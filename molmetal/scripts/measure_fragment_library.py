@@ -37,17 +37,20 @@ def main() -> int:
     pool = fragments_from_chembl_reactive()
 
     by_category = {
-        "azide":  [s for s in FRAGMENT_POOL_AZIDES],
+        "azide": [s for s in FRAGMENT_POOL_AZIDES],
         "alkyne": [s for s in FRAGMENT_POOL_ALKYNES],
-        "diene":  [s for s in FRAGMENT_POOL_DIENES],
-        "thiol":  [s for s in FRAGMENT_POOL_THOLS],
+        "diene": [s for s in FRAGMENT_POOL_DIENES],
+        "thiol": [s for s in FRAGMENT_POOL_THOLS],
     }
 
     # Bucket the emitted tiles by primary tag.
     emitted_by_category = {"azide": 0, "alkyne": 0, "diene": 0, "thiol": 0}
     for t in pool:
         for cat in emitted_by_category:
-            if t.has_group(cat) or (cat == "alkyne" and (t.has_group("terminal_alkyne") or t.has_group("cyclooctyne"))):
+            if t.has_group(cat) or (
+                cat == "alkyne"
+                and (t.has_group("terminal_alkyne") or t.has_group("cyclooctyne"))
+            ):
                 emitted_by_category[cat] += 1
                 break
             if cat == "diene" and (t.has_group("diene") or t.has_group("dienophile")):
@@ -59,7 +62,9 @@ def main() -> int:
 
     metrics = l6_fragment_pool_metrics()
     print()
-    print(f"{'category':<10} {'input':>6} {'valid':>6} {'embed_fail':>11} {'mw_fail':>8} {'logp_fail':>10} {'fail_%':>8}")
+    print(
+        f"{'category':<10} {'input':>6} {'valid':>6} {'embed_fail':>11} {'mw_fail':>8} {'logp_fail':>10} {'fail_%':>8}"
+    )
     print("-" * 60)
     total_in, total_valid = 0, 0
     for cat, n_input in [(k, len(v)) for k, v in by_category.items()]:
@@ -73,8 +78,12 @@ def main() -> int:
         total_in += m["input"]
         total_valid += m["valid"]
     print("-" * 60)
-    overall_fail_pct = ((total_in - total_valid) / total_in * 100.0) if total_in else 0.0
-    print(f"{'TOTAL':<10} {total_in:>6} {total_valid:>6} {'':<11} {'':<8} {'':<10} {overall_fail_pct:>7.1f}%")
+    overall_fail_pct = (
+        ((total_in - total_valid) / total_in * 100.0) if total_in else 0.0
+    )
+    print(
+        f"{'TOTAL':<10} {total_in:>6} {total_valid:>6} {'':<11} {'':<8} {'':<10} {overall_fail_pct:>7.1f}%"
+    )
 
     print()
     print("Emitted tiles per category:")

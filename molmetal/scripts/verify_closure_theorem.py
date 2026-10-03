@@ -75,6 +75,7 @@ Usage
     # PlatinAI dataset only, all 7 PlatinAI metals.
     uv run --no-sync python molmetal/scripts/verify_closure_theorem.py --dataset platinai
 """
+
 from __future__ import annotations
 
 import argparse
@@ -112,14 +113,49 @@ log = logging.getLogger("wf36_closure_theorem")
 #: rhenium + osmium + gold + palladium + silver set.  All are present
 #: in BOTH the tmQM d-block subset AND the PlatinAI 5K CSV.
 TASK_SPEC_METALS: Tuple[str, ...] = (
-    "Pt", "Ru", "Ir", "Rh", "Re", "Os", "Au", "Pd", "Ag",
+    "Pt",
+    "Ru",
+    "Ir",
+    "Rh",
+    "Re",
+    "Os",
+    "Au",
+    "Pd",
+    "Ag",
 )
 
 #: The 30 d-block metals shipped in ``PRIMITIVE_ATOMS`` (R17 UC-B1).
 TMQM_DBLOCK_METALS: Tuple[str, ...] = (
-    "Sc", "Ti", "V",  "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",   # 3d
-    "Y",  "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",   # 4d
-    "La", "Hf", "Ta", "W",  "Re", "Os", "Ir", "Pt", "Au", "Hg",   # 5d + La
+    "Sc",
+    "Ti",
+    "V",
+    "Cr",
+    "Mn",
+    "Fe",
+    "Co",
+    "Ni",
+    "Cu",
+    "Zn",  # 3d
+    "Y",
+    "Zr",
+    "Nb",
+    "Mo",
+    "Tc",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Cd",  # 4d
+    "La",
+    "Hf",
+    "Ta",
+    "W",
+    "Re",
+    "Os",
+    "Ir",
+    "Pt",
+    "Au",
+    "Hg",  # 5d + La
 )
 
 #: PlatinAI 5K metal labels (subset of d-block).
@@ -135,13 +171,13 @@ DEFAULT_PLATINAI_CSV: Path = _REPO_ROOT / "molmetal" / "data" / "platinai_5k.csv
 
 #: Partner terms (mirrors wf_lambda4_verify fixture).
 PARTNER_SMILE_LIST: List[str] = [
-    "C#CCN",                  # propargylamine  — alkyne + amine
-    "CCN=[N+]=[N-]",          # ethyl azide     — CuAAC
-    "C#CC",                   # propyne         — CuAAC
-    "CS",                     # methanethiol    — ThiolEne
-    "C=CC",                   # propene         — ThiolEne
-    "OC(=O)c1ccccc1",         # benzoic acid    — AmideCoupling
-    "NCC",                    # ethylamine      — AmideCoupling
+    "C#CCN",  # propargylamine  — alkyne + amine
+    "CCN=[N+]=[N-]",  # ethyl azide     — CuAAC
+    "C#CC",  # propyne         — CuAAC
+    "CS",  # methanethiol    — ThiolEne
+    "C=CC",  # propene         — ThiolEne
+    "OC(=O)c1ccccc1",  # benzoic acid    — AmideCoupling
+    "NCC",  # ethylamine      — AmideCoupling
 ]
 
 
@@ -170,12 +206,14 @@ def _load_click_rules() -> List[Any]:
         Suzuki,
         ThiolEne,
     )
+
     return [CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling]
 
 
 def _load_partner_terms() -> List[Any]:
     """Build partner terms from :data:`PARTNER_SMILE_LIST`."""
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
     out: List[Any] = []
     for smi in PARTNER_SMILE_LIST:
         try:
@@ -217,13 +255,16 @@ def _load_metal_samples(
         if column not in fields:
             log.error(
                 "Column %r missing from %s; fields=%r",
-                column, csv_path, fields,
+                column,
+                csv_path,
+                fields,
             )
             return out
         if "smiles" not in fields:
             log.error(
                 "Column 'smiles' missing from %s; fields=%r",
-                csv_path, fields,
+                csv_path,
+                fields,
             )
             return out
         for row in reader:
@@ -404,9 +445,7 @@ def _aggregate_per_metal(records: List[Dict[str, Any]]) -> Dict[str, float]:
         mean_beta_depth = float(statistics.fmean(depths))
         mean_n_products = float(statistics.fmean(prods))
         mean_wall = float(statistics.fmean(walls))
-        std_wall = (
-            float(statistics.stdev(walls)) if len(walls) >= 2 else 0.0
-        )
+        std_wall = float(statistics.stdev(walls)) if len(walls) >= 2 else 0.0
         median_wall = float(statistics.median(walls))
         peak_mem = float(max(mems)) if mems else 0.0
         total_wall = float(sum(walls))
@@ -457,7 +496,10 @@ def run_closure_theorem_verifier(
     log.info(
         "[wf36_closure_theorem] start: dataset=%s, metals=%s, n_per_metal=%d, "
         "max_depth=%d",
-        dataset, list(metals), int(n_samples_per_metal), int(max_depth),
+        dataset,
+        list(metals),
+        int(n_samples_per_metal),
+        int(max_depth),
     )
 
     if dataset == "tmqm":
@@ -494,12 +536,17 @@ def run_closure_theorem_verifier(
 
     for metal in metals:
         smis = _load_metal_samples(
-            csv_path, str(metal), int(n_samples_per_metal), dataset=dataset,
+            csv_path,
+            str(metal),
+            int(n_samples_per_metal),
+            dataset=dataset,
         )
         records: List[Dict[str, Any]] = []
         for i, smi in enumerate(smis):
             rec = _benchmark_one(
-                smi, i, str(metal),
+                smi,
+                i,
+                str(metal),
                 click_rules=click_rules,
                 partner_terms=partner_terms,
                 max_depth=int(max_depth),
@@ -512,8 +559,11 @@ def run_closure_theorem_verifier(
         agg = per_metal_aggregate[metal]
         log.info(
             "[wf36_closure_theorem] %s: n=%d closure_ok=%d rate=%.4f wall=%.3fs",
-            metal, agg["n_samples"], agg["n_closure_ok"],
-            agg["closure_reachability_rate"], agg["total_wall_time"],
+            metal,
+            agg["n_samples"],
+            agg["n_closure_ok"],
+            agg["closure_reachability_rate"],
+            agg["total_wall_time"],
         )
 
     # Overall aggregate (across all metals).
@@ -530,6 +580,7 @@ def run_closure_theorem_verifier(
 
     try:
         import torch  # local; cheap
+
         torch_ver = torch.__version__
     except Exception:
         torch_ver = "n/a"
@@ -545,9 +596,9 @@ def run_closure_theorem_verifier(
         "csv_path": str(csv_path),
         "metals": list(metals),
         "n_samples_per_metal": int(n_samples_per_metal),
-        "n_samples_total": int(sum(
-            per_metal_aggregate[m]["n_samples"] for m in metals
-        )),
+        "n_samples_total": int(
+            sum(per_metal_aggregate[m]["n_samples"] for m in metals)
+        ),
         "max_depth": int(max_depth),
         "max_products": int(max_products),
         "seeds": int(seeds) if seeds is not None else 1,
@@ -591,6 +642,7 @@ def save_verifier_benchmark(
     def _coerce(o: Any) -> Any:
         try:
             import numpy as _np
+
             if isinstance(o, (_np.floating, _np.integer)):
                 return o.item()
             if isinstance(o, _np.ndarray):
@@ -607,10 +659,18 @@ def save_verifier_benchmark(
     csv_path = output_dir / "per_metal.csv"
     with csv_path.open("w", newline="") as fh:
         fields = [
-            "metal", "n_samples", "n_closure_ok", "closure_reachability_rate",
-            "mean_beta_depth", "mean_n_products", "mean_wall_time",
-            "std_wall_time", "median_wall_time", "peak_memory_mb",
-            "total_wall_time", "n_error",
+            "metal",
+            "n_samples",
+            "n_closure_ok",
+            "closure_reachability_rate",
+            "mean_beta_depth",
+            "mean_n_products",
+            "mean_wall_time",
+            "std_wall_time",
+            "median_wall_time",
+            "peak_memory_mb",
+            "total_wall_time",
+            "n_error",
         ]
         writer = csv.DictWriter(fh, fieldnames=fields)
         writer.writeheader()
@@ -671,7 +731,9 @@ def _write_markdown(payload: Dict[str, Any], output_dir: Path) -> None:
     lines.append(f"| closure_reachability_rate | {overall_rate:.4f} |")
     lines.append(f"| mean_beta_depth | {float(agg.get('mean_beta_depth', 0.0)):.4f} |")
     lines.append(f"| mean_n_products | {float(agg.get('mean_n_products', 0.0)):.4f} |")
-    lines.append(f"| mean_wall_time (s) | {float(agg.get('mean_wall_time', 0.0)):.6f} |")
+    lines.append(
+        f"| mean_wall_time (s) | {float(agg.get('mean_wall_time', 0.0)):.6f} |"
+    )
     lines.append(f"| std_wall_time (s) | {float(agg.get('std_wall_time', 0.0)):.6f} |")
     lines.append(f"| peak_memory_mb | {float(agg.get('peak_memory_mb', 0.0)):.4f} |")
     lines.append(f"| N error | {int(agg.get('n_error', 0))} |")
@@ -725,7 +787,9 @@ def _build_argparser() -> argparse.ArgumentParser:
         help="Dataset to load (default tmqm).",
     )
     p.add_argument(
-        "--n-samples", type=int, default=DEFAULT_N_SAMPLES_PER_METAL,
+        "--n-samples",
+        type=int,
+        default=DEFAULT_N_SAMPLES_PER_METAL,
         help="Samples per metal (default 100).",
     )
     p.add_argument(
@@ -740,35 +804,49 @@ def _build_argparser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--tmqm-csv", type=Path, default=DEFAULT_TMQM_CSV,
+        "--tmqm-csv",
+        type=Path,
+        default=DEFAULT_TMQM_CSV,
         help="Path to tmQM d-block subset CSV.",
     )
     p.add_argument(
-        "--platinai-csv", type=Path, default=DEFAULT_PLATINAI_CSV,
+        "--platinai-csv",
+        type=Path,
+        default=DEFAULT_PLATINAI_CSV,
         help="Path to PlatinAI 5K CSV.",
     )
     p.add_argument(
-        "--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR,
+        "--output-dir",
+        type=Path,
+        default=DEFAULT_OUTPUT_DIR,
         help="Output directory for closure_bench.json + per_metal.csv + .md.",
     )
     p.add_argument(
-        "--max-depth", type=int, default=DEFAULT_MAX_DEPTH,
+        "--max-depth",
+        type=int,
+        default=DEFAULT_MAX_DEPTH,
         help="Closure BFS max depth (default 1).",
     )
     p.add_argument(
-        "--max-products", type=int, default=DEFAULT_MAX_PRODUCTS,
+        "--max-products",
+        type=int,
+        default=DEFAULT_MAX_PRODUCTS,
         help="ProductiveSpace BFS safety cap (default 64).",
     )
     p.add_argument(
-        "--seeds", type=int, default=1,
+        "--seeds",
+        type=int,
+        default=1,
         help="Number of independent seeds (default 1; placeholder for future).",
     )
     p.add_argument(
-        "--smoke", action="store_true",
+        "--smoke",
+        action="store_true",
         help="Smoke mode (caller controls --n-samples, e.g. 10).",
     )
     p.add_argument(
-        "--log-level", default="INFO",
+        "--log-level",
+        default="INFO",
         choices=("DEBUG", "INFO", "WARNING", "ERROR"),
     )
     return p
@@ -794,7 +872,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if not metals:
         log.error(
             "No known metals in --metals %s; valid for dataset=%s: %s",
-            metals_arg, args.dataset, sorted(known),
+            metals_arg,
+            args.dataset,
+            sorted(known),
         )
         return 2
 
@@ -820,9 +900,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "[wf36_closure_theorem] DONE: dataset=%s metals=%d n=%d "
         "closure_ok=%d rate=%.4f mean_wall=%.6fs peak_mem=%.2fMB "
         "total_wall=%.2fs",
-        payload["dataset"], len(metals), agg["n_samples"],
-        agg["n_closure_ok"], agg["closure_reachability_rate"],
-        agg["mean_wall_time"], agg["peak_memory_mb"],
+        payload["dataset"],
+        len(metals),
+        agg["n_samples"],
+        agg["n_closure_ok"],
+        agg["closure_reachability_rate"],
+        agg["mean_wall_time"],
+        agg["peak_memory_mb"],
         payload["total_wall_time_s"],
     )
     print(

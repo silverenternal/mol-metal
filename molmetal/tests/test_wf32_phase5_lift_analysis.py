@@ -8,6 +8,7 @@ These tests verify that:
 5. No fabricated MEASURED headline values exist (lift_r18_minus_r17 is None for m19, negative for m16, null + smoke-caveat for m8)
 6. The R20 plan items are referenced
 """
+
 from __future__ import annotations
 
 import json
@@ -16,8 +17,12 @@ from pathlib import Path
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-LIFT_ANALYSIS_JSON = PROJECT_ROOT / "molmetal" / "reports" / "wf32_m16_m19_m8_lift_analysis.json"
-LIFT_SUMMARY_MD = PROJECT_ROOT / "molmetal" / "reports" / "wf32_m16_m19_m8_lift_summary.md"
+LIFT_ANALYSIS_JSON = (
+    PROJECT_ROOT / "molmetal" / "reports" / "wf32_m16_m19_m8_lift_analysis.json"
+)
+LIFT_SUMMARY_MD = (
+    PROJECT_ROOT / "molmetal" / "reports" / "wf32_m16_m19_m8_lift_summary.md"
+)
 METRICS_PEARSON = PROJECT_ROOT / "metrics" / "by_metric" / "pearson_r_pic50.json"
 METRICS_LOMO = PROJECT_ROOT / "metrics" / "by_metric" / "metal_lomo_auc.json"
 METRICS_PB = PROJECT_ROOT / "metrics" / "by_metric" / "pb_pass_rate.json"
@@ -34,9 +39,9 @@ def _load_text(path: Path) -> str:
 
 class TestLiftAnalysisJsonExists:
     def test_lift_analysis_json_exists(self):
-        assert LIFT_ANALYSIS_JSON.exists(), (
-            f"Wf-32 Phase 5 lift analysis JSON not found at {LIFT_ANALYSIS_JSON}"
-        )
+        assert (
+            LIFT_ANALYSIS_JSON.exists()
+        ), f"Wf-32 Phase 5 lift analysis JSON not found at {LIFT_ANALYSIS_JSON}"
 
     def test_lift_analysis_json_is_valid_json(self):
         data = _load_json(LIFT_ANALYSIS_JSON)
@@ -93,9 +98,9 @@ class TestLiftSummaryMdExists:
 class TestM16Metric:
     def test_pearson_metrics_has_wf32_entry(self):
         data = _load_json(METRICS_PEARSON)
-        assert "wf32_phase5_lift_update" in data, (
-            "metrics/by_metric/pearson_r_pic50.json must have wf32_phase5_lift_update"
-        )
+        assert (
+            "wf32_phase5_lift_update" in data
+        ), "metrics/by_metric/pearson_r_pic50.json must have wf32_phase5_lift_update"
 
     def test_pearson_r17_baseline_preserved(self):
         data = _load_json(METRICS_PEARSON)
@@ -135,7 +140,9 @@ class TestM19Metric:
     def test_lomo_wf32_defer_reason_includes_gpu1(self):
         data = _load_json(METRICS_LOMO)
         u = data["wf32_phase5_lift_update"]
-        assert "GPU 1" in u["r18_wf32_defer_reason"] or "GPU" in u["r18_wf32_defer_reason"]
+        assert (
+            "GPU 1" in u["r18_wf32_defer_reason"] or "GPU" in u["r18_wf32_defer_reason"]
+        )
 
 
 class TestM8Metric:

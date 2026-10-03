@@ -63,9 +63,7 @@ PDBBIND_BASE_URL = "http://www.pdbbind.org.cn/"
 PDBBIND_INDEX_URL = (
     "http://www.pdbbind.org.cn/download/PDBbind_v2020_plain_text_index.tar.gz"
 )
-PDBBIND_REFINED_URL = (
-    "http://www.pdbbind.org.cn/download/PDBbind_v2020_refined.tar.gz"
-)
+PDBBIND_REFINED_URL = "http://www.pdbbind.org.cn/download/PDBbind_v2020_refined.tar.gz"
 
 # MBD paper (no public benchmark bundle; the 15-family table is in the
 # SI of Metz et al. 2024).  The DOI resolves to ACS landing page.
@@ -79,7 +77,9 @@ CROSSDOCKED_LOCAL_DIR = DEFAULT_DATA_DIR / "crossdocked"
 # ---------------------------------------------------------------------------
 # Network probe
 # ---------------------------------------------------------------------------
-def probe_network(url: str = PDBBIND_BASE_URL, timeout: float = 4.0) -> Tuple[bool, str]:
+def probe_network(
+    url: str = PDBBIND_BASE_URL, timeout: float = 4.0
+) -> Tuple[bool, str]:
     """Return ``(ok, message)``.  True iff ``url`` resolves within ``timeout`` s."""
     try:
         with urllib.request.urlopen(url, timeout=timeout) as r:
@@ -220,8 +220,10 @@ def run_fallback(
         print("[fallback] WARNING: no CrossDocked2020 data found locally.")
         print("           Run scripts/ablation_counterion.py first to populate,")
         print("           or download the 1.6 GB archive manually:")
-        print("             wget http://bits.csb.pitt.edu/files/"
-              "CrossDocked2020_cascadediff.zip")
+        print(
+            "             wget http://bits.csb.pitt.edu/files/"
+            "CrossDocked2020_cascadediff.zip"
+        )
         return {"ok": False, "split": has_split, "tar": has_tar, "zip": has_zip}
 
     print(

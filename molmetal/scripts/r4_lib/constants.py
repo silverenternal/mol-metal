@@ -50,29 +50,29 @@ _REPO_ROOT = _HERE.parent.parent.parent
 # ---------------------------------------------------------------------------
 CLICK_RULE_ALIASES: Dict[str, List[str]] = {
     # "all-5" / "all_5" / "all" — the canonical 5 click rules.
-    "all-5":   ["CuAAC", "SPAAC", "Suzuki", "ThiolEne", "AmideCoupling"],
-    "all_5":   ["CuAAC", "SPAAC", "Suzuki", "ThiolEne", "AmideCoupling"],
-    "all":     ["CuAAC", "SPAAC", "Suzuki", "ThiolEne", "AmideCoupling"],
+    "all-5": ["CuAAC", "SPAAC", "Suzuki", "ThiolEne", "AmideCoupling"],
+    "all_5": ["CuAAC", "SPAAC", "Suzuki", "ThiolEne", "AmideCoupling"],
+    "all": ["CuAAC", "SPAAC", "Suzuki", "ThiolEne", "AmideCoupling"],
     "default": ["CuAAC", "SPAAC", "Suzuki", "ThiolEne", "AmideCoupling"],
     # Individual rule pass-throughs (also accept the lower-case /
     # dashed variants that :data:`CLICK_REACTIONS` already understands).
-    "CuAAC":         ["CuAAC"],
-    "cuaac":         ["CuAAC"],
-    "SPAAC":         ["SPAAC"],
-    "spaac":         ["SPAAC"],
-    "Suzuki":        ["Suzuki"],
-    "suzuki":        ["Suzuki"],
-    "ThiolEne":      ["ThiolEne"],
-    "thiol-ene":     ["ThiolEne"],
-    "thiol_ene":     ["ThiolEne"],
-    "thiolene":      ["ThiolEne"],
+    "CuAAC": ["CuAAC"],
+    "cuaac": ["CuAAC"],
+    "SPAAC": ["SPAAC"],
+    "spaac": ["SPAAC"],
+    "Suzuki": ["Suzuki"],
+    "suzuki": ["Suzuki"],
+    "ThiolEne": ["ThiolEne"],
+    "thiol-ene": ["ThiolEne"],
+    "thiol_ene": ["ThiolEne"],
+    "thiolene": ["ThiolEne"],
     "AmideCoupling": ["AmideCoupling"],
     "amide-coupling": ["AmideCoupling"],
     "amide_coupling": ["AmideCoupling"],
-    "amide":         ["AmideCoupling"],
+    "amide": ["AmideCoupling"],
     # Comma-separated friendly lists.
-    "cu+spaac":      ["CuAAC", "SPAAC"],
-    "click-azide":   ["CuAAC", "SPAAC"],
+    "cu+spaac": ["CuAAC", "SPAAC"],
+    "click-azide": ["CuAAC", "SPAAC"],
     # F2(a) — metal-coordination family (Pt_II / Ru_II / Ir_III).
     # These opt-in rules are NOT included in the default ``all-5``
     # set; they are activated explicitly via the ``metal-coord``
@@ -80,22 +80,36 @@ CLICK_RULE_ALIASES: Dict[str, List[str]] = {
     # separate from the click family because the search treats them
     # as a different chemistry regime (single-bond ligand
     # substitution vs 3-bond click cycloaddition).
-    "metal-coord":   ["MetalLigandExchange", "AquaExchange"],
-    "metal_coord":   ["MetalLigandExchange", "AquaExchange"],
-    "MetalLigandExchange":    ["MetalLigandExchange"],
-    "metal-ligand-exchange":  ["MetalLigandExchange"],
-    "metal_ligand_exchange":  ["MetalLigandExchange"],
-    "ammonia-substitution":   ["MetalLigandExchange"],
-    "ammine-substitution":    ["MetalLigandExchange"],
-    "AquaExchange":   ["AquaExchange"],
-    "aqua-exchange":  ["AquaExchange"],
-    "aqua_exchange":  ["AquaExchange"],
-    "aquation":       ["AquaExchange"],
+    "metal-coord": ["MetalLigandExchange", "AquaExchange"],
+    "metal_coord": ["MetalLigandExchange", "AquaExchange"],
+    "MetalLigandExchange": ["MetalLigandExchange"],
+    "metal-ligand-exchange": ["MetalLigandExchange"],
+    "metal_ligand_exchange": ["MetalLigandExchange"],
+    "ammonia-substitution": ["MetalLigandExchange"],
+    "ammine-substitution": ["MetalLigandExchange"],
+    "AquaExchange": ["AquaExchange"],
+    "aqua-exchange": ["AquaExchange"],
+    "aqua_exchange": ["AquaExchange"],
+    "aquation": ["AquaExchange"],
     # Composed family — click + metal-coordination (7 rules total).
-    "all-7":   ["CuAAC", "SPAAC", "Suzuki", "ThiolEne", "AmideCoupling",
-                "MetalLigandExchange", "AquaExchange"],
-    "all_7":   ["CuAAC", "SPAAC", "Suzuki", "ThiolEne", "AmideCoupling",
-                "MetalLigandExchange", "AquaExchange"],
+    "all-7": [
+        "CuAAC",
+        "SPAAC",
+        "Suzuki",
+        "ThiolEne",
+        "AmideCoupling",
+        "MetalLigandExchange",
+        "AquaExchange",
+    ],
+    "all_7": [
+        "CuAAC",
+        "SPAAC",
+        "Suzuki",
+        "ThiolEne",
+        "AmideCoupling",
+        "MetalLigandExchange",
+        "AquaExchange",
+    ],
     # F2-B: scaffold-aware aliases (WF-Lambda-Fix-FullPath-v2 Fix 2
     # IMPROVED).  Each alias expands to the click-rule subset that is
     # chemistry-compatible with a given metal-scaffold category (see
@@ -125,27 +139,27 @@ CLICK_RULE_ALIASES: Dict[str, List[str]] = {
     # For ``auto-pt-strict`` we list ONLY the compatible+marginal
     # rules (CuAAC + SPAAC + Suzuki); ThiolEne + AmideCoupling are
     # GATED OUT (incompatible on strict Pt_II).
-    "auto-pt-strict":  ["CuAAC", "SPAAC", "Suzuki"],
-    "auto_pt_strict":  ["CuAAC", "SPAAC", "Suzuki"],
+    "auto-pt-strict": ["CuAAC", "SPAAC", "Suzuki"],
+    "auto_pt_strict": ["CuAAC", "SPAAC", "Suzuki"],
     # Pt_IV / Pt_II_chelating / labile_metal all enable all 5
     # (no incompatible rules).
-    "auto-pt-iv":      ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
-    "auto_pt_iv":      ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
+    "auto-pt-iv": ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
+    "auto_pt_iv": ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
     "auto-pt-chelate": ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
     "auto_pt_chelate": ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
-    "auto-labile":     ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
-    "auto_labile":     ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
+    "auto-labile": ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
+    "auto_labile": ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
     # auto-unknown mirrors the historical all-5 behaviour (the
     # scaffold could not be classified; fall back to the broadest
     # set so the user is never silently restricted).
-    "auto-unknown":    ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
-    "auto_unknown":    ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
+    "auto-unknown": ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
+    "auto_unknown": ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
     # The ``strict-Pt-II`` alias is the friendly name for the
     # narrowest scaffold-gated subset (CuAAC + SPAAC, dropping even
     # the marginal Suzuki).  Useful for the strict-coordination
     # baseline cell.
-    "strict-Pt-II":   ["CuAAC", "SPAAC"],
-    "strict_pt_ii":   ["CuAAC", "SPAAC"],
+    "strict-Pt-II": ["CuAAC", "SPAAC"],
+    "strict_pt_ii": ["CuAAC", "SPAAC"],
     "click-azide-only": ["CuAAC", "SPAAC"],
     "click_azide_only": ["CuAAC", "SPAAC"],
 }
@@ -304,26 +318,22 @@ METAL_PRIOR_WEIGHT: float = 0.5
 # cross-references).
 # ---------------------------------------------------------------------------
 _R17_LEGACY_DEFAULTS: Dict[str, Any] = {
-    "pockets":        10,
-    "seeds":          [42, 0, 1234],
-    "n_simulations":  200,
-    "manifest":       str(
-        _REPO_ROOT / "molmetal" / "data" / "crossdocked100_manifest.csv"
-    ),
+    "pockets": 10,
+    "seeds": [42, 0, 1234],
+    "n_simulations": 200,
+    "manifest": str(_REPO_ROOT / "molmetal" / "data" / "crossdocked100_manifest.csv"),
 }
 _R17_SMOKE_PRESET: Dict[str, Any] = {
-    "pockets":        10,
-    "seeds":          [42],
-    "n_simulations":  20,
-    "manifest":       str(
+    "pockets": 10,
+    "seeds": [42],
+    "n_simulations": 20,
+    "manifest": str(
         _REPO_ROOT / "molmetal" / "data" / "test_010_019_subset_manifest.csv"
     ),
 }
 _R17_PAPER_GRADE_PRESET: Dict[str, Any] = {
-    "pockets":        100,
-    "seeds":          [42, 0, 1234],
-    "n_simulations":  1000,
-    "manifest":       str(
-        _REPO_ROOT / "molmetal" / "data" / "crossdocked100_manifest.csv"
-    ),
+    "pockets": 100,
+    "seeds": [42, 0, 1234],
+    "n_simulations": 1000,
+    "manifest": str(_REPO_ROOT / "molmetal" / "data" / "crossdocked100_manifest.csv"),
 }

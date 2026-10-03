@@ -112,9 +112,9 @@ def test_vocab_matches_spec(adapter_on: LipmanFlowMatchingAdapter) -> None:
 def test_vocab_mask_default_is_true() -> None:
     """Default behaviour is ON — the masked-softmax ships out of the box."""
     a = LipmanFlowMatchingAdapter()
-    assert a._vocab_mask is True, (
-        "A2 default must be vocab_mask=True; round-10 spec locked this in."
-    )
+    assert (
+        a._vocab_mask is True
+    ), "A2 default must be vocab_mask=True; round-10 spec locked this in."
 
 
 def test_sampled_atoms_in_vocab_when_mask_on(
@@ -151,9 +151,9 @@ def test_sampled_atoms_in_vocab_when_mask_on(
             )
     # Mass conservation over the masked support (test 4 in the spec).
     support_sum = probs.sum(dim=-1)
-    assert torch.allclose(support_sum, torch.ones_like(support_sum), atol=1e-6), (
-        "softmax over the masked support must sum to 1.0 per atom."
-    )
+    assert torch.allclose(
+        support_sum, torch.ones_like(support_sum), atol=1e-6
+    ), "softmax over the masked support must sum to 1.0 per atom."
     # Sample — every draw must land inside the vocab.
     sampler = torch.Generator().manual_seed(0)
     samples = torch.multinomial(probs, 1, generator=sampler).flatten()
@@ -184,12 +184,14 @@ def test_all_atoms_in_vocab_when_mask_off(
     probs = F.softmax(logits, dim=-1)
     # Every Z in [1, max_z) has >0 probability.
     for z in range(1, max_z):
-        assert (probs[:, z] > 0).all(), (
-            f"Z={z} must have non-zero probability when vocab_mask=False."
-        )
+        assert (
+            probs[:, z] > 0
+        ).all(), f"Z={z} must have non-zero probability when vocab_mask=False."
     # Mass conservation.
     assert torch.allclose(
-        probs.sum(dim=-1), torch.ones(2000), atol=1e-6,
+        probs.sum(dim=-1),
+        torch.ones(2000),
+        atol=1e-6,
     )
     # Sampling covers a wide swath of the support (at least 50 of the
     # 99 non-padding Zs should appear in 2000 draws).
@@ -235,9 +237,9 @@ def test_pt_appears_with_nonzero_probability(
         f"Pt appeared 0 times in 2000 samples — the metal centre is "
         f"unreachable, the vocab mask is broken."
     )
-    assert pt_count >= 100, (
-        f"Expected ~166 Pt samples (uniform over 12), got {pt_count}."
-    )
+    assert (
+        pt_count >= 100
+    ), f"Expected ~166 Pt samples (uniform over 12), got {pt_count}."
 
 
 def test_mask_mass_conservation(adapter_on: LipmanFlowMatchingAdapter) -> None:
@@ -265,15 +267,15 @@ def test_mask_mass_conservation(adapter_on: LipmanFlowMatchingAdapter) -> None:
         )
         # Vocab columns must have strictly positive probability.
         for z in adapter_on.atom_vocab:
-            assert (probs[:, z] > 0).all(), (
-                f"Vocab element Z={z} has zero probability mass."
-            )
+            assert (
+                probs[:, z] > 0
+            ).all(), f"Vocab element Z={z} has zero probability mass."
         # Non-vocab columns (incl. Z=0) must have exactly zero.
         for z in range(max_z):
             if z == 0 or z not in adapter_on.atom_vocab:
-                assert torch.all(probs[:, z] == 0), (
-                    f"Z={z} leaked probability mass under vocab_mask=True."
-                )
+                assert torch.all(
+                    probs[:, z] == 0
+                ), f"Z={z} leaked probability mass under vocab_mask=True."
 
 
 def test_sampled_atom_distribution_histogram(
@@ -309,12 +311,12 @@ def test_sampled_atom_distribution_histogram(
     expected_share = n_steps / len(adapter_on.atom_vocab)
     for z in adapter_on.atom_vocab:
         c = counts.get(z, 0)
-        assert c >= 50, (
-            f"Z={z} under-sampled: {c} < 50 (expected ~{expected_share:.0f})."
-        )
-        assert c <= 4 * expected_share, (
-            f"Z={z} over-sampled: {c} > 4*{expected_share:.0f} — biased."
-        )
+        assert (
+            c >= 50
+        ), f"Z={z} under-sampled: {c} < 50 (expected ~{expected_share:.0f})."
+        assert (
+            c <= 4 * expected_share
+        ), f"Z={z} over-sampled: {c} > 4*{expected_share:.0f} — biased."
 
 
 def test_construct_with_vocab_mask_false_does_not_raise() -> None:

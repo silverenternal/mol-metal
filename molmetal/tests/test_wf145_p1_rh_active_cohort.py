@@ -25,6 +25,7 @@ label**, which regressed Rh fold AUC from baseline 0.368 → 0.136.
 
 Constraints: pytest ≥ 12 tests PASS.
 """
+
 from __future__ import annotations
 
 import json
@@ -38,8 +39,12 @@ import numpy as np
 import pytest
 
 # Project paths — Wf-145 P1
-SCRIPT_PATH = "/home/hugo/codes/mol-metal/molmetal/scripts/rh_active_label_generation.py"
-REAL_CSV = "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
+SCRIPT_PATH = (
+    "/home/hugo/codes/mol-metal/molmetal/scripts/rh_active_label_generation.py"
+)
+REAL_CSV = (
+    "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
+)
 SYNTH_JSON = "/home/hugo/codes/mol-metal/molmetal/reports/wf131_p2_rh_oversample/synthetic_rh_cohort.json"
 OUTPUT_DIR = "/home/hugo/codes/mol-metal/molmetal/reports/wf145_p1_rh_active_cohort"
 OUTPUT_JSON = f"{OUTPUT_DIR}/synthetic_rh_pos_neg.json"
@@ -49,6 +54,7 @@ SYNTHESIS_MD = f"{OUTPUT_DIR}/synthesis.md"
 # =============================================================================
 # Test 1: Module import + main entry point
 # =============================================================================
+
 
 def test_module_imports():
     """Test that rh_active_label_generation module imports cleanly."""
@@ -68,6 +74,7 @@ def test_module_imports():
             DEFAULT_N_ACTIVE,
             DEFAULT_N_INACTIVE,
         )
+
         # Spot-check constants
         assert DEFAULT_N_ACTIVE == 250
         assert DEFAULT_N_INACTIVE == 250
@@ -78,6 +85,7 @@ def test_module_imports():
 # =============================================================================
 # Test 2: Output JSON exists and has valid structure
 # =============================================================================
+
 
 def test_output_json_exists():
     """Test that output JSON was generated."""
@@ -102,6 +110,7 @@ def test_output_json_valid_structure():
 # Test 3: Label balance — 250 active + 250 inactive (not constant)
 # =============================================================================
 
+
 def test_label_balance():
     """Test that labels are balanced (250 active + 250 inactive, NOT constant-inactive)."""
     with open(OUTPUT_JSON) as f:
@@ -119,6 +128,7 @@ def test_label_balance():
 # Test 4: Catherine 6/6 PASS per compound
 # =============================================================================
 
+
 def test_catherine_6of6_pass_rate():
     """Test that all 500 cohort compounds pass Catherine 6/6."""
     with open(OUTPUT_JSON) as f:
@@ -126,35 +136,45 @@ def test_catherine_6of6_pass_rate():
     all_compounds = data["actives"] + data["inactives"]
     n_pass = sum(1 for c in all_compounds if c.get("catherine_6of6_pass"))
     n_total = len(all_compounds)
-    assert n_pass == n_total, f"Expected all {n_total} to pass Catherine 6/6, got {n_pass}"
-    assert data["stats"]["catherine_6of6_pass_rate"] == 1.0, (
-        f"Catherine 6/6 PASS rate must be 1.0, got {data['stats']['catherine_6of6_pass_rate']}"
-    )
+    assert (
+        n_pass == n_total
+    ), f"Expected all {n_total} to pass Catherine 6/6, got {n_pass}"
+    assert (
+        data["stats"]["catherine_6of6_pass_rate"] == 1.0
+    ), f"Catherine 6/6 PASS rate must be 1.0, got {data['stats']['catherine_6of6_pass_rate']}"
 
 
 # =============================================================================
 # Test 5: Scaffold-split verified (no overlap with real cohort)
 # =============================================================================
 
+
 def test_no_scaffold_leak():
     """Test that no synthetic compound shares scaffold with real cohort."""
     with open(OUTPUT_JSON) as f:
         data = json.load(f)
     scaffold_overlap = data["stats"]["scaffold_overlap_count"]
-    assert scaffold_overlap == 0, f"Scaffold overlap detected: {scaffold_overlap} (label leak risk)"
+    assert (
+        scaffold_overlap == 0
+    ), f"Scaffold overlap detected: {scaffold_overlap} (label leak risk)"
 
 
 # =============================================================================
 # Test 6: Tanimoto similarity computed
 # =============================================================================
 
+
 def test_tanimoto_similarity_field_present():
     """Test that each compound has similarity fields populated."""
     with open(OUTPUT_JSON) as f:
         data = json.load(f)
     sample = data["actives"][0]
-    for k in ["max_sim_active", "max_sim_inactive",
-              "nearest_active_smiles", "nearest_inactive_smiles"]:
+    for k in [
+        "max_sim_active",
+        "max_sim_inactive",
+        "nearest_active_smiles",
+        "nearest_inactive_smiles",
+    ]:
         assert k in sample, f"Missing key: {k}"
     # Values should be in [0, 1]
     assert 0.0 <= sample["max_sim_active"] <= 1.0
@@ -164,6 +184,7 @@ def test_tanimoto_similarity_field_present():
 # =============================================================================
 # Test 7: Diff-based ranking — actives have higher diff than inactives
 # =============================================================================
+
 
 def test_diff_ranking_discriminative():
     """Test that actives have higher diff (max_sim_active - max_sim_inactive) than inactives."""
@@ -191,26 +212,29 @@ def test_diff_ranking_discriminative():
 # Test 8: Workflow metadata is Wf-145 P1 (not Wf-139 P7)
 # =============================================================================
 
+
 def test_workflow_metadata_is_wf145_p1():
     """Test that output JSON carries Wf-145 P1 metadata."""
     with open(OUTPUT_JSON) as f:
         data = json.load(f)
-    assert data["workflow"] == "wf145_p1_rh_active_cohort", (
-        f"Expected workflow='wf145_p1_rh_active_cohort', got '{data['workflow']}'"
-    )
-    assert "Wf-145" in data["phase"], (
-        f"Expected phase to mention Wf-145, got '{data['phase']}'"
-    )
+    assert (
+        data["workflow"] == "wf145_p1_rh_active_cohort"
+    ), f"Expected workflow='wf145_p1_rh_active_cohort', got '{data['workflow']}'"
+    assert (
+        "Wf-145" in data["phase"]
+    ), f"Expected phase to mention Wf-145, got '{data['phase']}'"
 
 
 # =============================================================================
 # Test 9: SMILES validity — all 500 cohort compounds parse as valid molecules
 # =============================================================================
 
+
 def test_smiles_validity():
     """Test that all SMILES parse as valid molecules via RDKit."""
     from rdkit import Chem
     from rdkit import RDLogger
+
     RDLogger.DisableLog("rdApp.*")  # suppress parse warnings
 
     with open(OUTPUT_JSON) as f:
@@ -226,14 +250,15 @@ def test_smiles_validity():
         else:
             n_invalid += 1
             invalid_ids.append(c["compound_id"])
-    assert n_valid == len(all_compounds), (
-        f"{n_invalid} SMILES invalid (compound IDs: {invalid_ids[:5]}...)"
-    )
+    assert n_valid == len(
+        all_compounds
+    ), f"{n_invalid} SMILES invalid (compound IDs: {invalid_ids[:5]}...)"
 
 
 # =============================================================================
 # Test 10: Active vs inactive cohorts not identical
 # =============================================================================
+
 
 def test_actives_inactives_not_identical():
     """Test that active and inactive cohorts are not identical compounds (sanity)."""
@@ -252,6 +277,7 @@ def test_actives_inactives_not_identical():
 # Test 11: Per-compound derivation_path and seed_scaffold inherited
 # =============================================================================
 
+
 def test_compound_metadata_inherited():
     """Test that each compound has seed_scaffold and derivation_path from Wf-131 P2."""
     with open(OUTPUT_JSON) as f:
@@ -267,6 +293,7 @@ def test_compound_metadata_inherited():
 # Test 12: Honest framing documented in synthesis.md
 # =============================================================================
 
+
 def test_honest_framing_documented():
     """Test that synthesis.md documents honest framing (proxy, similarity, etc.)."""
     assert os.path.exists(SYNTHESIS_MD), f"Synthesis file not found at {SYNTHESIS_MD}"
@@ -276,14 +303,15 @@ def test_honest_framing_documented():
     assert "proxy" in text.lower(), "Synthesis must mention similarity is proxy"
     assert "honest" in text.lower(), "Synthesis must mention honest framing"
     # Should reference the bug fix (Wf-131 regression)
-    assert "Wf-131" in text or "0.368" in text or "0.136" in text, (
-        "Synthesis must reference the Wf-131 regression bug"
-    )
+    assert (
+        "Wf-131" in text or "0.368" in text or "0.136" in text
+    ), "Synthesis must reference the Wf-131 regression bug"
 
 
 # =============================================================================
 # Test 13: Reproducibility — same seed → same output
 # =============================================================================
+
 
 def test_reproducibility():
     """Test that re-reading the canonical output is deterministic (deterministic by construction)."""
@@ -304,15 +332,21 @@ def test_reproducibility():
 # Test 14: CLI workflow-tag / phase-tag metadata override
 # =============================================================================
 
+
 def test_cli_workflow_tag_override():
     """Test that --workflow-tag and --phase-tag CLI flags override default metadata."""
     with tempfile.TemporaryDirectory() as tmpdir:
         cmd = [
-            sys.executable, SCRIPT_PATH,
-            "--output-dir", tmpdir,
-            "--seed", "123",
-            "--workflow-tag", "test_workflow_tag_xyz",
-            "--phase-tag", "TEST_PHASE_TAG",
+            sys.executable,
+            SCRIPT_PATH,
+            "--output-dir",
+            tmpdir,
+            "--seed",
+            "123",
+            "--workflow-tag",
+            "test_workflow_tag_xyz",
+            "--phase-tag",
+            "TEST_PHASE_TAG",
         ]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
         assert result.returncode == 0, f"Script failed: {result.stderr}"

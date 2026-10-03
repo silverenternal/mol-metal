@@ -52,8 +52,9 @@ import numpy as np
 try:
     import torch
     import torch.nn as nn
+
     _HAS_TORCH = True
-except Exception:                                                      # pragma: no cover
+except Exception:  # pragma: no cover
     _HAS_TORCH = False
 
 
@@ -72,8 +73,12 @@ def _dropout_types() -> Tuple[type, ...]:
     global _DROPOUT_TYPES
     if not _DROPOUT_TYPES and _HAS_TORCH:
         _DROPOUT_TYPES = (
-            nn.Dropout, nn.Dropout1d, nn.Dropout2d, nn.Dropout3d,
-            nn.AlphaDropout, nn.FeatureAlphaDropout,
+            nn.Dropout,
+            nn.Dropout1d,
+            nn.Dropout2d,
+            nn.Dropout3d,
+            nn.AlphaDropout,
+            nn.FeatureAlphaDropout,
         )
     return _DROPOUT_TYPES
 
@@ -146,8 +151,9 @@ class MCDropoutEnsemble:
         (default 10; pass 1 for deterministic single-pass output).
     """
 
-    def __init__(self, model: "nn.Module", dropout_p: float = 0.1,
-                 n_passes: int = 10) -> None:
+    def __init__(
+        self, model: "nn.Module", dropout_p: float = 0.1, n_passes: int = 10
+    ) -> None:
         _require_torch()
         if not (0.0 <= dropout_p <= 1.0):
             raise ValueError(f"dropout_p must be in [0, 1], got {dropout_p}")
@@ -169,7 +175,9 @@ class MCDropoutEnsemble:
         return n_found
 
     def predict(
-        self, x: "torch.Tensor", return_std: bool = True,
+        self,
+        x: "torch.Tensor",
+        return_std: bool = True,
     ) -> Tuple["torch.Tensor", Optional["torch.Tensor"]]:
         """Run M forward passes and aggregate.
 
@@ -199,7 +207,9 @@ class MCDropoutEnsemble:
         return mean, std
 
     def predict_with_uncertainty(
-        self, x: "torch.Tensor", confidence: float = 0.95,
+        self,
+        x: "torch.Tensor",
+        confidence: float = 0.95,
     ) -> Tuple["torch.Tensor", "torch.Tensor", "torch.Tensor"]:
         """Return (mean, lower, upper) at given confidence interval.
 

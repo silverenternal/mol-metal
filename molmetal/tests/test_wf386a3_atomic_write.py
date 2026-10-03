@@ -12,6 +12,7 @@ Per Wf-386-A3 deliverable #2. Test cases:
 
 All tests run on a temporary directory; no production files are touched.
 """
+
 from __future__ import annotations
 
 import os
@@ -231,7 +232,9 @@ class TestDetectTruncationFlags:
 
     def test_ends_with_colon_flagged(self) -> None:
         # 200+ chars ending with a colon (mid-sentence).
-        output = ("# Section\n\n" + "This is content that goes on for a while " * 5) + ":"
+        output = (
+            "# Section\n\n" + "This is content that goes on for a while " * 5
+        ) + ":"
         reason = detect_truncation(output)
         assert reason is not None
         assert "colon" in reason
@@ -268,11 +271,7 @@ class TestDetectTruncationPasses:
     def test_fenced_code_close_passes(self) -> None:
         # Pass expected_min_length=30 since this is a short test fixture.
         output = (
-            "## Code Block\n\n"
-            "```python\n"
-            "def foo():\n"
-            "    return 42\n"
-            "```\n"
+            "## Code Block\n\n" "```python\n" "def foo():\n" "    return 42\n" "```\n"
         )
         assert detect_truncation(output, expected_min_length=30) is None
 
@@ -313,11 +312,15 @@ class TestWriteCloseoutIntegration:
         assert target.exists()
         assert target.read_text() == content
 
-    def test_overwrite_warning_logged_but_proceeds(self, tmp_path: Path, caplog) -> None:
+    def test_overwrite_warning_logged_but_proceeds(
+        self, tmp_path: Path, caplog
+    ) -> None:
         target = tmp_path / "out.md"
         existing = "\n".join(f"line {i} of original content." for i in range(100))
         target.write_text(existing)
-        new_content = "\n".join(f"line {i} of totally different text." for i in range(100))
+        new_content = "\n".join(
+            f"line {i} of totally different text." for i in range(100)
+        )
         # Default: log warning, proceed.
         write_closeout(target, new_content)
         assert target.read_text() == new_content
@@ -326,7 +329,9 @@ class TestWriteCloseoutIntegration:
         target = tmp_path / "out.md"
         existing = "\n".join(f"line {i} of original content." for i in range(100))
         target.write_text(existing)
-        new_content = "\n".join(f"line {i} of totally different text." for i in range(100))
+        new_content = "\n".join(
+            f"line {i} of totally different text." for i in range(100)
+        )
         with pytest.raises(OverwriteRisk):
             write_closeout(target, new_content, raise_on_overwrite=True)
         # Original content preserved (atomic write didn't happen).

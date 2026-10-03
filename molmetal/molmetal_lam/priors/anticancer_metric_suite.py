@@ -3,6 +3,7 @@
 The hERG heuristic follows Fermini & Coyne, *J. Med. Chem.* 2018, 61:3599.
 Missing RDKit or malformed SMILES gracefully return 0.5.
 """
+
 from __future__ import annotations
 from typing import Dict
 import math
@@ -16,47 +17,82 @@ except Exception:  # pragma: no cover
 
 from .metal_hydration import MetalHydrationAnalyzer
 
-_ANTICANCER_COUNTERS: Dict[str, int] = {k: 0 for k in (
-    "logp_calls", "tpsa_calls", "rotb_calls", "herg_calls",
-    "composite_calls", "in_range_hits", "out_of_range_hits")}
+_ANTICANCER_COUNTERS: Dict[str, int] = {
+    k: 0
+    for k in (
+        "logp_calls",
+        "tpsa_calls",
+        "rotb_calls",
+        "herg_calls",
+        "composite_calls",
+        "in_range_hits",
+        "out_of_range_hits",
+    )
+}
+
 
 class AnticancerMetricSuite:
-    def __init__(self, metal="Pt", oxidation_state=2, logp_range=(2.0, 5.0), tpsa_range=(60.0, 150.0)):
-        self.logp_range = tuple(map(float, logp_range)); self.tpsa_range = tuple(map(float, tpsa_range))
+    def __init__(
+        self,
+        metal="Pt",
+        oxidation_state=2,
+        logp_range=(2.0, 5.0),
+        tpsa_range=(60.0, 150.0),
+    ):
+        self.logp_range = tuple(map(float, logp_range))
+        self.tpsa_range = tuple(map(float, tpsa_range))
         self.hydration = MetalHydrationAnalyzer(metal, oxidation_state)
 
     def _mol(self, smiles):
-        if Chem is None or not isinstance(smiles, str): return None
-        try: return Chem.MolFromSmiles(smiles)
-        except Exception: return None
+        if Chem is None or not isinstance(smiles, str):
+            return None
+        try:
+            return Chem.MolFromSmiles(smiles)
+        except Exception:
+            return None
 
     def _band(self, value, bounds, *, logp=False):
         lo, hi = bounds
         if lo <= value <= hi:
-            _ANTICANCER_COUNTERS["in_range_hits"] += 1; return 1.0
+            _ANTICANCER_COUNTERS["in_range_hits"] += 1
+            return 1.0
         _ANTICANCER_COUNTERS["out_of_range_hits"] += 1
         if value < lo:
             return max(0.0, value - (lo - 1.0)) if logp else max(0.0, value / lo)
         return max(0.0, 1.0 - (value - hi) / (1.0 if logp else hi))
 
     def logp_anticancer(self, smiles: str) -> float:
-        _ANTICANCER_COUNTERS["logp_calls"] += 1; mol = self._mol(smiles)
-        if mol is None or Descriptors is None: return 0.5
-        try: return float(self._band(Descriptors.MolLogP(mol), self.logp_range, logp=True))
-        except Exception: return 0.5
+        _ANTICANCER_COUNTERS["logp_calls"] += 1
+        mol = self._mol(smiles)
+        if mol is None or Descriptors is None:
+            return 0.5
+        try:
+            return float(
+                self._band(Descriptors.MolLogP(mol), self.logp_range, logp=True)
+            )
+        except Exception:
+            return 0.5
 
     def tpsa_iv(self, smiles: str) -> float:
-        _ANTICANCER_COUNTERS["tpsa_calls"] += 1; mol = self._mol(smiles)
-        if mol is None or Descriptors is None: return 0.5
-        try: return float(self._band(Descriptors.TPSA(mol), self.tpsa_range))
-        except Exception: return 0.5
+        _ANTICANCER_COUNTERS["tpsa_calls"] += 1
+        mol = self._mol(smiles)
+        if mol is None or Descriptors is None:
+            return 0.5
+        try:
+            return float(self._band(Descriptors.TPSA(mol), self.tpsa_range))
+        except Exception:
+            return 0.5
 
     def rotatable_bonds(self, smiles: str) -> float:
-        _ANTICANCER_COUNTERS["rotb_calls"] += 1; mol = self._mol(smiles)
-        if mol is None or Descriptors is None: return 0.5
+        _ANTICANCER_COUNTERS["rotb_calls"] += 1
+        mol = self._mol(smiles)
+        if mol is None or Descriptors is None:
+            return 0.5
         try:
-            n = Descriptors.NumRotatableBonds(mol); return 1.0 if n <= 10 else (0.0 if n > 15 else (15-n)/5.0)
-        except Exception: return 0.5
+            n = Descriptors.NumRotatableBonds(mol)
+            return 1.0 if n <= 10 else (0.0 if n > 15 else (15 - n) / 5.0)
+        except Exception:
+            return 0.5
 
     def _raw_descriptors(self, smiles: str) -> dict[str, float]:
         """Parse once for reporting; incomplete measurements invalidate the row.
@@ -68,8 +104,10 @@ class AnticancerMetricSuite:
         if not isinstance(smiles, str) or not smiles.strip() or Descriptors is None:
             return invalid
         mol = self._mol(smiles)
-        if mol is None or mol.GetNumAtoms() == 0 or any(
-            atom.GetAtomicNum() == 0 for atom in mol.GetAtoms()
+        if (
+            mol is None
+            or mol.GetNumAtoms() == 0
+            or any(atom.GetAtomicNum() == 0 for atom in mol.GetAtoms())
         ):
             return invalid
         try:
@@ -111,8 +149,12 @@ class AnticancerMetricSuite:
         return {
             **values,
             "descriptor_valid": valid,
-            "logP_in_range": bool(valid and self.logp_range[0] <= values["logP"] <= self.logp_range[1]),
-            "TPSA_in_range": bool(valid and self.tpsa_range[0] <= values["TPSA"] <= self.tpsa_range[1]),
+            "logP_in_range": bool(
+                valid and self.logp_range[0] <= values["logP"] <= self.logp_range[1]
+            ),
+            "TPSA_in_range": bool(
+                valid and self.tpsa_range[0] <= values["TPSA"] <= self.tpsa_range[1]
+            ),
             "RotB_in_range": bool(valid and values["RotB"] < 10.0),
             "MW_lipinski": bool(valid and values["MW"] <= 500.0),
             "MW_metal_adjusted": bool(valid and 300.0 <= values["MW"] <= 700.0),
@@ -157,8 +199,10 @@ class AnticancerMetricSuite:
         and total H count == 0 (i.e., a fully-substituted amine, the
         canonical hERG-pharmacophore signature).
         """
-        _ANTICANCER_COUNTERS["herg_calls"] += 1; mol = self._mol(smiles)
-        if mol is None or Descriptors is None or mol.GetNumAtoms() == 0: return 0.5
+        _ANTICANCER_COUNTERS["herg_calls"] += 1
+        mol = self._mol(smiles)
+        if mol is None or Descriptors is None or mol.GetNumAtoms() == 0:
+            return 0.5
         try:
             basic_n = sum(
                 a.GetAtomicNum() == 7
@@ -171,6 +215,7 @@ class AnticancerMetricSuite:
             mw = Descriptors.MolWt(mol)
             try:
                 from rdkit.Chem import rdMolDescriptors as _rdmd
+
                 aromatic_rings = _rdmd.CalcNumAromaticRings(mol)
             except Exception:
                 aromatic_rings = 0
@@ -182,14 +227,39 @@ class AnticancerMetricSuite:
                 + max(0.0, (mw - 400.0) / 100.0) * 0.10
             )
             return float(max(0.0, min(1.0, 1.0 - min(1.0, risk))))
-        except Exception: return 0.5
+        except Exception:
+            return 0.5
 
     def composite_score(self, smiles: str) -> float:
         _ANTICANCER_COUNTERS["composite_calls"] += 1
-        gsh = getattr(self.hydration, "gsh_resistance_flag", getattr(self.hydration, "gs_resistance_flag", lambda s: False))
-        vals = [self.logp_anticancer(smiles), self.tpsa_iv(smiles), self.rotatable_bonds(smiles), self.herg_proxy(smiles), self.hydration.aquation_rate_proxy(smiles), 1.0 if gsh(smiles) else 0.0]
-        return float(max(0.0, min(1.0, sum(v*w for v,w in zip(vals, (0.20,0.15,0.10,0.20,0.20,0.15))))))
+        gsh = getattr(
+            self.hydration,
+            "gsh_resistance_flag",
+            getattr(self.hydration, "gs_resistance_flag", lambda s: False),
+        )
+        vals = [
+            self.logp_anticancer(smiles),
+            self.tpsa_iv(smiles),
+            self.rotatable_bonds(smiles),
+            self.herg_proxy(smiles),
+            self.hydration.aquation_rate_proxy(smiles),
+            1.0 if gsh(smiles) else 0.0,
+        ]
+        return float(
+            max(
+                0.0,
+                min(
+                    1.0,
+                    sum(
+                        v * w
+                        for v, w in zip(vals, (0.20, 0.15, 0.10, 0.20, 0.20, 0.15))
+                    ),
+                ),
+            )
+        )
 
-    def l5_metrics(self): return dict(_ANTICANCER_COUNTERS)
+    def l5_metrics(self):
+        return dict(_ANTICANCER_COUNTERS)
+
 
 __all__ = ["AnticancerMetricSuite", "_ANTICANCER_COUNTERS"]

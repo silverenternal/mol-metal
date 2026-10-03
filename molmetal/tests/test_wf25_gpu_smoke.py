@@ -42,9 +42,7 @@ import torch.nn as nn
 # Constants
 # ---------------------------------------------------------------------------
 
-REPORT_DIR = (
-    Path(__file__).resolve().parent.parent / "reports" / "wf25_gpu_smoke"
-)
+REPORT_DIR = Path(__file__).resolve().parent.parent / "reports" / "wf25_gpu_smoke"
 REPORT_PATH = REPORT_DIR / "gpu_check.json"
 
 # 50 steps × 64-batch BF16 forward/backward through a (64→128→128→10) MLP.
@@ -60,6 +58,7 @@ PEAK_ALLOC_BUDGET_MB = 256  # generous cap; flags a leak if hit
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _smoke_train_once(device: torch.device) -> Dict[str, Any]:
     """Run a 50-step BF16 autocast train loop on ``device``.
 
@@ -69,8 +68,10 @@ def _smoke_train_once(device: torch.device) -> Dict[str, Any]:
     """
     torch.manual_seed(0)
     model = nn.Sequential(
-        nn.Linear(64, HIDDEN), nn.GELU(),
-        nn.Linear(HIDDEN, HIDDEN), nn.GELU(),
+        nn.Linear(64, HIDDEN),
+        nn.GELU(),
+        nn.Linear(HIDDEN, HIDDEN),
+        nn.GELU(),
         nn.Linear(HIDDEN, 10),
     ).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=1e-3)
@@ -88,15 +89,13 @@ def _smoke_train_once(device: torch.device) -> Dict[str, Any]:
             pred = model(x)
             loss = nn.functional.mse_loss(pred, y)
         if not torch.isfinite(loss):
-            raise RuntimeError(
-                f"non-finite loss during smoke: {loss.item()}"
-            )
+            raise RuntimeError(f"non-finite loss during smoke: {loss.item()}")
         loss.backward()
         opt.step()
         last_loss = float(loss.detach().cpu())
     torch.cuda.synchronize(device)
     dt = time.time() - t0
-    peak_mb = torch.cuda.max_memory_allocated(device) / (1024 ** 2)
+    peak_mb = torch.cuda.max_memory_allocated(device) / (1024**2)
 
     del model, opt, x, y, pred, loss
     torch.cuda.empty_cache()
@@ -123,9 +122,7 @@ def _nvidia_smi_snapshot() -> Optional[Dict[str, Any]]:
     """
     if shutil.which("nvidia-smi") is None:
         return None
-    query = (
-        "index,name,memory.total,memory.used,utilization.gpu,compute_cap"
-    )
+    query = "index,name,memory.total,memory.used,utilization.gpu,compute_cap"
     fmt = "csv,noheader,nounits"
     proc = subprocess.run(
         ["nvidia-smi", f"--query-gpu={query}", f"--format={fmt}"],
@@ -193,6 +190,7 @@ def _write_report(payload: Dict[str, Any]) -> None:
 # Tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.gpu
 def test_gpu_pytorch_cuda_visible() -> None:
     """torch sees ≥ 1 CUDA device (either Blackwell or RTX 5090).
@@ -209,9 +207,10 @@ def test_gpu_pytorch_cuda_visible() -> None:
     assert n >= 1, f"torch sees {n} CUDA devices (expected ≥ 1)"
     # torch CUDA build must be ≥ 12.x to talk to Blackwell sm_120.
     major, minor = map(int, torch.version.cuda.split(".")[:2])
-    assert (major, minor) >= (12, 0), (
-        f"CUDA runtime {torch.version.cuda} is too old for sm_120"
-    )
+    assert (major, minor) >= (
+        12,
+        0,
+    ), f"CUDA runtime {torch.version.cuda} is too old for sm_120"
 
 
 @pytest.mark.gpu
@@ -227,7 +226,7 @@ def test_gpu0_device_properties() -> None:
     if not torch.cuda.is_available():
         pytest.skip("no CUDA")
     name = torch.cuda.get_device_name(0)
-    total_gb = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
+    total_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
     major, minor = torch.cuda.get_device_capability(0)
     # Loose check: compute-cap ≥ 12.x (Blackwell sm_120) AND ≥ 16 GB.
     # Both RTX PRO 6000 (95 GB) and RTX 5090 (32 GB) pass; older cards fail.
@@ -286,9 +285,7 @@ def test_wf25_gpu_smoke_emits_report_json() -> None:
     """
     payload: Dict[str, Any] = {
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
-        "cuda_visible_devices_env": os.environ.get(
-            "CUDA_VISIBLE_DEVICES", "<unset>"
-        ),
+        "cuda_visible_devices_env": os.environ.get("CUDA_VISIBLE_DEVICES", "<unset>"),
         "pytorch_cuda": torch.version.cuda or "<none>",
         "torch_version": torch.__version__,
         "gpu_available": False,
@@ -318,17 +315,15 @@ def test_wf25_gpu_smoke_emits_report_json() -> None:
     payload["device_0"] = {
         "name": torch.cuda.get_device_name(0),
         "total_mem_gb": round(
-            torch.cuda.get_device_properties(0).total_memory / (1024 ** 3), 2
+            torch.cuda.get_device_properties(0).total_memory / (1024**3), 2
         ),
-        "compute_cap": ".".join(
-            str(x) for x in torch.cuda.get_device_capability(0)
-        ),
+        "compute_cap": ".".join(str(x) for x in torch.cuda.get_device_capability(0)),
     }
     if torch.cuda.device_count() >= 2:
         payload["device_1"] = {
             "name": torch.cuda.get_device_name(1),
             "total_mem_gb": round(
-                torch.cuda.get_device_properties(1).total_memory / (1024 ** 3), 2
+                torch.cuda.get_device_properties(1).total_memory / (1024**3), 2
             ),
             "compute_cap": ".".join(
                 str(x) for x in torch.cuda.get_device_capability(1)

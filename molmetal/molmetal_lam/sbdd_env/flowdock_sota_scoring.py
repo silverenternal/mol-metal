@@ -149,8 +149,9 @@ def flowdock_cli_available(repo_root: str = DEFAULT_REPO_ROOT) -> bool:
 # Aggregation
 # ---------------------------------------------------------------------------
 def _aggregate(confidences: Sequence[float]) -> tuple[Optional[float], Optional[float]]:
-    finite = [c for c in confidences
-              if isinstance(c, (int, float)) and math.isfinite(c)]
+    finite = [
+        c for c in confidences if isinstance(c, (int, float)) and math.isfinite(c)
+    ]
     if not finite:
         return None, None
     mean = sum(finite) / len(finite)
@@ -163,10 +164,16 @@ def _aggregate(confidences: Sequence[float]) -> tuple[Optional[float], Optional[
 # ---------------------------------------------------------------------------
 # Subprocess invocation
 # ---------------------------------------------------------------------------
-def _build_cli(sample_script: Path, smiles: str, protein_path: str,
-               out_dir: str, ckpt_path: Optional[str],
-               n_samples: int, num_steps: int,
-               device: str = "cpu") -> List[str]:
+def _build_cli(
+    sample_script: Path,
+    smiles: str,
+    protein_path: str,
+    out_dir: str,
+    ckpt_path: Optional[str],
+    n_samples: int,
+    num_steps: int,
+    device: str = "cpu",
+) -> List[str]:
     """Compose the upstream Hydra CLI invocation as a dotlist.
 
     Upstream ``flowdock.sample`` is Hydra-driven so flags take the
@@ -175,7 +182,8 @@ def _build_cli(sample_script: Path, smiles: str, protein_path: str,
     ``num_steps`` / ``device`` via keyword args.
     """
     cmd: List[str] = [
-        sys.executable, str(sample_script),
+        sys.executable,
+        str(sample_script),
         # Disable rich logging that confuses stdout parsing.
         "hydra.run.dir=" + str(Path(out_dir) / "hydra"),
         "hydra.job.chdir=False",
@@ -196,13 +204,25 @@ def _build_cli(sample_script: Path, smiles: str, protein_path: str,
     return cmd
 
 
-def _run_one_subprocess(sample_script: Path, smiles: str, protein_path: str,
-                        out_dir: Path, n_samples: int, num_steps: int,
-                        ckpt_path: Optional[str], timeout_sec: float) -> tuple[int, str]:
+def _run_one_subprocess(
+    sample_script: Path,
+    smiles: str,
+    protein_path: str,
+    out_dir: Path,
+    n_samples: int,
+    num_steps: int,
+    ckpt_path: Optional[str],
+    timeout_sec: float,
+) -> tuple[int, str]:
     """Invoke FlowDock sample.py once; return (returncode, stderr_snippet)."""
     cmd = _build_cli(
-        sample_script, smiles, protein_path,
-        str(out_dir), ckpt_path, n_samples, num_steps,
+        sample_script,
+        smiles,
+        protein_path,
+        str(out_dir),
+        ckpt_path,
+        n_samples,
+        num_steps,
     )
     try:
         proc = subprocess.run(
@@ -241,8 +261,10 @@ def _parse_confidence_from_outdir(out_dir: Path, sample_id: str) -> float:
     """
     try:
         from molmetal_lam.sbdd_env.diffdock_adapter import DiffDockAdapter
+
         return DiffDockAdapter.parse_confidence_from_outdir(
-            str(out_dir), sample_id,
+            str(out_dir),
+            sample_id,
         )
     except Exception:
         return float("nan")
@@ -300,22 +322,31 @@ def score_candidates(
     """
     if not candidates:
         return FlowDockScoreColumn(
-            status="ok", n_invoked=0, n_scored=0,
-            flowdock_score_mean=None, flowdock_score_std=None,
+            status="ok",
+            n_invoked=0,
+            n_scored=0,
+            flowdock_score_mean=None,
+            flowdock_score_std=None,
             notes="no candidates supplied",
         )
 
     if not flowdock_cli_available(repo_root):
         return FlowDockScoreColumn(
-            status="unavailable", n_invoked=len(candidates), n_scored=0,
-            flowdock_score_mean=None, flowdock_score_std=None,
+            status="unavailable",
+            n_invoked=len(candidates),
+            n_scored=0,
+            flowdock_score_mean=None,
+            flowdock_score_std=None,
             notes=f"FlowDock sample.py not found at {repo_root!r}",
         )
 
     if not Path(protein_path).is_file():
         return FlowDockScoreColumn(
-            status="error", n_invoked=len(candidates), n_scored=0,
-            flowdock_score_mean=None, flowdock_score_std=None,
+            status="error",
+            n_invoked=len(candidates),
+            n_scored=0,
+            flowdock_score_mean=None,
+            flowdock_score_std=None,
             notes=f"protein_path not found: {protein_path!r}",
         )
 
@@ -335,14 +366,22 @@ def score_candidates(
             tmp_path = Path(tmp)
             sample_id = f"r4_{abs(hash(smiles)) % 10**8}"
             rc, stderr = _run_one_subprocess(
-                sample_script, smiles, protein_path, tmp_path,
-                n_samples, num_steps, ckpt_path, timeout_sec,
+                sample_script,
+                smiles,
+                protein_path,
+                tmp_path,
+                n_samples,
+                num_steps,
+                ckpt_path,
+                timeout_sec,
             )
             last_stderr = stderr
             if rc != 0:
                 logger.warning(
                     "FlowDock subprocess failed rc=%d for %s: %s",
-                    rc, smiles[:40], stderr,
+                    rc,
+                    smiles[:40],
+                    stderr,
                 )
                 confidences[smiles] = float("nan")
                 continue
@@ -360,9 +399,13 @@ def score_candidates(
         status = "ok"
     notes = "" if status != "error" else f"last stderr: {last_stderr}"
     return FlowDockScoreColumn(
-        status=status, n_invoked=n_invoked, n_scored=n_scored,
-        flowdock_score_mean=mean, flowdock_score_std=std,
-        per_smiles=confidences, notes=notes,
+        status=status,
+        n_invoked=n_invoked,
+        n_scored=n_scored,
+        flowdock_score_mean=mean,
+        flowdock_score_std=std,
+        per_smiles=confidences,
+        notes=notes,
     )
 
 

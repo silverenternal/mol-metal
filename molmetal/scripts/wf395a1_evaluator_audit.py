@@ -32,6 +32,7 @@ Honest framing (party-twenty-spirit §3.5):
       requires Wf-388-A1 (m2 R²) / Wf-179 Vina retrain / Wf-299 CFM 3-wave
       GPU launch — all USER_OK-gated per AGENTS.md §5.1.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -251,12 +252,20 @@ def _probe_evaluator(ev: Dict[str, str]) -> Tuple[bool, str, float]:
     try:
         mod = importlib.import_module(module_path)
     except Exception as e:
-        return False, f"IMPORT_FAIL: {type(e).__name__}: {str(e)[:80]}", (time.time() - t0) * 1000
+        return (
+            False,
+            f"IMPORT_FAIL: {type(e).__name__}: {str(e)[:80]}",
+            (time.time() - t0) * 1000,
+        )
 
     try:
         target = getattr(mod, func_name)
     except AttributeError as e:
-        return False, f"ATTR_FAIL: {type(e).__name__}: {str(e)[:80]}", (time.time() - t0) * 1000
+        return (
+            False,
+            f"ATTR_FAIL: {type(e).__name__}: {str(e)[:80]}",
+            (time.time() - t0) * 1000,
+        )
 
     t0 = time.time()
     try:
@@ -312,18 +321,26 @@ def _safe_eval(target: Any, func_name: str) -> Any:
                 if "tensor" in ann:
                     # logits / embeddings: 2D float tensor
                     import torch
+
                     args.append(torch.zeros(2, 8))
                 elif "ndarray" in ann:
                     import numpy as np
+
                     args.append(np.zeros((4, 12), dtype=np.float32))
                 elif "path" in ann:
                     import tempfile
-                    with tempfile.NamedTemporaryFile(suffix=".yaml", mode="w", delete=False) as f:
-                        f.write("levels:\n  low:\n    exhaustiveness: 8\n  medium:\n    exhaustiveness: 32\n  high:\n    exhaustiveness: 64\n")
+
+                    with tempfile.NamedTemporaryFile(
+                        suffix=".yaml", mode="w", delete=False
+                    ) as f:
+                        f.write(
+                            "levels:\n  low:\n    exhaustiveness: 8\n  medium:\n    exhaustiveness: 32\n  high:\n    exhaustiveness: 64\n"
+                        )
                         tp = Path(f.name)
                     args.append(tp)
                 elif "Chem.Mol".lower() in ann or "mol" == ann.strip():
                     from rdkit import Chem
+
                     args.append(Chem.MolFromSmiles("CCO"))
                 elif "float" in ann:
                     args.append(0.9)
@@ -367,17 +384,19 @@ def test_each_evaluator() -> List[Dict[str, object]]:
     records: List[Dict[str, object]] = []
     for ev in EVALUATOR_INVENTORY:
         passed, result, wall_ms = _probe_evaluator(ev)
-        records.append({
-            "name": ev["name"],
-            "module": ev["module"],
-            "function": ev["function"],
-            "tier": ev["tier"],
-            "metric": ev["metric"],
-            "source": ev["source"],
-            "passed": passed,
-            "result": result,
-            "wall_ms": wall_ms,
-        })
+        records.append(
+            {
+                "name": ev["name"],
+                "module": ev["module"],
+                "function": ev["function"],
+                "tier": ev["tier"],
+                "metric": ev["metric"],
+                "source": ev["source"],
+                "passed": passed,
+                "result": result,
+                "wall_ms": wall_ms,
+            }
+        )
     return records
 
 
@@ -399,7 +418,9 @@ def main() -> int:
     for r in records:
         verdict = "PASS" if r["passed"] else "FAIL"
         tier_padded = f"[{r['tier']:18s}]"
-        print(f"  {tier_padded} {verdict}  {r['name']:50s} ({r['wall_ms']:6.1f}ms) — {r['result']}")
+        print(
+            f"  {tier_padded} {verdict}  {r['name']:50s} ({r['wall_ms']:6.1f}ms) — {r['result']}"
+        )
         if r["passed"]:
             n_pass += 1
     print()
@@ -407,23 +428,32 @@ def main() -> int:
     print(f"Wf-395-A1 SUMMARY: {n_pass}/{len(records)} evaluators PASS")
     print(f"R17 canonical baseline: 14/14 evaluators PASS")
     print(f"  (per molmetal/scripts/eval_all_evaluators.py @ Wf-395-A1 fresh-run)")
-    print(f"NEW Wf-380..394: {sum(by_tier.get(t, 0) for t in ['SCAFFOLD', 'WIRE-IN', 'MEASURED-ON-REAL'])} candidate evaluators")
-    print(f"  ({n_pass} MEASURED-OK in this probe; the rest may need real-cohort input)")
+    print(
+        f"NEW Wf-380..394: {sum(by_tier.get(t, 0) for t in ['SCAFFOLD', 'WIRE-IN', 'MEASURED-ON-REAL'])} candidate evaluators"
+    )
+    print(
+        f"  ({n_pass} MEASURED-OK in this probe; the rest may need real-cohort input)"
+    )
     print("=" * 80)
 
     # Persist JSON audit record
     out_dir = Path("molmetal/reports/wf395a1_evaluator_audit")
     out_dir.mkdir(parents=True, exist_ok=True)
     out_json = out_dir / "audit.json"
-    out_json.write_text(json.dumps({
-        "wave": "Wf-395-A1",
-        "date": "2026-09-30",
-        "by_tier": by_tier,
-        "n_evaluators": len(records),
-        "n_pass": n_pass,
-        "r17_canonical_pass": 14,
-        "records": records,
-    }, indent=2))
+    out_json.write_text(
+        json.dumps(
+            {
+                "wave": "Wf-395-A1",
+                "date": "2026-09-30",
+                "by_tier": by_tier,
+                "n_evaluators": len(records),
+                "n_pass": n_pass,
+                "r17_canonical_pass": 14,
+                "records": records,
+            },
+            indent=2,
+        )
+    )
     print(f"\nJSON audit record: {out_json}")
 
     return 0 if n_pass == len(records) else 1

@@ -37,11 +37,20 @@ CKPT_DIR = PROJECT_ROOT / "molmetal" / "checkpoints" / "wf196_50ep"
 # 14 PENDING (metal, seed) pairs (Ru seed=0 already MEASURED at 30 epochs;
 # all others are PENDING per TODO-180 §2 + TODO-181 §3).
 MISSING_PAIRS: list[tuple[str, int]] = [
-    ("Ru", 1), ("Ru", 2),
-    ("Ir", 0), ("Ir", 1), ("Ir", 2),
-    ("Os", 0), ("Os", 1), ("Os", 2),
-    ("Rh", 0), ("Rh", 1), ("Rh", 2),
-    ("Re", 0), ("Re", 1), ("Re", 2),
+    ("Ru", 1),
+    ("Ru", 2),
+    ("Ir", 0),
+    ("Ir", 1),
+    ("Ir", 2),
+    ("Os", 0),
+    ("Os", 1),
+    ("Os", 2),
+    ("Rh", 0),
+    ("Rh", 1),
+    ("Rh", 2),
+    ("Re", 0),
+    ("Re", 1),
+    ("Re", 2),
 ]
 
 
@@ -60,16 +69,26 @@ def run_one_pair(
     cmd = [
         PY,
         str(TRAIN_SCRIPT),
-        "--metals", metal,
-        "--seeds", str(seed),
-        "--epochs", str(epochs),
-        "--hidden", str(hidden),
-        "--depth", str(depth),
-        "--batch-size", str(batch_size),
-        "--device", "cpu",
-        "--data-csv", str(DATA_CSV),
-        "--out-dir", str(OUT_DIR),
-        "--ckpt-dir", str(CKPT_DIR),
+        "--metals",
+        metal,
+        "--seeds",
+        str(seed),
+        "--epochs",
+        str(epochs),
+        "--hidden",
+        str(hidden),
+        "--depth",
+        str(depth),
+        "--batch-size",
+        str(batch_size),
+        "--device",
+        "cpu",
+        "--data-csv",
+        str(DATA_CSV),
+        "--out-dir",
+        str(OUT_DIR),
+        "--ckpt-dir",
+        str(CKPT_DIR),
     ]
     env = os.environ.copy()
     # Cap threads per process so 6 parallel runs share the 32 cores.
@@ -97,8 +116,12 @@ def run_one_pair(
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Wf-196 — 50-epoch CPU sweep launcher")
-    p.add_argument("--n-parallel", type=int, default=6,
-                   help="Number of parallel (metal, seed) pair runs (default 6)")
+    p.add_argument(
+        "--n-parallel",
+        type=int,
+        default=6,
+        help="Number of parallel (metal, seed) pair runs (default 6)",
+    )
     p.add_argument("--epochs", type=int, default=50, help="Epochs per pair")
     p.add_argument("--hidden", type=int, default=64, help="Backbone hidden dim")
     p.add_argument("--depth", type=int, default=2, help="Backbone depth")
@@ -142,8 +165,13 @@ def main(argv: list[str] | None = None) -> int:
         futs = {
             ex.submit(
                 run_one_pair,
-                metal, seed, args.epochs, args.hidden, args.depth,
-                args.batch_size, args.log_dir,
+                metal,
+                seed,
+                args.epochs,
+                args.hidden,
+                args.depth,
+                args.batch_size,
+                args.log_dir,
             ): (metal, seed)
             for metal, seed in pairs
         }
@@ -154,13 +182,15 @@ def main(argv: list[str] | None = None) -> int:
             wall = res["wall_seconds"]
             rc = res["returncode"]
             print(
-                f"[wf196] DONE {ms} seed={sd} "
-                f"wall={wall:.1f}s returncode={rc}",
+                f"[wf196] DONE {ms} seed={sd} " f"wall={wall:.1f}s returncode={rc}",
                 flush=True,
             )
     total_wall = time.time() - t_start
-    print(f"[wf196] ALL DONE total_wall={total_wall:.1f}s "
-          f"({total_wall / 60:.1f} min, {total_wall / 3600:.2f} h)", flush=True)
+    print(
+        f"[wf196] ALL DONE total_wall={total_wall:.1f}s "
+        f"({total_wall / 60:.1f} min, {total_wall / 3600:.2f} h)",
+        flush=True,
+    )
 
     summary = {
         "wf_tag": "Wf-196 — 50-epoch CPU sweep of 14 missing (metal, seed) pairs",

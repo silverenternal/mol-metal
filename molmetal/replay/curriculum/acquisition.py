@@ -38,6 +38,7 @@ import numpy as np
 try:
     from rdkit import Chem
     from rdkit.Chem import rdFingerprintGenerator
+
     _RDKIT_OK = True
 except Exception:  # pragma: no cover
     _RDKIT_OK = False
@@ -114,7 +115,9 @@ class AcquisitionPolicy:
         fp_size: int = 2048,
         seed: int = 0,
     ) -> None:
-        self.k_by_metal = dict(k_by_metal) if k_by_metal is not None else dict(DEFAULT_K_BY_METAL)
+        self.k_by_metal = (
+            dict(k_by_metal) if k_by_metal is not None else dict(DEFAULT_K_BY_METAL)
+        )
         self.tanimoto_threshold = float(tanimoto_threshold)
         if not 0.0 <= self.tanimoto_threshold <= 1.0:
             raise ValueError(
@@ -149,11 +152,11 @@ class AcquisitionPolicy:
         mol = Chem.MolFromSmiles(smiles)
         if mol is None:
             return None
-        return np.asarray(
-            self._fp_gen.GetFingerprintAsNumPy(mol), dtype=np.uint8
-        )
+        return np.asarray(self._fp_gen.GetFingerprintAsNumPy(mol), dtype=np.uint8)
 
-    def fingerprints_batch(self, smiles_list: Sequence[str]) -> List[Optional[np.ndarray]]:
+    def fingerprints_batch(
+        self, smiles_list: Sequence[str]
+    ) -> List[Optional[np.ndarray]]:
         """Fingerprint a batch — preserves order."""
         return [self.fingerprint(s) for s in smiles_list]
 

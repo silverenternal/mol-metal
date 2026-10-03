@@ -66,7 +66,9 @@ def main() -> int:
     sig = MultiPHPLLSignature(n_bins=16, k=8)
     print(
         "[verify] signature: n_bins={n_bins} k={k} knn={knn}".format(
-            n_bins=sig.n_bins, k=sig.k, knn=sig.knn,
+            n_bins=sig.n_bins,
+            k=sig.k,
+            knn=sig.knn,
         )
     )
 
@@ -85,14 +87,18 @@ def main() -> int:
             }
         )
     elapsed = time.perf_counter() - t0
-    print(f"[verify] computed {len(SMILES_LIST)} signatures in "
-          f"{1000.0 * elapsed / max(1, len(SMILES_LIST)):.2f} ms each")
+    print(
+        f"[verify] computed {len(SMILES_LIST)} signatures in "
+        f"{1000.0 * elapsed / max(1, len(SMILES_LIST)):.2f} ms each"
+    )
 
     # 3. Expressivity + wall-time benchmark via the canonical
     #    helper.
     n_runs = max(1, int(args.n_runs))
     comparison = compare_multi_ph_vs_single_pll(
-        SMILES_LIST, n_runs=n_runs, signature=sig,
+        SMILES_LIST,
+        n_runs=n_runs,
+        signature=sig,
     )
     print("[verify] comparison summary:")
     for key, val in comparison.items():

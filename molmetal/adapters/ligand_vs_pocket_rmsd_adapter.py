@@ -100,6 +100,7 @@ CLI
     python molmetal/scripts/compute_m15_ligand_vs_pocket.py \\
         --pockets 1h36 3eml 3ny8 4aaw 4rlu
 """
+
 from __future__ import annotations
 
 import json
@@ -179,17 +180,19 @@ class CrystalLigand:
         )
 
 
-def load_crystal_ligand(pocket_id: str, meta_path: Optional[Path] = None) -> CrystalLigand:
+def load_crystal_ligand(
+    pocket_id: str, meta_path: Optional[Path] = None
+) -> CrystalLigand:
     """Convenience wrapper: load crystal ligand for one pocket."""
-    return CrystalLigand.from_metadata_json(
-        meta_path or LIGAND_META, pocket_id
-    )
+    return CrystalLigand.from_metadata_json(meta_path or LIGAND_META, pocket_id)
 
 
 # ---------------------------------------------------------------------------
 # Pose alignment helpers
 # ---------------------------------------------------------------------------
-def _mol_from_smiles_with_coords(smiles: str, coords: Sequence[Sequence[float]]) -> Chem.Mol:
+def _mol_from_smiles_with_coords(
+    smiles: str, coords: Sequence[Sequence[float]]
+) -> Chem.Mol:
     """Build a 3D-conformer-tagged RDKit Mol from SMILES + heavy-atom coords.
 
     The SMILES is used for graph (atoms + bonds).  The 3D conformer
@@ -365,7 +368,9 @@ class LigandVsPocketRMSD:
         result.best_rmsd = float(min(per_pose))
         result.median_rmsd = float(statistics.median(per_pose))
         result.mean_rmsd = float(statistics.mean(per_pose))
-        result.std_rmsd = float(statistics.pstdev(per_pose)) if len(per_pose) > 1 else 0.0
+        result.std_rmsd = (
+            float(statistics.pstdev(per_pose)) if len(per_pose) > 1 else 0.0
+        )
         n = float(len(per_pose))
         result.success_05A = sum(1 for r in per_pose if r <= 0.5) / n
         result.success_10A = sum(1 for r in per_pose if r <= 1.0) / n
@@ -375,7 +380,9 @@ class LigandVsPocketRMSD:
     def evaluate_many(
         self,
         per_pocket_suns: Dict[str, Sequence[str]],
-        per_pocket_probe_coords: Optional[Dict[str, Sequence[Sequence[Sequence[float]]]]] = None,
+        per_pocket_probe_coords: Optional[
+            Dict[str, Sequence[Sequence[Sequence[float]]]]
+        ] = None,
     ) -> Dict[str, LigandVsPocketRMSDResult]:
         """Evaluate multiple pockets in one call.
 
@@ -386,7 +393,11 @@ class LigandVsPocketRMSD:
         """
         out: Dict[str, LigandVsPocketRMSDResult] = {}
         for p, smiles in per_pocket_suns.items():
-            pc = None if per_pocket_probe_coords is None else per_pocket_probe_coords.get(p)
+            pc = (
+                None
+                if per_pocket_probe_coords is None
+                else per_pocket_probe_coords.get(p)
+            )
             out[p] = self.evaluate(smiles, p, probe_coords_list=pc)
         return out
 
@@ -443,7 +454,9 @@ def parse_pdbqt_heavy_atoms(pdbqt_path: Path) -> List[Dict[str, object]]:
                 continue
             # Columns 77-78 hold the element (e.g. " C", "NA", "BR").
             elem_field = line[76:78].strip() if len(line) >= 78 else ""
-            elem_raw = elem_field.split()[0] if elem_field else line[12:16].strip().strip()
+            elem_raw = (
+                elem_field.split()[0] if elem_field else line[12:16].strip().strip()
+            )
             if elem_raw.startswith("H"):
                 continue  # skip H and HD
             # Map PDBQT aromatic prefixes back to base elements.
@@ -471,7 +484,10 @@ def parse_pdbqt_heavy_atoms(pdbqt_path: Path) -> List[Dict[str, object]]:
 
 def heavy_atom_coords_from_pdbqt(pdbqt_path: Path) -> List[List[float]]:
     """Convenience wrapper: heavy-atom (x, y, z) list from a PDBQT pose."""
-    return [[float(a["x"]), float(a["y"]), float(a["z"])] for a in parse_pdbqt_heavy_atoms(pdbqt_path)]
+    return [
+        [float(a["x"]), float(a["y"]), float(a["z"])]
+        for a in parse_pdbqt_heavy_atoms(pdbqt_path)
+    ]
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -81,18 +81,17 @@ def test_chemprop_v2_v3_integration() -> None:
     status = dmpnn_p0wins.list_optimization_status()
     assert len(status) == 5, f"Expected 5 P0 wins; got {len(status)}"
     expected_ids = {"326G-1", "326G-2", "326G-3", "326G-4", "326G-5"}
-    assert set(status.keys()) == expected_ids, (
-        f"Missing win IDs: {expected_ids - set(status.keys())}"
-    )
+    assert (
+        set(status.keys()) == expected_ids
+    ), f"Missing win IDs: {expected_ids - set(status.keys())}"
     for win_id in expected_ids:
-        assert status[win_id]["port"] is True, (
-            f"{win_id} not landed: {status[win_id]}"
-        )
+        assert status[win_id]["port"] is True, f"{win_id} not landed: {status[win_id]}"
 
     # 3. Verify chemprop_v2_v3 namespace compatibility: p0wins BatchMolGraph
     #    coexists with chemprop.data.BatchMolGraph (chemprop_v2_v3 line 127).
     try:
         from chemprop.data import BatchMolGraph as ChempropBatchMolGraph
+
         # Both BatchMolGraph classes can be imported; they are distinct.
         assert (
             dmpnn_p0wins.BatchMolGraph is not ChempropBatchMolGraph
@@ -105,9 +104,7 @@ def test_chemprop_v2_v3_integration() -> None:
 
     # 4. chemprop_v2_v3 trainer script is at the expected path (no
     #    invasive port in Wf-335-P1).
-    trainer_path = (
-        PROJECT_ROOT / "molmetal" / "scripts" / "train_chemprop_v2_v3.py"
-    )
+    trainer_path = PROJECT_ROOT / "molmetal" / "scripts" / "train_chemprop_v2_v3.py"
     assert trainer_path.is_file(), f"Trainer script missing: {trainer_path}"
 
     # 5. Verify the trainer source contains the BF16 autocast block (already
@@ -156,28 +153,34 @@ def test_cfm_yuelbond_integration() -> None:
     messages = torch.randn(n_edges, f_dim, dtype=torch.float32)
     edge_dst = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7] * 2, dtype=torch.long)
     out_agg = cfm_p0wins.cfm_egnn_message_aggregate(messages, edge_dst, n_atoms)
-    assert out_agg.shape == (n_atoms, f_dim), (
-        f"Wrong agg shape: {out_agg.shape}; expected {(n_atoms, f_dim)}"
-    )
+    assert out_agg.shape == (
+        n_atoms,
+        f_dim,
+    ), f"Wrong agg shape: {out_agg.shape}; expected {(n_atoms, f_dim)}"
     # Cross-validation: index_add_ fallback must match scatter_reduce_
     # within FP32 reduction-order tolerance.
     out_ref = cfm_p0wins.cfm_egnn_message_aggregate_index_add_fallback(
-        messages, edge_dst, n_atoms,
+        messages,
+        edge_dst,
+        n_atoms,
     )
-    assert torch.allclose(out_agg, out_ref, atol=5e-3), (
-        "scatter_reduce_ vs index_add_ mismatch on CFM-shaped inputs"
-    )
+    assert torch.allclose(
+        out_agg, out_ref, atol=5e-3
+    ), "scatter_reduce_ vs index_add_ mismatch on CFM-shaped inputs"
 
     # 4. setup_optimized_cfm_env: TF32 flip works.
     flipped = cfm_p0wins.setup_optimized_cfm_env(enable_tf32=True)
     assert flipped["tf32_enabled"] is True, "TF32 should be enabled"
 
     # 5. make_optimized_cfm_adam: returns an Adam optimizer with fused=True.
-    dummy_params = [torch.zeros(2, requires_grad=True), torch.zeros(3, requires_grad=True)]
+    dummy_params = [
+        torch.zeros(2, requires_grad=True),
+        torch.zeros(3, requires_grad=True),
+    ]
     opt = cfm_p0wins.make_optimized_cfm_adam(dummy_params, lr=1e-3, fused=True)
-    assert isinstance(opt, torch.optim.Adam), (
-        f"Expected torch.optim.Adam; got {type(opt)}"
-    )
+    assert isinstance(
+        opt, torch.optim.Adam
+    ), f"Expected torch.optim.Adam; got {type(opt)}"
 
     # 6. cfm_yuelbond trainer script is at the expected path (no
     #    invasive port in Wf-335-P1).
@@ -193,9 +196,7 @@ def test_cfm_yuelbond_integration() -> None:
     #    dmpnn_p0wins).  Verify the trainer source does NOT have the
     #    autocast block yet (so Wf-335-P1 is additive, not invasive).
     trainer_src = trainer_path.read_text()
-    n_autocast = trainer_src.count(
-        'torch.amp.autocast("cuda", dtype=torch.bfloat16)'
-    )
+    n_autocast = trainer_src.count('torch.amp.autocast("cuda", dtype=torch.bfloat16)')
     assert n_autocast == 0, (
         f"cfm_yuelbond trainer unexpectedly has BF16 autocast already "
         f"(Wf-335-P1 does NOT modify the trainer): got {n_autocast} blocks"
@@ -215,22 +216,24 @@ def test_combined_p0_wins() -> None:
     from molmetal.baselines import cfm_p0wins, dmpnn_p0wins
 
     # 1. Both modules importable in the same process.
-    assert hasattr(dmpnn_p0wins, "BatchMolGraph"), "Missing BatchMolGraph in dmpnn_p0wins"
-    assert hasattr(cfm_p0wins, "cfm_egnn_message_aggregate"), (
-        "Missing cfm_egnn_message_aggregate in cfm_p0wins"
-    )
+    assert hasattr(
+        dmpnn_p0wins, "BatchMolGraph"
+    ), "Missing BatchMolGraph in dmpnn_p0wins"
+    assert hasattr(
+        cfm_p0wins, "cfm_egnn_message_aggregate"
+    ), "Missing cfm_egnn_message_aggregate in cfm_p0wins"
 
     # 2. D-MPNN p0wins (5 wins, all port=True).
     status_dmpnn = dmpnn_p0wins.list_optimization_status()
-    assert all(s["port"] for s in status_dmpnn.values()), (
-        f"D-MPNN wins not all landed: {status_dmpnn}"
-    )
+    assert all(
+        s["port"] for s in status_dmpnn.values()
+    ), f"D-MPNN wins not all landed: {status_dmpnn}"
 
     # 3. CFM p0wins (5 wins, all port=True, but applicability differs).
     status_cfm = cfm_p0wins.list_cfm_optimization_status()
-    assert all(s["port"] for s in status_cfm.values()), (
-        f"CFM wins not all landed: {status_cfm}"
-    )
+    assert all(
+        s["port"] for s in status_cfm.values()
+    ), f"CFM wins not all landed: {status_cfm}"
 
     # 4. Cross-check: scatter_sum_no_self from D-MPNN p0wins is the
     #    SAME function as the one used by cfm_p0wins.cfm_egnn_message_aggregate
@@ -256,14 +259,18 @@ def test_combined_p0_wins() -> None:
         edge_dst_sub = bmg.edge_dst
         n_atoms_total = bmg.V.size(0)
         out_dmpnn = dmpnn_p0wins.scatter_sum_no_self(
-            bmg.E, edge_dst_sub, n_atoms_total,
+            bmg.E,
+            edge_dst_sub,
+            n_atoms_total,
         )
         out_cfm = cfm_p0wins.cfm_egnn_message_aggregate(
-            bmg.E, edge_dst_sub, n_atoms_total,
+            bmg.E,
+            edge_dst_sub,
+            n_atoms_total,
         )
-        assert torch.allclose(out_dmpnn, out_cfm, atol=5e-3), (
-            "D-MPNN vs CFM scatter_sum should be identical (re-export)"
-        )
+        assert torch.allclose(
+            out_dmpnn, out_cfm, atol=5e-3
+        ), "D-MPNN vs CFM scatter_sum should be identical (re-export)"
 
 
 # ---------------------------------------------------------------------------
@@ -298,15 +305,16 @@ def test_backward_compat() -> None:
     # Importing dmpnn_p0wins should not change dmpnn's exports.
     _ = dmpnn_p0wins.list_optimization_status
     dmpnn_exports_after = set(dir(dmpnn_module))
-    assert dmpnn_exports_before == dmpnn_exports_after, (
-        "dmpnn_p0wins import should NOT mutate molmetal.baselines.dmpnn"
-    )
+    assert (
+        dmpnn_exports_before == dmpnn_exports_after
+    ), "dmpnn_p0wins import should NOT mutate molmetal.baselines.dmpnn"
 
     # 3. Same check for cfm_p0wins: importing cfm_p0wins should not
     #    mutate the cfm_yuelbond_wasserstein trainer module's exports
     #    (the trainer is only invoked as a script, so we just check
     #    that the import doesn't raise and doesn't have state).
     from molmetal.baselines import cfm_p0wins
+
     _ = cfm_p0wins.list_cfm_optimization_status
     assert cfm_p0wins is not None
 
@@ -332,9 +340,9 @@ def test_backward_compat() -> None:
 
     # 5. Re-export sanity: scatter_sum_no_self is a re-export from
     #    dmpnn_p0wins, NOT a re-implementation.
-    assert hasattr(cfm_p0wins, "scatter_sum_no_self"), (
-        "scatter_sum_no_self should be re-exported via cfm_p0wins.__all__"
-    )
+    assert hasattr(
+        cfm_p0wins, "scatter_sum_no_self"
+    ), "scatter_sum_no_self should be re-exported via cfm_p0wins.__all__"
 
 
 if __name__ == "__main__":

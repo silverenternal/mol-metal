@@ -69,9 +69,9 @@ def test_lambda_cfm_flag() -> None:
     }
     # Each value is a bool (not None / not string).
     for value in audit.flags_present.values():
-        assert isinstance(value, bool), (
-            f"flags_present value must be bool; got {type(value).__name__}"
-        )
+        assert isinstance(
+            value, bool
+        ), f"flags_present value must be bool; got {type(value).__name__}"
     # The audit must also report on the loss-multiplier + dataset-
     # build blocks (both boolean).
     assert isinstance(audit.loss_multiplier_present, bool)
@@ -114,12 +114,10 @@ def test_lambda_cfm_integration() -> None:
     )
     # The import chain must include the canonical symbols.
     chain_text = "\n".join(smoke["import_chain"])
-    assert "molmetal" in chain_text, (
-        f"import chain missing 'molmetal': {chain_text!r}"
-    )
-    assert "build_lambda_reward_dataset" in chain_text, (
-        f"import chain missing canonical factory symbol: {chain_text!r}"
-    )
+    assert "molmetal" in chain_text, f"import chain missing 'molmetal': {chain_text!r}"
+    assert (
+        "build_lambda_reward_dataset" in chain_text
+    ), f"import chain missing canonical factory symbol: {chain_text!r}"
     # The loss-multiplier upper bound must equal 1 + 0.1 = 1.1
     # (canonical Wf-329-W6 default coupling_strength=0.1).
     assert smoke["loss_multiplier_upper_bound"] == pytest.approx(1.1), (
@@ -130,8 +128,7 @@ def test_lambda_cfm_integration() -> None:
     # launch blocker (honest framing — Wf-291D + Wf-299 gate).
     notes_text = "\n".join(audit.notes)
     assert "decode_ratio" in notes_text, (
-        f"audit.notes must mention the GPU launch blocker; "
-        f"got {notes_text!r}"
+        f"audit.notes must mention the GPU launch blocker; " f"got {notes_text!r}"
     )
 
 

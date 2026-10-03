@@ -40,6 +40,7 @@ Run with::
 
     uv run --no-sync pytest -q molmetal/tests/test_closure_theorem_verifier.py --tb=short
 """
+
 from __future__ import annotations
 
 import csv
@@ -127,13 +128,18 @@ def test_cisplatin_closure() -> None:
     from molmetal_lam.lam_chem.cisplatin_builder import build_cisplatin
     from molmetal_lam.lam_chem.closure import closure_theorem
     from molmetal_lam.lam_chem.rules import (
-        AmideCoupling, CuAAC, SPAAC, Suzuki, ThiolEne,
+        AmideCoupling,
+        CuAAC,
+        SPAAC,
+        Suzuki,
+        ThiolEne,
     )
 
     cisplatin = build_cisplatin()
     rules = [CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling]
     partners = _load_partner_terms()
     import warnings
+
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         ok = closure_theorem(
@@ -154,16 +160,22 @@ def test_oxaliplatin_closure() -> None:
     """Oxaliplatin (Pt_II + oxalate ligand) passes the closure theorem."""
     from molmetal_lam.lam_chem.closure import closure_theorem
     from molmetal_lam.lam_chem.rules import (
-        AmideCoupling, CuAAC, SPAAC, Suzuki, ThiolEne,
+        AmideCoupling,
+        CuAAC,
+        SPAAC,
+        Suzuki,
+        ThiolEne,
     )
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
 
     oxali = MoleculeClosedTerm.from_smiles(
-        "N.N.O=C(O)CC(=O)O.[NH2][Pt]([NH2])([Cl])[Cl]", embed_3d=False,
+        "N.N.O=C(O)CC(=O)O.[NH2][Pt]([NH2])([Cl])[Cl]",
+        embed_3d=False,
     )
     rules = [CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling]
     partners = _load_partner_terms()
     import warnings
+
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         ok = closure_theorem(
@@ -193,7 +205,11 @@ def test_carboplatin_closure() -> None:
     """
     from molmetal_lam.lam_chem.closure import closure_theorem
     from molmetal_lam.lam_chem.rules import (
-        AmideCoupling, CuAAC, SPAAC, Suzuki, ThiolEne,
+        AmideCoupling,
+        CuAAC,
+        SPAAC,
+        Suzuki,
+        ThiolEne,
     )
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
 
@@ -205,6 +221,7 @@ def test_carboplatin_closure() -> None:
     rules = [CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling]
     partners = _load_partner_terms()
     import warnings
+
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         ok = closure_theorem(
@@ -226,7 +243,11 @@ def test_Pt_II_closure() -> None:
     from molmetal.molmetal_lam.atoms.combinators import METAL_ATOMS
     from molmetal_lam.lam_chem.closure import closure_theorem
     from molmetal_lam.lam_chem.rules import (
-        AmideCoupling, CuAAC, SPAAC, Suzuki, ThiolEne,
+        AmideCoupling,
+        CuAAC,
+        SPAAC,
+        Suzuki,
+        ThiolEne,
     )
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
 
@@ -235,11 +256,13 @@ def test_Pt_II_closure() -> None:
 
     # Simple Pt_II square-planar: 4 ammine ligands + 1 Pt.
     pt_ii_complex = MoleculeClosedTerm.from_smiles(
-        "[NH3][Pt]([NH3])([NH3])([NH3])([Cl])([Cl])", embed_3d=False,
+        "[NH3][Pt]([NH3])([NH3])([NH3])([Cl])([Cl])",
+        embed_3d=False,
     )
     rules = [CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling]
     partners = _load_partner_terms()
     import warnings
+
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         ok = closure_theorem(
@@ -259,17 +282,23 @@ def test_Pt_IV_closure() -> None:
     """Pt_IV octahedral complexes pass closure theorem."""
     from molmetal_lam.lam_chem.closure import closure_theorem
     from molmetal_lam.lam_chem.rules import (
-        AmideCoupling, CuAAC, SPAAC, Suzuki, ThiolEne,
+        AmideCoupling,
+        CuAAC,
+        SPAAC,
+        Suzuki,
+        ThiolEne,
     )
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
 
     # Pt_IV: 6 ligands (NH3 + Cl etc).
     pt_iv = MoleculeClosedTerm.from_smiles(
-        "[NH3][Pt]([NH3])([Cl])([Cl])([Cl])([Cl])", embed_3d=False,
+        "[NH3][Pt]([NH3])([Cl])([Cl])([Cl])([Cl])",
+        embed_3d=False,
     )
     rules = [CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling]
     partners = _load_partner_terms()
     import warnings
+
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         ok = closure_theorem(
@@ -289,16 +318,22 @@ def test_Ru_II_III_closure() -> None:
     """Ru_II (octahedral) complexes pass closure theorem."""
     from molmetal_lam.lam_chem.closure import closure_theorem
     from molmetal_lam.lam_chem.rules import (
-        AmideCoupling, CuAAC, SPAAC, Suzuki, ThiolEne,
+        AmideCoupling,
+        CuAAC,
+        SPAAC,
+        Suzuki,
+        ThiolEne,
     )
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
 
     ru_ii = MoleculeClosedTerm.from_smiles(
-        "[NH3][Ru]([NH3])([NH3])([NH3])([NH3])[Cl]", embed_3d=False,
+        "[NH3][Ru]([NH3])([NH3])([NH3])([NH3])[Cl]",
+        embed_3d=False,
     )
     rules = [CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling]
     partners = _load_partner_terms()
     import warnings
+
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         ok = closure_theorem(
@@ -347,9 +382,9 @@ def test_task_spec_metals_present() -> None:
 # ---------------------------------------------------------------------------
 def test_partner_smile_list_size() -> None:
     """PARTNER_SMILE_LIST has at least 6 entries (covers all 5 click handles)."""
-    assert len(PARTNER_SMILE_LIST) >= 6, (
-        f"need >= 6 partner tiles, got {len(PARTNER_SMILE_LIST)}"
-    )
+    assert (
+        len(PARTNER_SMILE_LIST) >= 6
+    ), f"need >= 6 partner tiles, got {len(PARTNER_SMILE_LIST)}"
     # Spot-check: must contain at least one alkyne, one azide, one thiol.
     joined = " ".join(PARTNER_SMILE_LIST)
     assert "C#C" in joined, "need at least one alkyne partner"
@@ -377,10 +412,17 @@ def test_default_n_samples_per_metal_is_100() -> None:
 # 12. Per-metal closure reachability rate ∈ [0, 1]
 # ---------------------------------------------------------------------------
 EXPECTED_PER_METAL_KEYS: List[str] = [
-    "n_samples", "n_closure_ok", "closure_reachability_rate",
-    "mean_beta_depth", "mean_n_products", "mean_wall_time",
-    "std_wall_time", "median_wall_time", "peak_memory_mb",
-    "total_wall_time", "n_error",
+    "n_samples",
+    "n_closure_ok",
+    "closure_reachability_rate",
+    "mean_beta_depth",
+    "mean_n_products",
+    "mean_wall_time",
+    "std_wall_time",
+    "median_wall_time",
+    "peak_memory_mb",
+    "total_wall_time",
+    "n_error",
 ]
 
 
@@ -390,19 +432,31 @@ def test_per_metal_closure_rate_in_unit(smoke_payload: Dict[str, Any]) -> None:
     for metal, info in per_metal.items():
         agg = info["aggregate"]
         rate = float(agg["closure_reachability_rate"])
-        assert 0.0 <= rate <= 1.0, (
-            f"metal {metal!r} has out-of-unit closure rate: {rate}"
-        )
+        assert (
+            0.0 <= rate <= 1.0
+        ), f"metal {metal!r} has out-of-unit closure rate: {rate}"
 
 
 # ---------------------------------------------------------------------------
 # 13. Per-metal records have all expected keys
 # ---------------------------------------------------------------------------
 EXPECTED_RECORD_KEYS: List[str] = [
-    "idx", "metal", "smiles", "status", "closure_ok",
-    "n_visited", "n_products", "max_depth_seen", "witness_rate",
-    "well_typed_rate", "n_pt_coordinated", "n_atoms_start",
-    "parse_error", "wall_time_s", "memory_mb", "depth",
+    "idx",
+    "metal",
+    "smiles",
+    "status",
+    "closure_ok",
+    "n_visited",
+    "n_products",
+    "max_depth_seen",
+    "witness_rate",
+    "well_typed_rate",
+    "n_pt_coordinated",
+    "n_atoms_start",
+    "parse_error",
+    "wall_time_s",
+    "memory_mb",
+    "depth",
 ]
 
 
@@ -411,9 +465,9 @@ def test_per_metal_records_have_all_keys(smoke_payload: Dict[str, Any]) -> None:
     for metal, info in smoke_payload["per_metal"].items():
         for rec in info["records"]:
             missing = [k for k in EXPECTED_RECORD_KEYS if k not in rec]
-            assert not missing, (
-                f"per-sample record in metal {metal!r} missing {missing!r}"
-            )
+            assert (
+                not missing
+            ), f"per-sample record in metal {metal!r} missing {missing!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -437,12 +491,10 @@ def test_wall_time_non_negative(smoke_payload: Dict[str, Any]) -> None:
     for metal, info in smoke_payload["per_metal"].items():
         for rec in info["records"]:
             w = float(rec["wall_time_s"])
-            assert w >= 0.0, (
-                f"negative wall_time_s for {metal}/idx={rec['idx']}: {w}"
-            )
-            assert w < 1e6, (
-                f"wall_time_s unreasonably large for {metal}/idx={rec['idx']}: {w}"
-            )
+            assert w >= 0.0, f"negative wall_time_s for {metal}/idx={rec['idx']}: {w}"
+            assert (
+                w < 1e6
+            ), f"wall_time_s unreasonably large for {metal}/idx={rec['idx']}: {w}"
 
 
 # ---------------------------------------------------------------------------
@@ -453,12 +505,10 @@ def test_memory_non_negative(smoke_payload: Dict[str, Any]) -> None:
     for metal, info in smoke_payload["per_metal"].items():
         for rec in info["records"]:
             m = float(rec["memory_mb"])
-            assert m >= 0.0, (
-                f"negative memory_mb for {metal}/idx={rec['idx']}: {m}"
-            )
-            assert m < 1e6, (
-                f"memory_mb unreasonably large for {metal}/idx={rec['idx']}: {m}"
-            )
+            assert m >= 0.0, f"negative memory_mb for {metal}/idx={rec['idx']}: {m}"
+            assert (
+                m < 1e6
+            ), f"memory_mb unreasonably large for {metal}/idx={rec['idx']}: {m}"
 
 
 # ---------------------------------------------------------------------------
@@ -484,9 +534,9 @@ def test_per_metal_aggregate_keys(smoke_payload: Dict[str, Any]) -> None:
     for metal, info in smoke_payload["per_metal"].items():
         agg = info["aggregate"]
         missing = [k for k in EXPECTED_PER_METAL_KEYS if k not in agg]
-        assert not missing, (
-            f"per-metal aggregate for {metal!r} missing keys {missing!r}"
-        )
+        assert (
+            not missing
+        ), f"per-metal aggregate for {metal!r} missing keys {missing!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -525,9 +575,7 @@ def test_per_metal_csv_written(smoke_paths: Dict[str, Path]) -> None:
         assert "peak_memory_mb" in header
         rows = list(reader)
     # 3 metals in the smoke fixture.
-    assert len(rows) == 3, (
-        f"per_metal.csv should have 3 rows, got {len(rows)}"
-    )
+    assert len(rows) == 3, f"per_metal.csv should have 3 rows, got {len(rows)}"
 
 
 # ---------------------------------------------------------------------------
@@ -536,7 +584,10 @@ def test_per_metal_csv_written(smoke_paths: Dict[str, Path]) -> None:
 def test_load_metal_samples_first_n() -> None:
     """_load_metal_samples returns the first n SMILES tagged with the metal."""
     smis = _load_metal_samples(
-        DEFAULT_TMQM_CSV, "Pt", 5, dataset="tmqm",
+        DEFAULT_TMQM_CSV,
+        "Pt",
+        5,
+        dataset="tmqm",
     )
     assert len(smis) == 5, f"expected 5 Pt SMILES, got {len(smis)}"
     assert all(len(s) > 0 for s in smis)
@@ -555,9 +606,7 @@ def test_load_click_rules_count() -> None:
 def test_load_partner_terms_count() -> None:
     """_load_partner_terms returns at least 6 partner tiles."""
     partners = _load_partner_terms()
-    assert len(partners) >= 6, (
-        f"expected >= 6 partner terms, got {len(partners)}"
-    )
+    assert len(partners) >= 6, f"expected >= 6 partner terms, got {len(partners)}"
 
 
 def test_aggregate_per_metal_empty() -> None:
@@ -574,6 +623,7 @@ def test_aggregate_per_metal_empty() -> None:
 def test_is_pt_coordinated_cisplatin() -> None:
     """_is_pt_coordinated returns True for cisplatin."""
     from molmetal_lam.lam_chem.cisplatin_builder import build_cisplatin
+
     c = build_cisplatin()
     assert _is_pt_coordinated(c) is True
 
@@ -581,8 +631,10 @@ def test_is_pt_coordinated_cisplatin() -> None:
 def test_is_pt_coordinated_ru_complex() -> None:
     """_is_pt_coordinated returns False for a Ru complex (no Pt atoms)."""
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
     ru = MoleculeClosedTerm.from_smiles(
-        "[NH3][Ru]([NH3])([NH3])([NH3])([NH3])[Cl]", embed_3d=False,
+        "[NH3][Ru]([NH3])([NH3])([NH3])([NH3])[Cl]",
+        embed_3d=False,
     )
     assert _is_pt_coordinated(ru) is False
 
@@ -597,7 +649,9 @@ def test_utcnow_iso_format() -> None:
 def test_benchmark_one_smoke() -> None:
     """_benchmark_one on cisplatin returns the expected per-sample record."""
     rec = _benchmark_one(
-        "[NH3][Pt]([NH3])([Cl])([Cl])", 0, "Pt",
+        "[NH3][Pt]([NH3])([Cl])([Cl])",
+        0,
+        "Pt",
         click_rules=_load_click_rules(),
         partner_terms=_load_partner_terms(),
         max_depth=1,
@@ -649,18 +703,17 @@ def test_closure_ok_summary_present(smoke_payload: Dict[str, Any]) -> None:
 def test_platinai_load_smoke() -> None:
     """Loading Pt-tagged samples from PlatinAI 5K returns non-empty list."""
     smis = _load_metal_samples(
-        DEFAULT_PLATINAI_CSV, "Pt", 3, dataset="platinai",
+        DEFAULT_PLATINAI_CSV,
+        "Pt",
+        3,
+        dataset="platinai",
     )
-    assert len(smis) >= 1, (
-        f"PlatinAI Pt SMILES should exist, got {len(smis)}"
-    )
+    assert len(smis) >= 1, f"PlatinAI Pt SMILES should exist, got {len(smis)}"
 
 
 def test_default_csv_paths_exist() -> None:
     """The default tmQM and PlatinAI CSV paths exist on disk."""
-    assert DEFAULT_TMQM_CSV.is_file(), (
-        f"tmQM CSV missing at {DEFAULT_TMQM_CSV}"
-    )
-    assert DEFAULT_PLATINAI_CSV.is_file(), (
-        f"PlatinAI CSV missing at {DEFAULT_PLATINAI_CSV}"
-    )
+    assert DEFAULT_TMQM_CSV.is_file(), f"tmQM CSV missing at {DEFAULT_TMQM_CSV}"
+    assert (
+        DEFAULT_PLATINAI_CSV.is_file()
+    ), f"PlatinAI CSV missing at {DEFAULT_PLATINAI_CSV}"

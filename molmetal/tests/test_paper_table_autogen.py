@@ -120,8 +120,10 @@ def test_autogen_catalog_categories_present():
     for r in rows:
         assert r.category, f"{r.metric_id}: empty category"
         assert r.mechanism, f"{r.metric_id}: empty mechanism"
-        assert r.direction in ("higher", "lower"), \
-            f"{r.metric_id}: bad direction {r.direction!r}"
+        assert r.direction in (
+            "higher",
+            "lower",
+        ), f"{r.metric_id}: bad direction {r.direction!r}"
         assert r.r17_value, f"{r.metric_id}: empty R17 value"
         assert r.target_value, f"{r.metric_id}: empty target value"
 
@@ -131,9 +133,7 @@ def test_autogen_catalog_categories_present():
 # ---------------------------------------------------------------------------
 def test_autogen_build_with_empty_inputs():
     rows = autogen.build_table_rows(platinai={}, metalcytotox={})
-    pending_count = sum(
-        1 for r in rows if "PENDING" in r.r18_e2e_value
-    )
+    pending_count = sum(1 for r in rows if "PENDING" in r.r18_e2e_value)
     # Every row that depends on an e2e extractor must be PENDING.
     assert pending_count >= 1, "expected at least one PENDING row"
     # R17 columns must still be populated even with empty inputs.

@@ -137,5 +137,7 @@ def replace_batchnorm_with_groupnorm(
                     f"GroupNorm({resolved_groups}, {num_channels})"
                 )
         else:
-            replace_batchnorm_with_groupnorm(child, num_groups=num_groups, verbose=verbose)
+            replace_batchnorm_with_groupnorm(
+                child, num_groups=num_groups, verbose=verbose
+            )
     return module

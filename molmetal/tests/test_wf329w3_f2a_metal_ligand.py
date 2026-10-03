@@ -36,6 +36,7 @@ Honest-framing note (party-twenty-spirit §3.5):
   industry -7 cutoff).  Per WEAK_TO_STRONG §3.5, Phase 2 GPU
   metal-coordination term (Wf-246-C) is the next recovery step.
 """
+
 from __future__ import annotations
 
 import csv
@@ -122,13 +123,9 @@ def test_wf329w3_smarts_pattern_library_integrity():
     )
     # Every pattern must be a (name, smarts, description) triple
     for pat in F2A_COVALENT_SMARTS:
-        assert isinstance(pat, tuple) and len(pat) == 3, (
-            f"malformed pattern: {pat!r}"
-        )
+        assert isinstance(pat, tuple) and len(pat) == 3, f"malformed pattern: {pat!r}"
         name, smarts, desc = pat
-        assert name and smarts and desc, (
-            f"pattern triple must be non-empty: {pat!r}"
-        )
+        assert name and smarts and desc, f"pattern triple must be non-empty: {pat!r}"
     # Covalent-capable (bare metal) library
     assert len(F2A_COVALENT_CAPABLE_SMARTS) >= 4, (
         f"F2A_COVALENT_CAPABLE_SMARTS must have ≥4 patterns "
@@ -136,11 +133,14 @@ def test_wf329w3_smarts_pattern_library_integrity():
     )
     # Each canonical metal symbol must be in the library
     metal_syms = {pat[0] for pat in F2A_COVALENT_CAPABLE_SMARTS}
-    for sym in ("Pt_center_capable", "Pd_center_capable",
-                "Ru_center_capable", "Au_center_capable"):
+    for sym in (
+        "Pt_center_capable",
+        "Pd_center_capable",
+        "Ru_center_capable",
+        "Au_center_capable",
+    ):
         assert sym in metal_syms, (
-            f"covalent-capable library missing {sym}; "
-            f"got {sorted(metal_syms)}"
+            f"covalent-capable library missing {sym}; " f"got {sorted(metal_syms)}"
         )
 
 
@@ -162,10 +162,10 @@ def test_wf329w3_covalent_modifier_applied(scorer):
     f2a_score, mod_total, n_bonds = scorer.apply_covalent_modifier(
         CISPLATIN_SMILES, vina_baseline
     )
-    assert n_bonds >= 1, (
-        f"cisplatin n_bonds={n_bonds}; expected ≥1 (Pt_center_capable)"
-    )
-    assert math.isclose(mod_total, n_bonds * DEFAULT_COVALENT_MODIFIER_KCAL_MOL, abs_tol=1e-9), (
+    assert n_bonds >= 1, f"cisplatin n_bonds={n_bonds}; expected ≥1 (Pt_center_capable)"
+    assert math.isclose(
+        mod_total, n_bonds * DEFAULT_COVALENT_MODIFIER_KCAL_MOL, abs_tol=1e-9
+    ), (
         f"modifier_total={mod_total}; expected "
         f"n_bonds × {DEFAULT_COVALENT_MODIFIER_KCAL_MOL} = "
         f"{n_bonds * DEFAULT_COVALENT_MODIFIER_KCAL_MOL}"
@@ -179,12 +179,10 @@ def test_wf329w3_covalent_modifier_applied(scorer):
     f2a_benzene, mod_benzene, n_benzene = scorer.apply_covalent_modifier(
         BENZENE_SMILES, vina_baseline
     )
-    assert n_benzene == 0, (
-        f"benzene n_bonds={n_benzene}; expected 0 (no metal centre)"
-    )
-    assert math.isclose(mod_benzene, 0.0, abs_tol=1e-9), (
-        f"benzene modifier_total={mod_benzene}; expected 0.0"
-    )
+    assert n_benzene == 0, f"benzene n_bonds={n_benzene}; expected 0 (no metal centre)"
+    assert math.isclose(
+        mod_benzene, 0.0, abs_tol=1e-9
+    ), f"benzene modifier_total={mod_benzene}; expected 0.0"
     assert math.isclose(f2a_benzene, vina_baseline, abs_tol=1e-9), (
         f"benzene f2a_kcal_mol={f2a_benzene}; expected "
         f"vina_baseline = {vina_baseline}"
@@ -201,16 +199,12 @@ def test_wf329w3_covalent_modifier_propagates_none():
         CISPLATIN_SMILES, None
     )
     assert f2a_score is None, (
-        f"f2a_score must be None when vina_kcal_mol is None; "
-        f"got {f2a_score}"
+        f"f2a_score must be None when vina_kcal_mol is None; " f"got {f2a_score}"
     )
     assert mod_total == 0.0, (
-        f"mod_total must be 0.0 when vina_kcal_mol is None; "
-        f"got {mod_total}"
+        f"mod_total must be 0.0 when vina_kcal_mol is None; " f"got {mod_total}"
     )
-    assert n_bonds == 0, (
-        f"n_bonds must be 0 when vina_kcal_mol is None; got {n_bonds}"
-    )
+    assert n_bonds == 0, f"n_bonds must be 0 when vina_kcal_mol is None; got {n_bonds}"
 
 
 # ===========================================================================
@@ -225,6 +219,7 @@ def test_wf329w3_vina_integration_pocket_cell_carries_f2a_fields(scorer):
     """
     # Build a PocketCell-like object via the score pathway
     from molmetal.scripts.cfm_vina_dock_panel import PocketCell
+
     cell = PocketCell(pocket="1h36")
     vina_kcal = -3.283
     f2a_score, mod_total, n_bonds = scorer.apply_covalent_modifier(
@@ -240,23 +235,21 @@ def test_wf329w3_vina_integration_pocket_cell_carries_f2a_fields(scorer):
 
     # All five F2(a) fields must be populated
     assert cell.f2a_kcal_mol is not None, "f2a_kcal_mol must be set"
-    assert cell.f2a_n_bonds >= 1, (
-        f"f2a_n_bonds={cell.f2a_n_bonds}; expected ≥1 for cisplatin"
-    )
+    assert (
+        cell.f2a_n_bonds >= 1
+    ), f"f2a_n_bonds={cell.f2a_n_bonds}; expected ≥1 for cisplatin"
     assert cell.f2a_modifier_total < 0, (
-        f"f2a_modifier_total={cell.f2a_modifier_total}; "
-        f"expected negative (penalty)"
+        f"f2a_modifier_total={cell.f2a_modifier_total}; " f"expected negative (penalty)"
     )
-    assert cell.f2a_matched_patterns, (
-        "f2a_matched_patterns must be non-empty for cisplatin"
-    )
+    assert (
+        cell.f2a_matched_patterns
+    ), "f2a_matched_patterns must be non-empty for cisplatin"
     assert cell.f2a_recovery_status in (
-        "RECOVERY_PASS", "RECOVERY_BORDERLINE",
-        "HONEST_NEG_COVALENT_INSUFFICIENT", "NO_SCORE",
-    ), (
-        f"f2a_recovery_status={cell.f2a_recovery_status!r}; "
-        f"unknown status"
-    )
+        "RECOVERY_PASS",
+        "RECOVERY_BORDERLINE",
+        "HONEST_NEG_COVALENT_INSUFFICIENT",
+        "NO_SCORE",
+    ), f"f2a_recovery_status={cell.f2a_recovery_status!r}; " f"unknown status"
 
 
 # ===========================================================================
@@ -283,9 +276,7 @@ def test_wf329w3_vina_score_lift_in_projected_range(scorer):
     f2a_scores: List[float] = []
     for _pocket, kcal in vina_per_pocket.items():
         vina_scores.append(kcal)
-        f2a_score, _mod, _n = scorer.apply_covalent_modifier(
-            CISPLATIN_SMILES, kcal
-        )
+        f2a_score, _mod, _n = scorer.apply_covalent_modifier(CISPLATIN_SMILES, kcal)
         f2a_scores.append(f2a_score)
 
     # Cohort medians
@@ -323,8 +314,7 @@ def test_wf329w3_vina_score_lift_in_projected_range(scorer):
 if __name__ == "__main__":  # pragma: no cover
     # Manual quick run
     s = F2AMetalLigandScorer()
-    print(f"scorer: {s.n_patterns_loaded} patterns, "
-          f"modifier={s.modifier_kcal_mol}")
+    print(f"scorer: {s.n_patterns_loaded} patterns, " f"modifier={s.modifier_kcal_mol}")
     for label, sm in [
         ("cisplatin", CISPLATIN_SMILES),
         ("carboplatin", CARBOPLATIN_SMILES),
@@ -334,6 +324,8 @@ if __name__ == "__main__":  # pragma: no cover
         d = s.dispatch(sm)
         adj, mod, n = s.apply_covalent_modifier(sm, -3.283)
         st, gap = s.classify_recovery(adj)
-        print(f"  {label}: n_bonds={n} matched={d.matched_patterns} "
-              f"modifier={mod:+.2f} f2a={adj:.3f} status={st} "
-              f"gap={gap:+.3f}")
+        print(
+            f"  {label}: n_bonds={n} matched={d.matched_patterns} "
+            f"modifier={mod:+.2f} f2a={adj:.3f} status={st} "
+            f"gap={gap:+.3f}"
+        )

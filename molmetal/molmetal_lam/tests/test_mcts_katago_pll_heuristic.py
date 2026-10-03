@@ -61,6 +61,7 @@ Run from the project root::
     uv run pytest -q molmetal/molmetal_lam/tests/test_mcts_katago_pll_heuristic.py \\
         --tb=short
 """
+
 from __future__ import annotations
 
 import sys
@@ -145,17 +146,17 @@ def test_pll_distance_self_returns_zero() -> None:
     """``pll_distance(x, x) == 0.0`` (PLL is rotation-invariant)."""
     _Chem, _AllChem, _compute, _, _ = _pll_modules_or_skip()
     d_self = pll_distance("CCO", "CCO")
-    assert d_self == pytest.approx(0.0, abs=1e-6), (
-        f"identical SMILES must yield d=0; got d={d_self}"
-    )
+    assert d_self == pytest.approx(
+        0.0, abs=1e-6
+    ), f"identical SMILES must yield d=0; got d={d_self}"
 
 
 def test_pll_similarity_self_is_one() -> None:
     """``pll_similarity(x, x) == 1.0`` (kernel peak)."""
     val = pll_similarity("c1ccccc1", "c1ccccc1")
-    assert val == pytest.approx(1.0, abs=1e-3), (
-        f"identical SMILES must yield similarity≈1.0; got {val}"
-    )
+    assert val == pytest.approx(
+        1.0, abs=1e-3
+    ), f"identical SMILES must yield similarity≈1.0; got {val}"
 
 
 def test_pll_similarity_dissimilar_in_unit_interval() -> None:
@@ -167,9 +168,7 @@ def test_pll_similarity_dissimilar_in_unit_interval() -> None:
     ]
     for a, b in pairs:
         s = pll_similarity(a, b)
-        assert 0.0 < s <= 1.0, (
-            f"pll_similarity({a!r}, {b!r})={s} not in (0, 1]"
-        )
+        assert 0.0 < s <= 1.0, f"pll_similarity({a!r}, {b!r})={s} not in (0, 1]"
 
 
 def test_pll_distance_rotation_invariant() -> None:
@@ -223,9 +222,9 @@ def test_pll_heuristic_target_self_yields_one() -> None:
     h = PLLHeuristic(target="CCO")
     assert h.is_available, "PLLHeuristic for CCO target must be available"
     val = h.score_state("CCO")
-    assert val == pytest.approx(1.0, abs=1e-3), (
-        f"self-similarity must be ≈1.0; got {val}"
-    )
+    assert val == pytest.approx(
+        1.0, abs=1e-3
+    ), f"self-similarity must be ≈1.0; got {val}"
 
 
 def test_pll_heuristic_caches_repeated_queries() -> None:
@@ -245,9 +244,9 @@ def test_pll_heuristic_unparseable_smiles_returns_fallback() -> None:
     _Chem, _AllChem, _compute, _, _ = _pll_modules_or_skip()
     h = PLLHeuristic(target="CCO", fallback=0.42)
     val = h.score_state("@not_a_smiles@")
-    assert val == pytest.approx(0.42), (
-        f"unparseable SMILES must yield fallback=0.42; got {val}"
-    )
+    assert val == pytest.approx(
+        0.42
+    ), f"unparseable SMILES must yield fallback=0.42; got {val}"
 
 
 def test_pll_heuristic_is_available_when_signature_resolves() -> None:
@@ -292,12 +291,12 @@ def test_apply_fpu_bonus_only_for_unvisited_children() -> None:
     """
     for cn in (1, 5, 100):
         b = apply_fpu_bonus(
-            child_q=0.5, parent_q_max=0.7, child_n=cn,
+            child_q=0.5,
+            parent_q_max=0.7,
+            child_n=cn,
             fpu_reduction=0.25,
         )
-        assert b == 0.0, (
-            f"visited child (N={cn}) must have FPU bonus 0.0; got {b}"
-        )
+        assert b == 0.0, f"visited child (N={cn}) must have FPU bonus 0.0; got {b}"
 
 
 def test_apply_fpu_bonus_unvisited_scales_with_parent_q() -> None:
@@ -305,11 +304,14 @@ def test_apply_fpu_bonus_unvisited_scales_with_parent_q() -> None:
     # child_q = 0.0 (unvisited); parent_q_max = 0.5; fpu = 0.25
     # expected bonus = 0.5 - 0.25 - 0.0 = 0.25
     b = apply_fpu_bonus(
-        child_q=0.0, parent_q_max=0.5, child_n=0, fpu_reduction=0.25,
+        child_q=0.0,
+        parent_q_max=0.5,
+        child_n=0,
+        fpu_reduction=0.25,
     )
-    assert b == pytest.approx(0.25), (
-        f"unvisited child bonus = 0.5 - 0.25 - 0.0 = 0.25; got {b}"
-    )
+    assert b == pytest.approx(
+        0.25
+    ), f"unvisited child bonus = 0.5 - 0.25 - 0.0 = 0.25; got {b}"
 
 
 def test_apply_fpu_bonus_clip_at_zero_when_q_above_threshold() -> None:
@@ -321,11 +323,12 @@ def test_apply_fpu_bonus_clip_at_zero_when_q_above_threshold() -> None:
     # child_q = 0.5 (unvisited); parent_q_max = 0.5; fpu = 0.25
     # expected bonus = max(0, 0.5 - 0.25 - 0.5) = max(0, -0.25) = 0.0
     b = apply_fpu_bonus(
-        child_q=0.5, parent_q_max=0.5, child_n=0, fpu_reduction=0.25,
+        child_q=0.5,
+        parent_q_max=0.5,
+        child_n=0,
+        fpu_reduction=0.25,
     )
-    assert b == 0.0, (
-        f"unvisited child with q >= threshold must have bonus 0; got {b}"
-    )
+    assert b == 0.0, f"unvisited child with q >= threshold must have bonus 0; got {b}"
 
 
 def test_apply_fpu_bonus_no_signal_returns_zero() -> None:
@@ -335,18 +338,18 @@ def test_apply_fpu_bonus_no_signal_returns_zero() -> None:
     silently inject signal when there is none.
     """
     b = apply_fpu_bonus(
-        child_q=0.0, parent_q_max=0.0, child_n=0, fpu_reduction=0.25,
+        child_q=0.0,
+        parent_q_max=0.0,
+        child_n=0,
+        fpu_reduction=0.25,
     )
-    assert b == 0.0, (
-        f"parent_q_max=0.0 must yield bonus=0.0; got {b}"
-    )
+    assert b == 0.0, f"parent_q_max=0.0 must yield bonus=0.0; got {b}"
 
 
 def test_apply_fpu_bonus_default_reduction_value() -> None:
     """The module-level ``DEFAULT_FPU_REDUCTION`` is ``0.25`` (KataGo)."""
     assert DEFAULT_FPU_REDUCTION == pytest.approx(0.25), (
-        f"KataGo-canonical FPU reduction must be 0.25; got "
-        f"{DEFAULT_FPU_REDUCTION}"
+        f"KataGo-canonical FPU reduction must be 0.25; got " f"{DEFAULT_FPU_REDUCTION}"
     )
 
 
@@ -387,13 +390,13 @@ def test_puct_formula_matches_kata_go_definition() -> None:
     chosen = mcts._select_child(parent)
     # Compute the expected PUCT scores manually.
     import math
+
     sqrt_N_parent = math.sqrt(parent.N)
     scores = {}
     for c, label in [(c0, "c0"), (c1, "c1")]:
-        scores[label] = (
-            mcts.c_puct * (c.P * sqrt_N_parent) / (1.0 + c.N)
-            + (c.W / c.N) / max(1.0, 1.0 + c.N)
-        )
+        scores[label] = mcts.c_puct * (c.P * sqrt_N_parent) / (1.0 + c.N) + (
+            c.W / c.N
+        ) / max(1.0, 1.0 + c.N)
     expected = max(scores, key=scores.get)
     assert chosen is (c0 if expected == "c0" else c1), (
         f"PUCT argmax must match KataGo formula; expected {expected} "
@@ -443,9 +446,7 @@ def test_virtual_loss_biases_puct_away_from_inflight_child() -> None:
         f"virtual-loss on {first.state.canonical_smiles()} must bias "
         f"selection away; got {third.state.canonical_smiles()}"
     )
-    assert third is c1, (
-        f"expected switch to c1, got {third.state.canonical_smiles()}"
-    )
+    assert third is c1, f"expected switch to c1, got {third.state.canonical_smiles()}"
 
     # 4) Release and re-run — must recover the original tiebreak.
     mcts.virtual_loss.release(id(first))
@@ -617,11 +618,13 @@ def test_search_no_pll_no_fpu_is_bit_for_bit_legacy() -> None:
 
     try:
         from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
         initial = MoleculeClosedTerm.from_smiles("C", embed_3d=False)
     except Exception:
         initial = _StubState("C")
 
     import random
+
     mcts = MCTSProofSearch(
         tile_library=[initial],
         rules={"stub": _StubRule()},
@@ -644,12 +647,12 @@ def test_search_no_pll_no_fpu_is_bit_for_bit_legacy() -> None:
     # PARALLEL_COLLISION_RATE must still be present (legacy field).
     assert "PARALLEL_COLLISION_RATE" in mcts.history[-1]
     # The PLL internal hooks must be reset / None (no leakage).
-    assert getattr(mcts, "_use_pll_heuristic_for_search", None) is False, (
-        "PLL gate must default to False when use_pll_heuristic is unset"
-    )
-    assert getattr(mcts, "_fpu_reduction_for_search", None) == 0.0, (
-        "FPU reduction must default to 0.0 when fpu_reduction is unset"
-    )
+    assert (
+        getattr(mcts, "_use_pll_heuristic_for_search", None) is False
+    ), "PLL gate must default to False when use_pll_heuristic is unset"
+    assert (
+        getattr(mcts, "_fpu_reduction_for_search", None) == 0.0
+    ), "FPU reduction must default to 0.0 when fpu_reduction is unset"
 
 
 # ---------------------------------------------------------------------------
@@ -679,11 +682,13 @@ def test_search_with_pll_heuristic_runs_without_crash() -> None:
 
     try:
         from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
         initial = MoleculeClosedTerm.from_smiles("CCO", embed_3d=False)
     except Exception:
         initial = _StubState("CCO")
 
     import random
+
     mcts = MCTSProofSearch(
         tile_library=[initial],
         rules={"stub": _StubRule()},
@@ -728,11 +733,13 @@ def test_search_with_fpu_runs_without_crash() -> None:
 
     try:
         from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
         initial = MoleculeClosedTerm.from_smiles("C", embed_3d=False)
     except Exception:
         initial = _StubState("C")
 
     import random
+
     mcts = MCTSProofSearch(
         tile_library=[initial],
         rules={"stub": _StubRule()},
@@ -814,6 +821,7 @@ def test_puct_score_components_have_expected_scale() -> None:
     term dominates at low visit counts (KataGo design intent).
     """
     import math
+
     c_puct = 1.5
     P = 0.5
     N_parent = 100
@@ -822,9 +830,7 @@ def test_puct_score_components_have_expected_scale() -> None:
     exploration = c_puct * (P * sqrt_N_parent) / (1.0 + N_child)
     Q = 0.5
     exploit = Q / max(1.0, 1.0 + N_child)
-    assert exploration > 0.5, (
-        f"exploration term must be > 0.5 at this scale; got {exploration}"
-    )
-    assert exploit < 0.1, (
-        f"exploit term must be < 0.1 at this scale; got {exploit}"
-    )
+    assert (
+        exploration > 0.5
+    ), f"exploration term must be > 0.5 at this scale; got {exploration}"
+    assert exploit < 0.1, f"exploit term must be < 0.1 at this scale; got {exploit}"

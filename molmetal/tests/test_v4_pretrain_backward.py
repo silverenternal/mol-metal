@@ -93,9 +93,9 @@ def test_pretrain_masked_atom_loss_backward():
     # pretrain_head (Linear) must have a non-None, non-zero gradient
     g_head = m.pretrain_head.weight.grad
     assert g_head is not None, "pretrain_head.weight.grad is None — head not in graph"
-    assert g_head.abs().sum().item() > 0.0, (
-        "pretrain_head.weight.grad is zero — backward did not flow"
-    )
+    assert (
+        g_head.abs().sum().item() > 0.0
+    ), "pretrain_head.weight.grad is zero — backward did not flow"
 
     # The shared encoder's atom embedding should ALSO have a gradient
     # (proves the head is hooked into the encoder's parameter graph).
@@ -132,9 +132,9 @@ def test_pretrain_task_loss_backward():
     # mol_clf_head must have a non-None, non-zero gradient
     g_head = m.mol_clf_head.weight.grad
     assert g_head is not None, "mol_clf_head.weight.grad is None — head not in graph"
-    assert g_head.abs().sum().item() > 0.0, (
-        "mol_clf_head.weight.grad is zero — backward did not flow"
-    )
+    assert (
+        g_head.abs().sum().item() > 0.0
+    ), "mol_clf_head.weight.grad is zero — backward did not flow"
 
     # The shared encoder should ALSO have a gradient from the task head.
     enc_grad = m.encoder.dmpnn.atom_embed[0].weight.grad
@@ -165,9 +165,7 @@ def test_pretrain_combined_loss_backward():
     # Pretrain losses — masked atom + molecular task
     sum_N = int(out["atom_mask"].sum().item())
     atom_labels = torch.randint(0, ATOM_VOCAB_SIZE, (sum_N,))
-    atom_loss = torch.nn.functional.cross_entropy(
-        out["atom_logits"], atom_labels
-    )
+    atom_loss = torch.nn.functional.cross_entropy(out["atom_logits"], atom_labels)
     mol_labels = torch.randint(0, m.n_pretrain_tasks, (3,))
     mol_loss = torch.nn.functional.cross_entropy(out["mol_clf"], mol_labels)
 
@@ -178,36 +176,36 @@ def test_pretrain_combined_loss_backward():
     # Every pretrain head and every base head must have received gradient
     g_pretrain = m.pretrain_head.weight.grad
     g_molclf = m.mol_clf_head.weight.grad
-    assert g_pretrain is not None and g_pretrain.abs().sum().item() > 0.0, (
-        "pretrain_head received no gradient under combined loss"
-    )
-    assert g_molclf is not None and g_molclf.abs().sum().item() > 0.0, (
-        "mol_clf_head received no gradient under combined loss"
-    )
+    assert (
+        g_pretrain is not None and g_pretrain.abs().sum().item() > 0.0
+    ), "pretrain_head received no gradient under combined loss"
+    assert (
+        g_molclf is not None and g_molclf.abs().sum().item() > 0.0
+    ), "mol_clf_head received no gradient under combined loss"
 
     # A metal head also still receives gradient (backward compat)
     g_metal = m.metal_heads["Ru"][0].weight.grad
-    assert g_metal is not None and g_metal.abs().sum().item() > 0.0, (
-        "metal_head['Ru'] received no gradient under combined loss"
-    )
+    assert (
+        g_metal is not None and g_metal.abs().sum().item() > 0.0
+    ), "metal_head['Ru'] received no gradient under combined loss"
 
     # Coord head also receives gradient
     g_coord = m.coord_head[0].weight.grad
-    assert g_coord is not None and g_coord.abs().sum().item() > 0.0, (
-        "coord_head received no gradient under combined loss"
-    )
+    assert (
+        g_coord is not None and g_coord.abs().sum().item() > 0.0
+    ), "coord_head received no gradient under combined loss"
 
     # The shared encoder's atom embedding must have gradient (param sharing)
     enc_grad = m.encoder.dmpnn.atom_embed[0].weight.grad
-    assert enc_grad is not None and enc_grad.abs().sum().item() > 0.0, (
-        "Shared encoder atom_embed received no gradient — heads not hooked"
-    )
+    assert (
+        enc_grad is not None and enc_grad.abs().sum().item() > 0.0
+    ), "Shared encoder atom_embed received no gradient — heads not hooked"
 
     # Metal embedding must also have gradient (consumed by every head)
     g_embed = m.metal_embed.weight.grad
-    assert g_embed is not None and g_embed.abs().sum().item() > 0.0, (
-        "metal_embed received no gradient under combined loss"
-    )
+    assert (
+        g_embed is not None and g_embed.abs().sum().item() > 0.0
+    ), "metal_embed received no gradient under combined loss"
 
 
 # ---------------------------------------------------------------------------
@@ -228,51 +226,41 @@ def test_pretrain_gradients_non_zero():
     base_loss, _ = loss_fn(out, y_true, coord_true)
     sum_N = int(out["atom_mask"].sum().item())
     atom_labels = torch.randint(0, ATOM_VOCAB_SIZE, (sum_N,))
-    atom_loss = torch.nn.functional.cross_entropy(
-        out["atom_logits"], atom_labels
-    )
+    atom_loss = torch.nn.functional.cross_entropy(out["atom_logits"], atom_labels)
     mol_labels = torch.randint(0, m.n_pretrain_tasks, (3,))
     mol_loss = torch.nn.functional.cross_entropy(out["mol_clf"], mol_labels)
     total = base_loss + 0.1 * atom_loss + 0.1 * mol_loss
     total.backward()
 
     # --- Pretrain heads: must NOT be detached from the computation graph ---
-    assert m.pretrain_head.weight.grad is not None, (
-        "pretrain_head.weight.grad is None — head not in autograd graph"
-    )
+    assert (
+        m.pretrain_head.weight.grad is not None
+    ), "pretrain_head.weight.grad is None — head not in autograd graph"
     if m.pretrain_head.bias is not None:
-        assert m.pretrain_head.bias.grad is not None, (
-            "pretrain_head.bias.grad is None"
-        )
-    assert m.mol_clf_head.weight.grad is not None, (
-        "mol_clf_head.weight.grad is None — head not in autograd graph"
-    )
+        assert m.pretrain_head.bias.grad is not None, "pretrain_head.bias.grad is None"
+    assert (
+        m.mol_clf_head.weight.grad is not None
+    ), "mol_clf_head.weight.grad is None — head not in autograd graph"
     if m.mol_clf_head.bias is not None:
-        assert m.mol_clf_head.bias.grad is not None, (
-            "mol_clf_head.bias.grad is None"
-        )
+        assert m.mol_clf_head.bias.grad is not None, "mol_clf_head.bias.grad is None"
 
     # --- Encoder bottom layer: must be in graph (param sharing works) ---
-    assert m.encoder.dmpnn.atom_embed[0].weight.grad is not None, (
-        "encoder.dmpnn.atom_embed[0].weight.grad is None"
-    )
+    assert (
+        m.encoder.dmpnn.atom_embed[0].weight.grad is not None
+    ), "encoder.dmpnn.atom_embed[0].weight.grad is None"
 
     # --- Metal embedding: must be in graph (consumed by every head) ---
-    assert m.metal_embed.weight.grad is not None, (
-        "metal_embed.weight.grad is None"
-    )
+    assert m.metal_embed.weight.grad is not None, "metal_embed.weight.grad is None"
 
     # --- At least one per-metal head: must be in graph ---
     for met in SUPPORTED_METALS:
         head_lin1 = m.metal_heads[met][0]
-        assert head_lin1.weight.grad is not None, (
-            f"metal_heads[{met!r}][0].weight.grad is None"
-        )
+        assert (
+            head_lin1.weight.grad is not None
+        ), f"metal_heads[{met!r}][0].weight.grad is None"
 
     # --- Coord head: must be in graph ---
-    assert m.coord_head[0].weight.grad is not None, (
-        "coord_head[0].weight.grad is None"
-    )
+    assert m.coord_head[0].weight.grad is not None, "coord_head[0].weight.grad is None"
 
     # And as a final sanity check: NO learnable parameter that requires
     # grad is left without a gradient — catch detached tensors / detached
@@ -312,9 +300,7 @@ def test_pretrain_optimizer_step():
         if m.mol_clf_head.bias is not None
         else None
     )
-    enc_atom_embed_w_before = (
-        m.encoder.dmpnn.atom_embed[0].weight.detach().clone()
-    )
+    enc_atom_embed_w_before = m.encoder.dmpnn.atom_embed[0].weight.detach().clone()
 
     # Build the optimizer over model.parameters() — this is the standard
     # call site, and any head that's NOT in ``m.parameters()`` will be
@@ -345,9 +331,7 @@ def test_pretrain_optimizer_step():
     base_loss, _ = loss_fn(out, y_true, coord_true)
     sum_N = int(out["atom_mask"].sum().item())
     atom_labels = torch.randint(0, ATOM_VOCAB_SIZE, (sum_N,))
-    atom_loss = torch.nn.functional.cross_entropy(
-        out["atom_logits"], atom_labels
-    )
+    atom_loss = torch.nn.functional.cross_entropy(out["atom_logits"], atom_labels)
     mol_labels = torch.randint(0, m.n_pretrain_tasks, (3,))
     mol_loss = torch.nn.functional.cross_entropy(out["mol_clf"], mol_labels)
     total = base_loss + 0.1 * atom_loss + 0.1 * mol_loss
@@ -364,8 +348,8 @@ def test_pretrain_optimizer_step():
     # ----- Verify the weights changed -----
     # pretrain_head.weight
     delta_pretrain_head_w = (
-        m.pretrain_head.weight.detach() - pretrain_head_w_before
-    ).abs().sum().item()
+        (m.pretrain_head.weight.detach() - pretrain_head_w_before).abs().sum().item()
+    )
     assert delta_pretrain_head_w > 0.0, (
         f"pretrain_head.weight unchanged after AdamW step "
         f"(delta={delta_pretrain_head_w}) — head not optimized"
@@ -374,8 +358,8 @@ def test_pretrain_optimizer_step():
     # pretrain_head.bias (if present)
     if pretrain_head_b_before is not None:
         delta_pretrain_head_b = (
-            m.pretrain_head.bias.detach() - pretrain_head_b_before
-        ).abs().sum().item()
+            (m.pretrain_head.bias.detach() - pretrain_head_b_before).abs().sum().item()
+        )
         assert delta_pretrain_head_b > 0.0, (
             f"pretrain_head.bias unchanged after AdamW step "
             f"(delta={delta_pretrain_head_b})"
@@ -383,8 +367,8 @@ def test_pretrain_optimizer_step():
 
     # mol_clf_head.weight
     delta_mol_clf_head_w = (
-        m.mol_clf_head.weight.detach() - mol_clf_head_w_before
-    ).abs().sum().item()
+        (m.mol_clf_head.weight.detach() - mol_clf_head_w_before).abs().sum().item()
+    )
     assert delta_mol_clf_head_w > 0.0, (
         f"mol_clf_head.weight unchanged after AdamW step "
         f"(delta={delta_mol_clf_head_w}) — head not optimized"
@@ -393,8 +377,8 @@ def test_pretrain_optimizer_step():
     # mol_clf_head.bias (if present)
     if mol_clf_head_b_before is not None:
         delta_mol_clf_head_b = (
-            m.mol_clf_head.bias.detach() - mol_clf_head_b_before
-        ).abs().sum().item()
+            (m.mol_clf_head.bias.detach() - mol_clf_head_b_before).abs().sum().item()
+        )
         assert delta_mol_clf_head_b > 0.0, (
             f"mol_clf_head.bias unchanged after AdamW step "
             f"(delta={delta_mol_clf_head_b})"
@@ -402,9 +386,11 @@ def test_pretrain_optimizer_step():
 
     # encoder atom_embed (param sharing)
     delta_enc = (
-        m.encoder.dmpnn.atom_embed[0].weight.detach()
-        - enc_atom_embed_w_before
-    ).abs().sum().item()
+        (m.encoder.dmpnn.atom_embed[0].weight.detach() - enc_atom_embed_w_before)
+        .abs()
+        .sum()
+        .item()
+    )
     assert delta_enc > 0.0, (
         f"encoder.dmpnn.atom_embed[0].weight unchanged after AdamW step "
         f"(delta={delta_enc}) — shared encoder not updated"

@@ -72,6 +72,7 @@ Usage::
 
     source env.sh && uv run --no-sync python molmetal/scripts/benchmark_r18_metalcytotox.py --n-samples 500
 """
+
 from __future__ import annotations
 
 import argparse
@@ -141,6 +142,7 @@ def _build_module_registry() -> Dict[str, Callable[[List[str], int], List[float]
     from molmetal.scripts.benchmark_r18_platinai import (  # noqa: WPS433
         _build_module_registry as _plat_registry,
     )
+
     return _plat_registry()
 
 
@@ -414,9 +416,7 @@ def main(argv: List[str] | None = None) -> int:
     # ---------------------------------------------------------------------
     # Diagnostics summary
     # ---------------------------------------------------------------------
-    n_total_calls = sum(
-        sum(per_metal_calls[m].values()) for m in metals
-    )
+    n_total_calls = sum(sum(per_metal_calls[m].values()) for m in metals)
     n_ok_calls = sum(
         v
         for m in metals
@@ -425,10 +425,7 @@ def main(argv: List[str] | None = None) -> int:
     )
     # Simpler status tally: count per-metal, per-module "ok" entries.
     n_ok_cells = sum(
-        1
-        for m in metals
-        for st in per_metal_status[m].values()
-        if st == "ok"
+        1 for m in metals for st in per_metal_status[m].values() if st == "ok"
     )
 
     print(

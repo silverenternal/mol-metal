@@ -39,6 +39,7 @@ re-running reproduces the split bit-for-bit (forward-compat with the
 P6.3 (MMseqs2 + Tanimoto<0.4) is deferred; this script is the
 scaffold-only path required by the P6.1 reinforcement item.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -59,7 +60,9 @@ for _p in (str(_HERE.parent), str(_REPO_ROOT)):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s"
+)
 log = logging.getLogger("metallo_pool_scaffold_split")
 
 
@@ -88,11 +91,17 @@ def detect_metal(smiles: str, source: str = "") -> str:
     # Fallback: scan atomic numbers via RDKit.
     try:
         from rdkit import Chem  # type: ignore
+
         mol = Chem.MolFromSmiles(smiles or "")
         if mol is not None:
             atomic_nums = {a.GetAtomicNum() for a in mol.GetAtoms()}
-            for atomic_num, metal in ((78, "Pt"), (46, "Pd"), (79, "Au"),
-                                       (77, "Ir"), (44, "Ru")):
+            for atomic_num, metal in (
+                (78, "Pt"),
+                (46, "Pd"),
+                (79, "Au"),
+                (77, "Ir"),
+                (44, "Ru"),
+            ):
                 if atomic_num in atomic_nums:
                     return metal
     except Exception:
@@ -110,6 +119,7 @@ def _rdkit_imports():
     from rdkit.Chem.Scaffolds import MurckoScaffold  # type: ignore
     from rdkit import DataStructs  # type: ignore
     from rdkit.Chem import AllChem  # type: ignore
+
     return Chem, MurckoScaffold, DataStructs, AllChem
 
 
@@ -130,6 +140,7 @@ def _scaffold_smiles(smiles: str) -> Optional[str]:
 def _tanimoto(fp_a, fp_b) -> float:
     """DataStructs.TanimotoSimilarity; accepts RDKit ExplicitBitVect."""
     from rdkit import DataStructs  # type: ignore
+
     return float(DataStructs.TanimotoSimilarity(fp_a, fp_b))
 
 
@@ -155,7 +166,9 @@ def _cluster_scaffolds_by_tanimoto(
             continue
         fps.append(AllChem.GetMorganFingerprintAsBitVect(mol, radius=2, nBits=2048))
     cluster_id: Dict[str, int] = {}
-    clusters: List[Dict[str, "object"]] = []  # list of { "rep": fp, "members": set[str] }
+    clusters: List[
+        Dict[str, "object"]
+    ] = []  # list of { "rep": fp, "members": set[str] }
     for scaf, fp in zip(scaffolds, fps):
         if scaf == "" or fp is None:
             # Empty / unknown scaffold gets its own bucket to guarantee determinism.
@@ -301,7 +314,8 @@ def write_outputs(result: SplitResult, output_dir: Path) -> Tuple[Path, Path, Pa
         path = output_dir / f"{name}.csv"
         with path.open("w", newline="") as fh:
             writer = csv.DictWriter(
-                fh, fieldnames=["smiles", "source", "metal", "scaffold_id", "cluster_id"]
+                fh,
+                fieldnames=["smiles", "source", "metal", "scaffold_id", "cluster_id"],
             )
             writer.writeheader()
             for r in rows:
@@ -318,7 +332,9 @@ def write_manifest(
     tanimoto_threshold: float,
     seed: int,
 ) -> Path:
-    coverage = {name: coverage_by_metal(rows) for name, rows in result.rows_by_bucket.items()}
+    coverage = {
+        name: coverage_by_metal(rows) for name, rows in result.rows_by_bucket.items()
+    }
     summary = {
         "schema_version": 1,
         "tool": "metallo_pool_scaffold_split.py",
@@ -327,7 +343,9 @@ def write_manifest(
         "fractions": list(fractions),
         "tanimoto_threshold": tanimoto_threshold,
         "seed": seed,
-        "bucket_sizes": {name: len(rows) for name, rows in result.rows_by_bucket.items()},
+        "bucket_sizes": {
+            name: len(rows) for name, rows in result.rows_by_bucket.items()
+        },
         "bucket_metal_coverage": coverage,
     }
     path = output_dir / "manifest.json"
@@ -362,7 +380,9 @@ def _build_argparser() -> argparse.ArgumentParser:
         default=0.6,
         help="Murcko-scaffold Tanimoto threshold for clustering (default 0.6)",
     )
-    p.add_argument("--seed", type=int, default=42, help="Deterministic seed for bucket assignment")
+    p.add_argument(
+        "--seed", type=int, default=42, help="Deterministic seed for bucket assignment"
+    )
     return p
 
 
@@ -385,15 +405,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         tanimoto_threshold=float(args.tanimoto_threshold),
         seed=int(args.seed),
     )
-    coverage = {name: coverage_by_metal(rows) for name, rows in result.rows_by_bucket.items()}
-    print(json.dumps({
-        "n_rows": len(rows),
-        "n_clusters": result.n_clusters,
-        "bucket_sizes": {n: len(rs) for n, rs in result.rows_by_bucket.items()},
-        "bucket_metal_coverage": coverage,
-        "outputs": [str(p) for p in paths],
-        "manifest": str(manifest),
-    }, indent=2))
+    coverage = {
+        name: coverage_by_metal(rows) for name, rows in result.rows_by_bucket.items()
+    }
+    print(
+        json.dumps(
+            {
+                "n_rows": len(rows),
+                "n_clusters": result.n_clusters,
+                "bucket_sizes": {n: len(rs) for n, rs in result.rows_by_bucket.items()},
+                "bucket_metal_coverage": coverage,
+                "outputs": [str(p) for p in paths],
+                "manifest": str(manifest),
+            },
+            indent=2,
+        )
+    )
     return 0
 
 

@@ -55,6 +55,7 @@ extract_agent_result).  This module adds the second closure and wires
 it into the Wf-302D helper via a thin wrapper so existing callers need
 no source change.
 """
+
 from __future__ import annotations
 
 import json
@@ -87,13 +88,13 @@ _LOG = logging.getLogger("wf320b_harness_autofallback")
 class FailureReason(str, Enum):
     """Failure mode classification for an agent result."""
 
-    SCHEMA_SHAPE = "schema_shape"            # agent returned the schema def
-    SCHEMA_MISMATCH = "schema_mismatch"      # values returned, wrong schema
-    TYPE_MISMATCH = "type_mismatch"          # values returned, wrong types
-    MISSING_KEYS = "missing_keys"            # values returned, keys missing
-    EXTRA_KEYS = "extra_keys"                # values returned, unexpected keys
-    PLAIN_TEXT = "plain_text"                # plain text / markdown
-    OK = "ok"                                # values match expected schema
+    SCHEMA_SHAPE = "schema_shape"  # agent returned the schema def
+    SCHEMA_MISMATCH = "schema_mismatch"  # values returned, wrong schema
+    TYPE_MISMATCH = "type_mismatch"  # values returned, wrong types
+    MISSING_KEYS = "missing_keys"  # values returned, keys missing
+    EXTRA_KEYS = "extra_keys"  # values returned, unexpected keys
+    PLAIN_TEXT = "plain_text"  # plain text / markdown
+    OK = "ok"  # values match expected schema
 
 
 class FallbackStrategy(str, Enum):
@@ -247,7 +248,9 @@ def detect_schema_mismatch(
     extra = sorted(k for k in recovered if k not in expected)
     type_mm: Dict[str, tuple] = {}
 
-    properties = schema_dict.get("properties") if isinstance(schema_dict, dict) else None
+    properties = (
+        schema_dict.get("properties") if isinstance(schema_dict, dict) else None
+    )
     if isinstance(properties, dict):
         for field_name, prop_def in properties.items():
             if field_name not in agent_dict:
@@ -329,14 +332,16 @@ def build_schema_coerce_hint(
         suffix = "" if len(missing) <= 20 else " (and %d more)" % (len(missing) - 20)
         hint_lines.append(
             "  * MISSING KEYS: please populate these fields with values: "
-            + fields_str + suffix
+            + fields_str
+            + suffix
         )
     if extra:
         fields_str = ", ".join(extra[:20])
         suffix = "" if len(extra) <= 20 else " (and %d more)" % (len(extra) - 20)
         hint_lines.append(
             "  * EXTRA KEYS: please REMOVE these fields from your response: "
-            + fields_str + suffix
+            + fields_str
+            + suffix
         )
     if type_mm:
         bits = []
@@ -412,7 +417,8 @@ def _type_matches(expected_type: str, actual: Any) -> bool:
 
 
 def _coerce_to_schema(
-    agent_result: Any, schema_dict: Optional[Dict[str, Any]],
+    agent_result: Any,
+    schema_dict: Optional[Dict[str, Any]],
 ) -> Dict[str, Any]:
     """Best-effort coercion of *agent_result* into the shape of *schema_dict*.
 
@@ -432,7 +438,9 @@ def _coerce_to_schema(
         return {}
 
     expected = _expected_fields(schema_dict)
-    properties = schema_dict.get("properties") if isinstance(schema_dict, dict) else None
+    properties = (
+        schema_dict.get("properties") if isinstance(schema_dict, dict) else None
+    )
     if not isinstance(properties, dict):
         properties = {}
 
@@ -567,9 +575,7 @@ class HarnessAutoFallback:
         """
         max_retries = self.max_retries if max_retries is None else max_retries
         if max_retries < 0:
-            raise ValueError(
-                "max_retries must be >= 0 (got %r)." % (max_retries,)
-            )
+            raise ValueError("max_retries must be >= 0 (got %r)." % (max_retries,))
 
         report = AutoFallbackReport(fallback_strategy=None)
 
@@ -625,7 +631,9 @@ class HarnessAutoFallback:
             if mismatch.get("is_mismatch", False):
                 # Still mismatched after retries -- apply fallback.
                 report.budget_exhausted = True
-                report.final_reason = FailureReason(mismatch.get("reason", "schema_mismatch"))
+                report.final_reason = FailureReason(
+                    mismatch.get("reason", "schema_mismatch")
+                )
                 result = self._apply_fallback(report)
             else:
                 report.final_reason = FailureReason.OK
@@ -638,7 +646,8 @@ class HarnessAutoFallback:
         return result, report
 
     def coerce(
-        self, agent_result: Any,
+        self,
+        agent_result: Any,
     ) -> Dict[str, Any]:
         """Coerce *agent_result* to the expected schema (best-effort).
 
@@ -677,7 +686,11 @@ class HarnessAutoFallback:
             coerced["_partial"] = True
             coerced["_fallback_strategy"] = strategy.value
             return coerced
-        return {"_schema_detected": True, "_partial": True, "_fallback_strategy": strategy.value}
+        return {
+            "_schema_detected": True,
+            "_partial": True,
+            "_fallback_strategy": strategy.value,
+        }
 
 
 # ---------------------------------------------------------------------------

@@ -40,6 +40,7 @@ Each test is independent; collectively they prove a developer can run
 and get a green run, OR that ``pytest -m env_setup`` (see ``pytest`` config
 note at the bottom of this file) confirms the wiring in CI.
 """
+
 from __future__ import annotations
 
 import os
@@ -68,9 +69,9 @@ GITIGNORE = REPO_ROOT / ".gitignore"
 # ---------------------------------------------------------------------------
 def test_venv_symlink_exists() -> None:
     """``molmetal/.venvs/mol-metal-venv`` must exist as a symlink."""
-    assert VENV_SYMLINK.exists(), (
-        f"missing {VENV_SYMLINK}. Run: ln -snf {SHARED_VENV} {VENV_SYMLINK}"
-    )
+    assert (
+        VENV_SYMLINK.exists()
+    ), f"missing {VENV_SYMLINK}. Run: ln -snf {SHARED_VENV} {VENV_SYMLINK}"
     # It should be a symlink (or directory pointing at SHARED_VENV) — either
     # is acceptable; the symlink is the preferred layout but a copy is OK
     # for hosts where symlinks are restricted.
@@ -89,9 +90,9 @@ def test_venv_symlink_target_is_absolute_and_resolves() -> None:
     if target is not None:
         assert os.path.isabs(target), f"symlink target {target!r} must be absolute"
     # Whichever layout was chosen, the shared venv must have a Python.
-    assert SHARED_PY.exists() and os.access(SHARED_PY, os.X_OK), (
-        f"{SHARED_PY} missing or not executable — the shared env is broken"
-    )
+    assert SHARED_PY.exists() and os.access(
+        SHARED_PY, os.X_OK
+    ), f"{SHARED_PY} missing or not executable — the shared env is broken"
 
 
 # ---------------------------------------------------------------------------
@@ -101,9 +102,10 @@ def test_venv_symlink_target_is_absolute_and_resolves() -> None:
 def test_shared_venv_has_torch_with_cu130() -> None:
     """Shared venv must have torch==2.14.0+cu130 (Blackwell-ready)."""
     cp = subprocess.run(
-        [str(SHARED_PY), "-c",
-         "import torch; print(torch.__version__)"],
-        capture_output=True, text=True, timeout=60,
+        [str(SHARED_PY), "-c", "import torch; print(torch.__version__)"],
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     assert cp.returncode == 0, f"torch import failed: {cp.stderr}"
     assert "+cu130" in cp.stdout, (
@@ -118,10 +120,15 @@ def test_shared_venv_has_torch_with_cu130() -> None:
 @pytest.mark.skipif(not SHARED_PY.exists(), reason=f"no {SHARED_PY} on this host")
 def test_shared_venv_arch_list_includes_sm_120_blackwell() -> None:
     cp = subprocess.run(
-        [str(SHARED_PY), "-c",
-         "import torch; a=torch.cuda.get_arch_list() if torch.cuda.is_available() "
-         "else []; print(' '.join(a))"],
-        capture_output=True, text=True, timeout=60,
+        [
+            str(SHARED_PY),
+            "-c",
+            "import torch; a=torch.cuda.get_arch_list() if torch.cuda.is_available() "
+            "else []; print(' '.join(a))",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     if cp.returncode != 0 or not cp.stdout.strip():
         pytest.skip("torch.cuda not available on this host")
@@ -137,9 +144,9 @@ def test_shared_venv_arch_list_includes_sm_120_blackwell() -> None:
 # ---------------------------------------------------------------------------
 def test_setup_script_executable() -> None:
     assert SETUP_SCRIPT.exists(), f"missing {SETUP_SCRIPT}"
-    assert os.access(SETUP_SCRIPT, os.X_OK), (
-        f"{SETUP_SCRIPT} is not executable. Run: chmod +x {SETUP_SCRIPT}"
-    )
+    assert os.access(
+        SETUP_SCRIPT, os.X_OK
+    ), f"{SETUP_SCRIPT} is not executable. Run: chmod +x {SETUP_SCRIPT}"
 
 
 # ---------------------------------------------------------------------------
@@ -162,21 +169,26 @@ def test_setup_script_sets_pythonpath_to_repo_root() -> None:
         f"setup script never resolves REPO_ROOT — `import molmetal` "
         f"will fail under the shared interpreter"
     )
-    assert "${REPO_ROOT}" in src, (
-        "setup script defines REPO_ROOT but never uses it in an export"
-    )
+    assert (
+        "${REPO_ROOT}" in src
+    ), "setup script defines REPO_ROOT but never uses it in an export"
     # End-to-end confirmation: run the script and verify PYTHONPATH landed.
     cp = subprocess.run(
-        ["bash", "-c",
-         f"PYTHONPATH= bash {SETUP_SCRIPT} python -c "
-         f"'import os, sys; sys.path.insert(0, os.environ[\"PYTHONPATH\"]); "
-         f"import molmetal; print(molmetal.__file__)'"],
-        capture_output=True, text=True, timeout=60,
+        [
+            "bash",
+            "-c",
+            f"PYTHONPATH= bash {SETUP_SCRIPT} python -c "
+            f'\'import os, sys; sys.path.insert(0, os.environ["PYTHONPATH"]); '
+            f"import molmetal; print(molmetal.__file__)'",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     if SHARED_PY.exists():
-        assert cp.returncode == 0, (
-            f"setup-script PYTHONPATH wiring failed end-to-end: {cp.stderr}"
-        )
+        assert (
+            cp.returncode == 0
+        ), f"setup-script PYTHONPATH wiring failed end-to-end: {cp.stderr}"
 
 
 # ---------------------------------------------------------------------------
@@ -185,14 +197,21 @@ def test_setup_script_sets_pythonpath_to_repo_root() -> None:
 @pytest.mark.skipif(not SHARED_PY.exists(), reason=f"no {SHARED_PY} on this host")
 def test_setup_script_executes_shared_python() -> None:
     cp = subprocess.run(
-        ["bash", str(SETUP_SCRIPT), "python", "-c",
-         "import sys; print(sys.executable)"],
-        capture_output=True, text=True, timeout=60,
+        [
+            "bash",
+            str(SETUP_SCRIPT),
+            "python",
+            "-c",
+            "import sys; print(sys.executable)",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     assert cp.returncode == 0, f"setup script failed: {cp.stderr}"
-    assert cp.stdout.strip() == str(SHARED_PY), (
-        f"setup script invoked {cp.stdout.strip()!r}, expected {SHARED_PY}"
-    )
+    assert cp.stdout.strip() == str(
+        SHARED_PY
+    ), f"setup script invoked {cp.stdout.strip()!r}, expected {SHARED_PY}"
 
 
 # ---------------------------------------------------------------------------
@@ -201,9 +220,16 @@ def test_setup_script_executes_shared_python() -> None:
 @pytest.mark.skipif(not SHARED_PY.exists(), reason=f"no {SHARED_PY} on this host")
 def test_setup_script_can_import_molmetal() -> None:
     cp = subprocess.run(
-        ["bash", str(SETUP_SCRIPT), "python", "-c",
-         "import molmetal; print(molmetal.__file__)"],
-        capture_output=True, text=True, timeout=60,
+        [
+            "bash",
+            str(SETUP_SCRIPT),
+            "python",
+            "-c",
+            "import molmetal; print(molmetal.__file__)",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     assert cp.returncode == 0, f"import molmetal failed: {cp.stderr}"
     assert "molmetal/__init__.py" in cp.stdout, (
@@ -219,9 +245,16 @@ def test_setup_script_can_import_molmetal() -> None:
 @pytest.mark.skipif(not SHARED_PY.exists(), reason=f"no {SHARED_PY} on this host")
 def test_setup_script_can_import_torch_with_cuda() -> None:
     cp = subprocess.run(
-        ["bash", str(SETUP_SCRIPT), "python", "-c",
-         "import torch; print(torch.__version__, torch.cuda.is_available())"],
-        capture_output=True, text=True, timeout=60,
+        [
+            "bash",
+            str(SETUP_SCRIPT),
+            "python",
+            "-c",
+            "import torch; print(torch.__version__, torch.cuda.is_available())",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     assert cp.returncode == 0, f"import torch failed: {cp.stderr}"
     version, cuda_flag = cp.stdout.strip().split()
@@ -240,8 +273,7 @@ def test_gitignore_excludes_venvs() -> None:
     gitignore_text = GITIGNORE.read_text()
     # Either an explicit `.venvs/` line or a `.venv*` glob is acceptable.
     has_explicit = bool(
-        "\n.venvs/" in ("\n" + gitignore_text)
-        or "/.venvs/" in gitignore_text
+        "\n.venvs/" in ("\n" + gitignore_text) or "/.venvs/" in gitignore_text
     )
     has_glob = ".venv*" in gitignore_text or "*.venv*" in gitignore_text
     assert has_explicit or has_glob, (

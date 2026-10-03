@@ -59,8 +59,14 @@ class TinyModel(nn.Module):
 
 
 SMILES_8 = [
-    "CCO", "CC(=O)O", "c1ccccc1", "CC(C)C",
-    "CCC", "C1CCCCC1", "CCOCC", "CCCC",
+    "CCO",
+    "CC(=O)O",
+    "c1ccccc1",
+    "CC(C)C",
+    "CCC",
+    "C1CCCCC1",
+    "CCOCC",
+    "CCCC",
 ]
 
 
@@ -252,9 +258,9 @@ def test_resume_continues_from_epoch(tmp_path: Path):
     start_epoch, best_metric = b2.load_checkpoint()
     # The epoch-10 snapshot was deleted (crash simulation), so the
     # latest survivor is epoch 5 → resume must start at epoch 6.
-    assert start_epoch == 6, (
-        f"resume should pick up at epoch 6 (latest=5, +1), got {start_epoch}"
-    )
+    assert (
+        start_epoch == 6
+    ), f"resume should pick up at epoch 6 (latest=5, +1), got {start_epoch}"
     assert best_metric == pytest.approx(0.5)
     # Optimizer state was stashed on the baseline; fit() applies it
     # after constructing the optimizer.  Mirror that step here.
@@ -267,18 +273,17 @@ def test_resume_continues_from_epoch(tmp_path: Path):
     for ep in range(start_epoch, 10):
         _simulate_epoch(b2.model, optim2)  # type: ignore[arg-type]
         remaining += 1
-    assert remaining == 4, (
-        f"resume should run exactly 4 more epochs, ran {remaining}"
-    )
+    assert remaining == 4, f"resume should run exactly 4 more epochs, ran {remaining}"
 
     # Weights should not be identical to the fresh TinyModel (i.e. the
     # checkpoint was actually applied, not silently skipped).
     fresh = TinyModel()
-    for (n1, p1), (n2, p2) in zip(b2.model.named_parameters(), fresh.named_parameters()):  # type: ignore[attr-defined]
+    for (n1, p1), (n2, p2) in zip(
+        b2.model.named_parameters(), fresh.named_parameters()
+    ):  # type: ignore[attr-defined]
         assert n1 == n2
         assert not torch.equal(p1, p2), (
-            f"weight {n1} is identical to fresh init — checkpoint was "
-            "not applied."
+            f"weight {n1} is identical to fresh init — checkpoint was " "not applied."
         )
 
     # Final assertion: find_latest_checkpoint discovers the surviving
@@ -333,10 +338,7 @@ def test_resume_preserves_optimizer_state(tmp_path: Path):
     # ``state`` dict contains plain python ints (``step``) and tensor
     # buffers (``exp_avg``, ``exp_avg_sq``) — both handled by deepcopy.
     pre_save_state = copy.deepcopy(optim.state_dict())
-    pre_save_model = {
-        k: v.detach().cpu().clone()
-        for k, v in tiny.state_dict().items()
-    }
+    pre_save_model = {k: v.detach().cpu().clone() for k, v in tiny.state_dict().items()}
 
     ckpt_path = baseline.save_checkpoint(
         epoch=5,
@@ -382,7 +384,9 @@ def test_resume_preserves_optimizer_state(tmp_path: Path):
     pred = fresh_model(x)
     loss = ((pred - y) ** 2).mean()
     loss.backward()
-    grads_restored = {n: p.grad.detach().clone() for n, p in fresh_model.named_parameters()}
+    grads_restored = {
+        n: p.grad.detach().clone() for n, p in fresh_model.named_parameters()
+    }
     fresh_optim.step()
 
     brand_new_model = TinyModel()
@@ -391,7 +395,9 @@ def test_resume_preserves_optimizer_state(tmp_path: Path):
     pred = brand_new_model(x)
     loss = ((pred - y) ** 2).mean()
     loss.backward()
-    grads_fresh = {n: p.grad.detach().clone() for n, p in brand_new_model.named_parameters()}
+    grads_fresh = {
+        n: p.grad.detach().clone() for n, p in brand_new_model.named_parameters()
+    }
     brand_new_optim.step()
 
     # Gradients themselves are the same (deterministic input); what we

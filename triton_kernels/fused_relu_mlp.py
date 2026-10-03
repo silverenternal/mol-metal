@@ -131,12 +131,20 @@ def _check_cuda_pointers(arg_names: dict[str, object]) -> None:
 @triton.autotune(configs=AUTOTUNE_CONFIGS, key=["M", "H", "D"])
 @triton.jit
 def _fused_relu_linear_kernel(
-    x_ptr, w_ptr, b_ptr, out_ptr,
-    M, H, D,
-    sxm, sxd,
-    swh, swd,
+    x_ptr,
+    w_ptr,
+    b_ptr,
+    out_ptr,
+    M,
+    H,
+    D,
+    sxm,
+    sxd,
+    swh,
+    swd,
     sb,
-    som, soh,
+    som,
+    soh,
     HAS_BIAS: tl.constexpr,
     BLOCK_M: tl.constexpr,
     BLOCK_N: tl.constexpr,
@@ -191,12 +199,20 @@ def _fused_relu_linear_kernel(
 @triton.autotune(configs=AUTOTUNE_CONFIGS, key=["M", "H2", "H1"])
 @triton.jit
 def _linear_bias_kernel(
-    x_ptr, w_ptr, b_ptr, out_ptr,
-    M, H2, H1,
-    sxm, sxh,
-    swh2, swh1,
+    x_ptr,
+    w_ptr,
+    b_ptr,
+    out_ptr,
+    M,
+    H2,
+    H1,
+    sxm,
+    sxh,
+    swh2,
+    swh1,
     sb,
-    som, soh2,
+    som,
+    soh2,
     HAS_BIAS: tl.constexpr,
     BLOCK_M: tl.constexpr,
     BLOCK_N: tl.constexpr,
@@ -278,7 +294,9 @@ def fused_relu_linear(
     x2 = x.contiguous().view(-1, x.shape[-1])
     M, D = x2.shape
     if w.dim() != 2:
-        raise ValueError(f"fused_relu_linear expects 2-D weight w; got shape {tuple(w.shape)}")
+        raise ValueError(
+            f"fused_relu_linear expects 2-D weight w; got shape {tuple(w.shape)}"
+        )
     # Canonical nn.Linear layout: w is (out_features=H, in_features=D).
     H = w.shape[0]
     if w.shape[1] != D:
@@ -287,28 +305,35 @@ def fused_relu_linear(
             f"(w must be canonical nn.Linear layout (out_features, in_features))"
         )
     if b is not None and b.shape != (H,):
-        raise ValueError(
-            f"fused_relu_linear: bias shape {tuple(b.shape)} != ({H},)"
-        )
+        raise ValueError(f"fused_relu_linear: bias shape {tuple(b.shape)} != ({H},)")
 
     # GPU + gate open → Triton kernel.
     if x2.is_cuda and _cfg.use_fused_relu_linear(x2):
         _check_cuda_pointers({"x": x2, "w": w, "b": b, "out": None})
         out = torch.empty(
-            (M, H), dtype=x2.dtype, device=x2.device,
+            (M, H),
+            dtype=x2.dtype,
+            device=x2.device,
         )
         grid = lambda meta: (
             triton.cdiv(M, meta["BLOCK_M"]),
             triton.cdiv(H, meta["BLOCK_N"]),
         )
         _fused_relu_linear_kernel[grid](
-            x2, w, b if b is not None else x2,  # placeholder when no bias
+            x2,
+            w,
+            b if b is not None else x2,  # placeholder when no bias
             out,
-            M, H, D,
-            x2.stride(0), x2.stride(1),
-            w.stride(0), w.stride(1),
+            M,
+            H,
+            D,
+            x2.stride(0),
+            x2.stride(1),
+            w.stride(0),
+            w.stride(1),
             b.stride(0) if b is not None else 1,
-            out.stride(0), out.stride(1),
+            out.stride(0),
+            out.stride(1),
             HAS_BIAS=b is not None,
         )
         return out.view(*orig_shape[:-1], H)
@@ -387,7 +412,17 @@ def fused_relu_mlp(
         raise ValueError(f"fused_relu_mlp: b2 shape {tuple(b2.shape)} != ({H2},)")
 
     if x2.is_cuda and _cfg.use_fused_relu_mlp(x2):
-        _check_cuda_pointers({"x": x2, "w1": w1, "b1": b1, "w2": w2, "b2": b2, "out1": None, "out2": None})
+        _check_cuda_pointers(
+            {
+                "x": x2,
+                "w1": w1,
+                "b1": b1,
+                "w2": w2,
+                "b2": b2,
+                "out1": None,
+                "out2": None,
+            }
+        )
         # Fused first matmul + ReLU.
         out1 = torch.empty((M, H1), dtype=x2.dtype, device=x2.device)
         grid1 = lambda meta: (
@@ -395,13 +430,20 @@ def fused_relu_mlp(
             triton.cdiv(H1, meta["BLOCK_N"]),
         )
         _fused_relu_linear_kernel[grid1](
-            x2, w1, b1 if b1 is not None else x2,
+            x2,
+            w1,
+            b1 if b1 is not None else x2,
             out1,
-            M, H1, D,
-            x2.stride(0), x2.stride(1),
-            w1.stride(0), w1.stride(1),
+            M,
+            H1,
+            D,
+            x2.stride(0),
+            x2.stride(1),
+            w1.stride(0),
+            w1.stride(1),
             b1.stride(0) if b1 is not None else 1,
-            out1.stride(0), out1.stride(1),
+            out1.stride(0),
+            out1.stride(1),
             HAS_BIAS=b1 is not None,
         )
         # Fused second matmul + bias.
@@ -411,13 +453,20 @@ def fused_relu_mlp(
             triton.cdiv(H2, meta["BLOCK_N"]),
         )
         _linear_bias_kernel[grid2](
-            out1, w2, b2 if b2 is not None else x2,
+            out1,
+            w2,
+            b2 if b2 is not None else x2,
             out2,
-            M, H2, H1,
-            out1.stride(0), out1.stride(1),
-            w2.stride(0), w2.stride(1),
+            M,
+            H2,
+            H1,
+            out1.stride(0),
+            out1.stride(1),
+            w2.stride(0),
+            w2.stride(1),
             b2.stride(0) if b2 is not None else 1,
-            out2.stride(0), out2.stride(1),
+            out2.stride(0),
+            out2.stride(1),
             HAS_BIAS=b2 is not None,
         )
         return out2.view(*orig_shape[:-1], H2)

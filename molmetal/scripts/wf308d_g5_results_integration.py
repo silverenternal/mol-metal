@@ -102,6 +102,7 @@ from typing import Dict, List, Optional, Tuple
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -118,8 +119,19 @@ G5_OUTPUT_DIR = PROJECT_ROOT / "results" / "wf124_p3_50epoch_full_sweep_g5"
 METALS_5: Tuple[str, ...] = ("Ru", "Ir", "Os", "Rh", "Re")
 DEFAULT_SEEDS: Tuple[int, ...] = (0, 1, 2)
 DEFAULT_EPOCHS: int = 50
-SWEEP_SUMMARY_PATH = PROJECT_ROOT / "molmetal" / "reports" / "wf219_krasnov_aligned" / "sweep_summary.json"
-NEW_METRIC_PATH = PROJECT_ROOT / "metrics" / "by_metric" / "wf219_krasnov_aligned_dmpnn_mtw_5metal_3seed_50epoch_g5.json"
+SWEEP_SUMMARY_PATH = (
+    PROJECT_ROOT
+    / "molmetal"
+    / "reports"
+    / "wf219_krasnov_aligned"
+    / "sweep_summary.json"
+)
+NEW_METRIC_PATH = (
+    PROJECT_ROOT
+    / "metrics"
+    / "by_metric"
+    / "wf219_krasnov_aligned_dmpnn_mtw_5metal_3seed_50epoch_g5.json"
+)
 DASHBOARD_PATH = PROJECT_ROOT / "molmetal" / "scripts" / "paper_dashboard.py"
 PRE_FLIGHT_PATH = PROJECT_ROOT / "molmetal" / "scripts" / "pre_flight_check.py"
 
@@ -130,6 +142,7 @@ G5_REPORT_RUN_ID = "wf124_p3_50epoch_full_sweep_g5"
 @dataclass
 class PerSeedRecord:
     """One (metal, seed) MEASURED record from the G5 retrain output."""
+
     metal: str
     seed: int
     n_train: int
@@ -149,6 +162,7 @@ class PerSeedRecord:
 @dataclass
 class MetalAggregate:
     """Per-metal aggregate across seeds 0/1/2."""
+
     metal: str
     n_seeds_total: int
     n_seeds_ok: int
@@ -167,6 +181,7 @@ class MetalAggregate:
 @dataclass
 class IntegrationPlan:
     """The plan emitted by --verify-only or --apply."""
+
     g5_complete: bool
     n_pairs_total: int
     n_pairs_ok: int
@@ -210,14 +225,15 @@ def detect_g5_completion(g5_dir: Path) -> Tuple[int, int]:
                 if psm.exists():
                     try:
                         data = json.loads(psm.read_text())
-                        if data.get("per_seed") and isinstance(
-                            data["per_seed"], list
-                        ) and len(data["per_seed"]) > 0:
+                        if (
+                            data.get("per_seed")
+                            and isinstance(data["per_seed"], list)
+                            and len(data["per_seed"]) > 0
+                        ):
                             ps = data["per_seed"][0]
-                            if (
-                                ps.get("test_auc") is not None
-                                and float(ps["test_auc"]) == float(ps["test_auc"])
-                            ):
+                            if ps.get("test_auc") is not None and float(
+                                ps["test_auc"]
+                            ) == float(ps["test_auc"]):
                                 n_complete += 1
                                 break
                     except Exception:
@@ -245,12 +261,8 @@ def _load_per_seed(psm_path: Path) -> Optional[PerSeedRecord]:
         test_auc=float(ps.get("test_auc", float("nan"))),
         test_pearson=float(ps.get("test_pearson", float("nan"))),
         test_rmse=float(ps.get("test_rmse", float("nan"))),
-        test_mae=(
-            float(ps["test_mae"]) if ps.get("test_mae") is not None else None
-        ),
-        val_auc=(
-            float(ps["val_auc"]) if ps.get("val_auc") is not None else None
-        ),
+        test_mae=(float(ps["test_mae"]) if ps.get("test_mae") is not None else None),
+        val_auc=(float(ps["val_auc"]) if ps.get("val_auc") is not None else None),
         elapsed_seconds=(
             float(ps["elapsed_seconds"])
             if ps.get("elapsed_seconds") is not None
@@ -293,17 +305,13 @@ def aggregate_g5(g5_dir: Path) -> Tuple[Dict[str, MetalAggregate], int, int]:
             n_val=records[0].n_val,
             n_test=records[0].n_test,
             test_auc_mean=statistics.fmean(aucs),
-            test_auc_std=(
-                statistics.pstdev(aucs) if len(aucs) > 1 else 0.0
-            ),
+            test_auc_std=(statistics.pstdev(aucs) if len(aucs) > 1 else 0.0),
             test_pearson_mean=statistics.fmean(pearsons),
             test_pearson_std=(
                 statistics.pstdev(pearsons) if len(pearsons) > 1 else 0.0
             ),
             test_rmse_mean=statistics.fmean(rmses),
-            test_rmse_std=(
-                statistics.pstdev(rmses) if len(rmses) > 1 else 0.0
-            ),
+            test_rmse_std=(statistics.pstdev(rmses) if len(rmses) > 1 else 0.0),
             per_seed=records,
         )
         aggregates[metal] = agg
@@ -377,12 +385,8 @@ def build_integration_plan(
                 "mean_auc": agg.test_auc_mean,
                 "std": agg.test_auc_std,
                 "n_seeds": agg.n_seeds_ok,
-                "per_seed_auc": {
-                    str(r.seed): r.test_auc for r in agg.per_seed
-                },
-                "per_seed_status": {
-                    str(r.seed): r.status for r in agg.per_seed
-                },
+                "per_seed_auc": {str(r.seed): r.test_auc for r in agg.per_seed},
+                "per_seed_status": {str(r.seed): r.status for r in agg.per_seed},
                 "n_train": agg.n_train,
                 "n_val": agg.n_val,
                 "n_test": agg.n_test,
@@ -532,9 +536,7 @@ def trigger_pre_flight() -> Tuple[int, str]:
         "/tmp/wf308d_g5_preflight.json",
     ]
     try:
-        proc = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=600
-        )
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
         tail = (proc.stdout or "")[-2000:]
         return proc.returncode, tail
     except Exception as e:
@@ -600,9 +602,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             )
         all_aucs = [a.test_auc_mean for a in aggregates.values()]
         grand_mean = statistics.fmean(all_aucs)
-        grand_std = (
-            statistics.pstdev(all_aucs) if len(all_aucs) > 1 else 0.0
-        )
+        grand_std = statistics.pstdev(all_aucs) if len(all_aucs) > 1 else 0.0
         print()
         print(f"5-metal grand mean AUC : {grand_mean:.4f} ± {grand_std:.4f}")
     print()
@@ -629,9 +629,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             "  - dashboard claim patch -> "
             "molmetal/reports/wf308d_g5_integration_template/dashboard_claim_patch.py"
         )
-        print(
-            "    (REVIEW + manually paste into paper_dashboard.py CLAIMS list)"
-        )
+        print("    (REVIEW + manually paste into paper_dashboard.py CLAIMS list)")
         print()
         if args.trigger_pre_flight:
             rc, tail = trigger_pre_flight()

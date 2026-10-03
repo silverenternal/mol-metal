@@ -121,6 +121,7 @@ def _is_self_audit_path(path: Path) -> bool:
     s = str(path)
     return any(prefix in s for prefix in SELF_AUDIT_PREFIXES)
 
+
 # Order matters: first pattern wins per (file, line). All patterns compile
 # to case-sensitive regexes over the matched substring.
 #
@@ -141,7 +142,6 @@ PATTERNS: List[Tuple[str, str, re.Pattern[str], str, str]] = [
         "Replace the mock evaluator with the real property model and rerun.",
         "unknown",
     ),
-
     # ---- Verdict-level marker: scorer = stub ----
     (
         "stub_scorer",
@@ -167,16 +167,17 @@ PATTERNS: List[Tuple[str, str, re.Pattern[str], str, str]] = [
     (
         "use_real_vina_false",
         "major",
-        re.compile(r'use_real_vina\s*=\s*False|use_real_vina\s*=\s*false'),
+        re.compile(r"use_real_vina\s*=\s*False|use_real_vina\s*=\s*false"),
         "Real Vina path is required.",
         "m3_vina_dock",
     ),
-
     # ---- Stub / mock function definitions ----
     (
         "stub_fn",
         "major",
-        re.compile(r"def\s+_?stub_?(?:score|bridge|method|model|chem|search|field|reducer|chemistry)\b"),
+        re.compile(
+            r"def\s+_?stub_?(?:score|bridge|method|model|chem|search|field|reducer|chemistry)\b"
+        ),
         "Stub function — replace with the real backend (Vina / cross_dock / pIC50 model / SA / QED).",
         "unknown",
     ),
@@ -194,7 +195,6 @@ PATTERNS: List[Tuple[str, str, re.Pattern[str], str, str]] = [
         "Stub bridge — load the trained checkpoint at models/coupling_adapter_platinai5k.npz (or analogous).",
         "coupling_bridge_rmse",
     ),
-
     # ---- Module name mentions ----
     # We tag occurrences of the *canonical* stub module names so reviewers
     # can see them at a glance, but only when they appear in an *identifier*
@@ -208,7 +208,6 @@ PATTERNS: List[Tuple[str, str, re.Pattern[str], str, str]] = [
         "Module name 'md_relaxation_stub' — informational; the MD relaxation path is stub-by-design (per TODO-30 P2.5).",
         "n/a (module name)",
     ),
-
     # ---- Deterministic stub scorers ----
     (
         "stub_floor",
@@ -217,7 +216,6 @@ PATTERNS: List[Tuple[str, str, re.Pattern[str], str, str]] = [
         "Deterministic stub property — replace with real scorer output.",
         "m3_vina_dock",
     ),
-
     # ---- mock chemistry (bench / verify scripts) ----
     (
         "mock_chemistry",
@@ -226,7 +224,6 @@ PATTERNS: List[Tuple[str, str, re.Pattern[str], str, str]] = [
         "Mock chemistry — verify scripts are unit-level by design; flag as major so the bench/benchmark report line is visible.",
         "mcts_trajectory",
     ),
-
     # ---- Verifier / placeholder paper sections ----
     (
         "placeholder",
@@ -235,12 +232,13 @@ PATTERNS: List[Tuple[str, str, re.Pattern[str], str, str]] = [
         "Placeholder paper template; not a metric finding.",
         "n/a (paper template)",
     ),
-
     # ---- Generic patterns (catch-all, severity = minor) ----
     (
         "MOCK_USED",
         "major",
-        re.compile(r"\bMOCK_USED\b|\bMOCK_SCORE\b|\bMOCK_DATA\b|\bMOCK_EVAL\b|\bMOCK_PROPERTY\b"),
+        re.compile(
+            r"\bMOCK_USED\b|\bMOCK_SCORE\b|\bMOCK_DATA\b|\bMOCK_EVAL\b|\bMOCK_PROPERTY\b"
+        ),
         "Generic MOCK_* marker — inspect the surrounding code for the real backend.",
         "unknown",
     ),
@@ -253,7 +251,9 @@ PATTERNS: List[Tuple[str, str, re.Pattern[str], str, str]] = [
     (
         "stub_identifier",
         "minor",
-        re.compile(r"\bis_stub\b|\buse_stub\b|\bstub\s*=\s*True|class\s+_?Stub\w*|\bstub_\w+\s*=|=\s*_?Stub\("),
+        re.compile(
+            r"\bis_stub\b|\buse_stub\b|\bstub\s*=\s*True|class\s+_?Stub\w*|\bstub_\w+\s*=|=\s*_?Stub\("
+        ),
         "Identifier / call expression contains 'stub' — review whether the surrounding path actually exercises the stub or just declares it.",
         "unknown",
     ),
@@ -268,7 +268,9 @@ PATTERNS: List[Tuple[str, str, re.Pattern[str], str, str]] = [
     (
         "protocol_stub_adapter",
         "minor",
-        re.compile(r"Protocol\s*stub\s*:|adapter\s+stub\b|stub\s+adapter\b|deferred.*stub|stub.*deferred"),
+        re.compile(
+            r"Protocol\s*stub\s*:|adapter\s+stub\b|stub\s+adapter\b|deferred.*stub|stub.*deferred"
+        ),
         "Protocol-stub adapter (deferred until the upstream 3rd-party wheel is installed). Not a metric fabrication; flagged for visibility.",
         "external_sota_adapter",
     ),
@@ -279,7 +281,9 @@ PATTERNS: List[Tuple[str, str, re.Pattern[str], str, str]] = [
     (
         "placeholder_text",
         "minor",
-        re.compile(r"placeholder\s+(?:assembled|section|tex|template|figure|panel|bar|axis|column|marker|content)|placeholder\s+for\s+(?:the|a)|placeholder\s+until\b|\bplaceholder\s*=\s*[\'\"]"),
+        re.compile(
+            r"placeholder\s+(?:assembled|section|tex|template|figure|panel|bar|axis|column|marker|content)|placeholder\s+for\s+(?:the|a)|placeholder\s+until\b|\bplaceholder\s*=\s*[\'\"]"
+        ),
         "Placeholder paper template / figure stub — informational, not a metric fabrication.",
         "n/a (paper template)",
     ),
@@ -302,6 +306,7 @@ SKIP_FILES = {
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _read_text(path: Path) -> Optional[str]:
     try:
@@ -337,7 +342,11 @@ def _discover_scripts() -> List[Path]:
     out: List[Path] = []
     for prefix in ("bench_", "benchmark_", "verify_", "wf30_dock_summarize.py"):
         for entry in sorted(SCRIPT_DIR.iterdir()):
-            if entry.is_file() and entry.name.startswith(prefix) and entry.suffix == ".py":
+            if (
+                entry.is_file()
+                and entry.name.startswith(prefix)
+                and entry.suffix == ".py"
+            ):
                 out.append(entry)
         # The `dock_10pockets_se3sb.py` script owns the Wf-30 sweep; it does
         # not match the prefixes above but is central to the audit.
@@ -472,7 +481,9 @@ def _render_markdown(report: Dict[str, Any]) -> str:
         lines.append("_None._")
     else:
         for f in crit:
-            lines.append(f"### `{Path(f['file']).name}:{f['line']}` — `{f['kind']}` ({f['metric']})")
+            lines.append(
+                f"### `{Path(f['file']).name}:{f['line']}` — `{f['kind']}` ({f['metric']})"
+            )
             lines.append("")
             lines.append(f"File: `{f['file']}`")
             lines.append("")
@@ -491,7 +502,9 @@ def _render_markdown(report: Dict[str, Any]) -> str:
         lines.append("_None._")
     else:
         for f in maj:
-            lines.append(f"### `{Path(f['file']).name}:{f['line']}` — `{f['kind']}` ({f['metric']})")
+            lines.append(
+                f"### `{Path(f['file']).name}:{f['line']}` — `{f['kind']}` ({f['metric']})"
+            )
             lines.append("")
             lines.append(f"File: `{f['file']}`")
             lines.append("")
@@ -518,7 +531,9 @@ def _render_markdown(report: Dict[str, Any]) -> str:
             )
         if len(minor) > 200:
             lines.append("")
-            lines.append(f"_... {len(minor) - 200} more minor findings truncated; see `mock_inventory.json`._")
+            lines.append(
+                f"_... {len(minor) - 200} more minor findings truncated; see `mock_inventory.json`._"
+            )
     lines.append("")
     lines.append("---")
     lines.append("")
@@ -531,7 +546,7 @@ def _render_markdown(report: Dict[str, Any]) -> str:
     lines.append("## Interpretation")
     lines.append("")
     lines.append(
-        "The Wf-30 Phase-3 m3 Vina Dock sweep (`scorer=\"stub\"`, "
+        'The Wf-30 Phase-3 m3 Vina Dock sweep (`scorer="stub"`, '
         "`use_real_vina=false`) is the **only** critical finding that ships "
         "into the paper §4 table. Every other critical / major finding is "
         "either an honest-negative pre-recorded verdict (e.g. "
@@ -546,6 +561,7 @@ def _render_markdown(report: Dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -645,17 +661,22 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if not args.quiet:
         s = report["summary"]
-        print(json.dumps({
-            "output": str(output),
-            "markdown_output": str(md_output),
-            "total_findings": s["total_findings"],
-            "critical": s["by_severity"]["critical"],
-            "major": s["by_severity"]["major"],
-            "minor": s["by_severity"]["minor"],
-            "scripts_scanned": len(scripts),
-            "reports_scanned": len(reports),
-            "metric_jsons_scanned": len(metric_jsons),
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "output": str(output),
+                    "markdown_output": str(md_output),
+                    "total_findings": s["total_findings"],
+                    "critical": s["by_severity"]["critical"],
+                    "major": s["by_severity"]["major"],
+                    "minor": s["by_severity"]["minor"],
+                    "scripts_scanned": len(scripts),
+                    "reports_scanned": len(reports),
+                    "metric_jsons_scanned": len(metric_jsons),
+                },
+                indent=2,
+            )
+        )
     return 0
 
 

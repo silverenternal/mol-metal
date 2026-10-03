@@ -86,6 +86,7 @@ from typing import Dict, List, Optional, Tuple
 try:
     from rdkit import Chem  # type: ignore
     from rdkit.Chem import AllChem  # type: ignore
+
     _HAS_RDKIT = True
 except ImportError:  # pragma: no cover
     Chem = None  # type: ignore
@@ -243,6 +244,7 @@ class F2MetalLigandExchangeRuntime:
                 from molmetal_lam.lam_chem.pt_metal_ligand_exchange import (
                     METAL_LIGAND_EXCHANGE_SMARTS,
                 )
+
                 for pat in METAL_LIGAND_EXCHANGE_SMARTS:
                     _add(pat)
             except ImportError as exc:  # pragma: no cover
@@ -257,6 +259,7 @@ class F2MetalLigandExchangeRuntime:
                 from molmetal_lam.lam_chem.pt_metal_ligand_exchange import (
                     METAL_LIGAND_EXCHANGE_MATRIX,
                 )
+
                 for pat in METAL_LIGAND_EXCHANGE_MATRIX:
                     _add(pat)
             except ImportError as exc:  # pragma: no cover
@@ -272,6 +275,7 @@ class F2MetalLigandExchangeRuntime:
                 from molmetal_lam.lam_chem.pt_metal_ligand_exchange import (
                     get_new_smarts_patterns,
                 )
+
                 for pat in get_new_smarts_patterns():
                     _add(pat)
             except ImportError as exc:  # pragma: no cover
@@ -286,9 +290,12 @@ class F2MetalLigandExchangeRuntime:
                 from molmetal_lam.lam_chem.pt_click_compat import (
                     METAL_LIGAND_EXCHANGE_82_METAL_RULES,
                 )
+
                 for pat in METAL_LIGAND_EXCHANGE_82_METAL_RULES:
                     name = pat[0]
-                    if self.config.skip_p_block_and_synthetic and _should_skip_82_metal(name):
+                    if self.config.skip_p_block_and_synthetic and _should_skip_82_metal(
+                        name
+                    ):
                         continue
                     _add(pat)
             except ImportError as exc:  # pragma: no cover
@@ -432,9 +439,7 @@ class F2MetalLigandExchangeRuntime:
     # ------------------------------------------------------------------
     # Integration point — drop-in callable for MCTS reward.
     # ------------------------------------------------------------------
-    def integration_point(
-        self, metal: str, ligand_smiles: str
-    ) -> F2DispatchResult:
+    def integration_point(self, metal: str, ligand_smiles: str) -> F2DispatchResult:
         """Drop-in callable for MCTS dispatch reward channels.
 
         Equivalent to :meth:`dispatch` but returns a structured
@@ -461,7 +466,9 @@ class F2MetalLigandExchangeRuntime:
             ligand_mol = None
         if ligand_mol is None:
             return F2DispatchResult(
-                matched=False, pattern_name=None, n_patterns_evaluated=self.n_patterns_loaded
+                matched=False,
+                pattern_name=None,
+                n_patterns_evaluated=self.n_patterns_loaded,
             )
 
         for name, smarts, _desc in self.patterns:
@@ -533,8 +540,7 @@ def get_default_runtime() -> F2MetalLigandExchangeRuntime:
 # Pretty-printer for the audit report.
 # ---------------------------------------------------------------------------
 def render_runtime_summary(runtime: F2MetalLigandExchangeRuntime) -> str:
-    """Render a markdown table of the loaded library for documentation.
-    """
+    """Render a markdown table of the loaded library for documentation."""
     rows = [
         "| metric | value |",
         "| --- | --- |",

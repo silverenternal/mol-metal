@@ -64,17 +64,17 @@ class EDMConfig:
 
 def c_skip(sigma: torch.Tensor, cfg: EDMConfig) -> torch.Tensor:
     """c_skip(σ) = σ_data² / (σ² + σ_data²).  Karras eq. 2 component."""
-    return cfg.sigma_data ** 2 / (sigma ** 2 + cfg.sigma_data ** 2)
+    return cfg.sigma_data**2 / (sigma**2 + cfg.sigma_data**2)
 
 
 def c_out(sigma: torch.Tensor, cfg: EDMConfig) -> torch.Tensor:
     """c_out(σ) = σ · σ_data / sqrt(σ² + σ_data²).  Karras eq. 2."""
-    return sigma * cfg.sigma_data / torch.sqrt(sigma ** 2 + cfg.sigma_data ** 2)
+    return sigma * cfg.sigma_data / torch.sqrt(sigma**2 + cfg.sigma_data**2)
 
 
 def c_in(sigma: torch.Tensor, cfg: EDMConfig) -> torch.Tensor:
     """c_in(σ) = 1 / sqrt(σ² + σ_data²).  Karras eq. 2."""
-    return 1.0 / torch.sqrt(sigma ** 2 + cfg.sigma_data ** 2)
+    return 1.0 / torch.sqrt(sigma**2 + cfg.sigma_data**2)
 
 
 def c_noise(sigma: torch.Tensor) -> torch.Tensor:
@@ -110,7 +110,7 @@ def preconditioned_loss(
     """
     sigma_b = sigma.view(-1, *([1] * (x_t.dim() - 1))) if sigma.dim() == 1 else sigma
     v_pred = c_skip(sigma_b, cfg) * x_t + c_out(sigma_b, cfg) * pred_raw
-    weight = (sigma_b ** 2 + cfg.sigma_data ** 2) / (sigma_b * cfg.sigma_data) ** 2
+    weight = (sigma_b**2 + cfg.sigma_data**2) / (sigma_b * cfg.sigma_data) ** 2
     err2 = (v_pred - target_dx) ** 2
     return (weight * err2).mean()
 

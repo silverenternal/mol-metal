@@ -37,6 +37,7 @@ CLI usage
     source .venv/bin/activate && cd /home/hugo/codes/try_triton_on_rocm
     python -m molmetal.molmetal_lam.scripts.compare_to_published
 """
+
 from __future__ import annotations
 
 import argparse
@@ -48,9 +49,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
 # Path bootstrap so ``python -m`` works from the project root.
-_PKG_PARENT = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..")
-)
+_PKG_PARENT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 if _PKG_PARENT not in sys.path:
     sys.path.insert(0, _PKG_PARENT)
 
@@ -227,6 +226,7 @@ def our_lambda_metrics(
     lambda_row = dict(res.get("Lambda", {}))
     # Build the calibration view on the actual Lambda candidates.
     from molmetal.molmetal_lam.scripts.baselines import run_lambda  # noqa: WPS433
+
     lambda_out = run_lambda(pdb_id, n_samples)
     cal = compute_calibration_table(lambda_out["smiles"], method_name="Lambda")
     means = cal["means"]
@@ -289,9 +289,7 @@ def build_comparison_table(
     def _protocol_for(their_test_set: str) -> str:
         if their_test_set in ("—", "", None):
             return "different-axis"
-        if (
-            "MMP13" in our_protocol or "MMP9" in our_protocol
-        ) and (
+        if ("MMP13" in our_protocol or "MMP9" in our_protocol) and (
             "MMP13" in their_test_set or "MMP9" in their_test_set
         ):
             return "same-pocket"
@@ -299,16 +297,18 @@ def build_comparison_table(
 
     # Lambda (Ours)
     for key, label, fmt_ours, fmt_theirs, direction in METRIC_HEADERS:
-        rows.append({
-            "method": "Lambda (Ours)",
-            "metric": label,
-            "ours": _fmt(our_row.get(key), fmt_ours),
-            "published": "—",
-            "protocol": "ours",
-            "direction": direction,
-            "test_set": our_protocol,
-            "source": our_row.get("source", "This paper"),
-        })
+        rows.append(
+            {
+                "method": "Lambda (Ours)",
+                "metric": label,
+                "ours": _fmt(our_row.get(key), fmt_ours),
+                "published": "—",
+                "protocol": "ours",
+                "direction": direction,
+                "test_set": our_protocol,
+                "source": our_row.get("source", "This paper"),
+            }
+        )
 
     # Published methods
     for method_name, metric_dict in published.items():
@@ -325,25 +325,36 @@ def build_comparison_table(
                 theirs = _fmt(cell.get("value"), fmt_theirs)
                 test_set = cell.get("test_set", "—")
                 source = cell.get("source", "—")
-            rows.append({
-                "method": method_name,
-                "metric": label,
-                "ours": "—",  # not measured on their pocket
-                "published": theirs,
-                "protocol": _protocol_for(test_set),
-                "direction": direction,
-                "test_set": test_set,
-                "source": source,
-            })
+            rows.append(
+                {
+                    "method": method_name,
+                    "metric": label,
+                    "ours": "—",  # not measured on their pocket
+                    "published": theirs,
+                    "protocol": _protocol_for(test_set),
+                    "direction": direction,
+                    "test_set": test_set,
+                    "source": source,
+                }
+            )
     return rows
 
 
 def render_markdown_table(rows: Sequence[Dict[str, Any]]) -> str:
     """Render the rows as a markdown table with ``Same protocol?`` column."""
-    headers = ["Method", "Metric", "Our Lambda", "Published SOTA",
-               "Same protocol?", "Test set", "Source"]
-    out = ["| " + " | ".join(headers) + " |",
-           "|" + "|".join("---" for _ in headers) + "|"]
+    headers = [
+        "Method",
+        "Metric",
+        "Our Lambda",
+        "Published SOTA",
+        "Same protocol?",
+        "Test set",
+        "Source",
+    ]
+    out = [
+        "| " + " | ".join(headers) + " |",
+        "|" + "|".join("---" for _ in headers) + "|",
+    ]
     for r in rows:
         protocol_disp = {
             "ours": "—",
@@ -351,15 +362,21 @@ def render_markdown_table(rows: Sequence[Dict[str, Any]]) -> str:
             "cross-pocket": "NO (caveat)",
             "different-axis": "different axis",
         }.get(r["protocol"], r["protocol"])
-        out.append("| " + " | ".join([
-            r["method"],
-            r["metric"],
-            r["ours"],
-            r["published"],
-            protocol_disp,
-            r["test_set"],
-            r["source"],
-        ]) + " |")
+        out.append(
+            "| "
+            + " | ".join(
+                [
+                    r["method"],
+                    r["metric"],
+                    r["ours"],
+                    r["published"],
+                    protocol_disp,
+                    r["test_set"],
+                    r["source"],
+                ]
+            )
+            + " |"
+        )
     return "\n".join(out)
 
 
@@ -369,7 +386,9 @@ def render_markdown_table(rows: Sequence[Dict[str, Any]]) -> str:
 def render_text_table(rows: Sequence[Dict[str, Any]]) -> str:
     """Plain-text rendering for the CLI (fixed column widths)."""
     lines = []
-    lines.append("Method                  | Metric              | Ours      | Published | Protocol")
+    lines.append(
+        "Method                  | Metric              | Ours      | Published | Protocol"
+    )
     lines.append("-" * 96)
     for r in rows:
         protocol_disp = {
@@ -392,16 +411,25 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         description="Compare our Lambda numbers to published SBDD SOTA numbers.",
     )
-    parser.add_argument("--pdb-id", type=str, default="demo",
-                        help="Pocket identifier (default: demo).")
-    parser.add_argument("--n-samples", type=int, default=30,
-                        help="Lambda candidates (default: 30).")
-    parser.add_argument("--json-out", type=str, default=None,
-                        help="Optional path to dump the comparison rows as JSON.")
-    parser.add_argument("--markdown-out", type=str, default=None,
-                        help="Optional path to dump the markdown table.")
-    parser.add_argument("--quiet", action="store_true",
-                        help="Suppress INFO logging.")
+    parser.add_argument(
+        "--pdb-id", type=str, default="demo", help="Pocket identifier (default: demo)."
+    )
+    parser.add_argument(
+        "--n-samples", type=int, default=30, help="Lambda candidates (default: 30)."
+    )
+    parser.add_argument(
+        "--json-out",
+        type=str,
+        default=None,
+        help="Optional path to dump the comparison rows as JSON.",
+    )
+    parser.add_argument(
+        "--markdown-out",
+        type=str,
+        default=None,
+        help="Optional path to dump the markdown table.",
+    )
+    parser.add_argument("--quiet", action="store_true", help="Suppress INFO logging.")
     args = parser.parse_args(argv)
 
     logging.basicConfig(
@@ -422,6 +450,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # Also print the calibration summary on the Lambda side.
     try:
         from molmetal.molmetal_lam.scripts.baselines import run_lambda  # noqa: WPS433
+
         lambda_out = run_lambda(args.pdb_id, args.n_samples)
         cal = compute_calibration_table(lambda_out["smiles"], method_name="Lambda")
         print()
@@ -441,7 +470,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.markdown_out:
         Path(args.markdown_out).parent.mkdir(parents=True, exist_ok=True)
         Path(args.markdown_out).write_text(
-            render_markdown_table(rows), encoding="utf-8",
+            render_markdown_table(rows),
+            encoding="utf-8",
         )
         print(f"\nMarkdown saved -> {args.markdown_out}")
     return 0

@@ -60,6 +60,7 @@ Output
 * ``molmetal/reports/wf_t18_pic50_uncertainty/report.json``  (machine-readable)
 * ``molmetal/reports/wf_t18_pic50_uncertainty/final.md``      (human-readable)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -99,18 +100,12 @@ TARGET_DOMAIN: str = (
 )
 
 # Default artefact paths
-DEFAULT_CHECKPOINT = Path(
-    "molmetal/checkpoints/dmpnn_attn_heLa48h_dark_retrained.pt"
-)
+DEFAULT_CHECKPOINT = Path("molmetal/checkpoints/dmpnn_attn_heLa48h_dark_retrained.pt")
 DEFAULT_PREDICTIONS = Path(
     "molmetal/reports/wf_pic50_margin_sweep/m_0.5/test_predictions.parquet"
 )
-DEFAULT_REPORT_JSON = Path(
-    "molmetal/reports/wf_t18_pic50_uncertainty/report.json"
-)
-DEFAULT_REPORT_MD = Path(
-    "molmetal/reports/wf_t18_pic50_uncertainty/final.md"
-)
+DEFAULT_REPORT_JSON = Path("molmetal/reports/wf_t18_pic50_uncertainty/report.json")
+DEFAULT_REPORT_MD = Path("molmetal/reports/wf_t18_pic50_uncertainty/final.md")
 
 DEFAULT_N_RESAMPLES = 200
 DEFAULT_SEED = 20260917  # stable seed per acceptance criteria
@@ -130,14 +125,14 @@ class PerRowCI:
     is_censored: bool
     pic50_truth: float
     pic50_pred: float
-    pic50_bound: float           # for exact rows == pic50_truth
-    censor_dir: int              # +1 right, -1 left,  0 exact
-    residual: float              # pic50_pred - pic50_truth
-    ci_low: float                # 2.5% quantile of bootstrap mean preds
-    ci_high: float               # 97.5% quantile of bootstrap mean preds
-    ci_half_width: float         # (ci_high - ci_low) / 2
-    censor_compliant: bool       # see module docstring
-    compliance_tag: str          # "compliant", "violation", "n/a (exact)"
+    pic50_bound: float  # for exact rows == pic50_truth
+    censor_dir: int  # +1 right, -1 left,  0 exact
+    residual: float  # pic50_pred - pic50_truth
+    ci_low: float  # 2.5% quantile of bootstrap mean preds
+    ci_high: float  # 97.5% quantile of bootstrap mean preds
+    ci_half_width: float  # (ci_high - ci_low) / 2
+    censor_compliant: bool  # see module docstring
+    compliance_tag: str  # "compliant", "violation", "n/a (exact)"
 
 
 @dataclass
@@ -237,9 +232,7 @@ def _aggregate_metrics(
         pred_e = pic50_pred[exact_mask]
         out["rmse_exact"] = float(np.sqrt(np.mean((pred_e - truth_e) ** 2)))
         if np.std(truth_e) > 0 and np.std(pred_e) > 0:
-            out["pearson_r_exact"] = float(
-                pearsonr(pred_e, truth_e).statistic
-            )
+            out["pearson_r_exact"] = float(pearsonr(pred_e, truth_e).statistic)
         else:
             out["pearson_r_exact"] = float("nan")
     else:
@@ -307,9 +300,7 @@ def _bootstrap_metric_distribution(
             pe = pred[ok_e]
             boot["rmse_exact"][b] = float(np.sqrt(np.mean((pe - te) ** 2)))
             if np.std(te) > 0 and np.std(pe) > 0:
-                boot["pearson_r_exact"][b] = float(
-                    pearsonr(pe, te).statistic
-                )
+                boot["pearson_r_exact"][b] = float(pearsonr(pe, te).statistic)
 
         if cens.any():
             compliant = 0
@@ -327,8 +318,12 @@ def _bootstrap_metric_distribution(
     for k, vals in boot.items():
         finite = vals[np.isfinite(vals)]
         if len(finite) == 0:
-            out[k] = {"low": float("nan"), "mean": float("nan"),
-                      "high": float("nan"), "n_finite": 0}
+            out[k] = {
+                "low": float("nan"),
+                "mean": float("nan"),
+                "high": float("nan"),
+                "n_finite": 0,
+            }
             continue
         out[k] = {
             "low": float(np.quantile(finite, CI_LOW_Q)),
@@ -364,8 +359,13 @@ def run_calibration(
         raise FileNotFoundError(predictions_parquet)
 
     df = pd.read_parquet(predictions_parquet)
-    required_cols = {"seed", "formulation_id", "is_censored",
-                     "pic50_truth", "pic50_pred"}
+    required_cols = {
+        "seed",
+        "formulation_id",
+        "is_censored",
+        "pic50_truth",
+        "pic50_pred",
+    }
     missing = required_cols - set(df.columns)
     if missing:
         raise ValueError(
@@ -423,14 +423,10 @@ def run_calibration(
         is_cen = bool(anchor["is_censored"])
         cdir = int(anchor["censor_dir"])
 
-        residuals = (grp["pic50_pred"] - grp["pic50_truth"]).to_numpy(
-            dtype=np.float64
-        )
+        residuals = (grp["pic50_pred"] - grp["pic50_truth"]).to_numpy(dtype=np.float64)
         n_resid = len(residuals)
         if n_resid >= 2:
-            boot_means = _bootstrap_residual_distribution(
-                residuals, n_resamples, rng
-            )
+            boot_means = _bootstrap_residual_distribution(residuals, n_resamples, rng)
             # CI on the mean residual: pred - boot_mean estimates the
             # bias of pred - truth.  Equivalently, the CI on
             # "true pIC50 given this prediction" is:
@@ -445,9 +441,7 @@ def run_calibration(
             ci_low = pred_anchor - 0.5
             ci_high = pred_anchor + 0.5
 
-        compliant, tag = _compliance_for_row(
-            pred_anchor, bound_anchor, is_cen, cdir
-        )
+        compliant, tag = _compliance_for_row(pred_anchor, bound_anchor, is_cen, cdir)
         per_row.append(
             PerRowCI(
                 formulation_id=str(fid),
@@ -477,7 +471,11 @@ def run_calibration(
         pic50_truth, pic50_pred, is_censored, censor_dir, pic50_bound
     )
     boot_agg = _bootstrap_metric_distribution(
-        pic50_truth, pic50_pred, is_censored, censor_dir, pic50_bound,
+        pic50_truth,
+        pic50_pred,
+        is_censored,
+        censor_dir,
+        pic50_bound,
         n_resamples=n_resamples,
         rng=np.random.default_rng(seed + 1),
     )
@@ -562,8 +560,9 @@ def _to_json_safe(obj):
     return str(obj)
 
 
-def write_report(result: CalibrationResult, json_path: Path,
-                 md_path: Path) -> Tuple[Path, Path]:
+def write_report(
+    result: CalibrationResult, json_path: Path, md_path: Path
+) -> Tuple[Path, Path]:
     """Serialise the CalibrationResult to report.json + final.md."""
     json_path = Path(json_path)
     json_path.parent.mkdir(parents=True, exist_ok=True)
@@ -768,7 +767,7 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=DEFAULT_SEED,
         help=f"RNG seed (default {DEFAULT_SEED} — must be stable across "
-             f"runs per acceptance criteria).",
+        f"runs per acceptance criteria).",
     )
     p.add_argument(
         "--report-json",
@@ -826,9 +825,7 @@ def main() -> int:
                     "median_ci_half_width_pIC50"
                 ],
                 "rmse_exact_ci95": result.aggregate.get("rmse_exact_ci95"),
-                "pearson_r_exact_ci95": result.aggregate.get(
-                    "pearson_r_exact_ci95"
-                ),
+                "pearson_r_exact_ci95": result.aggregate.get("pearson_r_exact_ci95"),
                 "bound_aware_accuracy_ci95": result.aggregate.get(
                     "bound_aware_accuracy_ci95"
                 ),

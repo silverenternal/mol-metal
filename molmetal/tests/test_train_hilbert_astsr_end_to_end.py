@@ -22,6 +22,7 @@ Test inventory (~20 tests)
    z-score, fit_hilbert_stable, predict_hilbert, fit_evolutionary,
    predict_evolutionary, _compute_r2 (6 tests).
 """
+
 from __future__ import annotations
 
 import json
@@ -52,6 +53,7 @@ LOG_PATH = REPORT_DIR / "run.log"
 def _import_script():
     """Import the training script as a module."""
     import importlib.util
+
     spec = importlib.util.spec_from_file_location(
         "train_hilbert_astsr_end_to_end",
         str(_REPO_ROOT / "molmetal/scripts/train_hilbert_astsr_end_to_end.py"),
@@ -82,23 +84,33 @@ def test_run_log_exists() -> None:
 @pytest.fixture(scope="module")
 def bench() -> dict:
     if not BENCH_PATH.exists():
-        pytest.skip(f"r2_bench.json not produced; run train_hilbert_astsr_end_to_end.py first")
+        pytest.skip(
+            f"r2_bench.json not produced; run train_hilbert_astsr_end_to_end.py first"
+        )
     with open(BENCH_PATH) as f:
         return json.load(f)
 
 
 def test_bench_has_required_top_level_keys(bench: dict) -> None:
     expected = {
-        "hilbert_r2_mean", "hilbert_r2_std",
+        "hilbert_r2_mean",
+        "hilbert_r2_std",
         "hilbert_r2_per_seed",
-        "evolutionary_r2_mean", "evolutionary_r2_std",
+        "evolutionary_r2_mean",
+        "evolutionary_r2_std",
         "evolutionary_r2_per_seed",
-        "hilbert_wall_mean_s", "evolutionary_wall_mean_s",
+        "hilbert_wall_mean_s",
+        "evolutionary_wall_mean_s",
         "speedup",
-        "n_samples", "n_seeds", "n_folds_per_seed",
-        "parsed", "failed",
-        "feature_columns", "population_dim",
-        "config", "per_seed",
+        "n_samples",
+        "n_seeds",
+        "n_folds_per_seed",
+        "parsed",
+        "failed",
+        "feature_columns",
+        "population_dim",
+        "config",
+        "per_seed",
     }
     missing = expected - set(bench.keys())
     assert not missing, f"missing keys: {missing}"
@@ -116,7 +128,15 @@ def test_bench_types_correct(bench: dict) -> None:
 
 def test_bench_config_round_trips(bench: dict) -> None:
     cfg = bench["config"]
-    for k in ("dataset", "n_samples", "seeds", "epochs", "lr", "hilbert_dim", "n_folds"):
+    for k in (
+        "dataset",
+        "n_samples",
+        "seeds",
+        "epochs",
+        "lr",
+        "hilbert_dim",
+        "n_folds",
+    ):
         assert k in cfg, f"config.{k} missing"
 
 
@@ -124,17 +144,22 @@ def test_bench_config_round_trips(bench: dict) -> None:
 # 3. Per-seed consistency
 # ---------------------------------------------------------------------------
 def test_per_seed_count_matches_seeds(bench: dict) -> None:
-    assert len(bench["per_seed"]) == bench["n_seeds"], (
-        f"per_seed count {len(bench['per_seed'])} != n_seeds {bench['n_seeds']}"
-    )
+    assert (
+        len(bench["per_seed"]) == bench["n_seeds"]
+    ), f"per_seed count {len(bench['per_seed'])} != n_seeds {bench['n_seeds']}"
 
 
 def test_per_seed_dict_has_expected_keys(bench: dict) -> None:
     expected = {
-        "seed", "n_folds", "n_samples",
-        "hilbert_r2_mean", "hilbert_r2_std",
-        "evolutionary_r2_mean", "evolutionary_r2_std",
-        "hilbert_wall_mean_s", "evol_wall_mean_s",
+        "seed",
+        "n_folds",
+        "n_samples",
+        "hilbert_r2_mean",
+        "hilbert_r2_std",
+        "evolutionary_r2_mean",
+        "evolutionary_r2_std",
+        "hilbert_wall_mean_s",
+        "evol_wall_mean_s",
         "per_fold",
     }
     for entry in bench["per_seed"]:
@@ -144,9 +169,9 @@ def test_per_seed_dict_has_expected_keys(bench: dict) -> None:
 
 def test_per_fold_count_matches(bench: dict) -> None:
     for entry in bench["per_seed"]:
-        assert len(entry["per_fold"]) == entry["n_folds"], (
-            f"per_fold count {len(entry['per_fold'])} != n_folds {entry['n_folds']}"
-        )
+        assert (
+            len(entry["per_fold"]) == entry["n_folds"]
+        ), f"per_fold count {len(entry['per_fold'])} != n_folds {entry['n_folds']}"
 
 
 # ---------------------------------------------------------------------------
@@ -165,9 +190,9 @@ def test_hilbert_R2_positive_after_fix(bench: dict) -> None:
 
 def test_speedup_substantial(bench: dict) -> None:
     """Hilbert PD must be ≥ 10× faster than evolutionary ASTSR."""
-    assert bench["speedup"] >= 10.0, (
-        f"speedup {bench['speedup']:.2f}x below 10x threshold"
-    )
+    assert (
+        bench["speedup"] >= 10.0
+    ), f"speedup {bench['speedup']:.2f}x below 10x threshold"
 
 
 # ---------------------------------------------------------------------------
@@ -208,9 +233,9 @@ def test_pad_to_hilbert_dim_consistent_train_test() -> None:
     bias_col_tr = np.where(np.all(np.isclose(out_tr, 1.0), axis=0))[0]
     bias_col_te = np.where(np.all(np.isclose(out_te, 1.0), axis=0))[0]
     assert len(bias_col_tr) >= 1, "no bias column in train"
-    assert np.array_equal(bias_col_tr, bias_col_te), (
-        f"train/test bias columns differ: {bias_col_tr} vs {bias_col_te}"
-    )
+    assert np.array_equal(
+        bias_col_tr, bias_col_te
+    ), f"train/test bias columns differ: {bias_col_tr} vs {bias_col_te}"
 
 
 def test_zscore_normalization_is_deterministic() -> None:
@@ -233,15 +258,18 @@ def test_fit_hilbert_stable_returns_finite_r2() -> None:
     w = rng.standard_normal(mod.POPULATION_DIM) * 0.1
     y = X @ w + 0.05 * rng.standard_normal(50)
     best_x, info = mod.fit_hilbert_stable(
-        X, y,
+        X,
+        y,
         hilbert_dim=mod.POPULATION_DIM,
-        lr=0.05, epochs=100, seed=0,
+        lr=0.05,
+        epochs=100,
+        seed=0,
     )
     assert best_x.shape == (mod.POPULATION_DIM,)
     assert math.isfinite(info["train_r2"])
-    assert info["train_r2"] > 0.5, (
-        f"linear-recovery R² should be > 0.5 on clean signal; got {info['train_r2']:.4f}"
-    )
+    assert (
+        info["train_r2"] > 0.5
+    ), f"linear-recovery R² should be > 0.5 on clean signal; got {info['train_r2']:.4f}"
 
 
 def test_compute_r2_zero_on_constant_prediction() -> None:
@@ -306,24 +334,29 @@ def test_compute_w2_pic50_alignment_returns_per_cell_breakdown() -> None:
         pytest.skip("torch or wasserstein_loss module unavailable")
     rng = np.random.default_rng(0)
     rows = [
-        {"smiles": "CCO", "pic50": float(rng.uniform(4.0, 8.0)),
-         "cell_line": "MCF7"}
+        {"smiles": "CCO", "pic50": float(rng.uniform(4.0, 8.0)), "cell_line": "MCF7"}
         for _ in range(50)
     ] + [
-        {"smiles": "CCN", "pic50": float(rng.uniform(4.0, 8.0)),
-         "cell_line": "A549"}
+        {"smiles": "CCN", "pic50": float(rng.uniform(4.0, 8.0)), "cell_line": "A549"}
         for _ in range(50)
     ]
     y_pred = np.array([r["pic50"] + rng.normal(0, 0.1) for r in rows])
     out = mod.compute_w2_pic50_alignment(
-        y_pred, rows,
+        y_pred,
+        rows,
         ref_distribution="platinai_4cell",
         per_cell_cap=32,
         seed=0,
     )
     # Schema
-    for k in ("w2_overall", "w2_per_cell", "n_per_cell",
-              "ref_distribution", "per_cell_cap", "engine"):
+    for k in (
+        "w2_overall",
+        "w2_per_cell",
+        "n_per_cell",
+        "ref_distribution",
+        "per_cell_cap",
+        "engine",
+    ):
         assert k in out, f"missing key: {k}"
     assert out["engine"] == "wasserstein_reg"
     assert out["ref_distribution"] == "platinai_4cell"
@@ -345,20 +378,20 @@ def test_compute_w2_pic50_alignment_caps_at_32() -> None:
     rng = np.random.default_rng(0)
     # 100 rows in a single cell line → must be capped at 32.
     rows = [
-        {"smiles": "CCO", "pic50": float(rng.uniform(4.0, 8.0)),
-         "cell_line": "MCF7"}
+        {"smiles": "CCO", "pic50": float(rng.uniform(4.0, 8.0)), "cell_line": "MCF7"}
         for _ in range(100)
     ]
     y_pred = np.array([r["pic50"] + rng.normal(0, 0.1) for r in rows])
     out = mod.compute_w2_pic50_alignment(
-        y_pred, rows,
+        y_pred,
+        rows,
         ref_distribution="platinai_4cell",
         per_cell_cap=32,
         seed=0,
     )
-    assert out["n_per_cell"]["MCF7"] == 32, (
-        f"cap not enforced: n_per_cell={out['n_per_cell']}"
-    )
+    assert (
+        out["n_per_cell"]["MCF7"] == 32
+    ), f"cap not enforced: n_per_cell={out['n_per_cell']}"
 
 
 def test_compute_w2_pic50_alignment_zero_on_identical() -> None:
@@ -370,23 +403,23 @@ def test_compute_w2_pic50_alignment_zero_on_identical() -> None:
         pytest.skip("torch or wasserstein_loss module unavailable")
     rng = np.random.default_rng(0)
     rows = [
-        {"smiles": "CCO", "pic50": float(rng.uniform(4.0, 8.0)),
-         "cell_line": "MCF7"}
+        {"smiles": "CCO", "pic50": float(rng.uniform(4.0, 8.0)), "cell_line": "MCF7"}
         for _ in range(40)
     ]
     y_pred = np.array([r["pic50"] for r in rows])
     out = mod.compute_w2_pic50_alignment(
-        y_pred, rows,
+        y_pred,
+        rows,
         ref_distribution="platinai_4cell",
         per_cell_cap=32,
         seed=0,
     )
-    assert out["w2_per_cell"]["MCF7"] < 1e-4, (
-        f"W₂ should be ~0 for identical distributions; got {out['w2_per_cell']['MCF7']}"
-    )
-    assert out["w2_overall"] < 1e-4, (
-        f"W₂ overall should be ~0 for identical distributions; got {out['w2_overall']}"
-    )
+    assert (
+        out["w2_per_cell"]["MCF7"] < 1e-4
+    ), f"W₂ should be ~0 for identical distributions; got {out['w2_per_cell']['MCF7']}"
+    assert (
+        out["w2_overall"] < 1e-4
+    ), f"W₂ overall should be ~0 for identical distributions; got {out['w2_overall']}"
 
 
 def test_run_single_seed_wass_weight_zero_disables_w2() -> None:
@@ -399,7 +432,8 @@ def test_run_single_seed_wass_weight_zero_disables_w2() -> None:
     w = rng.standard_normal(len(mod.FEATURE_COLUMNS)) * 0.1
     y = X @ w + 0.05 * rng.standard_normal(50)
     res = mod.run_single_seed(
-        X, y,
+        X,
+        y,
         seed=0,
         hilbert_dim=mod.POPULATION_DIM,
         epochs=10,
@@ -422,12 +456,16 @@ def test_run_single_seed_wass_weight_positive_populates_w2() -> None:
     w = rng.standard_normal(len(mod.FEATURE_COLUMNS)) * 0.1
     y = X @ w + 0.05 * rng.standard_normal(50)
     rows_meta = [
-        {"smiles": "CCO", "pic50": float(rng.uniform(4.0, 8.0)),
-         "cell_line": "MCF7" if i % 2 == 0 else "A549"}
+        {
+            "smiles": "CCO",
+            "pic50": float(rng.uniform(4.0, 8.0)),
+            "cell_line": "MCF7" if i % 2 == 0 else "A549",
+        }
         for i in range(50)
     ]
     res = mod.run_single_seed(
-        X, y,
+        X,
+        y,
         seed=0,
         hilbert_dim=mod.POPULATION_DIM,
         epochs=10,
@@ -456,16 +494,20 @@ def test_cli_flags_present() -> None:
     # Re-run main() with --help, but cap on stdin — easier to inspect the
     # argparse parser directly.
     import argparse
+
     # Build the parser the same way main() does.
     # Simpler: invoke main with --help and check exit code 0 + argparse usage.
     import subprocess
+
     result = subprocess.run(
         [
             "/home/hugo/codes/mol-metal/.venv/bin/python",
             str(_REPO_ROOT / "molmetal/scripts/train_hilbert_astsr_end_to_end.py"),
             "--help",
         ],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     assert result.returncode == 0
     out = result.stdout

@@ -47,14 +47,14 @@ METRIC_FILE = REPO_ROOT / "metrics" / "by_metric" / "decode_ratio.json"
 
 # The 8 NEW CLI flags added by Wf-388-A2 (diversity) + Wf-388-A3 (SA penalty)
 WF388_FLAG_DEFAULTS = {
-    "--top-p": 1.0,                 # 1.0 = no nucleus truncation (OFF)
-    "--top-k": 0,                   # 0 = no top-k truncation (OFF)
-    "--temperature": 1.0,           # 1.0 = no rescale (OFF)
-    "--mmd-weight": 0.0,            # 0.0 = no MMD term (OFF)
-    "--repulsion-weight": 0.0,      # 0.0 = no repulsion term (OFF)
+    "--top-p": 1.0,  # 1.0 = no nucleus truncation (OFF)
+    "--top-k": 0,  # 0 = no top-k truncation (OFF)
+    "--temperature": 1.0,  # 1.0 = no rescale (OFF)
+    "--mmd-weight": 0.0,  # 0.0 = no MMD term (OFF)
+    "--repulsion-weight": 0.0,  # 0.0 = no repulsion term (OFF)
     "--scaffold-conditioning": False,  # scaffold_bias=None (OFF)
-    "--sa-penalty": 0.0,            # 0.0 = no SA penalty (OFF)
-    "--sa-target": 2.8,             # default SA threshold
+    "--sa-penalty": 0.0,  # 0.0 = no SA penalty (OFF)
+    "--sa-target": 2.8,  # default SA threshold
 }
 
 
@@ -179,8 +179,14 @@ def test_wf397a1_train_one_epoch_signature_includes_sa_penalty_kwargs() -> None:
             f"Wf-397-A1 plumbing missing, would raise NameError on first epoch"
         )
     # All 6 Wf-388-A2 diversity flags must also be present
-    for required in ("top_p", "top_k", "temperature", "mmd_weight",
-                     "repulsion_weight", "scaffold_conditioning"):
+    for required in (
+        "top_p",
+        "top_k",
+        "temperature",
+        "mmd_weight",
+        "repulsion_weight",
+        "scaffold_conditioning",
+    ):
         assert required in kwargs, (
             f"train_one_epoch signature missing {required!r} kwarg — "
             f"Wf-388-A2 diversity wire-in missing"

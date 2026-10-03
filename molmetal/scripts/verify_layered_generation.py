@@ -50,12 +50,12 @@ from molmetal.molmetal_lam.lam_chem.layered_generation import (
 # Smoke fixtures — drug-like inputs that span the Bemis-Murcko distribution.
 # ---------------------------------------------------------------------------
 _DRUG_SEEDS: Tuple[str, ...] = (
-    "Cc1ccc(NC(=O)c2ccccc2)cc1",    # paracetamol
+    "Cc1ccc(NC(=O)c2ccccc2)cc1",  # paracetamol
     "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",  # caffeine
-    "CC(=O)Oc1ccccc1C(=O)O",         # aspirin
-    "CC(C)Cc1ccc(C(C)C(=O)O)cc1",    # ibuprofen
-    "Oc1ccc(C(=O)O)cc1",             # 4-hydroxybenzoic acid
-    "Nc1ccc(C(=O)O)cc1",             # 4-aminobenzoic acid
+    "CC(=O)Oc1ccccc1C(=O)O",  # aspirin
+    "CC(C)Cc1ccc(C(C)C(=O)O)cc1",  # ibuprofen
+    "Oc1ccc(C(=O)O)cc1",  # 4-hydroxybenzoic acid
+    "Nc1ccc(C(=O)O)cc1",  # 4-aminobenzoic acid
 )
 
 
@@ -195,9 +195,7 @@ def main(argv: List[str] | None = None) -> int:
     else:
         print("LAYERED_GENERATION SMOKE FAIL")
         if not scaffold_ok:
-            print(
-                f"  scaffold mean validity {sc['mean_scaffold_validity']:.2%} < 50%"
-            )
+            print(f"  scaffold mean validity {sc['mean_scaffold_validity']:.2%} < 50%")
         if not pipeline_ok:
             print(f"  pipeline pass rate {pl['pass_rate']:.2%} < 50%")
         return 1

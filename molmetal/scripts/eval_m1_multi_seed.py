@@ -114,14 +114,16 @@ def _load_per_seed_metrics(
             continue
         # Normalize field names: per-seed file uses "fold" + "seed",
         # aggregate uses "seed" only; both carry "test_auc".
-        out.append({
-            "seed": d.get("seed", d.get("fold_seed")),
-            "test_auc": d.get("test_auc"),
-            "val_auc": d.get("val_auc"),
-            "n_train": d.get("n_train"),
-            "n_test": d.get("n_test"),
-            "test_pic50_mae": d.get("test_pic50_mae"),
-        })
+        out.append(
+            {
+                "seed": d.get("seed", d.get("fold_seed")),
+                "test_auc": d.get("test_auc"),
+                "val_auc": d.get("val_auc"),
+                "n_train": d.get("n_train"),
+                "n_test": d.get("n_test"),
+                "test_pic50_mae": d.get("test_pic50_mae"),
+            }
+        )
     if out:
         return out, f"<per-seed dir: {metal_subdir}>"
 
@@ -192,7 +194,7 @@ def aggregate_metal(
         block["gate_target"] = GATE_TARGET
         block["lift_vs_baseline"] = auc_mean - RU_KRASNOV_BASELINE
         block["gap_to_gate"] = auc_mean - GATE_TARGET
-        block["hit_gate"] = (auc_mean >= GATE_TARGET)
+        block["hit_gate"] = auc_mean >= GATE_TARGET
 
     return block
 
@@ -245,16 +247,17 @@ def build_aggregate(
             "this script will populate per_metal Rh + Re from "
             "wf131_p3_deferred_runs/ rather than fallback LOMO-full data",
             "honest_negative_note": (
-                    "1-seed-only readings emit HONEST_NEGATIVE_1SEED verdict "
-                    "with n_seeds_used=1 to preserve MEASURED-vs-PROJECTED "
-                    "tag discipline (party-twenty-spirit §3.5 + AGENTS.md §1.1)"
-                ),
+                "1-seed-only readings emit HONEST_NEGATIVE_1SEED verdict "
+                "with n_seeds_used=1 to preserve MEASURED-vs-PROJECTED "
+                "tag discipline (party-twenty-spirit §3.5 + AGENTS.md §1.1)"
+            ),
             "kill_then_adapt_directive": "CPU-only; no retrain / panel / ablation",
         },
         "verdict": (
             "READY_FOR_USER_OK_LAUNCH"
             if any(
-                b["verdict"] in ("HONEST_NEGATIVE_1SEED", "PARTIAL_2SEED", "NOT_MEASURED")
+                b["verdict"]
+                in ("HONEST_NEGATIVE_1SEED", "PARTIAL_2SEED", "NOT_MEASURED")
                 for b in per_metal.values()
             )
             else "ALL_METALS_5SEED"
@@ -264,20 +267,23 @@ def build_aggregate(
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description=(
-            "Wf-359-A2 m1 multi-seed evaluation scaffold (CPU-only)."
-        )
+        description=("Wf-359-A2 m1 multi-seed evaluation scaffold (CPU-only).")
     )
     parser.add_argument(
-        "--metals", nargs="+", default=list(DEFAULT_METALS),
+        "--metals",
+        nargs="+",
+        default=list(DEFAULT_METALS),
         help=f"Metals to aggregate (default: {' '.join(DEFAULT_METALS)})",
     )
     parser.add_argument(
-        "--out", type=Path, default=OUTPUT_FILE,
+        "--out",
+        type=Path,
+        default=OUTPUT_FILE,
         help=f"Output JSON path (default: {OUTPUT_FILE})",
     )
     parser.add_argument(
-        "--print", action="store_true",
+        "--print",
+        action="store_true",
         help="Print the aggregate to stdout in addition to writing the file",
     )
     args = parser.parse_args()

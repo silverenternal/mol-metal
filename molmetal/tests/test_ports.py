@@ -38,7 +38,9 @@ from molmetal.ports import (
 def _make_pocket(n_atoms: int = 4) -> Pocket:
     """Tiny Pocket for in-memory tests."""
     coords = torch.zeros(n_atoms, 3, dtype=torch.float32)
-    atom_types = torch.tensor([6, 7, 8, 16] * (n_atoms // 4 + 1), dtype=torch.long)[:n_atoms]
+    atom_types = torch.tensor([6, 7, 8, 16] * (n_atoms // 4 + 1), dtype=torch.long)[
+        :n_atoms
+    ]
     residue_ids = torch.zeros(n_atoms, dtype=torch.long)
     chain_ids = torch.zeros(n_atoms, dtype=torch.long)
     mask = torch.ones(n_atoms, dtype=torch.bool)
@@ -153,6 +155,7 @@ class TestRDKitRoundTrip:
         # of the original input ("CCO" with explicit Hs round-tripped
         # would otherwise compare against the H-explicit canonical form).
         from rdkit import Chem
+
         mol_no_h = Chem.RemoveHs(mol)
         rdkit_smiles = Chem.MolToSmiles(mol_no_h)
         ref = Chem.MolToSmiles(Chem.MolFromSmiles("CCO"))
@@ -172,9 +175,7 @@ class TestPocketFromPDB:
 
     def test_from_pdb_file_two_atoms(self):
         # The 2 ATOM lines are placed within a 6.0 Å sphere of the origin.
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".pdb", delete=False
-        ) as fh:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".pdb", delete=False) as fh:
             fh.write(self.PDB_2_ATOMS)
             tmp_path = fh.name
         try:
@@ -198,9 +199,7 @@ class TestPocketFromPDB:
     def test_from_pdb_file_too_far_raises(self):
         # Centre the pocket at (100, 100, 100) so neither atom is within
         # the 1.0 Å sphere around the centroid.
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".pdb", delete=False
-        ) as fh:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".pdb", delete=False) as fh:
             fh.write(self.PDB_2_ATOMS)
             tmp_path = fh.name
         try:
@@ -336,7 +335,12 @@ class TestProtocolAttrs:
         assert callable(sc.get_metadata)
 
     def test_design_loop_attrs(self):
-        gen, dock, pred, sc = _StubGenerator(), _StubDocker(), _StubPredictor(), _StubScorer()
+        gen, dock, pred, sc = (
+            _StubGenerator(),
+            _StubDocker(),
+            _StubPredictor(),
+            _StubScorer(),
+        )
         loop = _StubLoop(gen, dock, pred, sc)
         assert hasattr(loop, "name")
         assert hasattr(loop, "setup")

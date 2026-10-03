@@ -1,4 +1,5 @@
 """Tests for the MLC Molecule layer (molecules/closed_term.py)."""
+
 from __future__ import annotations
 
 import pytest
@@ -88,7 +89,7 @@ def test_alpha_equivalent_same_canonical_smiles() -> None:
 
 def test_alpha_equivalent_different_molecules() -> None:
     """Different connectivity → not α-equivalent."""
-    a = MoleculeClosedTerm.from_smiles("CCO")      # ethanol
+    a = MoleculeClosedTerm.from_smiles("CCO")  # ethanol
     b = MoleculeClosedTerm.from_smiles("CC(=O)C")  # acetone / propanal
     # Either way, ethanol and acetone should not be α-equivalent.
     # If propanal parses, the test still passes since it differs from ethanol.
@@ -200,9 +201,7 @@ def test_cyclopentadiene_has_redex_with_explicit_h() -> None:
     ``has_redex() == True``.
     """
     default_term = MoleculeClosedTerm.from_smiles("C1=CCC=C1")
-    explicit_h_term = MoleculeClosedTerm.from_smiles_with_explicit_h(
-        "C1=CCC=C1"
-    )
+    explicit_h_term = MoleculeClosedTerm.from_smiles_with_explicit_h("C1=CCC=C1")
     # The new path must report the redex — that is the whole point
     # of the L-A1 patch.
     assert explicit_h_term.has_redex() is True

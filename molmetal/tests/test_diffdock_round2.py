@@ -36,9 +36,7 @@ import pytest
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-SCRIPT_PATH = (
-    PROJECT_ROOT / "molmetal" / "scripts" / "bench_diffdock_round2.py"
-)
+SCRIPT_PATH = PROJECT_ROOT / "molmetal" / "scripts" / "bench_diffdock_round2.py"
 PYTHON = sys.executable
 
 
@@ -70,7 +68,12 @@ def _read_json(path: Path) -> dict:
 def test_smoke_emits_all_three_outputs(tmp_path: Path) -> None:
     """Default (stub) mode must emit status + per-pocket + summary."""
     out_dir = _run_bench(
-        tmp_path, "--pockets", "830c", "1h36", "--seeds", "0",
+        tmp_path,
+        "--pockets",
+        "830c",
+        "1h36",
+        "--seeds",
+        "0",
     )
     assert (out_dir / "diffdock_status.json").is_file()
     assert (out_dir / "summary.json").is_file()
@@ -81,7 +84,11 @@ def test_smoke_emits_all_three_outputs(tmp_path: Path) -> None:
 def test_smoke_default_status_is_missing_dep(tmp_path: Path) -> None:
     """Default mode (no --use-real-diffdock) must record MISSING_DEP."""
     out_dir = _run_bench(
-        tmp_path, "--pockets", "830c", "--seeds", "0",
+        tmp_path,
+        "--pockets",
+        "830c",
+        "--seeds",
+        "0",
     )
     payload = _read_json(out_dir / "diffdock_status.json")
     assert payload["diffdock_status"]["status"] == "MISSING_DEP"
@@ -93,7 +100,11 @@ def test_smoke_default_status_is_missing_dep(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 def test_diffdock_status_has_schema(tmp_path: Path) -> None:
     out_dir = _run_bench(
-        tmp_path, "--pockets", "830c", "--seeds", "0",
+        tmp_path,
+        "--pockets",
+        "830c",
+        "--seeds",
+        "0",
     )
     payload = _read_json(out_dir / "diffdock_status.json")
     assert payload["schema_version"] == 1
@@ -104,8 +115,12 @@ def test_diffdock_status_has_schema(tmp_path: Path) -> None:
 def test_diffdock_status_records_args(tmp_path: Path) -> None:
     out_dir = _run_bench(
         tmp_path,
-        "--pockets", "830c", "1h36",
-        "--seeds", "0", "1",
+        "--pockets",
+        "830c",
+        "1h36",
+        "--seeds",
+        "0",
+        "1",
     )
     payload = _read_json(out_dir / "diffdock_status.json")
     args = payload["args"]
@@ -122,9 +137,15 @@ def test_per_pocket_metrics_has_n_cells(tmp_path: Path) -> None:
     """n_cells = n_cands × n_seeds."""
     out_dir = _run_bench(
         tmp_path,
-        "--pockets", "830c",
-        "--cands", "CCO", "c1ccccc1",
-        "--seeds", "0", "1", "2",
+        "--pockets",
+        "830c",
+        "--cands",
+        "CCO",
+        "c1ccccc1",
+        "--seeds",
+        "0",
+        "1",
+        "2",
     )
     pm = _read_json(out_dir / "830c" / "metrics.json")
     assert pm["pocket_id"] == "830c"
@@ -137,13 +158,25 @@ def test_per_pocket_metrics_has_n_cells(tmp_path: Path) -> None:
 
 def test_per_pocket_metrics_records_cells(tmp_path: Path) -> None:
     out_dir = _run_bench(
-        tmp_path, "--pockets", "830c", "--seeds", "0",
+        tmp_path,
+        "--pockets",
+        "830c",
+        "--seeds",
+        "0",
     )
     pm = _read_json(out_dir / "830c" / "metrics.json")
     assert len(pm["cells"]) == pm["n_cells"]
     cell = pm["cells"][0]
-    assert {"smiles", "seed", "status", "confidence", "rmsd_A",
-            "vina_kcal", "elapsed_s", "note"} <= set(cell.keys())
+    assert {
+        "smiles",
+        "seed",
+        "status",
+        "confidence",
+        "rmsd_A",
+        "vina_kcal",
+        "elapsed_s",
+        "note",
+    } <= set(cell.keys())
     assert cell["status"] == "STUB_FALLBACK"
 
 
@@ -151,15 +184,20 @@ def test_per_pocket_metrics_confidence_in_range(tmp_path: Path) -> None:
     """Stub confidences must lie within the documented range."""
     out_dir = _run_bench(
         tmp_path,
-        "--pockets", "830c", "1h36",
-        "--seeds", "0", "1", "2",
+        "--pockets",
+        "830c",
+        "1h36",
+        "--seeds",
+        "0",
+        "1",
+        "2",
     )
     for pocket in ("830c", "1h36"):
         pm = _read_json(out_dir / pocket / "metrics.json")
         for cell in pm["cells"]:
-            assert 0.0 <= cell["confidence"] <= 1.0, (
-                f"confidence out of [0,1] for {pocket}/{cell['smiles']}"
-            )
+            assert (
+                0.0 <= cell["confidence"] <= 1.0
+            ), f"confidence out of [0,1] for {pocket}/{cell['smiles']}"
 
 
 # ---------------------------------------------------------------------------
@@ -168,8 +206,12 @@ def test_per_pocket_metrics_confidence_in_range(tmp_path: Path) -> None:
 def test_summary_aggregates_per_pocket(tmp_path: Path) -> None:
     out_dir = _run_bench(
         tmp_path,
-        "--pockets", "830c", "1h36", "3eml",
-        "--seeds", "0",
+        "--pockets",
+        "830c",
+        "1h36",
+        "3eml",
+        "--seeds",
+        "0",
     )
     summary = _read_json(out_dir / "summary.json")
     assert summary["n_pockets"] == 3
@@ -186,7 +228,11 @@ def test_summary_aggregates_per_pocket(tmp_path: Path) -> None:
 
 def test_summary_records_honest_framing(tmp_path: Path) -> None:
     out_dir = _run_bench(
-        tmp_path, "--pockets", "830c", "--seeds", "0",
+        tmp_path,
+        "--pockets",
+        "830c",
+        "--seeds",
+        "0",
     )
     summary = _read_json(out_dir / "summary.json")
     assert "honest_framing" in summary
@@ -201,42 +247,45 @@ def test_stub_scores_are_deterministic(tmp_path: Path) -> None:
     """Two runs with identical inputs must produce identical numbers."""
     out_a = _run_bench(
         tmp_path,
-        "--pockets", "830c",
-        "--cands", "CCO",
-        "--seeds", "0",
+        "--pockets",
+        "830c",
+        "--cands",
+        "CCO",
+        "--seeds",
+        "0",
     )
     out_b = _run_bench(
         tmp_path,
-        "--pockets", "830c",
-        "--cands", "CCO",
-        "--seeds", "0",
+        "--pockets",
+        "830c",
+        "--cands",
+        "CCO",
+        "--seeds",
+        "0",
     )
     pa = _read_json(out_a / "830c" / "metrics.json")
     pb = _read_json(out_b / "830c" / "metrics.json")
-    assert pa["cells"][0]["confidence"] == pytest.approx(
-        pb["cells"][0]["confidence"]
-    )
-    assert pa["cells"][0]["rmsd_A"] == pytest.approx(
-        pb["cells"][0]["rmsd_A"]
-    )
-    assert pa["cells"][0]["vina_kcal"] == pytest.approx(
-        pb["cells"][0]["vina_kcal"]
-    )
+    assert pa["cells"][0]["confidence"] == pytest.approx(pb["cells"][0]["confidence"])
+    assert pa["cells"][0]["rmsd_A"] == pytest.approx(pb["cells"][0]["rmsd_A"])
+    assert pa["cells"][0]["vina_kcal"] == pytest.approx(pb["cells"][0]["vina_kcal"])
 
 
 def test_stub_scores_differ_per_seed(tmp_path: Path) -> None:
     """Different seeds must produce different confidences for the same cell."""
     out_dir = _run_bench(
         tmp_path,
-        "--pockets", "830c",
-        "--cands", "CCO",
-        "--seeds", "0", "1", "2",
+        "--pockets",
+        "830c",
+        "--cands",
+        "CCO",
+        "--seeds",
+        "0",
+        "1",
+        "2",
     )
     pm = _read_json(out_dir / "830c" / "metrics.json")
     confs = [c["confidence"] for c in pm["cells"]]
-    assert len(set(confs)) == len(confs), (
-        "stub confidences should differ across seeds"
-    )
+    assert len(set(confs)) == len(confs), "stub confidences should differ across seeds"
 
 
 # ---------------------------------------------------------------------------
@@ -246,10 +295,13 @@ def test_real_diffdock_missing_dep(tmp_path: Path) -> None:
     """--use-real-diffdock with bad path must record MISSING_DEP honestly."""
     out_dir = _run_bench(
         tmp_path,
-        "--pockets", "830c",
-        "--seeds", "0",
+        "--pockets",
+        "830c",
+        "--seeds",
+        "0",
         "--use-real-diffdock",
-        "--diffdock-path", "/nonexistent/diffdock/binary",
+        "--diffdock-path",
+        "/nonexistent/diffdock/binary",
     )
     status = _read_json(out_dir / "diffdock_status.json")
     assert status["diffdock_status"]["status"] == "MISSING_DEP"
@@ -267,10 +319,13 @@ def test_real_diffdock_records_checked_paths(tmp_path: Path) -> None:
     """--use-real-diffdock must record every path it checked."""
     out_dir = _run_bench(
         tmp_path,
-        "--pockets", "830c",
-        "--seeds", "0",
+        "--pockets",
+        "830c",
+        "--seeds",
+        "0",
         "--use-real-diffdock",
-        "--diffdock-path", "/tmp/maybe_diffdock_here",
+        "--diffdock-path",
+        "/tmp/maybe_diffdock_here",
     )
     status = _read_json(out_dir / "diffdock_status.json")
     paths = status["diffdock_status"]["checked_paths"]

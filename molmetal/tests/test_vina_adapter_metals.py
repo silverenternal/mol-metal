@@ -140,15 +140,16 @@ class TestCisplatinPdbqt:
         text = _read_pdbqt(out)
         # The Pt atom must appear with our generic atype "M" in
         # columns 78..79 (0-indexed [77:79]).
-        pt_lines = [l for l in text.splitlines()
-                    if l.startswith("ATOM") and _atom_name(l) == "Pt"]
-        assert len(pt_lines) == 1, (
-            f"expected 1 Pt ATOM line, got {len(pt_lines)}"
-        )
+        pt_lines = [
+            l
+            for l in text.splitlines()
+            if l.startswith("ATOM") and _atom_name(l) == "Pt"
+        ]
+        assert len(pt_lines) == 1, f"expected 1 Pt ATOM line, got {len(pt_lines)}"
         pt_line = pt_lines[0]
-        assert pt_line[77:79].strip() == GENERIC_ATYPE, (
-            f"Pt atype is {pt_line[77:79]!r} (expected {GENERIC_ATYPE!r})"
-        )
+        assert (
+            pt_line[77:79].strip() == GENERIC_ATYPE
+        ), f"Pt atype is {pt_line[77:79]!r} (expected {GENERIC_ATYPE!r})"
 
     def test_cisplatin_charges_are_zero_or_finite(self, tmp_path):
         """The charge column must be parseable as a finite float.
@@ -207,16 +208,17 @@ class TestAllPtGroupMetals:
         # whitespace-separated token.
         elem_short = elem[:2]  # "Pt", "Ru", … — all 2 chars here
         metal_lines = [
-            l for l in text.splitlines()
+            l
+            for l in text.splitlines()
             if l.startswith("ATOM") and _atom_name(l) == elem_short
         ]
-        assert len(metal_lines) >= 1, (
-            f"no ATOM line found for {elem} in PDBQT: {text[:200]!r}"
-        )
+        assert (
+            len(metal_lines) >= 1
+        ), f"no ATOM line found for {elem} in PDBQT: {text[:200]!r}"
         for ml in metal_lines:
-            assert ml[77:79].strip() == GENERIC_ATYPE, (
-                f"{elem} atype is {ml[77:79]!r} (expected {GENERIC_ATYPE!r})"
-            )
+            assert (
+                ml[77:79].strip() == GENERIC_ATYPE
+            ), f"{elem} atype is {ml[77:79]!r} (expected {GENERIC_ATYPE!r})"
 
     def test_ru_probe_raises_metal_pdbqt_unavailable(self, tmp_path):
         """Ru's PROBE_SMILES is a 5-coordinate pentaammine — RDKit's
@@ -246,11 +248,11 @@ class TestOrganicRegression:
     @pytest.mark.parametrize(
         "name,smiles",
         [
-            ("aspirin",   "CC(=O)Oc1ccccc1C(=O)O"),
-            ("phenol",    "c1ccccc1O"),
-            ("ethanol",   "CCO"),
-            ("caffeine",  "CN1C=NC2=C1C(=O)N(C(=O)N2C)C"),
-            ("benzene",   "c1ccccc1"),
+            ("aspirin", "CC(=O)Oc1ccccc1C(=O)O"),
+            ("phenol", "c1ccccc1O"),
+            ("ethanol", "CCO"),
+            ("caffeine", "CN1C=NC2=C1C(=O)N(C(=O)N2C)C"),
+            ("benzene", "c1ccccc1"),
             ("imidazole", "c1cnc[nH]1"),
         ],
     )
@@ -281,6 +283,7 @@ class TestOrganicRegression:
         from molmetal.molmetal_lam.sbdd_env.metal_pdbqt_overrides import (
             MetalPDBQTUnavailable,
         )
+
         try:
             _ligand_to_pdbqt("not_a_real_smiles_$$$", tmp_path, "bad")
         except MetalPDBQTUnavailable:
@@ -292,7 +295,7 @@ class TestOrganicRegression:
             pass  # expected — RDKit fails to parse
         except Exception:
             pass  # any other exception is also fine — the point is
-                  # that the typed metal exception is reserved.
+            # that the typed metal exception is reserved.
 
     def test_carbon_atype_is_not_generic_M(self, tmp_path):
         """The patch must NOT type organic atoms as 'M' — only the
@@ -302,9 +305,9 @@ class TestOrganicRegression:
         atypes = _atom_types(text)
         # benzene should type C and H atoms only.
         assert atypes, "no atypes parsed from benzene PDBQT"
-        assert GENERIC_ATYPE not in atypes, (
-            f"benzene PDBQT unexpectedly contains 'M' atype: {atypes}"
-        )
+        assert (
+            GENERIC_ATYPE not in atypes
+        ), f"benzene PDBQT unexpectedly contains 'M' atype: {atypes}"
 
 
 # ---------------------------------------------------------------------------
@@ -330,6 +333,7 @@ class TestMetalPDBQTUnavailableContract:
         from molmetal.molmetal_lam.sbdd_env.metal_pdbqt_overrides import (
             MetalPDBQTUnavailable as MPO,
         )
+
         assert MPO is MetalPDBQTUnavailable
 
 
@@ -358,8 +362,11 @@ class TestLigandToPdbqtAdapterIntegration:
         # contain the Pt atom typed as 'M'.
         text = out.read_text()
         # Atom-name is the third whitespace-separated token.
-        pt_atoms = [l for l in text.splitlines()
-                    if l.startswith("ATOM") and _atom_name(l) == "Pt"]
+        pt_atoms = [
+            l
+            for l in text.splitlines()
+            if l.startswith("ATOM") and _atom_name(l) == "Pt"
+        ]
         assert pt_atoms, "no Pt ATOM line found in cisplatin PDBQT"
         assert all(l[77:79].strip() == GENERIC_ATYPE for l in pt_atoms)
 
@@ -372,26 +379,19 @@ class TestLigandToPdbqtAdapterIntegration:
                 text = out.read_text()
                 # Atom-name is the third whitespace-separated token.
                 metal_atom_lines = [
-                    l for l in text.splitlines()
-                    if l.startswith("ATOM")
-                    and _atom_name(l) == elem[:2]
+                    l
+                    for l in text.splitlines()
+                    if l.startswith("ATOM") and _atom_name(l) == elem[:2]
                 ]
-                assert metal_atom_lines, (
-                    f"{elem}: no metal ATOM line in PDBQT"
-                )
+                assert metal_atom_lines, f"{elem}: no metal ATOM line in PDBQT"
                 assert all(
-                    l[77:79].strip() == GENERIC_ATYPE
-                    for l in metal_atom_lines
-                ), (
-                    f"{elem}: atype is not 'M' in {metal_atom_lines}"
-                )
+                    l[77:79].strip() == GENERIC_ATYPE for l in metal_atom_lines
+                ), f"{elem}: atype is not 'M' in {metal_atom_lines}"
             except MetalPDBQTUnavailable:
                 # Ru's probe is the documented impossible case —
                 # the typed exception is the expected behaviour.
                 if elem != "Ru":
-                    pytest.fail(
-                        f"unexpected MetalPDBQTUnavailable for {elem}"
-                    )
+                    pytest.fail(f"unexpected MetalPDBQTUnavailable for {elem}")
 
     def test_dock_smiles_one_shot_with_cisplatin(self, tmp_path):
         """The ``dock_smiles`` one-shot helper should NOT raise the
@@ -428,8 +428,10 @@ class TestLigandToPdbqtAdapterIntegration:
         # conversion contract.
         try:
             dock_smiles(
-                "[Pt](N)(N)(Cl)Cl", pocket,
-                n_poses=1, exhaustiveness=1,
+                "[Pt](N)(N)(Cl)Cl",
+                pocket,
+                n_poses=1,
+                exhaustiveness=1,
             )
         except MetalPDBQTUnavailable:
             pytest.fail(

@@ -87,6 +87,7 @@ Honest framing
   contiguous subsets; the ``--seed`` controls the RNG inside each
   module, not the fold assignment.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -133,6 +134,7 @@ def _build_module_registry() -> Dict[str, Callable[[List[str], int], List[float]
     from molmetal.scripts.benchmark_r18_platinai import (  # noqa: WPS433
         _build_module_registry as _plat_registry,
     )
+
     return _plat_registry()
 
 
@@ -215,8 +217,16 @@ def _make_synthetic_smiles(n: int, seed: int) -> List[str]:
     a meaningful sample batch even without the PlatinAI CSV present.
     """
     kitchen = [
-        "CCO", "CCN", "CCC", "CC(=O)O", "CCN(C)C",
-        "c1ccccc1", "c1ccncc1", "CCNC(=O)C", "C1CCCCC1", "CCBr",
+        "CCO",
+        "CCN",
+        "CCC",
+        "CC(=O)O",
+        "CCN(C)C",
+        "c1ccccc1",
+        "c1ccncc1",
+        "CCNC(=O)C",
+        "C1CCCCC1",
+        "CCBr",
     ]
     return [kitchen[(i + seed) % len(kitchen)] for i in range(n)]
 
@@ -284,16 +294,19 @@ def _run_fold(
     # Seed the RNGs for deterministic forward primitives.
     try:
         import random as _random
+
         _random.seed(seed)
     except Exception:  # noqa: BLE001
         pass
     try:
         import numpy as _np
+
         _np.random.seed(seed)
     except Exception:  # noqa: BLE001
         pass
     try:
         import torch as _torch
+
         _torch.manual_seed(seed)
     except Exception:  # noqa: BLE001
         pass
@@ -488,6 +501,7 @@ def run_cv(
     # Build payload.
     try:
         import torch as _torch
+
         torch_ver = _torch.__version__
     except Exception:  # noqa: BLE001
         torch_ver = "unavailable"
@@ -575,8 +589,9 @@ def _render_text(payload: Dict[str, Any]) -> str:
 
 def _write_json(payload: Dict[str, Any], out_path: Path) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False),
-                        encoding="utf-8")
+    out_path.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -644,7 +659,8 @@ def main(argv: List[str] | None = None) -> int:
     csv_path = Path(args.csv_path)
     modules_arg = (
         [m.strip() for m in args.modules.split(",") if m.strip()]
-        if args.modules else None
+        if args.modules
+        else None
     )
 
     payload = run_cv(

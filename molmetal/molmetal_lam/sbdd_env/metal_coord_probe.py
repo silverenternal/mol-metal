@@ -127,7 +127,7 @@ CANONICAL_CN: Dict[Tuple[str, int], int] = {
     ("Pt", 4): 6,
     ("Ru", 2): 6,
     ("Ru", 3): 6,
-    ("Ru", 4): 7,    # RuO4 is tetrahedral but rare; treat as flag
+    ("Ru", 4): 7,  # RuO4 is tetrahedral but rare; treat as flag
     ("Ir", 3): 6,
     ("Ir", 4): 6,
     ("Rh", 3): 6,
@@ -142,10 +142,21 @@ CANONICAL_CN: Dict[Tuple[str, int], int] = {
 # Most-common oxidation state per element (used as fallback when the
 # SMILES bracket lacks an explicit charge).
 DEFAULT_OS: Dict[str, int] = {
-    "Pt": 2, "Pd": 2, "Au": 3, "Ag": 1,
-    "Ru": 3, "Ir": 3, "Rh": 3, "Os": 4,
-    "Re": 5, "Fe": 2, "Co": 2, "Ni": 2,
-    "Cu": 2, "Zn": 2, "Mn": 2,
+    "Pt": 2,
+    "Pd": 2,
+    "Au": 3,
+    "Ag": 1,
+    "Ru": 3,
+    "Ir": 3,
+    "Rh": 3,
+    "Os": 4,
+    "Re": 5,
+    "Fe": 2,
+    "Co": 2,
+    "Ni": 2,
+    "Cu": 2,
+    "Zn": 2,
+    "Mn": 2,
 }
 
 # Expected oxidation states per element — used to verify the parsed OS
@@ -174,7 +185,7 @@ EXPECTED_OS: Dict[str, Tuple[int, ...]] = {
 GEOMETRY_BY_CN: Dict[int, str] = {
     2: "linear",
     3: "trigonal_planar",
-    4: "square_planar",   # default for CN=4 (Pt(II)/Pd(II)/Au(III) all fit)
+    4: "square_planar",  # default for CN=4 (Pt(II)/Pd(II)/Au(III) all fit)
     5: "square_pyramidal",  # rare — flag as atypical
     6: "octahedral",
     7: "pentagonal_bipyramidal",
@@ -184,18 +195,44 @@ GEOMETRY_BY_CN: Dict[int, str] = {
 # A small list of elements we recognise as "metal centres" worth
 # probing.  Pure organic-only molecules return ``None`` from
 # :func:`probe_coordination`.
-RECOGNISED_METALS: frozenset = frozenset({
-    "Pt", "Pd", "Au", "Ag",
-    "Ru", "Ir", "Rh", "Os", "Re",
-    "Fe", "Co", "Ni", "Cu", "Zn", "Mn",
-})
+RECOGNISED_METALS: frozenset = frozenset(
+    {
+        "Pt",
+        "Pd",
+        "Au",
+        "Ag",
+        "Ru",
+        "Ir",
+        "Rh",
+        "Os",
+        "Re",
+        "Fe",
+        "Co",
+        "Ni",
+        "Cu",
+        "Zn",
+        "Mn",
+    }
+)
 
 # Atomic-number lookup — needed because RDKit exposes atomic numbers,
 # not symbols, for each atom in the molecule.
 _ATOMIC_NUM_TO_SYMBOL: Dict[int, str] = {
-    25: "Mn", 26: "Fe", 27: "Co", 28: "Ni", 29: "Cu", 30: "Zn",
-    44: "Ru", 45: "Rh", 46: "Pd", 47: "Ag", 78: "Pt", 77: "Ir",
-    76: "Os", 75: "Re", 79: "Au",
+    25: "Mn",
+    26: "Fe",
+    27: "Co",
+    28: "Ni",
+    29: "Cu",
+    30: "Zn",
+    44: "Ru",
+    45: "Rh",
+    46: "Pd",
+    47: "Ag",
+    78: "Pt",
+    77: "Ir",
+    76: "Os",
+    75: "Re",
+    79: "Au",
 }
 
 
@@ -338,7 +375,9 @@ def _probe_with_rdkit(smiles: str) -> Optional[MetalCoordinationProbe]:
         geometry=geom,
         is_compliant=is_compliant,
         diagnostics={
-            "os_source": "bracket" if _atom_has_charge(mol.GetAtomWithIdx(idx)) else "default",
+            "os_source": "bracket"
+            if _atom_has_charge(mol.GetAtomWithIdx(idx))
+            else "default",
             "n_metal_centres": len(metal_centres),
             "expected_oxidation_states": list(expected_os_set),
             "canonical_cn": expected_cn if expected_cn is not None else -1,

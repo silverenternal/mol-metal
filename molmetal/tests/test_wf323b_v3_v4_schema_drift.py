@@ -82,9 +82,9 @@ class TestV3CsvLoading:
     def test_v3_loader_returns_canonical_4_columns(self):
         """v3 must produce exactly the 4-column canonical DataFrame."""
         df = load_metal_cytotox(V3_CSV)
-        assert list(df.columns) == CANONICAL_COLUMNS, (
-            f"v3 should produce canonical 4 columns, got {list(df.columns)}"
-        )
+        assert (
+            list(df.columns) == CANONICAL_COLUMNS
+        ), f"v3 should produce canonical 4 columns, got {list(df.columns)}"
         assert len(df) > 25_000, f"v3 row count unexpectedly small: {len(df)}"
 
     @pytest.mark.skipif(not _has_all(V3_CSV), reason="v3 CSV not on disk")
@@ -92,9 +92,9 @@ class TestV3CsvLoading:
         """v3 must resolve all 5 expected metals."""
         df = load_metal_cytotox(V3_CSV)
         actual = set(df["metal"].unique())
-        assert actual == EXPECTED_METALS, (
-            f"v3 metals mismatch: expected {EXPECTED_METALS}, got {actual}"
-        )
+        assert (
+            actual == EXPECTED_METALS
+        ), f"v3 metals mismatch: expected {EXPECTED_METALS}, got {actual}"
 
     @pytest.mark.skipif(not _has_all(V3_CSV), reason="v3 CSV not on disk")
     def test_v3_loader_no_nan_pic50(self):
@@ -104,9 +104,9 @@ class TestV3CsvLoading:
             f"v3 pIC50 should be fully populated, "
             f"found {df['pIC50'].isna().sum()} NaN"
         )
-        assert df["pIC50"].dtype.kind == "f", (
-            f"v3 pIC50 dtype should be float, got {df['pIC50'].dtype}"
-        )
+        assert (
+            df["pIC50"].dtype.kind == "f"
+        ), f"v3 pIC50 dtype should be float, got {df['pIC50'].dtype}"
 
 
 # ---------------------------------------------------------------------------
@@ -128,9 +128,9 @@ class TestV4CsvLoading:
         already-present `smiles` column.  This test pins the fix.
         """
         df = load_metal_cytotox(V4_CSV)
-        assert list(df.columns) == CANONICAL_COLUMNS, (
-            f"v4 should produce canonical 4 columns, got {list(df.columns)}"
-        )
+        assert (
+            list(df.columns) == CANONICAL_COLUMNS
+        ), f"v4 should produce canonical 4 columns, got {list(df.columns)}"
         assert len(df) > 25_000, f"v4 row count unexpectedly small: {len(df)}"
 
     @pytest.mark.skipif(not _has_all(V4_CSV), reason="v4 CSV not on disk")
@@ -138,9 +138,9 @@ class TestV4CsvLoading:
         """v4 must resolve all 5 expected metals."""
         df = load_metal_cytotox(V4_CSV)
         actual = set(df["metal"].unique())
-        assert actual == EXPECTED_METALS, (
-            f"v4 metals mismatch: expected {EXPECTED_METALS}, got {actual}"
-        )
+        assert (
+            actual == EXPECTED_METALS
+        ), f"v4 metals mismatch: expected {EXPECTED_METALS}, got {actual}"
 
     @pytest.mark.skipif(not _has_all(V4_CSV), reason="v4 CSV not on disk")
     def test_v3_and_v4_outputs_match(self):
@@ -176,9 +176,9 @@ class TestSynonymMap:
         is itself an alias (chemistry convention uses lowercase pic50
         for the multi-task CSV)."""
         for canonical in ("smiles", "metal", "pIC50", "active"):
-            assert canonical in _COLUMN_SYNONYMS, (
-                f"missing synonym entry for canonical column {canonical!r}"
-            )
+            assert (
+                canonical in _COLUMN_SYNONYMS
+            ), f"missing synonym entry for canonical column {canonical!r}"
             candidates: List[str] = list(_COLUMN_SYNONYMS[canonical])
             # Every synonym map must contain the lowercase form so v4
             # wins (avoiding duplicate-column collision).
@@ -219,12 +219,12 @@ class TestSynonymMap:
         before_cols = list(v4_like.columns)
         out = _rename_v3_to_canonical(v4_like)
         # All columns should be untouched — no rename, no duplicates.
-        assert list(out.columns) == before_cols, (
-            f"v4-like rename must be a no-op, got {list(out.columns)}"
-        )
-        assert not out.columns.duplicated().any(), (
-            "v4 rename must NOT introduce duplicate columns"
-        )
+        assert (
+            list(out.columns) == before_cols
+        ), f"v4-like rename must be a no-op, got {list(out.columns)}"
+        assert (
+            not out.columns.duplicated().any()
+        ), "v4 rename must NOT introduce duplicate columns"
 
         # Also exercise _has_column on the v4-like frame.
         assert _has_column(v4_like, "smiles") == "smiles"

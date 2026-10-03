@@ -74,6 +74,7 @@ Constraints
   :class:`AdapterUnavailable` (e.g. no Vina-GPU binary on the host)
   the script records ``status="AdapterUnavailable"`` and continues.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -138,6 +139,7 @@ def _ensure_torch():
     if torch is None:
         import torch as _torch
         import numpy as _numpy
+
         torch = _torch
         numpy = _numpy
     return torch, numpy
@@ -174,10 +176,10 @@ class VRAMTracker:
         torch_, _ = _ensure_torch()
         if torch_.cuda.is_available():
             self.peak_mb = float(
-                torch_.cuda.max_memory_allocated(self.device_index) / (1024 ** 2)
+                torch_.cuda.max_memory_allocated(self.device_index) / (1024**2)
             )
             self.peak_reserved_mb = float(
-                torch_.cuda.max_memory_reserved(self.device_index) / (1024 ** 2)
+                torch_.cuda.max_memory_reserved(self.device_index) / (1024**2)
             )
         else:
             self.peak_mb = 0.0
@@ -255,6 +257,7 @@ def _make_vina_gpu_call():
 def _make_vina_cpu_call():
     """CPU-equivalent ``vina_score`` from score_any."""
     from molmetal.scoring.score_any import score_any
+
     AdapterUnavailable = _adapter_unavailable_class()
 
     def _call(smiles: Sequence[str], ctx: Dict[str, Any]) -> List[float]:
@@ -271,8 +274,15 @@ def _make_vina_cpu_call():
                 "domain object — the bench records AdapterUnavailable "
                 "honestly rather than fabricating one."
             )
-        return list(score_any("vina_score", molecules=list(smiles), pocket=pocket,
-                              n_poses=2, exhaustiveness=4))
+        return list(
+            score_any(
+                "vina_score",
+                molecules=list(smiles),
+                pocket=pocket,
+                n_poses=2,
+                exhaustiveness=4,
+            )
+        )
 
     return _call
 
@@ -281,8 +291,13 @@ def _make_diffdock_gpu_call():
     from molmetal.scoring.gpu_wrappers import diffdock_pose_batch
 
     def _call(smiles: Sequence[str], ctx: Dict[str, Any]) -> List[float]:
-        return diffdock_pose_batch(list(smiles), ctx["pocket_pdb"], exhaustiveness=4,
-                                   batch_size=8, timeout_sec=60.0)
+        return diffdock_pose_batch(
+            list(smiles),
+            ctx["pocket_pdb"],
+            exhaustiveness=4,
+            batch_size=8,
+            timeout_sec=60.0,
+        )
 
     return _call
 
@@ -291,8 +306,9 @@ def _make_diffdock_cpu_call():
     from molmetal.scoring.score_any import score_any
 
     def _call(smiles: Sequence[str], ctx: Dict[str, Any]) -> List[float]:
-        return list(score_any("diffdock_pose", molecules=list(smiles),
-                              pocket=ctx["pocket_pdb"]))
+        return list(
+            score_any("diffdock_pose", molecules=list(smiles), pocket=ctx["pocket_pdb"])
+        )
 
     return _call
 
@@ -301,7 +317,9 @@ def _make_boltz_gpu_call():
     from molmetal.scoring.gpu_wrappers import boltz_affinity_batch
 
     def _call(smiles: Sequence[str], ctx: Dict[str, Any]) -> List[float]:
-        return boltz_affinity_batch(list(smiles), batch_size=min(ctx.get("batch_size", 256), len(smiles)))
+        return boltz_affinity_batch(
+            list(smiles), batch_size=min(ctx.get("batch_size", 256), len(smiles))
+        )
 
     return _call
 
@@ -346,8 +364,10 @@ def _make_pb_cpu_call():
 
 def _make_hilbert_gpu_call():
     from molmetal.scoring.gpu_wrappers.hilbert_astsr_cuda import (
-        hilbert_astsr_optimize_batch, HilbertCUDAParams,
+        hilbert_astsr_optimize_batch,
+        HilbertCUDAParams,
     )
+
     _, np_ = _ensure_torch() if torch is not None else (None, None)
     import numpy as _np  # local import to keep top-level clean
 
@@ -358,7 +378,9 @@ def _make_hilbert_gpu_call():
         # default (64).
         pop_dim = int(ctx.get("population_dim", 64))
         n_per = int(ctx.get("n_per", 50))
-        params = HilbertCUDAParams(population_dim=pop_dim, n_iters=int(ctx.get("n_iters", 50)))
+        params = HilbertCUDAParams(
+            population_dim=pop_dim, n_iters=int(ctx.get("n_iters", 50))
+        )
         feats = []
         tgts = []
         for s in smiles:
@@ -374,14 +396,17 @@ def _make_hilbert_gpu_call():
 def _make_hilbert_cpu_call():
     """CPU equivalent: run the same math on CPU (eager fallback)."""
     from molmetal.scoring.gpu_wrappers.hilbert_astsr_cuda import (
-        hilbert_astsr_optimize_batch, HilbertCUDAParams,
+        hilbert_astsr_optimize_batch,
+        HilbertCUDAParams,
     )
     import numpy as _np
 
     def _call(smiles: Sequence[str], ctx: Dict[str, Any]) -> Any:
         pop_dim = int(ctx.get("population_dim", 64))
         n_per = int(ctx.get("n_per", 50))
-        params = HilbertCUDAParams(population_dim=pop_dim, n_iters=int(ctx.get("n_iters", 50)))
+        params = HilbertCUDAParams(
+            population_dim=pop_dim, n_iters=int(ctx.get("n_iters", 50))
+        )
         feats = []
         tgts = []
         for s in smiles:
@@ -486,7 +511,9 @@ def _resolve_pocket_context(repo_root: Path) -> Dict[str, Any]:
     # 2. Use the matching PDB if present (resolved stage dirs ship
     # selected_conformer.pdb).
     for conformer_dir in sorted(
-        (repo_root / "molmetal" / "reports" / "crossdocked_first10_resolved").glob("test_*")
+        (repo_root / "molmetal" / "reports" / "crossdocked_first10_resolved").glob(
+            "test_*"
+        )
     ):
         conformer = conformer_dir / "selected_conformer.pdb"
         if conformer.is_file():
@@ -678,7 +705,9 @@ def _write_per_dataset_metrics(
     return target
 
 
-def _write_vram_summary(out_dir: Path, spec: WrapperSpec, all_cells: List[CellResult]) -> Path:
+def _write_vram_summary(
+    out_dir: Path, spec: WrapperSpec, all_cells: List[CellResult]
+) -> Path:
     target_dir = out_dir / spec.name
     target_dir.mkdir(parents=True, exist_ok=True)
     target = target_dir / "vram_summary.json"
@@ -691,19 +720,27 @@ def _write_vram_summary(out_dir: Path, spec: WrapperSpec, all_cells: List[CellRe
     payload = {
         "wrapper": spec.name,
         "metric": spec.metric,
-        "vram_ceiling_mb": float(max(
-            (c.peak_vram_mb for c in all_cells if c.peak_vram_mb is not None),
-            default=0.0,
-        )),
+        "vram_ceiling_mb": float(
+            max(
+                (c.peak_vram_mb for c in all_cells if c.peak_vram_mb is not None),
+                default=0.0,
+            )
+        ),
         "per_dataset": {
             ds: {
-                "peak_mb": float(max(
-                    (c.peak_vram_mb for c in cs if c.peak_vram_mb is not None),
-                    default=0.0,
-                )),
-                "mean_mb": float(statistics.fmean(
-                    [c.peak_vram_mb for c in cs if c.peak_vram_mb is not None]
-                )) if any(c.peak_vram_mb is not None for c in cs) else 0.0,
+                "peak_mb": float(
+                    max(
+                        (c.peak_vram_mb for c in cs if c.peak_vram_mb is not None),
+                        default=0.0,
+                    )
+                ),
+                "mean_mb": float(
+                    statistics.fmean(
+                        [c.peak_vram_mb for c in cs if c.peak_vram_mb is not None]
+                    )
+                )
+                if any(c.peak_vram_mb is not None for c in cs)
+                else 0.0,
                 "n_cells": len(cs),
             }
             for ds, cs in by_dataset.items()
@@ -734,7 +771,13 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     )
     p.add_argument(
         "--wrapper",
-        choices=("vina_gpu", "diffdock_batch", "boltz_batch", "pb_batch", "hilbert_astsr_cuda"),
+        choices=(
+            "vina_gpu",
+            "diffdock_batch",
+            "boltz_batch",
+            "pb_batch",
+            "hilbert_astsr_cuda",
+        ),
         required=True,
         help="GPU wrapper to benchmark.",
     )
@@ -826,8 +869,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         "max_rows": args.max_rows,
     }
 
-    log.info("Wf-50 GPU bench — wrapper=%s device=%s CUDA_VISIBLE_DEVICES=%s",
-             spec.name, actual_device_name, os.environ.get("CUDA_VISIBLE_DEVICES"))
+    log.info(
+        "Wf-50 GPU bench — wrapper=%s device=%s CUDA_VISIBLE_DEVICES=%s",
+        spec.name,
+        actual_device_name,
+        os.environ.get("CUDA_VISIBLE_DEVICES"),
+    )
 
     # --- Pocket context ----------------------------------------------------
     ctx = _resolve_pocket_context(repo_root)
@@ -843,15 +890,22 @@ def main(argv: Optional[List[str]] = None) -> int:
         smiles = smiles[: args.max_rows]
         log.info(
             "Dataset %s: %d SMILES (capped at max_rows=%d).",
-            dataset_name, len(smiles), args.max_rows,
+            dataset_name,
+            len(smiles),
+            args.max_rows,
         )
         dataset_cells: List[CellResult] = []
         for batch_size in args.batch_sizes:
             log.info(
-                "  [%s] batch=%d ...", dataset_name, batch_size,
+                "  [%s] batch=%d ...",
+                dataset_name,
+                batch_size,
             )
             cell = _run_one_cell(
-                spec, dataset_name, smiles, ctx,
+                spec,
+                dataset_name,
+                smiles,
+                ctx,
                 batch_size=batch_size,
                 device_index=args.device_index,
             )
@@ -859,8 +913,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             all_cells.append(cell)
             log.info(
                 "    cpu=%s gpu=%s speedup=%s vram=%s",
-                cell.wall_cpu_s_per_batch, cell.wall_gpu_s_per_batch,
-                cell.speedup_x, cell.peak_vram_mb,
+                cell.wall_cpu_s_per_batch,
+                cell.wall_gpu_s_per_batch,
+                cell.speedup_x,
+                cell.peak_vram_mb,
             )
             gc.collect()
             if torch_.cuda.is_available():
@@ -910,16 +966,18 @@ def _refresh_cross_wrapper_report(out_dir: Path) -> None:
         for cell in r.get("cells", []):
             if cell.get("speedup_x") is None:
                 continue
-            rows.append({
-                "wrapper": cell["wrapper"],
-                "dataset": cell["dataset"],
-                "batch_size": cell["batch_size"],
-                "n_smiles": cell["n_smiles"],
-                "wall_cpu_s": cell.get("wall_cpu_s_per_batch"),
-                "wall_gpu_s": cell.get("wall_gpu_s_per_batch"),
-                "speedup_x": cell["speedup_x"],
-                "peak_vram_mb": cell.get("peak_vram_mb"),
-            })
+            rows.append(
+                {
+                    "wrapper": cell["wrapper"],
+                    "dataset": cell["dataset"],
+                    "batch_size": cell["batch_size"],
+                    "n_smiles": cell["n_smiles"],
+                    "wall_cpu_s": cell.get("wall_cpu_s_per_batch"),
+                    "wall_gpu_s": cell.get("wall_gpu_s_per_batch"),
+                    "speedup_x": cell["speedup_x"],
+                    "peak_vram_mb": cell.get("peak_vram_mb"),
+                }
+            )
     # Top 10 by speedup
     rows.sort(key=lambda r: r["speedup_x"] or 0.0, reverse=True)
     top = rows[:10]
@@ -936,28 +994,46 @@ def _refresh_cross_wrapper_report(out_dir: Path) -> None:
         "",
     ]
     if not top:
-        lines.append("> No MEASURED speed-up rows were recorded. The most likely "
-                     "cause is that the GPU backends (Vina-GPU binary, DiffDock "
-                     "repo, D-MPNN checkpoint) are not vendored on this host; "
-                     "the per-cell JSONs record `AdapterUnavailable` honestly.")
+        lines.append(
+            "> No MEASURED speed-up rows were recorded. The most likely "
+            "cause is that the GPU backends (Vina-GPU binary, DiffDock "
+            "repo, D-MPNN checkpoint) are not vendored on this host; "
+            "the per-cell JSONs record `AdapterUnavailable` honestly."
+        )
         md.write_text("\n".join(lines) + "\n")
         return
 
-    lines.append(_format_md_table(
-        ["#", "Wrapper", "Dataset", "Batch", "N SMILES",
-         "CPU wall (s)", "GPU wall (s)", "Speedup ×", "Peak VRAM (MB)"],
-        [
+    lines.append(
+        _format_md_table(
             [
-                i + 1,
-                r["wrapper"], r["dataset"], r["batch_size"], r["n_smiles"],
-                f"{r['wall_cpu_s']:.3f}" if r["wall_cpu_s"] is not None else "—",
-                f"{r['wall_gpu_s']:.3f}" if r["wall_gpu_s"] is not None else "—",
-                f"{r['speedup_x']:.2f}",
-                f"{r['peak_vram_mb']:.1f}" if r["peak_vram_mb"] is not None else "—",
-            ]
-            for i, r in enumerate(top)
-        ],
-    ))
+                "#",
+                "Wrapper",
+                "Dataset",
+                "Batch",
+                "N SMILES",
+                "CPU wall (s)",
+                "GPU wall (s)",
+                "Speedup ×",
+                "Peak VRAM (MB)",
+            ],
+            [
+                [
+                    i + 1,
+                    r["wrapper"],
+                    r["dataset"],
+                    r["batch_size"],
+                    r["n_smiles"],
+                    f"{r['wall_cpu_s']:.3f}" if r["wall_cpu_s"] is not None else "—",
+                    f"{r['wall_gpu_s']:.3f}" if r["wall_gpu_s"] is not None else "—",
+                    f"{r['speedup_x']:.2f}",
+                    f"{r['peak_vram_mb']:.1f}"
+                    if r["peak_vram_mb"] is not None
+                    else "—",
+                ]
+                for i, r in enumerate(top)
+            ],
+        )
+    )
     lines.append("")
     lines.append("## Per-wrapper best speedup")
     lines.append("")
@@ -967,16 +1043,27 @@ def _refresh_cross_wrapper_report(out_dir: Path) -> None:
     summary_rows = []
     for w, rs in sorted(by_wrapper.items()):
         best = max(rs, key=lambda r: r["speedup_x"])
-        summary_rows.append([
-            w, f"{best['speedup_x']:.2f}",
-            best["dataset"], best["batch_size"],
-            f"{best['peak_vram_mb']:.1f}" if best["peak_vram_mb"] else "—",
-        ])
-    lines.append(_format_md_table(
-        ["Wrapper", "Best speedup ×", "Best @ dataset", "Best @ batch",
-         "Peak VRAM (MB)"],
-        summary_rows,
-    ))
+        summary_rows.append(
+            [
+                w,
+                f"{best['speedup_x']:.2f}",
+                best["dataset"],
+                best["batch_size"],
+                f"{best['peak_vram_mb']:.1f}" if best["peak_vram_mb"] else "—",
+            ]
+        )
+    lines.append(
+        _format_md_table(
+            [
+                "Wrapper",
+                "Best speedup ×",
+                "Best @ dataset",
+                "Best @ batch",
+                "Peak VRAM (MB)",
+            ],
+            summary_rows,
+        )
+    )
     lines.append("")
     # Wrap status block: which wrappers measured vs AdapterUnavailable.
     lines.append("## Wrapper status verdict")
@@ -997,35 +1084,49 @@ def _refresh_cross_wrapper_report(out_dir: Path) -> None:
     for w in sorted(by_wrapper_aggregate.keys()):
         agg = by_wrapper_aggregate[w]
         gpu_status = "MEASURED" if agg["gpu_measured"] > 0 else "AdapterUnavailable"
-        verdict_rows.append([
-            w,
-            str(agg["cells"]),
-            str(agg["measured"]),
-            gpu_status,
-        ])
-    lines.append(_format_md_table(
-        ["Wrapper", "Cells run", "Cells measured", "GPU path verdict"],
-        verdict_rows,
-    ))
+        verdict_rows.append(
+            [
+                w,
+                str(agg["cells"]),
+                str(agg["measured"]),
+                gpu_status,
+            ]
+        )
+    lines.append(
+        _format_md_table(
+            ["Wrapper", "Cells run", "Cells measured", "GPU path verdict"],
+            verdict_rows,
+        )
+    )
     lines.append("")
     lines.append("## Notes")
     lines.append("")
-    lines.append("- All wrappers were invoked through the public "
-                 "`molmetal.scoring.gpu_wrappers` API (Wf-50 Phase 2 ship).")
-    lines.append("- `vina_gpu`, `diffdock_batch`, and `boltz_batch` require "
-                 "external binaries / checkpoints that are not vendored on "
-                 "this host — they raise `AdapterUnavailable` and the bench "
-                 "records the failure honestly without falling back to a mock.")
-    lines.append("- `pb_batch` is RDKit-bound (no GPU compute); its speedup "
-                 "comes from the thread-pool dispatch overlap. Speedup "
-                 "degrades as batch size grows because RDKit's GIL release "
-                 "is less effective at large sizes.")
-    lines.append("- `hilbert_astsr_cuda` is GPU-portable math; its best "
-                 "speedup is at batch=1 because JIT compile amortises across "
-                 "calls and per-step GPU launch overhead dominates small "
-                 "batches.")
-    lines.append("- VRAM peak across all 5 wrappers stayed ≤ 1 MB on this "
-                 "host — comfortably within the 16 GB RTX 5090 budget.")
+    lines.append(
+        "- All wrappers were invoked through the public "
+        "`molmetal.scoring.gpu_wrappers` API (Wf-50 Phase 2 ship)."
+    )
+    lines.append(
+        "- `vina_gpu`, `diffdock_batch`, and `boltz_batch` require "
+        "external binaries / checkpoints that are not vendored on "
+        "this host — they raise `AdapterUnavailable` and the bench "
+        "records the failure honestly without falling back to a mock."
+    )
+    lines.append(
+        "- `pb_batch` is RDKit-bound (no GPU compute); its speedup "
+        "comes from the thread-pool dispatch overlap. Speedup "
+        "degrades as batch size grows because RDKit's GIL release "
+        "is less effective at large sizes."
+    )
+    lines.append(
+        "- `hilbert_astsr_cuda` is GPU-portable math; its best "
+        "speedup is at batch=1 because JIT compile amortises across "
+        "calls and per-step GPU launch overhead dominates small "
+        "batches."
+    )
+    lines.append(
+        "- VRAM peak across all 5 wrappers stayed ≤ 1 MB on this "
+        "host — comfortably within the 16 GB RTX 5090 budget."
+    )
     lines.append("")
 
     md.write_text("\n".join(lines) + "\n")
@@ -1039,15 +1140,18 @@ def _refresh_vram_profile(out_dir: Path) -> None:
     by_wrapper: Dict[str, Dict[str, Any]] = {}
     for r in records:
         wrapper = r["wrapper"]
-        per_ds = by_wrapper.setdefault(wrapper, {
-            "wrapper": wrapper,
-            "metric": r.get("metric", ""),
-            "peak_mb": 0.0,
-            "mean_mb": 0.0,
-            "n_cells": 0,
-            "datasets": {},
-            "batch_sizes": set(),
-        })
+        per_ds = by_wrapper.setdefault(
+            wrapper,
+            {
+                "wrapper": wrapper,
+                "metric": r.get("metric", ""),
+                "peak_mb": 0.0,
+                "mean_mb": 0.0,
+                "n_cells": 0,
+                "datasets": {},
+                "batch_sizes": set(),
+            },
+        )
         for cell in r.get("cells", []):
             per_ds["n_cells"] += 1
             per_ds["batch_sizes"].add(cell["batch_size"])
@@ -1080,18 +1184,29 @@ def _refresh_vram_profile(out_dir: Path) -> None:
 
     rows = []
     for w, data in sorted(by_wrapper.items()):
-        rows.append([
-            w,
-            data["metric"],
-            f"{data['peak_mb']:.1f}" if data["peak_mb"] else "n/a",
-            ", ".join(f"{k} ({v['peak_mb']:.1f} MB)" for k, v in data["datasets"].items()),
-            str(sorted(data["batch_sizes"])),
-        ])
-    lines.append(_format_md_table(
-        ["Wrapper", "Metric", "Peak VRAM (MB)", "Per-dataset peak (MB)",
-         "Batch sizes covered"],
-        rows,
-    ))
+        rows.append(
+            [
+                w,
+                data["metric"],
+                f"{data['peak_mb']:.1f}" if data["peak_mb"] else "n/a",
+                ", ".join(
+                    f"{k} ({v['peak_mb']:.1f} MB)" for k, v in data["datasets"].items()
+                ),
+                str(sorted(data["batch_sizes"])),
+            ]
+        )
+    lines.append(
+        _format_md_table(
+            [
+                "Wrapper",
+                "Metric",
+                "Peak VRAM (MB)",
+                "Per-dataset peak (MB)",
+                "Batch sizes covered",
+            ],
+            rows,
+        )
+    )
     lines.append("")
     md.write_text("\n".join(lines) + "\n")
 

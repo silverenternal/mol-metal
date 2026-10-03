@@ -31,6 +31,7 @@ Run with::
     uv run pytest -q --ignore=molmetal/references \\
         molmetal/molmetal_lam/tests/test_mcts_vloss_tt.py --tb=short
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List
@@ -240,9 +241,9 @@ def test_tt_collapse_isomorphic() -> None:
     # max_size).
     for i in range(10):
         tt.insert(f"smi_{i}", _stub_node(f"smi_{i}"))
-    assert tt.lookup(canonical) is path_a, (
-        "inserting unrelated keys must not evict the canonical entry"
-    )
+    assert (
+        tt.lookup(canonical) is path_a
+    ), "inserting unrelated keys must not evict the canonical entry"
 
 
 # ---------------------------------------------------------------------------
@@ -300,18 +301,13 @@ def test_recycle_node_resets_stats() -> None:
 
     # Statistics reset.
     assert child.N == 0, f"N must be 0 after recycle, got {child.N}"
-    assert child.W == pytest.approx(0.0), (
-        f"W must be 0.0 after recycle, got {child.W}"
-    )
-    assert child.Q == pytest.approx(0.0), (
-        f"Q must be 0.0 after recycle, got {child.Q}"
-    )
-    assert child.children == [], (
-        f"children must be empty after recycle, got {child.children!r}"
-    )
+    assert child.W == pytest.approx(0.0), f"W must be 0.0 after recycle, got {child.W}"
+    assert child.Q == pytest.approx(0.0), f"Q must be 0.0 after recycle, got {child.Q}"
+    assert (
+        child.children == []
+    ), f"children must be empty after recycle, got {child.children!r}"
     assert child.virtual_loss.value == pytest.approx(0.0), (
-        f"virtual_loss must be 0.0 after recycle, got "
-        f"{child.virtual_loss.value}"
+        f"virtual_loss must be 0.0 after recycle, got " f"{child.virtual_loss.value}"
     )
 
     # Transposition-table entry was evicted so a re-lookup starts clean.
@@ -348,12 +344,15 @@ def test_parallel_collision_rate_emitted() -> None:
 
     try:
         from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
         initial = MoleculeClosedTerm.from_smiles("C", embed_3d=False)
     except Exception:
         from molmetal_lam.search_alg.proof_search import _StubState
+
         initial = _StubState("C")
 
     import random
+
     mcts = MCTSProofSearch(
         tile_library=[initial],
         rules={"stub": _StubRule()},
@@ -371,8 +370,7 @@ def test_parallel_collision_rate_emitted() -> None:
     out = mcts.search(initial_state=initial, max_depth=1)
     assert isinstance(out, list)
     assert len(mcts.history) >= 1, (
-        f"search() must emit at least one history entry, got "
-        f"{len(mcts.history)}"
+        f"search() must emit at least one history entry, got " f"{len(mcts.history)}"
     )
 
     # Every history entry must carry the key (we emit it on every iter,
@@ -385,12 +383,12 @@ def test_parallel_collision_rate_emitted() -> None:
             f"{list(entry.keys())}"
         )
         val = entry["PARALLEL_COLLISION_RATE"]
-        assert isinstance(val, float), (
-            f"PARALLEL_COLLISION_RATE must be a float, got {type(val).__name__}"
-        )
-        assert 0.0 <= val <= 1.0, (
-            f"PARALLEL_COLLISION_RATE must be in [0, 1], got {val}"
-        )
+        assert isinstance(
+            val, float
+        ), f"PARALLEL_COLLISION_RATE must be a float, got {type(val).__name__}"
+        assert (
+            0.0 <= val <= 1.0
+        ), f"PARALLEL_COLLISION_RATE must be in [0, 1], got {val}"
 
     # Spec asks specifically for the last entry to have the key —
     # verify that explicitly too.
@@ -489,17 +487,13 @@ def test_vloss_apply_called_in_simulate() -> None:
     # At least one non-root node on the path must have held the per-node
     # scalar lock (= virtual_loss.value > 0) at the moment backprop
     # started — i.e. before backprop released it.
-    assert any(
-        vl > 0.0 for _, vl in seen_locks
-    ), (
+    assert any(vl > 0.0 for _, vl in seen_locks), (
         f"_simulate must apply per-node virtual_loss before _backprop "
         f"releases it; saw locks {seen_locks!r}"
     )
     # After backprop the per-node scalars must be back at zero (i.e. the
     # apply+release pair balanced cleanly).
-    assert all(
-        n.virtual_loss.value == pytest.approx(0.0) for n in path[1:]
-    ), (
+    assert all(n.virtual_loss.value == pytest.approx(0.0) for n in path[1:]), (
         f"after _backprop the per-node scalar must be back at zero; got "
         f"{[n.virtual_loss.value for n in path[1:]]}"
     )
@@ -530,12 +524,15 @@ def test_parallel_collision_rate_populated() -> None:
 
     try:
         from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
         initial = MoleculeClosedTerm.from_smiles("C", embed_3d=False)
     except Exception:
         from molmetal_lam.search_alg.proof_search import _StubState
+
         initial = _StubState("C")
 
     import random
+
     mcts = MCTSProofSearch(
         tile_library=[initial],
         rules={"stub": _StubRule()},
@@ -556,12 +553,12 @@ def test_parallel_collision_rate_populated() -> None:
     for i, entry in enumerate(mcts.history):
         assert "PARALLEL_COLLISION_RATE" in entry
         val = entry["PARALLEL_COLLISION_RATE"]
-        assert isinstance(val, float), (
-            f"PARALLEL_COLLISION_RATE must be float (got {type(val).__name__})"
-        )
-        assert val == val, (
-            f"PARALLEL_COLLISION_RATE must be finite, got NaN at history[{i}]"
-        )
-        assert 0.0 <= val <= 1.0, (
-            f"PARALLEL_COLLISION_RATE must be in [0,1] at history[{i}], got {val}"
-        )
+        assert isinstance(
+            val, float
+        ), f"PARALLEL_COLLISION_RATE must be float (got {type(val).__name__})"
+        assert (
+            val == val
+        ), f"PARALLEL_COLLISION_RATE must be finite, got NaN at history[{i}]"
+        assert (
+            0.0 <= val <= 1.0
+        ), f"PARALLEL_COLLISION_RATE must be in [0,1] at history[{i}], got {val}"

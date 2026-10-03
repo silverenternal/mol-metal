@@ -48,7 +48,9 @@ import pytest
 # Path bootstrap (mirrors the pattern in other molmetal tests)
 # ---------------------------------------------------------------------------
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-_AUDIT_PATH = _PROJECT_ROOT / "molmetal" / "reports" / "wf326e_triton_audit" / "audit.json"
+_AUDIT_PATH = (
+    _PROJECT_ROOT / "molmetal" / "reports" / "wf326e_triton_audit" / "audit.json"
+)
 _TRITON_KERNELS_ROOT = _PROJECT_ROOT / "triton_kernels"
 
 if str(_PROJECT_ROOT) not in sys.path:
@@ -64,9 +66,9 @@ def _load_audit() -> dict:
     The audit is the source-of-truth per-party-twenty-spirit §3.5; tests
     cross-reference it instead of inlining numbers.
     """
-    assert _AUDIT_PATH.is_file(), (
-        f"Wf-326E audit missing at {_AUDIT_PATH}. Run the audit pipeline first."
-    )
+    assert (
+        _AUDIT_PATH.is_file()
+    ), f"Wf-326E audit missing at {_AUDIT_PATH}. Run the audit pipeline first."
     with _AUDIT_PATH.open() as f:
         return json.load(f)
 
@@ -105,9 +107,9 @@ class TestExistingKernelCoverage:
             f"disk under {_TRITON_KERNELS_ROOT}/: {missing}"
         )
         # Also verify the inventory count claim.
-        assert audit["triton_kernels_inventory"]["total_kernels"] == len(kernels), (
-            "Audit JSON total_kernels claim diverges from on-disk kernel list length."
-        )
+        assert audit["triton_kernels_inventory"]["total_kernels"] == len(
+            kernels
+        ), "Audit JSON total_kernels claim diverges from on-disk kernel list length."
 
     def test_02_kernel_dispatch_status_default_off_blackwell(self):
         """Verify that the Triton dispatch config is OFF by default — the
@@ -182,9 +184,7 @@ class TestExistingKernelCoverage:
         # (d) Audit JSON cross-ref: missing_kernels.shipped_since_audit
         # should list MISSING-001 as shipped.
         audit = _load_audit()
-        shipped = audit["missing_kernel_candidates"].get(
-            "shipped_since_audit", []
-        )
+        shipped = audit["missing_kernel_candidates"].get("shipped_since_audit", [])
         shipped_ids = {s["id"] for s in shipped}
         assert "MISSING-001" in shipped_ids, (
             "Audit JSON missing_kernel_candidates.shipped_since_audit "
@@ -214,20 +214,29 @@ class TestMissingKernelCandidates:
         # Cross-reference audit JSON.
         audit = _load_audit()
         miss001 = next(
-            (c for c in audit["missing_kernel_candidates"]["candidates"]
-             if c["id"] == "MISSING-001"),
+            (
+                c
+                for c in audit["missing_kernel_candidates"]["candidates"]
+                if c["id"] == "MISSING-001"
+            ),
             None,
         )
         assert miss001 is not None, "Audit JSON missing MISSING-001 entry."
-        assert "models/dmpnn.py" in miss001["wiring_site"], (
-            "MISSING-001 wiring_site should reference models/dmpnn.py."
-        )
+        assert (
+            "models/dmpnn.py" in miss001["wiring_site"]
+        ), "MISSING-001 wiring_site should reference models/dmpnn.py."
 
     def test_05_missing_fused_wasserstein_sliced_w310c_cited(self):
         """MISSING-002 candidate: verify the audit's _sliced_w2 wiring-site
         citation (molmetal_lam/reward/wasserstein_loss.py L217-272) is
         accurate — the file exists and contains the function."""
-        wl_path = _PROJECT_ROOT / "molmetal" / "molmetal_lam" / "reward" / "wasserstein_loss.py"
+        wl_path = (
+            _PROJECT_ROOT
+            / "molmetal"
+            / "molmetal_lam"
+            / "reward"
+            / "wasserstein_loss.py"
+        )
         assert wl_path.is_file(), (
             f"Wasserstein loss file missing at {wl_path} — audit "
             f"MISSING-002 wiring_site citation is stale."
@@ -240,14 +249,17 @@ class TestMissingKernelCandidates:
         # Audit JSON cross-reference.
         audit = _load_audit()
         miss002 = next(
-            (c for c in audit["missing_kernel_candidates"]["candidates"]
-             if c["id"] == "MISSING-002"),
+            (
+                c
+                for c in audit["missing_kernel_candidates"]["candidates"]
+                if c["id"] == "MISSING-002"
+            ),
             None,
         )
         assert miss002 is not None, "Audit JSON missing MISSING-002 entry."
-        assert "Wf-310C" in miss002["rationale"], (
-            "MISSING-002 rationale should reference Wf-310C TODO-179."
-        )
+        assert (
+            "Wf-310C" in miss002["rationale"]
+        ), "MISSING-002 rationale should reference Wf-310C TODO-179."
 
     def test_06_missing_fused_bond_head_aggregation_cited(self):
         """MISSING-003 candidate: verify the audit's bond-head wiring-site
@@ -265,14 +277,17 @@ class TestMissingKernelCandidates:
         # Cross-reference audit JSON: the missing candidate should reference bond head.
         audit = _load_audit()
         miss003 = next(
-            (c for c in audit["missing_kernel_candidates"]["candidates"]
-             if c["id"] == "MISSING-003"),
+            (
+                c
+                for c in audit["missing_kernel_candidates"]["candidates"]
+                if c["id"] == "MISSING-003"
+            ),
             None,
         )
         assert miss003 is not None, "Audit JSON missing MISSING-003 entry."
-        assert "bond_head" in miss003["wiring_site"].lower(), (
-            "MISSING-003 wiring_site should reference bond_head.py."
-        )
+        assert (
+            "bond_head" in miss003["wiring_site"].lower()
+        ), "MISSING-003 wiring_site should reference bond_head.py."
 
 
 # ===========================================================================
@@ -310,7 +325,9 @@ class TestProjectedSpeedup:
                 f"party-twenty-spirit §3.5."
             )
         # (c) Aggregate projected speedup is in the honest band.
-        aggregate_claim = audit["audit_summary"]["projected_speedup_with_retune_and_new_kernels"]
+        aggregate_claim = audit["audit_summary"][
+            "projected_speedup_with_retune_and_new_kernels"
+        ]
         # Extract the leading numeric (e.g. "1.5-3x" or "PROJECTED 1.5-3x").
         match = re.search(r"(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*x", aggregate_claim)
         assert match is not None, (
@@ -351,7 +368,8 @@ class TestProjectedSpeedup:
         # (c)
         recommendations = audit["follow_up_recommendations"]
         retune_items = [
-            r for r in recommendations
+            r
+            for r in recommendations
             if "retune" in r.lower() and ("sm_120" in r or "autotune" in r.lower())
         ]
         assert len(retune_items) >= 1, (

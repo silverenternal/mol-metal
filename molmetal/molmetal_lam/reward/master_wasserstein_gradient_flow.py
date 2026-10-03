@@ -245,6 +245,7 @@ class MasterWassersteinGradientFlow:
         from molmetal.molmetal_lam.reward.wasserstein_loss import (
             wasserstein_decay_check,
         )
+
         return wasserstein_decay_check(self._history, window=window, tol=tol)
 
     # -- single compute API -------------------------------------------------
@@ -320,8 +321,10 @@ class MasterWassersteinGradientFlow:
                     f"be Tensor, got {type(ref_distribution).__name__}"
                 )
             loss_tensor = self._compute_pic50(metal_logits, ref_distribution)
-            extras = {"pred_n": int(metal_logits.flatten().numel()),
-                      "ref_n": int(ref_distribution.flatten().numel())}
+            extras = {
+                "pred_n": int(metal_logits.flatten().numel()),
+                "ref_n": int(ref_distribution.flatten().numel()),
+            }
         else:  # "gradient_flow"
             if not isinstance(metal_logits, Tensor):
                 raise TypeError(
@@ -335,10 +338,13 @@ class MasterWassersteinGradientFlow:
                     f"{type(ref_distribution).__name__}"
                 )
             loss_tensor = self._compute_gradient_flow(
-                metal_logits, ref_distribution,
+                metal_logits,
+                ref_distribution,
             )
-            extras = {"pred_n": int(metal_logits.shape[0]),
-                      "ref_n": int(ref_distribution.shape[0])}
+            extras = {
+                "pred_n": int(metal_logits.shape[0]),
+                "ref_n": int(ref_distribution.shape[0]),
+            }
 
         wall = time.perf_counter() - t0
         loss_scalar = float(loss_tensor.detach().cpu().item())
@@ -372,14 +378,13 @@ class MasterWassersteinGradientFlow:
         from molmetal.molmetal_lam.reward.wasserstein_loss import (
             wasserstein_transfer_loss,
         )
+
         loss_tensor = wasserstein_transfer_loss(
             dict(per_metal),  # copy so caller cannot mutate mid-call
             n_mc=int(self.config.n_mc),
             seed=int(self.config.seed),
         )
-        per_metal_n = {
-            str(k): int(v.shape[0]) for k, v in per_metal.items()
-        }
+        per_metal_n = {str(k): int(v.shape[0]) for k, v in per_metal.items()}
         extras = {
             "n_metals": len(per_metal_n),
             "per_metal_n": per_metal_n,
@@ -395,6 +400,7 @@ class MasterWassersteinGradientFlow:
         from molmetal.molmetal_lam.reward.wasserstein_loss import (
             wasserstein_pic50_loss,
         )
+
         return wasserstein_pic50_loss(
             pred_pic50.float(),
             ref_pic50_dist.float(),
@@ -411,6 +417,7 @@ class MasterWassersteinGradientFlow:
         from molmetal.molmetal_lam.reward.wasserstein_loss import (
             wasserstein_loss,
         )
+
         return wasserstein_loss(
             pred_dist.float(),
             ref_dist.float(),

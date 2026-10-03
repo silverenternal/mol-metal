@@ -57,6 +57,7 @@ class _PtLigandRule(ReactionRule):
         try:
             state, tile = pair
             from molmetal_lam.bonds.application import FreeSiteLedger
+
             new_atoms = list(state.atoms) + list(tile.atoms)
             return [
                 MoleculeClosedTerm(
@@ -149,7 +150,12 @@ class TestNodeRoundtrip:
         node = _MCTSNode(state=_seed(), N=3, W=1.5, P=0.42, rule_name="x")
         d = node.to_dict()
         assert set(d.keys()) >= {
-            "smiles", "n_visits", "sum_value", "P", "rule_name", "children",
+            "smiles",
+            "n_visits",
+            "sum_value",
+            "P",
+            "rule_name",
+            "children",
         }
         assert d["n_visits"] == 3
         assert abs(d["sum_value"] - 1.5) < 1e-9
@@ -296,15 +302,20 @@ class TestSymbolicPriorAccumulatesAcrossIters:
             checkpoint_dir=str(tmp_path),
         )
         results = loop.run(
-            pdb_id="demo", n_iterations=3, top_k=3,
-            max_depth=2, n_simulations=4,
+            pdb_id="demo",
+            n_iterations=3,
+            top_k=3,
+            max_depth=2,
+            n_simulations=4,
         )
         assert len(results) == 3
         # 1) Dirichlet reinjection: i=0 ⇒ False; i>=1 ⇒ True.
         dirichlet_flags = [r["dirichlet_reinjected"] for r in results]
-        assert dirichlet_flags == [False, True, True], (
-            f"Dirichlet reinject should fire on iter>=1 only; got {dirichlet_flags}"
-        )
+        assert dirichlet_flags == [
+            False,
+            True,
+            True,
+        ], f"Dirichlet reinject should fire on iter>=1 only; got {dirichlet_flags}"
         # 2) n_pairs_seen_by_prior must grow (or stay non-decreasing)
         #    because the SymbolicPrior refit sees the cumulative buffer.
         pair_sizes = [r["n_pairs_seen_by_prior"] for r in results]
@@ -314,9 +325,7 @@ class TestSymbolicPriorAccumulatesAcrossIters:
         #    iterations than after iter 0 — at least one of pair_sizes
         #    [1:] must be > pair_sizes[0] OR the global buffer itself
         #    must have grown by at least 3x (3000 sims / 1000-sim batch).
-        global_pairs = len(
-            getattr(loop.mcts, "accumulated_leaf_pairs", []) or []
-        )
+        global_pairs = len(getattr(loop.mcts, "accumulated_leaf_pairs", []) or [])
         assert global_pairs > 0, "global buffer should have entries"
 
     def test_persistent_tree_no_checkpoint_dir(self) -> None:
@@ -333,8 +342,11 @@ class TestSymbolicPriorAccumulatesAcrossIters:
             checkpoint_dir=None,
         )
         results = loop.run(
-            pdb_id="demo", n_iterations=2, top_k=2,
-            max_depth=1, n_simulations=2,
+            pdb_id="demo",
+            n_iterations=2,
+            top_k=2,
+            max_depth=1,
+            n_simulations=2,
         )
         assert len(results) == 2
         # Without checkpoint_dir the Dirichlet reinject is never called.

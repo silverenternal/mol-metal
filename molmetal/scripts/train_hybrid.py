@@ -16,6 +16,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -39,7 +40,18 @@ from molmetal.models.metal_hybrid import MetalHybridConfig, MetalHybridModel
 from molmetal.utils.device import get_device
 
 # Metal name -> embedding index
-METAL_TO_IDX = {"Ru": 0, "Ir": 1, "Rh": 2, "Os": 3, "Re": 4, "Pt": 5, "Pd": 6, "Au": 7, "Ag": 8, "Cu": 9}
+METAL_TO_IDX = {
+    "Ru": 0,
+    "Ir": 1,
+    "Rh": 2,
+    "Os": 3,
+    "Re": 4,
+    "Pt": 5,
+    "Pd": 6,
+    "Au": 7,
+    "Ag": 8,
+    "Cu": 9,
+}
 
 CHECKPOINT_DIR = Path("molmetal/checkpoints")
 CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
@@ -147,6 +159,7 @@ def _uncollate(batch: dict) -> list:
 
 class _SimpleDataset(torch.utils.data.Dataset):
     """Wraps MetalCytotoxDataset for indexed access."""
+
     def __init__(self, dataset, indices):
         self.dataset = dataset
         self.indices = np.asarray(indices, dtype=np.int64)
@@ -183,7 +196,7 @@ def build_dataloader(
 
         def __iter__(self):
             for start in range(0, len(self.order), self.batch_size):
-                batch_idx = self.order[start:start+self.batch_size]
+                batch_idx = self.order[start : start + self.batch_size]
                 items = [self.ds[i] for i in batch_idx]
                 yield collate_with_3d(items, self.featurizer, self.device)
 
@@ -221,7 +234,15 @@ def train_epoch(
     n_batches = 0
 
     for batch in train_loader:
-        smiles_list, coords, metal_types, pic50_true, active_label, mask, mol_objects = batch
+        (
+            smiles_list,
+            coords,
+            metal_types,
+            pic50_true,
+            active_label,
+            mask,
+            mol_objects,
+        ) = batch
         mask = mask.to(device)
 
         optimizer.zero_grad()
@@ -259,7 +280,15 @@ def evaluate(
     n_batches = 0
 
     for batch in val_loader:
-        smiles_list, coords, metal_types, pic50_true, active_label, mask, mol_objects = batch
+        (
+            smiles_list,
+            coords,
+            metal_types,
+            pic50_true,
+            active_label,
+            mask,
+            mol_objects,
+        ) = batch
         mask = mask.to(device)
 
         out = model(smiles_list, coords, metal_types, mol_objects=mol_objects)
@@ -274,10 +303,18 @@ def evaluate(
         n_batches += 1
 
         all_pic50_pred.append(out.pic50.cpu().numpy())
-        all_pic50_true.append(pic50_true.cpu().numpy() if isinstance(pic50_true, torch.Tensor) else pic50_true)
+        all_pic50_true.append(
+            pic50_true.cpu().numpy()
+            if isinstance(pic50_true, torch.Tensor)
+            else pic50_true
+        )
         # Use logit over the "active" class (index 1) as the AUC score
         all_active_logit.append(out.active_logits[:, 1].cpu().numpy())
-        all_active_label.append(active_label.cpu().numpy() if isinstance(active_label, torch.Tensor) else active_label)
+        all_active_label.append(
+            active_label.cpu().numpy()
+            if isinstance(active_label, torch.Tensor)
+            else active_label
+        )
         all_mask.append(mask.cpu().numpy() if isinstance(mask, torch.Tensor) else mask)
 
     avg_loss = total_loss / max(n_batches, 1)
@@ -295,7 +332,7 @@ def evaluate(
     if valid.sum() > 0:
         diff = pic50_pred_all[valid] - pic50_true_all[valid]
         metrics["pic50_mae"] = float(np.mean(np.abs(diff)))
-        metrics["pic50_rmse"] = float(np.sqrt(np.mean(diff ** 2)))
+        metrics["pic50_rmse"] = float(np.sqrt(np.mean(diff**2)))
     else:
         metrics["pic50_mae"] = float("nan")
         metrics["pic50_rmse"] = float("nan")
@@ -314,7 +351,9 @@ def evaluate(
         else:
             probs = softmax(logits_for_acc, axis=-1)
             pred_label = (probs[:, 1] >= 0.5).astype(np.int32)
-        metrics["accuracy"] = float(np.mean(pred_label == active_all[valid].astype(np.int32)))
+        metrics["accuracy"] = float(
+            np.mean(pred_label == active_all[valid].astype(np.int32))
+        )
     else:
         metrics["accuracy"] = float("nan")
 
@@ -367,12 +406,15 @@ def main():
         splitter = LigandDeduplicatedSplitter(strategy="largest_first", seed=args.seed)
     elif args.split == "random":
         from molmetal.data.splits import RandomSplitter
+
         splitter = RandomSplitter(seed=args.seed)
     elif args.split == "temporal":
         from molmetal.data.splits import TemporalSplitter
+
         splitter = TemporalSplitter(seed=args.seed)
     elif args.split == "scaffold":
         from molmetal.data.splits import ScaffoldSplitter
+
         splitter = ScaffoldSplitter(seed=args.seed)
     else:
         splitter = LigandDeduplicatedSplitter(strategy="largest_first", seed=args.seed)
@@ -479,6 +521,7 @@ def main():
 
     # Persist a side-car metrics JSON next to the checkpoint
     import json
+
     metrics_path = CHECKPOINT_DIR / Path(args.checkpoint).stem / "metrics.json"
     # Save alongside the checkpoint under a sibling JSON file
     side_car = (CHECKPOINT_DIR / args.checkpoint).with_suffix(".json")
@@ -495,7 +538,9 @@ def main():
                 "n_params": n_params,
                 "wall_clock_seconds": total_dt,
                 "best_val_auc": best_val_auc,
-                "best_val_pr": val_prs[np.argmax(val_aucs)] if val_prs else float("nan"),
+                "best_val_pr": val_prs[np.argmax(val_aucs)]
+                if val_prs
+                else float("nan"),
                 "test": test_metrics,
                 "train_losses": train_losses,
                 "val_aucs": val_aucs,

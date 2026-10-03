@@ -42,6 +42,7 @@ Run with::
 
     uv run --no-sync pytest -q molmetal/tests/test_closure_dblock.py --tb=short
 """
+
 from __future__ import annotations
 
 import csv
@@ -127,13 +128,18 @@ def test_Pt_II_closure() -> None:
     from molmetal_lam.lam_chem.cisplatin_builder import build_cisplatin
     from molmetal_lam.lam_chem.closure import closure_theorem
     from molmetal_lam.lam_chem.rules import (
-        AmideCoupling, CuAAC, SPAAC, Suzuki, ThiolEne,
+        AmideCoupling,
+        CuAAC,
+        SPAAC,
+        Suzuki,
+        ThiolEne,
     )
 
     cisplatin = build_cisplatin()
     rules = [CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling]
     partners = _load_partner_terms()
     import warnings
+
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         ok = closure_theorem(
@@ -159,17 +165,23 @@ def test_Pt_IV_closure() -> None:
     """
     from molmetal_lam.lam_chem.closure import closure_theorem
     from molmetal_lam.lam_chem.rules import (
-        AmideCoupling, CuAAC, SPAAC, Suzuki, ThiolEne,
+        AmideCoupling,
+        CuAAC,
+        SPAAC,
+        Suzuki,
+        ThiolEne,
     )
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
 
     # Pt_IV: 6 ligands (NH3 + 5 Cl) → octahedral.
     pt_iv = MoleculeClosedTerm.from_smiles(
-        "[NH3][Pt]([NH3])([Cl])([Cl])([Cl])([Cl])", embed_3d=False,
+        "[NH3][Pt]([NH3])([Cl])([Cl])([Cl])([Cl])",
+        embed_3d=False,
     )
     rules = [CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling]
     partners = _load_partner_terms()
     import warnings
+
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         ok = closure_theorem(
@@ -190,17 +202,23 @@ def test_Ru_II_III_closure() -> None:
     """Ru_II (octahedral) hexaamminechloro passes the closure theorem."""
     from molmetal_lam.lam_chem.closure import closure_theorem
     from molmetal_lam.lam_chem.rules import (
-        AmideCoupling, CuAAC, SPAAC, Suzuki, ThiolEne,
+        AmideCoupling,
+        CuAAC,
+        SPAAC,
+        Suzuki,
+        ThiolEne,
     )
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
 
     # Ru_II hexaamminechloro — octahedral, 6-coordinate.
     ru_ii = MoleculeClosedTerm.from_smiles(
-        "[NH3][Ru]([NH3])([NH3])([NH3])([NH3])[Cl]", embed_3d=False,
+        "[NH3][Ru]([NH3])([NH3])([NH3])([NH3])[Cl]",
+        embed_3d=False,
     )
     rules = [CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling]
     partners = _load_partner_terms()
     import warnings
+
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         ok = closure_theorem(
@@ -226,17 +244,23 @@ def test_Rh_III_closure() -> None:
     """
     from molmetal_lam.lam_chem.closure import closure_theorem
     from molmetal_lam.lam_chem.rules import (
-        AmideCoupling, CuAAC, SPAAC, Suzuki, ThiolEne,
+        AmideCoupling,
+        CuAAC,
+        SPAAC,
+        Suzuki,
+        ThiolEne,
     )
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
 
     # Rh_III square-planar (4-coordinate).
     rh_iii = MoleculeClosedTerm.from_smiles(
-        "[NH3][Rh]([NH3])([Cl])([Cl])", embed_3d=False,
+        "[NH3][Rh]([NH3])([Cl])([Cl])",
+        embed_3d=False,
     )
     rules = [CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling]
     partners = _load_partner_terms()
     import warnings
+
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         ok = closure_theorem(
@@ -263,22 +287,29 @@ def test_Au_I_III_closure() -> None:
     """
     from molmetal_lam.lam_chem.closure import closure_theorem
     from molmetal_lam.lam_chem.rules import (
-        AmideCoupling, CuAAC, SPAAC, Suzuki, ThiolEne,
+        AmideCoupling,
+        CuAAC,
+        SPAAC,
+        Suzuki,
+        ThiolEne,
     )
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
 
     # Au_I linear: 2-coordinate.
     au_i = MoleculeClosedTerm.from_smiles(
-        "[NH3][Au][Cl]", embed_3d=False,
+        "[NH3][Au][Cl]",
+        embed_3d=False,
     )
     # Au_III square-planar: 4-coordinate.
     au_iii = MoleculeClosedTerm.from_smiles(
-        "[NH3][Au]([NH3])([Cl])([Cl])", embed_3d=False,
+        "[NH3][Au]([NH3])([Cl])([Cl])",
+        embed_3d=False,
     )
     rules = [CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling]
     partners = _load_partner_terms()
 
     import warnings
+
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         ok_i = closure_theorem(
@@ -308,17 +339,23 @@ def test_Pd_II_closure() -> None:
     """Pd_II (square-planar, 4-coordinate) complexes pass closure."""
     from molmetal_lam.lam_chem.closure import closure_theorem
     from molmetal_lam.lam_chem.rules import (
-        AmideCoupling, CuAAC, SPAAC, Suzuki, ThiolEne,
+        AmideCoupling,
+        CuAAC,
+        SPAAC,
+        Suzuki,
+        ThiolEne,
     )
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
 
     # Pd_II square-planar (4-coordinate).
     pd_ii = MoleculeClosedTerm.from_smiles(
-        "[NH3][Pd]([NH3])([Cl])([Cl])", embed_3d=False,
+        "[NH3][Pd]([NH3])([Cl])([Cl])",
+        embed_3d=False,
     )
     rules = [CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling]
     partners = _load_partner_terms()
     import warnings
+
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         ok = closure_theorem(
@@ -354,25 +391,34 @@ def test_module_imports() -> None:
 # ---------------------------------------------------------------------------
 def test_dblock_metals_30() -> None:
     """The DBLOCK_METALS list contains exactly 30 d-block metals."""
-    assert len(DBLOCK_METALS) == 30, (
-        f"30 d-block metals expected, got {len(DBLOCK_METALS)}"
-    )
+    assert (
+        len(DBLOCK_METALS) == 30
+    ), f"30 d-block metals expected, got {len(DBLOCK_METALS)}"
     # 3d / 4d / 5d+La split: 10 + 10 + 10.
     block_3d = {"Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn"}
     block_4d = {"Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd"}
     block_5d_la = {
-        "La", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg",
+        "La",
+        "Hf",
+        "Ta",
+        "W",
+        "Re",
+        "Os",
+        "Ir",
+        "Pt",
+        "Au",
+        "Hg",
     }
     actual = set(DBLOCK_METALS)
-    assert block_3d.issubset(actual), (
-        f"3d block incomplete: missing {block_3d - actual}"
-    )
-    assert block_4d.issubset(actual), (
-        f"4d block incomplete: missing {block_4d - actual}"
-    )
-    assert block_5d_la.issubset(actual), (
-        f"5d + La block incomplete: missing {block_5d_la - actual}"
-    )
+    assert block_3d.issubset(
+        actual
+    ), f"3d block incomplete: missing {block_3d - actual}"
+    assert block_4d.issubset(
+        actual
+    ), f"4d block incomplete: missing {block_4d - actual}"
+    assert block_5d_la.issubset(
+        actual
+    ), f"5d + La block incomplete: missing {block_5d_la - actual}"
 
 
 # ---------------------------------------------------------------------------
@@ -380,10 +426,9 @@ def test_dblock_metals_30() -> None:
 # ---------------------------------------------------------------------------
 def test_dblock_metals_in_tmqm() -> None:
     """All 30 d-block metals appear in the tmQM d-block subset CSV."""
-    assert DEFAULT_TMQM_CSV.is_file(), (
-        f"tmQM CSV missing at {DEFAULT_TMQM_CSV}"
-    )
+    assert DEFAULT_TMQM_CSV.is_file(), f"tmQM CSV missing at {DEFAULT_TMQM_CSV}"
     import csv as _csv
+
     seen: set = set()
     with DEFAULT_TMQM_CSV.open("r", newline="") as fh:
         reader = _csv.DictReader(fh)
@@ -391,8 +436,7 @@ def test_dblock_metals_in_tmqm() -> None:
             seen.add((row.get("metal_center", "") or "").strip())
     missing = set(DBLOCK_METALS) - seen
     assert not missing, (
-        f"tmQM CSV missing metals {missing}; "
-        f"DBLOCK_METALS must match the ship CSV"
+        f"tmQM CSV missing metals {missing}; " f"DBLOCK_METALS must match the ship CSV"
     )
 
 
@@ -465,11 +509,19 @@ def test_default_output_dir() -> None:
 # 17. Smoke run — 5 samples × 3 metals works end-to-end
 # ---------------------------------------------------------------------------
 EXPECTED_AGGREGATE_KEYS: List[str] = [
-    "n_samples", "n_closure_ok", "closure_reachability_rate",
-    "mean_beta_depth", "mean_n_products", "mean_wall_time",
-    "std_wall_time", "median_wall_time", "peak_memory_mb",
-    "total_wall_time", "n_error",
-    "n_metal_coordinated", "metal_coordination_rate",
+    "n_samples",
+    "n_closure_ok",
+    "closure_reachability_rate",
+    "mean_beta_depth",
+    "mean_n_products",
+    "mean_wall_time",
+    "std_wall_time",
+    "median_wall_time",
+    "peak_memory_mb",
+    "total_wall_time",
+    "n_error",
+    "n_metal_coordinated",
+    "metal_coordination_rate",
 ]
 
 
@@ -485,9 +537,7 @@ def test_smoke_run_3_metals(smoke_payload: Dict[str, Any]) -> None:
     assert agg["n_samples"] == 15
     # closure_reachability_rate must lie in the closed unit interval.
     rate = float(agg["closure_reachability_rate"])
-    assert 0.0 <= rate <= 1.0, (
-        f"closure_reachability_rate out of [0,1]: {rate}"
-    )
+    assert 0.0 <= rate <= 1.0, f"closure_reachability_rate out of [0,1]: {rate}"
     # No errors in the smoke fixture (RDKit can parse all 15 SMILES).
     assert agg["n_error"] == 0
 
@@ -500,9 +550,9 @@ def test_per_metal_aggregate_keys(smoke_payload: Dict[str, Any]) -> None:
     for metal, info in smoke_payload["per_metal"].items():
         agg = info["aggregate"]
         missing = [k for k in EXPECTED_AGGREGATE_KEYS if k not in agg]
-        assert not missing, (
-            f"per-metal aggregate for {metal!r} missing keys {missing!r}"
-        )
+        assert (
+            not missing
+        ), f"per-metal aggregate for {metal!r} missing keys {missing!r}"
         # metal_coordination_rate is one of the new L6 fields.
         assert "metal_coordination_rate" in agg
         assert "n_metal_coordinated" in agg
@@ -512,11 +562,20 @@ def test_per_metal_aggregate_keys(smoke_payload: Dict[str, Any]) -> None:
 # 19. per_metal.csv header is correct
 # ---------------------------------------------------------------------------
 EXPECTED_CSV_FIELDS: List[str] = [
-    "metal", "n_samples", "n_closure_ok", "closure_reachability_rate",
-    "metal_coordination_rate", "n_metal_coordinated",
-    "mean_beta_depth", "mean_n_products", "mean_wall_time",
-    "std_wall_time", "median_wall_time", "peak_memory_mb",
-    "total_wall_time", "n_error",
+    "metal",
+    "n_samples",
+    "n_closure_ok",
+    "closure_reachability_rate",
+    "metal_coordination_rate",
+    "n_metal_coordinated",
+    "mean_beta_depth",
+    "mean_n_products",
+    "mean_wall_time",
+    "std_wall_time",
+    "median_wall_time",
+    "peak_memory_mb",
+    "total_wall_time",
+    "n_error",
 ]
 
 
@@ -531,9 +590,7 @@ def test_per_metal_csv_header(smoke_paths: Dict[str, Path]) -> None:
             assert f in header, f"per_metal.csv missing column {f!r}"
         rows = list(reader)
     # 3 metals in the smoke fixture.
-    assert len(rows) == 3, (
-        f"per_metal.csv should have 3 rows, got {len(rows)}"
-    )
+    assert len(rows) == 3, f"per_metal.csv should have 3 rows, got {len(rows)}"
 
 
 # ---------------------------------------------------------------------------
@@ -555,7 +612,10 @@ def test_per_metal_bench_md_written(smoke_paths: Dict[str, Path]) -> None:
 def test_load_metal_samples_first_n() -> None:
     """_load_metal_samples returns the first n SMILES tagged with the metal."""
     smis = _load_metal_samples(
-        DEFAULT_TMQM_CSV, "Pt", 5, dataset="tmqm",
+        DEFAULT_TMQM_CSV,
+        "Pt",
+        5,
+        dataset="tmqm",
     )
     assert len(smis) == 5
     assert all(len(s) > 0 for s in smis)
@@ -592,14 +652,13 @@ def test_aggregate_per_metal_empty() -> None:
 def test_metal_z_coverage() -> None:
     """Every DBLOCK_METALS symbol has an entry in METAL_Z."""
     missing = [m for m in DBLOCK_METALS if m not in METAL_Z]
-    assert not missing, (
-        f"METAL_Z missing d-block metals {missing}"
-    )
+    assert not missing, f"METAL_Z missing d-block metals {missing}"
 
 
 def test_is_pt_coordinated_cisplatin() -> None:
     """_is_pt_coordinated returns True for cisplatin."""
     from molmetal_lam.lam_chem.cisplatin_builder import build_cisplatin
+
     c = build_cisplatin()
     assert _is_pt_coordinated(c) is True
 
@@ -607,8 +666,10 @@ def test_is_pt_coordinated_cisplatin() -> None:
 def test_is_pt_coordinated_ru_complex() -> None:
     """_is_pt_coordinated returns False for a Ru complex (no Pt atoms)."""
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
     ru = MoleculeClosedTerm.from_smiles(
-        "[NH3][Ru]([NH3])([NH3])([NH3])([NH3])[Cl]", embed_3d=False,
+        "[NH3][Ru]([NH3])([NH3])([NH3])([NH3])[Cl]",
+        embed_3d=False,
     )
     assert _is_pt_coordinated(ru) is False
 
@@ -623,7 +684,9 @@ def test_utcnow_iso_format() -> None:
 def test_benchmark_one_smoke() -> None:
     """_benchmark_one on cisplatin returns the expected per-sample record."""
     rec = _benchmark_one(
-        "[NH3][Pt]([NH3])([Cl])([Cl])", 0, "Pt",
+        "[NH3][Pt]([NH3])([Cl])([Cl])",
+        0,
+        "Pt",
         click_rules=_load_click_rules(),
         partner_terms=_load_partner_terms(),
         max_depth=1,
@@ -668,9 +731,7 @@ def test_per_block_keys_present() -> None:
 
 def test_default_csv_paths_exist() -> None:
     """The default tmQM CSV path exists on disk."""
-    assert DEFAULT_TMQM_CSV.is_file(), (
-        f"tmQM CSV missing at {DEFAULT_TMQM_CSV}"
-    )
+    assert DEFAULT_TMQM_CSV.is_file(), f"tmQM CSV missing at {DEFAULT_TMQM_CSV}"
 
 
 def test_metals_all_alias() -> None:
@@ -689,18 +750,27 @@ def test_per_metal_records_have_all_keys() -> None:
         max_products=64,
     )
     expected_keys = {
-        "idx", "metal", "smiles", "status", "closure_ok",
-        "n_visited", "n_products", "max_depth_seen",
-        "well_typed_rate", "n_pt_coordinated", "n_metal_coordinated",
-        "n_atoms_start", "parse_error", "wall_time_s", "memory_mb",
+        "idx",
+        "metal",
+        "smiles",
+        "status",
+        "closure_ok",
+        "n_visited",
+        "n_products",
+        "max_depth_seen",
+        "well_typed_rate",
+        "n_pt_coordinated",
+        "n_metal_coordinated",
+        "n_atoms_start",
+        "parse_error",
+        "wall_time_s",
+        "memory_mb",
         "depth",
     }
     for metal, info in payload["per_metal"].items():
         for rec in info["records"]:
             missing = expected_keys - set(rec.keys())
-            assert not missing, (
-                f"record in {metal!r} missing keys {missing!r}"
-            )
+            assert not missing, f"record in {metal!r} missing keys {missing!r}"
 
 
 def test_closure_ok_summary_present() -> None:
@@ -713,7 +783,11 @@ def test_closure_ok_summary_present() -> None:
     )
     agg = payload["aggregate"]
     for k in (
-        "n_samples", "n_closure_ok", "closure_reachability_rate",
-        "mean_wall_time", "peak_memory_mb", "total_wall_time",
+        "n_samples",
+        "n_closure_ok",
+        "closure_reachability_rate",
+        "mean_wall_time",
+        "peak_memory_mb",
+        "total_wall_time",
     ):
         assert k in agg, f"aggregate missing key {k!r}"

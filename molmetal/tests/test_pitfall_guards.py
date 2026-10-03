@@ -237,9 +237,9 @@ def test_p2_synflownet_per_rule_exception_handler():
         src,
         re.DOTALL,
     )
-    assert init_match is not None, (
-        "P2 guard FAIL — SynFlowNetEnvAdapter class body not found."
-    )
+    assert (
+        init_match is not None
+    ), "P2 guard FAIL — SynFlowNetEnvAdapter class body not found."
     body = init_match.group(0)
     # The guard verifies the *specific* try/except pattern around
     # ``_SFNReaction(template=...)`` rather than just counting
@@ -287,9 +287,7 @@ def test_p2_swap_smarts_idempotent_on_malformed_input():
     ``split('>>', 1)`` path.  The fix returns the malformed input
     unchanged so the caller can handle it.
     """
-    fn = _try_import(
-        "molmetal.molmetal_lam.sbdd_env.synflownet_env"
-    )
+    fn = _try_import("molmetal.molmetal_lam.sbdd_env.synflownet_env")
     if fn is None:
         pytest.skip("synflownet_env not importable in this env")
     _swap_smarts = getattr(fn, "_swap_smarts", None)
@@ -305,9 +303,9 @@ def test_p2_swap_smarts_idempotent_on_malformed_input():
     )
     # Well-formed input must swap sides.
     out2 = _swap_smarts("A.B>>C.D")
-    assert out2 == "C.D>>A.B", (
-        f"P2 guard FAIL — _swap_smarts(swapped) = {out2!r}, expected 'C.D>>A.B'"
-    )
+    assert (
+        out2 == "C.D>>A.B"
+    ), f"P2 guard FAIL — _swap_smarts(swapped) = {out2!r}, expected 'C.D>>A.B'"
 
 
 # ---------------------------------------------------------------------------
@@ -346,9 +344,9 @@ def test_p3_register_metal_ligand_exchange_rules_returns_at_least_84():
         "singleton attractor will return across pockets."
     )
     register = getattr(mod, "register_metal_ligand_exchange_rules", None)
-    assert register is not None and callable(register), (
-        "P3 guard FAIL — register_metal_ligand_exchange_rules() missing."
-    )
+    assert register is not None and callable(
+        register
+    ), "P3 guard FAIL — register_metal_ligand_exchange_rules() missing."
     # Call register_metal_ligand_exchange_rules WITHOUT mutating the
     # global rule registry (test isolation).
     rules = register(register_into_rule_registry=False)
@@ -393,7 +391,7 @@ def test_p3_metal_seed_cisplatin_is_a_valid_choice():
             "Pt(II) seed path."
         )
         start = m2.start()
-        snippet = src[start:start + 2000]
+        snippet = src[start : start + 2000]
         assert '"cisplatin"' in snippet, (
             "P3 guard FAIL -- 'cisplatin' missing from --metal-seed "
             "choices; users cannot opt into the canonical Pt(II) seed."
@@ -438,15 +436,13 @@ def test_p4_amp_dtype_float32_supported():
     # Set the env var BEFORE import so the singleton captures it.
     os.environ["MOLMETAL_CFM_AMP_DTYPE"] = "float32"
     try:
-        amp = _try_import(
-            "molmetal.adapters.flow_matching_lipman.amp"
-        )
+        amp = _try_import("molmetal.adapters.flow_matching_lipman.amp")
         if amp is None:
             pytest.skip("amp module not importable in this env")
         ctx_factory = getattr(amp, "CFMAMPContext", None)
-        assert ctx_factory is not None, (
-            "P4 guard FAIL — CFMAMPContext class missing from amp.py."
-        )
+        assert (
+            ctx_factory is not None
+        ), "P4 guard FAIL — CFMAMPContext class missing from amp.py."
         ctx = ctx_factory(enabled=True, dtype=__import__("torch").float32)
         assert ctx.dtype is __import__("torch").float32, (
             f"P4 guard FAIL — CFMAMPContext(dtype=float32).dtype = "
@@ -513,16 +509,14 @@ def test_p6_configure_reference_accepts_both_parent_and_clone_root():
         pytest.skip("_reference_loader.py not loadable in this env")
     configure = getattr(loader, "configure_reference", None)
     assert configure is not None and callable(configure), (
-        "P6 guard FAIL — configure_reference() missing from "
-        "_reference_loader."
+        "P6 guard FAIL — configure_reference() missing from " "_reference_loader."
     )
     src = inspect.getsource(configure)
     # Both conventions must be accepted: the function must check
     # ``(ref / '__init__.py').is_file() and ref.name == 'flow_matching'``
     # to detect a clone-root path.
     assert (
-        "ref.name == 'flow_matching'" in src
-        or 'ref.name == "flow_matching"' in src
+        "ref.name == 'flow_matching'" in src or 'ref.name == "flow_matching"' in src
     ), (
         "P6 guard FAIL — configure_reference does not auto-detect "
         "the clone-root convention; legacy parent-dir callers will "

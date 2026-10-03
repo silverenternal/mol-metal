@@ -60,6 +60,7 @@ CLI usage
     python -m molmetal.molmetal_lam.scripts.baselines \
         --pdb-id 1HOV --n-samples 30
 """
+
 from __future__ import annotations
 
 import argparse
@@ -80,9 +81,7 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 # The file lives at ``molmetal/molmetal_lam/scripts/baselines.py`` so the
 # project root is 4 ``..`` hops up.
 # ---------------------------------------------------------------------------
-_PKG_PARENT = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..")
-)
+_PKG_PARENT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 if _PKG_PARENT not in sys.path:
     sys.path.insert(0, _PKG_PARENT)
 
@@ -199,6 +198,7 @@ def predict_pic50(smiles: str) -> float:
 def _have_rdkit() -> bool:
     try:
         from rdkit import Chem  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -215,6 +215,7 @@ def sas_score(smiles: str) -> float:
         return 0.0
     try:
         from molmetal_lam.sbdd_env.sa_score import sa_score_ertl  # type: ignore
+
         v = sa_score_ertl(smiles)
         # NaN -> 0.0 for the legacy "_mean_metric" contract.
         return float(v) if v == v else 0.0
@@ -229,6 +230,7 @@ def sas_unit_score(smiles: str) -> float:
             sa_score_ertl,
             sa_score_to_unit,
         )
+
         return sa_score_to_unit(sa_score_ertl(smiles))
     except Exception:
         return 0.0
@@ -323,8 +325,9 @@ def _per_candidate_metrics(smiles_list: Sequence[str]) -> Dict[str, List[float]]
 
 def _safe_pearson(xs: Sequence[float], ys: Sequence[float]) -> float:
     """Pearson r on (x, y), ignoring NaN pairs; returns NaN if <3 valid pairs."""
-    pairs = [(float(x), float(y)) for x, y in zip(xs, ys)
-             if x == x and y == y]  # NaN-safe
+    pairs = [
+        (float(x), float(y)) for x, y in zip(xs, ys) if x == x and y == y
+    ]  # NaN-safe
     if len(pairs) < 3:
         return float("nan")
     arr_x = np.asarray([p[0] for p in pairs], dtype=float)
@@ -351,15 +354,23 @@ def compute_calibration_table(
     """
     per = _per_candidate_metrics(smiles_list)
     # Filter to parseable (NaN-free in qed, sas, pic50 at least).
-    keep_idx = [i for i in range(len(smiles_list))
-                if per["qed"][i] == per["qed"][i]
-                and per["sas"][i] == per["sas"][i]
-                and per["pic50"][i] == per["pic50"][i]]
+    keep_idx = [
+        i
+        for i in range(len(smiles_list))
+        if per["qed"][i] == per["qed"][i]
+        and per["sas"][i] == per["sas"][i]
+        and per["pic50"][i] == per["pic50"][i]
+    ]
     filtered = {k: [v[i] for i in keep_idx] for k, v in per.items()}
     n = len(keep_idx)
     if n == 0:
-        means = {"qed": 0.0, "sas": 0.0, "pic50": 0.0,
-                 "synth": 0.0, "vina": float("nan")}
+        means = {
+            "qed": 0.0,
+            "sas": 0.0,
+            "pic50": 0.0,
+            "synth": 0.0,
+            "vina": float("nan"),
+        }
     else:
         means = {
             "qed": float(np.nanmean(filtered["qed"])) if filtered["qed"] else 0.0,
@@ -668,7 +679,9 @@ def _random_smiles(rng: random.Random, n: int, qed_min: float = 0.30) -> List[st
 # Methods 2-4: DiffSBDD / Pocket2Mol / TargetDiff — fall back to random + QED
 # when the repo is not actually runnable in this environment.
 # ---------------------------------------------------------------------------
-def _reference_repo_run(repo_name: str, pdb_id: str, n_samples: int) -> Optional[List[str]]:
+def _reference_repo_run(
+    repo_name: str, pdb_id: str, n_samples: int
+) -> Optional[List[str]]:
     """Try to invoke the corresponding reference repo to sample ligands.
 
     Returns ``None`` if the repo isn't runnable here (no checkpoint,
@@ -684,7 +697,11 @@ def _reference_repo_run(repo_name: str, pdb_id: str, n_samples: int) -> Optional
     # and a failed subprocess would slow the comparison down.  Instead,
     # the absence of a runnable checkpoint is communicated via this
     # explicit ``None``.
-    log.info("%s repo present at %s but no runnable checkpoint — fallback", repo_name, repo_root)
+    log.info(
+        "%s repo present at %s but no runnable checkpoint — fallback",
+        repo_name,
+        repo_root,
+    )
     return None
 
 
@@ -783,19 +800,34 @@ _REPORT_DIR = Path(_PKG_PARENT) / "molmetal" / "reports"
 def _format_table(results: Dict[str, Dict[str, float]]) -> str:
     """Render the 4-method comparison as a markdown table."""
     methods = ["Lambda", "DiffSBDD", "Pocket2Mol", "TargetDiff"]
-    headers = ["method", "binding_affinity (pIC50)", "clash_rate", "sas_score", "interpretability", "synthesis_success"]
-    lines = ["| " + " | ".join(headers) + " |",
-             "|" + "|".join("---" for _ in headers) + "|"]
+    headers = [
+        "method",
+        "binding_affinity (pIC50)",
+        "clash_rate",
+        "sas_score",
+        "interpretability",
+        "synthesis_success",
+    ]
+    lines = [
+        "| " + " | ".join(headers) + " |",
+        "|" + "|".join("---" for _ in headers) + "|",
+    ]
     for m in methods:
         row = results.get(m, {})
-        lines.append("| " + " | ".join([
-            m,
-            f"{row.get('binding_affinity', 0.0):.3f}",
-            f"{row.get('clash_rate', 0.0):.2f}",
-            f"{row.get('sas_score', 0.0):.3f}",
-            f"{int(row.get('interpretability', 0))}",
-            f"{row.get('synthesis_success', 0.0):.2f}",
-        ]) + " |")
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    m,
+                    f"{row.get('binding_affinity', 0.0):.3f}",
+                    f"{row.get('clash_rate', 0.0):.2f}",
+                    f"{row.get('sas_score', 0.0):.3f}",
+                    f"{int(row.get('interpretability', 0))}",
+                    f"{row.get('synthesis_success', 0.0):.2f}",
+                ]
+            )
+            + " |"
+        )
     return "\n".join(lines)
 
 
@@ -811,15 +843,25 @@ def _find_winners(results: Dict[str, Dict[str, float]]) -> Dict[str, str]:
     out: Dict[str, str] = {}
     if all(m in results for m in methods):
         # SAS: lowest wins
-        out["sas_score (lowest=best)"] = min(methods, key=lambda m: results[m].get("sas_score", 0.0))
+        out["sas_score (lowest=best)"] = min(
+            methods, key=lambda m: results[m].get("sas_score", 0.0)
+        )
         # Binding: highest wins
-        out["binding_affinity (highest=best)"] = max(methods, key=lambda m: results[m].get("binding_affinity", 0.0))
+        out["binding_affinity (highest=best)"] = max(
+            methods, key=lambda m: results[m].get("binding_affinity", 0.0)
+        )
         # Clash: lowest wins
-        out["clash_rate (lowest=best)"] = min(methods, key=lambda m: results[m].get("clash_rate", 0.0))
+        out["clash_rate (lowest=best)"] = min(
+            methods, key=lambda m: results[m].get("clash_rate", 0.0)
+        )
         # Synthesis success: highest wins
-        out["synthesis_success (highest=best)"] = max(methods, key=lambda m: results[m].get("synthesis_success", 0.0))
+        out["synthesis_success (highest=best)"] = max(
+            methods, key=lambda m: results[m].get("synthesis_success", 0.0)
+        )
         # Interpretability: highest wins
-        out["interpretability (highest=best)"] = max(methods, key=lambda m: results[m].get("interpretability", 0.0))
+        out["interpretability (highest=best)"] = max(
+            methods, key=lambda m: results[m].get("interpretability", 0.0)
+        )
     return out
 
 
@@ -922,23 +964,32 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         description="Compare Lambda vs DiffSBDD / Pocket2Mol / TargetDiff."
     )
     parser.add_argument(
-        "--pdb-id", type=str, default="demo",
+        "--pdb-id",
+        type=str,
+        default="demo",
         help="Pocket identifier (used as RNG seed for fallback generators).",
     )
     parser.add_argument(
-        "--n-samples", type=int, default=50,
+        "--n-samples",
+        type=int,
+        default=50,
         help="Number of candidates per method.",
     )
     parser.add_argument(
-        "--report-path", type=str, default=None,
+        "--report-path",
+        type=str,
+        default=None,
         help="Override output path (default: molmetal/reports/lambda_vs_sbdd_baselines.md).",
     )
     parser.add_argument(
-        "--json-path", type=str, default=None,
+        "--json-path",
+        type=str,
+        default=None,
         help="Optional JSON dump of the per-method metric dict.",
     )
     parser.add_argument(
-        "--quiet", action="store_true",
+        "--quiet",
+        action="store_true",
         help="Suppress INFO logging.",
     )
     args = parser.parse_args(argv)
@@ -973,10 +1024,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
     winners = _find_winners(results)
     print()
-    print("Calibration (5-paper-grade metrics + pairwise Pearson r on Lambda candidates):")
+    print(
+        "Calibration (5-paper-grade metrics + pairwise Pearson r on Lambda candidates):"
+    )
     try:
         lambda_out_for_cal = run_lambda(args.pdb_id, max(int(args.n_samples), 16))
-        cal = compute_calibration_table(lambda_out_for_cal["smiles"], method_name="Lambda")
+        cal = compute_calibration_table(
+            lambda_out_for_cal["smiles"], method_name="Lambda"
+        )
         cal_str = _format_calibration(cal)
         for line in cal_str.split("\n"):
             print(f"  {line}")
@@ -988,6 +1043,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     print("  " + "-" * 42)
     try:
         from molmetal_lam.sbdd_env.sa_score import batch_sa_score  # type: ignore
+
         for m in methods:
             smis = _collect_smiles_for_method(m)
             stats = batch_sa_score(smis)

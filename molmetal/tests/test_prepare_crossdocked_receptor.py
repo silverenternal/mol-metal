@@ -1,4 +1,5 @@
 """Guard against reporting synthesized receptor chemistry as real preparation."""
+
 import csv
 import subprocess
 
@@ -27,12 +28,15 @@ def test_heavy_atom_audit_accepts_preserved_identity_and_coordinates(atom_pair):
     assert audit["max_heavy_atom_displacement_A"] == 0
 
 
-@pytest.mark.parametrize("old,new,error", [
-    ("VAL", "ALA", "identities"),
-    ("+0.243", "+0.000", "zero"),
-    ("47.233", "48.233", "moved"),
-    (" C \n", " NA\n", "element"),
-])
+@pytest.mark.parametrize(
+    "old,new,error",
+    [
+        ("VAL", "ALA", "identities"),
+        ("+0.243", "+0.000", "zero"),
+        ("47.233", "48.233", "moved"),
+        (" C \n", " NA\n", "element"),
+    ],
+)
 def test_corrupted_preparation_is_rejected(atom_pair, old, new, error):
     original, prepared = atom_pair
     prepared.write_text(prepared.read_text().replace(old, new))
@@ -45,7 +49,9 @@ def test_manifest_resolves_exact_pair_and_rejects_duplicates(tmp_path):
     receptor.touch()
     ligand.touch()
     manifest = tmp_path / "manifest.csv"
-    row = dict(pocket_id="test_001", receptor_path=str(receptor), ligand_path=str(ligand))
+    row = dict(
+        pocket_id="test_001", receptor_path=str(receptor), ligand_path=str(ligand)
+    )
     with manifest.open("w", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=row)
         writer.writeheader()
@@ -72,4 +78,8 @@ def test_failed_strict_preparation_does_not_retry_unsafe_flags(monkeypatch, tmp_
     assert len(commands) == 1
     assert "--compute_charges" in commands[0]
     assert commands[0][-2:] == ["--charge_model", "gasteiger"]
-    assert not {"--delete_bad_res", "--forgive_extra_bonds", "--allow_bad_res"}.intersection(commands[0])
+    assert not {
+        "--delete_bad_res",
+        "--forgive_extra_bonds",
+        "--allow_bad_res",
+    }.intersection(commands[0])

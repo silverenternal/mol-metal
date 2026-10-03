@@ -21,6 +21,7 @@ Constraints:
   CPU-only (no GPU)
   Backward-compatible with existing docked_pose_rmsd.json schema
 """
+
 from __future__ import annotations
 
 import json
@@ -60,7 +61,9 @@ def cross_pocket_aggregate(pocket_medians: list[float]) -> dict:
         return {"median": None, "std": None, "min": None, "max": None, "n_pockets": 0}
     return {
         "median": float(statistics.median(pocket_medians)),
-        "std": float(statistics.stdev(pocket_medians)) if len(pocket_medians) > 1 else 0.0,
+        "std": float(statistics.stdev(pocket_medians))
+        if len(pocket_medians) > 1
+        else 0.0,
         "min": float(min(pocket_medians)),
         "max": float(max(pocket_medians)),
         "n_pockets": len(pocket_medians),
@@ -170,7 +173,9 @@ def main() -> int:
             "EASY_lt": DIFFICULTY_EASY_MAX,
             "MEDIUM_lt": DIFFICULTY_MEDIUM_MAX,
         },
-        "pockets": {k: v for k, v in per_pocket_block.items()},  # alias for legacy readers
+        "pockets": {
+            k: v for k, v in per_pocket_block.items()
+        },  # alias for legacy readers
         "aggregate_median_across_pockets": cross_median,
         "n_pockets": len(per_pocket_block),
         "n_pockets_passed_2_5a": sum(
@@ -196,9 +201,9 @@ def main() -> int:
         f"- EASY: median < {DIFFICULTY_EASY_MAX}",
         f"- MEDIUM: {DIFFICULTY_EASY_MAX} <= median < {DIFFICULTY_MEDIUM_MAX}",
         f"- HARD: median >= {DIFFICULTY_MEDIUM_MAX}",
-            "",
-            "| Pocket | Difficulty | Median (Å) | Mean (Å) | Std (Å) | n_seeds | passes_2.5Å | passes_2.0Å |",
-            "|--------|------------|------------|----------|---------|---------|--------------|------------|",
+        "",
+        "| Pocket | Difficulty | Median (Å) | Mean (Å) | Std (Å) | n_seeds | passes_2.5Å | passes_2.0Å |",
+        "|--------|------------|------------|----------|---------|---------|--------------|------------|",
     ]
     for pid, pdata in sorted(per_pocket_block.items()):
         table_lines.append(
@@ -206,16 +211,18 @@ def main() -> int:
             f"{pdata['mean_best_rmsd_angstrom']:.4f} | {pdata['std_best_rmsd_angstrom']:.4f} | "
             f"{pdata['n_seeds_succeeded']}/3 | {pdata['passes_2_5a_gate']} | {pdata['passes_2_0a_sota']} |"
         )
-    table_lines.extend([
-        "",
-        f"Cross-pocket aggregate (n={len(per_pocket_block)}):",
-        f"- median: {cross_median:.4f} Å",
-        f"- std:    {cross_std:.4f} Å",
-        f"- min:    {cross_min:.4f} Å",
-        f"- max:    {cross_max:.4f} Å",
-        "",
-        f"Difficulty distribution: {difficulty_counts}",
-    ])
+    table_lines.extend(
+        [
+            "",
+            f"Cross-pocket aggregate (n={len(per_pocket_block)}):",
+            f"- median: {cross_median:.4f} Å",
+            f"- std:    {cross_std:.4f} Å",
+            f"- min:    {cross_min:.4f} Å",
+            f"- max:    {cross_max:.4f} Å",
+            "",
+            f"Difficulty distribution: {difficulty_counts}",
+        ]
+    )
     (REPORT_DIR / "per_pocket_table.md").write_text("\n".join(table_lines) + "\n")
     print(f"Wrote {REPORT_DIR / 'per_pocket_table.md'}")
 
@@ -250,35 +257,37 @@ def main() -> int:
             f"| {pid} | {d['difficulty_flag']} | {d['median_best_rmsd_angstrom']:.4f} | "
             f"{d['std_best_rmsd_angstrom']:.4f} | {d['n_seeds_succeeded']}/3 |"
         )
-    synthesis_lines.extend([
-        "",
-        "## §4 Cross-pocket aggregate",
-        "",
-        f"- **Median**: {cross_median:.4f} Å",
-        f"- **Std**:    {cross_std:.4f} Å",
-        f"- **Min**:    {cross_min:.4f} Å (best pocket)",
-        f"- **Max**:    {cross_max:.4f} Å (worst pocket)",
-        f"- **n_pockets**: {len(per_pocket_block)}",
-        "",
-        "## §6 Difficulty distribution",
-        "",
-        f"- EASY (<{DIFFICULTY_EASY_MAX} Å): {difficulty_counts['EASY']} pockets",
-        f"- MEDIUM ({DIFFICULTY_EASY_MAX}-{DIFFICULTY_MEDIUM_MAX} Å): {difficulty_counts['MEDIUM']} pockets",
-        f"- HARD (>={DIFFICULTY_MEDIUM_MAX} Å): {difficulty_counts['HARD']} pockets",
-        "",
-        "## §7 Verdict",
-        "",
-        f"All {len(per_pocket_block)}/5 pockets MEASURED with per-pocket std and difficulty flag.",
-        f"Cross-pocket median = {cross_median:.4f} Å (SOTA gate <= 2.0 Å: {'PASS' if cross_median <= 2.0 else 'FAIL'});",
-        f"all pockets pass <= 2.5 Å gate ({sum(1 for v in per_pocket_block.values() if v['passes_2_5a_gate'])}/{len(per_pocket_block)}).",
-        "",
-        "## §8 Honest framing",
-        "",
-        "- All values are MEASURED (not projected) from Wf-179 Vina redocking runs (exhaustiveness=16, n_poses=5).",
-        "- 3ny8 has only 1/3 seeds succeeded (NO_DOCK_OUTPUT for seeds 1, 2 — partial stage artifact).",
-        "- Difficulty flag uses median best RMSD (NOT pass-rate), so it's a property of the pocket + crystal ligand, not of Vina exhaustiveness.",
-        "- Backward compat: `metrics/by_metric/docked_pose_rmsd.json` schema preserved (legacy fields unchanged); new fields added under `redesign_wf246b`, `per_pocket_with_difficulty`, `cross_pocket_aggregate`.",
-    ])
+    synthesis_lines.extend(
+        [
+            "",
+            "## §4 Cross-pocket aggregate",
+            "",
+            f"- **Median**: {cross_median:.4f} Å",
+            f"- **Std**:    {cross_std:.4f} Å",
+            f"- **Min**:    {cross_min:.4f} Å (best pocket)",
+            f"- **Max**:    {cross_max:.4f} Å (worst pocket)",
+            f"- **n_pockets**: {len(per_pocket_block)}",
+            "",
+            "## §6 Difficulty distribution",
+            "",
+            f"- EASY (<{DIFFICULTY_EASY_MAX} Å): {difficulty_counts['EASY']} pockets",
+            f"- MEDIUM ({DIFFICULTY_EASY_MAX}-{DIFFICULTY_MEDIUM_MAX} Å): {difficulty_counts['MEDIUM']} pockets",
+            f"- HARD (>={DIFFICULTY_MEDIUM_MAX} Å): {difficulty_counts['HARD']} pockets",
+            "",
+            "## §7 Verdict",
+            "",
+            f"All {len(per_pocket_block)}/5 pockets MEASURED with per-pocket std and difficulty flag.",
+            f"Cross-pocket median = {cross_median:.4f} Å (SOTA gate <= 2.0 Å: {'PASS' if cross_median <= 2.0 else 'FAIL'});",
+            f"all pockets pass <= 2.5 Å gate ({sum(1 for v in per_pocket_block.values() if v['passes_2_5a_gate'])}/{len(per_pocket_block)}).",
+            "",
+            "## §8 Honest framing",
+            "",
+            "- All values are MEASURED (not projected) from Wf-179 Vina redocking runs (exhaustiveness=16, n_poses=5).",
+            "- 3ny8 has only 1/3 seeds succeeded (NO_DOCK_OUTPUT for seeds 1, 2 — partial stage artifact).",
+            "- Difficulty flag uses median best RMSD (NOT pass-rate), so it's a property of the pocket + crystal ligand, not of Vina exhaustiveness.",
+            "- Backward compat: `metrics/by_metric/docked_pose_rmsd.json` schema preserved (legacy fields unchanged); new fields added under `redesign_wf246b`, `per_pocket_with_difficulty`, `cross_pocket_aggregate`.",
+        ]
+    )
     (REPORT_DIR / "synthesis.md").write_text("\n".join(synthesis_lines) + "\n")
     print(f"Wrote {REPORT_DIR / 'synthesis.md'}")
 
@@ -287,10 +296,14 @@ def main() -> int:
     print(f"Per-pocket count: {len(per_pocket_block)}")
     for pid in sorted(per_pocket_block):
         d = per_pocket_block[pid]
-        print(f"  {pid:6s} {d['difficulty_flag']:6s} median={d['median_best_rmsd_angstrom']:.4f} Å "
-              f"std={d['std_best_rmsd_angstrom']:.4f} Å ({d['n_seeds_succeeded']}/3 seeds)")
-    print(f"Cross-pocket: median={cross_median:.4f} std={cross_std:.4f} "
-          f"min={cross_min:.4f} max={cross_max:.4f}")
+        print(
+            f"  {pid:6s} {d['difficulty_flag']:6s} median={d['median_best_rmsd_angstrom']:.4f} Å "
+            f"std={d['std_best_rmsd_angstrom']:.4f} Å ({d['n_seeds_succeeded']}/3 seeds)"
+        )
+    print(
+        f"Cross-pocket: median={cross_median:.4f} std={cross_std:.4f} "
+        f"min={cross_min:.4f} max={cross_max:.4f}"
+    )
     print(f"Difficulty: {difficulty_counts}")
 
     return 0

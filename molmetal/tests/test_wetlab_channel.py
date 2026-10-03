@@ -46,6 +46,7 @@ try:
         make_wetlab_channel,
         register_wetlab_channel,
     )
+
     _HAS_CHANNEL = True
 except Exception:  # pragma: no cover
     compute_wetlab_signed_error = None
@@ -55,6 +56,7 @@ except Exception:  # pragma: no cover
 
 try:
     from molmetal_lam.lam_chem import wetlab_protocol as _WP
+
     _HAS_PROTOCOL = True
 except Exception:  # pragma: no cover
     _WP = None
@@ -62,6 +64,7 @@ except Exception:  # pragma: no cover
 
 try:
     from molmetal_lam.search_alg.proof_search import RewardAggregator
+
     _HAS_AGGREGATOR = True
 except Exception:  # pragma: no cover
     RewardAggregator = None
@@ -93,7 +96,9 @@ def test_signed_error_perfect_prediction_returns_zero():
     """Perfect prediction: |pred - meas| == 0 → signed error = 0."""
     meas = {"CCO": 5.0}
     err = compute_wetlab_signed_error(
-        "CCO", meas, predicted_pic50=5.0,
+        "CCO",
+        meas,
+        predicted_pic50=5.0,
     )
     assert err == pytest.approx(0.0, abs=1e-9)
 
@@ -103,7 +108,9 @@ def test_signed_error_half_log_unit_returns_minus_half():
     """Half-log-unit error → signed error == -0.5."""
     meas = {"CCO": 5.0}
     err = compute_wetlab_signed_error(
-        "CCO", meas, predicted_pic50=5.5,
+        "CCO",
+        meas,
+        predicted_pic50=5.5,
     )
     assert err == pytest.approx(-0.5, abs=1e-9)
 
@@ -113,7 +120,9 @@ def test_signed_error_clamped_to_three_log_units():
     """Huge errors are clamped to ±3 log-units (defensive bound)."""
     meas = {"CCO": 5.0}
     err = compute_wetlab_signed_error(
-        "CCO", meas, predicted_pic50=20.0,  # 15 log-unit error → clamp to 3
+        "CCO",
+        meas,
+        predicted_pic50=20.0,  # 15 log-unit error → clamp to 3
     )
     assert err == pytest.approx(-3.0, abs=1e-9)
 
@@ -123,7 +132,9 @@ def test_signed_error_missing_measurement_returns_zero():
     """Missing measurement returns 0.0 (graceful degradation)."""
     meas = {"CCO": 5.0}
     err = compute_wetlab_signed_error(
-        "CCN", meas, predicted_pic50=5.0,  # CCN not in meas dict
+        "CCN",
+        meas,
+        predicted_pic50=5.0,  # CCN not in meas dict
     )
     assert err == pytest.approx(0.0, abs=1e-9)
 
@@ -159,7 +170,9 @@ def test_signed_error_nan_predicted_returns_zero():
     """NaN predicted value returns 0.0 (never NaN propagates)."""
     meas = {"CCO": 5.0}
     err = compute_wetlab_signed_error(
-        "CCO", meas, predicted_pic50=float("nan"),
+        "CCO",
+        meas,
+        predicted_pic50=float("nan"),
     )
     assert err == pytest.approx(0.0, abs=1e-9)
     assert not math.isnan(err)
@@ -170,7 +183,9 @@ def test_signed_error_lookup_callable_used_when_no_prediction():
     """When ``predicted_pic50`` is None, ``predicted_lookup`` is consulted."""
     meas = {"CCO": 5.0}
     err = compute_wetlab_signed_error(
-        "CCO", meas, predicted_pic50=None,
+        "CCO",
+        meas,
+        predicted_pic50=None,
         predicted_lookup=lambda s: 5.3 if s == "CCO" else None,
     )
     assert err == pytest.approx(-0.3, abs=1e-9)
@@ -181,7 +196,10 @@ def test_signed_error_zero_when_missing_true_no_pred():
     """zero_when_missing=True with no prediction returns 0.0."""
     meas = {"CCO": 5.0}
     err = compute_wetlab_signed_error(
-        "CCO", meas, predicted_pic50=None, zero_when_missing=True,
+        "CCO",
+        meas,
+        predicted_pic50=None,
+        zero_when_missing=True,
     )
     assert err == pytest.approx(0.0, abs=1e-9)
 
@@ -196,7 +214,8 @@ def test_make_wetlab_channel_handles_canonical_smiles():
     """The closure accepts a state with ``canonical_smiles()``."""
     meas = {"CCO": 5.0}
     channel = make_wetlab_channel(
-        meas, predicted_lookup=lambda s: {"CCO": 5.5, "CCN": 6.0}.get(s),
+        meas,
+        predicted_lookup=lambda s: {"CCO": 5.5, "CCN": 6.0}.get(s),
     )
     state = _MockState(smiles="CCO")
     val = channel(state)
@@ -208,7 +227,8 @@ def test_make_wetlab_channel_handles_plain_string():
     """The closure accepts a plain SMILES string."""
     meas = {"CCO": 5.0}
     channel = make_wetlab_channel(
-        meas, predicted_lookup=lambda s: 5.5 if s == "CCO" else None,
+        meas,
+        predicted_lookup=lambda s: 5.5 if s == "CCO" else None,
     )
     val = channel("CCO")
     assert val == pytest.approx(-0.5, abs=1e-9)
@@ -227,7 +247,8 @@ def test_make_wetlab_channel_never_crashes_on_bad_state():
     """The closure never raises on bad state — MCTS safety contract."""
     meas = {"CCO": 5.0}
     channel = make_wetlab_channel(
-        meas, predicted_lookup=lambda s: 5.5 if s == "CCO" else None,
+        meas,
+        predicted_lookup=lambda s: 5.5 if s == "CCO" else None,
     )
 
     class _Bad:
@@ -245,7 +266,8 @@ def test_register_wetlab_channel_wires_aggregator():
     agg = RewardAggregator(r_vina=lambda s: 2.5)
     meas = {"CCO": 5.0}
     register_wetlab_channel(
-        agg, meas,
+        agg,
+        meas,
         weight=1.0,
         predicted_lookup=lambda s: {"CCO": 5.5}.get(s),
     )
@@ -263,7 +285,9 @@ def test_register_wetlab_channel_disabled_zero_weight_keeps_aggregator_bit_for_b
     identical — backward-compat regression-proof."""
     agg = RewardAggregator(r_vina=lambda s: 2.5)
     register_wetlab_channel(
-        agg, {"CCO": 5.0}, weight=0.0,
+        agg,
+        {"CCO": 5.0},
+        weight=0.0,
         predicted_lookup=lambda s: 5.5 if s == "CCO" else None,
     )
     state = _MockState(smiles="CCO")
@@ -292,7 +316,8 @@ def test_aggregator_aggregate_recognises_r_wetlab_key():
     register_wetlab_channel(agg, {"CCO": 5.0}, weight=0.5)
     # Direct aggregate call with per-channel value of -1.0 → 0.5 * -1.0 = -0.5
     val = agg.aggregate(
-        smiles="CCO", channels={"r_wetlab": -1.0},
+        smiles="CCO",
+        channels={"r_wetlab": -1.0},
     )
     assert val == pytest.approx(-0.5, abs=1e-9)
 
@@ -306,12 +331,7 @@ def test_aggregator_aggregate_recognises_r_wetlab_key():
 def test_load_assays_two_column_fallback(tmp_path: Path):
     """A TSV without a header is parsed as ``smiles<sep>value`` pairs."""
     p = tmp_path / "two_col.tsv"
-    p.write_text(
-        "# comment\n"
-        "CCO\t5.0\n"
-        "CCN\t6.0\n"
-        "CCC\t7.0\n"
-    )
+    p.write_text("# comment\n" "CCO\t5.0\n" "CCN\t6.0\n" "CCC\t7.0\n")
     rows = _WP.load_assays(str(p))
     assert len(rows) == 3
     assert rows[0].smiles == "CCO"
@@ -405,23 +425,30 @@ def test_recalibrate_perfect_prediction_pearson_one(tmp_path: Path):
     """When predictions == measurements, Pearson r must be exactly 1.0."""
     wetlab = tmp_path / "wetlab.tsv"
     drylab = tmp_path / "drylab.tsv"
-    rows = [("CCO", 5.0), ("CCN", 6.0), ("CCC", 7.0),
-            ("CCl", 4.0), ("CBr", 3.0)]
+    rows = [("CCO", 5.0), ("CCN", 6.0), ("CCC", 7.0), ("CCl", 4.0), ("CBr", 3.0)]
     _write_tsv(wetlab, rows)
     _write_tsv(drylab, rows)
 
     report_path = tmp_path / "report.json"
     cmd = [
         sys.executable,
-        "-m", "molmetal.scripts.recalibrate_from_assay",
-        "--wetlab-input", str(wetlab),
-        "--drylab-input", str(drylab),
-        "--output", str(report_path),
+        "-m",
+        "molmetal.scripts.recalibrate_from_assay",
+        "--wetlab-input",
+        str(wetlab),
+        "--drylab-input",
+        str(drylab),
+        "--output",
+        str(report_path),
     ]
     # Run from the repo root so the package import works.
     repo_root = Path(__file__).resolve().parents[2]
     result = subprocess.run(
-        cmd, cwd=str(repo_root), capture_output=True, text=True, timeout=60,
+        cmd,
+        cwd=str(repo_root),
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     assert result.returncode == 0, f"stderr:\n{result.stderr}"
     report = json.loads(report_path.read_text())
@@ -435,15 +462,25 @@ def test_recalibrate_perfect_prediction_pearson_one(tmp_path: Path):
 def test_recalibrate_noisy_prediction_pearson_bounded(tmp_path: Path):
     """A noisy predictor should give Pearson r < 1.0 but > 0.5."""
     wetlab_rows = [
-        ("CCO", 5.0), ("CCN", 6.0), ("CCC", 7.0),
-        ("CCl", 4.0), ("CBr", 3.0), ("CF", 8.0),
-        ("CI", 2.0), ("CS", 9.0),
+        ("CCO", 5.0),
+        ("CCN", 6.0),
+        ("CCC", 7.0),
+        ("CCl", 4.0),
+        ("CBr", 3.0),
+        ("CF", 8.0),
+        ("CI", 2.0),
+        ("CS", 9.0),
     ]
     # Add Gaussian-ish noise (deterministic, hand-crafted)
     drylab_rows = [
-        ("CCO", 5.1), ("CCN", 5.8), ("CCC", 7.2),
-        ("CCl", 3.8), ("CBr", 3.1), ("CF", 7.9),
-        ("CI", 2.1), ("CS", 8.7),
+        ("CCO", 5.1),
+        ("CCN", 5.8),
+        ("CCC", 7.2),
+        ("CCl", 3.8),
+        ("CBr", 3.1),
+        ("CF", 7.9),
+        ("CI", 2.1),
+        ("CS", 8.7),
     ]
     wetlab = tmp_path / "wetlab.tsv"
     drylab = tmp_path / "drylab.tsv"
@@ -452,14 +489,22 @@ def test_recalibrate_noisy_prediction_pearson_bounded(tmp_path: Path):
     report_path = tmp_path / "report.json"
     cmd = [
         sys.executable,
-        "-m", "molmetal.scripts.recalibrate_from_assay",
-        "--wetlab-input", str(wetlab),
-        "--drylab-input", str(drylab),
-        "--output", str(report_path),
+        "-m",
+        "molmetal.scripts.recalibrate_from_assay",
+        "--wetlab-input",
+        str(wetlab),
+        "--drylab-input",
+        str(drylab),
+        "--output",
+        str(report_path),
     ]
     repo_root = Path(__file__).resolve().parents[2]
     result = subprocess.run(
-        cmd, cwd=str(repo_root), capture_output=True, text=True, timeout=60,
+        cmd,
+        cwd=str(repo_root),
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     assert result.returncode == 0, f"stderr:\n{result.stderr}"
     report = json.loads(report_path.read_text())
@@ -480,14 +525,22 @@ def test_recalibrate_no_overlap_returns_zero(tmp_path: Path):
     report_path = tmp_path / "report.json"
     cmd = [
         sys.executable,
-        "-m", "molmetal.scripts.recalibrate_from_assay",
-        "--wetlab-input", str(wetlab),
-        "--drylab-input", str(drylab),
-        "--output", str(report_path),
+        "-m",
+        "molmetal.scripts.recalibrate_from_assay",
+        "--wetlab-input",
+        str(wetlab),
+        "--drylab-input",
+        str(drylab),
+        "--output",
+        str(report_path),
     ]
     repo_root = Path(__file__).resolve().parents[2]
     result = subprocess.run(
-        cmd, cwd=str(repo_root), capture_output=True, text=True, timeout=60,
+        cmd,
+        cwd=str(repo_root),
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     # NO_OVERLAP returns exit code 1 with NO_OVERLAP recommendation.
     assert result.returncode == 1
@@ -517,9 +570,7 @@ def test_honest_framing_channel_returns_signed_error_not_bonus():
     # Probe a range of predicted values; all must be <= 0.0.
     for pred in [4.0, 5.0, 5.5, 6.0, 8.0]:
         err = compute_wetlab_signed_error("CCO", meas, predicted_pic50=pred)
-        assert err <= 0.0, (
-            f"wet-lab channel must never produce a bonus (err={err} > 0)"
-        )
+        assert err <= 0.0, f"wet-lab channel must never produce a bonus (err={err} > 0)"
 
 
 # ---------------------------------------------------------------------------

@@ -51,9 +51,7 @@ class TestValidityResult:
         assert d["error"] is None
 
     def test_frozen(self):
-        r = ValidityResult(
-            smiles="O", valid=False, fail_class="smiles_parse"
-        )
+        r = ValidityResult(smiles="O", valid=False, fail_class="smiles_parse")
         with pytest.raises((AttributeError, Exception)):
             r.valid = True  # type: ignore[misc]
 
@@ -140,6 +138,7 @@ class TestValidityGate:
     def test_fallback_when_no_rdkit(self):
         """When RDKit is missing, the gate falls back to length proxy."""
         import molmetal.replay.curriculum.validity_gate as vg_mod
+
         original = vg_mod._RDKIT_OK
         try:
             vg_mod._RDKIT_OK = False

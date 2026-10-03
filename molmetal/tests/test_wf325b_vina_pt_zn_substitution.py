@@ -23,6 +23,7 @@ Wf-325B cohort sits at −3.2830 median (cisplatin) — same architectural
 ceiling (0/5 pockets reach industry), same honest-negative
 (Wf-323C contract; Wf-325B formalises it).
 """
+
 from __future__ import annotations
 
 import json
@@ -98,6 +99,7 @@ def test_wf325b_per_pocket_zn_substitution_module_pt_group_elements():
         PT_GROUP_ELEMENTS,
         add_metal_atom_types,
     )
+
     # Pt-group metal set (canonical 8 d-block Pt-group elements)
     expected_pt_group = {"Pt", "Ru", "Ir", "Os", "Rh", "Pd", "Au", "Re"}
     assert set(PT_GROUP_ELEMENTS) == expected_pt_group, (
@@ -105,9 +107,9 @@ def test_wf325b_per_pocket_zn_substitution_module_pt_group_elements():
         f"expected {expected_pt_group}"
     )
     # The substitution rule caller is exposed (callable for downstream)
-    assert callable(add_metal_atom_types), (
-        "add_metal_atom_types must be callable for downstream consumers"
-    )
+    assert callable(
+        add_metal_atom_types
+    ), "add_metal_atom_types must be callable for downstream consumers"
 
 
 def test_wf325b_per_pocket_zn_substitution_lift_zero():
@@ -141,9 +143,9 @@ def test_wf325b_script_present_and_complete():
     assert "_build_per_pocket_records" in src, "_build_per_pocket_records fn missing"
     assert "Pt" in src, "Pt handling missing"
     assert "Zn" in src, "Zn substitution handling missing"
-    assert HONEST_NEGATIVE_KEY in src, (
-        f"honest-negative canonical key {HONEST_NEGATIVE_KEY!r} missing"
-    )
+    assert (
+        HONEST_NEGATIVE_KEY in src
+    ), f"honest-negative canonical key {HONEST_NEGATIVE_KEY!r} missing"
 
 
 def test_wf325b_result_json_shape():
@@ -153,32 +155,42 @@ def test_wf325b_result_json_shape():
     result = _load_result()
     # Top-level keys
     required = {
-        "workflow", "engine", "generated_at", "scope", "pockets",
-        "source_wf143_dir", "uff_prerelax_smoke", "per_pocket",
-        "headline", "honest_framing",
-        HONEST_NEGATIVE_KEY, "honest_negative_reason",
-        "ceiling_preserved_reason", "recovery_path",
-        "wall_seconds_total", "exit_status",
+        "workflow",
+        "engine",
+        "generated_at",
+        "scope",
+        "pockets",
+        "source_wf143_dir",
+        "uff_prerelax_smoke",
+        "per_pocket",
+        "headline",
+        "honest_framing",
+        HONEST_NEGATIVE_KEY,
+        "honest_negative_reason",
+        "ceiling_preserved_reason",
+        "recovery_path",
+        "wall_seconds_total",
+        "exit_status",
     }
     missing = required - set(result.keys())
     assert not missing, f"missing top-level keys: {sorted(missing)}"
 
     # 5-pocket per-pocket records
     per_pocket = result.get("per_pocket", [])
-    assert len(per_pocket) == 5, (
-        f"per_pocket should have 5 records; got {len(per_pocket)}"
-    )
+    assert (
+        len(per_pocket) == 5
+    ), f"per_pocket should have 5 records; got {len(per_pocket)}"
     pocket_ids = sorted(r["pocket_id"] for r in per_pocket)
-    assert pocket_ids == sorted(POCKETS_5), (
-        f"per-pocket pocket_ids={pocket_ids}; expected {sorted(POCKETS_5)}"
-    )
+    assert pocket_ids == sorted(
+        POCKETS_5
+    ), f"per-pocket pocket_ids={pocket_ids}; expected {sorted(POCKETS_5)}"
     # Honest-negative flag MUST be True
-    assert result.get(HONEST_NEGATIVE_KEY) is True, (
-        f"{HONEST_NEGATIVE_KEY} must be True (Wf-325B closeout)"
-    )
-    assert result.get("exit_status") == "PASS", (
-        f"exit_status must be 'PASS'; got {result.get('exit_status')!r}"
-    )
+    assert (
+        result.get(HONEST_NEGATIVE_KEY) is True
+    ), f"{HONEST_NEGATIVE_KEY} must be True (Wf-325B closeout)"
+    assert (
+        result.get("exit_status") == "PASS"
+    ), f"exit_status must be 'PASS'; got {result.get('exit_status')!r}"
 
 
 # =============================================================================
@@ -196,13 +208,13 @@ def test_wf325b_cross_pocket_m3_median_in_measured_window():
     headline = result.get("headline", {})
     cross_median = headline.get("cross_pocket_median_kcal_mol")
     assert cross_median is not None, "headline.cross_pocket_median_kcal_mol missing"
-    assert -3.7 <= cross_median <= -2.8, (
-        f"cross-pocket median {cross_median} outside cisplatin window [-3.7, -2.8]"
-    )
+    assert (
+        -3.7 <= cross_median <= -2.8
+    ), f"cross-pocket median {cross_median} outside cisplatin window [-3.7, -2.8]"
     # n_pockets_total must be 5
-    assert headline.get("n_pockets_total") == 5, (
-        f"n_pockets_total must be 5; got {headline.get('n_pockets_total')}"
-    )
+    assert (
+        headline.get("n_pockets_total") == 5
+    ), f"n_pockets_total must be 5; got {headline.get('n_pockets_total')}"
 
 
 def test_wf325b_ceiling_preserved_zero_pockets_at_industry_cutoff():
@@ -224,9 +236,9 @@ def test_wf325b_ceiling_preserved_zero_pockets_at_industry_cutoff():
     # gap_to_industry_cutoff_kcal_mol must be > 0 (i.e., the cohort is
     # above the industry cutoff in kcal/mol terms).
     gap = headline.get("gap_to_industry_cutoff_kcal_mol")
-    assert gap is not None and gap > 0, (
-        f"gap_to_industry_cutoff_kcal_mol must be > 0; got {gap}"
-    )
+    assert (
+        gap is not None and gap > 0
+    ), f"gap_to_industry_cutoff_kcal_mol must be > 0; got {gap}"
 
 
 # =============================================================================
@@ -255,10 +267,9 @@ def test_wf325b_integration_with_tier2_summary():
     # Documented m3 entry on 830c single-pocket — DIFFERENT cohort.
     # tier2_summary.json uses ``metrics_aggregated`` key (not
     # ``tier2_metrics``); search both shapes for backwards compat.
-    m3_entry = (
-        tier2.get("metrics_aggregated", {}).get("vina_dock_median_kcal_mol", {})
-        or tier2.get("tier2_metrics", {}).get("vina_dock_median_kcal_mol", {})
-    )
+    m3_entry = tier2.get("metrics_aggregated", {}).get(
+        "vina_dock_median_kcal_mol", {}
+    ) or tier2.get("tier2_metrics", {}).get("vina_dock_median_kcal_mol", {})
     if not m3_entry:
         pytest.skip(
             "tier2_summary missing vina_dock_median_kcal_mol entry "
@@ -267,9 +278,7 @@ def test_wf325b_integration_with_tier2_summary():
 
     tier2_value = m3_entry.get("our_value")
     result = _load_result()
-    wf325b_median = result.get("headline", {}).get(
-        "cross_pocket_median_kcal_mol"
-    )
+    wf325b_median = result.get("headline", {}).get("cross_pocket_median_kcal_mol")
 
     # Document the cohort difference in the Wf-325B result JSON
     # so a downstream consumer can branch on the canonical field.

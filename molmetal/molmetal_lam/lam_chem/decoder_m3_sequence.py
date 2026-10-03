@@ -221,7 +221,8 @@ class SequenceDecoderHead(nn.Module):
             activation="gelu",
         )
         self.transformer = nn.TransformerEncoder(
-            encoder_layer, num_layers=n_layers,
+            encoder_layer,
+            num_layers=n_layers,
         )
         # Output head: hidden_dim → vocab_size.
         self.out_proj = nn.Linear(hidden_dim, vocab_size, bias=True)
@@ -309,15 +310,18 @@ class SequenceDecoderHead(nn.Module):
         # zeros so the transformer can consume it.
         if n_atoms < self.max_seq_len:
             pad = torch.zeros(
-                batch, self.max_seq_len - n_atoms, self.hidden_dim,
-                dtype=atom_emb.dtype, device=atom_emb.device,
+                batch,
+                self.max_seq_len - n_atoms,
+                self.hidden_dim,
+                dtype=atom_emb.dtype,
+                device=atom_emb.device,
             )
             seq_input = torch.cat([atom_emb + bond_emb, pad], dim=1)
         elif n_atoms == self.max_seq_len:
             seq_input = atom_emb + bond_emb
         else:
             # n_atoms > max_seq_len → truncate to ``max_seq_len``.
-            seq_input = (atom_emb + bond_emb)[:, :self.max_seq_len, :]
+            seq_input = (atom_emb + bond_emb)[:, : self.max_seq_len, :]
         # Add the learned positional embedding.
         seq_input = seq_input + self.pos_embed[:, : self.max_seq_len, :]
         # TransformerEncoder expects ``key_padding_mask`` of shape
@@ -333,7 +337,8 @@ class SequenceDecoderHead(nn.Module):
             key_padding_mask = key_padding_mask.clone()
             key_padding_mask[all_pad_rows, 0] = False
         encoded = self.transformer(
-            seq_input, src_key_padding_mask=key_padding_mask,
+            seq_input,
+            src_key_padding_mask=key_padding_mask,
         )
         # Output projection: (B, S, H) → (B, S, V).
         logits = self.out_proj(encoded)
@@ -386,9 +391,7 @@ class GumbelTopKBondDecoder(nn.Module):
     ) -> None:
         super().__init__()
         if temperature <= 0.0:
-            raise ValueError(
-                f"temperature must be > 0, got {temperature!r}"
-            )
+            raise ValueError(f"temperature must be > 0, got {temperature!r}")
         if top_k <= 0:
             raise ValueError(f"top_k must be > 0, got {top_k!r}")
         self.temperature = float(temperature)
@@ -432,9 +435,7 @@ class GumbelTopKBondDecoder(nn.Module):
             )
         batch, n, m = bond_logits.shape
         if n != m:
-            raise ValueError(
-                f"bond_logits must be square, got ({n}, {m})"
-            )
+            raise ValueError(f"bond_logits must be square, got ({n}, {m})")
         if n == 0:
             return torch.zeros_like(bond_logits)
         if n == 1:
@@ -479,7 +480,11 @@ class GumbelTopKBondDecoder(nn.Module):
         # ``torch.topk`` returns the largest k; since we want the
         # top-k *scores*, this is correct.
         topk_vals, topk_idx = torch.topk(
-            scores, k=eff_k, dim=-1, largest=True, sorted=False,
+            scores,
+            k=eff_k,
+            dim=-1,
+            largest=True,
+            sorted=False,
         )
         # Build a mask of the same shape as ``scores`` with True at
         # the top-k positions per row.
@@ -534,7 +539,9 @@ class M3CompositeDecoder(nn.Module):
     ) -> None:
         super().__init__()
         self.existing_decoder = existing_decoder
-        self.seq_decoder = seq_decoder if seq_decoder is not None else SequenceDecoderHead()
+        self.seq_decoder = (
+            seq_decoder if seq_decoder is not None else SequenceDecoderHead()
+        )
         self.gumbel_decoder = (
             gumbel_decoder if gumbel_decoder is not None else GumbelTopKBondDecoder()
         )
@@ -604,7 +611,10 @@ class M3CompositeDecoder(nn.Module):
         # Default mask: all positions are valid.
         if mask is None:
             mask = torch.ones(
-                batch, max_seq_len, dtype=torch.bool, device=z.device,
+                batch,
+                max_seq_len,
+                dtype=torch.bool,
+                device=z.device,
             )
         # ---- Existing decoder rework (optional) ----
         rework_bond_logits: Optional[torch.Tensor] = None
@@ -629,12 +639,15 @@ class M3CompositeDecoder(nn.Module):
                 if callable(decode_fn):
                     try:
                         from molmetal.models.bond_head import AtomCloud
+
                         cloud = AtomCloud(
                             positions=z[..., :3].detach(),
                             atomic_numbers=torch.full(
-                                (batch, n_atoms), 6, dtype=torch.long,
+                                (batch, n_atoms),
+                                6,
+                                dtype=torch.long,
                                 device=z.device,
-                            ).reshape(-1)[: n_atoms],
+                            ).reshape(-1)[:n_atoms],
                         )
                         decode_fn(cloud)
                         # The existing decoder returns a DecodedMol;
@@ -679,7 +692,8 @@ if __name__ == "__main__":  # pragma: no cover
     seq = SequenceDecoderHead()
     gumbel = GumbelTopKBondDecoder()
     composite = M3CompositeDecoder(
-        seq_decoder=seq, gumbel_decoder=gumbel,
+        seq_decoder=seq,
+        gumbel_decoder=gumbel,
     )
     z = torch.randn(2, 8, 128)
     pocket = torch.randn(2, 64)

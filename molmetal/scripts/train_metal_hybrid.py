@@ -18,6 +18,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -99,7 +100,9 @@ def _train_one(
     torch.manual_seed(seed)
 
     device = get_device()
-    print(f"\n[train_metal_hybrid] metal={metal} split={split} seed={seed} device={device}")
+    print(
+        f"\n[train_metal_hybrid] metal={metal} split={split} seed={seed} device={device}"
+    )
 
     flt = CytotoxFilter(
         time_threshold=24.0,
@@ -138,16 +141,24 @@ def _train_one(
     cfg.base = None  # use default
     model = MetalHybridV3Model(config=cfg).to(device)
     n_params = sum(p.numel() for p in model.parameters())
-    print(f"[train_metal_hybrid] model={n_params:,} params, pretrained={model.pretrained_loaded}")
+    print(
+        f"[train_metal_hybrid] model={n_params:,} params, pretrained={model.pretrained_loaded}"
+    )
 
     loss_fn = MetalCytotoxLoss(alpha=alpha).to(device)
     optimizer = optim.Adam(model.parameters(), lr=lr)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
 
     featurizer = model.featurizer
-    train_loader = build_dataloader(dataset, train_idx, batch, featurizer, device, shuffle=True)
-    val_loader = build_dataloader(dataset, val_idx, batch, featurizer, device, shuffle=False)
-    test_loader = build_dataloader(dataset, test_idx, batch, featurizer, device, shuffle=False)
+    train_loader = build_dataloader(
+        dataset, train_idx, batch, featurizer, device, shuffle=True
+    )
+    val_loader = build_dataloader(
+        dataset, val_idx, batch, featurizer, device, shuffle=False
+    )
+    test_loader = build_dataloader(
+        dataset, test_idx, batch, featurizer, device, shuffle=False
+    )
 
     t0 = time.time()
     history = []
@@ -157,15 +168,17 @@ def _train_one(
         train_loss = train_epoch(model, train_loader, loss_fn, optimizer, device, epoch)
         scheduler.step()
         val_metrics = evaluate(model, val_loader, loss_fn, device)
-        history.append({
-            "epoch": epoch + 1,
-            "train_loss": float(train_loss),
-            "val_loss": float(val_metrics.get("loss", float("nan"))),
-            "val_auc": float(val_metrics.get("roc_auc", float("nan"))),
-            "val_pr": float(val_metrics.get("pr_auc", float("nan"))),
-            "val_pic50_mae": float(val_metrics.get("pic50_mae", float("nan"))),
-            "seconds": float(time.time() - ep_t),
-        })
+        history.append(
+            {
+                "epoch": epoch + 1,
+                "train_loss": float(train_loss),
+                "val_loss": float(val_metrics.get("loss", float("nan"))),
+                "val_auc": float(val_metrics.get("roc_auc", float("nan"))),
+                "val_pr": float(val_metrics.get("pr_auc", float("nan"))),
+                "val_pic50_mae": float(val_metrics.get("pic50_mae", float("nan"))),
+                "seconds": float(time.time() - ep_t),
+            }
+        )
         print(
             f"  epoch {epoch+1}/{epochs} train_loss={train_loss:.4f} "
             f"val_loss={val_metrics['loss']:.4f} val_auc={val_metrics['roc_auc']:.4f}"
@@ -206,10 +219,15 @@ def _aggregate(rows):
     """Aggregate per-seed rows: mean / std of AUC."""
     if not rows:
         return {}
-    aucs = np.array([r["test_auc"] for r in rows if not np.isnan(r["test_auc"])], dtype=float)
-    prs = np.array([r["test_pr"] for r in rows if not np.isnan(r["test_pr"])], dtype=float)
+    aucs = np.array(
+        [r["test_auc"] for r in rows if not np.isnan(r["test_auc"])], dtype=float
+    )
+    prs = np.array(
+        [r["test_pr"] for r in rows if not np.isnan(r["test_pr"])], dtype=float
+    )
     pic50s = np.array(
-        [r["test_pic50_mae"] for r in rows if not np.isnan(r["test_pic50_mae"])], dtype=float
+        [r["test_pic50_mae"] for r in rows if not np.isnan(r["test_pic50_mae"])],
+        dtype=float,
     )
     out = {
         "n_seeds": len(aucs),
@@ -235,7 +253,10 @@ def main():
     p.add_argument("--alpha", type=float, default=0.5)
     p.add_argument("--coord-weight", type=float, default=0.05)
     p.add_argument(
-        "--seeds", type=int, nargs="+", default=[1, 2, 3],
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=[1, 2, 3],
         help=">=3 seeds for variance estimate",
     )
     p.add_argument(
@@ -245,11 +266,15 @@ def main():
         default=["scaffold", "temporal"],
         choices=["random", "temporal", "ligand_dedup", "scaffold"],
     )
-    p.add_argument("--out", type=str, default=str(REPORTS_DIR / "metal_hybrid_ru_results.json"))
+    p.add_argument(
+        "--out", type=str, default=str(REPORTS_DIR / "metal_hybrid_ru_results.json")
+    )
     args = p.parse_args()
 
     if len(args.seeds) < 3:
-        print("[train_metal_hybrid] WARN: <3 seeds requested — variance estimate will be unreliable")
+        print(
+            "[train_metal_hybrid] WARN: <3 seeds requested — variance estimate will be unreliable"
+        )
 
     all_results = {"metal": args.metal, "epochs": args.epochs, "by_split": {}}
 

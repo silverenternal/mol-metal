@@ -44,6 +44,7 @@ Markers
 ``@pytest.mark.gpu`` — only run when CUDA is available; the CPU-only
 mode tests are run unconditionally.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -63,6 +64,7 @@ from molmetal.scoring import (
     score_any,
     tool_for_metric,
 )
+
 # ``molmetal.scoring.score_any`` is BOTH a module and a function name in
 # the package namespace (the package's ``__init__`` re-exports the
 # function). Direct ``import molmetal.scoring.score_any as X`` binds
@@ -121,6 +123,7 @@ class TestGPURoutingShape:
     def test_available_metrics_excludes_gpu_suffix(self):
         """Wf-43 backward compat: available_metrics() excludes _gpu entries."""
         from molmetal.scoring import available_metrics, available_metrics_with_gpu
+
         cpu_metrics = available_metrics()
         all_metrics = available_metrics_with_gpu()
         assert all(n in all_metrics for n in cpu_metrics)
@@ -137,8 +140,7 @@ class TestGPURoutingShape:
     def test_gpu_registry_entries_exist(self):
         for metric in GPU_ROUTED_METRICS:
             assert f"{metric}_gpu" in REGISTRY, (
-                f"REGISTRY must expose f'{metric}_gpu' as a "
-                f"GPU-backed ToolRef"
+                f"REGISTRY must expose f'{metric}_gpu' as a " f"GPU-backed ToolRef"
             )
             ref = REGISTRY[f"{metric}_gpu"]
             assert isinstance(ref, ToolRef)
@@ -167,11 +169,13 @@ class TestCPUMode:
                 calls.append(name)
                 smiles = list(ctx["molecules"]) if ctx["molecules"] else []
                 return [0.0] * len(smiles)
+
             return _rec
 
         for metric, ref in list(REGISTRY.items()):
             monkeypatch.setitem(
-                REGISTRY, metric,
+                REGISTRY,
+                metric,
                 ToolRef(
                     wrapper=make_recorder(metric),
                     tool_name=ref.tool_name,
@@ -199,11 +203,13 @@ class TestCPUMode:
             def _rec(ctx):
                 calls.append(name)
                 return [0.0] * max(1, len(list(ctx["molecules"])))
+
             return _rec
 
         for metric, ref in list(REGISTRY.items()):
             monkeypatch.setitem(
-                REGISTRY, metric,
+                REGISTRY,
+                metric,
                 ToolRef(
                     wrapper=make_recorder(metric),
                     tool_name=ref.tool_name,
@@ -230,11 +236,13 @@ class TestCPUMode:
             def _rec(ctx):
                 calls.append(name)
                 return [0.0] * max(1, len(list(ctx["molecules"])))
+
             return _rec
 
         for metric, ref in list(REGISTRY.items()):
             monkeypatch.setitem(
-                REGISTRY, metric,
+                REGISTRY,
+                metric,
                 ToolRef(
                     wrapper=make_recorder(metric),
                     tool_name=ref.tool_name,
@@ -272,9 +280,7 @@ class TestCPUMode:
 # 3. GPU mode — opt-in
 # ===========================================================================
 class TestGPUMode:
-    def test_gpu_auto_routes_via_gpu_when_metric_has_wrapper(
-        self, monkeypatch
-    ):
+    def test_gpu_auto_routes_via_gpu_when_metric_has_wrapper(self, monkeypatch):
         """gpu='auto' invokes the GPU wrapper when registered."""
         calls: List[str] = []
 
@@ -282,6 +288,7 @@ class TestGPUMode:
             def _rec(ctx):
                 calls.append(name)
                 return [0.5] * max(1, len(list(ctx["molecules"])))
+
             return _rec
 
         # Patch the GPU REGISTRY entries (NOT just GPU_WRAPPER_TABLE — the
@@ -291,7 +298,8 @@ class TestGPUMode:
             existing = REGISTRY.get(gpu_key)
             if existing is not None:
                 monkeypatch.setitem(
-                    REGISTRY, gpu_key,
+                    REGISTRY,
+                    gpu_key,
                     ToolRef(
                         wrapper=make_recorder(gpu_key),
                         tool_name=existing.tool_name,
@@ -306,7 +314,8 @@ class TestGPUMode:
         cpu_boltz = REGISTRY.get("boltz_affinity")
         if cpu_boltz is not None:
             monkeypatch.setitem(
-                REGISTRY, "boltz_affinity",
+                REGISTRY,
+                "boltz_affinity",
                 ToolRef(
                     wrapper=make_recorder("boltz_affinity"),
                     tool_name=cpu_boltz.tool_name,
@@ -316,7 +325,10 @@ class TestGPUMode:
             )
 
         # Pretend CUDA is available so gpu='auto' dispatches.
-        monkeypatch.setattr(_sa_module, "_is_cuda_available", lambda: True,
+        monkeypatch.setattr(
+            _sa_module,
+            "_is_cuda_available",
+            lambda: True,
         )
 
         result = score_any("boltz_affinity", molecules=["CCO", "CCN"], gpu="auto")
@@ -333,13 +345,15 @@ class TestGPUMode:
             def _rec(ctx):
                 calls.append(name)
                 return [0.5] * max(1, len(list(ctx["molecules"])))
+
             return _rec
 
         # Patch the GPU REGISTRY entry for vina_score.
         gpu_vina = REGISTRY.get("vina_score_gpu")
         if gpu_vina is not None:
             monkeypatch.setitem(
-                REGISTRY, "vina_score_gpu",
+                REGISTRY,
+                "vina_score_gpu",
                 ToolRef(
                     wrapper=make_recorder("vina_score_gpu"),
                     tool_name=gpu_vina.tool_name,
@@ -353,7 +367,8 @@ class TestGPUMode:
         vina_cpu = REGISTRY.get("vina_score")
         if vina_cpu is not None:
             monkeypatch.setitem(
-                REGISTRY, "vina_score",
+                REGISTRY,
+                "vina_score",
                 ToolRef(
                     wrapper=make_recorder("vina_score"),
                     tool_name=vina_cpu.tool_name,
@@ -362,11 +377,13 @@ class TestGPUMode:
                 ),
             )
 
-        monkeypatch.setattr(_sa_module, "_is_cuda_available", lambda: True,
+        monkeypatch.setattr(
+            _sa_module,
+            "_is_cuda_available",
+            lambda: True,
         )
 
-        result = score_any("vina_score", molecules=["CCO"], pocket=None,
-                           gpu=True)
+        result = score_any("vina_score", molecules=["CCO"], pocket=None, gpu=True)
         # vina_score requires pocket; with pocket=None the wrapper
         # raises AdapterUnavailable — for the routing test we just
         # verify the GPU path was selected (the value is secondary).
@@ -374,13 +391,15 @@ class TestGPUMode:
 
     def test_gpu_force_strict_no_fallback(self, monkeypatch):
         """gpu='force' raises AdapterUnavailable when GPU wrapper fails."""
+
         def gpu_fail(ctx):
             raise AdapterUnavailable("GPU wrapper not available (test)")
 
-        monkeypatch.setitem(
-            GPU_WRAPPER_TABLE, "boltz_affinity", gpu_fail
-        )
-        monkeypatch.setattr(_sa_module, "_is_cuda_available", lambda: True,
+        monkeypatch.setitem(GPU_WRAPPER_TABLE, "boltz_affinity", gpu_fail)
+        monkeypatch.setattr(
+            _sa_module,
+            "_is_cuda_available",
+            lambda: True,
         )
 
         with pytest.raises(AdapterUnavailable):
@@ -403,18 +422,25 @@ class TestAutoDetect:
             def _rec(ctx):
                 calls.append(name)
                 return [0.0] * max(1, len(list(ctx["molecules"])))
+
             return _rec
 
         # Stub the CPU REGISTRY entries so we can record the CPU call
         # without invoking the real boltz_affinity wrapper (which would
         # import torch on this host).
-        for metric in ("boltz_affinity", "vina_score", "pb_pass_rate",
-                       "diffdock_pose", "vina_high_affinity",
-                       "vina_min_score"):
+        for metric in (
+            "boltz_affinity",
+            "vina_score",
+            "pb_pass_rate",
+            "diffdock_pose",
+            "vina_high_affinity",
+            "vina_min_score",
+        ):
             existing = REGISTRY.get(metric)
             if existing is not None:
                 monkeypatch.setitem(
-                    REGISTRY, metric,
+                    REGISTRY,
+                    metric,
                     ToolRef(
                         wrapper=make_recorder(metric),
                         tool_name=existing.tool_name,
@@ -430,7 +456,8 @@ class TestAutoDetect:
             existing = REGISTRY.get(gpu_key)
             if existing is not None:
                 monkeypatch.setitem(
-                    REGISTRY, gpu_key,
+                    REGISTRY,
+                    gpu_key,
                     ToolRef(
                         wrapper=make_recorder(gpu_key),
                         tool_name=existing.tool_name,
@@ -439,7 +466,10 @@ class TestAutoDetect:
                     ),
                 )
         # But no CUDA.
-        monkeypatch.setattr(_sa_module, "_is_cuda_available", lambda: False,
+        monkeypatch.setattr(
+            _sa_module,
+            "_is_cuda_available",
+            lambda: False,
         )
 
         result = score_any("boltz_affinity", molecules=["CCO"], gpu="auto")
@@ -450,6 +480,7 @@ class TestAutoDetect:
 
     def test_auto_falls_back_on_gpu_unavailable(self, monkeypatch, caplog):
         """GPU AdapterUnavailable under gpu='auto' → CPU fallback + log."""
+
         def gpu_fail(ctx):
             raise AdapterUnavailable("GPU backend not reachable (test)")
 
@@ -459,7 +490,8 @@ class TestAutoDetect:
         gpu_existing = REGISTRY.get("boltz_affinity_gpu")
         if gpu_existing is not None:
             monkeypatch.setitem(
-                REGISTRY, "boltz_affinity_gpu",
+                REGISTRY,
+                "boltz_affinity_gpu",
                 ToolRef(
                     wrapper=gpu_fail,
                     tool_name=gpu_existing.tool_name,
@@ -473,7 +505,8 @@ class TestAutoDetect:
         cpu_existing = REGISTRY.get("boltz_affinity")
         if cpu_existing is not None:
             monkeypatch.setitem(
-                REGISTRY, "boltz_affinity",
+                REGISTRY,
+                "boltz_affinity",
                 ToolRef(
                     wrapper=lambda ctx: [0.0] * max(1, len(list(ctx["molecules"]))),
                     tool_name=cpu_existing.tool_name,
@@ -481,22 +514,24 @@ class TestAutoDetect:
                     notes="[cpu-stub]",
                 ),
             )
-        monkeypatch.setattr(_sa_module, "_is_cuda_available", lambda: True,
+        monkeypatch.setattr(
+            _sa_module,
+            "_is_cuda_available",
+            lambda: True,
         )
 
         with caplog.at_level(logging.WARNING):
             result = score_any(
-                "boltz_affinity", molecules=["CCO"], gpu="auto",
+                "boltz_affinity",
+                molecules=["CCO"],
+                gpu="auto",
             )
 
         assert result["status"] == "MEASURED_FALLBACK"
         assert result.get("fallback_to_cpu") is True
         assert result["gpu_mode"] == "auto"
         # WARNING log line was emitted.
-        assert any(
-            "falling back to CPU" in rec.message
-            for rec in caplog.records
-        )
+        assert any("falling back to CPU" in rec.message for rec in caplog.records)
 
     def test_auto_falls_back_on_oom(self, monkeypatch):
         """torch CUDA OOM under gpu='auto' → CPU fallback + cache cleared."""
@@ -512,7 +547,8 @@ class TestAutoDetect:
         gpu_existing = REGISTRY.get("boltz_affinity_gpu")
         if gpu_existing is not None:
             monkeypatch.setitem(
-                REGISTRY, "boltz_affinity_gpu",
+                REGISTRY,
+                "boltz_affinity_gpu",
                 ToolRef(
                     wrapper=gpu_oom,
                     tool_name=gpu_existing.tool_name,
@@ -524,7 +560,8 @@ class TestAutoDetect:
         cpu_existing = REGISTRY.get("boltz_affinity")
         if cpu_existing is not None:
             monkeypatch.setitem(
-                REGISTRY, "boltz_affinity",
+                REGISTRY,
+                "boltz_affinity",
                 ToolRef(
                     wrapper=lambda ctx: [0.0] * max(1, len(list(ctx["molecules"]))),
                     tool_name=cpu_existing.tool_name,
@@ -533,8 +570,12 @@ class TestAutoDetect:
                 ),
             )
 
-        monkeypatch.setattr(_sa_module, "_is_cuda_available", lambda: True,
+        monkeypatch.setattr(
+            _sa_module,
+            "_is_cuda_available",
+            lambda: True,
         )
+
         # The score_any code does ``torch.cuda.empty_cache()`` so the
         # stub torch must expose a ``cuda`` attribute with
         # ``empty_cache``.
@@ -542,8 +583,10 @@ class TestAutoDetect:
             @staticmethod
             def empty_cache():
                 cleared["called"] += 1
+
         monkeypatch.setattr(
-            _sa_module, "_import_torch",
+            _sa_module,
+            "_import_torch",
             lambda: type("T", (), {"cuda": _FakeCUDA})(),
         )
 
@@ -554,6 +597,7 @@ class TestAutoDetect:
 
     def test_force_raises_on_oom(self, monkeypatch):
         """gpu='force' + OOM → AdapterUnavailable (no CPU retry)."""
+
         def gpu_oom(ctx):
             raise RuntimeError("CUDA out of memory.")
 
@@ -561,7 +605,8 @@ class TestAutoDetect:
         gpu_existing = REGISTRY.get("boltz_affinity_gpu")
         if gpu_existing is not None:
             monkeypatch.setitem(
-                REGISTRY, "boltz_affinity_gpu",
+                REGISTRY,
+                "boltz_affinity_gpu",
                 ToolRef(
                     wrapper=gpu_oom,
                     tool_name=gpu_existing.tool_name,
@@ -570,7 +615,10 @@ class TestAutoDetect:
                 ),
             )
 
-        monkeypatch.setattr(_sa_module, "_is_cuda_available", lambda: True,
+        monkeypatch.setattr(
+            _sa_module,
+            "_is_cuda_available",
+            lambda: True,
         )
         with pytest.raises(AdapterUnavailable):
             score_any("boltz_affinity", molecules=["CCO"], gpu="force")
@@ -597,6 +645,7 @@ class TestEnvVars:
             def _rec(ctx):
                 calls.append(name)
                 return [0.0] * max(1, len(list(ctx["molecules"])))
+
             return _rec
 
         # Patch GPU REGISTRY entries.
@@ -605,7 +654,8 @@ class TestEnvVars:
             existing = REGISTRY.get(gpu_key)
             if existing is not None:
                 monkeypatch.setitem(
-                    REGISTRY, gpu_key,
+                    REGISTRY,
+                    gpu_key,
                     ToolRef(
                         wrapper=make_recorder(gpu_key),
                         tool_name=existing.tool_name,
@@ -617,7 +667,8 @@ class TestEnvVars:
         cpu_existing = REGISTRY.get("boltz_affinity")
         if cpu_existing is not None:
             monkeypatch.setitem(
-                REGISTRY, "boltz_affinity",
+                REGISTRY,
+                "boltz_affinity",
                 ToolRef(
                     wrapper=make_recorder("boltz_affinity"),
                     tool_name=cpu_existing.tool_name,
@@ -626,7 +677,10 @@ class TestEnvVars:
                 ),
             )
 
-        monkeypatch.setattr(_sa_module, "_is_cuda_available", lambda: True,
+        monkeypatch.setattr(
+            _sa_module,
+            "_is_cuda_available",
+            lambda: True,
         )
         monkeypatch.setenv("MOLMETAL_GPU_ACCEL", "1")
 
@@ -649,7 +703,8 @@ class TestEnvVars:
         gpu_existing = REGISTRY.get("boltz_affinity_gpu")
         if gpu_existing is not None:
             monkeypatch.setitem(
-                REGISTRY, "boltz_affinity_gpu",
+                REGISTRY,
+                "boltz_affinity_gpu",
                 ToolRef(
                     wrapper=gpu_record_device,
                     tool_name=gpu_existing.tool_name,
@@ -657,7 +712,10 @@ class TestEnvVars:
                     notes="[gpu-device-stub]",
                 ),
             )
-        monkeypatch.setattr(_sa_module, "_is_cuda_available", lambda: True,
+        monkeypatch.setattr(
+            _sa_module,
+            "_is_cuda_available",
+            lambda: True,
         )
         monkeypatch.setenv("MOLMETAL_GPU_DEVICE", "1")
         # _selected_gpu_device is a module-level function imported into
@@ -706,7 +764,8 @@ class TestResolveGPURequest:
         assert _resolve_gpu_request(s) == "auto"
 
     @pytest.mark.parametrize(
-        "s", ["off", "false", "no", "0", ""],
+        "s",
+        ["off", "false", "no", "0", ""],
     )
     def test_off_strings_resolve_to_off(self, s):
         assert _resolve_gpu_request(s) == "off"
@@ -730,6 +789,7 @@ class TestNumericalParity:
         def gpu_parity(ctx):
             # Same RDKit SA score path.
             from molmetal.molmetal_lam.sbdd_env.sa_score import sa_score_ertl
+
             smiles = [str(s) for s in ctx["molecules"]]
             return [float(sa_score_ertl(s)) for s in smiles]
 
@@ -753,17 +813,21 @@ class TestNumericalParity:
         # 10=practically un-synthesizable). The test contract here is
         # "ethanol is synthesizable" → value should land near the
         # lower end of the [1, 10] range, not near the middle.
-        assert 1.0 <= cpu_val <= 4.0, f"SA score {cpu_val} outside expected low-end range [1, 4]"
+        assert (
+            1.0 <= cpu_val <= 4.0
+        ), f"SA score {cpu_val} outside expected low-end range [1, 4]"
 
     def test_gpu_wrapper_invocation_preserves_metric_name(self, monkeypatch):
         """score_any("X", gpu=...) returns dict with metric='X' regardless of path."""
+
         def gpu_mock(ctx):
             return [42.0] * max(1, len(list(ctx["molecules"])))
 
         gpu_existing = REGISTRY.get("boltz_affinity_gpu")
         if gpu_existing is not None:
             monkeypatch.setitem(
-                REGISTRY, "boltz_affinity_gpu",
+                REGISTRY,
+                "boltz_affinity_gpu",
                 ToolRef(
                     wrapper=gpu_mock,
                     tool_name=gpu_existing.tool_name,
@@ -776,7 +840,8 @@ class TestNumericalParity:
         cpu_existing = REGISTRY.get("boltz_affinity")
         if cpu_existing is not None:
             monkeypatch.setitem(
-                REGISTRY, "boltz_affinity",
+                REGISTRY,
+                "boltz_affinity",
                 ToolRef(
                     wrapper=lambda ctx: [0.0] * max(1, len(list(ctx["molecules"]))),
                     tool_name=cpu_existing.tool_name,
@@ -785,7 +850,10 @@ class TestNumericalParity:
                 ),
             )
 
-        monkeypatch.setattr(_sa_module, "_is_cuda_available", lambda: True,
+        monkeypatch.setattr(
+            _sa_module,
+            "_is_cuda_available",
+            lambda: True,
         )
 
         result = score_any("boltz_affinity", molecules=["CCO"], gpu="auto")
@@ -824,6 +892,7 @@ class TestWF43BackwardCompat:
             def _rec(ctx):
                 calls.append(name)
                 return [0.0] * max(1, len(list(ctx["molecules"])))
+
             return _rec
 
         # Patch the GPU REGISTRY entries to record calls if invoked.
@@ -832,7 +901,8 @@ class TestWF43BackwardCompat:
             existing = REGISTRY.get(gpu_key)
             if existing is not None:
                 monkeypatch.setitem(
-                    REGISTRY, gpu_key,
+                    REGISTRY,
+                    gpu_key,
                     ToolRef(
                         wrapper=make_recorder(gpu_key),
                         tool_name=existing.tool_name,
@@ -844,7 +914,8 @@ class TestWF43BackwardCompat:
         cpu_existing = REGISTRY.get("boltz_affinity")
         if cpu_existing is not None:
             monkeypatch.setitem(
-                REGISTRY, "boltz_affinity",
+                REGISTRY,
+                "boltz_affinity",
                 ToolRef(
                     wrapper=make_recorder("boltz_affinity"),
                     tool_name=cpu_existing.tool_name,
@@ -853,7 +924,10 @@ class TestWF43BackwardCompat:
                 ),
             )
 
-        monkeypatch.setattr(_sa_module, "_is_cuda_available", lambda: True,
+        monkeypatch.setattr(
+            _sa_module,
+            "_is_cuda_available",
+            lambda: True,
         )
         # Ensure env var is unset.
         monkeypatch.delenv("MOLMETAL_GPU_ACCEL", raising=False)

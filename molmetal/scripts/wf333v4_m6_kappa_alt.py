@@ -53,6 +53,7 @@ Run::
         molmetal/scripts/wf333v4_m6_kappa_alt.py \\
         --output-dir molmetal/reports/wf333v4_m6_kappa
 """
+
 from __future__ import annotations
 
 import argparse
@@ -76,6 +77,7 @@ except Exception:
 # errors for.
 try:
     from rdkit import RDLogger
+
     RDLogger.DisableLog("rdApp.*")
 except Exception:
     pass
@@ -125,6 +127,7 @@ def _safe_m6_kappa(smi: str) -> Optional[float]:
         from molmetal.molmetal_lam.sbdd_env.metrics_v2 import (
             m6_kappa_from_smiles,
         )
+
         v = m6_kappa_from_smiles(smi)
     except Exception:
         return None
@@ -134,7 +137,8 @@ def _safe_m6_kappa(smi: str) -> Optional[float]:
 
 
 def _compute_baseline_pass_rate(
-    values: Sequence[float], threshold: float,
+    values: Sequence[float],
+    threshold: float,
 ) -> float:
     """Fraction of ``values`` that meet ``threshold`` (NaN-safe)."""
     finite = [v for v in values if v == v]  # NaN-safe
@@ -148,7 +152,10 @@ def _compute_baseline_pass_rate(
 # CV-Ridge helpers
 # ---------------------------------------------------------------------------
 def _cv_r2_predict(
-    X: Any, y: Any, alpha: float, cv_folds: int,
+    X: Any,
+    y: Any,
+    alpha: float,
+    cv_folds: int,
 ) -> Dict[str, Any]:
     """Cross-validated Ridge prediction + R² for m6_kappa recovery.
 
@@ -194,12 +201,14 @@ def _cv_r2_predict(
 def _wasserstein_distance_1d(a, b) -> float:
     """1-d Wasserstein (earth mover's) distance (scipy + numpy fallback)."""
     import numpy as np
+
     a = np.asarray(a, dtype="float64")
     b = np.asarray(b, dtype="float64")
     if a.size < 1 or b.size < 1:
         return 0.0
     try:
         from scipy.stats import wasserstein_distance as _wd
+
         return float(_wd(a, b))
     except Exception:
         a_sorted = np.sort(a)
@@ -218,11 +227,13 @@ def _wasserstein_distance_1d(a, b) -> float:
 def _to_numpy(arr):
     """numpy.asarray wrapper (test-time import shim)."""
     import numpy as np
+
     return np.asarray(arr, dtype="float64")
 
 
 def _rdkit_projection(
-    smiles_list: Sequence[str], projection_axis: int = 0,
+    smiles_list: Sequence[str],
+    projection_axis: int = 0,
 ) -> "np.ndarray":
     """Per-SMILES RDKit descriptor projection (covariate for W₂).
 
@@ -231,6 +242,7 @@ def _rdkit_projection(
     RDKit 12-d features; otherwise we compute on-the-fly.
     """
     import numpy as np
+
     try:
         from rdkit import Chem
         from rdkit.Chem import Descriptors
@@ -238,9 +250,18 @@ def _rdkit_projection(
         return np.zeros(len(smiles_list), dtype="float64")
 
     cols = [
-        "MolWt", "MolLogP", "TPSA", "HBA", "HBD", "NRotB",
-        "HeavyAtoms", "RingCount", "NumAromaticRings",
-        "FractionCSP3", "MolMR", "BalabanJ",
+        "MolWt",
+        "MolLogP",
+        "TPSA",
+        "HBA",
+        "HBD",
+        "NRotB",
+        "HeavyAtoms",
+        "RingCount",
+        "NumAromaticRings",
+        "FractionCSP3",
+        "MolMR",
+        "BalabanJ",
     ]
     fns = {
         "MolWt": Descriptors.MolWt,
@@ -298,7 +319,8 @@ def _compute_w2_distance_covariate(
         if not np.isfinite(proj[i]):
             continue
         out[i] = _wasserstein_distance_1d(
-            np.array([proj[i]], dtype="float64"), ref_proj,
+            np.array([proj[i]], dtype="float64"),
+            ref_proj,
         )
     return out
 
@@ -344,7 +366,9 @@ def _chemprop_v2_pooled(smiles_list: Sequence[str]) -> "np.ndarray":
             _one_hot(int(atom.GetHybridization()), atom_vocab["hybridization"], 8),
             _one_hot(int(atom.GetIsAromatic()), atom_vocab["is_aromatic"], 2),
             _one_hot(atom.GetTotalNumHs(), atom_vocab["total_num_Hs"], 9),
-            _one_hot(atom.GetNumRadicalElectrons(), atom_vocab["num_radical_electrons"], 5),
+            _one_hot(
+                atom.GetNumRadicalElectrons(), atom_vocab["num_radical_electrons"], 5
+            ),
             _one_hot(int(atom.IsInRing()), atom_vocab["in_ring"], 2),
         ]
         ring_part = np.zeros(4, dtype="float64")
@@ -402,18 +426,19 @@ def _run_candidate(
     y_pred = cv["y_pred_cv"]
     augmented_mean = float(np.mean(y_pred))
     augmented_pass_rate = _compute_baseline_pass_rate(
-        y_pred, M6_KAPPA_THRESHOLD,
+        y_pred,
+        M6_KAPPA_THRESHOLD,
     )
     augmented_pass_rate_adaptive = _compute_baseline_pass_rate(
-        y_pred, M6_KAPPA_THRESHOLD_ADAPTIVE,
+        y_pred,
+        M6_KAPPA_THRESHOLD_ADAPTIVE,
     )
     baseline_pass_rate_adaptive = _compute_baseline_pass_rate(
-        y, M6_KAPPA_THRESHOLD_ADAPTIVE,
+        y,
+        M6_KAPPA_THRESHOLD_ADAPTIVE,
     )
     pass_rate_lift = augmented_pass_rate - baseline_pass_rate
-    pass_rate_lift_adaptive = (
-        augmented_pass_rate_adaptive - baseline_pass_rate_adaptive
-    )
+    pass_rate_lift_adaptive = augmented_pass_rate_adaptive - baseline_pass_rate_adaptive
     if augmented_mean >= M6_KAPPA_THRESHOLD:
         verdict = "HONEST_NEGATIVE_M6_KAPPA_RESOLVED"
     else:
@@ -443,16 +468,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--csv",
-        default=str(
-            REPO_ROOT / "molmetal" / "data" / "metallo_drugs_500_train.csv"
-        ),
+        default=str(REPO_ROOT / "molmetal" / "data" / "metallo_drugs_500_train.csv"),
         help="Path to metallo_drugs_500_train.csv",
     )
     parser.add_argument(
         "--output-dir",
-        default=str(
-            REPO_ROOT / "molmetal" / "reports" / "wf333v4_m6_kappa"
-        ),
+        default=str(REPO_ROOT / "molmetal" / "reports" / "wf333v4_m6_kappa"),
         help="Where to write result.json + per-axis csv",
     )
     parser.add_argument(
@@ -460,7 +481,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         type=int,
         default=60,
         help="Cap cohort size for the smoke run (CPU-only); "
-             "default 60 keeps wall < ~5 min on a 32-bin grid.",
+        "default 60 keeps wall < ~5 min on a 32-bin grid.",
     )
     parser.add_argument(
         "--cv-folds",
@@ -491,8 +512,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # ------------------------------------------------------------------
     # 1. Load cohort
     # ------------------------------------------------------------------
-    print(f"[Wf-333-V4] Loading cohort from {csv_path} "
-          f"(max {args.max_samples}) ...")
+    print(
+        f"[Wf-333-V4] Loading cohort from {csv_path} " f"(max {args.max_samples}) ..."
+    )
     t0 = time.time()
     smiles = _load_cohort(csv_path, args.max_samples)
     t_load = time.time() - t0
@@ -500,8 +522,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     if not smiles:
         smiles = ["CCO", "c1ccccc1", "[Pt](N)(N)(Cl)Cl"]
-        print(f"[Wf-333-V4] CSV empty; using synthetic fallback "
-              f"({len(smiles)} SMILES)")
+        print(
+            f"[Wf-333-V4] CSV empty; using synthetic fallback "
+            f"({len(smiles)} SMILES)"
+        )
 
     # ------------------------------------------------------------------
     # 2. Compute baseline m6_kappa on the cohort
@@ -519,43 +543,53 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     baseline_mean = float(sum(baseline_clean) / n_parsed)
     baseline_std = float(np.std(baseline_clean, ddof=1)) if n_parsed > 1 else 0.0
     baseline_pass_rate = _compute_baseline_pass_rate(
-        baseline_clean, M6_KAPPA_THRESHOLD,
+        baseline_clean,
+        M6_KAPPA_THRESHOLD,
     )
     baseline_pass_rate_adaptive = _compute_baseline_pass_rate(
-        baseline_clean, M6_KAPPA_THRESHOLD_ADAPTIVE,
+        baseline_clean,
+        M6_KAPPA_THRESHOLD_ADAPTIVE,
     )
-    print(f"[Wf-333-V4] baseline m6_kappa: mean={baseline_mean:.4f} "
-          f"(std={baseline_std:.4f}, n_parsed={n_parsed}, "
-          f"n_failed={n_failed}, "
-          f"pass_rate@{M6_KAPPA_THRESHOLD:.2f}={baseline_pass_rate:.4f}, "
-          f"pass_rate@{M6_KAPPA_THRESHOLD_ADAPTIVE:.2f}="
-          f"{baseline_pass_rate_adaptive:.4f}, {t_baseline:.2f}s)")
+    print(
+        f"[Wf-333-V4] baseline m6_kappa: mean={baseline_mean:.4f} "
+        f"(std={baseline_std:.4f}, n_parsed={n_parsed}, "
+        f"n_failed={n_failed}, "
+        f"pass_rate@{M6_KAPPA_THRESHOLD:.2f}={baseline_pass_rate:.4f}, "
+        f"pass_rate@{M6_KAPPA_THRESHOLD_ADAPTIVE:.2f}="
+        f"{baseline_pass_rate_adaptive:.4f}, {t_baseline:.2f}s)"
+    )
 
     # ------------------------------------------------------------------
     # 3. Extract PLL features via MultiPHPLLFeatureExtractor
     # ------------------------------------------------------------------
-    print("[Wf-333-V4] Computing PLL features via "
-          "MultiPHPLLFeatureExtractor ...")
+    print("[Wf-333-V4] Computing PLL features via " "MultiPHPLLFeatureExtractor ...")
     t0 = time.time()
     from molmetal.molmetal_lam.reward.multiph_pll_feature import (
         MultiPHPLLFeatureExtractor,
     )
+
     extractor = MultiPHPLLFeatureExtractor()
     fourier_b, multi_ph_b, pll_b = extractor.compute_batch(smiles)
     t_features = time.time() - t0
     n_samples = fourier_b.shape[0]
-    print(f"[Wf-333-V4] Extractor: n_bins={extractor.n_bins} "
-          f"(F={extractor.fourier_dim}, M={extractor.multi_ph_dim}, "
-          f"P={extractor.pll_dim})")
-    print(f"[Wf-333-V4] Batch shape: fourier={fourier_b.shape}, "
-          f"multi_ph={multi_ph_b.shape}, pll={pll_b.shape} "
-          f"({t_features:.2f}s)")
+    print(
+        f"[Wf-333-V4] Extractor: n_bins={extractor.n_bins} "
+        f"(F={extractor.fourier_dim}, M={extractor.multi_ph_dim}, "
+        f"P={extractor.pll_dim})"
+    )
+    print(
+        f"[Wf-333-V4] Batch shape: fourier={fourier_b.shape}, "
+        f"multi_ph={multi_ph_b.shape}, pll={pll_b.shape} "
+        f"({t_features:.2f}s)"
+    )
 
     # ------------------------------------------------------------------
     # 4. Compute W₂ distance feature (covariate-based, non-leaky)
     # ------------------------------------------------------------------
-    print("[Wf-333-V4] Computing W₂ distance feature (covariate, "
-          "non-leaky; MolWt projection) ...")
+    print(
+        "[Wf-333-V4] Computing W₂ distance feature (covariate, "
+        "non-leaky; MolWt projection) ..."
+    )
     t0 = time.time()
     # Build the y-vector aligned with features: filter to those
     # rows where baseline is finite.
@@ -575,22 +609,30 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     # W₂ on RDKit MolWt projection (axis 0; non-leaky per Wf-331-R5)
     w2_feat = _compute_w2_distance_covariate(
-        kept_smiles, y, projection_axis=0,
+        kept_smiles,
+        y,
+        projection_axis=0,
     )
     t_w2 = time.time() - t0
-    print(f"[Wf-333-V4] W₂ distance feature: shape={w2_feat.shape}, "
-          f"min={w2_feat.min():.4f}, max={w2_feat.max():.4f}, "
-          f"mean={w2_feat.mean():.4f} ({t_w2:.2f}s)")
+    print(
+        f"[Wf-333-V4] W₂ distance feature: shape={w2_feat.shape}, "
+        f"min={w2_feat.min():.4f}, max={w2_feat.max():.4f}, "
+        f"mean={w2_feat.mean():.4f} ({t_w2:.2f}s)"
+    )
 
     # chemprop v2 RDKit-native fallback
-    print("[Wf-333-V4] Computing chemprop v2 graph features "
-          "(RDKit-native fallback) ...")
+    print(
+        "[Wf-333-V4] Computing chemprop v2 graph features "
+        "(RDKit-native fallback) ..."
+    )
     t0 = time.time()
     chemprop_feat = _chemprop_v2_pooled(kept_smiles)
     t_chemprop = time.time() - t0
-    print(f"[Wf-333-V4] chemprop v2 graph: shape={chemprop_feat.shape}, "
-          f"min={chemprop_feat.min():.4f}, max={chemprop_feat.max():.4f} "
-          f"({t_chemprop:.2f}s)")
+    print(
+        f"[Wf-333-V4] chemprop v2 graph: shape={chemprop_feat.shape}, "
+        f"min={chemprop_feat.min():.4f}, max={chemprop_feat.max():.4f} "
+        f"({t_chemprop:.2f}s)"
+    )
 
     # Truncate features to the kept subset
     fourier_kept = fourier_b[kept_index]
@@ -601,51 +643,77 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # ------------------------------------------------------------------
     # 5. Run the 5 candidate pipelines
     # ------------------------------------------------------------------
-    print(f"[Wf-333-V4] Cross-validated Ridge recovery "
-          f"(alpha={args.ridge_alpha}, cv_folds={args.cv_folds}) ...")
+    print(
+        f"[Wf-333-V4] Cross-validated Ridge recovery "
+        f"(alpha={args.ridge_alpha}, cv_folds={args.cv_folds}) ..."
+    )
 
     # Candidate 1: PLL-only (the +0.49 structural signal from Wf-331-R3)
     X_pll_only = pll_kept
     cand_pll_only = _run_candidate(
-        "pll_only", X_pll_only, y, baseline_pass_rate,
-        alpha=args.ridge_alpha, cv_folds=args.cv_folds,
+        "pll_only",
+        X_pll_only,
+        y,
+        baseline_pass_rate,
+        alpha=args.ridge_alpha,
+        cv_folds=args.cv_folds,
     )
 
     # Candidate 2: W₂ + PLL (top Wf-333-V4 candidate)
     X_w2_pll = np.concatenate(
-        [w2_feat.reshape(-1, 1), pll_kept], axis=-1,
+        [w2_feat.reshape(-1, 1), pll_kept],
+        axis=-1,
     )
     cand_w2_pll = _run_candidate(
-        "w2_plus_pll", X_w2_pll, y, baseline_pass_rate,
-        alpha=args.ridge_alpha, cv_folds=args.cv_folds,
+        "w2_plus_pll",
+        X_w2_pll,
+        y,
+        baseline_pass_rate,
+        alpha=args.ridge_alpha,
+        cv_folds=args.cv_folds,
     )
 
     # Candidate 3: chemprop v2 + PLL (graph features + PLL)
     X_chemprop_pll = np.concatenate(
-        [chemprop_feat, pll_kept], axis=-1,
+        [chemprop_feat, pll_kept],
+        axis=-1,
     )
     cand_chemprop_pll = _run_candidate(
-        "chemprop_plus_pll", X_chemprop_pll, y, baseline_pass_rate,
-        alpha=args.ridge_alpha, cv_folds=args.cv_folds,
+        "chemprop_plus_pll",
+        X_chemprop_pll,
+        y,
+        baseline_pass_rate,
+        alpha=args.ridge_alpha,
+        cv_folds=args.cv_folds,
     )
 
     # Candidate 4: Multi-PH + W₂ (full multi-PH + W₂ distance)
     multi_ph_flat = multi_ph_kept.reshape(n_kept, -1)
     X_multi_ph_w2 = np.concatenate(
-        [multi_ph_flat, w2_feat.reshape(-1, 1)], axis=-1,
+        [multi_ph_flat, w2_feat.reshape(-1, 1)],
+        axis=-1,
     )
     cand_multi_ph_w2 = _run_candidate(
-        "multi_ph_plus_w2", X_multi_ph_w2, y, baseline_pass_rate,
-        alpha=args.ridge_alpha, cv_folds=args.cv_folds,
+        "multi_ph_plus_w2",
+        X_multi_ph_w2,
+        y,
+        baseline_pass_rate,
+        alpha=args.ridge_alpha,
+        cv_folds=args.cv_folds,
     )
 
     # Reference: full Wf-331-R3 joint (Fourier + Multi-PH + PLL)
     X_joint_ref = np.concatenate(
-        [fourier_kept, multi_ph_flat, pll_kept], axis=-1,
+        [fourier_kept, multi_ph_flat, pll_kept],
+        axis=-1,
     )
     cand_joint_ref = _run_candidate(
-        "joint_fourier_multiph_pll_ref", X_joint_ref, y, baseline_pass_rate,
-        alpha=args.ridge_alpha, cv_folds=args.cv_folds,
+        "joint_fourier_multiph_pll_ref",
+        X_joint_ref,
+        y,
+        baseline_pass_rate,
+        alpha=args.ridge_alpha,
+        cv_folds=args.cv_folds,
     )
 
     candidates = [
@@ -662,15 +730,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     print()
     print("=" * 80)
     print(f"Wf-333-V4 SUMMARY")
-    print(f"  m6_kappa baseline mean : {baseline_mean:.4f} "
-          f"(Wf-325D MEASURED={WF_325D_MEASURED_BASELINE:.4f})")
+    print(
+        f"  m6_kappa baseline mean : {baseline_mean:.4f} "
+        f"(Wf-325D MEASURED={WF_325D_MEASURED_BASELINE:.4f})"
+    )
     print(f"  pass_rate @0.60       : {baseline_pass_rate:.4f}")
     print(f"  pass_rate @0.55 (ada) : {baseline_pass_rate_adaptive:.4f}")
     print(f"  candidates            : {len(candidates)}")
     print()
-    print(f"  {'candidate':<30s} {'n_feat':>7s} {'cv_r2':>9s} "
-          f"{'aug_mean':>9s} {'pass_lift':>10s} {'lift_adapt':>11s} "
-          f"{'verdict':<30s}")
+    print(
+        f"  {'candidate':<30s} {'n_feat':>7s} {'cv_r2':>9s} "
+        f"{'aug_mean':>9s} {'pass_lift':>10s} {'lift_adapt':>11s} "
+        f"{'verdict':<30s}"
+    )
     for c in candidates:
         print(
             f"  {c['candidate']:<30s} {c['n_features']:>7d} "
@@ -686,19 +758,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # Top candidate by CV-R² (structural recovery signal)
     best_cv_r2 = max(c["cv_r2"] for c in candidates)
     best_cv_r2_candidate = next(
-        c["candidate"] for c in candidates
-        if c["cv_r2"] == best_cv_r2
+        c["candidate"] for c in candidates if c["cv_r2"] == best_cv_r2
     )
     # Top candidate by adaptive-threshold pass-rate lift (threshold-reaching)
     best_lift_adaptive = max(c["pass_rate_lift_adaptive"] for c in candidates)
     best_lift_candidate = next(
-        c["candidate"] for c in candidates
+        c["candidate"]
+        for c in candidates
         if c["pass_rate_lift_adaptive"] == best_lift_adaptive
     )
     # Recovery verdict: any candidate resolved (augmented_mean >= 0.6)?
     any_resolved = any(
-        c["verdict"] == "HONEST_NEGATIVE_M6_KAPPA_RESOLVED"
-        for c in candidates
+        c["verdict"] == "HONEST_NEGATIVE_M6_KAPPA_RESOLVED" for c in candidates
     )
     if any_resolved:
         aggregate_status = "HONEST_NEGATIVE_M6_KAPPA_RESOLVED"
@@ -714,10 +785,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             aggregate_status = "HONEST_NEGATIVE_PERSISTENT"
 
     print()
-    print(f"  best_cv_r2 candidate       : {best_cv_r2_candidate} "
-          f"(CV-R²={best_cv_r2:+.4f})")
-    print(f"  best_adaptive_lift candidate: {best_lift_candidate} "
-          f"(lift={best_lift_adaptive:+.4f})")
+    print(
+        f"  best_cv_r2 candidate       : {best_cv_r2_candidate} "
+        f"(CV-R²={best_cv_r2:+.4f})"
+    )
+    print(
+        f"  best_adaptive_lift candidate: {best_lift_candidate} "
+        f"(lift={best_lift_adaptive:+.4f})"
+    )
     print(f"  aggregate_status           : {aggregate_status}")
     print("=" * 80)
 
@@ -732,7 +807,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "no_retrain": True,
         "cpu_only": True,
         "wall_seconds": round(
-            t_load + t_baseline + t_features + t_w2 + t_chemprop, 4,
+            t_load + t_baseline + t_features + t_w2 + t_chemprop,
+            4,
         ),
         "wf_325d_baseline_measured": WF_325D_MEASURED_BASELINE,
         "wf_325d_threshold": M6_KAPPA_THRESHOLD,
@@ -769,8 +845,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "is_no_paper_touch": True,
             "baseline_mean_status": "MEASURED (Wf-325D, n=449 full cohort)",
             "smoke_baseline_status": (
-                "MEASURED on this smoke cohort "
-                f"(n={n_parsed}/{len(smiles)})"
+                "MEASURED on this smoke cohort " f"(n={n_parsed}/{len(smiles)})"
             ),
             "cv_r2_status": "MEASURED (5-fold Ridge cross-validation)",
             "augmented_mean_status": (
@@ -786,7 +861,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             ),
             "r2_lift_status": "MEASURED",
             "m6_kappa_lift_status": (
-                "RESOLVED" if aggregate_status == "HONEST_NEGATIVE_M6_KAPPA_RESOLVED"
+                "RESOLVED"
+                if aggregate_status == "HONEST_NEGATIVE_M6_KAPPA_RESOLVED"
                 else "PERSISTENT"
             ),
             "interpretation_note": (
@@ -837,31 +913,43 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         writer = csv.DictWriter(
             fh,
             fieldnames=[
-                "axis", "candidate", "n_features", "cv_r2", "augmented_mean",
-                "delta_mean", "pass_rate_baseline", "pass_rate_augmented",
-                "pass_rate_lift", "pass_rate_lift_adaptive",
-                "verdict", "alpha", "cv_folds",
+                "axis",
+                "candidate",
+                "n_features",
+                "cv_r2",
+                "augmented_mean",
+                "delta_mean",
+                "pass_rate_baseline",
+                "pass_rate_augmented",
+                "pass_rate_lift",
+                "pass_rate_lift_adaptive",
+                "verdict",
+                "alpha",
+                "cv_folds",
             ],
         )
         writer.writeheader()
         for c in candidates:
-            writer.writerow({
-                "axis": "m6_kappa",
-                "candidate": c["candidate"],
-                "n_features": c["n_features"],
-                "cv_r2": round(c["cv_r2"], 6),
-                "augmented_mean": round(c["augmented_mean"], 6),
-                "delta_mean": round(c["delta_mean"], 6),
-                "pass_rate_baseline": round(c["pass_rate_baseline"], 6),
-                "pass_rate_augmented": round(c["pass_rate_augmented"], 6),
-                "pass_rate_lift": round(c["pass_rate_lift"], 6),
-                "pass_rate_lift_adaptive": round(
-                    c["pass_rate_lift_adaptive"], 6,
-                ),
-                "verdict": c["verdict"],
-                "alpha": c["alpha"],
-                "cv_folds": c["cv_folds"],
-            })
+            writer.writerow(
+                {
+                    "axis": "m6_kappa",
+                    "candidate": c["candidate"],
+                    "n_features": c["n_features"],
+                    "cv_r2": round(c["cv_r2"], 6),
+                    "augmented_mean": round(c["augmented_mean"], 6),
+                    "delta_mean": round(c["delta_mean"], 6),
+                    "pass_rate_baseline": round(c["pass_rate_baseline"], 6),
+                    "pass_rate_augmented": round(c["pass_rate_augmented"], 6),
+                    "pass_rate_lift": round(c["pass_rate_lift"], 6),
+                    "pass_rate_lift_adaptive": round(
+                        c["pass_rate_lift_adaptive"],
+                        6,
+                    ),
+                    "verdict": c["verdict"],
+                    "alpha": c["alpha"],
+                    "cv_folds": c["cv_folds"],
+                }
+            )
     print(f"[Wf-333-V4] Wrote {csv_path_out}")
 
     # ------------------------------------------------------------------

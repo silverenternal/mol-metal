@@ -49,16 +49,19 @@ REPORT_DIR = ROOT / "molmetal" / "reports" / "wf_coupling_ablation"
 def test_platinai_holdout_deterministic() -> None:
     """Sub-sampling 1K rows from platinai_5k.csv is bit-identical."""
     from molmetal.scripts.wf_coupling_ablation import (
-        HOLDOUT_SEED, HOLDOUT_SIZE, make_holdout,
+        HOLDOUT_SEED,
+        HOLDOUT_SIZE,
+        make_holdout,
     )
+
     csv_path = ROOT / "molmetal" / "data" / "platinai_5k.csv"
     if not csv_path.is_file():
         pytest.skip(f"platinai_5k.csv missing: {csv_path}")
     a = make_holdout(csv_path, seed=HOLDOUT_SEED, n=HOLDOUT_SIZE)
     b = make_holdout(csv_path, seed=HOLDOUT_SEED, n=HOLDOUT_SIZE)
-    assert a["id"].tolist() == b["id"].tolist(), (
-        "sub-sample is not deterministic across calls"
-    )
+    assert (
+        a["id"].tolist() == b["id"].tolist()
+    ), "sub-sample is not deterministic across calls"
     assert len(a) == HOLDOUT_SIZE
 
 
@@ -68,11 +71,13 @@ def test_platinai_holdout_deterministic() -> None:
 def test_feature_columns_match_f5() -> None:
     """Per-molecule features are exactly the 5 F5 columns in canonical order."""
     from molmetal.scripts.wf_coupling_ablation import (
-        FEATURE_NAMES, default_feature_columns,
+        FEATURE_NAMES,
+        default_feature_columns,
     )
     from molmetal.molmetal_lam.reward.lambda_astsr import (
         DEFAULT_FEATURE_COLUMNS,
     )
+
     assert FEATURE_NAMES == DEFAULT_FEATURE_COLUMNS, (
         f"FEATURE_NAMES ({FEATURE_NAMES}) != "
         f"DEFAULT_FEATURE_COLUMNS ({DEFAULT_FEATURE_COLUMNS})"
@@ -101,15 +106,17 @@ def test_target_is_pure_quadratic() -> None:
     F5's pure-linear hypothesis class plateaus around R² ≈ 0.93.
     """
     from molmetal.scripts.wf_coupling_ablation import (
-        TARGET_FEATURES, TARGET_KIND,
+        TARGET_FEATURES,
+        TARGET_KIND,
     )
+
     assert TARGET_FEATURES == ("qed_mean",), (
         f"TARGET_FEATURES must be (qed_mean,) for the pure quadratic "
         f"target; got {TARGET_FEATURES}"
     )
-    assert TARGET_KIND == "qed * qed", (
-        f"TARGET_KIND must be 'qed * qed'; got {TARGET_KIND!r}"
-    )
+    assert (
+        TARGET_KIND == "qed * qed"
+    ), f"TARGET_KIND must be 'qed * qed'; got {TARGET_KIND!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -135,11 +142,16 @@ def test_lambda_astsr_beats_f5_on_centered_target() -> None:
 
     proc = subprocess.run(
         [
-            venv_python, str(SCRIPT_PATH),
-            "--output-dir", str(output_dir),
-            "--astsr-depth", "4",
-            "--astsr-population", "96",
-            "--astsr-generations", "80",
+            venv_python,
+            str(SCRIPT_PATH),
+            "--output-dir",
+            str(output_dir),
+            "--astsr-depth",
+            "4",
+            "--astsr-population",
+            "96",
+            "--astsr-generations",
+            "80",
             "--quiet",
         ],
         cwd=str(ROOT),
@@ -174,13 +186,13 @@ def test_no_coupling_baseline_r2_nonpositive() -> None:
     y_test = rng.uniform(0, 1, 300)
 
     from molmetal.scripts.wf_coupling_ablation import (
-        shaper_no_coupling, compute_r2,
+        shaper_no_coupling,
+        compute_r2,
     )
+
     y_pred, _, info = shaper_no_coupling(y_train, len(y_test))
     r2 = compute_r2(y_test, y_pred)
-    assert r2 <= 1e-9, (
-        f"no-coupling baseline R² must be ≤ 0; got {r2:.6f}"
-    )
+    assert r2 <= 1e-9, f"no-coupling baseline R² must be ≤ 0; got {r2:.6f}"
     # Baseline uses the train mean.
     assert info["y_mean"] == pytest.approx(float(np.mean(y_train)), abs=1e-9)
 
@@ -196,18 +208,29 @@ def test_metrics_json_well_formed() -> None:
     """The saved metrics.json is a parseable JSON with all expected keys."""
     metrics = json.loads((REPORT_DIR / "metrics.json").read_text())
     expected_keys = {
-        "workflow", "date", "data_source", "holdout_seed", "holdout_size",
-        "split_seed", "train_fraction", "n_train", "n_test",
-        "feature_names", "target_features", "target_kind",
-        "feature_seconds", "shapers", "verify_gate",
+        "workflow",
+        "date",
+        "data_source",
+        "holdout_seed",
+        "holdout_size",
+        "split_seed",
+        "train_fraction",
+        "n_train",
+        "n_test",
+        "feature_names",
+        "target_features",
+        "target_kind",
+        "feature_seconds",
+        "shapers",
+        "verify_gate",
     }
-    assert expected_keys <= set(metrics.keys()), (
-        f"metrics.json missing keys: {expected_keys - set(metrics.keys())}"
-    )
+    assert expected_keys <= set(
+        metrics.keys()
+    ), f"metrics.json missing keys: {expected_keys - set(metrics.keys())}"
     shaper_keys = {"lambda_astsr", "f5_linear_hinge", "no_coupling"}
-    assert shaper_keys <= set(metrics["shapers"].keys()), (
-        f"shapers missing: {shaper_keys - set(metrics['shapers'].keys())}"
-    )
+    assert shaper_keys <= set(
+        metrics["shapers"].keys()
+    ), f"shapers missing: {shaper_keys - set(metrics['shapers'].keys())}"
     for s in shaper_keys:
         assert "r2" in metrics["shapers"][s]
         assert "rmse" in metrics["shapers"][s]

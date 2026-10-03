@@ -31,6 +31,7 @@ detector contract:
 
 All tests are CPU-only, deterministic, and complete in < 5 seconds.
 """
+
 from __future__ import annotations
 
 import json
@@ -72,9 +73,9 @@ def test_real_value_dict() -> None:
     }
 
     # 1. Detector must NOT flag it.
-    assert detect_schema_shape(json.dumps(agent_payload)) is False, (
-        "Real-value dict was misclassified as a schema-shape payload."
-    )
+    assert (
+        detect_schema_shape(json.dumps(agent_payload)) is False
+    ), "Real-value dict was misclassified as a schema-shape payload."
 
     # 2. Extractor must return the values verbatim.
     extracted = extract_agent_result(agent_payload)
@@ -115,9 +116,9 @@ def test_schema_shape_dict() -> None:
     }
 
     # 1. Detector MUST flag it.
-    assert detect_schema_shape(json.dumps(schema_payload)) is True, (
-        "Regression-case schema payload was not detected as schema-shape."
-    )
+    assert (
+        detect_schema_shape(json.dumps(schema_payload)) is True
+    ), "Regression-case schema payload was not detected as schema-shape."
 
     # 2. Extractor MUST mark it as schema-detected and not silently
     #    fabricate values.
@@ -135,8 +136,7 @@ def test_schema_shape_dict() -> None:
         "G4_n_pre_flight_items",
     ):
         assert key not in extracted, (
-            "Schema key %r leaked into extracted values: %r"
-            % (key, extracted)
+            "Schema key %r leaked into extracted values: %r" % (key, extracted)
         )
 
 
@@ -200,9 +200,9 @@ def test_nested_schema_shape() -> None:
     }
 
     # 1. Detector MUST flag it.
-    assert detect_schema_shape(json.dumps(nested_schema)) is True, (
-        "Nested-schema payload (Wf-272A verbatim) was not detected."
-    )
+    assert (
+        detect_schema_shape(json.dumps(nested_schema)) is True
+    ), "Nested-schema payload (Wf-272A verbatim) was not detected."
 
     # 2. Extractor MUST mark it as schema-detected.
     extracted = extract_agent_result(nested_schema)
@@ -228,9 +228,9 @@ def test_text_passthrough() -> None:
     )
 
     # 1. Detector must NOT flag plain text.
-    assert detect_schema_shape(raw_text) is False, (
-        "Plain-text agent output was misclassified as schema-shape."
-    )
+    assert (
+        detect_schema_shape(raw_text) is False
+    ), "Plain-text agent output was misclassified as schema-shape."
 
     # 2. Extractor must wrap as {"text": <raw>}.
     extracted = extract_agent_result(raw_text)

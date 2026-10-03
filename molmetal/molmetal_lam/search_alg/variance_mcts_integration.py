@@ -69,6 +69,7 @@ Verify
     uv run --no-sync python -m pytest \\
         molmetal/tests/test_variance_mcts_integration.py -v
 """
+
 from __future__ import annotations
 
 import math
@@ -193,13 +194,9 @@ class VarianceMCTSNode:
 
     def __post_init__(self) -> None:
         if self.c_puct < 0.0:
-            raise VarianceMCTSError(
-                f"c_puct must be >= 0; got {self.c_puct}"
-            )
+            raise VarianceMCTSError(f"c_puct must be >= 0; got {self.c_puct}")
         if self.c_var < 0.0:
-            raise VarianceMCTSError(
-                f"c_var must be >= 0; got {self.c_var}"
-            )
+            raise VarianceMCTSError(f"c_var must be >= 0; got {self.c_var}")
         if self.n_min_visits < 1:
             raise VarianceMCTSError(
                 f"n_min_visits must be >= 1; got {self.n_min_visits}"
@@ -493,10 +490,12 @@ class VarianceMCTSWrapper:
     n_min_visits: int = DEFAULT_N_MIN_VISITS
     # Populated by search_with_proof_search / tree_statistics.
     last_run_stats_: Dict[str, Any] = field(
-        default_factory=dict, repr=False,
+        default_factory=dict,
+        repr=False,
     )
     variance_report_: Dict[str, Any] = field(
-        default_factory=dict, repr=False,
+        default_factory=dict,
+        repr=False,
     )
 
     def __post_init__(self) -> None:
@@ -506,6 +505,7 @@ class VarianceMCTSWrapper:
                 from molmetal_lam.search_alg.variance_puct_integration import (
                     VarianceControlledPUCT as _VariancePUCT,
                 )
+
                 self.variance_puct = _VariancePUCT(
                     c_puct=float(self.c_puct),
                     c_var=float(self.c_var),
@@ -564,9 +564,7 @@ class VarianceMCTSWrapper:
         # Bare integer = build a fresh VarianceMCTSNode.
         if isinstance(root, int):
             if root <= 0:
-                raise VarianceMCTSError(
-                    f"n_actions must be >= 1; got {root}"
-                )
+                raise VarianceMCTSError(f"n_actions must be >= 1; got {root}")
             node = VarianceMCTSNode(
                 prior=1.0 / float(root),
                 c_puct=float(self.c_puct),
@@ -617,7 +615,8 @@ class VarianceMCTSWrapper:
         t0 = time.time()
         try:
             candidates = self.base_search.search(
-                initial_state, max_depth=max_depth,
+                initial_state,
+                max_depth=max_depth,
             )
         except Exception as exc:
             self.variance_report_ = {
@@ -653,8 +652,7 @@ class VarianceMCTSWrapper:
             }
         # Re-score through the base search's aggregator.
         try:
-            values = [float(self.base_search.score_final(c))
-                      for c in candidates]
+            values = [float(self.base_search.score_final(c)) for c in candidates]
         except Exception:
             values = [0.0 for _ in candidates]
         # Compute the variance report (per-candidate residual).
@@ -740,15 +738,27 @@ class VarianceMCTSWrapper:
         wall_time = float(self.last_run_stats_.get("wall_time_s", 0.0))
         return {
             "wall_time_s": wall_time,
-            "leaf_value_var": float(getattr(
-                self.base_search, "leaf_value_var", 0.0,
-            )),
-            "leaf_value_std": float(getattr(
-                self.base_search, "leaf_value_std", 0.0,
-            )),
-            "puct_exploit_ratio_var": float(getattr(
-                self.base_search, "puct_exploit_ratio_var", 0.0,
-            )),
+            "leaf_value_var": float(
+                getattr(
+                    self.base_search,
+                    "leaf_value_var",
+                    0.0,
+                )
+            ),
+            "leaf_value_std": float(
+                getattr(
+                    self.base_search,
+                    "leaf_value_std",
+                    0.0,
+                )
+            ),
+            "puct_exploit_ratio_var": float(
+                getattr(
+                    self.base_search,
+                    "puct_exploit_ratio_var",
+                    0.0,
+                )
+            ),
             "history_len": int(len(getattr(self.base_search, "history", []))),
             "last_iteration": last,
         }
@@ -815,9 +825,7 @@ def compare_variance_vs_dirichlet_mcts(
     variance than the Dirichlet baseline.
     """
     if n_runs < 1:
-        raise VarianceMCTSError(
-            f"n_runs must be >= 1; got {n_runs}"
-        )
+        raise VarianceMCTSError(f"n_runs must be >= 1; got {n_runs}")
     if base_search is variance_search:
         raise VarianceMCTSError(
             "base_search and variance_search must be distinct "
@@ -835,7 +843,8 @@ def compare_variance_vs_dirichlet_mcts(
             if hasattr(search_obj, "search_with_proof_search"):
                 # VarianceMCTSWrapper path.
                 out = search_obj.search_with_proof_search(
-                    initial_state, max_depth=max_depth,
+                    initial_state,
+                    max_depth=max_depth,
                 )
                 if "error" in out:
                     return {
@@ -866,9 +875,12 @@ def compare_variance_vs_dirichlet_mcts(
                         ),
                     }
             else:
-                cands = list(search_obj.search(
-                    initial_state, max_depth=max_depth,
-                ))
+                cands = list(
+                    search_obj.search(
+                        initial_state,
+                        max_depth=max_depth,
+                    )
+                )
         except Exception as exc:
             return {
                 "wall_time_s": float(time.time() - t0),
@@ -923,8 +935,10 @@ def compare_variance_vs_dirichlet_mcts(
     initial_state = None
     try:
         if not getattr(base_search, "tile_library", None):
-            return {"error": "base_search.tile_library is empty",
-                    "wall_time_s": time.time() - t0}
+            return {
+                "error": "base_search.tile_library is empty",
+                "wall_time_s": time.time() - t0,
+            }
         initial_state = base_search.tile_library[0]
     except Exception as exc:
         return {"error": str(exc), "wall_time_s": time.time() - t0}
@@ -940,8 +954,10 @@ def compare_variance_vs_dirichlet_mcts(
     def _aggregate(runs: List[Dict[str, float]]) -> Dict[str, float]:
         if not runs:
             return {
-                "wall_time_s": 0.0, "mean_var": 0.0,
-                "mean_score": 0.0, "best_score": 0.0,
+                "wall_time_s": 0.0,
+                "mean_var": 0.0,
+                "mean_score": 0.0,
+                "best_score": 0.0,
                 "success_rate": 0.0,
                 "n_candidates": 0.0,
             }
@@ -950,8 +966,10 @@ def compare_variance_vs_dirichlet_mcts(
         if not ok:
             return {
                 "wall_time_s": float(sum(r["wall_time_s"] for r in runs)),
-                "mean_var": 0.0, "mean_score": 0.0,
-                "best_score": 0.0, "success_rate": float(success),
+                "mean_var": 0.0,
+                "mean_score": 0.0,
+                "best_score": 0.0,
+                "success_rate": float(success),
                 "n_candidates": 0.0,
             }
         return {

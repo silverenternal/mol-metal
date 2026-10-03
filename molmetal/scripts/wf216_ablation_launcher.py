@@ -66,14 +66,62 @@ LOG_DIR = OUT_DIR / "logs"
 # bits: (MT=multi_task, W=Wasserstein, L2=L2 guard)
 # Config code: 3-bit string e.g. "111" = all on, "000" = all off (baseline)
 ABLATION_CONFIGS: list[dict] = [
-    {"code": "000", "multi_task": False, "w_weight": 0.0,  "l2_guard": False, "label": "baseline (no levers)"},
-    {"code": "100", "multi_task": True,  "w_weight": 0.0,  "l2_guard": False, "label": "multi-task only"},
-    {"code": "010", "multi_task": False, "w_weight": 0.05, "l2_guard": False, "label": "Wasserstein only"},
-    {"code": "001", "multi_task": False, "w_weight": 0.0,  "l2_guard": True,  "label": "L2 guard only"},
-    {"code": "110", "multi_task": True,  "w_weight": 0.05, "l2_guard": False, "label": "MT + W"},
-    {"code": "101", "multi_task": True,  "w_weight": 0.0,  "l2_guard": True,  "label": "MT + L2"},
-    {"code": "011", "multi_task": False, "w_weight": 0.05, "l2_guard": True,  "label": "W + L2"},
-    {"code": "111", "multi_task": True,  "w_weight": 0.05, "l2_guard": True,  "label": "full recipe (Wf-124 P3 default)"},
+    {
+        "code": "000",
+        "multi_task": False,
+        "w_weight": 0.0,
+        "l2_guard": False,
+        "label": "baseline (no levers)",
+    },
+    {
+        "code": "100",
+        "multi_task": True,
+        "w_weight": 0.0,
+        "l2_guard": False,
+        "label": "multi-task only",
+    },
+    {
+        "code": "010",
+        "multi_task": False,
+        "w_weight": 0.05,
+        "l2_guard": False,
+        "label": "Wasserstein only",
+    },
+    {
+        "code": "001",
+        "multi_task": False,
+        "w_weight": 0.0,
+        "l2_guard": True,
+        "label": "L2 guard only",
+    },
+    {
+        "code": "110",
+        "multi_task": True,
+        "w_weight": 0.05,
+        "l2_guard": False,
+        "label": "MT + W",
+    },
+    {
+        "code": "101",
+        "multi_task": True,
+        "w_weight": 0.0,
+        "l2_guard": True,
+        "label": "MT + L2",
+    },
+    {
+        "code": "011",
+        "multi_task": False,
+        "w_weight": 0.05,
+        "l2_guard": True,
+        "label": "W + L2",
+    },
+    {
+        "code": "111",
+        "multi_task": True,
+        "w_weight": 0.05,
+        "l2_guard": True,
+        "label": "full recipe (Wf-124 P3 default)",
+    },
 ]
 
 
@@ -102,17 +150,32 @@ def run_one_config(
     cmd = [
         PY,
         str(TRAIN_SCRIPT),
-        "--metals", "Ru", "Ir", "Os", "Rh", "Re",
-        "--seeds", str(seed),
-        "--epochs", str(epochs),
-        "--hidden", str(hidden),
-        "--depth", str(depth),
-        "--batch-size", str(batch_size),
-        "--device", "cpu",
-        "--data-csv", str(DATA_CSV),
-        "--out-dir", str(cfg_out),
-        "--ckpt-dir", str(cfg_ckpt),
-        "--wasserstein-weight", str(cfg["w_weight"]),
+        "--metals",
+        "Ru",
+        "Ir",
+        "Os",
+        "Rh",
+        "Re",
+        "--seeds",
+        str(seed),
+        "--epochs",
+        str(epochs),
+        "--hidden",
+        str(hidden),
+        "--depth",
+        str(depth),
+        "--batch-size",
+        str(batch_size),
+        "--device",
+        "cpu",
+        "--data-csv",
+        str(DATA_CSV),
+        "--out-dir",
+        str(cfg_out),
+        "--ckpt-dir",
+        str(cfg_ckpt),
+        "--wasserstein-weight",
+        str(cfg["w_weight"]),
         "--no-l2-guard" if not cfg["l2_guard"] else "--use-l2-guard",
     ]
     if not cfg["multi_task"]:
@@ -126,7 +189,11 @@ def run_one_config(
     t0 = time.time()
     with open(log_path, "w") as f:
         proc = subprocess.run(
-            cmd, stdout=f, stderr=subprocess.STDOUT, env=env, cwd=str(PROJECT_ROOT),
+            cmd,
+            stdout=f,
+            stderr=subprocess.STDOUT,
+            env=env,
+            cwd=str(PROJECT_ROOT),
         )
     wall = time.time() - t0
 
@@ -139,6 +206,7 @@ def run_one_config(
         if log_path.exists():
             log_text = log_path.read_text()
             import re
+
             # Match: [Ru seed=0] DONE best_epoch=X val_auc=Y test_auc=Z ...
             matches = re.findall(
                 r"\[Ru seed=\d+\] DONE.*?test_auc=([\d.]+).*?test_pearson=([\d.-]+)",
@@ -156,7 +224,10 @@ def run_one_config(
             # Verify this is the right config by checking wasserstein_weight
             w_in_metrics = metrics.get("wasserstein_weight", -1)
             l2_in_metrics = metrics.get("use_l2_guard", None)
-            if abs(w_in_metrics - cfg["w_weight"]) < 0.001 and l2_in_metrics == cfg["l2_guard"]:
+            if (
+                abs(w_in_metrics - cfg["w_weight"]) < 0.001
+                and l2_in_metrics == cfg["l2_guard"]
+            ):
                 test_auc = metrics.get("test_metrics", {}).get("roc_auc")
                 test_pearson = metrics.get("test_pic50_metrics", {}).get("pearson")
         except Exception:
@@ -168,6 +239,7 @@ def run_one_config(
         try:
             log_text = log_path.read_text()
             import re
+
             matches = re.findall(r"epoch\s+(\d+)/\d+", log_text)
             if matches:
                 epochs_completed = max(int(m) for m in matches)
@@ -219,11 +291,13 @@ def compute_attribution(results: list[dict]) -> dict:
     # Bit positions: index 0 = multi_task (MT), index 1 = wasserstein (W), index 2 = l2_guard (L2)
     def interaction(a_pos: int, b_pos: int) -> float | None:
         """Compute I_AB given positions of A, B; third lever fixed at 0."""
+
         def cfg_code(a: int, b: int) -> str:
             bits = ["0", "0", "0"]
             bits[a_pos] = str(a)
             bits[b_pos] = str(b)
             return "".join(bits)
+
         a_v = auc(cfg_code(1, 0))
         b_v = auc(cfg_code(0, 1))
         ab_v = auc(cfg_code(1, 1))
@@ -233,14 +307,16 @@ def compute_attribution(results: list[dict]) -> dict:
         return ab_v - a_v - b_v + c_v
 
     interactions: dict[str, float | None] = {
-        "I_MT_W": interaction(0, 1),    # MT × W, L2=0
-        "I_MT_L2": interaction(0, 2),   # MT × L2, W=0
-        "I_W_L2": interaction(1, 2),    # W × L2, MT=0
+        "I_MT_W": interaction(0, 1),  # MT × W, L2=0
+        "I_MT_L2": interaction(0, 2),  # MT × L2, W=0
+        "I_W_L2": interaction(1, 2),  # W × L2, MT=0
     }
 
     # 3-way interaction (full): I_3way = full(111) - main_effects - pairwise
     full_auc_val = auc("111")
-    full_recipe_lift = (full_auc_val - baseline_auc) if full_auc_val is not None else None
+    full_recipe_lift = (
+        (full_auc_val - baseline_auc) if full_auc_val is not None else None
+    )
 
     # Sum of single-lever lifts
     valid_singles = [v for v in single_lift.values() if v is not None]
@@ -252,7 +328,11 @@ def compute_attribution(results: list[dict]) -> dict:
     # where I_3way = full - sum_single - sum_interactions
     three_way_I = None
     additivity_gap = None
-    if full_recipe_lift is not None and sum_single is not None and sum_interactions is not None:
+    if (
+        full_recipe_lift is not None
+        and sum_single is not None
+        and sum_interactions is not None
+    ):
         three_way_I = full_recipe_lift - sum_single - sum_interactions
         # If three_way_I == 0, levers are additive (no 3-way interaction)
         additivity_gap = round(three_way_I, 6)
@@ -279,8 +359,10 @@ def compute_attribution(results: list[dict]) -> dict:
         "three_way_interaction": three_way_I,
         "additivity_gap_three_way": additivity_gap,
         "pct_attribution": pct_attribution,
-        "by_code": {k: {"test_auc": v.get("test_auc"), "wall_seconds": v.get("wall_seconds")}
-                    for k, v in by_code.items()},
+        "by_code": {
+            k: {"test_auc": v.get("test_auc"), "wall_seconds": v.get("wall_seconds")}
+            for k, v in by_code.items()
+        },
     }
 
 
@@ -337,16 +419,20 @@ def write_synthesis(summary: dict, attribution: dict) -> None:
             f"{r.get('label', '')} |"
         )
 
-    lines.extend([
-        "",
-        "## §3 Per-config measured test_auc (Ru seed=0, 30ep→15ep, h=64, d=2, CPU)",
-        "",
-        "| Code | test_auc | test_pearson | wall (s) | epochs_completed | return |",
-        "|---|---|---|---|---|---|",
-    ])
+    lines.extend(
+        [
+            "",
+            "## §3 Per-config measured test_auc (Ru seed=0, 30ep→15ep, h=64, d=2, CPU)",
+            "",
+            "| Code | test_auc | test_pearson | wall (s) | epochs_completed | return |",
+            "|---|---|---|---|---|---|",
+        ]
+    )
     for r in summary["results"]:
-        auc_str = f"{r['test_auc']:.4f}" if r.get('test_auc') is not None else "N/A"
-        pearson_str = f"{r['test_pearson']:.4f}" if r.get('test_pearson') is not None else "N/A"
+        auc_str = f"{r['test_auc']:.4f}" if r.get("test_auc") is not None else "N/A"
+        pearson_str = (
+            f"{r['test_pearson']:.4f}" if r.get("test_pearson") is not None else "N/A"
+        )
         epochs_str = f"{r.get('epochs_completed_in_log', '?')}/{summary['epochs']}"
         lines.append(
             f"| {r['code']} | {auc_str} | {pearson_str} | "
@@ -354,11 +440,13 @@ def write_synthesis(summary: dict, attribution: dict) -> None:
             f"{r.get('returncode', 'N/A')} |"
         )
 
-    lines.extend([
-        "",
-        "## §4 Per-lever lift attribution (within-cohort, h=64 d=2)",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            "## §4 Per-lever lift attribution (within-cohort, h=64 d=2)",
+            "",
+        ]
+    )
     if "error" in attribution:
         lines.append(f"**Error**: {attribution['error']}")
     else:
@@ -405,9 +493,7 @@ def write_synthesis(summary: dict, attribution: dict) -> None:
                 f"- Σ 2-way interactions = {attribution['sum_interactions']:+.4f}"
             )
         if attribution["full_recipe_lift"] is not None:
-            lines.append(
-                f"- Full recipe lift = {attribution['full_recipe_lift']:+.4f}"
-            )
+            lines.append(f"- Full recipe lift = {attribution['full_recipe_lift']:+.4f}")
         if attribution["three_way_interaction"] is not None:
             lines.append(
                 f"- **3-way interaction** = full - Σ - I2way = "
@@ -417,17 +503,25 @@ def write_synthesis(summary: dict, attribution: dict) -> None:
         if attribution.get("three_way_interaction") is not None:
             gap = attribution["three_way_interaction"]
             if abs(gap) < 0.005:
-                lines.append("**Verdict**: levers are approximately additive (3-way gap < 0.005).")
+                lines.append(
+                    "**Verdict**: levers are approximately additive (3-way gap < 0.005)."
+                )
             elif abs(gap) < 0.02:
-                lines.append("**Verdict**: small 3-way interaction effect (0.005 < gap < 0.02).")
+                lines.append(
+                    "**Verdict**: small 3-way interaction effect (0.005 < gap < 0.02)."
+                )
             else:
-                lines.append("**Verdict**: large 3-way interaction term — levers are NOT independent.")
+                lines.append(
+                    "**Verdict**: large 3-way interaction term — levers are NOT independent."
+                )
 
-    lines.extend([
-        "",
-        "## §5 Per-lever lift % attribution (vs full recipe)",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            "## §5 Per-lever lift % attribution (vs full recipe)",
+            "",
+        ]
+    )
     if attribution.get("pct_attribution"):
         lines.append("| Lever | Δ AUC | % of full-recipe lift |")
         lines.append("|---|---|---|")
@@ -448,40 +542,44 @@ def write_synthesis(summary: dict, attribution: dict) -> None:
                 f"{100.0 * attribution['three_way_interaction'] / max(abs(attribution['full_recipe_lift'] or 1e-9), 1e-9):.1f}% |"
             )
         if attribution.get("full_recipe_lift") is not None:
-            lines.append(f"| **Full recipe** | {attribution['full_recipe_lift']:+.4f} | 100.0% |")
+            lines.append(
+                f"| **Full recipe** | {attribution['full_recipe_lift']:+.4f} | 100.0% |"
+            )
     else:
         lines.append("Full recipe lift not positive — cannot compute meaningful %.")
 
-    lines.extend([
-        "",
-        "## §6 Honest framing (party-twenty-spirit §3.5)",
-        "",
-        "**MEASURED**:",
-        "- Per-config test_auc for all 8 permutations at h=64, d=2, 15ep, Ru seed=0, CPU",
-        "- Per-lever lift attribution WITHIN this cohort (relative)",
-        "",
-        "**PROJECTED — DO NOT CITE AS MEASURED**:",
-        "- The Wf-124 P3 +0.049 absolute lift (h=128, d=3, GPU, 30ep) is **NOT directly reproducible**",
-        "  at h=64, d=2 (CPU, 15ep). The smaller backbone yields different absolute numbers.",
-        "- The +0.049 anchor was on GPU with full backbone at 30ep.",
-        "- The per-lever % attribution computed here is **WITHIN-COHORT** relative.",
-        "",
-        "**INTERACTION CAVEAT**:",
-        "- If the 3-way interaction (§4.4) is large, the 3 levers are NOT independent.",
-        "- Simple additive decomposition (Δ_total ≈ Δ_MT + Δ_W + Δ_L2) may be misleading.",
-        "",
-        "**PER-METAL CAVEAT**:",
-        "- Only Ru seed=0 was ablated (single metal, single seed).",
-        "- Per-metal attribution for Ir/Os/Rh/Re requires the full 5-metal × 3-seed",
-        "  sweep — DEFERRED to TODO-181 GPU follow-up.",
-        "",
-        "**NO FABRICATION**:",
-        "- Per-lever attribution % is reported WITH std (single seed → std=N/A).",
-        "- Per-lever lift = single config vs baseline; no best-seed selection.",
-        "",
-        "## §7 Acceptance verdict",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            "## §6 Honest framing (party-twenty-spirit §3.5)",
+            "",
+            "**MEASURED**:",
+            "- Per-config test_auc for all 8 permutations at h=64, d=2, 15ep, Ru seed=0, CPU",
+            "- Per-lever lift attribution WITHIN this cohort (relative)",
+            "",
+            "**PROJECTED — DO NOT CITE AS MEASURED**:",
+            "- The Wf-124 P3 +0.049 absolute lift (h=128, d=3, GPU, 30ep) is **NOT directly reproducible**",
+            "  at h=64, d=2 (CPU, 15ep). The smaller backbone yields different absolute numbers.",
+            "- The +0.049 anchor was on GPU with full backbone at 30ep.",
+            "- The per-lever % attribution computed here is **WITHIN-COHORT** relative.",
+            "",
+            "**INTERACTION CAVEAT**:",
+            "- If the 3-way interaction (§4.4) is large, the 3 levers are NOT independent.",
+            "- Simple additive decomposition (Δ_total ≈ Δ_MT + Δ_W + Δ_L2) may be misleading.",
+            "",
+            "**PER-METAL CAVEAT**:",
+            "- Only Ru seed=0 was ablated (single metal, single seed).",
+            "- Per-metal attribution for Ir/Os/Rh/Re requires the full 5-metal × 3-seed",
+            "  sweep — DEFERRED to TODO-181 GPU follow-up.",
+            "",
+            "**NO FABRICATION**:",
+            "- Per-lever attribution % is reported WITH std (single seed → std=N/A).",
+            "- Per-lever lift = single config vs baseline; no best-seed selection.",
+            "",
+            "## §7 Acceptance verdict",
+            "",
+        ]
+    )
     n_done = summary["n_configs_completed"]
     n_total = summary["n_configs_planned"]
     if n_done == n_total and attribution.get("single_lever_lift"):
@@ -491,14 +589,22 @@ def write_synthesis(summary: dict, attribution: dict) -> None:
         single_sum = attribution.get("sum_single_levers")
         if full_lift is not None and single_sum is not None:
             if abs(full_lift) < 0.001:
-                lines.append(f"NEGATIVE **G3** — Full recipe lift not positive ({full_lift:+.4f}); cannot attribute +0.049 directly.")
-                lines.append("  (The h=64, d=2 CPU ablation did NOT reproduce the Wf-124 P3 +0.049 lift.")
-                lines.append("  This is itself a finding — Wf-196 showed the smaller backbone regressed.)")
+                lines.append(
+                    f"NEGATIVE **G3** — Full recipe lift not positive ({full_lift:+.4f}); cannot attribute +0.049 directly."
+                )
+                lines.append(
+                    "  (The h=64, d=2 CPU ablation did NOT reproduce the Wf-124 P3 +0.049 lift."
+                )
+                lines.append(
+                    "  This is itself a finding — Wf-196 showed the smaller backbone regressed.)"
+                )
             else:
-                lines.append(f"PASS **G3** — Per-lever lift attributed: "
-                             f"MT={attribution['single_lever_lift'].get('multi_task', 0):+.4f}, "
-                             f"W={attribution['single_lever_lift'].get('wasserstein', 0):+.4f}, "
-                             f"L2={attribution['single_lever_lift'].get('l2_guard', 0):+.4f} (within-cohort, not absolute)")
+                lines.append(
+                    f"PASS **G3** — Per-lever lift attributed: "
+                    f"MT={attribution['single_lever_lift'].get('multi_task', 0):+.4f}, "
+                    f"W={attribution['single_lever_lift'].get('wasserstein', 0):+.4f}, "
+                    f"L2={attribution['single_lever_lift'].get('l2_guard', 0):+.4f} (within-cohort, not absolute)"
+                )
         else:
             lines.append("PARTIAL **G3** — Some permutations missing")
         lines.append("PASS **G4** — Honest framing documented (§6)")
@@ -506,16 +612,18 @@ def write_synthesis(summary: dict, attribution: dict) -> None:
         lines.append(f"PARTIAL **G1** — {n_done}/{n_total} permutations complete")
         lines.append("See §3 for missing configs and §6 for honest framing")
 
-    lines.extend([
-        "",
-        "## §8 Follow-ups",
-        "",
-        "1. **TODO-181 GPU follow-up**: full-backbone (h=128, d=3) 50-epoch ablation",
-        "   for apples-to-apples comparison with Wf-124 P3 0.7613 anchor.",
-        "2. **Per-metal ablation**: 5-metal × 3-seed full permutation (TODO-181 §3.2).",
-        "3. **Paper §3 attribution**: cite per-lever % only after GPU ablation completes.",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            "## §8 Follow-ups",
+            "",
+            "1. **TODO-181 GPU follow-up**: full-backbone (h=128, d=3) 50-epoch ablation",
+            "   for apples-to-apples comparison with Wf-124 P3 0.7613 anchor.",
+            "2. **Per-metal ablation**: 5-metal × 3-seed full permutation (TODO-181 §3.2).",
+            "3. **Paper §3 attribution**: cite per-lever % only after GPU ablation completes.",
+            "",
+        ]
+    )
     synth_path = OUT_DIR / "synthesis.md"
     synth_path.write_text("\n".join(lines))
     print(f"[wf216] wrote synthesis: {synth_path}", flush=True)
@@ -525,22 +633,51 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         description="Wf-216 — TODO-182 per-innovation permutations retry"
     )
-    p.add_argument("--n-parallel", type=int, default=6,
-                   help="Number of parallel ablation configs (default 6)")
-    p.add_argument("--epochs", type=int, default=15,
-                   help="Training epochs per config (default 15 — fits 60 min budget)")
-    p.add_argument("--hidden", type=int, default=64,
-                   help="Backbone hidden dim (default 64 — Wf-196 CPU protocol)")
-    p.add_argument("--depth", type=int, default=2,
-                   help="Backbone depth (default 2 — Wf-196 CPU protocol)")
-    p.add_argument("--batch-size", type=int, default=64,
-                   help="Mini-batch size (default 64)")
-    p.add_argument("--seed", type=int, default=0,
-                   help="Single seed for ablation (default 0 — anchor Wf-124 P3)")
-    p.add_argument("--max-wall-min", type=int, default=55,
-                   help="Hard wall-time cap in minutes (default 55; task budget is 60)")
-    p.add_argument("--out-dir", type=Path, default=OUT_DIR,
-                   help="Output directory (default: molmetal/reports/wf216_ablation)")
+    p.add_argument(
+        "--n-parallel",
+        type=int,
+        default=6,
+        help="Number of parallel ablation configs (default 6)",
+    )
+    p.add_argument(
+        "--epochs",
+        type=int,
+        default=15,
+        help="Training epochs per config (default 15 — fits 60 min budget)",
+    )
+    p.add_argument(
+        "--hidden",
+        type=int,
+        default=64,
+        help="Backbone hidden dim (default 64 — Wf-196 CPU protocol)",
+    )
+    p.add_argument(
+        "--depth",
+        type=int,
+        default=2,
+        help="Backbone depth (default 2 — Wf-196 CPU protocol)",
+    )
+    p.add_argument(
+        "--batch-size", type=int, default=64, help="Mini-batch size (default 64)"
+    )
+    p.add_argument(
+        "--seed",
+        type=int,
+        default=0,
+        help="Single seed for ablation (default 0 — anchor Wf-124 P3)",
+    )
+    p.add_argument(
+        "--max-wall-min",
+        type=int,
+        default=55,
+        help="Hard wall-time cap in minutes (default 55; task budget is 60)",
+    )
+    p.add_argument(
+        "--out-dir",
+        type=Path,
+        default=OUT_DIR,
+        help="Output directory (default: molmetal/reports/wf216_ablation)",
+    )
     args = p.parse_args(argv)
 
     out_dir = args.out_dir
@@ -563,10 +700,12 @@ def main(argv: list[str] | None = None) -> int:
         f"(1 baseline + 3 single + 3 two-way + 1 three-way)",
         flush=True,
     )
-    print(f"[wf216] note: task spec 1+3+7=11 has overlap "
-          f"(the 7 combinations include the 3 single-lever runs); "
-          f"we run each unique config once",
-          flush=True)
+    print(
+        f"[wf216] note: task spec 1+3+7=11 has overlap "
+        f"(the 7 combinations include the 3 single-lever runs); "
+        f"we run each unique config once",
+        flush=True,
+    )
 
     t_start = time.time()
     results: list[dict] = []
@@ -574,9 +713,17 @@ def main(argv: list[str] | None = None) -> int:
         futs = {
             ex.submit(
                 run_one_config,
-                cfg, args.epochs, args.hidden, args.depth,
-                args.batch_size, args.seed, log_dir, out_dir, ckpt_dir,
-            ): cfg for cfg in ABLATION_CONFIGS
+                cfg,
+                args.epochs,
+                args.hidden,
+                args.depth,
+                args.batch_size,
+                args.seed,
+                log_dir,
+                out_dir,
+                ckpt_dir,
+            ): cfg
+            for cfg in ABLATION_CONFIGS
         }
         for fut in as_completed(futs):
             try:
@@ -590,7 +737,11 @@ def main(argv: list[str] | None = None) -> int:
                 }
             results.append(res)
             elapsed = time.time() - t_start
-            auc_str = f"{res.get('test_auc'):.4f}" if res.get('test_auc') is not None else "N/A"
+            auc_str = (
+                f"{res.get('test_auc'):.4f}"
+                if res.get("test_auc") is not None
+                else "N/A"
+            )
             print(
                 f"[wf216] DONE cfg={res.get('code')} "
                 f"auc={auc_str} "
@@ -625,7 +776,9 @@ def main(argv: list[str] | None = None) -> int:
         "wf_tag": "Wf-216 — TODO-182 per-innovation ablation (full 2^3 permutations, retry)",
         "retry_of": "Wf-197 (killed mid-training)",
         "n_configs_planned": n_configs,
-        "n_configs_completed": len([r for r in results if r.get("test_auc") is not None]),
+        "n_configs_completed": len(
+            [r for r in results if r.get("test_auc") is not None]
+        ),
         "n_parallel": args.n_parallel,
         "epochs": args.epochs,
         "hidden": args.hidden,

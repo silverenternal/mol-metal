@@ -58,21 +58,24 @@ OUT_DIR = REPORTS_DIR / "wf398a2_m2_r2_real_verify"
 # result on disk per the Wf-369-A2 verdict doc.
 UPSTREAM_CANDIDATES = [
     ("wf398a1_retrain", "Wf-398-A1 (planned D-MPNN retrain with per-cohort features)"),
-    ("wf388a1_m2_per_cohort_real", "Wf-388-A1 (per-cohort config CPU-only real-cohort verification)"),
+    (
+        "wf388a1_m2_per_cohort_real",
+        "Wf-388-A1 (per-cohort config CPU-only real-cohort verification)",
+    ),
     ("wf388a1_m2_per_cohort_real_smoke", "Wf-388-A1 smoke variant"),
 ]
 
 # Canonical baselines from docs/M2_R2_FINAL_VERDICT.md §1.
 # These are the MEASURED-on-real-cohort R² values from prior waves.
 WF335_M2_BASELINES = {
-    "platinai_4cell": -0.1172,   # 12d_baseline best per Wf-335-M2
-    "hilbert": -0.1348,           # 12d_baseline best per Wf-335-M2
+    "platinai_4cell": -0.1172,  # 12d_baseline best per Wf-335-M2
+    "hilbert": -0.1348,  # 12d_baseline best per Wf-335-M2
     "metalcytotox_combined": +0.3196,  # full_static_combined_plus_w2_best_axis
 }
 
 WF367_B1_BASELINES = {
-    "platinai_4cell": -0.1251,   # 12d_baseline (best 1 of 4 configs)
-    "hilbert": -0.1268,           # 12d_baseline (best 1 of 4 configs)
+    "platinai_4cell": -0.1251,  # 12d_baseline (best 1 of 4 configs)
+    "hilbert": -0.1268,  # 12d_baseline (best 1 of 4 configs)
     "metalcytotox_combined": +0.3196,  # re-uses Wf-335-M2 CEILING_BREAK
 }
 
@@ -108,7 +111,9 @@ class VerifyResult:
     n_cohorts_tested: int = 0
     cohorts_tested: List[str] = field(default_factory=list)
     per_cohort: List[CohortVerdict] = field(default_factory=list)
-    aggregate_status: str = ""  # HONEST_NEGATIVE_PARTIAL | MEASURED_PARTIAL_LIFT | CEILING_BREAK_AGGREGATE
+    aggregate_status: str = (
+        ""  # HONEST_NEGATIVE_PARTIAL | MEASURED_PARTIAL_LIFT | CEILING_BREAK_AGGREGATE
+    )
     honest_framing: Dict[str, str] = field(default_factory=dict)
     elapsed_sec: float = 0.0
     timestamp: str = ""
@@ -234,6 +239,7 @@ def aggregate_status(per_cohort: Dict[str, CohortVerdict]) -> str:
 def main() -> int:
     """Main verification entry point."""
     import time
+
     t0 = time.time()
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)

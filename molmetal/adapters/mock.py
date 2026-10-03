@@ -98,7 +98,9 @@ class MockGenerator(MoleculeGenerator):
         # Build the chain of 7 single bonds: edges (0-1, 1-2, …, 6-7)
         # Stored undirected (both directions) like the real Molecule
         # convention used in ``rdkit_io._mol_to_molecule``.
-        edge_pairs = torch.tensor([[i, i + 1] for i in range(n_atoms - 1)], dtype=torch.long)
+        edge_pairs = torch.tensor(
+            [[i, i + 1] for i in range(n_atoms - 1)], dtype=torch.long
+        )
         # Duplicate edges for symmetry
         bonds_single = torch.cat([edge_pairs, edge_pairs.flip(1)], dim=0)  # (14, 2)
         bonds = bonds_single.t().contiguous()  # (2, 14)
@@ -279,7 +281,13 @@ class MockPredictor(PropertyPredictor):
         if molecule.smiles:
             try:
                 from rdkit import Chem
-                from rdkit.Chem import AllChem, Crippen, Descriptors, Lipinski, rdMolDescriptors
+                from rdkit.Chem import (
+                    AllChem,
+                    Crippen,
+                    Descriptors,
+                    Lipinski,
+                    rdMolDescriptors,
+                )
 
                 mol = Chem.MolFromSmiles(molecule.smiles)
                 if mol is not None:
@@ -378,7 +386,11 @@ class MockScorer(ScoringFunction):
     ) -> List[ScoredCandidate]:
         scored: List[ScoredCandidate] = []
         for mol, cmpl, prop in candidates:
-            vina = cmpl.vina_score if (cmpl is not None and cmpl.vina_score is not None) else 0.0
+            vina = (
+                cmpl.vina_score
+                if (cmpl is not None and cmpl.vina_score is not None)
+                else 0.0
+            )
             binding_pic50 = (
                 prop.binding_affinity_pic50
                 if prop.binding_affinity_pic50 is not None

@@ -81,6 +81,7 @@ Verify
     uv run --no-sync python -m pytest \\
         molmetal/tests/test_mcts_replay_buffer.py -v
 """
+
 from __future__ import annotations
 
 import json
@@ -307,9 +308,7 @@ class MCTSReplayBuffer:
 
     def __post_init__(self) -> None:
         if self.max_size < 1:
-            raise MCTSReplayError(
-                f"max_size must be >= 1; got {self.max_size}"
-            )
+            raise MCTSReplayError(f"max_size must be >= 1; got {self.max_size}")
         self._rng = np.random.default_rng(int(self.seed))
 
     # ------------------------------------------------------------------
@@ -375,9 +374,7 @@ class MCTSReplayBuffer:
             Number of entries to sample.  Must be ≥ 1.
         """
         if batch_size < 1:
-            raise MCTSReplayError(
-                f"batch_size must be >= 1; got {batch_size}"
-            )
+            raise MCTSReplayError(f"batch_size must be >= 1; got {batch_size}")
         if batch_size > MAX_BATCH_SIZE:
             raise MCTSReplayError(
                 f"batch_size={batch_size} exceeds MAX_BATCH_SIZE={MAX_BATCH_SIZE}"
@@ -499,9 +496,7 @@ class MCTSReplayBuffer:
             with open(abspath, "r", encoding="utf-8") as fh:
                 lines = [ln for ln in fh.read().splitlines() if ln.strip()]
             if not lines:
-                raise MCTSReplayError(
-                    f"load() — empty file {abspath!r}"
-                )
+                raise MCTSReplayError(f"load() — empty file {abspath!r}")
             meta = json.loads(lines[0])
             buf = cls(
                 max_size=int(meta.get("max_size", DEFAULT_MAX_SIZE)),
@@ -587,14 +582,14 @@ class MCTSReplayWrapper:
     n_searches_: int = field(default=0, init=False, repr=False)
     n_entries_recorded_: int = field(default=0, init=False, repr=False)
     last_loss_: Dict[str, float] = field(
-        default_factory=dict, init=False, repr=False,
+        default_factory=dict,
+        init=False,
+        repr=False,
     )
 
     def __post_init__(self) -> None:
         if self.buffer is None:
-            raise MCTSReplayError(
-                "MCTSReplayWrapper requires a non-None buffer"
-            )
+            raise MCTSReplayError("MCTSReplayWrapper requires a non-None buffer")
         if self.n_top_actions < 1:
             raise MCTSReplayError(
                 f"n_top_actions must be >= 1; got {self.n_top_actions}"
@@ -725,7 +720,8 @@ class MCTSReplayWrapper:
     # Value-network training step (loss estimate from replay)
     # ------------------------------------------------------------------
     def train_value_network(
-        self, batch: Optional[Sequence[MCTSReplayEntry]] = None,
+        self,
+        batch: Optional[Sequence[MCTSReplayEntry]] = None,
     ) -> Dict[str, float]:
         """Return loss estimates for a sampled replay mini-batch.
 
@@ -787,7 +783,9 @@ class MCTSReplayWrapper:
         p_mean = float(priors.mean())
         eps = 1.0e-6
         p_clipped = np.clip(priors, eps, 1.0 - eps)
-        per_entry = -(p_mean * np.log(p_clipped) + (1.0 - p_mean) * np.log(1.0 - p_clipped))
+        per_entry = -(
+            p_mean * np.log(p_clipped) + (1.0 - p_mean) * np.log(1.0 - p_clipped)
+        )
         policy_loss = float(per_entry.mean())
 
         out = {
@@ -837,7 +835,9 @@ class MCTSReplayWrapper:
         if "candidates" not in out:
             try:
                 cache = getattr(
-                    self.base_search, "_root_children_cache_for_search", None,
+                    self.base_search,
+                    "_root_children_cache_for_search",
+                    None,
                 )
                 if cache is not None:
                     if isinstance(cache, dict):
@@ -874,7 +874,8 @@ class MCTSReplayWrapper:
                     ]
                     out["scores"] = [
                         float(e.get("reward", 0.0))
-                        for e in trace if isinstance(e, dict)
+                        for e in trace
+                        if isinstance(e, dict)
                     ]
             except Exception:
                 pass
@@ -942,7 +943,9 @@ class ReplayGuidedMCTS:
 
     n_bias_calls_: int = field(default=0, init=False, repr=False)
     last_bias_: Optional[np.ndarray] = field(
-        default=None, init=False, repr=False,
+        default=None,
+        init=False,
+        repr=False,
     )
 
     def __post_init__(self) -> None:
@@ -951,9 +954,7 @@ class ReplayGuidedMCTS:
                 f"alpha_replay must be in [0, 1]; got {self.alpha_replay}"
             )
         if float(self.tau) <= 0.0:
-            raise MCTSReplayError(
-                f"tau must be > 0; got {self.tau}"
-            )
+            raise MCTSReplayError(f"tau must be > 0; got {self.tau}")
 
     # ------------------------------------------------------------------
     # bias_prior
@@ -991,9 +992,7 @@ class ReplayGuidedMCTS:
             Dimensionality of the returned bias vector.  Must be ≥ 1.
         """
         if n_actions < 1:
-            raise MCTSReplayError(
-                f"n_actions must be >= 1; got {n_actions}"
-            )
+            raise MCTSReplayError(f"n_actions must be >= 1; got {n_actions}")
         buf = replay_buffer if replay_buffer is not None else self.replay_buffer
         if buf is None:
             raise MCTSReplayError(
@@ -1034,7 +1033,9 @@ class ReplayGuidedMCTS:
         """
         try:
             cache = getattr(
-                self.base_search, "_root_children_cache_for_search", None,
+                self.base_search,
+                "_root_children_cache_for_search",
+                None,
             )
             if isinstance(cache, dict):
                 priors = cache.get("priors")
@@ -1063,7 +1064,10 @@ class ReplayGuidedMCTS:
             return ""
 
     def _replay_prior_for(
-        self, root_key: str, n_actions: int, buf: MCTSReplayBuffer,
+        self,
+        root_key: str,
+        n_actions: int,
+        buf: MCTSReplayBuffer,
     ) -> np.ndarray:
         """Compute the visit-count-temperature policy over matching entries."""
         if not buf.entries:

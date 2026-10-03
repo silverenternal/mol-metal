@@ -87,6 +87,7 @@ try:
     from molmetal.adapters.flow_matching_lipman.amp import (
         CFMAMPContext as _CFMAMPContext,
     )
+
     _torch = _torch_mod
     _nn = _nn_mod
     _TORCH_OK = True
@@ -97,6 +98,7 @@ except Exception as _e:  # pragma: no cover — host-specific
 # ---------------------------------------------------------------------------
 # Tiny stand-in for an EGNN message-passing block.
 # ---------------------------------------------------------------------------
+
 
 class _TinyBlock(_nn.Module if _TORCH_OK else object):  # type: ignore[misc]
     """Cheap stand-in for ``EquivariantGraphConv``.
@@ -144,13 +146,15 @@ class _TinyStack(_nn.Module if _TORCH_OK else object):  # type: ignore[misc]
     ) -> None:
         if _TORCH_OK:
             super().__init__()
-        self.layers = _nn.ModuleList([
-            _CheckpointedEGNNLayer(
-                block=_TinyBlock(hidden_dim),
-                enabled=checkpoint,
-            )
-            for _ in range(n_layers)
-        ])
+        self.layers = _nn.ModuleList(
+            [
+                _CheckpointedEGNNLayer(
+                    block=_TinyBlock(hidden_dim),
+                    enabled=checkpoint,
+                )
+                for _ in range(n_layers)
+            ]
+        )
 
     def forward(  # type: ignore[override]
         self,
@@ -166,6 +170,7 @@ class _TinyStack(_nn.Module if _TORCH_OK else object):  # type: ignore[misc]
 # ---------------------------------------------------------------------------
 # Step runner
 # ---------------------------------------------------------------------------
+
 
 def _make_inputs(device, n_atoms: int = 64, hidden_dim: int = 32, seed: int = 0):
     """Build deterministic tiny inputs.
@@ -216,7 +221,9 @@ def _run_steps(
     optim = _torch.optim.SGD(model.parameters(), lr=1e-3)
     amp_ctx = _CFMAMPContext(
         device="cuda:0" if device.type == "cuda" else "cpu",
-        dtype=_torch.bfloat16 if (device.type == "cuda" and use_amp) else _torch.float32,
+        dtype=_torch.bfloat16
+        if (device.type == "cuda" and use_amp)
+        else _torch.float32,
         enabled=(device.type == "cuda" and use_amp),
         cache_enabled=True,
     )
@@ -247,6 +254,7 @@ def _run_steps(
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main() -> int:
     if not _TORCH_OK:
         # Honest NOOP framing — torch failed to load (host-specific
@@ -262,7 +270,9 @@ def main() -> int:
 
     device = _torch.device("cuda:0" if _torch.cuda.is_available() else "cpu")
     n_steps = 3
-    print(f"[smoke] device={device} torch.cuda.is_available()={_torch.cuda.is_available()}")
+    print(
+        f"[smoke] device={device} torch.cuda.is_available()={_torch.cuda.is_available()}"
+    )
     print(
         f"[smoke] gfx1101 env vars: PYTORCH_HIP_ALLOC_CONF={os.environ.get('PYTORCH_HIP_ALLOC_CONF')!r}, "
         f"TORCH_BLAS_PREFER_HIPBLASLT={os.environ.get('TORCH_BLAS_PREFER_HIPBLASLT')!r}"
@@ -275,7 +285,10 @@ def main() -> int:
     _torch.manual_seed(0)
     baseline = _TinyStack(n_layers=3, hidden_dim=32, checkpoint=False).to(device)
     base_wall, base_alloc, base_reserved = _run_steps(
-        baseline, h, x, edge_index,
+        baseline,
+        h,
+        x,
+        edge_index,
         n_steps=n_steps,
         use_amp=False,
         device=device,
@@ -290,7 +303,10 @@ def main() -> int:
     _torch.manual_seed(0)
     treatment = _TinyStack(n_layers=3, hidden_dim=32, checkpoint=True).to(device)
     treat_wall, treat_alloc, treat_reserved = _run_steps(
-        treatment, h, x, edge_index,
+        treatment,
+        h,
+        x,
+        edge_index,
         n_steps=n_steps,
         use_amp=True,
         device=device,

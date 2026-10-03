@@ -77,7 +77,9 @@ from molmetal_lam.tile_lib.library import build_tile_library, FRAGMENT_LIBRARY_2
 from molmetal_lam.types.predicates import LIPINSKI
 
 
-CROSSDOCKED_ROOT = "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10"
+CROSSDOCKED_ROOT = (
+    "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10"
+)
 
 
 # ---------------------------------------------------------------------------
@@ -99,6 +101,7 @@ def _sa_proxy(smi: str) -> float:
     want a raw SA score without going through the reward aggregator.
     """
     from rdkit.Chem import Descriptors as _D
+
     mol = Chem.MolFromSmiles(smi)
     if mol is None:
         return float("nan")
@@ -111,6 +114,7 @@ def _sa_proxy(smi: str) -> float:
 def _qed(smi: str) -> float:
     """Raw QED value (0..1, higher = better)."""
     from rdkit.Chem import QED as _QED
+
     mol = Chem.MolFromSmiles(smi)
     if mol is None:
         return float("nan")
@@ -124,6 +128,7 @@ def _sa_score(smi: str) -> float:
     """Report the reference Ertl SA score, never the search heuristic."""
     try:
         from molmetal_lam.sbdd_env.sa_score import sa_score_ertl
+
         return float(sa_score_ertl(smi))
     except Exception:
         return float("nan")
@@ -132,6 +137,7 @@ def _sa_score(smi: str) -> float:
 def _sa_backend() -> str:
     try:
         from molmetal_lam.sbdd_env.sa_score import _SASCORER_AVAILABLE
+
         return "rdkit_contrib_ertl" if _SASCORER_AVAILABLE else "unavailable"
     except ImportError:
         return "unavailable"
@@ -142,7 +148,11 @@ def _structure_key(smiles: str) -> Optional[str]:
     """Graph identity excluding atom maps and explicit-H spelling differences."""
     try:
         mol = Chem.MolFromSmiles(smiles)
-        if mol is None or not mol.GetNumAtoms() or any(a.GetAtomicNum() == 0 for a in mol.GetAtoms()):
+        if (
+            mol is None
+            or not mol.GetNumAtoms()
+            or any(a.GetAtomicNum() == 0 for a in mol.GetAtoms())
+        ):
             return None
         for atom in mol.GetAtoms():
             atom.SetAtomMapNum(0)
@@ -158,8 +168,11 @@ def _observe_search(search, seed_key):
     populations. The MCTS safe reduction API merges non-matches and exceptions;
     report that ambiguity rather than claiming all empty expansions are errors.
     """
-    counters = {"reduction_calls": 0, "reductions_without_products": 0,
-                "products_returned": 0}
+    counters = {
+        "reduction_calls": 0,
+        "reductions_without_products": 0,
+        "products_returned": 0,
+    }
     states = {"new_products": set(), "typed_rejected": set(), "binding_rejected": set()}
     reduce = search._safe_reduce
     typed = search._satisfies_predicates
@@ -224,14 +237,23 @@ def _choose_click_seed(seed_tiles, expansion_tiles, rules, rng, library_name):
                 left, right = rxn.GetReactantTemplate(0), rxn.GetReactantTemplate(1)
             elif name == "ThiolEne":
                 # This rule's implementation edits the first thiol and alkene.
-                left, right = Chem.MolFromSmarts("[S;H1]"), Chem.MolFromSmarts("[C]=[C]")
+                left, right = (
+                    Chem.MolFromSmarts("[S;H1]"),
+                    Chem.MolFromSmarts("[C]=[C]"),
+                )
             else:
                 unsupported.append(name)
                 continue
-            seed_indices = [i for i, mol in enumerate(seed_mols)
-                            if mol is not None and mol.HasSubstructMatch(left)]
-            partner_indices = [i for i, mol in enumerate(partner_mols)
-                               if mol is not None and mol.HasSubstructMatch(right)]
+            seed_indices = [
+                i
+                for i, mol in enumerate(seed_mols)
+                if mol is not None and mol.HasSubstructMatch(left)
+            ]
+            partner_indices = [
+                i
+                for i, mol in enumerate(partner_mols)
+                if mol is not None and mol.HasSubstructMatch(right)
+            ]
         except Exception:
             unsupported.append(name)
             continue
@@ -244,17 +266,26 @@ def _choose_click_seed(seed_tiles, expansion_tiles, rules, rng, library_name):
                     products = rule.reduce((seed_tiles[i], expansion_tiles[j]))
                 except Exception:
                     continue
-                inputs = {_structure_key(_smi_of(seed_tiles[i])),
-                          _structure_key(_smi_of(expansion_tiles[j]))}
-                new_products = sorted({key for p in products
-                                       if (key := _structure_key(_smi_of(p))) is not None
-                                       and key not in inputs})
+                inputs = {
+                    _structure_key(_smi_of(seed_tiles[i])),
+                    _structure_key(_smi_of(expansion_tiles[j])),
+                }
+                new_products = sorted(
+                    {
+                        key
+                        for p in products
+                        if (key := _structure_key(_smi_of(p))) is not None
+                        and key not in inputs
+                    }
+                )
                 if new_products:
                     return seed_tiles[i], {
-                        "library": library_name, "tile_index": i,
+                        "library": library_name,
+                        "tile_index": i,
                         "smiles": _smi_of(seed_tiles[i]),
                         "canonical_seed": _structure_key(_smi_of(seed_tiles[i])),
-                        "validated_rule": name, "partner_index": j,
+                        "validated_rule": name,
+                        "partner_index": j,
                         "partner_smiles": _smi_of(expansion_tiles[j]),
                         "validation_products": new_products,
                         "validation_reduction_calls": attempts,
@@ -278,7 +309,7 @@ def list_crossdocked_pockets(offset: int = 0, count: int = 100) -> List[str]:
     if not os.path.isdir(CROSSDOCKED_ROOT):
         return []
     entries = sorted(os.listdir(CROSSDOCKED_ROOT))
-    return [os.path.join(CROSSDOCKED_ROOT, e) for e in entries[offset:offset + count]]
+    return [os.path.join(CROSSDOCKED_ROOT, e) for e in entries[offset : offset + count]]
 
 
 # ---------------------------------------------------------------------------
@@ -338,8 +369,11 @@ def run_one_pocket(
     if seed_strategy not in {"reference", "click_tile"}:
         raise ValueError(f"Unknown seed_strategy: {seed_strategy!r}")
     if n_simulations < 1 or max_depth < 1 or top_k < 1 or patience < 1:
-        raise ValueError("n_simulations, max_depth, top_k and patience must be positive")
+        raise ValueError(
+            "n_simulations, max_depth, top_k and patience must be positive"
+        )
     from molmetal_lam.lam_chem.rules import CLICK_REACTIONS, list_reactions
+
     if click_rules is None:
         rules = dict(REACTION_RULES)
     else:
@@ -352,34 +386,58 @@ def run_one_pocket(
                 raise ValueError(f"Unknown click rule: {name!r}")
             rules[rule.name] = rule
     if branching_target is not None and (
-        isinstance(branching_target, bool) or not isinstance(branching_target, int)
+        isinstance(branching_target, bool)
+        or not isinstance(branching_target, int)
         or branching_target < len(rules)
     ):
-        raise ValueError("branching_target must be an integer >= the selected rule count")
-    selected_library = tile_library or ("extended_204" if include_fragments else "standard_12")
+        raise ValueError(
+            "branching_target must be an integer >= the selected rule count"
+        )
+    selected_library = tile_library or (
+        "extended_204" if include_fragments else "standard_12"
+    )
     if selected_library not in {"extended_204", "standard_12"}:
         raise ValueError(f"Unknown tile library: {selected_library!r}")
     pocket_id = os.path.basename(pocket_dir)
     effective_seed = 20260912 + seed_offset if seed is None else seed
     from molmetal_lam.search_alg import sweep_guidance as guidance
-    prior_enabled = symbolic_prior is True or symbolic_prior == "linear_descriptor_prior"
+
+    prior_enabled = (
+        symbolic_prior is True or symbolic_prior == "linear_descriptor_prior"
+    )
     learned_prior = None
     replay_state = prior_state
     if prior_enabled:
         replay_state, learned_prior = guidance.prepare_prior(
-            prior_state, seed=effective_seed, mode=prior_mode, data_split=prior_data_split)
-    prior_report = {"requested": symbolic_prior, "backend": "linear_descriptor_prior",
-                    "mode": prior_mode, "data_split": prior_data_split,
-                    "applied": learned_prior is not None,
-                    "status": "fitted_state_loaded" if learned_prior else
-                              "awaiting_real_training_observations" if prior_enabled else
-                              "disabled" if not symbolic_prior else "unsupported_request",
-                    "puct_calls": 0, "pysr_symbolic_regression": False}
-    synthesis_checker, synthesis_report = guidance.build_synthesis_gate(synthesis_oracle, synthesis_config_path)
+            prior_state,
+            seed=effective_seed,
+            mode=prior_mode,
+            data_split=prior_data_split,
+        )
+    prior_report = {
+        "requested": symbolic_prior,
+        "backend": "linear_descriptor_prior",
+        "mode": prior_mode,
+        "data_split": prior_data_split,
+        "applied": learned_prior is not None,
+        "status": "fitted_state_loaded"
+        if learned_prior
+        else "awaiting_real_training_observations"
+        if prior_enabled
+        else "disabled"
+        if not symbolic_prior
+        else "unsupported_request",
+        "puct_calls": 0,
+        "pysr_symbolic_regression": False,
+    }
+    synthesis_checker, synthesis_report = guidance.build_synthesis_gate(
+        synthesis_oracle, synthesis_config_path
+    )
     rng = random.Random(effective_seed)
     if seed is not None:
         import numpy as np
         import torch
+
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
@@ -398,13 +456,21 @@ def run_one_pocket(
                     raise ValueError("first ligand record is invalid or empty")
                 seed_smiles = Chem.MolToSmiles(mol)
             except Exception as exc:
-                return {"pocket_id": pocket_id, "status": "seed_parse_fail",
-                        "prior_state": replay_state, "prior_report": prior_report,
-                        "synthesis_report": synthesis_report,
-                        "init_strategy": seed_strategy, "chosen_tile": None,
-                        "canonical_seed": None,
-                        "ligand_path": str(ligand_path), "seed_smiles": None,
-                        "error": str(exc), "n_candidates": 0, "candidates": []}
+                return {
+                    "pocket_id": pocket_id,
+                    "status": "seed_parse_fail",
+                    "prior_state": replay_state,
+                    "prior_report": prior_report,
+                    "synthesis_report": synthesis_report,
+                    "init_strategy": seed_strategy,
+                    "chosen_tile": None,
+                    "canonical_seed": None,
+                    "ligand_path": str(ligand_path),
+                    "seed_smiles": None,
+                    "error": str(exc),
+                    "n_candidates": 0,
+                    "candidates": [],
+                }
         else:
             seed_smiles = build_seed_smiles(pocket_dir)
         if seed_smiles is None and ligand_path is None:
@@ -417,7 +483,8 @@ def run_one_pocket(
             return {
                 "pocket_id": pocket_id,
                 "status": "seed_parse_fail",
-                "prior_state": replay_state, "prior_report": prior_report,
+                "prior_state": replay_state,
+                "prior_report": prior_report,
                 "synthesis_report": synthesis_report,
                 "seed_smiles": seed_smiles,
                 "n_candidates": 0,
@@ -430,43 +497,66 @@ def run_one_pocket(
         if selected_library == "extended_204"
         else build_tile_library(12, include_fragments=False)
     )
-    tile_terms = [MoleculeClosedTerm.from_smiles(t.smiles, embed_3d=False) for t in tiles]
+    tile_terms = [
+        MoleculeClosedTerm.from_smiles(t.smiles, embed_3d=False) for t in tiles
+    ]
     seed_tile_terms = list(tile_terms)
     if branching_target is not None:
-        tile_terms = tile_terms[:branching_target // len(rules)]
+        tile_terms = tile_terms[: branching_target // len(rules)]
 
     # Reward: SA + QED + Vina_proxy
     reward = _build_reward()
     # Add Vina proxy channel — zero weight by default until L-1 oracle live
     from dataclasses import replace
+
     reward = replace(reward, r_vina_proxy=_vina_proxy, w_vina_proxy=0.0)
     docking_reward = None
-    docking_reward_report = {"requested": docking_reward_config is not None,
-                             "status": "disabled", "applied": False}
+    docking_reward_report = {
+        "requested": docking_reward_config is not None,
+        "status": "disabled",
+        "applied": False,
+    }
     if docking_reward_config is not None:
         try:
             from molmetal_lam.sbdd_env.pocket_docking_reward import PocketDockingReward
+
             reward_options = dict(docking_reward_config)
             reward_weight = float(reward_options.pop("weight", 0.4))
             if not math.isfinite(reward_weight) or reward_weight < 0:
-                raise ValueError("Measured docking reward weight must be finite and nonnegative")
+                raise ValueError(
+                    "Measured docking reward weight must be finite and nonnegative"
+                )
             docking_reward = PocketDockingReward(seed=effective_seed, **reward_options)
-            reward = replace(reward, r_vina=docking_reward, w_vina=reward_weight,
-                             vina_invert=True, w_vina_proxy=0.0)
-            docking_reward_report.update(status="configured", applied=False, weight=reward_weight,
-                                         energy_feedback_enabled=reward_weight > 0,
-                                         transform="weighted negative measured kcal/mol; no reference energy input")
+            reward = replace(
+                reward,
+                r_vina=docking_reward,
+                w_vina=reward_weight,
+                vina_invert=True,
+                w_vina_proxy=0.0,
+            )
+            docking_reward_report.update(
+                status="configured",
+                applied=False,
+                weight=reward_weight,
+                energy_feedback_enabled=reward_weight > 0,
+                transform="weighted negative measured kcal/mol; no reference energy input",
+            )
         except Exception as exc:
             # Keep independent chemistry search available, but never label this
             # failed setup as pocket-conditioned execution.
-            docking_reward_report.update(status="unavailable", error=f"{type(exc).__name__}: {exc}")
+            docking_reward_report.update(
+                status="unavailable", error=f"{type(exc).__name__}: {exc}"
+            )
+
     def record_docking_reward():
         if docking_reward is not None:
             execution = docking_reward.report()
             measured = execution.get("n_docked", 0) > 0
-            docking_reward_report.update(execution=execution,
-                                         applied=measured and docking_reward_report["energy_feedback_enabled"],
-                                         status="executed" if measured else "no_measured_rewards")
+            docking_reward_report.update(
+                execution=execution,
+                applied=measured and docking_reward_report["energy_feedback_enabled"],
+                status="executed" if measured else "no_measured_rewards",
+            )
 
     search_class = guidance.GuidedMCTS if prior_enabled else MCTSProofSearch
     search = search_class(
@@ -499,29 +589,47 @@ def run_one_pocket(
         # successfully.  Set ``use_fragment_pool=False`` to fall back
         # to the 12-tile library for backward compat (no 204-tile download).
         # Explicit tile selection/capping must survive MCTS's lazy pool loader.
-        use_fragment_pool=bool(use_fragment_pool and include_fragments
-                               and tile_library is None and branching_target is None),
+        use_fragment_pool=bool(
+            use_fragment_pool
+            and include_fragments
+            and tile_library is None
+            and branching_target is None
+        ),
     )
     actual_tiles = search._resolve_expand_tile_pool()
     search_config = {
-        "n_simulations": n_simulations, "max_depth": max_depth, "top_k": top_k,
-        "early_stop": early_stop, "patience": patience,
-        "tile_library": selected_library, "click_rules": click_rules,
-        "rule_names": list(rules), "tile_count": len(actual_tiles),
+        "n_simulations": n_simulations,
+        "max_depth": max_depth,
+        "top_k": top_k,
+        "early_stop": early_stop,
+        "patience": patience,
+        "tile_library": selected_library,
+        "click_rules": click_rules,
+        "rule_names": list(rules),
+        "tile_count": len(actual_tiles),
         "branching_target": branching_target,
         "branching_attempts": len(rules) * len(actual_tiles),
         "use_fragment_pool": search.use_fragment_pool,
         "seed": effective_seed,
         "seed_strategy": seed_strategy,
-        "not_applied": [name for name, value in {
-            "symbolic_prior": symbolic_prior,
-            "synthesis_oracle": synthesis_oracle,
-            "symbolic_prior_refit_every": symbolic_prior_refit_every,
-        }.items() if value],
-        "disabled": [name for name, value in {
-            "symbolic_prior": symbolic_prior, "synthesis_oracle": synthesis_oracle,
-            "symbolic_prior_refit_every": symbolic_prior_refit_every,
-        }.items() if not value],
+        "not_applied": [
+            name
+            for name, value in {
+                "symbolic_prior": symbolic_prior,
+                "synthesis_oracle": synthesis_oracle,
+                "symbolic_prior_refit_every": symbolic_prior_refit_every,
+            }.items()
+            if value
+        ],
+        "disabled": [
+            name
+            for name, value in {
+                "symbolic_prior": symbolic_prior,
+                "synthesis_oracle": synthesis_oracle,
+                "symbolic_prior_refit_every": symbolic_prior_refit_every,
+            }.items()
+            if not value
+        ],
         "unsupported_requested": {
             "symbolic_prior": symbolic_prior,
             "synthesis_oracle": synthesis_oracle,
@@ -529,35 +637,59 @@ def run_one_pocket(
         },
     }
     if prior_enabled:
-        search_config["not_applied"] = [key for key in search_config["not_applied"]
-                                        if key not in {"symbolic_prior", "symbolic_prior_refit_every"}]
+        search_config["not_applied"] = [
+            key
+            for key in search_config["not_applied"]
+            if key not in {"symbolic_prior", "symbolic_prior_refit_every"}
+        ]
         if learned_prior is None:
             search_config["not_applied"].append("symbolic_prior")
         if prior_mode == "frozen" and symbolic_prior_refit_every is not None:
             search_config["not_applied"].append("symbolic_prior_refit_every")
     if synthesis_report["applied"]:
-        search_config["not_applied"] = [key for key in search_config["not_applied"]
-                                        if key != "synthesis_oracle"]
+        search_config["not_applied"] = [
+            key for key in search_config["not_applied"] if key != "synthesis_oracle"
+        ]
     search_config["unsupported_requested"] = {
-        key: value for key, value in search_config["unsupported_requested"].items()
-        if key in search_config["not_applied"]}
-    search_config["guidance"] = {"prior": prior_report, "synthesis": synthesis_report,
-                                 "docking_reward": docking_reward_report}
+        key: value
+        for key, value in search_config["unsupported_requested"].items()
+        if key in search_config["not_applied"]
+    }
+    search_config["guidance"] = {
+        "prior": prior_report,
+        "synthesis": synthesis_report,
+        "docking_reward": docking_reward_report,
+    }
 
     if seed_strategy == "click_tile":
         try:
-            seed, chosen_tile = _choose_click_seed(seed_tile_terms, actual_tiles, rules,
-                                                   random.Random(effective_seed), selected_library)
+            seed, chosen_tile = _choose_click_seed(
+                seed_tile_terms,
+                actual_tiles,
+                rules,
+                random.Random(effective_seed),
+                selected_library,
+            )
             seed_smiles = _smi_of(seed)
         except ValueError as exc:
-            return {"pocket_id": pocket_id, "status": "initialization_fail",
-                    "prior_state": replay_state, "prior_report": prior_report,
-                    "synthesis_report": synthesis_report,
-                    "init_strategy": seed_strategy, "chosen_tile": None,
-                    "canonical_seed": None, "seed_smiles": None,
-                    "ligand_path": ligand_path, "search_config": search_config,
-                    "error": str(exc), "n_candidates": 0, "candidates": [],
-                    "has_generated_candidates": False, "n_generated_candidates": 0}
+            return {
+                "pocket_id": pocket_id,
+                "status": "initialization_fail",
+                "prior_state": replay_state,
+                "prior_report": prior_report,
+                "synthesis_report": synthesis_report,
+                "init_strategy": seed_strategy,
+                "chosen_tile": None,
+                "canonical_seed": None,
+                "seed_smiles": None,
+                "ligand_path": ligand_path,
+                "search_config": search_config,
+                "error": str(exc),
+                "n_candidates": 0,
+                "candidates": [],
+                "has_generated_candidates": False,
+                "n_generated_candidates": 0,
+            }
     seed_key = _structure_key(seed_smiles)
     initialization_seconds = time.monotonic() - init_started
     observed, observed_states = _observe_search(search, seed_key)
@@ -569,7 +701,8 @@ def run_one_pocket(
         return {
             "pocket_id": pocket_id,
             "status": f"search_fail: {type(e).__name__}",
-            "prior_state": replay_state, "prior_report": prior_report,
+            "prior_state": replay_state,
+            "prior_report": prior_report,
             "synthesis_report": synthesis_report,
             "seed_smiles": seed_smiles,
             "n_candidates": 0,
@@ -585,35 +718,54 @@ def run_one_pocket(
     record_docking_reward()
     prior_report["puct_calls"] = getattr(search, "learned_prior_calls", 0)
     if prior_enabled:
-        observations = (guidance.candidate_observations(candidates, search, pocket_id)
-                        if prior_mode != "frozen" else [])
+        observations = (
+            guidance.candidate_observations(candidates, search, pocket_id)
+            if prior_mode != "frozen"
+            else []
+        )
         replay_state, update_info = guidance.update_prior(
-            replay_state, observations, mode=prior_mode, data_split=prior_data_split,
-            refit_every=symbolic_prior_refit_every if symbolic_prior_refit_every is not None else 5)
+            replay_state,
+            observations,
+            mode=prior_mode,
+            data_split=prior_data_split,
+            refit_every=symbolic_prior_refit_every
+            if symbolic_prior_refit_every is not None
+            else 5,
+        )
         prior_report.update(update_info)
     pre_synthesis_candidates = list(candidates)
-    candidates, synthesis_report = guidance.gate_candidates(pre_synthesis_candidates, synthesis_checker, synthesis_report)
+    candidates, synthesis_report = guidance.gate_candidates(
+        pre_synthesis_candidates, synthesis_checker, synthesis_report
+    )
     search_config["guidance"]["synthesis"] = synthesis_report
     wall = time.time() - t0
 
     # Generation denominators precede synthesis selection. Rejected products
     # remain auditable even though only retained top-k proceed downstream.
     synthesis_rows = synthesis_report.get("reports", [])
-    retained_indices = [i for i in range(len(pre_synthesis_candidates))
-                        if not synthesis_rows or synthesis_rows[i]["passed"]]
+    retained_indices = [
+        i
+        for i in range(len(pre_synthesis_candidates))
+        if not synthesis_rows or synthesis_rows[i]["passed"]
+    ]
     selected_indices = set(retained_indices[:top_k])
     all_cand_records: List[Dict[str, object]] = []
     for index, c in enumerate(pre_synthesis_candidates):
         smi = _smi_of(c)
         structure_key = _structure_key(smi)
-        synthesis_row = synthesis_rows[index] if synthesis_rows else {
-            "status": "not_applied", "passed": None}
+        synthesis_row = (
+            synthesis_rows[index]
+            if synthesis_rows
+            else {"status": "not_applied", "passed": None}
+        )
         all_cand_records.append(
             {
                 "candidate_id": index,
                 "smiles": smi,
                 "is_seed": structure_key is not None and structure_key == seed_key,
-                "is_generated": structure_key is not None and seed_key is not None and structure_key != seed_key,
+                "is_generated": structure_key is not None
+                and seed_key is not None
+                and structure_key != seed_key,
                 "sa": _sa_score(smi),
                 "qed": _qed(smi),
                 "lipinski": _lipinski_pass(smi),
@@ -622,7 +774,9 @@ def run_one_pocket(
                 "synthesis_passed": synthesis_row["passed"],
                 "retained_after_synthesis": index in retained_indices,
                 "selected_for_evaluation": index in selected_indices,
-                "physical_evaluation_status": "pending_downstream" if index in selected_indices else "not_selected",
+                "physical_evaluation_status": "pending_downstream"
+                if index in selected_indices
+                else "not_selected",
             }
         )
 
@@ -633,13 +787,17 @@ def run_one_pocket(
     reasons = []
     if not generated:
         if observed["reduction_calls"] and not observed["products_returned"]:
-            reasons.append("No products from attempted reductions (non-matching rules or invalid reductions)")
+            reasons.append(
+                "No products from attempted reductions (non-matching rules or invalid reductions)"
+            )
         if observed_states["typed_rejected"]:
             reasons.append("New structures were rejected by existing type predicates")
         if observed_states["binding_rejected"]:
             reasons.append("New structures were rejected by the existing binding gate")
         if not reasons:
-            reasons.append("No new structure in returned top-k; available observations do not identify a specific gate")
+            reasons.append(
+                "No new structure in returned top-k; available observations do not identify a specific gate"
+            )
     return {
         "pocket_id": pocket_id,
         "status": "ok",
@@ -654,33 +812,51 @@ def run_one_pocket(
         "synthesis_report": synthesis_report,
         "docking_reward_report": docking_reward_report,
         "initialization_seconds": initialization_seconds,
-        "metric_backend": {"sa": _sa_backend(), "qed": "rdkit",
-                           "vina": "heuristic_proxy_no_docking"},
-        "empty_candidates_reason": (None if cand_records else
-                                    "No search candidates passed the configured search/filter path"),
-        "search_diagnostics": {"nfe": search.nfe,
-                               "nfe_reductions": search.nfe_reductions,
-                               "nfe_oracle": search.nfe_oracle,
-                               "simulations_completed": len(search.history),
-                               "early_stopped": bool(search.history and
-                                   search.history[-1].get("EARLY_STOPPED", False))},
+        "metric_backend": {
+            "sa": _sa_backend(),
+            "qed": "rdkit",
+            "vina": "heuristic_proxy_no_docking",
+        },
+        "empty_candidates_reason": (
+            None
+            if cand_records
+            else "No search candidates passed the configured search/filter path"
+        ),
+        "search_diagnostics": {
+            "nfe": search.nfe,
+            "nfe_reductions": search.nfe_reductions,
+            "nfe_oracle": search.nfe_oracle,
+            "simulations_completed": len(search.history),
+            "early_stopped": bool(
+                search.history and search.history[-1].get("EARLY_STOPPED", False)
+            ),
+        },
         "n_sims": n_simulations,
         "n_candidates": len(cand_records),
         "n_pre_synthesis_candidates": len(all_cand_records),
         "n_retained_candidates": len(retained_indices),
         "n_selected_candidates": len(cand_records),
         "n_evaluated_candidates": 0,
-        "n_synthesis_rejected_candidates": len(all_cand_records) - len(retained_indices),
+        "n_synthesis_rejected_candidates": len(all_cand_records)
+        - len(retained_indices),
         "n_generated_retained_candidates": len(retained_generated),
         "n_generated_selected_candidates": sum(c["is_generated"] for c in cand_records),
-        "n_generated_synthesis_rejected_candidates": len(generated) - len(retained_generated),
+        "n_generated_synthesis_rejected_candidates": len(generated)
+        - len(retained_generated),
         "n_generated_candidates": len(generated),
         "n_seed_candidates": n_seed,
         "n_invalid_candidates": len(all_cand_records) - len(generated) - n_seed,
         "n_unique_generated": len({_structure_key(c["smiles"]) for c in generated}),
         "has_generated_candidates": bool(generated),
-        "generation_status": ("generated" if generated else "seed_only" if n_seed
-                              else "invalid_candidates" if all_cand_records else "no_candidates"),
+        "generation_status": (
+            "generated"
+            if generated
+            else "seed_only"
+            if n_seed
+            else "invalid_candidates"
+            if all_cand_records
+            else "no_candidates"
+        ),
         "candidate_accounting": {
             "generated_scope": "all search-returned candidates before synthesis filtering and top-k selection",
             "candidates_scope": "retained candidates selected for downstream evaluation",
@@ -713,8 +889,12 @@ def aggregate(results: List[Dict[str, object]]) -> Dict[str, object]:
     n_total = len(results)
     if n_ok == 0:
         return {"n_pockets_total": n_total, "n_pockets_ok": 0}
-    sa_vals = [c["sa"] for r in ok for c in r["candidates"] if isinstance(c.get("sa"), float)]
-    qed_vals = [c["qed"] for r in ok for c in r["candidates"] if isinstance(c.get("qed"), float)]
+    sa_vals = [
+        c["sa"] for r in ok for c in r["candidates"] if isinstance(c.get("sa"), float)
+    ]
+    qed_vals = [
+        c["qed"] for r in ok for c in r["candidates"] if isinstance(c.get("qed"), float)
+    ]
     lip_pass = sum(1 for r in ok for c in r["candidates"] if c.get("lipinski"))
     n_total_cands = sum(r["n_candidates"] for r in ok)
     mean_wall = sum(r["wall_seconds"] for r in ok) / n_ok
@@ -778,7 +958,9 @@ def write_csv(results: List[Dict[str, object]], path: str) -> None:
             )
 
 
-def write_json(results: List[Dict[str, object]], summary: Dict[str, object], path: str) -> None:
+def write_json(
+    results: List[Dict[str, object]], summary: Dict[str, object], path: str
+) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as f:
         json.dump({"summary": summary, "per_pocket": results}, f, indent=2, default=str)
@@ -826,19 +1008,33 @@ def write_markdown(summary: Dict[str, object], path: str) -> None:
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--n-pockets", type=int, default=10, help="Number of pockets (max 100)")
-    p.add_argument("--pocket-offset", type=int, default=0, help="Skip this many pockets (for chunked runs)")
-    p.add_argument("--n-simulations", type=int, default=200, help="MCTS sims per pocket")
+    p.add_argument(
+        "--n-pockets", type=int, default=10, help="Number of pockets (max 100)"
+    )
+    p.add_argument(
+        "--pocket-offset",
+        type=int,
+        default=0,
+        help="Skip this many pockets (for chunked runs)",
+    )
+    p.add_argument(
+        "--n-simulations", type=int, default=200, help="MCTS sims per pocket"
+    )
     p.add_argument("--max-depth", type=int, default=3, help="MCTS max depth")
     p.add_argument("--top-k", type=int, default=20)
     p.add_argument("--early-stop", action=argparse.BooleanOptionalAction, default=True)
     p.add_argument("--patience", type=int, default=30)
     p.add_argument("--tile-library", choices=["standard_12", "extended_204"])
     p.add_argument("--click-rules", help="all_5 or comma-separated registered names")
-    p.add_argument("--branching-target", type=int,
-                   help="Maximum rule/tile attempts per expansion (not successful products)")
+    p.add_argument(
+        "--branching-target",
+        type=int,
+        help="Maximum rule/tile attempts per expansion (not successful products)",
+    )
     p.add_argument("--seed", type=int, default=None)
-    p.add_argument("--seed-strategy", choices=["reference", "click_tile"], default="reference")
+    p.add_argument(
+        "--seed-strategy", choices=["reference", "click_tile"], default="reference"
+    )
     p.add_argument(
         "--use-fragment-pool",
         dest="use_fragment_pool",
@@ -858,10 +1054,28 @@ def main():
         action="store_false",
         help="Deprecated alias for --no-fragment-pool (backward compat)",
     )
-    p.add_argument("--out-prefix", type=str, default="r4_c_100pocket_sweep", help="Output file prefix")
-    p.add_argument("--append", action="store_true", help="Append to existing CSV/JSON instead of overwriting")
-    p.add_argument("--detach", action="store_true", help="Run as a detached background process (returns immediately)")
-    p.add_argument("--detach-pidfile", type=str, default="/tmp/r4_c_2.pid", help="Where to write pid when --detach")
+    p.add_argument(
+        "--out-prefix",
+        type=str,
+        default="r4_c_100pocket_sweep",
+        help="Output file prefix",
+    )
+    p.add_argument(
+        "--append",
+        action="store_true",
+        help="Append to existing CSV/JSON instead of overwriting",
+    )
+    p.add_argument(
+        "--detach",
+        action="store_true",
+        help="Run as a detached background process (returns immediately)",
+    )
+    p.add_argument(
+        "--detach-pidfile",
+        type=str,
+        default="/tmp/r4_c_2.pid",
+        help="Where to write pid when --detach",
+    )
     args = p.parse_args()
 
     if args.detach:
@@ -869,7 +1083,9 @@ def main():
         return
 
     pockets = list_crossdocked_pockets(offset=args.pocket_offset, count=args.n_pockets)
-    print(f"[r4_c] offset={args.pocket_offset}, count={args.n_pockets}, found={len(pockets)}")
+    print(
+        f"[r4_c] offset={args.pocket_offset}, count={args.n_pockets}, found={len(pockets)}"
+    )
     if not pockets:
         print("[r4_c] No pockets found at", CROSSDOCKED_ROOT)
         sys.exit(1)
@@ -882,6 +1098,7 @@ def main():
         # multiplier before any pocket runs.
         try:
             from molmetal_lam.reactions.beta_reductions import REACTION_RULES as _RR
+
             n_rules = len(dict(_RR))
         except Exception:
             n_rules = 5
@@ -891,7 +1108,9 @@ def main():
             f"(branching factor = {n_rules} rules x 204 tiles = {branching})"
         )
     else:
-        print("[r4_c] Using STANDARD_12_TILES (12-tile fallback, branching = 5 x 12 = 60)")
+        print(
+            "[r4_c] Using STANDARD_12_TILES (12-tile fallback, branching = 5 x 12 = 60)"
+        )
 
     out_dir = os.path.abspath(os.path.join(HERE, "..", "reports"))
     csv_path = os.path.join(out_dir, args.out_prefix + ".csv")
@@ -910,10 +1129,11 @@ def main():
             prior_per_pocket = prev.get("per_pocket", [])
             current_ids = {os.path.basename(p) for p in pockets}
             existing_results = [
-                r for r in prior_per_pocket
-                if r.get("pocket_id") not in current_ids
+                r for r in prior_per_pocket if r.get("pocket_id") not in current_ids
             ]
-            print(f"[r4_c] Append mode: keeping {len(existing_results)} prior results outside this chunk")
+            print(
+                f"[r4_c] Append mode: keeping {len(existing_results)} prior results outside this chunk"
+            )
         except Exception as e:
             print(f"[r4_c] Could not read prior json: {e}")
 
@@ -921,7 +1141,9 @@ def main():
     t_total = time.time()
     for i, pdir in enumerate(pockets):
         idx_global = args.pocket_offset + i
-        print(f"[r4_c] [{idx_global+1}/{args.pocket_offset + len(pockets)}] {os.path.basename(pdir)}")
+        print(
+            f"[r4_c] [{idx_global+1}/{args.pocket_offset + len(pockets)}] {os.path.basename(pdir)}"
+        )
         r = run_one_pocket(
             pdir,
             n_simulations=args.n_simulations,
@@ -944,7 +1166,9 @@ def main():
             summary = aggregate(results)
             write_csv(results, csv_path)
             write_json(results, summary, json_path)
-            print(f"[r4_c] checkpoint @ {idx_global+1}/{args.pocket_offset + len(pockets)} pockets — {summary}")
+            print(
+                f"[r4_c] checkpoint @ {idx_global+1}/{args.pocket_offset + len(pockets)} pockets — {summary}"
+            )
 
     summary = aggregate(results)
     write_csv(results, csv_path)
@@ -972,7 +1196,9 @@ def _detach_self(args):
         # Parent — write child pid, return immediately
         with open(args.detach_pidfile, "w") as f:
             f.write(str(pid) + "\n")
-        print(f"[r4_c] Detached child pid={pid}, log={log_path}, pidfile={args.detach_pidfile}")
+        print(
+            f"[r4_c] Detached child pid={pid}, log={log_path}, pidfile={args.detach_pidfile}"
+        )
         return
     # Child
     os.setsid()
@@ -986,21 +1212,32 @@ def _detach_self(args):
     sys.stdin = open(os.devnull, "r")
     # Reconstruct argv without --detach to avoid re-forking
     argv = [
-        sys.executable, os.path.abspath(__file__),
-        "--n-pockets", str(args.n_pockets),
-        "--pocket-offset", str(args.pocket_offset),
-        "--n-simulations", str(args.n_simulations),
-        "--max-depth", str(args.max_depth),
-        "--top-k", str(args.top_k),
-        "--seed-strategy", args.seed_strategy,
-        "--patience", str(args.patience),
+        sys.executable,
+        os.path.abspath(__file__),
+        "--n-pockets",
+        str(args.n_pockets),
+        "--pocket-offset",
+        str(args.pocket_offset),
+        "--n-simulations",
+        str(args.n_simulations),
+        "--max-depth",
+        str(args.max_depth),
+        "--top-k",
+        str(args.top_k),
+        "--seed-strategy",
+        args.seed_strategy,
+        "--patience",
+        str(args.patience),
         "--early-stop" if args.early_stop else "--no-early-stop",
-        "--out-prefix", args.out_prefix,
+        "--out-prefix",
+        args.out_prefix,
     ]
-    for flag, value in (("--tile-library", args.tile_library),
-                        ("--click-rules", args.click_rules),
-                        ("--branching-target", args.branching_target),
-                        ("--seed", args.seed)):
+    for flag, value in (
+        ("--tile-library", args.tile_library),
+        ("--click-rules", args.click_rules),
+        ("--branching-target", args.branching_target),
+        ("--seed", args.seed),
+    ):
         if value is not None:
             argv.extend([flag, str(value)])
     if args.append:

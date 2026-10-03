@@ -46,6 +46,7 @@ Honest framing (per ``party-twenty-spirit`` §3.5):
     before GPU portion can run end-to-end — this is a known blocker
     NOT addressed by the CPU scaffold.
 """
+
 from __future__ import annotations
 
 import re
@@ -99,18 +100,20 @@ def test_argparse_chemprop_mode_accepts_v2_and_v3():
         # Fall back: introspect via subprocess --help.
         out = subprocess.run(
             [sys.executable, str(_CHEMPROP), "--help"],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
             cwd=str(_REPO_ROOT),
         )
-        assert "--chemprop-mode" in (out.stdout + out.stderr), (
-            "--chemprop-mode flag missing from --help output"
-        )
+        assert "--chemprop-mode" in (
+            out.stdout + out.stderr
+        ), "--chemprop-mode flag missing from --help output"
         # Must include both v2 and v3 as choices
         combined = out.stdout + out.stderr
         for token in ("v2", "v3", "v3-fallback", "v3-fix"):
-            assert token in combined, (
-                f"--chemprop-mode choice '{token}' missing from --help output"
-            )
+            assert (
+                token in combined
+            ), f"--chemprop-mode choice '{token}' missing from --help output"
         return
     # If driver exposes _build_arg_parser, use it directly
     try:
@@ -135,7 +138,9 @@ def test_argparse_chemprop_mode_default_is_v3_fallback():
     """
     out = subprocess.run(
         [sys.executable, str(_CHEMPROP), "--help"],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
         cwd=str(_REPO_ROOT),
     )
     combined = out.stdout + out.stderr
@@ -150,9 +155,7 @@ def test_argparse_chemprop_mode_default_is_v3_fallback():
         combined,
         re.DOTALL | re.MULTILINE,
     )
-    assert block is not None, (
-        "--chemprop-mode description block missing"
-    )
+    assert block is not None, "--chemprop-mode description block missing"
     block_text = block.group(0)
     # Argparse formats default as either ``v3-fallback (default)``
     # (choices list) or ``(default: v3-fallback)`` (scalar).
@@ -163,8 +166,7 @@ def test_argparse_chemprop_mode_default_is_v3_fallback():
     if m is None:
         m = re.search(r"\(default:\s*([^)]+)\)", block_text)
     assert m is not None, (
-        f"--chemprop-mode default annotation missing in block: "
-        f"{block_text[:300]!r}"
+        f"--chemprop-mode default annotation missing in block: " f"{block_text[:300]!r}"
     )
     if m.lastindex == 1 and m.group(1):
         default = m.group(1).strip()
@@ -187,7 +189,9 @@ def test_argparse_chemprop_mode_mutually_excludes_v3_with_enhanced_head():
     """
     out = subprocess.run(
         [sys.executable, str(_CHEMPROP), "--help"],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
         cwd=str(_REPO_ROOT),
     )
     combined = out.stdout + out.stderr
@@ -201,9 +205,9 @@ def test_argparse_chemprop_mode_mutually_excludes_v3_with_enhanced_head():
     )
     assert m is not None
     mode_help = m.group(0)
-    assert "enhanced-head" in mode_help or "v3" in mode_help, (
-        "--chemprop-mode help must reference v3/enhanced-head relationship"
-    )
+    assert (
+        "enhanced-head" in mode_help or "v3" in mode_help
+    ), "--chemprop-mode help must reference v3/enhanced-head relationship"
 
 
 # ---------------------------------------------------------------------------
@@ -213,13 +217,15 @@ def test_chemprop_min_epochs_floor_default_is_10():
     """``--chemprop-min-epochs`` defaults to 10 (Wf-266 LOMO floor)."""
     out = subprocess.run(
         [sys.executable, str(_CHEMPROP), "--help"],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
         cwd=str(_REPO_ROOT),
     )
     combined = out.stdout + out.stderr
-    assert "--chemprop-min-epochs" in combined, (
-        "--chemprop-min-epochs flag missing from --help"
-    )
+    assert (
+        "--chemprop-min-epochs" in combined
+    ), "--chemprop-min-epochs flag missing from --help"
     # Default annotation: argparse shows ``(default: 10)`` somewhere
     # in the chemprop-min-epochs help block.  The block may span
     # multiple lines.  Find the description (NOT usage-line) instance.
@@ -228,9 +234,7 @@ def test_chemprop_min_epochs_floor_default_is_10():
         combined,
         re.DOTALL | re.MULTILINE,
     )
-    assert block is not None, (
-        "--chemprop-min-epochs description block missing"
-    )
+    assert block is not None, "--chemprop-min-epochs description block missing"
     block_text = block.group(0)
     m = re.search(r"default[:\s)]*\s*(\d+)", block_text)
     assert m is not None, (
@@ -248,13 +252,15 @@ def test_chemprop_lomo_init_scale_default_is_1e_3():
     """``--chemprop-lomo-init-scale`` defaults to 1e-3 (Wf-266 anti-bias)."""
     out = subprocess.run(
         [sys.executable, str(_CHEMPROP), "--help"],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
         cwd=str(_REPO_ROOT),
     )
     combined = out.stdout + out.stderr
-    assert "--chemprop-lomo-init-scale" in combined, (
-        "--chemprop-lomo-init-scale flag missing from --help"
-    )
+    assert (
+        "--chemprop-lomo-init-scale" in combined
+    ), "--chemprop-lomo-init-scale flag missing from --help"
     # Default annotation: argparse shows ``(default: 1e-3)`` somewhere
     # in the chemprop-lomo-init-scale help block.  May span multiple
     # lines.  Find the description (NOT usage-line) instance.
@@ -263,9 +269,7 @@ def test_chemprop_lomo_init_scale_default_is_1e_3():
         combined,
         re.DOTALL | re.MULTILINE,
     )
-    assert block is not None, (
-        "--chemprop-lomo-init-scale description block missing"
-    )
+    assert block is not None, "--chemprop-lomo-init-scale description block missing"
     block_text = block.group(0)
     m = re.search(r"default[:\s)]*\s*(\S+)", block_text)
     assert m is not None, (
@@ -289,7 +293,9 @@ def test_lomo_scaffold_shipped_v3_fix_combines_min_epochs_and_init_scale():
     """
     out = subprocess.run(
         [sys.executable, str(_CHEMPROP), "--help"],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
         cwd=str(_REPO_ROOT),
     )
     combined = out.stdout + out.stderr
@@ -299,9 +305,9 @@ def test_lomo_scaffold_shipped_v3_fix_combines_min_epochs_and_init_scale():
         "--chemprop-lomo-init-scale",
         "v3-fix",  # mode choice that activates both levers
     ):
-        assert tok in combined, (
-            f"LOMO scaffold token {tok!r} missing from --help output"
-        )
+        assert (
+            tok in combined
+        ), f"LOMO scaffold token {tok!r} missing from --help output"
 
 
 # ---------------------------------------------------------------------------
@@ -311,7 +317,9 @@ def test_pre_flight_script_imports_and_parses_argv():
     """pre_flight_check.py imports cleanly + recognises --pipeline flag."""
     out = subprocess.run(
         [sys.executable, str(_PRE_FLIGHT), "--help"],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
         cwd=str(_REPO_ROOT),
     )
     assert out.returncode == 0, (
@@ -321,9 +329,7 @@ def test_pre_flight_script_imports_and_parses_argv():
     combined = out.stdout + out.stderr
     assert "--pipeline" in combined, "--pipeline flag missing"
     # chemprop_v2_v3 must be a valid choice
-    assert "chemprop_v2_v3" in combined, (
-        "chemprop_v2_v3 pipeline choice missing"
-    )
+    assert "chemprop_v2_v3" in combined, "chemprop_v2_v3 pipeline choice missing"
 
 
 def test_pre_flight_chemprop_v2_v3_pipeline_has_chemprop_mode_gate():
@@ -343,9 +349,9 @@ def test_pre_flight_chemprop_v2_v3_pipeline_has_chemprop_mode_gate():
         "missing (the Wf-321H pre-flight contract requires the chemprop "
         "v2_v3 pipeline structure to remain intact)."
     )
-    assert "p1_chemprop_smoke" in src, (
-        "Expected pre-flight gate p1_chemprop_smoke missing"
-    )
+    assert (
+        "p1_chemprop_smoke" in src
+    ), "Expected pre-flight gate p1_chemprop_smoke missing"
 
 
 def test_pre_flight_gate_p3_todo_119_p14_cpu_smoke_ready_wired():
@@ -391,13 +397,13 @@ def test_wf300c_launcher_references_todo119_p14_wave_a():
     """Wf-300C launcher references TODO-119 + Wave-A smoke."""
     content = _WF300_LAUNCHER.read_text(encoding="utf-8")
     # Wave-A is the smoke (4 ablations × 1 seed × 3 ep) per Wf-295D §1
-    assert "Wave-A" in content or "WAVE_A" in content or "wave-a" in content.lower(), (
-        "Wf-300C launcher missing Wave-A reference (TODO-119 P1.4 smoke)"
-    )
+    assert (
+        "Wave-A" in content or "WAVE_A" in content or "wave-a" in content.lower()
+    ), "Wf-300C launcher missing Wave-A reference (TODO-119 P1.4 smoke)"
     # 4 ablations × 1 seed × 3 ep is the canonical smoke shape
-    assert "4 ablations" in content or "4 cfgs" in content or "ablation" in content.lower(), (
-        "Wf-300C launcher missing 4-ablation smoke shape reference"
-    )
+    assert (
+        "4 ablations" in content or "4 cfgs" in content or "ablation" in content.lower()
+    ), "Wf-300C launcher missing 4-ablation smoke shape reference"
 
 
 def test_wf300c_launcher_dry_run_mode_wired_no_gpu_work():

@@ -37,6 +37,7 @@ This test file covers the Wf-381-A1 NEW test contract:
 
 All tests are CPU-only and do NOT launch the Vina binary.
 """
+
 from __future__ import annotations
 
 import json
@@ -50,7 +51,9 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "molmetal" / "scripts" / "wf381a1_vina_param_tuning.py"
 CONFIG_PATH = ROOT / "molmetal" / "configs" / "vina_docking_params.yaml"
-REPORT_PATH = ROOT / "molmetal" / "reports" / "wf381a1_vina_tuning_smoke" / "result.json"
+REPORT_PATH = (
+    ROOT / "molmetal" / "reports" / "wf381a1_vina_tuning_smoke" / "result.json"
+)
 
 _SCRIPT_DIR = ROOT / "molmetal" / "scripts"
 if str(ROOT) not in sys.path:
@@ -77,7 +80,14 @@ def smoke_report():
     """Ensure the smoke report exists; generate it if missing."""
     if not REPORT_PATH.exists():
         subprocess.run(
-            [sys.executable, str(SCRIPT), "--config", str(CONFIG_PATH), "--out", str(REPORT_PATH)],
+            [
+                sys.executable,
+                str(SCRIPT),
+                "--config",
+                str(CONFIG_PATH),
+                "--out",
+                str(REPORT_PATH),
+            ],
             check=True,
             cwd=str(ROOT),
         )
@@ -122,17 +132,17 @@ def test_wf381a1_vina_config_levels_and_per_level_median_bounds(
     high_median = per_level["high"]["cohort_median_kcal"]
 
     # low median is in the synthetic Wf-121/Wf-143 baseline band [-7.3, -6.8].
-    assert -7.30 <= low_median <= -6.80, (
-        f"low cohort median {low_median} not in [-7.30, -6.80] synthetic band"
-    )
+    assert (
+        -7.30 <= low_median <= -6.80
+    ), f"low cohort median {low_median} not in [-7.30, -6.80] synthetic band"
     # medium < low by at least 0.3 kcal/mol (Wf-141 §0 PROJECTED -0.5).
-    assert (low_median - med_median) >= 0.30, (
-        f"medium lift {low_median - med_median:.2f} kcal/mol < 0.30 floor"
-    )
+    assert (
+        low_median - med_median
+    ) >= 0.30, f"medium lift {low_median - med_median:.2f} kcal/mol < 0.30 floor"
     # high < medium by at least 0.2 kcal/mol (Pareto frontier ceiling).
-    assert (med_median - high_median) >= 0.20, (
-        f"high lift {med_median - high_median:.2f} kcal/mol < 0.20 floor"
-    )
+    assert (
+        med_median - high_median
+    ) >= 0.20, f"high lift {med_median - high_median:.2f} kcal/mol < 0.20 floor"
 
     # Contract (c): canonical Wf-381-A1 schema fields present.
     assert smoke_report["_workflow"] == "Wf-381-A1"

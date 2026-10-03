@@ -370,7 +370,9 @@ def _write_csv(
 
 def _write_json(path: Path, payload: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -403,9 +405,7 @@ def _as_bool(value: Any) -> bool | None:
     return None
 
 
-def _first_value(
-    row: Mapping[str, Any], keys: Iterable[str]
-) -> tuple[str | None, Any]:
+def _first_value(row: Mapping[str, Any], keys: Iterable[str]) -> tuple[str | None, Any]:
     for key in keys:
         if key in row and row.get(key) not in (None, ""):
             return key, row.get(key)
@@ -437,8 +437,23 @@ def _applicability_is_blocking(status: str) -> bool:
     text = status.strip().lower()
     if not text:
         return True
-    allowed = {"in_domain", "inside_domain", "applicable", "pass", "passed", "known_in_domain"}
-    blocked = {"ood", "out_of_domain", "outside_domain", "not_applicable", "fail", "failed", "unknown"}
+    allowed = {
+        "in_domain",
+        "inside_domain",
+        "applicable",
+        "pass",
+        "passed",
+        "known_in_domain",
+    }
+    blocked = {
+        "ood",
+        "out_of_domain",
+        "outside_domain",
+        "not_applicable",
+        "fail",
+        "failed",
+        "unknown",
+    }
     if text in allowed:
         return False
     if text in blocked:
@@ -490,8 +505,12 @@ def _domain_row(
     has_any_domain_input = any(
         value is not None and value != ""
         for value in (
-            probability_value, score_value, uncertainty_value,
-            label_value, applicability_value, ood_value,
+            probability_value,
+            score_value,
+            uncertainty_value,
+            label_value,
+            applicability_value,
+            ood_value,
         )
     )
     if not has_any_domain_input:
@@ -585,7 +604,9 @@ def _calibration_bins(
                 error = None
                 contribution = 0.0
             else:
-                mean_confidence = sum(probability for probability, _ in in_bin) / len(in_bin)
+                mean_confidence = sum(probability for probability, _ in in_bin) / len(
+                    in_bin
+                )
                 accuracy = sum(1.0 for _, label in in_bin if label) / len(in_bin)
                 error = abs(mean_confidence - accuracy)
                 contribution = (len(in_bin) / total) * error
@@ -597,7 +618,9 @@ def _calibration_bins(
                     "bin_lower": lower,
                     "bin_upper": upper,
                     "count": len(in_bin),
-                    "mean_confidence": "" if mean_confidence is None else mean_confidence,
+                    "mean_confidence": ""
+                    if mean_confidence is None
+                    else mean_confidence,
                     "empirical_accuracy": "" if accuracy is None else accuracy,
                     "abs_calibration_error": "" if error is None else error,
                     "ece_contribution": contribution,
@@ -650,7 +673,9 @@ def build_cross_domain_panel(
     for index, row in enumerate(candidate_rows):
         for domain in DOMAIN_SPECS:
             domain_row = _domain_row(
-                row, index=index, domain=domain,
+                row,
+                index=index,
+                domain=domain,
                 low_confidence_margin=low_confidence_margin,
             )
             if domain_row is not None:
@@ -666,7 +691,10 @@ def build_cross_domain_panel(
             ood_count += 1
         if _as_bool(row.get("low_confidence")):
             low_confidence_count += 1
-        if _to_float(row.get("probability")) is not None and _as_bool(row.get("label")) is not None:
+        if (
+            _to_float(row.get("probability")) is not None
+            and _as_bool(row.get("label")) is not None
+        ):
             calibrated_domain_count += 1
         for blocker in str(row.get("claim_blockers") or "").split("|"):
             if blocker:
@@ -677,7 +705,9 @@ def build_cross_domain_panel(
         claim_blockers.append("uncertainty_or_calibration_inputs_missing")
     if calibrated_domain_count == 0:
         claim_blockers.append("calibration_probability_label_pairs_missing")
-    missing_domains = [domain for domain in DOMAIN_SPECS if ece_by_domain.get(domain) is None]
+    missing_domains = [
+        domain for domain in DOMAIN_SPECS if ece_by_domain.get(domain) is None
+    ]
     if missing_domains:
         claim_blockers.append("domain_calibration_missing:" + "|".join(missing_domains))
     if ood_count:
@@ -709,7 +739,9 @@ def build_cross_domain_panel(
         "low_confidence_count": low_confidence_count,
         "claim_blocker_counts": dict(blocker_counts.most_common()),
         "claim_blockers": claim_blockers,
-        "uncertainty_calibration_evidence_present": bool(domain_rows and calibrated_domain_count),
+        "uncertainty_calibration_evidence_present": bool(
+            domain_rows and calibrated_domain_count
+        ),
         "broad_claim_allowed": broad_claim_allowed,
         "promotion_note": (
             "Fail closed: broad claims require calibrated probability/label "

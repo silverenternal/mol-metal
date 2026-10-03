@@ -75,9 +75,12 @@ def test_cli_exposes_contract_flags():
     all be present in the argparse parser."""
     ns = wave_budget_tracker.parse_argv(
         [
-            "--budget-hr", "8.5",
-            "--waves", "Wave-A:2.0,Wave-B:3.0",
-            "--report-json", "/tmp/foo.json",
+            "--budget-hr",
+            "8.5",
+            "--waves",
+            "Wave-A:2.0,Wave-B:3.0",
+            "--report-json",
+            "/tmp/foo.json",
         ]
     )
     assert ns.budget_hr == 8.5
@@ -86,8 +89,12 @@ def test_cli_exposes_contract_flags():
     # G2 target: at least 3 flags exposed (extras like --auto-discover
     # + --no-auto-discover count as 2 distinct flags).
     extras_visible = (
-        "--reports-dir", "--auto-discover", "--no-auto-discover",
-        "--wave-glob", "--no-default-glob", "--verbose",
+        "--reports-dir",
+        "--auto-discover",
+        "--no-auto-discover",
+        "--wave-glob",
+        "--no-default-glob",
+        "--verbose",
     )
     assert all(e.startswith("--") for e in extras_visible)
 
@@ -100,12 +107,11 @@ def test_cli_exposes_contract_flags():
 def test_report_json_default_is_wf262_path():
     """Per 207 v2 §7.1, --report-json default must be
     ``molmetal/reports/wf262_wave_budget/wave_budget_report.json``."""
-    ns = wave_budget_tracker.parse_argv(
-        ["--budget-hr", "10", "--waves", "Wave-1:1.0"]
-    )
+    ns = wave_budget_tracker.parse_argv(["--budget-hr", "10", "--waves", "Wave-1:1.0"])
     assert ns.report_json == wave_budget_tracker.DEFAULT_REPORT_JSON
     expected = (
-        wave_budget_tracker.REPORTS_DIR / "wf262_wave_budget"
+        wave_budget_tracker.REPORTS_DIR
+        / "wf262_wave_budget"
         / "wave_budget_report.json"
     )
     assert ns.report_json == expected
@@ -117,9 +123,7 @@ def test_report_json_default_is_wf262_path():
 
 
 def test_parse_waves_arg_well_formed():
-    out = wave_budget_tracker.parse_waves_arg(
-        "Wave-1:4.6,Wave-2:5.0,Wave-3:1.0"
-    )
+    out = wave_budget_tracker.parse_waves_arg("Wave-1:4.6,Wave-2:5.0,Wave-3:1.0")
     assert len(out) == 3
     assert out[0][0] == "Wave-1"
     assert out[0][1] == 4.6
@@ -150,9 +154,12 @@ def test_cumulative_within_budget(tmp_path: Path):
     report_path = tmp_path / "report_within.json"
     rc = wave_budget_tracker.main(
         [
-            "--budget-hr", "10.0",
-            "--waves", "Wave-1:3.0,Wave-2:2.0,Wave-3:1.0",
-            "--report-json", str(report_path),
+            "--budget-hr",
+            "10.0",
+            "--waves",
+            "Wave-1:3.0,Wave-2:2.0,Wave-3:1.0",
+            "--report-json",
+            str(report_path),
         ]
     )
     assert rc == 0
@@ -180,9 +187,12 @@ def test_cumulative_over_budget_marks_deferred(tmp_path: Path):
     report_path = tmp_path / "report_over.json"
     rc = wave_budget_tracker.main(
         [
-            "--budget-hr", "10.0",
-            "--waves", "Wave-1:5.0,Wave-2:4.0,Wave-3:3.0,Wave-4:2.0",
-            "--report-json", str(report_path),
+            "--budget-hr",
+            "10.0",
+            "--waves",
+            "Wave-1:5.0,Wave-2:4.0,Wave-3:3.0,Wave-4:2.0",
+            "--report-json",
+            str(report_path),
         ]
     )
     assert rc == 0
@@ -229,12 +239,17 @@ def test_actual_hr_loaded_from_log_if_present(tmp_path: Path):
     report_path = tmp_path / "report_actual.json"
     rc = wave_budget_tracker.main(
         [
-            "--budget-hr", "5.0",
-            "--waves", "wf_wave_test:2.0,Wave-Y:1.0",
-            "--report-json", str(report_path),
-            "--reports-dir", str(fake_reports),
+            "--budget-hr",
+            "5.0",
+            "--waves",
+            "wf_wave_test:2.0,Wave-Y:1.0",
+            "--report-json",
+            str(report_path),
+            "--reports-dir",
+            str(fake_reports),
             "--no-default-glob",
-            "--wave-glob", str(fake_reports / "wf*" / "**" / "log"),
+            "--wave-glob",
+            str(fake_reports / "wf*" / "**" / "log"),
         ]
     )
     assert rc == 0
@@ -261,12 +276,17 @@ def test_actual_hr_none_when_log_absent(tmp_path: Path):
     report_path = tmp_path / "report_no_log.json"
     rc = wave_budget_tracker.main(
         [
-            "--budget-hr", "10.0",
-            "--waves", "Wave-A:1.0",
-            "--report-json", str(report_path),
-            "--reports-dir", str(tmp_path / "empty_reports"),
+            "--budget-hr",
+            "10.0",
+            "--waves",
+            "Wave-A:1.0",
+            "--report-json",
+            str(report_path),
+            "--reports-dir",
+            str(tmp_path / "empty_reports"),
             "--no-default-glob",
-            "--wave-glob", str(tmp_path / "empty_reports" / "wf*" / "**" / "log"),
+            "--wave-glob",
+            str(tmp_path / "empty_reports" / "wf*" / "**" / "log"),
         ]
     )
     assert rc == 0
@@ -286,9 +306,12 @@ def test_report_json_schema_complete(tmp_path: Path):
     report_path = tmp_path / "schema.json"
     wave_budget_tracker.main(
         [
-            "--budget-hr", "8.0",
-            "--waves", "Wave-1:2.0,Wave-2:3.0",
-            "--report-json", str(report_path),
+            "--budget-hr",
+            "8.0",
+            "--waves",
+            "Wave-1:2.0,Wave-2:3.0",
+            "--report-json",
+            str(report_path),
         ]
     )
     report = json.loads(report_path.read_text())
@@ -330,8 +353,10 @@ def test_auto_discover_when_waves_omitted(tmp_path: Path):
     report_path = tmp_path / "auto_report.json"
     rc = wave_budget_tracker.main(
         [
-            "--budget-hr", "100.0",  # large budget so nothing defers
-            "--report-json", str(report_path),
+            "--budget-hr",
+            "100.0",  # large budget so nothing defers
+            "--report-json",
+            str(report_path),
         ]
     )
     assert rc == 0
@@ -353,9 +378,11 @@ def test_no_auto_discover_without_waves_errors(tmp_path: Path):
     script exits with usage error (rc=1)."""
     rc = wave_budget_tracker.main(
         [
-            "--budget-hr", "10.0",
+            "--budget-hr",
+            "10.0",
             "--no-auto-discover",
-            "--report-json", str(tmp_path / "should_not_exist.json"),
+            "--report-json",
+            str(tmp_path / "should_not_exist.json"),
         ]
     )
     assert rc == 1
@@ -408,20 +435,28 @@ def test_subprocess_via_venv(tmp_path: Path):
     # --help smoke (exit 0).
     rc = subprocess.run(
         [VENV_PY, str(wave_budget_tracker.__file__), "--help"],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
     ).returncode
     assert rc == 0, f"--help failed: {rc}"
     # End-to-end smoke: emit a JSON report with all flags exercised.
     report_path = tmp_path / "subproc_report.json"
     rc2 = subprocess.run(
         [
-            VENV_PY, str(wave_budget_tracker.__file__),
-            "--budget-hr", "12.0",
-            "--waves", "Wave-1:4.0,Wave-2:3.0,Wave-3:5.0",
-            "--report-json", str(report_path),
+            VENV_PY,
+            str(wave_budget_tracker.__file__),
+            "--budget-hr",
+            "12.0",
+            "--waves",
+            "Wave-1:4.0,Wave-2:3.0,Wave-3:5.0",
+            "--report-json",
+            str(report_path),
             "--verbose",
         ],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
     ).returncode
     assert rc2 == 0, f"subprocess run failed (rc={rc2}): {rc2}"
     assert report_path.exists()
@@ -545,9 +580,7 @@ def test_mine_actual_wall_hr_todo_180_g4_aggregate():
     actual_hr, actual_src = wave_budget_tracker.mine_actual_wall_hr(
         "Wave-3:chemprop_v3_G4_14_pairs", globs=[]
     )
-    expected_total = sum(
-        wave_budget_tracker.TODO_180_G4_ACTUAL_HR_BY_METAL.values()
-    )
+    expected_total = sum(wave_budget_tracker.TODO_180_G4_ACTUAL_HR_BY_METAL.values())
     assert actual_hr == pytest.approx(expected_total, abs=1e-3)
     assert actual_src is not None
     assert "sum" in actual_src.lower()
@@ -569,9 +602,9 @@ def test_default_reports_glob_prefers_wf_log():
     callers using ``--wave-glob`` are unaffected."""
     g = wave_budget_tracker.DEFAULT_REPORTS_GLOB
     assert "wf*" in g
-    assert g.endswith("/log") or g.endswith(str(Path("**") / "log")), (
-        f"DEFAULT_REPORTS_GLOB should end with /log path, got: {g}"
-    )
+    assert g.endswith("/log") or g.endswith(
+        str(Path("**") / "log")
+    ), f"DEFAULT_REPORTS_GLOB should end with /log path, got: {g}"
     assert "**" in g  # recursive glob to descend into wf* sub-dirs
 
 
@@ -591,7 +624,9 @@ def test_wave_3_g4_marks_complete_with_measured_actual(tmp_path: Path):
     assert "TODO_180_G4_ACTUAL_HR_BY_METAL" in actual_src
     actual_hr_by_name = {"Wave-3:chemprop_v3_G4_14_pairs": (actual_hr, actual_src)}
     out = wave_budget_tracker.compute_wave_status(
-        budget_hr=50.0, waves=waves, actual_hr_by_name=actual_hr_by_name,
+        budget_hr=50.0,
+        waves=waves,
+        actual_hr_by_name=actual_hr_by_name,
     )
     assert out[0]["status"] == "COMPLETE"
     assert out[0]["actual_hr"] == pytest.approx(41.8, abs=1e-3)
@@ -607,11 +642,15 @@ def test_g4_per_metal_end_to_end_via_cli(tmp_path: Path):
     report_path = tmp_path / "g4_cli.json"
     rc = wave_budget_tracker.main(
         [
-            "--budget-hr", "50.0",
-            "--waves", "Wf268c_Ru:50.0",
-            "--report-json", str(report_path),
+            "--budget-hr",
+            "50.0",
+            "--waves",
+            "Wf268c_Ru:50.0",
+            "--report-json",
+            str(report_path),
             "--no-default-glob",
-            "--wave-glob", str(tmp_path / "empty" / "**" / "log"),
+            "--wave-glob",
+            str(tmp_path / "empty" / "**" / "log"),
         ]
     )
     assert rc == 0
@@ -625,13 +664,27 @@ def test_g4_per_metal_end_to_end_via_cli(tmp_path: Path):
 def test_no_enforce_budget_honest_framing_acknowledges_opt_out():
     """Summarise() emits the user-opt-out string when over budget."""
     wave_dicts = [
-        {"wave_name": "W1", "estimated_hr": 6.0, "actual_hr": None,
-         "status": "PLANNED", "actual_source": None, "source": None},
-        {"wave_name": "W2", "estimated_hr": 8.0, "actual_hr": None,
-         "status": "PLANNED", "actual_source": None, "source": None},
+        {
+            "wave_name": "W1",
+            "estimated_hr": 6.0,
+            "actual_hr": None,
+            "status": "PLANNED",
+            "actual_source": None,
+            "source": None,
+        },
+        {
+            "wave_name": "W2",
+            "estimated_hr": 8.0,
+            "actual_hr": None,
+            "status": "PLANNED",
+            "actual_source": None,
+            "source": None,
+        },
     ]
     summary = wave_budget_tracker.summarise(
-        budget_hr=10.0, wave_dicts=wave_dicts, enforce_budget=False,
+        budget_hr=10.0,
+        wave_dicts=wave_dicts,
+        enforce_budget=False,
     )
     assert summary["deferred_waves"] == []
     assert summary["remaining_hr"] < 0
@@ -652,9 +705,12 @@ def test_no_enforce_budget_flag(tmp_path: Path):
     report_path = tmp_path / "no_enforce_report.json"
     rc = wave_budget_tracker.main(
         [
-            "--budget-hr", "10.0",
-            "--waves", "Wave-1:5.0,Wave-2:4.0,Wave-3:3.0,Wave-4:2.0",
-            "--report-json", str(report_path),
+            "--budget-hr",
+            "10.0",
+            "--waves",
+            "Wave-1:5.0,Wave-2:4.0,Wave-3:3.0,Wave-4:2.0",
+            "--report-json",
+            str(report_path),
             "--no-enforce-budget",
         ]
     )
@@ -680,9 +736,12 @@ def test_budget_enforced_when_flag_off(tmp_path: Path):
     report_path = tmp_path / "enforce_report.json"
     rc = wave_budget_tracker.main(
         [
-            "--budget-hr", "10.0",
-            "--waves", "Wave-1:5.0,Wave-2:4.0,Wave-3:3.0,Wave-4:2.0",
-            "--report-json", str(report_path),
+            "--budget-hr",
+            "10.0",
+            "--waves",
+            "Wave-1:5.0,Wave-2:4.0,Wave-3:3.0,Wave-4:2.0",
+            "--report-json",
+            str(report_path),
             # Note: NO --no-enforce-budget here → enforcement ON (default).
         ]
     )
@@ -735,8 +794,10 @@ def test_cfm_yuelbond_required_flag():
     assert ns_default.cfm_yuelbond_required is False
     ns_set = wave_budget_tracker.parse_argv(
         [
-            "--budget-hr", "10.0",
-            "--waves", "Wave-A:2.0",
+            "--budget-hr",
+            "10.0",
+            "--waves",
+            "Wave-A:2.0",
             "--cfm-yuelbond-required",
         ]
     )
@@ -751,9 +812,12 @@ def test_cfm_yuelbond_required_enforces(tmp_path: Path):
     report_path = tmp_path / "cfm_yb_required_report.json"
     rc = wave_budget_tracker.main(
         [
-            "--budget-hr", "100.0",  # large budget so non-CFM waves would all PLANNED
-            "--waves", "chemprop_v2_smoke:1.0,cfm_full_retrain:2.0,cfm_per_innovation_ablation:3.0,chemprop_v3_lomo:1.0",
-            "--report-json", str(report_path),
+            "--budget-hr",
+            "100.0",  # large budget so non-CFM waves would all PLANNED
+            "--waves",
+            "chemprop_v2_smoke:1.0,cfm_full_retrain:2.0,cfm_per_innovation_ablation:3.0,chemprop_v3_lomo:1.0",
+            "--report-json",
+            str(report_path),
             "--cfm-yuelbond-required",
         ]
     )
@@ -783,9 +847,12 @@ def test_cfm_yuelbond_not_required_default(tmp_path: Path):
     report_path = tmp_path / "default_no_yb_gate.json"
     rc = wave_budget_tracker.main(
         [
-            "--budget-hr", "100.0",  # large budget so nothing defers on budget
-            "--waves", "cfm_full_retrain:2.0,cfm_per_innovation_ablation:3.0",
-            "--report-json", str(report_path),
+            "--budget-hr",
+            "100.0",  # large budget so nothing defers on budget
+            "--waves",
+            "cfm_full_retrain:2.0,cfm_per_innovation_ablation:3.0",
+            "--report-json",
+            str(report_path),
             # No --cfm-yuelbond-required flag.
         ]
     )
@@ -810,9 +877,12 @@ def test_cfm_yuelbond_required_with_yuelbond_present(tmp_path: Path):
     report_path = tmp_path / "cfm_with_yb.json"
     rc = wave_budget_tracker.main(
         [
-            "--budget-hr", "100.0",
-            "--waves", "cfm_full_retrain_yuelbond:2.0,cfm_YuelBond_wasserstein:3.0,chemprop_v2_yuelbond_probe:1.0",
-            "--report-json", str(report_path),
+            "--budget-hr",
+            "100.0",
+            "--waves",
+            "cfm_full_retrain_yuelbond:2.0,cfm_YuelBond_wasserstein:3.0,chemprop_v2_yuelbond_probe:1.0",
+            "--report-json",
+            str(report_path),
             "--cfm-yuelbond-required",
         ]
     )
@@ -827,13 +897,10 @@ def test_cfm_yuelbond_required_with_yuelbond_present(tmp_path: Path):
     assert report["deferred_waves"] == []
     # Sanity-check helper directly (positive case: present).
     assert (
-        wave_budget_tracker.is_cfm_wave_missing_yuelbond(
-            "cfm_full_retrain_yuelbond"
-        )
+        wave_budget_tracker.is_cfm_wave_missing_yuelbond("cfm_full_retrain_yuelbond")
         is False
     )
     # Non-CFM wave (no "cfm" in name) is never gated — helper returns False.
     assert (
-        wave_budget_tracker.is_cfm_wave_missing_yuelbond("chemprop_v2_smoke")
-        is False
+        wave_budget_tracker.is_cfm_wave_missing_yuelbond("chemprop_v2_smoke") is False
     )

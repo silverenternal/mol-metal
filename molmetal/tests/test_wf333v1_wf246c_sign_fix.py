@@ -46,6 +46,7 @@ Honest framing
   medians (MEASURED_GENERIC_ATOM) and the Wf-246-C smoke composite
   values (projected for sign-fixed metal-coord term).
 """
+
 from __future__ import annotations
 
 import json
@@ -56,6 +57,7 @@ import pytest
 
 try:
     from rdkit import Chem, RDLogger  # type: ignore
+
     RDLogger.DisableLog("rdApp.*")
     _HAVE_RDKIT = True
 except Exception:  # pragma: no cover
@@ -68,7 +70,8 @@ from molmetal.molmetal_lam.sbdd_env.metal_coord_term import (
 )
 
 pytestmark = pytest.mark.skipif(
-    not _HAVE_RDKIT, reason="rdkit not installed",
+    not _HAVE_RDKIT,
+    reason="rdkit not installed",
 )
 
 
@@ -172,9 +175,7 @@ class TestSignFixedPerfectComposite:
         term = MetalCoordinationTerm()
         prev = float("inf")
         for composite in (0.0, 0.25, 0.5, 0.75, 1.0):
-            adj = term.kcal_adjustment(
-                MetalCoordinationScore(total=composite)
-            )
+            adj = term.kcal_adjustment(MetalCoordinationScore(total=composite))
             assert adj < prev, (
                 f"Sign-fix regression: composite={composite} "
                 f"→ adj={adj:+.3f} not strictly decreasing (prev={prev:+.3f})"
@@ -238,9 +239,9 @@ class TestVinaPanelIntegration:
         )
         # And the absolute magnitude is ~ -1.0 kcal/mol for perfect
         # composite (cisplatin × N-rich pocket).
-        assert adjustment == pytest.approx(-1.0, abs=1e-3), (
-            f"Adjustment magnitude off: expected ~-1.0, got {adjustment:+.4f}"
-        )
+        assert adjustment == pytest.approx(
+            -1.0, abs=1e-3
+        ), f"Adjustment magnitude off: expected ~-1.0, got {adjustment:+.4f}"
 
 
 # ---------------------------------------------------------------------------
@@ -308,9 +309,7 @@ class TestPerPocketLift5Pockets:
 
         projected_lifts = {}
         for pocket_id in self.POCKETS:
-            assert pocket_id in medians, (
-                f"Wf-325B median missing for {pocket_id}"
-            )
+            assert pocket_id in medians, f"Wf-325B median missing for {pocket_id}"
             projected = medians[pocket_id] + adj  # adj = -1.0
             projected_lifts[pocket_id] = projected
 

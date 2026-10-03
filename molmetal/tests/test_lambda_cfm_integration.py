@@ -117,13 +117,9 @@ def test_integration_with_lambda_astsr(pipe_stub) -> None:
     )
 
     os.environ["LAMBDA_ASTSR_ENABLED"] = "1"
-    p_on = LambdaCFMPipeline(
-        bridge=pipe_stub.bridge, use_lambda_astsr=True, seed=0
-    )
+    p_on = LambdaCFMPipeline(bridge=pipe_stub.bridge, use_lambda_astsr=True, seed=0)
     os.environ["LAMBDA_ASTSR_ENABLED"] = "0"
-    p_off = LambdaCFMPipeline(
-        bridge=pipe_stub.bridge, use_lambda_astsr=False, seed=0
-    )
+    p_off = LambdaCFMPipeline(bridge=pipe_stub.bridge, use_lambda_astsr=False, seed=0)
     pocket = np.zeros(8, dtype=np.float32)
     on_out = p_on.run_full_pipeline("CCO", pocket, n_steps=5)
     off_out = p_off.run_full_pipeline("CCO", pocket, n_steps=5)
@@ -143,7 +139,10 @@ def test_integration_with_lambda_astsr_channel_returns_finite(pipe_stub) -> None
 
     os.environ["LAMBDA_ASTSR_ENABLED"] = "1"
     astsr = LambdaASTSR(
-        depth=2, population=8, generations=2, seed=0,
+        depth=2,
+        population=8,
+        generations=2,
+        seed=0,
         feature_names=DEFAULT_FEATURE_COLUMNS,
     )
     rng = np.random.default_rng(0)
@@ -222,7 +221,10 @@ def test_integration_with_deflexpressor(pipe_stub) -> None:
     y = (X[:, 0] + 0.25 * X[:, 1] - 0.1 * X[:, 2]).astype(np.float32)
 
     astsr = LambdaASTSR(
-        depth=3, population=16, generations=4, seed=0,
+        depth=3,
+        population=16,
+        generations=4,
+        seed=0,
         feature_names=DEFAULT_FEATURE_COLUMNS,
     )
     astsr.fit(X[:40], y[:40])
@@ -251,7 +253,10 @@ def test_integration_deflexpressor_channel_after_pipeline(pipe_stub) -> None:
     )
 
     astsr = LambdaASTSR(
-        depth=2, population=4, generations=1, seed=0,
+        depth=2,
+        population=4,
+        generations=1,
+        seed=0,
         feature_names=DEFAULT_FEATURE_COLUMNS,
     )
     ch = make_lambda_astsr_reward_channel(astsr=astsr, enabled=True)
@@ -369,8 +374,8 @@ def test_pipeline_handles_metallo_smiles(pipe_stub) -> None:
     pocket = np.zeros(8, dtype=np.float32)
     metal_smiles = [
         "C1->[Pt](<-Cl)(<-Cl)<-N",  # Pt with two Cl ligands
-        "[Pd](<-[Cl-])(<-[Cl-])",    # Pd square planar
-        "[Au]<-[Cl-]",               # Au(I) chloride
+        "[Pd](<-[Cl-])(<-[Cl-])",  # Pd square planar
+        "[Au]<-[Cl-]",  # Au(I) chloride
     ]
     for smi in metal_smiles:
         out = pipe_stub.run_full_pipeline(smi, pocket, n_steps=5)
@@ -488,11 +493,13 @@ def test_pipeline_alpha_extremes(pipe_stub) -> None:
     pocket = rng.standard_normal(64).astype(np.float32)
 
     # alpha=1: target is the lambda embed only.
-    pipe_lam = type(pipe_stub)(bridge=pipe_stub.bridge, use_lambda_astsr=True,
-                                alpha=1.0, seed=0)
+    pipe_lam = type(pipe_stub)(
+        bridge=pipe_stub.bridge, use_lambda_astsr=True, alpha=1.0, seed=0
+    )
     # alpha=0: target is the pocket only.
-    pipe_pkt = type(pipe_stub)(bridge=pipe_stub.bridge, use_lambda_astsr=True,
-                                alpha=0.0, seed=0)
+    pipe_pkt = type(pipe_stub)(
+        bridge=pipe_stub.bridge, use_lambda_astsr=True, alpha=0.0, seed=0
+    )
     out_lam = pipe_lam.cfm_inference(z0, lam, pocket, n_steps=200)
     out_pkt = pipe_pkt.cfm_inference(z0, lam, pocket, n_steps=200)
     assert np.isfinite(out_lam).all()

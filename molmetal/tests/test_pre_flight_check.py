@@ -31,7 +31,9 @@ ALLOWED_STATUS = {"PASS", "FAIL", "SKIP"}
 ALLOWED_PRIORITY = {"P0", "P1", "P2", "P3"}
 
 
-def _run_script(*args: str, env_extra: dict | None = None) -> subprocess.CompletedProcess:
+def _run_script(
+    *args: str, env_extra: dict | None = None
+) -> subprocess.CompletedProcess:
     """Invoke ``pre_flight_check.py`` and return the CompletedProcess."""
     env = os.environ.copy()
     if env_extra:
@@ -50,14 +52,15 @@ def test_cli_runs(tmp_path: Path) -> None:
     out_json = tmp_path / "preflight.json"
     # Use --pipeline cfm so the run completes quickly (chemprop --quick on CPU is slow).
     result = _run_script("--pipeline", "cfm", "--json", str(out_json))
-    assert result.returncode in (0, 1), (
-        f"unexpected exit {result.returncode}; stderr={result.stderr!r}"
-    )
+    assert result.returncode in (
+        0,
+        1,
+    ), f"unexpected exit {result.returncode}; stderr={result.stderr!r}"
     assert out_json.exists(), "JSON output file was not written"
     data = json.loads(out_json.read_text(encoding="utf-8"))
-    assert REQUIRED_TOP_KEYS.issubset(data.keys()), (
-        f"missing top-level keys: {REQUIRED_TOP_KEYS - set(data.keys())}"
-    )
+    assert REQUIRED_TOP_KEYS.issubset(
+        data.keys()
+    ), f"missing top-level keys: {REQUIRED_TOP_KEYS - set(data.keys())}"
 
 
 def test_json_schema() -> None:
@@ -65,9 +68,10 @@ def test_json_schema() -> None:
     result = _run_script("--pipeline", "all", "--verbose")
     # Tolerate exit=1 because some gates legitimately FAIL on this host
     # (vina missing, chemprop --quick may exceed 60s on CPU).
-    assert result.returncode in (0, 1), (
-        f"unexpected exit {result.returncode}; stderr={result.stderr[-500:]!r}"
-    )
+    assert result.returncode in (
+        0,
+        1,
+    ), f"unexpected exit {result.returncode}; stderr={result.stderr[-500:]!r}"
 
     # The script prints JSON to stdout (after stderr --verbose lines).
     payload = result.stdout.strip()
@@ -81,14 +85,16 @@ def test_json_schema() -> None:
         payload = payload[start : end + 1]
 
     data = json.loads(payload)
-    assert REQUIRED_TOP_KEYS.issubset(data.keys()), (
-        f"missing top-level keys: {REQUIRED_TOP_KEYS - set(data.keys())}"
-    )
+    assert REQUIRED_TOP_KEYS.issubset(
+        data.keys()
+    ), f"missing top-level keys: {REQUIRED_TOP_KEYS - set(data.keys())}"
     assert REQUIRED_SUMMARY_KEYS.issubset(data["summary"].keys()), (
         f"missing summary keys: "
         f"{REQUIRED_SUMMARY_KEYS - set(data['summary'].keys())}"
     )
-    assert isinstance(data["gates"], list) and data["gates"], "gates must be non-empty list"
+    assert (
+        isinstance(data["gates"], list) and data["gates"]
+    ), "gates must be non-empty list"
     for gate in data["gates"]:
         missing = REQUIRED_GATE_KEYS - set(gate.keys())
         assert not missing, f"gate missing keys {missing}: {gate}"
@@ -98,34 +104,35 @@ def test_json_schema() -> None:
         assert isinstance(gate["evidence"], str), "evidence must be string"
     # n_pass + n_fail + n_skip must equal len(gates).
     s = data["summary"]
-    assert s["pass"] + s["fail"] + s["skip"] == len(data["gates"]), (
-        f"summary.totals don't match gates list: {s}"
-    )
+    assert s["pass"] + s["fail"] + s["skip"] == len(
+        data["gates"]
+    ), f"summary.totals don't match gates list: {s}"
 
 
 def test_pipeline_filter(tmp_path: Path) -> None:
     """--pipeline cfm runs ONLY CFM gates (no chemprop or data gates)."""
     out_json = tmp_path / "cfm_only.json"
     result = _run_script("--pipeline", "cfm", "--json", str(out_json))
-    assert result.returncode in (0, 1), (
-        f"unexpected exit {result.returncode}; stderr={result.stderr!r}"
-    )
+    assert result.returncode in (
+        0,
+        1,
+    ), f"unexpected exit {result.returncode}; stderr={result.stderr!r}"
     data = json.loads(out_json.read_text(encoding="utf-8"))
     pipelines_seen = {g["pipeline"] for g in data["gates"]}
-    assert pipelines_seen == {"cfm"}, (
-        f"--pipeline cfm should yield only CFM gates; saw {pipelines_seen}"
-    )
+    assert pipelines_seen == {
+        "cfm"
+    }, f"--pipeline cfm should yield only CFM gates; saw {pipelines_seen}"
     names = [g["name"] for g in data["gates"]]
     # Sanity: 6 CFM gates per spec §4.2 (script/config/decoder/wass/smoke_decoded/catherine_30).
-    assert any(n.startswith("p1_cfm_") for n in names), (
-        f"expected p1_cfm_* gates in --pipeline cfm; got {names}"
-    )
-    assert all(not n.startswith("p1_chemprop_") for n in names), (
-        f"chemprop gates must NOT appear in --pipeline cfm; saw {[n for n in names if 'chemprop' in n]}"
-    )
-    assert all(not n.startswith("p2_") for n in names), (
-        f"P2 gates must NOT appear in --pipeline cfm; saw {[n for n in names if n.startswith('p2_')]}"
-    )
+    assert any(
+        n.startswith("p1_cfm_") for n in names
+    ), f"expected p1_cfm_* gates in --pipeline cfm; got {names}"
+    assert all(
+        not n.startswith("p1_chemprop_") for n in names
+    ), f"chemprop gates must NOT appear in --pipeline cfm; saw {[n for n in names if 'chemprop' in n]}"
+    assert all(
+        not n.startswith("p2_") for n in names
+    ), f"P2 gates must NOT appear in --pipeline cfm; saw {[n for n in names if n.startswith('p2_')]}"
 
 
 if __name__ == "__main__":

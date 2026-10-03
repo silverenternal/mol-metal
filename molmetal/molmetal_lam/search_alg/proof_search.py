@@ -128,12 +128,14 @@ from triton_kernels.config import triton_config
 try:  # pragma: no cover — optional dep
     from rdkit import Chem as _Chem  # type: ignore
     from rdkit.Chem import Descriptors as _Descriptors  # type: ignore
+
     try:
         from rdkit.Contrib.SA_Score import sascorer as _sascorer  # type: ignore
     except Exception:  # pragma: no cover
         _sascorer = None  # type: ignore
     try:
         from rdkit.Chem import RDLogger as _RDLogger  # type: ignore
+
         _RDLogger.DisableLog("rdApp.*")  # type: ignore[attr-defined]
     except Exception:  # pragma: no cover
         _RDLogger = None  # type: ignore
@@ -279,7 +281,8 @@ class SymbolicPrior:
             # Empty fit — leave model un-fitted, prior defaults to 0.5.
             return self
         X = np.asarray(
-            [list(self.feature_extractor(s)) for s in states], dtype=float,
+            [list(self.feature_extractor(s)) for s in states],
+            dtype=float,
         )
         y = np.asarray(list(scores), dtype=float)
         if X.ndim == 1:
@@ -356,9 +359,7 @@ def _default_feature_extractor(state: MoleculeClosedTerm) -> List[float]:
         n_atoms = float(state.n_atoms)
         n_bonds = float(state.n_bonds)
         n_free = float(sum(state.free_sites.values()))
-        n_heavy = float(sum(
-            1 for a in state.atoms if a.symbol not in {"H"}
-        ))
+        n_heavy = float(sum(1 for a in state.atoms if a.symbol not in {"H"}))
         return [n_atoms, n_bonds, n_free, n_heavy]
     except Exception:
         return [0.0, 0.0, 0.0, 0.0]
@@ -389,6 +390,7 @@ def _default_qed_channel() -> Callable[[MoleculeClosedTerm], float]:
 
     Falls back to ``0.0`` when RDKit or a valid SMILES is unavailable.
     """
+
     def _channel(state: MoleculeClosedTerm) -> float:
         if not _RDKIT_AVAILABLE or _Descriptors is None:
             return 0.0
@@ -396,6 +398,7 @@ def _default_qed_channel() -> Callable[[MoleculeClosedTerm], float]:
             smi = state.canonical_smiles()
             if smi:
                 from molmetal_lam.tile_lib.canonical_cache import canonicalize
+
                 smi = canonicalize(str(smi))
         except Exception:
             return 0.0
@@ -407,6 +410,7 @@ def _default_qed_channel() -> Callable[[MoleculeClosedTerm], float]:
             return max(0.0, min(1.0, qed_val))
         except Exception:
             return 0.0
+
     return _channel
 
 
@@ -435,6 +439,7 @@ def _default_pb_valid_channel() -> Callable[[MoleculeClosedTerm], float]:
             smi = state.canonical_smiles()
             if smi:
                 from molmetal_lam.tile_lib.canonical_cache import canonicalize
+
                 smi = canonicalize(str(smi))
         except Exception:
             return 0.0
@@ -471,6 +476,7 @@ def _default_pb_valid_channel() -> Callable[[MoleculeClosedTerm], float]:
                 pass
         cache[smi] = out
         return out
+
     return _channel
 
 
@@ -512,6 +518,7 @@ def _default_vina_proxy_channel(
     :class:`MoleculeClosedTerm` directly (no SMILES round-trip) so the
     proxy is well-defined in headless test runs.
     """
+
     def _channel(state: MoleculeClosedTerm) -> float:
         feats: List[float]
         if _RDKIT_AVAILABLE:
@@ -519,14 +526,13 @@ def _default_vina_proxy_channel(
                 smi = state.canonical_smiles()
                 if smi:
                     from molmetal_lam.tile_lib.canonical_cache import canonicalize
+
                     smi = canonicalize(str(smi))
                 mol = _safe_smiles_to_mol(smi)
                 if mol is not None:
                     n_atoms = float(mol.GetNumAtoms())
                     n_bonds = float(mol.GetNumBonds())
-                    n_free = float(
-                        sum(state.free_sites.values())
-                    )
+                    n_free = float(sum(state.free_sites.values()))
                 else:
                     n_atoms = float(state.n_atoms)
                     n_bonds = float(state.n_bonds)
@@ -553,12 +559,13 @@ def _default_vina_proxy_channel(
         # Combine symbolic prior (centred) + linear proxy, then
         # squash into [0, 1].
         linear_proxy = (
-            0.04 * feats[0]            # n_atoms
-            + 0.05 * feats[1]          # n_bonds
+            0.04 * feats[0]  # n_atoms
+            + 0.05 * feats[1]  # n_bonds
             - 0.03 * max(0.0, feats[2] - 4.0)  # free-site penalty
         )
         raw = 0.5 + 0.5 * (prior_val - 0.5) + linear_proxy
         return float(max(0.0, min(1.0, raw)))
+
     return _channel
 
 
@@ -1016,9 +1023,7 @@ class RewardAggregator:
         # Resolve candidate SMILES / fingerprint.
         try:
             cand_smi = (
-                candidate_smi
-                if candidate_smi is not None
-                else state.canonical_smiles()
+                candidate_smi if candidate_smi is not None else state.canonical_smiles()
             ) or ""
         except Exception:
             cand_smi = ""
@@ -1057,8 +1062,11 @@ class RewardAggregator:
             except Exception:
                 continue
             try:
-                sim = _DataStructs_local.TanimotoSimilarity(cand_fp, other_fp) \
-                    if cand_fp is not None else 0.0
+                sim = (
+                    _DataStructs_local.TanimotoSimilarity(cand_fp, other_fp)
+                    if cand_fp is not None
+                    else 0.0
+                )
             except Exception:
                 sim = 0.0
             distances.append(max(0.0, 1.0 - float(sim)))
@@ -1099,6 +1107,7 @@ class RewardAggregator:
         legacy ``priors.anticancer_metric_suite.AnticancerMetricSuite``
         that lacks ``composite_score(mol) -> dict``.
         """
+
         def _smiles(state):
             if isinstance(state, str):
                 return state
@@ -1106,11 +1115,15 @@ class RewardAggregator:
             if callable(fn):
                 return str(fn())
             return str(getattr(state, "smiles", ""))
+
         self.r_logp_anticancer = lambda state: suite.logp_anticancer(_smiles(state))
         self.r_tpsa_iv = lambda state: suite.tpsa_iv(_smiles(state))
         self.r_rotatable_bonds = lambda state: suite.rotatable_bonds(_smiles(state))
         self.r_herg_proxy = lambda state: suite.herg_proxy(_smiles(state))
-        self.r_anticancer_composite = lambda state: suite.composite_score(_smiles(state))
+        self.r_anticancer_composite = lambda state: suite.composite_score(
+            _smiles(state)
+        )
+
         # TODO-15: equal-weight anticancer_index channel.  The new
         # metric suite returns a dict so we read the "anticancer_index"
         # key; if the suite returns a float (legacy API) we reuse it.
@@ -1119,6 +1132,7 @@ class RewardAggregator:
             if isinstance(result, dict):
                 return float(result.get("anticancer_index", 0.0))
             return float(result)
+
         self.r_anticancer_index = _anticancer_index
 
     def register_soft_metal_geometry_channel(
@@ -1172,6 +1186,7 @@ class RewardAggregator:
         from molmetal_lam.priors.metal_geometry import (
             make_soft_metal_geometry_channel,
         )
+
         self.r_metal_geom_soft = make_soft_metal_geometry_channel(
             enabled=enabled,
             cn_targets=cn_targets,
@@ -1459,6 +1474,7 @@ class RewardAggregator:
         from molmetal.adapters.rxnflow_adapter import (
             make_rxnflow_template_channel,
         )
+
         self.r_rxnflow = make_rxnflow_template_channel(template_name)
         self._rxnflow_template_name = template_name
 
@@ -1546,6 +1562,7 @@ class RewardAggregator:
                 except Exception:
                     return 0.0
         else:
+
             def _channel(state: Any) -> float:
                 try:
                     smi_fn = getattr(state, "canonical_smiles", None)
@@ -1704,6 +1721,7 @@ class RewardAggregator:
             # channel fires.
             try:
                 from molmetal_lam.reward import learned_shaping as _ls
+
                 # Swap the module-level default for this call-site.
                 # We keep the env-var gate intact so the same
                 # LearnedShaping instance is reused across calls.
@@ -1751,9 +1769,11 @@ class RewardAggregator:
                 load_best_formula,
                 LearnedShaping,
             )
-            formula = getattr(
-                self, "_learned_shaping_formula_override", None
-            ) or load_best_formula()
+
+            formula = (
+                getattr(self, "_learned_shaping_formula_override", None)
+                or load_best_formula()
+            )
             sh = LearnedShaping(formula=formula)
             sh.enable()
             return float(self.w_learned_shaping) * float(sh.shape_reward(sa_raw))
@@ -1785,14 +1805,16 @@ class RewardAggregator:
     #: pIC50 fill out drug-likeness + potency.  Exposed as a module
     #: constant so :meth:`MCTSProofSearch.__post_init__` can copy the
     #: dict without instantiating an aggregator.
-    DEFAULT_PRIOR_WEIGHTS: Dict[str, float] = field(default_factory=lambda: {
-        "w_vina": 0.40,
-        "w_posebusters": 0.20,
-        "w_retro": 0.15,
-        "w_pic50": 0.10,
-        "w_qed": 0.10,
-        "w_sa": 0.05,
-    })
+    DEFAULT_PRIOR_WEIGHTS: Dict[str, float] = field(
+        default_factory=lambda: {
+            "w_vina": 0.40,
+            "w_posebusters": 0.20,
+            "w_retro": 0.15,
+            "w_pic50": 0.10,
+            "w_qed": 0.10,
+            "w_sa": 0.05,
+        }
+    )
 
     def aggregate(
         self,
@@ -2008,7 +2030,9 @@ class RewardAggregator:
         # candidates, coupling disabled, NaN, exception).
         r_lambda_score_callable = getattr(self, "r_lambda_score", None)
         w_lambda_score_attr = float(getattr(self, "w_lambda_score", 0.0))
-        v_lambda_score = _safe(r_lambda_score_callable) if r_lambda_score_callable else 0.0
+        v_lambda_score = (
+            _safe(r_lambda_score_callable) if r_lambda_score_callable else 0.0
+        )
 
         value += self.w_vina * v_vina
         value += self.w_sa * v_sa
@@ -2093,15 +2117,19 @@ class RewardAggregator:
 
     def metrics(self):
         """Return registered reward channel callables."""
-        return {k: v for k, v in {
-            "logp_anticancer": self.r_logp_anticancer,
-            "tpsa_iv": self.r_tpsa_iv,
-            "rotatable_bonds": self.r_rotatable_bonds,
-            "herg_proxy": self.r_herg_proxy,
-            "anticancer_composite": self.r_anticancer_composite,
-            "anticancer_index": self.r_anticancer_index,
-            "platinai": self.r_platinai,
-        }.items() if v is not None}
+        return {
+            k: v
+            for k, v in {
+                "logp_anticancer": self.r_logp_anticancer,
+                "tpsa_iv": self.r_tpsa_iv,
+                "rotatable_bonds": self.r_rotatable_bonds,
+                "herg_proxy": self.r_herg_proxy,
+                "anticancer_composite": self.r_anticancer_composite,
+                "anticancer_index": self.r_anticancer_index,
+                "platinai": self.r_platinai,
+            }.items()
+            if v is not None
+        }
 
     # ------------------------------------------------------------------
     # (Phase 2) Batched RDKit-backed reward scoring via multiprocessing
@@ -2162,6 +2190,7 @@ class RewardAggregator:
                 return _torch.zeros(0)
             try:
                 import numpy as _np
+
                 return _np.zeros(0, dtype=float)
             except Exception:
                 return []  # type: ignore[return-value]
@@ -2173,9 +2202,7 @@ class RewardAggregator:
             else [False] * n
         )
         bind_list = (
-            [bool(b) for b in binds_target]
-            if binds_target is not None
-            else [False] * n
+            [bool(b) for b in binds_target] if binds_target is not None else [False] * n
         )
         # Truncate / pad to length n defensively.
         if len(sat_list) < n:
@@ -2231,18 +2258,17 @@ class RewardAggregator:
         )
 
         # ---- serial path (default) -----------------------------------
-        if (
-            int(n_workers) <= 1
-            or not rdkit_channels_active
-        ):
+        if int(n_workers) <= 1 or not rdkit_channels_active:
             values = [
-                float(self(
-                    s,
-                    target_predicates=target_predicates,
-                    binding_site=binding_site,
-                    satisfies_typed=sat_list[i],
-                    binds_target=bind_list[i],
-                ))
+                float(
+                    self(
+                        s,
+                        target_predicates=target_predicates,
+                        binding_site=binding_site,
+                        satisfies_typed=sat_list[i],
+                        binds_target=bind_list[i],
+                    )
+                )
                 for i, s in enumerate(states)
             ]
         else:
@@ -2264,10 +2290,12 @@ class RewardAggregator:
                 # one state → a float score.
                 try:
                     from multiprocessing import Pool as _Pool
+
                     # Use 'spawn' on macOS / Windows; 'fork' on Linux
                     # is fine for this pure-Python / RDKit workload.
                     ctx_method = "fork"
                     import multiprocessing as _mp
+
                     try:
                         ctx = _mp.get_context(ctx_method)
                     except Exception:  # pragma: no cover
@@ -2289,13 +2317,15 @@ class RewardAggregator:
                         exc,
                     )
                     values = [
-                        float(self(
-                            s,
-                            target_predicates=target_predicates,
-                            binding_site=binding_site,
-                            satisfies_typed=sat_list[i],
-                            binds_target=bind_list[i],
-                        ))
+                        float(
+                            self(
+                                s,
+                                target_predicates=target_predicates,
+                                binding_site=binding_site,
+                                satisfies_typed=sat_list[i],
+                                binds_target=bind_list[i],
+                            )
+                        )
                         for i, s in enumerate(states)
                     ]
             except Exception as exc:  # pragma: no cover - defensive
@@ -2304,26 +2334,31 @@ class RewardAggregator:
                     exc,
                 )
                 values = [
-                    float(self(
-                        s,
-                        target_predicates=target_predicates,
-                        binding_site=binding_site,
-                        satisfies_typed=sat_list[i],
-                        binds_target=bind_list[i],
-                    ))
+                    float(
+                        self(
+                            s,
+                            target_predicates=target_predicates,
+                            binding_site=binding_site,
+                            satisfies_typed=sat_list[i],
+                            binds_target=bind_list[i],
+                        )
+                    )
                     for i, s in enumerate(states)
                 ]
 
         # ---- stack to a (GPU) tensor --------------------------------
         try:
             import numpy as _np
+
             arr = _np.asarray(values, dtype=float)
         except Exception:
             arr = None  # type: ignore
 
         if _torch is not None:
             try:
-                t = _torch.as_tensor(arr if arr is not None else values, dtype=_torch.float32)
+                t = _torch.as_tensor(
+                    arr if arr is not None else values, dtype=_torch.float32
+                )
                 if _torch.cuda.is_available():
                     # ``cuda`` is the ROCm PyTorch API name as well, but use
                     # the shared resolver so HIP_VISIBLE_DEVICES selection
@@ -2382,6 +2417,7 @@ class RewardAggregator:
             batch_qed,
             batch_sa,
         )
+
         smiles_list = list(smiles_list)
         if len(smiles_list) == 0:
             empty = np.zeros(0, dtype=float)
@@ -2395,6 +2431,7 @@ class RewardAggregator:
         # formula can drop down to :func:`_score_vina_proxy`.
         try:
             import numpy as _np
+
             vina_arr = _np.clip(1.0 - sa_arr / 10.0, 0.0, 1.0)
         except Exception:
             vina_arr = np.asarray(
@@ -2434,6 +2471,7 @@ class RewardAggregator:
         unavailable or the SMILES is unparsable, so the search never
         crashes on malformed molecules.
         """
+
         def _r_sa(state: MoleculeClosedTerm) -> float:
             if not _RDKIT_AVAILABLE or _sascorer is None:
                 return 0.0
@@ -2441,6 +2479,7 @@ class RewardAggregator:
                 smi = state.canonical_smiles()
                 if smi:
                     from molmetal_lam.tile_lib.canonical_cache import canonicalize
+
                     smi = canonicalize(str(smi))
             except Exception:
                 return 0.0
@@ -2849,6 +2888,7 @@ def _smi_of(state: MoleculeClosedTerm) -> str:
         smi = state.canonical_smiles()
         if smi:
             from molmetal_lam.tile_lib.canonical_cache import canonicalize
+
             return str(canonicalize(str(smi)))
     except Exception:
         pass
@@ -2856,6 +2896,7 @@ def _smi_of(state: MoleculeClosedTerm) -> str:
         src = getattr(state, "source_smiles", "") or ""
         if src:
             from molmetal_lam.tile_lib.canonical_cache import canonicalize
+
             return str(canonicalize(str(src)))
     except Exception:
         pass
@@ -2928,9 +2969,7 @@ def _pareto_score_vector(
         # SA raw is 1 (easy) .. 10 (hard); invert so higher = easier.
         sa_raw = _safe(reward_fn.r_sa) if reward_fn.r_sa is not None else 0.0
         out[1] = (
-            max(0.0, min(1.0, 1.0 - (sa_raw - 1.0) / 9.0))
-            if reward_fn.r_sa
-            else 0.0
+            max(0.0, min(1.0, 1.0 - (sa_raw - 1.0) / 9.0)) if reward_fn.r_sa else 0.0
         )
         # QED is already in [0, 1]; higher = more drug-like.
         out[2] = _safe(reward_fn.r_qed)
@@ -3001,6 +3040,7 @@ def _pareto_rank_candidates(
         return candidates
     try:
         from molmetal_lam.search_alg import pareto as _pareto  # late import
+
         pop: List[List[float]] = [
             _pareto_score_vector(state, score, reward_fn=reward_fn)
             for score, state in candidates
@@ -3530,11 +3570,10 @@ class MCTSProofSearch:
                 from molmetal_lam.lam_chem.pocket_macro_inference import (
                     PocketMacroInference,
                 )
+
                 _pmi = PocketMacroInference()
                 if _pmi.is_available():
-                    pocket_features = _pmi.get_embedding(
-                        pocket_macro_target_name
-                    )
+                    pocket_features = _pmi.get_embedding(pocket_macro_target_name)
                 else:
                     # TODO-30 / Rank-7 P2.2 (2026-09-17) — pocket
                     # embedding skipped because PocketMacroInference
@@ -3545,6 +3584,7 @@ class MCTSProofSearch:
                     pocket_features = None
                     try:
                         import logging as _logging_p22  # type: ignore
+
                         _logging_p22.getLogger(__name__).debug(
                             "pocket_macro_inference not loaded; "
                             "skipping pocket embedding for "
@@ -3568,9 +3608,7 @@ class MCTSProofSearch:
         # consult them.  Reset to None at the top of every ``search()``
         # call so a previous run's hooks do not leak.
         self._learned_prior_for_search = learned_prior
-        self._learned_prior_mix_uniform_for_search = float(
-            learned_prior_mix_uniform
-        )
+        self._learned_prior_mix_uniform_for_search = float(learned_prior_mix_uniform)
 
         # WF-T25-SA-Prior — stash the SA-aware prior hooks on the
         # search instance so :meth:`self._prior` can consult them on
@@ -3600,14 +3638,12 @@ class MCTSProofSearch:
         # When ``use_pocket_conditioned_reference=False`` (default) the
         # resolver is NOT consulted and the search uses the caller's
         # ``initial_state`` verbatim — bit-for-bit backward compatible.
-        if (
-            use_pocket_conditioned_reference
-            and pocket_features is not None
-        ):
+        if use_pocket_conditioned_reference and pocket_features is not None:
             try:
                 from molmetal_lam.lam_chem.reference_ligand_resolver import (
                     resolve_reference_ligand,
                 )
+
                 _ref_record = resolve_reference_ligand(
                     pocket_features,
                     warn_on_fallback=False,
@@ -3617,18 +3653,14 @@ class MCTSProofSearch:
                         _ref_record.smiles,
                         embed_3d=False,
                     )
-                    self._reference_ligand_record_for_search = (
-                        _ref_record
-                    )
+                    self._reference_ligand_record_for_search = _ref_record
                 except Exception:
                     # Sticky fallback — if the resolver SMILES fails
                     # to round-trip via MoleculeClosedTerm.from_smiles
                     # the legacy initial_state stands.  We still stash
                     # the record so downstream diagnostics see the
                     # resolver's intent.
-                    self._reference_ligand_record_for_search = (
-                        _ref_record
-                    )
+                    self._reference_ligand_record_for_search = _ref_record
             except Exception:
                 # Sticky fallback — never fail search() on a
                 # resolver import / call error.  Legacy initial_state
@@ -3656,6 +3688,7 @@ class MCTSProofSearch:
                 from molmetal_lam.search_alg.warm_start import (
                     modify_root_prior,
                 )
+
                 # Enumerate the root's children via the existing
                 # _expand helper (mirror the first call to get the
                 # action keys so modify_root_prior gets the correct
@@ -3674,13 +3707,9 @@ class MCTSProofSearch:
                                 )
                             except Exception:
                                 tile_smi = ""
-                            root_actions.append(
-                                (rule_name, tile_smi)
-                            )
+                            root_actions.append((rule_name, tile_smi))
                         elif isinstance(entry, tuple) and len(entry) >= 2:
-                            root_actions.append(
-                                (entry[0], str(entry[1]))
-                            )
+                            root_actions.append((entry[0], str(entry[1])))
                         else:
                             root_actions.append(str(entry))
                 except Exception:
@@ -3692,10 +3721,7 @@ class MCTSProofSearch:
                         try:
                             phi_state = self.heuristic(initial_state)
                             if phi_state is not None:
-                                state_feats_seq = [
-                                    float(x)
-                                    for x in phi_state
-                                ]
+                                state_feats_seq = [float(x) for x in phi_state]
                         except Exception:
                             state_feats_seq = []
                         pocket_prior = modify_root_prior(
@@ -3723,9 +3749,7 @@ class MCTSProofSearch:
                             # expand_cache on ``self`` so ``_simulate``
                             # reuses the inflated children instead of
                             # creating fresh nodes with P=0.5.
-                            argmax_action = max(
-                                pocket_prior, key=pocket_prior.get
-                            )
+                            argmax_action = max(pocket_prior, key=pocket_prior.get)
                             # WF-Pocket-Invariance Phase-2A (sub-fix A):
                             # the w2swi9tsu Phase-3 patch clamped the
                             # pocket-argmax child's P to [0.5, 1.0],
@@ -3745,9 +3769,7 @@ class MCTSProofSearch:
                             # pocket-argmax child (capped at 1.0 to
                             # preserve the dataclass invariant
                             # ``P in [0, 1]``).
-                            base_argmax_prob = float(
-                                pocket_prior[argmax_action]
-                            )
+                            base_argmax_prob = float(pocket_prior[argmax_action])
                             strength = float(pocket_boost_strength)
                             if strength > 1.0:
                                 # Stronger boost: inflate the argmax
@@ -3761,8 +3783,7 @@ class MCTSProofSearch:
                                             0.05,
                                             min(
                                                 1.0,
-                                                base_argmax_prob
-                                                * strength,
+                                                base_argmax_prob * strength,
                                             ),
                                         ),
                                     )
@@ -3785,26 +3806,19 @@ class MCTSProofSearch:
                             # children instead of creating fresh
                             # nodes with P=0.5.
                             try:
-                                self._attach_children(
-                                    root, expand_cache
-                                )
-                                self._root_children_cache_for_search = (
-                                    expand_cache
-                                )
+                                self._attach_children(root, expand_cache)
+                                self._root_children_cache_for_search = expand_cache
                             except Exception:
                                 self._root_children_cache_for_search = None
                             for child in root.children:
                                 try:
-                                    child_rule = getattr(
-                                        child, "rule_name", None
-                                    )
+                                    child_rule = getattr(child, "rule_name", None)
                                     child_tile_smi = ""
                                     try:
                                         ctile = getattr(child, "tile", None)
                                         if ctile is not None:
                                             child_tile_smi = str(
-                                                ctile.canonical_smiles()
-                                                or ""
+                                                ctile.canonical_smiles() or ""
                                             )
                                     except Exception:
                                         child_tile_smi = ""
@@ -3843,18 +3857,14 @@ class MCTSProofSearch:
                             # formula.
                             if (
                                 use_learned_prior_argmax
-                                and self._learned_prior_for_search
-                                is not None
+                                and self._learned_prior_for_search is not None
                                 and pocket_prior
                             ):
                                 try:
                                     lp = self._learned_prior_for_search
                                     try:
                                         state_smi = (
-                                            str(
-                                                initial_state
-                                                .canonical_smiles()
-                                            )
+                                            str(initial_state.canonical_smiles())
                                             if hasattr(
                                                 initial_state,
                                                 "canonical_smiles",
@@ -3892,21 +3902,14 @@ class MCTSProofSearch:
                                                             pkt_act_key,
                                                             tuple,
                                                         )
-                                                        else str(
-                                                            pkt_act_key
-                                                        ).split("|")[0]
+                                                        else str(pkt_act_key).split(
+                                                            "|"
+                                                        )[0]
                                                     )
                                                 except Exception:
-                                                    pkt_rule = str(
-                                                        pkt_act_key
-                                                    )
-                                                if (
-                                                    pkt_rule
-                                                    == lp_argmax_rule
-                                                ):
-                                                    lp_action_key = (
-                                                        pkt_act_key
-                                                    )
+                                                    pkt_rule = str(pkt_act_key)
+                                                if pkt_rule == lp_argmax_rule:
+                                                    lp_action_key = pkt_act_key
                                                     # keep first match
                                                     break
                                             if lp_action_key is not None:
@@ -3924,19 +3927,10 @@ class MCTSProofSearch:
                                                 # contract.  Clamp to 1.0
                                                 # so the dataclass invariant
                                                 # ``P in [0, 1]`` holds.
-                                                pocket_prior[lp_action_key] = (
-                                                    min(
-                                                        1.0,
-                                                        float(
-                                                            pocket_prior[
-                                                                lp_action_key
-                                                            ]
-                                                        )
-                                                        + (
-                                                            lp_argmax_prob
-                                                            * 0.75
-                                                        ),
-                                                    )
+                                                pocket_prior[lp_action_key] = min(
+                                                    1.0,
+                                                    float(pocket_prior[lp_action_key])
+                                                    + (lp_argmax_prob * 0.75),
                                                 )
                                                 # refresh argmax_action
                                                 # for the boost loop below
@@ -3948,15 +3942,11 @@ class MCTSProofSearch:
                                                 # so the new argmax wins
                                                 # the boost loop
                                                 base_argmax_prob = float(
-                                                    pocket_prior[
-                                                        argmax_action
-                                                    ]
+                                                    pocket_prior[argmax_action]
                                                 )
                                                 # re-derive argmax_prob
                                                 # with the same floor logic
-                                                strength = float(
-                                                    pocket_boost_strength
-                                                )
+                                                strength = float(pocket_boost_strength)
                                                 if strength > 1.0:
                                                     argmax_prob = float(
                                                         min(
@@ -4036,7 +4026,8 @@ class MCTSProofSearch:
         # search, where callers may have changed the chemistry configuration.
         self._unreactive_states: set[str] = set()
         self.transposition_table = _TranspositionTable(
-            max_size=self.transposition_table._max_size)
+            max_size=self.transposition_table._max_size
+        )
         self._prior_refit_skipped: bool = False
         self._prior_refit_last_size: int = 0
 
@@ -4050,11 +4041,15 @@ class MCTSProofSearch:
         # ``self._root_children_cache_for_search``, reuse it so
         # ``_simulate`` reuses the inflated children instead of
         # recreating fresh nodes with P=0.5.
-        root_children_cache: Optional[List[Tuple[
-            MoleculeClosedTerm, str, MoleculeClosedTerm,
-        ]]] = getattr(
-            self, "_root_children_cache_for_search", None
-        )
+        root_children_cache: Optional[
+            List[
+                Tuple[
+                    MoleculeClosedTerm,
+                    str,
+                    MoleculeClosedTerm,
+                ]
+            ]
+        ] = getattr(self, "_root_children_cache_for_search", None)
         root_dirichlet_applied: bool = False
 
         # n_simulations MCTS rollouts.
@@ -4084,7 +4079,8 @@ class MCTSProofSearch:
             best_score = max(scores) if scores else 0.0
             mean_score = (sum(scores) / len(scores)) if scores else 0.0
             satisfying = sum(
-                1 for n in leaves_by_smi.values()
+                1
+                for n in leaves_by_smi.values()
                 if self._satisfies_predicates(n.state, self.target_predicates)
                 and self._binds_target(n.state)
             )
@@ -4113,9 +4109,7 @@ class MCTSProofSearch:
             else:
                 leaf_value_var = 0.0
                 leaf_value_std = 0.0
-            puct_exploit_ratio_var = (
-                leaf_value_var / (leaf_value_var + 1e-6)
-            )
+            puct_exploit_ratio_var = leaf_value_var / (leaf_value_var + 1e-6)
             # (D2) PARALLEL_COLLISION_RATE — fraction of adjacent
             # simulation pairs whose (depth, child_state_canonical_smi)
             # tuples collide at the same depth.  A crude proxy for
@@ -4124,7 +4118,10 @@ class MCTSProofSearch:
             n_sims = max(1, self._sim_counter)
             same_selected = 0
             for i in range(1, len(sel_sig)):
-                if sel_sig[i][0] == sel_sig[i - 1][0] and sel_sig[i][1] == sel_sig[i - 1][1]:
+                if (
+                    sel_sig[i][0] == sel_sig[i - 1][0]
+                    and sel_sig[i][1] == sel_sig[i - 1][1]
+                ):
                     same_selected += 1
             parallel_collision_rate = float(same_selected) / float(n_sims)
 
@@ -4138,28 +4135,32 @@ class MCTSProofSearch:
                 float(t_hits) / float(t_total) if t_total > 0 else 0.0
             )
 
-            self.history.append({
-                "iteration": it,
-                "best_score": float(best_score),
-                "mean_score": float(mean_score),
-                "n_states_explored": int(self._count_nodes(root)),
-                "n_leaves": int(len(leaves_by_smi)),
-                "n_satisfying": int(satisfying),
-                "best_state": best_state,
-                "PUCT_EXPLOIT_RATIO_VAR": float(puct_exploit_ratio_var),
-                "LEAF_VALUE_VAR": float(leaf_value_var),
-                "LEAF_VALUE_STD": float(leaf_value_std),
-                "TRANSPOSITION_HIT_RATE": float(transposition_hit_rate),
-                "PARALLEL_COLLISION_RATE": float(parallel_collision_rate),
-                "PRIOR_REFIT_SKIPPED": bool(getattr(self, "_prior_refit_skipped", False)),
-                # (r0 fix) — NFE counters surfaced per iteration so the
-                # closed-loop pipeline (and SOTA comparison reports) can
-                # plot cost-vs-quality curves without re-deriving them
-                # from the leaf_value_history buffer.
-                "CUMULATIVE_NFE": int(self.nfe),
-                "CUMULATIVE_NFE_REDUCTIONS": int(self.nfe_reductions),
-                "CUMULATIVE_NFE_ORACLE": int(self.nfe_oracle),
-            })
+            self.history.append(
+                {
+                    "iteration": it,
+                    "best_score": float(best_score),
+                    "mean_score": float(mean_score),
+                    "n_states_explored": int(self._count_nodes(root)),
+                    "n_leaves": int(len(leaves_by_smi)),
+                    "n_satisfying": int(satisfying),
+                    "best_state": best_state,
+                    "PUCT_EXPLOIT_RATIO_VAR": float(puct_exploit_ratio_var),
+                    "LEAF_VALUE_VAR": float(leaf_value_var),
+                    "LEAF_VALUE_STD": float(leaf_value_std),
+                    "TRANSPOSITION_HIT_RATE": float(transposition_hit_rate),
+                    "PARALLEL_COLLISION_RATE": float(parallel_collision_rate),
+                    "PRIOR_REFIT_SKIPPED": bool(
+                        getattr(self, "_prior_refit_skipped", False)
+                    ),
+                    # (r0 fix) — NFE counters surfaced per iteration so the
+                    # closed-loop pipeline (and SOTA comparison reports) can
+                    # plot cost-vs-quality curves without re-deriving them
+                    # from the leaf_value_history buffer.
+                    "CUMULATIVE_NFE": int(self.nfe),
+                    "CUMULATIVE_NFE_REDUCTIONS": int(self.nfe_reductions),
+                    "CUMULATIVE_NFE_ORACLE": int(self.nfe_oracle),
+                }
+            )
 
             # (r0 fix) — MCTS early-stop.  Track best_score_so_far; if
             # the budget has not improved the best score for ``patience``
@@ -4222,15 +4223,11 @@ class MCTSProofSearch:
         # weight.  Both can be enabled simultaneously without
         # disturbing the dominant Vina / SA / PB reward channels.
         try:
-            w_td = float(
-                getattr(reward_fn, "w_tanimoto_distance", 0.0) or 0.0
-            )
+            w_td = float(getattr(reward_fn, "w_tanimoto_distance", 0.0) or 0.0)
         except Exception:
             w_td = 0.0
         try:
-            td_floor = float(
-                getattr(reward_fn, "min_tanimoto_floor", 0.0) or 0.0
-            )
+            td_floor = float(getattr(reward_fn, "min_tanimoto_floor", 0.0) or 0.0)
         except Exception:
             td_floor = 0.0
         if (w_div > 0.0 or w_td > 0.0) and candidates:
@@ -4239,13 +4236,9 @@ class MCTSProofSearch:
             for score, s in candidates:
                 bonus = 0.0
                 if w_div > 0.0:
-                    bonus += w_div * float(
-                        reward_fn.diversity_bonus(s, state_list)
-                    )
+                    bonus += w_div * float(reward_fn.diversity_bonus(s, state_list))
                 if w_td > 0.0:
-                    td = float(
-                        reward_fn.tanimoto_distance_to_set(s, state_list)
-                    )
+                    td = float(reward_fn.tanimoto_distance_to_set(s, state_list))
                     if td_floor > 0.0 and td < td_floor:
                         td = float(td_floor)
                     bonus += w_td * td
@@ -4280,6 +4273,7 @@ class MCTSProofSearch:
             if oracle is None:
                 try:
                     from molmetal_lam.binding.types import _resolve_docking_oracle
+
                     oracle = _resolve_docking_oracle()
                 except Exception:
                     oracle = None
@@ -4300,7 +4294,7 @@ class MCTSProofSearch:
                         filtered.append((score, state))
                 # Append any non-top-K candidates (kept on the fingerprint
                 # verdict so the closed loop does not lose diversity).
-                for score, state in candidates[int(self.oracle_top_k):]:
+                for score, state in candidates[int(self.oracle_top_k) :]:
                     filtered.append((score, state))
                 candidates = filtered
                 # TODO-30 / Rank-1 P3.3 — re-apply the Pareto ranker
@@ -4332,9 +4326,7 @@ class MCTSProofSearch:
         else:
             self.leaf_value_var = 0.0
             self.leaf_value_std = 0.0
-        self.puct_exploit_ratio_var = (
-            self.leaf_value_var / (self.leaf_value_var + 1e-6)
-        )
+        self.puct_exploit_ratio_var = self.leaf_value_var / (self.leaf_value_var + 1e-6)
 
         # (L-2) Persistent tree: remember the root for save_tree() so
         # the *next* closed-loop iteration can resume from the same
@@ -4375,7 +4367,8 @@ class MCTSProofSearch:
                 # environments and on the headless test harness where
                 # rdkit is mocked.
                 _LOG_P2_2_FALLBACK = getattr(
-                    __import__("logging"), "getLogger",
+                    __import__("logging"),
+                    "getLogger",
                 )(__name__)
                 _LOG_P2_2_FALLBACK.warning(
                     "materialize_3d=True requested but RDKit could not "
@@ -4390,7 +4383,8 @@ class MCTSProofSearch:
                 except Exception as _torch_import_exc:
                     _torch_local = None  # type: ignore
                     _LOG_P2_2_TORCH = getattr(
-                        __import__("logging"), "getLogger",
+                        __import__("logging"),
+                        "getLogger",
                     )(__name__)
                     _LOG_P2_2_TORCH.warning(
                         "materialize_3d=True requested but torch could "
@@ -4421,9 +4415,11 @@ class MCTSProofSearch:
                             coord = conf.GetPositions()
                             # Slice to n_heavy atoms.
                             import numpy as _np  # type: ignore
+
                             coord_np = _np.asarray(coord[:n], dtype=float)
                             cand.coords_3d = _torch_local.as_tensor(
-                                coord_np, dtype=_torch_local.float32,
+                                coord_np,
+                                dtype=_torch_local.float32,
                             )
                             n_attached += 1
                         except Exception:
@@ -4434,9 +4430,7 @@ class MCTSProofSearch:
         if self.history:
             try:
                 self.history[-1]["n_coords_3d_attached"] = int(n_attached)
-                self.history[-1]["n_coords_3d_returned"] = int(
-                    len(result_states)
-                )
+                self.history[-1]["n_coords_3d_returned"] = int(len(result_states))
             except Exception:
                 pass
 
@@ -4472,9 +4466,15 @@ class MCTSProofSearch:
         self,
         root: _MCTSNode,
         max_depth: int,
-        root_children_cache: Optional[List[Tuple[
-            MoleculeClosedTerm, str, MoleculeClosedTerm,
-        ]]] = None,
+        root_children_cache: Optional[
+            List[
+                Tuple[
+                    MoleculeClosedTerm,
+                    str,
+                    MoleculeClosedTerm,
+                ]
+            ]
+        ] = None,
     ) -> List[_MCTSNode]:
         """Run one MCTS simulation: select → expand → rollout → backprop.
 
@@ -4487,7 +4487,11 @@ class MCTSProofSearch:
         # 1) SELECT — PUCT traversal down to a leaf or terminal.
         # Only an exhaustive empty expansion establishes chemical termination.
         node = root
-        while not node.is_leaf and (not node.is_closed_for_search) and len(path) <= max_depth:
+        while (
+            not node.is_leaf
+            and (not node.is_closed_for_search)
+            and len(path) <= max_depth
+        ):
             node = self._select_child(node)
             # Lock the selected child with a virtual loss so any
             # concurrent in-flight simulation that re-enters the same
@@ -4538,7 +4542,9 @@ class MCTSProofSearch:
         self._backprop(path, value)
         # L9-10 ROLLOUT_DEPTH_DIST — histogram of β-chain length per sim.
         # 1-line: tally path length so ``search()`` can emit the histogram.
-        self.rollout_depth_hist[len(path) - 1] = self.rollout_depth_hist.get(len(path) - 1, 0) + 1
+        self.rollout_depth_hist[len(path) - 1] = (
+            self.rollout_depth_hist.get(len(path) - 1, 0) + 1
+        )
 
         # (D2) Record (depth, child_state_smi) per simulation so the
         # caller can compute PARALLEL_COLLISION_RATE — a crude proxy
@@ -4631,8 +4637,8 @@ class MCTSProofSearch:
                 scalar_vloss = 0.0
             try:
                 cnt_vloss = float(
-                    int(self.virtual_loss.on_node(id(child))) *
-                    float(self.virtual_loss.value),
+                    int(self.virtual_loss.on_node(id(child)))
+                    * float(self.virtual_loss.value),
                 )
             except Exception:
                 cnt_vloss = 0.0
@@ -4776,22 +4782,20 @@ class MCTSProofSearch:
         # this parent consults the same ``learned_prior.predict_proba``
         # output (the head is O(1) per call but the dict materialise
         # is non-trivial — caching it here is bit-cheap).
-        learned_prior_obj = getattr(
-            self, "_learned_prior_for_search", None
-        )
+        learned_prior_obj = getattr(self, "_learned_prior_for_search", None)
         mix_uniform = float(
-            getattr(self, "_learned_prior_mix_uniform_for_search", 0.0)
-            or 0.0
+            getattr(self, "_learned_prior_mix_uniform_for_search", 0.0) or 0.0
         )
         learned_dist_cache: Dict[str, float] = {}
         if learned_prior_obj is not None and mix_uniform > 0.0:
             try:
                 parent_smi = ""
                 try:
-                    if parent is not None and getattr(parent, "state", None) is not None:
-                        parent_smi = str(
-                            parent.state.canonical_smiles() or ""
-                        )
+                    if (
+                        parent is not None
+                        and getattr(parent, "state", None) is not None
+                    ):
+                        parent_smi = str(parent.state.canonical_smiles() or "")
                 except Exception:
                     parent_smi = ""
                 learned_dist_cache = dict(
@@ -4804,9 +4808,16 @@ class MCTSProofSearch:
             child_key = self._canonical_smi(child_state)
             if child_key in ancestors or child_key in sibling_keys:
                 continue
+
             def factory():
-                return _MCTSNode(state=child_state, parent=parent,
-                                 P=self._prior(child_state), rule_name=rule_name, tile=tile)
+                return _MCTSNode(
+                    state=child_state,
+                    parent=parent,
+                    P=self._prior(child_state),
+                    rule_name=rule_name,
+                    tile=tile,
+                )
+
             existing, hit = self._lookup_or_create(child_key, factory)
             child = factory() if hit and existing.parent is not parent else existing
 
@@ -4831,15 +4842,11 @@ class MCTSProofSearch:
                     n_rules = max(1, len(learned_dist_cache))
                     uniform_val = 1.0 / float(n_rules)
                     learned_val = float(
-                        learned_dist_cache.get(
-                            str(rule_name), uniform_val
-                        )
+                        learned_dist_cache.get(str(rule_name), uniform_val)
                     )
                     alpha = max(0.0, min(1.0, mix_uniform))
                     mixed = (1.0 - alpha) * uniform_val + alpha * learned_val
-                    child.P = float(
-                        max(0.0, min(1.0, mixed))
-                    )
+                    child.P = float(max(0.0, min(1.0, mixed)))
                 except Exception:
                     # Defensive fallback — never fail child attach on
                     # a learned-prior mix error.  Legacy P stands.
@@ -4892,7 +4899,9 @@ class MCTSProofSearch:
         converted: List[MoleculeClosedTerm] = []
         for t in tiles:
             try:
-                smi = getattr(t, "smiles", None) or getattr(t, "to_smiles", lambda: "")()
+                smi = (
+                    getattr(t, "smiles", None) or getattr(t, "to_smiles", lambda: "")()
+                )
                 if not smi:
                     continue
                 mol = MoleculeClosedTerm.from_smiles(smi, embed_3d=False)
@@ -4917,7 +4926,12 @@ class MCTSProofSearch:
             from molmetal_lam.tile_lib.fragment_pool import (
                 fragments_from_chembl_reactive,
             )
-            click_handle_flag = os.environ.get("ROUND10_5_CLICK", "1") not in ("0", "false", "False")
+
+            click_handle_flag = os.environ.get("ROUND10_5_CLICK", "1") not in (
+                "0",
+                "false",
+                "False",
+            )
         except Exception:
             fragments_from_chembl_reactive = None  # type: ignore
             click_handle_flag = False
@@ -4939,7 +4953,10 @@ class MCTSProofSearch:
                 )
                 for t in extra_pool:
                     try:
-                        smi = getattr(t, "smiles", None) or getattr(t, "to_smiles", lambda: "")()
+                        smi = (
+                            getattr(t, "smiles", None)
+                            or getattr(t, "to_smiles", lambda: "")()
+                        )
                         if not smi:
                             continue
                         mol = MoleculeClosedTerm.from_smiles(smi, embed_3d=False)
@@ -4961,9 +4978,13 @@ class MCTSProofSearch:
     def _apply_dirichlet_to_root(
         self,
         root: _MCTSNode,
-        root_children: List[Tuple[
-            MoleculeClosedTerm, str, MoleculeClosedTerm,
-        ]],
+        root_children: List[
+            Tuple[
+                MoleculeClosedTerm,
+                str,
+                MoleculeClosedTerm,
+            ]
+        ],
     ) -> None:
         """AlphaZero-style Dirichlet noise injection at the root.
 
@@ -5005,6 +5026,7 @@ class MCTSProofSearch:
         if use_fused:
             try:
                 import torch as _torch
+
                 priors = _torch.tensor(
                     [float(c.P) for c in root.children],
                     dtype=_torch.float32,
@@ -5087,6 +5109,7 @@ class MCTSProofSearch:
         if use_fused:
             try:
                 import torch as _torch
+
                 priors = _torch.tensor(
                     [float(c.P) for c in root.children],
                     dtype=_torch.float32,
@@ -5110,10 +5133,12 @@ class MCTSProofSearch:
 
         for child, eta in zip(root.children, noise):
             try:
-                child.P = float(max(
-                    0.0,
-                    min(1.0, (1.0 - eps) * float(child.P) + eps * float(eta)),
-                ))
+                child.P = float(
+                    max(
+                        0.0,
+                        min(1.0, (1.0 - eps) * float(child.P) + eps * float(eta)),
+                    )
+                )
             except Exception:
                 continue
         return True
@@ -5146,7 +5171,9 @@ class MCTSProofSearch:
         cur_depth = 0
         while cur_depth < depth:
             # Internal beta-NF does not rule out an external reaction partner.
-            if self._canonical_smi(current) in getattr(self, "_unreactive_states", set()):
+            if self._canonical_smi(current) in getattr(
+                self, "_unreactive_states", set()
+            ):
                 break
 
             # Sample a (rule, tile).
@@ -5204,13 +5231,15 @@ class MCTSProofSearch:
             binds = self._binds_target(current)
         except Exception:
             binds = False
-        value = float(reward_fn(
-            current,
-            target_predicates=self.target_predicates,
-            binding_site=self.binding_site,
-            satisfies_typed=sat,
-            binds_target=binds,
-        ))
+        value = float(
+            reward_fn(
+                current,
+                target_predicates=self.target_predicates,
+                binding_site=self.binding_site,
+                satisfies_typed=sat,
+                binds_target=binds,
+            )
+        )
         # (r0 fix) — every call to the reward aggregator counts as one
         # Number of Function Evaluation (NFE).  This includes the
         # per-channel scorer invocations inside :class:`RewardAggregator`
@@ -5245,7 +5274,10 @@ class MCTSProofSearch:
         """
         assert self.prior is not None
         best: Tuple[float, str, MoleculeClosedTerm, List[MoleculeClosedTerm]] = (
-            -float("inf"), "", tile_lib[0], []
+            -float("inf"),
+            "",
+            tile_lib[0],
+            [],
         )
         any_fired = False
         for rule_name in rule_names:
@@ -5337,7 +5369,8 @@ class MCTSProofSearch:
         """
         try:
             result = typecheck(
-                state, self.binding_site,
+                state,
+                self.binding_site,
                 leaf_oracle_call=False,  # never during expansion/rollout
                 oracle=None,
             )
@@ -5345,9 +5378,7 @@ class MCTSProofSearch:
         except Exception:
             return False
 
-    def _binds_target_top_k(
-        self, state: MoleculeClosedTerm, oracle: Any
-    ) -> bool:
+    def _binds_target_top_k(self, state: MoleculeClosedTerm, oracle: Any) -> bool:
         """Top-K-only binding check — invokes the real docking oracle.
 
         Called from :meth:`search`'s post-iteration candidate ranking
@@ -5356,7 +5387,8 @@ class MCTSProofSearch:
         """
         try:
             result = typecheck(
-                state, self.binding_site,
+                state,
+                self.binding_site,
                 leaf_oracle_call=True,
                 oracle=oracle,
             )
@@ -5372,13 +5404,15 @@ class MCTSProofSearch:
         reward_fn = self._resolved_reward()
         sat = self._satisfies_predicates(state, self.target_predicates)
         binds = self._binds_target(state)
-        return float(reward_fn(
-            state,
-            target_predicates=self.target_predicates,
-            binding_site=self.binding_site,
-            satisfies_typed=sat,
-            binds_target=binds,
-        ))
+        return float(
+            reward_fn(
+                state,
+                target_predicates=self.target_predicates,
+                binding_site=self.binding_site,
+                satisfies_typed=sat,
+                binds_target=binds,
+            )
+        )
 
     # ------------------------------------------------------------------
     # Priors and helpers
@@ -5597,9 +5631,7 @@ class MCTSProofSearch:
             return float(max(1e-6, min(1.0 - 1e-6, legacy_p)))
 
         try:
-            beta = float(
-                getattr(self, "_sa_prior_strength_for_search", 0.5)
-            )
+            beta = float(getattr(self, "_sa_prior_strength_for_search", 0.5))
         except Exception:
             beta = 0.5
         beta = float(max(0.0, min(1.0, beta)))
@@ -5609,6 +5641,7 @@ class MCTSProofSearch:
         if sa_prior_obj is None:
             try:
                 from molmetal_lam.search_alg.priors import SAPrior
+
                 sa_prior_obj = SAPrior()
                 self._sa_prior_obj_for_search = sa_prior_obj
             except Exception:
@@ -5716,6 +5749,7 @@ class MCTSProofSearch:
             child_smi = child_state.canonical_smiles()
             if child_smi:
                 from molmetal_lam.tile_lib.canonical_cache import canonicalize
+
                 child_smi = canonicalize(str(child_smi))
         except Exception:
             return False
@@ -5724,6 +5758,7 @@ class MCTSProofSearch:
                 es = existing.state.canonical_smiles()
                 if es:
                     from molmetal_lam.tile_lib.canonical_cache import canonicalize
+
                     es = canonicalize(str(es))
                 if es == child_smi:
                     return True
@@ -5748,6 +5783,7 @@ class MCTSProofSearch:
             smi = state.canonical_smiles()
             if smi:
                 from molmetal_lam.tile_lib.canonical_cache import canonicalize
+
                 return str(canonicalize(str(smi)))
         except Exception:
             pass
@@ -5755,6 +5791,7 @@ class MCTSProofSearch:
             src = getattr(state, "source_smiles", "") or ""
             if src:
                 from molmetal_lam.tile_lib.canonical_cache import canonicalize
+
                 return str(canonicalize(str(src)))
         except Exception:
             pass
@@ -5902,8 +5939,10 @@ class MCTSProofSearch:
             from molmetal_lam.lam_chem.pysr_wrapper import (
                 HeuristicRegressor as _HR,
             )
+
             X = _np.array(
-                [list(p[0]) for p in pairs], dtype=float,
+                [list(p[0]) for p in pairs],
+                dtype=float,
             )
             y = _np.array([p[1] for p in pairs], dtype=float)
             new_regressor = _HR().fit(X, y)
@@ -5952,9 +5991,12 @@ class MCTSProofSearch:
             nodes = list(nodes_by_id.values())
             representative = nodes[0]
             leaves_by_smi[key] = _MCTSNode(
-                state=representative.state, N=sum(n.N for n in nodes),
-                W=sum(n.W for n in nodes), P=representative.P,
-                rule_name=representative.rule_name, tile=representative.tile,
+                state=representative.state,
+                N=sum(n.N for n in nodes),
+                W=sum(n.W for n in nodes),
+                P=representative.P,
+                rule_name=representative.rule_name,
+                tile=representative.tile,
             )
         return leaves_by_smi
 
@@ -6002,13 +6044,17 @@ class MCTSProofSearch:
 
         for node in leaves_by_smi.values():
             try:
-                feats = list(self.prior.feature_extractor(node.state)) \
-                    if self.prior is not None \
+                feats = (
+                    list(self.prior.feature_extractor(node.state))
+                    if self.prior is not None
                     else _default_feature_extractor(node.state)
+                )
             except Exception:
-                feats = [float(node.state.n_atoms),
-                         float(node.state.n_bonds),
-                         float(sum(node.state.free_sites.values()))]
+                feats = [
+                    float(node.state.n_atoms),
+                    float(node.state.n_bonds),
+                    float(sum(node.state.free_sites.values())),
+                ]
             try:
                 score = float(node.W) / max(1, int(node.N))
             except Exception:
@@ -6062,11 +6108,13 @@ class MCTSProofSearch:
             missing.
         """
         import os as _os
+
         parent = _os.path.dirname(_os.path.abspath(path))
         if parent:
             _os.makedirs(parent, exist_ok=True)
         try:
             import json as _json
+
             tree_json = _json.dumps(
                 self._root.to_dict() if self._root is not None else {},
                 ensure_ascii=False,
@@ -6097,7 +6145,8 @@ class MCTSProofSearch:
                 intercept = getattr(model, "intercept_", None)
                 if intercept is not None:
                     prior_intercept = np.asarray(
-                        np.atleast_1d(intercept), dtype=float,
+                        np.atleast_1d(intercept),
+                        dtype=float,
                     ).ravel()
                 prior_fitted = 1 if bool(getattr(prior_obj, "fitted", False)) else 0
         except Exception:
@@ -6177,7 +6226,8 @@ class MCTSProofSearch:
                 dtype=float,
             ).tolist()
             accumulated_pairs_raw = data.get(
-                "accumulated_pairs", np.empty((0,), dtype=object),
+                "accumulated_pairs",
+                np.empty((0,), dtype=object),
             )
             prior_coefs = np.asarray(
                 data.get("prior_coefs", np.zeros((0,), dtype=float)),
@@ -6187,9 +6237,11 @@ class MCTSProofSearch:
                 data.get("prior_intercept", np.zeros((0,), dtype=float)),
                 dtype=float,
             )
-            prior_fitted = int(np.atleast_1d(
-                data.get("prior_fitted", np.zeros((1,), dtype=int)),
-            ).tolist()[0])
+            prior_fitted = int(
+                np.atleast_1d(
+                    data.get("prior_fitted", np.zeros((1,), dtype=int)),
+                ).tolist()[0]
+            )
 
         # Resolve / build the SymbolicPrior.
         if prior is None:
@@ -6204,6 +6256,7 @@ class MCTSProofSearch:
         ):
             try:
                 from sklearn.linear_model import Ridge  # type: ignore
+
                 n_features = int(prior_coefs.size)
                 model = Ridge(alpha=1.0, random_state=int(prior.random_state))
                 # Lazy fit on a tiny synthetic grid so the regressor is
@@ -6236,8 +6289,12 @@ class MCTSProofSearch:
             tile_library=list(tile_library),
             rules=dict(rules),
             target_predicates=list(target_predicates or []),
-            binding_site=binding_site if binding_site is not None else BindingSite(
-                name="empty_site", constraints=[], geometry_hints={},
+            binding_site=binding_site
+            if binding_site is not None
+            else BindingSite(
+                name="empty_site",
+                constraints=[],
+                geometry_hints={},
             ),
             scorer=scorer,
             reward=reward,
@@ -6270,6 +6327,7 @@ class MCTSProofSearch:
         if tree_json and tree_json.strip() not in {"", "{}"}:
             try:
                 import json as _json
+
                 d = _json.loads(tree_json)
                 state_lookup: Dict[str, MoleculeClosedTerm] = {}
                 for t in tile_library:

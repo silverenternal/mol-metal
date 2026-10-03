@@ -30,6 +30,7 @@ The synthetic-summary path is the primary test target; the test suite
 runs in <1s on a slim environment and never requires the real closure
 BFS.  This is the Wf-68 P5.1 CPU-only ship target.
 """
+
 from __future__ import annotations
 
 import json
@@ -55,9 +56,11 @@ from molmetal.scripts import verify_catherine_25_metals as v68
 # keeps the test file independent of the verifier implementation.
 # ---------------------------------------------------------------------------
 
+
 def _load_catherine_properties():
     """Load catherine_properties.py directly without triggering math_skills.__init__."""
     import importlib.util
+
     cp_path = (
         Path(__file__).resolve().parent.parent
         / "math_skills"
@@ -190,6 +193,7 @@ def test_property_pass_synthetic(property_id):
 @pytest.mark.parametrize("property_id", PER_PROPERTY_VERIFIERS)
 def test_property_fail_propagates(property_id, monkeypatch):
     """When a per-property verifier returns FAIL, the verdict reflects it."""
+
     def _fail(_, __):
         return _cp.CatherinePropertyResult(
             property_id=property_id,
@@ -274,30 +278,49 @@ def test_combined_metadata_shape(tmp_path):
 def test_synthesis_md_renders(tmp_path):
     """``_render_synthesis`` produces a non-empty Markdown with the headline verdict."""
     per_metal_rows = [
-        {"metal": "Pt", "six_of_six_pass": True, "n_pass": 6, "n_fail": 0,
-         "synthetic_only": True},
-        {"metal": "Ru", "six_of_six_pass": True, "n_pass": 6, "n_fail": 0,
-         "synthetic_only": True},
+        {
+            "metal": "Pt",
+            "six_of_six_pass": True,
+            "n_pass": 6,
+            "n_fail": 0,
+            "synthetic_only": True,
+        },
+        {
+            "metal": "Ru",
+            "six_of_six_pass": True,
+            "n_pass": 6,
+            "n_fail": 0,
+            "synthetic_only": True,
+        },
     ]
     # Write per-metal catherine_props.json so the synthesis loader can
     # compute per-property pass-rate.
     for r in per_metal_rows:
         d = tmp_path / r["metal"]
         d.mkdir()
-        (d / "catherine_props.json").write_text(json.dumps({
-            "metal": r["metal"],
-            "six_of_six_pass": True,
-            "n_pass": 6,
-            "n_fail": 0,
-            "passed_properties": list(v68.CATHERINE_PROPERTIES),
-            "failed_properties": [],
-            "per_property": {
-                pid: {"passed": True, "n_samples": 1, "n_violations": 0,
-                      "wall_time_s": 0.0, "notes": ""}
-                for pid in v68.CATHERINE_PROPERTIES
-            },
-            "wall_time_s": 0.0,
-        }))
+        (d / "catherine_props.json").write_text(
+            json.dumps(
+                {
+                    "metal": r["metal"],
+                    "six_of_six_pass": True,
+                    "n_pass": 6,
+                    "n_fail": 0,
+                    "passed_properties": list(v68.CATHERINE_PROPERTIES),
+                    "failed_properties": [],
+                    "per_property": {
+                        pid: {
+                            "passed": True,
+                            "n_samples": 1,
+                            "n_violations": 0,
+                            "wall_time_s": 0.0,
+                            "notes": "",
+                        }
+                        for pid in v68.CATHERINE_PROPERTIES
+                    },
+                    "wall_time_s": 0.0,
+                }
+            )
+        )
     md = v68._render_synthesis(
         metadata={
             "n_metals": 2,

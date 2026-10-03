@@ -271,9 +271,7 @@ def load_drugood(
             f"to read ${subset}.json from target_root."
         )
     if split not in VALID_SPLITS:
-        raise ValueError(
-            f"split={split!r} is not valid; choose one of {VALID_SPLITS}"
-        )
+        raise ValueError(f"split={split!r} is not valid; choose one of {VALID_SPLITS}")
 
     if prefer_library:
         try:

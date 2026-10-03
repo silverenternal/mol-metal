@@ -36,6 +36,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -66,8 +67,18 @@ from molmetal.scripts.train_hybrid import build_dataloader, compute_metrics
 from molmetal.utils.device import get_device
 
 
-METAL_TO_IDX = {"Ru": 0, "Ir": 1, "Rh": 2, "Os": 3, "Re": 4,
-                "Pt": 5, "Pd": 6, "Au": 7, "Ag": 8, "Cu": 9}
+METAL_TO_IDX = {
+    "Ru": 0,
+    "Ir": 1,
+    "Rh": 2,
+    "Os": 3,
+    "Re": 4,
+    "Pt": 5,
+    "Pd": 6,
+    "Au": 7,
+    "Ag": 8,
+    "Cu": 9,
+}
 
 CHECKPOINT_DIR = Path("molmetal/checkpoints")
 REPORT_DIR = Path("molmetal/reports")
@@ -129,7 +140,15 @@ def safe_train_epoch(
     last_info: dict = {}
 
     for batch in train_loader:
-        smiles_list, coords, metal_types, pic50_true, active_label, mask, mol_objects = batch
+        (
+            smiles_list,
+            coords,
+            metal_types,
+            pic50_true,
+            active_label,
+            mask,
+            mol_objects,
+        ) = batch
         mask = mask.to(device)
 
         try:
@@ -203,7 +222,15 @@ def evaluate(
     n_batches = 0
 
     for batch in loader:
-        smiles_list, coords, metal_types, pic50_true, active_label, mask, mol_objects = batch
+        (
+            smiles_list,
+            coords,
+            metal_types,
+            pic50_true,
+            active_label,
+            mask,
+            mol_objects,
+        ) = batch
         mask = mask.to(device)
         out = model.forward_two_stage(
             smiles_list, coords, metal_types, mol_objects=mol_objects
@@ -246,7 +273,7 @@ def evaluate(
     if valid.sum() > 0:
         diff = pic50_pred_all[valid] - pic50_true_all[valid]
         metrics["pic50_mae"] = float(np.mean(np.abs(diff)))
-        metrics["pic50_rmse"] = float(np.sqrt(np.mean(diff ** 2)))
+        metrics["pic50_rmse"] = float(np.sqrt(np.mean(diff**2)))
     else:
         metrics["pic50_mae"] = float("nan")
         metrics["pic50_rmse"] = float("nan")
@@ -258,7 +285,9 @@ def evaluate(
 # ---------------------------------------------------------------------------
 # Single-seed run
 # ---------------------------------------------------------------------------
-def run_one_seed(seed: int, dataset, train_idx, val_idx, test_idx, args, device, featurizer):
+def run_one_seed(
+    seed: int, dataset, train_idx, val_idx, test_idx, args, device, featurizer
+):
     print(f"\n=== seed={seed} ===")
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -295,11 +324,13 @@ def run_one_seed(seed: int, dataset, train_idx, val_idx, test_idx, args, device,
     # log_sigma values stay frozen at 0 — masking the M-B1 plateau
     # diagnostic.  We attach them to the head group (lr=lr_top) so they
     # are free to move quickly.
-    param_groups.append({
-        "params": list(loss_fn.parameters()),
-        "lr": float(cfg.llrd_lr_top),
-        "name": "kendall_log_sigma",
-    })
+    param_groups.append(
+        {
+            "params": list(loss_fn.parameters()),
+            "lr": float(cfg.llrd_lr_top),
+            "name": "kendall_log_sigma",
+        }
+    )
     optimizer = optim.Adam(param_groups, lr=cfg.llrd_lr_top)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 
@@ -321,7 +352,7 @@ def run_one_seed(seed: int, dataset, train_idx, val_idx, test_idx, args, device,
     best_val_auc = 0.0
     best_val_pr = 0.0
     train_losses, val_aucs, val_prs = [], [], []
-    sigma_trajectory = []   # list of {epoch, log_s_cls, log_s_reg, cls_chg, reg_chg}
+    sigma_trajectory = []  # list of {epoch, log_s_cls, log_s_reg, cls_chg, reg_chg}
     epoch_times = []
     total_skipped = 0
     sigma_reg_plateau_warned = False
@@ -330,8 +361,13 @@ def run_one_seed(seed: int, dataset, train_idx, val_idx, test_idx, args, device,
     for epoch in range(args.epochs):
         ep_t0 = time.time()
         train_loss, skipped, last_info = safe_train_epoch(
-            model, train_loader, loss_fn, optimizer, device,
-            epoch=epoch, T=args.epochs,
+            model,
+            train_loader,
+            loss_fn,
+            optimizer,
+            device,
+            epoch=epoch,
+            T=args.epochs,
         )
         total_skipped += skipped
         scheduler.step()
@@ -343,21 +379,37 @@ def run_one_seed(seed: int, dataset, train_idx, val_idx, test_idx, args, device,
         val_aucs.append(val_metrics["roc_auc"])
         val_prs.append(val_metrics["pr_auc"])
 
-        sigma_trajectory.append({
-            "epoch": epoch + 1,
-            "log_s_cls": float(loss_fn.log_s_cls.item()),
-            "log_s_reg": float(loss_fn.log_s_reg.item()),
-            "sigma_cls_log_change": float(last_info.get("sigma_cls_log_change", 0.0)),
-            "sigma_reg_log_change": float(last_info.get("sigma_reg_log_change", 0.0)),
-            "w_cls": float(last_info.get("w_cls", torch.tensor(1.0)).item() if hasattr(last_info.get("w_cls", 1.0), "item") else last_info.get("w_cls", 1.0)),
-            "w_reg": float(last_info.get("w_reg", torch.tensor(1.0)).item() if hasattr(last_info.get("w_reg", 1.0), "item") else last_info.get("w_reg", 1.0)),
-        })
+        sigma_trajectory.append(
+            {
+                "epoch": epoch + 1,
+                "log_s_cls": float(loss_fn.log_s_cls.item()),
+                "log_s_reg": float(loss_fn.log_s_reg.item()),
+                "sigma_cls_log_change": float(
+                    last_info.get("sigma_cls_log_change", 0.0)
+                ),
+                "sigma_reg_log_change": float(
+                    last_info.get("sigma_reg_log_change", 0.0)
+                ),
+                "w_cls": float(
+                    last_info.get("w_cls", torch.tensor(1.0)).item()
+                    if hasattr(last_info.get("w_cls", 1.0), "item")
+                    else last_info.get("w_cls", 1.0)
+                ),
+                "w_reg": float(
+                    last_info.get("w_reg", torch.tensor(1.0)).item()
+                    if hasattr(last_info.get("w_reg", 1.0), "item")
+                    else last_info.get("w_reg", 1.0)
+                ),
+            }
+        )
 
         # Plateau detection (after epoch 5): σ_reg change < 1e-4 while σ_cls change > 1e-3
         if epoch >= 5 and not sigma_reg_plateau_warned:
             recent_reg = [s["sigma_reg_log_change"] for s in sigma_trajectory[-3:]]
             recent_cls = [s["sigma_cls_log_change"] for s in sigma_trajectory[-3:]]
-            if all(abs(r) < 1e-4 for r in recent_reg) and any(abs(c) > 1e-3 for c in recent_cls):
+            if all(abs(r) < 1e-4 for r in recent_reg) and any(
+                abs(c) > 1e-3 for c in recent_cls
+            ):
                 warnings.warn(
                     f"[v4-mb1 seed={seed}] σ_reg plateau detected: σ_cls keeps moving "
                     f"({recent_cls}) while σ_reg is frozen ({recent_reg}). "
@@ -396,7 +448,9 @@ def run_one_seed(seed: int, dataset, train_idx, val_idx, test_idx, args, device,
 
     total_dt = time.time() - t_total
 
-    test_metrics = evaluate(model, test_loader, loss_fn, device, args.epochs, args.epochs)
+    test_metrics = evaluate(
+        model, test_loader, loss_fn, device, args.epochs, args.epochs
+    )
     print(
         f"  [seed={seed}] TEST  AUC={test_metrics['roc_auc']:.4f} | "
         f"PR={test_metrics['pr_auc']:.4f} | "
@@ -478,7 +532,9 @@ def write_mb1_report(results: list, output_path: Path, prev_std: float = 0.1346)
     )
 
     lines.append("## Per-seed results\n")
-    lines.append("| seed | params | best val AUC | best val PR | test AUC | test PR | test pIC50 MAE | wall-clock | avg epoch |")
+    lines.append(
+        "| seed | params | best val AUC | best val PR | test AUC | test PR | test pIC50 MAE | wall-clock | avg epoch |"
+    )
     lines.append("| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
     for r in results:
         lines.append(
@@ -494,15 +550,23 @@ def write_mb1_report(results: list, output_path: Path, prev_std: float = 0.1346)
     lines.append("| metric | mean | std (ddof=1) | previous V4 std |")
     lines.append("| --- | ---: | ---: | ---: |")
     lines.append(f"| test AUC | {auc_mean:.4f} | **{auc_std:.4f}** | {prev_std:.4f} |")
-    lines.append(f"| test pIC50 MAE | {mae_mean:.4f} | {mae_std:.4f} | 0.0000 (constant 0.7317) |")
-    lines.append(f"| test PR-AUC | {float(np.mean([r['test_pr'] for r in results])):.4f} | "
-                 f"{float(np.std([r['test_pr'] for r in results], ddof=1)) if len(results) > 1 else 0.0:.4f} | — |")
-    lines.append(f"| best val AUC | {float(np.mean([r['best_val_auc'] for r in results])):.4f} | "
-                 f"{float(np.std([r['best_val_auc'] for r in results], ddof=1)) if len(results) > 1 else 0.0:.4f} | — |")
+    lines.append(
+        f"| test pIC50 MAE | {mae_mean:.4f} | {mae_std:.4f} | 0.0000 (constant 0.7317) |"
+    )
+    lines.append(
+        f"| test PR-AUC | {float(np.mean([r['test_pr'] for r in results])):.4f} | "
+        f"{float(np.std([r['test_pr'] for r in results], ddof=1)) if len(results) > 1 else 0.0:.4f} | — |"
+    )
+    lines.append(
+        f"| best val AUC | {float(np.mean([r['best_val_auc'] for r in results])):.4f} | "
+        f"{float(np.std([r['best_val_auc'] for r in results], ddof=1)) if len(results) > 1 else 0.0:.4f} | — |"
+    )
 
     lines.append("\n## Sigma trajectory excerpt (5 epochs, seed 42)\n")
-    lines.append("Excerpt of `log_s_cls` / `log_s_reg` trajectory across 5 epochs "
-                 "(showing the multi-fidelity head receiving gradient signal):\n\n")
+    lines.append(
+        "Excerpt of `log_s_cls` / `log_s_reg` trajectory across 5 epochs "
+        "(showing the multi-fidelity head receiving gradient signal):\n\n"
+    )
     lines.append("| epoch | log_s_cls | log_s_reg | Δσ_cls | Δσ_reg | w_cls | w_reg |")
     lines.append("| ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
     if results and results[0]["sigma_trajectory"]:
@@ -614,13 +678,18 @@ def main():
     splitter = TemporalSplitter(cutoff_year=args.cutoff_year)
     split_result = splitter(dataset)
     train_idx, val_idx, test_idx = (
-        split_result.train_idx, split_result.val_idx, split_result.test_idx
+        split_result.train_idx,
+        split_result.val_idx,
+        split_result.test_idx,
     )
-    print(f"[v4-mb1] Temporal (cutoff={args.cutoff_year}): "
-          f"train={len(train_idx)}, val={len(val_idx)}, test={len(test_idx)}")
+    print(
+        f"[v4-mb1] Temporal (cutoff={args.cutoff_year}): "
+        f"train={len(train_idx)}, val={len(val_idx)}, test={len(test_idx)}"
+    )
 
     if args.max_atoms and args.max_atoms > 0:
         from rdkit import Chem, RDLogger
+
         RDLogger.DisableLog("rdApp.*")
 
         def _filter(idx, label):
@@ -666,9 +735,11 @@ def main():
     ci_lo, ci_hi = bootstrap_ci(test_aucs.tolist())
     print("\n=== V4-MB1 3-seed summary (Ru temporal test set) ===")
     for r in results:
-        print(f"  seed={r['seed']:3d}: test_AUC={r['test_auc']:.4f}  "
-              f"test_pIC50_MAE={r['test_pic50_mae']:.4f}  "
-              f"best_val={r['best_val_auc']:.4f}")
+        print(
+            f"  seed={r['seed']:3d}: test_AUC={r['test_auc']:.4f}  "
+            f"test_pIC50_MAE={r['test_pic50_mae']:.4f}  "
+            f"best_val={r['best_val_auc']:.4f}"
+        )
     print(f"\n  Mean AUC: {auc_mean:.4f} ± {auc_std:.4f}")
     print(f"  95% bootstrap CI: [{ci_lo:.4f}, {ci_hi:.4f}]")
 

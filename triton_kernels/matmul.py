@@ -120,13 +120,20 @@ _MATMUL_CONFIGS: Sequence[triton.Config] = _matmul_configs()
 @triton.jit
 def _matmul_kernel(
     # Pointers to matrices
-    a_ptr, b_ptr, c_ptr,
+    a_ptr,
+    b_ptr,
+    c_ptr,
     # Matrix dimensions
-    M, N, K,
+    M,
+    N,
+    K,
     # Per-dim strides (in elements, not bytes)
-    stride_am, stride_ak,
-    stride_bk, stride_bn,
-    stride_cm, stride_cn,
+    stride_am,
+    stride_ak,
+    stride_bk,
+    stride_bn,
+    stride_cm,
+    stride_cn,
     # Meta-parameters chosen by the autotuner
     BLOCK_SIZE_M: tl.constexpr,
     BLOCK_SIZE_N: tl.constexpr,
@@ -274,11 +281,18 @@ def matmul(
         triton.cdiv(M, meta["BLOCK_SIZE_M"]) * triton.cdiv(N, meta["BLOCK_SIZE_N"]),
     )
     _matmul_kernel[grid](
-        a2, b2, out,
-        M, N, K,
-        a2.stride(0), a2.stride(1),
-        b2.stride(0), b2.stride(1),
-        out.stride(0), out.stride(1),
+        a2,
+        b2,
+        out,
+        M,
+        N,
+        K,
+        a2.stride(0),
+        a2.stride(1),
+        b2.stride(0),
+        b2.stride(1),
+        out.stride(0),
+        out.stride(1),
     )
     return out
 

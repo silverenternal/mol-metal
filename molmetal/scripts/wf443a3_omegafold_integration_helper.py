@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 """Wf-A3 PHASE 2 integration closeout author + INDEX entry + commit helper."""
+
 from pathlib import Path
 from molmetal.scripts.wf386a3_atomic_write import atomic_write_file
 
@@ -176,7 +177,9 @@ def main():
         "appended at EOF between Wf-431-A2 and END per filesystem ordering.** |\n"
     )
     if "| 2026-10-02 | **Wf-A3" not in index:
-        new_index = index[: index.index(marker)] + insertion + index[index.index(marker):]
+        new_index = (
+            index[: index.index(marker)] + insertion + index[index.index(marker) :]
+        )
         atomic_write_file(INDEX_PATH, new_index)
         print(f"INDEX: {INDEX_PATH} {INDEX_PATH.stat().st_size} bytes")
     else:

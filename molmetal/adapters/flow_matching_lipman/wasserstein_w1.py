@@ -92,7 +92,9 @@ def wasserstein_w1_1d_torchsort(x: torch.Tensor, y: torch.Tensor) -> torch.Tenso
 
 
 def wasserstein_w1_loss(
-    pred: torch.Tensor, ref: torch.Tensor, weight: float = 1.0,
+    pred: torch.Tensor,
+    ref: torch.Tensor,
+    weight: float = 1.0,
 ) -> torch.Tensor:
     """Trainer-facing W₁ pIC50 penalty (drop-in for ``wasserstein_pic50_gradient``).
 
@@ -116,7 +118,8 @@ def wasserstein_w1_loss(
 # Multi-task 5-metal helper (parity with wasserstein_transfer_loss)
 # ---------------------------------------------------------------------------
 def wasserstein_w1_multi_task(
-    per_metal: Dict[str, torch.Tensor], weight: float = 1.0,
+    per_metal: Dict[str, torch.Tensor],
+    weight: float = 1.0,
 ) -> torch.Tensor:
     """Mean W₁ across all valid (non-empty) per-metal pairs.
 
@@ -125,13 +128,17 @@ def wasserstein_w1_multi_task(
     non-empty metal batch with the next, averages the W₁ distances.
     Accepts any dict size >= 2 (the standard 5-metal cohort).
     """
-    keys = [k for k, v in per_metal.items() if isinstance(v, torch.Tensor) and v.numel() > 0]
+    keys = [
+        k for k, v in per_metal.items() if isinstance(v, torch.Tensor) and v.numel() > 0
+    ]
     if len(keys) < 2:
         raise ValueError(f"need at least 2 non-empty metals, got {len(keys)}")
     contribs = []
     for i in range(len(keys)):
         for j in range(i + 1, len(keys)):
-            contribs.append(wasserstein_w1_1d_torchsort(per_metal[keys[i]], per_metal[keys[j]]))
+            contribs.append(
+                wasserstein_w1_1d_torchsort(per_metal[keys[i]], per_metal[keys[j]])
+            )
     return float(weight) * torch.stack(contribs).mean()
 
 
@@ -144,8 +151,11 @@ def _env_flag(name: str, default: str = "0") -> bool:
 
 
 def wasserstein_w1_dispatch(
-    pred: torch.Tensor, ref: torch.Tensor, weight: float = 1.0,
-    *, force_off: Optional[bool] = None,
+    pred: torch.Tensor,
+    ref: torch.Tensor,
+    weight: float = 1.0,
+    *,
+    force_off: Optional[bool] = None,
 ) -> torch.Tensor:
     """Gated W₁ dispatch wrapper (env-var + explicit ``force_off``).
 

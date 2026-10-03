@@ -58,6 +58,7 @@ class _IdentityRule(ReactionRule):
         try:
             from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
             from molmetal_lam.bonds.application import FreeSiteLedger
+
             new_atoms = list(state.atoms) + list(tile.atoms)
             return [
                 MoleculeClosedTerm(
@@ -77,8 +78,7 @@ class _IdentityRule(ReactionRule):
 def _tiles() -> List[MoleculeClosedTerm]:
     """Tiny tile library: 4 distinct small molecules."""
     return [
-        MoleculeClosedTerm.from_smiles(smi)
-        for smi in ("CCO", "CCN", "CCCl", "CCS")
+        MoleculeClosedTerm.from_smiles(smi) for smi in ("CCO", "CCN", "CCCl", "CCS")
     ]
 
 
@@ -120,11 +120,15 @@ class TestSymbolicPrior:
             for _ in range(2 + k):
                 from molmetal_lam.atoms.combinators import PRIMITIVE_ATOMS
                 from molmetal_lam.bonds.application import distinct
+
                 atoms.append(distinct(PRIMITIVE_ATOMS["C"]))
             from molmetal_lam.bonds.application import FreeSiteLedger
             from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
             s = MoleculeClosedTerm(
-                atoms=atoms, bonds=[], ledger=FreeSiteLedger(),
+                atoms=atoms,
+                bonds=[],
+                ledger=FreeSiteLedger(),
             )
             X_states.append(s)
             y.append(float(len(atoms)))
@@ -172,6 +176,7 @@ class TestRewardAggregator:
     def test_from_scorer_matches_scalar(self) -> None:
         def scorer(state):
             return 0.7
+
         agg = RewardAggregator.from_scorer(scorer, weight=2.0)
         s = MoleculeClosedTerm.from_smiles("CCO")
         # Single channel with weight 2.0 ⇒ raw 0.7 * 2.0 = 1.4
@@ -183,7 +188,9 @@ class TestRewardAggregator:
         # -9.0, with invert ⇒ +9.0.
         agg_in = RewardAggregator(r_vina=lambda s: -9.0, w_vina=1.0)
         agg_out = RewardAggregator(
-            r_vina=lambda s: -9.0, w_vina=1.0, vina_invert=False,
+            r_vina=lambda s: -9.0,
+            w_vina=1.0,
+            vina_invert=False,
         )
         s = MoleculeClosedTerm.from_smiles("CCO")
         assert agg_in(s, satisfies_typed=False, binds_target=False) > 0
@@ -212,6 +219,7 @@ class TestRewardAggregator:
         # A channel that raises must not crash the aggregator.
         def bad(state):
             raise RuntimeError("backend down")
+
         agg = RewardAggregator(r_vina=bad, w_vina=1.0)
         s = MoleculeClosedTerm.from_smiles("CCO")
         v = agg(s, satisfies_typed=False, binds_target=False)
@@ -219,12 +227,19 @@ class TestRewardAggregator:
 
     def test_weighted_sum(self) -> None:
         agg = RewardAggregator(
-            r_vina=lambda s: 5.0, w_vina=2.0, vina_invert=False,
-            r_sa=lambda s: 4.0, w_sa=0.5,
-            r_posebusters=lambda s: 0.8, w_posebusters=1.0,
-            r_pic50=lambda s: 7.5, w_pic50=0.4,
-            r_retro=lambda s: 0.9, w_retro=1.0,
-            bonus_typed=0.0, bonus_binder=0.0,
+            r_vina=lambda s: 5.0,
+            w_vina=2.0,
+            vina_invert=False,
+            r_sa=lambda s: 4.0,
+            w_sa=0.5,
+            r_posebusters=lambda s: 0.8,
+            w_posebusters=1.0,
+            r_pic50=lambda s: 7.5,
+            w_pic50=0.4,
+            r_retro=lambda s: 0.9,
+            w_retro=1.0,
+            bonus_typed=0.0,
+            bonus_binder=0.0,
         )
         s = MoleculeClosedTerm.from_smiles("CCO")
         # vina_invert=False so we keep 5.0
@@ -233,11 +248,7 @@ class TestRewardAggregator:
         # pic50=7.5
         # retro=0.9
         expected = (
-            2.0 * 5.0
-            + 0.5 * (1.0 - 3.0 / 9.0)
-            + 1.0 * 0.8
-            + 0.4 * 7.5
-            + 1.0 * 0.9
+            2.0 * 5.0 + 0.5 * (1.0 - 3.0 / 9.0) + 1.0 * 0.8 + 0.4 * 7.5 + 1.0 * 0.9
         )
         v = agg(s, satisfies_typed=False, binds_target=False)
         assert abs(v - expected) < 1e-6
@@ -253,8 +264,14 @@ class TestDirichletDeterminism:
     the same argmax child as the unperturbed baseline.
     """
 
-    def _run(self, *, dirichlet_alpha: float, dirichlet_frac: float, seed: int,
-             state_scorer: bool = False):
+    def _run(
+        self,
+        *,
+        dirichlet_alpha: float,
+        dirichlet_frac: float,
+        seed: int,
+        state_scorer: bool = False,
+    ):
         rng = random.Random(seed)
         if state_scorer:
             # A scorer that depends on the state, so the rollout value
@@ -320,6 +337,7 @@ class TestDirichletDeterminism:
         Dirichlet draw is genuinely different.  Inspecting the priors
         is a sharper probe.
         """
+
         # Build a single-simulation MCTS so we can read the root
         # children's priors directly (the tree is tiny).
         def build(seed: int):
@@ -347,22 +365,23 @@ class TestDirichletDeterminism:
         # We don't expose root via search(); rebuild the same root
         # object to inspect P directly by re-running _apply_dirichlet.
         from molmetal_lam.search_alg.proof_search import _MCTSNode
+
         # Simpler: just re-run the Dirichlet step on a fresh root.
         def root_priors(mcts) -> list:
             r = _MCTSNode(state=MoleculeClosedTerm.from_smiles("CCO"))
             children = mcts._expand(r.state)
             mcts._apply_dirichlet_to_root(r, children)
             return [c.P for c in r.children]
+
         pa = root_priors(a)
         pb = root_priors(b)
         # The priors must (i) include values different from the
         # constant 0.5 baseline and (ii) differ between seeds.
-        assert any(abs(p - 0.5) > 1e-3 for p in pa), (
-            f"Dirichlet did not perturb root priors: {pa}"
-        )
+        assert any(
+            abs(p - 0.5) > 1e-3 for p in pa
+        ), f"Dirichlet did not perturb root priors: {pa}"
         assert pa != pb, (
-            "Dirichlet draws identical for two different seeds — "
-            "RNG-draw bug."
+            "Dirichlet draws identical for two different seeds — " "RNG-draw bug."
         )
 
 
@@ -385,8 +404,13 @@ class TestEndToEndWiring:
             r_posebusters=lambda s: 0.9,
             r_pic50=lambda s: 7.5,
             r_retro=lambda s: 0.85,
-            w_vina=0.5, w_sa=0.2, w_posebusters=0.1, w_pic50=0.1, w_retro=0.1,
-            bonus_typed=0.5, bonus_binder=0.5,
+            w_vina=0.5,
+            w_sa=0.2,
+            w_posebusters=0.1,
+            w_pic50=0.1,
+            w_retro=0.1,
+            bonus_typed=0.5,
+            bonus_binder=0.5,
         )
         mcts = MCTSProofSearch(
             tile_library=_tiles(),

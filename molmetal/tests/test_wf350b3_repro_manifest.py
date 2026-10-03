@@ -96,8 +96,7 @@ def _run_preflight_json(tmp_path: Path) -> dict:
     # Surface subprocess output on non-zero exit for debuggability.
     if proc.returncode not in (0, 1, 2):
         pytest.skip(
-            f"pre_flight_check.py exited {proc.returncode}: "
-            f"{proc.stderr[:200]}"
+            f"pre_flight_check.py exited {proc.returncode}: " f"{proc.stderr[:200]}"
         )
     if not out_json.is_file():
         pytest.skip(
@@ -166,9 +165,9 @@ def test_reproducibility_manifest_per_section_present(tmp_path: Path) -> None:
             "wf350a2_compute_manifest.json not on disk (env without "
             "Wf-350-A2 artefact)."
         )
-    assert isinstance(compute, dict), (
-        f"Wf-350-B3: 'compute' must be a dict, got {type(compute).__name__}"
-    )
+    assert isinstance(
+        compute, dict
+    ), f"Wf-350-B3: 'compute' must be a dict, got {type(compute).__name__}"
     compute_required_keys = {
         "gpus",
         "driver_version",
@@ -177,9 +176,9 @@ def test_reproducibility_manifest_per_section_present(tmp_path: Path) -> None:
         "system",
     }
     missing_compute = compute_required_keys - set(compute.keys())
-    assert not missing_compute, (
-        f"Wf-350-B3: compute manifest missing keys: {missing_compute}"
-    )
+    assert (
+        not missing_compute
+    ), f"Wf-350-B3: compute manifest missing keys: {missing_compute}"
 
     # ---- (b) hp provenance (Wf-350-A3, JSONL → list of dicts) ----
     hp = rm.get("hp_provenance")
@@ -190,8 +189,7 @@ def test_reproducibility_manifest_per_section_present(tmp_path: Path) -> None:
             "Wf-350-A3 artefact)."
         )
     assert isinstance(hp, list), (
-        f"Wf-350-B3: 'hp_provenance' must be a list, got "
-        f"{type(hp).__name__}"
+        f"Wf-350-B3: 'hp_provenance' must be a list, got " f"{type(hp).__name__}"
     )
     assert len(hp) >= 1, (
         "Wf-350-B3: 'hp_provenance' list is empty (expected ≥1 "
@@ -209,9 +207,9 @@ def test_reproducibility_manifest_per_section_present(tmp_path: Path) -> None:
             f"{type(rec).__name__}"
         )
         missing_hp = hp_required_keys - set(rec.keys())
-        assert not missing_hp, (
-            f"Wf-350-B3: hp_provenance[{i}] missing keys: {missing_hp}"
-        )
+        assert (
+            not missing_hp
+        ), f"Wf-350-B3: hp_provenance[{i}] missing keys: {missing_hp}"
 
     # ---- (c) runtime + GPU energy (Wf-350-A1) ----
     energy = rm.get("runtime_energy")
@@ -222,8 +220,7 @@ def test_reproducibility_manifest_per_section_present(tmp_path: Path) -> None:
             "Wf-350-A1 artefact)."
         )
     assert isinstance(energy, dict), (
-        f"Wf-350-B3: 'runtime_energy' must be a dict, got "
-        f"{type(energy).__name__}"
+        f"Wf-350-B3: 'runtime_energy' must be a dict, got " f"{type(energy).__name__}"
     )
     energy_required_keys = {
         "per_gpu",
@@ -232,15 +229,14 @@ def test_reproducibility_manifest_per_section_present(tmp_path: Path) -> None:
         "n_gpus_reported",
     }
     missing_energy = energy_required_keys - set(energy.keys())
-    assert not missing_energy, (
-        f"Wf-350-B3: runtime_energy missing keys: {missing_energy}"
-    )
+    assert (
+        not missing_energy
+    ), f"Wf-350-B3: runtime_energy missing keys: {missing_energy}"
 
     # ---- (d) prereg_path (Wf-343a-R1 forward-looking) ----
     prereg = rm.get("prereg_path")
     # prereg_path is forward-looking — allowed to be None on a host
     # without a prereg.md (current canonical state per Wf-343a-R1).
     assert prereg is None or isinstance(prereg, str), (
-        f"Wf-350-B3: 'prereg_path' must be None or str, got "
-        f"{type(prereg).__name__}"
+        f"Wf-350-B3: 'prereg_path' must be None or str, got " f"{type(prereg).__name__}"
     )

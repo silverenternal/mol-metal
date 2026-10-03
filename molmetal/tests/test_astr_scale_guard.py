@@ -170,7 +170,10 @@ def test_lambda_astsr_rejects_exploding_ast_via_score() -> None:
         X = rng.uniform(0.0, 1.0, (N, F))
         y = 2.0 * X[:, 0] + 0.5
         astsr = LambdaASTSR(
-            depth=3, population=16, generations=5, seed=0,
+            depth=3,
+            population=16,
+            generations=5,
+            seed=0,
             feature_names=("a", "b", "c"),
         )
         astsr.fit(X, y)
@@ -194,7 +197,10 @@ def test_lambda_astsr_keeps_good_ast_on_simple_target() -> None:
     y = 2.0 * X[:, 0] + 1.5 * X[:, 1] - 1.0 * X[:, 2] + 0.1
     y += rng.normal(0.0, 0.02, N)
     astsr = LambdaASTSR(
-        depth=4, population=64, generations=50, seed=42,
+        depth=4,
+        population=64,
+        generations=50,
+        seed=42,
         feature_names=("f0", "f1", "f2", "f3"),
     )
     astsr.fit(X, y)
@@ -230,7 +236,10 @@ def test_lambda_astsr_score_clipped_to_neg_inf_for_exploding_ast() -> None:
     try:
         la_module.collapse_detected = lambda y_pred, y_true: True
         astsr = LambdaASTSR(
-            depth=2, population=2, generations=0, seed=0,
+            depth=2,
+            population=2,
+            generations=0,
+            seed=0,
             feature_names=("a", "b"),
         )
         score = astsr._score(ast, X, y)
@@ -245,7 +254,10 @@ def test_lambda_astsr_score_clipped_to_neg_inf_for_exploding_ast() -> None:
 def test_best_ast_lisp_pre_fit() -> None:
     """``best_ast_lisp()`` returns ``"<no_lisp>"`` before ``fit()``."""
     astsr = LambdaASTSR(
-        depth=2, population=4, generations=0, seed=0,
+        depth=2,
+        population=4,
+        generations=0,
+        seed=0,
         feature_names=("a", "b"),
     )
     assert astsr.best_ast_lisp() == "<no_lisp>"
@@ -257,7 +269,10 @@ def test_best_ast_lisp_after_fit_known_ast() -> None:
     X = rng.uniform(0.0, 1.0, (40, 3))
     y = X[:, 0] + 0.5 * X[:, 1]
     astsr = LambdaASTSR(
-        depth=3, population=16, generations=5, seed=0,
+        depth=3,
+        population=16,
+        generations=5,
+        seed=0,
         feature_names=("a", "b", "c"),
     )
     astsr.fit(X, y)
@@ -325,13 +340,17 @@ def test_clip_astr_signature_phase1_stable_default() -> None:
     # (y values > 10 or < -10).
     y_typical = np.array([3.0, 5.0, 7.0, 9.0])
     out_t, n_t = clip_astr_signature(
-        y_typical, DEFAULT_ASTSR_SCALE_CLIP[0], DEFAULT_ASTSR_SCALE_CLIP[1],
+        y_typical,
+        DEFAULT_ASTSR_SCALE_CLIP[0],
+        DEFAULT_ASTSR_SCALE_CLIP[1],
     )
     assert n_t == 0
     np.testing.assert_array_equal(out_t, y_typical)
     y_exploding = np.array([3.0, 50.0, -50.0, 9.0])
     out_e, n_e = clip_astr_signature(
-        y_exploding, DEFAULT_ASTSR_SCALE_CLIP[0], DEFAULT_ASTSR_SCALE_CLIP[1],
+        y_exploding,
+        DEFAULT_ASTSR_SCALE_CLIP[0],
+        DEFAULT_ASTSR_SCALE_CLIP[1],
     )
     assert n_e == 2
     np.testing.assert_array_equal(out_e, np.array([3.0, 10.0, -10.0, 9.0]))
@@ -357,7 +376,10 @@ def test_clip_astr_signature_rejects_inverted_bounds() -> None:
 def test_lambda_astsr_default_clip_is_noop() -> None:
     """LambdaASTSR defaults ``scale_clip_min=-inf``, ``scale_clip_max=+inf``."""
     astsr = LambdaASTSR(
-        depth=2, population=4, generations=0, seed=0,
+        depth=2,
+        population=4,
+        generations=0,
+        seed=0,
         feature_names=("a", "b"),
     )
     assert astsr.scale_clip_min == float("-inf")
@@ -390,7 +412,10 @@ def test_lambda_astsr_clips_predictions_to_phase1_range() -> None:
         # may or may not trip it; we verify the counter exists and is
         # correctly typed after a fit run.
         astsr = LambdaASTSR(
-            depth=3, population=16, generations=5, seed=0,
+            depth=3,
+            population=16,
+            generations=5,
+            seed=0,
             feature_names=("a", "b", "c"),
             scale_clip_min=-10.0,
             scale_clip_max=10.0,
@@ -423,11 +448,10 @@ def test_lambda_astsr_tracks_n_clipped_predictions() -> None:
         from molmetal.molmetal_lam.reward.lambda_astsr import LambdaAST
 
         # Build a single canned AST that always returns 100.0.
-        canned_ops = (
-            {"kind": "const", "value": 100.0},
-        )
+        canned_ops = ({"kind": "const", "value": 100.0},)
         # We don't need a fully-formed LamNode for this test; use a stub.
         from molmetal.molmetal_lam.lam_chem.ast import var
+
         canned_ast = LambdaAST(
             lam_node=var("const_100.0"),
             ops=canned_ops,
@@ -442,7 +466,10 @@ def test_lambda_astsr_tracks_n_clipped_predictions() -> None:
 
         # Patch _initial_population to return only the canned AST.
         astsr = LambdaASTSR(
-            depth=1, population=4, generations=0, seed=0,
+            depth=1,
+            population=4,
+            generations=0,
+            seed=0,
             feature_names=("a", "b"),
             scale_clip_min=-10.0,
             scale_clip_max=10.0,
@@ -450,10 +477,13 @@ def test_lambda_astsr_tracks_n_clipped_predictions() -> None:
 
         class _StubAst:
             """Stub that behaves like LambdaAST for evaluate_matrix."""
+
             def __init__(self):
                 self._ops = canned_ops
+
             def evaluate_matrix(self, X, feature_names):
                 return np.full(X.shape[0], 100.0, dtype=float)
+
             def complexity(self):
                 return 1
 
@@ -477,7 +507,10 @@ def test_lambda_astsr_predict_clips_output() -> None:
     X = rng.uniform(0.0, 1.0, (N, F))
     y = 2.0 * X[:, 0] + 0.5
     astsr = LambdaASTSR(
-        depth=3, population=16, generations=5, seed=0,
+        depth=3,
+        population=16,
+        generations=5,
+        seed=0,
         feature_names=("a", "b", "c"),
         scale_clip_min=-1.0,
         scale_clip_max=1.0,

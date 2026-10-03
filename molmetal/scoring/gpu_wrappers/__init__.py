@@ -58,6 +58,7 @@ Verification
   wrapper + per-dimension (batch + memory ceiling). Run with
   ``pytest molmetal/tests/test_gpu_wrappers.py -v``.
 """
+
 from __future__ import annotations
 
 from molmetal.scoring.gpu_wrappers.boltz_batch import (

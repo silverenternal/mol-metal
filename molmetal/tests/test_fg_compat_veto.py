@@ -107,13 +107,9 @@ def test_fg_compat_matrix_incompatible():
     # Symmetric — same verdict in reverse.
     assert matrix.is_compatible("aldehyde", "aldehyde") is False
     # A second canonical veto — two carboxylic acids.
-    assert matrix.is_compatible(
-        "carboxylic_acid", "carboxylic_acid"
-    ) is False
+    assert matrix.is_compatible("carboxylic_acid", "carboxylic_acid") is False
     # Two amines — hydrazine-like, out of menu.
-    assert matrix.is_compatible(
-        "primary_amine", "primary_amine"
-    ) is False
+    assert matrix.is_compatible("primary_amine", "primary_amine") is False
 
 
 def test_fg_compat_matrix_get_incompatible():
@@ -165,9 +161,9 @@ def test_fg_compat_matrix_symmetric():
         for b in FUNCTIONAL_GROUPS:
             ab = matrix.is_compatible(a, b)
             ba = matrix.is_compatible(b, a)
-            assert ab == ba, (
-                f"FG matrix not symmetric on ({a}, {b}): ab={ab} vs ba={ba}"
-            )
+            assert (
+                ab == ba
+            ), f"FG matrix not symmetric on ({a}, {b}): ab={ab} vs ba={ba}"
 
 
 def test_fg_compat_matrix_unknown_labels_pass():
@@ -383,9 +379,7 @@ def test_veto_augmented_reducer_veto_rate():
     wrapper.reduce("CC=O", fg_pair=("aldehyde", "aldehyde"))
     assert wrapper.veto_rate() == 1.0
     # One pass.
-    wrapper.reduce(
-        "NCC(=O)O", fg_pair=("carboxylic_acid", "primary_amine")
-    )
+    wrapper.reduce("NCC(=O)O", fg_pair=("carboxylic_acid", "primary_amine"))
     # 1 veto / 2 total = 0.5
     assert wrapper.veto_rate() == 0.5
 

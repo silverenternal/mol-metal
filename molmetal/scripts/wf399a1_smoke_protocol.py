@@ -250,9 +250,7 @@ def verify_decode_ratio(smoke: SmokeOutput) -> Dict[str, Any]:
     #   "Best decode_ratio = 0.788 (96/122) ..."  (with spaces around '=')
     # The regex accepts both forms.
     if decode_ratio is None:
-        m = re.search(
-            r"decode_ratio\s*=\s*([0-9]+(?:\.[0-9]+)?)", smoke.stdout
-        )
+        m = re.search(r"decode_ratio\s*=\s*([0-9]+(?:\.[0-9]+)?)", smoke.stdout)
         if m:
             try:
                 decode_ratio = float(m.group(1))

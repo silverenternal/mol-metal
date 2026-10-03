@@ -92,8 +92,7 @@ class _IdentityRule(ReactionRule):
 
 def _tiles() -> List[MoleculeClosedTerm]:
     return [
-        MoleculeClosedTerm.from_smiles(smi)
-        for smi in ("CCO", "CCN", "CCCl", "CCS")
+        MoleculeClosedTerm.from_smiles(smi) for smi in ("CCO", "CCN", "CCCl", "CCS")
     ]
 
 
@@ -130,7 +129,11 @@ class _StubAdapter:
 
         out = []
         for i, s in enumerate(smiles_list):
-            ok = self.synthesizable_flags[i] if i < len(self.synthesizable_flags) else False
+            ok = (
+                self.synthesizable_flags[i]
+                if i < len(self.synthesizable_flags)
+                else False
+            )
             d = self.depths[i] if i < len(self.depths) else 0
             out.append(RetrosynthesisReport(smiles=s, synthesizable=ok, depth=d))
         return out
@@ -161,6 +164,7 @@ def test_02_n_states_explored_grows() -> None:
 
 def test_03_n_satisfying_with_satisfying_predicates() -> None:
     """With predicates attached the search should record satisfying leaves."""
+
     # Constant predicate: any non-empty closed term satisfies.
     def _pred(s: MoleculeClosedTerm) -> bool:
         try:
@@ -234,6 +238,7 @@ def test_06_dirichlet_applied_once() -> None:
 
 def test_07_closed_loop_iteration_latency_recorded() -> None:
     """Each result dict carries ``closed_loop_iteration_latency_s >= 0``."""
+
     # Use a MockMCTS so the loop is fast and deterministic.
     @dataclass
     class MockMCTS:
@@ -261,6 +266,7 @@ def test_07_closed_loop_iteration_latency_recorded() -> None:
 
 def test_08_equation_change_rate_decreases() -> None:
     """Equation string converges (last 2 iters stable)."""
+
     @dataclass
     class MockMCTS:
         def search(self, initial_state=None, max_depth=3):
@@ -355,6 +361,7 @@ def test_13_retrosynth_feasibility_in_unit_interval() -> None:
 
 def test_14_end_to_end_yield_proxy_with_predictor() -> None:
     """Yield proxy averages predict_yield across rules × pairs."""
+
     class _YieldRule:
         def __init__(self, y: float) -> None:
             self.y = y

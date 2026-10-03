@@ -128,15 +128,34 @@ class MorganFingerprinter:
 # ---------------------------------------------------------------------------
 # Atom-feature one-hot tables -------------------------------------------------
 _ATOM_SYMBOLS = [
-    "C", "N", "O", "F", "P", "S", "Cl", "Br", "I", "B", "Si", "Se",
-    "H", "Other",
+    "C",
+    "N",
+    "O",
+    "F",
+    "P",
+    "S",
+    "Cl",
+    "Br",
+    "I",
+    "B",
+    "Si",
+    "Se",
+    "H",
+    "Other",
 ]
 _SYMBOL_TO_IDX = {s: i for i, s in enumerate(_ATOM_SYMBOLS)}
 
 _HYBRIDIZATIONS = [
-    "SP", "SP2", "SP3", "SP3D", "SP3D2", "UNSPECIFIED", "OTHER",
+    "SP",
+    "SP2",
+    "SP3",
+    "SP3D",
+    "SP3D2",
+    "UNSPECIFIED",
+    "OTHER",
 ]
 _HYB_TO_IDX = {h: i for i, h in enumerate(_HYBRIDIZATIONS)}
+
 
 # Mapping RDKit HybridizationType → string table above
 def _hybrid_to_str(h) -> str:
@@ -146,6 +165,7 @@ def _hybrid_to_str(h) -> str:
     if name == "UNSPECIFIED":
         return "UNSPECIFIED"
     return "OTHER"
+
 
 # Bond-type one-hot table -----------------------------------------------------
 _BOND_TYPES = ["SINGLE", "DOUBLE", "TRIPLE", "AROMATIC"]
@@ -193,18 +213,18 @@ class GraphFeaturizer:
         # Compute static feature dims
         self._atom_dim = (
             len(_ATOM_SYMBOLS)
-            + 6                   # degree
+            + 6  # degree
             + len(_HYBRIDIZATIONS)
-            + 5                   # charge bucket
-            + 1                   # in_ring
-            + 1                   # aromatic
-            + 5                   # num_hs bucket 0..4+
+            + 5  # charge bucket
+            + 1  # in_ring
+            + 1  # aromatic
+            + 5  # num_hs bucket 0..4+
             + (1 if self.cfg.include_stereo else 0)
         )
         self._edge_dim = (
             len(_BOND_TYPES)
-            + 1                   # conjugated
-            + 1                   # in_ring
+            + 1  # conjugated
+            + 1  # in_ring
         )
 
     @property
@@ -294,7 +314,11 @@ class GraphFeaturizer:
         src, dst, attrs = [], [], []
         for bond in mol.GetBonds():
             i, j = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
-            bt = bond.GetBondType().name if hasattr(bond.GetBondType(), "name") else str(bond.GetBondType())
+            bt = (
+                bond.GetBondType().name
+                if hasattr(bond.GetBondType(), "name")
+                else str(bond.GetBondType())
+            )
             bt_idx = _BOND_TYPES.index(bt) if bt in _BOND_TYPES else 0
             conjugated = 1.0 if bond.GetIsConjugated() else 0.0
             in_ring = 1.0 if bond.IsInRing() else 0.0
@@ -302,7 +326,7 @@ class GraphFeaturizer:
             base[bt_idx] = 1.0
             base[len(_BOND_TYPES)] = conjugated
             base[len(_BOND_TYPES) + 1] = in_ring
-            for (u, v) in ((i, j), (j, i)):
+            for u, v in ((i, j), (j, i)):
                 src.append(u)
                 dst.append(v)
                 attrs.append(base)

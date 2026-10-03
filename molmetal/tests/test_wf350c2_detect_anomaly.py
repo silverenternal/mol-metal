@@ -20,6 +20,7 @@ Per party-twenty-spirit §3.5 (MEASURED vs PROJECTED):
 
 No GPU launches performed (CPU-only; mocked main() for the test).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -35,6 +36,7 @@ import torch
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _reload_module(mod_name: str):
     """Reload a module so argparse defaults are fresh between tests."""
     if mod_name in sys.modules:
@@ -46,16 +48,15 @@ def _reload_module(mod_name: str):
 # Test 1 — flag parsed (default False, explicit True)
 # ---------------------------------------------------------------------------
 
+
 def test_dmpnn_trainer_detect_anomaly_flag_parsed() -> None:
     """D-MPNN trainer must accept --detect-anomaly (default False)."""
-    mod = _reload_module(
-        "molmetal.scripts.train_dmpnn_multitask_wasserstein"
-    )
+    mod = _reload_module("molmetal.scripts.train_dmpnn_multitask_wasserstein")
     # Default — flag absent
     args = mod.parse_args([])
-    assert hasattr(args, "detect_anomaly"), (
-        "Wf-350-C2: DMPNN trainer must expose --detect-anomaly"
-    )
+    assert hasattr(
+        args, "detect_anomaly"
+    ), "Wf-350-C2: DMPNN trainer must expose --detect-anomaly"
     assert args.detect_anomaly is False, (
         f"Wf-350-C2: default must be OFF for production speed, got "
         f"{args.detect_anomaly!r}"
@@ -70,32 +71,29 @@ def test_dmpnn_trainer_detect_anomaly_flag_parsed() -> None:
 
 def test_cfm_trainer_detect_anomaly_flag_parsed() -> None:
     """CFM trainer must accept --detect-anomaly (default False)."""
-    mod = _reload_module(
-        "molmetal.scripts.train_cfm_yuelbond_wasserstein"
-    )
+    mod = _reload_module("molmetal.scripts.train_cfm_yuelbond_wasserstein")
     # Default — flag absent (CFM parse_args takes no argv; uses sys.argv)
     with mock.patch.object(sys, "argv", ["train_cfm_yuelbond_wasserstein.py"]):
         args = mod.parse_args()
-    assert hasattr(args, "detect_anomaly"), (
-        "Wf-350-C2: CFM trainer must expose --detect-anomaly"
-    )
-    assert args.detect_anomaly is False, (
-        f"Wf-350-C2: CFM default must be OFF, got {args.detect_anomaly!r}"
-    )
+    assert hasattr(
+        args, "detect_anomaly"
+    ), "Wf-350-C2: CFM trainer must expose --detect-anomaly"
+    assert (
+        args.detect_anomaly is False
+    ), f"Wf-350-C2: CFM default must be OFF, got {args.detect_anomaly!r}"
 
 
 # ---------------------------------------------------------------------------
 # Test 2 — torch.autograd.set_detect_anomaly called when flag on
 # ---------------------------------------------------------------------------
 
+
 def test_dmpnn_main_calls_set_detect_anomaly_when_flag_on(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """When --detect-anomaly is passed, D-MPNN main() must call
     ``torch.autograd.set_detect_anomaly(True)``."""
-    mod = _reload_module(
-        "molmetal.scripts.train_dmpnn_multitask_wasserstein"
-    )
+    mod = _reload_module("molmetal.scripts.train_dmpnn_multitask_wasserstein")
     called_with: list[bool] = []
     real_set = torch.autograd.set_detect_anomaly
 
@@ -116,7 +114,8 @@ def test_dmpnn_main_calls_set_detect_anomaly_when_flag_on(
         return 0
 
     monkeypatch.setattr(
-        mod, "apply_default_cuda_visible_devices",
+        mod,
+        "apply_default_cuda_visible_devices",
         _fake_apply_default_cuda_visible_devices,
     )
     # Patch the heavy inner orchestrator (run_training_loop / etc.) so
@@ -155,14 +154,13 @@ def test_dmpnn_main_calls_set_detect_anomaly_when_flag_on(
 # Test 3 — backward compat: without flag, behavior unchanged
 # ---------------------------------------------------------------------------
 
+
 def test_backward_compat_no_flag_no_set_detect_anomaly(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Without --detect-anomaly, ``torch.autograd.set_detect_anomaly``
     must NOT be called by main() — backward compat preserved."""
-    mod = _reload_module(
-        "molmetal.scripts.train_dmpnn_multitask_wasserstein"
-    )
+    mod = _reload_module("molmetal.scripts.train_dmpnn_multitask_wasserstein")
     called_with: list[bool] = []
 
     def _spy(value: bool) -> None:
@@ -196,9 +194,7 @@ def test_cfm_main_calls_set_detect_anomaly_when_flag_on(
 ) -> None:
     """When --detect-anomaly is passed, CFM main() must call
     ``torch.autograd.set_detect_anomaly(True)``."""
-    mod = _reload_module(
-        "molmetal.scripts.train_cfm_yuelbond_wasserstein"
-    )
+    mod = _reload_module("molmetal.scripts.train_cfm_yuelbond_wasserstein")
     called_with: list[bool] = []
 
     def _spy(value: bool) -> None:
@@ -215,7 +211,8 @@ def test_cfm_main_calls_set_detect_anomaly_when_flag_on(
 
     monkeypatch.setattr(mod, "main", _exit_after_setup)
     with mock.patch.object(
-        sys, "argv",
+        sys,
+        "argv",
         ["train_cfm_yuelbond_wasserstein.py", "--detect-anomaly"],
     ):
         with pytest.raises(SystemExit):
@@ -229,9 +226,7 @@ def test_cfm_main_calls_set_detect_anomaly_when_flag_on(
 
 def test_cfm_backward_compat_no_flag() -> None:
     """CFM default --detect-anomaly=False preserves backward compat."""
-    mod = _reload_module(
-        "molmetal.scripts.train_cfm_yuelbond_wasserstein"
-    )
+    mod = _reload_module("molmetal.scripts.train_cfm_yuelbond_wasserstein")
     with mock.patch.object(sys, "argv", ["train_cfm_yuelbond_wasserstein.py"]):
         args = mod.parse_args()
     assert args.detect_anomaly is False, (

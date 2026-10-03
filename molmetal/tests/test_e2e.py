@@ -31,9 +31,9 @@ from molmetal.ports import DesignLoopConfig
 def _tiny_pocket(n_atoms: int = 10) -> Pocket:
     """A 10-atom pocket centred at the origin."""
     coords = torch.zeros(n_atoms, 3, dtype=torch.float32)
-    atom_types = torch.tensor(
-        [6, 7, 8, 16, 6, 7, 8, 16, 6, 7], dtype=torch.long
-    )[:n_atoms]
+    atom_types = torch.tensor([6, 7, 8, 16, 6, 7, 8, 16, 6, 7], dtype=torch.long)[
+        :n_atoms
+    ]
     residue_ids = torch.arange(n_atoms, dtype=torch.long)
     chain_ids = torch.zeros(n_atoms, dtype=torch.long)
     mask = torch.ones(n_atoms, dtype=torch.bool)
@@ -83,9 +83,9 @@ class TestE2EClosedLoop:
         assert all(1 <= r <= n for r in ranks), f"bad ranks: {ranks}"
         # 3. every combined_score is finite
         for c in result:
-            assert math.isfinite(c.combined_score), (
-                f"non-finite combined_score: {c.combined_score}"
-            )
+            assert math.isfinite(
+                c.combined_score
+            ), f"non-finite combined_score: {c.combined_score}"
         # 4. capped by n_top_k
         assert len(result) <= cfg.n_top_k
 

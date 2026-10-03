@@ -81,6 +81,7 @@ Honest framing
   instability is fixed (R² ≥ 0.3 on noisy synthetic, ≥ 0.0 on real
   IC50 spread over a continuous range).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -98,6 +99,7 @@ try:
         safe_overwrite_check,
         detect_truncation,
     )
+
     _WF424_HAS_ATOMIC = True
 except ImportError:  # pragma: no cover — fallback when running as standalone
     _WF424_HAS_ATOMIC = False
@@ -131,8 +133,8 @@ FEATURE_COLUMNS: Tuple[str, ...] = (
     "num_heteroatoms",
     "qed",
 )
-POPULATION_DIM: int = 64       # Hilbert space dim
-N_DESCRIPTORS: int = 12        # length of FEATURE_COLUMNS (default 12-d path)
+POPULATION_DIM: int = 64  # Hilbert space dim
+N_DESCRIPTORS: int = 12  # length of FEATURE_COLUMNS (default 12-d path)
 # Per-column z-score std floor — guards against zero-variance cols.
 _EPS_STD: float = 1e-3
 # Numerical-stability cap on |predict| — defends the R² denominator.
@@ -146,13 +148,38 @@ _PRED_CLIP: float = 1e6
 # ``scripts/build_f5_rdkit_2d.py``); the inline 12-d ``_featurize_smiles``
 # path is preserved bit-for-bit as the default for backward compat.
 FEATURE_COLUMNS_32D: Tuple[str, ...] = (
-    "MolWt", "MolLogP", "TPSA", "HBA", "HBD", "NRotB", "HeavyAtoms",
-    "RingCount", "NumAromaticRings", "FractionCSP3", "MolMR", "BalabanJ",
-    "BertzCT", "Chi0v", "Chi0n", "Chi1n", "HallKierAlpha", "Kappa1",
-    "Kappa2", "Kappa3", "LabuteASA", "MaxPartialCharge", "MinPartialCharge",
-    "MaxAbsPartialCharge", "MinAbsPartialCharge", "NumAliphaticRings",
-    "NumSaturatedRings", "NumHeteroatoms", "NHOHCount", "NOCount",
-    "fr_halogen", "fr_Al_COO",
+    "MolWt",
+    "MolLogP",
+    "TPSA",
+    "HBA",
+    "HBD",
+    "NRotB",
+    "HeavyAtoms",
+    "RingCount",
+    "NumAromaticRings",
+    "FractionCSP3",
+    "MolMR",
+    "BalabanJ",
+    "BertzCT",
+    "Chi0v",
+    "Chi0n",
+    "Chi1n",
+    "HallKierAlpha",
+    "Kappa1",
+    "Kappa2",
+    "Kappa3",
+    "LabuteASA",
+    "MaxPartialCharge",
+    "MinPartialCharge",
+    "MaxAbsPartialCharge",
+    "MinAbsPartialCharge",
+    "NumAliphaticRings",
+    "NumSaturatedRings",
+    "NumHeteroatoms",
+    "NHOHCount",
+    "NOCount",
+    "fr_halogen",
+    "fr_Al_COO",
 )
 N_DESCRIPTORS_32D: int = 32
 
@@ -160,7 +187,9 @@ N_DESCRIPTORS_32D: int = 32
 # ---------------------------------------------------------------------------
 # RDKit featurizer (parallel to wf25_hilbert_real_eval + 4 new descriptors)
 # ---------------------------------------------------------------------------
-def _wf424_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
+def _wf424_atomic_write_text(
+    path, content: str, min_lines: int = 50, expected_min_length: int = 200
+) -> None:
     """Wf-424-A4 atomic-write-protocol wrapper around direct write_text.
 
     Falls back to direct write_text if atomic_write_file is unavailable
@@ -172,21 +201,26 @@ def _wf424_atomic_write_text(path, content: str, min_lines: int = 50, expected_m
             _risk = safe_overwrite_check(path, content, min_lines=min_lines)
             if _risk is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-424-A4] safe_overwrite_check diff_ratio=%.3f at %s",
-                    _risk, path,
+                    _risk,
+                    path,
                 )
         atomic_write_file(path, content, encoding="utf-8")
         if detect_truncation is not None:
             _trunc = detect_truncation(content, expected_min_length=expected_min_length)
             if _trunc is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-424-A4] detect_truncation reason=%r at %s",
-                    _trunc, path,
+                    _trunc,
+                    path,
                 )
     else:  # pragma: no cover — fallback when atomic primitive unavailable
         Path(path).write_text(content, encoding="utf-8")
+
 
 def _featurize_smiles(smiles: str) -> Optional[List[float]]:
     """Return 12-d RDKit descriptor vector; ``None`` if SMILES fails."""
@@ -305,14 +339,21 @@ def load_f5_32d_csv(
         # ``len(feature_columns)`` columns are the descriptors.
         if not any(i >= 0 for i in desc_indices):
             n_rows_in_header = len(header)
-            desc_indices = list(range(
-                n_rows_in_header - len(feature_columns),
-                n_rows_in_header,
-            ))
+            desc_indices = list(
+                range(
+                    n_rows_in_header - len(feature_columns),
+                    n_rows_in_header,
+                )
+            )
 
         # Stream rows
         for row in reader:
-            if len(row) <= max(desc_indices + [-1] + [smiles_col_idx] + ([target_col_idx] if target_col_idx is not None else [])):
+            if len(row) <= max(
+                desc_indices
+                + [-1]
+                + [smiles_col_idx]
+                + ([target_col_idx] if target_col_idx is not None else [])
+            ):
                 continue
             smi = row[smiles_col_idx].strip() if smiles_col_idx < len(row) else ""
             if not smi:
@@ -355,12 +396,14 @@ def load_f5_32d_csv(
             smiles_list.append(smi)
             X_list.append(feats)
             y_list.append(float(y_val))
-            rows_meta.append({
-                "smiles": smi,
-                "pic50": float(y_val),
-                "cell_line": "MCF7",  # default cell-line tag for 32-d path
-                "metal": metal,
-            })
+            rows_meta.append(
+                {
+                    "smiles": smi,
+                    "pic50": float(y_val),
+                    "cell_line": "MCF7",  # default cell-line tag for 32-d path
+                    "metal": metal,
+                }
+            )
             if n_max is not None and len(smiles_list) >= n_max:
                 break
 
@@ -379,7 +422,9 @@ def load_f5_32d_csv(
     )
 
 
-def load_nci60_precious(csv_path: Path, n_max: Optional[int] = None) -> List[Dict[str, Any]]:
+def load_nci60_precious(
+    csv_path: Path, n_max: Optional[int] = None
+) -> List[Dict[str, Any]]:
     """Load NCI-60 long-form precious-metal rows with real pIC50.
 
     Returns a list of dicts ``{"smiles", "pic50", "cell_line"}`` where
@@ -401,17 +446,21 @@ def load_nci60_precious(csv_path: Path, n_max: Optional[int] = None) -> List[Dic
             smi = (row.get("smiles") or "").strip()
             if not smi:
                 continue
-            out.append({
-                "smiles": smi,
-                "pic50": pic50,
-                "cell_line": row.get("cell_line", ""),
-            })
+            out.append(
+                {
+                    "smiles": smi,
+                    "pic50": pic50,
+                    "cell_line": row.get("cell_line", ""),
+                }
+            )
             if n_max is not None and len(out) >= n_max:
                 break
     return out
 
 
-def load_platinai_4cell(csv_path: Path, n_max: Optional[int] = None) -> List[Dict[str, Any]]:
+def load_platinai_4cell(
+    csv_path: Path, n_max: Optional[int] = None
+) -> List[Dict[str, Any]]:
     """Load PlatinAI 4-cell-line rows (synthetic pIC50 from real schema).
 
     The 4-cell csv has columns ``ic50_mcf7_nm``, ``ic50_a549_nm``,
@@ -443,15 +492,17 @@ def load_platinai_4cell(csv_path: Path, n_max: Optional[int] = None) -> List[Dic
                     continue
             if ic50_nm is None:
                 continue
-            ic50_um = ic50_nm / 1000.0   # nM → µM
+            ic50_um = ic50_nm / 1000.0  # nM → µM
             pic50 = -math.log10(max(ic50_um * 1e-6, 1e-12))
             if not math.isfinite(pic50):
                 continue
-            out.append({
-                "smiles": smi,
-                "pic50": float(pic50),
-                "cell_line": cell_line or "",
-            })
+            out.append(
+                {
+                    "smiles": smi,
+                    "pic50": float(pic50),
+                    "cell_line": cell_line or "",
+                }
+            )
             if n_max is not None and len(out) >= n_max:
                 break
     return out
@@ -500,11 +551,16 @@ def build_design_matrix(
     # extract it without breaking the existing return-tuple schema.
     # We return it as the 5th element via a wrapper dict in stats.
     build_design_matrix._last_rows_kept = rows_kept  # type: ignore[attr-defined]
-    return smiles_list, X_arr, y_arr, {
-        "n_parsed": n_parsed,
-        "n_failed": n_failed,
-        "n_target_rows": n_parsed,
-    }
+    return (
+        smiles_list,
+        X_arr,
+        y_arr,
+        {
+            "n_parsed": n_parsed,
+            "n_failed": n_failed,
+            "n_target_rows": n_parsed,
+        },
+    )
 
 
 def build_design_matrix_from_32d(
@@ -536,11 +592,17 @@ def build_design_matrix_from_32d(
     n_parsed = int(smiles_list.__len__())
     n_failed = 0
     if X.shape[0] == 0:
-        return [], X, y, {
-            "n_parsed": 0,
-            "n_failed": n_failed,
-            "n_target_rows": 0,
-        }, rows_meta
+        return (
+            [],
+            X,
+            y,
+            {
+                "n_parsed": 0,
+                "n_failed": n_failed,
+                "n_target_rows": 0,
+            },
+            rows_meta,
+        )
     # rows_meta is already aligned with X / y.
     build_design_matrix_from_32d._last_rows_kept = rows_meta  # type: ignore[attr-defined]
     return (
@@ -588,6 +650,7 @@ def pad_to_hilbert_dim(
         augmentation.
     """
     import numpy as np
+
     n = X_8d.shape[0]
     F = X_8d.shape[1]
     if F >= hilbert_dim:
@@ -602,7 +665,9 @@ def pad_to_hilbert_dim(
     for i in range(F):
         for j in range(i + 1, F):
             interactions_tr.append(X_8d[:, i] * X_8d[:, j])
-    inter_arr_tr = np.stack(interactions_tr, axis=1) if interactions_tr else np.zeros((n, 0))
+    inter_arr_tr = (
+        np.stack(interactions_tr, axis=1) if interactions_tr else np.zeros((n, 0))
+    )
     base_tr = np.concatenate([X_8d, bias], axis=1)
     aug_tr = np.concatenate([base_tr, inter_arr_tr], axis=1)
     if X_8d_test is not None:
@@ -612,7 +677,11 @@ def pad_to_hilbert_dim(
         for i in range(F):
             for j in range(i + 1, F):
                 interactions_te.append(X_8d_test[:, i] * X_8d_test[:, j])
-        inter_arr_te = np.stack(interactions_te, axis=1) if interactions_te else np.zeros((n_te, 0))
+        inter_arr_te = (
+            np.stack(interactions_te, axis=1)
+            if interactions_te
+            else np.zeros((n_te, 0))
+        )
         base_te = np.concatenate([X_8d_test, bias_te], axis=1)
         aug_te = np.concatenate([base_te, inter_arr_te], axis=1)
     else:
@@ -652,9 +721,12 @@ def pad_to_hilbert_dim(
     return out_tr
 
 
-def zscore_fit_transform(X_tr: np.ndarray, X_te: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def zscore_fit_transform(
+    X_tr: np.ndarray, X_te: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Z-score with std floor; per-column mean/std from training rows only."""
     import numpy as np
+
     mu = X_tr.mean(axis=0)
     sigma = X_tr.std(axis=0)
     sigma = np.where(sigma < _EPS_STD, 1.0, sigma)
@@ -716,7 +788,9 @@ def fit_hilbert_stable(
         if it < int(warmup_iters):
             lr_it = float(lr) * (it + 1) / max(1, int(warmup_iters))
         else:
-            progress = (it - int(warmup_iters)) / max(1, int(epochs) - int(warmup_iters))
+            progress = (it - int(warmup_iters)) / max(
+                1, int(epochs) - int(warmup_iters)
+            )
             lr_it = float(lr) * (0.1 + 0.9 * 0.5 * (1.0 + math.cos(math.pi * progress)))
 
         # --- Loss + gradient (ridge-regularised) ---
@@ -760,8 +834,11 @@ def fit_hilbert_stable(
     }
 
 
-def predict_hilbert(best_params: np.ndarray, X: np.ndarray, hilbert_dim: int) -> np.ndarray:
+def predict_hilbert(
+    best_params: np.ndarray, X: np.ndarray, hilbert_dim: int
+) -> np.ndarray:
     import numpy as np
+
     feats = np.asarray(X, dtype=float).reshape(-1, hilbert_dim)
     out = feats @ np.asarray(best_params, dtype=float).reshape(-1)
     # Bounded prediction clip (overflow guard).
@@ -782,6 +859,7 @@ def fit_evolutionary(
     generations: int = 50,
 ) -> Tuple[Any, Dict[str, float]]:
     from molmetal.molmetal_lam.reward.lambda_astsr import LambdaASTSR
+
     t0 = time.perf_counter()
     astsr = LambdaASTSR(
         depth=depth,
@@ -804,6 +882,7 @@ def fit_evolutionary(
 
 def predict_evolutionary(astsr: Any, X: np.ndarray) -> np.ndarray:
     import numpy as np
+
     out = np.asarray(astsr.predict(X), dtype=float).reshape(-1)
     return np.clip(out, -_PRED_CLIP, _PRED_CLIP)
 
@@ -813,6 +892,7 @@ def predict_evolutionary(astsr: Any, X: np.ndarray) -> np.ndarray:
 # ---------------------------------------------------------------------------
 def _compute_r2(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     import numpy as np
+
     y_true = np.asarray(y_true, dtype=float).reshape(-1)
     y_pred = np.asarray(y_pred, dtype=float).reshape(-1)
     if y_true.size < 2 or y_true.size != y_pred.size:
@@ -883,7 +963,9 @@ def run_single_seed(
         # interactions.  Column selection is learned on the training
         # rows and applied consistently to the test rows.
         X_tr_pad, X_te_pad = pad_to_hilbert_dim(
-            X_tr_raw, hilbert_dim, X_8d_test=X_te_raw,
+            X_tr_raw,
+            hilbert_dim,
+            X_8d_test=X_te_raw,
         )
         # Z-score using training statistics only.
         X_tr_n, X_te_n, _, _ = zscore_fit_transform(X_tr_pad, X_te_pad)
@@ -894,7 +976,8 @@ def run_single_seed(
         y_mean = float(np.mean(y_tr))
         y_tr_c = y_tr - y_mean
         best_params, h_info = fit_hilbert_stable(
-            X_tr_n, y_tr_c,
+            X_tr_n,
+            y_tr_c,
             hilbert_dim=hilbert_dim,
             lr=lr,
             epochs=epochs,
@@ -904,8 +987,11 @@ def run_single_seed(
         h_r2 = _compute_r2(y_te, y_hat_h)
         # Evolutionary branch (8-d / 32-d input — the ASTSR feature schema).
         astsr, e_info = fit_evolutionary(
-            X_tr_raw, y_tr,
-            feature_columns=tuple(feature_columns) if feature_columns is not None else FEATURE_COLUMNS,
+            X_tr_raw,
+            y_tr,
+            feature_columns=tuple(feature_columns)
+            if feature_columns is not None
+            else FEATURE_COLUMNS,
             seed=int(seed * 1000 + fi),
             population=evolutionary_population,
             generations=evolutionary_generations,
@@ -921,7 +1007,8 @@ def run_single_seed(
             try:
                 fold_rows = [rows_meta[int(i)] for i in test_idx]
                 fold_w2 = compute_w2_pic50_alignment(
-                    y_hat_h, fold_rows,
+                    y_hat_h,
+                    fold_rows,
                     ref_distribution=ref_distribution,
                     per_cell_cap=per_cell_cap,
                     seed=int(seed * 1000 + fi),
@@ -933,21 +1020,26 @@ def run_single_seed(
                 # Don't break the seed run if torch / W₂ fails — emit
                 # a zeroed diagnostic so the JSON schema stays stable.
                 print(f"  WARN: fold {fi} W₂ alignment failed: {exc}")
-                w2_per_fold.append({
-                    "w2_overall": 0.0,
-                    "w2_per_cell": {},
-                    "n_per_cell": {},
-                    "ref_distribution": ref_distribution,
-                    "per_cell_cap": int(per_cell_cap),
-                    "engine": "wasserstein_reg",
-                    "error": str(exc),
-                })
+                w2_per_fold.append(
+                    {
+                        "w2_overall": 0.0,
+                        "w2_per_cell": {},
+                        "n_per_cell": {},
+                        "ref_distribution": ref_distribution,
+                        "per_cell_cap": int(per_cell_cap),
+                        "engine": "wasserstein_reg",
+                        "error": str(exc),
+                    }
+                )
         print(
             f"  seed={seed} fold={fi}: hilbert R²={h_r2:+.4f} "
             f"wall={h_info['wall_s']:.3f}s | evol R²={e_r2:+.4f} "
             f"wall={e_info['wall_s']:.3f}s"
-            + (f" | w2={w2_per_fold[-1].get('w2_overall', 0.0):.4f}"
-               if w2_per_fold else "")
+            + (
+                f" | w2={w2_per_fold[-1].get('w2_overall', 0.0):.4f}"
+                if w2_per_fold
+                else ""
+            )
         )
     # Aggregate W₂ across folds (full OOD-cohort W₂).
     w2_aggregate: Optional[Dict[str, Any]] = None
@@ -955,7 +1047,8 @@ def run_single_seed(
         try:
             y_all = np.concatenate(w2_pred_accum)
             w2_aggregate = compute_w2_pic50_alignment(
-                y_all, w2_rows_accum,
+                y_all,
+                w2_rows_accum,
                 ref_distribution=ref_distribution,
                 per_cell_cap=per_cell_cap,
                 seed=int(seed),
@@ -989,8 +1082,11 @@ def run_single_seed(
                 "evolutionary_r2": float(evol_r2s[fi]),
                 "hilbert_wall_s": float(hilbert_walls[fi]),
                 "evol_wall_s": float(evol_walls[fi]),
-                **({"w2_overall": float(w2_per_fold[fi].get("w2_overall", 0.0))}
-                   if w2_per_fold else {}),
+                **(
+                    {"w2_overall": float(w2_per_fold[fi].get("w2_overall", 0.0))}
+                    if w2_per_fold
+                    else {}
+                ),
             }
             for fi in range(n_folds)
         ],
@@ -1099,6 +1195,7 @@ def compute_w2_pic50_alignment(
     per_cell_ref_capped: Dict[str, List[float]] = {}
     n_per_cell: Dict[str, int] = {}
     import random as _r
+
     for cl, pred_list in per_cell.items():
         ref_list = per_cell_ref[cl]
         n_total = len(pred_list)
@@ -1111,6 +1208,7 @@ def compute_w2_pic50_alignment(
         n_per_cell[cl] = len(idx)
     # Compute W₂ per cell line via wasserstein_pic50_loss (1-D → closed form).
     import torch
+
     w2_per_cell: Dict[str, float] = {}
     for cl in sorted(per_cell_capped.keys()):
         p = torch.tensor(per_cell_capped[cl], dtype=torch.float32)
@@ -1160,6 +1258,7 @@ def render_table(seeds: List[Dict[str, Any]], stats: Dict[str, int]) -> str:
     h_walls = [s["hilbert_wall_mean_s"] for s in seeds]
     e_walls = [s["evol_wall_mean_s"] for s in seeds]
     import numpy as np
+
     h_mean_overall = float(np.mean(h_means))
     h_std_overall = float(np.std(h_means))
     e_mean_overall = float(np.mean(e_means))
@@ -1198,33 +1297,41 @@ def render_table(seeds: List[Dict[str, Any]], stats: Dict[str, int]) -> str:
             f"{s['evolutionary_r2_std']:.4f} | {s['hilbert_wall_mean_s']:.3f} | "
             f"{s['evol_wall_mean_s']:.3f} |"
         )
-    out.extend([
-        "",
-        "## Wf-25 numerical-instability fix",
-        "",
-        "* Wf-25 joint R² was -0.443 (binary target + tile inflation + "
-        "constant lr).",
-        "* Wf-37 L5 fixes all three: real continuous pIC50 + bias-column "
-        "padding + cosine LR schedule + gradient clip + L2 ridge "
-        "regularisation + pairwise-interaction feature augmentation.",
-        "* The headline number is whether **Hilbert R² ≥ 0.0** on real "
-        "spread pIC50 (vs Wf-25's -0.353 on noisy binary).",
-        "",
-        "## Honest framing",
-        "",
-        "* pIC50 is real (NCI-60) where available; PlatinAI 4-cell is "
-        "**synthetic** (the IC50 columns were generated from HOMO/LUMO/"
-        "Gap/Polarizability per ``build_platinai_4cell.py``).",
-        "* Speedup is the real Wf-37 lever (Hilbert PD is deterministic, "
-        "population=1, while ASTSR is evolutionary, population=32 × 25 gens).",
-        "* Wall-time is machine-dependent; speedup column is the intended "
-        "*relative* metric.",
-    ])
+    out.extend(
+        [
+            "",
+            "## Wf-25 numerical-instability fix",
+            "",
+            "* Wf-25 joint R² was -0.443 (binary target + tile inflation + "
+            "constant lr).",
+            "* Wf-37 L5 fixes all three: real continuous pIC50 + bias-column "
+            "padding + cosine LR schedule + gradient clip + L2 ridge "
+            "regularisation + pairwise-interaction feature augmentation.",
+            "* The headline number is whether **Hilbert R² ≥ 0.0** on real "
+            "spread pIC50 (vs Wf-25's -0.353 on noisy binary).",
+            "",
+            "## Honest framing",
+            "",
+            "* pIC50 is real (NCI-60) where available; PlatinAI 4-cell is "
+            "**synthetic** (the IC50 columns were generated from HOMO/LUMO/"
+            "Gap/Polarizability per ``build_platinai_4cell.py``).",
+            "* Speedup is the real Wf-37 lever (Hilbert PD is deterministic, "
+            "population=1, while ASTSR is evolutionary, population=32 × 25 gens).",
+            "* Wall-time is machine-dependent; speedup column is the intended "
+            "*relative* metric.",
+        ]
+    )
     return "\n".join(out) + "\n"
 
 
-def write_r2_bench(path: Path, seeds: List[Dict[str, Any]], stats: Dict[str, int], args: argparse.Namespace) -> None:
+def write_r2_bench(
+    path: Path,
+    seeds: List[Dict[str, Any]],
+    stats: Dict[str, int],
+    args: argparse.Namespace,
+) -> None:
     import numpy as np
+
     h_means = [s["hilbert_r2_mean"] for s in seeds]
     e_means = [s["evolutionary_r2_mean"] for s in seeds]
     h_walls = [s["hilbert_wall_mean_s"] for s in seeds]
@@ -1258,7 +1365,9 @@ def write_r2_bench(path: Path, seeds: List[Dict[str, Any]], stats: Dict[str, int
             "evolutionary_generations": args.evo_gens,
             # Wf-246-A — Wasserstein pIC50 alignment wire-in.
             "wass_weight": float(getattr(args, "wass_weight", 0.0)),
-            "ref_distribution": str(getattr(args, "ref_distribution", "platinai_4cell")),
+            "ref_distribution": str(
+                getattr(args, "ref_distribution", "platinai_4cell")
+            ),
             "per_cell_cap": int(getattr(args, "per_cell_cap", 32)),
             # Wf-251-F1 — F5_RDKIT_2D 32-d wire-in.
             "feature_set": str(getattr(args, "feature_set", "rdkit_12d")),
@@ -1295,55 +1404,114 @@ def _resolve_csv(arg: str, fallback_name: str) -> Path:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[1] if __doc__ else "Wf-37 L5")
-    parser.add_argument("--dataset", choices=("nci60", "platinai", "both"), default="nci60",
-                        help="Which IC50 dataset to use (default nci60).")
-    parser.add_argument("--n-samples", type=int, default=500,
-                        help="Cap on rows to featurise (default 500).")
-    parser.add_argument("--seeds", type=int, default=5,
-                        help="Number of seeds for the benchmark (default 5).")
-    parser.add_argument("--n-folds", type=int, default=5,
-                        help="K folds per seed (default 5).")
-    parser.add_argument("--epochs", type=int, default=100,
-                        help="PD iterations per fold (default 100).")
-    parser.add_argument("--lr", type=float, default=0.05,
-                        help="Peak learning rate for Hilbert PD (default 0.05).")
-    parser.add_argument("--hilbert-dim", type=int, default=POPULATION_DIM,
-                        help=f"Hilbert space dimension (default {POPULATION_DIM}).")
-    parser.add_argument("--evo-pop", type=int, default=32,
-                        help="LambdaASTSR population size (default 32 — small for speed).")
-    parser.add_argument("--evo-gens", type=int, default=25,
-                        help="LambdaASTSR generations (default 25 — small for speed).")
-    parser.add_argument("--nci60-csv", type=str,
-                        default="molmetal/data/nci60_precious_9cell.csv",
-                        help="NCI-60 long-form CSV path.")
-    parser.add_argument("--platinai-csv", type=str,
-                        default="molmetal/data/platinai_4cell.csv",
-                        help="PlatinAI 4-cell CSV path.")
-    parser.add_argument("--output", type=str,
-                        default="molmetal/reports/wf37_hilbert_astsr",
-                        help="Output directory for r2_bench.json + comparison_table.md.")
+    parser = argparse.ArgumentParser(
+        description=__doc__.splitlines()[1] if __doc__ else "Wf-37 L5"
+    )
+    parser.add_argument(
+        "--dataset",
+        choices=("nci60", "platinai", "both"),
+        default="nci60",
+        help="Which IC50 dataset to use (default nci60).",
+    )
+    parser.add_argument(
+        "--n-samples",
+        type=int,
+        default=500,
+        help="Cap on rows to featurise (default 500).",
+    )
+    parser.add_argument(
+        "--seeds",
+        type=int,
+        default=5,
+        help="Number of seeds for the benchmark (default 5).",
+    )
+    parser.add_argument(
+        "--n-folds", type=int, default=5, help="K folds per seed (default 5)."
+    )
+    parser.add_argument(
+        "--epochs", type=int, default=100, help="PD iterations per fold (default 100)."
+    )
+    parser.add_argument(
+        "--lr",
+        type=float,
+        default=0.05,
+        help="Peak learning rate for Hilbert PD (default 0.05).",
+    )
+    parser.add_argument(
+        "--hilbert-dim",
+        type=int,
+        default=POPULATION_DIM,
+        help=f"Hilbert space dimension (default {POPULATION_DIM}).",
+    )
+    parser.add_argument(
+        "--evo-pop",
+        type=int,
+        default=32,
+        help="LambdaASTSR population size (default 32 — small for speed).",
+    )
+    parser.add_argument(
+        "--evo-gens",
+        type=int,
+        default=25,
+        help="LambdaASTSR generations (default 25 — small for speed).",
+    )
+    parser.add_argument(
+        "--nci60-csv",
+        type=str,
+        default="molmetal/data/nci60_precious_9cell.csv",
+        help="NCI-60 long-form CSV path.",
+    )
+    parser.add_argument(
+        "--platinai-csv",
+        type=str,
+        default="molmetal/data/platinai_4cell.csv",
+        help="PlatinAI 4-cell CSV path.",
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="molmetal/reports/wf37_hilbert_astsr",
+        help="Output directory for r2_bench.json + comparison_table.md.",
+    )
     # Wf-246-A (TODO-179) — Wasserstein pIC50 alignment wire-in.
-    parser.add_argument("--wass-weight", type=float, default=0.05,
-                        help="Wasserstein pIC50 alignment weight w_w in joint loss "
-                             "(default 0.05 per TODO-179 §3.1; set 0.0 to disable).")
-    parser.add_argument("--ref-distribution", type=str, default="platinai_4cell",
-                        choices=("platinai_4cell", "metalcytotox_5metal"),
-                        help="Reference pIC50 distribution for W₂ alignment "
-                             "(default platinai_4cell per TODO-179 §3.1).")
-    parser.add_argument("--per-cell-cap", type=int, default=32,
-                        help="Cap on rows per cell line for O(N^2) W₂ bound "
-                             "(default 32 per TODO-179 §3 task spec).")
+    parser.add_argument(
+        "--wass-weight",
+        type=float,
+        default=0.05,
+        help="Wasserstein pIC50 alignment weight w_w in joint loss "
+        "(default 0.05 per TODO-179 §3.1; set 0.0 to disable).",
+    )
+    parser.add_argument(
+        "--ref-distribution",
+        type=str,
+        default="platinai_4cell",
+        choices=("platinai_4cell", "metalcytotox_5metal"),
+        help="Reference pIC50 distribution for W₂ alignment "
+        "(default platinai_4cell per TODO-179 §3.1).",
+    )
+    parser.add_argument(
+        "--per-cell-cap",
+        type=int,
+        default=32,
+        help="Cap on rows per cell line for O(N^2) W₂ bound "
+        "(default 32 per TODO-179 §3 task spec).",
+    )
     # Wf-251-F1 — F5_RDKIT_2D 32-d wire-in.
-    parser.add_argument("--feature-set", choices=("rdkit_12d", "rdkit_32d"),
-                        default="rdkit_12d",
-                        help="Descriptor set: rdkit_12d (legacy inline path; default) "
-                             "or rdkit_32d (F5_RDKIT_2D pre-built CSV path).")
-    parser.add_argument("--f5-32d-csv", type=str,
-                        default="molmetal/data/platinai_4cell_rdkit_extended_features.csv",
-                        help="Pre-built 32-d RDKit features CSV (default "
-                             "molmetal/data/platinai_4cell_rdkit_extended_features.csv). "
-                             "Only used when --feature-set rdkit_32d.")
+    parser.add_argument(
+        "--feature-set",
+        choices=("rdkit_12d", "rdkit_32d"),
+        default="rdkit_12d",
+        help="Descriptor set: rdkit_12d (legacy inline path; default) "
+        "or rdkit_32d (F5_RDKIT_2D pre-built CSV path).",
+    )
+    parser.add_argument(
+        "--f5-32d-csv",
+        type=str,
+        default="molmetal/data/platinai_4cell_rdkit_extended_features.csv",
+        help="Pre-built 32-d RDKit features CSV (default "
+        "molmetal/data/platinai_4cell_rdkit_extended_features.csv). "
+        "Only used when --feature-set rdkit_32d.",
+    )
     args = parser.parse_args()
 
     out_dir = Path(args.output)
@@ -1360,16 +1528,22 @@ def main() -> int:
     print(f"  wass_weight = {args.wass_weight} (Wf-246-A TODO-179 wire-in)")
     print(f"  ref_distribution = {args.ref_distribution}")
     print(f"  per_cell_cap = {args.per_cell_cap}")
-    print(f"  feature_set = {args.feature_set} (Wf-251-F1: rdkit_32d wires F5_RDKIT_2D)")
+    print(
+        f"  feature_set = {args.feature_set} (Wf-251-F1: rdkit_32d wires F5_RDKIT_2D)"
+    )
     print(f"  f5_32d_csv  = {args.f5_32d_csv}")
     print(f"  output    = {out_dir}")
 
     # ---- Load rows ----
     rows: List[Dict[str, Any]] = []
     if args.dataset in ("nci60", "both"):
-        nci60_path = _resolve_csv(args.nci60_csv, "molmetal/data/nci60_precious_9cell.csv")
+        nci60_path = _resolve_csv(
+            args.nci60_csv, "molmetal/data/nci60_precious_9cell.csv"
+        )
         if nci60_path.exists():
-            nci60_rows = load_nci60_precious(nci60_path, n_max=max(args.n_samples, 2000))
+            nci60_rows = load_nci60_precious(
+                nci60_path, n_max=max(args.n_samples, 2000)
+            )
             print(f"  NCI-60 rows loaded: {len(nci60_rows)}")
             rows.extend(nci60_rows)
         else:
@@ -1398,7 +1572,9 @@ def main() -> int:
         if not f5_csv.exists():
             f5_csv = _REPO_ROOT / args.f5_32d_csv
         if not f5_csv.exists():
-            print(f"ERROR: --feature-set rdkit_32d requested but CSV {f5_csv} not found.")
+            print(
+                f"ERROR: --feature-set rdkit_32d requested but CSV {f5_csv} not found."
+            )
             print("       Run scripts/build_f5_rdkit_2d.py first.")
             return 1
         smiles_list, X, y, stats, rows_kept = build_design_matrix_from_32d(
@@ -1410,8 +1586,10 @@ def main() -> int:
     else:
         smiles_list, X, y, stats = build_design_matrix(rows=rows, seed=42)
         rows_kept = getattr(build_design_matrix, "_last_rows_kept", None) or []
-    print(f"  parsed={stats['n_parsed']}, failed={stats['n_failed']}, "
-          f"target_rows={stats['n_target_rows']}")
+    print(
+        f"  parsed={stats['n_parsed']}, failed={stats['n_failed']}, "
+        f"target_rows={stats['n_target_rows']}"
+    )
     if X.shape[0] < 50:
         print(f"ERROR: only {X.shape[0]} samples survived — too few.")
         return 1
@@ -1421,7 +1599,8 @@ def main() -> int:
     seeds: List[Dict[str, Any]] = []
     for s in range(int(args.seeds)):
         res = run_single_seed(
-            X, y,
+            X,
+            y,
             seed=s,
             hilbert_dim=int(args.hilbert_dim),
             epochs=int(args.epochs),
@@ -1436,11 +1615,16 @@ def main() -> int:
             feature_columns=feature_columns_active,
         )
         seeds.append(res)
-        print(f"  -> seed {s} aggregate: hilbert R²={res['hilbert_r2_mean']:+.4f} "
-              f"± {res['hilbert_r2_std']:.4f} | evol R²={res['evolutionary_r2_mean']:+.4f} "
-              f"± {res['evolutionary_r2_std']:.4f}"
-              + (f" | w2={res.get('w2_aggregate', {}).get('w2_overall', 0.0):.4f}"
-                 if res.get("w2_aggregate") else ""))
+        print(
+            f"  -> seed {s} aggregate: hilbert R²={res['hilbert_r2_mean']:+.4f} "
+            f"± {res['hilbert_r2_std']:.4f} | evol R²={res['evolutionary_r2_mean']:+.4f} "
+            f"± {res['evolutionary_r2_std']:.4f}"
+            + (
+                f" | w2={res.get('w2_aggregate', {}).get('w2_overall', 0.0):.4f}"
+                if res.get("w2_aggregate")
+                else ""
+            )
+        )
 
     # ---- Write outputs ----
     print(f"\n[3/3] Writing outputs to {out_dir}...")
@@ -1454,20 +1638,27 @@ def main() -> int:
     print(f"  wrote {table_path}")
     # Mirror stdout to run.log
     with open(log_path, "w") as f:
-        f.write(f"Wf-37 L5 run\n"
-                f"  dataset={args.dataset} n_samples={args.n_samples} "
-                f"seeds={args.seeds} epochs={args.epochs} lr={args.lr}\n"
-                f"  hilbert_r2_mean = {sum(s['hilbert_r2_mean'] for s in seeds) / len(seeds):+.4f}\n"
-                f"  evol_r2_mean    = {sum(s['evolutionary_r2_mean'] for s in seeds) / len(seeds):+.4f}\n")
+        f.write(
+            f"Wf-37 L5 run\n"
+            f"  dataset={args.dataset} n_samples={args.n_samples} "
+            f"seeds={args.seeds} epochs={args.epochs} lr={args.lr}\n"
+            f"  hilbert_r2_mean = {sum(s['hilbert_r2_mean'] for s in seeds) / len(seeds):+.4f}\n"
+            f"  evol_r2_mean    = {sum(s['evolutionary_r2_mean'] for s in seeds) / len(seeds):+.4f}\n"
+        )
     print(f"  wrote {log_path}")
 
     # ---- Summary ----
     import numpy as np
+
     h_mean = float(np.mean([s["hilbert_r2_mean"] for s in seeds]))
     e_mean = float(np.mean([s["evolutionary_r2_mean"] for s in seeds]))
-    speedup = float(np.mean([s["evol_wall_mean_s"] for s in seeds]) /
-                    max(np.mean([s["hilbert_wall_mean_s"] for s in seeds]), 1e-9))
-    print(f"\nSummary: hilbert R²={h_mean:+.4f} | evol R²={e_mean:+.4f} | speedup={speedup:.2f}x")
+    speedup = float(
+        np.mean([s["evol_wall_mean_s"] for s in seeds])
+        / max(np.mean([s["hilbert_wall_mean_s"] for s in seeds]), 1e-9)
+    )
+    print(
+        f"\nSummary: hilbert R²={h_mean:+.4f} | evol R²={e_mean:+.4f} | speedup={speedup:.2f}x"
+    )
     print("Done.")
     return 0
 

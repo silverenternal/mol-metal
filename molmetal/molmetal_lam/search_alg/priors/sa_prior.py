@@ -104,12 +104,14 @@ from typing import Optional
 # backward-compatible with the headless CI test path.
 try:  # pragma: no cover — optional dep
     from rdkit import Chem as _Chem  # type: ignore
+
     try:
         from rdkit.Contrib.SA_Score import sascorer as _sascorer  # type: ignore
     except Exception:  # pragma: no cover
         _sascorer = None  # type: ignore
     try:
         from rdkit.Chem import RDLogger as _RDLogger  # type: ignore
+
         _RDLogger.DisableLog("rdApp.*")  # type: ignore[attr-defined]
     except Exception:  # pragma: no cover
         _RDLogger = None  # type: ignore
@@ -156,6 +158,7 @@ def _compute_sa_score(smiles: str) -> Optional[float]:
         from molmetal_lam.sbdd_env.anticancer_metric_suite import (  # type: ignore
             compute_sa as _suite_compute_sa,
         )
+
         try:
             v = float(_suite_compute_sa(smi))
             if math.isfinite(v):

@@ -75,15 +75,13 @@ def test_wf29_phase2_comparison_md_references_all_recipes() -> None:
     _skip_if_missing(COMPARISON_MD)
     body = COMPARISON_MD.read_text()
     for recipe in DOCUMENTED_RECIPES:
-        assert recipe in body, (
-            f"comparison_phase2.md missing recipe {recipe!r}"
-        )
+        assert recipe in body, f"comparison_phase2.md missing recipe {recipe!r}"
 
 
 def test_wf29_phase2_comparison_md_has_honest_negative_section() -> None:
     """comparison_phase2.md must declare honest-negative provenance."""
     _skip_if_missing(COMPARISON_MD)
     body = COMPARISON_MD.read_text()
-    assert "Honest-negative provenance" in body, (
-        "comparison_phase2.md missing 'Honest-negative provenance' section"
-    )
+    assert (
+        "Honest-negative provenance" in body
+    ), "comparison_phase2.md missing 'Honest-negative provenance' section"

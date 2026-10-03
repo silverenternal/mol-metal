@@ -64,6 +64,7 @@ Usage
     python molmetal/scripts/m15_rmsd_phase2.py --pockets 1h36 4rlu \\
         --seeds 0 1 2 --n-poses 5 --exhaustiveness 16
 """
+
 from __future__ import annotations
 
 import argparse
@@ -88,7 +89,9 @@ from scipy.optimize import linear_sum_assignment
 # ---------------------------------------------------------------------------
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_OUT = PROJECT_ROOT / "molmetal" / "reports" / "m15_rmsd_phase2"
-LIGAND_META = PROJECT_ROOT / "molmetal" / "data" / "pocket_ref_ligands" / "ligand_metadata.json"
+LIGAND_META = (
+    PROJECT_ROOT / "molmetal" / "data" / "pocket_ref_ligands" / "ligand_metadata.json"
+)
 RECEPT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf30_pocket_prep"
 DEFAULT_VINA_BIN = PROJECT_ROOT / "molmetal" / "bin" / "vina"
 DEFAULT_RDKIT_PY = PROJECT_ROOT / ".venv" / "bin" / "python"
@@ -97,7 +100,9 @@ ALTERNATE_VINA_BINS: Tuple[Path, ...] = (
     Path("/home/hugo/.mamba/bin/vina"),
     Path("/home/hugo/codes/pocket/.eval_envs/pocket2mol311/bin/vina"),
 )
-ALT_PREPARE_LIGAND_PY = Path("/home/hugo/codes/mol-metal/.venv/bin/mk_prepare_ligand.py")
+ALT_PREPARE_LIGAND_PY = Path(
+    "/home/hugo/codes/mol-metal/.venv/bin/mk_prepare_ligand.py"
+)
 ALT_PREPARE_LIGAND_VENV = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
 
 # ---------------------------------------------------------------------------
@@ -113,7 +118,9 @@ DEFAULT_EXHAUSTIVENESS = 16
 # ---------------------------------------------------------------------------
 
 
-def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
+def _wf416_atomic_write_text(
+    path, content: str, min_lines: int = 50, expected_min_length: int = 200
+) -> None:
     """Wf-416-A1 atomic-write-protocol wrapper around direct write_text.
 
     Falls back to direct write_text if atomic_write_file is unavailable
@@ -125,21 +132,26 @@ def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_m
             _risk = safe_overwrite_check(path, content, min_lines=min_lines)
             if _risk is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-416-A1] safe_overwrite_check diff_ratio=%.3f at %s",
-                    _risk, path,
+                    _risk,
+                    path,
                 )
         atomic_write_file(path, content, encoding="utf-8")
         if detect_truncation is not None:
             _trunc = detect_truncation(content, expected_min_length=expected_min_length)
             if _trunc is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-416-A1] detect_truncation reason=%r at %s",
-                    _trunc, path,
+                    _trunc,
+                    path,
                 )
     else:  # pragma: no cover — fallback when atomic primitive unavailable
         Path(path).write_text(content, encoding="utf-8")
+
 
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -147,6 +159,7 @@ def _utc_now_iso() -> str:
 
 def _strip_ansi(s: str) -> str:
     import re
+
     return re.sub(r"\x1b\[[0-9;]*m", "", s)
 
 
@@ -155,8 +168,9 @@ def _resolve_vina_bin() -> Optional[Path]:
     for cand in (DEFAULT_VINA_BIN, *ALTERNATE_VINA_BINS):
         if cand.exists() and os.access(str(cand), os.X_OK):
             try:
-                cp = subprocess.run([str(cand), "--version"],
-                                    capture_output=True, text=True, timeout=5)
+                cp = subprocess.run(
+                    [str(cand), "--version"], capture_output=True, text=True, timeout=5
+                )
                 if cp.returncode == 0 and "Vina" in cp.stdout:
                     return cand
             except Exception:  # noqa: BLE001
@@ -167,6 +181,7 @@ def _resolve_vina_bin() -> Optional[Path]:
 # ---------------------------------------------------------------------------
 # Kabsch + Hungarian RMSD
 # ---------------------------------------------------------------------------
+
 
 def kabsch_rmsd(P: np.ndarray, Q: np.ndarray) -> float:
     """Kabsch-aligned RMSD between two Nx3 point sets.
@@ -193,17 +208,17 @@ def kabsch_rmsd(P: np.ndarray, Q: np.ndarray) -> float:
 
 # PDBQT atype column map (matches Wf-179 wf179_fix_rmsd.py)
 _PDBQT_ATYPE_TO_ELEMENT = {
-    "A": "C",   # aromatic C
-    "C": "C",   # sp3 C
+    "A": "C",  # aromatic C
+    "C": "C",  # sp3 C
     "CA": "C",
-    "N": "N",   # sp3 N
+    "N": "N",  # sp3 N
     "NA": "N",  # aromatic N
-    "O": "O",   # sp3 O
+    "O": "O",  # sp3 O
     "OA": "O",  # aromatic O
     "S": "S",
     "SA": "S",  # aromatic S
     "HD": "H",  # polar H (skip)
-    "H": "H",   # non-polar H (skip)
+    "H": "H",  # non-polar H (skip)
 }
 
 
@@ -337,6 +352,7 @@ def heavy_atom_rmsd(
 # Vina dock (CLI)
 # ---------------------------------------------------------------------------
 
+
 def dock_one(
     vina_bin: Path,
     receptor_pdbqt: Path,
@@ -354,19 +370,32 @@ def dock_one(
     out_pdbqt.parent.mkdir(parents=True, exist_ok=True)
     cmd = [
         str(vina_bin),
-        "--receptor", str(receptor_pdbqt),
-        "--ligand", str(ligand_pdbqt),
-        "--center_x", f"{center[0]:.3f}",
-        "--center_y", f"{center[1]:.3f}",
-        "--center_z", f"{center[2]:.3f}",
-        "--size_x", f"{box_size[0]:.3f}",
-        "--size_y", f"{box_size[1]:.3f}",
-        "--size_z", f"{box_size[2]:.3f}",
-        "--out", str(out_pdbqt),
-        "--exhaustiveness", str(int(exhaustiveness)),
-        "--num_modes", str(int(n_poses)),
-        "--seed", str(int(seed)),
-        "--cpu", "1",
+        "--receptor",
+        str(receptor_pdbqt),
+        "--ligand",
+        str(ligand_pdbqt),
+        "--center_x",
+        f"{center[0]:.3f}",
+        "--center_y",
+        f"{center[1]:.3f}",
+        "--center_z",
+        f"{center[2]:.3f}",
+        "--size_x",
+        f"{box_size[0]:.3f}",
+        "--size_y",
+        f"{box_size[1]:.3f}",
+        "--size_z",
+        f"{box_size[2]:.3f}",
+        "--out",
+        str(out_pdbqt),
+        "--exhaustiveness",
+        str(int(exhaustiveness)),
+        "--num_modes",
+        str(int(n_poses)),
+        "--seed",
+        str(int(seed)),
+        "--cpu",
+        "1",
     ]
     t0 = time.time()
     proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
@@ -377,9 +406,7 @@ def dock_one(
             f"stderr={_strip_ansi(proc.stderr)[-200:]}"
         )
     if not out_pdbqt.exists():
-        raise RuntimeError(
-            f"vina CLI exited 0 but no out_pdbqt written to {out_pdbqt}"
-        )
+        raise RuntimeError(f"vina CLI exited 0 but no out_pdbqt written to {out_pdbqt}")
     return out_pdbqt, elapsed
 
 
@@ -406,7 +433,7 @@ def smiles_to_pdbqt_3d(
 
     sdf_intermediate = str(out_pdbqt_path).replace(".pdbqt", "_pre.sdf")
     # RDKit 3D embed script (in-project venv)
-    embed_script = f'''
+    embed_script = f"""
 from rdkit import Chem
 from rdkit.Chem import AllChem
 import sys
@@ -445,10 +472,12 @@ writer = Chem.SDWriter("{sdf_intermediate}")
 writer.write(mol)
 writer.close()
 print("OK")
-'''
+"""
     embed_proc = subprocess.run(
         [str(rdkit_py), "-c", embed_script],
-        capture_output=True, text=True, timeout=timeout,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
     )
     if embed_proc.returncode != 0:
         raise RuntimeError(
@@ -463,10 +492,19 @@ print("OK")
             f"the BD-9 Phase 2 ligand prep step requires meeko."
         )
     meeko_proc = subprocess.run(
-        [str(prepare_venv_py), str(prepare_lig_py),
-         "-i", sdf_intermediate, "-o", str(out_pdbqt_path),
-         "--charge_model", "gasteiger"],
-        capture_output=True, text=True, timeout=timeout,
+        [
+            str(prepare_venv_py),
+            str(prepare_lig_py),
+            "-i",
+            sdf_intermediate,
+            "-o",
+            str(out_pdbqt_path),
+            "--charge_model",
+            "gasteiger",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=timeout,
     )
     if meeko_proc.returncode != 0 or not out_pdbqt_path.exists():
         raise RuntimeError(
@@ -479,6 +517,7 @@ print("OK")
 # ---------------------------------------------------------------------------
 # Per-pocket aggregation
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PocketResult:
@@ -529,27 +568,39 @@ def _run_pocket_from_existing_poses(
             if rmsd is None:
                 continue
             seed_rmsds.append(rmsd)
-            per_pose_records.append({
-                "pocket": pocket_id, "seed": seed, "pose": pose_idx + 1,
-                "rmsd_angstrom": round(rmsd, 4),
-                "n_docked_heavy": len(elems),
-                "n_ref_heavy": len(ref_elements),
-            })
+            per_pose_records.append(
+                {
+                    "pocket": pocket_id,
+                    "seed": seed,
+                    "pose": pose_idx + 1,
+                    "rmsd_angstrom": round(rmsd, 4),
+                    "n_docked_heavy": len(elems),
+                    "n_ref_heavy": len(ref_elements),
+                }
+            )
         if seed_rmsds:
             best = float(min(seed_rmsds))
             per_seed_best.append(best)
-            per_seed_records.append({
-                "seed": seed, "status": "OK",
-                "n_poses_valid": len(seed_rmsds),
-                "rmsd_per_pose": [round(r, 4) for r in seed_rmsds],
-                "best_rmsd_angstrom": round(best, 4),
-            })
+            per_seed_records.append(
+                {
+                    "seed": seed,
+                    "status": "OK",
+                    "n_poses_valid": len(seed_rmsds),
+                    "rmsd_per_pose": [round(r, 4) for r in seed_rmsds],
+                    "best_rmsd_angstrom": round(best, 4),
+                }
+            )
         else:
             per_seed_records.append({"seed": seed, "status": "NO_VALID_POSES"})
 
     return _finalize_pocket_result(
-        pocket_id, ref_smiles, ref_elements, per_seed_best,
-        per_seed_records, per_pose_records, [],
+        pocket_id,
+        ref_smiles,
+        ref_elements,
+        per_seed_best,
+        per_seed_records,
+        per_pose_records,
+        [],
     )
 
 
@@ -596,21 +647,40 @@ def _run_pocket_full(
                 smiles_to_pdbqt_3d(ref_smiles, lig_pdbqt)
             except Exception as exc:
                 return _finalize_pocket_result(
-                    pocket_id, ref_smiles, ref_elements,
-                    [], [{"seed": s, "status": "LIGAND_PREP_FAIL",
-                          "error": str(exc)[:200]} for s in seeds],
-                    [], [], pre_docked_ligand_pdbqt=None,
+                    pocket_id,
+                    ref_smiles,
+                    ref_elements,
+                    [],
+                    [
+                        {
+                            "seed": s,
+                            "status": "LIGAND_PREP_FAIL",
+                            "error": str(exc)[:200],
+                        }
+                        for s in seeds
+                    ],
+                    [],
+                    [],
+                    pre_docked_ligand_pdbqt=None,
                 )
 
         for seed in seeds:
             try:
                 out_pdbqt, elapsed = dock_one(
-                    vina_bin, receptor_pdbqt, lig_pdbqt, box_center, box_size,
-                    pocket_out_dir, seed, exhaustiveness, n_poses,
+                    vina_bin,
+                    receptor_pdbqt,
+                    lig_pdbqt,
+                    box_center,
+                    box_size,
+                    pocket_out_dir,
+                    seed,
+                    exhaustiveness,
+                    n_poses,
                 )
             except Exception as exc:
-                per_seed_records.append({"seed": seed, "status": "DOCK_FAIL",
-                                         "error": str(exc)[:200]})
+                per_seed_records.append(
+                    {"seed": seed, "status": "DOCK_FAIL", "error": str(exc)[:200]}
+                )
                 continue
             per_seed_elapsed.append(elapsed)
 
@@ -624,29 +694,41 @@ def _run_pocket_full(
                 if rmsd is None:
                     continue
                 seed_rmsds.append(rmsd)
-                per_pose_records.append({
-                    "pocket": pocket_id, "seed": seed, "pose": pose_idx + 1,
-                    "rmsd_angstrom": round(rmsd, 4),
-                    "n_docked_heavy": len(elems),
-                    "n_ref_heavy": len(ref_elements),
-                })
+                per_pose_records.append(
+                    {
+                        "pocket": pocket_id,
+                        "seed": seed,
+                        "pose": pose_idx + 1,
+                        "rmsd_angstrom": round(rmsd, 4),
+                        "n_docked_heavy": len(elems),
+                        "n_ref_heavy": len(ref_elements),
+                    }
+                )
             if seed_rmsds:
                 best = float(min(seed_rmsds))
                 per_seed_best.append(best)
-                per_seed_records.append({
-                    "seed": seed, "status": "OK",
-                    "n_poses_valid": len(seed_rmsds),
-                    "rmsd_per_pose": [round(r, 4) for r in seed_rmsds],
-                    "best_rmsd_angstrom": round(best, 4),
-                    "elapsed_s": round(elapsed, 3),
-                })
+                per_seed_records.append(
+                    {
+                        "seed": seed,
+                        "status": "OK",
+                        "n_poses_valid": len(seed_rmsds),
+                        "rmsd_per_pose": [round(r, 4) for r in seed_rmsds],
+                        "best_rmsd_angstrom": round(best, 4),
+                        "elapsed_s": round(elapsed, 3),
+                    }
+                )
             else:
                 per_seed_records.append({"seed": seed, "status": "NO_VALID_POSES"})
 
     return _finalize_pocket_result(
-        pocket_id, ref_smiles, ref_elements,
-        per_seed_best, per_seed_records, per_pose_records,
-        per_seed_elapsed, box_size,
+        pocket_id,
+        ref_smiles,
+        ref_elements,
+        per_seed_best,
+        per_seed_records,
+        per_pose_records,
+        per_seed_elapsed,
+        box_size,
     )
 
 
@@ -664,7 +746,8 @@ def _finalize_pocket_result(
     n_seeds_succeeded = len(per_seed_best)
     if n_seeds_succeeded == 0:
         return PocketResult(
-            pocket_id=pocket_id, ref_smiles=ref_smiles,
+            pocket_id=pocket_id,
+            ref_smiles=ref_smiles,
             n_ref_heavy=len(ref_elements),
             box_center=[0.0, 0.0, 0.0],
             box_size=box_size or [0.0, 0.0, 0.0],
@@ -703,6 +786,7 @@ def _finalize_pocket_result(
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="m15_rmsd_phase2",
@@ -712,41 +796,60 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--pockets", nargs="+", default=list(DEFAULT_POCKETS),
+        "--pockets",
+        nargs="+",
+        default=list(DEFAULT_POCKETS),
         help=f"Pocket IDs (default: {' '.join(DEFAULT_POCKETS)}).",
     )
     p.add_argument(
-        "--seeds", nargs="+", type=int, default=list(DEFAULT_SEEDS),
+        "--seeds",
+        nargs="+",
+        type=int,
+        default=list(DEFAULT_SEEDS),
         help="Experiment seeds (default: 0 1 2).",
     )
     p.add_argument(
-        "--n-poses", type=int, default=DEFAULT_N_POSES,
+        "--n-poses",
+        type=int,
+        default=DEFAULT_N_POSES,
         help="Vina --num_modes (default 5).",
     )
     p.add_argument(
-        "--exhaustiveness", type=int, default=DEFAULT_EXHAUSTIVENESS,
+        "--exhaustiveness",
+        type=int,
+        default=DEFAULT_EXHAUSTIVENESS,
         help="Vina --exhaustiveness (default 16).",
     )
     p.add_argument(
-        "--vina-bin", type=Path, default=None,
+        "--vina-bin",
+        type=Path,
+        default=None,
         help="Path to vina binary (default: auto-detect).",
     )
     p.add_argument(
-        "--ligand-meta", type=Path, default=LIGAND_META,
+        "--ligand-meta",
+        type=Path,
+        default=LIGAND_META,
         help="Path to ligand_metadata.json (default: "
-             f"{LIGAND_META.relative_to(PROJECT_ROOT)}).",
+        f"{LIGAND_META.relative_to(PROJECT_ROOT)}).",
     )
     p.add_argument(
-        "--recept-dir", type=Path, default=RECEPT_DIR,
+        "--recept-dir",
+        type=Path,
+        default=RECEPT_DIR,
         help="Wf-30 receptor.pdbqt directory (default: "
-             f"{RECEPT_DIR.relative_to(PROJECT_ROOT)}).",
+        f"{RECEPT_DIR.relative_to(PROJECT_ROOT)}).",
     )
     p.add_argument(
-        "--out-dir", type=Path, default=DEFAULT_OUT,
+        "--out-dir",
+        type=Path,
+        default=DEFAULT_OUT,
         help=f"Output root (default: {DEFAULT_OUT.relative_to(PROJECT_ROOT)}).",
     )
     p.add_argument(
-        "--from-existing", action="store_true", default=False,
+        "--from-existing",
+        action="store_true",
+        default=False,
         help=(
             "Re-score from already-docked pose PDBQT files under "
             "--out-dir/<pocket>/pose_seed*.pdbqt — skip the Vina dock step. "
@@ -755,13 +858,17 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--dry-run-summary", action="store_true", default=False,
+        "--dry-run-summary",
+        action="store_true",
+        default=False,
         help="Only print scope + Vina binary status without running.",
     )
     return p
 
 
-def _load_pocket_box_centers(pockets: List[str], recept_dir: Path) -> Dict[str, List[float]]:
+def _load_pocket_box_centers(
+    pockets: List[str], recept_dir: Path
+) -> Dict[str, List[float]]:
     """Read docking box centers from ``prep_meta.json`` if present.
 
     Falls back to the centroid of ``receptor.pdbqt`` heavy atoms.
@@ -797,10 +904,15 @@ def _load_pocket_box_centers(pockets: List[str], recept_dir: Path) -> Dict[str, 
     return out
 
 
-def _write_metric_json(out_dir: Path, results: Dict[str, PocketResult],
-                       seeds: Tuple[int, ...], exhaustiveness: int,
-                       n_poses: int, vina_bin: Path,
-                       note: str = "") -> Path:
+def _write_metric_json(
+    out_dir: Path,
+    results: Dict[str, PocketResult],
+    seeds: Tuple[int, ...],
+    exhaustiveness: int,
+    n_poses: int,
+    vina_bin: Path,
+    note: str = "",
+) -> Path:
     """Write the redesigned metric ``docked_pose_rmsd.json`` (back-compat).
 
     This is the BD-9 successor to ``rigid_fragment_rmsd.json`` per
@@ -810,25 +922,33 @@ def _write_metric_json(out_dir: Path, results: Dict[str, PocketResult],
     measurements = []
     for p, r in results.items():
         if r.status != "MEASURED":
-            measurements.append({
-                "pocket": p, "status": r.status,
-                "per_seed_best_rmsd_angstrom": r.per_seed_best_rmsd_angstrom,
-            })
+            measurements.append(
+                {
+                    "pocket": p,
+                    "status": r.status,
+                    "per_seed_best_rmsd_angstrom": r.per_seed_best_rmsd_angstrom,
+                }
+            )
             continue
-        measurements.append({
-            "pocket": p,
-            "per_seed_best_rmsd_angstrom": r.per_seed_best_rmsd_angstrom,
-            "median_best_rmsd_angstrom": r.median_best_rmsd_angstrom,
-            "mean_best_rmsd_angstrom": r.mean_best_rmsd_angstrom,
-            "std_best_rmsd_angstrom": r.std_best_rmsd_angstrom,
-            "passes_2_5a_gate": r.passes_2_5a_gate,
-            "passes_2_0a_sota": r.passes_2_0a_sota,
-            "n_seeds_succeeded": r.n_seeds_succeeded,
-            "status": r.status,
-            "date_utc": _utc_now_iso(),
-        })
-    medians = [r.median_best_rmsd_angstrom for r in results.values()
-               if r.status == "MEASURED" and r.median_best_rmsd_angstrom is not None]
+        measurements.append(
+            {
+                "pocket": p,
+                "per_seed_best_rmsd_angstrom": r.per_seed_best_rmsd_angstrom,
+                "median_best_rmsd_angstrom": r.median_best_rmsd_angstrom,
+                "mean_best_rmsd_angstrom": r.mean_best_rmsd_angstrom,
+                "std_best_rmsd_angstrom": r.std_best_rmsd_angstrom,
+                "passes_2_5a_gate": r.passes_2_5a_gate,
+                "passes_2_0a_sota": r.passes_2_0a_sota,
+                "n_seeds_succeeded": r.n_seeds_succeeded,
+                "status": r.status,
+                "date_utc": _utc_now_iso(),
+            }
+        )
+    medians = [
+        r.median_best_rmsd_angstrom
+        for r in results.values()
+        if r.status == "MEASURED" and r.median_best_rmsd_angstrom is not None
+    ]
     aggregate_median = float(statistics.median(medians)) if medians else float("nan")
     n_pass_25 = sum(1 for m in medians if m <= 2.5)
     n_pass_20 = sum(1 for m in medians if m <= 2.0)
@@ -856,13 +976,18 @@ def _write_metric_json(out_dir: Path, results: Dict[str, PocketResult],
             "convention); per-pocket success rate >= 80% (TransDiffSBDD "
             "reference: 83.9%)"
         ),
-        "aggregate_median_across_pockets": round(aggregate_median, 4) if medians else None,
+        "aggregate_median_across_pockets": round(aggregate_median, 4)
+        if medians
+        else None,
         "n_pockets_passed_2_5a": n_pass_25,
         "n_pockets_passed_2_0a": n_pass_20,
         "n_pockets_measured": len(medians),
-        "gate_4_passes_2_5a_overall": bool(aggregate_median <= 2.5) if medians else False,
+        "gate_4_passes_2_5a_overall": bool(aggregate_median <= 2.5)
+        if medians
+        else False,
         "measurements": measurements,
-        "note": note or (
+        "note": note
+        or (
             "Generated by molmetal/scripts/m15_rmsd_phase2.py — canonical "
             "BD-9 m15 RMSD Phase 2 script. Backward-compatible with "
             "existing docked_pose_rmsd.json schema (Wf-179 ship)."
@@ -876,18 +1001,27 @@ def _write_metric_json(out_dir: Path, results: Dict[str, PocketResult],
     return out_metric
 
 
-def _write_summary(out_dir: Path, results: Dict[str, PocketResult],
-                   seeds: Tuple[int, ...], exhaustiveness: int,
-                   n_poses: int, vina_bin: Path,
-                   from_existing: bool, pocket_box_centers: Dict[str, List[float]]) -> dict:
+def _write_summary(
+    out_dir: Path,
+    results: Dict[str, PocketResult],
+    seeds: Tuple[int, ...],
+    exhaustiveness: int,
+    n_poses: int,
+    vina_bin: Path,
+    from_existing: bool,
+    pocket_box_centers: Dict[str, List[float]],
+) -> dict:
     """Write ``summary.json`` and ``synthesis.md`` under out_dir."""
     out_dir.mkdir(parents=True, exist_ok=True)
     results_summary: Dict[str, dict] = {}
     for p, r in results.items():
         r.box_center = pocket_box_centers.get(p, [0.0, 0.0, 0.0])
         results_summary[p] = asdict(r)
-    medians = [r.median_best_rmsd_angstrom for r in results.values()
-               if r.status == "MEASURED" and r.median_best_rmsd_angstrom is not None]
+    medians = [
+        r.median_best_rmsd_angstrom
+        for r in results.values()
+        if r.status == "MEASURED" and r.median_best_rmsd_angstrom is not None
+    ]
     aggregate_median = float(statistics.median(medians)) if medians else float("nan")
     n_pass_25 = sum(1 for m in medians if m <= 2.5)
     n_pass_20 = sum(1 for m in medians if m <= 2.0)
@@ -898,11 +1032,15 @@ def _write_summary(out_dir: Path, results: Dict[str, PocketResult],
         "n_poses": int(n_poses),
         "seeds": list(seeds),
         "pockets": results_summary,
-        "aggregate_median_across_pockets": round(aggregate_median, 4) if medians else None,
+        "aggregate_median_across_pockets": round(aggregate_median, 4)
+        if medians
+        else None,
         "n_pockets": len(medians),
         "n_pockets_passed_2_5a": n_pass_25,
         "n_pockets_passed_2_0a": n_pass_20,
-        "gate_4_passes_2_5a_overall": bool(aggregate_median <= 2.5) if medians else False,
+        "gate_4_passes_2_5a_overall": bool(aggregate_median <= 2.5)
+        if medians
+        else False,
         "from_existing_poses": bool(from_existing),
         "generated_utc": _utc_now_iso(),
     }
@@ -913,18 +1051,26 @@ def _write_summary(out_dir: Path, results: Dict[str, PocketResult],
     md_lines.append("")
     md_lines.append(f"_Generated_: {_utc_now_iso()}  ")
     md_lines.append(f"_Engine_: {vina_bin}  ")
-    md_lines.append(f"_Exhaustiveness_: {exhaustiveness}; _n_poses_: {n_poses}; "
-                    f"_seeds_: {list(seeds)}.")
-    md_lines.append(f"_Mode_: {'from-existing (re-score only)' if from_existing else 'full dock'}.")
+    md_lines.append(
+        f"_Exhaustiveness_: {exhaustiveness}; _n_poses_: {n_poses}; "
+        f"_seeds_: {list(seeds)}."
+    )
+    md_lines.append(
+        f"_Mode_: {'from-existing (re-score only)' if from_existing else 'full dock'}."
+    )
     md_lines.append("")
     md_lines.append("## Per-pocket median best RMSD")
     md_lines.append("")
-    md_lines.append("| Pocket | n_ref_heavy | median A | mean A | std A | n_seeds | passes 2.5 A | passes 2.0 A | status |")
+    md_lines.append(
+        "| Pocket | n_ref_heavy | median A | mean A | std A | n_seeds | passes 2.5 A | passes 2.0 A | status |"
+    )
     md_lines.append("|---|---|---|---|---|---|---|---|---|")
     for p, r in results.items():
         if r.status != "MEASURED":
-            md_lines.append(f"| {p} | {r.n_ref_heavy} | — | — | — | "
-                            f"{r.n_seeds_succeeded}/{r.n_seeds_succeeded + r.n_seeds_failed} | — | — | {r.status} |")
+            md_lines.append(
+                f"| {p} | {r.n_ref_heavy} | — | — | — | "
+                f"{r.n_seeds_succeeded}/{r.n_seeds_succeeded + r.n_seeds_failed} | — | — | {r.status} |"
+            )
             continue
         md_lines.append(
             f"| {p} | {r.n_ref_heavy} | {r.median_best_rmsd_angstrom:.4f} | "
@@ -935,13 +1081,21 @@ def _write_summary(out_dir: Path, results: Dict[str, PocketResult],
         )
     md_lines.append("")
     if medians:
-        md_lines.append(f"**Aggregate median across pockets**: {aggregate_median:.4f} A "
-                        f"({len(medians)} pockets).")
+        md_lines.append(
+            f"**Aggregate median across pockets**: {aggregate_median:.4f} A "
+            f"({len(medians)} pockets)."
+        )
         md_lines.append("")
-        md_lines.append(f"Pass 2.5 A (practical gate): {n_pass_25}/{len(medians)} pockets.  ")
-        md_lines.append(f"Pass 2.0 A (SOTA gate, Trott & Olson 2010): {n_pass_20}/{len(medians)} pockets.")
+        md_lines.append(
+            f"Pass 2.5 A (practical gate): {n_pass_25}/{len(medians)} pockets.  "
+        )
+        md_lines.append(
+            f"Pass 2.0 A (SOTA gate, Trott & Olson 2010): {n_pass_20}/{len(medians)} pockets."
+        )
     else:
-        md_lines.append("**No pockets measured** — Vina binary or receptor.pdbqt likely missing.")
+        md_lines.append(
+            "**No pockets measured** — Vina binary or receptor.pdbqt likely missing."
+        )
     md_lines.append("")
     md_lines.append("## Honest framing (party-twenty-spirit §3.5)")
     md_lines.append("")
@@ -965,8 +1119,12 @@ def _write_summary(out_dir: Path, results: Dict[str, PocketResult],
     md_lines.append("## Files")
     md_lines.append("")
     md_lines.append("* `summary.json` — machine-readable aggregate.")
-    md_lines.append("* `<pocket>/per_seed_metrics.json` — per-pocket per-seed RMSD records.")
-    md_lines.append("* `<pocket>/per_pose_metrics.json` — per-pocket per-seed per-pose RMSD records.")
+    md_lines.append(
+        "* `<pocket>/per_seed_metrics.json` — per-pocket per-seed RMSD records."
+    )
+    md_lines.append(
+        "* `<pocket>/per_pose_metrics.json` — per-pocket per-seed per-pose RMSD records."
+    )
     md_lines.append("* `<pocket>/pose_seed<N>_p<M>.pdbqt` — individual docked poses.")
     (_wf416_atomic_write_text(out_dir / "synthesis.md"), "\n".join(md_lines) + "\n")
     return summary
@@ -979,8 +1137,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     # ---- Pre-flight ----
     vina_bin = args.vina_bin or _resolve_vina_bin()
     if vina_bin is None and not args.dry_run_summary:
-        print("ERROR: no working vina binary found. Run check_vina.py "
-              "to diagnose.", file=sys.stderr)
+        print(
+            "ERROR: no working vina binary found. Run check_vina.py " "to diagnose.",
+            file=sys.stderr,
+        )
         return 1
     vina_bin_label = str(vina_bin) if vina_bin else "(dry-run only)"
 
@@ -996,8 +1156,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
 
     if not args.ligand_meta.exists():
-        print(f"ERROR: ligand_metadata.json not found at {args.ligand_meta}. "
-              f"Wf-139 P1 must ship first.", file=sys.stderr)
+        print(
+            f"ERROR: ligand_metadata.json not found at {args.ligand_meta}. "
+            f"Wf-139 P1 must ship first.",
+            file=sys.stderr,
+        )
         return 2
 
     # Load ligand metadata + box centers
@@ -1006,12 +1169,16 @@ def main(argv: Optional[List[str]] = None) -> int:
     box_centers = _load_pocket_box_centers(list(args.pockets), args.recept_dir)
 
     print(f"Vina binary: {vina_bin}")
-    cp = subprocess.run([str(vina_bin), "--version"], capture_output=True, text=True, timeout=10)
+    cp = subprocess.run(
+        [str(vina_bin), "--version"], capture_output=True, text=True, timeout=10
+    )
     print(f"Vina version: {_strip_ansi(cp.stdout).strip()}")
     print(f"Pockets: {list(args.pockets)}")
     print(f"Seeds:   {list(args.seeds)}")
     print(f"n_poses: {args.n_poses}; exhaustiveness: {args.exhaustiveness}")
-    print(f"Mode:    {'from-existing (re-score only)' if args.from_existing else 'full dock'}")
+    print(
+        f"Mode:    {'from-existing (re-score only)' if args.from_existing else 'full dock'}"
+    )
     print()
 
     results: Dict[str, PocketResult] = {}
@@ -1028,38 +1195,60 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         if args.from_existing:
             r = _run_pocket_from_existing_poses(
-                pocket_id, pocket_meta[pocket_id], pocket_out,
+                pocket_id,
+                pocket_meta[pocket_id],
+                pocket_out,
                 tuple(args.seeds),
             )
         else:
             r = _run_pocket_full(
-                pocket_id, pocket_meta[pocket_id], box_centers[pocket_id],
-                pocket_out, receptor, vina_bin,
-                tuple(args.seeds), int(args.exhaustiveness), int(args.n_poses),
+                pocket_id,
+                pocket_meta[pocket_id],
+                box_centers[pocket_id],
+                pocket_out,
+                receptor,
+                vina_bin,
+                tuple(args.seeds),
+                int(args.exhaustiveness),
+                int(args.n_poses),
             )
 
         pocket_out.mkdir(parents=True, exist_ok=True)
         r.box_center = box_centers.get(pocket_id, [0.0, 0.0, 0.0])
         # Per-seed / per-pose JSON (also written by helper functions for full mode)
-        (_wf416_atomic_write_text(pocket_out / "per_seed_metrics.json"), json.dumps(asdict(r), indent=2))
+        (
+            _wf416_atomic_write_text(pocket_out / "per_seed_metrics.json"),
+            json.dumps(asdict(r), indent=2),
+        )
         results[pocket_id] = r
         if r.status == "MEASURED":
-            print(f"  median={r.median_best_rmsd_angstrom:.4f}A "
-                  f"mean={r.mean_best_rmsd_angstrom:.4f}A "
-                  f"std={r.std_best_rmsd_angstrom:.4f}A "
-                  f"passes_2.5={r.passes_2_5a_gate}")
+            print(
+                f"  median={r.median_best_rmsd_angstrom:.4f}A "
+                f"mean={r.mean_best_rmsd_angstrom:.4f}A "
+                f"std={r.std_best_rmsd_angstrom:.4f}A "
+                f"passes_2.5={r.passes_2_5a_gate}"
+            )
         else:
             print(f"  status={r.status}")
 
     # ---- Write summary + back-compat metric JSON ----
     summary = _write_summary(
-        out_dir, results, tuple(args.seeds),
-        int(args.exhaustiveness), int(args.n_poses), vina_bin,
-        bool(args.from_existing), box_centers,
+        out_dir,
+        results,
+        tuple(args.seeds),
+        int(args.exhaustiveness),
+        int(args.n_poses),
+        vina_bin,
+        bool(args.from_existing),
+        box_centers,
     )
     metric_path = _write_metric_json(
-        out_dir, results, tuple(args.seeds),
-        int(args.exhaustiveness), int(args.n_poses), vina_bin,
+        out_dir,
+        results,
+        tuple(args.seeds),
+        int(args.exhaustiveness),
+        int(args.n_poses),
+        vina_bin,
     )
     print()
     print(f"Wrote summary: {out_dir / 'summary.json'}")

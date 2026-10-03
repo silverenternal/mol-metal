@@ -33,9 +33,7 @@ except ImportError:  # pragma: no cover — pyyaml is in pyproject.toml deps
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 CI_YML = PROJECT_ROOT / ".github" / "workflows" / "ci.yml"
-MASTER_VERIFY_SCRIPT = (
-    PROJECT_ROOT / "molmetal" / "scripts" / "master_verify_r18.py"
-)
+MASTER_VERIFY_SCRIPT = PROJECT_ROOT / "molmetal" / "scripts" / "master_verify_r18.py"
 
 JOB_NAME = "r18-train-scripts-master-verify"
 
@@ -63,9 +61,7 @@ def ci_workflow() -> Dict[str, Any]:
 def r18_job(ci_workflow: Dict[str, Any]) -> Dict[str, Any]:
     """Pull the Wf-35 Phase 4 master-verify job out of the workflow."""
     jobs = ci_workflow["jobs"]
-    assert JOB_NAME in jobs, (
-        f"missing {JOB_NAME!r} job; present jobs: {sorted(jobs)}"
-    )
+    assert JOB_NAME in jobs, f"missing {JOB_NAME!r} job; present jobs: {sorted(jobs)}"
     return jobs[JOB_NAME]
 
 
@@ -80,9 +76,7 @@ def test_ci_yml_exists() -> None:
 def test_ci_yml_parses_as_yaml(ci_workflow: Dict[str, Any]) -> None:
     """``ci.yml`` is well-formed YAML with a top-level ``jobs`` key."""
     assert "jobs" in ci_workflow, "ci.yml must declare a top-level jobs: key"
-    assert isinstance(ci_workflow["jobs"], dict), (
-        "ci.yml 'jobs' must be a mapping"
-    )
+    assert isinstance(ci_workflow["jobs"], dict), "ci.yml 'jobs' must be a mapping"
 
 
 # ---------------------------------------------------------------------------
@@ -96,9 +90,9 @@ def test_ci_yml_has_r18_master_verify_job(r18_job: Dict[str, Any]) -> None:
     """
     # The fixture already asserts presence; this test makes the
     # contract explicit in the test report.
-    assert r18_job.get("name", "").startswith("[4b]"), (
-        f"expected name to start with '[4b]', got {r18_job.get('name')!r}"
-    )
+    assert r18_job.get("name", "").startswith(
+        "[4b]"
+    ), f"expected name to start with '[4b]', got {r18_job.get('name')!r}"
 
 
 def test_ci_yml_r18_job_uses_ubuntu_latest_cpu(
@@ -110,9 +104,9 @@ def test_ci_yml_r18_job_uses_ubuntu_latest_cpu(
     keeps the Wf-35 refactor gate free of self-hosted-runner
     dependencies.
     """
-    assert r18_job["runs-on"] == "ubuntu-latest", (
-        f"expected 'ubuntu-latest', got {r18_job['runs-on']!r}"
-    )
+    assert (
+        r18_job["runs-on"] == "ubuntu-latest"
+    ), f"expected 'ubuntu-latest', got {r18_job['runs-on']!r}"
 
 
 def test_ci_yml_r18_job_has_fifteen_minute_timeout(
@@ -124,9 +118,9 @@ def test_ci_yml_r18_job_has_fifteen_minute_timeout(
     checks on a fresh runner.  Drift above this likely indicates
     an unintended smoke test slipped in.
     """
-    assert r18_job.get("timeout-minutes") == 15, (
-        f"expected timeout-minutes=15, got {r18_job.get('timeout-minutes')!r}"
-    )
+    assert (
+        r18_job.get("timeout-minutes") == 15
+    ), f"expected timeout-minutes=15, got {r18_job.get('timeout-minutes')!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -146,8 +140,7 @@ def test_ci_yml_r18_job_invokes_master_verify_script(
         str(s.get("run", "")) for s in r18_job["steps"] if isinstance(s, dict)
     )
     assert "master_verify_r18.py" in joined, (
-        "expected 'master_verify_r18.py' in run steps; "
-        f"runs were:\n{joined}"
+        "expected 'master_verify_r18.py' in run steps; " f"runs were:\n{joined}"
     )
 
 
@@ -161,16 +154,14 @@ def test_ci_yml_r18_job_uses_uv_setup_action(
     is a regression.
     """
     uses = [s.get("uses", "") for s in r18_job["steps"]]
-    assert any("setup-uv" in u for u in uses), (
-        f"expected astral-sh/setup-uv in steps; got uses={uses}"
-    )
+    assert any(
+        "setup-uv" in u for u in uses
+    ), f"expected astral-sh/setup-uv in steps; got uses={uses}"
 
 
 def test_master_verify_script_exists() -> None:
     """The Phase 3 master-verify script (input to Phase 4) is on disk."""
-    assert MASTER_VERIFY_SCRIPT.exists(), (
-        f"missing {MASTER_VERIFY_SCRIPT}"
-    )
+    assert MASTER_VERIFY_SCRIPT.exists(), f"missing {MASTER_VERIFY_SCRIPT}"
 
 
 # ---------------------------------------------------------------------------
@@ -188,6 +179,4 @@ def test_ci_summary_includes_r18_master_verify_job(
     """
     summary = ci_workflow["jobs"]["ci-summary"]
     needs = summary.get("needs", [])
-    assert JOB_NAME in needs, (
-        f"expected {JOB_NAME!r} in ci-summary.needs; got {needs}"
-    )
+    assert JOB_NAME in needs, f"expected {JOB_NAME!r} in ci-summary.needs; got {needs}"

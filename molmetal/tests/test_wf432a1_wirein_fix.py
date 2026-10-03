@@ -33,6 +33,7 @@ project venv per Wf-421-A2 + Wf-422-A2.
 Wall budget: ~30 s on the host Python with project venv. CPU-only by design
 (per AGENTS.md §5.7 + §5.1 standing GPU authorization honored — no GPU launches).
 """
+
 from __future__ import annotations
 
 import os
@@ -126,16 +127,25 @@ class TestDMPNNWireInNoNameError(unittest.TestCase):
         rc, stdout, stderr = _run_subprocess_smoke(
             trainer_path="molmetal/scripts/train_dmpnn_multitask_wasserstein.py",
             flags=[
-                "--epochs", "1",
-                "--batch-size", "8",
-                "--device", "cpu",
-                "--metals", "Ru",
-                "--seeds", "0",
-                "--out-dir", str(out_dir),
-                "--no-kendall", "--no-dann",
+                "--epochs",
+                "1",
+                "--batch-size",
+                "8",
+                "--device",
+                "cpu",
+                "--metals",
+                "Ru",
+                "--seeds",
+                "0",
+                "--out-dir",
+                str(out_dir),
+                "--no-kendall",
+                "--no-dann",
                 "--use-ot-cfm",
-                "--data-csv", ".data/molmetal/metalcytotox_5metal_multitask_v4.csv",
-                "--csv", ".data/molmetal/metalcytotox_5metal_multitask_v4.csv",
+                "--data-csv",
+                ".data/molmetal/metalcytotox_5metal_multitask_v4.csv",
+                "--csv",
+                ".data/molmetal/metalcytotox_5metal_multitask_v4.csv",
             ],
             timeout_sec=600,
         )
@@ -160,16 +170,25 @@ class TestDMPNNWireInNoNameError(unittest.TestCase):
         rc, stdout, stderr = _run_subprocess_smoke(
             trainer_path="molmetal/scripts/train_dmpnn_multitask_wasserstein.py",
             flags=[
-                "--epochs", "1",
-                "--batch-size", "8",
-                "--device", "cpu",
-                "--metals", "Ru",
-                "--seeds", "0",
-                "--out-dir", str(out_dir),
-                "--no-kendall", "--no-dann",
+                "--epochs",
+                "1",
+                "--batch-size",
+                "8",
+                "--device",
+                "cpu",
+                "--metals",
+                "Ru",
+                "--seeds",
+                "0",
+                "--out-dir",
+                str(out_dir),
+                "--no-kendall",
+                "--no-dann",
                 "--per-cohort-features",
-                "--data-csv", ".data/molmetal/metalcytotox_5metal_multitask_v4.csv",
-                "--csv", ".data/molmetal/metalcytotox_5metal_multitask_v4.csv",
+                "--data-csv",
+                ".data/molmetal/metalcytotox_5metal_multitask_v4.csv",
+                "--csv",
+                ".data/molmetal/metalcytotox_5metal_multitask_v4.csv",
             ],
             timeout_sec=600,
         )
@@ -198,18 +217,26 @@ class TestDMPNNWireInNoNameError(unittest.TestCase):
         rc, stdout, stderr = _run_subprocess_smoke(
             trainer_path="molmetal/scripts/train_dmpnn_multitask_wasserstein.py",
             flags=[
-                "--epochs", "1",
-                "--batch-size", "8",
-                "--device", "cpu",
-                "--metals", "Ru",
-                "--seeds", "0",
-                "--out-dir", str(out_dir),
+                "--epochs",
+                "1",
+                "--batch-size",
+                "8",
+                "--device",
+                "cpu",
+                "--metals",
+                "Ru",
+                "--seeds",
+                "0",
+                "--out-dir",
+                str(out_dir),
                 "--no-kendall",
                 "--use-dann",
                 "--use-ot-cfm",
                 "--per-cohort-features",
-                "--data-csv", ".data/molmetal/metalcytotox_5metal_multitask_v4.csv",
-                "--csv", ".data/molmetal/metalcytotox_5metal_multitask_v4.csv",
+                "--data-csv",
+                ".data/molmetal/metalcytotox_5metal_multitask_v4.csv",
+                "--csv",
+                ".data/molmetal/metalcytotox_5metal_multitask_v4.csv",
             ],
             timeout_sec=600,
         )
@@ -248,11 +275,16 @@ class TestCFMWireInNoNameError(unittest.TestCase):
         rc, stdout, stderr = _run_subprocess_smoke(
             trainer_path="molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
             flags=[
-                "--epochs", "1",
-                "--batch-size", "8",
-                "--device", "cpu",
-                "--seed", "42",
-                "--out-dir", str(out_dir),
+                "--epochs",
+                "1",
+                "--batch-size",
+                "8",
+                "--device",
+                "cpu",
+                "--seed",
+                "42",
+                "--out-dir",
+                str(out_dir),
             ],
             timeout_sec=300,
         )
@@ -262,7 +294,9 @@ class TestCFMWireInNoNameError(unittest.TestCase):
             decode_ratio != decode_ratio,  # NaN check
             f"decode_ratio not found in stdout:\n{stdout[-500:]}",
         )
-        self.assertGreater(decode_ratio, 0.0, f"decode_ratio must be > 0; got {decode_ratio}")
+        self.assertGreater(
+            decode_ratio, 0.0, f"decode_ratio must be > 0; got {decode_ratio}"
+        )
 
     @unittest.skipUnless(
         _has_torch(),
@@ -279,15 +313,23 @@ class TestCFMWireInNoNameError(unittest.TestCase):
         rc, stdout, stderr = _run_subprocess_smoke(
             trainer_path="molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
             flags=[
-                "--epochs", "2",
-                "--batch-size", "8",
-                "--device", "cpu",
-                "--seed", "42",
-                "--out-dir", str(out_dir),
-                "--sa-penalty", "0.5",
-                "--sa-target", "2.8",
+                "--epochs",
+                "2",
+                "--batch-size",
+                "8",
+                "--device",
+                "cpu",
+                "--seed",
+                "42",
+                "--out-dir",
+                str(out_dir),
+                "--sa-penalty",
+                "0.5",
+                "--sa-target",
+                "2.8",
                 "--scaffold-conditioning",
-                "--mmd-weight", "0.1",
+                "--mmd-weight",
+                "0.1",
                 "--use-ot-cfm",
                 "--per-cohort-features",
             ],
@@ -301,7 +343,9 @@ class TestCFMWireInNoNameError(unittest.TestCase):
             decode_ratio != decode_ratio,
             f"decode_ratio not found in stdout:\n{stdout[-500:]}",
         )
-        self.assertGreater(decode_ratio, 0.0, f"decode_ratio must be > 0; got {decode_ratio}")
+        self.assertGreater(
+            decode_ratio, 0.0, f"decode_ratio must be > 0; got {decode_ratio}"
+        )
         # loss curve monotone decreasing
         losses = _parse_loss_curve(stdout)
         self.assertGreaterEqual(
@@ -323,7 +367,9 @@ class TestWireInSourceAudit(unittest.TestCase):
     contract that the Wf-424-A11 NameError fix enforced.
     """
 
-    TRAINER_DMPNN = _REPO_ROOT / "molmetal" / "scripts" / "train_dmpnn_multitask_wasserstein.py"
+    TRAINER_DMPNN = (
+        _REPO_ROOT / "molmetal" / "scripts" / "train_dmpnn_multitask_wasserstein.py"
+    )
 
     def test_dmpnn_train_one_metal_one_seed_no_args_references(self) -> None:
         """``train_one_metal_one_seed`` (line ~639) body must NOT contain
@@ -394,7 +440,7 @@ class TestWireInSourceAudit(unittest.TestCase):
         call_idx = main_body.find("train_one_metal_one_seed(")
         self.assertNotEqual(call_idx, -1, "train_one_metal_one_seed call not found")
         # Extract ~30 lines after the call (the kwarg list)
-        call_block = main_body[call_idx: call_idx + 3000]
+        call_block = main_body[call_idx : call_idx + 3000]
         # Verify each of the 3 kwargs is passed
         self.assertIn(
             "use_ot_cfm=",

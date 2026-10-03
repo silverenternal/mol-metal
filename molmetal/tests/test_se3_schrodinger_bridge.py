@@ -65,7 +65,9 @@ def _eye_R(n: int = 3, batch: int = 1, dtype=torch.float32) -> torch.Tensor:
     return eye.contiguous()
 
 
-def _rand_R(batch: int = 1, dtype=torch.float32, max_angle: float = 0.9) -> torch.Tensor:
+def _rand_R(
+    batch: int = 1, dtype=torch.float32, max_angle: float = 0.9
+) -> torch.Tensor:
     """Random SO(3) rotation matrix via Rodrigues with bounded angle.
 
     We bound the rotation angle below ``pi`` to avoid the antipodal
@@ -79,7 +81,9 @@ def _rand_R(batch: int = 1, dtype=torch.float32, max_angle: float = 0.9) -> torc
     return so3_exp(omega)
 
 
-def _rand_T(batch: int = 1, dtype=torch.float32, max_angle: float = 0.9) -> torch.Tensor:
+def _rand_T(
+    batch: int = 1, dtype=torch.float32, max_angle: float = 0.9
+) -> torch.Tensor:
     """Random SE(3) matrix of shape ``(batch, 4, 4)``."""
     R = _rand_R(batch, dtype=dtype, max_angle=max_angle)
     p = torch.randn(batch, 3, dtype=dtype)
@@ -374,8 +378,12 @@ def test_log_sinkhorn_zero_eps_approaches_exact_ot() -> None:
     With small ``eps`` and many iterations the coupling should
     concentrate on a permutation matrix (the optimal assignment).
     """
-    p0 = torch.tensor([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
-    p1 = torch.tensor([[0.1, 0.1, 0.1], [1.1, 0.1, 0.1], [0.1, 1.1, 0.1], [0.1, 0.1, 1.1]])
+    p0 = torch.tensor(
+        [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+    )
+    p1 = torch.tensor(
+        [[0.1, 0.1, 0.1], [1.1, 0.1, 0.1], [0.1, 1.1, 0.1], [0.1, 0.1, 1.1]]
+    )
     sk = LogSinkhornLoss(eps=0.01, n_iters=500)
     _loss, P = sk.forward(p0, p1)
     # The optimal coupling is the identity permutation: P[i, j] high

@@ -62,9 +62,7 @@ import pytest
 
 PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
 LAUNCHER = PROJECT_ROOT / "scripts" / "launch_wf74_v2_drugood_dann.sh"
-DRUGOOD_TRAINER = (
-    PROJECT_ROOT / "molmetal" / "scripts" / "wf305d_drugood_dann_train.py"
-)
+DRUGOOD_TRAINER = PROJECT_ROOT / "molmetal" / "scripts" / "wf305d_drugood_dann_train.py"
 PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
 
 
@@ -81,9 +79,9 @@ def _read_launcher() -> str:
 
 def _read_trainer() -> str:
     """Read the Wf-305D DANN trainer source."""
-    assert DRUGOOD_TRAINER.exists(), (
-        f"Wf-305D DrugOOD DANN trainer missing: {DRUGOOD_TRAINER}"
-    )
+    assert (
+        DRUGOOD_TRAINER.exists()
+    ), f"Wf-305D DrugOOD DANN trainer missing: {DRUGOOD_TRAINER}"
     return DRUGOOD_TRAINER.read_text()
 
 
@@ -105,26 +103,24 @@ class TestUserOkGate:
     def test_user_ok_function_defined_in_launcher(self) -> None:
         """The ``user_ok_gate()`` function must be defined in the launcher."""
         text = _read_launcher()
-        assert "user_ok_gate()" in text, (
-            "user_ok_gate() function missing from Wf-74 v2 launcher"
-        )
+        assert (
+            "user_ok_gate()" in text
+        ), "user_ok_gate() function missing from Wf-74 v2 launcher"
         # And it must check USER_OK == "YES" for R3 mode
-        assert 'USER_OK' in text, "USER_OK env var reference missing"
-        assert '"YES"' in text or "'YES'" in text, (
-            "USER_OK == 'YES' literal comparison missing"
-        )
+        assert "USER_OK" in text, "USER_OK env var reference missing"
+        assert (
+            '"YES"' in text or "'YES'" in text
+        ), "USER_OK == 'YES' literal comparison missing"
 
     def test_r3_mode_requires_user_ok_yes(self) -> None:
         """The user_ok_gate() must require USER_OK='YES' for R3 mode."""
         text = _read_launcher()
         # Look for the gate body: R3 → USER_OK must equal 'YES'
-        assert "[ \"${mode}\" = \"R3\" ]" in text, (
-            "R3 mode check missing in user_ok_gate()"
-        )
+        assert '[ "${mode}" = "R3" ]' in text, "R3 mode check missing in user_ok_gate()"
         # And the explicit YES comparison (script uses ${USER_OK} expansion)
-        assert '!= "YES"' in text, (
-            "USER_OK != 'YES' comparison missing in user_ok_gate()"
-        )
+        assert (
+            '!= "YES"' in text
+        ), "USER_OK != 'YES' comparison missing in user_ok_gate()"
 
     def test_user_ok_gate_is_invoked_before_run(self) -> None:
         """user_ok_gate() must be invoked before pre_flight/vram/run."""
@@ -133,9 +129,9 @@ class TestUserOkGate:
         assert gate_idx >= 0, "user_ok_gate invocation missing"
         # It should appear before pre_flight_gate and phase_R3 / phase_R1
         pre_flight_idx = text.find("pre_flight_gate")
-        assert pre_flight_idx > gate_idx, (
-            "pre_flight_gate must be invoked AFTER user_ok_gate"
-        )
+        assert (
+            pre_flight_idx > gate_idx
+        ), "pre_flight_gate must be invoked AFTER user_ok_gate"
 
     def test_user_ok_missing_triggers_die_in_r3(self) -> None:
         """When USER_OK is unset and mode=R3, the launcher must die.
@@ -165,9 +161,9 @@ class TestUserOkGate:
         )
         # And the error message should mention USER_OK
         combined = proc.stdout + proc.stderr
-        assert "USER_OK" in combined, (
-            f"USER_OK error message missing from output: {combined!r}"
-        )
+        assert (
+            "USER_OK" in combined
+        ), f"USER_OK error message missing from output: {combined!r}"
 
     def test_user_ok_wrong_value_triggers_die_in_r3(self) -> None:
         """When USER_OK != 'YES' and mode=R3, the launcher must die."""
@@ -186,9 +182,7 @@ class TestUserOkGate:
             f"got exit={proc.returncode}"
         )
         combined = proc.stdout + proc.stderr
-        assert "USER_OK" in combined, (
-            f"USER_OK error message missing: {combined!r}"
-        )
+        assert "USER_OK" in combined, f"USER_OK error message missing: {combined!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -207,9 +201,9 @@ class TestVramBudgetCheck:
     def test_vram_gate_function_defined(self) -> None:
         """``vram_gate()`` function must be defined in the launcher."""
         text = _read_launcher()
-        assert "vram_gate()" in text or "vram_gate ()" in text, (
-            "vram_gate() function missing from Wf-74 v2 launcher"
-        )
+        assert (
+            "vram_gate()" in text or "vram_gate ()" in text
+        ), "vram_gate() function missing from Wf-74 v2 launcher"
 
     def test_vram_budget_threshold_is_20gb(self) -> None:
         """VRAM_BUDGET_GB constant must be 20 (RTX 5090 / RTX PRO 6000 budget)."""
@@ -230,21 +224,17 @@ class TestVramBudgetCheck:
     def test_vram_gate_uses_nvidia_smi(self) -> None:
         """``vram_gate()`` must call ``nvidia-smi --query-gpu=memory.free``."""
         text = _read_launcher()
-        assert "nvidia-smi" in text, (
-            "nvidia-smi invocation missing from vram_gate()"
-        )
+        assert "nvidia-smi" in text, "nvidia-smi invocation missing from vram_gate()"
         # And it queries memory.free
-        assert "memory.free" in text, (
-            "nvidia-smi --query-gpu=memory.free missing from vram_gate()"
-        )
+        assert (
+            "memory.free" in text
+        ), "nvidia-smi --query-gpu=memory.free missing from vram_gate()"
 
     def test_vram_gate_called_in_main(self) -> None:
         """vram_gate() must be invoked in main() for both R1 and R3 paths."""
         text = _read_launcher()
         # Count vram_gate invocations as a function call (e.g. `vram_gate "${X}"`)
-        n_vram_calls = len(
-            re.findall(r"\bvram_gate\b\s*\"", text)
-        )
+        n_vram_calls = len(re.findall(r"\bvram_gate\b\s*\"", text))
         assert n_vram_calls >= 2, (
             f"vram_gate invocation count = {n_vram_calls}; "
             f"expected ≥2 (R1 call + R3 call)"
@@ -258,17 +248,17 @@ class TestVramBudgetCheck:
         match = re.search(r"vram_gate\(\)\s*\{(.*?)\n\}", text, re.DOTALL)
         assert match, "vram_gate function body not parseable"
         body = match.group(1)
-        assert "DRY-RUN" in body or "DRY_RUN" in body, (
-            "vram_gate() missing DRY-RUN guard"
-        )
+        assert (
+            "DRY-RUN" in body or "DRY_RUN" in body
+        ), "vram_gate() missing DRY-RUN guard"
 
     def test_vram_budget_oom_die_message(self) -> None:
         """When VRAM < budget, vram_gate() must die with OOM message."""
         text = _read_launcher()
         # Look for the OOM die branch
-        assert "OOM" in text or "OOM risk" in text, (
-            "OOM die message missing from vram_gate()"
-        )
+        assert (
+            "OOM" in text or "OOM risk" in text
+        ), "OOM die message missing from vram_gate()"
 
 
 # ---------------------------------------------------------------------------
@@ -288,81 +278,71 @@ class TestWf328FixesWired:
     def test_build_wf328_flags_function_defined(self) -> None:
         """``build_wf328_flags()`` function must be defined."""
         text = _read_launcher()
-        assert "build_wf328_flags" in text, (
-            "build_wf328_flags() function missing"
-        )
+        assert "build_wf328_flags" in text, "build_wf328_flags() function missing"
 
     def test_w1_torch_compile_flag(self) -> None:
         """Wf-328 W1: torch.compile default ON."""
         text = _read_launcher()
         # The constants section should set WF328_TORCH_COMPILE=1
-        assert "WF328_TORCH_COMPILE=1" in text, (
-            "W1 torch.compile default ON constant missing"
-        )
+        assert (
+            "WF328_TORCH_COMPILE=1" in text
+        ), "W1 torch.compile default ON constant missing"
 
     def test_w2_num_workers_8(self) -> None:
         """Wf-328 W2: cpu-num-workers=8."""
         text = _read_launcher()
-        assert "WF328_NUM_WORKERS=8" in text, (
-            "W2 num-workers=8 constant missing"
-        )
+        assert "WF328_NUM_WORKERS=8" in text, "W2 num-workers=8 constant missing"
         # And it must be wired into build_wf328_flags
-        assert "--cpu-num-workers" in text, (
-            "W2 --cpu-num-workers flag missing from build_wf328_flags"
-        )
+        assert (
+            "--cpu-num-workers" in text
+        ), "W2 --cpu-num-workers flag missing from build_wf328_flags"
 
     def test_w3_bf16_default_on(self) -> None:
         """Wf-328 W3: BF16 default ON."""
         text = _read_launcher()
-        assert "WF328_BF16=1" in text, (
-            "W3 BF16 default ON constant missing"
-        )
+        assert "WF328_BF16=1" in text, "W3 BF16 default ON constant missing"
 
     def test_w4_tf32_default_on(self) -> None:
         """Wf-328 W4: TF32 default ON."""
         text = _read_launcher()
-        assert "WF328_TF32=1" in text, (
-            "W4 TF32 default ON constant missing"
-        )
+        assert "WF328_TF32=1" in text, "W4 TF32 default ON constant missing"
 
     def test_w5_w2_gradient_mode_sort(self) -> None:
         """Wf-328 W5: W₂ gradient mode = sort."""
         text = _read_launcher()
-        assert 'WF328_W2_MODE="sort"' in text, (
-            "W5 W₂ gradient mode = sort constant missing"
-        )
+        assert (
+            'WF328_W2_MODE="sort"' in text
+        ), "W5 W₂ gradient mode = sort constant missing"
         # And it must be wired into build_wf328_flags
-        assert "--w2-gradient-mode" in text, (
-            "W5 --w2-gradient-mode flag missing from build_wf328_flags"
-        )
+        assert (
+            "--w2-gradient-mode" in text
+        ), "W5 --w2-gradient-mode flag missing from build_wf328_flags"
 
     def test_w7_dmpnn_backend_pyg(self) -> None:
         """Wf-328 W7: DMPNN backend = pyg."""
         text = _read_launcher()
-        assert 'WF328_DMPNN_BACKEND="pyg"' in text, (
-            "W7 DMPNN backend = pyg constant missing"
-        )
+        assert (
+            'WF328_DMPNN_BACKEND="pyg"' in text
+        ), "W7 DMPNN backend = pyg constant missing"
 
     def test_w8_cuda_graph_opt_in(self) -> None:
         """Wf-328 W8: CUDA Graphs are opt-in (default OFF)."""
         text = _read_launcher()
         # Per source comment: W8 (CUDA Graphs) and W9 (Triton edge) are
         # opt-in only (per Wf-328-SYN §3)
-        assert "W8 (CUDA Graphs) and W9 (Triton edge) are opt-in" in text, (
-            "W8/W9 opt-in comment missing"
-        )
+        assert (
+            "W8 (CUDA Graphs) and W9 (Triton edge) are opt-in" in text
+        ), "W8/W9 opt-in comment missing"
 
     def test_use_dann_flag_wired(self) -> None:
         """DANN GRL --use-dann flag must be wired in build_wf328_flags."""
         text = _read_launcher()
-        assert "--use-dann" in text, (
-            "--use-dann flag missing from build_wf328_flags"
-        )
+        assert "--use-dann" in text, "--use-dann flag missing from build_wf328_flags"
         # And ReverseLayerF must be present in Wf-305D trainer
         trainer = _read_trainer()
-        assert "ReverseLayerF" in trainer, (
-            "ReverseLayerF (DANN GRL) missing from Wf-305D trainer"
-        )
+        assert (
+            "ReverseLayerF" in trainer
+        ), "ReverseLayerF (DANN GRL) missing from Wf-305D trainer"
 
     def test_use_kendall_lambda_grl_wired(self) -> None:
         """DANN multi-task: --use-kendall, --lambda-grl, --wasserstein-weight."""
@@ -370,15 +350,11 @@ class TestWf328FixesWired:
         for flag in ("--use-kendall", "--lambda-grl", "--wasserstein-weight"):
             assert flag in text, f"{flag} flag missing from build_wf328_flags"
         # Verify numeric defaults
-        assert "--wasserstein-weight 0.05" in text, (
-            "Wasserstein weight default 0.05 missing"
-        )
-        assert "--lambda-grl 0.1" in text, (
-            "Lambda GRL default 0.1 missing"
-        )
-        assert "--alpha 0.5" in text, (
-            "Alpha default 0.5 missing"
-        )
+        assert (
+            "--wasserstein-weight 0.05" in text
+        ), "Wasserstein weight default 0.05 missing"
+        assert "--lambda-grl 0.1" in text, "Lambda GRL default 0.1 missing"
+        assert "--alpha 0.5" in text, "Alpha default 0.5 missing"
 
 
 # ---------------------------------------------------------------------------
@@ -417,9 +393,9 @@ class TestBackwardCompat:
         # R1 mode may mention USER_OK as a warning, but not as fatal
         if "USER_OK" in combined:
             # Verify it's a WARN, not FATAL
-            assert "[WARN]" in combined or "[OK]" in combined, (
-                f"USER_OK should be WARN/OK in R1 mode, not FATAL: {combined!r}"
-            )
+            assert (
+                "[WARN]" in combined or "[OK]" in combined
+            ), f"USER_OK should be WARN/OK in R1 mode, not FATAL: {combined!r}"
 
     def test_dry_run_does_not_bypass_user_ok_in_r3(self) -> None:
         """--dry-run must NOT bypass USER_OK gate for R3 (per Wf-300C).
@@ -441,9 +417,7 @@ class TestBackwardCompat:
             timeout=10,
             cwd=str(PROJECT_ROOT),
         )
-        assert proc.returncode == 0, (
-            f"--help should exit 0; got {proc.returncode}"
-        )
+        assert proc.returncode == 0, f"--help should exit 0; got {proc.returncode}"
         combined = proc.stdout + proc.stderr
         assert "R1" in combined, "--help missing R1 mode"
         assert "R3" in combined, "--help missing R3 mode"
@@ -461,17 +435,19 @@ class TestBackwardCompat:
             env=env,
             cwd=str(PROJECT_ROOT),
         )
-        assert proc.returncode != 0, (
-            f"--mode R2 (invalid) should die; got exit={proc.returncode}"
-        )
+        assert (
+            proc.returncode != 0
+        ), f"--mode R2 (invalid) should die; got exit={proc.returncode}"
         combined = proc.stdout + proc.stderr
-        assert "R1 | R3" in combined or "mode must be" in combined, (
-            f"Error message must mention 'R1 | R3' valid modes: {combined!r}"
-        )
+        assert (
+            "R1 | R3" in combined or "mode must be" in combined
+        ), f"Error message must mention 'R1 | R3' valid modes: {combined!r}"
 
     def test_dry_run_creates_reports_dir(self) -> None:
         """--mode R1 --dry-run must create the reports/r1 directory."""
-        reports_dir = PROJECT_ROOT / "molmetal" / "reports" / "wf74_v2_drugood_dann_launch"
+        reports_dir = (
+            PROJECT_ROOT / "molmetal" / "reports" / "wf74_v2_drugood_dann_launch"
+        )
         # Clean before test
         if (reports_dir / "r1").exists():
             pass  # leave alone, dry-run writes DRY_RUN.log
@@ -487,9 +463,9 @@ class TestBackwardCompat:
         )
         assert proc.returncode == 0
         # The DRY_RUN.log marker should be present
-        assert (reports_dir / "r1" / "DRY_RUN.log").exists(), (
-            "DRY_RUN.log marker missing from r1/ — wrapper did not run"
-        )
+        assert (
+            reports_dir / "r1" / "DRY_RUN.log"
+        ).exists(), "DRY_RUN.log marker missing from r1/ — wrapper did not run"
 
     def test_bash_syntax_check(self) -> None:
         """The launcher must pass ``bash -n`` syntax check."""
@@ -499,9 +475,7 @@ class TestBackwardCompat:
             text=True,
             timeout=10,
         )
-        assert proc.returncode == 0, (
-            f"launcher syntax error: stderr={proc.stderr!r}"
-        )
+        assert proc.returncode == 0, f"launcher syntax error: stderr={proc.stderr!r}"
 
 
 # ---------------------------------------------------------------------------

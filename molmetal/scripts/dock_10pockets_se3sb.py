@@ -108,8 +108,16 @@ for _p in (str(_HERE.parent), str(_REPO_ROOT)):
 # Constants
 # ---------------------------------------------------------------------------
 DEFAULT_POCKETS: Tuple[str, ...] = (
-    "830c", "1h36", "3eml", "3ny8", "4aaw",
-    "4rlu", "1g9v", "2hnx", "4rn0", "1fmc",
+    "830c",
+    "1h36",
+    "3eml",
+    "3ny8",
+    "4aaw",
+    "4rlu",
+    "1g9v",
+    "2hnx",
+    "4rn0",
+    "1fmc",
 )
 DEFAULT_METHODS: Tuple[str, ...] = ("se3sb", "transport", "multiph", "baseline")
 DEFAULT_SEEDS: Tuple[int, ...] = (0, 1, 2, 3, 4)
@@ -163,10 +171,10 @@ class DockResult:
     candidate: str
     method: str
     seed: int
-    status: str           # "docked" | "trajectory_failed" | "docking_failed"
+    status: str  # "docked" | "trajectory_failed" | "docking_failed"
     vina_kcal_mol: Optional[float]
     elapsed_s: float
-    n_steps: int          # SE(3) integration steps actually used
+    n_steps: int  # SE(3) integration steps actually used
     note: Optional[str] = None
 
 
@@ -335,8 +343,9 @@ def _init_ligand_coords(
     """
     try:
         from rdkit import Chem
+
         rdkit_mol = Chem.MolFromSmiles(smiles)
-    except Exception:                                       # pragma: no cover
+    except Exception:  # pragma: no cover
         rdkit_mol = None
     if rdkit_mol is not None:
         # Use heavy-atom count as the seed for the random pose.
@@ -383,7 +392,7 @@ def generate_se3sb_trajectory(
             "final_centroid": final.mean(dim=0).tolist(),
             "final_norm": float(final.norm().item()),
         }
-    except Exception as exc:                                # pragma: no cover
+    except Exception as exc:  # pragma: no cover
         return init.squeeze(0), {"status": "trajectory_failed", "error": str(exc)}
 
 
@@ -489,12 +498,10 @@ def _make_vina_adapter_or_none(
     try:
         from molmetal_lam.sbdd_env.vina_adapter import VinaDockingAdapter
 
-        adapter = VinaDockingAdapter(
-            default_box_padding=4.0, cpu_count=int(cpu_count)
-        )
+        adapter = VinaDockingAdapter(default_box_padding=4.0, cpu_count=int(cpu_count))
         adapter.setup()
         return adapter, False
-    except Exception as exc:                                # pragma: no cover
+    except Exception as exc:  # pragma: no cover
         log.warning(
             "VinaDockingAdapter unavailable (%s); falling back to "
             "deterministic stub scorer.",
@@ -581,19 +588,24 @@ def _run_real_dock(
         # well-formed.
         mol = scaffold
     cfg = DockingConfig(
-        seed=int(seed), exhaustiveness=4, n_poses=1,
+        seed=int(seed),
+        exhaustiveness=4,
+        n_poses=1,
     )
     try:
         complexes = adapter.dock(mol, pocket_t, cfg)
-    except Exception as exc:                                # pragma: no cover
-        log.warning("adapter.dock failed for %s/%s seed=%d: %s",
-                    pocket.pocket_id, smiles, seed, exc)
+    except Exception as exc:  # pragma: no cover
+        log.warning(
+            "adapter.dock failed for %s/%s seed=%d: %s",
+            pocket.pocket_id,
+            smiles,
+            seed,
+            exc,
+        )
         return None
     if not complexes:
         return None
-    scores = [
-        float(c.vina_score) for c in complexes if c.vina_score is not None
-    ]
+    scores = [float(c.vina_score) for c in complexes if c.vina_score is not None]
     if not scores:
         return None
     return float(min(scores))
@@ -660,12 +672,12 @@ def run_sweep(
     for m in methods:
         if m not in TRAJECTORY_GENERATORS:
             raise ValueError(
-                f"unknown method {m!r}; valid: "
-                f"{list(TRAJECTORY_GENERATORS)}"
+                f"unknown method {m!r}; valid: " f"{list(TRAJECTORY_GENERATORS)}"
             )
     vina_adapter, is_stub = (
         _make_vina_adapter_or_none(cpu_count=cpu_count)
-        if use_real_vina else (None, True)
+        if use_real_vina
+        else (None, True)
     )
     if use_real_vina and is_stub:
         log.warning(
@@ -674,9 +686,7 @@ def run_sweep(
         )
 
     results: List[DockResult] = []
-    n_total = (
-        len(pockets) * len(candidates) * len(methods) * len(seeds)
-    )
+    n_total = len(pockets) * len(candidates) * len(methods) * len(seeds)
     counter = 0
     t_start = time.monotonic()
     for pocket_id in pockets:
@@ -704,10 +714,15 @@ def run_sweep(
                         log.info(
                             "sweep %d/%d (%.0f%%) — %s %s seed=%d "
                             "vina=%.3f (%.1fs total)",
-                            counter, n_total,
+                            counter,
+                            n_total,
                             100.0 * counter / max(1, n_total),
-                            pocket_id, method, seed,
-                            res.vina_kcal_mol if res.vina_kcal_mol is not None else float("nan"),
+                            pocket_id,
+                            method,
+                            seed,
+                            res.vina_kcal_mol
+                            if res.vina_kcal_mol is not None
+                            else float("nan"),
                             elapsed,
                         )
     return results
@@ -733,7 +748,8 @@ def aggregate_results(
         key = (res.pocket_id, res.method)
         by_pocket_method.setdefault(key, []).append(float(res.vina_kcal_mol))
         stats = by_pocket_method_status.setdefault(
-            key, {"n_docked": 0, "n_failed": 0},
+            key,
+            {"n_docked": 0, "n_failed": 0},
         )
         if res.status == "docked":
             stats["n_docked"] += 1
@@ -827,59 +843,79 @@ def _to_jsonable(obj):
 # ---------------------------------------------------------------------------
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
-        description=(
-            "Wf-30 Phase 2 — 10-pocket × 5-candidate × 5-seed docking sweep."
-        ),
+        description=("Wf-30 Phase 2 — 10-pocket × 5-candidate × 5-seed docking sweep."),
     )
     p.add_argument("--pockets", nargs="+", default=list(DEFAULT_POCKETS))
     p.add_argument("--n-candidates", type=int, default=DEFAULT_N_CANDIDATES)
     p.add_argument("--n-seeds", type=int, default=len(DEFAULT_SEEDS))
     p.add_argument(
-        "--seeds", type=int, nargs="+",
+        "--seeds",
+        type=int,
+        nargs="+",
         default=list(DEFAULT_SEEDS),
     )
     p.add_argument(
-        "--methods", nargs="+",
+        "--methods",
+        nargs="+",
         choices=list(TRAJECTORY_GENERATORS),
         default=list(DEFAULT_METHODS),
     )
     p.add_argument(
-        "--candidates-csv", type=Path, default=None,
+        "--candidates-csv",
+        type=Path,
+        default=None,
         help="Optional 2-column CSV (name,smiles); default reads "
-             "_demo_5_metaldrugs.txt.",
+        "_demo_5_metaldrugs.txt.",
     )
     p.add_argument(
-        "--pocket-dir", type=Path, default=WF30_POCKET_DIR,
+        "--pocket-dir",
+        type=Path,
+        default=WF30_POCKET_DIR,
         help="WF-30 staging directory with <pocket>/receptor.pdbqt files.",
     )
     p.add_argument(
-        "--out-dir", type=Path, default=DEFAULT_OUT_DIR,
+        "--out-dir",
+        type=Path,
+        default=DEFAULT_OUT_DIR,
     )
     p.add_argument(
-        "--metrics-path", type=Path, default=DEFAULT_METRICS_PATH,
+        "--metrics-path",
+        type=Path,
+        default=DEFAULT_METRICS_PATH,
     )
     p.add_argument(
-        "--summary-path", type=Path, default=DEFAULT_SUMMARY_PATH,
+        "--summary-path",
+        type=Path,
+        default=DEFAULT_SUMMARY_PATH,
     )
     p.add_argument(
-        "--n-steps", type=int, default=SE3_INTEGRATION_STEPS,
+        "--n-steps",
+        type=int,
+        default=SE3_INTEGRATION_STEPS,
         help="SE(3) integration steps for the se3sb method.",
     )
     p.add_argument(
-        "--cpu-count", type=int, default=1,
+        "--cpu-count",
+        type=int,
+        default=1,
         help="Per-docking-call CPU thread count (passed to Vina).",
     )
     p.add_argument(
-        "--use-real-vina", action="store_true",
+        "--use-real-vina",
+        action="store_true",
         help="Try to call the real VinaDockingAdapter. Default is "
-             "the deterministic stub scorer (runnable on CPU-only CI).",
+        "the deterministic stub scorer (runnable on CPU-only CI).",
     )
     p.add_argument(
-        "--seed-offset", type=int, default=0,
+        "--seed-offset",
+        type=int,
+        default=0,
         help="Add this offset to all seeds (for batched re-runs).",
     )
     p.add_argument(
-        "--quiet", action="store_true", help="Suppress per-evaluation logging.",
+        "--quiet",
+        action="store_true",
+        help="Suppress per-evaluation logging.",
     )
     return p.parse_args(argv)
 
@@ -913,14 +949,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args.metrics_path.parent.mkdir(parents=True, exist_ok=True)
     args.summary_path.parent.mkdir(parents=True, exist_ok=True)
 
-    n_evals = (
-        len(args.pockets) * len(candidates) * len(args.methods) * len(seeds)
-    )
+    n_evals = len(args.pockets) * len(candidates) * len(args.methods) * len(seeds)
     log.info(
         "starting dock_10pockets_se3sb sweep: %d pockets × %d candidates × "
         "%d methods × %d seeds = %d evals (real_vina=%s)",
-        len(args.pockets), len(candidates), len(args.methods), len(seeds),
-        n_evals, args.use_real_vina,
+        len(args.pockets),
+        len(candidates),
+        len(args.methods),
+        len(seeds),
+        n_evals,
+        args.use_real_vina,
     )
 
     results = run_sweep(
@@ -941,9 +979,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "recipe": "wf30_dock_10pockets_se3sb",
         "generated_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "pockets": list(args.pockets),
-        "candidates": [
-            {"name": c.name, "smiles": c.smiles} for c in candidates
-        ],
+        "candidates": [{"name": c.name, "smiles": c.smiles} for c in candidates],
         "methods": list(args.methods),
         "seeds": list(seeds),
         "n_steps": int(args.n_steps),
@@ -965,9 +1001,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             for r in results
         ],
         "per_pocket_per_method": _to_jsonable(per_pocket),
-        "aggregate": _to_jsonable(
-            {f"{p}|{m}": v for (p, m), v in aggregate.items()}
-        ),
+        "aggregate": _to_jsonable({f"{p}|{m}": v for (p, m), v in aggregate.items()}),
     }
     args.metrics_path.write_text(
         json.dumps(_to_jsonable(metrics_payload), indent=2) + "\n"
@@ -979,12 +1013,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "generated_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "n_evaluations": int(len(results)),
         "n_docked": int(sum(1 for r in results if r.status == "docked")),
-        "n_failed": int(
-            sum(1 for r in results if r.status != "docked")
-        ),
-        "aggregate": _to_jsonable(
-            {f"{p}|{m}": v for (p, m), v in aggregate.items()}
-        ),
+        "n_failed": int(sum(1 for r in results if r.status != "docked")),
+        "aggregate": _to_jsonable({f"{p}|{m}": v for (p, m), v in aggregate.items()}),
         "win_tie_loss_vs_baseline": _to_jsonable(win_tie_loss),
         "use_real_vina": bool(args.use_real_vina),
     }

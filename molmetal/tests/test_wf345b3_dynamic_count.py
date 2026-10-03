@@ -95,8 +95,7 @@ class TestDynamicCount:
                 f"evidence={result.evidence!r}"
             )
             assert (
-                f"actual={actual_total} == expected={actual_total}"
-                in result.evidence
+                f"actual={actual_total} == expected={actual_total}" in result.evidence
             ), (
                 f"evidence must show actual == auto-computed expected for "
                 f"pipeline={pipeline!r}; got evidence={result.evidence!r}"
@@ -209,7 +208,10 @@ class TestDynamicCount:
                 "P3",
                 pipeline,
             )
-            if result.status == "PASS" and "(auto-computed via Wf-345-B3)" in result.evidence:
+            if (
+                result.status == "PASS"
+                and "(auto-computed via Wf-345-B3)" in result.evidence
+            ):
                 auto_passing_pipelines.append(pipeline)
 
         assert set(auto_passing_pipelines) == set(PIPELINES), (
@@ -220,9 +222,9 @@ class TestDynamicCount:
 
         # Also pin the invariant that EXPECTED_GATE_COUNTS is preserved
         # (backward compat) but is no longer the canonical source.
-        assert isinstance(EXPECTED_GATE_COUNTS, dict), (
-            "EXPECTED_GATE_COUNTS must remain a dict for backward compat"
-        )
+        assert isinstance(
+            EXPECTED_GATE_COUNTS, dict
+        ), "EXPECTED_GATE_COUNTS must remain a dict for backward compat"
         assert set(EXPECTED_GATE_COUNTS.keys()) <= set(PIPELINES), (
             f"EXPECTED_GATE_COUNTS keys must be subset of PIPELINES; "
             f"got keys={set(EXPECTED_GATE_COUNTS.keys())}, "

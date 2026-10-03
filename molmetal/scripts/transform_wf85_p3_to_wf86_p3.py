@@ -14,6 +14,7 @@ report ``per_fold`` containing the (test, val, train) triples as
 proxy for K-fold.  This is **format-shifting** only — the
 underlying numbers are the MEASURED Wf-85 P3 results.
 """
+
 from __future__ import annotations
 
 import json
@@ -141,9 +142,7 @@ def transform_cell_line(cell_line: str) -> Dict[str, Any]:
         "hilbert_r2_std": float(np.std(r2_hilbert_per_seed))
         if len(r2_hilbert_per_seed) > 1
         else 0.0,
-        "astr_r2_mean": float(np.mean(r2_astr_per_seed))
-        if r2_astr_per_seed
-        else 0.0,
+        "astr_r2_mean": float(np.mean(r2_astr_per_seed)) if r2_astr_per_seed else 0.0,
         "astr_r2_std": float(np.std(r2_astr_per_seed))
         if len(r2_astr_per_seed) > 1
         else 0.0,
@@ -197,9 +196,7 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
         )
         combined_means.append(r["combined_r2_mean"])
     aggregate = float(np.mean(combined_means)) if combined_means else 0.0
-    aggregate_std = (
-        float(np.std(combined_means)) if len(combined_means) > 1 else 0.0
-    )
+    aggregate_std = float(np.std(combined_means)) if len(combined_means) > 1 else 0.0
     lines.append(
         "| **4-cell aggregate** | — | **{agg:+.4f} ± {ags:.4f}** | — | — |".format(
             agg=aggregate,
@@ -207,14 +204,18 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
         )
     )
     lines.append("")
-    lines.append("## Verify gate (target ≥ +0.30 mean across 4 cell lines, vs Wf-85 P3 anchor)")
+    lines.append(
+        "## Verify gate (target ≥ +0.30 mean across 4 cell lines, vs Wf-85 P3 anchor)"
+    )
     lines.append("")
     if aggregate >= 0.30:
         verdict = "✅ **PASS** (combined R² ≥ +0.30 across 4 cell lines on average)"
     elif aggregate >= 0.0:
         verdict = "🟡 **PARTIAL** (combined R² ≥ 0.0 but below Wf-85 P3 anchor)"
     else:
-        verdict = "❌ **FAIL** (combined R² < 0.0; honest per-cell-line breakdown below)"
+        verdict = (
+            "❌ **FAIL** (combined R² < 0.0; honest per-cell-line breakdown below)"
+        )
     lines.append(
         f"**Aggregate combined R² (mean of 4 cell-line means) = {aggregate:+.4f}** — {verdict}"
     )
@@ -265,30 +266,56 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
         lines.append("")
     lines.append("## Honest framing")
     lines.append("")
-    lines.append("- **MEASURED today**: 5 seeds × strict-scaffold × 4 cell lines on PlatinAI 4-cell")
-    lines.append("  synthetic pIC50 data; Hilbert+ASTSR convex blend with per-seed alpha selection.")
-    lines.append("  Source script: `molmetal/scripts/bench_hilbert_astr_combined_real.py`")
-    lines.append("  (Wf-85 P3 anchor).  This Wf-86 P3 report is a **schema transformation**")
+    lines.append(
+        "- **MEASURED today**: 5 seeds × strict-scaffold × 4 cell lines on PlatinAI 4-cell"
+    )
+    lines.append(
+        "  synthetic pIC50 data; Hilbert+ASTSR convex blend with per-seed alpha selection."
+    )
+    lines.append(
+        "  Source script: `molmetal/scripts/bench_hilbert_astr_combined_real.py`"
+    )
+    lines.append(
+        "  (Wf-85 P3 anchor).  This Wf-86 P3 report is a **schema transformation**"
+    )
     lines.append("  of the Wf-85 P3 MEASURED outputs (5-fold style with test/val/train")
     lines.append("  per-fold entries).")
     lines.append("- **Strict-scaffold split**: Bemis-Murcko scaffold is computed")
     lines.append("  on-the-fly from canonical SMILES, with a two-tier fallback to")
     lines.append("  canonicalised ligand SMILES when Bemis-Murcko returns empty")
-    lines.append("  (PlatinAI 4-cell has many Pt-coordination complexes with open-chain")
+    lines.append(
+        "  (PlatinAI 4-cell has many Pt-coordination complexes with open-chain"
+    )
     lines.append("  or saturated ligands that lack ring systems).")
-    lines.append("  Each scaffold is assigned to exactly one split (train/val/test); this")
+    lines.append(
+        "  Each scaffold is assigned to exactly one split (train/val/test); this"
+    )
     lines.append("  eliminates scaffold leakage between train and test.")
     lines.append("- **Per-cell-line cohort sizes**: mcf7=4078, a549=4078,")
     lines.append("  a2780=4078, a2780cis=4078 (PlatinAI 4-cell has the same")
     lines.append("  rows × 4 cell-line IC50 columns).")
     lines.append("- **Alpha selection**: per-seed 90/10 inner validation; grid over")
-    lines.append("  alpha ∈ {0.0, 0.25, 0.5, 0.75, 1.0}; reported as `alpha_chosen` per seed.")
-    lines.append("- **Collapse detector**: `pred_std / y_test_std < 0.10` flagged in `per_seed`.")
-    lines.append("- **No Multi-PH + PLL**: this is the **combined Hilbert+ASTSR** anchor;")
-    lines.append("  Multi-PH/PLL augmentation is a separate workstream (Wf-79 P2 3-way + PLL).")
-    lines.append("- **CPU smoke**: per-cell-line fits in < 5 min on a single CPU core for")
-    lines.append("  the 4 078-row cohort (full 4-cell × 5-seed × strict-scaffold benchmark")
-    lines.append("  runs in < 8 min total).  GPU-0 Blackwell optional but not required.")
+    lines.append(
+        "  alpha ∈ {0.0, 0.25, 0.5, 0.75, 1.0}; reported as `alpha_chosen` per seed."
+    )
+    lines.append(
+        "- **Collapse detector**: `pred_std / y_test_std < 0.10` flagged in `per_seed`."
+    )
+    lines.append(
+        "- **No Multi-PH + PLL**: this is the **combined Hilbert+ASTSR** anchor;"
+    )
+    lines.append(
+        "  Multi-PH/PLL augmentation is a separate workstream (Wf-79 P2 3-way + PLL)."
+    )
+    lines.append(
+        "- **CPU smoke**: per-cell-line fits in < 5 min on a single CPU core for"
+    )
+    lines.append(
+        "  the 4 078-row cohort (full 4-cell × 5-seed × strict-scaffold benchmark"
+    )
+    lines.append(
+        "  runs in < 8 min total).  GPU-0 Blackwell optional but not required."
+    )
     lines.append("")
     lines.append(
         "Per `party-twenty-spirit §3.5`: aggregate combined R² = "
@@ -311,7 +338,8 @@ def main() -> int:
         src_log = SRC / cl / "run.log"
         if src_log.exists():
             (out_dir / "run.log").write_text(
-                src_log.read_text(encoding="utf-8"), encoding="utf-8",
+                src_log.read_text(encoding="utf-8"),
+                encoding="utf-8",
             )
         # Generate summary run.log line for Wf-86 P3
         summary_lines = [
@@ -328,7 +356,8 @@ def main() -> int:
             "# Generated by transform_wf85_p3_to_wf86_p3.py from Wf-85 P3 MEASURED outputs.",
         ]
         (out_dir / "wf86_p3_run.log").write_text(
-            "\n".join(summary_lines) + "\n", encoding="utf-8",
+            "\n".join(summary_lines) + "\n",
+            encoding="utf-8",
         )
         print(
             f"[wf86-p3] {cl}: combined R² = "

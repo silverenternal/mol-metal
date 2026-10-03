@@ -52,11 +52,21 @@ if str(PROJECT_ROOT) not in sys.path:
 # ---------------------------------------------------------------------------
 
 
-CANONICAL_CSV = PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
+CANONICAL_CSV = (
+    PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
+)
 V4_CSV = PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 V3_CSV = PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v3.csv"
 
-REQUIRED_COLUMNS = {"smiles", "metal", "pic50", "activity", "cell_line", "split", "source"}
+REQUIRED_COLUMNS = {
+    "smiles",
+    "metal",
+    "pic50",
+    "activity",
+    "cell_line",
+    "split",
+    "source",
+}
 
 EXPECTED_METALS = {"Ru", "Ir", "Os", "Rh", "Re"}
 
@@ -115,9 +125,9 @@ class TestWf319DMetalcytotoxSchemaValidation:
         assert V4_CSV.exists(), f"v4 CSV missing at {V4_CSV}"
         header = _read_csv_header(V4_CSV)
         for col in REQUIRED_COLUMNS:
-            assert _has_column(header, col), (
-                f"v4 missing required column {col!r} (got {header})"
-            )
+            assert _has_column(
+                header, col
+            ), f"v4 missing required column {col!r} (got {header})"
         # v4-specific provenance columns
         for col in ("SMILES_Ligands", "Metal", "IC50_Dark_value"):
             assert col in header, f"v4 missing provenance column {col!r}"
@@ -133,13 +143,12 @@ class TestWf319DMetalcytotoxSchemaValidation:
             header = _read_csv_header(path)
             for col in REQUIRED_COLUMNS:
                 assert _has_column(header, col), (
-                    f"{path.name} missing required column {col!r} "
-                    f"(got {header})"
+                    f"{path.name} missing required column {col!r} " f"(got {header})"
                 )
             # Both must have pic50 (the W₂-target column)
-            assert "pic50" in header, (
-                f"{path.name} missing pic50 — W₂ transfer loss requires it"
-            )
+            assert (
+                "pic50" in header
+            ), f"{path.name} missing pic50 — W₂ transfer loss requires it"
 
 
 # ---------------------------------------------------------------------------
@@ -162,9 +171,9 @@ class TestWf319DMetalcytotoxFailOnMissing:
         fake_root = Path("/tmp/__wf319d_no_such_dir__")
         result = _metalcytotox_csv_path()
         # The real resolution must succeed on this checkout.
-        assert result is not None, (
-            "real _metalcytotox_csv_path() returned None — CSV is missing"
-        )
+        assert (
+            result is not None
+        ), "real _metalcytotox_csv_path() returned None — CSV is missing"
         # Sanity: also confirm the helper supports a None-return contract.
         assert fake_root is not None  # just to silence linter
 
@@ -207,13 +216,12 @@ class TestWf319DMetalcytotoxPerMetalRowCount:
         per_metal, total, missing = _csv_stats(V4_CSV)
         assert not missing, f"v4 has missing required columns: {missing}"
         assert total >= MIN_TOTAL_ROWS, (
-            f"v4 total rows {total} < {MIN_TOTAL_ROWS}; W₂ transfer loss "
-            "degenerate"
+            f"v4 total rows {total} < {MIN_TOTAL_ROWS}; W₂ transfer loss " "degenerate"
         )
         for metal in EXPECTED_METALS:
-            assert metal in per_metal, (
-                f"v4 missing metal {metal!r} (got {sorted(per_metal.keys())})"
-            )
+            assert (
+                metal in per_metal
+            ), f"v4 missing metal {metal!r} (got {sorted(per_metal.keys())})"
             assert per_metal[metal] >= MIN_PER_METAL_ROWS, (
                 f"v4 metal {metal!r} has only {per_metal[metal]} rows; "
                 f"need ≥ {MIN_PER_METAL_ROWS} for non-degenerate W₂"
@@ -241,12 +249,14 @@ class TestWf319DMetalcytotoxPerMetalRowCount:
         # ≥ MIN_PER_METAL_ROWS for the W₂ guarantee.
         for metal in EXPECTED_METALS:
             count = sidecar_counts.get(metal, 0)
-            assert count >= MIN_PER_METAL_ROWS, (
-                f"audit sidecar metal {metal!r} has only {count} rows"
-            )
+            assert (
+                count >= MIN_PER_METAL_ROWS
+            ), f"audit sidecar metal {metal!r} has only {count} rows"
         # Sanity: at least one of the two (CSV / sidecar) must show all
         # 5 metals.
-        assert EXPECTED_METALS.issubset(set(per_metal.keys()) | set(sidecar_counts.keys())), (
+        assert EXPECTED_METALS.issubset(
+            set(per_metal.keys()) | set(sidecar_counts.keys())
+        ), (
             f"expected metals {EXPECTED_METALS} not covered; "
             f"csv={sorted(per_metal.keys())} sidecar={sorted(sidecar_counts.keys())}"
         )
@@ -309,6 +319,6 @@ class TestWf319DMetalcytotoxDownstreamIntegration:
                 f"got keys: {sorted(payload.keys())}"
             )
         # Total rows must meet W₂ threshold.
-        assert payload["total_rows"] >= MIN_TOTAL_ROWS, (
-            f"sidecar total_rows={payload['total_rows']} < {MIN_TOTAL_ROWS}"
-        )
+        assert (
+            payload["total_rows"] >= MIN_TOTAL_ROWS
+        ), f"sidecar total_rows={payload['total_rows']} < {MIN_TOTAL_ROWS}"

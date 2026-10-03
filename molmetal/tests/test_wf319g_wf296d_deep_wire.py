@@ -93,6 +93,7 @@ def test_02_build_matrix_reactions_returns_compiled_rdkit():
     # n_failed == 0 on the canonical SMARTS library.
     try:
         from rdkit.Chem import AllChem as _AllChem  # type: ignore
+
         rdkit_ok = True
     except Exception:
         rdkit_ok = False
@@ -109,6 +110,7 @@ def test_02_build_matrix_reactions_returns_compiled_rdkit():
         # Every compiled entry must be a ChemicalReaction whose
         # Initialize() succeeded (so IsMoleculeReactant answers).
         from rdkit.Chem import AllChem  # type: ignore
+
         for _name, rxn in compiled:
             assert rxn is not None
             assert isinstance(rxn, AllChem.ChemicalReaction)
@@ -165,9 +167,7 @@ def test_04_runtime_pattern_names_match_matrix():
         pytest.skip("rdkit unavailable; runtime not dispatchable")
 
     pattern_names = runtime.pattern_names()
-    matrix_names = {
-        name for name, _smarts, _desc in METAL_LIGAND_EXCHANGE_MATRIX
-    }
+    matrix_names = {name for name, _smarts, _desc in METAL_LIGAND_EXCHANGE_MATRIX}
     # Every matrix name must appear in the runtime pattern_names (the
     # matrix is a strict subset of the runtime's compiled surface).
     missing = matrix_names - set(pattern_names)
@@ -203,7 +203,8 @@ def test_06_yuelbond_precondition_no_yuelbond_fails_fast():
     returns FAIL_FAST with the Wf-269C MEASURED delta_decode_ratio.
     """
     verdict = check_yuelbond_precondition(
-        use_yuelbond=False, strict=True,
+        use_yuelbond=False,
+        strict=True,
     )
     assert verdict.yuelbond_active is False
     assert verdict.m14_lead_invalidated is True
@@ -218,7 +219,8 @@ def test_07_yuelbond_precondition_warn_and_proceed():
     returns WARN_AND_PROCEED (the Wf-296D ablation path).
     """
     verdict = check_yuelbond_precondition(
-        use_yuelbond=False, strict=False,
+        use_yuelbond=False,
+        strict=False,
     )
     assert verdict.yuelbond_active is False
     assert verdict.m14_lead_invalidated is True
@@ -244,7 +246,9 @@ def test_08_yuelbond_precondition_checkpoint_basename_check():
     assert verdict.yuelbond_active is False
     assert verdict.m14_lead_invalidated is True
     assert verdict.recommended_action == "FAIL_FAST"
-    assert "checkpoint" in verdict.reason.lower() or "yuelbond" in verdict.reason.lower()
+    assert (
+        "checkpoint" in verdict.reason.lower() or "yuelbond" in verdict.reason.lower()
+    )
 
     # Canonical YuelBond-trained checkpoint path.
     verdict_ok = check_yuelbond_precondition(
@@ -269,15 +273,23 @@ def test_09_runtime_constructor_runs_precondition_by_default():
     # FAIL_FAST path — constructor must raise.
     with pytest.raises(RuntimeError) as excinfo:
         MetalLigandExchangeRuntime(
-            use_yuelbond=False, strict=True,
+            use_yuelbond=False,
+            strict=True,
         )
-    assert "FAIL_FAST" in str(excinfo.value) or "precondition" in str(excinfo.value).lower()
+    assert (
+        "FAIL_FAST" in str(excinfo.value)
+        or "precondition" in str(excinfo.value).lower()
+    )
 
     # WARN_AND_PROCEED path — constructor must NOT raise (loud warning).
     runtime_warn = MetalLigandExchangeRuntime(
-        use_yuelbond=False, strict=False,
+        use_yuelbond=False,
+        strict=False,
     )
-    assert runtime_warn.yuelbond_precondition_result.recommended_action == "WARN_AND_PROCEED"
+    assert (
+        runtime_warn.yuelbond_precondition_result.recommended_action
+        == "WARN_AND_PROCEED"
+    )
 
     # PROCEED path — constructor runs and runtime is available.
     runtime_ok = MetalLigandExchangeRuntime()
@@ -358,9 +370,9 @@ def test_12_runtime_dispatch_on_novel_substrate_yields_empty():
 
     # Pure hydrocarbon — no metal, so NO matrix pattern can fire.
     products = runtime.dispatch("CCO", "C")
-    assert products == [], (
-        f"Runtime should NOT fire on non-metal substrate; got {products[:4]}"
-    )
+    assert (
+        products == []
+    ), f"Runtime should NOT fire on non-metal substrate; got {products[:4]}"
 
     # Pure metal (no Cl leaving group) — no matrix pattern can fire
     # because the canonical Pt-Cl leaving group is missing.

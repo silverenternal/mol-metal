@@ -39,6 +39,7 @@ References
 * Liu J., Feng H. (2026) "Persistent Local Laplacian Prediction of
   Protein-Ligand Binding Affinities".  *J. Chem. Inf. Model.* 66(3).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -170,9 +171,7 @@ def _scorer(state: MoleculeClosedTerm) -> float:
     return float(
         min(
             1.0,
-            0.05 * float(n_atoms)
-            + 0.30 * smi_hash
-            + 0.05 * float(n_atoms % 7),
+            0.05 * float(n_atoms) + 0.30 * smi_hash + 0.05 * float(n_atoms % 7),
         )
     )
 
@@ -220,7 +219,8 @@ def _run_trajectory(
     t0 = time.time()
     try:
         start = MoleculeClosedTerm.from_smiles(
-            str(start_smiles), embed_3d=False,
+            str(start_smiles),
+            embed_3d=False,
         )
     except Exception as exc:
         return {
@@ -233,8 +233,10 @@ def _run_trajectory(
             "n_states_explored": 0,
         }
     search = _build_search(
-        seed=int(seed), sims=int(sims),
-        strategy=str(strategy), c_var=float(c_var),
+        seed=int(seed),
+        sims=int(sims),
+        strategy=str(strategy),
+        c_var=float(c_var),
     )
     try:
         search.search(start, max_depth=int(depth))
@@ -300,9 +302,9 @@ def _aggregate_runs(runs: List[Dict[str, Any]]) -> Dict[str, float]:
         "n_ok": int(len(ok)),
         "success_rate": float(len(ok) / max(1, len(runs))),
         "mean_leaf_value_var": float(mean_lv),
-        "std_leaf_value_var": float(var_lv ** 0.5),
+        "std_leaf_value_var": float(var_lv**0.5),
         "mean_best_score": float(mean_bs),
-        "std_best_score": float(var_bs ** 0.5),
+        "std_best_score": float(var_bs**0.5),
         "mean_n_states": float(sum(n_states) / len(n_states)),
         "mean_wall_time_s": float(sum(walls) / len(walls)),
     }
@@ -317,37 +319,49 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
-        "--smoke", action="store_true",
-        help=(
-            "Smoke harness: 20 trajectories × 10 sims (default behaviour)."
-        ),
+        "--smoke",
+        action="store_true",
+        help=("Smoke harness: 20 trajectories × 10 sims (default behaviour)."),
     )
     parser.add_argument(
-        "--n-trajectories", type=int, default=100,
+        "--n-trajectories",
+        type=int,
+        default=100,
         help="Number of independent trajectories per strategy (default 100).",
     )
     parser.add_argument(
-        "--sims", type=int, default=30,
+        "--sims",
+        type=int,
+        default=30,
         help="MCTS simulations per trajectory (default 30).",
     )
     parser.add_argument(
-        "--depth", type=int, default=3,
+        "--depth",
+        type=int,
+        default=3,
         help="Max β-reduction chain length per simulation (default 3).",
     )
     parser.add_argument(
-        "--seed", type=int, default=2025,
+        "--seed",
+        type=int,
+        default=2025,
         help="Master seed (default 2025).",
     )
     parser.add_argument(
-        "--start-smiles", type=str, default="CCO",
+        "--start-smiles",
+        type=str,
+        default="CCO",
         help="Starting molecule SMILES (default CCO).",
     )
     parser.add_argument(
-        "--c-var", type=float, default=0.5,
+        "--c-var",
+        type=float,
+        default=0.5,
         help="Variance penalty coefficient (default 0.5).",
     )
     parser.add_argument(
-        "--report-path", type=str,
+        "--report-path",
+        type=str,
         default=(
             "/home/hugo/codes/mol-metal/molmetal/reports/"
             "wf36_variance_mcts/variance_bench.json"
@@ -388,14 +402,16 @@ def main(argv: Any = None) -> int:
         runs: List[Dict[str, Any]] = []
         for t in range(n_traj):
             run_seed = seed + t
-            runs.append(_run_trajectory(
-                strategy=strategy,
-                seed=run_seed,
-                sims=sims,
-                depth=depth,
-                c_var=c_var,
-                start_smiles=start_smiles,
-            ))
+            runs.append(
+                _run_trajectory(
+                    strategy=strategy,
+                    seed=run_seed,
+                    sims=sims,
+                    depth=depth,
+                    c_var=c_var,
+                    start_smiles=start_smiles,
+                )
+            )
         all_runs[strategy] = runs
         agg = _aggregate_runs(runs)
         print(
@@ -417,8 +433,12 @@ def main(argv: Any = None) -> int:
         sr_var_reduction = float(1.0 - sr["mean_leaf_value_var"] / base_var)
         var_var_reduction = float(1.0 - var["mean_leaf_value_var"] / base_var)
     print()
-    print(f"  variance_reduction(score_repellent vs dirichlet) = {sr_var_reduction:.4f}")
-    print(f"  variance_reduction(variance vs dirichlet)        = {var_var_reduction:.4f}")
+    print(
+        f"  variance_reduction(score_repellent vs dirichlet) = {sr_var_reduction:.4f}"
+    )
+    print(
+        f"  variance_reduction(variance vs dirichlet)        = {var_var_reduction:.4f}"
+    )
     print(f"  total_wall_time_s = {total_wall:.3f}")
 
     # Build the JSON report.
@@ -431,18 +451,14 @@ def main(argv: Any = None) -> int:
             "seed": int(seed),
             "start_smiles": start_smiles,
         },
-        "strategies": {
-            s: _aggregate_runs(all_runs[s]) for s in EXPLORATION_STRATEGIES
-        },
+        "strategies": {s: _aggregate_runs(all_runs[s]) for s in EXPLORATION_STRATEGIES},
         "variance_reduction": {
             "score_repellent_vs_dirichlet": float(sr_var_reduction),
             "variance_vs_dirichlet": float(var_var_reduction),
         },
         "wall_time_s": float(total_wall),
         "n_runs_per_strategy": int(n_traj),
-        "all_runs": {
-            s: list(all_runs[s]) for s in EXPLORATION_STRATEGIES
-        },
+        "all_runs": {s: list(all_runs[s]) for s in EXPLORATION_STRATEGIES},
     }
     report_path = str(args.report_path)
     os.makedirs(os.path.dirname(report_path), exist_ok=True)

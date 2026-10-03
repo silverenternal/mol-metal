@@ -15,6 +15,7 @@ We do NOT run PoseBusters' full check here (it is not installed in
 the unit-test environment).  Each test pins the public contract
 without depending on PB availability.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -126,13 +127,14 @@ def test_pb_runner_uses_mmff94():
     """
     runner = _import_runner()
     import inspect
+
     sig = inspect.signature(runner.check_posebusters)
     assert "optimize_method" in sig.parameters
     default = sig.parameters["optimize_method"].default
     # The default is ``"MMFF94"`` — anything else is a regression.
-    assert default == "MMFF94", (
-        f"optimize_method default must be 'MMFF94' (got {default!r})"
-    )
+    assert (
+        default == "MMFF94"
+    ), f"optimize_method default must be 'MMFF94' (got {default!r})"
     assert default.upper() != "UFF"
     # ``embed_method`` default is ``"ETKDGv3"``.
     assert sig.parameters["embed_method"].default == "ETKDGv3"
@@ -171,6 +173,7 @@ def test_pb_runner_signature_exposes_kwargs():
     """
     runner = _import_runner()
     import inspect
+
     sig = inspect.signature(runner.check_posebusters)
     params = sig.parameters
     assert "smiles" in params
@@ -179,6 +182,6 @@ def test_pb_runner_signature_exposes_kwargs():
     # out as keyword-only in the docstring).
     for kname in ("n_conformers", "embed_method", "optimize_method"):
         assert kname in params
-        assert params[kname].kind == inspect.Parameter.KEYWORD_ONLY, (
-            f"{kname} must be keyword-only"
-        )
+        assert (
+            params[kname].kind == inspect.Parameter.KEYWORD_ONLY
+        ), f"{kname} must be keyword-only"

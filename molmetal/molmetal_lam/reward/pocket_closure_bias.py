@@ -605,9 +605,9 @@ def _pocket_seed_smiles(pocket_id: str) -> List[str]:
         # the closure-bounded reachable space from 5 (single seed) to
         # 14 unique catherine-pass candidates (tested 2026-09-27).
         "4aaw": [
-            "NS(=O)(=O)c1ccccc1",                # benzenesulfonamide (warhead)
+            "NS(=O)(=O)c1ccccc1",  # benzenesulfonamide (warhead)
             "NS(=O)(=O)c1ccc(N=[N+]=[N-])cc1",  # 4-azido-sulfanilamide (CuAAC handle)
-            "NS(=O)(=O)c1ccc(C#C)cc1",          # 4-ethynyl-sulfanilamide (SPAAC handle)
+            "NS(=O)(=O)c1ccc(C#C)cc1",  # 4-ethynyl-sulfanilamide (SPAAC handle)
         ],
         # 4rlu — GST electrophile pocket: thiol handle for ThiolEne + alkene.
         "4rlu": [
@@ -624,13 +624,13 @@ def _pocket_seed_smiles(pocket_id: str) -> List[str]:
 def _per_pocket_partners() -> List[str]:
     """Standard partner-tile SMILES for the closure BFS partner set."""
     return [
-        "CCN=[N+]=[N-]",      # azide (CuAAC partner)
-        "C#CC",                # alkyne (CuAAC partner)
-        "C=CC",                # alkene (ThiolEne partner)
-        "SC",                  # thiol (ThiolEne partner)
-        "NC",                  # amine (AmideCoupling partner)
-        "OC(=O)C",             # carboxylic acid (AmideCoupling partner)
-        "B(O)c1ccccc1",        # phenyl boronic acid (Suzuki partner)
+        "CCN=[N+]=[N-]",  # azide (CuAAC partner)
+        "C#CC",  # alkyne (CuAAC partner)
+        "C=CC",  # alkene (ThiolEne partner)
+        "SC",  # thiol (ThiolEne partner)
+        "NC",  # amine (AmideCoupling partner)
+        "OC(=O)C",  # carboxylic acid (AmideCoupling partner)
+        "B(O)c1ccccc1",  # phenyl boronic acid (Suzuki partner)
     ]
 
 
@@ -638,12 +638,25 @@ def _load_closure_stack():
     """Lazy importer for the closure-theorem machinery (defer RDKit cost)."""
     from molmetal_lam.lam_chem.closure import ProductiveSpace
     from molmetal_lam.lam_chem.rules import (
-        AmideCoupling, CuAAC, SPAAC, Suzuki, ThiolEne,
+        AmideCoupling,
+        CuAAC,
+        SPAAC,
+        Suzuki,
+        ThiolEne,
     )
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
-    return ProductiveSpace, MoleculeClosedTerm, [
-        CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling,
-    ]
+
+    return (
+        ProductiveSpace,
+        MoleculeClosedTerm,
+        [
+            CuAAC,
+            SPAAC,
+            ThiolEne,
+            Suzuki,
+            AmideCoupling,
+        ],
+    )
 
 
 def _load_catherine():
@@ -652,6 +665,7 @@ def _load_catherine():
         verify_all_catherine_properties,
         synthetic_closure_summary,
     )
+
     return verify_all_catherine_properties, synthetic_closure_summary
 
 
@@ -728,9 +742,7 @@ def closure_bounded_smiles_generation(
     partners: List[Any] = []
     for ps in _per_pocket_partners():
         try:
-            partners.append(
-                MoleculeClosedTerm.from_smiles(ps, embed_3d=False)
-            )
+            partners.append(MoleculeClosedTerm.from_smiles(ps, embed_3d=False))
         except Exception as exc:  # noqa: BLE001 — partner parse fail is non-fatal
             logger.warning(
                 "[pocket_closure_bias] partner SMILES %r parse failed: %s",
@@ -743,9 +755,7 @@ def closure_bounded_smiles_generation(
 
     for seed_smi in seed_smiles:
         try:
-            start_term = MoleculeClosedTerm.from_smiles(
-                seed_smi, embed_3d=False
-            )
+            start_term = MoleculeClosedTerm.from_smiles(seed_smi, embed_3d=False)
         except Exception as exc:  # noqa: BLE001 — seed parse fail is non-fatal
             logger.warning(
                 "[pocket_closure_bias] seed SMILES %r parse failed: %s",
@@ -802,18 +812,14 @@ def closure_bounded_smiles_generation(
                 closure_ok=True,
             )
             try:
-                verdict = verify_catherine(
-                    bias.default_metal or "Pt", summary
-                )
+                verdict = verify_catherine(bias.default_metal or "Pt", summary)
                 catherine_pass = bool(verdict.six_of_six_pass)
             except Exception:
                 catherine_pass = False
             if not catherine_pass:
                 continue
 
-            witness_rules: List[str] = [
-                str(step[0]) for step in witness
-            ]
+            witness_rules: List[str] = [str(step[0]) for step in witness]
             candidates.append(
                 {
                     "smiles": smiles,
@@ -921,6 +927,7 @@ def closure_oversample(
     from molmetal.molmetal_lam.reward.closure_oversample import (
         ClosureOversampler,
     )
+
     sampler = ClosureOversampler(
         metal=str(target_metal),
         seed_scaffolds=seed_scaffolds,
@@ -934,9 +941,7 @@ def closure_oversample(
     # Add engine tag + alias-friendly duplicates for TODO-126 §7
     # auditability.
     out["engine"] = "closure_catherine_oversample"
-    out["catherine_6of6_pass_rate"] = float(
-        out.get("catherine_pass_rate", 0.0) or 0.0
-    )
+    out["catherine_6of6_pass_rate"] = float(out.get("catherine_pass_rate", 0.0) or 0.0)
     out["max_depth"] = int(max_depth)
     out["per_scaffold_cap"] = int(per_scaffold_cap)
     out["notes"] = ""
@@ -1086,9 +1091,7 @@ def build_per_function_verification() -> Dict[str, Any]:
     # 3. closure_oversample — thin smoke test with Rh.
     try:
         rh_cohort = closure_oversample("Rh", n=20, per_scaffold_cap=4)
-        pass_rate = float(
-            rh_cohort.get("catherine_6of6_pass_rate", 1.0) or 0.0
-        )
+        pass_rate = float(rh_cohort.get("catherine_6of6_pass_rate", 1.0) or 0.0)
         n_compounds_kept = int(rh_cohort.get("n_compounds_kept", 0))
         out["closure_oversample"] = {
             "status": "PASS"
@@ -1101,7 +1104,7 @@ def build_per_function_verification() -> Dict[str, Any]:
             "notes": (
                 "Thin wrapper over "
                 "ClosureOversampler; tagged with engine="
-                "\"closure_catherine_oversample\" for TODO-126 §7 "
+                '"closure_catherine_oversample" for TODO-126 §7 '
                 "auditability."
             ),
         }

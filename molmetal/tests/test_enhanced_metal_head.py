@@ -79,7 +79,10 @@ def _make_v3(
 def test_enhanced_metal_head_instantiates_default():
     """Default constructor wires the 2-layer MLP + (optional) attention."""
     h = EnhancedMetalHead(
-        input_dim=128, hidden_dim=64, metal_embed_dim=32, dropout=0.2,
+        input_dim=128,
+        hidden_dim=64,
+        metal_embed_dim=32,
+        dropout=0.2,
         use_metal_attention=False,
     )
     assert isinstance(h, torch.nn.Module)
@@ -100,8 +103,12 @@ def test_enhanced_metal_head_instantiates_default():
 def test_enhanced_metal_head_with_attention_instantiates():
     """Attention path constructor wires attn_q / attn_k / attn_v."""
     h = EnhancedMetalHead(
-        input_dim=128, hidden_dim=64, metal_embed_dim=32,
-        attn_dim=16, dropout=0.2, use_metal_attention=True,
+        input_dim=128,
+        hidden_dim=64,
+        metal_embed_dim=32,
+        attn_dim=16,
+        dropout=0.2,
+        use_metal_attention=True,
     )
     assert h.use_metal_attention is True
     assert h.attn_dim == 16
@@ -110,10 +117,10 @@ def test_enhanced_metal_head_with_attention_instantiates():
     assert h.attn_q.in_features == 32  # metal_embed_dim
     assert h.attn_q.out_features == 16  # attn_dim
     assert isinstance(h.attn_k, torch.nn.Linear)
-    assert h.attn_k.in_features == 64   # hidden_dim
+    assert h.attn_k.in_features == 64  # hidden_dim
     assert h.attn_k.out_features == 16  # attn_dim
     assert isinstance(h.attn_v, torch.nn.Linear)
-    assert h.attn_v.in_features == 64   # hidden_dim
+    assert h.attn_v.in_features == 64  # hidden_dim
     assert h.attn_v.out_features == 64  # hidden_dim
 
 
@@ -139,7 +146,9 @@ def test_enhanced_metal_head_forward_shape():
 def test_enhanced_metal_head_forward_rejects_attention_path():
     """forward(z_in) raises when use_metal_attention=True."""
     h = EnhancedMetalHead(
-        input_dim=128, hidden_dim=64, dropout=0.0,
+        input_dim=128,
+        hidden_dim=64,
+        dropout=0.0,
         use_metal_attention=True,
     )
     z = torch.randn(4, 128)
@@ -153,8 +162,12 @@ def test_enhanced_metal_head_forward_rejects_attention_path():
 def test_enhanced_metal_head_forward_with_attention_shape():
     """forward_with_attention(h, e) → (B, 1) logit (attention path)."""
     h = EnhancedMetalHead(
-        input_dim=128, hidden_dim=64, metal_embed_dim=32,
-        attn_dim=16, dropout=0.0, use_metal_attention=True,
+        input_dim=128,
+        hidden_dim=64,
+        metal_embed_dim=32,
+        attn_dim=16,
+        dropout=0.0,
+        use_metal_attention=True,
     )
     h.eval()
     h_in = torch.randn(4, 64)
@@ -179,15 +192,22 @@ def test_v3_model_attention_requires_enhanced_head():
     """use_metal_attention=True without enhanced_head=True raises ValueError."""
     with pytest.raises(ValueError, match="use_metal_attention"):
         ChempropV2MTModelV3(
-            hidden_dim=32, depth=1, n_metals=3, n_coord_classes=4,
-            enhanced_head=False, use_metal_attention=True,
+            hidden_dim=32,
+            depth=1,
+            n_metals=3,
+            n_coord_classes=4,
+            enhanced_head=False,
+            use_metal_attention=True,
         )
 
 
 def test_v3_model_legacy_path_default():
     """Default constructor (enhanced_head=False) wires the legacy path."""
     m = ChempropV2MTModelV3(
-        hidden_dim=32, depth=1, n_metals=3, n_coord_classes=4,
+        hidden_dim=32,
+        depth=1,
+        n_metals=3,
+        n_coord_classes=4,
     )
     assert m.enhanced_head is False
     assert m.use_metal_attention is False
@@ -201,7 +221,9 @@ def test_v3_model_legacy_path_default():
 def test_v3_model_legacy_forward_returns_correct_keys():
     """enhanced_head=False → dict[Ru, Ir, Os, Rh, Re, coord] with (B, 2)."""
     m = ChempropV2MTModelV3(
-        hidden_dim=32, depth=1, enhanced_head=False,
+        hidden_dim=32,
+        depth=1,
+        enhanced_head=False,
     )
     metal_ids = torch.tensor([0, 1, 2], dtype=torch.long)
     out = m(SMILES_3, metal_ids)
@@ -209,17 +231,21 @@ def test_v3_model_legacy_forward_returns_correct_keys():
     assert set(out.keys()) == expected
     B = len(SMILES_3)
     for met in SUPPORTED_METALS:
-        assert out[met].shape == (B, 2), (
-            f"{met} logits expected ({B}, 2), got {tuple(out[met].shape)}"
-        )
+        assert out[met].shape == (
+            B,
+            2,
+        ), f"{met} logits expected ({B}, 2), got {tuple(out[met].shape)}"
     assert out["coord"].shape == (B, 5)
 
 
 def test_v3_model_enhanced_head_forward_returns_correct_keys():
     """enhanced_head=True → same dict[Ru, Ir, Os, Rh, Re, coord] shape."""
     m = ChempropV2MTModelV3(
-        hidden_dim=32, depth=1, enhanced_head=True,
-        use_metal_attention=False, head_hidden_dim=32,
+        hidden_dim=32,
+        depth=1,
+        enhanced_head=True,
+        use_metal_attention=False,
+        head_hidden_dim=32,
     )
     metal_ids = torch.tensor([0, 1, 2], dtype=torch.long)
     out = m(SMILES_3, metal_ids)
@@ -234,8 +260,12 @@ def test_v3_model_enhanced_head_forward_returns_correct_keys():
 def test_v3_model_attention_forward_returns_correct_keys():
     """enhanced_head=True + use_metal_attention=True → same output shape."""
     m = ChempropV2MTModelV3(
-        hidden_dim=32, depth=1, enhanced_head=True,
-        use_metal_attention=True, head_hidden_dim=32, attn_dim=8,
+        hidden_dim=32,
+        depth=1,
+        enhanced_head=True,
+        use_metal_attention=True,
+        head_hidden_dim=32,
+        attn_dim=8,
     )
     metal_ids = torch.tensor([0, 1, 2], dtype=torch.long)
     out = m(SMILES_3, metal_ids)
@@ -317,8 +347,10 @@ def test_v3_model_attention_auto_aligns_head_hidden_dim():
     # head_hidden_dim=32 so the attention layer's attn_k / attn_v
     # projection matrices consume the correct dim.
     m = ChempropV2MTModelV3(
-        hidden_dim=32, depth=1,
-        enhanced_head=True, use_metal_attention=True,
+        hidden_dim=32,
+        depth=1,
+        enhanced_head=True,
+        use_metal_attention=True,
     )
     assert m.head_hidden_dim == 32, (
         f"head_hidden_dim should auto-align to encoder hidden_dim=32, "
@@ -339,9 +371,11 @@ def test_v3_model_attention_respects_explicit_head_hidden_dim():
     practice the smoke / production configs all pass matching dims.
     """
     m = ChempropV2MTModelV3(
-        hidden_dim=32, depth=1,
+        hidden_dim=32,
+        depth=1,
         head_hidden_dim=32,
-        enhanced_head=True, use_metal_attention=True,
+        enhanced_head=True,
+        use_metal_attention=True,
     )
     # Explicit match stays at 32.
     assert m.head_hidden_dim == 32
@@ -395,7 +429,8 @@ def test_v4_backward_compat_still_works():
 def test_quick_smoke_helper_enhanced():
     """quick_smoke_chemprop_v2_mt_v3 returns (model, loss, out, labels)."""
     model, loss_fn, out, labels = quick_smoke_chemprop_v2_mt_v3(
-        enhanced_head=True, use_metal_attention=False,
+        enhanced_head=True,
+        use_metal_attention=False,
     )
     B = 4
     for met in SUPPORTED_METALS:
@@ -410,7 +445,8 @@ def test_quick_smoke_helper_enhanced():
 def test_quick_smoke_helper_attention():
     """quick_smoke_chemprop_v2_mt_v3 with attention path returns finite loss."""
     model, loss_fn, out, labels = quick_smoke_chemprop_v2_mt_v3(
-        enhanced_head=True, use_metal_attention=True,
+        enhanced_head=True,
+        use_metal_attention=True,
     )
     B = 4
     for met in SUPPORTED_METALS:

@@ -60,9 +60,9 @@ def head():
     :file:`molmetal/reports/wf1_a1_bond_head.md`).
     """
     h, metrics = train_synthetic(n_epochs=200, seed=0)
-    assert metrics["train_acc"] > 0.85, (
-        f"synthetic training degraded — train_acc={metrics['train_acc']:.3f}"
-    )
+    assert (
+        metrics["train_acc"] > 0.85
+    ), f"synthetic training degraded — train_acc={metrics['train_acc']:.3f}"
     return h
 
 
@@ -76,11 +76,14 @@ def decoder_legacy(head):
 def decoder_gumbel(head):
     """:class:`ConnectivityAwareDecoder` with default Gumbel prior."""
     gumbel = GumbelConnectivity(
-        in_dim=head.in_dim, expected_bonds_per_atom=3.0,
+        in_dim=head.in_dim,
+        expected_bonds_per_atom=3.0,
     )
     gumbel.eval()
     return ConnectivityAwareDecoder(
-        bond_head=head, connectivity=gumbel, drop_edge=DropEdge(p=0.1),
+        bond_head=head,
+        connectivity=gumbel,
+        drop_edge=DropEdge(p=0.1),
     )
 
 
@@ -89,9 +92,8 @@ def _benzene_cloud() -> AtomCloud:
     n = 6
     r = 1.39
     coords = [
-        (r * math.cos(2.0 * math.pi * k / n),
-         r * math.sin(2.0 * math.pi * k / n),
-         0.0) for k in range(n)
+        (r * math.cos(2.0 * math.pi * k / n), r * math.sin(2.0 * math.pi * k / n), 0.0)
+        for k in range(n)
     ]
     return AtomCloud(
         positions=torch.tensor(coords, dtype=torch.float32),
@@ -123,8 +125,11 @@ def test_gumbel_high_temperature_is_uniform() -> None:
     n_edges = 200
     feats = torch.randn(n_edges, 9)
     g = GumbelConnectivity(
-        in_dim=9, hidden_dim=32,
-        tau_start=10.0, tau_end=10.0, total_steps=1,
+        in_dim=9,
+        hidden_dim=32,
+        tau_start=10.0,
+        tau_end=10.0,
+        total_steps=1,
         expected_bonds_per_atom=3.0,
     )
     g.eval()
@@ -139,14 +144,14 @@ def test_gumbel_high_temperature_is_uniform() -> None:
         f"distribution at τ=10"
     )
     # Sum must be 1.0 (it's a softmax).
-    assert abs(float(out.soft_weights.sum().item()) - 1.0) < 1e-5, (
-        f"softmax must sum to 1.0, got {float(out.soft_weights.sum()):.6f}"
-    )
+    assert (
+        abs(float(out.soft_weights.sum().item()) - 1.0) < 1e-5
+    ), f"softmax must sum to 1.0, got {float(out.soft_weights.sum()):.6f}"
     # Variance across weights should be tiny at high temperature.
     std = float(out.soft_weights.std().item())
-    assert std < expected_uniform * 2.0, (
-        f"expected near-uniform std (~{expected_uniform:.4f}), got {std:.4f}"
-    )
+    assert (
+        std < expected_uniform * 2.0
+    ), f"expected near-uniform std (~{expected_uniform:.4f}), got {std:.4f}"
 
 
 # ---------------------------------------------------------------------------
@@ -159,8 +164,11 @@ def test_gumbel_low_temperature_is_argmax() -> None:
     n_edges = 100
     feats = torch.randn(n_edges, 9)
     g = GumbelConnectivity(
-        in_dim=9, hidden_dim=32,
-        tau_start=0.01, tau_end=0.01, total_steps=1,
+        in_dim=9,
+        hidden_dim=32,
+        tau_start=0.01,
+        tau_end=0.01,
+        total_steps=1,
         expected_bonds_per_atom=3.0,
     )
     g.eval()
@@ -169,9 +177,9 @@ def test_gumbel_low_temperature_is_argmax() -> None:
     # logits (softmax is monotonic).
     soft_argmax = int(torch.argmax(out.soft_weights).item())
     logit_argmax = int(torch.argmax(out.logits).item())
-    assert soft_argmax == logit_argmax, (
-        f"softmax argmax ({soft_argmax}) != logits argmax ({logit_argmax})"
-    )
+    assert (
+        soft_argmax == logit_argmax
+    ), f"softmax argmax ({soft_argmax}) != logits argmax ({logit_argmax})"
     # With τ=0.01 the distribution should be sharply peaked on the
     # winning index.  Require the winning weight to be at least 5x
     # the runner-up (loose enough that it does not depend on the
@@ -215,9 +223,9 @@ def test_drop_edge_reduces_count_by_p_fraction() -> None:
     torch.manual_seed(0)
     x = torch.randn(100, 3)
     _, keep_eval = de(x, training=False)
-    assert int(keep_eval.sum().item()) == 100, (
-        f"DropEdge must be a no-op in eval, kept {int(keep_eval.sum())}/100"
-    )
+    assert (
+        int(keep_eval.sum().item()) == 100
+    ), f"DropEdge must be a no-op in eval, kept {int(keep_eval.sum())}/100"
 
 
 # ---------------------------------------------------------------------------
@@ -256,9 +264,10 @@ def test_decode_gumbel_on_amide_produces_valid_molecule(decoder_gumbel) -> None:
     co_bonds = [b for b in result.bond_orders if {b[0], b[1]} == {1, 2}]
     assert len(co_bonds) == 1, f"expected 1 C-O bond, got {co_bonds}"
     from molmetal.models.bond_head import BOND_DOUBLE
-    assert co_bonds[0][2] == BOND_DOUBLE, (
-        f"expected C=O double bond, got order={co_bonds[0][2]}"
-    )
+
+    assert (
+        co_bonds[0][2] == BOND_DOUBLE
+    ), f"expected C=O double bond, got order={co_bonds[0][2]}"
 
 
 # ---------------------------------------------------------------------------
@@ -324,9 +333,9 @@ def test_inference_topk_keeps_expected_count() -> None:
     feats = torch.randn(n_edges, 9)
     mask, out = g.inference_topk(feats, n_atoms=20)
     expected_k = math.ceil(3.0 * 20 / 2.0)  # = 30
-    assert int(mask.sum().item()) == expected_k, (
-        f"expected {expected_k} kept edges, got {int(mask.sum())}"
-    )
+    assert (
+        int(mask.sum().item()) == expected_k
+    ), f"expected {expected_k} kept edges, got {int(mask.sum())}"
     # Mask length must equal the number of input edges.
     assert mask.shape == (n_edges,)
 
@@ -336,7 +345,9 @@ def test_decode_gumbel_accepts_explicit_edge_index(head) -> None:
     gumbel = GumbelConnectivity(in_dim=head.in_dim, expected_bonds_per_atom=3.0)
     gumbel.eval()
     decoder = ConnectivityAwareDecoder(
-        bond_head=head, connectivity=gumbel, drop_edge=DropEdge(p=0.0),
+        bond_head=head,
+        connectivity=gumbel,
+        drop_edge=DropEdge(p=0.0),
     )
     cloud = _amide_cloud()
     # Only score the (1, 2) C-O pair.
@@ -344,9 +355,9 @@ def test_decode_gumbel_accepts_explicit_edge_index(head) -> None:
     result = decoder.decode_gumbel(cloud, edge_index=edge_index)
     pairs = [tuple(sorted((b[0], b[1]))) for b in result.bond_orders]
     # The only possible bond is 1-2.
-    assert all(p == (1, 2) for p in pairs), (
-        f"unexpected bonds {pairs} when only 1-2 listed"
-    )
+    assert all(
+        p == (1, 2) for p in pairs
+    ), f"unexpected bonds {pairs} when only 1-2 listed"
 
 
 def test_decode_gumbel_with_drop_p_one_falls_back_to_first_edge(head) -> None:
@@ -355,7 +366,9 @@ def test_decode_gumbel_with_drop_p_one_falls_back_to_first_edge(head) -> None:
     gumbel = GumbelConnectivity(in_dim=head.in_dim, expected_bonds_per_atom=3.0)
     gumbel.eval()
     decoder = ConnectivityAwareDecoder(
-        bond_head=head, connectivity=gumbel, drop_edge=DropEdge(p=1.0),
+        bond_head=head,
+        connectivity=gumbel,
+        drop_edge=DropEdge(p=1.0),
     )
     cloud = _amide_cloud()
     result = decoder.decode(cloud)

@@ -92,10 +92,18 @@ def batch_builder(torch_device):
 
     def _make(batch_size: int, n_atoms: int = 28, n_edges: int = 58):
         return {
-            "atom_feats": torch.randn(batch_size, n_atoms, ATOM_FEATURE_DIM, device=torch_device),
-            "bond_feats": torch.randn(batch_size, n_edges, BOND_FEATURE_DIM, device=torch_device),
-            "edge_src": torch.randint(0, n_atoms, (batch_size, n_edges), device=torch_device),
-            "edge_dst": torch.randint(0, n_atoms, (batch_size, n_edges), device=torch_device),
+            "atom_feats": torch.randn(
+                batch_size, n_atoms, ATOM_FEATURE_DIM, device=torch_device
+            ),
+            "bond_feats": torch.randn(
+                batch_size, n_edges, BOND_FEATURE_DIM, device=torch_device
+            ),
+            "edge_src": torch.randint(
+                0, n_atoms, (batch_size, n_edges), device=torch_device
+            ),
+            "edge_dst": torch.randint(
+                0, n_atoms, (batch_size, n_edges), device=torch_device
+            ),
         }
 
     return _make
@@ -158,10 +166,14 @@ def test_bf16_forward_backward_higher_batch(encoder, batch_builder, torch_device
     import torch
 
     if torch_device.type != "cuda":
-        pytest.skip("BF16 forward+backward at higher batch is GPU-only (CPU BF16 has no tensor cores)")
+        pytest.skip(
+            "BF16 forward+backward at higher batch is GPU-only (CPU BF16 has no tensor cores)"
+        )
 
     head_reg = torch.nn.Linear(256, 1).to(torch_device)
-    optimizer = torch.optim.Adam(list(encoder.parameters()) + list(head_reg.parameters()), lr=1e-3)
+    optimizer = torch.optim.Adam(
+        list(encoder.parameters()) + list(head_reg.parameters()), lr=1e-3
+    )
     batch = batch_builder(batch_size=256)  # <-- Wf-327-F6 lift over Wf-326D's batch=64
 
     # Part 1 — BF16 autocast on the real D-MPNN encoder.  Expected to
@@ -179,9 +191,9 @@ def test_bf16_forward_backward_higher_batch(encoder, batch_builder, torch_device
     except RuntimeError as _exc:
         # Expected: index_add_ dtype mismatch (FP32 accumulator vs BF16 source).
         bf16_fallback_occurred = True
-        assert "index_add_" in str(_exc) or "scalar type" in str(_exc), (
-            f"unexpected RuntimeError source: {_exc}"
-        )
+        assert "index_add_" in str(_exc) or "scalar type" in str(
+            _exc
+        ), f"unexpected RuntimeError source: {_exc}"
     assert bf16_fallback_occurred, (
         "BF16 autocast should have raised on the real D-MPNN encoder "
         "(index_add_ dtype mismatch) — if it didn't, the encoder may "
@@ -196,7 +208,9 @@ def test_bf16_forward_backward_higher_batch(encoder, batch_builder, torch_device
     # (shape (B,) = one scalar per molecule), not the pooled (B, 2H)
     # representation.  The pool vector lives in the multi-task wrapper
     # (:meth:`DMPNNMultitaskModel.encode_pool`).
-    assert h_pool.shape == (256,), f"unexpected pool shape {h_pool.shape} (expect per-mol scalar logits)"
+    assert h_pool.shape == (
+        256,
+    ), f"unexpected pool shape {h_pool.shape} (expect per-mol scalar logits)"
     target = torch.zeros(256, device=torch_device)
     loss = torch.nn.functional.mse_loss(h_pool, target)
     assert torch.isfinite(h_pool).all(), "FP32 forward produced non-finite values"
@@ -210,7 +224,9 @@ def test_bf16_forward_backward_higher_batch(encoder, batch_builder, torch_device
         n_total += 1
         if not torch.isfinite(p.grad).all():
             n_nan += 1
-    assert n_nan == 0, f"{n_nan}/{n_total} encoder params have non-finite FP32 grads at batch=256"
+    assert (
+        n_nan == 0
+    ), f"{n_nan}/{n_total} encoder params have non-finite FP32 grads at batch=256"
     optimizer.step()
 
 
@@ -242,7 +258,9 @@ def test_batch_size_sweep_2048(torch_device):
             n_measure=1,
             use_stub_encoder=True,
         )
-        assert len(sweep.rows) == 3, f"expected 3 rows (256/1024/2048), got {len(sweep.rows)}"
+        assert (
+            len(sweep.rows) == 3
+        ), f"expected 3 rows (256/1024/2048), got {len(sweep.rows)}"
         seen = {r.batch_size for r in sweep.rows}
         assert seen == {256, 1024, 2048}, f"unexpected batch sizes in sweep: {seen}"
         for row in sweep.rows:
@@ -257,11 +275,15 @@ def test_batch_size_sweep_2048(torch_device):
         n_warmup=1,
         n_measure=2,
     )
-    assert len(sweep.rows) >= 3, f"expected 3+ rows (256/1024/2048 × BF16+FP32), got {len(sweep.rows)}"
+    assert (
+        len(sweep.rows) >= 3
+    ), f"expected 3+ rows (256/1024/2048 × BF16+FP32), got {len(sweep.rows)}"
     bf16_rows = [r for r in sweep.rows if r.dtype == "bf16"]
     assert bf16_rows, "BF16 rows missing from sweep"
     seen = {r.batch_size for r in bf16_rows}
-    assert {256, 1024, 2048}.issubset(seen), f"missing batch sizes in BF16 rows: {{256,1024,2048}} vs {seen}"
+    assert {256, 1024, 2048}.issubset(
+        seen
+    ), f"missing batch sizes in BF16 rows: {{256,1024,2048}} vs {seen}"
     # On 24 GB RTX 5090, batch=2048 BF16 should overflow gracefully (overflow=True)
     # rather than crashing.  On 32 GB or larger GPUs it may fit — both are OK.
     bf16_2048 = next((r for r in bf16_rows if r.batch_size == 2048), None)
@@ -298,16 +320,20 @@ def test_bf16_batch_cli_integration():
 
     # 1. Default: BF16 ON, batch=DEFAULT_BATCH_SIZE (MT_BATCH_SIZE=64)
     args = parse_args([])
-    assert args.bf16 is DEFAULT_BF16, f"default --bf16 should be {DEFAULT_BF16}, got {args.bf16}"
-    assert args.batch_size == DEFAULT_BATCH_SIZE, (
-        f"default --batch-size should be {DEFAULT_BATCH_SIZE}, got {args.batch_size}"
-    )
+    assert (
+        args.bf16 is DEFAULT_BF16
+    ), f"default --bf16 should be {DEFAULT_BF16}, got {args.bf16}"
+    assert (
+        args.batch_size == DEFAULT_BATCH_SIZE
+    ), f"default --batch-size should be {DEFAULT_BATCH_SIZE}, got {args.batch_size}"
     assert args.bf16 is True, "DEFAULT_BF16 should be True (Wf-328-W3)"
 
     # 2. Override: --no-bf16 + --batch-size 256
     args = parse_args(["--no-bf16", "--batch-size", "256"])
     assert args.bf16 is False, "--no-bf16 should set bf16=False"
-    assert args.batch_size == 256, f"--batch-size 256 should set batch_size=256, got {args.batch_size}"
+    assert (
+        args.batch_size == 256
+    ), f"--batch-size 256 should set batch_size=256, got {args.batch_size}"
 
     # 3. Re-enable: --bf16 + --batch-size 1024
     args = parse_args(["--bf16", "--batch-size", "1024"])
@@ -317,9 +343,14 @@ def test_bf16_batch_cli_integration():
     # 4. Confirm ``use_bf16`` kwarg shape consumed by train_one_epoch_joint (signature probe)
     import inspect
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import train_one_epoch_joint
+
     sig = inspect.signature(train_one_epoch_joint)
-    assert "batch_size" in sig.parameters, "train_one_epoch_joint missing batch_size kwarg"
-    assert "use_bf16" in sig.parameters, "train_one_epoch_joint missing use_bf16 kwarg (Wf-328-W3)"
+    assert (
+        "batch_size" in sig.parameters
+    ), "train_one_epoch_joint missing batch_size kwarg"
+    assert (
+        "use_bf16" in sig.parameters
+    ), "train_one_epoch_joint missing use_bf16 kwarg (Wf-328-W3)"
     # Default values must match CLI defaults.
     assert sig.parameters["batch_size"].default is inspect.Parameter.empty or (
         sig.parameters["batch_size"].default == DEFAULT_BATCH_SIZE
@@ -369,9 +400,9 @@ def test_memory_utilization_higher_batch(torch_device):
     assert bf16_row.peak_memory_mb is not None
     # The bench's vram_budget_gb=24 caps the *recommendation*; allow up to
     # 30 GB peak to account for the bench's measurement slack.
-    assert bf16_row.peak_memory_mb <= 30.0 * 1024.0, (
-        f"BF16 peak at batch=1024 = {bf16_row.peak_memory_mb:.0f} MB > 30 GB ceiling"
-    )
+    assert (
+        bf16_row.peak_memory_mb <= 30.0 * 1024.0
+    ), f"BF16 peak at batch=1024 = {bf16_row.peak_memory_mb:.0f} MB > 30 GB ceiling"
     # Memory growth should be sub-linear in batch (BF16 amortizes activations).
     # Wf-326D's analogous test asserts <3.5x growth 64→256; we expect similar
     # sub-linearity at 1024 vs the 64 baseline (run a quick baseline).
@@ -387,6 +418,6 @@ def test_memory_utilization_higher_batch(torch_device):
         pytest.skip("BF16 baseline (batch=64) missing — skipping growth ratio check")
     ratio = bf16_row.peak_memory_mb / max(bf16_baseline.peak_memory_mb, 1.0)
     # Linear scaling 64→1024 = 16x.  Allow up to 14x (sub-linear amortisation).
-    assert ratio < 14.0, (
-        f"BF16 memory grew {ratio:.2f}x from batch=64→1024 (expect sub-14x)"
-    )
+    assert (
+        ratio < 14.0
+    ), f"BF16 memory grew {ratio:.2f}x from batch=64→1024 (expect sub-14x)"

@@ -28,6 +28,7 @@ Notes
   intentionally un-Sanitized; we fall back to RDKit relaxed sanitization.
 * Per (smiles, cell_line) replicates are aggregated by median.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -50,43 +51,62 @@ for _p in (str(_HERE.parent), str(_REPO_ROOT)):
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[2])
     p.add_argument(
-        "--xlsx-path", type=Path, required=True,
+        "--xlsx-path",
+        type=Path,
+        required=True,
         help="Path to the Rusanov 2025 PlatinAI xlsx file.",
     )
     p.add_argument(
-        "--out-csv", type=Path, required=True,
+        "--out-csv",
+        type=Path,
+        required=True,
         help="Output CSV path (per-row: smiles, metal, cell_line, pic50).",
     )
     p.add_argument(
-        "--summary", type=Path, default=None,
+        "--summary",
+        type=Path,
+        default=None,
         help="Optional JSON summary path (default <out-csv>.summary.json).",
     )
     p.add_argument(
-        "--sheet", type=str, default=None,
+        "--sheet",
+        type=str,
+        default=None,
         help="Excel sheet name (default: first sheet).",
     )
     p.add_argument(
-        "--smiles-col", type=str, default=None,
+        "--smiles-col",
+        type=str,
+        default=None,
         help="SMILES column name (auto-detected if None).",
     )
     p.add_argument(
-        "--ic50-col", type=str, default=None,
+        "--ic50-col",
+        type=str,
+        default=None,
         help="IC50 (nM) column name (auto-detected if None).",
     )
     p.add_argument(
-        "--metal-col", type=str, default=None,
+        "--metal-col",
+        type=str,
+        default=None,
         help="Metal column name (auto-detected if None; default 'Pt').",
     )
     p.add_argument(
-        "--cell-line-col", type=str, default=None,
+        "--cell-line-col",
+        type=str,
+        default=None,
         help="Cell line column name (auto-detected if None).",
     )
     p.add_argument(
-        "--max-rows", type=int, default=None,
+        "--max-rows",
+        type=int,
+        default=None,
         help="Cap on rows (smoke).",
     )
     p.add_argument(
-        "--no-rdkit-validate", action="store_true",
+        "--no-rdkit-validate",
+        action="store_true",
         help="Skip RDKit SMILES validation (faster).",
     )
     return p.parse_args(argv)
@@ -116,20 +136,23 @@ def _read_xlsx(
     rows: List[Dict[str, str]] = []
     try:
         import pandas as pd
+
         df = pd.read_excel(xlsx_path, sheet_name=sheet or 0)
         rows = df.to_dict(orient="records")
         # Coerce all values to str for downstream handling.
-        rows = [
-            {str(k): "" if v is None else str(v)} for k, v in rows
-        ]
+        rows = [{str(k): "" if v is None else str(v)} for k, v in rows]
         return rows
     except Exception as exc:
-        print(f"[wf251-F5] pandas read failed ({exc}); falling back to openpyxl",
-              flush=True)
+        print(
+            f"[wf251-F5] pandas read failed ({exc}); falling back to openpyxl",
+            flush=True,
+        )
     try:
         import openpyxl
-        wb = openpyxl.load_workbook(filename=str(xlsx_path), read_only=True,
-                                    data_only=True)
+
+        wb = openpyxl.load_workbook(
+            filename=str(xlsx_path), read_only=True, data_only=True
+        )
         ws = wb[sheet] if sheet else wb.active
         header: List[str] = []
         for i, row in enumerate(ws.iter_rows(values_only=True)):
@@ -160,19 +183,23 @@ def _validate_smiles_rdkit(smi: str) -> bool:
     Returns True if the SMILES parses to a non-empty mol."""
     try:
         from rdkit import Chem
+
         mol = Chem.MolFromSmiles(smi)
         if mol is not None and mol.GetNumHeavyAtoms() >= 1:
             return True
         mol = Chem.MolFromSmiles(smi, sanitize=False)
         if mol is not None:
             try:
-                Chem.SanitizeMol(mol, Chem.SanitizeFlags.SANITIZE_FINDRADICALS |
-                                 Chem.SanitizeFlags.SANITIZE_KEKULIZE |
-                                 Chem.SanitizeFlags.SANITIZE_SETAROMATICITY |
-                                 Chem.SanitizeFlags.SANITIZE_SETCONJUGATION |
-                                 Chem.SanitizeFlags.SANITIZE_SETHYBRIDIZATION |
-                                 Chem.SanitizeFlags.SANITIZE_SYMMRINGS,
-                                 catchErrors=True)
+                Chem.SanitizeMol(
+                    mol,
+                    Chem.SanitizeFlags.SANITIZE_FINDRADICALS
+                    | Chem.SanitizeFlags.SANITIZE_KEKULIZE
+                    | Chem.SanitizeFlags.SANITIZE_SETAROMATICITY
+                    | Chem.SanitizeFlags.SANITIZE_SETCONJUGATION
+                    | Chem.SanitizeFlags.SANITIZE_SETHYBRIDIZATION
+                    | Chem.SanitizeFlags.SANITIZE_SYMMRINGS,
+                    catchErrors=True,
+                )
                 return mol.GetNumHeavyAtoms() >= 1
             except Exception:
                 pass
@@ -247,13 +274,15 @@ def aggregate_pic50(
             continue
         # Median replicate aggregation
         pic50_med = float(sorted(vals)[len(vals) // 2])
-        out_rows.append({
-            "smiles": smi,
-            "metal": metal,
-            "cell_line": cell_line,
-            "pic50": pic50_med,
-            "n_replicates": int(len(vals)),
-        })
+        out_rows.append(
+            {
+                "smiles": smi,
+                "metal": metal,
+                "cell_line": cell_line,
+                "pic50": pic50_med,
+                "n_replicates": int(len(vals)),
+            }
+        )
         stats["n_aggregated"] += 1
     return out_rows, stats
 
@@ -276,20 +305,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # Auto-detect column names
     header = list(raw_rows[0].keys())
     smiles_col = args.smiles_col or _auto_detect_col(
-        header, ("smiles", "SMILES", "structure", "Structure"),
+        header,
+        ("smiles", "SMILES", "structure", "Structure"),
     )
     ic50_col = args.ic50_col or _auto_detect_col(
-        header, ("ic50_nm", "IC50_nM", "ic50", "IC50", "ic50 (nm)",
-                 "pIC50", "pic50"),
+        header,
+        ("ic50_nm", "IC50_nM", "ic50", "IC50", "ic50 (nm)", "pIC50", "pic50"),
     )
     # If we matched pIC50, no need to convert — handled below.
     is_pic50_col = bool(ic50_col and ic50_col.lower().startswith("pic50"))
     metal_col = args.metal_col or _auto_detect_col(
-        header, ("metal", "Metal", "metal_id", "ion"),
+        header,
+        ("metal", "Metal", "metal_id", "ion"),
     )
     cell_line_col = args.cell_line_col or _auto_detect_col(
-        header, ("cell_line", "cell", "Cell", "CellLine", "cell line",
-                 "tissue"),
+        header,
+        ("cell_line", "cell", "Cell", "CellLine", "cell line", "tissue"),
     )
     if not smiles_col or not ic50_col:
         print(
@@ -316,9 +347,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         bucket: Dict[Tuple[str, str, str], List[float]] = defaultdict(list)
         metals: Dict[Tuple[str, str, str], str] = {}
         out_rows: List[Dict[str, object]] = []
-        stats = {"n_total": 0, "n_no_smiles": 0, "n_no_pic50": 0,
-                 "n_invalid_pic50": 0, "n_rdkit_failed": 0,
-                 "n_aggregated": 0}
+        stats = {
+            "n_total": 0,
+            "n_no_smiles": 0,
+            "n_no_pic50": 0,
+            "n_invalid_pic50": 0,
+            "n_rdkit_failed": 0,
+            "n_aggregated": 0,
+        }
         for row in raw_rows:
             stats["n_total"] += 1
             smi_raw = row.get(smiles_col)
@@ -346,19 +382,23 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             metal_raw = row.get(metal_col)
             metal = (str(metal_raw) if metal_raw is not None else "Pt").strip() or "Pt"
             cell_raw = row.get(cell_line_col)
-            cell_line = (str(cell_raw) if cell_raw is not None else "UNK").strip() or "UNK"
+            cell_line = (
+                str(cell_raw) if cell_raw is not None else "UNK"
+            ).strip() or "UNK"
             key = (smi, metal, cell_line)
             bucket[key].append(float(v))
         for key, vals in bucket.items():
             smi, metal, cell_line = key
             pic50_med = float(sorted(vals)[len(vals) // 2])
-            out_rows.append({
-                "smiles": smi,
-                "metal": metal,
-                "cell_line": cell_line,
-                "pic50": pic50_med,
-                "n_replicates": int(len(vals)),
-            })
+            out_rows.append(
+                {
+                    "smiles": smi,
+                    "metal": metal,
+                    "cell_line": cell_line,
+                    "pic50": pic50_med,
+                    "n_replicates": int(len(vals)),
+                }
+            )
             stats["n_aggregated"] += 1
     else:
         out_rows, stats = aggregate_pic50(
@@ -373,14 +413,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args.out_csv.parent.mkdir(parents=True, exist_ok=True)
     with args.out_csv.open("w", newline="") as fh:
         writer = csv.writer(fh)
-        writer.writerow(["smiles", "metal", "cell_line", "pic50",
-                         "n_replicates"])
+        writer.writerow(["smiles", "metal", "cell_line", "pic50", "n_replicates"])
         for r in out_rows:
-            writer.writerow([
-                r["smiles"], r["metal"], r["cell_line"],
-                f"{float(r['pic50']):.6f}",
-                r["n_replicates"],
-            ])
+            writer.writerow(
+                [
+                    r["smiles"],
+                    r["metal"],
+                    r["cell_line"],
+                    f"{float(r['pic50']):.6f}",
+                    r["n_replicates"],
+                ]
+            )
     wall = time.time() - t0
     print(
         f"[wf251-F5] wrote {len(out_rows)} aggregated rows to {args.out_csv} "
@@ -396,10 +439,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "n_rows_total": stats.get("n_total", 0),
         "n_rows_aggregated": stats.get("n_aggregated", 0),
         "n_rows_dropped_no_smiles": stats.get("n_no_smiles", 0),
-        "n_rows_dropped_no_target": stats.get("n_no_ic50",
-                                              stats.get("n_no_pic50", 0)),
-        "n_rows_dropped_invalid_target": stats.get("n_invalid_ic50",
-                                                   stats.get("n_invalid_pic50", 0)),
+        "n_rows_dropped_no_target": stats.get("n_no_ic50", stats.get("n_no_pic50", 0)),
+        "n_rows_dropped_invalid_target": stats.get(
+            "n_invalid_ic50", stats.get("n_invalid_pic50", 0)
+        ),
         "n_rows_dropped_rdkit": stats.get("n_rdkit_failed", 0),
         "wall_seconds": wall,
         "smiles_col": smiles_col,

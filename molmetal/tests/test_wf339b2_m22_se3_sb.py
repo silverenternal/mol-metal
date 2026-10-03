@@ -151,6 +151,7 @@ def test_m22_se3_sb_cpu_scaffold_10000_steps():
 
     # Time the 10000-step integration.
     import time
+
     t0 = time.perf_counter()
     final = integrate_with_cfm(
         samples,
@@ -169,9 +170,9 @@ def test_m22_se3_sb_cpu_scaffold_10000_steps():
         f"vs {tuple(samples.shape)}"
     )
     # Contract 2: no NaN / Inf.
-    assert torch.isfinite(final).all(), (
-        f"10000-step integration must produce finite output; got NaN/Inf in {final}"
-    )
+    assert (
+        torch.isfinite(final).all()
+    ), f"10000-step integration must produce finite output; got NaN/Inf in {final}"
     # Contract 3: magnitude bound (no exponential blowup).  The dummy
     # EGNN returns ``sin(t) * x.mean(...)`` which is bounded by the
     # input magnitude for ``t in [0, 1]``, so the output should be
@@ -179,15 +180,14 @@ def test_m22_se3_sb_cpu_scaffold_10000_steps():
     out_mag = final.abs().max().item()
     in_mag = samples.abs().max().item()
     assert out_mag < 100.0 * in_mag, (
-        f"10000-step output must not blow up; out_mag={out_mag} vs "
-        f"in_mag={in_mag}"
+        f"10000-step output must not blow up; out_mag={out_mag} vs " f"in_mag={in_mag}"
     )
     # Contract 4: wall-time < 30 s on a single CPU thread (the 10000-step
     # path is the bottleneck of the scaffold; on a 16-core machine
     # typical wall is ~10-15 s for B=2 N=4).
-    assert elapsed < 30.0, (
-        f"10000-step CPU scaffold must complete in <30 s; got {elapsed:.2f}s"
-    )
+    assert (
+        elapsed < 30.0
+    ), f"10000-step CPU scaffold must complete in <30 s; got {elapsed:.2f}s"
 
 
 class _DummyEGNNVelocityNet(nn.Module):
@@ -231,7 +231,8 @@ class _LinearVelocity(nn.Module):
     def __init__(self) -> None:
         super().__init__()
         self.register_buffer(
-            "e_z", torch.tensor([0.0, 0.0, 1.0]),
+            "e_z",
+            torch.tensor([0.0, 0.0, 1.0]),
         )
 
     def forward(
@@ -355,7 +356,9 @@ def test_m22_se3_sb_equivariance():
 
     for k in range(5):
         R = _random_rotation(batch=samples.shape[0], seed=k)
-        t_b = torch.randn(samples.shape[0], 3, generator=torch.Generator().manual_seed(k + 100))
+        t_b = torch.randn(
+            samples.shape[0], 3, generator=torch.Generator().manual_seed(k + 100)
+        )
         # Transform the conformer: x' = R @ x + t_b.
         x_trans = torch.einsum("bij,bnj->bni", R, samples) + t_b.unsqueeze(1)
         # Integrate on the transformed conformer.
@@ -367,7 +370,9 @@ def test_m22_se3_sb_equivariance():
         )
         # Expected: R @ out_ref + t_b.
         out_expected = torch.einsum(
-            "bij,bnj->bni", R, out_ref,
+            "bij,bnj->bni",
+            R,
+            out_ref,
         ) + t_b.unsqueeze(1)
         # Relative error.
         err = (out_trans - out_expected).flatten(start_dim=1).norm(dim=-1)
@@ -437,9 +442,9 @@ def test_m22_m30_integration():
         f"{tuple(out.shape)} vs {tuple(samples.shape)}"
     )
     # Contract 2: finite output.
-    assert torch.isfinite(out).all(), (
-        f"M22 + M30 composite output must be finite; got NaN/Inf in {out}"
-    )
+    assert torch.isfinite(
+        out
+    ).all(), f"M22 + M30 composite output must be finite; got NaN/Inf in {out}"
     # Contract 3: magnitude bound.
     out_mag = out.abs().max().item()
     in_mag = samples.abs().max().item()

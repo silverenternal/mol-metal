@@ -35,6 +35,7 @@ Honest framing
   — see TODO-83 §0 for the honest-negative framing.
 * All tests are CPU-only and CPU-cheap (≤30 s on a single thread).
 """
+
 from __future__ import annotations
 
 import math
@@ -56,7 +57,7 @@ for _p in (str(_REPO_ROOT), str(_SCRIPTS_DIR)):
 
 
 try:
-    from bench_lambda_triangle_end_to_end import (    # noqa: E402
+    from bench_lambda_triangle_end_to_end import (  # noqa: E402
         DATASET_REGISTRY,
         DEFAULT_METALCYTO_5METAL_CSV,
         F5_RDKIT_2D_FEATURE_NAMES,
@@ -119,18 +120,21 @@ def test_per_metal_breakdown_5_metal_cohort() -> None:
         assert "mean_hilbert_r2" in v
         assert "projected_target" in v
         assert v["projected_target"] == pytest.approx(
-            PER_METAL_PROJECTED[metal], rel=1e-6,
+            PER_METAL_PROJECTED[metal],
+            rel=1e-6,
         )
         assert "MEASURED_vs_PROJECTED" in v
         assert v["MEASURED_vs_PROJECTED"] in (
-            "MEASURED=ON_TARGET", "MEASURED=BELOW_TARGET",
+            "MEASURED=ON_TARGET",
+            "MEASURED=BELOW_TARGET",
         )
     summary = report.get("summary", {}) or {}
     assert summary.get("dataset") == "metalcytotox_5metal"
     assert summary.get("feature_mode") == "f5_rdkit_2d"
     assert "projected_cohort_mean_hilbert_r2" in summary
     assert summary["projected_cohort_mean_hilbert_r2"] == pytest.approx(
-        COHORT_PROJECTED_MEAN, rel=1e-6,
+        COHORT_PROJECTED_MEAN,
+        rel=1e-6,
     )
 
 
@@ -144,16 +148,23 @@ def test_f5_rdkit_2d_12d_integration() -> None:
     # The 12 feature names are stable across re-runs.
     assert len(F5_RDKIT_2D_FEATURE_NAMES) == 12
     expected = {
-        "MolWt", "MolLogP", "TPSA", "HBA", "HBD", "NRotB",
-        "HeavyAtoms", "RingCount", "NumAromaticRings",
-        "FractionCSP3", "MolMR", "BalabanJ",
+        "MolWt",
+        "MolLogP",
+        "TPSA",
+        "HBA",
+        "HBD",
+        "NRotB",
+        "HeavyAtoms",
+        "RingCount",
+        "NumAromaticRings",
+        "FractionCSP3",
+        "MolMR",
+        "BalabanJ",
     }
     assert set(F5_RDKIT_2D_FEATURE_NAMES) == expected
     # Try to extract a 12-d vector from a known Pt-drug SMILES
     # (cisplatin carrier SMILES, well-formed).
-    cisplatin_smi = (
-        "N.N.N.Cl[Pt]Cl"  # canonical cisplatin ligand sphere
-    )
+    cisplatin_smi = "N.N.N.Cl[Pt]Cl"  # canonical cisplatin ligand sphere
     feats = _f5_rdkit_2d_features(cisplatin_smi)
     if feats is None:
         # RDKit may not be installed in this venv — gracefully skip
@@ -192,8 +203,13 @@ def test_7_metal_cohort_projected_mean() -> None:
     """
     # Per-metal PROJECTED ledger from skill §4.2 (PlatinAI 4-cell).
     expected_per_metal = {
-        "Pt": 0.62, "Pd": 0.61, "Ru": 0.60, "Rh": 0.60,
-        "Ir": 0.59, "Os": 0.58, "Au": 0.58,
+        "Pt": 0.62,
+        "Pd": 0.61,
+        "Ru": 0.60,
+        "Rh": 0.60,
+        "Ir": 0.59,
+        "Os": 0.58,
+        "Au": 0.58,
     }
     computed_unweighted_mean = float(np.mean(list(expected_per_metal.values())))
     # The true unweighted mean is 0.5971, NOT 0.594 (skill ledger typo).
@@ -237,7 +253,9 @@ def test_convergence_lift_f5_rdkit_2d_vs_5d() -> None:
     subset = rows[: min(50, len(rows))]
     # F5_RDKIT_2D 12-d path.
     X_12d, y_12d, _ = _build_design_matrix(
-        subset, seed=0, feature_mode="f5_rdkit_2d",
+        subset,
+        seed=0,
+        feature_mode="f5_rdkit_2d",
     )
     assert X_12d.shape[1] == 12, f"Expected 12-d, got {X_12d.shape[1]}"
     # 5-d structural path: build manually using the bench's
@@ -246,9 +264,11 @@ def test_convergence_lift_f5_rdkit_2d_vs_5d() -> None:
     from bench_lambda_triangle_end_to_end import (
         _smiles_features,
     )
+
     for i, row in enumerate(subset):
         feats = _smiles_features(
-            row.get("smiles", ""), row.get("metal", ""),
+            row.get("smiles", ""),
+            row.get("metal", ""),
         )
         X_5d[i, :] = feats
     assert X_5d.shape[1] == 5
@@ -285,8 +305,13 @@ def test_wf330t2_module_smoke() -> None:
     """
     assert "metalcytotox_5metal" in DATASET_REGISTRY
     assert DATASET_REGISTRY["metalcytotox_5metal"]["feature_mode"] == "f5_rdkit_2d"
-    assert DATASET_REGISTRY["metalcytotox_5metal"]["metal_list"] == METALCYTO_5METAL_LIST
-    assert DATASET_REGISTRY["metalcytotox_5metal"]["metal_to_idx"] == METALCYTO_5METAL_TO_IDX
+    assert (
+        DATASET_REGISTRY["metalcytotox_5metal"]["metal_list"] == METALCYTO_5METAL_LIST
+    )
+    assert (
+        DATASET_REGISTRY["metalcytotox_5metal"]["metal_to_idx"]
+        == METALCYTO_5METAL_TO_IDX
+    )
     assert METALCYTO_5METAL_LIST == ("Ru", "Ir", "Rh", "Os", "Re")
     assert METALCYTO_5METAL_TO_IDX["Ru"] == 0
     assert METALCYTO_5METAL_TO_IDX["Re"] == 4

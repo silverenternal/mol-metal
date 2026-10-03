@@ -32,6 +32,7 @@ the SBDD adapters (FLOWR, Pocket2Mol, SoftMol).  We do not require a
 GPU, a checkpoint, or an upstream repo clone.  This is consistent with
 the other adapter tests in ``test_softmol_adapter.py``.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -49,6 +50,7 @@ from molmetal.ports import GenerationConfig, MoleculeGenerator
 # ---------------------------------------------------------------------------
 def _tiny_pocket() -> Pocket:
     import torch
+
     return Pocket(
         pdb_id="wf222_test",
         coords=torch.zeros(2, 3, dtype=torch.float32),
@@ -86,8 +88,14 @@ def test_click_building_blocks_library_covers_each_handle() -> None:
         "molmetal.molmetal_lam.sbdd_env.click_building_blocks"
     )
     required_handles = {
-        "azide", "alkyne", "thiol", "diene",
-        "alkene", "boronic_acid", "bromide", "amine",
+        "azide",
+        "alkyne",
+        "thiol",
+        "diene",
+        "alkene",
+        "boronic_acid",
+        "bromide",
+        "amine",
     }
     present = set()
     for _smi, handles in mod.CLICK_BUILDING_BLOCKS:
@@ -161,6 +169,7 @@ def test_enumerate_click_products_deduplicates_on_repeat_calls() -> None:
 # ===========================================================================
 def _stub_adapter(name: str, mols: List[Molecule]) -> MoleculeGenerator:
     """Create a minimal MoleculeGenerator-shaped stub for tests."""
+
     class _Stub:
         pass
 
@@ -251,10 +260,18 @@ def test_click_blocks_wrapper_swallows_underlying_exception() -> None:
 
     class _Boom:
         name = "boom"
-        def setup(self, device="cpu"): return None
-        def generate(self, pocket, config): raise RuntimeError("upstream dead")
-        def train_step(self, pocket, mols): return 0.0
-        def get_metadata(self): return {"name": "boom", "stub": True}
+
+        def setup(self, device="cpu"):
+            return None
+
+        def generate(self, pocket, config):
+            raise RuntimeError("upstream dead")
+
+        def train_step(self, pocket, mols):
+            return 0.0
+
+        def get_metadata(self):
+            return {"name": "boom", "stub": True}
 
     wrapped = mod.wrap_with_click_blocks(_Boom())  # type: ignore[arg-type]
     out = wrapped.generate(_tiny_pocket(), _tiny_config(n=0))
@@ -311,10 +328,18 @@ def test_click_blocks_wrapper_train_step_delegates() -> None:
 
     class _LossStub:
         name = "lossy"
-        def setup(self, device="cpu"): return None
-        def generate(self, pocket, config): return []
-        def train_step(self, pocket, mols): return 0.123
-        def get_metadata(self): return {"name": "lossy"}
+
+        def setup(self, device="cpu"):
+            return None
+
+        def generate(self, pocket, config):
+            return []
+
+        def train_step(self, pocket, mols):
+            return 0.123
+
+        def get_metadata(self):
+            return {"name": "lossy"}
 
     wrapped = mod.wrap_with_click_blocks(_LossStub())  # type: ignore[arg-type]
     val = wrapped.train_step(_tiny_pocket(), [])
@@ -346,6 +371,7 @@ def test_click_blocks_wraps_real_flowr_adapter() -> None:
     # explicit Hs after embed_3d).  We check the heavy-atom skeleton: the
     # first molecule's heavy-atom SMILES is one of the three.
     from rdkit import Chem as _Chem
+
     first_mol = _Chem.MolFromSmiles(out[0].smiles)
     assert first_mol is not None
     heavy_smi = _Chem.MolToSmiles(_Chem.RemoveHs(first_mol))

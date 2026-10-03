@@ -320,9 +320,9 @@ def main(argv: List[str] | None = None) -> int:
     # ---- Pre-featurise filter: heavy atoms & coord number --------------
     pre = df.copy()
     pre["coord_number"] = pd_numeric(pre["coord_number"]).fillna(-1).astype(int)
-    pre = pre[
-        pre["coord_number"].between(args.coord_min, args.coord_max)
-    ].reset_index(drop=True)
+    pre = pre[pre["coord_number"].between(args.coord_min, args.coord_max)].reset_index(
+        drop=True
+    )
     print(
         f"[extract_tmqm_dblock] coord-filter [{args.coord_min},"
         f"{args.coord_max}]: kept {len(pre):,} rows",
@@ -336,7 +336,11 @@ def main(argv: List[str] | None = None) -> int:
     sa_nan = 0
     for smi in pre["smiles"].tolist():
         f = featurise_one(smi)
-        if f["n_atoms"] is None or f["n_atoms"] < args.heavy_atom_min or f["n_atoms"] > args.heavy_atom_max:
+        if (
+            f["n_atoms"] is None
+            or f["n_atoms"] < args.heavy_atom_min
+            or f["n_atoms"] > args.heavy_atom_max
+        ):
             heavy_filtered += 1
             feats.append(None)  # type: ignore[arg-type]
             continue

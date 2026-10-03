@@ -48,18 +48,18 @@ def test_docked_pose_rmsd_json_includes_wf341t1_redesign_field() -> None:
         "Wf-362-A3 should have added it to refresh the STALE file"
     )
     wf341t1 = d["redesign_wf341t1"]
-    assert wf341t1["workflow"].startswith("Wf-341-T1"), (
-        f"Unexpected workflow name: {wf341t1['workflow']}"
-    )
-    assert wf341t1["source"].endswith("341t1_m15_rmsd.md"), (
-        f"Source should point to Wf-341-T1 doc: {wf341t1['source']}"
-    )
-    assert wf341t1["updated_at"] == "2026-09-29", (
-        f"updated_at should be 2026-09-29, got {wf341t1['updated_at']}"
-    )
-    assert wf341t1["status"] == "MEASURED", (
-        f"status should be MEASURED per party-twenty-spirit 3.5, got {wf341t1['status']}"
-    )
+    assert wf341t1["workflow"].startswith(
+        "Wf-341-T1"
+    ), f"Unexpected workflow name: {wf341t1['workflow']}"
+    assert wf341t1["source"].endswith(
+        "341t1_m15_rmsd.md"
+    ), f"Source should point to Wf-341-T1 doc: {wf341t1['source']}"
+    assert (
+        wf341t1["updated_at"] == "2026-09-29"
+    ), f"updated_at should be 2026-09-29, got {wf341t1['updated_at']}"
+    assert (
+        wf341t1["status"] == "MEASURED"
+    ), f"status should be MEASURED per party-twenty-spirit 3.5, got {wf341t1['status']}"
 
 
 def test_docked_pose_rmsd_json_median_5_of_5_matches_wf341t1_source() -> None:
@@ -80,27 +80,27 @@ def test_docked_pose_rmsd_json_median_5_of_5_matches_wf341t1_source() -> None:
     wf341t1 = d["redesign_wf341t1"]
 
     # Median
-    assert wf341t1["aggregate_median_best_rmsd_angstrom"] == pytest.approx(0.6578, abs=1e-4), (
-        f"median should be 0.6578, got {wf341t1['aggregate_median_best_rmsd_angstrom']}"
-    )
+    assert wf341t1["aggregate_median_best_rmsd_angstrom"] == pytest.approx(
+        0.6578, abs=1e-4
+    ), f"median should be 0.6578, got {wf341t1['aggregate_median_best_rmsd_angstrom']}"
     # 5/5 pass at 2.0 A SOTA gate
-    assert wf341t1["n_pockets_passed_2_0a"] == 5, (
-        f"n_pockets_passed_2_0a should be 5, got {wf341t1['n_pockets_passed_2_0a']}"
-    )
-    assert wf341t1["n_pockets_measured"] == 5, (
-        f"n_pockets_measured should be 5, got {wf341t1['n_pockets_measured']}"
-    )
-    assert wf341t1["aggregate_success_rate_2_0a"] == pytest.approx(1.0, abs=1e-9), (
-        f"aggregate_success_rate_2_0a should be 1.0, got {wf341t1['aggregate_success_rate_2_0a']}"
-    )
+    assert (
+        wf341t1["n_pockets_passed_2_0a"] == 5
+    ), f"n_pockets_passed_2_0a should be 5, got {wf341t1['n_pockets_passed_2_0a']}"
+    assert (
+        wf341t1["n_pockets_measured"] == 5
+    ), f"n_pockets_measured should be 5, got {wf341t1['n_pockets_measured']}"
+    assert (
+        wf341t1["aggregate_success_rate_2_0a"] == pytest.approx(1.0, abs=1e-9)
+    ), f"aggregate_success_rate_2_0a should be 1.0, got {wf341t1['aggregate_success_rate_2_0a']}"
     # Difficulty counts
     assert wf341t1["difficulty_counts"]["EASY"] == 1
     assert wf341t1["difficulty_counts"]["MEDIUM"] == 3
     assert wf341t1["difficulty_counts"]["HARD"] == 1
     # PoseBusters SKIPPED (honest-negative)
-    assert wf341t1["posebusters_validity"] == "SKIPPED", (
-        f"posebusters_validity should be SKIPPED, got {wf341t1['posebusters_validity']}"
-    )
+    assert (
+        wf341t1["posebusters_validity"] == "SKIPPED"
+    ), f"posebusters_validity should be SKIPPED, got {wf341t1['posebusters_validity']}"
 
     # Cross-check against top-level aggregate_median_across_pockets
     # (the existing aggregate field must also agree).
@@ -111,12 +111,13 @@ def test_docked_pose_rmsd_json_median_5_of_5_matches_wf341t1_source() -> None:
 
     # Wf-341-T1 doc must exist on disk (per party-twenty-spirit 3.5
     # MEASURED values must trace to a report path).
-    assert os.path.exists(WF341T1_DOC), (
-        f"Wf-341-T1 source doc not found on disk: {WF341T1_DOC}"
-    )
+    assert os.path.exists(
+        WF341T1_DOC
+    ), f"Wf-341-T1 source doc not found on disk: {WF341T1_DOC}"
 
 
 if __name__ == "__main__":
     # Allow `python -m molmetal.tests.test_wf362a3_rmsd_json_refresh` for quick smoke
     import sys
+
     sys.exit(pytest.main([__file__, "-v"]))

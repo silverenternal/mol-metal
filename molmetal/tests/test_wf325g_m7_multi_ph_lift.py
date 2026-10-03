@@ -32,6 +32,7 @@ Run with::
         /home/hugo/codes/mol-metal/.venv/bin/python -m pytest \\
         molmetal/tests/test_wf325g_m7_multi_ph_lift.py -v
 """
+
 from __future__ import annotations
 
 import csv
@@ -51,6 +52,7 @@ except Exception:
 # Quiet RDKit warnings on the metallo cohort
 try:
     from rdkit import RDLogger
+
     RDLogger.DisableLog("rdApp.*")
 except Exception:
     pass
@@ -65,6 +67,7 @@ def _import_wf325g():
     sys.path.insert(0, str(REPO_ROOT))
     sys.path.insert(0, str(REPO_ROOT / "molmetal"))
     from molmetal.scripts import wf325g_m7_multi_ph_lift as m
+
     return m
 
 
@@ -189,9 +192,9 @@ def test_select_top_n_diversity_lift(wf325g, smiles):
     d_sel = wf325g.mean_pairwise_tanimoto_distance(fps_sel)
 
     # MaxMin should be at least as good as random; allow tiny float slack.
-    assert d_sel >= d_pool - 1e-6, (
-        f"MaxMin regressed: pool={d_pool:.6f}, selected={d_sel:.6f}"
-    )
+    assert (
+        d_sel >= d_pool - 1e-6
+    ), f"MaxMin regressed: pool={d_pool:.6f}, selected={d_sel:.6f}"
 
 
 # ---------------------------------------------------------------------------
@@ -200,7 +203,9 @@ def test_select_top_n_diversity_lift(wf325g, smiles):
 def test_lift_aggregate_vs_baseline(wf325g, smiles):
     """Wf-325G §7 — aggregate 100-pool MaxMin exceeds raw-pool mean diversity."""
     rng = np.random.default_rng(20260929)
-    pools = [rng.choice(len(smiles), size=20, replace=False).tolist() for _ in range(20)]
+    pools = [
+        rng.choice(len(smiles), size=20, replace=False).tolist() for _ in range(20)
+    ]
     selections = [
         wf325g.select_top_n_by_multi_ph_distance(
             [smiles[i] for i in pool],
@@ -235,13 +240,20 @@ def test_result_json_downstream_consumer(wf325g, tmp_path):
     """Wf-325G §8 — result.json is parseable + has required MEASURED-vs-PROJECTED fields."""
     # Run the full main() with tiny args to generate a fresh result.json.
     out_dir = tmp_path / "wf325g_test_result"
-    rc = wf325g.main([
-        "--n-pools", "3",
-        "--pool-size", "5",
-        "--top-n", "2",
-        "--max-multiph-per-pool", "2",
-        "--report-dir", str(out_dir),
-    ])
+    rc = wf325g.main(
+        [
+            "--n-pools",
+            "3",
+            "--pool-size",
+            "5",
+            "--top-n",
+            "2",
+            "--max-multiph-per-pool",
+            "2",
+            "--report-dir",
+            str(out_dir),
+        ]
+    )
     assert rc == 0
 
     result_path = out_dir / "result.json"
@@ -261,13 +273,13 @@ def test_result_json_downstream_consumer(wf325g, tmp_path):
     ):
         assert k in data, f"missing required field: {k}"
         assert "tag" in data[k], f"{k} missing 'tag' field"
-        assert data[k]["tag"] == "MEASURED", (
-            f"{k}.tag should be MEASURED (got {data[k]['tag']})"
-        )
+        assert (
+            data[k]["tag"] == "MEASURED"
+        ), f"{k}.tag should be MEASURED (got {data[k]['tag']})"
     # Honest framing must include the structural-fix disclaimer.
-    assert data["honest_framing"]["structural_fix_needed"], (
-        "honest_framing.structural_fix_needed missing"
-    )
+    assert data["honest_framing"][
+        "structural_fix_needed"
+    ], "honest_framing.structural_fix_needed missing"
     assert data["honest_framing"]["is_mechanical_lift_only"] is True
 
     # Per-cohort CSV is also emitted for downstream consumers.

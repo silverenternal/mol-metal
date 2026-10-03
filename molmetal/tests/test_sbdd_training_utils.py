@@ -11,6 +11,7 @@ Verifies the GPU-default helpers do what they claim:
   ``cpu`` otherwise, and emits a single INFO log line.
 * :func:`setup_training_device_env` is idempotent + always seeds torch.
 """
+
 from __future__ import annotations
 
 import os
@@ -106,6 +107,7 @@ def test_resolve_returns_torch_device(monkeypatch: pytest.MonkeyPatch) -> None:
     device = tu.resolve_default_device()
     # type: ignore[arg-type]
     import torch  # noqa: WPS433 — only here for the assertion
+
     assert isinstance(device, torch.device)
     assert device.type in ("cuda", "cpu")
 

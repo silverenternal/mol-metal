@@ -54,9 +54,7 @@ import wf343c2_per_wave_check as wf343c2  # noqa: E402
 VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
 WF343C2_SCRIPT = SCRIPT_DIR / "wf343c2_per_wave_check.py"
 # The script's --out default lives under REPORTS_DIR, not SCRIPT_DIR.
-_WF343C2_REPORT_DIR = (
-    PROJECT_ROOT / "molmetal" / "reports" / "wf343c2_per_wave_check"
-)
+_WF343C2_REPORT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf343c2_per_wave_check"
 
 
 def _write_fresh_preflight(path: Path, *, n_pass: int = 22, n_fail: int = 0) -> None:
@@ -107,17 +105,22 @@ def _run_wf343c2_subprocess(
 ) -> subprocess.CompletedProcess:
     """Subprocess-run ``wf343c2_per_wave_check.py`` with the given args and
     return the completed process.  CPU-only; wall < 60s."""
-    assert WF343C2_SCRIPT.is_file(), (
-        f"wf343c2_per_wave_check.py missing: {WF343C2_SCRIPT}"
-    )
+    assert (
+        WF343C2_SCRIPT.is_file()
+    ), f"wf343c2_per_wave_check.py missing: {WF343C2_SCRIPT}"
     args = [
         VENV_PY,
         str(WF343C2_SCRIPT),
-        "--wave", wave,
-        "--preflight", str(preflight),
-        "--pairs-metals", pairs_metals,
-        "--pairs-seeds", pairs_seeds,
-        "--budget-hr", str(budget_hr),
+        "--wave",
+        wave,
+        "--preflight",
+        str(preflight),
+        "--pairs-metals",
+        pairs_metals,
+        "--pairs-seeds",
+        pairs_seeds,
+        "--budget-hr",
+        str(budget_hr),
     ]
     if config is not None:
         args.extend(["--config", str(config)])
@@ -139,9 +142,7 @@ def _run_wf343c2_subprocess(
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skipif(
-    not Path(VENV_PY).exists(), reason="vlm venv not on disk"
-)
+@pytest.mark.skipif(not Path(VENV_PY).exists(), reason="vlm venv not on disk")
 def test_wf343c2_skip_live_3_skips_returns_rc_zero(tmp_path: Path) -> None:
     """Wf-368-A1 Option C contract: ``wf343c2_per_wave_check.py --skip-live``
     (without ``--config``, without ``--strict``) legitimately produces 3
@@ -182,9 +183,9 @@ def test_wf343c2_skip_live_3_skips_returns_rc_zero(tmp_path: Path) -> None:
     # ``molmetal/reports/wf343c2_per_wave_check/per_wave_check.json``
     # (REPORTS_DIR, not SCRIPT_DIR).
     out_path = _WF343C2_REPORT_DIR / "per_wave_check.json"
-    assert out_path.is_file(), (
-        f"expected JSON output at {out_path} not found after wf343c2 run"
-    )
+    assert (
+        out_path.is_file()
+    ), f"expected JSON output at {out_path} not found after wf343c2 run"
     json_obj = json.loads(out_path.read_text(encoding="utf-8"))
     assert json_obj["n_fail"] == 0, (
         f"expected 0 FAIL, got {json_obj['n_fail']}: "
@@ -211,9 +212,7 @@ def test_wf343c2_skip_live_3_skips_returns_rc_zero(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skipif(
-    not Path(VENV_PY).exists(), reason="vlm venv not on disk"
-)
+@pytest.mark.skipif(not Path(VENV_PY).exists(), reason="vlm venv not on disk")
 def test_wf343c2_skip_live_zero_fail_returns_rc_zero(tmp_path: Path) -> None:
     """Wf-368-A1 guard: ``wf343c2_per_wave_check.py --skip-live`` (with
     full --config, without --strict) yields 0 FAIL; exit code 0
@@ -249,9 +248,9 @@ def test_wf343c2_skip_live_zero_fail_returns_rc_zero(tmp_path: Path) -> None:
     )
     # Verify the JSON output reflects the expected state.
     out_path = _WF343C2_REPORT_DIR / "per_wave_check.json"
-    assert out_path.is_file(), (
-        f"expected JSON output at {out_path} not found after wf343c2 run"
-    )
+    assert (
+        out_path.is_file()
+    ), f"expected JSON output at {out_path} not found after wf343c2 run"
     json_obj = json.loads(out_path.read_text(encoding="utf-8"))
     assert json_obj["n_fail"] == 0, (
         f"expected 0 FAIL, got {json_obj['n_fail']}: "
@@ -266,9 +265,7 @@ def test_wf343c2_skip_live_zero_fail_returns_rc_zero(tmp_path: Path) -> None:
     # If --config was provided AND --skip-live is set, the only SKIPs
     # should be the 2 live-probe checks (gpu + disk).  hyperparams_config
     # should be PASS in this scenario.
-    check_statuses = {
-        c["check_id"]: c["status"] for c in json_obj["checks"]
-    }
+    check_statuses = {c["check_id"]: c["status"] for c in json_obj["checks"]}
     assert check_statuses["hyperparams_config_complete"] == "PASS", (
         f"--config was provided; hyperparams_config_complete should be "
         f"PASS, got {check_statuses['hyperparams_config_complete']}"

@@ -38,16 +38,16 @@ STATUS_PATH = WF30_DIR / "pocket_status.json"
 # Mirrors the canonical list in molmetal/scripts/check_10_pockets.py.
 # 6 metric-measured + 4 candidates from the task brief.
 WF30_POCKETS = (
-    "830c",   # MMP-13 (mmp13_real anchor)
-    "1h36",   # SQHC_ALIAD (metric-measured)
-    "3eml",   # AA2AR_HUMAN GPCR (metric-measured)
-    "3ny8",   # ADRB2_HUMAN GPCR (metric-measured)
-    "4aaw",   # GLMU_STRPN test_001 (metric-measured)
-    "4rlu",   # pdbbindpp-2020 (metric-measured)
-    "1g9v",   # HBA_HUMAN (task brief candidate)
-    "2hnx",   # FABP4_HUMAN (task brief candidate)
-    "4rn0",   # HDAC8_HUMAN test_005
-    "1fmc",   # HDHA_ECOLI test_006
+    "830c",  # MMP-13 (mmp13_real anchor)
+    "1h36",  # SQHC_ALIAD (metric-measured)
+    "3eml",  # AA2AR_HUMAN GPCR (metric-measured)
+    "3ny8",  # ADRB2_HUMAN GPCR (metric-measured)
+    "4aaw",  # GLMU_STRPN test_001 (metric-measured)
+    "4rlu",  # pdbbindpp-2020 (metric-measured)
+    "1g9v",  # HBA_HUMAN (task brief candidate)
+    "2hnx",  # FABP4_HUMAN (task brief candidate)
+    "4rn0",  # HDAC8_HUMAN test_005
+    "1fmc",  # HDHA_ECOLI test_006
 )
 
 METRIC_MEASURED = ("1h36", "3eml", "3ny8", "4aaw", "4rlu", "830c")
@@ -91,9 +91,9 @@ def test_pocket_pdbqt_is_parseable(pocket_id: str) -> None:
     pdbqt_path = WF30_DIR / pocket_id / "receptor.pdbqt"
     body = pdbqt_path.read_text().splitlines()
     atom_lines = [line for line in body if line.startswith(("ATOM", "HETATM"))]
-    assert len(atom_lines) > 10, (
-        f"pdbqt for {pocket_id} has only {len(atom_lines)} ATOM/HETATM lines"
-    )
+    assert (
+        len(atom_lines) > 10
+    ), f"pdbqt for {pocket_id} has only {len(atom_lines)} ATOM/HETATM lines"
     # Meeko always emits AutoDock type in cols 77-79.
     for line in atom_lines[:20]:
         assert len(line) >= 78, f"short pdbqt line: {line!r}"
@@ -122,9 +122,9 @@ def test_status_json_records_ready(pocket_id: str) -> None:
     record = next(
         entry for entry in payload["pockets"] if entry["pocket_id"] == pocket_id
     )
-    assert record["status"] == "READY", (
-        f"{pocket_id} status={record['status']}; error={record.get('error')}"
-    )
+    assert (
+        record["status"] == "READY"
+    ), f"{pocket_id} status={record['status']}; error={record.get('error')}"
     assert record["pdbqt_path"] is not None
     assert record["pdbqt_size_bytes"] > 0
 
@@ -135,9 +135,7 @@ def test_metric_measured_pocket_has_metric_provenance(pocket_id: str) -> None:
     _skip_if_not_staged()
     payload = _status()
     provenance = payload["metric_provenance"]
-    assert pocket_id in provenance, (
-        f"missing metric provenance for {pocket_id}"
-    )
+    assert pocket_id in provenance, f"missing metric provenance for {pocket_id}"
     block = provenance[pocket_id]
     assert block["metric_status"] == "MEASURED"
     assert block["mean_kcal_mol"] is not None
@@ -150,9 +148,7 @@ def test_status_json_source_paths_unique() -> None:
     payload = _status()
     sources = [entry["source_pdb"] for entry in payload["pockets"]]
     assert all(sources), "all pockets must have a source_pdb"
-    assert len(set(sources)) == len(sources), (
-        f"duplicate source paths in {sources}"
-    )
+    assert len(set(sources)) == len(sources), f"duplicate source paths in {sources}"
 
 
 def test_status_json_source_sha_matches_disk() -> None:
@@ -182,6 +178,6 @@ def test_wf30_dir_inventory_covers_metric_measured_and_brief() -> None:
     # available locally), so we add 4rn0 + 1fmc from the crossdocked100
     # manifest. Verify the union still adds up to 10 pockets.
     assert len(ids) == 10
-    assert {"1g9v", "2hnx"}.issubset(ids), (
-        "task-brief candidate pockets 1g9v + 2hnx must be staged"
-    )
+    assert {"1g9v", "2hnx"}.issubset(
+        ids
+    ), "task-brief candidate pockets 1g9v + 2hnx must be staged"

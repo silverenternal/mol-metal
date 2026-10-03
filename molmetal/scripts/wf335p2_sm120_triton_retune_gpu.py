@@ -102,6 +102,7 @@ Cross-references:
   * :file:`molmetal/scripts/pre_flight_check.py` — Pre-flight v2
     25/25 PASS gate (REQUIRED before :func:`main` accepts ``--launch``).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -228,9 +229,7 @@ def _config_pairs(configs: Sequence[Any]) -> List[Tuple[int, int]]:
             nw = cfg.get("num_warps")
             ns = cfg.get("num_stages")
         if nw is None or ns is None:
-            raise AttributeError(
-                f"Config {cfg!r} is missing num_warps or num_stages."
-            )
+            raise AttributeError(f"Config {cfg!r} is missing num_warps or num_stages.")
         pairs.append((int(nw), int(ns)))
     return pairs
 
@@ -397,10 +396,7 @@ def launch_gate_check() -> Dict[str, Any]:
                 "molmetal/reports/wf335p2_sm120_triton_retune_gpu/"
                 "gpu_env_check.json"
             ),
-            "pre_flight": (
-                "python molmetal/scripts/pre_flight_check.py "
-                "--strict"
-            ),
+            "pre_flight": ("python molmetal/scripts/pre_flight_check.py " "--strict"),
             "config_aligned": (
                 "Verify num_warps/num_stages/batch_size/hidden/depth "
                 "match peer-paper config in "
@@ -464,16 +460,12 @@ def cpu_smoke_gpu_wrapper(output_dir: Path) -> Dict[str, Any]:
     assert plan_generic.estimated_kernel_launches == 288 * 5
 
     # 3) Per-kernel is strictly smaller than generic (326E-B ~3x).
-    assert (
-        plan_default.total_configs_to_sweep
-        < plan_generic.total_configs_to_sweep
-    ), (
+    assert plan_default.total_configs_to_sweep < plan_generic.total_configs_to_sweep, (
         f"Per-kernel total ({plan_default.total_configs_to_sweep}) "
         f"should be < generic total ({plan_generic.total_configs_to_sweep})."
     )
     speedup_ratio = (
-        plan_generic.total_configs_to_sweep
-        / plan_default.total_configs_to_sweep
+        plan_generic.total_configs_to_sweep / plan_default.total_configs_to_sweep
     )
     # ~3x projection from Wf-326E-B: 288/117 = 2.46x.
     assert 2.0 <= speedup_ratio <= 3.5, (
@@ -501,13 +493,12 @@ def cpu_smoke_gpu_wrapper(output_dir: Path) -> Dict[str, Any]:
     else:
         unknown_raises = False
     assert unknown_raises, (
-        "build_launch_plan should raise ValueError for unknown kernel "
-        "names."
+        "build_launch_plan should raise ValueError for unknown kernel " "names."
     )
 
     # 6) Every per-kernel config is_sm120_config_safe.
     for name, pairs in plan_default.per_kernel_configs.items():
-        for (nw, ns) in pairs:
+        for nw, ns in pairs:
             cfg = {"num_warps": nw, "num_stages": ns}
             assert _x3.is_sm120_config_safe(cfg), (
                 f"is_sm120_config_safe returned False for plan config "
@@ -634,13 +625,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "--output-dir",
         default=str(DEFAULT_OUTPUT_DIR),
         help="Where to write the launch plan JSON (default: "
-             "molmetal/reports/wf335p2_sm120_triton_retune_gpu).",
+        "molmetal/reports/wf335p2_sm120_triton_retune_gpu).",
     )
     parser.add_argument(
         "--smoke",
         action="store_true",
         help="Run the CPU smoke that exercises the wrapper "
-             "(plan composition + JSON dump + CLI flags).",
+        "(plan composition + JSON dump + CLI flags).",
     )
     parser.add_argument(
         "--dump-launch-plan-only",
@@ -651,29 +642,29 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "--per-kernel",
         action="store_true",
         help="Use the Wf-333-T1 per-kernel presets (RECOMMENDED per "
-             "Wf-326E-B).  Default behavior is also per-kernel; this "
-             "flag is explicit for clarity.",
+        "Wf-326E-B).  Default behavior is also per-kernel; this "
+        "flag is explicit for clarity.",
     )
     parser.add_argument(
         "--kernels",
         default=None,
         help="Comma-separated subset of Wf-326E audit kernel names "
-             "(e.g. 'fused_silu_mlp,matmul_fn').  Default: all 24 "
-             "audit kernels.",
+        "(e.g. 'fused_silu_mlp,matmul_fn').  Default: all 24 "
+        "audit kernels.",
     )
     parser.add_argument(
         "--launch",
         action="store_true",
         help="Promote to an actual GPU launch.  REQUIRES "
-             "--launch-prereqs-confirmed.  Without it the wrapper "
-             "prints the launch-gate checklist and exits 2.",
+        "--launch-prereqs-confirmed.  Without it the wrapper "
+        "prints the launch-gate checklist and exits 2.",
     )
     parser.add_argument(
         "--launch-prereqs-confirmed",
         action="store_true",
         help="Operator's explicit ack that VRAM + pre-flight + "
-             "config-aligned are done (does NOT itself perform those "
-             "checks).",
+        "config-aligned are done (does NOT itself perform those "
+        "checks).",
     )
     args = parser.parse_args(argv)
 
@@ -716,9 +707,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.dump_launch_plan_only:
         kernels_arg: Optional[Tuple[str, ...]]
         if args.kernels:
-            kernels_arg = tuple(
-                k.strip() for k in args.kernels.split(",") if k.strip()
-            )
+            kernels_arg = tuple(k.strip() for k in args.kernels.split(",") if k.strip())
         else:
             kernels_arg = None
 
@@ -731,19 +720,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 1
 
-        dumped = dump_launch_plan_json(
-            plan, output_dir / "launch_plan_per_kernel.json"
-        )
+        dumped = dump_launch_plan_json(plan, output_dir / "launch_plan_per_kernel.json")
         print(
             json.dumps(
                 {
                     "n_selected_kernels": dumped["n_selected_kernels"],
-                    "total_configs_to_sweep": dumped[
-                        "total_configs_to_sweep"
-                    ],
-                    "estimated_kernel_launches": (
-                        plan.estimated_kernel_launches
-                    ),
+                    "total_configs_to_sweep": dumped["total_configs_to_sweep"],
+                    "estimated_kernel_launches": (plan.estimated_kernel_launches),
                     "use_per_kernel": plan.use_per_kernel,
                     "gpu_retune_deferred": plan.gpu_retune_deferred,
                     "launch_plan_path": dumped["output_path"],
@@ -763,18 +746,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # ---- Default path: dump plan + summary -------------------------------
     kernels_arg = None
     if args.kernels:
-        kernels_arg = tuple(
-            k.strip() for k in args.kernels.split(",") if k.strip()
-        )
+        kernels_arg = tuple(k.strip() for k in args.kernels.split(",") if k.strip())
     try:
         plan = build_launch_plan(use_per_kernel=True, kernels=kernels_arg)
     except (FileNotFoundError, ValueError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 
-    dumped = dump_launch_plan_json(
-        plan, output_dir / "launch_plan_per_kernel.json"
-    )
+    dumped = dump_launch_plan_json(plan, output_dir / "launch_plan_per_kernel.json")
     print(
         json.dumps(
             {

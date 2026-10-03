@@ -41,6 +41,7 @@ Honest framing per party-twenty-spirit §3.5
   bias.  This is the Wf-156 chemprop v2 baseline at production-epoch
   count + LOMO split + smaller backbone.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -183,7 +184,10 @@ def run_one_with_ckpt(
         if time_budget_s is not None and (time.time() - t_start) > time_budget_s:
             logger.warning(
                 "[fold=%s seed=%d] timeout at epoch=%d (elapsed=%.1fs)",
-                held_out, seed, epoch, time.time() - t_start,
+                held_out,
+                seed,
+                epoch,
+                time.time() - t_start,
             )
             timed_out = True
             break
@@ -193,13 +197,13 @@ def run_one_with_ckpt(
         n_batches = 0
         model.train()
         for start in range(0, n_train, batch_size):
-            batch_idx = indices[start:start + batch_size]
+            batch_idx = indices[start : start + batch_size]
             bmols = [train_mols[i] for i in batch_idx]
-            b_metal_ids = torch.from_numpy(
-                train_metal_ids[batch_idx]
-            ).long().to(device)
+            b_metal_ids = torch.from_numpy(train_metal_ids[batch_idx]).long().to(device)
             bmg = _bf16_cast_inputs(_make_bmg(bmols), device)
-            with torch.amp.autocast("cuda", dtype=autocast_dtype, enabled=(device.type == "cuda")):
+            with torch.amp.autocast(
+                "cuda", dtype=autocast_dtype, enabled=(device.type == "cuda")
+            ):
                 H_v = model.encoder.message_passing(bmg)
                 H = model.encoder.agg(H_v, bmg.batch)
                 e = model.metal_embed(b_metal_ids)
@@ -207,15 +211,18 @@ def run_one_with_ckpt(
                 total = z.new_zeros(())
                 for metal, head in model.metal_heads.items():
                     logit_1 = head.train_step(z)
-                    tgt = torch.from_numpy(
-                        y_true_all[metal][batch_idx]
-                    ).unsqueeze(-1).float().to(device)
+                    tgt = (
+                        torch.from_numpy(y_true_all[metal][batch_idx])
+                        .unsqueeze(-1)
+                        .float()
+                        .to(device)
+                    )
                     l = loss_fn(logit_1.float(), tgt)
                     total = total + l
                 logit_c = model.coord_head(z)
-                b_coord = torch.from_numpy(
-                    coord_true_train[batch_idx]
-                ).long().to(device)
+                b_coord = (
+                    torch.from_numpy(coord_true_train[batch_idx]).long().to(device)
+                )
                 total = total + 0.3 * nn.functional.cross_entropy(
                     logit_c.float(), b_coord
                 )
@@ -228,7 +235,11 @@ def run_one_with_ckpt(
         if epoch % 10 == 0 or epoch == epochs - 1:
             logger.info(
                 "[fold=%s seed=%d] epoch=%d/%d loss=%.4f elapsed=%.1fs",
-                held_out, seed, epoch, epochs, last_train_loss,
+                held_out,
+                seed,
+                epoch,
+                epochs,
+                last_train_loss,
                 time.time() - t_start,
             )
 
@@ -240,12 +251,16 @@ def run_one_with_ckpt(
         model.eval()
         with torch.no_grad():
             for start in range(0, n_test, batch_size):
-                bmols = test_mols[start:start + batch_size]
-                b_metal_ids = torch.from_numpy(
-                    test_metal_ids[start:start + batch_size]
-                ).long().to(device)
+                bmols = test_mols[start : start + batch_size]
+                b_metal_ids = (
+                    torch.from_numpy(test_metal_ids[start : start + batch_size])
+                    .long()
+                    .to(device)
+                )
                 bmg = _bf16_cast_inputs(_make_bmg(bmols), device)
-                with torch.amp.autocast("cuda", dtype=autocast_dtype, enabled=(device.type == "cuda")):
+                with torch.amp.autocast(
+                    "cuda", dtype=autocast_dtype, enabled=(device.type == "cuda")
+                ):
                     H_v = model.encoder.message_passing(bmg)
                     H = model.encoder.agg(H_v, bmg.batch)
                     e = model.metal_embed(b_metal_ids)
@@ -254,10 +269,11 @@ def run_one_with_ckpt(
                     p = torch.sigmoid(logit_1.squeeze(-1).float()).cpu().numpy()
                 scores_list.extend(float(x) for x in p)
                 labels_list.extend(
-                    int(x) for x in test_active[start:start + batch_size]
+                    int(x) for x in test_active[start : start + batch_size]
                 )
         try:
             from sklearn.metrics import roc_auc_score
+
             if len(set(labels_list)) < 2:
                 test_auc = float("nan")
             else:
@@ -349,11 +365,17 @@ def main(argv=None):
     logger.info(
         "device=%s metals=%s seeds=%s epochs=%d hidden=%d depth=%d "
         "wall-budget=%.0fs",
-        device, args.metals, args.seeds, args.epochs, args.hidden,
-        args.depth, args.time_budget_s,
+        device,
+        args.metals,
+        args.seeds,
+        args.epochs,
+        args.hidden,
+        args.depth,
+        args.time_budget_s,
     )
 
     from molmetal.data.metal_cytotox import load_metal_cytotox
+
     df_all = load_metal_cytotox()
     df = df_all[df_all["metal"].isin(args.metals)].reset_index(drop=True)
     if df.empty:
@@ -361,7 +383,8 @@ def main(argv=None):
         return 1
     logger.info(
         "filtered MetalCytoToxDB: %d rows across metals=%s",
-        len(df), sorted(set(df["metal"].tolist())),
+        len(df),
+        sorted(set(df["metal"].tolist())),
     )
 
     smiles_all = df["smiles"].astype(str).tolist()
@@ -376,21 +399,24 @@ def main(argv=None):
     mols_all, atom_fdim, bond_fdim = _real_prefeaturize(smiles_all)
     logger.info(
         "pre-featurized %d SMILES in %.1fs (atom_fdim=%d bond_fdim=%d)",
-        len(mols_all), time.time() - t0, atom_fdim, bond_fdim,
+        len(mols_all),
+        time.time() - t0,
+        atom_fdim,
+        bond_fdim,
     )
 
     metal_id_lookup = {m: i for i, m in enumerate(SUPPORTED_METALS)}
     keep_mask = np.isin(metals_all, list(SUPPORTED_METALS))
     if not keep_mask.all():
         n_drop = int((~keep_mask).sum())
-        logger.warning("dropping %d rows with metals outside %s", n_drop, SUPPORTED_METALS)
+        logger.warning(
+            "dropping %d rows with metals outside %s", n_drop, SUPPORTED_METALS
+        )
         keep_idx = np.where(keep_mask)[0]
         mols_all = [mols_all[i] for i in keep_idx]
         metals_all = metals_all[keep_idx]
         active_all = active_all[keep_idx]
-    metal_ids_all = np.array(
-        [metal_id_lookup[m] for m in metals_all], dtype=np.int64
-    )
+    metal_ids_all = np.array([metal_id_lookup[m] for m in metals_all], dtype=np.int64)
 
     logo = LeaveOneGroupOut()
     splits = list(logo.split(np.arange(len(mols_all)), groups=metals_all))
@@ -451,8 +477,12 @@ def main(argv=None):
                     "seed": int(seed),
                     "n_train": int(len(train_idx)),
                     "n_test": int(len(test_idx)),
-                    "pos_rate_train": float(np.mean(active_all[train_idx])) if len(train_idx) else 0.0,
-                    "pos_rate_test": float(np.mean(active_all[test_idx])) if len(test_idx) else 0.0,
+                    "pos_rate_train": float(np.mean(active_all[train_idx]))
+                    if len(train_idx)
+                    else 0.0,
+                    "pos_rate_test": float(np.mean(active_all[test_idx]))
+                    if len(test_idx)
+                    else 0.0,
                     "test_auc": float("nan"),
                     "elapsed_s": 0.0,
                     "epoch_count": 0,
@@ -464,8 +494,12 @@ def main(argv=None):
             runs.append(rec)
             logger.info(
                 "fold=%s seed=%d test_auc=%.4f epochs=%d elapsed=%.1fs status=%s",
-                rec["fold"], rec["seed"], rec["test_auc"], rec["epoch_count"],
-                rec["elapsed_s"], rec["status"],
+                rec["fold"],
+                rec["seed"],
+                rec["test_auc"],
+                rec["epoch_count"],
+                rec["elapsed_s"],
+                rec["status"],
             )
             if (time.time() - sweep_t0) > args.time_budget_s:
                 logger.warning(
@@ -496,7 +530,8 @@ def main(argv=None):
         if not per_fold:
             continue
         aucs = [
-            r["test_auc"] for r in per_fold
+            r["test_auc"]
+            for r in per_fold
             if r["status"] == "ok" and not np.isnan(r["test_auc"])
         ]
         per_metal_summary[fold] = {
@@ -506,16 +541,22 @@ def main(argv=None):
             "n_test": int(per_fold[0]["n_test"]),
             "n_seeds_ok": len(aucs),
             "n_seeds_total": len(per_fold),
-            "per_seed_auc": {
-                str(r["seed"]): r["test_auc"] for r in per_fold
-            },
+            "per_seed_auc": {str(r["seed"]): r["test_auc"] for r in per_fold},
         }
 
-    mean_auc_overall = float(np.nanmean([
-        per_metal_summary[m]["mean_auc"]
-        for m in per_metal_summary
-        if not np.isnan(per_metal_summary[m]["mean_auc"])
-    ])) if per_metal_summary else float("nan")
+    mean_auc_overall = (
+        float(
+            np.nanmean(
+                [
+                    per_metal_summary[m]["mean_auc"]
+                    for m in per_metal_summary
+                    if not np.isnan(per_metal_summary[m]["mean_auc"])
+                ]
+            )
+        )
+        if per_metal_summary
+        else float("nan")
+    )
 
     honest_framing_note = (
         f"Wf-146 chemprop v2 LOMO sweep ran with hidden_dim={args.hidden}, "

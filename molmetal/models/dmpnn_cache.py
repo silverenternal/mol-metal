@@ -62,8 +62,8 @@ from rdkit import RDLogger
 # ---------------------------------------------------------------------------
 # Defaults — match GraphFeaturizer output shape.
 # ---------------------------------------------------------------------------
-ATOM_FDIM_DEFAULT: int = 39   # GraphFeaturizer default atom feature dim
-EDGE_FDIM_DEFAULT: int = 6    # GraphFeaturizer default edge feature dim
+ATOM_FDIM_DEFAULT: int = 39  # GraphFeaturizer default atom feature dim
+EDGE_FDIM_DEFAULT: int = 6  # GraphFeaturizer default edge feature dim
 
 
 @dataclass
@@ -156,6 +156,7 @@ class DMPNNFeaturizationCache:
         # Lazy import — GraphFeaturizer is heavy (rdkit + numpy).
         if featurizer is None:
             from molmetal.data.featurize import GraphFeaturizer
+
             self._featurizer = GraphFeaturizer()
         else:
             self._featurizer = featurizer

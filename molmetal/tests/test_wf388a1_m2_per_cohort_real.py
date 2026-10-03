@@ -27,6 +27,7 @@ Honest framing (party-twenty-spirit §3.5):
   small (per Wf-388-A1 smoke result.json: platinai_4cell + hilbert
   lift +0.0194, metalcytotox_combined WEAK_RECOVERY at +0.1961).
 """
+
 from __future__ import annotations
 
 import os
@@ -70,71 +71,67 @@ def test_per_cohort_config_applied() -> None:
 
     # n=200 → n_lt_300 tier → 12 features, alpha=1.0
     X_per, cfg = apply_per_cohort_config(X_50d, cohort_size=200)
-    assert cfg["tier"] == "n_lt_300", (
-        f"n=200 cohort should map to n_lt_300 tier; got {cfg['tier']!r}"
-    )
-    assert cfg["alpha"] == 1.0, (
-        f"n_lt_300 tier alpha should be 1.0; got {cfg['alpha']}"
-    )
-    assert X_per.shape[1] == 12, (
-        f"n_lt_300 tier should use 12-d features; got {X_per.shape[1]}"
-    )
-    assert X_per.shape[0] == 300, (
-        f"n=200 cohort with n=300 synthesized should retain 300 rows; got {X_per.shape[0]}"
-    )
+    assert (
+        cfg["tier"] == "n_lt_300"
+    ), f"n=200 cohort should map to n_lt_300 tier; got {cfg['tier']!r}"
+    assert cfg["alpha"] == 1.0, f"n_lt_300 tier alpha should be 1.0; got {cfg['alpha']}"
+    assert (
+        X_per.shape[1] == 12
+    ), f"n_lt_300 tier should use 12-d features; got {X_per.shape[1]}"
+    assert (
+        X_per.shape[0] == 300
+    ), f"n=200 cohort with n=300 synthesized should retain 300 rows; got {X_per.shape[0]}"
 
     # n=500 → n_lt_1000 tier → 24 features, alpha=0.5
     X_per_500, cfg = apply_per_cohort_config(X_50d, cohort_size=500)
-    assert cfg["tier"] == "n_lt_1000", (
-        f"n=500 cohort should map to n_lt_1000 tier; got {cfg['tier']!r}"
-    )
-    assert cfg["alpha"] == 0.5, (
-        f"n_lt_1000 tier alpha should be 0.5; got {cfg['alpha']}"
-    )
-    assert X_per_500.shape[1] == 24, (
-        f"n_lt_1000 tier should use 24-d features; got {X_per_500.shape[1]}"
-    )
+    assert (
+        cfg["tier"] == "n_lt_1000"
+    ), f"n=500 cohort should map to n_lt_1000 tier; got {cfg['tier']!r}"
+    assert (
+        cfg["alpha"] == 0.5
+    ), f"n_lt_1000 tier alpha should be 0.5; got {cfg['alpha']}"
+    assert (
+        X_per_500.shape[1] == 24
+    ), f"n_lt_1000 tier should use 24-d features; got {X_per_500.shape[1]}"
 
     # n=2000 → n_gte_1000 tier → 50 features, alpha=0.1
     X_per_2000, cfg = apply_per_cohort_config(X_50d, cohort_size=2000)
-    assert cfg["tier"] == "n_gte_1000", (
-        f"n=2000 cohort should map to n_gte_1000 tier; got {cfg['tier']!r}"
-    )
-    assert cfg["alpha"] == 0.1, (
-        f"n_gte_1000 tier alpha should be 0.1; got {cfg['alpha']}"
-    )
-    assert X_per_2000.shape[1] == 50, (
-        f"n_gte_1000 tier should use 50-d features; got {X_per_2000.shape[1]}"
-    )
+    assert (
+        cfg["tier"] == "n_gte_1000"
+    ), f"n=2000 cohort should map to n_gte_1000 tier; got {cfg['tier']!r}"
+    assert (
+        cfg["alpha"] == 0.1
+    ), f"n_gte_1000 tier alpha should be 0.1; got {cfg['alpha']}"
+    assert (
+        X_per_2000.shape[1] == 50
+    ), f"n_gte_1000 tier should use 50-d features; got {X_per_2000.shape[1]}"
 
     # Boundary tests (n=299 → n_lt_300, n=300 → n_lt_1000; n=999 → n_lt_1000, n=1000 → n_gte_1000).
     X_per_299, _ = apply_per_cohort_config(X_50d, cohort_size=299)
-    assert X_per_299.shape[1] == 12, (
-        f"n=299 (boundary) should use 12-d; got {X_per_299.shape[1]}"
-    )
+    assert (
+        X_per_299.shape[1] == 12
+    ), f"n=299 (boundary) should use 12-d; got {X_per_299.shape[1]}"
     X_per_300, _ = apply_per_cohort_config(X_50d, cohort_size=300)
-    assert X_per_300.shape[1] == 24, (
-        f"n=300 (boundary) should use 24-d; got {X_per_300.shape[1]}"
-    )
+    assert (
+        X_per_300.shape[1] == 24
+    ), f"n=300 (boundary) should use 24-d; got {X_per_300.shape[1]}"
     X_per_999, _ = apply_per_cohort_config(X_50d, cohort_size=999)
-    assert X_per_999.shape[1] == 24, (
-        f"n=999 (boundary) should use 24-d; got {X_per_999.shape[1]}"
-    )
+    assert (
+        X_per_999.shape[1] == 24
+    ), f"n=999 (boundary) should use 24-d; got {X_per_999.shape[1]}"
     X_per_1000, _ = apply_per_cohort_config(X_50d, cohort_size=1000)
-    assert X_per_1000.shape[1] == 50, (
-        f"n=1000 (boundary) should use 50-d; got {X_per_1000.shape[1]}"
-    )
+    assert (
+        X_per_1000.shape[1] == 50
+    ), f"n=1000 (boundary) should use 50-d; got {X_per_1000.shape[1]}"
 
     # Sanity: the sliced features are taken from the FIRST n_use columns.
-    assert np.allclose(X_per, X_50d[:, :12]), (
-        "n_lt_300 tier should slice X[:, :12]"
-    )
-    assert np.allclose(X_per_500, X_50d[:, :24]), (
-        "n_lt_1000 tier should slice X[:, :24]"
-    )
-    assert np.allclose(X_per_2000, X_50d[:, :50]), (
-        "n_gte_1000 tier should slice X[:, :50]"
-    )
+    assert np.allclose(X_per, X_50d[:, :12]), "n_lt_300 tier should slice X[:, :12]"
+    assert np.allclose(
+        X_per_500, X_50d[:, :24]
+    ), "n_lt_1000 tier should slice X[:, :24]"
+    assert np.allclose(
+        X_per_2000, X_50d[:, :50]
+    ), "n_gte_1000 tier should slice X[:, :50]"
 
 
 # ---------------------------------------------------------------------------
@@ -164,33 +161,35 @@ def test_r2_lift_on_synthetic() -> None:
     cohort_data = (X, y, smiles_list, target_name)
     result = train_eval_per_cohort(
         cohort_data=cohort_data,
-        n_seeds=2, n_folds=3,
-        wass_w=0.05, epochs=30,
+        n_seeds=2,
+        n_folds=3,
+        wass_w=0.05,
+        epochs=30,
     )
     # Pipeline ran + produced finite R².
-    assert np.isfinite(result["r2_mean"]), (
-        f"R²_mean should be finite; got {result['r2_mean']!r}"
-    )
-    assert result["tier"] == "n_lt_300", (
-        f"n=200 cohort should map to n_lt_300 tier; got {result['tier']!r}"
-    )
-    assert result["n_features_used"] == 12, (
-        f"n_lt_300 tier should use 12-d features; got {result['n_features_used']}"
-    )
-    assert result["alpha_used"] == 1.0, (
-        f"n_lt_300 tier alpha should be 1.0; got {result['alpha_used']}"
-    )
+    assert np.isfinite(
+        result["r2_mean"]
+    ), f"R²_mean should be finite; got {result['r2_mean']!r}"
+    assert (
+        result["tier"] == "n_lt_300"
+    ), f"n=200 cohort should map to n_lt_300 tier; got {result['tier']!r}"
+    assert (
+        result["n_features_used"] == 12
+    ), f"n_lt_300 tier should use 12-d features; got {result['n_features_used']}"
+    assert (
+        result["alpha_used"] == 1.0
+    ), f"n_lt_300 tier alpha should be 1.0; got {result['alpha_used']}"
     # R² should be > 0 (synthetic signal is real; Ridge with α=1.0 should lift).
     # NOTE: per Wf-388-A1 honest finding, R² on n=200 + 12-d synthetic is MEASURED
     # positive (Wf-380-A2 result.json reports +0.1970 for platinai_4cell synthetic).
     # We use a relaxed threshold (> 0) to keep this test robust.
-    assert result["r2_mean"] > 0.0, (
-        f"R²_mean on n=200 + 12-d synthetic should be > 0; got {result['r2_mean']:+.4f}"
-    )
+    assert (
+        result["r2_mean"] > 0.0
+    ), f"R²_mean on n=200 + 12-d synthetic should be > 0; got {result['r2_mean']:+.4f}"
     # Lift vs baseline is recorded for honest framing.
-    assert np.isfinite(result["baseline_r2_mechanical"]), (
-        "baseline_r2_mechanical should be finite (uses default WF335M2 anchor)"
-    )
+    assert np.isfinite(
+        result["baseline_r2_mechanical"]
+    ), "baseline_r2_mechanical should be finite (uses default WF335M2 anchor)"
 
 
 # ---------------------------------------------------------------------------
@@ -210,63 +209,59 @@ def test_real_cohort_loader() -> None:
     # platinai_4cell: n=200, 32-d RDKit extended features
     X_p, y_p, smiles_p, target_p = load_platinai_4cell(max_samples=200)
     assert X_p.ndim == 2, f"platinai_4cell X should be 2-D; got ndim={X_p.ndim}"
-    assert X_p.shape[0] == 200, (
-        f"platinai_4cell should load 200 samples; got {X_p.shape[0]}"
-    )
-    assert X_p.shape[1] >= 12, (
-        f"platinai_4cell X should have ≥ 12 features; got {X_p.shape[1]}"
-    )
-    assert y_p.shape == (200,), (
-        f"platinai_4cell y should be 1-D (200,); got shape {y_p.shape}"
-    )
-    assert len(smiles_p) == 200, (
-        f"platinai_4cell smiles_list should have 200 entries; got {len(smiles_p)}"
-    )
-    assert "pIC50" in target_p or "mcf7" in target_p.lower(), (
-        f"platinai_4cell target should be pIC50-like; got {target_p!r}"
-    )
+    assert (
+        X_p.shape[0] == 200
+    ), f"platinai_4cell should load 200 samples; got {X_p.shape[0]}"
+    assert (
+        X_p.shape[1] >= 12
+    ), f"platinai_4cell X should have ≥ 12 features; got {X_p.shape[1]}"
+    assert y_p.shape == (
+        200,
+    ), f"platinai_4cell y should be 1-D (200,); got shape {y_p.shape}"
+    assert (
+        len(smiles_p) == 200
+    ), f"platinai_4cell smiles_list should have 200 entries; got {len(smiles_p)}"
+    assert (
+        "pIC50" in target_p or "mcf7" in target_p.lower()
+    ), f"platinai_4cell target should be pIC50-like; got {target_p!r}"
 
     # hilbert: same as platinai_4cell (per Wf-331-R5 load_cohort pattern).
     X_h, y_h, smiles_h, target_h = load_hilbert(max_samples=200)
     assert X_h.ndim == 2, f"hilbert X should be 2-D; got ndim={X_h.ndim}"
-    assert X_h.shape[0] == 200, (
-        f"hilbert should load 200 samples; got {X_h.shape[0]}"
-    )
-    assert X_h.shape[1] == X_p.shape[1], (
-        f"hilbert X feature dim should match platinai_4cell; got {X_h.shape[1]} vs {X_p.shape[1]}"
-    )
-    assert y_h.shape == (200,), (
-        f"hilbert y should be 1-D (200,); got shape {y_h.shape}"
-    )
-    assert len(smiles_h) == 200, (
-        f"hilbert smiles_list should have 200 entries; got {len(smiles_h)}"
-    )
+    assert X_h.shape[0] == 200, f"hilbert should load 200 samples; got {X_h.shape[0]}"
+    assert (
+        X_h.shape[1] == X_p.shape[1]
+    ), f"hilbert X feature dim should match platinai_4cell; got {X_h.shape[1]} vs {X_p.shape[1]}"
+    assert y_h.shape == (200,), f"hilbert y should be 1-D (200,); got shape {y_h.shape}"
+    assert (
+        len(smiles_h) == 200
+    ), f"hilbert smiles_list should have 200 entries; got {len(smiles_h)}"
 
     # metalcytotox_combined: n=2000, 32-d (12-d + 20-d zero-fill per Wf-331-R5).
     X_m, y_m, smiles_m, target_m = load_metalcytotox_combined(max_samples=2000)
     assert X_m.ndim == 2, f"metalcytotox_combined X should be 2-D; got ndim={X_m.ndim}"
-    assert X_m.shape[0] == 2000, (
-        f"metalcytotox_combined should load 2000 samples; got {X_m.shape[0]}"
-    )
-    assert X_m.shape[1] == 32, (
-        f"metalcytotox_combined X should be 32-d (12-d + 20-d zero-fill); got {X_m.shape[1]}"
-    )
-    assert y_m.shape == (2000,), (
-        f"metalcytotox_combined y should be 1-D (2000,); got shape {y_m.shape}"
-    )
-    assert len(smiles_m) == 2000, (
-        f"metalcytotox_combined smiles_list should have 2000 entries; got {len(smiles_m)}"
-    )
-    assert "activity" in target_m.lower() or "ic50" in target_m.lower(), (
-        f"metalcytotox_combined target should be activity/IC50-like; got {target_m!r}"
-    )
+    assert (
+        X_m.shape[0] == 2000
+    ), f"metalcytotox_combined should load 2000 samples; got {X_m.shape[0]}"
+    assert (
+        X_m.shape[1] == 32
+    ), f"metalcytotox_combined X should be 32-d (12-d + 20-d zero-fill); got {X_m.shape[1]}"
+    assert y_m.shape == (
+        2000,
+    ), f"metalcytotox_combined y should be 1-D (2000,); got shape {y_m.shape}"
+    assert (
+        len(smiles_m) == 2000
+    ), f"metalcytotox_combined smiles_list should have 2000 entries; got {len(smiles_m)}"
+    assert (
+        "activity" in target_m.lower() or "ic50" in target_m.lower()
+    ), f"metalcytotox_combined target should be activity/IC50-like; got {target_m!r}"
 
     # Sanity: COHORT_REGISTRY contains all 3 cohort names.
     expected_keys = {"platinai_4cell", "hilbert", "metalcytotox_combined"}
     actual_keys = set(COHORT_REGISTRY.keys())
-    assert expected_keys.issubset(actual_keys), (
-        f"COHORT_REGISTRY missing cohorts: {expected_keys - actual_keys}"
-    )
+    assert expected_keys.issubset(
+        actual_keys
+    ), f"COHORT_REGISTRY missing cohorts: {expected_keys - actual_keys}"
 
 
 # ---------------------------------------------------------------------------
@@ -285,9 +280,9 @@ def test_aggregate_per_cohort_r2() -> None:
         {"r2_mean": -0.10, "verdict": "HONEST_NEGATIVE_R2_DEEP"},
     ]
     agg = aggregate_per_cohort_r2(fake_results)
-    assert agg["aggregate_status"] == "CEILING_BREAK_MAJORITY", (
-        f"2/3 CEILING_BREAK should yield CEILING_BREAK_MAJORITY; got {agg['aggregate_status']!r}"
-    )
+    assert (
+        agg["aggregate_status"] == "CEILING_BREAK_MAJORITY"
+    ), f"2/3 CEILING_BREAK should yield CEILING_BREAK_MAJORITY; got {agg['aggregate_status']!r}"
     assert agg["n_cohorts_ceiling_break"] == 2
     assert agg["n_cohorts_above_zero"] == 2
 
@@ -298,9 +293,9 @@ def test_aggregate_per_cohort_r2() -> None:
         {"r2_mean": -0.20, "verdict": "HONEST_NEGATIVE_R2_DEEP"},
     ]
     agg_2 = aggregate_per_cohort_r2(fake_results_2)
-    assert agg_2["aggregate_status"] == "MEASURED_PARTIAL_LIFT", (
-        f"1/3 WEAK_RECOVERY should yield MEASURED_PARTIAL_LIFT; got {agg_2['aggregate_status']!r}"
-    )
+    assert (
+        agg_2["aggregate_status"] == "MEASURED_PARTIAL_LIFT"
+    ), f"1/3 WEAK_RECOVERY should yield MEASURED_PARTIAL_LIFT; got {agg_2['aggregate_status']!r}"
     assert agg_2["n_cohorts_weak_recovery_or_better"] == 1
     assert agg_2["n_cohorts_above_zero"] == 1
 
@@ -311,9 +306,9 @@ def test_aggregate_per_cohort_r2() -> None:
         {"r2_mean": -0.15, "verdict": "HONEST_NEGATIVE_R2_DEEP"},
     ]
     agg_3 = aggregate_per_cohort_r2(fake_results_3)
-    assert agg_3["aggregate_status"] == "HONEST_NEGATIVE_R2_DEEP", (
-        f"3/3 HONEST_NEGATIVE_R2_DEEP should yield HONEST_NEGATIVE_R2_DEEP; got {agg_3['aggregate_status']!r}"
-    )
+    assert (
+        agg_3["aggregate_status"] == "HONEST_NEGATIVE_R2_DEEP"
+    ), f"3/3 HONEST_NEGATIVE_R2_DEEP should yield HONEST_NEGATIVE_R2_DEEP; got {agg_3['aggregate_status']!r}"
     assert agg_3["n_cohorts_above_zero"] == 0
 
 

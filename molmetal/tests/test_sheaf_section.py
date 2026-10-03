@@ -293,8 +293,12 @@ def test_overlap_residual_similarity_invert() -> None:
         (_pt_cisplatin_section(), _pt_cisplatin_section()),
         (_pt_cisplatin_section(), _au_oxaliplatin_section()),
         (
-            MoleculeSection(name="a", atoms=frozenset({1}), fragments=frozenset(), bonds=frozenset()),
-            MoleculeSection(name="b", atoms=frozenset({2}), fragments=frozenset(), bonds=frozenset()),
+            MoleculeSection(
+                name="a", atoms=frozenset({1}), fragments=frozenset(), bonds=frozenset()
+            ),
+            MoleculeSection(
+                name="b", atoms=frozenset({2}), fragments=frozenset(), bonds=frozenset()
+            ),
         ),
     ]:
         residual = overlap_residual(left, right)["overlap_residual"]

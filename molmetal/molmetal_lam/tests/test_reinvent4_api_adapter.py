@@ -60,6 +60,7 @@ def _install_fake_reinvent():
     import-gate in ``__post_init__`` succeeds.
     """
     import types
+
     fake = types.ModuleType("reinvent")
     fake_utils = types.ModuleType("reinvent.utils")
     fake_config_parse = types.ModuleType("reinvent.utils.config_parse")
@@ -368,9 +369,7 @@ class TestShapeEquivalence(unittest.TestCase):
         self.assertIn("outside", msg)
 
     def test_drift_fails(self):
-        ok, msg = shape_equivalence_check(
-            [0.1, 0.5, 0.9], [0.1, 0.5, 0.4], tol=1e-3
-        )
+        ok, msg = shape_equivalence_check([0.1, 0.5, 0.9], [0.1, 0.5, 0.4], tol=1e-3)
         self.assertFalse(ok)
         self.assertIn("drift", msg)
 
@@ -400,6 +399,7 @@ class TestAggregatorWire(unittest.TestCase):
         pragmatic test workaround for a torch-broken environment.
         """
         import importlib.util
+
         src_path = os.path.normpath(
             os.path.join(_HERE, "..", "search_alg", "proof_search.py")
         )
@@ -431,7 +431,7 @@ class TestAggregatorWire(unittest.TestCase):
             end = min(candidates)
             # If the next def or comment is the start of the *next*
             # method, we're done.
-            snippet = src[end:end + 40]
+            snippet = src[end : end + 40]
             if "# ----" in snippet or "def " in snippet:
                 break
             head = end
@@ -514,6 +514,7 @@ class TestSysPathInjection(unittest.TestCase):
         from molmetal_lam.sbdd_env.reinvent4_api_adapter import (
             _DEFAULT_REINVENT_ROOT,
         )
+
         if not os.path.isdir(_DEFAULT_REINVENT_ROOT):
             self.skipTest("REINVENT4 checkout not present in this env")
         # Snapshot pre-call sys.path so we can restore.
@@ -553,16 +554,18 @@ class TestResolveComponents(unittest.TestCase):
         )
 
     def test_non_positive_dropped(self):
-        self.assertEqual(_resolve_components_arg({"qed": 0.0, "sa": -1.0}),
-                         {"qed": 1.0})
+        self.assertEqual(
+            _resolve_components_arg({"qed": 0.0, "sa": -1.0}), {"qed": 1.0}
+        )
 
     def test_non_numeric_dropped(self):
         # Numeric strings are coerced; genuinely non-numeric strings
         # are silently dropped.  When any entry survives we return it
         # verbatim — the qed=1.0 fallback only kicks in when *every*
         # entry is dropped.
-        self.assertEqual(_resolve_components_arg({"qed": "0.5", "sa": "bad"}),
-                         {"qed": 0.5})
+        self.assertEqual(
+            _resolve_components_arg({"qed": "0.5", "sa": "bad"}), {"qed": 0.5}
+        )
 
 
 if __name__ == "__main__":

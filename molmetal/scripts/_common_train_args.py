@@ -74,7 +74,17 @@ import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+)
 
 # ---------------------------------------------------------------------------
 # Public provenance-tag constants
@@ -101,11 +111,11 @@ RECIPE_TRAIN_MAX_PER_METAL: int = 4000
 # Encoder-init choices — same set as ``train_ru_multitask.py`` /
 # ``train_affinity_regression.py``.
 INIT_CHOICES: Tuple[str, ...] = (
-    "tmqm",      # R17 default (with arch-mismatch fallback to random)
-    "random",    # R17 random init
-    "se3sb",     # R18 W2.1 attach
-    "transport", # R18 W2.2 attach
-    "multiph",   # R18 W2.3 attach
+    "tmqm",  # R17 default (with arch-mismatch fallback to random)
+    "random",  # R17 random init
+    "se3sb",  # R18 W2.1 attach
+    "transport",  # R18 W2.2 attach
+    "multiph",  # R18 W2.3 attach
 )
 INIT_DEFAULT: str = "tmqm"
 
@@ -235,51 +245,141 @@ def add_common_args(
     )
 
     # --- I/O paths ---------------------------------------------------------
-    _add(parser, group, "--data", type=Path, default=data_default,
-         help="CSV / dataset path (default: %(default)s).")
-    _add(parser, group, "--encoder-ckpt", type=Path, default=encoder_ckpt_default,
-         help="Optional pretrained encoder checkpoint (tmQM default).")
-    _add(parser, group, "--out-dir", type=Path, default=out_dir_default,
-         help="Where to write per-seed ckpt files.")
-    _add(parser, group, "--metrics-path", type=Path, default=metrics_path_default,
-         help="Per-seed metrics JSON.")
-    _add(parser, group, "--summary-path", type=Path, default=summary_path_default,
-         help="Aggregate (mean±std) summary JSON.")
+    _add(
+        parser,
+        group,
+        "--data",
+        type=Path,
+        default=data_default,
+        help="CSV / dataset path (default: %(default)s).",
+    )
+    _add(
+        parser,
+        group,
+        "--encoder-ckpt",
+        type=Path,
+        default=encoder_ckpt_default,
+        help="Optional pretrained encoder checkpoint (tmQM default).",
+    )
+    _add(
+        parser,
+        group,
+        "--out-dir",
+        type=Path,
+        default=out_dir_default,
+        help="Where to write per-seed ckpt files.",
+    )
+    _add(
+        parser,
+        group,
+        "--metrics-path",
+        type=Path,
+        default=metrics_path_default,
+        help="Per-seed metrics JSON.",
+    )
+    _add(
+        parser,
+        group,
+        "--summary-path",
+        type=Path,
+        default=summary_path_default,
+        help="Aggregate (mean±std) summary JSON.",
+    )
 
     # --- Training recipe ---------------------------------------------------
-    _add(parser, group, "--seeds", type=int, nargs="+", default=list(RECIPE_SEEDS),
-         help="List of RNG seeds (default: %(default)s).")
-    _add(parser, group, "--epochs", type=int, default=RECIPE_EPOCHS,
-         help="Number of training epochs per seed.")
-    _add(parser, group, "--batch", type=int, default=RECIPE_BATCH,
-         help="Mini-batch size.")
-    _add(parser, group, "--lr", type=float, default=RECIPE_LR,
-         help="AdamW learning rate.")
-    _add(parser, group, "--hidden", type=int, default=RECIPE_HIDDEN,
-         help="D-MPNN hidden width.")
-    _add(parser, group, "--depth", type=int, default=RECIPE_DEPTH,
-         help="D-MPNN message-passing depth.")
+    _add(
+        parser,
+        group,
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=list(RECIPE_SEEDS),
+        help="List of RNG seeds (default: %(default)s).",
+    )
+    _add(
+        parser,
+        group,
+        "--epochs",
+        type=int,
+        default=RECIPE_EPOCHS,
+        help="Number of training epochs per seed.",
+    )
+    _add(
+        parser,
+        group,
+        "--batch",
+        type=int,
+        default=RECIPE_BATCH,
+        help="Mini-batch size.",
+    )
+    _add(
+        parser,
+        group,
+        "--lr",
+        type=float,
+        default=RECIPE_LR,
+        help="AdamW learning rate.",
+    )
+    _add(
+        parser,
+        group,
+        "--hidden",
+        type=int,
+        default=RECIPE_HIDDEN,
+        help="D-MPNN hidden width.",
+    )
+    _add(
+        parser,
+        group,
+        "--depth",
+        type=int,
+        default=RECIPE_DEPTH,
+        help="D-MPNN message-passing depth.",
+    )
 
     if include_eval_every:
-        _add(parser, group, "--eval-every", type=int, default=RECIPE_EVAL_EVERY,
-             help="Evaluate on val every N epochs.")
+        _add(
+            parser,
+            group,
+            "--eval-every",
+            type=int,
+            default=RECIPE_EVAL_EVERY,
+            help="Evaluate on val every N epochs.",
+        )
 
     if include_dropout:
-        _add(parser, group, "--dropout", type=float, default=RECIPE_DROPOUT,
-             help="Dropout probability on the multi-task heads.")
+        _add(
+            parser,
+            group,
+            "--dropout",
+            type=float,
+            default=RECIPE_DROPOUT,
+            help="Dropout probability on the multi-task heads.",
+        )
 
     if include_train_max_per_metal:
-        _add(parser, group, "--train-max-per-metal", type=int,
-             default=RECIPE_TRAIN_MAX_PER_METAL,
-             help="Subsample cap per metal per epoch (0 = full). Default 4000.")
+        _add(
+            parser,
+            group,
+            "--train-max-per-metal",
+            type=int,
+            default=RECIPE_TRAIN_MAX_PER_METAL,
+            help="Subsample cap per metal per epoch (0 = full). Default 4000.",
+        )
 
     if include_init:
-        _add(parser, group, "--init", choices=list(INIT_CHOICES), default=INIT_DEFAULT,
-             help=(
-                 "Encoder initialisation. R17: 'tmqm' (with arch-mismatch "
-                 "fallback to random), 'random'. R18: 'se3sb' / 'transport' "
-                 "/ 'multiph' attach R18 adapter components."
-             ))
+        _add(
+            parser,
+            group,
+            "--init",
+            choices=list(INIT_CHOICES),
+            default=INIT_DEFAULT,
+            help=(
+                "Encoder initialisation. R17: 'tmqm' (with arch-mismatch "
+                "fallback to random), 'random'. R18: 'se3sb' / 'transport' "
+                "/ 'multiph' attach R18 adapter components."
+            ),
+        )
 
     return parser
 
@@ -312,19 +412,35 @@ def add_gpu_args(
         "Hardware selection + precision / dataloader knobs.",
     )
 
-    _add(parser, group, "--cuda-visible-devices", type=str,
-         default=default_cuda_visible_devices,
-         help=(
-             "Comma-separated GPU ids to expose.  Default '1' "
-             "(Wf-130 — RTX 5090 on kanzi, GPU 0 reserved for VLM "
-             "venv).  Empty string '' = inherit from the shell.  "
-             "Applied via CUDA_VISIBLE_DEVICES before importing torch."
-         ))
-    _add(parser, group, "--mixed-precision", choices=list(MIXED_PRECISION_CHOICES),
-         default=default_mixed_precision,
-         help="Autocast dtype (default: %(default)s).")
-    _add(parser, group, "--num-workers", type=int, default=default_num_workers,
-         help="DataLoader worker count (default: %(default)s).")
+    _add(
+        parser,
+        group,
+        "--cuda-visible-devices",
+        type=str,
+        default=default_cuda_visible_devices,
+        help=(
+            "Comma-separated GPU ids to expose.  Default '1' "
+            "(Wf-130 — RTX 5090 on kanzi, GPU 0 reserved for VLM "
+            "venv).  Empty string '' = inherit from the shell.  "
+            "Applied via CUDA_VISIBLE_DEVICES before importing torch."
+        ),
+    )
+    _add(
+        parser,
+        group,
+        "--mixed-precision",
+        choices=list(MIXED_PRECISION_CHOICES),
+        default=default_mixed_precision,
+        help="Autocast dtype (default: %(default)s).",
+    )
+    _add(
+        parser,
+        group,
+        "--num-workers",
+        type=int,
+        default=default_num_workers,
+        help="DataLoader worker count (default: %(default)s).",
+    )
 
     return parser
 
@@ -356,15 +472,32 @@ def add_benchmark_args(
         "Cross-validation + benchmarking knobs.",
     )
 
-    _add(parser, group, "--n-folds", type=int, default=default_n_folds,
-         help="Number of CV folds (0 disables CV). Default: %(default)s.")
-    _add(parser, group, "--cv-strategy", choices=list(CV_STRATEGY_CHOICES),
-         default=default_cv_strategy,
-         help="Splitter strategy (default: %(default)s).")
+    _add(
+        parser,
+        group,
+        "--n-folds",
+        type=int,
+        default=default_n_folds,
+        help="Number of CV folds (0 disables CV). Default: %(default)s.",
+    )
+    _add(
+        parser,
+        group,
+        "--cv-strategy",
+        choices=list(CV_STRATEGY_CHOICES),
+        default=default_cv_strategy,
+        help="Splitter strategy (default: %(default)s).",
+    )
 
     if include_folds_seed:
-        _add(parser, group, "--folds-seed", type=int, default=0,
-             help="RNG seed for the fold splitter (default: %(default)s).")
+        _add(
+            parser,
+            group,
+            "--folds-seed",
+            type=int,
+            default=0,
+            help="RNG seed for the fold splitter (default: %(default)s).",
+        )
 
     return parser
 
@@ -686,9 +819,7 @@ def MEASURED_vs_PROJECTED_decorator(
                 # argparse --help / parse error → leave JSON alone.
                 raise
             except Exception as exc:  # pragma: no cover — defensive
-                sys.stderr.write(
-                    f"[MEASURED_vs_PROJECTED] tagging failed: {exc!r}\n"
-                )
+                sys.stderr.write(f"[MEASURED_vs_PROJECTED] tagging failed: {exc!r}\n")
             return result
 
         return wrapper
@@ -734,6 +865,7 @@ def _to_jsonable(obj: Any) -> Any:
         return [_to_jsonable(v) for v in obj]
     try:
         import numpy as np  # noqa: WPS433
+
         if isinstance(obj, np.floating):
             return float(obj.item())
         if isinstance(obj, np.integer):
@@ -745,6 +877,7 @@ def _to_jsonable(obj: Any) -> Any:
     if isinstance(obj, float):
         try:
             import math
+
             if math.isnan(obj):
                 return None
         except Exception:

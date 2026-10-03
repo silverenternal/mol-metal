@@ -233,9 +233,7 @@ class ReactionConfidence:
             rule = key[0]
             smi = key[1]
             self.per_rule_total[rule] = self.per_rule_total.get(rule, 0) + 1
-            self.per_scaffold_total[smi] = (
-                self.per_scaffold_total.get(smi, 0) + 1
-            )
+            self.per_scaffold_total[smi] = self.per_scaffold_total.get(smi, 0) + 1
             self.provenance_counts[row.source] = (
                 self.provenance_counts.get(row.source, 0) + 1
             )
@@ -437,7 +435,9 @@ class ReactionConfidence:
             "per_scaffold_total": {
                 str(k): int(v) for k, v in self.per_scaffold_total.items()
             },
-            "provenance_counts": {str(k): int(v) for k, v in self.provenance_counts.items()},
+            "provenance_counts": {
+                str(k): int(v) for k, v in self.provenance_counts.items()
+            },
         }
 
     @classmethod
@@ -445,9 +445,7 @@ class ReactionConfidence:
         """Inverse of :meth:`to_dict`.  Reject unknown versions."""
         version = blob.get("version", 1)
         if version != 1:
-            raise ValueError(
-                f"ReactionConfidence blob version mismatch: {version!r}"
-            )
+            raise ValueError(f"ReactionConfidence blob version mismatch: {version!r}")
         cache: Dict[Tuple[str, str], List[int]] = {}
         for key, counts in blob.get("cache", {}).items():
             if "\x00" not in key:
@@ -495,9 +493,7 @@ def laplace_estimate(n_success: int, n_total: int) -> float:
     in one line.
     """
     if n_total < 0 or n_success < 0 or n_success > n_total:
-        raise ValueError(
-            f"Invalid (n_success={n_success}, n_total={n_total})"
-        )
+        raise ValueError(f"Invalid (n_success={n_success}, n_total={n_total})")
     return (n_success + 1) / (n_total + 2)
 
 
@@ -505,5 +501,10 @@ def laplace_estimate(n_success: int, n_total: int) -> float:
 def bayes_shrink(*args: Any, **kwargs: Any) -> float:  # pragma: no cover
     """Deprecated thin wrapper around :func:`laplace_estimate`."""
     if args:
-        return laplace_estimate(int(args[0]), int(args[1]) if len(args) > 1 else int(kwargs.get("n_total", 0)))
-    return laplace_estimate(int(kwargs.get("n_success", 0)), int(kwargs.get("n_total", 0)))
+        return laplace_estimate(
+            int(args[0]),
+            int(args[1]) if len(args) > 1 else int(kwargs.get("n_total", 0)),
+        )
+    return laplace_estimate(
+        int(kwargs.get("n_success", 0)), int(kwargs.get("n_total", 0))
+    )

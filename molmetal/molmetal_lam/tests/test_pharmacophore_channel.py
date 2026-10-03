@@ -49,6 +49,7 @@ try:
         compute_pharmacophore_score,
         register_pharmacophore_channel,
     )
+
     _HAS_CHANNEL = True
 except Exception:  # pragma: no cover
     compute_pharmacophore_score = None
@@ -59,6 +60,7 @@ try:
     # Re-import the locked filter module to assert (in the constraint-
     # guard test) that the channel wrapper does not modify it.
     from molmetal_lam.lam_chem import pharmacophore_filter as _PF
+
     _HAS_PF = True
 except Exception:  # pragma: no cover
     _PF = None
@@ -66,6 +68,7 @@ except Exception:  # pragma: no cover
 
 try:
     from molmetal_lam.search_alg.proof_search import RewardAggregator
+
     _HAS_AGGREGATOR = True
 except Exception:  # pragma: no cover
     RewardAggregator = None

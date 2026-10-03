@@ -124,12 +124,12 @@ def test_pre_featurize_hook_correctness() -> None:
             f"expected {BOND_FEATURE_DIM} or 6"
         )
         # Edge indices: (E,) as flat tuples of int.
-        assert es.shape == (bf.shape[0],), (
-            f"{smi}: edge_src.shape = {es.shape}, expected ({bf.shape[0]},)"
-        )
-        assert ed.shape == (bf.shape[0],), (
-            f"{smi}: edge_dst.shape = {ed.shape}, expected ({bf.shape[0]},)"
-        )
+        assert es.shape == (
+            bf.shape[0],
+        ), f"{smi}: edge_src.shape = {es.shape}, expected ({bf.shape[0]},)"
+        assert ed.shape == (
+            bf.shape[0],
+        ), f"{smi}: edge_dst.shape = {ed.shape}, expected ({bf.shape[0]},)"
 
     # Round-trip: featurize() returns the same tuples.
     graphs, missing = cache.featurize(sample_keys)
@@ -292,9 +292,9 @@ def test_integration_with_trainer() -> None:
     bl_nocache.fit(smiles, y_all, cell_lines, idx_train, idx_val, verbose=False)
     test_scores_nocache = bl_nocache.predict(smiles, idx_test)
     assert test_scores_nocache.shape == (len(idx_test),)
-    assert np.isfinite(test_scores_nocache).all(), (
-        f"non-finite test scores: {test_scores_nocache}"
-    )
+    assert np.isfinite(
+        test_scores_nocache
+    ).all(), f"non-finite test scores: {test_scores_nocache}"
     # No-cache path: hit rate stays 0.
     assert bl_nocache.cache_hit_rate == 0.0
 
@@ -302,14 +302,19 @@ def test_integration_with_trainer() -> None:
     # The cache hook itself is wired correctly: _featurize_with_cache
     # returns graph tuples, the hit/miss counters accumulate.
     bl_cache = DMPNNBaseline(
-        metal="Ru", epochs=2, hidden=32, depth=2, seed=42, cache=cache,
+        metal="Ru",
+        epochs=2,
+        hidden=32,
+        depth=2,
+        seed=42,
+        cache=cache,
     )
     # Verify the hook at the FEATURISE layer (independent of model).
     graphs_from_cache = bl_cache._featurize_with_cache(smiles)
     assert len(graphs_from_cache) == len(smiles)
-    assert bl_cache._cache_hits >= len(smiles), (
-        f"expected at least {len(smiles)} hits, got {bl_cache._cache_hits}"
-    )
+    assert bl_cache._cache_hits >= len(
+        smiles
+    ), f"expected at least {len(smiles)} hits, got {bl_cache._cache_hits}"
     assert bl_cache.cache_hit_rate > 0.0
     # The cached graphs must have the canonical tuple layout.
     for smi, g in zip(smiles, graphs_from_cache):
@@ -369,9 +374,7 @@ def test_integration_with_chemprop_v2_v3() -> None:
 
     # Load the canonical chemprop_v2_v3 path and verify schema.
     blob = torch.load(all_pretrain_pt, weights_only=False, map_location="cpu")
-    assert isinstance(blob, dict), (
-        f"all_pretrain.pt should be a dict, got {type(blob)}"
-    )
+    assert isinstance(blob, dict), f"all_pretrain.pt should be a dict, got {type(blob)}"
 
     # Canonical keys expected by chemprop_v2_v3's _load_cached_path.
     canonical_keys = {
@@ -391,15 +394,17 @@ def test_integration_with_chemprop_v2_v3() -> None:
     am = blob["atom_mask"]
     smiles_list = blob["smiles"]
     N = af.shape[0]
-    assert af.shape == (N, af.shape[1], ATOM_FEATURE_DIM), (
-        f"atom_features shape: {af.shape}, expected (N, V_max, {ATOM_FEATURE_DIM})"
-    )
+    assert af.shape == (
+        N,
+        af.shape[1],
+        ATOM_FEATURE_DIM,
+    ), f"atom_features shape: {af.shape}, expected (N, V_max, {ATOM_FEATURE_DIM})"
     assert ei.shape[0] == N, f"edge_index batch dim: {ei.shape[0]}, expected {N}"
     assert ea.shape[0] == N, f"edge_attr batch dim: {ea.shape[0]}, expected {N}"
     assert am.shape[0] == N, f"atom_mask batch dim: {am.shape[0]}, expected {N}"
-    assert len(smiles_list) == N, (
-        f"smiles list length: {len(smiles_list)}, expected {N}"
-    )
+    assert (
+        len(smiles_list) == N
+    ), f"smiles list length: {len(smiles_list)}, expected {N}"
 
     # Verify PreFeaturizedCache can be re-built from the same dir + still
     # agrees on per-SMILES lookup.  This is the sidecar hook.

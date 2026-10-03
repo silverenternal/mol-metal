@@ -223,12 +223,22 @@ def test_run_one_seed_deterministic_for_same_inputs() -> None:
     X = rng.standard_normal((20, 5)) * 5.0 + 5.0
     y = rng.standard_normal(20)
     r1 = bte._run_one_seed(
-        seed=42, n_trajectories=20, n_rounds=2, n_arms=4,
-        hilbert_iters=10, X_seed=X, y_seed=y,
+        seed=42,
+        n_trajectories=20,
+        n_rounds=2,
+        n_arms=4,
+        hilbert_iters=10,
+        X_seed=X,
+        y_seed=y,
     )
     r2 = bte._run_one_seed(
-        seed=42, n_trajectories=20, n_rounds=2, n_arms=4,
-        hilbert_iters=10, X_seed=X, y_seed=y,
+        seed=42,
+        n_trajectories=20,
+        n_rounds=2,
+        n_arms=4,
+        hilbert_iters=10,
+        X_seed=X,
+        y_seed=y,
     )
     assert r1["mean_hilbert_r2"] == r2["mean_hilbert_r2"]
     assert r1["mean_evolutionary_r2"] == r2["mean_evolutionary_r2"]
@@ -261,12 +271,21 @@ def test_build_report_with_real_platinai_csv() -> None:
     assert summary["platinai_rows_loaded"] > 1000
     # Summary keys all present and finite.
     for key in (
-        "mean_astsr_wall_s", "mean_hilbert_wall_s", "mean_mcts_wall_s",
-        "std_astsr_wall_s", "std_hilbert_wall_s", "std_mcts_wall_s",
-        "astsr_success_rate", "hilbert_success_rate", "mcts_success_rate",
-        "mean_hilbert_r2", "std_hilbert_r2",
-        "mean_evolutionary_r2", "std_evolutionary_r2",
-        "mean_variance_reduction", "std_variance_reduction",
+        "mean_astsr_wall_s",
+        "mean_hilbert_wall_s",
+        "mean_mcts_wall_s",
+        "std_astsr_wall_s",
+        "std_hilbert_wall_s",
+        "std_mcts_wall_s",
+        "astsr_success_rate",
+        "hilbert_success_rate",
+        "mcts_success_rate",
+        "mean_hilbert_r2",
+        "std_hilbert_r2",
+        "mean_evolutionary_r2",
+        "std_evolutionary_r2",
+        "mean_variance_reduction",
+        "std_variance_reduction",
     ):
         assert key in summary, key
         assert math.isfinite(summary[key]), (key, summary[key])
@@ -315,8 +334,10 @@ def test_write_report_emits_all_three_files(tmp_path: Path) -> None:
         hilbert_iters=8,
     )
     json_path, csv_path_out, md_path = bte.write_report(
-        out_dir=str(tmp_path), report=report,
-        also_markdown=True, also_csv=True,
+        out_dir=str(tmp_path),
+        report=report,
+        also_markdown=True,
+        also_csv=True,
     )
     assert json_path.exists()
     assert json_path.name == "triangle_bench.json"
@@ -346,38 +367,49 @@ def test_smoke_run_returns_true_on_happy_path() -> None:
 def test_cli_smoke_exits_zero() -> None:
     """``--smoke`` exits with code 0 on the happy path."""
     import subprocess
+
     csv_path = Path(bte._REPO_ROOT) / "molmetal" / "data" / "platinai_5k.csv"
     if not csv_path.exists():
         pytest.skip(f"PlatinAI 5K CSV not found at {csv_path}")
     result = subprocess.run(
         [
             sys.executable,
-            str(Path(bte._REPO_ROOT) / "molmetal" / "scripts"
-                 / "bench_lambda_triangle_end_to_end.py"),
+            str(
+                Path(bte._REPO_ROOT)
+                / "molmetal"
+                / "scripts"
+                / "bench_lambda_triangle_end_to_end.py"
+            ),
             "--smoke",
-            "--platinai-csv", str(csv_path),
+            "--platinai-csv",
+            str(csv_path),
         ],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
         cwd=str(bte._REPO_ROOT),
         timeout=120,
     )
-    assert result.returncode == 0, (
-        f"stdout={result.stdout}\nstderr={result.stderr}"
-    )
+    assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
     assert "PASS" in result.stdout
 
 
 def test_cli_help_exits_zero() -> None:
     """``--help`` exits with code 0 and mentions the bench."""
     import subprocess
+
     result = subprocess.run(
         [
             sys.executable,
-            str(Path(bte._REPO_ROOT) / "molmetal" / "scripts"
-                 / "bench_lambda_triangle_end_to_end.py"),
+            str(
+                Path(bte._REPO_ROOT)
+                / "molmetal"
+                / "scripts"
+                / "bench_lambda_triangle_end_to_end.py"
+            ),
             "--help",
         ],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
         cwd=str(bte._REPO_ROOT),
         timeout=30,
     )

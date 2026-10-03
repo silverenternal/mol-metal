@@ -94,6 +94,7 @@ try:  # pragma: no cover — exercised indirectly via dmpnn tests
         FusedReLUMLP as _FusedReLUMLP,
     )
     from triton_kernels.config import triton_config as _triton_config
+
     _TRITON_AVAILABLE = True
 except ImportError:  # pragma: no cover — CPU-only minimal CI
     _TRITON_AVAILABLE = False
@@ -166,10 +167,18 @@ class DMPNNTritonKernelConfig:
         (``edge_mlp[layer]``) to run.
     """
 
-    triton_use_fused: bool = field(default_factory=lambda: _env_flag("TRITON_USE_FUSED", "0"))
-    triton_use_fused_eval: bool = field(default_factory=lambda: _env_flag("TRITON_USE_FUSED_EVAL", "0"))
-    triton_relu_mlp: bool = field(default_factory=lambda: _env_flag("TRITON_RELU_MLP", "0"))
-    triton_relu_linear: bool = field(default_factory=lambda: _env_flag("TRITON_RELU_LINEAR", "0"))
+    triton_use_fused: bool = field(
+        default_factory=lambda: _env_flag("TRITON_USE_FUSED", "0")
+    )
+    triton_use_fused_eval: bool = field(
+        default_factory=lambda: _env_flag("TRITON_USE_FUSED_EVAL", "0")
+    )
+    triton_relu_mlp: bool = field(
+        default_factory=lambda: _env_flag("TRITON_RELU_MLP", "0")
+    )
+    triton_relu_linear: bool = field(
+        default_factory=lambda: _env_flag("TRITON_RELU_LINEAR", "0")
+    )
 
     def gate_open(self) -> bool:
         """Return True iff the global fused-kernel gate is open.
@@ -263,7 +272,11 @@ def maybe_fused_relu_mlp(
     if len(seq) != 3:
         return seq(x)
     linear1, relu_mid, linear2 = seq[0], seq[1], seq[2]
-    if not (isinstance(linear1, nn.Linear) and isinstance(relu_mid, nn.ReLU) and isinstance(linear2, nn.Linear)):
+    if not (
+        isinstance(linear1, nn.Linear)
+        and isinstance(relu_mid, nn.ReLU)
+        and isinstance(linear2, nn.Linear)
+    ):
         return seq(x)
 
     # CPU → PyTorch reference (Triton kernels raise on CPU).
@@ -282,8 +295,10 @@ def maybe_fused_relu_mlp(
 
     return _fused_relu_mlp(
         x,
-        linear1.weight, linear1.bias,
-        linear2.weight, linear2.bias,
+        linear1.weight,
+        linear1.bias,
+        linear2.weight,
+        linear2.bias,
     )
 
 
@@ -350,7 +365,8 @@ def maybe_fused_relu_linear(
 
     return _fused_relu_linear(
         x,
-        linear1.weight, linear1.bias,
+        linear1.weight,
+        linear1.bias,
     )
 
 

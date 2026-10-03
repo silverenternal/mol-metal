@@ -37,7 +37,9 @@ import numpy as np
 # Resolve import paths assuming the tests live at molmetal/tests/
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WF411A4_SCRIPT = REPO_ROOT / "molmetal" / "scripts" / "wf411a4_m6k_supp_verifier.py"
-WF411A4_RESULT = REPO_ROOT / "molmetal" / "reports" / "wf411a4_m6k_supp_verifier" / "result.json"
+WF411A4_RESULT = (
+    REPO_ROOT / "molmetal" / "reports" / "wf411a4_m6k_supp_verifier" / "result.json"
+)
 TOP3 = ["MolLogP", "MorganDensity_r2", "Chi3v"]
 COHORTS = ["NSCLC", "breast", "melanoma", "Krebs", "other"]
 
@@ -64,7 +66,9 @@ def test_per_cohort_weak_band():
     # Import the helper from the script
     import importlib.util
 
-    spec = importlib.util.spec_from_file_location("wf411a4_m6k_supp_verifier", WF411A4_SCRIPT)
+    spec = importlib.util.spec_from_file_location(
+        "wf411a4_m6k_supp_verifier", WF411A4_SCRIPT
+    )
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
 
@@ -87,23 +91,37 @@ def test_per_cohort_weak_band():
 
     # NaN handling
     nan_band = mod._cohen1988_band(float("nan"))
-    assert nan_band == "INSUFFICIENT_DATA", f"NaN: expected INSUFFICIENT_DATA, got {nan_band}"
+    assert (
+        nan_band == "INSUFFICIENT_DATA"
+    ), f"NaN: expected INSUFFICIENT_DATA, got {nan_band}"
 
     # Check the empirical result.json is well-formed (if it exists from a prior run)
     if WF411A4_RESULT.exists():
         result = json.loads(WF411A4_RESULT.read_text())
         for inv_name in TOP3:
-            assert inv_name in result["per_invariant"], f"Missing {inv_name} in result.per_invariant"
+            assert (
+                inv_name in result["per_invariant"]
+            ), f"Missing {inv_name} in result.per_invariant"
             per_cohort = result["per_invariant"][inv_name]["per_cohort"]
-            assert len(per_cohort) == 5, f"{inv_name}: expected 5 cohorts, got {len(per_cohort)}"
+            assert (
+                len(per_cohort) == 5
+            ), f"{inv_name}: expected 5 cohorts, got {len(per_cohort)}"
             cohort_names = {c["cohort"] for c in per_cohort}
-            assert cohort_names == set(COHORTS), (
-                f"{inv_name}: cohort names mismatch — expected {set(COHORTS)}, got {cohort_names}"
-            )
+            assert (
+                cohort_names == set(COHORTS)
+            ), f"{inv_name}: cohort names mismatch — expected {set(COHORTS)}, got {cohort_names}"
             for c in per_cohort:
-                assert "pearson_r" in c and "band" in c, f"{inv_name}/{c['cohort']}: missing field"
+                assert (
+                    "pearson_r" in c and "band" in c
+                ), f"{inv_name}/{c['cohort']}: missing field"
                 # Per Wf-411-A4 3-band scheme, every cohort-cell must have one of these bands
-                assert c["band"] in {"WEAK", "MODERATE", "STRONG", "INSUFFICIENT_DATA", "CORRELATION_FAILED"}
+                assert c["band"] in {
+                    "WEAK",
+                    "MODERATE",
+                    "STRONG",
+                    "INSUFFICIENT_DATA",
+                    "CORRELATION_FAILED",
+                }
 
 
 def test_aggregate_supplementary():
@@ -141,27 +159,37 @@ def test_aggregate_supplementary():
     agg = result["aggregate"]
 
     # Check the aggregate counters exist
-    for k in ["n_cohort_strong_total", "n_cohort_moderate_total", "n_cohort_weak_total", "aggregate_verdict"]:
+    for k in [
+        "n_cohort_strong_total",
+        "n_cohort_moderate_total",
+        "n_cohort_weak_total",
+        "aggregate_verdict",
+    ]:
         assert k in agg, f"Missing key in aggregate: {k}"
 
     # No STRONG bands on empirical data (15 cohort-cells × 3 invariants)
-    assert agg["n_cohort_strong_total"] == 0, (
-        f"Expected 0 STRONG bands empirically; got {agg['n_cohort_strong_total']}"
-    )
+    assert (
+        agg["n_cohort_strong_total"] == 0
+    ), f"Expected 0 STRONG bands empirically; got {agg['n_cohort_strong_total']}"
 
     # Total cohort-cells = 15
-    n_total = agg["n_cohort_strong_total"] + agg["n_cohort_moderate_total"] + agg["n_cohort_weak_total"]
+    n_total = (
+        agg["n_cohort_strong_total"]
+        + agg["n_cohort_moderate_total"]
+        + agg["n_cohort_weak_total"]
+    )
     assert n_total == 15, f"Expected 15 cohort-cells total; got {n_total}"
 
     # aggregate_verdict is one of the two valid verdicts
-    assert agg["aggregate_verdict"] in {"MIXED", "ALL_WEAK"}, (
-        f"Invalid aggregate_verdict: {agg['aggregate_verdict']}"
-    )
+    assert agg["aggregate_verdict"] in {
+        "MIXED",
+        "ALL_WEAK",
+    }, f"Invalid aggregate_verdict: {agg['aggregate_verdict']}"
 
     # all_three_invariants_no_strong invariant
-    assert agg["all_three_invariants_no_strong"] is True, (
-        "Expected all_three_invariants_no_strong == True (no STRONG bands in any cohort)"
-    )
+    assert (
+        agg["all_three_invariants_no_strong"] is True
+    ), "Expected all_three_invariants_no_strong == True (no STRONG bands in any cohort)"
 
     # Per Wf-411-A4 3-band scheme, the empirical MIXED verdict is a STRUCTURAL finding:
     # the supplementary sub-table is exploratory + mostly MODERATE (not pure WEAK).

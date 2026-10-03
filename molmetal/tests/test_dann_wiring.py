@@ -59,8 +59,14 @@ from molmetal.molmetal_lam.sbdd_env.gradient_reversal import ReverseLayerF
 
 
 SMILES_8 = [
-    "CCO", "CC(=O)O", "c1ccccc1", "CC(C)C",
-    "CCC", "C1CCCCC1", "CCOCC", "CCCC",
+    "CCO",
+    "CC(=O)O",
+    "c1ccccc1",
+    "CC(C)C",
+    "CCC",
+    "C1CCCCC1",
+    "CCOCC",
+    "CCCC",
 ]
 
 
@@ -127,8 +133,12 @@ def test_model_forward_return_pool_returns_three_tensors():
     atom_f, bond_f, e_src, e_dst = bd
 
     model = DMPNNMultiTaskModel(
-        atom_dim=ATOM_FEATURE_DIM, bond_dim=BOND_FEATURE_DIM,
-        hidden=64, depth=2, dropout=0.0, use_dann=True,
+        atom_dim=ATOM_FEATURE_DIM,
+        bond_dim=BOND_FEATURE_DIM,
+        hidden=64,
+        depth=2,
+        dropout=0.0,
+        use_dann=True,
     )
     model.eval()
     with torch.no_grad():
@@ -147,8 +157,11 @@ def test_model_forward_default_returns_two_tensors():
     atom_f, bond_f, e_src, e_dst = bd
 
     model = DMPNNMultiTaskModel(
-        atom_dim=ATOM_FEATURE_DIM, bond_dim=BOND_FEATURE_DIM,
-        hidden=64, depth=2, dropout=0.0,
+        atom_dim=ATOM_FEATURE_DIM,
+        bond_dim=BOND_FEATURE_DIM,
+        hidden=64,
+        depth=2,
+        dropout=0.0,
     )
     model.eval()
     with torch.no_grad():
@@ -172,8 +185,12 @@ def test_train_epoch_mt_dann_one_step_finite_nonzero():
     y_active_np = np.array([1, 0, 1, 1, 0, 1, 0, 1], dtype=np.int64)
 
     model = DMPNNMultiTaskModel(
-        atom_dim=ATOM_FEATURE_DIM, bond_dim=BOND_FEATURE_DIM,
-        hidden=64, depth=2, dropout=0.0, use_dann=True,
+        atom_dim=ATOM_FEATURE_DIM,
+        bond_dim=BOND_FEATURE_DIM,
+        hidden=64,
+        depth=2,
+        dropout=0.0,
+        use_dann=True,
     )
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     criterion = MultiTaskLoss(alpha=0.5)
@@ -217,17 +234,29 @@ def test_train_epoch_mt_dann_gradients_flow_to_backbone():
     y_active_np = np.array([1, 0, 1, 1, 0, 1, 0, 1], dtype=np.int64)
 
     model = DMPNNMultiTaskModel(
-        atom_dim=ATOM_FEATURE_DIM, bond_dim=BOND_FEATURE_DIM,
-        hidden=64, depth=2, dropout=0.0, use_dann=True,
+        atom_dim=ATOM_FEATURE_DIM,
+        bond_dim=BOND_FEATURE_DIM,
+        hidden=64,
+        depth=2,
+        dropout=0.0,
+        use_dann=True,
     )
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     criterion = MultiTaskLoss(alpha=0.5)
 
     train_epoch_mt_dann(
-        model=model, optimizer=optimizer, criterion=criterion,
-        graphs=graphs, pic50_labels=y_pic50_np, active_labels=y_active_np,
-        domain_head=model.domain_head, lambda_grl=0.1, domain_id=0,
-        grl_alpha=0.1, batch_size=MT_BATCH_SIZE, device=torch.device("cpu"),
+        model=model,
+        optimizer=optimizer,
+        criterion=criterion,
+        graphs=graphs,
+        pic50_labels=y_pic50_np,
+        active_labels=y_active_np,
+        domain_head=model.domain_head,
+        lambda_grl=0.1,
+        domain_id=0,
+        grl_alpha=0.1,
+        batch_size=MT_BATCH_SIZE,
+        device=torch.device("cpu"),
     )
 
     # Backbone (atom_emb, bond_emb, gru_update) must have non-zero gradients
@@ -236,9 +265,9 @@ def test_train_epoch_mt_dann_gradients_flow_to_backbone():
     grad_norm_sum = 0.0
     for sub in backbone_submodules:
         for p in sub.parameters():
-            assert p.grad is not None, (
-                f"backbone {type(sub).__name__} param missing gradient"
-            )
+            assert (
+                p.grad is not None
+            ), f"backbone {type(sub).__name__} param missing gradient"
             assert torch.isfinite(p.grad).all(), "backbone grad has NaN/Inf"
             n_with_grad += 1
             grad_norm_sum += float(p.grad.norm().item())
@@ -268,32 +297,56 @@ def test_train_epoch_mt_dann_grl_flips_sign_on_backbone_grad():
     # ---- Run A: DANN with lambda_grl=0.1 ----
     torch.manual_seed(7)
     model_a = DMPNNMultiTaskModel(
-        atom_dim=ATOM_FEATURE_DIM, bond_dim=BOND_FEATURE_DIM,
-        hidden=64, depth=2, dropout=0.0, use_dann=True,
+        atom_dim=ATOM_FEATURE_DIM,
+        bond_dim=BOND_FEATURE_DIM,
+        hidden=64,
+        depth=2,
+        dropout=0.0,
+        use_dann=True,
     )
     optimizer_a = torch.optim.Adam(model_a.parameters(), lr=1e-3)
     criterion_a = MultiTaskLoss(alpha=0.5)
     train_epoch_mt_dann(
-        model=model_a, optimizer=optimizer_a, criterion=criterion_a,
-        graphs=graphs, pic50_labels=y_pic50_np, active_labels=y_active_np,
-        domain_head=model_a.domain_head, lambda_grl=0.1, domain_id=0,
-        grl_alpha=0.1, batch_size=MT_BATCH_SIZE, device=torch.device("cpu"),
+        model=model_a,
+        optimizer=optimizer_a,
+        criterion=criterion_a,
+        graphs=graphs,
+        pic50_labels=y_pic50_np,
+        active_labels=y_active_np,
+        domain_head=model_a.domain_head,
+        lambda_grl=0.1,
+        domain_id=0,
+        grl_alpha=0.1,
+        batch_size=MT_BATCH_SIZE,
+        device=torch.device("cpu"),
     )
     grad_a = model_a.atom_emb.weight.grad.detach().clone()
 
     # ---- Run B: DANN with lambda_grl=0 (no domain loss contribution) ----
     torch.manual_seed(7)
     model_b = DMPNNMultiTaskModel(
-        atom_dim=ATOM_FEATURE_DIM, bond_dim=BOND_FEATURE_DIM,
-        hidden=64, depth=2, dropout=0.0, use_dann=True,
+        atom_dim=ATOM_FEATURE_DIM,
+        bond_dim=BOND_FEATURE_DIM,
+        hidden=64,
+        depth=2,
+        dropout=0.0,
+        use_dann=True,
     )
     optimizer_b = torch.optim.Adam(model_b.parameters(), lr=1e-3)
     criterion_b = MultiTaskLoss(alpha=0.5)
     train_epoch_mt_dann(
-        model=model_b, optimizer=optimizer_b, criterion=criterion_b,
-        graphs=graphs, pic50_labels=y_pic50_np, active_labels=y_active_np,
-        domain_head=model_b.domain_head, lambda_grl=0.0, domain_id=0,
-        grl_alpha=0.1, batch_size=MT_BATCH_SIZE, device=torch.device("cpu"),
+        model=model_b,
+        optimizer=optimizer_b,
+        criterion=criterion_b,
+        graphs=graphs,
+        pic50_labels=y_pic50_np,
+        active_labels=y_active_np,
+        domain_head=model_b.domain_head,
+        lambda_grl=0.0,
+        domain_id=0,
+        grl_alpha=0.1,
+        batch_size=MT_BATCH_SIZE,
+        device=torch.device("cpu"),
     )
     grad_b = model_b.atom_emb.weight.grad.detach().clone()
 
@@ -323,16 +376,28 @@ def test_train_epoch_mt_dann_lambda_grl_scaling():
     def _run(lambda_grl: float) -> torch.Tensor:
         torch.manual_seed(13)
         m = DMPNNMultiTaskModel(
-            atom_dim=ATOM_FEATURE_DIM, bond_dim=BOND_FEATURE_DIM,
-            hidden=64, depth=2, dropout=0.0, use_dann=True,
+            atom_dim=ATOM_FEATURE_DIM,
+            bond_dim=BOND_FEATURE_DIM,
+            hidden=64,
+            depth=2,
+            dropout=0.0,
+            use_dann=True,
         )
         opt = torch.optim.Adam(m.parameters(), lr=1e-3)
         crit = MultiTaskLoss(alpha=0.5)
         train_epoch_mt_dann(
-            model=m, optimizer=opt, criterion=crit,
-            graphs=graphs, pic50_labels=y_pic50_np, active_labels=y_active_np,
-            domain_head=m.domain_head, lambda_grl=lambda_grl, domain_id=0,
-            grl_alpha=0.1, batch_size=MT_BATCH_SIZE, device=torch.device("cpu"),
+            model=m,
+            optimizer=opt,
+            criterion=crit,
+            graphs=graphs,
+            pic50_labels=y_pic50_np,
+            active_labels=y_active_np,
+            domain_head=m.domain_head,
+            lambda_grl=lambda_grl,
+            domain_id=0,
+            grl_alpha=0.1,
+            batch_size=MT_BATCH_SIZE,
+            device=torch.device("cpu"),
         )
         return m.atom_emb.weight.grad.detach().clone()
 
@@ -349,8 +414,7 @@ def test_train_epoch_mt_dann_lambda_grl_scaling():
     # backbone (we re-seed but the DataLoader permutation is also random).
     ratio = diff_2 / max(diff_1, 1e-8)
     assert 1.4 < ratio < 2.6, (
-        f"lambda_grl scaling failed: ratio(diff_2/diff_1)={ratio:.3f}, "
-        "expected ~2.0"
+        f"lambda_grl scaling failed: ratio(diff_2/diff_1)={ratio:.3f}, " "expected ~2.0"
     )
 
 
@@ -363,17 +427,25 @@ def test_train_epoch_mt_dann_rejects_none_domain_head():
     y_pic50_np = np.array([5.0, 6.5, 4.0, 7.2, 5.8, 6.1, 4.5, 5.9], dtype=np.float32)
     y_active_np = np.array([1, 0, 1, 1, 0, 1, 0, 1], dtype=np.int64)
     model = DMPNNMultiTaskModel(
-        atom_dim=ATOM_FEATURE_DIM, bond_dim=BOND_FEATURE_DIM,
-        hidden=64, depth=2, dropout=0.0,
+        atom_dim=ATOM_FEATURE_DIM,
+        bond_dim=BOND_FEATURE_DIM,
+        hidden=64,
+        depth=2,
+        dropout=0.0,
     )
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     criterion = MultiTaskLoss(alpha=0.5)
     with pytest.raises(ValueError, match="domain_head"):
         train_epoch_mt_dann(
-            model=model, optimizer=optimizer, criterion=criterion,
-            graphs=graphs, pic50_labels=y_pic50_np, active_labels=y_active_np,
+            model=model,
+            optimizer=optimizer,
+            criterion=criterion,
+            graphs=graphs,
+            pic50_labels=y_pic50_np,
+            active_labels=y_active_np,
             domain_head=None,
-            batch_size=MT_BATCH_SIZE, device=torch.device("cpu"),
+            batch_size=MT_BATCH_SIZE,
+            device=torch.device("cpu"),
         )
 
 
@@ -403,7 +475,7 @@ def test_dmpnn_mt_baseline_fit_with_dann_smoke():
         metal="Ru",
         hidden=64,
         depth=2,
-        epochs=2,           # tiny smoke — just verify wiring
+        epochs=2,  # tiny smoke — just verify wiring
         batch_size=4,
         alpha=0.5,
         seed=0,
@@ -412,8 +484,13 @@ def test_dmpnn_mt_baseline_fit_with_dann_smoke():
         domain_id=0,
     )
     baseline.fit(
-        smiles, active_all, pic50_all, cell_lines,
-        idx_train, idx_val, verbose=False,
+        smiles,
+        active_all,
+        pic50_all,
+        cell_lines,
+        idx_train,
+        idx_val,
+        verbose=False,
     )
     # After fit, model must be set + have domain_head + show no NaN
     assert baseline.model is not None
@@ -449,6 +526,7 @@ def test_dmpnn_mt_baseline_run_returns_dann_config_in_result():
     )
     js = r.to_json()
     import json as _json
+
     payload = _json.loads(js)
     assert payload["use_dann"] is True
     assert payload["lambda_grl"] == 0.2
@@ -488,8 +566,13 @@ def test_dmpnn_mt_baseline_fit_without_dann_unchanged():
     # model.domain_head must stay None when DANN is off
     assert baseline.use_dann is False
     baseline.fit(
-        smiles, active_all, pic50_all, cell_lines,
-        idx_train, idx_val, verbose=False,
+        smiles,
+        active_all,
+        pic50_all,
+        cell_lines,
+        idx_train,
+        idx_val,
+        verbose=False,
     )
     assert baseline.model is not None
     assert baseline.model.domain_head is None
@@ -503,16 +586,24 @@ def test_train_epoch_mt_dann_does_not_run_when_use_dann_false():
     y_active_np = np.array([1, 0, 1, 1, 0, 1, 0, 1], dtype=np.int64)
 
     model = DMPNNMultiTaskModel(
-        atom_dim=ATOM_FEATURE_DIM, bond_dim=BOND_FEATURE_DIM,
-        hidden=64, depth=2, dropout=0.0,
+        atom_dim=ATOM_FEATURE_DIM,
+        bond_dim=BOND_FEATURE_DIM,
+        hidden=64,
+        depth=2,
+        dropout=0.0,
     )
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     criterion = MultiTaskLoss(alpha=0.5)
 
     out = train_epoch_mt(
-        model=model, optimizer=optimizer, criterion=criterion,
-        graphs=graphs, pic50_labels=y_pic50_np, active_labels=y_active_np,
-        batch_size=MT_BATCH_SIZE, device=torch.device("cpu"),
+        model=model,
+        optimizer=optimizer,
+        criterion=criterion,
+        graphs=graphs,
+        pic50_labels=y_pic50_np,
+        active_labels=y_active_np,
+        batch_size=MT_BATCH_SIZE,
+        device=torch.device("cpu"),
     )
     assert len(out) == 3
     for v in out:

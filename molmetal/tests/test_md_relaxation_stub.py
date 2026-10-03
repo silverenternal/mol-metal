@@ -203,9 +203,7 @@ def test_md_relaxation_relaxes(ff, methane_coords, methane_types) -> None:
     """Relaxed coords differ from the initial (compressed) coords."""
     relax = MDRelaxation(ff, n_steps=20, step_size=0.005, temperature=100)
     out = relax.relax(methane_coords, methane_types)
-    assert not np.allclose(out, methane_coords), (
-        "relaxation did not move the atoms"
-    )
+    assert not np.allclose(out, methane_coords), "relaxation did not move the atoms"
 
 
 def test_md_relaxation_lowers_energy(ff, methane_coords, methane_types) -> None:
@@ -213,9 +211,7 @@ def test_md_relaxation_lowers_energy(ff, methane_coords, methane_types) -> None:
     relax = MDRelaxation(ff, n_steps=20, step_size=0.005, temperature=100)
     e0 = ff.energy(methane_coords, methane_types)
     e1 = relax.energy_after_relax(methane_coords, methane_types)
-    assert e1 <= e0 + 1e-6, (
-        f"relaxation did not lower energy: e0={e0:.3f}, e1={e1:.3f}"
-    )
+    assert e1 <= e0 + 1e-6, f"relaxation did not lower energy: e0={e0:.3f}, e1={e1:.3f}"
 
 
 def test_md_relaxation_deterministic(ff, methane_coords, methane_types) -> None:
@@ -240,7 +236,9 @@ def test_md_relaxation_zero_steps(ff, methane_coords, methane_types) -> None:
     # proposal is rejected deterministically — coords are returned
     # as a copy.  We assert shape + finiteness; do NOT assert exact
     # equality because the MC step may accept a tiny proposal.
-    relax = MDRelaxation(ff, n_steps=0, step_size=0.01, temperature=1.0, mc_step_size=0.0, seed=0)
+    relax = MDRelaxation(
+        ff, n_steps=0, step_size=0.01, temperature=1.0, mc_step_size=0.0, seed=0
+    )
     out = relax.relax(methane_coords, methane_types)
     assert out.shape == methane_coords.shape
     assert np.isfinite(out).all()

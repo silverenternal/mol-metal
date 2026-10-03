@@ -173,12 +173,16 @@ RMSE_GATE: float = 0.05
 #: Path to the 5K SMILES CSV (created on demand by this script).
 DEFAULT_PLATINAI_5K_CSV: Path = PROJECT_ROOT / "molmetal" / "data" / "platinai_5k.csv"
 #: Path to the tmQM parsed CSV (fallback source).
-DEFAULT_TMQM_PARSED_CSV: Path = Path(
-    os.environ.get(
-        "MOLMETAL_DATA_DIR",
-        "/home/hugo/codes/mol-metal/.data/molmetal",
+DEFAULT_TMQM_PARSED_CSV: Path = (
+    Path(
+        os.environ.get(
+            "MOLMETAL_DATA_DIR",
+            "/home/hugo/codes/mol-metal/.data/molmetal",
+        )
     )
-) / "tmQM" / "tmqm_parsed.csv"
+    / "tmQM"
+    / "tmqm_parsed.csv"
+)
 #: Output directory for the .npz checkpoint + .json metadata.
 DEFAULT_OUT_DIR: Path = PROJECT_ROOT / "models"
 
@@ -207,6 +211,7 @@ def ensure_platinai_5k_csv(
     if csv_path.exists():
         try:
             import pandas as _pd  # local import to keep module-load fast
+
             existing = _pd.read_csv(csv_path)
             if len(existing) >= n_smiles:
                 return csv_path
@@ -215,6 +220,7 @@ def ensure_platinai_5k_csv(
     # ---- Build the 5K subset from tmQM -------------------------------
     try:
         import pandas as _pd
+
         if not DEFAULT_TMQM_PARSED_CSV.exists():
             raise FileNotFoundError(
                 f"tmQM corpus not found at {DEFAULT_TMQM_PARSED_CSV}"
@@ -246,6 +252,7 @@ def ensure_platinai_5k_csv(
     if fallback.exists():
         try:
             import pandas as _pd
+
             small = _pd.read_csv(fallback)
             small.insert(0, "id", [f"pt_drug_{i:03d}" for i in range(len(small))])
             small["ic50_nm"] = np.nan
@@ -256,9 +263,7 @@ def ensure_platinai_5k_csv(
             return csv_path
         except Exception:
             pass
-    raise RuntimeError(
-        f"Could not materialise platinai_5k.csv ({log_msg})"
-    )
+    raise RuntimeError(f"Could not materialise platinai_5k.csv ({log_msg})")
 
 
 def load_platinai_5k_smiles(
@@ -275,6 +280,7 @@ def load_platinai_5k_smiles(
     """
     csv_path = ensure_platinai_5k_csv(csv_path, n_smiles=n_smiles, seed=seed)
     import pandas as _pd
+
     df = _pd.read_csv(csv_path)
     if len(df) > n_smiles:
         df = df.iloc[:n_smiles].reset_index(drop=True)
@@ -350,13 +356,15 @@ def _lambda_features_one(smiles: str, *, dim: int = LAMBDA_DIM) -> np.ndarray:
     try:
         from rdkit import Chem  # type: ignore
         from rdkit import RDLogger  # type: ignore
+
         RDLogger.DisableLog("rdApp.*")
         mol = Chem.MolFromSmiles(s)
         if mol is not None:
             heavy = mol.GetNumHeavyAtoms()
             ring_count = mol.GetRingInfo().NumRings()
             aromatic_ring_count = sum(
-                1 for r in mol.GetRingInfo().AtomRings()
+                1
+                for r in mol.GetRingInfo().AtomRings()
                 if all(mol.GetAtomWithIdx(i).GetIsAromatic() for i in r)
             )
             double_bond = sum(
@@ -398,8 +406,18 @@ def _lambda_features_one(smiles: str, *, dim: int = LAMBDA_DIM) -> np.ndarray:
     i_frac = sum(1 for c in s if c == "I") / n
     other_frac = max(0.0, 1.0 - metal_chars / n)
     hist = np.array(
-        [c_frac, n_frac, o_frac, s_frac, p_frac,
-         f_frac, cl_frac, br_frac, i_frac, other_frac],
+        [
+            c_frac,
+            n_frac,
+            o_frac,
+            s_frac,
+            p_frac,
+            f_frac,
+            cl_frac,
+            br_frac,
+            i_frac,
+            other_frac,
+        ],
         dtype=np.float32,
     )
     # ---- Concatenate -------------------------------------------------
@@ -422,6 +440,7 @@ def _cfm_features_one(smiles: str, *, dim: int = CFM_DIM) -> np.ndarray:
         from rdkit import Chem, DataStructs  # type: ignore
         from rdkit.Chem import AllChem  # type: ignore
         from rdkit import RDLogger  # type: ignore
+
         RDLogger.DisableLog("rdApp.*")
         mol = Chem.MolFromSmiles(smiles)
         if mol is None:
@@ -557,9 +576,7 @@ def _init_mlp_params(
     return params
 
 
-def _mlp_forward(
-    x: np.ndarray, params: Dict[str, np.ndarray]
-) -> np.ndarray:
+def _mlp_forward(x: np.ndarray, params: Dict[str, np.ndarray]) -> np.ndarray:
     """Forward pass through the 2-hidden-layer MLP.
 
     The output is **L2-normalised per row** so the cosine-similarity
@@ -658,8 +675,7 @@ def train_on_platinai5k(
     n = len(smiles_list)
     if n < 100:
         raise RuntimeError(
-            f"Only {n} SMILES loaded — expected at least 100; check "
-            f"{csv_path}"
+            f"Only {n} SMILES loaded — expected at least 100; check " f"{csv_path}"
         )
     rng = np.random.default_rng(seed)
     perm = rng.permutation(n)
@@ -681,9 +697,7 @@ def train_on_platinai5k(
     X_train_n = (X_train - input_mean) / input_std
     X_holdout_n = (X_holdout - input_mean) / input_std
     Y_train = make_bridge_target(T_train, lambda_features=X_train_n)
-    Y_holdout = make_bridge_target(
-        T_holdout, lambda_features=X_holdout_n
-    )
+    Y_holdout = make_bridge_target(T_holdout, lambda_features=X_holdout_n)
     # ---- Init MLP ---------------------------------------------------
     params = _init_mlp_params(
         in_dim=LAMBDA_DIM,
@@ -711,7 +725,7 @@ def train_on_platinai5k(
         epoch_perm = rng.permutation(n_train)
         epoch_losses: List[float] = []
         for s in range(steps_per_epoch):
-            sl = epoch_perm[s * batch_size:(s + 1) * batch_size]
+            sl = epoch_perm[s * batch_size : (s + 1) * batch_size]
             xb = X_train[sl]
             yb = Y_train[sl]
             xb_n = (xb - input_mean) / input_std
@@ -733,10 +747,7 @@ def train_on_platinai5k(
             # task.  Default weights ``(cos_w=0.7, mse_w=0.3)``.
             cos = np.sum(pred * yb, axis=1)
             per_row_mse = np.mean((pred - yb) ** 2, axis=1)
-            loss_per_row = (
-                COSINE_WEIGHT * (1.0 - cos)
-                + MSE_WEIGHT * per_row_mse
-            )
+            loss_per_row = COSINE_WEIGHT * (1.0 - cos) + MSE_WEIGHT * per_row_mse
             loss = float(np.mean(loss_per_row))
             epoch_losses.append(loss)
             # ---- Back-prop (analytic) -------------------------------
@@ -786,10 +797,12 @@ def train_on_platinai5k(
                 m = ADAM_BETA1 * m + (1.0 - ADAM_BETA1) * g
                 v = ADAM_BETA2 * v + (1.0 - ADAM_BETA2) * (g * g)
                 adam_state[k] = (m, v)
-                m_hat = m / (1.0 - ADAM_BETA1 ** global_step)
-                v_hat = v / (1.0 - ADAM_BETA2 ** global_step)
+                m_hat = m / (1.0 - ADAM_BETA1**global_step)
+                v_hat = v / (1.0 - ADAM_BETA2**global_step)
                 params[k] -= lr * m_hat / (np.sqrt(v_hat) + ADAM_EPS)
-        final_train_loss = float(np.mean(epoch_losses)) if epoch_losses else float("nan")
+        final_train_loss = (
+            float(np.mean(epoch_losses)) if epoch_losses else float("nan")
+        )
         # ---- Hold-out eval -----------------------------------------
         # Use the *normalised* features and matching normalised
         # target so the RMSE matches the cosine-similarity bound
@@ -798,12 +811,8 @@ def train_on_platinai5k(
         pred_h = _mlp_forward(xh_n, params)
         # Build a normalised-target on the fly so the metric stays
         # in sync with the normalisation pipeline.
-        Y_holdout_n = make_bridge_target(
-            T_holdout, lambda_features=xh_n
-        )
-        final_holdout_rmse = float(
-            np.sqrt(np.mean((pred_h - Y_holdout_n) ** 2))
-        )
+        Y_holdout_n = make_bridge_target(T_holdout, lambda_features=xh_n)
+        final_holdout_rmse = float(np.sqrt(np.mean((pred_h - Y_holdout_n) ** 2)))
         loss_history.append(final_train_loss)
         rmse_history.append(final_holdout_rmse)
         if verbose and (epoch < 5 or epoch % 10 == 9 or epoch == n_epochs - 1):
@@ -970,9 +979,7 @@ def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         default=RMSE_GATE,
         help="Hold-out RMSE gate (default 0.05).",
     )
-    p.add_argument(
-        "--quiet", action="store_true", help="Suppress per-epoch logging."
-    )
+    p.add_argument("--quiet", action="store_true", help="Suppress per-epoch logging.")
     return p.parse_args(argv)
 
 

@@ -348,4 +348,5 @@ def _self_test() -> dict[str, Any]:
 if __name__ == "__main__":
     out = _self_test()
     import pprint
+
     pprint.pp(out)

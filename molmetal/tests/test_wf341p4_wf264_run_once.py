@@ -52,6 +52,7 @@ SMILES_CSV = ROOT / "molmetal" / "data" / "metalcytotox_rdkit_features.csv"
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _read(path: Path) -> str:
     assert path.exists(), f"file missing: {path}"
     return path.read_text()
@@ -76,45 +77,47 @@ def _executable_body(src: str) -> str:
 # Test 1: run-once launcher parses (bash -n + structural assertions)
 # ---------------------------------------------------------------------------
 
+
 def test_run_once_launcher_parses_and_structure():
     """Run-once wrapper must:
-      - exist at scripts/run_wf264_cfm_property_panel.sh,
-      - parse via bash -n (no syntax errors),
-      - declare set -uo pipefail (or stricter) for safe scripting,
-      - reference PROJECT_ROOT + the full Wf-264 launcher it wraps,
-      - exit-code contract: 0=PASS / 1=FAIL / 2=SKIP / 3=USER_OK_DENIED.
+    - exist at scripts/run_wf264_cfm_property_panel.sh,
+    - parse via bash -n (no syntax errors),
+    - declare set -uo pipefail (or stricter) for safe scripting,
+    - reference PROJECT_ROOT + the full Wf-264 launcher it wraps,
+    - exit-code contract: 0=PASS / 1=FAIL / 2=SKIP / 3=USER_OK_DENIED.
     """
-    assert RUN_ONCE_WRAPPER.exists(), (
-        f"run-once wrapper missing at {RUN_ONCE_WRAPPER}"
-    )
-    assert FULL_LAUNCHER.exists(), (
-        f"full launcher missing at {FULL_LAUNCHER} (run-once needs it)"
-    )
+    assert RUN_ONCE_WRAPPER.exists(), f"run-once wrapper missing at {RUN_ONCE_WRAPPER}"
+    assert (
+        FULL_LAUNCHER.exists()
+    ), f"full launcher missing at {FULL_LAUNCHER} (run-once needs it)"
 
     src = _read(RUN_ONCE_WRAPPER)
 
     # bash -n syntax check
     proc_syntax = subprocess.run(
         ["bash", "-n", str(RUN_ONCE_WRAPPER)],
-        cwd=str(ROOT), capture_output=True, text=True, timeout=10,
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        timeout=10,
     )
-    assert proc_syntax.returncode == 0, (
-        f"wrapper bash syntax error: stderr={proc_syntax.stderr!r}"
-    )
+    assert (
+        proc_syntax.returncode == 0
+    ), f"wrapper bash syntax error: stderr={proc_syntax.stderr!r}"
 
     # strict mode (set -uo pipefail or stricter)
-    assert re.search(r"set\s+-[a-z]*[uo]", src) or "set -euo pipefail" in src, (
-        "wrapper must declare strict mode (set -uo pipefail or stricter)"
-    )
+    assert (
+        re.search(r"set\s+-[a-z]*[uo]", src) or "set -euo pipefail" in src
+    ), "wrapper must declare strict mode (set -uo pipefail or stricter)"
 
     # structural references
     assert "PROJECT_ROOT" in src, "PROJECT_ROOT constant missing"
-    assert "launch_wf264_cfm_property_panel.sh" in src, (
-        "full Wf-264 launcher reference missing"
-    )
-    assert "pre_flight_check.py" in src, (
-        "pre_flight_check.py invocation missing (TODO-207 §1 gate)"
-    )
+    assert (
+        "launch_wf264_cfm_property_panel.sh" in src
+    ), "full Wf-264 launcher reference missing"
+    assert (
+        "pre_flight_check.py" in src
+    ), "pre_flight_check.py invocation missing (TODO-207 §1 gate)"
 
     # exit-code contract documented in header
     for code, label in (
@@ -123,14 +126,15 @@ def test_run_once_launcher_parses_and_structure():
         ("2", "SKIP"),
         ("3", "USER_OK"),
     ):
-        assert re.search(rf"\b{code}\b\s*=\s*{label}", src, re.IGNORECASE), (
-            f"exit-code {code}={label} contract missing from header"
-        )
+        assert re.search(
+            rf"\b{code}\b\s*=\s*{label}", src, re.IGNORECASE
+        ), f"exit-code {code}={label} contract missing from header"
 
 
 # ---------------------------------------------------------------------------
 # Test 2: pre-flight integration (TODO-207 §1 gate wired correctly)
 # ---------------------------------------------------------------------------
+
 
 def test_preflight_integration_wired():
     """Run-once wrapper must invoke pre_flight_check.py --pipeline all
@@ -143,18 +147,16 @@ def test_preflight_integration_wired():
     body = _executable_body(src)
 
     # pre-flight check wired with correct flag
-    assert "pre_flight_check.py --pipeline all" in src, (
-        "pre_flight_check.py --pipeline all invocation missing from wrapper"
-    )
-    assert "--pipeline all" in src, (
-        "--pipeline all flag missing (TODO-207 §1 gate)"
-    )
+    assert (
+        "pre_flight_check.py --pipeline all" in src
+    ), "pre_flight_check.py --pipeline all invocation missing from wrapper"
+    assert "--pipeline all" in src, "--pipeline all flag missing (TODO-207 §1 gate)"
 
     # Pre-flight is invoked via the project's venv python (per AGENTS.md
     # §5.1: .venv/bin/python, NOT the unrelated /home/hugo/cades/CadButEaas
     # VLM venv).
     assert "/home/hugo/codes/mol-metal/.venv/bin/python" in src or (
-        '${PY:-' in src and '.venv/bin/python' in src
+        "${PY:-" in src and ".venv/bin/python" in src
     ), (
         "wrapper must use /home/hugo/codes/mol-metal/.venv/bin/python "
         "(AGENTS.md §5.1 venv convention)"
@@ -165,10 +167,7 @@ def test_preflight_integration_wired():
     assert preflight_idx > 0, "preflight invocation not found in executable body"
     # Fail-fast branch: a `if > ! ...` OR an explicit FAIL log must follow
     fail_after = body[preflight_idx:].find('"PRE_FLIGHT FAIL"')
-    fail_after = (
-        fail_after if fail_after > 0
-        else body[preflight_idx:].find("exit 1")
-    )
+    fail_after = fail_after if fail_after > 0 else body[preflight_idx:].find("exit 1")
     assert fail_after > 0, (
         "no fail-fast branch after preflight invocation — wrapper must "
         "abort if pre-flight fails (TODO-207 §1.4 standing rule)"
@@ -177,14 +176,15 @@ def test_preflight_integration_wired():
     # The full launcher also re-enforces pre-flight (orchestration
     # determinism: wrapper + launcher each gate independently).
     full_src = _read(FULL_LAUNCHER)
-    assert "pre_flight_check.py --pipeline all" in full_src, (
-        "full launcher must also re-invoke pre-flight (defence in depth)"
-    )
+    assert (
+        "pre_flight_check.py --pipeline all" in full_src
+    ), "full launcher must also re-invoke pre-flight (defence in depth)"
 
 
 # ---------------------------------------------------------------------------
 # Test 3: Wf-328 fixes / HONEST_NEGATIVE for RDKit post-hoc panel
 # ---------------------------------------------------------------------------
+
 
 def test_wf328_honest_negative_for_rdkit_post_hoc():
     """Wf-328 optimization flags (--torch-compile / --bf16 / --tf32 /
@@ -229,8 +229,7 @@ def test_wf328_honest_negative_for_rdkit_post_hoc():
     if "--num-workers" in run_once_src:
         # Acceptable only if it's in a comment line
         nw_lines = [
-            line for line in run_once_src.split("\n")
-            if "--num-workers" in line
+            line for line in run_once_src.split("\n") if "--num-workers" in line
         ]
         for line in nw_lines:
             stripped = line.lstrip()
@@ -253,18 +252,19 @@ def test_wf328_honest_negative_for_rdkit_post_hoc():
             f"(honest-negative contract per AGENTS.md §5.2)"
         )
     # Honest-negative framing language in full launcher
-    assert ("NA" in full_src) or ("do NOT" in full_src), (
-        "Wf-328 NA / do-not-apply framing language missing from full launcher"
-    )
+    assert ("NA" in full_src) or (
+        "do NOT" in full_src
+    ), "Wf-328 NA / do-not-apply framing language missing from full launcher"
     # The Wf-328 NA echo must surface in dry-run output
-    assert "Wf-328 optimization flags: NA for this panel" in full_src, (
-        "Wf-328 NA dry-run echo missing from full launcher source"
-    )
+    assert (
+        "Wf-328 optimization flags: NA for this panel" in full_src
+    ), "Wf-328 NA dry-run echo missing from full launcher source"
 
 
 # ---------------------------------------------------------------------------
 # Test 4: USER_OK gate (kill_then_adapt standing directive)
 # ---------------------------------------------------------------------------
+
 
 def test_user_ok_gate_enforced_before_real_launch():
     """Run-once wrapper must enforce USER_OK=1 BEFORE any real work
@@ -293,9 +293,9 @@ def test_user_ok_gate_enforced_before_real_launch():
     )
 
     # (2) kill_then_adapt reference (AGENTS.md §5.1 standing directive)
-    assert "kill_then_adapt" in src, (
-        "kill_then_adapt standing directive reference missing"
-    )
+    assert (
+        "kill_then_adapt" in src
+    ), "kill_then_adapt standing directive reference missing"
 
     # (3) Gate-first ordering: USER_OK gate fires BEFORE pre-flight check
     # (so the user can deny without burning time on pre-flight).
@@ -328,23 +328,29 @@ def test_user_ok_gate_enforced_before_real_launch():
     env_no_user_ok = {k: v for k, v in os.environ.items() if k != "USER_OK"}
     proc = subprocess.run(
         ["bash", str(RUN_ONCE_WRAPPER)],
-        cwd=str(ROOT), capture_output=True, text=True,
-        env=env_no_user_ok, timeout=15,
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        env=env_no_user_ok,
+        timeout=15,
     )
     assert proc.returncode == 3, (
         f"wrapper exited rc={proc.returncode} without USER_OK; "
         f"expected rc=3 (USER_OK_GATE_DENIED). "
         f"stdout={proc.stdout[-200:]!r}"
     )
-    assert "USER_OK_GATE_DENIED" in proc.stdout, (
-        f"gate-deny message missing from stdout; got {proc.stdout[-200:]!r}"
-    )
+    assert (
+        "USER_OK_GATE_DENIED" in proc.stdout
+    ), f"gate-deny message missing from stdout; got {proc.stdout[-200:]!r}"
 
     # (5) --status query is USER_OK-exempt and exits 0.
     proc_status = subprocess.run(
         ["bash", str(RUN_ONCE_WRAPPER), "--status"],
-        cwd=str(ROOT), capture_output=True, text=True,
-        env=env_no_user_ok, timeout=15,
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        env=env_no_user_ok,
+        timeout=15,
     )
     assert proc_status.returncode == 0, (
         f"--status exited rc={proc_status.returncode}; expected 0. "
@@ -352,8 +358,7 @@ def test_user_ok_gate_enforced_before_real_launch():
     )
     # Status JSON must include honest-negative caveat for Vina sub-panel
     assert (
-        "BLOCKED on meeko" in proc_status.stdout
-        or "Wf-299B" in proc_status.stdout
+        "BLOCKED on meeko" in proc_status.stdout or "Wf-299B" in proc_status.stdout
     ), (
         f"Vina honest-negative caveat missing from --status output; "
         f"got {proc_status.stdout[-300:]!r}"

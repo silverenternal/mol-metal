@@ -38,6 +38,7 @@ Honest framing
 * Tests skip if the Wf-141 v2 outputs are not on disk (matching the
   existing Wf-121 P3 skip policy).
 """
+
 from __future__ import annotations
 
 import json
@@ -58,8 +59,16 @@ if str(REPO_ROOT) not in sys.path:
 WF141_DIR = REPO_ROOT / "molmetal" / "reports" / "wf141_ex32_lift"
 WF121_DIR = REPO_ROOT / "molmetal" / "reports" / "wf121_cisplatin_real_vina"
 POCKETS = (
-    "830c", "1h36", "3eml", "3ny8", "4aaw",
-    "4rlu", "4rn0", "1fmc", "1g9v", "2hnx",
+    "830c",
+    "1h36",
+    "3eml",
+    "3ny8",
+    "4aaw",
+    "4rlu",
+    "4rn0",
+    "1fmc",
+    "1g9v",
+    "2hnx",
 )
 UPPER_BOUND_POCKETS = ("1h36", "4aaw")
 SEEDS = (0, 1, 2)
@@ -67,10 +76,9 @@ SEEDS = (0, 1, 2)
 
 def _outputs_present() -> bool:
     """Skip policy — only run if Wf-141 v2 sweep has produced outputs."""
-    return (
-        (WF141_DIR / "per_pocket_summary.json").exists()
-        and (WF141_DIR / "upper_bound_ex64.json").exists()
-    )
+    return (WF141_DIR / "per_pocket_summary.json").exists() and (
+        WF141_DIR / "upper_bound_ex64.json"
+    ).exists()
 
 
 pytestmark = pytest.mark.skipif(
@@ -90,6 +98,7 @@ class TestBenchCisplatinExhaustivenessLiftScript:
 
     def test_module_importable(self):
         from molmetal.scripts import bench_cisplatin_exhaustiveness_lift
+
         mod = bench_cisplatin_exhaustiveness_lift
         assert hasattr(mod, "CISPLATIN_SMILES")
         assert hasattr(mod, "POCKETS")
@@ -102,32 +111,47 @@ class TestBenchCisplatinExhaustivenessLiftScript:
         from molmetal.scripts.bench_cisplatin_exhaustiveness_lift import (
             CISPLATIN_SMILES,
         )
+
         assert CISPLATIN_SMILES == "[Pt](N)(N)(Cl)Cl"
 
     def test_pockets_match_wf121_cohort(self):
         from molmetal.scripts.bench_cisplatin_exhaustiveness_lift import POCKETS
+
         assert POCKETS == (
-            "830c", "1h36", "3eml", "3ny8", "4aaw",
-            "4rlu", "4rn0", "1fmc", "1g9v", "2hnx",
+            "830c",
+            "1h36",
+            "3eml",
+            "3ny8",
+            "4aaw",
+            "4rlu",
+            "4rn0",
+            "1fmc",
+            "1g9v",
+            "2hnx",
         )
 
     def test_upper_bound_pockets_subset(self):
         from molmetal.scripts.bench_cisplatin_exhaustiveness_lift import (
-            POCKETS, UPPER_BOUND_POCKETS,
+            POCKETS,
+            UPPER_BOUND_POCKETS,
         )
+
         for p in UPPER_BOUND_POCKETS:
-            assert p in POCKETS, (
-                f"upper-bound pocket {p!r} not in main 10-pocket cohort"
-            )
+            assert (
+                p in POCKETS
+            ), f"upper-bound pocket {p!r} not in main 10-pocket cohort"
 
     def test_default_seeds_are_three(self):
         from molmetal.scripts.bench_cisplatin_exhaustiveness_lift import SEEDS
+
         assert SEEDS == (0, 1, 2)
 
     def test_default_exhaustiveness_values(self):
         from molmetal.scripts.bench_cisplatin_exhaustiveness_lift import (
-            EXHAUSTIVENESS_PRIMARY, EXHAUSTIVENESS_UPPER,
+            EXHAUSTIVENESS_PRIMARY,
+            EXHAUSTIVENESS_UPPER,
         )
+
         assert EXHAUSTIVENESS_PRIMARY == 32
         assert EXHAUSTIVENESS_UPPER == 64
 
@@ -140,9 +164,9 @@ class TestPerPocketSummaryStructure:
 
     def test_summary_has_10_pockets(self):
         data = json.loads((WF141_DIR / "per_pocket_summary.json").read_text())
-        assert len(data) == 10, (
-            f"expected 10 pockets, got {len(data)}: {list(data.keys())}"
-        )
+        assert (
+            len(data) == 10
+        ), f"expected 10 pockets, got {len(data)}: {list(data.keys())}"
 
     def test_each_pocket_has_3_seeds(self):
         data = json.loads((WF141_DIR / "per_pocket_summary.json").read_text())
@@ -165,9 +189,9 @@ class TestPerPocketSummaryStructure:
     def test_each_pocket_has_delta_vs_ex8(self):
         data = json.loads((WF141_DIR / "per_pocket_summary.json").read_text())
         for pocket_id, payload in data.items():
-            assert "delta_vs_ex8_kcal" in payload, (
-                f"{pocket_id}: missing delta_vs_ex8_kcal"
-            )
+            assert (
+                "delta_vs_ex8_kcal" in payload
+            ), f"{pocket_id}: missing delta_vs_ex8_kcal"
 
 
 # ---------------------------------------------------------------------------
@@ -185,12 +209,12 @@ class TestKcalMolRealNotStub:
                 if kcal is None:
                     # DOCK_FAILED seed — skip but make sure status flags it
                     continue
-                assert isinstance(kcal, (int, float)), (
-                    f"{pocket_id} seed={i}: kcal_min must be number, got {type(kcal)}"
-                )
-                assert math.isfinite(float(kcal)), (
-                    f"{pocket_id} seed={i}: kcal_min not finite: {kcal}"
-                )
+                assert isinstance(
+                    kcal, (int, float)
+                ), f"{pocket_id} seed={i}: kcal_min must be number, got {type(kcal)}"
+                assert math.isfinite(
+                    float(kcal)
+                ), f"{pocket_id} seed={i}: kcal_min not finite: {kcal}"
 
     def test_kcal_min_in_realistic_range(self):
         data = json.loads((WF141_DIR / "per_pocket_summary.json").read_text())
@@ -243,22 +267,22 @@ class TestUpperBoundEx64:
 
     def test_upper_bound_summary_has_2_pockets(self):
         data = json.loads((WF141_DIR / "upper_bound_ex64.json").read_text())
-        assert len(data) == 2, (
-            f"expected 2 upper-bound pockets, got {len(data)}: {list(data.keys())}"
-        )
+        assert (
+            len(data) == 2
+        ), f"expected 2 upper-bound pockets, got {len(data)}: {list(data.keys())}"
 
     def test_ex64_kcal_min_finite_for_all_seeds(self):
         data = json.loads((WF141_DIR / "upper_bound_ex64.json").read_text())
         for pocket_id, payload in data.items():
-            assert pocket_id in self.UPPER, (
-                f"unexpected upper-bound pocket {pocket_id!r}"
-            )
+            assert (
+                pocket_id in self.UPPER
+            ), f"unexpected upper-bound pocket {pocket_id!r}"
             for i, kcal in enumerate(payload["kcal_min_per_seed"]):
                 if kcal is None:
                     continue
-                assert math.isfinite(float(kcal)), (
-                    f"{pocket_id} seed={i} ex=64: non-finite kcal_min"
-                )
+                assert math.isfinite(
+                    float(kcal)
+                ), f"{pocket_id} seed={i} ex=64: non-finite kcal_min"
 
     def test_ex64_kcal_min_negative(self):
         data = json.loads((WF141_DIR / "upper_bound_ex64.json").read_text())
@@ -266,9 +290,9 @@ class TestUpperBoundEx64:
             for i, kcal in enumerate(payload["kcal_min_per_seed"]):
                 if kcal is None:
                     continue
-                assert float(kcal) < 0.0, (
-                    f"{pocket_id} seed={i} ex=64: kcal_min {kcal} not negative"
-                )
+                assert (
+                    float(kcal) < 0.0
+                ), f"{pocket_id} seed={i} ex=64: kcal_min {kcal} not negative"
 
     def test_ex64_kcal_mean_close_to_ex32_kcal_mean(self):
         """Higher exhaustiveness should generally find a pose at
@@ -300,9 +324,18 @@ class TestPerPocketRecordSchema:
     schema + reference the Wf-121 P3 baseline."""
 
     REQUIRED_TOP_KEYS = {
-        "_workflow", "_phase", "_generated_utc", "_engine",
-        "_engine_version", "_smiles", "_n_poses", "_exhaustiveness",
-        "_pocket", "_wf121_baseline_ex8", "_per_seed", "_aggregate",
+        "_workflow",
+        "_phase",
+        "_generated_utc",
+        "_engine",
+        "_engine_version",
+        "_smiles",
+        "_n_poses",
+        "_exhaustiveness",
+        "_pocket",
+        "_wf121_baseline_ex8",
+        "_per_seed",
+        "_aggregate",
     }
 
     def test_required_top_level_keys_present(self):
@@ -335,8 +368,7 @@ class TestPerPocketRecordSchema:
         # Cross-check against the Wf-121 sweep_summary for 1h36.
         wf121_summary = json.loads((WF121_DIR / "sweep_summary.json").read_text())
         wf121_1h36 = next(
-            p for p in wf121_summary["_per_pocket"]
-            if p["pocket_id"] == "1h36"
+            p for p in wf121_summary["_per_pocket"] if p["pocket_id"] == "1h36"
         )
         assert baseline["kcal_mol_mean"] == wf121_1h36["kcal_mol_mean"]
         assert baseline["kcal_mol_per_seed"] == wf121_1h36["kcal_mol_per_seed"]
@@ -395,8 +427,10 @@ class TestSynthesisMarkdown:
 
     def test_synthesis_mentions_no_lift_possibility(self):
         text = self.SYNTHESIS.read_text()
-        assert "NO LIFT" in text or "no lift" in text.lower() or (
-            "regression" in text.lower()
+        assert (
+            "NO LIFT" in text
+            or "no lift" in text.lower()
+            or ("regression" in text.lower())
         ), (
             "synthesis.md must mention that Vina can occasionally "
             "regress at higher exhaustiveness — honest framing"

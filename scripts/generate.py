@@ -91,9 +91,7 @@ def _require_cuda_for_triton(device: torch.device) -> None:
 # ---------------------------------------------------------------------------
 # Checkpoint loading
 # ---------------------------------------------------------------------------
-def load_velocity_net(
-    checkpoint_path: Path, device: torch.device
-):
+def load_velocity_net(checkpoint_path: Path, device: torch.device):
     """Rebuild a ``VelocityNet`` from a checkpoint dict.
 
     The checkpoint layout (see ``scripts/train.py``) is::
@@ -463,7 +461,9 @@ def generate(args: argparse.Namespace) -> None:
 
     # 2. Resolve sampler hyper-parameters ------------------------------------
     flow_cfg = (cfg or {}).get("flow", {}) or {}
-    n_steps = int(args.n_steps if args.n_steps is not None else flow_cfg.get("n_steps", 100))
+    n_steps = int(
+        args.n_steps if args.n_steps is not None else flow_cfg.get("n_steps", 100)
+    )
     method = args.method or flow_cfg.get("method", "euler")
     if method not in ("euler", "rk4"):
         raise ValueError(f"Unsupported method {method!r}; expected 'euler' or 'rk4'.")
@@ -493,6 +493,7 @@ def generate(args: argparse.Namespace) -> None:
     target_index = getattr(args, "target_index", None)
     if target_index is not None:
         from data.qm9 import QM9Dataset as _QM9Dataset
+
         target_name = (
             _QM9Dataset.TARGETS[target_index]
             if 0 <= target_index < len(_QM9Dataset.TARGETS)
@@ -506,10 +507,13 @@ def generate(args: argparse.Namespace) -> None:
     seed_dataset = None
     try:
         from data.mol_dataset import QM9Dataset
+
         seed_dataset = QM9Dataset(split="test", target_index=target_index)
     except Exception as exc:
-        print(f"[generate] WARNING: could not load QM9 test split ({exc}); "
-              "falling back to carbon-only defaults.")
+        print(
+            f"[generate] WARNING: could not load QM9 test split ({exc}); "
+            "falling back to carbon-only defaults."
+        )
 
     x0, atomic_numbers, edge_index, edge_mask, node_mask = build_qm9_inputs(
         args.n_samples, device, seed_dataset=seed_dataset
@@ -530,20 +534,14 @@ def generate(args: argparse.Namespace) -> None:
                 dtype=torch.float32,
                 device=device,
             )
-            target_label = (
-                f" ({target_name})" if target_index is not None else ""
-            )
+            target_label = f" ({target_name})" if target_index is not None else ""
             print(
                 f"[generate] conditioning every sample on "
                 f"cond_value={float(args.cond_value):.6f}{target_label}"
             )
         else:
-            cond = torch.randn(
-                args.n_samples, 1, dtype=torch.float32, device=device
-            )
-            target_label = (
-                f" ({target_name})" if target_index is not None else ""
-            )
+            cond = torch.randn(args.n_samples, 1, dtype=torch.float32, device=device)
+            target_label = f" ({target_name})" if target_index is not None else ""
             print(
                 f"[generate] conditioning on N(0, 1) noise{target_label} "
                 f"(cond min={cond.min().item():.3f}, "
@@ -580,8 +578,12 @@ def generate(args: argparse.Namespace) -> None:
     smiles = positions_to_smiles(x_real, atomic_numbers)
     val = validity(smiles)
     uniq = uniqueness(smiles)
-    print(f"[generate] validity    = {val:.4f}  ({int(round(val * len(smiles)))}/{len(smiles)})")
-    print(f"[generate] uniqueness  = {uniq:.4f}  ({int(round(uniq * len(smiles)))}/{len(smiles)})")
+    print(
+        f"[generate] validity    = {val:.4f}  ({int(round(val * len(smiles)))}/{len(smiles)})"
+    )
+    print(
+        f"[generate] uniqueness  = {uniq:.4f}  ({int(round(uniq * len(smiles)))}/{len(smiles)})"
+    )
 
 
 def main() -> None:

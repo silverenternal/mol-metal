@@ -68,6 +68,7 @@ Usage
     uv run --no-sync python molmetal/scripts/bench_closure_dblock.py \\
         --seeds 5 --output-dir .../seed5
 """
+
 from __future__ import annotations
 
 import argparse
@@ -107,11 +108,38 @@ log = logging.getLogger("wf37_closure_dblock")
 #: :mod:`molmetal.scripts.verify_closure_theorem`.
 DBLOCK_METALS: Tuple[str, ...] = (
     # 3d
-    "Sc", "Ti", "V",  "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
+    "Sc",
+    "Ti",
+    "V",
+    "Cr",
+    "Mn",
+    "Fe",
+    "Co",
+    "Ni",
+    "Cu",
+    "Zn",
     # 4d
-    "Y",  "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
+    "Y",
+    "Zr",
+    "Nb",
+    "Mo",
+    "Tc",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Cd",
     # 5d + La
-    "La", "Hf", "Ta", "W",  "Re", "Os", "Ir", "Pt", "Au", "Hg",
+    "La",
+    "Hf",
+    "Ta",
+    "W",
+    "Re",
+    "Os",
+    "Ir",
+    "Pt",
+    "Au",
+    "Hg",
 )
 
 #: tmQM dataset ships with a ``metal_center`` column (e.g. "Pt", "Ru").
@@ -121,9 +149,7 @@ DEFAULT_N_SAMPLES_PER_METAL: int = 100
 DEFAULT_MAX_DEPTH: int = 1
 DEFAULT_MAX_PRODUCTS: int = 64
 DEFAULT_SEEDS: int = 1
-DEFAULT_OUTPUT_DIR: Path = (
-    _REPO_ROOT / "molmetal" / "reports" / "wf37_closure_dblock"
-)
+DEFAULT_OUTPUT_DIR: Path = _REPO_ROOT / "molmetal" / "reports" / "wf37_closure_dblock"
 DEFAULT_TMQM_CSV: Path = _REPO_ROOT / "molmetal" / "data" / "tmqm_dblock_subset.csv"
 
 #: Partner terms — same 7-tile set as :mod:`verify_closure_theorem`.
@@ -131,19 +157,27 @@ DEFAULT_TMQM_CSV: Path = _REPO_ROOT / "molmetal" / "data" / "tmqm_dblock_subset.
 #: AmideCoupling) plus a generic amine and benzoic acid for stress
 #: coverage.
 PARTNER_SMILE_LIST: List[str] = [
-    "C#CCN",                  # propargylamine  — alkyne + amine
-    "CCN=[N+]=[N-]",          # ethyl azide     — CuAAC
-    "C#CC",                   # propyne         — CuAAC
-    "CS",                     # methanethiol    — ThiolEne
-    "C=CC",                   # propene         — ThiolEne
-    "OC(=O)c1ccccc1",         # benzoic acid    — AmideCoupling
-    "NCC",                    # ethylamine      — AmideCoupling
+    "C#CCN",  # propargylamine  — alkyne + amine
+    "CCN=[N+]=[N-]",  # ethyl azide     — CuAAC
+    "C#CC",  # propyne         — CuAAC
+    "CS",  # methanethiol    — ThiolEne
+    "C=CC",  # propene         — ThiolEne
+    "OC(=O)c1ccccc1",  # benzoic acid    — AmideCoupling
+    "NCC",  # ethylamine      — AmideCoupling
 ]
 
 #: 9 task-spec metals (subset of d-block) — convenience alias for
 #: ``--metals task_spec``.
 TASK_SPEC_METALS: Tuple[str, ...] = (
-    "Pt", "Ru", "Ir", "Rh", "Re", "Os", "Au", "Pd", "Ag",
+    "Pt",
+    "Ru",
+    "Ir",
+    "Rh",
+    "Re",
+    "Os",
+    "Au",
+    "Pd",
+    "Ag",
 )
 
 
@@ -172,12 +206,14 @@ def _load_click_rules() -> List[Any]:
         Suzuki,
         ThiolEne,
     )
+
     return [CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling]
 
 
 def _load_partner_terms() -> List[Any]:
     """Build partner terms from :data:`PARTNER_SMILE_LIST`."""
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
     out: List[Any] = []
     for smi in PARTNER_SMILE_LIST:
         try:
@@ -219,13 +255,16 @@ def _load_metal_samples(
         if column not in fields:
             log.error(
                 "Column %r missing from %s; fields=%r",
-                column, csv_path, fields,
+                column,
+                csv_path,
+                fields,
             )
             return out
         if "smiles" not in fields:
             log.error(
                 "Column 'smiles' missing from %s; fields=%r",
-                csv_path, fields,
+                csv_path,
+                fields,
             )
             return out
         for row in reader:
@@ -292,11 +331,36 @@ def _is_metal_coordinated(term: Any, metal_z: int) -> bool:
 # imported from combinators) so this script stays decoupled from any
 # future refactor of the METAL_ATOMS dict.
 METAL_Z: Dict[str, int] = {
-    "Sc": 21, "Ti": 22, "V":  23, "Cr": 24, "Mn": 25, "Fe": 26,
-    "Co": 27, "Ni": 28, "Cu": 29, "Zn": 30, "Y":  39, "Zr": 40,
-    "Nb": 41, "Mo": 42, "Tc": 43, "Ru": 44, "Rh": 45, "Pd": 46,
-    "Ag": 47, "Cd": 48, "La": 57, "Hf": 72, "Ta": 73, "W":  74,
-    "Re": 75, "Os": 76, "Ir": 77, "Pt": 78, "Au": 79, "Hg": 80,
+    "Sc": 21,
+    "Ti": 22,
+    "V": 23,
+    "Cr": 24,
+    "Mn": 25,
+    "Fe": 26,
+    "Co": 27,
+    "Ni": 28,
+    "Cu": 29,
+    "Zn": 30,
+    "Y": 39,
+    "Zr": 40,
+    "Nb": 41,
+    "Mo": 42,
+    "Tc": 43,
+    "Ru": 44,
+    "Rh": 45,
+    "Pd": 46,
+    "Ag": 47,
+    "Cd": 48,
+    "La": 57,
+    "Hf": 72,
+    "Ta": 73,
+    "W": 74,
+    "Re": 75,
+    "Os": 76,
+    "Ir": 77,
+    "Pt": 78,
+    "Au": 79,
+    "Hg": 80,
 }
 
 
@@ -372,9 +436,7 @@ def _benchmark_one(
         # ``well_typed_rate`` is not yet populated by closure.py — fall
         # back to 1.0 (every product was checked at emission) so the
         # field is non-NaN in the JSON.
-        record["well_typed_rate"] = float(
-            last_result.get("well_typed_rate", 1.0)
-        )
+        record["well_typed_rate"] = float(last_result.get("well_typed_rate", 1.0))
     except Exception as exc:
         record["status"] = "error"
         record["parse_error"] = f"{type(exc).__name__}: {exc}"[:240]
@@ -453,9 +515,7 @@ def _aggregate_per_metal(records: List[Dict[str, Any]]) -> Dict[str, float]:
         mean_beta_depth = float(statistics.fmean(depths))
         mean_n_products = float(statistics.fmean(prods))
         mean_wall = float(statistics.fmean(walls))
-        std_wall = (
-            float(statistics.stdev(walls)) if len(walls) >= 2 else 0.0
-        )
+        std_wall = float(statistics.stdev(walls)) if len(walls) >= 2 else 0.0
         median_wall = float(statistics.median(walls))
         peak_mem = float(max(mems)) if mems else 0.0
         total_wall = float(sum(walls))
@@ -481,9 +541,7 @@ def _aggregate_per_metal(records: List[Dict[str, Any]]) -> Dict[str, float]:
         "total_wall_time": total_wall,
         "n_error": int(n_err),
         "n_metal_coordinated": int(n_metal),
-        "metal_coordination_rate": float(
-            (n_metal / n) if n else 0.0
-        ),
+        "metal_coordination_rate": float((n_metal / n) if n else 0.0),
     }
 
 
@@ -539,8 +597,11 @@ def run_closure_dblock_benchmark(
     log.info(
         "[wf37_closure_dblock] start: dataset=%s, n_metals=%d, "
         "n_per_metal=%d, max_depth=%d, seeds=%d",
-        dataset, len(metals), int(n_samples_per_metal),
-        int(max_depth), int(seeds),
+        dataset,
+        len(metals),
+        int(n_samples_per_metal),
+        int(max_depth),
+        int(seeds),
     )
 
     csv_path = Path(tmqm_csv)
@@ -564,9 +625,7 @@ def run_closure_dblock_benchmark(
 
     click_rules = _load_click_rules()
     partner_terms = _load_partner_terms()
-    click_rule_names = [
-        getattr(r, "name", type(r).__name__) for r in click_rules
-    ]
+    click_rule_names = [getattr(r, "name", type(r).__name__) for r in click_rules]
 
     t_total_0 = time.perf_counter()
     per_metal_records: Dict[str, List[Dict[str, Any]]] = {}
@@ -575,12 +634,17 @@ def run_closure_dblock_benchmark(
 
     for metal in metals:
         smis = _load_metal_samples(
-            csv_path, str(metal), int(n_samples_per_metal), dataset=dataset,
+            csv_path,
+            str(metal),
+            int(n_samples_per_metal),
+            dataset=dataset,
         )
         records: List[Dict[str, Any]] = []
         for i, smi in enumerate(smis):
             rec = _benchmark_one(
-                smi, i, str(metal),
+                smi,
+                i,
+                str(metal),
                 click_rules=click_rules,
                 partner_terms=partner_terms,
                 max_depth=int(max_depth),
@@ -592,10 +656,12 @@ def run_closure_dblock_benchmark(
         per_metal_aggregate[metal] = _aggregate_per_metal(records)
         agg = per_metal_aggregate[metal]
         log.info(
-            "[wf37_closure_dblock] %s: n=%d closure_ok=%d rate=%.4f "
-            "wall=%.3fs",
-            metal, agg["n_samples"], agg["n_closure_ok"],
-            agg["closure_reachability_rate"], agg["total_wall_time"],
+            "[wf37_closure_dblock] %s: n=%d closure_ok=%d rate=%.4f " "wall=%.3fs",
+            metal,
+            agg["n_samples"],
+            agg["n_closure_ok"],
+            agg["closure_reachability_rate"],
+            agg["total_wall_time"],
         )
 
     # Overall aggregate (across all metals).
@@ -614,7 +680,16 @@ def run_closure_dblock_benchmark(
     block_3d = ("Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn")
     block_4d = ("Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd")
     block_5d_la = (
-        "La", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg",
+        "La",
+        "Hf",
+        "Ta",
+        "W",
+        "Re",
+        "Os",
+        "Ir",
+        "Pt",
+        "Au",
+        "Hg",
     )
     block_aggregate: Dict[str, Dict[str, float]] = {}
     for block_name, block_metals in (
@@ -629,6 +704,7 @@ def run_closure_dblock_benchmark(
 
     try:
         import torch  # local; cheap
+
         torch_ver = torch.__version__
     except Exception:
         torch_ver = "n/a"
@@ -644,9 +720,9 @@ def run_closure_dblock_benchmark(
         "csv_path": str(csv_path),
         "metals": list(metals),
         "n_samples_per_metal": int(n_samples_per_metal),
-        "n_samples_total": int(sum(
-            per_metal_aggregate[m]["n_samples"] for m in metals
-        )),
+        "n_samples_total": int(
+            sum(per_metal_aggregate[m]["n_samples"] for m in metals)
+        ),
         "max_depth": int(max_depth),
         "max_products": int(max_products),
         "seeds": int(seeds),
@@ -701,6 +777,7 @@ def save_dblock_benchmark(
     def _coerce(o: Any) -> Any:
         try:
             import numpy as _np
+
             if isinstance(o, (_np.floating, _np.integer)):
                 return o.item()
             if isinstance(o, _np.ndarray):
@@ -717,11 +794,20 @@ def save_dblock_benchmark(
     csv_path = output_dir / "per_metal.csv"
     with csv_path.open("w", newline="") as fh:
         fields = [
-            "metal", "n_samples", "n_closure_ok", "closure_reachability_rate",
-            "metal_coordination_rate", "n_metal_coordinated",
-            "mean_beta_depth", "mean_n_products", "mean_wall_time",
-            "std_wall_time", "median_wall_time", "peak_memory_mb",
-            "total_wall_time", "n_error",
+            "metal",
+            "n_samples",
+            "n_closure_ok",
+            "closure_reachability_rate",
+            "metal_coordination_rate",
+            "n_metal_coordinated",
+            "mean_beta_depth",
+            "mean_n_products",
+            "mean_wall_time",
+            "std_wall_time",
+            "median_wall_time",
+            "peak_memory_mb",
+            "total_wall_time",
+            "n_error",
         ]
         writer = csv.DictWriter(fh, fieldnames=fields)
         writer.writeheader()
@@ -734,11 +820,21 @@ def save_dblock_benchmark(
     per_sample_csv_path = output_dir / "per_sample.csv"
     with per_sample_csv_path.open("w", newline="") as fh:
         fields = [
-            "idx", "metal", "smiles", "status", "closure_ok",
-            "n_visited", "n_products", "max_depth_seen",
-            "well_typed_rate", "n_pt_coordinated",
-            "n_metal_coordinated", "n_atoms_start",
-            "wall_time_s", "memory_mb", "depth",
+            "idx",
+            "metal",
+            "smiles",
+            "status",
+            "closure_ok",
+            "n_visited",
+            "n_products",
+            "max_depth_seen",
+            "well_typed_rate",
+            "n_pt_coordinated",
+            "n_metal_coordinated",
+            "n_atoms_start",
+            "wall_time_s",
+            "memory_mb",
+            "depth",
         ]
         writer = csv.DictWriter(fh, fieldnames=fields)
         writer.writeheader()
@@ -757,9 +853,7 @@ def save_dblock_benchmark(
     }
 
 
-def _write_markdown(
-    payload: Dict[str, Any], output_dir: Path
-) -> None:
+def _write_markdown(payload: Dict[str, Any], output_dir: Path) -> None:
     """Write the human-readable ``per_metal_bench.md`` summary."""
     md_path = output_dir / "per_metal_bench.md"
     metals = payload.get("metals", [])
@@ -788,9 +882,7 @@ def _write_markdown(
     lines.append(f"**N samples per metal**: {payload['n_samples_per_metal']}  ")
     lines.append(f"**N samples total**: {overall_n}  ")
     lines.append(f"**Max depth**: {payload['max_depth']}  ")
-    lines.append(
-        f"**Click rules**: {', '.join(payload['click_rule_names'])}  "
-    )
+    lines.append(f"**Click rules**: {', '.join(payload['click_rule_names'])}  ")
     lines.append(f"**Partner terms**: {payload['n_partners']}  ")
     lines.append(f"**Seeds**: {payload['seeds']}  ")
     lines.append(f"**Total wall**: {total_wall:.2f} s  ")
@@ -802,34 +894,23 @@ def _write_markdown(
     lines.append(f"| N samples | {overall_n} |")
     lines.append(f"| N closure_ok | {overall_ok} |")
     lines.append(f"| closure_reachability_rate | {overall_rate:.4f} |")
+    lines.append(f"| mean_beta_depth | {float(agg.get('mean_beta_depth', 0.0)):.4f} |")
+    lines.append(f"| mean_n_products | {float(agg.get('mean_n_products', 0.0)):.4f} |")
     lines.append(
-        f"| mean_beta_depth | {float(agg.get('mean_beta_depth', 0.0)):.4f} |"
+        f"| mean_wall_time (s) | " f"{float(agg.get('mean_wall_time', 0.0)):.6f} |"
     )
     lines.append(
-        f"| mean_n_products | {float(agg.get('mean_n_products', 0.0)):.4f} |"
+        f"| std_wall_time (s) | " f"{float(agg.get('std_wall_time', 0.0)):.6f} |"
     )
     lines.append(
-        f"| mean_wall_time (s) | "
-        f"{float(agg.get('mean_wall_time', 0.0)):.6f} |"
-    )
-    lines.append(
-        f"| std_wall_time (s) | "
-        f"{float(agg.get('std_wall_time', 0.0)):.6f} |"
-    )
-    lines.append(
-        f"| peak_memory_mb | "
-        f"{float(agg.get('peak_memory_mb', 0.0)):.4f} |"
+        f"| peak_memory_mb | " f"{float(agg.get('peak_memory_mb', 0.0)):.4f} |"
     )
     lines.append(f"| N error | {int(agg.get('n_error', 0))} |")
     lines.append("")
     lines.append("## Per-periodic-block aggregate")
     lines.append("")
-    lines.append(
-        "| Block | N | closure_ok | reachability_rate | mean_wall_s |"
-    )
-    lines.append(
-        "|-------|---|------------|-------------------|-------------|"
-    )
+    lines.append("| Block | N | closure_ok | reachability_rate | mean_wall_s |")
+    lines.append("|-------|---|------------|-------------------|-------------|")
     for block in ("3d", "4d", "5d_La"):
         b = payload.get("per_block", {}).get(block, {})
         if not b:
@@ -898,7 +979,8 @@ def _build_argparser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--n-samples-per-metal", type=int,
+        "--n-samples-per-metal",
+        type=int,
         default=DEFAULT_N_SAMPLES_PER_METAL,
         help="Samples per metal (default 100).",
     )
@@ -915,31 +997,44 @@ def _build_argparser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--tmqm-csv", type=Path, default=DEFAULT_TMQM_CSV,
+        "--tmqm-csv",
+        type=Path,
+        default=DEFAULT_TMQM_CSV,
         help="Path to tmQM d-block subset CSV.",
     )
     p.add_argument(
-        "--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR,
+        "--output-dir",
+        type=Path,
+        default=DEFAULT_OUTPUT_DIR,
         help="Output directory for the JSON + CSV + Markdown reports.",
     )
     p.add_argument(
-        "--max-depth", type=int, default=DEFAULT_MAX_DEPTH,
+        "--max-depth",
+        type=int,
+        default=DEFAULT_MAX_DEPTH,
         help="Closure BFS max depth (default 1).",
     )
     p.add_argument(
-        "--max-products", type=int, default=DEFAULT_MAX_PRODUCTS,
+        "--max-products",
+        type=int,
+        default=DEFAULT_MAX_PRODUCTS,
         help="ProductiveSpace BFS safety cap (default 64).",
     )
     p.add_argument(
-        "--seeds", type=int, default=DEFAULT_SEEDS,
+        "--seeds",
+        type=int,
+        default=DEFAULT_SEEDS,
         help="Number of independent seeds (default 1; placeholder).",
     )
     p.add_argument(
-        "--dataset", choices=("tmqm",), default=DEFAULT_DATASET,
+        "--dataset",
+        choices=("tmqm",),
+        default=DEFAULT_DATASET,
         help="Dataset to load (default tmqm).",
     )
     p.add_argument(
-        "--log-level", default="INFO",
+        "--log-level",
+        default="INFO",
         choices=("DEBUG", "INFO", "WARNING", "ERROR"),
     )
     return p
@@ -955,7 +1050,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     metals_arg = list(args.metals)
     # Allow "all" / "all_dblock" alias for the 30-metal set.
     if len(metals_arg) == 1 and metals_arg[0].lower() in (
-        "all_dblock", "all", "30",
+        "all_dblock",
+        "all",
+        "30",
     ):
         metals_arg = list(DBLOCK_METALS)
     elif len(metals_arg) == 1 and metals_arg[0].lower() == "task_spec":
@@ -967,7 +1064,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if not metals:
         log.error(
             "No known metals in --metals %s; valid: %s",
-            metals_arg, sorted(known),
+            metals_arg,
+            sorted(known),
         )
         return 2
 
@@ -991,9 +1089,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     log.info(
         "[wf37_closure_dblock] DONE: n_metals=%d n=%d closure_ok=%d "
         "rate=%.4f mean_wall=%.6fs peak_mem=%.2fMB total_wall=%.2fs",
-        len(metals), agg["n_samples"], agg["n_closure_ok"],
-        agg["closure_reachability_rate"], agg["mean_wall_time"],
-        agg["peak_memory_mb"], payload["total_wall_time_s"],
+        len(metals),
+        agg["n_samples"],
+        agg["n_closure_ok"],
+        agg["closure_reachability_rate"],
+        agg["mean_wall_time"],
+        agg["peak_memory_mb"],
+        payload["total_wall_time_s"],
     )
     print(
         f"[wf37_closure_dblock] n_metals={len(metals)} "

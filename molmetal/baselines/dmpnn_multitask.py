@@ -66,6 +66,7 @@ from molmetal.data.splits import (
 RDLogger = None  # silence linter
 try:
     from rdkit import RDLogger as _RD
+
     RDLogger = _RD
     _RD.DisableLog("rdApp.*")
 except Exception:
@@ -148,8 +149,8 @@ class MultiTaskReadout(nn.Module):
             active_logits: (B, 2) binary activity logits.
         """
         shared = self.shared(h_pool)
-        pic50 = self.reg_head(shared).squeeze(-1)         # (B,)
-        cls = self.cls_head(shared)                        # (B, 2)
+        pic50 = self.reg_head(shared).squeeze(-1)  # (B,)
+        cls = self.cls_head(shared)  # (B, 2)
         return pic50, cls
 
 
@@ -222,8 +223,8 @@ class DMPNNMultiTaskModel(nn.Module):
         self,
         atom_f: torch.Tensor,  # (V, A)
         bond_f: torch.Tensor,  # (E, B)
-        e_src: torch.Tensor,   # (E,)
-        e_dst: torch.Tensor,   # (E,)
+        e_src: torch.Tensor,  # (E,)
+        e_dst: torch.Tensor,  # (E,)
     ) -> torch.Tensor:
         """Forward pass for a single molecule. Returns 2H-dim pooled vector."""
         V = atom_f.size(0)
@@ -246,15 +247,15 @@ class DMPNNMultiTaskModel(nn.Module):
         outgoing = torch.zeros(V, self.hidden, device=device)
         outgoing.index_add_(0, e_src, h_e)
         h_comb = torch.cat([h_v, outgoing], dim=-1)  # (V, 2H)
-        pooled = h_comb.sum(dim=0)                    # (2H,)
+        pooled = h_comb.sum(dim=0)  # (2H,)
         return pooled
 
     def forward(
         self,
         atom_feats: torch.Tensor,  # (B, V, A)
         bond_feats: torch.Tensor,  # (B, E, B_dim)
-        edge_src: torch.Tensor,    # (B, E)
-        edge_dst: torch.Tensor,    # (B, E)
+        edge_src: torch.Tensor,  # (B, E)
+        edge_dst: torch.Tensor,  # (B, E)
         return_pool: bool = False,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Per-molecule forward (unrolled). Returns (pic50, active_logits).
@@ -270,7 +271,7 @@ class DMPNNMultiTaskModel(nn.Module):
         pooled_list: List[torch.Tensor] = []
         for b in range(B):
             V = atom_feats.size(1)
-            valid_edges = (bond_feats[b].abs().sum(dim=-1) > 0)
+            valid_edges = bond_feats[b].abs().sum(dim=-1) > 0
             E = valid_edges.sum().item()
             if E == 0 or V == 0:
                 # Empty/invalid: emit zero vector so both heads default to 0
@@ -358,6 +359,7 @@ class MultiTaskLoss(nn.Module):
             from molmetal.molmetal_lam.sbdd_env.uncertainty_loss import (
                 UncertaintyWeightedMultiTaskLoss,
             )
+
             self._kendall = UncertaintyWeightedMultiTaskLoss(num_tasks=2).to(device)
         return self._kendall
 
@@ -368,10 +370,10 @@ class MultiTaskLoss(nn.Module):
 
     def forward(
         self,
-        pic50_pred: torch.Tensor,     # (B,) regression logits
+        pic50_pred: torch.Tensor,  # (B,) regression logits
         active_logits: torch.Tensor,  # (B, 2) classification logits
-        pic50_target: torch.Tensor,   # (B,) continuous pIC50 label
-        active_target: torch.Tensor,   # (B,) long binary label
+        pic50_target: torch.Tensor,  # (B,) continuous pIC50 label
+        active_target: torch.Tensor,  # (B,) long binary label
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         if self._pos_weight is not None:
             # Wf-187 — take the positive-class logit (column 1) and
@@ -467,7 +469,7 @@ def train_epoch_mt(
     np.random.shuffle(indices)
 
     for start in range(0, len(indices), batch_size):
-        batch_idx = indices[start:start + batch_size]
+        batch_idx = indices[start : start + batch_size]
         batch_graphs = [graphs[i] for i in batch_idx]
         batch_pic50 = pic50_labels[batch_idx]
         batch_active = active_labels[batch_idx]
@@ -612,7 +614,7 @@ def train_epoch_mt_dann(
     np.random.shuffle(indices)
 
     for start in range(0, len(indices), batch_size):
-        batch_idx = indices[start:start + batch_size]
+        batch_idx = indices[start : start + batch_size]
         batch_graphs = [graphs[i] for i in batch_idx]
         batch_pic50 = pic50_labels[batch_idx]
         batch_active = active_labels[batch_idx]
@@ -650,9 +652,7 @@ def train_epoch_mt_dann(
         )
 
         # 2) Multi-task (BCE + MSE) loss
-        loss_task, lc, lr = criterion(
-            pic50_pred, active_logits, y_pic50_t, y_active_t
-        )
+        loss_task, lc, lr = criterion(pic50_pred, active_logits, y_pic50_t, y_active_t)
 
         # 3) GRL: forward = identity, backward = -grl_alpha * dL/dh
         rev = ReverseLayerF.apply(h_pool, float(grl_alpha))
@@ -711,9 +711,9 @@ def predict_mt(
     all_pic50 = []
 
     for start in range(0, len(graphs), batch_size):
-        batch_graphs = graphs[start:start + batch_size]
-        batch_pic50 = pic50_labels[start:start + batch_size]
-        batch_active = active_labels[start:start + batch_size]
+        batch_graphs = graphs[start : start + batch_size]
+        batch_pic50 = pic50_labels[start : start + batch_size]
+        batch_active = active_labels[start : start + batch_size]
 
         valid = [
             (g, p, a)
@@ -778,16 +778,26 @@ def regression_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, floa
     y_true = np.asarray(y_true, dtype=float)
     y_pred = np.asarray(y_pred, dtype=float)
     if y_true.size == 0:
-        return {"mae": float("nan"), "rmse": float("nan"), "pearson": float("nan"), "n": 0}
+        return {
+            "mae": float("nan"),
+            "rmse": float("nan"),
+            "pearson": float("nan"),
+            "n": 0,
+        }
     mask = ~np.isnan(y_true) & ~np.isnan(y_pred)
     yt = y_true[mask]
     yp = y_pred[mask]
     n = int(yt.size)
     if n == 0:
-        return {"mae": float("nan"), "rmse": float("nan"), "pearson": float("nan"), "n": 0}
+        return {
+            "mae": float("nan"),
+            "rmse": float("nan"),
+            "pearson": float("nan"),
+            "n": 0,
+        }
     diff = yt - yp
     mae = float(np.mean(np.abs(diff)))
-    rmse = float(np.sqrt(np.mean(diff ** 2)))
+    rmse = float(np.sqrt(np.mean(diff**2)))
     if yt.std() > 0 and yp.std() > 0:
         pearson = float(np.corrcoef(yt, yp)[0, 1])
     else:
@@ -903,8 +913,10 @@ class DMPNNMultiTaskBaseline:
             idx, y, test_size=0.2, stratify=y, random_state=self.seed
         )
         idx_val, idx_test, _, _ = train_test_split(
-            idx_tmp, np.asarray(y[idx_tmp]).astype(int),
-            test_size=0.5, stratify=np.asarray(y[idx_tmp]).astype(int),
+            idx_tmp,
+            np.asarray(y[idx_tmp]).astype(int),
+            test_size=0.5,
+            stratify=np.asarray(y[idx_tmp]).astype(int),
             random_state=self.seed,
         )
         return idx_train, idx_val, idx_test
@@ -955,15 +967,12 @@ class DMPNNMultiTaskBaseline:
                 "constructed yet."
             )
         if self.ckpt_dir is None:
-            raise RuntimeError(
-                "save_checkpoint() called but ckpt_dir is not set."
-            )
+            raise RuntimeError("save_checkpoint() called but ckpt_dir is not set.")
         self.ckpt_dir.mkdir(parents=True, exist_ok=True)
         path = self._ckpt_path(epoch)
         payload = {
             "model_state_dict": {
-                k: v.detach().cpu().clone()
-                for k, v in self.model.state_dict().items()
+                k: v.detach().cpu().clone() for k, v in self.model.state_dict().items()
             },
             "epoch": int(epoch),
             "best_metric": float(best_metric),
@@ -975,9 +984,9 @@ class DMPNNMultiTaskBaseline:
         }
         if optimizer is not None:
             payload["optimizer_state_dict"] = {
-                k: v if isinstance(v, (int, float, bool, str)) else (
-                    v.detach().cpu().clone() if hasattr(v, "detach") else v
-                )
+                k: v
+                if isinstance(v, (int, float, bool, str))
+                else (v.detach().cpu().clone() if hasattr(v, "detach") else v)
                 for k, v in optimizer.state_dict().items()
             }
         torch.save(payload, path)
@@ -1086,7 +1095,9 @@ class DMPNNMultiTaskBaseline:
             domain_head_dropout=self.domain_head_dropout,
         ).to(self.device)
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
-        criterion = MultiTaskLoss(alpha=self.alpha, use_kendall_loss=self.use_kendall_loss)
+        criterion = MultiTaskLoss(
+            alpha=self.alpha, use_kendall_loss=self.use_kendall_loss
+        )
 
         # Choose the per-epoch train fn depending on whether DANN is on.
         # ``self.model.domain_head`` is set by ``DMPNNMultiTaskModel.__init__``
@@ -1171,24 +1182,38 @@ class DMPNNMultiTaskBaseline:
             t0 = time.time()
             if self.use_dann:
                 train_loss, cls_loss, reg_loss, domain_loss = train_fn(
-                    self.model, optimizer, criterion,
-                    graphs_train, pic50_train, active_train,
+                    self.model,
+                    optimizer,
+                    criterion,
+                    graphs_train,
+                    pic50_train,
+                    active_train,
                     domain_head=domain_head,
                     lambda_grl=self.lambda_grl,
                     domain_id=self.domain_id,
                     grl_alpha=self.grl_alpha,
-                    batch_size=self.batch_size, device=self.device,
+                    batch_size=self.batch_size,
+                    device=self.device,
                 )
             else:
                 train_loss, cls_loss, reg_loss = train_fn(
-                    self.model, optimizer, criterion,
-                    graphs_train, pic50_train, active_train,
-                    batch_size=self.batch_size, device=self.device,
+                    self.model,
+                    optimizer,
+                    criterion,
+                    graphs_train,
+                    pic50_train,
+                    active_train,
+                    batch_size=self.batch_size,
+                    device=self.device,
                 )
                 domain_loss = 0.0
             y_true_v, y_score_v, pic50_pred_v = predict_mt(
-                self.model, graphs_val, pic50_val, active_val,
-                batch_size=self.batch_size, device=self.device,
+                self.model,
+                graphs_val,
+                pic50_val,
+                active_val,
+                batch_size=self.batch_size,
+                device=self.device,
             )
             val_metrics = compute_metrics(y_true_v, y_score_v)
             val_pic50 = regression_metrics(pic50_val, pic50_pred_v)
@@ -1282,8 +1307,12 @@ class DMPNNMultiTaskBaseline:
         active_dummy = np.zeros(len(idx), dtype=int)
         pic50_dummy = np.zeros(len(idx), dtype=np.float32)
         _, score, pic50 = predict_mt(
-            self.model, graphs, pic50_dummy, active_dummy,
-            batch_size=self.batch_size, device=self.device,
+            self.model,
+            graphs,
+            pic50_dummy,
+            active_dummy,
+            batch_size=self.batch_size,
+            device=self.device,
         )
         return score, pic50
 
@@ -1306,8 +1335,13 @@ class DMPNNMultiTaskBaseline:
         self._test_idx = idx_test
 
         self.fit(
-            smiles, active_all, pic50_all, cell_lines,
-            idx_train, idx_val, verbose=verbose,
+            smiles,
+            active_all,
+            pic50_all,
+            cell_lines,
+            idx_train,
+            idx_val,
+            verbose=verbose,
         )
 
         # Test-set eval
@@ -1354,7 +1388,9 @@ class DMPNNMultiTaskBaseline:
 # ---------------------------------------------------------------------------
 # Convenience: train a quick smoke model
 # ---------------------------------------------------------------------------
-def quick_smoke_mt(metal: str = "Ru", max_rows: int = 200, alpha: float = MT_ALPHA) -> DMPNNMultiTaskResult:
+def quick_smoke_mt(
+    metal: str = "Ru", max_rows: int = 200, alpha: float = MT_ALPHA
+) -> DMPNNMultiTaskResult:
     """Smoke-test runner for the test suite."""
     flt = CytotoxFilter(
         time_threshold=24.0,

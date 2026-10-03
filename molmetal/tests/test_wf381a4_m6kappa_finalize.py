@@ -33,13 +33,21 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # Canonical TODO-206 source brief (created by Wf-381-A4)
-TODO_206_PENDING = REPO_ROOT / "TODO" / "pending" / "206_m6_kappa_metric_redefinition.md"
+TODO_206_PENDING = (
+    REPO_ROOT / "TODO" / "pending" / "206_m6_kappa_metric_redefinition.md"
+)
 
 # 4 m6_kappa reframe docs (verified SHIPPED at Wf-381-A4 start)
 PAPER_S6 = REPO_ROOT / "docs" / "PAPER_S6_M6_KAPPA_REFRAME.md"  # Wf-375-A4 (8 sections)
-SECTION_3 = REPO_ROOT / "docs" / "SECTION_3_METRIC_REFRAME_TEMPLATE.md"  # Wf-376-A4 (7 sections)
-REDESIGN = REPO_ROOT / "docs" / "M6_KAPPA_REDESIGN_PROPOSAL.md"  # Wf-377-A1 (8 sections)
-FINAL_VERDICT = REPO_ROOT / "docs" / "M6_KAPPA_FINAL_VERDICT.md"  # Wf-365-A3 (9 sections)
+SECTION_3 = (
+    REPO_ROOT / "docs" / "SECTION_3_METRIC_REFRAME_TEMPLATE.md"
+)  # Wf-376-A4 (7 sections)
+REDESIGN = (
+    REPO_ROOT / "docs" / "M6_KAPPA_REDESIGN_PROPOSAL.md"
+)  # Wf-377-A1 (8 sections)
+FINAL_VERDICT = (
+    REPO_ROOT / "docs" / "M6_KAPPA_FINAL_VERDICT.md"
+)  # Wf-365-A3 (9 sections)
 
 # Canonical section headers per doc (per task brief §1 verification step)
 EXPECTED_SECTIONS = {
@@ -110,16 +118,21 @@ class TestW381A4M6KappaFinalize(unittest.TestCase):
         # Must be non-trivial (>= 5000 bytes per AGENTS.md §5.2 documentation convention)
         size = TODO_206_PENDING.stat().st_size
         self.assertGreater(
-            size, 5000,
+            size,
+            5000,
             f"TODO-206 pending file too small: {size} bytes (expect >= 5000)",
         )
 
     def test_pending_file_sections(self):
         """Pending source brief has 5 expected sections."""
         text = TODO_206_PENDING.read_text(encoding="utf-8")
-        for sec in ["## §0 TL;DR", "## §1 Per-doc status",
-                    "## §2 Gaps filled", "## §3 Final verdict",
-                    "## §4 Cross-references"]:
+        for sec in [
+            "## §0 TL;DR",
+            "## §1 Per-doc status",
+            "## §2 Gaps filled",
+            "## §3 Final verdict",
+            "## §4 Cross-references",
+        ]:
             self.assertIn(sec, text, f"Pending file missing section: {sec}")
 
     def test_pending_file_user_voice_relay(self):
@@ -131,7 +144,10 @@ class TestW381A4M6KappaFinalize(unittest.TestCase):
         self.assertIn("METRIC_LIFT_STRATEGY", text)
         # Must contain at least one of the 4 SHIPPED workflow references
         self.assertTrue(
-            any(wf in text for wf in ["Wf-375-A4", "Wf-376-A4", "Wf-377-A1", "Wf-365-A3"]),
+            any(
+                wf in text
+                for wf in ["Wf-375-A4", "Wf-376-A4", "Wf-377-A1", "Wf-365-A3"]
+            ),
             "Pending file missing workflow cross-references",
         )
 
@@ -149,7 +165,8 @@ class TestW381A4M6KappaFinalize(unittest.TestCase):
             )
             # Must be non-trivial
             self.assertGreater(
-                path.stat().st_size, 5000,
+                path.stat().st_size,
+                5000,
                 f"{label} too small: {path.stat().st_size} bytes (expect >= 5000)",
             )
 
@@ -179,16 +196,19 @@ class TestW381A4M6KappaFinalize(unittest.TestCase):
 
     def test_8_path_inventory_aggregates(self):
         """8 unique Wf paths present across all 4 docs + pending source brief."""
-        all_text = "\n".join([
-            PAPER_S6.read_text(encoding="utf-8"),
-            SECTION_3.read_text(encoding="utf-8"),
-            REDESIGN.read_text(encoding="utf-8"),
-            FINAL_VERDICT.read_text(encoding="utf-8"),
-            TODO_206_PENDING.read_text(encoding="utf-8"),
-        ])
+        all_text = "\n".join(
+            [
+                PAPER_S6.read_text(encoding="utf-8"),
+                SECTION_3.read_text(encoding="utf-8"),
+                REDESIGN.read_text(encoding="utf-8"),
+                FINAL_VERDICT.read_text(encoding="utf-8"),
+                TODO_206_PENDING.read_text(encoding="utf-8"),
+            ]
+        )
         for wf in EIGHT_PATH_WORKFLOWS:
             self.assertIn(
-                wf, all_text,
+                wf,
+                all_text,
                 f"8-path inventory missing: {wf} across all 4 docs + pending brief",
             )
 
@@ -217,13 +237,15 @@ class TestW381A4M6KappaFinalize(unittest.TestCase):
 
     def test_section_3_lineup_invariant(self):
         """Each doc contains DROP/demote m6_kappa recommendation + 4-metric headline."""
-        all_text = "\n".join([
-            PAPER_S6.read_text(encoding="utf-8"),
-            SECTION_3.read_text(encoding="utf-8"),
-            REDESIGN.read_text(encoding="utf-8"),
-            FINAL_VERDICT.read_text(encoding="utf-8"),
-            TODO_206_PENDING.read_text(encoding="utf-8"),
-        ])
+        all_text = "\n".join(
+            [
+                PAPER_S6.read_text(encoding="utf-8"),
+                SECTION_3.read_text(encoding="utf-8"),
+                REDESIGN.read_text(encoding="utf-8"),
+                FINAL_VERDICT.read_text(encoding="utf-8"),
+                TODO_206_PENDING.read_text(encoding="utf-8"),
+            ]
+        )
         # DROP/demote m6_kappa
         self.assertTrue(
             "DROP" in all_text or "drop" in all_text or "demote" in all_text.lower(),
@@ -232,7 +254,8 @@ class TestW381A4M6KappaFinalize(unittest.TestCase):
         # 4-metric headline references
         for metric in ["m1_auc", "m2", "m3", "m15"]:
             self.assertIn(
-                metric, all_text,
+                metric,
+                all_text,
                 f"Aggregate docs missing metric reference: {metric}",
             )
 
@@ -241,7 +264,8 @@ class TestW381A4M6KappaFinalize(unittest.TestCase):
         redesign = REDESIGN.read_text(encoding="utf-8")
         for alt in ["MolLogP", "MorganDensity_r2", "Chi3v"]:
             self.assertIn(
-                alt, redesign,
+                alt,
+                redesign,
                 f"REDESIGN missing top-3 alternative: {alt}",
             )
 
@@ -250,11 +274,13 @@ class TestW381A4M6KappaFinalize(unittest.TestCase):
         paper_s6 = PAPER_S6.read_text(encoding="utf-8")
         section_3 = SECTION_3.read_text(encoding="utf-8")
         self.assertIn(
-            "\\begin{itemize}", paper_s6,
+            "\\begin{itemize}",
+            paper_s6,
             "PAPER_S6 missing LaTeX \\begin{itemize} template",
         )
         self.assertIn(
-            "\\begin{itemize}", section_3,
+            "\\begin{itemize}",
+            section_3,
             "SECTION_3 missing LaTeX \\begin{itemize} template",
         )
 

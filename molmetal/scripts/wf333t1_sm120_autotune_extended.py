@@ -88,6 +88,7 @@ Cross-references:
   * :file:`TODO/completed/331x3_sm120_retune_cpu_scaffold.md` —
     Wf-331-X3 ship surface (the 4 Wf-331-X3 tests are preserved).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -126,62 +127,69 @@ CAT_ODE = "ode"
 
 
 # Memory-bound kernels — bandwidth-limited; num_warps=2 (low occupancy).
-MEMORY_BOUND_KERNELS = frozenset({
-    "fused_residual_add",           # elementwise
-    "fused_dropout_residual",       # elementwise+dropout
-    "fused_layer_norm",             # norm
-    "fused_rms_norm",               # norm
-    "fused_rmsnorm_residual",       # norm+residual
-})
+MEMORY_BOUND_KERNELS = frozenset(
+    {
+        "fused_residual_add",  # elementwise
+        "fused_dropout_residual",  # elementwise+dropout
+        "fused_layer_norm",  # norm
+        "fused_rms_norm",  # norm
+        "fused_rmsnorm_residual",  # norm+residual
+    }
+)
 
 
 # Compute-bound kernels — ILP-heavy; num_warps in {8, 16}.
-COMPUTE_BOUND_KERNELS = frozenset({
-    # MLP variants
-    "fused_silu_mlp",
-    "fused_gelu_mlp",
-    "FusedGeluMLP",
-    # Batched MLP variants
-    "batched_fused_silu_mlp",
-    "batched_fused_gelu_mlp",
-    "batched_fused_silu_mlp_per_k",
-    "batched_fused_gelu_mlp_per_k",
-    # ReLU MLP variants
-    "fused_relu_linear",
-    "fused_relu_mlp",
-    "FusedReLULinear",
-    "FusedReLUMLP",
-    # Matmul
-    "matmul_fn",
-    # Compute-bound losses
-    "fused_cross_entropy",
-    "fused_log_softmax_nll",
-})
+COMPUTE_BOUND_KERNELS = frozenset(
+    {
+        # MLP variants
+        "fused_silu_mlp",
+        "fused_gelu_mlp",
+        "FusedGeluMLP",
+        # Batched MLP variants
+        "batched_fused_silu_mlp",
+        "batched_fused_gelu_mlp",
+        "batched_fused_silu_mlp_per_k",
+        "batched_fused_gelu_mlp_per_k",
+        # ReLU MLP variants
+        "fused_relu_linear",
+        "fused_relu_mlp",
+        "FusedReLULinear",
+        "FusedReLUMLP",
+        # Matmul
+        "matmul_fn",
+        # Compute-bound losses
+        "fused_cross_entropy",
+        "fused_log_softmax_nll",
+    }
+)
 
 
 # Mid-bound kernels — neither purely memory nor purely compute;
 # num_warps in {4, 8}.
-MID_BOUND_KERNELS = frozenset({
-    "softmax_last_dim",  # softmax
-    "aggregate_vectors",  # scatter/gather
-    # fused_cross_entropy / fused_log_softmax_nll moved to COMPUTE_BOUND
-    # because on Blackwell the log-softmax cross-entropy is dominated
-    # by the matmul (logits @ targets).
-})
+MID_BOUND_KERNELS = frozenset(
+    {
+        "softmax_last_dim",  # softmax
+        "aggregate_vectors",  # scatter/gather
+        # fused_cross_entropy / fused_log_softmax_nll moved to COMPUTE_BOUND
+        # because on Blackwell the log-softmax cross-entropy is dominated
+        # by the matmul (logits @ targets).
+    }
+)
 
 
 # ODE / se(3) kernels — low arithmetic intensity; num_warps=4.
-ODE_KERNELS = frozenset({
-    "rotation_from_axis_angle",  # se3
-    "euler_step",                # ode
-    "rk4_step",                  # ode
-})
+ODE_KERNELS = frozenset(
+    {
+        "rotation_from_axis_angle",  # se3
+        "euler_step",  # ode
+        "rk4_step",  # ode
+    }
+)
 
 
 # Aggregate sanity check — total must equal 24 (Wf-326E inventory).
 _ALL_KERNELS = (
-    MEMORY_BOUND_KERNELS | COMPUTE_BOUND_KERNELS
-    | MID_BOUND_KERNELS | ODE_KERNELS
+    MEMORY_BOUND_KERNELS | COMPUTE_BOUND_KERNELS | MID_BOUND_KERNELS | ODE_KERNELS
 )
 assert len(_ALL_KERNELS) == 24, (
     f"Per-kernel category assignments cover {len(_ALL_KERNELS)} kernels; "
@@ -220,7 +228,9 @@ def _has_num_stages_safe(cfg: Any) -> int:
     return int(ns)
 
 
-def _make_configs(num_warps_grid: Sequence[int], num_stages_grid: Sequence[int]) -> List[Any]:
+def _make_configs(
+    num_warps_grid: Sequence[int], num_stages_grid: Sequence[int]
+) -> List[Any]:
     """Build a list of :class:`triton.Config` from (num_warps, num_stages) grids.
 
     Falls back to dict-of-ints placeholders when :mod:`triton` is not
@@ -241,10 +251,10 @@ def _make_configs(num_warps_grid: Sequence[int], num_stages_grid: Sequence[int])
 
 
 # Per-category grids (kept narrow to cut autotune cost ~3x).
-_MEMORY_BOUND_GRID = _make_configs((2,), (2, 3, 4))                # 3 configs
-_COMPUTE_BOUND_GRID = _make_configs((8, 16), (2, 3, 4))            # 6 configs
-_MID_BOUND_GRID = _make_configs((4, 8), (2, 3, 4))                 # 6 configs
-_ODE_GRID = _make_configs((4,), (2, 3))                            # 2 configs
+_MEMORY_BOUND_GRID = _make_configs((2,), (2, 3, 4))  # 3 configs
+_COMPUTE_BOUND_GRID = _make_configs((8, 16), (2, 3, 4))  # 6 configs
+_MID_BOUND_GRID = _make_configs((4, 8), (2, 3, 4))  # 6 configs
+_ODE_GRID = _make_configs((4,), (2, 3))  # 2 configs
 
 # Sanity: 3 + 6 + 6 + 2 = 17 unique (num_warps, num_stages) cells; but
 # PER_KERNEL_CONFIGS maps each of 24 kernel names to a list, so the
@@ -366,8 +376,10 @@ def sm120_autotune_per_kernel(
     using the per-kernel config grid.
     """
     if triton is None:  # pragma: no cover - CPU-only env
+
         def _passthrough(fn: Callable[..., Any]) -> Callable[..., Any]:
             return fn
+
         return _passthrough
     if not key:
         raise ValueError(
@@ -420,8 +432,10 @@ def dump_per_kernel_configs_json(
             "n_kernels": len(registry),
             "n_categories": 4,
             "categories": [
-                CAT_MEMORY_BOUND, CAT_COMPUTE_BOUND,
-                CAT_MID_BOUND, CAT_ODE,
+                CAT_MEMORY_BOUND,
+                CAT_COMPUTE_BOUND,
+                CAT_MID_BOUND,
+                CAT_ODE,
             ],
             "n_memory_bound_kernels": len(MEMORY_BOUND_KERNELS),
             "n_compute_bound_kernels": len(COMPUTE_BOUND_KERNELS),
@@ -477,9 +491,7 @@ def cpu_smoke_extended(output_dir: Path) -> Dict[str, Any]:
         f"Update PER_KERNEL_CONFIGS if the audit inventory grew."
     )
     missing = set(audit_names) - _ALL_KERNELS
-    assert not missing, (
-        f"Audit kernels missing from per-kernel registry: {missing}."
-    )
+    assert not missing, f"Audit kernels missing from per-kernel registry: {missing}."
 
     # 2) Each per-kernel config is a subset of the Wf-331-X3 grid.
     x3_grid_pairs = {
@@ -520,9 +532,9 @@ def cpu_smoke_extended(output_dir: Path) -> Dict[str, Any]:
         def _per_kernel_dummy(x_ptr, M: tl.constexpr) -> None:  # pragma: no cover
             _ = (x_ptr, M)
 
-        assert hasattr(_per_kernel_dummy, "configs"), (
-            "sm120_autotune_per_kernel-wrapped kernel must expose .configs."
-        )
+        assert hasattr(
+            _per_kernel_dummy, "configs"
+        ), "sm120_autotune_per_kernel-wrapped kernel must expose .configs."
         expected_n = len(PER_KERNEL_CONFIGS["fused_silu_mlp"])
         assert len(_per_kernel_dummy.configs) == expected_n, (
             f"Per-kernel decorator produced {len(_per_kernel_dummy.configs)} "
@@ -531,9 +543,7 @@ def cpu_smoke_extended(output_dir: Path) -> Dict[str, Any]:
 
     # 6) Per-kernel JSON dump.
     output_dir.mkdir(parents=True, exist_ok=True)
-    dumped = dump_per_kernel_configs_json(
-        output_dir / "per_kernel_configs.json"
-    )
+    dumped = dump_per_kernel_configs_json(output_dir / "per_kernel_configs.json")
 
     # 7) safe_kernel_call fallback path (re-verify from Wf-331-X3).
     calls: List[str] = []
@@ -548,9 +558,7 @@ def cpu_smoke_extended(output_dir: Path) -> Dict[str, Any]:
 
     fb = _x3.safe_kernel_call(_sm120_kernel, _gfx1101_kernel)
     assert fb == "fallback_ok", f"safe_kernel_call fallback broken: {fb}"
-    assert calls == ["sm120", "gfx1101"], (
-        f"safe_kernel_call call order wrong: {calls}"
-    )
+    assert calls == ["sm120", "gfx1101"], f"safe_kernel_call call order wrong: {calls}"
 
     elapsed = time.time() - started
     return {
@@ -561,9 +569,7 @@ def cpu_smoke_extended(output_dir: Path) -> Dict[str, Any]:
         "n_compute_bound": len(COMPUTE_BOUND_KERNELS),
         "n_mid_bound": len(MID_BOUND_KERNELS),
         "n_ode": len(ODE_KERNELS),
-        "n_total_per_kernel_configs": sum(
-            len(v) for v in PER_KERNEL_CONFIGS.values()
-        ),
+        "n_total_per_kernel_configs": sum(len(v) for v in PER_KERNEL_CONFIGS.values()),
         "fallback_to_generic_grid_ok": True,
         "safe_kernel_call_fallback_ok": True,
         "per_kernel_decorator_callable": True,
@@ -581,7 +587,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "--output-dir",
         default=str(DEFAULT_OUTPUT_DIR),
         help="Where to write the per-kernel configs JSON (default: "
-             "molmetal/reports/wf333t1_sm120_autotune).",
+        "molmetal/reports/wf333t1_sm120_autotune).",
     )
     parser.add_argument(
         "--smoke",
@@ -598,9 +604,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     output_dir = Path(args.output_dir).resolve()
 
     if args.dump_configs_only:
-        dumped = dump_per_kernel_configs_json(
-            output_dir / "per_kernel_configs.json"
-        )
+        dumped = dump_per_kernel_configs_json(output_dir / "per_kernel_configs.json")
         print(json.dumps(dumped, indent=2))
         return 0
 
@@ -610,20 +614,23 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 0 if result["smoke_passed"] else 1
 
     # Default: dump configs and report the cross-reference.
-    dumped = dump_per_kernel_configs_json(
-        output_dir / "per_kernel_configs.json"
+    dumped = dump_per_kernel_configs_json(output_dir / "per_kernel_configs.json")
+    print(
+        json.dumps(
+            {
+                "n_kernels": dumped["n_kernels"],
+                "n_categories": dumped["n_categories"],
+                "n_memory_bound": len(MEMORY_BOUND_KERNELS),
+                "n_compute_bound": len(COMPUTE_BOUND_KERNELS),
+                "n_mid_bound": len(MID_BOUND_KERNELS),
+                "n_ode": len(ODE_KERNELS),
+                "configs_json_path": dumped["output_path"],
+                "gpu_retune_deferred": True,
+                "extends": "wf331x3_sm120_retune.py",
+            },
+            indent=2,
+        )
     )
-    print(json.dumps({
-        "n_kernels": dumped["n_kernels"],
-        "n_categories": dumped["n_categories"],
-        "n_memory_bound": len(MEMORY_BOUND_KERNELS),
-        "n_compute_bound": len(COMPUTE_BOUND_KERNELS),
-        "n_mid_bound": len(MID_BOUND_KERNELS),
-        "n_ode": len(ODE_KERNELS),
-        "configs_json_path": dumped["output_path"],
-        "gpu_retune_deferred": True,
-        "extends": "wf331x3_sm120_retune.py",
-    }, indent=2))
     return 0
 
 

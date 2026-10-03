@@ -107,6 +107,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -150,18 +151,18 @@ from molmetal.adapters.se3_sb_integration import (
 # R18 W2.2 / W2.3 adapter wiring — only used when --init is
 # transport / multiph.  We import lazily inside the init branches
 # to keep the cold-start path (--init tmqm) import-clean.
-try:                                            # pragma: no cover
+try:  # pragma: no cover
     from molmetal.adapters.transport_relaxation_integration import (
         RelaxedEndpointTerm as _RelaxedEndpointTerm,
     )
-except Exception:                               # pragma: no cover
-    _RelaxedEndpointTerm = None                  # type: ignore[assignment]
-try:                                            # pragma: no cover
+except Exception:  # pragma: no cover
+    _RelaxedEndpointTerm = None  # type: ignore[assignment]
+try:  # pragma: no cover
     from molmetal.adapters.multi_ph_integration import (
         MultiPHPocketFeatures as _MultiPHPocketFeatures,
     )
-except Exception:                               # pragma: no cover
-    _MultiPHPocketFeatures = None               # type: ignore[assignment]
+except Exception:  # pragma: no cover
+    _MultiPHPocketFeatures = None  # type: ignore[assignment]
 
 # Wf-35 Phase 2 — shared argparse / GPU env / MEASURED-vs-PROJECTED tag.
 from molmetal.scripts._common_train_args import (
@@ -192,8 +193,11 @@ DEFAULT_METALS: Tuple[str, ...] = SUPPORTED_METALS
 # Coord labels: a deterministic per-metal proxy (square_planar for
 # Pt/Ru/Ir/Rh, tetrahedral for Re/Os) — see train_se3sb.py.
 COORD_BY_METAL: Dict[str, int] = {
-    "Ru": 3, "Ir": 3, "Rh": 3,
-    "Re": 2, "Os": 3,
+    "Ru": 3,
+    "Ir": 3,
+    "Rh": 3,
+    "Re": 2,
+    "Os": 3,
 }
 
 # --- Output paths (overridable via CLI) ---
@@ -204,9 +208,7 @@ DEFAULT_ENCODER_CKPT = (
     PROJECT_ROOT / "models" / "tmqm_pretrained" / "tmqm_pretrained_encoder.pt"
 )
 DEFAULT_OUT_DIR = PROJECT_ROOT / ".ckpt"
-DEFAULT_METRICS_PATH = (
-    PROJECT_ROOT / "metrics" / "by_metric" / "ru_5metal_se3sb.json"
-)
+DEFAULT_METRICS_PATH = PROJECT_ROOT / "metrics" / "by_metric" / "ru_5metal_se3sb.json"
 DEFAULT_SUMMARY_PATH = (
     PROJECT_ROOT / "metrics" / "by_metric" / "ru_5metal_se3sb_summary.json"
 )
@@ -268,9 +270,7 @@ class Ru5MetalSe3SBHead(nn.Module):
         self.backbone = backbone
         self.metals: Tuple[str, ...] = tuple(metals)
         self.head_hidden_dim = int(head_hidden_dim)
-        head_in = (
-            self.backbone.hidden_dim + self.backbone.metal_embed_dim
-        )
+        head_in = self.backbone.hidden_dim + self.backbone.metal_embed_dim
         # Per-metal regression head (BCE-with-logits → scalar).
         self.reg_heads = nn.ModuleDict(
             {
@@ -397,21 +397,13 @@ class Ru5MetalSe3SBLoss(nn.Module):
         reg_out = out["reg"]
         for metal in cls_out:
             if metal not in y_true:
-                info[f"loss_cls_{metal}"] = torch.tensor(
-                    0.0, device=total.device
-                )
-                info[f"loss_reg_{metal}"] = torch.tensor(
-                    0.0, device=total.device
-                )
+                info[f"loss_cls_{metal}"] = torch.tensor(0.0, device=total.device)
+                info[f"loss_reg_{metal}"] = torch.tensor(0.0, device=total.device)
                 continue
             y = y_true[metal].long()
             if y.numel() == 0:
-                info[f"loss_cls_{metal}"] = torch.tensor(
-                    0.0, device=total.device
-                )
-                info[f"loss_reg_{metal}"] = torch.tensor(
-                    0.0, device=total.device
-                )
+                info[f"loss_cls_{metal}"] = torch.tensor(0.0, device=total.device)
+                info[f"loss_reg_{metal}"] = torch.tensor(0.0, device=total.device)
                 continue
             w = self.metal_weights.get(metal, 1.0)
             # Classification CE
@@ -530,9 +522,7 @@ class _StubEGNNVelocityNet(nn.Module):
     ) -> torch.Tensor:
         """Return per-atom velocity of shape ``(B, N, 3)`` (zeros)."""
         if x.dim() != 3 or x.shape[-1] != 3:
-            raise ValueError(
-                f"x must have shape (B, N, 3), got {tuple(x.shape)}"
-            )
+            raise ValueError(f"x must have shape (B, N, 3), got {tuple(x.shape)}")
         return torch.zeros_like(x)
 
 
@@ -581,7 +571,7 @@ def build_batches(
         rng.shuffle(idx)
     batches: List[Tuple[List[str], torch.Tensor, torch.Tensor]] = []
     for start in range(0, len(idx), batch_size):
-        chunk = idx[start:start + batch_size]
+        chunk = idx[start : start + batch_size]
         smis = [pool[int(i)][0] for i in chunk]
         ys = torch.tensor([pool[int(i)][1] for i in chunk], dtype=torch.long)
         mids = torch.full((len(chunk),), metal_id, dtype=torch.long)
@@ -630,7 +620,7 @@ def eval_split_auc(
     labels: List[int] = []
     wrapper.eval()
     for start in range(0, len(pool), batch_size):
-        chunk = pool[start:start + batch_size]
+        chunk = pool[start : start + batch_size]
         smis = [s for s, _ in chunk]
         ys = torch.tensor([y for _, y in chunk], dtype=torch.long)
         mids = torch.full((len(chunk),), mid, dtype=torch.long).to(device)
@@ -664,11 +654,14 @@ def se3_integration_smoke(
     samples = torch.randn(2, n_atoms, 3)
     try:
         x_final = integrate_with_cfm(
-            samples, twist_head, n_steps=n_steps, method="midpoint",
+            samples,
+            twist_head,
+            n_steps=n_steps,
+            method="midpoint",
         )
         out_norm = float(x_final.norm().item())
         finite = bool(torch.isfinite(x_final).all().item())
-    except Exception as exc:                                # pragma: no cover
+    except Exception as exc:  # pragma: no cover
         return {"out_norm": float("nan"), "finite": False, "error": str(exc)}
     return {"out_norm": out_norm, "finite": finite}
 
@@ -700,7 +693,7 @@ def attach_init_components(
         return components
     if init == "se3sb":
         twist_head = build_se3_twist_head(hidden_dim=hidden_dim).to(device)
-        wrapper.se3_field = twist_head        # type: ignore[attr-defined]
+        wrapper.se3_field = twist_head  # type: ignore[attr-defined]
         components["se3_field"] = twist_head
     elif init == "transport":
         if _RelaxedEndpointTerm is None:
@@ -710,7 +703,7 @@ def attach_init_components(
             )
             return components
         relax_term = _RelaxedEndpointTerm(lambda_relax=1e-3, eps=0.1)
-        wrapper.relax_term = relax_term        # type: ignore[attr-defined]
+        wrapper.relax_term = relax_term  # type: ignore[attr-defined]
         components["relax_term"] = relax_term
     elif init == "multiph":
         if _MultiPHPocketFeatures is None:
@@ -720,14 +713,14 @@ def attach_init_components(
             )
             return components
         mphp = _MultiPHPocketFeatures(
-            max_radius=5.0, max_coord=4.0, n_bins=8,
+            max_radius=5.0,
+            max_coord=4.0,
+            n_bins=8,
         ).to(device)
-        wrapper.mphp = mphp                    # type: ignore[attr-defined]
+        wrapper.mphp = mphp  # type: ignore[attr-defined]
         components["mphp"] = mphp
     else:
-        raise ValueError(
-            f"Unknown init {init!r}; expected one of {INIT_CHOICES}"
-        )
+        raise ValueError(f"Unknown init {init!r}; expected one of {INIT_CHOICES}")
     return components
 
 
@@ -767,7 +760,10 @@ def train_one_seed(
 
     # Attach the per-init R18 adapter components.
     r18_components = attach_init_components(
-        args.init, wrapper, device, hidden_dim=args.hidden,
+        args.init,
+        wrapper,
+        device,
+        hidden_dim=args.hidden,
     )
 
     n_frozen, n_trainable = freeze_encoder_layers_1_2(backbone)
@@ -783,9 +779,7 @@ def train_one_seed(
         lr=args.lr,
         weight_decay=1e-4,
     )
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=args.epochs
-    )
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
     loss_fn = Ru5MetalSe3SBLoss(
         n_coord_classes=RECIPE_N_COORD_CLASSES,
         coord_weight=COORD_LOSS_WEIGHT,
@@ -805,8 +799,7 @@ def train_one_seed(
         n_batches = 0
         per_metal_batches = {
             m: build_batches(
-                cap_pool(gather_train_pool(data, m),
-                         args.train_max_per_metal, rng),
+                cap_pool(gather_train_pool(data, m), args.train_max_per_metal, rng),
                 wrapper.metal_id(m),
                 args.batch,
                 rng,
@@ -844,7 +837,8 @@ def train_one_seed(
             if isinstance(batch_loss, torch.Tensor):
                 batch_loss.backward()
                 torch.nn.utils.clip_grad_norm_(
-                    wrapper.parameters(), max_norm=5.0,
+                    wrapper.parameters(),
+                    max_norm=5.0,
                 )
                 optimizer.step()
                 epoch_loss += float(batch_loss.item())
@@ -855,17 +849,23 @@ def train_one_seed(
             val_aucs: Dict[str, float] = {}
             for m in metals:
                 a, _ = eval_split_auc(
-                    wrapper, data, m, "val", device, args.batch,
+                    wrapper,
+                    data,
+                    m,
+                    "val",
+                    device,
+                    args.batch,
                 )
                 val_aucs[m] = a
             valid_aucs = [v for v in val_aucs.values() if not np.isnan(v)]
-            mean_val = (
-                float(np.mean(valid_aucs)) if valid_aucs else float("nan")
+            mean_val = float(np.mean(valid_aucs)) if valid_aucs else float("nan")
+            val_history.append(
+                {
+                    "epoch": epoch,
+                    "mean_val_auc": mean_val,
+                    "per_metal": val_aucs,
+                }
             )
-            val_history.append({
-                "epoch": epoch, "mean_val_auc": mean_val,
-                "per_metal": val_aucs,
-            })
             print(
                 f"[train_ru_5metal_se3sb] seed={seed} epoch={epoch:3d} "
                 f"loss={epoch_loss / max(n_batches, 1):.4f} "
@@ -876,8 +876,7 @@ def train_one_seed(
                 best_val_mean = mean_val
                 best_epoch = epoch
                 best_state = {
-                    k: v.detach().cpu().clone()
-                    for k, v in wrapper.state_dict().items()
+                    k: v.detach().cpu().clone() for k, v in wrapper.state_dict().items()
                 }
 
     wrapper.load_state_dict(best_state)
@@ -886,12 +885,15 @@ def train_one_seed(
     test_aucs: Dict[str, float] = {}
     for m in metals:
         a, n = eval_split_auc(
-            wrapper, data, m, "test", device, args.batch,
+            wrapper,
+            data,
+            m,
+            "test",
+            device,
+            args.batch,
         )
         test_aucs[m] = a
-        print(
-            f"[train_ru_5metal_se3sb] seed={seed} TEST {m} AUC={a:.4f} n={n}"
-        )
+        print(f"[train_ru_5metal_se3sb] seed={seed} TEST {m} AUC={a:.4f} n={n}")
     valid_test = [v for v in test_aucs.values() if not np.isnan(v)]
     mean_test = float(np.mean(valid_test)) if valid_test else float("nan")
     print(
@@ -942,8 +944,7 @@ def aggregate_per_metal(
         vals = [
             float(r["test_auc_per_metal"][m])
             for r in seed_results
-            if m in r["test_auc_per_metal"]
-            and not np.isnan(r["test_auc_per_metal"][m])
+            if m in r["test_auc_per_metal"] and not np.isnan(r["test_auc_per_metal"][m])
         ]
         if not vals:
             means[m] = float("nan")
@@ -1006,7 +1007,9 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
-        "--se3-n-steps", type=int, default=8,
+        "--se3-n-steps",
+        type=int,
+        default=8,
         help="Number of SE(3) integration steps for the smoke test.",
     )
     return p.parse_args(argv)
@@ -1040,8 +1043,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     data = load_5metal_csv(args.data)
     summary_counts = {
-        m: {sp: len(data[m][sp]) for sp in ("train", "val", "test")}
-        for m in metals
+        m: {sp: len(data[m][sp]) for sp in ("train", "val", "test")} for m in metals
     }
     print(f"[train_ru_5metal_se3sb] split counts: {summary_counts}")
 
@@ -1053,9 +1055,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     for seed in args.seeds:
         result = train_one_seed(seed, data, metals, args, device)
         seed_results.append(result)
-        ckpt_path = (
-            args.out_dir / f"ru_5metal_se3sb_{args.init}_seed{seed}.pt"
-        )
+        ckpt_path = args.out_dir / f"ru_5metal_se3sb_{args.init}_seed{seed}.pt"
         torch.save(
             {
                 "seed": seed,
@@ -1070,8 +1070,10 @@ def main(argv: Optional[List[str]] = None) -> int:
                 "state_dict": result["best_state"],
                 "recipe": {
                     "init": args.init,
-                    "epochs": args.epochs, "batch": args.batch,
-                    "lr": args.lr, "hidden": args.hidden,
+                    "epochs": args.epochs,
+                    "batch": args.batch,
+                    "lr": args.lr,
+                    "hidden": args.hidden,
                     "depth": args.depth,
                     "se3_n_steps": args.se3_n_steps,
                     "metals": list(metals),
@@ -1112,12 +1114,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         ],
         "ru_mean_auc_5seed": per_metal_mean.get("Ru", float("nan")),
         "ru_std_auc_5seed": per_metal_std.get("Ru", float("nan")),
-        "mean_test_auc_per_seed": [
-            r["mean_test_auc"] for r in seed_results
-        ],
-        "mean_test_auc_overall": float(np.nanmean(
-            [r["mean_test_auc"] for r in seed_results]
-        )),
+        "mean_test_auc_per_seed": [r["mean_test_auc"] for r in seed_results],
+        "mean_test_auc_overall": float(
+            np.nanmean([r["mean_test_auc"] for r in seed_results])
+        ),
         "split_counts": summary_counts,
         "known_limitation": (
             "tmQM encoder was trained on baseline MetalCytotoxModel "
@@ -1127,9 +1127,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             "is the future fix."
         ),
     }
-    args.metrics_path.write_text(
-        json.dumps(_to_jsonable(metrics), indent=2)
-    )
+    args.metrics_path.write_text(json.dumps(_to_jsonable(metrics), indent=2))
     print(
         f"[train_ru_5metal_se3sb] wrote {args.metrics_path} "
         f"(Ru 5-seed mean ± std = "
@@ -1153,13 +1151,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         "per_metal_std_auc": metrics["per_metal_std_auc"],
         "mean_test_auc_per_seed": metrics["mean_test_auc_per_seed"],
         "mean_test_auc_overall": metrics["mean_test_auc_overall"],
-        "wf31_headline": (
-            "mean(Ru 5-seed AUC) ≥ 0.86 claims beating Krasnov 0.81"
-        ),
+        "wf31_headline": ("mean(Ru 5-seed AUC) ≥ 0.86 claims beating Krasnov 0.81"),
     }
-    args.summary_path.write_text(
-        json.dumps(_to_jsonable(final_summary), indent=2)
-    )
+    args.summary_path.write_text(json.dumps(_to_jsonable(final_summary), indent=2))
     print(f"[train_ru_5metal_se3sb] wrote {args.summary_path}")
     # Return (exit_code, args) so the @MEASURED_vs_PROJECTED_decorator
     # can use the explicit args namespace instead of re-parsing argv

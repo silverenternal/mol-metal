@@ -77,18 +77,18 @@ def test_encoder_load():
     """Pretrained tmQM D-MPNN weights load into the V3 encoder."""
     _set_seed(0)
     cfg = _small_config()
-    assert Path(DEFAULT_PRETRAINED_CKPT).exists(), (
-        f"missing pretrained ckpt {DEFAULT_PRETRAINED_CKPT}"
-    )
+    assert Path(
+        DEFAULT_PRETRAINED_CKPT
+    ).exists(), f"missing pretrained ckpt {DEFAULT_PRETRAINED_CKPT}"
     model = MetalHybridV3Model(config=cfg)
     # Pretrained hidden_dim is 128, our small config is 64, so shapes differ
     # → no load — but a full-size config should load.
     base_full = MetalHybridConfig(hidden_dim=128, n_dmpnn_layers=3, n_egnn_layers=3)
     cfg_full = MetalHybridV3Config(base=base_full, load_pretrained_encoder=True)
     model_full = MetalHybridV3Model(config=cfg_full)
-    assert model_full.pretrained_loaded is True, (
-        "tmQM pretrained D-MPNN weights failed to load into V3 encoder"
-    )
+    assert (
+        model_full.pretrained_loaded is True
+    ), "tmQM pretrained D-MPNN weights failed to load into V3 encoder"
     # Confirm at least one parameter differs from random init (sanity)
     sd = model_full.dmpnn.state_dict()
     p0 = next(iter(sd.values())).flatten()
@@ -127,7 +127,9 @@ def test_coord_refinement():
     model = MetalHybridV3Model(config=cfg).eval()
     smiles_list, coords, metal_types, mols = _make_batch(smiles)
     with torch.no_grad():
-        refined = model.refine_coords(smiles_list, coords, metal_types, mol_objects=mols)
+        refined = model.refine_coords(
+            smiles_list, coords, metal_types, mol_objects=mols
+        )
     assert refined.shape == coords.shape
     delta = refined - coords
     # Δx should be bounded by the configured max_step (in case every edge contributes)
@@ -185,7 +187,15 @@ def test_train_loop_1_epoch(tmp_path):
     # One train pass
     model.train()
     for batch in train_loader:
-        smiles_list, coords, metal_types, pic50_true, active_label, mask, mol_objects = batch
+        (
+            smiles_list,
+            coords,
+            metal_types,
+            pic50_true,
+            active_label,
+            mask,
+            mol_objects,
+        ) = batch
         optimizer.zero_grad()
         out = model(smiles_list, coords, metal_types, mol_objects=mol_objects)
         loss = loss_fn(
@@ -204,7 +214,15 @@ def test_train_loop_1_epoch(tmp_path):
     model.eval()
     with torch.no_grad():
         for batch in val_loader:
-            smiles_list, coords, metal_types, pic50_true, active_label, mask, mol_objects = batch
+            (
+                smiles_list,
+                coords,
+                metal_types,
+                pic50_true,
+                active_label,
+                mask,
+                mol_objects,
+            ) = batch
             out = model(smiles_list, coords, metal_types, mol_objects=mol_objects)
             assert torch.isfinite(out.pic50).all()
             assert torch.isfinite(out.active_logits).all()

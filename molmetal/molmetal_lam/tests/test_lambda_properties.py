@@ -42,22 +42,26 @@ def _import_atoms():
         _EXPECTED_METAL_CN,
         Atom,
     )
+
     return Atom, PRIMITIVE_ATOMS, METAL_ATOMS, _EXPECTED_METAL_CN
 
 
 def _import_reaction_rules():
     from molmetal_lam.reactions.beta_reductions import REACTION_RULES
+
     return REACTION_RULES
 
 
 def _import_click_reactions():
     from molmetal_lam.reactions.click_reactions import CLICK_REACTIONS
+
     return CLICK_REACTIONS
 
 
 # ---------------------------------------------------------------------------
 # 1. arity = valence + lone_pairs  (algebraic law of the Atom combinator)
 # ---------------------------------------------------------------------------
+
 
 @given(
     v=st.integers(min_value=0, max_value=8),
@@ -81,6 +85,7 @@ def test_atom_arity_equals_valence_plus_lone_pairs(v, lp, geom):
 # 2. every primitive atom is registered with arity >= 1
 # ---------------------------------------------------------------------------
 
+
 @given(sym=st.sampled_from(["H", "C", "N", "O", "F", "P", "S", "Cl", "Br", "I"]))
 @settings(max_examples=32, deadline=None)
 def test_primitive_atom_in_registry(sym):
@@ -94,6 +99,7 @@ def test_primitive_atom_in_registry(sym):
 # 3. metal arity matches coordination number
 # ---------------------------------------------------------------------------
 
+
 @given(sym=st.sampled_from(["Pt_II", "Ru_II", "Zn_II", "Ir_III", "Cu_II", "Au_III"]))
 @settings(max_examples=16, deadline=None)
 def test_metal_atom_arity_matches_coordination(sym):
@@ -106,6 +112,7 @@ def test_metal_atom_arity_matches_coordination(sym):
 # ---------------------------------------------------------------------------
 # 4. reaction rule predict_yield returns a value in [0, 1]
 # ---------------------------------------------------------------------------
+
 
 @given(rx=st.sampled_from(["CuAAC", "SPAAC", "SPC", "DielsAlder"]))
 @settings(max_examples=16, deadline=None)
@@ -134,6 +141,7 @@ def test_reaction_rule_predict_yield_in_unit_interval(rx):
 # 5. every click reaction is registered in CLICK_REACTIONS
 # ---------------------------------------------------------------------------
 
+
 @given(rx=st.sampled_from(["CuAAC", "SPAAC", "SPC", "DielsAlder"]))
 @settings(max_examples=16, deadline=None)
 def test_click_reaction_does_not_crash(rx):
@@ -154,6 +162,7 @@ def test_click_reaction_does_not_crash(rx):
 # ---------------------------------------------------------------------------
 # 6. atom registry lookup does not crash on arbitrary symbols
 # ---------------------------------------------------------------------------
+
 
 @given(
     symbols=st.lists(

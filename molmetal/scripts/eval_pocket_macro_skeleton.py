@@ -61,13 +61,9 @@ TEST_SET: List[str] = ["CA2", "ACE", "MMP2", "PKA", "CYP3A4"]
 
 def _check_files() -> None:
     if not os.path.exists(DEFAULT_CHECKPOINT_PATH):
-        raise FileNotFoundError(
-            f"Checkpoint missing: {DEFAULT_CHECKPOINT_PATH}"
-        )
+        raise FileNotFoundError(f"Checkpoint missing: {DEFAULT_CHECKPOINT_PATH}")
     if not os.path.exists(DEFAULT_METADATA_PATH):
-        raise FileNotFoundError(
-            f"Metadata missing: {DEFAULT_METADATA_PATH}"
-        )
+        raise FileNotFoundError(f"Metadata missing: {DEFAULT_METADATA_PATH}")
 
 
 def main() -> int:
@@ -83,8 +79,10 @@ def main() -> int:
 
     print(f"\n[1/4] Loaded checkpoint: {DEFAULT_CHECKPOINT_PATH}")
     n_params = sum(p.numel() for p in inference._model.parameters())
-    print(f"      Architecture:    v1 mirror (PER_RESIDUE_FEATURES=29, "
-          f"hidden_dim={HIDDEN_DIM}, n_classes=12)")
+    print(
+        f"      Architecture:    v1 mirror (PER_RESIDUE_FEATURES=29, "
+        f"hidden_dim={HIDDEN_DIM}, n_classes=12)"
+    )
     print(f"      Trainable params: {n_params} (expected 5,580)")
 
     # ------------------------------------------------------------------

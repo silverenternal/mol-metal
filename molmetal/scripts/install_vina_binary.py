@@ -34,6 +34,7 @@ Default ``--bin-dir`` is ``<project_root>/molmetal/bin`` (i.e. where
 ``molmetal.bin.vina`` lives after install). ``--skip-install`` only
 probes existing installations (useful for CI / dry-run).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -49,18 +50,10 @@ from typing import Any, Dict, List, Optional, Tuple
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_BIN_DIR = PROJECT_ROOT / "molmetal" / "bin"
 DEFAULT_LOG_PATH = (
-    PROJECT_ROOT
-    / "molmetal"
-    / "reports"
-    / "wf84_p2_vina_install"
-    / "install_log.json"
+    PROJECT_ROOT / "molmetal" / "reports" / "wf84_p2_vina_install" / "install_log.json"
 )
 DEFAULT_STUB_PATH = (
-    PROJECT_ROOT
-    / "molmetal"
-    / "reports"
-    / "wf84_p2_vina_install"
-    / "stub_warning.md"
+    PROJECT_ROOT / "molmetal" / "reports" / "wf84_p2_vina_install" / "stub_warning.md"
 )
 # Standard conda env dirs on linux (conda, mamba, micromamba all share).
 _CONDA_PREFIX_HINTS = (
@@ -273,16 +266,16 @@ def _locate_mamba_env_prefix(
     """Return the prefix path of a micromamba env if it exists."""
     if not shutil.which("micromamba"):
         return None
-    res = _run(
-        ["micromamba", "env", "list", "--json"], timeout=30, env=env
-    )
+    res = _run(["micromamba", "env", "list", "--json"], timeout=30, env=env)
     if not res["ok"]:
         return None
     try:
         data = json.loads(res["stdout_tail"])
         envs = data.get("envs", [])
         for env_str in envs:
-            if env_str.endswith(f"/envs/{env_name}") or env_str.endswith(f"\\{env_name}"):
+            if env_str.endswith(f"/envs/{env_name}") or env_str.endswith(
+                f"\\{env_name}"
+            ):
                 return Path(env_str)
         # Fallback: search for env by name in any prefix
         for env_str in envs:
@@ -291,9 +284,11 @@ def _locate_mamba_env_prefix(
     except (json.JSONDecodeError, KeyError):
         pass
     # Manual fallback: guess the prefix from MAMBA_ROOT_PREFIX or default
-    root = os.environ.get("MAMBA_ROOT_PREFIX") or (
-        env or os.environ
-    ).get("MAMBA_ROOT_PREFIX") or os.path.expanduser("~/.local/micromamba")
+    root = (
+        os.environ.get("MAMBA_ROOT_PREFIX")
+        or (env or os.environ).get("MAMBA_ROOT_PREFIX")
+        or os.path.expanduser("~/.local/micromamba")
+    )
     candidate = Path(root) / "envs" / env_name
     if (candidate / "bin" / "vina").is_file():
         return candidate
@@ -359,7 +354,11 @@ def _try_apt_install() -> Dict[str, Any]:
         return {"channel": "apt", "ok": False, "reason": "apt-get not on PATH"}
     # Honour the user's "CPU-only; user permission required for sudo" rule
     sudo = shutil.which("sudo")
-    cmd = ([sudo, "apt-get", "install", "-y", "autodock-vina"] if sudo else ["apt-get", "install", "-y", "autodock-vina"])
+    cmd = (
+        [sudo, "apt-get", "install", "-y", "autodock-vina"]
+        if sudo
+        else ["apt-get", "install", "-y", "autodock-vina"]
+    )
     res = _run(cmd, timeout=600)
     return {
         "channel": "apt",
@@ -392,9 +391,14 @@ def _try_source_build(build_dir: Path) -> Dict[str, Any]:
     # If already cloned from a prior attempt, reuse.
     if not repo_dir.exists():
         clone = _run(
-            ["git", "clone", "--depth", "1",
-             "https://github.com/ccsb-scripps/AutoDock-Vina.git",
-             str(repo_dir)],
+            [
+                "git",
+                "clone",
+                "--depth",
+                "1",
+                "https://github.com/ccsb-scripps/AutoDock-Vina.git",
+                str(repo_dir),
+            ],
             timeout=300,
         )
         if not clone["ok"]:
@@ -445,8 +449,11 @@ def _try_source_build(build_dir: Path) -> Dict[str, Any]:
 
     built_bin = build_subdir / "vina"
     if not built_bin.is_file():
-        return {"channel": "source", "ok": False,
-                "reason": "build did not produce vina"}
+        return {
+            "channel": "source",
+            "ok": False,
+            "reason": "build did not produce vina",
+        }
     return {
         "channel": "source",
         "ok": True,
@@ -544,7 +551,9 @@ The installer will detect the env override, symlink the binary into
 """
 
 
-def _write_stub_warning(path: Path, attempts: List[Dict[str, Any]], reason: str) -> None:
+def _write_stub_warning(
+    path: Path, attempts: List[Dict[str, Any]], reason: str
+) -> None:
     """Write the honest-stub-fallback warning document."""
     path.parent.mkdir(parents=True, exist_ok=True)
     rows: List[str] = []
@@ -600,8 +609,11 @@ def install_vina(
     if force_reinstall:
         # Still log the probe results for transparency, but don't short-circuit
         _, _, probe_candidates = _find_existing_vina()
-        log["probe"] = {"candidates": probe_candidates, "found": False,
-                        "note": "skipped due to --force-reinstall"}
+        log["probe"] = {
+            "candidates": probe_candidates,
+            "found": False,
+            "note": "skipped due to --force-reinstall",
+        }
         found = None
         version = ""
         candidates = probe_candidates
@@ -635,9 +647,7 @@ def install_vina(
                         log["final_path"] = str(p)
                         log["version"] = ver
                         log["status"] = "OK"
-                        log["reason"] = (
-                            f"installed via {att['channel']}; probed OK"
-                        )
+                        log["reason"] = f"installed via {att['channel']}; probed OK"
                         break
         # 3. try source build if still nothing (last resort)
         if log["status"] != "OK":

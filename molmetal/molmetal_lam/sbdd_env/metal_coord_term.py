@@ -57,6 +57,7 @@ Public API
   ligand_pos, metal_pos)` — distance score
 * :data:`HSAB_TABLE` — 5-metal × donor class table
 """
+
 from __future__ import annotations
 
 import logging
@@ -103,17 +104,23 @@ HSAB_TABLE: Dict[str, Dict[str, float]] = {
 
 # Atomic numbers recognised as donor atoms (Pearson 1963 list)
 _DONOR_CLASS_BY_ATOMIC_NUM: Dict[int, str] = {
-    7:  "N",   # nitrogen
-    8:  "O",   # oxygen
-    16: "S",   # sulfur
-    15: "P",   # phosphorus
+    7: "N",  # nitrogen
+    8: "O",  # oxygen
+    16: "S",  # sulfur
+    15: "P",  # phosphorus
 }
 
 # Metal centres recognised by the term (5-metal core set per the
 # project convention; matches Pt/Ru/Ir/Os/Rh/Re from TODO-130 m3/m10)
 _METAL_ATOMIC_NUMS: Dict[int, str] = {
-    44: "Ru", 45: "Rh", 46: "Pd", 76: "Os", 77: "Ir",
-    78: "Pt", 75: "Re", 79: "Au",
+    44: "Ru",
+    45: "Rh",
+    46: "Pd",
+    76: "Os",
+    77: "Ir",
+    78: "Pt",
+    75: "Re",
+    79: "Au",
 }
 
 
@@ -127,26 +134,49 @@ _METAL_ATOMIC_NUMS: Dict[int, str] = {
 METAL_LIGAND_OPT_DISTANCE: Dict[Tuple[str, str], float] = {
     # M-N bonds (~2.0 Å for 1st-row d8 square-planar; ~2.05 Å for
     # octahedral Ru/Ir/Rh/Os).
-    ("Pt", "N"): 2.04, ("Pd", "N"): 2.02, ("Au", "N"): 2.05,
-    ("Ru", "N"): 2.06, ("Ir", "N"): 2.07, ("Os", "N"): 2.08,
-    ("Rh", "N"): 2.05, ("Re", "N"): 2.10,
+    ("Pt", "N"): 2.04,
+    ("Pd", "N"): 2.02,
+    ("Au", "N"): 2.05,
+    ("Ru", "N"): 2.06,
+    ("Ir", "N"): 2.07,
+    ("Os", "N"): 2.08,
+    ("Rh", "N"): 2.05,
+    ("Re", "N"): 2.10,
     # M-O bonds (slightly shorter; ~1.99-2.05 Å).
-    ("Pt", "O"): 2.00, ("Pd", "O"): 2.00, ("Au", "O"): 2.02,
-    ("Ru", "O"): 2.04, ("Ir", "O"): 2.05, ("Os", "O"): 2.06,
-    ("Rh", "O"): 2.04, ("Re", "O"): 2.07,
+    ("Pt", "O"): 2.00,
+    ("Pd", "O"): 2.00,
+    ("Au", "O"): 2.02,
+    ("Ru", "O"): 2.04,
+    ("Ir", "O"): 2.05,
+    ("Os", "O"): 2.06,
+    ("Rh", "O"): 2.04,
+    ("Re", "O"): 2.07,
     # M-S bonds (longer; ~2.30 Å for Pt-S, ~2.32 Å for Au-S).
-    ("Pt", "S"): 2.30, ("Pd", "S"): 2.30, ("Au", "S"): 2.32,
-    ("Ru", "S"): 2.34, ("Ir", "S"): 2.36, ("Os", "S"): 2.35,
-    ("Rh", "S"): 2.33, ("Re", "S"): 2.38,
+    ("Pt", "S"): 2.30,
+    ("Pd", "S"): 2.30,
+    ("Au", "S"): 2.32,
+    ("Ru", "S"): 2.34,
+    ("Ir", "S"): 2.36,
+    ("Os", "S"): 2.35,
+    ("Rh", "S"): 2.33,
+    ("Re", "S"): 2.38,
     # M-P bonds (longest; ~2.30 Å for Pt-P phosphine).
-    ("Pt", "P"): 2.28, ("Pd", "P"): 2.28, ("Au", "P"): 2.30,
-    ("Ru", "P"): 2.32, ("Ir", "P"): 2.34, ("Os", "P"): 2.33,
-    ("Rh", "P"): 2.31, ("Re", "P"): 2.36,
+    ("Pt", "P"): 2.28,
+    ("Pd", "P"): 2.28,
+    ("Au", "P"): 2.30,
+    ("Ru", "P"): 2.32,
+    ("Ir", "P"): 2.34,
+    ("Os", "P"): 2.33,
+    ("Rh", "P"): 2.31,
+    ("Re", "P"): 2.36,
 }
 
 # Gaussian sigma for distance penalty (Å). Larger sigma = more permissive.
 _DISTANCE_SIGMA: Dict[str, float] = {
-    "N": 0.20, "O": 0.18, "S": 0.22, "P": 0.22,
+    "N": 0.20,
+    "O": 0.18,
+    "S": 0.22,
+    "P": 0.22,
 }
 
 
@@ -234,6 +264,7 @@ def _detect_metal_symbol(smiles: str) -> Optional[Tuple[str, int, int]]:
     """
     try:
         from rdkit import Chem, RDLogger  # type: ignore
+
         RDLogger.DisableLog("rdApp.*")
         mol = Chem.MolFromSmiles(smiles)
     except Exception:
@@ -262,8 +293,15 @@ def _detect_metal_symbol(smiles: str) -> Optional[Tuple[str, int, int]]:
 
 def _default_oxidation_state(sym: str) -> int:
     return {
-        "Pt": 2, "Pd": 2, "Au": 3, "Ag": 1,
-        "Ru": 3, "Ir": 3, "Rh": 3, "Os": 4, "Re": 5,
+        "Pt": 2,
+        "Pd": 2,
+        "Au": 3,
+        "Ag": 1,
+        "Ru": 3,
+        "Ir": 3,
+        "Rh": 3,
+        "Os": 4,
+        "Re": 5,
     }.get(sym, 0)
 
 
@@ -275,6 +313,7 @@ def _coordination_number_from_smiles(smiles: str, metal_symbol: str) -> int:
     """
     try:
         from rdkit import Chem, RDLogger  # type: ignore
+
         RDLogger.DisableLog("rdApp.*")
         mol = Chem.MolFromSmiles(smiles)
     except Exception:
@@ -293,7 +332,9 @@ def _coordination_number_from_smiles(smiles: str, metal_symbol: str) -> int:
 
 
 def _coordination_geometry_score(
-    cn: int, metal_symbol: str, oxidation_state: int,
+    cn: int,
+    metal_symbol: str,
+    oxidation_state: int,
 ) -> float:
     """Score the coordination geometry match in [0, 1].
 
@@ -355,7 +396,7 @@ def coordination_geometry_score(smiles: str) -> Tuple[Optional[float], Dict[str,
     sym, os_, n_centres = detected
     cn = _coordination_number_from_smiles(smiles, sym)
     expected = EXPECTED_GEOMETRY.get((sym, os_))
-    expected_geom, expected_cn = (expected if expected else ("unknown", -1))
+    expected_geom, expected_cn = expected if expected else ("unknown", -1)
     score = _coordination_geometry_score(cn, sym, os_)
     return score, {
         "metal": sym,
@@ -412,7 +453,9 @@ def hsab_match_score(
         return None, {"metal": sym, "donor_counts": {}, "reason": "no_hsab_table_row"}
 
     if pocket_donor_counts is not None:
-        counts = {cls: int(pocket_donor_counts.get(cls, 0)) for cls in ("N", "O", "S", "P")}
+        counts = {
+            cls: int(pocket_donor_counts.get(cls, 0)) for cls in ("N", "O", "S", "P")
+        }
     else:
         counts = _ligand_donor_counts(smiles, sym)
 
@@ -435,6 +478,7 @@ def _ligand_donor_counts(smiles: str, metal_symbol: str) -> Dict[str, int]:
     counts = {"N": 0, "O": 0, "S": 0, "P": 0}
     try:
         from rdkit import Chem, RDLogger  # type: ignore
+
         RDLogger.DisableLog("rdApp.*")
         mol = Chem.MolFromSmiles(smiles)
     except Exception:
@@ -475,7 +519,7 @@ def metal_ligand_distance_score(
         return None
     sigma = _DISTANCE_SIGMA.get(donor_class, 0.20)
     diff = float(distance_angstrom) - float(d_opt)
-    return float(math.exp(-(diff / sigma) ** 2))
+    return float(math.exp(-((diff / sigma) ** 2)))
 
 
 def pocket_donor_counts_from_atomicnums(

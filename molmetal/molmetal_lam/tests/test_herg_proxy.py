@@ -31,6 +31,7 @@ The midpoint 0.30 is chosen to:
   - flag paracetamol (1.00) and aspirin (1.00) as clean,
   - leave a clean margin between the two classes.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -69,15 +70,15 @@ def test_invalid_smiles_falls_back_to_neutral(suite, smiles):
 def test_output_bounded_in_unit_interval(suite):
     """Score must be in [0, 1] across a diverse chemical space."""
     smiles_list = [
-        "CCO",                                # ethanol
-        "C",                                  # methane (CH4)
-        "c1ccccc1",                           # benzene
-        "CC(=O)NC1=CC=C(O)C=C1",              # paracetamol
-        "CCCCCCCCCCCCCCCCCCCC",               # eicosane (very lipophilic)
-        "C(C(C(C(C(C(C=O)O)O)O)O)O)O",        # glucose
-        "C1=CN=CC=C1",                        # pyrazine
-        "Cl[Pt](N)(N)Cl",                     # cisplatin
-        "C1CC2CCC1C2",                        # norbornane
+        "CCO",  # ethanol
+        "C",  # methane (CH4)
+        "c1ccccc1",  # benzene
+        "CC(=O)NC1=CC=C(O)C=C1",  # paracetamol
+        "CCCCCCCCCCCCCCCCCCCC",  # eicosane (very lipophilic)
+        "C(C(C(C(C(C(C=O)O)O)O)O)O)O",  # glucose
+        "C1=CN=CC=C1",  # pyrazine
+        "Cl[Pt](N)(N)Cl",  # cisplatin
+        "C1CC2CCC1C2",  # norbornane
     ]
     for s in smiles_list:
         v = suite.herg_proxy(s)
@@ -96,7 +97,7 @@ def test_basic_nitrogen_increases_risk(suite):
 
 def test_logp_above_threshold_increases_risk(suite):
     """Pushing logP > 3.5 must lower the score."""
-    polar = suite.herg_proxy("c1ccccc1O")            # phenol, logP ~1.5
+    polar = suite.herg_proxy("c1ccccc1O")  # phenol, logP ~1.5
     lipophilic = suite.herg_proxy("c1ccccc1CCCCCCCC")  # octylbenzene, logP > 5
     assert lipophilic < polar, (
         f"Lipophilic aromatic should score lower: "
@@ -106,7 +107,7 @@ def test_logp_above_threshold_increases_risk(suite):
 
 def test_aromatic_ring_threshold(suite):
     """Aromatic rings >= 3 must start contributing to hERG risk."""
-    biphenyl = suite.herg_proxy("c1ccc(-c2ccccc2)cc1")     # 2 aromatic rings
+    biphenyl = suite.herg_proxy("c1ccc(-c2ccccc2)cc1")  # 2 aromatic rings
     terphenyl = suite.herg_proxy("c1ccc(-c2ccc(-c3ccccc3)cc2)cc1")  # 3 rings
     assert terphenyl < biphenyl, (
         f"3+ aromatic rings should score lower than 2 rings: "
@@ -116,7 +117,7 @@ def test_aromatic_ring_threshold(suite):
 
 def test_molecular_weight_increases_risk(suite):
     """MW > 400 must start contributing to hERG risk."""
-    light = suite.herg_proxy("c1ccccc1c1ccccc1")              # biphenyl ~154 Da
+    light = suite.herg_proxy("c1ccccc1c1ccccc1")  # biphenyl ~154 Da
     heavy = suite.herg_proxy("c1ccccc1c1ccccc1c1ccccc1c1ccccc1")  # quaterphenyl ~306 Da
     # Heavy polyaromatic combines MW contribution + extra aromatic-ring contribution.
     assert heavy < light, (
@@ -204,6 +205,7 @@ def test_documented_unit_ceiling_for_clean_small_molecule(suite):
 def test_counter_increments(suite):
     """The herg_calls counter must tick on every call."""
     from molmetal_lam.priors.anticancer_metric_suite import _ANTICANCER_COUNTERS
+
     before = _ANTICANCER_COUNTERS["herg_calls"]
     suite.herg_proxy("CCO")
     suite.herg_proxy("c1ccccc1")

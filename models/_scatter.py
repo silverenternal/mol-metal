@@ -75,6 +75,7 @@ def _try_load_triton_aggregate():
 
 _TRITON_AGGREGATE = _try_load_triton_aggregate()
 
+
 # Detect RDNA3 (gfx1100/gfx1101) at import time.  Per the triton-rocm
 # integration report, ``torch.index_add_`` beats the Triton
 # ``aggregate_vectors`` kernel by 3.0-3.5x on RDNA3 at every shape the
@@ -203,13 +204,21 @@ class _ScatterSum(torch.autograd.Function):
         ctx.batch_size = batch_size
         ctx.n_atoms = n_atoms
         return _scatter_sum_impl(
-            src, dst, features, n_atoms, mask, out, batch_size,
+            src,
+            dst,
+            features,
+            n_atoms,
+            mask,
+            out,
+            batch_size,
         )
 
     @staticmethod
     def backward(ctx, grad_out):  # type: ignore[override]
         dst, mask = ctx.saved_tensors
-        bs = ctx.batch_size if (ctx.batch_size is not None and ctx.batch_size > 1) else 1
+        bs = (
+            ctx.batch_size if (ctx.batch_size is not None and ctx.batch_size > 1) else 1
+        )
         grad_features = _scatter_backward(grad_out, dst, mask, bs, ctx.n_atoms)
         # src is unused in the math, so its gradient is None.
         return None, None, grad_features, None, None, None, None
@@ -238,7 +247,8 @@ def _scatter_backward(
     if batch_size > 1:
         device = dst.device
         offsets = (
-            torch.arange(batch_size, device=device, dtype=torch.long).unsqueeze(1) * n_atoms
+            torch.arange(batch_size, device=device, dtype=torch.long).unsqueeze(1)
+            * n_atoms
         )
         dst_offset = (dst_long.view(batch_size, -1) + offsets).reshape(-1)
         # ``grad_out`` has shape ``(B, N, F)``; flatten its leading
@@ -389,5 +399,11 @@ def scatter_sum(
     ``torch.scatter_add_`` — fast, correct, and standard.
     """
     return _ScatterSum.apply(
-        src, dst, features, n_atoms, mask, out, batch_size,
+        src,
+        dst,
+        features,
+        n_atoms,
+        mask,
+        out,
+        batch_size,
     )

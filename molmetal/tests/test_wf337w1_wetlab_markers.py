@@ -74,7 +74,9 @@ WETLAB_FILES = [
 
 MARKER_CANONICAL_TOKEN = "TEMPLATE_NOT_NEEDED_FOR_TIER2"
 AGENTS_SECTION_RE = re.compile(r"AGENTS\.md\s*§?\s*5\.4")
-TIER2_DIRECTIVE_RE = re.compile(r"二区就可以了|wet-?lab\s+(is\s+)?OUT\s+OF\s+SCOPE", re.IGNORECASE)
+TIER2_DIRECTIVE_RE = re.compile(
+    r"二区就可以了|wet-?lab\s+(is\s+)?OUT\s+OF\s+SCOPE", re.IGNORECASE
+)
 
 
 # ---------------------------------------------------------------------------
@@ -215,7 +217,10 @@ def test_marker_format_consistency():
         )
         # Accept either canonical format header on the first marker line.
         first_marker_line = block.splitlines()[0]
-        if not (format_a_re.search(first_marker_line) or format_b_re.search(first_marker_line)):
+        if not (
+            format_a_re.search(first_marker_line)
+            or format_b_re.search(first_marker_line)
+        ):
             bad_format.append((name, first_marker_line))
 
     assert not bad_format, (
@@ -245,9 +250,9 @@ def test_tier2_strategy_compliance():
     for name in WETLAB_FILES:
         text = _load(name)
         block = _find_marker_block(text)
-        assert block is not None, (
-            f"{name}: marker block missing (test 2 should have caught this)"
-        )
+        assert (
+            block is not None
+        ), f"{name}: marker block missing (test 2 should have caught this)"
 
         # 1. AGENTS.md §5.4 reference.
         if not AGENTS_SECTION_RE.search(block):
@@ -263,9 +268,7 @@ def test_tier2_strategy_compliance():
     )
 
     # Sanity: at least one file uses the Chinese directive verbatim.
-    has_chinese_directive = any(
-        "二区就可以了" in _load(name) for name in WETLAB_FILES
-    )
+    has_chinese_directive = any("二区就可以了" in _load(name) for name in WETLAB_FILES)
     assert has_chinese_directive, (
         "Tier-2 strategy compliance: no file uses the canonical Chinese "
         "directive '二区就可以了' verbatim — possible drift from §5.4"
@@ -278,9 +281,14 @@ def test_tier2_strategy_compliance():
     fmt_b_count = 0
     for name in WETLAB_FILES:
         text = _load(name)
-        if re.search(r"> \*\*TEMPLATE_NOT_NEEDED_FOR_TIER2\s*\(\d{4}-\d{2}-\d{2}\)\*\*", text):
+        if re.search(
+            r"> \*\*TEMPLATE_NOT_NEEDED_FOR_TIER2\s*\(\d{4}-\d{2}-\d{2}\)\*\*", text
+        ):
             fmt_a_count += 1
-        elif re.search(r"> \*\*Status\s*\(\d{4}-\d{2}-\d{2}\):\s*TEMPLATE_NOT_NEEDED_FOR_TIER2\*\*", text):
+        elif re.search(
+            r"> \*\*Status\s*\(\d{4}-\d{2}-\d{2}\):\s*TEMPLATE_NOT_NEEDED_FOR_TIER2\*\*",
+            text,
+        ):
             fmt_b_count += 1
     assert fmt_a_count + fmt_b_count == len(WETLAB_FILES), (
         f"Format distribution unexpected: A={fmt_a_count}, B={fmt_b_count}, "

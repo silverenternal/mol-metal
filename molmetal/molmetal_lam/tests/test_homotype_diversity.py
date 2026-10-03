@@ -92,7 +92,9 @@ def test_signature_from_mol_captures_atoms():
     # Default click-rule fires are the all-zero dict covering the
     # canonical vocabulary.
     assert sig.click_rule_fires == {
-        "CuAAC": 0, "SPAAC": 0, "ThiolEne": 0,
+        "CuAAC": 0,
+        "SPAAC": 0,
+        "ThiolEne": 0,
     }
 
 
@@ -152,7 +154,10 @@ def test_homotype_distance_maximal_one():
     # 0 aromatic C; benzene has 6 aromatic C) we use that to make the
     # test pass.  Otherwise we relax the threshold to >= 0.0 with a
     # docstring explaining the projection.
-    if sig_b.typed_variable_counts.get("C", 0) == 6 and sig_d.typed_variable_counts.get("C", 0) == 10:
+    if (
+        sig_b.typed_variable_counts.get("C", 0) == 6
+        and sig_d.typed_variable_counts.get("C", 0) == 10
+    ):
         # Spec compliance: typed-var histograms differ in count only,
         # so cosine = 0.0 on the typed-var axis.  We accept ANY
         # non-negative distance and document the projection.
@@ -272,8 +277,8 @@ def test_homotype_diversity_distinguishes_tanimoto_indistinguishable():
     else:
         # A more strongly different pair — pick a mol whose typed-var
         # histogram truly differs and check the independence.
-        mol_a = _safe_mol("c1ccccc1")        # 6 C, 6 H (heavy only)
-        mol_b = _safe_mol("C1CCCCC1")        # 6 C, 12 H
+        mol_a = _safe_mol("c1ccccc1")  # 6 C, 6 H (heavy only)
+        mol_b = _safe_mol("C1CCCCC1")  # 6 C, 12 H
         if mol_a is not None and mol_b is not None:
             sa = HomotypeSignature.from_mol(mol_a)
             sb = HomotypeSignature.from_mol(mol_b)
@@ -390,7 +395,9 @@ def test_signature_from_term_with_reduction_history():
     rule_names = iter(["CuAAC", "CuAAC", "ThiolEne"])
 
     sig = HomotypeSignature.from_term(
-        term, reduction_history=history, rule_name_extractor=lambda step: next(rule_names, None)
+        term,
+        reduction_history=history,
+        rule_name_extractor=lambda step: next(rule_names, None),
     )
     assert sig.typed_variable_counts == {"C": 2, "Pt": 1, "N": 2}
     assert sig.beta_reduction_depth == 3

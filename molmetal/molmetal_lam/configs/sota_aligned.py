@@ -22,6 +22,7 @@ not re-run DiffDock / TargetDiff ourselves on this hardware.  Strict
 head-to-head is gated on DiffSBDD ckpt + torch_geometric ROCm 7.2
 wheels (TODO/pending/risks.md R1).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
@@ -239,7 +240,9 @@ def load_sota_aligned_config(path: str) -> SOTAAlignedConfig:
     with p.open("r") as f:
         raw = yaml.safe_load(f) or {}
     if not isinstance(raw, dict):
-        raise ValueError(f"SOTA-aligned config root must be a mapping; got {type(raw).__name__}")
+        raise ValueError(
+            f"SOTA-aligned config root must be a mapping; got {type(raw).__name__}"
+        )
     return SOTAAlignedConfig(
         test_set=raw.get("test_set", "crossdocked_pocket10"),
         n_test_pockets=int(raw.get("n_test_pockets", 100)),

@@ -129,8 +129,7 @@ AQUA_EXCHANGE_SMARTS: List[Tuple[str, str, str]] = [
     # bearing a hydroxyl + a Cl leaving group + H2O donor.
     (
         "Pt_OHCl_H2O_second",
-        "[Pt:1]([OH:2])([Cl:3])[*:4].[OH2:5]>>"
-        "[Pt:1]([OH:2])([OH:5])[*:4].[Cl:3]",
+        "[Pt:1]([OH:2])([Cl:3])[*:4].[OH2:5]>>" "[Pt:1]([OH:2])([OH:5])[*:4].[Cl:3]",
         "second aquation — Pt-OH(Cl) + H2O → Pt-(OH)2 + Cl "
         "(Reedijk 1987, the diaqua complex that binds DNA-N7-guanine)",
     ),
@@ -186,11 +185,15 @@ class AquaContext:
 # Canonical AquaContext instances for the 2 patterns.
 AQUA_CONTEXTS: Dict[str, AquaContext] = {
     "Pt_Cl_H2O_first": AquaContext(
-        pka1=6.5, ionic_strength_M=0.10, temperature_K=310.0,
+        pka1=6.5,
+        ionic_strength_M=0.10,
+        temperature_K=310.0,
         notes="first aquation (Reedijk 1987 cisplatin canonical)",
     ),
     "Pt_OHCl_H2O_second": AquaContext(
-        pka1=7.2, ionic_strength_M=0.10, temperature_K=310.0,
+        pka1=7.2,
+        ionic_strength_M=0.10,
+        temperature_K=310.0,
         notes="second aquation — diaqua complex that binds DNA-N7-guanine",
     ),
 }
@@ -210,12 +213,18 @@ AQUA_CONTEXTS: Dict[str, AquaContext] = {
 # ---------------------------------------------------------------------------
 _MATRIX_METALS: Tuple[str, str] = (
     # (metal_label, SMARTS_atom_token)
-    ("Pt_II", "[Pt:1]"), ("Pt_IV", "[Pt:1]"),
-    ("Ru_II", "[Ru:1]"), ("Ru_III", "[Ru:1]"),
-    ("Ir_III", "[Ir:1]"), ("Ir_IV", "[Ir:1]"),
-    ("Os_II", "[Os:1]"), ("Os_III", "[Os:1]"),
-    ("Rh_I", "[Rh:1]"), ("Rh_III", "[Rh:1]"),
-    ("Au_I", "[Au:1]"), ("Au_III", "[Au:1]"),
+    ("Pt_II", "[Pt:1]"),
+    ("Pt_IV", "[Pt:1]"),
+    ("Ru_II", "[Ru:1]"),
+    ("Ru_III", "[Ru:1]"),
+    ("Ir_III", "[Ir:1]"),
+    ("Ir_IV", "[Ir:1]"),
+    ("Os_II", "[Os:1]"),
+    ("Os_III", "[Os:1]"),
+    ("Rh_I", "[Rh:1]"),
+    ("Rh_III", "[Rh:1]"),
+    ("Au_I", "[Au:1]"),
+    ("Au_III", "[Au:1]"),
 )
 _MATRIX_LIGANDS: Tuple[str, str, str, str] = (
     # (ligand_label, donor_SMILES, reactant_donor_token, product_donor_token)
@@ -233,8 +242,10 @@ _MATRIX_LIGANDS: Tuple[str, str, str, str] = (
 METAL_LIGAND_EXCHANGE_MATRIX: List[Tuple[str, str, str]] = []
 for _metal_label, _metal_token in _MATRIX_METALS:
     for (
-        _ligand_label, _donor_smiles,
-        _reactant_token, _product_token,
+        _ligand_label,
+        _donor_smiles,
+        _reactant_token,
+        _product_token,
     ) in _MATRIX_LIGANDS:
         _name = f"{_metal_label}_Cl_{_ligand_label}"
         # Canonical Pt_Cl_NH3 SMARTS: [Pt:1]([Cl:2])[*:3].[NH3:4]>>
@@ -271,7 +282,9 @@ def get_metal_ligand_matrix_ligands() -> List[Tuple[str, str, str]]:
     # Returns only the first 3 fields per ligand (label, SMILES, token);
     # the 4th field `product_token` is internal — used only in matrix
     # generation to handle the H2O donor product-side change.
-    return [(label, smiles, rtoken) for (label, smiles, rtoken, _ptok) in _MATRIX_LIGANDS]
+    return [
+        (label, smiles, rtoken) for (label, smiles, rtoken, _ptok) in _MATRIX_LIGANDS
+    ]
 
 
 def get_metal_ligand_matrix_metals() -> List[Tuple[str, str, str]]:
@@ -281,8 +294,11 @@ def get_metal_ligand_matrix_metals() -> List[Tuple[str, str, str]]:
         # contract: return (symbol, oxidation_state, geometry) where
         # `symbol` is just the element symbol (e.g. "Pt", not "Pt_II")
         # and `geometry` is one of {square_planar, octahedral, ...}.
-        (label.split("_")[0], label.split("_")[1],
-         "square_planar" if label.startswith(("Pt_", "Au_")) else "octahedral")
+        (
+            label.split("_")[0],
+            label.split("_")[1],
+            "square_planar" if label.startswith(("Pt_", "Au_")) else "octahedral",
+        )
         for (label, _token) in _MATRIX_METALS
     ]
 
@@ -315,43 +331,37 @@ TRANSMETALATION_SMARTS: List[Tuple[str, str, str]] = [
     # 6 transmetalation pairs (1R -> 1P; metal :1 + ligands :2-:5 mirrored).
     (
         "transmet_Pt_II_to_Pd_II",
-        "[Pt:1]([*:2])([*:3])([*:4])([*:5])>>"
-        "[Pd:1]([*:2])([*:3])([*:4])([*:5])",
+        "[Pt:1]([*:2])([*:3])([*:4])([*:5])>>" "[Pd:1]([*:2])([*:3])([*:4])([*:5])",
         "Pt_II -> Pd_II transmetalation (d8 square-planar swap, "
         "ligand shell :2-:5 preserved; Lippard 1995 §4.2)",
     ),
     (
         "transmet_Pt_II_to_Au_III",
-        "[Pt:1]([*:2])([*:3])([*:4])([*:5])>>"
-        "[Au:1]([*:2])([*:3])([*:4])([*:5])",
+        "[Pt:1]([*:2])([*:3])([*:4])([*:5])>>" "[Au:1]([*:2])([*:3])([*:4])([*:5])",
         "Pt_II -> Au_III transmetalation (d8 5d analogue swap, "
         "ligand shell :2-:5 preserved; Comba-Hambley 2009 §3.4)",
     ),
     (
         "transmet_Pt_II_to_Ru_II",
-        "[Pt:1]([*:2])([*:3])([*:4])([*:5])>>"
-        "[Ru:1]([*:2])([*:3])([*:4])([*:5])",
+        "[Pt:1]([*:2])([*:3])([*:4])([*:5])>>" "[Ru:1]([*:2])([*:3])([*:4])([*:5])",
         "Pt_II -> Ru_II transmetalation (3d -> 4d swap, "
         "ligand shell :2-:5 preserved)",
     ),
     (
         "transmet_Pd_II_to_Au_III",
-        "[Pd:1]([*:2])([*:3])([*:4])([*:5])>>"
-        "[Au:1]([*:2])([*:3])([*:4])([*:5])",
+        "[Pd:1]([*:2])([*:3])([*:4])([*:5])>>" "[Au:1]([*:2])([*:3])([*:4])([*:5])",
         "Pd_II -> Au_III transmetalation (4d -> 5d swap, "
         "ligand shell :2-:5 preserved)",
     ),
     (
         "transmet_Pt_II_to_Os_II",
-        "[Pt:1]([*:2])([*:3])([*:4])([*:5])>>"
-        "[Os:1]([*:2])([*:3])([*:4])([*:5])",
+        "[Pt:1]([*:2])([*:3])([*:4])([*:5])>>" "[Os:1]([*:2])([*:3])([*:4])([*:5])",
         "Pt_II -> Os_II transmetalation (5d6 -> 5d8 swap, "
         "ligand shell :2-:5 preserved)",
     ),
     (
         "transmet_Ru_II_to_Pt_II",
-        "[Ru:1]([*:2])([*:3])([*:4])([*:5])>>"
-        "[Pt:1]([*:2])([*:3])([*:4])([*:5])",
+        "[Ru:1]([*:2])([*:3])([*:4])([*:5])>>" "[Pt:1]([*:2])([*:3])([*:4])([*:5])",
         "Ru_II -> Pt_II transmetalation (reverse direction, "
         "ligand shell :2-:5 preserved)",
     ),
@@ -412,22 +422,19 @@ LIGAND_SHELL_MMA_SMARTS: List[Tuple[str, str, str]] = [
         "shell_mma_Pt_II_to_Au_III",
         "[Pt:1]([C-:2]#N)([*:3])([*:4])([*:5])>>"
         "[Au:1]([C-:2]#N)([*:3])([*:4])([*:5])",
-        "Pt_II -> Au_III transmetalation with CN- ligand shell "
-        "preserved",
+        "Pt_II -> Au_III transmetalation with CN- ligand shell " "preserved",
     ),
     (
         "shell_mma_Pt_II_to_Ru_II",
         "[Pt:1]([C-:2]#N)([*:3])([*:4])([*:5])>>"
         "[Ru:1]([C-:2]#N)([*:3])([*:4])([*:5])",
-        "Pt_II -> Ru_II transmetalation with CN- ligand shell "
-        "preserved",
+        "Pt_II -> Ru_II transmetalation with CN- ligand shell " "preserved",
     ),
     (
         "shell_mma_Pd_II_to_Au_III",
         "[Pd:1]([C-:2]#N)([*:3])([*:4])([*:5])>>"
         "[Au:1]([C-:2]#N)([*:3])([*:4])([*:5])",
-        "Pd_II -> Au_III transmetalation with CN- ligand shell "
-        "preserved",
+        "Pd_II -> Au_III transmetalation with CN- ligand shell " "preserved",
     ),
 ]
 
@@ -439,15 +446,13 @@ PT_PD_TRANSMETALATION_SMARTS: List[Tuple[str, str, str]] = [
     # also contains a Pt_II->Pd_II pair).
     (
         "pt_pd_transmet_Pt_II_to_Pd_II",
-        "[Pt:1]([*:2])([*:3])([*:4])([*:5])>>"
-        "[Pd:1]([*:2])([*:3])([*:4])([*:5])",
+        "[Pt:1]([*:2])([*:3])([*:4])([*:5])>>" "[Pd:1]([*:2])([*:3])([*:4])([*:5])",
         "Pt_II -> Pd_II directional transmetalation (specific Pt/Pd "
         "pair in the canonical d8 square-planar geometry)",
     ),
     (
         "pt_pd_transmet_Pd_II_to_Pt_II",
-        "[Pd:1]([*:2])([*:3])([*:4])([*:5])>>"
-        "[Pt:1]([*:2])([*:3])([*:4])([*:5])",
+        "[Pd:1]([*:2])([*:3])([*:4])([*:5])>>" "[Pt:1]([*:2])([*:3])([*:4])([*:5])",
         "Pd_II -> Pt_II directional transmetalation (reverse "
         "direction; specific Pt/Pd pair)",
     ),
@@ -516,12 +521,9 @@ def register_metal_ligand_exchange_rules(
                 register_rule,
                 list_rules,
             )
-            existing_matrix = {
-                r.name for r in list_rules(scope="metal-coord-matrix")
-            }
-            existing_new = {
-                r.name for r in list_rules(scope="metal-coord-new-smarts")
-            }
+
+            existing_matrix = {r.name for r in list_rules(scope="metal-coord-matrix")}
+            existing_new = {r.name for r in list_rules(scope="metal-coord-new-smarts")}
             for name, smarts, desc in METAL_LIGAND_EXCHANGE_MATRIX:
                 if str(name) not in existing_matrix:
                     register_rule(

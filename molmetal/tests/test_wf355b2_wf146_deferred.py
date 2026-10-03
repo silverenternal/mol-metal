@@ -32,7 +32,9 @@ PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
 WRAPPER = PROJECT_ROOT / "scripts" / "launch_wf146_deferred_runs.sh"
 PRE_FLIGHT = PROJECT_ROOT / "molmetal" / "scripts" / "pre_flight_check.py"
 PER_WAVE_CHECK = PROJECT_ROOT / "molmetal" / "scripts" / "wf343c2_per_wave_check.py"
-DATA_QUALITY_CHECK = PROJECT_ROOT / "molmetal" / "scripts" / "wf343c3_data_quality_check.py"
+DATA_QUALITY_CHECK = (
+    PROJECT_ROOT / "molmetal" / "scripts" / "wf343c3_data_quality_check.py"
+)
 WF146_TRAINER = PROJECT_ROOT / "molmetal" / "scripts" / "wf146_chemprop_lomo.py"
 
 # 6 DEFERRED (metal, seed) pairs per Wf-354-A1 §5 + Wf-146 sweep.log
@@ -42,6 +44,7 @@ EXPECTED_PAIRS = ["Re_0", "Re_1", "Re_2", "Re_3", "Re_4", "Os_4"]
 # ---------------------------------------------------------------------------
 # Test 1: USER_OK gate enforced (R3 mode requires USER_OK=YES)
 # ---------------------------------------------------------------------------
+
 
 def test_wf355b2_user_ok_gate_enforced_r3():
     """Wf-355-B2 task contract — USER_OK gate enforces R3 mode per Wf-294B /
@@ -65,21 +68,26 @@ def test_wf355b2_user_ok_gate_enforced_r3():
     # R3 without USER_OK must die (FATAL exit non-zero)
     proc = subprocess.run(
         ["bash", str(WRAPPER), "--dry-run", "--mode", "R3"],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     assert proc.returncode != 0, (
         "R3 mode without USER_OK should exit non-zero (gate enforced); "
         f"got rc={proc.returncode} stderr={proc.stderr[-300:]!r}"
     )
-    assert "USER_OK" in proc.stderr, (
-        f"FATAL message should reference USER_OK; got stderr={proc.stderr[-300:]!r}"
-    )
+    assert (
+        "USER_OK" in proc.stderr
+    ), f"FATAL message should reference USER_OK; got stderr={proc.stderr[-300:]!r}"
 
     # R3 with USER_OK=YES must pass (exit zero)
     env = {**os.environ, "USER_OK": "YES"}
     proc = subprocess.run(
         ["bash", str(WRAPPER), "--dry-run", "--mode", "R3"],
-        capture_output=True, text=True, timeout=60, env=env,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        env=env,
     )
     assert proc.returncode == 0, (
         f"R3 mode with USER_OK=YES should exit zero; got rc={proc.returncode} "
@@ -89,20 +97,23 @@ def test_wf355b2_user_ok_gate_enforced_r3():
     # R1 mode without USER_OK must warn but still exit zero (smoke mode)
     proc = subprocess.run(
         ["bash", str(WRAPPER), "--dry-run", "--mode", "R1"],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     assert proc.returncode == 0, (
         f"R1 mode without USER_OK should still pass (smoke); got rc={proc.returncode} "
         f"stderr={proc.stderr[-300:]!r}"
     )
-    assert "USER_OK not set" in proc.stderr or "USER_OK not set" in proc.stdout, (
-        "R1 mode without USER_OK should emit USER_OK-not-set warning"
-    )
+    assert (
+        "USER_OK not set" in proc.stderr or "USER_OK not set" in proc.stdout
+    ), "R1 mode without USER_OK should emit USER_OK-not-set warning"
 
 
 # ---------------------------------------------------------------------------
 # Test 2: Bash syntax check (`bash -n` parses cleanly)
 # ---------------------------------------------------------------------------
+
 
 def test_wf355b2_bash_syntax_check():
     """Wf-355-B2 task contract — `bash -n` parses cleanly (no syntax errors).
@@ -119,7 +130,9 @@ def test_wf355b2_bash_syntax_check():
 
     proc = subprocess.run(
         ["bash", "-n", str(WRAPPER)],
-        capture_output=True, text=True, timeout=10,
+        capture_output=True,
+        text=True,
+        timeout=10,
     )
     assert proc.returncode == 0, (
         f"bash -n syntax check failed; rc={proc.returncode} "
@@ -129,53 +142,62 @@ def test_wf355b2_bash_syntax_check():
     text = WRAPPER.read_text()
 
     # Shebang present
-    assert text.startswith("#!/usr/bin/env bash"), \
-        f"wrapper missing proper shebang; first line={text.splitlines()[0]!r}"
+    assert text.startswith(
+        "#!/usr/bin/env bash"
+    ), f"wrapper missing proper shebang; first line={text.splitlines()[0]!r}"
 
     # Size check — task brief says ~200 LOC; allow 300-700 with header docstring.
     n_lines = len(text.splitlines())
-    assert 300 <= n_lines <= 700, (
-        f"wrapper size {n_lines} LOC outside expected [300, 700] range"
-    )
+    assert (
+        300 <= n_lines <= 700
+    ), f"wrapper size {n_lines} LOC outside expected [300, 700] range"
 
     # Wf-146 trainer reference
-    assert "wf146_chemprop_lomo.py" in text, \
-        "wrapper missing reference to Wf-146 chemprop LOMO trainer"
+    assert (
+        "wf146_chemprop_lomo.py" in text
+    ), "wrapper missing reference to Wf-146 chemprop LOMO trainer"
 
     # 3 pre-launch gate helpers (per Wf-343c2 retro-fit pattern)
     assert "pre_flight_gate" in text, "pre_flight_gate function missing in wrapper"
-    assert "per_wave_check_gate" in text, \
-        "per_wave_check_gate function missing in wrapper"
-    assert "data_quality_gate" in text, \
-        "data_quality_gate function missing in wrapper"
+    assert (
+        "per_wave_check_gate" in text
+    ), "per_wave_check_gate function missing in wrapper"
+    assert "data_quality_gate" in text, "data_quality_gate function missing in wrapper"
 
     # Pre-flight + per-wave + data quality script paths present
-    assert "pre_flight_check.py" in text, \
-        "pre_flight_check.py reference missing in wrapper"
-    assert "wf343c2_per_wave_check.py" in text, \
-        "wf343c2_per_wave_check.py reference missing in wrapper"
-    assert "wf343c3_data_quality_check.py" in text, \
-        "wf343c3_data_quality_check.py reference missing in wrapper"
+    assert (
+        "pre_flight_check.py" in text
+    ), "pre_flight_check.py reference missing in wrapper"
+    assert (
+        "wf343c2_per_wave_check.py" in text
+    ), "wf343c2_per_wave_check.py reference missing in wrapper"
+    assert (
+        "wf343c3_data_quality_check.py" in text
+    ), "wf343c3_data_quality_check.py reference missing in wrapper"
 
     # Verify all 4 helper scripts exist on disk
     assert PRE_FLIGHT.exists(), f"pre_flight_check.py missing on disk: {PRE_FLIGHT}"
-    assert PER_WAVE_CHECK.exists(), \
-        f"wf343c2_per_wave_check.py missing on disk: {PER_WAVE_CHECK}"
-    assert DATA_QUALITY_CHECK.exists(), \
-        f"wf343c3_data_quality_check.py missing on disk: {DATA_QUALITY_CHECK}"
-    assert WF146_TRAINER.exists(), \
-        f"Wf-146 trainer missing on disk: {WF146_TRAINER}"
+    assert (
+        PER_WAVE_CHECK.exists()
+    ), f"wf343c2_per_wave_check.py missing on disk: {PER_WAVE_CHECK}"
+    assert (
+        DATA_QUALITY_CHECK.exists()
+    ), f"wf343c3_data_quality_check.py missing on disk: {DATA_QUALITY_CHECK}"
+    assert WF146_TRAINER.exists(), f"Wf-146 trainer missing on disk: {WF146_TRAINER}"
 
     # Smoke backbone hidden/depth markers
-    assert "hidden 64" in text or "hidden=64" in text, \
-        "wrapper missing hidden=64 (Wf-146 smoke backbone)"
-    assert "depth 2" in text or "depth=2" in text, \
-        "wrapper missing depth=2 (Wf-146 smoke backbone)"
+    assert (
+        "hidden 64" in text or "hidden=64" in text
+    ), "wrapper missing hidden=64 (Wf-146 smoke backbone)"
+    assert (
+        "depth 2" in text or "depth=2" in text
+    ), "wrapper missing depth=2 (Wf-146 smoke backbone)"
 
 
 # ---------------------------------------------------------------------------
 # Test 3: Per-run enumeration (6 DEFERRED pairs listed)
 # ---------------------------------------------------------------------------
+
 
 def test_wf355b2_per_run_enumeration_six_deferred():
     """Wf-355-B2 task contract — 6 DEFERRED (metal, seed) pairs enumerated
@@ -205,8 +227,9 @@ def test_wf355b2_per_run_enumeration_six_deferred():
 
     # WF146_DEFERRED_PAIRS array contains all 6
     # Find the array literal in the source
-    assert "WF146_DEFERRED_PAIRS=(" in text, \
-        "WF146_DEFERRED_PAIRS array declaration missing"
+    assert (
+        "WF146_DEFERRED_PAIRS=(" in text
+    ), "WF146_DEFERRED_PAIRS array declaration missing"
 
     # Reconstruct what the bash array would expand to (5 Re + 1 Os)
     re_count = sum(1 for p in EXPECTED_PAIRS if p.startswith("Re_"))
@@ -218,7 +241,10 @@ def test_wf355b2_per_run_enumeration_six_deferred():
     env = {**os.environ, "USER_OK": "YES"}
     proc = subprocess.run(
         ["bash", str(WRAPPER), "--dry-run", "--mode", "R3"],
-        capture_output=True, text=True, timeout=60, env=env,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        env=env,
     )
     assert proc.returncode == 0, (
         f"R3 dry-run should exit zero; got rc={proc.returncode} "
@@ -240,17 +266,22 @@ def test_wf355b2_per_run_enumeration_six_deferred():
     env_with_filter = {**os.environ, "USER_OK": "YES", "ONLY_RUNS": "Re_1,Os_4"}
     proc_filter = subprocess.run(
         ["bash", str(WRAPPER), "--dry-run", "--mode", "R3"],
-        capture_output=True, text=True, timeout=60, env=env_with_filter,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        env=env_with_filter,
     )
     assert proc_filter.returncode == 0, (
         f"R3 dry-run with ONLY_RUNS filter should exit zero; got rc={proc_filter.returncode} "
         f"stderr={proc_filter.stderr[-500:]!r}"
     )
     # Re_1 and Os_4 should appear
-    assert "Re_1" in proc_filter.stderr, \
-        f"Re_1 not in ONLY_RUNS=Re_1,Os_4 output; stderr={proc_filter.stderr[-500:]!r}"
-    assert "Os_4" in proc_filter.stderr, \
-        f"Os_4 not in ONLY_RUNS=Re_1,Os_4 output; stderr={proc_filter.stderr[-500:]!r}"
+    assert (
+        "Re_1" in proc_filter.stderr
+    ), f"Re_1 not in ONLY_RUNS=Re_1,Os_4 output; stderr={proc_filter.stderr[-500:]!r}"
+    assert (
+        "Os_4" in proc_filter.stderr
+    ), f"Os_4 not in ONLY_RUNS=Re_1,Os_4 output; stderr={proc_filter.stderr[-500:]!r}"
     # Re_0 / Re_2 / Re_3 / Re_4 should NOT appear (excluded by filter)
     for excluded in ["Re_0", "Re_2", "Re_3", "Re_4"]:
         assert excluded not in proc_filter.stderr, (

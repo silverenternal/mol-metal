@@ -162,15 +162,15 @@ def logp7_4(smiles: str) -> float:
 
     # Ionisation fractions at pH=7.4 (proxy via functional-group counts).
     alpha7_4 = 0  # acids ionised at 7.4
-    beta7_4 = 0   # bases protonated at 7.4
+    beta7_4 = 0  # bases protonated at 7.4
     try:
         acid_smarts = [
-            "[CX3](=O)[OX2H1]",        # -COOH
-            "[SX4](=O)(=O)[OX2H1]",    # -SO3H / -SO2NH2 (sulphonamide)
+            "[CX3](=O)[OX2H1]",  # -COOH
+            "[SX4](=O)(=O)[OX2H1]",  # -SO3H / -SO2NH2 (sulphonamide)
         ]
         base_smarts = [
-            "[NX3;H2][CX4]",           # primary aliphatic amine
-            "[NX3;H1][CX4][CX4]",      # secondary aliphatic amine
+            "[NX3;H2][CX4]",  # primary aliphatic amine
+            "[NX3;H1][CX4][CX4]",  # secondary aliphatic amine
         ]
         for sma in acid_smarts:
             patt = Chem.MolFromSmarts(sma)
@@ -324,12 +324,12 @@ def ames_mutagen(smiles: str) -> float:
     if mol is None:
         return 0.0
     smarts_alerts = [
-        "[cR1][NH2]",            # aromatic primary amine
-        "[cR1][NH][cR1]",        # aromatic secondary amine
+        "[cR1][NH2]",  # aromatic primary amine
+        "[cR1][NH][cR1]",  # aromatic secondary amine
         "[cR1][N]([cR1])[cR1]",  # tertiary aromatic amine
-        "[NX3](=O)[OX2-]",       # nitro group
-        "[NX2]=O",               # nitroso
-        "[CX3](=O)[NX3](=O)",    # N-nitro amide
+        "[NX3](=O)[OX2-]",  # nitro group
+        "[NX2]=O",  # nitroso
+        "[CX3](=O)[NX3](=O)",  # N-nitro amide
     ]
     try:
         for sma in smarts_alerts:
@@ -456,6 +456,7 @@ def plasma_protein_binding(smiles: str) -> float:
     except Exception:
         return 0.0
     import math
+
     logit_p = -1.50 + 1.20 * logp
     # Logistic
     if logit_p >= 0:
@@ -809,6 +810,7 @@ def md_relax_pool(
         std_val: Optional[float] = None
     else:
         import math
+
         mean_val = float(sum(energies) / n_relaxed)
         if n_relaxed > 1:
             var = sum((e - mean_val) ** 2 for e in energies) / (n_relaxed - 1)
@@ -886,21 +888,17 @@ def all_metrics_one(
         "plasma_protein_binding": plasma_protein_binding(smiles),
         "ring_size_distribution": ring_size_distribution(smiles),
         "md_relax_energy": (
-            md_relax_energy(smiles, steps=md_relax_steps)
-            if md_relax_enabled else None
+            md_relax_energy(smiles, steps=md_relax_steps) if md_relax_enabled else None
         ),
         # Phase-4A external scorers (no-op when disabled or missing deps).
         "ptiv_reduction_potential": (
-            ptiv_reduction_potential(smiles)
-            if external_scorers_enabled else None
+            ptiv_reduction_potential(smiles) if external_scorers_enabled else None
         ),
         "coord_geometry_proxy": (
-            coord_geometry_proxy(smiles)
-            if external_scorers_enabled else None
+            coord_geometry_proxy(smiles) if external_scorers_enabled else None
         ),
         "phototherapy_activity": (
-            phototherapy_activity(smiles)
-            if external_scorers_enabled else None
+            phototherapy_activity(smiles) if external_scorers_enabled else None
         ),
     }
     return panel
@@ -949,16 +947,13 @@ def all_metrics_mean(
         "md_relax_energy_mean": None,
         "md_relax_energy_std": None,
         "ptiv_reduction_potential": (
-            ptiv_reduction_potential_mean(seq)
-            if external_scorers_enabled else None
+            ptiv_reduction_potential_mean(seq) if external_scorers_enabled else None
         ),
         "coord_geometry_proxy": (
-            coord_geometry_proxy_mean(seq)
-            if external_scorers_enabled else None
+            coord_geometry_proxy_mean(seq) if external_scorers_enabled else None
         ),
         "phototherapy_activity": (
-            phototherapy_activity_mean(seq)
-            if external_scorers_enabled else None
+            phototherapy_activity_mean(seq) if external_scorers_enabled else None
         ),
     }
     if md_relax_enabled:
@@ -1012,9 +1007,7 @@ def _safe_external_score(adapter_name: str, scorer_name: str, smiles: str) -> fl
         ``score()`` call raises / returns ``None``.
     """
     if not isinstance(smiles, str) or not smiles.strip():
-        raise AdapterUnavailable(
-            f"{scorer_name}: empty / non-string SMILES input"
-        )
+        raise AdapterUnavailable(f"{scorer_name}: empty / non-string SMILES input")
     try:
         from molmetal_lam.sbdd_env import external_scorers as _es
     except Exception as exc:
@@ -1048,15 +1041,16 @@ def _safe_external_score(adapter_name: str, scorer_name: str, smiles: str) -> fl
         ) from exc
     if out is None:
         raise AdapterUnavailable(
-            f"{scorer_name}: adapter.score() returned None for "
-            f"smiles={smiles!r}"
+            f"{scorer_name}: adapter.score() returned None for " f"smiles={smiles!r}"
         )
     return float(out)
 
 
 def ptiv_reduction_potential(smiles: str) -> Optional[float]:
     """Phase-4A scorer: predicted Pt(IV) reduction potential (V vs NHE)."""
-    return _safe_external_score("ptiv_reduction_potential", "ptiv_reduction_potential", smiles)
+    return _safe_external_score(
+        "ptiv_reduction_potential", "ptiv_reduction_potential", smiles
+    )
 
 
 def coord_geometry_proxy(smiles: str) -> Optional[float]:
@@ -1066,10 +1060,14 @@ def coord_geometry_proxy(smiles: str) -> Optional[float]:
 
 def phototherapy_activity(smiles: str) -> Optional[float]:
     """Phase-4A scorer: phototherapy activity probability (0..1)."""
-    return _safe_external_score("phototherapy_activity", "phototherapy_activity", smiles)
+    return _safe_external_score(
+        "phototherapy_activity", "phototherapy_activity", smiles
+    )
 
 
-def _external_mean(adapter_name: str, scorer_name: str, candidates: Sequence[str]) -> Optional[float]:
+def _external_mean(
+    adapter_name: str, scorer_name: str, candidates: Sequence[str]
+) -> Optional[float]:
     vals: List[float] = []
     for s in candidates:
         v = _safe_external_score(adapter_name, scorer_name, s)
@@ -1082,7 +1080,9 @@ def _external_mean(adapter_name: str, scorer_name: str, candidates: Sequence[str
 
 def ptiv_reduction_potential_mean(candidates: Sequence[str]) -> Optional[float]:
     """Mean predicted Pt(IV) reduction potential (V) across *candidates*."""
-    return _external_mean("ptiv_reduction_potential", "ptiv_reduction_potential", candidates)
+    return _external_mean(
+        "ptiv_reduction_potential", "ptiv_reduction_potential", candidates
+    )
 
 
 def coord_geometry_proxy_mean(candidates: Sequence[str]) -> Optional[float]:

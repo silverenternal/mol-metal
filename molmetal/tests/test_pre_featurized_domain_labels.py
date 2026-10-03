@@ -53,10 +53,10 @@ if str(PROJECT_ROOT) not in sys.path:
 # molmetal/scripts/pre_featurize_dmpnn.py.
 # ---------------------------------------------------------------------------
 CANONICAL_DOMAIN_ID = {
-    "metal_cytotox": 0,   # MetalCytoToxDB
-    "drugood":       1,   # DrugOOD
-    "nci60":         2,   # NCI-60
-    "binding_db":    3,   # BindingDB
+    "metal_cytotox": 0,  # MetalCytoToxDB
+    "drugood": 1,  # DrugOOD
+    "nci60": 2,  # NCI-60
+    "binding_db": 3,  # BindingDB
 }
 ALL_DOMAIN_IDS = {0, 1, 2, 3}
 
@@ -64,10 +64,10 @@ PRE_FEATURIZED_DIR = PROJECT_ROOT / "molmetal" / "data" / "pre_featurized"
 
 # Mapping from filename -> canonical domain_id expected for every row.
 FILE_TO_CANONICAL_ID = {
-    "metal_cytotox.pt": CANONICAL_DOMAIN_ID["metal_cytotox"],   # 0
-    "drugood.pt":       CANONICAL_DOMAIN_ID["drugood"],         # 1
-    "nci60.pt":         CANONICAL_DOMAIN_ID["nci60"],           # 2
-    "binding_db.pt":    CANONICAL_DOMAIN_ID["binding_db"],      # 3
+    "metal_cytotox.pt": CANONICAL_DOMAIN_ID["metal_cytotox"],  # 0
+    "drugood.pt": CANONICAL_DOMAIN_ID["drugood"],  # 1
+    "nci60.pt": CANONICAL_DOMAIN_ID["nci60"],  # 2
+    "binding_db.pt": CANONICAL_DOMAIN_ID["binding_db"],  # 3
 }
 
 
@@ -102,9 +102,9 @@ def _load_pt(filename: str) -> dict:
     "filename,expected_id",
     [
         ("metal_cytotox.pt", CANONICAL_DOMAIN_ID["metal_cytotox"]),
-        ("drugood.pt",       CANONICAL_DOMAIN_ID["drugood"]),
-        ("nci60.pt",         CANONICAL_DOMAIN_ID["nci60"]),
-        ("binding_db.pt",    CANONICAL_DOMAIN_ID["binding_db"]),
+        ("drugood.pt", CANONICAL_DOMAIN_ID["drugood"]),
+        ("nci60.pt", CANONICAL_DOMAIN_ID["nci60"]),
+        ("binding_db.pt", CANONICAL_DOMAIN_ID["binding_db"]),
     ],
 )
 def test_per_domain_files_use_canonical_labels(filename, expected_id):
@@ -113,9 +113,9 @@ def test_per_domain_files_use_canonical_labels(filename, expected_id):
     assert "domain" in pack, f"{filename}: missing 'domain' tensor"
     dom = pack["domain"]
     assert torch.is_tensor(dom), f"{filename}: 'domain' must be a Tensor"
-    assert dom.dtype == torch.int64, (
-        f"{filename}: 'domain' dtype must be int64, got {dom.dtype}"
-    )
+    assert (
+        dom.dtype == torch.int64
+    ), f"{filename}: 'domain' dtype must be int64, got {dom.dtype}"
     uniq = dom.unique().tolist()
     assert uniq == [expected_id], (
         f"{filename}: expected only canonical domain_id={expected_id} "
@@ -152,9 +152,9 @@ def test_all_pretrain_includes_all_domains():
     "filename,expected_id",
     [
         ("metal_cytotox.pt", CANONICAL_DOMAIN_ID["metal_cytotox"]),
-        ("drugood.pt",       CANONICAL_DOMAIN_ID["drugood"]),
-        ("nci60.pt",         CANONICAL_DOMAIN_ID["nci60"]),
-        ("binding_db.pt",    CANONICAL_DOMAIN_ID["binding_db"]),
+        ("drugood.pt", CANONICAL_DOMAIN_ID["drugood"]),
+        ("nci60.pt", CANONICAL_DOMAIN_ID["nci60"]),
+        ("binding_db.pt", CANONICAL_DOMAIN_ID["binding_db"]),
     ],
 )
 def test_no_stale_domain_ids(filename, expected_id):

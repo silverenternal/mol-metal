@@ -76,10 +76,10 @@ from molmetal.baselines.dmpnn_p0wins import (  # noqa: E402
 # Helpers
 # ===========================================================================
 SMILES_4 = [
-    "CCO",                # ethanol
-    "CC(=O)O",            # acetic acid
-    "c1ccccc1",           # benzene
-    "C1CCCCC1",           # cyclohexane
+    "CCO",  # ethanol
+    "CC(=O)O",  # acetic acid
+    "c1ccccc1",  # benzene
+    "C1CCCCC1",  # cyclohexane
 ]
 
 
@@ -94,6 +94,7 @@ def _chemprop_v2_batchmolgraph_importable() -> bool:
     """
     try:
         import chemprop  # noqa: F401
+
         return True
     except ImportError:
         return False
@@ -144,12 +145,13 @@ def test_batch_mol_graph_flat_tensor_for_chemprop_v2_v3() -> None:
 
     # forward_batched_dmpnn requires a DMPNNModel — instantiate a small one.
     from molmetal.baselines.dmpnn import DMPNNModel
+
     model = DMPNNModel(hidden=32, depth=2)
     logits = forward_batched_dmpnn(model, bmg)
     assert logits.shape == (bmg.size,)
-    assert torch.isfinite(logits).all(), (
-        f"forward_batched_dmpnn produced non-finite logits: {logits}"
-    )
+    assert torch.isfinite(
+        logits
+    ).all(), f"forward_batched_dmpnn produced non-finite logits: {logits}"
 
 
 # ===========================================================================
@@ -224,9 +226,9 @@ def test_pre_featurize_dmpnn_runtime_hook_for_chemprop_v2_v3() -> None:
     cache = PreFeaturizedCache(pre_dir, domain="metal_cytotox")
     cache.load()
     n_cached = cache.cache_size()
-    assert n_cached > 100, (
-        f"metal_cytotox cache should have thousands of SMILES, got {n_cached}"
-    )
+    assert (
+        n_cached > 100
+    ), f"metal_cytotox cache should have thousands of SMILES, got {n_cached}"
 
     # Pull a small subset of SMILES from the cache.
     cached_smiles = list(cache._cache.keys())[:8]
@@ -244,9 +246,10 @@ def test_pre_featurize_dmpnn_runtime_hook_for_chemprop_v2_v3() -> None:
         # format used by the basic D-MPNN path.  The p0wins
         # PreFeaturizedCache is data-source agnostic and stores
         # whatever bond-feature dim the source produced.
-        assert bf.ndim == 2 and bf.shape[-1] in (BOND_FEATURE_DIM, 6), (
-            f"Unexpected bond feature dim: {bf.shape}"
-        )
+        assert bf.ndim == 2 and bf.shape[-1] in (
+            BOND_FEATURE_DIM,
+            6,
+        ), f"Unexpected bond feature dim: {bf.shape}"
 
     # Build a flat BatchMolGraph from the cached tuples.
     bmg = batch_mol_graph_from_tuples(graphs)
@@ -290,10 +293,13 @@ def test_chemprop_v2_v3_namespace_compatibility() -> None:
     """
     # If chemprop v2 is not available, skip the chemprop-side checks.
     if not _chemprop_v2_batchmolgraph_importable():
-        pytest.skip("chemprop v2 not installed — skipping chemprop_v2_v3 namespace test")
+        pytest.skip(
+            "chemprop v2 not installed — skipping chemprop_v2_v3 namespace test"
+        )
 
     # Import the p0wins BatchMolGraph.
     from molmetal.baselines.dmpnn_p0wins import BatchMolGraph as P0winsBatchMolGraph
+
     # Import the chemprop v2 BatchMolGraph with a distinct alias.
     from chemprop.data import BatchMolGraph as ChempropV2BatchMolGraph  # noqa: F401
 
@@ -308,10 +314,21 @@ def test_chemprop_v2_v3_namespace_compatibility() -> None:
     assert callable(ChempropV2BatchMolGraph)
 
     # The p0wins class has the expected dataclass fields.
-    expected_field_names = ("V", "E", "edge_src", "edge_dst", "atom_batch",
-                         "bond_batch", "n_atoms_per_mol", "size")
-    p0_fields = {f.name for f in P0winsBatchMolGraph.__dataclass_fields__.values()} \
-        if hasattr(P0winsBatchMolGraph, "__dataclass_fields__") else set()
+    expected_field_names = (
+        "V",
+        "E",
+        "edge_src",
+        "edge_dst",
+        "atom_batch",
+        "bond_batch",
+        "n_atoms_per_mol",
+        "size",
+    )
+    p0_fields = (
+        {f.name for f in P0winsBatchMolGraph.__dataclass_fields__.values()}
+        if hasattr(P0winsBatchMolGraph, "__dataclass_fields__")
+        else set()
+    )
     # P0wins BatchMolGraph may or may not be a dataclass depending on
     # implementation — but the attributes must be settable.
     inst = P0winsBatchMolGraph(
@@ -331,9 +348,9 @@ def test_chemprop_v2_v3_namespace_compatibility() -> None:
     status = list_optimization_status()
     assert len(status) == 5, f"Expected 5 P0 wins, got {len(status)}"
     expected_keys = {"326G-1", "326G-2", "326G-3", "326G-4", "326G-5"}
-    assert set(status.keys()) == expected_keys, (
-        f"P0 status keys mismatch: {set(status.keys())}"
-    )
+    assert (
+        set(status.keys()) == expected_keys
+    ), f"P0 status keys mismatch: {set(status.keys())}"
     # Each status entry has `port=True`.
     for k, v in status.items():
         assert v["port"] is True, f"{k} should be ported=True"

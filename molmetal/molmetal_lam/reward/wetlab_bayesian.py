@@ -211,7 +211,15 @@ class GaussianProcessSurrogate:
         d = np.sqrt((diff * diff).sum(axis=-1))
         sqrt5 = math.sqrt(5.0)
         scaled = sqrt5 * d / self.length_scale
-        k = self.signal_var * (1.0 + scaled + (5.0 / 3.0) * d * d / (self.length_scale * self.length_scale)) * np.exp(-scaled)
+        k = (
+            self.signal_var
+            * (
+                1.0
+                + scaled
+                + (5.0 / 3.0) * d * d / (self.length_scale * self.length_scale)
+            )
+            * np.exp(-scaled)
+        )
         return k
 
     def predict(
@@ -283,6 +291,7 @@ class qExpectedImprovement:
         # Use scipy.special.erf when available; fall back to vectorised erf.
         try:
             from scipy.special import erf as _erf
+
             Phi_z = 0.5 * (1.0 + _erf(z / math.sqrt(2.0)))
         except ImportError:
             # Vectorised erf approximation (numpy's math.erf is scalar-only);
@@ -292,8 +301,13 @@ class qExpectedImprovement:
             # If scipy is missing entirely, fall back to a coarse Φ(z):
             Phi_z = np.where(
                 z > 0.0,
-                1.0 - 0.5 * np.exp(-z * z / 2.0) / (np.abs(z) * math.sqrt(2 * math.pi) + 1e-12),
-                0.5 * np.exp(-z * z / 2.0) / (np.abs(z) * math.sqrt(2 * math.pi) + 1e-12),
+                1.0
+                - 0.5
+                * np.exp(-z * z / 2.0)
+                / (np.abs(z) * math.sqrt(2 * math.pi) + 1e-12),
+                0.5
+                * np.exp(-z * z / 2.0)
+                / (np.abs(z) * math.sqrt(2 * math.pi) + 1e-12),
             )
         return (mu - self.best_y + self.epsilon) * Phi_z + sigma_safe * phi_z
 
@@ -370,13 +384,15 @@ def build_synthetic_in_silico_top20(
     rng = np.random.RandomState(seed)
     rows: List[Dict[str, str]] = []
     for metal, lig, cell, cohort in METALDOM_DRUG_AXES:
-        rows.append({
-            "smiles": f"X_{metal}_{lig}_{cell}",
-            "metal": metal,
-            "ligand_class": lig,
-            "cell_line": cell,
-            "cohort": cohort,
-        })
+        rows.append(
+            {
+                "smiles": f"X_{metal}_{lig}_{cell}",
+                "metal": metal,
+                "ligand_class": lig,
+                "cell_line": cell,
+                "cohort": cohort,
+            }
+        )
     X = _encode_axis(METALDOM_DRUG_AXES)
     return rows, X
 
@@ -395,8 +411,13 @@ def build_synthetic_wetlab_measurements(
     rng = np.random.RandomState(seed + 1000)
     measurements: List[Dict[str, float]] = []
     metal_bias = {
-        "Pt": 7.5, "Au": 6.8, "Ru": 6.2, "Ir": 6.0, "Pd": 5.5,
-        "Os": 6.0, "Rh": 5.5,
+        "Pt": 7.5,
+        "Au": 6.8,
+        "Ru": 6.2,
+        "Ir": 6.0,
+        "Pd": 5.5,
+        "Os": 6.0,
+        "Rh": 5.5,
     }
     for cycle in range(n_cycles):
         for _, lig, cell, cohort in METALDOM_DRUG_AXES[:5]:
@@ -405,14 +426,16 @@ def build_synthetic_wetlab_measurements(
             sin_signal = math.sin(rng.uniform(0, math.pi))
             jitter = rng.normal(0.0, 0.3)
             value = float(np.clip(base + sin_signal + jitter - 1.0, 4.0, 9.0))
-            measurements.append({
-                "cycle": cycle,
-                "metal": metal,
-                "ligand_class": lig,
-                "cell_line": cell,
-                "cohort": cohort,
-                "pic50": round(value, 4),
-            })
+            measurements.append(
+                {
+                    "cycle": cycle,
+                    "metal": metal,
+                    "ligand_class": lig,
+                    "cell_line": cell,
+                    "cohort": cohort,
+                    "pic50": round(value, 4),
+                }
+            )
     return measurements
 
 
@@ -516,27 +539,36 @@ def run_iterative_loop(
         # measurement using the row's identity + the metal_bias lookup, then
         # add a small per-observation jitter (Snoek et al. 2012 §2.2).
         metal_bias = {
-            "Pt": 7.5, "Au": 6.8, "Ru": 6.2, "Ir": 6.0, "Pd": 5.5,
-            "Os": 6.0, "Rh": 5.5,
+            "Pt": 7.5,
+            "Au": 6.8,
+            "Ru": 6.2,
+            "Ir": 6.0,
+            "Pd": 5.5,
+            "Os": 6.0,
+            "Rh": 5.5,
         }
         for s_idx in sel:
             row = top20_rows[s_idx]
             base = metal_bias.get(row["metal"], 5.0)
             jitter = rng.normal(0.0, 0.2)
-            measurements.append({
-                "cycle": cycle_idx + 1,
-                "metal": row["metal"],
-                "ligand_class": row["ligand_class"],
-                "cell_line": row["cell_line"],
-                "cohort": row.get("cohort", "default"),
-                "pic50": round(float(np.clip(base + jitter, 4.0, 9.0)), 4),
-            })
-        cycles_log.append({
-            "cycle": cycle_idx,
-            "n_measurements": len(measurements),
-            "best_y": best_y,
-            "selected": sel,
-        })
+            measurements.append(
+                {
+                    "cycle": cycle_idx + 1,
+                    "metal": row["metal"],
+                    "ligand_class": row["ligand_class"],
+                    "cell_line": row["cell_line"],
+                    "cohort": row.get("cohort", "default"),
+                    "pic50": round(float(np.clip(base + jitter, 4.0, 9.0)), 4),
+                }
+            )
+        cycles_log.append(
+            {
+                "cycle": cycle_idx,
+                "n_measurements": len(measurements),
+                "best_y": best_y,
+                "selected": sel,
+            }
+        )
 
     return {
         "cycles_log": cycles_log,
@@ -604,6 +636,7 @@ def main() -> None:
     """CPU-only smoke runner — run synthetic BO loop + report KPIs."""
     import os
     import sys
+
     here = os.path.dirname(os.path.abspath(__file__))
     repo_root = os.path.abspath(os.path.join(here, "..", "..", ".."))
     molmetal_pkg = os.path.abspath(os.path.join(here, "..", ".."))

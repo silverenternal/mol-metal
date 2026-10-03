@@ -41,6 +41,7 @@ This module is library-first: it does NOT import the (heavy) Vina
 Python binding or meeko at module import — only the project's
 lightweight ``molmetal.ports.DockingConfig`` dataclass.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -90,8 +91,7 @@ class PocketVinaConfig:
             )
         if int(self.n_poses) < 1:
             raise ValueError(
-                f"PocketVinaConfig.n_poses must be >= 1, "
-                f"got {self.n_poses!r}"
+                f"PocketVinaConfig.n_poses must be >= 1, " f"got {self.n_poses!r}"
             )
 
 
@@ -173,9 +173,7 @@ class PerPocketVinaConfig:
         # User-supplied overrides win; if both ``overrides`` and
         # ``pocket_map`` are given, ``pocket_map`` replaces the
         # entire default map (used by tests).
-        self._pocket_map: Dict[str, PocketVinaConfig] = dict(
-            self.DEFAULT_POCKET_MAP
-        )
+        self._pocket_map: Dict[str, PocketVinaConfig] = dict(self.DEFAULT_POCKET_MAP)
         if pocket_map is not None:
             self._pocket_map = dict(pocket_map)
         if overrides:

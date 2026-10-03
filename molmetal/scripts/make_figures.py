@@ -71,7 +71,9 @@ def fig1_baseline_heatmap() -> Path:
         for model in MODELS_ORDER:
             col_labels.append(f"{metal}\n{MODEL_LABEL[model]}")
             for i, split in enumerate(SPLIT_ORDER):
-                matrix[i, len(col_labels) - 1] = _auc(_load_baseline(metal, model, split))
+                matrix[i, len(col_labels) - 1] = _auc(
+                    _load_baseline(metal, model, split)
+                )
 
     fig, ax = plt.subplots(figsize=(11, 5))
     masked = np.ma.masked_invalid(matrix)
@@ -80,7 +82,9 @@ def fig1_baseline_heatmap() -> Path:
     ax.set_xticklabels(col_labels, rotation=30, ha="right", fontsize=9)
     ax.set_yticks(range(len(SPLIT_ORDER)))
     ax.set_yticklabels([SPLIT_LABEL[s] for s in SPLIT_ORDER])
-    ax.set_title("Fig 1. Baseline ROC-AUC across splits / models / metals\n(masked = not run)")
+    ax.set_title(
+        "Fig 1. Baseline ROC-AUC across splits / models / metals\n(masked = not run)"
+    )
     ax.set_xlabel("Metal & model")
     ax.set_ylabel("Split strictness (low → high)")
     for i in range(matrix.shape[0]):
@@ -121,14 +125,18 @@ def fig2_temporal_ooc() -> Path:
         ys = [_auc(_load_baseline(metal, model, s)) for s in SPLIT_ORDER]
         ls = "--" if "Ir" in label else "-"
         marker = "o"
-        ax.plot(x, ys, marker=marker, linestyle=ls, color=color, label=label, linewidth=1.8)
+        ax.plot(
+            x, ys, marker=marker, linestyle=ls, color=color, label=label, linewidth=1.8
+        )
 
     ax.set_xticks(x)
     ax.set_xticklabels([SPLIT_LABEL[s] for s in SPLIT_ORDER])
     ax.set_xlabel("Split strictness (low → high)")
     ax.set_ylabel("Test ROC-AUC")
     ax.set_ylim(0.4, 1.0)
-    ax.set_title("Fig 2. Out-of-distribution degradation\nRandom → Ligand-dedup → Scaffold → Temporal")
+    ax.set_title(
+        "Fig 2. Out-of-distribution degradation\nRandom → Ligand-dedup → Scaffold → Temporal"
+    )
     ax.grid(alpha=0.3)
     ax.legend(fontsize=8, ncol=2)
     fig.tight_layout()
@@ -155,7 +163,13 @@ def fig3_leakage_seen_unseen() -> Path:
     x = np.arange(len(metals))
     w = 0.36
     fig, ax = plt.subplots(figsize=(6.5, 4.2))
-    b1 = ax.bar(x - w / 2, seen, w, label=f"Seen (n={n_seen[0] if metals else 0})", color="#4c72b0")
+    b1 = ax.bar(
+        x - w / 2,
+        seen,
+        w,
+        label=f"Seen (n={n_seen[0] if metals else 0})",
+        color="#4c72b0",
+    )
     b2 = ax.bar(
         x + w / 2,
         unseen,
@@ -178,7 +192,9 @@ def fig3_leakage_seen_unseen() -> Path:
     ax.set_xlabel("Metal")
     ax.set_ylabel("Test ROC-AUC")
     ax.set_ylim(0.6, 1.0)
-    ax.set_title("Fig 3. Seen-vs-unseen SMILES leak diagnosis\n(XGB on the random split, leakage_diagnosis_data.json)")
+    ax.set_title(
+        "Fig 3. Seen-vs-unseen SMILES leak diagnosis\n(XGB on the random split, leakage_diagnosis_data.json)"
+    )
     ax.legend()
     ax.grid(axis="y", alpha=0.3)
     fig.tight_layout()
@@ -207,7 +223,9 @@ def fig4_attentive_vs_vanilla() -> Path:
     ax.set_ylim(0.4, 0.7)
     ax.set_ylabel("Test ROC-AUC")
     ax.set_xlabel("Model")
-    ax.set_title("Fig 4. Ru temporal-split AUC: vanilla vs attentive D-MPNN\n(Morgan FP baselines shown for reference)")
+    ax.set_title(
+        "Fig 4. Ru temporal-split AUC: vanilla vs attentive D-MPNN\n(Morgan FP baselines shown for reference)"
+    )
     ax.grid(axis="y", alpha=0.3)
     fig.tight_layout()
     out = FIGURES_DIR / "fig4_attentive_vs_vanilla.png"
@@ -235,9 +253,9 @@ def fig5_dmpnn_wallclock() -> Path:
 
     # Param proxies (effective trainable params, approximate)
     param_proxy_k = {
-        "xgb": 3.0,          # ~500 trees * ~6 splits worth of leaves
-        "rf": 300.0,         # 500 trees * ~600 leaves
-        "dmpnn": 1100.0,     # ~1.1 M params (MolMetal default)
+        "xgb": 3.0,  # ~500 trees * ~6 splits worth of leaves
+        "rf": 300.0,  # 500 trees * ~600 leaves
+        "dmpnn": 1100.0,  # ~1.1 M params (MolMetal default)
         "dmpnn_attn": 1300.0,
     }
     xs = [param_proxy_k[m] for m, _ in rows]
@@ -245,9 +263,16 @@ def fig5_dmpnn_wallclock() -> Path:
     labels = [m for m, _ in rows]
 
     fig, ax = plt.subplots(figsize=(6.5, 4.2))
-    colors = {"xgb": "#4c72b0", "rf": "#55a868", "dmpnn": "#c44e52", "dmpnn_attn": "#8172b2"}
+    colors = {
+        "xgb": "#4c72b0",
+        "rf": "#55a868",
+        "dmpnn": "#c44e52",
+        "dmpnn_attn": "#8172b2",
+    }
     for x, y, lbl in zip(xs, ys, labels):
-        ax.scatter(x, y, s=110, color=colors[lbl], label=MODEL_LABEL[lbl], edgecolor="black")
+        ax.scatter(
+            x, y, s=110, color=colors[lbl], label=MODEL_LABEL[lbl], edgecolor="black"
+        )
         ax.annotate(lbl, (x, y), xytext=(5, 5), textcoords="offset points", fontsize=9)
     ax.set_xscale("log")
     ax.set_yscale("log")
@@ -281,7 +306,9 @@ def fig6_fm_loss_curves() -> Path:
             ax.set_title(title)
         ax.set_xticks([])
         ax.set_yticks([])
-    fig.suptitle("Fig 6. Flow-matching training-loss curves (re-plotted from saved PNGs)", y=1.02)
+    fig.suptitle(
+        "Fig 6. Flow-matching training-loss curves (re-plotted from saved PNGs)", y=1.02
+    )
     fig.tight_layout()
     out = FIGURES_DIR / "fig6_fm_loss_curves.png"
     fig.savefig(out, dpi=DPI, bbox_inches="tight")

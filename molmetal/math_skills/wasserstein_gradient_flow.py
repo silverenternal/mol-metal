@@ -161,9 +161,7 @@ class W2GradientFlow:
 
     def __init__(self, kernel: str = "gaussian", sigma: float = 1.0) -> None:
         if kernel not in self._KERNELS:
-            raise ValueError(
-                f"kernel must be one of {self._KERNELS}, got {kernel!r}"
-            )
+            raise ValueError(f"kernel must be one of {self._KERNELS}, got {kernel!r}")
         if not (sigma > 0.0):
             raise ValueError(f"sigma must be > 0, got {sigma}")
         self.kernel = str(kernel)
@@ -211,9 +209,7 @@ class W2GradientFlow:
         if self.kernel == "gaussian":
             w = torch.exp(-0.5 * sq / (self.sigma * self.sigma + _EPS_SIGMA2))
         else:  # "imq"
-            w = 1.0 / torch.sqrt(
-                1.0 + sq / (self.sigma * self.sigma + _EPS_SIGMA2)
-            )
+            w = 1.0 / torch.sqrt(1.0 + sq / (self.sigma * self.sigma + _EPS_SIGMA2))
         # Self-attention form: weighted score, normalised by weight sum.
         denom = w.sum(dim=-1, keepdim=True).clamp_min(_EPS_LOG)
         return (w @ score) / denom
@@ -268,9 +264,7 @@ class W2GradientFlow:
             )
         smoothed = self._smooth_score(x, score)
         ref = (
-            reference_score
-            if reference_score is not None
-            else torch.zeros_like(score)
+            reference_score if reference_score is not None else torch.zeros_like(score)
         )
         return -(smoothed - ref)
 
@@ -425,15 +419,11 @@ class ChemicalGraphMetric:
         if not bt:
             raise ValueError("bond_types must be non-empty")
         if any(b < 0 for b in bt):
-            raise ValueError(
-                f"bond_types must be non-negative, got {bt}"
-            )
+            raise ValueError(f"bond_types must be non-negative, got {bt}")
         self.bond_types: List[int] = bt
         self.insert_delete_cost = max(bt)
 
-    def _edge_map(
-        self, edges: Sequence[Tuple]
-    ) -> Dict[Tuple[int, int], int]:
+    def _edge_map(self, edges: Sequence[Tuple]) -> Dict[Tuple[int, int], int]:
         """Coerce an edge list into a ``{(i, j): bond_type}`` dict.
 
         We canonicalise ``(i, j)`` to ``(min(i, j), max(i, j))`` so
@@ -442,9 +432,7 @@ class ChemicalGraphMetric:
         out: Dict[Tuple[int, int], int] = {}
         for e in edges:
             if len(e) != 3:
-                raise ValueError(
-                    f"edge must be (i, j, bond_type), got {tuple(e)}"
-                )
+                raise ValueError(f"edge must be (i, j, bond_type), got {tuple(e)}")
             i, j, b = e
             key = (min(int(i), int(j)), max(int(i), int(j)))
             out[key] = int(b)
@@ -524,20 +512,14 @@ class ReactionStepW2:
 
     def __init__(self, n_bond_types: int = 4, dt: float = 1.0) -> None:
         if n_bond_types < 1:
-            raise ValueError(
-                f"n_bond_types must be >= 1, got {n_bond_types}"
-            )
+            raise ValueError(f"n_bond_types must be >= 1, got {n_bond_types}")
         if dt <= 0.0:
             raise ValueError(f"dt must be > 0, got {dt}")
         self.n_bond_types = int(n_bond_types)
         self.dt = float(dt)
-        self.metric = ChemicalGraphMetric(
-            bond_types=list(range(n_bond_types))
-        )
+        self.metric = ChemicalGraphMetric(bond_types=list(range(n_bond_types)))
 
-    def drift(
-        self, reactant: Tensor, product: Tensor
-    ) -> Tensor:
+    def drift(self, reactant: Tensor, product: Tensor) -> Tensor:
         """Compute the optimal W₂ drift from reactant to product.
 
         The drift is the *velocity field* :math:`(p - r) / T` where
@@ -599,13 +581,9 @@ class ReactionStepW2:
         step = self.dt if dt is None else float(dt)
         if step < 0.0:
             raise ValueError(f"dt must be >= 0, got {step}")
-        return (
-            reactant + step * self.drift(reactant, product)
-        ).detach()
+        return (reactant + step * self.drift(reactant, product)).detach()
 
-    def w2_distance(
-        self, reactant: Tensor, product: Tensor
-    ) -> Tensor:
+    def w2_distance(self, reactant: Tensor, product: Tensor) -> Tensor:
         """Return the W₂ distance under the chemical-graph metric.
 
         Computed as the row-wise L1 distance between the

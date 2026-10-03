@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Tests for precision_policy.py (mirror omegafold/pipeline.py _set_precision)."""
+
 import pytest
 
 from molmetal.scripts.precision_policy import (
@@ -43,7 +44,10 @@ class TestPrecisionPolicy:
     def test_reset_precision_returns_to_defaults(self):
         """reset_precision returns torch backends to DEFAULT_POLICY values."""
         import torch
-        set_precision(allow_tf32=True, cudnn_benchmark=True, float32_matmul_precision="medium")
+
+        set_precision(
+            allow_tf32=True, cudnn_benchmark=True, float32_matmul_precision="medium"
+        )
         reset_precision()
         assert torch.backends.cuda.matmul.allow_tf32 is False
         assert torch.backends.cudnn.benchmark is False

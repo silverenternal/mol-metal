@@ -231,13 +231,9 @@ class MasterCatherineClosureBias:
         bias_on_fail: float = 0.0,
     ) -> None:
         if not (0.0 <= float(bias_on_pass) <= 1.0):
-            raise ValueError(
-                f"bias_on_pass must be in [0,1], got {bias_on_pass}"
-            )
+            raise ValueError(f"bias_on_pass must be in [0,1], got {bias_on_pass}")
         if not (0.0 <= float(bias_on_fail) <= 1.0):
-            raise ValueError(
-                f"bias_on_fail must be in [0,1], got {bias_on_fail}"
-            )
+            raise ValueError(f"bias_on_fail must be in [0,1], got {bias_on_fail}")
         self.bias_on_pass = float(bias_on_pass)
         self.bias_on_fail = float(bias_on_fail)
 
@@ -337,6 +333,7 @@ class MasterCatherineClosureBias:
         from molmetal.molmetal_lam.reward.pocket_closure_bias import (
             closure_oversample,
         )
+
         target_metal = str(payload.get("target_metal", "Rh"))
         n = int(payload.get("n", 500))
         seed_scaffolds = payload.get("seed_scaffolds")
@@ -361,6 +358,7 @@ class MasterCatherineClosureBias:
         from molmetal.molmetal_lam.reward.pocket_closure_bias import (
             closure_bounded_smiles_generation,
         )
+
         pocket_id = str(payload.get("pocket_id", ""))
         n = int(payload.get("n", 100))
         max_depth = int(payload.get("max_depth", 2))
@@ -417,9 +415,7 @@ class MasterCatherineClosureBias:
         elif isinstance(payload, Sequence):
             batch = [dict(p) for p in payload]  # copy so no mutation
             if not batch:
-                raise ValueError(
-                    "bias_type='feature_flag' payload list is empty"
-                )
+                raise ValueError("bias_type='feature_flag' payload list is empty")
         else:
             raise TypeError(
                 f"bias_type='feature_flag' requires payload=dict or "
@@ -465,16 +461,15 @@ class MasterCatherineClosureBias:
                 smiles = str(entry.get("smiles", ""))
                 if smiles:
                     geometry = DEFAULT_COORDINATION_GEOMETRY.get(
-                        metal, "octahedral",
+                        metal,
+                        "octahedral",
                     )
                     cn_cap = GEOMETRY_MAX_CN.get(geometry, 6)
                     tok = f"[{metal}"
                     idx = smiles.find(tok)
                     if idx >= 0:
-                        after = smiles[idx + len(tok) + 1: idx + len(tok) + 32]
-                        donor_count = sum(
-                            1 for c in after if c in ("N", "O", "S", "P")
-                        )
+                        after = smiles[idx + len(tok) + 1 : idx + len(tok) + 32]
+                        donor_count = sum(1 for c in after if c in ("N", "O", "S", "P"))
                         if donor_count > cn_cap:
                             coord_violations = 1
 
@@ -492,17 +487,19 @@ class MasterCatherineClosureBias:
             )
             verdict = verify_all_catherine_properties(metal, summary)
             per_property = {
-                pid: bool(res.passed)
-                for pid, res in verdict.per_property.items()
+                pid: bool(res.passed) for pid, res in verdict.per_property.items()
             }
             six_of_six = bool(verdict.six_of_six_pass)
             bias_used = (
-                float(self.bias_on_pass) if six_of_six
-                else float(self.bias_on_fail)
+                float(self.bias_on_pass) if six_of_six else float(self.bias_on_fail)
             )
-            note = "" if six_of_six else (
-                "Catherine 6/6 failed; bias_used="
-                f"{bias_used} (per_property={per_property})"
+            note = (
+                ""
+                if six_of_six
+                else (
+                    "Catherine 6/6 failed; bias_used="
+                    f"{bias_used} (per_property={per_property})"
+                )
             )
             feature_flags.append(
                 CatherineClosureFeatureFlag(
@@ -530,8 +527,7 @@ class MasterCatherineClosureBias:
             out_payload = {
                 "batch_size": len(feature_flags),
                 "six_of_six_pass_rate": (
-                    float(sum(1 for f in feature_flags
-                              if f.six_of_six_pass))
+                    float(sum(1 for f in feature_flags if f.six_of_six_pass))
                     / float(max(len(feature_flags), 1))
                 ),
                 "feature_flags": [
@@ -610,10 +606,7 @@ def build_master_verification() -> Dict[str, Any]:
             "term_id": f"wf247_term_{i:03d}",
             "metal": "Pt",
             "witness_path": ["CuAAC"] if i % 2 == 0 else ["AmideCoupling"],
-            "smiles": (
-                "Nc1nc(N)nc(N)n1" if i % 2 == 0
-                else "NS(=O)(=O)c1ccc(C#C)cc1"
-            ),
+            "smiles": ("Nc1nc(N)nc(N)n1" if i % 2 == 0 else "NS(=O)(=O)c1ccc(C#C)cc1"),
         }
         for i in range(4)
     ]

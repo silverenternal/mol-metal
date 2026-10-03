@@ -122,16 +122,17 @@ def test_pre_flight_wf327_gate_passes():
     )
 
     result = gate_wf327_cpu_num_workers_sufficient(
-        "p3_wf327_cpu_num_workers_sufficient", "P3", "wf327",
-        LAUNCH_SCRIPTS, min_workers=4,
+        "p3_wf327_cpu_num_workers_sufficient",
+        "P3",
+        "wf327",
+        LAUNCH_SCRIPTS,
+        min_workers=4,
     )
-    assert result.status == "PASS", (
-        f"Wf-327 pre-flight gate FAILED: {result.evidence}"
-    )
+    assert result.status == "PASS", f"Wf-327 pre-flight gate FAILED: {result.evidence}"
     # 6/6 scripts must show max >= 4 (Wf-328-W2 + Wf-326B §6.2)
-    assert "6/6" in result.evidence, (
-        f"expected 6/6 launch scripts in evidence, got: {result.evidence}"
-    )
+    assert (
+        "6/6" in result.evidence
+    ), f"expected 6/6 launch scripts in evidence, got: {result.evidence}"
 
 
 # ---------------------------------------------------------------------------
@@ -166,7 +167,9 @@ def test_dmpnn_trainer_uses_build_optimized_loader():
     :func:`train_one_epoch_joint`.  This test verifies the wiring
     held (the Wf-328-W6 source-level import + call).
     """
-    trainer = PROJECT_ROOT / "molmetal" / "scripts" / "train_dmpnn_multitask_wasserstein.py"
+    trainer = (
+        PROJECT_ROOT / "molmetal" / "scripts" / "train_dmpnn_multitask_wasserstein.py"
+    )
     assert trainer.is_file()
     text = trainer.read_text(encoding="utf-8")
     assert "from molmetal.scripts.wf326b_dataloader_optimized import" in text, (
@@ -196,9 +199,9 @@ def test_chemprop_trainer_num_workers_is_honest_negative():
     assert chemprop.is_file()
     text = chemprop.read_text(encoding="utf-8")
     # The flag must be declared.
-    assert '"--num-workers"' in text or "'--num-workers'" in text, (
-        f"chemprop trainer does NOT declare --num-workers flag"
-    )
+    assert (
+        '"--num-workers"' in text or "'--num-workers'" in text
+    ), f"chemprop trainer does NOT declare --num-workers flag"
     # And the help text must include 'Reserved' (the honest disclosure).
     assert "Reserved" in text, (
         f"chemprop --num-workers help text does NOT include 'Reserved' "

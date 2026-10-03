@@ -17,6 +17,7 @@ Coverage
    fail on the strict SMARTS but pass on the structural handlers,
    so we expect a uniform pass rate on the 12 tiles.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -38,9 +39,9 @@ def test_retrosynthesize_cuaac_product():
     ok, rules = retrosynthesize_with_report(smi)
     assert ok, f"CuAAC product {smi} should be reversible, got rules={rules}"
     # At least one of the triazole rules must fire.
-    assert any(r in {"CuAAC", "SPAAC"} for r in rules), (
-        f"expected CuAAC or SPAAC rule, got {rules}"
-    )
+    assert any(
+        r in {"CuAAC", "SPAAC"} for r in rules
+    ), f"expected CuAAC or SPAAC rule, got {rules}"
 
 
 # ---------------------------------------------------------------------------
@@ -49,17 +50,17 @@ def test_retrosynthesize_cuaac_product():
 @pytest.mark.parametrize(
     "smi, label",
     [
-        ("CCCCCC",     "hexane"),
-        ("c1ccccc1",   "benzene"),
-        ("CCO",        "ethanol"),
-        ("CC(=O)O",    "acetic acid"),
+        ("CCCCCC", "hexane"),
+        ("c1ccccc1", "benzene"),
+        ("CCO", "ethanol"),
+        ("CC(=O)O", "acetic acid"),
     ],
 )
 def test_retrosynthesize_random_mol(smi, label):
     """Molecules without a click signature must return False."""
-    assert retrosynthesize(smi) is False, (
-        f"random molecule {label!r} ({smi}) should not be click-reversible"
-    )
+    assert (
+        retrosynthesize(smi) is False
+    ), f"random molecule {label!r} ({smi}) should not be click-reversible"
 
 
 # ---------------------------------------------------------------------------
@@ -74,7 +75,9 @@ def _generate_lambda_products(n_max: int = 12) -> list:
     """
     from molmetal_lam.tile_lib import AZIDES, ALKYNES, PARTNERS
     from molmetal_lam.reactions.beta_reductions import (
-        cuaac, diels_alder, thiol_ene,
+        cuaac,
+        diels_alder,
+        thiol_ene,
     )
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
 
@@ -119,5 +122,7 @@ def test_synthesis_success_rate_lambda():
     rate = synthesis_success_rate(smis)
     assert rate >= 0.80, f"Lambda product rate {rate:.3f} below 0.80"
     failures = [s for s in smis if not retrosynthesize(s)]
-    print(f"\n[debug] Lambda retrosynthesis rate={rate:.3f}, "
-        f"n_products={len(smis)}, failing={failures}")
+    print(
+        f"\n[debug] Lambda retrosynthesis rate={rate:.3f}, "
+        f"n_products={len(smis)}, failing={failures}"
+    )

@@ -107,7 +107,16 @@ DEFAULT_CANDIDATES = HERE / "_demo_5_metaldrugs.txt"
 DEFAULT_POCKET_PREP_DIR = REPO_ROOT / "molmetal" / "reports" / "wf30_pocket_prep"
 DEFAULT_OUT_DIR = REPO_ROOT / "molmetal" / "reports" / "wf67_p4_3_100pocket"
 WF30_TEN_POCKETS: Tuple[str, ...] = (
-    "830c", "1h36", "3eml", "3ny8", "4aaw", "4rlu", "1g9v", "2hnx", "4rn0", "1fmc"
+    "830c",
+    "1h36",
+    "3eml",
+    "3ny8",
+    "4aaw",
+    "4rlu",
+    "1g9v",
+    "2hnx",
+    "4rn0",
+    "1fmc",
 )
 
 DEFAULT_SEEDS: Tuple[int, ...] = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
@@ -200,11 +209,16 @@ def _vina_run_one(
     t0 = time.time()
     cmd = [
         str(vina_bin),
-        "--receptor", str(receptor_pdbqt),
-        "--ligand", str(ligand_pdbqt),
-        "--out", str(out_pdbqt),
-        "--exhaustiveness", str(exhaustiveness),
-        "--seed", str(seed),
+        "--receptor",
+        str(receptor_pdbqt),
+        "--ligand",
+        str(ligand_pdbqt),
+        "--out",
+        str(out_pdbqt),
+        "--exhaustiveness",
+        str(exhaustiveness),
+        "--seed",
+        str(seed),
         "--quiet",
     ]
     proc = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
@@ -546,7 +560,9 @@ def per_pocket_summary(scores: List[DockScore]) -> Dict[str, object]:
     return {
         "per_candidate": per_cand,
         "best_candidate_smiles": per_cand[0]["candidate_smiles"] if per_cand else None,
-        "best_candidate_mean_kcal_mol": per_cand[0]["mean_kcal_mol"] if per_cand else None,
+        "best_candidate_mean_kcal_mol": per_cand[0]["mean_kcal_mol"]
+        if per_cand
+        else None,
         "n_evaluations": len(scores),
         "seed_means": seed_means,
         "pocket_mean_kcal_mol": (
@@ -731,7 +747,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     seeds = list(range(n_seeds))
 
     wf30_bundles = _load_wf30_pocket_bundles(args.pocket_prep_dir)
-    LOG.info("Wf-30 bundles loaded: %d (ids=%s)", len(wf30_bundles), sorted(wf30_bundles))
+    LOG.info(
+        "Wf-30 bundles loaded: %d (ids=%s)", len(wf30_bundles), sorted(wf30_bundles)
+    )
 
     crossdocked_rows = _load_crossdocked100_manifest(args.manifest)
     LOG.info("CrossDocked-2020 manifest rows: %d", len(crossdocked_rows))
@@ -784,7 +802,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             continue
 
         if not scores:
-            LOG.warning("Pocket %s produced 0 evaluations — recording empty summary", pocket_id)
+            LOG.warning(
+                "Pocket %s produced 0 evaluations — recording empty summary", pocket_id
+            )
             continue
 
         per_pocket_path = args.out_dir / pocket_id / "per_seed_metrics.json"
@@ -804,11 +824,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             pocket_id,
             len(scores),
             per_pocket_summary(scores).get("best_candidate_smiles", "?"),
-            per_pocket_summary(scores).get("best_candidate_mean_kcal_mol", float("nan")),
+            per_pocket_summary(scores).get(
+                "best_candidate_mean_kcal_mol", float("nan")
+            ),
         )
 
     # Per-pocket rank-correlation across the candidate ranking (Spearman)
-    rank_series: List[List[float]] = []  # one list of per-pocket best-mean-kcal per candidate
+    rank_series: List[
+        List[float]
+    ] = []  # one list of per-pocket best-mean-kcal per candidate
     candidate_order: List[str] = []
     for _, summ in pocket_summaries:
         per_cand = summ.get("per_candidate", [])  # type: ignore[assignment]
@@ -829,7 +853,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             xs = rank_series[i]
             ys = rank_series[j]
             # Drop entries where either side is nan
-            clean = [(a, b) for a, b in zip(xs, ys) if not math.isnan(a) and not math.isnan(b)]
+            clean = [
+                (a, b)
+                for a, b in zip(xs, ys)
+                if not math.isnan(a) and not math.isnan(b)
+            ]
             if len(clean) < 2:
                 continue
             xs_clean = [a for a, _ in clean]
@@ -850,7 +878,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "generated_utc": _utc_now_iso(),
         "n_pockets_requested": n_pockets,
         "n_pockets_completed": sum(
-            1 for _, s in pocket_summaries if s.get("n_evaluations", 0) > 0  # type: ignore[operator]
+            1
+            for _, s in pocket_summaries
+            if s.get("n_evaluations", 0) > 0  # type: ignore[operator]
         ),
         "n_pockets_selected": len(pocket_ids),
         "n_candidates": len(candidates),

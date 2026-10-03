@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Build the 5-metal × 5-seed LOMO test_auc matrix from Wf-131 P3 + Wf-193 + Wf-226."""
+
 import json
 import statistics
 from pathlib import Path
@@ -28,7 +29,9 @@ for src_name, src_dir in SOURCES:
             if "test_auc" in d and d.get("error") is None:
                 seed = int(d["seed"])
                 # If duplicate, prefer latest (Wf-226 > Wf-193 > Wf-131 P3)
-                if (m, seed) not in sources_used or sources_used[(m, seed)] == "Wf-131 P3":
+                if (m, seed) not in sources_used or sources_used[
+                    (m, seed)
+                ] == "Wf-131 P3":
                     matrix[m][seed] = {
                         "test_auc": float(d["test_auc"]),
                         "val_auc": float(d.get("val_auc", float("nan"))),
@@ -71,23 +74,37 @@ for m in ["Ru", "Ir", "Os", "Rh", "Re"]:
     if m not in matrix:
         print(f"{m:6s} | (no data)")
         continue
-    row = [f"{matrix[m].get(s, {}).get('test_auc', float('nan')):.4f}"
-           if s in matrix[m] else "  ---  " for s in range(5)]
+    row = [
+        f"{matrix[m].get(s, {}).get('test_auc', float('nan')):.4f}"
+        if s in matrix[m]
+        else "  ---  "
+        for s in range(5)
+    ]
     stats = per_metal_stats[m]
-    print(f"{m:6s} | " + " | ".join(f"{r:6s}" for r in row)
-          + f" | {stats['n_seeds']}/5 | {stats['mean']:.4f} ± {stats['std']:.4f}")
+    print(
+        f"{m:6s} | "
+        + " | ".join(f"{r:6s}" for r in row)
+        + f" | {stats['n_seeds']}/5 | {stats['mean']:.4f} ± {stats['std']:.4f}"
+    )
 
 print()
-print(f"Overall: {agg['overall_mean']:.4f} ± {agg['overall_std']:.4f} "
-      f"(n={agg['n_pairs_total']}/25)")
-print(f"Gate target ≥ 0.70: "
-      f"{'PASS' if agg['overall_mean'] >= 0.7 else 'BELOW GATE'}")
-print(f"Overall target ≥ 0.60 (Wf-125 P2): "
-      f"{'HIT' if agg['overall_mean'] >= 0.60 else 'MISS'}")
+print(
+    f"Overall: {agg['overall_mean']:.4f} ± {agg['overall_std']:.4f} "
+    f"(n={agg['n_pairs_total']}/25)"
+)
+print(
+    f"Gate target ≥ 0.70: " f"{'PASS' if agg['overall_mean'] >= 0.7 else 'BELOW GATE'}"
+)
+print(
+    f"Overall target ≥ 0.60 (Wf-125 P2): "
+    f"{'HIT' if agg['overall_mean'] >= 0.60 else 'MISS'}"
+)
 rh_target = 0.50
 rh_mean = per_metal_stats.get("Rh", {}).get("mean", float("nan"))
-print(f"Rh target ≥ {rh_target}: "
-      f"{'HIT' if rh_mean >= rh_target else 'MISS'} (Rh mean = {rh_mean:.4f})")
+print(
+    f"Rh target ≥ {rh_target}: "
+    f"{'HIT' if rh_mean >= rh_target else 'MISS'} (Rh mean = {rh_mean:.4f})"
+)
 
 out_path = REPORTS / "wf226_lomo_sweep" / "wf226_full_5x5_matrix.json"
 out_path.write_text(json.dumps(agg, indent=2, default=str))

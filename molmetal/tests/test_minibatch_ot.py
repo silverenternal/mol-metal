@@ -71,10 +71,12 @@ def test_minibatch_ot_sinkhorn() -> None:
     # shape-level check.
     x1 = torch.randn(b, 8, dtype=torch.float32)
     x0 = torch.randn(b, 8, dtype=torch.float32)
-    batch_idx = torch.cat([
-        torch.zeros(n_per_batch, dtype=torch.long),
-        torch.ones(n_per_batch, dtype=torch.long),
-    ])
+    batch_idx = torch.cat(
+        [
+            torch.zeros(n_per_batch, dtype=torch.long),
+            torch.ones(n_per_batch, dtype=torch.long),
+        ]
+    )
 
     idx = mini_batch_ot_coupling(x1, x0, batch_idx, method="sinkhorn")
 
@@ -83,9 +85,9 @@ def test_minibatch_ot_sinkhorn() -> None:
     assert idx.dtype == torch.long, f"expected long, got {idx.dtype}"
 
     # 1b. Valid permutation.
-    assert _is_permutation(idx, b), (
-        f"idx must be a valid permutation of 0..{b - 1}; got {idx.tolist()}"
-    )
+    assert _is_permutation(
+        idx, b
+    ), f"idx must be a valid permutation of 0..{b - 1}; got {idx.tolist()}"
 
     # 1c. Every row still maps to its original batch group.  The
     #     pairing is solved independently within each batch, so the
@@ -108,11 +110,13 @@ def test_minibatch_ot_hungarian_fallback() -> None:
 
     x1 = torch.randn(b, 4, dtype=torch.float32)
     x0 = torch.randn(b, 4, dtype=torch.float32)
-    batch_idx = torch.cat([
-        torch.full((n_per_batch,), 0, dtype=torch.long),
-        torch.full((n_per_batch,), 1, dtype=torch.long),
-        torch.full((n_per_batch,), 2, dtype=torch.long),
-    ])
+    batch_idx = torch.cat(
+        [
+            torch.full((n_per_batch,), 0, dtype=torch.long),
+            torch.full((n_per_batch,), 1, dtype=torch.long),
+            torch.full((n_per_batch,), 2, dtype=torch.long),
+        ]
+    )
 
     idx = mini_batch_ot_coupling(x1, x0, batch_idx, method="hungarian")
 
@@ -124,7 +128,10 @@ def test_minibatch_ot_hungarian_fallback() -> None:
     # Hungarian is exact: the returned pairing must be the identity
     # permutation when x0 == x1 (every row's cheapest partner is itself).
     idx_ident = mini_batch_ot_coupling(
-        x1, x1.clone(), batch_idx, method="hungarian",
+        x1,
+        x1.clone(),
+        batch_idx,
+        method="hungarian",
     )
     assert torch.equal(idx_ident, torch.arange(b, dtype=torch.long)), (
         "Hungarian on identical x0/x1 must return the identity permutation; "
@@ -146,10 +153,12 @@ def test_minibatch_ot_per_batch_independence() -> None:
 
     x1 = torch.cat([cluster_a, cluster_b], dim=0)
     x0 = torch.cat([cluster_a.clone(), cluster_b.clone()], dim=0)
-    batch_idx = torch.cat([
-        torch.zeros(n, dtype=torch.long),
-        torch.ones(n, dtype=torch.long),
-    ])
+    batch_idx = torch.cat(
+        [
+            torch.zeros(n, dtype=torch.long),
+            torch.ones(n, dtype=torch.long),
+        ]
+    )
     b = x1.shape[0]
 
     idx = mini_batch_ot_coupling(x1, x0, batch_idx, method="sinkhorn")
@@ -167,13 +176,13 @@ def test_minibatch_ot_per_batch_independence() -> None:
 
     # Sanity: the first n output rows still come from cluster A.
     first_n_x1 = x1[idx[:n]]
-    assert torch.allclose(first_n_x1, cluster_a, atol=1e-5), (
-        "First n rows of the permuted x1 must still be cluster A"
-    )
+    assert torch.allclose(
+        first_n_x1, cluster_a, atol=1e-5
+    ), "First n rows of the permuted x1 must still be cluster A"
     last_n_x1 = x1[idx[n:]]
-    assert torch.allclose(last_n_x1, cluster_b, atol=1e-5), (
-        "Last n rows of the permuted x1 must still be cluster B"
-    )
+    assert torch.allclose(
+        last_n_x1, cluster_b, atol=1e-5
+    ), "Last n rows of the permuted x1 must still be cluster B"
 
 
 # ---------------------------------------------------------------------
@@ -215,7 +224,8 @@ def test_cfmloss_use_minibatch_ot() -> None:
     batch_idx = torch.tensor([0, 0, 1, 1], dtype=torch.long)
 
     out = loss_module(
-        x0, x1,
+        x0,
+        x1,
         cond=None,
         h_node=h_node,
         edge_index=edge_index,
@@ -233,9 +243,9 @@ def test_cfmloss_use_minibatch_ot() -> None:
     out.loss.backward()
     grads = [p.grad for p in velocity_net.parameters() if p.grad is not None]
     assert len(grads) > 0, "backward must populate at least one gradient"
-    assert all(torch.isfinite(g).all() for g in grads), (
-        "all gradients must be finite after backward"
-    )
+    assert all(
+        torch.isfinite(g).all() for g in grads
+    ), "all gradients must be finite after backward"
 
 
 # ---------------------------------------------------------------------
@@ -256,7 +266,8 @@ def test_cfmloss_use_minibatch_ot_requires_batch_idx() -> None:
 
     with pytest.raises(ValueError, match="batch_idx"):
         loss_module(
-            x0, x1,
+            x0,
+            x1,
             cond=None,
             h_node=h_node,
             edge_index=edge_index,
@@ -294,10 +305,12 @@ def test_cfmloss_vanilla_vs_minibatch_ot_parity() -> None:
     # Two losses sharing the same network weights so the only
     # difference between them is the OT toggle.
     loss_v = ConditionalFlowMatchingLoss(
-        model=velocity_net, use_minibatch_ot=False,
+        model=velocity_net,
+        use_minibatch_ot=False,
     )
     loss_m = ConditionalFlowMatchingLoss(
-        model=velocity_net, use_minibatch_ot=True,
+        model=velocity_net,
+        use_minibatch_ot=True,
     )
 
     x0 = torch.randn(b, n, 3, dtype=torch.float32)
@@ -311,8 +324,11 @@ def test_cfmloss_vanilla_vs_minibatch_ot_parity() -> None:
             if i != j:
                 edges.append([i, j])
     edge_index = (
-        torch.tensor(edges, dtype=torch.long).t().unsqueeze(0)
-        .expand(b, -1, -1).contiguous()
+        torch.tensor(edges, dtype=torch.long)
+        .t()
+        .unsqueeze(0)
+        .expand(b, -1, -1)
+        .contiguous()
     )
     edge_mask = torch.ones(b * n_edges, dtype=torch.bool)
     node_mask = torch.ones(b, n, dtype=torch.bool)
@@ -325,14 +341,22 @@ def test_cfmloss_vanilla_vs_minibatch_ot_parity() -> None:
     # delta between the two losses is the OT toggle.
     torch.manual_seed(7)
     out_v = loss_v(
-        x0, x1, cond=None, h_node=h_node,
-        edge_index=edge_index, edge_mask=edge_mask,
+        x0,
+        x1,
+        cond=None,
+        h_node=h_node,
+        edge_index=edge_index,
+        edge_mask=edge_mask,
         node_mask=node_mask,
     )
     torch.manual_seed(7)
     out_m = loss_m(
-        x0, x1, cond=None, h_node=h_node,
-        edge_index=edge_index, edge_mask=edge_mask,
+        x0,
+        x1,
+        cond=None,
+        h_node=h_node,
+        edge_index=edge_index,
+        edge_mask=edge_mask,
         node_mask=node_mask,
         batch_idx=batch_idx,
     )

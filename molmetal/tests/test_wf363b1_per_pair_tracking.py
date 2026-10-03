@@ -40,10 +40,19 @@ DASHBOARD_SH = PROJECT_ROOT / "scripts" / "gpu_launch_dashboard.sh"
 AGGREGATOR_PY = PROJECT_ROOT / "molmetal" / "scripts" / "gpu_launch_aggregator.py"
 
 VALID_PAIR_STATUSES = {
-    "PLANNED", "RUNNING", "COMPLETED", "FAILED", "STALE", "UNKNOWN",
+    "PLANNED",
+    "RUNNING",
+    "COMPLETED",
+    "FAILED",
+    "STALE",
+    "UNKNOWN",
 }
 EXPECTED_PER_PAIR_FIELDS = {
-    "metal", "seed", "status", "wall_elapsed_s", "last_log_ts",
+    "metal",
+    "seed",
+    "status",
+    "wall_elapsed_s",
+    "last_log_ts",
 }
 
 
@@ -108,9 +117,9 @@ def test_01_per_pair_progress_schema():
         for p in per_pair:
             missing = EXPECTED_PER_PAIR_FIELDS - set(p.keys())
             assert not missing, f"per-pair entry missing fields: {missing}"
-            assert p["status"] in VALID_PAIR_STATUSES, (
-                f"invalid status: {p['status']!r} (must be in {VALID_PAIR_STATUSES})"
-            )
+            assert (
+                p["status"] in VALID_PAIR_STATUSES
+            ), f"invalid status: {p['status']!r} (must be in {VALID_PAIR_STATUSES})"
             assert isinstance(p["wall_elapsed_s"], int)
             assert p["wall_elapsed_s"] >= 0
 
@@ -121,17 +130,17 @@ def test_01_per_pair_progress_schema():
         assert ("Pt", "2") in by_id
 
         # Ru/seed0 should be COMPLETED (training_summary.json status=OK → COMPLETED)
-        assert by_id[("Ru", "0")]["status"] == "COMPLETED", (
-            f"Ru/seed0 status should be COMPLETED, got {by_id[('Ru', '0')]['status']!r}"
-        )
+        assert (
+            by_id[("Ru", "0")]["status"] == "COMPLETED"
+        ), f"Ru/seed0 status should be COMPLETED, got {by_id[('Ru', '0')]['status']!r}"
         # Ir/seed1 should be RUNNING (run.log exists, mtime fresh)
-        assert by_id[("Ir", "1")]["status"] == "RUNNING", (
-            f"Ir/seed1 status should be RUNNING, got {by_id[('Ir', '1')]['status']!r}"
-        )
+        assert (
+            by_id[("Ir", "1")]["status"] == "RUNNING"
+        ), f"Ir/seed1 status should be RUNNING, got {by_id[('Ir', '1')]['status']!r}"
         # Pt/seed2 should be PLANNED (no artifacts at all)
-        assert by_id[("Pt", "2")]["status"] == "PLANNED", (
-            f"Pt/seed2 status should be PLANNED, got {by_id[('Pt', '2')]['status']!r}"
-        )
+        assert (
+            by_id[("Pt", "2")]["status"] == "PLANNED"
+        ), f"Pt/seed2 status should be PLANNED, got {by_id[('Pt', '2')]['status']!r}"
 
         # last_log_ts should be ISO-8601 UTC when artifacts exist
         assert by_id[("Ru", "0")]["last_log_ts"] is not None
@@ -146,14 +155,18 @@ def test_01_per_pair_progress_schema():
         # Verify bash syntax
         result = subprocess.run(
             ["bash", "-n", str(DASHBOARD_SH)],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         assert result.returncode == 0, f"bash -n failed: {result.stderr}"
 
         # Verify --per-pair-detail + --help banner mentions it
         with open(DASHBOARD_SH) as f:
             src = f.read()
-        assert "--per-pair-detail" in src, "bash dashboard must declare --per-pair-detail flag"
+        assert (
+            "--per-pair-detail" in src
+        ), "bash dashboard must declare --per-pair-detail flag"
 
         # 3) Test pair_progress_detail() directly on synthetic pair
         detail = mod.pair_progress_detail(str(root / "Ru" / "seed0"))
@@ -169,7 +182,9 @@ def test_01_per_pair_progress_schema():
 
         # 5) Test pair_status() directly (alias OK → COMPLETED)
         st = mod.pair_status(str(root / "Ru" / "seed0"))
-        assert st == "COMPLETED", f"pair_status should normalize OK → COMPLETED; got {st!r}"
+        assert (
+            st == "COMPLETED"
+        ), f"pair_status should normalize OK → COMPLETED; got {st!r}"
 
         # 6) PLANNED status: empty pair dir
         st = mod.pair_status(str(root / "Pt" / "seed2"))
@@ -221,7 +236,7 @@ def test_02_status_inference_from_run_log():
         # Case D: FAILED via run.log Traceback (no summary)
         (root / "Au" / "seed3").mkdir(parents=True, exist_ok=True)
         (root / "Au" / "seed3" / "run.log").write_text(
-            "Traceback (most recent call last):\n  File \"train.py\", line 42\n"
+            'Traceback (most recent call last):\n  File "train.py", line 42\n'
         )
         os.utime(root / "Au" / "seed3" / "run.log", (old, old))
         assert mod.pair_status(str(root / "Au" / "seed3")) == "FAILED"
@@ -255,11 +270,15 @@ def test_02_status_inference_from_run_log():
         # Case I: COMPLETED via per_pair_table (all OK)
         (root / "Ir" / "seed8").mkdir(parents=True, exist_ok=True)
         (root / "Ir" / "seed8" / "training_summary.json").write_text(
-            json.dumps({
-                "per_pair_table": [
-                    {"status": "OK"}, {"status": "OK"}, {"status": "OK"},
-                ],
-            })
+            json.dumps(
+                {
+                    "per_pair_table": [
+                        {"status": "OK"},
+                        {"status": "OK"},
+                        {"status": "OK"},
+                    ],
+                }
+            )
         )
         os.utime(root / "Ir" / "seed8" / "training_summary.json", (old, old))
         assert mod.pair_status(str(root / "Ir" / "seed8")) == "COMPLETED"
@@ -267,11 +286,14 @@ def test_02_status_inference_from_run_log():
         # Case J: per_pair_table with FAILED → PARTIAL
         (root / "Pt" / "seed9").mkdir(parents=True, exist_ok=True)
         (root / "Pt" / "seed9" / "training_summary.json").write_text(
-            json.dumps({
-                "per_pair_table": [
-                    {"status": "OK"}, {"status": "FAILED"},
-                ],
-            })
+            json.dumps(
+                {
+                    "per_pair_table": [
+                        {"status": "OK"},
+                        {"status": "FAILED"},
+                    ],
+                }
+            )
         )
         os.utime(root / "Pt" / "seed9" / "training_summary.json", (old, old))
         assert mod.pair_status(str(root / "Pt" / "seed9")) == "PARTIAL"
@@ -281,7 +303,9 @@ def test_02_status_inference_from_run_log():
         (root / "no_dann" / "Ru" / "seed0" / "training_summary.json").write_text(
             json.dumps({"status": "OK"})
         )
-        os.utime(root / "no_dann" / "Ru" / "seed0" / "training_summary.json", (old, old))
+        os.utime(
+            root / "no_dann" / "Ru" / "seed0" / "training_summary.json", (old, old)
+        )
         assert mod.pair_status(str(root / "no_dann" / "Ru" / "seed0")) == "COMPLETED"
 
         # Verify pair_progress_detail for the g6 shape

@@ -52,6 +52,7 @@ def test_flowdock_sota_scoring_importable() -> None:
         flowdock_cli_available,
         score_candidates,
     )
+
     # Public surface is in place (use __dataclass_fields__ for default_factory fields).
     fields = FlowDockScoreColumn.__dataclass_fields__
     assert "flowdock_score_mean" in fields
@@ -124,7 +125,16 @@ def test_flowdock_subprocess_call_routed(tmp_path: Path, monkeypatch) -> None:
     from molmetal_lam.sbdd_env import flowdock_sota_scoring as scoring
 
     batch = [
-        "CCO", "CCN", "c1ccccc1", "CO", "CN", "CCO", "CCN", "CCC", "CCCO", "COC",
+        "CCO",
+        "CCN",
+        "c1ccccc1",
+        "CO",
+        "CN",
+        "CCO",
+        "CCN",
+        "CCC",
+        "CCCO",
+        "COC",
     ]
 
     def _confidence_for(smiles: str) -> float:
@@ -146,9 +156,11 @@ def test_flowdock_subprocess_call_routed(tmp_path: Path, monkeypatch) -> None:
         complex_dir.mkdir(parents=True, exist_ok=True)
         conf = _confidence_for(smiles)
         (complex_dir / f"rank1_confidence{conf:+.2f}.sdf").write_text("stub")
+
         class _Result:
             returncode = 0
             stderr = ""
+
         return _Result()
 
     monkeypatch.setattr(scoring.subprocess, "run", _fake_subprocess_run)
@@ -167,7 +179,8 @@ def test_flowdock_subprocess_call_routed(tmp_path: Path, monkeypatch) -> None:
 
     candidates = [{"smiles": s} for s in batch]
     col = scoring.score_candidates(
-        candidates, str(fake_pdb),
+        candidates,
+        str(fake_pdb),
         repo_root=str(repo),
         n_samples=2,
         timeout_sec=30.0,
@@ -195,10 +208,12 @@ def test_flowdock_subprocess_call_routed(tmp_path: Path, monkeypatch) -> None:
 def test_flowdock_score_candidates_unavailable(tmp_path: Path) -> None:
     """When the vendored FlowDock repo is missing, status='unavailable'."""
     from molmetal_lam.sbdd_env.flowdock_sota_scoring import score_candidates
+
     fake_pdb = tmp_path / "fake.pdb"
     fake_pdb.write_text("ATOM\nEND\n")
     col = score_candidates(
-        [{"smiles": "CCO"}], str(fake_pdb),
+        [{"smiles": "CCO"}],
+        str(fake_pdb),
         repo_root=str(tmp_path / "no_such_flowdock_repo"),
     )
     assert col.status == "unavailable"
@@ -214,6 +229,7 @@ def test_flowdock_score_candidates_unavailable(tmp_path: Path) -> None:
 def test_flowdock_score_candidates_empty() -> None:
     """When no candidates are supplied, status='ok' with zero invocations."""
     from molmetal_lam.sbdd_env.flowdock_sota_scoring import score_candidates
+
     col = score_candidates([], "/tmp/doesnt_matter_pdb")
     assert col.status == "ok"
     assert col.n_invoked == 0
@@ -228,6 +244,7 @@ def test_flowdock_score_candidates_empty() -> None:
 def test_flowdock_score_candidates_missing_protein(tmp_path: Path) -> None:
     """Missing protein_path -> status='error', no scoring attempted."""
     from molmetal_lam.sbdd_env.flowdock_sota_scoring import score_candidates
+
     # Build a vendored repo stub so the path is "available".
     repo = tmp_path / "synthetic_flowdock"
     pkg = repo / "flowdock"
@@ -251,6 +268,7 @@ def test_flowdock_score_candidates_missing_protein(tmp_path: Path) -> None:
 def test_flowdock_aggregation_helper() -> None:
     """The internal _aggregate helper returns the right mean/std values."""
     from molmetal_lam.sbdd_env.flowdock_sota_scoring import _aggregate
+
     # n=0 -> (None, None)
     assert _aggregate([]) == (None, None)
     # n=1 -> (mean, None)
@@ -278,24 +296,42 @@ def test_flowdock_score_recorded_in_report(tmp_path: Path, monkeypatch) -> None:
     synthetic :class:`PocketResult` and a ``flowdock_config``; then we
     inspect the worker output JSON for the new columns.
     """
+
     def _fake_run_one_pocket(*args, **kwargs):
         from molmetal.scripts.r4_c_full_sweep import PocketResult
+
         return PocketResult(
             pocket_id="fake_000",
             status="ok",
             n_candidates=2,
             candidates=[
-                {"smiles": "CCO", "is_generated": True, "sa": 1.0, "qed": 0.5,
-                 "lipinski": True, "vina_proxy": -7.0},
-                {"smiles": "CCN", "is_generated": True, "sa": 1.5, "qed": 0.4,
-                 "lipinski": True, "vina_proxy": -6.5},
+                {
+                    "smiles": "CCO",
+                    "is_generated": True,
+                    "sa": 1.0,
+                    "qed": 0.5,
+                    "lipinski": True,
+                    "vina_proxy": -7.0,
+                },
+                {
+                    "smiles": "CCN",
+                    "is_generated": True,
+                    "sa": 1.5,
+                    "qed": 0.4,
+                    "lipinski": True,
+                    "vina_proxy": -6.5,
+                },
             ],
             top1_smiles="CCO",
-            top1_sa=1.0, top1_qed=0.5, top1_lipinski=True,
+            top1_sa=1.0,
+            top1_qed=0.5,
+            top1_lipinski=True,
             top1_vina_proxy=-7.0,
-            mean_sa=1.25, mean_qed=0.45,
+            mean_sa=1.25,
+            mean_qed=0.45,
             lipinski_pass_count=2,
-            n_generated_candidates=2, n_seed_candidates=0,
+            n_generated_candidates=2,
+            n_seed_candidates=0,
             receptor_path=str(tmp_path / "fake.pdb"),
             ligand_path=str(tmp_path / "fake.sdf"),
             seed=42,
@@ -322,9 +358,11 @@ def test_flowdock_score_recorded_in_report(tmp_path: Path, monkeypatch) -> None:
             (complex_dir / "rank1_confidence-1.20.sdf").write_text("stub")
         else:
             (complex_dir / "rank1_confidence-0.80.sdf").write_text("stub")
+
         class _Result:
             returncode = 0
             stderr = ""
+
         return _Result()
 
     monkeypatch.setattr(scoring.subprocess, "run", _fake_subprocess_run)
@@ -361,12 +399,18 @@ def test_flowdock_score_recorded_in_report(tmp_path: Path, monkeypatch) -> None:
 
     # Patch run_one_pocket inside the r4_c_full_sweep module.
     import importlib
+
     r4 = importlib.import_module("molmetal.scripts.r4_c_full_sweep")
     monkeypatch.setattr(r4, "run_one_pocket", _fake_run_one_pocket)
 
     saved_argv = sys.argv[:]
-    sys.argv = [saved_argv[0], "--worker-input", str(worker_input),
-                "--worker-output", str(worker_output)]
+    sys.argv = [
+        saved_argv[0],
+        "--worker-input",
+        str(worker_input),
+        "--worker-output",
+        str(worker_output),
+    ]
     try:
         rc = r4.main()
     finally:

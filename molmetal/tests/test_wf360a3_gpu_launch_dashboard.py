@@ -38,13 +38,13 @@ AGGREGATOR_PY = PROJECT_ROOT / "molmetal" / "scripts" / "gpu_launch_aggregator.p
 DASHBOARD_JSON = PROJECT_ROOT / "molmetal" / "reports" / "gpu_launch_dashboard.json"
 
 EXPECTED_LAUNCHERS = {
-    "wf355_a1",   # DrugOOD 1.58M chemprop v2
-    "wf355_a2",   # BindingDB 1.07M chemprop v2
-    "wf355_a3",   # tmQM + PlatinAI joint
-    "wf355_b1",   # Wf-131 P3 deferred
-    "wf355_b2",   # Wf-146 deferred
-    "g5_retrain", # G5 15 pairs
-    "g6_recover", # G6 60 tuples
+    "wf355_a1",  # DrugOOD 1.58M chemprop v2
+    "wf355_a2",  # BindingDB 1.07M chemprop v2
+    "wf355_a3",  # tmQM + PlatinAI joint
+    "wf355_b1",  # Wf-131 P3 deferred
+    "wf355_b2",  # Wf-146 deferred
+    "g5_retrain",  # G5 15 pairs
+    "g6_recover",  # G6 60 tuples
 }
 
 
@@ -53,25 +53,33 @@ def test_01_dashboard_script_parses_per_launcher_output():
     # bash syntax check
     result = subprocess.run(
         ["bash", "-n", str(DASHBOARD_SH)],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     assert result.returncode == 0, f"bash -n failed: {result.stderr}"
 
     # --list-launchers mode
     result = subprocess.run(
         ["bash", str(DASHBOARD_SH), "--list-launchers"],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     assert result.returncode == 0, f"--list-launchers failed: {result.stderr}"
 
     out = result.stdout
     for name in EXPECTED_LAUNCHERS:
-        assert name in out, f"launcher {name!r} missing from --list-launchers output:\n{out}"
+        assert (
+            name in out
+        ), f"launcher {name!r} missing from --list-launchers output:\n{out}"
 
     # Also check --status mode returns one line per launcher
     result = subprocess.run(
         ["bash", str(DASHBOARD_SH), "--status"],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     assert result.returncode == 0
     status_lines = [l for l in result.stdout.splitlines() if l.strip()]
@@ -83,7 +91,9 @@ def test_01_dashboard_script_parses_per_launcher_output():
     # JSON mode roundtrip — must be valid JSON
     result = subprocess.run(
         ["bash", str(DASHBOARD_SH), "--json"],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     assert result.returncode == 0, f"--json failed: {result.stderr}"
     try:
@@ -92,19 +102,20 @@ def test_01_dashboard_script_parses_per_launcher_output():
         pytest.fail(f"--json output is not valid JSON: {e}\n{result.stdout[:500]}")
     assert "launchers" in data
     assert isinstance(data["launchers"], list)
-    assert len(data["launchers"]) == len(EXPECTED_LAUNCHERS), (
-        f"expected {len(EXPECTED_LAUNCHERS)} launchers, got {len(data['launchers'])}"
-    )
+    assert len(data["launchers"]) == len(
+        EXPECTED_LAUNCHERS
+    ), f"expected {len(EXPECTED_LAUNCHERS)} launchers, got {len(data['launchers'])}"
     names_in_json = {l["name"] for l in data["launchers"]}
-    assert names_in_json == EXPECTED_LAUNCHERS, (
-        f"launcher name mismatch: got {names_in_json}, expected {EXPECTED_LAUNCHERS}"
-    )
+    assert (
+        names_in_json == EXPECTED_LAUNCHERS
+    ), f"launcher name mismatch: got {names_in_json}, expected {EXPECTED_LAUNCHERS}"
 
 
 def test_02_aggregator_produces_correct_json_schema():
     """Verify aggregator python script: imports + runs + schema validates."""
     # python syntax check
     import ast
+
     src = AGGREGATOR_PY.read_text()
     try:
         ast.parse(src)
@@ -112,7 +123,9 @@ def test_02_aggregator_produces_correct_json_schema():
         pytest.fail(f"aggregator python syntax error: {e}")
 
     # Import (loads aggregator module without running main)
-    spec = importlib_util.spec_from_file_location("gpu_launch_aggregator", str(AGGREGATOR_PY))
+    spec = importlib_util.spec_from_file_location(
+        "gpu_launch_aggregator", str(AGGREGATOR_PY)
+    )
     mod = importlib_util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     assert hasattr(mod, "aggregate"), "aggregate() function missing"
@@ -123,7 +136,9 @@ def test_02_aggregator_produces_correct_json_schema():
     # Run main() and write JSON file
     result = subprocess.run(
         [sys.executable, str(AGGREGATOR_PY)],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     assert result.returncode == 0, f"aggregator failed: {result.stderr}"
     assert DASHBOARD_JSON.exists(), f"dashboard JSON not written to {DASHBOARD_JSON}"
@@ -139,34 +154,55 @@ def test_02_aggregator_produces_correct_json_schema():
     assert len(data["launchers"]) == len(EXPECTED_LAUNCHERS)
 
     required_top_fields = {
-        "name", "script", "root", "status", "wall_projected_hr",
-        "last_activity", "elapsed_sec", "pair_progress",
-        "activation_gated", "user_ok_required",
+        "name",
+        "script",
+        "root",
+        "status",
+        "wall_projected_hr",
+        "last_activity",
+        "elapsed_sec",
+        "pair_progress",
+        "activation_gated",
+        "user_ok_required",
     }
     required_pair_fields = {
-        "total_pairs", "discovered_pairs", "ok", "failed", "running", "pending",
+        "total_pairs",
+        "discovered_pairs",
+        "ok",
+        "failed",
+        "running",
+        "pending",
     }
     valid_statuses = {
-        "COMPLETED", "RUNNING", "PARTIAL", "FAILED", "DRY_RUN_OK",
-        "PLAN_ONLY", "READY", "STALE", "NO_PLAN",
+        "COMPLETED",
+        "RUNNING",
+        "PARTIAL",
+        "FAILED",
+        "DRY_RUN_OK",
+        "PLAN_ONLY",
+        "READY",
+        "STALE",
+        "NO_PLAN",
     }
 
     for launcher_entry in data["launchers"]:
         missing = required_top_fields - set(launcher_entry.keys())
-        assert not missing, f"launcher {launcher_entry.get('name')} missing fields: {missing}"
+        assert (
+            not missing
+        ), f"launcher {launcher_entry.get('name')} missing fields: {missing}"
         assert launcher_entry["activation_gated"] is True
         assert launcher_entry["user_ok_required"] is True
-        assert launcher_entry["status"] in valid_statuses, (
-            f"launcher {launcher_entry['name']} has invalid status: {launcher_entry['status']}"
-        )
+        assert (
+            launcher_entry["status"] in valid_statuses
+        ), f"launcher {launcher_entry['name']} has invalid status: {launcher_entry['status']}"
         pp = launcher_entry["pair_progress"]
         missing_pp = required_pair_fields - set(pp.keys())
         assert not missing_pp, f"pair_progress missing fields: {missing_pp}"
         # Sum of (ok + failed + running + pending) == total_pairs OR matches discovered
         sum_components = pp["ok"] + pp["failed"] + pp["running"] + pp["pending"]
-        assert sum_components <= pp["total_pairs"], (
-            f"launcher {launcher_entry['name']}: sum {sum_components} > total {pp['total_pairs']}"
-        )
+        assert (
+            sum_components <= pp["total_pairs"]
+        ), f"launcher {launcher_entry['name']}: sum {sum_components} > total {pp['total_pairs']}"
 
 
 # Importlib helper (py3.8+)

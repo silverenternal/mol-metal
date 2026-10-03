@@ -12,6 +12,7 @@ Tests:
 
 All tests CPU-only; use existing reports (no GPU launches).
 """
+
 from __future__ import annotations
 
 import json
@@ -25,7 +26,13 @@ REPO_ROOT = Path("/home/hugo/codes/mol-metal")
 SCRIPTS_DIR = REPO_ROOT / "molmetal" / "scripts"
 VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
 
-REPORT_C2 = REPO_ROOT / "molmetal" / "reports" / "wf343c2_per_wave_check" / "per_wave_check.json"
+REPORT_C2 = (
+    REPO_ROOT
+    / "molmetal"
+    / "reports"
+    / "wf343c2_per_wave_check"
+    / "per_wave_check.json"
+)
 REPORT_C3 = REPO_ROOT / "molmetal" / "reports" / "wf343c3_data_quality" / "report.json"
 
 EXPECTED_CHECK_IDS_C2 = frozenset(
@@ -58,8 +65,15 @@ def test_wf343c2_per_wave_check_contract() -> None:
       - schema_valid == True
       - honest_framing field is non-empty
     """
-    proc = _run([VENV_PY, str(SCRIPTS_DIR / "wf343c2_per_wave_check.py"),
-                 "--wave", "1", "--skip-live"])
+    proc = _run(
+        [
+            VENV_PY,
+            str(SCRIPTS_DIR / "wf343c2_per_wave_check.py"),
+            "--wave",
+            "1",
+            "--skip-live",
+        ]
+    )
     assert proc.returncode in (0, 1), (
         f"wf343c2_per_wave_check crashed: rc={proc.returncode}\n"
         f"stdout: {proc.stdout[-500:]}\nstderr: {proc.stderr[-500:]}"
@@ -76,13 +90,15 @@ def test_wf343c2_per_wave_check_contract() -> None:
         f"extra={check_ids - EXPECTED_CHECK_IDS_C2}"
     )
     for c in payload["checks"]:
-        assert c["status"] in {"PASS", "FAIL", "SKIP"}, (
-            f"check {c['check_id']} has invalid status {c['status']}"
-        )
+        assert c["status"] in {
+            "PASS",
+            "FAIL",
+            "SKIP",
+        }, f"check {c['check_id']} has invalid status {c['status']}"
         assert c.get("evidence"), f"check {c['check_id']} missing evidence"
-    assert payload.get("schema_valid") is True, (
-        f"schema_valid must be True, got {payload.get('schema_valid')}"
-    )
+    assert (
+        payload.get("schema_valid") is True
+    ), f"schema_valid must be True, got {payload.get('schema_valid')}"
     assert payload.get("honest_framing"), "honest_framing field missing"
 
 
@@ -102,18 +118,19 @@ def test_wf343c3_data_quality_check_contract() -> None:
         f"stdout: {proc.stdout[-500:]}\nstderr: {proc.stderr[-500:]}"
     )
     assert REPORT_C3.exists(), (
-        f"report.json not written: {REPORT_C3}\n"
-        f"stderr: {proc.stderr[-500:]}"
+        f"report.json not written: {REPORT_C3}\n" f"stderr: {proc.stderr[-500:]}"
     )
     payload = json.loads(REPORT_C3.read_text())
-    assert payload.get("loader_count") == 5, (
-        f"expected 5 loaders, got {payload.get('loader_count')}"
-    )
-    assert payload.get("checks_per_loader") >= 1, (
-        f"checks_per_loader must be ≥ 1, got {payload.get('checks_per_loader')}"
-    )
+    assert (
+        payload.get("loader_count") == 5
+    ), f"expected 5 loaders, got {payload.get('loader_count')}"
+    assert (
+        payload.get("checks_per_loader") >= 1
+    ), f"checks_per_loader must be ≥ 1, got {payload.get('checks_per_loader')}"
     loader_reports = payload.get("loader_reports", [])
-    assert len(loader_reports) == 5, f"expected 5 loader_reports, got {len(loader_reports)}"
+    assert (
+        len(loader_reports) == 5
+    ), f"expected 5 loader_reports, got {len(loader_reports)}"
     loader_names = {lr.get("loader") for lr in loader_reports}
     expected_loaders = {
         "load_binding_db",
@@ -128,9 +145,7 @@ def test_wf343c3_data_quality_check_contract() -> None:
     )
     # Per real-data contract: each loader should have at least 1 PASS check.
     for lr in loader_reports:
-        pass_count = sum(
-            1 for c in lr.get("checks", []) if c.get("status") == "PASS"
-        )
-        assert pass_count >= 1, (
-            f"loader {lr.get('loader')} has 0 PASS checks on real data"
-        )
+        pass_count = sum(1 for c in lr.get("checks", []) if c.get("status") == "PASS")
+        assert (
+            pass_count >= 1
+        ), f"loader {lr.get('loader')} has 0 PASS checks on real data"

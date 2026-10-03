@@ -31,6 +31,7 @@ Run via::
     uv run --no-sync python -m pytest \\
         molmetal/tests/test_joint_3stage_mcts.py -v
 """
+
 from __future__ import annotations
 
 import math
@@ -92,6 +93,7 @@ except Exception:  # pragma: no cover - import path fallback
     from molmetal.molmetal_lam.search_alg.variance_mcts_integration import (  # type: ignore
         VarianceMCTSWrapper,
     )
+
     # Wf-A16: the FALLBACK path fails too. EXPLORATION_STRATEGIES does not
     # exist in proof_search under either import root, so the first `try` raises,
     # this `except` runs, and this import then raises UNCAUGHT — which is what
@@ -140,6 +142,7 @@ except Exception:  # pragma: no cover - import path fallback
     sys.path.insert(0, os.path.join(_PROJECT_ROOT, "molmetal", "scripts"))
     try:
         import importlib
+
         _joint_mod = importlib.import_module(
             "joint_score_repellent_variance_puct_mcts",
         )
@@ -157,10 +160,13 @@ except Exception:  # pragma: no cover - import path fallback
         # If the script is unavailable in this environment, fall back
         # to direct path injection so the import surface still works.
         import importlib.util as _ilu
+
         _spec = _ilu.spec_from_file_location(
             "joint_pipeline_fallback",
             os.path.join(
-                _PROJECT_ROOT, "molmetal", "scripts",
+                _PROJECT_ROOT,
+                "molmetal",
+                "scripts",
                 "joint_score_repellent_variance_puct_mcts.py",
             ),
         )
@@ -215,7 +221,9 @@ def _tiles() -> List[MoleculeClosedTerm]:
 
 def _binding_site() -> BindingSite:
     return BindingSite(
-        name="wf36_3stage_test", constraints=[], geometry_hints={},
+        name="wf36_3stage_test",
+        constraints=[],
+        geometry_hints={},
     )
 
 
@@ -282,8 +290,7 @@ def _stub_mcts_report(
     """Build a stub Stage-3-like report dict."""
     out: Dict[str, Any] = {
         "candidates": (
-            [_StubMol(f"CC{i}") for i in range(candidates)]
-            if with_candidates else []
+            [_StubMol(f"CC{i}") for i in range(candidates)] if with_candidates else []
         ),
         "best_action": 0 if candidates > 0 else -1,
         "leaf_value_var": float(leaf_value_var),
@@ -462,9 +469,16 @@ class TestStage3MctsTrajectory:
         )
         # Required keys.
         for k in [
-            "wall_time_s", "leaf_value_var", "leaf_value_std",
-            "best_action", "best_score", "n_states_explored",
-            "candidates", "strategy", "seed", "tree_statistics",
+            "wall_time_s",
+            "leaf_value_var",
+            "leaf_value_std",
+            "best_action",
+            "best_score",
+            "n_states_explored",
+            "candidates",
+            "strategy",
+            "seed",
+            "tree_statistics",
         ]:
             assert k in report, f"missing key: {k}"
         assert report["strategy"] == "variance"
@@ -562,8 +576,11 @@ class TestFullPipeline:
         )
         # Top-level keys.
         for k in [
-            "config", "per_round", "aggregate",
-            "replay_buffer_stats", "wall_time_s",
+            "config",
+            "per_round",
+            "aggregate",
+            "replay_buffer_stats",
+            "wall_time_s",
         ]:
             assert k in report, f"missing key: {k}"
         # Aggregate stats.
@@ -631,7 +648,9 @@ class TestFullPipeline:
         assert agg_a["mean_best_score"] == agg_b["mean_best_score"]
         assert agg_a["mean_leaf_value_var"] == agg_b["mean_leaf_value_var"]
         # Replay buffer sizes match.
-        assert rep_a["replay_buffer_stats"]["size"] == rep_b["replay_buffer_stats"]["size"]
+        assert (
+            rep_a["replay_buffer_stats"]["size"] == rep_b["replay_buffer_stats"]["size"]
+        )
 
     def test_full_pipeline_stage_wall_time_pct_sums_to_one(self) -> None:
         """Stage wall-time percentages sum to ≈ 1.0."""

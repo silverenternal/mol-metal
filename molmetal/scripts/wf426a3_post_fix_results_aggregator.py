@@ -40,6 +40,7 @@ The ``--candidates-dir`` is a temp dir populated by the launcher; each
 JSON file there represents one retrain candidate with on-disk evidence
 recorded.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -76,18 +77,20 @@ def _load_candidate_records(candidates_dir: Path) -> list[dict[str, Any]]:
             records.append(rec)
         except (json.JSONDecodeError, OSError) as exc:
             # Per AGENTS.md §5.2 honest framing — surface bad records.
-            records.append({
-                "name": p.stem,
-                "_source_path": str(p),
-                "_load_error": str(exc),
-                "script": "",
-                "script_exists": False,
-                "report_dir": "",
-                "report_dir_exists": False,
-                "dry_run_log_exists": False,
-                "plan_json_exists": False,
-                "notes": f"failed to load candidate record: {exc}",
-            })
+            records.append(
+                {
+                    "name": p.stem,
+                    "_source_path": str(p),
+                    "_load_error": str(exc),
+                    "script": "",
+                    "script_exists": False,
+                    "report_dir": "",
+                    "report_dir_exists": False,
+                    "dry_run_log_exists": False,
+                    "plan_json_exists": False,
+                    "notes": f"failed to load candidate record: {exc}",
+                }
+            )
     return records
 
 
@@ -129,7 +132,9 @@ def _validate_candidate(rec: dict[str, Any]) -> dict[str, Any]:
     try:
         bash_rc = subprocess.run(
             ["bash", "-n", script],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if bash_rc.returncode != 0:
             return {
@@ -193,7 +198,8 @@ def _validate_candidate(rec: dict[str, Any]) -> dict[str, Any]:
         "report_dir": report_dir,
         "verdict": "READY" if plan_json_ok else "WARN",
         "reason": (
-            "all readiness checks PASS" if plan_json_ok
+            "all readiness checks PASS"
+            if plan_json_ok
             else f"wrapper ready; {plan_json_note}"
         ),
         "ready_to_launch": True,
@@ -213,9 +219,15 @@ def aggregate_readiness(
     verdicts = [_validate_candidate(r) for r in records]
 
     # Default pre-flight numbers from Wf-353-B1 baseline.
-    pf_pass = pre_flight_pass if pre_flight_pass is not None else EXPECTED_PRE_FLIGHT_PASS
-    pf_total = pre_flight_total if pre_flight_total is not None else EXPECTED_PRE_FLIGHT_TOTAL
-    pf_skip = pre_flight_skip if pre_flight_skip is not None else EXPECTED_PRE_FLIGHT_SKIP
+    pf_pass = (
+        pre_flight_pass if pre_flight_pass is not None else EXPECTED_PRE_FLIGHT_PASS
+    )
+    pf_total = (
+        pre_flight_total if pre_flight_total is not None else EXPECTED_PRE_FLIGHT_TOTAL
+    )
+    pf_skip = (
+        pre_flight_skip if pre_flight_skip is not None else EXPECTED_PRE_FLIGHT_SKIP
+    )
 
     ready_count = sum(1 for v in verdicts if v["verdict"] == "READY")
     blocked_count = sum(1 for v in verdicts if v["verdict"] == "BLOCKED")
@@ -241,6 +253,7 @@ def _atomic_write_text(path: Path, content: str) -> None:
     """Write content atomically via the canonical Wf-386-A3 primitive."""
     try:
         from molmetal.scripts.wf386a3_atomic_write import atomic_write_file
+
         atomic_write_file(path, content, encoding="utf-8")
     except ImportError:
         # Fallback: standard write (only for in-repo dry-run).
@@ -253,23 +266,33 @@ def main() -> int:
         description="Wf-426-A3 post-fix retrain readiness aggregator",
     )
     parser.add_argument(
-        "--candidates-dir", required=True, type=Path,
+        "--candidates-dir",
+        required=True,
+        type=Path,
         help="Temp dir populated by wf426a3_post_fix_retrain_launcher.sh",
     )
     parser.add_argument(
-        "--output", required=True, type=Path,
+        "--output",
+        required=True,
+        type=Path,
         help="Path to write the aggregated readiness JSON",
     )
     parser.add_argument(
-        "--pre-flight-pass", type=int, default=None,
+        "--pre-flight-pass",
+        type=int,
+        default=None,
         help="Pre-flight PASS count (default: 114 per Wf-424-B1 baseline)",
     )
     parser.add_argument(
-        "--pre-flight-total", type=int, default=None,
+        "--pre-flight-total",
+        type=int,
+        default=None,
         help="Pre-flight TOTAL count (default: 117 per Wf-353-B1 baseline)",
     )
     parser.add_argument(
-        "--pre-flight-skip", type=int, default=None,
+        "--pre-flight-skip",
+        type=int,
+        default=None,
         help="Pre-flight SKIP count (default: 3 per Wf-424-B1 baseline)",
     )
     args = parser.parse_args()

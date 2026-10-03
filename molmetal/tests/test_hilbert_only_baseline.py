@@ -28,6 +28,7 @@ Test inventory
     ``per_seed_metrics.json`` is well-formed JSON with all required
     keys.
 """
+
 from __future__ import annotations
 
 import csv
@@ -49,9 +50,12 @@ _HERE = Path(__file__).resolve().parent
 # contexts.  Walk up the tree until we find the marker `molmetal/scripts`
 # directory OR fall back to the conventional two-level path.
 _REPO_ROOT = _HERE.parent  # molmetal/
-while _REPO_ROOT != _REPO_ROOT.parent and not (
-    _REPO_ROOT / "molmetal" / "scripts" / "bench_hilbert_only_baseline.py"
-).exists():
+while (
+    _REPO_ROOT != _REPO_ROOT.parent
+    and not (
+        _REPO_ROOT / "molmetal" / "scripts" / "bench_hilbert_only_baseline.py"
+    ).exists()
+):
     _REPO_ROOT = _REPO_ROOT.parent
 for _p in (str(_HERE.parent), str(_REPO_ROOT)):
     if _p not in sys.path:
@@ -219,7 +223,9 @@ def test_hilbert_only_baseline_smoke() -> None:
         _write_subset_csv(src, subset, n_rows=50)
         out_dir = tmpdir / "out"
         monkeypatch_env = {
-            "PYTHONPATH": str(_REPO_ROOT) + os.pathsep + os.environ.get("PYTHONPATH", ""),
+            "PYTHONPATH": str(_REPO_ROOT)
+            + os.pathsep
+            + os.environ.get("PYTHONPATH", ""),
         }
         # Construct a wrapper script that imports the bench module
         # and runs main() with our subset path.
@@ -248,9 +254,7 @@ def test_hilbert_only_baseline_smoke() -> None:
             text=True,
             timeout=180,
         )
-        assert proc.returncode == 0, (
-            f"stdout={proc.stdout!r} stderr={proc.stderr!r}"
-        )
+        assert proc.returncode == 0, f"stdout={proc.stdout!r} stderr={proc.stderr!r}"
         json_path = out_dir / "platinai_4cell" / "per_seed_metrics.json"
         assert json_path.exists(), f"missing {json_path}"
         with open(json_path, "r", encoding="utf-8") as f:

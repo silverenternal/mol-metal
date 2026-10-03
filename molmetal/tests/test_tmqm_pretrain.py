@@ -20,6 +20,7 @@ Contract tests for the encoder-only pretrain pipeline:
 8. ``test_reg_scaler_floor_for_constant_target`` — if a target has
    zero variance the std is floored to 1.0 (avoids /0 in z-score).
 """
+
 from __future__ import annotations
 
 import os
@@ -59,9 +60,9 @@ SKIP_NO_DATA = not TMQM_CSV.exists()
 def test_load_tmqm_returns_finite_targets():
     ds = load_tmqm(TMQM_CSV, require_smiles=True)
     assert ds.n > 50_000
-    assert np.isfinite(ds.reg_targets).all(), (
-        f"non-finite reg targets leaked: {np.argwhere(~np.isfinite(ds.reg_targets)).shape[0]} rows"
-    )
+    assert np.isfinite(
+        ds.reg_targets
+    ).all(), f"non-finite reg targets leaked: {np.argwhere(~np.isfinite(ds.reg_targets)).shape[0]} rows"
 
 
 # ---------------------------------------------------------------------------
@@ -139,8 +140,14 @@ def test_save_encoder_load_round_trip(tmp_path):
         torch.zeros(1, 4, dtype=torch.long),
     )
     cfg = {"hidden": 32, "depth": 2, "dropout": 0.1, "atom_dim": ATOM_FEATURE_DIM}
-    meta = {"best_epoch": 1, "best_val_rmse": 0.5, "final_test": {"rmse": 0.6, "mae": 0.4, "cls_acc": 0.8}}
-    scaler = RegScaler(mean=np.zeros(5, dtype=np.float32), std=np.ones(5, dtype=np.float32))
+    meta = {
+        "best_epoch": 1,
+        "best_val_rmse": 0.5,
+        "final_test": {"rmse": 0.6, "mae": 0.4, "cls_acc": 0.8},
+    }
+    scaler = RegScaler(
+        mean=np.zeros(5, dtype=np.float32), std=np.ones(5, dtype=np.float32)
+    )
     enc_path = save_encoder(model, tmp_path, cfg, meta, scaler)
 
     payload = torch.load(enc_path, map_location="cpu")

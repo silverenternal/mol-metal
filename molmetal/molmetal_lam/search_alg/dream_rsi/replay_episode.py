@@ -118,13 +118,13 @@ def trace_metrics(trace: Sequence[Decision], cfg: RewardConfig) -> EpisodeMetric
             area += float(attainment) if attainment is not None else 0.0
 
     auc = (
-        float(cfg.baseline_score) if cfg.baseline_score is not None else 0.0
+        float(cfg.baseline_score)
+        if cfg.baseline_score is not None
+        else 0.0
         if probes == 0
         else area / probes
     )
-    parallel_penalty = (
-        0.0 if probes == 0 else effective_sequential_rounds / probes
-    )
+    parallel_penalty = 0.0 if probes == 0 else effective_sequential_rounds / probes
     return EpisodeMetrics(
         probes=probes,
         rounds=len(trace),

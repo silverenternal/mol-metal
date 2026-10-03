@@ -30,6 +30,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -103,6 +104,7 @@ class _MaybeFusedSiLUMLP(nn.Module):
             w2 = self.linear2.weight.t().contiguous()
             return _fused_silu_mlp(x, w1, self.linear1.bias, w2, self.linear2.bias)
         return F.silu(self.linear1(x)) @ self.linear2.weight.t() + self.linear2.bias
+
 
 REPORTS_DIR = PROJECT_ROOT / "molmetal" / "reports"
 CHECKPOINT_DIR = PROJECT_ROOT / "molmetal" / "checkpoints"
@@ -207,14 +209,14 @@ class PocketConditionedVelocityField(nn.Module):
 
     def forward(
         self,
-        ligand_coords: torch.Tensor,      # (B, N_lig, 3)
+        ligand_coords: torch.Tensor,  # (B, N_lig, 3)
         ligand_atom_types: torch.Tensor,  # (B, N_lig)
-        pocket_coords: torch.Tensor,       # (B, N_poc, 3)
-        pocket_atom_types: torch.Tensor,   # (B, N_poc)
-        edge_index_lig: torch.Tensor,      # (B, 2, E_lig)  — not used; per-sample edges built internally
-        edge_index_poc: torch.Tensor,      # (B, 2, E_poc)  — not used
-        t: torch.Tensor,                   # (B,) or (B, 1)
-        ligand_mask: torch.Tensor,         # (B, N_lig)
+        pocket_coords: torch.Tensor,  # (B, N_poc, 3)
+        pocket_atom_types: torch.Tensor,  # (B, N_poc)
+        edge_index_lig: torch.Tensor,  # (B, 2, E_lig)  — not used; per-sample edges built internally
+        edge_index_poc: torch.Tensor,  # (B, 2, E_poc)  — not used
+        t: torch.Tensor,  # (B,) or (B, 1)
+        ligand_mask: torch.Tensor,  # (B, N_lig)
     ) -> torch.Tensor:
         """Predict per-atom velocity for ligand atoms (B, N_lig, 3).
 
@@ -241,10 +243,12 @@ class PocketConditionedVelocityField(nn.Module):
 
         for i in range(b):
             # Get sample data
-            x_lig_i = ligand_coords[i]                    # (N_lig_i, 3)
-            h_lig_i = self.ligand_atom_embed(ligand_atom_types[i:i+1].squeeze(0))  # (N_lig_i, H)
-            t_emb_i = t_emb[i]                             # (H,)
-            mask_i = ligand_mask[i]                        # (N_lig_i,)
+            x_lig_i = ligand_coords[i]  # (N_lig_i, 3)
+            h_lig_i = self.ligand_atom_embed(
+                ligand_atom_types[i : i + 1].squeeze(0)
+            )  # (N_lig_i, H)
+            t_emb_i = t_emb[i]  # (H,)
+            mask_i = ligand_mask[i]  # (N_lig_i,)
             n_lig_i = int(mask_i.sum().item())
 
             if n_lig_i < 1:
@@ -252,10 +256,12 @@ class PocketConditionedVelocityField(nn.Module):
                 continue
 
             x_lig_masked = x_lig_i[:n_lig_i]
-            h_lig_masked = h_lig_i[:n_lig_i] + t_emb_i    # (N_lig_i, H)
+            h_lig_masked = h_lig_i[:n_lig_i] + t_emb_i  # (N_lig_i, H)
 
-            x_poc_i = pocket_coords[i]                     # (N_poc, 3)
-            h_poc_i = self.pocket_atom_embed(pocket_atom_types[i:i+1].squeeze(0))  # (N_poc, H)
+            x_poc_i = pocket_coords[i]  # (N_poc, 3)
+            h_poc_i = self.pocket_atom_embed(
+                pocket_atom_types[i : i + 1].squeeze(0)
+            )  # (N_poc, H)
             n_poc_i = x_poc_i.shape[0]
 
             # Build edges for this sample
@@ -264,7 +270,9 @@ class PocketConditionedVelocityField(nn.Module):
                 src = idx.view(1, n_lig_i, 1).expand(1, n_lig_i, n_lig_i)
                 dst = idx.view(1, 1, n_lig_i).expand(1, n_lig_i, n_lig_i)
                 mask_e = src != dst
-                ei_lig = torch.cat([src[mask_e].view(1, -1), dst[mask_e].view(1, -1)], dim=0)
+                ei_lig = torch.cat(
+                    [src[mask_e].view(1, -1), dst[mask_e].view(1, -1)], dim=0
+                )
             else:
                 ei_lig = torch.zeros(2, 0, dtype=torch.long, device=device)
 
@@ -273,7 +281,9 @@ class PocketConditionedVelocityField(nn.Module):
                 src = idx.view(1, n_poc_i, 1).expand(1, n_poc_i, n_poc_i)
                 dst = idx.view(1, 1, n_poc_i).expand(1, n_poc_i, n_poc_i)
                 mask_e = src != dst
-                ei_poc = torch.cat([src[mask_e].view(1, -1), dst[mask_e].view(1, -1)], dim=0)
+                ei_poc = torch.cat(
+                    [src[mask_e].view(1, -1), dst[mask_e].view(1, -1)], dim=0
+                )
             else:
                 ei_poc = torch.zeros(2, 0, dtype=torch.long, device=device)
 
@@ -307,6 +317,7 @@ class PocketConditionedVelocityField(nn.Module):
 # Pocket dataset wrapper
 # ---------------------------------------------------------------------------
 
+
 class PocketDataModule:
     """Wraps CrossDockedDataset and parses PDB files to extract pockets."""
 
@@ -335,8 +346,11 @@ class PocketDataModule:
         self._pockets = []
         self._ligands = []
 
-    def _try_native_zip_extract(self, archive_path: Path, member: str, out_path: Path) -> bool:
+    def _try_native_zip_extract(
+        self, archive_path: Path, member: str, out_path: Path
+    ) -> bool:
         import zipfile
+
         try:
             with zipfile.ZipFile(archive_path, "r") as z:
                 with z.open(member) as src, open(out_path, "wb") as dst:
@@ -349,11 +363,16 @@ class PocketDataModule:
         except Exception:
             return False
 
-    def _stream_extract_member(self, archive_path: Path, target_name: str, out_path: Path) -> bool:
+    def _stream_extract_member(
+        self, archive_path: Path, target_name: str, out_path: Path
+    ) -> bool:
         from molmetal.data.crossdocked import (
-            _parse_cd_entry, _read_central_directory, _read_first_eocd,
+            _parse_cd_entry,
+            _read_central_directory,
+            _read_first_eocd,
         )
         import zipfile
+
         cd = _read_central_directory(archive_path)
         match = None
         for entry in cd:
@@ -370,8 +389,16 @@ class PocketDataModule:
             if lh[:4] != b"PK\x03\x04":
                 return False
             (
-                ver, flags, method, mtime, mdate, crc,
-                lh_csize, lh_usize, fnlen, exlen,
+                ver,
+                flags,
+                method,
+                mtime,
+                mdate,
+                crc,
+                lh_csize,
+                lh_usize,
+                fnlen,
+                exlen,
             ) = struct.unpack("<HHHHHIIIHH", lh[4:30])
             f.seek(match["local_offset"] + 30 + fnlen + exlen)
             csize = match["csize"]
@@ -449,12 +476,27 @@ class PocketDataModule:
                     elem = line[76:78].strip().capitalize()
                     if not elem:
                         elem = line[12:14].strip().capitalize()
-                    atom_num = getattr(__import__("rdkit" if False else "rdkit.Chem", fromlist=["Atom"]), "Atom")(
-                        0
-                    ).GetAtomicNumber() if False else 0
+                    atom_num = (
+                        getattr(
+                            __import__(
+                                "rdkit" if False else "rdkit.Chem", fromlist=["Atom"]
+                            ),
+                            "Atom",
+                        )(0).GetAtomicNumber()
+                        if False
+                        else 0
+                    )
 
                     # Use element to atomic number
-                    elem_map = {"C": 6, "N": 7, "O": 8, "S": 16, "P": 15, "FE": 26, "ZN": 30}
+                    elem_map = {
+                        "C": 6,
+                        "N": 7,
+                        "O": 8,
+                        "S": 16,
+                        "P": 15,
+                        "FE": 26,
+                        "ZN": 30,
+                    }
                     atomic_num = elem_map.get(elem, 6)
 
                     coords_list.append([x, y, z])
@@ -492,6 +534,7 @@ class PocketDataModule:
         """Load a ligand from SDF file into a Molecule."""
         try:
             from rdkit import Chem
+
             if not os.path.exists(sdf_path):
                 return None
             suppl = Chem.SDMolSupplier(sdf_path, removeHs=False)
@@ -548,12 +591,18 @@ class PocketDataModule:
                     self.archive_path, f"crossdocked/{DEFAULT_SPLIT_NAME}", split_path
                 )
                 ok_tar = self._try_native_zip_extract(
-                    self.archive_path, f"crossdocked/{DEFAULT_TARBALL_NAME}", tarball_path
+                    self.archive_path,
+                    f"crossdocked/{DEFAULT_TARBALL_NAME}",
+                    tarball_path,
                 )
                 if not ok_split:
-                    self._stream_extract_member(self.archive_path, DEFAULT_SPLIT_NAME, split_path)
+                    self._stream_extract_member(
+                        self.archive_path, DEFAULT_SPLIT_NAME, split_path
+                    )
                 if not ok_tar:
-                    self._stream_extract_member(self.archive_path, DEFAULT_TARBALL_NAME, tarball_path)
+                    self._stream_extract_member(
+                        self.archive_path, DEFAULT_TARBALL_NAME, tarball_path
+                    )
 
         if not split_path.exists():
             print(f"[pocket_fm] ERROR: split file not found at {split_path}")
@@ -576,6 +625,7 @@ class PocketDataModule:
         if not extract_dir.exists():
             extract_dir.parent.mkdir(parents=True, exist_ok=True)
             import tarfile
+
             print(f"[pocket_fm] Extracting tarball to {extract_dir.parent} ...")
             with tarfile.open(tarball_path, "r:gz") as tar:
                 tar.extractall(extract_dir.parent)
@@ -611,7 +661,9 @@ class PocketDataModule:
             if idx % 10000 == 0 and idx > 0:
                 print(f"  scanned {idx} pairs, MMP candidates: {len(mmp_pairs)}")
 
-        print(f"[pocket_fm] Found {len(mmp_pairs)} MMP pairs, {len(all_pairs)} total non-MMP")
+        print(
+            f"[pocket_fm] Found {len(mmp_pairs)} MMP pairs, {len(all_pairs)} total non-MMP"
+        )
 
         # Use MMP pairs if available, otherwise fallback
         if len(mmp_pairs) >= 10 and self.filter_mmp:
@@ -620,9 +672,11 @@ class PocketDataModule:
         else:
             # Fallback: random 100 pairs
             fallback_n = min(self.max_pairs, len(all_pairs))
-            self._pairs = list(np.random.RandomState(self.seed).choice(
-                all_pairs, size=fallback_n, replace=False
-            ))
+            self._pairs = list(
+                np.random.RandomState(self.seed).choice(
+                    all_pairs, size=fallback_n, replace=False
+                )
+            )
             print(f"[pocket_fm] Fallback: using {len(self._pairs)} random pairs")
 
         # Pre-load pockets and ligands
@@ -649,6 +703,7 @@ class PocketDataModule:
 # pIC50 regressor (Morgan FP → pIC50) — same as train_fm_cytotox.py
 # ---------------------------------------------------------------------------
 
+
 class MorganPic50Regressor:
     def __init__(self, n_bits: int = 2048, hidden: int = 256, seed: int = 42):
         self.n_bits = n_bits
@@ -659,6 +714,7 @@ class MorganPic50Regressor:
     def fit(self, X: np.ndarray, y: np.ndarray) -> "MorganPic50Regressor":
         from sklearn.neural_network import MLPRegressor
         from sklearn.preprocessing import StandardScaler
+
         self._scaler = StandardScaler()
         Xs = self._scaler.fit_transform(X)
         self._model = MLPRegressor(
@@ -684,8 +740,12 @@ class MorganPic50Regressor:
 # Plot loss curve
 # ---------------------------------------------------------------------------
 
-def plot_loss_curve(losses: list[float], out_path: Path, title: str = "Pocket FM Training Loss") -> None:
+
+def plot_loss_curve(
+    losses: list[float], out_path: Path, title: str = "Pocket FM Training Loss"
+) -> None:
     import matplotlib.pyplot as plt
+
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.plot(losses, marker="o", markersize=3, linewidth=1, color="steelblue")
     ax.set_xlabel("Epoch")
@@ -702,6 +762,7 @@ def plot_loss_curve(losses: list[float], out_path: Path, title: str = "Pocket FM
 # ---------------------------------------------------------------------------
 # Evaluate generated molecules
 # ---------------------------------------------------------------------------
+
 
 def evaluate_molecules(
     mols: list[Molecule | None],
@@ -730,6 +791,7 @@ def evaluate_molecules(
 
         try:
             import rdkit.Chem
+
             fp = morgan.fingerprint_mol(predictor._coerce_to_mol(mol, rdkit.Chem))
             if fp is not None:
                 pic50 = float(regressor.predict(fp.reshape(1, -1))[0])
@@ -752,13 +814,16 @@ def evaluate_molecules(
         "frac_druglike": float(np.mean(qed_arr >= 0.5)) if len(qed_arr) > 0 else 0.0,
         "pic50_pred_mean": float(np.mean(pic50_arr)) if len(pic50_arr) > 0 else 0.0,
         "pic50_pred_std": float(np.std(pic50_arr)) if len(pic50_arr) > 0 else 0.0,
-        "hit_rate_pic50_6": float(np.mean(pic50_arr >= 6.0)) if len(pic50_arr) > 0 else 0.0,
+        "hit_rate_pic50_6": float(np.mean(pic50_arr >= 6.0))
+        if len(pic50_arr) > 0
+        else 0.0,
     }
 
 
 # ---------------------------------------------------------------------------
 # Write report
 # ---------------------------------------------------------------------------
+
 
 def write_report(
     args: argparse.Namespace,
@@ -849,10 +914,15 @@ Saved to: `{checkpoint_path}`
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Train pocket-conditioned FM on CrossDocked2020.")
+    p = argparse.ArgumentParser(
+        description="Train pocket-conditioned FM on CrossDocked2020."
+    )
     p.add_argument("--epochs", type=int, default=30)
-    p.add_argument("--batch", type=int, default=8, help="Batch size (keep small for heavy 3D)")
+    p.add_argument(
+        "--batch", type=int, default=8, help="Batch size (keep small for heavy 3D)"
+    )
     p.add_argument("--lr", type=float, default=1e-4)
     p.add_argument("--hidden-dim", type=int, default=128)
     p.add_argument("--n-layers", type=int, default=3)
@@ -860,14 +930,18 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--max-pocket-atoms", type=int, default=200, help="Max pocket atoms")
     p.add_argument("--n-gen", type=int, default=100, help="Molecules to generate")
     p.add_argument("--seed", type=int, default=42)
-    p.add_argument("--filter-mmp", type=int, default=1, help="Filter for MMP targets (1=yes, 0=no)")
+    p.add_argument(
+        "--filter-mmp", type=int, default=1, help="Filter for MMP targets (1=yes, 0=no)"
+    )
     p.add_argument("--max-pairs", type=int, default=500, help="Max pairs to load")
     p.add_argument("--split", default="train", choices=["train", "test"])
     p.add_argument("--checkpoint-out", default=None)
     p.add_argument("--plot-out", default=None)
     p.add_argument("--report-out", default=None)
     p.add_argument(
-        "--cuda-visible-devices", type=str, default="",
+        "--cuda-visible-devices",
+        type=str,
+        default="",
         help=(
             "Override CUDA_VISIBLE_DEVICES before device resolution.  "
             "Empty '' → default '1' (RTX 5090 on kanzi, GPU 0 = VLM "
@@ -880,6 +954,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
@@ -949,7 +1024,7 @@ def main(argv: list[str] | None = None) -> int:
         order = np.random.permutation(n_pairs)
 
         for batch_start in range(0, n_pairs, args.batch):
-            batch_idx = order[batch_start:batch_start + args.batch]
+            batch_idx = order[batch_start : batch_start + args.batch]
             if len(batch_idx) == 0:
                 continue
 
@@ -975,11 +1050,15 @@ def main(argv: list[str] | None = None) -> int:
 
             # Build padded tensors
             x_1 = torch.zeros(b, max_lig_atoms, 3, device=device)
-            atom_types_lig = torch.zeros(b, max_lig_atoms, dtype=torch.long, device=device)
+            atom_types_lig = torch.zeros(
+                b, max_lig_atoms, dtype=torch.long, device=device
+            )
             ligand_mask = torch.zeros(b, max_lig_atoms, dtype=torch.bool, device=device)
 
             x_pocket = torch.zeros(b, max_poc_atoms, 3, device=device)
-            atom_types_poc = torch.zeros(b, max_poc_atoms, dtype=torch.long, device=device)
+            atom_types_poc = torch.zeros(
+                b, max_poc_atoms, dtype=torch.long, device=device
+            )
             pocket_mask = torch.zeros(b, max_poc_atoms, dtype=torch.bool, device=device)
 
             for i, (pocket, ligand) in enumerate(zip(batch_pockets, batch_ligands)):
@@ -1034,10 +1113,16 @@ def main(argv: list[str] | None = None) -> int:
 
     train_time = time.time() - t_train
     gpu_used = str(device).startswith("cuda") or str(device).startswith("hip")
-    print(f"[pocket_fm] Training done in {train_time:.1f}s ({train_time/args.epochs:.2f}s/epoch)")
+    print(
+        f"[pocket_fm] Training done in {train_time:.1f}s ({train_time/args.epochs:.2f}s/epoch)"
+    )
 
     # --- 4. Save checkpoint ------------------------------------------------
-    ckpt_out = Path(args.checkpoint_out) if args.checkpoint_out else CHECKPOINT_DIR / "fm_pocket.pt"
+    ckpt_out = (
+        Path(args.checkpoint_out)
+        if args.checkpoint_out
+        else CHECKPOINT_DIR / "fm_pocket.pt"
+    )
     ckpt_out.parent.mkdir(parents=True, exist_ok=True)
     ckpt = {
         "model_state": model.state_dict(),
@@ -1050,7 +1135,11 @@ def main(argv: list[str] | None = None) -> int:
     print(f"[pocket_fm] Saved checkpoint to {ckpt_out}")
 
     # --- 5. Plot loss curve ------------------------------------------------
-    plot_out = Path(args.plot_out) if args.plot_out else REPORTS_DIR / "fm_pocket_train_loss.png"
+    plot_out = (
+        Path(args.plot_out)
+        if args.plot_out
+        else REPORTS_DIR / "fm_pocket_train_loss.png"
+    )
     plot_loss_curve(losses, plot_out)
 
     # --- 6. Generate from first pocket -------------------------------------
@@ -1063,7 +1152,9 @@ def main(argv: list[str] | None = None) -> int:
     first_pocket_dev = first_pocket.to(device)
 
     # Use a fixed ligand size (median of training)
-    median_lig_atoms = int(np.median([dm[i][1].n_atoms for i in range(min(100, len(dm)))]))
+    median_lig_atoms = int(
+        np.median([dm[i][1].n_atoms for i in range(min(100, len(dm)))])
+    )
     n_gen_atoms = max(8, min(median_lig_atoms, 20))
 
     gen_atom_types = torch.randint(1, 10, (args.n_gen, n_gen_atoms), device=device)
@@ -1072,19 +1163,34 @@ def main(argv: list[str] | None = None) -> int:
 
     # Build pocket context tensors
     n_poc = first_pocket_dev.n_atoms
-    gen_pocket_coords = first_pocket_dev.coords.unsqueeze(0).expand(args.n_gen, n_poc, -1)
-    gen_pocket_atom_types = first_pocket_dev.atom_types.unsqueeze(0).expand(args.n_gen, n_poc)
+    gen_pocket_coords = first_pocket_dev.coords.unsqueeze(0).expand(
+        args.n_gen, n_poc, -1
+    )
+    gen_pocket_atom_types = first_pocket_dev.atom_types.unsqueeze(0).expand(
+        args.n_gen, n_poc
+    )
 
     # Dummy edge indices — model builds its own per-sample edges internally
     edge_index_lig_gen = torch.zeros(args.n_gen, 2, 0, dtype=torch.long, device=device)
     edge_index_poc_gen = torch.zeros(args.n_gen, 2, 0, dtype=torch.long, device=device)
 
     # ligand_mask for generation: all atoms are real (no padding)
-    gen_ligand_mask = torch.ones(args.n_gen, n_gen_atoms, dtype=torch.bool, device=device)
+    gen_ligand_mask = torch.ones(
+        args.n_gen, n_gen_atoms, dtype=torch.bool, device=device
+    )
 
     from functools import partial
 
-    def velocity_model(x, t, atom_types, pocket_coords, pocket_atom_types, edge_index_lig, edge_index_poc, ligand_mask):
+    def velocity_model(
+        x,
+        t,
+        atom_types,
+        pocket_coords,
+        pocket_atom_types,
+        edge_index_lig,
+        edge_index_poc,
+        ligand_mask,
+    ):
         # torchdiffeq passes x=... as keyword arg; flow_matching ModelWrapper forwards t=t
         return model(
             ligand_coords=x,
@@ -1120,14 +1226,16 @@ def main(argv: list[str] | None = None) -> int:
 
     gen_mols = []
     for i in range(args.n_gen):
-        gen_mols.append(Molecule(
-            coords=x_final[i].detach().cpu(),
-            atom_types=gen_atom_types[i].detach().cpu(),
-            bonds=torch.zeros(2, 0, dtype=torch.long),
-            bond_types=torch.zeros(0, dtype=torch.long),
-            formal_charges=torch.zeros(n_gen_atoms, dtype=torch.long),
-            smiles="",
-        ))
+        gen_mols.append(
+            Molecule(
+                coords=x_final[i].detach().cpu(),
+                atom_types=gen_atom_types[i].detach().cpu(),
+                bonds=torch.zeros(2, 0, dtype=torch.long),
+                bond_types=torch.zeros(0, dtype=torch.long),
+                formal_charges=torch.zeros(n_gen_atoms, dtype=torch.long),
+                smiles="",
+            )
+        )
 
     print(f"[pocket_fm] Generated {len(gen_mols)} raw molecules (placeholder atoms)")
 
@@ -1140,7 +1248,14 @@ def main(argv: list[str] | None = None) -> int:
     print("[pocket_fm] Training Morgan-FP → pIC50 regressor on Ru subset...")
     try:
         from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset
-        flt = CytotoxFilter(time_threshold=24.0, ic50_min=0.01, metal_whitelist=["Ru"], compute_pic50=True, compute_active=True)
+
+        flt = CytotoxFilter(
+            time_threshold=24.0,
+            ic50_min=0.01,
+            metal_whitelist=["Ru"],
+            compute_pic50=True,
+            compute_active=True,
+        )
         ds_ru = MetalCytotoxDataset.from_csv(filters=flt)
         train_smiles_ru = []
         train_pic50_ru = []
@@ -1150,9 +1265,13 @@ def main(argv: list[str] | None = None) -> int:
                 train_smiles_ru.append(row["smiles"])
                 train_pic50_ru.append(row["pIC50"])
         train_pic50_ru = np.array(train_pic50_ru, dtype=np.float32)
-        print(f"[pocket_fm]   {len(train_pic50_ru)} Ru training molecules with valid pIC50")
+        print(
+            f"[pocket_fm]   {len(train_pic50_ru)} Ru training molecules with valid pIC50"
+        )
     except Exception as e:
-        print(f"[pocket_fm] WARNING: could not load Ru dataset ({e}), using random regressor")
+        print(
+            f"[pocket_fm] WARNING: could not load Ru dataset ({e}), using random regressor"
+        )
         train_smiles_ru = ["CCO", "c1ccccc1", "CC(=O)O"]
         train_pic50_ru = np.array([5.0, 4.0, 6.0], dtype=np.float32)
 
@@ -1171,11 +1290,17 @@ def main(argv: list[str] | None = None) -> int:
     ref_mols = [dm[i][1] for i in range(min(1000, len(dm)))]
     ref_metrics = evaluate_molecules(ref_mols, predictor, regressor, morgan)
 
-    print(f"[pocket_fm] Generated: valid={eval_metrics['n_valid']}, QED_mean={eval_metrics['qed_mean']:.3f}")
-    print(f"[pocket_fm] Reference: valid={ref_metrics['n_valid']}, QED_mean={ref_metrics['qed_mean']:.3f}")
+    print(
+        f"[pocket_fm] Generated: valid={eval_metrics['n_valid']}, QED_mean={eval_metrics['qed_mean']:.3f}"
+    )
+    print(
+        f"[pocket_fm] Reference: valid={ref_metrics['n_valid']}, QED_mean={ref_metrics['qed_mean']:.3f}"
+    )
 
     # --- 10. Write report --------------------------------------------------
-    report_path = Path(args.report_out) if args.report_out else REPORTS_DIR / "fm_pocket_eval.md"
+    report_path = (
+        Path(args.report_out) if args.report_out else REPORTS_DIR / "fm_pocket_eval.md"
+    )
     write_report(
         args=args,
         losses=losses,

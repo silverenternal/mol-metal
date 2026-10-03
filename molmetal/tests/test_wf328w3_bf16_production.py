@@ -90,14 +90,14 @@ def test_bf16_flag_passed():
 
     # --- CLI parser test ---
     args_on = parse_args(["--bf16"])
-    assert args_on.bf16 is True, (
-        f"--bf16 should yield args.bf16=True; got {args_on.bf16!r}"
-    )
+    assert (
+        args_on.bf16 is True
+    ), f"--bf16 should yield args.bf16=True; got {args_on.bf16!r}"
 
     args_off = parse_args(["--no-bf16"])
-    assert args_off.bf16 is False, (
-        f"--no-bf16 should yield args.bf16=False; got {args_off.bf16!r}"
-    )
+    assert (
+        args_off.bf16 is False
+    ), f"--no-bf16 should yield args.bf16=False; got {args_off.bf16!r}"
 
     args_default = parse_args([])
     assert args_default.bf16 is DEFAULT_BF16, (
@@ -137,12 +137,12 @@ def test_autocast_wrap():
     # by calling __enter__ / __exit__ without error and confirming the
     # factory does NOT raise an autocast error.
     ctx_cpu_on = bf16_autocast(cpu_device, enabled=True)
-    assert hasattr(ctx_cpu_on, "__enter__"), (
-        "bf16_autocast must return a context manager (has __enter__)"
-    )
-    assert hasattr(ctx_cpu_on, "__exit__"), (
-        "bf16_autocast must return a context manager (has __exit__)"
-    )
+    assert hasattr(
+        ctx_cpu_on, "__enter__"
+    ), "bf16_autocast must return a context manager (has __enter__)"
+    assert hasattr(
+        ctx_cpu_on, "__exit__"
+    ), "bf16_autocast must return a context manager (has __exit__)"
     with ctx_cpu_on:
         # Inner tensor allocation should succeed without autocast errors.
         x = torch.randn(4, 4)
@@ -258,9 +258,7 @@ def test_bf16_forward_backward_correctness_vs_fp32():
     # --- BF16 vs FP32 gradient closeness (loose bound on CPU) ---
     for name in grad_fp32:
         if name in grad_bf16:
-            grad_rel_diff = (
-                grad_bf16[name] - grad_fp32[name]
-            ).abs().max().item() / (
+            grad_rel_diff = (grad_bf16[name] - grad_fp32[name]).abs().max().item() / (
                 grad_fp32[name].abs().max().item() + 1e-8
             )
             assert grad_rel_diff < 0.20, (
@@ -323,9 +321,7 @@ def test_integration_with_trainer():
     )
     assert "cpu" in s_cpu_on["fallback_reason"].lower() or "no tensor" in (
         s_cpu_on["fallback_reason"].lower()
-    ), (
-        f"fallback_reason should mention CPU; got {s_cpu_on['fallback_reason']!r}"
-    )
+    ), f"fallback_reason should mention CPU; got {s_cpu_on['fallback_reason']!r}"
 
     # --- CPU + enabled=False ---
     s_cpu_off = configure_bf16(enabled=False, device=cpu_device)
@@ -363,6 +359,6 @@ def test_integration_with_trainer():
         "fallback_reason",
     }
     for state in (s_cpu_on, s_cpu_off, s_cuda_on, s_cuda_off):
-        assert expected_keys.issubset(set(state.keys())), (
-            f"configure_bf16 missing keys: {expected_keys - set(state.keys())}"
-        )
+        assert expected_keys.issubset(
+            set(state.keys())
+        ), f"configure_bf16 missing keys: {expected_keys - set(state.keys())}"

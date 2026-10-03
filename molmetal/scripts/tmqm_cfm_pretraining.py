@@ -234,9 +234,7 @@ def _init_layers(
     }
 
 
-def _forward(
-    x: np.ndarray, params: Dict[str, np.ndarray]
-) -> np.ndarray:
+def _forward(x: np.ndarray, params: Dict[str, np.ndarray]) -> np.ndarray:
     """Two-layer MLP forward pass: x -> ReLU(W1 x + b1) -> W2 h + b2.
 
     Returns the 64-d embedding for each input row.
@@ -247,9 +245,7 @@ def _forward(
     return out.astype(np.float32)
 
 
-def _mse_loss(
-    pred: np.ndarray, target: np.ndarray
-) -> float:
+def _mse_loss(pred: np.ndarray, target: np.ndarray) -> float:
     diff = pred - target
     return float(np.mean(diff * diff))
 
@@ -391,8 +387,7 @@ def train_full(
     smiles_full = try_load_tmqm()
     if smiles_full is None or len(smiles_full) == 0:
         meta_extra = (
-            "tmQM corpus unavailable (CI or unmounted); "
-            "fell back to dry-run corpus."
+            "tmQM corpus unavailable (CI or unmounted); " "fell back to dry-run corpus."
         )
         out = train_dry_run(out_dir=out_dir, n_steps=n_steps, seed=seed)
         # Mark metadata as non-dry.

@@ -45,9 +45,7 @@ if str(_REPO) not in sys.path:
 def temp_trainer_copy(tmp_path):
     """Copy ``train_chemprop_v2_v3.py`` into a tmp dir for isolated testing."""
     repo_trainer = (
-        Path(__file__).resolve().parents[1]
-        / "scripts"
-        / "train_chemprop_v2_v3.py"
+        Path(__file__).resolve().parents[1] / "scripts" / "train_chemprop_v2_v3.py"
     )
     if not repo_trainer.is_file():
         pytest.skip(f"Trainer not found: {repo_trainer}")
@@ -90,13 +88,16 @@ def test_cache_flag(temp_trainer_copy):
 
     # Verify the wired file actually contains the marker + flag.
     wired_content = temp_trainer_copy.read_text()
-    assert "WIRED_MARKER" not in wired_content  # marker is a Python str constant, not file text
+    assert (
+        "WIRED_MARKER" not in wired_content
+    )  # marker is a Python str constant, not file text
     # The marker comment is in the file:
     assert "--chemprop-v3-cache" in wired_content, "Flag should be in trainer argparse."
     assert "--chemprop-v3-cache" in wired_content
 
     # Verify the wired file is syntactically valid Python (parses without errors).
     import ast
+
     try:
         ast.parse(wired_content)
     except SyntaxError as e:
@@ -104,9 +105,12 @@ def test_cache_flag(temp_trainer_copy):
 
     # Parse the flag via the trainer's argparse.
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--chemprop-v3-cache", action="store_true", default=False,
+        "--chemprop-v3-cache",
+        action="store_true",
+        default=False,
     )
     parser.add_argument("--metals", nargs="+", default=["Ru"])
     parser.add_argument("--epochs", type=int, default=1)
@@ -160,9 +164,9 @@ def test_cache_hit_rate(temp_trainer_copy):
         "trainer_path",
         "trainer_exists",
     }
-    assert expected_keys.issubset(result.keys()), (
-        f"Missing keys: {expected_keys - set(result.keys())}"
-    )
+    assert expected_keys.issubset(
+        result.keys()
+    ), f"Missing keys: {expected_keys - set(result.keys())}"
 
     # Tier-1 must always complete (no chemprop dependency for SMILES precompute).
     assert result["n_added"] >= 1, "Tier-1 precompute should add at least 1 SMILES."
@@ -172,17 +176,17 @@ def test_cache_hit_rate(temp_trainer_copy):
     assert result["batch_size"] == 4
 
     # hit_rate must be a valid float in [0, 1].
-    assert 0.0 <= result["hit_rate"] <= 1.0, (
-        f"hit_rate out of range: {result['hit_rate']}"
-    )
+    assert (
+        0.0 <= result["hit_rate"] <= 1.0
+    ), f"hit_rate out of range: {result['hit_rate']}"
 
     # On hosts WITH chemprop installed, tier-2 exercises and hit_rate > 0
     # (epoch 1 builds all batches → 0% hit; epoch 2 hits all → ~50% total).
     # On hosts WITHOUT chemprop, tier-2 fails gracefully and hit_rate == 0.
     if result["tier2_exercised"]:
-        assert result["hit_rate"] > 0.0, (
-            f"hit_rate should be > 0 with tier2 exercised; got {result['hit_rate']}"
-        )
+        assert (
+            result["hit_rate"] > 0.0
+        ), f"hit_rate should be > 0 with tier2 exercised; got {result['hit_rate']}"
     else:
         # Degraded mode — chemprop not installed; tier-1 still completes.
         assert result["hit_rate"] == 0.0

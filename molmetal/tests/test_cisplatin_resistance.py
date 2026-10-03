@@ -126,19 +126,21 @@ def test_feature_keys():
 # ---------------------------------------------------------------------------
 # 3. logP within a reasonable range for a small drug-like molecule
 # ---------------------------------------------------------------------------
-@pytest.mark.parametrize("smiles,lo,hi", [
-    ("N.N.Cl.Cl.[Pt]", -5.0, 5.0),    # cisplatin
-    ("CC(=O)Oc1ccccc1C(=O)O", -1.0, 5.0),  # aspirin
-    ("CCO",                          -1.0, 1.5),   # ethanol
-    ("Cc1ccc(O)cc1",                  1.0, 4.0),   # p-cresol
-])
+@pytest.mark.parametrize(
+    "smiles,lo,hi",
+    [
+        ("N.N.Cl.Cl.[Pt]", -5.0, 5.0),  # cisplatin
+        ("CC(=O)Oc1ccccc1C(=O)O", -1.0, 5.0),  # aspirin
+        ("CCO", -1.0, 1.5),  # ethanol
+        ("Cc1ccc(O)cc1", 1.0, 4.0),  # p-cresol
+    ],
+)
 def test_logP_range(smiles, lo, hi):
     """logP lies in a drug-like band for representative small molecules."""
     mol = _safe_load(smiles)
     feats = compute_resistance_features(mol)
     assert lo <= feats["logP"] <= hi, (
-        f"logP for {smiles!r} = {feats['logP']:.3f}, "
-        f"expected within [{lo}, {hi}]"
+        f"logP for {smiles!r} = {feats['logP']:.3f}, " f"expected within [{lo}, {hi}]"
     )
 
 
@@ -152,20 +154,23 @@ def test_thiol_count_ethanethiol():
     assert feats["thiol_count"] == 1
 
 
-@pytest.mark.parametrize("smiles,expected", [
-    ("CCS",                  1),  # ethanethiol
-    ("CC(S)CO",              1),  # 1-thioglycerol (SH explicit)
-    ("CCO",                  0),  # ethanol — no S
-    ("c1ccc(S)cc1",          1),  # thiophenol
-    ("CC(=O)NC(C)(C)S",      1),  # N-acetyl penicillamine thiol form
-])
+@pytest.mark.parametrize(
+    "smiles,expected",
+    [
+        ("CCS", 1),  # ethanethiol
+        ("CC(S)CO", 1),  # 1-thioglycerol (SH explicit)
+        ("CCO", 0),  # ethanol — no S
+        ("c1ccc(S)cc1", 1),  # thiophenol
+        ("CC(=O)NC(C)(C)S", 1),  # N-acetyl penicillamine thiol form
+    ],
+)
 def test_thiol_count_table(smiles, expected):
     """A small cross-check across thiol / non-thiol molecules."""
     mol = _safe_load(smiles)
     feats = compute_resistance_features(mol)
-    assert feats["thiol_count"] == expected, (
-        f"{smiles!r}: thiol_count={feats['thiol_count']}, expected {expected}"
-    )
+    assert (
+        feats["thiol_count"] == expected
+    ), f"{smiles!r}: thiol_count={feats['thiol_count']}, expected {expected}"
 
 
 # ---------------------------------------------------------------------------

@@ -130,7 +130,9 @@ class TestWassersteinLoss:
         y = torch.randn(32, 4) + 0.5
         l1 = wasserstein_loss(x, y, n_mc=128)
         l2 = wasserstein_loss(y, x, n_mc=128)
-        assert abs(float(l1) - float(l2)) < 0.5 * (abs(float(l1)) + abs(float(l2)) + 1e-6)
+        assert abs(float(l1) - float(l2)) < 0.5 * (
+            abs(float(l1)) + abs(float(l2)) + 1e-6
+        )
 
     def test_shape_mismatch_rejected(self):
         x = torch.randn(8, 4)
@@ -321,9 +323,7 @@ class TestWassersteinPic50Loss:
         would *diverge*, not converge — this test catches that.
         """
         _set_seed(0)
-        pred_leaf = (
-            torch.tensor([6.0, 7.0, 8.0, 5.5], requires_grad=True)
-        )
+        pred_leaf = torch.tensor([6.0, 7.0, 8.0, 5.5], requires_grad=True)
         ref = torch.tensor([5.0, 5.5, 5.0, 5.5])
         w_before = float(wasserstein_pic50_loss(pred_leaf, ref).item())
         loss = wasserstein_pic50_loss(pred_leaf, ref)
@@ -359,9 +359,9 @@ class TestWassersteinPic50Loss:
         # Shift pred by +5 → per-order-statistic diff is exactly 5.
         pred = ref + 5.0
         loss = wasserstein_pic50_loss(pred, ref)
-        assert math.isclose(float(loss.item()), 5.0, abs_tol=1e-5), (
-            f"expected |c|=5.0 for shift c=+5, got {float(loss.item()):.4f}"
-        )
+        assert math.isclose(
+            float(loss.item()), 5.0, abs_tol=1e-5
+        ), f"expected |c|=5.0 for shift c=+5, got {float(loss.item()):.4f}"
         # Sign check: shift in the opposite direction gives the same
         # magnitude (W₂ / W₁ are both |c| for a pure shift).
         pred2 = ref - 3.0
@@ -409,9 +409,7 @@ class TestWassersteinPocketLoss:
         _set_seed(0)
         cand = torch.randn(32, 8)
         ref = torch.randn(32, 8) + 0.7
-        loss = wasserstein_pocket_loss(
-            cand, ref, pocket_id="1h36", n_mc=64
-        )
+        loss = wasserstein_pocket_loss(cand, ref, pocket_id="1h36", n_mc=64)
         assert loss.dim() == 0
         assert bool(torch.isfinite(loss))
 

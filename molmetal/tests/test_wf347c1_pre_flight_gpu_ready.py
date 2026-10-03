@@ -66,6 +66,7 @@ WRAPPER = PROJECT_ROOT / "scripts" / "pre_flight_gpu_ready.sh"
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _read_wrapper() -> str:
     assert WRAPPER.exists(), f"wrapper missing: {WRAPPER}"
     return WRAPPER.read_text()
@@ -80,6 +81,7 @@ def _is_executable() -> bool:
 # ---------------------------------------------------------------------------
 # Test 1: dry-run path
 # ---------------------------------------------------------------------------
+
 
 def test_dry_run_path_emits_structured_output():
     """``bash scripts/pre_flight_gpu_ready.sh --dry-run`` must emit
@@ -122,21 +124,25 @@ def test_dry_run_path_emits_structured_output():
     # least one of those tokens appears AND each hard gate has a verdict.
     verdict_tokens = (" PASS ", " FAIL ", " SKIP ")
     assert any(tok in out for tok in verdict_tokens), (
-        f"no PASS/FAIL/SKIP verdict tokens in stdout; "
-        f"got tail: {out[-500:]!r}"
+        f"no PASS/FAIL/SKIP verdict tokens in stdout; " f"got tail: {out[-500:]!r}"
     )
     assert "VERDICT:" in out, f"VERDICT line missing; got: {out[-500:]!r}"
     # USER_OK gate must be present (gate_check.py is wired into wrapper)
     assert "USER_OK_gate" in out, "USER_OK gate result missing from output"
     # The 4 hard gates must each appear in output
-    for gate in ("pre_flight_all", "compute_manifest",
-                "wf343c2_per_wave", "wf343c3_data_quality"):
+    for gate in (
+        "pre_flight_all",
+        "compute_manifest",
+        "wf343c2_per_wave",
+        "wf343c3_data_quality",
+    ):
         assert gate in out, f"gate {gate!r} result missing from stdout"
 
 
 # ---------------------------------------------------------------------------
 # Test 2: USER_OK gate enforcement (without USER_OK → non-zero exit)
 # ---------------------------------------------------------------------------
+
 
 def test_user_ok_gate_enforced_without_user_ok():
     """Without USER_OK env var, the wrapper must exit non-zero (USER_OK
@@ -176,8 +182,11 @@ def test_user_ok_gate_enforced_without_user_ok():
     # The USER_OK gate must be recorded as FAIL (because real mode +
     # USER_OK unset)
     assert "USER_OK_gate" in out, "USER_OK gate marker missing from output"
-    assert ("FAIL" in out.split("USER_OK_gate", 1)[1][:50]
-            if "USER_OK_gate" in out else False), (
+    assert (
+        "FAIL" in out.split("USER_OK_gate", 1)[1][:50]
+        if "USER_OK_gate" in out
+        else False
+    ), (
         "USER_OK_gate verdict should be FAIL in real mode without USER_OK; "
         f"got: {out[-500:]!r}"
     )
@@ -186,6 +195,7 @@ def test_user_ok_gate_enforced_without_user_ok():
 # ---------------------------------------------------------------------------
 # Test 3: with USER_OK=1 → verdict logic branches to PASS path
 # ---------------------------------------------------------------------------
+
 
 def test_user_ok_set_branches_to_pass_path():
     """With USER_OK=1 set (and --dry-run), the wrapper must take the
@@ -205,9 +215,9 @@ def test_user_ok_set_branches_to_pass_path():
     """
     src = _read_wrapper()
     # Verdict logic for dry-run path
-    assert "DRY_RUN=1" in src or "DRY_RUN -eq 1" in src, (
-        "DRY_RUN check missing from verdict logic"
-    )
+    assert (
+        "DRY_RUN=1" in src or "DRY_RUN -eq 1" in src
+    ), "DRY_RUN check missing from verdict logic"
     # USER_OK=1 is the canonical authorization value
     assert '"1"' in src, "USER_OK=1 comparison missing"
 
@@ -231,6 +241,6 @@ def test_user_ok_set_branches_to_pass_path():
     )
     assert user_ok_line is not None, "USER_OK_gate line not found"
     # In --dry-run mode, USER_OK gate is SKIP (per script line ~283-288)
-    assert "SKIP" in user_ok_line, (
-        f"USER_OK_gate should be SKIP in --dry-run mode; got: {user_ok_line!r}"
-    )
+    assert (
+        "SKIP" in user_ok_line
+    ), f"USER_OK_gate should be SKIP in --dry-run mode; got: {user_ok_line!r}"

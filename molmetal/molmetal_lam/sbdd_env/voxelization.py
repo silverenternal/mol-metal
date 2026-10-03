@@ -19,6 +19,7 @@ import numpy as np
 
 try:
     import torch  # type: ignore
+
     _HAVE_TORCH = True
 except Exception:  # pragma: no cover
     _HAVE_TORCH = False
@@ -37,17 +38,23 @@ class SpatialTile:
     """
 
     coords: Tuple[float, float, float]
-    occupied: int            # 1 if any heavy atom sits here, else 0
-    hbond_donor: int         # N/O (and S) atoms
-    hbond_acceptor: int      # O, carbonyl O
-    hydrophobic: int         # aliphatic/aromatic C
-    charge: int              # -1 / 0 / +1
+    occupied: int  # 1 if any heavy atom sits here, else 0
+    hbond_donor: int  # N/O (and S) atoms
+    hbond_acceptor: int  # O, carbonyl O
+    hydrophobic: int  # aliphatic/aromatic C
+    charge: int  # -1 / 0 / +1
 
     def as_array(self) -> np.ndarray:
         """Return the 6-D feature vector ``[occupied, hd, ha, hyd, charge, 0]``."""
         return np.asarray(
-            [self.occupied, self.hbond_donor, self.hbond_acceptor,
-             self.hydrophobic, self.charge, 0],
+            [
+                self.occupied,
+                self.hbond_donor,
+                self.hbond_acceptor,
+                self.hydrophobic,
+                self.charge,
+                0,
+            ],
             dtype=np.float32,
         )
 
@@ -56,16 +63,29 @@ class SpatialTile:
 # Element -> channel mapping
 # ---------------------------------------------------------------------------
 # Atomic-number lookups we need for element-channel decisions.
-_HBOND_DONOR_Z = {7, 8, 16}                # N, O, S
-_HBOND_ACCEPTOR_Z = {7, 8}                 # N, O  (rough; carbonyl O handled below)
-_HYDROPHOBIC_Z = {6}                       # C
+_HBOND_DONOR_Z = {7, 8, 16}  # N, O, S
+_HBOND_ACCEPTOR_Z = {7, 8}  # N, O  (rough; carbonyl O handled below)
+_HYDROPHOBIC_Z = {6}  # C
 _CHARGED_POS_Z = {12, 19, 20, 26, 29, 30}  # Mg, K, Ca, Fe, Cu, Zn (etc.) → +1
 # We keep charge strictly +1 for metals; -1 is reserved for acidic
 # carboxylate O atoms in residues (handled at residue level below).
 
-_CHARGED_RESIDUES_POS = {"ARG", "LYS", "HIS"}   # basic
-_CHARGED_RESIDUES_NEG = {"ASP", "GLU"}          # acidic
-_METAL_RESIDUES = {"ZN", "MG", "FE", "CU", "MN", "CA", "NI", "CO", "MO", "PT", "PD", "AU"}
+_CHARGED_RESIDUES_POS = {"ARG", "LYS", "HIS"}  # basic
+_CHARGED_RESIDUES_NEG = {"ASP", "GLU"}  # acidic
+_METAL_RESIDUES = {
+    "ZN",
+    "MG",
+    "FE",
+    "CU",
+    "MN",
+    "CA",
+    "NI",
+    "CO",
+    "MO",
+    "PT",
+    "PD",
+    "AU",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -93,7 +113,9 @@ def _to_numpy_atom_types(atom_types) -> np.ndarray:
     return np.asarray(atom_types, dtype=np.int64)
 
 
-def _voxel_index(x: float, y: float, z: float, origin: np.ndarray, resolution: float, grid_size: int) -> Tuple[int, int, int]:
+def _voxel_index(
+    x: float, y: float, z: float, origin: np.ndarray, resolution: float, grid_size: int
+) -> Tuple[int, int, int]:
     """Convert a 3-D coord (Å) into a ``(i, j, k)`` voxel index, clipped."""
     rel = (np.asarray([x, y, z], dtype=np.float32) - origin) / resolution
     idx = np.floor(rel).astype(np.int64)
@@ -146,7 +168,9 @@ def pocket_to_spatial_tiles(
         # Lazy-load from PDB file.
         if lig_center is None:
             raise ValueError("lig_center is required when passing a PDB id/path string")
-        pocket = _load_pocket_from_id(pocket_or_pdb_id, lig_center, radius, chain_whitelist)
+        pocket = _load_pocket_from_id(
+            pocket_or_pdb_id, lig_center, radius, chain_whitelist
+        )
     else:
         pocket = pocket_or_pdb_id
 
@@ -186,14 +210,19 @@ def _synthetic_pocket(pdb_id: str, lig_center, radius: float):
     """Build a small synthetic Pocket around ``lig_center`` (test/dev fallback)."""
     if _HAVE_TORCH:
         from molmetal.domain import Pocket  # type: ignore
+
         centre = torch.as_tensor(lig_center, dtype=torch.float32).flatten()
         # 8 heavy atoms in a small cube around the centre.
         offsets = torch.tensor(
             [
-                [-1.0, -1.0, -1.0], [+1.0, -1.0, -1.0],
-                [-1.0, +1.0, -1.0], [+1.0, +1.0, -1.0],
-                [-1.0, -1.0, +1.0], [+1.0, -1.0, +1.0],
-                [-1.0, +1.0, +1.0], [+1.0, +1.0, +1.0],
+                [-1.0, -1.0, -1.0],
+                [+1.0, -1.0, -1.0],
+                [-1.0, +1.0, -1.0],
+                [+1.0, +1.0, -1.0],
+                [-1.0, -1.0, +1.0],
+                [+1.0, -1.0, +1.0],
+                [-1.0, +1.0, +1.0],
+                [+1.0, +1.0, +1.0],
             ],
             dtype=torch.float32,
         )
@@ -216,7 +245,7 @@ def _synthetic_pocket(pdb_id: str, lig_center, radius: float):
 
 def _voxelize_pocket(pocket, grid_size: int, resolution: float) -> List[SpatialTile]:
     """Pure-NumPy voxelizer over a Pocket."""
-    coords = _to_numpy(pocket.coords)            # (N, 3)
+    coords = _to_numpy(pocket.coords)  # (N, 3)
     atom_z = _to_numpy_atom_types(pocket.atom_types)  # (N,)
     center = _to_numpy(pocket.center).reshape(-1)
     radius = float(getattr(pocket, "radius", 6.0))
@@ -234,9 +263,11 @@ def _voxelize_pocket(pocket, grid_size: int, resolution: float) -> List[SpatialT
 
     # --- Scatter atoms -------------------------------------------------
     for (x, y, z), z_at in zip(coords, atom_z):
-        if (abs(x - center[0]) > half_extent
-                or abs(y - center[1]) > half_extent
-                or abs(z - center[2]) > half_extent):
+        if (
+            abs(x - center[0]) > half_extent
+            or abs(y - center[1]) > half_extent
+            or abs(z - center[2]) > half_extent
+        ):
             continue
         i, j, k = _voxel_index(x, y, z, origin, resolution, grid_size)
         occ[i, j, k] = 1
@@ -275,7 +306,7 @@ def _voxelize_pocket(pocket, grid_size: int, resolution: float) -> List[SpatialT
     flat_ha = hb_a.ravel()
     flat_hyd = hyd.ravel()
     flat_chg = charge.ravel()
-    for linear_idx in range(grid_size ** 3):
+    for linear_idx in range(grid_size**3):
         i = linear_idx // (grid_size * grid_size)
         j = (linear_idx // grid_size) % grid_size
         k = linear_idx % grid_size

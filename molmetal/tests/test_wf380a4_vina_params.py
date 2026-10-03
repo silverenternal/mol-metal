@@ -36,6 +36,7 @@ This test file covers four contracts:
 
 All tests are CPU-only and do NOT launch the Vina binary.
 """
+
 from __future__ import annotations
 
 import json
@@ -49,7 +50,9 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "molmetal" / "scripts" / "wf380a4_vina_param_tuning.py"
 CONFIG_PATH = ROOT / "molmetal" / "configs" / "vina_docking_params.yaml"
-REPORT_PATH = ROOT / "molmetal" / "reports" / "wf380a4_vina_tuning_smoke" / "result.json"
+REPORT_PATH = (
+    ROOT / "molmetal" / "reports" / "wf380a4_vina_tuning_smoke" / "result.json"
+)
 _SCRIPT_DIR = ROOT / "molmetal" / "scripts"
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -80,6 +83,7 @@ def _script_run() -> dict:
 def _config() -> dict:
     """Load the 3-level config via the script's load_vina_config()."""
     from molmetal.scripts.wf380a4_vina_param_tuning import load_vina_config
+
     return load_vina_config(CONFIG_PATH)
 
 
@@ -87,6 +91,7 @@ def _config() -> dict:
 def _tune_docking():
     """Import the tune_docking function for direct unit testing."""
     from molmetal.scripts.wf380a4_vina_param_tuning import tune_docking
+
     return tune_docking
 
 

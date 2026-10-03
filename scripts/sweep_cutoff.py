@@ -198,6 +198,7 @@ def train_with_cutoff(
             dataset = built
 
         from data.mol_dataset import QM9Dataset as _QM9Dataset
+
         position_scale = (
             train_mod.compute_qm9_position_scale(dataset)
             if isinstance(dataset, _QM9Dataset)
@@ -238,9 +239,9 @@ def train_with_cutoff(
         blob = torch.load(CHECKPOINT_PATH, map_location=device)
         velocity_net.load_state_dict(blob["model_state_dict"])
         encoder.load_state_dict(blob["encoder_state_dict"])
-        loss_fn = ConditionalFlowMatchingLoss(
-            model=velocity_net, encoder=encoder
-        ).to(device)
+        loss_fn = ConditionalFlowMatchingLoss(model=velocity_net, encoder=encoder).to(
+            device
+        )
         optimizer = torch.optim.Adam(
             list(velocity_net.parameters()) + list(encoder.parameters()),
             lr=float(cfg["train"]["lr"]),
@@ -294,7 +295,8 @@ def train_with_cutoff(
 
                 has_nan_inf = any(
                     p.grad is not None and not torch.isfinite(p.grad).all()
-                    for p in list(velocity_net.parameters()) + list(encoder.parameters())
+                    for p in list(velocity_net.parameters())
+                    + list(encoder.parameters())
                 )
                 if has_nan_inf:
                     optimizer.zero_grad()
@@ -331,8 +333,7 @@ def train_with_cutoff(
                     "epoch": epoch,
                     "model_state_dict": velocity_net.state_dict(),
                     "velocity_net_ema_state_dict": {
-                        name: t.detach().clone()
-                        for name, t in velocity_net_ema.items()
+                        name: t.detach().clone() for name, t in velocity_net_ema.items()
                     },
                     "encoder_state_dict": encoder.state_dict(),
                     "encoder_config": train_mod.encoder_config_from(cfg),
@@ -348,7 +349,9 @@ def train_with_cutoff(
     # Stable eval loss under EMA shadow weights, evaluated BEFORE we
     # return so the freshly-trained checkpoint is still on disk.
     eval_loss = compute_eval_loss(
-        cfg, velocity_net_ema=velocity_net_ema, device=device,
+        cfg,
+        velocity_net_ema=velocity_net_ema,
+        device=device,
         position_scale=position_scale,
     )
 
@@ -356,7 +359,9 @@ def train_with_cutoff(
         "cutoff": float(cutoff),
         "epochs": int(epochs),
         "batch_size": int(batch_size),
-        "initial_loss": float(initial_loss) if initial_loss is not None else float("nan"),
+        "initial_loss": float(initial_loss)
+        if initial_loss is not None
+        else float("nan"),
         "final_loss": float(final_loss) if final_loss is not None else float("nan"),
         "train_loss": float(final_loss) if final_loss is not None else float("nan"),
         "eval_loss": float(eval_loss),
@@ -381,12 +386,15 @@ def compute_eval_loss(
     built = train_mod.build_dataset(cfg)
     dataset = built[0] if isinstance(built, tuple) else built
     from data.mol_dataset import QM9Dataset as _QM9Dataset
+
     edge_cutoff = float(cfg["train"].get("edge_cutoff", train_mod._QM9_EDGE_CUTOFF))
 
     def _collate(items):
         if isinstance(dataset, _QM9Dataset):
             return train_mod.collate_qm9(
-                items, device=device, position_scale=position_scale,
+                items,
+                device=device,
+                position_scale=position_scale,
                 edge_cutoff=edge_cutoff,
             )
         feats = torch.stack(
@@ -398,21 +406,26 @@ def compute_eval_loss(
     loader = DataLoader(
         dataset,
         batch_size=cfg["train"]["batch_size"],
-        shuffle=True, drop_last=True, collate_fn=_collate,
+        shuffle=True,
+        drop_last=True,
+        collate_fn=_collate,
     )
     velocity_net = train_mod.build_velocity_net(cfg, device)
     encoder = train_mod.build_encoder(cfg, device)
     blob = torch.load(CHECKPOINT_PATH, map_location=device)
     velocity_net.load_state_dict(blob["model_state_dict"])
     encoder.load_state_dict(blob["encoder_state_dict"])
-    velocity_net.eval(); encoder.eval()
+    velocity_net.eval()
+    encoder.eval()
     if velocity_net_ema is None and "velocity_net_ema_state_dict" in blob:
         velocity_net_ema = blob["velocity_net_ema_state_dict"]
-    loss_fn = ConditionalFlowMatchingLoss(
-        model=velocity_net, encoder=encoder
-    ).to(device)
+    loss_fn = ConditionalFlowMatchingLoss(model=velocity_net, encoder=encoder).to(
+        device
+    )
     return train_mod.evaluate(
-        loss_fn, loader, device,
+        loss_fn,
+        loader,
+        device,
         max_batches=max_batches,
         ema_state_dict=velocity_net_ema,
     )
@@ -445,25 +458,33 @@ def generate_with_cutoff(
         position_scale = float(blob.get("position_scale", 1.0))
 
         from flow_matching import FlowMatchingSampler
+
         sampler = FlowMatchingSampler(
-            model=net, encoder=encoder,
-            default_method=method, default_n_steps=n_steps,
+            model=net,
+            encoder=encoder,
+            default_method=method,
+            default_n_steps=n_steps,
         )
 
         from data.mol_dataset import QM9Dataset
+
         try:
             seed_ds = QM9Dataset(split="test")
         except Exception:
             seed_ds = None
 
-        x0, atomic_numbers, edge_index, edge_mask, node_mask = (
-            gen_mod.build_qm9_inputs(n_samples, device, seed_dataset=seed_ds)
+        x0, atomic_numbers, edge_index, edge_mask, node_mask = gen_mod.build_qm9_inputs(
+            n_samples, device, seed_dataset=seed_ds
         )
         x_final = sampler.sample(
-            x0=x0, cond=None,
-            n_steps=n_steps, method=method,
+            x0=x0,
+            cond=None,
+            n_steps=n_steps,
+            method=method,
             atomic_numbers=atomic_numbers,
-            edge_index=edge_index, edge_mask=edge_mask, node_mask=node_mask,
+            edge_index=edge_index,
+            edge_mask=edge_mask,
+            node_mask=node_mask,
         )
         x_real = gen_mod.denormalize_positions(x_final, position_scale)
         smiles = gen_mod.positions_to_smiles(x_real, atomic_numbers)
@@ -540,16 +561,17 @@ def main() -> None:
     )
     print(f"[sweep] device = {device}")
     print(f"[sweep] cutoffs = {cutoffs}")
-    print(f"[sweep] epochs={args.epochs} batch_size={args.batch_size} "
-          f"n_samples={args.n_samples} n_steps={args.n_steps} method={args.method}")
+    print(
+        f"[sweep] epochs={args.epochs} batch_size={args.batch_size} "
+        f"n_samples={args.n_samples} n_steps={args.n_steps} method={args.method}"
+    )
 
     base_cfg = load_config(PROJECT_ROOT / "configs" / "default.yaml")
     base_cfg["train"]["epochs"] = int(args.epochs)
     base_cfg["train"]["batch_size"] = int(args.batch_size)
 
     snapshot = snapshot_checkpoint(CHECKPOINT_PATH)
-    print(f"[sweep] snapshotted {CHECKPOINT_PATH} "
-          f"({len(snapshot):,} bytes)")
+    print(f"[sweep] snapshotted {CHECKPOINT_PATH} " f"({len(snapshot):,} bytes)")
 
     rows: list[dict] = []
     best_so_far: dict | None = None
@@ -600,9 +622,10 @@ def main() -> None:
             ):
                 print("[sweep] early-stop: clear winner found")
                 break
-            if best_so_far is None or (
-                row["validity"], row["uniqueness"]
-            ) > (best_so_far["validity"], best_so_far["uniqueness"]):
+            if best_so_far is None or (row["validity"], row["uniqueness"]) > (
+                best_so_far["validity"],
+                best_so_far["uniqueness"],
+            ):
                 best_so_far = row
     finally:
         # Always restore the original checkpoint, even on exception.

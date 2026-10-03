@@ -124,7 +124,10 @@ def is_reinvent4_binary_available(binary_name: str = "reinvent") -> bool:
     # The isolated environment is intentionally outside the project venv:
     # REINVENT4 pins a CUDA torch version incompatible with ROCm torch.
     candidates.append("/mnt/storage/envs/reinvent4/bin/reinvent")
-    if any(c and (os.path.isfile(c) and os.access(c, os.X_OK) or shutil.which(c)) for c in candidates):
+    if any(
+        c and (os.path.isfile(c) and os.access(c, os.X_OK) or shutil.which(c))
+        for c in candidates
+    ):
         return True
     for alt in ("reinvent4", "reinvent.py"):
         if shutil.which(alt):
@@ -135,7 +138,9 @@ def is_reinvent4_binary_available(binary_name: str = "reinvent") -> bool:
     # the source tree but not the installed entry-point.
     here = os.path.dirname(os.path.abspath(__file__))
     candidate = os.path.normpath(
-        os.path.join(here, "..", "..", "references", "REINVENT4", "reinvent", "Reinvent.py")
+        os.path.join(
+            here, "..", "..", "references", "REINVENT4", "reinvent", "Reinvent.py"
+        )
     )
     return os.path.isfile(candidate)
 
@@ -227,7 +232,9 @@ class REINVENT4Adapter:
             # JSONL. Prefer the isolated RDKit-only compatibility worker for
             # the default protocol and leave REINVENT4_BIN available when a
             # learned plugin worker is explicitly configured.
-            worker = os.path.join(os.path.dirname(__file__), "reinvent4_jsonl_worker.py")
+            worker = os.path.join(
+                os.path.dirname(__file__), "reinvent4_jsonl_worker.py"
+            )
             if not configured and os.path.isfile(worker):
                 self.binary = worker
         self.available = is_reinvent4_binary_available(self.binary)
@@ -287,11 +294,15 @@ class REINVENT4Adapter:
                 "REINVENT4Adapter: failed to spawn worker for '%s' "
                 "(FileNotFoundError: %s). All score() calls will return "
                 "None. %s",
-                self.binary, exc, self.BINARY_MISSING_HINT,
+                self.binary,
+                exc,
+                self.BINARY_MISSING_HINT,
             )
             return
         except Exception as exc:  # pragma: no cover - defensive
-            logger.warning("REINVENT4Adapter: failed to start worker (%s); falling back.", exc)
+            logger.warning(
+                "REINVENT4Adapter: failed to start worker (%s); falling back.", exc
+            )
             self.last_error = "worker_dead"
             self.available = False
             return
@@ -313,7 +324,11 @@ class REINVENT4Adapter:
         ref_root = os.path.normpath(
             os.path.join(here, "..", "..", "references", "REINVENT4", "configs")
         )
-        for name in ("stage1_scoring.toml", "scoring.toml", "scoring_components_example.toml"):
+        for name in (
+            "stage1_scoring.toml",
+            "scoring.toml",
+            "scoring_components_example.toml",
+        ):
             p = os.path.join(ref_root, name)
             if os.path.isfile(p):
                 return p
@@ -327,7 +342,12 @@ class REINVENT4Adapter:
             # binary is the Python entry-point (``reinvent/Reinvent.py``)
             # we wrap it in ``python -m`` style invocation.
             if self.binary.endswith(".py"):
-                cmd = [sys.executable, self.binary, "--scoring-config", self.scoring_config]
+                cmd = [
+                    sys.executable,
+                    self.binary,
+                    "--scoring-config",
+                    self.scoring_config,
+                ]
             else:
                 cmd = [self.binary, "--scoring-config", self.scoring_config]
         if self.binary.endswith("reinvent4_jsonl_worker.py"):
@@ -352,7 +372,8 @@ class REINVENT4Adapter:
             poll = self._proc.poll()
             if poll is not None:
                 logger.warning(
-                    "REINVENT4Adapter: worker subprocess exited (rc=%s).", poll,
+                    "REINVENT4Adapter: worker subprocess exited (rc=%s).",
+                    poll,
                 )
                 self.dead = True
                 break
@@ -416,12 +437,14 @@ class REINVENT4Adapter:
                 continue
             r = results[i]
             try:
-                out.append(ScoreResult(
-                    qed=_clip01(r.get("qed")),
-                    sa=_clip01(r.get("sa")),
-                    binding=_clip01(r.get("binding")),
-                    novelty=_clip01(r.get("novelty")),
-                ))
+                out.append(
+                    ScoreResult(
+                        qed=_clip01(r.get("qed")),
+                        sa=_clip01(r.get("sa")),
+                        binding=_clip01(r.get("binding")),
+                        novelty=_clip01(r.get("novelty")),
+                    )
+                )
             except Exception:
                 out.append(None)
         return out
@@ -603,7 +626,10 @@ class REINVENT4MultipropertyAdapter:
     DEFAULT_COMPONENTS: Dict[str, float] = None  # type: ignore[assignment]
 
     def __post_init__(self) -> None:
-        if not isinstance(self.mode, str) or self.mode.strip().lower() != "multiproperty":
+        if (
+            not isinstance(self.mode, str)
+            or self.mode.strip().lower() != "multiproperty"
+        ):
             # We refuse to silently default to a different protocol.  A
             # caller that passes ``mode=prior_nll`` should be using
             # :class:`reinvent_prior_adapter.REINVENT4PriorAdapter`
@@ -667,7 +693,8 @@ class REINVENT4MultipropertyAdapter:
             self.available = False
             logger.warning(
                 "REINVENT4MultipropertyAdapter: failed to spawn %s (%s)",
-                self.worker_python, exc,
+                self.worker_python,
+                exc,
             )
             return
         except Exception as exc:  # pragma: no cover - defensive
@@ -739,7 +766,9 @@ class REINVENT4MultipropertyAdapter:
                 with self._lock:
                     resp = self._rpc_roundtrip(request)
             except Exception as exc:  # pragma: no cover - defensive
-                logger.warning("REINVENT4MultipropertyAdapter.score RPC failed: %s", exc)
+                logger.warning(
+                    "REINVENT4MultipropertyAdapter.score RPC failed: %s", exc
+                )
                 self.last_error = "rpc_error"
                 out.append(0.0)
                 continue
@@ -784,13 +813,17 @@ class REINVENT4MultipropertyAdapter:
             proc.stdin.write(line)
             proc.stdin.flush()
         except Exception as exc:  # pragma: no cover
-            logger.warning("REINVENT4MultipropertyAdapter: stdin write failed (%s)", exc)
+            logger.warning(
+                "REINVENT4MultipropertyAdapter: stdin write failed (%s)", exc
+            )
             self.last_error = "rpc_error"
             return None
         try:
             resp_line = proc.stdout.readline()
         except Exception as exc:  # pragma: no cover
-            logger.warning("REINVENT4MultipropertyAdapter: stdout read failed (%s)", exc)
+            logger.warning(
+                "REINVENT4MultipropertyAdapter: stdout read failed (%s)", exc
+            )
             self.last_error = "rpc_error"
             return None
         if not resp_line:
@@ -799,7 +832,9 @@ class REINVENT4MultipropertyAdapter:
         try:
             return json.loads(resp_line)
         except json.JSONDecodeError as exc:
-            logger.warning("REINVENT4MultipropertyAdapter: malformed RPC response (%s)", exc)
+            logger.warning(
+                "REINVENT4MultipropertyAdapter: malformed RPC response (%s)", exc
+            )
             self.last_error = "rpc_error"
             return None
 

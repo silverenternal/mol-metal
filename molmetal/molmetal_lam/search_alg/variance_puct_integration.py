@@ -73,6 +73,7 @@ Verify
     uv run --no-sync python -m pytest \\
         molmetal/tests/test_variance_puct_integration.py -v
 """
+
 from __future__ import annotations
 
 import math
@@ -332,21 +333,15 @@ class VarianceControlledPUCT:
 
     def __post_init__(self) -> None:
         if self.c_puct < 0.0:
-            raise VariancePUCTError(
-                f"c_puct must be >= 0; got {self.c_puct}"
-            )
+            raise VariancePUCTError(f"c_puct must be >= 0; got {self.c_puct}")
         if self.c_var < 0.0:
-            raise VariancePUCTError(
-                f"c_var must be >= 0; got {self.c_var}"
-            )
+            raise VariancePUCTError(f"c_var must be >= 0; got {self.c_var}")
         if self.n_min_visits < 1:
             raise VariancePUCTError(
                 f"n_min_visits must be >= 1; got {self.n_min_visits}"
             )
         if not 0.0 <= self.epsilon <= 1.0:
-            raise VariancePUCTError(
-                f"epsilon must be in [0, 1]; got {self.epsilon}"
-            )
+            raise VariancePUCTError(f"epsilon must be in [0, 1]; got {self.epsilon}")
 
     # ------------------------------------------------------------------
     # RNG / inner-selector lazy builders
@@ -363,6 +358,7 @@ class VarianceControlledPUCT:
             from molmetal.molmetal_lam.search_alg.score_repellent_mc import (
                 VarianceControlledPUCT as _InnerPUCT,
             )
+
             self.inner_ = _InnerPUCT(
                 c_puct=float(self.c_puct),
                 score_repellent=bool(self.score_repellent),
@@ -471,9 +467,7 @@ class VarianceControlledPUCT:
         """
         n_actions = node.action_count()
         if n_actions <= 0:
-            raise VariancePUCTError(
-                f"node {node.node_id!r} has no legal actions"
-            )
+            raise VariancePUCTError(f"node {node.node_id!r} has no legal actions")
         # FPU: unvisited first.
         for idx in range(n_actions):
             if self.n_value(node, idx) == 0:
@@ -586,22 +580,16 @@ class DirichletVarianceComparator:
 
     def __post_init__(self) -> None:
         if self.alpha <= 0.0:
-            raise VariancePUCTError(
-                f"alpha must be > 0; got {self.alpha}"
-            )
+            raise VariancePUCTError(f"alpha must be > 0; got {self.alpha}")
         if self.score_repellent_alpha <= 0.0:
             raise VariancePUCTError(
                 f"score_repellent_alpha must be > 0; got "
                 f"{self.score_repellent_alpha}"
             )
         if self.step_size < 0.0:
-            raise VariancePUCTError(
-                f"step_size must be >= 0; got {self.step_size}"
-            )
+            raise VariancePUCTError(f"step_size must be >= 0; got {self.step_size}")
         if self.n_iters < 1:
-            raise VariancePUCTError(
-                f"n_iters must be >= 1; got {self.n_iters}"
-            )
+            raise VariancePUCTError(f"n_iters must be >= 1; got {self.n_iters}")
 
     # ------------------------------------------------------------------
     # Sampling
@@ -614,6 +602,7 @@ class DirichletVarianceComparator:
         rng: "Any",
     ) -> "Any":
         import numpy as np
+
         dim = len(priors)
         a_vec = np.full(dim, float(self.alpha), dtype=np.float64)
         # Re-weight to the requested priors (preserve relative
@@ -634,6 +623,7 @@ class DirichletVarianceComparator:
         rng: "Any",
     ) -> "Any":
         import numpy as np
+
         dim = len(priors)
         out = np.zeros((int(n_samples), dim), dtype=np.float64)
         p = np.asarray(priors, dtype=np.float64)
@@ -646,14 +636,11 @@ class DirichletVarianceComparator:
         # :class:`score_repellent_mc.DirichletReplacement`.
         for i in range(int(n_samples)):
             anchor = rng.dirichlet(
-                np.full(dim, float(self.score_repellent_alpha),
-                        dtype=np.float64),
+                np.full(dim, float(self.score_repellent_alpha), dtype=np.float64),
             )
             x = anchor.copy()
             for _ in range(int(self.n_iters)):
-                score = 1.0 - dim * np.exp(
-                    x - x.max()
-                ) / np.exp(x - x.max()).sum()
+                score = 1.0 - dim * np.exp(x - x.max()) / np.exp(x - x.max()).sum()
                 x = (
                     x
                     - 0.5 * self.step_size * score
@@ -693,19 +680,17 @@ class DirichletVarianceComparator:
                "total_var_score_repellent": float, "n_samples": int}``.
         """
         import numpy as np
+
         if priors is None:
             dim = 4
             priors = [1.0 / dim] * dim
         priors = list(priors)
         dim = len(priors)
         if dim < 1:
-            raise VariancePUCTError(
-                f"priors must be non-empty; got {dim}"
-            )
+            raise VariancePUCTError(f"priors must be non-empty; got {dim}")
         if n_samples < 2:
             raise VariancePUCTError(
-                f"n_samples must be >= 2 for variance estimation; "
-                f"got {n_samples}"
+                f"n_samples must be >= 2 for variance estimation; " f"got {n_samples}"
             )
         rng = np.random.default_rng(int(self.rng_seed))
         # Sample.
@@ -848,7 +833,8 @@ class MCTSVarianceWrapper:
         t0 = time.time()
         try:
             candidates = self.base_search.search(
-                initial_state, max_depth=max_depth,
+                initial_state,
+                max_depth=max_depth,
             )
         except Exception as exc:  # pragma: no cover - defensive
             return {"error": str(exc), "wall_time_s": time.time() - t0}
@@ -935,9 +921,7 @@ def integration_with_proof_search(
         etc.) the report carries ``{"error": "..."}``.
     """
     if n_runs < 1:
-        raise VariancePUCTError(
-            f"n_runs must be >= 1; got {n_runs}"
-        )
+        raise VariancePUCTError(f"n_runs must be >= 1; got {n_runs}")
     t0 = time.time()
     per_run_n_cands: List[int] = []
     per_run_score: List[float] = []
@@ -948,8 +932,10 @@ def integration_with_proof_search(
         # is conservative; callers wanting a custom initial state
         # should drive ``base_search.search`` directly.
         if not getattr(search_proof, "tile_library", None):
-            return {"error": "search_proof.tile_library is empty",
-                    "wall_time_s": time.time() - t0}
+            return {
+                "error": "search_proof.tile_library is empty",
+                "wall_time_s": time.time() - t0,
+            }
         initial_state = search_proof.tile_library[0]
     except Exception as exc:
         return {"error": str(exc), "wall_time_s": time.time() - t0}

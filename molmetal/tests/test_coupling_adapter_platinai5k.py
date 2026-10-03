@@ -57,6 +57,7 @@ def test_platinai_5k_csv_exists_or_is_built() -> None:
     path = pretrain.ensure_platinai_5k_csv()
     assert path.exists(), f"CSV not built at {path}"
     import pandas as _pd
+
     df = _pd.read_csv(path)
     assert "smiles" in df.columns
     assert len(df) >= 5000
@@ -93,10 +94,12 @@ def test_bridge_target_l2_normalised() -> None:
     """The 64-d target is unit-norm per row."""
     from molmetal.scripts import tmqm_coupling_pretraining_cpu as pretrain
 
-    x = np.random.default_rng(0).standard_normal((5, pretrain.LAMBDA_DIM)).astype(np.float32)
-    y = pretrain.make_bridge_target(
-        np.zeros_like(x), lambda_features=x
+    x = (
+        np.random.default_rng(0)
+        .standard_normal((5, pretrain.LAMBDA_DIM))
+        .astype(np.float32)
     )
+    y = pretrain.make_bridge_target(np.zeros_like(x), lambda_features=x)
     assert y.shape == (5, pretrain.EMBED_DIM)
     norms = np.linalg.norm(y, axis=1)
     np.testing.assert_allclose(norms, 1.0, atol=1e-5)
@@ -133,12 +136,8 @@ def test_pretraining_smoke(tmp_path: Path) -> None:
     assert "hidden.bias" in data.files
     assert "input_mean" in data.files
     assert "input_std" in data.files
-    assert data["embed.weight"].shape == (
-        pretrain.LAMBDA_DIM, pretrain.EMBED_DIM
-    )
-    assert data["head.weight"].shape == (
-        pretrain.EMBED_DIM, pretrain.EMBED_DIM
-    )
+    assert data["embed.weight"].shape == (pretrain.LAMBDA_DIM, pretrain.EMBED_DIM)
+    assert data["head.weight"].shape == (pretrain.EMBED_DIM, pretrain.EMBED_DIM)
     metadata = json.loads(json_path.read_text())
     assert metadata["lambda_dim"] == pretrain.LAMBDA_DIM
     assert metadata["cfm_dim"] == pretrain.CFM_DIM
@@ -290,9 +289,7 @@ def test_load_platinai5k_adapter_reconstruction_rmse(tmp_path: Path) -> None:
     # script does so the bridge target matches what the model
     # was actually fit to.
     X_h_n = (X_h - handle.input_mean) / handle.input_std
-    Y_h = pretrain.make_bridge_target(
-        np.zeros_like(X_h_n), lambda_features=X_h_n
-    )
+    Y_h = pretrain.make_bridge_target(np.zeros_like(X_h_n), lambda_features=X_h_n)
     pred_h = handle.embed(X_h_n)
     rmse = float(np.sqrt(np.mean((pred_h - Y_h) ** 2)))
     assert rmse <= 0.05, f"reconstruction RMSE {rmse:.4f} exceeds gate 0.05"

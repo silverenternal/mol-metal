@@ -85,24 +85,30 @@ def _make_aggregate_v3_above_v2() -> dict:
         "gate_1_all_ran": True,
         "gate_2_total_runs": 15,
         "gate_4_per_config_summary": {
-            "lbap_refined_ic50_assay":    {"mean": 0.7250, "std": 0.0062, "n": 5},
+            "lbap_refined_ic50_assay": {"mean": 0.7250, "std": 0.0062, "n": 5},
             "lbap_refined_ic50_scaffold": {"mean": 0.6789, "std": 0.0040, "n": 5},
-            "lbap_refined_ic50_size":     {"mean": 0.6812, "std": 0.0120, "n": 5},
+            "lbap_refined_ic50_size": {"mean": 0.6812, "std": 0.0120, "n": 5},
         },
         "gate_5_v3_vs_v2_comparison": {
             "lbap_refined_ic50_assay": {
-                "v2_baseline_mean": 0.7137, "v2_baseline_std": 0.0079,
-                "v3_fallback_mean": 0.7250, "delta": 0.0113,
+                "v2_baseline_mean": 0.7137,
+                "v2_baseline_std": 0.0079,
+                "v3_fallback_mean": 0.7250,
+                "delta": 0.0113,
                 "passes_v2_baseline": True,
             },
             "lbap_refined_ic50_scaffold": {
-                "v2_baseline_mean": 0.6707, "v2_baseline_std": 0.0042,
-                "v3_fallback_mean": 0.6789, "delta": 0.0082,
+                "v2_baseline_mean": 0.6707,
+                "v2_baseline_std": 0.0042,
+                "v3_fallback_mean": 0.6789,
+                "delta": 0.0082,
                 "passes_v2_baseline": True,
             },
             "lbap_refined_ic50_size": {
-                "v2_baseline_mean": 0.6757, "v2_baseline_std": 0.0142,
-                "v3_fallback_mean": 0.6812, "delta": 0.0055,
+                "v2_baseline_mean": 0.6757,
+                "v2_baseline_std": 0.0142,
+                "v3_fallback_mean": 0.6812,
+                "delta": 0.0055,
                 "passes_v2_baseline": True,
             },
         },
@@ -115,11 +121,15 @@ def _make_aggregate_v3_below_v2() -> dict:
     """Aggregate JSON where chemprop v3-fallback MEASURED < v2 baseline."""
     agg = _make_aggregate_v3_above_v2()
     agg["gate_4_per_config_summary"]["lbap_refined_ic50_assay"] = {
-        "mean": 0.6812, "std": 0.0095, "n": 5,
+        "mean": 0.6812,
+        "std": 0.0095,
+        "n": 5,
     }
     agg["gate_5_v3_vs_v2_comparison"]["lbap_refined_ic50_assay"] = {
-        "v2_baseline_mean": 0.7137, "v2_baseline_std": 0.0079,
-        "v3_fallback_mean": 0.6812, "delta": -0.0325,
+        "v2_baseline_mean": 0.7137,
+        "v2_baseline_std": 0.0079,
+        "v3_fallback_mean": 0.6812,
+        "delta": -0.0325,
         "passes_v2_baseline": False,
     }
     agg["gate_6_overall_v3_fallback_matches_v2"] = False
@@ -201,11 +211,16 @@ def test_argparse_flag_count():
 # ---------------------------------------------------------------------------
 def test_dry_run_default_true():
     parser = up._build_argparser()
-    args = parser.parse_args([
-        "--wf263a-verify-json", "/tmp/x.json",
-        "--207-doc", "/tmp/y.md",
-        "--188-doc", "/tmp/z.md",
-    ])
+    args = parser.parse_args(
+        [
+            "--wf263a-verify-json",
+            "/tmp/x.json",
+            "--207-doc",
+            "/tmp/y.md",
+            "--188-doc",
+            "/tmp/z.md",
+        ]
+    )
     assert args.dry_run is True, f"--dry-run default should be True; got {args.dry_run}"
 
 
@@ -230,9 +245,11 @@ def test_parse_v3_measured_extracts_per_split_aucs():
     splits, gate_meta = up.parse_v3_measured(agg)
     assert len(splits) == 3, f"expected 3 splits, got {len(splits)}"
     labels = [s.split_label for s in splits]
-    assert labels == ["assay", "scaffold", "size"], (
-        f"split order should be assay/scaffold/size; got {labels}"
-    )
+    assert labels == [
+        "assay",
+        "scaffold",
+        "size",
+    ], f"split order should be assay/scaffold/size; got {labels}"
     by_label = {s.split_label: s for s in splits}
     assert by_label["assay"].v3_mean == pytest.approx(0.7250)
     assert by_label["scaffold"].v3_mean == pytest.approx(0.6789)
@@ -267,7 +284,9 @@ def test_determine_promotion_below_v2_baseline():
 def test_update_207_replaces_projected_with_measured():
     splits, _ = up.parse_v3_measured(_make_aggregate_v3_above_v2())
     r = up.update_207_paragraph(DOC_207_TEMPLATE, splits, promotion=True)
-    assert r.applied is True, f"update_207 should have applied; skip_reason={r.skip_reason!r}"
+    assert (
+        r.applied is True
+    ), f"update_207 should have applied; skip_reason={r.skip_reason!r}"
     # Old "projected" substring no longer survives in the new_substring.
     assert "projected ≥ v2 baseline" not in r.new_substring
     # New substring carries the MEASURED numbers + verdict.
@@ -294,7 +313,9 @@ def test_update_207_no_match_when_sentence_missing():
 def test_update_188_appends_lead_paragraph_when_promoted():
     splits, _ = up.parse_v3_measured(_make_aggregate_v3_above_v2())
     r = up.update_188_paragraph(DOC_188_TEMPLATE, splits, promotion=True)
-    assert r.applied is True, f"update_188 should have applied; skip_reason={r.skip_reason!r}"
+    assert (
+        r.applied is True
+    ), f"update_188 should have applied; skip_reason={r.skip_reason!r}"
     # The new substring carries the assay number + the Wf-263A provenance tag.
     assert "0.7250" in r.new_substring
     assert "Wf-263A-Verify" in r.new_substring
@@ -330,14 +351,22 @@ def test_end_to_end_dry_run_writes_only_report(tmp_path: Path):
     original_207 = doc207_path.read_text(encoding="utf-8")
     original_188 = doc188_path.read_text(encoding="utf-8")
 
-    rc = up.main([
-        "--wf263a-verify-json", str(verify_path),
-        "--207-doc", str(doc207_path),
-        "--188-doc", str(doc188_path),
-        "--out-report", str(out_report),
-        "--updated-207", str(updated_207),
-        "--updated-188", str(updated_188),
-    ])
+    rc = up.main(
+        [
+            "--wf263a-verify-json",
+            str(verify_path),
+            "--207-doc",
+            str(doc207_path),
+            "--188-doc",
+            str(doc188_path),
+            "--out-report",
+            str(out_report),
+            "--updated-207",
+            str(updated_207),
+            "--updated-188",
+            str(updated_188),
+        ]
+    )
     assert rc == 0
     assert out_report.exists(), "post_fix_update_report.json should be written"
     report = json.loads(out_report.read_text(encoding="utf-8"))
@@ -368,15 +397,23 @@ def test_end_to_end_apply_writes_207_only_when_not_promoted(tmp_path: Path):
     doc188_path.write_text(DOC_188_TEMPLATE, encoding="utf-8")
     original_188 = doc188_path.read_text(encoding="utf-8")
 
-    rc = up.main([
-        "--wf263a-verify-json", str(verify_path),
-        "--207-doc", str(doc207_path),
-        "--188-doc", str(doc188_path),
-        "--out-report", str(out_report),
-        "--updated-207", str(updated_207),
-        "--updated-188", str(updated_188),
-        "--no-dry-run",
-    ])
+    rc = up.main(
+        [
+            "--wf263a-verify-json",
+            str(verify_path),
+            "--207-doc",
+            str(doc207_path),
+            "--188-doc",
+            str(doc188_path),
+            "--out-report",
+            str(out_report),
+            "--updated-207",
+            str(updated_207),
+            "--updated-188",
+            str(updated_188),
+            "--no-dry-run",
+        ]
+    )
     assert rc == 0
     report = json.loads(out_report.read_text(encoding="utf-8"))
     assert report["promote_v3_to_lead"] is False
@@ -406,15 +443,23 @@ def test_end_to_end_apply_writes_both_docs_when_promoted(tmp_path: Path):
     doc207_path.write_text(DOC_207_TEMPLATE, encoding="utf-8")
     doc188_path.write_text(DOC_188_TEMPLATE, encoding="utf-8")
 
-    rc = up.main([
-        "--wf263a-verify-json", str(verify_path),
-        "--207-doc", str(doc207_path),
-        "--188-doc", str(doc188_path),
-        "--out-report", str(out_report),
-        "--updated-207", str(updated_207),
-        "--updated-188", str(updated_188),
-        "--no-dry-run",
-    ])
+    rc = up.main(
+        [
+            "--wf263a-verify-json",
+            str(verify_path),
+            "--207-doc",
+            str(doc207_path),
+            "--188-doc",
+            str(doc188_path),
+            "--out-report",
+            str(out_report),
+            "--updated-207",
+            str(updated_207),
+            "--updated-188",
+            str(updated_188),
+            "--no-dry-run",
+        ]
+    )
     assert rc == 0
     report = json.loads(out_report.read_text(encoding="utf-8"))
     assert report["promote_v3_to_lead"] is True

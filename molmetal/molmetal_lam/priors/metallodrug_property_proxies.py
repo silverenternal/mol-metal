@@ -35,6 +35,7 @@ wet-lab measurement (Cyclic Voltammetry, Kb assays, etc.).
 The values are clipped to ``[0, 1]`` for use in the MCTS reward
 aggregator without dominating the dominant Vina / SA / QED reward.
 """
+
 from __future__ import annotations
 
 from typing import Dict, Iterable, Tuple
@@ -66,9 +67,17 @@ __all__ = [
 # Order (weak → strong): I- < Br- < Cl- < F- < OH- < H2O < NH3 < en
 #                        < bpy < NO2- < PR3 < CN- < CO (approximate)
 _LIGAND_FIELD_STRENGTH: Dict[str, float] = {
-    "I": 0.20, "Br": 0.25, "Cl": 0.30, "F": 0.50,
-    "O": 0.55, "S": 0.50, "N": 0.65, "P": 0.85,
-    "CN": 0.95, "CO": 0.95, "C2H4": 0.80,
+    "I": 0.20,
+    "Br": 0.25,
+    "Cl": 0.30,
+    "F": 0.50,
+    "O": 0.55,
+    "S": 0.50,
+    "N": 0.65,
+    "P": 0.85,
+    "CN": 0.95,
+    "CO": 0.95,
+    "C2H4": 0.80,
 }
 
 # Trans-effect donor strengths (Pt(II) series) per Appleton et al.,
@@ -77,10 +86,17 @@ _LIGAND_FIELD_STRENGTH: Dict[str, float] = {
 # effect whereas ligand-field strength is a thermodynamic (splitting)
 # effect.  We expose both for transparency.
 _TRANS_EFFECT_STRENGTH: Dict[str, float] = {
-    "CN": 1.00, "CO": 0.95, "NO2": 0.85,
-    "PR3": 0.90, "C2H4": 0.85,
-    "Cl": 0.40, "Br": 0.40, "I": 0.30,
-    "NH3": 0.30, "H2O": 0.25, "OH": 0.30,
+    "CN": 1.00,
+    "CO": 0.95,
+    "NO2": 0.85,
+    "PR3": 0.90,
+    "C2H4": 0.85,
+    "Cl": 0.40,
+    "Br": 0.40,
+    "I": 0.30,
+    "NH3": 0.30,
+    "H2O": 0.25,
+    "OH": 0.30,
 }
 
 # Counts as "high-trans-effect" if strength >= this threshold.
@@ -105,7 +121,9 @@ def _mol(smiles):
         try:
             mol = Chem.MolFromSmiles(smiles, sanitize=False)
             if mol is not None:
-                Chem.SanitizeMol(mol, sanitizeOps=Chem.SanitizeFlags.SANITIZE_PROPERTIES)
+                Chem.SanitizeMol(
+                    mol, sanitizeOps=Chem.SanitizeFlags.SANITIZE_PROPERTIES
+                )
         except Exception:
             mol = None
     return mol
@@ -156,7 +174,8 @@ def _inner_sphere_ligands(mol, metal: str = "Pt") -> Iterable[Tuple[int, str]]:
             if sym == "N":
                 # Azide N-N=N detection (terminal NN=N pattern)
                 has_n_double_n = any(
-                    b.GetBondTypeAsDouble() >= 2 and b.GetOtherAtom(nbr).GetSymbol() == "N"
+                    b.GetBondTypeAsDouble() >= 2
+                    and b.GetOtherAtom(nbr).GetSymbol() == "N"
                     for b in nbr.GetBonds()
                 )
                 if has_n_double_n:
@@ -185,22 +204,26 @@ def _inner_sphere_ligands(mol, metal: str = "Pt") -> Iterable[Tuple[int, str]]:
             if sym == "C":
                 # Inspect C neighbours for olefin / alkyne / CO / CN motifs
                 olefin = any(
-                    b.GetBondTypeAsDouble() == 2 and b.GetOtherAtom(nbr).GetSymbol() == "C"
+                    b.GetBondTypeAsDouble() == 2
+                    and b.GetOtherAtom(nbr).GetSymbol() == "C"
                     for b in nbr.GetBonds()
                 )
                 alkyne = any(
-                    b.GetBondTypeAsDouble() == 3 and b.GetOtherAtom(nbr).GetSymbol() == "C"
+                    b.GetBondTypeAsDouble() == 3
+                    and b.GetOtherAtom(nbr).GetSymbol() == "C"
                     for b in nbr.GetBonds()
                 )
                 carbonyl = any(
-                    b.GetBondTypeAsDouble() == 2 and b.GetOtherAtom(nbr).GetSymbol() == "O"
+                    b.GetBondTypeAsDouble() == 2
+                    and b.GetOtherAtom(nbr).GetSymbol() == "O"
                     for b in nbr.GetBonds()
                 )
                 # Cyanide: C triple-bonded to N (CN- ligand, often
                 # Pt-bonded via the C atom).  Check this first so
                 # cyanide is classified correctly.
                 cyanide = any(
-                    b.GetBondTypeAsDouble() == 3 and b.GetOtherAtom(nbr).GetSymbol() == "N"
+                    b.GetBondTypeAsDouble() == 3
+                    and b.GetOtherAtom(nbr).GetSymbol() == "N"
                     for b in nbr.GetBonds()
                 )
                 if cyanide:
@@ -359,7 +382,9 @@ def lfse_proxy(
     if n_t2g <= 0:
         return 0.0
     # Mean Δ_oct proxy from the ligands (range ~0.2 .. 1.0 in our table).
-    mean_field = sum(_LIGAND_FIELD_STRENGTH.get(k, 0.5) for _, k in ligands) / len(ligands)
+    mean_field = sum(_LIGAND_FIELD_STRENGTH.get(k, 0.5) for _, k in ligands) / len(
+        ligands
+    )
     # Score: 0.4 * n_t2g * mean_field  (clipped at 1.0)
     raw = 0.4 * n_t2g * mean_field
     return float(max(0.0, min(1.0, raw)))

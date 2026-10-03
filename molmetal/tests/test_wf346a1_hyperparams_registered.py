@@ -81,9 +81,7 @@ import pytest
 # guard has a fixed target.
 # ---------------------------------------------------------------------------
 REPO_ROOT = Path(__file__).resolve().parents[2]
-PRE_FLIGHT_SCRIPT = (
-    REPO_ROOT / "molmetal" / "scripts" / "pre_flight_check.py"
-)
+PRE_FLIGHT_SCRIPT = REPO_ROOT / "molmetal" / "scripts" / "pre_flight_check.py"
 
 
 # ---------------------------------------------------------------------------
@@ -244,8 +242,7 @@ class TestWf343C4GateInAllPipeline:
             )
         # GateResult shape check (per pre_flight_check.py GateResult
         # dataclass: status / priority / pipeline / evidence / wall_sec).
-        for attr in ("status", "priority", "pipeline", "evidence",
-                     "wall_sec"):
+        for attr in ("status", "priority", "pipeline", "evidence", "wall_sec"):
             assert hasattr(result, attr), (
                 f"GateResult for '{PRIMARY_GATE_NAME}' missing "
                 f"attribute {attr!r}: {result!r}.  The runner "

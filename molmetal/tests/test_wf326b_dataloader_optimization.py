@@ -28,6 +28,7 @@ Honest framing (AGENTS.md §5.2):
     (BLOCKED on AGENTS.md §5.1 "kill then adapt" directive).
   - All tests are CPU-only and complete in < 60 s wall.
 """
+
 from __future__ import annotations
 
 import math
@@ -106,6 +107,7 @@ def test_loader_resolves_optimal_config():
     """The factory resolves to the Wf-326B optimal config."""
     graphs, mids, p, a = _toy_dataset(n=32)
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import _JointGraphDataset
+
     ds = _JointGraphDataset(graphs, mids, p, a)
     loader = build_optimized_loader(ds, batch_size=8, device=torch.device("cpu"))
     cfg = LoaderConfig()
@@ -133,8 +135,8 @@ def test_collate_fn_drops_none_and_nan():
     g = _toy_graph()
     batch = [
         (g, 0, 5.0, 1),
-        (None, 1, 6.0, 0),       # dropped: None graph
-        (g, 2, float("nan"), 1), # dropped: NaN pIC50
+        (None, 1, 6.0, 0),  # dropped: None graph
+        (g, 2, float("nan"), 1),  # dropped: NaN pIC50
         (g, 3, 7.0, 1),
         (g, 4, 8.0, 1),
     ]
@@ -152,17 +154,21 @@ def test_pin_memory_follows_device():
     """pin_memory=True on CUDA, False on CPU."""
     graphs, mids, p, a = _toy_dataset(n=16)
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import _JointGraphDataset
+
     ds = _JointGraphDataset(graphs, mids, p, a)
     # CPU → pin_memory False (wasteful on CPU-only paths)
     cpu_loader = build_optimized_loader(ds, batch_size=8, device=torch.device("cpu"))
     assert cpu_loader.pin_memory is False
+
     # CUDA (mocked via the device.type=='cuda' branch) → pin_memory True
     # We can't actually create a CUDA DataLoader without a GPU, so we
     # emulate by passing a torch.device object with .type='cuda'.
     class _MockCudaDevice:
         type = "cuda"
+
         def __str__(self):
             return "cuda:0"
+
     mock_cuda = _MockCudaDevice()
     cuda_loader = build_optimized_loader(ds, batch_size=8, device=mock_cuda)
     assert cuda_loader.pin_memory is True
@@ -201,6 +207,7 @@ def test_throughput_8workers_faster_than_0workers():
     n = 256
     graphs, mids, p, a = _toy_dataset(n=n)
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import _JointGraphDataset
+
     ds = _JointGraphDataset(graphs, mids, p, a)
 
     def _per_batch_ms(loader: torch.utils.data.DataLoader) -> float:
@@ -217,15 +224,21 @@ def test_throughput_8workers_faster_than_0workers():
 
     # Single-threaded (num_workers=0 → main-process loop).
     loader_0 = torch.utils.data.DataLoader(
-        ds, batch_size=8, shuffle=False, num_workers=0,
+        ds,
+        batch_size=8,
+        shuffle=False,
+        num_workers=0,
         collate_fn=_dmpnn_default_collate,
     )
     ms_per_batch_0 = _per_batch_ms(loader_0)
 
     # 8-worker fork (CPU-only test; production uses spawn for CUDA).
     loader_8 = torch.utils.data.DataLoader(
-        ds, batch_size=8, shuffle=False,
-        num_workers=8, pin_memory=False,
+        ds,
+        batch_size=8,
+        shuffle=False,
+        num_workers=8,
+        pin_memory=False,
         collate_fn=_dmpnn_default_collate,
         persistent_workers=True,
         prefetch_factor=2,
@@ -262,12 +275,16 @@ def test_throughput_scales_sublinearly():
     n = 256
     graphs, mids, p, a = _toy_dataset(n=n)
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import _JointGraphDataset
+
     ds = _JointGraphDataset(graphs, mids, p, a)
 
     def _per_batch_ms(num_workers: int) -> float:
         loader = torch.utils.data.DataLoader(
-            ds, batch_size=8, shuffle=False,
-            num_workers=num_workers, pin_memory=False,
+            ds,
+            batch_size=8,
+            shuffle=False,
+            num_workers=num_workers,
+            pin_memory=False,
             collate_fn=_dmpnn_default_collate,
             persistent_workers=(num_workers > 0),
             prefetch_factor=2,
@@ -296,9 +313,12 @@ def test_one_epoch_round_trip_under_30s():
     n = 256
     graphs, mids, p, a = _toy_dataset(n=n)
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import _JointGraphDataset
+
     ds = _JointGraphDataset(graphs, mids, p, a)
     loader = build_optimized_loader(
-        ds, batch_size=32, device=torch.device("cpu"),
+        ds,
+        batch_size=32,
+        device=torch.device("cpu"),
         n_workers_override=OPTIMAL_NUM_WORKERS,
         prefetch_factor_override=OPTIMAL_PREFETCH_FACTOR,
     )
@@ -330,9 +350,12 @@ def test_persistent_workers_pid_stable_across_epochs():
     n = 32
     graphs, mids, p, a = _toy_dataset(n=n)
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import _JointGraphDataset
+
     ds = _JointGraphDataset(graphs, mids, p, a)
     loader = build_optimized_loader(
-        ds, batch_size=8, device=torch.device("cpu"),
+        ds,
+        batch_size=8,
+        device=torch.device("cpu"),
         n_workers_override=4,
         prefetch_factor_override=2,
     )
@@ -359,12 +382,15 @@ def test_pin_memory_rss_bounded():
     n = 64
     graphs, mids, p, a = _toy_dataset(n=n)
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import _JointGraphDataset
+
     ds = _JointGraphDataset(graphs, mids, p, a)
     proc = psutil.Process()
     rss_before_mb = proc.memory_info().rss / (1024 * 1024)
 
     loader = build_optimized_loader(
-        ds, batch_size=8, device=torch.device("cpu"),
+        ds,
+        batch_size=8,
+        device=torch.device("cpu"),
         n_workers_override=OPTIMAL_NUM_WORKERS,
         prefetch_factor_override=OPTIMAL_PREFETCH_FACTOR,
     )

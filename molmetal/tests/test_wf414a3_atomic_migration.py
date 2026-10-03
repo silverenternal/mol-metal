@@ -50,6 +50,7 @@ auto-migrating all existing scripts in one sweep is too risky. Wf-414-A3
 migrates 5 more closeout-drafting scripts after Wf-406-A3's 3 + Wf-410-A3's 5;
 combined Wf-406+410+414 = 13 of N existing scripts migrated.
 """
+
 from __future__ import annotations
 
 import ast
@@ -79,7 +80,7 @@ def _ast_has_atomic_write_import(tree: ast.AST) -> bool:
     """
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom):
-            module = (node.module or "")
+            module = node.module or ""
             names = {alias.name for alias in node.names}
             if module.endswith("wf386a3_atomic_write") and "atomic_write_file" in names:
                 return True
@@ -127,16 +128,20 @@ def _ast_legacy_with_open_writes(tree: ast.AST) -> list[str]:
                     if mode_arg == "w":
                         path_arg = ctx.args[0] if ctx.args else None
                         path_str = None
-                        if isinstance(path_arg, ast.Constant) and isinstance(path_arg.value, str):
+                        if isinstance(path_arg, ast.Constant) and isinstance(
+                            path_arg.value, str
+                        ):
                             path_str = path_arg.value
                         elif path_arg is not None:
                             try:
                                 path_str = ast.unparse(path_arg)
                             except Exception:
                                 path_str = None
-                        if path_str and (path_str.endswith(".json")
-                                         or path_str.endswith(".md")
-                                         or path_str.endswith(".smi")):
+                        if path_str and (
+                            path_str.endswith(".json")
+                            or path_str.endswith(".md")
+                            or path_str.endswith(".smi")
+                        ):
                             legacy_writes.append(f"line {node.lineno}: {path_str}")
     return legacy_writes
 
@@ -164,7 +169,10 @@ def _ast_legacy_path_write_text_calls(src: str) -> list[str]:
             continue
         # Strip comments + docstring residue
         clean = line.split("#", 1)[0].strip()
-        if any(suffix in clean for suffix in ('.json"', ".json'", '.md"', ".md'", '.smi"', ".smi'")):
+        if any(
+            suffix in clean
+            for suffix in ('.json"', ".json'", '.md"', ".md'", '.smi"', ".smi'")
+        ):
             flagged.append(f"line {ln}: {clean[:80]}")
     return flagged
 
@@ -232,9 +240,9 @@ def test_script_uses_atomic_write(script_name: str) -> None:
     # 5. Both safe_overwrite_check() and detect_truncation() must be called
     #    by name in the migrated write blocks (not just imported-but-unused).
     src_lower = src.lower()
-    assert "safe_overwrite_check(" in src_lower, (
-        f"{script_name}: safe_overwrite_check() must be called at write sites"
-    )
-    assert "detect_truncation(" in src_lower, (
-        f"{script_name}: detect_truncation() must be called on agent output"
-    )
+    assert (
+        "safe_overwrite_check(" in src_lower
+    ), f"{script_name}: safe_overwrite_check() must be called at write sites"
+    assert (
+        "detect_truncation(" in src_lower
+    ), f"{script_name}: detect_truncation() must be called on agent output"

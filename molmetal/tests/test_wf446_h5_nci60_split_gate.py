@@ -48,9 +48,7 @@ class TestPureHelpers:
         assert all(n == 0 for _a, _b, n in leaks)
 
     def test_index_triple_violations_detects_overlap(self) -> None:
-        bad = _nci60_index_triple_violations(
-            [0, 1, 2], [2, 3], [4, 5, 6], n_rows=7
-        )
+        bad = _nci60_index_triple_violations([0, 1, 2], [2, 3], [4, 5, 6], n_rows=7)
         assert any("index overlap train/val" in v for v in bad)
 
     def test_index_triple_violations_detects_gap(self) -> None:

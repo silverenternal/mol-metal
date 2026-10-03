@@ -298,20 +298,30 @@ class DiffDockAdapter:
         if resolved.endswith(".py") or os.path.isfile(resolved):
             return [
                 resolved,
-                "--protein_path", pocket_pdb,
-                "--ligand", smiles,
-                "--out_dir", os.path.dirname(out_json),
-                "--samples", str(int(exhaustiveness)),
-                "--out_json", out_json,
+                "--protein_path",
+                pocket_pdb,
+                "--ligand",
+                smiles,
+                "--out_dir",
+                os.path.dirname(out_json),
+                "--samples",
+                str(int(exhaustiveness)),
+                "--out_json",
+                out_json,
             ]
         # Default: treat as a CLI binary on PATH.
         return [
             resolved,
-            "--protein_path", pocket_pdb,
-            "--ligand", smiles,
-            "--out_dir", os.path.dirname(out_json),
-            "--samples", str(int(exhaustiveness)),
-            "--out_json", out_json,
+            "--protein_path",
+            pocket_pdb,
+            "--ligand",
+            smiles,
+            "--out_dir",
+            os.path.dirname(out_json),
+            "--samples",
+            str(int(exhaustiveness)),
+            "--out_json",
+            out_json,
         ]
 
     @staticmethod
@@ -326,13 +336,17 @@ class DiffDockAdapter:
                 payload: Any = json.load(fh)
         except Exception as exc:  # pragma: no cover - defensive
             logger.warning("DiffDock-L output parse failed: %s", exc)
-            return DockResult(rmsd_A=float("nan"), vina_kcal=float("nan"), confidence=0.0)
+            return DockResult(
+                rmsd_A=float("nan"), vina_kcal=float("nan"), confidence=0.0
+            )
         # DiffDock-L writes a list of poses; the first is the best by
         # confidence.  Fall back to a flat dict if the schema differs.
         if isinstance(payload, list) and payload:
             payload = payload[0]
         if not isinstance(payload, dict):
-            return DockResult(rmsd_A=float("nan"), vina_kcal=float("nan"), confidence=0.0)
+            return DockResult(
+                rmsd_A=float("nan"), vina_kcal=float("nan"), confidence=0.0
+            )
         return DockResult(
             rmsd_A=float(payload.get("rmsd", float("nan"))),
             vina_kcal=float(payload.get("vina_score", float("nan"))),

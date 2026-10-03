@@ -25,6 +25,7 @@ References:
 This module is RDKit-optional; missing RDKit or malformed SMILES
 gracefully return neutral fallbacks (0.5 for floats, False for flags).
 """
+
 from __future__ import annotations
 
 import math
@@ -49,7 +50,7 @@ TPSA_LO, TPSA_HI = 60.0, 150.0
 MW_LO, MW_HI = 300.0, 700.0  # descriptive IV window; not Lipinski
 
 # Coordination geometry ideals (coordination number = donor count)
-SQ_PLANAR_IDEAL = 4   # Pt(II) d8 square-planar
+SQ_PLANAR_IDEAL = 4  # Pt(II) d8 square-planar
 OCTAHEDRAL_IDEAL = 6  # Ru(II/III), Ir(III) octahedral
 
 # Canonical SMILES for the four reference metal drugs (hand-checked).
@@ -167,7 +168,9 @@ class AnticancerMetricSuite:
                 "dna_kb_proxy_v1": 0.0,
             }
 
-        iv_window_ok = bool(LOGP_LO <= logp <= LOGP_HI) and bool(TPSA_LO <= tpsa <= TPSA_HI)
+        iv_window_ok = bool(LOGP_LO <= logp <= LOGP_HI) and bool(
+            TPSA_LO <= tpsa <= TPSA_HI
+        )
         mw_iv_flag = bool(MW_LO <= mw <= MW_HI)
 
         # New anticancer metrics (TODO-14 / T14 §4.8 panel).
@@ -281,8 +284,11 @@ class AnticancerMetricSuite:
         if rdkit_mol is None:
             return empty
 
-        metal_atoms = [a for a in rdkit_mol.GetAtoms()
-                       if a.GetSymbol() in ("Pt", "Ru", "Ir", "Au", "Rh", "Os")]
+        metal_atoms = [
+            a
+            for a in rdkit_mol.GetAtoms()
+            if a.GetSymbol() in ("Pt", "Ru", "Ir", "Au", "Rh", "Os")
+        ]
         if not metal_atoms:
             # Non-metal molecule: still report zero coordination.
             return {**empty, "coordination_number": 0, "geometry": "none"}
@@ -410,8 +416,7 @@ class AnticancerMetricSuite:
         # bis-benzimidazoles) are polycyclic aromatic with N donors.
         if target == "minor_groove":
             has_aromatic_n = any(
-                a.GetSymbol() == "N" and a.GetIsAromatic()
-                for a in rdkit_mol.GetAtoms()
+                a.GetSymbol() == "N" and a.GetIsAromatic() for a in rdkit_mol.GetAtoms()
             )
             if aromatic_rings >= 3 and has_aromatic_n:
                 score += 0.20
@@ -455,8 +460,11 @@ class AnticancerMetricSuite:
             return 0.5
 
         # Identify the dominant metal centre.
-        metal_centres = [a for a in rdkit_mol.GetAtoms()
-                         if a.GetSymbol() in ("Pt", "Ru", "Ir", "Au", "Rh", "Os")]
+        metal_centres = [
+            a
+            for a in rdkit_mol.GetAtoms()
+            if a.GetSymbol() in ("Pt", "Ru", "Ir", "Au", "Rh", "Os")
+        ]
         if not metal_centres:
             return 0.5
 
@@ -465,8 +473,7 @@ class AnticancerMetricSuite:
         scores = []
         for centre in metal_centres:
             symbol = centre.GetSymbol()
-            donors = [n for n in centre.GetNeighbors()
-                      if n.GetSymbol() not in ("H",)]
+            donors = [n for n in centre.GetNeighbors() if n.GetSymbol() not in ("H",)]
             donor_count = len(donors)
             if symbol in ("Pt", "Au") and centre.GetFormalCharge() in (0, 1, 2):
                 # Pt(II) most often; Pt(IV) and Au(III) may also be 4.
@@ -529,8 +536,11 @@ class AnticancerMetricSuite:
                 break
 
         # 2. Bulky aromatic-N donors on a metal centre => evasion.
-        metal_centres = [a for a in rdkit_mol.GetAtoms()
-                         if a.GetSymbol() in ("Pt", "Ru", "Ir", "Au", "Rh", "Os")]
+        metal_centres = [
+            a
+            for a in rdkit_mol.GetAtoms()
+            if a.GetSymbol() in ("Pt", "Ru", "Ir", "Au", "Rh", "Os")
+        ]
         has_aromatic_n_bulky = False
         for centre in metal_centres:
             for n in centre.GetNeighbors():
@@ -588,23 +598,20 @@ class AnticancerMetricSuite:
 
         # Ru/Ir centre: 0.30 base contribution (kinetic inertness).
         has_rhodium_like = any(
-            a.GetSymbol() in ("Ru", "Ir", "Rh")
-            for a in rdkit_mol.GetAtoms()
+            a.GetSymbol() in ("Ru", "Ir", "Rh") for a in rdkit_mol.GetAtoms()
         )
         if has_rhodium_like:
             score += 0.30
 
         # Chloride leaving groups (aquation -> DNA adduct): +0.20.
-        cl_count = sum(
-            1 for a in rdkit_mol.GetAtoms()
-            if a.GetSymbol() == "Cl"
-        )
+        cl_count = sum(1 for a in rdkit_mol.GetAtoms() if a.GetSymbol() == "Cl")
         if cl_count >= 1:
             score += 0.20
 
         # Aromatic N (minor-groove binder): +0.20.
         aromatic_n = sum(
-            1 for a in rdkit_mol.GetAtoms()
+            1
+            for a in rdkit_mol.GetAtoms()
             if a.GetSymbol() == "N" and a.GetIsAromatic()
         )
         if aromatic_n >= 1:
@@ -612,9 +619,7 @@ class AnticancerMetricSuite:
 
         # Chelating diamine (cisplatin N,N ring or ethylenediamine):
         # +0.10.
-        n_count = sum(
-            1 for a in rdkit_mol.GetAtoms() if a.GetSymbol() == "N"
-        )
+        n_count = sum(1 for a in rdkit_mol.GetAtoms() if a.GetSymbol() == "N")
         if n_count >= 2 and has_pt_ii:
             score += 0.10
 
@@ -669,9 +674,7 @@ class AnticancerMetricSuite:
         gsh_value = 1.0 if gsh_evasion else 0.0
 
         # Equal-weight mean (all four components).
-        anticancer_index = (
-            iv_window_value + metal_score + gsh_value + dna_proxy
-        ) / 4.0
+        anticancer_index = (iv_window_value + metal_score + gsh_value + dna_proxy) / 4.0
         anticancer_index = float(max(0.0, min(1.0, anticancer_index)))
 
         return {

@@ -86,35 +86,33 @@ class TestBindingDBLoader:
         assert len(df) > 0, "binding_db loader returned 0 rows"
 
         # GATE-3 + GATE-6: canonical 6-col schema, exact column order.
-        assert tuple(df.columns) == CANONICAL_COLUMNS, (
-            f"binding_db columns {df.columns.tolist()} != canonical {CANONICAL_COLUMNS}"
-        )
+        assert (
+            tuple(df.columns) == CANONICAL_COLUMNS
+        ), f"binding_db columns {df.columns.tolist()} != canonical {CANONICAL_COLUMNS}"
 
         # Type contract
-        assert df["active"].dtype == bool, (
-            f"active should be bool, got {df['active'].dtype}"
-        )
-        assert pd.api.types.is_numeric_dtype(df["pIC50"]), (
-            f"pIC50 should be numeric, got {df['pIC50'].dtype}"
-        )
+        assert (
+            df["active"].dtype == bool
+        ), f"active should be bool, got {df['active'].dtype}"
+        assert pd.api.types.is_numeric_dtype(
+            df["pIC50"]
+        ), f"pIC50 should be numeric, got {df['pIC50'].dtype}"
 
         # All pIC50 finite
         n_nan = int(df["pIC50"].isna().sum())
         assert n_nan == 0, f"binding_db has {n_nan} NaN pIC50 rows"
-        assert df["pIC50"].apply(lambda v: math.isfinite(float(v))).all(), (
-            "binding_db has non-finite pIC50 values"
-        )
+        assert (
+            df["pIC50"].apply(lambda v: math.isfinite(float(v))).all()
+        ), "binding_db has non-finite pIC50 values"
 
         # No empty SMILES / metal / cell_line / protein
         for c in ("smiles", "metal", "cell_line", "protein"):
-            assert (df[c].astype(str) != "").all(), (
-                f"binding_db has empty {c} entries"
-            )
+            assert (df[c].astype(str) != "").all(), f"binding_db has empty {c} entries"
 
         # Documented behaviour: 5257 rows for the project-shipped CSV.
-        assert len(df) == 5257, (
-            f"binding_db row count drifted: expected 5257, got {len(df)}"
-        )
+        assert (
+            len(df) == 5257
+        ), f"binding_db row count drifted: expected 5257, got {len(df)}"
 
 
 # ---------------------------------------------------------------------------
@@ -128,40 +126,38 @@ class TestNCI60Loader:
         assert len(df) > 0, "nci60 loader returned 0 rows"
 
         # GATE-4 + GATE-6: canonical 6-col schema (was 4-col pre-Wf-130).
-        assert tuple(df.columns) == CANONICAL_COLUMNS, (
-            f"nci60 columns {df.columns.tolist()} != canonical {CANONICAL_COLUMNS}"
-        )
+        assert (
+            tuple(df.columns) == CANONICAL_COLUMNS
+        ), f"nci60 columns {df.columns.tolist()} != canonical {CANONICAL_COLUMNS}"
 
         # metal + protein are NA-filled (NCI-60 has no per-row metal /
         # protein identifier in the source CSV).
-        assert (df["metal"] == "NA").all(), (
-            f"nci60 metal should be 'NA'-filled, got uniques: {df['metal'].unique()[:5]}"
-        )
-        assert (df["protein"] == "NA").all(), (
-            f"nci60 protein should be 'NA'-filled, got uniques: {df['protein'].unique()[:5]}"
-        )
+        assert (
+            df["metal"] == "NA"
+        ).all(), f"nci60 metal should be 'NA'-filled, got uniques: {df['metal'].unique()[:5]}"
+        assert (
+            df["protein"] == "NA"
+        ).all(), f"nci60 protein should be 'NA'-filled, got uniques: {df['protein'].unique()[:5]}"
 
         # cell_line still carries real NCI-60 identifiers (was ``cell``
         # pre-Wf-130 — verify it is a non-trivial set).
         unique_cells = df["cell_line"].unique()
-        assert len(unique_cells) >= 3, (
-            f"nci60 cell_line should have ≥3 unique NCI-60 lines, got {unique_cells}"
-        )
+        assert (
+            len(unique_cells) >= 3
+        ), f"nci60 cell_line should have ≥3 unique NCI-60 lines, got {unique_cells}"
 
         # Type contract + finite pIC50
-        assert df["active"].dtype == bool, (
-            f"active should be bool, got {df['active'].dtype}"
-        )
-        assert pd.api.types.is_numeric_dtype(df["pIC50"]), (
-            f"pIC50 should be numeric, got {df['pIC50'].dtype}"
-        )
+        assert (
+            df["active"].dtype == bool
+        ), f"active should be bool, got {df['active'].dtype}"
+        assert pd.api.types.is_numeric_dtype(
+            df["pIC50"]
+        ), f"pIC50 should be numeric, got {df['pIC50'].dtype}"
         n_nan = int(df["pIC50"].isna().sum())
         assert n_nan == 0, f"nci60 has {n_nan} NaN pIC50 rows"
 
         # Documented behaviour: 7823 rows for the project-shipped CSV.
-        assert len(df) == 7823, (
-            f"nci60 row count drifted: expected 7823, got {len(df)}"
-        )
+        assert len(df) == 7823, f"nci60 row count drifted: expected 7823, got {len(df)}"
 
 
 # ---------------------------------------------------------------------------
@@ -190,26 +186,26 @@ class TestDrugOODLoader:
         assert len(df) > 0, "drugood loader returned 0 rows"
 
         # GATE-1 + GATE-2 + GATE-6: canonical 6-col schema, exact order.
-        assert tuple(df.columns) == CANONICAL_COLUMNS, (
-            f"drugood columns {df.columns.tolist()} != canonical {CANONICAL_COLUMNS}"
-        )
+        assert (
+            tuple(df.columns) == CANONICAL_COLUMNS
+        ), f"drugood columns {df.columns.tolist()} != canonical {CANONICAL_COLUMNS}"
 
         # Type contract
-        assert df["active"].dtype == bool, (
-            f"active should be bool, got {df['active'].dtype}"
-        )
-        assert pd.api.types.is_numeric_dtype(df["pIC50"]), (
-            f"pIC50 should be numeric, got {df['pIC50'].dtype}"
-        )
+        assert (
+            df["active"].dtype == bool
+        ), f"active should be bool, got {df['active'].dtype}"
+        assert pd.api.types.is_numeric_dtype(
+            df["pIC50"]
+        ), f"pIC50 should be numeric, got {df['pIC50'].dtype}"
 
         # DrugOOD has no per-row metal / cell_line identifier — both
         # columns are NA-filled by design.
-        assert (df["metal"] == "NA").all(), (
-            f"drugood metal should be 'NA'-filled, got uniques: {df['metal'].unique()[:5]}"
-        )
-        assert (df["cell_line"] == "NA").all(), (
-            f"drugood cell_line should be 'NA'-filled, got uniques: {df['cell_line'].unique()[:5]}"
-        )
+        assert (
+            df["metal"] == "NA"
+        ).all(), f"drugood metal should be 'NA'-filled, got uniques: {df['metal'].unique()[:5]}"
+        assert (
+            df["cell_line"] == "NA"
+        ).all(), f"drugood cell_line should be 'NA'-filled, got uniques: {df['cell_line'].unique()[:5]}"
 
         # protein carries the assay_id proxy (stringified); should be
         # non-empty and reasonably diverse (DrugOOD assay split has
@@ -223,9 +219,9 @@ class TestDrugOODLoader:
         # All pIC50 finite (no NaN, no inf)
         n_nan = int(df["pIC50"].isna().sum())
         assert n_nan == 0, f"drugood has {n_nan} NaN pIC50 rows"
-        assert df["pIC50"].apply(lambda v: math.isfinite(float(v))).all(), (
-            "drugood has non-finite pIC50 values"
-        )
+        assert (
+            df["pIC50"].apply(lambda v: math.isfinite(float(v))).all()
+        ), "drugood has non-finite pIC50 values"
 
         # Documented behaviour for lbap_refined_ic50_assay train split
         # is 95,373 rows (Ji 2022 official curator output).
@@ -254,15 +250,15 @@ class TestCanonicalSchemaMatch:
 
         bd_cols = tuple(df_bd.columns)
         nci_cols = tuple(df_nci.columns)
-        assert bd_cols == CANONICAL_COLUMNS, (
-            f"binding_db columns {bd_cols} != canonical {CANONICAL_COLUMNS}"
-        )
-        assert nci_cols == CANONICAL_COLUMNS, (
-            f"nci60 columns {nci_cols} != canonical {CANONICAL_COLUMNS}"
-        )
-        assert bd_cols == nci_cols, (
-            f"binding_db and nci60 columns diverge: {bd_cols} vs {nci_cols}"
-        )
+        assert (
+            bd_cols == CANONICAL_COLUMNS
+        ), f"binding_db columns {bd_cols} != canonical {CANONICAL_COLUMNS}"
+        assert (
+            nci_cols == CANONICAL_COLUMNS
+        ), f"nci60 columns {nci_cols} != canonical {CANONICAL_COLUMNS}"
+        assert (
+            bd_cols == nci_cols
+        ), f"binding_db and nci60 columns diverge: {bd_cols} vs {nci_cols}"
 
         # DrugOOD is optional — only run if the JSON is available.
         if _DRUGOOD_JSON.exists():
@@ -272,9 +268,9 @@ class TestCanonicalSchemaMatch:
                 prefer_library=False,
             )
             do_cols = tuple(df_do.columns)
-            assert do_cols == CANONICAL_COLUMNS, (
-                f"drugood columns {do_cols} != canonical {CANONICAL_COLUMNS}"
-            )
+            assert (
+                do_cols == CANONICAL_COLUMNS
+            ), f"drugood columns {do_cols} != canonical {CANONICAL_COLUMNS}"
             assert do_cols == bd_cols == nci_cols, (
                 f"canonical-schema mismatch: "
                 f"binding_db={bd_cols}, nci60={nci_cols}, drugood={do_cols}"

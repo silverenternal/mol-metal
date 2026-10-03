@@ -56,7 +56,10 @@ LAUNCH_WRAPPER = REPO_ROOT / "scripts" / "launch_wf310e_wf135_phase2_gpu.sh"
 
 # Phase 1 cohort — Wf-139 P7 / Wf-309A SHIPPED 500 balanced.
 PHASE1_COHORT_WF139 = (
-    MOLMETAL_ROOT / "reports" / "wf139_p7_rh_active_cohort" / "synthetic_rh_pos_neg.json"
+    MOLMETAL_ROOT
+    / "reports"
+    / "wf139_p7_rh_active_cohort"
+    / "synthetic_rh_pos_neg.json"
 )
 
 
@@ -91,14 +94,11 @@ class TestUserOKGateRefuses:
         # Invoke WITHOUT USER_OK in env (--dry-run still requires USER_OK=1).
         # subprocess env inherits parent env by default; we explicitly
         # strip USER_OK to verify the gate works in a clean env.
-        clean_env = {
-            k: v for k, v in os.environ.items()
-            if k not in ("USER_OK",)
-        }
+        clean_env = {k: v for k, v in os.environ.items() if k not in ("USER_OK",)}
         # Sanity: USER_OK must NOT be set in our test env for this to be valid.
-        assert clean_env.get("USER_OK") is None, (
-            "test environment leaked USER_OK; cannot verify gate behaviour"
-        )
+        assert (
+            clean_env.get("USER_OK") is None
+        ), "test environment leaked USER_OK; cannot verify gate behaviour"
 
         # shell=True so the bash script's set -euo pipefail + USER_OK check
         # + exit 64 path are exercised end-to-end.
@@ -145,9 +145,9 @@ class TestUserOKGateAccepts:
         invocation: it emits a plan record to ``plan.json`` without
         launching any GPU work.
         """
-        assert LAUNCH_WRAPPER.exists(), (
-            f"Wf-310E launch wrapper missing at {LAUNCH_WRAPPER}"
-        )
+        assert (
+            LAUNCH_WRAPPER.exists()
+        ), f"Wf-310E launch wrapper missing at {LAUNCH_WRAPPER}"
 
         # shell=True so bash parses the script; explicit USER_OK=1 in env.
         # --dry-run ensures no GPU work is launched even on accept.
@@ -172,9 +172,7 @@ class TestUserOKGateAccepts:
 
         # Verify the wrapper emitted a plan.json (the canonical
         # PROJECTED/MMEASURED ledger per party-twenty-spirit §3.5).
-        plan_json = (
-            MOLMETAL_ROOT / "reports" / "wf310e_wf135_phase2" / "plan.json"
-        )
+        plan_json = MOLMETAL_ROOT / "reports" / "wf310e_wf135_phase2" / "plan.json"
         assert plan_json.exists(), (
             f"plan.json not emitted at {plan_json}. "
             "dry-run path must write the PROJECTED ledger on accept."
@@ -184,17 +182,15 @@ class TestUserOKGateAccepts:
         # fields as unquoted tokens (a known JSON strictness limitation
         # in the bash printf emitter), so we grep instead of json.load().
         plan_text = plan_json.read_text()
-        assert '"user_ok": true' in plan_text, (
-            "plan.json must record user_ok=true when USER_OK=1 is honoured"
-        )
-        assert '"dry_run": 1' in plan_text, (
-            "plan.json must record dry_run=1 on dry-run path"
-        )
+        assert (
+            '"user_ok": true' in plan_text
+        ), "plan.json must record user_ok=true when USER_OK=1 is honoured"
+        assert (
+            '"dry_run": 1' in plan_text
+        ), "plan.json must record dry_run=1 on dry-run path"
         # 5-metal LOMO spec — substring check tolerates unquoted JSON tokens.
         for m in ("Rh", "Ru", "Ir", "Os", "Re"):
-            assert m in plan_text, (
-                f"plan.json missing metal {m} in 5-metal LOMO spec"
-            )
+            assert m in plan_text, f"plan.json missing metal {m} in 5-metal LOMO spec"
 
 
 # =====================================================================
@@ -224,9 +220,9 @@ class TestRhBalancedCohortExists:
         with PHASE1_COHORT_WF139.open() as fh:
             data = json.load(fh)
 
-        assert isinstance(data, dict), (
-            f"cohort JSON must be a dict (got {type(data).__name__})"
-        )
+        assert isinstance(
+            data, dict
+        ), f"cohort JSON must be a dict (got {type(data).__name__})"
 
         # Read the canonical stats block per Wf-309A schema.
         stats = data.get("stats", {})
@@ -237,15 +233,9 @@ class TestRhBalancedCohortExists:
         n_inactive = int(stats.get("n_inactive", 0))
 
         # The cohort must be 500 balanced (250 + 250).
-        assert n_total == 500, (
-            f"expected n_total=500 (Wf-309A spec), got {n_total}"
-        )
-        assert n_active == 250, (
-            f"expected n_active=250, got {n_active}"
-        )
-        assert n_inactive == 250, (
-            f"expected n_inactive=250, got {n_inactive}"
-        )
+        assert n_total == 500, f"expected n_total=500 (Wf-309A spec), got {n_total}"
+        assert n_active == 250, f"expected n_active=250, got {n_active}"
+        assert n_inactive == 250, f"expected n_inactive=250, got {n_inactive}"
 
         # Scaffold-split integrity: must be 0 (no leakage between
         # active and inactive Bemis-Murcko scaffolds).
@@ -259,12 +249,8 @@ class TestRhBalancedCohortExists:
         # Verify the actual lists are 250 each (not just the stats block).
         actives = data.get("actives", [])
         inactives = data.get("inactives", [])
-        assert len(actives) == 250, (
-            f"len(actives)={len(actives)} (expected 250)"
-        )
-        assert len(inactives) == 250, (
-            f"len(inactives)={len(inactives)} (expected 250)"
-        )
+        assert len(actives) == 250, f"len(actives)={len(actives)} (expected 250)"
+        assert len(inactives) == 250, f"len(inactives)={len(inactives)} (expected 250)"
 
 
 # =====================================================================
@@ -297,9 +283,7 @@ class TestPathConsistencyAfterWf334U2:
         )
 
         # Pre-fix path must NOT have a launcher file (this is the bug).
-        wrong_path = (
-            MOLMETAL_ROOT / "scripts" / "launch_wf310e_wf135_phase2_gpu.sh"
-        )
+        wrong_path = MOLMETAL_ROOT / "scripts" / "launch_wf310e_wf135_phase2_gpu.sh"
         assert not wrong_path.exists(), (
             f"Pre-Wf-334-U2 path bug REGRESSED: launcher found at "
             f"{wrong_path}. Per Wf-334-U2 §2.3 the canonical path is "
@@ -314,17 +298,17 @@ class TestPathConsistencyAfterWf334U2:
             f"launch wrapper shebang missing at {LAUNCH_WRAPPER}: "
             f"first line = {first_line!r}"
         )
-        assert "bash" in first_line, (
-            f"launch wrapper shebang must be bash (got {first_line!r})"
-        )
+        assert (
+            "bash" in first_line
+        ), f"launch wrapper shebang must be bash (got {first_line!r})"
 
         # Sanity: the wrapper must reference the canonical Phase 1
         # cohort path (Wf-309A ship surface).
         with LAUNCH_WRAPPER.open() as fh:
             src = fh.read()
-        assert "wf139_p7_rh_active_cohort" in src, (
-            "launch wrapper does not reference the Wf-309A Phase 1 cohort path"
-        )
+        assert (
+            "wf139_p7_rh_active_cohort" in src
+        ), "launch wrapper does not reference the Wf-309A Phase 1 cohort path"
         assert "synthetic_rh_pos_neg.json" in src, (
             "launch wrapper does not reference synthetic_rh_pos_neg.json "
             "(the canonical Phase 1 cohort filename)"

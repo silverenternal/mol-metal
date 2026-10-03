@@ -98,9 +98,24 @@ def vuln_v1_ast_r2(rows: List[Dict[str, Any]], seed: int) -> Dict[str, Any]:
     y_tr, y_te = y[train_idx], y[test_idx]
 
     astsr = LambdaASTSR(
-        depth=3, population=16, generations=8, seed=seed,
-        feature_names=("f0", "f1", "f2", "f3", "f4", "f5", "f6", "f7",
-                        "f8", "f9", "f10", "f11"),
+        depth=3,
+        population=16,
+        generations=8,
+        seed=seed,
+        feature_names=(
+            "f0",
+            "f1",
+            "f2",
+            "f3",
+            "f4",
+            "f5",
+            "f6",
+            "f7",
+            "f8",
+            "f9",
+            "f10",
+            "f11",
+        ),
     )
     # Rename columns to match (X has 12 columns named after FEATURE_COLUMNS
     # by default; ``build_design_matrix`` doesn't rename).
@@ -142,14 +157,25 @@ def vuln_v2_hilbert_stability(rows: List[Dict[str, Any]], seed: int) -> Dict[str
     y_tr, y_te = y[train_idx], y[test_idx]
 
     model = LambdaASTSRHilbert(
-        population_dim=HILBERT_DIM, lr_primal=0.05, lr_dual=0.05,
-        n_iters=200, seed=seed,
+        population_dim=HILBERT_DIM,
+        lr_primal=0.05,
+        lr_dual=0.05,
+        n_iters=200,
+        seed=seed,
     )
     t0 = time.perf_counter()
     model.optimize(X_tr_64, y_tr)
     wall = float(time.perf_counter() - t0)
-    has_nan = bool(np.any(~np.isfinite(model.best_params_))) if model.best_params_ is not None else True
-    has_inf = bool(np.any(np.abs(model.best_params_) > 1e6)) if model.best_params_ is not None else True
+    has_nan = (
+        bool(np.any(~np.isfinite(model.best_params_)))
+        if model.best_params_ is not None
+        else True
+    )
+    has_inf = (
+        bool(np.any(np.abs(model.best_params_) > 1e6))
+        if model.best_params_ is not None
+        else True
+    )
     y_hat = model.predict(X_te_64)
     y_hat = np.nan_to_num(y_hat, nan=0.0, posinf=1e6, neginf=-1e6)
     ss_res = float(np.sum((y_te - y_hat) ** 2))
@@ -169,9 +195,13 @@ def vuln_v2_hilbert_stability(rows: List[Dict[str, Any]], seed: int) -> Dict[str
     }
 
 
-def vuln_v3_composite_roundtrip(rows: List[Dict[str, Any]], seed: int) -> Dict[str, Any]:
+def vuln_v3_composite_roundtrip(
+    rows: List[Dict[str, Any]], seed: int
+) -> Dict[str, Any]:
     """V3: ``HilbertASTSRComposite.fit()`` → ``predict()`` is consistent."""
-    from molmetal.molmetal_lam.reward.hilbert_astsr_integration import HilbertASTSRComposite
+    from molmetal.molmetal_lam.reward.hilbert_astsr_integration import (
+        HilbertASTSRComposite,
+    )
     from molmetal.molmetal_lam.reward.hilbert_primal_dual import LambdaASTSRHilbert
     from molmetal.molmetal_lam.reward.lambda_astsr import LambdaASTSR
 
@@ -187,24 +217,34 @@ def vuln_v3_composite_roundtrip(rows: List[Dict[str, Any]], seed: int) -> Dict[s
     y_tr, y_te = y[train_idx], y[test_idx]
 
     astsr = LambdaASTSR(
-        depth=2, population=8, generations=4, seed=seed,
+        depth=2,
+        population=8,
+        generations=4,
+        seed=seed,
         feature_names=tuple(range(X_tr_n.shape[1])),
     )
     hilbert = LambdaASTSRHilbert(
-        population_dim=HILBERT_DIM, lr_primal=0.05, lr_dual=0.05,
-        n_iters=100, seed=seed,
+        population_dim=HILBERT_DIM,
+        lr_primal=0.05,
+        lr_dual=0.05,
+        n_iters=100,
+        seed=seed,
     )
     model = HilbertASTSRComposite(
-        lambda_astsr=astsr, hilbert_optimizer=hilbert,
+        lambda_astsr=astsr,
+        hilbert_optimizer=hilbert,
         feature_columns=tuple(range(X_tr_n.shape[1])),
-        use_hilbert=True, population_dim=HILBERT_DIM,
+        use_hilbert=True,
+        population_dim=HILBERT_DIM,
     )
     info = model.fit(X_tr_64, y_tr)
     y_hat = model.predict(X_te_64)
     y_hat = np.nan_to_num(y_hat, nan=0.0, posinf=1e6, neginf=-1e6)
     n_finite = int(np.sum(np.isfinite(y_hat)))
     n_test_actual = int(y_hat.shape[0])
-    verdict = "OK" if (n_finite == n_test_actual and info.get("r2") is not None) else "FAIL"
+    verdict = (
+        "OK" if (n_finite == n_test_actual and info.get("r2") is not None) else "FAIL"
+    )
     return {
         "verdict": verdict,
         "info_r2": float(info.get("r2", float("nan"))),
@@ -226,29 +266,37 @@ def vuln_v4_lambda_ast_extremes(seed: int) -> Dict[str, Any]:
     n_extreme_failures: List[Dict[str, Any]] = []
     for i in range(10):
         ast = random_ast(rng, feats, max_depth=3, p_var=0.5)
-        for j, row in enumerate([
-            {"x" + str(k): 1e10 for k in range(8)},
-            {"x" + str(k): -1e10 for k in range(8)},
-            {"x" + str(k): 0.0 for k in range(8)},
-            {"x" + str(k): float("nan") for k in range(8)},
-        ]):
+        for j, row in enumerate(
+            [
+                {"x" + str(k): 1e10 for k in range(8)},
+                {"x" + str(k): -1e10 for k in range(8)},
+                {"x" + str(k): 0.0 for k in range(8)},
+                {"x" + str(k): float("nan") for k in range(8)},
+            ]
+        ):
             n_total += 1
             try:
                 val = ast.evaluate(row)
                 if math.isfinite(val):
                     n_finite += 1
                 elif i < 3:  # Only log first 3 extreme-failures per AST
-                    n_extreme_failures.append({
+                    n_extreme_failures.append(
+                        {
+                            "ast_idx": i,
+                            "row_idx": j,
+                            "value": float(val)
+                            if not (math.isinf(val) or math.isnan(val))
+                            else str(val),
+                        }
+                    )
+            except Exception as exc:
+                n_extreme_failures.append(
+                    {
                         "ast_idx": i,
                         "row_idx": j,
-                        "value": float(val) if not (math.isinf(val) or math.isnan(val)) else str(val),
-                    })
-            except Exception as exc:
-                n_extreme_failures.append({
-                    "ast_idx": i,
-                    "row_idx": j,
-                    "exception": f"{type(exc).__name__}: {exc}"[:120],
-                })
+                        "exception": f"{type(exc).__name__}: {exc}"[:120],
+                    }
+                )
     finite_rate = n_finite / max(1, n_total)
     verdict = "OK" if finite_rate >= 0.5 else "FAIL"
     return {
@@ -278,14 +326,22 @@ def vuln_v5_reproducibility(rows: List[Dict[str, Any]], seed: int) -> Dict[str, 
     fnames = tuple(range(X_tr.shape[1]))
 
     model_a = LambdaASTSR(
-        depth=2, population=8, generations=4, seed=seed, feature_names=fnames,
+        depth=2,
+        population=8,
+        generations=4,
+        seed=seed,
+        feature_names=fnames,
     )
     model_a.fit(X_tr, y_tr)
     r2_a = float(model_a.best_r2_train_)
     s_a = model_a.best_ast_.to_lambda_string() if model_a.best_ast_ is not None else ""
 
     model_b = LambdaASTSR(
-        depth=2, population=8, generations=4, seed=seed, feature_names=fnames,
+        depth=2,
+        population=8,
+        generations=4,
+        seed=seed,
+        feature_names=fnames,
     )
     model_b.fit(X_tr, y_tr)
     r2_b = float(model_b.best_r2_train_)
@@ -319,8 +375,11 @@ def vuln_v6_seed_spread(rows: List[Dict[str, Any]], seeds: List[int]) -> Dict[st
         X_tr_64, X_te_64 = pad_to_hilbert_dim(X_tr_n, HILBERT_DIM, X_te_n)
         y_tr, y_te = y[train_idx], y[test_idx]
         model = LambdaASTSRHilbert(
-            population_dim=HILBERT_DIM, lr_primal=0.05, lr_dual=0.05,
-            n_iters=200, seed=seed,
+            population_dim=HILBERT_DIM,
+            lr_primal=0.05,
+            lr_dual=0.05,
+            n_iters=200,
+            seed=seed,
         )
         model.optimize(X_tr_64, y_tr)
         y_hat = model.predict(X_te_64)

@@ -58,15 +58,15 @@ def test_cisplatin_Pt_II_CN4():
     probe = probe_coordination(SMILES_CISPLATIN_BRACKET)
     assert probe is not None, "Cisplatin must produce a probe (metal centre present)"
     assert probe.metal == "Pt", f"Expected metal=Pt, got {probe.metal!r}"
-    assert probe.oxidation_state == 2, (
-        f"Expected Pt oxidation state=2 (default for Pt), got {probe.oxidation_state}"
-    )
-    assert probe.coordination_number == 4, (
-        f"Cisplatin must have CN=4 (2 NH3 + 2 Cl), got {probe.coordination_number}"
-    )
-    assert probe.geometry == "square_planar", (
-        f"CN=4 -> square_planar, got {probe.geometry!r}"
-    )
+    assert (
+        probe.oxidation_state == 2
+    ), f"Expected Pt oxidation state=2 (default for Pt), got {probe.oxidation_state}"
+    assert (
+        probe.coordination_number == 4
+    ), f"Cisplatin must have CN=4 (2 NH3 + 2 Cl), got {probe.coordination_number}"
+    assert (
+        probe.geometry == "square_planar"
+    ), f"CN=4 -> square_planar, got {probe.geometry!r}"
     assert probe.is_compliant is True, (
         f"Cisplatin should be compliant (Pt(II) CN=4 matches canonical), "
         f"got is_compliant={probe.is_compliant}, diagnostics={probe.diagnostics}"
@@ -83,18 +83,16 @@ def test_Pt_IV_CN6():
     probe = probe_coordination(SMILES_PT_IV_OCTAHEDRAL)
     assert probe is not None
     assert probe.metal == "Pt", f"Expected Pt, got {probe.metal!r}"
-    assert probe.oxidation_state == 4, (
-        f"Expected OS=4 from [Pt+4] bracket, got {probe.oxidation_state}"
-    )
-    assert probe.coordination_number == 6, (
-        f"Pt(IV) octahedral should have CN=6, got {probe.coordination_number}"
-    )
-    assert probe.geometry == "octahedral", (
-        f"CN=6 -> octahedral, got {probe.geometry!r}"
-    )
-    assert probe.is_compliant is True, (
-        f"Pt(IV) CN=6 must be compliant, got diagnostics={probe.diagnostics}"
-    )
+    assert (
+        probe.oxidation_state == 4
+    ), f"Expected OS=4 from [Pt+4] bracket, got {probe.oxidation_state}"
+    assert (
+        probe.coordination_number == 6
+    ), f"Pt(IV) octahedral should have CN=6, got {probe.coordination_number}"
+    assert probe.geometry == "octahedral", f"CN=6 -> octahedral, got {probe.geometry!r}"
+    assert (
+        probe.is_compliant is True
+    ), f"Pt(IV) CN=6 must be compliant, got diagnostics={probe.diagnostics}"
     # Diagnostics must reflect bracket-based OS inference.
     assert probe.diagnostics.get("os_source") == "bracket", (
         f"OS should be sourced from [Pt+4] bracket, got "
@@ -116,14 +114,14 @@ def test_Ru_III_CN6():
     probe = probe_coordination(SMILES_RU_III_OCTAHEDRAL)
     assert probe is not None
     assert probe.metal == "Ru", f"Expected Ru, got {probe.metal!r}"
-    assert probe.oxidation_state == 3, (
-        f"Expected OS=3 from [Ru+3] bracket, got {probe.oxidation_state}"
-    )
+    assert (
+        probe.oxidation_state == 3
+    ), f"Expected OS=3 from [Ru+3] bracket, got {probe.oxidation_state}"
     assert probe.coordination_number == 6
     assert probe.geometry == "octahedral"
-    assert probe.is_compliant is True, (
-        f"Ru(III) CN=6 octahedral must be compliant, diagnostics={probe.diagnostics}"
-    )
+    assert (
+        probe.is_compliant is True
+    ), f"Ru(III) CN=6 octahedral must be compliant, diagnostics={probe.diagnostics}"
 
 
 # ---------------------------------------------------------------------------
@@ -148,9 +146,9 @@ def test_oxidation_state_parsing():
         f"Au(I) linear must have CN=2 (one alkyne carbon), "
         f"got {probe_au_i.coordination_number}"
     )
-    assert probe_au_i.geometry == "linear", (
-        f"CN=2 -> linear, got {probe_au_i.geometry!r}"
-    )
+    assert (
+        probe_au_i.geometry == "linear"
+    ), f"CN=2 -> linear, got {probe_au_i.geometry!r}"
 
     # Au(III) square-planar: 4-coordinate (charge-tagged bracket)
     probe_au_iii = probe_coordination(SMILES_AU_III_SQUARE)
@@ -185,15 +183,15 @@ def test_nonmetal_smiles_returns_none():
     """
     from molmetal.molmetal_lam.sbdd_env.metal_coord_probe import probe_coordination
 
-    assert probe_coordination(SMILES_ORGANIC_BENZENE) is None, (
-        "Benzene (no metal) must return None"
-    )
-    assert probe_coordination(SMILES_ORGANIC_ETHANOL) is None, (
-        "Ethanol (no metal) must return None"
-    )
-    assert probe_coordination("c1ccc(O)cc1") is None, (
-        "Phenol (no metal) must return None"
-    )
+    assert (
+        probe_coordination(SMILES_ORGANIC_BENZENE) is None
+    ), "Benzene (no metal) must return None"
+    assert (
+        probe_coordination(SMILES_ORGANIC_ETHANOL) is None
+    ), "Ethanol (no metal) must return None"
+    assert (
+        probe_coordination("c1ccc(O)cc1") is None
+    ), "Phenol (no metal) must return None"
 
 
 # ---------------------------------------------------------------------------
@@ -256,15 +254,17 @@ def test_geometry_classifier_table():
 
     # End-to-end: CN=5 around Pt -> "square_pyramidal" label.
     # Build a SMILES with explicit Pt bonded to 5 heavy atoms.
-    smi_cn5 = "[Pt](N)(N)(N)(N)(Cl)"  # 5 heavy-atom bonds around Pt (connected bracket form)
+    smi_cn5 = (
+        "[Pt](N)(N)(N)(N)(Cl)"  # 5 heavy-atom bonds around Pt (connected bracket form)
+    )
     probe_cn5 = probe_coordination(smi_cn5)
     assert probe_cn5 is not None
-    assert probe_cn5.coordination_number == 5, (
-        f"CN=5 expected, got {probe_cn5.coordination_number}"
-    )
-    assert probe_cn5.geometry == "square_pyramidal", (
-        f"CN=5 -> square_pyramidal, got {probe_cn5.geometry!r}"
-    )
+    assert (
+        probe_cn5.coordination_number == 5
+    ), f"CN=5 expected, got {probe_cn5.coordination_number}"
+    assert (
+        probe_cn5.geometry == "square_pyramidal"
+    ), f"CN=5 -> square_pyramidal, got {probe_cn5.geometry!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -337,9 +337,9 @@ def test_smoke_3_smiles_batch():
     assert probes[1].metal == "Pt"
     assert probes[1].coordination_number == 8
     assert probes[1].geometry == "cubic"
-    assert probes[1].is_compliant is False, (
-        "CN=8 around Pt must NOT be compliant (no canonical Pt-CN=8)"
-    )
+    assert (
+        probes[1].is_compliant is False
+    ), "CN=8 around Pt must NOT be compliant (no canonical Pt-CN=8)"
 
     # (c) organic -> None
     assert probes[2] is None
@@ -347,15 +347,15 @@ def test_smoke_3_smiles_batch():
     # Compliance rate: only (a) compliant out of 2 considered (organic
     # excluded).  Expected 1/2 = 0.5.
     rate = compliance_rate(smiles_batch)
-    assert math.isclose(rate, 0.5, abs_tol=1e-9), (
-        f"Expected compliance_rate=0.5 (1/2 considered), got {rate:.4f}"
-    )
+    assert math.isclose(
+        rate, 0.5, abs_tol=1e-9
+    ), f"Expected compliance_rate=0.5 (1/2 considered), got {rate:.4f}"
 
     # All-organic batch -> 0.0 compliance rate (metric does not fire).
     rate_organic = compliance_rate([SMILES_ORGANIC_BENZENE, SMILES_ORGANIC_ETHANOL])
-    assert rate_organic == 0.0, (
-        f"All-organic batch must yield compliance_rate=0.0, got {rate_organic:.4f}"
-    )
+    assert (
+        rate_organic == 0.0
+    ), f"All-organic batch must yield compliance_rate=0.0, got {rate_organic:.4f}"
 
 
 # ---------------------------------------------------------------------------
@@ -408,13 +408,13 @@ def test_cisplatin_multi_component_form():
     from molmetal.molmetal_lam.sbdd_env.metal_coord_probe import probe_coordination
 
     probe = probe_coordination(SMILES_CISPLATIN)
-    assert probe is not None, (
-        "Multi-component cisplatin must produce a probe (Pt centre present)"
-    )
+    assert (
+        probe is not None
+    ), "Multi-component cisplatin must produce a probe (Pt centre present)"
     assert probe.metal == "Pt"
-    assert probe.oxidation_state == 2, (
-        f"Pt without bracket charge -> default OS=2, got {probe.oxidation_state}"
-    )
+    assert (
+        probe.oxidation_state == 2
+    ), f"Pt without bracket charge -> default OS=2, got {probe.oxidation_state}"
     # CN=0 because RDKit parses each dot-separated fragment as a
     # disconnected molecule — Pt has no bonded heavy atoms in this
     # representation.  This is the documented honest limitation.
@@ -423,9 +423,9 @@ def test_cisplatin_multi_component_form():
         f"got {probe.coordination_number}"
     )
     # Therefore not compliant in this representation.
-    assert probe.is_compliant is False, (
-        "Multi-component cisplatin with CN=0 must NOT be compliant"
-    )
+    assert (
+        probe.is_compliant is False
+    ), "Multi-component cisplatin with CN=0 must NOT be compliant"
 
 
 # ---------------------------------------------------------------------------
@@ -467,9 +467,9 @@ def test_compliance_rate_aggregation():
     # 1 compliant + 1 non-compliant (CN=8 around Pt)
     mixed = [SMILES_CISPLATIN_BRACKET, "[Pt](N)(N)(N)(N)(N)(N)(N)(N)"]
     rate_mixed = compliance_rate(mixed)
-    assert math.isclose(rate_mixed, 0.5, abs_tol=1e-9), (
-        f"Expected 1/2 = 0.5, got {rate_mixed:.4f}"
-    )
+    assert math.isclose(
+        rate_mixed, 0.5, abs_tol=1e-9
+    ), f"Expected 1/2 = 0.5, got {rate_mixed:.4f}"
 
     # All-organic: denominator is empty → 0.0 (the metric does not fire).
     organics = [SMILES_ORGANIC_BENZENE, SMILES_ORGANIC_ETHANOL, "c1ccc(O)cc1"]

@@ -136,16 +136,16 @@ def test_g1_script_exists_at_canonical_path():
     """The dashboard script MUST exist at
     ``molmetal/scripts/paper_dashboard.py``."""
     script_path = SCRIPT_DIR / "paper_dashboard.py"
-    assert script_path.is_file(), (
-        f"G1 FAIL: paper_dashboard.py not found at {script_path}"
-    )
+    assert (
+        script_path.is_file()
+    ), f"G1 FAIL: paper_dashboard.py not found at {script_path}"
     # Sanity-check the file is non-empty and contains the expected module
     # docstring so we know it's our script and not a stale placeholder.
     text = script_path.read_text(encoding="utf-8")
     assert len(text) > 1000, "script body too short; suspect placeholder"
-    assert "Wf-265-Dashboard" in text, (
-        "Wf-265-Dashboard token missing — wrong script on disk"
-    )
+    assert (
+        "Wf-265-Dashboard" in text
+    ), "Wf-265-Dashboard token missing — wrong script on disk"
 
 
 # ---------------------------------------------------------------------------
@@ -167,9 +167,9 @@ def test_g2_cli_exposes_contract_flags():
     # argparse so the flag strings appear in the source.
     text = (SCRIPT_DIR / "paper_dashboard.py").read_text(encoding="utf-8")
     for flag in flags:
-        assert flag in text, (
-            f"G2 FAIL: CLI flag {flag} not present in paper_dashboard.py source"
-        )
+        assert (
+            flag in text
+        ), f"G2 FAIL: CLI flag {flag} not present in paper_dashboard.py source"
     # And the argparse parser object exposes them too.
     parser = paper_dashboard._build_arg_parser()
     # Argparse stores dest names; we can introspect by re-parsing with
@@ -179,9 +179,9 @@ def test_g2_cli_exposes_contract_flags():
         # dest is in the parser's _actions.
         dest = flag.lstrip("-").replace("-", "_")
         action_dests = {a.dest for a in parser._actions}
-        assert dest in action_dests, (
-            f"G2 FAIL: argparse dest {dest} missing from parser actions"
-        )
+        assert (
+            dest in action_dests
+        ), f"G2 FAIL: argparse dest {dest} missing from parser actions"
 
 
 # ---------------------------------------------------------------------------
@@ -199,9 +199,7 @@ def test_g3_emitted_html_contains_metrics(tmp_path: Path):
     paper_doc = tmp_path / "stub_paper.md"
     paper_doc.write_text(STUB_PAPER_DOC_TEXT, encoding="utf-8")
     collect_json = tmp_path / "stub_collect.json"
-    collect_json.write_text(
-        json.dumps(STUB_COLLECT_JSON, indent=2), encoding="utf-8"
-    )
+    collect_json.write_text(json.dumps(STUB_COLLECT_JSON, indent=2), encoding="utf-8")
     out_html = tmp_path / "dashboard.html"
 
     obj = paper_dashboard.build_dashboard_html(
@@ -212,9 +210,9 @@ def test_g3_emitted_html_contains_metrics(tmp_path: Path):
         collect_data=STUB_COLLECT_JSON,
         verbose=False,
     )
-    assert obj["schema_valid"] is True, (
-        f"G3 FAIL: schema_valid=False: {obj.get('error', '?')}"
-    )
+    assert (
+        obj["schema_valid"] is True
+    ), f"G3 FAIL: schema_valid=False: {obj.get('error', '?')}"
     html_str = obj["html"]
 
     # Required verbatim tokens — must all appear.
@@ -248,9 +246,9 @@ def test_g3_emitted_html_contains_metrics(tmp_path: Path):
     # Per-claim card count = catalog length; verify at least 5 claims
     # were rendered (we ship 20 in the catalog).
     n_claim_cards = html_str.count('class="claim-card"')
-    assert n_claim_cards >= 5, (
-        f"G3 FAIL: only {n_claim_cards} claim cards in HTML (expected ≥ 5)"
-    )
+    assert (
+        n_claim_cards >= 5
+    ), f"G3 FAIL: only {n_claim_cards} claim cards in HTML (expected ≥ 5)"
 
     # Write to disk and verify file is non-empty.
     out_html.write_text(html_str, encoding="utf-8")
@@ -296,9 +294,7 @@ def test_g5_dashboard_cli_end_to_end(tmp_path: Path):
     paper_doc = tmp_path / "stub_paper.md"
     paper_doc.write_text(STUB_PAPER_DOC_TEXT, encoding="utf-8")
     collect_json = tmp_path / "stub_collect.json"
-    collect_json.write_text(
-        json.dumps(STUB_COLLECT_JSON, indent=2), encoding="utf-8"
-    )
+    collect_json.write_text(json.dumps(STUB_COLLECT_JSON, indent=2), encoding="utf-8")
     out_html = tmp_path / "out_dashboard.html"
 
     cmd = [
@@ -312,9 +308,7 @@ def test_g5_dashboard_cli_end_to_end(tmp_path: Path):
         str(out_html),
         "--verbose",
     ]
-    proc = subprocess.run(
-        cmd, capture_output=True, text=True, timeout=60, check=False
-    )
+    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60, check=False)
     if proc.returncode != 0:
         pytest.fail(
             f"G5 FAIL: paper_dashboard.py exited {proc.returncode}; "
@@ -346,9 +340,7 @@ def test_g6_v3_fallback_section_in_html(tmp_path: Path):
     paper_doc = tmp_path / "stub_paper.md"
     paper_doc.write_text(STUB_PAPER_DOC_TEXT, encoding="utf-8")
     collect_json = tmp_path / "stub_collect.json"
-    collect_json.write_text(
-        json.dumps(STUB_COLLECT_JSON, indent=2), encoding="utf-8"
-    )
+    collect_json.write_text(json.dumps(STUB_COLLECT_JSON, indent=2), encoding="utf-8")
 
     obj = paper_dashboard.build_dashboard_html(
         paper_doc=paper_doc,
@@ -370,18 +362,16 @@ def test_g6_v3_fallback_section_in_html(tmp_path: Path):
         "claim_chemprop_v3_fallback_official",
     ]
     missing = [t for t in required_tokens if t not in html_str]
-    assert not missing, (
-        f"G6 FAIL: HTML missing v3-fallback tokens: {missing}"
-    )
+    assert not missing, f"G6 FAIL: HTML missing v3-fallback tokens: {missing}"
 
     # Confirm the chemprop_v3_fallback cohort is in the build JSON
-    assert "chemprop_v3_fallback" in obj["cohorts"], (
-        "G6 FAIL: chemprop_v3_fallback cohort missing from build JSON"
-    )
+    assert (
+        "chemprop_v3_fallback" in obj["cohorts"]
+    ), "G6 FAIL: chemprop_v3_fallback cohort missing from build JSON"
     cohort = obj["cohorts"]["chemprop_v3_fallback"]
-    assert cohort.get("n_files_modified") == 3, (
-        f"G6 FAIL: expected n_files_modified=3, got {cohort.get('n_files_modified')}"
-    )
+    assert (
+        cohort.get("n_files_modified") == 3
+    ), f"G6 FAIL: expected n_files_modified=3, got {cohort.get('n_files_modified')}"
 
 
 def test_g7_v3_lomo_fix_section_in_html(tmp_path: Path):
@@ -391,9 +381,7 @@ def test_g7_v3_lomo_fix_section_in_html(tmp_path: Path):
     paper_doc = tmp_path / "stub_paper.md"
     paper_doc.write_text(STUB_PAPER_DOC_TEXT, encoding="utf-8")
     collect_json = tmp_path / "stub_collect.json"
-    collect_json.write_text(
-        json.dumps(STUB_COLLECT_JSON, indent=2), encoding="utf-8"
-    )
+    collect_json.write_text(json.dumps(STUB_COLLECT_JSON, indent=2), encoding="utf-8")
 
     obj = paper_dashboard.build_dashboard_html(
         paper_doc=paper_doc,
@@ -416,18 +404,16 @@ def test_g7_v3_lomo_fix_section_in_html(tmp_path: Path):
         "claim_wf266_v3_fix_mode",
     ]
     missing = [t for t in required_tokens if t not in html_str]
-    assert not missing, (
-        f"G7 FAIL: HTML missing Wf-266 LOMO fix tokens: {missing}"
-    )
+    assert not missing, f"G7 FAIL: HTML missing Wf-266 LOMO fix tokens: {missing}"
 
-    assert "wf266_lomo_fix" in obj["cohorts"], (
-        "G7 FAIL: wf266_lomo_fix cohort missing from build JSON"
-    )
+    assert (
+        "wf266_lomo_fix" in obj["cohorts"]
+    ), "G7 FAIL: wf266_lomo_fix cohort missing from build JSON"
     cohort = obj["cohorts"]["wf266_lomo_fix"]
     # 3 flag rows in the cohort
-    assert len(cohort.get("rows", [])) == 3, (
-        f"G7 FAIL: expected 3 flag rows, got {len(cohort.get('rows', []))}"
-    )
+    assert (
+        len(cohort.get("rows", [])) == 3
+    ), f"G7 FAIL: expected 3 flag rows, got {len(cohort.get('rows', []))}"
 
 
 def test_g8_g4_per_metal_table_in_cohort(tmp_path: Path):
@@ -437,9 +423,7 @@ def test_g8_g4_per_metal_table_in_cohort(tmp_path: Path):
     paper_doc = tmp_path / "stub_paper.md"
     paper_doc.write_text(STUB_PAPER_DOC_TEXT, encoding="utf-8")
     collect_json = tmp_path / "stub_collect.json"
-    collect_json.write_text(
-        json.dumps(STUB_COLLECT_JSON, indent=2), encoding="utf-8"
-    )
+    collect_json.write_text(json.dumps(STUB_COLLECT_JSON, indent=2), encoding="utf-8")
 
     obj = paper_dashboard.build_dashboard_html(
         paper_doc=paper_doc,
@@ -460,19 +444,17 @@ def test_g8_g4_per_metal_table_in_cohort(tmp_path: Path):
         "claim_todo_180_g4_overall_15pair",
     ]
     missing = [t for t in required_tokens if t not in html_str]
-    assert not missing, (
-        f"G8 FAIL: HTML missing TODO-180 G4 table tokens: {missing}"
-    )
+    assert not missing, f"G8 FAIL: HTML missing TODO-180 G4 table tokens: {missing}"
 
     # The chemprop cohort has the per-metal aggregate from the stub
     cohort = obj["cohorts"]["chemprop_v2_v3"]
-    assert len(cohort.get("rows", [])) >= 2, (
-        f"G8 FAIL: chemprop cohort rows < 2: {len(cohort.get('rows', []))}"
-    )
+    assert (
+        len(cohort.get("rows", [])) >= 2
+    ), f"G8 FAIL: chemprop cohort rows < 2: {len(cohort.get('rows', []))}"
     metals = {r.get("metal") for r in cohort.get("rows", [])}
-    assert "Ru" in metals and "Ir" in metals, (
-        f"G8 FAIL: chemprop cohort missing Ru/Ir metals: {metals}"
-    )
+    assert (
+        "Ru" in metals and "Ir" in metals
+    ), f"G8 FAIL: chemprop cohort missing Ru/Ir metals: {metals}"
 
 
 def test_g9_badge_discipline_explicit(tmp_path: Path):
@@ -483,9 +465,7 @@ def test_g9_badge_discipline_explicit(tmp_path: Path):
     paper_doc = tmp_path / "stub_paper.md"
     paper_doc.write_text(STUB_PAPER_DOC_TEXT, encoding="utf-8")
     collect_json = tmp_path / "stub_collect.json"
-    collect_json.write_text(
-        json.dumps(STUB_COLLECT_JSON, indent=2), encoding="utf-8"
-    )
+    collect_json.write_text(json.dumps(STUB_COLLECT_JSON, indent=2), encoding="utf-8")
 
     obj = paper_dashboard.build_dashboard_html(
         paper_doc=paper_doc,
@@ -506,22 +486,20 @@ def test_g9_badge_discipline_explicit(tmp_path: Path):
         "badge-summary",
     ]
     missing = [t for t in required_tokens if t not in html_str]
-    assert not missing, (
-        f"G9 FAIL: HTML missing badge discipline tokens: {missing}"
-    )
+    assert not missing, f"G9 FAIL: HTML missing badge discipline tokens: {missing}"
 
     # update_report.badge_counts must have MEASURED, PROJECTED, honest-negative
     update_report = obj.get("update_report") or {}
     bc = update_report.get("badge_counts") or {}
     for key in ("MEASURED", "PROJECTED", "honest-negative"):
         assert key in bc, f"G9 FAIL: badge_counts missing key {key}"
-        assert isinstance(bc[key], int), (
-            f"G9 FAIL: badge_counts[{key}] is not int: {bc[key]!r}"
-        )
+        assert isinstance(
+            bc[key], int
+        ), f"G9 FAIL: badge_counts[{key}] is not int: {bc[key]!r}"
     # Total claims = sum of badge_counts
-    assert sum(bc.values()) == obj["n_claims"], (
-        f"G9 FAIL: sum(badge_counts)={sum(bc.values())} != n_claims={obj['n_claims']}"
-    )
+    assert (
+        sum(bc.values()) == obj["n_claims"]
+    ), f"G9 FAIL: sum(badge_counts)={sum(bc.values())} != n_claims={obj['n_claims']}"
 
 
 def test_g10_update_report_present(tmp_path: Path):
@@ -532,9 +510,7 @@ def test_g10_update_report_present(tmp_path: Path):
     paper_doc = tmp_path / "stub_paper.md"
     paper_doc.write_text(STUB_PAPER_DOC_TEXT, encoding="utf-8")
     collect_json = tmp_path / "stub_collect.json"
-    collect_json.write_text(
-        json.dumps(STUB_COLLECT_JSON, indent=2), encoding="utf-8"
-    )
+    collect_json.write_text(json.dumps(STUB_COLLECT_JSON, indent=2), encoding="utf-8")
 
     obj = paper_dashboard.build_dashboard_html(
         paper_doc=paper_doc,
@@ -547,12 +523,12 @@ def test_g10_update_report_present(tmp_path: Path):
     assert obj["schema_valid"] is True
     update_report = obj.get("update_report")
     assert update_report is not None, "G10 FAIL: update_report missing"
-    assert update_report["wf_id"] == "Wf-268C-Dash", (
-        f"G10 FAIL: wf_id != Wf-268C-Dash: {update_report['wf_id']!r}"
-    )
-    assert update_report["n_new_claims_added"] >= 1, (
-        f"G10 FAIL: n_new_claims_added < 1: {update_report['n_new_claims_added']}"
-    )
+    assert (
+        update_report["wf_id"] == "Wf-268C-Dash"
+    ), f"G10 FAIL: wf_id != Wf-268C-Dash: {update_report['wf_id']!r}"
+    assert (
+        update_report["n_new_claims_added"] >= 1
+    ), f"G10 FAIL: n_new_claims_added < 1: {update_report['n_new_claims_added']}"
     assert update_report["n_new_honest_negatives_added"] >= 1, (
         f"G10 FAIL: n_new_honest_negatives_added < 1: "
         f"{update_report['n_new_honest_negatives_added']}"

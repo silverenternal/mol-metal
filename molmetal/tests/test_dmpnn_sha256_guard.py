@@ -84,6 +84,7 @@ def test_guard_module_imports() -> None:
         sha256_of_file,
         target_path,
     )
+
     assert GUARD_TAG == "[wf120-dmpnn-sha256-guard]"
     assert callable(sha256_of_file)
     assert callable(pre_train_sha256_overwrite_guard)
@@ -128,9 +129,9 @@ def test_parse_dmpnn_filename_valid_and_invalid() -> None:
     invalid = [
         "affinity_platinai_seed0.pt",
         "dmpnn_pic50_xx_seed0.pt",  # unknown metal
-        "dmpnn_pic50_ru.pt",        # no seed suffix
+        "dmpnn_pic50_ru.pt",  # no seed suffix
         "dmpnn_pic50_ru_seedA.pt",  # non-numeric seed
-        "dmpnn_pic50_ru_seed.pt",   # empty seed
+        "dmpnn_pic50_ru_seed.pt",  # empty seed
     ]
     for bad in invalid:
         assert parse_dmpnn_filename(Path(bad)) is None, bad
@@ -221,7 +222,9 @@ def test_post_save_guard_returns_sha_on_unique_save(tmp_path: Path) -> None:
     buf = io.StringIO()
     with redirect_stdout(buf):
         new_sha = post_save_sha256_overwrite_guard(
-            metal="Rh", seed=0, ckpt_dir=tmp_path,
+            metal="Rh",
+            seed=0,
+            ckpt_dir=tmp_path,
         )
 
     expected_sha = sha256_of_file(new_ckpt)
@@ -262,14 +265,14 @@ def test_post_save_guard_raises_and_removes_on_collision(tmp_path: Path) -> None
     with redirect_stdout(buf):
         with pytest.raises(RuntimeError, match="refusing to keep"):
             post_save_sha256_overwrite_guard(
-                metal="Rh", seed=1, ckpt_dir=tmp_path,
+                metal="Rh",
+                seed=1,
+                ckpt_dir=tmp_path,
                 # default remove_on_fail=True
             )
 
     # Rollback: the just-written file is removed
-    assert not target.exists(), (
-        "post-save guard removed the colliding file (rollback)"
-    )
+    assert not target.exists(), "post-save guard removed the colliding file (rollback)"
 
     # Sibling must still be intact
     sibling = tmp_path / "dmpnn_pic50_rh_seed0.pt"
@@ -306,7 +309,9 @@ def test_post_save_guard_raises_without_remove_when_flag_false(tmp_path: Path) -
 
     with pytest.raises(RuntimeError, match="refusing to keep"):
         post_save_sha256_overwrite_guard(
-            metal="Rh", seed=1, ckpt_dir=tmp_path,
+            metal="Rh",
+            seed=1,
+            ckpt_dir=tmp_path,
             remove_on_fail=False,
         )
 
@@ -328,7 +333,9 @@ def test_post_save_guard_raises_when_target_missing(tmp_path: Path) -> None:
     # Empty dir → no target on disk
     with pytest.raises(FileNotFoundError, match="does not exist"):
         post_save_sha256_overwrite_guard(
-            metal="Rh", seed=0, ckpt_dir=tmp_path,
+            metal="Rh",
+            seed=0,
+            ckpt_dir=tmp_path,
         )
 
 

@@ -8,6 +8,7 @@ interrupted mid-run; the consolidation is honest about the
 interrupted seeds (which we ran with --n-samples 25 to keep wall
 cheap).
 """
+
 from __future__ import annotations
 import json
 import sys
@@ -59,8 +60,7 @@ def main() -> int:
         "target_met": bool(overall >= TARGET),
         "overall_pb_pass_rate_last_seed": float(overall),
         "per_dataset_last_seed": {
-            ds: rates[-1] if rates else 0.0
-            for ds, rates in per_dataset_rates.items()
+            ds: rates[-1] if rates else 0.0 for ds, rates in per_dataset_rates.items()
         },
         "per_dataset_seed_history": per_dataset_rates,
         "per_dataset_aggregate": per_dataset_aggregate,
@@ -84,9 +84,7 @@ def main() -> int:
     md.append(
         f"**Status**: {'SHIP (target met)' if overall >= TARGET else 'HONEST-NEGATIVE'}\n"
     )
-    md.append(
-        f"**Datasets**: {', '.join(per_dataset_rates.keys())}\n"
-    )
+    md.append(f"**Datasets**: {', '.join(per_dataset_rates.keys())}\n")
     md.append(
         f"**Seeds**: 5/5/5 (platinai / metalcytotox / tmqm) × 25 samples = "
         f"{5*3*25} PB checks\n"
@@ -106,15 +104,17 @@ def main() -> int:
         )
     md.append("\n## Per-seed history\n")
     n_seeds_max = max((len(v) for v in per_dataset_rates.values()), default=0)
-    md.append("| Dataset | " + " | ".join(f"seed_{i}" for i in range(n_seeds_max)) + " |")
+    md.append(
+        "| Dataset | " + " | ".join(f"seed_{i}" for i in range(n_seeds_max)) + " |"
+    )
     md.append("|---|" + "|".join(["---:"] * n_seeds_max) + "|")
     for ds, rates in per_dataset_rates.items():
-        md.append(
-            f"| {ds} | " + " | ".join(f"{r:.4f}" for r in rates) + " |"
-        )
+        md.append(f"| {ds} | " + " | ".join(f"{r:.4f}" for r in rates) + " |")
     md.append("\n## Comparability caveat (vs Wf-32 P2 baseline)\n")
     md.append("- **Wf-32 P2 baseline**: DEFER (no MEASURED value — GPU 1 occupancy)")
-    md.append("- **Wf-63 m8 retry** (10 pockets × demo_5_metaldrugs.txt): pass_rate=0.0")
+    md.append(
+        "- **Wf-63 m8 retry** (10 pockets × demo_5_metaldrugs.txt): pass_rate=0.0"
+    )
     md.append("- **Wf-64 Phase 3**: real-dataset SMILES subsample (25/seed/dataset).")
     md.append("")
     md.append("## Failure mode (honest framing)\n")
@@ -126,7 +126,9 @@ def main() -> int:
         "with explicit metal centers). The dominant failure checks are:"
     )
     md.append("- `all_atoms_connected` — disconnected fragments (counterions)")
-    md.append("- `internal_steric_clash` — close non-bonded contacts in multi-coordinate complexes")
+    md.append(
+        "- `internal_steric_clash` — close non-bonded contacts in multi-coordinate complexes"
+    )
     md.append("- `InChI creation` errors — unrecognized bond types / charges")
     md.append("")
     md.append(

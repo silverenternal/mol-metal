@@ -20,6 +20,7 @@ This module intentionally ships thin — the heavy lifting lives in the
 canonical scripts under :mod:`molmetal.scripts`.  We dispatch by
 subcommand and exit-code propagate from the called script.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -46,6 +47,7 @@ def _import_subcommand(name: str):
         # point keeps working).
         return globals()[callable_name]
     import importlib
+
     mod = importlib.import_module(module_name)
     return getattr(mod, callable_name)
 
@@ -62,6 +64,7 @@ def _demo_main(argv: Optional[Sequence[str]] = None) -> int:
     project_root = _resolve_project_root()
     sys.path.insert(0, str(project_root))
     import main as _legacy_main  # type: ignore[import-not-found]
+
     _legacy_main.main()
     return 0
 
@@ -69,6 +72,7 @@ def _demo_main(argv: Optional[Sequence[str]] = None) -> int:
 def _resolve_project_root() -> "Path":
     """Walk up from this file's directory until ``pyproject.toml`` is found."""
     from pathlib import Path
+
     here = Path(__file__).resolve().parent.parent  # molmetal/ → project root
     if (here / "pyproject.toml").exists():
         return here
@@ -121,6 +125,7 @@ def cli_main(argv: Optional[Sequence[str]] = None) -> int:
 
     if args.version:
         from molmetal import __version__
+
         print(f"molmetal {__version__}")
         return 0
 

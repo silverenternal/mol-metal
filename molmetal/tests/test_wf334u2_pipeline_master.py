@@ -44,15 +44,16 @@ PIPELINE_MASTER = PROJECT_ROOT / "scripts" / "gpu_pipeline_master.sh"
 #         → TODO-179 → DrugOOD → Wf-135 Phase 2
 # ---------------------------------------------------------------------------
 
+
 def test_pipeline_master_sequential_launch_order():
     """Pipeline master's phase3_gpu1 function must launch wrappers in this order:
 
-        1. Wf-310F frontier Wave B
-        2. Wf-219 §4.1 Ru
-        3. TODO-220 (Wf-310C Part 4)
-        4. TODO-179 W₂ pIC50 (Wf-310C Part 3)
-        5. DrugOOD DANN Phase A (Wf-306A)
-        6. Wf-135 Phase 2 LOMO (Wf-310E Part 1) — USER_OK-gated
+    1. Wf-310F frontier Wave B
+    2. Wf-219 §4.1 Ru
+    3. TODO-220 (Wf-310C Part 4)
+    4. TODO-179 W₂ pIC50 (Wf-310C Part 3)
+    5. DrugOOD DANN Phase A (Wf-306A)
+    6. Wf-135 Phase 2 LOMO (Wf-310E Part 1) — USER_OK-gated
     """
     text = PIPELINE_MASTER.read_text()
 
@@ -79,24 +80,28 @@ def test_pipeline_master_sequential_launch_order():
     # And the gaps should be reasonable (no interleaving)
     for i in range(1, len(positions)):
         gap = positions[i] - positions[i - 1]
-        assert gap > 0, (
-            f"line {expected_lines[i]} appeared BEFORE {expected_lines[i - 1]}"
-        )
+        assert (
+            gap > 0
+        ), f"line {expected_lines[i]} appeared BEFORE {expected_lines[i - 1]}"
 
 
 # ---------------------------------------------------------------------------
 # Test 2: every wrapper referenced in pipeline master exists on disk
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("wrapper_name", [
-    "launch_wf310f_frontier_math_gpu.sh",
-    "launch_wf306b_wf219_ru_gpu.sh",
-    "launch_wf310c_todo220_gpu.sh",
-    "launch_wf310c_t179_w2_gpu.sh",
-    "launch_wf306a_drugood_vina_gpu.sh",
-    "launch_wf310e_wf135_phase2_gpu.sh",
-    "launch_wf333_vina_4step_gpu_bench.sh",
-])
+
+@pytest.mark.parametrize(
+    "wrapper_name",
+    [
+        "launch_wf310f_frontier_math_gpu.sh",
+        "launch_wf306b_wf219_ru_gpu.sh",
+        "launch_wf310c_todo220_gpu.sh",
+        "launch_wf310c_t179_w2_gpu.sh",
+        "launch_wf306a_drugood_vina_gpu.sh",
+        "launch_wf310e_wf135_phase2_gpu.sh",
+        "launch_wf333_vina_4step_gpu_bench.sh",
+    ],
+)
 def test_pipeline_master_wrappers_exist(wrapper_name):
     """Every launcher referenced in pipeline master must resolve to a real file
     on disk in either ``scripts/`` or ``molmetal/scripts/``.
@@ -115,14 +120,13 @@ def test_pipeline_master_wrappers_exist(wrapper_name):
     )
     # And it must be executable
     for f in found:
-        assert os.access(f, os.X_OK), (
-            f"wrapper not executable: {f}"
-        )
+        assert os.access(f, os.X_OK), f"wrapper not executable: {f}"
 
 
 # ---------------------------------------------------------------------------
 # Test 3: Wf-135 Phase 2 wrapper enforces USER_OK=1 gate
 # ---------------------------------------------------------------------------
+
 
 def test_wf135_phase2_user_ok_gate_enforced():
     """Wf-310E Wf-135 Phase 2 wrapper must REFUSE to run without USER_OK=1.
@@ -148,9 +152,9 @@ def test_wf135_phase2_user_ok_gate_enforced():
         f"USER_OK gate REFUSED to enforce: expected exit 64 (EX_USAGE), "
         f"got {proc.returncode}. stderr: {proc.stderr[:500]}"
     )
-    assert "USER_OK" in proc.stderr, (
-        f"stderr missing USER_OK gate message: {proc.stderr[:500]}"
-    )
+    assert (
+        "USER_OK" in proc.stderr
+    ), f"stderr missing USER_OK gate message: {proc.stderr[:500]}"
 
     # With USER_OK=1, --dry-run must succeed
     env_ok = {**os.environ, "USER_OK": "1"}
@@ -171,41 +175,42 @@ def test_wf135_phase2_user_ok_gate_enforced():
 # Test 4: pipeline master CLI supports phase2|phase3|all modes
 # ---------------------------------------------------------------------------
 
+
 def test_pipeline_master_cli_help_invariants():
     """Pipeline master must:
 
-      - start with a shebang
-      - declare set -euo pipefail (or stricter)
-      - declare a phase3_gpu1 function (the 6-step Phase 3 sequence)
-      - declare a phase2_gpu0 function (Wave C GPU 0)
-      - emit a usage message mentioning phase2|phase3|all
-      - reference the correct project root (/home/hugo/codes/mol-metal)
+    - start with a shebang
+    - declare set -euo pipefail (or stricter)
+    - declare a phase3_gpu1 function (the 6-step Phase 3 sequence)
+    - declare a phase2_gpu0 function (Wave C GPU 0)
+    - emit a usage message mentioning phase2|phase3|all
+    - reference the correct project root (/home/hugo/codes/mol-metal)
     """
     text = PIPELINE_MASTER.read_text()
 
     # Shebang
-    assert text.startswith("#!/usr/bin/env bash"), (
-        "pipeline master must start with #!/usr/bin/env bash"
-    )
+    assert text.startswith(
+        "#!/usr/bin/env bash"
+    ), "pipeline master must start with #!/usr/bin/env bash"
 
     # Strict mode
-    assert "set -euo pipefail" in text or "set -uo pipefail" in text, (
-        "pipeline master must use strict mode (set -euo pipefail)"
-    )
+    assert (
+        "set -euo pipefail" in text or "set -uo pipefail" in text
+    ), "pipeline master must use strict mode (set -euo pipefail)"
 
     # Phase functions present
     assert "phase3_gpu1()" in text, "phase3_gpu1() function missing"
     assert "phase2_gpu0()" in text, "phase2_gpu0() function missing"
 
     # Usage
-    assert "phase2" in text and "phase3" in text and "all" in text, (
-        "usage must mention phase2, phase3, all modes"
-    )
+    assert (
+        "phase2" in text and "phase3" in text and "all" in text
+    ), "usage must mention phase2, phase3, all modes"
 
     # Project root
-    assert "/home/hugo/codes/mol-metal" in text, (
-        "pipeline master must reference the project root"
-    )
+    assert (
+        "/home/hugo/codes/mol-metal" in text
+    ), "pipeline master must reference the project root"
 
     # Pipeline master should NOT bypass per-wrapper gates (honest framing)
     # i.e. it should NOT set USER_OK=1 for Wf-135 Phase 2 by default —
@@ -224,11 +229,14 @@ def test_pipeline_master_cli_help_invariants():
 # Bonus (not in the original 4 but useful): Wf-333 wrapper exists with status
 # ---------------------------------------------------------------------------
 
+
 def test_wf333_vina_wrapper_has_status_command():
     """Wf-333 Vina 4-step wrapper must support --status (USER_OK-exempt)
     for read-only state queries per Wf-334-U2 honest framing.
     """
-    wrapper = PROJECT_ROOT / "molmetal" / "scripts" / "launch_wf333_vina_4step_gpu_bench.sh"
+    wrapper = (
+        PROJECT_ROOT / "molmetal" / "scripts" / "launch_wf333_vina_4step_gpu_bench.sh"
+    )
     assert wrapper.exists(), f"Wf-333 wrapper missing: {wrapper}"
 
     text = wrapper.read_text()
@@ -253,9 +261,9 @@ def test_wf333_vina_wrapper_has_status_command():
         f"stderr: {proc.stderr[:500]}"
     )
     # Output should be JSON-ish (has expected keys)
-    assert "vina_available" in proc.stdout, (
-        f"--status JSON missing 'vina_available' key: {proc.stdout[:500]}"
-    )
+    assert (
+        "vina_available" in proc.stdout
+    ), f"--status JSON missing 'vina_available' key: {proc.stdout[:500]}"
     # Should parse as JSON
     try:
         payload = json.loads(proc.stdout)

@@ -174,8 +174,8 @@ class SE3SBVelocityField(nn.Module):
 
     def forward(
         self,
-        x_T: torch.Tensor,        # (B, N, 3) per-atom coords at time t
-        t: torch.Tensor,          # (B,) or (B, 1) flow time
+        x_T: torch.Tensor,  # (B, N, 3) per-atom coords at time t
+        t: torch.Tensor,  # (B,) or (B, 1) flow time
         pocket: Optional[torch.Tensor] = None,  # (B, P, 3) pocket coords, optional
     ) -> torch.Tensor:
         """Return the SE(3) tangent (twist) of shape ``(B, 6)``.
@@ -188,9 +188,7 @@ class SE3SBVelocityField(nn.Module):
         moment-arm cross product for rotation).
         """
         if x_T.dim() != 3 or x_T.shape[-1] != 3:
-            raise ValueError(
-                f"x_T must have shape (B, N, 3), got {tuple(x_T.shape)}"
-            )
+            raise ValueError(f"x_T must have shape (B, N, 3), got {tuple(x_T.shape)}")
         b, n = x_T.shape[:2]
         # Query the underlying EGNN.  We treat ``pocket`` as an optional
         # context vector — the wrapper is *agnostic* to how the EGNN
@@ -204,7 +202,7 @@ class SE3SBVelocityField(nn.Module):
             v_euclidean = self.base_velocity_net(x_T, t)
         # Reduce the (B, N, 3) Euclidean velocity to a single (B, 3)
         # centroid velocity + per-atom (B, N, 3) residual.
-        v_centroid = v_euclidean.mean(dim=1)        # (B, 3)
+        v_centroid = v_euclidean.mean(dim=1)  # (B, 3)
         residual = v_euclidean - v_centroid.unsqueeze(1)  # (B, N, 3)
         # Linear component of the SE(3) twist = centroid velocity.
         upsilon = v_centroid  # (B, 3)
@@ -215,14 +213,14 @@ class SE3SBVelocityField(nn.Module):
         # The total angular velocity is the per-atom mean of r_i × v_i
         # — this is the standard rigid-body identification of
         # so(3) with skew-symmetric 3x3 matrices.
-        centroid_x = x_T.mean(dim=1, keepdim=True)        # (B, 1, 3)
-        r = x_T - centroid_x                              # (B, N, 3)
+        centroid_x = x_T.mean(dim=1, keepdim=True)  # (B, 1, 3)
+        r = x_T - centroid_x  # (B, N, 3)
         # Numerically safe cross product — torch.linalg.cross handles
         # the broadcasting cleanly.
         angular_per_atom = torch.linalg.cross(r, residual, dim=-1)  # (B, N, 3)
-        omega = angular_per_atom.mean(dim=1)              # (B, 3)
+        omega = angular_per_atom.mean(dim=1)  # (B, 3)
         # Stack into the (B, 6) SE(3) twist (linear, angular).
-        xi = torch.cat([upsilon, omega], dim=-1)          # (B, 6)
+        xi = torch.cat([upsilon, omega], dim=-1)  # (B, 6)
         return xi
 
 
@@ -303,14 +301,17 @@ class SE3SBDecoder(nn.Module):
     def _ensure_sinkhorn(self) -> LogSinkhornLoss:
         if self._sinkhorn is None:
             self._sinkhorn = LogSinkhornLoss(
-                eps=self.eps, n_iters=self.n_iters,
+                eps=self.eps,
+                n_iters=self.n_iters,
             )
         return self._sinkhorn
 
     def _ensure_bridge(self) -> SchrodingerBridgeSE3:
         if self._bridge is None:
             self._bridge = SchrodingerBridgeSE3(
-                eps=self.eps, n_iters=self.n_iters, seed=self.seed,
+                eps=self.eps,
+                n_iters=self.n_iters,
+                seed=self.seed,
             )
         return self._bridge
 
@@ -319,8 +320,8 @@ class SE3SBDecoder(nn.Module):
     # ------------------------------------------------------------------
     def decode(
         self,
-        z0: torch.Tensor,        # (B, 4, 4) source SE(3) pose
-        z1: torch.Tensor,        # (B, 4, 4) target SE(3) pose
+        z0: torch.Tensor,  # (B, 4, 4) source SE(3) pose
+        z1: torch.Tensor,  # (B, 4, 4) target SE(3) pose
         pocket: Optional[torch.Tensor] = None,  # (B, P, 3) pocket, optional
         t_values: Optional[torch.Tensor] = None,  # (n_t,) eval points
     ) -> torch.Tensor:
@@ -357,9 +358,7 @@ class SE3SBDecoder(nn.Module):
         if t_values is None:
             t_values = torch.tensor([0.5], dtype=z0.dtype, device=z0.device)
         if t_values.ndim != 1:
-            raise ValueError(
-                f"t_values must be 1-D, got shape {tuple(t_values.shape)}"
-            )
+            raise ValueError(f"t_values must be 1-D, got shape {tuple(t_values.shape)}")
 
         b = z0.shape[0]
         if self.use_sinkhorn:
@@ -379,7 +378,7 @@ class SE3SBDecoder(nn.Module):
             # common proxy for the SE(3) geodesic distance, eq. (12)
             # of Mahmood 2026).
             diff = xi0.unsqueeze(1) - xi1.unsqueeze(0)  # (B, B, 6)
-            C = (diff * diff).sum(dim=-1)              # (B, B) squared L2
+            C = (diff * diff).sum(dim=-1)  # (B, B) squared L2
             a = torch.full((b,), 1.0 / b, dtype=z0.dtype, device=z0.device)
             _loss, P = sinkhorn.forward(xi0, xi1, C=C, a=a, b=a)
             # Greedy deterministic assignment: for each source i pick
@@ -388,7 +387,7 @@ class SE3SBDecoder(nn.Module):
             # of :cite:`mahmood2026sb_lie` — the SB coupling
             # converges to the un-regularised OT plan as ``eps -> 0``).
             assign = P.argmax(dim=-1)  # (B,)
-            z1_matched = z1[assign]    # (B, 4, 4)
+            z1_matched = z1[assign]  # (B, 4, 4)
         else:
             z1_matched = z1
 
@@ -428,7 +427,7 @@ class SE3SBDecoder(nn.Module):
 # ODE integrator — drop-in wrapper around the CFM ODE solver
 # ---------------------------------------------------------------------------
 def integrate_with_cfm(
-    samples: torch.Tensor,             # (B, N, 3) per-atom initial noise
+    samples: torch.Tensor,  # (B, N, 3) per-atom initial noise
     velocity_field: SE3SBVelocityField,
     n_steps: int = 100,
     manifold: str = "SE3",
@@ -492,13 +491,10 @@ def integrate_with_cfm(
     stable for ``n_steps >= 1``.
     """
     if manifold not in {"SE3", "SO3"}:
-        raise ValueError(
-            f"manifold must be one of {{'SE3', 'SO3'}}, got {manifold!r}"
-        )
+        raise ValueError(f"manifold must be one of {{'SE3', 'SO3'}}, got {manifold!r}")
     if manifold == "SO3":
         raise NotImplementedError(
-            "SO3 integration is on the R18 roadmap; only SE3 is "
-            "implemented in W2.1."
+            "SO3 integration is on the R18 roadmap; only SE3 is " "implemented in W2.1."
         )
     if method not in {"euler", "midpoint"}:
         raise ValueError(
@@ -513,9 +509,7 @@ def integrate_with_cfm(
     if eps <= 0.0:
         raise ValueError(f"eps must be > 0, got {eps}")
     if not (0.0 <= t0 < t1 <= 1.0 + 1e-9):
-        raise ValueError(
-            f"require 0 <= t0 < t1 <= 1, got t0={t0}, t1={t1}"
-        )
+        raise ValueError(f"require 0 <= t0 < t1 <= 1, got t0={t0}, t1={t1}")
 
     b, n = samples.shape[:2]
     device, dtype = samples.device, samples.dtype
@@ -543,13 +537,15 @@ def integrate_with_cfm(
         T_k = T
         # Per-atom positions at time t_k = centroid translation +
         # centroid rotation * offsets.
-        R_k = T_k[..., :3, :3]                       # (B, 3, 3)
+        R_k = T_k[..., :3, :3]  # (B, 3, 3)
         x_k = T_k[..., :3, 3].unsqueeze(1) + torch.einsum(
-            "bij,bnj->bni", R_k, offsets,
-        )                                            # (B, N, 3)
+            "bij,bnj->bni",
+            R_k,
+            offsets,
+        )  # (B, N, 3)
         # Normalise t to (B,) for the velocity field.
         t_tensor = torch.full((b,), float(t_k), dtype=dtype, device=device)
-        xi_k = velocity_field(x_k, t_tensor)         # (B, 6)
+        xi_k = velocity_field(x_k, t_tensor)  # (B, 6)
 
         if method == "midpoint":
             # Midpoint (Heun) step: probe the velocity at t_k + dt/2
@@ -557,7 +553,9 @@ def integrate_with_cfm(
             T_half = _euler_se3(T_k, xi_k, 0.5 * dt, eps=eps)
             R_half = T_half[..., :3, :3]
             x_half = T_half[..., :3, 3].unsqueeze(1) + torch.einsum(
-                "bij,bnj->bni", R_half, offsets,
+                "bij,bnj->bni",
+                R_half,
+                offsets,
             )
             t_half = t_tensor + 0.5 * dt
             xi_half = velocity_field(x_half, t_half)  # (B, 6)
@@ -567,10 +565,12 @@ def integrate_with_cfm(
 
     # Final per-atom positions = centroid translation + centroid
     # rotation * offsets.
-    R_final = T[..., :3, :3]                         # (B, 3, 3)
+    R_final = T[..., :3, :3]  # (B, 3, 3)
     x_final = T[..., :3, 3].unsqueeze(1) + torch.einsum(
-        "bij,bnj->bni", R_final, offsets,
-    )                                                # (B, N, 3)
+        "bij,bnj->bni",
+        R_final,
+        offsets,
+    )  # (B, N, 3)
     return x_final
 
 
@@ -578,8 +578,8 @@ def integrate_with_cfm(
 # Internal SE(3) integrators (pure math — no learnable parameters)
 # ---------------------------------------------------------------------------
 def _euler_se3(
-    T: torch.Tensor,        # (B, 4, 4) SE(3) pose at time t
-    xi: torch.Tensor,       # (B, 6) twist at time t
+    T: torch.Tensor,  # (B, 4, 4) SE(3) pose at time t
+    xi: torch.Tensor,  # (B, 6) twist at time t
     dt: float,
     eps: float,
 ) -> torch.Tensor:
@@ -593,8 +593,8 @@ def _euler_se3(
 
 
 def _midpoint_se3(
-    T: torch.Tensor,        # (B, 4, 4) SE(3) pose at time t
-    xi: torch.Tensor,       # (B, 6) midpoint twist
+    T: torch.Tensor,  # (B, 4, 4) SE(3) pose at time t
+    xi: torch.Tensor,  # (B, 6) midpoint twist
     dt: float,
     eps: float,
 ) -> torch.Tensor:

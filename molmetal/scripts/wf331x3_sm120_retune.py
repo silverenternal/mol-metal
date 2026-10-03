@@ -73,6 +73,7 @@ Notes
   identical launches (caller can pre-check via
   :func:`is_sm120_config_safe`).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -136,9 +137,7 @@ if triton is not None:
 else:  # pragma: no cover - triton absent in CPU-only env
     # Placeholder list — tests assert len() == 12.
     SM120_AUTOTUNE_CONFIGS = [
-        {"num_warps": nw, "num_stages": ns}
-        for nw in (16, 8, 4, 2)
-        for ns in (4, 3, 2)
+        {"num_warps": nw, "num_stages": ns} for nw in (16, 8, 4, 2) for ns in (4, 3, 2)
     ]
 
 
@@ -213,8 +212,10 @@ def sm120_autotune(
         Forwarded verbatim to :func:`triton.autotune`.
     """
     if triton is None:  # pragma: no cover - CPU-only env
+
         def _passthrough(fn: Callable[..., Any]) -> Callable[..., Any]:
             return fn
+
         return _passthrough
     if configs is None:
         configs = SM120_AUTOTUNE_CONFIGS
@@ -322,8 +323,7 @@ def load_audit_kernels(audit_path: Path = AUDIT_PATH) -> List[Dict[str, Any]]:
     """
     if not audit_path.is_file():
         raise FileNotFoundError(
-            f"Wf-326E audit missing at {audit_path}. Run the audit "
-            f"pipeline first."
+            f"Wf-326E audit missing at {audit_path}. Run the audit " f"pipeline first."
         )
     with audit_path.open() as fh:
         data = json.load(fh)
@@ -416,13 +416,13 @@ def cpu_smoke(output_dir: Path) -> Dict[str, Any]:
 
     # 1) Config shape checks
     for cfg in SM120_AUTOTUNE_CONFIGS:
-        assert is_sm120_config_safe(cfg), (
-            f"sm_120 config {cfg} is outside the Wf-326E-A grid."
-        )
+        assert is_sm120_config_safe(
+            cfg
+        ), f"sm_120 config {cfg} is outside the Wf-326E-A grid."
     for cfg in SM120_AUTOTUNE_CONFIGS_FALLBACK:
-        assert is_sm120_config_safe(cfg), (
-            f"sm_120 fallback config {cfg} is outside the Wf-326E-A grid."
-        )
+        assert is_sm120_config_safe(
+            cfg
+        ), f"sm_120 fallback config {cfg} is outside the Wf-326E-A grid."
 
     # 2) is_sm120_config_safe returns False for out-of-range configs.
     if triton is not None:
@@ -446,9 +446,7 @@ def cpu_smoke(output_dir: Path) -> Dict[str, Any]:
         return "fallback_ok"
 
     result = safe_kernel_call(_sm120_kernel, _gfx1101_kernel)
-    assert result == "fallback_ok", (
-        f"safe_kernel_call should fall back; got {result!r}"
-    )
+    assert result == "fallback_ok", f"safe_kernel_call should fall back; got {result!r}"
     assert calls == ["sm120", "gfx1101"], (
         f"safe_kernel_call should call sm_120 first then gfx1101; "
         f"got call order {calls}"
@@ -458,24 +456,20 @@ def cpu_smoke(output_dir: Path) -> Dict[str, Any]:
     if triton is not None and _sm120_dummy_kernel is not None:
         # _sm120_dummy_kernel is an Autotuner wrapping a JITFunction.
         # It has ``.configs`` (list of sm_120 configs) and ``.run`` method.
-        assert hasattr(_sm120_dummy_kernel, "configs"), (
-            "sm120_autotune-wrapped kernel must expose .configs."
-        )
-        assert hasattr(_sm120_dummy_kernel, "run"), (
-            "sm120_autotune-wrapped kernel must expose .run method."
-        )
-        assert len(_sm120_dummy_kernel.configs) == len(
-            SM120_AUTOTUNE_CONFIGS
-        ), (
+        assert hasattr(
+            _sm120_dummy_kernel, "configs"
+        ), "sm120_autotune-wrapped kernel must expose .configs."
+        assert hasattr(
+            _sm120_dummy_kernel, "run"
+        ), "sm120_autotune-wrapped kernel must expose .run method."
+        assert len(_sm120_dummy_kernel.configs) == len(SM120_AUTOTUNE_CONFIGS), (
             f"sm120_autotune-wrapped kernel has {len(_sm120_dummy_kernel.configs)} "
             f"configs; expected {len(SM120_AUTOTUNE_CONFIGS)}."
         )
 
     # 5) Dump configs to JSON for the eventual GPU retune run.
     output_dir.mkdir(parents=True, exist_ok=True)
-    dumped = dump_sm120_configs_json(
-        output_dir / "sm120_autotune_configs.json"
-    )
+    dumped = dump_sm120_configs_json(output_dir / "sm120_autotune_configs.json")
 
     elapsed = time.time() - started
     return {
@@ -500,13 +494,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "--output-dir",
         default=str(DEFAULT_OUTPUT_DIR),
         help="Where to write the sm_120 configs JSON (default: "
-             "molmetal/reports/wf331x3_sm120_retune).",
+        "molmetal/reports/wf331x3_sm120_retune).",
     )
     parser.add_argument(
         "--smoke",
         action="store_true",
         help="Run the CPU smoke test that exercises the scaffold "
-             "(autotune wrapper, fallback, is_safe).",
+        "(autotune wrapper, fallback, is_safe).",
     )
     parser.add_argument(
         "--dump-configs-only",
@@ -518,15 +512,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     output_dir = Path(args.output_dir).resolve()
 
     if args.dump_configs_only:
-        dumped = dump_sm120_configs_json(
-            output_dir / "sm120_autotune_configs.json"
+        dumped = dump_sm120_configs_json(output_dir / "sm120_autotune_configs.json")
+        print(
+            json.dumps(
+                {
+                    "n_configs": dumped["n_configs"],
+                    "n_kernels_inventoried": dumped["n_kernels_inventoried"],
+                    "gpu_retune_deferred": dumped["gpu_retune_deferred"],
+                    "configs_json_path": dumped["output_path"],
+                },
+                indent=2,
+            )
         )
-        print(json.dumps({
-            "n_configs": dumped["n_configs"],
-            "n_kernels_inventoried": dumped["n_kernels_inventoried"],
-            "gpu_retune_deferred": dumped["gpu_retune_deferred"],
-            "configs_json_path": dumped["output_path"],
-        }, indent=2))
         return 0
 
     if args.smoke:
@@ -541,18 +538,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
 
-    dumped = dump_sm120_configs_json(
-        output_dir / "sm120_autotune_configs.json"
-    )
+    dumped = dump_sm120_configs_json(output_dir / "sm120_autotune_configs.json")
 
     print(
         json.dumps(
             {
                 "n_kernels_inventoried": len(kernel_names),
                 "n_sm120_configs": len(SM120_AUTOTUNE_CONFIGS),
-                "n_sm120_fallback_configs": len(
-                    SM120_AUTOTUNE_CONFIGS_FALLBACK
-                ),
+                "n_sm120_fallback_configs": len(SM120_AUTOTUNE_CONFIGS_FALLBACK),
                 "configs_json_path": dumped["output_path"],
                 "gpu_retune_deferred": True,
             },

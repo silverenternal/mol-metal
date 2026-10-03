@@ -70,14 +70,24 @@ from molmetal_lam.molecules.closed_term import MoleculeClosedTerm  # noqa: E402
 # We also include a small panel of organic click-handle tiles so the
 # BFS can fire on multiple bi-molecular pairs.
 PARTNER_TERMS: List[MoleculeClosedTerm] = [
-    MoleculeClosedTerm.from_smiles("C#CCN", embed_3d=False),         # propargylamine: alkyne + amine
-    MoleculeClosedTerm.from_smiles("CCN=[N+]=[N-]", embed_3d=False), # ethyl azide (CuAAC)
-    MoleculeClosedTerm.from_smiles("C#CC", embed_3d=False),          # propyne (CuAAC)
-    MoleculeClosedTerm.from_smiles("CS", embed_3d=False),            # methanethiol (ThiolEne)
-    MoleculeClosedTerm.from_smiles("C=CC", embed_3d=False),          # propene (ThiolEne)
-    MoleculeClosedTerm.from_smiles("B(O)c1ccccc1", embed_3d=False),  # phenylboronic acid (Suzuki)
-    MoleculeClosedTerm.from_smiles("Brc1ccccc1", embed_3d=False),    # bromobenzene (Suzuki)
-    MoleculeClosedTerm.from_smiles("OC(=O)c1ccccc1", embed_3d=False),# benzoic acid (AmideCoupling)
+    MoleculeClosedTerm.from_smiles(
+        "C#CCN", embed_3d=False
+    ),  # propargylamine: alkyne + amine
+    MoleculeClosedTerm.from_smiles(
+        "CCN=[N+]=[N-]", embed_3d=False
+    ),  # ethyl azide (CuAAC)
+    MoleculeClosedTerm.from_smiles("C#CC", embed_3d=False),  # propyne (CuAAC)
+    MoleculeClosedTerm.from_smiles("CS", embed_3d=False),  # methanethiol (ThiolEne)
+    MoleculeClosedTerm.from_smiles("C=CC", embed_3d=False),  # propene (ThiolEne)
+    MoleculeClosedTerm.from_smiles(
+        "B(O)c1ccccc1", embed_3d=False
+    ),  # phenylboronic acid (Suzuki)
+    MoleculeClosedTerm.from_smiles(
+        "Brc1ccccc1", embed_3d=False
+    ),  # bromobenzene (Suzuki)
+    MoleculeClosedTerm.from_smiles(
+        "OC(=O)c1ccccc1", embed_3d=False
+    ),  # benzoic acid (AmideCoupling)
 ]
 
 
@@ -132,6 +142,7 @@ def _is_well_typed(term: MoleculeClosedTerm) -> bool:
         return False
     try:
         from rdkit import Chem  # type: ignore[import-not-found]
+
         Chem.SanitizeMol(mol)
     except Exception:
         return False
@@ -277,8 +288,16 @@ def main() -> int:
         start_term=cisplatin,
         partner_terms=PARTNER_TERMS,
     )
-    print(json.dumps({k: v for k, v in res_a.items() if k not in
-                      ("depth_distribution", "rule_counter")}, indent=2))
+    print(
+        json.dumps(
+            {
+                k: v
+                for k, v in res_a.items()
+                if k not in ("depth_distribution", "rule_counter")
+            },
+            indent=2,
+        )
+    )
 
     # Scenario (b): cisplatin + 5 click rules + d2
     print("\n[scenario b] cisplatin + 5 click rules + d=2")
@@ -289,8 +308,16 @@ def main() -> int:
         start_term=cisplatin,
         partner_terms=PARTNER_TERMS,
     )
-    print(json.dumps({k: v for k, v in res_b.items() if k not in
-                      ("depth_distribution", "rule_counter")}, indent=2))
+    print(
+        json.dumps(
+            {
+                k: v
+                for k, v in res_b.items()
+                if k not in ("depth_distribution", "rule_counter")
+            },
+            indent=2,
+        )
+    )
 
     # Scenario (c): cisplatin + 5 click rules + d3
     print("\n[scenario c] cisplatin + 5 click rules + d=3")
@@ -301,16 +328,22 @@ def main() -> int:
         start_term=cisplatin,
         partner_terms=PARTNER_TERMS,
     )
-    print(json.dumps({k: v for k, v in res_c.items() if k not in
-                      ("depth_distribution", "rule_counter")}, indent=2))
+    print(
+        json.dumps(
+            {
+                k: v
+                for k, v in res_c.items()
+                if k not in ("depth_distribution", "rule_counter")
+            },
+            indent=2,
+        )
+    )
 
     # Persist results to a JSON sidecar.
     out_dir = PROJECT_ROOT / "molmetal" / "reports" / "wf_lambda4_final"
     out_dir.mkdir(parents=True, exist_ok=True)
     out_json = out_dir / "scenarios.json"
-    out_json.write_text(json.dumps(
-        {"a": res_a, "b": res_b, "c": res_c}, indent=2
-    ))
+    out_json.write_text(json.dumps({"a": res_a, "b": res_b, "c": res_c}, indent=2))
     print(f"\nWrote {out_json}")
 
     # --------------------------------------------------------------
@@ -328,16 +361,18 @@ def main() -> int:
         click_rules=FIVE_CLICK_RULES,
         partner_terms=PARTNER_TERMS,
     )
-    out_json.write_text(json.dumps(
-        {"a": res_a, "b": res_b, "c": res_c,
-         "complexity_probe": complexity}, indent=2
-    ))
-    print(f"  cost_per_rule_application_seconds = "
-          f"{complexity['cost_per_rule_application_seconds']:.6f}")
-    print(f"  total_work_units (sum) = "
-          f"{complexity['total_work_units']}")
-    print(f"  probe_wall_seconds = "
-          f"{complexity['probe_wall_seconds']:.4f}")
+    out_json.write_text(
+        json.dumps(
+            {"a": res_a, "b": res_b, "c": res_c, "complexity_probe": complexity},
+            indent=2,
+        )
+    )
+    print(
+        f"  cost_per_rule_application_seconds = "
+        f"{complexity['cost_per_rule_application_seconds']:.6f}"
+    )
+    print(f"  total_work_units (sum) = " f"{complexity['total_work_units']}")
+    print(f"  probe_wall_seconds = " f"{complexity['probe_wall_seconds']:.4f}")
     return 0
 
 
@@ -387,12 +422,14 @@ def _measure_cost_per_rule_application(
         # This is the tightest analytical upper bound on the
         # rule-application work the BFS performs.
         work = n * len(click_rules) * (n + 1) // 2
-        per_depth.append({
-            "max_depth": d,
-            "n_reachable": n,
-            "work_units": work,
-            "wall_seconds": round(wall, 4),
-        })
+        per_depth.append(
+            {
+                "max_depth": d,
+                "n_reachable": n,
+                "work_units": work,
+                "wall_seconds": round(wall, 4),
+            }
+        )
         total_wall += wall
         total_work += work
     cost_per_unit = (total_wall / total_work) if total_work else 0.0

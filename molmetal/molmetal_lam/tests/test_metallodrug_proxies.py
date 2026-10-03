@@ -4,6 +4,7 @@ Covers :mod:`molmetal_lam.priors.metallodrug_property_proxies` (4
 heuristic proxies for reduction potential, trans-effect, LFSE, and
 Pt-DNA crosslink propensity).  All values are clipped to ``[0, 1]``.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -42,7 +43,9 @@ INVALID_CASES = ["", " ", "not-a-smiles", "C*", "*", None]
 # Helper assertions
 # ---------------------------------------------------------------------------
 def _assert_in_unit_interval(value, label):
-    assert isinstance(value, float), f"{label}: expected float, got {type(value).__name__}"
+    assert isinstance(
+        value, float
+    ), f"{label}: expected float, got {type(value).__name__}"
     assert 0.0 <= value <= 1.0, f"{label}: out of [0, 1] — got {value}"
 
 
@@ -161,7 +164,12 @@ def test_pt_dna_crosslink_graceful_for_invalid_smiles():
 # ---------------------------------------------------------------------------
 def test_compute_metallodrug_proxies_returns_all_four_keys():
     out = compute_metallodrug_proxies(CISPLATIN)
-    assert set(out) == {"reduction_potential", "trans_effect", "lfse", "pt_dna_crosslink"}
+    assert set(out) == {
+        "reduction_potential",
+        "trans_effect",
+        "lfse",
+        "pt_dna_crosslink",
+    }
     for k, v in out.items():
         _assert_in_unit_interval(v, f"agg[{k}]")
 
@@ -179,7 +187,12 @@ def test_compute_metallodrug_proxies_graceful_for_invalid_smiles(bad):
         out = compute_metallodrug_proxies(bad)  # type: ignore[arg-type]
     except Exception as exc:  # noqa: BLE001
         pytest.fail(f"aggregator raised on invalid SMILES {bad!r}: {exc}")
-    assert set(out) == {"reduction_potential", "trans_effect", "lfse", "pt_dna_crosslink"}
+    assert set(out) == {
+        "reduction_potential",
+        "trans_effect",
+        "lfse",
+        "pt_dna_crosslink",
+    }
     for v in out.values():
         assert 0.0 <= v <= 1.0
 

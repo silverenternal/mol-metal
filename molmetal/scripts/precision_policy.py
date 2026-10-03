@@ -18,6 +18,7 @@ NOTE: PyTorch quirk — `torch.set_float32_matmul_precision('highest')` resets
 sets it to True. Order matters: matmul.allow_tf32 must be set AFTER
 set_float32_matmul_precision, or set_float32_matmul_precision wins.
 """
+
 import torch
 
 

@@ -51,25 +51,31 @@ def _cisplatin_like_cloud() -> AtomCloud:
 
     Layout: Pt at origin, 4 donors at 2.05 Å in square-planar motif.
     """
-    positions = torch.tensor([
-        [0.0, 0.0, 0.0],            # Pt
-        [2.05, 0.0, 0.0],            # Cl  (right)
-        [-2.05, 0.0, 0.0],           # Cl  (left)
-        [0.0, 2.05, 0.0],            # NH3 (top)
-        [0.0, -2.05, 0.0],           # NH3 (bottom)
-    ], dtype=torch.float32)
+    positions = torch.tensor(
+        [
+            [0.0, 0.0, 0.0],  # Pt
+            [2.05, 0.0, 0.0],  # Cl  (right)
+            [-2.05, 0.0, 0.0],  # Cl  (left)
+            [0.0, 2.05, 0.0],  # NH3 (top)
+            [0.0, -2.05, 0.0],  # NH3 (bottom)
+        ],
+        dtype=torch.float32,
+    )
     atomic_numbers = torch.tensor([78, 17, 17, 7, 7], dtype=torch.long)
     return AtomCloud(positions=positions, atomic_numbers=atomic_numbers)
 
 
 def _distant_cloud() -> AtomCloud:
     """Build a 4-atom cloud with all pairs > 5 Å — no bonds expected."""
-    positions = torch.tensor([
-        [0.0, 0.0, 0.0],
-        [10.0, 0.0, 0.0],
-        [0.0, 10.0, 0.0],
-        [0.0, 0.0, 10.0],
-    ], dtype=torch.float32)
+    positions = torch.tensor(
+        [
+            [0.0, 0.0, 0.0],
+            [10.0, 0.0, 0.0],
+            [0.0, 10.0, 0.0],
+            [0.0, 0.0, 10.0],
+        ],
+        dtype=torch.float32,
+    )
     atomic_numbers = torch.tensor([6, 6, 6, 6], dtype=torch.long)
     return AtomCloud(positions=positions, atomic_numbers=atomic_numbers)
 
@@ -82,15 +88,18 @@ def _crowded_pt_cloud() -> AtomCloud:
     overvalent Pt (6 > 4).  The YuelBond + valence-cap selector must
     reject at least 2 of the 6 candidate bonds.
     """
-    positions = torch.tensor([
-        [0.0, 0.0, 0.0],            # Pt
-        [2.0, 0.0, 0.0],
-        [-2.0, 0.0, 0.0],
-        [0.0, 2.0, 0.0],
-        [0.0, -2.0, 0.0],
-        [1.4, 1.4, 0.0],
-        [-1.4, -1.4, 0.0],
-    ], dtype=torch.float32)
+    positions = torch.tensor(
+        [
+            [0.0, 0.0, 0.0],  # Pt
+            [2.0, 0.0, 0.0],
+            [-2.0, 0.0, 0.0],
+            [0.0, 2.0, 0.0],
+            [0.0, -2.0, 0.0],
+            [1.4, 1.4, 0.0],
+            [-1.4, -1.4, 0.0],
+        ],
+        dtype=torch.float32,
+    )
     atomic_numbers = torch.tensor([78, 17, 17, 7, 7, 8, 8], dtype=torch.long)
     return AtomCloud(positions=positions, atomic_numbers=atomic_numbers)
 
@@ -102,13 +111,13 @@ def test_yuelbond_bond_decoder_init_default():
     """YuelBondBondDecoder() builds a fresh head with default dims."""
     torch.manual_seed(0)
     decoder = YuelBondBondDecoder()
-    assert decoder.distance_cutoff == 3.5, (
-        f"default cutoff should be 3.5 Å, got {decoder.distance_cutoff}"
-    )
+    assert (
+        decoder.distance_cutoff == 3.5
+    ), f"default cutoff should be 3.5 Å, got {decoder.distance_cutoff}"
     assert decoder.valence_cap is not None
-    assert decoder.valence_cap[78] == 4, (
-        f"Pt_II valence cap should be 4, got {decoder.valence_cap.get(78)}"
-    )
+    assert (
+        decoder.valence_cap[78] == 4
+    ), f"Pt_II valence cap should be 4, got {decoder.valence_cap.get(78)}"
     assert decoder.valence_cap[6] == 4
     assert decoder.valence_cap[7] == 3
     assert decoder.valence_cap[8] == 2
@@ -144,9 +153,7 @@ def test_yuelbond_decoder_returns_valid_bonds_on_cisplatin():
             # Identify Pt atom — index 0 in the cisplatin layout.
             if src == 0 or dst == 0:
                 pt_total += int(order)
-        assert pt_total <= 4, (
-            f"Pt_II valence cap (4) violated: Pt has {pt_total} bonds"
-        )
+        assert pt_total <= 4, f"Pt_II valence cap (4) violated: Pt has {pt_total} bonds"
 
 
 # ===========================================================================
@@ -268,7 +275,9 @@ def test_smoke_decode_ratio_above_baseline():
     lifts decode_ratio above the current 0/8 baseline (4-fix bundle).
     """
     n_decoded, n_total, results = smoke_decode_ratio(
-        n_clouds=8, jitter=0.20, use_yuelbond=True,
+        n_clouds=8,
+        jitter=0.20,
+        use_yuelbond=True,
     )
     assert n_total == 8
     assert n_decoded > 0, (
@@ -296,9 +305,9 @@ def test_synthetic_pt_click_cloud_generator():
         # 4 donors at 2.05 Å (jitter=0.0 → exact)
         for i in range(1, 5):
             d = float(cloud.positions[i].norm().item())
-            assert abs(d - 2.05) < 1e-4, (
-                f"Donor {i} distance from Pt should be 2.05 Å, got {d}"
-            )
+            assert (
+                abs(d - 2.05) < 1e-4
+            ), f"Donor {i} distance from Pt should be 2.05 Å, got {d}"
 
 
 # ===========================================================================
@@ -331,7 +340,9 @@ def test_write_smoke_results_json(tmp_path):
 def test_end_to_end_smoke_to_json(tmp_path):
     """End-to-end: run smoke + write JSON + verify decode_ratio > 0."""
     n_decoded, n_total, _ = smoke_decode_ratio(
-        n_clouds=8, jitter=0.20, use_yuelbond=True,
+        n_clouds=8,
+        jitter=0.20,
+        use_yuelbond=True,
     )
     out = tmp_path / "yuelbond_smoke_results.json"
     write_smoke_results_json(

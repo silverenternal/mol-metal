@@ -106,9 +106,36 @@ DEFAULT_OUT_DIR: Path = _REPO_ROOT / "molmetal" / "reports" / "wf128_p3_tmqm_29"
 # 30 d-block elements (Wf-73 P3 anchor) — the script drops any element
 # with < 5 rows at load time so the per-element cohort remains usable.
 ALL_DBLOCK_ELEMENTS: Tuple[str, ...] = (
-    "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",  # 3d
-    "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",  # 4d
-    "La", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg",  # 5d + La
+    "Sc",
+    "Ti",
+    "V",
+    "Cr",
+    "Mn",
+    "Fe",
+    "Co",
+    "Ni",
+    "Cu",
+    "Zn",  # 3d
+    "Y",
+    "Zr",
+    "Nb",
+    "Mo",
+    "Tc",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Cd",  # 4d
+    "La",
+    "Hf",
+    "Ta",
+    "W",
+    "Re",
+    "Os",
+    "Ir",
+    "Pt",
+    "Au",
+    "Hg",  # 5d + La
 )
 
 # 5 default largest first-row d-block cohorts (Wf-86 P2 anchor).
@@ -242,8 +269,10 @@ def evaluate_fold(
     element: str,
     seed: int,
     fold: int,
-    tr: np.ndarray, te: np.ndarray,
-    X: np.ndarray, y: np.ndarray,
+    tr: np.ndarray,
+    te: np.ndarray,
+    X: np.ndarray,
+    y: np.ndarray,
     hilbert_dim: int,
 ) -> FitRecord:
     """Run 3-way integration on a single (element, seed, fold) split."""
@@ -255,7 +284,10 @@ def evaluate_fold(
 
     try:
         w_h, _trh, aug_te_h = fit_hilbert_stream(
-            X_tr_z, y_tr, X_te_z, hilbert_dim=hilbert_dim,
+            X_tr_z,
+            y_tr,
+            X_te_z,
+            hilbert_dim=hilbert_dim,
         )
         y_h_te = predict_hilbert(w_h, aug_te_h)
     except Exception:
@@ -269,7 +301,9 @@ def evaluate_fold(
 
     try:
         reg_a, _tra = fit_astr_stream(
-            X_tr, y_tr, use_astr_scale_guard=True,
+            X_tr,
+            y_tr,
+            use_astr_scale_guard=True,
         )
         y_a_te = predict_astr(reg_a, X_te, use_astr_scale_guard=True)
     except Exception:
@@ -285,13 +319,17 @@ def evaluate_fold(
     collapse_c = _collapse_detected(y_combined_te, y_te)
 
     return FitRecord(
-        element=element, seed=int(seed), fold=int(fold),
-        n_train=int(len(tr)), n_test=int(len(te)),
+        element=element,
+        seed=int(seed),
+        fold=int(fold),
+        n_train=int(len(tr)),
+        n_test=int(len(te)),
         combined_r2=float(r2_c) if math.isfinite(r2_c) else float("nan"),
         hilbert_r2=float(r2_h) if math.isfinite(r2_h) else float("nan"),
         mph_r2=float(r2_m) if math.isfinite(r2_m) else float("nan"),
         astr_r2=float(r2_a) if math.isfinite(r2_a) else float("nan"),
-        wall_s=float(wall), collapse_detected=bool(collapse_c),
+        wall_s=float(wall),
+        collapse_detected=bool(collapse_c),
     )
 
 
@@ -308,7 +346,10 @@ def evaluate_element(
     n_max: Optional[int],
 ) -> List[FitRecord]:
     X, y, _smi = load_tmqm_element(
-        element, csv_path=csv_path, target_col=target_col, n_max=n_max,
+        element,
+        csv_path=csv_path,
+        target_col=target_col,
+        n_max=n_max,
     )
     n = X.shape[0]
     if n < MIN_ROWS_PER_ELEMENT:
@@ -323,8 +364,14 @@ def evaluate_element(
             if len(te) == 0:
                 continue
             rec = evaluate_fold(
-                element=element, seed=int(seed), fold=int(fold),
-                tr=tr, te=te, X=X, y=y, hilbert_dim=int(hilbert_dim),
+                element=element,
+                seed=int(seed),
+                fold=int(fold),
+                tr=tr,
+                te=te,
+                X=X,
+                y=y,
+                hilbert_dim=int(hilbert_dim),
             )
             records.append(rec)
             print(
@@ -349,17 +396,22 @@ def aggregate_element(records: List[FitRecord]) -> List[ElementSeedSummary]:
         mph = np.asarray([r.mph_r2 for r in recs], dtype=float)
         astr = np.asarray([r.astr_r2 for r in recs], dtype=float)
         wall = np.asarray([r.wall_s for r in recs], dtype=float)
-        out.append(ElementSeedSummary(
-            element=element, seed=int(seed),
-            n_folds=int(len(recs)),
-            combined_r2_mean=float(np.nanmean(combined)) if combined.size else 0.0,
-            combined_r2_std=float(np.nanstd(combined)) if combined.size > 1 else 0.0,
-            hilbert_r2_mean=float(np.nanmean(hilbert)) if hilbert.size else 0.0,
-            mph_r2_mean=float(np.nanmean(mph)) if mph.size else 0.0,
-            astr_r2_mean=float(np.nanmean(astr)) if astr.size else 0.0,
-            wall_s_mean=float(np.nanmean(wall)) if wall.size else 0.0,
-            collapse_detected_any=bool(any(r.collapse_detected for r in recs)),
-        ))
+        out.append(
+            ElementSeedSummary(
+                element=element,
+                seed=int(seed),
+                n_folds=int(len(recs)),
+                combined_r2_mean=float(np.nanmean(combined)) if combined.size else 0.0,
+                combined_r2_std=float(np.nanstd(combined))
+                if combined.size > 1
+                else 0.0,
+                hilbert_r2_mean=float(np.nanmean(hilbert)) if hilbert.size else 0.0,
+                mph_r2_mean=float(np.nanmean(mph)) if mph.size else 0.0,
+                astr_r2_mean=float(np.nanmean(astr)) if astr.size else 0.0,
+                wall_s_mean=float(np.nanmean(wall)) if wall.size else 0.0,
+                collapse_detected_any=bool(any(r.collapse_detected for r in recs)),
+            )
+        )
     return out
 
 
@@ -372,8 +424,9 @@ def _write_json(path: Path, obj: Any) -> None:
         json.dump(obj, fh, indent=2, sort_keys=False, default=str)
 
 
-def write_synthesis(out_dir: Path, all_records: List[FitRecord],
-                    elements: Sequence[str]) -> None:
+def write_synthesis(
+    out_dir: Path, all_records: List[FitRecord], elements: Sequence[str]
+) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     by_el: Dict[str, List[FitRecord]] = {}
     for r in all_records:
@@ -424,8 +477,7 @@ def write_synthesis(out_dir: Path, all_records: List[FitRecord],
         agg_std = float(np.std(element_means))
         hilbert_agg = float(np.mean(hilbert_means))
         # Verify gate: combined R² not worse than Hilbert baseline.
-        n_pass = int(sum(1 for cm, hm in zip(element_means, hilbert_means)
-                         if cm >= hm))
+        n_pass = int(sum(1 for cm, hm in zip(element_means, hilbert_means) if cm >= hm))
         verdict = "PASS" if agg >= hilbert_agg else "FAIL"
     else:
         agg = 0.0
@@ -469,15 +521,21 @@ def write_synthesis(out_dir: Path, all_records: List[FitRecord],
 
     lines.append("## Honest framing")
     lines.append("")
-    lines.append("- **REAL data**: tmQM d-block (Balcells & Skjelstad 2020); "
-                 "DFT-computed ``coord_number``.")
-    lines.append("- **Feature stack**: 172-d zero-padded (12-d RDKit + "
-                 "32-d Multi-PH zeros + 128-d PLL zeros); the 3-way "
-                 "Multi-PH stream is effectively a constant-zero ridge.")
+    lines.append(
+        "- **REAL data**: tmQM d-block (Balcells & Skjelstad 2020); "
+        "DFT-computed ``coord_number``."
+    )
+    lines.append(
+        "- **Feature stack**: 172-d zero-padded (12-d RDKit + "
+        "32-d Multi-PH zeros + 128-d PLL zeros); the 3-way "
+        "Multi-PH stream is effectively a constant-zero ridge."
+    )
     lines.append("- **ASTSR scale guard**: predictions clipped to `[0, 1]`.")
     lines.append("- **CPU + GPU-1**: CPU default; GPU-1 optional.")
-    lines.append("- **Collapse detector**: ``pred_std / y_test_std < 0.10`` "
-                 "per fold → flag in ``per_seed_metrics.json``.")
+    lines.append(
+        "- **Collapse detector**: ``pred_std / y_test_std < 0.10`` "
+        "per fold → flag in ``per_seed_metrics.json``."
+    )
     lines.append("")
     lines.append(
         f"Per `party-twenty-spirit §3.5`: 29-element combined R² = "
@@ -509,23 +567,30 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "per element (29 d-block metals)."
         )
     )
-    parser.add_argument("--elements", type=_parse_elements, nargs="+",
-                        default=None,
-                        help="Element symbols (default: all 29 with "
-                             "≥5 rows; pass subset to scope)")
-    parser.add_argument("--seeds", type=_parse_seeds, nargs="+",
-                        default=list(DEFAULT_SEEDS))
+    parser.add_argument(
+        "--elements",
+        type=_parse_elements,
+        nargs="+",
+        default=None,
+        help="Element symbols (default: all 29 with " "≥5 rows; pass subset to scope)",
+    )
+    parser.add_argument(
+        "--seeds", type=_parse_seeds, nargs="+", default=list(DEFAULT_SEEDS)
+    )
     parser.add_argument("--n-folds", type=int, default=DEFAULT_N_FOLDS)
     parser.add_argument("--epochs", type=int, default=DEFAULT_EPOCHS)
     parser.add_argument("--hilbert-dim", type=int, default=DEFAULT_HILBERT_DIM)
     parser.add_argument("--csv-path", type=Path, default=DEFAULT_TMQM_CSV)
     parser.add_argument("--target-col", type=str, default=DEFAULT_TARGET_COL)
-    parser.add_argument("--n-max", type=int, default=None,
-                        help="Cap rows per element (for ablation).")
+    parser.add_argument(
+        "--n-max", type=int, default=None, help="Cap rows per element (for ablation)."
+    )
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR)
-    parser.add_argument("--smoke", action="store_true",
-                        help="Smoke mode: 2 elements (Cu, Ni), 1 seed, "
-                             "2 folds, 10 epochs.")
+    parser.add_argument(
+        "--smoke",
+        action="store_true",
+        help="Smoke mode: 2 elements (Cu, Ni), 1 seed, " "2 folds, 10 epochs.",
+    )
     args = parser.parse_args(argv)
 
     if args.smoke:
@@ -537,7 +602,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     else:
         if args.elements is None:
             flat_elements = list_available_elements(
-                csv_path=args.csv_path, target_col=args.target_col,
+                csv_path=args.csv_path,
+                target_col=args.target_col,
             )
             if not flat_elements:
                 raise RuntimeError("No usable elements in CSV.")
@@ -570,9 +636,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print(f"[wf128-p3-tmqm] === element={el} ===")
         try:
             recs = evaluate_element(
-                element=el, seeds=flat_seeds, n_folds=n_folds,
+                element=el,
+                seeds=flat_seeds,
+                n_folds=n_folds,
                 hilbert_dim=int(args.hilbert_dim),
-                csv_path=args.csv_path, target_col=args.target_col,
+                csv_path=args.csv_path,
+                target_col=args.target_col,
                 n_max=n_max,
             )
         except Exception as exc:
@@ -605,8 +674,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print(f"[wf128-p3-tmqm] wrote {per_seed_path}")
 
     write_synthesis(args.out_dir, all_records, flat_elements)
-    print(f"[wf128-p3-tmqm] synthesis.md written to "
-          f"{args.out_dir / 'synthesis.md'}")
+    print(
+        f"[wf128-p3-tmqm] synthesis.md written to " f"{args.out_dir / 'synthesis.md'}"
+    )
     return 0
 
 

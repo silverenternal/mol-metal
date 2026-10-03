@@ -56,6 +56,7 @@ def audit_module() -> Dict[str, Any]:
     # Try direct import first
     try:
         import importlib.util as _ilu
+
         spec = _ilu.spec_from_file_location(
             "wf390a3_se3_sb_integration_audit", str(script_path)
         )
@@ -92,6 +93,7 @@ def audit_module() -> Dict[str, Any]:
 # Test 1 — trainer audit
 # ---------------------------------------------------------------------------
 
+
 def test_audit_se3_sb_trainer_present(audit_module: Dict[str, Any]) -> None:
     """Verify train_se3sb.py exists, AST-parses, parse_args at line 557.
 
@@ -108,21 +110,22 @@ def test_audit_se3_sb_trainer_present(audit_module: Dict[str, Any]) -> None:
         trainer_audit = audit_module["audit_se3_sb_trainer"]()
     else:
         # Parse the subprocess stdout JSON output
-        assert audit_module["_returncode"] in (0, 1), (
-            f"subprocess failed: stderr={audit_module['_stderr']}"
-        )
+        assert audit_module["_returncode"] in (
+            0,
+            1,
+        ), f"subprocess failed: stderr={audit_module['_stderr']}"
         payload = json.loads(audit_module["_stdout"])
         trainer_audit = payload["trainer_audit"]
 
-    assert trainer_audit["trainer_exists"] is True, (
-        f"SE(3) SB trainer not found at {trainer_audit['trainer_path']}"
-    )
-    assert trainer_audit["ast_parses"] is True, (
-        "train_se3sb.py did not AST-parse cleanly"
-    )
-    assert trainer_audit["parse_args_importable"] is True, (
-        "parse_args not found in train_se3sb.py"
-    )
+    assert (
+        trainer_audit["trainer_exists"] is True
+    ), f"SE(3) SB trainer not found at {trainer_audit['trainer_path']}"
+    assert (
+        trainer_audit["ast_parses"] is True
+    ), "train_se3sb.py did not AST-parse cleanly"
+    assert (
+        trainer_audit["parse_args_importable"] is True
+    ), "parse_args not found in train_se3sb.py"
     assert trainer_audit["parse_args_loc"] == 557, (
         f"parse_args line shifted from Wf-383-A2 audit: "
         f"got {trainer_audit['parse_args_loc']}, expected 557"
@@ -132,14 +135,15 @@ def test_audit_se3_sb_trainer_present(audit_module: Dict[str, Any]) -> None:
     # Current state per Wf-383-A2 §1.2 audit: 0/10 SE(3)-specific flags wired
     # (upper bound not enforced — value may grow as Wf-200-A1..A10 wires execute)
     assert trainer_audit["n_se3_specific_flags_current"] >= 0
-    assert trainer_audit["trainer_loc"] > 500, (
-        f"train_se3sb.py LOC suspiciously low: {trainer_audit['trainer_loc']}"
-    )
+    assert (
+        trainer_audit["trainer_loc"] > 500
+    ), f"train_se3sb.py LOC suspiciously low: {trainer_audit['trainer_loc']}"
 
 
 # ---------------------------------------------------------------------------
 # Test 2 — smoke step count band
 # ---------------------------------------------------------------------------
+
 
 def test_smoke_se3_sb_step_count_band(audit_module: Dict[str, Any]) -> None:
     """Pin Wf-383-A1 §3.2 PROJECTED step count bands as acceptance criteria.

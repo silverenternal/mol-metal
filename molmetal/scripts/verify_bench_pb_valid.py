@@ -53,23 +53,38 @@ def parse_args(argv: List[str] | None = None) -> argparse.Namespace:
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument("--pocket", default="830c",
-                   help="WF-30 pocket_id (default: 830c — MMP-13).")
-    p.add_argument("--candidate", default="CCO",
-                   help="SMILES of the single candidate (default: CCO — ethanol).")
-    p.add_argument("--pb-mode", choices=("mol", "dock"), default="mol",
-                   help="PB mode (default: mol — chemistry only).")
-    p.add_argument("--method",
-                   choices=("se3sb", "transport", "multiph", "baseline"),
-                   default="se3sb",
-                   help="Trajectory-generation tag (recorded as metadata; "
-                        "default: se3sb).")
+    p.add_argument(
+        "--pocket", default="830c", help="WF-30 pocket_id (default: 830c — MMP-13)."
+    )
+    p.add_argument(
+        "--candidate",
+        default="CCO",
+        help="SMILES of the single candidate (default: CCO — ethanol).",
+    )
+    p.add_argument(
+        "--pb-mode",
+        choices=("mol", "dock"),
+        default="mol",
+        help="PB mode (default: mol — chemistry only).",
+    )
+    p.add_argument(
+        "--method",
+        choices=("se3sb", "transport", "multiph", "baseline"),
+        default="se3sb",
+        help="Trajectory-generation tag (recorded as metadata; " "default: se3sb).",
+    )
     p.add_argument("--pocket-dir", type=Path, default=pb.WF30_POCKET_DIR)
     p.add_argument("--out-dir", type=Path, default=pb.DEFAULT_OUT_DIR)
-    p.add_argument("--metrics-path", type=Path,
-                   default=pb.DEFAULT_OUT_DIR / "wf32_pb_valid_verify.json")
-    p.add_argument("--summary-path", type=Path,
-                   default=pb.DEFAULT_OUT_DIR / "wf32_pb_valid_verify_summary.json")
+    p.add_argument(
+        "--metrics-path",
+        type=Path,
+        default=pb.DEFAULT_OUT_DIR / "wf32_pb_valid_verify.json",
+    )
+    p.add_argument(
+        "--summary-path",
+        type=Path,
+        default=pb.DEFAULT_OUT_DIR / "wf32_pb_valid_verify_summary.json",
+    )
     p.add_argument("--quiet", action="store_true")
     return p.parse_args(argv)
 
@@ -90,7 +105,10 @@ def main(argv: List[str] | None = None) -> int:
 
     log.info(
         "verify_bench_pb_valid smoke: pocket=%s candidate=%s pb_mode=%s method=%s",
-        args.pocket, args.candidate, args.pb_mode, args.method,
+        args.pocket,
+        args.candidate,
+        args.pb_mode,
+        args.method,
     )
 
     # If the requested pocket isn't staged, materialise a tiny dummy
@@ -124,8 +142,16 @@ def main(argv: List[str] | None = None) -> int:
     log.info(
         "  pocket=%s candidate=%s pb_mode=%s traj=%s status=%s pass_rate=%.3f "
         "(n_checks=%d n_passed=%d n_failed=%d elapsed=%.2fs)",
-        r.pocket_id, r.candidate_name, r.method, r.trajectory_method, r.status,
-        r.pass_rate, r.n_checks, r.n_passed, r.n_failed, r.elapsed_s,
+        r.pocket_id,
+        r.candidate_name,
+        r.method,
+        r.trajectory_method,
+        r.status,
+        r.pass_rate,
+        r.n_checks,
+        r.n_passed,
+        r.n_failed,
+        r.elapsed_s,
     )
 
     per_pocket, aggregate = pb.aggregate_results(results)
@@ -159,9 +185,7 @@ def main(argv: List[str] | None = None) -> int:
         "per_pocket_per_method": pb._to_jsonable(per_pocket),
         "overall_pb_pass_rate": pb._to_jsonable(overall),
     }
-    args.metrics_path.write_text(
-        json.dumps(metrics_payload, indent=2) + "\n"
-    )
+    args.metrics_path.write_text(json.dumps(metrics_payload, indent=2) + "\n")
     log.info("wrote %s", args.metrics_path)
 
     summary_payload = {
@@ -173,21 +197,19 @@ def main(argv: List[str] | None = None) -> int:
         "method": args.method,
         "overall_pb_pass_rate": pb._to_jsonable(overall),
         "aggregate": {
-            f"{k[0]}|{k[1]}": pb._to_jsonable(v)
-            for k, v in aggregate.items()
+            f"{k[0]}|{k[1]}": pb._to_jsonable(v) for k, v in aggregate.items()
         },
     }
-    args.summary_path.write_text(
-        json.dumps(summary_payload, indent=2) + "\n"
-    )
+    args.summary_path.write_text(json.dumps(summary_payload, indent=2) + "\n")
     log.info("wrote %s", args.summary_path)
 
     # Headline pass/fail: at least one PB evaluation completed (any
     # status — passed, failed, or skipped is OK; only an outright
     # crash or zero-cell run is a failure).
     if r.status == "error":
-        log.error("verify_bench_pb_valid failed: cell status=%s note=%s",
-                  r.status, r.note)
+        log.error(
+            "verify_bench_pb_valid failed: cell status=%s note=%s", r.status, r.note
+        )
         return 1
     log.info(
         "verify_bench_pb_valid PASSED (status=%s overall=%.3f)",

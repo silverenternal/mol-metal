@@ -57,9 +57,7 @@ from molmetal.models.v4_multitask_dmpnn import (
 
 # Default data path — matches what ``scripts/pre_featurize_dmpnn.py``
 # writes and what ``scripts/train_dmpnn_multitask.py`` reads.
-PRE_FEATURIZED_ALL = (
-    _REPO / "molmetal" / "data" / "pre_featurized" / "all_pretrain.pt"
-)
+PRE_FEATURIZED_ALL = _REPO / "molmetal" / "data" / "pre_featurized" / "all_pretrain.pt"
 LOGS_DIR = _REPO / "logs"
 REPORTS_DIR = _REPO / "reports" / "wf_end_to_end_cached"
 
@@ -89,8 +87,17 @@ def load_pre_featurized(
         the slice, not the full file.
     """
     pack = torch.load(src, map_location="cpu", weights_only=False, mmap=True)
-    keys = ["atom_features", "edge_index", "edge_attr", "atom_mask",
-            "metal_idx", "y", "active", "domain", "smiles"]
+    keys = [
+        "atom_features",
+        "edge_index",
+        "edge_attr",
+        "atom_mask",
+        "metal_idx",
+        "y",
+        "active",
+        "domain",
+        "smiles",
+    ]
     out = {k: pack[k] for k in keys}
     if canonical_only:
         keep = out["metal_idx"] >= 0
@@ -194,18 +201,21 @@ def run_steps(
                 t0 = time.perf_counter()
                 optimizer.zero_grad()
                 out = model.forward_cached(
-                    batch_af, batch_ei, batch_mi,
-                    atom_mask=batch_mask, edge_attr=batch_ea,
+                    batch_af,
+                    batch_ei,
+                    batch_mi,
+                    atom_mask=batch_mask,
+                    edge_attr=batch_ea,
                 )
                 # Build per-metal y_true and coord_true from the active label.
                 # active ∈ {0,1}; cast to long and broadcast over all 5 metals
                 # so V4MultiTaskLoss has labels for every head.
-                y_true = {
-                    m: batch_act.clone() for m in SUPPORTED_METALS
-                }
+                y_true = {m: batch_act.clone() for m in SUPPORTED_METALS}
                 coord_true = batch_act.clone()
                 loss, _ = loss_fn(out, y_true, coord_true)
-                assert torch.isfinite(loss), f"step {step}: non-finite loss {loss.item()}"
+                assert torch.isfinite(
+                    loss
+                ), f"step {step}: non-finite loss {loss.item()}"
                 loss.backward()
                 optimizer.step()
                 torch.cuda.synchronize() if torch.cuda.is_available() else None
@@ -229,9 +239,7 @@ def run_steps(
                         )
                     )
 
-    rdkit_inner_called = (
-        rdkit_mol_called["count"] + rdkit_to_smiles_called["count"]
-    )
+    rdkit_inner_called = rdkit_mol_called["count"] + rdkit_to_smiles_called["count"]
 
     return {
         "step_times_ms": step_times_ms,
@@ -255,17 +263,29 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--steps", type=int, default=3)
     p.add_argument("--batch", type=int, default=8)
-    p.add_argument("--max-rows", type=int, default=512,
-                   help="Cap corpus to first N rows after canonical filter.")
+    p.add_argument(
+        "--max-rows",
+        type=int,
+        default=512,
+        help="Cap corpus to first N rows after canonical filter.",
+    )
     p.add_argument("--hidden-dim", type=int, default=64)
     p.add_argument("--n-layers", type=int, default=2)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--data-path", type=str, default=str(PRE_FEATURIZED_ALL))
-    p.add_argument("--out", type=str, default=None,
-                   help="Output JSON path; default = "
-                        "reports/wf_end_to_end_cached/<timestamp>.json")
-    p.add_argument("--log", type=str, default=None,
-                   help="Log path; default = logs/end_to_end_cached_<timestamp>.log")
+    p.add_argument(
+        "--out",
+        type=str,
+        default=None,
+        help="Output JSON path; default = "
+        "reports/wf_end_to_end_cached/<timestamp>.json",
+    )
+    p.add_argument(
+        "--log",
+        type=str,
+        default=None,
+        help="Log path; default = logs/end_to_end_cached_<timestamp>.log",
+    )
     return p.parse_args(argv)
 
 
@@ -277,18 +297,23 @@ def main(argv: list[str] | None = None) -> int:
 
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     out_path = Path(args.out) if args.out else REPORTS_DIR / f"{timestamp}.json"
-    log_path = Path(args.log) if args.log else LOGS_DIR / f"end_to_end_cached_{timestamp}.log"
+    log_path = (
+        Path(args.log) if args.log else LOGS_DIR / f"end_to_end_cached_{timestamp}.log"
+    )
 
     log_lines: list[str] = []
+
     def log(msg: str) -> None:
         print(msg, flush=True)
         log_lines.append(msg)
 
     log(f"[end_to_end_cached] ts={timestamp}")
     log(f"[end_to_end_cached] data_path={args.data_path}")
-    log(f"[end_to_end_cached] steps={args.steps} batch={args.batch} "
+    log(
+        f"[end_to_end_cached] steps={args.steps} batch={args.batch} "
         f"max_rows={args.max_rows} hidden_dim={args.hidden_dim} "
-        f"n_layers={args.n_layers} seed={args.seed}")
+        f"n_layers={args.n_layers} seed={args.seed}"
+    )
 
     # ------------------------------------------------------------------
     # Load data — mmap + slice
@@ -317,10 +342,12 @@ def main(argv: list[str] | None = None) -> int:
         canonical_only=True,
     )
     load_ms = (time.perf_counter() - t_load) * 1000.0
-    log(f"[end_to_end_cached] data loaded in {load_ms:.1f}ms — "
+    log(
+        f"[end_to_end_cached] data loaded in {load_ms:.1f}ms — "
         f"n_rows={pack['atom_features'].size(0)} "
         f"af_shape={tuple(pack['atom_features'].shape)} "
-        f"mi_unique={sorted(set(pack['metal_idx'].tolist()))}")
+        f"mi_unique={sorted(set(pack['metal_idx'].tolist()))}"
+    )
 
     # ------------------------------------------------------------------
     # Run training steps
@@ -339,14 +366,18 @@ def main(argv: list[str] | None = None) -> int:
     )
     run_ms = (time.perf_counter() - t_run) * 1000.0
 
-    log(f"[end_to_end_cached] ran {args.steps} steps in {run_ms:.1f}ms — "
+    log(
+        f"[end_to_end_cached] ran {args.steps} steps in {run_ms:.1f}ms — "
         f"mean_step={res['mean_step_time_ms']:.1f}ms "
         f"std_step={res['std_step_time_ms']:.1f}ms "
-        f"final_loss={res['final_loss']:.4f}")
+        f"final_loss={res['final_loss']:.4f}"
+    )
     log(f"[end_to_end_cached] grad_flow_ok={res['grad_flow_ok']}")
-    log(f"[end_to_end_cached] rdkit_mol_called={res['rdkit_mol_called']} "
+    log(
+        f"[end_to_end_cached] rdkit_mol_called={res['rdkit_mol_called']} "
         f"rdkit_mol_to_smiles_called={res['rdkit_mol_to_smiles_called']} "
-        f"rdkit_called_in_inner_loop={res['rdkit_called_in_inner_loop']}")
+        f"rdkit_called_in_inner_loop={res['rdkit_called_in_inner_loop']}"
+    )
     log(f"[end_to_end_cached] model_params={res['model_params']}")
 
     # ------------------------------------------------------------------

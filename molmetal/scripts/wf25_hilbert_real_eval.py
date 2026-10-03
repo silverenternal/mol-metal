@@ -40,6 +40,7 @@ Run::
         --output molmetal/reports/wf25_hilbert_real \\
         2>&1 | tee molmetal/reports/wf25_hilbert_real/run.log
 """
+
 from __future__ import annotations
 
 import argparse
@@ -182,7 +183,11 @@ def build_design_matrix(
             n_parsed += 1
 
     # ---- 2. Fallback / supplement: PlatinAI 5K (no IC50) ----
-    if len(smiles_list) < n_samples and platinai_csv is not None and platinai_csv.exists():
+    if (
+        len(smiles_list) < n_samples
+        and platinai_csv is not None
+        and platinai_csv.exists()
+    ):
         pt_rows = load_platinai_5k(platinai_csv)
         rng.shuffle(pt_rows)
         for row in pt_rows:
@@ -197,9 +202,8 @@ def build_design_matrix(
             # drawn from the metal label + descriptor distribution so
             # the regressor has a non-trivial signal to fit.
             try:
-                target = (
-                    float(row.get("metal") == "Pt")
-                    + 0.1 * float(rng.standard_normal())
+                target = float(row.get("metal") == "Pt") + 0.1 * float(
+                    rng.standard_normal()
                 )
             except Exception:
                 target = 0.05 * float(rng.standard_normal())
@@ -333,6 +337,7 @@ def cross_validate(
         from molmetal.molmetal_lam.reward.hilbert_primal_dual import (
             LambdaASTSRHilbert,
         )
+
         composite_h.hilbert_optimizer = LambdaASTSRHilbert(
             population_dim=population_dim,
             lr_primal=0.05,
@@ -441,18 +446,20 @@ def render_table(metrics: Dict[str, Any], stats: Dict[str, int]) -> str:
             f"{fold['hilbert_r2']:+.4f} | {fold['hilbert_wall_s']:.4f} | "
             f"{fold['evolutionary_r2']:+.4f} | {fold['evolutionary_wall_s']:.4f} |"
         )
-    out.extend([
-        "",
-        "## Honest framing",
-        "",
-        "* Features are 8 RDKit descriptors, not the F5 schema "
-        "(which requires a Pareto-front computation unavailable here).",
-        "* Activity is binary; the target is ``activity + N(0, 0.05)`` — "
-        "the regressor sees a noisy continuous signal, R² reflects "
-        "how much of that binary signal the ASTSR-class regressor recovers.",
-        "* Wall-time is machine-dependent; the speedup column is the "
-        "intended *relative* metric.",
-    ])
+    out.extend(
+        [
+            "",
+            "## Honest framing",
+            "",
+            "* Features are 8 RDKit descriptors, not the F5 schema "
+            "(which requires a Pareto-front computation unavailable here).",
+            "* Activity is binary; the target is ``activity + N(0, 0.05)`` — "
+            "the regressor sees a noisy continuous signal, R² reflects "
+            "how much of that binary signal the ASTSR-class regressor recovers.",
+            "* Wall-time is machine-dependent; the speedup column is the "
+            "intended *relative* metric.",
+        ]
+    )
     return "\n".join(out) + "\n"
 
 
@@ -464,29 +471,39 @@ def main() -> int:
         description=__doc__.splitlines()[0],
     )
     parser.add_argument(
-        "--n-samples", type=int, default=500,
+        "--n-samples",
+        type=int,
+        default=500,
         help="Number of (SMILES, target) rows to featurize.",
     )
     parser.add_argument(
-        "--n-folds", type=int, default=5,
+        "--n-folds",
+        type=int,
+        default=5,
         help="Number of cross-validation folds.",
     )
     parser.add_argument(
-        "--data", type=str, default="molmetal/data/platinai_5k.csv",
+        "--data",
+        type=str,
+        default="molmetal/data/platinai_5k.csv",
         help="PlatinAI 5K CSV path (SMILES source).",
     )
     parser.add_argument(
-        "--metalcytotox", type=str,
+        "--metalcytotox",
+        type=str,
         default=".data/molmetal/metalcytotox_5metal_multitask_v4.csv",
         help="MetalCytoToxDB CSV path (target source).",
     )
     parser.add_argument(
-        "--output", type=str,
+        "--output",
+        type=str,
         default="molmetal/reports/wf25_hilbert_real",
         help="Output directory for run.log / metrics.json / comparison_table.md.",
     )
     parser.add_argument(
-        "--seed", type=int, default=42,
+        "--seed",
+        type=int,
+        default=42,
         help="Random seed for SMILES sampling.",
     )
     args = parser.parse_args()
@@ -521,8 +538,10 @@ def main() -> int:
         n_samples=args.n_samples,
         seed=args.seed,
     )
-    print(f"  parsed={stats['n_parsed']}, failed={stats['n_failed']}, "
-          f"target_rows={stats['n_target_rows']}")
+    print(
+        f"  parsed={stats['n_parsed']}, failed={stats['n_failed']}, "
+        f"target_rows={stats['n_target_rows']}"
+    )
     if not X:
         print("ERROR: no samples survived featurization — aborting.")
         return 1
@@ -530,7 +549,8 @@ def main() -> int:
     # ---- Run CV ----
     print(f"\n[2/3] Running {args.n_folds}-fold cross-validation...")
     metrics = cross_validate(
-        X, y,
+        X,
+        y,
         n_folds=args.n_folds,
         population_dim=POPULATION_DIM,
         feature_columns=FEATURE_COLUMNS,
@@ -545,7 +565,8 @@ def main() -> int:
     )
     speedup = (
         metrics["evolutionary_wall_time"] / metrics["hilbert_wall_time"]
-        if metrics["hilbert_wall_time"] > 0 else float("inf")
+        if metrics["hilbert_wall_time"] > 0
+        else float("inf")
     )
     print(f"  speedup = {speedup:.2f}x")
 

@@ -39,12 +39,12 @@ from .autotune import AUTOTUNE_CONFIGS
 @triton.autotune(configs=AUTOTUNE_CONFIGS, key=["n", "feat_dim"])
 @triton.jit
 def _euler_step_kernel(
-    state_ptr,    # *fp  [B, D]
-    velocity_ptr, # *fp  [B, D]
-    out_ptr,      # *fp  [B, D]
-    n,            # i32  batch size B (autotune key only)
-    feat_dim,     # i32  feature dim D (autotune key only)
-    n_elements,   # i32  = B * D, used internally for masking
+    state_ptr,  # *fp  [B, D]
+    velocity_ptr,  # *fp  [B, D]
+    out_ptr,  # *fp  [B, D]
+    n,  # i32  batch size B (autotune key only)
+    feat_dim,  # i32  feature dim D (autotune key only)
+    n_elements,  # i32  = B * D, used internally for masking
     BLOCK_SIZE: tl.constexpr,
 ):
     """Compute ``out = state + dt * velocity`` element-wise.
@@ -68,16 +68,16 @@ def _euler_step_kernel(
 @triton.autotune(configs=AUTOTUNE_CONFIGS, key=["n", "feat_dim"])
 @triton.jit
 def _rk4_combine_kernel(
-    state_ptr,    # *fp  [B, D]
-    k1_ptr,       # *fp  [B, D]
-    k2_ptr,       # *fp  [B, D]
-    k3_ptr,       # *fp  [B, D]
-    k4_ptr,       # *fp  [B, D]
-    out_ptr,      # *fp  [B, D]
-    dt,           # fp
-    n,            # i32  batch size B (autotune key only)
-    feat_dim,     # i32  feature dim D (autotune key only)
-    n_elements,   # i32  = B * D
+    state_ptr,  # *fp  [B, D]
+    k1_ptr,  # *fp  [B, D]
+    k2_ptr,  # *fp  [B, D]
+    k3_ptr,  # *fp  [B, D]
+    k4_ptr,  # *fp  [B, D]
+    out_ptr,  # *fp  [B, D]
+    dt,  # fp
+    n,  # i32  batch size B (autotune key only)
+    feat_dim,  # i32  feature dim D (autotune key only)
+    n_elements,  # i32  = B * D
     BLOCK_SIZE: tl.constexpr,
 ):
     """Combine four RK4 stages into ``x + dt/6 * (k1 + 2 k2 + 2 k3 + k4)``."""

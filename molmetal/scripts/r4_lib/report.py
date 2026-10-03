@@ -67,18 +67,20 @@ def _render_summary_md(payload: Dict[str, Any]) -> str:
     lines.append(f"| anticancer_index | {agg.get('anticancer_index', 0.0):.4f} |")
     ox_dist = payload.get("oxidation_state_distribution_total", {}) or {}
     if ox_dist:
-        ox_str = ", ".join(
-            f"{k}={v}" for k, v in sorted(ox_dist.items())
-        )
+        ox_str = ", ".join(f"{k}={v}" for k, v in sorted(ox_dist.items()))
     else:
         ox_str = "(none)"
     lines.append(f"| oxidation_state_distribution | {ox_str} |")
     lines.append("")
-    lines.append("## WF-Phase3b-MetricsV2 — 8 tumor-relevant anticancer / ADMET columns")
+    lines.append(
+        "## WF-Phase3b-MetricsV2 — 8 tumor-relevant anticancer / ADMET columns"
+    )
     lines.append("")
     lines.append("Lit basis: Weininger 1990 / Patrick 2009 / Hou 2007 / Veith 2009 /")
     lines.append("Benigni-Richard 2005 / Hughes 2008 / Delaney 2004 ESOL / Obach 1999.")
-    lines.append("All CPU-only; zero GPU load. Heuristic evaluators (NOT wet-lab calibrated).")
+    lines.append(
+        "All CPU-only; zero GPU load. Heuristic evaluators (NOT wet-lab calibrated)."
+    )
     lines.append("")
     lines.append("| metric | value |")
     lines.append("|---|---|")
@@ -96,26 +98,32 @@ def _render_summary_md(payload: Dict[str, Any]) -> str:
     lines.append("")
     lines.append("## WF-Phase3D-PerResidue-Diversity + WF-Phase3G-MetalCoordProbe")
     lines.append("")
-    lines.append("Lit basis: Bemis & Murcko 1996 / Jasial 2021 IntDiv / Peter 2019 SPF;")
-    lines.append("Lippard & Berg 1995 / Reedijk 1987 / Miessler 2014 d-block geometries.")
+    lines.append(
+        "Lit basis: Bemis & Murcko 1996 / Jasial 2021 IntDiv / Peter 2019 SPF;"
+    )
+    lines.append(
+        "Lippard & Berg 1995 / Reedijk 1987 / Miessler 2014 d-block geometries."
+    )
     lines.append("")
     lines.append("| metric | value |")
     lines.append("|---|---|")
     lines.append(
-        f"| diversity_subpocket | "
-        f"{agg.get('diversity_subpocket', 0.0):.4f} |"
+        f"| diversity_subpocket | " f"{agg.get('diversity_subpocket', 0.0):.4f} |"
     )
     lines.append(
-        f"| metal_coord_compliance | "
-        f"{agg.get('metal_coord_compliance', 0.0):.4f} |"
+        f"| metal_coord_compliance | " f"{agg.get('metal_coord_compliance', 0.0):.4f} |"
     )
     # ---- WF-T25-Metallo-Proxies: 4 metallodrug proxies (opt-in) -------
     if bool(agg.get("metallodrug_proxies_enabled", False)):
         lines.append("")
         lines.append("## WF-T25-Metallo-Proxies — 4 metallodrug-specific proxies")
         lines.append("")
-        lines.append("Lit basis: Shriver & Atkins Table 17.7 (spectrochemical series) +")
-        lines.append("Appleton 1997 Coord. Chem. Rev. (trans-effect series) + Wang 2005 +")
+        lines.append(
+            "Lit basis: Shriver & Atkins Table 17.7 (spectrochemical series) +"
+        )
+        lines.append(
+            "Appleton 1997 Coord. Chem. Rev. (trans-effect series) + Wang 2005 +"
+        )
         lines.append("Cohen 2007 (Pt-DNA crosslink). All values in [0, 1].")
         lines.append("PROXIES, not measured quantities — see `molmetal/reports/")
         lines.append("wf_t25_metallo_proxies/final.md` for the honest framing.")
@@ -146,8 +154,12 @@ def _render_summary_md(payload: Dict[str, Any]) -> str:
     lines.append("")
     lines.append("## Per-cell results")
     lines.append("")
-    lines.append("| pocket | seed | n_cand | n_distinct | valid | uniq | div_tan | div_hom | novel | syn | metal | ref_tan | rigid_rmsd | com_shift | logP | TPSA | RotB | coord | gsh | dna | ai | cl | warnings |")
-    lines.append("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+    lines.append(
+        "| pocket | seed | n_cand | n_distinct | valid | uniq | div_tan | div_hom | novel | syn | metal | ref_tan | rigid_rmsd | com_shift | logP | TPSA | RotB | coord | gsh | dna | ai | cl | warnings |"
+    )
+    lines.append(
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"
+    )
     for c in cells:
         lines.append(
             "| {pid} | {seed} | {nc} | {nd} | {v:.3f} | {u:.3f} | "

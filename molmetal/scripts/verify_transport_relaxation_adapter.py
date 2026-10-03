@@ -55,9 +55,9 @@ def _check_relaxed_endpoint_term() -> None:
     # (a) λ = 0 → no-op
     term_zero = RelaxedEndpointTerm(lambda_relax=0.0, eps=0.1)
     out_zero = term_zero.forward(trajectory, energies)
-    assert out_zero.item() == 0.0, (
-        f"lambda=0 must yield zero penalty; got {out_zero.item()}"
-    )
+    assert (
+        out_zero.item() == 0.0
+    ), f"lambda=0 must yield zero penalty; got {out_zero.item()}"
 
     # (b) non-zero λ → non-negative penalty
     term = RelaxedEndpointTerm(lambda_relax=1e-3, eps=0.1)
@@ -73,9 +73,9 @@ def _check_relaxed_endpoint_term() -> None:
     # (d) equal energies → KL ≈ 0
     equal_e = torch.full((4,), 0.5)
     kl_equal = term.kl(trajectory, equal_e)
-    assert abs(kl_equal.item()) < 1e-6, (
-        f"equal energies must give KL=0, got {kl_equal.item()}"
-    )
+    assert (
+        abs(kl_equal.item()) < 1e-6
+    ), f"equal energies must give KL=0, got {kl_equal.item()}"
 
     print("        -> CPU smoke 0/4 fail")
 
@@ -93,16 +93,23 @@ def _check_augment_learned_shaping(dry_run: bool) -> None:
 
     # (a) λ = 0 → exactly equal to base
     out_zero = augment_learned_shaping(
-        base_scalar, trajectory, energies, lambda_relax=0.0, eps=0.1,
+        base_scalar,
+        trajectory,
+        energies,
+        lambda_relax=0.0,
+        eps=0.1,
     )
     assert torch.allclose(out_zero, base_scalar, atol=1e-7), (
-        f"lambda=0 must recover base; got {out_zero.item()} vs "
-        f"{base_scalar.item()}"
+        f"lambda=0 must recover base; got {out_zero.item()} vs " f"{base_scalar.item()}"
     )
 
     # (b) λ = 1e-3 → strictly greater than base
     out = augment_learned_shaping(
-        base_scalar, trajectory, energies, lambda_relax=1e-3, eps=0.1,
+        base_scalar,
+        trajectory,
+        energies,
+        lambda_relax=1e-3,
+        eps=0.1,
     )
     assert out.item() > base_scalar.item(), (
         f"positive penalty must exceed base; got {out.item()} vs "
@@ -112,7 +119,11 @@ def _check_augment_learned_shaping(dry_run: bool) -> None:
     # (c) (B,) base → output shape = (B,)
     base_vec = torch.tensor([0.1, 0.2, 0.3, 0.4])
     out_vec = augment_learned_shaping(
-        base_vec, trajectory, energies, lambda_relax=1e-3, eps=0.1,
+        base_vec,
+        trajectory,
+        energies,
+        lambda_relax=1e-3,
+        eps=0.1,
     )
     assert out_vec.shape == base_vec.shape
     assert (out_vec >= base_vec).all()
@@ -132,32 +143,32 @@ def _check_lambda_relax_sweep(dry_run: bool) -> None:
         return -0.5
 
     sweep = LambdaRelaxSweep(
-        base_shaping=_base, lambdas=(1e-4, 1e-3, 1e-2), eps=0.1,
+        base_shaping=_base,
+        lambdas=(1e-4, 1e-3, 1e-2),
+        eps=0.1,
     )
     trajectory = torch.randn(8, 5, 3)
     energies = torch.randn(8)
     val_features = [{"sa_mean_norm": 0.3}] * 8
 
     best = sweep.best_lambda(trajectory, energies, val_features)
-    assert best in (1e-4, 1e-3, 1e-2), (
-        f"best_lambda must be from the grid, got {best}"
-    )
+    assert best in (1e-4, 1e-3, 1e-2), f"best_lambda must be from the grid, got {best}"
 
     rows = sweep.evaluate_grid(trajectory, energies, val_features)
     assert len(rows) == 3, f"expected 3 rows, got {len(rows)}"
     for row in rows:
         for key in ("lambda_relax", "kl", "penalty", "base_mean", "augmented_mean"):
             assert key in row, f"missing key {key!r} in row {row}"
-            assert math.isfinite(row[key]), (
-                f"row[{key!r}] must be finite, got {row[key]}"
-            )
+            assert math.isfinite(
+                row[key]
+            ), f"row[{key!r}] must be finite, got {row[key]}"
 
     # Equal energies must break ties by smallest λ.
     equal_energies = torch.full((8,), 0.5)
     best_equal = sweep.best_lambda(trajectory, equal_energies, [None] * 8)
-    assert best_equal == 1e-4, (
-        f"equal energies must break ties by smallest λ, got {best_equal}"
-    )
+    assert (
+        best_equal == 1e-4
+    ), f"equal energies must break ties by smallest λ, got {best_equal}"
 
     print("        -> CPU smoke 0/3 fail")
 
@@ -168,13 +179,13 @@ def _check_lambda_relax_sweep(dry_run: bool) -> None:
 def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         description="CPU-only smoke verification of the W2.2 "
-                    "Transport-Relaxation adapter.",
+        "Transport-Relaxation adapter.",
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Skip the (slower) augment + sweep steps; only verify "
-             "RelaxedEndpointTerm on CPU.",
+        "RelaxedEndpointTerm on CPU.",
     )
     args = parser.parse_args(argv)
 

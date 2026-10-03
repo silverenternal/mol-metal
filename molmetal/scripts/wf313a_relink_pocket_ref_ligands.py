@@ -104,9 +104,7 @@ def relink_one_pocket(pocket: dict[str, Any]) -> dict[str, Any]:
         # Provenance: cite Wf-139 P1 as the MEASURED source
         "source_wf": "Wf-139 P1",
         "source_metadata_json": str(SOURCE_METADATA.relative_to(PROJECT_ROOT)),
-        "source_synthesis_md": str(
-            WF139_P1_SYNTHESIS_MD.relative_to(PROJECT_ROOT)
-        ),
+        "source_synthesis_md": str(WF139_P1_SYNTHESIS_MD.relative_to(PROJECT_ROOT)),
         "wf313a_relink_utc": datetime.now(timezone.utc).isoformat(),
         "wf313a_relink_kind": "REFACTOR_FROM_FLAT_LAYOUT",
         # Phase 2 honest-negative marker
@@ -160,9 +158,7 @@ def write_extraction_summary(
         ),
         "source_wf": "Wf-139 P1",
         "source_metadata_json": str(SOURCE_METADATA.relative_to(PROJECT_ROOT)),
-        "source_synthesis_md": str(
-            WF139_P1_SYNTHESIS_MD.relative_to(PROJECT_ROOT)
-        ),
+        "source_synthesis_md": str(WF139_P1_SYNTHESIS_MD.relative_to(PROJECT_ROOT)),
         "todo134_status_reference": str(TODO_134.relative_to(PROJECT_ROOT)),
         # Honest-framing marker: this is a refactor, not new extraction
         "refactor_only": True,

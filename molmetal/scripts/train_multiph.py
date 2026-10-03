@@ -89,6 +89,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -143,10 +144,10 @@ RECIPE_EVAL_EVERY: int = 5
 RECIPE_N_COORD_CLASSES: int = 5
 RECIPE_METAL_EMBED_DIM: int = 64
 RECIPE_DROPOUT: float = 0.2
-RECIPE_MPHP_N_BINS: int = 8            # reduced for CPU smoke; 32 for prod
+RECIPE_MPHP_N_BINS: int = 8  # reduced for CPU smoke; 32 for prod
 RECIPE_MPHP_MAX_RADIUS: float = 5.0
 RECIPE_MPHP_MAX_COORD: float = 4.0
-RECIPE_MPHP_PROJECT_DIM: int = 16      # projector output dim (additive to metal_embed)
+RECIPE_MPHP_PROJECT_DIM: int = 16  # projector output dim (additive to metal_embed)
 
 # --- Output paths (overridable via CLI) ---
 DEFAULT_DATA = (
@@ -166,8 +167,11 @@ DEFAULT_SUMMARY_PATH = (
 # Coord labels: a deterministic per-metal proxy (square_planar for
 # Pt/Ru/Ir/Rh, tetrahedral for Re/Os) — see train_ru_multitask.py.
 COORD_BY_METAL = {
-    "Ru": 3, "Ir": 3, "Rh": 3,
-    "Re": 2, "Os": 3,
+    "Ru": 3,
+    "Ir": 3,
+    "Rh": 3,
+    "Re": 2,
+    "Os": 3,
 }
 
 
@@ -303,14 +307,15 @@ class MultiPHProjector(nn.Module):
     def forward(self, mphp_features: torch.Tensor) -> torch.Tensor:
         """Project a ``(B, n_bins, n_bins)`` map to ``(B, mphp_dim)``."""
         if mphp_features.dim() != 3 or mphp_features.shape[1:] != (
-            self.n_bins, self.n_bins,
+            self.n_bins,
+            self.n_bins,
         ):
             raise ValueError(
                 f"mphp_features must be (B, {self.n_bins}, {self.n_bins}); "
                 f"got {tuple(mphp_features.shape)}"
             )
-        flat = mphp_features.flatten(start_dim=1)        # (B, n_bins^2)
-        return self.proj(flat)                            # (B, mphp_dim)
+        flat = mphp_features.flatten(start_dim=1)  # (B, n_bins^2)
+        return self.proj(flat)  # (B, mphp_dim)
 
 
 # ---------------------------------------------------------------------------
@@ -352,7 +357,7 @@ def build_batches(
         rng.shuffle(idx)
     batches: List[Tuple[List[str], torch.Tensor, torch.Tensor]] = []
     for start in range(0, len(idx), batch_size):
-        chunk = idx[start:start + batch_size]
+        chunk = idx[start : start + batch_size]
         smis = [pool[int(i)][0] for i in chunk]
         ys = torch.tensor([pool[int(i)][1] for i in chunk], dtype=torch.long)
         mids = torch.full((len(chunk),), metal_id, dtype=torch.long)
@@ -401,13 +406,14 @@ def eval_split_auc(
     labels: List[int] = []
     model.eval()
     for start in range(0, len(pool), batch_size):
-        chunk = pool[start:start + batch_size]
+        chunk = pool[start : start + batch_size]
         smis = [s for s, _ in chunk]
         ys = torch.tensor([y for _, y in chunk], dtype=torch.long)
         mids = torch.full((len(chunk),), mid, dtype=torch.long).to(device)
         ys = ys.to(device)
         with torch.amp.autocast(
-            device_type="cuda", dtype=torch.bfloat16,
+            device_type="cuda",
+            dtype=torch.bfloat16,
             enabled=device.type == "cuda",
         ):
             out = model(smis, mids)
@@ -431,17 +437,18 @@ def mphp_smoke(
 ) -> Dict[str, object]:
     """Run the multi-PH extractor on a synthetic pocket cloud."""
     pocket = smiles_to_synthetic_pocket(
-        smiles_batch, n_pocket_atoms=n_pocket_atoms,
+        smiles_batch,
+        n_pocket_atoms=n_pocket_atoms,
     )
     try:
-        features = mphp(pocket)                            # (B, n_bins, n_bins)
+        features = mphp(pocket)  # (B, n_bins, n_bins)
         return {
             "feature_shape": list(features.shape),
             "feature_mean": float(features.mean().item()),
             "feature_max": float(features.max().item()),
             "finite": bool(torch.isfinite(features).all().item()),
         }
-    except Exception as exc:                              # pragma: no cover
+    except Exception as exc:  # pragma: no cover
         return {"error": str(exc), "finite": False}
 
 
@@ -478,7 +485,8 @@ def train_one_seed(
         n_bins=args.n_bins,
     ).to(device)
     projector = MultiPHProjector(
-        n_bins=args.n_bins, mphp_dim=args.mphp_project_dim,
+        n_bins=args.n_bins,
+        mphp_dim=args.mphp_project_dim,
     ).to(device)
 
     n_mphp_params = sum(p.numel() for p in mphp.parameters())
@@ -497,9 +505,7 @@ def train_one_seed(
         lr=args.lr,
         weight_decay=1e-4,
     )
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=args.epochs
-    )
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
     loss_fn = V4MultiTaskLoss(
         n_coord_classes=RECIPE_N_COORD_CLASSES,
         coord_weight=COORD_LOSS_WEIGHT,
@@ -526,8 +532,7 @@ def train_one_seed(
         n_batches = 0
         per_metal_batches = {
             m: build_batches(
-                cap_pool(gather_train_pool(data, m),
-                         args.train_max_per_metal, rng),
+                cap_pool(gather_train_pool(data, m), args.train_max_per_metal, rng),
                 model.metal_id(m),
                 args.batch,
                 rng,
@@ -548,10 +553,12 @@ def train_one_seed(
                 ys_dev = ys.to(device)
                 # Compute the multi-PH features for this batch.
                 pocket = smiles_to_synthetic_pocket(
-                    smis, n_pocket_atoms=args.mphp_n_pocket_atoms,
+                    smis,
+                    n_pocket_atoms=args.mphp_n_pocket_atoms,
                 ).to(device)
                 with torch.amp.autocast(
-                    device_type="cuda", dtype=torch.bfloat16,
+                    device_type="cuda",
+                    dtype=torch.bfloat16,
                     enabled=device.type == "cuda",
                 ):
                     # W2.3 augmentation: mphp_features -> projector
@@ -582,11 +589,10 @@ def train_one_seed(
                 a, _ = eval_split_auc(model, data, m, "val", device, args.batch)
                 val_aucs[m] = a
             valid_aucs = [v for v in val_aucs.values() if not np.isnan(v)]
-            mean_val = (
-                float(np.mean(valid_aucs)) if valid_aucs else float("nan")
+            mean_val = float(np.mean(valid_aucs)) if valid_aucs else float("nan")
+            val_history.append(
+                {"epoch": epoch, "mean_val_auc": mean_val, "per_metal": val_aucs}
             )
-            val_history.append({"epoch": epoch, "mean_val_auc": mean_val,
-                                "per_metal": val_aucs})
             print(
                 f"[train_multiph] seed={seed} epoch={epoch:3d} "
                 f"loss={epoch_loss / max(n_batches, 1):.4f} "
@@ -596,12 +602,16 @@ def train_one_seed(
             if not np.isnan(mean_val) and mean_val > best_val_mean:
                 best_val_mean = mean_val
                 best_epoch = epoch
-                best_state = {k: v.detach().cpu().clone()
-                              for k, v in model.state_dict().items()}
-                best_mphp_state = {k: v.detach().cpu().clone()
-                                   for k, v in mphp.state_dict().items()}
-                best_proj_state = {k: v.detach().cpu().clone()
-                                   for k, v in projector.state_dict().items()}
+                best_state = {
+                    k: v.detach().cpu().clone() for k, v in model.state_dict().items()
+                }
+                best_mphp_state = {
+                    k: v.detach().cpu().clone() for k, v in mphp.state_dict().items()
+                }
+                best_proj_state = {
+                    k: v.detach().cpu().clone()
+                    for k, v in projector.state_dict().items()
+                }
 
     model.load_state_dict(best_state)
     mphp.load_state_dict(best_mphp_state)
@@ -644,9 +654,7 @@ def train_one_seed(
 # ---------------------------------------------------------------------------
 def parse_args(argv: List[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
-        description=(
-            "Wf-23 Phase 2 — R18 W2.3 Multi-PH 5-metal multitask trainer."
-        ),
+        description=("Wf-23 Phase 2 — R18 W2.3 Multi-PH 5-metal multitask trainer."),
     )
     # Wf-35 Phase 2 — shared recipe / GPU / benchmark args.
     p = add_common_args(
@@ -662,23 +670,33 @@ def parse_args(argv: List[str] | None = None) -> argparse.Namespace:
 
     # W2.3-specific Multi-PH flags.
     p.add_argument(
-        "--n-bins", type=int, default=RECIPE_MPHP_N_BINS,
+        "--n-bins",
+        type=int,
+        default=RECIPE_MPHP_N_BINS,
         help="Number of bins per multi-PH filter axis (default 8 for CPU smoke).",
     )
     p.add_argument(
-        "--mphp-max-radius", type=float, default=RECIPE_MPHP_MAX_RADIUS,
+        "--mphp-max-radius",
+        type=float,
+        default=RECIPE_MPHP_MAX_RADIUS,
         help="Multi-PH spatial filter max in Ångström.",
     )
     p.add_argument(
-        "--mphp-max-coord", type=float, default=RECIPE_MPHP_MAX_COORD,
+        "--mphp-max-coord",
+        type=float,
+        default=RECIPE_MPHP_MAX_COORD,
         help="Multi-PH atomic-number coordination distance max.",
     )
     p.add_argument(
-        "--mphp-project-dim", type=int, default=RECIPE_MPHP_PROJECT_DIM,
+        "--mphp-project-dim",
+        type=int,
+        default=RECIPE_MPHP_PROJECT_DIM,
         help="Output dim of the multi-PH linear projector.",
     )
     p.add_argument(
-        "--mphp-n-pocket-atoms", type=int, default=12,
+        "--mphp-n-pocket-atoms",
+        type=int,
+        default=12,
         help="Synthetic pocket atoms per SMILES (default 12).",
     )
     return p.parse_args(argv)
@@ -748,8 +766,10 @@ def main(argv: List[str] | None = None) -> int:
                 "proj_state_dict": result["best_proj_state"],
                 "recipe": {
                     "init": "multiph",
-                    "epochs": args.epochs, "batch": args.batch,
-                    "lr": args.lr, "hidden": args.hidden,
+                    "epochs": args.epochs,
+                    "batch": args.batch,
+                    "lr": args.lr,
+                    "hidden": args.hidden,
                     "depth": args.depth,
                     "n_bins": args.n_bins,
                     "mphp_max_radius": args.mphp_max_radius,
@@ -763,9 +783,7 @@ def main(argv: List[str] | None = None) -> int:
     wall = time.time() - t0
     print(f"[train_multiph] total wall={wall:.1f}s")
 
-    ru_per_seed = [
-        r["test_auc_per_metal"].get("Ru") for r in seed_results
-    ]
+    ru_per_seed = [r["test_auc_per_metal"].get("Ru") for r in seed_results]
     ru_mean = float(np.nanmean([a for a in ru_per_seed if a is not None]))
     metrics = {
         "recipe": "r18_w2.3_multiph_5metal_multitask",
@@ -799,10 +817,7 @@ def main(argv: List[str] | None = None) -> int:
             for k in ("best_state", "best_mphp_state", "best_proj_state"):
                 r.pop(k, None)
     args.metrics_path.write_text(json.dumps(_to_jsonable(metrics), indent=2))
-    print(
-        f"[train_multiph] wrote {args.metrics_path} "
-        f"(Ru mean={ru_mean:.4f})"
-    )
+    print(f"[train_multiph] wrote {args.metrics_path} " f"(Ru mean={ru_mean:.4f})")
 
     final_summary = {
         "recipe": "r18_w2.3_multiph_5metal_multitask_final_summary",

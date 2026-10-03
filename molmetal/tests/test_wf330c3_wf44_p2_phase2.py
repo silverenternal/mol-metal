@@ -49,6 +49,7 @@ Honest framing
   neighbour by definition. The bench must continue to run on the
   other 2 domains without raising.
 """
+
 from __future__ import annotations
 
 import csv
@@ -93,6 +94,7 @@ from molmetal.scripts.bench_closure_ood import (  # noqa: E402
 def _have_rdkit() -> bool:
     try:
         from rdkit import Chem  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -156,8 +158,7 @@ def test_wf44_p2_numerical_fix_lift() -> None:
     secondary metric tracked in the report itself.
     """
     report_path = (
-        PROJECT_ROOT / "molmetal/reports/wf44_r2_debug/"
-        "numerical_fix_results.json"
+        PROJECT_ROOT / "molmetal/reports/wf44_r2_debug/" "numerical_fix_results.json"
     )
     assert report_path.is_file(), (
         f"Wf-44 numerical fix report missing: {report_path}. "
@@ -252,37 +253,29 @@ def test_wf44_p2_per_domain_ood_sweep(tmp_path: Path) -> None:
 
     # All 3 Wf-44 P2 domains must be present
     for dom in PHASE2_DOMAINS:
-        assert dom in payload["domains"], (
-            f"Phase 2 domain {dom!r} missing from payload"
-        )
+        assert dom in payload["domains"], f"Phase 2 domain {dom!r} missing from payload"
 
     # Each domain has an aggregate block with documented keys
     for dom in payload["domains"]:
         d_info = payload["per_domain"].get(dom, {})
         d_agg = d_info.get("aggregate", {})
         missing = [k for k in EXPECTED_AGGREGATE_KEYS if k not in d_agg]
-        assert not missing, (
-            f"per-domain aggregate for {dom!r} missing keys {missing!r}"
-        )
+        assert not missing, f"per-domain aggregate for {dom!r} missing keys {missing!r}"
 
         # n_ood <= n_input (OOD filter must not inflate input)
         n_in = int(d_agg["n_input"])
         n_ood = int(d_agg["n_ood"])
-        assert n_ood <= n_in, (
-            f"OOD filter inflated {dom!r}: n_ood={n_ood} > n_input={n_in}"
-        )
+        assert (
+            n_ood <= n_in
+        ), f"OOD filter inflated {dom!r}: n_ood={n_ood} > n_input={n_in}"
 
         # reachability rate is bounded
         rate = float(d_agg["closure_reachability_rate"])
-        assert 0.0 <= rate <= 1.0, (
-            f"{dom!r} reachability rate out of [0,1]: {rate}"
-        )
+        assert 0.0 <= rate <= 1.0, f"{dom!r} reachability rate out of [0,1]: {rate}"
 
         # ood_rate is bounded
         ood_rate = float(d_agg["ood_rate"])
-        assert 0.0 <= ood_rate <= 1.0, (
-            f"{dom!r} ood_rate out of [0,1]: {ood_rate}"
-        )
+        assert 0.0 <= ood_rate <= 1.0, f"{dom!r} ood_rate out of [0,1]: {ood_rate}"
 
     # Artefact writes — all 3 files must exist
     paths = save_closure_ood_benchmark(payload, output_dir=out_dir)
@@ -300,9 +293,7 @@ def test_wf44_p2_per_domain_ood_sweep(tmp_path: Path) -> None:
     # Markdown mentions all 3 domains
     md_text = paths["markdown"].read_text()
     for dom in PHASE2_DOMAINS:
-        assert dom in md_text, (
-            f"ood_closure.md missing domain {dom!r}"
-        )
+        assert dom in md_text, f"ood_closure.md missing domain {dom!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -332,9 +323,7 @@ def test_wf44_p2_per_metal_reachability_bench() -> None:
         seeds=1,
     )
 
-    per_metal = (
-        payload["per_domain"]["platinai_5k"]["per_metal"]
-    )
+    per_metal = payload["per_domain"]["platinai_5k"]["per_metal"]
     assert len(per_metal) >= len(PLATINAI_METALS), (
         f"per_metal has {len(per_metal)} entries, expected "
         f">= {len(PLATINAI_METALS)} (PLATINAI_METALS)"
@@ -347,47 +336,48 @@ def test_wf44_p2_per_metal_reachability_bench() -> None:
         if int(agg.get("n_input", 0)) == 0:
             continue
         missing = [k for k in EXPECTED_AGGREGATE_KEYS if k not in agg]
-        assert not missing, (
-            f"per-metal {metal!r} aggregate missing keys {missing!r}"
-        )
+        assert not missing, f"per-metal {metal!r} aggregate missing keys {missing!r}"
 
         # Reachability rate is in [0, 1]
         rate = float(agg["closure_reachability_rate"])
-        assert 0.0 <= rate <= 1.0, (
-            f"per-metal {metal!r} reachability out of [0,1]: {rate}"
-        )
+        assert (
+            0.0 <= rate <= 1.0
+        ), f"per-metal {metal!r} reachability out of [0,1]: {rate}"
 
         # OOD rate is in [0, 1]
         ood_rate = float(agg["ood_rate"])
-        assert 0.0 <= ood_rate <= 1.0, (
-            f"per-metal {metal!r} ood_rate out of [0,1]: {ood_rate}"
-        )
+        assert (
+            0.0 <= ood_rate <= 1.0
+        ), f"per-metal {metal!r} ood_rate out of [0,1]: {ood_rate}"
 
         # n_ood <= n_input (sanity)
         n_in = int(agg["n_input"])
         n_ood = int(agg["n_ood"])
-        assert n_ood <= n_in, (
-            f"per-metal {metal!r}: n_ood={n_ood} > n_input={n_in}"
-        )
+        assert n_ood <= n_in, f"per-metal {metal!r}: n_ood={n_ood} > n_input={n_in}"
 
         # closure_ok <= n_samples (sanity)
         n_samples = int(agg["n_samples"])
         n_ok = int(agg["n_closure_ok"])
         assert n_ok <= n_samples, (
-            f"per-metal {metal!r}: n_closure_ok={n_ok} > "
-            f"n_samples={n_samples}"
+            f"per-metal {metal!r}: n_closure_ok={n_ok} > " f"n_samples={n_samples}"
         )
 
         # Every record has the per-sample schema
         for rec in m_info.get("records", []):
             for k in (
-                "idx", "metal", "domain", "smiles", "status",
-                "closure_ok", "n_visited", "n_products",
-                "wall_time_s", "memory_mb", "depth",
+                "idx",
+                "metal",
+                "domain",
+                "smiles",
+                "status",
+                "closure_ok",
+                "n_visited",
+                "n_products",
+                "wall_time_s",
+                "memory_mb",
+                "depth",
             ):
-                assert k in rec, (
-                    f"per-metal {metal!r} record missing key {k!r}"
-                )
+                assert k in rec, f"per-metal {metal!r} record missing key {k!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -410,24 +400,24 @@ def test_wf44_p2_tanimoto_filter_threshold() -> None:
       - Record the correct ``max_tanimoto`` per query
     """
     train_pool = [
-        "c1ccccc1O",          # phenol — train[0]
-        "c1ccccc1N",          # aniline — train[1]
-        "CC(=O)Nc1ccccc1",    # acetanilide — train[2]
+        "c1ccccc1O",  # phenol — train[0]
+        "c1ccccc1N",  # aniline — train[1]
+        "CC(=O)Nc1ccccc1",  # acetanilide — train[2]
     ]
     queries = [
-        "c1ccccc1O",          # identical to train[0] → NOT OOD
-        "c1ccc(N)cc1",        # aniline (Tanimoto ~0.55 with train[1]) → NOT OOD
-        "CCCCCCCCCC",         # decane — fully OOD
-        "c1ccncc1",           # pyridine — fully OOD
+        "c1ccccc1O",  # identical to train[0] → NOT OOD
+        "c1ccc(N)cc1",  # aniline (Tanimoto ~0.55 with train[1]) → NOT OOD
+        "CCCCCCCCCC",  # decane — fully OOD
+        "c1ccncc1",  # pyridine — fully OOD
     ]
     p = _load_tanimoto_protocol(threshold=0.4)
     ood_subset, audit = _filter_ood_subset(queries, train_pool, p, "Test")
 
     # 2 of 4 queries are OOD
     assert audit["n_in"] == 4
-    assert audit["n_ood"] == 2, (
-        f"expected 2 OOD queries (decane + pyridine); got {audit['n_ood']}"
-    )
+    assert (
+        audit["n_ood"] == 2
+    ), f"expected 2 OOD queries (decane + pyridine); got {audit['n_ood']}"
     assert audit["ood_rate"] == pytest.approx(0.5, abs=1e-6)
     assert audit["threshold"] == pytest.approx(0.4)
 
@@ -435,15 +425,15 @@ def test_wf44_p2_tanimoto_filter_threshold() -> None:
     assert "CCCCCCCCCC" in ood_smiles, "decane must be OOD"
     assert "c1ccncc1" in ood_smiles, "pyridine must be OOD"
     assert "c1ccccc1O" not in ood_smiles, "phenol (in train) must NOT be OOD"
-    assert "c1ccc(N)cc1" not in ood_smiles, (
-        "aniline (Tanimoto > 0.4 to train) must NOT be OOD"
-    )
+    assert (
+        "c1ccc(N)cc1" not in ood_smiles
+    ), "aniline (Tanimoto > 0.4 to train) must NOT be OOD"
 
     # The max_tanimoto values must be in [0, 1]
-    for (_, _, max_t) in ood_subset:
-        assert 0.0 <= max_t < 0.4, (
-            f"OOD entry has max_tanimoto={max_t} >= threshold=0.4"
-        )
+    for _, _, max_t in ood_subset:
+        assert (
+            0.0 <= max_t < 0.4
+        ), f"OOD entry has max_tanimoto={max_t} >= threshold=0.4"
 
     # mean_max_tanimoto covers all 4 queries (OOD + non-OOD)
     assert 0.0 <= float(audit["mean_max_tanimoto"]) <= 1.0
@@ -473,9 +463,9 @@ def test_wf44_p2_phase2_domain_set() -> None:
     assert "metalcytotox_5metal" in DOMAIN_SPECS
 
     # tmQM d-block covers 30 metals
-    assert len(TMQM_METALS) == 30, (
-        f"tmqm_dblock should ship 30 d-block metals; got {len(TMQM_METALS)}"
-    )
+    assert (
+        len(TMQM_METALS) == 30
+    ), f"tmqm_dblock should ship 30 d-block metals; got {len(TMQM_METALS)}"
 
     # PlatinAI + MetalCytoTox domain CSV paths exist on disk
     assert DEFAULT_PLATINAI_CSV.is_file()

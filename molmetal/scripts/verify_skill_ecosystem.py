@@ -50,6 +50,7 @@ Or with explicit smoke output::
 
     uv run --no-sync python molmetal/scripts/verify_skill_ecosystem.py --smoke
 """
+
 from __future__ import annotations
 
 import argparse

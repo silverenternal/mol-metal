@@ -138,7 +138,9 @@ def test_helper_caller_can_override_workers_via_env(tensors, monkeypatch):
     monkeypatch.setenv("WF191_NUM_WORKERS", "0")
     X, y = tensors
     dl = dh.make_retrain_dataloader(
-        (X, y), batch_size=32, num_workers=4  # requested 4, env forces 0
+        (X, y),
+        batch_size=32,
+        num_workers=4,  # requested 4, env forces 0
     )
     # effective_workers reads env at call time; check it's 0
     assert dh._env_int("WF191_NUM_WORKERS", dh.DEFAULT_NUM_WORKERS) == 0
@@ -169,9 +171,7 @@ def test_indexed_loader_round_trip():
     """``make_indexed_dataloader`` over a TensorDataset-style list."""
     items = torch.arange(50)
     ds = dh.IndexedListDataset(list(range(50)), items.tolist(), return_index=True)
-    dl = dh.make_indexed_dataloader(
-        ds, batch_size=10, shuffle=False, num_workers=0
-    )
+    dl = dh.make_indexed_dataloader(ds, batch_size=10, shuffle=False, num_workers=0)
     rows = list(dl)
     assert len(rows) == 5
     for batch in rows:
@@ -201,9 +201,7 @@ def test_manual_yields_same_set_as_loader_with_indices(tensors):
     # the DataLoader batches to a sorted list of indices.
     base = torch.stack([torch.as_tensor(i, dtype=torch.long) for i in indices])
     ds = dh.IndexSubset(base, torch.arange(len(indices), dtype=torch.long))
-    dl = dh.make_indexed_dataloader(
-        ds, batch_size=8, shuffle=False, num_workers=0
-    )
+    dl = dh.make_indexed_dataloader(ds, batch_size=8, shuffle=False, num_workers=0)
     loader_visited = []
     for batch_tensor in dl:
         loader_visited.extend(batch_tensor.tolist())

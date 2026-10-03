@@ -346,9 +346,9 @@ def has_metal_coordination_warhead(mol: Any) -> bool:
     if rdkit_mol is None:
         return False
     warheads = [
-        "[CX3](=O)[NX3][OX2]",   # hydroxamic acid
-        "[CX3](=O)[OX2H1]",      # carboxylic acid
-        "[SX2H1]",               # thiol
+        "[CX3](=O)[NX3][OX2]",  # hydroxamic acid
+        "[CX3](=O)[OX2H1]",  # carboxylic acid
+        "[SX2H1]",  # thiol
         "[PX4](=O)([OX2H1])[OX2H1]",  # phosphonate
     ]
     for sma in warheads:
@@ -359,8 +359,20 @@ def has_metal_coordination_warhead(mol: Any) -> bool:
     # ligand: cisplatin / auranofin / etc. are *coordination complexes*
     # where the metal itself is the warhead.
     for atom in rdkit_mol.GetAtoms():
-        if atom.GetSymbol() in {"Pt", "Pd", "Ru", "Ir", "Au", "Zn",
-                                 "Cu", "Ni", "Fe", "Co", "Mn", "Mg"}:
+        if atom.GetSymbol() in {
+            "Pt",
+            "Pd",
+            "Ru",
+            "Ir",
+            "Au",
+            "Zn",
+            "Cu",
+            "Ni",
+            "Fe",
+            "Co",
+            "Mn",
+            "Mg",
+        }:
             return True
     return False
 
@@ -409,9 +421,7 @@ def has_hydrophobic_pocket(mol: Any) -> bool:
         except Exception:
             rings = []
     aromatic = sum(
-        1 for r in rings if any(
-            rdkit_mol.GetAtomWithIdx(i).GetIsAromatic() for i in r
-        )
+        1 for r in rings if any(rdkit_mol.GetAtomWithIdx(i).GetIsAromatic() for i in r)
     )
     if aromatic > 0:
         return True
@@ -537,16 +547,24 @@ def _geometric_beta_check(
     # appear in the ligand — only the donor atoms.  When the metal is
     # part of the **ligand** (e.g. cisplatin → Pt_DNA), we *do* require
     # it to be present.  The flag ``metal_in_ligand`` distinguishes.
-    metal_in_ligand = bool(hints.get("metal_in_ligand", metal_symbol in {
-        "Pt", "Pd", "Ru", "Ir", "Au",
-    }))
+    metal_in_ligand = bool(
+        hints.get(
+            "metal_in_ligand",
+            metal_symbol
+            in {
+                "Pt",
+                "Pd",
+                "Ru",
+                "Ir",
+                "Au",
+            },
+        )
+    )
 
     # 1. Donor element check.
     preferred_donors: List[str] = list(hints.get("preferred_donors", []))
     if preferred_donors:
-        donor_atom_symbols = {
-            atom.GetSymbol() for atom in mol.GetAtoms()
-        }
+        donor_atom_symbols = {atom.GetSymbol() for atom in mol.GetAtoms()}
         has_preferred = any(d in donor_atom_symbols for d in preferred_donors)
         details["preferred_donors"] = preferred_donors
         details["donor_atom_symbols"] = sorted(donor_atom_symbols)
@@ -565,8 +583,7 @@ def _geometric_beta_check(
             sym = atom.GetSymbol()
             if sym in {"N", "O", "S", "P"}:
                 donor_atoms.append(atom.GetIdx())
-            elif (metal_in_ligand and metal_symbol is not None
-                  and sym == metal_symbol):
+            elif metal_in_ligand and metal_symbol is not None and sym == metal_symbol:
                 # Metal centre itself is the donor (coordination core)
                 donor_atoms.append(atom.GetIdx())
         details["min_donors_required"] = int(min_donors)
@@ -614,9 +631,7 @@ def _geometric_beta_check(
             details["min_hbond_donors_required"] = int(min_hbd)
             details["hbond_donors"] = hbd
             if hbd < int(min_hbd):
-                reasons.append(
-                    f"need at least {min_hbd} H-bond donors, found {hbd}"
-                )
+                reasons.append(f"need at least {min_hbd} H-bond donors, found {hbd}")
 
     min_hba = hints.get("min_hbond_acceptors")
     if min_hba is not None:
@@ -629,9 +644,7 @@ def _geometric_beta_check(
             details["min_hbond_acceptors_required"] = int(min_hba)
             details["hbond_acceptors"] = hba
             if hba < int(min_hba):
-                reasons.append(
-                    f"need at least {min_hba} H-bond acceptors, found {hba}"
-                )
+                reasons.append(f"need at least {min_hba} H-bond acceptors, found {hba}")
 
     return (len(reasons) == 0), reasons, details
 
@@ -730,6 +743,7 @@ def _resolve_docking_oracle():
     """
     try:  # pragma: no cover — import guard
         from molmetal_lam.sbdd_env.flowdock_adapter import FlowDockAdapter
+
         flow = FlowDockAdapter()
         if flow.is_available():
             return flow
@@ -737,6 +751,7 @@ def _resolve_docking_oracle():
         pass
     try:  # pragma: no cover — import guard
         from molmetal_lam.sbdd_env.diffdock_adapter import DiffDockAdapter
+
         diff = DiffDockAdapter()
         if diff.is_available():
             return diff
@@ -779,8 +794,11 @@ def _oracle_leaf_typecheck(
     except Exception as exc:  # pragma: no cover - AdapterUnavailable etc.
         logger_name = "molmetal_lam.binding.types"
         import logging as _logging
+
         _logging.getLogger(logger_name).debug(
-            "docking oracle unavailable (%s): %s", type(exc).__name__, exc,
+            "docking oracle unavailable (%s): %s",
+            type(exc).__name__,
+            exc,
         )
         return None
     # Compose the oracle verdict into a BindingTypeCheckResult.
@@ -790,7 +808,8 @@ def _oracle_leaf_typecheck(
         success=bool(rmsd_ok and vina_ok),
         pic50_estimate=float("nan"),
         violated_constraints=(
-            [] if (rmsd_ok and vina_ok)
+            []
+            if (rmsd_ok and vina_ok)
             else [
                 f"oracle: rmsd_A={result.rmsd_A:.2f} vina_kcal={result.vina_kcal:.2f}"
                 f" confidence={result.confidence:.2f}"
@@ -883,15 +902,11 @@ def typecheck(
             "ok": ok,
         }
         if not ok:
-            violated.append(
-                f"{predicate.name}: {predicate.description or 'failed'}"
-            )
+            violated.append(f"{predicate.name}: {predicate.description or 'failed'}")
 
     # Stage 2 — geometric β-check.
     mol = _ligand_rdkit_mol(ligand)
-    geom_ok, geom_reasons, geom_details = _geometric_beta_check(
-        ligand, site, mol
-    )
+    geom_ok, geom_reasons, geom_details = _geometric_beta_check(ligand, site, mol)
     details["geometric_check"] = geom_details
     violated.extend(geom_reasons)
 
@@ -1102,8 +1117,7 @@ PROTEASE_GENERIC: BindingSite = BindingSite(
 
 # A registry mapping canonical name -> BindingSite for the search layer.
 CANONICAL_BINDING_SITES: Dict[str, BindingSite] = {
-    s.name: s
-    for s in (MMP2_ACTIVE, PT_DNA_MAJOR_GROOVE, KINASE_ATP, PROTEASE_GENERIC)
+    s.name: s for s in (MMP2_ACTIVE, PT_DNA_MAJOR_GROOVE, KINASE_ATP, PROTEASE_GENERIC)
 }
 
 
@@ -1120,13 +1134,19 @@ class _L8Metrics:
     per_site_ok: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
     per_site_geom_ok: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
     per_site_warhead: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
-    per_site_pic50: Dict[str, List[float]] = field(default_factory=lambda: defaultdict(list))
+    per_site_pic50: Dict[str, List[float]] = field(
+        default_factory=lambda: defaultdict(list)
+    )
     per_site_pic50_components: Dict[str, List[float]] = field(
         default_factory=lambda: defaultdict(list)
     )
     first_failure: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
-    vina_in_pocket_total: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
-    vina_in_pocket_pass: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
+    vina_in_pocket_total: Dict[str, int] = field(
+        default_factory=lambda: defaultdict(int)
+    )
+    vina_in_pocket_pass: Dict[str, int] = field(
+        default_factory=lambda: defaultdict(int)
+    )
 
 
 _L8_STATE = _L8Metrics()
@@ -1181,7 +1201,7 @@ def _stdev(xs: List[float]) -> float:
         return 0.0
     mean = sum(xs) / n
     var = sum((x - mean) ** 2 for x in xs) / (n - 1)
-    return float(var ** 0.5)
+    return float(var**0.5)
 
 
 def _median(xs: List[float]) -> float:
@@ -1213,9 +1233,11 @@ def l8_metrics() -> Dict[str, Any]:
     vina_in_pocket_rate : dict[str, float]
         L8-NEW — per-site Vina ≤ -7.0 kcal/mol rate.
     """
-    sites = sorted(set(_L8_STATE.per_site_calls) |
-                   set(_L8_STATE.per_site_ok) |
-                   set(_L8_STATE.vina_in_pocket_total))
+    sites = sorted(
+        set(_L8_STATE.per_site_calls)
+        | set(_L8_STATE.per_site_ok)
+        | set(_L8_STATE.vina_in_pocket_total)
+    )
     typecheck_rate = {
         s: (
             _L8_STATE.per_site_ok[s] / _L8_STATE.per_site_calls[s]

@@ -19,6 +19,7 @@ Test inventory (~10 tests)
 9.  ``test_init_axis_sweep_returns_all_modes`` — full init mode axis.
 10. ``test_smoke_end_to_end_synthesis`` — invoke script, verify outputs.
 """
+
 from __future__ import annotations
 
 import json
@@ -33,9 +34,12 @@ import pytest
 
 _HERE = Path(__file__).resolve().parent
 _REPO_ROOT = _HERE.parent
-while _REPO_ROOT != _REPO_ROOT.parent and not (
-    _REPO_ROOT / "molmetal" / "scripts" / "diag_hilbert_astsr_param_sweep.py"
-).exists():
+while (
+    _REPO_ROOT != _REPO_ROOT.parent
+    and not (
+        _REPO_ROOT / "molmetal" / "scripts" / "diag_hilbert_astsr_param_sweep.py"
+    ).exists()
+):
     _REPO_ROOT = _REPO_ROOT.parent
 for _p in (str(_HERE.parent), str(_REPO_ROOT)):
     if _p not in sys.path:
@@ -151,7 +155,10 @@ def test_run_hilbert_sweep_returns_result() -> None:
     X, y = make_synthetic(n=400, dim=12, snr=1.0, seed=0)
     X_tr, X_te, y_tr, y_te = train_test_split(X, y, seed=0)
     res = run_hilbert_sweep(
-        X_tr, y_tr, X_te, y_te,
+        X_tr,
+        y_tr,
+        X_te,
+        y_te,
         l2_lambda=0.01,
         init_mode="random_normal",
         n_iters=20,
@@ -171,7 +178,10 @@ def test_run_hilbert_sweep_xavier_finite() -> None:
     X, y = make_synthetic(n=200, dim=8, snr=1.0, seed=0)
     X_tr, X_te, y_tr, y_te = train_test_split(X, y, seed=0)
     res = run_hilbert_sweep(
-        X_tr, y_tr, X_te, y_te,
+        X_tr,
+        y_tr,
+        X_te,
+        y_te,
         l2_lambda=0.1,
         init_mode="xavier",
         n_iters=20,
@@ -186,7 +196,10 @@ def test_run_hilbert_sweep_zeros_finite() -> None:
     X, y = make_synthetic(n=200, dim=8, snr=1.0, seed=0)
     X_tr, X_te, y_tr, y_te = train_test_split(X, y, seed=0)
     res = run_hilbert_sweep(
-        X_tr, y_tr, X_te, y_te,
+        X_tr,
+        y_tr,
+        X_te,
+        y_te,
         l2_lambda=0.1,
         init_mode="zeros",
         n_iters=20,
@@ -203,7 +216,12 @@ def test_run_hilbert_sweep_zeros_finite() -> None:
 def test_l2_axis_sweep_returns_all_lambdas() -> None:
     X, y = make_synthetic(n=200, dim=8, snr=1.0, seed=0)
     sweep = l2_axis_sweep(
-        X, y, seeds=[0, 1], n_iters=10, hilbert_dim=32, lr=0.05,
+        X,
+        y,
+        seeds=[0, 1],
+        n_iters=10,
+        hilbert_dim=32,
+        lr=0.05,
     )
     assert sweep["axis"] == "l2_lambda"
     assert [r["l2_lambda"] for r in sweep["results"]] == list(L2_SWEEP)
@@ -219,8 +237,13 @@ def test_l2_axis_sweep_returns_all_lambdas() -> None:
 def test_astr_axis_sweep_returns_all_scales() -> None:
     X, y = make_synthetic(n=200, dim=8, snr=1.0, seed=0)
     sweep = astr_axis_sweep(
-        X, y, seeds=[0, 1], population=8, generations=4,
-        depth=2, hilbert_dim=16,
+        X,
+        y,
+        seeds=[0, 1],
+        population=8,
+        generations=4,
+        depth=2,
+        hilbert_dim=16,
     )
     assert sweep["axis"] == "astr_loss_scale"
     assert [r["loss_scale"] for r in sweep["results"]] == list(ASTR_SCALE_SWEEP)
@@ -232,7 +255,12 @@ def test_astr_axis_sweep_returns_all_scales() -> None:
 def test_init_axis_sweep_returns_all_modes() -> None:
     X, y = make_synthetic(n=200, dim=8, snr=1.0, seed=0)
     sweep = init_axis_sweep(
-        X, y, seeds=[0, 1], n_iters=10, hilbert_dim=32, lr=0.05,
+        X,
+        y,
+        seeds=[0, 1],
+        n_iters=10,
+        hilbert_dim=32,
+        lr=0.05,
     )
     assert sweep["axis"] == "init_mode"
     assert [r["init_mode"] for r in sweep["results"]] == list(INIT_MODE_SWEEP)
@@ -248,29 +276,46 @@ def test_smoke_end_to_end_synthesis(tmp_path: Path) -> None:
     repo_root = _REPO_ROOT
     out = tmp_path / "wf127_smoke"
     cmd = [
-        sys.executable, "-u",
+        sys.executable,
+        "-u",
         str(repo_root / "molmetal" / "scripts" / "diag_hilbert_astsr_param_sweep.py"),
-        "--n", "200", "--dim", "8", "--snr", "1.0",
-        "--seeds", "0", "1",
-        "--n-iters", "10",
-        "--astr-population", "8",
-        "--astr-generations", "3",
-        "--astr-depth", "2",
-        "--hilbert-dim", "16",
-        "--output", str(out),
+        "--n",
+        "200",
+        "--dim",
+        "8",
+        "--snr",
+        "1.0",
+        "--seeds",
+        "0",
+        "1",
+        "--n-iters",
+        "10",
+        "--astr-population",
+        "8",
+        "--astr-generations",
+        "3",
+        "--astr-depth",
+        "2",
+        "--hilbert-dim",
+        "16",
+        "--output",
+        str(out),
     ]
     env = dict(os.environ)
     env.setdefault("TOKENIZERS_PARALLELISM", "false")
     env.setdefault("TRANSFORMERS_VERBOSITY", "error")
     res = subprocess.run(
-        cmd, cwd=str(repo_root), env=env,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        cmd,
+        cwd=str(repo_root),
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         timeout=180,
     )
     # The script should exit 0.
-    assert res.returncode == 0, (
-        f"script exit {res.returncode}; stderr={res.stderr.decode()[:500]}"
-    )
+    assert (
+        res.returncode == 0
+    ), f"script exit {res.returncode}; stderr={res.stderr.decode()[:500]}"
     # All required outputs should exist.
     assert (out / "l2_sweep.json").exists()
     assert (out / "astr_sweep.json").exists()

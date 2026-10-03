@@ -108,6 +108,7 @@ PROJECTED_LIFT_W335_M2 = 0.049  # match Wf-124 P3 1-seed lift +0.0490
 # Synthetic per-seed AUC generator (SCAFFOLD mode only)
 # ---------------------------------------------------------------------------
 
+
 def synthetic_per_seed_auc(
     metal: str,
     seed: int,
@@ -146,6 +147,7 @@ def synthetic_per_seed_auc(
 # ---------------------------------------------------------------------------
 # Per-metal aggregation (mean AUC + std + 95% CI across seeds)
 # ---------------------------------------------------------------------------
+
 
 def aggregate_metal_multiseed(
     metal: str,
@@ -223,7 +225,7 @@ def aggregate_metal_multiseed(
         block["gate_target"] = GATE_TARGET
         block["lift_vs_baseline"] = auc_mean - RU_KRASNOV_BASELINE
         block["gap_to_gate"] = auc_mean - GATE_TARGET
-        block["hit_gate"] = (auc_mean >= GATE_TARGET)
+        block["hit_gate"] = auc_mean >= GATE_TARGET
 
     return block
 
@@ -231,6 +233,7 @@ def aggregate_metal_multiseed(
 # ---------------------------------------------------------------------------
 # ENV-gated dispatch (USER_OK_SCAFFOLD vs USER_OK)
 # ---------------------------------------------------------------------------
+
 
 def resolve_mode() -> str:
     """Resolve SCAFFOLD vs LIVE mode from environment.
@@ -272,15 +275,15 @@ def build_per_seed_aucs_live(
 ) -> Tuple[Dict[str, Dict[int, List[float]]], str]:
     """LIVE-mode per-seed AUC builder (USER_OK=1 only).
 
-    This is the production-grade path: it would invoke the
-    Wf-355-B1 wrapper (`scripts/launch_wf131_p3_deferred_runs.sh`)
-    to launch a (metal, seed) grid of 5-fold CV runs on the
-    metalcytotox_combined cohort.  In LIVE mode the wrapper would
-    handle VRAM check + pre-flight PASS + sequential execution.
+        This is the production-grade path: it would invoke the
+        Wf-355-B1 wrapper (`scripts/launch_wf131_p3_deferred_runs.sh`)
+        to launch a (metal, seed) grid of 5-fold CV runs on the
+        metalcytotox_combined cohort.  In LIVE mode the wrapper would
+        handle VRAM check + pre-flight PASS + sequential execution.
 
-    NOTE: This function is INTENTIONALLY a no-op stub when invoked
-    outside a USER_OK=1 environment; the scaffold emits a
-PROVISED degraded verdict with honest-negative marker.
+        NOTE: This function is INTENTIONALLY a no-op stub when invoked
+        outside a USER_OK=1 environment; the scaffold emits a
+    PROVISED degraded verdict with honest-negative marker.
     """
     # LIVE mode requires USER_OK=1; this path is reached only when
     # resolve_mode() == "LIVE" AND os.environ["USER_OK"] == "1".
@@ -293,6 +296,7 @@ PROVISED degraded verdict with honest-negative marker.
 # ---------------------------------------------------------------------------
 # Aggregate builder
 # ---------------------------------------------------------------------------
+
 
 def build_aggregate(
     metals: Tuple[str, ...] = DEFAULT_METALS,
@@ -310,9 +314,13 @@ def build_aggregate(
         mode = resolve_mode()
 
     if mode == "LIVE":
-        per_metal_per_seed, source_path = build_per_seed_aucs_live(metals, seeds, n_folds)
+        per_metal_per_seed, source_path = build_per_seed_aucs_live(
+            metals, seeds, n_folds
+        )
     else:
-        per_metal_per_seed, source_path = build_per_seed_aucs_scaffold(metals, seeds, n_folds)
+        per_metal_per_seed, source_path = build_per_seed_aucs_scaffold(
+            metals, seeds, n_folds
+        )
 
     per_metal: Dict[str, Dict[str, object]] = {}
     for metal in metals:
@@ -392,6 +400,7 @@ def build_aggregate(
 # CLI entry point
 # ---------------------------------------------------------------------------
 
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
@@ -400,27 +409,39 @@ def main() -> int:
         )
     )
     parser.add_argument(
-        "--metals", nargs="+", default=list(DEFAULT_METALS),
+        "--metals",
+        nargs="+",
+        default=list(DEFAULT_METALS),
         help=f"Metals to evaluate (default: {' '.join(DEFAULT_METALS)})",
     )
     parser.add_argument(
-        "--seeds", nargs="+", type=int, default=list(DEFAULT_SEEDS),
+        "--seeds",
+        nargs="+",
+        type=int,
+        default=list(DEFAULT_SEEDS),
         help=f"Seeds to average over (default: {' '.join(map(str, DEFAULT_SEEDS))})",
     )
     parser.add_argument(
-        "--n-folds", type=int, default=N_FOLDS,
+        "--n-folds",
+        type=int,
+        default=N_FOLDS,
         help=f"Number of CV folds per seed (default: {N_FOLDS})",
     )
     parser.add_argument(
-        "--mode", choices=("scaffold", "live"), default=None,
+        "--mode",
+        choices=("scaffold", "live"),
+        default=None,
         help="Override ENV-gated mode detection (default: detect from USER_OK env)",
     )
     parser.add_argument(
-        "--out", type=Path, default=OUTPUT_FILE,
+        "--out",
+        type=Path,
+        default=OUTPUT_FILE,
         help=f"Output JSON path (default: {OUTPUT_FILE})",
     )
     parser.add_argument(
-        "--print", action="store_true",
+        "--print",
+        action="store_true",
         help="Print the aggregate to stdout in addition to writing the file",
     )
     args = parser.parse_args()

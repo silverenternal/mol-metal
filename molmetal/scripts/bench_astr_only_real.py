@@ -125,6 +125,7 @@ Pytest
 
     pytest molmetal/tests/test_astr_only_real.py -v
 """
+
 from __future__ import annotations
 
 import argparse
@@ -634,7 +635,9 @@ def _run_one_seed(
 ) -> Dict[str, Any]:
     """Run a single seed on the strict-scaffold split."""
     train_idx, val_idx, test_idx = _strict_scaffold_split(
-        smiles, fractions=fractions, seed=seed,
+        smiles,
+        fractions=fractions,
+        seed=seed,
     )
     X_tr, X_va, X_te = X[train_idx], X[val_idx], X[test_idx]
     y_tr, y_va, y_te = y[train_idx], y[val_idx], y[test_idx]
@@ -663,7 +666,8 @@ def _run_one_seed(
     else:
         try:
             reg, used_cuda = fit_astsr_with_device(
-                X_tr_n, y_tr,
+                X_tr_n,
+                y_tr,
                 epochs=epochs,
                 seed=seed,
                 population=population,
@@ -752,7 +756,9 @@ def evaluate_cell_line(
 
     for seed in seeds:
         result = _run_one_seed(
-            X, y, smiles,
+            X,
+            y,
+            smiles,
             seed=int(seed),
             epochs=epochs,
             fractions=fractions,
@@ -794,9 +800,7 @@ def evaluate_cell_line(
         "astr_r2_test_std": float(np.std(r2_test_per_seed))
         if len(r2_test_per_seed) > 1
         else 0.0,
-        "astr_r2_val_mean": float(np.mean(r2_val_per_seed))
-        if r2_val_per_seed
-        else 0.0,
+        "astr_r2_val_mean": float(np.mean(r2_val_per_seed)) if r2_val_per_seed else 0.0,
         "astr_r2_val_std": float(np.std(r2_val_per_seed))
         if len(r2_val_per_seed) > 1
         else 0.0,
@@ -830,8 +834,7 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
     """Write ``<out_dir>/synthesis.md`` cross-cell-line summary."""
     out_dir.mkdir(parents=True, exist_ok=True)
     feature_set_label = (
-        all_results[0].get("feature_set", "rdkit_2d")
-        if all_results else "rdkit_2d"
+        all_results[0].get("feature_set", "rdkit_2d") if all_results else "rdkit_2d"
     )
     lines: List[str] = [
         "# Wf-85 Phase 2 — REAL ASTSR-only retrain (PlatinAI 4-cell, strict-scaffold)",
@@ -875,9 +878,7 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
         )
         test_means.append(r["astr_r2_test_mean"])
     aggregate = float(np.mean(test_means)) if test_means else 0.0
-    aggregate_std = (
-        float(np.std(test_means)) if len(test_means) > 1 else 0.0
-    )
+    aggregate_std = float(np.std(test_means)) if len(test_means) > 1 else 0.0
     lines.append(
         "| **4-cell aggregate** | — | **{agg:+.4f} ± {ags:.4f}** | — | — | {c} |".format(
             agg=aggregate,
@@ -911,7 +912,9 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
     for r in all_results:
         lines.append(f"### {r['cell_line']} ({r['target_col']})")
         lines.append("")
-        lines.append("| seed | test R² | val R² | train R² | n_train/n_val/n_test | collapse | cuda | wall_s |")
+        lines.append(
+            "| seed | test R² | val R² | train R² | n_train/n_val/n_test | collapse | cuda | wall_s |"
+        )
         lines.append("|---:|---:|---:|---:|---|:---:|:---:|---:|")
         for s in r["per_seed"]:
             lines.append(
@@ -1025,8 +1028,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         nargs="+",
         default=["mcf7", "a549", "a2780", "a2780cis"],
         help=(
-            "PlatinAI cell lines to benchmark "
-            "(default: mcf7 a549 a2780 a2780cis)."
+            "PlatinAI cell lines to benchmark " "(default: mcf7 a549 a2780 a2780cis)."
         ),
     )
     parser.add_argument(
@@ -1116,8 +1118,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         type=Path,
         default=Path("molmetal/reports/wf85_p2_astr_only_real"),
         help=(
-            "Output directory "
-            "(default: molmetal/reports/wf85_p2_astr_only_real)."
+            "Output directory " "(default: molmetal/reports/wf85_p2_astr_only_real)."
         ),
     )
     args = parser.parse_args(argv)

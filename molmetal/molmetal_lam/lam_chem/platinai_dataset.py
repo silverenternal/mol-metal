@@ -52,6 +52,7 @@ from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 try:
     import pandas as pd
+
     _HAS_PANDAS = True
 except Exception:  # pragma: no cover
     pd = None
@@ -59,6 +60,7 @@ except Exception:  # pragma: no cover
 
 try:
     from rdkit import Chem, RDLogger
+
     RDLogger.DisableLog("rdApp.*")
     _HAS_RDKIT = True
 except Exception:  # pragma: no cover
@@ -75,11 +77,13 @@ PLATINAI_MBFINDER_DEFAULT = Path(
 PLATINAI_A2780_DEFAULT = Path(
     "/mnt/storage/data/molmetal/PlatinAI_predicted_A2780.xlsx"
 )
-PLATINAI_MCF7_DEFAULT = Path(
-    "/mnt/storage/data/molmetal/PlatinAI_predicted_MCF7.xlsx"
+PLATINAI_MCF7_DEFAULT = Path("/mnt/storage/data/molmetal/PlatinAI_predicted_MCF7.xlsx")
+METAL_CYTOTOX_DEFAULT = Path(
+    "/home/hugo/codes/mol-metal/.data/molmetal/MetalCytoToxDB.csv"
 )
-METAL_CYTOTOX_DEFAULT = Path("/home/hugo/codes/mol-metal/.data/molmetal/MetalCytoToxDB.csv")
-NCI60_GI50_DEFAULT = Path("/home/hugo/codes/mol-metal/.data/molmetal/NCI60_GI50/GI50.csv")
+NCI60_GI50_DEFAULT = Path(
+    "/home/hugo/codes/mol-metal/.data/molmetal/NCI60_GI50/GI50.csv"
+)
 
 # Heavy-atom window used in WF-R12 Path A model capacity
 HEAVY_ATOM_MIN = 8
@@ -87,9 +91,36 @@ HEAVY_ATOM_MAX = 38
 
 # 30 d-block transition metals (subset that appears in the metallodrug vertical)
 TRANSITION_METALS: Tuple[str, ...] = (
-    "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
-    "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
-    "La", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg",
+    "Sc",
+    "Ti",
+    "V",
+    "Cr",
+    "Mn",
+    "Fe",
+    "Co",
+    "Ni",
+    "Cu",
+    "Zn",
+    "Y",
+    "Zr",
+    "Nb",
+    "Mo",
+    "Tc",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Cd",
+    "La",
+    "Hf",
+    "Ta",
+    "W",
+    "Re",
+    "Os",
+    "Ir",
+    "Pt",
+    "Au",
+    "Hg",
 )
 _TM_SET = frozenset(TRANSITION_METALS)
 
@@ -235,9 +266,7 @@ class PlatinAIDataset:
         if self.metal_filter is not None:
             for m in self.metal_filter:
                 if m not in _TM_SET:
-                    raise ValueError(
-                        f"metal_filter must be a known TM, got {m!r}"
-                    )
+                    raise ValueError(f"metal_filter must be a known TM, got {m!r}")
         self._records: List[Tuple[str, Tuple[float, float], Optional[str]]] = []
         self._loaded = False
 
@@ -379,6 +408,7 @@ class PlatinAIDataset:
         NaN where activity is missing.  Imports numpy lazily.
         """
         import numpy as np
+
         self._load()
         if not self._records:
             return np.zeros((0, 2), dtype=np.float32)
@@ -417,12 +447,8 @@ class MetalCytoToxDataset:
         if self.metal_filter is not None:
             for m in self.metal_filter:
                 if m not in _TM_SET:
-                    raise ValueError(
-                        f"metal_filter must be a known TM, got {m!r}"
-                    )
-        self._records: List[
-            Tuple[str, float, str, Optional[int]]
-        ] = []
+                    raise ValueError(f"metal_filter must be a known TM, got {m!r}")
+        self._records: List[Tuple[str, float, str, Optional[int]]] = []
         self._loaded = False
 
     def _load(self) -> None:
@@ -431,9 +457,7 @@ class MetalCytoToxDataset:
         if not _HAS_PANDAS:
             raise ImportError("pandas is required for MetalCytoToxDataset")
         if not self.path.is_file():
-            raise FileNotFoundError(
-                f"MetalCytoToxDB missing: {self.path}"
-            )
+            raise FileNotFoundError(f"MetalCytoToxDB missing: {self.path}")
         df = pd.read_csv(self.path)
         smiles_col = "SMILES_Ligands"
         if smiles_col not in df.columns:
@@ -505,7 +529,9 @@ class MetalCytoToxDataset:
         self._load()
         return [r[0] for r in self._records]
 
-    def get_by_metal(self, metal: str = "Pt") -> List[Tuple[str, float, str, Optional[int]]]:
+    def get_by_metal(
+        self, metal: str = "Pt"
+    ) -> List[Tuple[str, float, str, Optional[int]]]:
         """Return records filtered to a single metal centre."""
         if metal not in _TM_SET:
             raise ValueError(f"Unknown metal: {metal!r}")
@@ -579,9 +605,7 @@ class MetalloDrugDataset:
         for smi, ic50, metal, ox in self.metal_cytotox:
             if any(r[0] == smi for r in records):
                 continue
-            records.append(
-                (smi, metal, {"ic50_dark": float(ic50)})
-            )
+            records.append((smi, metal, {"ic50_dark": float(ic50)}))
         # Optional NCI60 Pt slice.
         if self.include_nci60 and NCI60_GI50_DEFAULT.is_file() and _HAS_PANDAS:
             try:
@@ -619,6 +643,7 @@ class MetalloDrugDataset:
             from molmetal.molmetal_lam.lam_chem.data_diversity import (
                 greedy_maxmin_diversity,
             )
+
             indices, _ = greedy_maxmin_diversity(
                 smiles_list, n=n, radius=2, n_bits=2048, seed=self.seed
             )

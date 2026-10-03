@@ -1,4 +1,5 @@
 """Test Wf-244-D: click chemistry yield R² pipeline acceptance gates."""
+
 from __future__ import annotations
 
 import json

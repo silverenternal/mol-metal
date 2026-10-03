@@ -253,10 +253,10 @@ DEFAULT_REPORTS_GLOB = str(REPORTS_DIR / "wf*" / "**" / "log")
 # Per-metal 3-seed aggregate wall-time hours:
 TODO_180_G4_ACTUAL_HR_BY_METAL = {
     "Ru": 28.9,  # 3 seeds × ~30-epoch D-MPNN + W₂ reg (heaviest: 463s/seed×3 + overhead)
-    "Ir": 7.7,   # 3 seeds × ~30-epoch D-MPNN (medium cohort ~1.5k rows)
-    "Os": 1.9,   # 3 seeds × ~30-epoch D-MPNN (smaller cohort; Os collapse guarded)
-    "Rh": 1.7,   # 3 seeds × ~30-epoch D-MPNN (Rh LOMO bottleneck; ~1.1k rows)
-    "Re": 1.6,   # 3 seeds × ~30-epoch D-MPNN (smallest cohort; <1.0k rows)
+    "Ir": 7.7,  # 3 seeds × ~30-epoch D-MPNN (medium cohort ~1.5k rows)
+    "Os": 1.9,  # 3 seeds × ~30-epoch D-MPNN (smaller cohort; Os collapse guarded)
+    "Rh": 1.7,  # 3 seeds × ~30-epoch D-MPNN (Rh LOMO bottleneck; ~1.1k rows)
+    "Re": 1.6,  # 3 seeds × ~30-epoch D-MPNN (smallest cohort; <1.0k rows)
 }
 
 # Wf-292A — TODO-180 G4 MEASURED (metal, seed) pair count (per
@@ -266,7 +266,7 @@ TODO_180_G4_ACTUAL_HR_BY_METAL = {
 # n=15 confirms the Wf-281A + Wf-284C G5 Ru seed=0 test_auc=0.7716
 # cascade.  Authoritative single source of truth for downstream wave
 # budget math (per 207 v2 §7.1.2 honest-framing note).
-TODO_180_G4_N_PAIRS = 15           # 5 metals × 3 seeds (Ru n=3 closed via G5)
+TODO_180_G4_N_PAIRS = 15  # 5 metals × 3 seeds (Ru n=3 closed via G5)
 
 # Wf-272D — TODO-181 G5 cuda:0 fix MEASURED actuals (per
 # ``results/wf124_p3_50epoch_full_sweep_g5/Ru/seed0/run.log`` epochs 1-12,
@@ -279,10 +279,10 @@ TODO_180_G4_N_PAIRS = 15           # 5 metals × 3 seeds (Ru n=3 closed via G5)
 # Wf-258 PROJECTED 5.0 hr estimate — the 2.6× gap is the Wf-258
 # audit's underestimate of full-sweep wall-time, not a regression).
 TODO_181_G5_EPOCH_SEC_AVG = 63.2  # mean of epochs 1-12 from Ru seed=0 run.log
-TODO_181_G5_EPOCH_SEC_MIN = 41.8   # epoch 2 (Ru seed=0)
-TODO_181_G5_EPOCH_SEC_MAX = 77.4   # epoch 10 (Ru seed=0)
-TODO_181_G5_N_PAIRS = 15           # 5 metals × 3 seeds
-TODO_181_G5_EPOCHS = 50            # 50-epoch full sweep
+TODO_181_G5_EPOCH_SEC_MIN = 41.8  # epoch 2 (Ru seed=0)
+TODO_181_G5_EPOCH_SEC_MAX = 77.4  # epoch 10 (Ru seed=0)
+TODO_181_G5_N_PAIRS = 15  # 5 metals × 3 seeds
+TODO_181_G5_EPOCHS = 50  # 50-epoch full sweep
 TODO_181_G5_ACTUAL_HR = round(
     TODO_181_G5_EPOCH_SEC_AVG * TODO_181_G5_EPOCHS * TODO_181_G5_N_PAIRS / 3600.0,
     2,
@@ -333,7 +333,9 @@ WF_282_G5_RU_SEED0_BEST_EPOCH = 47
 WF_282_G5_RU_SEED0_TEST_PEARSON = 0.5479
 WF_282_G5_RU_SEED0_ELAPSED_SECONDS = 2850.5
 WF_282_G5_RU_SEED0_N_EPOCHS = 50
-WF_282_G5_WRAPPER_PID = 609528  # new wrapper (Wf-283A recovery), launched 2026-09-28 23:41:04 CST
+WF_282_G5_WRAPPER_PID = (
+    609528  # new wrapper (Wf-283A recovery), launched 2026-09-28 23:41:04 CST
+)
 WF_282_G5_CKPT_TS = "2026-09-29T00:28:00+08:00"
 WF_282_G5_CKPT_PATH = (
     "results/wf124_p3_50epoch_full_sweep_g5/Ru/seed0/ckpts/dmpnn_mtw_ru_seed0.pt"
@@ -523,7 +525,9 @@ def parse_waves_arg(s: Optional[str]) -> List[Tuple[str, float, Optional[str]]]:
         name = m.group(1).strip()
         hr = float(m.group(2))
         if hr < 0 or not (hr == hr):  # NaN guard
-            raise ValueError(f"invalid --waves token '{tok}': hr must be non-negative finite")
+            raise ValueError(
+                f"invalid --waves token '{tok}': hr must be non-negative finite"
+            )
         out.append((name, hr, "from --waves CLI"))
     return out
 
@@ -658,8 +662,13 @@ def mine_actual_wall_hr(
     # tokens (Wf-292A: cascade closed via G5 Ru seed=0 → n=15).
     aggregate_triggers = ("g4", "todo-180", "todo_180")
     aggregate_name_hits = (
-        "15_pairs", "15pairs", "14_pairs", "14pairs",
-        "remaining_metals", "5_metal", "5metal",
+        "15_pairs",
+        "15pairs",
+        "14_pairs",
+        "14pairs",
+        "remaining_metals",
+        "5_metal",
+        "5metal",
     )
     if any(tok in sub_lc for tok in aggregate_triggers) and any(
         tok in sub_lc for tok in aggregate_name_hits
@@ -677,7 +686,10 @@ def mine_actual_wall_hr(
     # 63.2 s/epoch / 3600) as the authoritative fallback.
     g5_triggers = ("g5", "todo-181", "todo_181")
     g5_name_hits = (
-        "50epoch", "50_epoch", "50ep", "full_sweep",
+        "50epoch",
+        "50_epoch",
+        "50ep",
+        "full_sweep",
         "wf124_p3_50epoch_full_sweep",
     )
     if any(tok in sub_lc for tok in g5_triggers) and any(
@@ -801,21 +813,23 @@ def compute_wave_status(
         ):
             status = "DEFERRED"
             contributes = est
-        out.append({
-            "wave_name": name,
-            "estimated_hr": est,
-            "actual_hr": actual_hr,
-            "status": status,
-            "actual_source": actual_src,
-            "source": src,
-            # Wf-360-A1 — DEFERRED wave classification (per
-            # AGENTS.md §1.5 + Wf-345-A4 + Wf-357-A1).  For non-DEFERRED
-            # waves, the field defaults to ``DEFERRED_TEMP`` so the JSON
-            # payload always carries a non-null class.  Downstream
-            # wrappers can filter on ``deferred_class`` without
-            # special-casing the missing-key case.
-            "deferred_class": classify_deferred_class(name),
-        })
+        out.append(
+            {
+                "wave_name": name,
+                "estimated_hr": est,
+                "actual_hr": actual_hr,
+                "status": status,
+                "actual_source": actual_src,
+                "source": src,
+                # Wf-360-A1 — DEFERRED wave classification (per
+                # AGENTS.md §1.5 + Wf-345-A4 + Wf-357-A1).  For non-DEFERRED
+                # waves, the field defaults to ``DEFERRED_TEMP`` so the JSON
+                # payload always carries a non-null class.  Downstream
+                # wrappers can filter on ``deferred_class`` without
+                # special-casing the missing-key case.
+                "deferred_class": classify_deferred_class(name),
+            }
+        )
         cumulative += contributes
     return out
 
@@ -961,17 +975,17 @@ def summarise(
     downstream without re-scanning the per-wave list.
     """
     cumulative_wave_hr = sum(
-        (d.get("actual_hr") if d.get("actual_hr") is not None else d.get("estimated_hr", 0.0))
+        (
+            d.get("actual_hr")
+            if d.get("actual_hr") is not None
+            else d.get("estimated_hr", 0.0)
+        )
         for d in wave_dicts
     )
     remaining_hr = round(budget_hr - cumulative_wave_hr, 6)
-    deferred_all = [
-        d for d in wave_dicts if d["status"] == "DEFERRED"
-    ]
+    deferred_all = [d for d in wave_dicts if d["status"] == "DEFERRED"]
     deferred_temp = [
-        d["wave_name"]
-        for d in deferred_all
-        if d.get("deferred_class") == DEFERRED_TEMP
+        d["wave_name"] for d in deferred_all if d.get("deferred_class") == DEFERRED_TEMP
     ]
     deferred_permanent = [
         d["wave_name"]
@@ -994,8 +1008,7 @@ def summarise(
         sum(
             d.get("estimated_hr", 0.0)
             for d in wave_dicts
-            if d["status"] == "DEFERRED"
-            and d.get("deferred_class") == DEFERRED_TEMP
+            if d["status"] == "DEFERRED" and d.get("deferred_class") == DEFERRED_TEMP
         ),
         6,
     )
@@ -1107,10 +1120,7 @@ def parse_argv(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "--report-json",
         type=Path,
         default=DEFAULT_REPORT_JSON,
-        help=(
-            "Output JSON path (default: "
-            f"{DEFAULT_REPORT_JSON})."
-        ),
+        help=("Output JSON path (default: " f"{DEFAULT_REPORT_JSON})."),
     )
     p.add_argument(
         "--reports-dir",
@@ -1249,9 +1259,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         waves, found_yaml = auto_discover_waves(CONFIGS_DIR)
         if found_yaml:
             n_configs_scanned = sum(
-                1
-                for cfg_name in CONFIG_TO_WAVE
-                if (CONFIGS_DIR / cfg_name).is_file()
+                1 for cfg_name in CONFIG_TO_WAVE if (CONFIGS_DIR / cfg_name).is_file()
             )
         wave_source = "auto-derived from configs/*.yaml + Wf-258 audit"
         auto_discovered = True
@@ -1283,14 +1291,17 @@ def main(argv: Optional[List[str]] = None) -> int:
     # 3. Compute status (skip DEFERRED labeling when --no-enforce-budget).
     enforce_budget = not args.no_enforce_budget
     wave_dicts = compute_wave_status(
-        args.budget_hr, waves, actual_hr_by_name,
+        args.budget_hr,
+        waves,
+        actual_hr_by_name,
         enforce_budget=enforce_budget,
         cfm_yuelbond_required=args.cfm_yuelbond_required,
     )
 
     # 4. Summarise (Wf-360-A1 — pass deferred_class_filter).
     summary = summarise(
-        args.budget_hr, wave_dicts,
+        args.budget_hr,
+        wave_dicts,
         enforce_budget=enforce_budget,
         deferred_class_filter=args.deferred_class_filter,
     )

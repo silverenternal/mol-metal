@@ -44,6 +44,7 @@ Run with::
 
     uv run --no-sync pytest -q molmetal/tests/test_closure_real_benchmark.py --tb=short
 """
+
 from __future__ import annotations
 
 import csv
@@ -130,12 +131,12 @@ def test_module_imports() -> None:
 # ---------------------------------------------------------------------------
 def test_default_csv_path() -> None:
     """The default CSV points at the PlatinAI 5K ship file."""
-    assert DEFAULT_PLATINAI_CSV.name == "platinai_5k.csv", (
-        f"expected CSV 'platinai_5k.csv', got {DEFAULT_PLATINAI_CSV.name}"
-    )
-    assert DEFAULT_PLATINAI_CSV.is_file(), (
-        f"PlatinAI 5K CSV not found at {DEFAULT_PLATINAI_CSV}"
-    )
+    assert (
+        DEFAULT_PLATINAI_CSV.name == "platinai_5k.csv"
+    ), f"expected CSV 'platinai_5k.csv', got {DEFAULT_PLATINAI_CSV.name}"
+    assert (
+        DEFAULT_PLATINAI_CSV.is_file()
+    ), f"PlatinAI 5K CSV not found at {DEFAULT_PLATINAI_CSV}"
 
 
 # ---------------------------------------------------------------------------
@@ -153,9 +154,9 @@ def test_default_output_dir() -> None:
 # ---------------------------------------------------------------------------
 def test_default_n_samples_is_500() -> None:
     """The default sample count is 500 (matches the Wf-17 P4.2 brief)."""
-    assert DEFAULT_N_SAMPLES == 500, (
-        f"expected DEFAULT_N_SAMPLES=500, got {DEFAULT_N_SAMPLES}"
-    )
+    assert (
+        DEFAULT_N_SAMPLES == 500
+    ), f"expected DEFAULT_N_SAMPLES=500, got {DEFAULT_N_SAMPLES}"
 
 
 # ---------------------------------------------------------------------------
@@ -185,9 +186,7 @@ def test_smoke_under_one_minute() -> None:
         smoke=True,
     )
     wall = time.perf_counter() - t0
-    assert wall < 60.0, (
-        f"smoke run took {wall:.2f}s; budget is 60s"
-    )
+    assert wall < 60.0, f"smoke run took {wall:.2f}s; budget is 60s"
     assert payload["n_samples"] == 10
 
 
@@ -195,10 +194,21 @@ def test_smoke_under_one_minute() -> None:
 # 7. Per-sample record keys
 # ---------------------------------------------------------------------------
 EXPECTED_RECORD_KEYS: List[str] = [
-    "idx", "smiles", "status", "closure_ok", "n_visited", "n_products",
-    "max_depth_seen", "witness_rate", "well_typed_rate",
-    "n_pt_coordinated", "n_atoms_start", "wall_time_s", "memory_mb",
-    "depth", "parse_error",
+    "idx",
+    "smiles",
+    "status",
+    "closure_ok",
+    "n_visited",
+    "n_products",
+    "max_depth_seen",
+    "witness_rate",
+    "well_typed_rate",
+    "n_pt_coordinated",
+    "n_atoms_start",
+    "wall_time_s",
+    "memory_mb",
+    "depth",
+    "parse_error",
 ]
 
 
@@ -206,9 +216,7 @@ def test_per_sample_record_keys(smoke_payload: Dict[str, Any]) -> None:
     """Every per-sample record carries every expected key."""
     for rec in smoke_payload["per_sample"]:
         missing = [k for k in EXPECTED_RECORD_KEYS if k not in rec]
-        assert not missing, (
-            f"per-sample record missing keys {missing!r}: {rec!r}"
-        )
+        assert not missing, f"per-sample record missing keys {missing!r}: {rec!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -217,9 +225,11 @@ def test_per_sample_record_keys(smoke_payload: Dict[str, Any]) -> None:
 def test_per_sample_status_values(smoke_payload: Dict[str, Any]) -> None:
     """Every per-sample status is one of the three contract values."""
     for rec in smoke_payload["per_sample"]:
-        assert rec["status"] in ("ok", "skipped", "error"), (
-            f"unexpected status {rec['status']!r} in record {rec['idx']}"
-        )
+        assert rec["status"] in (
+            "ok",
+            "skipped",
+            "error",
+        ), f"unexpected status {rec['status']!r} in record {rec['idx']}"
 
 
 # ---------------------------------------------------------------------------
@@ -243,12 +253,8 @@ def test_per_sample_wall_time_non_negative(
     """Every per-sample wall_time_s is non-negative and finite."""
     for rec in smoke_payload["per_sample"]:
         w = float(rec["wall_time_s"])
-        assert w >= 0.0, (
-            f"negative wall_time_s for idx={rec['idx']}: {w}"
-        )
-        assert w < 1e9, (
-            f"wall_time_s too large for idx={rec['idx']}: {w}"
-        )
+        assert w >= 0.0, f"negative wall_time_s for idx={rec['idx']}: {w}"
+        assert w < 1e9, f"wall_time_s too large for idx={rec['idx']}: {w}"
 
 
 # ---------------------------------------------------------------------------
@@ -260,12 +266,8 @@ def test_per_sample_memory_non_negative(
     """Every per-sample memory_mb is non-negative and finite."""
     for rec in smoke_payload["per_sample"]:
         m = float(rec["memory_mb"])
-        assert m >= 0.0, (
-            f"negative memory_mb for idx={rec['idx']}: {m}"
-        )
-        assert m < 1e9, (
-            f"memory_mb too large for idx={rec['idx']}: {m}"
-        )
+        assert m >= 0.0, f"negative memory_mb for idx={rec['idx']}: {m}"
+        assert m < 1e9, f"memory_mb too large for idx={rec['idx']}: {m}"
 
 
 # ---------------------------------------------------------------------------
@@ -278,19 +280,27 @@ def test_per_sample_max_depth_seen_bounded(
     max_depth = int(smoke_payload["max_depth"])
     for rec in smoke_payload["per_sample"]:
         d = int(rec["max_depth_seen"])
-        assert d <= max_depth, (
-            f"max_depth_seen={d} > max_depth={max_depth} for idx={rec['idx']}"
-        )
+        assert (
+            d <= max_depth
+        ), f"max_depth_seen={d} > max_depth={max_depth} for idx={rec['idx']}"
 
 
 # ---------------------------------------------------------------------------
 # 13. Aggregate keys present
 # ---------------------------------------------------------------------------
 EXPECTED_AGGREGATE_KEYS: List[str] = [
-    "n_samples", "n_parsed", "n_closure_ok", "closure_success_rate",
-    "mean_beta_depth", "mean_wall_time", "std_wall_time",
-    "median_wall_time", "peak_memory_mb", "total_wall_time",
-    "n_error", "n_status_ok",
+    "n_samples",
+    "n_parsed",
+    "n_closure_ok",
+    "closure_success_rate",
+    "mean_beta_depth",
+    "mean_wall_time",
+    "std_wall_time",
+    "median_wall_time",
+    "peak_memory_mb",
+    "total_wall_time",
+    "n_error",
+    "n_status_ok",
 ]
 
 
@@ -298,9 +308,9 @@ def test_aggregate_keys_present(smoke_payload: Dict[str, Any]) -> None:
     """The aggregate dict carries every documented key."""
     agg = smoke_payload["aggregate"]
     missing = [k for k in EXPECTED_AGGREGATE_KEYS if k not in agg]
-    assert not missing, (
-        f"aggregate missing keys {missing!r}; got {sorted(agg.keys())!r}"
-    )
+    assert (
+        not missing
+    ), f"aggregate missing keys {missing!r}; got {sorted(agg.keys())!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -309,9 +319,7 @@ def test_aggregate_keys_present(smoke_payload: Dict[str, Any]) -> None:
 def test_closure_success_rate_in_unit(smoke_payload: Dict[str, Any]) -> None:
     """closure_success_rate is a probability in the closed interval [0, 1]."""
     rate = float(smoke_payload["aggregate"]["closure_success_rate"])
-    assert 0.0 <= rate <= 1.0, (
-        f"closure_success_rate out of [0, 1]: {rate}"
-    )
+    assert 0.0 <= rate <= 1.0, f"closure_success_rate out of [0, 1]: {rate}"
 
 
 # ---------------------------------------------------------------------------
@@ -354,8 +362,7 @@ def test_status_counts_sum_to_n_samples(
     counts = smoke_payload["status_counts"]
     n = sum(int(v) for v in counts.values())
     assert n == int(smoke_payload["n_samples"]), (
-        f"status counts sum to {n}, expected n_samples="
-        f"{smoke_payload['n_samples']}"
+        f"status counts sum to {n}, expected n_samples=" f"{smoke_payload['n_samples']}"
     )
 
 
@@ -393,9 +400,7 @@ def test_per_sample_csv_written(smoke_paths: Dict[str, Path]) -> None:
         assert "wall_time_s" in header
         assert "memory_mb" in header
         rows = list(reader)
-    assert len(rows) == 10, (
-        f"per_sample.csv should have 10 rows, got {len(rows)}"
-    )
+    assert len(rows) == 10, f"per_sample.csv should have 10 rows, got {len(rows)}"
 
 
 # ---------------------------------------------------------------------------
@@ -412,9 +417,7 @@ def test_load_platinai_smiles_first_n() -> None:
 def test_build_partner_terms_count() -> None:
     """_build_partner_terms returns >= 6 partner tiles."""
     partners = _build_partner_terms()
-    assert len(partners) >= 6, (
-        f"expected >= 6 partner terms, got {len(partners)}"
-    )
+    assert len(partners) >= 6, f"expected >= 6 partner terms, got {len(partners)}"
 
 
 def test_build_click_rules_count() -> None:
@@ -429,9 +432,9 @@ def test_build_click_rules_count() -> None:
 
 def test_partner_smiles_list_matches_default() -> None:
     """PARTNER_SMILE_LIST has the documented 7 tiles."""
-    assert len(PARTNER_SMILE_LIST) == 7, (
-        f"PARTNER_SMILE_LIST should have 7 entries, got {len(PARTNER_SMILE_LIST)}"
-    )
+    assert (
+        len(PARTNER_SMILE_LIST) == 7
+    ), f"PARTNER_SMILE_LIST should have 7 entries, got {len(PARTNER_SMILE_LIST)}"
 
 
 def test_aggregate_empty_records() -> None:

@@ -27,9 +27,9 @@ def make_8_atom_mol():
     N = 8
     atom_dim = 39
     edge_dim = 6
-    bonds = [(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7)]
-    src = [a for a,b in bonds for a in [a,b]]
-    dst = [b for a,b in bonds for b in [b,a]]
+    bonds = [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7)]
+    src = [a for a, b in bonds for a in [a, b]]
+    dst = [b for a, b in bonds for b in [b, a]]
     h_atom = torch.randn(N, atom_dim)
     edge_index = torch.tensor([src, dst], dtype=torch.long)
     edge_attr = torch.randn(14, edge_dim)
@@ -78,14 +78,16 @@ def test_egnn_block_se3_invariance():
     N = 6
     h = torch.randn(N, in_dim)
     x = torch.randn(N, 3)
-    edge_index = torch.tensor([[0,1,2,3,4],[1,2,3,4,5]], dtype=torch.long)
+    edge_index = torch.tensor([[0, 1, 2, 3, 4], [1, 2, 3, 4, 5]], dtype=torch.long)
 
     h1, _ = egnn(h.clone(), x.clone(), edge_index)
     angle = np.pi / 2
     rot = torch.tensor(
-        [[np.cos(angle), -np.sin(angle), 0],
-         [np.sin(angle),  np.cos(angle), 0],
-         [0, 0, 1]],
+        [
+            [np.cos(angle), -np.sin(angle), 0],
+            [np.sin(angle), np.cos(angle), 0],
+            [0, 0, 1],
+        ],
         dtype=torch.float,
     )
     x_rot = x @ rot.T
@@ -93,7 +95,9 @@ def test_egnn_block_se3_invariance():
 
     pool1 = h1.sum(dim=0)
     pool2 = h2.sum(dim=0)
-    assert torch.allclose(pool1, pool2, atol=1e-5), "EGNN pooled output changed under rotation"
+    assert torch.allclose(
+        pool1, pool2, atol=1e-5
+    ), "EGNN pooled output changed under rotation"
     print("test_egnn_block_se3_invariance PASSED")
 
 
@@ -123,7 +127,13 @@ def test_metal_hybrid_end_to_end():
     )
     model.eval()
 
-    smiles_list = ["CCO", "CC(=O)O", "c1ccccc1", "CC(C)C", "CN1C=NC2=C1C(=O)N(C)C(=O)N2C"]
+    smiles_list = [
+        "CCO",
+        "CC(=O)O",
+        "c1ccccc1",
+        "CC(C)C",
+        "CN1C=NC2=C1C(=O)N(C)C(=O)N2C",
+    ]
     B = len(smiles_list)
     N_max = 30
     device = next(model.parameters()).device
@@ -134,8 +144,13 @@ def test_metal_hybrid_end_to_end():
     with torch.no_grad():
         pic50_pred, active_logits = model(smiles_list, coords, metal_types)
 
-    assert pic50_pred.shape == (B,), f"pic50_pred: expected ({B},), got {pic50_pred.shape}"
-    assert active_logits.shape == (B,) or active_logits.shape == (B, 2), f"active_logits: expected ({B},) or ({B}, 2), got {active_logits.shape}"
+    assert pic50_pred.shape == (
+        B,
+    ), f"pic50_pred: expected ({B},), got {pic50_pred.shape}"
+    assert active_logits.shape == (B,) or active_logits.shape == (
+        B,
+        2,
+    ), f"active_logits: expected ({B},) or ({B}, 2), got {active_logits.shape}"
     assert torch.isfinite(pic50_pred).all(), "pic50_pred contains NaN/Inf"
     assert torch.isfinite(active_logits).all(), "active_logits contains NaN/Inf"
     print("test_metal_hybrid_end_to_end PASSED")
@@ -157,7 +172,16 @@ def test_metal_hybrid_loss():
     N_max = 20
     device = next(model.parameters()).device
 
-    smiles_list = ["CCO", "CC(=O)O", "c1ccccc1", "CC(C)C", "CCN", "CCCC", "CCOCC", "CCOC"]
+    smiles_list = [
+        "CCO",
+        "CC(=O)O",
+        "c1ccccc1",
+        "CC(C)C",
+        "CCN",
+        "CCCC",
+        "CCOCC",
+        "CCOC",
+    ]
     coords = torch.randn(B, N_max, 3).to(device)
     metal_types = torch.randint(0, 5, (B,), dtype=torch.long).to(device)
     pic50_true = torch.rand(B).to(device) * 5 + 4
@@ -168,12 +192,16 @@ def test_metal_hybrid_loss():
     for step in range(5):
         optimizer.zero_grad()
         pic50_pred, active_logits = model(smiles_list, coords, metal_types)
-        loss = loss_fn(pic50_pred, pic50_true, active_label, active_logits=active_logits)
+        loss = loss_fn(
+            pic50_pred, pic50_true, active_label, active_logits=active_logits
+        )
         loss.backward()
         optimizer.step()
         losses.append(loss.item())
 
-    assert all(np.isfinite(l) for l in losses), f"Loss contains non-finite values: {losses}"
+    assert all(
+        np.isfinite(l) for l in losses
+    ), f"Loss contains non-finite values: {losses}"
     print(f"test_metal_hybrid_loss PASSED  (losses: {[f'{l:.4f}' for l in losses]})")
 
 

@@ -19,6 +19,7 @@ Vina binary which is not installed on this machine (per TODO/environment
 constraints). Heavy imports are guarded; missing deps return ``None`` for
 that metric only, not for the whole wrapper.
 """
+
 from __future__ import annotations
 
 from collections import Counter
@@ -35,6 +36,7 @@ try:
         FilterCatalogParams,
     )
     from rdkit.Chem.QED import qed
+
     _RDKIT_OK = True
 except ImportError:  # pragma: no cover - guard
     _RDKIT_OK = False
@@ -43,6 +45,7 @@ except ImportError:  # pragma: no cover - guard
 # sascorer next to this module (works without TDC / QVina / BioLM).
 try:
     from molmetal.eval.scoring.sascorer import compute_sa_score
+
     _SA_OK = True
 except Exception:  # pragma: no cover - guard
     _SA_OK = False
@@ -112,7 +115,9 @@ def _mol_from_smiles(smi: str) -> Optional[Chem.Mol]:
     return Chem.MolFromSmiles(str(smi))
 
 
-def score(smiles_list: List[str], pocket: Optional[Any] = None, **_: Any) -> Optional[Dict[str, Any]]:
+def score(
+    smiles_list: List[str], pocket: Optional[Any] = None, **_: Any
+) -> Optional[Dict[str, Any]]:
     """Score a list of SMILES with the TargetDiff metric suite.
 
     Parameters

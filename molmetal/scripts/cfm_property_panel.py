@@ -104,10 +104,12 @@ def _load_sascorer():
     """
     from rdkit.Chem import RDConfig  # noqa: WPS433
     import os as _os
+
     sa_dir = _os.path.join(RDConfig.RDContribDir, "SA_Score")
     if sa_dir not in sys.path:
         sys.path.append(sa_dir)
     import sascorer  # type: ignore[import-not-found]  # noqa: WPS433
+
     return sascorer
 
 
@@ -117,12 +119,22 @@ def _percentiles(values: list[float]) -> dict[str, float]:
     NaN values are filtered out before computing statistics; if no
     values remain, all keys are returned as ``None``.
     """
-    clean = [v for v in values if v is not None and not (isinstance(v, float) and math.isnan(v))]
+    clean = [
+        v
+        for v in values
+        if v is not None and not (isinstance(v, float) and math.isnan(v))
+    ]
     if not clean:
         return {
-            "mean": None, "std": None,
-            "p10": None, "p25": None, "p50": None,
-            "p75": None, "p90": None, "min": None, "max": None,
+            "mean": None,
+            "std": None,
+            "p10": None,
+            "p25": None,
+            "p50": None,
+            "p75": None,
+            "p90": None,
+            "min": None,
+            "max": None,
             "n": 0,
         }
     n = len(clean)
@@ -199,8 +211,7 @@ def read_smiles_csv(path: Path) -> list[str]:
                 lowered = [c.strip().lower() for c in row]
                 if "smiles" not in lowered:
                     raise ValueError(
-                        f"CSV at {path} has no 'smiles' column "
-                        f"(header={row!r})"
+                        f"CSV at {path} has no 'smiles' column " f"(header={row!r})"
                     )
                 header = row
                 col_idx = lowered.index("smiles")
@@ -221,8 +232,7 @@ def build_panel(smiles_list: list[str]) -> dict[str, Any]:
     sa_vals = [m["sa"] for m in per_molecule]
     qed_vals = [m["qed"] for m in per_molecule]
     n_parsed = sum(
-        1 for m in per_molecule
-        if m["sa"] is not None and m["qed"] is not None
+        1 for m in per_molecule if m["sa"] is not None and m["qed"] is not None
     )
     n_input = len(per_molecule)
     parsed_ratio = (n_parsed / n_input) if n_input > 0 else 0.0
@@ -257,11 +267,15 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--smiles-csv", required=True, type=Path,
+        "--smiles-csv",
+        required=True,
+        type=Path,
         help="CSV with a 'smiles' column (one molecule per row).",
     )
     p.add_argument(
-        "--out-json", required=True, type=Path,
+        "--out-json",
+        required=True,
+        type=Path,
         help="Output JSON path; will be created or overwritten.",
     )
     return p

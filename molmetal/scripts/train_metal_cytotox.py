@@ -31,6 +31,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -70,6 +71,7 @@ try:
         safe_overwrite_check,
         detect_truncation,
     )
+
     _WF416_HAS_ATOMIC = True
 except ImportError:  # pragma: no cover — fallback when running as standalone
     _WF416_HAS_ATOMIC = False
@@ -89,7 +91,9 @@ REPORTS_DIR = PROJECT_ROOT / "molmetal" / "reports"
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
-def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
+def _wf416_atomic_write_text(
+    path, content: str, min_lines: int = 50, expected_min_length: int = 200
+) -> None:
     """Wf-416-A1 atomic-write-protocol wrapper around direct write_text.
 
     Falls back to direct write_text if atomic_write_file is unavailable
@@ -101,25 +105,34 @@ def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_m
             _risk = safe_overwrite_check(path, content, min_lines=min_lines)
             if _risk is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-416-A1] safe_overwrite_check diff_ratio=%.3f at %s",
-                    _risk, path,
+                    _risk,
+                    path,
                 )
         atomic_write_file(path, content, encoding="utf-8")
         if detect_truncation is not None:
             _trunc = detect_truncation(content, expected_min_length=expected_min_length)
             if _trunc is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-416-A1] detect_truncation reason=%r at %s",
-                    _trunc, path,
+                    _trunc,
+                    path,
                 )
     else:  # pragma: no cover — fallback when atomic primitive unavailable
         Path(path).write_text(content, encoding="utf-8")
 
+
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Train Mol-Metal on MetalCytoToxDB Ru subset.")
-    p.add_argument("--metal", default="Ru", help="Metal centre to filter on (default: Ru)")
+    p = argparse.ArgumentParser(
+        description="Train Mol-Metal on MetalCytoToxDB Ru subset."
+    )
+    p.add_argument(
+        "--metal", default="Ru", help="Metal centre to filter on (default: Ru)"
+    )
     p.add_argument(
         "--seeds",
         type=int,
@@ -133,16 +146,41 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Splitting strategy. Default: scaffold (set --scaffold-split or --temporal-split)",
     )
-    p.add_argument("--scaffold-split", dest="split", action="store_const", const="scaffold",
-                   help="Shortcut: --split=scaffold (default)")
-    p.add_argument("--temporal-split", dest="split", action="store_const", const="temporal",
-                   help="Shortcut: --split=temporal (pre-2024 train / post-2024 test)")
-    p.add_argument("--epochs", type=int, default=50, help="Epochs per seed (default: 50)")
-    p.add_argument("--batch-size", type=int, default=32, help="Mini-batch size (default: 32)")
-    p.add_argument("--lr", type=float, default=1e-3, help="Learning rate (default: 1e-3)")
-    p.add_argument("--alpha", type=float, default=MT_ALPHA, help="BCE/MSE weight (default: 0.5)")
-    p.add_argument("--hidden", type=int, default=MT_HIDDEN, help="D-MPNN hidden dim (default: 128)")
-    p.add_argument("--depth", type=int, default=MT_DEPTH, help="D-MPNN message passing depth (default: 3)")
+    p.add_argument(
+        "--scaffold-split",
+        dest="split",
+        action="store_const",
+        const="scaffold",
+        help="Shortcut: --split=scaffold (default)",
+    )
+    p.add_argument(
+        "--temporal-split",
+        dest="split",
+        action="store_const",
+        const="temporal",
+        help="Shortcut: --split=temporal (pre-2024 train / post-2024 test)",
+    )
+    p.add_argument(
+        "--epochs", type=int, default=50, help="Epochs per seed (default: 50)"
+    )
+    p.add_argument(
+        "--batch-size", type=int, default=32, help="Mini-batch size (default: 32)"
+    )
+    p.add_argument(
+        "--lr", type=float, default=1e-3, help="Learning rate (default: 1e-3)"
+    )
+    p.add_argument(
+        "--alpha", type=float, default=MT_ALPHA, help="BCE/MSE weight (default: 0.5)"
+    )
+    p.add_argument(
+        "--hidden", type=int, default=MT_HIDDEN, help="D-MPNN hidden dim (default: 128)"
+    )
+    p.add_argument(
+        "--depth",
+        type=int,
+        default=MT_DEPTH,
+        help="D-MPNN message passing depth (default: 3)",
+    )
     p.add_argument(
         "--time-threshold",
         type=float,
@@ -426,7 +464,9 @@ def main(argv: list[str] | None = None) -> int:
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
     aggregate_path = out_dir / "aggregate.json"
-    _wf416_atomic_write_text(aggregate_path, json.dumps(full_payload, indent=2, default=str))
+    _wf416_atomic_write_text(
+        aggregate_path, json.dumps(full_payload, indent=2, default=str)
+    )
     print(f"\n[metric1] === AGGREGATE ===", flush=True)
     print(
         f"[metric1] test AUC = {auc_mean:.4f} ± {auc_std:.4f}  "
@@ -462,12 +502,12 @@ def main(argv: list[str] | None = None) -> int:
         "per_seed_values": aggregate["per_seed_auc"],
         "n_seeds": int(aggregate["n_seeds"]),
         "n_train_avg": (
-            float(statistics.mean([d.get('n_train', 0) for d in per_seed]))
+            float(statistics.mean([d.get("n_train", 0) for d in per_seed]))
             if per_seed
             else 0.0
         ),
         "n_test_avg": (
-            float(statistics.mean([d.get('n_test', 0) for d in per_seed]))
+            float(statistics.mean([d.get("n_test", 0) for d in per_seed]))
             if per_seed
             else 0.0
         ),

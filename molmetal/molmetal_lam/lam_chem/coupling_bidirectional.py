@@ -102,18 +102,18 @@ DEFAULT_POCKET_SIZE: int = 8
 # library).
 # ---------------------------------------------------------------------------
 _FALLBACK_TILES: Tuple[str, ...] = (
-    "CCN=[N+]=[N-]",   # azide
-    "CCC#C",           # alkyne
+    "CCN=[N+]=[N-]",  # azide
+    "CCC#C",  # alkyne
     "[N-]=[N+]=NCc1ccccc1",  # benzyl azide
-    "OC#C",            # terminal alkyne
-    "CC(=O)C=C",       # alkene
-    "C1=CCCC1",        # cyclopentene
-    "C(=O)([O-])C",    # acetate
-    "[Cl-]",           # chloride (ligand)
-    "CS",              # thiol (thiol-ene handle)
-    "c1ccccc1",        # benzene
-    "O",               # water
-    "CCO",             # ethanol
+    "OC#C",  # terminal alkyne
+    "CC(=O)C=C",  # alkene
+    "C1=CCCC1",  # cyclopentene
+    "C(=O)([O-])C",  # acetate
+    "[Cl-]",  # chloride (ligand)
+    "CS",  # thiol (thiol-ene handle)
+    "c1ccccc1",  # benzene
+    "O",  # water
+    "CCO",  # ethanol
 )
 
 
@@ -149,7 +149,8 @@ def _build_default_closure_oracle() -> Any:
                 )
 
                 term = MoleculeClosedTerm.from_smiles(
-                    smiles, embed_3d=False,
+                    smiles,
+                    embed_3d=False,
                 )
                 if term is None:
                     return False
@@ -247,7 +248,7 @@ def _lambda_features_from_text(text: str) -> np.ndarray:
     buckets = np.zeros(16, dtype=np.float32)
     for i in range(16):
         h = 0
-        for c in (norm + f"|{i}"):
+        for c in norm + f"|{i}":
             h = (h * 1099511628211 + ord(c)) & 0x7FFFFFFF
         buckets[i] = (h % 1024) / 1024.0
 
@@ -388,9 +389,7 @@ class CFMLambdaReverse:
     # ------------------------------------------------------------------
     # Nearest-tile lookup
     # ------------------------------------------------------------------
-    def _nearest_tile(
-        self, lambda_features: np.ndarray
-    ) -> Tuple[int, str, float]:
+    def _nearest_tile(self, lambda_features: np.ndarray) -> Tuple[int, str, float]:
         """Return ``(idx, smiles, distance)`` of the closest tile.
 
         Distance is L2 in 32-d lambda-feature space.
@@ -441,12 +440,14 @@ class CFMLambdaReverse:
             from molmetal.molmetal_lam.lam_chem.lambda_combinators import (
                 PRIMITIVE_ATOMS as _PA,
             )
+
             primitive_atoms = _PA
         except Exception:
             try:
                 from molmetal_lam.lam_chem.lambda_combinators import (
                     PRIMITIVE_ATOMS as _PA,  # type: ignore
                 )
+
                 primitive_atoms = _PA
             except Exception:
 
@@ -466,6 +467,7 @@ class CFMLambdaReverse:
                     from molmetal.molmetal_lam.lam_chem.lambda_combinators import (
                         Atom as _Atom,
                     )
+
                     atom = _Atom(
                         symbol=sym or "C",
                         atomic_num=6,
@@ -483,9 +485,7 @@ class CFMLambdaReverse:
     # ------------------------------------------------------------------
     # Build a β-reduction sequence from a list of atoms
     # ------------------------------------------------------------------
-    def build_beta_reduction_sequence(
-        self, atoms: Sequence[AtomLike]
-    ) -> List[LamTerm]:
+    def build_beta_reduction_sequence(self, atoms: Sequence[AtomLike]) -> List[LamTerm]:
         """Build a β-reduction sequence from an atom combinator list.
 
         The sequence is the left-associative ``fold`` of :class:`LamApp`
@@ -510,7 +510,8 @@ class CFMLambdaReverse:
         """
         try:
             from molmetal.molmetal_lam.lam_chem.ast import (
-                LamApp, LamVar,  # type: ignore
+                LamApp,
+                LamVar,  # type: ignore
             )
         except Exception:
             # Fallback: use ADT-style duck-typed objects.
@@ -603,7 +604,8 @@ class CFMLambdaReverse:
         # Build the LamTerm AST.
         try:
             from molmetal.molmetal_lam.lam_chem.ast import (
-                LamApp, LamVar,  # type: ignore
+                LamApp,
+                LamVar,  # type: ignore
             )
         except Exception:
             LamApp = None  # type: ignore
@@ -749,10 +751,18 @@ class BidirectionalCoupling:
         """
         pocket_arr = np.asarray(pocket, dtype=np.float32).reshape(-1)
         t0 = time.time()
-        fwd = self.lambda_to_cfm.run_full_pipeline(
-            str(lambda_seed), pocket_arr, n_steps=int(n_steps),
-        ) if hasattr(self.lambda_to_cfm, "run_full_pipeline") else _stub_fwd(
-            str(lambda_seed), pocket_arr, n_steps=int(n_steps),
+        fwd = (
+            self.lambda_to_cfm.run_full_pipeline(
+                str(lambda_seed),
+                pocket_arr,
+                n_steps=int(n_steps),
+            )
+            if hasattr(self.lambda_to_cfm, "run_full_pipeline")
+            else _stub_fwd(
+                str(lambda_seed),
+                pocket_arr,
+                n_steps=int(n_steps),
+            )
         )
         cfm_output = np.asarray(
             fwd.get("cfm_output", np.zeros(EMBED_DIM, dtype=np.float32)),
@@ -840,6 +850,7 @@ def _build_default_lambda_to_cfm() -> Any:
         from molmetal.molmetal_lam.lam_chem.coupling_joint_inference import (
             LambdaCFMPipeline,
         )
+
         return LambdaCFMPipeline()
     except Exception:
         return _NoOpForwardPipeline()

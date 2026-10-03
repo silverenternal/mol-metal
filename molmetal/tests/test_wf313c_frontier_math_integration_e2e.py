@@ -45,6 +45,7 @@ Cross-references
   (same 4 test names).
 * TODO-234 §6 — recommended execution order (Day 3-5 = this file).
 """
+
 from __future__ import annotations
 
 import math
@@ -88,6 +89,7 @@ def fmi():
     Day 1-2 fixture — same factory surface, deeper assertions.
     """
     from molmetal.adapters.frontier_math_integration import FrontierMathIntegration
+
     return FrontierMathIntegration()
 
 
@@ -125,9 +127,11 @@ def test_multi_ph_pocket_augmentation(fmi):
     pocket = torch.randn(2, 8, 3)
     feat_map = features_mod.compute(pocket)
     # Output shape = (B, n_bins, n_bins) = (2, 4, 4).
-    assert feat_map.shape == (2, 4, 4), (
-        f"unexpected feature map shape: {tuple(feat_map.shape)}"
-    )
+    assert feat_map.shape == (
+        2,
+        4,
+        4,
+    ), f"unexpected feature map shape: {tuple(feat_map.shape)}"
     # Multi-PH feature map is a count of (r, d) pairs per pocket —
     # must be non-negative.
     assert (feat_map >= 0).all(), "multi-PH feature map must be non-negative"
@@ -148,7 +152,9 @@ def test_multi_ph_pocket_augmentation(fmi):
     )
     # Trailing slice must equal the flattened feature map.
     assert torch.allclose(
-        augmented[:, 16:].reshape(2, 4, 4), feat_map, atol=1e-6,
+        augmented[:, 16:].reshape(2, 4, 4),
+        feat_map,
+        atol=1e-6,
     ), "augment_pocket_embedding must serialise the feature map row-major"
 
 
@@ -188,22 +194,25 @@ def test_se3_lipman_solver_tangent_correctness(fmi):
     torch.manual_seed(0)
     x0 = torch.randn(2, 6, 3)
     x_final = solver.solve(
-        velocity_fn=_v_fn, x0=x0, t_span=(0.0, 1.0), pocket=None,
+        velocity_fn=_v_fn,
+        x0=x0,
+        t_span=(0.0, 1.0),
+        pocket=None,
     )
     assert x_final.shape == (2, 6, 3), (
         f"SE(3) solver output must preserve (B, N, 3) shape; "
         f"got {tuple(x_final.shape)}"
     )
-    assert torch.isfinite(x_final).all(), (
-        "SE(3) solver output must be finite — no NaN/Inf permitted"
-    )
+    assert torch.isfinite(
+        x_final
+    ).all(), "SE(3) solver output must be finite — no NaN/Inf permitted"
 
     # Orthogonality audit: limit to 3 runs (the default is 10) to
     # keep the test well under 1 s on a single CPU thread.
     max_err = solver.verify_se3_orthogonality(n_runs=3)
-    assert math.isfinite(max_err), (
-        f"max orthogonality error must be finite; got {max_err}"
-    )
+    assert math.isfinite(
+        max_err
+    ), f"max orthogonality error must be finite; got {max_err}"
     assert max_err < SE3_ORTHO_TOL, (
         f"max orthogonality error must be < {SE3_ORTHO_TOL}; "
         f"got {max_err} (W2.1 hard contract violated)"
@@ -244,9 +253,12 @@ def test_se3_sb_decoder_endpoint_distribution(fmi):
 
     t_values = torch.tensor([0.0, 1.0], dtype=z.dtype, device=z.device)
     out = decoder.decode(z, z, t_values=t_values)
-    assert out.shape == (b, 2, 4, 4), (
-        f"decode output must be (B, n_t, 4, 4); got {tuple(out.shape)}"
-    )
+    assert out.shape == (
+        b,
+        2,
+        4,
+        4,
+    ), f"decode output must be (B, n_t, 4, 4); got {tuple(out.shape)}"
     # Both endpoints must equal the source pose (self-coupling
     # degenerates to identity; geodesic is constant on self-pair).
     for k in (0, 1):
@@ -374,7 +386,10 @@ def test_joint_frontier_integration_no_nan(fmi):
 
     x0 = torch.randn(2, 6, 3)
     x_final = solver.solve(
-        velocity_fn=_v_fn, x0=x0, t_span=(0.0, 1.0), pocket=None,
+        velocity_fn=_v_fn,
+        x0=x0,
+        t_span=(0.0, 1.0),
+        pocket=None,
     )
     assert torch.isfinite(x_final).all()
     assert x_final.shape == x0.shape
@@ -412,7 +427,8 @@ def test_research_only_modules_excluded(fmi):
       :mod:`molmetal.adapters.frontier_math_integration`.
     """
     factory_methods = {
-        name for name in dir(fmi)
+        name
+        for name in dir(fmi)
         if name.startswith("get_") and callable(getattr(fmi, name))
     }
     # Canonical 4 factory entry-points (Wf-309B).
@@ -439,6 +455,7 @@ def test_research_only_modules_excluded(fmi):
     # The integration wrapper's namespace must NOT carry the
     # research-only modules' public classes.
     from molmetal.adapters import frontier_math_integration as fmi_mod
+
     for cls in (
         "BassExistenceTheorem",
         "BassMartingale",
@@ -562,7 +579,10 @@ def test_frontier_integration_metrics(fmi):
 
     x0 = torch.randn(2, 6, 3)
     x_final = solver.solve(
-        velocity_fn=_v_fn, x0=x0, t_span=(0.0, 1.0), pocket=None,
+        velocity_fn=_v_fn,
+        x0=x0,
+        t_span=(0.0, 1.0),
+        pocket=None,
     )
     assert x_final.shape == x0.shape  # shape preserved
     assert torch.isfinite(x_final).all()
@@ -593,9 +613,7 @@ def test_frontier_integration_metrics(fmi):
             f"metrics payload {key!r} must be a JSON-serialisable "
             f"Python float; got {type(val).__name__}"
         )
-        assert math.isfinite(val), (
-            f"metrics payload {key!r} must be finite; got {val}"
-        )
+        assert math.isfinite(val), f"metrics payload {key!r} must be finite; got {val}"
     # Multi-PH feature-map sum must be non-negative.
     assert metrics_payload["multi_ph_feature_map_sum"] >= 0.0
     # Transport-relaxation penalty must be non-negative.

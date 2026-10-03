@@ -577,7 +577,9 @@ class PreFeaturizedCache:
                 f"Unknown domain {domain!r}. Supported: {self._SUPPORTED_DOMAINS}"
             )
         self.domain = domain
-        self._cache: Dict[str, Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]] = {}
+        self._cache: Dict[
+            str, Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+        ] = {}
         self._loaded = False
         # Optional label / metadata sidecar.
         self._labels: Optional[Tensor] = None
@@ -631,7 +633,10 @@ class PreFeaturizedCache:
 
     def featurize(
         self, smiles_list: List[str]
-    ) -> Tuple[List[Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]], ], List[int]]:
+    ) -> Tuple[
+        List[Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]],],
+        List[int],
+    ]:
         """Featurize SMILES from cache.
 
         Returns
@@ -647,7 +652,9 @@ class PreFeaturizedCache:
         """
         if not self._loaded:
             self.load()
-        graphs: List[Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]] = []
+        graphs: List[
+            Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]
+        ] = []
         missing_idx: List[int] = []
         for i, smi in enumerate(smiles_list):
             tup = self._cache.get(smi)
@@ -678,6 +685,7 @@ class PreFeaturizedCache:
             return cached  # type: ignore[return-value]
         # Fall back to RDKit for missing SMILES.
         from molmetal.baselines.dmpnn import featurize_smiles_list as _rdkit_featurize
+
         fallback = _rdkit_featurize([smiles_list[i] for i in missing])
         # Splice back into the result list.
         for i, fallback_tup in zip(missing, fallback):
@@ -718,21 +726,32 @@ def list_optimization_status() -> Dict[str, Dict[str, object]]:
             "name": "BatchMolGraph flat-tensor forward",
             "port": True,
             "LOC_approx": 100,
-            "functions": ["BatchMolGraph", "batch_mol_graph_from_tuples", "forward_batched_dmpnn"],
+            "functions": [
+                "BatchMolGraph",
+                "batch_mol_graph_from_tuples",
+                "forward_batched_dmpnn",
+            ],
             "projected_speedup": "5-15x",
         },
         "326G-2": {
             "name": "scatter_reduce_(include_self=False) drop-in",
             "port": True,
             "LOC_approx": 6,
-            "functions": ["scatter_sum_no_self", "scatter_sum_no_self_index_add_fallback"],
+            "functions": [
+                "scatter_sum_no_self",
+                "scatter_sum_no_self_index_add_fallback",
+            ],
             "projected_speedup": "1.2-1.5x + 3x mem",
         },
         "326G-3": {
             "name": "torch.compile + TF32 + Adam(fused=True)",
             "port": True,
             "LOC_approx": 4,
-            "functions": ["setup_optimized_dmpnn_env", "compile_dmpnn_model", "make_optimized_adam"],
+            "functions": [
+                "setup_optimized_dmpnn_env",
+                "compile_dmpnn_model",
+                "make_optimized_adam",
+            ],
             "projected_speedup": "1.3-1.5x + 1.3-1.8x + 1.1-1.3x",
         },
         "326G-4": {

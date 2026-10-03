@@ -68,17 +68,27 @@ def per_metal_summary(metal: str, seeds: List[Dict]) -> Dict:
         dtype=float,
     )
     w_finals = np.array(
-        [s["wasserstein_history"][-1] if s.get("wasserstein_history") else float("nan")
-         for s in seeds],
+        [
+            s["wasserstein_history"][-1]
+            if s.get("wasserstein_history")
+            else float("nan")
+            for s in seeds
+        ],
         dtype=float,
     )
     aucs_finite = aucs[np.isfinite(aucs)]
     return {
         "metal": metal,
         "n_seeds": len(seeds),
-        "test_auc_mean": float(np.nanmean(aucs_finite)) if aucs_finite.size else float("nan"),
-        "test_auc_std": float(np.nanstd(aucs_finite)) if aucs_finite.size else float("nan"),
-        "test_auc_per_seed": {str(s["seed"]): float(s["test_metrics"]["roc_auc"]) for s in seeds},
+        "test_auc_mean": float(np.nanmean(aucs_finite))
+        if aucs_finite.size
+        else float("nan"),
+        "test_auc_std": float(np.nanstd(aucs_finite))
+        if aucs_finite.size
+        else float("nan"),
+        "test_auc_per_seed": {
+            str(s["seed"]): float(s["test_metrics"]["roc_auc"]) for s in seeds
+        },
         "test_pearson_mean": float(np.nanmean(pearsons)),
         "test_pearson_std": float(np.nanstd(pearsons)),
         "test_rmse_mean": float(np.nanmean(rmses)),
@@ -98,8 +108,10 @@ def per_metal_summary(metal: str, seeds: List[Dict]) -> Dict:
 
 def main(argv: list[str] | None = None) -> int:
     if not SWEEP_DIR.is_dir():
-        print(f"[wf196-agg] ERROR: {SWEEP_DIR} does not exist; run sweep first",
-              flush=True)
+        print(
+            f"[wf196-agg] ERROR: {SWEEP_DIR} does not exist; run sweep first",
+            flush=True,
+        )
         return 2
 
     summary_per_metal: Dict[str, Dict] = {}
@@ -139,8 +151,12 @@ def main(argv: list[str] | None = None) -> int:
         "per_metal": summary_per_metal,
         "aggregate_5metal": {
             "n_pairs": len(all_seeds),
-            "test_auc_mean": float(np.nanmean(aucs_all_finite)) if aucs_all_finite.size else float("nan"),
-            "test_auc_std": float(np.nanstd(aucs_all_finite)) if aucs_all_finite.size else float("nan"),
+            "test_auc_mean": float(np.nanmean(aucs_all_finite))
+            if aucs_all_finite.size
+            else float("nan"),
+            "test_auc_std": float(np.nanstd(aucs_all_finite))
+            if aucs_all_finite.size
+            else float("nan"),
             "test_pearson_mean": float(np.nanmean(pearsons_all)),
             "test_pearson_std": float(np.nanstd(pearsons_all)),
             "test_rmse_mean": float(np.nanmean(rmses_all)),
@@ -150,7 +166,8 @@ def main(argv: list[str] | None = None) -> int:
         "ru_auc_baseline_single_task": 0.7123,
         "ru_auc_target_met_50ep": (
             float(summary_per_metal["Ru"]["test_auc_mean"]) >= 0.86
-            if summary_per_metal["Ru"]["test_auc_mean"] != "NO_SEEDS" else False
+            if summary_per_metal["Ru"]["test_auc_mean"] != "NO_SEEDS"
+            else False
         ),
         "honest_framing_note": (
             "Wf-196 CPU sweep at 50 epochs with smaller backbone (hidden=64, "

@@ -70,9 +70,7 @@ MAX_AGE_HR = 24
 
 PYTHONPATH = "/home/hugo/codes/mol-metal"
 PYTHON_BIN = "/home/hugo/codes/mol-metal/.venv/bin/python"
-PRE_FLIGHT_SCRIPT = (
-    REPO_ROOT / "molmetal" / "scripts" / "pre_flight_check.py"
-)
+PRE_FLIGHT_SCRIPT = REPO_ROOT / "molmetal" / "scripts" / "pre_flight_check.py"
 ANCHOR_FRESHNESS_GATE_NAME = "p3_wf343c4_anchor_freshness_24h"
 
 
@@ -154,8 +152,7 @@ def test_wf356a2_preflight_anchor_freshness_gate_passes():
     out = proc.stdout
     json_start = out.find("{")
     assert json_start >= 0, (
-        f"pre_flight_check.py stdout has no JSON object start; "
-        f"stdout={out[:500]}"
+        f"pre_flight_check.py stdout has no JSON object start; " f"stdout={out[:500]}"
     )
     payload = json.loads(out[json_start:])
     # Locate the gate by name.

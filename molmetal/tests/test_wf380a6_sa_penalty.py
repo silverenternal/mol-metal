@@ -47,11 +47,7 @@ import pytest
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _PENALTY_PATH = (
-    _REPO_ROOT
-    / "molmetal"
-    / "adapters"
-    / "flow_matching_lipman"
-    / "sa_penalty.py"
+    _REPO_ROOT / "molmetal" / "adapters" / "flow_matching_lipman" / "sa_penalty.py"
 )
 
 
@@ -115,13 +111,11 @@ class TestSAPenaltyContract:
         mod = sa_penalty_mod
         # slope = sa_weight = 0.3, intercept = 0 at sa=target.
         for sa in [3.0, 5.0, 10.0]:
-            p = mod.sa_aware_sampling_penalty(
-                [sa], target_sa=2.8, sa_weight=0.3
-            )
+            p = mod.sa_aware_sampling_penalty([sa], target_sa=2.8, sa_weight=0.3)
             expected = (sa - 2.8) * 0.3
-            assert abs(p[0] - expected) < 1e-9, (
-                f"expected {expected} got {p[0]} for sa={sa}"
-            )
+            assert (
+                abs(p[0] - expected) < 1e-9
+            ), f"expected {expected} got {p[0]} for sa={sa}"
 
     def test_penalty_default_target_is_2_8(self, sa_penalty_mod):
         """Default target_sa must be 2.8 (the canonical synthesizable threshold)."""
@@ -209,8 +203,7 @@ class TestSAAwareLossStep:
         # Cohort B: high SA (penalty kicks in)
         loss_b = mod.sa_aware_loss_step(logits, np.array([6.0, 8.0]))
         assert loss_b > loss_a, (
-            f"loss not monotonic in SA penalty: "
-            f"loss_a={loss_a} loss_b={loss_b}"
+            f"loss not monotonic in SA penalty: " f"loss_a={loss_a} loss_b={loss_b}"
         )
 
 
@@ -231,9 +224,9 @@ class TestComputeSAScoreDelegation:
 
         ref = rdkit_sascorer.calculateScore(Chem.MolFromSmiles("CCO"))
         mod_score = sa_penalty_mod.compute_sa_score(Chem.MolFromSmiles("CCO"))
-        assert abs(ref - mod_score) < 1e-9, (
-            f"delegation mismatch: ref={ref} mod={mod_score}"
-        )
+        assert (
+            abs(ref - mod_score) < 1e-9
+        ), f"delegation mismatch: ref={ref} mod={mod_score}"
 
     def test_compute_sa_score_none_returns_nan(self, sa_penalty_mod):
         """None mol must return NaN (defensive)."""

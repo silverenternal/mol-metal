@@ -34,6 +34,7 @@ Test inventory
    can be coupled to the live ``MCTSProofSearch`` root selection
    to confirm the math is wire-compatible.
 """
+
 from __future__ import annotations
 
 import math
@@ -180,7 +181,9 @@ def test_puct_dirichlet_noise_adds_exploration():
         that case below.
     """
     sel = PUCTSelector(
-        c_puct=1.5, epsilon=0.25, alpha=0.3,
+        c_puct=1.5,
+        epsilon=0.25,
+        alpha=0.3,
         rng=np.random.default_rng(42),
     )
     priors = np.array([0.1, 0.6, 0.2, 0.1], dtype=np.float64)
@@ -197,7 +200,9 @@ def test_puct_dirichlet_noise_adds_exploration():
     # one extra shot with a fresh seed to avoid flakiness.
     if np.allclose(out, priors / priors.sum(), atol=1e-12):
         sel2 = PUCTSelector(
-            c_puct=1.5, epsilon=0.25, alpha=0.3,
+            c_puct=1.5,
+            epsilon=0.25,
+            alpha=0.3,
             rng=np.random.default_rng(7),
         )
         out = sel2.add_dirichlet_noise(priors, epsilon=0.25, alpha=0.3)

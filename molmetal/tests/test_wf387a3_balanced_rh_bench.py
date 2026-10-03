@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Tests for Wf-387-A3 balanced Rh benchmark scaffold (CPU-only)."""
+
 from __future__ import annotations
 
 import json
@@ -40,6 +41,7 @@ def test_select_per_cohort_config_tiers() -> None:
 def test_auc_ranksum_returns_finite() -> None:
     """AUC is in [0, 1] and 0.5 for constant predictions."""
     import numpy as np
+
     y = np.asarray([0, 0, 1, 1, 1, 0, 1, 0])
     s = np.asarray([0.1, 0.2, 0.9, 0.8, 0.7, 0.3, 0.6, 0.4])
     auc = _auc_ranksum(y, s)
@@ -54,6 +56,7 @@ def test_auc_ranksum_returns_finite() -> None:
 def test_ridge_fit_predict_predicts_shape() -> None:
     """Ridge prediction shape = (n_test,)."""
     import numpy as np
+
     X_train = np.random.RandomState(0).randn(50, 5)
     y_train = X_train[:, 0] + np.random.RandomState(0).randn(50) * 0.1
     X_test = np.random.RandomState(1).randn(20, 5)
@@ -64,12 +67,13 @@ def test_ridge_fit_predict_predicts_shape() -> None:
 def test_kfold_indices_deterministic() -> None:
     """Same seed produces same folds; n_iterations matches."""
     import numpy as np
+
     folds1 = _kfold_indices(n=100, k=5, seed=42)
     folds2 = _kfold_indices(n=100, k=5, seed=42)
     folds3 = _kfold_indices(n=100, k=5, seed=43)
     assert len(folds1) == 5
     # Deterministic: same seed = same folds
-    for (a, b) in zip(folds1, folds2):
+    for a, b in zip(folds1, folds2):
         np.testing.assert_array_equal(a[0], b[0])  # train
         np.testing.assert_array_equal(a[1], b[1])  # val
     # Different seed = different folds
@@ -82,7 +86,9 @@ def test_balanced_rh_aggregate_returns_dict() -> None:
     assert result["n_seeds"] == 4
     assert 0.5 < result["mean"] < 0.8
     assert result["verdict"] in (
-        "PARTIAL_ARTIFACT", "REAL_LIFT", "CEILING_BREAK",
+        "PARTIAL_ARTIFACT",
+        "REAL_LIFT",
+        "CEILING_BREAK",
     )
     # Edge case: empty
     empty = balanced_rh_aggregate([])
@@ -99,15 +105,19 @@ def test_smoke_run_produces_valid_output() -> None:
         epochs=30,
     )
     out_path = os.path.join(
-        "molmetal/reports/wf387a3_balanced_rh_smoke/", "smoke_result.json",
+        "molmetal/reports/wf387a3_balanced_rh_smoke/",
+        "smoke_result.json",
     )
     assert os.path.exists(out_path)
     with open(out_path, "r", encoding="utf-8") as fh:
         blob = json.load(fh)
     # Verdict taxonomy (per Wf-387-A3 §0)
     assert blob["verdict_compare"] in (
-        "ARTIFACT_LIFT", "PARTIAL_ARTIFACT", "REAL_LIFT",
-        "CEILING_BREAK", "INSUFFICIENT_DATA",
+        "ARTIFACT_LIFT",
+        "PARTIAL_ARTIFACT",
+        "REAL_LIFT",
+        "CEILING_BREAK",
+        "INSUFFICIENT_DATA",
     )
     # Aggregate stats present
     assert "mean" in blob["aggregate"]
@@ -124,9 +134,11 @@ def test_train_eval_balanced_synthetic_smoke() -> None:
     # Build inline cohort
     smiles, labs = _synthetic_balanced_smiles(n_active=20, n_inactive=20, seed=42)
     import tempfile
+
     with tempfile.TemporaryDirectory() as td:
         csv_path = os.path.join(td, "tiny.csv")
         import csv as csvlib
+
         with open(csv_path, "w", encoding="utf-8", newline="") as fh:
             writer = csvlib.writer(fh)
             writer.writerow(["smiles", "active"])
@@ -149,6 +161,7 @@ def test_train_eval_balanced_synthetic_smoke() -> None:
 def test_resolve_repo_path_handles_absolute() -> None:
     """Absolute existing path returned unchanged."""
     import tempfile
+
     with tempfile.TemporaryDirectory() as td:
         path = os.path.join(td, "fake.json")
         with open(path, "w") as fh:

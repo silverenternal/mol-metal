@@ -54,7 +54,9 @@ from molmetal_lam.tile_lib.library import (
 #: Default CrossDocked2020 root.  Both sweep scripts read this; the
 #: benchmark accepts an explicit ``--pockets`` directory which
 #: overrides it.
-DEFAULT_CROSSDOCKED_ROOT = "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10"
+DEFAULT_CROSSDOCKED_ROOT = (
+    "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10"
+)
 
 
 #: Fallback seed when a pocket directory contains no readable SDF.
@@ -68,9 +70,9 @@ DEFAULT_SEED_SMILES = "C1=CCC=C1"
 #: * 60   — STANDARD_12 x 5 click rules (round-0 default).
 #: * 1020 — 204-tile library x 5 click rules (round-4 L-3).
 BRANCHING_LABELS: Dict[int, str] = {
-    12:    "minimal 12-tile (single rule)",
-    60:    "STANDARD_12 x 5 rules",
-    1020:  "extended 204-tile x 5 rules",
+    12: "minimal 12-tile (single rule)",
+    60: "STANDARD_12 x 5 rules",
+    1020: "extended 204-tile x 5 rules",
 }
 
 
@@ -204,6 +206,7 @@ def build_reward() -> RewardAggregator:
     sweep (``w_sa=0.5, w_qed=0.5``).  Callers can add a Vina proxy
     channel via :func:`dataclasses.replace` if desired.
     """
+
     def r_sa(state) -> float:
         smi = smi_of(state)
         return max(0.0, 1.0 - _sa_proxy(smi) / 10.0)

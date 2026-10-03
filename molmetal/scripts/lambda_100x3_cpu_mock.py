@@ -188,8 +188,8 @@ MOCK_CELL_BASE_S: float = 2.0
 # (Lambda-only, no Vina/QuickVina2).  Multiplied by 300 / 30 = 10x
 # scale factor gives ~12500 s = ~3.5 h.
 # ---------------------------------------------------------------------------
-GPU_REFERENCE_CELL_S: float = 125.0   # seconds / cell (R17 pilot)
-GPU_TARGET_CELLS: int = 300             # 100 pockets x 3 seeds
+GPU_REFERENCE_CELL_S: float = 125.0  # seconds / cell (R17 pilot)
+GPU_TARGET_CELLS: int = 300  # 100 pockets x 3 seeds
 
 
 # ===========================================================================
@@ -340,7 +340,8 @@ class LambdaSweep100x3Mock:
         if n > len(pool):
             log.warning(
                 "Requested subset of %d pockets but pool only has %d; clamping",
-                n, len(pool),
+                n,
+                len(pool),
             )
             n = len(pool)
         return _hashselect(pool, n=n, salt="p4_1_subset")
@@ -360,7 +361,9 @@ class LambdaSweep100x3Mock:
         floats, paths to strings).
         """
         cell = _deterministic_mock_cell(
-            pocket=pocket, seed=seed, base_seed=self.base_seed,
+            pocket=pocket,
+            seed=seed,
+            base_seed=self.base_seed,
             n_sim=self.n_sim,
         )
         return asdict(cell)
@@ -382,7 +385,9 @@ class LambdaSweep100x3Mock:
         seeds = list(range(self.n_seeds))
         log.info(
             "Mock sweep start: %d pockets x %d seeds = %d cells",
-            len(pockets), len(seeds), len(pockets) * len(seeds),
+            len(pockets),
+            len(seeds),
+            len(pockets) * len(seeds),
         )
         started = time.monotonic()
         cells: List[Dict[str, Any]] = []
@@ -429,7 +434,9 @@ class LambdaSweep100x3Mock:
         )
         log.info(
             "Mock sweep done: %d cells in %.2f s (mean elapsed/cell = %.2f s)",
-            len(cells), total_wall, total_wall / max(1, len(cells)),
+            len(cells),
+            total_wall,
+            total_wall / max(1, len(cells)),
         )
         return summary
 
@@ -454,19 +461,25 @@ class LambdaSweep100x3Mock:
             writer = csv.writer(fh)
             writer.writerow(
                 ["pocket_id", "seed", "n_atoms", "elapsed_s"]
-                + [f"metric_{k}" for k in METRIC_KEYS
-                   if k not in ("n_atoms", "elapsed_s")]
+                + [
+                    f"metric_{k}"
+                    for k in METRIC_KEYS
+                    if k not in ("n_atoms", "elapsed_s")
+                ]
             )
             for cell in summary.per_cell:
-                row = [cell["pocket_id"], cell["seed"],
-                       cell["n_atoms"], cell["elapsed_s"]]
+                row = [
+                    cell["pocket_id"],
+                    cell["seed"],
+                    cell["n_atoms"],
+                    cell["elapsed_s"],
+                ]
                 for k in METRIC_KEYS:
                     if k in ("n_atoms", "elapsed_s"):
                         continue
                     row.append(cell["metrics"].get(k, float("nan")))
                 writer.writerow(row)
-        log.info("Wrote summary to %s and per-cell CSV to %s",
-                 json_path, csv_path)
+        log.info("Wrote summary to %s and per-cell CSV to %s", json_path, csv_path)
         return json_path
 
 
@@ -672,13 +685,17 @@ def _deterministic_mock_cell(
             v = anchor + spread * unit
         metrics[key] = float(v)
 
-    n_atoms_int = int(round(MOCK_ANCHOR_MEAN["n_atoms"]
-                            + MOCK_ANCHOR_SPREAD["n_atoms"]
-                            * _signed_unit_hash(pocket, seed, base_seed, "n_atoms")))
+    n_atoms_int = int(
+        round(
+            MOCK_ANCHOR_MEAN["n_atoms"]
+            + MOCK_ANCHOR_SPREAD["n_atoms"]
+            * _signed_unit_hash(pocket, seed, base_seed, "n_atoms")
+        )
+    )
     elapsed = float(
         MOCK_CELL_BASE_S
         * (1.0 + 0.2 * abs(_signed_unit_hash(pocket, seed, base_seed, "elapsed_s")))
-        * max(1.0, n_sim / 100.0) ** 0.1   # weak scaling with n_sim
+        * max(1.0, n_sim / 100.0) ** 0.1  # weak scaling with n_sim
     )
 
     return CellResult(

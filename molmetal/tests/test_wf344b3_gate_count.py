@@ -73,9 +73,7 @@ import pytest
 # fixed target.
 # ---------------------------------------------------------------------------
 REPO_ROOT = Path(__file__).resolve().parents[2]
-AUDIT_DOC = (
-    REPO_ROOT / "TODO" / "completed" / "321d_preflight_gate_audit.md"
-)
+AUDIT_DOC = REPO_ROOT / "TODO" / "completed" / "321d_preflight_gate_audit.md"
 
 
 # ---------------------------------------------------------------------------
@@ -107,6 +105,7 @@ class TestAuditPipelineInvalid:
         from molmetal.scripts.pre_flight_check import (
             gate_gate_count_consistency_audit,
         )
+
         result = gate_gate_count_consistency_audit(
             "p3_gate_count_consistency_audit",
             "P3",
@@ -148,11 +147,18 @@ class TestAuditPipelineInvalid:
         from molmetal.scripts.pre_flight_check import (
             gate_gate_count_consistency_audit,
         )
+
         # Try a few different invalid pipeline names + expected counts to
         # ensure the silent-zero contract holds regardless of the
         # expected_total the caller passed.
-        for invalid_pipeline in ("audit", "AUDIT", "frontier-audit",
-                                 "all-audit", "", "audit2"):
+        for invalid_pipeline in (
+            "audit",
+            "AUDIT",
+            "frontier-audit",
+            "all-audit",
+            "",
+            "audit2",
+        ):
             for bad_expected in (57, 58, 62, 66, 100):
                 result = gate_gate_count_consistency_audit(
                     "p3_gate_count_consistency_audit",
@@ -204,6 +210,7 @@ class TestExpectedGateCountsSync:
             PIPELINES,
             build_gates,
         )
+
         expected_keys = set(EXPECTED_GATE_COUNTS.keys())
         pipelines_set = set(PIPELINES)
         orphans = expected_keys - pipelines_set
@@ -280,9 +287,7 @@ class TestAuditDocSync:
         text = AUDIT_DOC.read_text(encoding="utf-8")
 
         # Section header for the `all` pipeline: "### §2.1 `all` pipeline — N gates"
-        all_section_re = re.compile(
-            r"### §2\.1\s+`all`\s+pipeline\s+—\s+(\d+)\s+gates"
-        )
+        all_section_re = re.compile(r"### §2\.1\s+`all`\s+pipeline\s+—\s+(\d+)\s+gates")
         all_section_match = all_section_re.search(text)
         assert all_section_match is not None, (
             f"audit doc §2.1 `all` pipeline section header not found in "

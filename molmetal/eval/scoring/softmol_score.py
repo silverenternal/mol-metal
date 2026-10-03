@@ -20,6 +20,7 @@ round-7 install report). This wrapper:
 
 Heavy imports are guarded; missing TDC simply falls back to RDKit.
 """
+
 from __future__ import annotations
 
 import math
@@ -30,18 +31,21 @@ import numpy as np
 try:
     from rdkit import Chem
     from rdkit.Chem.QED import qed as _rdkit_qed
+
     _RDKIT_OK = True
 except ImportError:  # pragma: no cover
     _RDKIT_OK = False
 
 try:
     from molmetal.eval.scoring.sascorer import compute_sa_score
+
     _SA_OK = True
 except Exception:  # pragma: no cover
     _SA_OK = False
 
 try:
     from tdc import Oracle  # type: ignore
+
     _TDC_OK = True
 except Exception:  # pragma: no cover
     _TDC_OK = False
@@ -146,8 +150,10 @@ def score(
     sas = [_sa_for(s) for s in cleaned]
 
     # --- 3. QED/SA filter ---------------------------------------------
-    qs_mask = [(not math.isnan(q)) and (not math.isnan(s)) and (q > QED_THR) and (s < SA_THR)
-               for q, s in zip(qeds, sas)]
+    qs_mask = [
+        (not math.isnan(q)) and (not math.isnan(s)) and (q > QED_THR) and (s < SA_THR)
+        for q, s in zip(qeds, sas)
+    ]
     n_qs = sum(qs_mask)
 
     if n_qs == 0 or rv_scores is None:
@@ -192,8 +198,9 @@ def score(
     rvs = np.asarray([float(v) if v is not None else float("nan") for v in rv_iter])
 
     # --- 4. hits (rv > threshold) within QS subset --------------------
-    hit_mask = [qs and (not math.isnan(rv)) and (rv > hit_thr)
-                for qs, rv in zip(qs_mask, rvs)]
+    hit_mask = [
+        qs and (not math.isnan(rv)) and (rv > hit_thr) for qs, rv in zip(qs_mask, rvs)
+    ]
     hit_rv = rvs[hit_mask]
     n_hits = int(hit_mask.count(True))
     if n_hits == 0:

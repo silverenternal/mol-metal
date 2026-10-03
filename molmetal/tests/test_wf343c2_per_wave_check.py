@@ -158,14 +158,22 @@ def test_cli_exposes_contract_flags():
     max-age-sec must all be present in the argparse parser."""
     ns = wf343c2.parse_argv(
         [
-            "--wave", "Wave-1 chemprop v2 retrain",
-            "--config", "/tmp/foo.yaml",
-            "--preflight", "/tmp/preflight.json",
-            "--out", "/tmp/wave_check.json",
-            "--pairs-metals", "Ru,Ir",
-            "--pairs-seeds", "0,1,2",
-            "--min-vram-mib", "16384",
-            "--min-disk-gib", "100",
+            "--wave",
+            "Wave-1 chemprop v2 retrain",
+            "--config",
+            "/tmp/foo.yaml",
+            "--preflight",
+            "/tmp/preflight.json",
+            "--out",
+            "/tmp/wave_check.json",
+            "--pairs-metals",
+            "Ru,Ir",
+            "--pairs-seeds",
+            "0,1,2",
+            "--min-vram-mib",
+            "16384",
+            "--min-disk-gib",
+            "100",
         ]
     )
     assert ns.wave == "Wave-1 chemprop v2 retrain"
@@ -341,7 +349,7 @@ def test_multiple_checks_fail_with_evidence(tmp_path: Path, monkeypatch):
         config_path=bad_yaml,
         preflight_path=pf,
         pairs_metals=["Ru", "Ir", "Os", "Rh", "Re"],  # 5 metals
-        pairs_seeds=[0, 1, 2, 3, 4],                    # 5 seeds → 25 pairs
+        pairs_seeds=[0, 1, 2, 3, 4],  # 5 seeds → 25 pairs
         min_vram_mib=1024,
         min_disk_gib=10,
         # 1.0h budget × 25 pairs × 0.7/25 = 0.7h/ea → 25 × 0.028 = 0.7h
@@ -421,10 +429,7 @@ def test_validate_schema_rejects_stubs_and_accepts_real(tmp_path: Path):
 
     # Stub: missing check_id field
     stub5 = dict(real_obj)
-    stub5["checks"] = [
-        {"status": "PASS", "evidence": "ok"}
-        for _ in range(7)
-    ]
+    stub5["checks"] = [{"status": "PASS", "evidence": "ok"} for _ in range(7)]
     assert wf343c2._validate_schema(stub5) is False
 
     # Stub: illegal status

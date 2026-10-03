@@ -49,10 +49,10 @@ def test_so3_average_loss_is_finite_and_nonnegative():
     assert torch.isfinite(loss), f"loss must be finite; got {loss.item()}"
     assert loss.item() >= 0.0
     # For pred=0, the loss equals mean(||R · target||²) = mean(||target||²).
-    expected = (target ** 2).mean().item()
-    assert abs(loss.item() - expected) < 1e-5, (
-        f"For pred=0, loss must equal mean(target²); got {loss.item()} vs {expected}"
-    )
+    expected = (target**2).mean().item()
+    assert (
+        abs(loss.item() - expected) < 1e-5
+    ), f"For pred=0, loss must equal mean(target²); got {loss.item()} vs {expected}"
 
 
 def test_module_importable():

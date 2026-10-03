@@ -36,6 +36,7 @@ Run with::
         molmetal/scripts/wf331r4_m7_diversity_multiph.py \\
         --output-dir molmetal/reports/wf331r4_m7_diversity
 """
+
 from __future__ import annotations
 
 import argparse
@@ -59,6 +60,7 @@ except Exception:
 # atom types that RDKit logs UFFTYPER errors for.
 try:
     from rdkit import RDLogger
+
     RDLogger.DisableLog("rdApp.*")
 except Exception:
     pass
@@ -138,7 +140,9 @@ def load_metallo_drugs(csv_path: Path) -> Tuple[List[str], List[str]]:
 # ---------------------------------------------------------------------------
 # Diversity computation (Morgan-ECFP4 Tanimoto — matches Wf-325G)
 # ---------------------------------------------------------------------------
-def morgan_fp_batch(smiles: Sequence[str], radius: int = 2, n_bits: int = 2048) -> np.ndarray:
+def morgan_fp_batch(
+    smiles: Sequence[str], radius: int = 2, n_bits: int = 2048
+) -> np.ndarray:
     """Return ``(n, n_bits)`` uint8 Morgan-ECFP4 fingerprint matrix."""
     try:
         from rdkit import Chem
@@ -155,6 +159,7 @@ def morgan_fp_batch(smiles: Sequence[str], radius: int = 2, n_bits: int = 2048) 
             fp = AllChem.GetMorganFingerprintAsBitVect(mol, radius, nBits=n_bits)
             arr = np.zeros((n_bits,), dtype=np.uint8)
             from rdkit import DataStructs
+
             DataStructs.ConvertToNumpyArray(fp, arr)
             out[i] = arr
         except Exception:
@@ -188,7 +193,7 @@ def _pack_bits_to_uint64(fps: np.ndarray) -> np.ndarray:
         bits_T = bits_T[:target]
     grouped = bits_T.reshape(n_words, 32, n)
     bit_shifts = np.arange(32, dtype=np.uint64).reshape(32, 1)
-    shifted = (grouped << bit_shifts)
+    shifted = grouped << bit_shifts
     packed = shifted.sum(axis=1).T
     return packed
 
@@ -200,7 +205,11 @@ def mean_pairwise_tanimoto_distance(fps: np.ndarray) -> float:
         return 0.0
     packed = _pack_bits_to_uint64(fps)
     total_bits = _popcount_uint64(packed).sum(axis=1).astype(np.int64)
-    inter = _popcount_uint64(packed[:, None, :] & packed[None, :, :]).sum(axis=-1).astype(np.int64)
+    inter = (
+        _popcount_uint64(packed[:, None, :] & packed[None, :, :])
+        .sum(axis=-1)
+        .astype(np.int64)
+    )
     union = total_bits[:, None] + total_bits[None, :] - inter
     sim = np.where(union > 0, inter / np.maximum(union, 1), 0.0)
     iu = np.triu_indices(n, k=1)
@@ -261,7 +270,9 @@ def expand_to_multiph_cohort(smiles_list: Sequence[str]) -> List[Tuple[str, str]
 # ---------------------------------------------------------------------------
 # Multi-PH feature extractor (subset of Wf-329-W4 for CPU speed)
 # ---------------------------------------------------------------------------
-def compute_pll_signatures(smiles_list: Sequence[str], k: int = 16, knn: int = 8) -> np.ndarray:
+def compute_pll_signatures(
+    smiles_list: Sequence[str], k: int = 16, knn: int = 8
+) -> np.ndarray:
     """Compute PLL signatures for a list of SMILES.
 
     Returns ``(n, k)`` float64 array; rows with embed failure get
@@ -435,7 +446,9 @@ def select_top_n_maxmin(
 # ---------------------------------------------------------------------------
 # Aggregation
 # ---------------------------------------------------------------------------
-def aggregate_unique(pools: Sequence[Sequence[int]], selections: Sequence[Sequence[int]]) -> List[int]:
+def aggregate_unique(
+    pools: Sequence[Sequence[int]], selections: Sequence[Sequence[int]]
+) -> List[int]:
     seen = set()
     out: List[int] = []
     for pool, sel in zip(pools, selections):
@@ -491,34 +504,46 @@ def main(argv: Sequence[str] | None = None) -> int:
     # ---------------------------------------------------------------
     # Multi-pH expansion — 3 pH buckets per SMILES
     # ---------------------------------------------------------------
-    print(f"[Wf-331-R4] Expanding cohort to {N_PH_BUCKETS}-pH buckets (acidic/neutral/basic) ...")
+    print(
+        f"[Wf-331-R4] Expanding cohort to {N_PH_BUCKETS}-pH buckets (acidic/neutral/basic) ..."
+    )
     t0 = time.time()
     mph_cohort: List[Tuple[str, str]] = expand_to_multiph_cohort(smiles)
     mph_smiles = [s for _, s in mph_cohort]
     mph_labels = [lab for lab, _ in mph_cohort]
     n_mph = len(mph_smiles)
     t_mph = time.time() - t0
-    print(f"[Wf-331-R4] Multi-pH cohort: {n_mph} SMILES ({N_PH_BUCKETS} buckets × {len(smiles)} base) in {t_mph:.2f}s")
+    print(
+        f"[Wf-331-R4] Multi-pH cohort: {n_mph} SMILES ({N_PH_BUCKETS} buckets × {len(smiles)} base) in {t_mph:.2f}s"
+    )
 
     # ---------------------------------------------------------------
     # Baseline: pool-ceiling Tanimoto diversity (single-pH, original)
     # ---------------------------------------------------------------
-    print("[Wf-331-R4] Computing pool-ceiling Tanimoto diversity on full base cohort ...")
+    print(
+        "[Wf-331-R4] Computing pool-ceiling Tanimoto diversity on full base cohort ..."
+    )
     t0 = time.time()
     fps_full = morgan_fp_batch(smiles)
     m7_pool_ceiling_base = mean_pairwise_tanimoto_distance(fps_full)
     t_base = time.time() - t0
-    print(f"[Wf-331-R4] base pool-ceiling Tanimoto = {m7_pool_ceiling_base:.6f}  [{t_base:.2f}s]")
+    print(
+        f"[Wf-331-R4] base pool-ceiling Tanimoto = {m7_pool_ceiling_base:.6f}  [{t_base:.2f}s]"
+    )
 
     # ---------------------------------------------------------------
     # Multi-pH pool-ceiling Tanimoto diversity
     # ---------------------------------------------------------------
-    print("[Wf-331-R4] Computing Multi-pH pool-ceiling Tanimoto diversity (3 buckets) ...")
+    print(
+        "[Wf-331-R4] Computing Multi-pH pool-ceiling Tanimoto diversity (3 buckets) ..."
+    )
     t0 = time.time()
     fps_mph = morgan_fp_batch(mph_smiles)
     m7_pool_ceiling_mph = mean_pairwise_tanimoto_distance(fps_mph)
     t_mph_ceil = time.time() - t0
-    print(f"[Wf-331-R4] multi-pH pool-ceiling Tanimoto = {m7_pool_ceiling_mph:.6f}  [{t_mph_ceil:.2f}s]")
+    print(
+        f"[Wf-331-R4] multi-pH pool-ceiling Tanimoto = {m7_pool_ceiling_mph:.6f}  [{t_mph_ceil:.2f}s]"
+    )
 
     # ---------------------------------------------------------------
     # 3-seed × multi-pocket expansion (per WEAK_TO_STRONG §2.5)
@@ -526,7 +551,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     # PLL-distance selection across n_pools sub-pools of the base
     # cohort, then take the geometric mean of Tanimoto + PLL distance.
     # ---------------------------------------------------------------
-    print(f"[Wf-331-R4] Running {args.n_seeds}-seed × {N_PH_BUCKETS}-pH MaxMin PLL selection ...")
+    print(
+        f"[Wf-331-R4] Running {args.n_seeds}-seed × {N_PH_BUCKETS}-pH MaxMin PLL selection ..."
+    )
     t_select_total = time.time()
     per_seed_summary: List[Dict[str, Any]] = []
     mph_tanimoto_lifts: List[float] = []
@@ -570,8 +597,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             d_before = mean_pairwise_tanimoto_distance(base_fps)
             # Selected candidates → flatten to base pool indices
             sel_base_idx = sorted({cand_idx_to_base[s] for s in sel})
-            sel_pool_smiles = [pool_smiles[base_i - pool[0]] for base_i in sel_base_idx
-                                if 0 <= base_i - pool[0] < len(pool_smiles)]
+            sel_pool_smiles = [
+                pool_smiles[base_i - pool[0]]
+                for base_i in sel_base_idx
+                if 0 <= base_i - pool[0] < len(pool_smiles)
+            ]
             if not sel_pool_smiles:
                 sel_pool_smiles = pool_smiles[: args.top_n]
             sel_fps = morgan_fp_batch(sel_pool_smiles)
@@ -595,10 +625,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         # Aggregate across all pools for this seed
         agg_idx = aggregate_unique(pools, selections)
         agg_smiles = [smiles[i] for i in agg_idx if i < len(smiles)]
-        agg_fps = morgan_fp_batch(agg_smiles) if agg_smiles else np.zeros((0, 2048), dtype=np.uint8)
+        agg_fps = (
+            morgan_fp_batch(agg_smiles)
+            if agg_smiles
+            else np.zeros((0, 2048), dtype=np.uint8)
+        )
         agg_tanimoto = mean_pairwise_tanimoto_distance(agg_fps) if agg_smiles else 0.0
         # PLL contribution on the aggregated cohort
-        agg_pll_feats = compute_pll_signatures(agg_smiles, k=16, knn=8) if agg_smiles else np.zeros((0, 16), dtype=np.float64)
+        agg_pll_feats = (
+            compute_pll_signatures(agg_smiles, k=16, knn=8)
+            if agg_smiles
+            else np.zeros((0, 16), dtype=np.float64)
+        )
         agg_pll_dist = mean_pairwise_l2_distance(agg_pll_feats) if agg_smiles else 0.0
         agg_pll_norm = min(1.0, max(0.0, agg_pll_dist / 2.0))
         agg_geo = geometric_mean(agg_tanimoto, agg_pll_norm) if agg_smiles else 0.0
@@ -611,26 +649,40 @@ def main(argv: Sequence[str] | None = None) -> int:
             "agg_tanimoto_diversity": float(agg_tanimoto),
             "agg_pll_distance_normalised": float(agg_pll_norm),
             "agg_geometric_mean": float(agg_geo),
-            "per_pool_lift_mean": float(np.mean(per_pool_lifts)) if per_pool_lifts else 0.0,
-            "per_pool_lift_min": float(np.min(per_pool_lifts)) if per_pool_lifts else 0.0,
-            "per_pool_lift_max": float(np.max(per_pool_lifts)) if per_pool_lifts else 0.0,
-            "per_pool_pll_lift_mean": float(np.mean(per_pool_pll_lifts)) if per_pool_pll_lifts else 0.0,
-            "per_pool_geometric_lift_mean": float(np.mean(per_pool_geo_lifts)) if per_pool_geo_lifts else 0.0,
+            "per_pool_lift_mean": float(np.mean(per_pool_lifts))
+            if per_pool_lifts
+            else 0.0,
+            "per_pool_lift_min": float(np.min(per_pool_lifts))
+            if per_pool_lifts
+            else 0.0,
+            "per_pool_lift_max": float(np.max(per_pool_lifts))
+            if per_pool_lifts
+            else 0.0,
+            "per_pool_pll_lift_mean": float(np.mean(per_pool_pll_lifts))
+            if per_pool_pll_lifts
+            else 0.0,
+            "per_pool_geometric_lift_mean": float(np.mean(per_pool_geo_lifts))
+            if per_pool_geo_lifts
+            else 0.0,
         }
         per_seed_summary.append(seed_summary)
         mph_tanimoto_lifts.append(agg_tanimoto)
         pll_lifts.append(agg_pll_norm)
         geometric_lifts.append(agg_geo)
-        print(f"[Wf-331-R4] seed={seed}: agg_Tanimoto={agg_tanimoto:.4f} "
-              f"agg_PLL_norm={agg_pll_norm:.4f} agg_geomean={agg_geo:.4f} "
-              f"(n_agg={len(agg_smiles)})")
+        print(
+            f"[Wf-331-R4] seed={seed}: agg_Tanimoto={agg_tanimoto:.4f} "
+            f"agg_PLL_norm={agg_pll_norm:.4f} agg_geomean={agg_geo:.4f} "
+            f"(n_agg={len(agg_smiles)})"
+        )
 
     t_select_total = time.time() - t_select_total
 
     # ---------------------------------------------------------------
     # Aggregate across all seeds → final m7 lift
     # ---------------------------------------------------------------
-    mean_mph_tanimoto = float(np.mean(mph_tanimoto_lifts)) if mph_tanimoto_lifts else 0.0
+    mean_mph_tanimoto = (
+        float(np.mean(mph_tanimoto_lifts)) if mph_tanimoto_lifts else 0.0
+    )
     mean_pll_norm = float(np.mean(pll_lifts)) if pll_lifts else 0.0
     mean_geometric = float(np.mean(geometric_lifts)) if geometric_lifts else 0.0
     # Aggregate Tanimoto on the multi-pH cohort (one-shot, no selection)
@@ -754,45 +806,76 @@ def main(argv: Sequence[str] | None = None) -> int:
         writer = csv.DictWriter(
             fh,
             fieldnames=[
-                "axis", "baseline", "after_lift", "delta", "n_samples",
-                "n_seeds", "n_ph_buckets", "wall_seconds", "tag",
+                "axis",
+                "baseline",
+                "after_lift",
+                "delta",
+                "n_samples",
+                "n_seeds",
+                "n_ph_buckets",
+                "wall_seconds",
+                "tag",
             ],
         )
         writer.writeheader()
         for axis, baseline, after, delta, wall in [
-            ("m7_path_a_baseline", M7_BASELINE_MEASURED, mean_geometric,
-             delta_vs_path_a, t_select_total),
-            ("m7_r12_ev3_baseline", M7_BASELINE_R12_EV3, mean_geometric,
-             delta_vs_r12_ev3, t_select_total),
-            ("m7_pool_ceiling_base", m7_pool_ceiling_base, mean_geometric,
-             mean_geometric - m7_pool_ceiling_base, t_base),
-            ("m7_pool_ceiling_mph", m7_pool_ceiling_mph, mean_geometric,
-             mean_geometric - m7_pool_ceiling_mph, t_mph_ceil),
+            (
+                "m7_path_a_baseline",
+                M7_BASELINE_MEASURED,
+                mean_geometric,
+                delta_vs_path_a,
+                t_select_total,
+            ),
+            (
+                "m7_r12_ev3_baseline",
+                M7_BASELINE_R12_EV3,
+                mean_geometric,
+                delta_vs_r12_ev3,
+                t_select_total,
+            ),
+            (
+                "m7_pool_ceiling_base",
+                m7_pool_ceiling_base,
+                mean_geometric,
+                mean_geometric - m7_pool_ceiling_base,
+                t_base,
+            ),
+            (
+                "m7_pool_ceiling_mph",
+                m7_pool_ceiling_mph,
+                mean_geometric,
+                mean_geometric - m7_pool_ceiling_mph,
+                t_mph_ceil,
+            ),
         ]:
-            writer.writerow({
-                "axis": axis,
-                "baseline": round(float(baseline), 6),
-                "after_lift": round(float(after), 6),
-                "delta": round(float(delta), 6),
-                "n_samples": n_mph,
-                "n_seeds": args.n_seeds,
-                "n_ph_buckets": N_PH_BUCKETS,
-                "wall_seconds": round(float(wall), 4),
-                "tag": "MEASURED",
-            })
+            writer.writerow(
+                {
+                    "axis": axis,
+                    "baseline": round(float(baseline), 6),
+                    "after_lift": round(float(after), 6),
+                    "delta": round(float(delta), 6),
+                    "n_samples": n_mph,
+                    "n_seeds": args.n_seeds,
+                    "n_ph_buckets": N_PH_BUCKETS,
+                    "wall_seconds": round(float(wall), 4),
+                    "tag": "MEASURED",
+                }
+            )
         # Per-seed rows
         for ss in per_seed_summary:
-            writer.writerow({
-                "axis": f"seed_{ss['seed_idx']}_geomean",
-                "baseline": M7_BASELINE_MEASURED,
-                "after_lift": round(ss["agg_geometric_mean"], 6),
-                "delta": round(ss["agg_geometric_mean"] - M7_BASELINE_MEASURED, 6),
-                "n_samples": ss["n_aggregated_candidates"],
-                "n_seeds": 1,
-                "n_ph_buckets": N_PH_BUCKETS,
-                "wall_seconds": round(t_select_total / max(1, args.n_seeds), 4),
-                "tag": "MEASURED",
-            })
+            writer.writerow(
+                {
+                    "axis": f"seed_{ss['seed_idx']}_geomean",
+                    "baseline": M7_BASELINE_MEASURED,
+                    "after_lift": round(ss["agg_geometric_mean"], 6),
+                    "delta": round(ss["agg_geometric_mean"] - M7_BASELINE_MEASURED, 6),
+                    "n_samples": ss["n_aggregated_candidates"],
+                    "n_seeds": 1,
+                    "n_ph_buckets": N_PH_BUCKETS,
+                    "wall_seconds": round(t_select_total / max(1, args.n_seeds), 4),
+                    "tag": "MEASURED",
+                }
+            )
     print(f"[Wf-331-R4] Wrote {csv_out}")
 
     # per_seed.csv for downstream consumers
@@ -801,10 +884,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         writer = csv.DictWriter(
             fh,
             fieldnames=[
-                "seed_idx", "seed", "n_aggregated_candidates",
-                "agg_tanimoto_diversity", "agg_pll_distance_normalised",
-                "agg_geometric_mean", "per_pool_lift_mean", "per_pool_lift_min",
-                "per_pool_lift_max", "per_pool_pll_lift_mean",
+                "seed_idx",
+                "seed",
+                "n_aggregated_candidates",
+                "agg_tanimoto_diversity",
+                "agg_pll_distance_normalised",
+                "agg_geometric_mean",
+                "per_pool_lift_mean",
+                "per_pool_lift_min",
+                "per_pool_lift_max",
+                "per_pool_pll_lift_mean",
                 "per_pool_geometric_lift_mean",
             ],
         )

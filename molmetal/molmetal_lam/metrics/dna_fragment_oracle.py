@@ -12,6 +12,7 @@ References
 ----------
 Jamieson, E. R. & Lippard, S. J. (1999), *Chem. Rev.*, 99, 2467-2498.
 """
+
 from __future__ import annotations
 
 import math
@@ -32,9 +33,9 @@ __all__ = ["dna_kb_proxy_v2", "DNA_FRAGMENT_DONORS"]
 
 # DNA fragment donor sites (SMILES of the relevant base/fragment).
 DNA_FRAGMENT_DONORS = {
-    "guanine_N7": "N1C=NC2=C1NC=NC2=O",   # approximate guanine core
-    "adenine_N7": "NC1=NC=NC2=C1NC=N2",   # approximate adenine core
-    "thymine_O2": "O=C(N)C(=O)NC(=O)C",   # not used directly
+    "guanine_N7": "N1C=NC2=C1NC=NC2=O",  # approximate guanine core
+    "adenine_N7": "NC1=NC=NC2=C1NC=N2",  # approximate adenine core
+    "thymine_O2": "O=C(N)C(=O)NC(=O)C",  # not used directly
 }
 
 
@@ -56,8 +57,11 @@ def _docked_distance(mol, donor_smiles: str) -> Optional[float]:
     if rdkit_mol is None:
         return None
 
-    metal_atoms = [a for a in rdkit_mol.GetAtoms()
-                   if a.GetSymbol() in ("Pt", "Ru", "Ir", "Au", "Rh", "Os")]
+    metal_atoms = [
+        a
+        for a in rdkit_mol.GetAtoms()
+        if a.GetSymbol() in ("Pt", "Ru", "Ir", "Au", "Rh", "Os")
+    ]
     if not metal_atoms:
         return None
 
@@ -81,9 +85,11 @@ def _docked_distance(mol, donor_smiles: str) -> Optional[float]:
 
     metal_idx = metal_atoms[0].GetIdx()
     metal_conf = rdkit_mol.GetConformer()
-    mx, my, mz = metal_conf.GetAtomPosition(metal_idx).x, \
-                 metal_conf.GetAtomPosition(metal_idx).y, \
-                 metal_conf.GetAtomPosition(metal_idx).z
+    mx, my, mz = (
+        metal_conf.GetAtomPosition(metal_idx).x,
+        metal_conf.GetAtomPosition(metal_idx).y,
+        metal_conf.GetAtomPosition(metal_idx).z,
+    )
     donor_conf = donor_mol.GetConformer()
     distances = []
     for n in n_atoms:

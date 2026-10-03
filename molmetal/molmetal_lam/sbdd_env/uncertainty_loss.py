@@ -101,9 +101,7 @@ class UncertaintyWeightedMultiTaskLoss(nn.Module):
     def __init__(self, num_tasks: int):
         super().__init__()
         if not isinstance(num_tasks, int) or num_tasks < 1:
-            raise ValueError(
-                f"num_tasks must be a positive int, got {num_tasks!r}"
-            )
+            raise ValueError(f"num_tasks must be a positive int, got {num_tasks!r}")
         self.num_tasks = int(num_tasks)
         # log(sigma) initialised to 0  <=>  sigma = 1, so the initial
         # weighting is uniform.  Registered as a Parameter so the
@@ -124,12 +122,10 @@ class UncertaintyWeightedMultiTaskLoss(nn.Module):
             back through both the task losses and ``log_sigmas``.
         """
         if len(losses) != self.num_tasks:
-            raise ValueError(
-                f"Expected {self.num_tasks} losses, got {len(losses)}"
-            )
+            raise ValueError(f"Expected {self.num_tasks} losses, got {len(losses)}")
         task_losses = torch.stack(losses)
         sigmas = self.log_sigmas.exp()
-        return (task_losses / (2 * sigmas ** 2) + self.log_sigmas).sum()
+        return (task_losses / (2 * sigmas**2) + self.log_sigmas).sum()
 
     def get_sigmas(self) -> torch.Tensor:
         """Return the current per-task sigma estimates (detached).

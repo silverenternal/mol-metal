@@ -170,10 +170,13 @@ class KantorovichPotential:
         eigvals, eigvecs = torch.linalg.eigh(cost_matrix)
         eigvals = eigvals.clamp_min(_EPS_SPD)
         self._Q = (
-            eigvecs @ torch.diag_embed(eigvals) @ eigvecs.transpose(-1, -2)
-        ).detach().clone()
-        self._c = torch.zeros(self.d, dtype=cost_matrix.dtype,
-                              device=cost_matrix.device)
+            (eigvecs @ torch.diag_embed(eigvals) @ eigvecs.transpose(-1, -2))
+            .detach()
+            .clone()
+        )
+        self._c = torch.zeros(
+            self.d, dtype=cost_matrix.dtype, device=cost_matrix.device
+        )
         self._d_const = torch.tensor(
             0.0, dtype=cost_matrix.dtype, device=cost_matrix.device
         )
@@ -206,11 +209,9 @@ class KantorovichPotential:
             Potential values of shape ``(...)``.
         """
         if x.shape[-1] != self.d:
-            raise ValueError(
-                f"x last dim must be {self.d}, got {x.shape[-1]}"
-            )
+            raise ValueError(f"x last dim must be {self.d}, got {x.shape[-1]}")
         quad = 0.5 * ((x @ self._Q) * x).sum(dim=-1)
-        linear = (x @ self._c)
+        linear = x @ self._c
         return quad + linear + self._d_const
 
     def gradient(self, x: Tensor) -> Tensor:
@@ -227,9 +228,7 @@ class KantorovichPotential:
             Gradient of shape ``(..., d)``.
         """
         if x.shape[-1] != self.d:
-            raise ValueError(
-                f"x last dim must be {self.d}, got {x.shape[-1]}"
-            )
+            raise ValueError(f"x last dim must be {self.d}, got {x.shape[-1]}")
         return x @ self._Q + self._c
 
     def hessian(self, x: Tensor) -> Tensor:
@@ -251,15 +250,12 @@ class KantorovichPotential:
             Hessian of shape ``(..., d, d)``.
         """
         if x.shape[-1] != self.d:
-            raise ValueError(
-                f"x last dim must be {self.d}, got {x.shape[-1]}"
-            )
+            raise ValueError(f"x last dim must be {self.d}, got {x.shape[-1]}")
         # Broadcast helper to add a single perturbation direction
         # across an entire leading batch.
         eps = _HESSIAN_FD_EPS
         eye = torch.eye(self.d, dtype=x.dtype, device=x.device)
-        H = torch.empty(*x.shape[:-1], self.d, self.d,
-                        dtype=x.dtype, device=x.device)
+        H = torch.empty(*x.shape[:-1], self.d, self.d, dtype=x.dtype, device=x.device)
         for i in range(self.d):
             e_i = eye[i].view(*([1] * (x.ndim - 1)), self.d)
             grad_p = self.gradient(x + eps * e_i)
@@ -397,8 +393,9 @@ class MongeAmpereSolver:
         diff = x - mean
         # log N(x | μ, Σ) = -0.5 * (diff² / diag) - 0.5 * log diag - 0.5 d log 2π
         inv_var = 1.0 / cov
-        log_norm = -0.5 * (torch.log(cov).sum()
-                            + diff.shape[-1] * math.log(2.0 * math.pi))
+        log_norm = -0.5 * (
+            torch.log(cov).sum() + diff.shape[-1] * math.log(2.0 * math.pi)
+        )
         return log_norm - 0.5 * ((diff * diff) * inv_var).sum(dim=-1)
 
     def solve(
@@ -461,9 +458,8 @@ class MongeAmpereSolver:
         g = torch.Generator(device="cpu").manual_seed(seed)
         x = (
             mu_0.detach().cpu()
-            + torch.sqrt(var_0.detach().cpu()) * torch.randn(
-                n_samples, dim, generator=g
-            )
+            + torch.sqrt(var_0.detach().cpu())
+            * torch.randn(n_samples, dim, generator=g)
         ).to(device=device, dtype=dtype)
 
         # Initialise the Kantorovich potential — analytic seed is the
@@ -490,7 +486,7 @@ class MongeAmpereSolver:
             log_ratio = log_rho_1_T - log_rho_0_x
             # MA residual: log det Q - log(ρ_1(T(x)) / ρ_0(x)) should be 0.
             residual = log_det - log_ratio
-            loss = (residual ** 2).mean()
+            loss = (residual**2).mean()
             opt.zero_grad()
             loss.backward()
             opt.step()
@@ -579,8 +575,7 @@ class AdvantageEstimatorMA:
         """
         if advantages.numel() < 2:
             raise ValueError(
-                "variance_bound needs at least 2 samples, got "
-                f"{advantages.numel()}"
+                "variance_bound needs at least 2 samples, got " f"{advantages.numel()}"
             )
         n = float(advantages.numel())
         var = advantages.var(unbiased=True)

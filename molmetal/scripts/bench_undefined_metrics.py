@@ -102,6 +102,7 @@ by:
 * and producing a synthesis doc that names the next human / GPU step
   required to lift each metric from DEFERRED → MEASURED.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -129,15 +130,11 @@ for _p in (str(_MOLMETAL_PKG_DIR), str(_REPO_ROOT), str(_HERE)):
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-DEFAULT_OUT_DIR = (
-    _REPO_ROOT / "molmetal" / "reports" / "wf61_undefined"
-)
+DEFAULT_OUT_DIR = _REPO_ROOT / "molmetal" / "reports" / "wf61_undefined"
 DEFAULT_POCKETS_JSON = (
     _REPO_ROOT / "molmetal" / "reports" / "wf30_pocket_prep" / "pocket_status.json"
 )
-DEFAULT_POLICY_JSON = (
-    _REPO_ROOT / "molmetal" / "scoring" / "policy.json"
-)
+DEFAULT_POLICY_JSON = _REPO_ROOT / "molmetal" / "scoring" / "policy.json"
 DEFAULT_TEST_POCKET = "test_001"
 
 # Wf-30 READY pocket list — kept in sync with Wf-30 pocket_status.json.
@@ -178,6 +175,7 @@ def _probe_rdkit() -> Tuple[bool, str]:
         from rdkit import Chem  # noqa: F401
         from rdkit.Chem import AllChem  # noqa: F401
         from rdkit import DataStructs  # noqa: F401
+
         return True, "rdkit"
     except Exception as exc:
         return False, repr(exc)[:120]
@@ -186,6 +184,7 @@ def _probe_rdkit() -> Tuple[bool, str]:
 def _probe_posebusters() -> Tuple[bool, str]:
     try:
         from posebusters import PoseBusters  # noqa: F401
+
         return True, "posebusters"
     except Exception as exc:
         return False, repr(exc)[:120]
@@ -194,6 +193,7 @@ def _probe_posebusters() -> Tuple[bool, str]:
 def _probe_vina_python() -> Tuple[bool, str]:
     try:
         import vina  # noqa: F401
+
         return True, "vina-python"
     except Exception as exc:
         return False, repr(exc)[:120]
@@ -224,7 +224,9 @@ def _probe_nvidia_smi() -> Tuple[bool, str]:
             check=False,
         )
         if r.returncode == 0:
-            return True, (r.stdout.decode("utf-8", errors="replace").strip().splitlines() or [""])[0]
+            return True, (
+                r.stdout.decode("utf-8", errors="replace").strip().splitlines() or [""]
+            )[0]
     except Exception:
         pass
     return False, "no nvidia-smi"
@@ -271,6 +273,7 @@ def load_policy_python() -> Dict[str, dict]:
     """Return ``{metric_name: PolicyEntry_dict}`` from the in-process router."""
     try:
         from molmetal.scoring.score_any import ROUTING_POLICY  # type: ignore
+
         return {k: asdict(v) for k, v in ROUTING_POLICY.items()}
     except Exception:
         return {}
@@ -286,11 +289,12 @@ def cross_check_policy(
     for m in metrics:
         in_json = m in json_policy
         in_py = m in py_policy
-        primary_json = (json_policy.get(m) or {}).get("primary_tool") if in_json else None
+        primary_json = (
+            (json_policy.get(m) or {}).get("primary_tool") if in_json else None
+        )
         primary_py = (py_policy.get(m) or {}).get("primary_tool") if in_py else None
-        consistent = (
-            in_json == in_py
-            and (primary_json == primary_py if in_json and in_py else True)
+        consistent = in_json == in_py and (
+            primary_json == primary_py if in_json and in_py else True
         )
         out.append(
             PolicyCheck(
@@ -338,9 +342,9 @@ def bench_diversity_subpocket(
     out: Dict[str, Any] = {
         "metric": "diversity_subpocket",
         "description": (
-                "Per-residue sub-pocket fingerprint diversity "
-                "(3D-aware local-patch complement to global Tanimoto IntDiv1)."
-            ),
+            "Per-residue sub-pocket fingerprint diversity "
+            "(3D-aware local-patch complement to global Tanimoto IntDiv1)."
+        ),
         "unit": "ratio (0-1, higher = more locally diverse)",
         "lit_anchors": [
             "Bemis 1996 JMC 39:2887 Murcko scaffold",
@@ -783,7 +787,9 @@ def _synthesis_md(
     lines.append("|---|---|---|---|---|")
     for pid, row in sorted(clash["per_pocket"].items()):
         rate = row["clash_pass_rate"]
-        rate_str = "n/a" if isinstance(rate, float) and math.isnan(rate) else f"{rate:.4f}"
+        rate_str = (
+            "n/a" if isinstance(rate, float) and math.isnan(rate) else f"{rate:.4f}"
+        )
         lines.append(
             f"| {pid} | {row['n_poses_evaluated']} | {row['n_clash_free']} | "
             f"{rate_str} | {row['status']} |"
@@ -814,7 +820,9 @@ def _synthesis_md(
         "(Wf-43 + Wf-50 invariant: no metric may exist only in one of the two views)."
     )
     lines.append("")
-    lines.append("| Metric | in_json | in_python | primary_tool_json | primary_tool_python | consistent |")
+    lines.append(
+        "| Metric | in_json | in_python | primary_tool_json | primary_tool_python | consistent |"
+    )
     lines.append("|---|---|---|---|---|---|")
     for c in routing:
         lines.append(

@@ -73,13 +73,13 @@ def _check_cuda_pointers(arg_names: dict[str, object]) -> None:
 @triton.autotune(configs=AUTOTUNE_CONFIGS, key=["n_elements"])
 @triton.jit
 def _fused_residual_add_kernel(
-    x_ptr,        # *fp   [N]
-    res_ptr,      # *fp   [N_res]  (may broadcast into N)
-    out_ptr,      # *fp   [N]
-    alpha,        # fp
-    beta,         # fp
-    n_elements,   # i32
-    res_n,        # i32  == n_elements when no broadcast, else smaller
+    x_ptr,  # *fp   [N]
+    res_ptr,  # *fp   [N_res]  (may broadcast into N)
+    out_ptr,  # *fp   [N]
+    alpha,  # fp
+    beta,  # fp
+    n_elements,  # i32
+    res_n,  # i32  == n_elements when no broadcast, else smaller
     BLOCK_SIZE: tl.constexpr,
 ):
     pid = tl.program_id(axis=0)
@@ -100,14 +100,14 @@ def _fused_residual_add_kernel(
 @triton.autotune(configs=AUTOTUNE_CONFIGS, key=["n_elements"])
 @triton.jit
 def _fused_residual_add_bwd_kernel(
-    grad_out_ptr,   # *fp   [N]
-    grad_x_ptr,     # *fp   [N]
-    grad_res_ptr,   # *fp   [N_res]   (atomic add)
-    alpha,          # fp
-    beta,           # fp
-    n_elements,     # i32
-    res_n,          # i32
-    NEEDS_ATOMIC: tl.constexpr,    # True iff n_elements != res_n
+    grad_out_ptr,  # *fp   [N]
+    grad_x_ptr,  # *fp   [N]
+    grad_res_ptr,  # *fp   [N_res]   (atomic add)
+    alpha,  # fp
+    beta,  # fp
+    n_elements,  # i32
+    res_n,  # i32
+    NEEDS_ATOMIC: tl.constexpr,  # True iff n_elements != res_n
     BLOCK_SIZE: tl.constexpr,
 ):
     pid = tl.program_id(axis=0)
@@ -225,7 +225,9 @@ class _FusedResidualAddFunction(torch.autograd.Function):
         grad_out_c = grad_out.contiguous()
         n_elements = grad_out_c.numel()
         grad_x = torch.empty_like(grad_out_c)
-        grad_res = torch.zeros(residual.shape, dtype=residual.dtype, device=residual.device)
+        grad_res = torch.zeros(
+            residual.shape, dtype=residual.dtype, device=residual.device
+        )
 
         _check_cuda_pointers(
             {"grad_out": grad_out_c, "grad_x": grad_x, "grad_res": grad_res}

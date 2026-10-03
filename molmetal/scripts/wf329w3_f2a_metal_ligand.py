@@ -67,6 +67,7 @@ Lit anchors
   contribution to total ΔG.
 * Comba-Hambley 2009 — d-block coordination modeling.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -75,6 +76,7 @@ from typing import Dict, List, Optional, Tuple
 # RDKit — required for SMARTS parse + substructure matching.
 try:
     from rdkit import Chem  # type: ignore
+
     _HAS_RDKIT = True
 except ImportError:  # pragma: no cover
     Chem = None  # type: ignore
@@ -124,8 +126,7 @@ F2A_COVALENT_SMARTS: List[Tuple[str, str, str]] = [
     (
         "Au_N7_guanine",
         "[Au:1]~[n:2]1cnc2c1nc(N)[nH]c2=O",
-        "Au covalently bonded to N7 of guanine "
-        "(Che 2003, Au(III) anticancer class)",
+        "Au covalently bonded to N7 of guanine " "(Che 2003, Au(III) anticancer class)",
     ),
 ]
 
@@ -245,8 +246,7 @@ F2A_PER_BOND_SMARTS: List[Tuple[str, str, str]] = [
     (
         "Ru_N_donor_bond",
         "[Ru]~[N]",
-        "Ru-N donor bond — Ru arene RAPTA donor arm "
-        "(Morris 2015, RAPTA-type)",
+        "Ru-N donor bond — Ru arene RAPTA donor arm " "(Morris 2015, RAPTA-type)",
     ),
     # Pattern 7 — Au-S donor bond (auranofin-class).
     (
@@ -544,9 +544,7 @@ class F2AMetalLigandScorer:
                 continue
         return int(total)
 
-    def classify_recovery(
-        self, f2a_kcal_mol: Optional[float]
-    ) -> Tuple[str, float]:
+    def classify_recovery(self, f2a_kcal_mol: Optional[float]) -> Tuple[str, float]:
         """Classify the F2(a) recovery status.
 
         Parameters
@@ -620,8 +618,10 @@ if __name__ == "__main__":  # pragma: no cover
     # Smoke
     test_smiles = [
         ("cisplatin", "Cl[Pt](Cl)(N)(N)"),
-        ("Pt-N7-guanine adduct (synthesized)",
-         "[Pt]([NH3])([NH3])([n]1cnc2c1nc(N)[nH]c2=O)"),
+        (
+            "Pt-N7-guanine adduct (synthesized)",
+            "[Pt]([NH3])([NH3])([n]1cnc2c1nc(N)[nH]c2=O)",
+        ),
         ("carboplatin", "C1(NC(=O)N(C1=O)[Pt](N)(N))"),
         ("organic only", "c1ccccc1"),
     ]
@@ -630,6 +630,8 @@ if __name__ == "__main__":  # pragma: no cover
         adj, mod, n = scorer.apply_covalent_modifier(sm, -3.283)
         status, gap = scorer.classify_recovery(adj)
         print(f"  {label}: {sm!r}")
-        print(f"    n_bonds={n} matched={d.matched_patterns} "
-              f"modifier={mod:+.2f} f2a={adj:.3f} status={status} "
-              f"gap_to_industry={gap:+.3f}")
+        print(
+            f"    n_bonds={n} matched={d.matched_patterns} "
+            f"modifier={mod:+.2f} f2a={adj:.3f} status={status} "
+            f"gap_to_industry={gap:+.3f}"
+        )

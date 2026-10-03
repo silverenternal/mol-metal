@@ -16,6 +16,7 @@ party-twenty-spirit §3.5 MEASURED-vs-PROJECTED discipline preserved
 throughout: the synthetic per-level kcal/mol values are PROJECTED
 placeholders, never MEASURED.
 """
+
 from __future__ import annotations
 
 import json
@@ -76,9 +77,9 @@ class TestParamGridBuild:
     def test_n_poses_axis_4_tiers(self):
         grid = build_param_grid()
         actual = tuple(grid[lvl]["n_poses"] for lvl in grid)
-        assert sorted(actual) == sorted(self.EXPECTED_N_POSES), (
-            f"n_poses mismatch: expected {self.EXPECTED_N_POSES}, got {actual}"
-        )
+        assert sorted(actual) == sorted(
+            self.EXPECTED_N_POSES
+        ), f"n_poses mismatch: expected {self.EXPECTED_N_POSES}, got {actual}"
 
     def test_validate_accepts_canonical_grid(self):
         grid = build_param_grid()
@@ -93,7 +94,7 @@ class TestParamGridBuild:
 
     def test_validate_rejects_out_of_bracket_exhaustiveness(self):
         bad_grid = {
-            "ex8_nposes5":   {"exhaustiveness":  8, "n_poses":  5},
+            "ex8_nposes5": {"exhaustiveness": 8, "n_poses": 5},
             "ex16_nposes10": {"exhaustiveness": 16, "n_poses": 10},
             "ex32_nposes20": {"exhaustiveness": 32, "n_poses": 20},
             "ex64_nposes50": {"exhaustiveness": 999, "n_poses": 50},
@@ -126,9 +127,9 @@ class TestCohortLoader4Pockets:
         """The Wf-381-A1 5-pocket cohort included 4rlu; Wf-404-A1 drops it."""
         cohort = load_cohort_4pockets()
         for forbidden in self.FORBIDDEN_POCKETS:
-            assert forbidden not in cohort["pockets"], (
-                f"Wf-404-A1 cohort must NOT include {forbidden!r} (drops vs Wf-381-A1)"
-            )
+            assert (
+                forbidden not in cohort["pockets"]
+            ), f"Wf-404-A1 cohort must NOT include {forbidden!r} (drops vs Wf-381-A1)"
 
     def test_default_cohort_has_3_seeds(self):
         cohort = load_cohort_4pockets()
@@ -158,6 +159,7 @@ class TestCohortLoader4Pockets:
         from molmetal.scripts.wf404a1_vina_param_tuning_scaffold import (
             PER_POCKET_OFFSET_KCAL_4POCKETS,
         )
+
         for pocket in self.EXPECTED_POCKETS:
             assert pocket in PER_POCKET_OFFSET_KCAL_4POCKETS, (
                 f"Missing per-pocket offset for {pocket!r} in "
@@ -214,7 +216,10 @@ class TestSmokeVina50Step:
         grid = payload["_param_grid"]
         assert len(grid) == 4
         assert set(grid) == {
-            "ex8_nposes5", "ex16_nposes10", "ex32_nposes20", "ex64_nposes50"
+            "ex8_nposes5",
+            "ex16_nposes10",
+            "ex32_nposes20",
+            "ex64_nposes50",
         }
 
     def test_smoke_per_level_kcal_monotone_lift(self, tmp_path):
@@ -227,9 +232,9 @@ class TestSmokeVina50Step:
         run_smoke(out_path=out)
         payload = json.loads(out.read_text())
         per_level = payload["_aggregate"]["per_level_cohort_median"]
-        assert per_level["ex16_nposes10"] < per_level["ex8_nposes5"], (
-            "ex16_nposes10 should beat ex8_nposes5 per Wf-141 §0 PROJECTED lift"
-        )
+        assert (
+            per_level["ex16_nposes10"] < per_level["ex8_nposes5"]
+        ), "ex16_nposes10 should beat ex8_nposes5 per Wf-141 §0 PROJECTED lift"
         assert per_level["ex32_nposes20"] < per_level["ex16_nposes10"]
         assert per_level["ex64_nposes50"] < per_level["ex32_nposes20"]
 

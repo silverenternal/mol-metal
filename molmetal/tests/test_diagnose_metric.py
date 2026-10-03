@@ -41,17 +41,16 @@ def _run(args, timeout: int = 300) -> subprocess.CompletedProcess:
 # Script availability / parsing smoke
 # ---------------------------------------------------------------------------
 
+
 def test_script_is_executable_and_lists_metrics():
     """`--list` enumerates the metric IDs covered by §4 of the mapping."""
     if not shutil.which("pytest"):
         pytest.skip("pytest is not on PATH; cannot run the inner diagnostics")
     proc = _run(["--list"])
-    assert proc.returncode == 0, (
-        f"--list exited with {proc.returncode}; stderr: {proc.stderr}"
-    )
-    assert "m14" in proc.stdout, (
-        f"--list output missing m14 entry: {proc.stdout!r}"
-    )
+    assert (
+        proc.returncode == 0
+    ), f"--list exited with {proc.returncode}; stderr: {proc.stderr}"
+    assert "m14" in proc.stdout, f"--list output missing m14 entry: {proc.stdout!r}"
     assert "Metrics with failure-mode entries" in proc.stdout
 
 
@@ -62,17 +61,18 @@ def test_m14_diagnosis_prints_required_sections():
     assert "Metric m14" in out, f"missing 'Metric m14' header in:\n{out}"
     assert "M15" in out, f"missing M15 mechanism check in:\n{out}"
     # The output must include a PASS / FAIL / MISS line per mechanism row.
-    assert any(token in out for token in ("PASS", "FAIL", "MISS")), (
-        f"no per-mechanism status line in output:\n{out}"
-    )
+    assert any(
+        token in out for token in ("PASS", "FAIL", "MISS")
+    ), f"no per-mechanism status line in output:\n{out}"
 
 
 def test_m14_diagnosis_json_contract():
     """`--metric m14 --json` returns structured data with the expected keys."""
     proc = _run(["--metric", "m14", "--json"])
-    assert proc.returncode in (0, 1), (
-        f"--json exited with {proc.returncode}; stderr: {proc.stderr}"
-    )
+    assert proc.returncode in (
+        0,
+        1,
+    ), f"--json exited with {proc.returncode}; stderr: {proc.stderr}"
     payload = json.loads(proc.stdout)
     assert payload["metric"] == "m14", payload
     assert "diagnostics" in payload, payload
@@ -88,12 +88,12 @@ def test_m14_diagnosis_json_contract():
 def test_invalid_metric_reports_error_and_exits_nonzero():
     """A bogus metric ID returns exit code 1 and a helpful stderr message."""
     proc = _run(["--metric", "m999"])
-    assert proc.returncode != 0, (
-        f"bogus metric should exit non-zero; got rc={proc.returncode}"
-    )
-    assert "No failure-mode row" in proc.stderr or "m999" in proc.stderr, (
-        f"missing error context in stderr: {proc.stderr!r}"
-    )
+    assert (
+        proc.returncode != 0
+    ), f"bogus metric should exit non-zero; got rc={proc.returncode}"
+    assert (
+        "No failure-mode row" in proc.stderr or "m999" in proc.stderr
+    ), f"missing error context in stderr: {proc.stderr!r}"
 
 
 def test_malformed_metric_rejected():
@@ -101,7 +101,9 @@ def test_malformed_metric_rejected():
     proc = _run(["--metric", "not_a_metric"])
     assert proc.returncode != 0
     # argparse exits with code 2 and prints usage to stderr.
-    assert "usage" in proc.stderr.lower() or "invalid" in proc.stderr.lower(), proc.stderr
+    assert (
+        "usage" in proc.stderr.lower() or "invalid" in proc.stderr.lower()
+    ), proc.stderr
 
 
 if __name__ == "__main__":

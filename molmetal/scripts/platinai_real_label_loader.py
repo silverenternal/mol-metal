@@ -94,6 +94,7 @@ Usage
         --substances-start-page 1400 --substances-max-pages 147 \\
         --out .data/molmetal --csv-basename platinai_a2780cis_biodata
 """
+
 from __future__ import annotations
 
 import argparse
@@ -115,7 +116,9 @@ MB_API_BASE = "https://api.mb-finder.org/api/v2"
 TARGET_CELL_LINES = ["MCF7", "A549", "A2780", "A2780cis"]
 
 
-def _post(endpoint: str, body: dict, *, max_retries: int = 4, timeout: int = 20) -> Optional[dict]:
+def _post(
+    endpoint: str, body: dict, *, max_retries: int = 4, timeout: int = 20
+) -> Optional[dict]:
     """POST with exponential backoff on 429 throttle. Fallback to GET if 405.
 
     Wf-305A: detect MB-Finder soft-rate-limit (status 200 with success=false).
@@ -135,18 +138,24 @@ def _post(endpoint: str, body: dict, *, max_retries: int = 4, timeout: int = 20)
                     payload = r.json()
                 except ValueError:
                     # Non-JSON 200 (e.g. CF challenge HTML) — treat as soft block
-                    print(f"      [warn] {endpoint}: non-JSON 200 response "
-                          f"({len(r.text)} bytes) — possible CF challenge", flush=True)
+                    print(
+                        f"      [warn] {endpoint}: non-JSON 200 response "
+                        f"({len(r.text)} bytes) — possible CF challenge",
+                        flush=True,
+                    )
                     return None
                 if isinstance(payload, dict) and payload.get("success") is False:
                     msg = payload.get("message", "")
                     retry_after = payload.get("retry_after", "?")
-                    print(f"      [BLOCK_RATE_LIMIT] {endpoint}: {msg} "
-                          f"(retry_after={retry_after}s)", flush=True)
+                    print(
+                        f"      [BLOCK_RATE_LIMIT] {endpoint}: {msg} "
+                        f"(retry_after={retry_after}s)",
+                        flush=True,
+                    )
                     return None
                 return payload
             if r.status_code == 429:
-                wait = 3.0 * (2 ** attempt)
+                wait = 3.0 * (2**attempt)
                 time.sleep(wait)
                 continue
             if r.status_code == 404:
@@ -234,7 +243,9 @@ def parse_measurement_value(value) -> tuple:
         return None, None
 
 
-def fetch_cell_line_biodata(cell_line: str, page: int = 1, per_page: int = 5) -> List[dict]:
+def fetch_cell_line_biodata(
+    cell_line: str, page: int = 1, per_page: int = 5
+) -> List[dict]:
     """Fetch ONE page of per-cell-line REAL measured bio-data.
 
     Endpoint: POST /api/v2/get-ceil-line-bio-data (public, no auth; the
@@ -311,8 +322,11 @@ def fetch_cell_line_biodata_pages(
             records.append(flatten_biodata_row(row, cell_line))
         last_page = (payload.get("meta") or {}).get("last_page") or last_page
         if progress_every and total_requests % progress_every == 0:
-            print(f"      [progress] biodata page={page} rows={len(records)} "
-                  f"reqs={total_requests} last_page={last_page}", flush=True)
+            print(
+                f"      [progress] biodata page={page} rows={len(records)} "
+                f"reqs={total_requests} last_page={last_page}",
+                flush=True,
+            )
         if last_page and page >= int(last_page):
             break
         page += 1
@@ -343,7 +357,9 @@ def build_structure_index(
         if not items:
             break
         for item in items:
-            code = item.get("imageId") or compound_code_from_image_url(item.get("imageUrl", ""))
+            code = item.get("imageId") or compound_code_from_image_url(
+                item.get("imageUrl", "")
+            )
             if not code:
                 continue
             index[code] = {
@@ -392,12 +408,17 @@ def _build_row(item: dict, cell_lines_data: List[dict]) -> dict:
     for line in TARGET_CELL_LINES:
         if line == "A2780cis":
             coverage_flags[f"has_a2780cis"] = int(
-                any("A2780cis" == cn or "A2780cis" in (cn or "") for cn in cell_line_names)
+                any(
+                    "A2780cis" == cn or "A2780cis" in (cn or "")
+                    for cn in cell_line_names
+                )
             )
         else:
             coverage_flags[f"has_{line.lower()}"] = int(
-                any(line == cn or (line + " ") in (cn or "") or cn == line
-                    for cn in cell_line_names)
+                any(
+                    line == cn or (line + " ") in (cn or "") or cn == line
+                    for cn in cell_line_names
+                )
             )
     return {
         "mb_id": int(item["id"]),
@@ -407,7 +428,9 @@ def _build_row(item: dict, cell_lines_data: List[dict]) -> dict:
         "ceilLineCount": item.get("ceilLineCount", 0),
         "bioDataCount": item.get("bioDataCount", 0),
         **coverage_flags,
-        "n_cell_lines_with_data": sum(1 for cl in cell_lines_data if int(cl.get("bioDataCount", 0)) > 0),
+        "n_cell_lines_with_data": sum(
+            1 for cl in cell_lines_data if int(cl.get("bioDataCount", 0)) > 0
+        ),
         "n_biodata_total": n_biodata_total,
         "total_cell_lines_listed": n_cell_total,
     }
@@ -419,7 +442,9 @@ def _has_cell_line(row: dict, cell_line: str) -> bool:
     return int(row.get(key, 0)) == 1
 
 
-def build_loader(n_target: int, start_page: int, per_request_delay: float) -> List[dict]:
+def build_loader(
+    n_target: int, start_page: int, per_request_delay: float
+) -> List[dict]:
     """Iterate Pt pages, filter for Pt compounds, enrich with cell-line coverage.
 
     Original single-pass loader (Wf-295B). Stop after n_target compounds.
@@ -482,8 +507,10 @@ def build_loader_stratified(
     total_requests = 0
     n_non_pt = 0
     # Stop when all target cell lines reach n_target_per_cell OR end of pages
-    target_keys = [("has_a2780cis" if cl == "A2780cis" else f"has_{cl.lower()}")
-                   for cl in cell_lines]
+    target_keys = [
+        ("has_a2780cis" if cl == "A2780cis" else f"has_{cl.lower()}")
+        for cl in cell_lines
+    ]
     while page <= max_pages:
         # Check if all targets are satisfied
         if all(per_cell_count[cl] >= n_target_per_cell for cl in cell_lines):
@@ -525,20 +552,37 @@ def build_loader_stratified(
     return rows, per_cell_count, total_requests, total_pages_seen, n_non_pt
 
 
-def write_outputs(rows: List[dict], out_dir: Path, total_requests: int,
-                  total_pages_seen: int, n_non_pt: int, n_target: int,
-                  start_page: int, per_request_delay: float,
-                  stratified: bool = False,
-                  target_cell_lines: Optional[List[str]] = None,
-                  per_cell_count: Optional[Dict[str, int]] = None,
-                  csv_basename: str = "platinai_4cell_mbfinder") -> Dict[str, str]:
+def write_outputs(
+    rows: List[dict],
+    out_dir: Path,
+    total_requests: int,
+    total_pages_seen: int,
+    n_non_pt: int,
+    n_target: int,
+    start_page: int,
+    per_request_delay: float,
+    stratified: bool = False,
+    target_cell_lines: Optional[List[str]] = None,
+    per_cell_count: Optional[Dict[str, int]] = None,
+    csv_basename: str = "platinai_4cell_mbfinder",
+) -> Dict[str, str]:
     out_dir.mkdir(parents=True, exist_ok=True)
     csv_path = out_dir / f"{csv_basename}.csv"
     meta_path = out_dir / f"{csv_basename}.meta.json"
     fieldnames = [
-        "mb_id", "imageId", "smiles", "mw", "ceilLineCount", "bioDataCount",
-        "has_mcf7", "has_a549", "has_a2780", "has_a2780cis",
-        "n_cell_lines_with_data", "n_biodata_total", "total_cell_lines_listed",
+        "mb_id",
+        "imageId",
+        "smiles",
+        "mw",
+        "ceilLineCount",
+        "bioDataCount",
+        "has_mcf7",
+        "has_a549",
+        "has_a2780",
+        "has_a2780cis",
+        "n_cell_lines_with_data",
+        "n_biodata_total",
+        "total_cell_lines_listed",
     ]
     with open(csv_path, "w", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=fieldnames)
@@ -585,8 +629,7 @@ def write_outputs(rows: List[dict], out_dir: Path, total_requests: int,
         meta["per_cell_count"] = per_cell_count
         meta["per_cell_target"] = {cl: n_target for cl in (target_cell_lines or [])}
         meta["all_targets_met"] = all(
-            per_cell_count.get(cl, 0) >= n_target
-            for cl in (target_cell_lines or [])
+            per_cell_count.get(cl, 0) >= n_target for cl in (target_cell_lines or [])
         )
     with open(meta_path, "w") as fh:
         json.dump(meta, fh, indent=2)
@@ -594,46 +637,63 @@ def write_outputs(rows: List[dict], out_dir: Path, total_requests: int,
 
 
 BIODATA_FIELDNAMES = [
-    "compound_code", "cell_line", "value_raw", "value_mean", "value_sd",
-    "smiles", "mw", "substance_id", "casNumber", "doi", "method",
-    "incubation_time", "biodata_row_id", "n_measurements", "title",
+    "compound_code",
+    "cell_line",
+    "value_raw",
+    "value_mean",
+    "value_sd",
+    "smiles",
+    "mw",
+    "substance_id",
+    "casNumber",
+    "doi",
+    "method",
+    "incubation_time",
+    "biodata_row_id",
+    "n_measurements",
+    "title",
 ]
 
 
-def write_biodata_outputs(joined: List[dict], out_dir: Path, csv_basename: str,
-                          meta_extra: dict) -> Dict[str, str]:
+def write_biodata_outputs(
+    joined: List[dict], out_dir: Path, csv_basename: str, meta_extra: dict
+) -> Dict[str, str]:
     """Write the REAL-numeric-mode CSV + meta (joined bio-data + structures)."""
     out_dir.mkdir(parents=True, exist_ok=True)
     csv_path = out_dir / f"{csv_basename}.csv"
     meta_path = out_dir / f"{csv_basename}.meta.json"
     with open(csv_path, "w", newline="") as fh:
-        writer = csv.DictWriter(fh, fieldnames=BIODATA_FIELDNAMES, extrasaction="ignore")
+        writer = csv.DictWriter(
+            fh, fieldnames=BIODATA_FIELDNAMES, extrasaction="ignore"
+        )
         writer.writeheader()
         writer.writerows(joined)
     n_with_value = sum(1 for r in joined if r["value_mean"] is not None)
     meta = dict(meta_extra)
-    meta.update({
-        "n_rows": len(joined),
-        "n_rows_with_numeric_value": n_with_value,
-        "n_rows_parse_failed": len(joined) - n_with_value,
-        "n_rows_with_smiles": sum(1 for r in joined if r["smiles"]),
-        "source": "MB-Finder portal (https://www.mb-finder.org)",
-        "underlying_paper": "Rusanov 2025 PlatinAI (DOI 10.26434/chemrxiv-2025-pp32k)",
-        "endpoints_used": [
-            "POST /api/v2/get-ceil-line-bio-data",
-            "POST /api/v2/get-substances",
-        ],
-        "framing": (
-            "REAL per-cell-line measured values from the public MB-Finder API "
-            "(get-ceil-line-bio-data) joined to REAL compound SMILES from "
-            "get-substances. This corrects the earlier false honest-negative "
-            "('per-cell-line IC50 NUMERIC not exposed'); see "
-            "TODO/completed/pt_data_route_correction.md. Rows whose code is "
-            "outside the indexed page window keep empty SMILES and are counted "
-            "as unmatched (n_matched_structures / n_unmatched_structures)."
-        ),
-        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
-    })
+    meta.update(
+        {
+            "n_rows": len(joined),
+            "n_rows_with_numeric_value": n_with_value,
+            "n_rows_parse_failed": len(joined) - n_with_value,
+            "n_rows_with_smiles": sum(1 for r in joined if r["smiles"]),
+            "source": "MB-Finder portal (https://www.mb-finder.org)",
+            "underlying_paper": "Rusanov 2025 PlatinAI (DOI 10.26434/chemrxiv-2025-pp32k)",
+            "endpoints_used": [
+                "POST /api/v2/get-ceil-line-bio-data",
+                "POST /api/v2/get-substances",
+            ],
+            "framing": (
+                "REAL per-cell-line measured values from the public MB-Finder API "
+                "(get-ceil-line-bio-data) joined to REAL compound SMILES from "
+                "get-substances. This corrects the earlier false honest-negative "
+                "('per-cell-line IC50 NUMERIC not exposed'); see "
+                "TODO/completed/pt_data_route_correction.md. Rows whose code is "
+                "outside the indexed page window keep empty SMILES and are counted "
+                "as unmatched (n_matched_structures / n_unmatched_structures)."
+            ),
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        }
+    )
     with open(meta_path, "w") as fh:
         json.dump(meta, fh, indent=2)
     return {"csv": str(csv_path), "meta": str(meta_path)}
@@ -642,30 +702,44 @@ def write_biodata_outputs(joined: List[dict], out_dir: Path, csv_basename: str,
 def _run_biodata_mode(args) -> int:
     """REAL per-cell-line numeric mode (NEW 2026-10-03)."""
     cell_line = args.biodata_cell_line
-    print("=== MB-Finder REAL per-cell-line bio-data mode (corrects the false "
-          "honest-negative, 2026-10-03) ===")
+    print(
+        "=== MB-Finder REAL per-cell-line bio-data mode (corrects the false "
+        "honest-negative, 2026-10-03) ==="
+    )
     print(f"Source: {MB_API_BASE}")
-    print(f"cell_line: {cell_line}   biodata_max_pages: {args.biodata_max_pages}   "
-          f"delay: {args.delay}s")
+    print(
+        f"cell_line: {cell_line}   biodata_max_pages: {args.biodata_max_pages}   "
+        f"delay: {args.delay}s"
+    )
     print()
     print(f"[1/4] Paginating {BIODATA_ENDPOINT} for {cell_line}...")
     records, bio_requests = fetch_cell_line_biodata_pages(
-        cell_line, max_pages=args.biodata_max_pages, per_request_delay=args.delay,
+        cell_line,
+        max_pages=args.biodata_max_pages,
+        per_request_delay=args.delay,
     )
     n_parsed = sum(1 for r in records if r["value_mean"] is not None)
-    print(f"      rows={len(records)} reqs={bio_requests} parsed_numeric={n_parsed} "
-          f"parse_failures={len(records) - n_parsed}")
-    print(f"[2/4] Building substance structure index (pages "
-          f"{args.substances_start_page}.."
-          f"{args.substances_start_page + args.substances_max_pages - 1})...")
+    print(
+        f"      rows={len(records)} reqs={bio_requests} parsed_numeric={n_parsed} "
+        f"parse_failures={len(records) - n_parsed}"
+    )
+    print(
+        f"[2/4] Building substance structure index (pages "
+        f"{args.substances_start_page}.."
+        f"{args.substances_start_page + args.substances_max_pages - 1})..."
+    )
     index, index_requests = build_structure_index(
-        args.substances_start_page, args.substances_max_pages, args.delay,
+        args.substances_start_page,
+        args.substances_max_pages,
+        args.delay,
     )
     print(f"      index_size={len(index)} substance codes reqs={index_requests}")
     print("[3/4] Joining compound_code -> SMILES...")
     joined, n_matched, n_unmatched = join_structures(records, index)
-    print(f"      matched={n_matched} unmatched={n_unmatched} "
-          f"(unmatched rows kept with empty smiles)")
+    print(
+        f"      matched={n_matched} unmatched={n_unmatched} "
+        f"(unmatched rows kept with empty smiles)"
+    )
     print(f"[4/4] Writing outputs to {args.out_dir}...")
     meta_extra = {
         "cell_line": cell_line,
@@ -691,41 +765,87 @@ def _run_biodata_mode(args) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[1])
-    parser.add_argument("--out", default=".data/molmetal", help="Output directory (or .csv file path)")
-    parser.add_argument("--n-target", type=int, default=100,
-                        help="Number of Pt compounds to load (single-pass mode)")
-    parser.add_argument("--n-target-per-cell", type=int, default=None,
-                        help="If set with --cell-lines, run STRATIFIED mode: collect "
-                             "this many compounds per cell line")
-    parser.add_argument("--cell-lines", type=str, default=None,
-                        help="Comma-separated target cell lines for stratified sampling "
-                             "(e.g. 'A549,MCF7,A2780,A2780cis')")
-    parser.add_argument("--csv-basename", type=str, default="platinai_4cell_mbfinder",
-                        help="CSV/Meta basename (default platinai_4cell_mbfinder). "
-                             "If --out ends in .csv, this is auto-set from the file stem.")
-    parser.add_argument("--start-page", type=int, default=850,
-                        help="Starting page (default 850, deep in Pt range)")
-    parser.add_argument("--delay", type=float, default=2.5,
-                        help="Seconds between API requests (rate-limit buffer)")
-    parser.add_argument("--max-pages", type=int, default=1547,
-                        help="Maximum pages to scan before stopping "
-                             "(stratified mode; default 1547 = full Pt corpus)")
-    parser.add_argument("--biodata-cell-line", type=str, default=None,
-                        help="NEW 2026-10-03: fetch REAL per-cell-line numeric "
-                             "bio-data (get-ceil-line-bio-data) for this cell line, "
-                             "join compound SMILES via get-substances, write "
-                             "CSV+meta. Corrects the earlier false claim that "
-                             "these values were not public.")
-    parser.add_argument("--biodata-max-pages", type=int, default=60,
-                        help="Max bio-data pages in --biodata-cell-line mode "
-                             "(server caps 5 rows/page; default 60 = 300 rows)")
-    parser.add_argument("--substances-start-page", type=int, default=1400,
-                        help="First get-substances page for the structure index "
-                             "in --biodata-cell-line mode (Pt codes live in the "
-                             "high, descending pages ~828..1547)")
-    parser.add_argument("--substances-max-pages", type=int, default=147,
-                        help="Max get-substances pages for the structure index "
-                             "(default 147 covers pages 1400..1546)")
+    parser.add_argument(
+        "--out", default=".data/molmetal", help="Output directory (or .csv file path)"
+    )
+    parser.add_argument(
+        "--n-target",
+        type=int,
+        default=100,
+        help="Number of Pt compounds to load (single-pass mode)",
+    )
+    parser.add_argument(
+        "--n-target-per-cell",
+        type=int,
+        default=None,
+        help="If set with --cell-lines, run STRATIFIED mode: collect "
+        "this many compounds per cell line",
+    )
+    parser.add_argument(
+        "--cell-lines",
+        type=str,
+        default=None,
+        help="Comma-separated target cell lines for stratified sampling "
+        "(e.g. 'A549,MCF7,A2780,A2780cis')",
+    )
+    parser.add_argument(
+        "--csv-basename",
+        type=str,
+        default="platinai_4cell_mbfinder",
+        help="CSV/Meta basename (default platinai_4cell_mbfinder). "
+        "If --out ends in .csv, this is auto-set from the file stem.",
+    )
+    parser.add_argument(
+        "--start-page",
+        type=int,
+        default=850,
+        help="Starting page (default 850, deep in Pt range)",
+    )
+    parser.add_argument(
+        "--delay",
+        type=float,
+        default=2.5,
+        help="Seconds between API requests (rate-limit buffer)",
+    )
+    parser.add_argument(
+        "--max-pages",
+        type=int,
+        default=1547,
+        help="Maximum pages to scan before stopping "
+        "(stratified mode; default 1547 = full Pt corpus)",
+    )
+    parser.add_argument(
+        "--biodata-cell-line",
+        type=str,
+        default=None,
+        help="NEW 2026-10-03: fetch REAL per-cell-line numeric "
+        "bio-data (get-ceil-line-bio-data) for this cell line, "
+        "join compound SMILES via get-substances, write "
+        "CSV+meta. Corrects the earlier false claim that "
+        "these values were not public.",
+    )
+    parser.add_argument(
+        "--biodata-max-pages",
+        type=int,
+        default=60,
+        help="Max bio-data pages in --biodata-cell-line mode "
+        "(server caps 5 rows/page; default 60 = 300 rows)",
+    )
+    parser.add_argument(
+        "--substances-start-page",
+        type=int,
+        default=1400,
+        help="First get-substances page for the structure index "
+        "in --biodata-cell-line mode (Pt codes live in the "
+        "high, descending pages ~828..1547)",
+    )
+    parser.add_argument(
+        "--substances-max-pages",
+        type=int,
+        default=147,
+        help="Max get-substances pages for the structure index "
+        "(default 147 covers pages 1400..1546)",
+    )
     args = parser.parse_args()
     out_arg = args.out
     # If --out is a .csv path, derive basename + directory from it
@@ -737,7 +857,9 @@ def main() -> int:
         if args.csv_basename == "platinai_4cell_mbfinder":
             args.csv_basename = out_path.stem
     else:
-        out_dir = PROJECT_ROOT / out_arg if not out_arg.startswith("/") else Path(out_arg)
+        out_dir = (
+            PROJECT_ROOT / out_arg if not out_arg.startswith("/") else Path(out_arg)
+        )
 
     if args.biodata_cell_line:
         args.out_dir = out_dir
@@ -750,54 +872,77 @@ def main() -> int:
         parser.error("--cell-lines requires --n-target-per-cell")
     cell_lines = (
         [cl.strip() for cl in args.cell_lines.split(",") if cl.strip()]
-        if args.cell_lines else None
+        if args.cell_lines
+        else None
     )
 
     if stratified:
-        print(f"=== Wf-301C: MB-Finder STRATIFIED fetch ({len(cell_lines)} cell lines) ===")
+        print(
+            f"=== Wf-301C: MB-Finder STRATIFIED fetch ({len(cell_lines)} cell lines) ==="
+        )
     else:
-        print(f"=== Wf-295B: MB-Finder real-label loader (Strategy S7, Wf-292D top-1) ===")
+        print(
+            f"=== Wf-295B: MB-Finder real-label loader (Strategy S7, Wf-292D top-1) ==="
+        )
     print(f"Source: {MB_API_BASE}")
     if stratified:
-        print(f"n_target_per_cell: {args.n_target_per_cell}   "
-              f"cell_lines: {cell_lines}   start_page: {args.start_page}   "
-              f"delay: {args.delay}s")
+        print(
+            f"n_target_per_cell: {args.n_target_per_cell}   "
+            f"cell_lines: {cell_lines}   start_page: {args.start_page}   "
+            f"delay: {args.delay}s"
+        )
     else:
-        print(f"n_target: {args.n_target}   start_page: {args.start_page}   "
-              f"delay: {args.delay}s")
+        print(
+            f"n_target: {args.n_target}   start_page: {args.start_page}   "
+            f"delay: {args.delay}s"
+        )
     print()
 
     print("[1/3] Probing MB-Finder aggregate counts...")
     counts = fetch_count()
-    print(f"      compounds={counts.get('compoundsCount')} "
-          f"Pt={counts.get('metalCounts',{}).get('Pt')} "
-          f"IC50s={counts.get('ic50Count')} cells={counts.get('cellsCount')}")
+    print(
+        f"      compounds={counts.get('compoundsCount')} "
+        f"Pt={counts.get('metalCounts',{}).get('Pt')} "
+        f"IC50s={counts.get('ic50Count')} cells={counts.get('cellsCount')}"
+    )
 
     print(f"[2/3] Paginating Pt compounds starting page {args.start_page}...")
     if stratified:
         rows, per_cell_count, total_requests, total_pages_seen, n_non_pt = (
             build_loader_stratified(
-                args.n_target_per_cell, cell_lines,
-                args.start_page, args.delay,
+                args.n_target_per_cell,
+                cell_lines,
+                args.start_page,
+                args.delay,
                 max_pages=args.max_pages,
             )
         )
-        print(f"      Got {len(rows)} unique Pt compounds in {total_requests} "
-              f"API requests ({total_pages_seen} pages, {n_non_pt} non-Pt skipped)")
+        print(
+            f"      Got {len(rows)} unique Pt compounds in {total_requests} "
+            f"API requests ({total_pages_seen} pages, {n_non_pt} non-Pt skipped)"
+        )
         print(f"      Per-cell-line counts: {per_cell_count}")
     else:
         rows, total_requests, total_pages_seen, n_non_pt = build_loader(
             args.n_target, args.start_page, args.delay
         )
         per_cell_count = None
-        print(f"      Got {len(rows)} Pt compounds in {total_requests} API requests "
-              f"({total_pages_seen} pages, {n_non_pt} non-Pt skipped)")
+        print(
+            f"      Got {len(rows)} Pt compounds in {total_requests} API requests "
+            f"({total_pages_seen} pages, {n_non_pt} non-Pt skipped)"
+        )
 
     print(f"[3/3] Writing outputs to {out_dir}...")
     n_target_for_meta = args.n_target_per_cell if stratified else args.n_target
     paths = write_outputs(
-        rows, out_dir, total_requests, total_pages_seen, n_non_pt,
-        n_target_for_meta, args.start_page, args.delay,
+        rows,
+        out_dir,
+        total_requests,
+        total_pages_seen,
+        n_non_pt,
+        n_target_for_meta,
+        args.start_page,
+        args.delay,
         stratified=stratified,
         target_cell_lines=cell_lines,
         per_cell_count=per_cell_count,
@@ -812,17 +957,20 @@ def main() -> int:
     print()
     print("=== Smoke verification ===")
     print(f"n_smoke_mols:        {len(rows)}")
-    print(f"n_with_real_label:   {n_real_label} (compounds with >=1 cell-line bio-data)")
+    print(
+        f"n_with_real_label:   {n_real_label} (compounds with >=1 cell-line bio-data)"
+    )
     print(f"n_nan_smiles:        {n_nan_smiles}")
-    print(f"coverage mcf7/a549/a2780/a2780cis: "
-          f"{sum(1 for r in rows if r['has_mcf7'])}/"
-          f"{sum(1 for r in rows if r['has_a549'])}/"
-          f"{sum(1 for r in rows if r['has_a2780'])}/"
-          f"{sum(1 for r in rows if r['has_a2780cis'])}")
+    print(
+        f"coverage mcf7/a549/a2780/a2780cis: "
+        f"{sum(1 for r in rows if r['has_mcf7'])}/"
+        f"{sum(1 for r in rows if r['has_a549'])}/"
+        f"{sum(1 for r in rows if r['has_a2780'])}/"
+        f"{sum(1 for r in rows if r['has_a2780cis'])}"
+    )
     if stratified and per_cell_count is not None:
         all_met = all(
-            per_cell_count.get(cl, 0) >= args.n_target_per_cell
-            for cl in cell_lines
+            per_cell_count.get(cl, 0) >= args.n_target_per_cell for cl in cell_lines
         )
         print(f"stratified_all_targets_met: {all_met}")
     return 0

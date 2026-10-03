@@ -105,14 +105,14 @@ DEFAULT_CFM_N_STEPS: int = 10
 DEFAULT_MCTS_N_ACTIONS: int = 4
 DEFAULT_POCKET_SIZE: int = 64
 
-DEFAULT_PLATINAI_CSV = (
-    _REPO_ROOT / "molmetal" / "data" / "platinai_5k.csv"
-)
+DEFAULT_PLATINAI_CSV = _REPO_ROOT / "molmetal" / "data" / "platinai_5k.csv"
 DEFAULT_METALCYTOTOX_CSV = (
-    Path(os.environ.get(
-        "MOLMETAL_DATA_DIR",
-        str(_REPO_ROOT / ".data" / "molmetal"),
-    ))
+    Path(
+        os.environ.get(
+            "MOLMETAL_DATA_DIR",
+            str(_REPO_ROOT / ".data" / "molmetal"),
+        )
+    )
     / "MetalCytoToxDB.csv"
 )
 
@@ -165,17 +165,19 @@ def _parse_phases(arg: str) -> List[str]:
     ``closure``, ``astsr``, ``hilbert``, ``coupling``, ``cfm``, ``mcts``).
     """
     canonical = [
-        "closure", "astsr", "hilbert",
-        "coupling", "cfm", "mcts",
+        "closure",
+        "astsr",
+        "hilbert",
+        "coupling",
+        "cfm",
+        "mcts",
     ]
     if arg.strip().lower() == "all":
         return list(canonical)
     wanted = [p.strip().lower() for p in arg.split(",") if p.strip()]
     unknown = [p for p in wanted if p not in canonical]
     if unknown:
-        raise ValueError(
-            f"Unknown phase(s): {unknown}.  Must be one of {canonical}."
-        )
+        raise ValueError(f"Unknown phase(s): {unknown}.  Must be one of {canonical}.")
     return wanted
 
 
@@ -243,13 +245,19 @@ class LambdaCFMPipeline:
 
     # Per-step wall-time / memory accumulator (cleared per run).
     step_wall_times_: Dict[str, float] = field(
-        default_factory=dict, init=False, repr=False,
+        default_factory=dict,
+        init=False,
+        repr=False,
     )
     step_memory_mb_: Dict[str, float] = field(
-        default_factory=dict, init=False, repr=False,
+        default_factory=dict,
+        init=False,
+        repr=False,
     )
     step_status_: Dict[str, str] = field(
-        default_factory=dict, init=False, repr=False,
+        default_factory=dict,
+        init=False,
+        repr=False,
     )
 
     # ------------------------------------------------------------------
@@ -275,7 +283,8 @@ class LambdaCFMPipeline:
             from molmetal_lam.lam_chem.closure import ProductiveSpace
 
             start = MoleculeClosedTerm.from_smiles(
-                seed_smiles, embed_3d=False,
+                seed_smiles,
+                embed_3d=False,
             )
             space = ProductiveSpace(
                 start_term=start,
@@ -306,7 +315,8 @@ class LambdaCFMPipeline:
     # Step 2 — Lambda ASTSR (Deflexpressor)
     # ------------------------------------------------------------------
     def step2_lambda_astsr(
-        self, n_features: int = 12,
+        self,
+        n_features: int = 12,
     ) -> Dict[str, Any]:
         """Deflexpressor-style λ-AST symbolic regression.
 
@@ -325,8 +335,10 @@ class LambdaCFMPipeline:
             X = rng.standard_normal((16, n_features))
             y = X[:, 0] + 0.5 * X[:, 1] - 0.25 * X[:, 2]
             sr = LambdaASTSR(
-                depth=3, population=int(self.astr_pop),
-                generations=4, seed=int(self.seed),
+                depth=3,
+                population=int(self.astr_pop),
+                generations=4,
+                seed=int(self.seed),
             )
             sr.fit(X, y)
             y_hat = sr.predict(X)
@@ -361,15 +373,18 @@ class LambdaCFMPipeline:
         t0 = time.perf_counter()
         try:
             from molmetal_lam.reward.hilbert_primal_dual import (
-                HilbertSpace, PrimalDualOptimizer,
+                HilbertSpace,
+                PrimalDualOptimizer,
             )
 
             space = HilbertSpace(dim=8)
             rng = np.random.default_rng(int(self.seed))
             target = rng.standard_normal(8)
             opt = PrimalDualOptimizer(
-                space=space, target=target,
-                step_size=0.05, n_iters=int(n_iters),
+                space=space,
+                target=target,
+                step_size=0.05,
+                n_iters=int(n_iters),
             )
             opt.run()
             x_final = np.asarray(opt.x_k).reshape(-1)
@@ -377,9 +392,7 @@ class LambdaCFMPipeline:
             # Empirical O(1/k) rate from last 4 iterates.
             history = list(getattr(opt, "history", []))[-4:]
             if len(history) >= 2 and history[0] > 1e-12:
-                emp_rate = float(
-                    history[-1] / (history[0] * (len(history)))
-                )
+                emp_rate = float(history[-1] / (history[0] * (len(history))))
             else:
                 emp_rate = float("nan")
             status = "ok"
@@ -403,7 +416,8 @@ class LambdaCFMPipeline:
     # Step 4 — CouplingAdapter (pocket-embedding bridge)
     # ------------------------------------------------------------------
     def step4_coupling(
-        self, pocket_features: Optional[np.ndarray] = None,
+        self,
+        pocket_features: Optional[np.ndarray] = None,
     ) -> Dict[str, Any]:
         """Load CouplingAdapter and embed a 9-d pocket feature vector.
 
@@ -446,7 +460,9 @@ class LambdaCFMPipeline:
     # Step 5 — CFM ODE decode (analytic linear-path solver stub)
     # ------------------------------------------------------------------
     def step5_cfm_decode(
-        self, n_atoms: int = 8, n_steps: int = 10,
+        self,
+        n_atoms: int = 8,
+        n_steps: int = 10,
     ) -> Dict[str, Any]:
         """Run the analytic linear-path CFM ODE.
 
@@ -463,9 +479,7 @@ class LambdaCFMPipeline:
             x0 = rng.standard_normal(n_atoms)
             x1 = rng.standard_normal(n_atoms)
             ts = np.linspace(0.0, 1.0, int(n_steps) + 1)
-            traj = np.stack([
-                (1.0 - t) * x0 + t * x1 for t in ts
-            ], axis=0)
+            traj = np.stack([(1.0 - t) * x0 + t * x1 for t in ts], axis=0)
             x_T = traj[-1]
             rmse = float(np.sqrt(np.mean((x_T - x1) ** 2)))
             path_len = float(np.linalg.norm(np.diff(traj, axis=0), axis=1).sum())
@@ -481,7 +495,8 @@ class LambdaCFMPipeline:
             self.step_memory_mb_["cfm"] = _memory_mb(peak)
         self.step_status_["cfm"] = status
         return {
-            "status": status, "terminal_rmse": rmse,
+            "status": status,
+            "terminal_rmse": rmse,
             "path_length": path_len,
         }
 
@@ -489,7 +504,8 @@ class LambdaCFMPipeline:
     # Step 6 — Variance-controlled PUCT (MCTS) selection
     # ------------------------------------------------------------------
     def step6_mcts_select(
-        self, n_actions: int = 4,
+        self,
+        n_actions: int = 4,
     ) -> Dict[str, Any]:
         """Variance-controlled PUCT selector over ``n_actions`` actions.
 
@@ -509,10 +525,7 @@ class LambdaCFMPipeline:
             visit = np.arange(1, int(n_actions) + 1)
             c_puct = 1.5
             N_total = float(visit.sum())
-            puct_scores = (
-                rewards
-                + c_puct * np.sqrt(N_total) / (1.0 + visit)
-            )
+            puct_scores = rewards + c_puct * np.sqrt(N_total) / (1.0 + visit)
             argmax = int(np.argmax(puct_scores))
             status = "ok"
         except Exception as exc:  # pragma: no cover
@@ -542,8 +555,12 @@ class LambdaCFMPipeline:
         """Run the full six-step pipeline and return the consolidated report."""
         if phases is None:
             phases = [
-                "closure", "astsr", "hilbert",
-                "coupling", "cfm", "mcts",
+                "closure",
+                "astsr",
+                "hilbert",
+                "coupling",
+                "cfm",
+                "mcts",
             ]
         self.step_wall_times_.clear()
         self.step_memory_mb_.clear()
@@ -568,9 +585,7 @@ class LambdaCFMPipeline:
             )
 
         total_wall = float(sum(self.step_wall_times_.values()))
-        n_ok = sum(
-            1 for v in steps.values() if v.get("status") == "ok"
-        )
+        n_ok = sum(1 for v in steps.values() if v.get("status") == "ok")
         return {
             "seed_smiles": seed_smiles,
             "seed": int(self.seed),
@@ -608,8 +623,12 @@ class LambdaCFMBenchmark:
     seeds: Sequence[int] = (0, 1, 2)
     phases: Sequence[str] = field(
         default_factory=lambda: [
-            "closure", "astsr", "hilbert",
-            "coupling", "cfm", "mcts",
+            "closure",
+            "astsr",
+            "hilbert",
+            "coupling",
+            "cfm",
+            "mcts",
         ],
     )
     out_dir: Path = REPORT_DIR
@@ -617,17 +636,18 @@ class LambdaCFMBenchmark:
     def run(self) -> Dict[str, Any]:
         """Execute the benchmark and persist the JSON report."""
         smiles_pool = _read_csv_column(
-            DEFAULT_PLATINAI_CSV, column="smiles",
+            DEFAULT_PLATINAI_CSV,
+            column="smiles",
             n_max=int(self.n_samples),
         )
         if not smiles_pool:
             # Fallback to a tiny synthetic seed set.
             smiles_pool = [
                 "CCN=[N+]=[N-]",  # azide
-                "C#C",           # alkyne
-                "C=CC=C",        # butadiene
-                "NC(=O)O",       # carbamic acid
-                "c1ccccc1",      # benzene
+                "C#C",  # alkyne
+                "C=CC=C",  # butadiene
+                "NC(=O)O",  # carbamic acid
+                "c1ccccc1",  # benzene
             ][: max(1, int(self.n_samples))]
         smiles_pool = smiles_pool[: int(self.n_samples)]
 
@@ -641,16 +661,18 @@ class LambdaCFMBenchmark:
                 )
             n_ok_steps = sum(p["n_steps_ok"] for p in per_sample)
             n_total_steps = sum(p["n_steps_total"] for p in per_sample)
-            per_seed.append({
-                "seed": int(seed),
-                "n_samples": int(len(per_sample)),
-                "per_sample": per_sample,
-                "total_wall_time_s": float(sum(
-                    p["total_wall_time_s"] for p in per_sample
-                )),
-                "n_steps_ok_total": int(n_ok_steps),
-                "n_steps_total": int(n_total_steps),
-            })
+            per_seed.append(
+                {
+                    "seed": int(seed),
+                    "n_samples": int(len(per_sample)),
+                    "per_sample": per_sample,
+                    "total_wall_time_s": float(
+                        sum(p["total_wall_time_s"] for p in per_sample)
+                    ),
+                    "n_steps_ok_total": int(n_ok_steps),
+                    "n_steps_total": int(n_total_steps),
+                }
+            )
 
         total_wall = float(sum(s["total_wall_time_s"] for s in per_seed))
         n_steps_ok_total = sum(s["n_steps_ok_total"] for s in per_seed)
@@ -690,22 +712,30 @@ def _build_argparser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--n-samples", type=int, default=10,
+        "--n-samples",
+        type=int,
+        default=10,
         help="Number of SMILES samples drawn from PlatinAI 5K.",
     )
     p.add_argument(
-        "--seeds", type=str, default="0,1,2",
+        "--seeds",
+        type=str,
+        default="0,1,2",
         help="Comma-separated RNG seeds (e.g. '0,1,2').",
     )
     p.add_argument(
-        "--phases", type=str, default="all",
+        "--phases",
+        type=str,
+        default="all",
         help=(
             "Comma-separated phase list or 'all'.  Allowed: "
             "closure, astsr, hilbert, coupling, cfm, mcts."
         ),
     )
     p.add_argument(
-        "--out-dir", type=str, default=str(REPORT_DIR),
+        "--out-dir",
+        type=str,
+        default=str(REPORT_DIR),
         help="Output directory for the orchestrator JSON report.",
     )
     return p
@@ -726,12 +756,17 @@ def run_orchestrator(argv: Optional[Sequence[str]] = None) -> Dict[str, Any]:
 
 if __name__ == "__main__":
     report = run_orchestrator()
-    print(json.dumps({
-        "n_samples": report["n_samples"],
-        "n_samples_actual": report["n_samples_actual"],
-        "seeds": report["seeds"],
-        "n_steps_ok_total": report["n_steps_ok_total"],
-        "n_steps_total": report["n_steps_total"],
-        "total_wall_time_s": round(report["total_wall_time_s"], 4),
-        "timestamp_utc": report["timestamp_utc"],
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "n_samples": report["n_samples"],
+                "n_samples_actual": report["n_samples_actual"],
+                "seeds": report["seeds"],
+                "n_steps_ok_total": report["n_steps_ok_total"],
+                "n_steps_total": report["n_steps_total"],
+                "total_wall_time_s": round(report["total_wall_time_s"], 4),
+                "timestamp_utc": report["timestamp_utc"],
+            },
+            indent=2,
+        )
+    )

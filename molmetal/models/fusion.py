@@ -41,7 +41,5 @@ class FusionMLP(nn.Module):
             (B, output_dim) or (N, output_dim) fused features
         """
         if h_2d.shape != h_3d.shape:
-            raise ValueError(
-                f"Shape mismatch: h_2d={h_2d.shape}, h_3d={h_3d.shape}"
-            )
+            raise ValueError(f"Shape mismatch: h_2d={h_2d.shape}, h_3d={h_3d.shape}")
         return self.net(torch.cat([h_2d, h_3d], dim=-1))

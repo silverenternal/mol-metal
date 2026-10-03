@@ -11,6 +11,7 @@ Honest framing (party-twenty-spirit §3.5):
   * Tests are CPU-only, deterministic.
   * 4/4 PASS is the acceptance criterion (per Wf-353-A2 closeout).
 """
+
 from __future__ import annotations
 
 import copy
@@ -54,8 +55,9 @@ def _linear_path(*, x_0, x_1, t):
     return _PathSample(x_t=(1.0 - t_b) * x_0 + t_b * x_1, dx_t=x_1 - x_0)
 
 
-def _build_distiller_with_perturb(seed: int = 0, perturb: float = 0.05,
-                                   **cfg_kwargs) -> "ShortcutDistiller":
+def _build_distiller_with_perturb(
+    seed: int = 0, perturb: float = 0.05, **cfg_kwargs
+) -> "ShortcutDistiller":
     """Helper: build a distiller with teacher != student at init.
 
     Default construction makes teacher == student (deepcopy), so the
@@ -67,6 +69,7 @@ def _build_distiller_with_perturb(seed: int = 0, perturb: float = 0.05,
         ShortcutDistillationConfig,
         ShortcutDistiller,
     )
+
     torch.manual_seed(seed)
     model = _TinyVField(hidden=16)
     distiller = ShortcutDistiller(model, ShortcutDistillationConfig(**cfg_kwargs))
@@ -222,58 +225,44 @@ def test_distillation_loss_computation() -> None:
     # each call to make them bit-comparable.
     torch.manual_seed(300)
     model_b = _TinyVField(hidden=16)
-    distiller_b = ShortcutDistiller(
-        model_b, ShortcutDistillationConfig(weight=1.0)
-    )
+    distiller_b = ShortcutDistiller(model_b, ShortcutDistillationConfig(weight=1.0))
     with torch.no_grad():
         for p in distiller_b.student.parameters():
             p.add_(0.1 * torch.randn_like(p))
     distiller_b.update_teacher()
 
     torch.manual_seed(300)
-    loss_w1 = distiller_b.distillation_loss(
-        x_0=x_0, x_1=x_1, path_sampler=_linear_path
-    )
+    loss_w1 = distiller_b.distillation_loss(x_0=x_0, x_1=x_1, path_sampler=_linear_path)
     distiller_b.cfg.weight = 2.0
     torch.manual_seed(300)
-    loss_w2 = distiller_b.distillation_loss(
-        x_0=x_0, x_1=x_1, path_sampler=_linear_path
-    )
+    loss_w2 = distiller_b.distillation_loss(x_0=x_0, x_1=x_1, path_sampler=_linear_path)
     # Same RNG state + same distiller ⇒ mask+t identical ⇒ ratio == 2.0.
     assert loss_w1.item() > 0.0
     ratio = loss_w2.item() / loss_w1.item()
-    assert abs(ratio - 2.0) < 1e-4, (
-        f"Weight scaling not 2x (fp-exact): ratio={ratio:.6f}"
-    )
+    assert (
+        abs(ratio - 2.0) < 1e-4
+    ), f"Weight scaling not 2x (fp-exact): ratio={ratio:.6f}"
 
     # (c) p_distill=0 ⇒ loss is exactly zero (early-return path).
     torch.manual_seed(400)
     model_c = _TinyVField(hidden=16)
-    distiller_c = ShortcutDistiller(
-        model_c, ShortcutDistillationConfig(p_distill=0.0)
-    )
+    distiller_c = ShortcutDistiller(model_c, ShortcutDistillationConfig(p_distill=0.0))
     with torch.no_grad():
         for p in distiller_c.student.parameters():
             p.add_(0.1 * torch.randn_like(p))
     distiller_c.update_teacher()
-    loss_c = distiller_c.distillation_loss(
-        x_0=x_0, x_1=x_1, path_sampler=_linear_path
-    )
+    loss_c = distiller_c.distillation_loss(x_0=x_0, x_1=x_1, path_sampler=_linear_path)
     assert loss_c.item() == 0.0, f"p_distill=0 should zero the loss: {loss_c}"
 
     # (d) p_distill=1 ⇒ full batch; loss strictly > 0 (teacher != student).
     torch.manual_seed(500)
     model_d = _TinyVField(hidden=16)
-    distiller_d = ShortcutDistiller(
-        model_d, ShortcutDistillationConfig(p_distill=1.0)
-    )
+    distiller_d = ShortcutDistiller(model_d, ShortcutDistillationConfig(p_distill=1.0))
     with torch.no_grad():
         for p in distiller_d.student.parameters():
             p.add_(0.1 * torch.randn_like(p))
     distiller_d.update_teacher()
-    loss_d = distiller_d.distillation_loss(
-        x_0=x_0, x_1=x_1, path_sampler=_linear_path
-    )
+    loss_d = distiller_d.distillation_loss(x_0=x_0, x_1=x_1, path_sampler=_linear_path)
     assert loss_d.item() > 0.0, f"p_distill=1 should give non-zero loss: {loss_d}"
 
 
@@ -313,19 +302,25 @@ def test_backward_compat_without_flag() -> None:
             p.add_(0.1 * torch.randn_like(p))
     pre_diff = sum(
         (tp.data - sp.data).abs().sum().item()
-        for tp, sp in zip(distiller.teacher.parameters(), distiller.student.parameters())
+        for tp, sp in zip(
+            distiller.teacher.parameters(), distiller.student.parameters()
+        )
     )
-    assert pre_diff > 0, f"Pre-EMA: teacher should differ from mutated student (diff={pre_diff})"
+    assert (
+        pre_diff > 0
+    ), f"Pre-EMA: teacher should differ from mutated student (diff={pre_diff})"
 
     # Apply EMA; teacher should move toward the student.
     distiller.update_teacher()
     post_diff = sum(
         (tp.data - sp.data).abs().sum().item()
-        for tp, sp in zip(distiller.teacher.parameters(), distiller.student.parameters())
+        for tp, sp in zip(
+            distiller.teacher.parameters(), distiller.student.parameters()
+        )
     )
-    assert post_diff < pre_diff, (
-        f"EMA should reduce teacher-student gap: pre={pre_diff:.4f}, post={post_diff:.4f}"
-    )
+    assert (
+        post_diff < pre_diff
+    ), f"EMA should reduce teacher-student gap: pre={pre_diff:.4f}, post={post_diff:.4f}"
 
     # (3) The prior self-consistency shortcut in ``acceleration.py``
     # is untouched (no imports clobbered, no global state mutated).

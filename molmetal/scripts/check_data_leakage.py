@@ -228,7 +228,7 @@ def canonicalise_smiles(smiles_list: Sequence[str]) -> Tuple[List[str], int]:
     for s in smiles_list:
         c = _try_canonicalize(s)
         if c is None:
-            canon.append("")    # sentinel — never matches a real canon
+            canon.append("")  # sentinel — never matches a real canon
             n_fail += 1
         else:
             canon.append(c)
@@ -330,7 +330,10 @@ def scaffold_split_indices(
     def _next_split() -> str:
         return max(
             ("train", "val", "test"),
-            key=lambda k: (capacities[k], 0 if k == "train" else 1 if k == "val" else 2),
+            key=lambda k: (
+                capacities[k],
+                0 if k == "train" else 1 if k == "val" else 2,
+            ),
         )
 
     for g in groups:
@@ -405,7 +408,9 @@ def compute_overlap(
         for s in tb:
             if s in ta:
                 b_scaf_seen += 1
-        frac_b_scafs_seen = (b_scaf_seen / n_b_unique_scafs) if n_b_unique_scafs else 0.0
+        frac_b_scafs_seen = (
+            (b_scaf_seen / n_b_unique_scafs) if n_b_unique_scafs else 0.0
+        )
 
         out[name] = SplitOverlap(
             n_intersect_smiles=n_inter_smiles,
@@ -508,7 +513,9 @@ def run_dataset(
             shipped_split.n_test = len(shipped_split.test_idx)
             rep.splits["shipped"] = shipped_split
             rep.overlaps["shipped"] = compute_overlap(
-                canon, final_scaffolds, shipped_split,
+                canon,
+                final_scaffolds,
+                shipped_split,
             )
             rep.strict_pass["shipped"] = (
                 rep.overlaps["shipped"]["train_vs_test"].n_intersect_scaffolds == 0
@@ -627,10 +634,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         "--out-path",
         type=Path,
         default=None,
-        help=(
-            "Full output JSON path (default: "
-            "<out-dir>/leakage_check.json)"
-        ),
+        help=("Full output JSON path (default: " "<out-dir>/leakage_check.json)"),
     )
     parser.add_argument(
         "--seed",
@@ -651,8 +655,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         datasets.append(("platinai_5k", args.platinai_csv))
     else:
         print(
-            f"[check_data_leakage] SKIP platinai CSV missing: "
-            f"{args.platinai_csv}"
+            f"[check_data_leakage] SKIP platinai CSV missing: " f"{args.platinai_csv}"
         )
     if args.metalcytotox_csv.exists():
         datasets.append(("metalcytotox_5metal", args.metalcytotox_csv))

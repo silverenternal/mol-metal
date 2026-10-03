@@ -62,6 +62,7 @@ from typing import Dict, List, Optional, Tuple
 # Exception types
 # -----------------------------------------------------------------
 
+
 class MetalPDBQTUnavailable(RuntimeError):
     """Raised when a metallodrug SMILES cannot be converted to PDBQT.
 
@@ -219,6 +220,7 @@ METAL_ATOM_TYPE_RULES: Dict[str, Dict[str, object]] = {
 # -----------------------------------------------------------------
 # Public helpers
 # -----------------------------------------------------------------
+
 
 def get_metal_vdw_table(
     elements: Optional[List[str]] = None,
@@ -440,9 +442,7 @@ def verify_metal_smarts() -> Dict[str, Dict[str, int]]:
     try:
         from rdkit import Chem  # type: ignore
     except ImportError as exc:  # pragma: no cover — RDKit is a hard dep
-        raise RuntimeError(
-            "rdkit is required to verify metal SMARTS rules"
-        ) from exc
+        raise RuntimeError("rdkit is required to verify metal SMARTS rules") from exc
 
     results: Dict[str, Dict[str, int]] = {}
     for elem in PT_GROUP_ELEMENTS:

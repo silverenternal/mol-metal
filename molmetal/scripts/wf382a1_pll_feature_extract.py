@@ -157,9 +157,7 @@ def per_mol_pll_features(
         Order matches the input sequence minus any skipped failures.
     """
     if not _ADAPTER_AVAILABLE:  # pragma: no cover — defensive
-        raise PLLFeatureError(
-            f"PLL feature adapter unavailable: {_ADAPTER_IMPORT_ERR}"
-        )
+        raise PLLFeatureError(f"PLL feature adapter unavailable: {_ADAPTER_IMPORT_ERR}")
 
     features: List[np.ndarray] = []
     for mol in mols:
@@ -259,7 +257,12 @@ def _smoke_cohort() -> Optional[Dict[str, np.ndarray]]:
     except ImportError:
         return None
 
-    smiles_list = ["c1ccccc1", "C", "CCO", "C1=CC=CC=C1Cl"]  # benzene, methane, ethanol, chlorobenzene
+    smiles_list = [
+        "c1ccccc1",
+        "C",
+        "CCO",
+        "C1=CC=CC=C1Cl",
+    ]  # benzene, methane, ethanol, chlorobenzene
     out: Dict[str, np.ndarray] = {}
     for smi in smiles_list:
         mol = Chem.MolFromSmiles(smi)

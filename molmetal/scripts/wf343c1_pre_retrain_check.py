@@ -101,17 +101,24 @@ DATA_MIN_LINES: Dict[str, int] = {
 
 # Expected total gate counts (used by the gate-count consistency audit).
 EXPECTED_GATE_COUNTS = {
-    "code_level": 10,        # §1.1.1 - §1.1.10
-    "ablation_flags": 3,     # §1.3.1 - §1.3.3
-    "data_level": 7,         # §2.1.1 - §2.1.7
-    "test_level": 1,         # §3.1.1
-    "post_retrain": 4,       # §5.11 - §5.14
-    "honest_framing": 1,     # §8.15
+    "code_level": 10,  # §1.1.1 - §1.1.10
+    "ablation_flags": 3,  # §1.3.1 - §1.3.3
+    "data_level": 7,  # §2.1.1 - §2.1.7
+    "test_level": 1,  # §3.1.1
+    "post_retrain": 4,  # §5.11 - §5.14
+    "honest_framing": 1,  # §8.15
 }
 
 # Pipeline gate list (§-level selection; default "all" runs everything).
-PIPELINES = ("code", "ablation", "data", "test", "post_retrain",
-             "honest_framing", "all")
+PIPELINES = (
+    "code",
+    "ablation",
+    "data",
+    "test",
+    "post_retrain",
+    "honest_framing",
+    "all",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -191,8 +198,10 @@ def _run(
         )
         return proc.returncode, proc.stdout, proc.stderr
     except subprocess.TimeoutExpired as exc:
-        return 124, exc.stdout or "", (exc.stderr or "") + (
-            f"\n[TIMEOUT after {timeout}s]"
+        return (
+            124,
+            exc.stdout or "",
+            (exc.stderr or "") + (f"\n[TIMEOUT after {timeout}s]"),
         )
     except FileNotFoundError as exc:
         return 127, "", f"[exec error: {exc}]"
@@ -250,12 +259,20 @@ def gate_grep(
     elapsed = time.perf_counter() - t0
     if ok:
         return GateResult(
-            name, priority, pipeline, "PASS",
-            f"grep '{pattern}' found in {file_path}", elapsed,
+            name,
+            priority,
+            pipeline,
+            "PASS",
+            f"grep '{pattern}' found in {file_path}",
+            elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "FAIL",
-        f"grep '{pattern}' NOT found in {file_path}", elapsed,
+        name,
+        priority,
+        pipeline,
+        "FAIL",
+        f"grep '{pattern}' NOT found in {file_path}",
+        elapsed,
     )
 
 
@@ -272,12 +289,20 @@ def gate_regex(
     elapsed = time.perf_counter() - t0
     if ok:
         return GateResult(
-            name, priority, pipeline, "PASS",
-            f"regex '{pattern}' matched in {file_path}", elapsed,
+            name,
+            priority,
+            pipeline,
+            "PASS",
+            f"regex '{pattern}' matched in {file_path}",
+            elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "FAIL",
-        f"regex '{pattern}' did NOT match in {file_path}", elapsed,
+        name,
+        priority,
+        pipeline,
+        "FAIL",
+        f"regex '{pattern}' did NOT match in {file_path}",
+        elapsed,
     )
 
 
@@ -307,14 +332,21 @@ def gate_help(
     missing = [tok for tok in tokens if tok not in blob]
     if not missing:
         return GateResult(
-            name, priority, pipeline, "PASS",
-            f"help exposes all {len(tokens)} token(s) of '{pattern}' "
-            f"(rc={rc})", elapsed,
+            name,
+            priority,
+            pipeline,
+            "PASS",
+            f"help exposes all {len(tokens)} token(s) of '{pattern}' " f"(rc={rc})",
+            elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "FAIL",
+        name,
+        priority,
+        pipeline,
+        "FAIL",
         f"help missing token(s) {missing} from '{pattern}' "
-        f"(rc={rc}; {len(blob)}B output)", elapsed,
+        f"(rc={rc}; {len(blob)}B output)",
+        elapsed,
     )
 
 
@@ -326,19 +358,25 @@ def gate_file_exists(
 ) -> GateResult:
     """PASS if ``file_path`` exists and is a regular file (or dir for data dirs)."""
     t0 = time.perf_counter()
-    exists = file_path.exists() and (
-        file_path.is_file() or file_path.is_dir()
-    )
+    exists = file_path.exists() and (file_path.is_file() or file_path.is_dir())
     elapsed = time.perf_counter() - t0
     if exists:
         kind = "dir" if file_path.is_dir() else "file"
         return GateResult(
-            name, priority, pipeline, "PASS",
-            f"{kind} exists: {file_path}", elapsed,
+            name,
+            priority,
+            pipeline,
+            "PASS",
+            f"{kind} exists: {file_path}",
+            elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "FAIL",
-        f"path MISSING: {file_path}", elapsed,
+        name,
+        priority,
+        pipeline,
+        "FAIL",
+        f"path MISSING: {file_path}",
+        elapsed,
     )
 
 
@@ -355,17 +393,29 @@ def gate_min_lines(
     elapsed = time.perf_counter() - t0
     if n < 0:
         return GateResult(
-            name, priority, pipeline, "FAIL",
-            f"file unreadable: {file_path}", elapsed,
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"file unreadable: {file_path}",
+            elapsed,
         )
     if n >= min_lines:
         return GateResult(
-            name, priority, pipeline, "PASS",
-            f"wc -l {file_path} = {n} >= {min_lines}", elapsed,
+            name,
+            priority,
+            pipeline,
+            "PASS",
+            f"wc -l {file_path} = {n} >= {min_lines}",
+            elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "FAIL",
-        f"wc -l {file_path} = {n} < {min_lines}", elapsed,
+        name,
+        priority,
+        pipeline,
+        "FAIL",
+        f"wc -l {file_path} = {n} < {min_lines}",
+        elapsed,
     )
 
 
@@ -386,7 +436,10 @@ def gate_post_retrain_skip(
     t0 = time.perf_counter()
     elapsed = time.perf_counter() - t0
     return GateResult(
-        name, priority, pipeline, "SKIP",
+        name,
+        priority,
+        pipeline,
+        "SKIP",
         f"post-retrain gate: {description} (filled in after retrain wave)",
         elapsed,
     )
@@ -412,7 +465,10 @@ def gate_section8_entry_count(
     t0 = time.perf_counter()
     if not doc_path.exists():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"parent doc missing: {doc_path}",
             time.perf_counter() - t0,
         )
@@ -425,19 +481,30 @@ def gate_section8_entry_count(
                     n += 1
     except OSError as exc:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"read error: {exc}",
             time.perf_counter() - t0,
         )
     elapsed = time.perf_counter() - t0
     if n >= min_entries:
         return GateResult(
-            name, priority, pipeline, "PASS",
-            f"{doc_path} has {n} §8 entries (>= {min_entries})", elapsed,
+            name,
+            priority,
+            pipeline,
+            "PASS",
+            f"{doc_path} has {n} §8 entries (>= {min_entries})",
+            elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "FAIL",
-        f"{doc_path} has {n} §8 entries (< {min_entries})", elapsed,
+        name,
+        priority,
+        pipeline,
+        "FAIL",
+        f"{doc_path} has {n} §8 entries (< {min_entries})",
+        elapsed,
     )
 
 
@@ -457,55 +524,75 @@ def _code_level_gates() -> List[Tuple[str, Callable[[], GateResult]]]:
         (
             "code_1_1_1_indices_aliasing_fix",
             lambda: gate_grep(
-                "code_1_1_1_indices_aliasing_fix", "P1", "code",
-                "indices = train_idx.copy()", CHEMPROP_V3_DRIVER,
+                "code_1_1_1_indices_aliasing_fix",
+                "P1",
+                "code",
+                "indices = train_idx.copy()",
+                CHEMPROP_V3_DRIVER,
             ),
         ),
         # §1.1.2 — Kendall MTL log_sigma in optimizer.
         (
             "code_1_1_2_kendall_log_sigma",
             lambda: gate_grep(
-                "code_1_1_2_kendall_log_sigma", "P1", "code",
-                "kendall.parameters()", CHEMPROP_V3_DRIVER,
+                "code_1_1_2_kendall_log_sigma",
+                "P1",
+                "code",
+                "kendall.parameters()",
+                CHEMPROP_V3_DRIVER,
             ),
         ),
         # §1.1.3 — DANN per_metal mode (not hardcoded DOMAIN_METALCYTOX).
         (
             "code_1_1_3_dann_per_metal",
             lambda: gate_grep(
-                "code_1_1_3_dann_per_metal", "P1", "code",
-                "per_metal", CHEMPROP_V3_DRIVER,
+                "code_1_1_3_dann_per_metal",
+                "P1",
+                "code",
+                "per_metal",
+                CHEMPROP_V3_DRIVER,
             ),
         ),
         # §1.1.4 — eval logits FP32 + clamp ±30 + NaN guard.
         (
             "code_1_1_4_nan_to_num_guard",
             lambda: gate_grep(
-                "code_1_1_4_nan_to_num_guard", "P1", "code",
-                "nan_to_num", CHEMPROP_V3_DRIVER,
+                "code_1_1_4_nan_to_num_guard",
+                "P1",
+                "code",
+                "nan_to_num",
+                CHEMPROP_V3_DRIVER,
             ),
         ),
         # §1.1.5 — gradient clipping max_norm=1.0.
         (
             "code_1_1_5_grad_clip_max_norm",
             lambda: gate_grep(
-                "code_1_1_5_grad_clip_max_norm", "P1", "code",
-                "clip_grad_norm", CHEMPROP_V3_DRIVER,
+                "code_1_1_5_grad_clip_max_norm",
+                "P1",
+                "code",
+                "clip_grad_norm",
+                CHEMPROP_V3_DRIVER,
             ),
         ),
         # §1.1.6 — epoch-avg logging for W₂/coord/domain (not last-batch).
         (
             "code_1_1_6_w2_epoch_avg_history",
             lambda: gate_grep(
-                "code_1_1_6_w2_epoch_avg_history", "P1", "code",
-                "w2_epoch_avg_history", CHEMPROP_V3_DRIVER,
+                "code_1_1_6_w2_epoch_avg_history",
+                "P1",
+                "code",
+                "w2_epoch_avg_history",
+                CHEMPROP_V3_DRIVER,
             ),
         ),
         # §1.1.7 — ablation flags --no-multi-task / --no-wass / etc.
         (
             "code_1_1_7_ablation_flags_present",
             lambda: gate_help(
-                "code_1_1_7_ablation_flags_present", "P1", "code",
+                "code_1_1_7_ablation_flags_present",
+                "P1",
+                "code",
                 CHEMPROP_V3_DRIVER,
                 "--no-multi-task --no-wass --no-kendall --no-dann",
                 extra_args=[],
@@ -516,7 +603,9 @@ def _code_level_gates() -> List[Tuple[str, Callable[[], GateResult]]]:
         (
             "code_1_1_8_enhanced_metal_head",
             lambda: gate_help(
-                "code_1_1_8_enhanced_metal_head", "P1", "code",
+                "code_1_1_8_enhanced_metal_head",
+                "P1",
+                "code",
                 CHEMPROP_V3_DRIVER,
                 "--enhanced-head --metal-attention",
                 extra_args=[],
@@ -527,15 +616,20 @@ def _code_level_gates() -> List[Tuple[str, Callable[[], GateResult]]]:
         (
             "code_1_1_9_click_aug_flag",
             lambda: gate_grep(
-                "code_1_1_9_click_aug_flag", "P1", "code",
-                "--use-click-aug", CHEMPROP_V3_DRIVER,
+                "code_1_1_9_click_aug_flag",
+                "P1",
+                "code",
+                "--use-click-aug",
+                CHEMPROP_V3_DRIVER,
             ),
         ),
         # §1.1.10 — master modules M1/M2 flags (Wf-250-Apply F3+F4).
         (
             "code_1_1_10_master_modules_flags",
             lambda: gate_help(
-                "code_1_1_10_master_modules_flags", "P1", "code",
+                "code_1_1_10_master_modules_flags",
+                "P1",
+                "code",
                 CHEMPROP_V3_DRIVER,
                 "--use-master-wass --use-master-cath",
                 extra_args=[],
@@ -557,7 +651,9 @@ def _ablation_flag_gates() -> List[Tuple[str, Callable[[], GateResult]]]:
         (
             "ablation_1_3_1_flags_present",
             lambda: gate_help(
-                "ablation_1_3_1_flags_present", "P1", "ablation",
+                "ablation_1_3_1_flags_present",
+                "P1",
+                "ablation",
                 CHEMPROP_V3_DRIVER,
                 "--no-multi-task --no-wass --no-kendall --no-dann",
                 timeout=30.0,
@@ -567,7 +663,9 @@ def _ablation_flag_gates() -> List[Tuple[str, Callable[[], GateResult]]]:
         (
             "ablation_1_3_2_single_metal_flag",
             lambda: gate_help(
-                "ablation_1_3_2_single_metal_flag", "P1", "ablation",
+                "ablation_1_3_2_single_metal_flag",
+                "P1",
+                "ablation",
                 CHEMPROP_V3_DRIVER,
                 "--single-metal",
                 timeout=30.0,
@@ -577,7 +675,9 @@ def _ablation_flag_gates() -> List[Tuple[str, Callable[[], GateResult]]]:
         (
             "ablation_1_3_3_n_seeds_min_flag",
             lambda: gate_help(
-                "ablation_1_3_3_n_seeds_min_flag", "P1", "ablation",
+                "ablation_1_3_3_n_seeds_min_flag",
+                "P1",
+                "ablation",
                 CHEMPROP_V3_DRIVER,
                 "--n-seeds-min",
                 timeout=30.0,
@@ -596,69 +696,97 @@ def _data_level_gates() -> List[Tuple[str, Callable[[], GateResult]]]:
     runners: List[Tuple[str, Callable[[], GateResult]]] = []
 
     # §2.1.1 — MetalCytoToxDB 5-metal CSV (extended schema, ≥26000 lines).
-    runners.append((
-        "data_2_1_1_metalcytotox_5metal_csv",
-        lambda: gate_min_lines(
-            "data_2_1_1_metalcytotox_5metal_csv", "P1", "data",
-            DATA_PATHS["2.1.1_metalcytotox_5metal"],
-            DATA_MIN_LINES["2.1.1_metalcytotox_5metal"],
-        ),
-    ))
+    runners.append(
+        (
+            "data_2_1_1_metalcytotox_5metal_csv",
+            lambda: gate_min_lines(
+                "data_2_1_1_metalcytotox_5metal_csv",
+                "P1",
+                "data",
+                DATA_PATHS["2.1.1_metalcytotox_5metal"],
+                DATA_MIN_LINES["2.1.1_metalcytotox_5metal"],
+            ),
+        )
+    )
     # §2.1.2 — MetalCytoToxDB raw source CSV.
-    runners.append((
-        "data_2_1_2_metalcytotox_raw_csv",
-        lambda: gate_min_lines(
-            "data_2_1_2_metalcytotox_raw_csv", "P1", "data",
-            DATA_PATHS["2.1.2_metalcytotox_raw"],
-            DATA_MIN_LINES["2.1.2_metalcytotox_raw"],
-        ),
-    ))
+    runners.append(
+        (
+            "data_2_1_2_metalcytotox_raw_csv",
+            lambda: gate_min_lines(
+                "data_2_1_2_metalcytotox_raw_csv",
+                "P1",
+                "data",
+                DATA_PATHS["2.1.2_metalcytotox_raw"],
+                DATA_MIN_LINES["2.1.2_metalcytotox_raw"],
+            ),
+        )
+    )
     # §2.1.3 — DrugOOD dir on disk.
-    runners.append((
-        "data_2_1_3_drugood_dir",
-        lambda: gate_file_exists(
-            "data_2_1_3_drugood_dir", "P1", "data",
-            DATA_PATHS["2.1.3_drugood"],
-        ),
-    ))
+    runners.append(
+        (
+            "data_2_1_3_drugood_dir",
+            lambda: gate_file_exists(
+                "data_2_1_3_drugood_dir",
+                "P1",
+                "data",
+                DATA_PATHS["2.1.3_drugood"],
+            ),
+        )
+    )
     # §2.1.4 — NCI-60 dir on disk.
-    runners.append((
-        "data_2_1_4_nci60_dir",
-        lambda: gate_file_exists(
-            "data_2_1_4_nci60_dir", "P1", "data",
-            DATA_PATHS["2.1.4_nci60"],
-        ),
-    ))
+    runners.append(
+        (
+            "data_2_1_4_nci60_dir",
+            lambda: gate_file_exists(
+                "data_2_1_4_nci60_dir",
+                "P1",
+                "data",
+                DATA_PATHS["2.1.4_nci60"],
+            ),
+        )
+    )
     # §2.1.5 — PlatinAI 4-cell dir on disk.
-    runners.append((
-        "data_2_1_5_platinai_4cell_dir",
-        lambda: gate_file_exists(
-            "data_2_1_5_platinai_4cell_dir", "P1", "data",
-            DATA_PATHS["2.1.5_platinai_4cell"],
-        ),
-    ))
+    runners.append(
+        (
+            "data_2_1_5_platinai_4cell_dir",
+            lambda: gate_file_exists(
+                "data_2_1_5_platinai_4cell_dir",
+                "P1",
+                "data",
+                DATA_PATHS["2.1.5_platinai_4cell"],
+            ),
+        )
+    )
     # §2.1.6 — BindingDB is external / NOT used in retrain.
     # Honest-negative: per parent doc, "NOT used in retrain (data fact)".
-    runners.append((
-        "data_2_1_6_bindingdb_external_honest_negative",
-        lambda: GateResult(
+    runners.append(
+        (
             "data_2_1_6_bindingdb_external_honest_negative",
-            "P1", "data", "SKIP",
-            "BindingDB 1.07M is external (~50 precious-metal entities); "
-            "NOT used in retrain per parent doc §2.1.6. Honest-negative: "
-            "data fact, not blocker.",
-            0.0,
-        ),
-    ))
+            lambda: GateResult(
+                "data_2_1_6_bindingdb_external_honest_negative",
+                "P1",
+                "data",
+                "SKIP",
+                "BindingDB 1.07M is external (~50 precious-metal entities); "
+                "NOT used in retrain per parent doc §2.1.6. Honest-negative: "
+                "data fact, not blocker.",
+                0.0,
+            ),
+        )
+    )
     # §2.1.7 — Click yields literature CSV (≥50 entries).
-    runners.append((
-        "data_2_1_7_click_yields_csv",
-        lambda: gate_min_lines(
-            "data_2_1_7_click_yields_csv", "P1", "data",
-            DATA_PATHS["2.1.7_click_yields"],
-            DATA_MIN_LINES["2.1.7_click_yields"],
-        ),
-    ))
+    runners.append(
+        (
+            "data_2_1_7_click_yields_csv",
+            lambda: gate_min_lines(
+                "data_2_1_7_click_yields_csv",
+                "P1",
+                "data",
+                DATA_PATHS["2.1.7_click_yields"],
+                DATA_MIN_LINES["2.1.7_click_yields"],
+            ),
+        )
+    )
 
     return runners
 
@@ -675,7 +803,9 @@ def _test_level_gates() -> List[Tuple[str, Callable[[], GateResult]]]:
         (
             "test_3_1_5_nan_guard_test_present",
             lambda: gate_file_exists(
-                "test_3_1_5_nan_guard_test_present", "P1", "test",
+                "test_3_1_5_nan_guard_test_present",
+                "P1",
+                "test",
                 NA_NGUARD_TEST,
             ),
         ),
@@ -694,28 +824,36 @@ def _post_retrain_gates() -> List[Tuple[str, Callable[[], GateResult]]]:
         (
             "post_retrain_5_11_per_seed_std",
             lambda: gate_post_retrain_skip(
-                "post_retrain_5_11_per_seed_std", "P2", "post_retrain",
+                "post_retrain_5_11_per_seed_std",
+                "P2",
+                "post_retrain",
                 "per_seed std reported (NOT 0) across 5 seeds",
             ),
         ),
         (
             "post_retrain_5_12_os_auc_non_degenerate",
             lambda: gate_post_retrain_skip(
-                "post_retrain_5_12_os_auc_non_degenerate", "P2", "post_retrain",
+                "post_retrain_5_12_os_auc_non_degenerate",
+                "P2",
+                "post_retrain",
                 "Os AUC ≠ exactly 0.5 (LOMO collapse check)",
             ),
         ),
         (
             "post_retrain_5_13_ru_w2_epoch_avg",
             lambda: gate_post_retrain_skip(
-                "post_retrain_5_13_ru_w2_epoch_avg", "P2", "post_retrain",
+                "post_retrain_5_13_ru_w2_epoch_avg",
+                "P2",
+                "post_retrain",
                 "Ru w2_epoch_avg_history non-zero for ALL epochs",
             ),
         ),
         (
             "post_retrain_5_14_no_nan_auc",
             lambda: gate_post_retrain_skip(
-                "post_retrain_5_14_no_nan_auc", "P2", "post_retrain",
+                "post_retrain_5_14_no_nan_auc",
+                "P2",
+                "post_retrain",
                 "all 5 metals × 5 seeds non-NaN test_auc",
             ),
         ),
@@ -733,7 +871,8 @@ def _honest_framing_gates() -> List[Tuple[str, Callable[[], GateResult]]]:
         (
             "honest_framing_8_15_catalog_entry_count",
             lambda: gate_section8_entry_count(
-                "honest_framing_8_15_catalog_entry_count", "P1",
+                "honest_framing_8_15_catalog_entry_count",
+                "P1",
                 "honest_framing",
                 PARENT_DOC,
                 min_entries=15,
@@ -805,7 +944,7 @@ def parse_argv(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "--strict",
         action="store_true",
         help="Exit 2 if any gate SKIPPED (default: only FAIL triggers "
-             "non-zero exit).",
+        "non-zero exit).",
     )
     p.add_argument(
         "--verbose",
@@ -833,7 +972,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             res = runner()
         except Exception as exc:  # noqa: BLE001 — surface any gate error
             res = GateResult(
-                name, "?", args.pipeline, "FAIL",
+                name,
+                "?",
+                args.pipeline,
+                "FAIL",
                 f"gate raised: {type(exc).__name__}: {exc}",
                 time.perf_counter() - t0,
             )

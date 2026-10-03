@@ -16,6 +16,7 @@ These tests do NOT require the heavy ``posebusters`` wheel — they
 skip with a clear message if the wheel is missing (see G7 honest
 framing in Wf-246-D synthesis.md).
 """
+
 from __future__ import annotations
 
 import sys
@@ -37,8 +38,12 @@ sys.path.insert(0, str(REPORTS_DIR))
 def pose_path() -> Path:
     """One real Wf-179 P2 docked PDBQT pose (1h36 seed=0 pose=1)."""
     p = (
-        ROOT / "molmetal" / "reports" / "wf179_bd9_m15_rmsd_p2"
-        / "1h36" / "pose_seed0_p1.pdbqt"
+        ROOT
+        / "molmetal"
+        / "reports"
+        / "wf179_bd9_m15_rmsd_p2"
+        / "1h36"
+        / "pose_seed0_p1.pdbqt"
     )
     if not p.is_file():
         pytest.skip(f"missing Wf-179 P2 pose: {p}")
@@ -67,16 +72,16 @@ def test_build_mol_from_pdbqt_preserves_coordinates(pose_path):
     mol, smiles = _build_mol_from_pdbqt(pose_path)
     assert mol is not None, "build_mol_from_pdbqt returned None"
     heavy = parse_pdbqt_heavy_atoms(pose_path)
-    assert mol.GetNumAtoms() == len(heavy), (
-        f"built mol has {mol.GetNumAtoms()} atoms but PDBQT has {len(heavy)}"
-    )
+    assert mol.GetNumAtoms() == len(
+        heavy
+    ), f"built mol has {mol.GetNumAtoms()} atoms but PDBQT has {len(heavy)}"
     positions = mol.GetConformer().GetPositions()
     for i, h in enumerate(heavy):
         built = positions[i]
         raw = (h["x"], h["y"], h["z"])
-        assert np.allclose(built, raw, atol=1e-6), (
-            f"atom {i} coord mismatch: built={built} raw={raw}"
-        )
+        assert np.allclose(
+            built, raw, atol=1e-6
+        ), f"atom {i} coord mismatch: built={built} raw={raw}"
 
 
 # ---------------------------------------------------------------------------
@@ -122,25 +127,36 @@ def test_check_docked_pose_real_receptor(pose_path, receptor_pdb):
         check_docked_pose,
         posebusters_available,
     )
+
     if not posebusters_available():
         pytest.skip("posebusters wheel not installed")
 
     from wf246d_pb_dock_steric import _build_mol_from_pdbqt
+
     mol, _ = _build_mol_from_pdbqt(pose_path)
     assert mol is not None
 
     result = check_docked_pose(mol, str(receptor_pdb))
     # Documented shape.
-    for key in ("pb_valid", "backend", "config", "status", "checks",
-                "failures", "missing_checks"):
+    for key in (
+        "pb_valid",
+        "backend",
+        "config",
+        "status",
+        "checks",
+        "failures",
+        "missing_checks",
+    ):
         assert key in result, f"missing {key!r} in check_docked_pose result"
     assert result["backend"] == "posebusters"
     assert result["config"] == "dock"
     assert result["status"] in ("passed", "failed", "error")
     # Documented protein-aware checks all present.
-    for k in ("minimum_distance_to_protein",
-              "volume_overlap_with_protein",
-              "protein-ligand_maximum_distance"):
+    for k in (
+        "minimum_distance_to_protein",
+        "volume_overlap_with_protein",
+        "protein-ligand_maximum_distance",
+    ):
         assert k in result["checks"], f"missing protein-aware check {k!r}"
 
 
@@ -160,6 +176,7 @@ def test_aggregate_cross_pocket_wf179():
             "wf246d_pb_dock_steric.py` first"
         )
     import json
+
     s = json.loads(summary.read_text())
     agg = s["aggregation"]
     # n_total_poses is 65 on disk (brief said 75; 3ny8 has 1 of 3 seeds).
@@ -176,6 +193,6 @@ def test_aggregate_cross_pocket_wf179():
     # but atom-typed, so brute-force heavy-atom min is ~ 2.0-2.5 Å range).
     md = agg["mean_min_dist_to_protein_A"]
     assert md is not None
-    assert 1.8 <= md <= 3.0, (
-        f"mean_min_dist_to_protein_A={md} outside expected [1.8, 3.0] Å range"
-    )
+    assert (
+        1.8 <= md <= 3.0
+    ), f"mean_min_dist_to_protein_A={md} outside expected [1.8, 3.0] Å range"

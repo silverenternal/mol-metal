@@ -112,16 +112,14 @@ def test_should_use_approx_false_for_small_pairs() -> None:
     # 10^3 = 1000 µs = 1e-3 s.  At k_cubic_us=1e-3 the budget
     # is right at the edge; safety_factor=1.0 returns False.
     # Use a slightly larger budget to be safe.
-    assert g.should_use_approx(n_persistence_pairs=10,
-                               time_budget_s=1.0) is False
+    assert g.should_use_approx(n_persistence_pairs=10, time_budget_s=1.0) is False
 
 
 def test_should_use_approx_true_for_large_pairs() -> None:
     """A 1000-pair diagram blows a 1 ms budget."""
     g = BottleneckGuardrail()
     # 1000^3 = 1e9 µs = 1000 s.  Definitely > 1 ms.
-    assert g.should_use_approx(n_persistence_pairs=1000,
-                               time_budget_s=1.0e-3) is True
+    assert g.should_use_approx(n_persistence_pairs=1000, time_budget_s=1.0e-3) is True
 
 
 def test_should_use_approx_safety_factor_scales_budget() -> None:
@@ -136,10 +134,12 @@ def test_should_use_approx_safety_factor_scales_budget() -> None:
     g_large = BottleneckGuardrail(safety_factor=2.0)
     n = 1000
     budget = 1.0
-    assert g_small.should_use_approx(n_persistence_pairs=n,
-                                     time_budget_s=budget) is True
-    assert g_large.should_use_approx(n_persistence_pairs=n,
-                                     time_budget_s=budget) is False
+    assert (
+        g_small.should_use_approx(n_persistence_pairs=n, time_budget_s=budget) is True
+    )
+    assert (
+        g_large.should_use_approx(n_persistence_pairs=n, time_budget_s=budget) is False
+    )
 
 
 def test_should_use_approx_rejects_negative_pairs() -> None:
@@ -161,8 +161,7 @@ def test_should_use_approx_rejects_non_positive_budget() -> None:
 def test_should_use_approx_handles_zero_pairs() -> None:
     """Zero pairs → trivial exact match → approximation never triggered."""
     g = BottleneckGuardrail()
-    assert g.should_use_approx(n_persistence_pairs=0,
-                               time_budget_s=1.0e-9) is False
+    assert g.should_use_approx(n_persistence_pairs=0, time_budget_s=1.0e-9) is False
 
 
 # ---------------------------------------------------------------------------
@@ -356,8 +355,7 @@ def test_guardrail_triggers_approx_for_large_diagram() -> None:
     """Integration: a 2000-pair diagram is flagged for approximation."""
     g = BottleneckGuardrail()
     # 2000^3 = 8e9; cubic = 1e-3 * 8e9 = 8e6 µs = 8 s.  Above 1 s budget.
-    assert g.should_use_approx(n_persistence_pairs=2000,
-                               time_budget_s=1.0) is True
+    assert g.should_use_approx(n_persistence_pairs=2000, time_budget_s=1.0) is True
 
 
 def test_approximate_bottleneck_handles_random_diagram() -> None:

@@ -97,7 +97,7 @@ def test_lipman_kwarg_compatibility():
         n_layers=2,
         max_atomic_number=54,
         lr=1e-3,
-        joint_train=True,    # Lipman-specific kwarg
+        joint_train=True,  # Lipman-specific kwarg
         bond_loss_weight=0.5,
     )
     # Constructor should not raise; kwargs are surfaced via _extra.
@@ -113,6 +113,7 @@ def test_lipman_kwarg_compatibility():
 def test_adapter_is_module_export():
     """Both symbols must be exportable from the adapters package."""
     from molmetal.adapters import rxnflow_adapter  # noqa: F401
+
     assert hasattr(rxnflow_adapter, "RxnFlowAdapter")
     assert hasattr(rxnflow_adapter, "is_rxnflow_available")
 

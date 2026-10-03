@@ -55,16 +55,26 @@ def parse_args(argv: List[str] | None = None) -> argparse.Namespace:
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument("--pocket", default="830c",
-                   help="WF-30 pocket_id (default: 830c — MMP-13).")
-    p.add_argument("--candidate", default="CCO",
-                   help="SMILES of the single candidate (default: CCO — ethanol).")
+    p.add_argument(
+        "--pocket", default="830c", help="WF-30 pocket_id (default: 830c — MMP-13)."
+    )
+    p.add_argument(
+        "--candidate",
+        default="CCO",
+        help="SMILES of the single candidate (default: CCO — ethanol).",
+    )
     p.add_argument("--pocket-dir", type=Path, default=dock.WF30_POCKET_DIR)
     p.add_argument("--out-dir", type=Path, default=dock.DEFAULT_OUT_DIR)
-    p.add_argument("--metrics-path", type=Path,
-                   default=dock.DEFAULT_OUT_DIR / "wf30_dock_verify.json")
-    p.add_argument("--summary-path", type=Path,
-                   default=dock.DEFAULT_OUT_DIR / "wf30_dock_verify_summary.json")
+    p.add_argument(
+        "--metrics-path",
+        type=Path,
+        default=dock.DEFAULT_OUT_DIR / "wf30_dock_verify.json",
+    )
+    p.add_argument(
+        "--summary-path",
+        type=Path,
+        default=dock.DEFAULT_OUT_DIR / "wf30_dock_verify_summary.json",
+    )
     p.add_argument("--use-real-vina", action="store_true")
     p.add_argument("--quiet", action="store_true")
     return p.parse_args(argv)
@@ -86,7 +96,8 @@ def main(argv: List[str] | None = None) -> int:
 
     log.info(
         "verify_dock_10pockets smoke: pocket=%s candidate=%s methods=(se3sb,baseline)",
-        args.pocket, args.candidate,
+        args.pocket,
+        args.candidate,
     )
 
     # If the requested pocket isn't staged, materialise a tiny dummy
@@ -120,13 +131,17 @@ def main(argv: List[str] | None = None) -> int:
     if len(results) != n_expected:
         log.error(
             "expected %d evaluations, got %d",
-            n_expected, len(results),
+            n_expected,
+            len(results),
         )
         return 1
     for r in results:
         log.info(
             "  pocket=%s method=%s seed=%d status=%s vina=%.3f elapsed=%.2fs",
-            r.pocket_id, r.method, r.seed, r.status,
+            r.pocket_id,
+            r.method,
+            r.seed,
+            r.status,
             r.vina_kcal_mol if r.vina_kcal_mol is not None else float("nan"),
             r.elapsed_s,
         )
@@ -138,8 +153,7 @@ def main(argv: List[str] | None = None) -> int:
                 log.error("non-finite vina_kcal_mol=%s", r.vina_kcal_mol)
                 return 1
         else:
-            log.warning("  -> non-docked status %s (note=%s)",
-                        r.status, r.note)
+            log.warning("  -> non-docked status %s (note=%s)", r.status, r.note)
 
     per_pocket, aggregate = dock.aggregate_results(results)
     win_tie_loss = dock._win_tie_loss(aggregate, ("se3sb", "baseline"))
@@ -162,14 +176,10 @@ def main(argv: List[str] | None = None) -> int:
             for r in results
         ],
         "per_pocket_per_method": per_pocket,
-        "aggregate": {
-            f"{k[0]}|{k[1]}": v for k, v in aggregate.items()
-        },
+        "aggregate": {f"{k[0]}|{k[1]}": v for k, v in aggregate.items()},
         "win_tie_loss_vs_baseline": win_tie_loss,
     }
-    args.metrics_path.write_text(
-        json.dumps(metrics_payload, indent=2) + "\n"
-    )
+    args.metrics_path.write_text(json.dumps(metrics_payload, indent=2) + "\n")
     log.info("wrote %s", args.metrics_path)
 
     summary_payload = {
@@ -177,13 +187,9 @@ def main(argv: List[str] | None = None) -> int:
         "n_evaluations": int(len(results)),
         "n_docked": int(sum(1 for r in results if r.status == "docked")),
         "n_failed": int(sum(1 for r in results if r.status != "docked")),
-        "aggregate": {
-            f"{k[0]}|{k[1]}": v for k, v in aggregate.items()
-        },
+        "aggregate": {f"{k[0]}|{k[1]}": v for k, v in aggregate.items()},
     }
-    args.summary_path.write_text(
-        json.dumps(summary_payload, indent=2) + "\n"
-    )
+    args.summary_path.write_text(json.dumps(summary_payload, indent=2) + "\n")
     log.info("wrote %s", args.summary_path)
 
     # Headline pass/fail: at least one docked evaluation with a finite score.

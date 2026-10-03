@@ -109,7 +109,9 @@ def _find_kwarg_in_train_one_epoch(tree: ast.Module, kwarg_name: str) -> dict:
                     default_node = kw_defaults[idx] if kw_defaults else None
                     return {
                         "kind": "kwonly",
-                        "default_src": ast.unparse(default_node) if default_node else "<no-default>",
+                        "default_src": ast.unparse(default_node)
+                        if default_node
+                        else "<no-default>",
                     }
             # positional: defaults list aligns with rightmost positional args.
             pos_args = node.args.args
@@ -122,7 +124,9 @@ def _find_kwarg_in_train_one_epoch(tree: ast.Module, kwarg_name: str) -> dict:
                     default_node = node.args.defaults[default_idx]
                     return {
                         "kind": "positional",
-                        "default_src": ast.unparse(default_node) if default_node else "<no-default>",
+                        "default_src": ast.unparse(default_node)
+                        if default_node
+                        else "<no-default>",
                     }
     raise AssertionError(f"kwarg {kwarg_name} not found in train_one_epoch")
 
@@ -178,48 +182,48 @@ def test_cfm_cache_flag_off() -> None:
 
     # (a) Flag default = False
     flag = _find_argparse_flag(tree, "--cfm-chemprop-v3-cache")
-    assert flag["default"] == "False", (
-        f"--cfm-chemprop-v3-cache default should be False; got {flag['default']}"
-    )
-    assert flag["action"] == "'store_true'", (
-        f"--cfm-chemprop-v3-cache action should be store_true; got {flag['action']}"
-    )
+    assert (
+        flag["default"] == "False"
+    ), f"--cfm-chemprop-v3-cache default should be False; got {flag['default']}"
+    assert (
+        flag["action"] == "'store_true'"
+    ), f"--cfm-chemprop-v3-cache action should be store_true; got {flag['action']}"
 
     # (b) train_one_epoch kwarg default = False
     kwarg = _find_kwarg_in_train_one_epoch(tree, "cfm_chemprop_v3_cache")
-    assert kwarg["default_src"] == "False", (
-        f"train_one_epoch kwarg default should be False; got {kwarg['default_src']}"
-    )
+    assert (
+        kwarg["default_src"] == "False"
+    ), f"train_one_epoch kwarg default should be False; got {kwarg['default_src']}"
 
     # (c) main() wires getattr(args, "cfm_chemprop_v3_cache", False) via bool()
     main_wiring = _find_main_wiring(tree, "cfm_chemprop_v3_cache")
-    assert "cfm_chemprop_v3_cache" in main_wiring, (
-        f"main() should wire cfm_chemprop_v3_cache kwarg; got {main_wiring}"
-    )
-    assert "False" in main_wiring, (
-        f"main() default path should be False; got {main_wiring}"
-    )
+    assert (
+        "cfm_chemprop_v3_cache" in main_wiring
+    ), f"main() should wire cfm_chemprop_v3_cache kwarg; got {main_wiring}"
+    assert (
+        "False" in main_wiring
+    ), f"main() default path should be False; got {main_wiring}"
 
     # (d) Cache holder initial state = None (AST-validated).
     holder_src = _find_top_level_symbol(tree, "_CFM_CHEMPROP_V3_CACHE_HOLDER")
-    assert "None" in holder_src, (
-        f"cache holder initial state must be None; got {holder_src}"
-    )
-    assert "'cache'" in holder_src or '"cache"' in holder_src, (
-        f"cache holder must be a dict with 'cache' key; got {holder_src}"
-    )
+    assert (
+        "None" in holder_src
+    ), f"cache holder initial state must be None; got {holder_src}"
+    assert (
+        "'cache'" in holder_src or '"cache"' in holder_src
+    ), f"cache holder must be a dict with 'cache' key; got {holder_src}"
 
     # (e) set_cfm_chemprop_v3_cache is callable (top-level function defined).
     setter_src = _find_top_level_function(tree, "set_cfm_chemprop_v3_cache")
-    assert "def set_cfm_chemprop_v3_cache" in setter_src, (
-        f"set_cfm_chemprop_v3_cache must be defined; got {setter_src[:200]}"
-    )
+    assert (
+        "def set_cfm_chemprop_v3_cache" in setter_src
+    ), f"set_cfm_chemprop_v3_cache must be defined; got {setter_src[:200]}"
 
     # (f) get_cfm_chemprop_v3_cache is callable.
     getter_src = _find_top_level_function(tree, "get_cfm_chemprop_v3_cache")
-    assert "def get_cfm_chemprop_v3_cache" in getter_src, (
-        f"get_cfm_chemprop_v3_cache must be defined; got {getter_src[:200]}"
-    )
+    assert (
+        "def get_cfm_chemprop_v3_cache" in getter_src
+    ), f"get_cfm_chemprop_v3_cache must be defined; got {getter_src[:200]}"
 
 
 # ---------------------------------------------------------------------------
@@ -252,9 +256,9 @@ def test_cfm_cache_flag_on_hit_miss() -> None:
     cache = ChempropV3FeaturizationCache(use_fast_featurizer=False)
     smoke = ("c1ccccc1", "C", "CCO", "C1=CCNC=C1")
     n_added = cache.precompute_smiles(smoke)
-    assert n_added == len(smoke) == 4, (
-        f"tier-1 should precompute 4 SMILES; got {n_added}"
-    )
+    assert (
+        n_added == len(smoke) == 4
+    ), f"tier-1 should precompute 4 SMILES; got {n_added}"
     assert cache.stats.n_hit == 0
     assert cache.stats.n_miss == 0
     assert len(cache._mols) == 4
@@ -313,7 +317,10 @@ def test_cfm_cache_flag_on_hit_miss() -> None:
             out.rev_edge_index = _torch.from_numpy(_np.concatenate(batch_reis))
             out.batch = _torch.from_numpy(
                 _np.concatenate(
-                    [_np.full(n, i, dtype=_np.int64) for i, n in enumerate(atom_offsets)]
+                    [
+                        _np.full(n, i, dtype=_np.int64)
+                        for i, n in enumerate(atom_offsets)
+                    ]
                 )
             )
         else:

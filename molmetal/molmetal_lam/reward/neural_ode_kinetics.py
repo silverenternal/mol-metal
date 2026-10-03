@@ -98,6 +98,7 @@ Lit anchors
 * Hughes 2010 (Rh(III) kinetically inert scaffold).
 * Lippard 1995 (Pt(II) square-planar associative substitution).
 """
+
 from __future__ import annotations
 
 import math
@@ -129,14 +130,14 @@ SUPPORTED_KINETIC_METALS: Tuple[str, ...] = (
 #: + Hughes 2010 + Fricker 1996 + Shaw 1999).  Values are short labels
 #: used for diagnostic breakdowns in :class:`KineticsTrajectory`.
 KINETIC_REGIME: Dict[str, str] = {
-    "Pt": "associative_slow",      # t1/2 ~ 2 hr for aquation (cisplatin anchor)
-    "Pd": "associative_fast",      # ~10⁴× faster than Pt(II) (trans-effect)
-    "Ru": "inert_octahedral",      # t1/2 ~ weeks; photoactivatable
-    "Rh": "inert_scaffold",        # t1/2 ~ years; used as scaffold
-    "Ir": "very_inert",            # t1/2 ~ months; used as inert binder
-    "Os": "inert_octahedral",      # similar to Ru but slower (5d contraction)
+    "Pt": "associative_slow",  # t1/2 ~ 2 hr for aquation (cisplatin anchor)
+    "Pd": "associative_fast",  # ~10⁴× faster than Pt(II) (trans-effect)
+    "Ru": "inert_octahedral",  # t1/2 ~ weeks; photoactivatable
+    "Rh": "inert_scaffold",  # t1/2 ~ years; used as scaffold
+    "Ir": "very_inert",  # t1/2 ~ months; used as inert binder
+    "Os": "inert_octahedral",  # similar to Ru but slower (5d contraction)
     "Au": "thiol_fast_auranofin",  # t1/2 ~ minutes with serum albumin
-    "Re": "inert_scaffold",        # similar to Rh; mid-lanthanide proxy
+    "Re": "inert_scaffold",  # similar to Rh; mid-lanthanide proxy
 }
 
 #: Per-metal aquation half-life in seconds (Reedijk 1987 + Hartinger
@@ -145,41 +146,41 @@ KINETIC_REGIME: Dict[str, str] = {
 #: both as priors for the ligand-exchange ODE and as the literature
 #: target for the t1/2 RMSE verification gate (P2.2).
 AQUATION_HALF_LIVES_S: Dict[str, float] = {
-    "Pt": 2.0 * 3600.0,            # ~ 2 hr (cisplatin anchor, Reedijk 1987)
-    "Pd": 2.0 * 3600.0 / 1.0e4,    # ~ 0.72 s (10⁴× faster than Pt)
+    "Pt": 2.0 * 3600.0,  # ~ 2 hr (cisplatin anchor, Reedijk 1987)
+    "Pd": 2.0 * 3600.0 / 1.0e4,  # ~ 0.72 s (10⁴× faster than Pt)
     "Ru": 2.0 * 7.0 * 24.0 * 3600.0,  # ~ 2 weeks (inert octahedral)
     "Rh": 2.0 * 365.0 * 24.0 * 3600.0,  # ~ 2 years (scaffold)
-    "Ir": 2.0 * 30.0 * 24.0 * 3600.0,   # ~ 2 months (very inert)
-    "Os": 2.0 * 14.0 * 24.0 * 3600.0,   # ~ 2 weeks (similar to Ru)
-    "Au": 5.0 * 60.0,                   # ~ 5 min (auranofin thiol exchange)
-    "Re": 2.0 * 90.0 * 24.0 * 3600.0,   # ~ 6 months (scaffold proxy)
+    "Ir": 2.0 * 30.0 * 24.0 * 3600.0,  # ~ 2 months (very inert)
+    "Os": 2.0 * 14.0 * 24.0 * 3600.0,  # ~ 2 weeks (similar to Ru)
+    "Au": 5.0 * 60.0,  # ~ 5 min (auranofin thiol exchange)
+    "Re": 2.0 * 90.0 * 24.0 * 3600.0,  # ~ 6 months (scaffold proxy)
 }
 
 #: Per-metal redox potential in volts vs NHE for the M²⁺/M³⁺ or
 #: M²⁺/M⁴⁺ couple (Peacock 2006 + Taube 1952 + Shaw 1999).
 REDOX_POTENTIALS_V: Dict[str, float] = {
-    "Pt": 0.78,   # Pt²⁺/Pt⁴⁺ couple
-    "Pd": 0.95,   # Pd²⁺/Pd⁴⁺ couple (similar to Pt, slightly higher)
-    "Ru": 1.20,   # Ru²⁺/Ru³⁺ couple (Taube 1952)
-    "Rh": 0.76,   # Rh²⁺/Rh³⁺ couple (proxy)
-    "Ir": 0.86,   # Ir³⁺/Ir⁴⁺ couple
-    "Os": 0.85,   # Os²⁺/Os³⁺ couple (similar to Ru but slower)
-    "Au": 1.50,   # Au(I)/Au(III) couple (Shaw 1999)
-    "Re": 0.30,   # Re(III)/Re(IV) couple (proxy)
+    "Pt": 0.78,  # Pt²⁺/Pt⁴⁺ couple
+    "Pd": 0.95,  # Pd²⁺/Pd⁴⁺ couple (similar to Pt, slightly higher)
+    "Ru": 1.20,  # Ru²⁺/Ru³⁺ couple (Taube 1952)
+    "Rh": 0.76,  # Rh²⁺/Rh³⁺ couple (proxy)
+    "Ir": 0.86,  # Ir³⁺/Ir⁴⁺ couple
+    "Os": 0.85,  # Os²⁺/Os³⁺ couple (similar to Ru but slower)
+    "Au": 1.50,  # Au(I)/Au(III) couple (Shaw 1999)
+    "Re": 0.30,  # Re(III)/Re(IV) couple (proxy)
 }
 
 #: Per-metal cellular uptake flux in fmol/cell/hr via the **dominant
 #: transporter** (Ctr1 + OCT2 + passive per ORNL SOP-3 anchor in
 #: ``molmetal/docs/wetlab_protocols/sop_cellular_uptake_assay.md``).
 UPTAKE_FLUX_FMOL_CELL_HR: Dict[str, float] = {
-    "Pt": 2.0,    # Ctr1 dominant (cisplatin anchor)
-    "Pd": 0.5,    # Ctr1 moderate (Reedijk 2008)
-    "Ru": 0.5,    # OCT2 dominant (Taube 1952)
-    "Rh": 0.05,   # minimal uptake (Hughes 2010)
-    "Ir": 0.05,   # minimal uptake (Hughes 2010)
-    "Os": 0.4,    # similar to Ru
-    "Au": 0.05,   # passive (Fricker 1996)
-    "Re": 0.05,   # minimal uptake (scaffold proxy)
+    "Pt": 2.0,  # Ctr1 dominant (cisplatin anchor)
+    "Pd": 0.5,  # Ctr1 moderate (Reedijk 2008)
+    "Ru": 0.5,  # OCT2 dominant (Taube 1952)
+    "Rh": 0.05,  # minimal uptake (Hughes 2010)
+    "Ir": 0.05,  # minimal uptake (Hughes 2010)
+    "Os": 0.4,  # similar to Ru
+    "Au": 0.05,  # passive (Fricker 1996)
+    "Re": 0.05,  # minimal uptake (scaffold proxy)
 }
 
 #: Per-metal static pIC50 loss contribution (mock R² baseline
@@ -189,8 +190,8 @@ UPTAKE_FLUX_FMOL_CELL_HR: Dict[str, float] = {
 #: A2780cis shows R²=+0.037.  These are the **static** loss terms
 #: the multi-task loss anchors against.
 STATIC_R2_PLATINAI_4CELL: Dict[str, float] = {
-    "Pt": -0.02,     # 4-cell macro R² collapse detector fires
-    "Pd": -0.05,     # no PlatinAI Pd data; honest-static predict-mean
+    "Pt": -0.02,  # 4-cell macro R² collapse detector fires
+    "Pd": -0.05,  # no PlatinAI Pd data; honest-static predict-mean
     "Ru": -0.05,
     "Rh": -0.05,
     "Ir": -0.05,
@@ -207,27 +208,27 @@ STATIC_R2_PLATINAI_4CELL: Dict[str, float] = {
 # anchors; here we freeze them as module-level constants for the CPU
 # scaffold (the Wf-76 P2.1 GPU-1 retrain will make them learnable).
 LIGAND_EXCHANGE_RATE_CONSTANTS: Dict[str, float] = {
-    "Cl_to_H2O": 1.0e-4,    # Pt(II) aquation rate (M⁻¹s⁻¹)
-    "H2O_to_Cl": 1.0e2,     # reverse (Cl⁻ abundant in cell)
-    "H2O_to_GSH": 1.0e-1,   # GSH trapping (Hartinger 2009)
-    "GSH_to_H2O": 1.0e-3,   # reversible
-    "Cl_to_GSH": 1.0e-3,    # direct Cl→GSH (slower than via aqua)
+    "Cl_to_H2O": 1.0e-4,  # Pt(II) aquation rate (M⁻¹s⁻¹)
+    "H2O_to_Cl": 1.0e2,  # reverse (Cl⁻ abundant in cell)
+    "H2O_to_GSH": 1.0e-1,  # GSH trapping (Hartinger 2009)
+    "GSH_to_H2O": 1.0e-3,  # reversible
+    "Cl_to_GSH": 1.0e-3,  # direct Cl→GSH (slower than via aqua)
 }
 
 #: Hydrolysis cascade 4-step rate constants (Reedijk 1987 +
 #: Hartinger 2009).  k1 = rate-limiting aquation.
 HYDROLYSIS_CASCADE_RATE_CONSTANTS: Dict[str, float] = {
-    "k1_aquation": 1.0e-4,   # Step 1: Cl⁻ loss (rate-limiting)
+    "k1_aquation": 1.0e-4,  # Step 1: Cl⁻ loss (rate-limiting)
     "k2_second_loss": 1.0e-2,  # Step 2: 2nd Cl⁻ loss
-    "pKa1_Pt_OH2": 6.5,      # Step 3: Pt-OH2 ⇌ Pt-OH (Reedijk 1987)
+    "pKa1_Pt_OH2": 6.5,  # Step 3: Pt-OH2 ⇌ Pt-OH (Reedijk 1987)
     "k_bind_DNA_N7": 1.0e2,  # Step 4: G-N7 capture
 }
 
 #: Multi-task loss weights (S10 SKILL.md §2.4 anchor).
 MULTI_TASK_LOSS_WEIGHTS: Dict[str, float] = {
-    "alpha_static": 0.5,    # static R² term (preserves L5 baseline)
-    "beta_rate": 0.3,       # kinetic rate constant MSE
-    "gamma_half_life": 0.2, # t1/2 classification (fast / medium / slow)
+    "alpha_static": 0.5,  # static R² term (preserves L5 baseline)
+    "beta_rate": 0.3,  # kinetic rate constant MSE
+    "gamma_half_life": 0.2,  # t1/2 classification (fast / medium / slow)
 }
 
 #: t1/2 classification thresholds (seconds): fast < 600 s (10 min),
@@ -354,9 +355,7 @@ class BindingKinetics:
         state_traj = [state]
         for _ in range(n_steps):
             deriv = self.derivatives(state)
-            new_state = tuple(
-                max(0.0, s + d * actual_dt) for s, d in zip(state, deriv)
-            )
+            new_state = tuple(max(0.0, s + d * actual_dt) for s, d in zip(state, deriv))
             total = sum(new_state)
             if total > 0.0:
                 new_state = tuple(s / total for s in new_state)
@@ -405,13 +404,9 @@ class DissociationKinetics:
 
     def __post_init__(self) -> None:
         if self.metal not in SUPPORTED_KINETIC_METALS:
-            raise ValueError(
-                f"DissociationKinetics: unknown metal {self.metal!r}"
-            )
+            raise ValueError(f"DissociationKinetics: unknown metal {self.metal!r}")
         if self.rate_scale < 0.0:
-            raise ValueError(
-                f"DissociationKinetics: rate_scale must be non-negative"
-            )
+            raise ValueError(f"DissociationKinetics: rate_scale must be non-negative")
 
     def initial_state(self) -> Tuple[float, float, float, float, float, float]:
         """Return the initial [PtCl2, PtClOH2, Pt(OH2)2, PtOH, PtN7, PtOHG] state."""
@@ -426,8 +421,7 @@ class DissociationKinetics:
         s = self.rate_scale
         d_pt_cl2 = -k["k1_aquation"] * pt_cl2 * s
         d_pt_cl_oh2 = (
-            +k["k1_aquation"] * pt_cl2 * s
-            - k["k2_second_loss"] * pt_cl_oh2 * s
+            +k["k1_aquation"] * pt_cl2 * s - k["k2_second_loss"] * pt_cl_oh2 * s
         )
         d_pt_oh2_2 = (
             +k["k2_second_loss"] * pt_cl_oh2 * s
@@ -458,9 +452,7 @@ class DissociationKinetics:
         state_traj = [state]
         for _ in range(n_steps):
             deriv = self.derivatives(state)
-            new_state = tuple(
-                max(0.0, s + d * actual_dt) for s, d in zip(state, deriv)
-            )
+            new_state = tuple(max(0.0, s + d * actual_dt) for s, d in zip(state, deriv))
             total = sum(new_state)
             if total > 0.0:
                 new_state = tuple(s / total for s in new_state)
@@ -522,9 +514,7 @@ class CellularUptake:
 
     def __post_init__(self) -> None:
         if self.metal not in SUPPORTED_KINETIC_METALS:
-            raise ValueError(
-                f"CellularUptake: unknown metal {self.metal!r}"
-            )
+            raise ValueError(f"CellularUptake: unknown metal {self.metal!r}")
 
     def uptake_flux_fmol_per_cell_hr(self) -> float:
         """Return the dominant-transporter uptake flux (fmol/cell/hr)."""
@@ -569,12 +559,16 @@ class CellularUptake:
             # Michaelis-Menten fluxes (M/s, converted from fmol/cell/hr via
             # 1 fmol/cell ≈ 1.0e-15 mol in 1.0e-12 L cell volume)
             v_ctr1 = (
-                self.ctr1_vmax * pt_ext / (self.ctr1_km_m + pt_ext + 1.0e-12)
+                self.ctr1_vmax
+                * pt_ext
+                / (self.ctr1_km_m + pt_ext + 1.0e-12)
                 * (1.0e-15 / 1.0e-12)  # fmol/cell/hr → M/s
                 / 3600.0
             )
             v_oct2 = (
-                self.oct2_vmax * pt_ext / (self.oct2_km_m + pt_ext + 1.0e-12)
+                self.oct2_vmax
+                * pt_ext
+                / (self.oct2_km_m + pt_ext + 1.0e-12)
                 * (1.0e-15 / 1.0e-12)
                 / 3600.0
             )
@@ -619,13 +613,9 @@ class RedoxCycling:
 
     def __post_init__(self) -> None:
         if self.metal not in SUPPORTED_KINETIC_METALS:
-            raise ValueError(
-                f"RedoxCycling: unknown metal {self.metal!r}"
-            )
+            raise ValueError(f"RedoxCycling: unknown metal {self.metal!r}")
         if self.k_oxidation_s < 0.0 or self.k_reduction_s < 0.0:
-            raise ValueError(
-                f"RedoxCycling: rate constants must be non-negative"
-            )
+            raise ValueError(f"RedoxCycling: rate constants must be non-negative")
 
     def e0_v_vs_nhe(self) -> float:
         """Return the redox potential (V vs NHE) for this metal."""
@@ -635,9 +625,7 @@ class RedoxCycling:
         """Return the initial [M_reduced, M_oxidized] state."""
         return (1.0, 0.0)
 
-    def derivatives(
-        self, state: Tuple[float, float]
-    ) -> Tuple[float, float]:
+    def derivatives(self, state: Tuple[float, float]) -> Tuple[float, float]:
         """Compute the 2-state redox ODE derivatives."""
         m_red, m_ox = state
         d_m_red = -self.k_oxidation_s * m_red + self.k_reduction_s * m_ox
@@ -660,9 +648,7 @@ class RedoxCycling:
         state_traj = [state]
         for _ in range(n_steps):
             deriv = self.derivatives(state)
-            new_state = tuple(
-                max(0.0, s + d * actual_dt) for s, d in zip(state, deriv)
-            )
+            new_state = tuple(max(0.0, s + d * actual_dt) for s, d in zip(state, deriv))
             total = sum(new_state)
             if total > 0.0:
                 new_state = tuple(s / total for s in new_state)
@@ -706,7 +692,11 @@ class MultiTaskLoss:
     gamma_half_life: float = MULTI_TASK_LOSS_WEIGHTS["gamma_half_life"]
 
     def __post_init__(self) -> None:
-        if self.alpha_static < 0.0 or self.beta_rate < 0.0 or self.gamma_half_life < 0.0:
+        if (
+            self.alpha_static < 0.0
+            or self.beta_rate < 0.0
+            or self.gamma_half_life < 0.0
+        ):
             raise ValueError(
                 f"MultiTaskLoss: weights must be non-negative; "
                 f"got α={self.alpha_static}, β={self.beta_rate}, γ={self.gamma_half_life}"
@@ -946,8 +936,7 @@ def smoke_neural_ode_kinetics() -> List[KineticsTrajectory]:
     metals = ("Pt", "Pd", "Au")
     target_id = "smoke_target"
     trajectories = [
-        synthetic_mock_kinetics(metal=m, target_id=target_id, seed=42)
-        for m in metals
+        synthetic_mock_kinetics(metal=m, target_id=target_id, seed=42) for m in metals
     ]
     return trajectories
 
@@ -979,4 +968,5 @@ def _main() -> int:
 
 if __name__ == "__main__":
     import sys
+
     sys.exit(_main())

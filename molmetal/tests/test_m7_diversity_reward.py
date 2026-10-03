@@ -39,6 +39,7 @@ Run with::
     uv run --no-sync pytest -q \\
         molmetal/tests/test_m7_diversity_reward.py --tb=short
 """
+
 from __future__ import annotations
 
 from typing import Any, List, Optional
@@ -112,9 +113,9 @@ def test_diversity_reward_penalizes_similar(aggregator_cls):
     agg = RewardAggregator()
 
     # Xanthine cluster (3 members) — caffeine + 2 dimethylxanthines.
-    duplicate_smi = "CN1C=NC2=C1C(=O)N(C(=O)N2C)C"   # caffeine
-    near_dup_1 = "Cn1cnc2c1c(=O)[nH]c(=O)n2C"        # theophylline
-    near_dup_2 = "Cc1ncn2c1c(=O)n(C)c(=O)n2C"        # theobromine (valid SMILES)
+    duplicate_smi = "CN1C=NC2=C1C(=O)N(C(=O)N2C)C"  # caffeine
+    near_dup_1 = "Cn1cnc2c1c(=O)[nH]c(=O)n2C"  # theophylline
+    near_dup_2 = "Cc1ncn2c1c(=O)n(C)c(=O)n2C"  # theobromine (valid SMILES)
     main_dup = _SmiStub(duplicate_smi)
     result_set = [_SmiStub(near_dup_1), _SmiStub(near_dup_2), main_dup]
 
@@ -127,12 +128,8 @@ def test_diversity_reward_penalizes_similar(aggregator_cls):
     td_unique = agg.tanimoto_distance_to_set(unique, result_set)
 
     # (a) Sanity bound — the helper returns [0, 1].
-    assert 0.0 <= td_similar <= 1.0, (
-        f"td_similar must be in [0, 1]; got {td_similar}"
-    )
-    assert 0.0 <= td_unique <= 1.0, (
-        f"td_unique must be in [0, 1]; got {td_unique}"
-    )
+    assert 0.0 <= td_similar <= 1.0, f"td_similar must be in [0, 1]; got {td_similar}"
+    assert 0.0 <= td_unique <= 1.0, f"td_unique must be in [0, 1]; got {td_unique}"
 
     # The penalty signal is the relative ordering — the
     # near-duplicate MUST have a strictly lower mean Tanimoto
@@ -207,10 +204,10 @@ def test_diversity_reward_rewards_dissimilar(aggregator_cls):
     agg = RewardAggregator()
 
     # Aspirin (unique) vs 3 xanthine near-duplicates.
-    unique_smi = "CC(=O)Oc1ccccc1C(=O)O"               # aspirin
-    duplicate_smi = "CN1C=NC2=C1C(=O)N(C(=O)N2C)C"     # caffeine
-    near_dup_1 = "Cn1cnc2c1c(=O)[nH]c(=O)n2C"          # theophylline
-    near_dup_2 = "Cc1ncn2c1c(=O)n(C)c(=O)n2C"          # theobromine (valid SMILES)
+    unique_smi = "CC(=O)Oc1ccccc1C(=O)O"  # aspirin
+    duplicate_smi = "CN1C=NC2=C1C(=O)N(C(=O)N2C)C"  # caffeine
+    near_dup_1 = "Cn1cnc2c1c(=O)[nH]c(=O)n2C"  # theophylline
+    near_dup_2 = "Cc1ncn2c1c(=O)n(C)c(=O)n2C"  # theobromine (valid SMILES)
 
     unique = _SmiStub(unique_smi)
     main_dup = _SmiStub(duplicate_smi)

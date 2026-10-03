@@ -81,7 +81,18 @@ NUM_BOND_CLASSES = 5
 # independent atom-type head.  When None the head falls back to
 # max_atomic_number, which is the legacy CE code path.
 DEFAULT_ATOM_VOCAB: Tuple[int, ...] = (
-    1, 6, 7, 8, 9, 15, 16, 17, 34, 35, 53, 78,
+    1,
+    6,
+    7,
+    8,
+    9,
+    15,
+    16,
+    17,
+    34,
+    35,
+    53,
+    78,
 )
 
 
@@ -100,14 +111,16 @@ def _build_simplex_source(
     ``one_hot(target) - 1/K · 1_K`` (FlowMol Eq. 7).
     """
     return torch.full(
-        (n_samples, n_classes), 1.0 / float(n_classes),
-        device=device, dtype=dtype,
+        (n_samples, n_classes),
+        1.0 / float(n_classes),
+        device=device,
+        dtype=dtype,
     )
 
 
 def _simplex_flow_sample(
-    target_one_hot: torch.Tensor,    # (..., K) float
-    t: torch.Tensor,                  # (...,) 1 in [0, 1]
+    target_one_hot: torch.Tensor,  # (..., K) float
+    t: torch.Tensor,  # (...,) 1 in [0, 1]
     n_classes: int,
 ) -> torch.Tensor:
     """Sample the SimplexFlow interpolation at time ``t``.
@@ -117,15 +130,17 @@ def _simplex_flow_sample(
     """
     t_b = t.unsqueeze(-1).to(target_one_hot.dtype)
     source = _build_simplex_source(
-        n_classes, target_one_hot.shape[-2] if target_one_hot.dim() > 1 else 1,
-        target_one_hot.device, target_one_hot.dtype,
+        n_classes,
+        target_one_hot.shape[-2] if target_one_hot.dim() > 1 else 1,
+        target_one_hot.device,
+        target_one_hot.dtype,
     )
     # Broadcast-safe: source is (..., K), target_one_hot is (..., K).
     return (1.0 - t_b) * source + t_b * target_one_hot
 
 
 def _simplex_flow_target_velocity(
-    target_one_hot: torch.Tensor,    # (..., K) float
+    target_one_hot: torch.Tensor,  # (..., K) float
     n_classes: int,
 ) -> torch.Tensor:
     """Return the per-sample target velocity for the SimplexFlow path.
@@ -134,8 +149,10 @@ def _simplex_flow_target_velocity(
     ``v_target = target - 1/K · 1``  (FlowMol Eq. 7).
     """
     source = _build_simplex_source(
-        n_classes, target_one_hot.shape[-2] if target_one_hot.dim() > 1 else 1,
-        target_one_hot.device, target_one_hot.dtype,
+        n_classes,
+        target_one_hot.shape[-2] if target_one_hot.dim() > 1 else 1,
+        target_one_hot.device,
+        target_one_hot.dtype,
     )
     return target_one_hot - source
 
@@ -185,10 +202,10 @@ class UnifiedAtomBondHead(nn.Module):
 
     def forward(
         self,
-        h_src: torch.Tensor,                # (E, H)
-        h_dst: torch.Tensor,                # (E, H)
-        dist: torch.Tensor,                 # (E,)
-        t: torch.Tensor,                    # (E,)
+        h_src: torch.Tensor,  # (E, H)
+        h_dst: torch.Tensor,  # (E, H)
+        dist: torch.Tensor,  # (E,)
+        t: torch.Tensor,  # (E,)
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Predict (atom_velocity (E, max_z), bond_velocity (E, K))."""
         t_per_edge = t.unsqueeze(-1).to(h_src.dtype)
@@ -279,8 +296,8 @@ class UnifiedAtomBondFlow:
     # ------------------------------------------------------------------
     def sample(
         self,
-        atom_target_one_hot: torch.Tensor,    # (E, max_z) or (B, N, max_z)
-        bond_target_one_hot: torch.Tensor,    # (E, K)
+        atom_target_one_hot: torch.Tensor,  # (E, max_z) or (B, N, max_z)
+        bond_target_one_hot: torch.Tensor,  # (E, K)
         t: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Sample joint SimplexFlow at time ``t``.
@@ -298,10 +315,14 @@ class UnifiedAtomBondFlow:
                 dtype=atom_target_one_hot.dtype,
             )
         atom_x_t = _simplex_flow_sample(
-            atom_target_one_hot, t, self.max_atomic_number,
+            atom_target_one_hot,
+            t,
+            self.max_atomic_number,
         )
         bond_x_t = _simplex_flow_sample(
-            bond_target_one_hot, t, self.num_bond_classes,
+            bond_target_one_hot,
+            t,
+            self.num_bond_classes,
         )
         return atom_x_t, bond_x_t, t
 
@@ -315,10 +336,12 @@ class UnifiedAtomBondFlow:
         ``v_target = one_hot − 1/K`` for both simplices.
         """
         atom_v = _simplex_flow_target_velocity(
-            atom_target_one_hot, self.max_atomic_number,
+            atom_target_one_hot,
+            self.max_atomic_number,
         )
         bond_v = _simplex_flow_target_velocity(
-            bond_target_one_hot, self.num_bond_classes,
+            bond_target_one_hot,
+            self.num_bond_classes,
         )
         return atom_v, bond_v
 
@@ -327,11 +350,11 @@ class UnifiedAtomBondFlow:
     # ------------------------------------------------------------------
     def unified_loss(
         self,
-        h_src: torch.Tensor,                  # (E, H)
-        h_dst: torch.Tensor,                  # (E, H)
-        dist: torch.Tensor,                   # (E,)
-        atom_target_one_hot: torch.Tensor,    # (E, max_z)
-        bond_target_one_hot: torch.Tensor,    # (E, K)
+        h_src: torch.Tensor,  # (E, H)
+        h_dst: torch.Tensor,  # (E, H)
+        dist: torch.Tensor,  # (E,)
+        atom_target_one_hot: torch.Tensor,  # (E, max_z)
+        bond_target_one_hot: torch.Tensor,  # (E, K)
         t: Optional[torch.Tensor] = None,
         atom_loss_weight: float = 1.0,
         bond_loss_weight: float = 1.0,
@@ -353,17 +376,22 @@ class UnifiedAtomBondFlow:
         head = self.head(device=h_src.device)
         if t is None:
             t = torch.rand(
-                h_src.shape[0], device=h_src.device, dtype=h_src.dtype,
+                h_src.shape[0],
+                device=h_src.device,
+                dtype=h_src.dtype,
             )
         # Sample x_t (joint — single t draw, both simplices)
         atom_x_t, bond_x_t, t_e = self.sample(
-            atom_target_one_hot, bond_target_one_hot, t=t,
+            atom_target_one_hot,
+            bond_target_one_hot,
+            t=t,
         )
         # Predict joint velocity (single forward, shared MLP trunk)
         atom_v_pred, bond_v_pred = head(h_src, h_dst, dist, t_e)
         # Targets (constant per edge — FlowMol Eq. 7)
         atom_v_tgt, bond_v_tgt = self.target_velocity(
-            atom_target_one_hot, bond_target_one_hot,
+            atom_target_one_hot,
+            bond_target_one_hot,
         )
         # MSE on each component, masked to the simplex dim only.
         atom_loss = F.mse_loss(atom_v_pred, atom_v_tgt)
@@ -404,10 +432,14 @@ def matches_separate_flows(
     against ``target - x_t`` on its own simplex and they must agree.
     """
     atom_match = torch.allclose(
-        unified_v_pred_atom, separate_v_pred_atom, atol=atol,
+        unified_v_pred_atom,
+        separate_v_pred_atom,
+        atol=atol,
     )
     bond_match = torch.allclose(
-        unified_v_pred_bond, separate_v_pred_bond, atol=atol,
+        unified_v_pred_bond,
+        separate_v_pred_bond,
+        atol=atol,
     )
     # Shared-t contract per simplex (cannot compare across simplices
     # because their last-dim sizes differ).
@@ -421,12 +453,7 @@ def matches_separate_flows(
         separate_v_pred_bond - bond_x_t,
         atol=atol,
     )
-    return (
-        atom_match
-        and bond_match
-        and atom_residual_match
-        and bond_residual_match
-    )
+    return atom_match and bond_match and atom_residual_match and bond_residual_match
 
 
 __all__ = [

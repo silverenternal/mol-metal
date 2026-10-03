@@ -92,6 +92,7 @@ try:
         DEFAULT_N_LAYERS,
         apply_closure_bounded_mask,
     )
+
     TRAIN_IMPORT_OK = True
     TRAIN_IMPORT_ERR: Optional[str] = None
 except Exception as _e:  # pragma: no cover — defensive guard
@@ -103,6 +104,7 @@ from molmetal.models.bond_head import AtomCloud  # noqa: E402
 try:
     from rdkit import Chem  # noqa: E402
     from rdkit.Chem import AllChem  # noqa: E402
+
     RDKIT_AVAILABLE = True
 except Exception:  # pragma: no cover
     RDKIT_AVAILABLE = False
@@ -117,11 +119,12 @@ DEFAULT_CKPT_PATH = (
 DEFAULT_DATA_PATH = (
     PROJECT_ROOT / "molmetal" / "data" / "metalcytotox_rdkit_features.csv"
 )
-DEFAULT_OUT_DIR = (
-    PROJECT_ROOT / "molmetal" / "reports" / "wf188_m14_full_metalcytotox"
-)
+DEFAULT_OUT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf188_m14_full_metalcytotox"
 DEFAULT_OUT_JSON = (
-    PROJECT_ROOT / "molmetal" / "reports" / "wf188_m14_full_metalcytotox"
+    PROJECT_ROOT
+    / "molmetal"
+    / "reports"
+    / "wf188_m14_full_metalcytotox"
     / "result.json"
 )
 DEFAULT_CLOSURE_BIAS = {
@@ -191,6 +194,7 @@ def _embed_worker_init():
     global _EMBED_FUNC
     from rdkit import Chem
     from rdkit.Chem import AllChem
+
     _EMBED_FUNC = (Chem, AllChem)
 
 
@@ -234,7 +238,8 @@ def _try_embed_with_strategy(
         return False
     if strategy == "random_coords":
         embed_kwargs = dict(
-            randomSeed=seed, maxAttempts=max_attempts,
+            randomSeed=seed,
+            maxAttempts=max_attempts,
             useRandomCoords=True,
         )
         for _ in range(max_attempts):
@@ -303,9 +308,13 @@ def _embed_one(args: Tuple[str, int, float]) -> Optional[bytes]:
     for strat in strategies:
         try:
             embedded = _try_embed_with_strategy(
-                Chem, AllChem, mol,
-                strategy=strat, seed=seed,
-                max_attempts=5, max_iterations=200,
+                Chem,
+                AllChem,
+                mol,
+                strategy=strat,
+                seed=seed,
+                max_attempts=5,
+                max_iterations=200,
             )
         except Exception:
             embedded = False
@@ -368,9 +377,7 @@ def embed_cohort_parallel(
     if len(rows) == 0:
         return []
     out: List[Tuple[bytes, str]] = []
-    work = [
-        (row["smiles"], i, jitter) for i, row in enumerate(rows)
-    ]
+    work = [(row["smiles"], i, jitter) for i, row in enumerate(rows)]
     metals = [row["metal"] for row in rows]
     t0 = time.time()
     with mp.Pool(
@@ -378,9 +385,14 @@ def embed_cohort_parallel(
         initializer=_embed_worker_init,
     ) as pool:
         for i, (res, metal) in enumerate(
-            zip(pool.imap_unordered(
-                _embed_one, work, chunksize=64,
-            ), metals)
+            zip(
+                pool.imap_unordered(
+                    _embed_one,
+                    work,
+                    chunksize=64,
+                ),
+                metals,
+            )
         ):
             if res is not None:
                 out.append((res, metal))
@@ -435,7 +447,9 @@ def load_checkpoint(
             flush=True,
         )
     decoder = YuelBondBondDecoder(
-        head=model.head, hidden_dim=hidden_dim, n_layers=n_layers,
+        head=model.head,
+        hidden_dim=hidden_dim,
+        n_layers=n_layers,
     )
     model.eval()
     return model, decoder, payload
@@ -465,8 +479,10 @@ def decode_one_with_bias(
         orig_bias = last_layer.bias.data.clone()
         bias_delta = apply_closure_bounded_mask(
             torch.zeros(
-                1, NUM_BOND_CLASSES,
-                device=device, dtype=last_layer.bias.dtype,
+                1,
+                NUM_BOND_CLASSES,
+                device=device,
+                dtype=last_layer.bias.dtype,
             ),
             closure_bias,
             prefer_dative=True,
@@ -528,29 +544,55 @@ def parse_args() -> argparse.Namespace:
             "(26,801 samples, per-metal, parallel embed)."
         ),
     )
-    p.add_argument("--ckpt-path", type=str,
-                   default=str(DEFAULT_CKPT_PATH),
-                   help="Path to trained CFM checkpoint.")
-    p.add_argument("--data-path", type=str,
-                   default=str(DEFAULT_DATA_PATH),
-                   help="Path to MetalCytoToxDB CSV.")
-    p.add_argument("--out-dir", type=str,
-                   default=str(DEFAULT_OUT_DIR),
-                   help="Output directory.")
-    p.add_argument("--out-json", type=str,
-                   default=str(DEFAULT_OUT_JSON),
-                   help="Final gate-by-gate JSON path.")
-    p.add_argument("--device", type=str, default="auto",
-                   help="Device: auto / cuda / cuda:0 / cpu.")
-    p.add_argument("--pocket-id", type=str, default="1h36",
-                   help="Pocket ID for closure bias (default 1h36).")
-    p.add_argument("--jitter", type=float, default=0.05,
-                   help="Position jitter in Å (default 0.05).")
-    p.add_argument("--n-workers", type=int, default=16,
-                   help="Parallel embedding workers (default 16).")
-    p.add_argument("--target-metals", type=str, nargs="+",
-                   default=TARGET_METALS,
-                   help="Metals to report per-metal breakdown.")
+    p.add_argument(
+        "--ckpt-path",
+        type=str,
+        default=str(DEFAULT_CKPT_PATH),
+        help="Path to trained CFM checkpoint.",
+    )
+    p.add_argument(
+        "--data-path",
+        type=str,
+        default=str(DEFAULT_DATA_PATH),
+        help="Path to MetalCytoToxDB CSV.",
+    )
+    p.add_argument(
+        "--out-dir", type=str, default=str(DEFAULT_OUT_DIR), help="Output directory."
+    )
+    p.add_argument(
+        "--out-json",
+        type=str,
+        default=str(DEFAULT_OUT_JSON),
+        help="Final gate-by-gate JSON path.",
+    )
+    p.add_argument(
+        "--device", type=str, default="auto", help="Device: auto / cuda / cuda:0 / cpu."
+    )
+    p.add_argument(
+        "--pocket-id",
+        type=str,
+        default="1h36",
+        help="Pocket ID for closure bias (default 1h36).",
+    )
+    p.add_argument(
+        "--jitter",
+        type=float,
+        default=0.05,
+        help="Position jitter in Å (default 0.05).",
+    )
+    p.add_argument(
+        "--n-workers",
+        type=int,
+        default=16,
+        help="Parallel embedding workers (default 16).",
+    )
+    p.add_argument(
+        "--target-metals",
+        type=str,
+        nargs="+",
+        default=TARGET_METALS,
+        help="Metals to report per-metal breakdown.",
+    )
     return p.parse_args()
 
 
@@ -565,8 +607,7 @@ def main() -> int:
         device = torch.device("cpu")
 
     if not TRAIN_IMPORT_OK:
-        print(f"[Wf-188] FATAL: train import failed: {TRAIN_IMPORT_ERR}",
-              flush=True)
+        print(f"[Wf-188] FATAL: train import failed: {TRAIN_IMPORT_ERR}", flush=True)
         return 2
     if not RDKIT_AVAILABLE:
         print("[Wf-188] FATAL: rdkit not available", flush=True)
@@ -601,8 +642,7 @@ def main() -> int:
     out_json.parent.mkdir(parents=True, exist_ok=True)
 
     if not ckpt_path.exists():
-        print(f"[Wf-188] FATAL: checkpoint missing: {ckpt_path}",
-              flush=True)
+        print(f"[Wf-188] FATAL: checkpoint missing: {ckpt_path}", flush=True)
         return 2
     if not data_path.exists():
         print(f"[Wf-188] FATAL: data missing: {data_path}", flush=True)
@@ -650,10 +690,16 @@ def main() -> int:
         rows_m = per_metal_rows.get(metal, [])
         if not rows_m:
             print(f"[Wf-188] no rows for metal={metal}; skipping", flush=True)
-            per_metal.append(MetalMetrics(
-                metal=metal, n_total=0, n_embedded=0, n_decode_ok=0,
-                decode_ratio=0.0, wall_time_s=0.0,
-            ))
+            per_metal.append(
+                MetalMetrics(
+                    metal=metal,
+                    n_total=0,
+                    n_embedded=0,
+                    n_decode_ok=0,
+                    decode_ratio=0.0,
+                    wall_time_s=0.0,
+                )
+            )
             continue
         # Parallel embed.
         print(
@@ -687,14 +733,16 @@ def main() -> int:
             label=f"{metal}-decode",
         )
         decode_ratio = n_ok / max(n_total, 1)
-        per_metal.append(MetalMetrics(
-            metal=metal,
-            n_total=len(rows_m),
-            n_embedded=n_embedded,
-            n_decode_ok=n_ok,
-            decode_ratio=decode_ratio,
-            wall_time_s=embed_wall + decode_wall,
-        ))
+        per_metal.append(
+            MetalMetrics(
+                metal=metal,
+                n_total=len(rows_m),
+                n_embedded=n_embedded,
+                n_decode_ok=n_ok,
+                decode_ratio=decode_ratio,
+                wall_time_s=embed_wall + decode_wall,
+            )
+        )
         agg_ok += n_ok
         agg_embed_ok += n_embedded
         print(
@@ -712,8 +760,7 @@ def main() -> int:
     # Honest framing.
     if report.aggregate_n_embedded < 10000:
         verdict = (
-            f"HALT: only {report.aggregate_n_embedded} embedded "
-            f"(target = 26,801)"
+            f"HALT: only {report.aggregate_n_embedded} embedded " f"(target = 26,801)"
         )
     elif report.aggregate_decode_ratio == 0.0:
         verdict = "HALT: real CFM decode_ratio = 0.0 (model fails on real data)"
@@ -763,9 +810,7 @@ def main() -> int:
     gate_2_n_processed = int(report.aggregate_n_embedded)
     gate_3_wall_sec = float(report.wall_time_s)
     gate_4_decode_ratio = float(report.aggregate_decode_ratio)
-    gate_5_per_metal = {
-        m.metal: float(m.decode_ratio) for m in per_metal
-    }
+    gate_5_per_metal = {m.metal: float(m.decode_ratio) for m in per_metal}
     per_metal_summary = {
         m.metal: {
             "n": int(m.n_total),
@@ -852,8 +897,7 @@ def main() -> int:
         "",
         f"**Date**: 2026-09-27",
         f"**Checkpoint**: `{report.checkpoint_path}`",
-        f"**Data**: `{report.data_path}` "
-        f"(n_total={report.n_total_metalcytotox})",
+        f"**Data**: `{report.data_path}` " f"(n_total={report.n_total_metalcytotox})",
         f"**Device**: {device}",
         f"**Embed workers**: {args.n_workers}",
         "",
@@ -865,8 +909,7 @@ def main() -> int:
         f"({report.aggregate_n_decode_ok}/{report.aggregate_n_embedded})",
         f"- Gap vs synthetic: **{gap_vs_synthetic:+.4f}**",
         f"- Verdict: **{verdict}**",
-        f"- Wall time: {report.wall_time_s:.1f}s "
-        f"(target: <600s, hard cap: 1200s)",
+        f"- Wall time: {report.wall_time_s:.1f}s " f"(target: <600s, hard cap: 1200s)",
         "",
         "## Per-metal breakdown",
         "",

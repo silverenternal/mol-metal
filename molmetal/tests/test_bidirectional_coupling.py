@@ -111,9 +111,7 @@ def _import_coupling():
     return BidirectionalCoupling, CFMLambdaReverse, LAMBDA_DIM, EMBED_DIM
 
 
-BidirectionalCoupling, CFMLambdaReverse, LAMBDA_DIM, EMBED_DIM = (
-    _import_coupling()
-)
+BidirectionalCoupling, CFMLambdaReverse, LAMBDA_DIM, EMBED_DIM = _import_coupling()
 
 
 # ---------------------------------------------------------------------------
@@ -147,12 +145,7 @@ def test_load_platinai_smiles_handles_missing_file(tmp_path) -> None:
 def test_load_platinai_smiles_reads_rows(tmp_path) -> None:
     """Loads up to ``n`` rows, drops empty SMILES."""
     p = tmp_path / "p.csv"
-    p.write_text(
-        "id,smiles,metal\n"
-        "a,CCO,Pt\n"
-        "b,,Ru\n"
-        "c,c1ccccc1,Pd\n"
-    )
+    p.write_text("id,smiles,metal\n" "a,CCO,Pt\n" "b,,Ru\n" "c,c1ccccc1,Pd\n")
     rows = _load_platinai_smiles(p, n=10)
     assert len(rows) == 2
     assert rows[0]["smiles"] == "CCO"
@@ -250,7 +243,10 @@ def test_run_round_trip_records_on_failure(bc) -> None:
     # Pass a SMILES that triggers an error path via the on_pocket_change
     # hook (the runner accepts any callable).
     ok, payload, _ = _run_round_trip(
-        bc, "CCO", pocket, n_steps=10,
+        bc,
+        "CCO",
+        pocket,
+        n_steps=10,
         on_pocket_change=lambda p: None,  # returns None → coerced to 0-length
     )
     # Either the runner reports failure (None pocket → array of length 0)
@@ -264,9 +260,13 @@ def test_run_round_trip_records_on_failure(bc) -> None:
 def test_bench_seed_returns_full_aggregate(bc, sample_rows) -> None:
     """Per-seed bench emits the expected aggregate keys + sample_records."""
     out = _bench_seed(
-        bc, sample_rows, seed=0,
-        lambda_dim=LAMBDA_DIM, embed_dim=EMBED_DIM,
-        n_steps=10, pocket_size=64,
+        bc,
+        sample_rows,
+        seed=0,
+        lambda_dim=LAMBDA_DIM,
+        embed_dim=EMBED_DIM,
+        n_steps=10,
+        pocket_size=64,
     )
     assert out["seed"] == 0
     assert out["n_samples"] == 3
@@ -287,9 +287,13 @@ def test_aggregate_across_seeds_combines_blocks(bc, sample_rows) -> None:
     """Aggregating 2 seed blocks yields cross-seed mean + std."""
     blocks = [
         _bench_seed(
-            bc, sample_rows, seed=int(s),
-            lambda_dim=LAMBDA_DIM, embed_dim=EMBED_DIM,
-            n_steps=10, pocket_size=64,
+            bc,
+            sample_rows,
+            seed=int(s),
+            lambda_dim=LAMBDA_DIM,
+            embed_dim=EMBED_DIM,
+            n_steps=10,
+            pocket_size=64,
         )
         for s in (0, 1)
     ]
@@ -304,9 +308,13 @@ def test_aggregate_across_seeds_handles_single_block(bc, sample_rows) -> None:
     """A single seed block still produces a valid aggregate."""
     blocks = [
         _bench_seed(
-            bc, sample_rows, seed=0,
-            lambda_dim=LAMBDA_DIM, embed_dim=EMBED_DIM,
-            n_steps=10, pocket_size=64,
+            bc,
+            sample_rows,
+            seed=0,
+            lambda_dim=LAMBDA_DIM,
+            embed_dim=EMBED_DIM,
+            n_steps=10,
+            pocket_size=64,
         ),
     ]
     agg = _aggregate_across_seeds(blocks)
@@ -367,4 +375,5 @@ def test_optional_imports_resolve() -> None:
 def math_is_nan(x: float) -> bool:
     """Tiny local helper — avoids the bare ``math.isnan`` lint warning."""
     import math as _math
+
     return _math.isnan(float(x))

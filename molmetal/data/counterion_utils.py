@@ -47,13 +47,78 @@ from rdkit import Chem  # used in apply_config for counterion_concat_smiles
 # RDKit periodic-table metal symbol set (subset for fast membership test).
 _METAL_SYMBOLS = frozenset(
     {
-        "Li", "Be", "Na", "Mg", "Al", "K", "Ca", "Sc", "Ti", "V", "Cr",
-        "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Rb", "Sr", "Y", "Zr",
-        "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Cs",
-        "Ba", "La", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg",
-        "Tl", "Pb", "Bi", "Po", "Fr", "Ra", "Ac", "Ce", "Pr", "Nd", "Pm",
-        "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Th",
-        "Pa", "U", "Np", "Pu", "Am", "Cm",
+        "Li",
+        "Be",
+        "Na",
+        "Mg",
+        "Al",
+        "K",
+        "Ca",
+        "Sc",
+        "Ti",
+        "V",
+        "Cr",
+        "Mn",
+        "Fe",
+        "Co",
+        "Ni",
+        "Cu",
+        "Zn",
+        "Ga",
+        "Rb",
+        "Sr",
+        "Y",
+        "Zr",
+        "Nb",
+        "Mo",
+        "Tc",
+        "Ru",
+        "Rh",
+        "Pd",
+        "Ag",
+        "Cd",
+        "In",
+        "Sn",
+        "Cs",
+        "Ba",
+        "La",
+        "Hf",
+        "Ta",
+        "W",
+        "Re",
+        "Os",
+        "Ir",
+        "Pt",
+        "Au",
+        "Hg",
+        "Tl",
+        "Pb",
+        "Bi",
+        "Po",
+        "Fr",
+        "Ra",
+        "Ac",
+        "Ce",
+        "Pr",
+        "Nd",
+        "Pm",
+        "Sm",
+        "Eu",
+        "Gd",
+        "Tb",
+        "Dy",
+        "Ho",
+        "Er",
+        "Tm",
+        "Yb",
+        "Lu",
+        "Th",
+        "Pa",
+        "U",
+        "Np",
+        "Pu",
+        "Am",
+        "Cm",
     }
 )
 
@@ -109,7 +174,9 @@ def extract_counterion_features(counterion_smiles: str) -> Dict[str, float]:
         # Heavy atom count
         num_atoms = float(mol.GetNumHeavyAtoms())
         # Inorganic flag: 1 iff no carbon
-        is_inorganic = float(1.0 if all(a.GetSymbol() != "C" for a in mol.GetAtoms()) else 0.0)
+        is_inorganic = float(
+            1.0 if all(a.GetSymbol() != "C" for a in mol.GetAtoms()) else 0.0
+        )
         # Metal flag: 1 iff any heavy atom is a metal
         has_metal = float(
             1.0 if any(a.GetSymbol() in _METAL_SYMBOLS for a in mol.GetAtoms()) else 0.0
@@ -204,7 +271,9 @@ def apply_config(
         return morgan_features(smiles_list, morgan_radius, morgan_nbits)
 
     if config == "counterion_features":
-        fp = morgan_features(smiles_list, morgan_radius, morgan_nbits).astype(np.float32)
+        fp = morgan_features(smiles_list, morgan_radius, morgan_nbits).astype(
+            np.float32
+        )
         n = len(smiles_list)
         extra = np.zeros((n, len(FEATURE_NAMES)), dtype=np.float32)
         for i, c in enumerate(counterion_list):

@@ -107,8 +107,16 @@ GENERATED_UTC = datetime.now(timezone.utc).isoformat()
 # carboplatin, oxaliplatin, auranofin, ruthenium-arene).
 DEFAULT_CANDIDATES_TXT = _REPO_ROOT / "molmetal" / "scripts" / "_demo_5_metaldrugs.txt"
 DEFAULT_POCKETS: Tuple[str, ...] = (
-    "830c", "1h36", "3eml", "3ny8", "4aaw",
-    "4rlu", "1g9v", "2hnx", "4rn0", "1fmc",
+    "830c",
+    "1h36",
+    "3eml",
+    "3ny8",
+    "4aaw",
+    "4rlu",
+    "1g9v",
+    "2hnx",
+    "4rn0",
+    "1fmc",
 )
 WF30_POCKET_DIR = _REPO_ROOT / "molmetal" / "reports" / "wf30_pocket_prep"
 
@@ -143,10 +151,12 @@ def _load_candidates(path: Path) -> List[Tuple[str, str]]:
     # atom types) has SOME cells that pass — this is honest framing:
     # metal-cohort candidates are KNOWN to fail PB (per the Wf-32
     # sweep), but organic SMILES typically pass.
-    candidates.extend([
-        ("aspirin", "CC(=O)Oc1ccccc1C(=O)O"),
-        ("ibuprofen", "CC(C)Cc1ccc(C(C)C(=O)O)cc1"),
-    ])
+    candidates.extend(
+        [
+            ("aspirin", "CC(=O)Oc1ccccc1C(=O)O"),
+            ("ibuprofen", "CC(C)Cc1ccc(C(C)C(=O)O)cc1"),
+        ]
+    )
     return candidates
 
 
@@ -167,11 +177,13 @@ def _load_pocket(pdb_id: str) -> Optional[Any]:
         for line in src_pdb.read_text().splitlines():
             if line.startswith("ATOM") or line.startswith("HETATM"):
                 try:
-                    coords.append([
-                        float(line[30:38]),
-                        float(line[38:46]),
-                        float(line[46:54]),
-                    ])
+                    coords.append(
+                        [
+                            float(line[30:38]),
+                            float(line[38:46]),
+                            float(line[46:54]),
+                        ]
+                    )
                 except ValueError:
                     continue
         if not coords:
@@ -198,7 +210,9 @@ def run_bench_pb_valid(out_path: Path) -> Dict[str, Any]:
     # Include the 5 metal drug + 2 organic SMILES (aspirin, ibuprofen)
     # so the bench can show both modes: metal cohort fails PB
     # (UFF params missing for Pt/Au/Ru), organic cohort passes.
-    candidates = _load_candidates(DEFAULT_CANDIDATES_TXT)  # already includes aspirin+ibuprofen
+    candidates = _load_candidates(
+        DEFAULT_CANDIDATES_TXT
+    )  # already includes aspirin+ibuprofen
     pockets = list(DEFAULT_POCKETS)
 
     # score_any("pb_pass_rate", molecules=[smiles]) returns the
@@ -224,45 +238,53 @@ def run_bench_pb_valid(out_path: Path) -> Dict[str, Any]:
                     n_evaluated += 1
                     n_passed += int(pb_rate >= 0.5)
                     n_failed += int(pb_rate < 0.5)
-                    per_cell.append({
-                        "pocket": pdb_id,
-                        "candidate": name,
-                        "smiles": smiles,
-                        "pb_pass_rate": pb_rate,
-                        "status": "passed" if pb_rate >= 0.5 else "failed",
-                    })
+                    per_cell.append(
+                        {
+                            "pocket": pdb_id,
+                            "candidate": name,
+                            "smiles": smiles,
+                            "pb_pass_rate": pb_rate,
+                            "status": "passed" if pb_rate >= 0.5 else "failed",
+                        }
+                    )
                 else:
                     n_skipped += 1
-                    per_cell.append({
+                    per_cell.append(
+                        {
+                            "pocket": pdb_id,
+                            "candidate": name,
+                            "smiles": smiles,
+                            "pb_pass_rate": None,
+                            "status": "skipped",
+                            "note": status,
+                        }
+                    )
+            except AdapterUnavailable as exc:
+                n_skipped += 1
+                notes.append(str(exc).splitlines()[0])
+                per_cell.append(
+                    {
                         "pocket": pdb_id,
                         "candidate": name,
                         "smiles": smiles,
                         "pb_pass_rate": None,
                         "status": "skipped",
-                        "note": status,
-                    })
-            except AdapterUnavailable as exc:
-                n_skipped += 1
-                notes.append(str(exc).splitlines()[0])
-                per_cell.append({
-                    "pocket": pdb_id,
-                    "candidate": name,
-                    "smiles": smiles,
-                    "pb_pass_rate": None,
-                    "status": "skipped",
-                    "note": "AdapterUnavailable",
-                })
+                        "note": "AdapterUnavailable",
+                    }
+                )
             except Exception as exc:
                 n_skipped += 1
                 notes.append(f"{type(exc).__name__}: {exc}")
-                per_cell.append({
-                    "pocket": pdb_id,
-                    "candidate": name,
-                    "smiles": smiles,
-                    "pb_pass_rate": None,
-                    "status": "error",
-                    "note": f"{type(exc).__name__}: {str(exc)[:120]}",
-                })
+                per_cell.append(
+                    {
+                        "pocket": pdb_id,
+                        "candidate": name,
+                        "smiles": smiles,
+                        "pb_pass_rate": None,
+                        "status": "error",
+                        "note": f"{type(exc).__name__}: {str(exc)[:120]}",
+                    }
+                )
 
     overall = (n_passed / max(1, n_evaluated)) if n_evaluated else None
     elapsed = time.monotonic() - t0
@@ -284,10 +306,13 @@ def run_bench_pb_valid(out_path: Path) -> Dict[str, Any]:
         "notes": list(dict.fromkeys(notes))[:5],  # unique, top-5
     }
     out_path.write_text(json.dumps(record, indent=2))
-    log.info("  -> wrote %s (n_evaluated=%d, overall=%s, %.1fs)",
-             out_path.name, n_evaluated,
-             f"{overall:.3f}" if overall is not None else "N/A",
-             elapsed)
+    log.info(
+        "  -> wrote %s (n_evaluated=%d, overall=%s, %.1fs)",
+        out_path.name,
+        n_evaluated,
+        f"{overall:.3f}" if overall is not None else "N/A",
+        elapsed,
+    )
     return record
 
 
@@ -342,15 +367,21 @@ def run_bench_mcts_real_trajectory(out_path: Path) -> Dict[str, Any]:
                 except Exception as exc:
                     notes.append(f"trajectory error: {type(exc).__name__}")
                     continue
-            per_strategy[strategy].append({
-                "candidate": name,
-                "smiles": smiles,
-                "n_trajectories": len(traj_rewards),
-                "mean_reward": float(statistics.mean(traj_rewards)) if traj_rewards else None,
-                "std_reward": float(statistics.pstdev(traj_rewards)) if len(traj_rewards) > 1 else 0.0,
-                "min_reward": float(min(traj_rewards)) if traj_rewards else None,
-                "max_reward": float(max(traj_rewards)) if traj_rewards else None,
-            })
+            per_strategy[strategy].append(
+                {
+                    "candidate": name,
+                    "smiles": smiles,
+                    "n_trajectories": len(traj_rewards),
+                    "mean_reward": float(statistics.mean(traj_rewards))
+                    if traj_rewards
+                    else None,
+                    "std_reward": float(statistics.pstdev(traj_rewards))
+                    if len(traj_rewards) > 1
+                    else 0.0,
+                    "min_reward": float(min(traj_rewards)) if traj_rewards else None,
+                    "max_reward": float(max(traj_rewards)) if traj_rewards else None,
+                }
+            )
 
     # Aggregate variance across candidates per strategy.
     aggregate: Dict[str, Dict[str, float]] = {}
@@ -360,7 +391,9 @@ def run_bench_mcts_real_trajectory(out_path: Path) -> Dict[str, Any]:
             aggregate[strategy] = {
                 "n_candidates": len(rewards),
                 "grand_mean": float(statistics.mean(rewards)),
-                "grand_std": float(statistics.pstdev(rewards)) if len(rewards) > 1 else 0.0,
+                "grand_std": float(statistics.pstdev(rewards))
+                if len(rewards) > 1
+                else 0.0,
                 "min_reward": float(min(rewards)),
                 "max_reward": float(max(rewards)),
             }
@@ -380,8 +413,12 @@ def run_bench_mcts_real_trajectory(out_path: Path) -> Dict[str, Any]:
         "notes": list(dict.fromkeys(notes))[:5],
     }
     out_path.write_text(json.dumps(record, indent=2))
-    log.info("  -> wrote %s (n_strategies=%d, %.1fs)",
-             out_path.name, len(per_strategy), elapsed)
+    log.info(
+        "  -> wrote %s (n_strategies=%d, %.1fs)",
+        out_path.name,
+        len(per_strategy),
+        elapsed,
+    )
     return record
 
 
@@ -439,7 +476,9 @@ def run_bench_deflexpressor_e2e(out_path: Path) -> Dict[str, Any]:
                 mols = [mols[i] for i in keep]
                 y = df[target_col].values[keep]
                 # If IC50 in nM, convert to pIC50
-                if target_col.lower().startswith("ic50") and target_col.lower().endswith("nm"):
+                if target_col.lower().startswith(
+                    "ic50"
+                ) and target_col.lower().endswith("nm"):
                     with np.errstate(divide="ignore"):
                         y = -np.log10(np.asarray(y, dtype=float) * 1e-9)
                 # Compute descriptors
@@ -450,10 +489,10 @@ def run_bench_deflexpressor_e2e(out_path: Path) -> Dict[str, Any]:
                     "NumHDonors": Descriptors.NumHDonors,
                     "NumHAcceptors": Descriptors.NumHAcceptors,
                 }
-                X = np.array([
-                    [f(m) for f in descriptor_funcs.values()]
-                    for m in mols
-                ], dtype=float)
+                X = np.array(
+                    [[f(m) for f in descriptor_funcs.values()] for m in mols],
+                    dtype=float,
+                )
                 # Drop rows with NaN/inf
                 mask = np.isfinite(X).all(axis=1) & np.isfinite(y)
                 X = X[mask]
@@ -475,10 +514,12 @@ def run_bench_deflexpressor_e2e(out_path: Path) -> Dict[str, Any]:
                     coef, *_ = np.linalg.lstsq(Xt1, yt, rcond=None)
                     pred_in = Xt1 @ coef
                     pred_te = Xte1 @ coef
+
                     def _r2(true, pred):
                         ss_res = float(np.sum((true - pred) ** 2))
                         ss_tot = float(np.sum((true - true.mean()) ** 2))
                         return 1.0 - ss_res / ss_tot if ss_tot > 0 else float("nan")
+
                     r2_in = float(_r2(yt, pred_in))
                     r2_test = float(_r2(yte, pred_te))
                 except Exception as exc:
@@ -493,7 +534,9 @@ def run_bench_deflexpressor_e2e(out_path: Path) -> Dict[str, Any]:
         "method": "Deflexpressor-style ASTSR linear fit on real RDKit descriptors",
         "tool": "RDKit Descriptors + numpy.linalg.lstsq",
         "status": "MEASURED" if r2_test is not None else "FAIL",
-        "csv_path": str(csv_path.relative_to(_REPO_ROOT)) if csv_path.exists() else "MISSING",
+        "csv_path": str(csv_path.relative_to(_REPO_ROOT))
+        if csv_path.exists()
+        else "MISSING",
         "n_rows": n_rows,
         "target_column": target_col,
         "descriptors": descriptor_cols,
@@ -505,10 +548,14 @@ def run_bench_deflexpressor_e2e(out_path: Path) -> Dict[str, Any]:
         "notes": notes[:5],
     }
     out_path.write_text(json.dumps(record, indent=2))
-    log.info("  -> wrote %s (R²_test=%s, n_train=%d, n_test=%d, %.1fs)",
-             out_path.name,
-             f"{r2_test:.4f}" if r2_test is not None else "N/A",
-             n_train, n_test, elapsed)
+    log.info(
+        "  -> wrote %s (R²_test=%s, n_train=%d, n_test=%d, %.1fs)",
+        out_path.name,
+        f"{r2_test:.4f}" if r2_test is not None else "N/A",
+        n_train,
+        n_test,
+        elapsed,
+    )
     return record
 
 
@@ -561,10 +608,10 @@ def run_benchmark_astsr_extended(out_path: Path) -> Dict[str, Any]:
                 keep = [i for i, m in enumerate(mols) if m is not None]
                 mols = [mols[i] for i in keep]
                 y_raw = df[target_col].values[keep]
-                X = np.array([
-                    [f(m) for f in descriptor_funcs.values()]
-                    for m in mols
-                ], dtype=float)
+                X = np.array(
+                    [[f(m) for f in descriptor_funcs.values()] for m in mols],
+                    dtype=float,
+                )
                 mask = np.isfinite(X).all(axis=1) & np.isfinite(y_raw)
                 X = X[mask]
                 y = y_raw[mask].astype(float)
@@ -575,7 +622,9 @@ def run_benchmark_astsr_extended(out_path: Path) -> Dict[str, Any]:
                 perm = rng.permutation(len(y))
                 folds = np.array_split(perm, k_folds)
                 for k, test_idx in enumerate(folds):
-                    train_idx = np.concatenate([f for j, f in enumerate(folds) if j != k])
+                    train_idx = np.concatenate(
+                        [f for j, f in enumerate(folds) if j != k]
+                    )
                     Xt, yt = X[train_idx], y[train_idx]
                     Xte, yte = X[test_idx], y[test_idx]
                     # Hilbert: ridge-regression (the linear primitive-dual backend).
@@ -589,10 +638,12 @@ def run_benchmark_astsr_extended(out_path: Path) -> Dict[str, Any]:
                     except np.linalg.LinAlgError:
                         coef_h = np.linalg.lstsq(A, b, rcond=None)[0]
                     pred_h = Xte1 @ coef_h
+
                     def _r2(true, pred):
                         ss_res = float(np.sum((true - pred) ** 2))
                         ss_tot = float(np.sum((true - true.mean()) ** 2))
                         return 1.0 - ss_res / ss_tot if ss_tot > 0 else float("nan")
+
                     r2_hilbert = float(_r2(yte, pred_h))
                     # Evolutionary: best degree 1..3 polynomial on top-2
                     # features chosen by |corr| with y.
@@ -608,8 +659,14 @@ def run_benchmark_astsr_extended(out_path: Path) -> Dict[str, Any]:
                         top2 = [0]
                     best_r2_e = float("-inf")
                     for d in (1, 2, 3):
-                        Xte_p = np.hstack([Xte[:, top2] ** p for p in range(1, d + 1)] + [np.ones((len(Xte), 1))])
-                        Xt_p = np.hstack([Xt[:, top2] ** p for p in range(1, d + 1)] + [np.ones((len(Xt), 1))])
+                        Xte_p = np.hstack(
+                            [Xte[:, top2] ** p for p in range(1, d + 1)]
+                            + [np.ones((len(Xte), 1))]
+                        )
+                        Xt_p = np.hstack(
+                            [Xt[:, top2] ** p for p in range(1, d + 1)]
+                            + [np.ones((len(Xt), 1))]
+                        )
                         try:
                             coef_e, *_ = np.linalg.lstsq(Xt_p, yt, rcond=None)
                             pred_e = Xte_p @ coef_e
@@ -620,23 +677,29 @@ def run_benchmark_astsr_extended(out_path: Path) -> Dict[str, Any]:
                             continue
                     if best_r2_e == float("-inf"):
                         best_r2_e = float("nan")
-                    per_fold.append({
-                        "fold": k,
-                        "n_train": int(len(train_idx)),
-                        "n_test": int(len(test_idx)),
-                        "r2_hilbert": r2_hilbert,
-                        "r2_evolutionary_best": best_r2_e,
-                    })
+                    per_fold.append(
+                        {
+                            "fold": k,
+                            "n_train": int(len(train_idx)),
+                            "n_test": int(len(test_idx)),
+                            "r2_hilbert": r2_hilbert,
+                            "r2_evolutionary_best": best_r2_e,
+                        }
+                    )
                 # Aggregate
                 for k in ("hilbert", "evolutionary"):
-                    vals = [r[f"r2_{k}"] if k == "hilbert" else r["r2_evolutionary_best"]
-                            for r in per_fold]
+                    vals = [
+                        r[f"r2_{k}"] if k == "hilbert" else r["r2_evolutionary_best"]
+                        for r in per_fold
+                    ]
                     valid = [v for v in vals if v == v]  # NaN-filter
                     if valid:
                         aggregate[k] = {
                             "n_folds": len(valid),
                             "mean_r2": float(statistics.mean(valid)),
-                            "std_r2": float(statistics.pstdev(valid)) if len(valid) > 1 else 0.0,
+                            "std_r2": float(statistics.pstdev(valid))
+                            if len(valid) > 1
+                            else 0.0,
                             "min_r2": float(min(valid)),
                             "max_r2": float(max(valid)),
                         }
@@ -659,12 +722,18 @@ def run_benchmark_astsr_extended(out_path: Path) -> Dict[str, Any]:
         "notes": notes[:5],
     }
     out_path.write_text(json.dumps(record, indent=2))
-    log.info("  -> wrote %s (n_folds=%d, hilbert_mean=%s, evo_mean=%s, %.1fs)",
-             out_path.name,
-             len(per_fold),
-             f"{aggregate['hilbert'].get('mean_r2', 0):.4f}" if aggregate["hilbert"] else "N/A",
-             f"{aggregate['evolutionary'].get('mean_r2', 0):.4f}" if aggregate["evolutionary"] else "N/A",
-             elapsed)
+    log.info(
+        "  -> wrote %s (n_folds=%d, hilbert_mean=%s, evo_mean=%s, %.1fs)",
+        out_path.name,
+        len(per_fold),
+        f"{aggregate['hilbert'].get('mean_r2', 0):.4f}"
+        if aggregate["hilbert"]
+        else "N/A",
+        f"{aggregate['evolutionary'].get('mean_r2', 0):.4f}"
+        if aggregate["evolutionary"]
+        else "N/A",
+        elapsed,
+    )
     return record
 
 
@@ -693,7 +762,11 @@ def run_metric_credibility_audit_real(out_path: Path) -> Dict[str, Any]:
     t0 = time.monotonic()
     candidates = _load_candidates(DEFAULT_CANDIDATES_TXT)[:5]
 
-    from molmetal.scoring.score_any import score_any, AdapterUnavailable, available_metrics
+    from molmetal.scoring.score_any import (
+        score_any,
+        AdapterUnavailable,
+        available_metrics,
+    )
 
     available = set(available_metrics())
     metrics_to_measure = [
@@ -710,12 +783,14 @@ def run_metric_credibility_audit_real(out_path: Path) -> Dict[str, Any]:
     notes: List[str] = []
     for metric_id, metric_name, mols in metrics_to_measure:
         if metric_name not in available:
-            re_measures.append({
-                "metric_id": metric_id,
-                "metric_name": metric_name,
-                "status": "REGISTRY_ABSENT",
-                "note": f"{metric_name} not in available_metrics()",
-            })
+            re_measures.append(
+                {
+                    "metric_id": metric_id,
+                    "metric_name": metric_name,
+                    "status": "REGISTRY_ABSENT",
+                    "note": f"{metric_name} not in available_metrics()",
+                }
+            )
             continue
         try:
             r = score_any(metric_name, molecules=mols)
@@ -723,37 +798,52 @@ def run_metric_credibility_audit_real(out_path: Path) -> Dict[str, Any]:
             tool = r.get("tool", "unknown")
             backend = r.get("backend", "unknown")
             status = r.get("status", "UNKNOWN")
-            re_measures.append({
-                "metric_id": metric_id,
-                "metric_name": metric_name,
-                "status": status,
-                "tool": tool,
-                "backend": backend,
-                "n": r.get("n", 0),
-                "values_summary": (
-                    {"min": float(min([v for v in vals if v == v])) if any(v == v for v in vals) else None,
-                     "max": float(max([v for v in vals if v == v])) if any(v == v for v in vals) else None,
-                     "mean": float(statistics.mean([v for v in vals if v == v])) if any(v == v for v in vals) else None,
-                     "nan_count": int(sum(1 for v in vals if v != v))}
-                    if vals else {"all_empty": True}
-                ),
-            })
+            re_measures.append(
+                {
+                    "metric_id": metric_id,
+                    "metric_name": metric_name,
+                    "status": status,
+                    "tool": tool,
+                    "backend": backend,
+                    "n": r.get("n", 0),
+                    "values_summary": (
+                        {
+                            "min": float(min([v for v in vals if v == v]))
+                            if any(v == v for v in vals)
+                            else None,
+                            "max": float(max([v for v in vals if v == v]))
+                            if any(v == v for v in vals)
+                            else None,
+                            "mean": float(statistics.mean([v for v in vals if v == v]))
+                            if any(v == v for v in vals)
+                            else None,
+                            "nan_count": int(sum(1 for v in vals if v != v)),
+                        }
+                        if vals
+                        else {"all_empty": True}
+                    ),
+                }
+            )
         except AdapterUnavailable as exc:
             notes.append(f"{metric_name}: {str(exc).splitlines()[0]}")
-            re_measures.append({
-                "metric_id": metric_id,
-                "metric_name": metric_name,
-                "status": "AdapterUnavailable",
-                "note": str(exc).splitlines()[0],
-            })
+            re_measures.append(
+                {
+                    "metric_id": metric_id,
+                    "metric_name": metric_name,
+                    "status": "AdapterUnavailable",
+                    "note": str(exc).splitlines()[0],
+                }
+            )
         except Exception as exc:
             notes.append(f"{metric_name}: {type(exc).__name__}: {exc}")
-            re_measures.append({
-                "metric_id": metric_id,
-                "metric_name": metric_name,
-                "status": "ERROR",
-                "note": f"{type(exc).__name__}: {str(exc)[:120]}",
-            })
+            re_measures.append(
+                {
+                    "metric_id": metric_id,
+                    "metric_name": metric_name,
+                    "status": "ERROR",
+                    "note": f"{type(exc).__name__}: {str(exc)[:120]}",
+                }
+            )
 
     n_measured = sum(1 for r in re_measures if r["status"] == "MEASURED")
     n_unavailable = sum(1 for r in re_measures if r["status"] == "AdapterUnavailable")
@@ -774,8 +864,13 @@ def run_metric_credibility_audit_real(out_path: Path) -> Dict[str, Any]:
         "notes": list(dict.fromkeys(notes))[:5],
     }
     out_path.write_text(json.dumps(record, indent=2))
-    log.info("  -> wrote %s (n_measured=%d/%d, %.1fs)",
-             out_path.name, n_measured, len(re_measures), elapsed)
+    log.info(
+        "  -> wrote %s (n_measured=%d/%d, %.1fs)",
+        out_path.name,
+        n_measured,
+        len(re_measures),
+        elapsed,
+    )
     return record
 
 
@@ -791,7 +886,9 @@ def main() -> int:
         help="Output directory for the 5 real JSONs.",
     )
     parser.add_argument(
-        "--skip", nargs="*", default=[],
+        "--skip",
+        nargs="*",
+        default=[],
         help="Skip these path numbers (1-5).",
     )
     parser.add_argument("--verbose", "-v", action="store_true")

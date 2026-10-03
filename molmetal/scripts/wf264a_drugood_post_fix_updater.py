@@ -90,42 +90,30 @@ from molmetal.scripts.wf386a3_atomic_write import (
 # ---------------------------------------------------------------------------
 # Defaults — overridable on the CLI
 # ---------------------------------------------------------------------------
-DEFAULT_WF263A_VERIFY_JSON = Path(
-    "molmetal/reports/wf263a_verify/aggregate.json"
-)
+DEFAULT_WF263A_VERIFY_JSON = Path("molmetal/reports/wf263a_verify/aggregate.json")
 DEFAULT_WF263A_VERIFY_JSON_ALT = Path(
     "molmetal/reports/wf263a_verify/verify_report.json"
 )
-DEFAULT_DOC_207 = Path(
-    "TODO/completed/207_unified_pre_flight_checklist_v2.md"
-)
-DEFAULT_DOC_188 = Path(
-    "TODO/completed/188_paper_4_krasnov_protocol_aligned.md"
-)
-DEFAULT_OUT_REPORT = Path(
-    "molmetal/reports/wf264a_update/post_fix_update_report.json"
-)
-DEFAULT_UPDATED_207 = Path(
-    "molmetal/reports/wf264a_update/updated_207_v2.md"
-)
-DEFAULT_UPDATED_188 = Path(
-    "molmetal/reports/wf264a_update/updated_188_paper_4.md"
-)
+DEFAULT_DOC_207 = Path("TODO/completed/207_unified_pre_flight_checklist_v2.md")
+DEFAULT_DOC_188 = Path("TODO/completed/188_paper_4_krasnov_protocol_aligned.md")
+DEFAULT_OUT_REPORT = Path("molmetal/reports/wf264a_update/post_fix_update_report.json")
+DEFAULT_UPDATED_207 = Path("molmetal/reports/wf264a_update/updated_207_v2.md")
+DEFAULT_UPDATED_188 = Path("molmetal/reports/wf264a_update/updated_188_paper_4.md")
 
 # Chemprop v2 baseline numbers used to interpret the v3-fallback MEASURED
 # numbers (Wf-185 5-seed chemprop v2 retrain, per Wf-263A-Verify).
 V2_BASELINE = {
-    "lbap_refined_ic50_assay":   0.7137,
+    "lbap_refined_ic50_assay": 0.7137,
     "lbap_refined_ic50_scaffold": 0.6707,
-    "lbap_refined_ic50_size":    0.6757,
+    "lbap_refined_ic50_size": 0.6757,
 }
 
 # iMoLD Ji 2023 cite-only reference (kept here so the report can compare
 # v3-fallback MEASURED numbers to iMoLD without re-reading the paper doc).
 IMOld_REFERENCE = {
-    "lbap_refined_ic50_assay":   0.7211,
+    "lbap_refined_ic50_assay": 0.7211,
     "lbap_refined_ic50_scaffold": 0.6884,
-    "lbap_refined_ic50_size":    0.6792,
+    "lbap_refined_ic50_size": 0.6792,
 }
 
 # Section anchor constants — used by the regex matchers to know which
@@ -140,9 +128,9 @@ SEC0_1_APPEND_MARKER = "**Secondary metrics**"
 # Allow-list of splits the v3-fallback result table should carry (kept
 # short and stable across Wf-263A aggregate.json versions).
 SPLIT_LABELS = {
-    "lbap_refined_ic50_assay":   "assay",
+    "lbap_refined_ic50_assay": "assay",
     "lbap_refined_ic50_scaffold": "scaffold",
-    "lbap_refined_ic50_size":    "size",
+    "lbap_refined_ic50_size": "size",
 }
 
 
@@ -152,6 +140,7 @@ SPLIT_LABELS = {
 @dataclass
 class SplitMeasured:
     """One split's MEASURED chemprop v3-fallback OOD AUC."""
+
     split_key: str
     split_label: str
     v3_mean: float
@@ -169,11 +158,12 @@ class SplitMeasured:
 @dataclass
 class UpdateResult:
     """One rewrite of a doc's paragraph."""
-    section: str           # e.g. "207 §9.5"
-    doc_path: str          # path to the source doc
-    applied: bool          # True iff the substitution happened
-    old_substring: str     # exact old substring replaced ("" if not applied)
-    new_substring: str     # the replacement substring ("" if not applied)
+
+    section: str  # e.g. "207 §9.5"
+    doc_path: str  # path to the source doc
+    applied: bool  # True iff the substitution happened
+    old_substring: str  # exact old substring replaced ("" if not applied)
+    new_substring: str  # the replacement substring ("" if not applied)
     skip_reason: str = ""  # why we didn't apply ("" if applied)
 
 
@@ -725,9 +715,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             f"wait_timeout={args.wait_timeout_s}s"
         )
         if args.wait_timeout_s > 0:
-            _wait_for_file(
-                args.wf263a_verify_json, args.wait_timeout_s, poll_s=2.0
-            )
+            _wait_for_file(args.wf263a_verify_json, args.wait_timeout_s, poll_s=2.0)
 
     verify_path = _resolve_verify_json(
         args.wf263a_verify_json, args.wf263a_verify_json_alt
@@ -808,9 +796,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         else:
             _log(f"188 NOT updated: {r188.skip_reason}")
     else:
-        _log(
-            "dry_run=True; docs NOT modified (only report.json written)"
-        )
+        _log("dry_run=True; docs NOT modified (only report.json written)")
 
     # 6. Exit 0 = OK; we always exit 0 because dry-run is a valid use case
     #    and the report.json signals what would happen.

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Wf-226 aggregator — compute per-metal mean ± std from the 7-pair sweep."""
+
 import json
 import statistics
 from pathlib import Path
@@ -17,13 +18,15 @@ for metal_dir in sorted(OUT_DIR.iterdir()):
         if "test_auc" in d and d.get("error") is None:
             auc = float(d["test_auc"])
             per_metal.setdefault(metal_dir.name, []).append(auc)
-            aucs_per_pair.append({
-                "fold": metal_dir.name,
-                "seed": d["seed"],
-                "test_auc": auc,
-                "val_auc": d.get("val_auc"),
-                "elapsed_s": d.get("elapsed_seconds"),
-            })
+            aucs_per_pair.append(
+                {
+                    "fold": metal_dir.name,
+                    "seed": d["seed"],
+                    "test_auc": auc,
+                    "val_auc": d.get("val_auc"),
+                    "elapsed_s": d.get("elapsed_seconds"),
+                }
+            )
 
 per_metal_stats = {}
 for m, vals in per_metal.items():
@@ -49,7 +52,8 @@ agg = {
     "all_aucs": [j["test_auc"] for j in aucs_per_pair],
     "overall_mean": float(statistics.mean(j["test_auc"] for j in aucs_per_pair)),
     "overall_std": float(statistics.pstdev(j["test_auc"] for j in aucs_per_pair))
-        if len(aucs_per_pair) > 1 else 0.0,
+    if len(aucs_per_pair) > 1
+    else 0.0,
     "wall_time_seconds": 1382.317697763443,
     "wall_time_minutes": 1382.317697763443 / 60.0,
     "epochs": 50,
@@ -57,15 +61,31 @@ agg = {
     "depth": 2,
     "n_parallel": 4,
     "sweep_pairs": [
-        ("Rh", 3), ("Rh", 4),
-        ("Re", 0), ("Re", 1), ("Re", 2), ("Re", 3), ("Re", 4),
+        ("Rh", 3),
+        ("Rh", 4),
+        ("Re", 0),
+        ("Re", 1),
+        ("Re", 2),
+        ("Re", 3),
+        ("Re", 4),
     ],
 }
 out_path = OUT_DIR / "wf226_per_metal_aggregate.json"
 out_path.write_text(json.dumps(agg, indent=2, default=str))
 print(f"Wrote {out_path}")
-print(json.dumps({m: {"mean": s["mean"], "std": s["std"], "n_seeds": s["n_seeds"]}
-                   for m, s in per_metal_stats.items()}, indent=2))
-print(f"\nOverall: {agg['overall_mean']:.4f} ± {agg['overall_std']:.4f} "
-      f"(n={agg['n_pairs_total']} pairs)")
-print(f"Wall: {agg['wall_time_minutes']:.1f} min ({agg['wall_time_seconds']/3600:.2f} h)")
+print(
+    json.dumps(
+        {
+            m: {"mean": s["mean"], "std": s["std"], "n_seeds": s["n_seeds"]}
+            for m, s in per_metal_stats.items()
+        },
+        indent=2,
+    )
+)
+print(
+    f"\nOverall: {agg['overall_mean']:.4f} ± {agg['overall_std']:.4f} "
+    f"(n={agg['n_pairs_total']} pairs)"
+)
+print(
+    f"Wall: {agg['wall_time_minutes']:.1f} min ({agg['wall_time_seconds']/3600:.2f} h)"
+)

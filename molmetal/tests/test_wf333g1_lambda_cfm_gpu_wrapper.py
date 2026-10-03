@@ -51,10 +51,7 @@ if str(PROJECT_ROOT) not in sys.path:
 def _load_wrapper_module():
     """Load ``wf333g1_lambda_cfm_gpu_wrapper`` or skip the test."""
     spec_path = (
-        PROJECT_ROOT
-        / "molmetal"
-        / "scripts"
-        / "wf333g1_lambda_cfm_gpu_wrapper.py"
+        PROJECT_ROOT / "molmetal" / "scripts" / "wf333g1_lambda_cfm_gpu_wrapper.py"
     )
     if not spec_path.exists():
         pytest.skip(f"wrapper script not found at {spec_path}")
@@ -86,9 +83,9 @@ def test_wf333g1_wrapper_initialization_cpu_only() -> None:
     wrapper = LambdaCFMGPUWrapper()
     assert wrapper.dry_run is True, "dry_run must default to True per AGENTS.md §5.1"
     assert wrapper.device == "cuda"
-    assert wrapper.lambda_cfm_coupling_weight == 0.0, (
-        "default 0.0 is the Wf-329-W6 CPU-safe scaffold default"
-    )
+    assert (
+        wrapper.lambda_cfm_coupling_weight == 0.0
+    ), "default 0.0 is the Wf-329-W6 CPU-safe scaffold default"
     assert wrapper.batch_size == 64
     assert wrapper.pocket_id == "1h36"
 
@@ -114,14 +111,13 @@ def test_wf333g1_wrapper_initialization_cpu_only() -> None:
     smoke = mod.run_joint_inference_smoke(wrapper)
     assert smoke["n_smiles"] >= 1, "smoke n_smiles must be >= 1"
     assert smoke["bridge_present"] is True, (
-        "PlatinAI 5K bridge must be present (stub fallback is OK; "
-        "Wf-323E closeout)"
+        "PlatinAI 5K bridge must be present (stub fallback is OK; " "Wf-323E closeout)"
     )
     # On a missing RDKit env the smoke can return ok=False; in that case
     # we still expect at least one decoded SMILES attempted.
-    assert all(c >= 0 for c in smoke["decoded_counts"]), (
-        "decoded_counts must be non-negative"
-    )
+    assert all(
+        c >= 0 for c in smoke["decoded_counts"]
+    ), "decoded_counts must be non-negative"
 
     # build_train_kwargs must produce the exact kwargs shape the Wf-329-W6
     # 1-line adapter change at train_cfm_yuelbond_wasserstein.py:809-811
@@ -174,9 +170,9 @@ def test_wf333g1_wrapper_cli_args() -> None:
     # --cfm-checkpoint '' translates to None (disabled).
     args = parse_args(["--cfm-checkpoint", ""])
     wrapper = build_wrapper(args)
-    assert wrapper.cfm_checkpoint_path is None, (
-        "empty --cfm-checkpoint must disable the checkpoint path"
-    )
+    assert (
+        wrapper.cfm_checkpoint_path is None
+    ), "empty --cfm-checkpoint must disable the checkpoint path"
     # A non-empty path passes through.
     args = parse_args(["--cfm-checkpoint", "/tmp/fake_cfm.pt"])
     wrapper = build_wrapper(args)
@@ -190,6 +186,7 @@ def test_wf333g1_wrapper_cli_args() -> None:
 
     # --help exits 0 (subprocess smoke — exercises the argparse exit handler).
     import subprocess
+
     proc = subprocess.run(
         [
             sys.executable,
@@ -207,9 +204,8 @@ def test_wf333g1_wrapper_cli_args() -> None:
         timeout=15,
     )
     assert proc.returncode == 0, (
-        f"--help must exit 0; got {proc.returncode}\n"
-        f"stderr: {proc.stderr}"
+        f"--help must exit 0; got {proc.returncode}\n" f"stderr: {proc.stderr}"
     )
-    assert "Wf-333-G1" in proc.stdout, (
-        f"--help stdout missing 'Wf-333-G1' header; got:\n{proc.stdout[:200]}"
-    )
+    assert (
+        "Wf-333-G1" in proc.stdout
+    ), f"--help stdout missing 'Wf-333-G1' header; got:\n{proc.stdout[:200]}"

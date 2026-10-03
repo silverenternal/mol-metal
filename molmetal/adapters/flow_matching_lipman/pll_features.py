@@ -251,9 +251,7 @@ def pll_to_feature_vector(
 
     arr = np.asarray(eigenvalues, dtype=np.float64)
     if arr.ndim != 1:
-        raise PLLFeatureError(
-            f"eigenvalues must be 1-D; got shape {arr.shape}"
-        )
+        raise PLLFeatureError(f"eigenvalues must be 1-D; got shape {arr.shape}")
 
     if arr.size >= top_k:
         return arr[:top_k].copy()

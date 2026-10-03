@@ -43,6 +43,7 @@ Usage
         --encoder models/tmqm_pretrained/tmqm_pretrained_encoder.pt \\
         --out-dir logs/finetune_tmqm_vs_random
 """
+
 from __future__ import annotations
 
 import argparse
@@ -78,6 +79,7 @@ from molmetal.data.splits import ScaffoldSplitter
 RDLogger = None
 try:
     from rdkit import RDLogger as _RD
+
     RDLogger = _RD
     _RD.DisableLog("rdApp.*")
 except Exception:
@@ -160,7 +162,7 @@ class MetalCytotoxModel(nn.Module):
         pooled: List[torch.Tensor] = []
         for b in range(B):
             V = atom_feats.size(1)
-            valid_edges = (bond_feats[b].abs().sum(dim=-1) > 0)
+            valid_edges = bond_feats[b].abs().sum(dim=-1) > 0
             E = int(valid_edges.sum().item())
             if E == 0 or V == 0:
                 pooled.append(torch.zeros(2 * self.hidden, device=device))
@@ -283,11 +285,14 @@ def _train_one_epoch(
     order = train_idx.copy()
     rng.shuffle(order)
     for start in range(0, order.shape[0], batch_size):
-        batch_idx = order[start:start + batch_size]
+        batch_idx = order[start : start + batch_size]
         batched = make_batch(
             [graphs[int(i)] for i in batch_idx],
             [int(targets[int(i)]) for i in batch_idx],
-            max_atoms, max_edges, ATOM_FEATURE_DIM, BOND_FEATURE_DIM,
+            max_atoms,
+            max_edges,
+            ATOM_FEATURE_DIM,
+            BOND_FEATURE_DIM,
         )
         if batched is None or batched.target.numel() == 0:
             continue
@@ -328,11 +333,14 @@ def _evaluate(
     probs: List[np.ndarray] = []
     true: List[np.ndarray] = []
     for start in range(0, idx.shape[0], batch_size):
-        batch_idx = idx[start:start + batch_size]
+        batch_idx = idx[start : start + batch_size]
         batched = make_batch(
             [graphs[int(i)] for i in batch_idx],
             [int(targets[int(i)]) for i in batch_idx],
-            max_atoms, max_edges, ATOM_FEATURE_DIM, BOND_FEATURE_DIM,
+            max_atoms,
+            max_edges,
+            ATOM_FEATURE_DIM,
+            BOND_FEATURE_DIM,
         )
         if batched is None or batched.target.numel() == 0:
             continue
@@ -350,6 +358,7 @@ def _evaluate(
     t = np.concatenate(true)
     try:
         from sklearn.metrics import roc_auc_score
+
         auc = float(roc_auc_score(t, p))
     except Exception:
         auc = float("nan")
@@ -376,14 +385,16 @@ def main() -> int:
     p = argparse.ArgumentParser(
         description="Fine-tune D-MPNN on MetalCytoToxDB metal subset (init=tmqm|random)"
     )
-    p.add_argument("--metal", type=str, default="Ru",
-                   choices=["Ru", "Ir", "Rh", "Os", "Re", "Pt"])
-    p.add_argument("--init", type=str, default="tmqm",
-                   choices=["tmqm", "random"])
-    p.add_argument("--encoder", type=Path,
-                   default=Path("models/tmqm_pretrained/tmqm_pretrained_encoder.pt"))
-    p.add_argument("--out-dir", type=Path,
-                   default=Path("logs/finetune_tmqm_vs_random"))
+    p.add_argument(
+        "--metal", type=str, default="Ru", choices=["Ru", "Ir", "Rh", "Os", "Re", "Pt"]
+    )
+    p.add_argument("--init", type=str, default="tmqm", choices=["tmqm", "random"])
+    p.add_argument(
+        "--encoder",
+        type=Path,
+        default=Path("models/tmqm_pretrained/tmqm_pretrained_encoder.pt"),
+    )
+    p.add_argument("--out-dir", type=Path, default=Path("logs/finetune_tmqm_vs_random"))
     p.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
     p.add_argument("--epochs", type=int, default=20)
     p.add_argument("--batch", type=int, default=64)
@@ -397,8 +408,10 @@ def main() -> int:
 
     out_dir: Path = args.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
-    print(f"[finetune] init={args.init}  metal={args.metal}  "
-          f"seeds={args.seeds}  epochs={args.epochs}  out_dir={out_dir}")
+    print(
+        f"[finetune] init={args.init}  metal={args.metal}  "
+        f"seeds={args.seeds}  epochs={args.epochs}  out_dir={out_dir}"
+    )
 
     # ----- dataset -----
     print(f"[finetune] loading MetalCytoToxDB ({args.metal})")
@@ -438,11 +451,15 @@ def main() -> int:
         rng = np.random.default_rng(seed)
         torch.manual_seed(seed)
         model = MetalCytotoxModel(
-            hidden=args.hidden, depth=args.depth, dropout=args.dropout,
+            hidden=args.hidden,
+            depth=args.depth,
+            dropout=args.dropout,
         ).to(device)
         if args.init == "tmqm":
             n_loaded = load_tmqm_encoder(model, args.encoder)
-            print(f"[finetune] seed={seed} loaded {n_loaded} backbone tensors from tmQM")
+            print(
+                f"[finetune] seed={seed} loaded {n_loaded} backbone tensors from tmQM"
+            )
         else:
             print(f"[finetune] seed={seed} init=random (no pretrain)")
 
@@ -451,16 +468,26 @@ def main() -> int:
 
         for epoch in range(1, args.epochs + 1):
             tr = _train_one_epoch(
-                model, optimizer, criterion, graphs, targets,
+                model,
+                optimizer,
+                criterion,
+                graphs,
+                targets,
                 train_idx_full,
                 batch_size=args.batch,
-                max_atoms=args.max_atoms, max_edges=args.max_edges,
-                device=device, rng=rng,
+                max_atoms=args.max_atoms,
+                max_edges=args.max_edges,
+                device=device,
+                rng=rng,
             )
             va = _evaluate(
-                model, graphs, targets, val_idx_full,
+                model,
+                graphs,
+                targets,
+                val_idx_full,
                 batch_size=args.batch,
-                max_atoms=args.max_atoms, max_edges=args.max_edges,
+                max_atoms=args.max_atoms,
+                max_edges=args.max_edges,
                 device=device,
             )
             if epoch == 1 or epoch == args.epochs or epoch % 5 == 0:
@@ -471,17 +498,23 @@ def main() -> int:
                 )
 
         te = _evaluate(
-            model, graphs, targets, test_idx_full,
+            model,
+            graphs,
+            targets,
+            test_idx_full,
             batch_size=args.batch,
-            max_atoms=args.max_atoms, max_edges=args.max_edges,
+            max_atoms=args.max_atoms,
+            max_edges=args.max_edges,
             device=device,
         )
-        seed_aucs.append({
-            "seed": seed,
-            "test_auc": te["auc"],
-            "test_acc": te["acc"],
-            "n_test": te["n"],
-        })
+        seed_aucs.append(
+            {
+                "seed": seed,
+                "test_auc": te["auc"],
+                "test_acc": te["acc"],
+                "n_test": te["n"],
+            }
+        )
         print(
             f"[finetune] seed={seed} TEST AUC={te['auc']:.4f}  "
             f"acc={te['acc']:.3f}  n={te['n']}"

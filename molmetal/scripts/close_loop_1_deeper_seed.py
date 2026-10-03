@@ -124,8 +124,10 @@ def _run_search(
 ) -> Dict[str, object]:
     """Run one MCTSProofSearch and harvest all L9 metrics."""
     seed = MoleculeClosedTerm.from_smiles(seed_smiles, embed_3d=False)
-    tiles = [MoleculeClosedTerm.from_smiles(t.smiles, embed_3d=False)
-             for t in STANDARD_12_TILES()]
+    tiles = [
+        MoleculeClosedTerm.from_smiles(t.smiles, embed_3d=False)
+        for t in STANDARD_12_TILES()
+    ]
 
     # RewardAggregator with all-zero channels + zero bonuses = zero scorer.
     zero_reward = RewardAggregator()
@@ -204,8 +206,11 @@ def _cisplatin_baseline() -> Dict[str, object]:
     from molmetal_lam.bonds.application import FreeSiteLedger
 
     seed = MoleculeClosedTerm.from_smiles("N.N.Cl.Cl.[Pt]", embed_3d=False)
-    tiles = [MoleculeClosedTerm.from_smiles(s, embed_3d=False)
-             for s in ("CCO", "CCN", "CCCl", "CCS")]
+    tiles = [
+        MoleculeClosedTerm.from_smiles(s, embed_3d=False)
+        for s in ("CCO", "CCN", "CCCl", "CCS")
+    ]
+
     # The cisplatin baseline uses a single _PtLigandRule which is a
     # *combining* rule — so it always expands but the products are
     # just concatenations. To reproduce the closed seed result from
@@ -219,12 +224,14 @@ def _cisplatin_baseline() -> Dict[str, object]:
             try:
                 state, tile = pair
                 new_atoms = list(state.atoms) + list(tile.atoms)
-                return [MoleculeClosedTerm(
-                    atoms=new_atoms,
-                    bonds=list(state.bonds) + list(tile.bonds),
-                    ledger=FreeSiteLedger(),
-                    source_smiles=None,
-                )]
+                return [
+                    MoleculeClosedTerm(
+                        atoms=new_atoms,
+                        bonds=list(state.bonds) + list(tile.bonds),
+                        ledger=FreeSiteLedger(),
+                        source_smiles=None,
+                    )
+                ]
             except Exception:
                 return []
 
@@ -255,9 +262,9 @@ def _cisplatin_baseline() -> Dict[str, object]:
         "wall_time_s": float(wall),
         "n_states_explored_final": int(history[-1]["n_states_explored"]),
         "n_satisfying_final": int(history[-1]["n_satisfying"]),
-        "puct_exploit_ratio_proxy_delta_mean": float(max(
-            0.0, history[-1]["mean_score"] - history[0]["mean_score"]
-        )),
+        "puct_exploit_ratio_proxy_delta_mean": float(
+            max(0.0, history[-1]["mean_score"] - history[0]["mean_score"])
+        ),
         "rollout_depth_dist_median": median_depth,
         "rollout_depth_dist_hist": {int(k): int(v) for k, v in hist.items()},
         "tree_diversity": float(search.tree_diversity),
@@ -291,9 +298,7 @@ def main() -> None:
         ),
     }
 
-    json_path = os.path.join(
-        HERE, "..", "reports", "close_loop_1_deeper_seed.json"
-    )
+    json_path = os.path.join(HERE, "..", "reports", "close_loop_1_deeper_seed.json")
     with open(json_path, "w") as f:
         json.dump(out, f, indent=2, default=str)
     print(json.dumps(out, indent=2, default=str))

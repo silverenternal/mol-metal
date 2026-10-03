@@ -61,6 +61,7 @@ Usage
         --exhaustiveness 8 --n-poses 5 --seeds 0 1 2 \\
         --out-dir molmetal/reports/wf143_p4_chemotype_dock
 """
+
 from __future__ import annotations
 
 import argparse
@@ -89,8 +90,16 @@ CISPLATIN_SMILES = "[Pt](N)(N)(Cl)Cl"
 CISPLATIN_NAME = "cisplatin"
 
 DEFAULT_POCKETS: Tuple[str, ...] = (
-    "1fmc", "1g9v", "1h36", "2hnx", "3eml",
-    "3ny8", "4aaw", "4rlu", "4rn0", "830c",
+    "1fmc",
+    "1g9v",
+    "1h36",
+    "2hnx",
+    "3eml",
+    "3ny8",
+    "4aaw",
+    "4rlu",
+    "4rn0",
+    "830c",
 )
 DEFAULT_SEEDS: Tuple[int, ...] = (0, 1, 2)
 DEFAULT_EXHAUSTIVENESS = 8
@@ -98,13 +107,14 @@ DEFAULT_N_POSES = 5
 
 # Baseline (Wf-121 P3) sweep summary — used to compute delta_vs_ex8_mg.
 BASELINE_SUMMARY_PATH = (
-    PROJECT_ROOT / "molmetal" / "reports" / "wf121_cisplatin_real_vina"
+    PROJECT_ROOT
+    / "molmetal"
+    / "reports"
+    / "wf121_cisplatin_real_vina"
     / "sweep_summary.json"
 )
 # Default output directory.
-DEFAULT_OUT_DIR = (
-    PROJECT_ROOT / "molmetal" / "reports" / "wf143_p4_chemotype_dock"
-)
+DEFAULT_OUT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf143_p4_chemotype_dock"
 # Receptor lookup order: wf121_p3 outputs first (already-prepared in the
 # same sweep), wf30_prep as fallback.
 RECEPTOR_SEARCH_DIRS: Tuple[Path, ...] = (
@@ -123,13 +133,13 @@ class PocketResult:
     pocket_id: str
     smiles: str
     seeds: List[int]
-    ex8_kcal_per_seed: List[float]    # baseline (Wf-121 P3, Mg)
+    ex8_kcal_per_seed: List[float]  # baseline (Wf-121 P3, Mg)
     chemotype_kcal_per_seed: List[float]  # this run (Pt, or Mg fallback)
-    ex8_kcal_mean: float              # baseline mean of 3 seeds
-    chemotype_kcal_mean: float        # chemotype mean of 3 seeds
-    delta_vs_ex8_mg: float            # chemotype_mean - ex8_mean (negative = lift)
-    status_per_seed: List[str]        # one status per seed
-    chemotype_atype_accepted: bool    # True if Vina accepted Pt, False if Mg fallback
+    ex8_kcal_mean: float  # baseline mean of 3 seeds
+    chemotype_kcal_mean: float  # chemotype mean of 3 seeds
+    delta_vs_ex8_mg: float  # chemotype_mean - ex8_mean (negative = lift)
+    status_per_seed: List[str]  # one status per seed
+    chemotype_atype_accepted: bool  # True if Vina accepted Pt, False if Mg fallback
     engine: str
     engine_version: str
     n_atoms_ligand: int
@@ -215,7 +225,8 @@ def _load_baseline_per_pocket() -> Dict[str, Tuple[List[float], float]]:
     except Exception as exc:
         LOG.warning(
             "Failed to read baseline summary %s: %s; deltas will be NaN",
-            BASELINE_SUMMARY_PATH, exc,
+            BASELINE_SUMMARY_PATH,
+            exc,
         )
         return {}
     out: Dict[str, Tuple[List[float], float]] = {}
@@ -286,10 +297,15 @@ def _run_pocket_sweep_with_chemotype(
     status_per_seed = [sweep.status] * len(kcal_per_seed)
     chemotype_accepted = sweep.status == "MEASURED_CHEMOTYPE_VDW"
     # Probe how many ligand ATOM rows were written.
-    n_atoms_ligand = sum(
-        1 for line in (pocket_out / "cisplatin.pdbqt").read_text().splitlines()
-        if line.startswith("ATOM")
-    ) if (pocket_out / "cisplatin.pdbqt").is_file() else 0
+    n_atoms_ligand = (
+        sum(
+            1
+            for line in (pocket_out / "cisplatin.pdbqt").read_text().splitlines()
+            if line.startswith("ATOM")
+        )
+        if (pocket_out / "cisplatin.pdbqt").is_file()
+        else 0
+    )
     return kcal_per_seed, status_per_seed, chemotype_accepted, n_atoms_ligand, elapsed
 
 
@@ -325,12 +341,15 @@ def run_full_sweep(
         if receptor is None:
             LOG.error(
                 "%s: receptor.pdbqt missing under %s — skipping",
-                pocket_id, list(RECEPTOR_SEARCH_DIRS),
+                pocket_id,
+                list(RECEPTOR_SEARCH_DIRS),
             )
             continue
         LOG.info(
             "Docking cisplatin (chemotype VDW) into %s (seeds=%s, ex=%d)...",
-            pocket_id, list(seeds), int(exhaustiveness),
+            pocket_id,
+            list(seeds),
+            int(exhaustiveness),
         )
         try:
             kcal_per_seed, status_per_seed, accepted, n_atoms, elapsed = (
@@ -347,7 +366,9 @@ def run_full_sweep(
         except Exception as exc:
             LOG.error(
                 "%s: chemotype sweep failed: %s\n%s",
-                pocket_id, exc, traceback.format_exc(),
+                pocket_id,
+                exc,
+                traceback.format_exc(),
             )
             kcal_per_seed = [float("nan")] * len(seeds)
             status_per_seed = ["DOCK_FAILED"] * len(seeds)
@@ -396,14 +417,20 @@ def run_full_sweep(
         LOG.info(
             "  %s: chemotype_mean=%.3f ex8_mean=%.3f delta=%.3f "
             "kcal/mol (accepted=%s)",
-            pocket_id, chemotype_mean, ex8_mean, delta, accepted,
+            pocket_id,
+            chemotype_mean,
+            ex8_mean,
+            delta,
+            accepted,
         )
 
     # Aggregate.
-    aggregate_chemotype_mean = _mean(chemotype_means) if chemotype_means else float("nan")
-    baseline_mean_for_10 = _mean(
-        [v[1] for v in baseline.values()]
-    ) if baseline else float("nan")
+    aggregate_chemotype_mean = (
+        _mean(chemotype_means) if chemotype_means else float("nan")
+    )
+    baseline_mean_for_10 = (
+        _mean([v[1] for v in baseline.values()]) if baseline else float("nan")
+    )
     delta_vs_baseline = (
         aggregate_chemotype_mean - baseline_mean_for_10
         if math.isfinite(aggregate_chemotype_mean)
@@ -448,9 +475,7 @@ def _write_synthesis(
     md.append(f"_Generated: {summary['_generated_utc']}_  ")
     md.append(f"_Hardware: {summary['_hardware']}_  ")
     md.append(f"_Ligand SMILES_: `{summary['_smiles']}` (= cisplatin).  ")
-    md.append(
-        f"_Engine_: Vina 1.2.7 (Python binding).  "
-    )
+    md.append(f"_Engine_: Vina 1.2.7 (Python binding).  ")
     md.append(
         f"_Exhaustiveness_: {summary['_exhaustiveness']}; "
         f"_n_poses_: {summary['_n_poses']}; "
@@ -472,16 +497,13 @@ def _write_synthesis(
         f"kcal/mol (negative = lift)"
     )
     md.append(
-        f"* Pockets passing -5.0: "
-        f"{summary['_n_pockets_pass_target_minus5']} / 10"
+        f"* Pockets passing -5.0: " f"{summary['_n_pockets_pass_target_minus5']} / 10"
     )
     md.append(
-        f"* Pockets passing -6.0: "
-        f"{summary['_n_pockets_pass_stretch_minus6']} / 10"
+        f"* Pockets passing -6.0: " f"{summary['_n_pockets_pass_stretch_minus6']} / 10"
     )
     md.append(
-        f"* Pockets passing -7.0: "
-        f"{summary['_n_pockets_pass_cutoff_minus7']} / 10"
+        f"* Pockets passing -7.0: " f"{summary['_n_pockets_pass_cutoff_minus7']} / 10"
     )
     md.append("")
     md.append("## Per-pocket comparison")
@@ -494,12 +516,10 @@ def _write_synthesis(
     for r in results:
         ex8_str = ", ".join(f"{v:.3f}" for v in r.ex8_kcal_per_seed)
         ctype_str = ", ".join(
-            f"{v:.3f}" if math.isfinite(v) else "NaN"
-            for v in r.chemotype_kcal_per_seed
+            f"{v:.3f}" if math.isfinite(v) else "NaN" for v in r.chemotype_kcal_per_seed
         )
         delta_str = (
-            f"{r.delta_vs_ex8_mg:+.3f}"
-            if math.isfinite(r.delta_vs_ex8_mg) else "NaN"
+            f"{r.delta_vs_ex8_mg:+.3f}" if math.isfinite(r.delta_vs_ex8_mg) else "NaN"
         )
         md.append(
             f"| {r.pocket_id} | {ex8_str} | {ctype_str} | "
@@ -556,31 +576,44 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--pockets", nargs="+", default=list(DEFAULT_POCKETS),
+        "--pockets",
+        nargs="+",
+        default=list(DEFAULT_POCKETS),
         help="Pocket IDs (default: the 10 Wf-30 pockets).",
     )
     p.add_argument(
-        "--seeds", nargs="+", type=int, default=list(DEFAULT_SEEDS),
+        "--seeds",
+        nargs="+",
+        type=int,
+        default=list(DEFAULT_SEEDS),
         help="Experiment seeds (default: 0 1 2).",
     )
     p.add_argument(
-        "--exhaustiveness", type=int, default=DEFAULT_EXHAUSTIVENESS,
+        "--exhaustiveness",
+        type=int,
+        default=DEFAULT_EXHAUSTIVENESS,
         help="Vina --exhaustiveness (default 8).",
     )
     p.add_argument(
-        "--n-poses", type=int, default=DEFAULT_N_POSES,
+        "--n-poses",
+        type=int,
+        default=DEFAULT_N_POSES,
         help="Vina --num_modes (default 5).",
     )
     p.add_argument(
-        "--smiles", default=CISPLATIN_SMILES,
+        "--smiles",
+        default=CISPLATIN_SMILES,
         help="Ligand SMILES (default: cisplatin [Pt](N)(N)(Cl)Cl).",
     )
     p.add_argument(
-        "--out-dir", type=Path, default=DEFAULT_OUT_DIR,
+        "--out-dir",
+        type=Path,
+        default=DEFAULT_OUT_DIR,
         help="Output root (default: molmetal/reports/wf143_p4_chemotype_dock).",
     )
     p.add_argument(
-        "--log-level", default="INFO",
+        "--log-level",
+        default="INFO",
         choices=("DEBUG", "INFO", "WARNING", "ERROR"),
     )
     return p
@@ -600,8 +633,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     baseline = _load_baseline_per_pocket()
     if not baseline:
         LOG.warning(
-            "Wf-121 P3 baseline summary unavailable; per-pocket deltas "
-            "will be NaN."
+            "Wf-121 P3 baseline summary unavailable; per-pocket deltas " "will be NaN."
         )
 
     summary = run_full_sweep(

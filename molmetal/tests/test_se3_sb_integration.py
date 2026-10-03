@@ -60,8 +60,8 @@ class _DummyEGNNVelocityNet(nn.Module):
 
     def forward(
         self,
-        x: torch.Tensor,            # (B, N, 3)
-        t: torch.Tensor,            # (B,) or scalar
+        x: torch.Tensor,  # (B, N, 3)
+        t: torch.Tensor,  # (B,) or scalar
         pocket: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         if t.dim() == 0:
@@ -96,8 +96,8 @@ class _EquivariantDummyEGNN(nn.Module):
 
     def forward(
         self,
-        x: torch.Tensor,           # (B, N, 3)
-        t: torch.Tensor,           # (B,) or scalar
+        x: torch.Tensor,  # (B, N, 3)
+        t: torch.Tensor,  # (B,) or scalar
         pocket: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         # Apply the fixed rotation per-atom: (B, N, 3) <- (B, N, 3) @ R^T.
@@ -122,12 +122,13 @@ def test_se3_velocity_field_tangent():
     x = torch.randn(2, 5, 3)
     t = torch.tensor([0.5, 0.5])
     xi = field(x, t)
-    assert xi.shape == (2, 6), (
-        f"SE3SBVelocityField must return (B, 6); got {tuple(xi.shape)}"
-    )
-    assert xi.dtype == x.dtype, (
-        f"Output dtype must match input dtype; got {xi.dtype} vs {x.dtype}"
-    )
+    assert xi.shape == (
+        2,
+        6,
+    ), f"SE3SBVelocityField must return (B, 6); got {tuple(xi.shape)}"
+    assert (
+        xi.dtype == x.dtype
+    ), f"Output dtype must match input dtype; got {xi.dtype} vs {x.dtype}"
 
 
 # ---------------------------------------------------------------------------
@@ -145,9 +146,9 @@ def test_se3_velocity_field_finite():
     x = torch.randn(4, 7, 3) * 5.0  # large-magnitude input
     t = torch.linspace(0.0, 1.0, 4)
     xi = field(x, t)
-    assert torch.isfinite(xi).all(), (
-        f"Velocity field output must be finite; got NaN/Inf in {xi}"
-    )
+    assert torch.isfinite(
+        xi
+    ).all(), f"Velocity field output must be finite; got NaN/Inf in {xi}"
 
 
 # ---------------------------------------------------------------------------
@@ -168,12 +169,14 @@ def test_se3_velocity_field_reduction_linear_part():
 
     class _ConstantVelocity(nn.Module):
         """Velocity net that returns a *fixed* (B, N, 3) tensor per call."""
+
         def __init__(self) -> None:
             super().__init__()
             # Register a constant velocity buffer so we can pick it up
             # in forward() without modifying parameters.
             self.register_buffer(
-                "c", torch.tensor([1.0, -2.0, 0.5]).expand(2, 5, 3).contiguous(),
+                "c",
+                torch.tensor([1.0, -2.0, 0.5]).expand(2, 5, 3).contiguous(),
             )
 
         def forward(self, x, t, pocket=None):
@@ -184,7 +187,7 @@ def test_se3_velocity_field_reduction_linear_part():
     x = torch.randn(2, 5, 3)
     t = torch.tensor([0.5, 0.5])
     xi = field(x, t)
-    upsilon = xi[..., :3]                     # (B, 3)
+    upsilon = xi[..., :3]  # (B, 3)
     expected = torch.tensor([1.0, -2.0, 0.5]).expand(2, 3)
     assert torch.allclose(upsilon, expected, atol=1e-5), (
         f"Linear part must equal the centroid velocity [1, -2, 0.5]; "
@@ -208,6 +211,7 @@ def test_se3_velocity_field_reduction_angular_part():
 
     class _RadialVelocity(nn.Module):
         """v(x) = c * (x - mean(x)) — radial from centroid."""
+
         def forward(self, x, t, pocket=None):
             return 1.5 * (x - x.mean(dim=1, keepdim=True))
 
@@ -216,10 +220,10 @@ def test_se3_velocity_field_reduction_angular_part():
     x = torch.randn(3, 6, 3)
     t = torch.tensor([0.5, 0.5, 0.5])
     xi = field(x, t)
-    omega = xi[..., 3:]                      # (B, 3)
-    assert omega.abs().max().item() < 1e-5, (
-        f"Radial velocity gives zero angular part; got omega={omega.tolist()}"
-    )
+    omega = xi[..., 3:]  # (B, 3)
+    assert (
+        omega.abs().max().item() < 1e-5
+    ), f"Radial velocity gives zero angular part; got omega={omega.tolist()}"
 
 
 # ---------------------------------------------------------------------------
@@ -241,6 +245,7 @@ def test_se3_velocity_field_reduction_angular_nonzero():
 
     class _TangentialVelocity(nn.Module):
         """v(x) = cross(x - mean(x), e_z) — tangential rotation around z-axis."""
+
         def forward(self, x, t, pocket=None):
             r = x - x.mean(dim=1, keepdim=True)
             e_z = torch.tensor([0.0, 0.0, 1.0], dtype=x.dtype, device=x.device)
@@ -257,7 +262,7 @@ def test_se3_velocity_field_reduction_angular_nonzero():
     x = torch.cat([x_xy, torch.zeros(2, 5, 1)], dim=-1)  # (B, N, 3) z = 0
     t = torch.tensor([0.5, 0.5])
     xi = field(x, t)
-    omega = xi[..., 3:]                      # (B, 3)
+    omega = xi[..., 3:]  # (B, 3)
     # The angular velocity should be aligned with e_z = [0, 0, 1].
     # The xy components must be ~0 and the z component must be ~ mean(|r|^2).
     assert omega[..., :2].abs().max().item() < 1e-4, (
@@ -267,8 +272,8 @@ def test_se3_velocity_field_reduction_angular_nonzero():
     # The z component must equal -mean(|r|^2) where r = x - mean(x).
     # Note: |r_i|^2 = |x_i|^2 - 2 x_i . mean(x) + |mean(x)|^2,
     # so mean(|r_i|^2) = mean(|x_i|^2) - |mean(x)|^2 (the variance).
-    r = x - x.mean(dim=1, keepdim=True)              # (B, N, 3)
-    r_sq_mean = (r * r).sum(dim=-1).mean(dim=-1)     # (B,) mean |r|^2
+    r = x - x.mean(dim=1, keepdim=True)  # (B, N, 3)
+    r_sq_mean = (r * r).sum(dim=-1).mean(dim=-1)  # (B,) mean |r|^2
     assert torch.allclose(omega[..., 2], -r_sq_mean, atol=1e-4), (
         f"Tangential velocity gives z angular component equal to "
         f"-mean |r|^2; got z={omega[..., 2].tolist()}, "
@@ -322,9 +327,12 @@ def test_se3_sb_decoder_shape():
     z1[..., :3, 3] = torch.randn(b, 3)  # translate z1
     t_values = torch.tensor([0.0, 0.25, 0.5, 0.75, 1.0])
     out = decoder.decode(z0, z1, t_values=t_values)
-    assert out.shape == (b, t_values.numel(), 4, 4), (
-        f"Decoder output shape must be (B, n_t, 4, 4); got {tuple(out.shape)}"
-    )
+    assert out.shape == (
+        b,
+        t_values.numel(),
+        4,
+        4,
+    ), f"Decoder output shape must be (B, n_t, 4, 4); got {tuple(out.shape)}"
 
 
 # ---------------------------------------------------------------------------
@@ -345,9 +353,9 @@ def test_se3_sb_decoder_at_zero():
     z[..., :3, 3] = torch.randn(2, 3) * 0.1
     out = decoder.decode_at(z, t=0.0)
     diff = (out - z).abs().max().item()
-    assert diff < 1e-5, (
-        f"decode(z, z) at t=0 must equal z within 1e-5; got max abs diff={diff}"
-    )
+    assert (
+        diff < 1e-5
+    ), f"decode(z, z) at t=0 must equal z within 1e-5; got max abs diff={diff}"
 
 
 # ---------------------------------------------------------------------------
@@ -367,9 +375,9 @@ def test_se3_sb_decoder_at_one():
     z[..., :3, 3] = torch.randn(2, 3) * 0.1
     out = decoder.decode_at(z, t=1.0)
     diff = (out - z).abs().max().item()
-    assert diff < 1e-5, (
-        f"decode(z, z) at t=1 must equal z within 1e-5; got max abs diff={diff}"
-    )
+    assert (
+        diff < 1e-5
+    ), f"decode(z, z) at t=1 must equal z within 1e-5; got max abs diff={diff}"
 
 
 # ---------------------------------------------------------------------------
@@ -387,7 +395,7 @@ def test_se3_sb_decoder_midpoint_translation():
     from molmetal.adapters.se3_sb_integration import SE3SBDecoder
 
     decoder = SE3SBDecoder(use_sinkhorn=False)
-    z0 = torch.eye(4).unsqueeze(0)        # (1, 4, 4) identity
+    z0 = torch.eye(4).unsqueeze(0)  # (1, 4, 4) identity
     z1 = torch.eye(4).unsqueeze(0).clone()
     z1[..., :3, 3] = torch.tensor([[1.0, 0.0, 0.0]])
     out = decoder.decode(z0, z1, t_values=torch.tensor([0.5]))
@@ -459,9 +467,9 @@ def test_integrate_with_cfm_runs():
     field = SE3SBVelocityField(base_velocity_net=_DummyEGNNVelocityNet())
     samples = torch.randn(2, 6, 3)
     out = integrate_with_cfm(samples, field, n_steps=10)
-    assert out.shape == samples.shape, (
-        f"integrate_with_cfm must preserve input shape; got {tuple(out.shape)}"
-    )
+    assert (
+        out.shape == samples.shape
+    ), f"integrate_with_cfm must preserve input shape; got {tuple(out.shape)}"
 
 
 # ---------------------------------------------------------------------------
@@ -477,9 +485,9 @@ def test_integrate_with_cfm_finite():
     field = SE3SBVelocityField(base_velocity_net=_DummyEGNNVelocityNet())
     samples = torch.randn(4, 5, 3)
     out = integrate_with_cfm(samples, field, n_steps=20)
-    assert torch.isfinite(out).all(), (
-        f"Integration output must be finite; got NaN/Inf in {out}"
-    )
+    assert torch.isfinite(
+        out
+    ).all(), f"Integration output must be finite; got NaN/Inf in {out}"
 
 
 # ---------------------------------------------------------------------------
@@ -565,13 +573,13 @@ def test_integrate_with_cfm_centroid_translation():
     field = SE3SBVelocityField(base_velocity_net=_ZeroVelocity())
     torch.manual_seed(99)
     samples = torch.randn(3, 7, 3)
-    centroid_in = samples.mean(dim=1)              # (3, 3)
+    centroid_in = samples.mean(dim=1)  # (3, 3)
     out = integrate_with_cfm(samples, field, n_steps=5)
-    centroid_out = out.mean(dim=1)                  # (3, 3)
+    centroid_out = out.mean(dim=1)  # (3, 3)
     diff = (centroid_in - centroid_out).abs().max().item()
-    assert diff < 1e-5, (
-        f"Zero-velocity integration must preserve centroid; got diff={diff}"
-    )
+    assert (
+        diff < 1e-5
+    ), f"Zero-velocity integration must preserve centroid; got diff={diff}"
 
 
 # ---------------------------------------------------------------------------
@@ -638,6 +646,7 @@ def test_adapter_imports_cleanly():
     pre = set(dir(flow_matching_lipman))
     # Re-import the se3SB module to exercise the import path.
     import importlib
+
     importlib.reload(se3_sb_integration)
     post = set(dir(flow_matching_lipman))
     # Public API is stable (the R17 close-out is locked).
@@ -653,9 +662,9 @@ def test_adapter_imports_cleanly():
     )
     # The adapter module exposes the three W2.1 public symbols.
     for name in ("SE3SBVelocityField", "SE3SBDecoder", "integrate_with_cfm"):
-        assert hasattr(se3_sb_integration, name), (
-            f"se3_sb_integration must expose {name!r}"
-        )
+        assert hasattr(
+            se3_sb_integration, name
+        ), f"se3_sb_integration must expose {name!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -699,9 +708,12 @@ def test_se3_sb_decoder_default_t_values():
     decoder = SE3SBDecoder(use_sinkhorn=False)
     z = torch.eye(4).expand(2, 4, 4)
     out = decoder.decode(z, z)
-    assert out.shape == (2, 1, 4, 4), (
-        f"Default t_values must yield n_t=1; got shape {tuple(out.shape)}"
-    )
+    assert out.shape == (
+        2,
+        1,
+        4,
+        4,
+    ), f"Default t_values must yield n_t=1; got shape {tuple(out.shape)}"
 
 
 # ---------------------------------------------------------------------------
@@ -723,13 +735,13 @@ def test_integrate_with_cfm_large_steps_stable():
     field = SE3SBVelocityField(base_velocity_net=_DummyEGNNVelocityNet())
     samples = torch.randn(3, 4, 3) * 0.5
     out = integrate_with_cfm(samples, field, n_steps=200)
-    assert torch.isfinite(out).all(), (
-        f"Integration at n_steps=200 must remain finite; got NaN/Inf"
-    )
+    assert torch.isfinite(
+        out
+    ).all(), f"Integration at n_steps=200 must remain finite; got NaN/Inf"
     # Output magnitude must be bounded (the field is bounded).
-    assert out.abs().max().item() < 100.0, (
-        f"Integration output magnitude must stay bounded; got max={out.abs().max().item()}"
-    )
+    assert (
+        out.abs().max().item() < 100.0
+    ), f"Integration output magnitude must stay bounded; got max={out.abs().max().item()}"
 
 
 # ---------------------------------------------------------------------------

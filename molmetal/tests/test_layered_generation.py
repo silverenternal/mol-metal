@@ -33,6 +33,7 @@ All tests run on CPU in <5 s — no GPU, no torch dependency, no
 learned priors.  This is the API-surface contract that TODO-31 will
 plug the learned sampler into.
 """
+
 from __future__ import annotations
 
 import random
@@ -75,10 +76,10 @@ def _make_pipeline(seed: int = 0) -> LayeredGenerationPipeline:
 # A handful of drug-like input SMILES that span the typical Bemis-Murcko
 # scaffold distribution (single-ring, fused bicyclic, heterocyclic).
 _DRUG_LIKE = (
-    "Cc1ccc(NC(=O)c2ccccc2)cc1",    # paracetamol
+    "Cc1ccc(NC(=O)c2ccccc2)cc1",  # paracetamol
     "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",  # caffeine
-    "OC(=O)Cc1ccc(N)cc1",            # GABA-like
-    "CC(=O)Oc1ccccc1C(=O)O",         # aspirin
+    "OC(=O)Cc1ccc(N)cc1",  # GABA-like
+    "CC(=O)Oc1ccccc1C(=O)O",  # aspirin
 )
 
 
@@ -114,14 +115,17 @@ def test_scaffold_stage_min_heavy_filter():
     """Scaffolds smaller than n_heavy_atoms_min are rejected."""
     # Paracetamol scaffold has ~15 heavy atoms; min=100 rejects it.
     stage_strict = ScaffoldStage(
-        n_heavy_atoms_min=100, n_heavy_atoms_max=200, rng=random.Random(0),
+        n_heavy_atoms_min=100,
+        n_heavy_atoms_max=200,
+        rng=random.Random(0),
     )
-    assert stage_strict.generate("Cc1ccc(NC(=O)c2ccccc2)cc1") == "", (
-        "strict min_heavy should reject paracetamol scaffold"
-    )
+    assert (
+        stage_strict.generate("Cc1ccc(NC(=O)c2ccccc2)cc1") == ""
+    ), "strict min_heavy should reject paracetamol scaffold"
     # Same input with min_heavy=3 passes.
     stage_relaxed = ScaffoldStage(
-        n_heavy_atoms_min=3, rng=random.Random(0),
+        n_heavy_atoms_min=3,
+        rng=random.Random(0),
     )
     assert stage_relaxed.generate("Cc1ccc(NC(=O)c2ccccc2)cc1")
 
@@ -132,12 +136,14 @@ def test_scaffold_stage_min_heavy_filter():
 def test_scaffold_stage_max_heavy_filter():
     """Scaffolds larger than n_heavy_atoms_max are rejected."""
     stage_tight = ScaffoldStage(
-        n_heavy_atoms_min=3, n_heavy_atoms_max=3, rng=random.Random(0),
+        n_heavy_atoms_min=3,
+        n_heavy_atoms_max=3,
+        rng=random.Random(0),
     )
     # Paracetamol scaffold has more than 3 heavy atoms → rejected.
-    assert stage_tight.generate("Cc1ccc(NC(=O)c2ccccc2)cc1") == "", (
-        "max_heavy=3 should reject the paracetamol scaffold"
-    )
+    assert (
+        stage_tight.generate("Cc1ccc(NC(=O)c2ccccc2)cc1") == ""
+    ), "max_heavy=3 should reject the paracetamol scaffold"
 
 
 # ---------------------------------------------------------------------------
@@ -148,9 +154,9 @@ def test_scaffold_validity_known_drug():
     stage = ScaffoldStage(rng=random.Random(0))
     paracetamol_scaffold = stage.generate("Cc1ccc(NC(=O)c2ccccc2)cc1")
     assert paracetamol_scaffold, "paracetamol scaffold extraction failed"
-    assert stage.is_valid_scaffold(paracetamol_scaffold), (
-        f"paracetamol scaffold {paracetamol_scaffold!r} must validate"
-    )
+    assert stage.is_valid_scaffold(
+        paracetamol_scaffold
+    ), f"paracetamol scaffold {paracetamol_scaffold!r} must validate"
 
 
 # ---------------------------------------------------------------------------
@@ -201,6 +207,7 @@ def test_attach_stage_compatible_returns_molecule():
     assert out, f"compatible attach returned empty for scaffold={scaffold!r}"
     # The combined mol should have a Cl.
     from rdkit import Chem
+
     mol = Chem.MolFromSmiles(out)
     assert mol is not None
     has_cl = any(a.GetSymbol() == "Cl" for a in mol.GetAtoms())
@@ -218,12 +225,12 @@ def test_attach_stage_incompatible_returns_none():
     # attach → result has no attachments and rejects the bad R-group.
     report = attach.attach_with_report("c1ccccc1", ["not_a_smiles@@"])
     assert isinstance(report, AttachResult)
-    assert report.n_attachments == 0, (
-        f"invalid R-group should not attach, got {report.n_attachments}"
-    )
-    assert "not_a_smiles@@" in report.rejected, (
-        f"invalid R-group should appear in rejected list, got {report.rejected}"
-    )
+    assert (
+        report.n_attachments == 0
+    ), f"invalid R-group should not attach, got {report.n_attachments}"
+    assert (
+        "not_a_smiles@@" in report.rejected
+    ), f"invalid R-group should appear in rejected list, got {report.rejected}"
 
 
 # ---------------------------------------------------------------------------
@@ -251,9 +258,9 @@ def test_attach_stage_report_counts():
         ["[Cl]", "[NH2]", "@@@bad@@@"],
     )
     assert isinstance(report, AttachResult)
-    assert report.n_attachments + len(report.rejected) >= 3, (
-        f"counts must cover input list, got {report.n_attachments}+{report.rejected}"
-    )
+    assert (
+        report.n_attachments + len(report.rejected) >= 3
+    ), f"counts must cover input list, got {report.n_attachments}+{report.rejected}"
     assert "@@@bad@@@" in report.rejected
 
 
@@ -280,12 +287,13 @@ def test_decorate_stage_substituents():
     result = dec.decorate_with_report(base, ["[F]", "[Cl]"])
     assert isinstance(result, DecorateResult)
     # At least one substituent should land.
-    assert result.n_substituents >= 1, (
-        f"expected >= 1 substituent, got {result.n_substituents}"
-    )
+    assert (
+        result.n_substituents >= 1
+    ), f"expected >= 1 substituent, got {result.n_substituents}"
     assert result.smiles, "decorate returned empty SMILES"
     # The decorated mol should have F or Cl.
     from rdkit import Chem
+
     mol = Chem.MolFromSmiles(result.smiles)
     assert mol is not None
     halogens = {a.GetSymbol() for a in mol.GetAtoms()} & {"F", "Cl"}
@@ -302,9 +310,7 @@ def test_decorate_stage_stereo():
     out = dec.add_stereo(chiral_smi)
     assert isinstance(out, str)
     assert out, "add_stereo returned empty for valid chiral SMILES"
-    assert "@" in out, (
-        f"chirality tag should survive, got {out!r}"
-    )
+    assert "@" in out, f"chirality tag should survive, got {out!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -317,9 +323,9 @@ def test_decorate_stage_max_substituents_cap():
         "c1ccc2ccccc2c1",  # naphthalene — many open sites
         ["[F]", "[Cl]", "[OH]", "[NH2]"],
     )
-    assert result.n_substituents <= 2, (
-        f"max_substituents=2 cap violated, got {result.n_substituents}"
-    )
+    assert (
+        result.n_substituents <= 2
+    ), f"max_substituents=2 cap violated, got {result.n_substituents}"
 
 
 # ---------------------------------------------------------------------------
@@ -359,7 +365,11 @@ def test_pipeline_end_to_end_returns_dict():
     assert isinstance(out, dict)
     # Contract keys from TODO-30 §3.
     assert set(out.keys()) >= {
-        "scaffold", "attached", "decorated", "final_smiles", "valid",
+        "scaffold",
+        "attached",
+        "decorated",
+        "final_smiles",
+        "valid",
     }, f"contract keys missing, got {set(out.keys())}"
     # Plus our extended fields.
     assert "stages_run" in out
@@ -400,24 +410,47 @@ def test_pipeline_diversity():
     # Build 100 distinct drug-like seeds.
     base_seeds = [
         # Fused bicyclics — different ring compositions
-        "c1ccc2ccccc2c1", "c1ccc2[nH]ccc2c1", "c1ccc2ncccc2c1",
-        "c1ccc2[nH]cnc2c1", "c1cnc2[nH]cnc2c1", "c1cnc2ncncc2c1",
-        "c1ccc2cccnc2c1", "c1ccc2nccnc2c1", "c1cnc2cccnc2c1",
+        "c1ccc2ccccc2c1",
+        "c1ccc2[nH]ccc2c1",
+        "c1ccc2ncccc2c1",
+        "c1ccc2[nH]cnc2c1",
+        "c1cnc2[nH]cnc2c1",
+        "c1cnc2ncncc2c1",
+        "c1ccc2cccnc2c1",
+        "c1ccc2nccnc2c1",
+        "c1cnc2cccnc2c1",
         # 5-rings
-        "c1ccoc1", "c1cc[nH]c1", "c1cnc[nH]1", "c1cnco1", "c1ccsc1",
-        "c1ncnc[nH]1", "c1ncsc1", "c1ncc[nH]1",
+        "c1ccoc1",
+        "c1cc[nH]c1",
+        "c1cnc[nH]1",
+        "c1cnco1",
+        "c1ccsc1",
+        "c1ncnc[nH]1",
+        "c1ncsc1",
+        "c1ncc[nH]1",
         # Bridged bicyclics
-        "C1CCc2ccccc2C1", "C1CCc2ncccc2C1", "C1CCc2[nH]ccc2C1",
-        "C1CCc2cccnc2C1", "C1CCc2ncncc2C1",
+        "C1CCc2ccccc2C1",
+        "C1CCc2ncccc2C1",
+        "C1CCc2[nH]ccc2C1",
+        "C1CCc2cccnc2C1",
+        "C1CCc2ncncc2C1",
         # Biaryl
-        "c1ccc(-c2ccccc2)cc1", "c1ccc(-c2ccncc2)cc1",
-        "c1ccc(-c2ccoc2)cc1", "c1ccc(-c2ccsc2)cc1",
-        "c1ccc(-c2ccnnc2)cc1", "c1ccc(-c2ncccn2)cc1",
+        "c1ccc(-c2ccccc2)cc1",
+        "c1ccc(-c2ccncc2)cc1",
+        "c1ccc(-c2ccoc2)cc1",
+        "c1ccc(-c2ccsc2)cc1",
+        "c1ccc(-c2ccnnc2)cc1",
+        "c1ccc(-c2ncccn2)cc1",
         # Tri-cyclics
-        "c1ccc2c(c1)ccc1ccccc12", "c1ccc2c(c1)ncc1ncccc12",
+        "c1ccc2c(c1)ccc1ccccc12",
+        "c1ccc2c(c1)ncc1ncccc12",
         # Aromatic 6-rings with heterocycles
-        "c1ccncc1", "c1ccnnc1", "c1ccc2c(c1)cc[nH]2",
-        "c1ccc2c(c1)ccnc2", "c1ccc2c(c1)ccoc2", "c1ccc2c(c1)ccsc2",
+        "c1ccncc1",
+        "c1ccnnc1",
+        "c1ccc2c(c1)cc[nH]2",
+        "c1ccc2c(c1)ccnc2",
+        "c1ccc2c(c1)ccoc2",
+        "c1ccc2c(c1)ccsc2",
         # Methyl-variant scaffolds (paracetamol, ibuprofen, etc.)
         "Cc1ccc(NC(=O)c2ccccc2)cc1",
         "CC(C)Cc1ccc(C(C)C(=O)O)cc1",
@@ -439,16 +472,18 @@ def test_pipeline_diversity():
             decorate_stage=DecorateStage(rng=random.Random(i + 200)),
         )
         out = pipeline.generate(
-            seed, r_groups=["[Cl]"], decorations=["[F]"],
+            seed,
+            r_groups=["[Cl]"],
+            decorations=["[F]"],
         )
         if out["final_smiles"]:
             outputs.add(out["final_smiles"])
     # We require at least 25 distinct outputs from 100 seeds — the
     # Bemis-Murcko extraction collapses near-duplicate scaffolds,
     # so this is the calibrated minimum.
-    assert len(outputs) >= 25, (
-        f"expected >= 25 distinct outputs from 100 seeds, got {len(outputs)}"
-    )
+    assert (
+        len(outputs) >= 25
+    ), f"expected >= 25 distinct outputs from 100 seeds, got {len(outputs)}"
 
 
 # ---------------------------------------------------------------------------
@@ -461,6 +496,7 @@ def test_pipeline_partial_when_attach_fails():
         attach_stage=AttachStage(rng=random.Random(1)),
         decorate_stage=DecorateStage(rng=random.Random(2)),
     )
+
     # Inject a forced-failure attach stage.
     class _FailAttach:
         rng = random.Random(0)
@@ -469,9 +505,13 @@ def test_pipeline_partial_when_attach_fails():
             from molmetal.molmetal_lam.lam_chem.layered_generation import (
                 AttachResult,
             )
+
             return AttachResult(
-                smiles="", valid=False, n_attachments=0,
-                rejected=list(r_groups), error="forced failure",
+                smiles="",
+                valid=False,
+                n_attachments=0,
+                rejected=list(r_groups),
+                error="forced failure",
             )
 
     pipeline.attach_stage = _FailAttach()
@@ -483,9 +523,9 @@ def test_pipeline_partial_when_attach_fails():
     # Attach failed, but decorate should still try to decorate the
     # scaffold, and the result should NOT crash.
     assert "errors" in out
-    assert any("attach" in e for e in out["errors"]), (
-        f"attach error should be reported, got {out['errors']}"
-    )
+    assert any(
+        "attach" in e for e in out["errors"]
+    ), f"attach error should be reported, got {out['errors']}"
 
 
 # ---------------------------------------------------------------------------

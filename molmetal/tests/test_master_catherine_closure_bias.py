@@ -67,6 +67,7 @@ def test_canonical_submodules_unchanged():
         pocket_specific_closure_bias,
         per_pocket_pharmacophore_lookup,
     )
+
     assert callable(closure_oversample)
     assert callable(closure_bounded_smiles_generation)
     assert callable(pocket_specific_closure_bias)
@@ -86,7 +87,9 @@ def test_canonical_submodules_unchanged():
 class TestConstants:
     def test_supported_bias_types(self):
         assert tuple(SUPPORTED_BIAS_TYPES) == (
-            "oversample", "generation_bias", "feature_flag",
+            "oversample",
+            "generation_bias",
+            "feature_flag",
         )
 
     def test_engine_tags_distinct(self):
@@ -145,8 +148,12 @@ class TestFeatureFlag:
         assert res.payload["term_id"] == "test_term_1"
         assert isinstance(res.payload["six_of_six_pass"], bool)
         assert set(res.payload["per_property"].keys()) == {
-            "P1_reflexivity", "P2_transitivity", "P3_symmetry",
-            "P4_dblock", "P5_reachability", "P6_composability",
+            "P1_reflexivity",
+            "P2_transitivity",
+            "P3_symmetry",
+            "P4_dblock",
+            "P5_reachability",
+            "P6_composability",
         }
         assert res.payload["bias_used"] in (0.0, 1.0)
 
@@ -186,8 +193,9 @@ class TestFeatureFlag:
                 "term_id": f"b_{i}",
                 "metal": "Pt",
                 "witness_path": ["CuAAC"] if i % 2 == 0 else ["AmideCoupling"],
-                "smiles": ("Nc1nc(N)nc(N)n1" if i % 2 == 0
-                           else "NS(=O)(=O)c1ccc(C#C)cc1"),
+                "smiles": (
+                    "Nc1nc(N)nc(N)n1" if i % 2 == 0 else "NS(=O)(=O)c1ccc(C#C)cc1"
+                ),
             }
             for i in range(4)
         ]
@@ -270,8 +278,7 @@ class TestOversample:
         # Tiny cohort (n=12) to keep the test fast — the closure BFS
         # still fires + we exercise the full delegation chain.
         res = m.apply(
-            {"target_metal": "Rh", "n": 12, "per_scaffold_cap": 3,
-             "max_depth": 1},
+            {"target_metal": "Rh", "n": 12, "per_scaffold_cap": 3, "max_depth": 1},
             bias_type="oversample",
         )
         assert res.engine == ENGINE_OVERSAMPLE
@@ -301,18 +308,23 @@ class TestSelectorValidation:
 
     def test_default_bias_type_is_feature_flag(self):
         m = MasterCatherineClosureBias()
-        res_default = m.apply({
-            "term_id": "x",
-            "metal": "Pt",
-            "witness_path": [],
-            "smiles": "Nc1nc(N)nc(N)n1",
-        })
-        res_explicit = m.apply({
-            "term_id": "x",
-            "metal": "Pt",
-            "witness_path": [],
-            "smiles": "Nc1nc(N)nc(N)n1",
-        }, bias_type="feature_flag")
+        res_default = m.apply(
+            {
+                "term_id": "x",
+                "metal": "Pt",
+                "witness_path": [],
+                "smiles": "Nc1nc(N)nc(N)n1",
+            }
+        )
+        res_explicit = m.apply(
+            {
+                "term_id": "x",
+                "metal": "Pt",
+                "witness_path": [],
+                "smiles": "Nc1nc(N)nc(N)n1",
+            },
+            bias_type="feature_flag",
+        )
         assert res_default.bias_type == res_explicit.bias_type == "feature_flag"
 
 
@@ -366,10 +378,16 @@ class TestBuildMasterVerification:
 class TestCatherineClosureFeatureFlag:
     def test_default_engine(self):
         f = CatherineClosureFeatureFlag(
-            term_id="t1", six_of_six_pass=True,
-            per_property={"P1_reflexivity": True, "P2_transitivity": True,
-                          "P3_symmetry": True, "P4_dblock": True,
-                          "P5_reachability": True, "P6_composability": True},
+            term_id="t1",
+            six_of_six_pass=True,
+            per_property={
+                "P1_reflexivity": True,
+                "P2_transitivity": True,
+                "P3_symmetry": True,
+                "P4_dblock": True,
+                "P5_reachability": True,
+                "P6_composability": True,
+            },
             bias_used=1.0,
         )
         assert f.engine == ENGINE_FEATURE_FLAG

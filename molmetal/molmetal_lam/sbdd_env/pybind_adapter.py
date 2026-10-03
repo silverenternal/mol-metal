@@ -54,9 +54,9 @@ class PybindBindingProtocol:
     expected attribute set, it is *not* an abstract base.
     """
 
-    name: str                       # e.g. "equibind_geodesic_kernel"
-    version: str                    # pybind11 module version string
-    is_loaded: bool                 # True iff the .so was actually loaded
+    name: str  # e.g. "equibind_geodesic_kernel"
+    version: str  # pybind11 module version string
+    is_loaded: bool  # True iff the .so was actually loaded
 
     def setup(self, device: str = "cuda") -> None:
         """Optional one-shot init — equivalent to module import side-effects."""

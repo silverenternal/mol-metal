@@ -24,6 +24,7 @@ Run via::
     uv run --no-sync python -m pytest \\
         molmetal/tests/test_mcts_replay_trainer.py -v
 """
+
 from __future__ import annotations
 
 import math
@@ -196,7 +197,8 @@ class TestFeaturiseEntry:
     def test_featurise_entry_action_one_hot_wider(self):
         """With feature_dim > HASH_DIM + 4, the action one-hot lights up."""
         f = featurise_entry(
-            _mk_entry(action="action_2"), feature_dim=HASH_DIM + 8,
+            _mk_entry(action="action_2"),
+            feature_dim=HASH_DIM + 8,
         )
         # The slot at column HASH_DIM + 4 + 2 should be 1.0.
         assert f[HASH_DIM + 4 + 2] == pytest.approx(1.0, abs=1.0e-6)
@@ -211,11 +213,21 @@ class TestFeaturiseEntry:
     def test_featurise_state_action_matches_entry(self):
         """featurise_state_action and featurise_entry agree on shared fields."""
         f1 = featurise_entry(
-            _mk_entry(state="CCO", action="action_0", value=0.6, prior=0.3,
-                      variance=0.02, visit_count=5),
+            _mk_entry(
+                state="CCO",
+                action="action_0",
+                value=0.6,
+                prior=0.3,
+                variance=0.02,
+                visit_count=5,
+            ),
         )
         f2 = featurise_state_action(
-            "CCO", "action_0", value=0.6, prior=0.3, variance=0.02,
+            "CCO",
+            "action_0",
+            value=0.6,
+            prior=0.3,
+            variance=0.02,
             visit_count=5,
         )
         assert np.allclose(f1, f2)
@@ -288,8 +300,10 @@ class TestLinearPolicyValueNet:
         advantage = rng.normal(0.0, 0.5, size=5)
         action_idx = rng.integers(0, 4, size=5)
         policy_loss, value_loss = net.update(
-            x, target_value=target_value,
-            advantage=advantage, action_idx=action_idx,
+            x,
+            target_value=target_value,
+            advantage=advantage,
+            action_idx=action_idx,
         )
         assert isinstance(policy_loss, float)
         assert isinstance(value_loss, float)
@@ -340,10 +354,13 @@ class TestMCTSReplayLearner:
         """train_step returns a (policy_loss, value_loss) tuple."""
         buf = MCTSReplayBuffer(max_size=64, seed=0)
         for i in range(48):
-            buf.add(_mk_entry(
-                value=float(i) / 48.0, prior=0.1 + 0.012 * i,
-                action=f"action_{i % 4}",
-            ))
+            buf.add(
+                _mk_entry(
+                    value=float(i) / 48.0,
+                    prior=0.1 + 0.012 * i,
+                    action=f"action_{i % 4}",
+                )
+            )
         learner = MCTSReplayLearner(feature_dim=16, n_actions=4, lr=1.0e-2, seed=0)
         batch = buf.sample(16)
         pl, vl = learner.train_step(batch)
@@ -389,10 +406,12 @@ class TestTrainStepModuleWrapper:
         """train_step(learner, batch) == learner.train_step(batch)."""
         buf = MCTSReplayBuffer(max_size=32, seed=0)
         for i in range(16):
-            buf.add(_mk_entry(
-                value=float(i) / 16.0,
-                action=f"action_{i % 4}",
-            ))
+            buf.add(
+                _mk_entry(
+                    value=float(i) / 16.0,
+                    action=f"action_{i % 4}",
+                )
+            )
         learner = MCTSReplayLearner(feature_dim=16, n_actions=4, lr=1.0e-2, seed=0)
         batch = buf.sample(8)
         pl, vl = train_step(learner, batch)
@@ -440,12 +459,17 @@ class TestFitAndSummary:
         """fit() runs exactly n_steps steps."""
         buf = MCTSReplayBuffer(max_size=64, seed=0)
         for i in range(48):
-            buf.add(_mk_entry(
-                value=float(i) / 48.0,
-                action=f"action_{i % 4}",
-            ))
+            buf.add(
+                _mk_entry(
+                    value=float(i) / 48.0,
+                    action=f"action_{i % 4}",
+                )
+            )
         learner = MCTSReplayLearner(
-            feature_dim=16, n_actions=4, lr=1.0e-2, seed=0,
+            feature_dim=16,
+            n_actions=4,
+            lr=1.0e-2,
+            seed=0,
         )
         history = learner.fit(buf, n_steps=4, batch_size=8)
         assert len(history) == 4
@@ -469,12 +493,17 @@ class TestFitAndSummary:
         """summary() returns the expected keys with sensible values."""
         buf = MCTSReplayBuffer(max_size=64, seed=0)
         for i in range(48):
-            buf.add(_mk_entry(
-                value=float(i) / 48.0,
-                action=f"action_{i % 4}",
-            ))
+            buf.add(
+                _mk_entry(
+                    value=float(i) / 48.0,
+                    action=f"action_{i % 4}",
+                )
+            )
         learner = MCTSReplayLearner(
-            feature_dim=16, n_actions=4, lr=1.0e-2, seed=0,
+            feature_dim=16,
+            n_actions=4,
+            lr=1.0e-2,
+            seed=0,
         )
         learner.fit(buf, n_steps=3, batch_size=8)
         s = learner.summary()
@@ -525,15 +554,20 @@ class TestHonestNegativeGate:
                 else:
                     a = 1 - preferred
                     v = float(rng.uniform(-0.7, -0.3))
-                buf.add(_mk_entry(
-                    state=f"state_{state_idx}",
-                    action=f"action_{a}",
-                    value=v,
-                    prior=0.5 if a == preferred else 0.05,
-                    visit_count=8 if a == preferred else 1,
-                ))
+                buf.add(
+                    _mk_entry(
+                        state=f"state_{state_idx}",
+                        action=f"action_{a}",
+                        value=v,
+                        prior=0.5 if a == preferred else 0.05,
+                        visit_count=8 if a == preferred else 1,
+                    )
+                )
         learner = MCTSReplayLearner(
-            feature_dim=16, n_actions=2, lr=5.0e-2, seed=0,
+            feature_dim=16,
+            n_actions=2,
+            lr=5.0e-2,
+            seed=0,
         )
         history = learner.fit(buf, n_steps=12, batch_size=16)
         first_pl = history[0]["policy_loss"]
@@ -555,10 +589,7 @@ class TestHonestNegativeGate:
         # Last-step policy loss is the gate target (< 0 after
         # training).  We accept last_pl ≤ 0 OR a 95% drop from
         # first_pl.
-        assert (
-            last_pl <= 0.0
-            or last_pl < 0.05 * abs(first_pl) + 1.0e-6
-        ), (
+        assert last_pl <= 0.0 or last_pl < 0.05 * abs(first_pl) + 1.0e-6, (
             f"policy_loss did not cross zero: first={first_pl:.4f}, "
             f"last={last_pl:.4f}"
         )

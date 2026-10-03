@@ -35,6 +35,7 @@ For ``hidden_dim ∈ {32, 64, 128}`` the post-fix code path
 
 All tests run on CPU in <2 s — no GPU or external evaluators.
 """
+
 from __future__ import annotations
 
 import sys
@@ -113,9 +114,9 @@ def _rebuild_head_for_hidden_dim(h: int) -> BondOrderHead:
 def test_wrap_ordering_resizes_in_dim(h: int) -> None:
     """For h in {32, 64, 128} the post-fix rebuild yields in_dim=9+2*h."""
     head = _rebuild_head_for_hidden_dim(h)
-    assert head.in_dim == _expected_in_dim(h), (
-        f"h={h}: expected in_dim={_expected_in_dim(h)}, got {head.in_dim}"
-    )
+    assert head.in_dim == _expected_in_dim(
+        h
+    ), f"h={h}: expected in_dim={_expected_in_dim(h)}, got {head.in_dim}"
 
 
 @pytest.mark.parametrize("h", [32, 64, 128])
@@ -123,8 +124,7 @@ def test_wrap_ordering_fc1_weight_shape(h: int) -> None:
     """The rebuilt head's ``fc1`` Linear must have in_features=9+2*h."""
     head = _rebuild_head_for_hidden_dim(h)
     assert head.fc1.in_features == _expected_in_dim(h), (
-        f"h={h}: fc1.in_features={head.fc1.in_features} != "
-        f"{_expected_in_dim(h)}"
+        f"h={h}: fc1.in_features={head.fc1.in_features} != " f"{_expected_in_dim(h)}"
     )
     assert head.fc1.out_features == head.hidden_dim
 
@@ -184,6 +184,6 @@ def test_wrap_ordering_gumbel_accepts_resized_head(h: int) -> None:
     except (RuntimeError, ValueError) as exc:
         # If the failure is about an in_dim mismatch, the test fails.
         msg = str(exc).lower()
-        assert "in_dim" not in msg and "in_features" not in msg, (
-            f"h={h}: GumbelConnectivity raised in_dim mismatch: {exc}"
-        )
+        assert (
+            "in_dim" not in msg and "in_features" not in msg
+        ), f"h={h}: GumbelConnectivity raised in_dim mismatch: {exc}"

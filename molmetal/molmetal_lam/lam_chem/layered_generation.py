@@ -314,9 +314,7 @@ class ScaffoldStage:
             # string.
             return ""
         try:
-            return Chem.MolToSmiles(
-                scaffold, isomericSmiles=self.include_chirality
-            )
+            return Chem.MolToSmiles(scaffold, isomericSmiles=self.include_chirality)
         except Exception:
             return ""
 
@@ -444,10 +442,7 @@ class AttachStage:
         # Copy the scaffold into an RWMol so we can edit it.
         rw = Chem.RWMol(mol)
         # Per-site H count — decremented as we join.
-        h_counts = {
-            idx: int(rw.GetAtomWithIdx(idx).GetTotalNumHs())
-            for idx in sites
-        }
+        h_counts = {idx: int(rw.GetAtomWithIdx(idx).GetTotalNumHs()) for idx in sites}
         accepted: List[Tuple[int, Chem.Mol]] = []
         rejected: List[str] = []
 
@@ -621,12 +616,12 @@ class DecorateStage:
 
     # Small substituent SMILES (canonical, atom 0 = attach site).
     _SUBSTITUENT_LIBRARY: Tuple[str, ...] = (
-        "[F]",      # F
-        "[Cl]",     # Cl
-        "[OH]",     # OH
-        "[NH2]",    # NH2
-        "[CH3]",    # CH3
-        "[OCH3]",   # OMe
+        "[F]",  # F
+        "[Cl]",  # Cl
+        "[OH]",  # OH
+        "[NH2]",  # NH2
+        "[CH3]",  # CH3
+        "[OCH3]",  # OMe
     )
 
     def __init__(
@@ -636,9 +631,7 @@ class DecorateStage:
         rng: Optional[random.Random] = None,
     ) -> None:
         if int(max_substituents) < 0:
-            raise ValueError(
-                f"max_substituents must be >= 0, got {max_substituents!r}"
-            )
+            raise ValueError(f"max_substituents must be >= 0, got {max_substituents!r}")
         self.max_substituents = int(max_substituents)
         self.include_stereo = bool(include_stereo)
         self._rng = rng if rng is not None else random.Random()
@@ -883,9 +876,7 @@ class LayeredGenerationPipeline:
             if not base:
                 errors.append("decorate stage skipped: no base molecule")
             else:
-                dec_out = self.decorate_stage.decorate_with_report(
-                    base, decorations
-                )
+                dec_out = self.decorate_stage.decorate_with_report(base, decorations)
                 decorated_smi = dec_out.smiles
                 if not decorated_smi or not dec_out.valid:
                     errors.append(
@@ -920,6 +911,8 @@ if __name__ == "__main__":  # pragma: no cover
         r_groups=["[Cl]", "[OH]"],
         decorations=["[F]", "[NH2]"],
     )
-    print(f"layered_generation smoke: scaffold={out['scaffold']!r}, "
-          f"attached={out['attached']!r}, decorated={out['decorated']!r}, "
-          f"final={out['final_smiles']!r}, valid={out['valid']}")
+    print(
+        f"layered_generation smoke: scaffold={out['scaffold']!r}, "
+        f"attached={out['attached']!r}, decorated={out['decorated']!r}, "
+        f"final={out['final_smiles']!r}, valid={out['valid']}"
+    )

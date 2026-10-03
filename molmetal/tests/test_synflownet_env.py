@@ -93,12 +93,12 @@ def test_forward_step_amide(adapter: SynFlowNetEnvAdapter) -> None:
     # (Phase 2 may emit an extra zwitterion-stripped variant of the
     # same molecule; the canonical neutral form ``CCNC(C)=O`` must be
     # in both.)
-    assert "CCNC(C)=O" in p2_canonicals, (
-        f"expected CCNC(C)=O in Phase 2 canonical products, got {p2_canonicals}"
-    )
-    assert "CCNC(C)=O" in p1_canonicals, (
-        f"expected CCNC(C)=O in Phase 1 canonical products, got {p1_canonicals}"
-    )
+    assert (
+        "CCNC(C)=O" in p2_canonicals
+    ), f"expected CCNC(C)=O in Phase 2 canonical products, got {p2_canonicals}"
+    assert (
+        "CCNC(C)=O" in p1_canonicals
+    ), f"expected CCNC(C)=O in Phase 1 canonical products, got {p1_canonicals}"
     # And the two wrappers must agree on *at least* one canonical form.
     common = p1_canonicals & p2_canonicals
     assert common, (
@@ -123,9 +123,9 @@ def test_backward_step_ester(adapter: SynFlowNetEnvAdapter) -> None:
     """
     pairs = adapter.backward_step("CC(=O)OCC")
     assert isinstance(pairs, list)
-    assert len(pairs) >= 1, (
-        f"expected >=1 decomposition pair for ethyl acetate, got {pairs!r}"
-    )
+    assert (
+        len(pairs) >= 1
+    ), f"expected >=1 decomposition pair for ethyl acetate, got {pairs!r}"
 
     # Validate every SMILES string round-trips through RDKit.
     for a, b in pairs:
@@ -145,12 +145,10 @@ def test_backward_step_ester(adapter: SynFlowNetEnvAdapter) -> None:
     # The expected products of esterification in reverse are acetic acid
     # and ethanol (after H canonicalisation).
     assert "CC(=O)O" in canonical_reactants, (
-        f"expected acetic acid CC(=O)O in decomposition, "
-        f"got {canonical_reactants}"
+        f"expected acetic acid CC(=O)O in decomposition, " f"got {canonical_reactants}"
     )
     assert "CCO" in canonical_reactants, (
-        f"expected ethanol CCO in decomposition, "
-        f"got {canonical_reactants}"
+        f"expected ethanol CCO in decomposition, " f"got {canonical_reactants}"
     )
 
 
@@ -180,13 +178,15 @@ def test_backward_step_returns_multiple_pairs(adapter: SynFlowNetEnvAdapter) -> 
     # second decomposition route via a *different* rule.
     pairs = adapter.backward_step("CC(=O)N")
     assert isinstance(pairs, list)
-    assert len(pairs) >= 2, (
-        f"expected >=2 decomposition pairs for acetamide, got {pairs!r}"
-    )
+    assert (
+        len(pairs) >= 2
+    ), f"expected >=2 decomposition pairs for acetamide, got {pairs!r}"
 
     # At least one pair must be the canonical amide retro:
     # (acetic acid, amine) -> (CC(=O)O, NC) (or H-explicit forms).
-    canon_pairs = {(_canonical(a) if a else "", _canonical(b) if b else "") for a, b in pairs}
+    canon_pairs = {
+        (_canonical(a) if a else "", _canonical(b) if b else "") for a, b in pairs
+    }
     assert ("CC(=O)O", "CN") in canon_pairs, (
         f"expected (CC(=O)O, CN) in canonical acetamide decomposition, "
         f"got {canon_pairs}"
@@ -216,25 +216,22 @@ def test_no_match(adapter: SynFlowNetEnvAdapter) -> None:
     gibberish_inputs = [
         "@@@not_a_smiles@@@",
         "C[unclosed",
-        "1.2.3.4",          # dots only — no atoms
-        "",                 # empty string
+        "1.2.3.4",  # dots only — no atoms
+        "",  # empty string
     ]
     for smi in gibberish_inputs:
         pairs = adapter.backward_step(smi)
-        assert isinstance(pairs, list), (
-            f"backward_step({smi!r}) returned non-list {type(pairs).__name__}"
-        )
-        assert pairs == [], (
-            f"backward_step({smi!r}) should return [], got {pairs!r}"
-        )
+        assert isinstance(
+            pairs, list
+        ), f"backward_step({smi!r}) returned non-list {type(pairs).__name__}"
+        assert pairs == [], f"backward_step({smi!r}) should return [], got {pairs!r}"
 
     # The forward-step side must also short-circuit cleanly on
     # gibberish (no crash, empty list).
     for smi in gibberish_inputs:
         prods = adapter.forward_step(smi, "amide_coupling")
         assert prods == [], (
-            f"forward_step({smi!r}, amide_coupling) should return [], "
-            f"got {prods!r}"
+            f"forward_step({smi!r}, amide_coupling) should return [], " f"got {prods!r}"
         )
 
 
@@ -269,16 +266,14 @@ def test_synflownet_vs_syntemol_agreement(
     p2_products = adapter.forward_step(reactant_str, rule_name)
     assert isinstance(p2_products, list)
     assert len(p2_products) >= 1, (
-        f"Phase 2 forward_step returned no products for "
-        f"{rule_name}({reactants!r})"
+        f"Phase 2 forward_step returned no products for " f"{rule_name}({reactants!r})"
     )
 
     phase1_rule = REACTION_RULES[rule_name]
     assert isinstance(phase1_rule, SyntheMolReactionRule)
     p1_products = phase1_rule.fire(reactants)
     assert len(p1_products) >= 1, (
-        f"Phase 1 wrapper returned no products for "
-        f"{rule_name}({reactants!r})"
+        f"Phase 1 wrapper returned no products for " f"{rule_name}({reactants!r})"
     )
 
     p2_canonicals = {_canonical(p) for p in p2_products}

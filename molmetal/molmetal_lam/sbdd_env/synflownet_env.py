@@ -132,9 +132,7 @@ class _SFNReaction:
     def run_reactants(self, reactants: Tuple[Chem.Mol, ...]) -> Optional[Chem.Mol]:
         """Forward direction (reactants -> main product)."""
         if len(reactants) not in (1, 2):
-            raise ValueError(
-                f"SynFlowNet: 1 or 2 reactants only, got {len(reactants)}"
-            )
+            raise ValueError(f"SynFlowNet: 1 or 2 reactants only, got {len(reactants)}")
         ps = self._rxn.RunReactants(tuple(reactants))
         if not ps:
             return None
@@ -271,9 +269,7 @@ class SynFlowNetEnvAdapter:
             if name is None:
                 continue
             self._rules[name] = rule
-            sma = getattr(rule, "pattern_smiles", None) or getattr(
-                rule, "smarts", None
-            )
+            sma = getattr(rule, "pattern_smiles", None) or getattr(rule, "smarts", None)
             if not sma:
                 continue
             try:
@@ -350,7 +346,10 @@ class SynFlowNetEnvAdapter:
                 return []
             try:
                 products = fire(state_smiles.split("."))
-                return [Chem.MolToSmiles(m) if isinstance(m, Chem.Mol) else str(m) for m in products]
+                return [
+                    Chem.MolToSmiles(m) if isinstance(m, Chem.Mol) else str(m)
+                    for m in products
+                ]
             except Exception:
                 return []
         sfn = self._sfn[rule_name]
@@ -370,7 +369,10 @@ class SynFlowNetEnvAdapter:
             if callable(fire):
                 try:
                     products = fire(state_smiles.split("."))
-                    return [Chem.MolToSmiles(m) if isinstance(m, Chem.Mol) else str(m) for m in products]
+                    return [
+                        Chem.MolToSmiles(m) if isinstance(m, Chem.Mol) else str(m)
+                        for m in products
+                    ]
                 except Exception:
                     pass
             return []

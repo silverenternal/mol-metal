@@ -74,6 +74,7 @@ Outputs
   R17-baseline + delta-vs-Wf-60-target.
 * ``<out-dir>/synthesis.md`` — human-readable table.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -116,6 +117,7 @@ class LiftRecipe:
       1.0 --step-decay 0.5 --fp64-fallback`` so Wf-44 P4 ledger
       invariants are activated (Wf-44 §3.5 + Wf-59 §3.5).
     """
+
     metric: str
     label: str
     trainer_path: Path
@@ -143,13 +145,15 @@ RECIPES: Dict[str, LiftRecipe] = {
         label="Diversity Tanimoto (Lambda-MCTS generated, Multi-PH feature on)",
         trainer_path=_resolve("molmetal/scripts/bench_multi_ph_diversity.py"),
         extra_args=(
-            "--n-samples", "500",
-            "--n-bins", "16",
+            "--n-samples",
+            "500",
+            "--n-bins",
+            "16",
             "--use-multiph-feature",
         ),
         per_run_pattern="diversity.mean_tanimoto_distance",
         out_metric_relpath="m7/per_run_metrics.json",
-        baseline=0.1065,   # R17 Lambda-MCTS apples-to-apples
+        baseline=0.1065,  # R17 Lambda-MCTS apples-to-apples
         target=0.15,
         direction="max",
         unit="Tanimoto distance (0-1)",
@@ -166,12 +170,19 @@ RECIPES: Dict[str, LiftRecipe] = {
         label="Docking RMSD (scaffold strict, 10 pockets × 5 cands × 5 seeds)",
         trainer_path=_resolve("molmetal/scripts/train_fm_pocket.py"),
         extra_args=(
-            "--scaffold-split", "--n-pockets", "10", "--n-cands", "5",
-            "--metals", "Pt", "Au", "Ru",
+            "--scaffold-split",
+            "--n-pockets",
+            "10",
+            "--n-cands",
+            "5",
+            "--metals",
+            "Pt",
+            "Au",
+            "Ru",
         ),
         per_run_pattern="rmsd.median_angstrom",
         out_metric_relpath="m15/per_run_metrics.json",
-        baseline=0.428,    # R17 10/10 pockets no-strict-scaffold mean
+        baseline=0.428,  # R17 10/10 pockets no-strict-scaffold mean
         target=0.35,
         direction="min",
         unit="Å",
@@ -187,18 +198,25 @@ RECIPES: Dict[str, LiftRecipe] = {
         label="pIC50 Pearson r (HeLa48h cohort, Wf-44 numerical-fix active)",
         trainer_path=_resolve("molmetal/scripts/train_platinai_4cell.py"),
         extra_args=(
-            "--cohort", "HeLa48h",
+            "--cohort",
+            "HeLa48h",
             "--scaffold-split",
             "--use-numerical-fix",
-            "--grad-clip", "1.0",
-            "--step-decay", "0.5",
+            "--grad-clip",
+            "1.0",
+            "--step-decay",
+            "0.5",
             "--fp64-fallback",
-            "--seeds", "0", "1", "2",
-            "--epochs", "50",
+            "--seeds",
+            "0",
+            "1",
+            "2",
+            "--epochs",
+            "50",
         ),
         per_run_pattern="pearson_r_per_seed",
         out_metric_relpath="m16/per_run_metrics.json",
-        baseline=0.207,    # R17 best (margin=0.5, 3-seed)
+        baseline=0.207,  # R17 best (margin=0.5, 3-seed)
         target=0.30,
         direction="max",
         unit="Pearson r (-1 to 1)",
@@ -231,11 +249,16 @@ def _run_one_metric(
     log_path = metric_dir / "train_subprocess.log"
 
     cmd = [
-        sys.executable, "-u", str(recipe.trainer_path),
+        sys.executable,
+        "-u",
+        str(recipe.trainer_path),
         *recipe.extra_args,
-        "--seeds", *[str(s) for s in seeds],
-        "--out-dir", str(metric_dir),
-        "--out-metric", str(per_run_json),
+        "--seeds",
+        *[str(s) for s in seeds],
+        "--out-dir",
+        str(metric_dir),
+        "--out-metric",
+        str(per_run_json),
     ]
     env = dict(os.environ)
     env["CUDA_VISIBLE_DEVICES"] = str(cuda_visible_devices)
@@ -402,7 +425,9 @@ def _extract_values(payload: Dict[str, object], pattern: str) -> List[float]:
 # ---------------------------------------------------------------------------
 # Aggregate-existing path — read on-disk reports without invoking trainers
 # ---------------------------------------------------------------------------
-def _aggregate_existing(out_dir: Path, recipe_map: Dict[str, LiftRecipe]) -> Dict[str, object]:
+def _aggregate_existing(
+    out_dir: Path, recipe_map: Dict[str, LiftRecipe]
+) -> Dict[str, object]:
     """Synthesise a top-level summary by reading on-disk per_run_metrics.json.
 
     This is the safe path when the trainer subprocess call has already
@@ -446,8 +471,12 @@ def _write_synthesis_md(
     lines.append("# Wf-60 Phase 3 — Weak-real lifting synthesis (m7 + m15 + m16)")
     lines.append("")
     lines.append(f"**Generated**: {summary['generated_at']}")
-    lines.append("**Phase**: P3-weak-real-lifting (3 metrics on 5-seed × strict-scaffold)")
-    lines.append("**Mode**: per-recipe gate; honest framing per `party-twenty-spirit` §3.5")
+    lines.append(
+        "**Phase**: P3-weak-real-lifting (3 metrics on 5-seed × strict-scaffold)"
+    )
+    lines.append(
+        "**Mode**: per-recipe gate; honest framing per `party-twenty-spirit` §3.5"
+    )
     lines.append("")
     lines.append("## Per-metric verdict")
     lines.append("")
@@ -468,9 +497,7 @@ def _write_synthesis_md(
         status = entry.get("status", "DEFERRED")
         mean_str = f"{mean:.4f}" if isinstance(mean, (int, float)) else "—"
         std_str = f"{std:.4f}" if isinstance(std, (int, float)) else "—"
-        d_base_str = (
-            f"{d_base:+.4f}" if isinstance(d_base, (int, float)) else "—"
-        )
+        d_base_str = f"{d_base:+.4f}" if isinstance(d_base, (int, float)) else "—"
         if recipe.direction == "min":
             d_target_str = (
                 f"{d_target:+.4f}" if isinstance(d_target, (int, float)) else "—"
@@ -494,7 +521,9 @@ def _write_synthesis_md(
     lines.append("")
     lines.append("- **m7**: 5-seed mean Tanimoto distance ≥ 0.15 (R17 0.1065)")
     lines.append("- **m15**: 5-seed mean docking RMSD ≤ 0.35 Å (R17 0.428)")
-    lines.append("- **m16**: 5-seed mean Pearson r ≥ 0.30 on HeLa48h cohort with Wf-44 numerical fix active (R17 0.207)")
+    lines.append(
+        "- **m16**: 5-seed mean Pearson r ≥ 0.30 on HeLa48h cohort with Wf-44 numerical fix active (R17 0.207)"
+    )
     lines.append("")
     lines.append("## Honest framing (party-twenty-spirit §3.5)")
     lines.append("")
@@ -524,37 +553,50 @@ def _parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
-        "--metrics", nargs="+", choices=sorted(RECIPES.keys()),
+        "--metrics",
+        nargs="+",
+        choices=sorted(RECIPES.keys()),
         default=["m7", "m15", "m16"],
         help="Which metrics to lift (default: m7 m15 m16)",
     )
     p.add_argument(
-        "--seeds", type=int, nargs="+", default=[0, 1, 2, 3, 4],
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=[0, 1, 2, 3, 4],
         help="Seeds (default: 0 1 2 3 4)",
     )
     p.add_argument(
-        "--strict-scaffold", action="store_true", default=True,
+        "--strict-scaffold",
+        action="store_true",
+        default=True,
         help="Always-on scaffold strict (default True; recipes always pass it)",
     )
     p.add_argument(
-        "--cuda-visible-devices", default="1",
+        "--cuda-visible-devices",
+        default="1",
         help="CUDA_VISIBLE_DEVICES forwarded to subprocess trainers (default 1)",
     )
     p.add_argument(
-        "--out-dir", type=Path,
+        "--out-dir",
+        type=Path,
         default=PROJECT_ROOT / "molmetal" / "reports" / "wf60_lifting",
         help="Output directory (default: molmetal/reports/wf60_lifting)",
     )
     p.add_argument(
-        "--timeout-s", type=int, default=None,
+        "--timeout-s",
+        type=int,
+        default=None,
         help="Per-metric subprocess timeout (seconds). Default: no timeout.",
     )
     p.add_argument(
-        "--dry-run", action="store_true",
+        "--dry-run",
+        action="store_true",
         help="Print the planned trainer commands without invoking them",
     )
     p.add_argument(
-        "--aggregate-existing", action="store_true",
+        "--aggregate-existing",
+        action="store_true",
         help=(
             "Re-aggregate from on-disk per_run_metrics.json without "
             "invoking subprocess trainers (idempotent; safe for CI)."
@@ -572,10 +614,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.dry_run:
         for recipe in recipes_to_run:
             cmd = [
-                sys.executable, "-u", str(recipe.trainer_path),
+                sys.executable,
+                "-u",
+                str(recipe.trainer_path),
                 *recipe.extra_args,
-                "--seeds", *[str(s) for s in args.seeds],
-                "--out-dir", str(out_dir / recipe.metric),
+                "--seeds",
+                *[str(s) for s in args.seeds],
+                "--out-dir",
+                str(out_dir / recipe.metric),
             ]
             print(" ".join(cmd))
         return 0
@@ -586,7 +632,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     else:
         recipes_results: Dict[str, Dict[str, object]] = {}
         for recipe in recipes_to_run:
-            print(f"[Wf-60-P3] running {recipe.metric} ({recipe.label}) ...", flush=True)
+            print(
+                f"[Wf-60-P3] running {recipe.metric} ({recipe.label}) ...", flush=True
+            )
             recipes_results[recipe.metric] = _run_one_metric(
                 recipe=recipe,
                 seeds=args.seeds,

@@ -60,6 +60,7 @@ Usage:
       --events-jsonl molmetal/reports/wf124_p2_cfm_full/events.jsonl \\
       --tui-mode rich
 """
+
 from __future__ import annotations
 
 import argparse
@@ -132,10 +133,10 @@ def ansi_boldred(s: str) -> str:
     return f"\033[1;31m{s}\033[0m"
 
 
-
 # ---------------------------------------------------------------------------
 # Data sources
 # ---------------------------------------------------------------------------
+
 
 def get_gpu_info() -> list[dict[str, str]]:
     """Parse `nvidia-smi --query-gpu` output. Returns list of dicts.
@@ -164,15 +165,17 @@ def get_gpu_info() -> list[dict[str, str]]:
     for line in out.strip().splitlines():
         parts = [p.strip() for p in line.split(",")]
         if len(parts) >= 7:
-            rows.append({
-                "idx": parts[0],
-                "util": parts[1],
-                "util_mem": parts[2],
-                "mem_used": parts[3],
-                "mem_free": parts[4],
-                "temp": parts[5],
-                "power": parts[6],
-            })
+            rows.append(
+                {
+                    "idx": parts[0],
+                    "util": parts[1],
+                    "util_mem": parts[2],
+                    "mem_used": parts[3],
+                    "mem_free": parts[4],
+                    "temp": parts[5],
+                    "power": parts[6],
+                }
+            )
     return rows
 
 
@@ -262,6 +265,7 @@ def parse_metrics_from_log(log_lines: list[str]) -> dict[str, str]:
 # NEW: events.jsonl reader (WFTUI P0 primary)
 # ---------------------------------------------------------------------------
 
+
 def parse_events_jsonl(events_path: Path) -> list[dict]:
     """Parse events.jsonl — one JSON object per line.
 
@@ -322,11 +326,21 @@ def parse_train_epoch(events: list[dict]) -> dict[str, Any]:
         }
     last = train_events[-1]
     history = {
-        "train_loss": [float(e.get("train_loss", 0.0)) for e in train_events if "train_loss" in e],
-        "val_auc": [float(e.get("val_auc", 0.0)) for e in train_events if "val_auc" in e],
-        "grad_norm": [float(e.get("grad_norm", 0.0)) for e in train_events if "grad_norm" in e],
+        "train_loss": [
+            float(e.get("train_loss", 0.0)) for e in train_events if "train_loss" in e
+        ],
+        "val_auc": [
+            float(e.get("val_auc", 0.0)) for e in train_events if "val_auc" in e
+        ],
+        "grad_norm": [
+            float(e.get("grad_norm", 0.0)) for e in train_events if "grad_norm" in e
+        ],
         "lr": [float(e.get("lr", 0.0)) for e in train_events if "lr" in e],
-        "epoch_time_sec": [float(e.get("epoch_time_sec", 0.0)) for e in train_events if "epoch_time_sec" in e],
+        "epoch_time_sec": [
+            float(e.get("epoch_time_sec", 0.0))
+            for e in train_events
+            if "epoch_time_sec" in e
+        ],
     }
     return {
         "epoch": last.get("epoch", "?"),
@@ -357,9 +371,17 @@ def parse_lr_step(events: list[dict]) -> dict[str, Any]:
     if not lr_events:
         return {"current_lr": "?", "history": [], "phase": "?"}
     last = lr_events[-1]
-    history = [(int(e.get("step", e.get("epoch", 0))), float(e.get("lr", 0.0))) for e in lr_events if "lr" in e]
+    history = [
+        (int(e.get("step", e.get("epoch", 0))), float(e.get("lr", 0.0)))
+        for e in lr_events
+        if "lr" in e
+    ]
     # Infer phase from train_epoch events if no explicit phase field.
-    train_phase = [e.get("phase") for e in events if e.get("type") == "train_epoch" and e.get("phase")]
+    train_phase = [
+        e.get("phase")
+        for e in events
+        if e.get("type") == "train_epoch" and e.get("phase")
+    ]
     phase = last.get("phase", train_phase[-1] if train_phase else "?")
     return {
         "current_lr": last.get("lr", "?"),
@@ -376,7 +398,12 @@ def parse_resume(events: list[dict]) -> dict[str, Any]:
     """
     resume_events = [e for e in events if e.get("type") == "resume"]
     if not resume_events:
-        return {"was_resumed": False, "from_epoch": None, "best_val_auc": None, "ckpt_path": None}
+        return {
+            "was_resumed": False,
+            "from_epoch": None,
+            "best_val_auc": None,
+            "ckpt_path": None,
+        }
     last = resume_events[-1]
     return {
         "was_resumed": True,
@@ -409,7 +436,12 @@ def parse_per_epoch_metrics_json(output_dir: Path) -> dict[str, Any]:
                     "epoch_time_sec": payload.get("elapsed_seconds", "?"),
                     "decode_ratio": "?",
                     "best_val_auc": "?",
-                    "history": {"train_loss": [], "val_auc": [], "grad_norm": [], "lr": []},
+                    "history": {
+                        "train_loss": [],
+                        "val_auc": [],
+                        "grad_norm": [],
+                        "lr": [],
+                    },
                     "last_event": payload,
                     "source": str(seed_path),
                 }
@@ -425,8 +457,15 @@ def parse_per_epoch_metrics_json(output_dir: Path) -> dict[str, Any]:
         last = per_epoch[-1]
         history = {
             "train_loss": [float(m.get("train_loss", 0.0)) for m in per_epoch],
-            "val_auc": [float(m.get("wasserstein_loss" if "val_auc" not in m else "val_auc", 0.0)) for m in per_epoch],
-            "grad_norm": [float(m.get("grad_norm", 0.0)) for m in per_epoch if "grad_norm" in m],
+            "val_auc": [
+                float(
+                    m.get("wasserstein_loss" if "val_auc" not in m else "val_auc", 0.0)
+                )
+                for m in per_epoch
+            ],
+            "grad_norm": [
+                float(m.get("grad_norm", 0.0)) for m in per_epoch if "grad_norm" in m
+            ],
             "lr": [float(m.get("lr", 0.0)) for m in per_epoch if "lr" in m],
             "epoch_time_sec": [float(m.get("wall_time_s", 0.0)) for m in per_epoch],
         }
@@ -455,6 +494,7 @@ def parse_per_epoch_metrics_json(output_dir: Path) -> dict[str, Any]:
 # Checkpoints
 # ---------------------------------------------------------------------------
 
+
 def list_checkpoints(output_dir: Path, n: int = 5) -> list[dict[str, str]]:
     """List most recent n checkpoints in output_dir.
 
@@ -464,7 +504,9 @@ def list_checkpoints(output_dir: Path, n: int = 5) -> list[dict[str, str]]:
     if not output_dir.exists():
         return []
     cks = []
-    for ckpt in sorted(output_dir.glob("**/ckpt*.pt"), key=lambda p: p.stat().st_mtime, reverse=True)[:n]:
+    for ckpt in sorted(
+        output_dir.glob("**/ckpt*.pt"), key=lambda p: p.stat().st_mtime, reverse=True
+    )[:n]:
         try:
             st = ckpt.stat()
             ck_entry = {
@@ -482,7 +524,9 @@ def list_checkpoints(output_dir: Path, n: int = 5) -> list[dict[str, str]]:
                         with sibling.open() as f:
                             d = json.load(f)
                         if isinstance(d, dict):
-                            ck_entry["best_val_auc"] = d.get("best", {}).get("decode_ratio", d.get("best_val_auc", "?"))
+                            ck_entry["best_val_auc"] = d.get("best", {}).get(
+                                "decode_ratio", d.get("best_val_auc", "?")
+                            )
                     except Exception:
                         pass
                     break
@@ -496,6 +540,7 @@ def list_checkpoints(output_dir: Path, n: int = 5) -> list[dict[str, str]]:
 # Master log fallback
 # ---------------------------------------------------------------------------
 
+
 def find_master_log(output_dir: Path) -> Path | None:
     """Locate master.log if it exists. Falls back to stdout.log."""
     for cand in ("master.log", "stdout.log", "train.log"):
@@ -508,6 +553,7 @@ def find_master_log(output_dir: Path) -> Path | None:
 # ---------------------------------------------------------------------------
 # ETA calculator
 # ---------------------------------------------------------------------------
+
 
 def compute_eta(history_epochs_sec: list[float], epoch: int, total_epochs: int) -> str:
     """Compute ETA from recent epoch_time_sec history.
@@ -530,6 +576,7 @@ def compute_eta(history_epochs_sec: list[float], epoch: int, total_epochs: int) 
 # ---------------------------------------------------------------------------
 # Render (rich path)
 # ---------------------------------------------------------------------------
+
 
 def render_rich(args: argparse.Namespace, console: Console) -> Table:
     """Build a rich Table with 4 quadrants + top rows.
@@ -570,11 +617,19 @@ def render_rich(args: argparse.Namespace, console: Console) -> Table:
                 "epoch_time_sec": metrics.get("elapsed", "?"),
                 "decode_ratio": "?",
                 "best_val_auc": "?",
-                "history": {k: _METRIC_HISTORY.get(k, []) for k in ("train_loss", "val_auc", "grad_norm", "lr")},
+                "history": {
+                    k: _METRIC_HISTORY.get(k, [])
+                    for k in ("train_loss", "val_auc", "grad_norm", "lr")
+                },
                 "last_event": None,
             }
             lr = {"current_lr": "?", "history": [], "phase": "?"}
-            rs = {"was_resumed": False, "from_epoch": None, "best_val_auc": None, "ckpt_path": None}
+            rs = {
+                "was_resumed": False,
+                "from_epoch": None,
+                "best_val_auc": None,
+                "ckpt_path": None,
+            }
             source_label = f"master.log regex ({len(log_lines)} lines)"
 
     gpus = get_gpu_info()
@@ -582,25 +637,38 @@ def render_rich(args: argparse.Namespace, console: Console) -> Table:
 
     # Top rows: gradient norm + ETA + resume state
     grad_norm_hist = te.get("history", {}).get("grad_norm", [])
-    top_table = Table(title=f"Training State [{source_label}]", show_header=False, box=None, padding=(0, 1))
+    top_table = Table(
+        title=f"Training State [{source_label}]",
+        show_header=False,
+        box=None,
+        padding=(0, 1),
+    )
     top_table.add_column(style="cyan", width=12)
     top_table.add_column(style="white", width=24)
     top_table.add_column(style="cyan", width=14)
     top_table.add_column(style="white", width=24)
     grad_norm_str = sparkline(grad_norm_hist, width=24) if grad_norm_hist else "?"
-    grad_norm_last = f"{te.get('grad_norm', '?'):.3f}" if isinstance(te.get("grad_norm"), (int, float)) else str(te.get("grad_norm", "?"))
+    grad_norm_last = (
+        f"{te.get('grad_norm', '?'):.3f}"
+        if isinstance(te.get("grad_norm"), (int, float))
+        else str(te.get("grad_norm", "?"))
+    )
     epoch_time_hist = te.get("history", {}).get("epoch_time_sec", [])
     eta_str = compute_eta(epoch_time_hist, _safe_int(te.get("epoch", 0)), args.epochs)
     rs_str = "no"
     if rs.get("was_resumed"):
         rs_str = f"YES (from epoch {rs.get('from_epoch', '?')}, best={rs.get('best_val_auc', '?')})"
     top_table.add_row(
-        "grad_norm", f"{grad_norm_last}  {grad_norm_str}",
-        "ETA", eta_str,
+        "grad_norm",
+        f"{grad_norm_last}  {grad_norm_str}",
+        "ETA",
+        eta_str,
     )
     top_table.add_row(
-        "resume", rs_str,
-        "phase", str(te.get("phase", "?")),
+        "resume",
+        rs_str,
+        "phase",
+        str(te.get("phase", "?")),
     )
 
     # ----- Quadrant 1: training progress -----
@@ -619,12 +687,22 @@ def render_rich(args: argparse.Namespace, console: Console) -> Table:
     q2.add_column(style="cyan", width=10)
     q2.add_column(style="white", width=18)
     phase_label = str(lr.get("phase", "?"))
-    phase_style = "blue" if phase_label == "warmup" else ("green" if phase_label == "main" else "white")
+    phase_style = (
+        "blue"
+        if phase_label == "warmup"
+        else ("green" if phase_label == "main" else "white")
+    )
     current_lr = lr.get("current_lr", "?")
     lr_history = lr.get("history", [])
-    lr_hist_values = [v for _, v in lr_history] if lr_history else te.get("history", {}).get("lr", [])
+    lr_hist_values = (
+        [v for _, v in lr_history]
+        if lr_history
+        else te.get("history", {}).get("lr", [])
+    )
     lr_spark = sparkline(lr_hist_values, width=24) if lr_hist_values else "?"
-    q2.add_row("current_lr", f"[{phase_style}]{current_lr}[/]" if HAS_RICH else str(current_lr))
+    q2.add_row(
+        "current_lr", f"[{phase_style}]{current_lr}[/]" if HAS_RICH else str(current_lr)
+    )
     q2.add_row("phase", phase_label)
     q2.add_row("lr_history", lr_spark)
     q2.add_row("min_lr marker", "0" if phase_label == "main" else "—")
@@ -650,7 +728,8 @@ def render_rich(args: argparse.Namespace, console: Console) -> Table:
             else:
                 util_str = ansi_green(util_str)
             q3.add_row(
-                g["idx"], util_str,
+                g["idx"],
+                util_str,
                 g.get("util_mem", "?"),
                 f"{g['mem_used']}M",
                 f"{g['temp']}C",
@@ -699,6 +778,7 @@ def _safe_int(x, default=0) -> int:
 # Render (plain ANSI path)
 # ---------------------------------------------------------------------------
 
+
 def render_plain(args: argparse.Namespace) -> str:
     """Build a plain-text frame with ANSI colors."""
     events = parse_events_jsonl(Path(args.events_jsonl))
@@ -729,11 +809,19 @@ def render_plain(args: argparse.Namespace) -> str:
                 "epoch_time_sec": metrics.get("elapsed", "?"),
                 "decode_ratio": "?",
                 "best_val_auc": "?",
-                "history": {k: _METRIC_HISTORY.get(k, []) for k in ("train_loss", "val_auc", "grad_norm", "lr")},
+                "history": {
+                    k: _METRIC_HISTORY.get(k, [])
+                    for k in ("train_loss", "val_auc", "grad_norm", "lr")
+                },
                 "last_event": None,
             }
             lr = {"current_lr": "?", "history": [], "phase": "?"}
-            rs = {"was_resumed": False, "from_epoch": None, "best_val_auc": None, "ckpt_path": None}
+            rs = {
+                "was_resumed": False,
+                "from_epoch": None,
+                "best_val_auc": None,
+                "ckpt_path": None,
+            }
             source_label = "master.log regex"
 
     gpus = get_gpu_info()
@@ -742,25 +830,36 @@ def render_plain(args: argparse.Namespace) -> str:
 
     lines = []
     lines.append(ansi_clear_screen())
-    lines.append(ansi_bold(ansi_cyan(" Mol-Metal Retrain TUI Dashboard ")) + ansi_dim(f" | {ts} | src={source_label}"))
+    lines.append(
+        ansi_bold(ansi_cyan(" Mol-Metal Retrain TUI Dashboard "))
+        + ansi_dim(f" | {ts} | src={source_label}")
+    )
     lines.append("=" * 100)
 
     # Top rows: gradient norm + ETA + resume state
     grad_norm_hist = te.get("history", {}).get("grad_norm", [])
     grad_norm_str = sparkline(grad_norm_hist, width=24) if grad_norm_hist else "?"
-    grad_norm_last = f"{te.get('grad_norm', '?'):.3f}" if isinstance(te.get("grad_norm"), (int, float)) else str(te.get("grad_norm", "?"))
+    grad_norm_last = (
+        f"{te.get('grad_norm', '?'):.3f}"
+        if isinstance(te.get("grad_norm"), (int, float))
+        else str(te.get("grad_norm", "?"))
+    )
     epoch_time_hist = te.get("history", {}).get("epoch_time_sec", [])
     eta_str = compute_eta(epoch_time_hist, _safe_int(te.get("epoch", 0)), args.epochs)
     rs_str = "no"
     if rs.get("was_resumed"):
         rs_str = f"YES from_epoch={rs.get('from_epoch', '?')} best={rs.get('best_val_auc', '?')}"
-    lines.append(f"  {ansi_cyan('grad_norm'):<10} {grad_norm_last:<8} {grad_norm_str} | {ansi_cyan('ETA'):<8} {eta_str}")
-    lines.append(f"  {ansi_cyan('resume'):<10} {rs_str:<40} | {ansi_cyan('phase'):<8} {te.get('phase', '?')}")
+    lines.append(
+        f"  {ansi_cyan('grad_norm'):<10} {grad_norm_last:<8} {grad_norm_str} | {ansi_cyan('ETA'):<8} {eta_str}"
+    )
+    lines.append(
+        f"  {ansi_cyan('resume'):<10} {rs_str:<40} | {ansi_cyan('phase'):<8} {te.get('phase', '?')}"
+    )
     lines.append("=" * 100)
 
     # Q1 + Q2 side-by-side
     q1_rows = [
-        ("epoch",   f"{te.get('epoch', '?')} / {args.epochs}"),
+        ("epoch", f"{te.get('epoch', '?')} / {args.epochs}"),
         ("train_loss", str(te.get("train_loss", "?"))),
         ("val_loss", str(te.get("val_loss", "?"))),
         ("val_auc", str(te.get("val_auc", "?"))),
@@ -769,7 +868,11 @@ def render_plain(args: argparse.Namespace) -> str:
     ]
     phase_label = str(lr.get("phase", "?"))
     current_lr = lr.get("current_lr", "?")
-    lr_hist_values = [v for _, v in lr.get("history", [])] if lr.get("history") else te.get("history", {}).get("lr", [])
+    lr_hist_values = (
+        [v for _, v in lr.get("history", [])]
+        if lr.get("history")
+        else te.get("history", {}).get("lr", [])
+    )
     lr_spark = sparkline(lr_hist_values, width=24) if lr_hist_values else "?"
     q2_rows = [
         ("current_lr", str(current_lr)),
@@ -786,16 +889,24 @@ def render_plain(args: argparse.Namespace) -> str:
     lines.append("  " + ansi_dim("─" * 96))
     train_loss_hist = te.get("history", {}).get("train_loss", [])
     val_auc_hist = te.get("history", {}).get("val_auc", [])
-    lines.append(f"  {ansi_cyan('loss hist'):<13} {sparkline(train_loss_hist, width=40)}")
-    lines.append(f"  {ansi_cyan('val_auc hist'):<13} {sparkline(val_auc_hist, width=40)}")
-    lines.append(f"  {ansi_cyan('grad_n hist'):<13} {sparkline(grad_norm_hist, width=40)}")
+    lines.append(
+        f"  {ansi_cyan('loss hist'):<13} {sparkline(train_loss_hist, width=40)}"
+    )
+    lines.append(
+        f"  {ansi_cyan('val_auc hist'):<13} {sparkline(val_auc_hist, width=40)}"
+    )
+    lines.append(
+        f"  {ansi_cyan('grad_n hist'):<13} {sparkline(grad_norm_hist, width=40)}"
+    )
     lines.append(f"  {ansi_cyan('lr hist'):<13} {sparkline(lr_hist_values, width=40)}")
 
     lines.append("=" * 100)
 
     # Q3: GPU
     lines.append(ansi_bold(" GPU (nvtop-style) "))
-    lines.append(f"  {'idx':<5}{'util%':<10}{'u.m%':<8}{'mem':<10}{'temp':<8}{'power':<8}")
+    lines.append(
+        f"  {'idx':<5}{'util%':<10}{'u.m%':<8}{'mem':<10}{'temp':<8}{'power':<8}"
+    )
     if not gpus:
         lines.append(ansi_dim("  (nvidia-smi unavailable)"))
     else:
@@ -827,7 +938,11 @@ def render_plain(args: argparse.Namespace) -> str:
             )
 
     lines.append("=" * 100)
-    lines.append(ansi_dim(f" Press Ctrl+C to detach (trainer keeps running). Output refreshes every {args.interval}s."))
+    lines.append(
+        ansi_dim(
+            f" Press Ctrl+C to detach (trainer keeps running). Output refreshes every {args.interval}s."
+        )
+    )
     return "\n".join(lines)
 
 
@@ -835,6 +950,7 @@ def render_plain(args: argparse.Namespace) -> str:
 # Headless mode (NEW per WFTUI P0): single-shot dump to stdout, no Live loop.
 # Useful for CI / non-tmux contexts + §5.7 floor cross-reference verification.
 # ---------------------------------------------------------------------------
+
 
 def render_headless(args: argparse.Namespace) -> str:
     """Single-shot JSON dump of the current TUI state. No Live loop."""
@@ -866,11 +982,19 @@ def render_headless(args: argparse.Namespace) -> str:
                 "epoch_time_sec": metrics.get("elapsed", "?"),
                 "decode_ratio": "?",
                 "best_val_auc": "?",
-                "history": {k: _METRIC_HISTORY.get(k, []) for k in ("train_loss", "val_auc", "grad_norm", "lr")},
+                "history": {
+                    k: _METRIC_HISTORY.get(k, [])
+                    for k in ("train_loss", "val_auc", "grad_norm", "lr")
+                },
                 "last_event": None,
             }
             lr = {"current_lr": "?", "history": [], "phase": "?"}
-            rs = {"was_resumed": False, "from_epoch": None, "best_val_auc": None, "ckpt_path": None}
+            rs = {
+                "was_resumed": False,
+                "from_epoch": None,
+                "best_val_auc": None,
+                "ckpt_path": None,
+            }
             source = "master.log regex"
     gpus = get_gpu_info()
     cks = list_checkpoints(Path(args.output_dir))
@@ -904,23 +1028,47 @@ def render_headless(args: argparse.Namespace) -> str:
 # Main loop
 # ---------------------------------------------------------------------------
 
+
 def main() -> int:
-    p = argparse.ArgumentParser(description="Mol-Metal retrain TUI dashboard (WFTUI rewrite)")
-    p.add_argument("--log-file", default="", help="Path to trainer master.log (display fallback)")
-    p.add_argument("--output-dir", required=True, help="Path to output dir (checkpoint parent)")
+    p = argparse.ArgumentParser(
+        description="Mol-Metal retrain TUI dashboard (WFTUI rewrite)"
+    )
+    p.add_argument(
+        "--log-file", default="", help="Path to trainer master.log (display fallback)"
+    )
+    p.add_argument(
+        "--output-dir", required=True, help="Path to output dir (checkpoint parent)"
+    )
     p.add_argument("--gpu", default="cuda:0", help="GPU device label (display only)")
     p.add_argument("--epochs", type=int, default=50, help="Total epochs (display only)")
-    p.add_argument("--n-seeds", type=int, default=1, help="Number of seeds (display only)")
+    p.add_argument(
+        "--n-seeds", type=int, default=1, help="Number of seeds (display only)"
+    )
     p.add_argument("--dry-run", action="store_true", help="Dry-run mode (display only)")
-    p.add_argument("--interval", type=float, default=1.0, help="Refresh interval (seconds)")
+    p.add_argument(
+        "--interval", type=float, default=1.0, help="Refresh interval (seconds)"
+    )
     p.add_argument("--plain", action="store_true", help="Force plain ANSI (skip rich)")
-    p.add_argument("--events-jsonl", type=str, default="",
-                   help="Path to events.jsonl (NEW WFTUI canonical). "
-                        "If empty, defaults to <output-dir>/events.jsonl.")
-    p.add_argument("--tui-mode", type=str, default="rich", choices=["rich", "plain", "headless"],
-                   help="Render mode: rich (default), plain (ANSI), headless (single-shot JSON dump)")
-    p.add_argument("--tui-interval", type=float, default=None,
-                   help="Alias for --interval (WFTUI P0). If unset, --interval is used.")
+    p.add_argument(
+        "--events-jsonl",
+        type=str,
+        default="",
+        help="Path to events.jsonl (NEW WFTUI canonical). "
+        "If empty, defaults to <output-dir>/events.jsonl.",
+    )
+    p.add_argument(
+        "--tui-mode",
+        type=str,
+        default="rich",
+        choices=["rich", "plain", "headless"],
+        help="Render mode: rich (default), plain (ANSI), headless (single-shot JSON dump)",
+    )
+    p.add_argument(
+        "--tui-interval",
+        type=float,
+        default=None,
+        help="Alias for --interval (WFTUI P0). If unset, --interval is used.",
+    )
     args = p.parse_args()
 
     # If --events-jsonl not provided, default to <output-dir>/events.jsonl

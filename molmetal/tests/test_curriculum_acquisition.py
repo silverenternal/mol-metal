@@ -93,9 +93,18 @@ def _make_pool(n: int = 30):
     pool = []
     # 12 distinct aromatic SMILES — far enough apart in Tanimoto space.
     arom = [
-        "c1ccccc1", "c1ccccc1C", "c1ccccc1O", "c1ccccc1N",
-        "c1ccccc1Cl", "c1ccccc1F", "c1ccccc1Br", "c1ccncc1",
-        "c1cnccc1", "c1ncccc1", "c1ccc2ccccc12", "c1ccc2[nH]ccc2c1",
+        "c1ccccc1",
+        "c1ccccc1C",
+        "c1ccccc1O",
+        "c1ccccc1N",
+        "c1ccccc1Cl",
+        "c1ccccc1F",
+        "c1ccccc1Br",
+        "c1ccncc1",
+        "c1cnccc1",
+        "c1ncccc1",
+        "c1ccc2ccccc12",
+        "c1ccc2[nH]ccc2c1",
     ]
     for i in range(n):
         smi = arom[i % len(arom)]

@@ -17,6 +17,7 @@ Usage:
         --device cuda \
         --num-cycle 3
 """
+
 import argparse
 import gc
 import json
@@ -45,22 +46,51 @@ def parse_args(argv=None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description="Mol-Metal CFM standalone inference CLI",
     )
-    p.add_argument("--input-file", default=DEFAULTS["input_file"], type=str,
-                   help="Path to SMILES / fingerprint file (one per line)")
-    p.add_argument("--output-dir", default=DEFAULTS["output_dir"], type=str,
-                   help="Directory for inference outputs")
-    p.add_argument("--device", default=DEFAULTS["device"], type=str,
-                   help="cpu / cuda / cuda:0 / cuda:1")
-    p.add_argument("--num-cycle", type=int, default=DEFAULTS["num_cycle"],
-                   help="Number of recursive inference cycles (mirror OmegaFoldCycle)")
-    p.add_argument("--batch-size", type=int, default=DEFAULTS["batch_size"],
-                   help="Inference batch size")
-    p.add_argument("--max-smiles-len", type=int, default=DEFAULTS["max_smiles_len"],
-                   help="Max SMILES characters per line")
-    p.add_argument("--model-ckpt", type=str, default="",
-                   help="Path to model checkpoint (optional)")
-    p.add_argument("--checkpoint-state-dict-key", type=str, default="model",
-                   help="Key in checkpoint state_dict (e.g. 'model' or 'state_dict')")
+    p.add_argument(
+        "--input-file",
+        default=DEFAULTS["input_file"],
+        type=str,
+        help="Path to SMILES / fingerprint file (one per line)",
+    )
+    p.add_argument(
+        "--output-dir",
+        default=DEFAULTS["output_dir"],
+        type=str,
+        help="Directory for inference outputs",
+    )
+    p.add_argument(
+        "--device",
+        default=DEFAULTS["device"],
+        type=str,
+        help="cpu / cuda / cuda:0 / cuda:1",
+    )
+    p.add_argument(
+        "--num-cycle",
+        type=int,
+        default=DEFAULTS["num_cycle"],
+        help="Number of recursive inference cycles (mirror OmegaFoldCycle)",
+    )
+    p.add_argument(
+        "--batch-size",
+        type=int,
+        default=DEFAULTS["batch_size"],
+        help="Inference batch size",
+    )
+    p.add_argument(
+        "--max-smiles-len",
+        type=int,
+        default=DEFAULTS["max_smiles_len"],
+        help="Max SMILES characters per line",
+    )
+    p.add_argument(
+        "--model-ckpt", type=str, default="", help="Path to model checkpoint (optional)"
+    )
+    p.add_argument(
+        "--checkpoint-state-dict-key",
+        type=str,
+        default="model",
+        help="Key in checkpoint state_dict (e.g. 'model' or 'state_dict')",
+    )
     return p.parse_args(argv)
 
 
@@ -92,6 +122,7 @@ def setup_model(args: argparse.Namespace):
     Lazy import to keep CLI boot fast. CFM trainer is the canonical model.
     """
     from molmetal.scripts.train_cfm_yuelbond_wasserstein import build_model_from_args
+
     model = build_model_from_args(args)
     if args.model_ckpt and Path(args.model_ckpt).exists():
         ckpt = torch.load(args.model_ckpt, map_location=args.device, weights_only=True)
@@ -139,7 +170,7 @@ def main(argv=None) -> int:
     t_total = time.time()
     # Per-batch inference loop (mirror omegafold/__main__.py:58-83)
     for batch_start in range(0, len(smiles_list), args.batch_size):
-        batch = smiles_list[batch_start: batch_start + args.batch_size]
+        batch = smiles_list[batch_start : batch_start + args.batch_size]
         ts = time.time()
         output = infer_batch(model, batch, args)
         elapsed = time.time() - ts

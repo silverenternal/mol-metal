@@ -62,6 +62,7 @@ asserts + returns) but they share the same implementation here.
 
 Hardware: CPU-only. No GPU. No external services.
 """
+
 from __future__ import annotations
 
 import json
@@ -201,9 +202,7 @@ class AnchorGuard:
             stat_result = self.path.stat()
             age_sec = time.time() - stat_result.st_mtime
         except OSError as exc:
-            raise AnchorMissingError(
-                f"anchor stat failed: {self.path}"
-            ) from exc
+            raise AnchorMissingError(f"anchor stat failed: {self.path}") from exc
         if age_sec > self.max_age_sec:
             raise AnchorStaleError(
                 f"anchor stale: age={age_sec:.1f}s > "
@@ -220,9 +219,7 @@ class AnchorGuard:
                 f"(line {exc.lineno}, col {exc.colno}): {exc.msg}"
             ) from exc
         except OSError as exc:
-            raise AnchorMissingError(
-                f"anchor read failed: {self.path}"
-            ) from exc
+            raise AnchorMissingError(f"anchor read failed: {self.path}") from exc
 
         if not isinstance(data, dict):
             raise AnchorJSONError(

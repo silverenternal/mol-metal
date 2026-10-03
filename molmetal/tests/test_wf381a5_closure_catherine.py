@@ -14,6 +14,7 @@ The test is **CPU-only** — no GPU closure-theorem retrain is
 launched.  The Catherine 6/6 PASS verdict at CPU bench layer is
 preserved per Wf-57 Phase 2 + Wf-130 P3.
 """
+
 from __future__ import annotations
 
 import sys
@@ -32,6 +33,7 @@ if str(SCRIPT_DIR) not in sys.path:
 def _import_scaffold():
     try:
         from molmetal.scripts import wf381a5_r20_plan_cpu_close as scaffold
+
         return scaffold
     except Exception as exc:  # pragma: no cover
         pytest.skip(
@@ -74,7 +76,10 @@ def test_todo96_closure_catherine_scaffold() -> None:
     for key in ("script_30metals", "script_reachability", "script_dblock"):
         assert key in todo96, f"TODO-96 missing key {key}"
     assert todo96["script_30metals"] == "molmetal/scripts/bench_catherine_30metals.py"
-    assert todo96["script_reachability"] == "molmetal/scripts/bench_closure_reachability_r20.py"
+    assert (
+        todo96["script_reachability"]
+        == "molmetal/scripts/bench_closure_reachability_r20.py"
+    )
     assert todo96["script_dblock"] == "molmetal/scripts/bench_closure_dblock_r20.py"
 
     # All three bench scripts are on disk.
@@ -120,10 +125,12 @@ def test_todo96_closure_catherine_scaffold() -> None:
 
     # The reachability R20 module exposes the canonical 0.95 gate target.
     from molmetal.scripts import bench_closure_reachability_r20 as reach
+
     assert reach.GATE_TARGET_REACHABILITY == pytest.approx(0.95, abs=1e-9)
     assert reach.DEFAULT_N_METALS == 25
     assert reach.DEFAULT_N_SAMPLES == 1000
 
     # The Catherine 30-metals module exposes the 30-metal cohort.
     from molmetal.scripts import bench_catherine_30metals as cath
+
     assert len(cath.DEFAULT_30_METALS) == 30

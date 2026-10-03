@@ -96,6 +96,7 @@ Cross-references
 * ``TODO/completed/345a2_yuelbond_decoder_env.md`` — this Wf-345A2
   ship surface.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -133,11 +134,12 @@ def _load_preflight_module():
     ``_apply_rocm_gfx1101_env`` will raise on ``torch.cuda.is_available()``).
     """
     spec = importlib.util.spec_from_file_location(
-        "pre_flight_check_under_test_wf345a2", PREFLIGHT_SCRIPT,
+        "pre_flight_check_under_test_wf345a2",
+        PREFLIGHT_SCRIPT,
     )
-    assert spec is not None and spec.loader is not None, (
-        f"pre_flight_check.py has no import spec ({PREFLIGHT_SCRIPT})"
-    )
+    assert (
+        spec is not None and spec.loader is not None
+    ), f"pre_flight_check.py has no import spec ({PREFLIGHT_SCRIPT})"
     mod = importlib.util.module_from_spec(spec)
     sys.modules["pre_flight_check_under_test_wf345a2"] = mod
     spec.loader.exec_module(mod)
@@ -221,7 +223,8 @@ def _write_torch_env_gap_stub(path: Path) -> Path:
 
 
 def test_gate_yuelbond_decoder_env_pass_when_torch_available(
-    preflight, tmp_path,
+    preflight,
+    tmp_path,
 ) -> None:
     """Wf-345A2 — gate PASSes on a stub module that does NOT depend on torch.
 
@@ -235,7 +238,10 @@ def test_gate_yuelbond_decoder_env_pass_when_torch_available(
     """
     stub = _write_passing_stub(tmp_path / "cfm_decoder_stub_pass.py")
     result = preflight.gate_wf343c4_yuelbond_decoder_env(
-        "wf345a2_yb_pass", "P3", "wf343c4", stub,
+        "wf345a2_yb_pass",
+        "P3",
+        "wf343c4",
+        stub,
     )
     assert result.status == "PASS", (
         f"stub decoder (no torch dep) should PASS; got "
@@ -305,7 +311,8 @@ def torch_meta_path_blocker():
 
 
 def test_gate_yuelbond_decoder_env_skip_when_torch_missing(
-    preflight, tmp_path,
+    preflight,
+    tmp_path,
 ) -> None:
     """Wf-345A2 — gate SKIPs (NOT FAIL) when torch import fails.
 
@@ -333,7 +340,10 @@ def test_gate_yuelbond_decoder_env_skip_when_torch_missing(
         tmp_path / "cfm_decoder_stub_torch_dep.py",
     )
     result = preflight.gate_wf343c4_yuelbond_decoder_env(
-        "wf345a2_yb_skip", "P3", "wf343c4", stub,
+        "wf345a2_yb_skip",
+        "P3",
+        "wf343c4",
+        stub,
     )
     assert result.status == "SKIP", (
         f"stub decoder (raises ModuleNotFoundError) should SKIP; "
@@ -350,9 +360,7 @@ def test_gate_yuelbond_decoder_env_skip_when_torch_missing(
     # The expected runtime per AGENTS.md §5.1 standing GPU grant +
     # §5.9 single-venv rule: the repo-local canonical .venv is THE
     # torch-enabled runtime.
-    assert (
-        "/home/hugo/codes/mol-metal/.venv/bin/python" in result.evidence
-    ), (
+    assert "/home/hugo/codes/mol-metal/.venv/bin/python" in result.evidence, (
         f"SKIP evidence must name the expected torch-enabled runtime "
         f"per AGENTS.md §5.1; got: {result.evidence}"
     )
@@ -433,8 +441,7 @@ def test_gate_yuelbond_decoder_env_gate_name_propagates(preflight) -> None:
             target_runner = runner
             break
     assert target_runner is not None, (
-        "runner for p3_wf343c4_yuelbond_decoder_env not found in "
-        "build_gates('all')"
+        "runner for p3_wf343c4_yuelbond_decoder_env not found in " "build_gates('all')"
     )
     assert callable(target_runner), (
         f"runner for p3_wf343c4_yuelbond_decoder_env is not callable; "

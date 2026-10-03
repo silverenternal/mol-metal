@@ -57,15 +57,11 @@ import torch
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 TRAIN_SCRIPT = PROJECT_ROOT / "molmetal" / "scripts" / "train_ru_5metal_se3sb.py"
-VERIFY_SCRIPT = (
-    PROJECT_ROOT / "molmetal" / "scripts" / "verify_train_ru_5metal.py"
-)
+VERIFY_SCRIPT = PROJECT_ROOT / "molmetal" / "scripts" / "verify_train_ru_5metal.py"
 DEFAULT_DATA = (
     PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 )
-VENV_PY = (
-    PROJECT_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
-)
+VENV_PY = PROJECT_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
 
 
 def _scripts_path() -> str:
@@ -90,13 +86,15 @@ def tiny_5metal_csv(tmp_path: Path) -> Path:
     for m in metals:
         for sp in ("train", "val", "test"):
             for i in range(2):
-                rows.append({
-                    "smiles": smiles_pool[(i + hash(m)) % len(smiles_pool)],
-                    "metal": m,
-                    "scaffold_id": f"s_{m}_{sp}_{i}",
-                    "split": sp,
-                    "activity": str(i % 2),
-                })
+                rows.append(
+                    {
+                        "smiles": smiles_pool[(i + hash(m)) % len(smiles_pool)],
+                        "metal": m,
+                        "scaffold_id": f"s_{m}_{sp}_{i}",
+                        "split": sp,
+                        "activity": str(i % 2),
+                    }
+                )
     with csv_path.open("w", newline="") as fh:
         writer = csv.DictWriter(
             fh,
@@ -128,9 +126,7 @@ def test_help_exits_zero() -> None:
     assert "--init" in result.stdout
     # The 4 init choices from the Wf-31 spec.
     for init in ("tmqm", "se3sb", "transport", "multiph"):
-        assert init in result.stdout, (
-            f"--init {init} missing from --help output"
-        )
+        assert init in result.stdout, f"--init {init} missing from --help output"
 
 
 # ---------------------------------------------------------------------------
@@ -161,12 +157,20 @@ def test_parse_args_overrides() -> None:
     sys.path.insert(0, _scripts_path())
     import train_ru_5metal_se3sb as w31  # type: ignore[import-not-found]
 
-    args = w31.parse_args([
-        "--metals", "Ru", "Ir",
-        "--seeds", "0", "1",
-        "--epochs", "5",
-        "--init", "tmqm",
-    ])
+    args = w31.parse_args(
+        [
+            "--metals",
+            "Ru",
+            "Ir",
+            "--seeds",
+            "0",
+            "1",
+            "--epochs",
+            "5",
+            "--init",
+            "tmqm",
+        ]
+    )
     assert args.metals == ["Ru", "Ir"]
     assert args.seeds == [0, 1]
     assert args.epochs == 5
@@ -221,24 +225,31 @@ def test_head_wrapper_forward_contract() -> None:
     )
 
     bb = V4MultiTaskDMPNN(
-        hidden_dim=64, n_layers=2, n_metals=5, n_coord_classes=5,
+        hidden_dim=64,
+        n_layers=2,
+        n_metals=5,
+        n_coord_classes=5,
     )
     head = w31.Ru5MetalSe3SBHead(backbone=bb)
     smis = ["CCO", "c1ccccc1", "CC(=O)O"]
     mids = torch.tensor([0, 1, 2], dtype=torch.long)
     out = head(smis, mids)
-    assert set(out.keys()) == {"cls", "reg", "coord"}, (
-        f"forward keys must be {{cls, reg, coord}}; got {set(out.keys())}"
-    )
+    assert set(out.keys()) == {
+        "cls",
+        "reg",
+        "coord",
+    }, f"forward keys must be {{cls, reg, coord}}; got {set(out.keys())}"
     assert set(out["cls"].keys()) == set(SUPPORTED_METALS)
     assert set(out["reg"].keys()) == set(SUPPORTED_METALS)
     for m in SUPPORTED_METALS:
-        assert out["cls"][m].shape == (3, 2), (
-            f"cls[{m}] shape {tuple(out['cls'][m].shape)} != (3, 2)"
-        )
-        assert out["reg"][m].shape == (3, 1), (
-            f"reg[{m}] shape {tuple(out['reg'][m].shape)} != (3, 1)"
-        )
+        assert out["cls"][m].shape == (
+            3,
+            2,
+        ), f"cls[{m}] shape {tuple(out['cls'][m].shape)} != (3, 2)"
+        assert out["reg"][m].shape == (
+            3,
+            1,
+        ), f"reg[{m}] shape {tuple(out['reg'][m].shape)} != (3, 1)"
     assert out["coord"].shape == (3, 5)
 
 
@@ -260,10 +271,7 @@ def test_loss_and_backward() -> None:
     smis = ["CCO", "c1ccccc1", "CC(=O)O", "CC(C)C"]
     mids = torch.tensor([0, 1, 2, 3], dtype=torch.long)
     out = head(smis, mids)
-    y_true = {
-        m: torch.tensor([0, 1, 0, 1], dtype=torch.long)
-        for m in SUPPORTED_METALS
-    }
+    y_true = {m: torch.tensor([0, 1, 0, 1], dtype=torch.long) for m in SUPPORTED_METALS}
     coord_true = torch.tensor([3, 2, 3, 0], dtype=torch.long)
     loss_fn = w31.Ru5MetalSe3SBLoss(n_coord_classes=5)
     loss, info = loss_fn(out, y_true, coord_true)
@@ -294,25 +302,53 @@ def test_aggregate_per_metal_matches_numpy() -> None:
     import train_ru_5metal_se3sb as w31  # type: ignore[import-not-found]
 
     seed_results = [
-        {"test_auc_per_metal": {"Ru": 0.80, "Ir": 0.70, "Rh": 0.60, "Re": 0.50, "Os": 0.40}},
-        {"test_auc_per_metal": {"Ru": 0.82, "Ir": 0.72, "Rh": 0.62, "Re": 0.52, "Os": 0.42}},
-        {"test_auc_per_metal": {"Ru": 0.84, "Ir": 0.74, "Rh": 0.64, "Re": 0.54, "Os": 0.44}},
+        {
+            "test_auc_per_metal": {
+                "Ru": 0.80,
+                "Ir": 0.70,
+                "Rh": 0.60,
+                "Re": 0.50,
+                "Os": 0.40,
+            }
+        },
+        {
+            "test_auc_per_metal": {
+                "Ru": 0.82,
+                "Ir": 0.72,
+                "Rh": 0.62,
+                "Re": 0.52,
+                "Os": 0.42,
+            }
+        },
+        {
+            "test_auc_per_metal": {
+                "Ru": 0.84,
+                "Ir": 0.74,
+                "Rh": 0.64,
+                "Re": 0.54,
+                "Os": 0.44,
+            }
+        },
     ]
     metals = ("Ru", "Ir", "Rh", "Re", "Os")
     means, stds = w31.aggregate_per_metal(seed_results, metals)
     for m in metals:
-        expected_mean = float(np.mean(
-            [r["test_auc_per_metal"][m] for r in seed_results]
-        ))
-        expected_std = float(np.std(
-            [r["test_auc_per_metal"][m] for r in seed_results], ddof=0,
-        ))
+        expected_mean = float(
+            np.mean([r["test_auc_per_metal"][m] for r in seed_results])
+        )
+        expected_std = float(
+            np.std(
+                [r["test_auc_per_metal"][m] for r in seed_results],
+                ddof=0,
+            )
+        )
         assert abs(means[m] - expected_mean) < 1e-9
         assert abs(stds[m] - expected_std) < 1e-9
     # NaN-only list must yield NaN.
     nan_only = [{"test_auc_per_metal": {"Ru": float("nan")}}]
     m, s = w31.aggregate_per_metal(nan_only, ("Ru",))
     import math
+
     assert math.isnan(m["Ru"]), f"NaN-only must yield NaN mean; got {m}"
     assert math.isnan(s["Ru"]), f"NaN-only must yield NaN std; got {s}"
 
@@ -331,7 +367,10 @@ def test_attach_init_components_all_modes() -> None:
     device = torch.device("cpu")
     for init in ("tmqm", "se3sb", "transport", "multiph"):
         bb = V4MultiTaskDMPNN(
-            hidden_dim=32, n_layers=2, n_metals=5, n_coord_classes=5,
+            hidden_dim=32,
+            n_layers=2,
+            n_metals=5,
+            n_coord_classes=5,
         )
         head = w31.Ru5MetalSe3SBHead(backbone=bb)
         comps = w31.attach_init_components(init, head, device, hidden_dim=32)
@@ -352,7 +391,8 @@ def test_attach_init_components_all_modes() -> None:
 # 9. End-to-end main() smoke (1 seed, 1 epoch, tiny CSV fixture)
 # ---------------------------------------------------------------------------
 def test_main_smoke_one_seed_one_epoch(
-    tmp_path: Path, tiny_5metal_csv: Path,
+    tmp_path: Path,
+    tiny_5metal_csv: Path,
 ) -> None:
     """Full :func:`main` runs to completion on a tiny CSV — no AttributeError."""
     out_dir = tmp_path / "ckpt"
@@ -387,7 +427,11 @@ def test_main_smoke_one_seed_one_epoch(
         "--se3-n-steps",
         "2",
         "--metals",
-        "Ru", "Ir", "Rh", "Re", "Os",
+        "Ru",
+        "Ir",
+        "Rh",
+        "Re",
+        "Os",
     ]
     result = subprocess.run(
         cmd,
@@ -410,7 +454,8 @@ def test_main_smoke_one_seed_one_epoch(
 # 10. After main(), per-seed metrics JSON contains the recipe + headline metrics
 # ---------------------------------------------------------------------------
 def test_metrics_json_after_smoke(
-    tmp_path: Path, tiny_5metal_csv: Path,
+    tmp_path: Path,
+    tiny_5metal_csv: Path,
 ) -> None:
     """After smoke, ``metrics_path`` records recipe + per_metal mean/std + Ru headline."""
     out_dir = tmp_path / "ckpt"
@@ -445,7 +490,11 @@ def test_metrics_json_after_smoke(
         "--se3-n-steps",
         "2",
         "--metals",
-        "Ru", "Ir", "Rh", "Re", "Os",
+        "Ru",
+        "Ir",
+        "Rh",
+        "Re",
+        "Os",
     ]
     subprocess.run(cmd, capture_output=True, text=True, timeout=120, check=True)
 
@@ -472,7 +521,8 @@ def test_metrics_json_after_smoke(
 # 11. Summary JSON contains the headline Ru mean ± std
 # ---------------------------------------------------------------------------
 def test_summary_json_headline(
-    tmp_path: Path, tiny_5metal_csv: Path,
+    tmp_path: Path,
+    tiny_5metal_csv: Path,
 ) -> None:
     """``summary_path`` records the Wf-31 headline ``ru_mean_auc_5seed``."""
     out_dir = tmp_path / "ckpt"
@@ -507,15 +557,17 @@ def test_summary_json_headline(
         "--se3-n-steps",
         "2",
         "--metals",
-        "Ru", "Ir", "Rh", "Re", "Os",
+        "Ru",
+        "Ir",
+        "Rh",
+        "Re",
+        "Os",
     ]
     subprocess.run(cmd, capture_output=True, text=True, timeout=120, check=True)
 
     assert summary_path.exists(), f"summary JSON not written at {summary_path}"
     payload = json.loads(summary_path.read_text())
-    assert payload.get("recipe") == (
-        "wf31_r18_m22_se3sb_5metal_cls_reg_final_summary"
-    )
+    assert payload.get("recipe") == ("wf31_r18_m22_se3sb_5metal_cls_reg_final_summary")
     assert payload.get("init") == "se3sb"
     assert "ru_mean_auc_5seed" in payload
     assert "ru_std_auc_5seed" in payload
@@ -529,7 +581,8 @@ def test_summary_json_headline(
 # 12. Ckpt file is written for the single seed
 # ---------------------------------------------------------------------------
 def test_ckpt_file_written(
-    tmp_path: Path, tiny_5metal_csv: Path,
+    tmp_path: Path,
+    tiny_5metal_csv: Path,
 ) -> None:
     """After smoke, ``out_dir/ru_5metal_se3sb_{init}_seed0.pt`` exists."""
     out_dir = tmp_path / "ckpt"
@@ -564,7 +617,11 @@ def test_ckpt_file_written(
         "--se3-n-steps",
         "2",
         "--metals",
-        "Ru", "Ir", "Rh", "Re", "Os",
+        "Ru",
+        "Ir",
+        "Rh",
+        "Re",
+        "Os",
     ]
     subprocess.run(cmd, capture_output=True, text=True, timeout=120, check=True)
     ckpt = out_dir / "ru_5metal_se3sb_se3sb_seed0.pt"
@@ -576,7 +633,8 @@ def test_ckpt_file_written(
 # 13. --init tmqm mode also works (no SE(3) twist head)
 # ---------------------------------------------------------------------------
 def test_main_smoke_tmqm_init(
-    tmp_path: Path, tiny_5metal_csv: Path,
+    tmp_path: Path,
+    tiny_5metal_csv: Path,
 ) -> None:
     """``--init tmqm`` mode runs without attaching the SE(3) twist head."""
     out_dir = tmp_path / "ckpt"
@@ -609,10 +667,14 @@ def test_main_smoke_tmqm_init(
         "--train-max-per-metal",
         "4",
         "--metals",
-        "Ru", "Ir",
+        "Ru",
+        "Ir",
     ]
     result = subprocess.run(
-        cmd, capture_output=True, text=True, timeout=120,
+        cmd,
+        capture_output=True,
+        text=True,
+        timeout=120,
     )
     assert result.returncode == 0, (
         f"--init tmqm exited {result.returncode}\n"
@@ -633,13 +695,13 @@ def test_init_choices_in_help() -> None:
     """``--help`` lists all 4 Wf-31 init choices (tmqm / se3sb / transport / multiph)."""
     result = subprocess.run(
         [str(VENV_PY), str(TRAIN_SCRIPT), "--help"],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     assert result.returncode == 0
     for init in ("tmqm", "se3sb", "transport", "multiph"):
-        assert init in result.stdout, (
-            f"--init {init} missing from --help output"
-        )
+        assert init in result.stdout, f"--init {init} missing from --help output"
 
 
 # ---------------------------------------------------------------------------
@@ -659,8 +721,6 @@ def test_verify_script_runs(tmp_path: Path) -> None:
     )
     # All 8 numbered checks must have printed.
     for i in range(1, 9):
-        assert f"[{i}/8]" in result.stdout, (
-            f"check [{i}/8] missing from verify stdout"
-        )
+        assert f"[{i}/8]" in result.stdout, f"check [{i}/8] missing from verify stdout"
     # The final smoke line must be there.
     assert "CPU smoke 0/8 fail" in result.stdout

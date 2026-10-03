@@ -42,6 +42,7 @@ Run:
   PYTHONPATH=/home/hugo/codes/try_triton_on_rocm \
   uv run python molmetal/scripts/wf_path_b_vina_distribution.py
 """
+
 from __future__ import annotations
 
 import csv
@@ -78,8 +79,12 @@ def per_cell_status_aggregation(report: dict) -> dict:
         for k, v in cell.get("decode_status_counts", {}).items():
             status_counts[k] = status_counts.get(k, 0) + int(v)
         n_decoded_total += int(cell.get("n_decoded", 0))
-        n_docked_total += int(cell.get("physical", {}).get("summary", {}).get("n_docked", 0))
-        n_pb_pass_total += int(cell.get("physical", {}).get("summary", {}).get("n_pb_pass", 0))
+        n_docked_total += int(
+            cell.get("physical", {}).get("summary", {}).get("n_docked", 0)
+        )
+        n_pb_pass_total += int(
+            cell.get("physical", {}).get("summary", {}).get("n_pb_pass", 0)
+        )
         n_requested_total += int(cell.get("n_requested", 0))
 
     return {
@@ -112,7 +117,14 @@ def redock_reference(pocket_id: str, ligand_sdf: Path, receptor_pdb: Path) -> di
         from molmetal_lam.sbdd_env.vina_adapter import VinaDockingAdapter
         import torch
 
-        lig_mol = next((m for m in Chem.SDMolSupplier(str(ligand_sdf), removeHs=False) if m is not None), None)
+        lig_mol = next(
+            (
+                m
+                for m in Chem.SDMolSupplier(str(ligand_sdf), removeHs=False)
+                if m is not None
+            ),
+            None,
+        )
         if lig_mol is None:
             return {
                 "pocket_id": pocket_id,
@@ -151,7 +163,11 @@ def redock_reference(pocket_id: str, ligand_sdf: Path, receptor_pdb: Path) -> di
                 "receptor_pdb": str(receptor_pdb),
             }
         # Filter to finite (non-NaN) scores; pick lowest (best).
-        finite_complexes = [c for c in complexes if c.vina_score is not None and np.isfinite(c.vina_score)]
+        finite_complexes = [
+            c
+            for c in complexes
+            if c.vina_score is not None and np.isfinite(c.vina_score)
+        ]
         if not finite_complexes:
             return {
                 "pocket_id": pocket_id,
@@ -264,8 +280,7 @@ def main() -> int:
         },
         "decision_inputs": {
             "decode_ratio": (
-                cell_agg["n_decoded_total"]
-                / max(1, cell_agg["n_requested_total"])
+                cell_agg["n_decoded_total"] / max(1, cell_agg["n_requested_total"])
             ),
             "all_status_counts": cell_agg["decode_status_counts"],
             "pocket_redocked_reference_mean_kcal_mol": (

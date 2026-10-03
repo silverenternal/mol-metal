@@ -6,6 +6,7 @@ Writes:
   - per_seed_metrics.json  (per-seed SA/QED/Lipinski breakdown)
   - cohort_smiles.jsonl    (54 compounds with catherine + sa + qed + lipinski)
 """
+
 from __future__ import annotations
 
 import csv
@@ -26,6 +27,7 @@ from molmetal.molmetal_lam.lam_chem.pharmacophore_filter import (  # noqa: E402
 
 def rdkit_valid(smi: str) -> bool:
     from rdkit import Chem  # type: ignore
+
     return Chem.MolFromSmiles(smi) is not None
 
 
@@ -94,7 +96,8 @@ def main() -> int:
                 "catherine_pass_rate": len(cat_pass) / len(s_rows),
                 "aizynth_synthesizable_rate": sum(
                     1 for r in s_rows if r["aizynth_synthesizable"]
-                ) / len(s_rows),
+                )
+                / len(s_rows),
             }
         )
 
@@ -159,7 +162,9 @@ def main() -> int:
     with (out_dir / "cohort_smiles.jsonl").open("w") as f:
         for r in enriched:
             f.write(json.dumps(r) + "\n")
-    print(f"[postprocess] wrote {out_dir / 'cohort_smiles.jsonl'} ({len(enriched)} rows)")
+    print(
+        f"[postprocess] wrote {out_dir / 'cohort_smiles.jsonl'} ({len(enriched)} rows)"
+    )
     return 0
 
 

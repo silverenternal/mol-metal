@@ -57,7 +57,9 @@ CONFIGS = (
     "lbap_refined_ic50_size",
 )
 
-DEFAULT_OUT_ROOT = PROJECT_ROOT / "molmetal" / "reports" / "wf182_chemprop_v2_drugood_3configs"
+DEFAULT_OUT_ROOT = (
+    PROJECT_ROOT / "molmetal" / "reports" / "wf182_chemprop_v2_drugood_3configs"
+)
 
 
 def _log(msg: str) -> None:
@@ -91,22 +93,30 @@ def run_one_config(
     # Build the argv to pass to wf174.main() so we get full control
     # over seeds / epochs / time_budget / cache-reset.
     argv = [
-        "--seeds", *[str(s) for s in seeds],
-        "--epochs", str(epochs),
-        "--out", str(out_dir),
-        "--cache-dir", str(cache_dir),
-        "--time-budget-s", str(time_budget_s),
+        "--seeds",
+        *[str(s) for s in seeds],
+        "--epochs",
+        str(epochs),
+        "--out",
+        str(out_dir),
+        "--cache-dir",
+        str(cache_dir),
+        "--time-budget-s",
+        str(time_budget_s),
         # P0 FIX 2026-09-28: Default to 'cuda' now that wf174 supports GPU
         # (was 'cpu' which left Blackwell sm_120 idle at 0% utilization).
         # Falls back to CPU automatically if torch.cuda.is_available() False.
         # Previous 'Wf-182 task spec: CPU only' comment is now stale —
         # GPU concurrent contention resolved by serial per-config launch.
-        "--device", "cuda",
+        "--device",
+        "cuda",
     ]
     if reset_cache:
         argv.append("--reset-cache")
-    _log(f"running subset={subset}  out={out_dir}  cache_dir={cache_dir}  "
-         f"seeds={seeds}  epochs={epochs}")
+    _log(
+        f"running subset={subset}  out={out_dir}  cache_dir={cache_dir}  "
+        f"seeds={seeds}  epochs={epochs}"
+    )
     rc = wf174.main(argv)
     if rc != 0:
         raise RuntimeError(f"wf174.main returned {rc} for subset={subset}")
@@ -120,28 +130,44 @@ def run_one_config(
 
 def main(argv: List[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    p.add_argument("--configs", nargs="+", default=list(CONFIGS),
-                   help="DrugOOD lbap_refined_ic50_* subset names to run.")
+    p.add_argument(
+        "--configs",
+        nargs="+",
+        default=list(CONFIGS),
+        help="DrugOOD lbap_refined_ic50_* subset names to run.",
+    )
     p.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2, 3, 4])
     p.add_argument("--epochs", type=int, default=20)
     p.add_argument("--out-root", default=str(DEFAULT_OUT_ROOT))
-    p.add_argument("--cache-dir", default=None,
-                   help="Shared MolGraphCache directory (re-used across "
-                        "configs — saves the ~144s npz-load cost on "
-                        "configs 2+3). Defaults to "
-                        "<out-root>/shared_cache.")
-    p.add_argument("--time-budget-s", type=float, default=14400.0,
-                   help="Per-run wall budget (4 hr default — matches session budget).")
-    p.add_argument("--reset-cache", action="store_true",
-                   help="Delete cache dir before featurizing each config.")
+    p.add_argument(
+        "--cache-dir",
+        default=None,
+        help="Shared MolGraphCache directory (re-used across "
+        "configs — saves the ~144s npz-load cost on "
+        "configs 2+3). Defaults to "
+        "<out-root>/shared_cache.",
+    )
+    p.add_argument(
+        "--time-budget-s",
+        type=float,
+        default=14400.0,
+        help="Per-run wall budget (4 hr default — matches session budget).",
+    )
+    p.add_argument(
+        "--reset-cache",
+        action="store_true",
+        help="Delete cache dir before featurizing each config.",
+    )
     args = p.parse_args(argv)
 
     out_root = Path(args.out_root)
     out_root.mkdir(parents=True, exist_ok=True)
     cache_dir = Path(args.cache_dir) if args.cache_dir else (out_root / "shared_cache")
     cache_dir.mkdir(parents=True, exist_ok=True)
-    _log(f"using shared cache_dir={cache_dir} "
-         f"({sum(1 for _ in cache_dir.glob('*.npz'))} npz files)")
+    _log(
+        f"using shared cache_dir={cache_dir} "
+        f"({sum(1 for _ in cache_dir.glob('*.npz'))} npz files)"
+    )
 
     overall_t0 = time.time()
     per_config: Dict[str, Dict] = {}
@@ -163,11 +189,14 @@ def main(argv: List[str] | None = None) -> int:
                 reset_cache=args.reset_cache,
             )
             per_config[config_name] = summary
-            _log(f"=== END config={config_name}  "
-                 f"ood_test_mean={summary.get('ood_test_auc_mean'):.4f}  "
-                 f"total_wall_min={summary.get('total_wall_min'):.2f} ===")
+            _log(
+                f"=== END config={config_name}  "
+                f"ood_test_mean={summary.get('ood_test_auc_mean'):.4f}  "
+                f"total_wall_min={summary.get('total_wall_min'):.2f} ==="
+            )
         except Exception as exc:
             import traceback
+
             traceback.print_exc()
             _log(f"=== FAIL config={config_name}: {exc} ===")
             failures[config_name] = str(exc)
@@ -211,11 +240,7 @@ def main(argv: List[str] | None = None) -> int:
         "per_config_full_summary": {},
     }
     for config_name, summary in per_config.items():
-        aucs = [
-            r["ood_test_auc"]
-            for r in summary["results"]
-            if r["status"] == "ok"
-        ]
+        aucs = [r["ood_test_auc"] for r in summary["results"] if r["status"] == "ok"]
         aggregate["per_config_ood_test"][config_name] = aucs
         aggregate["per_config_ood_test_mean"][config_name] = _mean(aucs)
         aggregate["per_config_ood_test_std"][config_name] = _std(aucs)
@@ -241,8 +266,10 @@ def main(argv: List[str] | None = None) -> int:
         n = aggregate["per_config_n_runs"][config_name]
         aucs = aggregate["per_config_ood_test"][config_name]
         aucs_str = ", ".join(f"{a:.4f}" for a in aucs)
-        print(f"  {config_name:10s}  n={n}  mean={m:.4f}  std={s:.4f}  "
-              f"per-seed=[{aucs_str}]")
+        print(
+            f"  {config_name:10s}  n={n}  mean={m:.4f}  std={s:.4f}  "
+            f"per-seed=[{aucs_str}]"
+        )
     if failures:
         print(f"\nFAILED configs: {failures}")
     print(f"\nTotal wall: {total_wall_min:.2f} min")

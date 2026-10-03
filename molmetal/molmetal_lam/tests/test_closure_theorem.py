@@ -93,18 +93,16 @@ def test_closure_empty_set() -> None:
     )
     reachable = list(space.reachable_terms())
     # Start term itself counts as "reachable" but contributes nothing.
-    assert len(reachable) == 1, (
-        f"expected 1 reachable term (the empty start), got {len(reachable)}"
-    )
+    assert (
+        len(reachable) == 1
+    ), f"expected 1 reachable term (the empty start), got {len(reachable)}"
     assert reachable[0] is empty
     assert space.n_reachable == 1
 
     # closure_theorem: the empty term trivially has empty valence-BNF
     # (no atoms to be unsaturated).  No products fire (no handles).
     # The closure theorem should hold vacuously.
-    assert closure_theorem(
-        empty, _five_click_rules(), max_depth=3
-    ) is True
+    assert closure_theorem(empty, _five_click_rules(), max_depth=3) is True
 
 
 # ---------------------------------------------------------------------------
@@ -146,9 +144,7 @@ def test_closure_scaffold_propagates() -> None:
             mol = t.to_rdkit()
             assert mol is not None
         except Exception as exc:
-            pytest.fail(
-                f"reached product is not RDKit-sanitisable: {exc}"
-            )
+            pytest.fail(f"reached product is not RDKit-sanitisable: {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -191,9 +187,7 @@ def test_closure_closed_loop() -> None:
         f"Reachable: {[_canonical_smiles(t) for t in reachable]}"
     )
     assert isinstance(witness, list)
-    assert "CuAAC" in witness, (
-        f"witness path should contain 'CuAAC', got {witness!r}"
-    )
+    assert "CuAAC" in witness, f"witness path should contain 'CuAAC', got {witness!r}"
     # Exactly one click rule application (the BFS depth was 1).
     assert len(witness) == 1, (
         f"witness should have exactly 1 rule application at depth 1, "
@@ -259,6 +253,7 @@ def test_closure_aromatic_ring_closure() -> None:
     # ring.  We use benzyl azide (sanitisable, validated in the
     # round-10 test suite) + propyne to produce a benzyl-triazole.
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
     benzyl_azide = _term("N(=[N+]=[N-])Cc1ccccc1")
     propyne = _term("C#CC")
     space = ProductiveSpace(
@@ -280,6 +275,7 @@ def test_closure_aromatic_ring_closure() -> None:
     # alkyne partners (propyne, etc.) have no rings and are excluded
     # from the check — they are depth-0 seeds, not products.
     from rdkit import Chem
+
     aromatic_seeds = {_canonical_smiles(benzyl_azide)}
     for p in products:
         smi = _canonical_smiles(p)
@@ -296,9 +292,9 @@ def test_closure_aromatic_ring_closure() -> None:
         if mol is None:
             continue
         rings = mol.GetRingInfo().AtomRings()
-        aromatic = [r for r in rings if all(
-            mol.GetAtomWithIdx(i).GetIsAromatic() for i in r
-        )]
+        aromatic = [
+            r for r in rings if all(mol.GetAtomWithIdx(i).GetIsAromatic() for i in r)
+        ]
         assert len(aromatic) >= 1, (
             f"product {smi!r} lost aromaticity during CuAAC — "
             f"closure property violated!"
@@ -369,10 +365,10 @@ def test_closure_metal_seed() -> None:
         check_beta_normal_form_for_rdkit_term,
         check_closed_term,
     )
+
     for t in pt_reachable:
         assert check_closed_term(t), (
-            f"reached Pt product fails check_closed_term: "
-            f"{_canonical_smiles(t)!r}"
+            f"reached Pt product fails check_closed_term: " f"{_canonical_smiles(t)!r}"
         )
         # Soft valence-BNF check — cis-platin's Pt is valence-4 and
         # the amine partner doesn't break that.

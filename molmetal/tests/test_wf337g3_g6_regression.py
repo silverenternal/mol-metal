@@ -42,6 +42,7 @@ TRAINER = ROOT / "molmetal/scripts/train_dmpnn_multitask_wasserstein.py"
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _read_wrapper() -> str:
     assert WRAPPER.exists(), f"G6 wrapper missing: {WRAPPER}"
     return WRAPPER.read_text()
@@ -60,17 +61,20 @@ def _body_start(src: str) -> int:
 # Test 1: G6 launcher parses + dry-run executes cleanly
 # ---------------------------------------------------------------------------
 
+
 def test_g6_launcher_parses():
     """G6 wrapper must have valid bash syntax + --dry-run executes cleanly
     + reports 60 (config × metal × seed) tuples PLANNED."""
     # bash -n syntax check
     proc = subprocess.run(
         ["bash", "-n", str(WRAPPER)],
-        capture_output=True, text=True, timeout=10,
+        capture_output=True,
+        text=True,
+        timeout=10,
     )
-    assert proc.returncode == 0, (
-        f"bash syntax check failed: rc={proc.returncode} stderr={proc.stderr}"
-    )
+    assert (
+        proc.returncode == 0
+    ), f"bash syntax check failed: rc={proc.returncode} stderr={proc.stderr}"
 
     # --dry-run execution
     src = _read_wrapper()
@@ -78,7 +82,8 @@ def test_g6_launcher_parses():
     proc = subprocess.run(
         ["bash", str(WRAPPER), "--dry-run"],
         cwd=str(ROOT),
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
         env={**os.environ, "USER_OK": "1"},
         timeout=30,
     )
@@ -89,14 +94,15 @@ def test_g6_launcher_parses():
 
     # 60 tuples enumerated
     out = proc.stdout
-    assert "60 (config, metal, seed) tuples PLANNED" in out, (
-        f"dry-run must report 60 tuples PLANNED; tail: {out[-400:]!r}"
-    )
+    assert (
+        "60 (config, metal, seed) tuples PLANNED" in out
+    ), f"dry-run must report 60 tuples PLANNED; tail: {out[-400:]!r}"
 
     # 4 configs x 5 metals x 3 seeds = 60 — verify the cartesian product
     # is enumerated by counting per-cfg lines in the dry-run stdout.
     n_cfg_lines = sum(
-        1 for line in out.splitlines()
+        1
+        for line in out.splitlines()
         if re.search(r"cfg=(no_multi_task|no_wass|no_kendall|no_dann)", line)
     )
     assert n_cfg_lines >= 60, (
@@ -108,6 +114,7 @@ def test_g6_launcher_parses():
 # ---------------------------------------------------------------------------
 # Test 2: G6 launcher has all required flags (Wf-328 + Wf-335 + Wf-296C fixes)
 # ---------------------------------------------------------------------------
+
 
 def test_g6_launcher_has_all_required_flags():
     """Lock down ALL the Wf-328 / Wf-335 / Wf-296C fixes are present in the
@@ -126,16 +133,12 @@ def test_g6_launcher_has_all_required_flags():
     # Negative: --cpu-num-workers 0 must NOT appear as an ACTUAL ARGUMENT
     # (not in a comment that explains the reverted value). Scan only the
     # COMMON_ARGS array contents.
-    common_args_match = re.search(
-        r"COMMON_ARGS=\((.*?)\)", src, re.DOTALL
-    )
-    assert common_args_match is not None, (
-        "COMMON_ARGS array not found in G6 wrapper"
-    )
+    common_args_match = re.search(r"COMMON_ARGS=\((.*?)\)", src, re.DOTALL)
+    assert common_args_match is not None, "COMMON_ARGS array not found in G6 wrapper"
     common_args_body = common_args_match.group(1)
-    assert "--cpu-num-workers 8" in common_args_body, (
-        "Wf-328-W2 fix missing: --cpu-num-workers 8 must be in COMMON_ARGS array"
-    )
+    assert (
+        "--cpu-num-workers 8" in common_args_body
+    ), "Wf-328-W2 fix missing: --cpu-num-workers 8 must be in COMMON_ARGS array"
     assert not re.search(r"--cpu-num-workers\s+0\b", common_args_body), (
         "Wf-326B-reverted --cpu-num-workers 0 leaked back into COMMON_ARGS. "
         "Per Wf-328-W2, the only valid value is 8 (24-core host OPTIMAL)."
@@ -153,41 +156,42 @@ def test_g6_launcher_has_all_required_flags():
     # Wf-296C — --no-kendall + --no-dann must be in CONFIRMED_FLAGS dict so
     # the per-innovation ablation actually ablates (per-config, not blanket).
     # Verified via grep on train_dmpnn_multitask_wasserstein.py lines 1323/1331.
-    assert '"--no-kendall"' in src or "'--no-kendall'" in src, (
-        "Wf-296C fix missing: --no-kendall must be in CONFIRMED_FLAGS dict."
-    )
-    assert '"--no-dann"' in src or "'--no-dann'" in src, (
-        "Wf-296C fix missing: --no-dann must be in CONFIRMED_FLAGS dict."
-    )
+    assert (
+        '"--no-kendall"' in src or "'--no-kendall'" in src
+    ), "Wf-296C fix missing: --no-kendall must be in CONFIRMED_FLAGS dict."
+    assert (
+        '"--no-dann"' in src or "'--no-dann'" in src
+    ), "Wf-296C fix missing: --no-dann must be in CONFIRMED_FLAGS dict."
 
     # Wf-296C — VERIFIED_CONFIGS must list all 4 (no skip-with-WARN path)
     # i.e. UNVERIFIED_CONFIGS must be EMPTY.
-    assert "VERIFIED_CONFIGS=" in src, (
-        "VERIFIED_CONFIGS dispatch table missing from G6 wrapper."
-    )
-    assert "UNVERIFIED_CONFIGS=\"\"" in src, (
-        "Wf-296C fix: UNVERIFIED_CONFIGS must be empty (all 4 flags verified)."
-    )
+    assert (
+        "VERIFIED_CONFIGS=" in src
+    ), "VERIFIED_CONFIGS dispatch table missing from G6 wrapper."
+    assert (
+        'UNVERIFIED_CONFIGS=""' in src
+    ), "Wf-296C fix: UNVERIFIED_CONFIGS must be empty (all 4 flags verified)."
 
     # Trainer must also support these flags (cross-reference the CLI surface
     # that the wrapper depends on — guards against trainer refactor that
     # silently drops the flag alias).
     assert TRAINER.exists(), f"trainer missing: {TRAINER}"
     trainer_src = TRAINER.read_text()
-    assert "--no-cuda-graphs" in trainer_src, (
-        "trainer missing --no-cuda-graphs CLI flag — wrapper calls will fail."
-    )
-    assert '"--no-kendall"' in trainer_src or "'--no-kendall'" in trainer_src, (
-        "trainer missing --no-kendall CLI flag — Wf-296C ablation broken."
-    )
-    assert '"--no-dann"' in trainer_src or "'--no-dann'" in trainer_src, (
-        "trainer missing --no-dann CLI flag — Wf-296C ablation broken."
-    )
+    assert (
+        "--no-cuda-graphs" in trainer_src
+    ), "trainer missing --no-cuda-graphs CLI flag — wrapper calls will fail."
+    assert (
+        '"--no-kendall"' in trainer_src or "'--no-kendall'" in trainer_src
+    ), "trainer missing --no-kendall CLI flag — Wf-296C ablation broken."
+    assert (
+        '"--no-dann"' in trainer_src or "'--no-dann'" in trainer_src
+    ), "trainer missing --no-dann CLI flag — Wf-296C ablation broken."
 
 
 # ---------------------------------------------------------------------------
 # Test 3: G6 launcher pre-flight integration (kill_then_adapt ordering)
 # ---------------------------------------------------------------------------
+
 
 def test_g6_launcher_pre_flight_integration():
     """Per kill_then_adapt + TODO-207 + AGENTS.md §1.4: pre_flight_check
@@ -195,18 +199,18 @@ def test_g6_launcher_pre_flight_integration():
     BEFORE any per-tuple runner. Per AGENTS.md §1.4, STALE pre-flight
     blocks PASS — wrapper must invoke pre_flight_check.py (not skip it)."""
     src = _read_wrapper()
-    body = src[_body_start(src):]
+    body = src[_body_start(src) :]
 
     # All 3 wave-tool guards must be invoked
-    assert "pre_flight_check.py --pipeline all" in body, (
-        "pre_flight_check.py --pipeline all not invoked in G6 wrapper"
-    )
-    assert "per_wave_checklist.py --wave" in body, (
-        "per_wave_checklist.py not invoked in G6 wrapper"
-    )
-    assert "wave_budget_tracker.py" in body, (
-        "wave_budget_tracker.py not invoked in G6 wrapper"
-    )
+    assert (
+        "pre_flight_check.py --pipeline all" in body
+    ), "pre_flight_check.py --pipeline all not invoked in G6 wrapper"
+    assert (
+        "per_wave_checklist.py --wave" in body
+    ), "per_wave_checklist.py not invoked in G6 wrapper"
+    assert (
+        "wave_budget_tracker.py" in body
+    ), "wave_budget_tracker.py not invoked in G6 wrapper"
 
     # Ordering invariant: pre_flight must precede BOTH per_wave_checklist
     # AND wave_budget_tracker (kill_then_adapt — STALE pre-flight is a
@@ -236,7 +240,7 @@ def test_g6_launcher_pre_flight_integration():
     ):
         idx = body.find(tool)
         # Look at the next 80 chars after the tool name for the `||` guard
-        tail = body[idx:idx + 200]
+        tail = body[idx : idx + 200]
         assert "||" in tail and "exit 1" in tail, (
             f"tool {tool!r} invocation lacks `|| {{ ... exit 1 }}` guard. "
             f"A STALE pre-flight would silently continue without this. "
@@ -250,9 +254,9 @@ def test_g6_launcher_pre_flight_integration():
     # the real-launch path (dry-run block also has a for-loop but never
     # calls run_tuple).
     run_loop_idx = body.find('run_tuple "${cfg}" "${metal}" "${seed}"')
-    assert run_loop_idx > 0, (
-        "per-tuple runner loop (run_tuple invocation) not found in G6 wrapper body"
-    )
+    assert (
+        run_loop_idx > 0
+    ), "per-tuple runner loop (run_tuple invocation) not found in G6 wrapper body"
     assert pre_flight_idx < run_loop_idx, (
         f"pre_flight_check (idx {pre_flight_idx}) must precede per-tuple "
         f"runner loop (idx {run_loop_idx})"
@@ -263,6 +267,7 @@ def test_g6_launcher_pre_flight_integration():
 # Test 4: G6 launcher USER_OK gate
 # ---------------------------------------------------------------------------
 
+
 def test_g6_launcher_user_ok_gate():
     """Per Wf-306D + AGENTS.md §5.1 standing GPU auth: 7.5h wall launch
     requires explicit USER_OK=1. The gate MUST:
@@ -272,7 +277,7 @@ def test_g6_launcher_user_ok_gate():
       - be bypassed by --dry-run (which exits 0 without touching GPU)
     """
     src = _read_wrapper()
-    body = src[_body_start(src):]
+    body = src[_body_start(src) :]
 
     # Gate structure present
     assert "USER_OK" in src, "USER_OK gate text missing"
@@ -280,7 +285,7 @@ def test_g6_launcher_user_ok_gate():
 
     # Gate ordering: gate MUST come BEFORE pre_flight (kill_then_adapt
     # standing directive — no GPU probe without user OK).
-    gate_idx = body.find("if [[ -z \"${USER_OK:-}\" ]]")
+    gate_idx = body.find('if [[ -z "${USER_OK:-}" ]]')
     pre_flight_idx = body.find("pre_flight_check.py --pipeline all")
     assert gate_idx > 0, "USER_OK gate if-block not found"
     assert pre_flight_idx > 0, "pre_flight_check invocation not found"
@@ -294,7 +299,8 @@ def test_g6_launcher_user_ok_gate():
     proc = subprocess.run(
         ["bash", str(WRAPPER)],
         cwd=str(ROOT),
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
         env={k: v for k, v in os.environ.items() if k != "USER_OK"},
         timeout=15,
     )
@@ -302,16 +308,17 @@ def test_g6_launcher_user_ok_gate():
         f"wrapper exited 0 without USER_OK; expected gate block. "
         f"stdout={proc.stdout[-200:]!r}"
     )
-    assert "USER OK REQUIRED" in proc.stdout, (
-        f"gate block message missing from stdout; got {proc.stdout[-200:]!r}"
-    )
+    assert (
+        "USER OK REQUIRED" in proc.stdout
+    ), f"gate block message missing from stdout; got {proc.stdout[-200:]!r}"
 
     # --dry-run bypasses the gate (exits 0, never touches GPU, USER_OK
     # is irrelevant in dry-run path)
     proc_dry = subprocess.run(
         ["bash", str(WRAPPER), "--dry-run"],
         cwd=str(ROOT),
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
         env={k: v for k, v in os.environ.items() if k != "USER_OK"},
         timeout=30,
     )

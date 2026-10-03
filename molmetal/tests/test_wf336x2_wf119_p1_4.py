@@ -37,6 +37,7 @@ Honest framing (per ``party-twenty-spirit`` §3.5):
     because the chemprop trainer has no CUDA Graphs path. We assert this
     explicit no-cudagraphs contract in test_launcher_explicit_no_cudagraphs.
 """
+
 from __future__ import annotations
 
 import re
@@ -87,7 +88,9 @@ def test_launch_wf119_p1_4_chemprop_v3_lomo_sh_parser_and_shape():
     # Bash syntax check — must parse cleanly.
     out = subprocess.run(
         ["bash", "-n", str(_WF119_LAUNCHER)],
-        capture_output=True, text=True, timeout=15,
+        capture_output=True,
+        text=True,
+        timeout=15,
         cwd=str(_REPO_ROOT),
     )
     assert out.returncode == 0, (
@@ -117,16 +120,16 @@ def test_launch_wf119_p1_4_chemprop_v3_lomo_sh_parser_and_shape():
     )
 
     # 3) References TODO-119 + P1.4 + 4-ablations × 1-seed × 3-ep smoke.
-    assert "TODO-119" in content or "todo-119" in content.lower() or "P1.4" in content, (
-        "Wf-119 P1.4 launch wrapper missing TODO-119 / P1.4 reference."
-    )
+    assert (
+        "TODO-119" in content or "todo-119" in content.lower() or "P1.4" in content
+    ), "Wf-119 P1.4 launch wrapper missing TODO-119 / P1.4 reference."
     assert "4 ablations" in content or "ablation" in content.lower(), (
         "Wf-119 P1.4 launch wrapper missing 4-ablation smoke shape "
         "(per Wf-295D §1 Wave-A: 4 ablations × 1 seed × 3 ep)."
     )
-    assert "3 ep" in content or "3 epochs" in content or "--epochs 3" in content, (
-        "Wf-119 P1.4 launch wrapper missing 3-ep smoke shape (Wf-295D §1)."
-    )
+    assert (
+        "3 ep" in content or "3 epochs" in content or "--epochs 3" in content
+    ), "Wf-119 P1.4 launch wrapper missing 3-ep smoke shape (Wf-295D §1)."
 
     # 4) Pre-flight tool guard wired (per Wf-262 / Wf-296D pattern).
     assert "pre_flight_check.py" in content, (
@@ -203,9 +206,9 @@ def test_pre_flight_p3_todo_119_p14_cpu_smoke_ready_reachable_from_launcher():
     )
 
     # (b) Launch wrapper references the same gate name.
-    assert _WF119_LAUNCHER.exists(), (
-        f"Wf-119 P1.4 launch wrapper not found at {_WF119_LAUNCHER}."
-    )
+    assert (
+        _WF119_LAUNCHER.exists()
+    ), f"Wf-119 P1.4 launch wrapper not found at {_WF119_LAUNCHER}."
     launcher_content = _WF119_LAUNCHER.read_text(encoding="utf-8")
     assert expected_gate in launcher_content, (
         f"Wf-119 P1.4 launch wrapper missing reference to "

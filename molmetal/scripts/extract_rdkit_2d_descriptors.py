@@ -146,6 +146,7 @@ try:
         safe_overwrite_check,
         detect_truncation,
     )
+
     _WF416_HAS_ATOMIC = True
 except ImportError:  # pragma: no cover — fallback when running as standalone
     _WF416_HAS_ATOMIC = False
@@ -162,9 +163,10 @@ try:
     from rdkit import Chem, RDLogger
     from rdkit.Chem import AllChem, Descriptors, rdMolDescriptors
     from rdkit import DataStructs
+
     RDLogger.DisableLog("rdApp.*")  # silence the per-mol warnings
     _HAS_RDKIT = True
-except Exception as exc:                                              # pragma: no cover
+except Exception as exc:  # pragma: no cover
     _HAS_RDKIT = False
     _RDKIT_IMPORT_ERROR = exc
 
@@ -255,7 +257,9 @@ RDKIT_2D_EXTENDED_DESCRIPTORS: Tuple[Tuple[str, "callable"], ...] = (
 )
 
 
-def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
+def _wf416_atomic_write_text(
+    path, content: str, min_lines: int = 50, expected_min_length: int = 200
+) -> None:
     """Wf-416-A1 atomic-write-protocol wrapper around direct write_text.
 
     Falls back to direct write_text if atomic_write_file is unavailable
@@ -267,21 +271,26 @@ def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_m
             _risk = safe_overwrite_check(path, content, min_lines=min_lines)
             if _risk is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-416-A1] safe_overwrite_check diff_ratio=%.3f at %s",
-                    _risk, path,
+                    _risk,
+                    path,
                 )
         atomic_write_file(path, content, encoding="utf-8")
         if detect_truncation is not None:
             _trunc = detect_truncation(content, expected_min_length=expected_min_length)
             if _trunc is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-416-A1] detect_truncation reason=%r at %s",
-                    _trunc, path,
+                    _trunc,
+                    path,
                 )
     else:  # pragma: no cover — fallback when atomic primitive unavailable
         Path(path).write_text(content, encoding="utf-8")
+
 
 def _require_rdkit() -> None:
     if not _HAS_RDKIT:
@@ -307,7 +316,7 @@ def compute_rdkit_descriptors(smiles: str) -> Optional[List[float]]:
     for _name, fn in RDKIT_2D_DESCRIPTORS:
         try:
             v = float(fn(mol))
-        except Exception:                                              # pragma: no cover
+        except Exception:  # pragma: no cover
             v = float("nan")
         out.append(v)
     return out
@@ -331,7 +340,7 @@ def compute_rdkit_extended_descriptors(smiles: str) -> Optional[List[float]]:
     for _name, fn in RDKIT_2D_EXTENDED_DESCRIPTORS:
         try:
             v = float(fn(mol))
-        except Exception:                                              # pragma: no cover
+        except Exception:  # pragma: no cover
             v = float("nan")
         out.append(v)
     return out
@@ -353,8 +362,9 @@ DEFAULT_FP_RADIUS = 2
 DEFAULT_FP_NBITS = 1024
 
 
-def compute_morgan_fp_1024(smiles: str, radius: int = DEFAULT_FP_RADIUS,
-                          n_bits: int = DEFAULT_FP_NBITS) -> Optional[np.ndarray]:
+def compute_morgan_fp_1024(
+    smiles: str, radius: int = DEFAULT_FP_RADIUS, n_bits: int = DEFAULT_FP_NBITS
+) -> Optional[np.ndarray]:
     """1024-bit Morgan (ECFP4) fingerprint per Jiang et al. ChemRxiv 2024.
 
     Returns ``None`` if RDKit fails to parse the SMILES or the mol has
@@ -368,14 +378,16 @@ def compute_morgan_fp_1024(smiles: str, radius: int = DEFAULT_FP_RADIUS,
         return None
     try:
         fp = AllChem.GetMorganFingerprintAsBitVect(mol, radius=radius, nBits=n_bits)
-    except Exception:                                                  # pragma: no cover
+    except Exception:  # pragma: no cover
         return None
     arr = np.zeros((n_bits,), dtype=np.uint8)
     DataStructs.ConvertToNumpyArray(fp, arr)
     return arr
 
 
-def compute_rdk_fp_1024(smiles: str, n_bits: int = DEFAULT_FP_NBITS) -> Optional[np.ndarray]:
+def compute_rdk_fp_1024(
+    smiles: str, n_bits: int = DEFAULT_FP_NBITS
+) -> Optional[np.ndarray]:
     """1024-bit RDK topological fingerprint per Jiang et al. ChemRxiv 2024.
 
     Same None-on-failure contract as :func:`compute_morgan_fp_1024`.
@@ -386,7 +398,7 @@ def compute_rdk_fp_1024(smiles: str, n_bits: int = DEFAULT_FP_NBITS) -> Optional
         return None
     try:
         fp = Chem.RDKFingerprint(mol, fpSize=n_bits)
-    except Exception:                                                  # pragma: no cover
+    except Exception:  # pragma: no cover
         return None
     arr = np.zeros((n_bits,), dtype=np.uint8)
     DataStructs.ConvertToNumpyArray(fp, arr)
@@ -394,9 +406,9 @@ def compute_rdk_fp_1024(smiles: str, n_bits: int = DEFAULT_FP_NBITS) -> Optional
 
 
 FEATURES_V2_MODES: Tuple[str, ...] = (
-    "rdkit12",            # legacy 12-d, backward compat (Wf-49 P1)
-    "fp1024",             # 1024-d Morgan only — ablation arm
-    "rdkit12+fp1024",     # 1036-d concat — recommended
+    "rdkit12",  # legacy 12-d, backward compat (Wf-49 P1)
+    "fp1024",  # 1024-d Morgan only — ablation arm
+    "rdkit12+fp1024",  # 1036-d concat — recommended
 )
 
 
@@ -454,13 +466,18 @@ def compute_features_v2(smiles: str, mode: str = "rdkit12") -> Optional[np.ndarr
 # Both files share the per-row ``smiles`` + ``metal`` contract; the Wf-49
 # Phase 1 extractor runs over both.
 PLATINAI_5K_DEFAULT = PROJECT_ROOT / "molmetal" / "data" / "platinai_5k.csv"
-PLATINAI_5K_OUT_DEFAULT = PROJECT_ROOT / "molmetal" / "data" / "platinai_5k_rdkit_features.csv"
+PLATINAI_5K_OUT_DEFAULT = (
+    PROJECT_ROOT / "molmetal" / "data" / "platinai_5k_rdkit_features.csv"
+)
 PLATINAI_4CELL_DEFAULT = PROJECT_ROOT / "molmetal" / "data" / "platinai_4cell.csv"
 PLATINAI_4CELL_OUT_DEFAULT = (
     PROJECT_ROOT / "molmetal" / "data" / "platinai_4cell_rdkit_features.csv"
 )
 PLATINAI_4CELL_CELL_LINES: Tuple[str, ...] = (
-    "MCF7", "A549", "A2780", "A2780cis",
+    "MCF7",
+    "A549",
+    "A2780",
+    "A2780cis",
 )
 PLATINAI_4CELL_IC50_COLS: Tuple[str, ...] = tuple(
     f"ic50_{l.lower()}_nm" for l in PLATINAI_4CELL_CELL_LINES
@@ -518,13 +535,15 @@ def load_platinai_5k(
                     selectivity = float(sel_raw)
                 except ValueError:
                     selectivity = float("nan")
-            rows.append({
-                "smiles": smi,
-                "metal": metal,
-                "ic50_nm": ic50_nM,
-                "selectivity": selectivity,
-                "pIC50": _pIC50_from_nM(ic50_nM),
-            })
+            rows.append(
+                {
+                    "smiles": smi,
+                    "metal": metal,
+                    "ic50_nm": ic50_nM,
+                    "selectivity": selectivity,
+                    "pIC50": _pIC50_from_nM(ic50_nM),
+                }
+            )
             if max_rows is not None and len(rows) >= max_rows:
                 break
     return rows, stats
@@ -574,18 +593,20 @@ def load_platinai_4cell(
                 ic50_block[col] = v
             if not row_has_any_ic50:
                 stats["n_no_ic50_any"] += 1
-            rows.append({
-                "smiles": smi,
-                "metal": metal,
-                "ic50_mcf7_nm": ic50_block["ic50_mcf7_nm"],
-                "ic50_a549_nm": ic50_block["ic50_a549_nm"],
-                "ic50_a2780_nm": ic50_block["ic50_a2780_nm"],
-                "ic50_a2780cis_nm": ic50_block["ic50_a2780cis_nm"],
-                "pIC50_mcf7": _pIC50_from_nM(ic50_block["ic50_mcf7_nm"]),
-                "pIC50_a549": _pIC50_from_nM(ic50_block["ic50_a549_nm"]),
-                "pIC50_a2780": _pIC50_from_nM(ic50_block["ic50_a2780_nm"]),
-                "pIC50_a2780cis": _pIC50_from_nM(ic50_block["ic50_a2780cis_nm"]),
-            })
+            rows.append(
+                {
+                    "smiles": smi,
+                    "metal": metal,
+                    "ic50_mcf7_nm": ic50_block["ic50_mcf7_nm"],
+                    "ic50_a549_nm": ic50_block["ic50_a549_nm"],
+                    "ic50_a2780_nm": ic50_block["ic50_a2780_nm"],
+                    "ic50_a2780cis_nm": ic50_block["ic50_a2780cis_nm"],
+                    "pIC50_mcf7": _pIC50_from_nM(ic50_block["ic50_mcf7_nm"]),
+                    "pIC50_a549": _pIC50_from_nM(ic50_block["ic50_a549_nm"]),
+                    "pIC50_a2780": _pIC50_from_nM(ic50_block["ic50_a2780_nm"]),
+                    "pIC50_a2780cis": _pIC50_from_nM(ic50_block["ic50_a2780cis_nm"]),
+                }
+            )
             if max_rows is not None and len(rows) >= max_rows:
                 break
     return rows, stats
@@ -631,11 +652,13 @@ def load_metalcytotox_5metal(
                     stats["n_no_activity"] += 1
             else:
                 stats["n_no_activity"] += 1
-            rows.append({
-                "smiles": smi,
-                "metal": metal,
-                "activity": activity,
-            })
+            rows.append(
+                {
+                    "smiles": smi,
+                    "metal": metal,
+                    "activity": activity,
+                }
+            )
             if max_rows is not None and len(rows) >= max_rows:
                 break
     return rows, stats
@@ -691,36 +714,44 @@ def extract_descriptors_for_rows(
 # ---------------------------------------------------------------------------
 # Feature summary writer
 # ---------------------------------------------------------------------------
-def _desc_stats_block(X: np.ndarray, desc_names: Sequence[str]) -> List[Dict[str, float]]:
+def _desc_stats_block(
+    X: np.ndarray, desc_names: Sequence[str]
+) -> List[Dict[str, float]]:
     out: List[Dict[str, float]] = []
     for j, name in enumerate(desc_names):
         col = X[:, j]
         finite = col[np.isfinite(col)]
         if len(finite) == 0:
-            out.append({
-                "name": name,
-                "n_missing": int(len(col)),
-                "mean": None,
-                "std": None,
-                "min": None,
-                "max": None,
-                "median": None,
-            })
+            out.append(
+                {
+                    "name": name,
+                    "n_missing": int(len(col)),
+                    "mean": None,
+                    "std": None,
+                    "min": None,
+                    "max": None,
+                    "median": None,
+                }
+            )
             continue
-        out.append({
-            "name": name,
-            "n_missing": int(np.sum(~np.isfinite(col))),
-            "mean": float(np.mean(finite)),
-            "std": float(np.std(finite)),
-            "min": float(np.min(finite)),
-            "max": float(np.max(finite)),
-            "median": float(np.median(finite)),
-        })
+        out.append(
+            {
+                "name": name,
+                "n_missing": int(np.sum(~np.isfinite(col))),
+                "mean": float(np.mean(finite)),
+                "std": float(np.std(finite)),
+                "min": float(np.min(finite)),
+                "max": float(np.max(finite)),
+                "median": float(np.median(finite)),
+            }
+        )
     return out
 
 
 def _pearson_block(
-    X: np.ndarray, y: np.ndarray, desc_names: Sequence[str],
+    X: np.ndarray,
+    y: np.ndarray,
+    desc_names: Sequence[str],
 ) -> List[Dict[str, float]]:
     """Per-descriptor Pearson r vs target on the finite subset.
 
@@ -775,9 +806,7 @@ def write_feature_summary(
         "n_rows_total": n_rows_total,
         "n_rows_parsed": n_rows_parsed,
         "n_rows_dropped": n_rows_dropped,
-        "parse_success_rate": (
-            n_rows_parsed / n_rows_total if n_rows_total else 0.0
-        ),
+        "parse_success_rate": (n_rows_parsed / n_rows_total if n_rows_total else 0.0),
         "per_metal_counts": per_metal_counts,
         "descriptor_stats": desc_stats,
         "correlations_vs_target": correlations,
@@ -809,7 +838,9 @@ def run_platinai(out_csv: Path, summary_path: Path) -> Dict[str, object]:
     rows, load_stats = load_platinai_5k()
     desc_names = [n for n, _ in RDKIT_2D_DESCRIPTORS]
     X, valid, parse_failures = extract_descriptors_for_rows(
-        rows, desc_names, compute_rdkit_descriptors,
+        rows,
+        desc_names,
+        compute_rdkit_descriptors,
     )
     n_total = len(rows)
     n_parsed = int(np.sum(valid))
@@ -827,8 +858,8 @@ def run_platinai(out_csv: Path, summary_path: Path) -> Dict[str, object]:
     # trainers can do their own row filter.
     y_pic50 = np.asarray(
         [
-            float(r["pIC50"]) if isinstance(r["pIC50"], (int, float))
-            and math.isfinite(float(r["pIC50"]))
+            float(r["pIC50"])
+            if isinstance(r["pIC50"], (int, float)) and math.isfinite(float(r["pIC50"]))
             else float("nan")
             for r in rows
         ],
@@ -846,14 +877,16 @@ def run_platinai(out_csv: Path, summary_path: Path) -> Dict[str, object]:
             ic50 = r["ic50_nm"]
             sel = r["selectivity"]
             pic50 = r["pIC50"]
-            writer.writerow([
-                r["smiles"],
-                r["metal"],
-                "" if not math.isfinite(float(ic50)) else f"{float(ic50):.6f}",
-                "" if not math.isfinite(float(sel)) else f"{float(sel):.6f}",
-                "" if not math.isfinite(float(pic50)) else f"{float(pic50):.6f}",
-                *[f"{float(v):.6f}" for v in X[i, :]],
-            ])
+            writer.writerow(
+                [
+                    r["smiles"],
+                    r["metal"],
+                    "" if not math.isfinite(float(ic50)) else f"{float(ic50):.6f}",
+                    "" if not math.isfinite(float(sel)) else f"{float(sel):.6f}",
+                    "" if not math.isfinite(float(pic50)) else f"{float(pic50):.6f}",
+                    *[f"{float(v):.6f}" for v in X[i, :]],
+                ]
+            )
 
     desc_stats = _desc_stats_block(X[valid, :], desc_names)
     wall = time.time() - t0
@@ -861,10 +894,7 @@ def run_platinai(out_csv: Path, summary_path: Path) -> Dict[str, object]:
     # signal (n_samples=0 across the correlations block). This is the
     # 2026-09-26 snapshot situation: platinai_5k.csv has empty ic50_nm and
     # selectivity columns. Wf-49 Phase 4 synthesis can grep for this flag.
-    n_samples_zero = sum(
-        1 for c in correlations
-        if c.get("n_samples", 0) == 0
-    )
+    n_samples_zero = sum(1 for c in correlations if c.get("n_samples", 0) == 0)
     n_samples_warning = None
     if n_samples_zero > 0:
         n_samples_warning = (
@@ -912,7 +942,9 @@ def run_platinai_4cell(
     rows, load_stats = load_platinai_4cell()
     desc_names = [n for n, _ in RDKIT_2D_DESCRIPTORS]
     X, valid, parse_failures = extract_descriptors_for_rows(
-        rows, desc_names, compute_rdkit_descriptors,
+        rows,
+        desc_names,
+        compute_rdkit_descriptors,
     )
     n_total = len(rows)
     n_parsed = int(np.sum(valid))
@@ -944,8 +976,7 @@ def run_platinai_4cell(
         y_per_cell[col] = np.asarray(
             [
                 float(r[col])
-                if isinstance(r[col], (int, float))
-                and math.isfinite(float(r[col]))
+                if isinstance(r[col], (int, float)) and math.isfinite(float(r[col]))
                 else float("nan")
                 for r in rows
             ],
@@ -964,10 +995,7 @@ def run_platinai_4cell(
     # Write CSV.
     out_csv.parent.mkdir(parents=True, exist_ok=True)
     header = (
-        ["smiles", "metal"]
-        + list(PLATINAI_4CELL_IC50_COLS)
-        + pIC50_cols
-        + desc_names
+        ["smiles", "metal"] + list(PLATINAI_4CELL_IC50_COLS) + pIC50_cols + desc_names
     )
     with out_csv.open("w", newline="") as fh:
         writer = csv.writer(fh)
@@ -976,14 +1004,10 @@ def run_platinai_4cell(
             row_out = [r["smiles"], r["metal"]]
             for col in PLATINAI_4CELL_IC50_COLS:
                 v = float(r[col])
-                row_out.append(
-                    "" if not math.isfinite(v) else f"{v:.6f}"
-                )
+                row_out.append("" if not math.isfinite(v) else f"{v:.6f}")
             for col in pIC50_cols:
                 v = float(r[col])
-                row_out.append(
-                    "" if not math.isfinite(v) else f"{v:.6f}"
-                )
+                row_out.append("" if not math.isfinite(v) else f"{v:.6f}")
             row_out.extend(f"{float(v):.6f}" for v in X[i, :])
             writer.writerow(row_out)
 
@@ -1001,9 +1025,7 @@ def run_platinai_4cell(
         "n_rows_total": n_total,
         "n_rows_parsed": n_parsed,
         "n_rows_dropped": n_dropped,
-        "parse_success_rate": (
-            n_parsed / n_total if n_total else 0.0
-        ),
+        "parse_success_rate": (n_parsed / n_total if n_total else 0.0),
         "per_metal_counts": per_metal,
         "cell_lines": list(PLATINAI_4CELL_CELL_LINES),
         "descriptor_stats": desc_stats,
@@ -1024,7 +1046,9 @@ def run_platinai_4cell(
             "properties (MolLogP, TPSA, HBA, HBD, MW)."
         ),
     }
-    _wf416_atomic_write_text(payload_path, json.dumps(payload, indent=2, sort_keys=True))
+    _wf416_atomic_write_text(
+        payload_path, json.dumps(payload, indent=2, sort_keys=True)
+    )
 
     return {
         "dataset": "platinai_4cell",
@@ -1061,7 +1085,9 @@ def run_metalcytotox(out_csv: Path, summary_path: Path) -> Dict[str, object]:
 
     desc_names = [n for n, _ in RDKIT_2D_DESCRIPTORS]
     X, valid, parse_failures = extract_descriptors_for_rows(
-        rows, desc_names, compute_rdkit_descriptors,
+        rows,
+        desc_names,
+        compute_rdkit_descriptors,
     )
     n_total = len(rows)
     n_parsed = int(np.sum(valid))
@@ -1076,7 +1102,8 @@ def run_metalcytotox(out_csv: Path, summary_path: Path) -> Dict[str, object]:
     # Targets (binary activity).
     y_act = np.asarray(
         [
-            float(r["activity"]) if isinstance(r["activity"], (int, float))
+            float(r["activity"])
+            if isinstance(r["activity"], (int, float))
             and math.isfinite(float(r["activity"]))
             else float("nan")
             for r in rows
@@ -1095,12 +1122,14 @@ def run_metalcytotox(out_csv: Path, summary_path: Path) -> Dict[str, object]:
         writer.writerow(header)
         for i, r in enumerate(rows):
             act = r["activity"]
-            writer.writerow([
-                r["smiles"],
-                r["metal"],
-                "" if not math.isfinite(float(act)) else f"{float(act):.6f}",
-                *[f"{float(v):.6f}" for v in X[i, :]],
-            ])
+            writer.writerow(
+                [
+                    r["smiles"],
+                    r["metal"],
+                    "" if not math.isfinite(float(act)) else f"{float(act):.6f}",
+                    *[f"{float(v):.6f}" for v in X[i, :]],
+                ]
+            )
 
     desc_stats = _desc_stats_block(X[valid, :], desc_names)
     wall = time.time() - t0
@@ -1133,10 +1162,10 @@ def run_metalcytotox(out_csv: Path, summary_path: Path) -> Dict[str, object]:
 # CLI
 # ---------------------------------------------------------------------------
 DATASET_CHOICES: Tuple[str, ...] = (
-    "platinai",         # = platinai_5k.csv (SMILES-only structural subset)
-    "platinai_4cell",   # = platinai_4cell.csv (labelled regression cohort)
-    "metalcytotox",     # = metalcytotox_5metal_multitask_v4.csv (binary activity)
-    "all",              # = platinai_5k + platinai_4cell + metalcytotox
+    "platinai",  # = platinai_5k.csv (SMILES-only structural subset)
+    "platinai_4cell",  # = platinai_4cell.csv (labelled regression cohort)
+    "metalcytotox",  # = metalcytotox_5metal_multitask_v4.csv (binary activity)
+    "all",  # = platinai_5k + platinai_4cell + metalcytotox
 )
 
 
@@ -1222,20 +1251,27 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     results: List[Dict[str, object]] = []
     if args.dataset in ("platinai", "all"):
-        results.append(run_platinai(
-            out_csv=args.out_dir / "platinai_5k_rdkit_features.csv",
-            summary_path=args.report_dir / "platinai_5k_feature_summary.json",
-        ))
+        results.append(
+            run_platinai(
+                out_csv=args.out_dir / "platinai_5k_rdkit_features.csv",
+                summary_path=args.report_dir / "platinai_5k_feature_summary.json",
+            )
+        )
     if args.dataset in ("platinai_4cell", "all"):
-        results.append(run_platinai_4cell(
-            out_csv=args.out_dir / "platinai_4cell_rdkit_features.csv",
-            summary_path=args.report_dir / "platinai_4cell_feature_summary.json",
-        ))
+        results.append(
+            run_platinai_4cell(
+                out_csv=args.out_dir / "platinai_4cell_rdkit_features.csv",
+                summary_path=args.report_dir / "platinai_4cell_feature_summary.json",
+            )
+        )
     if args.dataset in ("metalcytotox", "all"):
-        results.append(run_metalcytotox(
-            out_csv=args.out_dir / "metalcytotox_rdkit_features.csv",
-            summary_path=args.report_dir / "metalcytotox_5metal_feature_summary.json",
-        ))
+        results.append(
+            run_metalcytotox(
+                out_csv=args.out_dir / "metalcytotox_rdkit_features.csv",
+                summary_path=args.report_dir
+                / "metalcytotox_5metal_feature_summary.json",
+            )
+        )
 
     print("[Wf-49] DONE — feature extraction summary:", flush=True)
     for r in results:

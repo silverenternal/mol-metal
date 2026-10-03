@@ -21,6 +21,7 @@ benchmark.  It does NOT mutate ``proof_search.py`` and does NOT
 require RDKit or a real molecular setup — the MCTSProofSearch is
 stubbed by a lightweight class that mimics the public surface.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -70,19 +71,25 @@ def main() -> int:
         description="Variance vs Dirichlet MCTS smoke harness",
     )
     parser.add_argument(
-        "--smoke", action="store_true",
+        "--smoke",
+        action="store_true",
         help="Run the canonical 4-run smoke harness.",
     )
     parser.add_argument(
-        "--n-runs", type=int, default=4,
+        "--n-runs",
+        type=int,
+        default=4,
         help="Number of repeated search calls (default 4).",
     )
     parser.add_argument(
-        "--max-depth", type=int, default=3,
+        "--max-depth",
+        type=int,
+        default=3,
         help="Rollout depth budget per call (default 3).",
     )
     parser.add_argument(
-        "--json", action="store_true",
+        "--json",
+        action="store_true",
         help="Emit the report as a single JSON line.",
     )
     args = parser.parse_args()

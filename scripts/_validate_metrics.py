@@ -18,6 +18,7 @@ Exit code:
     0 — all files PASS (warnings allowed in tolerant mode)
     1 — at least one FAIL (or any FAIL in strict mode)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -100,7 +101,9 @@ def _validate_one(schema: dict, path: Path, strict: bool, validator) -> tuple[st
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--strict", action="store_true", help="Fail on missing v1 fields")
+    parser.add_argument(
+        "--strict", action="store_true", help="Fail on missing v1 fields"
+    )
     parser.add_argument("--quiet", action="store_true", help="Suppress PASS output")
     args = parser.parse_args(argv)
 
@@ -109,7 +112,10 @@ def main(argv: list[str] | None = None) -> int:
 
     files = _iter_metric_files(METRICS_DIR)
     if not files:
-        print(f"[validate_metrics] no metric files found in {METRICS_DIR}", file=sys.stderr)
+        print(
+            f"[validate_metrics] no metric files found in {METRICS_DIR}",
+            file=sys.stderr,
+        )
         return 0
 
     pass_n = warn_n = fail_n = 0

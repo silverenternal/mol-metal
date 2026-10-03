@@ -62,7 +62,10 @@ def test_load_measured_cells():
         assert col in df.columns, f"missing feature column {col}"
     # Cohorts represented.
     assert set(df["cohort"].unique()) >= {
-        "r12_patha_10x3", "r12_pilot_baseline", "r13_novel_pocket"}
+        "r12_patha_10x3",
+        "r12_pilot_baseline",
+        "r13_novel_pocket",
+    }
 
 
 def test_build_reward_target_heuristic():
@@ -90,8 +93,7 @@ def test_fit_symbolic_reward_F3_r2_threshold():
     """
     df = load_measured_cells()
     # F3 needs (τ, η, q, ACI, sa_norm) → only novel-pocket has all 5.
-    df_cc, y = mask_complete_cases(
-        df, feature_cols=FORMULA_FAMILIES["F3"]["features"])
+    df_cc, y = mask_complete_cases(df, feature_cols=FORMULA_FAMILIES["F3"]["features"])
     if len(df_cc) < 5:
         pytest.skip(f"F3 needs ≥5 complete-case rows; got {len(df_cc)}")
     res = fit_symbolic_reward(df_cc, y, family="F3")
@@ -108,15 +110,16 @@ def test_fit_symbolic_reward_F7_only_paths():
     formula mentions the diversity channel.
     """
     df = load_measured_cells()
-    df_cc, y = mask_complete_cases(
-        df, feature_cols=FORMULA_FAMILIES["F7"]["features"])
+    df_cc, y = mask_complete_cases(df, feature_cols=FORMULA_FAMILIES["F7"]["features"])
     assert len(df_cc) >= 30, f"F7 needs ≥30 cells; got {len(df_cc)}"
     res = fit_symbolic_reward(df_cc, y, family="F7")
     assert res.status == "ok"
     assert res.n_fit >= 30
-    assert "tau" in res.formula.lower() or "tau*" in res.formula.lower() or \
-        "*tau" in res.formula.lower(), \
-        f"F7 formula missing diversity channel: {res.formula}"
+    assert (
+        "tau" in res.formula.lower()
+        or "tau*" in res.formula.lower()
+        or "*tau" in res.formula.lower()
+    ), f"F7 formula missing diversity channel: {res.formula}"
 
 
 def test_formula_complexity_under_50():
@@ -136,24 +139,26 @@ def test_formula_complexity_under_50():
             continue
         ops = sum(f.count(op) for op in [" + ", " - ", " * ", " / ", "**"])
         node_count = ops + len(re.findall(r"[A-Za-z_]+", f))
-        assert node_count < 50, \
-            f"{fam} formula too complex ({node_count} nodes): {f[:120]}"
+        assert (
+            node_count < 50
+        ), f"{fam} formula too complex ({node_count} nodes): {f[:120]}"
     assert all_ok
 
 
 def test_formula_human_readable():
     """Formula string is parseable (contains arithmetic operators or named tokens)."""
     df = load_measured_cells()
-    df_cc, y = mask_complete_cases(
-        df, feature_cols=FORMULA_FAMILIES["F7"]["features"])
+    df_cc, y = mask_complete_cases(df, feature_cols=FORMULA_FAMILIES["F7"]["features"])
     res = fit_symbolic_reward(df_cc, y, family="F7")
     # Must contain at least one arithmetic operator.
-    assert any(op in res.formula for op in ["+", "-", "*"]), \
-        f"Formula not parseable: {res.formula}"
+    assert any(
+        op in res.formula for op in ["+", "-", "*"]
+    ), f"Formula not parseable: {res.formula}"
     # Must mention at least one of the named channels.
     named_channels = ["tau", "metal", "sa_norm", "q", "eta", "ACI"]
-    assert any(ch in res.formula for ch in named_channels), \
-        f"No named channel in formula: {res.formula}"
+    assert any(
+        ch in res.formula for ch in named_channels
+    ), f"No named channel in formula: {res.formula}"
 
 
 def test_all_8_families_return_FitResult():
@@ -175,8 +180,7 @@ def test_all_8_families_return_FitResult():
 def test_loo_cv_returns_metrics():
     """loo_cv returns a dict with r2 and Pearson r fields."""
     df = load_measured_cells()
-    df_cc, y = mask_complete_cases(
-        df, feature_cols=FORMULA_FAMILIES["F7"]["features"])
+    df_cc, y = mask_complete_cases(df, feature_cols=FORMULA_FAMILIES["F7"]["features"])
     if len(df_cc) < 5:
         pytest.skip(f"F7 needs ≥5 cells; got {len(df_cc)}")
     cv = loo_cv(df_cc, y, family="F7")
@@ -194,8 +198,7 @@ def test_evaluate_formula_on_dummy():
     """evaluate_formula runs on a tiny DataFrame without raising."""
     df = load_measured_cells()
     # F7 has 33 complete-case cells (largest cohort) — use it for evaluator test.
-    df_cc, y = mask_complete_cases(
-        df, feature_cols=FORMULA_FAMILIES["F7"]["features"])
+    df_cc, y = mask_complete_cases(df, feature_cols=FORMULA_FAMILIES["F7"]["features"])
     if len(df_cc) < 5:
         pytest.skip("F7 insufficient data")
     res = fit_symbolic_reward(df_cc, y, family="F7")
@@ -207,14 +210,16 @@ def test_evaluate_formula_on_dummy():
     # F7 formula is a linear combination, so sympy lambdify works.
     y_pred = evaluate_formula(res.formula, X)
     assert len(y_pred) == 3
-    assert np.all(np.isfinite(y_pred)), \
-        f"evaluate_formula produced non-finite values: {y_pred}"
+    assert np.all(
+        np.isfinite(y_pred)
+    ), f"evaluate_formula produced non-finite values: {y_pred}"
 
 
 def test_pysr_unavailable_known():
     """PySR is not installed; we are using the algebraic fallback."""
     try:
         import pysr  # noqa: F401
+
         pytest.skip("PySR is available; this test only applies in fallback mode")
     except ImportError:
         # This is the expected state per phase1_inventory.md §2.
@@ -223,9 +228,13 @@ def test_pysr_unavailable_known():
 
 def test_pickled_fitresult_loadable():
     """The trained symbolic_reward.pkl contains a usable FitResult."""
-    pkl_path = PROJECT_ROOT / "molmetal" / "models" / "symbolic_reward" / "symbolic_reward.pkl"
+    pkl_path = (
+        PROJECT_ROOT / "molmetal" / "models" / "symbolic_reward" / "symbolic_reward.pkl"
+    )
     if not pkl_path.exists():
-        pytest.skip(f"pkl not found: {pkl_path} (run train_symbolic_regression.py first)")
+        pytest.skip(
+            f"pkl not found: {pkl_path} (run train_symbolic_regression.py first)"
+        )
     with open(pkl_path, "rb") as f:
         blob = pickle.load(f)
     assert "FitResult" in blob
@@ -238,7 +247,13 @@ def test_pickled_fitresult_loadable():
 
 def test_json_metadata_present():
     """symbolic_reward.json is a parseable dict with all 8 family results."""
-    json_path = PROJECT_ROOT / "molmetal" / "models" / "symbolic_reward" / "symbolic_reward.json"
+    json_path = (
+        PROJECT_ROOT
+        / "molmetal"
+        / "models"
+        / "symbolic_reward"
+        / "symbolic_reward.json"
+    )
     if not json_path.exists():
         pytest.skip(f"json not found: {json_path}")
     with open(json_path, "r") as f:
@@ -247,8 +262,7 @@ def test_json_metadata_present():
     assert "best_family" in meta
     assert "best_result" in meta
     # At least 3 families must have been fit successfully (so we have a Pareto pick).
-    n_ok = sum(1 for v in meta["all_results"].values()
-               if v.get("status") == "ok")
+    n_ok = sum(1 for v in meta["all_results"].values() if v.get("status") == "ok")
     assert n_ok >= 3, f"Expected ≥3 families OK; got {n_ok}"
 
 
@@ -259,8 +273,7 @@ def test_compute_symbolic_reward_returns_float():
     """compute_symbolic_reward(row) -> float; deterministic on the same row."""
     df = load_measured_cells()
     # Pick the first cell with all 5 F5 features non-NaN.
-    df_cc, _ = mask_complete_cases(
-        df, feature_cols=FORMULA_FAMILIES["F5"]["features"])
+    df_cc, _ = mask_complete_cases(df, feature_cols=FORMULA_FAMILIES["F5"]["features"])
     if len(df_cc) < 1:
         pytest.skip("No complete-case rows for F5")
     row = df_cc.iloc[0]
@@ -283,68 +296,78 @@ def test_compute_symbolic_reward_monotonic():
     # Build a grid over sa_norm in [0, 1]; other features constant.
     rows = []
     for sa in [0.0, 0.25, 0.5, 0.75, 1.0]:
-        rows.append({
+        rows.append(
+            {
+                "diversity_tanimoto": 0.1,
+                "diversity_homotype": 0.1,
+                "qed_mean": 0.5,
+                "anticancer_index": 0.2,
+                "sa_mean_norm": sa,
+            }
+        )
+    rewards = [compute_symbolic_reward(r) for r in rows]
+    # Strictly decreasing because coef = -2.5149 < 0.
+    for i in range(len(rewards) - 1):
+        assert (
+            rewards[i] > rewards[i + 1]
+        ), f"F5 not strictly decreasing: rewards={rewards}"
+    # Constant across rows that differ only in zero-coefficient features:
+    r_other = compute_symbolic_reward(
+        {
+            "diversity_tanimoto": 0.9,
+            "diversity_homotype": 0.0,
+            "qed_mean": 0.0,
+            "anticancer_index": 1.0,
+            "sa_mean_norm": 0.5,
+        }
+    )
+    r_target = compute_symbolic_reward(
+        {
             "diversity_tanimoto": 0.1,
             "diversity_homotype": 0.1,
             "qed_mean": 0.5,
             "anticancer_index": 0.2,
-            "sa_mean_norm": sa,
-        })
-    rewards = [compute_symbolic_reward(r) for r in rows]
-    # Strictly decreasing because coef = -2.5149 < 0.
-    for i in range(len(rewards) - 1):
-        assert rewards[i] > rewards[i + 1], (
-            f"F5 not strictly decreasing: rewards={rewards}"
-        )
-    # Constant across rows that differ only in zero-coefficient features:
-    r_other = compute_symbolic_reward({
-        "diversity_tanimoto": 0.9,
-        "diversity_homotype": 0.0,
-        "qed_mean": 0.0,
-        "anticancer_index": 1.0,
-        "sa_mean_norm": 0.5,
-    })
-    r_target = compute_symbolic_reward({
-        "diversity_tanimoto": 0.1,
-        "diversity_homotype": 0.1,
-        "qed_mean": 0.5,
-        "anticancer_index": 0.2,
-        "sa_mean_norm": 0.5,
-    })
-    assert math.isclose(r_other, r_target, abs_tol=1e-6), (
-        f"F5 not invariant to zero-coef features: {r_other} vs {r_target}"
+            "sa_mean_norm": 0.5,
+        }
     )
+    assert math.isclose(
+        r_other, r_target, abs_tol=1e-6
+    ), f"F5 not invariant to zero-coef features: {r_other} vs {r_target}"
 
 
 def test_compute_symbolic_reward_bounded():
     """compute_symbolic_reward output ∈ [0, 3] for any well-formed input."""
     df = load_measured_cells()
-    df_cc, _ = mask_complete_cases(
-        df, feature_cols=FORMULA_FAMILIES["F5"]["features"])
+    df_cc, _ = mask_complete_cases(df, feature_cols=FORMULA_FAMILIES["F5"]["features"])
     if len(df_cc) < 1:
         pytest.skip("No complete-case rows for F5")
     # Sweep 5 cells from the cell pool.
-    rewards = [compute_symbolic_reward(df_cc.iloc[i])
-               for i in range(min(5, len(df_cc)))]
+    rewards = [
+        compute_symbolic_reward(df_cc.iloc[i]) for i in range(min(5, len(df_cc)))
+    ]
     for r in rewards:
         assert 0.0 <= r <= 3.0, f"reward {r} outside [0, 3] bound"
     # Also test a synthetic extreme: all features at 0.
-    r_zero = compute_symbolic_reward({
-        "diversity_tanimoto": 0.0,
-        "diversity_homotype": 0.0,
-        "qed_mean": 0.0,
-        "anticancer_index": 0.0,
-        "sa_mean_norm": 0.0,
-    })
+    r_zero = compute_symbolic_reward(
+        {
+            "diversity_tanimoto": 0.0,
+            "diversity_homotype": 0.0,
+            "qed_mean": 0.0,
+            "anticancer_index": 0.0,
+            "sa_mean_norm": 0.0,
+        }
+    )
     assert 0.0 <= r_zero <= 3.0
     # And the opposite extreme: all features at 1.
-    r_one = compute_symbolic_reward({
-        "diversity_tanimoto": 1.0,
-        "diversity_homotype": 1.0,
-        "qed_mean": 1.0,
-        "anticancer_index": 1.0,
-        "sa_mean_norm": 1.0,
-    })
+    r_one = compute_symbolic_reward(
+        {
+            "diversity_tanimoto": 1.0,
+            "diversity_homotype": 1.0,
+            "qed_mean": 1.0,
+            "anticancer_index": 1.0,
+            "sa_mean_norm": 1.0,
+        }
+    )
     assert 0.0 <= r_one <= 3.0
 
 
@@ -352,7 +375,11 @@ def test_held_out_validation_returns_metrics():
     """held_out_validation returns a dict with R², std, n_repeats, n_complete."""
     df = load_measured_cells()
     result = held_out_validation(
-        df, family="F5", holdout_frac=0.10, n_repeats=5, seed=42,
+        df,
+        family="F5",
+        holdout_frac=0.10,
+        n_repeats=5,
+        seed=42,
     )
     assert "family" in result
     assert result["family"] == "F5"
@@ -380,13 +407,11 @@ def test_held_out_validation_F5_beats_linear_baseline_consistent():
       (b) |F5 - linear| < 0.5 (they agree to within a half R² unit)
     """
     df = load_measured_cells()
-    sym = held_out_validation(df, family="F5", holdout_frac=0.10,
-                              n_repeats=10, seed=42)
-    base = linear_baseline_validation(df, holdout_frac=0.10,
-                                      n_repeats=10, seed=42)
-    assert sym["held_out_r2_mean"] >= 0.5, (
-        f"F5 held-out R² = {sym['held_out_r2_mean']} below 0.5"
-    )
+    sym = held_out_validation(df, family="F5", holdout_frac=0.10, n_repeats=10, seed=42)
+    base = linear_baseline_validation(df, holdout_frac=0.10, n_repeats=10, seed=42)
+    assert (
+        sym["held_out_r2_mean"] >= 0.5
+    ), f"F5 held-out R² = {sym['held_out_r2_mean']} below 0.5"
     assert abs(sym["held_out_r2_mean"] - base["baseline_r2_mean"]) < 0.5, (
         f"F5 vs linear divergence: "
         f"sym={sym['held_out_r2_mean']} linear={base['baseline_r2_mean']}"
@@ -406,8 +431,7 @@ def test_integration_smoke_5_cells():
     features) to ensure the smoke covers a non-degenerate reward range.
     """
     df = load_measured_cells()
-    df_cc = mask_complete_cases(
-        df, feature_cols=FORMULA_FAMILIES["F5"]["features"])[0]
+    df_cc = mask_complete_cases(df, feature_cols=FORMULA_FAMILIES["F5"]["features"])[0]
     if len(df_cc) < 5:
         pytest.skip(f"Need ≥5 complete-case cells; got {len(df_cc)}")
     # Pick one row per cohort first, then top up.
@@ -432,6 +456,6 @@ def test_integration_smoke_5_cells():
     # Non-degenerate: at least 0.1 unit spread (3 cohorts × different
     # sa_norm values → sa_norm range > 0.05 → R range > 0.13).
     spread = float(rewards_arr.max() - rewards_arr.min())
-    assert spread > 0.1, (
-        f"5-cell smoke too clustered: range={rewards_arr}, spread={spread}"
-    )
+    assert (
+        spread > 0.1
+    ), f"5-cell smoke too clustered: range={rewards_arr}, spread={spread}"

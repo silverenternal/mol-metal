@@ -126,12 +126,22 @@ def test_l2_weight_zero_matches_baseline_iterates() -> None:
     # ``l2_lambda=0`` the only difference between them is the
     # proximal shrinkage on the dual.
     hil_a = LambdaASTSRHilbert(
-        population_dim=6, n_iters=20, lr_primal=0.05, lr_dual=0.05,
-        seed=0, l2_lambda=0.0, l2_weight=0.0,
+        population_dim=6,
+        n_iters=20,
+        lr_primal=0.05,
+        lr_dual=0.05,
+        seed=0,
+        l2_lambda=0.0,
+        l2_weight=0.0,
     )
     hil_b = LambdaASTSRHilbert(
-        population_dim=6, n_iters=20, lr_primal=0.05, lr_dual=0.05,
-        seed=0, l2_lambda=0.0, l2_weight=0.0,
+        population_dim=6,
+        n_iters=20,
+        lr_primal=0.05,
+        lr_dual=0.05,
+        seed=0,
+        l2_lambda=0.0,
+        l2_weight=0.0,
     )
     hil_a.optimize(X, y)
     hil_b.optimize(X, y)
@@ -139,8 +149,7 @@ def test_l2_weight_zero_matches_baseline_iterates() -> None:
     # the iterates should match exactly.
     assert np.allclose(hil_a.best_params_, hil_b.best_params_, atol=1e-12)
     # All recorded L2 penalties are exactly 0 (zero weight = zero penalty).
-    assert all(v == pytest.approx(0.0, abs=1e-12)
-               for v in hil_a.l2_weight_history_)
+    assert all(v == pytest.approx(0.0, abs=1e-12) for v in hil_a.l2_weight_history_)
     assert hil_a.last_l2_penalty_ == pytest.approx(0.0, abs=1e-12)
 
 
@@ -158,13 +167,23 @@ def test_l2_weight_positive_shrinks_primal_and_dual() -> None:
     """
     X, y = _toy_design(n=40, dim=8, seed=1)
     hil_off = LambdaASTSRHilbert(
-        population_dim=8, n_iters=40, lr_primal=0.05, lr_dual=0.05,
-        seed=1, l2_lambda=0.0, l2_weight=0.0,
+        population_dim=8,
+        n_iters=40,
+        lr_primal=0.05,
+        lr_dual=0.05,
+        seed=1,
+        l2_lambda=0.0,
+        l2_weight=0.0,
         grad_clip_max_norm=10.0,
     )
     hil_on = LambdaASTSRHilbert(
-        population_dim=8, n_iters=40, lr_primal=0.05, lr_dual=0.05,
-        seed=1, l2_lambda=0.0, l2_weight=0.5,
+        population_dim=8,
+        n_iters=40,
+        lr_primal=0.05,
+        lr_dual=0.05,
+        seed=1,
+        l2_lambda=0.0,
+        l2_weight=0.5,
         grad_clip_max_norm=10.0,
     )
     hil_off.optimize(X, y)
@@ -192,18 +211,19 @@ def test_l2_penalty_is_nonnegative_across_iters() -> None:
     for seed in (0, 1, 2):
         X, y = _stress_probe(seed=seed, n=120, dim=10)
         hil = LambdaASTSRHilbert(
-            population_dim=10, n_iters=30, lr_primal=0.05, lr_dual=0.05,
-            seed=seed, l2_lambda=0.0, l2_weight=0.05,
+            population_dim=10,
+            n_iters=30,
+            lr_primal=0.05,
+            lr_dual=0.05,
+            seed=seed,
+            l2_lambda=0.0,
+            l2_weight=0.05,
         )
         hil.optimize(X, y)
         # Every recorded penalty must be finite and >= 0.
         for v in hil.l2_weight_history_:
-            assert np.isfinite(v), (
-                f"seed={seed}: non-finite L2 penalty {v}"
-            )
-            assert v >= -1e-12, (
-                f"seed={seed}: L2 penalty went negative: {v}"
-            )
+            assert np.isfinite(v), f"seed={seed}: non-finite L2 penalty {v}"
+            assert v >= -1e-12, f"seed={seed}: L2 penalty went negative: {v}"
         assert hil.last_l2_penalty_ >= -1e-12
 
 
@@ -257,8 +277,13 @@ def test_l2_weight_history_records_penalty_at_every_iter() -> None:
     """
     X, y = _toy_design(n=30, dim=6, seed=0)
     hil = LambdaASTSRHilbert(
-        population_dim=6, n_iters=15, lr_primal=0.05, lr_dual=0.05,
-        seed=0, l2_lambda=0.0, l2_weight=0.1,
+        population_dim=6,
+        n_iters=15,
+        lr_primal=0.05,
+        lr_dual=0.05,
+        seed=0,
+        l2_lambda=0.0,
+        l2_weight=0.1,
     )
     hil.optimize(X, y)
     assert len(hil.l2_weight_history_) == 15
@@ -267,7 +292,8 @@ def test_l2_weight_history_records_penalty_at_every_iter() -> None:
         assert v >= -1e-12
     # Last history entry matches ``last_l2_penalty_``.
     assert hil.l2_weight_history_[-1] == pytest.approx(
-        hil.last_l2_penalty_, abs=1e-12,
+        hil.last_l2_penalty_,
+        abs=1e-12,
     )
 
 
@@ -275,8 +301,13 @@ def test_history_dict_records_l2_penalty_per_iter() -> None:
     """``history_`` exposes ``"l2_penalty"`` at every iter."""
     X, y = _toy_design(n=30, dim=6, seed=0)
     hil = LambdaASTSRHilbert(
-        population_dim=6, n_iters=12, lr_primal=0.05, lr_dual=0.05,
-        seed=0, l2_lambda=0.0, l2_weight=0.1,
+        population_dim=6,
+        n_iters=12,
+        lr_primal=0.05,
+        lr_dual=0.05,
+        seed=0,
+        l2_lambda=0.0,
+        l2_weight=0.1,
     )
     hil.optimize(X, y)
     assert len(hil.history_) == 12
@@ -305,7 +336,9 @@ def test_composite_pre_built_optimizer_keeps_its_l2_weight() -> None:
     """
     pre = LambdaASTSRHilbert(population_dim=8, l2_weight=0.5)
     c = HilbertASTSRComposite(
-        population_dim=8, l2_weight=0.01, hilbert_optimizer=pre,
+        population_dim=8,
+        l2_weight=0.01,
+        hilbert_optimizer=pre,
     )
     assert c.hilbert_optimizer.l2_weight == pytest.approx(0.5, abs=1e-12)
 
@@ -349,13 +382,23 @@ def test_l2_guard_prevents_dual_divergence_on_stress_probe() -> None:
     # ``l2_weight=0`` (un-protected) vs ``l2_weight=0.5`` (guarded)
     # on a regime where the dual momentum would otherwise dominate.
     hil_off = LambdaASTSRHilbert(
-        population_dim=12, n_iters=40, lr_primal=0.1, lr_dual=0.1,
-        seed=0, l2_lambda=0.0, l2_weight=0.0,
+        population_dim=12,
+        n_iters=40,
+        lr_primal=0.1,
+        lr_dual=0.1,
+        seed=0,
+        l2_lambda=0.0,
+        l2_weight=0.0,
         grad_clip_max_norm=100.0,
     )
     hil_on = LambdaASTSRHilbert(
-        population_dim=12, n_iters=40, lr_primal=0.1, lr_dual=0.1,
-        seed=0, l2_lambda=0.0, l2_weight=0.5,
+        population_dim=12,
+        n_iters=40,
+        lr_primal=0.1,
+        lr_dual=0.1,
+        seed=0,
+        l2_lambda=0.0,
+        l2_weight=0.5,
         grad_clip_max_norm=100.0,
     )
     hil_off.optimize(X, y)

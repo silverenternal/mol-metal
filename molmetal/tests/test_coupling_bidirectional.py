@@ -67,9 +67,14 @@ def _import_bidirectional():
     )
 
 
-CFMLambdaReverse, BidirectionalCoupling, benchmark_round_trip, lamterm_to_features, LAMBDA_DIM, EMBED_DIM = (
-    _import_bidirectional()
-)
+(
+    CFMLambdaReverse,
+    BidirectionalCoupling,
+    benchmark_round_trip,
+    lamterm_to_features,
+    LAMBDA_DIM,
+    EMBED_DIM,
+) = _import_bidirectional()
 
 
 # ---------------------------------------------------------------------------
@@ -156,9 +161,7 @@ def test_reconstruct_atom_sequence_handles_unknown_symbol(
     assert len(atoms) == len(syms)
 
 
-def test_reconstruct_atom_sequence_length_matches(
-    reverse, sample_positions
-) -> None:
+def test_reconstruct_atom_sequence_length_matches(reverse, sample_positions) -> None:
     """Length matches min(len(atom_types), positions.shape[0])."""
     syms = ["C", "C", "C"]  # only 3 of 5 positions
     atoms = reverse.reconstruct_atom_sequence(sample_positions, syms)
@@ -231,6 +234,7 @@ def test_round_trip_loss_zero_for_perfect_match(bidirectional) -> None:
         from molmetal.molmetal_lam.lam_chem.ast import (
             LamVar,  # type: ignore
         )
+
         # Variable named "CCO" — its lamterm_to_features result equals
         # the seed's lambda_features_from_smiles result by construction.
         term = LamVar(name="CCO")
@@ -246,6 +250,7 @@ def test_round_trip_loss_increases_for_noisy_term(bidirectional) -> None:
         from molmetal.molmetal_lam.lam_chem.ast import (
             LamVar,  # type: ignore
         )
+
         term = LamVar(name="NOTCCO_zzz")
         loss = bidirectional.round_trip_loss("CCO", term)
         assert loss > 0.0
@@ -260,6 +265,7 @@ def test_round_trip_loss_finite_for_extreme_input(bidirectional) -> None:
         from molmetal.molmetal_lam.lam_chem.ast import (
             LamVar,  # type: ignore
         )
+
         # Very long var name — should still be finite.
         long_name = "x" * 4096
         loss = bidirectional.round_trip_loss("CCO", LamVar(name=long_name))
@@ -294,9 +300,7 @@ def test_round_trip_deterministic(bidirectional) -> None:
     # The stub forward is deterministic; the reverse decode is
     # too (nearest-tile lookup).  Round-trip loss is therefore
     # bit-for-bit identical.
-    assert out1["round_trip_loss"] == pytest.approx(
-        out2["round_trip_loss"], abs=1e-6
-    )
+    assert out1["round_trip_loss"] == pytest.approx(out2["round_trip_loss"], abs=1e-6)
 
 
 def test_round_trip_pocket_any_size(bidirectional) -> None:
@@ -350,7 +354,10 @@ def test_lamterm_to_features_shape_and_finite() -> None:
     """``lamterm_to_features`` returns a finite 32-d vector for any term."""
     try:
         from molmetal.molmetal_lam.lam_chem.ast import (
-            LamVar, LamAbs, LamApp, var,
+            LamVar,
+            LamAbs,
+            LamApp,
+            var,
         )
     except Exception:
         pytest.skip("AST unavailable")

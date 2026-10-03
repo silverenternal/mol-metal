@@ -232,14 +232,21 @@ def list_cfm_optimization_status() -> Dict[str, Dict[str, object]]:
             "name": "scatter_reduce_(include_self=False) drop-in",
             "port": True,
             "applies": True,
-            "functions": ["cfm_egnn_message_aggregate", "cfm_egnn_message_aggregate_index_add_fallback"],
+            "functions": [
+                "cfm_egnn_message_aggregate",
+                "cfm_egnn_message_aggregate_index_add_fallback",
+            ],
             "projected_speedup": "1.2-1.5x + 3x mem on EGNN message agg",
         },
         "326G-3": {
             "name": "torch.compile + TF32 + Adam(fused=True)",
             "port": True,
             "applies": True,
-            "functions": ["setup_optimized_cfm_env", "compile_cfm_model", "make_optimized_cfm_adam"],
+            "functions": [
+                "setup_optimized_cfm_env",
+                "compile_cfm_model",
+                "make_optimized_cfm_adam",
+            ],
             "projected_speedup": "1.3-1.8x (TF32) + 1.1-1.3x (Adam fused)",
         },
         "326G-4": {

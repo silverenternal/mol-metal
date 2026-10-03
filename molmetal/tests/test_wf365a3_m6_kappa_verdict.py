@@ -86,12 +86,12 @@ def test_wf365a3_m6_kappa_verdict() -> None:
     )
 
     # Forward-looking section + Tier-2 §6 entry prep must be present
-    assert "Forward-looking" in text or "forward-looking" in text, (
-        "Wf-365-A3 verdict doc must include forward-looking (USER_OK-gated GPU retrain) section."
-    )
-    assert "§6" in text or "section 6" in text.lower(), (
-        "Wf-365-A3 verdict doc must include paper §6 honest-limitations entry prep."
-    )
+    assert (
+        "Forward-looking" in text or "forward-looking" in text
+    ), "Wf-365-A3 verdict doc must include forward-looking (USER_OK-gated GPU retrain) section."
+    assert (
+        "§6" in text or "section 6" in text.lower()
+    ), "Wf-365-A3 verdict doc must include paper §6 honest-limitations entry prep."
 
     # No paper/* touches (TODO-84 active) — allow the literal `paper/*` reference
     # since the doc explicitly says "no touches to paper/*" as standing rule text.

@@ -121,8 +121,14 @@ class _StubSingleHead(nn.Module):
             pooled = (pocket_features * mask_f).sum(dim=1) / denom
         else:
             pooled = pocket_features.mean(dim=1)
-        ctx = self.proj(pooled).unsqueeze(1).expand(
-            atom_features.shape[0], atom_features.shape[1], self.hidden_dim,
+        ctx = (
+            self.proj(pooled)
+            .unsqueeze(1)
+            .expand(
+                atom_features.shape[0],
+                atom_features.shape[1],
+                self.hidden_dim,
+            )
         )
         return self.norm(atom_features + ctx)
 
@@ -137,9 +143,7 @@ def test_multi_head_cross_attention_shape():
     atom = _make_atom_features(batch=2, n_atoms=6, hidden_dim=128)
     pocket = _make_pocket_features(batch=2, n_pocket=8, in_dim=128)
     out = attn(atom, pocket)
-    assert out.shape == (2, 6, 128), (
-        f"expected (2, 6, 128), got {tuple(out.shape)}"
-    )
+    assert out.shape == (2, 6, 128), f"expected (2, 6, 128), got {tuple(out.shape)}"
     assert torch.isfinite(out).all(), "output contains NaN/Inf"
 
 
@@ -149,12 +153,10 @@ def test_multi_head_cross_attention_shape():
 def test_multi_head_cross_attention_n_heads():
     """Default n_heads is 8 (M4.1 spec)."""
     attn = MultiHeadPocketCrossAttention()
-    assert attn.n_heads == 8, (
-        f"n_heads default must be 8, got {attn.n_heads}"
-    )
-    assert attn.n_heads == DEFAULT_N_HEADS, (
-        f"n_heads default must equal DEFAULT_N_HEADS={DEFAULT_N_HEADS}"
-    )
+    assert attn.n_heads == 8, f"n_heads default must be 8, got {attn.n_heads}"
+    assert (
+        attn.n_heads == DEFAULT_N_HEADS
+    ), f"n_heads default must equal DEFAULT_N_HEADS={DEFAULT_N_HEADS}"
     # head_dim must equal hidden_dim // n_heads.
     assert attn.head_dim == DEFAULT_HIDDEN_DIM // DEFAULT_N_HEADS, (
         f"head_dim ({attn.head_dim}) must equal "
@@ -181,12 +183,12 @@ def test_multi_head_cross_attention_n_heads_invalid():
 def test_multi_head_cross_attention_dropout():
     """Default dropout is 0.1 per Vaswani 2017 §5.4."""
     attn = MultiHeadPocketCrossAttention()
-    assert attn.dropout == DEFAULT_DROPOUT, (
-        f"dropout default must be {DEFAULT_DROPOUT}, got {attn.dropout}"
-    )
-    assert attn.dropout == 0.1, (
-        f"dropout default must be 0.1 (Vaswani 2017 §5.4), got {attn.dropout}"
-    )
+    assert (
+        attn.dropout == DEFAULT_DROPOUT
+    ), f"dropout default must be {DEFAULT_DROPOUT}, got {attn.dropout}"
+    assert (
+        attn.dropout == 0.1
+    ), f"dropout default must be 0.1 (Vaswani 2017 §5.4), got {attn.dropout}"
 
 
 # ---------------------------------------------------------------------------
@@ -209,24 +211,28 @@ def test_multi_head_cross_attention_pocket_projection():
     """When pocket_in_dim differs from hidden_dim, a projection is added."""
     # Same dim → identity projection.
     attn_same = MultiHeadPocketCrossAttention(
-        hidden_dim=64, n_heads=4, pocket_in_dim=64,
+        hidden_dim=64,
+        n_heads=4,
+        pocket_in_dim=64,
     )
-    assert isinstance(attn_same.pocket_proj, nn.Identity), (
-        "pocket_proj must be Identity when pocket_in_dim == hidden_dim"
-    )
+    assert isinstance(
+        attn_same.pocket_proj, nn.Identity
+    ), "pocket_proj must be Identity when pocket_in_dim == hidden_dim"
     # Different dim → Linear projection.
     attn_diff = MultiHeadPocketCrossAttention(
-        hidden_dim=128, n_heads=8, pocket_in_dim=42,
+        hidden_dim=128,
+        n_heads=8,
+        pocket_in_dim=42,
     )
-    assert isinstance(attn_diff.pocket_proj, nn.Linear), (
-        "pocket_proj must be Linear when pocket_in_dim != hidden_dim"
-    )
-    assert attn_diff.pocket_proj.in_features == 42, (
-        f"pocket_proj.in_features must be 42, got {attn_diff.pocket_proj.in_features}"
-    )
-    assert attn_diff.pocket_proj.out_features == 128, (
-        f"pocket_proj.out_features must be 128, got {attn_diff.pocket_proj.out_features}"
-    )
+    assert isinstance(
+        attn_diff.pocket_proj, nn.Linear
+    ), "pocket_proj must be Linear when pocket_in_dim != hidden_dim"
+    assert (
+        attn_diff.pocket_proj.in_features == 42
+    ), f"pocket_proj.in_features must be 42, got {attn_diff.pocket_proj.in_features}"
+    assert (
+        attn_diff.pocket_proj.out_features == 128
+    ), f"pocket_proj.out_features must be 128, got {attn_diff.pocket_proj.out_features}"
     # Forward pass works with the projection.
     atom = _make_atom_features(batch=1, n_atoms=4, hidden_dim=128)
     pocket = _make_pocket_features(batch=1, n_pocket=5, in_dim=42)
@@ -245,19 +251,23 @@ def test_multi_head_cross_attention_mask_handling():
     attn.eval()
     batch, n_atoms, n_pocket, hidden = 2, 3, 5, 64
     atom = _make_atom_features(batch=batch, n_atoms=n_atoms, hidden_dim=hidden, seed=0)
-    pocket = _make_pocket_features(batch=batch, n_pocket=n_pocket, in_dim=hidden, seed=1)
+    pocket = _make_pocket_features(
+        batch=batch, n_pocket=n_pocket, in_dim=hidden, seed=1
+    )
     # Mask out the last 2 pocket positions.
-    mask = torch.tensor([
-        [True, True, True, False, False],
-        [True, True, True, True, False],
-    ])
+    mask = torch.tensor(
+        [
+            [True, True, True, False, False],
+            [True, True, True, True, False],
+        ]
+    )
     with torch.no_grad():
         out_masked = attn(atom, pocket, mask=mask)
         out_unmasked = attn(atom, pocket)
     # The two outputs MUST differ (mask changes the softmax distribution).
-    assert not torch.allclose(out_masked, out_unmasked, atol=1e-6), (
-        "mask should change the attention output"
-    )
+    assert not torch.allclose(
+        out_masked, out_unmasked, atol=1e-6
+    ), "mask should change the attention output"
     assert torch.isfinite(out_masked).all()
     assert torch.isfinite(out_unmasked).all()
 
@@ -277,9 +287,9 @@ def test_multi_head_cross_attention_residual_path():
     with torch.no_grad():
         out = attn(atom, pocket)
     assert out.shape == atom.shape
-    assert not torch.allclose(out, torch.zeros_like(out), atol=1e-6), (
-        "non-trivial input should produce non-zero output"
-    )
+    assert not torch.allclose(
+        out, torch.zeros_like(out), atol=1e-6
+    ), "non-trivial input should produce non-zero output"
 
 
 # ---------------------------------------------------------------------------
@@ -290,8 +300,16 @@ def test_multi_head_cross_attention_gradient_flows():
     AND pocket_features."""
     torch.manual_seed(9)
     attn = MultiHeadPocketCrossAttention(hidden_dim=64, n_heads=4, dropout=0.0)
-    atom = _make_atom_features(batch=1, n_atoms=4, hidden_dim=64, seed=0).clone().requires_grad_(True)
-    pocket = _make_pocket_features(batch=1, n_pocket=5, in_dim=64, seed=1).clone().requires_grad_(True)
+    atom = (
+        _make_atom_features(batch=1, n_atoms=4, hidden_dim=64, seed=0)
+        .clone()
+        .requires_grad_(True)
+    )
+    pocket = (
+        _make_pocket_features(batch=1, n_pocket=5, in_dim=64, seed=1)
+        .clone()
+        .requires_grad_(True)
+    )
     out = attn(atom, pocket)
     loss = out.sum()
     loss.backward()
@@ -313,9 +331,7 @@ def test_pocket_aware_atom_bias_shape():
     atom = _make_atom_features(batch=2, n_atoms=6, hidden_dim=128)
     pocket = _make_pocket_features(batch=2, n_pocket=8, in_dim=128)
     out = bias_mod(atom, pocket)
-    assert out.shape == (2, 6, 128), (
-        f"expected (2, 6, 128), got {tuple(out.shape)}"
-    )
+    assert out.shape == (2, 6, 128), f"expected (2, 6, 128), got {tuple(out.shape)}"
     assert torch.isfinite(out).all(), "bias output contains NaN/Inf"
 
 
@@ -329,9 +345,9 @@ def test_pocket_aware_atom_bias_zero_pocket():
     torch.manual_seed(11)
     bias_mod = PocketAwareAtomBias(hidden_dim=64, max_atoms=32)
     # Sanity: the gate is initialised to zero.
-    assert float(bias_mod.gate.item()) == 0.0, (
-        f"gate must be initialised to 0.0, got {bias_mod.gate.item()}"
-    )
+    assert (
+        float(bias_mod.gate.item()) == 0.0
+    ), f"gate must be initialised to 0.0, got {bias_mod.gate.item()}"
     atom = _make_atom_features(batch=1, n_atoms=4, hidden_dim=64, seed=0)
     zero_pocket = torch.zeros(1, 5, 64)
     out = bias_mod(atom, zero_pocket)
@@ -358,9 +374,9 @@ def test_pocket_aware_atom_bias_mask_handling():
     out_all = bias_mod(atom, pocket, pocket_mask=mask_all)
     out_partial = bias_mod(atom, pocket, pocket_mask=mask_partial)
     # The two outputs MUST differ (mask changes the pool).
-    assert not torch.allclose(out_all, out_partial, atol=1e-6), (
-        "mask should change the bias output"
-    )
+    assert not torch.allclose(
+        out_all, out_partial, atol=1e-6
+    ), "mask should change the bias output"
     assert torch.isfinite(out_all).all()
     assert torch.isfinite(out_partial).all()
 
@@ -371,12 +387,12 @@ def test_pocket_aware_atom_bias_mask_handling():
 def test_pocket_aware_atom_bias_gate_init_zero():
     """The bias gate is a learnable scalar initialised to 0.0."""
     bias_mod = PocketAwareAtomBias()
-    assert bias_mod.gate.shape == (1,), (
-        f"gate shape must be (1,), got {tuple(bias_mod.gate.shape)}"
-    )
-    assert float(bias_mod.gate.item()) == 0.0, (
-        f"gate must be initialised to 0.0, got {float(bias_mod.gate.item())}"
-    )
+    assert bias_mod.gate.shape == (
+        1,
+    ), f"gate shape must be (1,), got {tuple(bias_mod.gate.shape)}"
+    assert (
+        float(bias_mod.gate.item()) == 0.0
+    ), f"gate must be initialised to 0.0, got {float(bias_mod.gate.item())}"
 
 
 # ---------------------------------------------------------------------------
@@ -393,9 +409,16 @@ def test_pocket_aware_atom_bias_gradient_flows():
     with torch.no_grad():
         bias_mod.gate.fill_(1.0)
     atom = _make_atom_features(batch=1, n_atoms=4, hidden_dim=64, seed=0)
-    pocket = _make_pocket_features(
-        batch=1, n_pocket=5, in_dim=64, seed=1,
-    ).clone().requires_grad_(True)
+    pocket = (
+        _make_pocket_features(
+            batch=1,
+            n_pocket=5,
+            in_dim=64,
+            seed=1,
+        )
+        .clone()
+        .requires_grad_(True)
+    )
     out = bias_mod(atom, pocket)
     loss = out.sum()
     loss.backward()
@@ -416,15 +439,15 @@ def test_m4_composite_attention_with_all_three():
     multi = MultiHeadPocketCrossAttention(hidden_dim=64, n_heads=4, dropout=0.0)
     bias_mod = PocketAwareAtomBias(hidden_dim=64, max_atoms=32)
     composite = M4CompositeAttention(
-        single_head=single, multi_head=multi, atom_bias=bias_mod,
+        single_head=single,
+        multi_head=multi,
+        atom_bias=bias_mod,
     )
     atom = _make_atom_features(batch=2, n_atoms=4, hidden_dim=64, seed=0)
     pocket = _make_pocket_features(batch=2, n_pocket=5, in_dim=64, seed=1)
     mask = _make_pocket_mask(batch=2, n_pocket=5, valid_lens=[5, 5])
     out = composite(atom, pocket, pocket_mask=mask)
-    assert out.shape == (2, 4, 64), (
-        f"expected (2, 4, 64), got {tuple(out.shape)}"
-    )
+    assert out.shape == (2, 4, 64), f"expected (2, 4, 64), got {tuple(out.shape)}"
     assert torch.isfinite(out).all(), "composite output contains NaN/Inf"
 
 
@@ -523,18 +546,14 @@ def test_m4_composite_attention_invalid_inputs_raise():
 # ---------------------------------------------------------------------------
 def test_module_level_constants():
     """Module-level DEFAULT_* constants are exposed and match the spec."""
-    assert DEFAULT_HIDDEN_DIM == 128, (
-        f"DEFAULT_HIDDEN_DIM must be 128, got {DEFAULT_HIDDEN_DIM}"
-    )
-    assert DEFAULT_N_HEADS == 8, (
-        f"DEFAULT_N_HEADS must be 8, got {DEFAULT_N_HEADS}"
-    )
-    assert DEFAULT_DROPOUT == 0.1, (
-        f"DEFAULT_DROPOUT must be 0.1, got {DEFAULT_DROPOUT}"
-    )
-    assert DEFAULT_MAX_ATOMS == 64, (
-        f"DEFAULT_MAX_ATOMS must be 64, got {DEFAULT_MAX_ATOMS}"
-    )
+    assert (
+        DEFAULT_HIDDEN_DIM == 128
+    ), f"DEFAULT_HIDDEN_DIM must be 128, got {DEFAULT_HIDDEN_DIM}"
+    assert DEFAULT_N_HEADS == 8, f"DEFAULT_N_HEADS must be 8, got {DEFAULT_N_HEADS}"
+    assert DEFAULT_DROPOUT == 0.1, f"DEFAULT_DROPOUT must be 0.1, got {DEFAULT_DROPOUT}"
+    assert (
+        DEFAULT_MAX_ATOMS == 64
+    ), f"DEFAULT_MAX_ATOMS must be 64, got {DEFAULT_MAX_ATOMS}"
     # MultiHeadPocketCrossAttention() with no args matches the defaults.
     attn = MultiHeadPocketCrossAttention()
     assert attn.hidden_dim == DEFAULT_HIDDEN_DIM

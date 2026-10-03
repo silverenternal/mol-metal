@@ -236,8 +236,8 @@ class EGNNLayer(nn.Module):
 
         pos_src = torch.gather(positions, 1, src.unsqueeze(-1).expand(b, e, 3))
         pos_dst = torch.gather(positions, 1, dst.unsqueeze(-1).expand(b, e, 3))
-        rel = pos_src - pos_dst                                          # (B, E, 3)
-        dist = rel.norm(dim=-1, keepdim=True)                            # (B, E, 1)
+        rel = pos_src - pos_dst  # (B, E, 3)
+        dist = rel.norm(dim=-1, keepdim=True)  # (B, E, 1)
 
         # 2. Edge MLP -> scalar message & scaling factor.
         # The original ``nn.Sequential(Linear, SiLU, Linear, SiLU)`` is
@@ -247,10 +247,10 @@ class EGNNLayer(nn.Module):
         # it's a single elementwise over the (B, E, edge_hidden) tensor).
         edge_in = torch.cat([h_src, h_dst, dist, dist * dist], dim=-1)
         edge_emb = self.edge_mlp_fused(edge_in)
-        edge_emb = torch.nn.functional.silu(edge_emb)                    # (B, E, edge_hidden)
+        edge_emb = torch.nn.functional.silu(edge_emb)  # (B, E, edge_hidden)
 
-        m_scalar = self.msg_scalar_head(edge_emb)                         # (B, E, edge_hidden)
-        phi = self.msg_vector_head(edge_emb)                            # (B, E, 1)
+        m_scalar = self.msg_scalar_head(edge_emb)  # (B, E, edge_hidden)
+        phi = self.msg_vector_head(edge_emb)  # (B, E, 1)
         # Opt-in architectural bound for molecular flow sampling. This
         # bounds the learned scalar coefficient, not generated coordinates.
         bounded_vectors = getattr(self, "bounded_coordinate_messages", False)
@@ -266,16 +266,14 @@ class EGNNLayer(nn.Module):
         # large and the flow-matching loss explodes within a few
         # thousand steps.  We aggregate vectors with a small PyTorch
         # scatter and scalars with the Triton kernel.
-        edge_vec = phi * rel                                            # (B, E, 3)
+        edge_vec = phi * rel  # (B, E, 3)
 
         # Flat tensors for the Triton scalar aggregation.
         # Flatten graph and edge axes independently for each index channel;
         # reshaping (B, 2, E) directly interleaves source/destination channels.
         src_flat = src.reshape(b * e)
         dst_flat = dst.reshape(b * e)
-        edge_mask_flat = (
-            edge_mask.reshape(b * e) if edge_mask is not None else None
-        )
+        edge_mask_flat = edge_mask.reshape(b * e) if edge_mask is not None else None
 
         # 3. Scatter vector messages via the shared primitive.
         # Both the Triton backend and the torch fallback honour
@@ -285,9 +283,7 @@ class EGNNLayer(nn.Module):
         # because :func:`scatter_sum` is wrapped in a
         # ``torch.autograd.Function`` with a ``scatter_add_`` backward.
         edge_vec_flat = edge_vec.reshape(b * e, 3)
-        mask_flat = (
-            edge_mask.reshape(b * e) if edge_mask is not None else None
-        )
+        mask_flat = edge_mask.reshape(b * e) if edge_mask is not None else None
         agg_vec = scatter_sum(
             src=src_flat,
             dst=dst_flat,
@@ -295,16 +291,16 @@ class EGNNLayer(nn.Module):
             n_atoms=n,
             mask=mask_flat,
             batch_size=b,
-        )                                                              # (B, N, 3)
+        )  # (B, N, 3)
         # The scatter API retains its legacy (N, F) result for batch_size=1.
         # Restore the model's batch dimension for both singleton and full
         # batches before combining vector norms with (B, N, H) features.
-        v_agg = agg_vec.reshape(b, n, 3)                                 # (B, N, 3)
+        v_agg = agg_vec.reshape(b, n, 3)  # (B, N, 3)
         if bounded_vectors:
             v_agg = v_agg / max(n - 1, 1)
         # Per-node vector norm kept as a (B, N, 1) feature for the
         # scalar message path.
-        v_norm_per_node = v_agg.norm(dim=-1, keepdim=True)               # (B, N, 1)
+        v_norm_per_node = v_agg.norm(dim=-1, keepdim=True)  # (B, N, 1)
 
         # 4. Scatter scalar messages via the shared primitive.
         agg_scalar = scatter_sum(
@@ -323,7 +319,7 @@ class EGNNLayer(nn.Module):
         #  v_agg.norm(dim=-1, keepdim=True) and v_norm_per_node — the
         #  latter is just a cached copy of the former, kept as an
         #  explicit name for readability).
-        v_norm = v_norm_per_node                                         # (B, N, 1)
+        v_norm = v_norm_per_node  # (B, N, 1)
         node_in = [h_node, agg_scalar, v_norm]
         if cond_per_node is not None:
             if cond_per_node.shape != h_node.shape:
@@ -424,16 +420,14 @@ class VelocityNet(nn.Module):
         if t.dim() == 2 and t.shape[-1] == 1:
             t = t.squeeze(-1)
         if t.dim() != 1:
-            raise ValueError(
-                f"`t` must be (B,) or (B, 1); got {tuple(t.shape)}."
-            )
+            raise ValueError(f"`t` must be (B,) or (B, 1); got {tuple(t.shape)}.")
         half = dim // 2
         freqs = torch.exp(
             -math.log(10000.0)
             * torch.arange(half, dtype=torch.float32, device=t.device)
             / max(half - 1, 1)
         )
-        args = t.float().unsqueeze(-1) * freqs.unsqueeze(0)              # (B, half)
+        args = t.float().unsqueeze(-1) * freqs.unsqueeze(0)  # (B, half)
         emb = torch.cat([torch.sin(args), torch.cos(args)], dim=-1)
         if emb.shape[-1] < dim:
             emb = torch.nn.functional.pad(emb, (0, dim - emb.shape[-1]))
@@ -504,8 +498,8 @@ class VelocityNet(nn.Module):
                 raise ValueError(
                     f"`cond` must be (B, {self.cond_dim}); got {tuple(cond.shape)}."
                 )
-            cond_per_node = self.cond_proj(cond).unsqueeze(1).expand(
-                b, n, self.hidden_dim
+            cond_per_node = (
+                self.cond_proj(cond).unsqueeze(1).expand(b, n, self.hidden_dim)
             )
             # Fused residual add (Wang 2020 Triton kernel) — the cond
             # projection residual that injects time embedding into every

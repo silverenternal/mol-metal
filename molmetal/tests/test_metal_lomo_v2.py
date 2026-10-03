@@ -54,6 +54,7 @@ if str(PROJECT_ROOT) not in sys.path:
 # ``cache_dir: Path = DEFAULT_CACHE_DIR`` was bound at class definition
 # time, so we wrap ``__init__`` to swap in our writable cache dir.
 import molmetal.data.cytotox as _cytotox_mod
+
 _OVERRIDE_CACHE = _PROJECT_ROOT / "tests" / "_tmp_metal_lomo_v2_cache"
 _OVERRIDE_CACHE.mkdir(parents=True, exist_ok=True)
 _cytotox_mod.DEFAULT_CACHE_DIR = _OVERRIDE_CACHE
@@ -132,20 +133,26 @@ def tiny_lomo_csv(tmp_path_factory) -> Path:
     rng = np.random.default_rng(7)
     rows = []
     smiles_pool = [
-        "C[Ru](C)(C)(C)C", "C[Ir](C)(C)(C)C", "C[Os](C)(C)(C)C",
-        "C[Rh](C)(C)(C)C", "C[Re](C)(C)(C)C", "C[Pt](C)(C)(C)C",
+        "C[Ru](C)(C)(C)C",
+        "C[Ir](C)(C)(C)C",
+        "C[Os](C)(C)(C)C",
+        "C[Rh](C)(C)(C)C",
+        "C[Re](C)(C)(C)C",
+        "C[Pt](C)(C)(C)C",
     ]
     for metal, smi in zip(["Ru", "Ir", "Os", "Rh", "Re", "Pt"], smiles_pool):
         for k in range(10):
-            rows.append({
-                "SMILES_Ligands": smi,
-                "Metal": metal,
-                "IC50_Dark_value": float(rng.uniform(0.1, 50.0)),
-                "Time(h)": 24,
-                "Cell_line": "A549",
-                "pIC50": float(rng.uniform(3, 9)),
-                "active": int(rng.integers(0, 2)),
-            })
+            rows.append(
+                {
+                    "SMILES_Ligands": smi,
+                    "Metal": metal,
+                    "IC50_Dark_value": float(rng.uniform(0.1, 50.0)),
+                    "Time(h)": 24,
+                    "Cell_line": "A549",
+                    "pIC50": float(rng.uniform(3, 9)),
+                    "active": int(rng.integers(0, 2)),
+                }
+            )
     pd.DataFrame(rows).to_csv(csv, index=False)
     return csv
 
@@ -154,9 +161,9 @@ def tiny_lomo_csv(tmp_path_factory) -> Path:
 # Test 1 — cohort loading: file exists.
 # ---------------------------------------------------------------------------
 def test_balanced_cohort_file_exists() -> None:
-    assert Path(DEFAULT_RH_BALANCED_JSON).exists(), (
-        f"Wf-145 P1 cohort missing at {DEFAULT_RH_BALANCED_JSON}"
-    )
+    assert Path(
+        DEFAULT_RH_BALANCED_JSON
+    ).exists(), f"Wf-145 P1 cohort missing at {DEFAULT_RH_BALANCED_JSON}"
 
 
 # ---------------------------------------------------------------------------
@@ -256,32 +263,62 @@ def test_aggregate_per_metal_summary() -> None:
     results = {
         "Rh": [
             BalancedLOMOResult(
-                fold="Rh", seed=0, n_train=100, n_val=10, n_test=10,
-                n_synthetic_rh_active=250, n_synthetic_rh_inactive=250,
-                pos_rate_train=0.5, pos_rate_test=0.4, val_auc=0.7,
-                test_auc=0.55, test_pic50_mae=0.7, wasserstein_weight=0.05,
+                fold="Rh",
+                seed=0,
+                n_train=100,
+                n_val=10,
+                n_test=10,
+                n_synthetic_rh_active=250,
+                n_synthetic_rh_inactive=250,
+                pos_rate_train=0.5,
+                pos_rate_test=0.4,
+                val_auc=0.7,
+                test_auc=0.55,
+                test_pic50_mae=0.7,
+                wasserstein_weight=0.05,
                 wasserstein_target="Rh_real_active_in_train_pool",
-                wasserstein_loss_history=[1.0], final_per_metal_w2={},
+                wasserstein_loss_history=[1.0],
+                final_per_metal_w2={},
                 elapsed_seconds=10.0,
             ),
             BalancedLOMOResult(
-                fold="Rh", seed=1, n_train=100, n_val=10, n_test=10,
-                n_synthetic_rh_active=250, n_synthetic_rh_inactive=250,
-                pos_rate_train=0.5, pos_rate_test=0.4, val_auc=0.72,
-                test_auc=0.65, test_pic50_mae=0.7, wasserstein_weight=0.05,
+                fold="Rh",
+                seed=1,
+                n_train=100,
+                n_val=10,
+                n_test=10,
+                n_synthetic_rh_active=250,
+                n_synthetic_rh_inactive=250,
+                pos_rate_train=0.5,
+                pos_rate_test=0.4,
+                val_auc=0.72,
+                test_auc=0.65,
+                test_pic50_mae=0.7,
+                wasserstein_weight=0.05,
                 wasserstein_target="Rh_real_active_in_train_pool",
-                wasserstein_loss_history=[1.0], final_per_metal_w2={},
+                wasserstein_loss_history=[1.0],
+                final_per_metal_w2={},
                 elapsed_seconds=10.0,
             ),
         ],
         "Ru": [
             BalancedLOMOResult(
-                fold="Ru", seed=0, n_train=100, n_val=10, n_test=10,
-                n_synthetic_rh_active=250, n_synthetic_rh_inactive=250,
-                pos_rate_train=0.5, pos_rate_test=0.4, val_auc=0.8,
-                test_auc=0.61, test_pic50_mae=0.7, wasserstein_weight=0.05,
+                fold="Ru",
+                seed=0,
+                n_train=100,
+                n_val=10,
+                n_test=10,
+                n_synthetic_rh_active=250,
+                n_synthetic_rh_inactive=250,
+                pos_rate_train=0.5,
+                pos_rate_test=0.4,
+                val_auc=0.8,
+                test_auc=0.61,
+                test_pic50_mae=0.7,
+                wasserstein_weight=0.05,
                 wasserstein_target="Rh_real_active_in_train_pool",
-                wasserstein_loss_history=[1.0], final_per_metal_w2={},
+                wasserstein_loss_history=[1.0],
+                final_per_metal_w2={},
                 elapsed_seconds=10.0,
             ),
         ],
@@ -306,12 +343,22 @@ def test_aggregate_rh_target_fail() -> None:
     results = {
         "Rh": [
             BalancedLOMOResult(
-                fold="Rh", seed=0, n_train=100, n_val=10, n_test=10,
-                n_synthetic_rh_active=250, n_synthetic_rh_inactive=250,
-                pos_rate_train=0.5, pos_rate_test=0.4, val_auc=0.5,
-                test_auc=0.3, test_pic50_mae=0.7, wasserstein_weight=0.05,
+                fold="Rh",
+                seed=0,
+                n_train=100,
+                n_val=10,
+                n_test=10,
+                n_synthetic_rh_active=250,
+                n_synthetic_rh_inactive=250,
+                pos_rate_train=0.5,
+                pos_rate_test=0.4,
+                val_auc=0.5,
+                test_auc=0.3,
+                test_pic50_mae=0.7,
+                wasserstein_weight=0.05,
                 wasserstein_target="Rh_real_active_in_train_pool",
-                wasserstein_loss_history=[1.0], final_per_metal_w2={},
+                wasserstein_loss_history=[1.0],
+                final_per_metal_w2={},
                 elapsed_seconds=10.0,
             ),
         ],
@@ -334,7 +381,9 @@ def test_targets_constants() -> None:
 def test_cli_help() -> None:
     out = subprocess.run(
         [sys.executable, "-m", "molmetal.scripts.train_metal_lomo_v2", "--help"],
-        capture_output=True, text=True, cwd=str(PROJECT_ROOT),
+        capture_output=True,
+        text=True,
+        cwd=str(PROJECT_ROOT),
     )
     assert out.returncode == 0
     assert "Wf-145" in out.stdout or "--metals" in out.stdout
@@ -364,19 +413,29 @@ def test_cli_quick_smoke(tmp_path, cohort_smiles_labels) -> None:
         sys.executable,
         "-m",
         "molmetal.scripts.train_metal_lomo_v2",
-        "--metals", "Ru",
-        "--seeds", "0",
-        "--epochs", "2",
+        "--metals",
+        "Ru",
+        "--seeds",
+        "0",
+        "--epochs",
+        "2",
         "--quick",
-        "--model", "v3",
-        "--device", "cpu",
-        "--out-dir", str(out_dir),
+        "--model",
+        "v3",
+        "--device",
+        "cpu",
+        "--out-dir",
+        str(out_dir),
     ]
     env = os.environ.copy()
     # Avoid CUDA initialisation flakiness on CPU smoke.
     env["CUDA_VISIBLE_DEVICES"] = ""
     proc = subprocess.run(
-        cmd, capture_output=True, text=True, env=env, cwd=str(PROJECT_ROOT),
+        cmd,
+        capture_output=True,
+        text=True,
+        env=env,
+        cwd=str(PROJECT_ROOT),
         timeout=180,
     )
     if proc.returncode != 0:
@@ -399,32 +458,42 @@ def test_real_rh_active_extraction(tiny_lomo_csv, cohort_smiles_labels) -> None:
     ds = _make_test_ds(tiny_lomo_csv)
     smis, labels = cohort_smiles_labels
     runner = BalancedLOMORunner(
-        ds=ds, held_out_metal="Rh",
-        balanced_smiles=smis, balanced_labels=labels,
-        epochs=1, device=torch.device("cpu"), seed=0,
+        ds=ds,
+        held_out_metal="Rh",
+        balanced_smiles=smis,
+        balanced_labels=labels,
+        epochs=1,
+        device=torch.device("cpu"),
+        seed=0,
     )
     spl = BalancedLOMOSplitter(held_out_metal="Rh", seed=0)
     res = spl(ds)
     real_actives = runner._real_rh_active_smiles(res.train_idx)
     # Train pool excludes Rh, so this MUST be empty.
-    assert real_actives == [], (
-        f"train pool should have no Rh actives (held-out); got {real_actives}"
-    )
+    assert (
+        real_actives == []
+    ), f"train pool should have no Rh actives (held-out); got {real_actives}"
 
 
 # ---------------------------------------------------------------------------
 # Test 15 — Runner uses balanced cohort counts in result metadata.
 # ---------------------------------------------------------------------------
-def test_runner_reports_balanced_cohort_counts(tiny_lomo_csv, cohort_smiles_labels) -> None:
+def test_runner_reports_balanced_cohort_counts(
+    tiny_lomo_csv, cohort_smiles_labels
+) -> None:
     """The result metadata records 250 active + 250 inactive (balanced)."""
     from molmetal.data.cytotox import MetalCytotoxDataset
 
     ds = _make_test_ds(tiny_lomo_csv)
     smis, labels = cohort_smiles_labels
     runner = BalancedLOMORunner(
-        ds=ds, held_out_metal="Ru",
-        balanced_smiles=smis, balanced_labels=labels,
-        epochs=1, device=torch.device("cpu"), seed=0,
+        ds=ds,
+        held_out_metal="Ru",
+        balanced_smiles=smis,
+        balanced_labels=labels,
+        epochs=1,
+        device=torch.device("cpu"),
+        seed=0,
     )
     assert runner.balanced_smiles == smis
     assert runner.balanced_labels == labels
@@ -436,10 +505,19 @@ def test_runner_reports_balanced_cohort_counts(tiny_lomo_csv, cohort_smiles_labe
 # ---------------------------------------------------------------------------
 def test_result_is_json_serialisable() -> None:
     r = BalancedLOMOResult(
-        fold="Rh", seed=0, n_train=100, n_val=10, n_test=10,
-        n_synthetic_rh_active=250, n_synthetic_rh_inactive=250,
-        pos_rate_train=0.5, pos_rate_test=0.4, val_auc=0.7,
-        test_auc=0.55, test_pic50_mae=0.7, wasserstein_weight=0.05,
+        fold="Rh",
+        seed=0,
+        n_train=100,
+        n_val=10,
+        n_test=10,
+        n_synthetic_rh_active=250,
+        n_synthetic_rh_inactive=250,
+        pos_rate_train=0.5,
+        pos_rate_test=0.4,
+        val_auc=0.7,
+        test_auc=0.55,
+        test_pic50_mae=0.7,
+        wasserstein_weight=0.05,
         wasserstein_target="Rh_real_active_in_train_pool",
         wasserstein_loss_history=[1.0, 0.9, 0.8],
         final_per_metal_w2={"Ru__Ir": 0.5},
@@ -545,9 +623,9 @@ def test_result_task_type_field_recorded() -> None:
         final_per_metal_w2={},
         elapsed_seconds=1.0,
     )
-    assert r.task_type == "multi", (
-        f"expected default task_type='multi' on dataclass, got {r.task_type!r}"
-    )
+    assert (
+        r.task_type == "multi"
+    ), f"expected default task_type='multi' on dataclass, got {r.task_type!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -588,7 +666,9 @@ def test_run_single_task_smoke(tiny_lomo_csv, cohort_smiles_labels) -> None:
 
 
 # ---------------------------------------------------------------------------
-def test_run_dispatch_routes_to_single_task(tiny_lomo_csv, cohort_smiles_labels) -> None:
+def test_run_dispatch_routes_to_single_task(
+    tiny_lomo_csv, cohort_smiles_labels
+) -> None:
     """Wf-201 — ``runner.run()`` dispatches to ``_run_single_task`` when ``task_type=='single'``.
 
     We monkey-patch ``_run_single_task`` to record the call so we can
@@ -617,9 +697,9 @@ def test_run_dispatch_routes_to_single_task(tiny_lomo_csv, cohort_smiles_labels)
 
     runner._run_single_task = spy  # type: ignore[assignment]
     runner.run(verbose=False)
-    assert calls["n"] == 1, (
-        f"expected _run_single_task called once via run(), got {calls['n']}"
-    )
+    assert (
+        calls["n"] == 1
+    ), f"expected _run_single_task called once via run(), got {calls['n']}"
 
 
 # ---------------------------------------------------------------------------
@@ -627,7 +707,9 @@ def test_cli_help_shows_task_type_flag() -> None:
     """Wf-201 — ``--task-type {single,multi}`` is exposed in --help output."""
     out = subprocess.run(
         [sys.executable, "-m", "molmetal.scripts.train_metal_lomo_v2", "--help"],
-        capture_output=True, text=True, cwd=str(PROJECT_ROOT),
+        capture_output=True,
+        text=True,
+        cwd=str(PROJECT_ROOT),
     )
     assert out.returncode == 0
     assert "--task-type" in out.stdout
@@ -657,19 +739,30 @@ def test_cli_task_type_single_smoke(tmp_path, cohort_smiles_labels) -> None:
         sys.executable,
         "-m",
         "molmetal.scripts.train_metal_lomo_v2",
-        "--task-type", "single",
-        "--metals", "Rh",
-        "--seeds", "0",
-        "--epochs", "1",
+        "--task-type",
+        "single",
+        "--metals",
+        "Rh",
+        "--seeds",
+        "0",
+        "--epochs",
+        "1",
         "--quick",
-        "--device", "cpu",
-        "--lomo-csv", str(tiny_csv),
-        "--out-dir", str(out_dir),
+        "--device",
+        "cpu",
+        "--lomo-csv",
+        str(tiny_csv),
+        "--out-dir",
+        str(out_dir),
     ]
     env = os.environ.copy()
     env["CUDA_VISIBLE_DEVICES"] = ""
     proc = subprocess.run(
-        cmd, capture_output=True, text=True, env=env, cwd=str(PROJECT_ROOT),
+        cmd,
+        capture_output=True,
+        text=True,
+        env=env,
+        cwd=str(PROJECT_ROOT),
         timeout=120,
     )
     if proc.returncode != 0:
@@ -678,9 +771,9 @@ def test_cli_task_type_single_smoke(tmp_path, cohort_smiles_labels) -> None:
         )
     # The per-seed JSON should record task_type='single'.
     seed_json = out_dir / "Rh" / "per_seed_metrics_seed0.json"
-    assert seed_json.exists(), (
-        f"per-seed JSON missing at {seed_json} — CLI did not produce output"
-    )
+    assert (
+        seed_json.exists()
+    ), f"per-seed JSON missing at {seed_json} — CLI did not produce output"
     payload = json.loads(seed_json.read_text())
     assert payload.get("task_type") == "single", (
         f"expected task_type='single' in per-seed JSON, got "

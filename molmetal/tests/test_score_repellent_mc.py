@@ -56,6 +56,7 @@ References
 * Silver D. et al. (2016) "Mastering the game of Go with deep
   neural networks and tree search".  *Nature* 529, 484-489.
 """
+
 from __future__ import annotations
 
 import math
@@ -93,7 +94,7 @@ except Exception:  # pragma: no cover - import path fallback
 
 def _running_mean_var(chain: np.ndarray) -> tuple:
     """Return ``(mean, variance)`` of the chain across the burn-in tail."""
-    tail = chain[-max(2, chain.shape[0] // 2):]
+    tail = chain[-max(2, chain.shape[0] // 2) :]
     return float(tail.mean()), float(tail.var(ddof=1))
 
 
@@ -185,12 +186,16 @@ def test_score_repellent_zero_step():
     ``samples[0]`` to ``x0`` directly so the shapes line up.
     """
     sampler = ScoreRepellentSampler(
-        n_iters=1, step_size=0.0, seed=0,
+        n_iters=1,
+        step_size=0.0,
+        seed=0,
     )
     x0 = torch.tensor([0.1, 0.2, 0.3, 0.4], dtype=torch.float64)
     samples = sampler.sample(x0, n_samples=1)
     np.testing.assert_allclose(
-        samples[0].numpy(), x0.numpy(), atol=1.0e-12,
+        samples[0].numpy(),
+        x0.numpy(),
+        atol=1.0e-12,
     )
 
 
@@ -226,7 +231,8 @@ def test_score_repellent_variance_bound_alpha():
     ``η = 0.1`` and ``L = 1.0`` we expect ``α ≈ 0.2``.
     """
     sampler = ScoreRepellentSampler(
-        step_size=0.1, score_lipschitz=1.0,
+        step_size=0.1,
+        score_lipschitz=1.0,
     )
     assert sampler.variance_bound() == pytest.approx(0.2, abs=1.0e-9)
 
@@ -241,7 +247,8 @@ def test_score_repellent_variance_bound_clamped():
     guarantee.
     """
     sampler = ScoreRepellentSampler(
-        step_size=10.0, score_lipschitz=10.0,
+        step_size=10.0,
+        score_lipschitz=10.0,
     )
     alpha = sampler.variance_bound()
     assert 0.0 <= alpha < 1.0
@@ -290,9 +297,11 @@ def test_score_repellent_repulses_from_mode():
     """
     dim = 4
     sampler = ScoreRepellentSampler(
-        n_iters=50, step_size=0.05, seed=11,
+        n_iters=50,
+        step_size=0.05,
+        seed=11,
     )
-    x0 = np.full(dim, 0.25, dtype=np.float64)   # uniform = mode
+    x0 = np.full(dim, 0.25, dtype=np.float64)  # uniform = mode
     _ = sampler.sample(torch.as_tensor(x0), n_samples=20)
     chain = np.stack(sampler.chain_)
     # Mean L2 displacement from anchor across the burn-in tail.
@@ -394,7 +403,9 @@ def test_dirichlet_replacement_fallback_dirichlet():
     small-sample noise for ``n_samples = 256``).
     """
     rep = DirichletReplacement(
-        alpha=0.3, score_repellent=False, seed=99,
+        alpha=0.3,
+        score_repellent=False,
+        seed=99,
     )
     eta = rep.sample(n_samples=256, dim=4).numpy()
     # Plain Dirichlet samples are all non-negative and sum to 1.

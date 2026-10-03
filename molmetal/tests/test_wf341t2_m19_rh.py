@@ -65,11 +65,15 @@ SCRIPTS_DIR = MOLMETAL_ROOT / "scripts"
 # Phase 1 cohort paths (Wf-309A SHIPPED + Wf-145 P1 mirror per
 # Wf-321A / Wf-322F cross-references).
 PHASE1_COHORT_WF139 = (
-    MOLMETAL_ROOT / "reports" / "wf139_p7_rh_active_cohort"
+    MOLMETAL_ROOT
+    / "reports"
+    / "wf139_p7_rh_active_cohort"
     / "synthetic_rh_pos_neg.json"
 )
 PHASE1_COHORT_WF145 = (
-    MOLMETAL_ROOT / "reports" / "wf145_p1_rh_active_cohort"
+    MOLMETAL_ROOT
+    / "reports"
+    / "wf145_p1_rh_active_cohort"
     / "synthetic_rh_pos_neg.json"
 )
 TRAINER_SCRIPT = SCRIPTS_DIR / "train_metal_lomo_v2.py"
@@ -150,9 +154,7 @@ class TestRhOversampleCorrectness:
         metals_arr = np.asarray(metals, dtype=object)
         pic50_arr = np.asarray(pic50, dtype=np.float32)
 
-        pre_pos_rate_Rh = float(
-            active_arr[np.array(metals_arr == "Rh")].mean()
-        )
+        pre_pos_rate_Rh = float(active_arr[np.array(metals_arr == "Rh")].mean())
         # Apply oversample.
         (smis_new, act_new, met_new, pic50_new, stats) = (
             oversample_underrepresented_metals(
@@ -166,12 +168,8 @@ class TestRhOversampleCorrectness:
             )
         )
 
-        post_pos_rate_Rh = float(
-            act_new[np.array(met_new == "Rh")].mean()
-        )
-        post_pos_rate_Ru = float(
-            act_new[np.array(met_new == "Ru")].mean()
-        )
+        post_pos_rate_Rh = float(act_new[np.array(met_new == "Rh")].mean())
+        post_pos_rate_Ru = float(act_new[np.array(met_new == "Ru")].mean())
 
         # Honest-mechanism assertions.
         # 1) Rh positive rate MUST be lifted to >= target_pos_rate.
@@ -185,9 +183,9 @@ class TestRhOversampleCorrectness:
             "(already-balanced metals must be passed through)"
         )
         # 3) The function reports how many positives it appended for Rh.
-        assert stats.get("Rh", 0) > 0, (
-            f"oversample appended 0 Rh positives; pre_pos_rate={pre_pos_rate_Rh:.3f}"
-        )
+        assert (
+            stats.get("Rh", 0) > 0
+        ), f"oversample appended 0 Rh positives; pre_pos_rate={pre_pos_rate_Rh:.3f}"
         # 4) Total Rh row count grew but stayed finite.
         n_Rh_pre = int(sum(1 for m in metals if m == "Rh"))
         n_Rh_post = int(sum(1 for m in met_new if m == "Rh"))
@@ -223,6 +221,7 @@ class TestLOMOCrossValidationSplitIntegrity:
         class _MockDS:
             def __init__(self, metals_list):
                 import pandas as pd
+
                 self.df = pd.DataFrame({"Metal": metals_list})
 
         metals_list = []
@@ -231,7 +230,9 @@ class TestLOMOCrossValidationSplitIntegrity:
         ds = _MockDS(metals_list)
 
         splitter = BalancedLOMOSplitter(
-            held_out_metal="Rh", val_fraction=0.1, seed=42,
+            held_out_metal="Rh",
+            val_fraction=0.1,
+            seed=42,
         )
         split = splitter(ds)
 
@@ -240,23 +241,21 @@ class TestLOMOCrossValidationSplitIntegrity:
         test_set = set(int(i) for i in split.test_idx)
 
         # 1) Train ∩ test MUST be empty.
-        assert train_set.isdisjoint(test_set), (
-            f"train/test overlap found: {sorted(train_set & test_set)[:5]}"
-        )
+        assert train_set.isdisjoint(
+            test_set
+        ), f"train/test overlap found: {sorted(train_set & test_set)[:5]}"
         # 2) Val ∩ test MUST be empty.
-        assert val_set.isdisjoint(test_set), (
-            f"val/test overlap found: {sorted(val_set & test_set)[:5]}"
-        )
+        assert val_set.isdisjoint(
+            test_set
+        ), f"val/test overlap found: {sorted(val_set & test_set)[:5]}"
         # 3) All Rh rows in the original pool MUST land in test_idx.
         n_Rh = sum(1 for m in metals_list if m == "Rh")
-        assert len(test_set) == n_Rh, (
-            f"test_idx size={len(test_set)} != n_Rh={n_Rh}"
-        )
+        assert len(test_set) == n_Rh, f"test_idx size={len(test_set)} != n_Rh={n_Rh}"
         # 4) Train ∪ val MUST contain all non-Rh rows.
         n_non_Rh = sum(1 for m in metals_list if m != "Rh")
-        assert (len(train_set) + len(val_set)) == n_non_Rh, (
-            f"train+val size={len(train_set) + len(val_set)} != n_non_Rh={n_non_Rh}"
-        )
+        assert (
+            (len(train_set) + len(val_set)) == n_non_Rh
+        ), f"train+val size={len(train_set) + len(val_set)} != n_non_Rh={n_non_Rh}"
         # 5) val_fraction=0.1 produces a val set of ~10% of the train pool.
         # The exact count is integer-rounded, but the ratio must be in
         # [0.05, 0.15] to honour the spec.
@@ -299,18 +298,18 @@ class Test500BalancedCohort:
         stats = data.get("stats", {})
 
         # Honest-mechanism assertions on the cohort structure.
-        assert int(stats.get("n_active", 0)) == 250, (
-            f"expected n_active=250, got {stats.get('n_active')}"
-        )
-        assert int(stats.get("n_inactive", 0)) == 250, (
-            f"expected n_inactive=250, got {stats.get('n_inactive')}"
-        )
-        assert len(data.get("actives", [])) == 250, (
-            f"actives array length={len(data.get('actives', []))} != 250"
-        )
-        assert len(data.get("inactives", [])) == 250, (
-            f"inactives array length={len(data.get('inactives', []))} != 250"
-        )
+        assert (
+            int(stats.get("n_active", 0)) == 250
+        ), f"expected n_active=250, got {stats.get('n_active')}"
+        assert (
+            int(stats.get("n_inactive", 0)) == 250
+        ), f"expected n_inactive=250, got {stats.get('n_inactive')}"
+        assert (
+            len(data.get("actives", [])) == 250
+        ), f"actives array length={len(data.get('actives', []))} != 250"
+        assert (
+            len(data.get("inactives", [])) == 250
+        ), f"inactives array length={len(data.get('inactives', []))} != 250"
         assert int(stats.get("scaffold_overlap_count", -1)) == 0, (
             f"scaffold_overlap_count={stats.get('scaffold_overlap_count')} "
             "!= 0 — scaffold-split integrity broken"
@@ -398,9 +397,7 @@ class TestM19MetricLiftStructural:
         pic50_arr = np.asarray(pic50, dtype=np.float32)
 
         # Pre-oversample Rh positive rate.
-        pre_pos_rate_Rh = float(
-            active_arr[np.array(metals_arr == "Rh")].mean()
-        )
+        pre_pos_rate_Rh = float(active_arr[np.array(metals_arr == "Rh")].mean())
         assert pre_pos_rate_Rh < 0.30, (
             f"test fixture broken: pre_pos_rate_Rh={pre_pos_rate_Rh:.3f} "
             "should be < 0.30 to mimic the regression pattern"
@@ -417,9 +414,7 @@ class TestM19MetricLiftStructural:
             seed=42,
         )
 
-        post_pos_rate_Rh = float(
-            act_new[np.array(met_new == "Rh")].mean()
-        )
+        post_pos_rate_Rh = float(act_new[np.array(met_new == "Rh")].mean())
 
         # Honest-mechanism assertions on the m19 fix.
         assert post_pos_rate_Rh > pre_pos_rate_Rh, (
@@ -434,6 +429,6 @@ class TestM19MetricLiftStructural:
             f"< 0.5 * gap={0.5 * gap:.3f}"
         )
         # The helper appended a positive number of Rh positives.
-        assert stats.get("Rh", 0) > 0, (
-            "oversample appended 0 Rh positives; fixture or helper broken"
-        )
+        assert (
+            stats.get("Rh", 0) > 0
+        ), "oversample appended 0 Rh positives; fixture or helper broken"

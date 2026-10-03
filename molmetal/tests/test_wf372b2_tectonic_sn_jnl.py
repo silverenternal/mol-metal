@@ -37,10 +37,14 @@ def test_tectonic_sn_jnl_compile_produces_valid_pdf():
     assert SN_JNL_CLS.is_file(), f"sn-jnl.cls missing at {SN_JNL_CLS}"
 
     tex_source = (
-        r"\documentclass[springer]{sn-jnl}" "\n"
-        r"\begin{document}" "\n"
-        r"Test article." "\n"
-        r"\end{document}" "\n"
+        r"\documentclass[springer]{sn-jnl}"
+        "\n"
+        r"\begin{document}"
+        "\n"
+        r"Test article."
+        "\n"
+        r"\end{document}"
+        "\n"
     )
 
     with tempfile.TemporaryDirectory() as tmp:

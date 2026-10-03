@@ -134,8 +134,12 @@ def per_metal_summary(metal: str, seeds: List[Dict]) -> Dict:
         dtype=float,
     )
     w_finals = np.array(
-        [s["wasserstein_history"][-1] if s.get("wasserstein_history") else float("nan")
-         for s in seeds],
+        [
+            s["wasserstein_history"][-1]
+            if s.get("wasserstein_history")
+            else float("nan")
+            for s in seeds
+        ],
         dtype=float,
     )
     val_aucs = np.array(
@@ -150,9 +154,15 @@ def per_metal_summary(metal: str, seeds: List[Dict]) -> Dict:
     return {
         "metal": metal,
         "n_seeds": len(seeds),
-        "test_auc_mean": float(np.nanmean(aucs_finite)) if aucs_finite.size else float("nan"),
-        "test_auc_std": float(np.nanstd(aucs_finite)) if aucs_finite.size else float("nan"),
-        "test_auc_per_seed": {str(s["seed"]): float(s["test_metrics"]["roc_auc"]) for s in seeds},
+        "test_auc_mean": float(np.nanmean(aucs_finite))
+        if aucs_finite.size
+        else float("nan"),
+        "test_auc_std": float(np.nanstd(aucs_finite))
+        if aucs_finite.size
+        else float("nan"),
+        "test_auc_per_seed": {
+            str(s["seed"]): float(s["test_metrics"]["roc_auc"]) for s in seeds
+        },
         "val_auc_mean": float(np.nanmean(val_aucs)),
         "val_auc_std": float(np.nanstd(val_aucs)),
         "test_pearson_mean": float(np.nanmean(pearsons)),
@@ -267,8 +277,12 @@ def main(argv: list[str] | None = None) -> int:
         "per_metal": summary_per_metal,
         "aggregate_5metal": {
             "n_pairs": len(all_seeds),
-            "test_auc_mean": float(np.nanmean(aucs_all_finite)) if aucs_all_finite.size else float("nan"),
-            "test_auc_std": float(np.nanstd(aucs_all_finite)) if aucs_all_finite.size else float("nan"),
+            "test_auc_mean": float(np.nanmean(aucs_all_finite))
+            if aucs_all_finite.size
+            else float("nan"),
+            "test_auc_std": float(np.nanstd(aucs_all_finite))
+            if aucs_all_finite.size
+            else float("nan"),
             "test_pearson_mean": float(np.nanmean(pearsons_all)),
             "test_pearson_std": float(np.nanstd(pearsons_all)),
             "test_rmse_mean": float(np.nanmean(rmses_all)),

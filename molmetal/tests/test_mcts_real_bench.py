@@ -23,6 +23,7 @@ Run via::
     uv run --no-sync python -m pytest \\
         molmetal/tests/test_mcts_real_bench.py -v
 """
+
 from __future__ import annotations
 
 import csv
@@ -65,10 +66,12 @@ def _import_benchmark_module() -> Any:
     """
     try:
         import molmetal.scripts.benchmark_mcts_real as mod  # type: ignore
+
         return mod
     except Exception:
         sys.path.insert(0, str(REPO_ROOT / "molmetal"))
         import scripts.benchmark_mcts_real as mod  # type: ignore
+
         return mod
 
 
@@ -94,13 +97,20 @@ def _run_benchmark(
     else:
         csv_path = str(CSV_PATH)
     argv: List[str] = [
-        "--n-samples", str(int(n_samples)),
-        "--n-simulations", str(int(n_simulations)),
-        "--max-depth", str(int(max_depth)),
-        "--top-k", str(int(top_k)),
-        "--seed", str(int(seed)),
-        "--csv", csv_path,
-        "--out-dir", str(out_dir),
+        "--n-samples",
+        str(int(n_samples)),
+        "--n-simulations",
+        str(int(n_simulations)),
+        "--max-depth",
+        str(int(max_depth)),
+        "--top-k",
+        str(int(top_k)),
+        "--seed",
+        str(int(seed)),
+        "--csv",
+        csv_path,
+        "--out-dir",
+        str(out_dir),
         "--quiet",
     ]
     argv.extend(extra_args)
@@ -192,7 +202,10 @@ class TestBenchmarkSmoke:
         """``run_benchmark`` returns a dict with all required keys."""
         mod = _import_benchmark_module()
         summary = _run_benchmark(
-            n_samples=3, n_simulations=2, max_depth=2, top_k=2,
+            n_samples=3,
+            n_simulations=2,
+            max_depth=2,
+            top_k=2,
             out_dir=tmp_report_dir,
         )
         assert isinstance(summary, dict)
@@ -214,7 +227,10 @@ class TestBenchmarkSmoke:
         """results.json is written and contains the summary."""
         mod = _import_benchmark_module()
         summary = _run_benchmark(
-            n_samples=3, n_simulations=2, max_depth=2, top_k=2,
+            n_samples=3,
+            n_simulations=2,
+            max_depth=2,
+            top_k=2,
             out_dir=tmp_report_dir,
         )
         json_path = mod._write_results_json(tmp_report_dir, summary)
@@ -227,12 +243,18 @@ class TestBenchmarkSmoke:
         """benchmark_log.md is written and is non-empty."""
         mod = _import_benchmark_module()
         summary = _run_benchmark(
-            n_samples=3, n_simulations=2, max_depth=2, top_k=2,
+            n_samples=3,
+            n_simulations=2,
+            max_depth=2,
+            top_k=2,
             out_dir=tmp_report_dir,
         )
         log_path = mod._write_benchmark_log(
-            tmp_report_dir, summary,
-            n_simulations=2, max_depth=2, top_k=2,
+            tmp_report_dir,
+            summary,
+            n_simulations=2,
+            max_depth=2,
+            top_k=2,
             csv_path=str(CSV_PATH),
         )
         assert log_path.exists()
@@ -246,7 +268,10 @@ class TestBenchmarkSmoke:
         """All three strategies are exercised and reported."""
         mod = _import_benchmark_module()
         summary = _run_benchmark(
-            n_samples=3, n_simulations=2, max_depth=2, top_k=2,
+            n_samples=3,
+            n_simulations=2,
+            max_depth=2,
+            top_k=2,
             out_dir=tmp_report_dir,
         )
         reports = summary["strategy_reports"]
@@ -269,7 +294,10 @@ class TestStrategyInvariants:
     def test_wall_time_non_negative(self, tmp_report_dir: Path) -> None:
         """Wall-time per strategy is >= 0."""
         summary = _run_benchmark(
-            n_samples=3, n_simulations=2, max_depth=2, top_k=2,
+            n_samples=3,
+            n_simulations=2,
+            max_depth=2,
+            top_k=2,
             out_dir=tmp_report_dir,
         )
         assert summary["base_mcts_wall_time"] >= 0.0
@@ -279,7 +307,10 @@ class TestStrategyInvariants:
     def test_wall_time_finite(self, tmp_report_dir: Path) -> None:
         """Wall-time per strategy is finite (no NaN / Inf)."""
         summary = _run_benchmark(
-            n_samples=3, n_simulations=2, max_depth=2, top_k=2,
+            n_samples=3,
+            n_simulations=2,
+            max_depth=2,
+            top_k=2,
             out_dir=tmp_report_dir,
         )
         for key in (
@@ -293,7 +324,10 @@ class TestStrategyInvariants:
     def test_success_rate_in_unit_interval(self, tmp_report_dir: Path) -> None:
         """Success rate is in [0, 1] for all three strategies."""
         summary = _run_benchmark(
-            n_samples=3, n_simulations=2, max_depth=2, top_k=2,
+            n_samples=3,
+            n_simulations=2,
+            max_depth=2,
+            top_k=2,
             out_dir=tmp_report_dir,
         )
         for key in (
@@ -307,7 +341,10 @@ class TestStrategyInvariants:
     def test_n_distinct_non_negative(self, tmp_report_dir: Path) -> None:
         """Mean distinct SMILES is >= 0 for all three strategies."""
         summary = _run_benchmark(
-            n_samples=3, n_simulations=2, max_depth=2, top_k=2,
+            n_samples=3,
+            n_simulations=2,
+            max_depth=2,
+            top_k=2,
             out_dir=tmp_report_dir,
         )
         for key in (
@@ -321,7 +358,10 @@ class TestStrategyInvariants:
     def test_total_candidates_non_negative(self, tmp_report_dir: Path) -> None:
         """Total candidate counts are >= 0."""
         summary = _run_benchmark(
-            n_samples=3, n_simulations=2, max_depth=2, top_k=2,
+            n_samples=3,
+            n_simulations=2,
+            max_depth=2,
+            top_k=2,
             out_dir=tmp_report_dir,
         )
         for key in (
@@ -334,7 +374,10 @@ class TestStrategyInvariants:
     def test_wall_time_ratio_finite(self, tmp_report_dir: Path) -> None:
         """Wall-time ratio (variance / base) is finite and positive."""
         summary = _run_benchmark(
-            n_samples=3, n_simulations=2, max_depth=2, top_k=2,
+            n_samples=3,
+            n_simulations=2,
+            max_depth=2,
+            top_k=2,
             out_dir=tmp_report_dir,
         )
         for key in (
@@ -357,17 +400,25 @@ class TestCLIIntegration:
         """``python -m molmetal.scripts.benchmark_mcts_real --n-samples 2`` runs."""
         env = dict(os.environ)
         env.setdefault("MOLMETAL_DATA_DIR", str(REPO_ROOT / ".data" / "molmetal"))
-        env.setdefault("MOLMETAL_TMQM_DIR",
-                       str(REPO_ROOT / ".data" / "molmetal" / "tmQM"))
+        env.setdefault(
+            "MOLMETAL_TMQM_DIR", str(REPO_ROOT / ".data" / "molmetal" / "tmQM")
+        )
         cmd: List[str] = [
             sys.executable,
-            "-m", "molmetal.scripts.benchmark_mcts_real",
-            "--n-samples", "2",
-            "--n-simulations", "2",
-            "--max-depth", "2",
-            "--top-k", "2",
-            "--csv", str(CSV_PATH),
-            "--out-dir", str(tmp_report_dir),
+            "-m",
+            "molmetal.scripts.benchmark_mcts_real",
+            "--n-samples",
+            "2",
+            "--n-simulations",
+            "2",
+            "--max-depth",
+            "2",
+            "--top-k",
+            "2",
+            "--csv",
+            str(CSV_PATH),
+            "--out-dir",
+            str(tmp_report_dir),
             "--quiet",
         ]
         proc = subprocess.run(
@@ -391,12 +442,16 @@ class TestCLIIntegration:
         assert data["n_samples_searched"] >= 1
 
     def test_results_json_has_expected_keys(
-        self, tmp_report_dir: Path,
+        self,
+        tmp_report_dir: Path,
     ) -> None:
         """results.json contains every required top-level key."""
         mod = _import_benchmark_module()
         summary = _run_benchmark(
-            n_samples=2, n_simulations=2, max_depth=2, top_k=2,
+            n_samples=2,
+            n_simulations=2,
+            max_depth=2,
+            top_k=2,
             out_dir=tmp_report_dir,
         )
         json_path = mod._write_results_json(tmp_report_dir, summary)
@@ -489,44 +544,52 @@ class TestPerSampleBehaviour:
     def test_per_sample_records_match(self, tmp_report_dir: Path) -> None:
         """``n_samples_searched`` equals the number of base per-sample records."""
         summary = _run_benchmark(
-            n_samples=3, n_simulations=2, max_depth=2, top_k=2,
+            n_samples=3,
+            n_simulations=2,
+            max_depth=2,
+            top_k=2,
             out_dir=tmp_report_dir,
         )
         rep = summary["strategy_reports"]["base"]
         assert len(rep["per_sample"]) == summary["n_samples_searched"]
 
     def test_per_sample_wall_time_consistent(
-        self, tmp_report_dir: Path,
+        self,
+        tmp_report_dir: Path,
     ) -> None:
         """Sum of per-sample wall-times equals total wall-time (base)."""
         summary = _run_benchmark(
-            n_samples=3, n_simulations=2, max_depth=2, top_k=2,
+            n_samples=3,
+            n_simulations=2,
+            max_depth=2,
+            top_k=2,
             out_dir=tmp_report_dir,
         )
         rep = summary["strategy_reports"]["base"]
-        per_sum = sum(
-            getattr(r, "wall_time_s") for r in rep["per_sample"]
-        )
+        per_sum = sum(getattr(r, "wall_time_s") for r in rep["per_sample"])
         assert math.isclose(per_sum, rep["total_wall_time_s"], abs_tol=1e-6)
 
     def test_per_sample_n_distinct_le_n_candidates(
-        self, tmp_report_dir: Path,
+        self,
+        tmp_report_dir: Path,
     ) -> None:
         """Distinct SMILES ≤ total candidates (dedup invariant)."""
         summary = _run_benchmark(
-            n_samples=3, n_simulations=2, max_depth=2, top_k=2,
+            n_samples=3,
+            n_simulations=2,
+            max_depth=2,
+            top_k=2,
             out_dir=tmp_report_dir,
         )
         rep = summary["strategy_reports"]["base"]
         for r in rep["per_sample"]:
             n_dist = getattr(r, "n_distinct")
             n_cand = getattr(r, "n_candidates")
-            assert n_dist <= n_cand, (
-                f"distinct {n_dist} > cands {n_cand}"
-            )
+            assert n_dist <= n_cand, f"distinct {n_dist} > cands {n_cand}"
 
     def test_summary_round_trip_json(
-        self, tmp_report_dir: Path,
+        self,
+        tmp_report_dir: Path,
     ) -> None:
         """The summary dict survives JSON round-trip with no NaN / Inf.
 
@@ -540,13 +603,14 @@ class TestPerSampleBehaviour:
         serialisation path.
         """
         summary = _run_benchmark(
-            n_samples=3, n_simulations=2, max_depth=2, top_k=2,
+            n_samples=3,
+            n_simulations=2,
+            max_depth=2,
+            top_k=2,
             out_dir=tmp_report_dir,
         )
         # Strip non-scalar fields before JSON round-trip.
-        scrubbed = {
-            k: v for k, v in summary.items() if k != "strategy_reports"
-        }
+        scrubbed = {k: v for k, v in summary.items() if k != "strategy_reports"}
         serialised = json.dumps(scrubbed)
         restored = json.loads(serialised)
         for k in (
@@ -561,11 +625,15 @@ class TestPerSampleBehaviour:
             assert math.isfinite(restored[k])
 
     def test_n_errors_zero_on_clean_run(
-        self, tmp_report_dir: Path,
+        self,
+        tmp_report_dir: Path,
     ) -> None:
         """A clean smoke run emits 0 search errors per strategy."""
         summary = _run_benchmark(
-            n_samples=3, n_simulations=2, max_depth=2, top_k=2,
+            n_samples=3,
+            n_simulations=2,
+            max_depth=2,
+            top_k=2,
             out_dir=tmp_report_dir,
         )
         assert int(summary["n_errors_base"]) == 0
@@ -573,11 +641,15 @@ class TestPerSampleBehaviour:
         assert int(summary["n_errors_variance_mcts"]) == 0
 
     def test_variance_puct_reuses_underlying_search(
-        self, tmp_report_dir: Path,
+        self,
+        tmp_report_dir: Path,
     ) -> None:
         """VariancePUCT results track base within ±20% (same underlying MCTS)."""
         summary = _run_benchmark(
-            n_samples=3, n_simulations=2, max_depth=2, top_k=2,
+            n_samples=3,
+            n_simulations=2,
+            max_depth=2,
+            top_k=2,
             out_dir=tmp_report_dir,
         )
         b = summary["base_mcts_wall_time"]
@@ -586,12 +658,13 @@ class TestPerSampleBehaviour:
             # Variance wrapper re-runs ``MCTSProofSearch.search`` and
             # re-scores — total wall-time must be within ±20% of base.
             ratio = vp / b
-            assert 0.5 <= ratio <= 2.0, (
-                f"variance_puct / base wall ratio out of range: {ratio:.3f}"
-            )
+            assert (
+                0.5 <= ratio <= 2.0
+            ), f"variance_puct / base wall ratio out of range: {ratio:.3f}"
 
     def test_seed_changes_nothing_on_determinism(
-        self, tmp_report_dir: Path,
+        self,
+        tmp_report_dir: Path,
     ) -> None:
         """Re-running with the same seed + same samples yields the same totals.
 
@@ -601,22 +674,24 @@ class TestPerSampleBehaviour:
         tolerance for the totals).
         """
         a = _run_benchmark(
-            n_samples=3, n_simulations=2, max_depth=2, top_k=2,
+            n_samples=3,
+            n_simulations=2,
+            max_depth=2,
+            top_k=2,
             seed=12345,
             out_dir=tmp_report_dir / "a",
         )
         b = _run_benchmark(
-            n_samples=3, n_simulations=2, max_depth=2, top_k=2,
+            n_samples=3,
+            n_simulations=2,
+            max_depth=2,
+            top_k=2,
             seed=12345,
             out_dir=tmp_report_dir / "b",
         )
         # Same success / candidate counts under the same seed.
         assert a["total_candidates_base"] == b["total_candidates_base"]
+        assert a["success_count_variance_puct"] == b["success_count_variance_puct"]
         assert (
-            a["success_count_variance_puct"]
-            == b["success_count_variance_puct"]
-        )
-        assert (
-            a["total_candidates_variance_mcts"]
-            == b["total_candidates_variance_mcts"]
+            a["total_candidates_variance_mcts"] == b["total_candidates_variance_mcts"]
         )

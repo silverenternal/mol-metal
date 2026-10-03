@@ -25,6 +25,7 @@ All tests are **CPU-only** and use the real
 (small n_bins=16 for the unit-test speed budget; the production
 n_bins=32 path is exercised by the recipe itself in ``wf348b1_w2_r20p3.py``).
 """
+
 from __future__ import annotations
 
 import math
@@ -49,6 +50,7 @@ def _import_recipe():
     """Lazy import of :mod:`molmetal.scripts.wf348b1_w2_r20p3`."""
     try:
         from molmetal.scripts import wf348b1_w2_r20p3 as recipe
+
         return recipe
     except Exception as exc:
         pytest.skip(
@@ -63,6 +65,7 @@ def _import_extractor():
         from molmetal.molmetal_lam.reward.multiph_pll_feature import (
             MultiPHPLLFeatureExtractor,
         )
+
         return MultiPHPLLFeatureExtractor
     except Exception as exc:
         pytest.skip(
@@ -75,12 +78,12 @@ def _import_extractor():
 # Canonical fixture SMILES — 6 small molecules that RDKit can embed quickly
 # ---------------------------------------------------------------------------
 CANONICAL_SMILES: tuple = (
-    "CCO",                  # ethanol
-    "c1ccccc1",             # benzene
-    "CC(=O)O",              # acetic acid
-    "CCN",                  # ethylamine
-    "c1ccc2ccccc2c1",       # naphthalene
-    "OCC(O)CO",             # glycerol
+    "CCO",  # ethanol
+    "c1ccccc1",  # benzene
+    "CC(=O)O",  # acetic acid
+    "CCN",  # ethylamine
+    "c1ccc2ccccc2c1",  # naphthalene
+    "OCC(O)CO",  # glycerol
 )
 
 
@@ -98,7 +101,9 @@ class TestFeatureExtraction:
         """
         recipe = _import_recipe()
         fourier_b, multi_ph_b, pll_b, valid_mask = recipe.extract_r20p3_features(
-            list(CANONICAL_SMILES), n_bins=32, pll_k=128,
+            list(CANONICAL_SMILES),
+            n_bins=32,
+            pll_k=128,
         )
         assert fourier_b.shape == (len(CANONICAL_SMILES), 32)
         assert multi_ph_b.shape == (len(CANONICAL_SMILES), 32, 32)
@@ -116,7 +121,9 @@ class TestFeatureExtraction:
         recipe = _import_recipe()
         bad = ["", "not_a_smiles", "c1ccccc1"]  # 2 invalid + 1 valid
         fourier_b, multi_ph_b, pll_b, valid_mask = recipe.extract_r20p3_features(
-            bad, n_bins=16, pll_k=16,
+            bad,
+            n_bins=16,
+            pll_k=16,
         )
         assert fourier_b.shape == (3, 16)
         assert multi_ph_b.shape == (3, 16, 16)
@@ -258,10 +265,13 @@ class TestThreeAxisW2:
             assert math.isfinite(float(out[k]))
             assert float(out[k]) >= 0.0
         # Symmetric distance is the average of a->b and b->a.
-        assert abs(
-            float(out["w2_pic50_symmetric"])
-            - 0.5 * (float(out["w2_pic50_a_to_b"]) + float(out["w2_pic50_b_to_a"]))
-        ) < 1e-9
+        assert (
+            abs(
+                float(out["w2_pic50_symmetric"])
+                - 0.5 * (float(out["w2_pic50_a_to_b"]) + float(out["w2_pic50_b_to_a"]))
+            )
+            < 1e-9
+        )
 
     def test_cross_cohort_w2_feature_axis(self, synthetic_cohort):
         recipe = _import_recipe()
@@ -271,8 +281,12 @@ class TestThreeAxisW2:
         feat_a = rng.normal(loc=0.0, scale=1.0, size=(30, 160))
         feat_b = rng.normal(loc=0.5, scale=1.0, size=(30, 160))
         out = recipe.compute_w2_cross_cohort(
-            y_a=np.zeros(30), y_b=np.ones(30),
-            feature_a=feat_a, feature_b=feat_b, n_mc=64, seed=0,
+            y_a=np.zeros(30),
+            y_b=np.ones(30),
+            feature_a=feat_a,
+            feature_b=feat_b,
+            n_mc=64,
+            seed=0,
         )
         # Feature-axis W₂ is finite and non-negative.
         for k in ("w2_feature_a_to_b", "w2_feature_b_to_a", "w2_feature_symmetric"):
@@ -330,8 +344,12 @@ class TestSotaBand:
         feat_a = rng.standard_normal((n, 32))
         feat_b = rng.standard_normal((n, 32)) + 0.2
         cross = recipe.compute_w2_cross_cohort(
-            y_a=y_a, y_b=y_b,
-            feature_a=feat_a, feature_b=feat_b, n_mc=64, seed=0,
+            y_a=y_a,
+            y_b=y_b,
+            feature_a=feat_a,
+            feature_b=feat_b,
+            n_mc=64,
+            seed=0,
         )
         sota = recipe.sota_band_check(per_cell, per_cohort, cross)
         assert sota["band_low"] == 0.01

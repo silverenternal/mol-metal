@@ -5,6 +5,7 @@ Fix: PDBQT atom types include aromatic prefixes (A, NA, OA, SA, HD).
 Map them back to pure elements (C, N, O, S, H) before Hungarian matching.
 Re-compute RMSD for all 5 pockets from existing pose PDBQT files.
 """
+
 from __future__ import annotations
 
 import json
@@ -20,6 +21,7 @@ try:
         safe_overwrite_check,
         detect_truncation,
     )
+
     _WF424_HAS_ATOMIC = True
 except ImportError:  # pragma: no cover — fallback when running as standalone
     _WF424_HAS_ATOMIC = False
@@ -37,7 +39,9 @@ SEEDS = [0, 1, 2]
 N_POSES = 5
 
 
-def _wf424_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
+def _wf424_atomic_write_text(
+    path, content: str, min_lines: int = 50, expected_min_length: int = 200
+) -> None:
     """Wf-424-A4 atomic-write-protocol wrapper around direct write_text.
 
     Falls back to direct write_text if atomic_write_file is unavailable
@@ -49,21 +53,26 @@ def _wf424_atomic_write_text(path, content: str, min_lines: int = 50, expected_m
             _risk = safe_overwrite_check(path, content, min_lines=min_lines)
             if _risk is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-424-A4] safe_overwrite_check diff_ratio=%.3f at %s",
-                    _risk, path,
+                    _risk,
+                    path,
                 )
         atomic_write_file(path, content, encoding="utf-8")
         if detect_truncation is not None:
             _trunc = detect_truncation(content, expected_min_length=expected_min_length)
             if _trunc is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-424-A4] detect_truncation reason=%r at %s",
-                    _trunc, path,
+                    _trunc,
+                    path,
                 )
     else:  # pragma: no cover — fallback when atomic primitive unavailable
         Path(path).write_text(content, encoding="utf-8")
+
 
 def kabsch_rmsd(P, Q):
     P = np.asarray(P, dtype=float)
@@ -95,7 +104,9 @@ def parse_pdbqt_heavy_atoms_fixed(pdbqt_path):
             if line.startswith("ENDMDL"):
                 break
             if line.startswith(("ATOM", "HETATM")):
-                elem_field = line[76:78].strip() if len(line) >= 78 else line[12:16].strip()
+                elem_field = (
+                    line[76:78].strip() if len(line) >= 78 else line[12:16].strip()
+                )
                 elem_raw = elem_field.split()[0] if elem_field else ""
                 # Skip H
                 if elem_raw.startswith("H"):
@@ -222,20 +233,28 @@ def main():
                 if rmsd is None:
                     continue
                 seed_rmsds.append(rmsd)
-                per_pose_data.append({
-                    "pocket": p, "seed": seed, "pose": pose_idx + 1,
-                    "rmsd_angstrom": round(rmsd, 4),
-                    "n_docked_heavy": len(elems),
-                    "n_ref_heavy": len(ref_elements),
-                })
+                per_pose_data.append(
+                    {
+                        "pocket": p,
+                        "seed": seed,
+                        "pose": pose_idx + 1,
+                        "rmsd_angstrom": round(rmsd, 4),
+                        "n_docked_heavy": len(elems),
+                        "n_ref_heavy": len(ref_elements),
+                    }
+                )
             if seed_rmsds:
                 best = float(min(seed_rmsds))
                 per_seed_best_rmsd.append(best)
-                per_seed_data.append({
-                    "seed": seed, "status": "OK", "n_poses_valid": len(seed_rmsds),
-                    "rmsd_per_pose": [round(r, 4) for r in seed_rmsds],
-                    "best_rmsd_angstrom": round(best, 4),
-                })
+                per_seed_data.append(
+                    {
+                        "seed": seed,
+                        "status": "OK",
+                        "n_poses_valid": len(seed_rmsds),
+                        "rmsd_per_pose": [round(r, 4) for r in seed_rmsds],
+                        "best_rmsd_angstrom": round(best, 4),
+                    }
+                )
             else:
                 per_seed_data.append({"seed": seed, "status": "NO_VALID_POSES"})
 
@@ -247,7 +266,9 @@ def main():
                 "pocket": p,
                 "ref_smiles": meta_p["smiles"],
                 "n_ref_heavy": len(ref_elements),
-                "per_seed_best_rmsd_angstrom": [round(r, 4) for r in per_seed_best_rmsd],
+                "per_seed_best_rmsd_angstrom": [
+                    round(r, 4) for r in per_seed_best_rmsd
+                ],
                 "median_best_rmsd_angstrom": round(median, 4),
                 "mean_best_rmsd_angstrom": round(mean, 4),
                 "std_best_rmsd_angstrom": round(std, 4),
@@ -262,11 +283,14 @@ def main():
                 json.dump(results[p], f, indent=2)
             with open(WORKDIR / p / "per_pose_metrics.json", "w") as f:
                 json.dump(per_pose_data, f, indent=2)
-            print(f"  {p}: median={median:.4f}A mean={mean:.4f}A std={std:.4f}A pass={median<=2.5}")
+            print(
+                f"  {p}: median={median:.4f}A mean={mean:.4f}A std={std:.4f}A pass={median<=2.5}"
+            )
             aggregate[p] = median
         else:
             results[p] = {
-                "pocket": p, "status": "ALL_SEEDS_FAIL",
+                "pocket": p,
+                "status": "ALL_SEEDS_FAIL",
                 "per_seed_data": per_seed_data,
             }
             with open(WORKDIR / p / "per_seed_metrics.json", "w") as f:

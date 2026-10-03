@@ -105,14 +105,14 @@ def test_wf343c3_build_report_shape() -> None:
     assert isinstance(reports, list)
     assert len(reports) == 5, f"expected 5 loaders, got {len(reports)}"
     observed_loaders = tuple(r.loader for r in reports)
-    assert observed_loaders == EXPECTED_LOADERS, (
-        f"loader set drifted: {observed_loaders} != {EXPECTED_LOADERS}"
-    )
+    assert (
+        observed_loaders == EXPECTED_LOADERS
+    ), f"loader set drifted: {observed_loaders} != {EXPECTED_LOADERS}"
     for rep in reports:
         assert isinstance(rep, LoaderReport)
-        assert len(rep.checks) == 5, (
-            f"{rep.loader}: expected 5 checks, got {len(rep.checks)}"
-        )
+        assert (
+            len(rep.checks) == 5
+        ), f"{rep.loader}: expected 5 checks, got {len(rep.checks)}"
         observed_checks = tuple(c.name for c in rep.checks)
         assert observed_checks == EXPECTED_CHECK_NAMES, (
             f"{rep.loader}: check order drifted {observed_checks} != "
@@ -120,9 +120,11 @@ def test_wf343c3_build_report_shape() -> None:
         )
         for c in rep.checks:
             assert isinstance(c, CheckResult)
-            assert c.status in ("PASS", "FAIL", "SKIP"), (
-                f"{rep.loader}.{c.name}: bad status {c.status}"
-            )
+            assert c.status in (
+                "PASS",
+                "FAIL",
+                "SKIP",
+            ), f"{rep.loader}.{c.name}: bad status {c.status}"
 
 
 # ---------------------------------------------------------------------------
@@ -139,15 +141,10 @@ def test_wf343c3_csv_loads_check_passes_for_all_loaders() -> None:
     for rep in reports:
         c = next(c for c in rep.checks if c.name == "csv_loads")
         assert c.status == "PASS", (
-            f"{rep.loader} csv_loads should be PASS, got {c.status}: "
-            f"{c.detail}"
+            f"{rep.loader} csv_loads should be PASS, got {c.status}: " f"{c.detail}"
         )
-        assert "n_rows" in c.metrics, (
-            f"{rep.loader} csv_loads missing n_rows metric"
-        )
-        assert c.metrics["n_rows"] > 0, (
-            f"{rep.loader} csv_loads reports 0 rows"
-        )
+        assert "n_rows" in c.metrics, f"{rep.loader} csv_loads missing n_rows metric"
+        assert c.metrics["n_rows"] > 0, f"{rep.loader} csv_loads reports 0 rows"
 
 
 # ---------------------------------------------------------------------------
@@ -166,14 +163,10 @@ def test_wf343c3_per_metal_balance_passes_for_multi_metal_loaders() -> None:
             f"{c.status}: {c.detail}"
         )
         n_metals = c.metrics.get("n_metals", 0)
-        assert n_metals >= 5, (
-            f"{loader_name} per_metal_balance n_metals={n_metals} < 5"
-        )
+        assert n_metals >= 5, f"{loader_name} per_metal_balance n_metals={n_metals} < 5"
         fracs = c.metrics.get("fractions", {})
         for m, f in fracs.items():
-            assert f > 0, (
-                f"{loader_name} metal {m} has zero fraction"
-            )
+            assert f > 0, f"{loader_name} metal {m} has zero fraction"
 
 
 # ---------------------------------------------------------------------------
@@ -186,14 +179,12 @@ def test_wf343c3_scaffold_split_check_passes_for_metalcytotox_v4() -> None:
     rep = next(r for r in reports if r.loader == "metalcytotox_5metal_multitask_v4")
     c = next(c for c in rep.checks if c.name == "scaffold_split")
     assert c.status == "PASS", (
-        f"metalcytotox_v4 scaffold_split should be PASS, got {c.status}: "
-        f"{c.detail}"
+        f"metalcytotox_v4 scaffold_split should be PASS, got {c.status}: " f"{c.detail}"
     )
     split_counts = c.metrics.get("split_counts", {})
     for split_name in ("train", "val", "test"):
         assert split_counts.get(split_name, 0) > 0, (
-            f"metalcytotox_v4 split {split_name!r} has 0 rows: "
-            f"{split_counts}"
+            f"metalcytotox_v4 split {split_name!r} has 0 rows: " f"{split_counts}"
         )
 
 
@@ -211,18 +202,17 @@ def test_wf343c3_label_range_check_passes_for_all_loaders() -> None:
     for rep in reports:
         c = next(c for c in rep.checks if c.name == "label_range")
         assert c.status == "PASS", (
-            f"{rep.loader} label_range should be PASS, got {c.status}: "
-            f"{c.detail}"
+            f"{rep.loader} label_range should be PASS, got {c.status}: " f"{c.detail}"
         )
         pmin = c.metrics.get("min")
         pstd = c.metrics.get("std")
         assert pmin is not None and math.isfinite(float(pmin))
-        assert pmin >= PIC50_SOFT_FLOOR, (
-            f"{rep.loader} pIC50 min={pmin} < soft-floor {PIC50_SOFT_FLOOR}"
-        )
-        assert pstd is not None and float(pstd) > 0, (
-            f"{rep.loader} pIC50 has zero variance"
-        )
+        assert (
+            pmin >= PIC50_SOFT_FLOOR
+        ), f"{rep.loader} pIC50 min={pmin} < soft-floor {PIC50_SOFT_FLOOR}"
+        assert (
+            pstd is not None and float(pstd) > 0
+        ), f"{rep.loader} pIC50 has zero variance"
 
 
 # ---------------------------------------------------------------------------
@@ -239,16 +229,14 @@ def test_wf343c3_per_check_per_loader_n_tests_integration_status(tmp_path) -> No
 
     # Contract 1 — per_check_count = 5
     for rep in reports:
-        assert len(rep.checks) == 5, (
-            f"{rep.loader}: per_check_count = {len(rep.checks)} != 5"
-        )
+        assert (
+            len(rep.checks) == 5
+        ), f"{rep.loader}: per_check_count = {len(rep.checks)} != 5"
 
     # Contract 2 — per_loader_status covers PASS / FAIL / SKIP only
     statuses = tuple(r.status for r in reports)
     for st in statuses:
-        assert st in ("PASS", "FAIL", "SKIP"), (
-            f"loader status drifted: {st}"
-        )
+        assert st in ("PASS", "FAIL", "SKIP"), f"loader status drifted: {st}"
 
     # Contract 3 — n_tests (total check rows) = loaders × checks = 25
     n_tests = sum(len(r.checks) for r in reports)
@@ -264,8 +252,13 @@ def test_wf343c3_per_check_per_loader_n_tests_integration_status(tmp_path) -> No
     assert len(payload["loader_reports"]) == 5
     for lr in payload["loader_reports"]:
         assert set(lr.keys()) >= {
-            "loader", "csv_path", "status",
-            "pass_count", "fail_count", "skip_count", "checks",
+            "loader",
+            "csv_path",
+            "status",
+            "pass_count",
+            "fail_count",
+            "skip_count",
+            "checks",
         }
         assert len(lr["checks"]) == 5
         assert lr["pass_count"] + lr["fail_count"] + lr["skip_count"] == 5
@@ -275,9 +268,7 @@ def test_wf343c3_per_check_per_loader_n_tests_integration_status(tmp_path) -> No
     assert written_md.exists()
     body = written_md.read_text(encoding="utf-8")
     for loader_name in EXPECTED_LOADERS:
-        assert loader_name in body, (
-            f"summary.md missing loader row {loader_name!r}"
-        )
+        assert loader_name in body, f"summary.md missing loader row {loader_name!r}"
     for cn in EXPECTED_CHECK_NAMES:
         assert cn in body, f"summary.md missing check column {cn!r}"
 

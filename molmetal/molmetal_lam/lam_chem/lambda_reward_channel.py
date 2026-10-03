@@ -62,6 +62,7 @@ from typing import Any, Callable, List, Optional, Sequence
 
 import numpy as np
 
+
 # ---------------------------------------------------------------------------
 # Lazy import of the coupling adapter (torch-free at inference time).
 # ---------------------------------------------------------------------------
@@ -143,8 +144,10 @@ def compute_lambda_score(
     # Opt-in gate: by default the channel is OFF so existing aggregator
     # behaviour is bit-for-bit identical.
     if enabled is None:
-        enabled = bool(os.environ.get("COUPLING_ENABLED", "").strip().lower()
-                       in {"1", "true", "yes", "on"})
+        enabled = bool(
+            os.environ.get("COUPLING_ENABLED", "").strip().lower()
+            in {"1", "true", "yes", "on"}
+        )
     if not enabled:
         return 0.0
     if not lambda_candidate_smiles:
@@ -219,6 +222,7 @@ def make_lambda_reward_channel(
         ``(state) -> float`` matching the :class:`RewardAggregator`
         contract.  NaN-safe; always returns a finite float in ``[-1, 1]``.
     """
+
     def _channel(state: Any) -> float:
         try:
             # Per-call state-override: callers can pre-populate the

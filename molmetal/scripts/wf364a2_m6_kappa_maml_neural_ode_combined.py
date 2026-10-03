@@ -61,6 +61,7 @@ Run::
         molmetal/scripts/wf364a2_m6_kappa_maml_neural_ode_combined.py \\
         --epochs 5 --out-dir molmetal/reports/wf364a2_m6_kappa_combined/
 """
+
 from __future__ import annotations
 
 import csv
@@ -97,9 +98,7 @@ WF_361B1_MAML_AUG_ADAPTED: float = 0.4495  # proxy: baseline ~chemprop+PLL ridge
 # Wf-361-B2 Neural ODE individual aug_mean
 WF_361B2_NEURAL_ODE_AUG_MEAN: float = 0.449462
 
-DEFAULT_CSV: str = str(
-    REPO_ROOT / "molmetal" / "data" / "metallo_drugs_500_train.csv"
-)
+DEFAULT_CSV: str = str(REPO_ROOT / "molmetal" / "data" / "metallo_drugs_500_train.csv")
 DEFAULT_OUT_DIR: str = str(
     REPO_ROOT / "molmetal" / "reports" / "wf364a2_m6_kappa_combined"
 )
@@ -144,6 +143,7 @@ def _safe_m6_kappa(smi: str) -> Optional[float]:
         from molmetal.molmetal_lam.sbdd_env.metrics_v2 import (
             m6_kappa_from_smiles,
         )
+
         v = m6_kappa_from_smiles(smi)
     except Exception:
         return None
@@ -153,7 +153,8 @@ def _safe_m6_kappa(smi: str) -> Optional[float]:
 
 
 def _compute_baseline_pass_rate(
-    values: Sequence[float], threshold: float,
+    values: Sequence[float],
+    threshold: float,
 ) -> float:
     """Fraction of ``values`` that meet ``threshold`` (NaN-safe)."""
     finite = [v for v in values if v == v]
@@ -175,9 +176,18 @@ def _rdkit_12d(smiles_list: Sequence[str]) -> np.ndarray:
         return np.zeros((len(smiles_list), 12), dtype="float64")
 
     cols = [
-        "MolWt", "MolLogP", "TPSA", "HBA", "HBD", "NRotB",
-        "HeavyAtoms", "RingCount", "NumAromaticRings",
-        "FractionCSP3", "MolMR", "BalabanJ",
+        "MolWt",
+        "MolLogP",
+        "TPSA",
+        "HBA",
+        "HBD",
+        "NRotB",
+        "HeavyAtoms",
+        "RingCount",
+        "NumAromaticRings",
+        "FractionCSP3",
+        "MolMR",
+        "BalabanJ",
     ]
     fns = {
         "MolWt": Descriptors.MolWt,
@@ -250,7 +260,9 @@ def _integrate_neural_ode(
     with torch.no_grad():
         try:
             x_traj = torchdiffeq.odeint(
-                fnet, x0, t_eval,
+                fnet,
+                x0,
+                t_eval,
                 method=str(ODE_METHOD),
                 rtol=1e-3,
                 atol=1e-4,
@@ -258,7 +270,9 @@ def _integrate_neural_ode(
         except Exception:
             try:
                 x_traj = torchdiffeq.odeint(
-                    fnet, x0, t_eval,
+                    fnet,
+                    x0,
+                    t_eval,
                     method="euler",
                     rtol=1e-3,
                     atol=1e-4,
@@ -286,12 +300,9 @@ def _maml_inner_adapt(
         return meta_coef, float(np.mean(y_support))
     model = Ridge(alpha=float(alpha_inner))
     model.fit(X_support, y_support)
-    inner_coef = (
-        MAML_BLEND * model.coef_ + (1.0 - MAML_BLEND) * meta_coef
-    )
+    inner_coef = MAML_BLEND * model.coef_ + (1.0 - MAML_BLEND) * meta_coef
     inner_intercept = (
-        MAML_BLEND * float(model.intercept_)
-        + (1.0 - MAML_BLEND) * meta_intercept
+        MAML_BLEND * float(model.intercept_) + (1.0 - MAML_BLEND) * meta_intercept
     )
     return inner_coef, inner_intercept
 
@@ -345,8 +356,9 @@ def _combined_cv_predict(
             "cv_folds": int(cv_folds),
             "n_samples": int(n),
         }
-    kf = KFold(n_splits=min(int(cv_folds), max(2, n - 1)), shuffle=True,
-               random_state=seed)
+    kf = KFold(
+        n_splits=min(int(cv_folds), max(2, n - 1)), shuffle=True, random_state=seed
+    )
     y_pred_cv = np.zeros(n, dtype=np.float64)
     for fold, (train_idx, test_idx) in enumerate(kf.split(X_arr)):
         X_tr, y_tr = X_arr[train_idx], y_arr[train_idx]
@@ -362,7 +374,8 @@ def _combined_cv_predict(
         rng = np.random.default_rng(seed + fold)
         support_idx = rng.choice(n_tr, size=k, replace=False)
         inner_coef, inner_intercept = _maml_inner_adapt(
-            X_tr[support_idx], y_tr[support_idx],
+            X_tr[support_idx],
+            y_tr[support_idx],
             meta_coef=meta_coef,
             meta_intercept=meta_intercept,
             alpha_inner=alpha_inner,
@@ -422,7 +435,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 # type-cast based on default type
                 default_val = parser_args.get(key)
                 if isinstance(default_val, bool):
-                    parser_args[key] = (raw.lower() in ("true", "1", "yes"))
+                    parser_args[key] = raw.lower() in ("true", "1", "yes")
                 elif isinstance(default_val, int):
                     parser_args[key] = int(raw)
                 elif isinstance(default_val, float):
@@ -438,8 +451,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # ---- Stage 1: Load cohort + baseline m6_kappa ----
-    print(f"[Wf-364-A2] Loading cohort from {csv_path} "
-          f"(max {parser_args['max_samples']}) ...")
+    print(
+        f"[Wf-364-A2] Loading cohort from {csv_path} "
+        f"(max {parser_args['max_samples']}) ..."
+    )
     t0 = time.time()
     smiles = _load_cohort(csv_path, int(parser_args["max_samples"]))
     t_load = time.time() - t0
@@ -447,8 +462,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     if not smiles:
         smiles = ["CCO", "c1ccccc1", "[Pt](N)(N)(Cl)Cl"]
-        print(f"[Wf-364-A2] CSV empty; using synthetic fallback "
-              f"({len(smiles)} SMILES)")
+        print(
+            f"[Wf-364-A2] CSV empty; using synthetic fallback "
+            f"({len(smiles)} SMILES)"
+        )
 
     print("[Wf-364-A2] Computing baseline m6_kappa on cohort ...")
     t0 = time.time()
@@ -463,13 +480,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     baseline_mean = float(sum(baseline_clean) / n_parsed)
     baseline_std = float(np.std(baseline_clean, ddof=1)) if n_parsed > 1 else 0.0
     baseline_pass_rate = _compute_baseline_pass_rate(
-        baseline_clean, M6_KAPPA_THRESHOLD,
+        baseline_clean,
+        M6_KAPPA_THRESHOLD,
     )
-    print(f"[Wf-364-A2] baseline m6_kappa: mean={baseline_mean:.4f} "
-          f"(std={baseline_std:.4f}, n_parsed={n_parsed}, "
-          f"n_failed={n_failed}, "
-          f"pass_rate@{M6_KAPPA_THRESHOLD:.2f}={baseline_pass_rate:.4f}, "
-          f"{t_baseline:.2f}s)")
+    print(
+        f"[Wf-364-A2] baseline m6_kappa: mean={baseline_mean:.4f} "
+        f"(std={baseline_std:.4f}, n_parsed={n_parsed}, "
+        f"n_failed={n_failed}, "
+        f"pass_rate@{M6_KAPPA_THRESHOLD:.2f}={baseline_pass_rate:.4f}, "
+        f"{t_baseline:.2f}s)"
+    )
 
     # Keep only valid rows
     kept_smiles: List[str] = []
@@ -486,13 +506,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     t0 = time.time()
     X_rdkit = _rdkit_12d(kept_smiles)
     t_rdkit = time.time() - t0
-    print(f"[Wf-364-A2] RDKit 12-d features: shape={X_rdkit.shape}, "
-          f"min={X_rdkit.min():.4f}, max={X_rdkit.max():.4f}, "
-          f"mean={X_rdkit.mean():.4f} ({t_rdkit:.2f}s)")
+    print(
+        f"[Wf-364-A2] RDKit 12-d features: shape={X_rdkit.shape}, "
+        f"min={X_rdkit.min():.4f}, max={X_rdkit.max():.4f}, "
+        f"mean={X_rdkit.mean():.4f} ({t_rdkit:.2f}s)"
+    )
 
-    print(f"[Wf-364-A2] Evolving features via Neural ODE "
-          f"(dopri5, hidden={parser_args['ode_hidden']}, "
-          f"t_end={parser_args['ode_t_end']}) ...")
+    print(
+        f"[Wf-364-A2] Evolving features via Neural ODE "
+        f"(dopri5, hidden={parser_args['ode_hidden']}, "
+        f"t_end={parser_args['ode_t_end']}) ..."
+    )
     t0 = time.time()
     X_ode = _integrate_neural_ode(
         X_rdkit,
@@ -501,9 +525,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         seed=int(parser_args["seed"]),
     )
     t_ode = time.time() - t0
-    print(f"[Wf-364-A2] Neural ODE evolved features: shape={X_ode.shape}, "
-          f"min={X_ode.min():.4f}, max={X_ode.max():.4f}, "
-          f"mean={X_ode.mean():.4f} ({t_ode:.2f}s)")
+    print(
+        f"[Wf-364-A2] Neural ODE evolved features: shape={X_ode.shape}, "
+        f"min={X_ode.min():.4f}, max={X_ode.max():.4f}, "
+        f"mean={X_ode.mean():.4f} ({t_ode:.2f}s)"
+    )
 
     # ---- Stage 3: Run candidates ----
     alpha_meta = float(parser_args["ridge_alpha_meta"])
@@ -514,16 +540,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     seed = int(parser_args["seed"])
 
     # Candidate 1 (main): combined MAML + Neural ODE (ODE-evolved only)
-    print(f"[Wf-364-A2] Running combined MAML + Neural ODE "
-          f"(K_shot={k_shot}, alpha_meta={alpha_meta}, "
-          f"alpha_inner={alpha_inner}, cv={cv_folds}, epochs={epochs}) ...")
+    print(
+        f"[Wf-364-A2] Running combined MAML + Neural ODE "
+        f"(K_shot={k_shot}, alpha_meta={alpha_meta}, "
+        f"alpha_inner={alpha_inner}, cv={cv_folds}, epochs={epochs}) ..."
+    )
     t0 = time.time()
     # Average over `epochs` runs to reduce sampling variance in
     # K_shot selection (per Wf-361-B1 §main convention)
     cand_combined_runs: List[np.ndarray] = []
     for ep in range(epochs):
         run = _combined_cv_predict(
-            X_ode, y,
+            X_ode,
+            y,
             alpha_meta=alpha_meta,
             alpha_inner=alpha_inner,
             k_shot=k_shot,
@@ -533,17 +562,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         cand_combined_runs.append(run["y_pred_cv"])
     cand_combined_pred = np.mean(np.stack(cand_combined_runs), axis=0)
     from sklearn.metrics import r2_score as _r2_score
+
     cand_combined_r2 = float(_r2_score(y, cand_combined_pred))
     cand_combined_aug_mean = float(np.mean(cand_combined_pred))
     cand_combined_aug_pass = _compute_baseline_pass_rate(
-        cand_combined_pred, M6_KAPPA_THRESHOLD,
+        cand_combined_pred,
+        M6_KAPPA_THRESHOLD,
     )
     cand_combined_lift = cand_combined_aug_pass - baseline_pass_rate
     cand_combined_aug_pass_adapt = _compute_baseline_pass_rate(
-        cand_combined_pred, M6_KAPPA_THRESHOLD_ADAPTIVE,
+        cand_combined_pred,
+        M6_KAPPA_THRESHOLD_ADAPTIVE,
     )
     cand_combined_baseline_pass_adapt = _compute_baseline_pass_rate(
-        y, M6_KAPPA_THRESHOLD_ADAPTIVE,
+        y,
+        M6_KAPPA_THRESHOLD_ADAPTIVE,
     )
     cand_combined_lift_adapt = (
         cand_combined_aug_pass_adapt - cand_combined_baseline_pass_adapt
@@ -583,7 +616,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "aug_mean": float(np.mean(yp)),
             "pass": _compute_baseline_pass_rate(yp, M6_KAPPA_THRESHOLD),
             "pass_adapt": _compute_baseline_pass_rate(
-                yp, M6_KAPPA_THRESHOLD_ADAPTIVE,
+                yp,
+                M6_KAPPA_THRESHOLD_ADAPTIVE,
             ),
         }
 
@@ -633,7 +667,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     cand_joint_runs: List[np.ndarray] = []
     for ep in range(epochs):
         run = _combined_cv_predict(
-            X_joint, y,
+            X_joint,
+            y,
             alpha_meta=alpha_meta,
             alpha_inner=alpha_inner,
             k_shot=k_shot,
@@ -645,10 +680,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     cand_joint_r2 = float(_r2_score(y, cand_joint_pred))
     cand_joint_aug_mean = float(np.mean(cand_joint_pred))
     cand_joint_aug_pass = _compute_baseline_pass_rate(
-        cand_joint_pred, M6_KAPPA_THRESHOLD,
+        cand_joint_pred,
+        M6_KAPPA_THRESHOLD,
     )
     cand_joint_aug_pass_adapt = _compute_baseline_pass_rate(
-        cand_joint_pred, M6_KAPPA_THRESHOLD_ADAPTIVE,
+        cand_joint_pred,
+        M6_KAPPA_THRESHOLD_ADAPTIVE,
     )
     cand_joint_lift = cand_joint_aug_pass - baseline_pass_rate
     cand_joint_lift_adapt = (
@@ -684,17 +721,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     print()
     print("=" * 80)
     print(f"Wf-364-A2 SUMMARY")
-    print(f"  m6_kappa baseline mean : {baseline_mean:.4f} "
-          f"(Wf-325D MEASURED={WF_325D_MEASURED_BASELINE:.4f}, "
-          f"Wf-359-A1 platinai_4cell={WF_359A1_MEASURED_BASELINE:.4f})")
+    print(
+        f"  m6_kappa baseline mean : {baseline_mean:.4f} "
+        f"(Wf-325D MEASURED={WF_325D_MEASURED_BASELINE:.4f}, "
+        f"Wf-359-A1 platinai_4cell={WF_359A1_MEASURED_BASELINE:.4f})"
+    )
     print(f"  pass_rate @0.60        : {baseline_pass_rate:.4f}")
-    print(f"  pass_rate @0.55 (ada)  : "
-          f"{cand_combined_baseline_pass_adapt:.4f}")
+    print(f"  pass_rate @0.55 (ada)  : " f"{cand_combined_baseline_pass_adapt:.4f}")
     print(f"  candidates             : {len(candidates)}")
     print()
-    print(f"  {'candidate':<40s} {'n_feat':>7s} {'cv_r2':>9s} "
-          f"{'aug_mean':>9s} {'pass_lift':>10s} {'lift_adapt':>11s} "
-          f"{'verdict':<30s}")
+    print(
+        f"  {'candidate':<40s} {'n_feat':>7s} {'cv_r2':>9s} "
+        f"{'aug_mean':>9s} {'pass_lift':>10s} {'lift_adapt':>11s} "
+        f"{'verdict':<30s}"
+    )
     for c in candidates:
         print(
             f"  {c['candidate']:<40s} {c['n_features']:>7d} "
@@ -706,17 +746,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     best_cv_r2 = max(c["cv_r2"] for c in candidates)
     best_cv_r2_candidate = next(
-        c["candidate"] for c in candidates
-        if c["cv_r2"] == best_cv_r2
+        c["candidate"] for c in candidates if c["cv_r2"] == best_cv_r2
     )
     best_aug_mean = max(c["augmented_mean"] for c in candidates)
     best_aug_candidate = next(
-        c["candidate"] for c in candidates
-        if c["augmented_mean"] == best_aug_mean
+        c["candidate"] for c in candidates if c["augmented_mean"] == best_aug_mean
     )
     any_resolved = any(
-        c["verdict"] == "HONEST_NEGATIVE_M6_KAPPA_RESOLVED"
-        for c in candidates
+        c["verdict"] == "HONEST_NEGATIVE_M6_KAPPA_RESOLVED" for c in candidates
     )
     if any_resolved:
         aggregate_status = "HONEST_NEGATIVE_M6_KAPPA_RESOLVED"
@@ -728,10 +765,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ceiling_break = best_aug_mean >= M6_KAPPA_THRESHOLD
 
     print()
-    print(f"  best_cv_r2 candidate       : {best_cv_r2_candidate} "
-          f"(CV-R²={best_cv_r2:+.4f})")
-    print(f"  best_aug_mean candidate    : {best_aug_candidate} "
-          f"(aug_mean={best_aug_mean:+.4f})")
+    print(
+        f"  best_cv_r2 candidate       : {best_cv_r2_candidate} "
+        f"(CV-R²={best_cv_r2:+.4f})"
+    )
+    print(
+        f"  best_aug_mean candidate    : {best_aug_candidate} "
+        f"(aug_mean={best_aug_mean:+.4f})"
+    )
     print(f"  aggregate_status           : {aggregate_status}")
     print(f"  ceiling_break              : {ceiling_break}")
     print("=" * 80)
@@ -741,7 +782,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     result: Dict[str, Any] = {
         "wf": "Wf-364-A2",
         "task": "m6_kappa MAML + Neural ODE combined exploration "
-                "(LAST architectural path per Wf-364-A2 brief)",
+        "(LAST architectural path per Wf-364-A2 brief)",
         "date_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "no_gpu_launch": True,
         "no_retrain": True,
@@ -797,7 +838,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "MAML provides K_shot inner-loop adaptation on top."
             ),
             "m6_kappa_lift_status": (
-                "RESOLVED" if aggregate_status == "HONEST_NEGATIVE_M6_KAPPA_RESOLVED"
+                "RESOLVED"
+                if aggregate_status == "HONEST_NEGATIVE_M6_KAPPA_RESOLVED"
                 else "PERSISTENT (PARTIAL_STRUCTURAL preserved — final state)"
             ),
             "interpretation_note": (
@@ -854,26 +896,39 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     csv_out = out_dir / "per_axis.csv"
     with open(csv_out, "w", encoding="utf-8", newline="") as fh:
         writer = csv.writer(fh)
-        writer.writerow([
-            "candidate", "n_features", "cv_r2", "augmented_mean",
-            "delta_mean", "pass_rate_baseline", "pass_rate_augmented",
-            "pass_rate_lift", "pass_rate_baseline_adaptive",
-            "pass_rate_augmented_adaptive", "pass_rate_lift_adaptive",
-            "verdict",
-        ])
+        writer.writerow(
+            [
+                "candidate",
+                "n_features",
+                "cv_r2",
+                "augmented_mean",
+                "delta_mean",
+                "pass_rate_baseline",
+                "pass_rate_augmented",
+                "pass_rate_lift",
+                "pass_rate_baseline_adaptive",
+                "pass_rate_augmented_adaptive",
+                "pass_rate_lift_adaptive",
+                "verdict",
+            ]
+        )
         for c in candidates:
-            writer.writerow([
-                c["candidate"], c["n_features"], f"{c['cv_r2']:+.6f}",
-                f"{c['augmented_mean']:.6f}",
-                f"{c['delta_mean']:+.6f}",
-                f"{c['pass_rate_baseline']:.6f}",
-                f"{c['pass_rate_augmented']:.6f}",
-                f"{c['pass_rate_lift']:+.6f}",
-                f"{c['pass_rate_baseline_adaptive']:.6f}",
-                f"{c['pass_rate_augmented_adaptive']:.6f}",
-                f"{c['pass_rate_lift_adaptive']:+.6f}",
-                c["verdict"],
-            ])
+            writer.writerow(
+                [
+                    c["candidate"],
+                    c["n_features"],
+                    f"{c['cv_r2']:+.6f}",
+                    f"{c['augmented_mean']:.6f}",
+                    f"{c['delta_mean']:+.6f}",
+                    f"{c['pass_rate_baseline']:.6f}",
+                    f"{c['pass_rate_augmented']:.6f}",
+                    f"{c['pass_rate_lift']:+.6f}",
+                    f"{c['pass_rate_baseline_adaptive']:.6f}",
+                    f"{c['pass_rate_augmented_adaptive']:.6f}",
+                    f"{c['pass_rate_lift_adaptive']:+.6f}",
+                    c["verdict"],
+                ]
+            )
     print(f"[Wf-364-A2] Wrote {csv_out}")
 
     # Plain-text OUTPUT (AGENTS.md §8.3)

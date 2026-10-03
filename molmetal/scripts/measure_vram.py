@@ -49,6 +49,7 @@ Citations
 * Device auto-detect: ``molmetal/utils/device.py`` (``get_device``)
 * Sister verdicts: ``molmetal/reports/wf_vram_fix/01_amp.md``, ``02_checkpoint.md``
 """
+
 from __future__ import annotations
 
 import argparse
@@ -81,6 +82,7 @@ ALL_MODES = ("baseline", "bf16", "checkpoint", "bf16+checkpoint")
 # ---------------------------------------------------------------------------
 # Synthetic batch
 # ---------------------------------------------------------------------------
+
 
 def _build_synthetic_batch(
     batch_size: int,
@@ -158,6 +160,7 @@ def _build_synthetic_batch(
 # Per-mode measurement
 # ---------------------------------------------------------------------------
 
+
 def measure_vram(
     mode: str = "baseline",
     hidden_dim: int = DEFAULT_HIDDEN_DIM,
@@ -198,9 +201,7 @@ def measure_vram(
     with peak fields set to ``None``.
     """
     if mode not in ALL_MODES:
-        raise ValueError(
-            f"mode must be one of {ALL_MODES}, got {mode!r}"
-        )
+        raise ValueError(f"mode must be one of {ALL_MODES}, got {mode!r}")
 
     use_bf16 = mode in ("bf16", "bf16+checkpoint")
     use_checkpoint = mode in ("checkpoint", "bf16+checkpoint")
@@ -246,6 +247,7 @@ def measure_vram(
         egnn_checkpoint_default_enabled,
         set_egnn_checkpoint_default_enabled,
     )
+
     prev_egnn_ckpt = egnn_checkpoint_default_enabled()
     set_egnn_checkpoint_default_enabled(use_checkpoint)
 
@@ -254,6 +256,7 @@ def measure_vram(
     # ``maybe_enable_amp()``.  The harness owns the autocast context
     # so we use the public ``CFMAMPContext`` directly.
     from molmetal.adapters.flow_matching_lipman import maybe_enable_amp
+
     prev_amp_setting = None  # we don't toggle the env; we own the context
 
     try:
@@ -261,12 +264,12 @@ def measure_vram(
             hidden_dim=hidden_dim,
             n_layers=n_layers,
             lr=1e-4,
-            use_bond_head=True,         # exercise the bond path
-            joint_train=True,           # bond head params in optimizer
+            use_bond_head=True,  # exercise the bond path
+            joint_train=True,  # bond head params in optimizer
             bond_loss_weight=1.0,
             bond_pattern_mask=True,
             vocab_mask=True,
-            cfg_scale=1.0,              # skip the double-pass CFG
+            cfg_scale=1.0,  # skip the double-pass CFG
             context_dropout=0.1,
             pocket_embed_scale=0.1,
         )
@@ -309,9 +312,9 @@ def measure_vram(
             _ = loss_value  # currently a float; float() coercion is the contract
             step_times_ms.append((time.perf_counter() - t0) * 1000.0)
 
-        peak_alloc = torch.cuda.max_memory_allocated() / (1024 ** 2)
-        peak_resv = torch.cuda.max_memory_reserved() / (1024 ** 2)
-        cur_alloc = torch.cuda.memory_allocated() / (1024 ** 2)
+        peak_alloc = torch.cuda.max_memory_allocated() / (1024**2)
+        peak_resv = torch.cuda.max_memory_reserved() / (1024**2)
+        cur_alloc = torch.cuda.memory_allocated() / (1024**2)
         frag = peak_resv - peak_alloc
         # Drop warm-up step from the mean — report steady-state.
         steady = step_times_ms[1:] if len(step_times_ms) > 1 else step_times_ms
@@ -349,15 +352,23 @@ def measure_vram(
 # Pretty-print
 # ---------------------------------------------------------------------------
 
-def _print_table(rows: List[Dict[str, Any]], baseline_row: Optional[Dict[str, Any]] = None) -> None:
+
+def _print_table(
+    rows: List[Dict[str, Any]], baseline_row: Optional[Dict[str, Any]] = None
+) -> None:
     """Render the comparison table to stdout."""
     if not rows:
         print("[measure_vram] no rows to display")
         return
 
     headers = [
-        "mode", "peak_alloc_mb", "peak_resv_mb", "frag_mb",
-        "cur_alloc_mb", "step_ms", "delta_vs_baseline_mb",
+        "mode",
+        "peak_alloc_mb",
+        "peak_resv_mb",
+        "frag_mb",
+        "cur_alloc_mb",
+        "step_ms",
+        "delta_vs_baseline_mb",
     ]
     print("[measure_vram] " + " | ".join(f"{h:>22}" for h in headers))
     print("[measure_vram] " + "-" * (24 * len(headers)))
@@ -367,10 +378,7 @@ def _print_table(rows: List[Dict[str, Any]], baseline_row: Optional[Dict[str, An
     for row in rows:
         if not row.get("available"):
             err = row.get("error", "no GPU")
-            print(
-                f"[measure_vram] {row['mode']:<22} | "
-                f"{'SKIPPED':>22} | err={err}"
-            )
+            print(f"[measure_vram] {row['mode']:<22} | " f"{'SKIPPED':>22} | err={err}")
             continue
         delta = ""
         if base_peak is not None and row.get("peak_allocated_mb") is not None:
@@ -393,6 +401,7 @@ def _print_table(rows: List[Dict[str, Any]], baseline_row: Optional[Dict[str, An
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -412,15 +421,21 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--n-steps", type=int, default=DEFAULT_N_STEPS)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
-        "--json-out", type=Path, default=None,
+        "--json-out",
+        type=Path,
+        default=None,
         help="Optional path to dump the per-mode results as JSON.",
     )
     args = parser.parse_args(argv)
 
-    print(f"[measure_vram] torch.cuda.is_available()={torch.cuda.is_available()}"
-          f" device_count={torch.cuda.device_count() if torch.cuda.is_available() else 0}")
-    print(f"[measure_vram] hidden_dim={args.hidden_dim} n_layers={args.n_layers}"
-          f" batch={args.batch_size} n_atoms={args.n_atoms} steps={args.n_steps}")
+    print(
+        f"[measure_vram] torch.cuda.is_available()={torch.cuda.is_available()}"
+        f" device_count={torch.cuda.device_count() if torch.cuda.is_available() else 0}"
+    )
+    print(
+        f"[measure_vram] hidden_dim={args.hidden_dim} n_layers={args.n_layers}"
+        f" batch={args.batch_size} n_atoms={args.n_atoms} steps={args.n_steps}"
+    )
 
     modes_to_run = ALL_MODES if args.mode == "all" else (args.mode,)
     rows: List[Dict[str, Any]] = []

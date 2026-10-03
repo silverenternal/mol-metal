@@ -58,6 +58,7 @@ Usage
         --n-target 100 --chromedb \\
         --out .data/molmetal/platinai_selenium_real_labels.csv
 """
+
 from __future__ import annotations
 
 import argparse
@@ -76,12 +77,8 @@ if str(PROJECT_ROOT) not in sys.path:
 
 # ChemRxiv URLs for Rusanov 2025 PlatinAI paper
 # DOI: 10.26434/chemrxiv-2025-pp32k
-CHEMRXIV_ARTICLE_URL = (
-    "https://chemrxiv.org/engage/chemrxiv/article-details/doi/10.26434/chemrxiv-2025-pp32k"
-)
-CHEMRXIV_SUPPL_URL = (
-    "https://chemrxiv.org/engage/chemrxiv/article-details/doi/suppl/10.26434/chemrxiv-2025-pp32k"
-)
+CHEMRXIV_ARTICLE_URL = "https://chemrxiv.org/engage/chemrxiv/article-details/doi/10.26434/chemrxiv-2025-pp32k"
+CHEMRXIV_SUPPL_URL = "https://chemrxiv.org/engage/chemrxiv/article-details/doi/suppl/10.26434/chemrxiv-2025-pp32k"
 
 # Rusanov 2025 Table S4-S5 expected cell lines (per Wf-295B §1)
 TARGET_CELL_LINES = ["MCF7", "A549", "A2780", "A2780cis"]
@@ -101,6 +98,7 @@ def _import_uc():
         import undetected_chromedriver as uc  # type: ignore
         from selenium.webdriver.common.by import By  # type: ignore
         from selenium.webdriver.support.ui import WebDriverWait  # type: ignore
+
         return uc, By, WebDriverWait
     except ImportError as e:
         print(f"IMPORT_FAIL: undetected-chromedriver / selenium not installed: {e}")
@@ -131,20 +129,25 @@ def _detect_chrome_path() -> Tuple[str, int]:
     # Playwright fallback - pick the highest-version chromium (sort descending)
     pw_root = Path("/home/hugo/.cache/ms-playwright")
     if pw_root.exists():
-        candidates = sorted(pw_root.glob("chromium-*/chrome-linux64/chrome"),
-                            reverse=True)  # highest version first
+        candidates = sorted(
+            pw_root.glob("chromium-*/chrome-linux64/chrome"), reverse=True
+        )  # highest version first
         for sub in candidates:
             if sub.exists():
                 # Probe actual chrome version via --version flag (no launch needed)
                 import subprocess
+
                 try:
                     out = subprocess.run(
                         [str(sub), "--version"],
-                        capture_output=True, text=True, timeout=10,
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
                     )
                     ver_str = (out.stdout or out.stderr or "").strip()
                     # e.g. "Chromium 151.0.7922.34"
                     import re
+
                     m = re.search(r"(\d+)\.\d+\.\d+\.\d+", ver_str)
                     if m:
                         actual_major = int(m.group(1))
@@ -201,8 +204,9 @@ def _wait_for_cloudflare(driver, By, WebDriverWait, timeout: int = 60) -> bool:
     return False
 
 
-def _try_navigate(driver, url: str, By, WebDriverWait,
-                  cf_wait: int, network_timeout: int) -> Tuple[bool, str]:
+def _try_navigate(
+    driver, url: str, By, WebDriverWait, cf_wait: int, network_timeout: int
+) -> Tuple[bool, str]:
     """Navigate to URL, wait for CF, return (success, final_url_or_err)."""
     t0 = time.time()
     try:
@@ -232,7 +236,9 @@ def _extract_supplementary_links(driver) -> List[Dict[str, str]]:
         for a in anchors:
             href = a.get_attribute("href") or ""
             text = (a.text or "").strip()
-            if any(ext in href.lower() for ext in [".xlsx", ".xls", ".csv", "suppl", "si_"]):
+            if any(
+                ext in href.lower() for ext in [".xlsx", ".xls", ".csv", "suppl", "si_"]
+            ):
                 out.append({"href": href, "text": text})
         return out
     except Exception as e:
@@ -246,6 +252,7 @@ def _download_via_browser(driver, url: str, out_path: Path) -> bool:
     try:
         # For xlsx we can also use JS fetch (smaller files)
         import base64
+
         js = """
         const r = await fetch(arguments[0]);
         if (!r.ok) return null;
@@ -298,7 +305,9 @@ def _parse_xlsx_for_ic50(xlsx_path: Path) -> List[Dict[str, Optional[float]]]:
     # Find compound_id column
     cid_idx = None
     for i, h in enumerate(header_lc):
-        if any(k in h for k in ["compound_id", "compound id", "id", "mb_id", "complex_id"]):
+        if any(
+            k in h for k in ["compound_id", "compound id", "id", "mb_id", "complex_id"]
+        ):
             cid_idx = i
             break
     # Find per-cell-line IC50 columns
@@ -309,8 +318,10 @@ def _parse_xlsx_for_ic50(xlsx_path: Path) -> List[Dict[str, Optional[float]]]:
             if cl_lc in h and ("ic50" in h or "pic50" in h):
                 cell_ic50_idx[cl] = i
                 break
-    print(f"  header_cols: {len(header_lc)}; cid_idx={cid_idx}; "
-          f"cell_ic50_idx={cell_ic50_idx}")
+    print(
+        f"  header_cols: {len(header_lc)}; cid_idx={cid_idx}; "
+        f"cell_ic50_idx={cell_ic50_idx}"
+    )
     if cid_idx is None or not cell_ic50_idx:
         return []
     out: List[Dict[str, Optional[float]]] = []
@@ -353,20 +364,42 @@ def write_outputs(rows: List[Dict], out_path: Path, meta: Dict) -> Dict[str, str
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[1])
-    parser.add_argument("--n-target", type=int, default=100,
-                        help="Number of compounds to harvest (smoke target)")
-    parser.add_argument("--out", default=".data/molmetal/platinai_selenium_real_labels.csv",
-                        help="Output CSV path")
-    parser.add_argument("--cf-wait", type=int, default=60,
-                        help="Max seconds to wait for Cloudflare challenge (default 60)")
-    parser.add_argument("--no-headless", action="store_true",
-                        help="Disable headless mode (visible browser, for debugging)")
-    parser.add_argument("--skip-cf", action="store_true",
-                        help="Skip CF wait (for non-CF endpoints like direct xlsx)")
-    parser.add_argument("--url", default=CHEMRXIV_ARTICLE_URL,
-                        help="URL to navigate to (default ChemRxiv article)")
+    parser.add_argument(
+        "--n-target",
+        type=int,
+        default=100,
+        help="Number of compounds to harvest (smoke target)",
+    )
+    parser.add_argument(
+        "--out",
+        default=".data/molmetal/platinai_selenium_real_labels.csv",
+        help="Output CSV path",
+    )
+    parser.add_argument(
+        "--cf-wait",
+        type=int,
+        default=60,
+        help="Max seconds to wait for Cloudflare challenge (default 60)",
+    )
+    parser.add_argument(
+        "--no-headless",
+        action="store_true",
+        help="Disable headless mode (visible browser, for debugging)",
+    )
+    parser.add_argument(
+        "--skip-cf",
+        action="store_true",
+        help="Skip CF wait (for non-CF endpoints like direct xlsx)",
+    )
+    parser.add_argument(
+        "--url",
+        default=CHEMRXIV_ARTICLE_URL,
+        help="URL to navigate to (default ChemRxiv article)",
+    )
     args = parser.parse_args()
-    out_path = PROJECT_ROOT / args.out if not args.out.startswith("/") else Path(args.out)
+    out_path = (
+        PROJECT_ROOT / args.out if not args.out.startswith("/") else Path(args.out)
+    )
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     print("=== Wf-304B: PlatinAI Selenium S1 loader (Strategy S1 from Wf-292D) ===")
@@ -401,8 +434,9 @@ def main() -> int:
     suppl_links: List[Dict[str, str]] = []
     try:
         print(f"[2/4] Navigating to {args.url}...")
-        ok, info = _try_navigate(driver, args.url, By, WebDriverWait,
-                                 args.cf_wait, network_timeout=30)
+        ok, info = _try_navigate(
+            driver, args.url, By, WebDriverWait, args.cf_wait, network_timeout=30
+        )
         if ok:
             cf_solved = True
             final_url = info
@@ -428,7 +462,9 @@ def main() -> int:
                 src_path = ss_dir / "block_state.html"
                 src_path.write_text(driver.page_source)
                 print(f"      [forensic] screenshot: {ss}")
-                print(f"      [forensic] page_source: {src_path} ({len(driver.page_source)} bytes)")
+                print(
+                    f"      [forensic] page_source: {src_path} ({len(driver.page_source)} bytes)"
+                )
                 final_title = driver.title
                 final_source_bytes = len(driver.page_source)
             except Exception as fe:
@@ -458,8 +494,12 @@ def main() -> int:
                     rows = _parse_xlsx_for_ic50(cache)
                     rows = rows[: args.n_target]
                     n_per_cell_ic50 = sum(
-                        1 for r in rows
-                        if any(r.get(f"{cl}_IC50_uM") is not None for cl in TARGET_CELL_LINES)
+                        1
+                        for r in rows
+                        if any(
+                            r.get(f"{cl}_IC50_uM") is not None
+                            for cl in TARGET_CELL_LINES
+                        )
                     )
                 driver2.quit()
             except Exception as e:
@@ -475,8 +515,11 @@ def main() -> int:
     print(f"user_ok_status:      NOT_REQUESTED (workflow harness auto-launched)")
 
     meta = {
-        "status": "OK" if cf_solved and n_per_cell_ic50 > 0 else
-                  "PARTIAL" if cf_solved else "BLOCK_CF",
+        "status": "OK"
+        if cf_solved and n_per_cell_ic50 > 0
+        else "PARTIAL"
+        if cf_solved
+        else "BLOCK_CF",
         "cf_solved": cf_solved,
         "final_url": final_url,
         "final_title": final_title,

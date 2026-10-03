@@ -23,6 +23,7 @@ Wf-67 Phase 2: 16 pytest contracts pinning
 
 All tests CPU-only, deterministic, complete < 120 s combined.
 """
+
 from __future__ import annotations
 
 import json
@@ -181,18 +182,35 @@ def test_dative_preprocessor_empty() -> None:
 def test_aggregate_keys() -> None:
     """_aggregate_per_metal returns expected keys."""
     recs = [
-        {"status": "ok", "closure_ok": True, "wall_time_s": 0.1,
-         "memory_mb": 0.5, "dative_converted": True},
-        {"status": "ok", "closure_ok": False, "wall_time_s": 0.2,
-         "memory_mb": 0.6, "dative_converted": False},
+        {
+            "status": "ok",
+            "closure_ok": True,
+            "wall_time_s": 0.1,
+            "memory_mb": 0.5,
+            "dative_converted": True,
+        },
+        {
+            "status": "ok",
+            "closure_ok": False,
+            "wall_time_s": 0.2,
+            "memory_mb": 0.6,
+            "dative_converted": False,
+        },
     ]
     agg = _aggregate_per_metal(recs)
     for key in (
-        "n_samples", "n_closure_ok", "closure_reachability_rate",
-        "n_parse_error", "n_dative_converted",
-        "mean_wall_time_s", "median_wall_time_s", "std_wall_time_s",
-        "total_wall_time_s", "peak_memory_mb",
-        "gate_target", "gate_pass",
+        "n_samples",
+        "n_closure_ok",
+        "closure_reachability_rate",
+        "n_parse_error",
+        "n_dative_converted",
+        "mean_wall_time_s",
+        "median_wall_time_s",
+        "std_wall_time_s",
+        "total_wall_time_s",
+        "peak_memory_mb",
+        "gate_target",
+        "gate_pass",
     ):
         assert key in agg
     assert agg["n_samples"] == 2
@@ -208,8 +226,13 @@ def test_aggregate_keys() -> None:
 def test_aggregate_gate_pass_false() -> None:
     """Aggregate below gate target → gate_pass=False."""
     recs = [
-        {"status": "ok", "closure_ok": False, "wall_time_s": 0.1,
-         "memory_mb": 0.5, "dative_converted": False}
+        {
+            "status": "ok",
+            "closure_ok": False,
+            "wall_time_s": 0.1,
+            "memory_mb": 0.5,
+            "dative_converted": False,
+        }
         for _ in range(10)
     ]
     agg = _aggregate_per_metal(recs)
@@ -253,7 +276,10 @@ def test_smoke_run_3_metals(smoke_payload: Dict[str, Any]) -> None:
 def test_per_metal_files_written(tmp_path: Path) -> None:
     """Per-metal reachability.json files are written."""
     payload = run_benchmark(
-        n_metals=2, n_samples=3, metals=["Pt", "Ru"], output_dir=tmp_path,
+        n_metals=2,
+        n_samples=3,
+        metals=["Pt", "Ru"],
+        output_dir=tmp_path,
     )
     paths = save_per_metal(payload, output_dir=tmp_path)
     assert (tmp_path / "Pt" / "reachability.json").is_file()
@@ -272,7 +298,10 @@ def test_per_metal_files_written(tmp_path: Path) -> None:
 def test_synthesis_md_written(tmp_path: Path) -> None:
     """synthesis.md is written with TL;DR + per-metal breakdown."""
     payload = run_benchmark(
-        n_metals=3, n_samples=3, metals=["Pt", "Ru", "Pd"], output_dir=tmp_path,
+        n_metals=3,
+        n_samples=3,
+        metals=["Pt", "Ru", "Pd"],
+        output_dir=tmp_path,
     )
     save_per_metal(payload, output_dir=tmp_path)
     md_path = write_synthesis(payload, output_dir=tmp_path)

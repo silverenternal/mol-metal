@@ -18,6 +18,7 @@ correctly:
    top-10 lists and a correlation matrix that is not degenerate
    (1 test).
 """
+
 from __future__ import annotations
 
 import json
@@ -42,6 +43,7 @@ SCRIPT_PATH = _REPO_ROOT / "molmetal/scripts/analyze_feature_target_correlation.
 
 def _import_script():
     import importlib.util
+
     mod_name = "analyze_feature_target_correlation"
     spec = importlib.util.spec_from_file_location(
         mod_name,
@@ -58,6 +60,7 @@ def _import_script():
 # 1. Artefact existence
 # ---------------------------------------------------------------------------
 
+
 def test_cli_writes_correlation_analysis_json():
     """Run the CLI and confirm the JSON artefact is produced."""
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
@@ -67,11 +70,14 @@ def test_cli_writes_correlation_analysis_json():
     env["PYTHONPATH"] = str(_REPO_ROOT) + os.pathsep + env.get("PYTHONPATH", "")
     result = subprocess.run(
         [sys.executable, str(SCRIPT_PATH), "--out-dir", str(REPORT_DIR), "--quiet"],
-        capture_output=True, text=True, env=env, timeout=300,
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=300,
     )
-    assert result.returncode == 0, (
-        f"Script failed: rc={result.returncode} stderr={result.stderr}"
-    )
+    assert (
+        result.returncode == 0
+    ), f"Script failed: rc={result.returncode} stderr={result.stderr}"
     assert OUT_PATH.exists(), f"Expected {OUT_PATH} to exist after CLI run"
     assert OUT_PATH.stat().st_size > 0, "correlation_analysis.json is empty"
 
@@ -79,6 +85,7 @@ def test_cli_writes_correlation_analysis_json():
 # ---------------------------------------------------------------------------
 # 2. Schema correctness
 # ---------------------------------------------------------------------------
+
 
 def _load_json_or_skip():
     if not OUT_PATH.exists():
@@ -89,14 +96,22 @@ def _load_json_or_skip():
 def test_schema_top_level_keys():
     payload = _load_json_or_skip()
     expected = {
-        "$schema_version", "workflow", "phase", "title", "description",
-        "n_datasets", "n_triples", "datasets", "summary",
-        "top_10_by_abs_pearson", "top_10_by_abs_spearman",
+        "$schema_version",
+        "workflow",
+        "phase",
+        "title",
+        "description",
+        "n_datasets",
+        "n_triples",
+        "datasets",
+        "summary",
+        "top_10_by_abs_pearson",
+        "top_10_by_abs_spearman",
         "correlation_matrix",
     }
-    assert expected.issubset(payload.keys()), (
-        f"Missing top-level keys: {expected - set(payload.keys())}"
-    )
+    assert expected.issubset(
+        payload.keys()
+    ), f"Missing top-level keys: {expected - set(payload.keys())}"
     assert payload["workflow"] == "Wf-44"
     assert payload["phase"] == "Phase 5"
 
@@ -105,12 +120,17 @@ def test_schema_summary_block_keys():
     payload = _load_json_or_skip()
     s = payload["summary"]
     for k in (
-        "max_abs_pearson_r", "max_abs_spearman_rho", "max_mutual_info",
-        "c8_trip", "c8_partial", "verdict",
+        "max_abs_pearson_r",
+        "max_abs_spearman_rho",
+        "max_mutual_info",
+        "c8_trip",
+        "c8_partial",
+        "verdict",
     ):
         assert k in s, f"Missing summary key: {k}"
     assert s["verdict"] in {
-        "features_truly_weak", "features_partially_correlated",
+        "features_truly_weak",
+        "features_partially_correlated",
         "features_carry_signal",
     }
 
@@ -136,6 +156,7 @@ def test_top10_lists_have_at_most_10():
 # ---------------------------------------------------------------------------
 # 3. Correlation primitives
 # ---------------------------------------------------------------------------
+
 
 def test_safe_pearsonr_known_signal():
     mod = _import_script()
@@ -184,6 +205,7 @@ def test_safe_pIC50_from_nM_known():
 # 4. Feature extractors
 # ---------------------------------------------------------------------------
 
+
 def test_extract_astsr_features_shape():
     mod = _import_script()
     smiles = ["CCO", "c1ccccc1", "CCN(CC)CC"]
@@ -205,6 +227,7 @@ def test_extract_dmpnn_features_shape():
 # 5. End-to-end — non-degenerate
 # ---------------------------------------------------------------------------
 
+
 def test_correlation_analysis_is_nonempty():
     payload = _load_json_or_skip()
     # We have 3 datasets × (5 ASTSR + 117 D-MPNN) features × n_targets;
@@ -212,7 +235,8 @@ def test_correlation_analysis_is_nonempty():
     assert payload["n_triples"] > 0
     # The summary verdict must be one of the 3 valid labels.
     assert payload["summary"]["verdict"] in {
-        "features_truly_weak", "features_partially_correlated",
+        "features_truly_weak",
+        "features_partially_correlated",
         "features_carry_signal",
     }
     # The correlation matrix must have at least one row.

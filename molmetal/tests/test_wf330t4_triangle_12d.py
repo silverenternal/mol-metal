@@ -92,28 +92,37 @@ def test_f5_rdkit_2d_12d_extraction() -> None:
 
     # (1) Canonical 12-d schema check.
     expected_12d = (
-        "MolWt", "MolLogP", "TPSA", "HBA", "HBD", "NRotB",
-        "HeavyAtoms", "RingCount", "NumAromaticRings", "FractionCSP3",
-        "MolMR", "BalabanJ",
+        "MolWt",
+        "MolLogP",
+        "TPSA",
+        "HBA",
+        "HBD",
+        "NRotB",
+        "HeavyAtoms",
+        "RingCount",
+        "NumAromaticRings",
+        "FractionCSP3",
+        "MolMR",
+        "BalabanJ",
     )
-    assert FEATURE_NAMES_12D == expected_12d, (
-        f"F5_RDKIT_2D 12-d schema drift: {FEATURE_NAMES_12D} != {expected_12d}"
-    )
+    assert (
+        FEATURE_NAMES_12D == expected_12d
+    ), f"F5_RDKIT_2D 12-d schema drift: {FEATURE_NAMES_12D} != {expected_12d}"
 
     # (2) Lipinski 4-driver check (Wf-49 P1 + Wf-218 schema contract).
     lipinski_required = {"MolLogP", "TPSA", "HBA", "HBD"}
-    assert lipinski_required.issubset(set(FEATURE_NAMES_12D)), (
-        f"Missing Lipinski drivers: {lipinski_required - set(FEATURE_NAMES_12D)}"
-    )
+    assert lipinski_required.issubset(
+        set(FEATURE_NAMES_12D)
+    ), f"Missing Lipinski drivers: {lipinski_required - set(FEATURE_NAMES_12D)}"
 
     # (3) Vectorised extractor produces (n, 12) float64 array.
     smis = list(_FIXTURE_SMILES)
     X, names = build_triangle_feature_matrix(
-        smiles_list=smis, metal_list=["Pt"] * len(smis), mode="12d",
+        smiles_list=smis,
+        metal_list=["Pt"] * len(smis),
+        mode="12d",
     )
-    assert X.shape == (len(smis), 12), (
-        f"12-d feature matrix shape drift: {X.shape}"
-    )
+    assert X.shape == (len(smis), 12), f"12-d feature matrix shape drift: {X.shape}"
     assert names == FEATURE_NAMES_12D
     # All entries must be finite (RDKit succeeded on cisplatin canonical SMILES).
     assert np.all(np.isfinite(X)), "12-d feature matrix has non-finite entries"
@@ -125,21 +134,27 @@ def test_f5_rdkit_2d_12d_extraction() -> None:
 
     # (5) 17-d first 5 columns equal the 5-d path byte-equivalent.
     X5, n5 = build_triangle_feature_matrix(
-        smiles_list=smis, metal_list=["Pt"] * len(smis), mode="5d",
+        smiles_list=smis,
+        metal_list=["Pt"] * len(smis),
+        mode="5d",
     )
     X17, n17 = build_triangle_feature_matrix(
-        smiles_list=smis, metal_list=["Pt"] * len(smis), mode="17d",
+        smiles_list=smis,
+        metal_list=["Pt"] * len(smis),
+        mode="17d",
     )
     assert X5.shape == (len(smis), 5)
     assert X17.shape == (len(smis), 17)
     assert n5 == FEATURE_NAMES_5D
     assert n17 == FEATURE_NAMES_5D + FEATURE_NAMES_12D
     np.testing.assert_array_equal(
-        X17[:, :5], X5,
+        X17[:, :5],
+        X5,
         err_msg="17-d first 5 columns must equal 5-d path byte-equivalent",
     )
     np.testing.assert_array_equal(
-        X17[:, 5:], X,
+        X17[:, 5:],
+        X,
         err_msg="17-d last 12 columns must equal 12-d path",
     )
 
@@ -206,13 +221,11 @@ def test_triangle_closure_12d_integration_astsr() -> None:
     )
     # ASTSR vertex must produce finite output.
     assert astsr_v.name == "astsr"
-    assert math.isfinite(astsr_v.r2), (
-        f"ASTSR R² is non-finite on 12d: {astsr_v.r2}"
-    )
+    assert math.isfinite(astsr_v.r2), f"ASTSR R² is non-finite on 12d: {astsr_v.r2}"
     assert astsr_v.wall_s > 0.0
-    assert astsr_v.wall_s < 30.0, (
-        f"ASTSR vertex wall_s out of budget: {astsr_v.wall_s:.2f}s"
-    )
+    assert (
+        astsr_v.wall_s < 30.0
+    ), f"ASTSR vertex wall_s out of budget: {astsr_v.wall_s:.2f}s"
     # Feature names contract: 12 names, not f0..f11.
     assert len(names_12d) == 12
     assert all(not n.startswith("f") or not n[1:].isdigit() for n in names_12d)
@@ -240,7 +253,10 @@ def test_convergence_lift_12d_over_5d_cpu_proxy() -> None:
     (e.g. running pytest before the smoke), the test is SKIPPED.
     """
     report_path = (
-        _REPO_ROOT / "molmetal" / "reports" / "wf330_triangle_12d"
+        _REPO_ROOT
+        / "molmetal"
+        / "reports"
+        / "wf330_triangle_12d"
         / "triangle_12d_bench.json"
     )
     if not report_path.exists():
@@ -251,14 +267,11 @@ def test_convergence_lift_12d_over_5d_cpu_proxy() -> None:
         )
     payload = json.loads(report_path.read_text())
     per_dataset = payload.get("per_dataset", {})
-    assert per_dataset, (
-        "Wf-330-T4 bench JSON has empty per_dataset; smoke failed"
-    )
+    assert per_dataset, "Wf-330-T4 bench JSON has empty per_dataset; smoke failed"
 
     # At least one dataset shows a positive 12-d lift on hilbert R².
     lifts = [
-        per_dataset[d]["lift"]["mean_hilbert_r2_lift_12d_vs_5d"]
-        for d in per_dataset
+        per_dataset[d]["lift"]["mean_hilbert_r2_lift_12d_vs_5d"] for d in per_dataset
     ]
     assert any(l > 0 for l in lifts), (
         f"12-d F5_RDKIT_2D path does NOT lift mean_hilbert_r2 over 5-d "
@@ -336,7 +349,8 @@ def test_backward_compat_5d_unchanged() -> None:
     for i, (smi, met) in enumerate(zip(smis, metals)):
         direct = compute_features_5d(smi, met)
         np.testing.assert_array_equal(
-            X5[i, :], np.asarray(direct, dtype=np.float64),
+            X5[i, :],
+            np.asarray(direct, dtype=np.float64),
             err_msg=f"5-d row {i} ({smi!r}) mismatch: vectorised vs direct",
         )
 
@@ -373,7 +387,8 @@ def test_backward_compat_5d_unchanged() -> None:
     # (4) 17-d first 5 columns == 5-d path (byte-equivalent).
     X17, _ = build_triangle_feature_matrix(smis, metals, mode="17d")
     np.testing.assert_array_equal(
-        X17[:, :5], X5,
+        X17[:, :5],
+        X5,
         err_msg="17-d first 5 columns must equal 5-d path byte-equivalent "
         "(backward-compat guarantee per Wf-331-R2)",
     )

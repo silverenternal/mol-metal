@@ -86,7 +86,13 @@ if str(REPO_ROOT) not in sys.path:
 # ---------------------------------------------------------------------------
 
 METRICS_DIR = REPO_ROOT / "metrics" / "by_metric"
-DEFAULT_OUT = REPO_ROOT / "molmetal" / "reports" / "wf433_protocol_validator" / "example_output.json"
+DEFAULT_OUT = (
+    REPO_ROOT
+    / "molmetal"
+    / "reports"
+    / "wf433_protocol_validator"
+    / "example_output.json"
+)
 
 # Canonical 3 baseline cache (auto-extracted from COMPARISON_BASELINES.md §1
 # + PROTOCOL_VALIDATION.md §2 + PROTOCOL_ALIGNMENT_MATRIX.md §1).
@@ -128,7 +134,12 @@ BASELINES: Dict[str, Dict[str, Any]] = {
         "threshold_direction": "higher_better",
         "applicable_metrics": ["m2", "m19"],
         "baselines": {
-            "m2": {"A2780cis": 0.62, "MCF7": "CITE-ONLY", "A549": "CITE-ONLY", "A2780": "CITE-ONLY"},
+            "m2": {
+                "A2780cis": 0.62,
+                "MCF7": "CITE-ONLY",
+                "A549": "CITE-ONLY",
+                "A2780": "CITE-ONLY",
+            },
             "m19": {"Pt_fold_primary": 0.70},
         },
         "baseline_source": "TODO/03_baselines/COMPARISON_BASELINES.md::§1.2::Rusanov_2025",
@@ -156,9 +167,7 @@ BASELINES: Dict[str, Dict[str, Any]] = {
             },
         },
         "baseline_source": "TODO/03_baselines/COMPARISON_BASELINES.md::§1.3::DrugOOD_2022",
-        "alignment_note": (
-            "FULL ALIGN; no protocol adjustment"
-        ),
+        "alignment_note": ("FULL ALIGN; no protocol adjustment"),
     },
 }
 
@@ -294,7 +303,9 @@ def _extract_m2_stats(r: Dict[str, Any]) -> OurStats:
     s.overall_value = r.get("value_overall_mean_auc")
     s.overall_std = r.get("value_overall_mean_std")
     cells = r.get("per_cell_line") or {}
-    s.per_cell = {k: float((v or {}).get("auc_mean", float("nan"))) for k, v in cells.items()}
+    s.per_cell = {
+        k: float((v or {}).get("auc_mean", float("nan"))) for k, v in cells.items()
+    }
     s.per_seed = []
     for v in cells.values():
         if v and "per_seed" in v:
@@ -309,7 +320,10 @@ def _extract_m17_stats(r: Dict[str, Any]) -> OurStats:
     s = OurStats()
     s.metric_field = r.get("metric")
     results = r.get("results") or {}
-    s.per_split = {k: float((v or {}).get("ood_auc_mean", float("nan"))) for k, v in results.items()}
+    s.per_split = {
+        k: float((v or {}).get("ood_auc_mean", float("nan")))
+        for k, v in results.items()
+    }
     valid = [v for v in s.per_split.values() if not math.isnan(v)]
     s.overall_value = _safe_mean(valid)
     s.overall_std = _safe_std(valid)
@@ -543,10 +557,13 @@ def run_validation(
     elif baseline_label == "iMoLD_mean":
         # DrugOOD: compare mean of per_split values vs mean of iMoLD splits.
         valid_per_split = [
-            v for v in our_stats.per_split.values()
+            v
+            for v in our_stats.per_split.values()
             if v is not None and not (isinstance(v, float) and (v != v))  # filter NaN
         ]
-        metric_value = _safe_mean(valid_per_split) if valid_per_split else our_stats.overall_value
+        metric_value = (
+            _safe_mean(valid_per_split) if valid_per_split else our_stats.overall_value
+        )
     else:
         metric_value = our_stats.overall_value
 
@@ -670,8 +687,7 @@ def parse_argv(argv: Optional[List[str]] = None) -> argparse.Namespace:
         required=True,
         choices=SUPPORTED_BASELINES,
         help=(
-            "Selected Tier-1 baseline. "
-            f"Supported: {', '.join(SUPPORTED_BASELINES)}."
+            "Selected Tier-1 baseline. " f"Supported: {', '.join(SUPPORTED_BASELINES)}."
         ),
     )
     p.add_argument(

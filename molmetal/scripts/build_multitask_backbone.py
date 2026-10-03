@@ -59,6 +59,7 @@ Usage
         --device cpu \\
         --out-arch molmetal/checkpoints/multitask_5metal_arch.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -87,6 +88,7 @@ try:
     import torch  # type: ignore
     import torch.nn as nn  # type: ignore
     import torch.nn.functional as F  # type: ignore
+
     _HAS_TORCH = True
     _TORCH_ERR: Optional[BaseException] = None
 except Exception as _exc:  # pragma: no cover
@@ -100,12 +102,12 @@ except Exception as _exc:  # pragma: no cover
 # ---------------------------------------------------------------------------
 # Constants — keep in sync with ``build_172d_features``.
 # ---------------------------------------------------------------------------
-INPUT_DIM: int = 172          # 12 RDKit + 32 Multi-PH + 128 PLL
-TRUNK_HIDDEN: int = 256       # shared 5-metal trunk hidden width
-TRUNK_LATENT: int = 128       # shared 5-metal trunk latent width
-HEAD_HIDDEN: int = 64         # per-metal head hidden width
-HEAD_DROPOUT: float = 0.2     # per-metal head dropout (matches V4MT)
-TRUNK_DROPOUT: float = 0.2    # shared trunk dropout
+INPUT_DIM: int = 172  # 12 RDKit + 32 Multi-PH + 128 PLL
+TRUNK_HIDDEN: int = 256  # shared 5-metal trunk hidden width
+TRUNK_LATENT: int = 128  # shared 5-metal trunk latent width
+HEAD_HIDDEN: int = 64  # per-metal head hidden width
+HEAD_DROPOUT: float = 0.2  # per-metal head dropout (matches V4MT)
+TRUNK_DROPOUT: float = 0.2  # shared trunk dropout
 METALS_5: Tuple[str, ...] = ("Ru", "Ir", "Os", "Rh", "Re")
 N_METALS: int = 5
 
@@ -176,9 +178,7 @@ if _HAS_TORCH:  # pragma: no cover - guard on torch availability
             return F.gelu
         if name == "tanh":
             return torch.tanh
-        raise ValueError(
-            f"unknown activation {name!r}; supported: relu, gelu, tanh"
-        )
+        raise ValueError(f"unknown activation {name!r}; supported: relu, gelu, tanh")
 
     class PerMetalHead(nn.Module):
         """Per-metal regression head: ``Linear(in → hidden) → act → Dropout → Linear(hidden → 1)``.
@@ -274,18 +274,13 @@ if _HAS_TORCH:  # pragma: no cover - guard on torch availability
                 )
             self.trunk = SharedTrunk(self.cfg)
             self.metal_heads = nn.ModuleDict(
-                {
-                    m: PerMetalHead(self.cfg.head)
-                    for m in self.cfg.metals
-                }
+                {m: PerMetalHead(self.cfg.head) for m in self.cfg.metals}
             )
 
         # ------------------------------------------------------------------
         def metal_id(self, metal: str) -> int:
             if metal not in self.cfg.metals:
-                raise KeyError(
-                    f"Unknown metal {metal!r}. Supported: {self.cfg.metals}"
-                )
+                raise KeyError(f"Unknown metal {metal!r}. Supported: {self.cfg.metals}")
             return self.cfg.metals.index(metal)
 
         # ------------------------------------------------------------------
@@ -304,9 +299,7 @@ if _HAS_TORCH:  # pragma: no cover - guard on torch availability
                 )
             b = x.size(0)
             if metal_id.size(0) != b:
-                raise ValueError(
-                    f"len(metal_id)={metal_id.size(0)} != x.size(0)={b}"
-                )
+                raise ValueError(f"len(metal_id)={metal_id.size(0)} != x.size(0)={b}")
             if x.size(1) != self.cfg.input_dim:
                 raise ValueError(
                     f"x.size(1)={x.size(1)} != input_dim={self.cfg.input_dim}"
@@ -537,9 +530,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             f"cpu_mean_ms={sanity['cpu_wall']['mean_ms']:.3f}"
         )
         if sanity.get("gpu_wall"):
-            print(
-                f"gpu_mean_ms={sanity['gpu_wall']['mean_ms']:.3f}"
-            )
+            print(f"gpu_mean_ms={sanity['gpu_wall']['mean_ms']:.3f}")
     else:
         print(f"Torch unavailable: {sanity.get('torch_error')}")
     return 0

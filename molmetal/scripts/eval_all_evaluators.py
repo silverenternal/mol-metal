@@ -5,6 +5,7 @@ Run:
     source env.sh
     /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/eval_all_evaluators.py
 """
+
 from __future__ import annotations
 
 import sys
@@ -57,31 +58,43 @@ def main() -> int:
     # 1. SA score
     print("[1] SA score (Ertl-Schuffenhauer)")
     from molmetal.molmetal_lam.sbdd_env.sa_score import sa_score_ertl, sa_score_to_unit
+
     n_total += 1
     if _check("SA(CCO) [low]", lambda: f"{sa_score_ertl('CCO'):.3f}"):
         n_pass += 1
     n_total += 1
-    if _check("SA(aspirin) [low]", lambda: f"{sa_score_ertl('CC(=O)Oc1ccccc1C(=O)O'):.3f}"):
+    if _check(
+        "SA(aspirin) [low]", lambda: f"{sa_score_ertl('CC(=O)Oc1ccccc1C(=O)O'):.3f}"
+    ):
         n_pass += 1
     n_total += 1
-    if _check("SA(taxol) [high]", lambda: f"{sa_score_ertl(TEST_MOLS['taxol (high SA)']):.3f}"):
+    if _check(
+        "SA(taxol) [high]", lambda: f"{sa_score_ertl(TEST_MOLS['taxol (high SA)']):.3f}"
+    ):
         n_pass += 1
 
     # 2. QED
     print("\n[2] QED (Bickerton)")
     from molmetal.molmetal_lam.sbdd_env.qed_scorer import qed_from_smiles
+
     n_total += 1
     if _check("QED(CCO)", lambda: f"{qed_from_smiles('CCO'):.3f}"):
         n_pass += 1
     n_total += 1
-    if _check("QED(ibuprofen) [high]", lambda: f"{qed_from_smiles(TEST_MOLS['ibuprofen (high QED)']):.3f}"):
+    if _check(
+        "QED(ibuprofen) [high]",
+        lambda: f"{qed_from_smiles(TEST_MOLS['ibuprofen (high QED)']):.3f}",
+    ):
         n_pass += 1
 
     # 3. Vina adapter instantiation
     print("\n[3] Vina adapter (AutoDock)")
     from molmetal.molmetal_lam.sbdd_env.vina_adapter import VinaDockingAdapter
+
     n_total += 1
-    if _check("VinaDockingAdapter() instantiate", lambda: type(VinaDockingAdapter()).__name__):
+    if _check(
+        "VinaDockingAdapter() instantiate", lambda: type(VinaDockingAdapter()).__name__
+    ):
         n_pass += 1
 
     # 4. Vina Python binding + meeko
@@ -96,13 +109,17 @@ def main() -> int:
     # 5. PoseBusters
     print("\n[5] PoseBusters (geometric sanity)")
     from molmetal.molmetal_lam.sbdd_env.posebusters_adapter import PoseBustersAdapter
+
     n_total += 1
-    if _check("PoseBustersAdapter() instantiate", lambda: type(PoseBustersAdapter()).__name__):
+    if _check(
+        "PoseBustersAdapter() instantiate", lambda: type(PoseBustersAdapter()).__name__
+    ):
         n_pass += 1
 
     # 6. BioPython (PLIP replacement)
     print("\n[6] BioPython PDB (PLIP replacement)")
     from Bio.PDB import PDBParser, NeighborSearch
+
     n_total += 1
     if _check("Bio.PDB.PDBParser", lambda: PDBParser(QUIET=True)):
         n_pass += 1

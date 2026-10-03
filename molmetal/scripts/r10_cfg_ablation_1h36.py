@@ -52,7 +52,11 @@ if str(PROJECT_ROOT) not in sys.path:
 
 REPORTS = PROJECT_ROOT / "molmetal" / "reports"
 EXAMPLE_PDB = (
-    PROJECT_ROOT / "molmetal" / "references" / "targetdiff" / "examples"
+    PROJECT_ROOT
+    / "molmetal"
+    / "references"
+    / "targetdiff"
+    / "examples"
     / "1h36_A_rec_1h36_r88_lig_tt_docked_0_pocket10.pdb"
 )
 
@@ -82,9 +86,23 @@ def _load_1h36_pocket():
     coords_arr = np.asarray(coords, dtype=np.float32)
     atomic_nums = np.asarray(
         [
-            {"C": 6, "N": 7, "O": 8, "S": 16, "P": 15, "H": 1,
-             "Fe": 26, "Zn": 30, "Mg": 12, "Mn": 25, "Ca": 20,
-             "Cl": 17, "Br": 35, "I": 53, "F": 9}.get(s, 6)
+            {
+                "C": 6,
+                "N": 7,
+                "O": 8,
+                "S": 16,
+                "P": 15,
+                "H": 1,
+                "Fe": 26,
+                "Zn": 30,
+                "Mg": 12,
+                "Mn": 25,
+                "Ca": 20,
+                "Cl": 17,
+                "Br": 35,
+                "I": 53,
+                "F": 9,
+            }.get(s, 6)
             for s in types
         ],
         dtype=np.int64,
@@ -157,9 +175,25 @@ def _generate(adapter, pocket, *, n_samples: int, n_steps: int, seed: int):
 # distance heuristic, and call ``Chem.MolToSmiles`` so Vina can use it.
 # ---------------------------------------------------------------------------
 _ELEM_TO_ATOMIC = {
-    "H": 1, "C": 6, "N": 7, "O": 8, "F": 9, "P": 15, "S": 16, "Cl": 17,
-    "Br": 35, "I": 53, "Na": 11, "Mg": 12, "Ca": 20, "Mn": 25, "Fe": 26,
-    "Co": 27, "Ni": 28, "Cu": 29, "Zn": 30,
+    "H": 1,
+    "C": 6,
+    "N": 7,
+    "O": 8,
+    "F": 9,
+    "P": 15,
+    "S": 16,
+    "Cl": 17,
+    "Br": 35,
+    "I": 53,
+    "Na": 11,
+    "Mg": 12,
+    "Ca": 20,
+    "Mn": 25,
+    "Fe": 26,
+    "Co": 27,
+    "Ni": 28,
+    "Cu": 29,
+    "Zn": 30,
 }
 # AutoDock-Vina / meeko accepts only these elements for organic
 # ligands — exotic metals (Pt, Ir, ...) need special parameter files.
@@ -170,9 +204,25 @@ _ATOMIC_TO_ELEM = {v: k for k, v in _ELEM_TO_ATOMIC.items()}
 # Covalent radii (Å) — Cordero 2008; padded by +0.4 Å for the bond-detection
 # heuristic.  Default to 0.77 Å (carbon) for unknown Z.
 _COVALENT_RADIUS = {
-    1: 0.31, 6: 0.76, 7: 0.71, 8: 0.66, 9: 0.57, 15: 1.07, 16: 1.05,
-    17: 1.02, 35: 1.20, 53: 1.39, 11: 1.66, 12: 1.41, 20: 1.76,
-    25: 1.39, 26: 1.32, 27: 1.26, 28: 1.24, 29: 1.32, 30: 1.22,
+    1: 0.31,
+    6: 0.76,
+    7: 0.71,
+    8: 0.66,
+    9: 0.57,
+    15: 1.07,
+    16: 1.05,
+    17: 1.02,
+    35: 1.20,
+    53: 1.39,
+    11: 1.66,
+    12: 1.41,
+    20: 1.76,
+    25: 1.39,
+    26: 1.32,
+    27: 1.26,
+    28: 1.24,
+    29: 1.32,
+    30: 1.22,
 }
 
 
@@ -180,8 +230,9 @@ def _atomic_to_elem(z: int) -> str:
     return _ATOMIC_TO_ELEM.get(int(z), "C")
 
 
-def _mol_to_smiles(coords: torch.Tensor, atom_types: torch.Tensor,
-                    bond_factor: float = 1.3) -> str | None:
+def _mol_to_smiles(
+    coords: torch.Tensor, atom_types: torch.Tensor, bond_factor: float = 1.3
+) -> str | None:
     """Build a SMILES from a coord + atom-type pair via a distance-based
     bond detector.  Returns None on failure (RDKit parsing, too few
     atoms, multi-fragment geometry, exotic element, or invalid geometry).
@@ -207,14 +258,12 @@ def _mol_to_smiles(coords: torch.Tensor, atom_types: torch.Tensor,
     # Filter out atoms whose Z is not in AutoDock-Vina's element set —
     # otherwise the resulting SMILES contains e.g. ``[Ir]`` or ``[Pt]``
     # which Vina / meeko cannot parameterise without an external file.
-    keep_idx = [i for i, z in enumerate(atom_types.tolist())
-                if int(z) in _MEKKO_OK]
+    keep_idx = [i for i, z in enumerate(atom_types.tolist()) if int(z) in _MEKKO_OK]
     if len(keep_idx) < 2:
         return None
     rw = Chem.RWMol()
     coords_np = coords.detach().cpu().numpy()
-    radii = [_COVALENT_RADIUS.get(int(atom_types[i]), 0.77)
-             for i in keep_idx]
+    radii = [_COVALENT_RADIUS.get(int(atom_types[i]), 0.77) for i in keep_idx]
     # Map kept indices → RWMol indices (contiguous).
     for i in keep_idx:
         elem = _atomic_to_elem(int(atom_types[i]))
@@ -260,8 +309,10 @@ def _dock_one(mol, pocket, *, exhaustiveness: int, seed: int):
     t0 = time.perf_counter()
     try:
         complexes = dock_smiles(
-            smiles, pocket,
-            n_poses=1, exhaustiveness=int(exhaustiveness),
+            smiles,
+            pocket,
+            n_poses=1,
+            exhaustiveness=int(exhaustiveness),
         )
     except Exception as exc:  # noqa: BLE001
         # Surface the first-few failures so the user can debug — Vina
@@ -304,8 +355,11 @@ def _run_one_cfg(
 
     print(f"[r10-cfg] === cfg_scale={cfg_scale:.2f} ===")
     adapter = LipmanFlowMatchingAdapter(
-        hidden_dim=hidden_dim, n_layers=n_layers, lr=lr,
-        context_dropout=context_dropout, cfg_scale=cfg_scale,
+        hidden_dim=hidden_dim,
+        n_layers=n_layers,
+        lr=lr,
+        context_dropout=context_dropout,
+        cfg_scale=cfg_scale,
     )
     adapter.setup(device=device_str)
 
@@ -350,10 +404,17 @@ def _run_one_cfg(
         return velocity_model_unwrapped(x=x, t=t)
 
     # Brief CFM training so CFG has real conditional/unconditional signal.
-    t_train = _brief_train(adapter, pocket, steps=train_steps, batch_size=4,
-                            seed=seed + int(cfg_scale * 100))
-    print(f"[r10-cfg] train: {t_train:.2f}s ({train_steps} steps, "
-          f"last loss={adapter.last_losses['total']:.4f})")
+    t_train = _brief_train(
+        adapter,
+        pocket,
+        steps=train_steps,
+        batch_size=4,
+        seed=seed + int(cfg_scale * 100),
+    )
+    print(
+        f"[r10-cfg] train: {t_train:.2f}s ({train_steps} steps, "
+        f"last loss={adapter.last_losses['total']:.4f})"
+    )
 
     # Generate N molecules with this cfg_scale.  We monkey-patch the
     # adapter's generate() result so the ODE solver never produces
@@ -373,28 +434,34 @@ def _run_one_cfg(
     # monkey-patching ``adapter.generate`` is too invasive — simpler
     # to wrap the partial the same way generate() builds it.
     from functools import partial as _partial
+
     # The batched EGNN scatter path requires at least two rows on the
     # ROCm backend for its scalar aggregation shape.  Preserve the public
     # ``--n-mols 1`` smoke-test contract by sampling a harmless extra row
     # and truncating before docking/reporting.
     n_samples = max(2, n_mols)
     n_atoms = 8
-    atom_types_init = torch.zeros(n_samples, n_atoms, dtype=torch.long, device=adapter.device)
+    atom_types_init = torch.zeros(
+        n_samples, n_atoms, dtype=torch.long, device=adapter.device
+    )
     edge_index = adapter._make_dummy_edge_index(n_samples, n_atoms, adapter.device)
-    pocket_embed = adapter._encode_pocket(pocket, b=n_samples,
-                                            max_n_atoms=n_atoms,
-                                            device=adapter.device)
+    pocket_embed = adapter._encode_pocket(
+        pocket, b=n_samples, max_n_atoms=n_atoms, device=adapter.device
+    )
     cfg_scale_v = float(getattr(adapter, "_cfg_scale", 1.0) or 1.0)
     if cfg_scale_v != 1.0 and pocket_embed is not None:
         velocity_model_unwrapped = _partial(
             adapter.velocity_field.v_cfg,
-            atom_types=atom_types_init, edge_index=edge_index,
-            pocket_embed=pocket_embed, cfg_scale=cfg_scale_v,
+            atom_types=atom_types_init,
+            edge_index=edge_index,
+            pocket_embed=pocket_embed,
+            cfg_scale=cfg_scale_v,
         )
     else:
         velocity_model_unwrapped = _partial(
             adapter.velocity_field.forward_velocity,
-            atom_types=atom_types_init, edge_index=edge_index,
+            atom_types=atom_types_init,
+            edge_index=edge_index,
             pocket_embed=pocket_embed,
         )
 
@@ -417,8 +484,10 @@ def _run_one_cfg(
     t_grid = torch.linspace(0.0, 1.0, n_integration_steps + 1, device=adapter.device)
     t_gen0 = time.perf_counter()
     x_final = solver.sample(
-        x_init=x_0, step_size=1.0 / n_integration_steps,
-        method="euler", time_grid=t_grid,
+        x_init=x_0,
+        step_size=1.0 / n_integration_steps,
+        method="euler",
+        time_grid=t_grid,
     )
     if x_final.dim() == 4:
         x_final = x_final[-1]
@@ -430,25 +499,34 @@ def _run_one_cfg(
     from molmetal.adapters.flow_matching_lipman import (
         EGNNVelocityField as _EGNN,
     )
+
     adapter.velocity_field.eval()
     init_atom_types = torch.ones_like(atom_types_init)
     t_one = torch.ones(n_samples, device=adapter.device)
     if cfg_scale_v != 1.0 and pocket_embed is not None:
         out_cond = adapter.velocity_field(
-            x_final, init_atom_types, edge_index, t_one,
+            x_final,
+            init_atom_types,
+            edge_index,
+            t_one,
             pocket_embed=pocket_embed,
         )
         out_uncond = adapter.velocity_field(
-            x_final, init_atom_types, edge_index, t_one,
+            x_final,
+            init_atom_types,
+            edge_index,
+            t_one,
             pocket_embed=None,
         )
-        atom_logits = (
-            out_uncond["atom_logits"]
-            + cfg_scale_v * (out_cond["atom_logits"] - out_uncond["atom_logits"])
+        atom_logits = out_uncond["atom_logits"] + cfg_scale_v * (
+            out_cond["atom_logits"] - out_uncond["atom_logits"]
         )
     else:
         out = adapter.velocity_field(
-            x_final, init_atom_types, edge_index, t_one,
+            x_final,
+            init_atom_types,
+            edge_index,
+            t_one,
             pocket_embed=pocket_embed,
         )
         atom_logits = out["atom_logits"]
@@ -457,30 +535,35 @@ def _run_one_cfg(
     adapter.velocity_field.train()
     # Mask Z=0 (padding) to -inf and categorical-sample.
     import torch.nn.functional as _F
+
     atom_logits[..., 0] = float("-inf")
     atom_probs = _F.softmax(atom_logits, dim=-1)
     sampled_atoms = torch.distributions.Categorical(probs=atom_probs).sample()
 
     from molmetal.domain import Molecule as _Mol
+
     mols = []
     for i in range(n_samples):
-        mols.append(_Mol(
-            coords=x_final[i].detach().cpu(),
-            atom_types=sampled_atoms[i].detach().cpu(),
-            bonds=torch.zeros(2, 0, dtype=torch.long),
-            bond_types=torch.zeros(0, dtype=torch.long),
-            formal_charges=torch.zeros(n_atoms, dtype=torch.long),
-        ))
+        mols.append(
+            _Mol(
+                coords=x_final[i].detach().cpu(),
+                atom_types=sampled_atoms[i].detach().cpu(),
+                bonds=torch.zeros(2, 0, dtype=torch.long),
+                bond_types=torch.zeros(0, dtype=torch.long),
+                formal_charges=torch.zeros(n_atoms, dtype=torch.long),
+            )
+        )
     t_gen = time.perf_counter() - t_gen0
-    print(f"[r10-cfg] generate: {t_gen:.2f}s ({n_mols} mols, "
-          f"max|coord|={max(m.coords.abs().max().item() for m in mols):.2f})")
+    print(
+        f"[r10-cfg] generate: {t_gen:.2f}s ({n_mols} mols, "
+        f"max|coord|={max(m.coords.abs().max().item() for m in mols):.2f})"
+    )
 
     # Dock each generated molecule with Vina.
     scores: list[float] = []
     t_dock0 = time.perf_counter()
     for i, mol in enumerate(mols):
-        score, _ = _dock_one(mol, pocket, exhaustiveness=exhaustiveness,
-                             seed=seed + i)
+        score, _ = _dock_one(mol, pocket, exhaustiveness=exhaustiveness, seed=seed + i)
         if score is not None and math.isfinite(score):
             scores.append(score)
     t_dock = time.perf_counter() - t_dock0
@@ -514,55 +597,81 @@ def main(argv: Sequence[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
-        "--cfg-scales", type=float, nargs="+",
+        "--cfg-scales",
+        type=float,
+        nargs="+",
         default=[1.0, 1.5, 2.0, 3.0],
         help="CFG scales to evaluate (default 1.0 1.5 2.0 3.0).",
     )
-    parser.add_argument("--n-mols", type=int, default=20,
-                        help="Molecules per cfg_scale (default 20).")
-    parser.add_argument("--train-steps", type=int, default=30,
-                        help="CFM train steps before sampling (default 30).")
-    parser.add_argument("--n-steps", type=int, default=8,
-                        help="ODE integration steps per molecule (default 8).")
-    parser.add_argument("--exhaustiveness", type=int, default=2,
-                        help="Vina exhaustiveness (default 2 — fast).")
+    parser.add_argument(
+        "--n-mols", type=int, default=20, help="Molecules per cfg_scale (default 20)."
+    )
+    parser.add_argument(
+        "--train-steps",
+        type=int,
+        default=30,
+        help="CFM train steps before sampling (default 30).",
+    )
+    parser.add_argument(
+        "--n-steps",
+        type=int,
+        default=8,
+        help="ODE integration steps per molecule (default 8).",
+    )
+    parser.add_argument(
+        "--exhaustiveness",
+        type=int,
+        default=2,
+        help="Vina exhaustiveness (default 2 — fast).",
+    )
     parser.add_argument("--hidden-dim", type=int, default=32)
     parser.add_argument("--n-layers", type=int, default=2)
-    parser.add_argument("--lr", type=float, default=2e-4,
-                        help="AdamW lr (default 2e-4 — much lower than 5e-3 "
-                             "used in unit tests because the 572-atom 1h36 "
-                             "pocket produces much larger pocket_embed norms "
-                             "than the 12-atom toy pocket used in unit tests; "
-                             "the higher lr diverges on the 1h36 pocket even "
-                             "with grad clipping).")
+    parser.add_argument(
+        "--lr",
+        type=float,
+        default=2e-4,
+        help="AdamW lr (default 2e-4 — much lower than 5e-3 "
+        "used in unit tests because the 572-atom 1h36 "
+        "pocket produces much larger pocket_embed norms "
+        "than the 12-atom toy pocket used in unit tests; "
+        "the higher lr diverges on the 1h36 pocket even "
+        "with grad clipping).",
+    )
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
-        "--device", type=str,
+        "--device",
+        type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
         help="Device for the velocity field (auto-selects ROCm/CUDA; CPU fallback).",
     )
     parser.add_argument("--context-dropout", type=float, default=0.1)
     parser.add_argument(
-        "--coord-clip", type=float, default=10.0,
+        "--coord-clip",
+        type=float,
+        default=10.0,
         help="Clamp generated per-atom coords to [-coord_clip, +coord_clip] "
-             "as a numerical safety net (default 10.0 = ~Angstrom-scale "
-             "box; set to 0 to disable).",
+        "as a numerical safety net (default 10.0 = ~Angstrom-scale "
+        "box; set to 0 to disable).",
     )
     parser.add_argument(
-        "--pocket-embed-norm-target", type=float, default=1.0,
+        "--pocket-embed-norm-target",
+        type=float,
+        default=1.0,
         help="Scale each batch slice of the pocket_embed to this L2 norm "
-             "(default 1.0).  Required to keep the additive bias from "
-             "dominating the velocity field's atom embeddings when the "
-             "real 572-atom 1h36 pocket is used (without scaling the embed "
-             "norm is ~178, vs ~5 for the 12-atom toy pocket used in unit "
-             "tests).",
+        "(default 1.0).  Required to keep the additive bias from "
+        "dominating the velocity field's atom embeddings when the "
+        "real 572-atom 1h36 pocket is used (without scaling the embed "
+        "norm is ~178, vs ~5 for the 12-atom toy pocket used in unit "
+        "tests).",
     )
     parser.add_argument(
-        "--output-prefix", type=str,
+        "--output-prefix",
+        type=str,
         default=str(REPORTS / "r10_cfg_ablation_1h36"),
     )
     parser.add_argument(
-        "--skip-dock", action="store_true",
+        "--skip-dock",
+        action="store_true",
         help="Skip Vina docking (generation-only smoke run).",
     )
     args = parser.parse_args(argv)
@@ -572,20 +681,29 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"[r10-cfg-ablation] ERROR: {EXAMPLE_PDB} not found.")
         return 2
     pocket = _load_1h36_pocket()
-    print(f"[r10-cfg-ablation] pocket={pocket.pdb_id} n_atoms={pocket.n_atoms} "
-          f"radius={pocket.radius:.1f}A")
+    print(
+        f"[r10-cfg-ablation] pocket={pocket.pdb_id} n_atoms={pocket.n_atoms} "
+        f"radius={pocket.radius:.1f}A"
+    )
 
     summaries: list[dict] = []
     all_rows: list[tuple[float, int, float]] = []  # (cfg, mol_id, score)
     wall_total0 = time.perf_counter()
     for cfg in args.cfg_scales:
         scores, summary = _run_one_cfg(
-            cfg_scale=cfg, n_mols=args.n_mols,
-            train_steps=args.train_steps, n_integration_steps=args.n_steps,
-            exhaustiveness=args.exhaustiveness, seed=args.seed,
-            hidden_dim=args.hidden_dim, n_layers=args.n_layers, lr=args.lr,
-            device_str=args.device, context_dropout=args.context_dropout,
-            pocket=pocket, coord_clip=args.coord_clip,
+            cfg_scale=cfg,
+            n_mols=args.n_mols,
+            train_steps=args.train_steps,
+            n_integration_steps=args.n_steps,
+            exhaustiveness=args.exhaustiveness,
+            seed=args.seed,
+            hidden_dim=args.hidden_dim,
+            n_layers=args.n_layers,
+            lr=args.lr,
+            device_str=args.device,
+            context_dropout=args.context_dropout,
+            pocket=pocket,
+            coord_clip=args.coord_clip,
             pocket_embed_norm_target=args.pocket_embed_norm_target,
         )
         # Skip-dock mode: insert NaN so the CSV/JSON shape is consistent.
@@ -631,25 +749,27 @@ def main(argv: Sequence[str] | None = None) -> int:
     # JSON
     json_path = out_prefix.with_suffix(".json")
     with open(json_path, "w") as f:
-        json.dump({
-            "pocket": pocket.pdb_id,
-            "pdb_path": str(EXAMPLE_PDB),
-            "n_mols_per_cfg": args.n_mols,
-            "cfg_scales": list(args.cfg_scales),
-            "train_steps": args.train_steps,
-            "exhaustiveness": args.exhaustiveness,
-            "hidden_dim": args.hidden_dim,
-            "n_layers": args.n_layers,
-            "device": args.device,
-            "wall_total_seconds": wall_total,
-            "summaries": summaries,
-            "base_cfg": base_cfg,
-            "best_cfg": (best["cfg_scale"] if best else None),
-            "best_vina_mean": (best["vina_mean"] if best else None),
-            "best_delta_vs_cfg_1": (
-                best["delta_vs_cfg_1"] if best else None
-            ),
-        }, f, indent=2)
+        json.dump(
+            {
+                "pocket": pocket.pdb_id,
+                "pdb_path": str(EXAMPLE_PDB),
+                "n_mols_per_cfg": args.n_mols,
+                "cfg_scales": list(args.cfg_scales),
+                "train_steps": args.train_steps,
+                "exhaustiveness": args.exhaustiveness,
+                "hidden_dim": args.hidden_dim,
+                "n_layers": args.n_layers,
+                "device": args.device,
+                "wall_total_seconds": wall_total,
+                "summaries": summaries,
+                "base_cfg": base_cfg,
+                "best_cfg": (best["cfg_scale"] if best else None),
+                "best_vina_mean": (best["vina_mean"] if best else None),
+                "best_delta_vs_cfg_1": (best["delta_vs_cfg_1"] if best else None),
+            },
+            f,
+            indent=2,
+        )
     print(f"[r10-cfg-ablation] wrote {json_path}")
 
     # Markdown
@@ -665,26 +785,34 @@ def main(argv: Sequence[str] | None = None) -> int:
             "is the CrossDocked 1h36 pocket (a real protein binding site).\n\n"
         )
         f.write("## Setup\n\n")
-        f.write(f"- Pocket: **{pocket.pdb_id}** "
-                f"({pocket.n_atoms} atoms, radius={pocket.radius:.1f}A)\n")
+        f.write(
+            f"- Pocket: **{pocket.pdb_id}** "
+            f"({pocket.n_atoms} atoms, radius={pocket.radius:.1f}A)\n"
+        )
         f.write(f"- PDB: `{EXAMPLE_PDB}`\n")
         f.write(f"- N molecules requested per cfg: **{args.n_mols}**\n")
         f.write(f"- CFG scales swept: **{args.cfg_scales}**\n")
-        f.write(f"- CFM train steps per cfg: **{args.train_steps}** "
-                f"(hidden_dim={args.hidden_dim}, n_layers={args.n_layers}, "
-                f"lr={args.lr}, context_dropout={args.context_dropout})\n")
+        f.write(
+            f"- CFM train steps per cfg: **{args.train_steps}** "
+            f"(hidden_dim={args.hidden_dim}, n_layers={args.n_layers}, "
+            f"lr={args.lr}, context_dropout={args.context_dropout})\n"
+        )
         f.write(f"- ODE integration steps: **{args.n_steps}**\n")
-        f.write(f"- Vina exhaustiveness: **{args.exhaustiveness}** "
-                f"(n_poses=1)\n")
-        f.write(f"- Coordinate safety clamp: **[-{args.coord_clip}, "
-                f"+{args.coord_clip}] Å** (per-velocity-step clamp "
-                f"prevents CFG>1 ODE divergence)\n")
-        f.write(f"- Pocket-embed L2 norm target: "
-                f"**{args.pocket_embed_norm_target}** (1h36's 572-atom pocket "
-                f"produces raw embed norm ~178, normalised to "
-                f"{args.pocket_embed_norm_target})\n")
-        f.write(f"- Total wall: **{wall_total:.2f}s** "
-                f"({wall_total/60:.2f} min)\n\n")
+        f.write(f"- Vina exhaustiveness: **{args.exhaustiveness}** " f"(n_poses=1)\n")
+        f.write(
+            f"- Coordinate safety clamp: **[-{args.coord_clip}, "
+            f"+{args.coord_clip}] Å** (per-velocity-step clamp "
+            f"prevents CFG>1 ODE divergence)\n"
+        )
+        f.write(
+            f"- Pocket-embed L2 norm target: "
+            f"**{args.pocket_embed_norm_target}** (1h36's 572-atom pocket "
+            f"produces raw embed norm ~178, normalised to "
+            f"{args.pocket_embed_norm_target})\n"
+        )
+        f.write(
+            f"- Total wall: **{wall_total:.2f}s** " f"({wall_total/60:.2f} min)\n\n"
+        )
 
         f.write("## CFG implementation\n\n")
         f.write(
@@ -705,8 +833,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
 
         f.write("## Vina score distribution per cfg\n\n")
-        f.write("| cfg_scale | n_docked | mean | median | min | max | "
-                "delta_vs_cfg=1 |\n")
+        f.write(
+            "| cfg_scale | n_docked | mean | median | min | max | " "delta_vs_cfg=1 |\n"
+        )
         f.write("| --- | --- | --- | --- | --- | --- | --- |\n")
         for s in summaries:
             mean = s["vina_mean"]
@@ -719,11 +848,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             mn_s = f"{mn:.3f}" if mn is not None else "n/a"
             mx_s = f"{mx:.3f}" if mx is not None else "n/a"
             delta_s = (
-                f"{delta:+.3f}" if delta is not None and base_mean is not None
+                f"{delta:+.3f}"
+                if delta is not None and base_mean is not None
                 else "n/a"
             )
-            f.write(f"| {s['cfg_scale']:.2f} | {s['n_mols_docked_ok']} | "
-                    f"{mean_s} | {med_s} | {mn_s} | {mx_s} | {delta_s} |\n")
+            f.write(
+                f"| {s['cfg_scale']:.2f} | {s['n_mols_docked_ok']} | "
+                f"{mean_s} | {med_s} | {mn_s} | {mx_s} | {delta_s} |\n"
+            )
         f.write("\n## Headline\n\n")
         if best is not None and base_mean is not None:
             f.write(

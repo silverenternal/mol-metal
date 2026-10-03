@@ -61,6 +61,7 @@ Usage examples
     uv run --no-sync python -m molmetal.scripts.bench_catherine_30metals \\
         --metals 15
 """
+
 from __future__ import annotations
 
 import argparse
@@ -91,15 +92,50 @@ log = logging.getLogger("wf255_catherine_30metals")
 #: 30 d-block metals (default bench cohort).  Mirrors
 #: :data:`molmetal.math_skills.catherine_properties.DBLOCK_30_METALS`.
 DEFAULT_30_METALS: Tuple[str, ...] = (
-    "Sc", "Ti", "V",  "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
-    "Y",  "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
-    "La", "Hf", "Ta", "W",  "Re", "Os", "Ir", "Pt", "Au", "Hg",
+    "Sc",
+    "Ti",
+    "V",
+    "Cr",
+    "Mn",
+    "Fe",
+    "Co",
+    "Ni",
+    "Cu",
+    "Zn",
+    "Y",
+    "Zr",
+    "Nb",
+    "Mo",
+    "Tc",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Cd",
+    "La",
+    "Hf",
+    "Ta",
+    "W",
+    "Re",
+    "Os",
+    "Ir",
+    "Pt",
+    "Au",
+    "Hg",
 )
 
 #: 9 task-spec metals (subset).  Mirrors
 #: :data:`molmetal.scripts.bench_closure_dblock.TASK_SPEC_METALS`.
 TASK_SPEC_9_METALS: Tuple[str, ...] = (
-    "Pt", "Ru", "Ir", "Rh", "Re", "Os", "Au", "Pd", "Ag",
+    "Pt",
+    "Ru",
+    "Ir",
+    "Rh",
+    "Re",
+    "Os",
+    "Au",
+    "Pd",
+    "Ag",
 )
 
 
@@ -141,6 +177,7 @@ def _run_bench_one_metal(
         from molmetal.math_skills.catherine_properties import (
             verify_all_catherine_properties,
         )
+
         verdict = verify_all_catherine_properties(
             metal=metal,
             max_depth=int(max_depth),
@@ -228,7 +265,9 @@ def _write_outputs(
     lines: List[str] = []
     lines.append(f"# Catherine 30-metal closure bench (Wf-255 R20-P5)\n")
     lines.append(f"- n_metals: **{report['n_metals']}**")
-    lines.append(f"- 6/6 PASS: **{report['n_six_of_six_pass']} / {report['n_metals']}**")
+    lines.append(
+        f"- 6/6 PASS: **{report['n_six_of_six_pass']} / {report['n_metals']}**"
+    )
     lines.append(f"- max_depth: {report['max_depth']}")
     lines.append(f"- n_partners: {report['n_partners']}")
     lines.append(f"- seed: {report['seed']}")
@@ -283,9 +322,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--output-dir",
         type=str,
-        default=str(
-            _REPO_ROOT / "molmetal" / "reports" / "wf255_catherine_30metals"
-        ),
+        default=str(_REPO_ROOT / "molmetal" / "reports" / "wf255_catherine_30metals"),
         help="Output directory.",
     )
     parser.add_argument(
@@ -323,10 +360,14 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     # Pretty-print summary.
     print(f"n_metals                 : {report['n_metals']}")
-    print(f"6/6 PASS                 : "
-          f"{report['n_six_of_six_pass']} / {report['n_metals']}")
-    print(f"total properties PASS    : "
-          f"{report['n_total_properties_pass']} / {report['n_total_properties_6N']}")
+    print(
+        f"6/6 PASS                 : "
+        f"{report['n_six_of_six_pass']} / {report['n_metals']}"
+    )
+    print(
+        f"total properties PASS    : "
+        f"{report['n_total_properties_pass']} / {report['n_total_properties_6N']}"
+    )
     print(f"wall_time_s              : {report['wall_time_s']:.4f}")
     print(f"per_metal_pass.json      : {json_path}")
     print(f"sweep_summary.md         : {md_path}")

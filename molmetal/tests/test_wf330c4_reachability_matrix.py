@@ -33,6 +33,7 @@ downstream agents MUST cite this file (or the source JSONs) when claiming
 any L1 / L6 / L12 / MetalCytoTox / Tanimoto<0.4 number — per
 ``party-twenty-spirit`` §3.5 zero-tolerance discipline.
 """
+
 from __future__ import annotations
 
 import json
@@ -96,9 +97,9 @@ def test_l1_beta_nf_enumeration_anchor() -> None:
     aggregate = bench.get("aggregate", {})
     rate = aggregate.get("closure_reachability_rate")
     assert rate is not None, "closure_reachability_rate missing from Wf-36 bench"
-    assert math.isclose(rate, L1_REACHABILITY_MEASURED, rel_tol=RTOL), (
-        f"L1 reachability drifted: got {rate}, expected {L1_REACHABILITY_MEASURED}"
-    )
+    assert math.isclose(
+        rate, L1_REACHABILITY_MEASURED, rel_tol=RTOL
+    ), f"L1 reachability drifted: got {rate}, expected {L1_REACHABILITY_MEASURED}"
     # Sample-count sanity (836 samples × 9 metals).
     assert aggregate.get("n_samples") == 836
     assert aggregate.get("n_closure_ok") == 427
@@ -122,9 +123,9 @@ def test_l6_dblock_30_metals_anchor() -> None:
     aggregate = bench.get("aggregate", {})
     rate = aggregate.get("closure_reachability_rate")
     assert rate is not None, "closure_reachability_rate missing from Wf-37 bench"
-    assert math.isclose(rate, L6_REACHABILITY_MEASURED, rel_tol=RTOL), (
-        f"L6 reachability drifted: got {rate}, expected {L6_REACHABILITY_MEASURED}"
-    )
+    assert math.isclose(
+        rate, L6_REACHABILITY_MEASURED, rel_tol=RTOL
+    ), f"L6 reachability drifted: got {rate}, expected {L6_REACHABILITY_MEASURED}"
     # Sample-count sanity (2244 samples × 30 metals).
     assert aggregate.get("n_samples") == 2244
     assert aggregate.get("n_closure_ok") == 1322
@@ -188,19 +189,20 @@ def test_l12_metalcyto_ood_anchor() -> None:
     # This is the biggest gap in the L1/L6/L12 matrix; R20-P5 GPU retrain
     # is reserved for the MetalCytoTox 0.0300 → 0.85 lift.
     gap = PROJECTED_REACHABILITY_GATE - rate
-    assert math.isclose(gap, GAP_METALCYTO_TO_PROJECTED, rel_tol=RTOL), (
-        f"MetalCytoTox gap drifted: got {gap}, expected {GAP_METALCYTO_TO_PROJECTED}"
-    )
+    assert math.isclose(
+        gap, GAP_METALCYTO_TO_PROJECTED, rel_tol=RTOL
+    ), f"MetalCytoTox gap drifted: got {gap}, expected {GAP_METALCYTO_TO_PROJECTED}"
     # Sanity: gap must be the largest in the matrix (party-twenty-spirit §3.5).
     gaps = {
         "L1": PROJECTED_REACHABILITY_GATE - L1_REACHABILITY_MEASURED,
         "L6": PROJECTED_REACHABILITY_GATE - L6_REACHABILITY_MEASURED,
-        "L12_platinai": PROJECTED_REACHABILITY_GATE - L12_PLATINAI_REACHABILITY_MEASURED,
+        "L12_platinai": PROJECTED_REACHABILITY_GATE
+        - L12_PLATINAI_REACHABILITY_MEASURED,
         "L12_metalcyto": PROJECTED_REACHABILITY_GATE - rate,
     }
-    assert gaps["L12_metalcyto"] == max(gaps.values()), (
-        f"MetalCytoTox should have the largest gap; got gaps={gaps}"
-    )
+    assert gaps["L12_metalcyto"] == max(
+        gaps.values()
+    ), f"MetalCytoTox should have the largest gap; got gaps={gaps}"
 
 
 # ---------------------------------------------------------------------------
@@ -228,9 +230,9 @@ def test_tanimoto_below_04_anchor() -> None:
         f"expected {TANIMOTO_BELOW_04_MEASURED}"
     )
     # Verification gate (>= 0.80) must PASS.
-    assert rate >= 0.80, (
-        f"Tanimoto<0.4 protocol verification FAILED: got {rate}, gate >= 0.80"
-    )
+    assert (
+        rate >= 0.80
+    ), f"Tanimoto<0.4 protocol verification FAILED: got {rate}, gate >= 0.80"
 
 
 # ---------------------------------------------------------------------------

@@ -29,6 +29,7 @@ HONEST FRAMING:
 - The M17 canonical config is SCAFFOLD-only — MEASURED-on-real-job launch
   deferred to Wf-A2 follow-up per AGENTS.md §5.1 standing GPU grant.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -74,14 +75,22 @@ def _normalize_key(key: str) -> str:
 #: metadata (``honest_framing``, ``cross_references``, ``entry``,
 #: ``directives``) are deliberately excluded so a per-wave value can never
 #: silently win over the protocol-level one.
-_LEAF_FALLBACK_SECTIONS = frozenset({
-    "protocol", "model", "flow", "data", "compute", "eval", "output",
-    # Wf-A11 FIX (2026-10-03) — "train" added: configs/default.yaml carries
-    # the real run hyperparameters (batch_size / lr / epochs / warmup_steps /
-    # grad_clip_norm) under `train:` and the whole block was silently dropped
-    # before this fix (see TODO/completed/config_dead_key_remediation.md).
-    "train",
-})
+_LEAF_FALLBACK_SECTIONS = frozenset(
+    {
+        "protocol",
+        "model",
+        "flow",
+        "data",
+        "compute",
+        "eval",
+        "output",
+        # Wf-A11 FIX (2026-10-03) — "train" added: configs/default.yaml carries
+        # the real run hyperparameters (batch_size / lr / epochs / warmup_steps /
+        # grad_clip_norm) under `train:` and the whole block was silently dropped
+        # before this fix (see TODO/completed/config_dead_key_remediation.md).
+        "train",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -121,21 +130,36 @@ class UnresolvedConfigKey(RuntimeError):
 #: alias whose target dest does not exist on the active parser stays
 #: unresolved (reported, not force-fitted).
 _LEAF_ALIASES: dict[str, tuple[str, ...]] = {
-    "hidden_dim": ("hidden",),               # D-MPNN: --hidden (CFM declares --hidden-dim itself)
-    "grad_clip_norm": ("max_norm",),         # both trainers: --max-norm (no --grad-clip-norm exists)
-    "warmup_steps": ("lr_warmup_steps",),    # CFM: --lr-warmup-steps (D-MPNN has epochs-based warmup only)
+    "hidden_dim": ("hidden",),  # D-MPNN: --hidden (CFM declares --hidden-dim itself)
+    "grad_clip_norm": (
+        "max_norm",
+    ),  # both trainers: --max-norm (no --grad-clip-norm exists)
+    "warmup_steps": (
+        "lr_warmup_steps",
+    ),  # CFM: --lr-warmup-steps (D-MPNN has epochs-based warmup only)
     "warmup_epochs": ("lr_warmup_epochs",),  # both trainers: --lr-warmup-epochs
-    "min_lr": ("lr_min_lr",),                # both trainers: --lr-min-lr
-    "cpu_workers": ("cpu_num_workers",),     # D-MPNN: --cpu-num-workers (CFM has no workers dest)
+    "min_lr": ("lr_min_lr",),  # both trainers: --lr-min-lr
+    "cpu_workers": (
+        "cpu_num_workers",
+    ),  # D-MPNN: --cpu-num-workers (CFM has no workers dest)
 }
 
 #: Top-level sections that describe run metadata / enumeration, not trainer
 #: hyperparameters.  A skipped key inside one of these is by design, so
 #: strict mode does not fail on it.
-_NON_TRAINER_SECTIONS = frozenset({
-    "entry", "directives", "honest_framing", "cross_references",
-    "waves", "ablation_configs", "sweep_pairs", "runs", "pending_pairs",
-})
+_NON_TRAINER_SECTIONS = frozenset(
+    {
+        "entry",
+        "directives",
+        "honest_framing",
+        "cross_references",
+        "waves",
+        "ablation_configs",
+        "sweep_pairs",
+        "runs",
+        "pending_pairs",
+    }
+)
 
 #: Leaf keys (any section) whose consumer is NOT the trainer, with the
 #: verified consumer named.  Skips of these are by design.
@@ -168,13 +192,19 @@ def last_skipped_keys() -> list[dict[str, Any]]:
 
 def _strict_enabled() -> bool:
     return os.environ.get("WFA2_CONFIG_STRICT", "").strip().lower() in {
-        "1", "true", "yes", "on",
+        "1",
+        "true",
+        "yes",
+        "on",
     }
 
 
 def _quiet_enabled() -> bool:
     return os.environ.get("WFA2_CONFIG_QUIET", "").strip().lower() in {
-        "1", "true", "yes", "on",
+        "1",
+        "true",
+        "yes",
+        "on",
     }
 
 
@@ -253,9 +283,7 @@ def _registered_non_trainer(entry: Mapping[str, Any]) -> bool:
     )
 
 
-def _iter_leaves(
-    mapping: Mapping[str, Any], prefix: Optional[list[str]] = None
-):
+def _iter_leaves(mapping: Mapping[str, Any], prefix: Optional[list[str]] = None):
     """Yield ``(path, value)`` for every leaf of a nested YAML mapping.
 
     ``path`` is the list of keys from the root, e.g.
@@ -411,10 +439,13 @@ def apply_yaml_overrides(
         if is_alias and dest in direct_dests:
             # Alias loses to a direct YAML key on the same dest.  Recorded
             # (and strict-fatal) so the redundancy is visible, never silent.
-            skipped.append(_skip_entry(
-                path, value,
-                reason=f"alias suppressed: '{dest}' is set by a direct YAML key",
-            ))
+            skipped.append(
+                _skip_entry(
+                    path,
+                    value,
+                    reason=f"alias suppressed: '{dest}' is set by a direct YAML key",
+                )
+            )
             continue
         cur = getattr(args, dest)
         dft = getattr(defaults, dest, _MISSING)

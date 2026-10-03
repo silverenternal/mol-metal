@@ -75,6 +75,7 @@ def _cco_conformer(seed: int = 42):
     duplicate the embed logic.
     """
     from molmetal_lam.lam_chem.conformer_embed import generate_conformer
+
     mol, _coords = generate_conformer("CCO", seed=seed)
     return mol
 
@@ -102,9 +103,7 @@ def test_top_k_eigenvalues_are_sorted_descending() -> None:
     mol = _cco_conformer(seed=42)
     eig = compute_pll(mol, k=16).eigenvalues
     diffs = np.diff(eig)
-    assert np.all(diffs <= 1e-9), (
-        f"eigenvalues not descending; diffs={diffs!r}"
-    )
+    assert np.all(diffs <= 1e-9), f"eigenvalues not descending; diffs={diffs!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -118,9 +117,9 @@ def test_sum_of_eigvals_bounded_by_2k() -> None:
     # Normalised Laplacian eigenvalues lie in [0, 2]; the partial sum
     # of the top-k is bounded by 2*k (with tiny ARPACK noise margin).
     assert eig.min() >= -1e-6, f"min eigval below PSD bound: {eig.min()}"
-    assert eig.sum() <= 2.0 * len(eig) + 1e-6, (
-        f"sum(eig)={eig.sum()} exceeds 2*k={2.0 * len(eig)}"
-    )
+    assert (
+        eig.sum() <= 2.0 * len(eig) + 1e-6
+    ), f"sum(eig)={eig.sum()} exceeds 2*k={2.0 * len(eig)}"
 
 
 # ---------------------------------------------------------------------------
@@ -134,9 +133,9 @@ def test_pll_invariant_under_rotation_and_translation() -> None:
     eig_b = compute_pll(mol_b, k=8).eigenvalues
     n = min(len(eig_a), len(eig_b))
     max_diff = float(np.max(np.abs(eig_a[:n] - eig_b[:n])))
-    assert max_diff < 1e-3, (
-        f"PLL not rotation/translation invariant; max|eig_a-eig_b|={max_diff}"
-    )
+    assert (
+        max_diff < 1e-3
+    ), f"PLL not rotation/translation invariant; max|eig_a-eig_b|={max_diff}"
 
 
 # ---------------------------------------------------------------------------
@@ -147,9 +146,7 @@ def test_pll_for_methanol_is_positive_semidefinite() -> None:
     mol = _cco_conformer(seed=42)
     eig = compute_pll(mol, k=16).eigenvalues
     min_eig = float(eig.min())
-    assert min_eig >= -1e-6, (
-        f"PLL not PSD for CCO; smallest eigval={min_eig}"
-    )
+    assert min_eig >= -1e-6, f"PLL not PSD for CCO; smallest eigval={min_eig}"
 
 
 # ---------------------------------------------------------------------------
@@ -196,13 +193,11 @@ def test_lazy_scipy_fallback_when_scipy_absent(
         sig = _compute_pll(mol, k=8)
     except PLLSignatureError as exc:
         msg = str(exc).lower()
-        assert "scipy" in msg or "sparse" in msg, (
-            f"PLLSignatureError must reference scipy; got {exc!r}"
-        )
+        assert (
+            "scipy" in msg or "sparse" in msg
+        ), f"PLLSignatureError must reference scipy; got {exc!r}"
     except Exception as exc:  # pragma: no cover - defensive
-        pytest.fail(
-            f"unexpected exception type {type(exc).__name__}: {exc!r}"
-        )
+        pytest.fail(f"unexpected exception type {type(exc).__name__}: {exc!r}")
     else:
         eig = sig.eigenvalues
         assert isinstance(eig, np.ndarray)

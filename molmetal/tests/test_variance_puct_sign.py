@@ -36,6 +36,7 @@ Run via::
     uv run --no-sync python -m pytest \\
         molmetal/tests/test_variance_puct_sign.py -v
 """
+
 from __future__ import annotations
 
 import json
@@ -66,7 +67,8 @@ except Exception:  # pragma: no cover - import path fallback
 
 _AUDIT_SCRIPT = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "scripts", "audit_variance_puct_sign.py",
+    "scripts",
+    "audit_variance_puct_sign.py",
 )
 
 
@@ -84,8 +86,7 @@ def _mk_root(n_children: int = 2):
         node_id="root",
         prior=0.5,
         children=[
-            IntegrationNode(node_id=f"a{i}", prior=1.0)
-            for i in range(int(n_children))
+            IntegrationNode(node_id=f"a{i}", prior=1.0) for i in range(int(n_children))
         ],
     )
 
@@ -95,7 +96,8 @@ def _import_audit():
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "audit_variance_puct_sign", _AUDIT_SCRIPT,
+        "audit_variance_puct_sign",
+        _AUDIT_SCRIPT,
     )
     mod = importlib.util.module_from_spec(spec)
     assert spec and spec.loader, "could not load audit script spec"
@@ -134,12 +136,8 @@ class TestAuditScriptSurface:
     def test_sign_audit_script_importable(self) -> None:
         """``audit_variance_puct_sign`` module is importable as a unit."""
         mod = _import_audit()
-        assert hasattr(mod, "run_audit"), (
-            "audit_variance_puct_sign.run_audit missing"
-        )
-        assert hasattr(mod, "__version__"), (
-            "audit script must expose __version__"
-        )
+        assert hasattr(mod, "run_audit"), "audit_variance_puct_sign.run_audit missing"
+        assert hasattr(mod, "__version__"), "audit script must expose __version__"
 
     def test_sign_audit_run_audit_returns_dict(self) -> None:
         """``run_audit()`` returns a dict with the expected schema."""
@@ -163,14 +161,12 @@ class TestAuditScriptSurface:
         mod = _import_audit()
         out = mod.run_audit()
         assert out["configurations"] == [
-            "canonical", "pre_fix", "post_fix",
-        ], (
-            "audit must run all three configurations"
-        )
+            "canonical",
+            "pre_fix",
+            "post_fix",
+        ], "audit must run all three configurations"
         for cfg in out["configurations"]:
-            assert cfg in out["per_config"], (
-                f"per_config missing entry for {cfg!r}"
-            )
+            assert cfg in out["per_config"], f"per_config missing entry for {cfg!r}"
 
     def test_sign_audit_script_subprocess_runs(self) -> None:
         """The audit script is invocable as ``python audit_variance_puct_sign.py``."""
@@ -184,8 +180,7 @@ class TestAuditScriptSurface:
             timeout=60,
         )
         assert result.returncode == 0, (
-            f"audit script failed (rc={result.returncode}): "
-            f"{result.stderr}"
+            f"audit script failed (rc={result.returncode}): " f"{result.stderr}"
         )
         # The summary line is always printed.
         assert "[wf65_p1_sign_audit] wrote" in result.stdout
@@ -207,11 +202,13 @@ class TestSignFlipNumericalReplay:
         cfg = {"c_var": 0.5, "n_min_visits": 1}
         # N=2: penalty = 0.5 * 0.4 / 3 = 0.0667
         s2 = _puct_score_pre_fix(
-            {"Q": 0.5, "N": 2.0, "sigma": 0.4}, cfg,
+            {"Q": 0.5, "N": 2.0, "sigma": 0.4},
+            cfg,
         )
         # N=20: penalty = 0.5 * 0.4 / 21 = 0.00952
         s20 = _puct_score_pre_fix(
-            {"Q": 0.5, "N": 20.0, "sigma": 0.4}, cfg,
+            {"Q": 0.5, "N": 20.0, "sigma": 0.4},
+            cfg,
         )
         assert math.isclose(s2, 0.5 - 0.5 * 0.4 / 3.0, abs_tol=1e-9)
         assert math.isclose(s20, 0.5 - 0.5 * 0.4 / 21.0, abs_tol=1e-9)
@@ -222,13 +219,16 @@ class TestSignFlipNumericalReplay:
         """Post-fix penalty magnitude is the same at every N_child."""
         cfg = {"c_var": 0.5, "n_min_visits": 1}
         s2 = _puct_score_post_fix(
-            {"Q": 0.5, "N": 2.0, "sigma": 0.4}, cfg,
+            {"Q": 0.5, "N": 2.0, "sigma": 0.4},
+            cfg,
         )
         s20 = _puct_score_post_fix(
-            {"Q": 0.5, "N": 20.0, "sigma": 0.4}, cfg,
+            {"Q": 0.5, "N": 20.0, "sigma": 0.4},
+            cfg,
         )
         s200 = _puct_score_post_fix(
-            {"Q": 0.5, "N": 200.0, "sigma": 0.4}, cfg,
+            {"Q": 0.5, "N": 200.0, "sigma": 0.4},
+            cfg,
         )
         # All three should equal 0.5 - 0.5 * 0.4 = 0.3.
         assert math.isclose(s2, 0.3, abs_tol=1e-9)
@@ -252,13 +252,19 @@ class TestSignFlipNumericalReplay:
         out = mod.run_audit()
         per = out["per_config"]
         assert math.isclose(
-            per["canonical"]["variance_reduction"], 0.0, abs_tol=1e-9,
+            per["canonical"]["variance_reduction"],
+            0.0,
+            abs_tol=1e-9,
         )
         assert math.isclose(
-            per["pre_fix"]["variance_reduction"], 0.01905, abs_tol=1e-3,
+            per["pre_fix"]["variance_reduction"],
+            0.01905,
+            abs_tol=1e-3,
         )
         assert math.isclose(
-            per["post_fix"]["variance_reduction"], 0.4, abs_tol=1e-3,
+            per["post_fix"]["variance_reduction"],
+            0.4,
+            abs_tol=1e-3,
         )
 
     def test_sign_live_probe_post_fix(self) -> None:
@@ -277,8 +283,7 @@ class TestSignFlipNumericalReplay:
             "the Wf-51 fix has regressed"
         )
         assert probe["divisor_line"] is None, (
-            "live source still contains a divisor line; the fix "
-            "must remove it"
+            "live source still contains a divisor line; the fix " "must remove it"
         )
 
 
@@ -298,12 +303,15 @@ class TestAuditJsonSchema:
 
         repo_root = Path(_AUDIT_SCRIPT).resolve().parents[2]
         expected = (
-            repo_root / "molmetal" / "reports"
-            / "wf65_p1_sign_audit" / "sign_flip_audit.json"
+            repo_root
+            / "molmetal"
+            / "reports"
+            / "wf65_p1_sign_audit"
+            / "sign_flip_audit.json"
         )
-        assert expected.parent.exists(), (
-            f"expected report dir missing: {expected.parent}"
-        )
+        assert (
+            expected.parent.exists()
+        ), f"expected report dir missing: {expected.parent}"
         # Confirm the file was written by an earlier CLI invocation.
         assert expected.exists(), (
             f"audit JSON missing at {expected}; run "
@@ -352,12 +360,10 @@ class TestAuditJsonSchema:
         out = mod.run_audit()
         for cfg_name, cfg_data in out["per_config"].items():
             for idx, score in enumerate(cfg_data["scores"]):
-                assert isinstance(score, float), (
-                    f"{cfg_name}.scores[{idx}] not float"
-                )
-                assert math.isfinite(score), (
-                    f"{cfg_name}.scores[{idx}] = {score} not finite"
-                )
+                assert isinstance(score, float), f"{cfg_name}.scores[{idx}] not float"
+                assert math.isfinite(
+                    score
+                ), f"{cfg_name}.scores[{idx}] = {score} not finite"
 
 
 __all__ = [

@@ -58,10 +58,16 @@ LAUNCH_WRAPPER = REPO_ROOT / "scripts" / "launch_wf310e_wf135_phase2_gpu.sh"
 
 # Phase 1 cohort paths (Wf-309A ship + Wf-145 P1 mirror).
 PHASE1_COHORT_WF139 = (
-    MOLMETAL_ROOT / "reports" / "wf139_p7_rh_active_cohort" / "synthetic_rh_pos_neg.json"
+    MOLMETAL_ROOT
+    / "reports"
+    / "wf139_p7_rh_active_cohort"
+    / "synthetic_rh_pos_neg.json"
 )
 PHASE1_COHORT_WF145 = (
-    MOLMETAL_ROOT / "reports" / "wf145_p1_rh_active_cohort" / "synthetic_rh_pos_neg.json"
+    MOLMETAL_ROOT
+    / "reports"
+    / "wf145_p1_rh_active_cohort"
+    / "synthetic_rh_pos_neg.json"
 )
 DEFAULT_RH_BALANCED_JSON = PHASE1_COHORT_WF145
 
@@ -116,9 +122,9 @@ class TestCohortJSONLoad:
         assert len(labels) == 500
         assert sum(labels) == 250
         assert sum(1 for x in labels if x == 0) == 250
-        assert all(isinstance(s, str) and s.strip() for s in smis), (
-            "all cohort SMILES must be non-empty strings"
-        )
+        assert all(
+            isinstance(s, str) and s.strip() for s in smis
+        ), "all cohort SMILES must be non-empty strings"
 
     def test_scaffold_split_integrity_zero_leak(self):
         """Per Wf-139 P7 / Wf-309A: scaffold_overlap_count == 0 between actives and inactives.
@@ -129,9 +135,7 @@ class TestCohortJSONLoad:
         useless for the honest-negative Phase 2 lift.
         """
         if not PHASE1_COHORT_WF139.exists():
-            pytest.skip(
-                f"Wf-139 P7 cohort missing at {PHASE1_COHORT_WF139}"
-            )
+            pytest.skip(f"Wf-139 P7 cohort missing at {PHASE1_COHORT_WF139}")
         with PHASE1_COHORT_WF139.open() as fh:
             data = json.load(fh)
         stats = data.get("stats", {})
@@ -154,21 +158,21 @@ class TestTrainerCLIFlagWiring:
         """``--balanced-cohort-json`` flag must exist (Wf-145 P3 wiring)."""
         with TRAINER_SCRIPT.open() as fh:
             src = fh.read()
-        assert "--balanced-cohort-json" in src, (
-            "--balanced-cohort-json flag missing from trainer CLI"
-        )
-        assert "DEFAULT_RH_BALANCED_JSON" in src, (
-            "DEFAULT_RH_BALANCED_JSON default path missing from trainer"
-        )
+        assert (
+            "--balanced-cohort-json" in src
+        ), "--balanced-cohort-json flag missing from trainer CLI"
+        assert (
+            "DEFAULT_RH_BALANCED_JSON" in src
+        ), "DEFAULT_RH_BALANCED_JSON default path missing from trainer"
         # Verify the default points to the Wf-145 P1 cohort (post-Wf-309A
         # mirror path) so users get the Phase 1 cohort by default.
         m = re.search(
-            r'DEFAULT_RH_BALANCED_JSON\s*=\s*\(?\s*\n?\s*PROJECT_ROOT',
+            r"DEFAULT_RH_BALANCED_JSON\s*=\s*\(?\s*\n?\s*PROJECT_ROOT",
             src,
         )
-        assert m is not None, (
-            "DEFAULT_RH_BALANCED_JSON assignment must use PROJECT_ROOT"
-        )
+        assert (
+            m is not None
+        ), "DEFAULT_RH_BALANCED_JSON assignment must use PROJECT_ROOT"
 
     def test_oversample_and_pos_weight_flags_exist(self):
         """Wf-187 m19 Rh oversample fix + pos_weight flags must be wired.
@@ -178,23 +182,21 @@ class TestTrainerCLIFlagWiring:
         """
         with TRAINER_SCRIPT.open() as fh:
             src = fh.read()
-        assert "--oversample-positives" in src, (
-            "--oversample-positives flag missing (Wf-187 m19 fix)"
-        )
-        assert "--pos-weight" in src, (
-            "--pos-weight flag missing (Wf-187 m19 fix)"
-        )
+        assert (
+            "--oversample-positives" in src
+        ), "--oversample-positives flag missing (Wf-187 m19 fix)"
+        assert "--pos-weight" in src, "--pos-weight flag missing (Wf-187 m19 fix)"
         # Verify the helper function is defined.
-        assert "def oversample_underrepresented_metals" in src, (
-            "oversample_underrepresented_metals helper missing"
-        )
+        assert (
+            "def oversample_underrepresented_metals" in src
+        ), "oversample_underrepresented_metals helper missing"
         # Verify the CLI path wires into the runner constructor.
-        assert "oversample_positives=args.oversample_positives" in src, (
-            "CLI --oversample-positives not wired into BalancedLOMORunner"
-        )
-        assert "pos_weight=args.pos_weight" in src, (
-            "CLI --pos-weight not wired into BalancedLOMORunner"
-        )
+        assert (
+            "oversample_positives=args.oversample_positives" in src
+        ), "CLI --oversample-positives not wired into BalancedLOMORunner"
+        assert (
+            "pos_weight=args.pos_weight" in src
+        ), "CLI --pos-weight not wired into BalancedLOMORunner"
 
     def test_task_type_quick_model_flags_exist(self):
         """Wf-201 --task-type + --quick + --model flags must all be wired.
@@ -206,22 +208,22 @@ class TestTrainerCLIFlagWiring:
         with TRAINER_SCRIPT.open() as fh:
             src = fh.read()
         assert "--task-type" in src, "--task-type flag missing (Wf-201)"
-        assert 'choices=["single", "multi"]' in src, (
-            "--task-type choices must include single + multi"
-        )
+        assert (
+            'choices=["single", "multi"]' in src
+        ), "--task-type choices must include single + multi"
         assert "--quick" in src, "--quick flag missing (CPU smoke runner)"
         assert "--model" in src, "--model flag missing"
-        assert "chemprop_v2" in src and "v3" in src, (
-            "--model must support chemprop_v2 + v3"
-        )
+        assert (
+            "chemprop_v2" in src and "v3" in src
+        ), "--model must support chemprop_v2 + v3"
         # Verify --quick wires into args.epochs = 2 + args.metals[:1] + args.seeds[:1].
         # That is the canonical 1-metal x 1-seed x 2-epoch smoke config.
-        assert "args.epochs = 2" in src, (
-            "--quick must set args.epochs=2 (canonical smoke)"
-        )
-        assert "args.metals[:1]" in src, (
-            "--quick must set args.metals[:1] (single-metal smoke)"
-        )
+        assert (
+            "args.epochs = 2" in src
+        ), "--quick must set args.epochs=2 (canonical smoke)"
+        assert (
+            "args.metals[:1]" in src
+        ), "--quick must set args.metals[:1] (single-metal smoke)"
 
 
 # =====================================================================
@@ -239,11 +241,12 @@ class TestPreFlightGate:
             "pre_flight_check.py"
         )
         # Verify it returns a GateResult (sanity check on the contract).
-        assert "GateResult(" in src.split(
-            "def gate_wf321a_wf135_phase2_cpu_smoke", 1
-        )[1].split("def ", 1)[0], (
-            "gate_wf321a_wf135_phase2_cpu_smoke must construct a GateResult"
-        )
+        assert (
+            "GateResult("
+            in src.split("def gate_wf321a_wf135_phase2_cpu_smoke", 1)[1].split(
+                "def ", 1
+            )[0]
+        ), "gate_wf321a_wf135_phase2_cpu_smoke must construct a GateResult"
 
     def test_new_gate_registered_in_main_runners(self):
         """The new gate must be registered in the main runners list (all pipeline)."""
@@ -258,9 +261,9 @@ class TestPreFlightGate:
         # Verify the gate has a clear comment block referencing Wf-321A
         # so the audit trail is obvious.
         gate_section = src.split("p3_wf135_phase2_cpu_smoke_ready", 1)
-        assert len(gate_section) == 2, (
-            "gate name appears exactly once (or at least one occurrence)"
-        )
+        assert (
+            len(gate_section) == 2
+        ), "gate name appears exactly once (or at least one occurrence)"
 
     def test_gate_validates_cohort_plus_trainer_plus_launch_wrapper(self):
         """The new gate must check the 3 prerequisites for Phase 2 launch.
@@ -277,20 +280,20 @@ class TestPreFlightGate:
             src,
             re.DOTALL,
         )
-        assert gate_body_match is not None, (
-            "could not isolate gate_wf321a_wf135_phase2_cpu_smoke body"
-        )
+        assert (
+            gate_body_match is not None
+        ), "could not isolate gate_wf321a_wf135_phase2_cpu_smoke body"
         body = gate_body_match.group(0)
         # 3 prerequisites must all be referenced in the gate body.
-        assert "synthetic_rh_pos_neg.json" in body, (
-            "gate must check Phase 1 cohort JSON path"
-        )
-        assert "--balanced-cohort-json" in body, (
-            "gate must check trainer --balanced-cohort-json flag wiring"
-        )
-        assert "launch_wf310e_wf135_phase2_gpu.sh" in body, (
-            "gate must check Wf-310E GPU launch wrapper exists"
-        )
+        assert (
+            "synthetic_rh_pos_neg.json" in body
+        ), "gate must check Phase 1 cohort JSON path"
+        assert (
+            "--balanced-cohort-json" in body
+        ), "gate must check trainer --balanced-cohort-json flag wiring"
+        assert (
+            "launch_wf310e_wf135_phase2_gpu.sh" in body
+        ), "gate must check Wf-310E GPU launch wrapper exists"
 
 
 # =====================================================================
@@ -321,33 +324,31 @@ class TestGPUPortionIntegrationReadiness:
         assert LAUNCH_WRAPPER.exists(), "launch wrapper missing"
         with LAUNCH_WRAPPER.open() as fh:
             src = fh.read()
-        assert "USER_OK" in src, (
-            "launch wrapper does not reference USER_OK gate"
-        )
+        assert "USER_OK" in src, "launch wrapper does not reference USER_OK gate"
         # Verify the wrapper REFUSES to run unless USER_OK=1 is set.
         # Common patterns: explicit check + exit 1, or env-gated path.
-        assert "REFUSES" in src or 'exit 1' in src or 'USER_OK=1' in src, (
-            "launch wrapper must REFUSE without USER_OK=1"
-        )
+        assert (
+            "REFUSES" in src or "exit 1" in src or "USER_OK=1" in src
+        ), "launch wrapper must REFUSE without USER_OK=1"
 
     def test_launch_wrapper_references_trainer_and_phase1_cohort(self):
         """Wrapper must point to the trainer + Phase 1 cohort + USER_OK-gated path."""
         assert LAUNCH_WRAPPER.exists(), "launch wrapper missing"
         with LAUNCH_WRAPPER.open() as fh:
             src = fh.read()
-        assert "train_metal_lomo_v2.py" in src, (
-            "launch wrapper does not reference the trainer"
-        )
-        assert "synthetic_rh_pos_neg.json" in src, (
-            "launch wrapper does not reference the Phase 1 cohort JSON"
-        )
-        assert "Phase 1 prerequisite" in src or "PHASE1_COHORT" in src, (
-            "launch wrapper does not mark Phase 1 as a prerequisite"
-        )
+        assert (
+            "train_metal_lomo_v2.py" in src
+        ), "launch wrapper does not reference the trainer"
+        assert (
+            "synthetic_rh_pos_neg.json" in src
+        ), "launch wrapper does not reference the Phase 1 cohort JSON"
+        assert (
+            "Phase 1 prerequisite" in src or "PHASE1_COHORT" in src
+        ), "launch wrapper does not mark Phase 1 as a prerequisite"
         # Verify it lists the 5-metal x 5-seed x 50-epoch spec.
-        assert "Rh" in src and "Ru" in src and "Ir" in src and "Os" in src and "Re" in src, (
-            "launch wrapper must enumerate all 5 LOMO metals"
-        )
-        assert "EPOCHS=50" in src or "epochs=50" in src or "EPOCHS= 50" in src, (
-            "launch wrapper must specify 50-epoch spec"
-        )
+        assert (
+            "Rh" in src and "Ru" in src and "Ir" in src and "Os" in src and "Re" in src
+        ), "launch wrapper must enumerate all 5 LOMO metals"
+        assert (
+            "EPOCHS=50" in src or "epochs=50" in src or "EPOCHS= 50" in src
+        ), "launch wrapper must specify 50-epoch spec"

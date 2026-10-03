@@ -239,9 +239,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     output_dir = Path(args.output_dir)
 
     if args.audit:
-        print(
-            f"[metallo] AUDIT split={args.split} archive={archive_path}"
-        )
+        print(f"[metallo] AUDIT split={args.split} archive={archive_path}")
         audit = audit_coverage(
             archive_path=archive_path,
             extracted_dir=extracted_dir,
@@ -264,8 +262,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         targets = [get_target(args.target)]
 
     print(
-        f"[metallo] target={args.target} split={args.split} "
-        f"archive={archive_path}"
+        f"[metallo] target={args.target} split={args.split} " f"archive={archive_path}"
     )
     overall_t0 = time.time()
     summary: List[Dict[str, object]] = []

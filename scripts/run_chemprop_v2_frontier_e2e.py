@@ -75,8 +75,14 @@ def _set_seed(seed: int = 0) -> None:
 def _coord_label_for(metal_name: str) -> int:
     """d^8 → square_planar (3); d^6 → octahedral (4); else → 3."""
     table = {
-        "Pt": 3, "Pd": 3, "Au": 3,
-        "Ru": 4, "Ir": 4, "Os": 4, "Rh": 4, "Re": 4,
+        "Pt": 3,
+        "Pd": 3,
+        "Au": 3,
+        "Ru": 4,
+        "Ir": 4,
+        "Os": 4,
+        "Rh": 4,
+        "Re": 4,
     }
     return table.get(metal_name, 3)
 
@@ -100,9 +106,7 @@ def _build_batch(sub: pd.DataFrame):
     metals_list = sub["metal"].tolist()
     actives_list = sub["active"].astype(float).tolist()
     metal_to_id = {m: i for i, m in enumerate(SUPPORTED_METALS)}
-    metal_ids = torch.tensor(
-        [metal_to_id[m] for m in metals_list], dtype=torch.long
-    )
+    metal_ids = torch.tensor([metal_to_id[m] for m in metals_list], dtype=torch.long)
     y_true: dict = {}
     for m in SUPPORTED_METALS:
         per_row = torch.tensor(
@@ -120,7 +124,9 @@ def _build_batch(sub: pd.DataFrame):
 
 
 def _split_train_eval(
-    sub: pd.DataFrame, frac_eval: float = 0.3, seed: int = 0,
+    sub: pd.DataFrame,
+    frac_eval: float = 0.3,
+    seed: int = 0,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Stratified train/eval split (per metal)."""
     train_pieces, eval_pieces = [], []
@@ -208,9 +214,7 @@ def phase_smoke(
     sub = _slice_100(df)
     smiles_list, metal_ids, y_true, coord_true, _, _ = _build_batch(sub)
 
-    model = ChempropV2Frontier(
-        config=config, hidden_dim=hidden_dim, depth=depth
-    )
+    model = ChempropV2Frontier(config=config, hidden_dim=hidden_dim, depth=depth)
     n_params = sum(p.numel() for p in model.parameters())
 
     t0 = time.time()
@@ -267,17 +271,23 @@ def phase_train(
     train, ev = _split_train_eval(sub, frac_eval=0.3, seed=0)
 
     (
-        train_smiles, train_metal_ids, train_y, train_coord,
-        train_metals, train_actives,
+        train_smiles,
+        train_metal_ids,
+        train_y,
+        train_coord,
+        train_metals,
+        train_actives,
     ) = _build_batch(train)
     (
-        ev_smiles, ev_metal_ids, ev_y, ev_coord,
-        ev_metals, ev_actives,
+        ev_smiles,
+        ev_metal_ids,
+        ev_y,
+        ev_coord,
+        ev_metals,
+        ev_actives,
     ) = _build_batch(ev)
 
-    model = ChempropV2Frontier(
-        config=config, hidden_dim=hidden_dim, depth=depth
-    )
+    model = ChempropV2Frontier(config=config, hidden_dim=hidden_dim, depth=depth)
     optim = torch.optim.AdamW(model.parameters(), lr=lr)
 
     curves = []
@@ -296,21 +306,27 @@ def phase_train(
 
         # Eval.
         eval_metrics = _eval_auc_acc(
-            model, ev_smiles, ev_metal_ids, ev_metals, ev_actives,
+            model,
+            ev_smiles,
+            ev_metal_ids,
+            ev_metals,
+            ev_actives,
         )
 
-        curves.append({
-            "epoch": epoch,
-            "train_loss": float(loss.detach().item()),
-            "finite": bool(torch.isfinite(loss).item()),
-            "train_time_ms": (t1 - t0) * 1000.0,
-            "per_metal_train_loss": {
-                k: float(v.detach().item())
-                for k, v in total_info.items()
-                if k.startswith("loss_")
-            },
-            **eval_metrics,
-        })
+        curves.append(
+            {
+                "epoch": epoch,
+                "train_loss": float(loss.detach().item()),
+                "finite": bool(torch.isfinite(loss).item()),
+                "train_time_ms": (t1 - t0) * 1000.0,
+                "per_metal_train_loss": {
+                    k: float(v.detach().item())
+                    for k, v in total_info.items()
+                    if k.startswith("loss_")
+                },
+                **eval_metrics,
+            }
+        )
 
     train_result = {
         "phase": f"phase_train_{tag}",
@@ -328,14 +344,14 @@ def phase_train(
         "curves": curves,
     }
     out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / f"phase_train_{tag}.json").write_text(
-        json.dumps(train_result, indent=2)
-    )
+    (out_dir / f"phase_train_{tag}.json").write_text(json.dumps(train_result, indent=2))
     return train_result
 
 
 def phase_backward_compat(
-    hidden_dim: int, depth: int, out_dir: Path,
+    hidden_dim: int,
+    depth: int,
+    out_dir: Path,
 ) -> dict:
     """Phase 3 — verify bit-exact equivalence on the SAME instance with
     all frontier weights = 0."""
@@ -352,9 +368,7 @@ def phase_backward_compat(
     config.bass_weight = 0.0
     config.monge_ampere_weight = 0.0
     config.multi_ph_weight = 0.0
-    model = ChempropV2Frontier(
-        config=config, hidden_dim=hidden_dim, depth=depth
-    )
+    model = ChempropV2Frontier(config=config, hidden_dim=hidden_dim, depth=depth)
     # CRITICAL: set eval mode so the dropout in chemprop's
     # BinaryClassificationFFN is disabled — otherwise the wrapper
     # forward (which consumes RNG via dropout) differs from the
@@ -382,9 +396,7 @@ def phase_backward_compat(
         "per_metal_diff": diffs,
     }
     out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "phase_backward_compat.json").write_text(
-        json.dumps(bc_result, indent=2)
-    )
+    (out_dir / "phase_backward_compat.json").write_text(json.dumps(bc_result, indent=2))
     return bc_result
 
 
@@ -398,7 +410,8 @@ def main() -> dict:
     parser.add_argument("--hidden", type=int, default=64)
     parser.add_argument("--depth", type=int, default=2)
     parser.add_argument(
-        "--out-dir", type=str,
+        "--out-dir",
+        type=str,
         default="molmetal/reports/wf237_frontier_integration/",
     )
     args = parser.parse_args()
@@ -426,9 +439,7 @@ def main() -> dict:
 
     # Phase 1 — smoke.
     print("[wf237] === Phase 1 — smoke (all 4 modules on) ===", flush=True)
-    smoke_result = phase_smoke(
-        config, args.hidden, args.depth, out_dir
-    )
+    smoke_result = phase_smoke(config, args.hidden, args.depth, out_dir)
     print(
         f"[wf237]   smoke loss = {smoke_result['loss']:.4f} "
         f"finite = {smoke_result['finite']} "
@@ -442,8 +453,13 @@ def main() -> dict:
         flush=True,
     )
     train_frontier = phase_train(
-        config, args.hidden, args.depth, args.epochs, args.lr,
-        out_dir, tag="frontier_on",
+        config,
+        args.hidden,
+        args.depth,
+        args.epochs,
+        args.lr,
+        out_dir,
+        tag="frontier_on",
     )
     last = train_frontier["curves"][-1]
     print(
@@ -465,8 +481,13 @@ def main() -> dict:
     config_off.monge_ampere_weight = 0.0
     config_off.multi_ph_weight = 0.0
     train_baseline = phase_train(
-        config_off, args.hidden, args.depth, args.epochs, args.lr,
-        out_dir, tag="frontier_off",
+        config_off,
+        args.hidden,
+        args.depth,
+        args.epochs,
+        args.lr,
+        out_dir,
+        tag="frontier_off",
     )
     last_b = train_baseline["curves"][-1]
     print(
@@ -477,7 +498,10 @@ def main() -> dict:
     )
 
     # Phase 3 — backward compat.
-    print("[wf237] === Phase 3 — backward compat (bit-exact on same instance) ===", flush=True)
+    print(
+        "[wf237] === Phase 3 — backward compat (bit-exact on same instance) ===",
+        flush=True,
+    )
     bc_result = phase_backward_compat(args.hidden, args.depth, out_dir)
     print(
         f"[wf237]   bit_exact = {bc_result['bit_exact']} "

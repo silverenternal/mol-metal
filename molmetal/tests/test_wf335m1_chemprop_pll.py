@@ -42,6 +42,7 @@ Run with::
         /home/hugo/codes/mol-metal/.venv/bin/python -m pytest \\
         molmetal/tests/test_wf335m1_chemprop_pll.py -v
 """
+
 from __future__ import annotations
 
 import sys
@@ -83,6 +84,7 @@ def _import_module():
             MultiPHPLLFeatureExtractor,
             MultiPHPLLFeatureError,
         )
+
         return {
             "ChempropPLLFeatureExtractor": ChempropPLLFeatureExtractor,
             "ChempropPLLRidgeModel": ChempropPLLRidgeModel,
@@ -113,8 +115,14 @@ def mod():
 
 # Synthetic cohort for tests (8 molecules)
 SYNTHETIC_SMILES = [
-    "CCO", "c1ccccc1", "CC(=O)O", "CCN",
-    "CCOC", "CCCCO", "c1ccc(O)cc1", "c1ccncc1",
+    "CCO",
+    "c1ccccc1",
+    "CC(=O)O",
+    "CCN",
+    "CCOC",
+    "CCCCO",
+    "c1ccc(O)cc1",
+    "c1ccncc1",
 ]
 
 
@@ -135,9 +143,9 @@ def test_chemprop_v2_features_extraction(mod):
         pytest.skip(f"chemprop+PLL extraction failed: {exc}")
     n = len(SYNTHETIC_SMILES)
     # chemprop_dim contract: 3 pools * 72 atom = 216
-    assert chemprop_feat.shape[0] == n, (
-        f"chemprop n rows: {chemprop_feat.shape[0]} != {n}"
-    )
+    assert (
+        chemprop_feat.shape[0] == n
+    ), f"chemprop n rows: {chemprop_feat.shape[0]} != {n}"
     assert chemprop_feat.shape[1] == mod["CHEMPROP_V2_ATOM_DIM"] * 3, (
         f"chemprop dim: {chemprop_feat.shape[1]} != "
         f"{mod['CHEMPROP_V2_ATOM_DIM'] * 3} "
@@ -148,14 +156,12 @@ def test_chemprop_v2_features_extraction(mod):
         f"got {chemprop_feat.shape[1]}"
     )
     # All finite (RDKit parse failures zero-fill but don't produce NaN)
-    assert np.isfinite(chemprop_feat).all(), (
-        "chemprop_feat contains non-finite values"
-    )
+    assert np.isfinite(chemprop_feat).all(), "chemprop_feat contains non-finite values"
     # At least one non-zero row (the RDKit parser should succeed
     # on most of the synthetic cohort)
-    assert (chemprop_feat.any(axis=-1)).sum() >= 1, (
-        "chemprop_feat is entirely zero — RDKit parser may be broken"
-    )
+    assert (
+        chemprop_feat.any(axis=-1)
+    ).sum() >= 1, "chemprop_feat is entirely zero — RDKit parser may be broken"
     # Property introspection
     assert extractor.chemprop_dim == 216
     assert extractor.use_chemprop_fallback is True
@@ -187,19 +193,15 @@ def test_pll_signature_extraction(mod):
         pytest.skip(f"chemprop+PLL extraction failed: {exc}")
     n = len(SYNTHETIC_SMILES)
     # PLL dim contract: top-k=32
-    assert pll_feat.shape[0] == n, (
-        f"PLL n rows: {pll_feat.shape[0]} != {n}"
-    )
-    assert pll_feat.shape[1] == mod["PLL_TOP_K"], (
-        f"PLL dim: {pll_feat.shape[1]} != {mod['PLL_TOP_K']}"
-    )
-    assert pll_feat.shape[1] == 32, (
-        f"expected 32-d PLL signature, got {pll_feat.shape[1]}"
-    )
+    assert pll_feat.shape[0] == n, f"PLL n rows: {pll_feat.shape[0]} != {n}"
+    assert (
+        pll_feat.shape[1] == mod["PLL_TOP_K"]
+    ), f"PLL dim: {pll_feat.shape[1]} != {mod['PLL_TOP_K']}"
+    assert (
+        pll_feat.shape[1] == 32
+    ), f"expected 32-d PLL signature, got {pll_feat.shape[1]}"
     # All finite
-    assert np.isfinite(pll_feat).all(), (
-        "pll_feat contains non-finite values"
-    )
+    assert np.isfinite(pll_feat).all(), "pll_feat contains non-finite values"
     # Joint design matrix contract: (n, chemprop_dim + pll_dim)
     assert joint.shape == (n, extractor.chemprop_dim + extractor.pll_dim), (
         f"joint shape: {joint.shape} != ({n}, "
@@ -207,11 +209,13 @@ def test_pll_signature_extraction(mod):
     )
     # chemprop leading, PLL trailing
     np.testing.assert_array_equal(
-        joint[:, :extractor.chemprop_dim], chemprop_feat,
+        joint[:, : extractor.chemprop_dim],
+        chemprop_feat,
         err_msg="chemprop block must lead the joint design matrix",
     )
     np.testing.assert_array_equal(
-        joint[:, extractor.chemprop_dim:], pll_feat,
+        joint[:, extractor.chemprop_dim :],
+        pll_feat,
         err_msg="PLL block must trail the joint design matrix",
     )
     # Property introspection
@@ -242,7 +246,8 @@ def test_combined_ridge_model(mod):
     # design matrix (PLL signature carries the dominant signal).
     np.random.seed(20260929)
     y_baseline = (
-        0.30 + 0.40 * pll_feat[:, 0]  # PLL λ_0 dependence
+        0.30
+        + 0.40 * pll_feat[:, 0]  # PLL λ_0 dependence
         + 0.10 * chemprop_feat[:, 0]  # chemprop graph dependence
         + 0.05 * np.random.randn(pll_feat.shape[0])
     )
@@ -280,16 +285,21 @@ def test_combined_ridge_model(mod):
     # Score dict populates the JSON contract
     score = model.score(chemprop_feat, pll_feat, y_baseline)
     for k in (
-        "cv_r2", "augmented_mean", "pass_rate_strict",
-        "pass_rate_adaptive", "baseline_mean",
+        "cv_r2",
+        "augmented_mean",
+        "pass_rate_strict",
+        "pass_rate_adaptive",
+        "baseline_mean",
     ):
         assert k in score, f"score missing key: {k}"
     # Pass-rate contract
     pr_strict = model.pass_rate_at_threshold(
-        y_pred_cv, adaptive=False,
+        y_pred_cv,
+        adaptive=False,
     )
     pr_adaptive = model.pass_rate_at_threshold(
-        y_pred_cv, adaptive=True,
+        y_pred_cv,
+        adaptive=True,
     )
     assert 0.0 <= pr_strict <= 1.0
     assert 0.0 <= pr_adaptive <= 1.0
@@ -301,7 +311,8 @@ def test_combined_ridge_model(mod):
     # Threshold constants mirror Wf-333-V4
     assert mod["M6_KAPPA_THRESHOLD"] == pytest.approx(0.6, abs=1e-9)
     assert mod["M6_KAPPA_THRESHOLD_ADAPTIVE"] == pytest.approx(
-        0.55, abs=1e-9,
+        0.55,
+        abs=1e-9,
     )
 
 
@@ -317,17 +328,13 @@ def test_cv_r2_0_6814_verification(mod):
     signal (per Wf-333-V4 result.json)."""
     # Wf-333-V4 anchor mirror
     assert mod["WF333V4_MEASURED_CV_R2"] == pytest.approx(
-        0.6814054457018517, abs=1e-9,
-    ), (
-        "Wf-333-V4 MEASURED CV-R² anchor must mirror "
-        "Wf-333-V4 result.json"
-    )
+        0.6814054457018517,
+        abs=1e-9,
+    ), "Wf-333-V4 MEASURED CV-R² anchor must mirror " "Wf-333-V4 result.json"
     assert mod["WF325D_MEASURED_BASELINE"] == pytest.approx(
-        0.4719079955824899, abs=1e-9,
-    ), (
-        "Wf-325D MEASURED baseline must mirror "
-        "metrics/by_metric/m6_kappa.json"
-    )
+        0.4719079955824899,
+        abs=1e-9,
+    ), "Wf-325D MEASURED baseline must mirror " "metrics/by_metric/m6_kappa.json"
     # Build a synthetic cohort with structural signal that the
     # chemprop+PLL features can recover.  We assign m6_kappa
     # as a function of the PLL signature + chemprop graph
@@ -351,7 +358,8 @@ def test_cv_r2_0_6814_verification(mod):
     y_synthetic = np.clip(y_synthetic, 0.0, 1.0)
     # Wire-in
     report = mod["wire_chemprop_pll_recovery"](
-        SYNTHETIC_SMILES, y_synthetic,
+        SYNTHETIC_SMILES,
+        y_synthetic,
         extractor=extractor,
         ridge_alpha=1.0,
         cv_folds=5,
@@ -363,13 +371,11 @@ def test_cv_r2_0_6814_verification(mod):
     assert report.n_samples == len(SYNTHETIC_SMILES)
     assert report.n_features == extractor.joint_dim  # 248
     # CV-R² is finite
-    assert np.isfinite(report.cv_r2), (
-        f"CV-R² not finite: {report.cv_r2}"
-    )
+    assert np.isfinite(report.cv_r2), f"CV-R² not finite: {report.cv_r2}"
     # Augmented mean is finite
-    assert np.isfinite(report.augmented_mean), (
-        f"augmented_mean not finite: {report.augmented_mean}"
-    )
+    assert np.isfinite(
+        report.augmented_mean
+    ), f"augmented_mean not finite: {report.augmented_mean}"
     # Verdict contract: HONEST_NEGATIVE_M6_KAPPA_RESOLVED iff
     # augmented_mean >= 0.6
     expected_verdict = (
@@ -377,9 +383,9 @@ def test_cv_r2_0_6814_verification(mod):
         if report.augmented_mean >= mod["M6_KAPPA_THRESHOLD"]
         else "HONEST_NEGATIVE_PERSISTENT"
     )
-    assert report.verdict == expected_verdict, (
-        f"verdict={report.verdict}, expected={expected_verdict}"
-    )
+    assert (
+        report.verdict == expected_verdict
+    ), f"verdict={report.verdict}, expected={expected_verdict}"
     # Wall-seconds contract: must be a positive finite float
     assert np.isfinite(report.wall_seconds)
     assert report.wall_seconds > 0.0
@@ -389,17 +395,20 @@ def test_cv_r2_0_6814_verification(mod):
         abs=1e-9,
     )
     assert report.pass_rate_lift_adaptive == pytest.approx(
-        report.pass_rate_augmented_adaptive
-        - report.pass_rate_baseline_adaptive,
+        report.pass_rate_augmented_adaptive - report.pass_rate_baseline_adaptive,
         abs=1e-9,
     )
     # Serialise via write_recovery_report and roundtrip
     import json as _json
     import tempfile
+
     with tempfile.TemporaryDirectory() as tmpdir:
         out_path = str(Path(tmpdir) / "result.json")
         mod["write_recovery_report"](
-            report, out_path, SYNTHETIC_SMILES, extractor,
+            report,
+            out_path,
+            SYNTHETIC_SMILES,
+            extractor,
         )
         with open(out_path, "r", encoding="utf-8") as fh:
             payload = _json.load(fh)
@@ -407,11 +416,13 @@ def test_cv_r2_0_6814_verification(mod):
     assert payload["no_gpu_launch"] is True
     assert payload["cpu_only"] is True
     assert payload["recovery"]["cv_r2"] == pytest.approx(
-        report.cv_r2, abs=1e-5,
+        report.cv_r2,
+        abs=1e-5,
     )
     assert payload["recovery"]["candidate"] == "chemprop_plus_pll"
     assert payload["wf_333_v4_best_cv_r2_measured"] == pytest.approx(
-        mod["WF333V4_MEASURED_CV_R2"], abs=1e-9,
+        mod["WF333V4_MEASURED_CV_R2"],
+        abs=1e-9,
     )
     # CV-R² sanity: on the Wf-333-V4 60-SMILES smoke cohort the
     # chemprop+PLL joint achieves +0.6814 (the Wf-333-V4 anchor).
@@ -422,13 +433,10 @@ def test_cv_r2_0_6814_verification(mod):
     # cohort as the wire-in integrity check; the Wf-333-V4
     # anchor is verified separately via the constant mirror
     # assertion above.
-    assert np.isfinite(report.cv_r2), (
-        f"CV-R² not finite: {report.cv_r2}"
-    )
+    assert np.isfinite(report.cv_r2), f"CV-R² not finite: {report.cv_r2}"
     # CV-R² must be in a sane range (not crazy large / small)
     assert -100.0 < report.cv_r2 < 100.0, (
-        f"CV-R² {report.cv_r2:+.4f} outside sane range; "
-        f"Ridge fit is broken."
+        f"CV-R² {report.cv_r2:+.4f} outside sane range; " f"Ridge fit is broken."
     )
     # Wf-333-V4 anchor mirror: the upper-bound CV-R² +0.6814 is
     # the MEASURED ceiling on the chemprop+PLL structural

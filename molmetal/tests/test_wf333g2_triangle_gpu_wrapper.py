@@ -36,6 +36,7 @@ These tests do NOT touch the GPU.  The Wf-333-G2 wrapper is shipped
 as CPU-only scaffolding per AGENTS.md §5.1 — downstream Wf-333-G3+
 runs the actual GPU launch when VRAM frees.
 """
+
 from __future__ import annotations
 
 import json
@@ -96,12 +97,12 @@ def test_wrapper_initialization_cpu_only(tmp_path: Path) -> None:
     """
     # ---- Default config — feature_mode=12d, hilbert_dim=64 ----
     config = TriangleGPUConfig()
-    assert config.feature_mode == "12d", (
-        f"default feature_mode should be '12d' (Wf-331-R2 ship), got {config.feature_mode!r}"
-    )
-    assert config.hilbert_dim == 64, (
-        f"default hilbert_dim should be 64, got {config.hilbert_dim}"
-    )
+    assert (
+        config.feature_mode == "12d"
+    ), f"default feature_mode should be '12d' (Wf-331-R2 ship), got {config.feature_mode!r}"
+    assert (
+        config.hilbert_dim == 64
+    ), f"default hilbert_dim should be 64, got {config.hilbert_dim}"
     assert config.launch is False, (
         f"default launch should be False (dry-run per AGENTS.md §5.1), "
         f"got {config.launch}"
@@ -112,12 +113,13 @@ def test_wrapper_initialization_cpu_only(tmp_path: Path) -> None:
 
     # ---- Schema assertions ----
     assert isinstance(summary, TriangleGPUSummary)
-    assert summary.feature_shape == (64, 12), (
-        f"feature_shape should be (64, 12) for 12-d mode, got {summary.feature_shape}"
-    )
-    assert len(summary.feature_names) == 12, (
-        f"feature_names should have 12 entries (F5_RDKIT_2D), got {len(summary.feature_names)}"
-    )
+    assert summary.feature_shape == (
+        64,
+        12,
+    ), f"feature_shape should be (64, 12) for 12-d mode, got {summary.feature_shape}"
+    assert (
+        len(summary.feature_names) == 12
+    ), f"feature_names should have 12 entries (F5_RDKIT_2D), got {len(summary.feature_names)}"
     # The 12-d names are the Wf-49 P1 / Wf-331-R2 canonical F5_RDKIT_2D
     # RDKit descriptors — must include MolWt, MolLogP, TPSA.
     expected_min_names = {"MolWt", "MolLogP", "TPSA"}
@@ -128,15 +130,15 @@ def test_wrapper_initialization_cpu_only(tmp_path: Path) -> None:
     )
 
     # ---- Vertex labels ----
-    assert summary.vertex_labels == ("astsr", "hilbert", "mcts"), (
-        f"vertex_labels should be ('astsr', 'hilbert', 'mcts'), got {summary.vertex_labels}"
-    )
+    assert (
+        summary.vertex_labels == ("astsr", "hilbert", "mcts")
+    ), f"vertex_labels should be ('astsr', 'hilbert', 'mcts'), got {summary.vertex_labels}"
 
     # ---- Hilbert torch module parameter count ----
     # hilbert_dim=64 → 1 parameter vector of length 64 → 64 trainable params.
-    assert summary.n_trainable_params == 64, (
-        f"n_trainable_params should be 64 for hilbert_dim=64, got {summary.n_trainable_params}"
-    )
+    assert (
+        summary.n_trainable_params == 64
+    ), f"n_trainable_params should be 64 for hilbert_dim=64, got {summary.n_trainable_params}"
 
     # ---- Honest-negative flags ----
     # The wrapper is dry-run only — should emit HONEST_NEGATIVE_TRIANGLE_GPU_DEFERRED.
@@ -146,9 +148,9 @@ def test_wrapper_initialization_cpu_only(tmp_path: Path) -> None:
     )
 
     # ---- Project tag ----
-    assert summary.project_tag == "PROJECTED", (
-        f"project_tag should be PROJECTED (CPU dry-run only), got {summary.project_tag}"
-    )
+    assert (
+        summary.project_tag == "PROJECTED"
+    ), f"project_tag should be PROJECTED (CPU dry-run only), got {summary.project_tag}"
 
     # ---- Honesty gate verdict (PROJECTED, not PASS) ----
     gate = summary.honesty_gate_status
@@ -241,10 +243,13 @@ def test_wrapper_cli_args_and_default_config() -> None:
     assert cfg_no_launch.launch is False
 
     # ---- --torch-compile + --torch-compile-mode ----
-    cfg_tc = parse_args([
-        "--torch-compile",
-        "--torch-compile-mode", "reduce-overhead",
-    ])
+    cfg_tc = parse_args(
+        [
+            "--torch-compile",
+            "--torch-compile-mode",
+            "reduce-overhead",
+        ]
+    )
     assert cfg_tc.torch_compile is True
     assert cfg_tc.torch_compile_mode == "reduce-overhead"
     cfg_tc_default = parse_args([])
@@ -273,8 +278,9 @@ def test_wrapper_cli_args_and_default_config() -> None:
     assert cfg_ds_mc.dataset == "metalcytotox"
 
     # ---- --hilbert-dim / --epochs / --seeds / --lr ----
-    cfg_hd = parse_args(["--hilbert-dim", "128", "--epochs", "100",
-                         "--seeds", "10", "--lr", "0.01"])
+    cfg_hd = parse_args(
+        ["--hilbert-dim", "128", "--epochs", "100", "--seeds", "10", "--lr", "0.01"]
+    )
     assert cfg_hd.hilbert_dim == 128
     assert cfg_hd.epochs == 100
     assert cfg_hd.seeds == 10
@@ -286,6 +292,7 @@ def test_wrapper_cli_args_and_default_config() -> None:
 
     # ---- add_wf333g2_args idempotency ----
     import argparse as _ap
+
     parser = _ap.ArgumentParser()
     parser = add_wf333g2_args(parser)
     # Calling twice on the same parser must not raise (the wrapper
@@ -342,12 +349,16 @@ def test_wrapper_cli_args_and_default_config() -> None:
 
     # ---- triangle_composite ----
     comp = triangle_composite(
-        hilbert_r2=0.5, evolutionary_r2=0.3, variance_reduction=0.05,
+        hilbert_r2=0.5,
+        evolutionary_r2=0.3,
+        variance_reduction=0.05,
     )
     assert isinstance(comp, float)
     assert comp == pytest.approx(0.5 + 0.3 + 0.05)
     comp_weighted = triangle_composite(
-        hilbert_r2=0.5, evolutionary_r2=0.3, variance_reduction=0.05,
+        hilbert_r2=0.5,
+        evolutionary_r2=0.3,
+        variance_reduction=0.05,
         weights=(2.0, 1.0, 1.0),
     )
     assert comp_weighted == pytest.approx(1.0 + 0.3 + 0.05)
@@ -363,5 +374,6 @@ def test_wrapper_module_imports_clean() -> None:
     or other GPU-touching side-effects in module-level imports.
     """
     import molmetal.scripts.wf333g2_triangle_12d_gpu_wrapper as wrapper
+
     assert wrapper.WRAPPER_NAME == "wf333g2_triangle_12d_gpu_wrapper"
     assert wrapper.WRAPPER_VERSION == "1.0.0"

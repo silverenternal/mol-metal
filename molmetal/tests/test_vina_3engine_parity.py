@@ -65,9 +65,9 @@ def test_vina_3engine_parity() -> None:
     for engine in ("vina", "qvina", "quickvina2"):
         adapter = VinaDockingAdapter(engine=engine)
         dispatched = adapter._engine_dispatched()
-        assert isinstance(dispatched, str), (
-            f"{engine}: _engine_dispatched returned {type(dispatched).__name__}"
-        )
+        assert isinstance(
+            dispatched, str
+        ), f"{engine}: _engine_dispatched returned {type(dispatched).__name__}"
         assert dispatched == expected_dispatch[engine], (
             f"{engine}: expected dispatch={expected_dispatch[engine]!r}, "
             f"got {dispatched!r}"

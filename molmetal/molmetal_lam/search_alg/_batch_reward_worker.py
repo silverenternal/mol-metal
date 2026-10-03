@@ -35,6 +35,7 @@ from typing import Any, Dict, Tuple
 try:  # pragma: no cover — RDKit optional
     from rdkit import Chem as _Chem  # type: ignore
     from rdkit.Chem import Descriptors as _Descriptors  # type: ignore
+
     try:
         from rdkit.Contrib.SA_Score import sascorer as _sascorer  # type: ignore
     except Exception:  # pragma: no cover
@@ -135,18 +136,12 @@ def _score_vina_proxy(smi: str) -> float:
         # No free_sites signal available without the closed-term — use
         # n_free_electrons as a stand-in (cheap and RDKit-native).
         try:
-            n_free = float(sum(
-                a.GetNumRadicalElectrons() for a in mol.GetAtoms()
-            ))
+            n_free = float(sum(a.GetNumRadicalElectrons() for a in mol.GetAtoms()))
         except Exception:
             n_free = 0.0
     except Exception:
         return 0.5
-    linear_proxy = (
-        0.04 * n_atoms
-        + 0.05 * n_bonds
-        - 0.03 * max(0.0, n_free - 4.0)
-    )
+    linear_proxy = 0.04 * n_atoms + 0.05 * n_bonds - 0.03 * max(0.0, n_free - 4.0)
     raw = 0.5 + 0.5 * (0.5 - 0.5) + linear_proxy
     return float(max(0.0, min(1.0, raw)))
 

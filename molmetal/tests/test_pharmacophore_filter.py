@@ -75,18 +75,18 @@ def test_lipinski_cisplatin() -> None:
     rep = compute_pharmacophore_report(cisplatin)
     assert rep.valid, "cisplatin SMILES must parse"
     # Sanity-check MW — empirically ~300 Da.
-    assert 290 < rep.descriptors["MW"] < 320, (
-        f"cisplatin MW ~300, got {rep.descriptors['MW']:.2f}"
-    )
+    assert (
+        290 < rep.descriptors["MW"] < 320
+    ), f"cisplatin MW ~300, got {rep.descriptors['MW']:.2f}"
     # logP: accept RDKit's reported ~0.20 (with Pt atom-type limitation
     # acknowledged) OR the experimental ~-2.19 — either is below 5.
-    assert rep.descriptors["logP"] < 5, (
-        f"cisplatin logP must be <5 (Ro5 cutoff), got {rep.descriptors['logP']:.2f}"
-    )
+    assert (
+        rep.descriptors["logP"] < 5
+    ), f"cisplatin logP must be <5 (Ro5 cutoff), got {rep.descriptors['logP']:.2f}"
     # Zero Lipinski violations.
-    assert rep.lipinski_violations == 0, (
-        f"cisplatin must have 0 Lipinski violations, got {rep.lipinski_violations}"
-    )
+    assert (
+        rep.lipinski_violations == 0
+    ), f"cisplatin must have 0 Lipinski violations, got {rep.lipinski_violations}"
     # Veber: PSA may be nonzero due to NH3/Cl groups but should be small.
     assert rep.descriptors["PSA"] < 140
     # Cisplatin is acyclic (ring_count=0), so it fails the ring-count
@@ -139,9 +139,9 @@ def test_lipinski_violation_mw_too_high() -> None:
     long_chain = "NCC(=O)" + "NC(C)C(=O)" * 19 + "O"
     rep = compute_pharmacophore_report(long_chain)
     assert rep.valid
-    assert rep.descriptors["MW"] > 500, (
-        f"long poly-alanine chain MW must be >500, got {rep.descriptors['MW']:.2f}"
-    )
+    assert (
+        rep.descriptors["MW"] > 500
+    ), f"long poly-alanine chain MW must be >500, got {rep.descriptors['MW']:.2f}"
     # At least MW violation triggered.
     assert compute_lipinski_violations(long_chain) >= 1
     # And the gate refuses it.
@@ -160,13 +160,13 @@ def test_lipinski_violation_logp_too_high() -> None:
     rep = compute_pharmacophore_report(lipophilic)
     assert rep.valid
     # MW under 500 so only logP fires
-    assert rep.descriptors["MW"] < 500, (
-        f"hexadecylbenzene MW must be <500, got {rep.descriptors['MW']:.2f}"
-    )
+    assert (
+        rep.descriptors["MW"] < 500
+    ), f"hexadecylbenzene MW must be <500, got {rep.descriptors['MW']:.2f}"
     # logP well over 5
-    assert rep.descriptors["logP"] > 5, (
-        f"hexadecylbenzene logP must be >5, got {rep.descriptors['logP']:.2f}"
-    )
+    assert (
+        rep.descriptors["logP"] > 5
+    ), f"hexadecylbenzene logP must be >5, got {rep.descriptors['logP']:.2f}"
     # At least the logP slot contributes to the count
     assert compute_lipinski_violations(lipophilic) >= 1
 
@@ -186,14 +186,12 @@ def test_veber_high_psa_fails() -> None:
     """
     # (HOCH2CH2)3N as a tripodal polyol — empirical TPSA ~ 60, too small.
     # Use a poly-sulfonamide instead.
-    high_psa = (
-        "O=S(=O)(N)c1ccc(S(=O)(=O)N)cc1S(=O)(=O)N"  # benzene-trisulfonamide
-    )
+    high_psa = "O=S(=O)(N)c1ccc(S(=O)(=O)N)cc1S(=O)(=O)N"  # benzene-trisulfonamide
     rep = compute_pharmacophore_report(high_psa)
     assert rep.valid
-    assert rep.descriptors["PSA"] > 140, (
-        f"benzene-trisulfonamide PSA must be >140, got {rep.descriptors['PSA']:.2f}"
-    )
+    assert (
+        rep.descriptors["PSA"] > 140
+    ), f"benzene-trisulfonamide PSA must be >140, got {rep.descriptors['PSA']:.2f}"
     # Veber slot fires
     assert compute_veber_violations(high_psa) >= 1
     # But Lipinski HBD=3, HBA=6, MW=335, logP~ -1 → 0 Lipinski violations.
@@ -210,9 +208,9 @@ def test_veber_too_many_rotb_fails() -> None:
     peg25 = "OCCO" * 25  # 25 ethylene glycol repeats → rotB ~ 50
     rep = compute_pharmacophore_report(peg25)
     assert rep.valid
-    assert rep.descriptors["rotB"] > 10, (
-        f"PEG25 rotB must be >10, got {rep.descriptors['rotB']}"
-    )
+    assert (
+        rep.descriptors["rotB"] > 10
+    ), f"PEG25 rotB must be >10, got {rep.descriptors['rotB']}"
     assert compute_veber_violations(peg25) >= 1
     # PSA also probably above 140 (25× OH/O atoms → large TPSA).
     assert rep.veber_violations >= 1
@@ -318,9 +316,7 @@ def test_ring_count_minimum() -> None:
     assert not pass_pharmacophore(cisplatin, strict=True)
     assert pass_pharmacophore(cisplatin, strict=False)
     # With allow_acyclic=True → 0 violations → strict passes.
-    assert pass_pharmacophore(
-        cisplatin, strict=True, allow_acyclic=True
-    )
+    assert pass_pharmacophore(cisplatin, strict=True, allow_acyclic=True)
 
 
 def test_allow_acyclic_opt_in() -> None:
@@ -334,9 +330,7 @@ def test_allow_acyclic_opt_in() -> None:
     assert not pass_pharmacophore(cisplatin, strict=True)
     assert pass_pharmacophore(cisplatin, strict=False)
     # Opt-in: strict now passes.
-    assert pass_pharmacophore(
-        cisplatin, strict=True, allow_acyclic=True
-    )
+    assert pass_pharmacophore(cisplatin, strict=True, allow_acyclic=True)
     # And the descriptor report has ring_violation=False with opt-in.
     rep = compute_pharmacophore_report(cisplatin, allow_acyclic=True)
     assert rep.ring_violation is False
@@ -362,9 +356,7 @@ def test_batch_filter() -> None:
         "OCCO" * 25,  # PEG25 → FAIL both
         "C" * 16,  # C16 alkane → FAIL both (ring + rotB)
     ]
-    survivors, reports = filter_molecules(
-        inputs, strict=True, return_reports=True
-    )
+    survivors, reports = filter_molecules(inputs, strict=True, return_reports=True)
     # aspirin + caffeine → 2 strict survivors
     assert "CC(=O)OC1=CC=CC=C1C(=O)O" in survivors
     assert "CN1C=NC2=C1C(=O)N(C(=O)N2C)C" in survivors
@@ -416,9 +408,10 @@ def test_compute_pharmacophore_report() -> None:
     # way it is comfortably below the Ro5 cutoff of 5.
     assert d["logP"] < 0, f"caffeine logP should be <0, got {d['logP']:.2f}"
     assert d["HBD"] == 0
-    assert d["HBA"] in (3, 6), (
-        f"caffeine HBA = 3 (N) or 6 (N+O); RDKit reports {d['HBA']}"
-    )
+    assert d["HBA"] in (
+        3,
+        6,
+    ), f"caffeine HBA = 3 (N) or 6 (N+O); RDKit reports {d['HBA']}"
     assert d["ring_count"] == 2  # imidazole + pyrimidinedione
 
 
@@ -491,10 +484,11 @@ def test_default_thresholds_match_literature() -> None:
     This is a regression test — if anyone tweaks the defaults they
     must also update this test (and the docstring).
     """
-    assert DEFAULT_LIPINSKI_BOUNDS == (500.0, 5.0, 5.0, 10.0), (
-        "Lipinski Ro5 thresholds (Lipinski 2001 Table 1)"
-    )
-    assert DEFAULT_VEBER_BOUNDS == (140.0, 10.0), (
-        "Veber 2002 PSA + rotB thresholds"
-    )
+    assert DEFAULT_LIPINSKI_BOUNDS == (
+        500.0,
+        5.0,
+        5.0,
+        10.0,
+    ), "Lipinski Ro5 thresholds (Lipinski 2001 Table 1)"
+    assert DEFAULT_VEBER_BOUNDS == (140.0, 10.0), "Veber 2002 PSA + rotB thresholds"
     assert DEFAULT_MIN_RING_COUNT == 1, "Hopkins 2008 minimum ring-count"

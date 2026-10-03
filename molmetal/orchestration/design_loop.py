@@ -389,7 +389,9 @@ class DesignLoop:
             this_iter_top = scored[: max(0, int(n_top))]
             iter_record["n_kept_this_iter"] = len(this_iter_top)
             iter_record["best_score"] = (
-                float(this_iter_top[0].combined_score) if this_iter_top else float("-inf")
+                float(this_iter_top[0].combined_score)
+                if this_iter_top
+                else float("-inf")
             )
             iter_record["mean_score"] = (
                 float(sum(c.combined_score for c in scored) / len(scored))

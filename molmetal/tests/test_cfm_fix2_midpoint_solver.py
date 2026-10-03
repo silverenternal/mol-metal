@@ -119,6 +119,7 @@ def test_generate_impl_reads_config_method():
 
     # Build a minimal pocket and config.
     from molmetal.domain import Molecule, Pocket
+
     g = torch.Generator().manual_seed(7)
     pcoords = torch.randn(12, 3, generator=g) * 2.0
     pocket = Pocket(
@@ -157,9 +158,9 @@ def test_generate_impl_reads_config_method():
         f"method='midpoint' when config.method='midpoint', got "
         f"{captured.get('method')!r}"
     )
-    assert abs(captured.get("step_size", 0.0) - 1.0 / cfg_mid.n_steps) < 1e-9, (
-        f"step_size should equal 1/n_steps, got {captured.get('step_size')!r}"
-    )
+    assert (
+        abs(captured.get("step_size", 0.0) - 1.0 / cfg_mid.n_steps) < 1e-9
+    ), f"step_size should equal 1/n_steps, got {captured.get('step_size')!r}"
 
     # Path B: explicit "euler" → solver.sample called with method="euler"
     captured.clear()
@@ -196,6 +197,7 @@ def test_fix2_does_not_break_p0_p1():
 
     # Build minimal pocket.
     from molmetal.domain import Pocket
+
     g_p = torch.Generator().manual_seed(11)
     pcoords = torch.randn(12, 3, generator=g_p) * 2.0
     pocket = Pocket(
@@ -225,9 +227,9 @@ def test_fix2_does_not_break_p0_p1():
             f"midpoint solver produced non-finite coords (Fix #2 "
             f"regression): coords shape={tuple(m.coords.shape)}"
         )
-        assert m.coords.shape[-1] == 3, (
-            f"coords should be (n_atoms, 3), got shape {tuple(m.coords.shape)}"
-        )
+        assert (
+            m.coords.shape[-1] == 3
+        ), f"coords should be (n_atoms, 3), got shape {tuple(m.coords.shape)}"
 
     # Verify the same call with explicit method="euler" also produces
     # finite coords — backward compat: callers that pin the legacy

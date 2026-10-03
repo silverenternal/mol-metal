@@ -60,9 +60,7 @@ from typing import Any, Iterable, Mapping, Sequence
 # Constants — 5-metal × 9-cell × 4-source
 # ---------------------------------------------------------------------------
 
-DEFAULT_OUTPUT_DIR = Path(
-    "molmetal/reports/wf143/cross_domain_uncertainty_panel"
-)
+DEFAULT_OUTPUT_DIR = Path("molmetal/reports/wf143/cross_domain_uncertainty_panel")
 
 # 5 precious metals covered by the Wf-128 P1 multitask backbone.
 FIVE_METALS: tuple[str, ...] = ("Pt", "Ru", "Ir", "Rh", "Os")
@@ -343,9 +341,29 @@ def _as_bool(value: Any) -> bool | None:
     if isinstance(value, (int, float)):
         return bool(value)
     text = str(value).strip().lower()
-    if text in {"1", "true", "yes", "y", "pass", "passed", "success", "accepted", "active"}:
+    if text in {
+        "1",
+        "true",
+        "yes",
+        "y",
+        "pass",
+        "passed",
+        "success",
+        "accepted",
+        "active",
+    }:
         return True
-    if text in {"0", "false", "no", "n", "fail", "failed", "failure", "rejected", "inactive"}:
+    if text in {
+        "0",
+        "false",
+        "no",
+        "n",
+        "fail",
+        "failed",
+        "failure",
+        "rejected",
+        "inactive",
+    }:
         return False
     return None
 
@@ -475,9 +493,7 @@ def _source_row(
     score_key, score_value = _first_value(row, spec["score"])
     label_key, label_value = _first_value(row, spec["label"])
     uncertainty_key, uncertainty_value = _first_value(row, spec["uncertainty"])
-    applicability_key, applicability_value = _first_value(
-        row, spec["applicability"]
-    )
+    applicability_key, applicability_value = _first_value(row, spec["applicability"])
     ood_key, ood_value = _first_value(row, spec["ood"])
     del label_key, uncertainty_key, applicability_key, ood_key
 
@@ -485,9 +501,7 @@ def _source_row(
     score = _to_float(score_value)
     if probability is None and score is not None:
         probability = _score_to_probability(source, score)
-        probability_key = (
-            f"{score_key}:score_to_probability" if score_key else None
-        )
+        probability_key = f"{score_key}:score_to_probability" if score_key else None
 
     uncertainty = _to_float(uncertainty_value)
     label_bool = _as_bool(label_value)
@@ -626,7 +640,9 @@ def _calibration_bins(
                     "bin_lower": lower,
                     "bin_upper": upper,
                     "count": len(in_bin),
-                    "mean_confidence": "" if mean_confidence is None else mean_confidence,
+                    "mean_confidence": ""
+                    if mean_confidence is None
+                    else mean_confidence,
                     "empirical_accuracy": "" if accuracy is None else accuracy,
                     "abs_calibration_error": "" if error is None else error,
                     "ece_contribution": contribution,
@@ -705,14 +721,10 @@ def build_cross_domain_uncertainty_panel(
     if calibrated_source_count == 0:
         claim_blockers.append("calibration_probability_label_pairs_missing")
     missing_sources = [
-        src
-        for src in DOMAIN_SPECS_MOL_METAL
-        if ece_by_source.get(src) is None
+        src for src in DOMAIN_SPECS_MOL_METAL if ece_by_source.get(src) is None
     ]
     if missing_sources:
-        claim_blockers.append(
-            "source_calibration_missing:" + "|".join(missing_sources)
-        )
+        claim_blockers.append("source_calibration_missing:" + "|".join(missing_sources))
     if ood_count:
         claim_blockers.append("ood_or_applicability_blocker_present")
     if low_confidence_count:

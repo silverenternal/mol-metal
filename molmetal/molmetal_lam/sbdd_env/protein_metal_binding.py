@@ -105,7 +105,9 @@ def _featurise_smiles_to_graph(
 
     def atom_features(atom, ring_info):
         sym = atom.GetSymbol()
-        ele_oh = [1.0 if sym == e else 0.0 for e in ele_list] + [1.0 if sym not in ele_list else 0.0]
+        ele_oh = [1.0 if sym == e else 0.0 for e in ele_list] + [
+            1.0 if sym not in ele_list else 0.0
+        ]
         deg = min(atom.GetDegree(), 5)
         deg_oh = [1.0 if deg == d else 0.0 for d in deg_list]
         chg = atom.GetFormalCharge()
@@ -116,7 +118,9 @@ def _featurise_smiles_to_graph(
         aro = [1.0 if atom.GetIsAromatic() else 0.0]
         h = min(atom.GetTotalNumHs(), 4)
         h_oh = [1.0 if h == i else 0.0 for i in range(5)]
-        return np.array(ele_oh + deg_oh + chg_oh + chir_oh + aro + h_oh, dtype=np.float32)
+        return np.array(
+            ele_oh + deg_oh + chg_oh + chir_oh + aro + h_oh, dtype=np.float32
+        )
 
     all_atom_feats: List[np.ndarray] = []
     all_dirs: List[Tuple[int, int]] = []
@@ -161,7 +165,9 @@ def _featurise_smiles_to_graph(
         )
     return (
         torch.from_numpy(np.concatenate(all_atom_feats, axis=0)),
-        torch.tensor(all_dirs, dtype=torch.long) if all_dirs else torch.zeros(0, 2, dtype=torch.long),
+        torch.tensor(all_dirs, dtype=torch.long)
+        if all_dirs
+        else torch.zeros(0, 2, dtype=torch.long),
         torch.tensor(all_batch, dtype=torch.long),
     )
 
@@ -359,9 +365,7 @@ class MultimodalFuser(nn.Module):
 
     def __init__(self, dims: Dict[str, int], fuse_dim: int, dropout: float):
         super().__init__()
-        self.projs = nn.ModuleDict(
-            {k: nn.Linear(v, fuse_dim) for k, v in dims.items()}
-        )
+        self.projs = nn.ModuleDict({k: nn.Linear(v, fuse_dim) for k, v in dims.items()})
         total = fuse_dim * len(dims)
         self.fuse = nn.Sequential(
             nn.Linear(total, fuse_dim),
@@ -477,8 +481,10 @@ def focal_loss(
         alpha_pos = alpha
         alpha_neg = 1.0 - alpha
     alpha_t = target_onehot[:, 0] * alpha_neg + target_onehot[:, 1] * alpha_pos
-    loss = -alpha_t * focal_weight * (
-        target_onehot[:, 0] * log_p[:, 0] + target_onehot[:, 1] * log_p[:, 1]
+    loss = (
+        -alpha_t
+        * focal_weight
+        * (target_onehot[:, 0] * log_p[:, 0] + target_onehot[:, 1] * log_p[:, 1])
     )
     return loss.mean()
 
@@ -502,8 +508,26 @@ def _ligand_only_smiles(smi: str) -> str:
     except ImportError:
         return smi
     metal_atoms = {
-        "Ru", "Ir", "Rh", "Os", "Re", "Pt", "Pd", "Au", "Ag", "Cu",
-        "Zn", "Fe", "Mn", "Co", "Ni", "Cr", "Mo", "W", "V", "Ti",
+        "Ru",
+        "Ir",
+        "Rh",
+        "Os",
+        "Re",
+        "Pt",
+        "Pd",
+        "Au",
+        "Ag",
+        "Cu",
+        "Zn",
+        "Fe",
+        "Mn",
+        "Co",
+        "Ni",
+        "Cr",
+        "Mo",
+        "W",
+        "V",
+        "Ti",
     }
     fragments = smi.split(".")
     keep = []
@@ -512,9 +536,7 @@ def _ligand_only_smiles(smi: str) -> str:
         if mol is None:
             continue
         atoms_to_drop = [
-            a.GetIdx()
-            for a in mol.GetAtoms()
-            if a.GetSymbol() in metal_atoms
+            a.GetIdx() for a in mol.GetAtoms() if a.GetSymbol() in metal_atoms
         ]
         if atoms_to_drop:
             atoms_sorted = sorted(atoms_to_drop, reverse=True)

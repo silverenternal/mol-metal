@@ -103,9 +103,9 @@ def test_adaptive_step_target_curvature_yields_midpoint():
     dx = torch.full((1, 3), 5.0)
     dt = sched.step_size(0.0, x, dx)
     expected = max_step * 0.5  # factor = 1/(1 + 5/5) = 0.5
-    assert abs(dt - expected) < 1e-6, (
-        f"At target curvature, dt must equal max_step/2 = {expected}; got {dt}"
-    )
+    assert (
+        abs(dt - expected) < 1e-6
+    ), f"At target curvature, dt must equal max_step/2 = {expected}; got {dt}"
 
 
 def test_adaptive_step_records_diagnostics():
@@ -162,7 +162,9 @@ def test_loss_annealer_post_warmup():
     for step in range(100, 1000, 50):
         w = annealer.weight(step)
         assert 0.0 <= w <= 1.0, f"weight out of range at step={step}: {w}"
-        assert w >= last, f"weight must be non-decreasing; step={step} w={w} < last={last}"
+        assert (
+            w >= last
+        ), f"weight must be non-decreasing; step={step} w={w} < last={last}"
         last = w
 
 
@@ -191,12 +193,12 @@ def test_loss_annealer_zero_warmup_linear_ramp_full_at_end():
     (not before).
     """
     annealer = LossAnnealer(total_steps=1000, warmup_frac=0.0)
-    assert annealer.weight(0) == 0.0, (
-        "step=0 with warmup_frac=0 must be at the ramp start (weight=0)"
-    )
-    assert abs(annealer.weight(500) - 0.5) < 1e-9, (
-        f"step=500 (midpoint of ramp) must be 0.5; got {annealer.weight(500)}"
-    )
+    assert (
+        annealer.weight(0) == 0.0
+    ), "step=0 with warmup_frac=0 must be at the ramp start (weight=0)"
+    assert (
+        abs(annealer.weight(500) - 0.5) < 1e-9
+    ), f"step=500 (midpoint of ramp) must be 0.5; got {annealer.weight(500)}"
     assert annealer.weight(999) < 1.0, "step=999 < total_steps=1000; ramp not done"
     assert annealer.weight(1000) == 1.0, "step=total_steps must be weight=1.0"
     assert annealer.weight(2000) == 1.0
@@ -253,15 +255,15 @@ def test_variance_reduced_baseline_update():
     assert abs(est.baseline - 1.0) < 1e-6
     # Second call with advantage mean = 0.0 → baseline drifts toward 0.0.
     est.forward(torch.full((4,), 0.0))
-    assert 0.0 < est.baseline < 1.0, (
-        f"Baseline must drift from 1.0 toward 0.0; got {est.baseline}"
-    )
+    assert (
+        0.0 < est.baseline < 1.0
+    ), f"Baseline must drift from 1.0 toward 0.0; got {est.baseline}"
     # Many calls with advantage mean = 0.0 → baseline converges near 0.0.
     for _ in range(50):
         est.forward(torch.full((4,), 0.0))
-    assert abs(est.baseline) < 0.05, (
-        f"Baseline must converge to 0.0 after 50 calls; got {est.baseline}"
-    )
+    assert (
+        abs(est.baseline) < 0.05
+    ), f"Baseline must converge to 0.0 after 50 calls; got {est.baseline}"
 
 
 def test_variance_reduced_zero_output_when_advantage_equals_baseline():
@@ -269,9 +271,9 @@ def test_variance_reduced_zero_output_when_advantage_equals_baseline():
     est = VarianceReducedEstimator(baseline_decay=0.5, init_baseline=0.3)
     advantages = torch.full((4,), 0.3)
     out = est.forward(advantages)
-    assert torch.allclose(out, torch.zeros(4)), (
-        f"adv=baseline must yield zero output; got {out}"
-    )
+    assert torch.allclose(
+        out, torch.zeros(4)
+    ), f"adv=baseline must yield zero output; got {out}"
 
 
 def test_variance_reduced_first_call_hard_sets_baseline():
@@ -283,9 +285,9 @@ def test_variance_reduced_first_call_hard_sets_baseline():
     # The first-call hard-set goes through a float() cast → allow tiny
     # FP drift from the .item() roundtrip (PyTorch float32 → Python
     # float → assignment).
-    assert abs(est.baseline - 0.7) < 1e-6, (
-        f"baseline must be hard-set to 0.7 on first call; got {est.baseline}"
-    )
+    assert (
+        abs(est.baseline - 0.7) < 1e-6
+    ), f"baseline must be hard-set to 0.7 on first call; got {est.baseline}"
     assert est._initialized
 
 

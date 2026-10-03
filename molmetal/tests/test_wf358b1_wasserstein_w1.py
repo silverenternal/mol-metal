@@ -58,6 +58,7 @@ PYTHON = sys.executable
 # Test 1: W₁ matches scipy.stats.wasserstein_distance reference
 # ---------------------------------------------------------------------------
 
+
 def test_w1_matches_scipy_reference():
     """W₁ closed form agrees with SciPy ``wasserstein_distance`` to <1e-5.
 
@@ -80,30 +81,40 @@ def test_w1_matches_scipy_reference():
     cases = []
     rng = torch.Generator().manual_seed(0)
     # Uniform
-    cases.append((
-        torch.rand(64, generator=rng),
-        torch.rand(64, generator=rng),
-    ))
+    cases.append(
+        (
+            torch.rand(64, generator=rng),
+            torch.rand(64, generator=rng),
+        )
+    )
     # Gaussian
-    cases.append((
-        torch.randn(64, generator=rng),
-        torch.randn(64, generator=rng),
-    ))
+    cases.append(
+        (
+            torch.randn(64, generator=rng),
+            torch.randn(64, generator=rng),
+        )
+    )
     # Constant shift (analytic: W₁ = |c|)
-    cases.append((
-        torch.arange(64, dtype=torch.float32),
-        torch.arange(64, dtype=torch.float32) + 1.0,
-    ))
+    cases.append(
+        (
+            torch.arange(64, dtype=torch.float32),
+            torch.arange(64, dtype=torch.float32) + 1.0,
+        )
+    )
     # Outlier
-    cases.append((
-        torch.cat([torch.zeros(32), torch.full((32,), 5.0)]),
-        torch.linspace(0.0, 4.0, 32).repeat(2),
-    ))
+    cases.append(
+        (
+            torch.cat([torch.zeros(32), torch.full((32,), 5.0)]),
+            torch.linspace(0.0, 4.0, 32).repeat(2),
+        )
+    )
     # Bimodal
-    cases.append((
-        torch.cat([torch.full((32,), -1.0), torch.full((32,), 1.0)]),
-        torch.cat([torch.full((32,), 0.5), torch.full((32,), 2.5)]),
-    ))
+    cases.append(
+        (
+            torch.cat([torch.full((32,), -1.0), torch.full((32,), 1.0)]),
+            torch.cat([torch.full((32,), 0.5), torch.full((32,), 2.5)]),
+        )
+    )
 
     for i, (pred, ref) in enumerate(cases):
         w1 = wasserstein_w1_1d_torchsort(pred, ref)
@@ -121,6 +132,7 @@ def test_w1_matches_scipy_reference():
 # ---------------------------------------------------------------------------
 # Test 2: multi-task 5-metal W₁ computes correctly
 # ---------------------------------------------------------------------------
+
 
 def test_multi_task_5_metal_w1():
     """Pairwise W₁ over a per-metal dict produces a finite scalar loss.
@@ -148,25 +160,28 @@ def test_multi_task_5_metal_w1():
 
     # Weight scaling: 2x weight → 2x loss.
     loss2 = wasserstein_w1_multi_task(per_metal, weight=2.0)
-    assert abs(float(loss2) - 2.0 * float(loss)) < 1e-5, (
-        f"weight scaling broken: 1x={float(loss):.6f}, 2x={float(loss2):.6f}"
-    )
+    assert (
+        abs(float(loss2) - 2.0 * float(loss)) < 1e-5
+    ), f"weight scaling broken: 1x={float(loss):.6f}, 2x={float(loss2):.6f}"
 
     # Rejects single metal.
     with pytest.raises(ValueError, match="at least 2"):
         wasserstein_w1_multi_task({"Ru": torch.randn(8, 4)})
 
     # Accepts 2 metals.
-    loss_min = wasserstein_w1_multi_task({
-        "Ru": torch.randn(8, 4),
-        "Ir": torch.randn(8, 4) + 0.5,
-    })
+    loss_min = wasserstein_w1_multi_task(
+        {
+            "Ru": torch.randn(8, 4),
+            "Ir": torch.randn(8, 4) + 0.5,
+        }
+    )
     assert loss_min.dim() == 0 and bool(torch.isfinite(loss_min))
 
 
 # ---------------------------------------------------------------------------
 # Test 3: CLI flag --wasserstein-w1 wired + default-OFF
 # ---------------------------------------------------------------------------
+
 
 def test_cli_flag_wasserstein_w1_wired():
     """``--wasserstein-w1`` is a valid trainer CLI argument.
@@ -186,9 +201,9 @@ def test_cli_flag_wasserstein_w1_wired():
 
     # (a) + (c) Default: flag absent → use_wasserstein_w1 = False.
     args_default = parse_args(["--metals", "Ru"])
-    assert hasattr(args_default, "use_wasserstein_w1"), (
-        "args.use_wasserstein_w1 should be present after parse_args"
-    )
+    assert hasattr(
+        args_default, "use_wasserstein_w1"
+    ), "args.use_wasserstein_w1 should be present after parse_args"
     assert args_default.use_wasserstein_w1 is False, (
         f"Default should be False (backward compat), got "
         f"{args_default.use_wasserstein_w1}"
@@ -213,6 +228,7 @@ def test_cli_flag_wasserstein_w1_wired():
 # Test 4: backward-compat — without the flag, W penalty path is preserved
 # ---------------------------------------------------------------------------
 
+
 def test_backward_compat_default_off():
     """Default-OFF preserves the Wf-131 P1 / Wf-181 G5 / Wf-182 G6 path.
 
@@ -233,6 +249,7 @@ def test_backward_compat_default_off():
     """
     # (a) CLI surface check — both legacy flags are still parseable.
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import parse_args
+
     args = parse_args(["--metals", "Ru"])
     assert args.use_wasserstein_w1 is False
     assert args.use_wasserstein_2 is False
@@ -273,6 +290,6 @@ def test_backward_compat_default_off():
     loss.backward()
     assert pred_g.grad is not None
     assert torch.isfinite(pred_g.grad).all()
-    assert (pred_g.grad != 0).all(), (
-        "Gradient should be non-zero for non-degenerate pred/ref"
-    )
+    assert (
+        pred_g.grad != 0
+    ).all(), "Gradient should be non-zero for non-degenerate pred/ref"

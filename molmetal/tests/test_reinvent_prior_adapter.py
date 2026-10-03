@@ -1,4 +1,5 @@
 """Behavioral transport checks; fake workers never claim real model validation."""
+
 from dataclasses import asdict
 import json
 import os
@@ -15,7 +16,7 @@ SHA = "b" * 64
 
 def adapter(tmp_path, behavior="", timeout=2.0, startup=""):
     script = tmp_path / "fake_jsonl_worker.py"
-    script.write_text(f'''
+    script.write_text(f"""
 import json,sys,time,subprocess,os
 metadata={{"protocol":"reinvent-prior-jsonl-v1","backend":"reinvent-prior","model_sha256":{SHA!r},"device":"cpu"}}
 {startup}
@@ -32,9 +33,15 @@ for line in sys.stdin:
   response={{"metadata":meta,"results":rows}}
  response["id"]=request["id"]
  print(json.dumps(response),flush=True)
-''')
-    return REINVENT4PriorAdapter(worker_python=sys.executable, worker_script=str(script),
-        prior_path="unused-by-fake", prior_sha256=SHA, device="cpu", timeout=timeout)
+""")
+    return REINVENT4PriorAdapter(
+        worker_python=sys.executable,
+        worker_script=str(script),
+        prior_path="unused-by-fake",
+        prior_sha256=SHA,
+        device="cpu",
+        timeout=timeout,
+    )
 
 
 def test_raw_nll_order_duplicates_and_invalid_slots_preserved(tmp_path):
@@ -73,7 +80,9 @@ def test_worker_exit_retains_denominator(tmp_path):
 
 
 def test_malformed_response_reaps_worker(tmp_path):
-    with adapter(tmp_path, behavior='print("not json",flush=True); time.sleep(30)') as client:
+    with adapter(
+        tmp_path, behavior='print("not json",flush=True); time.sleep(30)'
+    ) as client:
         rows = client.likelihood(["CCO"])
         assert rows[0].status == "error"
         assert "JSONDecodeError" in client.last_error
@@ -81,7 +90,9 @@ def test_malformed_response_reaps_worker(tmp_path):
 
 
 def test_one_deadline_includes_startup_and_inference(tmp_path):
-    with adapter(tmp_path, startup="time.sleep(0.18)", behavior="time.sleep(0.18)", timeout=0.28) as client:
+    with adapter(
+        tmp_path, startup="time.sleep(0.18)", behavior="time.sleep(0.18)", timeout=0.28
+    ) as client:
         started = time.monotonic()
         rows = client.likelihood(["CCO", "CCN"])
         elapsed = time.monotonic() - started
@@ -93,17 +104,25 @@ def test_one_deadline_includes_startup_and_inference(tmp_path):
 
 def test_partial_line_timeout_kills_process_group_descendant(tmp_path):
     pidfile = tmp_path / "child.pid"
-    behavior = (f'child=subprocess.Popen([sys.executable,"-c","import time; time.sleep(30)"]); '
-                f'open({str(pidfile)!r},"w").write(str(child.pid)); '
-                'sys.stdout.write("{partial"); sys.stdout.flush(); time.sleep(30)')
+    behavior = (
+        f'child=subprocess.Popen([sys.executable,"-c","import time; time.sleep(30)"]); '
+        f'open({str(pidfile)!r},"w").write(str(child.pid)); '
+        'sys.stdout.write("{partial"); sys.stdout.flush(); time.sleep(30)'
+    )
     with adapter(tmp_path, behavior=behavior, timeout=0.5) as client:
         rows = client.likelihood(["CCO"])
-        assert rows[0].status == "error" and "total_request_timeout" in client.last_error
+        assert (
+            rows[0].status == "error" and "total_request_timeout" in client.last_error
+        )
         assert pidfile.exists()
         child_pid = int(pidfile.read_text())
         stat = Path(f"/proc/{child_pid}/stat")
         deadline = time.monotonic() + 0.5
-        while stat.exists() and stat.read_text().split()[2] != "Z" and time.monotonic() < deadline:
+        while (
+            stat.exists()
+            and stat.read_text().split()[2] != "Z"
+            and time.monotonic() < deadline
+        ):
             time.sleep(0.01)
         assert not stat.exists() or stat.read_text().split()[2] == "Z"
 

@@ -41,6 +41,7 @@ auto-migrating all existing scripts in one sweep is too risky. Wf-406-A3
 migrates 3 of N existing closeout-drafting scripts; subsequent
 Wf-406+ waves may migrate additional scripts.
 """
+
 from __future__ import annotations
 
 import ast
@@ -119,14 +120,18 @@ def test_script_uses_atomic_write(script_name: str) -> None:
                         # Check first positional arg for output extension
                         path_arg = ctx.args[0] if ctx.args else None
                         path_str = None
-                        if isinstance(path_arg, ast.Constant) and isinstance(path_arg.value, str):
+                        if isinstance(path_arg, ast.Constant) and isinstance(
+                            path_arg.value, str
+                        ):
                             path_str = path_arg.value
                         elif path_arg is not None:
                             try:
                                 path_str = ast.unparse(path_arg)
                             except Exception:
                                 path_str = None
-                        if path_str and (path_str.endswith(".json") or path_str.endswith(".md")):
+                        if path_str and (
+                            path_str.endswith(".json") or path_str.endswith(".md")
+                        ):
                             legacy_writes.append(f"line {node.lineno}: {path_str}")
 
     # Also catch Path.write_text calls writing to .json/.md outputs.
@@ -155,7 +160,9 @@ def test_script_uses_atomic_write(script_name: str) -> None:
     # developer adds a new direct Write site in a migrated script.
     legacy_path_write_lines = []
     for ln, line in enumerate(src.splitlines(), 1):
-        if ".write_text(" in line and ('".json"' in line or "'.json'" in line or ".md" in line):
+        if ".write_text(" in line and (
+            '".json"' in line or "'.json'" in line or ".md" in line
+        ):
             # Acceptable if the call also routes through atomic_write_file
             # (it does not, by construction). Flag.
             legacy_path_write_lines.append(f"line {ln}: {line.strip()[:80]}")
@@ -200,16 +207,16 @@ def test_script_safe_overwrite_and_truncation_checks_wired(
                 imported.update(alias.name for alias in node.names)
 
     missing = {"safe_overwrite_check", "detect_truncation"} - imported
-    assert not missing, (
-        f"{script_name}: missing required atomic write protocol imports: {missing}"
-    )
+    assert (
+        not missing
+    ), f"{script_name}: missing required atomic write protocol imports: {missing}"
 
     # Both safe_overwrite_check and detect_truncation must be referenced
     # by name in the migrated write blocks (not just imported-but-unused).
     src_lower = src.lower()
-    assert "safe_overwrite_check(" in src_lower, (
-        f"{script_name}: safe_overwrite_check() must be called at write sites"
-    )
-    assert "detect_truncation(" in src_lower, (
-        f"{script_name}: detect_truncation() must be called on agent output"
-    )
+    assert (
+        "safe_overwrite_check(" in src_lower
+    ), f"{script_name}: safe_overwrite_check() must be called at write sites"
+    assert (
+        "detect_truncation(" in src_lower
+    ), f"{script_name}: detect_truncation() must be called on agent output"

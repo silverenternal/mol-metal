@@ -85,12 +85,8 @@ def _make_synthetic_pack_with_negatives(
     metal_idx = torch.tensor(metal_idx_list, dtype=torch.int64)
 
     y = torch.randn(n_rows, dtype=torch.float32)
-    active = torch.tensor(
-        [1.0, 0.0] * (n_rows // 2 + 1), dtype=torch.float32
-    )[:n_rows]
-    domain = torch.tensor(
-        [0, 1, 2, 3] * (n_rows // 4 + 1), dtype=torch.int64
-    )[:n_rows]
+    active = torch.tensor([1.0, 0.0] * (n_rows // 2 + 1), dtype=torch.float32)[:n_rows]
+    domain = torch.tensor([0, 1, 2, 3] * (n_rows // 4 + 1), dtype=torch.int64)[:n_rows]
     pack = {
         "atom_features": af,
         "edge_index": ei,
@@ -183,8 +179,7 @@ def test_filter_normalizes_metal_idx_range(
     # keys_tensors index 4 = metal_idx
     metal_idx = tensors[4]
     assert torch.all(metal_idx >= 0), (
-        f"Negative metal_idx survived filter: "
-        f"{metal_idx[metal_idx < 0].tolist()}"
+        f"Negative metal_idx survived filter: " f"{metal_idx[metal_idx < 0].tolist()}"
     )
     assert torch.all(metal_idx <= 4), (
         f"Out-of-range metal_idx survived filter: "
@@ -193,9 +188,13 @@ def test_filter_normalizes_metal_idx_range(
     # All five canonical values should be represented in the surviving
     # rows (cycle 0..4 across 19 rows).
     unique_vals = sorted(set(metal_idx.tolist()))
-    assert unique_vals == [0, 1, 2, 3, 4], (
-        f"Expected canonical {{0..4}}, got {unique_vals}"
-    )
+    assert unique_vals == [
+        0,
+        1,
+        2,
+        3,
+        4,
+    ], f"Expected canonical {{0..4}}, got {unique_vals}"
 
 
 def test_filter_logs_filtered_count(
@@ -217,13 +216,11 @@ def test_filter_logs_filtered_count(
 
     # Search the captured stdout for the canonical log line.
     expected_fragment = "[dmpnn_multitask] pretrain: filtered 5 non-canonical rows"
-    assert expected_fragment in out, (
-        f"Expected log line '{expected_fragment}' not found in stdout:\n{out}"
-    )
+    assert (
+        expected_fragment in out
+    ), f"Expected log line '{expected_fragment}' not found in stdout:\n{out}"
     # Also assert the surviving row count is reported.
-    assert "remaining=19" in out, (
-        f"Expected 'remaining=19' in stdout:\n{out}"
-    )
+    assert "remaining=19" in out, f"Expected 'remaining=19' in stdout:\n{out}"
 
 
 # ---------------------------------------------------------------------------
@@ -245,25 +242,19 @@ def test_filter_is_noop_when_all_canonical(
         "edge_index": torch.zeros(n_rows, 2, n_edges, dtype=torch.int64),
         "edge_attr": torch.randn(n_rows, n_edges, 6, dtype=torch.float32),
         "atom_mask": torch.ones(n_rows, n_atoms, dtype=torch.bool),
-        "metal_idx": torch.tensor(
-            [i % 5 for i in range(n_rows)], dtype=torch.int64
-        ),
+        "metal_idx": torch.tensor([i % 5 for i in range(n_rows)], dtype=torch.int64),
         "y": torch.randn(n_rows, dtype=torch.float32),
-        "active": torch.tensor(
-            [1.0, 0.0] * (n_rows // 2 + 1), dtype=torch.float32
-        )[:n_rows],
-        "domain": torch.tensor(
-            [i % 4 for i in range(n_rows)], dtype=torch.int64
-        ),
+        "active": torch.tensor([1.0, 0.0] * (n_rows // 2 + 1), dtype=torch.float32)[
+            :n_rows
+        ],
+        "domain": torch.tensor([i % 4 for i in range(n_rows)], dtype=torch.int64),
         "smiles": ["CCO"] * n_rows,
     }
     p = tmp_path / "all_pretrain.pt"
     torch.save(pack, p)
     monkeypatch.setattr(td, "PRE_FEATURIZED_ALL", p)
 
-    loader = td.build_pretrain_dataloader(
-        batch_size=4, shuffle=False, seed=0, path=p
-    )
+    loader = td.build_pretrain_dataloader(batch_size=4, shuffle=False, seed=0, path=p)
     ds = loader.dataset
     assert isinstance(ds, torch.utils.data.TensorDataset)
     assert ds.tensors[0].size(0) == n_rows  # no drop

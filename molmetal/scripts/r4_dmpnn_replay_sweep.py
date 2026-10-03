@@ -88,10 +88,7 @@ from molmetal.replay.pool import _config_hash_from_hp  # noqa: E402
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description=(
-            "A1+A3 D-MPNN config search via replay pool "
-            "(TODO-150 §P1)."
-        ),
+        description=("A1+A3 D-MPNN config search via replay pool " "(TODO-150 §P1)."),
     )
     p.add_argument(
         "--pool-path",
@@ -272,14 +269,11 @@ def _load_candidates(path: str) -> Dict[str, Dict[str, Any]]:
         d = json.load(fh)
     if isinstance(d, list):
         return {
-            f"cand_{i:03d}_{_config_hash_from_hp(hp)[:8]}": hp
-            for i, hp in enumerate(d)
+            f"cand_{i:03d}_{_config_hash_from_hp(hp)[:8]}": hp for i, hp in enumerate(d)
         }
     if isinstance(d, dict):
         return {str(k): dict(v) for k, v in d.items()}
-    raise ValueError(
-        f"candidates JSON must be list or dict; got {type(d).__name__}"
-    )
+    raise ValueError(f"candidates JSON must be list or dict; got {type(d).__name__}")
 
 
 # ---------------------------------------------------------------------------
@@ -298,7 +292,9 @@ def _rank_candidate(
     per_metal: Dict[str, Dict[str, Any]] = {}
     scores: List[float] = []
     for m in metals:
-        est = pool.replay_predict(hp_delta=candidate_hp, metal=m, baseline=baseline, k=k)
+        est = pool.replay_predict(
+            hp_delta=candidate_hp, metal=m, baseline=baseline, k=k
+        )
         per_metal[m] = est.to_dict()
         if est.n_neighbors > 0:
             scores.append(est.score)
@@ -360,11 +356,10 @@ def _bootstrap_validate(
         errors: List[float] = []
         for held_idx in range(len(items)):
             held_hp, held_score = items[held_idx]
-            others = [
-                items[j] for j in range(len(items)) if j != held_idx
-            ]
+            others = [items[j] for j in range(len(items)) if j != held_idx]
             # Same hp-distance ranking as replay_predict.
             from molmetal.replay.pool import _hp_distance
+
             others.sort(key=lambda t: _hp_distance(held_hp, t[0]))
             top = others[: max(1, len(others))]
             pred = sum(s for _, s in top) / len(top)
@@ -426,8 +421,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     print(
         f"[r4_dmpnn_replay_sweep] coverage: "
         + json.dumps(
-            {m: {"n_records": v["n_records"], "is_low_coverage": v["is_low_coverage"]}
-             for m, v in cov_table.items()}
+            {
+                m: {
+                    "n_records": v["n_records"],
+                    "is_low_coverage": v["is_low_coverage"],
+                }
+                for m, v in cov_table.items()
+            }
         ),
         file=sys.stderr,
     )
@@ -466,8 +466,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             mae = v.get("mae")
             mae_str = f"{mae:.4f}" if mae is not None else "n/a"
             print(
-                f"[bootstrap] metal={m} n={v.get('n_records')} "
-                f"MAE={mae_str}{tag}",
+                f"[bootstrap] metal={m} n={v.get('n_records')} " f"MAE={mae_str}{tag}",
                 file=sys.stderr,
             )
 
@@ -493,7 +492,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # ----- Persist outputs --------------------------------------------------
     if args.save_pool:
         path = pool.save(args.save_pool)
-        print(f"[r4_dmpnn_replay_sweep] saved pool ({len(pool)} records) to {path}", file=sys.stderr)
+        print(
+            f"[r4_dmpnn_replay_sweep] saved pool ({len(pool)} records) to {path}",
+            file=sys.stderr,
+        )
 
     if args.output_json:
         report = {

@@ -33,18 +33,16 @@ def _square_planar_pt_complex(device: str = "cpu"):
     """
     coords = torch.tensor(
         [
-            [0.0, 0.0, 0.0],   # Pt (Z=78)
-            [2.0, 0.0, 0.0],   # N  +
+            [0.0, 0.0, 0.0],  # Pt (Z=78)
+            [2.0, 0.0, 0.0],  # N  +
             [-2.0, 0.0, 0.0],  # N  -
-            [0.0, 2.0, 0.0],   # Cl +
+            [0.0, 2.0, 0.0],  # Cl +
             [0.0, -2.0, 0.0],  # Cl -
         ],
         device=device,
         dtype=torch.float32,
     )
-    atom_types = torch.tensor(
-        [78, 7, 7, 17, 17], device=device, dtype=torch.long
-    )
+    atom_types = torch.tensor([78, 7, 7, 17, 17], device=device, dtype=torch.long)
     # Edge index for a fully-connected (no self-loop) graph over 5 nodes.
     n = coords.size(0)
     src = []
@@ -60,7 +58,10 @@ def _square_planar_pt_complex(device: str = "cpu"):
     # Pt is index 0; donors are 1..4.  Mark donor -> Pt edges as dative.
     pt_idx = 0
     for k in range(edge_index.size(1)):
-        if int(edge_index[1, k].item()) == pt_idx and int(edge_index[0, k].item()) != pt_idx:
+        if (
+            int(edge_index[1, k].item()) == pt_idx
+            and int(edge_index[0, k].item()) != pt_idx
+        ):
             edge_types[k] = 2
     return coords, atom_types, edge_index, edge_types
 
@@ -73,20 +74,18 @@ def _octahedral_RuCO6(device: str = "cpu"):
     """
     coords = torch.tensor(
         [
-            [0.0, 0.0, 0.0],   # Ru (Z=44)
-            [2.0, 0.0, 0.0],   # C +x
+            [0.0, 0.0, 0.0],  # Ru (Z=44)
+            [2.0, 0.0, 0.0],  # C +x
             [-2.0, 0.0, 0.0],  # C -x
-            [0.0, 2.0, 0.0],   # C +y
+            [0.0, 2.0, 0.0],  # C +y
             [0.0, -2.0, 0.0],  # C -y
-            [0.0, 0.0, 2.0],   # C +z
+            [0.0, 0.0, 2.0],  # C +z
             [0.0, 0.0, -2.0],  # C -z
         ],
         device=device,
         dtype=torch.float32,
     )
-    atom_types = torch.tensor(
-        [44, 6, 6, 6, 6, 6, 6], device=device, dtype=torch.long
-    )
+    atom_types = torch.tensor([44, 6, 6, 6, 6, 6, 6], device=device, dtype=torch.long)
     n = coords.size(0)
     src, dst = [], []
     for i in range(n):
@@ -98,7 +97,10 @@ def _octahedral_RuCO6(device: str = "cpu"):
     edge_types = torch.zeros(edge_index.size(1), device=device, dtype=torch.long)
     ru_idx = 0
     for k in range(edge_index.size(1)):
-        if int(edge_index[1, k].item()) == ru_idx and int(edge_index[0, k].item()) != ru_idx:
+        if (
+            int(edge_index[1, k].item()) == ru_idx
+            and int(edge_index[0, k].item()) != ru_idx
+        ):
             edge_types[k] = 2
     return coords, atom_types, edge_index, edge_types
 
@@ -116,11 +118,16 @@ def test_square_planar_cisplatin():
         MetalGeometryPrior,
         Geometry,
     )
+
     coords, atom_types, edge_index, edge_types = _square_planar_pt_complex()
     prior = MetalGeometryPrior(weight=1.0)
     loss = prior.prior_loss(
-        coords=coords, atom_types=atom_types, edge_types=edge_types, edge_index=edge_index,
-        metal_idx=0, geometry=Geometry.SQUARE_PLANAR,
+        coords=coords,
+        atom_types=atom_types,
+        edge_types=edge_types,
+        edge_index=edge_index,
+        metal_idx=0,
+        geometry=Geometry.SQUARE_PLANAR,
     )
     # All four L-X-L angles are exactly 90 deg → deviation < 1 deg (radians).
     assert loss.item() < math.radians(1.0), (
@@ -135,11 +142,16 @@ def test_octahedral_Ru():
         MetalGeometryPrior,
         Geometry,
     )
+
     coords, atom_types, edge_index, edge_types = _octahedral_RuCO6()
     prior = MetalGeometryPrior(weight=1.0)
     loss = prior.prior_loss(
-        coords=coords, atom_types=atom_types, edge_types=edge_types, edge_index=edge_index,
-        metal_idx=0, geometry=Geometry.OCTAHEDRAL,
+        coords=coords,
+        atom_types=atom_types,
+        edge_types=edge_types,
+        edge_index=edge_index,
+        metal_idx=0,
+        geometry=Geometry.OCTAHEDRAL,
     )
     # Adjacent 90 deg, trans 180 deg → all 15 pairwise angles are in
     # the ideal set; min deviation should be effectively zero.
@@ -155,11 +167,16 @@ def test_prior_loss_zero_for_perfect_geometry():
         MetalGeometryPrior,
         Geometry,
     )
+
     coords, atom_types, edge_index, edge_types = _square_planar_pt_complex()
     prior = MetalGeometryPrior(weight=1.0)
     loss = prior.prior_loss(
-        coords=coords, atom_types=atom_types, edge_types=edge_types, edge_index=edge_index,
-        metal_idx=0, geometry=Geometry.SQUARE_PLANAR,
+        coords=coords,
+        atom_types=atom_types,
+        edge_types=edge_types,
+        edge_index=edge_index,
+        metal_idx=0,
+        geometry=Geometry.SQUARE_PLANAR,
     )
     # Tolerance 1e-3 rad ~ 0.057 deg.
     assert loss.item() < 1e-3, f"perfect-geometry loss not zero: {loss.item()}"
@@ -173,6 +190,7 @@ def test_prior_loss_positive_for_distorted():
         MetalGeometryPrior,
         Geometry,
     )
+
     # Build a distorted Pt: 4 donors at 45 deg spacing on the xy-plane
     # (ideal for square-planar is 90 deg → off by 45 deg per pair).
     device = "cpu"
@@ -187,9 +205,7 @@ def test_prior_loss_positive_for_distorted():
         device=device,
         dtype=torch.float32,
     )
-    atom_types = torch.tensor(
-        [78, 7, 7, 17, 17], device=device, dtype=torch.long
-    )
+    atom_types = torch.tensor([78, 7, 7, 17, 17], device=device, dtype=torch.long)
     # All edges are covalent single; the prior uses EDGE_TYPE_DATIVE
     # (== 2) so we need an edge_types tensor with at least one dative
     # edge.  Wire donor → Pt edges explicitly.
@@ -211,8 +227,12 @@ def test_prior_loss_positive_for_distorted():
 
     prior = MetalGeometryPrior(weight=1.0)
     loss = prior.prior_loss(
-        coords=coords, atom_types=atom_types, edge_types=edge_types, edge_index=edge_index,
-        metal_idx=0, geometry=Geometry.SQUARE_PLANAR,
+        coords=coords,
+        atom_types=atom_types,
+        edge_types=edge_types,
+        edge_index=edge_index,
+        metal_idx=0,
+        geometry=Geometry.SQUARE_PLANAR,
     )
     # Expect a substantial penalty (45 deg between some pairs → ~0.78 rad).
     assert loss.item() > math.radians(10.0), (
@@ -241,7 +261,9 @@ def test_egnn_velocity_applies_metal_prior():
         atom_types=atom_types_b,
         edge_types=edge_types_b,
         edge_index=edge_index,
-        step=3, k_every=10, weight=0.1,
+        step=3,
+        k_every=10,
+        weight=0.1,
     )
     assert off.dim() == 0
     assert off.item() == 0.0, f"off-step should be 0.0, got {off.item()}"
@@ -252,18 +274,20 @@ def test_egnn_velocity_applies_metal_prior():
         atom_types=atom_types_b,
         edge_types=edge_types_b,
         edge_index=edge_index,
-        step=10, k_every=10, weight=0.1,
+        step=10,
+        k_every=10,
+        weight=0.1,
     )
     assert on.dim() == 0
     # Perfect 90 deg geometry → penalty should be ~0; multiplied by
     # weight=0.1 → on <= 1e-4.
-    assert on.item() < 1e-4, (
-        f"On-step should be near-zero for perfect geometry; got {on.item()}"
-    )
+    assert (
+        on.item() < 1e-4
+    ), f"On-step should be near-zero for perfect geometry; got {on.item()}"
 
     # Distorted geometry on-step → penalty > 0.
     coords_dist = coords.clone()
-    coords_dist[1, 0] = 1.0   # compress donor 1 towards Pt
+    coords_dist[1, 0] = 1.0  # compress donor 1 towards Pt
     coords_dist[2, 0] = -1.0  # compress donor 2 towards Pt
     coords_dist_b = coords_dist.unsqueeze(0)
     on_dist = vf.apply_metal_geometry_step(
@@ -271,11 +295,13 @@ def test_egnn_velocity_applies_metal_prior():
         atom_types=atom_types_b,
         edge_types=edge_types_b,
         edge_index=edge_index,
-        step=20, k_every=10, weight=0.1,
+        step=20,
+        k_every=10,
+        weight=0.1,
     )
-    assert on_dist.item() > 0.0, (
-        f"Distorted on-step should produce positive loss; got {on_dist.item()}"
-    )
+    assert (
+        on_dist.item() > 0.0
+    ), f"Distorted on-step should produce positive loss; got {on_dist.item()}"
 
 
 def test_egnn_edge_type_dative_enum_and_set():
@@ -286,6 +312,7 @@ def test_egnn_edge_type_dative_enum_and_set():
         EDGE_TYPE_DATIVE,
         EGNN,
     )
+
     # Enum values
     assert EDGE_TYPE_SINGLE == 0
     assert EDGE_TYPE_DOUBLE == 1
@@ -317,11 +344,12 @@ def test_bondi_vdw_radii_present():
         bondi_van_der_waals_radius,
         BONDI_VAN_DER_WAALS_RADII,
     )
+
     # Canonical entries
-    assert bondi_van_der_waals_radius(78) == 1.75   # Pt
-    assert bondi_van_der_waals_radius(46) == 1.63   # Pd
-    assert bondi_van_der_waals_radius(29) == 1.40   # Cu
-    assert bondi_van_der_waals_radius(8)  == 1.52   # O
+    assert bondi_van_der_waals_radius(78) == 1.75  # Pt
+    assert bondi_van_der_waals_radius(46) == 1.63  # Pd
+    assert bondi_van_der_waals_radius(29) == 1.40  # Cu
+    assert bondi_van_der_waals_radius(8) == 1.52  # O
     # Fallback for unknown element (e.g. Tc=43 not in table) — should
     # return the 1.70 Å default.
     assert bondi_van_der_waals_radius(43) == 1.70

@@ -66,7 +66,10 @@ from molmetal.math_skills.multi_parameter_ph import (
 
 
 def _toy_clouds(
-    b: int = 2, n: int = 8, seed: int = 0, with_z: bool = True,
+    b: int = 2,
+    n: int = 8,
+    seed: int = 0,
+    with_z: bool = True,
 ) -> torch.Tensor:
     """Deterministic ``(B, N, 4)`` or ``(B, N, 3)`` point clouds."""
     g = torch.Generator().manual_seed(int(seed))
@@ -78,7 +81,9 @@ def _toy_clouds(
 
 
 def _toy_feature_maps(
-    b: int = 2, n_bins: int = 8, seed: int = 0,
+    b: int = 2,
+    n_bins: int = 8,
+    seed: int = 0,
 ) -> torch.Tensor:
     """Deterministic ``(B, n_bins, n_bins)`` feature maps."""
     g = torch.Generator().manual_seed(int(seed))
@@ -88,11 +93,13 @@ def _toy_feature_maps(
 def _rotation_matrix_z(angle: float) -> torch.Tensor:
     """A rotation about the ``z`` axis by ``angle`` radians."""
     c, s = math.cos(angle), math.sin(angle)
-    return torch.tensor([
-        [c, -s, 0.0],
-        [s,  c, 0.0],
-        [0.0, 0.0, 1.0],
-    ])
+    return torch.tensor(
+        [
+            [c, -s, 0.0],
+            [s, c, 0.0],
+            [0.0, 0.0, 1.0],
+        ]
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -137,9 +144,7 @@ def test_two_param_filtration_compute_shape() -> None:
     filt = TwoParameterFiltration(max_radius=5.0, max_coord=4.0, n_bins=16)
     clouds = _toy_clouds(b=3, n=8, seed=0)
     out = filt.compute(clouds)
-    assert out.shape == (3, 16, 16), (
-        f"expected (3, 16, 16), got {tuple(out.shape)}"
-    )
+    assert out.shape == (3, 16, 16), f"expected (3, 16, 16), got {tuple(out.shape)}"
 
 
 def test_two_param_filtration_compute_finite_non_negative() -> None:
@@ -159,7 +164,8 @@ def test_two_param_filtration_compute_3d_auto_promotes_carbon() -> None:
     # Equivalent construction with explicit carbon atom types must
     # match the auto-promoted output bit-for-bit.
     coords4 = torch.cat(
-        [coords3, torch.full((2, 6, 1), 6.0)], dim=-1,
+        [coords3, torch.full((2, 6, 1), 6.0)],
+        dim=-1,
     )
     out4 = filt.compute(coords4)
     torch.testing.assert_close(out3, out4, rtol=1e-6, atol=1e-6)
@@ -172,7 +178,8 @@ def test_two_param_filtration_rotation_invariant() -> None:
     R = _rotation_matrix_z(math.pi / 4)
     rotated_coords = clouds[..., :3] @ R.T
     clouds_rot = torch.cat(
-        [rotated_coords, clouds[..., 3:4]], dim=-1,
+        [rotated_coords, clouds[..., 3:4]],
+        dim=-1,
     )
     out = filt.compute(clouds)
     out_rot = filt.compute(clouds_rot)
@@ -186,7 +193,8 @@ def test_two_param_filtration_translation_invariant() -> None:
     shift = torch.tensor([10.0, -3.0, 7.0])
     coords_shift = clouds[..., :3] + shift
     clouds_shift = torch.cat(
-        [coords_shift, clouds[..., 3:4]], dim=-1,
+        [coords_shift, clouds[..., 3:4]],
+        dim=-1,
     )
     out = filt.compute(clouds)
     out_shift = filt.compute(clouds_shift)
@@ -231,8 +239,11 @@ def test_two_param_filtration_compute_with_atom_types_equivalent() -> None:
     atom_types = clouds[..., 3].long()
     out_class = filt.compute_with_atom_types(coords, atom_types)
     out_func = two_param_filtration(
-        coords, atom_types,
-        max_radius=5.0, max_coord=4.0, n_bins=10,
+        coords,
+        atom_types,
+        max_radius=5.0,
+        max_coord=4.0,
+        n_bins=10,
     )["features"]
     torch.testing.assert_close(out_class, out_func, rtol=1e-6, atol=1e-6)
 
@@ -273,7 +284,10 @@ def test_multi_ph_kernel_rejects_zero_projections() -> None:
 def test_multi_ph_kernel_matrix_shape_sliced_wasserstein() -> None:
     """``kernel_matrix`` returns ``(B_x, B_y)`` with ``sliced_wasserstein``."""
     kp = MultiPHKernel(
-        kernel="sliced_wasserstein", sigma=2.0, n_projections=4, seed=0,
+        kernel="sliced_wasserstein",
+        sigma=2.0,
+        n_projections=4,
+        seed=0,
     )
     x = _toy_feature_maps(b=3, n_bins=8, seed=1)
     y = _toy_feature_maps(b=5, n_bins=8, seed=2)
@@ -304,13 +318,16 @@ def test_multi_ph_kernel_gram_diagonal_is_one() -> None:
     x = _toy_feature_maps(b=4, n_bins=6, seed=3)
     for kernel in ("sliced_wasserstein", "rbf", "cosine"):
         kp = MultiPHKernel(
-            kernel=kernel, sigma=2.0, n_projections=4, seed=0,
+            kernel=kernel,
+            sigma=2.0,
+            n_projections=4,
+            seed=0,
         )
         K = kp.kernel_matrix(x)
         diag = torch.diagonal(K)
-        assert torch.allclose(diag, torch.ones_like(diag), atol=1e-4), (
-            f"{kernel}: diagonal must be 1, got {diag.tolist()}"
-        )
+        assert torch.allclose(
+            diag, torch.ones_like(diag), atol=1e-4
+        ), f"{kernel}: diagonal must be 1, got {diag.tolist()}"
 
 
 def test_multi_ph_kernel_gram_is_symmetric() -> None:
@@ -318,12 +335,13 @@ def test_multi_ph_kernel_gram_is_symmetric() -> None:
     x = _toy_feature_maps(b=4, n_bins=8, seed=3)
     for kernel in ("sliced_wasserstein", "rbf", "cosine"):
         kp = MultiPHKernel(
-            kernel=kernel, sigma=2.0, n_projections=4, seed=0,
+            kernel=kernel,
+            sigma=2.0,
+            n_projections=4,
+            seed=0,
         )
         K = kp.kernel_matrix(x)
-        assert torch.allclose(K, K.T, atol=1e-5), (
-            f"{kernel}: Gram matrix not symmetric"
-        )
+        assert torch.allclose(K, K.T, atol=1e-5), f"{kernel}: Gram matrix not symmetric"
 
 
 def test_multi_ph_kernel_asymmetric_bx_by_shape() -> None:
@@ -355,12 +373,10 @@ def test_multi_ph_kernel_rbf_matches_rbf_formula() -> None:
     # Manual cross-check: row 0, col 0.
     xf = x[0].reshape(-1)
     yf = y[0].reshape(-1)
-    expected = torch.exp(
-        -((xf - yf) ** 2).sum() / (2.0 * 2.0 + 1e-12)
-    )
-    assert torch.allclose(K[0, 0], expected, atol=1e-4), (
-        f"expected {expected.item()}; got {K[0, 0].item()}"
-    )
+    expected = torch.exp(-((xf - yf) ** 2).sum() / (2.0 * 2.0 + 1e-12))
+    assert torch.allclose(
+        K[0, 0], expected, atol=1e-4
+    ), f"expected {expected.item()}; got {K[0, 0].item()}"
 
 
 def test_multi_ph_kernel_cosine_in_unit_interval() -> None:
@@ -400,9 +416,12 @@ def test_multi_ph_summarizer_summarize_shape() -> None:
     summ = MultiPHSummarizer(n_bins=10)
     diagrams = _toy_feature_maps(b=3, n_bins=10, seed=1)
     out = summ.summarize([d for d in diagrams])
-    assert out.shape == (3, 4, 10, 10), (
-        f"expected (3, 4, 10, 10), got {tuple(out.shape)}"
-    )
+    assert out.shape == (
+        3,
+        4,
+        10,
+        10,
+    ), f"expected (3, 4, 10, 10), got {tuple(out.shape)}"
 
 
 def test_multi_ph_summarizer_accepts_batched_tensor_input() -> None:
@@ -479,7 +498,8 @@ def test_multi_ph_summarizer_channel1_equals_cumsum_of_channel0() -> None:
     out = summ.summarize(diagrams)
     # Cumsum along r (dim=-2) first, then along d (dim=-1).
     expected = torch.cumsum(
-        torch.cumsum(out[:, 0], dim=-2), dim=-1,
+        torch.cumsum(out[:, 0], dim=-2),
+        dim=-1,
     )
     torch.testing.assert_close(out[:, 1], expected, rtol=1e-6, atol=1e-6)
 

@@ -18,6 +18,7 @@ per-launcher ``make_config(model_idx=1)`` factories are added in
 follow-on waves (Wf-440+ — see :mod:`molmetal.baselines.train_cfm`
 and :mod:`molmetal.baselines.train_dmpnn_multitask_wasserstein`).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -101,5 +102,7 @@ __all__ = ["_make_config", "make_config"]
 if __name__ == "__main__":
     cfg = make_config(model_idx=1)
     print(f"node_dim={cfg.node_dim}  hidden_dim={cfg.hidden_dim}")
-    print(f"struct.num_cycle={cfg.struct.num_cycle}  struct.num_head={cfg.struct.num_head}")
+    print(
+        f"struct.num_cycle={cfg.struct.num_cycle}  struct.num_head={cfg.struct.num_head}"
+    )
     print(f"data.csv_path={cfg.data.csv_path}")

@@ -292,9 +292,9 @@ def test_backward_compat() -> None:
         trainer_src,
         re.DOTALL,
     )
-    assert w2_match is not None, (
-        "Trainer argparse missing --w2-gradient-mode flag (refactor drift)."
-    )
+    assert (
+        w2_match is not None
+    ), "Trainer argparse missing --w2-gradient-mode flag (refactor drift)."
     w2_choices = w2_match.group(1)
     assert "sliced" in w2_choices and "sort" in w2_choices, (
         f"--w2-gradient-mode choices {w2_choices!r} must include both "
@@ -308,9 +308,9 @@ def test_backward_compat() -> None:
     )
 
     # (c) --num-workers is still parsed (default None per Wf-328-W6)
-    assert "--num-workers" in trainer_src, (
-        "Trainer argparse missing --num-workers flag (Wf-328-W6 contract)."
-    )
+    assert (
+        "--num-workers" in trainer_src
+    ), "Trainer argparse missing --num-workers flag (Wf-328-W6 contract)."
 
     # (d) --no-cuda-graphs is still parsed (Wf-335-R3)
     assert "--no-cuda-graphs" in trainer_src, (
@@ -319,24 +319,30 @@ def test_backward_compat() -> None:
     )
 
     # (e) --no-kendall + --no-dann are still parsed (Wf-296C)
-    assert "--no-kendall" in trainer_src, (
-        "Trainer argparse missing --no-kendall flag (Wf-296C contract)."
-    )
-    assert "--no-dann" in trainer_src, (
-        "Trainer argparse missing --no-dann flag (Wf-296C contract)."
-    )
+    assert (
+        "--no-kendall" in trainer_src
+    ), "Trainer argparse missing --no-kendall flag (Wf-296C contract)."
+    assert (
+        "--no-dann" in trainer_src
+    ), "Trainer argparse missing --no-dann flag (Wf-296C contract)."
 
     # (f) Trainer parse_args() round-trip — verify the CLI accepts the
     # full Wf-337-G2 v2 config without raising.
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import parse_args
-    args = parse_args([
-        "--cpu-num-workers", "8",
-        "--num-workers", "8",
-        "--w2-gradient-mode", "sort",
-        "--no-cuda-graphs",
-        "--no-kendall",
-        "--no-dann",
-    ])
+
+    args = parse_args(
+        [
+            "--cpu-num-workers",
+            "8",
+            "--num-workers",
+            "8",
+            "--w2-gradient-mode",
+            "sort",
+            "--no-cuda-graphs",
+            "--no-kendall",
+            "--no-dann",
+        ]
+    )
     assert args.cpu_num_workers == 8
     assert args.num_workers == 8
     assert args.w2_gradient_mode == "sort"

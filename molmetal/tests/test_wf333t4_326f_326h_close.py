@@ -33,9 +33,9 @@ def test_333t4_final_doc_exists() -> None:
     assert path.exists(), f"Missing: {path}"
     content = _read(path)
     assert "Wf-333-T4" in content, "Final doc must reference Wf-333-T4"
-    assert "326F" in content and "326H" in content, (
-        "Final doc must reference both 326F + 326H slots"
-    )
+    assert (
+        "326F" in content and "326H" in content
+    ), "Final doc must reference both 326F + 326H slots"
 
 
 def test_333t4_final_doc_references_x1_shipped() -> None:
@@ -44,14 +44,12 @@ def test_333t4_final_doc_references_x1_shipped() -> None:
     assert path.exists(), f"Missing: {path}"
     content = _read(path)
     # Must declare that Wf-331-X1 already shipped (the gap-close evidence)
-    assert "Wf-331-X1" in content or "331-X1" in content or "331x1" in content, (
-        "Final doc must reference Wf-331-X1 as the prior ship"
-    )
+    assert (
+        "Wf-331-X1" in content or "331-X1" in content or "331x1" in content
+    ), "Final doc must reference Wf-331-X1 as the prior ship"
     # Must contain either 'SHIPPED' or 'FORMAL CLOSE' marker
     has_close_marker = any(
         marker in content.upper()
         for marker in ("SHIPPED", "FORMAL CLOSE", "FORMALLY CLOSED")
     )
-    assert has_close_marker, (
-        "Final doc must contain SHIPPED or FORMAL CLOSE marker"
-    )
+    assert has_close_marker, "Final doc must contain SHIPPED or FORMAL CLOSE marker"

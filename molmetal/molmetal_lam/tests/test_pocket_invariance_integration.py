@@ -85,9 +85,7 @@ class _StubRule:
         if isinstance(molecule, tuple):
             if len(molecule) == 0:
                 return []
-            state, tile = molecule[0], (
-                molecule[1] if len(molecule) > 1 else None
-            )
+            state, tile = molecule[0], (molecule[1] if len(molecule) > 1 else None)
         else:
             state, tile = molecule, None
         try:
@@ -318,8 +316,7 @@ def test_search_with_learned_prior_mix() -> None:
         )
     except TypeError as exc:
         pytest.skip(
-            f"proof_search.search() does not yet accept "
-            f"learned_prior= kwarg: {exc}"
+            f"proof_search.search() does not yet accept " f"learned_prior= kwarg: {exc}"
         )
     # If the call succeeded, the search produced a tree with non-zero
     # children (the stub rule fires on every (state, tile) pair).
@@ -372,8 +369,7 @@ def test_search_backward_compatible() -> None:
         # — but to keep the test simple we just check that the
         # *root.P* (the initial root prior) is 0.5.
         assert abs(float(mcts._root.P) - 0.5) < 1e-9, (
-            f"legacy search() must keep root.P = 0.5 at init, "
-            f"got {mcts._root.P!r}"
+            f"legacy search() must keep root.P = 0.5 at init, " f"got {mcts._root.P!r}"
         )
 
 
@@ -523,15 +519,14 @@ def test_search_pocket_invariance_break() -> None:
     # import from the script module via importlib so the test does
     # not break if the symbol moves.
     import importlib.util as _ilu
+
     _spec = _ilu.spec_from_file_location(
         "_r4_lambda_only_run",
         "/home/hugo/codes/try_triton_on_rocm/molmetal/scripts/r4_lambda_only_run.py",
     )
     _mod = _ilu.module_from_spec(_spec)  # type: ignore[arg-type]
     _spec.loader.exec_module(_mod)  # type: ignore[union-attr]
-    pocket_derived_metal_seed = getattr(
-        _mod, "pocket_derived_metal_seed", None
-    )
+    pocket_derived_metal_seed = getattr(_mod, "pocket_derived_metal_seed", None)
     if pocket_derived_metal_seed is None:
         pytest.skip(
             "pocket_derived_metal_seed not exported from "
@@ -572,9 +567,7 @@ class _NamedStubRule:
         if isinstance(molecule, tuple):
             if len(molecule) == 0:
                 return []
-            state, tile = molecule[0], (
-                molecule[1] if len(molecule) > 1 else None
-            )
+            state, tile = molecule[0], (molecule[1] if len(molecule) > 1 else None)
         else:
             state, tile = molecule, None
         try:
@@ -643,9 +636,7 @@ def _make_search_named(
     to inflate.
     """
     return MCTSProofSearch(
-        tile_library=_tile_library(
-            ["C#C", "N=N=N", "C#C", "C=C", "C(=O)O"]
-        ),
+        tile_library=_tile_library(["C#C", "N=N=N", "C#C", "C=C", "C(=O)O"]),
         rules=_named_rules(),
         target_predicates=[],
         binding_site=PROTEASE_GENERIC,
@@ -781,14 +772,10 @@ def test_strong_pocket_boost_overrides_default() -> None:
     # *dominate* every other root child by a margin > 2x (a
     # pocket-blind root has all children at P=0.5 — the inflated
     # argmax at P=0.99 should be ≈ 2x the second-highest).
-    all_priors = sorted(
-        (float(c.P) for c in root.children), reverse=True
-    )
+    all_priors = sorted((float(c.P) for c in root.children), reverse=True)
     max_p = all_priors[0]
     second_p = all_priors[1] if len(all_priors) > 1 else 0.0
-    max_p_idx = (
-        [float(c.P) for c in root.children].index(max_p)
-    )
+    max_p_idx = [float(c.P) for c in root.children].index(max_p)
     max_p_child = root.children[max_p_idx]
     assert max_p > 0.5, (
         f"pocket-argmax child must hold P > 0.5; got max P={max_p:.4f} "
@@ -801,9 +788,7 @@ def test_strong_pocket_boost_overrides_default() -> None:
     # The inflated argmax must dominate the second-highest child by a
     # 1.5x margin (pocket-blind root has uniform 0.5 everywhere, so
     # this margin must be > 1.5×).
-    dominance_ratio = (
-        max_p / second_p if second_p > 0 else float("inf")
-    )
+    dominance_ratio = max_p / second_p if second_p > 0 else float("inf")
     assert dominance_ratio > 1.5, (
         "pocket-argmax child must dominate the second-highest child "
         f"by > 1.5x; got max_p={max_p:.4f}, second_p={second_p:.4f}, "
@@ -890,8 +875,7 @@ def test_learned_prior_overrides_when_mix_high() -> None:
         )
     except TypeError as exc:
         pytest.skip(
-            "proof_search.search() does not yet accept "
-            f"learned_prior= kwarg: {exc}"
+            "proof_search.search() does not yet accept " f"learned_prior= kwarg: {exc}"
         )
 
     # ---- Inspect root children P values ----
@@ -925,9 +909,7 @@ def test_learned_prior_overrides_when_mix_high() -> None:
 
     # 2) The learned argmax rule (ThiolEne) must hold the highest
     # P across all root children.
-    rule_max_p = {
-        rule: float(max(ps)) for rule, ps in by_rule.items()
-    }
+    rule_max_p = {rule: float(max(ps)) for rule, ps in by_rule.items()}
     argmax_rule = max(rule_max_p, key=rule_max_p.get)
     assert argmax_rule == "ThiolEne", (
         "learned argmax rule (ThiolEne) must dominate at "
@@ -939,9 +921,7 @@ def test_learned_prior_overrides_when_mix_high() -> None:
     # rule should have a lower P than ThiolEne (i.e. mix_uniform=0.9
     # propagates the learned skew, not just shifts every rule by a
     # constant).
-    other_rules = [
-        r for r in rule_max_p.keys() if r != "ThiolEne"
-    ]
+    other_rules = [r for r in rule_max_p.keys() if r != "ThiolEne"]
     if other_rules:
         non_argmax_max = max(rule_max_p[r] for r in other_rules)
         assert thiolene_max_p > non_argmax_max, (
@@ -987,6 +967,7 @@ def test_metal_seed_pocket_derived() -> None:
     import sys
     import traceback
     from pathlib import Path
+
     _here = Path(__file__).resolve()
     # Test file path: .../molmetal/molmetal_lam/tests/...
     # parents[0] = tests/, parents[1] = molmetal_lam/,
@@ -1008,9 +989,7 @@ def test_metal_seed_pocket_derived() -> None:
             f"RDKit or runtime dep): {exc}\n{traceback.format_exc()}"
         )
     pocket_derived_metal_seed = _runner_mod.pocket_derived_metal_seed
-    POCKET_DERIVED_METAL_SEED_FALLBACK = (
-        _runner_mod.POCKET_DERIVED_METAL_SEED_FALLBACK
-    )
+    POCKET_DERIVED_METAL_SEED_FALLBACK = _runner_mod.POCKET_DERIVED_METAL_SEED_FALLBACK
 
     # ---- CA2: pocket_name="CA2" → explicit name lookup → Pt(II)
     v_ca2 = pocket_features(_ca2_residues(), pocket_name="CA2")
@@ -1032,8 +1011,8 @@ def test_metal_seed_pocket_derived() -> None:
     mmp2_pos = float(v_mmp2.values[2])
     mmp2_neg = float(v_mmp2.values[3])
     mmp2_name, mmp2_smi = pocket_derived_metal_seed(v_mmp2)
-    assert "Zn" in mmp2_smi or "zn" in mmp2_name.lower() or "zinc" in (
-        mmp2_name.lower()
+    assert (
+        "Zn" in mmp2_smi or "zn" in mmp2_name.lower() or "zinc" in (mmp2_name.lower())
     ), (
         f"MMP2 (pocket_name='MMP2', MMP zincin, pos={mmp2_pos:.3f}, "
         f"neg={mmp2_neg:.3f}) must select a Zn metal seed via the "
@@ -1061,8 +1040,7 @@ def test_metal_seed_pocket_derived() -> None:
         f"('palladium_alkyne'); got name={empty_name!r}"
     )
     assert "Pd" in empty_smi, (
-        f"empty-pocket fallback SMILES must contain Pd; "
-        f"got smiles={empty_smi!r}"
+        f"empty-pocket fallback SMILES must contain Pd; " f"got smiles={empty_smi!r}"
     )
 
     # ---- Defensive: None and malformed inputs do NOT crash.

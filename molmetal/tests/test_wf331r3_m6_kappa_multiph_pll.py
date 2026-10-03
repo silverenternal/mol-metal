@@ -35,6 +35,7 @@ Run with::
         /home/hugo/codes/mol-metal/.venv/bin/python -m pytest \\
         molmetal/tests/test_wf331r3_m6_kappa_multiph_pll.py -v
 """
+
 from __future__ import annotations
 
 import csv
@@ -74,6 +75,7 @@ def _import_module():
             _compute_baseline_pass_rate,
             main as wf331r3_main,
         )
+
         return {
             "FOURIER_BIN_COUNT": FOURIER_BIN_COUNT,
             "MULTI_PH_N_BINS": MULTI_PH_N_BINS,
@@ -119,14 +121,16 @@ def test_32bin_fourier_features(mod):
     # DC bin == total feature-map sum (Parseval preservation
     # when bin width covers only the r=0 pixel).
     np.testing.assert_allclose(
-        fourier[0], float(feat.sum()), atol=1e-6,
+        fourier[0],
+        float(feat.sum()),
+        atol=1e-6,
         err_msg="DC bin should equal feature-map sum",
     )
     # DC bin should be the largest (Parseval: most energy at
     # low frequency).
-    assert fourier[0] >= fourier[1] - 1e-9, (
-        f"DC bin ({fourier[0]:.4f}) should be the largest"
-    )
+    assert (
+        fourier[0] >= fourier[1] - 1e-9
+    ), f"DC bin ({fourier[0]:.4f}) should be the largest"
 
 
 # ---------------------------------------------------------------------------
@@ -147,7 +151,9 @@ def test_multi_ph_integration(mod):
         pytest.skip(f"RDKit unavailable: {exc}")
     # Multi-PH batch shape: (B, 32, 32).
     assert multi_ph_b.shape == (
-        len(smiles_list), extractor.n_bins, extractor.n_bins,
+        len(smiles_list),
+        extractor.n_bins,
+        extractor.n_bins,
     ), f"multi-PH batch shape: {multi_ph_b.shape}"
     # Non-negative + finite.
     assert np.isfinite(multi_ph_b).all(), "multi-PH must be finite"
@@ -164,11 +170,11 @@ def test_multi_ph_integration(mod):
     # and verify the multi-PH flat block is in the right slice.
     multi_ph_flat = multi_ph_b.reshape(len(smiles_list), -1)
     joint = np.concatenate([fourier_b, multi_ph_flat, pll_b], axis=-1)
-    assert joint.shape == (len(smiles_list), joint_dim), (
-        f"joint shape: {joint.shape}"
-    )
+    assert joint.shape == (len(smiles_list), joint_dim), f"joint shape: {joint.shape}"
     np.testing.assert_array_equal(
-        joint[:, extractor.fourier_dim: extractor.fourier_dim + extractor.multi_ph_dim],
+        joint[
+            :, extractor.fourier_dim : extractor.fourier_dim + extractor.multi_ph_dim
+        ],
         multi_ph_flat,
         err_msg="multi-PH block not in expected slice of joint matrix",
     )
@@ -188,29 +194,26 @@ def test_pll_signature(mod):
     except mod["MultiPHPLLFeatureError"] as exc:
         pytest.skip(f"RDKit unavailable: {exc}")
     # PLL batch shape: (B, 32).
-    assert pll_b.shape == (len(smiles_list), extractor.pll_dim), (
-        f"PLL batch shape: {pll_b.shape}"
-    )
+    assert pll_b.shape == (
+        len(smiles_list),
+        extractor.pll_dim,
+    ), f"PLL batch shape: {pll_b.shape}"
     # Per-sample contract: descending, finite, in [0, 2].
     for i in range(len(smiles_list)):
         pll = pll_b[i]
         assert np.isfinite(pll).all(), f"sample {i}: PLL not finite"
         assert (pll >= 0.0).all(), f"sample {i}: PLL not >= 0"
-        assert (pll <= 2.0 + 1e-9).all(), (
-            f"sample {i}: PLL max={pll.max():.4f} exceeds 2.0"
-        )
+        assert (
+            pll <= 2.0 + 1e-9
+        ).all(), f"sample {i}: PLL max={pll.max():.4f} exceeds 2.0"
         diffs = np.diff(pll)
-        assert (diffs <= 1e-9).all(), (
-            f"sample {i}: PLL eigenvalues not descending"
-        )
+        assert (diffs <= 1e-9).all(), f"sample {i}: PLL eigenvalues not descending"
     # PLL block is the trailing 32-dim slice of the joint matrix.
     joint = np.concatenate(
         [fourier_b, multi_ph_b.reshape(len(smiles_list), -1), pll_b],
         axis=-1,
     )
-    expected_pll_start = (
-        extractor.fourier_dim + extractor.multi_ph_dim
-    )
+    expected_pll_start = extractor.fourier_dim + extractor.multi_ph_dim
     np.testing.assert_array_equal(
         joint[:, expected_pll_start:],
         pll_b,
@@ -230,8 +233,14 @@ def test_m6_kappa_lift(mod):
     # Synthetic cohort — 8 SMILES (enough for 5-fold CV on 5+
     # samples after RDKit failures).
     smiles_list = [
-        "CCO", "c1ccccc1", "CC(=O)O", "CCN", "CCOC",
-        "CCCCO", "c1ccc(O)cc1", "c1ccncc1",
+        "CCO",
+        "c1ccccc1",
+        "CC(=O)O",
+        "CCN",
+        "CCOC",
+        "CCCCO",
+        "c1ccc(O)cc1",
+        "c1ccncc1",
     ]
     # 1. Baseline m6_kappa via the helper.
     baseline_vals = [mod["_safe_m6_kappa"](s) for s in smiles_list]
@@ -240,7 +249,8 @@ def test_m6_kappa_lift(mod):
         pytest.skip("RDKit unavailable for m6_kappa baseline")
     baseline_mean = float(np.mean(baseline_clean))
     baseline_pass_rate = mod["_compute_baseline_pass_rate"](
-        baseline_clean, mod["M6_KAPPA_THRESHOLD"],
+        baseline_clean,
+        mod["M6_KAPPA_THRESHOLD"],
     )
     assert np.isfinite(baseline_mean)
     assert 0.0 <= baseline_pass_rate <= 1.0
@@ -252,7 +262,8 @@ def test_m6_kappa_lift(mod):
     # Build joint + per-modality design matrices.
     n = len(smiles_list)
     X_joint = np.concatenate(
-        [fourier_b, multi_ph_b.reshape(n, -1), pll_b], axis=-1,
+        [fourier_b, multi_ph_b.reshape(n, -1), pll_b],
+        axis=-1,
     )
     X_fourier_only = fourier_b
     X_multi_ph_only = multi_ph_b.reshape(n, -1)
@@ -264,18 +275,28 @@ def test_m6_kappa_lift(mod):
     # 3. Cross-validated Ridge recovery (joint + per-modality).
     cv_full = mod["_cv_r2_joint_predict"](X_joint, y, alpha=1.0, cv_folds=5)
     cv_fourier = mod["_cv_r2_joint_predict"](
-        X_fourier_only, y, alpha=1.0, cv_folds=5,
+        X_fourier_only,
+        y,
+        alpha=1.0,
+        cv_folds=5,
     )
     cv_multi_ph = mod["_cv_r2_joint_predict"](
-        X_multi_ph_only, y, alpha=1.0, cv_folds=5,
+        X_multi_ph_only,
+        y,
+        alpha=1.0,
+        cv_folds=5,
     )
     cv_pll = mod["_cv_r2_joint_predict"](
-        X_pll_only, y, alpha=1.0, cv_folds=5,
+        X_pll_only,
+        y,
+        alpha=1.0,
+        cv_folds=5,
     )
     y_pred_cv = cv_full["y_pred_cv"]
     augmented_mean = float(np.mean(y_pred_cv))
     augmented_pass_rate = mod["_compute_baseline_pass_rate"](
-        y_pred_cv, mod["M6_KAPPA_THRESHOLD"],
+        y_pred_cv,
+        mod["M6_KAPPA_THRESHOLD"],
     )
     pass_rate_lift = augmented_pass_rate - baseline_pass_rate
     # Recovery verdict contract.
@@ -288,9 +309,9 @@ def test_m6_kappa_lift(mod):
     assert np.isfinite(augmented_mean), "augmented_mean must be finite"
     delta = augmented_mean - baseline_mean
     # Unbiased CV: delta is expected to be small; allow ±1.0.
-    assert abs(delta) <= 1.0, (
-        f"delta={delta:+.4f} too large (unbiased CV should ~baseline)"
-    )
+    assert (
+        abs(delta) <= 1.0
+    ), f"delta={delta:+.4f} too large (unbiased CV should ~baseline)"
     # 4.2 cv_r2 finite (NaN allowed only on n < 4).
     assert isinstance(cv_full["r2_cv"], float)
     assert np.isfinite(cv_full["r2_cv"]) or cv_full["n_samples"] < 4
@@ -299,8 +320,10 @@ def test_m6_kappa_lift(mod):
     assert -1.0 <= pass_rate_lift <= 1.0
     # 4.4 The per-modality CV R² values are populated and finite.
     for label, cv in [
-        ("joint", cv_full), ("fourier", cv_fourier),
-        ("multi-ph", cv_multi_ph), ("pll", cv_pll),
+        ("joint", cv_full),
+        ("fourier", cv_fourier),
+        ("multi-ph", cv_multi_ph),
+        ("pll", cv_pll),
     ]:
         assert "r2_cv" in cv
         assert "n_samples" in cv
@@ -314,11 +337,13 @@ def test_m6_kappa_lift(mod):
     # 4.6 Wf-325D MEASURED baseline is mirrored as the canonical
     # reference for honest-negative framing.
     assert mod["WF_325D_MEASURED_BASELINE"] == pytest.approx(
-        0.4719079955824899, abs=1e-9,
+        0.4719079955824899,
+        abs=1e-9,
     ), "Wf-325D MEASURED baseline must mirror metrics/by_metric/m6_kappa.json"
     # 4.7 Schema sanity: pass the values through the JSON
     # serialisation round-trip the script uses.
     import json as _json
+
     payload = {
         "baseline_mean": baseline_mean,
         "augmented_mean": augmented_mean,

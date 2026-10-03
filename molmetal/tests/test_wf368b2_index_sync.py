@@ -47,9 +47,9 @@ INDEX_SECTION_PATTERN = re.compile(
 
 def _load_index_text() -> str:
     """Load TODO/INDEX.md text. Skip if the file is missing."""
-    assert INDEX_PATH.is_file(), (
-        f"INDEX.md not found at {INDEX_PATH} — repo layout drifted?"
-    )
+    assert (
+        INDEX_PATH.is_file()
+    ), f"INDEX.md not found at {INDEX_PATH} — repo layout drifted?"
     return INDEX_PATH.read_text(encoding="utf-8")
 
 

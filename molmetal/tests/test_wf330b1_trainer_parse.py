@@ -47,10 +47,7 @@ import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 TRAINER_PATH = (
-    PROJECT_ROOT
-    / "molmetal"
-    / "scripts"
-    / "train_dmpnn_multitask_wasserstein.py"
+    PROJECT_ROOT / "molmetal" / "scripts" / "train_dmpnn_multitask_wasserstein.py"
 )
 
 
@@ -103,7 +100,8 @@ def test_trainer_file_parses_without_syntax_errors() -> None:
     # No stale ``@triton.autotune(`` decorator that requires Triton-3.x
     # incompatible kwarg shape.
     assert not re.search(
-        r"@triton\.autotune\s*\(", src,
+        r"@triton\.autotune\s*\(",
+        src,
     ), "Wf-330-B1 found a @triton.autotune(...) decorator; remove or migrate."
 
 
@@ -119,51 +117,79 @@ def test_wf328_integrations_present() -> None:
     src = _read_trainer_source()
 
     # Wf-328-W1 — torch.compile wrappers for encoder + W₂ closed-form.
-    assert "_make_compiled_encoder_forward" in src, "Wf-328-W1: missing _make_compiled_encoder_forward"
-    assert "_make_compiled_w2_penalty" in src, "Wf-328-W1: missing _make_compiled_w2_penalty"
+    assert (
+        "_make_compiled_encoder_forward" in src
+    ), "Wf-328-W1: missing _make_compiled_encoder_forward"
+    assert (
+        "_make_compiled_w2_penalty" in src
+    ), "Wf-328-W1: missing _make_compiled_w2_penalty"
     assert "torch.compile" in src, "Wf-328-W1: missing torch.compile call"
-    assert "compiled_w2_penalty" in src, "Wf-328-W1: missing compiled_w2_penalty thread-through"
+    assert (
+        "compiled_w2_penalty" in src
+    ), "Wf-328-W1: missing compiled_w2_penalty thread-through"
 
     # Wf-328-W3 — BF16 autocast context.
     assert "bf16_autocast" in src, "Wf-328-W3: missing bf16_autocast factory"
     assert "configure_bf16" in src, "Wf-328-W3: missing configure_bf16 helper"
     assert "use_bf16" in src, "Wf-328-W3: missing use_bf16 toggle"
-    assert "bf16_fallback_occurred" in src, "Wf-328-W3: missing bf16_fallback_occurred flag"
+    assert (
+        "bf16_fallback_occurred" in src
+    ), "Wf-328-W3: missing bf16_fallback_occurred flag"
 
     # Wf-328-W4 — TF32 default ON.
     assert "configure_tf32" in src, "Wf-328-W4: missing configure_tf32 helper"
-    assert "torch.backends.cuda.matmul.allow_tf32" in src, "Wf-328-W4: missing tf32 matmul flag"
+    assert (
+        "torch.backends.cuda.matmul.allow_tf32" in src
+    ), "Wf-328-W4: missing tf32 matmul flag"
     assert "DEFAULT_TF32" in src, "Wf-328-W4: missing DEFAULT_TF32 constant"
     assert "--no-tf32" in src, "Wf-328-W4: missing --no-tf32 CLI lever"
 
     # Wf-328-W5 — W₂ sort mode default (closed-form 1-D torch.sort).
-    assert "DEFAULT_W2_GRADIENT_MODE" in src, "Wf-328-W5: missing DEFAULT_W2_GRADIENT_MODE constant"
+    assert (
+        "DEFAULT_W2_GRADIENT_MODE" in src
+    ), "Wf-328-W5: missing DEFAULT_W2_GRADIENT_MODE constant"
     assert 'DEFAULT_W2_GRADIENT_MODE: str = "sort"' in src or (
         'DEFAULT_W2_GRADIENT_MODE: str = "sort"' in src
     ), "Wf-328-W5: DEFAULT_W2_GRADIENT_MODE must default to 'sort'"
-    assert 'w2_gradient_mode' in src, "Wf-328-W5: missing w2_gradient_mode dispatch"
-    assert "wasserstein_pic50_gradient" in src, "Wf-328-W5: missing closed-form W₂ gradient call"
+    assert "w2_gradient_mode" in src, "Wf-328-W5: missing w2_gradient_mode dispatch"
+    assert (
+        "wasserstein_pic50_gradient" in src
+    ), "Wf-328-W5: missing closed-form W₂ gradient call"
 
     # Wf-328-W6 — Wf-326B build_optimized_loader() factory wire-in.
-    assert "build_optimized_loader" in src, "Wf-328-W6: missing build_optimized_loader factory import"
-    assert "wf326b_dataloader_optimized" in src, "Wf-328-W6: missing wf326b_dataloader_optimized module ref"
-    assert "effective_num_workers" in src, "Wf-328-W6: missing effective_num_workers resolver"
+    assert (
+        "build_optimized_loader" in src
+    ), "Wf-328-W6: missing build_optimized_loader factory import"
+    assert (
+        "wf326b_dataloader_optimized" in src
+    ), "Wf-328-W6: missing wf326b_dataloader_optimized module ref"
+    assert (
+        "effective_num_workers" in src
+    ), "Wf-328-W6: missing effective_num_workers resolver"
 
     # Wf-328-W8 — CUDA Graphs capture wrapper.
     assert "use_cuda_graph" in src, "Wf-328-W8: missing use_cuda_graph toggle"
-    assert "CudaGraphDMPNNWrapper" in src, "Wf-328-W8: missing CudaGraphDMPNNWrapper import"
-    assert "cuda_graph_wrapper" in src, "Wf-328-W8: missing cuda_graph_wrapper instantiation"
+    assert (
+        "CudaGraphDMPNNWrapper" in src
+    ), "Wf-328-W8: missing CudaGraphDMPNNWrapper import"
+    assert (
+        "cuda_graph_wrapper" in src
+    ), "Wf-328-W8: missing cuda_graph_wrapper instantiation"
     assert "--cuda-graph" in src, "Wf-328-W8: missing --cuda-graph CLI flag"
 
     # Wf-328-W9 — Triton fused ReLU+Linear kernel opt-in.
     assert "TRITON_USE_FUSED" in src, "Wf-328-W9: missing TRITON_USE_FUSED env var"
     assert "TRITON_RELU_LINEAR" in src, "Wf-328-W9: missing TRITON_RELU_LINEAR env var"
     assert "TRITON_EDGE_UPDATE" in src, "Wf-328-W9: missing TRITON_EDGE_UPDATE env var"
-    assert "triton_edge_update" in src, "Wf-328-W9: missing triton_edge_update CLI toggle"
+    assert (
+        "triton_edge_update" in src
+    ), "Wf-328-W9: missing triton_edge_update CLI toggle"
 
     # Wf-328-W10 — on-disk pickle cache for featurisation (re-used from
     # Wf-84 P3 but re-affirmed by W10 as a quick-win energy saver).
-    assert "_featurize_with_cache" in src, "Wf-328-W10: missing _featurize_with_cache helper"
+    assert (
+        "_featurize_with_cache" in src
+    ), "Wf-328-W10: missing _featurize_with_cache helper"
     assert "wf131_mtw_fe_cache" in src, "Wf-328-W10: missing cache_dir constant"
 
     # Wf-285B (pre-Wf-328) — DANN Gradient-Reversal Layer wire-in (kept

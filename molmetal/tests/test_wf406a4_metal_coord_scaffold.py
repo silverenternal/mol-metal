@@ -43,7 +43,9 @@ from typing import Any, Dict
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCAFFOLD = REPO_ROOT / "molmetal" / "scripts" / "wf406a4_metal_coord_retrain_scaffold.py"
+SCAFFOLD = (
+    REPO_ROOT / "molmetal" / "scripts" / "wf406a4_metal_coord_retrain_scaffold.py"
+)
 LAUNCH_WRAPPER = REPO_ROOT / "scripts" / "wf406a4_launch_wf246c_metal_coord_retrain.sh"
 
 
@@ -68,10 +70,16 @@ def test_scaffold_smoke_passes() -> None:
             str(SCAFFOLD),
             "--metal-coord-term",
             "--smoke",
-            "--metals", "Ru", "Ir",
-            "--seeds", "0", "1",
-            "--epochs", "5",
-            "--out-dir", str(out_dir),
+            "--metals",
+            "Ru",
+            "Ir",
+            "--seeds",
+            "0",
+            "1",
+            "--epochs",
+            "5",
+            "--out-dir",
+            str(out_dir),
         ]
         env = os.environ.copy()
         env["PYTHONPATH"] = str(REPO_ROOT) + os.pathsep + env.get("PYTHONPATH", "")
@@ -158,8 +166,7 @@ def test_launch_wrapper_syntax() -> None:
         f"stderr={proc.stderr!r}"
     )
     assert "USER_OK gate refused" in proc.stderr, (
-        f"USER_OK gate refusal message missing from stderr; "
-        f"stderr={proc.stderr!r}"
+        f"USER_OK gate refusal message missing from stderr; " f"stderr={proc.stderr!r}"
     )
     # (c) USER_OK=1 with --smoke runs SCAFFOLD end-to-end
     with tempfile.TemporaryDirectory() as tmp:
@@ -173,10 +180,16 @@ def test_launch_wrapper_syntax() -> None:
             [
                 str(LAUNCH_WRAPPER),
                 "--smoke",
-                "--metals", "Ru", "Ir", "Rh",
-                "--seeds", "0",
-                "--epochs", "5",
-                "--out-dir", str(out_dir),
+                "--metals",
+                "Ru",
+                "Ir",
+                "Rh",
+                "--seeds",
+                "0",
+                "--epochs",
+                "5",
+                "--out-dir",
+                str(out_dir),
             ],
             cwd=str(REPO_ROOT),
             env=env_yes_user,

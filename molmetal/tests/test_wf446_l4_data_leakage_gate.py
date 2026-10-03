@@ -40,7 +40,8 @@ CYTO_V4_CSV = REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_
 
 def _write_platinai(path: Path) -> None:
     path.write_text(
-        "smiles\nCCO\nCCN\nCCC\nCCCl\nCO\nCN\nCS\nCCBr\n", encoding="utf-8",
+        "smiles\nCCO\nCCN\nCCC\nCCCl\nCO\nCN\nCS\nCCBr\n",
+        encoding="utf-8",
     )
 
 
@@ -61,9 +62,7 @@ def _write_cyto(path: Path, *, leak: bool = False, with_split: bool = True) -> N
             f"{s},{sc},{sp}\n" for s, sc, sp in rows
         )
     else:
-        body = "smiles,scaffold_id\n" + "".join(
-            f"{s},{sc}\n" for s, sc, _sp in rows
-        )
+        body = "smiles,scaffold_id\n" + "".join(f"{s},{sc}\n" for s, sc, _sp in rows)
     path.write_text(body, encoding="utf-8")
 
 
@@ -74,7 +73,9 @@ def _run_gate(tmp_path: Path, *, leak: bool = False, with_split: bool = True):
     _write_platinai(plat)
     _write_cyto(cyto, leak=leak, with_split=with_split)
     return gate_p2_data_leakage_diag(
-        "t", "P2", "data",
+        "t",
+        "P2",
+        "data",
         SCRIPT_DIR / "check_data_leakage.py",
         platinai_csv=plat,
         metalcytotox_csv=cyto,
@@ -103,7 +104,9 @@ class TestBothWaysSynthetic:
 class TestEnvAndPathContract:
     def test_fails_on_missing_script(self, tmp_path: Path) -> None:
         r = gate_p2_data_leakage_diag(
-            "t", "P2", "data",
+            "t",
+            "P2",
+            "data",
             tmp_path / "nope.py",
             platinai_csv=PLATINAI_CSV,
             metalcytotox_csv=CYTO_V4_CSV,
@@ -114,7 +117,9 @@ class TestEnvAndPathContract:
 
     def test_fails_on_missing_platinai_csv(self, tmp_path: Path) -> None:
         r = gate_p2_data_leakage_diag(
-            "t", "P2", "data",
+            "t",
+            "P2",
+            "data",
             SCRIPT_DIR / "check_data_leakage.py",
             platinai_csv=tmp_path / "nope.csv",
             metalcytotox_csv=CYTO_V4_CSV,
@@ -125,7 +130,9 @@ class TestEnvAndPathContract:
 
     def test_skips_when_gitignored_v4_absent(self, tmp_path: Path) -> None:
         r = gate_p2_data_leakage_diag(
-            "t", "P2", "data",
+            "t",
+            "P2",
+            "data",
             SCRIPT_DIR / "check_data_leakage.py",
             platinai_csv=PLATINAI_CSV,
             metalcytotox_csv=tmp_path / "nope.csv",
@@ -155,7 +162,9 @@ class TestHealthyTreeIntegration:
         if not CYTO_V4_CSV.is_file():
             pytest.skip(f"v4 CSV not on disk (gitignored): {CYTO_V4_CSV}")
         r = gate_p2_data_leakage_diag(
-            "t", "P2", "data",
+            "t",
+            "P2",
+            "data",
             SCRIPT_DIR / "check_data_leakage.py",
             platinai_csv=PLATINAI_CSV,
             metalcytotox_csv=CYTO_V4_CSV,

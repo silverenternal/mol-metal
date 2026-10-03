@@ -81,6 +81,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -135,19 +136,31 @@ from molmetal.data.splits import ScaffoldSplitter  # noqa: E402
 # Defaults — Krasnov 2026 protocol alignment
 # ---------------------------------------------------------------------------
 METALS_5: Tuple[str, ...] = ("Ru", "Ir", "Os", "Rh", "Re")
-DEFAULT_SEEDS: Tuple[int, ...] = (0, 1, 2)            # per user "3 seeds is enough"
-DEFAULT_EPOCHS: int = 50                              # Krasnov 2026 default
-DEFAULT_HIDDEN: int = 300                             # chemprop v2 default
-DEFAULT_DEPTH: int = 3                                # chemprop v2 default
+DEFAULT_SEEDS: Tuple[int, ...] = (0, 1, 2)  # per user "3 seeds is enough"
+DEFAULT_EPOCHS: int = 50  # Krasnov 2026 default
+DEFAULT_HIDDEN: int = 300  # chemprop v2 default
+DEFAULT_DEPTH: int = 3  # chemprop v2 default
 DEFAULT_BATCH: int = 64
 DEFAULT_LR: float = 1e-3
 DEFAULT_NUM_WORKERS: int = 4
-DEFAULT_TIME_BUDGET_S: float = 4 * 3600.0             # 4 hr wall budget
-DEFAULT_SCAFFOLD_FRACTIONS: Tuple[float, float, float] = (0.7, 0.1, 0.2)  # Bemis-Murcko scaffold split
+DEFAULT_TIME_BUDGET_S: float = 4 * 3600.0  # 4 hr wall budget
+DEFAULT_SCAFFOLD_FRACTIONS: Tuple[float, float, float] = (
+    0.7,
+    0.1,
+    0.2,
+)  # Bemis-Murcko scaffold split
 
 # NCI-60 9-cell panel (matches Wf_nci60 / train_nci60_10cell.py precious-metal subset).
 NCI60_9CELL_CELLS: Tuple[str, ...] = (
-    "MCF7", "A549", "A2780", "A2780cis", "HCT116", "PC3", "HL60", "SKOV3", "DU145",
+    "MCF7",
+    "A549",
+    "A2780",
+    "A2780cis",
+    "HCT116",
+    "PC3",
+    "HL60",
+    "SKOV3",
+    "DU145",
 )
 
 CKPT_DIR = PROJECT_ROOT / "molmetal" / "checkpoints" / "wf219_krasnov_aligned"
@@ -235,8 +248,10 @@ def run_one_per_metal(
     class _SmilesAdapter:
         def __init__(self, smiles):
             self._smiles = list(smiles)
+
         def __len__(self):
             return len(self._smiles)
+
         @property
         def smiles(self):
             return np.asarray(self._smiles, dtype=object)
@@ -256,12 +271,18 @@ def run_one_per_metal(
     # smaller metals like Re).
     if len(train_idx) < 50:
         from sklearn.model_selection import train_test_split
+
         idx = np.arange(len(smiles_subset))
         idx_train_full, idx_test = train_test_split(
-            idx, test_size=0.20, random_state=seed, stratify=active_subset.astype(int),
+            idx,
+            test_size=0.20,
+            random_state=seed,
+            stratify=active_subset.astype(int),
         )
         idx_train, idx_val = train_test_split(
-            idx_train_full, test_size=0.125, random_state=seed,
+            idx_train_full,
+            test_size=0.125,
+            random_state=seed,
             stratify=active_subset[idx_train_full].astype(int),
         )
         train_idx = np.asarray(idx_train, dtype=np.int64)
@@ -280,30 +301,47 @@ def run_one_per_metal(
     val_labels = active_subset[val_idx].astype(np.float32)
 
     train_dps = [
-        MoleculeDatapoint(mol=Chem.MolFromSmiles(smi), y=np.array([lbl], dtype=np.float32))
+        MoleculeDatapoint(
+            mol=Chem.MolFromSmiles(smi), y=np.array([lbl], dtype=np.float32)
+        )
         for smi, lbl in zip(train_smiles, train_labels)
     ]
     val_dps = [
-        MoleculeDatapoint(mol=Chem.MolFromSmiles(smi), y=np.array([lbl], dtype=np.float32))
+        MoleculeDatapoint(
+            mol=Chem.MolFromSmiles(smi), y=np.array([lbl], dtype=np.float32)
+        )
         for smi, lbl in zip(val_smiles, val_labels)
     ]
     train_ds = MoleculeDataset(train_dps, n_workers=num_workers)
     val_ds = MoleculeDataset(val_dps, n_workers=num_workers)
     train_dl = build_dataloader(
-        train_ds, batch_size=batch_size, num_workers=num_workers,
-        shuffle=True, seed=seed,
+        train_ds,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        shuffle=True,
+        seed=seed,
     )
     val_dl = build_dataloader(
-        val_ds, batch_size=batch_size, num_workers=num_workers, shuffle=False,
+        val_ds,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        shuffle=False,
     )
 
     mp = AtomMessagePassing(
-        d_v=atom_fdim, d_e=bond_fdim, d_h=hidden_dim, depth=depth, dropout=0.0,
+        d_v=atom_fdim,
+        d_e=bond_fdim,
+        d_h=hidden_dim,
+        depth=depth,
+        dropout=0.0,
     ).to(device)
     agg = SumAggregation().to(device)
     head = BinaryClassificationFFN(
-        n_tasks=1, input_dim=mp.output_dim, hidden_dim=hidden_dim,
-        n_layers=2, dropout=0.0,
+        n_tasks=1,
+        input_dim=mp.output_dim,
+        hidden_dim=hidden_dim,
+        n_layers=2,
+        dropout=0.0,
     ).to(device)
     optim = torch.optim.Adam(
         list(mp.parameters()) + list(agg.parameters()) + list(head.parameters()),
@@ -320,14 +358,18 @@ def run_one_per_metal(
             timed_out = True
             break
         epoch_done = epoch + 1
-        mp.train(); agg.train(); head.train()
+        mp.train()
+        agg.train()
+        head.train()
         total_loss = 0.0
         nb = 0
         for batch in train_dl:
             bmg = bmg_to_device(batch.bmg, device)
             Y = batch.Y.to(device).float()
             optim.zero_grad()
-            with torch.amp.autocast("cuda", dtype=torch.bfloat16, enabled=autocast_enabled):
+            with torch.amp.autocast(
+                "cuda", dtype=torch.bfloat16, enabled=autocast_enabled
+            ):
                 H_v = mp(bmg)
                 H = agg(H_v, bmg.batch)
                 logit = head.train_step(H)
@@ -339,21 +381,28 @@ def run_one_per_metal(
         if epoch % 10 == 0 or epoch == epochs - 1:
             logger.info(
                 "[seed=%d] epoch=%d/%d train_loss=%.4f elapsed=%.1fs",
-                seed, epoch, epochs - 1, total_loss / max(nb, 1),
+                seed,
+                epoch,
+                epochs - 1,
+                total_loss / max(nb, 1),
                 time.time() - t_start,
             )
 
     # Test-time scoring on the val fold (used as the held-out test for
     # scaffold-split — scaffold splits typically don't separate val
     # from test; we use the val fold as the test for honest reporting).
-    mp.eval(); agg.eval(); head.eval()
+    mp.eval()
+    agg.eval()
+    head.eval()
     scores: List[float] = []
     labels: List[int] = []
     with torch.no_grad():
         for batch in val_dl:
             bmg = bmg_to_device(batch.bmg, device)
             Y_cpu = batch.Y.float()
-            with torch.amp.autocast("cuda", dtype=torch.bfloat16, enabled=autocast_enabled):
+            with torch.amp.autocast(
+                "cuda", dtype=torch.bfloat16, enabled=autocast_enabled
+            ):
                 H_v = mp(bmg)
                 H = agg(H_v, bmg.batch)
                 logit = head.train_step(H)
@@ -394,8 +443,11 @@ def run_one_per_metal(
     return KrasnovRun(
         metal="?",
         seed=int(seed),
-        n_train=n_train, n_val=n_val, n_test=n_test,
-        pos_rate_train=pos_rate_train, pos_rate_test=pos_rate_test,
+        n_train=n_train,
+        n_val=n_val,
+        n_test=n_test,
+        pos_rate_train=pos_rate_train,
+        pos_rate_test=pos_rate_test,
         in_domain_test_auc=test_auc,
         elapsed_s=float(elapsed),
         epoch_count=int(epoch_done),
@@ -423,11 +475,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--json-dir", default=str(JSON_DIR))
     parser.add_argument("--time-budget-s", type=float, default=DEFAULT_TIME_BUDGET_S)
     parser.add_argument(
-        "--quick", action="store_true",
+        "--quick",
+        action="store_true",
         help="Smoke test: 2 metal x 1 seed x 2 epochs, hidden=64, depth=2.",
     )
     parser.add_argument(
-        "--metals-only", nargs="+", default=None,
+        "--metals-only",
+        nargs="+",
+        default=None,
         help="If set, only run these metals (subset of --metals).",
     )
     args = parser.parse_args(argv)
@@ -460,8 +515,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     logger.info(
         "device=%s metals=%s seeds=%s epochs=%d hidden=%d depth=%d batch=%d "
         "lr=%g num_workers=%d time_budget=%.0fs split=scaffold_BemisMurcko",
-        device, args.metals, args.seeds, args.epochs, args.hidden,
-        args.depth, args.batch_size, args.lr, args.num_workers,
+        device,
+        args.metals,
+        args.seeds,
+        args.epochs,
+        args.hidden,
+        args.depth,
+        args.batch_size,
+        args.lr,
+        args.num_workers,
         args.time_budget_s,
     )
 
@@ -472,19 +534,24 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
     logger.info(
         "filtered MetalCytoToxDB: %d rows across metals=%s",
-        len(df), sorted(set(df["metal"].tolist())),
+        len(df),
+        sorted(set(df["metal"].tolist())),
     )
 
     sample_smi = df["smiles"].astype(str).tolist()[:8]
     sample_dps = [
-        MoleculeDatapoint(mol=Chem.MolFromSmiles(s), y=np.array([0.5], dtype=np.float32))
+        MoleculeDatapoint(
+            mol=Chem.MolFromSmiles(s), y=np.array([0.5], dtype=np.float32)
+        )
         for s in sample_smi
     ]
     sample_ds = MoleculeDataset(sample_dps, n_workers=0)
     sample_dl = build_dataloader(sample_ds, batch_size=8, num_workers=0, shuffle=False)
     sample_batch = next(iter(sample_dl))
     atom_fdim = int(sample_batch.bmg.V.shape[1])
-    bond_fdim = int(sample_batch.bmg.E.shape[1]) if sample_batch.bmg.E.numel() > 0 else 14
+    bond_fdim = (
+        int(sample_batch.bmg.E.shape[1]) if sample_batch.bmg.E.numel() > 0 else 14
+    )
     logger.info("atom_fdim=%d bond_fdim=%d", atom_fdim, bond_fdim)
 
     per_metal_smiles: Dict[str, List[str]] = {}
@@ -495,12 +562,16 @@ def main(argv: Optional[List[str]] = None) -> int:
         per_metal_active[m] = sub["active"].astype(int).to_numpy()
         logger.info(
             "metal=%s n_rows=%d pos_rate=%.4f",
-            m, len(sub), float(per_metal_active[m].mean()),
+            m,
+            len(sub),
+            float(per_metal_active[m].mean()),
         )
 
     n_runs = len(args.metals) * len(args.seeds)
     time_per_run = args.time_budget_s / max(n_runs, 1)
-    logger.info("time budget per (metal, seed) = %.1fs for %d runs", time_per_run, n_runs)
+    logger.info(
+        "time budget per (metal, seed) = %.1fs for %d runs", time_per_run, n_runs
+    )
 
     sweep_t0 = time.time()
     sweep_results: Dict[str, Dict[str, dict]] = {m: {} for m in args.metals}
@@ -535,8 +606,12 @@ def main(argv: Optional[List[str]] = None) -> int:
                 logger.info(
                     "metal=%s seed=%d in_domain_test_auc=%.4f epochs=%d "
                     "elapsed=%.1fs status=%s",
-                    metal, seed, run.in_domain_test_auc, run.epoch_count,
-                    run.elapsed_s, run.status,
+                    metal,
+                    seed,
+                    run.in_domain_test_auc,
+                    run.epoch_count,
+                    run.elapsed_s,
+                    run.status,
                 )
                 rec = asdict(run)
                 json_out.write_text(json.dumps(rec, indent=2))
@@ -549,7 +624,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             except Exception as exc:
                 logger.error(
                     "metal=%s seed=%d FAILED: %s\n%s",
-                    metal, seed, exc, traceback.format_exc(),
+                    metal,
+                    seed,
+                    exc,
+                    traceback.format_exc(),
                 )
                 rec = {
                     "metal": metal,
@@ -596,7 +674,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     for metal in args.metals:
         per_seed = sweep_results.get(metal, {})
         vals = [
-            v["auc"] for v in per_seed.values()
+            v["auc"]
+            for v in per_seed.values()
             if v["status"] == "ok" and v["auc"] == v["auc"]
         ]
         rec_for_metal = next((r for r in summary_records if r.metal == metal), None)
@@ -613,9 +692,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 "n_train": n_train_m,
                 "n_val": n_val_m,
                 "n_test": n_test_m,
-                "per_seed_auc": {
-                    s: per_seed[s]["auc"] for s in per_seed
-                },
+                "per_seed_auc": {s: per_seed[s]["auc"] for s in per_seed},
             }
             aucs_across_metals.append(mean_auc)
         else:
@@ -630,7 +707,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             }
 
     mean_auc_overall = (
-        float(statistics.mean(aucs_across_metals)) if aucs_across_metals else float("nan")
+        float(statistics.mean(aucs_across_metals))
+        if aucs_across_metals
+        else float("nan")
     )
 
     honest_framing_note = (

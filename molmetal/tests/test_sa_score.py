@@ -36,9 +36,7 @@ def test_sa_score_aspirin():
     assert 1.0 <= sa <= 5.0, f"aspirin SA out of expected range: {sa}"
     # Tighter bound -- Ertl explicitly highlights aspirin as an "easy"
     # synthesis benchmark.  Use [1.0, 3.0].
-    assert 1.0 <= sa <= 3.0, (
-        f"aspirin SA expected [1.0, 3.0], got {sa:.3f}"
-    )
+    assert 1.0 <= sa <= 3.0, f"aspirin SA expected [1.0, 3.0], got {sa:.3f}"
 
 
 # ---------------------------------------------------------------------------
@@ -54,19 +52,15 @@ def test_sa_score_complex():
     )
     sa_taxol = sa_score_ertl(taxol)
     assert sa_taxol == sa_taxol  # not NaN
-    assert 5.0 <= sa_taxol <= 10.0, (
-        f"taxol SA expected in [5, 10], got {sa_taxol:.3f}"
-    )
+    assert 5.0 <= sa_taxol <= 10.0, f"taxol SA expected in [5, 10], got {sa_taxol:.3f}"
 
     # Sucrose -- a disaccharide, expected harder than aspirin
-    sa_sucrose = sa_score_ertl(
-        "OC1C(O)C(O)C(OC1OC1(CO)OC(CO)C(O)C1O)CO"
-    )
+    sa_sucrose = sa_score_ertl("OC1C(O)C(O)C(OC1OC1(CO)OC(CO)C(O)C1O)CO")
     assert sa_sucrose == sa_sucrose
     # sucrose SA ~ 4-5 per Ertl: definitely harder than aspirin
-    assert 3.0 <= sa_sucrose <= 7.5, (
-        f"sucrose SA expected in [3.0, 7.5], got {sa_sucrose:.3f}"
-    )
+    assert (
+        3.0 <= sa_sucrose <= 7.5
+    ), f"sucrose SA expected in [3.0, 7.5], got {sa_sucrose:.3f}"
 
 
 # ---------------------------------------------------------------------------

@@ -12,6 +12,7 @@ The test is **CPU-only** and uses the real ``hilbert_astsr_e2e.py``
 module (no GPU retrain is performed).  All values trace to a single
 DOC: ``TODO/completed/365a3_m6_kappa_verdict.md`` (Wf-365-A3).
 """
+
 from __future__ import annotations
 
 import sys
@@ -31,6 +32,7 @@ if str(SCRIPT_DIR) not in sys.path:
 def _import_scaffold():
     try:
         from molmetal.scripts import hilbert_astsr_e2e as scaffold
+
         return scaffold
     except Exception as exc:  # pragma: no cover
         pytest.skip(
@@ -90,6 +92,7 @@ def test_hilbert_r2_gate_status() -> None:
     # INDEX/AGENTS syncs).
     import dataclasses
     import json as json_mod
+
     payload = json_mod.dumps(dataclasses.asdict(status), default=str)
     rebuilt = json_mod.loads(payload)
     assert rebuilt["gate_status"] == status.gate_status

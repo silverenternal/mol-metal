@@ -109,7 +109,7 @@ def _extract_section(text: str, header: str) -> str:
             # No more headers; section runs to end of file.
             return text[start:]
         # Extract the (major, minor) of the next header.
-        body = text[next_header + 1:]  # skip leading "\n"
+        body = text[next_header + 1 :]  # skip leading "\n"
         m2 = re.match(r"### §(\d+)\.(\d+)", body)
         if m2 is None:
             # Not a §X.Y header; keep scanning.
@@ -289,10 +289,7 @@ def test_r22_r23_rescope_computational_only_compliance():
 
     # §3.3 R23 historical-record-only marker: must contain "historical
     # record" or "ARCHIVED" so downstream agents do not allocate Wf-57..62.
-    assert (
-        "historical record" in section_3_3.lower()
-        or "ARCHIVED" in section_3_3
-    ), (
+    assert "historical record" in section_3_3.lower() or "ARCHIVED" in section_3_3, (
         "§3.3 R23 missing 'historical record' / 'ARCHIVED' marker — "
         "downstream agents reading §3.3 must immediately see 'do not allocate "
         "Wf-57..62, do not recruit wet-lab / clinical PI'."
@@ -315,13 +312,13 @@ def test_r22_r23_rescope_computational_only_compliance():
 def test_tier2_strategy_no_wetlab_no_clinical():
     """Verifies the Tier-2 strategy compliance with AGENTS.md §5.4:
 
-      1. Paper trajectory §4.3 must point to tier-2 journal (Digital Discovery /
-         J. Cheminform., IF 5-8) — NOT Nat. Comput. Sci. / Nature MI tier-1.
-      2. R22 + R23 active sections must be computational-only (no wet-lab
-         / no clinical-trial planning in active scope).
-      3. The word "DEPRECATED" must appear in both §3.2 R22-P1 wet-lab
-         portion AND §3.3 R23 clinical portion (this is a defensive
-         belt-and-suspenders check covering both contracts in one assertion).
+    1. Paper trajectory §4.3 must point to tier-2 journal (Digital Discovery /
+       J. Cheminform., IF 5-8) — NOT Nat. Comput. Sci. / Nature MI tier-1.
+    2. R22 + R23 active sections must be computational-only (no wet-lab
+       / no clinical-trial planning in active scope).
+    3. The word "DEPRECATED" must appear in both §3.2 R22-P1 wet-lab
+       portion AND §3.3 R23 clinical portion (this is a defensive
+       belt-and-suspenders check covering both contracts in one assertion).
     """
     text = _load_lambda_roadmap()
 
@@ -353,13 +350,11 @@ def test_tier2_strategy_no_wetlab_no_clinical():
     section_3_2 = _extract_section(text, "### §3.2")
     # Split section 3.2 into lines for row-level analysis.
     rows_3_2 = [
-        line
-        for line in section_3_2.splitlines()
-        if line.startswith("| **R22-P")
+        line for line in section_3_2.splitlines() if line.startswith("| **R22-P")
     ]
-    assert len(rows_3_2) >= 6, (
-        f"Expected 6 R22-P1..P6 rows in §3.2, found {len(rows_3_2)}."
-    )
+    assert (
+        len(rows_3_2) >= 6
+    ), f"Expected 6 R22-P1..P6 rows in §3.2, found {len(rows_3_2)}."
     for row in rows_3_2:
         is_r22_p1 = "**R22-P1**" in row
         row_lower = row.lower()
@@ -373,7 +368,9 @@ def test_tier2_strategy_no_wetlab_no_clinical():
                 "celltiter-glo",
                 "wet-lab ic50",
             ]
-            if kw in row_lower and "no " + kw not in row_lower and "wet-lab portion" not in row_lower
+            if kw in row_lower
+            and "no " + kw not in row_lower
+            and "wet-lab portion" not in row_lower
         ]
         assert not wetlab_active_violations, (
             f"R22 row claims wet-lab {wetlab_active_violations!r} in active "
@@ -388,9 +385,9 @@ def test_tier2_strategy_no_wetlab_no_clinical():
         for line in section_3_3.splitlines()
         if line.startswith("| ~~**R23-P") or line.startswith("| **R23-P")
     ]
-    assert len(rows_3_3) >= 6, (
-        f"Expected 6 R23-P1..P6 rows in §3.3, found {len(rows_3_3)}."
-    )
+    assert (
+        len(rows_3_3) >= 6
+    ), f"Expected 6 R23-P1..P6 rows in §3.3, found {len(rows_3_3)}."
     for row in rows_3_3:
         assert "DEPRECATED" in row or "⛔" in row, (
             f"R23 row missing DEPRECATED marker (must be ALL DEPRECATED per "

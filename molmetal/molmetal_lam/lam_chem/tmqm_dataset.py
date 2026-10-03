@@ -75,6 +75,7 @@ from typing import (
 
 try:
     from rdkit import Chem, RDLogger
+
     RDLogger.DisableLog("rdApp.*")
     _HAS_RDKIT = True
 except Exception:  # pragma: no cover
@@ -84,6 +85,7 @@ except Exception:  # pragma: no cover
 
 try:
     from rdkit.Chem import AllChem
+
     _HAS_ALCHEM = True
 except Exception:  # pragma: no cover
     AllChem = None
@@ -104,9 +106,36 @@ HEAVY_ATOM_MAX = 60
 
 #: 30 d-block transition metals (subset the tmQM corpus covers).
 TRANSITION_METALS: Tuple[str, ...] = (
-    "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
-    "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
-    "La", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg",
+    "Sc",
+    "Ti",
+    "V",
+    "Cr",
+    "Mn",
+    "Fe",
+    "Co",
+    "Ni",
+    "Cu",
+    "Zn",
+    "Y",
+    "Zr",
+    "Nb",
+    "Mo",
+    "Tc",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Cd",
+    "La",
+    "Hf",
+    "Ta",
+    "W",
+    "Re",
+    "Os",
+    "Ir",
+    "Pt",
+    "Au",
+    "Hg",
 )
 _TM_SET: Set[str] = frozenset(TRANSITION_METALS)
 
@@ -117,17 +146,34 @@ DEFAULT_TARGET_METALS: Tuple[str, ...] = ("Pt", "Pd", "Au", "Ir", "Ru")
 #: Ligand-donor atoms of interest (used for M-L bond pattern extraction).
 #: Includes halides, chalcogens, pnictogens, and carbon (alkyl / aryl).
 DEFAULT_DONOR_ATOMS: Tuple[str, ...] = (
-    "F", "Cl", "Br", "I",
-    "O", "S", "Se", "Te",
-    "N", "P", "As",
+    "F",
+    "Cl",
+    "Br",
+    "I",
+    "O",
+    "S",
+    "Se",
+    "Te",
+    "N",
+    "P",
+    "As",
     "C",
 )
 
 #: Map from atomic number to element symbol (used for bond-pattern
 #: extraction from RDKit atom objects).
 _ATNUM_TO_ELEMENT: Dict[int, str] = {
-    1: "H", 6: "C", 7: "N", 8: "O", 9: "F", 15: "P", 16: "S",
-    17: "Cl", 34: "Se", 35: "Br", 53: "I",
+    1: "H",
+    6: "C",
+    7: "N",
+    8: "O",
+    9: "F",
+    15: "P",
+    16: "S",
+    17: "Cl",
+    34: "Se",
+    35: "Br",
+    53: "I",
     # Add more if needed — kept short for speed.
 }
 
@@ -303,10 +349,10 @@ class TmQMDataset:
         if self.metal_filter is not None:
             for m in self.metal_filter:
                 if m not in _TM_SET:
-                    raise ValueError(
-                        f"metal_filter must be a known TM, got {m!r}"
-                    )
-        self._records: List[Tuple[str, str, Optional[int], Dict[Tuple[str, str], int]]] = []
+                    raise ValueError(f"metal_filter must be a known TM, got {m!r}")
+        self._records: List[
+            Tuple[str, str, Optional[int], Dict[Tuple[str, str], int]]
+        ] = []
         self._loaded = False
 
     # ------------------------------------------------------------------
@@ -321,9 +367,7 @@ class TmQMDataset:
             raise FileNotFoundError(f"tmQM CSV missing: {self.path}")
 
         seen: Set[str] = set()
-        records: List[
-            Tuple[str, str, Optional[int], Dict[Tuple[str, str], int]]
-        ] = []
+        records: List[Tuple[str, str, Optional[int], Dict[Tuple[str, str], int]]] = []
         n_rows = 0
         n_with_smiles = 0
         n_parsed = 0
@@ -343,7 +387,9 @@ class TmQMDataset:
                         continue
                     raw_smiles = ""
                 n_with_smiles += int(bool(raw_smiles))
-                csv_metal = row[CSV_COL_METAL].strip() if CSV_COL_METAL < len(row) else ""
+                csv_metal = (
+                    row[CSV_COL_METAL].strip() if CSV_COL_METAL < len(row) else ""
+                )
                 # Prefer csv metal column for the metal label even when
                 # the SMILES column is empty; fall back to bracket scan.
                 metal = _infer_metal_from_csv(csv_metal, raw_smiles)
@@ -407,8 +453,12 @@ class TmQMDataset:
         logger.info(
             "tmQM load: rows=%d with_smiles=%d parsed=%d kept=%d "
             "filtered=%d dedup=%d",
-            n_rows, n_with_smiles, n_parsed, n_kept,
-            n_filtered, n_dedup,
+            n_rows,
+            n_with_smiles,
+            n_parsed,
+            n_kept,
+            n_filtered,
+            n_dedup,
         )
         if self.n_max is not None:
             self._records = self._records[: int(self.n_max)]
@@ -426,7 +476,9 @@ class TmQMDataset:
         self._load()
         return self._records[i]
 
-    def __iter__(self) -> Iterator[Tuple[str, str, Optional[int], Dict[Tuple[str, str], int]]]:
+    def __iter__(
+        self,
+    ) -> Iterator[Tuple[str, str, Optional[int], Dict[Tuple[str, str], int]]]:
         self._load()
         return iter(self._records)
 
@@ -458,9 +510,7 @@ class TmQMDataset:
         # Validate the new filter against the TM set
         for m in metal:
             if m not in _TM_SET:
-                raise ValueError(
-                    f"filter_by_metal: not a known TM, got {m!r}"
-                )
+                raise ValueError(f"filter_by_metal: not a known TM, got {m!r}")
         return TmQMDataset(
             path=self.path,
             metal_filter=list(metal),
@@ -594,6 +644,7 @@ class TmQMBondPattern:
         # Compute ECFP4 fingerprints (cached by SMILES key).
         fps: Dict[str, Any] = {}
         from rdkit import DataStructs
+
         for smi, metal, ox_state, bond_dict in records:
             mol = Chem.MolFromSmiles(smi)
             if mol is None:
@@ -605,10 +656,7 @@ class TmQMBondPattern:
             fps[smi] = fp
 
         # Records that successfully fingerprinted
-        fittable = [
-            r for r in records
-            if r[0] in fps
-        ]
+        fittable = [r for r in records if r[0] in fps]
         if not fittable:
             rng = random.Random(seed)
             return rng.sample(records, n)
@@ -653,9 +701,7 @@ class TmQMBondPattern:
             for r in fittable:
                 if r[0] in selected_set:
                     continue
-                sim = DataStructs.TanimotoSimilarity(
-                    fps[best_key], fps[r[0]]
-                )
+                sim = DataStructs.TanimotoSimilarity(fps[best_key], fps[r[0]])
                 d = 1.0 - sim
                 if d < min_dist[r[0]]:
                     min_dist[r[0]] = d
@@ -693,12 +739,10 @@ class TmQMBondPattern:
                 ("Pt", "Br"),
             ]
         covered = [
-            pair for pair in required_pairs
-            if self.bond_pattern_count.get(pair, 0) > 0
+            pair for pair in required_pairs if self.bond_pattern_count.get(pair, 0) > 0
         ]
         missing = [
-            pair for pair in required_pairs
-            if self.bond_pattern_count.get(pair, 0) == 0
+            pair for pair in required_pairs if self.bond_pattern_count.get(pair, 0) == 0
         ]
         return {
             "required": list(required_pairs),

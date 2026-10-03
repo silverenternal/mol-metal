@@ -33,7 +33,9 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 METRICS_DIR = REPO_ROOT / "metrics" / "by_metric"
-G4_PATH = REPO_ROOT / "results" / "wf124_p3_remaining_metals_g4" / "training_summary.json"
+G4_PATH = (
+    REPO_ROOT / "results" / "wf124_p3_remaining_metals_g4" / "training_summary.json"
+)
 G5_PATH = METRICS_DIR / "wf181_g5_50epoch_full_sweep.json"
 IR_RETRY_PATH = (
     REPO_ROOT
@@ -47,7 +49,7 @@ OUT_PATH = METRICS_DIR / "wf181_g5_50epoch_cascade_delta_5metal.json"
 
 
 def _pooled_std(std1: float, n1: int, std2: float, n2: int) -> float:
-    return math.sqrt((std1 ** 2 * n1 + std2 ** 2 * n2) / (n1 + n2))
+    return math.sqrt((std1**2 * n1 + std2**2 * n2) / (n1 + n2))
 
 
 def _t_stat(delta: float, std_pooled: float, n1: int, n2: int) -> float:
@@ -164,7 +166,8 @@ def main() -> None:
             "delta_positive_count": sum(1 for r in results.values() if r["delta"] > 0),
             "delta_negative_count": sum(1 for r in results.values() if r["delta"] < 0),
             "delta_zero_count": sum(1 for r in results.values() if r["delta"] == 0),
-            "aggregate_5metal_delta": sum(r["delta"] for r in results.values()) / len(results),
+            "aggregate_5metal_delta": sum(r["delta"] for r in results.values())
+            / len(results),
             "max_delta_metal": max(results.items(), key=lambda kv: kv[1]["delta"])[0],
             "min_delta_metal": min(results.items(), key=lambda kv: kv[1]["delta"])[0],
         },

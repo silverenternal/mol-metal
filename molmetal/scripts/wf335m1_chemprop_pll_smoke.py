@@ -34,6 +34,7 @@ Run::
         molmetal/scripts/wf335m1_chemprop_pll_smoke.py \\
         --output-dir molmetal/reports/wf335m1_chemprop_pll
 """
+
 from __future__ import annotations
 
 import argparse
@@ -53,6 +54,7 @@ except Exception:
 
 try:
     from rdkit import RDLogger
+
     RDLogger.DisableLog("rdApp.*")
 except Exception:
     pass
@@ -86,6 +88,7 @@ def _safe_m6_kappa(smi: str) -> Optional[float]:
         from molmetal.molmetal_lam.sbdd_env.metrics_v2 import (
             m6_kappa_from_smiles,
         )
+
         v = m6_kappa_from_smiles(smi)
     except Exception:
         return None
@@ -101,16 +104,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--csv",
-        default=str(
-            REPO_ROOT / "molmetal" / "data" / "metallo_drugs_500_train.csv"
-        ),
+        default=str(REPO_ROOT / "molmetal" / "data" / "metallo_drugs_500_train.csv"),
         help="Path to metallo_drugs_500_train.csv",
     )
     parser.add_argument(
         "--output-dir",
-        default=str(
-            REPO_ROOT / "molmetal" / "reports" / "wf335m1_chemprop_pll"
-        ),
+        default=str(REPO_ROOT / "molmetal" / "reports" / "wf335m1_chemprop_pll"),
         help="Where to write result.json",
     )
     parser.add_argument(
@@ -118,7 +117,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         type=int,
         default=60,
         help="Cap cohort size for the smoke run (CPU-only); "
-             "default 60 keeps wall < ~5 min on the chemprop+PLL joint.",
+        "default 60 keeps wall < ~5 min on the chemprop+PLL joint.",
     )
     parser.add_argument(
         "--ridge-alpha",
@@ -138,8 +137,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"[Wf-335-M1] Loading cohort from {csv_path} "
-          f"(max {args.max_samples}) ...")
+    print(
+        f"[Wf-335-M1] Loading cohort from {csv_path} " f"(max {args.max_samples}) ..."
+    )
     t0 = time.time()
     smiles = _load_cohort(csv_path, args.max_samples)
     t_load = time.time() - t0
@@ -147,8 +147,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     if not smiles:
         smiles = ["CCO", "c1ccccc1", "[Pt](N)(N)(Cl)Cl"]
-        print(f"[Wf-335-M1] CSV empty; using synthetic fallback "
-              f"({len(smiles)} SMILES)")
+        print(
+            f"[Wf-335-M1] CSV empty; using synthetic fallback "
+            f"({len(smiles)} SMILES)"
+        )
 
     # ------------------------------------------------------------------
     # Compute m6_kappa baseline
@@ -170,9 +172,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print("[Wf-335-M1] Too few valid m6_kappa values; aborting")
         return 2
     y = np.asarray(y_clean, dtype=np.float64)
-    print(f"[Wf-335-M1] m6_kappa baseline: n_parsed={n_parsed}, "
-          f"n_failed={n_failed}, mean={float(np.mean(y)):.4f}, "
-          f"({t_baseline:.2f}s)")
+    print(
+        f"[Wf-335-M1] m6_kappa baseline: n_parsed={n_parsed}, "
+        f"n_failed={n_failed}, mean={float(np.mean(y)):.4f}, "
+        f"({t_baseline:.2f}s)"
+    )
 
     # ------------------------------------------------------------------
     # Wire-in: chemprop v2 + PLL recovery
@@ -186,11 +190,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         WF333V4_MEASURED_CV_R2,
         WF325D_MEASURED_BASELINE,
     )
+
     extractor = ChempropPLLFeatureExtractor()
-    print(f"[Wf-335-M1] Extractor: chemprop_dim={extractor.chemprop_dim}, "
-          f"pll_dim={extractor.pll_dim}, joint_dim={extractor.joint_dim}")
+    print(
+        f"[Wf-335-M1] Extractor: chemprop_dim={extractor.chemprop_dim}, "
+        f"pll_dim={extractor.pll_dim}, joint_dim={extractor.joint_dim}"
+    )
     report = wire_chemprop_pll_recovery(
-        kept_smiles, y_clean,
+        kept_smiles,
+        y_clean,
         extractor=extractor,
         ridge_alpha=args.ridge_alpha,
         cv_folds=args.cv_folds,
@@ -206,18 +214,26 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     print("Wf-335-M1 SUMMARY")
     print(f"  n_samples          : {report.n_samples}")
     print(f"  n_features         : {report.n_features}")
-    print(f"  cv_r2              : {report.cv_r2:+.4f} "
-          f"(Wf-333-V4 MEASURED upper bound = "
-          f"{WF333V4_MEASURED_CV_R2:+.4f})")
-    print(f"  augmented_mean     : {report.augmented_mean:.4f} "
-          f"(baseline = {WF325D_MEASURED_BASELINE:.4f})")
+    print(
+        f"  cv_r2              : {report.cv_r2:+.4f} "
+        f"(Wf-333-V4 MEASURED upper bound = "
+        f"{WF333V4_MEASURED_CV_R2:+.4f})"
+    )
+    print(
+        f"  augmented_mean     : {report.augmented_mean:.4f} "
+        f"(baseline = {WF325D_MEASURED_BASELINE:.4f})"
+    )
     print(f"  delta_mean         : {report.delta_mean:+.4f}")
-    print(f"  pass_rate_strict   : {report.pass_rate_baseline:.4f} → "
-          f"{report.pass_rate_augmented:.4f} "
-          f"(lift={report.pass_rate_lift:+.4f})")
-    print(f"  pass_rate_adaptive : {report.pass_rate_baseline_adaptive:.4f} → "
-          f"{report.pass_rate_augmented_adaptive:.4f} "
-          f"(lift={report.pass_rate_lift_adaptive:+.4f})")
+    print(
+        f"  pass_rate_strict   : {report.pass_rate_baseline:.4f} → "
+        f"{report.pass_rate_augmented:.4f} "
+        f"(lift={report.pass_rate_lift:+.4f})"
+    )
+    print(
+        f"  pass_rate_adaptive : {report.pass_rate_baseline_adaptive:.4f} → "
+        f"{report.pass_rate_augmented_adaptive:.4f} "
+        f"(lift={report.pass_rate_lift_adaptive:+.4f})"
+    )
     print(f"  verdict            : {report.verdict}")
     print(f"  wall_seconds       : {report.wall_seconds:.2f}")
     print("=" * 80)

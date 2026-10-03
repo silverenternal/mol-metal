@@ -68,6 +68,7 @@ Usage
     uv run --no-sync python molmetal/scripts/bench_ood_per_element.py \\
         --elements W --n-samples 50 --seeds 5
 """
+
 from __future__ import annotations
 
 import argparse
@@ -105,17 +106,42 @@ log = logging.getLogger("wf73_ood_per_element")
 #: the Wf-57 25-metal + 30-element Catherine sweep ordering.
 DBLOCK_ELEMENTS: Tuple[str, ...] = (
     # 3d-block (10 elements)
-    "Sc", "Ti", "V",  "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
+    "Sc",
+    "Ti",
+    "V",
+    "Cr",
+    "Mn",
+    "Fe",
+    "Co",
+    "Ni",
+    "Cu",
+    "Zn",
     # 4d-block (10 elements)
-    "Y",  "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
+    "Y",
+    "Zr",
+    "Nb",
+    "Mo",
+    "Tc",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Cd",
     # 5d-block + La (10 elements)
-    "La", "Hf", "Ta", "W",  "Re", "Os", "Ir", "Pt", "Au", "Hg",
+    "La",
+    "Hf",
+    "Ta",
+    "W",
+    "Re",
+    "Os",
+    "Ir",
+    "Pt",
+    "Au",
+    "Hg",
 )
 
 #: Default TMQM CSV (Wf-28 ship).
-DEFAULT_TMQM_CSV: Path = (
-    _REPO_ROOT / "molmetal" / "data" / "tmqm_dblock_subset.csv"
-)
+DEFAULT_TMQM_CSV: Path = _REPO_ROOT / "molmetal" / "data" / "tmqm_dblock_subset.csv"
 
 #: Default output directory.
 DEFAULT_OUTPUT_DIR: Path = (
@@ -131,11 +157,36 @@ DEFAULT_TRAIN_RATIO: float = 0.8
 
 #: Per-element atomic-number map (for coordination sanity checks).
 ELEMENT_Z: Dict[str, int] = {
-    "Sc": 21, "Ti": 22, "V": 23, "Cr": 24, "Mn": 25, "Fe": 26,
-    "Co": 27, "Ni": 28, "Cu": 29, "Zn": 30, "Y": 39, "Zr": 40,
-    "Nb": 41, "Mo": 42, "Tc": 43, "Ru": 44, "Rh": 45, "Pd": 46,
-    "Ag": 47, "Cd": 48, "La": 57, "Hf": 72, "Ta": 73, "W": 74,
-    "Re": 75, "Os": 76, "Ir": 77, "Pt": 78, "Au": 79, "Hg": 80,
+    "Sc": 21,
+    "Ti": 22,
+    "V": 23,
+    "Cr": 24,
+    "Mn": 25,
+    "Fe": 26,
+    "Co": 27,
+    "Ni": 28,
+    "Cu": 29,
+    "Zn": 30,
+    "Y": 39,
+    "Zr": 40,
+    "Nb": 41,
+    "Mo": 42,
+    "Tc": 43,
+    "Ru": 44,
+    "Rh": 45,
+    "Pd": 46,
+    "Ag": 47,
+    "Cd": 48,
+    "La": 57,
+    "Hf": 72,
+    "Ta": 73,
+    "W": 74,
+    "Re": 75,
+    "Os": 76,
+    "Ir": 77,
+    "Pt": 78,
+    "Au": 79,
+    "Hg": 80,
 }
 
 #: Per-element block assignment (for honest framing in the synthesis).
@@ -180,6 +231,7 @@ def _safe_div(num: float, den: float) -> float:
 def _have_rdkit() -> bool:
     try:
         from rdkit import Chem  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -187,13 +239,19 @@ def _have_rdkit() -> bool:
 
 def _load_click_rules() -> List[Any]:
     from molmetal_lam.lam_chem.rules import (
-        AmideCoupling, CuAAC, SPAAC, Suzuki, ThiolEne,
+        AmideCoupling,
+        CuAAC,
+        SPAAC,
+        Suzuki,
+        ThiolEne,
     )
+
     return [CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling]
 
 
 def _load_partner_terms() -> List[Any]:
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
     out: List[Any] = []
     for smi in PARTNER_SMILE_LIST:
         try:
@@ -205,6 +263,7 @@ def _load_partner_terms() -> List[Any]:
 
 def _load_tanimoto_protocol(threshold: float = DEFAULT_TANIMOTO_THRESHOLD) -> Any:
     from molmetal_lam.lam_chem.ood_protocol import TanimotoOODProtocol
+
     return TanimotoOODProtocol(threshold=float(threshold))
 
 
@@ -237,7 +296,9 @@ def _load_tmqm_pool(
             if col not in fields:
                 log.error(
                     "Required column %r missing from %s; fields=%r",
-                    col, csv_path, fields,
+                    col,
+                    csv_path,
+                    fields,
                 )
                 return {}
         for row in reader:
@@ -248,13 +309,15 @@ def _load_tmqm_pool(
                 continue
             if metal not in wanted:
                 continue
-            out[metal].append({
-                "csd_code": code,
-                "smiles": smi,
-                "metal_center": metal,
-                "coord_number": (row.get("coord_number", "") or "").strip(),
-                "n_atoms": (row.get("n_atoms", "") or "").strip(),
-            })
+            out[metal].append(
+                {
+                    "csd_code": code,
+                    "smiles": smi,
+                    "metal_center": metal,
+                    "coord_number": (row.get("coord_number", "") or "").strip(),
+                    "n_atoms": (row.get("n_atoms", "") or "").strip(),
+                }
+            )
 
     for elem in list(out.keys()):
         out[elem].sort(key=lambda r: r["csd_code"])
@@ -476,7 +539,9 @@ def _aggregate_per_element(records: List[Dict[str, Any]]) -> Dict[str, float]:
         "metal_coordination_rate": _safe_div(n_metal, n),
         "mean_max_tanimoto_tmQM": float(
             statistics.fmean([r["max_tanimoto_tmQM"] for r in records])
-        ) if records else 0.0,
+        )
+        if records
+        else 0.0,
     }
 
 
@@ -494,9 +559,7 @@ def _cross_element_correlation(
     for elem in elements:
         seed_block = per_seed.get(elem, {})
         for s, agg in seed_block.items():
-            seed_index[int(s)][elem] = float(
-                agg.get("reachability_rate", 0.0)
-            )
+            seed_index[int(s)][elem] = float(agg.get("reachability_rate", 0.0))
     matrix: Dict[str, Dict[str, float]] = {}
     elems = list(elements)
     for i, ea in enumerate(elems):
@@ -506,11 +569,13 @@ def _cross_element_correlation(
                 matrix[ea][eb] = 1.0
                 continue
             xs = [
-                seed_index[s][ea] for s in seed_index
+                seed_index[s][ea]
+                for s in seed_index
                 if ea in seed_index[s] and eb in seed_index[s]
             ]
             ys = [
-                seed_index[s][eb] for s in seed_index
+                seed_index[s][eb]
+                for s in seed_index
                 if ea in seed_index[s] and eb in seed_index[s]
             ]
             if len(xs) >= 2 and len(set(xs)) > 1 and len(set(ys)) > 1:
@@ -542,15 +607,16 @@ def run_ood_per_element_benchmark(
     log.info(
         "[wf73_ood_per_element] start: elements=%s, n_per_element=%d, "
         "seeds=%d, threshold=%.2f, max_depth=%d",
-        list(elements), int(n_samples), int(seeds),
-        float(tanimoto_threshold), int(max_depth),
+        list(elements),
+        int(n_samples),
+        int(seeds),
+        float(tanimoto_threshold),
+        int(max_depth),
     )
 
     click_rules = _load_click_rules()
     partner_terms = _load_partner_terms()
-    click_rule_names = [
-        getattr(r, "name", type(r).__name__) for r in click_rules
-    ]
+    click_rule_names = [getattr(r, "name", type(r).__name__) for r in click_rules]
     ood_protocol = _load_tanimoto_protocol(threshold=tanimoto_threshold)
 
     pool = _load_tmqm_pool(Path(tmqm_csv), elements=elements)
@@ -621,20 +687,26 @@ def run_ood_per_element_benchmark(
         seed_metrics: Dict[int, Dict[str, Any]] = {}
         for seed in range(int(seeds)):
             samples = _load_element_samples(
-                pool, element, int(n_samples),
-                train_ratio=train_ratio, seed_offset=int(seed * n_samples),
+                pool,
+                element,
+                int(n_samples),
+                train_ratio=train_ratio,
+                seed_offset=int(seed * n_samples),
             )
             if not samples:
                 log.warning(
-                    "[wf73_ood_per_element] no test samples for "
-                    "element=%s seed=%d",
-                    element, seed,
+                    "[wf73_ood_per_element] no test samples for " "element=%s seed=%d",
+                    element,
+                    seed,
                 )
                 continue
             log.info(
                 "[wf73_ood_per_element] element=%s seed=%d n_loaded=%d "
                 "(train_pool=%d)",
-                element, seed, len(samples), len(train_pool),
+                element,
+                seed,
+                len(samples),
+                len(train_pool),
             )
             seed_recs: List[Dict[str, Any]] = []
             for i, row in enumerate(samples):
@@ -655,9 +727,8 @@ def run_ood_per_element_benchmark(
 
         per_element = _aggregate_per_element(element_records_all)
         n_error_total += int(per_element.get("n_error", 0))
-        gate_pass = (
-            float(per_element.get("reachability_rate", 0.0))
-            >= float(PER_ELEMENT_GATE)
+        gate_pass = float(per_element.get("reachability_rate", 0.0)) >= float(
+            PER_ELEMENT_GATE
         )
         payload["per_element"][element] = {
             "aggregate": per_element,
@@ -676,7 +747,8 @@ def run_ood_per_element_benchmark(
         seed_block = payload["per_element"].get(elem, {}).get("per_seed", {})
         per_seed_index[elem] = {int(s): dict(agg) for s, agg in seed_block.items()}
     payload["cross_element_correlation"] = _cross_element_correlation(
-        per_seed_index, elements,
+        per_seed_index,
+        elements,
     )
 
     # Honest per-element gate verdict.
@@ -725,7 +797,9 @@ def save_ood_per_element_benchmark(
         with (element_dir / "ood_reachability.json").open("w") as fh:
             json.dump(
                 payload["per_element"][element],
-                fh, indent=2, sort_keys=True,
+                fh,
+                indent=2,
+                sort_keys=True,
             )
     with (out / "wf73_ood_per_element_full.json").open("w") as fh:
         json.dump(payload, fh, indent=2, sort_keys=True)
@@ -755,9 +829,7 @@ def write_synthesis(
     lines.append(f"**Date UTC**: {payload.get('date_utc', '?')}  ")
     lines.append(f"**Tool**: `{payload.get('tool', '?')}`  ")
     lines.append(f"**Method**: {payload.get('method', '?')}  ")
-    lines.append(
-        f"**Tanimoto threshold**: {payload.get('tanimoto_threshold', 0.0)}  "
-    )
+    lines.append(f"**Tanimoto threshold**: {payload.get('tanimoto_threshold', 0.0)}  ")
     lines.append(
         f"**n_samples_per_element_per_seed**: "
         f"{payload.get('n_samples_per_element_per_seed', 0)}  "
@@ -783,7 +855,9 @@ def write_synthesis(
 
     lines.append("## §2 Per-element table (30 d-block elements)")
     lines.append("")
-    lines.append("| Element | Block | n | reachability | OOD pass | metal_coord | well_typed | gate |")
+    lines.append(
+        "| Element | Block | n | reachability | OOD pass | metal_coord | well_typed | gate |"
+    )
     lines.append("|---|---|---:|---:|---:|---:|---:|:---:|")
     for elem in elements:
         blk = per_element.get(elem, {})
@@ -797,9 +871,7 @@ def write_synthesis(
         gate_pass = bool(blk.get("gate_pass", False))
         gate_mark = "PASS" if gate_pass else "FAIL"
         if n == 0:
-            lines.append(
-                f"| {elem} | {block} | 0 | — | — | — | — | (no data) |"
-            )
+            lines.append(f"| {elem} | {block} | 0 | — | — | — | — | (no data) |")
         else:
             lines.append(
                 f"| {elem} | {block} | {n} | {rr:.4f} | "
@@ -893,8 +965,7 @@ def write_synthesis(
         "(MetalCytoToxDB 5-metal per-metal)"
     )
     lines.append(
-        "- `molmetal/scripts/bench_ood_per_metal.py` — Wf-73 P2 "
-        "per-metal script"
+        "- `molmetal/scripts/bench_ood_per_metal.py` — Wf-73 P2 " "per-metal script"
     )
     lines.append(
         "- `molmetal/scripts/bench_ood_tanimoto_protocol.py` — Wf-57 P1 "
@@ -917,32 +988,48 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
-        "--elements", nargs="+", default=list(DBLOCK_ELEMENTS),
+        "--elements",
+        nargs="+",
+        default=list(DBLOCK_ELEMENTS),
         help="Subset of d-block elements to run (default: all 30).",
     )
     parser.add_argument(
-        "--n-samples", type=int, default=DEFAULT_N_SAMPLES,
+        "--n-samples",
+        type=int,
+        default=DEFAULT_N_SAMPLES,
         help=f"SMILES per element per seed (default {DEFAULT_N_SAMPLES}).",
     )
     parser.add_argument(
-        "--tanimoto-thresh", type=float, default=DEFAULT_TANIMOTO_THRESHOLD,
+        "--tanimoto-thresh",
+        type=float,
+        default=DEFAULT_TANIMOTO_THRESHOLD,
         help=f"OOD threshold (default {DEFAULT_TANIMOTO_THRESHOLD}).",
     )
     parser.add_argument(
-        "--seeds", type=int, default=DEFAULT_SEEDS,
+        "--seeds",
+        type=int,
+        default=DEFAULT_SEEDS,
         help=f"Number of disjoint SMILES slices per element (default {DEFAULT_SEEDS}).",
     )
     parser.add_argument(
-        "--max-depth", type=int, default=DEFAULT_MAX_DEPTH,
+        "--max-depth",
+        type=int,
+        default=DEFAULT_MAX_DEPTH,
     )
     parser.add_argument(
-        "--max-products", type=int, default=DEFAULT_MAX_PRODUCTS,
+        "--max-products",
+        type=int,
+        default=DEFAULT_MAX_PRODUCTS,
     )
     parser.add_argument(
-        "--tmqm-csv", type=Path, default=DEFAULT_TMQM_CSV,
+        "--tmqm-csv",
+        type=Path,
+        default=DEFAULT_TMQM_CSV,
     )
     parser.add_argument(
-        "--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR,
+        "--output-dir",
+        type=Path,
+        default=DEFAULT_OUTPUT_DIR,
     )
     return parser.parse_args(argv)
 
@@ -966,13 +1053,23 @@ def main(argv: Optional[List[str]] = None) -> int:
     save_ood_per_element_benchmark(payload, output_dir=args.output_dir)
     write_synthesis(payload, output_dir=args.output_dir)
 
-    print(json.dumps(
-        {k: payload[k] for k in (
-            "tool", "date_utc", "elements", "seeds",
-            "n_samples_per_element_per_seed", "per_element_gate",
-        )},
-        indent=2, sort_keys=True,
-    ))
+    print(
+        json.dumps(
+            {
+                k: payload[k]
+                for k in (
+                    "tool",
+                    "date_utc",
+                    "elements",
+                    "seeds",
+                    "n_samples_per_element_per_seed",
+                    "per_element_gate",
+                )
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
     for elem, blk in payload.get("per_element", {}).items():
         agg = blk.get("aggregate", {})
         if int(agg.get("n_samples", 0)) == 0:

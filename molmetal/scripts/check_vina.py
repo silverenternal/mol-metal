@@ -46,6 +46,7 @@ Usage
     # Full pipeline smoke (one pocket, one seed, ~30 s)
     python molmetal/scripts/check_vina.py --with-smoke-dock
 """
+
 from __future__ import annotations
 
 import argparse
@@ -60,7 +61,9 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-DEFAULT_OUT = PROJECT_ROOT / "molmetal" / "reports" / "check_vina" / "vina_binary_status.json"
+DEFAULT_OUT = (
+    PROJECT_ROOT / "molmetal" / "reports" / "check_vina" / "vina_binary_status.json"
+)
 
 # Canonical candidate list. Order matters — preferred first.
 CANDIDATE_VINA_BINS: Tuple[Path, ...] = (
@@ -79,6 +82,7 @@ def _utc_now_iso() -> str:
 
 def _strip_ansi(s: str) -> str:
     import re
+
     return re.sub(r"\x1b\[[0-9;]*m", "", s)
 
 
@@ -87,7 +91,10 @@ def _probe_vina_version(bin_path: Path, timeout: int = 10) -> Tuple[bool, str, s
     try:
         cp = subprocess.run(
             [str(bin_path), "--version"],
-            check=False, capture_output=True, text=True, timeout=timeout,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
         )
     except subprocess.TimeoutExpired as exc:
         return False, "", f"TimeoutExpired after {timeout}s: {exc}"
@@ -109,7 +116,10 @@ def _probe_vina_help_works(bin_path: Path, timeout: int = 10) -> Tuple[bool, int
     try:
         cp = subprocess.run(
             [str(bin_path), "--help"],
-            check=False, capture_output=True, text=True, timeout=timeout,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
         )
     except subprocess.TimeoutExpired:
         return False, 0
@@ -149,7 +159,9 @@ def _resolve_vina_bin() -> Tuple[Optional[Path], List[Path]]:
     return None, checked
 
 
-def _run_smoke_dock(bin_path: Path, out_dir: Path, timeout: int = 60) -> Tuple[bool, dict]:
+def _run_smoke_dock(
+    bin_path: Path, out_dir: Path, timeout: int = 60
+) -> Tuple[bool, dict]:
     """Run a one-shot CLI dock against the smallest staged pocket.
 
     We use 1h36 (one of the Wf-179 BD-9 pockets — guaranteed staged by
@@ -160,15 +172,33 @@ def _run_smoke_dock(bin_path: Path, out_dir: Path, timeout: int = 60) -> Tuple[b
     Returns ``(ok, info_dict)``. We DO NOT fail the script if the
     smoke fails — the binary is the primary checkpoint.
     """
-    receptor = PROJECT_ROOT / "molmetal" / "reports" / "wf30_pocket_prep" / "1h36" / "receptor.pdbqt"
+    receptor = (
+        PROJECT_ROOT
+        / "molmetal"
+        / "reports"
+        / "wf30_pocket_prep"
+        / "1h36"
+        / "receptor.pdbqt"
+    )
     if not receptor.exists():
-        return False, {"error": f"receptor.pdbqt not found at {receptor}",
-                        "status": "SMOKE_DOCK_SKIPPED_NO_RECEPTOR"}
+        return False, {
+            "error": f"receptor.pdbqt not found at {receptor}",
+            "status": "SMOKE_DOCK_SKIPPED_NO_RECEPTOR",
+        }
     # Use an existing Wf-179 docked pose as the validated-format ligand.
-    pose = PROJECT_ROOT / "molmetal" / "reports" / "wf179_bd9_m15_rmsd_p2" / "1h36" / "pose_seed0_p1.pdbqt"
+    pose = (
+        PROJECT_ROOT
+        / "molmetal"
+        / "reports"
+        / "wf179_bd9_m15_rmsd_p2"
+        / "1h36"
+        / "pose_seed0_p1.pdbqt"
+    )
     if not pose.exists():
-        return False, {"error": f"no staged Wf-179 pose to use as smoke ligand at {pose}",
-                        "status": "SMOKE_DOCK_SKIPPED_NO_LIGAND"}
+        return False, {
+            "error": f"no staged Wf-179 pose to use as smoke ligand at {pose}",
+            "status": "SMOKE_DOCK_SKIPPED_NO_LIGAND",
+        }
     out_dir.mkdir(parents=True, exist_ok=True)
     smoke_ligand = out_dir / "smoke_ligand.pdbqt"
     # Vina's parser requires a single-MODEL ligand PDBQT (otherwise
@@ -186,11 +216,14 @@ def _run_smoke_dock(bin_path: Path, out_dir: Path, timeout: int = 60) -> Tuple[b
         if line.startswith("ENDMDL"):
             inside = False
             continue
-        if inside and (line.startswith("ATOM") or line.startswith("HETATM")
-                       or line.startswith("ROOT")
-                       or line.startswith("ENDROOT")
-                       or line.startswith("BRANCH")
-                       or line.startswith("ENDBRANCH")):
+        if inside and (
+            line.startswith("ATOM")
+            or line.startswith("HETATM")
+            or line.startswith("ROOT")
+            or line.startswith("ENDROOT")
+            or line.startswith("BRANCH")
+            or line.startswith("ENDBRANCH")
+        ):
             cleaned_lines.append(line)
     smoke_ligand.write_text("\n".join(cleaned_lines) + "\nTORSDOF 4\n")
     out_pdbqt = out_dir / "smoke_docked.pdbqt"
@@ -198,31 +231,48 @@ def _run_smoke_dock(bin_path: Path, out_dir: Path, timeout: int = 60) -> Tuple[b
     # is around 35/53/45 — extracted from the prep_meta.json).
     cmd = [
         str(bin_path),
-        "--receptor", str(receptor),
-        "--ligand", str(smoke_ligand),
-        "--center_x", "35.000",
-        "--center_y", "53.000",
-        "--center_z", "45.000",
-        "--size_x", "20.000",
-        "--size_y", "20.000",
-        "--size_z", "20.000",
-        "--out", str(out_pdbqt),
-        "--exhaustiveness", "1",
-        "--num_modes", "1",
-        "--seed", "0",
+        "--receptor",
+        str(receptor),
+        "--ligand",
+        str(smoke_ligand),
+        "--center_x",
+        "35.000",
+        "--center_y",
+        "53.000",
+        "--center_z",
+        "45.000",
+        "--size_x",
+        "20.000",
+        "--size_y",
+        "20.000",
+        "--size_z",
+        "20.000",
+        "--out",
+        str(out_pdbqt),
+        "--exhaustiveness",
+        "1",
+        "--num_modes",
+        "1",
+        "--seed",
+        "0",
     ]
     t0 = time.time()
     try:
-        cp = subprocess.run(cmd, check=False, capture_output=True,
-                            text=True, timeout=timeout)
+        cp = subprocess.run(
+            cmd, check=False, capture_output=True, text=True, timeout=timeout
+        )
     except subprocess.TimeoutExpired:
-        return False, {"error": f"smoke dock timed out after {timeout}s",
-                       "status": "SMOKE_DOCK_TIMEOUT",
-                       "receptor": str(receptor)}
+        return False, {
+            "error": f"smoke dock timed out after {timeout}s",
+            "status": "SMOKE_DOCK_TIMEOUT",
+            "receptor": str(receptor),
+        }
     except Exception as exc:  # noqa: BLE001
-        return False, {"error": f"{type(exc).__name__}: {exc}",
-                       "status": "SMOKE_DOCK_EXCEPTION",
-                       "receptor": str(receptor)}
+        return False, {
+            "error": f"{type(exc).__name__}: {exc}",
+            "status": "SMOKE_DOCK_EXCEPTION",
+            "receptor": str(receptor),
+        }
     elapsed = time.time() - t0
     info = {
         "receptor": str(receptor),
@@ -231,9 +281,7 @@ def _run_smoke_dock(bin_path: Path, out_dir: Path, timeout: int = 60) -> Tuple[b
         "returncode": cp.returncode,
         "stdout_tail": _strip_ansi(cp.stdout)[-200:],
         "stderr_tail": _strip_ansi(cp.stderr)[-200:],
-        "status": (
-            "SMOKE_DOCK_OK" if cp.returncode == 0 else "SMOKE_DOCK_FAIL"
-        ),
+        "status": ("SMOKE_DOCK_OK" if cp.returncode == 0 else "SMOKE_DOCK_FAIL"),
     }
     return cp.returncode == 0, info
 
@@ -244,15 +292,21 @@ def _build_parser() -> argparse.ArgumentParser:
         description="Vina binary smoke test (BD-9 m15 RMSD Phase 2 prerequisite).",
     )
     p.add_argument(
-        "--out", type=Path, default=DEFAULT_OUT,
+        "--out",
+        type=Path,
+        default=DEFAULT_OUT,
         help=f"JSON status output path (default: {DEFAULT_OUT}).",
     )
     p.add_argument(
-        "--with-smoke-dock", action="store_true", default=False,
+        "--with-smoke-dock",
+        action="store_true",
+        default=False,
         help="Run an end-to-end CLI dock smoke (slower, ~30 s).",
     )
     p.add_argument(
-        "--smoke-timeout", type=int, default=60,
+        "--smoke-timeout",
+        type=int,
+        default=60,
         help="Smoke dock timeout in seconds (default 60).",
     )
     return p
@@ -296,9 +350,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         "version": version_str or None,
         "version_stderr": v_err or None,
         "help_lines": h_lines,
-        "reason": "" if (v_ok and h_ok) else (
-            "vina --version failed" if not v_ok else
-            f"vina --help only returned {h_lines} lines (broken libboost)"
+        "reason": ""
+        if (v_ok and h_ok)
+        else (
+            "vina --version failed"
+            if not v_ok
+            else f"vina --help only returned {h_lines} lines (broken libboost)"
         ),
         "checked_paths": [str(p) for p in checked],
         "checked_utc": _utc_now_iso(),
@@ -331,8 +388,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     if report["status"] == "REAL_VINA_AVAILABLE":
         print("\nGATE PASS: Vina binary verified OK.")
         return 0
-    print(f"\nGATE FAIL: Vina binary not healthy — status={report['status']}",
-          file=sys.stderr)
+    print(
+        f"\nGATE FAIL: Vina binary not healthy — status={report['status']}",
+        file=sys.stderr,
+    )
     return 2
 
 

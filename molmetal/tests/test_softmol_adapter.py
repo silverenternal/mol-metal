@@ -27,6 +27,7 @@ Therefore most tests in this module run against the *fallback* path —
 the adapter degrades gracefully and returns honest empty output rather
 than crashing.  This is the documented behavior per the docstring.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -45,6 +46,7 @@ from molmetal.ports import GenerationConfig, MoleculeGenerator
 # ---------------------------------------------------------------------------
 def _tiny_pocket() -> Pocket:
     import torch
+
     return Pocket(
         pdb_id="test",
         coords=torch.zeros(2, 3, dtype=torch.float32),
@@ -62,6 +64,7 @@ def _tiny_pocket() -> Pocket:
 # ---------------------------------------------------------------------------
 def test_softmol_adapter_imports_and_exports_expected_symbols() -> None:
     import molmetal.adapters.softmol_adapter as sm
+
     assert sm.SoftMolAdapter.__name__ == "SoftMolAdapter"
     assert sm.SoftMolAdapter.__module__.endswith("softmol_adapter")
     assert hasattr(sm, "is_softmol_available")
@@ -158,15 +161,25 @@ def test_softmol_adapter_metadata_shape() -> None:
     adapter.setup(device="cpu")
     md = adapter.get_metadata()
     expected_keys = {
-        "name", "paper", "code", "weight_repo",
-        "uses_3d", "uses_pocket_conditioning",
-        "vocab", "length", "block_size", "steps",
-        "nucleus_p", "temperature", "first_hitting", "top1",
-        "ckpt_arg", "ckpt_resolved", "fallback_active",
+        "name",
+        "paper",
+        "code",
+        "weight_repo",
+        "uses_3d",
+        "uses_pocket_conditioning",
+        "vocab",
+        "length",
+        "block_size",
+        "steps",
+        "nucleus_p",
+        "temperature",
+        "first_hitting",
+        "top1",
+        "ckpt_arg",
+        "ckpt_resolved",
+        "fallback_active",
     }
-    assert expected_keys.issubset(md.keys()), (
-        f"missing: {expected_keys - md.keys()}"
-    )
+    assert expected_keys.issubset(md.keys()), f"missing: {expected_keys - md.keys()}"
     # Honest defaults
     assert md["uses_3d"] is False
     assert md["uses_pocket_conditioning"] is False
@@ -201,13 +214,16 @@ def test_softmol_vs_facebook_fm_metadata_diff_is_honest() -> None:
 
     try:
         from molmetal.adapters.facebook_fm_wrapper import FacebookFMWrapper
+
         cfm = FacebookFMWrapper()
         cfm_md = cfm.get_metadata()
     except Exception:
         # If the facebook_fm_wrapper cannot import (pre-existing dep
         # issue), we just verify SoftMol's contract — the comparison
         # is best-effort.
-        pytest.skip("facebook_fm_wrapper not importable in this venv — pre-existing dep issue")
+        pytest.skip(
+            "facebook_fm_wrapper not importable in this venv — pre-existing dep issue"
+        )
         return
 
     assert cfm_md["name"].startswith("FacebookFM")

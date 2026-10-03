@@ -105,7 +105,9 @@ class MetalHybridV2Model(nn.Module):
 
         # Readout + dual head (same shape as V1)
         self.head_mlp = nn.Sequential(
-            nn.Linear(self.base_cfg.hidden_dim + metal_embedding_dim, self.base_cfg.hidden_dim),
+            nn.Linear(
+                self.base_cfg.hidden_dim + metal_embedding_dim, self.base_cfg.hidden_dim
+            ),
             nn.ReLU(),
             nn.Dropout(self.base_cfg.dropout),
             nn.Linear(self.base_cfg.hidden_dim, self.base_cfg.hidden_dim // 2),

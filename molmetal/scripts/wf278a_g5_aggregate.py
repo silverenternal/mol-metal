@@ -219,7 +219,9 @@ def per_metal_summary(metal: str, seeds: List[Dict]) -> Dict:
         "test_auc_mean": _safe_mean(aucs),
         "test_auc_std": _safe_std(aucs),
         "test_auc_per_seed": {
-            str(s["seed"]): (float(s["test_auc"]) if s["test_auc"] is not None else None)
+            str(s["seed"]): (
+                float(s["test_auc"]) if s["test_auc"] is not None else None
+            )
             for s in seeds
         },
         "val_auc_mean": _safe_mean(val_aucs),
@@ -355,7 +357,9 @@ def main(argv: list[str] | None = None) -> int:
     }
 
     # Fill ru_auc_baseline_30epoch_g4 if cascade summary is present
-    g4_summary_path = g5_dir.parent / "wf124_p3_remaining_metals_g4" / "training_summary.json"
+    g4_summary_path = (
+        g5_dir.parent / "wf124_p3_remaining_metals_g4" / "training_summary.json"
+    )
     if g4_summary_path.exists():
         try:
             g4 = json.loads(g4_summary_path.read_text())
@@ -363,9 +367,8 @@ def main(argv: list[str] | None = None) -> int:
             if ru_g4.get("test_auc_mean") is not None:
                 summary["ru_auc_baseline_30epoch_g4"] = ru_g4["test_auc_mean"]
                 summary["ru_30ep_vs_50ep_delta"] = (
-                    (summary_per_metal.get("Ru") or {}).get("test_auc_mean", float("nan"))
-                    - ru_g4["test_auc_mean"]
-                )
+                    summary_per_metal.get("Ru") or {}
+                ).get("test_auc_mean", float("nan")) - ru_g4["test_auc_mean"]
         except Exception as exc:
             print(f"[wf278a-g5] WARN: could not load G4 cascade: {exc!r}", flush=True)
 

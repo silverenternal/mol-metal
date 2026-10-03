@@ -38,6 +38,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -71,10 +72,30 @@ REPORTS_DIR = PROJECT_ROOT / "molmetal" / "reports"
 
 # Each task: csv filename, label column, smiles column, optional gz suffix
 TASK_INFO: Dict[str, Dict[str, object]] = {
-    "bbbp": {"file": "bbbp.csv", "smiles_col": "smiles", "label_col": "p_np", "gz": False},
-    "bace": {"file": "bace.csv", "smiles_col": "mol", "label_col": "Class", "gz": False},
-    "hiv": {"file": "hiv.csv", "smiles_col": "smiles", "label_col": "HIV_active", "gz": False},
-    "clintox": {"file": "clintox.csv.gz", "smiles_col": "smiles", "label_col": "CT_TOX", "gz": True},
+    "bbbp": {
+        "file": "bbbp.csv",
+        "smiles_col": "smiles",
+        "label_col": "p_np",
+        "gz": False,
+    },
+    "bace": {
+        "file": "bace.csv",
+        "smiles_col": "mol",
+        "label_col": "Class",
+        "gz": False,
+    },
+    "hiv": {
+        "file": "hiv.csv",
+        "smiles_col": "smiles",
+        "label_col": "HIV_active",
+        "gz": False,
+    },
+    "clintox": {
+        "file": "clintox.csv.gz",
+        "smiles_col": "smiles",
+        "label_col": "CT_TOX",
+        "gz": True,
+    },
 }
 
 # Chemprop D-MPNN scaffold-split baseline AUC (Wu 2018)
@@ -92,6 +113,7 @@ def _open_csv(path: Path):
 
 def _load_task(task: str) -> Tuple[List[str], np.ndarray]:
     import csv as _csv
+
     info = TASK_INFO[task]
     fname = str(info["file"])
     smiles_col = str(info["smiles_col"])
@@ -129,6 +151,7 @@ def _load_task(task: str) -> Tuple[List[str], np.ndarray]:
 def _bemis_murcko_scaffold(smiles: str) -> str:
     from rdkit import Chem
     from rdkit.Chem.Scaffolds import MurckoScaffold
+
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
         return smiles  # group invalid SMILES by their string
@@ -140,7 +163,9 @@ def _bemis_murcko_scaffold(smiles: str) -> str:
 
 
 def _scaffold_split(
-    smiles: List[str], seed: int, fractions: Tuple[float, float, float] = (0.7, 0.1, 0.2)
+    smiles: List[str],
+    seed: int,
+    fractions: Tuple[float, float, float] = (0.7, 0.1, 0.2),
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Group by Bemis-Murcko scaffold; assign each scaffold to one split."""
     rng = np.random.default_rng(seed)
@@ -286,7 +311,9 @@ def _train_one_seed(
         v_metrics = compute_metrics(y_val_np, v_score)
         if v_metrics["roc_auc"] > best_val:
             best_val = v_metrics["roc_auc"]
-            best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+            best_state = {
+                k: v.detach().cpu().clone() for k, v in model.state_dict().items()
+            }
         if (epoch + 1) % max(1, epochs // 5) == 0 or epoch == 0:
             print(
                 f"[molnet:{task}]   epoch {epoch+1:3d}/{epochs} loss={total_loss/max(n_batches,1):.4f} "
@@ -325,9 +352,21 @@ def _train_one_seed(
 # Aggregation + reporting
 # ---------------------------------------------------------------------------
 def _aggregate(per_seed: List[Dict[str, object]]) -> Dict[str, object]:
-    aucs = [float(d["test_metrics"]["roc_auc"]) for d in per_seed if not np.isnan(d["test_metrics"]["roc_auc"])]
-    aps = [float(d["test_metrics"]["pr_auc"]) for d in per_seed if not np.isnan(d["test_metrics"]["pr_auc"])]
-    hits = [float(d["test_metrics"]["hit_rate_top5pct"]) for d in per_seed if not np.isnan(d["test_metrics"]["hit_rate_top5pct"])]
+    aucs = [
+        float(d["test_metrics"]["roc_auc"])
+        for d in per_seed
+        if not np.isnan(d["test_metrics"]["roc_auc"])
+    ]
+    aps = [
+        float(d["test_metrics"]["pr_auc"])
+        for d in per_seed
+        if not np.isnan(d["test_metrics"]["pr_auc"])
+    ]
+    hits = [
+        float(d["test_metrics"]["hit_rate_top5pct"])
+        for d in per_seed
+        if not np.isnan(d["test_metrics"]["hit_rate_top5pct"])
+    ]
     return {
         "n_seeds_total": len(per_seed),
         "n_seeds_valid": len(aucs),
@@ -361,12 +400,18 @@ def _run_task(
             (out_dir / f"{task}_seed{seed}.json").write_text(json.dumps(r, indent=2))
         except Exception as e:
             print(f"[molnet:{task}] seed {seed} FAILED: {e}", flush=True)
-            per_seed.append({
-                "seed": seed,
-                "task": task,
-                "error": str(e),
-                "test_metrics": {"roc_auc": float("nan"), "pr_auc": float("nan"), "hit_rate_top5pct": float("nan")},
-            })
+            per_seed.append(
+                {
+                    "seed": seed,
+                    "task": task,
+                    "error": str(e),
+                    "test_metrics": {
+                        "roc_auc": float("nan"),
+                        "pr_auc": float("nan"),
+                        "hit_rate_top5pct": float("nan"),
+                    },
+                }
+            )
     agg = _aggregate(per_seed)
     agg["task"] = task
     agg["chemprop_dmpnn_baseline"] = CHEMPROP_DMPNN_BASELINE[task]
@@ -375,7 +420,12 @@ def _run_task(
     return agg
 
 
-def _write_report(out_path: Path, all_results: Dict[str, object], gate_pass: bool, requested_tasks: List[str]) -> None:
+def _write_report(
+    out_path: Path,
+    all_results: Dict[str, object],
+    gate_pass: bool,
+    requested_tasks: List[str],
+) -> None:
     lines = [
         "# Metric Tier 2 — MoleculeNet cross-benchmark (BBBP / BACE / HIV / ClinTox)",
         "",
@@ -486,7 +536,9 @@ def _write_report(out_path: Path, all_results: Dict[str, object], gate_pass: boo
 # CLI
 # ---------------------------------------------------------------------------
 def _parse_args(argv: List[str] | None = None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Train Mol-Metal on MoleculeNet cross-benchmark.")
+    p = argparse.ArgumentParser(
+        description="Train Mol-Metal on MoleculeNet cross-benchmark."
+    )
     p.add_argument(
         "--tasks",
         nargs="+",
@@ -536,15 +588,34 @@ def main(argv: List[str] | None = None) -> int:
 
     out_dir = PROJECT_ROOT / args.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_metric = Path(args.out_metric) if args.out_metric else METRICS_DIR / "moleculenet_auc.json"
-    out_report = Path(args.out_report) if args.out_report else REPORTS_DIR / "wf_tier2_molnet" / "final.md"
+    out_metric = (
+        Path(args.out_metric)
+        if args.out_metric
+        else METRICS_DIR / "moleculenet_auc.json"
+    )
+    out_report = (
+        Path(args.out_report)
+        if args.out_report
+        else REPORTS_DIR / "wf_tier2_molnet" / "final.md"
+    )
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    print(f"[molnet] device={device}  tasks={args.tasks}  seeds={args.seeds}", flush=True)
+    print(
+        f"[molnet] device={device}  tasks={args.tasks}  seeds={args.seeds}", flush=True
+    )
 
     all_results: Dict[str, object] = {}
     for task in args.tasks:
-        agg = _run_task(task, args.seeds, args.epochs, args.batch_size, args.lr, args.hidden, device, out_dir)
+        agg = _run_task(
+            task,
+            args.seeds,
+            args.epochs,
+            args.batch_size,
+            args.lr,
+            args.hidden,
+            device,
+            out_dir,
+        )
         # Pull per-seed rows for the report (read back from disk)
         per_seed: List[Dict[str, object]] = []
         for s in args.seeds:
@@ -565,9 +636,14 @@ def main(argv: List[str] | None = None) -> int:
         "batch_size": args.batch_size,
         "lr": args.lr,
         "hidden": args.hidden,
-        "tasks": {task: {k: v for k, v in all_results[task].items() if k != "per_seed"} for task in args.tasks},
+        "tasks": {
+            task: {k: v for k, v in all_results[task].items() if k != "per_seed"}
+            for task in args.tasks
+        },
         "gate_mean_auc_threshold": 0.80,
-        "chemprop_dmpnn_baseline_mean": float(np.mean([CHEMPROP_DMPNN_BASELINE[t] for t in args.tasks])),
+        "chemprop_dmpnn_baseline_mean": float(
+            np.mean([CHEMPROP_DMPNN_BASELINE[t] for t in args.tasks])
+        ),
     }
     out_metric.parent.mkdir(parents=True, exist_ok=True)
     out_metric.write_text(json.dumps(payload, indent=2))
@@ -576,7 +652,10 @@ def main(argv: List[str] | None = None) -> int:
     # Mean AUC gate
     mean_auc = float(np.mean([all_results[t]["test_auc_mean"] for t in args.tasks]))
     gate_pass = mean_auc >= 0.80
-    print(f"[molnet] mean AUC = {mean_auc:.4f}  (gate ≥ 0.80)  {'PASS' if gate_pass else 'BELOW GATE'}", flush=True)
+    print(
+        f"[molnet] mean AUC = {mean_auc:.4f}  (gate ≥ 0.80)  {'PASS' if gate_pass else 'BELOW GATE'}",
+        flush=True,
+    )
 
     _write_report(out_report, all_results, gate_pass, args.tasks)
     print(f"[molnet] wrote {out_report}", flush=True)

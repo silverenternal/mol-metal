@@ -83,6 +83,7 @@ def _clear_cache_dir() -> None:
     """Erase the disk cache (test helper — see ``test_tile_lib_cache.py``)."""
     _JOBLIB_MEMORY.clear(warn=False)
 
+
 __all__ = [
     "build_tile_library",
     "build_tile_dict",

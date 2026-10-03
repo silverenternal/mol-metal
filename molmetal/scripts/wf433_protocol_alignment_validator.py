@@ -78,7 +78,11 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 DEFAULT_OUT = (
-    REPO_ROOT / "molmetal" / "reports" / "wf433_protocol_alignment" / "example_alignment.json"
+    REPO_ROOT
+    / "molmetal"
+    / "reports"
+    / "wf433_protocol_alignment"
+    / "example_alignment.json"
 )
 
 # Reuse the canonical baseline metadata from wf433_protocol_validator.
@@ -216,9 +220,7 @@ def _check_split_axis(
         expected_our=our,
         observed=observed,
         match=bool(documented),
-        evidence=(
-            f"baseline paper='{paper}'; our='{our}'; observed='{observed}'"
-        ),
+        evidence=(f"baseline paper='{paper}'; our='{our}'; observed='{observed}'"),
         verdict=verdict,
         verdict_detail=verdict_detail,
     )
@@ -238,9 +240,7 @@ def _check_metric_axis(
         "Rusanov 2025": ["auc", "r_squared"],
         "DrugOOD 2022": ["auc"],
     }
-    name_keys = [
-        k for k in expected_keywords.keys() if k in baseline_meta["name"]
-    ]
+    name_keys = [k for k in expected_keywords.keys() if k in baseline_meta["name"]]
     keys = expected_keywords.get(
         name_keys[0] if name_keys else "Krasnov 2026",
         ["auc"],
@@ -279,11 +279,7 @@ def _check_seed_coverage_axis(
     """
     seeds = results.get("seeds") or []
     n_seeds_field = results.get("n_seeds")
-    n_seeds = (
-        len(seeds)
-        if isinstance(seeds, list) and seeds
-        else n_seeds_field
-    )
+    n_seeds = len(seeds) if isinstance(seeds, list) and seeds else n_seeds_field
     if not n_seeds:
         # Try to derive from per_run_auc / per_cell_line / per_seed_ood.
         for key in ("per_run_auc", "per_seed"):
@@ -306,9 +302,7 @@ def _check_seed_coverage_axis(
     else:
         match = int(n_seeds) >= 3
         verdict = "PASS" if match else "WARN"
-        verdict_detail = (
-            f"Seed coverage n_seeds={n_seeds} {'≥' if match else '<'} 3 (Tier-1 threshold)."
-        )
+        verdict_detail = f"Seed coverage n_seeds={n_seeds} {'≥' if match else '<'} 3 (Tier-1 threshold)."
     return AxisCheck(
         axis_name="seed_coverage",
         expected_baseline=">=3 seeds (per COMPARISON_BASELINES.md §1)",
@@ -341,8 +335,10 @@ def _verdict_summary(checks: List[AxisCheck]) -> Tuple[str, int, int, int]:
     n_pass = sum(1 for c in checks if c.verdict == "PASS")
     n_fail = sum(1 for c in checks if c.verdict == "FAIL")
     n_warn = sum(1 for c in checks if c.verdict == "WARN")
-    overall = "PASS" if n_fail == 0 and n_warn == 0 else (
-        "PASS_WITH_WARN" if n_fail == 0 else "FAIL"
+    overall = (
+        "PASS"
+        if n_fail == 0 and n_warn == 0
+        else ("PASS_WITH_WARN" if n_fail == 0 else "FAIL")
     )
     return overall, n_pass, n_fail, n_warn
 

@@ -32,6 +32,7 @@ Honest framing (party-twenty-spirit §3.5)
 * ``test_mm_gbsa_rescore`` also asserts that the rescore picks a
   *low-MMGBSA* pose and that the best RMSD is non-negative.
 """
+
 from __future__ import annotations
 
 import pytest

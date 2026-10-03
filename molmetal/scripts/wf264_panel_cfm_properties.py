@@ -68,6 +68,7 @@ try:
         safe_overwrite_check,
         detect_truncation,
     )
+
     _WF424_HAS_ATOMIC = True
 except ImportError:  # pragma: no cover — fallback when running as standalone
     _WF424_HAS_ATOMIC = False
@@ -87,9 +88,7 @@ if str(PROJECT_ROOT) not in sys.path:
 DEFAULT_DATA_PATH = (
     PROJECT_ROOT / "molmetal" / "data" / "metalcytotox_rdkit_features.csv"
 )
-DEFAULT_OUT_DIR = (
-    PROJECT_ROOT / "molmetal" / "reports" / "wf264_panel"
-)
+DEFAULT_OUT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf264_panel"
 TARGET_METALS = ["Ru", "Ir", "Os", "Rh", "Re"]
 DEFAULT_VINA_SAMPLE = 100
 
@@ -97,7 +96,9 @@ DEFAULT_VINA_SAMPLE = 100
 # ---------------------------------------------------------------------------
 # RDKit-based property computations
 # ---------------------------------------------------------------------------
-def _wf424_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
+def _wf424_atomic_write_text(
+    path, content: str, min_lines: int = 50, expected_min_length: int = 200
+) -> None:
     """Wf-424-A4 atomic-write-protocol wrapper around direct write_text.
 
     Falls back to direct write_text if atomic_write_file is unavailable
@@ -109,21 +110,26 @@ def _wf424_atomic_write_text(path, content: str, min_lines: int = 50, expected_m
             _risk = safe_overwrite_check(path, content, min_lines=min_lines)
             if _risk is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-424-A4] safe_overwrite_check diff_ratio=%.3f at %s",
-                    _risk, path,
+                    _risk,
+                    path,
                 )
         atomic_write_file(path, content, encoding="utf-8")
         if detect_truncation is not None:
             _trunc = detect_truncation(content, expected_min_length=expected_min_length)
             if _trunc is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-424-A4] detect_truncation reason=%r at %s",
-                    _trunc, path,
+                    _trunc,
+                    path,
                 )
     else:  # pragma: no cover — fallback when atomic primitive unavailable
         Path(path).write_text(content, encoding="utf-8")
+
 
 def _load_rds():
     """Lazy import of RDKit — returns (Chem, QED, AllChem, RDLogger) or None."""
@@ -131,6 +137,7 @@ def _load_rds():
         from rdkit import Chem, RDLogger  # noqa: F401
         from rdkit.Chem import QED  # noqa: F401
         from rdkit.Chem import AllChem  # noqa: F401
+
         RDLogger.DisableLog("rdApp.*")
         return Chem, QED, AllChem, RDLogger
     except Exception:
@@ -141,6 +148,7 @@ def _load_sa_module():
     """Lazy import of Ertl SA scorer."""
     try:
         from molmetal.molmetal_lam.sbdd_env.sa_score import sa_score_ertl
+
         return sa_score_ertl
     except Exception:
         return None
@@ -212,14 +220,19 @@ def summarize(values: List[float]) -> Dict[str, float]:
     """Return {n, mean, std, p10, p50, p90, min, max}."""
     if not values:
         return {
-            "n": 0, "mean": float("nan"), "std": float("nan"),
-            "p10": float("nan"), "p50": float("nan"), "p90": float("nan"),
-            "min": float("nan"), "max": float("nan"),
+            "n": 0,
+            "mean": float("nan"),
+            "std": float("nan"),
+            "p10": float("nan"),
+            "p50": float("nan"),
+            "p90": float("nan"),
+            "min": float("nan"),
+            "max": float("nan"),
         }
     n = len(values)
     mean = sum(values) / n
     var = sum((v - mean) ** 2 for v in values) / max(n - 1, 1)
-    std = var ** 0.5
+    std = var**0.5
     return {
         "n": n,
         "mean": float(mean),
@@ -269,13 +282,16 @@ def vina_sample_dock(
 
     for smi, metal in smiles:
         record: Dict[str, Any] = {
-            "smiles": smi, "metal": metal, "vina_scores": {},
+            "smiles": smi,
+            "metal": metal,
+            "vina_scores": {},
         }
         # Try parsing + preparing ligand (will fail on metal-coordinating atoms).
         try:
             from rdkit import Chem
             from rdkit.Chem import AllChem
             from meeko import MoleculePreparation, PDBQTWriterLegacy
+
             mol = Chem.MolFromSmiles(smi)
             if mol is None:
                 record["error"] = "rdkit_parse_failed"
@@ -310,16 +326,19 @@ def vina_sample_dock(
                 # Compute pocket center from receptor atoms.
                 import tempfile
                 import numpy as np
+
                 coords = []
                 with open(rec_path) as f:
                     for line in f:
                         if line.startswith("ATOM") or line.startswith("HETATM"):
                             try:
-                                coords.append([
-                                    float(line[30:38]),
-                                    float(line[38:46]),
-                                    float(line[46:54]),
-                                ])
+                                coords.append(
+                                    [
+                                        float(line[30:38]),
+                                        float(line[38:46]),
+                                        float(line[46:54]),
+                                    ]
+                                )
                             except (ValueError, IndexError):
                                 continue
                 if not coords:
@@ -331,11 +350,13 @@ def vina_sample_dock(
                     lig_path = Path(tmpdir) / "lig.pdbqt"
                     _wf424_atomic_write_text(lig_path, lig_pdbqt)
                     from vina import Vina
+
                     v = Vina(sf_name="vina", verbosity=0)
                     v.set_receptor(str(rec_path))
                     v.set_ligand_from_file(str(lig_path))
                     v.compute_vina_maps(
-                        center=center, box_size=list(box_size),
+                        center=center,
+                        box_size=list(box_size),
                     )
                     v.dock(exhaustiveness=exhaustiveness, n_poses=n_poses)
                     energies = v.energies()
@@ -358,13 +379,22 @@ def main() -> int:
     )
     ap.add_argument("--data-path", type=str, default=str(DEFAULT_DATA_PATH))
     ap.add_argument("--out-dir", type=str, default=str(DEFAULT_OUT_DIR))
-    ap.add_argument("--vina-sample", type=int, default=DEFAULT_VINA_SAMPLE,
-                    help="Vina stratified sample size (default 100)")
-    ap.add_argument("--skip-vina", action="store_true",
-                    help="Skip Vina entirely (smoke-only)")
-    ap.add_argument("--vina-pocket", type=str, default="1h36",
-                    help="Single pocket for Vina (default 1h36; alt: 3eml, "
-                         "3ny8, 4aaw, 4rlu — all from Wf-30 prep)")
+    ap.add_argument(
+        "--vina-sample",
+        type=int,
+        default=DEFAULT_VINA_SAMPLE,
+        help="Vina stratified sample size (default 100)",
+    )
+    ap.add_argument(
+        "--skip-vina", action="store_true", help="Skip Vina entirely (smoke-only)"
+    )
+    ap.add_argument(
+        "--vina-pocket",
+        type=str,
+        default="1h36",
+        help="Single pocket for Vina (default 1h36; alt: 3eml, "
+        "3ny8, 4aaw, 4rlu — all from Wf-30 prep)",
+    )
     args = ap.parse_args()
 
     data_path = Path(args.data_path)
@@ -399,8 +429,7 @@ def main() -> int:
             metal = (row.get("metal") or "").strip()
             if smi and metal:
                 rows.append({"smiles": smi, "metal": metal})
-    print(f"[Wf-264] loaded {len(rows)} rows in {time.time()-t0:.1f}s",
-          flush=True)
+    print(f"[Wf-264] loaded {len(rows)} rows in {time.time()-t0:.1f}s", flush=True)
 
     # Per-molecule SA + QED.
     print("[Wf-264] computing SA + QED on full set...", flush=True)
@@ -418,10 +447,14 @@ def main() -> int:
         qed = compute_qed(smi, QED)
         if sa is None or qed is None:
             n_parse_fail += 1
-        per_mol.append({
-            "smiles": smi, "metal": metal,
-            "sa": sa, "qed": qed,
-        })
+        per_mol.append(
+            {
+                "smiles": smi,
+                "metal": metal,
+                "sa": sa,
+                "qed": qed,
+            }
+        )
         if sa is not None:
             sa_by_metal[metal].append(sa)
             sa_all.append(sa)
@@ -431,14 +464,12 @@ def main() -> int:
         if (i + 1) % 5000 == 0:
             elapsed = time.time() - t0
             print(
-                f"[Wf-264]   {i+1}/{len(rows)} "
-                f"({(i+1)/max(elapsed,1e-6):.0f}/s)",
+                f"[Wf-264]   {i+1}/{len(rows)} " f"({(i+1)/max(elapsed,1e-6):.0f}/s)",
                 flush=True,
             )
     sa_qed_wall = time.time() - t0
     print(
-        f"[Wf-264] SA+QED done in {sa_qed_wall:.1f}s "
-        f"(parse_fail={n_parse_fail})",
+        f"[Wf-264] SA+QED done in {sa_qed_wall:.1f}s " f"(parse_fail={n_parse_fail})",
         flush=True,
     )
 
@@ -458,6 +489,7 @@ def main() -> int:
             flush=True,
         )
         import random
+
         rng = random.Random(42)
         # Stratified: proportional to per-metal size, floor of n_sample / n_metals.
         n_per_metal: Dict[str, int] = {}
@@ -511,7 +543,8 @@ def main() -> int:
         )
         vina_wall = time.time() - t0
         n_vina_ok = sum(
-            1 for r in vina_records
+            1
+            for r in vina_records
             if r.get("vina_scores", {}).get(args.vina_pocket) is not None
         )
         n_vina_fail = len(vina_records) - n_vina_ok
@@ -524,9 +557,7 @@ def main() -> int:
         vina_summary["n_attempted"] = len(vina_records)
         vina_summary["n_docked"] = n_vina_ok
         vina_summary["n_failed"] = n_vina_fail
-        vina_summary["failure_rate"] = (
-            n_vina_fail / max(len(vina_records), 1)
-        )
+        vina_summary["failure_rate"] = n_vina_fail / max(len(vina_records), 1)
         print(
             f"[Wf-264] Vina done in {vina_wall:.1f}s: "
             f"{n_vina_ok}/{len(vina_records)} docked ok "
@@ -536,7 +567,9 @@ def main() -> int:
     else:
         vina_records = []
         vina_summary = {
-            "n_attempted": 0, "n_docked": 0, "n_failed": 0,
+            "n_attempted": 0,
+            "n_docked": 0,
+            "n_failed": 0,
             "failure_rate": 1.0,
         }
 
@@ -574,25 +607,41 @@ def main() -> int:
             "closest MEASURED analogue without rerunning CFM decode."
         ),
     }
-    (_wf424_atomic_write_text(out_dir / "aggregate.json"), json.dumps(aggregate, indent=2) + "\n",)
+    (
+        _wf424_atomic_write_text(out_dir / "aggregate.json"),
+        json.dumps(aggregate, indent=2) + "\n",
+    )
     print(f"[Wf-264] wrote {out_dir/'aggregate.json'}", flush=True)
 
     # Per-molecule JSON.
-    (_wf424_atomic_write_text(out_dir / "per_molecule.json"), json.dumps(per_mol) + "\n",)
+    (
+        _wf424_atomic_write_text(out_dir / "per_molecule.json"),
+        json.dumps(per_mol) + "\n",
+    )
     print(f"[Wf-264] wrote {out_dir/'per_molecule.json'}", flush=True)
 
     # Per-metal JSON.
-    (_wf424_atomic_write_text(out_dir / "per_metal.json"), json.dumps(per_metal, indent=2) + "\n",)
+    (
+        _wf424_atomic_write_text(out_dir / "per_metal.json"),
+        json.dumps(per_metal, indent=2) + "\n",
+    )
     print(f"[Wf-264] wrote {out_dir/'per_metal.json'}", flush=True)
 
     # Per-pocket Vina JSON (if run).
     if not args.skip_vina:
-        (_wf424_atomic_write_text(out_dir / "per_pocket.json"), json.dumps({
-                "pocket_id": args.vina_pocket,
-                "n_sample": len(vina_records),
-                "vina_scores": vina_records,
-                "summary": vina_summary,
-            }, indent=2) + "\n",)
+        (
+            _wf424_atomic_write_text(out_dir / "per_pocket.json"),
+            json.dumps(
+                {
+                    "pocket_id": args.vina_pocket,
+                    "n_sample": len(vina_records),
+                    "vina_scores": vina_records,
+                    "summary": vina_summary,
+                },
+                indent=2,
+            )
+            + "\n",
+        )
         print(f"[Wf-264] wrote {out_dir/'per_pocket.json'}", flush=True)
 
     # Markdown report.
@@ -656,8 +705,7 @@ def _write_report(out_dir, aggregate, per_metal, vina_records, args) -> None:
         "## §2 Vina per-pocket",
         "",
         f"- **Pocket**: {aggregate.get('vina_pocket')}",
-        f"- **Sample**: n = {vina.get('n_attempted', 0)} "
-        f"(stratified by metal)",
+        f"- **Sample**: n = {vina.get('n_attempted', 0)} " f"(stratified by metal)",
         f"- **Docked OK**: {vina.get('n_docked', 0)}",
         f"- **Failed**: {vina.get('n_failed', 0)} "
         f"(mostly meeko 0.8.0 metal-atom limitation)",

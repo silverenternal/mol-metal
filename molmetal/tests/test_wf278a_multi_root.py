@@ -48,19 +48,33 @@ def _seed_payload(metal: str, seed: int, epochs: int = 30) -> dict:
     }
 
 
-def _write_seed_file(root: Path, wave: str, metal: str, seed: int, payload: dict,
-                     touch_mtime: float | None = None) -> Path:
+def _write_seed_file(
+    root: Path,
+    wave: str,
+    metal: str,
+    seed: int,
+    payload: dict,
+    touch_mtime: float | None = None,
+) -> Path:
     """Write a nested per_seed_metrics_seed{N}.json under (root/wave/Metal/seed{N}/metal/).
 
     If touch_mtime is given, set the file's mtime to that absolute timestamp
     (used by test_last_wins_dedup to force a deterministic dedup ordering).
     """
     metal_lower = metal.lower()
-    out = root / wave / metal / f"seed{seed}" / metal_lower / f"per_seed_metrics_seed{seed}.json"
+    out = (
+        root
+        / wave
+        / metal
+        / f"seed{seed}"
+        / metal_lower
+        / f"per_seed_metrics_seed{seed}.json"
+    )
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload))
     if touch_mtime is not None:
         import os
+
         os.utime(out, (touch_mtime, touch_mtime))
     return out
 
@@ -68,7 +82,10 @@ def _write_seed_file(root: Path, wave: str, metal: str, seed: int, payload: dict
 def _import_module():
     """Import wf278a_g4_aggregate as a module via importlib."""
     import importlib.util
-    spec = importlib.util.spec_from_file_location("wf278a_g4_aggregate", str(SCRIPT_PATH))
+
+    spec = importlib.util.spec_from_file_location(
+        "wf278a_g4_aggregate", str(SCRIPT_PATH)
+    )
     mod = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     spec.loader.exec_module(mod)
@@ -90,8 +107,12 @@ def test_multi_root_merge(tmp_path: Path) -> None:
     _write_seed_file(g4, "A", "Ru", 0, _seed_payload("Ru", 0), touch_mtime=1_000_000.0)
     _write_seed_file(g4, "A", "Ir", 1, _seed_payload("Ir", 1), touch_mtime=1_000_000.0)
     # G5 — newer mtime on overlap, plus a brand-new Os/seed2
-    _write_seed_file(g5, "B", "Ru", 0, _seed_payload("Ru", 0, epochs=50), touch_mtime=2_000_000.0)
-    _write_seed_file(g5, "B", "Os", 2, _seed_payload("Os", 2, epochs=50), touch_mtime=2_000_000.0)
+    _write_seed_file(
+        g5, "B", "Ru", 0, _seed_payload("Ru", 0, epochs=50), touch_mtime=2_000_000.0
+    )
+    _write_seed_file(
+        g5, "B", "Os", 2, _seed_payload("Os", 2, epochs=50), touch_mtime=2_000_000.0
+    )
 
     out = mod.collect_seed_metrics_multi_root([g4, g5])
     keys = {(s["metal"], s["seed"]) for s in out}
@@ -122,15 +143,20 @@ def test_last_wins_dedup(tmp_path: Path) -> None:
     assert len(out) == 1, f"expected 1 deduped pair, got {len(out)}"
     picked = out[0]
     # The newer-mtime G5 payload (epochs=50, roc_auc=0.9999) must win
-    assert picked["epochs"] == 50, f"expected epochs=50 (G5 wins), got {picked['epochs']}"
+    assert (
+        picked["epochs"] == 50
+    ), f"expected epochs=50 (G5 wins), got {picked['epochs']}"
     assert picked["test_metrics"]["roc_auc"] == pytest.approx(0.9999)
     # And the older G4 file must NOT appear
-    assert picked is not g4_payload  # at least proves the merge materialised a fresh dict
+    assert (
+        picked is not g4_payload
+    )  # at least proves the merge materialised a fresh dict
 
 
 def test_expected_pairs_15() -> None:
     """Default expected_pairs is 15 (5 metals × 3 seeds), per Wf-298B patch."""
     import subprocess
+
     # Invoke the CLI with --help to inspect the default. argparse prints the
     # default in the help text when default= is set; we instead parse the
     # source to assert the default value, which is robust against argparse
@@ -144,9 +170,9 @@ def test_expected_pairs_15() -> None:
         "(5 metals × 3 seeds)"
     )
     # And the legacy hard-coded "expected_pairs": 14 must be gone.
-    assert '"expected_pairs": 14' not in src, (
-        "Legacy hard-coded expected_pairs=14 must be removed (replaced by CLI default=15)"
-    )
+    assert (
+        '"expected_pairs": 14' not in src
+    ), "Legacy hard-coded expected_pairs=14 must be removed (replaced by CLI default=15)"
 
 
 if __name__ == "__main__":

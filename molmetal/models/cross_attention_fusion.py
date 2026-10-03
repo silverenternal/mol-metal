@@ -110,8 +110,8 @@ class CrossAttentionFusion(nn.Module):
             )
 
         q = self.q_dmpnn(h_dmpnn)  # (B, N, hidden)
-        k = self.k_egnn(h_egnn)    # (B, N, hidden)
-        v = self.v_egnn(h_egnn)    # (B, N, hidden)
+        k = self.k_egnn(h_egnn)  # (B, N, hidden)
+        v = self.v_egnn(h_egnn)  # (B, N, hidden)
 
         q_h = self._split_heads(q)  # (B, n_heads, N, head_dim)
         k_h = self._split_heads(k)
@@ -134,9 +134,9 @@ class CrossAttentionFusion(nn.Module):
             # Average over heads -> (B, N_q, N_k)
             self._last_attn_weights = attn.mean(dim=1)
 
-        ctx = torch.matmul(attn, v_h)          # (B, n_heads, N, head_dim)
-        ctx = self._merge_heads(ctx)           # (B, N, hidden)
-        out = self.out(ctx)                    # (B, N, dmpnn_dim)
+        ctx = torch.matmul(attn, v_h)  # (B, n_heads, N, head_dim)
+        ctx = self._merge_heads(ctx)  # (B, N, hidden)
+        out = self.out(ctx)  # (B, N, dmpnn_dim)
 
         # Residual + LayerNorm
         fused = self.norm(h_dmpnn + out)

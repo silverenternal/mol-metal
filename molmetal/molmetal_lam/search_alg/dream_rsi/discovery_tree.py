@@ -448,7 +448,11 @@ class DiscoveryTree:
                 return round(float(score) - float(ref), 10)
             return None
 
-        parent_score = parent.score if parent is not None and isinstance(parent.score, (int, float)) else baseline
+        parent_score = (
+            parent.score
+            if parent is not None and isinstance(parent.score, (int, float))
+            else baseline
+        )
         return Observation(
             branch=node.meta.branch,
             attempt=node.meta.attempt,

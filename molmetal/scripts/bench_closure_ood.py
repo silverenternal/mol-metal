@@ -81,6 +81,7 @@ Usage
     uv run --no-sync python molmetal/scripts/bench_closure_ood.py \\
         --method closure+ood_filter
 """
+
 from __future__ import annotations
 
 import argparse
@@ -118,12 +119,22 @@ log = logging.getLogger("wf41_closure_ood")
 #: The 8 PlatinAI 5K metals (subset of d-block).  Empty (or unknown)
 #: labels are skipped during row filtering.
 PLATINAI_METALS: Tuple[str, ...] = (
-    "Pt", "Pd", "Ru", "Rh", "Ir", "Os", "Au",
+    "Pt",
+    "Pd",
+    "Ru",
+    "Rh",
+    "Ir",
+    "Os",
+    "Au",
 )
 
 #: The 5 MetalCytoToxDB multitask metals (Ru/Ir/Rh/Os/Re).
 METALCYTO_METALS: Tuple[str, ...] = (
-    "Ru", "Ir", "Rh", "Os", "Re",
+    "Ru",
+    "Ir",
+    "Rh",
+    "Os",
+    "Re",
 )
 
 #: The intersection (used for the per-domain headline aggregation when
@@ -137,18 +148,70 @@ COMMON_METALS: Tuple[str, ...] = tuple(
 #: representative subset (those with n_samples ≥ 20 in the CSV) for
 #: the Wf-57 Phase 2 per-domain reachability sweep.
 TMQM_METALS: Tuple[str, ...] = (
-    "Ag", "Au", "Cd", "Co", "Cr", "Cu", "Fe", "Hf", "Hg", "Ir",
-    "La", "Mn", "Mo", "Nb", "Ni", "Os", "Pd", "Pt", "Re", "Rh",
-    "Ru", "Sc", "Ta", "Tc", "Ti", "V", "W", "Y", "Zn", "Zr",
+    "Ag",
+    "Au",
+    "Cd",
+    "Co",
+    "Cr",
+    "Cu",
+    "Fe",
+    "Hf",
+    "Hg",
+    "Ir",
+    "La",
+    "Mn",
+    "Mo",
+    "Nb",
+    "Ni",
+    "Os",
+    "Pd",
+    "Pt",
+    "Re",
+    "Rh",
+    "Ru",
+    "Sc",
+    "Ta",
+    "Tc",
+    "Ti",
+    "V",
+    "W",
+    "Y",
+    "Zn",
+    "Zr",
 )
 
 #: Per-metal atomic-number map for coordination-count sanity checks.
 METAL_Z: Dict[str, int] = {
-    "Sc": 21, "Ti": 22, "V":  23, "Cr": 24, "Mn": 25, "Fe": 26,
-    "Co": 27, "Ni": 28, "Cu": 29, "Zn": 30, "Y":  39, "Zr": 40,
-    "Nb": 41, "Mo": 42, "Tc": 43, "Ru": 44, "Rh": 45, "Pd": 46,
-    "Ag": 47, "Cd": 48, "La": 57, "Hf": 72, "Ta": 73, "W":  74,
-    "Re": 75, "Os": 76, "Ir": 77, "Pt": 78, "Au": 79, "Hg": 80,
+    "Sc": 21,
+    "Ti": 22,
+    "V": 23,
+    "Cr": 24,
+    "Mn": 25,
+    "Fe": 26,
+    "Co": 27,
+    "Ni": 28,
+    "Cu": 29,
+    "Zn": 30,
+    "Y": 39,
+    "Zr": 40,
+    "Nb": 41,
+    "Mo": 42,
+    "Tc": 43,
+    "Ru": 44,
+    "Rh": 45,
+    "Pd": 46,
+    "Ag": 47,
+    "Cd": 48,
+    "La": 57,
+    "Hf": 72,
+    "Ta": 73,
+    "W": 74,
+    "Re": 75,
+    "Os": 76,
+    "Ir": 77,
+    "Pt": 78,
+    "Au": 79,
+    "Hg": 80,
 }
 
 DEFAULT_DATASET: str = "cross_domain"
@@ -156,16 +219,10 @@ DEFAULT_N_SAMPLES: int = 50
 DEFAULT_MAX_DEPTH: int = 1
 DEFAULT_MAX_PRODUCTS: int = 64
 DEFAULT_SEEDS: int = 1
-DEFAULT_OUTPUT_DIR: Path = (
-    _REPO_ROOT / "molmetal" / "reports" / "wf41_closure_ood"
-)
+DEFAULT_OUTPUT_DIR: Path = _REPO_ROOT / "molmetal" / "reports" / "wf41_closure_ood"
 DEFAULT_TANIMOTO_THRESHOLD: float = 0.4
-DEFAULT_PLATINAI_CSV: Path = (
-    _REPO_ROOT / "molmetal" / "data" / "platinai_5k.csv"
-)
-DEFAULT_TMQM_CSV: Path = (
-    _REPO_ROOT / "molmetal" / "data" / "tmqm_dblock_subset.csv"
-)
+DEFAULT_PLATINAI_CSV: Path = _REPO_ROOT / "molmetal" / "data" / "platinai_5k.csv"
+DEFAULT_TMQM_CSV: Path = _REPO_ROOT / "molmetal" / "data" / "tmqm_dblock_subset.csv"
 DEFAULT_METALCYTO_CSV: Path = (
     _REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 )
@@ -175,13 +232,13 @@ DEFAULT_METHOD: str = "closure"  # 'closure' | 'closure+ood_filter'
 #: handles (CuAAC / SPAAC / ThiolEne / Suzuki / AmideCoupling) plus a
 #: generic amine + benzoic acid for stress coverage.
 PARTNER_SMILE_LIST: List[str] = [
-    "C#CCN",                  # propargylamine  — alkyne + amine
-    "CCN=[N+]=[N-]",          # ethyl azide     — CuAAC
-    "C#CC",                   # propyne         — CuAAC
-    "CS",                     # methanethiol    — ThiolEne
-    "C=CC",                   # propene         — ThiolEne
-    "OC(=O)c1ccccc1",         # benzoic acid    — AmideCoupling
-    "NCC",                    # ethylamine      — AmideCoupling
+    "C#CCN",  # propargylamine  — alkyne + amine
+    "CCN=[N+]=[N-]",  # ethyl azide     — CuAAC
+    "C#CC",  # propyne         — CuAAC
+    "CS",  # methanethiol    — ThiolEne
+    "C=CC",  # propene         — ThiolEne
+    "OC(=O)c1ccccc1",  # benzoic acid    — AmideCoupling
+    "NCC",  # ethylamine      — AmideCoupling
 ]
 
 #: Domains tracked by the benchmark.  Each domain has a CSV path,
@@ -236,12 +293,14 @@ def _load_click_rules() -> List[Any]:
         Suzuki,
         ThiolEne,
     )
+
     return [CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling]
 
 
 def _load_partner_terms() -> List[Any]:
     """Build partner terms from :data:`PARTNER_SMILE_LIST`."""
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
     out: List[Any] = []
     for smi in PARTNER_SMILE_LIST:
         try:
@@ -256,6 +315,7 @@ def _load_tanimoto_protocol(
 ) -> Any:
     """Construct a :class:`TanimotoOODProtocol` (Wf-7 ship)."""
     from molmetal_lam.lam_chem.ood_protocol import TanimotoOODProtocol
+
     return TanimotoOODProtocol(threshold=float(threshold))
 
 
@@ -290,13 +350,17 @@ def _load_metal_samples(
         if metal_col not in fields:
             log.error(
                 "Column %r missing from %s; fields=%r",
-                metal_col, csv_path, fields,
+                metal_col,
+                csv_path,
+                fields,
             )
             return out
         if smiles_col not in fields:
             log.error(
                 "Column %r missing from %s; fields=%r",
-                smiles_col, csv_path, fields,
+                smiles_col,
+                csv_path,
+                fields,
             )
             return out
         skipped = 0
@@ -431,9 +495,7 @@ def _benchmark_one(
         record["n_visited"] = int(last_result.get("n_visited", 0))
         record["n_products"] = int(last_result.get("n_products", 0))
         record["max_depth_seen"] = int(last_result.get("max_depth_seen", 0))
-        record["well_typed_rate"] = float(
-            last_result.get("well_typed_rate", 1.0)
-        )
+        record["well_typed_rate"] = float(last_result.get("well_typed_rate", 1.0))
     except Exception as exc:
         record["status"] = "error"
         record["parse_error"] = f"{type(exc).__name__}: {exc}"[:240]
@@ -511,10 +573,8 @@ def _filter_ood_subset(
         "n_ood": int(n_ood),
         "n_not_ood": int(n_not_ood),
         "ood_rate": float(n_ood / n_total) if n_total else 0.0,
-        "mean_max_tanimoto": float(statistics.fmean(max_sims))
-        if max_sims else 0.0,
-        "median_max_tanimoto": float(statistics.median(max_sims))
-        if max_sims else 0.0,
+        "mean_max_tanimoto": float(statistics.fmean(max_sims)) if max_sims else 0.0,
+        "median_max_tanimoto": float(statistics.median(max_sims)) if max_sims else 0.0,
         "max_max_tanimoto": float(max(max_sims)) if max_sims else 0.0,
         "n_unparseable_query": int(n_unparseable),
         "threshold": float(ood_protocol.threshold),
@@ -577,9 +637,7 @@ def _aggregate_per_metal(
         walls = [float(r["wall_time_s"]) for r in ok_records]
         mems = [float(r["memory_mb"]) for r in ok_records]
         mean_wall = float(statistics.fmean(walls))
-        std_wall = (
-            float(statistics.stdev(walls)) if len(walls) >= 2 else 0.0
-        )
+        std_wall = float(statistics.stdev(walls)) if len(walls) >= 2 else 0.0
         median_wall = float(statistics.median(walls))
         peak_mem = float(max(mems)) if mems else 0.0
         total_wall = float(sum(walls))
@@ -600,9 +658,7 @@ def _aggregate_per_metal(
         "total_wall_time": total_wall,
         "n_error": int(n_err),
         "n_metal_coordinated": int(n_metal),
-        "metal_coordination_rate": float(
-            (n_metal / n) if n else 0.0
-        ),
+        "metal_coordination_rate": float((n_metal / n) if n else 0.0),
     }
 
 
@@ -613,7 +669,9 @@ def run_closure_ood_benchmark(
     n_samples: int = DEFAULT_N_SAMPLES,
     *,
     domains: Sequence[str] = (
-        "platinai_5k", "metalcytotox_5metal", "tmqm_dblock",
+        "platinai_5k",
+        "metalcytotox_5metal",
+        "tmqm_dblock",
     ),
     method: str = DEFAULT_METHOD,
     tanimoto_threshold: float = DEFAULT_TANIMOTO_THRESHOLD,
@@ -662,8 +720,12 @@ def run_closure_ood_benchmark(
     log.info(
         "[wf41_closure_ood] start: domains=%s, method=%s, n_per_metal=%d, "
         "max_depth=%d, threshold=%.2f, seeds=%d",
-        list(domains), str(method), int(n_samples),
-        int(max_depth), float(tanimoto_threshold), int(seeds),
+        list(domains),
+        str(method),
+        int(n_samples),
+        int(max_depth),
+        float(tanimoto_threshold),
+        int(seeds),
     )
 
     method_norm = str(method).lower().replace(" ", "")
@@ -676,9 +738,7 @@ def run_closure_ood_benchmark(
     # Lazy-loaded heavy objects.
     click_rules = _load_click_rules()
     partner_terms = _load_partner_terms()
-    click_rule_names = [
-        getattr(r, "name", type(r).__name__) for r in click_rules
-    ]
+    click_rule_names = [getattr(r, "name", type(r).__name__) for r in click_rules]
 
     # Train pool (used only when applying the OOD filter).
     train_pool: List[str] = []
@@ -706,9 +766,7 @@ def run_closure_ood_benchmark(
     per_domain_per_metal_seed_aggregate: Dict[
         str, Dict[str, List[Dict[str, float]]]
     ] = {}
-    per_domain_seed_aggregates: Dict[
-        str, List[Dict[str, float]]
-    ] = {}
+    per_domain_seed_aggregates: Dict[str, List[Dict[str, float]]] = {}
     ood_audit: Dict[str, Dict[str, Dict[str, Any]]] = {}
     all_records: List[Dict[str, Any]] = []
 
@@ -748,24 +806,36 @@ def run_closure_ood_benchmark(
             for seed_i in range(n_seeds):
                 offset = seed_i * int(n_samples)
                 smis = _load_metal_samples(
-                    csv_path, str(metal), int(n_samples),
-                    smiles_col=smiles_col, metal_col=metal_col,
+                    csv_path,
+                    str(metal),
+                    int(n_samples),
+                    smiles_col=smiles_col,
+                    metal_col=metal_col,
                     offset=int(offset),
                 )
                 if not smis:
                     log.warning(
-                        "[wf41_closure_ood] %s/%s/seed=%d: no SMILES "
-                        "found", domain, metal, seed_i,
+                        "[wf41_closure_ood] %s/%s/seed=%d: no SMILES " "found",
+                        domain,
+                        metal,
+                        seed_i,
                     )
                     seed_records.append([])
-                    seed_aggregates.append(_aggregate_per_metal(
-                        [], n_input=0, n_ood=0,
-                    ))
+                    seed_aggregates.append(
+                        _aggregate_per_metal(
+                            [],
+                            n_input=0,
+                            n_ood=0,
+                        )
+                    )
                     continue
 
                 if apply_ood_filter:
                     ood_subset, audit = _filter_ood_subset(
-                        smis, train_pool, ood_protocol, str(metal),
+                        smis,
+                        train_pool,
+                        ood_protocol,
+                        str(metal),
                     )
                     per_metal_ood_audit[metal] = audit
                     smis_to_run = [s for (_, s, _) in ood_subset]
@@ -787,7 +857,9 @@ def run_closure_ood_benchmark(
                 records: List[Dict[str, Any]] = []
                 for i, smi in enumerate(smis_to_run):
                     rec = _benchmark_one(
-                        smi, i, str(metal),
+                        smi,
+                        i,
+                        str(metal),
                         domain=str(domain),
                         click_rules=click_rules,
                         partner_terms=partner_terms,
@@ -796,11 +868,13 @@ def run_closure_ood_benchmark(
                     )
                     records.append(rec)
                 seed_records.append(records)
-                seed_aggregates.append(_aggregate_per_metal(
-                    records,
-                    n_input=int(len(smis)),
-                    n_ood=int(n_ood),
-                ))
+                seed_aggregates.append(
+                    _aggregate_per_metal(
+                        records,
+                        n_input=int(len(smis)),
+                        n_ood=int(n_ood),
+                    )
+                )
 
             # End for seed_i — collapse all seeds into per_metal_records.
             per_metal_records[metal] = [
@@ -808,12 +882,8 @@ def run_closure_ood_benchmark(
             ]
             per_metal_aggregate[metal] = _aggregate_per_metal(
                 per_metal_records[metal],
-                n_input=int(sum(
-                    s["n_input"] for s in seed_aggregates
-                )),
-                n_ood=int(sum(
-                    s["n_ood"] for s in seed_aggregates
-                )),
+                n_input=int(sum(s["n_input"] for s in seed_aggregates)),
+                n_ood=int(sum(s["n_ood"] for s in seed_aggregates)),
             )
             per_metal_seed_records[metal] = seed_records
             per_metal_seed_aggregate[metal] = seed_aggregates
@@ -821,24 +891,25 @@ def run_closure_ood_benchmark(
             log.info(
                 "[wf41_closure_ood] %s/%s: n_input=%d n_ood=%d "
                 "closure_ok=%d rate=%.4f mean_wall=%.3fs seeds=%d",
-                domain, metal, agg["n_input"], agg["n_ood"],
-                agg["n_closure_ok"], agg["closure_reachability_rate"],
-                agg["mean_wall_time"], n_seeds,
+                domain,
+                metal,
+                agg["n_input"],
+                agg["n_ood"],
+                agg["n_closure_ok"],
+                agg["closure_reachability_rate"],
+                agg["mean_wall_time"],
+                n_seeds,
             )
 
         # Domain-level aggregate across all metals.
         domain_records = [
-            rec
-            for metal in domain_metals
-            for rec in per_metal_records.get(metal, [])
+            rec for metal in domain_metals for rec in per_metal_records.get(metal, [])
         ]
         n_input_total = sum(
-            int(per_metal_aggregate.get(m, {}).get("n_input", 0))
-            for m in domain_metals
+            int(per_metal_aggregate.get(m, {}).get("n_input", 0)) for m in domain_metals
         )
         n_ood_total = sum(
-            int(per_metal_aggregate.get(m, {}).get("n_ood", 0))
-            for m in domain_metals
+            int(per_metal_aggregate.get(m, {}).get("n_ood", 0)) for m in domain_metals
         )
         per_domain_records[domain] = domain_records
         per_domain_aggregate[domain] = _aggregate_per_metal(
@@ -860,17 +931,16 @@ def run_closure_ood_benchmark(
 
     overall = _aggregate_per_metal(
         all_records,
-        n_input=int(sum(
-            per_domain_aggregate[d]["n_input"] for d in per_domain_aggregate
-        )),
-        n_ood=int(sum(
-            per_domain_aggregate[d]["n_ood"] for d in per_domain_aggregate
-        )),
+        n_input=int(
+            sum(per_domain_aggregate[d]["n_input"] for d in per_domain_aggregate)
+        ),
+        n_ood=int(sum(per_domain_aggregate[d]["n_ood"] for d in per_domain_aggregate)),
     )
     total_wall_s = time.perf_counter() - t_total_0
 
     try:
         import torch  # local; cheap
+
         torch_ver = torch.__version__
     except Exception:
         torch_ver = "n/a"
@@ -911,9 +981,14 @@ def run_closure_ood_benchmark(
                 ],
                 "per_metal": {
                     metal: {
-                        "aggregate": dict(per_domain_per_metal_aggregate[d].get(metal, {})),
+                        "aggregate": dict(
+                            per_domain_per_metal_aggregate[d].get(metal, {})
+                        ),
                         "seed_aggregate": [
-                            dict(s) for s in per_domain_per_metal_seed_aggregate.get(d, {}).get(metal, [])
+                            dict(s)
+                            for s in per_domain_per_metal_seed_aggregate.get(d, {}).get(
+                                metal, []
+                            )
                         ],
                         "records": list(per_domain_per_metal_records[d].get(metal, [])),
                         "ood_audit": dict(ood_audit[d].get(metal, {})),
@@ -964,6 +1039,7 @@ def save_closure_ood_benchmark(
     def _coerce(o: Any) -> Any:
         try:
             import numpy as _np
+
             if isinstance(o, (_np.floating, _np.integer)):
                 return o.item()
             if isinstance(o, _np.ndarray):
@@ -979,12 +1055,22 @@ def save_closure_ood_benchmark(
 
     csv_path = output_dir / "per_domain.csv"
     fields = [
-        "domain", "metal", "n_input", "n_ood", "n_samples",
-        "n_closure_ok", "closure_reachability_rate", "ood_rate",
-        "metal_coordination_rate", "n_metal_coordinated",
+        "domain",
+        "metal",
+        "n_input",
+        "n_ood",
+        "n_samples",
+        "n_closure_ok",
+        "closure_reachability_rate",
+        "ood_rate",
+        "metal_coordination_rate",
+        "n_metal_coordinated",
         "mean_wall_time",
-        "std_wall_time", "median_wall_time", "peak_memory_mb",
-        "total_wall_time", "n_error",
+        "std_wall_time",
+        "median_wall_time",
+        "peak_memory_mb",
+        "total_wall_time",
+        "n_error",
     ]
     with csv_path.open("w", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=fields)
@@ -993,8 +1079,11 @@ def save_closure_ood_benchmark(
             d_info = payload.get("per_domain", {}).get(domain, {})
             for metal in DOMAIN_SPECS.get(domain, {}).get("metals", []):
                 agg = (
-                    d_info.get("per_metal", {}).get(metal, {}).get(
-                        "aggregate", {},
+                    d_info.get("per_metal", {})
+                    .get(metal, {})
+                    .get(
+                        "aggregate",
+                        {},
                     )
                 )
                 row: Dict[str, Any] = {f: agg.get(f, "") for f in fields}
@@ -1012,9 +1101,7 @@ def save_closure_ood_benchmark(
     }
 
 
-def _write_markdown(
-    payload: Dict[str, Any], output_dir: Path
-) -> None:
+def _write_markdown(payload: Dict[str, Any], output_dir: Path) -> None:
     """Write the human-readable ``ood_closure.md`` summary."""
     md_path = output_dir / "ood_closure.md"
     method = payload.get("method", "")
@@ -1043,18 +1130,22 @@ def _write_markdown(
     lines.append(f"**Date (UTC)**: {payload['timestamp_utc']}  ")
     lines.append(f"**Tool**: `{payload['tool']}`  ")
     lines.append(f"**Method**: `{method}`  ")
-    lines.append(f"**Tanimoto threshold**: "
-                 f"{float(payload.get('tanimoto_threshold', 0.4)):.2f}  ")
-    lines.append(f"**Train pool size (tmQM)**: "
-                 f"{int(payload.get('n_train_pool', 0))}  ")
+    lines.append(
+        f"**Tanimoto threshold**: "
+        f"{float(payload.get('tanimoto_threshold', 0.4)):.2f}  "
+    )
+    lines.append(
+        f"**Train pool size (tmQM)**: " f"{int(payload.get('n_train_pool', 0))}  "
+    )
     lines.append(f"**Domains**: {', '.join(domains)}  ")
-    lines.append(f"**N samples per metal**: "
-                 f"{int(payload.get('n_samples_per_metal', 0))}  ")
+    lines.append(
+        f"**N samples per metal**: " f"{int(payload.get('n_samples_per_metal', 0))}  "
+    )
     lines.append(f"**Max depth**: {payload['max_depth']}  ")
-    lines.append(f"**Click rules**: "
-                 f"{', '.join(payload.get('click_rule_names', []))}  ")
-    lines.append(f"**Partner terms**: "
-                 f"{int(payload.get('n_partners', 0))}  ")
+    lines.append(
+        f"**Click rules**: " f"{', '.join(payload.get('click_rule_names', []))}  "
+    )
+    lines.append(f"**Partner terms**: " f"{int(payload.get('n_partners', 0))}  ")
     lines.append(f"**Seeds**: {payload['seeds']}  ")
     lines.append(f"**Total wall**: {total_wall:.2f} s  ")
     lines.append("")
@@ -1066,20 +1157,15 @@ def _write_markdown(
     lines.append(f"| N OOD (after filter) | {overall_n_ood} |")
     lines.append(f"| N samples run | {overall_n} |")
     lines.append(f"| N closure_ok | {overall_ok} |")
+    lines.append(f"| closure_reachability_rate | {overall_rate:.4f} |")
     lines.append(
-        f"| closure_reachability_rate | {overall_rate:.4f} |"
+        f"| mean_wall_time (s) | " f"{float(agg.get('mean_wall_time', 0.0)):.6f} |"
     )
     lines.append(
-        f"| mean_wall_time (s) | "
-        f"{float(agg.get('mean_wall_time', 0.0)):.6f} |"
+        f"| std_wall_time (s) | " f"{float(agg.get('std_wall_time', 0.0)):.6f} |"
     )
     lines.append(
-        f"| std_wall_time (s) | "
-        f"{float(agg.get('std_wall_time', 0.0)):.6f} |"
-    )
-    lines.append(
-        f"| peak_memory_mb | "
-        f"{float(agg.get('peak_memory_mb', 0.0)):.4f} |"
+        f"| peak_memory_mb | " f"{float(agg.get('peak_memory_mb', 0.0)):.4f} |"
     )
     lines.append(f"| N error | {int(agg.get('n_error', 0))} |")
     lines.append("")
@@ -1095,31 +1181,27 @@ def _write_markdown(
     )
     n_seeds = max(1, int(payload.get("seeds", 1)))
     for domain in domains:
-        d_agg = payload.get("per_domain", {}).get(domain, {}).get(
-            "aggregate", {},
+        d_agg = (
+            payload.get("per_domain", {})
+            .get(domain, {})
+            .get(
+                "aggregate",
+                {},
+            )
         )
         if not d_agg:
             continue
         # Per-domain mean/std across seeds (mean of per-seed rates).
         seed_aggs = (
-            payload.get("per_domain", {}).get(domain, {})
-            .get("seed_aggregate", [])
+            payload.get("per_domain", {}).get(domain, {}).get("seed_aggregate", [])
         )
         if seed_aggs:
-            rates = [
-                float(s.get("closure_reachability_rate", 0.0))
-                for s in seed_aggs
-            ]
+            rates = [float(s.get("closure_reachability_rate", 0.0)) for s in seed_aggs]
             mean_rate = float(statistics.fmean(rates))
-            std_rate = (
-                float(statistics.stdev(rates))
-                if len(rates) >= 2 else 0.0
-            )
+            std_rate = float(statistics.stdev(rates)) if len(rates) >= 2 else 0.0
             rate_str = f"{mean_rate:.4f} ± {std_rate:.4f}"
         else:
-            rate_str = (
-                f"{float(d_agg.get('closure_reachability_rate', 0.0)):.4f}"
-            )
+            rate_str = f"{float(d_agg.get('closure_reachability_rate', 0.0)):.4f}"
         lines.append(
             f"| {domain} | {int(d_agg.get('n_input', 0))} "
             f"| {int(d_agg.get('n_ood', 0))} "
@@ -1140,10 +1222,7 @@ def _write_markdown(
         "|-------------------|----------|"
     )
     for domain in domains:
-        per_metal = (
-            payload.get("per_domain", {}).get(domain, {})
-            .get("per_metal", {})
-        )
+        per_metal = payload.get("per_domain", {}).get(domain, {}).get("per_metal", {})
         for metal in DOMAIN_SPECS.get(domain, {}).get("metals", []):
             m_agg = per_metal.get(metal, {}).get("aggregate", {})
             if not m_agg:
@@ -1199,11 +1278,14 @@ def _build_argparser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--n-samples", type=int, default=DEFAULT_N_SAMPLES,
+        "--n-samples",
+        type=int,
+        default=DEFAULT_N_SAMPLES,
         help="Samples per (domain, metal) (default 50).",
     )
     p.add_argument(
-        "--domains", nargs="+",
+        "--domains",
+        nargs="+",
         default=["platinai_5k", "metalcytotox_5metal"],
         choices=("platinai_5k", "metalcytotox_5metal", "tmqm_dblock"),
         help=(
@@ -1226,40 +1308,56 @@ def _build_argparser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--tanimoto-threshold", type=float,
+        "--tanimoto-threshold",
+        type=float,
         default=DEFAULT_TANIMOTO_THRESHOLD,
         help="Tanimoto OOD threshold (default 0.4).",
     )
     p.add_argument(
-        "--platinai-csv", type=Path, default=DEFAULT_PLATINAI_CSV,
+        "--platinai-csv",
+        type=Path,
+        default=DEFAULT_PLATINAI_CSV,
         help="Path to PlatinAI 5K CSV.",
     )
     p.add_argument(
-        "--metalcyto-csv", type=Path, default=DEFAULT_METALCYTO_CSV,
+        "--metalcyto-csv",
+        type=Path,
+        default=DEFAULT_METALCYTO_CSV,
         help="Path to MetalCytoToxDB 5-metal CSV.",
     )
     p.add_argument(
-        "--tmqm-csv", type=Path, default=DEFAULT_TMQM_CSV,
+        "--tmqm-csv",
+        type=Path,
+        default=DEFAULT_TMQM_CSV,
         help="Path to tmQM d-block training-pool CSV.",
     )
     p.add_argument(
-        "--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR,
+        "--output-dir",
+        type=Path,
+        default=DEFAULT_OUTPUT_DIR,
         help="Output directory for the JSON + CSV + Markdown reports.",
     )
     p.add_argument(
-        "--max-depth", type=int, default=DEFAULT_MAX_DEPTH,
+        "--max-depth",
+        type=int,
+        default=DEFAULT_MAX_DEPTH,
         help="Closure BFS max depth (default 1).",
     )
     p.add_argument(
-        "--max-products", type=int, default=DEFAULT_MAX_PRODUCTS,
+        "--max-products",
+        type=int,
+        default=DEFAULT_MAX_PRODUCTS,
         help="ProductiveSpace BFS safety cap (default 64).",
     )
     p.add_argument(
-        "--seeds", type=int, default=DEFAULT_SEEDS,
+        "--seeds",
+        type=int,
+        default=DEFAULT_SEEDS,
         help="Number of independent seeds (default 1; placeholder).",
     )
     p.add_argument(
-        "--log-level", default="INFO",
+        "--log-level",
+        default="INFO",
         choices=("DEBUG", "INFO", "WARNING", "ERROR"),
     )
     return p
@@ -1292,10 +1390,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "[wf41_closure_ood] DONE: domains=%d method=%s n_input=%d "
         "n_ood=%d closure_ok=%d rate=%.4f mean_wall=%.6fs peak_mem=%.2fMB "
         "total_wall=%.2fs",
-        len(payload["domains"]), payload["method"],
-        agg["n_input"], agg["n_ood"], agg["n_closure_ok"],
-        agg["closure_reachability_rate"], agg["mean_wall_time"],
-        agg["peak_memory_mb"], payload["total_wall_time_s"],
+        len(payload["domains"]),
+        payload["method"],
+        agg["n_input"],
+        agg["n_ood"],
+        agg["n_closure_ok"],
+        agg["closure_reachability_rate"],
+        agg["mean_wall_time"],
+        agg["peak_memory_mb"],
+        payload["total_wall_time_s"],
     )
     print(
         f"[wf41_closure_ood] n_domains={len(payload['domains'])} "

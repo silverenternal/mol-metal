@@ -105,13 +105,12 @@ RDLogger.DisableLog("rdApp.*")
 # Defaults — match the Wf-185 / Krasnov 2026 protocol.
 # ---------------------------------------------------------------------------
 DEFAULT_SUBSET: str = "lbap_core_ic50_assay"
-DEFAULT_ECFP4_RADIUS: int = 2      # ECFP4 == Morgan radius 2 (Rogers 2010).
-DEFAULT_ECFP4_NBITS: int = 2048    # 2048-bit, matches the Krasnov baseline.
+DEFAULT_ECFP4_RADIUS: int = 2  # ECFP4 == Morgan radius 2 (Rogers 2010).
+DEFAULT_ECFP4_NBITS: int = 2048  # 2048-bit, matches the Krasnov baseline.
 DEFAULT_FRACTIONS: Tuple[float, float, float] = (0.70, 0.10, 0.20)
 DEFAULT_SEED: int = 42
 DEFAULT_OUTPUT: Path = (
-    PROJECT_ROOT / "molmetal" / ".data" / "molmetal"
-    / "drugood_ecfp4_scaffold.csv"
+    PROJECT_ROOT / "molmetal" / ".data" / "molmetal" / "drugood_ecfp4_scaffold.csv"
 )
 
 # CSV schema — keep these stable; downstream Wf-275B tests assert against
@@ -199,7 +198,8 @@ def _murcko_scaffold(smi: str, include_chirality: bool = False) -> str:
         if mol is None:
             return ""
         scaf = MurckoScaffold.GetScaffoldForMol(
-            mol, includeChirality=include_chirality,
+            mol,
+            includeChirality=include_chirality,
         )
         if scaf is None:
             return ""
@@ -263,7 +263,8 @@ def scaffold_split_largest_first(
 
     # Sort scaffolds by descending size (largest-first strategy).
     groups = sorted(
-        scaffold_to_rows.values(), key=lambda g: (-len(g), g[0]),
+        scaffold_to_rows.values(),
+        key=lambda g: (-len(g), g[0]),
     )
 
     train_idx: List[int] = []
@@ -326,6 +327,7 @@ def count_scaffold_leakage(
     scaffold-split (the standard Wf-185 invariant) returns
     ``{0, 0, 0}``.
     """
+
     def _scaf_set(idxs: np.ndarray) -> set:
         out = set()
         for i in idxs:
@@ -451,7 +453,9 @@ def build_drugood_ecfp4_scaffold_csv(
     for split in ("train", "iid_val", "iid_test", "ood_val", "ood_test"):
         try:
             sub = load_drugood(
-                subset=subset, split=split, prefer_library=False,
+                subset=subset,
+                split=split,
+                prefer_library=False,
             )
             if max_rows is not None and len(sub) > max_rows:
                 sub = sub.iloc[:max_rows].copy()
@@ -467,6 +471,7 @@ def build_drugood_ecfp4_scaffold_csv(
             f"{PROJECT_ROOT / '.data/molmetal/drugood/ic50/official'}."
         )
     import pandas as pd
+
     pool = pd.concat(pool_dfs, axis=0, ignore_index=True)
     n_source = int(len(pool))
 
@@ -496,7 +501,9 @@ def build_drugood_ecfp4_scaffold_csv(
 
     # ECFP4 fingerprints.
     fps, canon_kept = compute_ecfp4_fingerprints(
-        canon_list, radius=radius, n_bits=n_bits,
+        canon_list,
+        radius=radius,
+        n_bits=n_bits,
     )
     # The two calls should give the same length (both drop parse
     # failures), but if they diverge we keep the min length so the
@@ -509,7 +516,9 @@ def build_drugood_ecfp4_scaffold_csv(
 
     # Scaffold split.
     train_idx, val_idx, test_idx = scaffold_split_largest_first(
-        canon_kept, fractions=fractions, seed=seed,
+        canon_kept,
+        fractions=fractions,
+        seed=seed,
     )
     n_train = int(len(train_idx))
     n_val = int(len(val_idx))
@@ -517,7 +526,10 @@ def build_drugood_ecfp4_scaffold_csv(
 
     # Scaffold leakage diagnostic.
     leak = count_scaffold_leakage(
-        canon_kept, train_idx, val_idx, test_idx,
+        canon_kept,
+        train_idx,
+        val_idx,
+        test_idx,
     )
 
     # Build the tidy CSV.
@@ -540,17 +552,19 @@ def build_drugood_ecfp4_scaffold_csv(
             scaf = f"__empty__{canon_kept[k]}"
         hex_str = _arr_to_hex_packed(fps[k])
         popcount = int(fps[k].sum())
-        rows_out.append({
-            "smiles": canon_kept[k],
-            "scaffold": scaf,
-            "ecfp4_bits": hex_str,
-            "ecfp4_popcount": popcount,
-            "pIC50": pIC50_list[k],
-            "active": active_list[k],
-            "subset": subset,
-            "split": split_assignment[k],
-            "idx": int(keep_idx[k]) if k < len(keep_idx) else k,
-        })
+        rows_out.append(
+            {
+                "smiles": canon_kept[k],
+                "scaffold": scaf,
+                "ecfp4_bits": hex_str,
+                "ecfp4_popcount": popcount,
+                "pIC50": pIC50_list[k],
+                "active": active_list[k],
+                "subset": subset,
+                "split": split_assignment[k],
+                "idx": int(keep_idx[k]) if k < len(keep_idx) else k,
+            }
+        )
 
     out_df = pd.DataFrame(rows_out, columns=list(CSV_COLUMNS))
     out_df.to_csv(output_path, index=False)
@@ -584,7 +598,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     p.add_argument("--ecfp4-radius", type=int, default=DEFAULT_ECFP4_RADIUS)
     p.add_argument("--ecfp4-nbits", type=int, default=DEFAULT_ECFP4_NBITS)
     p.add_argument(
-        "--fractions", nargs=3, type=float, default=list(DEFAULT_FRACTIONS),
+        "--fractions",
+        nargs=3,
+        type=float,
+        default=list(DEFAULT_FRACTIONS),
     )
     p.add_argument("--seed", type=int, default=DEFAULT_SEED)
     p.add_argument("--max-rows", type=int, default=0)

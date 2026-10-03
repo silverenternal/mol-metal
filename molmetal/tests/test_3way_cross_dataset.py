@@ -54,11 +54,18 @@ import pytest
 _HERE = Path(__file__).resolve().parent
 _REPO_ROOT = _HERE.parent  # molmetal/
 _SCRIPTS_DIR = _REPO_ROOT / "scripts"
-while _REPO_ROOT != _REPO_ROOT.parent and not (
-    _REPO_ROOT / "molmetal" / "scripts" / "bench_3way_platinai_4cell.py"
-).exists():
+while (
+    _REPO_ROOT != _REPO_ROOT.parent
+    and not (
+        _REPO_ROOT / "molmetal" / "scripts" / "bench_3way_platinai_4cell.py"
+    ).exists()
+):
     _REPO_ROOT = _REPO_ROOT.parent
-for _p in (str(_HERE.parent), str(_REPO_ROOT), str(_REPO_ROOT / "molmetal" / "scripts")):
+for _p in (
+    str(_HERE.parent),
+    str(_REPO_ROOT),
+    str(_REPO_ROOT / "molmetal" / "scripts"),
+):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
@@ -124,9 +131,9 @@ def test_load_platinai_cell_mcf7_shape():
     except (FileNotFoundError, RuntimeError):
         pytest.skip("PlatinAI CSV not available")
     assert X.ndim == 2
-    assert X.shape[1] == FEATURE_DIM, (
-        f"expected {FEATURE_DIM}-d features; got {X.shape[1]}"
-    )
+    assert (
+        X.shape[1] == FEATURE_DIM
+    ), f"expected {FEATURE_DIM}-d features; got {X.shape[1]}"
     assert y.ndim == 1
     assert X.shape[0] == y.shape[0] == len(smiles)
     assert np.all(np.isfinite(y))
@@ -156,8 +163,15 @@ def test_evaluate_fold_returns_fit_record():
     n_tr = max(10, n // 2)
     tr, te = perm[:n_tr], perm[n_tr:]
     rec = plat_evaluate_fold(
-        cell_line="mcf7", seed=0, fold=0, tr=tr, te=te,
-        X=X, y=y, epochs=3, hilbert_dim=32,
+        cell_line="mcf7",
+        seed=0,
+        fold=0,
+        tr=tr,
+        te=te,
+        X=X,
+        y=y,
+        epochs=3,
+        hilbert_dim=32,
     )
     assert isinstance(rec, PlatFitRecord)
     assert math.isfinite(rec.combined_r2)
@@ -174,9 +188,13 @@ def test_evaluate_fold_returns_fit_record():
 def test_evaluate_cell_line_returns_records():
     try:
         recs = evaluate_cell_line(
-            cell_line="mcf7", seeds=(0,), n_folds=2,
-            epochs=3, hilbert_dim=32,
-            csv_path="molmetal/data/platinai_4cell.csv", n_max=120,
+            cell_line="mcf7",
+            seeds=(0,),
+            n_folds=2,
+            epochs=3,
+            hilbert_dim=32,
+            csv_path="molmetal/data/platinai_4cell.csv",
+            n_max=120,
         )
     except (FileNotFoundError, RuntimeError):
         pytest.skip("PlatinAI CSV not available")
@@ -192,14 +210,30 @@ def test_evaluate_cell_line_returns_records():
 def test_aggregate_cell_line_per_seed_summary():
     records = [
         PlatFitRecord(
-            cell_line="mcf7", seed=0, fold=0, n_train=40, n_test=10,
-            combined_r2=-0.05, hilbert_r2=-0.10, mph_r2=-0.20, astr_r2=-0.30,
-            wall_s=1.0, collapse_detected=False,
+            cell_line="mcf7",
+            seed=0,
+            fold=0,
+            n_train=40,
+            n_test=10,
+            combined_r2=-0.05,
+            hilbert_r2=-0.10,
+            mph_r2=-0.20,
+            astr_r2=-0.30,
+            wall_s=1.0,
+            collapse_detected=False,
         ),
         PlatFitRecord(
-            cell_line="mcf7", seed=0, fold=1, n_train=40, n_test=10,
-            combined_r2=0.10, hilbert_r2=-0.05, mph_r2=0.05, astr_r2=-0.20,
-            wall_s=1.2, collapse_detected=True,
+            cell_line="mcf7",
+            seed=0,
+            fold=1,
+            n_train=40,
+            n_test=10,
+            combined_r2=0.10,
+            hilbert_r2=-0.05,
+            mph_r2=0.05,
+            astr_r2=-0.20,
+            wall_s=1.2,
+            collapse_detected=True,
         ),
     ]
     out = aggregate_cell_line(records)
@@ -220,9 +254,11 @@ def test_platinai_smoke_bench_produces_artifacts(tmp_path):
     out_dir = tmp_path / "wf128_p3_plat_smoke"
     argv = [
         "--smoke",
-        "--out-dir", str(out_dir),
+        "--out-dir",
+        str(out_dir),
     ]
     from bench_3way_platinai_4cell import main as plat_main
+
     try:
         rc = plat_main(argv)
     except Exception as exc:
@@ -230,9 +266,7 @@ def test_platinai_smoke_bench_produces_artifacts(tmp_path):
     assert rc == 0
     assert (out_dir / "synthesis.md").exists()
     assert (out_dir / "mcf7" / "per_seed_metrics.json").exists()
-    payload = json.loads(
-        (out_dir / "mcf7" / "per_seed_metrics.json").read_text()
-    )
+    payload = json.loads((out_dir / "mcf7" / "per_seed_metrics.json").read_text())
     assert payload["cell_line"] == "mcf7"
     assert "per_seed" in payload and len(payload["per_seed"]) == 1
     assert "config" in payload
@@ -245,9 +279,7 @@ def test_platinai_smoke_bench_produces_artifacts(tmp_path):
 def test_tmqm_default_elements_subset():
     assert len(DEFAULT_ELEMENTS) == 5
     for el in DEFAULT_ELEMENTS:
-        assert el in ALL_DBLOCK_ELEMENTS, (
-            f"{el} not in d-block elements list"
-        )
+        assert el in ALL_DBLOCK_ELEMENTS, f"{el} not in d-block elements list"
     assert len(ALL_DBLOCK_ELEMENTS) == 30
 
 
@@ -280,9 +312,7 @@ def test_list_available_elements_min_rows():
     # All available elements should have ≥ MIN_ROWS_PER_ELEMENT rows
     # (verified indirectly: we only emit elements that pass the filter).
     # We can also assert the list is non-empty (real CSV has data).
-    assert len(available) >= 5, (
-        f"expected ≥ 5 elements; got {len(available)}"
-    )
+    assert len(available) >= 5, f"expected ≥ 5 elements; got {len(available)}"
 
 
 # ---------------------------------------------------------------------------
@@ -292,9 +322,11 @@ def test_tmqm_smoke_bench_produces_artifacts(tmp_path):
     out_dir = tmp_path / "wf128_p3_tmqm_smoke"
     argv = [
         "--smoke",
-        "--out-dir", str(out_dir),
+        "--out-dir",
+        str(out_dir),
     ]
     from bench_3way_tmqm import main as tmqm_main
+
     try:
         rc = tmqm_main(argv)
     except Exception as exc:
@@ -303,9 +335,7 @@ def test_tmqm_smoke_bench_produces_artifacts(tmp_path):
     assert (out_dir / "synthesis.md").exists()
     # Cu is a smoke element.
     assert (out_dir / "Cu" / "per_seed_metrics.json").exists()
-    payload = json.loads(
-        (out_dir / "Cu" / "per_seed_metrics.json").read_text()
-    )
+    payload = json.loads((out_dir / "Cu" / "per_seed_metrics.json").read_text())
     assert payload["element"] == "Cu"
     assert "per_seed" in payload and len(payload["per_seed"]) == 1
     assert "config" in payload

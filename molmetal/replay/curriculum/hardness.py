@@ -49,6 +49,7 @@ import numpy as np
 try:
     import torch
     from torch import nn
+
     _TORCH_OK = True
 except Exception:  # pragma: no cover
     _TORCH_OK = False
@@ -58,6 +59,7 @@ except Exception:  # pragma: no cover
 # multiple predictor instances.  Defining the class inside a method
 # creates a new class on every call, which breaks isinstance checks.
 if _TORCH_OK:
+
     class _HardnessMLP(nn.Module):  # type: ignore[misc]
         """2-layer MLP with sigmoid output — defined once per module."""
 
@@ -264,7 +266,11 @@ class HardnessPredictor:
         if _TORCH_OK and isinstance(self.model, _HardnessMLP):
             self.model.eval()
             with torch.no_grad():
-                out = self.model(torch.as_tensor(feats, dtype=torch.float32)).cpu().numpy()
+                out = (
+                    self.model(torch.as_tensor(feats, dtype=torch.float32))
+                    .cpu()
+                    .numpy()
+                )
             return out.reshape(-1)
         # numpy fallback
         z = feats @ self.model["w"] + self.model["b"]
@@ -368,7 +374,9 @@ class HardnessPredictor:
                 # BCE magnitude for diagnostics
                 eps = 1e-12
                 p_clip = np.clip(p, eps, 1.0 - eps)
-                final_loss = float(-(y * np.log(p_clip) + (1 - y) * np.log(1 - p_clip)).mean())
+                final_loss = float(
+                    -(y * np.log(p_clip) + (1 - y) * np.log(1 - p_clip)).mean()
+                )
         self.model["w"] = w_param
         self.model["b"] = b_param
         preds = self.predict(feats)
@@ -404,7 +412,9 @@ class HardnessPredictor:
         m_geom = self._geometry_score(smiles)
         m_bind = self._binding_score(predicted_pic50, target_pic50)
         m_red = self._reduction_score(metal, target_pic50)
-        return HardnessDecomposition(m_geometry=m_geom, m_binding=m_bind, m_reduction=m_red)
+        return HardnessDecomposition(
+            m_geometry=m_geom, m_binding=m_bind, m_reduction=m_red
+        )
 
     @staticmethod
     def _geometry_score(smiles: str) -> float:
@@ -417,6 +427,7 @@ class HardnessPredictor:
         """
         try:
             from rdkit import Chem  # noqa: F401  (imported for side-effect only)
+
             # If the SMILES is unparseable we cannot say; default to 0.5.
             if smiles is None or not smiles:
                 return 0.5

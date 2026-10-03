@@ -10,6 +10,7 @@ Verifies:
 
 Per Wf-377-A2 brief — 3 NEW tests, 3/3 PASS expected.
 """
+
 from __future__ import annotations
 
 import json
@@ -96,9 +97,9 @@ def test_wf377a2_result_json_has_per_cohort_stats():
     data = _read_json(RESULT_JSON)
     assert data, f"missing or empty: {RESULT_JSON}"
     assert "per_cohort" in data, "missing 'per_cohort' key in result.json"
-    assert len(data["per_cohort"]) == 3, (
-        f"expected 3 cohorts in per_cohort, got {len(data['per_cohort'])}"
-    )
+    assert (
+        len(data["per_cohort"]) == 3
+    ), f"expected 3 cohorts in per_cohort, got {len(data['per_cohort'])}"
     cohort_names = {c["cohort"] for c in data["per_cohort"]}
     assert cohort_names == {
         "platinai_4cell",
@@ -162,13 +163,11 @@ def test_wf377a2_alternative_splits_compared():
         for split_name, sr in splits.items():
             # Each split has the required R² fields
             for key in ("r2_mean", "r2_std", "n_seeds", "r2_per_seed"):
-                assert key in sr, (
-                    f"{cohort}/{split_name} missing key {key!r}"
-                )
+                assert key in sr, f"{cohort}/{split_name} missing key {key!r}"
             # Sanity: r2_per_seed length matches n_seeds
-            assert len(sr["r2_per_seed"]) == sr["n_seeds"], (
-                f"{cohort}/{split_name} r2_per_seed length mismatch"
-            )
+            assert (
+                len(sr["r2_per_seed"]) == sr["n_seeds"]
+            ), f"{cohort}/{split_name} r2_per_seed length mismatch"
     # Honest-negative invariant: ALL 4 split strategies stay negative on n=200
     # cohorts (the headline MEASURED finding of the diagnostic).
     for cohort in ("platinai_4cell", "hilbert"):

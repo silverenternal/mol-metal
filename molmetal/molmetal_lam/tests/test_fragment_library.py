@@ -11,6 +11,7 @@ Covers:
       correctly identifies + excludes unstable / hard-to-synthesize
       fragments from the validated pool.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -53,11 +54,10 @@ def test_fragment_library_size() -> None:
     """
     pool = FRAGMENT_LIBRARY_200_TILES()
     assert isinstance(pool, list)
-    assert len(pool) >= 200, (
-        f"Fragment pool has only {len(pool)} tiles, target >= 200"
-    )
+    assert len(pool) >= 200, f"Fragment pool has only {len(pool)} tiles, target >= 200"
     # All emitted tiles must be Tile instances.
     from molmetal_lam.tile_lib.tile import Tile
+
     assert all(isinstance(t, Tile) for t in pool)
 
 
@@ -117,25 +117,21 @@ def test_fragment_tile_validity() -> None:
         params = AllChem.ETKDGv3()
         params.randomSeed = 0xC11C
         rc = AllChem.EmbedMolecule(mol_h, params)
-        assert rc == 0, (
-            f"Tile {t.tile_id} ({t.smiles}) ETKDGv3 embed failed rc={rc}"
-        )
+        assert rc == 0, f"Tile {t.tile_id} ({t.smiles}) ETKDGv3 embed failed rc={rc}"
 
         # Descriptor filters: MW in [40, 300], logP in [-2, 5].
         mw = float(Descriptors.MolWt(mol))
         logp = float(Descriptors.MolLogP(mol))
-        assert 40.0 <= mw <= 300.0, (
-            f"Tile {t.tile_id} ({t.smiles}) MW out of range: {mw}"
-        )
-        assert -2.0 <= logp <= 5.0, (
-            f"Tile {t.tile_id} ({t.smiles}) logP out of range: {logp}"
-        )
+        assert (
+            40.0 <= mw <= 300.0
+        ), f"Tile {t.tile_id} ({t.smiles}) MW out of range: {mw}"
+        assert (
+            -2.0 <= logp <= 5.0
+        ), f"Tile {t.tile_id} ({t.smiles}) logP out of range: {logp}"
 
         # Tile.coords must be populated (embed succeeded) and have the
         # expected (N_atoms, 3) shape.
-        assert t.coords is not None, (
-            f"Tile {t.tile_id} ({t.smiles}) has no 3D coords"
-        )
+        assert t.coords is not None, f"Tile {t.tile_id} ({t.smiles}) has no 3D coords"
 
 
 # ---------------------------------------------------------------------------
@@ -156,9 +152,7 @@ def test_fragment_pool_covers_all_four_categories() -> None:
     has_alkyne = any(
         t.has_group("terminal_alkyne") or t.has_group("cyclooctyne") for t in pool
     )
-    has_diene = any(
-        t.has_group("diene") or t.has_group("dienophile") for t in pool
-    )
+    has_diene = any(t.has_group("diene") or t.has_group("dienophile") for t in pool)
     has_thiol = any(t.has_group("thiol") for t in pool)
 
     assert has_azide, "No azide tile in fragment pool"
@@ -195,9 +189,9 @@ def test_fragment_pool_metrics_populated() -> None:
     # required to satisfy the strict L-3 contract; the 5 new
     # families are checked separately below.
     legacy = {"azide", "alkyne", "diene", "thiol"}
-    assert legacy <= set(metrics.keys()), (
-        f"Missing legacy L-3 categories; got {sorted(metrics.keys())}"
-    )
+    assert legacy <= set(
+        metrics.keys()
+    ), f"Missing legacy L-3 categories; got {sorted(metrics.keys())}"
     for cat in ("azide", "alkyne", "diene", "thiol"):
         assert "input" in metrics[cat]
         assert "valid" in metrics[cat]
@@ -243,9 +237,7 @@ def test_top10_highest_sa_tiles_identified() -> None:
     blacklist stores them in descending order for readability).
     """
     pool = FRAGMENT_LIBRARY_200_TILES()
-    assert len(pool) >= 200, (
-        f"Pool has {len(pool)} tiles; need >= 200 for SA test"
-    )
+    assert len(pool) >= 200, f"Pool has {len(pool)} tiles; need >= 200 for SA test"
     # Score every tile in the validated pool.
     scored = []
     for t in pool:
@@ -277,8 +269,7 @@ def test_top10_highest_sa_tiles_identified() -> None:
     stored = {s: sa for _, s, sa in TOP10_HIGHEST_SA_PAIRS}
     for s, v in scored[:10]:
         assert abs(stored[s] - v) < 1e-6, (
-            f"SA value mismatch for {s}: stored={stored[s]} "
-            f"computed={v}"
+            f"SA value mismatch for {s}: stored={stored[s]} " f"computed={v}"
         )
 
 
@@ -292,15 +283,15 @@ def test_filtered_pool_default_excludes_top10() -> None:
     pre = len(pool)
     # Default: keep_high_sa=False → top-10 removed.
     filtered = top10_filter_pool(pool)
-    assert len(filtered) == pre - 10, (
-        f"Expected {pre - 10} tiles after top-10 filter, got {len(filtered)}"
-    )
+    assert (
+        len(filtered) == pre - 10
+    ), f"Expected {pre - 10} tiles after top-10 filter, got {len(filtered)}"
     # No blacklisted SMILES survive the filter.
     smiles_in_filtered = {getattr(t, "smiles", "") for t in filtered}
     for black in TOP10_HIGHEST_SA_SMILES:
-        assert black not in smiles_in_filtered, (
-            f"Blacklisted SMILES survived filter: {black}"
-        )
+        assert (
+            black not in smiles_in_filtered
+        ), f"Blacklisted SMILES survived filter: {black}"
     # Opt-in: keep_high_sa=True → pool returned unchanged.
     kept = top10_filter_pool(pool, keep_high_sa=True)
     assert len(kept) == pre

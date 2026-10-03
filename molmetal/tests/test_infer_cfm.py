@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Tests for infer_cfm.py standalone inference CLI."""
+
 import json
 import os
 import tempfile
@@ -22,6 +23,7 @@ class TestInferCFM:
     def test_parse_args_defaults(self):
         """parse_args with no CLI overrides uses defaults."""
         import sys
+
         sys.argv = ["infer_cfm.py"]
         args = parse_args([])
         assert args.input_file == DEFAULTS["input_file"]
@@ -31,11 +33,15 @@ class TestInferCFM:
 
     def test_parse_args_with_overrides(self):
         """parse_args accepts custom --num-cycle, --batch-size, --device."""
-        args = parse_args(["--num-cycle", "3", "--batch-size", "16", "--device", "cuda"])
+        args = parse_args(
+            ["--num-cycle", "3", "--batch-size", "16", "--device", "cuda"]
+        )
         assert args.num_cycle == 3
         assert args.batch_size == 16
         assert args.device == "cuda"
-        print(f"test_parse_args_with_overrides PASS: num_cycle={args.num_cycle} device={args.device}")
+        print(
+            f"test_parse_args_with_overrides PASS: num_cycle={args.num_cycle} device={args.device}"
+        )
 
     def test_make_dirs_idempotent(self):
         """make_dirs with exist_ok=True does not raise on existing dir."""
@@ -62,13 +68,22 @@ class TestInferCFM:
 
     def test_infer_batch_with_stub_model(self):
         """infer_batch returns confidence + predictions dict."""
+
         class StubModel:
             def infer(self, smiles, num_cycle=1):
-                return {"confidence": 0.85, "predictions": [{"smiles": s} for s in smiles], "num_cycle": num_cycle}
+                return {
+                    "confidence": 0.85,
+                    "predictions": [{"smiles": s} for s in smiles],
+                    "num_cycle": num_cycle,
+                }
+
         import argparse
+
         args = parse_args([])
         out = infer_batch(StubModel(), ["CCO", "c1ccccc1"], args)
         assert "confidence" in out
         assert 0.0 <= out["confidence"] <= 1.0
         assert len(out["predictions"]) == 2
-        print(f"test_infer_batch_with_stub_model PASS: confidence={out['confidence']:.3f}")
+        print(
+            f"test_infer_batch_with_stub_model PASS: confidence={out['confidence']:.3f}"
+        )

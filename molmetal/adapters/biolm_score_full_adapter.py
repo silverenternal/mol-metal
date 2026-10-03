@@ -374,6 +374,7 @@ def _try_in_process_score_batch(
         device = torch.device("cpu")
         if encoder == "gatedgcn":
             from BioLM_Score.model.model4 import GatedGCN  # type: ignore
+
             ligmodel = GatedGCN(
                 in_channels=41,
                 edge_features=10,
@@ -394,6 +395,7 @@ def _try_in_process_score_batch(
             )
         elif encoder == "gt":
             from BioLM_Score.model.model4 import GraphTransformer  # type: ignore
+
             ligmodel = GraphTransformer(
                 in_channels=41,
                 edge_features=10,
@@ -490,8 +492,8 @@ def _try_cli_score_batch(
         # a hard-coded local clone path).
         env = os.environ.copy()
         existing_pp = env.get("PYTHONPATH", "")
-        env["PYTHONPATH"] = (
-            str(repo_root) + (os.pathsep + existing_pp if existing_pp else "")
+        env["PYTHONPATH"] = str(repo_root) + (
+            os.pathsep + existing_pp if existing_pp else ""
         )
         try:
             proc = subprocess.run(
@@ -556,8 +558,11 @@ def _try_mock_score_batch(smiles_list: Sequence[str]) -> Dict[str, float]:
 # ---------------------------------------------------------------------------
 def _aggregate(scores: Sequence[float]) -> Tuple[Optional[float], Optional[float]]:
     """Return ``(mean, std)`` over finite scores; ``(None, None)`` when empty."""
-    finite = [float(s) for s in scores if isinstance(s, (int, float))
-              and __import__("math").isfinite(s)]
+    finite = [
+        float(s)
+        for s in scores
+        if isinstance(s, (int, float)) and __import__("math").isfinite(s)
+    ]
     if not finite:
         return None, None
     mean = sum(finite) / len(finite)
@@ -698,8 +703,10 @@ class BioLMScoreFullAdapter:
                 res = None
             if res is not None:
                 # Length === len(clean) when in-process succeeds.
-                per = {smi: (float(s) if s is not None else float("nan"))
-                       for smi, s in zip(clean, res)}
+                per = {
+                    smi: (float(s) if s is not None else float("nan"))
+                    for smi, s in zip(clean, res)
+                }
                 finite = [v for v in per.values() if __import__("math").isfinite(v)]
                 mean, std = _aggregate(list(per.values()))
                 n_scored = len(finite)
@@ -735,8 +742,7 @@ class BioLMScoreFullAdapter:
                 timeout_sec=self.timeout_sec,
             )
             per_full = {smi: per.get(smi, float("nan")) for smi in clean}
-            finite = [v for v in per_full.values()
-                      if __import__("math").isfinite(v)]
+            finite = [v for v in per_full.values() if __import__("math").isfinite(v)]
             mean, std = _aggregate(list(per_full.values()))
             n_scored = len(finite)
             if status == "ok":
@@ -908,8 +914,10 @@ def _smoke_benchmark(
 
     print(f"status={col.status} inference_path={col.inference_path}")
     print(f"n_invoked={col.n_invoked} n_scored={col.n_scored}")
-    print(f"biolm_score_mean={col.biolm_score_mean} "
-          f"biolm_score_std={col.biolm_score_std}")
+    print(
+        f"biolm_score_mean={col.biolm_score_mean} "
+        f"biolm_score_std={col.biolm_score_std}"
+    )
     for smi, sc in col.per_smiles.items():
         print(f"{smi}\t{sc}")
     if col.notes:
@@ -938,7 +946,7 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
         "--allow-mock",
         action="store_true",
         help="Fall through to the deterministic mock path when "
-             "in-process + CLI are unavailable.",
+        "in-process + CLI are unavailable.",
     )
     parser.add_argument(
         "--encoder",

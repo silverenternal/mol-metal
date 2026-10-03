@@ -23,6 +23,7 @@ The tests below cover (1) and (2) for every registered metric. (3) is
 optional and skipped automatically when the underlying tool is
 unavailable on the test host.
 """
+
 from __future__ import annotations
 
 import os
@@ -57,22 +58,22 @@ class TestRegistryShape:
     def test_available_metrics_are_strings(self):
         names = available_metrics()
         for n in names:
-            assert isinstance(n, str) and n, (
-                f"metric name must be non-empty string, got {n!r}"
-            )
+            assert (
+                isinstance(n, str) and n
+            ), f"metric name must be non-empty string, got {n!r}"
 
     def test_no_mock_keyword_in_registry(self):
         """Hard guarantee: no metric name contains 'mock'."""
         for n in available_metrics():
-            assert "mock" not in n.lower(), (
-                f"metric {n!r} contains 'mock' — forbidden by Wf-43"
-            )
+            assert (
+                "mock" not in n.lower()
+            ), f"metric {n!r} contains 'mock' — forbidden by Wf-43"
 
     def test_every_metric_is_a_toolref(self):
         for n, ref in REGISTRY.items():
-            assert isinstance(ref, ToolRef), (
-                f"{n!r} maps to {type(ref).__name__}, not ToolRef"
-            )
+            assert isinstance(
+                ref, ToolRef
+            ), f"{n!r} maps to {type(ref).__name__}, not ToolRef"
             assert callable(ref.wrapper)
             assert isinstance(ref.tool_name, str) and ref.tool_name
             assert isinstance(ref.backend, str) and ref.backend
@@ -98,6 +99,7 @@ class TestRouting:
             def _recorder(ctx):
                 calls.setdefault(name, []).append(ctx)
                 return [0.0] * len(_as_smiles(ctx["molecules"]))
+
             return _recorder
 
         for metric, ref in REGISTRY.items():
@@ -314,7 +316,12 @@ class TestEndToEnd:
             pytest.skip("SA score not importable on this host")
         result = score_any("sa_score", molecules=["CCO", "CCCCO"])
         assert set(result.keys()) >= {
-            "metric", "tool", "backend", "values", "n", "status",
+            "metric",
+            "tool",
+            "backend",
+            "values",
+            "n",
+            "status",
         }
         assert result["metric"] == "sa_score"
         assert result["n"] == 2

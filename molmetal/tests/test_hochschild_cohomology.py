@@ -180,7 +180,13 @@ def test_differential_delta_zero_constant_three() -> None:
     alg = mlc_algebra()
     coch = _constant_three_cochain(value=1.5)
     test_args = [
-        [torch.tensor(0.5), torch.tensor(0.5), torch.tensor(0.5), torch.tensor(0.5), torch.tensor(0.5)],
+        [
+            torch.tensor(0.5),
+            torch.tensor(0.5),
+            torch.tensor(0.5),
+            torch.tensor(0.5),
+            torch.tensor(0.5),
+        ],
     ]
     # delta^2 raises the degree from 3 to 5 (so we need n+2 = 5 args).
     assert alg.delta_squared_zero(coch, test_args) is True

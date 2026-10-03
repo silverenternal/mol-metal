@@ -63,9 +63,9 @@ EXPECTED_VOCAB: tuple = (1, 6, 7, 8, 9, 15, 16, 17, 34, 35, 53, 78)
 # ---------------------------------------------------------------------------
 # Helpers — keep the tests independent of the ``flow_matching`` clone.
 # ---------------------------------------------------------------------------
-def _build_adapter(use_bond_head: bool = True,
-                   hidden_dim: int = 32,
-                   n_layers: int = 1) -> LipmanFlowMatchingAdapter:
+def _build_adapter(
+    use_bond_head: bool = True, hidden_dim: int = 32, n_layers: int = 1
+) -> LipmanFlowMatchingAdapter:
     """Construct an adapter without invoking :meth:`setup`.
 
     The decoder wiring lives inside :meth:`_generate_impl`, which
@@ -89,10 +89,13 @@ def _build_adapter(use_bond_head: bool = True,
     # ``adapter.device`` is set in __init__ as ``torch.device('cpu')``;
     # carry everything over to CPU explicitly.
     adapter.velocity_field = EGNNVelocityField(
-        hidden_dim=hidden_dim, n_layers=n_layers, max_atomic_number=100,
+        hidden_dim=hidden_dim,
+        n_layers=n_layers,
+        max_atomic_number=100,
     ).to(adapter.device)
     adapter.pocket_encoder = PocketEncoder(
-        hidden_dim=hidden_dim, max_atomic_number=100,
+        hidden_dim=hidden_dim,
+        max_atomic_number=100,
     ).to(adapter.device)
     # Wire the ODE solver + path stubs so :meth:`generate` and
     # :meth:`_generate_impl` do not crash on ``assert self.path is
@@ -101,6 +104,7 @@ def _build_adapter(use_bond_head: bool = True,
     from molmetal.adapters.flow_matching_lipman._reference_loader import (
         configure_reference,
     )
+
     configure_reference("molmetal/references/flow_matching")
     from molmetal.adapters.flow_matching_lipman._reference.path import (
         AffineProbPath,
@@ -114,6 +118,7 @@ def _build_adapter(use_bond_head: bool = True,
     from molmetal.adapters.flow_matching_lipman._reference.utils import (
         ModelWrapper,
     )
+
     adapter.scheduler = CondOTScheduler()
     adapter.path = AffineProbPath(scheduler=adapter.scheduler)
     adapter._ODESolver = ODESolver
@@ -121,8 +126,9 @@ def _build_adapter(use_bond_head: bool = True,
     return adapter
 
 
-def _attach_bond_head(adapter: LipmanFlowMatchingAdapter,
-                      pretrained: bool = True) -> BondOrderHead:
+def _attach_bond_head(
+    adapter: LipmanFlowMatchingAdapter, pretrained: bool = True
+) -> BondOrderHead:
     """Construct a :class:`BondOrderHead` and attach it to the adapter.
 
     When ``pretrained=True`` (the default) we use the
@@ -137,6 +143,7 @@ def _attach_bond_head(adapter: LipmanFlowMatchingAdapter,
     """
     if pretrained:
         from molmetal.models.bond_head import default_trained_head
+
         head = default_trained_head()
         head = head.to(adapter.device)
     else:
@@ -185,12 +192,12 @@ def test_decoder_wired_in_generate() -> None:
     )
     # ``bonds`` must be a (2, E) int64 tensor for every mol.
     for m in mols:
-        assert m.bonds.dim() == 2 and m.bonds.shape[0] == 2, (
-            f"bonds must be (2, E), got shape={tuple(m.bonds.shape)}"
-        )
-        assert m.bonds.dtype == torch.long, (
-            f"bonds dtype must be long, got {m.bonds.dtype}"
-        )
+        assert (
+            m.bonds.dim() == 2 and m.bonds.shape[0] == 2
+        ), f"bonds must be (2, E), got shape={tuple(m.bonds.shape)}"
+        assert (
+            m.bonds.dtype == torch.long
+        ), f"bonds dtype must be long, got {m.bonds.dtype}"
         # Bond types must align with the bond count.
         assert m.bond_types.shape[0] == m.bonds.shape[1], (
             f"bond_types ({m.bond_types.shape[0]}) must align "
@@ -286,15 +293,14 @@ def test_legacy_no_bond_head_keeps_empty_bonds() -> None:
     mols = adapter.generate(pocket=None, config=config)
     assert len(mols) == 2
     for m in mols:
-        assert m.bonds.shape == (2, 0), (
-            f"expected empty (2, 0) bonds in legacy mode, got {tuple(m.bonds.shape)}"
-        )
-        assert m.bond_types.shape == (0,), (
-            f"expected empty bond_types in legacy mode, got {tuple(m.bond_types.shape)}"
-        )
-        assert m.smiles == "", (
-            f"expected empty smiles in legacy mode, got {m.smiles!r}"
-        )
+        assert m.bonds.shape == (
+            2,
+            0,
+        ), f"expected empty (2, 0) bonds in legacy mode, got {tuple(m.bonds.shape)}"
+        assert m.bond_types.shape == (
+            0,
+        ), f"expected empty bond_types in legacy mode, got {tuple(m.bond_types.shape)}"
+        assert m.smiles == "", f"expected empty smiles in legacy mode, got {m.smiles!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -320,6 +326,7 @@ def test_bond_head_in_dim_matches_features() -> None:
     from molmetal.adapters.flow_matching_lipman._reference_loader import (
         configure_reference,
     )
+
     configure_reference("molmetal/references/flow_matching")
 
     adapter = _build_adapter(use_bond_head=True, hidden_dim=32, n_layers=1)
@@ -353,9 +360,10 @@ def test_bond_head_in_dim_matches_features() -> None:
     n_edges = 4
     pair_features = torch.randn(n_edges, expected_in_dim, device=adapter.device)
     out = adapter.bond_head(pair_features)
-    assert out.shape == (n_edges, 5), (
-        f"bond-head output shape {tuple(out.shape)} != (E, 5)"
-    )
+    assert out.shape == (
+        n_edges,
+        5,
+    ), f"bond-head output shape {tuple(out.shape)} != (E, 5)"
 
     # Verify the (E, 9) fallback would now be rejected (i.e. the
     # contract is enforced — a too-small feature tensor raises).
@@ -365,9 +373,9 @@ def test_bond_head_in_dim_matches_features() -> None:
 
     # Final check: BondOrderHead stores in_dim and the formula
     # produces the documented ``9 + 2*hidden_dim`` value.
-    assert expected_in_dim == 9 + 2 * 32, (
-        f"sanity-check formula 9+2*32=73, got {expected_in_dim}"
-    )
+    assert (
+        expected_in_dim == 9 + 2 * 32
+    ), f"sanity-check formula 9+2*32=73, got {expected_in_dim}"
 
 
 # ---------------------------------------------------------------------------
@@ -390,13 +398,14 @@ def test_vocab_mask_in_training_loss() -> None:
     from molmetal.adapters.flow_matching_lipman._reference_loader import (
         configure_reference,
     )
+
     configure_reference("molmetal/references/flow_matching")
 
     adapter = _build_adapter(use_bond_head=False, hidden_dim=16, n_layers=1)
     # The adapter has vocab_mask=True by default — confirm that.
-    assert adapter._vocab_mask is True, (
-        "vocab_mask must default to True for F3 to be active"
-    )
+    assert (
+        adapter._vocab_mask is True
+    ), "vocab_mask must default to True for F3 to be active"
     # Build a dummy optimizer so :meth:`train_step` does not crash on
     # ``self.optimizer.zero_grad()`` (mirrors what
     # :meth:`test_a5_joint_training.test_joint_bond_loss_flows` does).
@@ -411,6 +420,7 @@ def test_vocab_mask_in_training_loss() -> None:
     # "padded" since they all sit on a single line, but the CE
     # loss is computed on every node regardless).
     from molmetal.domain import Molecule
+
     mols: list = []
     for _ in range(2):
         mols.append(
@@ -462,8 +472,7 @@ def test_vocab_mask_in_training_loss() -> None:
     in_vocab_mask = torch.zeros(max_z, dtype=torch.bool)
     in_vocab_mask[list(vocab)] = True
     assert in_vocab_mask.sum() == len(vocab), (
-        "vocab setup failed — in_vocab_mask does not have "
-        f"{len(vocab)} True entries"
+        "vocab setup failed — in_vocab_mask does not have " f"{len(vocab)} True entries"
     )
 
     # Out-of-vocab slots must be -inf across ALL rows.
@@ -504,6 +513,7 @@ def test_setup_warns_when_hidden_dim_small() -> None:
     from molmetal.adapters.flow_matching_lipman._reference_loader import (
         configure_reference,
     )
+
     configure_reference("molmetal/references/flow_matching")
 
     # (a) hidden_dim=32 -> UserWarning fires
@@ -526,7 +536,8 @@ def test_setup_warns_when_hidden_dim_small() -> None:
         _warnings.simplefilter("always")
         adapter_prod.setup(device="cpu")
     hidden_dim_warnings = [
-        w for w in caught2
+        w
+        for w in caught2
         if issubclass(w.category, UserWarning)
         and "hidden_dim" in str(w.message)
         and "production" in str(w.message).lower()
@@ -599,7 +610,9 @@ def test_no_bonds_zeros_placeholder_remains() -> None:
     # After stripping the legitimate else fallback, no bare
     # ``bonds_tensor = torch.zeros(2, 0`` should remain.
     leftover = re.findall(
-        r"^\s*bonds_tensor\s*=\s*torch\.zeros\(2,\s*0", stripped, re.MULTILINE,
+        r"^\s*bonds_tensor\s*=\s*torch\.zeros\(2,\s*0",
+        stripped,
+        re.MULTILINE,
     )
     assert leftover == [], (
         f"_generate_impl still contains a `bonds_tensor = torch.zeros(2, 0)` "
@@ -642,20 +655,20 @@ def test_hidden_dim_default_is_128() -> None:
 
     repo_root = Path(__file__).resolve().parents[3]
     script_path = repo_root / "molmetal" / "scripts" / "r10_cfg_real_crossdocked.py"
-    assert script_path.exists(), f"r10_cfg_real_crossdocked.py not found at {script_path}"
+    assert (
+        script_path.exists()
+    ), f"r10_cfg_real_crossdocked.py not found at {script_path}"
 
-    spec = importlib.util.spec_from_file_location(
-        "_r10_cfg_for_test", str(script_path)
-    )
+    spec = importlib.util.spec_from_file_location("_r10_cfg_for_test", str(script_path))
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)  # type: ignore[union-attr]
 
     parser = argparse.ArgumentParser()
-    for action in module.main.__wrapped__._actions if hasattr(
-        module.main, "__wrapped__"
-    ) else []:
+    for action in (
+        module.main.__wrapped__._actions if hasattr(module.main, "__wrapped__") else []
+    ):
         pass  # placeholder; we will instead inspect the module-level body
 
     # The script defines a `def main():` and inside it does
@@ -663,7 +676,9 @@ def test_hidden_dim_default_is_128() -> None:
     # than re-run argparse (which would also need --gpu-binary), we
     # read the source line to assert the literal default value.
     src = script_path.read_text(encoding="utf-8")
-    assert "'--hidden-dim'" in src, "r10_cfg_real_crossdocked.py missing --hidden-dim arg"
+    assert (
+        "'--hidden-dim'" in src
+    ), "r10_cfg_real_crossdocked.py missing --hidden-dim arg"
     # Look for any line of the form:
     #   p.add_argument('--hidden-dim', type=int, default=<N>)
     import re
@@ -703,15 +718,17 @@ def test_vel_scale_initial_value() -> None:
     requires the lit-grounded Round-13 sweep (out of scope here).
     """
     field = EGNNVelocityField(
-        hidden_dim=32, n_layers=1, max_atomic_number=100,
+        hidden_dim=32,
+        n_layers=1,
+        max_atomic_number=100,
     )
     assert hasattr(field, "vel_scale"), (
         "Phase 2.2: EGNNVelocityField must expose a learnable vel_scale "
         "parameter (replacement for the tanh saturation gate)"
     )
-    assert isinstance(field.vel_scale, torch.nn.Parameter), (
-        f"vel_scale must be nn.Parameter, got {type(field.vel_scale).__name__}"
-    )
+    assert isinstance(
+        field.vel_scale, torch.nn.Parameter
+    ), f"vel_scale must be nn.Parameter, got {type(field.vel_scale).__name__}"
     # Init value must be exactly 1.0 — preserves bit-exact equivalence
     # with the pre-Phase-2.2 behaviour at initialisation time (the
     # forward output equals ``vel_head(h) * 1.0 * (x_t - centroid) + last_v``
@@ -720,9 +737,9 @@ def test_vel_scale_initial_value() -> None:
         f"vel_scale must be a scalar tensor, got shape "
         f"{tuple(field.vel_scale.shape)}"
     )
-    assert torch.allclose(field.vel_scale.detach(), torch.tensor(1.0)), (
-        f"vel_scale must init to 1.0, got {field.vel_scale.detach().item()}"
-    )
+    assert torch.allclose(
+        field.vel_scale.detach(), torch.tensor(1.0)
+    ), f"vel_scale must init to 1.0, got {field.vel_scale.detach().item()}"
 
 
 def test_vel_scale_learnable() -> None:
@@ -739,7 +756,9 @@ def test_vel_scale_learnable() -> None:
     (that requires the joint retrain).
     """
     field = EGNNVelocityField(
-        hidden_dim=16, n_layers=1, max_atomic_number=100,
+        hidden_dim=16,
+        n_layers=1,
+        max_atomic_number=100,
     )
     field.train()
     # Seed vel_head.weight to a non-zero value so the gradient through
@@ -797,7 +816,9 @@ def test_no_tanh_saturation() -> None:
     Albergo 2023 — only require C^1 linearity, not a specific scale).
     """
     field = EGNNVelocityField(
-        hidden_dim=16, n_layers=1, max_atomic_number=100,
+        hidden_dim=16,
+        n_layers=1,
+        max_atomic_number=100,
     )
     field.eval()
     # Force the gate scalar to a large value: vel_head.weight -> +10
@@ -810,10 +831,7 @@ def test_no_tanh_saturation() -> None:
     # non-zero and large.
     b, n = 1, 4
     x = torch.tensor(
-        [[[0.0, 0.0, 0.0],
-          [10.0, 0.0, 0.0],
-          [0.0, 10.0, 0.0],
-          [0.0, 0.0, 10.0]]],
+        [[[0.0, 0.0, 0.0], [10.0, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]]],
         dtype=torch.float32,
     )
     atom_types = torch.tensor([[6, 6, 6, 6]], dtype=torch.long)
@@ -866,12 +884,10 @@ def test_pcgrad_no_conflict_equivalent_sgd() -> None:
     g1 = torch.randn(64)
     g2 = g1.clone()  # perfectly aligned
     resolved, n_conf, mean_cos = _pcgrad_resolve([g1, g2])
-    assert n_conf == 0, (
-        f"aligned gradients must produce 0 conflicts, got {n_conf}"
-    )
-    assert mean_cos > 0.99, (
-        f"mean_cos_sim must be ~+1 for aligned grads, got {mean_cos}"
-    )
+    assert n_conf == 0, f"aligned gradients must produce 0 conflicts, got {n_conf}"
+    assert (
+        mean_cos > 0.99
+    ), f"mean_cos_sim must be ~+1 for aligned grads, got {mean_cos}"
     assert torch.allclose(resolved[0], g1, atol=1e-6), (
         "PCGrad must be a no-op for non-conflicting gradients "
         "(resolved[0] should equal g1 bit-for-bit)"
@@ -907,17 +923,16 @@ def test_pcgrad_resolves_conflict() -> None:
     g2 = -base.clone()  # perfectly anti-parallel
     # Pre-check: cos(g1, g2) = -1 by construction.
     cos_pre = (g1 @ g2) / (g1.norm() * g2.norm() + 1e-12)
-    assert cos_pre.item() < -0.99, (
-        f"Test fixture must produce cos < -0.99; got {cos_pre.item()}"
-    )
+    assert (
+        cos_pre.item() < -0.99
+    ), f"Test fixture must produce cos < -0.99; got {cos_pre.item()}"
     resolved, n_conf, mean_cos = _pcgrad_resolve([g1, g2])
     assert n_conf >= 1, (
-        f"anti-parallel gradients must register >= 1 conflict, "
-        f"got {n_conf}"
+        f"anti-parallel gradients must register >= 1 conflict, " f"got {n_conf}"
     )
-    assert mean_cos < 0.0, (
-        f"mean_cos must stay negative when conflicts exist, got {mean_cos}"
-    )
+    assert (
+        mean_cos < 0.0
+    ), f"mean_cos must stay negative when conflicts exist, got {mean_cos}"
     # Theorem 1 guarantee: after projection, the resolved gradients
     # must NOT have a negative dot product with the *other* task's
     # original gradient — i.e. the conflict has been removed.
@@ -983,9 +998,7 @@ def test_pcgrad_preserves_total_magnitude() -> None:
             f"||g||={pre:.4f}, ||proj||={post:.4f}"
         )
     # Conflict count must be >= 1 on this regime.
-    assert n_conf >= 1, (
-        f"Anti-parallel pair must register >= 1 conflict, got {n_conf}"
-    )
+    assert n_conf >= 1, f"Anti-parallel pair must register >= 1 conflict, got {n_conf}"
 
 
 def test_pcgrad_apply_to_params_writes_grad() -> None:
@@ -1000,7 +1013,7 @@ def test_pcgrad_apply_to_params_writes_grad() -> None:
     g1_p1 = torch.ones(4)
     g1_p2 = -torch.ones(4)
     g2_p1 = -torch.ones(4)  # conflicting with g1
-    g2_p2 = torch.ones(4)   # conflicting with g1
+    g2_p2 = torch.ones(4)  # conflicting with g1
     n_conf, mean_cos = _pcgrad_apply_to_params(
         params=[p1, p2],
         task_grads_list=[
@@ -1009,15 +1022,13 @@ def test_pcgrad_apply_to_params_writes_grad() -> None:
         ],
         fallback_grads=[g1_p1 + g2_p1, g1_p2 + g2_p2],
     )
-    assert n_conf >= 1, (
-        f"Expected >= 1 conflict (anti-parallel), got {n_conf}"
-    )
+    assert n_conf >= 1, f"Expected >= 1 conflict (anti-parallel), got {n_conf}"
     assert p1.grad is not None, "p1.grad must be populated"
     assert p2.grad is not None, "p2.grad must be populated"
     # Per-task projection must not amplify (post-norm <= pre-norm).
-    assert p1.grad.norm().item() <= g1_p1.norm().item() + 1e-6, (
-        "PCGrad must not amplify p1's gradient"
-    )
+    assert (
+        p1.grad.norm().item() <= g1_p1.norm().item() + 1e-6
+    ), "PCGrad must not amplify p1's gradient"
     # The post-projection p1.grad must have non-negative inner product
     # with the OTHER task's original p1 gradient (Theorem 1).
     post_dot = (p1.grad * g2_p1).sum().item()
@@ -1036,23 +1047,27 @@ def test_pcgrad_constructor_default_off() -> None:
     runs without PCGrad unless explicitly opted in.
     """
     adapter = LipmanFlowMatchingAdapter(
-        hidden_dim=32, n_layers=1, max_atomic_number=100,
+        hidden_dim=32,
+        n_layers=1,
+        max_atomic_number=100,
     )
-    assert adapter._use_pcgrad is False, (
-        f"use_pcgrad must default to False, got {adapter._use_pcgrad}"
-    )
+    assert (
+        adapter._use_pcgrad is False
+    ), f"use_pcgrad must default to False, got {adapter._use_pcgrad}"
     # Stats must be initialised.
-    assert "n_conflicts" in adapter.last_pcgrad_stats, (
-        "last_pcgrad_stats dict must be initialised in the constructor"
-    )
+    assert (
+        "n_conflicts" in adapter.last_pcgrad_stats
+    ), "last_pcgrad_stats dict must be initialised in the constructor"
     # Opt-in path: pass use_pcgrad=True and verify it sticks.
     adapter2 = LipmanFlowMatchingAdapter(
-        hidden_dim=32, n_layers=1, max_atomic_number=100,
+        hidden_dim=32,
+        n_layers=1,
+        max_atomic_number=100,
         use_pcgrad=True,
     )
-    assert adapter2._use_pcgrad is True, (
-        f"use_pcgrad=True must be respected, got {adapter2._use_pcgrad}"
-    )
+    assert (
+        adapter2._use_pcgrad is True
+    ), f"use_pcgrad=True must be respected, got {adapter2._use_pcgrad}"
 
 
 # ---------------------------------------------------------------------------
@@ -1096,44 +1111,46 @@ def test_pac_bayes_bound_computed() -> None:
     n = 200
     delta = 0.05
     result = pac_bayes_bound(
-        empirical_risk=emp, kl_q_p=kl, n=n, delta=delta,
+        empirical_risk=emp,
+        kl_q_p=kl,
+        n=n,
+        delta=delta,
     )
     assert isinstance(result, PACBayesResult), (
-        f"pac_bayes_bound must return a PACBayesResult, got "
-        f"{type(result).__name__}"
+        f"pac_bayes_bound must return a PACBayesResult, got " f"{type(result).__name__}"
     )
     # ---- Structural validity ----
-    assert math.isfinite(result.bound), (
-        f"bound must be finite, got {result.bound}"
-    )
-    assert math.isfinite(result.bound_squared), (
-        f"bound_squared must be finite, got {result.bound_squared}"
-    )
-    assert result.bound >= 0.0, (
-        f"bound must be non-negative, got {result.bound}"
-    )
+    assert math.isfinite(result.bound), f"bound must be finite, got {result.bound}"
+    assert math.isfinite(
+        result.bound_squared
+    ), f"bound_squared must be finite, got {result.bound_squared}"
+    assert result.bound >= 0.0, f"bound must be non-negative, got {result.bound}"
     assert result.bound_squared >= 0.0, (
         f"bound_squared (complexity term) must be non-negative, "
         f"got {result.bound_squared}"
     )
-    assert result.n == n, (
-        f"n must be preserved, expected {n}, got {result.n}"
-    )
-    assert result.delta == delta, (
-        f"delta must be preserved, expected {delta}, got {result.delta}"
-    )
+    assert result.n == n, f"n must be preserved, expected {n}, got {result.n}"
+    assert (
+        result.delta == delta
+    ), f"delta must be preserved, expected {delta}, got {result.delta}"
     # ---- McAllester 1999 Theorem 1: bound == R_hat + complexity ----
     expected_complexity = math.sqrt(
         (kl + math.log(2.0 / delta)) / (2.0 * n),
     )
     assert math.isclose(
-        result.bound_squared, expected_complexity, rel_tol=1e-9, abs_tol=1e-12,
+        result.bound_squared,
+        expected_complexity,
+        rel_tol=1e-9,
+        abs_tol=1e-12,
     ), (
         f"complexity term must equal sqrt((KL + log(2/delta)) / (2n)); "
         f"expected {expected_complexity:.6f}, got {result.bound_squared:.6f}"
     )
     assert math.isclose(
-        result.bound, emp + expected_complexity, rel_tol=1e-9, abs_tol=1e-12,
+        result.bound,
+        emp + expected_complexity,
+        rel_tol=1e-9,
+        abs_tol=1e-12,
     ), (
         f"bound must equal emp_risk + complexity; "
         f"expected {emp + expected_complexity:.6f}, "
@@ -1145,14 +1162,19 @@ def test_pac_bayes_bound_computed() -> None:
         f"got bound={result.bound:.4f} < emp_risk={result.empirical_risk:.4f}"
     )
     # ---- is_valid flag: hand-picked inputs are all in-range ----
-    assert result.is_valid is True, (
-        f"is_valid must be True for in-range inputs, got {result.is_valid}"
-    )
+    assert (
+        result.is_valid is True
+    ), f"is_valid must be True for in-range inputs, got {result.is_valid}"
     # ---- as_dict round-trip ----
     as_dict = result.as_dict()
     for key in (
-        "empirical_risk", "kl_q_p", "delta", "n",
-        "bound", "bound_squared", "is_valid",
+        "empirical_risk",
+        "kl_q_p",
+        "delta",
+        "n",
+        "bound",
+        "bound_squared",
+        "is_valid",
     ):
         assert key in as_dict, f"as_dict must include {key!r}"
 
@@ -1179,7 +1201,10 @@ def test_pac_bayes_bound_decreases_with_n() -> None:
     n_values = [50, 200, 800, 3200]
     bounds = [
         pac_bayes_bound(
-            empirical_risk=emp, kl_q_p=kl, n=n, delta=delta,
+            empirical_risk=emp,
+            kl_q_p=kl,
+            n=n,
+            delta=delta,
         ).bound
         for n in n_values
     ]
@@ -1194,17 +1219,18 @@ def test_pac_bayes_bound_decreases_with_n() -> None:
     # complexity(n1) / complexity(n2) ~ sqrt(n2 / n1)
     complexities = [
         pac_bayes_bound(
-            empirical_risk=emp, kl_q_p=kl, n=n, delta=delta,
+            empirical_risk=emp,
+            kl_q_p=kl,
+            n=n,
+            delta=delta,
         ).bound_squared
         for n in n_values
     ]
     expected_ratios = [
-        math.sqrt(n_values[i + 1] / n_values[i])
-        for i in range(len(n_values) - 1)
+        math.sqrt(n_values[i + 1] / n_values[i]) for i in range(len(n_values) - 1)
     ]
     actual_ratios = [
-        complexities[i] / complexities[i + 1]
-        for i in range(len(complexities) - 1)
+        complexities[i] / complexities[i + 1] for i in range(len(complexities) - 1)
     ]
     for actual, expected in zip(actual_ratios, expected_ratios):
         assert math.isclose(actual, expected, rel_tol=1e-9), (
@@ -1243,7 +1269,10 @@ def test_pac_bayes_bound_under_delta() -> None:
     deltas = [0.5, 0.1, 0.01, 0.001]
     results = [
         pac_bayes_bound(
-            empirical_risk=emp, kl_q_p=kl, n=n, delta=d,
+            empirical_risk=emp,
+            kl_q_p=kl,
+            n=n,
+            delta=d,
         )
         for d in deltas
     ]
@@ -1262,8 +1291,7 @@ def test_pac_bayes_bound_under_delta() -> None:
     complexities = [r.bound_squared for r in results]
     for i in range(len(complexities) - 1):
         expected_ratio = math.sqrt(
-            (kl + math.log(2.0 / deltas[i]))
-            / (kl + math.log(2.0 / deltas[i + 1])),
+            (kl + math.log(2.0 / deltas[i])) / (kl + math.log(2.0 / deltas[i + 1])),
         )
         actual_ratio = complexities[i] / complexities[i + 1]
         assert math.isclose(actual_ratio, expected_ratio, rel_tol=1e-9), (
@@ -1273,14 +1301,22 @@ def test_pac_bayes_bound_under_delta() -> None:
     # ---- Sanity: from_losses entry point produces the same bound ----
     losses = [emp * 10.0] * n  # mean loss = emp * 10 = 4.0 (clamped to 1.0)
     from_losses = pac_bayes_bound_from_losses(
-        losses=losses, kl_q_p=kl, delta=0.05, loss_clamp=10.0,
+        losses=losses,
+        kl_q_p=kl,
+        delta=0.05,
+        loss_clamp=10.0,
     )
     direct = pac_bayes_bound(
         empirical_risk=from_losses.empirical_risk,
-        kl_q_p=kl, n=n, delta=0.05,
+        kl_q_p=kl,
+        n=n,
+        delta=0.05,
     )
     assert math.isclose(
-        from_losses.bound, direct.bound, rel_tol=1e-9, abs_tol=1e-12,
+        from_losses.bound,
+        direct.bound,
+        rel_tol=1e-9,
+        abs_tol=1e-12,
     ), (
         f"pac_bayes_bound_from_losses and pac_bayes_bound must agree on "
         f"the same inputs; from_losses={from_losses.bound:.6f}, "
@@ -1292,17 +1328,16 @@ def test_pac_bayes_bound_under_delta() -> None:
     p2 = torch.nn.Parameter(torch.randn(8))
     kl_val = kl_l2_proxy([p1], [p2])
     assert kl_val >= 0.0, (
-        f"kl_l2_proxy must be non-negative (Neyshabur 2017 L2 proxy), "
-        f"got {kl_val}"
+        f"kl_l2_proxy must be non-negative (Neyshabur 2017 L2 proxy), " f"got {kl_val}"
     )
-    assert math.isfinite(kl_val), (
-        f"kl_l2_proxy must be finite for random tensors, got {kl_val}"
-    )
+    assert math.isfinite(
+        kl_val
+    ), f"kl_l2_proxy must be finite for random tensors, got {kl_val}"
     # KL must be 0 if prior == posterior
     kl_zero = kl_l2_proxy([p1], [p1])
-    assert math.isclose(kl_zero, 0.0, abs_tol=1e-12), (
-        f"kl_l2_proxy(prior, prior) must be exactly 0, got {kl_zero}"
-    )
+    assert math.isclose(
+        kl_zero, 0.0, abs_tol=1e-12
+    ), f"kl_l2_proxy(prior, prior) must be exactly 0, got {kl_zero}"
 
 
 # ---------------------------------------------------------------------------
@@ -1364,7 +1399,8 @@ def test_soft_distance_mask_lifts_decode() -> None:
     for seed in range(n_clouds):
         g = torch.Generator().manual_seed(seed)
         z = torch.tensor(
-            [6, 6, 7, 8, 17, 6, 6, 7, 78, 17], dtype=torch.long,
+            [6, 6, 7, 8, 17, 6, 6, 7, 78, 17],
+            dtype=torch.long,
         )
         coords = torch.randn(10, 3, generator=g) * 1.5  # ~3 Å spread
         cloud = AtomCloud(positions=coords, atomic_numbers=z)
@@ -1372,9 +1408,7 @@ def test_soft_distance_mask_lifts_decode() -> None:
         # Count as "decoded" if the rework pipeline ran (any mol with
         # at least one bond OR an error that mentions the rework
         # finding viable bonds).
-        if dec.n_bonds > 0 or (
-            dec.error and "no viable bonds" not in dec.error
-        ):
+        if dec.n_bonds > 0 or (dec.error and "no viable bonds" not in dec.error):
             n_decoded += 1
     assert n_decoded > 0, (
         f"decoder rework produced n_decoded=0 over {n_clouds} clouds; "
@@ -1401,9 +1435,9 @@ def test_type_compat_supports_C_C_bond() -> None:
     p_cc = float(p[0].item())
     p_cpt = float(p[1].item())
     p_cn = float(p[2].item())
-    assert p_cc > p_cpt, (
-        f"C-C ({p_cc}) should have higher type-compat than C-Pt ({p_cpt})"
-    )
+    assert (
+        p_cc > p_cpt
+    ), f"C-C ({p_cc}) should have higher type-compat than C-Pt ({p_cpt})"
     # Spot-check ATOM_TYPE_COMPAT directly.
     assert ATOM_TYPE_COMPAT[(6, 6)] > ATOM_TYPE_COMPAT[(6, 78)], (
         f"ATOM_TYPE_COMPAT lookup table must have C-C > C-Pt; "
@@ -1432,7 +1466,11 @@ def test_valence_cap_prevents_overvalent() -> None:
     pair_dst = torch.tensor([1, 2, 3, 4, 5], dtype=torch.long)
     bond_orders_soft = torch.ones(5)
     penalty = valence_log_barrier(
-        bond_orders_soft, z, pair_src, pair_dst, n_atoms=6,
+        bond_orders_soft,
+        z,
+        pair_src,
+        pair_dst,
+        n_atoms=6,
     )
     # Sum of orders at C0 = 5, cap = 4, excess = 5 - 4 + eps = ~1.
     # Squared hinge = (1)^2 = 1.
@@ -1443,26 +1481,34 @@ def test_valence_cap_prevents_overvalent() -> None:
     # 4 bonds (saturated) → excess ~ 0, penalty ~ 0.
     bond_orders_4 = torch.ones(4)
     p_ok = valence_log_barrier(
-        bond_orders_4, z, pair_src[:4], pair_dst[:4], n_atoms=6,
+        bond_orders_4,
+        z,
+        pair_src[:4],
+        pair_dst[:4],
+        n_atoms=6,
     )
-    assert float(p_ok.item()) < 0.1, (
-        f"4-bond C should be near-zero penalty, got {float(p_ok.item())}"
-    )
+    assert (
+        float(p_ok.item()) < 0.1
+    ), f"4-bond C should be near-zero penalty, got {float(p_ok.item())}"
     # 3 bonds (under-valent) → near 0 (eps^2 from the floor in the
     # squared hinge — :func:`valence_log_barrier` adds ``eps=1e-3`` so
     # ``clamp(sum - cap + eps, 0)^2 = eps^2 = 1e-6`` for an
     # under-valent atom).
     bond_orders_3 = torch.ones(3)
     p_under = valence_log_barrier(
-        bond_orders_3, z, pair_src[:3], pair_dst[:3], n_atoms=6,
+        bond_orders_3,
+        z,
+        pair_src[:3],
+        pair_dst[:3],
+        n_atoms=6,
     )
-    assert float(p_under.item()) < 1e-4, (
-        f"3-bond C should have near-zero penalty (eps^2), got {float(p_under.item())}"
-    )
+    assert (
+        float(p_under.item()) < 1e-4
+    ), f"3-bond C should have near-zero penalty (eps^2), got {float(p_under.item())}"
     # Pt_II (Z=78) cap = 4 — same check.
-    assert DEFAULT_VALENCES[78] == 4, (
-        f"Pt_II (Z=78) max_valence must be 4, got {DEFAULT_VALENCES[78]}"
-    )
+    assert (
+        DEFAULT_VALENCES[78] == 4
+    ), f"Pt_II (Z=78) max_valence must be 4, got {DEFAULT_VALENCES[78]}"
 
 
 def test_decoder_rework_differentiable() -> None:
@@ -1487,9 +1533,9 @@ def test_decoder_rework_differentiable() -> None:
     loss = res.bond_logits.sum() + res.valence_penalty
     loss.backward()
     assert coords.grad is not None, "no gradient on coords"
-    assert torch.isfinite(coords.grad).all(), (
-        f"coords.grad contains non-finite values: {coords.grad}"
-    )
+    assert torch.isfinite(
+        coords.grad
+    ).all(), f"coords.grad contains non-finite values: {coords.grad}"
     g_norm = float(coords.grad.abs().sum().item())
     assert g_norm > 0.0, (
         f"coords.grad must be non-zero (soft distance + type compat are "
@@ -1518,12 +1564,12 @@ def test_decoder_rework_composes_with_bond_head() -> None:
     z = torch.tensor([6, 6, 6, 7, 78, 17], dtype=torch.long)
     coords = torch.tensor(
         [
-            [0.0, 0.0, 0.0],   # C0
-            [1.5, 0.0, 0.0],   # C1 (1.5 Å from C0)
-            [0.0, 1.5, 0.0],   # C2 (1.5 Å from C0)
-            [1.4, 1.4, 0.0],   # N  (1.4 Å from C1, sqrt(2)*1.0=1.41 from C2)
-            [3.0, 0.0, 0.0],   # Pt (1.5 Å from C1, 1.5 Å from N)
-            [3.0, 2.3, 0.0],   # Cl (2.3 Å from Pt)
+            [0.0, 0.0, 0.0],  # C0
+            [1.5, 0.0, 0.0],  # C1 (1.5 Å from C0)
+            [0.0, 1.5, 0.0],  # C2 (1.5 Å from C0)
+            [1.4, 1.4, 0.0],  # N  (1.4 Å from C1, sqrt(2)*1.0=1.41 from C2)
+            [3.0, 0.0, 0.0],  # Pt (1.5 Å from C1, 1.5 Å from N)
+            [3.0, 2.3, 0.0],  # Cl (2.3 Å from Pt)
         ],
         dtype=torch.float32,
     )
@@ -1537,17 +1583,17 @@ def test_decoder_rework_composes_with_bond_head() -> None:
     p_cc_dist = float(res.p_dist[cc_idx].max().item())
     p_cc_type = float(res.p_type[cc_idx].max().item())
     # p_combined = p_dist * p_type; it should be ≤ min(p_dist, p_type).
-    assert p_cc_combined <= p_cc_dist + 1e-6, (
-        f"p_combined ({p_cc_combined}) should be <= p_dist ({p_cc_dist})"
-    )
-    assert p_cc_combined <= p_cc_type + 1e-6, (
-        f"p_combined ({p_cc_combined}) should be <= p_type ({p_cc_type})"
-    )
+    assert (
+        p_cc_combined <= p_cc_dist + 1e-6
+    ), f"p_combined ({p_cc_combined}) should be <= p_dist ({p_cc_dist})"
+    assert (
+        p_cc_combined <= p_cc_type + 1e-6
+    ), f"p_combined ({p_cc_combined}) should be <= p_type ({p_cc_type})"
     # The combined prior must be non-trivial (well above 0) for the
     # close C-C pair.
-    assert p_cc_combined > 0.5, (
-        f"C-C p_combined should be > 0.5 (1.5 Å + 1.0 compat), got {p_cc_combined}"
-    )
+    assert (
+        p_cc_combined > 0.5
+    ), f"C-C p_combined should be > 0.5 (1.5 Å + 1.0 compat), got {p_cc_combined}"
     # Pt-Cl pair (4,5): 2.3 Å is at the soft-band edge; p_dist ~ 0.5,
     # Pt-Cl compat=0.95.
     ptcl_idx = (res.edge_index[0] == 4) & (res.edge_index[1] == 5)
@@ -1557,12 +1603,12 @@ def test_decoder_rework_composes_with_bond_head() -> None:
     p_ptcl_dist = float(res.p_dist[ptcl_idx].max().item())
     p_ptcl_type = float(res.p_type[ptcl_idx].max().item())
     # Pt-Cl at 2.3 Å: p_dist ~ sigmoid(-(2.3-2.4)/0.3) = sigmoid(0.33) ≈ 0.58
-    assert 0.3 < p_ptcl_dist < 0.8, (
-        f"Pt-Cl at 2.3 Å p_dist should be in soft band (0.3-0.8), got {p_ptcl_dist}"
-    )
-    assert math.isclose(p_ptcl_type, 0.95, abs_tol=1e-5), (
-        f"Pt-Cl type-compat must be 0.95 (Himo/Lit-Survey), got {p_ptcl_type}"
-    )
+    assert (
+        0.3 < p_ptcl_dist < 0.8
+    ), f"Pt-Cl at 2.3 Å p_dist should be in soft band (0.3-0.8), got {p_ptcl_dist}"
+    assert math.isclose(
+        p_ptcl_type, 0.95, abs_tol=1e-5
+    ), f"Pt-Cl type-compat must be 0.95 (Himo/Lit-Survey), got {p_ptcl_type}"
     assert p_ptcl_combined > 0.0, (
         f"Pt-Cl p_combined must be > 0 (soft prior on a real dative pair), "
         f"got {p_ptcl_combined}"
@@ -1614,14 +1660,14 @@ def test_decoder_rework_composes_with_bond_head() -> None:
 # Spec contract — frozen so a regression is loud and easy to triage.
 _V2_SPEC = {
     # (SMILES, family)
-    "azide_ethyl":     ("CCN=[N+]=[N-]",                  "azide"),
-    "azide_benzyl":    ("N(=[N+]=[N-])Cc1ccccc1",         "azide"),
-    "azide_butanoic":  ("OC(=O)CCCN=[N+]=[N-]",           "azide"),
-    "boronic_phenyl":     ("OB(O)c1ccccc1",               "boronic_acid"),
-    "boronic_4methyl":    ("Cc1ccc(B(O)O)cc1",            "boronic_acid"),
-    "boronic_4carboxy":   ("OC(=O)c1ccc(B(O)O)cc1",       "boronic_acid"),
-    "bromide_phenyl":     ("Brc1ccccc1",                  "bromide"),
-    "bromide_pyridine":   ("Brc1ccncc1",                  "bromide"),
+    "azide_ethyl": ("CCN=[N+]=[N-]", "azide"),
+    "azide_benzyl": ("N(=[N+]=[N-])Cc1ccccc1", "azide"),
+    "azide_butanoic": ("OC(=O)CCCN=[N+]=[N-]", "azide"),
+    "boronic_phenyl": ("OB(O)c1ccccc1", "boronic_acid"),
+    "boronic_4methyl": ("Cc1ccc(B(O)O)cc1", "boronic_acid"),
+    "boronic_4carboxy": ("OC(=O)c1ccc(B(O)O)cc1", "boronic_acid"),
+    "bromide_phenyl": ("Brc1ccccc1", "bromide"),
+    "bromide_pyridine": ("Brc1ccncc1", "bromide"),
 }
 
 
@@ -1632,12 +1678,11 @@ def test_partner_tiles_v2_module_importable() -> None:
     from molmetal_lam.tile_lib.click_tiles import PARTNER_TILES_V2
 
     tiles = PARTNER_TILES_V2()
-    assert isinstance(tiles, list), (
-        f"PARTNER_TILES_V2() must return a list, got {type(tiles).__name__}"
-    )
+    assert isinstance(
+        tiles, list
+    ), f"PARTNER_TILES_V2() must return a list, got {type(tiles).__name__}"
     assert len(tiles) == 8, (
-        f"PARTNER_TILES_V2() must return exactly 8 tiles (3+3+2), got "
-        f"{len(tiles)}"
+        f"PARTNER_TILES_V2() must return exactly 8 tiles (3+3+2), got " f"{len(tiles)}"
     )
 
 
@@ -1662,9 +1707,9 @@ def test_partner_tiles_rdkit_parseable() -> None:
         + list(BORONIC_PARTNER_TILES())
         + list(BROMIDE_PARTNER_TILES())
     )
-    assert len(all_tiles) == 8, (
-        f"3 azide + 3 boronic + 2 bromide tiles must total 8, got {len(all_tiles)}"
-    )
+    assert (
+        len(all_tiles) == 8
+    ), f"3 azide + 3 boronic + 2 bromide tiles must total 8, got {len(all_tiles)}"
     # RDKit-level parse + sanitise check.
     parse_failures = []
     sanitize_failures = []
@@ -1677,17 +1722,17 @@ def test_partner_tiles_rdkit_parseable() -> None:
             Chem.SanitizeMol(m)
         except Exception as exc:  # noqa: BLE001
             sanitize_failures.append(f"{t.smiles}: {exc}")
-    assert parse_failures == [], (
-        f"these V2 partner SMILES failed Chem.MolFromSmiles: {parse_failures}"
-    )
-    assert sanitize_failures == [], (
-        f"these V2 partner SMILES failed Chem.SanitizeMol: {sanitize_failures}"
-    )
+    assert (
+        parse_failures == []
+    ), f"these V2 partner SMILES failed Chem.MolFromSmiles: {parse_failures}"
+    assert (
+        sanitize_failures == []
+    ), f"these V2 partner SMILES failed Chem.SanitizeMol: {sanitize_failures}"
     # The Tile dataclass should expose functional_groups + descriptors.
     for t in all_tiles:
-        assert isinstance(t.functional_groups, list) and len(t.functional_groups) > 0, (
-            f"Tile {t.smiles!r} must carry at least one functional-group tag"
-        )
+        assert (
+            isinstance(t.functional_groups, list) and len(t.functional_groups) > 0
+        ), f"Tile {t.smiles!r} must carry at least one functional-group tag"
         assert t.mw > 0.0, f"Tile {t.smiles!r} must have positive MW, got {t.mw}"
     # Cross-check: canonical SMILES must round-trip via RDKit.
     for spec_name, (raw_smi, _family) in _V2_SPEC.items():
@@ -1710,9 +1755,9 @@ def test_partner_tiles_azide_count() -> None:
     from molmetal_lam.tile_lib.click_tiles import AZIDE_PARTNER_TILES
 
     azides = list(AZIDE_PARTNER_TILES())
-    assert len(azides) == 3, (
-        f"AZIDE_PARTNER_TILES must return exactly 3 azides, got {len(azides)}"
-    )
+    assert (
+        len(azides) == 3
+    ), f"AZIDE_PARTNER_TILES must return exactly 3 azides, got {len(azides)}"
     # All 3 must carry the 'azide' tag.
     for t in azides:
         assert "azide" in t.functional_groups, (
@@ -1736,9 +1781,9 @@ def test_partner_tiles_boronic_count() -> None:
     from molmetal_lam.tile_lib.click_tiles import BORONIC_PARTNER_TILES
 
     boronics = list(BORONIC_PARTNER_TILES())
-    assert len(boronics) == 3, (
-        f"BORONIC_PARTNER_TILES must return exactly 3 boronic acids, got {len(boronics)}"
-    )
+    assert (
+        len(boronics) == 3
+    ), f"BORONIC_PARTNER_TILES must return exactly 3 boronic acids, got {len(boronics)}"
     for t in boronics:
         assert "boronic_acid" in t.functional_groups, (
             f"boronic partner {t.smiles!r} must carry 'boronic_acid' tag, got "
@@ -1761,9 +1806,9 @@ def test_partner_tiles_bromide_count() -> None:
     from molmetal_lam.tile_lib.click_tiles import BROMIDE_PARTNER_TILES
 
     bromides = list(BROMIDE_PARTNER_TILES())
-    assert len(bromides) == 2, (
-        f"BROMIDE_PARTNER_TILES must return exactly 2 bromides, got {len(bromides)}"
-    )
+    assert (
+        len(bromides) == 2
+    ), f"BROMIDE_PARTNER_TILES must return exactly 2 bromides, got {len(bromides)}"
     for t in bromides:
         assert "bromide" in t.functional_groups, (
             f"bromide partner {t.smiles!r} must carry 'bromide' tag, got "
@@ -1820,9 +1865,7 @@ def test_partner_tiles_v2_partition_matches_spec() -> None:
     boronics = list(BORONIC_PARTNER_TILES())
     bromides = list(BROMIDE_PARTNER_TILES())
     union = azides + boronics + bromides
-    assert len(union) == 8, (
-        f"3+3+2 partner partition must total 8, got {len(union)}"
-    )
+    assert len(union) == 8, f"3+3+2 partner partition must total 8, got {len(union)}"
     # Disjointness via canonical SMILES.
     az_smi = {t.smiles for t in azides}
     bo_smi = {t.smiles for t in boronics}
@@ -1950,6 +1993,7 @@ def test_partner_tiles_v2_reachable_via_tile_library() -> None:
 def _metal_alkyne_closed_term(smiles: str):
     """Build a MoleculeClosedTerm from a SMILES (used for bare-metal tiles)."""
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
     return MoleculeClosedTerm.from_smiles(smiles)
 
 
@@ -1970,14 +2014,14 @@ def test_symmetric_click_cuaac_accepts_alkyne_first() -> None:
         symmetric_click,
     )
 
-    azide_tile = AZIDE_TILES()[0]    # benzyl azide (carries the N=N=N handle)
+    azide_tile = AZIDE_TILES()[0]  # benzyl azide (carries the N=N=N handle)
     alkyne_tile = ALKYNE_TILES()[0]  # propyne       (carries the C#CH handle)
 
     # Sanity: the legacy call order (azide, alkyne) works.
     legacy = click_cuaac(azide_tile, alkyne_tile)
-    assert len(legacy) == 1, (
-        f"baseline CuAAC(azide, alkyne) should produce 1 product, got {len(legacy)}"
-    )
+    assert (
+        len(legacy) == 1
+    ), f"baseline CuAAC(azide, alkyne) should produce 1 product, got {len(legacy)}"
 
     # The reverse order (alkyne, azide) MUST also produce a product
     # under the symmetric dispatch — this is the bug the fix targets.
@@ -2007,13 +2051,13 @@ def test_symmetric_click_spaac_accepts_alkyne_first() -> None:
         symmetric_click,
     )
 
-    azide_tile = AZIDE_TILES()[0]      # ethyl azide
-    alkyne_tile = ALKYNE_TILES()[2]    # cyclooctyne (internal alkyne — SPAAC substrate)
+    azide_tile = AZIDE_TILES()[0]  # ethyl azide
+    alkyne_tile = ALKYNE_TILES()[2]  # cyclooctyne (internal alkyne — SPAAC substrate)
 
     legacy = click_spaac(azide_tile, alkyne_tile)
-    assert len(legacy) >= 1, (
-        f"baseline SPAAC(azide, alkyne) should produce >=1 product, got {len(legacy)}"
-    )
+    assert (
+        len(legacy) >= 1
+    ), f"baseline SPAAC(azide, alkyne) should produce >=1 product, got {len(legacy)}"
 
     swapped = symmetric_click(click_spaac, alkyne_tile, azide_tile)
     assert len(swapped) >= 1, (
@@ -2065,9 +2109,7 @@ def test_symmetric_click_suzuki_accepts_aryl_halide_first() -> None:
         f"got {len(swapped)}"
     )
     # Canonical product SMILES should match (biaryl product is canonical).
-    assert (
-        swapped[0].canonical_smiles() == forward[0].canonical_smiles()
-    ), (
+    assert swapped[0].canonical_smiles() == forward[0].canonical_smiles(), (
         f"symmetric Suzuki must yield same canonical product "
         f"({forward[0].canonical_smiles()!r} vs {swapped[0].canonical_smiles()!r})"
     )
@@ -2095,6 +2137,7 @@ def test_symmetric_click_no_double_reduction() -> None:
     def counting_cuaac(a, b):
         call_counter["n"] += 1
         from molmetal_lam.reactions.click_reactions import click_cuaac
+
         return click_cuaac(a, b)
 
     # Order (azide, alkyne) is the canonical call order — forward should

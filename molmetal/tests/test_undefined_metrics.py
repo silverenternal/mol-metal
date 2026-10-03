@@ -189,7 +189,9 @@ def test_cross_check_policy_divergent_metrics(bench_module):
 def test_bench_diversity_subpocket_smoke_pool(bench_module):
     """diversity_subpocket bench returns expected schema."""
     out = bench_module.bench_diversity_subpocket(
-        pocket_ids=list(WF30_POCKETS)[:3], smiles_pool=bench_module.SMOKE_POOL, seeds=(0,)
+        pocket_ids=list(WF30_POCKETS)[:3],
+        smiles_pool=bench_module.SMOKE_POOL,
+        seeds=(0,),
     )
     assert out["metric"] == "diversity_subpocket"
     assert "per_pocket" in out
@@ -197,7 +199,12 @@ def test_bench_diversity_subpocket_smoke_pool(bench_module):
     for pid, row in out["per_pocket"].items():
         assert row["pocket_id"] == pid
         assert row["n_molecules"] == len(bench_module.SMOKE_POOL)
-        assert row["status"] in ("MEASURED", "DESIGN_ONLY", "DEFERRED_receptors_missing", "DEFERRED_posebusters_unavailable")
+        assert row["status"] in (
+            "MEASURED",
+            "DESIGN_ONLY",
+            "DEFERRED_receptors_missing",
+            "DEFERRED_posebusters_unavailable",
+        )
     assert "verdict" in out
 
 
@@ -240,17 +247,25 @@ def wf61_run(bench_module, tmp_path_factory):
         [
             sys.executable,
             str(BENCH_SCRIPT),
-            "--out-dir", str(out_dir),
-            "--device", "cpu",
-            "--seeds", "0",
-            "--pockets", "830c", "1h36",
-            "--test-pocket", "test_001",
+            "--out-dir",
+            str(out_dir),
+            "--device",
+            "cpu",
+            "--seeds",
+            "0",
+            "--pockets",
+            "830c",
+            "1h36",
+            "--test-pocket",
+            "test_001",
         ],
         capture_output=True,
         timeout=120.0,
         check=False,
     )
-    assert r.returncode == 0, f"bench exited non-zero: stderr={r.stderr.decode('utf-8', errors='replace')}"
+    assert (
+        r.returncode == 0
+    ), f"bench exited non-zero: stderr={r.stderr.decode('utf-8', errors='replace')}"
     return out_dir
 
 

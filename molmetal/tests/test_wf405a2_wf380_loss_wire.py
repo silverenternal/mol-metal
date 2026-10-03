@@ -132,14 +132,13 @@ def test_cfm_use_ot_cfm_flag(cfm_parse_args):
     # (a) Default OFF
     args = _round_trip(cfm_parse_args, [])
     assert args.use_ot_cfm is False, (
-        f"Wf-405-A2: CFM --use-ot-cfm default must be False; "
-        f"got {args.use_ot_cfm}"
+        f"Wf-405-A2: CFM --use-ot-cfm default must be False; " f"got {args.use_ot_cfm}"
     )
     # (b) When set, surfaces as True
     args = _round_trip(cfm_parse_args, ["--use-ot-cfm"])
-    assert args.use_ot_cfm is True, (
-        "Wf-405-A2: --use-ot-cfm must surface as True when set"
-    )
+    assert (
+        args.use_ot_cfm is True
+    ), "Wf-405-A2: --use-ot-cfm must surface as True when set"
 
 
 # ===========================================================================
@@ -151,13 +150,12 @@ def test_cfm_triton_ot_flag(cfm_parse_args):
     in main()."""
     args = _round_trip(cfm_parse_args, [])
     assert args.triton_ot is False, (
-        f"Wf-405-A2: CFM --triton-ot default must be False; "
-        f"got {args.triton_ot}"
+        f"Wf-405-A2: CFM --triton-ot default must be False; " f"got {args.triton_ot}"
     )
     args = _round_trip(cfm_parse_args, ["--triton-ot"])
-    assert args.triton_ot is True, (
-        "Wf-405-A2: --triton-ot must surface as True when set"
-    )
+    assert (
+        args.triton_ot is True
+    ), "Wf-405-A2: --triton-ot must surface as True when set"
 
 
 # ===========================================================================
@@ -170,24 +168,22 @@ def test_cfm_stable_vm_flag(stable_vm_mod, cfm_parse_args):
     invariants."""
     args = _round_trip(cfm_parse_args, [])
     assert args.stable_vm is False, (
-        f"Wf-405-A2: CFM --stable-vm default must be False; "
-        f"got {args.stable_vm}"
+        f"Wf-405-A2: CFM --stable-vm default must be False; " f"got {args.stable_vm}"
     )
     args = _round_trip(cfm_parse_args, ["--stable-vm"])
-    assert args.stable_vm is True, (
-        "Wf-405-A2: --stable-vm must surface as True when set"
-    )
+    assert (
+        args.stable_vm is True
+    ), "Wf-405-A2: --stable-vm must surface as True when set"
     # Validate the underlying primitive: stable_vm_loss on a small
     # (B, D) tensor produces a scalar tensor; non-negative; multi-scale
     # weights sum to >= 1.
     import torch as _t
+
     pred = _t.randn(8, 16)
     target = _t.randn(8, 16)
     loss = stable_vm_mod.stable_vm_loss(pred, target, n_scales=4)
     assert loss.ndim == 0, "stable_vm_loss must return scalar tensor"
-    assert loss.item() >= 0.0, (
-        f"stable_vm_loss must be non-negative; got {loss.item()}"
-    )
+    assert loss.item() >= 0.0, f"stable_vm_loss must be non-negative; got {loss.item()}"
 
 
 # ===========================================================================
@@ -204,9 +200,9 @@ def test_cfm_shortcut_distill_flag(cfm_parse_args):
         f"got {args.shortcut_distill}"
     )
     args = _round_trip(cfm_parse_args, ["--shortcut-distill"])
-    assert args.shortcut_distill is True, (
-        "Wf-405-A2: --shortcut-distill must surface as True when set"
-    )
+    assert (
+        args.shortcut_distill is True
+    ), "Wf-405-A2: --shortcut-distill must surface as True when set"
 
 
 # ===========================================================================
@@ -242,9 +238,9 @@ def test_cfm_per_cohort_features_flag(select_features_fn, cfm_parse_args):
         f"got {args.per_cohort_features}"
     )
     args = _round_trip(cfm_parse_args, ["--per-cohort-features"])
-    assert args.per_cohort_features is True, (
-        "Wf-405-A2: --per-cohort-features must surface as True when set"
-    )
+    assert (
+        args.per_cohort_features is True
+    ), "Wf-405-A2: --per-cohort-features must surface as True when set"
     # Validate the underlying primitive: select_features returns a
     # valid config dict with the canonical keys.
     cfg_200 = select_features_fn(200)
@@ -272,9 +268,9 @@ def test_dmpnn_per_cohort_features_flag(select_features_fn, dmpnn_parse_args):
         dmpnn_parse_args,
         ["--per-cohort-features", "--metals", "Ru"],
     )
-    assert args.per_cohort_features is True, (
-        "Wf-405-A2: DMPNN --per-cohort-features must surface as True when set"
-    )
+    assert (
+        args.per_cohort_features is True
+    ), "Wf-405-A2: DMPNN --per-cohort-features must surface as True when set"
 
 
 # ===========================================================================
@@ -285,13 +281,12 @@ def test_dmpnn_triton_ot_flag(dmpnn_parse_args):
     ``args.triton_ot`` is True."""
     args = _round_trip(dmpnn_parse_args, [])
     assert args.triton_ot is False, (
-        f"Wf-405-A2: DMPNN --triton-ot default must be False; "
-        f"got {args.triton_ot}"
+        f"Wf-405-A2: DMPNN --triton-ot default must be False; " f"got {args.triton_ot}"
     )
     args = _round_trip(dmpnn_parse_args, ["--triton-ot"])
-    assert args.triton_ot is True, (
-        "Wf-405-A2: DMPNN --triton-ot must surface as True when set"
-    )
+    assert (
+        args.triton_ot is True
+    ), "Wf-405-A2: DMPNN --triton-ot must surface as True when set"
 
 
 # ===========================================================================
@@ -309,18 +304,17 @@ def test_dmpnn_use_ot_cfm_flag(ot_solver_mod, dmpnn_parse_args):
         f"got {args.use_ot_cfm}"
     )
     args = _round_trip(dmpnn_parse_args, ["--use-ot-cfm"])
-    assert args.use_ot_cfm is True, (
-        "Wf-405-A2: DMPNN --use-ot-cfm must surface as True when set"
-    )
+    assert (
+        args.use_ot_cfm is True
+    ), "Wf-405-A2: DMPNN --use-ot-cfm must surface as True when set"
     # Validate the underlying primitive: ot_solver on 1-D tensors
     import torch as _t
+
     a = _t.randn(64)
     b = _t.randn(64)
     w2 = ot_solver_mod.ot_solver(a, b)
     assert w2.ndim == 0, "ot_solver must return scalar tensor"
-    assert w2.item() >= 0.0, (
-        f"ot_solver must be non-negative; got {w2.item()}"
-    )
+    assert w2.item() >= 0.0, f"ot_solver must be non-negative; got {w2.item()}"
 
 
 # ===========================================================================
@@ -344,7 +338,8 @@ def test_aggregate_all_nine_flags_on(cfm_parse_args, dmpnn_parse_args):
             "--triton-ot",
             "--stable-vm",
             "--shortcut-distill",
-            "--consistency-weight", "0.5",
+            "--consistency-weight",
+            "0.5",
             "--per-cohort-features",
         ],
     )
@@ -370,7 +365,9 @@ def test_aggregate_all_nine_flags_on(cfm_parse_args, dmpnn_parse_args):
             "--per-cohort-features",
             "--triton-ot",
             "--use-ot-cfm",
-            "--metals", "Ru", "Ir",
+            "--metals",
+            "Ru",
+            "Ir",
         ],
     )
     assert args_dmpnn.per_cohort_features is True
@@ -496,30 +493,23 @@ def test_decode_ratio_and_loss_decrease_floor():
     log_blob = "\n".join(simulated_log_lines)
 
     # (a) decode_ratio > 0 invariant (canonical §5.7 floor).
-    decode_ratio_pattern = re.compile(
-        r"decode_ratio\s*=\s*([0-9]+(?:\.[0-9]+)?)"
-    )
+    decode_ratio_pattern = re.compile(r"decode_ratio\s*=\s*([0-9]+(?:\.[0-9]+)?)")
     matches = decode_ratio_pattern.findall(log_blob)
-    assert len(matches) == 50, (
-        f"expected 50 decode_ratio regex matches; got {len(matches)}"
-    )
+    assert (
+        len(matches) == 50
+    ), f"expected 50 decode_ratio regex matches; got {len(matches)}"
     for m in matches:
         assert float(m) > 0.0, (
-            f"§5.7 floor: every epoch's decode_ratio must be > 0; "
-            f"got {m}"
+            f"§5.7 floor: every epoch's decode_ratio must be > 0; " f"got {m}"
         )
 
     # (b) loss[0] > loss[49] invariant (monotone non-increasing loss).
-    loss_pattern = re.compile(
-        r"train_loss=([0-9]+\.[0-9]+)"
-    )
+    loss_pattern = re.compile(r"train_loss=([0-9]+\.[0-9]+)")
     losses = [float(m) for m in loss_pattern.findall(log_blob)]
-    assert len(losses) == 50, (
-        f"expected 50 train_loss regex matches; got {len(losses)}"
-    )
-    assert losses[0] > losses[-1], (
-        f"§5.7 floor: loss[0]={losses[0]} must be > loss[49]={losses[-1]}"
-    )
+    assert len(losses) == 50, f"expected 50 train_loss regex matches; got {len(losses)}"
+    assert (
+        losses[0] > losses[-1]
+    ), f"§5.7 floor: loss[0]={losses[0]} must be > loss[49]={losses[-1]}"
     # Monotone non-increasing: each loss[i+1] <= loss[i]
     for i in range(len(losses) - 1):
         assert losses[i + 1] <= losses[i] + 1e-6, (

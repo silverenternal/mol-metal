@@ -42,6 +42,7 @@ def attach_all_rate_predictors_safe() -> Dict[str, RatePredictor]:
         from molmetal_lam.reactions.beta_reductions import (
             attach_all_rate_predictors,
         )
+
         out = attach_all_rate_predictors()
         for k, v in (out or {}).items():
             if isinstance(v, RatePredictor):
@@ -176,7 +177,9 @@ class SynthesisOracle:
         model = getattr(pred, "model", None)
         backend = getattr(pred, "model", None)
         backend_attr = getattr(model, "backend_", None) if model is not None else None
-        is_sklearn = isinstance(backend_attr, str) and backend_attr.startswith("sklearn")
+        is_sklearn = isinstance(backend_attr, str) and backend_attr.startswith(
+            "sklearn"
+        )
         # (defensive) Also accept direct sklearn estimators attached to
         # ``pred.model._model``.
         if not is_sklearn:
@@ -211,7 +214,8 @@ class SynthesisOracle:
                 log.debug(
                     "SynthesisOracle.predict_batch(%s) sklearn failed: %s; "
                     "falling back to scalar loop",
-                    reaction_name, exc,
+                    reaction_name,
+                    exc,
                 )
                 raw = _np.asarray(
                     [float(pred.predict(a, b)) for a, b in pairs],
@@ -230,7 +234,8 @@ class SynthesisOracle:
                 v = float(pred.predict(smi_a, smi_b))
             except Exception as exc:  # pragma: no cover
                 log.debug(
-                    "SynthesisOracle.predict_batch per-pair failed: %s", exc,
+                    "SynthesisOracle.predict_batch per-pair failed: %s",
+                    exc,
                 )
                 v = 0.5
             out.append(max(0.0, min(1.0, v)))

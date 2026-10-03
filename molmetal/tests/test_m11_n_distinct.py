@@ -197,9 +197,7 @@ def test_n_distinct_smoke_metallo_drugs_500():
     canonical SMILES count rather than a range to surface RDKit
     version drift honestly (paper §6 honest limitations).
     """
-    csv_path = os.path.join(
-        _REPO, "molmetal", "data", "metallo_drugs_500_train.csv"
-    )
+    csv_path = os.path.join(_REPO, "molmetal", "data", "metallo_drugs_500_train.csv")
     if not os.path.exists(csv_path):
         pytest.skip(f"metallo_drugs_500_train.csv not found at {csv_path}")
     smiles_list = []

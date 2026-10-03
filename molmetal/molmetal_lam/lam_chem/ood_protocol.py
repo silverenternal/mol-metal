@@ -54,6 +54,7 @@ from typing import Optional, Sequence
 
 try:  # numpy is optional — fallback to pure-Python bit-counting when missing
     import numpy as np
+
     _HAS_NUMPY: bool = True
 except Exception:  # pragma: no cover
     np = None  # type: ignore
@@ -62,6 +63,7 @@ except Exception:  # pragma: no cover
 try:  # pragma: no cover - exercised in CI with RDKit installed
     from rdkit import Chem as _Chem
     from rdkit.Chem import rdFingerprintGenerator as _rdFingerprintGenerator
+
     _HAS_RDKIT: bool = True
 except Exception:  # pragma: no cover
     _Chem = None  # type: ignore
@@ -107,7 +109,9 @@ DEFAULT_MMSEQS2_THRESHOLD: float = 0.30
 # ---------------------------------------------------------------------------
 # Fingerprint helpers
 # ---------------------------------------------------------------------------
-def _morgan_fp(smiles: str, radius: int = DEFAULT_FP_RADIUS, n_bits: int = DEFAULT_FP_NBITS):
+def _morgan_fp(
+    smiles: str, radius: int = DEFAULT_FP_RADIUS, n_bits: int = DEFAULT_FP_NBITS
+):
     """Morgan-ECFP fingerprint as a flat np.uint8 bit-vector.
 
     Returns ``None`` if RDKit is missing or the SMILES cannot be
@@ -127,7 +131,9 @@ def _morgan_fp(smiles: str, radius: int = DEFAULT_FP_RADIUS, n_bits: int = DEFAU
         return None
     try:
         gen = _rdFingerprintGenerator.GetMorganGenerator(
-            radius=int(radius), fpSize=int(n_bits), includeChirality=False,
+            radius=int(radius),
+            fpSize=int(n_bits),
+            includeChirality=False,
         )
         if _HAS_NUMPY and np is not None:
             fp = gen.GetFingerprintAsNumPy(mol)
@@ -158,9 +164,7 @@ def _tanimoto_sim_vectors(a, b) -> float:
     except TypeError:
         return 0.0
     if size_a != size_b:
-        raise ValueError(
-            f"fingerprint length mismatch: {size_a} vs {size_b}"
-        )
+        raise ValueError(f"fingerprint length mismatch: {size_a} vs {size_b}")
     inter = _bitwise_and_count(a, b)
     union = _bit_count_uint8(a) + _bit_count_uint8(b) - inter
     if union <= 0:
@@ -244,9 +248,7 @@ class TanimotoOODProtocol:
 
     def __post_init__(self) -> None:
         if not (0.0 <= float(self.threshold) <= 1.0):
-            raise ValueError(
-                f"threshold must be in [0.0, 1.0]; got {self.threshold}"
-            )
+            raise ValueError(f"threshold must be in [0.0, 1.0]; got {self.threshold}")
         if int(self.radius) < 0:
             raise ValueError(f"radius must be non-negative; got {self.radius}")
         if int(self.n_bits) <= 0:
@@ -255,11 +257,16 @@ class TanimotoOODProtocol:
     def compute_tanimoto(self, smi1: str, smi2: str) -> float:
         """Scalar Tanimoto helper (mirrors :func:`compute_tanimoto`)."""
         return compute_tanimoto(
-            smi1, smi2, radius=int(self.radius), n_bits=int(self.n_bits),
+            smi1,
+            smi2,
+            radius=int(self.radius),
+            n_bits=int(self.n_bits),
         )
 
     def max_tanimoto(
-        self, query_smiles: str, train_smiles_list: Sequence[str],
+        self,
+        query_smiles: str,
+        train_smiles_list: Sequence[str],
     ) -> float:
         """Return the *maximum* Tanimoto of ``query_smiles`` vs the
         training list.
@@ -270,14 +277,18 @@ class TanimotoOODProtocol:
         if not train_smiles_list:
             return 0.0
         fp_q = _morgan_fp(
-            query_smiles, radius=int(self.radius), n_bits=int(self.n_bits),
+            query_smiles,
+            radius=int(self.radius),
+            n_bits=int(self.n_bits),
         )
         if fp_q is None:
             return 0.0
         max_sim = 0.0
         for smi in train_smiles_list:
             fp_t = _morgan_fp(
-                smi, radius=int(self.radius), n_bits=int(self.n_bits),
+                smi,
+                radius=int(self.radius),
+                n_bits=int(self.n_bits),
             )
             if fp_t is None:
                 continue
@@ -291,7 +302,9 @@ class TanimotoOODProtocol:
         return float(max_sim)
 
     def is_ood(
-        self, query_smiles: str, train_smiles_list: Sequence[str],
+        self,
+        query_smiles: str,
+        train_smiles_list: Sequence[str],
     ) -> bool:
         """Return ``True`` iff ``query_smiles`` is OOD relative to the train list.
 
@@ -434,7 +447,9 @@ class CombinedOODProtocol:
             raise TypeError(
                 f"tanimoto must be a TanimotoOODProtocol; got {type(self.tanimoto)}"
             )
-        if self.mmseqs2 is not None and not isinstance(self.mmseqs2, MMseqs2OODProtocol):
+        if self.mmseqs2 is not None and not isinstance(
+            self.mmseqs2, MMseqs2OODProtocol
+        ):
             raise TypeError(
                 f"mmseqs2 must be MMseqs2OODProtocol or None; got {type(self.mmseqs2)}"
             )

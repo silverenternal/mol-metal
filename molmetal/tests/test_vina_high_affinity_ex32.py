@@ -13,6 +13,7 @@ This test module validates:
 5. ``_smiles_to_pdbqt_string`` — RDKit + Meeko PDBQT generation.
 6. ``per_smiles_results.json`` schema (pocket 3eml fixture).
 """
+
 from __future__ import annotations
 
 import importlib
@@ -155,12 +156,7 @@ class TestSmilesToPdbqtString:
 # ---------------------------------------------------------------------------
 
 
-WF142_REPORT_DIR = (
-    PROJECT_ROOT
-    / "molmetal"
-    / "reports"
-    / "wf142_ex32_high_affinity"
-)
+WF142_REPORT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf142_ex32_high_affinity"
 
 
 @pytest.mark.skipif(
@@ -169,7 +165,9 @@ WF142_REPORT_DIR = (
 )
 class TestPerSmilesResultsSchema:
     def test_3eml_schema_keys(self):
-        d = json.loads((WF142_REPORT_DIR / "3eml" / "per_smiles_results.json").read_text())
+        d = json.loads(
+            (WF142_REPORT_DIR / "3eml" / "per_smiles_results.json").read_text()
+        )
         for k in (
             "_workflow",
             "_phase",
@@ -188,22 +186,30 @@ class TestPerSmilesResultsSchema:
             assert k in d, f"missing key {k}"
 
     def test_3eml_rate_in_0_1(self):
-        d = json.loads((WF142_REPORT_DIR / "3eml" / "per_smiles_results.json").read_text())
+        d = json.loads(
+            (WF142_REPORT_DIR / "3eml" / "per_smiles_results.json").read_text()
+        )
         rate = d["_high_affinity_rate"]
         assert 0.0 <= rate <= 1.0
 
     def test_3eml_kcal_min_negative(self):
-        d = json.loads((WF142_REPORT_DIR / "3eml" / "per_smiles_results.json").read_text())
+        d = json.loads(
+            (WF142_REPORT_DIR / "3eml" / "per_smiles_results.json").read_text()
+        )
         assert d["_kcal_min_overall"] is not None
         assert d["_kcal_min_overall"] < 0.0
 
     def test_3eml_exhaustiveness_is_32(self):
-        d = json.loads((WF142_REPORT_DIR / "3eml" / "per_smiles_results.json").read_text())
+        d = json.loads(
+            (WF142_REPORT_DIR / "3eml" / "per_smiles_results.json").read_text()
+        )
         assert d["_exhaustiveness"] == 32
         assert d["_n_poses"] == 5
 
     def test_3eml_per_smiles_have_kcal(self):
-        d = json.loads((WF142_REPORT_DIR / "3eml" / "per_smiles_results.json").read_text())
+        d = json.loads(
+            (WF142_REPORT_DIR / "3eml" / "per_smiles_results.json").read_text()
+        )
         for entry in d["_per_smiles"]:
             assert "smiles" in entry
             assert "kcal_min" in entry
@@ -219,7 +225,9 @@ class TestPerSmilesResults1h36:
     def test_1h36_high_rate(self):
         """1h36 reference kcal/mol is -0.801 (very weak target). The
         Wf-140 closure-bounded fragments should easily beat this."""
-        d = json.loads((WF142_REPORT_DIR / "1h36" / "per_smiles_results.json").read_text())
+        d = json.loads(
+            (WF142_REPORT_DIR / "1h36" / "per_smiles_results.json").read_text()
+        )
         assert d["_high_affinity_rate"] >= 0.5
 
 
@@ -377,12 +385,23 @@ class TestPerSmilesResults3ny8:
             (WF142_REPORT_DIR / "3ny8" / "per_smiles_results.json").read_text()
         )
         for k in (
-            "_workflow", "_phase", "_pocket", "_reference_kcal_mol",
-            "_exhaustiveness", "_n_poses", "_n_cohort_total",
-            "_n_docked", "_n_high_affinity", "_high_affinity_rate",
-            "_delta_vs_baseline_ex4", "_kcal_min_overall",
-            "_kcal_mean_top5_avg", "_box_center_A", "_box_size_A",
-            "_wf126_baseline_ex4", "_per_smiles",
+            "_workflow",
+            "_phase",
+            "_pocket",
+            "_reference_kcal_mol",
+            "_exhaustiveness",
+            "_n_poses",
+            "_n_cohort_total",
+            "_n_docked",
+            "_n_high_affinity",
+            "_high_affinity_rate",
+            "_delta_vs_baseline_ex4",
+            "_kcal_min_overall",
+            "_kcal_mean_top5_avg",
+            "_box_center_A",
+            "_box_size_A",
+            "_wf126_baseline_ex4",
+            "_per_smiles",
         ):
             assert k in d, f"missing key {k}"
 
@@ -438,7 +457,7 @@ class TestPerSmilesResults3ny8:
         )
         cx, cy, cz = d["_box_center_A"]
         assert -3 < cx < 0  # centroid x ≈ -1.7
-        assert 2 < cy < 6   # centroid y ≈ 3.7
+        assert 2 < cy < 6  # centroid y ≈ 3.7
         assert -55 < cz < -45  # centroid z ≈ -50.7
 
     def test_3ny8_box_size_is_20_cube(self):
@@ -525,12 +544,23 @@ class TestPerSmilesResults4rlu:
             (WF142_REPORT_DIR / "4rlu" / "per_smiles_results.json").read_text()
         )
         for k in (
-            "_workflow", "_phase", "_pocket", "_reference_kcal_mol",
-            "_exhaustiveness", "_n_poses", "_n_cohort_total",
-            "_n_docked", "_n_high_affinity", "_high_affinity_rate",
-            "_delta_vs_baseline_ex4", "_kcal_min_overall",
-            "_kcal_mean_top5_avg", "_box_center_A", "_box_size_A",
-            "_wf126_baseline_ex4", "_per_smiles",
+            "_workflow",
+            "_phase",
+            "_pocket",
+            "_reference_kcal_mol",
+            "_exhaustiveness",
+            "_n_poses",
+            "_n_cohort_total",
+            "_n_docked",
+            "_n_high_affinity",
+            "_high_affinity_rate",
+            "_delta_vs_baseline_ex4",
+            "_kcal_min_overall",
+            "_kcal_mean_top5_avg",
+            "_box_center_A",
+            "_box_size_A",
+            "_wf126_baseline_ex4",
+            "_per_smiles",
         ):
             assert k in d, f"missing key {k}"
 
@@ -589,9 +619,9 @@ class TestPerSmilesResults4rlu:
             (WF142_REPORT_DIR / "4rlu" / "per_smiles_results.json").read_text()
         )
         cx, cy, cz = d["_box_center_A"]
-        assert -20 < cx < -5     # centroid x ≈ -13.1
-        assert 5 < cy < 25       # centroid y ≈ 13.2
-        assert -45 < cz < -25    # centroid z ≈ -35.3
+        assert -20 < cx < -5  # centroid x ≈ -13.1
+        assert 5 < cy < 25  # centroid y ≈ 13.2
+        assert -45 < cz < -25  # centroid z ≈ -35.3
 
     def test_4rlu_box_size_is_20_cube(self):
         """Box side hard-coded to 20 Å to match Wf-126 P3 protocol

@@ -101,6 +101,7 @@ DEFAULT_OUT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf326c_compile_optimi
 # torch.compile wrappers — Inductor-traced callables for the hot path
 # ---------------------------------------------------------------------------
 
+
 def _make_compiled_dmpnn_encoder(
     hidden: int = 128,
     depth: int = 3,
@@ -143,9 +144,12 @@ def _make_compiled_w2_penalty(
     numel.  ``torch.compile`` fuses the conditional interpolation into
     a Triton kernel and gives ~2.4× on GPU.
     """
+
     def _w2(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         return wasserstein_pic50_gradient(
-            pred, target.detach(), w_weight=float(w_weight),
+            pred,
+            target.detach(),
+            w_weight=float(w_weight),
         )
 
     return torch.compile(_w2, mode=mode, fullgraph=False, dynamic=False)
@@ -154,6 +158,7 @@ def _make_compiled_w2_penalty(
 # ---------------------------------------------------------------------------
 # Per-(metal, seed) optimized training loop
 # ---------------------------------------------------------------------------
+
 
 def train_one_metal_one_seed_optimized(
     metal: str,
@@ -184,7 +189,10 @@ def train_one_metal_one_seed_optimized(
     np.random.seed(int(seed))
 
     model = DMPNNMultiTaskModel(
-        n_metals=5, hidden=hidden, depth=depth, dropout=0.0,
+        n_metals=5,
+        hidden=hidden,
+        depth=depth,
+        dropout=0.0,
     ).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=float(lr))
     criterion = MultiTaskLoss(alpha=0.5)
@@ -197,9 +205,7 @@ def train_one_metal_one_seed_optimized(
         encoder_compiled = None
         w2_compiled = None
 
-    ref_pic50 = torch.from_numpy(
-        pic50_all[train_idx].astype(np.float32)
-    ).to(device)
+    ref_pic50 = torch.from_numpy(pic50_all[train_idx].astype(np.float32)).to(device)
 
     best_val_auc = -1.0
     best_state: Optional[Dict] = None
@@ -216,7 +222,7 @@ def train_one_metal_one_seed_optimized(
         n_samples = 0
 
         for start in range(0, len(tr_shuf), int(batch_size)):
-            batch_idx = tr_shuf[start:start + int(batch_size)]
+            batch_idx = tr_shuf[start : start + int(batch_size)]
             batch_graphs = [graphs_all[int(i)] for i in batch_idx]
             valid = [
                 (g, p, a)
@@ -225,14 +231,13 @@ def train_one_metal_one_seed_optimized(
                     pic50_all[batch_idx],
                     active_all[batch_idx],
                 )
-                if g is not None and not (
-                    isinstance(p, float) and np.isnan(p)
-                )
+                if g is not None and not (isinstance(p, float) and np.isnan(p))
             ]
             if not valid:
                 continue
             g_list = [v[0] for v in valid]
             from molmetal.baselines.dmpnn import collate_graphs
+
             bd = collate_graphs(g_list)
             if bd is None:
                 continue
@@ -242,10 +247,14 @@ def train_one_metal_one_seed_optimized(
             e_src = e_src.to(device)
             e_dst = e_dst.to(device)
             y_pic50_t = torch.tensor(
-                [v[1] for v in valid], dtype=torch.float32, device=device,
+                [v[1] for v in valid],
+                dtype=torch.float32,
+                device=device,
             )
             y_active_t = torch.tensor(
-                [v[2] for v in valid], dtype=torch.long, device=device,
+                [v[2] for v in valid],
+                dtype=torch.long,
+                device=device,
             )
 
             optimizer.zero_grad()
@@ -257,7 +266,9 @@ def train_one_metal_one_seed_optimized(
                 w_pen = w2_compiled(pic50_p, ref_pic50)
             elif w_w > 0.0 and pic50_p.numel() >= 4:
                 w_pen = wasserstein_pic50_gradient(
-                    pic50_p, ref_pic50, w_weight=float(w_w),
+                    pic50_p,
+                    ref_pic50,
+                    w_weight=float(w_w),
                 )
             else:
                 w_pen = torch.zeros((), device=device)
@@ -284,16 +295,16 @@ def train_one_metal_one_seed_optimized(
             y_true_v: List[int] = []
             y_score_v: List[float] = []
             for start in range(0, len(val_idx), int(batch_size)):
-                bi = val_idx[start:start + int(batch_size)]
+                bi = val_idx[start : start + int(batch_size)]
                 bg = [graphs_all[int(i)] for i in bi]
                 valid = [
                     (g, p, a)
                     for g, p, a in zip(
-                        bg, pic50_all[bi], active_all[bi],
+                        bg,
+                        pic50_all[bi],
+                        active_all[bi],
                     )
-                    if g is not None and not (
-                        isinstance(p, float) and np.isnan(p)
-                    )
+                    if g is not None and not (isinstance(p, float) and np.isnan(p))
                 ]
                 if not valid:
                     continue
@@ -351,6 +362,7 @@ def train_one_metal_one_seed_optimized(
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description=(
@@ -359,7 +371,9 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         )
     )
     p.add_argument(
-        "--metals", nargs="+", default=list(FIVE_METALS),
+        "--metals",
+        nargs="+",
+        default=list(FIVE_METALS),
         choices=FIVE_METALS,
     )
     p.add_argument("--seeds", type=int, nargs="+", default=[0])
@@ -420,8 +434,10 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     rng = np.random.default_rng(0)
     train_idx = rng.permutation(n_per_metal)[: int(n_per_metal * 0.7)]
-    val_idx = rng.permutation(n_per_metal)[int(n_per_metal * 0.7):int(n_per_metal * 0.85)]
-    test_idx = rng.permutation(n_per_metal)[int(n_per_metal * 0.85):]
+    val_idx = rng.permutation(n_per_metal)[
+        int(n_per_metal * 0.7) : int(n_per_metal * 0.85)
+    ]
+    test_idx = rng.permutation(n_per_metal)[int(n_per_metal * 0.85) :]
 
     w_config = WassersteinConfig(n_mc=256, seed=0)
     overall_start = time.time()
@@ -430,15 +446,23 @@ def main(argv: Optional[List[str]] = None) -> int:
         all_results[metal] = {}
         for seed in args.seeds:
             res = train_one_metal_one_seed_optimized(
-                metal=metal, seed=int(seed), epochs=int(args.epochs),
-                lr=float(args.lr), batch_size=int(args.batch_size),
-                hidden=int(args.hidden), depth=int(args.depth),
+                metal=metal,
+                seed=int(seed),
+                epochs=int(args.epochs),
+                lr=float(args.lr),
+                batch_size=int(args.batch_size),
+                hidden=int(args.hidden),
+                depth=int(args.depth),
                 w_w=float(args.wasserstein_weight),
                 w_config=w_config,
                 graphs_all=graphs_pool,
-                train_idx=train_idx, val_idx=val_idx, test_idx=test_idx,
-                pic50_all=pic50_arr, active_all=active_arr,
-                device=device, use_compile=bool(args.use_compile),
+                train_idx=train_idx,
+                val_idx=val_idx,
+                test_idx=test_idx,
+                pic50_all=pic50_arr,
+                active_all=active_arr,
+                device=device,
+                use_compile=bool(args.use_compile),
             )
             all_results[metal][int(seed)] = res
             (args.out_dir / f"{metal.lower()}_seed{seed}_metrics.json").write_text(
@@ -457,8 +481,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "device": str(device),
         "elapsed_seconds_total": float(overall),
         "per_metal_per_seed": {
-            m: {str(s): r for s, r in seeds.items()}
-            for m, seeds in all_results.items()
+            m: {str(s): r for s, r in seeds.items()} for m, seeds in all_results.items()
         },
         "measured_speedup_claim": (
             "torch.compile mode='reduce-overhead' on D-MPNN encoder "

@@ -46,6 +46,7 @@ it eagerly imports ``synthemol.generate`` (which depends on ``wandb``)
 and ``synthemol.models`` (which depends on ``chemprop``).  Neither is
 needed for the reaction layer; the loader only requires ``rdkit``.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -101,7 +102,9 @@ def _resolve_synthemol_path() -> Path:
     )
     candidates = (
         repo_local,
-        Path("/home/hugo/codes/try_triton_on_rocm/molmetal/references/SyntheMol/synthemol"),
+        Path(
+            "/home/hugo/codes/try_triton_on_rocm/molmetal/references/SyntheMol/synthemol"
+        ),
     )
     for candidate in candidates:
         if (candidate / "utils.py").is_file():
@@ -147,9 +150,7 @@ def _bootstrap_synthemol() -> None:
     sys.modules["synthemol.constants"] = constants_mod
 
     # 3. synthemol.utils
-    _load_submodule(
-        "synthemol.utils", _SYNTHEMOL_PATH / "utils.py"
-    )
+    _load_submodule("synthemol.utils", _SYNTHEMOL_PATH / "utils.py")
 
     # 4. synthemol.reactions subpackage
     reactions_pkg = types.ModuleType("synthemol.reactions")
@@ -246,14 +247,10 @@ class SyntheMolReactionRule:
         try:
             return bool(self.reaction.has_match(reactant_smiles))
         except Exception as exc:  # pragma: no cover — defensive
-            logger.warning(
-                "[%s] can_apply raised %r; returning False", self.name, exc
-            )
+            logger.warning("[%s] can_apply raised %r; returning False", self.name, exc)
             return False
 
-    def reverse_can_apply(
-        self, product_smiles: str
-    ) -> List[Tuple[str, List[str]]]:
+    def reverse_can_apply(self, product_smiles: str) -> List[Tuple[str, List[str]]]:
         """Decompose ``product_smiles`` into reactants via the swapped SMARTS.
 
         Phase-2 SynFlowNet hook — every rule must expose the same
@@ -275,9 +272,7 @@ class SyntheMolReactionRule:
             from rdkit import Chem  # type: ignore[import-not-found]
             from rdkit.Chem import rdChemReactions  # type: ignore[import-not-found]
         except ImportError as exc:  # pragma: no cover
-            raise ImportError(
-                "rdChemReactions required for reverse_can_apply"
-            ) from exc
+            raise ImportError("rdChemReactions required for reverse_can_apply") from exc
 
         lhs, rhs = self.smarts.split(">>", 1)
         rev_smarts = f"{rhs}>>{lhs}"
@@ -404,9 +399,10 @@ class SyntheMolReactionRule:
                 # MoleculeClosedTerm (or any object exposing .source_smiles
                 # and .canonical_smiles) — prefer source_smiles so the
                 # raw input round-trips, fall back to canonical_smiles.
-                smi = getattr(r, "source_smiles", None) or getattr(
-                    r, "canonical_smiles", lambda: None
-                )()
+                smi = (
+                    getattr(r, "source_smiles", None)
+                    or getattr(r, "canonical_smiles", lambda: None)()
+                )
                 if not smi:
                     raise SyntheMolRuleError(
                         f"[{self.name}] cannot extract SMILES from reactant "
@@ -424,9 +420,7 @@ class SyntheMolReactionRule:
                 term = MoleculeClosedTerm.from_smiles(smi, embed_3d=False)
             except Exception:
                 continue
-            term.term = (
-                f"SyntheMol/{self.name}({', '.join(smiles_list)}) -> {smi}"
-            )
+            term.term = f"SyntheMol/{self.name}({', '.join(smiles_list)}) -> {smi}"
             terms.append(term)
         return terms
 

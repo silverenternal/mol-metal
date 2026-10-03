@@ -30,6 +30,7 @@ References
 * Burch & Bardsley 2022, "Score-based Repulsive MCMC".
 * Silver 2016, "Mastering the game of Go", *Nature* 529.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -99,31 +100,44 @@ def _build_parser() -> argparse.ArgumentParser:
         description="Score-repellent MC smoke verification (R18 P2-5).",
     )
     parser.add_argument(
-        "--smoke", action="store_true",
+        "--smoke",
+        action="store_true",
         help="Run the smoke harness end-to-end (default behaviour).",
     )
     parser.add_argument(
-        "--n-samples", type=int, default=256,
+        "--n-samples",
+        type=int,
+        default=256,
         help="Number of draws per arm (default 256).",
     )
     parser.add_argument(
-        "--dim", type=int, default=8,
+        "--dim",
+        type=int,
+        default=8,
         help="Action-space dimension (default 8).",
     )
     parser.add_argument(
-        "--alpha", type=float, default=1.0,
+        "--alpha",
+        type=float,
+        default=1.0,
         help="Dirichlet concentration alpha (default 1.0).",
     )
     parser.add_argument(
-        "--n-iters", type=int, default=DEFAULT_N_ITERS,
+        "--n-iters",
+        type=int,
+        default=DEFAULT_N_ITERS,
         help="Chain length per draw (default DEFAULT_N_ITERS).",
     )
     parser.add_argument(
-        "--step-size", type=float, default=DEFAULT_STEP_SIZE,
+        "--step-size",
+        type=float,
+        default=DEFAULT_STEP_SIZE,
         help="Score-repellent step eta (default DEFAULT_STEP_SIZE).",
     )
     parser.add_argument(
-        "--seed", type=int, default=2025,
+        "--seed",
+        type=int,
+        default=2025,
         help="Master RNG seed (default 2025).",
     )
     return parser
@@ -151,7 +165,9 @@ def main(argv=None) -> int:
 
     # ----- (a) Vanilla Dirichlet baseline -------------------------------
     dirichlet = DirichletReplacement(
-        alpha=args.alpha, score_repellent=False, seed=int(args.seed),
+        alpha=args.alpha,
+        score_repellent=False,
+        seed=int(args.seed),
     )
     eta_d = dirichlet.sample(n_samples=args.n_samples, dim=args.dim)
     var_d = _running_variance(eta_d)
@@ -164,8 +180,10 @@ def main(argv=None) -> int:
 
     # ----- (b) Score-repellent replacement -------------------------------
     rep = DirichletReplacement(
-        alpha=args.alpha, score_repellent=True,
-        step_size=args.step_size, n_iters=args.n_iters,
+        alpha=args.alpha,
+        score_repellent=True,
+        step_size=args.step_size,
+        n_iters=args.n_iters,
         seed=int(args.seed),
     )
     eta_sr = rep.sample(n_samples=args.n_samples, dim=args.dim)
@@ -193,9 +211,7 @@ def main(argv=None) -> int:
     if var_d > 0.0:
         ratio = var_sr / var_d
         print(f"  variance(score-repellent) / variance(Dirichlet) = {ratio:.4f}")
-        print(
-            f"  variance reduction (1 - ratio) = {(1.0 - ratio):.4f}"
-        )
+        print(f"  variance reduction (1 - ratio) = {(1.0 - ratio):.4f}")
     else:
         print("  WARNING: Dirichlet variance is zero (degenerate alpha).")
     print()

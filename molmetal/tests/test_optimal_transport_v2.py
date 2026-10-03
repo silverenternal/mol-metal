@@ -151,12 +151,8 @@ def test_mean_field_residual_is_one_over_sqrt_n() -> None:
     """``mean_field_residual(N) = mean_field_tol / sqrt(N)``."""
     plan = MeanFieldW2Plan(mean_field_tol=1.0)
     assert math.isclose(plan.mean_field_residual(1), 1.0, rel_tol=1.0e-6)
-    assert math.isclose(
-        plan.mean_field_residual(4), 0.5, rel_tol=1.0e-6
-    )
-    assert math.isclose(
-        plan.mean_field_residual(100), 0.1, rel_tol=1.0e-6
-    )
+    assert math.isclose(plan.mean_field_residual(4), 0.5, rel_tol=1.0e-6)
+    assert math.isclose(plan.mean_field_residual(100), 0.1, rel_tol=1.0e-6)
 
 
 def test_mean_field_residual_floors_n_at_one() -> None:
@@ -177,9 +173,7 @@ def test_verify_step_size_warns_when_cfl_violated() -> None:
     plan = MeanFieldW2Plan()
     dt_star = plan.recommended_step_size(64, score_norm=1.0)
     with pytest.warns(RuntimeWarning, match="CFL violated"):
-        ok = plan.verify_step_size(
-            64, 1.0, dt_star * 2.0
-        )
+        ok = plan.verify_step_size(64, 1.0, dt_star * 2.0)
     assert ok is False
 
 
@@ -195,9 +189,7 @@ def test_verify_step_size_warns_when_mean_field_residual_too_large() -> None:
     # Use a tiny score norm so dt_star is clamped at 1.0 and the
     # CFL check trivially passes.
     with pytest.warns(RuntimeWarning, match="mean_field_residual"):
-        ok = plan.verify_step_size(
-            1, 1.0e-15, step_size=1.0
-        )
+        ok = plan.verify_step_size(1, 1.0e-15, step_size=1.0)
     assert ok is False
 
 
@@ -226,9 +218,7 @@ def test_score_smoothed_ot_plan_random_mode_is_permutation() -> None:
     """``random`` mode returns a valid permutation of ``[0, B)``."""
     x0 = _random_points(n=8, d=3, seed=0)
     x1 = _random_points(n=8, d=3, seed=1)
-    idx = mean_field_score_smoothed_ot_plan(
-        x0, x1, mode="random", seed=42
-    )
+    idx = mean_field_score_smoothed_ot_plan(x0, x1, mode="random", seed=42)
     assert idx.shape == (8,)
     assert sorted(idx.tolist()) == list(range(8))
 
@@ -236,9 +226,7 @@ def test_score_smoothed_ot_plan_random_mode_is_permutation() -> None:
 def test_score_smoothed_ot_plan_hungarian_returns_identity_on_self() -> None:
     """``hungarian`` mode returns the identity when ``x0 == x1``."""
     x0 = _random_points(n=4, d=3, seed=2)
-    idx = mean_field_score_smoothed_ot_plan(
-        x0, x0.clone(), mode="hungarian", alpha=0.5
-    )
+    idx = mean_field_score_smoothed_ot_plan(x0, x0.clone(), mode="hungarian", alpha=0.5)
     assert sorted(idx.tolist()) == list(range(4))
 
 
@@ -250,9 +238,7 @@ def test_score_smoothed_ot_plan_hungarian_optimal_cost() -> None:
     """
     x0 = torch.tensor([[0.0, 0.0]])
     x1 = torch.tensor([[1.0, 0.0]])
-    idx = mean_field_score_smoothed_ot_plan(
-        x0, x1, mode="hungarian"
-    )
+    idx = mean_field_score_smoothed_ot_plan(x0, x1, mode="hungarian")
     assert idx.tolist() == [0]
 
 
@@ -260,9 +246,7 @@ def test_score_smoothed_ot_plan_alpha_zero_falls_back_to_base() -> None:
     """``alpha = 0`` (no mean-field bias) does not raise and returns a perm."""
     x0 = _random_points(n=6, d=2, seed=3)
     x1 = _random_points(n=6, d=2, seed=4)
-    idx = mean_field_score_smoothed_ot_plan(
-        x0, x1, mode="hungarian", alpha=0.0
-    )
+    idx = mean_field_score_smoothed_ot_plan(x0, x1, mode="hungarian", alpha=0.0)
     assert sorted(idx.tolist()) == list(range(6))
 
 
@@ -304,8 +288,11 @@ def test_score_smoothed_ot_plan_handles_reference_score() -> None:
     x1 = _random_points(n=4, d=3, seed=14)
     ref = torch.zeros_like(x0)
     idx = mean_field_score_smoothed_ot_plan(
-        x0, x1, mode="hungarian",
-        reference_score0=ref, alpha=0.5,
+        x0,
+        x1,
+        mode="hungarian",
+        reference_score0=ref,
+        alpha=0.5,
     )
     assert sorted(idx.tolist()) == list(range(4))
 
@@ -363,16 +350,17 @@ def test_mean_field_bias_reduces_cost_on_toy_two_cluster_case() -> None:
 
     # With alpha = 0, the Hungarian solver picks the minimum-cost
     # assignment: row 0 ↔ x1[0] (cost 0.01), row 1 ↔ x1[1] (cost 25).
-    idx_base = mean_field_score_smoothed_ot_plan(
-        x0, x1, mode="hungarian", alpha=0.0
-    )
+    idx_base = mean_field_score_smoothed_ot_plan(x0, x1, mode="hungarian", alpha=0.0)
     assert sorted(idx_base.tolist()) == [0, 1]
 
     # With the bias pointing toward x1[0] (the near cluster), the
     # bias term can only *strengthen* this assignment (the other
     # pairing incurs a positive cost penalty).
     idx_biased = mean_field_score_smoothed_ot_plan(
-        x0, x1, mode="hungarian", alpha=10.0,
+        x0,
+        x1,
+        mode="hungarian",
+        alpha=10.0,
         reference_score0=score0,
     )
     # Both rows still get distinct columns; the bias does not
@@ -395,7 +383,9 @@ def test_ma_regularization_factor_well_conditioned() -> None:
     torch.manual_seed(0)
     x0 = torch.randn(16, 4)
     Q, is_regular, reg_factor = ma_regularization_factor(
-        x0, alpha=0.5, degenerate_threshold=1.0e-4,
+        x0,
+        alpha=0.5,
+        degenerate_threshold=1.0e-4,
     )
     assert Q.shape == (4, 4)
     # SPD by construction
@@ -412,7 +402,9 @@ def test_ma_regularization_factor_detects_degenerate_constant_x0() -> None:
     """``x0 = 0`` triggers the degenerate Brenier-map flag."""
     x0 = torch.zeros(8, 3)
     Q, is_regular, reg_factor = ma_regularization_factor(
-        x0, alpha=0.5, degenerate_threshold=1.0e-4,
+        x0,
+        alpha=0.5,
+        degenerate_threshold=1.0e-4,
     )
     # All-zero input → degenerate empirical covariance → Q is the SPD
     # projection at the floor → strict convexity check fails because
@@ -427,7 +419,9 @@ def test_ma_regularization_factor_detects_rank_deficient() -> None:
     x0 = torch.randn(8, 3)
     x0[:, 2] *= 1.0e-6  # collapse the z-axis
     Q, is_regular, reg_factor = ma_regularization_factor(
-        x0, alpha=0.5, degenerate_threshold=1.0e-4,
+        x0,
+        alpha=0.5,
+        degenerate_threshold=1.0e-4,
     )
     # The z-eigenvalue falls below the threshold → degenerate.
     assert not bool(is_regular)
@@ -452,7 +446,10 @@ def test_ma_regularized_ot_plan_well_conditioned_matches_upstream() -> None:
     x0 = torch.randn(8, 3)
     x1 = torch.randn(8, 3)
     idx_ma, diag = ma_regularized_ot_plan(
-        x0, x1, lambda_ma=0.01, mode="hungarian",
+        x0,
+        x1,
+        lambda_ma=0.01,
+        mode="hungarian",
         return_diagnostics=True,
     )
     assert diag["activated"] is False
@@ -468,7 +465,10 @@ def test_ma_regularized_ot_plan_degenerate_activates_regularisation() -> None:
     x0 = torch.zeros(8, 3)
     x1 = torch.randn(8, 3)
     idx_ma, diag = ma_regularized_ot_plan(
-        x0, x1, lambda_ma=0.01, mode="hungarian",
+        x0,
+        x1,
+        lambda_ma=0.01,
+        mode="hungarian",
         return_diagnostics=True,
     )
     assert diag["activated"] is True
@@ -485,7 +485,10 @@ def test_ma_regularized_ot_plan_lambda_zero_is_no_op() -> None:
     x0 = torch.zeros(8, 3)  # degenerate, but lambda_ma disables regularisation
     x1 = torch.randn(8, 3)
     idx_ma, diag = ma_regularized_ot_plan(
-        x0, x1, lambda_ma=0.0, mode="hungarian",
+        x0,
+        x1,
+        lambda_ma=0.0,
+        mode="hungarian",
         return_diagnostics=True,
     )
     assert diag["activated"] is False
@@ -498,7 +501,10 @@ def test_ma_regularized_ot_plan_random_mode_skips_ma() -> None:
     x0 = torch.zeros(8, 3)
     x1 = torch.randn(8, 3)
     idx_ma = ma_regularized_ot_plan(
-        x0, x1, lambda_ma=0.01, mode="random",
+        x0,
+        x1,
+        lambda_ma=0.01,
+        mode="random",
     )
     # Random mode never activates Hungarian; it just calls upstream.
     assert idx_ma.shape == (8,)
@@ -531,7 +537,10 @@ def test_ma_regularized_ot_plan_returns_permutation_shape() -> None:
     x0 = torch.cat([torch.zeros(4, 3), torch.randn(4, 3)], dim=0)
     x1 = torch.randn(8, 3)
     idx = ma_regularized_ot_plan(
-        x0, x1, lambda_ma=0.01, mode="hungarian",
+        x0,
+        x1,
+        lambda_ma=0.01,
+        mode="hungarian",
     )
     assert idx.shape == (8,)
     assert idx.dtype == torch.long
@@ -547,7 +556,9 @@ def test_ma_regularization_mathematical_correctness_gaussian() -> None:
     x0 = torch.randn(32, 4)
     x1 = torch.randn(32, 4) + 0.5
     _, is_regular, _ = ma_regularization_factor(
-        x0, alpha=0.5, degenerate_threshold=1.0e-4,
+        x0,
+        alpha=0.5,
+        degenerate_threshold=1.0e-4,
     )
     # Affine Brenier map → C^{2,α} regular → no MA-regularisation.
     assert bool(is_regular)

@@ -53,6 +53,7 @@ Exit codes:
     1 — at least one test failed.
     2 — orchestrator could not run (repo missing, etc.).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -106,9 +107,9 @@ class CheckResult:
 class TestReport:
     """Aggregate report for one of the five integration tests."""
 
-    test_id: str           # "T1", "T2", ..., "T5"
-    test_name: str         # short human title
-    status: str = "PASS"   # "PASS" | "FAIL" | "SKIPPED"
+    test_id: str  # "T1", "T2", ..., "T5"
+    test_name: str  # short human title
+    status: str = "PASS"  # "PASS" | "FAIL" | "SKIPPED"
     checks: List[CheckResult] = field(default_factory=list)
     elapsed_seconds: float = 0.0
     error: str = ""
@@ -130,6 +131,7 @@ def _to_jsonable(obj: Any) -> Any:
         return str(obj)
     try:
         import numpy as np  # noqa: WPS433
+
         if isinstance(obj, np.floating):
             return float(obj.item())
         if isinstance(obj, np.integer):
@@ -231,8 +233,9 @@ def _test_t1_se3_vina() -> TestReport:
         z1 = torch.eye(4).unsqueeze(0).repeat(2, 1, 1).clone()
         # Small rotation around z axis (10°) on target.
         theta = 0.1745329
-        cos_t, sin_t = float(torch.cos(torch.tensor(theta))), float(
-            torch.sin(torch.tensor(theta))
+        cos_t, sin_t = (
+            float(torch.cos(torch.tensor(theta))),
+            float(torch.sin(torch.tensor(theta))),
         )
         z1[:, 0, 0] = cos_t
         z1[:, 0, 1] = -sin_t
@@ -242,10 +245,7 @@ def _test_t1_se3_vina() -> TestReport:
         # Walk the geodesic at t = [0.0, 0.5, 1.0].
         t_values = torch.tensor([0.0, 0.5, 1.0])
         poses = decoder.decode(z0=z0, z1=z1, t_values=t_values)
-        se3_ok = (
-            poses.shape == (2, 3, 4, 4)
-            and torch.isfinite(poses).all().item()
-        )
+        se3_ok = poses.shape == (2, 3, 4, 4) and torch.isfinite(poses).all().item()
         se3_dt = time.perf_counter() - t0
         _record(
             rep,
@@ -284,6 +284,7 @@ def _test_t1_se3_vina() -> TestReport:
             dock_smiles,
         )
         from molmetal.domain import Pocket
+
         pocket = Pocket(
             pdb_id="T1",
             coords=torch.zeros(20, 3, dtype=torch.float32),
@@ -295,7 +296,10 @@ def _test_t1_se3_vina() -> TestReport:
             radius=10.0,
         )
         complexes = dock_smiles(
-            "CCO", pocket, n_poses=1, exhaustiveness=1,
+            "CCO",
+            pocket,
+            n_poses=1,
+            exhaustiveness=1,
         )
         # On hosts without Vina the call raises — accept SKIPPED here.
         vina_ok = len(complexes) >= 1
@@ -358,9 +362,7 @@ def _test_t1_se3_vina() -> TestReport:
             ),
             detail={
                 "translation_shape": list(translation.shape),
-                "translation_norm_mean": float(
-                    translation.norm(dim=-1).mean().item()
-                ),
+                "translation_norm_mean": float(translation.norm(dim=-1).mean().item()),
             },
         )
     except Exception as exc:
@@ -542,9 +544,11 @@ def _test_t2_hilbert_astsr() -> TestReport:
     t0 = time.perf_counter()
     try:
         bench = benchmark_hilbert_vs_evolutionary(
-            X, y, n_runs=1, feature_columns=tuple(
-                f"f{i}" for i in range(n_features)
-            ), population_dim=int(n_features),
+            X,
+            y,
+            n_runs=1,
+            feature_columns=tuple(f"f{i}" for i in range(n_features)),
+            population_dim=int(n_features),
         )
         bench_ok = bool(np.isfinite(bench.get("speedup_mean", float("nan"))))
         bench_dt = time.perf_counter() - t0
@@ -561,9 +565,7 @@ def _test_t2_hilbert_astsr() -> TestReport:
             detail={
                 "speedup_mean": float(bench.get("speedup_mean", 0.0)),
                 "hilbert_r2_mean": float(bench.get("hilbert_r2_mean", 0.0)),
-                "evolutionary_r2_mean": float(
-                    bench.get("evolutionary_r2_mean", 0.0)
-                ),
+                "evolutionary_r2_mean": float(bench.get("evolutionary_r2_mean", 0.0)),
             },
         )
         rep.outputs["speedup_mean"] = float(bench.get("speedup_mean", 0.0))
@@ -681,9 +683,13 @@ def _test_t3_multiph_pll_score_any() -> TestReport:
     try:
         sa_result = score_any("sa_score", molecules=smiles_list[:2])
         sa_vals = sa_result["values"]
-        sa_ok = bool(len(sa_vals) == 2 and all(
-            v == v for v in sa_vals  # isfinite
-        ))
+        sa_ok = bool(
+            len(sa_vals) == 2
+            and all(
+                v == v
+                for v in sa_vals  # isfinite
+            )
+        )
         sa_dt = time.perf_counter() - t0
         _record(
             rep,
@@ -726,9 +732,7 @@ def _test_t3_multiph_pll_score_any() -> TestReport:
     try:
         qed_result = score_any("qed", molecules=smiles_list[:2])
         qed_vals = qed_result["values"]
-        qed_ok = bool(len(qed_vals) == 2 and all(
-            v == v for v in qed_vals
-        ))
+        qed_ok = bool(len(qed_vals) == 2 and all(v == v for v in qed_vals))
         qed_dt = time.perf_counter() - t0
         _record(
             rep,
@@ -768,12 +772,11 @@ def _test_t3_multiph_pll_score_any() -> TestReport:
     t0 = time.perf_counter()
     try:
         pll_result = score_any(
-            "pl_likelihood", molecules=smiles_list[:2],
+            "pl_likelihood",
+            molecules=smiles_list[:2],
         )
         pll_vals = pll_result["values"]
-        pll_ok = bool(len(pll_vals) == 2 and all(
-            v == v for v in pll_vals
-        ))
+        pll_ok = bool(len(pll_vals) == 2 and all(v == v for v in pll_vals))
         pll_dt = time.perf_counter() - t0
         _record(
             rep,
@@ -887,6 +890,7 @@ def _test_t4_variance_mcts_proof_search() -> TestReport:
     # ---- Build stub MCTSProofSearch + wrapper --------------------------
     t0 = time.perf_counter()
     try:
+
         class _StubMCTS:
             """Stub MCTSProofSearch: exposes the attributes the wrapper
             reads (``history``, ``leaf_value_var``, ``leaf_value_std``,
@@ -937,10 +941,7 @@ def _test_t4_variance_mcts_proof_search() -> TestReport:
     t0 = time.perf_counter()
     try:
         # Build a small IntegrationNode with 4 child leaves.
-        children = [
-            IntegrationNode(node_id=f"a{i}", prior=1.0 / 4)
-            for i in range(4)
-        ]
+        children = [IntegrationNode(node_id=f"a{i}", prior=1.0 / 4) for i in range(4)]
         root = IntegrationNode(node_id="root", prior=1.0)
         root.children = children
         action = wrapper.search(root)
@@ -1013,7 +1014,9 @@ def _test_t4_variance_mcts_proof_search() -> TestReport:
     t0 = time.perf_counter()
     try:
         node = VarianceMCTSNode(
-            prior=0.5, c_puct=1.0, c_var=0.5,
+            prior=0.5,
+            c_puct=1.0,
+            c_var=0.5,
             action_priors=[0.25, 0.25, 0.25, 0.25],
         )
         direct_actions = [node.select_action() for _ in range(8)]
@@ -1133,7 +1136,7 @@ def _test_t5_triangle_closure_with_multiph() -> TestReport:
             passed=False,
             seconds=smoke_dt,
             message=f"build_report raised {type(exc).__name__}: {exc}\n"
-                    f"{traceback.format_exc()}",
+            f"{traceback.format_exc()}",
         )
         rep.status = "FAIL"
         rep.error = "triangle_closure.build_report failed"
@@ -1144,12 +1147,20 @@ def _test_t5_triangle_closure_with_multiph() -> TestReport:
     t0 = time.perf_counter()
     try:
         r1 = build_report(
-            n_trajectories=8, n_rounds=2, n_features=4,
-            n_arms=3, seed=42, hilbert_iters=10,
+            n_trajectories=8,
+            n_rounds=2,
+            n_features=4,
+            n_arms=3,
+            seed=42,
+            hilbert_iters=10,
         )
         r2 = build_report(
-            n_trajectories=8, n_rounds=2, n_features=4,
-            n_arms=3, seed=42, hilbert_iters=10,
+            n_trajectories=8,
+            n_rounds=2,
+            n_features=4,
+            n_arms=3,
+            seed=42,
+            hilbert_iters=10,
         )
         det_ok = bool(r1["summary"] == r2["summary"])
         det_dt = time.perf_counter() - t0
@@ -1191,9 +1202,9 @@ def _test_t5_triangle_closure_with_multiph() -> TestReport:
         closure_obj_attrs: List[str] = []
         try:
             from molmetal.scripts import triangle_closure as _tc_mod
+
             closure_obj_attrs = sorted(
-                a for a in dir(_tc_mod.TriangleClosure)
-                if not a.startswith("__")
+                a for a in dir(_tc_mod.TriangleClosure) if not a.startswith("__")
             )
         except Exception:
             pass
@@ -1201,6 +1212,7 @@ def _test_t5_triangle_closure_with_multiph() -> TestReport:
         # ``multi_ph_augment`` symbol on the module.  Accept either.
         try:
             from molmetal.scripts import triangle_closure as _tc_mod2
+
             has_param = "multi_ph_knn" in closure_obj_attrs
             has_mod = hasattr(_tc_mod2, "multi_ph_augment")
             multiph_hooked = bool(has_param or has_mod)
@@ -1250,19 +1262,28 @@ def _test_t5_triangle_closure_with_multiph() -> TestReport:
 # ===========================================================================
 TESTS: Tuple[Tuple[str, str, Callable[[], TestReport]], ...] = (
     ("T1", "SE(3) Schrödinger-Bridge → Vina Dock", _test_t1_se3_vina),
-    ("T2", "Hilbert ASTSR end-to-end",             _test_t2_hilbert_astsr),
-    ("T3", "Multi-PH + PLL → score_any router",    _test_t3_multiph_pll_score_any),
-    ("T4", "Variance MCTS × proof_search",         _test_t4_variance_mcts_proof_search),
-    ("T5", "ASTSR × Hilbert × Multi-PH closure",   _test_t5_triangle_closure_with_multiph),
+    ("T2", "Hilbert ASTSR end-to-end", _test_t2_hilbert_astsr),
+    ("T3", "Multi-PH + PLL → score_any router", _test_t3_multiph_pll_score_any),
+    ("T4", "Variance MCTS × proof_search", _test_t4_variance_mcts_proof_search),
+    (
+        "T5",
+        "ASTSR × Hilbert × Multi-PH closure",
+        _test_t5_triangle_closure_with_multiph,
+    ),
 )
 
 
 # ===========================================================================
 # Report emission
 # ===========================================================================
-def _write_json(reports: List[TestReport], *, started: str,
-                finished: str, total_seconds: float,
-                argv: Sequence[str]) -> None:
+def _write_json(
+    reports: List[TestReport],
+    *,
+    started: str,
+    finished: str,
+    total_seconds: float,
+    argv: Sequence[str],
+) -> None:
     payload = {
         "schema_version": "1.0",
         "workflow": "Wf-46 Phase 4",
@@ -1289,8 +1310,9 @@ def _write_json(reports: List[TestReport], *, started: str,
     JSON_OUT.write_text(json.dumps(payload, indent=2, sort_keys=True))
 
 
-def _write_markdown(reports: List[TestReport], *, started: str,
-                    finished: str, total_seconds: float) -> None:
+def _write_markdown(
+    reports: List[TestReport], *, started: str, finished: str, total_seconds: float
+) -> None:
     n_total = len(reports)
     n_pass = sum(1 for r in reports if r.status == "PASS")
     n_fail = sum(1 for r in reports if r.status == "FAIL")
@@ -1316,9 +1338,7 @@ def _write_markdown(reports: List[TestReport], *, started: str,
         n_chk = len(r.checks)
         n_ok = sum(1 for c in r.checks if c.passed and not c.skipped)
         n_skip_c = sum(1 for c in r.checks if c.skipped)
-        notes = r.error or (
-            f"{n_ok}/{n_chk} pass, {n_skip_c} skipped"
-        )
+        notes = r.error or (f"{n_ok}/{n_chk} pass, {n_skip_c} skipped")
         lines.append(
             f"| `{r.test_id}` | {r.test_name} | **{r.status}** | "
             f"{r.elapsed_seconds:.1f} | {n_ok}/{n_chk} | {notes} |"
@@ -1343,15 +1363,16 @@ def _write_markdown(reports: List[TestReport], *, started: str,
         lines.append("| Assertion | Pass | Skip | Time (s) | Message |")
         lines.append("|---|---|---|---|---|")
         for c in r.checks:
-            status = "PASS" if c.passed and not c.skipped else (
-                "SKIP" if c.skipped else "FAIL"
+            status = (
+                "PASS"
+                if c.passed and not c.skipped
+                else ("SKIP" if c.skipped else "FAIL")
             )
             msg = (c.message or "").replace("|", "\\|")
             if len(msg) > 240:
                 msg = msg[:237] + "..."
             lines.append(
-                f"| `{c.name}` | {status} | {c.skipped} | "
-                f"{c.seconds:.2f} | {msg} |"
+                f"| `{c.name}` | {status} | {c.skipped} | " f"{c.seconds:.2f} | {msg} |"
             )
         lines.append("")
 
@@ -1366,17 +1387,25 @@ def _write_markdown(reports: List[TestReport], *, started: str,
         "error rather than failing the verify."
     )
     lines.append("")
-    lines.append("- **T1** — SE(3) Schrödinger-Bridge decoder + Vina Dock "
-                 "(Wf-30 + Wf-40).")
-    lines.append("- **T2** — Hilbert ASTSR composite: fit + switch + "
-                 "predict + benchmark (Wf-37 + Wf-39).")
-    lines.append("- **T3** — Multi-PH PLL signature → score_any router "
-                 "for sa_score, qed, pl_likelihood + unknown-metric "
-                 "rejection (Wf-43).")
-    lines.append("- **T4** — VarianceMCTSWrapper around a stub "
-                 "MCTSProofSearch (Wf-36).")
-    lines.append("- **T5** — triangle_closure.build_report 3-round smoke "
-                 "+ determinism check + Multi-PH hook probe (Wf-41).")
+    lines.append(
+        "- **T1** — SE(3) Schrödinger-Bridge decoder + Vina Dock " "(Wf-30 + Wf-40)."
+    )
+    lines.append(
+        "- **T2** — Hilbert ASTSR composite: fit + switch + "
+        "predict + benchmark (Wf-37 + Wf-39)."
+    )
+    lines.append(
+        "- **T3** — Multi-PH PLL signature → score_any router "
+        "for sa_score, qed, pl_likelihood + unknown-metric "
+        "rejection (Wf-43)."
+    )
+    lines.append(
+        "- **T4** — VarianceMCTSWrapper around a stub " "MCTSProofSearch (Wf-36)."
+    )
+    lines.append(
+        "- **T5** — triangle_closure.build_report 3-round smoke "
+        "+ determinism check + Multi-PH hook probe (Wf-41)."
+    )
     lines.append("")
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     MD_OUT.write_text("\n".join(lines))
@@ -1393,19 +1422,26 @@ def _parse_argv(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
-        "--only", type=str, default="",
+        "--only",
+        type=str,
+        default="",
         help="Comma-separated test IDs to run (e.g. 'T1,T2'). Default: all.",
     )
     p.add_argument(
-        "--exclude", type=str, default="",
+        "--exclude",
+        type=str,
+        default="",
         help="Comma-separated test IDs to skip.",
     )
     p.add_argument(
-        "--subprocess", action="store_true",
+        "--subprocess",
+        action="store_true",
         help="Run each test in a fresh subprocess (catches import cycles).",
     )
     p.add_argument(
-        "--timeout", type=int, default=180,
+        "--timeout",
+        type=int,
+        default=180,
         help="Per-test timeout in seconds (subprocess mode only).",
     )
     return p.parse_args(argv)
@@ -1446,19 +1482,27 @@ def _run_in_subprocess(test_id: str, fn_name: str, *, timeout: int) -> TestRepor
     env.setdefault("PYTHONPATH", str(PROJECT_ROOT))
     try:
         proc = subprocess.run(
-            cmd, capture_output=True, text=True,
-            cwd=str(PROJECT_ROOT), timeout=int(timeout), env=env,
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=str(PROJECT_ROOT),
+            timeout=int(timeout),
+            env=env,
         )
     except subprocess.TimeoutExpired:
         return TestReport(
-            test_id=test_id, test_name=fn_name, status="FAIL",
+            test_id=test_id,
+            test_name=fn_name,
+            status="FAIL",
             error=f"subprocess timed out after {timeout}s",
             elapsed_seconds=float(timeout),
         )
     out = proc.stdout or ""
     if "---WF46_BEGIN---" not in out or "---WF46_END---" not in out:
         return TestReport(
-            test_id=test_id, test_name=fn_name, status="FAIL",
+            test_id=test_id,
+            test_name=fn_name,
+            status="FAIL",
             error=(
                 f"subprocess rc={proc.returncode}; stdout tail: "
                 f"{out[-400:]}; stderr tail: {(proc.stderr or '')[-400:]}"
@@ -1468,20 +1512,25 @@ def _run_in_subprocess(test_id: str, fn_name: str, *, timeout: int) -> TestRepor
     body = out.split("---WF46_BEGIN---", 1)[1].split("---WF46_END---", 1)[0]
     data = json.loads(body)
     rep = TestReport(
-        test_id=data["test_id"], test_name=data["test_name"],
-        status=data["status"], elapsed_seconds=float(data["elapsed_seconds"]),
+        test_id=data["test_id"],
+        test_name=data["test_name"],
+        status=data["status"],
+        elapsed_seconds=float(data["elapsed_seconds"]),
         error=str(data.get("error", "")),
         inputs=dict(data.get("inputs", {})),
         outputs=dict(data.get("outputs", {})),
     )
     for c in data.get("checks", []) or []:
-        rep.checks.append(CheckResult(
-            name=c["name"], passed=bool(c["passed"]),
-            skipped=bool(c.get("skipped", False)),
-            seconds=float(c.get("seconds", 0.0)),
-            message=str(c.get("message", "")),
-            detail=dict(c.get("detail", {})),
-        ))
+        rep.checks.append(
+            CheckResult(
+                name=c["name"],
+                passed=bool(c["passed"]),
+                skipped=bool(c.get("skipped", False)),
+                seconds=float(c.get("seconds", 0.0)),
+                message=str(c.get("message", "")),
+                detail=dict(c.get("detail", {})),
+            )
+        )
     return rep
 
 
@@ -1503,7 +1552,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print(f"[integration_verify_r18] -> {test_id}: {test_name}")
         if args.subprocess:
             rep = _run_in_subprocess(
-                test_id, fn.__name__, timeout=args.timeout,
+                test_id,
+                fn.__name__,
+                timeout=args.timeout,
             )
         else:
             try:
@@ -1511,7 +1562,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             except Exception as exc:
                 tb = traceback.format_exc()
                 rep = TestReport(
-                    test_id=test_id, test_name=test_name, status="FAIL",
+                    test_id=test_id,
+                    test_name=test_name,
+                    status="FAIL",
                     error=f"{type(exc).__name__}: {exc}\n{tb}",
                     elapsed_seconds=0.0,
                 )
@@ -1534,10 +1587,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     total_s = time.perf_counter() - t0
 
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    _write_json(reports, started=started, finished=finished,
-                total_seconds=total_s, argv=sys.argv[1:])
-    _write_markdown(reports, started=started, finished=finished,
-                    total_seconds=total_s)
+    _write_json(
+        reports,
+        started=started,
+        finished=finished,
+        total_seconds=total_s,
+        argv=sys.argv[1:],
+    )
+    _write_markdown(reports, started=started, finished=finished, total_seconds=total_s)
 
     n_fail = sum(1 for r in reports if r.status == "FAIL")
     n_pass = sum(1 for r in reports if r.status == "PASS")

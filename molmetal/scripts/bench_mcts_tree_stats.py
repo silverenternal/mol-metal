@@ -79,6 +79,7 @@ Usage
     uv run --no-sync python molmetal/scripts/bench_mcts_tree_stats.py \\
         --smoke --n-trees 5 --n-simulations 50
 """
+
 from __future__ import annotations
 
 import argparse
@@ -132,7 +133,15 @@ DEFAULT_SEED: int = 0x575F40  # ascii 'WSf40'
 DEFAULT_C_PUCT: float = 1.4
 DEFAULT_C_VAR: float = 0.5
 TASK_SPEC_METALS: Tuple[str, ...] = (
-    "Pt", "Ru", "Ir", "Rh", "Re", "Os", "Au", "Pd", "Ag",
+    "Pt",
+    "Ru",
+    "Ir",
+    "Rh",
+    "Re",
+    "Os",
+    "Au",
+    "Pd",
+    "Ag",
 )
 
 
@@ -185,20 +194,22 @@ def _load_platinai(path: str, n_samples: int, seed: int) -> List[Dict[str, Any]]
             smi = parts[smi_idx].strip()
             if not smi:
                 continue
-            rows.append({
-                "smiles": smi,
-                "metal": (
-                    parts[metal_idx].strip()
-                    if metal_idx is not None and metal_idx < len(parts)
-                    else "Pt"
-                ),
-                "id": (
-                    parts[id_idx].strip()
-                    if id_idx is not None and id_idx < len(parts)
-                    else f"row_{line_idx}"
-                ),
-                "row_idx": int(line_idx),
-            })
+            rows.append(
+                {
+                    "smiles": smi,
+                    "metal": (
+                        parts[metal_idx].strip()
+                        if metal_idx is not None and metal_idx < len(parts)
+                        else "Pt"
+                    ),
+                    "id": (
+                        parts[id_idx].strip()
+                        if id_idx is not None and id_idx < len(parts)
+                        else f"row_{line_idx}"
+                    ),
+                    "row_idx": int(line_idx),
+                }
+            )
     rng = random.Random(int(seed) ^ 0xA5A5)
     if n_samples >= len(rows):
         return rows
@@ -236,9 +247,7 @@ def _load_metalcytotox(
             elif h_norm in ("metal", "metal_label"):
                 metal_idx = i
         if smi_idx is None:
-            raise Wf40Error(
-                f"metalcytotox csv has no SMILES column: {header}"
-            )
+            raise Wf40Error(f"metalcytotox csv has no SMILES column: {header}")
         for line_idx, line in enumerate(fh):
             parts = line.rstrip("\n").split(",")
             if len(parts) <= smi_idx:
@@ -253,16 +262,18 @@ def _load_metalcytotox(
             )
             if metal_whitelist and metal not in metal_whitelist:
                 continue
-            rows.append({
-                "smiles": smi,
-                "metal": metal or "?",
-                "id": (
-                    parts[id_idx].strip()
-                    if id_idx is not None and id_idx < len(parts)
-                    else f"row_{line_idx}"
-                ),
-                "row_idx": int(line_idx),
-            })
+            rows.append(
+                {
+                    "smiles": smi,
+                    "metal": metal or "?",
+                    "id": (
+                        parts[id_idx].strip()
+                        if id_idx is not None and id_idx < len(parts)
+                        else f"row_{line_idx}"
+                    ),
+                    "row_idx": int(line_idx),
+                }
+            )
     rng = random.Random(int(seed) ^ 0xB5B5)
     if n_samples >= len(rows):
         return rows
@@ -350,11 +361,7 @@ def _scorer_from_smiles(smiles: str) -> Any:
             smi = str(state.canonical_smiles() or "")
         except Exception:
             smi = str(getattr(state, "source_smiles", "") or "")
-        smi_hash = (
-            float(abs(hash(smi)) % 1000) / 1000.0
-            if smi
-            else base_hash
-        )
+        smi_hash = float(abs(hash(smi)) % 1000) / 1000.0 if smi else base_hash
         return float(
             min(
                 1.0,
@@ -394,7 +401,9 @@ def _build_proof_search(
             MCTSProofSearch,
         )
     binding_site = BindingSite(
-        name="wf40_site", constraints=[], geometry_hints={},
+        name="wf40_site",
+        constraints=[],
+        geometry_hints={},
     )
     tiles = _build_default_tiles()
     if not tiles:
@@ -413,8 +422,8 @@ def _build_proof_search(
         dirichlet_alpha=0.3,
         dirichlet_fraction=0.25,
         early_stop=False,  # Wf-40: disable early-stop so we
-                            # consume the full sims budget and the
-                            # tree statistics reflect the full run.
+        # consume the full sims budget and the
+        # tree statistics reflect the full run.
         debug=False,
     )
     if exploration_strategy in ("score_repellent", "variance"):
@@ -476,6 +485,7 @@ def _build_replay_wrapper(
         from molmetal.molmetal_lam.search_alg.mcts_replay_buffer import (  # type: ignore
             MCTSReplayBuffer,
         )
+
         base = _build_proof_search(
             seed=int(seed),
             sims=int(sims),
@@ -487,6 +497,7 @@ def _build_replay_wrapper(
         from molmetal.molmetal_lam.search_alg.variance_mcts_integration import (  # type: ignore
             VarianceMCTSWrapper,
         )
+
         wrapper = VarianceMCTSWrapper(
             base_search=base,
             c_puct=float(c_puct),
@@ -499,7 +510,10 @@ def _build_replay_wrapper(
     except Exception:
         return {
             "wrapper": _build_variance_wrapper(
-                seed=seed, sims=sims, c_puct=c_puct, c_var=c_var,
+                seed=seed,
+                sims=sims,
+                c_puct=c_puct,
+                c_var=c_var,
             ),
             "buffer": None,
         }
@@ -584,9 +598,14 @@ def _capture_replay_entries(
         except Exception:
             continue
     # Loss proxy.
-    loss = wrapper_obj.train_value_network if hasattr(
-        wrapper_obj, "train_value_network",
-    ) else None
+    loss = (
+        wrapper_obj.train_value_network
+        if hasattr(
+            wrapper_obj,
+            "train_value_network",
+        )
+        else None
+    )
     # The VarianceMCTSWrapper does not expose train_value_network; we
     # compute the empirical loss directly from the buffer instead.
     value_loss = 0.0
@@ -880,7 +899,8 @@ def _run_tree(
                 wrapper = pair["wrapper"]
                 buf = pair["buffer"]
                 out = wrapper.search_with_proof_search(
-                    state, max_depth=max_depth,
+                    state,
+                    max_depth=max_depth,
                 )
                 if "error" in out:
                     rec["error"] = str(out["error"])
@@ -918,7 +938,8 @@ def _run_tree(
                     c_var=c_var,
                 )
                 out = wrapper.search_with_proof_search(
-                    state, max_depth=max_depth,
+                    state,
+                    max_depth=max_depth,
                 )
                 if "error" in out:
                     rec["error"] = str(out["error"])
@@ -1188,11 +1209,7 @@ def _vulnerability_scan(
         "sigma_fraction_variance_mcts": float(var_sigma),
         "target_min_fraction_variance": 0.05,
         "verdict": (
-            "OK"
-            if var_sigma >= 0.05
-            else "WARN"
-            if var_sigma >= 0.01
-            else "CRITICAL"
+            "OK" if var_sigma >= 0.05 else "WARN" if var_sigma >= 0.01 else "CRITICAL"
         ),
     }
 
@@ -1200,10 +1217,7 @@ def _vulnerability_scan(
         ok = [r for r in records if not r.get("error")]
         if not ok:
             return 0.0
-        n_empty = sum(
-            1 for r in ok
-            if int(r.get("n_replay_entries", 0) or 0) == 0
-        )
+        n_empty = sum(1 for r in ok if int(r.get("n_replay_entries", 0) or 0) == 0)
         return float(n_empty) / len(ok)
 
     var_replay_starve = _replay_starve_rate(variance_records)
@@ -1257,36 +1271,76 @@ def _build_argparser() -> argparse.ArgumentParser:
             "depth starvation, variance-penalty void)."
         ),
     )
-    p.add_argument("--n-trees", type=int, default=DEFAULT_N_TREES,
-                   help="Number of MCTS trees to run per strategy.")
-    p.add_argument("--n-simulations", type=int,
-                   default=DEFAULT_N_SIMULATIONS,
-                   help="MCTS simulations per tree.")
-    p.add_argument("--max-depth", type=int, default=DEFAULT_MAX_DEPTH,
-                   help="Rollout depth budget per simulation.")
-    p.add_argument("--seeds", type=int, nargs="*", default=None,
-                   help="Master seeds for the per-tree runs.")
-    p.add_argument("--c-puct", type=float, default=DEFAULT_C_PUCT,
-                   help="PUCT exploration constant.")
-    p.add_argument("--c-var", type=float, default=DEFAULT_C_VAR,
-                   help="Variance penalty coefficient (variance_mcts).")
-    p.add_argument("--platinai-csv", type=str,
-                   default=DEFAULT_PLATINAI_CSV,
-                   help="PlatinAI 5K CSV path.")
-    p.add_argument("--metalcyto-csv", type=str,
-                   default=DEFAULT_METALCYTO_CSV,
-                   help="MetalCytoToxDB CSV path.")
-    p.add_argument("--out-dir", type=str, default=DEFAULT_OUT_DIR,
-                   help="Output directory for the bench report.")
-    p.add_argument("--metals", type=str, nargs="*", default=None,
-                   help=(
-                       "Metal whitelist for MetalCytoToxDB (default: "
-                       "task-spec 9 metals)."
-                   ))
-    p.add_argument("--skip-metalcyto", action="store_true",
-                   help="Skip the MetalCytoToxDB cell (PlatinAI only).")
-    p.add_argument("--smoke", action="store_true",
-                   help="Smoke mode (5 trees × 50 sims × depth=2).")
+    p.add_argument(
+        "--n-trees",
+        type=int,
+        default=DEFAULT_N_TREES,
+        help="Number of MCTS trees to run per strategy.",
+    )
+    p.add_argument(
+        "--n-simulations",
+        type=int,
+        default=DEFAULT_N_SIMULATIONS,
+        help="MCTS simulations per tree.",
+    )
+    p.add_argument(
+        "--max-depth",
+        type=int,
+        default=DEFAULT_MAX_DEPTH,
+        help="Rollout depth budget per simulation.",
+    )
+    p.add_argument(
+        "--seeds",
+        type=int,
+        nargs="*",
+        default=None,
+        help="Master seeds for the per-tree runs.",
+    )
+    p.add_argument(
+        "--c-puct",
+        type=float,
+        default=DEFAULT_C_PUCT,
+        help="PUCT exploration constant.",
+    )
+    p.add_argument(
+        "--c-var",
+        type=float,
+        default=DEFAULT_C_VAR,
+        help="Variance penalty coefficient (variance_mcts).",
+    )
+    p.add_argument(
+        "--platinai-csv",
+        type=str,
+        default=DEFAULT_PLATINAI_CSV,
+        help="PlatinAI 5K CSV path.",
+    )
+    p.add_argument(
+        "--metalcyto-csv",
+        type=str,
+        default=DEFAULT_METALCYTO_CSV,
+        help="MetalCytoToxDB CSV path.",
+    )
+    p.add_argument(
+        "--out-dir",
+        type=str,
+        default=DEFAULT_OUT_DIR,
+        help="Output directory for the bench report.",
+    )
+    p.add_argument(
+        "--metals",
+        type=str,
+        nargs="*",
+        default=None,
+        help=("Metal whitelist for MetalCytoToxDB (default: " "task-spec 9 metals)."),
+    )
+    p.add_argument(
+        "--skip-metalcyto",
+        action="store_true",
+        help="Skip the MetalCytoToxDB cell (PlatinAI only).",
+    )
+    p.add_argument(
+        "--smoke", action="store_true", help="Smoke mode (5 trees × 50 sims × depth=2)."
+    )
     return p
 
 
@@ -1301,9 +1355,7 @@ def run_bench(cfg: BenchConfig) -> Dict[str, Any]:
         sims = min(sims, 50)
         depth = min(depth, 2)
     metal_whitelist = (
-        tuple(cfg.metal_whitelist)
-        if cfg.metal_whitelist
-        else TASK_SPEC_METALS
+        tuple(cfg.metal_whitelist) if cfg.metal_whitelist else TASK_SPEC_METALS
     )
 
     out_dir = Path(cfg.out_dir)
@@ -1314,7 +1366,9 @@ def run_bench(cfg: BenchConfig) -> Dict[str, Any]:
     # ------------------------------------------------------------------
     n_per_dataset: Dict[str, int] = {}
     platinai_rows = _load_platinai(
-        cfg.platinai_csv, n_trees, seeds[0],
+        cfg.platinai_csv,
+        n_trees,
+        seeds[0],
     )
     n_per_dataset["platinai_5k"] = int(len(platinai_rows))
     metalcyto_rows: List[Dict[str, Any]] = []

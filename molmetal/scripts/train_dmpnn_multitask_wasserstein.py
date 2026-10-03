@@ -80,6 +80,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -135,6 +136,7 @@ from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset
 
 try:
     from rdkit import RDLogger
+
     RDLogger.DisableLog("rdApp.*")
 except Exception:
     pass
@@ -143,7 +145,9 @@ except Exception:
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-DEFAULT_5METAL_CSV = PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
+DEFAULT_5METAL_CSV = (
+    PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
+)
 DEFAULT_PLATINAI_4CELL_CSV = PROJECT_ROOT / ".data" / "molmetal" / "platinai_4cell.csv"
 PLATINAI_4CELL_METALS: Tuple[str, ...] = ("Pt",)
 PLATINAI_4CELL_CELL_LINES: Tuple[str, ...] = ("mcf7", "a549", "a2780", "a2780cis")
@@ -152,9 +156,19 @@ PLATINAI_4CELL_CELL_LINES: Tuple[str, ...] = ("mcf7", "a549", "a2780", "a2780cis
 # carries REAL measured pIC50 from MetalCytoToxDB, and its 9 cell lines
 # include all four Rusanov 2025 reports (MCF7 / A549 / A2780 / A2780cis).
 # Long form: smiles,cell_line,pIC50,active — one row per (SMILES, cell) pair.
-DEFAULT_NCI60_9CELL_CSV = PROJECT_ROOT / "molmetal" / "data" / "nci60_precious_9cell.csv"
+DEFAULT_NCI60_9CELL_CSV = (
+    PROJECT_ROOT / "molmetal" / "data" / "nci60_precious_9cell.csv"
+)
 NCI60_9CELL_CELL_LINES: Tuple[str, ...] = (
-    "MCF7", "A549", "A2780", "A2780cis", "HCT116", "PC3", "HL60", "SKOV3", "DU145",
+    "MCF7",
+    "A549",
+    "A2780",
+    "A2780cis",
+    "HCT116",
+    "PC3",
+    "HL60",
+    "SKOV3",
+    "DU145",
 )
 DEFAULT_OUT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf131_p1_ru_auc_multitask"
 DEFAULT_CKPT_DIR = PROJECT_ROOT / "molmetal" / "checkpoints"
@@ -235,9 +249,7 @@ def emit_event(event_type: str, **fields) -> None:
         # format for grep/tail downstream consumers (TUI text regex path).
         # Format mirrors the existing print(...) lines so log history
         # for backward compat is preserved.
-        msg = " ".join(
-            f"{k}={payload[k]}" for k in sorted(payload) if k != "ts"
-        )
+        msg = " ".join(f"{k}={payload[k]}" for k in sorted(payload) if k != "ts")
         print(f"  [EVENT {event_type}] {msg}", flush=True)
     # Append to events.jsonl (always when emit_event is called, even
     # when --emit-json-events is False — JSONL consumers downstream
@@ -335,9 +347,7 @@ def build_lr_scheduler(
         warmup = LinearLR(
             optimizer, start_factor=0.01, end_factor=1.0, total_iters=warmup_steps
         )
-        cosine = CosineAnnealingLR(
-            optimizer, T_max=cosine_steps, eta_min=float(min_lr)
-        )
+        cosine = CosineAnnealingLR(optimizer, T_max=cosine_steps, eta_min=float(min_lr))
         if warmup_steps == 0:
             return cosine
         return SequentialLR(
@@ -469,8 +479,8 @@ def load_platinai_4cell_split_table(
     # the split change on every run (see _stable_hash_int).  Because the id
     # depends only on the SMILES, the same molecule lands in the same split
     # for all 4 cell lines — that is what prevents cross-cell leakage.
-    long_df["scaffold_id"] = long_df["smiles"].astype(str).map(
-        lambda s: _stable_hash_int(s, 10**8)
+    long_df["scaffold_id"] = (
+        long_df["smiles"].astype(str).map(lambda s: _stable_hash_int(s, 10**8))
     )
     if split_strategy == "scaffold_70_10_10":
         # 70/10/10 bucket, derived from the stable id only.  (Was
@@ -484,6 +494,7 @@ def load_platinai_4cell_split_table(
             if h < 80:
                 return "val"
             return "test"
+
         long_df["split"] = long_df["scaffold_id"].map(_split_bucket)
     else:
         raise ValueError(
@@ -517,9 +528,11 @@ def _derive_active_labels(
     across cell lines.
     """
     if labeling == "per_cell_median":
-        return pic50.groupby(task_labels).transform(
-            lambda s: s > float(s.median())
-        ).astype(bool)
+        return (
+            pic50.groupby(task_labels)
+            .transform(lambda s: s > float(s.median()))
+            .astype(bool)
+        )
     if labeling == "global":
         return (pic50 > float(global_threshold)).astype(bool)
     raise ValueError(
@@ -673,7 +686,9 @@ def load_nci60_9cell_split_table(
 
     uniq = np.asarray(sorted(df["smiles"].unique()), dtype=object)
     result = ScaffoldSplitter(
-        strategy="largest_first", fractions=(0.7, 0.1, 0.2), seed=0,
+        strategy="largest_first",
+        fractions=(0.7, 0.1, 0.2),
+        seed=0,
     )(_SmilesOnlyAdapter(uniq))
 
     smi_to_split: Dict[str, str] = {}
@@ -888,14 +903,26 @@ class MultiTaskWassersteinModel(nn.Module):
         self.domain_head = self.encoder.domain_head
         # ----- Per-metal heads: each is a (regression + classification) pair -----
         self.reg_heads = nn.ModuleList(
-            [nn.Sequential(nn.Linear(2 * hidden, hidden), nn.ReLU(),
-                           nn.Dropout(dropout), nn.Linear(hidden, 1))
-             for _ in range(n_metals)]
+            [
+                nn.Sequential(
+                    nn.Linear(2 * hidden, hidden),
+                    nn.ReLU(),
+                    nn.Dropout(dropout),
+                    nn.Linear(hidden, 1),
+                )
+                for _ in range(n_metals)
+            ]
         )
         self.cls_heads = nn.ModuleList(
-            [nn.Sequential(nn.Linear(2 * hidden, hidden), nn.ReLU(),
-                           nn.Dropout(dropout), nn.Linear(hidden, 2))
-             for _ in range(n_metals)]
+            [
+                nn.Sequential(
+                    nn.Linear(2 * hidden, hidden),
+                    nn.ReLU(),
+                    nn.Dropout(dropout),
+                    nn.Linear(hidden, 2),
+                )
+                for _ in range(n_metals)
+            ]
         )
 
     def encode_pool(
@@ -911,7 +938,7 @@ class MultiTaskWassersteinModel(nn.Module):
         pooled_list: List[torch.Tensor] = []
         for b in range(B):
             V = atom_feats.size(1)
-            valid_edges = (bond_feats[b].abs().sum(dim=-1) > 0)
+            valid_edges = bond_feats[b].abs().sum(dim=-1) > 0
             E = valid_edges.sum().item()
             if E == 0 or V == 0:
                 pooled_list.append(torch.zeros(2 * self.hidden, device=device))
@@ -932,7 +959,7 @@ class MultiTaskWassersteinModel(nn.Module):
         bond_feats: torch.Tensor,
         edge_src: torch.Tensor,
         edge_dst: torch.Tensor,
-        metal_ids: torch.Tensor,    # (B,) long
+        metal_ids: torch.Tensor,  # (B,) long
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Per-batch forward. Returns (pic50_preds, active_logits) shape (B,)."""
         h_pool = self.encode_pool(atom_feats, bond_feats, edge_src, edge_dst)
@@ -979,9 +1006,7 @@ def collate_multimetal(
         return None
     atom_f, bond_f, e_src, e_dst = batch_data
     metal_ids_t = torch.tensor([v[1] for v in valid], dtype=torch.long)
-    pic50_t = torch.tensor(
-        [v[2] for v in valid], dtype=torch.float32
-    )
+    pic50_t = torch.tensor([v[2] for v in valid], dtype=torch.float32)
     active_t = torch.tensor([v[3] for v in valid], dtype=torch.long)
     return atom_f, bond_f, e_src, e_dst, metal_ids_t, pic50_t, active_t
 
@@ -1051,7 +1076,7 @@ def train_one_epoch_joint(
     np.random.shuffle(indices)
 
     for start in range(0, len(indices), batch_size):
-        batch_idx = indices[start:start + batch_size]
+        batch_idx = indices[start : start + batch_size]
         batch_graphs = [graphs[i] for i in batch_idx]
         batch_mids = [metal_ids[i] for i in batch_idx]
         batch_pic50 = pic50[batch_idx]
@@ -1097,8 +1122,10 @@ def train_one_epoch_joint(
                     from molmetal.adapters.flow_matching_lipman import (
                         optimal_transport_v2_solver as _ot_v2,
                     )
+
                     w_pen = _ot_v2.ot_solver(
-                        pic50_pred.detach(), ref_dev,
+                        pic50_pred.detach(),
+                        ref_dev,
                     )
                 except Exception:
                     # Defensive fallback to legacy sliced-W₂.
@@ -1113,7 +1140,9 @@ def train_one_epoch_joint(
                 # Differentiable w.r.t. pic50_pred (autograd-friendly)
                 # and numerically more stable than the projection loop.
                 w_pen = wasserstein_pic50_gradient(
-                    pic50_pred, ref_dev, w_weight=1.0,
+                    pic50_pred,
+                    ref_dev,
+                    w_weight=1.0,
                 )
             else:
                 # Default — sliced-W₂ (Wf-131 P1 shipped behaviour).
@@ -1141,6 +1170,7 @@ def train_one_epoch_joint(
                     MetalCoordinationScore,
                     MetalCoordinationTerm,
                 )
+
                 # Re-use the per-epoch term instance lazily via a
                 # thread-local cache. Build once per epoch (or fall back
                 # to per-batch build for bit-for-bit identical SCAFFOLD
@@ -1157,9 +1187,9 @@ def train_one_epoch_joint(
                         weight_distance=0.2,
                         kcal_per_unit=1.0,
                     )
-                    train_one_epoch_joint.__dict__[
-                        "_wf432a2_mc_term_instance"
-                    ] = _mc_term_cache
+                    train_one_epoch_joint.__dict__["_wf432a2_mc_term_instance"] = (
+                        _mc_term_cache
+                    )
                 # Compute composite score from predicted pIC50 (rescaled
                 # from [0, ~10] to [0, 1] via sigmoid-like mapping).
                 # For loss-cascade differentiation we use the predicted
@@ -1253,7 +1283,7 @@ def predict_joint(
 
     indices = np.arange(len(graphs))
     for start in range(0, len(indices), batch_size):
-        batch_idx = indices[start:start + batch_size]
+        batch_idx = indices[start : start + batch_size]
         batch_graphs = [graphs[i] for i in batch_idx]
         batch_mids = [metal_ids[i] for i in batch_idx]
         batch_pic50 = pic50[batch_idx]
@@ -1448,7 +1478,11 @@ def train_one_metal_one_seed(
 
     # Concatenate train rows from pool metals (5-metal joint OR Ru-only)
     train_pool_idx = np.concatenate(
-        [per_metal_indices[m][0] for m in metals_in_pool if len(per_metal_indices[m][0]) > 0]
+        [
+            per_metal_indices[m][0]
+            for m in metals_in_pool
+            if len(per_metal_indices[m][0]) > 0
+        ]
     )
     if len(train_pool_idx) < 50:
         raise RuntimeError(
@@ -1482,9 +1516,15 @@ def train_one_metal_one_seed(
         )
 
     # Featurise union of all rows we touch (joint + target val/test)
-    used_idx = np.unique(np.concatenate([
-        train_pool_idx, target_val, target_test,
-    ]))
+    used_idx = np.unique(
+        np.concatenate(
+            [
+                train_pool_idx,
+                target_val,
+                target_test,
+            ]
+        )
+    )
     used_smiles = smiles_all[used_idx]
     t_fe = time.time()
     cache_key = f"wf131_mtw_{metal.lower()}_seed{seed}"
@@ -1615,6 +1655,7 @@ def train_one_metal_one_seed(
             from molmetal.scripts.wf380a2_m2_r2_per_cohort import (
                 select_features,
             )
+
             _pc = select_features(int(len(train_pool_idx)))
             effective_alpha = float(_pc.get("alpha", alpha))
             print(
@@ -1680,9 +1721,13 @@ def train_one_metal_one_seed(
 
         # Validate (target metal only)
         y_true_v, y_score_v, pic50_pred_v = predict_joint(
-            model, target_val_graphs, target_val_mids,
-            target_val_pic50, target_val_active,
-            batch_size=batch_size, device=device,
+            model,
+            target_val_graphs,
+            target_val_mids,
+            target_val_pic50,
+            target_val_active,
+            batch_size=batch_size,
+            device=device,
         )
         if len(set(y_true_v.tolist())) >= 2:
             val_auc = float(roc_auc_score(y_true_v, y_score_v))
@@ -1798,7 +1843,7 @@ def train_one_metal_one_seed(
         # Wf-A5 N3 — checkpoint resumption: save mid-training checkpoint
         # every ``checkpoint_interval`` epochs (default 50).  Final epoch
         # always saves (handled by the post-loop block below).
-        is_last_epoch = (epoch == epochs - 1)
+        is_last_epoch = epoch == epochs - 1
         if checkpoint_interval > 0 and (
             (epoch + 1) % checkpoint_interval == 0 or is_last_epoch
         ):
@@ -1822,21 +1867,31 @@ def train_one_metal_one_seed(
 
     if best_state is None:
         # Fallback: use last epoch weights
-        best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+        best_state = {
+            k: v.detach().cpu().clone() for k, v in model.state_dict().items()
+        }
         best_epoch = epochs
     train_seconds = time.time() - t_train
 
     # Reload best + eval on val + test (target metal only)
     model.load_state_dict(best_state)
     y_true_v2, y_score_v2, pic50_pred_v2 = predict_joint(
-        model, target_val_graphs, target_val_mids,
-        target_val_pic50, target_val_active,
-        batch_size=batch_size, device=device,
+        model,
+        target_val_graphs,
+        target_val_mids,
+        target_val_pic50,
+        target_val_active,
+        batch_size=batch_size,
+        device=device,
     )
     y_true_t, y_score_t, pic50_pred_t = predict_joint(
-        model, target_test_graphs, target_test_mids,
-        target_test_pic50, target_test_active,
-        batch_size=batch_size, device=device,
+        model,
+        target_test_graphs,
+        target_test_mids,
+        target_test_pic50,
+        target_test_active,
+        batch_size=batch_size,
+        device=device,
     )
     val_m = _safe_classification_metrics(y_true_v2, y_score_v2)
     test_m = _safe_classification_metrics(y_true_t, y_score_t)
@@ -1858,9 +1913,7 @@ def train_one_metal_one_seed(
             "best_val_auc": float(val_m.get("roc_auc", float("nan"))),
             "wasserstein_history": list(w_history),
             "model_state_dict": best_state,
-            "optimizer_state_dict": {
-                k: v for k, v in optimizer.state_dict().items()
-            },
+            "optimizer_state_dict": {k: v for k, v in optimizer.state_dict().items()},
             # Legacy keys (preserved bit-for-bit for downstream consumers)
             "metal": metal,
             "seed": seed,
@@ -1991,9 +2044,7 @@ def _save_resumable_checkpoint(
             "model_state_dict": {
                 k: v.detach().cpu().clone() for k, v in model.state_dict().items()
             },
-            "optimizer_state_dict": {
-                k: v for k, v in optimizer.state_dict().items()
-            },
+            "optimizer_state_dict": {k: v for k, v in optimizer.state_dict().items()},
         },
         ckpt_path,
     )
@@ -2177,7 +2228,10 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="Random seeds (default: 0 1 2 3 4).",
     )
     p.add_argument(
-        "--epochs", type=int, default=DEFAULT_EPOCHS, help="Epochs per seed (default 50)."
+        "--epochs",
+        type=int,
+        default=DEFAULT_EPOCHS,
+        help="Epochs per seed (default 50).",
     )
     p.add_argument(
         "--alpha",
@@ -2191,7 +2245,8 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     # Wf-131 P1 / Wf-197 default behaviour; pass --no-kendall or
     # --no-dann to disable the respective component.
     p.add_argument(
-        "--use-kendall", "--no-kendall",
+        "--use-kendall",
+        "--no-kendall",
         dest="kendall",
         action=argparse.BooleanOptionalAction,
         default=True,
@@ -2202,7 +2257,8 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
-        "--use-dann", "--no-dann",
+        "--use-dann",
+        "--no-dann",
         dest="dann",
         action=argparse.BooleanOptionalAction,
         default=True,
@@ -2236,10 +2292,10 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         choices=("mtl_baseline", "mtl_structured", "mtl_gradproj", "single_task"),
         default="mtl_baseline",
         help="Ablation config dispatcher (Wf-251-F3): "
-             "mtl_baseline (default — current shipped behaviour), "
-             "mtl_structured (per-metal weight-sharing mask on FFN head), "
-             "mtl_gradproj (PCGrad-style per-task gradient projection), "
-             "single_task (Wf-197 lever 1; per-metal cohort only).",
+        "mtl_baseline (default — current shipped behaviour), "
+        "mtl_structured (per-metal weight-sharing mask on FFN head), "
+        "mtl_gradproj (PCGrad-style per-task gradient projection), "
+        "single_task (Wf-197 lever 1; per-metal cohort only).",
     )
     p.add_argument(
         "--n-mc",
@@ -2253,8 +2309,8 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         choices=("sliced", "sort"),
         default="sliced",
         help="W₂ gradient source (Wf-251-F4): sliced (default — Wf-131 P1 "
-             "shipped behaviour) or sort (closed-form 1-D torch.sort; "
-             "more numerically stable; modest AUC lift).",
+        "shipped behaviour) or sort (closed-form 1-D torch.sort; "
+        "more numerically stable; modest AUC lift).",
     )
     p.add_argument(
         "--use-l2-guard",
@@ -2269,7 +2325,9 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         action="store_false",
         help="Disable grad-norm clip (overrides --use-l2-guard).",
     )
-    p.add_argument("--lr", type=float, default=DEFAULT_LR, help="Adam lr (default 1e-3).")
+    p.add_argument(
+        "--lr", type=float, default=DEFAULT_LR, help="Adam lr (default 1e-3)."
+    )
     # Wf-A6 A2 BLOCKER C fix — LR scheduler (cosine/onecycle) + warmup + weight decay
     # per user voice 2026-10-03 verbatim '学习率的控制至少得用余弦退火或者更加高级的方案'.
     # Default OFF preserves Wf-131 P1 + Wf-251-F4 baseline bit-for-bit.
@@ -2348,15 +2406,21 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
-        "--batch-size", type=int, default=DEFAULT_BATCH_SIZE,
+        "--batch-size",
+        type=int,
+        default=DEFAULT_BATCH_SIZE,
         help="Batch size (default MT_BATCH_SIZE=64).",
     )
     p.add_argument(
-        "--out-dir", type=Path, default=DEFAULT_OUT_DIR,
+        "--out-dir",
+        type=Path,
+        default=DEFAULT_OUT_DIR,
         help="Output directory for per-seed metrics JSON.",
     )
     p.add_argument(
-        "--ckpt-dir", type=Path, default=None,
+        "--ckpt-dir",
+        type=Path,
+        default=None,
         help=(
             "Checkpoint directory. Default (when not given here or via the "
             "yaml output.ckpt_dir field): <out_dir>/checkpoints. "
@@ -2488,7 +2552,9 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
-        "--csv", type=Path, default=None,
+        "--csv",
+        type=Path,
+        default=None,
         help=(
             "Override CSV path. Default resolved from --dataset via "
             "_resolve_default_csv_path(): metalcytotox_5metal -> "
@@ -2508,11 +2574,13 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
-        "--device", default=None,
+        "--device",
+        default=None,
         help="Force device (cuda:0 or cpu). Default auto-detect.",
     )
     p.add_argument(
-        "--cuda-visible-devices", default="",
+        "--cuda-visible-devices",
+        default="",
         help=(
             "Override CUDA_VISIBLE_DEVICES before device resolution.  "
             "Empty '' (the default) = inherit the shell env — "
@@ -2725,6 +2793,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     args = p.parse_args(argv)
     # Apply YAML overrides (no-op when --config not supplied).
     from molmetal.scripts.wfA2_config_loader import apply_yaml_overrides
+
     return apply_yaml_overrides(p, args, args.config)
 
 
@@ -2820,15 +2889,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         # suffixes of the pIC50_<cell> columns.
         _plate = pd.read_csv(args.csv, nrows=1)
         _available_metals = sorted(
-            str(c)[len("pIC50_"):]
+            str(c)[len("pIC50_") :]
             for c in _plate.columns
             if str(c).startswith("pIC50_")
         )
     else:
         _metals_df = pd.read_csv(args.csv, usecols=["metal"])
-        _available_metals = sorted(
-            set(_metals_df["metal"].astype(str).tolist())
-        )
+        _available_metals = sorted(set(_metals_df["metal"].astype(str).tolist()))
     _expanded_metals: List[str] = []
     for _m in args.metals:
         if _m == "auto":
@@ -2862,9 +2929,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     # straight through asked every normal launch for CPU.  Coerce empty →
     # None so the documented "inherit" semantics actually apply: the env
     # var exported by start.sh (from yaml ``compute.gpu``) wins.
-    apply_default_cuda_visible_devices(
-        override=(args.cuda_visible_devices or None)
-    )
+    apply_default_cuda_visible_devices(override=(args.cuda_visible_devices or None))
     if args.device:
         device = torch.device(args.device)
         print(f"[wf131-mtw] explicit device override: {device}", flush=True)
@@ -2896,6 +2961,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             from molmetal.scripts.wf380a2_m2_r2_per_cohort import (
                 select_features,
             )
+
             _cfg = select_features(int(len(args.metals) * 200))
             print(
                 f"[Wf-405-A2] --per-cohort-features ENABLED: "
@@ -2989,8 +3055,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             local_cache = Path("/tmp") / "wf131_mtw_cache"
             local_cache.mkdir(parents=True, exist_ok=True)
             import pandas as _pd
+
             df_loaded = _pd.read_csv(args.data_csv, low_memory=False)
             from molmetal.data import cytotox as _cytotox_mod
+
             df_loaded = _cytotox_mod._apply_filters(df_loaded, flt)
             if flt.compute_pic50:
                 df_loaded = _cytotox_mod._add_pic50(df_loaded)
@@ -3031,8 +3099,12 @@ def main(argv: Optional[List[str]] = None) -> int:
             elif args.ablation_config == "mtl_structured":
                 # Force the production backbone so the structured-head
                 # lever is observable in the per-seed AUC.
-                effective_hidden = effective_hidden if effective_hidden is not None else MT_PROD_HIDDEN
-                effective_depth = effective_depth if effective_depth is not None else MT_PROD_DEPTH
+                effective_hidden = (
+                    effective_hidden if effective_hidden is not None else MT_PROD_HIDDEN
+                )
+                effective_depth = (
+                    effective_depth if effective_depth is not None else MT_PROD_DEPTH
+                )
             elif args.ablation_config == "mtl_gradproj":
                 # Same as mtl_baseline for now; the gradient-projection
                 # hook lives inside ``MultiTaskLoss`` (forwarded via
@@ -3045,7 +3117,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                     epochs=args.epochs,
                     alpha=args.alpha,
                     lr=args.lr,
-                    wd=float(getattr(args, "weight_decay", 0.0)),  # Wf-A6 A2 BLOCKER C fix
+                    wd=float(
+                        getattr(args, "weight_decay", 0.0)
+                    ),  # Wf-A6 A2 BLOCKER C fix
                     # Wf-A9 FIX (2026-10-03) — gradient-clip threshold
                     # from the yaml-driven ``args.max_norm`` threading
                     # down to the loss-cascade clipping site.
@@ -3085,12 +3159,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                     # into ``train_one_metal_one_seed()`` →
                     # ``train_one_epoch_joint()`` so the kcal/mol
                     # adjustment contributes to the composite loss.
-                    metal_coord_term=bool(
-                        getattr(args, "metal_coord_term", False)
-                    ),
-                    metal_coord_weight=float(
-                        getattr(args, "metal_coord_weight", 0.5)
-                    ),
+                    metal_coord_term=bool(getattr(args, "metal_coord_term", False)),
+                    metal_coord_weight=float(getattr(args, "metal_coord_weight", 0.5)),
                     cal_sign_vina_convention=bool(
                         getattr(args, "cal_sign_vina_convention", True)
                     ),
@@ -3103,15 +3173,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                     # optimizer.defaults[0]['lr'] for OneCycleLR's
                     # max_lr base. Default OFF preserves Wf-131 P1 +
                     # Wf-251-F4 baseline bit-for-bit.
-                    lr_scheduler=str(
-                        getattr(args, "lr_scheduler", "none")
-                    ),
-                    lr_warmup_epochs=int(
-                        getattr(args, "lr_warmup_epochs", 5)
-                    ),
-                    lr_min_lr=float(
-                        getattr(args, "lr_min_lr", 1e-6)
-                    ),
+                    lr_scheduler=str(getattr(args, "lr_scheduler", "none")),
+                    lr_warmup_epochs=int(getattr(args, "lr_warmup_epochs", 5)),
+                    lr_min_lr=float(getattr(args, "lr_min_lr", 1e-6)),
                     # Wf-A5 N3 — checkpoint resumption kwargs
                     # (``--resume-from`` + ``--resume-from-path`` +
                     # ``--checkpoint-interval``) thread from main()
@@ -3119,12 +3183,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                     # _load_checkpoint_for_resume() call fires before
                     # the build_split_indices loop.
                     resume_from=str(getattr(args, "resume_from", "auto")),
-                    resume_from_path=getattr(
-                        args, "resume_from_path", None
-                    ),
-                    checkpoint_interval=int(
-                        getattr(args, "checkpoint_interval", 50)
-                    ),
+                    resume_from_path=getattr(args, "resume_from_path", None),
+                    checkpoint_interval=int(getattr(args, "checkpoint_interval", 50)),
                     # Wf-TUI NEW: per-epoch emit_event("eval_epoch", ...)
                     # call in the inner loop reads from the module
                     # global _EVENT_LOG_PATH (set by _install_event_emitter()
@@ -3175,15 +3235,24 @@ def main(argv: Optional[List[str]] = None) -> int:
             }
             continue
         aucs = np.array(
-            [r.test_metrics.get("roc_auc", float("nan")) for r in seed_results.values()],
+            [
+                r.test_metrics.get("roc_auc", float("nan"))
+                for r in seed_results.values()
+            ],
             dtype=float,
         )
         pearsons = np.array(
-            [r.test_pic50_metrics.get("pearson", float("nan")) for r in seed_results.values()],
+            [
+                r.test_pic50_metrics.get("pearson", float("nan"))
+                for r in seed_results.values()
+            ],
             dtype=float,
         )
         rmses = np.array(
-            [r.test_pic50_metrics.get("rmse", float("nan")) for r in seed_results.values()],
+            [
+                r.test_pic50_metrics.get("rmse", float("nan"))
+                for r in seed_results.values()
+            ],
             dtype=float,
         )
         first = next(iter(seed_results.values()))
@@ -3192,8 +3261,12 @@ def main(argv: Optional[List[str]] = None) -> int:
             "n_train": first.n_train,
             "n_val": first.n_val,
             "n_test": first.n_test,
-            "test_auc_mean": float(np.nanmean(aucs)) if np.isfinite(aucs).any() else float("nan"),
-            "test_auc_std": float(np.nanstd(aucs)) if np.isfinite(aucs).any() else float("nan"),
+            "test_auc_mean": float(np.nanmean(aucs))
+            if np.isfinite(aucs).any()
+            else float("nan"),
+            "test_auc_std": float(np.nanstd(aucs))
+            if np.isfinite(aucs).any()
+            else float("nan"),
             "test_pearson_mean": float(np.nanmean(pearsons)),
             "test_pearson_std": float(np.nanstd(pearsons)),
             "test_rmse_mean": float(np.nanmean(rmses)),
@@ -3264,8 +3337,12 @@ def main(argv: Optional[List[str]] = None) -> int:
                     "elapsed_seconds": res.elapsed_seconds,
                     "val_auc": float(res.val_metrics.get("roc_auc", float("nan"))),
                     "test_auc": float(res.test_metrics.get("roc_auc", float("nan"))),
-                    "test_pearson": float(res.test_pic50_metrics.get("pearson", float("nan"))),
-                    "test_rmse": float(res.test_pic50_metrics.get("rmse", float("nan"))),
+                    "test_pearson": float(
+                        res.test_pic50_metrics.get("pearson", float("nan"))
+                    ),
+                    "test_rmse": float(
+                        res.test_pic50_metrics.get("rmse", float("nan"))
+                    ),
                     "test_mae": float(res.test_pic50_metrics.get("mae", float("nan"))),
                     "wasserstein_history": res.wasserstein_history,
                     "status": res.status,

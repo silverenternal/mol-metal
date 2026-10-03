@@ -76,6 +76,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -136,13 +137,15 @@ try:
         MasterWassersteinGradientFlow as _MasterWass,
         MasterWassersteinConfig as _MasterWassConfig,
     )
+
     _HAVE_MASTER_WASS = True
 except Exception as _m1_err:  # pragma: no cover — best-effort opt-in
     _MasterWass = None  # type: ignore
     _MasterWassConfig = None  # type: ignore
     _HAVE_MASTER_WASS = False
     logger.warning(
-        "[wf250] MasterWassersteinGradientFlow unavailable: %s", _m1_err,
+        "[wf250] MasterWassersteinGradientFlow unavailable: %s",
+        _m1_err,
     )
 
 try:
@@ -150,13 +153,15 @@ try:
         MasterCatherineClosureBias as _MasterCath,
         SUPPORTED_BIAS_TYPES as _CATH_BIAS_TYPES,
     )
+
     _HAVE_MASTER_CATH = True
 except Exception as _m2_err:  # pragma: no cover — best-effort opt-in
     _MasterCath = None  # type: ignore
     _CATH_BIAS_TYPES = ()  # type: ignore
     _HAVE_MASTER_CATH = False
     logger.warning(
-        "[wf250] MasterCatherineClosureBias unavailable: %s", _m2_err,
+        "[wf250] MasterCatherineClosureBias unavailable: %s",
+        _m2_err,
     )
 
 # Wf-252-Apply Fix #1 (F1-ClickAug-V3Wire): wire the chemprop v2 click
@@ -173,6 +178,7 @@ try:
         augment_candidates_via_click_reactions as _click_augment_fn,
         ClickAugmentedChempropGenerator as _ClickAugGenerator,
     )
+
     _HAVE_CLICK_AUG = True
 except Exception as _wf252_err:  # pragma: no cover — best-effort opt-in
     _click_augment_fn = None  # type: ignore
@@ -215,8 +221,14 @@ CKPT_DIR = PROJECT_ROOT / "molmetal" / "checkpoints" / "wf200_chemprop_v2_v3"
 
 # Coord label heuristic (mirrors smoke_chemprop_v2_mt_100).
 _COORD_TABLE = {
-    "Pt": 3, "Pd": 3, "Au": 3,                   # square_planar
-    "Ru": 4, "Ir": 4, "Os": 4, "Rh": 4, "Re": 4, # octahedral
+    "Pt": 3,
+    "Pd": 3,
+    "Au": 3,  # square_planar
+    "Ru": 4,
+    "Ir": 4,
+    "Os": 4,
+    "Rh": 4,
+    "Re": 4,  # octahedral
 }
 
 
@@ -362,6 +374,7 @@ def _batch_molgraphs_to_via_cache(
             "this is a Wf-404-A4 wire-in internal error."
         )
     from chemprop.data.molgraph import BatchMolGraph  # lazy import
+
     return cache.get_or_build_batch(
         epoch_idx,
         batch_idx,
@@ -444,7 +457,7 @@ class ChempropV2V3Model(nn.Module):
         # swaps the chemprop BinaryClassificationFFN per-metal head for
         # the EnhancedMetalHead (2-layer MLP + optional metal-aware
         # attention).  When --enhanced-head is off we use the original
-  # ChempropV2MTModel so Wf-200 / Wf-225 / Wf-230 trained
+        # ChempropV2MTModel so Wf-200 / Wf-225 / Wf-230 trained
         # checkpoints still load cleanly.
         if enhanced_head or use_metal_attention:
             self.inner = ChempropV2MTModelV3(
@@ -503,9 +516,9 @@ class ChempropV2V3Model(nn.Module):
         if self.inner.encoder.message_passing is None:
             probe = smiles_list[:1] if smiles_list else ["C"]
             _ = self.inner.encoder(probe)
-        h = self.inner.encode(smiles_list)               # (B, hidden_dim)
-        e = self.inner.metal_embed(metal_ids.long())     # (B, metal_embed_dim)
-        return torch.cat([h, e], dim=-1)                # (B, head_in_dim)
+        h = self.inner.encode(smiles_list)  # (B, hidden_dim)
+        e = self.inner.metal_embed(metal_ids.long())  # (B, metal_embed_dim)
+        return torch.cat([h, e], dim=-1)  # (B, head_in_dim)
 
     # ------------------------------------------------------------------
     def forward(
@@ -604,7 +617,8 @@ def _run_one(
         try:
             _wf250_master_wass_obj = _MasterWass(  # type: ignore
                 config=_MasterWassConfig(  # type: ignore
-                    n_mc=int(master_wass_n_mc), seed=int(seed),
+                    n_mc=int(master_wass_n_mc),
+                    seed=int(seed),
                 ),
             )
         except Exception as exc:
@@ -706,8 +720,11 @@ def _run_one(
     # log_sigma_k is initialised to 0 (sigma_k = 1) — this is the standard
     # Kendall initialisation.  log_sigmas.std() > 0.1 after training is the
     # TODO-143 §2.1 verify gate (no collapse to uniform weights).
-    kendall = UncertaintyWeightedMultiTaskLoss(num_tasks=5).to(device) \
-        if (use_kendall and use_multi_task) else None
+    kendall = (
+        UncertaintyWeightedMultiTaskLoss(num_tasks=5).to(device)
+        if (use_kendall and use_multi_task)
+        else None
+    )
     # Wf-245 Fix: Kendall MTL is intrinsically multi-task (operates over a
     # list of per-metal BCE tensors of fixed length).  When --no-multi-task
     # is set the per-metal BCE list collapses to a single metal, so
@@ -728,9 +745,7 @@ def _run_one(
         )
 
     # Coord labels (auxiliary task).
-    coord_true_all = np.array(
-        [_coord_label_for(m) for m in metals_all], dtype=np.int64
-    )
+    coord_true_all = np.array([_coord_label_for(m) for m in metals_all], dtype=np.int64)
 
     # Per-row targets per metal.
     y_true_per_metal: Dict[str, np.ndarray] = {}
@@ -748,9 +763,7 @@ def _run_one(
     # attention).  We detect the head type once at model-build time and
     # close over the right callable.
     use_enhanced_head = bool(getattr(model.inner, "enhanced_head", False))
-    use_metal_attention = bool(
-        getattr(model.inner, "use_metal_attention", False)
-    )
+    use_metal_attention = bool(getattr(model.inner, "use_metal_attention", False))
 
     def _route_head_call(
         z_in: torch.Tensor,
@@ -800,7 +813,10 @@ def _run_one(
         if time_budget_s is not None and (time.time() - t_start) > time_budget_s:
             logger.warning(
                 "[metal=%s seed=%d] timeout at epoch=%d (elapsed=%.1fs)",
-                target_metal, seed, epoch, time.time() - t_start,
+                target_metal,
+                seed,
+                epoch,
+                time.time() - t_start,
             )
             timed_out = True
             break
@@ -820,7 +836,7 @@ def _run_one(
         if _cache_obj is not None and hasattr(_cache_obj, "begin_epoch"):
             _cache_obj.begin_epoch(epoch)
         for start in range(0, n_train, batch_size):
-            batch_idx = indices[start:start + batch_size]
+            batch_idx = indices[start : start + batch_size]
             # Wf-404-A4: cache-aware batch path. When cache is enabled,
             # use cache.get_or_build_batch (tier-2 per-batch reuse).
             # When cache is None, fall back to bit-for-bit original
@@ -834,19 +850,15 @@ def _run_one(
             else:
                 bmols = [mols_all[int(i)] for i in batch_idx]
                 bmg = _batch_molgraphs_to(bmols, device)
-            b_metal_ids = torch.from_numpy(
-                metal_ids_all[batch_idx]
-            ).long().to(device)
+            b_metal_ids = torch.from_numpy(metal_ids_all[batch_idx]).long().to(device)
 
             # Build per-metal target dict for this batch.
             y_true_b: Dict[str, torch.Tensor] = {}
             for m in model.metals:
-                y_true_b[m] = torch.from_numpy(
-                    y_true_per_metal[m][batch_idx]
-                ).to(device)
-            b_coord = torch.from_numpy(
-                coord_true_all[batch_idx]
-            ).long().to(device)
+                y_true_b[m] = torch.from_numpy(y_true_per_metal[m][batch_idx]).to(
+                    device
+                )
+            b_coord = torch.from_numpy(coord_true_all[batch_idx]).long().to(device)
 
             # ----- Forward (BF16 autocast on CUDA) -----
             if use_amp:
@@ -858,9 +870,7 @@ def _run_one(
                     z = torch.cat([H, e], dim=-1)
                     # Per-metal head logits — route through enhanced-head
                     # if --enhanced-head is set.
-                    logits_dict = _route_head_call(
-                        z, h_in=H.float(), e_in=e.float()
-                    )
+                    logits_dict = _route_head_call(z, h_in=H.float(), e_in=e.float())
                     # Coord logit.
                     logit_c = model.inner.coord_head(z)
             else:
@@ -905,7 +915,7 @@ def _run_one(
                 mid_np = b_metal_ids.detach().cpu().numpy()
                 z_cpu = z.detach().float()
                 for i_m, m_name in enumerate(model.metals):
-                    mask = (mid_np == i_m)
+                    mask = mid_np == i_m
                     if mask.sum() == 0:
                         continue
                     sub = z_cpu[torch.from_numpy(mask)].float()
@@ -930,7 +940,8 @@ def _run_one(
                             )
                             w2_loss = torch.tensor(
                                 float(res.loss_value),
-                                dtype=z.dtype, device=z.device,
+                                dtype=z.dtype,
+                                device=z.device,
                             )
                         else:
                             w2_loss = wasserstein_transfer_loss(
@@ -940,7 +951,8 @@ def _run_one(
                         w2_loss = z.new_zeros(())
                         if epoch == 0:
                             logger.debug(
-                                "w2 transfer skipped (epoch 0): %s", exc,
+                                "w2 transfer skipped (epoch 0): %s",
+                                exc,
                             )
 
             # ----- DANN domain loss (4-class, GRL-flipped) -----
@@ -969,13 +981,13 @@ def _run_one(
                     # b_metal_ids is the per-row metal id (0..4).  Map to
                     # 0..N_DOMAINS-1 via modulo so the discriminator sees
                     # a valid 4-class label even if metals expand.
-                    domain_targets = (
-                        b_metal_ids.long() % N_DOMAINS
-                    )
+                    domain_targets = b_metal_ids.long() % N_DOMAINS
                 elif dann_domain_mode == "single":
                     domain_targets = torch.full(
-                        (z.size(0),), DOMAIN_METALCYTOX,
-                        dtype=torch.long, device=z.device,
+                        (z.size(0),),
+                        DOMAIN_METALCYTOX,
+                        dtype=torch.long,
+                        device=z.device,
                     )
                 elif dann_domain_mode == "real_data":
                     # TODO(Wf-243): wire real_data loader here.  Falling
@@ -984,11 +996,10 @@ def _run_one(
                     logger.warning(
                         "[metal=%s seed=%d] --dann-domain-mode real_data "
                         "not yet wired in Wf-243; falling back to per_metal",
-                        target_metal, seed,
+                        target_metal,
+                        seed,
                     )
-                    domain_targets = (
-                        b_metal_ids.long() % N_DOMAINS
-                    )
+                    domain_targets = b_metal_ids.long() % N_DOMAINS
                 else:
                     raise ValueError(
                         f"unknown dann_domain_mode={dann_domain_mode!r}; "
@@ -999,8 +1010,12 @@ def _run_one(
                 )
 
             # ----- Total loss -----
-            total = task_loss + 0.3 * coord_loss + wass_weight * w2_loss \
+            total = (
+                task_loss
+                + 0.3 * coord_loss
+                + wass_weight * w2_loss
                 + (lambda_grl if use_dann else 0.0) * domain_loss
+            )
 
             optim.zero_grad()
             total.backward()
@@ -1016,7 +1031,8 @@ def _run_one(
             # is None or <= 0 (e.g. --no-grad-clip).
             if grad_clip is not None and float(grad_clip) > 0.0:
                 torch.nn.utils.clip_grad_norm_(
-                    model.parameters(), max_norm=float(grad_clip),
+                    model.parameters(),
+                    max_norm=float(grad_clip),
                 )
             optim.step()
             # Wf-243 Fix F: accumulate epoch averages for w2/coord/domain
@@ -1053,7 +1069,11 @@ def _run_one(
             logger.info(
                 "[metal=%s seed=%d] epoch=%d/%d loss=%.4f coord=%.4f w2=%.4f "
                 "domain=%.4f elapsed=%.1fs",
-                target_metal, seed, epoch, epochs, last_train_loss,
+                target_metal,
+                seed,
+                epoch,
+                epochs,
+                last_train_loss,
                 coord_epoch_avg_history[-1],
                 w2_epoch_avg_history[-1],
                 domain_epoch_avg_history[-1],
@@ -1073,36 +1093,39 @@ def _run_one(
                     payload = {
                         "term_id": f"{target_metal}-seed{seed}-e{epoch}",
                         "metal": target_metal,
-                        "witness_path": [
-                            f"{m}" for m in model.metals
-                        ],
+                        "witness_path": [f"{m}" for m in model.metals],
                         "smiles": "",
                         "n_visited": int(len(model.metals)),
                         "max_depth_seen": int(epoch + 1),
-                        "coord_violations": int(
-                            coord_epoch_avg_history[-1] > 0.5
-                        ),
+                        "coord_violations": int(coord_epoch_avg_history[-1] > 0.5),
                     }
                     cath_res = _wf250_master_cath_obj.apply(
-                        payload, bias_type=_wf250_master_cath_bias,
+                        payload,
+                        bias_type=_wf250_master_cath_bias,
                     )
-                    _wf250_cath_flags.append({
-                        "epoch": epoch,
-                        "engine": cath_res.engine,
-                        "bias_type": cath_res.bias_type,
-                        "wall_time_s": float(cath_res.wall_time_s),
-                    })
+                    _wf250_cath_flags.append(
+                        {
+                            "epoch": epoch,
+                            "engine": cath_res.engine,
+                            "bias_type": cath_res.bias_type,
+                            "wall_time_s": float(cath_res.wall_time_s),
+                        }
+                    )
                     if epoch == 0 or epoch == epochs - 1:
                         logger.info(
                             "[wf250-m2 metal=%s seed=%d] catherine "
                             "engine=%s bias_type=%s wall=%.4fs",
-                            target_metal, seed, cath_res.engine,
-                            cath_res.bias_type, cath_res.wall_time_s,
+                            target_metal,
+                            seed,
+                            cath_res.engine,
+                            cath_res.bias_type,
+                            cath_res.wall_time_s,
                         )
                 except Exception as exc:
                     logger.debug(
-                        "[wf250-m2] cath feature_flag failed "
-                        "(epoch=%d): %s", epoch, exc,
+                        "[wf250-m2] cath feature_flag failed " "(epoch=%d): %s",
+                        epoch,
+                        exc,
                     )
 
     # ----- Eval on target test fold -----
@@ -1120,8 +1143,7 @@ def _run_one(
                 _cache_obj = _CHEMPROP_V3_CACHE_HOLDER["cache"]
                 if _cache_obj is not None and smiles_all is not None:
                     smiles_batch_eval = [
-                        smiles_all[int(i)]
-                        for i in test_idx[start:start + batch_size]
+                        smiles_all[int(i)] for i in test_idx[start : start + batch_size]
                     ]
                     # Eval epoch_idx is the final training epoch + 1
                     # to keep it distinct from training epochs.
@@ -1132,11 +1154,17 @@ def _run_one(
                         _eval_batch_idx_num,
                     )
                 else:
-                    bmols = [mols_all[int(i)] for i in test_idx[start:start + batch_size]]
+                    bmols = [
+                        mols_all[int(i)] for i in test_idx[start : start + batch_size]
+                    ]
                     bmg = _batch_molgraphs_to(bmols, device)
-                b_metal_ids = torch.from_numpy(
-                    metal_ids_all[test_idx[start:start + batch_size]]
-                ).long().to(device)
+                b_metal_ids = (
+                    torch.from_numpy(
+                        metal_ids_all[test_idx[start : start + batch_size]]
+                    )
+                    .long()
+                    .to(device)
+                )
                 if use_amp:
                     with torch.amp.autocast("cuda", dtype=torch.bfloat16):
                         H_v = model.inner.encoder.message_passing(bmg)
@@ -1184,12 +1212,13 @@ def _run_one(
                 if np.any(np.isnan(p)):
                     logger.warning(
                         "eval produced %d/%d NaN scores, replacing with 0.5",
-                        int(np.isnan(p).sum()), len(p),
+                        int(np.isnan(p).sum()),
+                        len(p),
                     )
                     p = np.nan_to_num(p, nan=0.5)
                 scores.extend(float(x) for x in p)
                 labels.extend(
-                    int(x) for x in active_all[test_idx[start:start + batch_size]]
+                    int(x) for x in active_all[test_idx[start : start + batch_size]]
                 )
         # Wf-244 Fix 2: held-out metal prediction-constant guard.  When the
         # held-out metal's BCE always sees label=0 in LOMO training (the
@@ -1208,7 +1237,10 @@ def _run_one(
                 "multi-task BCE in LOMO trains the held-out head on "
                 "label=0 only (no positive labels exist for the held-out "
                 "metal in train_idx).  Structural fix deferred to R20+.",
-                target_metal, seed, scores[0], len(scores),
+                target_metal,
+                seed,
+                scores[0],
+                len(scores),
             )
         try:
             if len(set(labels)) < 2:
@@ -1267,7 +1299,8 @@ def _run_one(
             # checkpoint for downstream honest reporting (TODO-126 §7).
             "wf250_use_master_wass": bool(_wf250_use_master_wass),
             "wf250_master_wass_engine": "wasserstein_reg"
-            if _wf250_use_master_wass else "legacy_wasserstein_transfer",
+            if _wf250_use_master_wass
+            else "legacy_wasserstein_transfer",
             "wf250_use_master_cath": bool(_wf250_use_master_cath),
             "wf250_master_cath_bias_type": (
                 _wf250_master_cath_bias if _wf250_use_master_cath else None
@@ -1305,11 +1338,16 @@ def _run_one(
 def main(argv: Optional[List[str]] = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
-        "--metals", nargs="+", default=list(METALS_5),
+        "--metals",
+        nargs="+",
+        default=list(METALS_5),
         help="Metals to train on (default: 5-metal Ru/Ir/Os/Rh/Re)",
     )
     p.add_argument(
-        "--seeds", nargs="+", type=int, default=list(DEFAULT_SEEDS),
+        "--seeds",
+        nargs="+",
+        type=int,
+        default=list(DEFAULT_SEEDS),
         help="RNG seeds (default: 0 1 2)",
     )
     p.add_argument("--epochs", type=int, default=DEFAULT_EPOCHS)
@@ -1323,11 +1361,17 @@ def main(argv: Optional[List[str]] = None) -> int:
     p.add_argument("--out-dir", default=str(REPORTS_DIR))
     p.add_argument("--time-budget-s", type=float, default=7200.0)
     p.add_argument(
-        "--no-kendall", dest="use_kendall", action="store_false", default=True,
+        "--no-kendall",
+        dest="use_kendall",
+        action="store_false",
+        default=True,
         help="Disable Kendall MTL uncertainty weighting (default: on)",
     )
     p.add_argument(
-        "--no-dann", dest="use_dann", action="store_false", default=True,
+        "--no-dann",
+        dest="use_dann",
+        action="store_false",
+        default=True,
         help="Disable DANN adversarial head (default: on)",
     )
     # Wf-245 Fix: per-innovation ablation flag for W₂ transfer (TODO-182).
@@ -1335,7 +1379,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     # --wass-weight 0.0 internal knob.  This is a user-friendly alias
     # that maps to --wass-weight 0.0.
     p.add_argument(
-        "--no-wass", dest="use_wass", action="store_false", default=True,
+        "--no-wass",
+        dest="use_wass",
+        action="store_false",
+        default=True,
         help=(
             "Disable Wasserstein transfer loss (alias for "
             "--wass-weight 0.0; default: on).  Wf-245 ablation flag."
@@ -1347,7 +1394,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     # pass --metals {M} --no-multi-task.  We honour it by collapsing the
     # per-metal BCE list to a single metal at optimisation time.
     p.add_argument(
-        "--no-multi-task", dest="use_multi_task", action="store_false",
+        "--no-multi-task",
+        dest="use_multi_task",
+        action="store_false",
         default=True,
         help=(
             "Disable multi-task heads — train a single BCE head on the "
@@ -1367,7 +1416,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         ),
     )
     p.add_argument(
-        "--no-bf16", dest="bf16", action="store_false", default=True,
+        "--no-bf16",
+        dest="bf16",
+        action="store_false",
+        default=True,
         help="Disable BF16 autocast (default: on)",
     )
     # Wf-248 Fix: per-metal head enhancement flags (TODO-149 §3).
@@ -1378,7 +1430,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     # compat with Wf-200 / Wf-225 / Wf-230 trained checkpoints.
     p.add_argument(
         "--enhanced-head",
-        action="store_true", default=False,
+        action="store_true",
+        default=False,
         help=(
             "Enable EnhancedMetalHead (2-layer MLP + ReLU + dropout) "
             "per-metal classifier (Wf-248 / TODO-149).  Default: off "
@@ -1387,7 +1440,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     p.add_argument(
         "--metal-attention",
-        action="store_true", default=False,
+        action="store_true",
+        default=False,
         help=(
             "Enable metal-aware single-head attention in EnhancedMetalHead.  "
             "Implies --enhanced-head.  Default: off."
@@ -1409,7 +1463,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     # Wf-243 Fix E: max-norm gradient clipping.
     p.add_argument(
-        "--grad-clip", type=float, default=1.0,
+        "--grad-clip",
+        type=float,
+        default=1.0,
         help=(
             "Max-norm gradient clip on model.parameters() (default: 1.0).  "
             "Pass --no-grad-clip to disable."
@@ -1423,7 +1479,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     # :func:`wasserstein_transfer_loss` call.  Default OFF so Wf-200 /
     # Wf-225 / Wf-230 trained checkpoints are reproducible.
     p.add_argument(
-        "--use-master-wass", action="store_true", default=False,
+        "--use-master-wass",
+        action="store_true",
+        default=False,
         help=(
             "Wf-250 Fix #1 (M1): dispatch per-batch W₂ transfer via "
             "MasterWassersteinGradientFlow.compute(loss_type='transfer').  "
@@ -1431,7 +1489,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         ),
     )
     p.add_argument(
-        "--master-wass-n-mc", type=int, default=64,
+        "--master-wass-n-mc",
+        type=int,
+        default=64,
         help=(
             "MasterWassersteinGradientFlow n_mc when --use-master-wass "
             "is set (default: 64; matches legacy wasserstein_transfer_loss)."
@@ -1444,7 +1504,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     # from the per-metal BCE losses; the resulting Catherine 6/6 PASS
     # flag is logged for honest reporting (TODO-126 §7).  Default OFF.
     p.add_argument(
-        "--use-master-cath", action="store_true", default=False,
+        "--use-master-cath",
+        action="store_true",
+        default=False,
         help=(
             "Wf-250 Fix #2 (M2): per-epoch Catherine 6/6 feature_flag "
             "via MasterCatherineClosureBias.apply(bias_type='feature_flag').  "
@@ -1452,7 +1514,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         ),
     )
     p.add_argument(
-        "--master-cath-bias-type", default="feature_flag",
+        "--master-cath-bias-type",
+        default="feature_flag",
         choices=("feature_flag", "oversample", "generation_bias"),
         help=(
             "MasterCatherineClosureBias selector (default: feature_flag; "
@@ -1469,7 +1532,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     # The 4 click rules (CuAAC / SPAAC / SPC / DielsAlder) are the same
     # 4 rules that lifted Lambda-search m7 by +28.3% on Wf_lift_ev3.
     p.add_argument(
-        "--use-click-aug", action="store_true", default=False,
+        "--use-click-aug",
+        action="store_true",
+        default=False,
         help=(
             "Wf-252 Fix #1 (F1-ClickAug-V3Wire): pass training-corpus "
             "SMILES through augment_candidates_via_click_reactions "
@@ -1478,7 +1543,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         ),
     )
     p.add_argument(
-        "--click-aug-prob", type=float, default=0.5,
+        "--click-aug-prob",
+        type=float,
+        default=0.5,
         help=(
             "use_click_prob passed to augment_candidates_via_click_reactions "
             "when --use-click-aug is set (default: 0.5).  Clamped to [0, 1]; "
@@ -1487,20 +1554,28 @@ def main(argv: Optional[List[str]] = None) -> int:
         ),
     )
     p.add_argument(
-        "--no-grad-clip", dest="grad_clip", action="store_const",
-        const=0.0, default=1.0,
+        "--no-grad-clip",
+        dest="grad_clip",
+        action="store_const",
+        const=0.0,
+        default=1.0,
         help="Disable gradient clipping (alias for --grad-clip 0).",
     )
     p.add_argument(
-        "--num-workers", type=int, default=4,
+        "--num-workers",
+        type=int,
+        default=4,
         help="Reserved — currently logged only (manual range loop).",
     )
     p.add_argument(
-        "--quick", action="store_true",
+        "--quick",
+        action="store_true",
         help="Smoke: 1 metal x 1 seed x 2 epochs, CPU fallback.",
     )
     p.add_argument(
-        "--max-rows", type=int, default=0,
+        "--max-rows",
+        type=int,
+        default=0,
         help="Cap corpus to first N rows (after metal filter). 0 = no cap.",
     )
     # Wf-245 Fix: per-seed variance validation.  Pre-fix: a single-seed
@@ -1510,14 +1585,17 @@ def main(argv: Optional[List[str]] = None) -> int:
     # is meaningful (single-seed → std is undefined).
     # Allow override for honest-negative smoke tests via --allow-single-seed.
     p.add_argument(
-        "--n-seeds-min", type=int, default=3,
+        "--n-seeds-min",
+        type=int,
+        default=3,
         help=(
             "Minimum number of seeds required for honest per-seed std "
             "reporting (default: 3).  Wf-245 Fix."
         ),
     )
     p.add_argument(
-        "--allow-single-seed", action="store_true",
+        "--allow-single-seed",
+        action="store_true",
         help=(
             "Bypass the --n-seeds-min check (for smoke tests; not for "
             "paper claims).  Wf-245 Fix."
@@ -1531,7 +1609,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     # bit-for-bit reproducible). The Wf-266 TODO-130 G5 follow-up references
     # the same SCAFFOLD surface.
     p.add_argument(
-        "--chemprop-mode", default="v3-fallback",
+        "--chemprop-mode",
+        default="v3-fallback",
         choices=("v3-fallback", "v3-fix", "v3-strict"),
         help=(
             "Chemprop v3 mode selector (Wf-321H LOMO scaffold; "
@@ -1541,14 +1620,18 @@ def main(argv: Optional[List[str]] = None) -> int:
         ),
     )
     p.add_argument(
-        "--chemprop-min-epochs", type=int, default=0,
+        "--chemprop-min-epochs",
+        type=int,
+        default=0,
         help=(
             "Minimum epochs to run before LOMO scaffold flips on "
             "(Wf-321H; default: 0 = no min). Used with --chemprop-mode v3-fix."
         ),
     )
     p.add_argument(
-        "--chemprop-lomo-init-scale", type=float, default=1.0,
+        "--chemprop-lomo-init-scale",
+        type=float,
+        default=1.0,
         help=(
             "LOMO init scale for chemprop v3 feature extractor "
             "(Wf-321H; default: 1.0 = no scale). Used with --chemprop-mode v3-fix."
@@ -1562,7 +1645,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     # When OFF (default): existing _prefeaturize_all_smiles + _batch_molgraphs_to
     # path is preserved bit-for-bit (backward compat preserved).
     p.add_argument(
-        "--chemprop-v3-cache", action="store_true", default=False,
+        "--chemprop-v3-cache",
+        action="store_true",
+        default=False,
         help=(
             "Enable chemprop v3 featurization cache (default: OFF; "
             "preserves bit-for-bit backward compat). When ON, the "
@@ -1643,11 +1728,22 @@ def main(argv: Optional[List[str]] = None) -> int:
         "hidden=%d depth=%d wass_w=%.4f lambda_grl=%.4f "
         "kendall=%s dann=%s dann_domain_mode=%s grad_clip=%s "
         "multi_task=%s n_seeds_min=%s",
-        device, args.bf16, args.num_workers, args.metals, args.seeds,
-        args.epochs, args.hidden, args.depth, args.wass_weight,
-        args.lambda_grl, args.use_kendall, args.use_dann,
-        args.dann_domain_mode, args.grad_clip,
-        args.use_multi_task, args.n_seeds_min,
+        device,
+        args.bf16,
+        args.num_workers,
+        args.metals,
+        args.seeds,
+        args.epochs,
+        args.hidden,
+        args.depth,
+        args.wass_weight,
+        args.lambda_grl,
+        args.use_kendall,
+        args.use_dann,
+        args.dann_domain_mode,
+        args.grad_clip,
+        args.use_multi_task,
+        args.n_seeds_min,
     )
 
     # ----- Load MetalCytoToxDB + filter to the 5 metals -----
@@ -1669,12 +1765,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         df = pd.concat(capped_pieces, ignore_index=True)
         logger.info(
             "per-metal cap %d rows; filtered corpus: %d rows across %s",
-            args.max_rows, len(df),
+            args.max_rows,
+            len(df),
             sorted(set(df["metal"].tolist())),
         )
     logger.info(
         "filtered MetalCytoToxDB: %d rows across metals=%s",
-        len(df), sorted(set(df["metal"].tolist())),
+        len(df),
+        sorted(set(df["metal"].tolist())),
     )
 
     smiles_all = df["smiles"].astype(str).tolist()
@@ -1693,12 +1791,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.use_click_aug:
         if _HAVE_CLICK_AUG and _click_augment_fn is not None:
             import random as _rng_mod
+
             _aug_rng = _rng_mod.Random(int(args.seeds[0]))
             logger.info(
                 "[wf252-f1] --use-click-aug ON: augmenting %d SMILES "
                 "via ClickAugmentedChempropGenerator (use_click_prob=%.2f, "
                 "seed=%d)",
-                len(smiles_all), float(args.click_aug_prob),
+                len(smiles_all),
+                float(args.click_aug_prob),
                 int(args.seeds[0]),
             )
             _aug_res = _click_augment_fn(
@@ -1736,7 +1836,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                 "[wf252-f1] augmented: n_fired=%d n_passthrough=%d "
                 "diversity_lift_tanimoto=%.4f "
                 "diversity_lift_scaffolds=%d wall_time_s=%.4f",
-                _aug_res.n_fired, _aug_res.n_passthrough,
+                _aug_res.n_fired,
+                _aug_res.n_passthrough,
                 _aug_res.diversity_lift_tanimoto,
                 _aug_res.diversity_lift_scaffolds,
                 _aug_res.wall_time_s,
@@ -1769,6 +1870,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             from molmetal.scripts.wf382a2_chemprop_v3_featurization_cache import (
                 ChempropV3FeaturizationCache,
             )
+
             logger.info(
                 "[wf404-a4] --chemprop-v3-cache ON: initializing "
                 "ChempropV3FeaturizationCache from %d SMILES …",
@@ -1780,26 +1882,32 @@ def main(argv: Optional[List[str]] = None) -> int:
             set_chemprop_v3_cache(_cache_obj)
             logger.info(
                 "[wf404-a4] cache tier-1 precompute: %d new SMILES in %.4fs",
-                _n_added, time.time() - _t_cache,
+                _n_added,
+                time.time() - _t_cache,
             )
         except ImportError as exc:
             logger.warning(
                 "[wf404-a4] ChempropV3FeaturizationCache import failed "
                 "(chemprop v3 may not be installed); falling back to "
-                "original _batch_molgraphs_to path: %s", exc,
+                "original _batch_molgraphs_to path: %s",
+                exc,
             )
             set_chemprop_v3_cache(None)
 
     # ----- Pre-featurize ALL SMILES once -----
     logger.info(
         "pre-featurizing %d SMILES via chemprop v2 "
-        "SimpleMoleculeMolGraphFeaturizer …", len(smiles_all),
+        "SimpleMoleculeMolGraphFeaturizer …",
+        len(smiles_all),
     )
     t0 = time.time()
     mols_all, atom_fdim, bond_fdim = _prefeaturize_all_smiles(smiles_all)
     logger.info(
         "pre-featurized %d SMILES in %.1fs (atom_fdim=%d bond_fdim=%d)",
-        len(mols_all), time.time() - t0, atom_fdim, bond_fdim,
+        len(mols_all),
+        time.time() - t0,
+        atom_fdim,
+        bond_fdim,
     )
 
     metal_id_lookup = {m: i for i, m in enumerate(SUPPORTED_METALS)}
@@ -1828,13 +1936,14 @@ def main(argv: Optional[List[str]] = None) -> int:
             if len(train_idx) < 50 or len(test_idx) < 5:
                 logger.warning(
                     "skip metal=%s train=%d test=%d (< 50 / < 5 rows)",
-                    target_metal, len(train_idx), len(test_idx),
+                    target_metal,
+                    len(train_idx),
+                    len(test_idx),
                 )
                 continue
         for seed in args.seeds:
             slice_budget = (
-                args.time_budget_s
-                / max(len(args.metals) * len(args.seeds), 1)
+                args.time_budget_s / max(len(args.metals) * len(args.seeds), 1)
             ) * 0.9
             # ----- Per-seed split (Wf-225 intra-set fallback) -----
             if lomo_eligible:
@@ -1854,16 +1963,16 @@ def main(argv: Optional[List[str]] = None) -> int:
                 this_train_idx = np.concatenate(
                     [pos_idx[:n_pos_tr], neg_idx[:n_neg_tr]]
                 )
-                this_test_idx = np.concatenate(
-                    [pos_idx[n_pos_tr:], neg_idx[n_neg_tr:]]
-                )
+                this_test_idx = np.concatenate([pos_idx[n_pos_tr:], neg_idx[n_neg_tr:]])
                 rs.shuffle(this_train_idx)
                 rs.shuffle(this_test_idx)
             if len(this_train_idx) < 50 or len(this_test_idx) < 5:
                 logger.warning(
                     "skip metal=%s seed=%d train=%d test=%d (< 50 / < 5 rows)",
-                    target_metal, seed,
-                    len(this_train_idx), len(this_test_idx),
+                    target_metal,
+                    seed,
+                    len(this_train_idx),
+                    len(this_test_idx),
                 )
                 continue
             try:
@@ -1896,8 +2005,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                     # Wf-243 Fix D + E.
                     dann_domain_mode=args.dann_domain_mode,
                     grad_clip=(
-                        float(args.grad_clip)
-                        if float(args.grad_clip) > 0.0 else None
+                        float(args.grad_clip) if float(args.grad_clip) > 0.0 else None
                     ),
                     # Wf-245 Fix: per-innovation ablation (TODO-182).
                     # use_wass / use_multi_task mirror --no-wass /
@@ -1921,7 +2029,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             except Exception as exc:
                 logger.error(
                     "metal=%s seed=%d FAILED: %s",
-                    target_metal, seed, exc,
+                    target_metal,
+                    seed,
+                    exc,
                 )
                 logger.debug(traceback.format_exc())
                 run = V3Run(
@@ -1930,9 +2040,11 @@ def main(argv: Optional[List[str]] = None) -> int:
                     n_train=int(len(train_idx)),
                     n_test=int(len(test_idx)),
                     pos_rate_train=float(np.mean(active_all[train_idx]))
-                    if len(train_idx) else 0.0,
+                    if len(train_idx)
+                    else 0.0,
                     pos_rate_test=float(np.mean(active_all[test_idx]))
-                    if len(test_idx) else 0.0,
+                    if len(test_idx)
+                    else 0.0,
                     test_auc=float("nan"),
                     val_auc=float("nan"),
                     elapsed_s=0.0,
@@ -1946,68 +2058,74 @@ def main(argv: Optional[List[str]] = None) -> int:
                 )
             runs.append(run)
             logger.info(
-                "metal=%s seed=%d test_auc=%.4f epochs=%d "
-                "elapsed=%.1fs status=%s",
-                run.metal, run.seed, run.test_auc,
-                run.epoch_count, run.elapsed_s, run.status,
+                "metal=%s seed=%d test_auc=%.4f epochs=%d " "elapsed=%.1fs status=%s",
+                run.metal,
+                run.seed,
+                run.test_auc,
+                run.epoch_count,
+                run.elapsed_s,
+                run.status,
             )
             # Per-metal / per-seed JSON output.
             metal_dir = out_dir / run.metal.lower()
             metal_dir.mkdir(parents=True, exist_ok=True)
             seed_json = metal_dir / f"per_seed_metrics_seed{run.seed}.json"
-            seed_json.write_text(json.dumps(
-                {
-                    "metal": run.metal,
-                    "seed": run.seed,
-                    "epochs": args.epochs,
-                    "hidden_dim": args.hidden,
-                    "depth": args.depth,
-                    "wass_weight": args.wass_weight,
-                    "lambda_grl": args.lambda_grl,
-                    "use_kendall": args.use_kendall,
-                    "use_dann": args.use_dann,
-                    "dann_domain_mode": args.dann_domain_mode,
-                    "grad_clip": args.grad_clip,
-                    # Wf-250-Apply: M1 + M2 master facade tags so the
-                    # per-seed JSON carries honest-reporting metadata.
-                    "wf250_use_master_wass": bool(args.use_master_wass),
-                    "wf250_master_wass_engine": (
-                        "wasserstein_reg"
-                        if bool(args.use_master_wass) else
-                        "legacy_wasserstein_transfer"
-                    ),
-                    "wf250_use_master_cath": bool(args.use_master_cath),
-                    "wf250_master_cath_bias_type": (
-                        str(args.master_cath_bias_type)
-                        if bool(args.use_master_cath) else None
-                    ),
-                    "wf250_enhanced_head": bool(args.enhanced_head),
-                    "wf250_metal_attention": bool(args.metal_attention),
-                    "n_train": run.n_train,
-                    "n_test": run.n_test,
-                    "pos_rate_train": run.pos_rate_train,
-                    "pos_rate_test": run.pos_rate_test,
-                    "val_auc": run.val_auc,
-                    "test_auc": run.test_auc,
-                    "initial_loss": run.initial_loss,
-                    "final_loss": run.final_loss,
-                    "w2_history": run.w2_history,
-                    "log_sigma_history": run.log_sigma_history,
-                    # Wf-243 Fix F: epoch-average auxiliary histories.
-                    "w2_epoch_avg_history": run.w2_epoch_avg_history,
-                    "coord_epoch_avg_history": run.coord_epoch_avg_history,
-                    "domain_epoch_avg_history": run.domain_epoch_avg_history,
-                    "elapsed_seconds": run.elapsed_s,
-                    "epoch_count": run.epoch_count,
-                    "status": run.status,
-                    "error": run.error,
-                    "ckpt_path": str(
-                        CKPT_DIR
-                        / f"dmpnn_mtw_v3_{run.metal.lower()}_seed{run.seed}.pt"
-                    ),
-                },
-                indent=2,
-            ))
+            seed_json.write_text(
+                json.dumps(
+                    {
+                        "metal": run.metal,
+                        "seed": run.seed,
+                        "epochs": args.epochs,
+                        "hidden_dim": args.hidden,
+                        "depth": args.depth,
+                        "wass_weight": args.wass_weight,
+                        "lambda_grl": args.lambda_grl,
+                        "use_kendall": args.use_kendall,
+                        "use_dann": args.use_dann,
+                        "dann_domain_mode": args.dann_domain_mode,
+                        "grad_clip": args.grad_clip,
+                        # Wf-250-Apply: M1 + M2 master facade tags so the
+                        # per-seed JSON carries honest-reporting metadata.
+                        "wf250_use_master_wass": bool(args.use_master_wass),
+                        "wf250_master_wass_engine": (
+                            "wasserstein_reg"
+                            if bool(args.use_master_wass)
+                            else "legacy_wasserstein_transfer"
+                        ),
+                        "wf250_use_master_cath": bool(args.use_master_cath),
+                        "wf250_master_cath_bias_type": (
+                            str(args.master_cath_bias_type)
+                            if bool(args.use_master_cath)
+                            else None
+                        ),
+                        "wf250_enhanced_head": bool(args.enhanced_head),
+                        "wf250_metal_attention": bool(args.metal_attention),
+                        "n_train": run.n_train,
+                        "n_test": run.n_test,
+                        "pos_rate_train": run.pos_rate_train,
+                        "pos_rate_test": run.pos_rate_test,
+                        "val_auc": run.val_auc,
+                        "test_auc": run.test_auc,
+                        "initial_loss": run.initial_loss,
+                        "final_loss": run.final_loss,
+                        "w2_history": run.w2_history,
+                        "log_sigma_history": run.log_sigma_history,
+                        # Wf-243 Fix F: epoch-average auxiliary histories.
+                        "w2_epoch_avg_history": run.w2_epoch_avg_history,
+                        "coord_epoch_avg_history": run.coord_epoch_avg_history,
+                        "domain_epoch_avg_history": run.domain_epoch_avg_history,
+                        "elapsed_seconds": run.elapsed_s,
+                        "epoch_count": run.epoch_count,
+                        "status": run.status,
+                        "error": run.error,
+                        "ckpt_path": str(
+                            CKPT_DIR
+                            / f"dmpnn_mtw_v3_{run.metal.lower()}_seed{run.seed}.pt"
+                        ),
+                    },
+                    indent=2,
+                )
+            )
             if (time.time() - sweep_t0) > args.time_budget_s:
                 logger.warning("wall budget exceeded; aborting sweep.")
                 break
@@ -2023,20 +2141,17 @@ def main(argv: Optional[List[str]] = None) -> int:
     for m in args.metals:
         per_m = [r for r in runs if r.metal == m]
         aucs = [
-            r.test_auc for r in per_m
-            if r.status == "ok" and not np.isnan(r.test_auc)
+            r.test_auc for r in per_m if r.status == "ok" and not np.isnan(r.test_auc)
         ]
         per_metal_auc[m] = float(np.mean(aucs)) if aucs else float("nan")
         per_metal_auc_std[m] = float(np.std(aucs)) if aucs else 0.0
 
     all_aucs = [
-        r.test_auc for r in runs
-        if r.status == "ok" and not np.isnan(r.test_auc)
+        r.test_auc for r in runs if r.status == "ok" and not np.isnan(r.test_auc)
     ]
     aggregate_auc = float(np.mean(all_aucs)) if all_aucs else float("nan")
     n_metals_above_07 = sum(
-        1 for v in per_metal_auc.values()
-        if not np.isnan(v) and v > 0.7
+        1 for v in per_metal_auc.values() if not np.isnan(v) and v > 0.7
     )
 
     honest_framing_note = (
@@ -2110,8 +2225,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "cfg_bf16": bool(args.bf16),
         "cfg_dann_domain_mode": str(args.dann_domain_mode),
         "cfg_grad_clip": (
-            float(args.grad_clip)
-            if float(args.grad_clip) > 0.0 else None
+            float(args.grad_clip) if float(args.grad_clip) > 0.0 else None
         ),
         "cfg_device": str(device),
         "cfg_time_budget_s": float(args.time_budget_s),

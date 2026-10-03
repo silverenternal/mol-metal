@@ -194,18 +194,14 @@ class Cochain:
         cochains: List[Callable[[List[Tensor]], Tensor]],
     ) -> None:
         if degree < 0:
-            raise ValueError(
-                f"degree must be >= 0, got {degree}"
-            )
+            raise ValueError(f"degree must be >= 0, got {degree}")
         if len(cochains) != 1:
             raise ValueError(
                 f"cochains list must have length 1 (got {len(cochains)}); "
                 "use a single multilinear callable for the cochain"
             )
         if not callable(cochains[0]):
-            raise ValueError(
-                "cochains[0] must be a Callable"
-            )
+            raise ValueError("cochains[0] must be a Callable")
         self.degree = int(degree)
         self.cochains = list(cochains)
         self._callable = self.cochains[0]
@@ -225,16 +221,11 @@ class Cochain:
             The bimodule element :math:`c(a_1, \\ldots, a_n)`.
         """
         if len(args) != self.degree:
-            raise ValueError(
-                f"args must have length {self.degree}, got {len(args)}"
-            )
+            raise ValueError(f"args must have length {self.degree}, got {len(args)}")
         return self._callable(args)
 
     def __repr__(self) -> str:  # pragma: no cover - cosmetic
-        return (
-            f"Cochain(degree={self.degree}, "
-            f"cochains=List[Callable, len=1])"
-        )
+        return f"Cochain(degree={self.degree}, " f"cochains=List[Callable, len=1])"
 
 
 # ---------------------------------------------------------------------------
@@ -313,8 +304,7 @@ class Differential:
 
             if len(args) != n + 1:
                 raise ValueError(
-                    f"coboundary args must have length n+1={n + 1}, "
-                    f"got {len(args)}"
+                    f"coboundary args must have length n+1={n + 1}, " f"got {len(args)}"
                 )
             # Left term: a_1 · f(a_2, ..., a_{n+1}).
             left_term = self.left_mult(args[0], f(list(args[1:])))
@@ -334,9 +324,7 @@ class Differential:
                 mid_terms.append(sign * f(inner_args))
             # Right term: (-1)^{n+1} f(a_1..a_n) · a_{n+1}.
             sign = -1.0 if ((n + 1) % 2 == 1) else 1.0
-            right_term = sign * self.right_mult(
-                f(list(args[:n])), args[n]
-            )
+            right_term = sign * self.right_mult(f(list(args[:n])), args[n])
             # Sum everything.
             total = left_term
             for term in mid_terms:
@@ -436,9 +424,7 @@ class HochschildCohomology:
         max_degree: int = 3,
     ) -> None:
         if max_degree < 0:
-            raise ValueError(
-                f"max_degree must be >= 0, got {max_degree}"
-            )
+            raise ValueError(f"max_degree must be >= 0, got {max_degree}")
         self.algebra = algebra
         self.max_degree = int(max_degree)
 
@@ -543,8 +529,7 @@ class HochschildCohomology:
             # Build a sample of argument tuples for degree-n+1
             # (the arguments on which we evaluate delta(c)).
             sample_args: List[List[Tensor]] = [
-                [torch.zeros(1) for _ in range(n + 1)]
-                for _ in range(len(deg_n))
+                [torch.zeros(1) for _ in range(n + 1)] for _ in range(len(deg_n))
             ]
             # Count cocycles.
             cocycles = [
@@ -568,8 +553,16 @@ class HochschildCohomology:
                 # to one already in the list.
                 if not any(
                     torch.allclose(
-                        delta_c.evaluate(sample_args[0] if sample_args else [torch.zeros(1) for _ in range(n)]),
-                        existing.evaluate(sample_args[0] if sample_args else [torch.zeros(1) for _ in range(n)]),
+                        delta_c.evaluate(
+                            sample_args[0]
+                            if sample_args
+                            else [torch.zeros(1) for _ in range(n)]
+                        ),
+                        existing.evaluate(
+                            sample_args[0]
+                            if sample_args
+                            else [torch.zeros(1) for _ in range(n)]
+                        ),
                         atol=_EPS_DELTA,
                     )
                     for existing in coboundaries
@@ -666,9 +659,7 @@ class MLCReductionCochain:
 
         def coch_fn(args: List[Tensor]) -> Tensor:
             if len(args) != 1:
-                raise ValueError(
-                    f"1-cochain expects 1 argument, got {len(args)}"
-                )
+                raise ValueError(f"1-cochain expects 1 argument, got {len(args)}")
             return constant
 
         return Cochain(degree=1, cochains=[coch_fn])

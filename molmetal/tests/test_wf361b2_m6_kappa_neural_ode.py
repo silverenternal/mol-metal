@@ -32,6 +32,7 @@ Run with::
         /home/hugo/codes/mol-metal/.venv/bin/python -m pytest \\
         molmetal/tests/test_wf361b2_m6_kappa_neural_ode.py -v
 """
+
 from __future__ import annotations
 
 import csv
@@ -72,6 +73,7 @@ def _import_module():
             _run_candidate,
             main as wf361b2_main,
         )
+
         return {
             "M6_KAPPA_THRESHOLD": M6_KAPPA_THRESHOLD,
             "M6_KAPPA_THRESHOLD_ADAPTIVE": M6_KAPPA_THRESHOLD_ADAPTIVE,
@@ -132,17 +134,14 @@ def test_ode_function_correctness(mod):
     # Forward pass — should return (B, feature_dim) tensor.
     dx = fnet(t, x)
     assert dx.shape == (batch_size, cfg.feature_dim), (
-        f"ODE function output shape {dx.shape} != ({batch_size}, "
-        f"{cfg.feature_dim})"
+        f"ODE function output shape {dx.shape} != ({batch_size}, " f"{cfg.feature_dim})"
     )
     assert torch.isfinite(dx).all(), "ODE function output must be finite"
     # Autograd flow: sum + backward should not raise.
     loss = dx.sum()
     loss.backward()
     assert x.grad is not None, "autograd flow through f_θ must work"
-    assert torch.isfinite(x.grad).all(), (
-        "autograd gradients must be finite"
-    )
+    assert torch.isfinite(x.grad).all(), "autograd gradients must be finite"
 
 
 # ---------------------------------------------------------------------------
@@ -184,9 +183,7 @@ def test_ode_solver_integration(mod):
     )
     # Also verify the trajectory is monotonic decreasing (dx/dt = -x).
     diff = x_traj[-1] - x_traj[0]
-    assert (diff < 0.0).all(), (
-        f"trajectory should be decreasing (got diff={diff})"
-    )
+    assert (diff < 0.0).all(), f"trajectory should be decreasing (got diff={diff})"
 
 
 # ---------------------------------------------------------------------------
@@ -216,22 +213,36 @@ def test_backward_compat(mod):
     X = rng.normal(0.0, 1.0, size=(n, feature_dim))
     y = rng.normal(0.0, 1.0, size=n) * 0.3 + X[:, 0] * 0.1
     baseline_pass_rate = mod["_compute_baseline_pass_rate"](
-        list(y), mod["M6_KAPPA_THRESHOLD"],
+        list(y),
+        mod["M6_KAPPA_THRESHOLD"],
     )
     cand = mod["_run_candidate"](
-        "test_candidate", X, y, baseline_pass_rate,
-        alpha=1.0, cv_folds=5,
+        "test_candidate",
+        X,
+        y,
+        baseline_pass_rate,
+        alpha=1.0,
+        cv_folds=5,
     )
     required_keys = {
-        "candidate", "n_features", "cv_r2", "augmented_mean",
-        "delta_mean", "pass_rate_baseline", "pass_rate_augmented",
-        "pass_rate_lift", "pass_rate_baseline_adaptive",
-        "pass_rate_augmented_adaptive", "pass_rate_lift_adaptive",
-        "verdict", "alpha", "cv_folds",
+        "candidate",
+        "n_features",
+        "cv_r2",
+        "augmented_mean",
+        "delta_mean",
+        "pass_rate_baseline",
+        "pass_rate_augmented",
+        "pass_rate_lift",
+        "pass_rate_baseline_adaptive",
+        "pass_rate_augmented_adaptive",
+        "pass_rate_lift_adaptive",
+        "verdict",
+        "alpha",
+        "cv_folds",
     }
-    assert set(cand.keys()) >= required_keys, (
-        f"missing keys: {required_keys - set(cand.keys())}"
-    )
+    assert (
+        set(cand.keys()) >= required_keys
+    ), f"missing keys: {required_keys - set(cand.keys())}"
     # 2. Gate contract.
     if cand["augmented_mean"] >= mod["M6_KAPPA_THRESHOLD"]:
         assert cand["verdict"] == "HONEST_NEGATIVE_M6_KAPPA_RESOLVED"
@@ -239,21 +250,23 @@ def test_backward_compat(mod):
         assert cand["verdict"] == "HONEST_NEGATIVE_PERSISTENT"
     # 3. Wf-325D + Wf-359-A1 MEASURED baselines mirrored.
     assert mod["WF_325D_MEASURED_BASELINE"] == pytest.approx(
-        0.4719079955824899, abs=1e-9,
+        0.4719079955824899,
+        abs=1e-9,
     ), "Wf-325D MEASURED baseline must mirror metrics/by_metric/m6_kappa.json"
-    assert 0.0 <= mod["WF_359A1_MEASURED_BASELINE"] <= 1.0, (
-        "Wf-359-A1 platinai_4cell baseline must be in [0, 1]"
-    )
+    assert (
+        0.0 <= mod["WF_359A1_MEASURED_BASELINE"] <= 1.0
+    ), "Wf-359-A1 platinai_4cell baseline must be in [0, 1]"
     # 4. Threshold + adaptive threshold values mirror Wf-333-V4.
     assert mod["M6_KAPPA_THRESHOLD"] == pytest.approx(0.6, abs=1e-9)
     assert mod["M6_KAPPA_THRESHOLD_ADAPTIVE"] == pytest.approx(
-        0.55, abs=1e-9,
+        0.55,
+        abs=1e-9,
     )
     # 5. CV-R² is finite + not NaN.
     assert isinstance(cand["cv_r2"], float)
-    assert np.isfinite(cand["cv_r2"]) or n < 4, (
-        f"cv_r2 should be finite (or n<4); got {cand['cv_r2']}"
-    )
+    assert (
+        np.isfinite(cand["cv_r2"]) or n < 4
+    ), f"cv_r2 should be finite (or n<4); got {cand['cv_r2']}"
     # 6. pass_rate_lift is finite + bounded in [-1, 1].
     assert np.isfinite(cand["pass_rate_lift"])
     assert -1.0 <= cand["pass_rate_lift"] <= 1.0

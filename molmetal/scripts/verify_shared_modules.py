@@ -61,24 +61,13 @@ if str(PROJECT_ROOT) not in sys.path:
 # Pre-flight: ensure the integration test file exists and the two
 # shared modules are importable.
 INTEGRATION_TEST_PATH = (
-    PROJECT_ROOT
-    / "molmetal"
-    / "tests"
-    / "test_wasserstein_closure_integration.py"
+    PROJECT_ROOT / "molmetal" / "tests" / "test_wasserstein_closure_integration.py"
 )
 WASSERSTEIN_PATH = (
-    PROJECT_ROOT
-    / "molmetal"
-    / "molmetal_lam"
-    / "reward"
-    / "wasserstein_loss.py"
+    PROJECT_ROOT / "molmetal" / "molmetal_lam" / "reward" / "wasserstein_loss.py"
 )
 CLOSURE_BIAS_PATH = (
-    PROJECT_ROOT
-    / "molmetal"
-    / "molmetal_lam"
-    / "reward"
-    / "pocket_closure_bias.py"
+    PROJECT_ROOT / "molmetal" / "molmetal_lam" / "reward" / "pocket_closure_bias.py"
 )
 PLATINAI_CSV = PROJECT_ROOT / "molmetal" / "data" / "platinai_4cell.csv"
 
@@ -154,6 +143,7 @@ def _module_fingerprint() -> Dict[str, str]:
     """Compute a quick fingerprint of the two shared modules (file size
     + sha-ish byte hash, NOT cryptographic — just a content marker
     so the verification report can be cross-referenced."""
+
     def _fp(p: Path) -> str:
         if not p.exists():
             return "MISSING"
@@ -241,21 +231,17 @@ def _probe_signal_floor(probe_rows: int) -> Dict[str, Any]:
     per_pocket_bias_sum: Dict[str, float] = {}
     for pid in SUPPORTED_POCKETS:
         bias = pocket_specific_closure_bias(pid)
-        per_pocket_bias_sum[pid] = (
-            float(bias.bias_sum) if bias.is_known_pocket else 0.0
-        )
+        per_pocket_bias_sum[pid] = float(bias.bias_sum) if bias.is_known_pocket else 0.0
 
     return {
         "status": "PASS",
         "n_rows_used": n_used,
         "cell_lines": list(col_map.keys()),
         "per_cell_line_pic50_mean": {
-            cl: statistics.fmean(by_cell[cl][:n_used])
-            for cl in col_map
+            cl: statistics.fmean(by_cell[cl][:n_used]) for cl in col_map
         },
         "per_cell_line_pic50_std": {
-            cl: statistics.pstdev(by_cell[cl][:n_used])
-            for cl in col_map
+            cl: statistics.pstdev(by_cell[cl][:n_used]) for cl in col_map
         },
         "r2_signal_floor_mcf7_vs_a2780": float(r2_floor),
         "wasserstein_pic50_mcf7_vs_a2780": w2_cross,
@@ -313,8 +299,7 @@ def main() -> int:
 
     fingerprint = _module_fingerprint()
     print(
-        "[wf123-p3] M1 (wasserstein_loss.py): "
-        f"{fingerprint['wasserstein_loss.py']}",
+        "[wf123-p3] M1 (wasserstein_loss.py): " f"{fingerprint['wasserstein_loss.py']}",
         file=sys.stderr,
     )
     print(

@@ -45,6 +45,7 @@ Output JSON schema (per ``--dataset output_dir/triangle_12d_bench.json``):
   * ``lift.mean_variance_reduction_lift``
   * ``recovery_status`` — HONEST_NEGATIVE_TRIANGLE_RESOLVED or HONEST_NEGATIVE_PERSISTENT
 """
+
 from __future__ import annotations
 
 import argparse
@@ -303,6 +304,7 @@ def _run_one_seed(
         # Re-evaluate R² on the original (un-standardised) y so the
         # headline metric is comparable to the 5-d baseline.
         from molmetal.scripts.triangle_closure import TriangleClosure as _TC
+
         # We can't easily re-evaluate the regressor's prediction on the
         # original scale because LambdaASTSRHilbert.predict() expects
         # the same standardised inputs. Recompute R² on the normalised
@@ -315,16 +317,18 @@ def _run_one_seed(
             n_arms=int(n_arms),
             seed=round_seed + 2,
         )
-        per_round.append({
-            "round": int(r),
-            "seed": int(round_seed),
-            "n_rows": int(X_local.shape[0]),
-            "vertices": {
-                "astsr": _vertex_to_dict(astsr_v),
-                "hilbert": _vertex_to_dict(hilbert_v),
-                "mcts": _vertex_to_dict(mcts_v),
-            },
-        })
+        per_round.append(
+            {
+                "round": int(r),
+                "seed": int(round_seed),
+                "n_rows": int(X_local.shape[0]),
+                "vertices": {
+                    "astsr": _vertex_to_dict(astsr_v),
+                    "hilbert": _vertex_to_dict(hilbert_v),
+                    "mcts": _vertex_to_dict(mcts_v),
+                },
+            }
+        )
         astsr_ok_flag = bool(math.isfinite(astsr_v.r2))
         hilbert_ok_flag = bool(math.isfinite(hilbert_v.r2))
         mcts_ok_flag = bool(math.isfinite(mcts_v.variance_reduction))
@@ -333,7 +337,10 @@ def _run_one_seed(
         per_round[-1]["vertices"]["mcts"]["success"] = mcts_ok_flag
         if r + 1 < int(n_rounds):
             X_local, y_local = closure._feedback_dataset(
-                X_local, y_local, mcts_v, round_idx=int(r),
+                X_local,
+                y_local,
+                mcts_v,
+                round_idx=int(r),
             )
 
     total_wall = float(time.perf_counter() - t_total_0)
@@ -391,7 +398,8 @@ def _vertex_to_dict(v: VertexResult) -> Dict[str, Any]:
         "r2": float(v.r2) if math.isfinite(v.r2) else 0.0,
         "n_actions": int(v.n_actions),
         "variance_reduction": float(v.variance_reduction)
-        if math.isfinite(v.variance_reduction) else 0.0,
+        if math.isfinite(v.variance_reduction)
+        else 0.0,
         "success": success,
         "metadata": dict(v.metadata),
     }
@@ -422,9 +430,7 @@ def run_dataset(
 
     rows = _load_dataset(dataset_name, csv_path)
     if not rows:
-        raise RuntimeError(
-            f"dataset {dataset_name!r} at {csv_path} returned 0 rows"
-        )
+        raise RuntimeError(f"dataset {dataset_name!r} at {csv_path} returned 0 rows")
 
     smiles_list = [r["smiles"] for r in rows]
     metal_list = [r.get("metal", "") for r in rows]
@@ -457,16 +463,18 @@ def run_dataset(
         finite = np.isfinite(y_seed)
         X_seed = X_seed[finite, :]
         y_seed = y_seed[finite]
-        per_seed.append(_run_one_seed(
-            seed=int(s),
-            n_trajectories=int(n_trajectories),
-            n_rounds=int(n_rounds),
-            n_arms=int(n_arms),
-            hilbert_iters=int(hilbert_iters),
-            X=X_seed,
-            y=y_seed,
-            feature_names=names_seed,
-        ))
+        per_seed.append(
+            _run_one_seed(
+                seed=int(s),
+                n_trajectories=int(n_trajectories),
+                n_rounds=int(n_rounds),
+                n_arms=int(n_arms),
+                hilbert_iters=int(hilbert_iters),
+                X=X_seed,
+                y=y_seed,
+                feature_names=names_seed,
+            )
+        )
 
     def _mean(key: str) -> float:
         return float(np.mean([r[key] for r in per_seed]))
@@ -476,10 +484,16 @@ def run_dataset(
 
     # Triangle convergence rate = final round R² / first round R²
     # (computed across the per-seed aggregate — uses mean final vs mean first).
-    final_r2s = [r["per_round"][-1]["vertices"]["hilbert"]["r2"]
-                 for r in per_seed if r.get("per_round")]
-    first_r2s = [r["per_round"][0]["vertices"]["hilbert"]["r2"]
-                 for r in per_seed if r.get("per_round")]
+    final_r2s = [
+        r["per_round"][-1]["vertices"]["hilbert"]["r2"]
+        for r in per_seed
+        if r.get("per_round")
+    ]
+    first_r2s = [
+        r["per_round"][0]["vertices"]["hilbert"]["r2"]
+        for r in per_seed
+        if r.get("per_round")
+    ]
     convergence = (
         float(np.mean(final_r2s) / np.mean(first_r2s))
         if first_r2s and np.mean(first_r2s) != 0.0
@@ -563,19 +577,23 @@ def run_comparison(
         hilbert_iters=hilbert_iters,
     )
     lift = {
-        "mean_hilbert_r2_lift_12d_vs_5d":
-            float(baseline_12d["mean_hilbert_r2"] - baseline_5d["mean_hilbert_r2"]),
-        "mean_hilbert_r2_lift_17d_vs_5d":
-            float(baseline_17d["mean_hilbert_r2"] - baseline_5d["mean_hilbert_r2"]),
-        "mean_variance_reduction_lift_12d_vs_5d":
-            float(baseline_12d["mean_variance_reduction"]
-                  - baseline_5d["mean_variance_reduction"]),
-        "mean_variance_reduction_lift_17d_vs_5d":
-            float(baseline_17d["mean_variance_reduction"]
-                  - baseline_5d["mean_variance_reduction"]),
-        "mean_evolutionary_r2_lift_12d_vs_5d":
-            float(baseline_12d["mean_evolutionary_r2"]
-                  - baseline_5d["mean_evolutionary_r2"]),
+        "mean_hilbert_r2_lift_12d_vs_5d": float(
+            baseline_12d["mean_hilbert_r2"] - baseline_5d["mean_hilbert_r2"]
+        ),
+        "mean_hilbert_r2_lift_17d_vs_5d": float(
+            baseline_17d["mean_hilbert_r2"] - baseline_5d["mean_hilbert_r2"]
+        ),
+        "mean_variance_reduction_lift_12d_vs_5d": float(
+            baseline_12d["mean_variance_reduction"]
+            - baseline_5d["mean_variance_reduction"]
+        ),
+        "mean_variance_reduction_lift_17d_vs_5d": float(
+            baseline_17d["mean_variance_reduction"]
+            - baseline_5d["mean_variance_reduction"]
+        ),
+        "mean_evolutionary_r2_lift_12d_vs_5d": float(
+            baseline_12d["mean_evolutionary_r2"] - baseline_5d["mean_evolutionary_r2"]
+        ),
     }
     return {
         "dataset": str(dataset_name),
@@ -603,8 +621,10 @@ def recovery_verdict(
     """
     any_resolved = False
     for ds_name, lift in per_dataset_lift.items():
-        if (lift.get("mean_hilbert_r2_lift_12d_vs_5d", -1.0) > 0
-                and lift.get("mean_variance_reduction_lift_12d_vs_5d", -1.0) > 0):
+        if (
+            lift.get("mean_hilbert_r2_lift_12d_vs_5d", -1.0) > 0
+            and lift.get("mean_variance_reduction_lift_12d_vs_5d", -1.0) > 0
+        ):
             any_resolved = True
             break
     if any_resolved:
@@ -642,10 +662,16 @@ def write_report(
     md_path = out_dir / "triangle_12d_bench.md"
     lines: List[str] = []
     lines.append("# Wf-330-T4 triangle convergence lift (F5_RDKIT_2D 12-d)\n\n")
-    lines.append("Per-dataset comparison: 5-d structural features (baseline) vs 12-d RDKit 2D (F5_RDKIT_2D).\n\n")
+    lines.append(
+        "Per-dataset comparison: 5-d structural features (baseline) vs 12-d RDKit 2D (F5_RDKIT_2D).\n\n"
+    )
     lines.append(f"**Recovery verdict**: `{recovery_status}`\n\n")
-    lines.append("| Dataset | 5d hilbert R² | 12d hilbert R² | 17d hilbert R² | 12d-5d lift | 5d var_red | 12d var_red | 12d-5d var_red lift |\n")
-    lines.append("|---------|---------------|----------------|----------------|-------------|------------|-------------|--------------------|\n")
+    lines.append(
+        "| Dataset | 5d hilbert R² | 12d hilbert R² | 17d hilbert R² | 12d-5d lift | 5d var_red | 12d var_red | 12d-5d var_red lift |\n"
+    )
+    lines.append(
+        "|---------|---------------|----------------|----------------|-------------|------------|-------------|--------------------|\n"
+    )
     for ds_name, ds in per_dataset.items():
         b5 = ds["baseline_5d"]
         b12 = ds["f5_rdkit_2d_12d"]
@@ -700,41 +726,57 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help="Which dataset to bench (default: platinai_4cell).",
     )
     parser.add_argument(
-        "--platinai-csv", type=str,
+        "--platinai-csv",
+        type=str,
         default=DEFAULT_PLATINAI_4CELL_CSV,
         help=f"Path to PlatinAI 4-cell CSV (default: {DEFAULT_PLATINAI_4CELL_CSV}).",
     )
     parser.add_argument(
-        "--metalcyto-csv", type=str,
+        "--metalcyto-csv",
+        type=str,
         default=DEFAULT_METALCYTO_CSV,
         help=f"Path to MetalCytoToxDB 5-metal CSV (default: {DEFAULT_METALCYTO_CSV}).",
     )
     parser.add_argument(
-        "--n-trajectories", type=int, default=DEFAULT_N_TRAJECTORIES,
+        "--n-trajectories",
+        type=int,
+        default=DEFAULT_N_TRAJECTORIES,
         help=f"Smoke trajectories per seed (default {DEFAULT_N_TRAJECTORIES}).",
     )
     parser.add_argument(
-        "--n-rounds", type=int, default=DEFAULT_N_ROUNDS,
+        "--n-rounds",
+        type=int,
+        default=DEFAULT_N_ROUNDS,
         help=f"Closure rounds (default {DEFAULT_N_ROUNDS}).",
     )
     parser.add_argument(
-        "--seeds", type=int, nargs="+", default=list(DEFAULT_SEEDS),
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=list(DEFAULT_SEEDS),
         help=f"Seed list (default {list(DEFAULT_SEEDS)}).",
     )
     parser.add_argument(
-        "--n-arms", type=int, default=DEFAULT_N_ARMS,
+        "--n-arms",
+        type=int,
+        default=DEFAULT_N_ARMS,
         help=f"MCTS arms (default {DEFAULT_N_ARMS}).",
     )
     parser.add_argument(
-        "--hilbert-iters", type=int, default=DEFAULT_HILBERT_ITERS,
+        "--hilbert-iters",
+        type=int,
+        default=DEFAULT_HILBERT_ITERS,
         help=f"Hilbert primal-dual iterations (default {DEFAULT_HILBERT_ITERS}).",
     )
     parser.add_argument(
-        "--output-dir", type=str, default=DEFAULT_OUT_DIR,
+        "--output-dir",
+        type=str,
+        default=DEFAULT_OUT_DIR,
         help=f"Output directory (default: {DEFAULT_OUT_DIR}).",
     )
     parser.add_argument(
-        "--both", action="store_true",
+        "--both",
+        action="store_true",
         help="Run both PlatinAI 4-cell + MetalCytoToxDB 5-metal.",
     )
     args = parser.parse_args(argv)
@@ -758,8 +800,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     per_dataset: Dict[str, Dict[str, Any]] = {}
     per_dataset_lift: Dict[str, Dict[str, float]] = {}
     for ds_name, csv_path in datasets_to_run:
-        print(f"[Wf-330-T4] running dataset={ds_name} csv={csv_path} ...",
-              flush=True)
+        print(f"[Wf-330-T4] running dataset={ds_name} csv={csv_path} ...", flush=True)
         if not csv_path.exists():
             print(f"[Wf-330-T4] SKIP — CSV not found: {csv_path}", flush=True)
             continue
@@ -793,8 +834,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
 
     if not per_dataset:
-        print("[Wf-330-T4] no datasets ran successfully — aborting",
-              flush=True)
+        print("[Wf-330-T4] no datasets ran successfully — aborting", flush=True)
         return 2
 
     recovery_status = recovery_verdict(per_dataset_lift)

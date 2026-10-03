@@ -10,6 +10,7 @@ Validates the Pareto-aware multi-objective ranking primitives:
 
 Math priors (Deb 2002 NSGA-II, Zitzler 1999 MOEA, Knowles 2006 HV).
 """
+
 from __future__ import annotations
 
 import math
@@ -301,4 +302,5 @@ def test_rank_population_3d_basic():
 
 if __name__ == "__main__":
     import pytest as _pt
+
     _pt.main([__file__, "-x", "--tb=short", "-q"])

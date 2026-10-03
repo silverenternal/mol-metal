@@ -175,6 +175,7 @@ def _apply_rocm_gfx1101_env(
             from molmetal.adapters.flow_matching_lipman.amp import (
                 ROCM_GFX1101_ENV_VARS as AMP_VARS,
             )
+
             env_vars = AMP_VARS
         except Exception:
             pass

@@ -157,16 +157,12 @@ def _safe_run_reactants(
     """
     rxn = AllChem.ReactionFromSmarts(smarts)
     if rxn is None:
-        logger.warning(
-            "[non_click_medchem_rules] failed to parse SMARTS: %s", smarts
-        )
+        logger.warning("[non_click_medchem_rules] failed to parse SMARTS: %s", smarts)
         return []
     try:
         product_sets = rxn.RunReactants(tuple(reactants))
     except Exception as exc:  # pragma: no cover - defensive
-        logger.warning(
-            "[non_click_medchem_rules] RunReactants raised: %s", exc
-        )
+        logger.warning("[non_click_medchem_rules] RunReactants raised: %s", exc)
         return []
     products: List[Chem.Mol] = []
     for product_tuple in product_sets:
@@ -216,9 +212,7 @@ def _parse_smiles(smi: str) -> Optional[Chem.Mol]:
 # SMARTS template: carboxylic acid [C:1](=[O:2])[OH:3].[NH2:4] ->
 # amide [C:1](=[O:2])[NH:4].  Atom-maps 1/2/4 are kept on the
 # product; 3 (the hydroxyl leaving group) is released.
-_PEPTIDE_BOND_SMARTS = (
-    "[C:1](=[O:2])[OH].[NH2:4]>>[C:1](=[O:2])[NH:4]"
-)
+_PEPTIDE_BOND_SMARTS = "[C:1](=[O:2])[OH].[NH2:4]>>[C:1](=[O:2])[NH:4]"
 
 
 # Functional-group SMARTS used for ``is_substrate_compatible`` —
@@ -353,9 +347,7 @@ _BOC_PROTECTION_SMARTS = (
 
 # SMARTS — reverse deprotection: Boc-protected amine -> primary
 # amine + CO2 + isobutylene.
-_BOC_DEPROTECTION_SMARTS = (
-    "[NH:1][C:2](=O)[O:3]C(C)(C)C>>[NH2:1]"
-)
+_BOC_DEPROTECTION_SMARTS = "[NH:1][C:2](=O)[O:3]C(C)(C)C>>[NH2:1]"
 
 
 @dataclass
@@ -474,9 +466,7 @@ class BocProtectionRule:
 # SMARTS captures the *final* reduction product (R-CH2-NH-R') with
 # water as the leaving group.  Intermediate imine formation +
 # hydride reduction are absorbed into the net transform.
-_REDUCTIVE_AMINATION_SMARTS = (
-    "[CH:1](=O).[NH2:4]>>[CH2:1][NH:4]"
-)
+_REDUCTIVE_AMINATION_SMARTS = "[CH:1](=O).[NH2:4]>>[CH2:1][NH:4]"
 
 # Functional-group patterns used for ``is_compatible``.
 _ALDEHYDE_SMARTS = "[CH](=O)[!$([CH]=O)]"  # aldehyde, not formate-like
@@ -741,6 +731,7 @@ if __name__ == "__main__":  # pragma: no cover
     # ``_safe_run_reactants`` so the module-level smoke runs
     # even when the SMARTS templates have not been parsed.
     from rdkit.Chem import AllChem  # noqa: F401  - imported for completeness
+
     registry = NonClickMedChemRegistry()
     n = register_non_click_rules(registry)
     print(f"# non_click_medchem_rules — registered {n} rules")

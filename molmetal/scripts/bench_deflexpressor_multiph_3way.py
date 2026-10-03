@@ -175,7 +175,8 @@ class LiftSummary:
 # Loaders — PlatinAI 5K (SMILES + metal)
 # ---------------------------------------------------------------------------
 def load_platinai_5k(
-    csv_path: Path, n_max: Optional[int] = None,
+    csv_path: Path,
+    n_max: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
     """Load PlatinAI 5K SMILES + metal rows.
 
@@ -190,12 +191,14 @@ def load_platinai_5k(
             smi = (row.get("smiles") or "").strip()
             if not smi:
                 continue
-            out.append({
-                "smiles": smi,
-                "metal": (row.get("metal") or "").strip(),
-                "ic50_nm": (row.get("ic50_nm") or "").strip(),
-                "selectivity": (row.get("selectivity") or "").strip(),
-            })
+            out.append(
+                {
+                    "smiles": smi,
+                    "metal": (row.get("metal") or "").strip(),
+                    "ic50_nm": (row.get("ic50_nm") or "").strip(),
+                    "selectivity": (row.get("selectivity") or "").strip(),
+                }
+            )
             if n_max is not None and len(out) >= n_max:
                 break
     return out
@@ -253,7 +256,8 @@ def _qed(smiles: str) -> Optional[float]:
 # Multi-PH feature extractor — pocket cloud → 2-PH feature map
 # ---------------------------------------------------------------------------
 def _mph_features_for(
-    smiles_list: Sequence[str], n_bins: int = MPH_N_BINS,
+    smiles_list: Sequence[str],
+    n_bins: int = MPH_N_BINS,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Compute the multi-PH feature map for every SMILES in ``smiles_list``.
 
@@ -284,9 +288,7 @@ def _mph_features_for(
             if mol is None:
                 continue
             mol_h = Chem.AddHs(mol)
-            embed_status = int(
-                AllChem.EmbedMolecule(mol_h, randomSeed=0xC0FFEE)
-            )
+            embed_status = int(AllChem.EmbedMolecule(mol_h, randomSeed=0xC0FFEE))
             if embed_status != 0:
                 continue
             n_atoms = int(mol_h.GetNumAtoms())
@@ -303,7 +305,9 @@ def _mph_features_for(
             atom_types = torch.zeros(1, n_atoms, dtype=torch.long)
             for j in range(n_atoms):
                 atom_types[0, j] = int(mol_h.GetAtomWithIdx(j).GetAtomicNum())
-            fmap = mph.compute_with_atom_types(coords_t, atom_types)  # (1, n_bins, n_bins)
+            fmap = mph.compute_with_atom_types(
+                coords_t, atom_types
+            )  # (1, n_bins, n_bins)
             arr = fmap[0].detach().cpu().numpy().astype(float).reshape(-1)
             if not np.all(np.isfinite(arr)):
                 continue
@@ -318,7 +322,9 @@ def _mph_features_for(
 # PLL feature extractor — pocket cloud → top-k Laplacian eigenvalues
 # ---------------------------------------------------------------------------
 def _numpy_pll_eigvals(
-    coords: np.ndarray, k: int, k_nn: int = 8,
+    coords: np.ndarray,
+    k: int,
+    k_nn: int = 8,
 ) -> Optional[np.ndarray]:
     """Numpy-only PLL spectrum — fallback when scipy is unavailable.
 
@@ -371,13 +377,15 @@ def _numpy_pll_eigvals(
     eigvals = np.sort(eigvals)[::-1]
     if eigvals.size < k:
         eigvals = np.concatenate(
-            [eigvals, np.zeros(k - eigvals.size, dtype=float)], axis=0,
+            [eigvals, np.zeros(k - eigvals.size, dtype=float)],
+            axis=0,
         )
     return eigvals[:k]
 
 
 def _pll_features_for(
-    smiles_list: Sequence[str], k: int = PLL_K,
+    smiles_list: Sequence[str],
+    k: int = PLL_K,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Compute the PLL top-k eigenvalue vector for every SMILES.
 
@@ -393,6 +401,7 @@ def _pll_features_for(
     compute_pll_fn = None
     try:
         from molmetal.molmetal_lam.lam_chem.pll_signature import compute_pll
+
         compute_pll_fn = compute_pll
     except Exception:
         use_scipy = False
@@ -405,9 +414,7 @@ def _pll_features_for(
             if mol is None:
                 continue
             mol_h = Chem.AddHs(mol)
-            embed_status = int(
-                AllChem.EmbedMolecule(mol_h, randomSeed=0xC0FFEE)
-            )
+            embed_status = int(AllChem.EmbedMolecule(mol_h, randomSeed=0xC0FFEE))
             if embed_status != 0:
                 continue
             n_atoms = int(mol_h.GetNumAtoms())
@@ -417,7 +424,8 @@ def _pll_features_for(
                 try:
                     pll_sig = compute_pll_fn(mol_h, k=int(k), k_nn=8)
                     eig = np.asarray(
-                        pll_sig.eigenvalues, dtype=float,
+                        pll_sig.eigenvalues,
+                        dtype=float,
                     ).reshape(-1)
                 except Exception:
                     eig = None
@@ -437,7 +445,8 @@ def _pll_features_for(
                 continue
             if eig.size < k:
                 eig = np.concatenate(
-                    [eig, np.zeros(k - eig.size, dtype=float)], axis=0,
+                    [eig, np.zeros(k - eig.size, dtype=float)],
+                    axis=0,
                 )
             elif eig.size > k:
                 eig = eig[:k]
@@ -542,16 +551,21 @@ def build_design_matrices(
 
     # Hilbert-padded 64-d via pairwise interactions (Wf-37 pattern).
     hil_X_tr, hil_X_te = pad_to_hilbert_dim(
-        astr_X_arr[train_idx_keep], HILBERT_DIM, astr_X_arr[test_idx_keep],
+        astr_X_arr[train_idx_keep],
+        HILBERT_DIM,
+        astr_X_arr[test_idx_keep],
     )
     # Z-score.
-    astr_X_tr_n, astr_X_te_n = zscore(astr_X_arr[train_idx_keep],
-                                       astr_X_arr[test_idx_keep])
+    astr_X_tr_n, astr_X_te_n = zscore(
+        astr_X_arr[train_idx_keep], astr_X_arr[test_idx_keep]
+    )
     hil_X_tr_n, hil_X_te_n = zscore(hil_X_tr, hil_X_te)
-    mph_X_tr_n, mph_X_te_n = zscore(mph_feats_all[train_idx_keep],
-                                     mph_feats_all[test_idx_keep])
-    pll_X_tr_n, pll_X_te_n = zscore(pll_feats_all[train_idx_keep],
-                                     pll_feats_all[test_idx_keep])
+    mph_X_tr_n, mph_X_te_n = zscore(
+        mph_feats_all[train_idx_keep], mph_feats_all[test_idx_keep]
+    )
+    pll_X_tr_n, pll_X_te_n = zscore(
+        pll_feats_all[train_idx_keep], pll_feats_all[test_idx_keep]
+    )
 
     n_mph_failed = int(np.sum(~mph_valid))
     n_pll_failed = int(np.sum(~pll_valid))
@@ -630,8 +644,7 @@ def pad_to_hilbert_dim(
         X_12d[:, i] * X_12d[:, j] for i in range(F) for j in range(i + 1, F)
     ]
     inter_arr_tr = (
-        np.stack(interactions_tr, axis=1)
-        if interactions_tr else np.zeros((n, 0))
+        np.stack(interactions_tr, axis=1) if interactions_tr else np.zeros((n, 0))
     )
     base_tr = np.concatenate([X_12d, bias], axis=1)
     aug_tr = np.concatenate([base_tr, inter_arr_tr], axis=1)
@@ -640,11 +653,13 @@ def pad_to_hilbert_dim(
         bias_te = np.ones((n_te, 1), dtype=float)
         interactions_te = [
             X_12d_test[:, i] * X_12d_test[:, j]
-            for i in range(F) for j in range(i + 1, F)
+            for i in range(F)
+            for j in range(i + 1, F)
         ]
         inter_arr_te = (
             np.stack(interactions_te, axis=1)
-            if interactions_te else np.zeros((n_te, 0))
+            if interactions_te
+            else np.zeros((n_te, 0))
         )
         base_te = np.concatenate([X_12d_test, bias_te], axis=1)
         aug_te = np.concatenate([base_te, inter_arr_te], axis=1)
@@ -654,8 +669,9 @@ def pad_to_hilbert_dim(
         pad = np.zeros((n, hilbert_dim - aug_tr.shape[1]), dtype=float)
         out_tr = np.concatenate([aug_tr, pad], axis=1)
         if aug_te is not None:
-            pad_te = np.zeros((aug_te.shape[0], hilbert_dim - aug_te.shape[1]),
-                              dtype=float)
+            pad_te = np.zeros(
+                (aug_te.shape[0], hilbert_dim - aug_te.shape[1]), dtype=float
+            )
             out_te = np.concatenate([aug_te, pad_te], axis=1)
             return out_tr, out_te
         return out_tr, None
@@ -683,7 +699,8 @@ def pad_to_hilbert_dim(
 
 
 def zscore(
-    X_tr: np.ndarray, X_te: np.ndarray,
+    X_tr: np.ndarray,
+    X_te: np.ndarray,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Z-score with std floor; per-column mean/std from training rows only."""
     mu = X_tr.mean(axis=0)
@@ -760,8 +777,13 @@ def _predict(w: np.ndarray, X: np.ndarray) -> np.ndarray:
 # Per-method fit wrappers
 # ---------------------------------------------------------------------------
 def fit_ast(
-    X_tr: np.ndarray, y_tr: np.ndarray, X_te: np.ndarray, y_te: np.ndarray,
-    *, seed: int, hp: Dict[str, Any],
+    X_tr: np.ndarray,
+    y_tr: np.ndarray,
+    X_te: np.ndarray,
+    y_te: np.ndarray,
+    *,
+    seed: int,
+    hp: Dict[str, Any],
 ) -> Tuple[float, float]:
     """Fit :class:`LambdaASTSR` on the 12-d RDKit descriptors."""
     from molmetal.molmetal_lam.reward.lambda_astsr import LambdaASTSR
@@ -783,8 +805,13 @@ def fit_ast(
 
 
 def fit_hilbert(
-    X_tr: np.ndarray, y_tr: np.ndarray, X_te: np.ndarray, y_te: np.ndarray,
-    *, seed: int, hp: Dict[str, Any],
+    X_tr: np.ndarray,
+    y_tr: np.ndarray,
+    X_te: np.ndarray,
+    y_te: np.ndarray,
+    *,
+    seed: int,
+    hp: Dict[str, Any],
 ) -> Tuple[float, float]:
     """Fit :class:`LambdaASTSRHilbert` on 64-d Hilbert-padded RDKit.
 
@@ -810,7 +837,9 @@ def fit_hilbert(
     # (Sun & Zheng 2026 Thm. 3.2); we use the closed-form for
     # predictability.  Fall back to ``model.predict`` if available.
     w, train_r2 = _stable_ridge_fit(
-        X_tr, y_tr, ridge_alpha=float(hp.get("ridge_alpha", 0.1)),
+        X_tr,
+        y_tr,
+        ridge_alpha=float(hp.get("ridge_alpha", 0.1)),
     )
     y_hat = _predict(w, X_te)
     r2 = _r2(y_te, y_hat)
@@ -818,8 +847,13 @@ def fit_hilbert(
 
 
 def fit_multiph(
-    X_tr: np.ndarray, y_tr: np.ndarray, X_te: np.ndarray, y_te: np.ndarray,
-    *, seed: int, hp: Dict[str, Any],
+    X_tr: np.ndarray,
+    y_tr: np.ndarray,
+    X_te: np.ndarray,
+    y_te: np.ndarray,
+    *,
+    seed: int,
+    hp: Dict[str, Any],
 ) -> Tuple[float, float]:
     """Fit closed-form ridge on the flattened Multi-PH feature map.
 
@@ -828,7 +862,9 @@ def fit_multiph(
     stable than the Hilbert PD iteration when ``F >= N``.
     """
     w, train_r2 = _stable_ridge_fit(
-        X_tr, y_tr, ridge_alpha=float(hp.get("ridge_alpha", 0.1)),
+        X_tr,
+        y_tr,
+        ridge_alpha=float(hp.get("ridge_alpha", 0.1)),
     )
     y_hat = _predict(w, X_te)
     r2 = _r2(y_te, y_hat)
@@ -836,10 +872,15 @@ def fit_multiph(
 
 
 def fit_joint(
-    astr_X_tr: np.ndarray, mph_X_tr: np.ndarray,
-    astr_X_te: np.ndarray, mph_X_te: np.ndarray,
-    y_tr: np.ndarray, y_te: np.ndarray,
-    *, seed: int, hp: Dict[str, Any],
+    astr_X_tr: np.ndarray,
+    mph_X_tr: np.ndarray,
+    astr_X_te: np.ndarray,
+    mph_X_te: np.ndarray,
+    y_tr: np.ndarray,
+    y_te: np.ndarray,
+    *,
+    seed: int,
+    hp: Dict[str, Any],
 ) -> Tuple[float, float]:
     """Fit :class:`JointHilbertOptimizer` on the ASTSR + Multi-PH concat.
 
@@ -877,7 +918,9 @@ def fit_joint(
     joined_tr = np.concatenate([astr_X_tr, mph_X_tr], axis=1)
     joined_te = np.concatenate([astr_X_te, mph_X_te], axis=1)
     w, train_r2 = _stable_ridge_fit(
-        joined_tr, y_tr, ridge_alpha=float(hp.get("ridge_alpha", 0.1)),
+        joined_tr,
+        y_tr,
+        ridge_alpha=float(hp.get("ridge_alpha", 0.1)),
     )
     y_hat = _predict(w, joined_te)
     r2 = _r2(y_te, y_hat)
@@ -885,10 +928,17 @@ def fit_joint(
 
 
 def fit_3way(
-    astr_X_tr: np.ndarray, mph_X_tr: np.ndarray, pll_X_tr: np.ndarray,
-    astr_X_te: np.ndarray, mph_X_te: np.ndarray, pll_X_te: np.ndarray,
-    y_tr: np.ndarray, y_te: np.ndarray,
-    *, seed: int, hp: Dict[str, Any],
+    astr_X_tr: np.ndarray,
+    mph_X_tr: np.ndarray,
+    pll_X_tr: np.ndarray,
+    astr_X_te: np.ndarray,
+    mph_X_te: np.ndarray,
+    pll_X_te: np.ndarray,
+    y_tr: np.ndarray,
+    y_te: np.ndarray,
+    *,
+    seed: int,
+    hp: Dict[str, Any],
 ) -> Tuple[float, float]:
     """Fit closed-form ridge on the 3-way (ASTSR + Multi-PH + PLL) concat.
 
@@ -901,7 +951,9 @@ def fit_3way(
     joined_tr = np.concatenate([astr_X_tr, mph_X_tr, pll_X_tr], axis=1)
     joined_te = np.concatenate([astr_X_te, mph_X_te, pll_X_te], axis=1)
     w, train_r2 = _stable_ridge_fit(
-        joined_tr, y_tr, ridge_alpha=float(hp.get("ridge_alpha", 0.1)),
+        joined_tr,
+        y_tr,
+        ridge_alpha=float(hp.get("ridge_alpha", 0.1)),
     )
     y_hat = _predict(w, joined_te)
     r2 = _r2(y_te, y_hat)
@@ -914,13 +966,18 @@ def fit_3way(
 DEFAULT_HYPERPARAMS: Dict[str, Dict[str, Any]] = {
     "ast": {"depth": 4, "population": 32, "generations": 20},
     "hilbert": {
-        "population_dim": HILBERT_DIM, "lr_primal": 0.05, "lr_dual": 0.05,
-        "n_iters": 200, "ridge_alpha": 0.1,
+        "population_dim": HILBERT_DIM,
+        "lr_primal": 0.05,
+        "lr_dual": 0.05,
+        "n_iters": 200,
+        "ridge_alpha": 0.1,
     },
     "multiph": {"ridge_alpha": 0.1, "population_dim": MPH_DIM},
     "joint": {
         "population_dim": N_DESCRIPTORS + MPH_DIM,
-        "lr_primal": 0.05, "lr_dual": 0.05, "n_iters": 200,
+        "lr_primal": 0.05,
+        "lr_dual": 0.05,
+        "n_iters": 200,
         "ridge_alpha": 0.1,
     },
     "3way": {
@@ -944,7 +1001,9 @@ def _run_one(
 ) -> FitRecord:
     """Run a single ``(method, seed)`` fit; measure wall-time + peak memory."""
     dm = build_design_matrices(
-        rows=[], seed=int(seed), test_frac=float(test_frac),
+        rows=[],
+        seed=int(seed),
+        test_frac=float(test_frac),
         cached_features=cached_features,
     )
     if dm.y_tr.shape[0] < 5 or dm.y_te.shape[0] < 1:
@@ -961,30 +1020,58 @@ def _run_one(
     t0 = time.perf_counter()
     if method == "ast":
         r2, train_r2 = fit_ast(
-            dm.astr_X_tr, dm.y_tr, dm.astr_X_te, dm.y_te, seed=seed, hp=local_hp,
+            dm.astr_X_tr,
+            dm.y_tr,
+            dm.astr_X_te,
+            dm.y_te,
+            seed=seed,
+            hp=local_hp,
         )
         n_features = int(dm.astr_X_tr.shape[1])
     elif method == "hilbert":
         r2, train_r2 = fit_hilbert(
-            dm.hil_X_tr, dm.y_tr, dm.hil_X_te, dm.y_te, seed=seed, hp=local_hp,
+            dm.hil_X_tr,
+            dm.y_tr,
+            dm.hil_X_te,
+            dm.y_te,
+            seed=seed,
+            hp=local_hp,
         )
         n_features = int(dm.hil_X_tr.shape[1])
     elif method == "multiph":
         r2, train_r2 = fit_multiph(
-            dm.mph_X_tr, dm.y_tr, dm.mph_X_te, dm.y_te, seed=seed, hp=local_hp,
+            dm.mph_X_tr,
+            dm.y_tr,
+            dm.mph_X_te,
+            dm.y_te,
+            seed=seed,
+            hp=local_hp,
         )
         n_features = int(dm.mph_X_tr.shape[1])
     elif method == "joint":
         r2, train_r2 = fit_joint(
-            dm.astr_X_tr, dm.mph_X_tr, dm.astr_X_te, dm.mph_X_te,
-            dm.y_tr, dm.y_te, seed=seed, hp=local_hp,
+            dm.astr_X_tr,
+            dm.mph_X_tr,
+            dm.astr_X_te,
+            dm.mph_X_te,
+            dm.y_tr,
+            dm.y_te,
+            seed=seed,
+            hp=local_hp,
         )
         n_features = int(dm.astr_X_tr.shape[1] + dm.mph_X_tr.shape[1])
     elif method == "3way":
         r2, train_r2 = fit_3way(
-            dm.astr_X_tr, dm.mph_X_tr, dm.pll_X_tr,
-            dm.astr_X_te, dm.mph_X_te, dm.pll_X_te,
-            dm.y_tr, dm.y_te, seed=seed, hp=local_hp,
+            dm.astr_X_tr,
+            dm.mph_X_tr,
+            dm.pll_X_tr,
+            dm.astr_X_te,
+            dm.mph_X_te,
+            dm.pll_X_te,
+            dm.y_tr,
+            dm.y_te,
+            seed=seed,
+            hp=local_hp,
         )
         n_features = int(
             dm.astr_X_tr.shape[1] + dm.mph_X_tr.shape[1] + dm.pll_X_tr.shape[1]
@@ -1025,9 +1112,7 @@ def run_benchmark(
     """Run the full 5-method × 5-seed × PlatinAI 5K benchmark."""
     rows = load_platinai_5k(DEFAULT_PLATINAI_CSV, n_max=int(n_samples))
     if len(rows) < 20:
-        raise RuntimeError(
-            f"platinai_5k returned {len(rows)} rows; need >=20"
-        )
+        raise RuntimeError(f"platinai_5k returned {len(rows)} rows; need >=20")
 
     # Precompute the expensive Multi-PH + PLL + RDKit features once;
     # reused across all (method, seed) pairs.  Cuts wall-time from
@@ -1093,18 +1178,22 @@ def run_benchmark(
 
     # Lift over the ASTSR baseline (per-seed deltas aggregated).
     ast_r2_arr = np.asarray(
-        [r.r2_test for r in records if r.method == "ast"], dtype=float,
+        [r.r2_test for r in records if r.method == "ast"],
+        dtype=float,
     )
     ast_mean = float(np.nanmean(ast_r2_arr)) if ast_r2_arr.size else 0.0
     lift: Dict[str, LiftSummary] = {}
     for method in methods:
         if method == "ast":
             lift[method] = LiftSummary(
-                method=method, lift_r2_mean=0.0, lift_r2_std=0.0,
+                method=method,
+                lift_r2_mean=0.0,
+                lift_r2_std=0.0,
             )
             continue
         m_r2_arr = np.asarray(
-            [r.r2_test for r in records if r.method == method], dtype=float,
+            [r.r2_test for r in records if r.method == method],
+            dtype=float,
         )
         # Per-seed lift — only when both ASTSR and method share the seed.
         per_seed_lifts: List[float] = []
@@ -1128,7 +1217,9 @@ def run_benchmark(
             )
         else:
             lift[method] = LiftSummary(
-                method=method, lift_r2_mean=float("nan"), lift_r2_std=float("nan"),
+                method=method,
+                lift_r2_mean=float("nan"),
+                lift_r2_std=float("nan"),
             )
 
     payload = {
@@ -1150,9 +1241,16 @@ def run_benchmark(
             "feature_columns": list(FEATURE_COLUMNS),
             "feats_wall_s": float(feats_elapsed),
             "hyperparams": {
-                m: {k: (int(v) if isinstance(v, (int, np.integer)) else
-                       float(v) if isinstance(v, (float, np.floating)) else v)
-                    for k, v in hyperparams[m].items()}
+                m: {
+                    k: (
+                        int(v)
+                        if isinstance(v, (int, np.integer))
+                        else float(v)
+                        if isinstance(v, (float, np.floating))
+                        else v
+                    )
+                    for k, v in hyperparams[m].items()
+                }
                 for m in methods
             },
             "timestamp_utc": datetime.now(timezone.utc).isoformat(),
@@ -1171,21 +1269,30 @@ def run_benchmark(
                 "peak_mem_mb_std": float(per_method[m].peak_mem_mb_std),
                 "n_records": int(per_method[m].n_records),
                 "per_seed": {
-                    str(s): {kk: float(vv) if isinstance(vv, (int, float, np.floating))
-                             else int(vv) if isinstance(vv, (np.integer,)) else vv
-                             for kk, vv in vals.items()}
+                    str(s): {
+                        kk: float(vv)
+                        if isinstance(vv, (int, float, np.floating))
+                        else int(vv)
+                        if isinstance(vv, (np.integer,))
+                        else vv
+                        for kk, vv in vals.items()
+                    }
                     for s, vals in per_method[m].per_seed.items()
                 },
-            } for m in methods
+            }
+            for m in methods
         },
         "lift_over_ast": {
             m: {
                 "method": lift[m].method,
                 "lift_r2_mean": float(lift[m].lift_r2_mean)
-                if math.isfinite(lift[m].lift_r2_mean) else float("nan"),
+                if math.isfinite(lift[m].lift_r2_mean)
+                else float("nan"),
                 "lift_r2_std": float(lift[m].lift_r2_std)
-                if math.isfinite(lift[m].lift_r2_std) else float("nan"),
-            } for m in methods
+                if math.isfinite(lift[m].lift_r2_std)
+                else float("nan"),
+            }
+            for m in methods
         },
         "records": [asdict(r) for r in records],
     }
@@ -1203,17 +1310,33 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         )
     )
     p.add_argument("--n-samples", type=int, default=DEFAULT_N_SAMPLES)
-    p.add_argument("--seeds", type=int, default=len(DEFAULT_SEEDS),
-                   help="Number of seeds; sweep runs seeds {0, 1, ..., N-1}")
-    p.add_argument("--epochs", type=int, default=200,
-                   help="Hilbert PD iterations (--method hilbert/joint)")
-    p.add_argument("--method", type=str, nargs="+", default=list(DEFAULT_METHODS),
-                   choices=["ast", "hilbert", "multiph", "joint", "3way"],
-                   help="One or more of: ast / hilbert / multiph / joint / 3way")
+    p.add_argument(
+        "--seeds",
+        type=int,
+        default=len(DEFAULT_SEEDS),
+        help="Number of seeds; sweep runs seeds {0, 1, ..., N-1}",
+    )
+    p.add_argument(
+        "--epochs",
+        type=int,
+        default=200,
+        help="Hilbert PD iterations (--method hilbert/joint)",
+    )
+    p.add_argument(
+        "--method",
+        type=str,
+        nargs="+",
+        default=list(DEFAULT_METHODS),
+        choices=["ast", "hilbert", "multiph", "joint", "3way"],
+        help="One or more of: ast / hilbert / multiph / joint / 3way",
+    )
     p.add_argument("--test-frac", type=float, default=DEFAULT_TEST_FRAC)
     p.add_argument("--output", type=str, default=str(DEFAULT_OUT_DIR))
-    p.add_argument("--smoke", action="store_true",
-                   help="Fast mode: --n-samples 30 --seeds 1 --epochs 30")
+    p.add_argument(
+        "--smoke",
+        action="store_true",
+        help="Fast mode: --n-samples 30 --seeds 1 --epochs 30",
+    )
     return p.parse_args(argv)
 
 
@@ -1234,15 +1357,19 @@ def render_markdown(payload: Dict[str, Any]) -> str:
     lines: List[str] = []
     lines.append("# Wf-41 Phase 1 — Deflexpressor + Multi-PH + ASTSR 3-way bench\n")
     lines.append(f"**Dataset**: PlatinAI 5K (synthetic ``qed * qed`` target)  ")
-    lines.append(f"**n_samples loaded**: {cfg['n_samples_loaded']} "
-                 f"(requested {cfg['n_samples_requested']})  ")
+    lines.append(
+        f"**n_samples loaded**: {cfg['n_samples_loaded']} "
+        f"(requested {cfg['n_samples_requested']})  "
+    )
     lines.append(f"**Seeds**: {cfg['seeds']}  ")
     lines.append(f"**Methods**: {cfg['methods']}  ")
     lines.append(f"**Epochs (PD iters)**: {cfg['epochs']}  ")
-    lines.append(f"**12-d RDKit** -> **{cfg['hilbert_dim']}-d Hilbert-padded** + "
-                 f"**{cfg['mph_dim']}-d Multi-PH** (n_bins={cfg['mph_n_bins']}) "
-                 f"+ **{cfg['pll_k']}-d PLL** -> 3-way design matrix is "
-                 f"{N_DESCRIPTORS + cfg['mph_dim'] + cfg['pll_k']}-d.\n")
+    lines.append(
+        f"**12-d RDKit** -> **{cfg['hilbert_dim']}-d Hilbert-padded** + "
+        f"**{cfg['mph_dim']}-d Multi-PH** (n_bins={cfg['mph_n_bins']}) "
+        f"+ **{cfg['pll_k']}-d PLL** -> 3-way design matrix is "
+        f"{N_DESCRIPTORS + cfg['mph_dim'] + cfg['pll_k']}-d.\n"
+    )
 
     lines.append("\n## Per-method R² (mean ± std across seeds)\n")
     lines.append("| Method | R² mean ± std | Lift over AST | Wall (s) | n_features |")
@@ -1251,9 +1378,9 @@ def render_markdown(payload: Dict[str, Any]) -> str:
         agg = per_method[m]
         lf = lift[m]
         lift_str = f"{lf['lift_r2_mean']:+.4f}"
-        if not (lf['lift_r2_mean'] == lf['lift_r2_mean']):  # NaN check
+        if not (lf["lift_r2_mean"] == lf["lift_r2_mean"]):  # NaN check
             lift_str = "—"
-        n_feat = int(agg['per_seed'][str(cfg['seeds'][0])]['n_features'])
+        n_feat = int(agg["per_seed"][str(cfg["seeds"][0])]["n_features"])
         lines.append(
             f"| {m} | {agg['r2_mean']:+.4f} ± {agg['r2_std']:.4f} | "
             f"{lift_str} | {agg['wall_s_mean']:.3f} | {n_feat} |"
@@ -1281,21 +1408,23 @@ def render_markdown(payload: Dict[str, Any]) -> str:
         lines.append(f"| {m} | " + " | ".join(cells) + " |")
 
     lines.append("\n## Honest framing\n")
-    lines.append("* ``ast`` is the R17 ship Deflexpressor baseline — "
-                 "evolutionary LambdaASTSR on 12-d RDKit descriptors.\n"
-                 "* ``hilbert`` lifts 12-d to 64-d via pairwise "
-                 "interactions and fits LambdaASTSRHilbert.\n"
-                 "* ``multiph`` flattens the 2-PH feature map to 64-d "
-                 "(n_bins=8) and fits a closed-form ridge.\n"
-                 "* ``joint`` runs JointHilbertOptimizer on the "
-                 "(ASTSR + Multi-PH) concat — the Wf-21 P5 baseline.\n"
-                 "* ``3way`` is the new Wf-41 P1 integration: "
-                 "ASTSR + Multi-PH + PLL streams concat → ridge.\n"
-                 "* The PlatinAI 5K target is **synthetic** "
-                 "(``qed * qed``); the comparison is on the *relative* "
-                 "lift between regressors, not on absolute R².\n"
-                 "* Wall-time is machine-dependent; speedup is the "
-                 "intended *relative* metric.\n")
+    lines.append(
+        "* ``ast`` is the R17 ship Deflexpressor baseline — "
+        "evolutionary LambdaASTSR on 12-d RDKit descriptors.\n"
+        "* ``hilbert`` lifts 12-d to 64-d via pairwise "
+        "interactions and fits LambdaASTSRHilbert.\n"
+        "* ``multiph`` flattens the 2-PH feature map to 64-d "
+        "(n_bins=8) and fits a closed-form ridge.\n"
+        "* ``joint`` runs JointHilbertOptimizer on the "
+        "(ASTSR + Multi-PH) concat — the Wf-21 P5 baseline.\n"
+        "* ``3way`` is the new Wf-41 P1 integration: "
+        "ASTSR + Multi-PH + PLL streams concat → ridge.\n"
+        "* The PlatinAI 5K target is **synthetic** "
+        "(``qed * qed``); the comparison is on the *relative* "
+        "lift between regressors, not on absolute R².\n"
+        "* Wall-time is machine-dependent; speedup is the "
+        "intended *relative* metric.\n"
+    )
     lines.append(f"\n**Run timestamp (UTC):** {cfg['timestamp_utc']}\n")
     return "\n".join(lines) + "\n"
 

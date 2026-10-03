@@ -152,7 +152,11 @@ def _parse_dry_run_log(path: Path) -> dict:
         raise FileNotFoundError(f"DRY_RUN.log missing: {path}")
     for line in path.read_text().splitlines():
         line = line.rstrip()
-        if not line or line.startswith("DRY-RUN launcher") or line.startswith("per_pair"):
+        if (
+            not line
+            or line.startswith("DRY-RUN launcher")
+            or line.startswith("per_pair")
+        ):
             continue
         # Each indented line: "  <key>: <value>"
         m = re.match(r"^\s{2}([a-z_]+):\s*(.*)$", line)
@@ -208,7 +212,9 @@ def test_per_wrapper_dry_run_log_schema(wrapper: Path) -> None:
     if wrapper.name == "launch_wf131_p3_deferred_runs.sh":
         proc = _invoke_wrapper(wrapper, env_extra=env_extra)  # default 7 DEFERRED runs
     elif wrapper.name == "launch_wf146_deferred_runs.sh":
-        proc = _invoke_wrapper(wrapper, "--mode", "R3", env_extra=env_extra)  # full GPU mode
+        proc = _invoke_wrapper(
+            wrapper, "--mode", "R3", env_extra=env_extra
+        )  # full GPU mode
     elif wrapper.name == "launch_wf310e_r20_p5_tmqm_plat_joint_retrain.sh":
         proc = _invoke_wrapper(wrapper, "--smoke-only", env_extra=env_extra)
     else:

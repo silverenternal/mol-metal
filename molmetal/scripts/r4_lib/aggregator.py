@@ -256,6 +256,7 @@ def build_lambda_only_aggregator(
             return float("nan")
         try:
             from molmetal_lam.sbdd_env.sa_score import sa_score_ertl  # type: ignore
+
             return float(sa_score_ertl(smi))
         except Exception:
             return float("nan")
@@ -283,6 +284,7 @@ def build_lambda_only_aggregator(
             from molmetal_lam.lam_chem.lambda_reward_channel import (
                 register_lambda_reward_channel,
             )
+
             register_lambda_reward_channel(agg, weight=float(lambda_reward_weight))
         if float(pharmacophore_weight) > 0.0:
             # TODO-30 P2.5 Phase A (2026-09-17) — wire the pharmacophore
@@ -294,6 +296,7 @@ def build_lambda_only_aggregator(
             from molmetal_lam.lam_chem.pharmacophore_reward_channel import (
                 register_pharmacophore_channel,
             )
+
             register_pharmacophore_channel(
                 agg,
                 weight=float(pharmacophore_weight),
@@ -307,6 +310,7 @@ def build_lambda_only_aggregator(
             from molmetal_lam.lam_chem.wetlab_reward_channel import (
                 register_wetlab_channel,
             )
+
             register_wetlab_channel(
                 agg,
                 measurement_dict=wetlab_measurements,
@@ -318,6 +322,7 @@ def build_lambda_only_aggregator(
         from molmetal_lam.lam_chem.lambda_reward_channel import (
             register_lambda_reward_channel,
         )
+
         register_lambda_reward_channel(agg, weight=float(lambda_reward_weight))
     if float(pharmacophore_weight) > 0.0:
         # TODO-30 P2.5 Phase A — same wiring as the platinai arm
@@ -326,6 +331,7 @@ def build_lambda_only_aggregator(
         from molmetal_lam.lam_chem.pharmacophore_reward_channel import (
             register_pharmacophore_channel,
         )
+
         register_pharmacophore_channel(
             agg,
             weight=float(pharmacophore_weight),
@@ -339,6 +345,7 @@ def build_lambda_only_aggregator(
         from molmetal_lam.lam_chem.wetlab_reward_channel import (
             register_wetlab_channel,
         )
+
         register_wetlab_channel(
             agg,
             measurement_dict=wetlab_measurements,
@@ -355,4 +362,5 @@ def _import_lambda_stack():
     cycle.
     """
     from molmetal_lam.lam_chem.rules import CLICK_REACTIONS  # type: ignore
+
     return {"CLICK_REACTIONS": CLICK_REACTIONS}

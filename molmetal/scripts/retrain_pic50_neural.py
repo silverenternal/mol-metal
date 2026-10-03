@@ -36,6 +36,7 @@ Outputs
 * molmetal/reports/wf_extra1_retrain/report.json               (per-seed + aggregate)
 * molmetal/reports/wf_extra1_retrain/report.md
 """
+
 from __future__ import annotations
 
 import argparse
@@ -83,18 +84,20 @@ logger = logging.getLogger(__name__)
 DMPNN_HIDDEN = 128
 DMPNN_DEPTH = 3
 DMPNN_DROPOUT = 0.1
-DEFAULT_LR = 1e-4           # brief-specified lr
-DEFAULT_EPOCHS = 50         # brief-specified
-DEFAULT_BATCH_SIZE = 64     # brief-specified
-CENSOR_MARGIN_DEFAULT = 0.5  # hinge margin on pIC50 scale (WF-pIC50-Margin-Sweep 2026-09-14:
-                              # down-shift from 1.0 → 0.5.  Sweep over {0.5,1.0,2.0,3.0} on
-                              # FROZEN HeLa48h/dark cohort (3 seeds × 50 epochs): margin=0.5
-                              # ties margin=1.0 on bound_aware_accuracy=1.0 (67/67) and beats
-                              # it on test_pearson_r (0.195 vs 0.184) and test_rmse (0.686 vs
-                              # 0.703).  Margins 2.0/3.0 BREAK the censor guarantee (one
-                              # over-prediction on seed=0 → BA=0.990).  WF-Extra-1 raised
-                              # 0.25→1.0 because 0.25 was below the regression-to-mean pull
-                              # (~0.80); 0.5 is the tighter sweet spot.)
+DEFAULT_LR = 1e-4  # brief-specified lr
+DEFAULT_EPOCHS = 50  # brief-specified
+DEFAULT_BATCH_SIZE = 64  # brief-specified
+CENSOR_MARGIN_DEFAULT = (
+    0.5  # hinge margin on pIC50 scale (WF-pIC50-Margin-Sweep 2026-09-14:
+)
+# down-shift from 1.0 → 0.5.  Sweep over {0.5,1.0,2.0,3.0} on
+# FROZEN HeLa48h/dark cohort (3 seeds × 50 epochs): margin=0.5
+# ties margin=1.0 on bound_aware_accuracy=1.0 (67/67) and beats
+# it on test_pearson_r (0.195 vs 0.184) and test_rmse (0.686 vs
+# 0.703).  Margins 2.0/3.0 BREAK the censor guarantee (one
+# over-prediction on seed=0 → BA=0.990).  WF-Extra-1 raised
+# 0.25→1.0 because 0.25 was below the regression-to-mean pull
+# (~0.80); 0.5 is the tighter sweet spot.)
 
 CHECKPOINT_REL = Path("molmetal/checkpoints/dmpnn_attn_heLa48h_dark_retrained.pt")
 REPORT_REL = Path("molmetal/reports/wf_extra1_retrain")
@@ -112,11 +115,11 @@ def _ic50_to_pic50(ic50_uM: float) -> float:
 @dataclass
 class Cohort:
     smiles: List[str]
-    pic50: np.ndarray              # for exact: target; for censored: bound as best-effort
-    is_censored: np.ndarray        # bool
-    bound_uM: np.ndarray           # numeric bound in uM
-    pIC50_bound: np.ndarray        # pIC50 of bound (for censoring loss)
-    censor_dir: np.ndarray         # +1 right (">X"), -1 left ("<X")
+    pic50: np.ndarray  # for exact: target; for censored: bound as best-effort
+    is_censored: np.ndarray  # bool
+    bound_uM: np.ndarray  # numeric bound in uM
+    pIC50_bound: np.ndarray  # pIC50 of bound (for censoring loss)
+    censor_dir: np.ndarray  # +1 right (">X"), -1 left ("<X")
     scaffold: List[str]
     formulation_id: List[str]
 
@@ -171,16 +174,24 @@ def _build_cohort(csv_path: Path, cell_line: str, time_h: float) -> Cohort:
     ):
         ligand, counterion, metal, ox, charge = key
         if not np.isfinite([ox, charge]).all():
-            rejected.append({"key": list(map(str, key)), "reason": "non-finite oxidation/charge"})
+            rejected.append(
+                {"key": list(map(str, key)), "reason": "non-finite oxidation/charge"}
+            )
             continue
         parent = Chem.MolFromSmiles(ligand)
         if parent is None:
-            rejected.append({"key": list(map(str, key)), "reason": "parent mol parse failed"})
+            rejected.append(
+                {"key": list(map(str, key)), "reason": "parent mol parse failed"}
+            )
             continue
         try:
-            scaffold = MurckoScaffold.MurckoScaffoldSmiles(mol=parent, includeChirality=False)
+            scaffold = MurckoScaffold.MurckoScaffoldSmiles(
+                mol=parent, includeChirality=False
+            )
         except Exception as exc:
-            rejected.append({"key": list(map(str, key)), "reason": f"scaffold fail: {exc}"})
+            rejected.append(
+                {"key": list(map(str, key)), "reason": f"scaffold fail: {exc}"}
+            )
             continue
 
         any_censored = bool(grp["is_censored"].any())
@@ -210,7 +221,9 @@ def _build_cohort(csv_path: Path, cell_line: str, time_h: float) -> Cohort:
                 "charge": float(charge),
                 "scaffold": scaffold or "<acyclic>",
                 "is_censored": any_censored,
-                "target_uM": float(grp["target_uM"].median()) if not any_censored else bound_uM,
+                "target_uM": float(grp["target_uM"].median())
+                if not any_censored
+                else bound_uM,
                 "bound_uM": bound_uM,
                 "pic50": pic50,
                 "pIC50_bound": pIC50_bound,
@@ -248,9 +261,13 @@ def scaffold_split(
     groups = np.asarray(cohort.scaffold)
     ligands = np.asarray(cohort.smiles)
 
-    gss = GroupShuffleSplit(n_splits=1, test_size=test_size + val_size, random_state=seed)
+    gss = GroupShuffleSplit(
+        n_splits=1, test_size=test_size + val_size, random_state=seed
+    )
     train, rest = next(gss.split(np.zeros(len(groups)), groups=groups))
-    val, test = train_test_split_group(rest, groups[rest], val_size=val_size / (test_size + val_size), seed=seed + 1)
+    val, test = train_test_split_group(
+        rest, groups[rest], val_size=val_size / (test_size + val_size), seed=seed + 1
+    )
 
     for i, j in ((0, 1), (0, 2), (1, 2)):
         idxs = (train, val, test)[i], (train, val, test)[j]
@@ -326,8 +343,10 @@ def censored_loss(
         mse = torch.zeros((), device=pred.device)
 
     if is_censored.any():
-        diff = pred[is_censored] - pIC50_bound[is_censored]   # signed deviation from bound
-        dir_ = censor_dir[is_censored].to(diff.dtype)         # +1 or -1
+        diff = (
+            pred[is_censored] - pIC50_bound[is_censored]
+        )  # signed deviation from bound
+        dir_ = censor_dir[is_censored].to(diff.dtype)  # +1 or -1
         # diff > 0 means claim more potent than bound.
         # For right-censored (+1), diff > 0 is the forbidden direction.
         # For left-censored (-1), diff < 0 is forbidden -> multiply diff by -1.
@@ -380,7 +399,10 @@ def train_one_seed(
     if log_every:
         logger.info(
             "seed=%d  train=%d val=%d test=%d  censored_train=%d censored_test=%d",
-            seed, len(train), len(val), len(test),
+            seed,
+            len(train),
+            len(val),
+            len(test),
             int(is_censored[train].sum()),
             int(is_censored[test].sum()),
         )
@@ -442,7 +464,9 @@ def train_one_seed(
             y_bound = bound_t[batch_idx]
             y_dir = dir_t[batch_idx]
 
-            loss = censored_loss(pred, y_true, y_cen, y_bound, y_dir, margin=censored_margin)
+            loss = censored_loss(
+                pred, y_true, y_cen, y_bound, y_dir, margin=censored_margin
+            )
 
             optim.zero_grad()
             loss.backward()
@@ -475,7 +499,11 @@ def train_one_seed(
             val_preds = np.asarray(val_preds, dtype=np.float64)
             val_truth = pic50[val]
             ok = np.isfinite(val_preds) & np.isfinite(val_truth)
-            if ok.sum() >= 2 and np.std(val_preds[ok]) > 0 and np.std(val_truth[ok]) > 0:
+            if (
+                ok.sum() >= 2
+                and np.std(val_preds[ok]) > 0
+                and np.std(val_truth[ok]) > 0
+            ):
                 val_pearson = float(pearsonr(val_preds[ok], val_truth[ok]).statistic)
             else:
                 val_pearson = float("nan")
@@ -495,12 +523,19 @@ def train_one_seed(
         if log_every and (epoch % log_every == 0 or epoch == epochs - 1):
             logger.info(
                 "seed=%d epoch=%d  train_loss=%.4f  val_rmse=%.4f  val_pearson=%.4f  t=%.1fs",
-                seed, epoch, train_loss, val_rmse, val_pearson, elapsed,
+                seed,
+                epoch,
+                train_loss,
+                val_rmse,
+                val_pearson,
+                elapsed,
             )
 
         if val_rmse < best_val_rmse:
             best_val_rmse = val_rmse
-            best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+            best_state = {
+                k: v.detach().cpu().clone() for k, v in model.state_dict().items()
+            }
 
     if best_state is not None:
         model.load_state_dict(best_state)
@@ -529,13 +564,27 @@ def train_one_seed(
 
     exact_mask = ~test_censored
     metrics: Dict[str, float] = {"n_test": int(len(test))}
-    if exact_mask.sum() >= 2 and np.std(test_preds[exact_mask]) > 0 and np.std(test_truth[exact_mask]) > 0:
+    if (
+        exact_mask.sum() >= 2
+        and np.std(test_preds[exact_mask]) > 0
+        and np.std(test_truth[exact_mask]) > 0
+    ):
         metrics.update(
             {
-                "pearson_r": float(pearsonr(test_preds[exact_mask], test_truth[exact_mask]).statistic),
-                "spearman_r": float(spearmanr(test_preds[exact_mask], test_truth[exact_mask]).statistic),
-                "rmse": float(np.sqrt(np.mean((test_preds[exact_mask] - test_truth[exact_mask]) ** 2))),
-                "mae": float(np.mean(np.abs(test_preds[exact_mask] - test_truth[exact_mask]))),
+                "pearson_r": float(
+                    pearsonr(test_preds[exact_mask], test_truth[exact_mask]).statistic
+                ),
+                "spearman_r": float(
+                    spearmanr(test_preds[exact_mask], test_truth[exact_mask]).statistic
+                ),
+                "rmse": float(
+                    np.sqrt(
+                        np.mean((test_preds[exact_mask] - test_truth[exact_mask]) ** 2)
+                    )
+                ),
+                "mae": float(
+                    np.mean(np.abs(test_preds[exact_mask] - test_truth[exact_mask]))
+                ),
             }
         )
     metrics.update(
@@ -568,7 +617,9 @@ def train_one_seed(
         logger.info(
             "seed=%d TEST  pearson=%s  rmse=%s  n=%d",
             seed,
-            f"{metrics.get('pearson_r', float('nan')):.4f}" if "pearson_r" in metrics else "nan",
+            f"{metrics.get('pearson_r', float('nan')):.4f}"
+            if "pearson_r" in metrics
+            else "nan",
             f"{metrics.get('rmse', float('nan')):.4f}" if "rmse" in metrics else "nan",
             int(metrics["n_test"]),
         )
@@ -584,16 +635,23 @@ def train_one_seed(
             "pic50_pred": test_preds,
         }
     )
-    return model, {"metrics": metrics, "predictions": predictions_frame,
-                    "train_idx": train, "val_idx": val, "test_idx": test,
-                    "history": [h.__dict__ for h in history]}
+    return model, {
+        "metrics": metrics,
+        "predictions": predictions_frame,
+        "train_idx": train,
+        "val_idx": val,
+        "test_idx": test,
+        "history": [h.__dict__ for h in history],
+    }
 
 
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument(
         "--csv",
         type=Path,
@@ -606,12 +664,24 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--seeds", nargs="+", type=int, default=[42, 0, 1234])
     p.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE)
     p.add_argument("--lr", type=float, default=DEFAULT_LR)
-    p.add_argument("--output-dir", type=Path, required=True,
-                   help="Where to write report.json/report.md/test_predictions.parquet")
-    p.add_argument("--checkpoint", type=Path, default=CHECKPOINT_REL,
-                   help="Per-seed checkpoint path (last seed wins)")
-    p.add_argument("--max-rows", type=int, default=None,
-                   help="If set, subsample the training set to at most this many rows (scaled-down real evaluator run).")
+    p.add_argument(
+        "--output-dir",
+        type=Path,
+        required=True,
+        help="Where to write report.json/report.md/test_predictions.parquet",
+    )
+    p.add_argument(
+        "--checkpoint",
+        type=Path,
+        default=CHECKPOINT_REL,
+        help="Per-seed checkpoint path (last seed wins)",
+    )
+    p.add_argument(
+        "--max-rows",
+        type=int,
+        default=None,
+        help="If set, subsample the training set to at most this many rows (scaled-down real evaluator run).",
+    )
     p.add_argument("--device", default="cuda:0")
     p.add_argument(
         "--censored-margin",
@@ -629,7 +699,9 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
+    )
 
     if torch.cuda.is_available():
         device = torch.device(args.device if "cuda" in args.device else "cuda:0")
@@ -809,8 +881,14 @@ def main() -> int:
     for s in seed_summaries:
         m = s["metrics"]
         n = f"{s['n_train']}/{s['n_val']}/{s['n_test']}"
-        rmse = f"{m.get('rmse', float('nan')):.4f}" if m.get('rmse') is not None else "nan"
-        pr = f"{m.get('pearson_r', float('nan')):.4f}" if m.get('pearson_r') is not None else "nan"
+        rmse = (
+            f"{m.get('rmse', float('nan')):.4f}" if m.get("rmse") is not None else "nan"
+        )
+        pr = (
+            f"{m.get('pearson_r', float('nan')):.4f}"
+            if m.get("pearson_r") is not None
+            else "nan"
+        )
         ba = m.get("bound_aware_accuracy")
         ba_str = f"{ba:.3f}" if ba is not None else "nan"
         lines.append(

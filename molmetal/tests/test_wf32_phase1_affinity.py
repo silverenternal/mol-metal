@@ -37,9 +37,7 @@ from pathlib import Path
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-METRICS_PATH = (
-    PROJECT_ROOT / "metrics" / "by_metric" / "affinity_pearson_r.json"
-)
+METRICS_PATH = PROJECT_ROOT / "metrics" / "by_metric" / "affinity_pearson_r.json"
 SUMMARY_PATH = (
     PROJECT_ROOT / "metrics" / "by_metric" / "affinity_pearson_r_summary.json"
 )
@@ -68,9 +66,9 @@ def test_wf32_metrics_json_well_formed() -> None:
     payload = _load(METRICS_PATH)
     assert isinstance(payload, dict)
     recipe = payload.get("recipe", "")
-    assert recipe.startswith("r19_wf32_m16_affinity_pearson_r"), (
-        f"unexpected recipe tag {recipe!r}"
-    )
+    assert recipe.startswith(
+        "r19_wf32_m16_affinity_pearson_r"
+    ), f"unexpected recipe tag {recipe!r}"
 
 
 def test_wf32_metrics_json_n_seeds() -> None:
@@ -86,9 +84,7 @@ def test_wf32_metrics_json_n_seeds() -> None:
             f"metrics.json records n_seeds={n_seeds} (smoke run); "
             f"Wf-32 Phase 4 spec requires {N_SEEDS}."
         )
-    assert n_seeds == N_SEEDS, (
-        f"expected n_seeds={N_SEEDS}, got {n_seeds}"
-    )
+    assert n_seeds == N_SEEDS, f"expected n_seeds={N_SEEDS}, got {n_seeds}"
 
 
 def test_wf32_metrics_json_headline_finite_in_range() -> None:
@@ -97,12 +93,10 @@ def test_wf32_metrics_json_headline_finite_in_range() -> None:
     payload = _load(METRICS_PATH)
     headline = payload.get("headline_pearson_r_mean")
     assert headline is not None, "headline_pearson_r_mean missing"
-    assert math.isfinite(headline), (
-        f"headline_pearson_r_mean not finite: {headline!r}"
-    )
-    assert -1.0 <= headline <= 1.0, (
-        f"headline_pearson_r_mean outside [-1, 1]: {headline!r}"
-    )
+    assert math.isfinite(headline), f"headline_pearson_r_mean not finite: {headline!r}"
+    assert (
+        -1.0 <= headline <= 1.0
+    ), f"headline_pearson_r_mean outside [-1, 1]: {headline!r}"
 
 
 def test_wf32_metrics_json_per_cell_lines_complete() -> None:
@@ -115,12 +109,8 @@ def test_wf32_metrics_json_per_cell_lines_complete() -> None:
         f"(expected all of {PLATINAI_CELL_LINES})"
     )
     for line, block in per_cell.items():
-        assert math.isfinite(block.get("mean", float("nan"))), (
-            f"{line} mean not finite"
-        )
-        assert math.isfinite(block.get("std", float("nan"))), (
-            f"{line} std not finite"
-        )
+        assert math.isfinite(block.get("mean", float("nan"))), f"{line} mean not finite"
+        assert math.isfinite(block.get("std", float("nan"))), f"{line} std not finite"
         assert block["std"] >= 0, f"{line} std negative: {block['std']}"
 
 
@@ -129,9 +119,9 @@ def test_wf32_metrics_json_init_choice_valid() -> None:
     _skip_if_missing(METRICS_PATH)
     payload = _load(METRICS_PATH)
     init = payload.get("init")
-    assert init in INIT_CHOICES, (
-        f"unexpected init choice {init!r} (must be one of {INIT_CHOICES})"
-    )
+    assert (
+        init in INIT_CHOICES
+    ), f"unexpected init choice {init!r} (must be one of {INIT_CHOICES})"
 
 
 def test_wf32_summary_json_well_formed() -> None:
@@ -140,17 +130,14 @@ def test_wf32_summary_json_well_formed() -> None:
     summary = _load(SUMMARY_PATH)
     assert isinstance(summary, dict)
     recipe = summary.get("recipe", "")
-    assert recipe.startswith("r19_wf32_m16_affinity_pearson_r"), (
-        f"unexpected summary recipe tag {recipe!r}"
-    )
+    assert recipe.startswith(
+        "r19_wf32_m16_affinity_pearson_r"
+    ), f"unexpected summary recipe tag {recipe!r}"
     # Must mirror the headline number from metrics.json
     metrics = _load(METRICS_PATH)
     if metrics is not None:
         assert (
-            abs(
-                summary["headline_pearson_r_mean"]
-                - metrics["headline_pearson_r_mean"]
-            )
+            abs(summary["headline_pearson_r_mean"] - metrics["headline_pearson_r_mean"])
             < 1e-9
         ), "summary headline_pearson_r_mean does not match metrics"
         assert summary["n_seeds"] == metrics["n_seeds"]

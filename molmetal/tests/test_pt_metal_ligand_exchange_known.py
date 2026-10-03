@@ -58,12 +58,9 @@ import pytest
 # ---------------------------------------------------------------------------
 CISPLATIN_SMILES = "N.N.[Cl][Pt][Cl]"
 CARBOPLATIN_SMILES = "N.N.[Pt]12(OC(=O)CCC1)OC(=O)CCC2"
-OXALIPLATIN_SMILES = (
-    "N.N.O[Pt]([O-])([NH3])([NH3])OC(=O)[C@@H](N)CCC(=O)O"
-)
+OXALIPLATIN_SMILES = "N.N.O[Pt]([O-])([NH3])([NH3])OC(=O)[C@@H](N)CCC(=O)O"
 SATRAPLATIN_SMILES = (
-    "CC1=C(C(=O)O[Pt]([NH3])([NH3])(OC(=O)c2ccccc2)"
-    "C(C)(C)C)C(C)(C)C=C1"
+    "CC1=C(C(=O)O[Pt]([NH3])([NH3])(OC(=O)c2ccccc2)" "C(C)(C)C)C(C)(C)C=C1"
 )
 NEDAPLATIN_SMILES = "N.N.OCC(=O)O[Pt]([NH3])([NH3])OCC(=O)O"
 
@@ -76,6 +73,7 @@ def _load_metal_ligand_patterns():
     from molmetal.molmetal_lam.lam_chem.pt_metal_ligand_exchange import (
         METAL_LIGAND_EXCHANGE_SMARTS,
     )
+
     return [(n, s) for (n, s, _d) in METAL_LIGAND_EXCHANGE_SMARTS]
 
 
@@ -84,6 +82,7 @@ def _load_aqua_patterns():
     from molmetal.molmetal_lam.lam_chem.pt_metal_ligand_exchange import (
         AQUA_EXCHANGE_SMARTS,
     )
+
     return [(n, s) for (n, s, _d) in AQUA_EXCHANGE_SMARTS]
 
 
@@ -96,9 +95,11 @@ def _reaction_template(smarts: str):
     check (not a chemistry check).
     """
     from rdkit import Chem
+
     # ReactionFromSmarts lives in rdkit.Chem.AllChem (not Chem).
     try:
         from rdkit.Chem import AllChem
+
         rxn = AllChem.ReactionFromSmarts(smarts)
     except ImportError:
         # Fallback for older RDKit versions where AllChem may not have
@@ -127,9 +128,9 @@ def test_cisplatin_mono_ammine():
     """
     patterns = dict(_load_metal_ligand_patterns())
     # Sanity: the canonical Pt_Cl_NH3 pattern must be present.
-    assert "Pt_Cl_NH3" in patterns, (
-        f"canonical Pt_Cl_NH3 pattern missing; got {list(patterns)}"
-    )
+    assert (
+        "Pt_Cl_NH3" in patterns
+    ), f"canonical Pt_Cl_NH3 pattern missing; got {list(patterns)}"
     smarts = patterns["Pt_Cl_NH3"]
     # Atom-map invariants:
     #   :1 = Pt centre (kept in product)
@@ -236,6 +237,7 @@ def test_carboplatin_cbdca_ring_opening():
     a check that the existing rule fires on carboplatin.
     """
     from rdkit import Chem
+
     mol = Chem.MolFromSmiles(CARBOPLATIN_SMILES)
     assert mol is not None, f"failed to parse carboplatin SMILES: {CARBOPLATIN_SMILES}"
     # Pt atom index + degree.
@@ -253,13 +255,13 @@ def test_carboplatin_cbdca_ring_opening():
     assert pt_idx is not None, "carboplatin must contain Pt"
     # CN == 4 is the canonical Pt_II target.  The CBDCA chelate
     # provides 2 O donors + 2 NH3 = CN 4.
-    assert pt_degree == 4, (
-        f"carboplatin Pt should have CN=4 (CBDCA + 2 NH3); got {pt_degree}"
-    )
+    assert (
+        pt_degree == 4
+    ), f"carboplatin Pt should have CN=4 (CBDCA + 2 NH3); got {pt_degree}"
     # CBDCA provides at least 1 (and at most 2) O donors directly on Pt.
-    assert pt_bonded_O_count >= 1, (
-        f"carboplatin Pt should have >=1 Pt-O bond (CBDCA); got {pt_bonded_O_count}"
-    )
+    assert (
+        pt_bonded_O_count >= 1
+    ), f"carboplatin Pt should have >=1 Pt-O bond (CBDCA); got {pt_bonded_O_count}"
     # The carboplatin SMILES contains the cyclobutane-1,1-dicarboxylate
     # motif (C1-C-C-C1 with two -C(=O)O- branches on the quaternary C).
     # We assert that two carboxylate carbons are present (one per
@@ -295,9 +297,9 @@ def test_pt_aqua_first_aquation():
     ``pt_metal_ligand_exchange.py:1184-1190``).
     """
     patterns = dict(_load_aqua_patterns())
-    assert "Pt_Cl_H2O_first" in patterns, (
-        f"canonical Pt_Cl_H2O_first pattern missing; got {list(patterns)}"
-    )
+    assert (
+        "Pt_Cl_H2O_first" in patterns
+    ), f"canonical Pt_Cl_H2O_first pattern missing; got {list(patterns)}"
     smarts = patterns["Pt_Cl_H2O_first"]
     # Atom-map invariants:
     #   :1 = Pt centre
@@ -310,20 +312,21 @@ def test_pt_aqua_first_aquation():
     assert ">>" in smarts, "missing reaction separator"
     # Product side: water must lose one proton → [OH].
     product_side = smarts.split(">>", 1)[1]
-    assert "[OH:4]" in product_side, (
-        "product should show [OH:4] hydroxyl (water lost 1 proton)"
-    )
-    assert "[OH2:4]" not in product_side, (
-        "product should NOT show [OH2:4] (proton already lost)"
-    )
+    assert (
+        "[OH:4]" in product_side
+    ), "product should show [OH:4] hydroxyl (water lost 1 proton)"
+    assert (
+        "[OH2:4]" not in product_side
+    ), "product should NOT show [OH2:4] (proton already lost)"
     # AquaContext must propagate pKa1 ~ 6.5.
     from molmetal.molmetal_lam.lam_chem.pt_metal_ligand_exchange import (
         get_aqua_context,
     )
+
     ctx = get_aqua_context("Pt_Cl_H2O_first")
-    assert abs(ctx.pka1 - 6.5) < 1e-6, (
-        f"first aquation pKa1 must be 6.5 per Reedijk 1987; got {ctx.pka1}"
-    )
+    assert (
+        abs(ctx.pka1 - 6.5) < 1e-6
+    ), f"first aquation pKa1 must be 6.5 per Reedijk 1987; got {ctx.pka1}"
     assert ctx.ionic_strength_M == pytest.approx(0.10, abs=1e-6)
     assert ctx.temperature_K == pytest.approx(310.0, abs=1e-6)
     # RDKit parseability.
@@ -346,16 +349,16 @@ def test_pt_aqua_second_aquation():
     from the first-aquation pattern.
     """
     patterns = dict(_load_aqua_patterns())
-    assert "Pt_OHCl_H2O_second" in patterns, (
-        f"second-aquation pattern missing; got {list(patterns)}"
-    )
+    assert (
+        "Pt_OHCl_H2O_second" in patterns
+    ), f"second-aquation pattern missing; got {list(patterns)}"
     smarts = patterns["Pt_OHCl_H2O_second"]
     # The second-aquation pattern MUST distinguish itself from the
     # first by requiring a Pt-OH bond (not just Pt-Cl).  We assert
     # this distinguishing feature is present.
-    assert "[OH:2]" in smarts, (
-        "second-aquation pattern must require a Pt-OH bond (post first aquation)"
-    )
+    assert (
+        "[OH:2]" in smarts
+    ), "second-aquation pattern must require a Pt-OH bond (post first aquation)"
     assert "[Cl:3]" in smarts, (
         "second-aquation pattern must require a Pt-Cl bond "
         "(only one Cl should remain to be displaced)"
@@ -374,6 +377,7 @@ def test_pt_aqua_second_aquation():
     from molmetal.molmetal_lam.lam_chem.pt_metal_ligand_exchange import (
         get_aqua_context,
     )
+
     ctx_first = get_aqua_context("Pt_Cl_H2O_first")
     ctx_second = get_aqua_context("Pt_OHCl_H2O_second")
     assert ctx_second.pka1 > ctx_first.pka1, (
@@ -398,13 +402,14 @@ def test_pt_aqua_second_aquation():
     # therefore count ``O&H1`` occurrences (the atom-spec fragment) in
     # the serialised SMARTS.
     from rdkit import Chem
+
     product_template = rxn.GetProductTemplate(0)
     product_smarts = Chem.MolToSmarts(product_template)
     # Count the O&H1 hydroxyl atoms (one per hydroxyl).
     oh_count = product_smarts.count("O&H1")
-    assert oh_count >= 2, (
-        f"product template should show 2 OH groups; got {oh_count} in {product_smarts!r}"
-    )
+    assert (
+        oh_count >= 2
+    ), f"product template should show 2 OH groups; got {oh_count} in {product_smarts!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -443,6 +448,7 @@ def test_scaffold_novelty_cisplatin_satraplatin():
     # helper does this internally; we want to fail fast with a clear
     # message if the parse breaks).
     from rdkit import Chem
+
     for name, smi in [
         ("cisplatin", CISPLATIN_SMILES),
         ("satraplatin", SATRAPLATIN_SMILES),
@@ -499,9 +505,9 @@ def test_scaffold_novelty_cisplatin_satraplatin():
     inter_id = int(((fp_cis > 0) & (fp_cis > 0)).sum())
     union_id = int(((fp_cis > 0) | (fp_cis > 0)).sum())
     tanimoto_id = inter_id / union_id if union_id > 0 else 0.0
-    assert tanimoto_id == pytest.approx(1.0, abs=1e-6), (
-        f"self-similarity must be 1.0; got {tanimoto_id}"
-    )
+    assert tanimoto_id == pytest.approx(
+        1.0, abs=1e-6
+    ), f"self-similarity must be 1.0; got {tanimoto_id}"
 
 
 # ---------------------------------------------------------------------------
@@ -513,21 +519,22 @@ def test_pattern_library_length_invariants():
         METAL_LIGAND_EXCHANGE_SMARTS,
         AQUA_EXCHANGE_SMARTS,
     )
-    assert len(METAL_LIGAND_EXCHANGE_SMARTS) == 5, (
-        "MetalLigandExchange SMARTS library must be 5 patterns (F2(a) cardinality)"
-    )
-    assert len(AQUA_EXCHANGE_SMARTS) == 2, (
-        "AquaExchange SMARTS library must be 2 patterns (F2(a) cardinality)"
-    )
+
+    assert (
+        len(METAL_LIGAND_EXCHANGE_SMARTS) == 5
+    ), "MetalLigandExchange SMARTS library must be 5 patterns (F2(a) cardinality)"
+    assert (
+        len(AQUA_EXCHANGE_SMARTS) == 2
+    ), "AquaExchange SMARTS library must be 2 patterns (F2(a) cardinality)"
     # Pattern-name uniqueness within each library (no duplicates).
     metal_names = [n for (n, _s, _d) in METAL_LIGAND_EXCHANGE_SMARTS]
     aqua_names = [n for (n, _s, _d) in AQUA_EXCHANGE_SMARTS]
-    assert len(set(metal_names)) == 5, (
-        f"MetalLigandExchange pattern names must be unique; got {metal_names}"
-    )
-    assert len(set(aqua_names)) == 2, (
-        f"AquaExchange pattern names must be unique; got {aqua_names}"
-    )
+    assert (
+        len(set(metal_names)) == 5
+    ), f"MetalLigandExchange pattern names must be unique; got {metal_names}"
+    assert (
+        len(set(aqua_names)) == 2
+    ), f"AquaExchange pattern names must be unique; got {aqua_names}"
 
 
 def test_all_patterns_parse_with_rdkit():
@@ -585,8 +592,7 @@ def test_rule_classes_have_pattern_accessors():
     # The default pattern_smiles (used by _reduce) must be the
     # canonical Pt_Cl_NH3 SMARTS.
     assert mle.pattern_smiles == (
-        "[Pt:1]([Cl:2])[*:3].[NH3:4]>>"
-        "[Pt:1]([NH3:4])[*:3].[Cl:2]"
+        "[Pt:1]([Cl:2])[*:3].[NH3:4]>>" "[Pt:1]([NH3:4])[*:3].[Cl:2]"
     )
 
     ae = REACTION_RULES["AquaExchange"]
@@ -595,8 +601,7 @@ def test_rule_classes_have_pattern_accessors():
     # The default pattern_smiles (used by _reduce) must be the
     # canonical Pt_Cl_H2O_first SMARTS.
     assert ae.pattern_smiles == (
-        "[Pt:1]([Cl:2])[*:3].[OH2:4]>>"
-        "[Pt:1]([OH:4])[*:3].[Cl:2]"
+        "[Pt:1]([Cl:2])[*:3].[OH2:4]>>" "[Pt:1]([OH:4])[*:3].[Cl:2]"
     )
     # AquaContext accessor must work.
     ctx = ae.aqua_context("Pt_Cl_H2O_first")

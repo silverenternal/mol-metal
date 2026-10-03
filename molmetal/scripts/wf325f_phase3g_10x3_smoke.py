@@ -104,13 +104,20 @@ DONOR_BY_SEED = ("N", "O", "Cl")  # 3 donor atoms for seed jitter
 # Without these, the probe falls back to DEFAULT_OS which would mask
 # the deliberate non-compliance in axis R09 (Au(I) mismatch).
 _CHARGE_BY_OS: dict[tuple[str, int], str] = {
-    ("Pt", 2): "+2", ("Pt", 4): "+4",
-    ("Pd", 2): "+2", ("Pd", 4): "+4",
-    ("Ru", 2): "+2", ("Ru", 3): "+3",
-    ("Ir", 3): "+3", ("Ir", 4): "+4",
-    ("Os", 2): "+2", ("Os", 3): "+3",
-    ("Rh", 1): "+1", ("Rh", 3): "+3",
-    ("Au", 1): "+1", ("Au", 3): "+3",
+    ("Pt", 2): "+2",
+    ("Pt", 4): "+4",
+    ("Pd", 2): "+2",
+    ("Pd", 4): "+4",
+    ("Ru", 2): "+2",
+    ("Ru", 3): "+3",
+    ("Ir", 3): "+3",
+    ("Ir", 4): "+4",
+    ("Os", 2): "+2",
+    ("Os", 3): "+3",
+    ("Rh", 1): "+1",
+    ("Rh", 3): "+3",
+    ("Au", 1): "+1",
+    ("Au", 3): "+3",
 }
 
 
@@ -140,18 +147,18 @@ def _axis(label: str, metal: str, ox_state: str, geometry: str, donor_count: int
 # non-compliant axis). Each axis picks (metal, ox_state, donor_count)
 # consistent with the matrix geometry.
 ROTATION_AXES = [
-    _axis("R00_Pt_II_sp_N4",  "Pt", "II",  "square_planar", 4),
-    _axis("R01_Pd_II_sp_N4",  "Pd", "II",  "square_planar", 4),
+    _axis("R00_Pt_II_sp_N4", "Pt", "II", "square_planar", 4),
+    _axis("R01_Pd_II_sp_N4", "Pd", "II", "square_planar", 4),
     _axis("R02_Au_III_sp_N4", "Au", "III", "square_planar", 4),
-    _axis("R03_Ru_II_oct_N6", "Ru", "II",  "octahedral",    6),
-    _axis("R04_Ru_III_oct_N6","Ru", "III", "octahedral",    6),
-    _axis("R05_Ir_III_oct_N6","Ir", "III", "octahedral",    6),
-    _axis("R06_Os_III_oct_N6","Os", "III", "octahedral",    6),
-    _axis("R07_Rh_III_oct_N6","Rh", "III", "octahedral",    6),
-    _axis("R08_Pt_IV_oct_N6", "Pt", "IV",  "octahedral",    6),
+    _axis("R03_Ru_II_oct_N6", "Ru", "II", "octahedral", 6),
+    _axis("R04_Ru_III_oct_N6", "Ru", "III", "octahedral", 6),
+    _axis("R05_Ir_III_oct_N6", "Ir", "III", "octahedral", 6),
+    _axis("R06_Os_III_oct_N6", "Os", "III", "octahedral", 6),
+    _axis("R07_Rh_III_oct_N6", "Rh", "III", "octahedral", 6),
+    _axis("R08_Pt_IV_oct_N6", "Pt", "IV", "octahedral", 6),
     # R09 is a NON-COMPLIANT axis — Au(I) CN=4 (Au(I) canonical CN=2).
     # This must score is_compliant=False and validates the probe.
-    _axis("R09_Au_I_mismatch","Au", "I",   "linear",        4),
+    _axis("R09_Au_I_mismatch", "Au", "I", "linear", 4),
 ]
 
 SEEDS = (0, 1, 2)
@@ -163,11 +170,15 @@ def run_smoke() -> dict:
 
     # Verify runtime is loadable.
     n_patterns = rt.n_patterns_loaded
-    assert n_patterns >= 170, f"F2(a) runtime must load >=170 patterns, got {n_patterns}"
+    assert (
+        n_patterns >= 170
+    ), f"F2(a) runtime must load >=170 patterns, got {n_patterns}"
 
     # Verify 84-rule MLE matrix is loadable.
     n_matrix_patterns = len(MATRIX_METALS) * len(MATRIX_LIGANDS)
-    assert n_matrix_patterns == 84, f"84-rule matrix must be 84, got {n_matrix_patterns}"
+    assert (
+        n_matrix_patterns == 84
+    ), f"84-rule matrix must be 84, got {n_matrix_patterns}"
 
     per_cell: list = []
     per_rotation_compliance: dict = {}
@@ -175,14 +186,39 @@ def run_smoke() -> dict:
     t0 = time.time()
     for axis_label, metal, ox_state, geometry, donor_count, builder in ROTATION_AXES:
         per_seed: list = []
-        per_rotation_compliance[axis_label] = {"metal": metal, "ox": ox_state, "geometry": geometry, "donor_count": donor_count}
+        per_rotation_compliance[axis_label] = {
+            "metal": metal,
+            "ox": ox_state,
+            "geometry": geometry,
+            "donor_count": donor_count,
+        }
         for seed_idx, seed in enumerate(SEEDS):
             smiles = builder(seed_idx)
             # Probe the coordination geometry.
             probe = probe_coordination(smiles)
             if probe is None:
                 # No metal detected — skip from compliance scoring.
-                per_cell.append({
+                per_cell.append(
+                    {
+                        "axis": axis_label,
+                        "seed": seed,
+                        "metal": metal,
+                        "ox_state": ox_state,
+                        "geometry_target": geometry,
+                        "donor_count": donor_count,
+                        "smiles": smiles,
+                        "probe_metal": None,
+                        "is_compliant": None,
+                        "probe_coordination_number": None,
+                        "probe_geometry": None,
+                        "note": "no_metal_detected",
+                    }
+                )
+                per_seed.append(None)
+                continue
+
+            per_cell.append(
+                {
                     "axis": axis_label,
                     "seed": seed,
                     "metal": metal,
@@ -190,35 +226,21 @@ def run_smoke() -> dict:
                     "geometry_target": geometry,
                     "donor_count": donor_count,
                     "smiles": smiles,
-                    "probe_metal": None,
-                    "is_compliant": None,
-                    "probe_coordination_number": None,
-                    "probe_geometry": None,
-                    "note": "no_metal_detected",
-                })
-                per_seed.append(None)
-                continue
-
-            per_cell.append({
-                "axis": axis_label,
-                "seed": seed,
-                "metal": metal,
-                "ox_state": ox_state,
-                "geometry_target": geometry,
-                "donor_count": donor_count,
-                "smiles": smiles,
-                "probe_metal": probe.metal,
-                "is_compliant": probe.is_compliant,
-                "probe_coordination_number": probe.coordination_number,
-                "probe_geometry": probe.geometry,
-                "note": "ok",
-            })
+                    "probe_metal": probe.metal,
+                    "is_compliant": probe.is_compliant,
+                    "probe_coordination_number": probe.coordination_number,
+                    "probe_geometry": probe.geometry,
+                    "note": "ok",
+                }
+            )
             per_seed.append(probe.is_compliant)
         # Per-rotation mean compliance over the 3 seeds (None excluded).
         compliant_vals = [v for v in per_seed if v is not None]
         if compliant_vals:
             per_rotation_compliance[axis_label]["per_seed_compliance"] = per_seed
-            per_rotation_compliance[axis_label]["mean_compliance"] = statistics.mean(compliant_vals)
+            per_rotation_compliance[axis_label]["mean_compliance"] = statistics.mean(
+                compliant_vals
+            )
         else:
             per_rotation_compliance[axis_label]["per_seed_compliance"] = per_seed
             per_rotation_compliance[axis_label]["mean_compliance"] = None
@@ -238,10 +260,15 @@ def run_smoke() -> dict:
     # Variance over per-rotation mean_compliance (the headline variance
     # metric — variance=0 means singleton collapse persists).
     per_rotation_means = [
-        v["mean_compliance"] for v in per_rotation_compliance.values()
+        v["mean_compliance"]
+        for v in per_rotation_compliance.values()
         if v["mean_compliance"] is not None
     ]
-    variance = statistics.pvariance(per_rotation_means) if len(per_rotation_means) >= 2 else 0.0
+    variance = (
+        statistics.pvariance(per_rotation_means)
+        if len(per_rotation_means) >= 2
+        else 0.0
+    )
 
     # Honest framing verdict.
     if variance > 0.05:
@@ -303,15 +330,19 @@ def run_smoke() -> dict:
 
 def main() -> int:
     result = run_smoke()
-    out_dir = Path(__file__).resolve().parents[1] / "reports" / "wf325f_phase3g_10x3_smoke"
+    out_dir = (
+        Path(__file__).resolve().parents[1] / "reports" / "wf325f_phase3g_10x3_smoke"
+    )
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / "result.json"
     out_path.write_text(json.dumps(result, indent=2, default=str))
     # Summary to stdout.
     print(f"Wf-325F Phase-3G 10x3 rotation CPU smoke")
     print(f"  n_runs_executed: {result['n_runs_executed']}")
-    print(f"  n_compliant / n_noncompliant / n_none: "
-          f"{result['n_compliant']} / {result['n_noncompliant']} / {result['n_none_no_metal']}")
+    print(
+        f"  n_compliant / n_noncompliant / n_none: "
+        f"{result['n_compliant']} / {result['n_noncompliant']} / {result['n_none_no_metal']}"
+    )
     print(f"  compliance_rate: {result['compliance_rate']:.4f}")
     print(f"  variance (per-rotation mean_compliance): {result['variance']:.6f}")
     print(f"  elapsed_s: {result['elapsed_s']:.2f}")

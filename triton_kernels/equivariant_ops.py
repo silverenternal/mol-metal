@@ -67,17 +67,19 @@ def _check_cuda_pointers(arg_names: dict[str, torch.Tensor]) -> None:
 # inner reduction width), so we cannot include it as a tuning axis —
 # the autotuner just picks the best warp / pipeline combination for
 # each (n_edges, feat_dim) shape.
-@triton.autotune(configs=AUTOTUNE_CONFIGS, key=["n_edges", "feat_dim"], reset_to_zero=["out_ptr"])
+@triton.autotune(
+    configs=AUTOTUNE_CONFIGS, key=["n_edges", "feat_dim"], reset_to_zero=["out_ptr"]
+)
 @triton.jit
 def _aggregate_vectors_kernel(
-    edge_src_ptr,      # *i32  [E]   - global source atom index per edge
-    edge_dst_ptr,      # *i32  [E]   - global destination atom index per edge
-    edge_mask_ptr,     # *i1   [E]   - 1 if edge is real, 0 if padded
-    edge_feat_ptr,     # *fp   [E, F] - per-edge vector features
-    out_ptr,           # *fp   [N, F] - aggregated per-atom output
-    n_edges,           # i32
-    n_atoms,           # i32
-    feat_dim,          # i32
+    edge_src_ptr,  # *i32  [E]   - global source atom index per edge
+    edge_dst_ptr,  # *i32  [E]   - global destination atom index per edge
+    edge_mask_ptr,  # *i1   [E]   - 1 if edge is real, 0 if padded
+    edge_feat_ptr,  # *fp   [E, F] - per-edge vector features
+    out_ptr,  # *fp   [N, F] - aggregated per-atom output
+    n_edges,  # i32
+    n_atoms,  # i32
+    feat_dim,  # i32
     FEAT_BLOCK: tl.constexpr,
 ):
     """One program instance per edge; for each feature dim, conditionally
@@ -113,9 +115,9 @@ def _aggregate_vectors_kernel(
 # ---------------------------------------------------------------------------
 @triton.jit
 def _rotation_from_axis_angle_kernel(
-    axis_angle_ptr,    # *fp   [B, 3]
-    out_ptr,           # *fp   [B, 3, 3]
-    batch_size,        # i32
+    axis_angle_ptr,  # *fp   [B, 3]
+    out_ptr,  # *fp   [B, 3, 3]
+    batch_size,  # i32
     BLOCK_BATCH: tl.constexpr,
 ):
     """Compute a 3x3 rotation matrix from an axis-angle vector.

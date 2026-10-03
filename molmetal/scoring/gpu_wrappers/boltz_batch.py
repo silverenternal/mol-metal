@@ -30,6 +30,7 @@ Public API
 * :func:`boltz_affinity_batch`         — list[float] pIC50 per SMILES.
 * :func:`boltz_affinity_with_loader`   — same, but uses a torch DataLoader.
 """
+
 from __future__ import annotations
 
 import logging
@@ -188,8 +189,10 @@ def boltz_affinity_batch(
                     from molmetal.molmetal_lam.sbdd_env.pic50_predictor import (
                         AttentiveDMPNNPredictor,
                     )
+
                     predictor = AttentiveDMPNNPredictor(
-                        ckpt=predictor.ckpt, device=device,
+                        ckpt=predictor.ckpt,
+                        device=device,
                     )
         except AdapterUnavailable:
             raise
@@ -266,9 +269,7 @@ def boltz_affinity_with_loader(
     # list is microseconds, but the per-batch transfer isn't free at
     # 256-batch size).
     encoded = [str(s) for s in smiles_list]
-    tensor = torch.tensor(
-        [hash(s) & 0x7FFFFFFF for s in encoded], dtype=torch.int32
-    )
+    tensor = torch.tensor([hash(s) & 0x7FFFFFFF for s in encoded], dtype=torch.int32)
 
     loader = torch.utils.data.DataLoader(
         torch.utils.data.TensorDataset(tensor),
@@ -286,7 +287,9 @@ def boltz_affinity_with_loader(
         if not chunk:
             continue
         if pin_memory:
-            batch_idx = batch_idx.pin_memory() if not batch_idx.is_pinned() else batch_idx
+            batch_idx = (
+                batch_idx.pin_memory() if not batch_idx.is_pinned() else batch_idx
+            )
             if device.startswith("cuda"):
                 batch_idx = batch_idx.to(device, non_blocking=bool(non_blocking))
         preds = predictor.predict_pic50_batch(chunk, batch_size=int(batch_size))
@@ -294,8 +297,11 @@ def boltz_affinity_with_loader(
     # If we missed the tail (last batch is smaller than ``batch_size``),
     # backfill it directly.
     if len(out) < len(encoded):
-        tail = encoded[len(out):]
-        out.extend(float(v) for v in predictor.predict_pic50_batch(tail, batch_size=int(batch_size)))
+        tail = encoded[len(out) :]
+        out.extend(
+            float(v)
+            for v in predictor.predict_pic50_batch(tail, batch_size=int(batch_size))
+        )
     return out[: len(encoded)]
 
 
@@ -314,9 +320,7 @@ def _pinned_predict(
     """
     torch = _import_torch()
     encoded = [str(s) for s in smiles_list]
-    staging = torch.tensor(
-        [hash(s) & 0x7FFFFFFF for s in encoded], dtype=torch.int32
-    )
+    staging = torch.tensor([hash(s) & 0x7FFFFFFF for s in encoded], dtype=torch.int32)
     if torch.cuda.is_available():
         # Pin the host staging tensor so the next batch's index lookup
         # overlaps with the current batch's GPU forward pass.

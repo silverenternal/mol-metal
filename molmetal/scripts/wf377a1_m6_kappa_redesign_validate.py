@@ -43,7 +43,12 @@ SMILES_COL = "SMILES_Ligands"
 PIC50_COL = "pIC50"
 METAL_COL = "Metal"
 
-OUT_DIR = Path(__file__).resolve().parents[2] / "molmetal" / "reports" / "wf377a1_m6_kappa_redesign"
+OUT_DIR = (
+    Path(__file__).resolve().parents[2]
+    / "molmetal"
+    / "reports"
+    / "wf377a1_m6_kappa_redesign"
+)
 
 # 14 RDKit topological invariants + Morgan fp density (15 total)
 INVARIANTS = [
@@ -85,6 +90,7 @@ def _morgan_density(mol, radius: int = 2, n_bits: int = 1024) -> float:
         fp = AllChem.GetMorganFingerprintAsBitVect(mol, radius, nBits=n_bits)
         arr = np.zeros((n_bits,), dtype=np.uint8)
         from rdkit.DataStructs import ConvertToNumpyArray
+
         ConvertToNumpyArray(fp, arr)
         return float(arr.sum()) / float(n_bits)
     except Exception:
@@ -124,14 +130,21 @@ def compute_invariants(df: pd.DataFrame) -> pd.DataFrame:
     for name, fn in INVARIANTS:
         df[name] = df["mol"].apply(lambda m, fn=fn: _safe(fn, m))
     df["MorganDensity_r2"] = df["mol"].apply(lambda m: _morgan_density(m, radius=2))
+
     # Composite m6_kappa (matches metrics_v2.py:m6_kappa_from_smiles convention)
     def _clip01(x: float) -> float:
         if not np.isfinite(x):
             return float("nan")
         return float(np.clip((x - 0.0) / (30.0 - 0.0), 0.0, 1.0))
+
     df["m6_kappa_composite"] = df[["Kappa1", "Kappa2", "Kappa3"]].apply(
-        lambda r: float(np.nanmean([_clip01(r["Kappa1"]), _clip01(r["Kappa2"]), _clip01(r["Kappa3"])]))
-        if r.notna().all() else float("nan"),
+        lambda r: float(
+            np.nanmean(
+                [_clip01(r["Kappa1"]), _clip01(r["Kappa2"]), _clip01(r["Kappa3"])]
+            )
+        )
+        if r.notna().all()
+        else float("nan"),
         axis=1,
     )
     return df
@@ -141,22 +154,27 @@ def rank_invariants(df: pd.DataFrame) -> list[dict]:
     """For each invariant, compute Pearson r + Spearman rho vs pIC50 (on rows where both finite)."""
     out = []
     y = df[PIC50_COL].values
-    for name, _fn in INVARIANTS + [("MorganDensity_r2", None), ("m6_kappa_composite", None)]:
+    for name, _fn in INVARIANTS + [
+        ("MorganDensity_r2", None),
+        ("m6_kappa_composite", None),
+    ]:
         x = df[name].values
         mask = np.isfinite(x) & np.isfinite(y)
         n = int(mask.sum())
         if n < 30:
-            out.append({
-                "name": name,
-                "n_used": n,
-                "pearson_r": None,
-                "spearman_rho": None,
-                "abs_pearson_r": None,
-                "abs_spearman_rho": None,
-                "pearson_p": None,
-                "spearman_p": None,
-                "verdict": "INSUFFICIENT_DATA",
-            })
+            out.append(
+                {
+                    "name": name,
+                    "n_used": n,
+                    "pearson_r": None,
+                    "spearman_rho": None,
+                    "abs_pearson_r": None,
+                    "abs_spearman_rho": None,
+                    "pearson_p": None,
+                    "spearman_p": None,
+                    "verdict": "INSUFFICIENT_DATA",
+                }
+            )
             continue
         x_clean = x[mask].astype(float)
         y_clean = y[mask].astype(float)
@@ -164,12 +182,14 @@ def rank_invariants(df: pd.DataFrame) -> list[dict]:
             pr, pp = pearsonr(x_clean, y_clean)
             sr, sp = spearmanr(x_clean, y_clean)
         except Exception as e:
-            out.append({
-                "name": name,
-                "n_used": n,
-                "error": str(e),
-                "verdict": "CORRELATION_FAILED",
-            })
+            out.append(
+                {
+                    "name": name,
+                    "n_used": n,
+                    "error": str(e),
+                    "verdict": "CORRELATION_FAILED",
+                }
+            )
             continue
         abs_r = abs(float(pr))
         abs_s = abs(float(sr))
@@ -182,19 +202,23 @@ def rank_invariants(df: pd.DataFrame) -> list[dict]:
             verdict = "WEAK"
         else:
             verdict = "NEGLIGIBLE"
-        out.append({
-            "name": name,
-            "n_used": n,
-            "pearson_r": float(pr),
-            "spearman_rho": float(sr),
-            "abs_pearson_r": abs_r,
-            "abs_spearman_rho": abs_s,
-            "pearson_p": float(pp),
-            "spearman_p": float(sp),
-            "verdict": verdict,
-        })
+        out.append(
+            {
+                "name": name,
+                "n_used": n,
+                "pearson_r": float(pr),
+                "spearman_rho": float(sr),
+                "abs_pearson_r": abs_r,
+                "abs_spearman_rho": abs_s,
+                "pearson_p": float(pp),
+                "spearman_p": float(sp),
+                "verdict": verdict,
+            }
+        )
     # Sort by abs_pearson_r descending
-    out.sort(key=lambda r: -(r["abs_pearson_r"] if r["abs_pearson_r"] is not None else -1.0))
+    out.sort(
+        key=lambda r: -(r["abs_pearson_r"] if r["abs_pearson_r"] is not None else -1.0)
+    )
     return out
 
 
@@ -209,7 +233,14 @@ def per_metal_breakdown(df: pd.DataFrame) -> dict:
         if len(sub) < 30:
             continue
         out[metal] = {"n": int(len(sub))}
-        for name in ("m6_kappa_composite", "TPSA", "MolLogP", "BalabanJ", "HallKierAlpha", "MorganDensity_r2"):
+        for name in (
+            "m6_kappa_composite",
+            "TPSA",
+            "MolLogP",
+            "BalabanJ",
+            "HallKierAlpha",
+            "MorganDensity_r2",
+        ):
             x = sub[name].values
             y = sub[PIC50_COL].values
             mask = np.isfinite(x) & np.isfinite(y)
@@ -219,7 +250,11 @@ def per_metal_breakdown(df: pd.DataFrame) -> dict:
                 continue
             try:
                 pr, _pp = pearsonr(x[mask].astype(float), y[mask].astype(float))
-                out[metal][name] = {"n": n, "pearson_r": float(pr), "abs_pearson_r": abs(float(pr))}
+                out[metal][name] = {
+                    "n": n,
+                    "pearson_r": float(pr),
+                    "abs_pearson_r": abs(float(pr)),
+                }
             except Exception:
                 out[metal][name] = {"n": n, "pearson_r": None}
     return out
@@ -227,8 +262,12 @@ def per_metal_breakdown(df: pd.DataFrame) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--max-samples", type=int, default=None,
-                        help="Cap cohort size for speed (None = use all rows)")
+    parser.add_argument(
+        "--max-samples",
+        type=int,
+        default=None,
+        help="Cap cohort size for speed (None = use all rows)",
+    )
     parser.add_argument("--out-dir", type=Path, default=OUT_DIR)
     parser.add_argument("--data-csv", type=Path, default=DATA_FILE)
     args = parser.parse_args()
@@ -238,11 +277,17 @@ def main() -> int:
     print(f"[wf377a1] Loading cohort from {args.data_csv}", file=sys.stderr)
     df = load_cohort(args.data_csv, max_samples=args.max_samples)
     n0 = len(df)
-    print(f"[wf377a1] Loaded {n0} rows with non-empty SMILES + numeric pIC50", file=sys.stderr)
+    print(
+        f"[wf377a1] Loaded {n0} rows with non-empty SMILES + numeric pIC50",
+        file=sys.stderr,
+    )
 
     df = parse_mols(df)
     n1 = len(df)
-    print(f"[wf377a1] Parsed {n1} valid RDKit mols ({n0 - n1} RDKit parse failures)", file=sys.stderr)
+    print(
+        f"[wf377a1] Parsed {n1} valid RDKit mols ({n0 - n1} RDKit parse failures)",
+        file=sys.stderr,
+    )
 
     df = compute_invariants(df)
     n2 = len(df)
@@ -288,7 +333,7 @@ def main() -> int:
             "|Pearson r| descending. Bands: STRONG |r|>=0.5 / MODERATE 0.3<= |r|<0.5 "
             "/ WEAK 0.1<= |r|<0.3 / NEGLIGIBLE |r|<0.1. Verdict preserved as "
             "honest-negative if no invariant reaches MODERATE or STRONG."
-        )
+        ),
     }
     out_path = args.out_dir / "result.json"
     out_path.write_text(json.dumps(result, indent=2))
@@ -298,7 +343,10 @@ def main() -> int:
     print("\n=== Top 15 invariants (ranked by |Pearson r|) ===", file=sys.stderr)
     for i, r in enumerate(ranking[:15], 1):
         if r["pearson_r"] is not None:
-            print(f"  {i:2d}. {r['name']:20s}  Pearson r = {r['pearson_r']:+.4f}  Spearman rho = {r['spearman_rho']:+.4f}  n={r['n_used']:5d}  verdict={r['verdict']}", file=sys.stderr)
+            print(
+                f"  {i:2d}. {r['name']:20s}  Pearson r = {r['pearson_r']:+.4f}  Spearman rho = {r['spearman_rho']:+.4f}  n={r['n_used']:5d}  verdict={r['verdict']}",
+                file=sys.stderr,
+            )
         else:
             print(f"  {i:2d}. {r['name']:20s}  (insufficient data)", file=sys.stderr)
 

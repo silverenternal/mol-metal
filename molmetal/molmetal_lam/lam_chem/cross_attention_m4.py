@@ -192,18 +192,14 @@ class MultiHeadPocketCrossAttention(nn.Module):
     ) -> None:
         super().__init__()
         if hidden_dim <= 0:
-            raise ValueError(
-                f"hidden_dim must be > 0, got {hidden_dim!r}"
-            )
+            raise ValueError(f"hidden_dim must be > 0, got {hidden_dim!r}")
         if n_heads <= 0 or hidden_dim % n_heads != 0:
             raise ValueError(
                 f"n_heads ({n_heads}) must be > 0 and divide "
                 f"hidden_dim ({hidden_dim})"
             )
         if not 0.0 <= dropout < 1.0:
-            raise ValueError(
-                f"dropout must be in [0, 1), got {dropout!r}"
-            )
+            raise ValueError(f"dropout must be in [0, 1), got {dropout!r}")
         self.hidden_dim = int(hidden_dim)
         self.n_heads = int(n_heads)
         self.head_dim = self.hidden_dim // self.n_heads
@@ -215,9 +211,7 @@ class MultiHeadPocketCrossAttention(nn.Module):
         # add a Linear to lift to ``hidden_dim``.
         pocket_in = int(pocket_in_dim) if pocket_in_dim is not None else self.hidden_dim
         if pocket_in <= 0:
-            raise ValueError(
-                f"pocket_in_dim must be > 0, got {pocket_in!r}"
-            )
+            raise ValueError(f"pocket_in_dim must be > 0, got {pocket_in!r}")
         self.pocket_in_dim = pocket_in
         if pocket_in != self.hidden_dim:
             self.pocket_proj = nn.Linear(pocket_in, self.hidden_dim, bias=False)
@@ -324,9 +318,9 @@ class MultiHeadPocketCrossAttention(nn.Module):
         pocket_proj = self.pocket_proj(pocket_features)  # (B, P, H)
 
         # Q from ligand atoms, K + V from pocket atoms.
-        q = self._split_heads(self.q_proj(atom_features))   # (B, h, N, hd)
-        k = self._split_heads(self.k_proj(pocket_proj))     # (B, h, P, hd)
-        v = self._split_heads(self.v_proj(pocket_proj))     # (B, h, P, hd)
+        q = self._split_heads(self.q_proj(atom_features))  # (B, h, N, hd)
+        k = self._split_heads(self.k_proj(pocket_proj))  # (B, h, P, hd)
+        v = self._split_heads(self.v_proj(pocket_proj))  # (B, h, P, hd)
 
         # Scaled dot-product attention with optional key-padding
         # mask.  ``scores`` shape: (B, h, N, P).
@@ -340,15 +334,16 @@ class MultiHeadPocketCrossAttention(nn.Module):
                 )
             # True at valid pocket atoms; we mask-out the rest with -inf.
             scores = scores.masked_fill(
-                (~mask.bool())[:, None, None, :], float("-inf"),
+                (~mask.bool())[:, None, None, :],
+                float("-inf"),
             )
         attn = F.softmax(scores, dim=-1)
         # Dropout on the attention weights (Vaswani 2017 §5.4).
         attn = self.attn_drop(attn)
         ctx = torch.matmul(attn, v)  # (B, h, N, hd)
         # Merge heads and apply output projection.
-        ctx = self._merge_heads(ctx)                # (B, N, H)
-        ctx = self.proj_drop(self.out_proj(ctx))    # (B, N, H)
+        ctx = self._merge_heads(ctx)  # (B, N, H)
+        ctx = self.proj_drop(self.out_proj(ctx))  # (B, N, H)
         # Residual + LayerNorm (Vaswani 2017 §5.4 "add & norm").
         return self.norm(atom_features + ctx)
 
@@ -388,19 +383,17 @@ class PocketAwareAtomBias(nn.Module):
     ) -> None:
         super().__init__()
         if hidden_dim <= 0:
-            raise ValueError(
-                f"hidden_dim must be > 0, got {hidden_dim!r}"
-            )
+            raise ValueError(f"hidden_dim must be > 0, got {hidden_dim!r}")
         if max_atoms <= 0:
-            raise ValueError(
-                f"max_atoms must be > 0, got {max_atoms!r}"
-            )
+            raise ValueError(f"max_atoms must be > 0, got {max_atoms!r}")
         self.hidden_dim = int(hidden_dim)
         self.max_atoms = int(max_atoms)
 
         # Mean + max pool → (B, 2 * hidden_dim) descriptor.
         self.pocket_descriptor = nn.Linear(
-            2 * self.hidden_dim, self.hidden_dim, bias=True,
+            2 * self.hidden_dim,
+            self.hidden_dim,
+            bias=True,
         )
         # Per-atom gating — a learned scalar that the optimiser can
         # anneal from "no bias" (init 0.0) to "full bias" (init 1.0).
@@ -482,7 +475,8 @@ class PocketAwareAtomBias(nn.Module):
             mean_pool = (pocket_features * mask_f).sum(dim=1) / denom
             # Masked max: replace padding with -inf so it never wins.
             masked_for_max = pocket_features.masked_fill(
-                (~pocket_mask.bool())[..., None], float("-inf"),
+                (~pocket_mask.bool())[..., None],
+                float("-inf"),
             )
             max_pool = masked_for_max.max(dim=1).values
             # If a row is all-padding, the max is -inf; replace with
@@ -500,7 +494,9 @@ class PocketAwareAtomBias(nn.Module):
         # Gated broadcast: (B, H) → (B, 1, H) → broadcast to (B, n_atoms, H).
         bias = self.gate * descriptor.unsqueeze(1)
         # Broadcast to (B, n_atoms, H) via expand (no copy).
-        return bias.expand(atom_features.shape[0], atom_features.shape[1], self.hidden_dim)
+        return bias.expand(
+            atom_features.shape[0], atom_features.shape[1], self.hidden_dim
+        )
 
 
 # ---------------------------------------------------------------------------

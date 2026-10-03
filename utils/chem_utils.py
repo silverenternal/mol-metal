@@ -255,7 +255,7 @@ def infer_bonds(
             d_sq = dx * dx + dy * dy + dz * dz
             if d_sq >= max_sq:
                 continue
-            order = _bond_order_for(z_i, z_j, d_sq ** 0.5)
+            order = _bond_order_for(z_i, z_j, d_sq**0.5)
             if order is not None:
                 bonds.append((i, j, order))
     return bonds
@@ -263,6 +263,7 @@ def infer_bonds(
 
 def _positions_hash(coords: Sequence[Sequence[float]]) -> str:
     """Stable short hash of a coordinate block, used for INVALID_ tokens."""
+
     def _q(value: float) -> bytes:
         try:
             scaled = int(round(float(value) * 1000.0))
@@ -298,7 +299,9 @@ def _mol_from_geometry(
     for i, j, order in bonds:
         if i not in index_map or j not in index_map:
             continue
-        mol.AddBond(index_map[i], index_map[j], bond_types.get(order, Chem.BondType.SINGLE))
+        mol.AddBond(
+            index_map[i], index_map[j], bond_types.get(order, Chem.BondType.SINGLE)
+        )
     try:
         out = mol.GetMol()
         Chem.SanitizeMol(out)

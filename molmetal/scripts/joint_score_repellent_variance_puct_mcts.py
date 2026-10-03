@@ -85,6 +85,7 @@ References
   algorithm that masters chess, shogi, and Go through self-play".
   *Science* 362, 1140-1144.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -260,9 +261,7 @@ def _scorer(state: MoleculeClosedTerm) -> float:
     return float(
         min(
             1.0,
-            0.05 * float(n_atoms)
-            + 0.30 * smi_hash
-            + 0.05 * float(n_atoms % 7),
+            0.05 * float(n_atoms) + 0.30 * smi_hash + 0.05 * float(n_atoms % 7),
         )
     )
 
@@ -343,15 +342,22 @@ def stage1_score_repellent(
     rng = random.Random(int(seed))
     # Use uniform anchor in the simplex (n_samples anchors).
     import numpy as np  # lazy import keeps script import-cheap
+
     dim = len(priors)
     anchors = np.zeros((int(n_samples), dim), dtype=np.float64)
     for i in range(int(n_samples)):
         anchors[i] = rng_dirichlet(priors, rng)
     samples = np.zeros((int(n_samples), dim), dtype=np.float64)
     for i in range(int(n_samples)):
-        chain_tail = sampler.sample(
-            x0=anchors[i], n_samples=1,
-        ).detach().cpu().numpy()
+        chain_tail = (
+            sampler.sample(
+                x0=anchors[i],
+                n_samples=1,
+            )
+            .detach()
+            .cpu()
+            .numpy()
+        )
         # Project onto the simplex (softmax projection for safety).
         x = chain_tail[0]
         x = x - x.max()
@@ -378,11 +384,11 @@ def rng_dirichlet(priors: List[float], rng: random.Random) -> "np.ndarray":
     Falls back to uniform when ``priors`` sums to ``<= 0``.
     """
     import numpy as np
+
     p = np.asarray(priors, dtype=np.float64)
     p = np.clip(p, 1.0e-12, None)
     if p.sum() <= 0:
-        p = np.full(len(priors), 1.0 / float(max(1, len(priors))),
-                    dtype=np.float64)
+        p = np.full(len(priors), 1.0 / float(max(1, len(priors))), dtype=np.float64)
     # Gamma draw: alpha_i = p_i * N.  Larger N → tighter around p.
     N = 100.0
     alpha = p * N
@@ -392,8 +398,7 @@ def rng_dirichlet(priors: List[float], rng: random.Random) -> "np.ndarray":
         # so we use a normal approximation: Gamma(alpha, 1) ≈
         # N(alpha, sqrt(alpha)) for alpha >= 10.
         if alpha[i] >= 10.0:
-            out[i] = max(0.0, rng.gauss(float(alpha[i]),
-                                        float(alpha[i] ** 0.5)))
+            out[i] = max(0.0, rng.gauss(float(alpha[i]), float(alpha[i] ** 0.5)))
         else:
             out[i] = max(1.0e-12, rng.gammavariate(float(alpha[i]), 1.0))
     s = out.sum()
@@ -443,7 +448,9 @@ def stage2_variance_puct(
         for i in range(int(n_actions))
     ]
     root = IntegrationNode(
-        node_id=root_smiles, prior=1.0, children=children,
+        node_id=root_smiles,
+        prior=1.0,
+        children=children,
     )
     # The VarianceControlledPUCT.select needs legal_actions — pass
     # the children indices as a list of integer hashables.
@@ -452,15 +459,19 @@ def stage2_variance_puct(
     # sampler is initialised.
     try:
         sel.set_priors(
-            root_smiles, legal_actions,
-            [float(priors[i]) if i < len(priors) else 1.0 / float(n_actions)
-             for i in range(int(n_actions))],
+            root_smiles,
+            legal_actions,
+            [
+                float(priors[i]) if i < len(priors) else 1.0 / float(n_actions)
+                for i in range(int(n_actions))
+            ],
         )
     except Exception:
         pass
     try:
         selected = sel.select(
-            root_smiles, legal_actions,
+            root_smiles,
+            legal_actions,
             default_prior=[
                 float(priors[i]) if i < len(priors) else 1.0 / float(n_actions)
                 for i in range(int(n_actions))
@@ -475,10 +486,7 @@ def stage2_variance_puct(
         for i in range(int(n_actions)):
             P = float(priors[i]) if i < len(priors) else 1.0 / float(n_actions)
             N_child = 0
-            score = (
-                0.0
-                + float(c_puct) * P * math.sqrt(1.0) / (1.0 + float(N_child))
-            )
+            score = 0.0 + float(c_puct) * P * math.sqrt(1.0) / (1.0 + float(N_child))
             puct_scores.append(float(score))
     except Exception:
         puct_scores = [0.0 for _ in range(int(n_actions))]
@@ -523,7 +531,8 @@ def stage3_mcts_trajectory(
     t0 = time.time()
     try:
         start = MoleculeClosedTerm.from_smiles(
-            str(start_smiles), embed_3d=False,
+            str(start_smiles),
+            embed_3d=False,
         )
     except Exception as exc:
         return {
@@ -580,7 +589,8 @@ def stage3_mcts_trajectory(
             c_var=float(c_var),
         )
         out = wrapper.search_with_proof_search(
-            start, max_depth=int(max_depth),
+            start,
+            max_depth=int(max_depth),
         )
     except Exception as exc:
         out = {"error": str(exc)}
@@ -770,7 +780,9 @@ def run_joint_pipeline(
             traj_seed = int(round_seed) + 100 + t
             try:
                 sample_vec = sr_report["samples"][t % len(sr_report["samples"])]
-                sample_action_prior = float(sample_vec[0]) if len(sample_vec) > 0 else 0.5
+                sample_action_prior = (
+                    float(sample_vec[0]) if len(sample_vec) > 0 else 0.5
+                )
             except Exception:
                 sample_action_prior = 0.5
             # Stage 2 — VariancePUCT selects the action index.
@@ -814,25 +826,29 @@ def run_joint_pipeline(
             else:
                 leaf_var_sum += float(mcts_report.get("leaf_value_var", 0.0))
                 best_score_sum += float(mcts_report.get("best_score", 0.0))
-            per_round_traj.append({
-                "trajectory_seed": int(traj_seed),
-                "stage2_selected_action": int(t2["selected_action"]),
-                "stage3_leaf_var": float(mcts_report.get("leaf_value_var", 0.0)),
-                "stage3_best_score": float(mcts_report.get("best_score", 0.0)),
-                "stage3_n_states": int(mcts_report.get("n_states_explored", 0)),
-                "stage4_n_added": int(t4["n_added"]),
-                "stage3_error": str(mcts_report.get("error", "")),
-            })
-        per_round.append({
-            "round_idx": int(round_idx),
-            "stage1_samples": int(max(1, int(n_trajectories))),
-            "stage1_chain_mean": sr_report.get("chain_mean", []),
-            "stage1_chain_std": sr_report.get("chain_std", []),
-            "stage1_variance_bound_alpha": float(
-                sr_report.get("variance_bound_alpha", 0.0),
-            ),
-            "trajectories": per_round_traj,
-        })
+            per_round_traj.append(
+                {
+                    "trajectory_seed": int(traj_seed),
+                    "stage2_selected_action": int(t2["selected_action"]),
+                    "stage3_leaf_var": float(mcts_report.get("leaf_value_var", 0.0)),
+                    "stage3_best_score": float(mcts_report.get("best_score", 0.0)),
+                    "stage3_n_states": int(mcts_report.get("n_states_explored", 0)),
+                    "stage4_n_added": int(t4["n_added"]),
+                    "stage3_error": str(mcts_report.get("error", "")),
+                }
+            )
+        per_round.append(
+            {
+                "round_idx": int(round_idx),
+                "stage1_samples": int(max(1, int(n_trajectories))),
+                "stage1_chain_mean": sr_report.get("chain_mean", []),
+                "stage1_chain_std": sr_report.get("chain_std", []),
+                "stage1_variance_bound_alpha": float(
+                    sr_report.get("variance_bound_alpha", 0.0),
+                ),
+                "trajectories": per_round_traj,
+            }
+        )
     total_wall = time.time() - t_start
     success_rate = float(
         (n_total_runs - n_total_errors) / float(max(1, n_total_runs)),
@@ -891,63 +907,85 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
-        "--smoke", action="store_true",
+        "--smoke",
+        action="store_true",
         help="Smoke harness: 4 trajectories × 1 round × 4 sims.",
     )
     parser.add_argument(
-        "--n-trajectories", type=int, default=DEFAULT_N_TRAJECTORIES,
+        "--n-trajectories",
+        type=int,
+        default=DEFAULT_N_TRAJECTORIES,
         help="Number of trajectories per round (default 30).",
     )
     parser.add_argument(
-        "--n-rounds", type=int, default=DEFAULT_N_ROUNDS,
+        "--n-rounds",
+        type=int,
+        default=DEFAULT_N_ROUNDS,
         help="Number of rounds (default 3).",
     )
     parser.add_argument(
-        "--buffer-size", type=int, default=DEFAULT_BUFFER_SIZE,
+        "--buffer-size",
+        type=int,
+        default=DEFAULT_BUFFER_SIZE,
         help="Replay buffer capacity (default 256).",
     )
     parser.add_argument(
-        "--n-simulations", type=int, default=DEFAULT_N_SIMULATIONS,
+        "--n-simulations",
+        type=int,
+        default=DEFAULT_N_SIMULATIONS,
         help="MCTS simulations per trajectory (default 10).",
     )
     parser.add_argument(
-        "--max-depth", type=int, default=DEFAULT_MAX_DEPTH,
+        "--max-depth",
+        type=int,
+        default=DEFAULT_MAX_DEPTH,
         help="Max β-reduction chain length per simulation (default 3).",
     )
     parser.add_argument(
-        "--seed", type=int, default=DEFAULT_SEED,
+        "--seed",
+        type=int,
+        default=DEFAULT_SEED,
         help="Master seed (default 2025).",
     )
     parser.add_argument(
-        "--start-smiles", type=str, default=DEFAULT_START_SMILES,
+        "--start-smiles",
+        type=str,
+        default=DEFAULT_START_SMILES,
         help="Starting molecule SMILES (default CCO).",
     )
     parser.add_argument(
-        "--step-size", type=float, default=DEFAULT_STEP_SIZE,
+        "--step-size",
+        type=float,
+        default=DEFAULT_STEP_SIZE,
         help="Score-repellent step size (default 0.1).",
     )
     parser.add_argument(
-        "--n-iters", type=int, default=DEFAULT_N_ITERS,
+        "--n-iters",
+        type=int,
+        default=DEFAULT_N_ITERS,
         help="Score-repellent chain length per draw (default 32).",
     )
     parser.add_argument(
-        "--c-var", type=float, default=DEFAULT_C_VAR,
+        "--c-var",
+        type=float,
+        default=DEFAULT_C_VAR,
         help="Variance penalty coefficient (default 0.5).",
     )
     parser.add_argument(
-        "--c-puct", type=float, default=DEFAULT_C_PUCT,
+        "--c-puct",
+        type=float,
+        default=DEFAULT_C_PUCT,
         help="PUCT exploration constant (default 1.4).",
     )
     parser.add_argument(
-        "--out-dir", type=str,
-        default=(
-            "/home/hugo/codes/mol-metal/molmetal/reports/"
-            "wf36_3stage_mcts"
-        ),
+        "--out-dir",
+        type=str,
+        default=("/home/hugo/codes/mol-metal/molmetal/reports/" "wf36_3stage_mcts"),
         help="Directory for the JSON bench report (default reports/wf36_3stage_mcts/).",
     )
     parser.add_argument(
-        "--json", action="store_true",
+        "--json",
+        action="store_true",
         help="Emit the full report as a single JSON line on stdout.",
     )
     return parser
@@ -1019,14 +1057,18 @@ def main(argv: Optional[Any] = None) -> int:
         return 1
     if args.json:
         # Emit a one-line summary on stdout for grep-friendly CI.
-        print(json.dumps({
-            "success_rate": agg["success_rate"],
-            "mean_leaf_value_var": agg["mean_leaf_value_var"],
-            "mean_best_score": agg["mean_best_score"],
-            "n_replay_entries_added": agg["n_replay_entries_added"],
-            "total_wall_time_s": report["wall_time_s"],
-            "report_path": out_path,
-        }))
+        print(
+            json.dumps(
+                {
+                    "success_rate": agg["success_rate"],
+                    "mean_leaf_value_var": agg["mean_leaf_value_var"],
+                    "mean_best_score": agg["mean_best_score"],
+                    "n_replay_entries_added": agg["n_replay_entries_added"],
+                    "total_wall_time_s": report["wall_time_s"],
+                    "report_path": out_path,
+                }
+            )
+        )
     print()
     print("PASS: Wf-36 Phase-3 joint pipeline complete.")
     return 0

@@ -79,6 +79,7 @@ def mol_cls():
     if RDKit is not importable."""
     try:
         from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
         return MoleculeClosedTerm
     except Exception as exc:  # pragma: no cover — defensive
         pytest.skip(f"MoleculeClosedTerm unavailable: {exc}")
@@ -101,25 +102,22 @@ def test_metal_seed_smiles_are_bare_metal_with_alkyne_handle():
     centres (Pt/Ru/Ir)."""
     expected = {"cisplatin", "ru_arene", "ir_cp_star"}
     assert set(lam.METAL_SEED_SMILES.keys()) == expected, (
-        f"Unexpected metal-seed keys: "
-        f"{set(lam.METAL_SEED_SMILES.keys())}"
+        f"Unexpected metal-seed keys: " f"{set(lam.METAL_SEED_SMILES.keys())}"
     )
 
     # Each seed's SMILES must contain a metal atom + the alkyne handle.
     metal_atoms = ("Pt", "Ru", "Ir")
     for name, smi in lam.METAL_SEED_SMILES.items():
         # bare metal bracketed first
-        assert any(f"[{m}]" in smi for m in metal_atoms), (
-            f"{name}: missing bare metal bracket; got {smi!r}"
-        )
+        assert any(
+            f"[{m}]" in smi for m in metal_atoms
+        ), f"{name}: missing bare metal bracket; got {smi!r}"
         # alkyne handle present
-        assert "C#C" in smi, (
-            f"{name}: missing alkyne handle C#C; got {smi!r}"
-        )
+        assert "C#C" in smi, f"{name}: missing alkyne handle C#C; got {smi!r}"
         # Old fully-bonded motifs are gone: no NH3, no Cl on Pt/Ru/Ir
-        assert "[NH3]" not in smi, (
-            f"{name}: legacy NH3 handle present (pre-Fix-1); got {smi!r}"
-        )
+        assert (
+            "[NH3]" not in smi
+        ), f"{name}: legacy NH3 handle present (pre-Fix-1); got {smi!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -134,12 +132,11 @@ def test_metal_seed_parses_with_metal_atom_and_alkyne(mol_cls):
         if term is None:
             pytest.skip(f"RDKit failed to parse metal-seed {name}: {smi!r}")
         # Must contain the metal as an atom.
-        metal_sym = {"cisplatin": "Pt", "ru_arene": "Ru",
-                     "ir_cp_star": "Ir"}[name]
+        metal_sym = {"cisplatin": "Pt", "ru_arene": "Ru", "ir_cp_star": "Ir"}[name]
         syms = [a.symbol for a in term.atoms]
-        assert metal_sym in syms, (
-            f"{name}: parsed atoms {syms} lack metal {metal_sym!r}"
-        )
+        assert (
+            metal_sym in syms
+        ), f"{name}: parsed atoms {syms} lack metal {metal_sym!r}"
         # Heavy-atom count must be exactly 3 (Metal + 2 alkyne Cs) — the
         # "ROOT-only" promise.
         assert len(term.atoms) == 3, (
@@ -147,9 +144,7 @@ def test_metal_seed_parses_with_metal_atom_and_alkyne(mol_cls):
             f"got {len(term.atoms)}: {syms}"
         )
         # Bonds must be exactly 2 (Pt-C + C#C triple).
-        assert len(term.bonds) == 2, (
-            f"{name}: expected 2 bonds, got {len(term.bonds)}"
-        )
+        assert len(term.bonds) == 2, f"{name}: expected 2 bonds, got {len(term.bonds)}"
 
 
 # ---------------------------------------------------------------------------
@@ -182,19 +177,15 @@ def test_metal_seed_emits_3d_geometry(mol_cls):
             # we DO require that the bare-metal + alkyne shape is
             # preserved in the 2D-only path.
             term_2d = _safe_term(mol_cls, smi)
-            assert term_2d is not None, (
-                f"{name}: even 2D parsing failed: {exc}"
-            )
+            assert term_2d is not None, f"{name}: even 2D parsing failed: {exc}"
             # The 2D term has 3 atoms + 2 bonds (Pt-C + C#C).
             assert len(term_2d.atoms) == 3
             # Find the metal atom index; its valence_used must be 1
             # (one bond to the alkyne C) — i.e. NOT 4, NOT 6.  This
             # is the "ROOT-only" guarantee.
-            metal_sym = {"cisplatin": "Pt", "ru_arene": "Ru",
-                         "ir_cp_star": "Ir"}[name]
+            metal_sym = {"cisplatin": "Pt", "ru_arene": "Ru", "ir_cp_star": "Ir"}[name]
             metal_idx = next(
-                i for i, a in enumerate(term_2d.atoms)
-                if a.symbol == metal_sym
+                i for i, a in enumerate(term_2d.atoms) if a.symbol == metal_sym
             )
             v_used = term_2d.valence_used.get(metal_idx, 0)
             assert v_used == 1, (
@@ -217,8 +208,7 @@ def test_metal_seed_emits_3d_geometry(mol_cls):
         for i in range(n_atoms):
             pos = conf.GetAtomPosition(i)
             assert pos.x == pos.x, (
-                f"{name}: NaN coordinate on atom {i} — "
-                f"3D embed produced garbage"
+                f"{name}: NaN coordinate on atom {i} — " f"3D embed produced garbage"
             )
 
 
@@ -238,6 +228,7 @@ def test_cuaac_fires_on_metal_alkyne_seed():
         pytest.skip(f"CuAAC unavailable: {exc}")
 
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
     state = MoleculeClosedTerm.from_smiles("[Pt]C#C", embed_3d=False)
     azide = MoleculeClosedTerm.from_smiles("CCN=[N+]=[N-]", embed_3d=False)
 
@@ -253,10 +244,11 @@ def test_cuaac_fires_on_metal_alkyne_seed():
     # drops them.  Verify by checking that the rule's L4 counters
     # recorded an attempt.
     from molmetal_lam.reactions import beta_reductions as br
+
     cuaac_counters = br._L4_COUNTERS.get("CuAAC", {})
-    assert cuaac_counters.get("attempts", 0) >= 1, (
-        f"CuAAC did not register an attempt: {cuaac_counters}"
-    )
+    assert (
+        cuaac_counters.get("attempts", 0) >= 1
+    ), f"CuAAC did not register an attempt: {cuaac_counters}"
 
 
 # ---------------------------------------------------------------------------
@@ -295,20 +287,21 @@ def test_metal_seed_root_only_n_distinct_greater_than_one(mol_cls, tmp_path):
     # diagnostic message rather than failing the suite (the search
     # may legitimately return no candidates on a hostile pocket).
     import warnings
+
     warnings.filterwarnings("ignore")
 
     cell = None
     try:
         cell = lam.run_one_cell(
-            pocket_id="1h36",       # dummy pocket id; tolerated by harness
+            pocket_id="1h36",  # dummy pocket id; tolerated by harness
             reference_smiles=None,
             seed=42,
             n_simulations=100,
             n_top_k=10,
             prior_enabled=True,
             max_depth=3,
-            click_rules=None,       # all-5
-            metal_seed="cisplatin", # NEW: ROOT-only seed
+            click_rules=None,  # all-5
+            metal_seed="cisplatin",  # NEW: ROOT-only seed
             sa_weight=0.0,
         )
     except Exception as exc:
@@ -393,9 +386,7 @@ def test_soft_prior_exact_coordination():
     bonds = [_StubBond(pt, cl_atoms[i]) for i in range(4)]
     state = _StubState([pt] + cl_atoms, bonds)
     bonus = lam.metal_geometry_prior_bonus(state, enabled=True)
-    assert bonus == 1.0, (
-        f"Exact Pt coord=4 should return 1.0, got {bonus}"
-    )
+    assert bonus == 1.0, f"Exact Pt coord=4 should return 1.0, got {bonus}"
 
 
 def test_soft_prior_partial_coordination():
@@ -412,8 +403,7 @@ def test_soft_prior_partial_coordination():
     state = _StubState([pt] + cl_atoms, bonds)
     bonus = lam.metal_geometry_prior_bonus(state, enabled=True)
     assert bonus == 0.5, (
-        f"Pt coord=3 (off-by-one from target 4) should return 0.5, "
-        f"got {bonus}"
+        f"Pt coord=3 (off-by-one from target 4) should return 0.5, " f"got {bonus}"
     )
 
 
@@ -423,9 +413,7 @@ def test_soft_prior_no_metal():
     bonds = [_StubBond(c1, c2), _StubBond(c2, c3)]
     state = _StubState([c1, c2, c3], bonds)
     bonus = lam.metal_geometry_prior_bonus(state, enabled=True)
-    assert bonus == 0.0, (
-        f"State with no metal should return 0.0, got {bonus}"
-    )
+    assert bonus == 0.0, f"State with no metal should return 0.0, got {bonus}"
 
 
 # ---------------------------------------------------------------------------
@@ -453,19 +441,17 @@ def test_reward_rebalance_preserves_metal_compliance():
          MCTS can no longer collapse onto the metal channel.
     """
     # (1) Constants ship at the recommended 0.5 / 0.5 balance.
-    assert hasattr(lam, "CLICK_RULE_WEIGHT"), (
-        "r4_lambda_only_run must export CLICK_RULE_WEIGHT"
-    )
-    assert hasattr(lam, "METAL_PRIOR_WEIGHT"), (
-        "r4_lambda_only_run must export METAL_PRIOR_WEIGHT"
-    )
+    assert hasattr(
+        lam, "CLICK_RULE_WEIGHT"
+    ), "r4_lambda_only_run must export CLICK_RULE_WEIGHT"
+    assert hasattr(
+        lam, "METAL_PRIOR_WEIGHT"
+    ), "r4_lambda_only_run must export METAL_PRIOR_WEIGHT"
     assert float(lam.CLICK_RULE_WEIGHT) == 0.5, (
-        f"CLICK_RULE_WEIGHT must be 0.5 (was "
-        f"{float(lam.CLICK_RULE_WEIGHT)})"
+        f"CLICK_RULE_WEIGHT must be 0.5 (was " f"{float(lam.CLICK_RULE_WEIGHT)})"
     )
     assert float(lam.METAL_PRIOR_WEIGHT) == 0.5, (
-        f"METAL_PRIOR_WEIGHT must be 0.5 (was "
-        f"{float(lam.METAL_PRIOR_WEIGHT)})"
+        f"METAL_PRIOR_WEIGHT must be 0.5 (was " f"{float(lam.METAL_PRIOR_WEIGHT)})"
     )
 
     # (2) Metal compliance still functional at the exact tier.
@@ -475,8 +461,7 @@ def test_reward_rebalance_preserves_metal_compliance():
     metal_state = _StubState([pt] + cl_atoms, bonds)
     metal_bonus = lam.metal_geometry_prior_bonus(metal_state, enabled=True)
     assert metal_bonus == 1.0, (
-        f"metal_compliance at exact tier must still be 1.0 "
-        f"(got {metal_bonus})"
+        f"metal_compliance at exact tier must still be 1.0 " f"(got {metal_bonus})"
     )
 
     # (3) The rebalance scales the click contribution from 1.0
@@ -501,14 +486,11 @@ def test_reward_rebalance_preserves_metal_compliance():
         f"channel must no longer dominate"
     )
     assert abs(rebalanced_reward - 0.5) < 1e-9, (
-        f"Rebalanced reward must be 0.5 (=0.5*1.0); got "
-        f"{rebalanced_reward}"
+        f"Rebalanced reward must be 0.5 (=0.5*1.0); got " f"{rebalanced_reward}"
     )
 
     # (4) Sum of click + metal contributions is at most 1.0 (was 2.0).
-    total_channel_weight = (
-        float(lam.CLICK_RULE_WEIGHT) + float(lam.METAL_PRIOR_WEIGHT)
-    )
+    total_channel_weight = float(lam.CLICK_RULE_WEIGHT) + float(lam.METAL_PRIOR_WEIGHT)
     assert total_channel_weight <= 1.0, (
         f"click + metal channel weights must be ≤ 1.0 after "
         f"rebalance (was 2.0 historically); got {total_channel_weight}"
@@ -570,19 +552,14 @@ def test_compliance_truthfulness_seed_violates():
     # Pt here, so off-by-one tier = 0.5).  But the truthful gate
     # must return 0.0 because the SMILES is in the seed set.
     seed_smis = set(lam.METAL_SEED_SMILES.values()) | {"Cl[Pt]Cl"}
-    assert "[Pt]C#C" in seed_smis, (
-        "test setup: [Pt]C#C must be in seed_smis set"
-    )
+    assert "[Pt]C#C" in seed_smis, "test setup: [Pt]C#C must be in seed_smis set"
 
     pt = _StubAtom("Pt")
     c1, c2 = _StubAtom("C"), _StubAtom("C")
     # Pt-C bond (single) + C#C bond (triple, but for this stub we
     # only need the bond count, not the order).
-    bonds = [_StubBond(pt, c1, kind="single"),
-             _StubBond(c1, c2, kind="triple")]
-    seed_state = _StubStateWithSmi(
-        [pt, c1, c2], bonds, "[Pt]C#C"
-    )
+    bonds = [_StubBond(pt, c1, kind="single"), _StubBond(c1, c2, kind="triple")]
+    seed_state = _StubStateWithSmi([pt, c1, c2], bonds, "[Pt]C#C")
 
     # (1) The historical ``metal_geometry_prior_bonus`` returns 0.2
     # for this state (coord_num=1, bare-metal tier — bare-metal
@@ -595,8 +572,7 @@ def test_compliance_truthfulness_seed_violates():
     # the historical prior returns 0.5 non-trivially).
     pt_offby1 = _StubAtom("Pt")
     cl_atoms_offby1 = [_StubAtom("Cl") for _ in range(3)]
-    bonds_offby1 = [_StubBond(pt_offby1, cl_atoms_offby1[i])
-                    for i in range(3)]
+    bonds_offby1 = [_StubBond(pt_offby1, cl_atoms_offby1[i]) for i in range(3)]
     offby1_state = _StubStateWithSmi(
         [pt_offby1] + cl_atoms_offby1, bonds_offby1, "[Pt]C#C"
     )
@@ -634,9 +610,7 @@ def test_compliance_truthfulness_seed_violates():
     pt2 = _StubAtom("Pt")
     cl_atoms = [_StubAtom("Cl") for _ in range(4)]
     bonds2 = [_StubBond(pt2, cl_atoms[i]) for i in range(4)]
-    derived_state = _StubStateWithSmi(
-        [pt2] + cl_atoms, bonds2, "Cl[Pt](Cl)(Cl)Cl"
-    )
+    derived_state = _StubStateWithSmi([pt2] + cl_atoms, bonds2, "Cl[Pt](Cl)(Cl)Cl")
     truthful_derived = lam.metal_compliance_truthful(
         derived_state,
         enabled=True,
@@ -658,7 +632,9 @@ def test_compliance_truthfulness_seed_violates():
     # that would otherwise fire must ALSO fail (the root-difference
     # check is independent of the seed-set check).
     root_state = _StubStateWithSmi(
-        [pt, c1, c2], bonds, "[Pt]C#C"  # same SMILES as root
+        [pt, c1, c2],
+        bonds,
+        "[Pt]C#C",  # same SMILES as root
     )
     truthful_root = lam.metal_compliance_truthful(
         root_state,
@@ -711,32 +687,29 @@ def test_diversity_bonus_ranks_unique_first():
     # shares its SMILES).
     bonus_unique = agg.diversity_bonus(unique, result_set)
     assert bonus_unique == 1.0, (
-        f"Unique candidate must score 1.0 diversity bonus; "
-        f"got {bonus_unique}"
+        f"Unique candidate must score 1.0 diversity bonus; " f"got {bonus_unique}"
     )
 
     # (b) A repeated candidate gets 0.0 (3 other members of
     # result_set share its SMILES).
     bonus_repeat = agg.diversity_bonus(repeated[0], result_set)
     assert bonus_repeat == 0.0, (
-        f"Repeated candidate must score 0.0 diversity bonus; "
-        f"got {bonus_repeat}"
+        f"Repeated candidate must score 0.0 diversity bonus; " f"got {bonus_repeat}"
     )
 
     # (c) Identity check: when the candidate is the *only* member of
     # result_set, it is vacuously unique (1.0).
     bonus_solo = agg.diversity_bonus(unique, [unique])
     assert bonus_solo == 1.0, (
-        f"Solo candidate must be vacuously unique (1.0); "
-        f"got {bonus_solo}"
+        f"Solo candidate must be vacuously unique (1.0); " f"got {bonus_solo}"
     )
 
     # (d) Edge: empty SMILES is treated as non-unique (0.0).
     blank = _SmiStub("")
     bonus_blank = agg.diversity_bonus(blank, result_set)
-    assert bonus_blank == 0.0, (
-        f"Blank-SMILES candidate must score 0.0; got {bonus_blank}"
-    )
+    assert (
+        bonus_blank == 0.0
+    ), f"Blank-SMILES candidate must score 0.0; got {bonus_blank}"
 
 
 # ---------------------------------------------------------------------------
@@ -783,10 +756,10 @@ def test_tanimoto_distance_to_set_ranks_diverse_higher():
     # xanthine alkaloids with pairwise Tanimoto similarity ~0.65+ on
     # Morgan-ECFP4.  The "main duplicate" we'll compare against is
     # one of those three.
-    unique_smi = "CC(=O)Oc1ccccc1C(=O)O"             # aspirin
-    duplicate_smi = "CN1C=NC2=C1C(=O)N(C(=O)N2C)C"   # caffeine
-    near_dup_1 = "Cn1cnc2c1c(=O)[nH]c(=O)n2C"        # theophylline (1,3-dimethylxanthine)
-    near_dup_2 = "Cn1cnc2c1c(=O)n(C)c(=O)n2"        # theobromine (3,7-dimethylxanthine)
+    unique_smi = "CC(=O)Oc1ccccc1C(=O)O"  # aspirin
+    duplicate_smi = "CN1C=NC2=C1C(=O)N(C(=O)N2C)C"  # caffeine
+    near_dup_1 = "Cn1cnc2c1c(=O)[nH]c(=O)n2C"  # theophylline (1,3-dimethylxanthine)
+    near_dup_2 = "Cn1cnc2c1c(=O)n(C)c(=O)n2"  # theobromine (3,7-dimethylxanthine)
 
     def _stub(smi: str):
         # Return a stub object that the helper can call
@@ -795,8 +768,10 @@ def test_tanimoto_distance_to_set_ranks_diverse_higher():
         class _S:
             def __init__(self, s):
                 self._s = s
+
             def canonical_smiles(self):
                 return self._s
+
         return _S(smi)
 
     unique = _stub(unique_smi)
@@ -808,7 +783,9 @@ def test_tanimoto_distance_to_set_ranks_diverse_higher():
     # path: the search loop has already computed
     # ``state.canonical_smiles()`` once at leaf-evaluation.
     td_unique_pre = agg.tanimoto_distance_to_set(
-        unique, result_set, candidate_smi=unique_smi,
+        unique,
+        result_set,
+        candidate_smi=unique_smi,
     )
     td_unique_post = agg.tanimoto_distance_to_set(unique, result_set)
     assert td_unique_pre == td_unique_post, (
@@ -839,15 +816,15 @@ def test_tanimoto_distance_to_set_ranks_diverse_higher():
 
     # (d) Empty result set returns 0.0.
     td_solo = agg.tanimoto_distance_to_set(unique, [])
-    assert td_solo == 0.0, (
-        f"Empty result set must return 0.0; got {td_solo}"
-    )
+    assert td_solo == 0.0, f"Empty result set must return 0.0; got {td_solo}"
 
     # (e) Singleton-mode candidate (identical to every other member)
     # returns Tanimoto distance close to 0.0 — the rank-time penalty.
     singleton_self = _stub(unique_smi)
     td_self = agg.tanimoto_distance_to_set(
-        singleton_self, [_stub(unique_smi)], candidate_smi=unique_smi,
+        singleton_self,
+        [_stub(unique_smi)],
+        candidate_smi=unique_smi,
     )
     # Self is excluded by identity; if there are no OTHERS the mean
     # is 0.0 (the helper returns 0.0 when the iteration set is empty).
@@ -897,6 +874,7 @@ def test_w_tanimoto_distance_default_is_off():
     class _SmiStub:
         def __init__(self, smi):
             self._smi = smi
+
         def canonical_smiles(self):
             return self._smi
 
@@ -929,9 +907,9 @@ def test_metal_compliance_non_seed_excludes_seed():
     truthful gate already shipped in WF-Lambda-Fix-Singleton Fix 3.
     """
     # Sanity: the function must be exported.
-    assert hasattr(lam, "metal_compliance_truthful"), (
-        "r4_lambda_only_run must export metal_compliance_truthful"
-    )
+    assert hasattr(
+        lam, "metal_compliance_truthful"
+    ), "r4_lambda_only_run must export metal_compliance_truthful"
 
     # Build a non-metal stub (3 carbons + 2 bonds) so the chemistry
     # prior returns 0.0 for every candidate.  This isolates the
@@ -949,9 +927,7 @@ def test_metal_compliance_non_seed_excludes_seed():
     other_candidate_2 = _StubStateWithSmi([c1, c2, c3], bonds, "CCN")
 
     seed_smis = set(lam.METAL_SEED_SMILES.values()) | {"Cl[Pt]Cl"}
-    assert "[Pt]C#C" in seed_smis, (
-        "test setup: [Pt]C#C must be in seed_smis"
-    )
+    assert "[Pt]C#C" in seed_smis, "test setup: [Pt]C#C must be in seed_smis"
 
     # The truthful gate (seed-aware): seed candidate is rejected.
     seed_score = lam.metal_compliance_truthful(
@@ -990,9 +966,9 @@ def test_metal_compliance_non_seed_excludes_seed():
         [pt] + cl_atoms, compliant_bonds, "Cl[Pt](Cl)(Cl)Cl"
     )
     # Sanity: SMILES not in seed_smis (otherwise this test is trivial).
-    assert "Cl[Pt](Cl)(Cl)Cl" not in seed_smis, (
-        "test setup: Cl[Pt](Cl)(Cl)Cl must NOT be in seed_smis"
-    )
+    assert (
+        "Cl[Pt](Cl)(Cl)Cl" not in seed_smis
+    ), "test setup: Cl[Pt](Cl)(Cl)Cl must NOT be in seed_smis"
 
     # Truthful view: seed-aware gate, the compliant state passes (1.0).
     truthful = lam.metal_compliance_truthful(
@@ -1043,9 +1019,7 @@ def test_metal_compliance_non_seed_excludes_seed():
     seed_compliant_state = _StubStateWithSmi(
         [pt] + cl_atoms, compliant_bonds, "[Pt]C#C"
     )
-    assert "[Pt]C#C" in seed_smis, (
-        "test setup invariant violated"
-    )
+    assert "[Pt]C#C" in seed_smis, "test setup invariant violated"
     # The truthful gate: seed-aware → returns 0.0 (seed-membership
     # fails the check before chemistry is even consulted).
     truthful_seed_compliant = lam.metal_compliance_truthful(
@@ -1131,9 +1105,9 @@ def test_metal_compliance_including_seed_unchanged():
     behaviour so closed-loop regression tests and Round-12 cells
     stay bit-for-bit identical on the including-seed column.
     """
-    assert hasattr(lam, "metal_compliance_truthful"), (
-        "r4_lambda_only_run must export metal_compliance_truthful"
-    )
+    assert hasattr(
+        lam, "metal_compliance_truthful"
+    ), "r4_lambda_only_run must export metal_compliance_truthful"
 
     # Build a candidate that is BOTH:
     #   - in seed_smis (so the truthful gate rejects it), AND
@@ -1143,9 +1117,7 @@ def test_metal_compliance_including_seed_unchanged():
     pt = _StubAtom("Pt")
     cl_atoms = [_StubAtom("Cl") for _ in range(4)]
     bonds = [_StubBond(pt, cl_atoms[i]) for i in range(4)]
-    seed_compliant_state = _StubStateWithSmi(
-        [pt] + cl_atoms, bonds, "[Pt]C#C"
-    )
+    seed_compliant_state = _StubStateWithSmi([pt] + cl_atoms, bonds, "[Pt]C#C")
     seed_smis = set(lam.METAL_SEED_SMILES.values()) | {"Cl[Pt]Cl"}
     assert "[Pt]C#C" in seed_smis
 
@@ -1248,21 +1220,24 @@ def test_click_compat_table_lookup():
           preserving strict-coordination metal_compliance).
     """
     from molmetal_lam.lam_chem.pt_click_compat import (
-        COMPAT_MATRIX, SCAFFOLD_NAMES, CLICK_RULE_NAMES,
+        COMPAT_MATRIX,
+        SCAFFOLD_NAMES,
+        CLICK_RULE_NAMES,
     )
+
     # Matrix shape: 5 scaffolds x 7 rules (5 click + 2 metal-coord) = 35 cells.
     assert len(SCAFFOLD_NAMES) == 5
     assert len(CLICK_RULE_NAMES) == 7, (
         f"F2(a) must extend CLICK_RULE_NAMES to 7 (5 click + 2 metal-coord); "
         f"got {len(CLICK_RULE_NAMES)}"
     )
-    assert len(COMPAT_MATRIX) == 5, (
-        f"COMPAT_MATRIX must expose 5 scaffolds; got {len(COMPAT_MATRIX)}"
-    )
+    assert (
+        len(COMPAT_MATRIX) == 5
+    ), f"COMPAT_MATRIX must expose 5 scaffolds; got {len(COMPAT_MATRIX)}"
     for scaffold in SCAFFOLD_NAMES:
-        assert scaffold in COMPAT_MATRIX, (
-            f"scaffold {scaffold!r} missing from COMPAT_MATRIX"
-        )
+        assert (
+            scaffold in COMPAT_MATRIX
+        ), f"scaffold {scaffold!r} missing from COMPAT_MATRIX"
         row = COMPAT_MATRIX[scaffold]
         assert len(row) == 7, (
             f"row[{scaffold!r}] must have 7 verdicts (5 click + 2 metal-coord); "
@@ -1286,19 +1261,19 @@ def test_click_compat_table_lookup():
             )
 
     # ThiolEne + AmideCoupling GATED on strict Pt_II.
-    assert COMPAT_MATRIX["strict_Pt_II"]["ThiolEne"] == "incompatible", (
-        "ThiolEne must be incompatible on strict Pt_II"
-    )
-    assert COMPAT_MATRIX["strict_Pt_II"]["AmideCoupling"] == "incompatible", (
-        "AmideCoupling must be incompatible on strict Pt_II"
-    )
+    assert (
+        COMPAT_MATRIX["strict_Pt_II"]["ThiolEne"] == "incompatible"
+    ), "ThiolEne must be incompatible on strict Pt_II"
+    assert (
+        COMPAT_MATRIX["strict_Pt_II"]["AmideCoupling"] == "incompatible"
+    ), "AmideCoupling must be incompatible on strict Pt_II"
     # ... but COMPATIBLE on Pt_II_chelating and Pt_IV and labile_metal.
-    assert COMPAT_MATRIX["Pt_II_chelating"]["ThiolEne"] == "compatible", (
-        "ThiolEne must be compatible on Pt_II chelating (carboplatin)"
-    )
-    assert COMPAT_MATRIX["Pt_II_chelating"]["AmideCoupling"] == "compatible", (
-        "AmideCoupling must be compatible on Pt_II chelating"
-    )
+    assert (
+        COMPAT_MATRIX["Pt_II_chelating"]["ThiolEne"] == "compatible"
+    ), "ThiolEne must be compatible on Pt_II chelating (carboplatin)"
+    assert (
+        COMPAT_MATRIX["Pt_II_chelating"]["AmideCoupling"] == "compatible"
+    ), "AmideCoupling must be compatible on Pt_II chelating"
     assert COMPAT_MATRIX["Pt_IV"]["ThiolEne"] == "compatible"
     assert COMPAT_MATRIX["Pt_IV"]["AmideCoupling"] == "compatible"
     assert COMPAT_MATRIX["labile_metal"]["ThiolEne"] == "compatible"
@@ -1340,15 +1315,23 @@ def test_auto_click_for_pt_ii():
     incompatible ThiolEne + AmideCoupling gated out.
     """
     from molmetal_lam.lam_chem.pt_click_compat import (
-        detect_scaffold, default_compatible_rules, incompatible_rules,
+        detect_scaffold,
+        default_compatible_rules,
+        incompatible_rules,
     )
+
     scaffold = detect_scaffold(None, name_hint="cisplatin")
-    assert scaffold == "strict_Pt_II", (
-        f"cisplatin must detect as strict_Pt_II; got {scaffold!r}"
-    )
+    assert (
+        scaffold == "strict_Pt_II"
+    ), f"cisplatin must detect as strict_Pt_II; got {scaffold!r}"
     rules_default = default_compatible_rules(scaffold, allow_incompatible=False)
-    assert set(rules_default) == {"CuAAC", "SPAAC", "Suzuki",
-                                  "metal_ligand_exchange", "aqua_exchange"}, (
+    assert set(rules_default) == {
+        "CuAAC",
+        "SPAAC",
+        "Suzuki",
+        "metal_ligand_exchange",
+        "aqua_exchange",
+    }, (
         f"strict_Pt_II default rules must be "
         f"{{CuAAC, SPAAC, Suzuki, metal_ligand_exchange, aqua_exchange}} "
         f"(F2(a) adds 2 metal-coord rules); "
@@ -1356,9 +1339,10 @@ def test_auto_click_for_pt_ii():
     )
     # The gated-out incompatible rules:
     gated = incompatible_rules(scaffold)
-    assert set(gated) == {"ThiolEne", "AmideCoupling"}, (
-        f"strict_Pt_II must gate ThiolEne + AmideCoupling; got {gated}"
-    )
+    assert set(gated) == {
+        "ThiolEne",
+        "AmideCoupling",
+    }, f"strict_Pt_II must gate ThiolEne + AmideCoupling; got {gated}"
 
     # Verify the alias CLICK_RULE_ALIASES entry is the CLICK-only subset
     # of default_compatible_rules for strict_Pt_II.  The F2(a) extension
@@ -1367,9 +1351,11 @@ def test_auto_click_for_pt_ii():
     # (the metal-coord rules are opt-in via ``metal-coord`` alias).
     alias_rules = lam.CLICK_RULE_ALIASES["auto-pt-strict"]
     # Click-only subset of rules_default must equal alias_rules.
-    click_only = {r for r in rules_default
-                  if r in {"CuAAC", "SPAAC", "ThiolEne",
-                           "Suzuki", "AmideCoupling"}}
+    click_only = {
+        r
+        for r in rules_default
+        if r in {"CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"}
+    }
     assert click_only == set(alias_rules), (
         f"alias auto-pt-strict (click-only subset) must equal the "
         f"5-click portion of default_compatible_rules(strict_Pt_II); "
@@ -1382,27 +1368,33 @@ def test_auto_click_for_pt_iv():
     ``auto-pt-iv`` enables all 5 click rules (no gating on Pt_IV).
     """
     from molmetal_lam.lam_chem.pt_click_compat import (
-        detect_scaffold, default_compatible_rules,
+        detect_scaffold,
+        default_compatible_rules,
     )
+
     scaffold = detect_scaffold(None, name_hint="satraplatin")
-    assert scaffold == "Pt_IV", (
-        f"satraplatin must detect as Pt_IV; got {scaffold!r}"
-    )
+    assert scaffold == "Pt_IV", f"satraplatin must detect as Pt_IV; got {scaffold!r}"
     rules = default_compatible_rules(scaffold, allow_incompatible=False)
     # F2(a) extension: Pt_IV enables all 5 click rules + 2 metal-coord
     # rules (the metal-coord rules are COMPATIBLE on every scaffold).
-    assert set(rules) == {"CuAAC", "SPAAC", "Suzuki", "ThiolEne",
-                          "AmideCoupling",
-                          "metal_ligand_exchange", "aqua_exchange"}, (
-        f"Pt_IV must enable all 5 click + 2 metal-coord rules; got {rules}"
-    )
+    assert set(rules) == {
+        "CuAAC",
+        "SPAAC",
+        "Suzuki",
+        "ThiolEne",
+        "AmideCoupling",
+        "metal_ligand_exchange",
+        "aqua_exchange",
+    }, f"Pt_IV must enable all 5 click + 2 metal-coord rules; got {rules}"
     # Verify alias matches the click-only subset (alias is the
     # user-facing 5-click view; metal-coord rules are opt-in via
     # ``metal-coord`` alias, not via auto-pt-iv).
     alias_rules = lam.CLICK_RULE_ALIASES["auto-pt-iv"]
-    click_only = {r for r in rules
-                  if r in {"CuAAC", "SPAAC", "ThiolEne",
-                           "Suzuki", "AmideCoupling"}}
+    click_only = {
+        r
+        for r in rules
+        if r in {"CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"}
+    }
     assert click_only == set(alias_rules), (
         f"alias auto-pt-iv (click-only subset) must equal the "
         f"5-click portion of default_compatible_rules(Pt_IV); "
@@ -1414,13 +1406,19 @@ def test_auto_click_for_pt_iv():
     # AmideCoupling are COMPATIBLE (the chelate's carboxylate leaves
     # readily) and metal-coord rules are always COMPATIBLE.
     scaffold_chelate = detect_scaffold(None, name_hint="carboplatin")
-    assert scaffold_chelate == "Pt_II_chelating", (
-        f"carboplatin must detect as Pt_II_chelating; got {scaffold_chelate!r}"
-    )
+    assert (
+        scaffold_chelate == "Pt_II_chelating"
+    ), f"carboplatin must detect as Pt_II_chelating; got {scaffold_chelate!r}"
     rules_chelate = default_compatible_rules(scaffold_chelate)
-    assert set(rules_chelate) == {"CuAAC", "SPAAC", "Suzuki", "ThiolEne",
-                                  "AmideCoupling",
-                                  "metal_ligand_exchange", "aqua_exchange"}, (
+    assert set(rules_chelate) == {
+        "CuAAC",
+        "SPAAC",
+        "Suzuki",
+        "ThiolEne",
+        "AmideCoupling",
+        "metal_ligand_exchange",
+        "aqua_exchange",
+    }, (
         f"carboplatin must enable all 5 click + 2 metal-coord rules; "
         f"got {rules_chelate}"
     )
@@ -1429,14 +1427,19 @@ def test_auto_click_for_pt_iv():
     # metal-coord rules.
     for name in ("copper", "zinc", "iron", "manganese"):
         scaffold_labile = detect_scaffold(None, name_hint=name)
-        assert scaffold_labile == "labile_metal", (
-            f"{name!r} must detect as labile_metal; got {scaffold_labile!r}"
-        )
+        assert (
+            scaffold_labile == "labile_metal"
+        ), f"{name!r} must detect as labile_metal; got {scaffold_labile!r}"
         rules_labile = default_compatible_rules(scaffold_labile)
-        assert set(rules_labile) == {"CuAAC", "SPAAC", "Suzuki", "ThiolEne",
-                                      "AmideCoupling",
-                                      "metal_ligand_exchange",
-                                      "aqua_exchange"}, (
+        assert set(rules_labile) == {
+            "CuAAC",
+            "SPAAC",
+            "Suzuki",
+            "ThiolEne",
+            "AmideCoupling",
+            "metal_ligand_exchange",
+            "aqua_exchange",
+        }, (
             f"{name} must enable all 5 click + 2 metal-coord rules; "
             f"got {rules_labile}"
         )
@@ -1452,8 +1455,10 @@ def test_allow_incompatible_opt_in():
     "incompatible_rules_enabled" entry.
     """
     from molmetal_lam.lam_chem.pt_click_compat import (
-        default_compatible_rules, incompatible_rules,
+        default_compatible_rules,
+        incompatible_rules,
     )
+
     # (a) Pre-condition: strict_Pt_II normally gates ThiolEne +
     # AmideCoupling.
     scaffold = "strict_Pt_II"
@@ -1464,12 +1469,18 @@ def test_allow_incompatible_opt_in():
     # rules (incl. previously-gated ThiolEne + AmideCoupling) PLUS the
     # 2 metal-coord rules (always-compatible).  F2(a) extension.
     rules_unrestricted = default_compatible_rules(
-        scaffold, allow_incompatible=True,
+        scaffold,
+        allow_incompatible=True,
     )
-    assert set(rules_unrestricted) == {"CuAAC", "SPAAC", "Suzuki",
-                                        "ThiolEne", "AmideCoupling",
-                                        "metal_ligand_exchange",
-                                        "aqua_exchange"}, (
+    assert set(rules_unrestricted) == {
+        "CuAAC",
+        "SPAAC",
+        "Suzuki",
+        "ThiolEne",
+        "AmideCoupling",
+        "metal_ligand_exchange",
+        "aqua_exchange",
+    }, (
         f"allow_incompatible=True must re-enable ThiolEne + "
         f"AmideCoupling on strict_Pt_II + the 2 metal-coord rules; "
         f"got {rules_unrestricted}"
@@ -1508,18 +1519,18 @@ def test_allow_incompatible_opt_in():
     assert cell is not None
     warnings_str = " | ".join(getattr(cell, "warnings", []))
     # The auto-rules-expanded warning MUST mention CuAAC+SPAAC+Suzuki.
-    assert "CuAAC" in warnings_str and "SPAAC" in warnings_str, (
-        f"Expected CuAAC+SPAAC in warnings; got: {warnings_str}"
-    )
+    assert (
+        "CuAAC" in warnings_str and "SPAAC" in warnings_str
+    ), f"Expected CuAAC+SPAAC in warnings; got: {warnings_str}"
     # The incompatible_rules_enabled warning MUST mention ThiolEne
     # (because we opted in).
     assert "ThiolEne" in warnings_str, (
         f"Expected ThiolEne in warnings after allow_incompatible=True; "
         f"got: {warnings_str}"
     )
-    assert "auto_scaffold_detected=strict_Pt_II" in warnings_str, (
-        f"Expected auto_scaffold_detected=strict_Pt_II; got: {warnings_str}"
-    )
+    assert (
+        "auto_scaffold_detected=strict_Pt_II" in warnings_str
+    ), f"Expected auto_scaffold_detected=strict_Pt_II; got: {warnings_str}"
 
 
 def test_scaffold_detection_works_on_metal_seed_smiles():
@@ -1550,9 +1561,7 @@ def test_scaffold_detection_works_on_metal_seed_smiles():
     # ring) and ``[Pt](N)(N)(O=C(O)C1(CCC1)C(=O)O)`` (free carboxylate
     # arms) both classify correctly.  We pick the latter (more common
     # in PubChem).
-    assert detect_scaffold(
-        "[Pt](N)(N)(O=C(O)C1(CCC1)C(=O)O)"
-    ) == "Pt_II_chelating"
+    assert detect_scaffold("[Pt](N)(N)(O=C(O)C1(CCC1)C(=O)O)") == "Pt_II_chelating"
     assert detect_scaffold("O=C1O[Pt](N)(N)O1") == "Pt_II_chelating"
 
     # Satraplatin-style Pt_IV (octahedral, 6 bonds) -> Pt_IV.
@@ -1622,7 +1631,8 @@ def test_metal_ligand_exchange_swap():
     """
     try:
         from molmetal_lam.reactions.beta_reductions import (
-            MetalLigandExchange, REACTION_RULES,
+            MetalLigandExchange,
+            REACTION_RULES,
         )
     except Exception as exc:  # pragma: no cover
         pytest.skip(f"MetalLigandExchange unavailable: {exc}")
@@ -1634,28 +1644,28 @@ def test_metal_ligand_exchange_swap():
 
     # (a) The rule is exported and is a ReactionRule instance.
     rule = REACTION_RULES["MetalLigandExchange"]
-    assert rule.name == "MetalLigandExchange", (
-        f"rule name must be 'MetalLigandExchange'; got {rule.name!r}"
-    )
-    assert rule.pattern_smiles is not None, (
-        "MetalLigandExchange must have a non-None pattern_smiles"
-    )
+    assert (
+        rule.name == "MetalLigandExchange"
+    ), f"rule name must be 'MetalLigandExchange'; got {rule.name!r}"
+    assert (
+        rule.pattern_smiles is not None
+    ), "MetalLigandExchange must have a non-None pattern_smiles"
 
     # (b) The SMARTS pattern is the documented Pt-Cl/NH3 substitution.
     # The pattern we ship is::
     #   "[Pt:1]([Cl:2])[*:3].[NH3:4]>>[Pt:1]([NH3:4])[*:3].[Cl:2]"
-    assert "[Pt" in rule.pattern_smiles, (
-        f"pattern must reference [Pt]; got {rule.pattern_smiles!r}"
-    )
-    assert "[Cl" in rule.pattern_smiles, (
-        f"pattern must reference [Cl]; got {rule.pattern_smiles!r}"
-    )
-    assert "[NH3" in rule.pattern_smiles, (
-        f"pattern must reference [NH3] donor; got {rule.pattern_smiles!r}"
-    )
-    assert ">>" in rule.pattern_smiles, (
-        f"pattern must have >> arrow; got {rule.pattern_smiles!r}"
-    )
+    assert (
+        "[Pt" in rule.pattern_smiles
+    ), f"pattern must reference [Pt]; got {rule.pattern_smiles!r}"
+    assert (
+        "[Cl" in rule.pattern_smiles
+    ), f"pattern must reference [Cl]; got {rule.pattern_smiles!r}"
+    assert (
+        "[NH3" in rule.pattern_smiles
+    ), f"pattern must reference [NH3] donor; got {rule.pattern_smiles!r}"
+    assert (
+        ">>" in rule.pattern_smiles
+    ), f"pattern must have >> arrow; got {rule.pattern_smiles!r}"
 
     # (c) Invoking the rule on a Pt-Cl educt + NH3 donor increments
     # L4 counters.  We do NOT assert a non-empty product list (RDKit
@@ -1667,9 +1677,12 @@ def test_metal_ligand_exchange_swap():
     except Exception as exc:
         pytest.skip(f"RDKit failed to parse educt: {exc}")
 
-    attempts_before = rule._L4_COUNTERS["attempts"] if hasattr(rule, "_L4_COUNTERS") else 0
+    attempts_before = (
+        rule._L4_COUNTERS["attempts"] if hasattr(rule, "_L4_COUNTERS") else 0
+    )
     # The module-level counter is br._L4_COUNTERS["MetalLigandExchange"]
     from molmetal_lam.reactions import beta_reductions as br
+
     attempts_before = br._L4_COUNTERS["MetalLigandExchange"]["attempts"]
 
     products = rule.reduce((pt_cl, donor))
@@ -1713,7 +1726,8 @@ def test_aqua_exchange_pka_context():
     """
     try:
         from molmetal_lam.reactions.beta_reductions import (
-            AquaExchange, REACTION_RULES,
+            AquaExchange,
+            REACTION_RULES,
         )
     except Exception as exc:  # pragma: no cover
         pytest.skip(f"AquaExchange unavailable: {exc}")
@@ -1727,15 +1741,15 @@ def test_aqua_exchange_pka_context():
     rule = REACTION_RULES["AquaExchange"]
     assert rule.name == "AquaExchange"
     assert rule.pattern_smiles is not None
-    assert "[OH2]" in rule.pattern_smiles or "[OH" in rule.pattern_smiles, (
-        f"pattern must reference water/hydroxyl; got {rule.pattern_smiles!r}"
-    )
-    assert "[Pt" in rule.pattern_smiles, (
-        f"pattern must reference [Pt]; got {rule.pattern_smiles!r}"
-    )
-    assert "[Cl" in rule.pattern_smiles, (
-        f"pattern must reference [Cl] leaving; got {rule.pattern_smiles!r}"
-    )
+    assert (
+        "[OH2]" in rule.pattern_smiles or "[OH" in rule.pattern_smiles
+    ), f"pattern must reference water/hydroxyl; got {rule.pattern_smiles!r}"
+    assert (
+        "[Pt" in rule.pattern_smiles
+    ), f"pattern must reference [Pt]; got {rule.pattern_smiles!r}"
+    assert (
+        "[Cl" in rule.pattern_smiles
+    ), f"pattern must reference [Cl] leaving; got {rule.pattern_smiles!r}"
 
     # (b) Stoichiometry is empty (mass balance).
     assert rule.stoichiometry == {}, (
@@ -1751,6 +1765,7 @@ def test_aqua_exchange_pka_context():
         pytest.skip(f"RDKit failed to parse educt: {exc}")
 
     from molmetal_lam.reactions import beta_reductions as br
+
     attempts_before = br._L4_COUNTERS["AquaExchange"]["attempts"]
 
     products = rule.reduce((pt_cl, water))
@@ -1853,8 +1868,7 @@ def test_aqua_exchange_compat_matrix_updated():
     # (b) Included in the default-compatible list.
     rules = default_compatible_rules("strict_Pt_II", allow_incompatible=False)
     assert "aqua_exchange" in rules, (
-        f"aqua_exchange must be in default-compatible for strict_Pt_II; "
-        f"got {rules}"
+        f"aqua_exchange must be in default-compatible for strict_Pt_II; " f"got {rules}"
     )
 
     # (c) NOT in incompatible list.

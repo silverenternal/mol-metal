@@ -65,6 +65,7 @@ def _resolve_mapping_md() -> Path:
             return cand
     return MAPPING_MD_CANDIDATES[0]  # for the FATAL message below
 
+
 # ---------------------------------------------------------------------------
 # Static mechanism → pytest mapping.
 #
@@ -77,27 +78,111 @@ def _resolve_mapping_md() -> Path:
 
 MECHANISM_PYTEST: Dict[str, Tuple[str, str, str]] = {
     # ID     pytest -k selector              suggested fix path                       brief
-    "M1":  ("synflownet or atom_training",     "molmetal/molmetal_lam/lam_chem/lambda_combinators.py", "Molecular Lambda Calculus (atoms-as-combinators)"),
-    "M2":  ("metal_ligand_exchange or pt_click_compat", "molmetal/molmetal_lam/lam_chem/pt_click_compat.py", "β-reduction rules (84 + 18 + 4 NEW SMARTS)"),
-    "M3":  ("proof_search or mcts",            "molmetal/molmetal_lam/search_alg/proof_search.py",     "KataGo-MCTS proof search"),
-    "M4":  ("pll_signature or pll_heuristic",  "molmetal/molmetal_lam/lam_chem/pll_signature.py",      "PLL heuristic (Persistent Local Laplacian)"),
-    "M5":  ("egnn_velocity or egnn_coord",     "molmetal/adapters/flow_matching_lipman/__init__.py",   "SE(3)-equivariant EGNN"),
-    "M6":  ("cfm_decoder or cfm_rescue",       "molmetal/adapters/flow_matching_lipman/__init__.py",   "Lipman 2023 CFM (CondOT path + midpoint ODE)"),
-    "M7":  ("bond_head or yuelbond",           "molmetal/models/bond_head.py",                          "YuelBond bond head (learning-based)"),
-    "M8":  ("lambda_astsr",                    "molmetal/molmetal_lam/reward/lambda_astsr.py",          "LambdaASTSR (Deflexpressor-style AST SR)"),
-    "M9":  ("coupling_adapter or coupling_platinai5k", "molmetal/molmetal_lam/reward/coupling_adapter.py", "Coupling adapter (lambda × CFM bridge)"),
-    "M10": ("metal_ligand_exchange or pt_metal_ligand_exchange", "molmetal/molmetal_lam/lam_chem/pt_metal_ligand_exchange.py", "84-rule MLE matrix"),
-    "M11": ("pt_click_compat or metal_ligand_exchange",          "molmetal/molmetal_lam/lam_chem/pt_click_compat.py",          "18 + 4 NEW SMARTS"),
-    "M12": ("p1_oov or p1_skips",              "molmetal/adapters/flow_matching_lipman/__init__.py:1825", "20-element atom vocab"),
-    "M13": ("p4_clamped or p4_amp",            "molmetal/adapters/flow_matching_lipman/__init__.py:2170", "Logits clamp (±50)"),
-    "M14": ("p5_safety_max or p5_r4",          "molmetal/scripts/metallo_drug_smoke_retrain.py",         "LR warmup (linear 200 steps)"),
-    "M15": ("p2_synflownet or p2_swap_smarts", "molmetal/adapters/flow_matching_lipman/_reference/solver/__init__.py:152", "Shim TypeError fix"),
-    "M16": ("p7_model_wrapper",                "molmetal/adapters/flow_matching_lipman/_reference/utils/__init__.py",     "ModelWrapper kw-time fallback"),
-    "M17": ("p6_configure_reference",          "molmetal/adapters/flow_matching_lipman/_reference_loader.py:83",         "Reference loader flat-clone auto-detect"),
-    "M18": ("sa_score or erl",                 "molmetal/molmetal_lam/sbdd_env/sa_score.py",            "Ertl-Schuffenhauer SA score"),
-    "M19": ("posebusters or pb_valid",         "molmetal/molmetal_lam/sbdd_env/posebusters_adapter.py", "PoseBusters geometric filter"),
-    "M20": ("biopython or plip",               "BioPython built-in",                                     "BioPython PDB NeighborSearch (PLIP replacement)"),
-    "M21": ("scaffold or leakage",             "molmetal/data/leakage_utils.py",                         "Scaffold split (data leakage prevention)"),
+    "M1": (
+        "synflownet or atom_training",
+        "molmetal/molmetal_lam/lam_chem/lambda_combinators.py",
+        "Molecular Lambda Calculus (atoms-as-combinators)",
+    ),
+    "M2": (
+        "metal_ligand_exchange or pt_click_compat",
+        "molmetal/molmetal_lam/lam_chem/pt_click_compat.py",
+        "β-reduction rules (84 + 18 + 4 NEW SMARTS)",
+    ),
+    "M3": (
+        "proof_search or mcts",
+        "molmetal/molmetal_lam/search_alg/proof_search.py",
+        "KataGo-MCTS proof search",
+    ),
+    "M4": (
+        "pll_signature or pll_heuristic",
+        "molmetal/molmetal_lam/lam_chem/pll_signature.py",
+        "PLL heuristic (Persistent Local Laplacian)",
+    ),
+    "M5": (
+        "egnn_velocity or egnn_coord",
+        "molmetal/adapters/flow_matching_lipman/__init__.py",
+        "SE(3)-equivariant EGNN",
+    ),
+    "M6": (
+        "cfm_decoder or cfm_rescue",
+        "molmetal/adapters/flow_matching_lipman/__init__.py",
+        "Lipman 2023 CFM (CondOT path + midpoint ODE)",
+    ),
+    "M7": (
+        "bond_head or yuelbond",
+        "molmetal/models/bond_head.py",
+        "YuelBond bond head (learning-based)",
+    ),
+    "M8": (
+        "lambda_astsr",
+        "molmetal/molmetal_lam/reward/lambda_astsr.py",
+        "LambdaASTSR (Deflexpressor-style AST SR)",
+    ),
+    "M9": (
+        "coupling_adapter or coupling_platinai5k",
+        "molmetal/molmetal_lam/reward/coupling_adapter.py",
+        "Coupling adapter (lambda × CFM bridge)",
+    ),
+    "M10": (
+        "metal_ligand_exchange or pt_metal_ligand_exchange",
+        "molmetal/molmetal_lam/lam_chem/pt_metal_ligand_exchange.py",
+        "84-rule MLE matrix",
+    ),
+    "M11": (
+        "pt_click_compat or metal_ligand_exchange",
+        "molmetal/molmetal_lam/lam_chem/pt_click_compat.py",
+        "18 + 4 NEW SMARTS",
+    ),
+    "M12": (
+        "p1_oov or p1_skips",
+        "molmetal/adapters/flow_matching_lipman/__init__.py:1825",
+        "20-element atom vocab",
+    ),
+    "M13": (
+        "p4_clamped or p4_amp",
+        "molmetal/adapters/flow_matching_lipman/__init__.py:2170",
+        "Logits clamp (±50)",
+    ),
+    "M14": (
+        "p5_safety_max or p5_r4",
+        "molmetal/scripts/metallo_drug_smoke_retrain.py",
+        "LR warmup (linear 200 steps)",
+    ),
+    "M15": (
+        "p2_synflownet or p2_swap_smarts",
+        "molmetal/adapters/flow_matching_lipman/_reference/solver/__init__.py:152",
+        "Shim TypeError fix",
+    ),
+    "M16": (
+        "p7_model_wrapper",
+        "molmetal/adapters/flow_matching_lipman/_reference/utils/__init__.py",
+        "ModelWrapper kw-time fallback",
+    ),
+    "M17": (
+        "p6_configure_reference",
+        "molmetal/adapters/flow_matching_lipman/_reference_loader.py:83",
+        "Reference loader flat-clone auto-detect",
+    ),
+    "M18": (
+        "sa_score or erl",
+        "molmetal/molmetal_lam/sbdd_env/sa_score.py",
+        "Ertl-Schuffenhauer SA score",
+    ),
+    "M19": (
+        "posebusters or pb_valid",
+        "molmetal/molmetal_lam/sbdd_env/posebusters_adapter.py",
+        "PoseBusters geometric filter",
+    ),
+    "M20": (
+        "biopython or plip",
+        "BioPython built-in",
+        "BioPython PDB NeighborSearch (PLIP replacement)",
+    ),
+    "M21": (
+        "scaffold or leakage",
+        "molmetal/data/leakage_utils.py",
+        "Scaffold split (data leakage prevention)",
+    ),
 }
 
 
@@ -141,7 +226,9 @@ def parse_failure_modes(md_text: str) -> List[Dict[str, object]]:
         if not metric_match:
             continue
         mechs_raw = m.group("mechs").strip()
-        mechanisms = [tok for tok in re.split(r"→|\s+", mechs_raw) if re.fullmatch(r"M\d+", tok)]
+        mechanisms = [
+            tok for tok in re.split(r"→|\s+", mechs_raw) if re.fullmatch(r"M\d+", tok)
+        ]
         cmd_raw = m.group("cmd").strip()
         if cmd_raw.startswith("`") and cmd_raw.endswith("`"):
             cmd_raw = cmd_raw[1:-1].strip()
@@ -156,11 +243,15 @@ def parse_failure_modes(md_text: str) -> List[Dict[str, object]]:
     return rows
 
 
-def filter_rows(rows: List[Dict[str, object]], metric: str, symptom: Optional[str]) -> List[Dict[str, object]]:
+def filter_rows(
+    rows: List[Dict[str, object]], metric: str, symptom: Optional[str]
+) -> List[Dict[str, object]]:
     """Pick the failure-mode rows relevant to ``metric`` (and optionally ``symptom``)."""
     metric_rows = [r for r in rows if r["metric"] == metric]
     if symptom is not None:
-        specific = [r for r in metric_rows if symptom.lower() in str(r["symptom"]).lower()]
+        specific = [
+            r for r in metric_rows if symptom.lower() in str(r["symptom"]).lower()
+        ]
         if specific:
             return specific
     return metric_rows
@@ -169,6 +260,7 @@ def filter_rows(rows: List[Dict[str, object]], metric: str, symptom: Optional[st
 # ---------------------------------------------------------------------------
 # Pytest invocation
 # ---------------------------------------------------------------------------
+
 
 def run_pytest(keyword: str, timeout: int = 120) -> Tuple[int, str, str, float]:
     """Run ``pytest -k '<keyword>'`` and return (rc, stdout, stderr, wall_s).
@@ -195,11 +287,28 @@ def run_pytest(keyword: str, timeout: int = 120) -> Tuple[int, str, str, float]:
     last_stderr = ""
     t0 = time.time()
     for rel in candidates:
-        cmd: List[str] = [sys.executable, "-m", "pytest", rel, "-k", keyword, "--tb=line", "--no-header", "-q"]
+        cmd: List[str] = [
+            sys.executable,
+            "-m",
+            "pytest",
+            rel,
+            "-k",
+            keyword,
+            "--tb=line",
+            "--no-header",
+            "-q",
+        ]
         try:
-            proc = subprocess.run(cmd, cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=timeout)
+            proc = subprocess.run(
+                cmd, cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=timeout
+            )
         except subprocess.TimeoutExpired:
-            return 124, "", f"pytest -k {keyword!r} timed out after {timeout}s", time.time() - t0
+            return (
+                124,
+                "",
+                f"pytest -k {keyword!r} timed out after {timeout}s",
+                time.time() - t0,
+            )
         last_rc, last_stdout, last_stderr = proc.returncode, proc.stdout, proc.stderr
         # pytest returncode 5 = "no tests collected".  Skip to next candidate.
         if proc.returncode == 5:
@@ -211,6 +320,7 @@ def run_pytest(keyword: str, timeout: int = 120) -> Tuple[int, str, str, float]:
 # ---------------------------------------------------------------------------
 # Reporting
 # ---------------------------------------------------------------------------
+
 
 def short_status(stdout: str) -> str:
     """Return a one-line summary (e.g. ``1 passed`` / ``3 failed``)."""
@@ -249,7 +359,9 @@ def run_diagnosis(rows: List[Dict[str, object]], timeout: int) -> Dict[str, obje
                     "status": status,
                     "returncode": rc,
                     "wall_seconds": round(wall, 2),
-                    "summary": short_status(out) if status != "MISS" else "no test collected",
+                    "summary": short_status(out)
+                    if status != "MISS"
+                    else "no test collected",
                     "keyword": kw,
                     "symptom": row["symptom"],
                 }
@@ -261,6 +373,7 @@ def run_diagnosis(rows: List[Dict[str, object]], timeout: int) -> Dict[str, obje
 # ---------------------------------------------------------------------------
 # Output
 # ---------------------------------------------------------------------------
+
 
 def print_human(payload: Dict[str, object], metric: str) -> None:
     rows = payload.get("results", [])  # type: ignore[assignment]
@@ -308,6 +421,7 @@ def print_human(payload: Dict[str, object], metric: str) -> None:
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--metric", help="Metric ID, e.g. m14")
@@ -316,12 +430,19 @@ def main(argv: Optional[List[str]] = None) -> int:
         default=None,
         help="Optional substring filter on the symptom (e.g. 'm14 decode_ratio = 0').",
     )
-    parser.add_argument("--timeout", type=int, default=120, help="Per-pytest timeout in seconds.")
+    parser.add_argument(
+        "--timeout", type=int, default=120, help="Per-pytest timeout in seconds."
+    )
     parser.add_argument("--json", action="store_true", help="Emit JSON output.")
-    parser.add_argument("--list", action="store_true", help="List metrics covered by §4 and exit.")
+    parser.add_argument(
+        "--list", action="store_true", help="List metrics covered by §4 and exit."
+    )
     args = parser.parse_args(argv)
 
-    if not MAPPING_MD_CANDIDATES[0].is_file() and not MAPPING_MD_CANDIDATES[1].is_file():
+    if (
+        not MAPPING_MD_CANDIDATES[0].is_file()
+        and not MAPPING_MD_CANDIDATES[1].is_file()
+    ):
         print(
             f"FATAL: mapping file not found at {MAPPING_MD_CANDIDATES[0]} or {MAPPING_MD_CANDIDATES[1]}",
             file=sys.stderr,
@@ -346,7 +467,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     selected = filter_rows(rows, metric, args.symptom)
     if not selected:
         print(f"No failure-mode row in §4 mentions {metric}.", file=sys.stderr)
-        print("Available metrics:", ", ".join(sorted({r['metric'] for r in rows})), file=sys.stderr)
+        print(
+            "Available metrics:",
+            ", ".join(sorted({r["metric"] for r in rows})),
+            file=sys.stderr,
+        )
         return 1
 
     payload = run_diagnosis(selected, timeout=args.timeout)

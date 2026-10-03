@@ -20,6 +20,7 @@ Why source-grep rather than behavioural?
     the value here is a *fast, isolated* canary that fails within ms
     when somebody deletes a line during a clean-up.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -60,10 +61,7 @@ _R17_INVARIANTS = [
         # _atom_vocab tuple MUST be assigned (not just mentioned in a
         # comment) so the model knows the expanded support.  20 comma-
         # separated integers separated by ', ' are unique to this vocab.
-        (
-            "1, 5, 6, 7, 8, 9, 14, 15, 16, 17, 21, 22, 33, 34, 35, "
-            "39, 40, 53, 72, 78"
-        ),
+        ("1, 5, 6, 7, 8, 9, 14, 15, 16, 17, 21, 22, 33, 34, 35, " "39, 40, 53, 72, 78"),
         "Canonical 20-element _atom_vocab tuple (TODO-33 / M12 fix)",
     ),
     (

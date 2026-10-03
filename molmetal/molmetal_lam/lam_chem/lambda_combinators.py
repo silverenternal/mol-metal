@@ -51,6 +51,7 @@ Backward compatibility:
   any non-public project module, so they can be unit-tested in isolation
   (cf. test_lambda_combinators.py).
 """
+
 from __future__ import annotations
 
 from itertools import product
@@ -98,9 +99,7 @@ def map_combinator(fn: Callable[[A], B], collection: Iterable[A]) -> Iterator[B]
     return (fn(x) for x in collection)
 
 
-def fold_combinator(
-    fn: Callable[[B, A], B], init: B, collection: Iterable[A]
-) -> B:
+def fold_combinator(fn: Callable[[B, A], B], init: B, collection: Iterable[A]) -> B:
     """Left-fold (strict) — ``foldl(⊕, z, xs) = ((z ⊕ x₁) ⊕ x₂) ⊕ ...`` (Bird 1988).
 
     Math formulation
@@ -201,8 +200,10 @@ def compose(f: Callable[[B], C], g: Callable[[A], B]) -> Callable[[A], C]:
     node in the defunctionalised state machine, which is what Python's
     closure object IS at runtime.
     """
+
     def _composed(x: A) -> C:
         return f(g(x))
+
     return _composed
 
 
@@ -232,8 +233,10 @@ def nest(
     f(g(x))``) because the *inner* function is passed *as an argument*
     to the *outer* function rather than being applied first.
     """
+
     def _nested(coll: Iterable[Any]) -> List[Any]:
         return outer_fn(inner_fn, coll)
+
     return _nested
 
 
@@ -246,8 +249,8 @@ def nest(
 # shape — see warm_start.pocket_features for the canonical source).
 PocketFeatures = Dict[str, Any]
 Rule = Any  # opaque click-rule object — lambda-combinator layer does
-            # not introspect it; we only need ``name`` and a callable
-            # ``applies_to(pocket_features)`` predicate.
+# not introspect it; we only need ``name`` and a callable
+# ``applies_to(pocket_features)`` predicate.
 
 
 def _rule_applies_to_pocket(rule: Rule, pocket_features: PocketFeatures) -> bool:
@@ -333,9 +336,7 @@ class ClickRuleCombinator:
 
         # Stage 2 — map_combinator (Reynolds 1972): (rule, score) pair.
         scored = list(
-            map_combinator(
-                lambda r: (r, _rule_score(r, pocket_features)), applicable
-            )
+            map_combinator(lambda r: (r, _rule_score(r, pocket_features)), applicable)
             # NB: ``map_combinator`` returns an Iterator; we materialise
             # so the subsequent fold is well-defined.
         )
@@ -515,8 +516,7 @@ def _imperative_count_heavy_atoms(smiles: str) -> Dict[str, int]:
         from rdkit import Chem  # type: ignore[import-not-found]
     except ImportError as exc:  # pragma: no cover
         raise ImportError(
-            "lambda_combinators requires RDKit. "
-            "Install with `uv pip install rdkit`."
+            "lambda_combinators requires RDKit. " "Install with `uv pip install rdkit`."
         ) from exc
 
     mol = Chem.MolFromSmiles(smiles)
@@ -576,8 +576,7 @@ def count_heavy_atoms(smiles: str) -> Dict[str, int]:
         from rdkit import Chem  # type: ignore[import-not-found]
     except ImportError as exc:  # pragma: no cover
         raise ImportError(
-            "lambda_combinators requires RDKit. "
-            "Install with `uv pip install rdkit`."
+            "lambda_combinators requires RDKit. " "Install with `uv pip install rdkit`."
         ) from exc
 
     mol = Chem.MolFromSmiles(smiles)
@@ -586,9 +585,7 @@ def count_heavy_atoms(smiles: str) -> Dict[str, int]:
     return dict(Counter(map_combinator(lambda a: a.GetSymbol(), mol.GetAtoms())))
 
 
-def diff_counts(
-    reactants: Iterable[str], products: Iterable[str]
-) -> Dict[str, int]:
+def diff_counts(reactants: Iterable[str], products: Iterable[str]) -> Dict[str, int]:
     """HOF version of :func:`_imperative_diff_counts`.
 
     Equivalent to the imperative signed for-loop.  Bit-for-bit identical

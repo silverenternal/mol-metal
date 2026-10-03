@@ -87,6 +87,7 @@ N_GEOMETRIES_DEFAULT: int = 8
 # Pure-torch scatter-sum (no torch_scatter dependency)
 # ---------------------------------------------------------------------------
 
+
 def _scatter_sum(
     msg: torch.Tensor,
     dst: torch.Tensor,
@@ -113,6 +114,7 @@ def _scatter_sum(
 # ---------------------------------------------------------------------------
 # Layer
 # ---------------------------------------------------------------------------
+
 
 class CoordinationAwareGNNLayer(nn.Module):
     """Coordination-aware graph convolution layer.
@@ -213,8 +215,7 @@ class CoordinationAwareGNNLayer(nn.Module):
             )
         if x.size(-1) != self.hidden_dim:
             raise ValueError(
-                f"x last dim must be hidden_dim={self.hidden_dim}; "
-                f"got {x.size(-1)}"
+                f"x last dim must be hidden_dim={self.hidden_dim}; " f"got {x.size(-1)}"
             )
         if coordination.size(-1) != self.n_coordination_classes:
             raise ValueError(
@@ -265,6 +266,7 @@ class CoordinationAwareGNNLayer(nn.Module):
 # ---------------------------------------------------------------------------
 # Heads
 # ---------------------------------------------------------------------------
+
 
 class CoordinationNumberHead(nn.Module):
     """Per-metal coordination-number classifier.
@@ -371,6 +373,7 @@ class CoordinationGeometryHead(nn.Module):
 # ---------------------------------------------------------------------------
 # Composite
 # ---------------------------------------------------------------------------
+
 
 class CoordinationAwareGNNComposite(nn.Module):
     """Layer + heads bundle for end-to-end coordination reasoning.

@@ -51,7 +51,8 @@ def test_diffdock_adapter_unavailable_returns_fallback(monkeypatch) -> None:
     monkeypatch.setattr(
         "builtins.__import__",
         lambda name, *a, **kw: (_ for _ in ()).throw(ImportError(name))
-        if name == "diffdock" else __import__(name, *a, **kw),
+        if name == "diffdock"
+        else __import__(name, *a, **kw),
     )
 
     adapter = DiffDockAdapter(binary="/nonexistent/diffdock")
@@ -91,7 +92,8 @@ def test_flowdock_adapter_unavailable_returns_fallback(monkeypatch) -> None:
     monkeypatch.setattr(
         "builtins.__import__",
         lambda name, *a, **kw: (_ for _ in ()).throw(ImportError(name))
-        if name == "flowdock" else __import__(name, *a, **kw),
+        if name == "flowdock"
+        else __import__(name, *a, **kw),
     )
 
     adapter = FlowDockAdapter(binary="/nonexistent/flowdock")
@@ -174,7 +176,10 @@ def test_binding_typecheck_with_failing_oracle() -> None:
     )
     mol = MoleculeClosedTerm.from_smiles("CCO", embed_3d=False)
     result = typecheck(
-        mol, site, leaf_oracle_call=True, oracle=_MockFailingOracle(),
+        mol,
+        site,
+        leaf_oracle_call=True,
+        oracle=_MockFailingOracle(),
     )
     # The fingerprint stub passes (no constraints violated), but the
     # oracle reports RMSD=5Å and Vina=-3 kcal/mol — both worse than the
@@ -192,10 +197,14 @@ def test_resolve_docking_oracle_returns_none_when_missing(monkeypatch) -> None:
     from molmetal_lam.sbdd_env import diffdock_adapter, flowdock_adapter
 
     monkeypatch.setattr(
-        diffdock_adapter.DiffDockAdapter, "is_available", lambda self: False,
+        diffdock_adapter.DiffDockAdapter,
+        "is_available",
+        lambda self: False,
     )
     monkeypatch.setattr(
-        flowdock_adapter.FlowDockAdapter, "is_available", lambda self: False,
+        flowdock_adapter.FlowDockAdapter,
+        "is_available",
+        lambda self: False,
     )
     assert _resolve_docking_oracle() is None
 

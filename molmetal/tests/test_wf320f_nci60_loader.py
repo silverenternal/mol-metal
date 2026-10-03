@@ -42,7 +42,12 @@ def test_wf320f_canonical_columns_exact_order():
     """Returns the canonical 6-col schema in exact order (GATE-6)."""
     df = load_nci60()
     assert df.columns.tolist() == [
-        "smiles", "metal", "cell_line", "protein", "pIC50", "active",
+        "smiles",
+        "metal",
+        "cell_line",
+        "protein",
+        "pIC50",
+        "active",
     ]
 
 
@@ -76,7 +81,16 @@ def test_wf320f_cell_line_filter_at_least_8_unique():
     """Cell-line filter: ≥8 unique NCI-60 cell lines on disk."""
     df = load_nci60()
     assert df["cell_line"].nunique() >= 8
-    expected_subset = {"MCF7", "A549", "A2780", "A2780cis", "HCT116", "PC3", "HL60", "SKOV3"}
+    expected_subset = {
+        "MCF7",
+        "A549",
+        "A2780",
+        "A2780cis",
+        "HCT116",
+        "PC3",
+        "HL60",
+        "SKOV3",
+    }
     actual = set(df["cell_line"].unique().tolist())
     assert expected_subset.issubset(actual)
 
@@ -94,7 +108,8 @@ def test_wf320f_scaffold_split_three_index_arrays():
             continue
         try:
             scaffold = MurckoScaffold.MurckoScaffoldSmiles(
-                mol=mol, includeChirality=False,
+                mol=mol,
+                includeChirality=False,
             )
         except Exception:
             continue
@@ -147,10 +162,10 @@ def test_wf320f_malformed_csv_missing_columns_raises_valueerror(tmp_path: Path):
 def test_wf320f_smiles_rdkit_round_trip_subsample():
     """RDKit can round-trip ≥95% of NCI-60 SMILES (subsample 1k)."""
     from rdkit import Chem
+
     df = load_nci60().sample(n=min(1000, len(load_nci60())), random_state=2)
     parsed = sum(
-        1 for smi in df["smiles"].tolist()
-        if Chem.MolFromSmiles(smi) is not None
+        1 for smi in df["smiles"].tolist() if Chem.MolFromSmiles(smi) is not None
     )
     parse_rate = parsed / len(df)
     assert parse_rate >= 0.95, f"SMILES parse rate {parse_rate:.3f} < 0.95"
@@ -162,7 +177,12 @@ def test_wf320f_dataframe_consumable_by_canonical_concat():
     df_bdb = load_binding_db()
     combined = pd.concat([df_nci, df_bdb], ignore_index=True)
     assert combined.columns.tolist() == [
-        "smiles", "metal", "cell_line", "protein", "pIC50", "active",
+        "smiles",
+        "metal",
+        "cell_line",
+        "protein",
+        "pIC50",
+        "active",
     ]
     assert len(combined) == len(df_nci) + len(df_bdb)
 

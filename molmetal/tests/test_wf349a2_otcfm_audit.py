@@ -44,6 +44,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from molmetal.adapters.flow_matching_lipman import optimal_transport_v2 as ot2
+
 try:
     from molmetal.adapters.flow_matching_lipman.optimal_transport_v2 import (
         exact_minibatch_ot_coupling,
@@ -131,12 +132,12 @@ def test_exact_ot_matches_hungarian_reference_on_gaussian() -> None:
     )
 
     # Permutation validity: px0 must be a permutation of x0 rows.
-    assert _is_valid_permutation(px0, x0), (
-        "exact_minibatch_ot_coupling returned non-permutation"
-    )
-    assert _is_valid_permutation(px1, x1), (
-        "exact_minibatch_ot_coupling returned non-permutation"
-    )
+    assert _is_valid_permutation(
+        px0, x0
+    ), "exact_minibatch_ot_coupling returned non-permutation"
+    assert _is_valid_permutation(
+        px1, x1
+    ), "exact_minibatch_ot_coupling returned non-permutation"
 
 
 def test_exact_ot_matches_hungarian_reference_3d_coordinates() -> None:
@@ -173,12 +174,12 @@ def test_edge_case_singleton_n_1_returns_identity() -> None:
     x1 = torch.randn(1, 4, dtype=torch.float32)
 
     px0, px1 = exact_minibatch_ot_coupling(x0, x1)
-    assert torch.equal(px0, x0), (
-        f"singleton: px0 must equal x0; px0={px0.tolist()} vs x0={x0.tolist()}"
-    )
-    assert torch.equal(px1, x1), (
-        f"singleton: px1 must equal x1; px1={px1.tolist()} vs x1={x1.tolist()}"
-    )
+    assert torch.equal(
+        px0, x0
+    ), f"singleton: px0 must equal x0; px0={px0.tolist()} vs x0={x0.tolist()}"
+    assert torch.equal(
+        px1, x1
+    ), f"singleton: px1 must equal x1; px1={px1.tolist()} vs x1={x1.tolist()}"
 
 
 def test_edge_case_identical_points_returns_identity() -> None:
@@ -193,12 +194,12 @@ def test_edge_case_identical_points_returns_identity() -> None:
     b = 8
     x = torch.randn(b, 4, dtype=torch.float32)
     px0, px1 = exact_minibatch_ot_coupling(x.clone(), x.clone())
-    assert torch.equal(px0, x), (
-        f"identical points: px0 must equal x; px0={px0.tolist()} vs x={x.tolist()}"
-    )
-    assert torch.equal(px1, x), (
-        f"identical points: px1 must equal x; px1={px1.tolist()} vs x={x.tolist()}"
-    )
+    assert torch.equal(
+        px0, x
+    ), f"identical points: px0 must equal x; px0={px0.tolist()} vs x={x.tolist()}"
+    assert torch.equal(
+        px1, x
+    ), f"identical points: px1 must equal x; px1={px1.tolist()} vs x={x.tolist()}"
 
 
 def test_edge_case_identical_rows_in_x0() -> None:
@@ -214,9 +215,9 @@ def test_edge_case_identical_rows_in_x0() -> None:
     # px0 == x0 (since all rows identical, any permutation is the same)
     assert torch.equal(px0, x0)
     # px1 must be a valid permutation of x1 rows
-    assert _is_valid_permutation(px1, x1), (
-        f"px1 is not a permutation of x1: {px1.tolist()} vs {x1.tolist()}"
-    )
+    assert _is_valid_permutation(
+        px1, x1
+    ), f"px1 is not a permutation of x1: {px1.tolist()} vs {x1.tolist()}"
 
 
 def test_edge_case_empty_batch_raises_value_error() -> None:
@@ -279,12 +280,12 @@ def test_large_batch_fallback_returns_valid_permutation() -> None:
     px0, px1 = exact_minibatch_ot_coupling(x0, x1)
     assert px0.shape == (b, 4)
     assert px1.shape == (b, 4)
-    assert _is_valid_permutation(px0, x0), (
-        "large-batch fallback returned non-permutation of x0"
-    )
-    assert _is_valid_permutation(px1, x1), (
-        "large-batch fallback returned non-permutation of x1"
-    )
+    assert _is_valid_permutation(
+        px0, x0
+    ), "large-batch fallback returned non-permutation of x0"
+    assert _is_valid_permutation(
+        px1, x1
+    ), "large-batch fallback returned non-permutation of x1"
 
 
 def test_large_batch_fallback_with_custom_max_batch() -> None:

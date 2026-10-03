@@ -66,6 +66,7 @@ Usage examples
     uv run --no-sync python molmetal/scripts/verify_catherine_25_metals.py \\
         --metals 25 --synthetic-only
 """
+
 from __future__ import annotations
 
 import argparse
@@ -98,9 +99,36 @@ log = logging.getLogger("wf68_catherine")
 #: 30 d-block transition metals — same canonical list as Wf-57
 #: (:data:`molmetal.math_skills.catherine_properties.DBLOCK_30_METALS`).
 DEFAULT_30_METALS: Tuple[str, ...] = (
-    "Sc", "Ti", "V",  "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
-    "Y",  "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
-    "La", "Hf", "Ta", "W",  "Re", "Os", "Ir", "Pt", "Au", "Hg",
+    "Sc",
+    "Ti",
+    "V",
+    "Cr",
+    "Mn",
+    "Fe",
+    "Co",
+    "Ni",
+    "Cu",
+    "Zn",
+    "Y",
+    "Zr",
+    "Nb",
+    "Mo",
+    "Tc",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Cd",
+    "La",
+    "Hf",
+    "Ta",
+    "W",
+    "Re",
+    "Os",
+    "Ir",
+    "Pt",
+    "Au",
+    "Hg",
 )
 
 #: 6 Catherine properties — the theorem-level claim this verifier tests.
@@ -137,12 +165,7 @@ def _verify_via_direct_import(metal: str, summary: Mapping[str, Any]):
     """
     import importlib.util
 
-    cp_path = (
-        _REPO_ROOT
-        / "molmetal"
-        / "math_skills"
-        / "catherine_properties.py"
-    )
+    cp_path = _REPO_ROOT / "molmetal" / "math_skills" / "catherine_properties.py"
     spec = importlib.util.spec_from_file_location(
         "_catherine_properties_direct", str(cp_path)
     )
@@ -220,6 +243,7 @@ def _load_wf57_helpers():
             _summarise_seed_summary,
             _synthetic_summary,
         )
+
         return {
             "load_partner_terms": _load_partner_terms,
             "run_closure": _run_closure_for_metal,
@@ -256,7 +280,7 @@ def _run_metal(
     if not helpers.get("available") or synthetic_only:
         # Pure synthetic path — Wf-57 fallback parity.
         synth = helpers.get("synthetic") or (
-            (lambda m, seed, max_depth, partner_terms_n: {
+            lambda m, seed, max_depth, partner_terms_n: {
                 "metal": m,
                 "seed": seed,
                 "max_depth": max_depth,
@@ -272,7 +296,7 @@ def _run_metal(
                 "partner_terms_n": partner_terms_n,
                 "wall_time_s": 0.0,
                 "synthetic": True,
-            })
+            }
         )
         seed_summaries: List[Dict[str, Any]] = []
         for seed in seeds:
@@ -285,7 +309,7 @@ def _run_metal(
             seed_summaries.append(s)
         # Aggregate across seeds.
         summarise = helpers.get("summarise") or (
-            (lambda m, ss: {
+            lambda m, ss: {
                 "metal": m,
                 "seed": -1,
                 "max_depth": int(ss[0].get("max_depth", 1)),
@@ -302,7 +326,7 @@ def _run_metal(
                 "wall_time_s": 0.0,
                 "n_seeds": len(ss),
                 "synthetic": True,
-            })
+            }
         )
         summary = summarise(metal, seed_summaries)
         summary["synthetic"] = True
@@ -384,9 +408,7 @@ def _write_per_metal(
             "wf": "Wf-68",
             "phase": "Phase 1",
             "r20_plan": "R20-P5.1",
-            "wf57_back_link": (
-                f"../../wf57_catherine_25metals/per_metal_pass.json"
-            ),
+            "wf57_back_link": (f"../../wf57_catherine_25metals/per_metal_pass.json"),
             "helpers_available": helpers_available,
             "timestamp": _utcnow_iso(),
         },
@@ -436,7 +458,9 @@ def _render_synthesis(
 ) -> str:
     """Render the Wf-68 P5.1 synthesis.md (R20-P5 ship surface)."""
     lines: List[str] = []
-    lines.append("# Wf-68 Phase 1 (R20-P5.1) — Catherine 6/6 Properties × 25+ d-block metals")
+    lines.append(
+        "# Wf-68 Phase 1 (R20-P5.1) — Catherine 6/6 Properties × 25+ d-block metals"
+    )
     lines.append("")
     lines.append("**Date**: {0}".format(metadata["timestamp"]))
     lines.append(
@@ -456,7 +480,9 @@ def _render_synthesis(
         )
     )
     lines.append("")
-    lines.append("**Parent plan**: `TODO/pending/96_r20_p5_closure_catherine.md` §3 P5.1")
+    lines.append(
+        "**Parent plan**: `TODO/pending/96_r20_p5_closure_catherine.md` §3 P5.1"
+    )
     lines.append(
         "**Back-link**: Wf-57 Phase 3 (`molmetal/reports/wf57_catherine_25metals/per_metal_pass.json`)"
     )
@@ -486,9 +512,7 @@ def _render_synthesis(
     lines.append("")
     lines.append("## Per-property pass-rate")
     lines.append("")
-    lines.append(
-        "| Property | #metals PASS / #metals total | Pass-rate |"
-    )
+    lines.append("| Property | #metals PASS / #metals total | Pass-rate |")
     lines.append("|---|---:|---:|")
     prop_pass_count: Dict[str, int] = {pid: 0 for pid in CATHERINE_PROPERTIES}
     # We need the per-metal verdict dict to derive the per-property count;
@@ -516,9 +540,7 @@ def _render_synthesis(
     lines.append("")
     lines.append("## Per-metal 6/6 verdict")
     lines.append("")
-    lines.append(
-        "| Metal | 6/6 | P1 | P2 | P3 | P4 | P5 | P6 | synth |"
-    )
+    lines.append("| Metal | 6/6 | P1 | P2 | P3 | P4 | P5 | P6 | synth |")
     lines.append("|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|")
     for r in per_metal_rows:
         catherine_path = out_dir / r["metal"] / "catherine_props.json"
@@ -547,11 +569,13 @@ def _render_synthesis(
     lines.append(
         "- `catherine_6_props.json` — combined sweep verdict + back-link to Wf-57"
     )
+    lines.append("- `synthesis.md` — this file (Wf-68 P5.1 ship surface)")
     lines.append(
-        "- `synthesis.md` — this file (Wf-68 P5.1 ship surface)"
+        "- `{metal}/catherine_props.json` — per-metal 6/6 verdict (one file per metal)"
     )
-    lines.append("- `{metal}/catherine_props.json` — per-metal 6/6 verdict (one file per metal)")
-    lines.append("- `{metal}/bench_summary.json` — per-metal closure summary that fed the verifiers")
+    lines.append(
+        "- `{metal}/bench_summary.json` — per-metal closure summary that fed the verifiers"
+    )
     lines.append("")
     return "\n".join(lines) + "\n"
 
@@ -653,7 +677,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     # Resolve 30-metal list.
     csv_path = (
-        Path(args.metal_csv) if args.metal_csv
+        Path(args.metal_csv)
+        if args.metal_csv
         else _REPO_ROOT / "molmetal" / "data" / "transition_metals_30.csv"
     )
     metals: List[str] = []
@@ -700,7 +725,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
 
     out_dir = (
-        Path(args.out_dir) if args.out_dir
+        Path(args.out_dir)
+        if args.out_dir
         else _REPO_ROOT / "molmetal" / "reports" / "wf68_p5_1_catherine"
     )
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -710,7 +736,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     log.info(
         "[Wf-68] Catherine sweep: metals=%d, seeds=%d, max_depth=%d, "
         "max_products=%d, real_bfs=%s",
-        len(metals), len(seeds), args.max_depth, args.max_products,
+        len(metals),
+        len(seeds),
+        args.max_depth,
+        args.max_products,
         real_bfs_available,
     )
 
@@ -757,9 +786,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     combined = {
         "metadata": metadata,
         "metals": {r["metal"]: r for r in per_metal_rows},
-        "wf57_back_link": (
-            "../../wf57_catherine_25metals/per_metal_pass.json"
-        ),
+        "wf57_back_link": ("../../wf57_catherine_25metals/per_metal_pass.json"),
     }
     (out_dir / "catherine_6_props.json").write_text(
         json.dumps(combined, indent=2, default=str)
@@ -777,7 +804,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     log.info(
         "[Wf-68] Sweep complete: %d metals, wall=%.2fs — 6/6 PASS on "
         "%d / %d metals (see %s)",
-        len(metals), wall_total, n_pass_6of6, len(metals),
+        len(metals),
+        wall_total,
+        n_pass_6of6,
+        len(metals),
         out_dir / "catherine_6_props.json",
     )
     return 0

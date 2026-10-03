@@ -4,6 +4,7 @@ Each test asserts the healthy target from
 ``molmetal/reports/govern_review_L4_L6.md`` against a freshly-built
 state of the corresponding module.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -37,6 +38,7 @@ from molmetal_lam.tile_lib.library import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _term(smiles: str) -> MoleculeClosedTerm:
     """Wrap a SMILES string as a closed term."""
     return MoleculeClosedTerm.from_smiles(smiles)
@@ -45,38 +47,36 @@ def _term(smiles: str) -> MoleculeClosedTerm:
 def _fire_all_canonical_pairs() -> dict:
     """Measure just these canonical calls, excluding prior fault-injection tests."""
     before = l4_metrics()["per_rule"]
-    REACTION_RULES["CuAAC"].reduce(
-        (_term("CCN=[N+]=[N-]"), _term("C#CC"))
-    )
-    REACTION_RULES["SPAAC"].reduce(
-        (_term("CCN=[N+]=[N-]"), _term("C1CCCC#CCC1"))
-    )
-    REACTION_RULES["SPC"].reduce(
-        (_term("CCN=[N+]=[N-]"), _term("CP(C)C"))
-    )
-    REACTION_RULES["DielsAlder"].reduce(
-        (_term("C1C=CC=C1"), _term("O=C1OC(=O)C=C1"))
-    )
+    REACTION_RULES["CuAAC"].reduce((_term("CCN=[N+]=[N-]"), _term("C#CC")))
+    REACTION_RULES["SPAAC"].reduce((_term("CCN=[N+]=[N-]"), _term("C1CCCC#CCC1")))
+    REACTION_RULES["SPC"].reduce((_term("CCN=[N+]=[N-]"), _term("CP(C)C")))
+    REACTION_RULES["DielsAlder"].reduce((_term("C1C=CC=C1"), _term("O=C1OC(=O)C=C1")))
     # ThiolEne: pick a thiol tile (thiophenol) + alkene (cyclopentadiene).
     thiol = _term("Sc1ccccc1")
     alkene = _term("C2CC3CC2C=C3")
     REACTION_RULES["ThiolEne"].reduce((thiol, alkene))
     REACTION_RULES["ThiolEne"].can_apply(thiol, alkene)
     after = l4_metrics()["per_rule"]
-    return {rule: {key: value - before[rule][key] for key, value in counters.items()}
-            for rule, counters in after.items()}
+    return {
+        rule: {key: value - before[rule][key] for key, value in counters.items()}
+        for rule, counters in after.items()
+    }
 
 
 # ---------------------------------------------------------------------------
 # L4 — Reactions  (7 tests)
 # ---------------------------------------------------------------------------
 
+
 def test_l4_01_fire_rate_per_rule():
     """FIRE_RATE_PER_RULE — CuAAC ≥ 0.85; SPC ≥ 0.85; ThiolEne ≥ 0.75."""
     m = _fire_all_canonical_pairs()
     for rule_name, lower in [
-        ("CuAAC", 0.85), ("SPAAC", 0.80), ("SPC", 0.85),
-        ("DielsAlder", 0.90), ("ThiolEne", 0.75),
+        ("CuAAC", 0.85),
+        ("SPAAC", 0.80),
+        ("SPC", 0.85),
+        ("DielsAlder", 0.90),
+        ("ThiolEne", 0.75),
     ]:
         attempts = m[rule_name]["attempts"] or 1
         rate = m[rule_name]["fire"] / attempts
@@ -105,7 +105,9 @@ def test_l4_04_mass_balance_pass_rate():
     """MASS_BALANCE_PASS_RATE — 1.0 (invariant)."""
     before = l4_metrics()["mass_balance"]
     verify_mass_balance()  # runs the audit on every rule
-    mb = {key: value - before[key] for key, value in l4_metrics()["mass_balance"].items()}
+    mb = {
+        key: value - before[key] for key, value in l4_metrics()["mass_balance"].items()
+    }
     total = mb["pass"] + mb["fail"]
     assert total > 0
     assert mb["fail"] == 0
@@ -138,6 +140,7 @@ def test_l4_07_thiolene_can_apply_rate():
 # ---------------------------------------------------------------------------
 # L5 — Rate Predictors  (5 tests)
 # ---------------------------------------------------------------------------
+
 
 def test_l5_01_predictor_train_r2():
     """PREDICTOR_TRAIN_R2 — per-rule R² ≥ 0.6 on 10-row literature fits."""
@@ -191,6 +194,7 @@ def test_l5_05_backend_used():
 # L6 — Tile Library  (6 tests)
 # ---------------------------------------------------------------------------
 
+
 def test_l6_01_tile_count_per_group():
     """TILE_COUNT_PER_GROUP — exactly 12 (4 + 4 + 4)."""
     tiles = STANDARD_12_TILES()
@@ -216,7 +220,9 @@ def test_l6_03_canonical_smiles_unique():
     n_unique = len(set(smis))
     # The production tile library has expanded beyond the original 12/14
     # seed tiles.  The invariant is now uniqueness and a non-empty library.
-    assert n_unique == len(smis), f"duplicate canonical SMILES: {len(smis)} total, {n_unique} unique"
+    assert n_unique == len(
+        smis
+    ), f"duplicate canonical SMILES: {len(smis)} total, {n_unique} unique"
     assert n_unique == len(smis), "duplicate canonical SMILES detected"
 
 

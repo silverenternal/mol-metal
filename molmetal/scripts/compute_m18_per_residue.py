@@ -26,6 +26,7 @@ Usage
         --out-metric metrics/by_metric/metric18_protein_metal_per_residue.json \\
         --out-report molmetal/reports/wf247_b/final.md
 """
+
 from __future__ import annotations
 
 import argparse
@@ -88,9 +89,23 @@ def synthesize_complex_scores(
 
 def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Wf-247-B m18 per-residue AUC")
-    p.add_argument("--data", default=str(PROJECT_ROOT / "molmetal" / "data" / "protein_metal_binding.csv"))
-    p.add_argument("--out-metric", default=str(PROJECT_ROOT / "metrics" / "by_metric" / "metric18_protein_metal_per_residue.json"))
-    p.add_argument("--out-report", default=str(PROJECT_ROOT / "molmetal" / "reports" / "wf247_b" / "final.md"))
+    p.add_argument(
+        "--data",
+        default=str(PROJECT_ROOT / "molmetal" / "data" / "protein_metal_binding.csv"),
+    )
+    p.add_argument(
+        "--out-metric",
+        default=str(
+            PROJECT_ROOT
+            / "metrics"
+            / "by_metric"
+            / "metric18_protein_metal_per_residue.json"
+        ),
+    )
+    p.add_argument(
+        "--out-report",
+        default=str(PROJECT_ROOT / "molmetal" / "reports" / "wf247_b" / "final.md"),
+    )
     p.add_argument("--seed", type=int, default=DEFAULT_SEED)
     p.add_argument("--n-pos-residues", type=int, default=DEFAULT_N_RESIDUES_PER_POS)
     p.add_argument("--n-neg-residues", type=int, default=DEFAULT_N_RESIDUES_PER_NEG)
@@ -130,9 +145,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     md.append("")
     md.append("## TL;DR")
     md.append("")
-    md.append(f"- **Complex-level AUC (legacy reproduced):** {result['per_complex_auc']:.4f}")
-    md.append(f"- **Per-residue AUC (synthetic proxy):** {result['per_residue_auc']:.4f}")
-    md.append(f"- **Per-residue PR-AUC (synthetic proxy):** {result['per_residue_pr_auc']:.4f}")
+    md.append(
+        f"- **Complex-level AUC (legacy reproduced):** {result['per_complex_auc']:.4f}"
+    )
+    md.append(
+        f"- **Per-residue AUC (synthetic proxy):** {result['per_residue_auc']:.4f}"
+    )
+    md.append(
+        f"- **Per-residue PR-AUC (synthetic proxy):** {result['per_residue_pr_auc']:.4f}"
+    )
     md.append(f"- **N complexes:** {result['n_complex']}")
     md.append(f"- **N residue samples (synthesized):** {result['n_residue_samples']}")
     md.append("")
@@ -150,7 +171,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     md.append("")
     md.append("## Reconciliation table (top 25)")
     md.append("")
-    md.append("| idx | protein | metal | n_residues | n_pos_residues | mean_score | max_score | true_label | complex_score |")
+    md.append(
+        "| idx | protein | metal | n_residues | n_pos_residues | mean_score | max_score | true_label | complex_score |"
+    )
     md.append("|---:|---|---|---:|---:|---:|---:|---:|---:|")
     for r in result["reconciliation"]:
         md.append(
@@ -169,11 +192,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         "| G2_per_residue_labels | False (synthetic proxy only; "
         "MetalCytoToxDB does not ship real per-residue labels) |"
     )
-    md.append("| G3_adapter_implemented | True (`molmetal/adapters/per_residue_protein_metal_auc.py`) |")
+    md.append(
+        "| G3_adapter_implemented | True (`molmetal/adapters/per_residue_protein_metal_auc.py`) |"
+    )
     md.append(f"| G4_per_complex_auc | {result['per_complex_auc']:.4f} |")
     md.append(f"| G5_per_residue_auc | {result['per_residue_auc']:.4f} |")
     md.append("| G6_reconciliation_table | True (≥25 rows in JSON) |")
-    md.append("| G7_test_added | True (`molmetal/tests/test_per_residue_protein_metal.py`) |")
+    md.append(
+        "| G7_test_added | True (`molmetal/tests/test_per_residue_protein_metal.py`) |"
+    )
     md.append("| G8_report_written | True (this file) |")
     md.append("")
     md.append(f"## Elapsed: {elapsed:.2f}s")

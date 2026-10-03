@@ -76,6 +76,7 @@ def _make_rules():
     from molmetal.molmetal_lam.lam_chem.non_click_medchem_rules import (
         NonClickMedChemRegistry,
     )
+
     registry = NonClickMedChemRegistry()
     register_non_click_rules(registry)
     return registry.get_rules()
@@ -111,9 +112,9 @@ def test_medchem_augmented_generator_prob_zero_only_click():
         rng=random.Random(0),
     )
     out = aug.generate(GLYCINE, n_samples=10)
-    assert all(s == GLYCINE for s in out), (
-        f"prob=0 must produce passthrough SMILES; got {out!r}"
-    )
+    assert all(
+        s == GLYCINE for s in out
+    ), f"prob=0 must produce passthrough SMILES; got {out!r}"
 
 
 def test_medchem_augmented_generator_prob_one_only_non_click():
@@ -133,9 +134,7 @@ def test_medchem_augmented_generator_prob_one_only_non_click():
     # generator falls back to the seed — but with prob=1.0 the
     # majority should differ.
     n_different = sum(1 for s in out if s != GLYCINE)
-    assert n_different >= 1, (
-        f"prob=1.0 must apply non-click rules; got {out!r}"
-    )
+    assert n_different >= 1, f"prob=1.0 must apply non-click rules; got {out!r}"
 
 
 def test_medchem_augmented_generator_prob_03():
@@ -228,9 +227,9 @@ def test_medchem_augmented_generator_empty_rules_returns_base():
         rng=random.Random(0),
     )
     out = aug.generate(GLYCINE, n_samples=6)
-    assert all(s == GLYCINE for s in out), (
-        f"empty rules must produce passthrough; got {out!r}"
-    )
+    assert all(
+        s == GLYCINE for s in out
+    ), f"empty rules must produce passthrough; got {out!r}"
 
 
 def test_medchem_augmented_generator_diversity_lift():
@@ -553,6 +552,7 @@ def test_medchem_integration_error_is_value_error():
 def test_module_import_surface():
     """The integration module exposes the canonical public API."""
     from molmetal.molmetal_lam.lam_chem import medchem_gen_integration
+
     expected = {
         "MedChemAugmentedGenerator",
         "RuleConflictResolver",
@@ -564,9 +564,9 @@ def test_module_import_surface():
         "DEFAULT_NON_CLICK_RULE_PRIORITY",
     }
     for name in expected:
-        assert hasattr(medchem_gen_integration, name), (
-            f"medchem_gen_integration missing public attribute {name!r}"
-        )
+        assert hasattr(
+            medchem_gen_integration, name
+        ), f"medchem_gen_integration missing public attribute {name!r}"
 
 
 def test_non_click_rules_pass_through_to_augmented_generator():

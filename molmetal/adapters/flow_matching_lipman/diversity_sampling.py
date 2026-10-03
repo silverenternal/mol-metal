@@ -205,7 +205,9 @@ def nucleus_sample(
 # §2.  Maximum Mean Discrepancy (MMD) (Gretton 2012)
 # =====================================================================
 def _rbf_kernel(
-    x: torch.Tensor, y: torch.Tensor, sigma: float,
+    x: torch.Tensor,
+    y: torch.Tensor,
+    sigma: float,
 ) -> torch.Tensor:
     """RBF kernel Gram matrix ``K(x_i, y_j) = exp(-||x_i - y_j||^2 / (2 sigma^2))``.
 
@@ -398,7 +400,8 @@ def repulsion_loss(
     pairwise_sim = normed @ normed.t()  # (N, N)
     # Mask: upper triangle (i < j), diagonal-removed.
     mask = torch.triu(
-        torch.ones_like(pairwise_sim), diagonal=1,
+        torch.ones_like(pairwise_sim),
+        diagonal=1,
     ).to(pairwise_sim.dtype)
     penalty = F.relu(pairwise_sim - float(margin)) * mask
     if reduce:
@@ -563,10 +566,7 @@ def diversity_aware_sampling_step(
                 reduce=True,
             )
 
-    combined = (
-        float(config.mmd_weight) * mmd
-        + float(config.repulsion_weight) * rep
-    )
+    combined = float(config.mmd_weight) * mmd + float(config.repulsion_weight) * rep
     return DiversitySamplingOutput(
         sampled=sampled,
         mmd_loss=mmd,

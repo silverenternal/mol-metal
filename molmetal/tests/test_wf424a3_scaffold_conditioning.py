@@ -75,7 +75,10 @@ def test_3d_input() -> None:
     scaffold_bias[0, 2] = 1.0
 
     out = _sc.scaffold_condition(
-        logits, scaffold_idx, n_scaffolds=n_scaffolds, scaffold_bias=scaffold_bias,
+        logits,
+        scaffold_idx,
+        n_scaffolds=n_scaffolds,
+        scaffold_bias=scaffold_bias,
     )
 
     # Shape preserved
@@ -104,7 +107,10 @@ def test_2d_input_reshaped() -> None:
     scaffold_bias[0, 0] = 1.0  # only column 0 affected for samples with idx=0
 
     out = _sc.scaffold_condition(
-        logits, scaffold_idx, n_scaffolds=n_scaffolds, scaffold_bias=scaffold_bias,
+        logits,
+        scaffold_idx,
+        n_scaffolds=n_scaffolds,
+        scaffold_bias=scaffold_bias,
     )
 
     # Shape preserved (2D → 2D)
@@ -129,25 +135,29 @@ def test_error_clear() -> None:
     logits_4d = torch.randn(2, 3, 4, V)
     with pytest.raises(ValueError) as exc_info:
         _sc.scaffold_condition(
-            logits_4d, torch.zeros(2, dtype=torch.long),
-            n_scaffolds=n_scaffolds, scaffold_bias=scaffold_bias,
+            logits_4d,
+            torch.zeros(2, dtype=torch.long),
+            n_scaffolds=n_scaffolds,
+            scaffold_bias=scaffold_bias,
         )
     err_4d = str(exc_info.value)
-    assert "(B, V)" in err_4d or "(B, N, V)" in err_4d, (
-        f"4D error message should mention accepted shapes: {err_4d!r}"
-    )
+    assert (
+        "(B, V)" in err_4d or "(B, N, V)" in err_4d
+    ), f"4D error message should mention accepted shapes: {err_4d!r}"
 
     # 1D input
     logits_1d = torch.randn(V)
     with pytest.raises(ValueError) as exc_info:
         _sc.scaffold_condition(
-            logits_1d, torch.zeros(1, dtype=torch.long),
-            n_scaffolds=n_scaffolds, scaffold_bias=scaffold_bias,
+            logits_1d,
+            torch.zeros(1, dtype=torch.long),
+            n_scaffolds=n_scaffolds,
+            scaffold_bias=scaffold_bias,
         )
     err_1d = str(exc_info.value)
-    assert "(B, V)" in err_1d or "(B, N, V)" in err_1d, (
-        f"1D error message should mention accepted shapes: {err_1d!r}"
-    )
+    assert (
+        "(B, V)" in err_1d or "(B, N, V)" in err_1d
+    ), f"1D error message should mention accepted shapes: {err_1d!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -161,7 +171,10 @@ def test_2d_identity_path() -> None:
     logits = torch.randn(B, V)
     scaffold_idx = torch.zeros(B, dtype=torch.long)
     out = _sc.scaffold_condition(
-        logits, scaffold_idx, n_scaffolds=256, scaffold_bias=None,
+        logits,
+        scaffold_idx,
+        n_scaffolds=256,
+        scaffold_bias=None,
     )
     assert out.shape == (B, V)
     assert torch.equal(out, logits), "identity path not bit-exact for 2D"
@@ -175,7 +188,10 @@ def test_3d_identity_path() -> None:
     logits = torch.randn(B, N, V)
     scaffold_idx = torch.zeros(B, dtype=torch.long)
     out = _sc.scaffold_condition(
-        logits, scaffold_idx, n_scaffolds=256, scaffold_bias=None,
+        logits,
+        scaffold_idx,
+        n_scaffolds=256,
+        scaffold_bias=None,
     )
     assert out.shape == (B, N, V)
     assert torch.equal(out, logits), "identity path not bit-exact for 3D"
@@ -202,7 +218,10 @@ def test_2d_per_sample_bias_broadcast() -> None:
     scaffold_idx = torch.tensor([0, 1, 2, 3], dtype=torch.long)
 
     out = _sc.scaffold_condition(
-        logits, scaffold_idx, n_scaffolds=n_scaffolds, scaffold_bias=scaffold_bias,
+        logits,
+        scaffold_idx,
+        n_scaffolds=n_scaffolds,
+        scaffold_bias=scaffold_bias,
     )
 
     expected = torch.tensor(
@@ -213,9 +232,9 @@ def test_2d_per_sample_bias_broadcast() -> None:
             [1.0, 1.0, 1.0],
         ],
     )
-    assert torch.allclose(out, expected), (
-        f"per-row bias selection failed: {out} vs {expected}"
-    )
+    assert torch.allclose(
+        out, expected
+    ), f"per-row bias selection failed: {out} vs {expected}"
 
 
 def test_scaffold_idx_shape_mismatch_raises() -> None:
@@ -230,20 +249,26 @@ def test_scaffold_idx_shape_mismatch_raises() -> None:
     bad_idx = torch.zeros(5, dtype=torch.long)  # length 5, but B=8
     with pytest.raises(ValueError) as exc_info:
         _sc.scaffold_condition(
-            logits_2d, bad_idx, n_scaffolds=n_scaffolds, scaffold_bias=scaffold_bias,
+            logits_2d,
+            bad_idx,
+            n_scaffolds=n_scaffolds,
+            scaffold_bias=scaffold_bias,
         )
     err = str(exc_info.value)
-    assert "scaffold_idx" in err, (
-        f"scaffold_idx error message should mention scaffold_idx: {err!r}"
-    )
+    assert (
+        "scaffold_idx" in err
+    ), f"scaffold_idx error message should mention scaffold_idx: {err!r}"
 
     # 2D logits with 2D scaffold_idx (dim=2 instead of dim=1)
     bad_idx_2d = torch.zeros(8, 1, dtype=torch.long)
     with pytest.raises(ValueError) as exc_info:
         _sc.scaffold_condition(
-            logits_2d, bad_idx_2d, n_scaffolds=n_scaffolds, scaffold_bias=scaffold_bias,
+            logits_2d,
+            bad_idx_2d,
+            n_scaffolds=n_scaffolds,
+            scaffold_bias=scaffold_bias,
         )
     err_2d = str(exc_info.value)
-    assert "scaffold_idx" in err_2d, (
-        f"scaffold_idx dim error message should mention scaffold_idx: {err_2d!r}"
-    )
+    assert (
+        "scaffold_idx" in err_2d
+    ), f"scaffold_idx dim error message should mention scaffold_idx: {err_2d!r}"

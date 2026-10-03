@@ -122,8 +122,12 @@ def test_pocket_features_handles_empty() -> None:
 def test_pocket_features_handles_dict_input() -> None:
     """Dict-style residues are accepted via PocketResidue.from_dict."""
     residues = [
-        {"one_letter": "A", "resid": 94, "distance_to_ligand": 2.5,
-         "is_metal_anchor": True},
+        {
+            "one_letter": "A",
+            "resid": 94,
+            "distance_to_ligand": 2.5,
+            "is_metal_anchor": True,
+        },
         {"one_letter": "A", "resid": 96, "distance_to_ligand": 3.0},
         {"one_letter": "V", "resid": 143, "distance_to_ligand": 4.5},
     ]
@@ -149,9 +153,9 @@ def test_pocket_features_normalized() -> None:
     v = pocket_features(residues, pocket_name="CA2")
     # Slots 1..5 are fractions ∈ [0, 1].
     for i in range(1, 6):
-        assert 0.0 <= float(v.values[i]) <= 1.0, (
-            f"slot {i} = {v.values[i]} is out of [0, 1]"
-        )
+        assert (
+            0.0 <= float(v.values[i]) <= 1.0
+        ), f"slot {i} = {v.values[i]} is out of [0, 1]"
     # Slot 0 is a log feature (non-negative, finite).
     assert float(v.values[0]) >= 0.0
     assert math.isfinite(float(v.values[0]))
@@ -162,17 +166,17 @@ def test_pocket_features_normalized() -> None:
     assert np.all(v.values[7:] == 0.0)
     # Pocket volume is bounded by the residue-sphere union.
     # For 10 residues at r_eff=3.5 Å, V = 10 * (4/3) * π * 3.5^3 ≈ 1796 Å³.
-    assert 1000.0 < v.pocket_volume_A3 < 5000.0, (
-        f"pocket_volume_A3 = {v.pocket_volume_A3} outside the expected band"
-    )
+    assert (
+        1000.0 < v.pocket_volume_A3 < 5000.0
+    ), f"pocket_volume_A3 = {v.pocket_volume_A3} outside the expected band"
 
 
 def test_pocket_features_shell_cutoff() -> None:
     """Residues beyond cutoff_A are excluded from the shell."""
     residues = [
-        PocketResidue("H", 1, 2.0),       # inside
-        PocketResidue("H", 2, 8.0),       # outside
-        PocketResidue("H", 3, 4.9),       # inside (just)
+        PocketResidue("H", 1, 2.0),  # inside
+        PocketResidue("H", 2, 8.0),  # outside
+        PocketResidue("H", 3, 4.9),  # inside (just)
     ]
     v = pocket_features(residues, cutoff_A=5.0, pocket_name="shell_test")
     # Only 2 residues within 5 Å.
@@ -230,9 +234,9 @@ def test_modify_root_prior_changes_selection() -> None:
     argmax_ca2 = max(prior_ca2, key=prior_ca2.get)
 
     # With a sufficiently strong pocket_bias_strength the argmax must move.
-    assert argmax_empty != argmax_ca2, (
-        "modify_root_prior failed to change selection under pocket conditioning"
-    )
+    assert (
+        argmax_empty != argmax_ca2
+    ), "modify_root_prior failed to change selection under pocket conditioning"
 
 
 def test_modify_root_prior_returns_distribution() -> None:
@@ -287,6 +291,7 @@ def test_modify_root_prior_disabled() -> None:
 def test_pocket_features_from_binding_site() -> None:
     """Adapter produces a valid PocketFeatureVector from a BindingSite-like
     object even when no residue data is available."""
+
     # Minimal mock — the adapter only reads .name and .geometry_hints.
     class _MockBindingSite:
         name = "MMP2_active_site"

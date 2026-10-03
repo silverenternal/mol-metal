@@ -51,16 +51,16 @@ def _make_synthetic_pack(
     ei = torch.zeros(n_rows, 2, n_edges, dtype=torch.int64)
     ea = torch.randn(n_rows, n_edges, edge_feat_dim, dtype=torch.float32)
     mask = torch.ones(n_rows, n_atoms, dtype=torch.bool)
-    metal_idx = torch.tensor(
-        [0, 1, 2, 3, 4] * (n_rows // 5 + 1), dtype=torch.int64
-    )[:n_rows]
+    metal_idx = torch.tensor([0, 1, 2, 3, 4] * (n_rows // 5 + 1), dtype=torch.int64)[
+        :n_rows
+    ]
     y = torch.randn(n_rows, dtype=torch.float32)
     active = torch.tensor(
         [1.0, 0.0, 1.0, 0.0, 1.0] * (n_rows // 5 + 1), dtype=torch.float32
     )[:n_rows]
-    domain = torch.tensor(
-        [0, 1, 2, 3, 0] * (n_rows // 5 + 1), dtype=torch.int64
-    )[:n_rows]
+    domain = torch.tensor([0, 1, 2, 3, 0] * (n_rows // 5 + 1), dtype=torch.int64)[
+        :n_rows
+    ]
     return {
         "atom_features": af,
         "edge_index": ei,
@@ -125,16 +125,25 @@ def test_train_dmpnn_multitask_model_flag_v4pretrain_instantiates_correct_class(
     "V4MultiTaskDMPNNPretrain"`` and ``pretrain_mode is True``.
     """
     out_path = tmp_path / "v4pretrain_record.json"
-    rc = td.main([
-        "--data-config", "pretrain",
-        "--batch", "4",
-        "--epochs", "1",
-        "--model", "v4pretrain",
-        "--out", str(out_path),
-        "--metal", "Ru",
-        "--seed", "0",
-        "--no-bf16",
-    ])
+    rc = td.main(
+        [
+            "--data-config",
+            "pretrain",
+            "--batch",
+            "4",
+            "--epochs",
+            "1",
+            "--model",
+            "v4pretrain",
+            "--out",
+            str(out_path),
+            "--metal",
+            "Ru",
+            "--seed",
+            "0",
+            "--no-bf16",
+        ]
+    )
     assert rc == 0, f"main() returned {rc} (expected 0)"
     payload = json.loads(out_path.read_text())
     training = payload["training"]
@@ -159,15 +168,23 @@ def test_train_dmpnn_multitask_default_v4_uses_base_class(
     """With default ``--model=v4``, the pretrain path instantiates
     :class:`V4MultiTaskDMPNN` (NOT the pretrain variant)."""
     out_path = tmp_path / "v4_record.json"
-    rc = td.main([
-        "--data-config", "pretrain",
-        "--batch", "4",
-        "--epochs", "1",
-        "--out", str(out_path),
-        "--metal", "Ru",
-        "--seed", "0",
-        "--no-bf16",
-    ])
+    rc = td.main(
+        [
+            "--data-config",
+            "pretrain",
+            "--batch",
+            "4",
+            "--epochs",
+            "1",
+            "--out",
+            str(out_path),
+            "--metal",
+            "Ru",
+            "--seed",
+            "0",
+            "--no-bf16",
+        ]
+    )
     assert rc == 0
     payload = json.loads(out_path.read_text())
     training = payload["training"]
@@ -192,20 +209,29 @@ def test_train_dmpnn_multitask_model_v3_raises_not_implemented(
     path must raise NotImplementedError."""
     out_path = tmp_path / "v3_record.json"
     with pytest.raises(NotImplementedError) as excinfo:
-        td.main([
-            "--data-config", "pretrain",
-            "--batch", "4",
-            "--epochs", "1",
-            "--model", "v3",
-            "--out", str(out_path),
-            "--metal", "Ru",
-            "--seed", "0",
-            "--no-bf16",
-        ])
+        td.main(
+            [
+                "--data-config",
+                "pretrain",
+                "--batch",
+                "4",
+                "--epochs",
+                "1",
+                "--model",
+                "v3",
+                "--out",
+                str(out_path),
+                "--metal",
+                "Ru",
+                "--seed",
+                "0",
+                "--no-bf16",
+            ]
+        )
     msg = str(excinfo.value)
-    assert "--model v3" in msg or "v3" in msg, (
-        f"NotImplementedError must mention 'v3' for clarity. Got: {msg}"
-    )
+    assert (
+        "--model v3" in msg or "v3" in msg
+    ), f"NotImplementedError must mention 'v3' for clarity. Got: {msg}"
 
 
 # ===========================================================================
@@ -238,9 +264,9 @@ def test_train_metal_lomo_v2_model_flag_choices() -> None:
     )
     for choice in ("DMPNNMultiTaskModel", "v4", "v4pretrain"):
         ns = parser.parse_args(["--model", choice])
-        assert ns.model == choice, (
-            f"--model {choice!r} did not round-trip. Got {ns.model!r}"
-        )
+        assert (
+            ns.model == choice
+        ), f"--model {choice!r} did not round-trip. Got {ns.model!r}"
 
 
 def test_train_metal_lomo_v2_default_runner_uses_dmpnnmultitaskmodel() -> None:
@@ -254,8 +280,7 @@ def test_train_metal_lomo_v2_default_runner_uses_dmpnnmultitaskmodel() -> None:
         balanced_labels=[],
     )
     assert runner._model_cls is DMPNNMultiTaskModel, (
-        "Default runner must use DMPNNMultiTaskModel. Got "
-        f"{runner._model_cls!r}"
+        "Default runner must use DMPNNMultiTaskModel. Got " f"{runner._model_cls!r}"
     )
 
 
@@ -301,12 +326,12 @@ def test_train_metal_lomo_v2_v4_model_run_raises_not_implemented() -> None:
     with pytest.raises(NotImplementedError) as excinfo:
         runner.run()
     msg = str(excinfo.value)
-    assert "V4MultiTaskDMPNN" in msg, (
-        f"NotImplementedError must name the V4 class. Got: {msg}"
-    )
-    assert "TODO-145" in msg or "migration" in msg.lower(), (
-        f"NotImplementedError must include a migration pointer. Got: {msg}"
-    )
+    assert (
+        "V4MultiTaskDMPNN" in msg
+    ), f"NotImplementedError must name the V4 class. Got: {msg}"
+    assert (
+        "TODO-145" in msg or "migration" in msg.lower()
+    ), f"NotImplementedError must include a migration pointer. Got: {msg}"
 
     runner_pretrain = tl.BalancedLOMORunner(
         ds=None,
@@ -318,9 +343,9 @@ def test_train_metal_lomo_v2_v4_model_run_raises_not_implemented() -> None:
     with pytest.raises(NotImplementedError) as excinfo:
         runner_pretrain.run()
     msg = str(excinfo.value)
-    assert "V4MultiTaskDMPNNPretrain" in msg, (
-        f"NotImplementedError must name the V4 pretrain class. Got: {msg}"
-    )
+    assert (
+        "V4MultiTaskDMPNNPretrain" in msg
+    ), f"NotImplementedError must name the V4 pretrain class. Got: {msg}"
 
 
 def test_train_metal_lomo_v2_default_dmpnnmultitaskmodel_compat_passes() -> None:
@@ -347,6 +372,7 @@ def _make_pretrain_model() -> "V4MultiTaskDMPNNPretrain":
         ATOM_VOCAB_SIZE,
         V4MultiTaskDMPNNPretrain,
     )
+
     torch.manual_seed(0)
     return V4MultiTaskDMPNNPretrain(
         hidden_dim=64,
@@ -441,11 +467,17 @@ def test_v4pretrain_pretrain_mode_off_matches_v4_base() -> None:
 
     torch.manual_seed(0)
     base = V4MultiTaskDMPNN(
-        hidden_dim=64, n_layers=2, n_metals=5, n_coord_classes=5,
+        hidden_dim=64,
+        n_layers=2,
+        n_metals=5,
+        n_coord_classes=5,
     )
     torch.manual_seed(0)
     pretrain = V4MultiTaskDMPNNPretrain(
-        hidden_dim=64, n_layers=2, n_metals=5, n_coord_classes=5,
+        hidden_dim=64,
+        n_layers=2,
+        n_metals=5,
+        n_coord_classes=5,
     )
     pretrain.eval()  # train-mode is irrelevant when pretrain_mode=False
     pretrain.set_pretrain_mode(False)

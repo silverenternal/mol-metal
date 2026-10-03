@@ -31,10 +31,20 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from molmetal.baselines.morgan_xgb import SPLITTER_FACTORIES as XGB_SPLITTER_FACTORIES, MorganXGBBaseline
+from molmetal.baselines.morgan_xgb import (
+    SPLITTER_FACTORIES as XGB_SPLITTER_FACTORIES,
+    MorganXGBBaseline,
+)
 from molmetal.baselines.rf_baseline import RFBaseline
-from molmetal.baselines.dmpnn import DMPNNBaseline, SPLITTER_FACTORIES as DMPNN_SPLITTER_FACTORIES
-from molmetal.baselines.dmpnn_attentive import AttentiveDMPNNBaseline, SPLITTER_FACTORIES as ATTN_DMPNN_SPLITTER_FACTORIES
+from molmetal.baselines.dmpnn import (
+    DMPNNBaseline,
+    SPLITTER_FACTORIES as DMPNN_SPLITTER_FACTORIES,
+)
+from molmetal.baselines.dmpnn_attentive import (
+    AttentiveDMPNNBaseline,
+    SPLITTER_FACTORIES as ATTN_DMPNN_SPLITTER_FACTORIES,
+)
+
 # LightGBM is an optional classical-ML control; we always import the module
 # so --model lightgbm is wireable, and the class raises RuntimeError at
 # ``run()`` time when lightgbm isn't installed.
@@ -44,7 +54,11 @@ from molmetal.baselines.morgan_lightgbm import (
 )
 
 # Merge splitter factories
-SPLITTER_FACTORIES = {**XGB_SPLITTER_FACTORIES, **DMPNN_SPLITTER_FACTORIES, **ATTN_DMPNN_SPLITTER_FACTORIES}
+SPLITTER_FACTORIES = {
+    **XGB_SPLITTER_FACTORIES,
+    **DMPNN_SPLITTER_FACTORIES,
+    **ATTN_DMPNN_SPLITTER_FACTORIES,
+}
 
 
 REPORTS_DIR = PROJECT_ROOT / "molmetal" / "reports"
@@ -125,27 +139,39 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return 2
-        runner = MorganLightGBMBaseline(metal=args.metal, seed=args.seed, splitter=splitter)
+        runner = MorganLightGBMBaseline(
+            metal=args.metal, seed=args.seed, splitter=splitter
+        )
     elif args.model == "rf":
         runner = RFBaseline(metal=args.metal, seed=args.seed, splitter=splitter)
     elif args.model == "dmpnn_attn":
-        runner = AttentiveDMPNNBaseline(metal=args.metal, seed=args.seed, splitter=splitter, epochs=args.epochs)
+        runner = AttentiveDMPNNBaseline(
+            metal=args.metal, seed=args.seed, splitter=splitter, epochs=args.epochs
+        )
     else:
-        runner = DMPNNBaseline(metal=args.metal, seed=args.seed, splitter=splitter, epochs=args.epochs)
+        runner = DMPNNBaseline(
+            metal=args.metal, seed=args.seed, splitter=splitter, epochs=args.epochs
+        )
 
     result = runner.run()
     elapsed = time.time() - t0
 
     tm = result.test_metrics
     vm = result.val_metrics
-    print(f"[baselines] train/val/test = "
-          f"{result.n_train}/{result.n_val}/{result.n_test}")
-    print(f"[baselines] val  : "
-          f"AUC={vm['roc_auc']:.4f} AP={vm['pr_auc']:.4f} "
-          f"Hit@5%={vm['hit_rate_top5pct']:.3f}")
-    print(f"[baselines] test : "
-          f"AUC={tm['roc_auc']:.4f} AP={tm['pr_auc']:.4f} "
-          f"Hit@5%={tm['hit_rate_top5pct']:.3f}")
+    print(
+        f"[baselines] train/val/test = "
+        f"{result.n_train}/{result.n_val}/{result.n_test}"
+    )
+    print(
+        f"[baselines] val  : "
+        f"AUC={vm['roc_auc']:.4f} AP={vm['pr_auc']:.4f} "
+        f"Hit@5%={vm['hit_rate_top5pct']:.3f}"
+    )
+    print(
+        f"[baselines] test : "
+        f"AUC={tm['roc_auc']:.4f} AP={tm['pr_auc']:.4f} "
+        f"Hit@5%={tm['hit_rate_top5pct']:.3f}"
+    )
     if result.per_cell_line:
         top = list(result.per_cell_line.items())[:5]
         print("[baselines] per-cell-line AUC (top 5 by support):")

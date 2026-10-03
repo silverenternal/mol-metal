@@ -68,6 +68,7 @@ into the existing :class:`MCTSProofSearch` (see
 ``proof_search.py:_select_child``) by translating ``_MCTSNode``
 into the ``(state, action)`` tuple space.
 """
+
 from __future__ import annotations
 
 import math
@@ -139,13 +140,15 @@ class PUCTSelector:
     # tuples so a single PUCTSelector can be reused across many
     # tree positions if the action space is factored accordingly.
     _stats: Dict[Tuple[Hashable, Hashable], _ActionStats] = field(
-        default_factory=dict, repr=False,
+        default_factory=dict,
+        repr=False,
     )
     # (state, action) -> prior.  PUCT reads this when computing
     # the bonus term; tests can pre-fill it to explore the
     # exploration-vs-exploitation boundary.
     _priors: Dict[Tuple[Hashable, Hashable], float] = field(
-        default_factory=dict, repr=False,
+        default_factory=dict,
+        repr=False,
     )
 
     # ------------------------------------------------------------------
@@ -180,9 +183,7 @@ class PUCTSelector:
     # Running-mean Q update
     # ------------------------------------------------------------------
 
-    def update_q(
-        self, state: Hashable, action: Hashable, reward: float
-    ) -> None:
+    def update_q(self, state: Hashable, action: Hashable, reward: float) -> None:
         """Increment the running-mean reward for ``(state, action)``.
 
         Implements the standard incremental update
@@ -287,9 +288,7 @@ class PUCTSelector:
             # ties fall back to iteration order, which makes the
             # first element the default winner for tests.
             unvisited.sort(
-                key=lambda a: (
-                    -float(self._priors.get((state, a), 0.0)),
-                ),
+                key=lambda a: (-float(self._priors.get((state, a), 0.0)),),
             )
             return unvisited[0]
 

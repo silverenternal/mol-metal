@@ -360,10 +360,7 @@ class RuleConflictResolver:
         return rule1
 
     def _is_registered(self, rule_name: str) -> bool:
-        return (
-            rule_name in self.click_rules
-            or rule_name in self.non_click_rules
-        )
+        return rule_name in self.click_rules or rule_name in self.non_click_rules
 
     def _priority(self, rule_name: str) -> int:
         """Compute a numeric priority for ``rule_name``.
@@ -414,19 +411,19 @@ class RuleConflictResolver:
 # blocks that pair with peptide / Boc / reductive-amination rules.
 _DEFAULT_NON_CLICK_COPARTNERS: Dict[str, Tuple[str, ...]] = {
     "peptide_bond": (
-        "NCC(=O)O",          # glycine
-        "CC(N)C(=O)O",       # alanine
+        "NCC(=O)O",  # glycine
+        "CC(N)C(=O)O",  # alanine
         "NCC(Cc1ccccc1)C(=O)O",  # phenylalanine
     ),
     "boc_protection": (
-        "NCC(=O)O",          # glycine
-        "CN",                # methylamine
-        "CCCN",              # propylamine
+        "NCC(=O)O",  # glycine
+        "CN",  # methylamine
+        "CCCN",  # propylamine
     ),
     "reductive_amination": (
-        "O=Cc1ccccc1",       # benzaldehyde
-        "CC=O",              # acetaldehyde
-        "CCC=O",             # propionaldehyde
+        "O=Cc1ccccc1",  # benzaldehyde
+        "CC=O",  # acetaldehyde
+        "CCC=O",  # propionaldehyde
     ),
 }
 
@@ -580,16 +577,12 @@ class MedChemAugmentedGenerator:
         try:
             base_samples = list(self.base_generator(seed_smiles, n_samples))
         except Exception as exc:  # pragma: no cover - defensive
-            logger.warning(
-                "[MedChemAugmentedGenerator] base_generator raised: %s", exc
-            )
+            logger.warning("[MedChemAugmentedGenerator] base_generator raised: %s", exc)
             base_samples = []
 
         out: List[str] = []
         for i in range(n_samples):
-            base_smi = (
-                base_samples[i] if i < len(base_samples) else seed_smiles
-            )
+            base_smi = base_samples[i] if i < len(base_samples) else seed_smiles
             if not isinstance(base_smi, str) or not base_smi:
                 # Skip empty / non-string slots — caller sees a
                 # shorter list rather than a corrupted one.
@@ -664,7 +657,8 @@ class MedChemAugmentedGenerator:
         except Exception as exc:  # pragma: no cover - defensive
             logger.debug(
                 "[MedChemAugmentedGenerator] rule %s failed: %s",
-                rule_name, exc,
+                rule_name,
+                exc,
             )
             return None
 
@@ -791,18 +785,14 @@ def benchmark_medchem_diversity(
         "wall_time_s": base_wall,
         "n_samples": len(base_clean),
         "n_unique_scaffolds": _unique_scaffold_count(base_clean),
-        "mean_pairwise_tanimoto_distance": _mean_pairwise_tanimoto_distance(
-            base_clean
-        ),
+        "mean_pairwise_tanimoto_distance": _mean_pairwise_tanimoto_distance(base_clean),
         "samples": base_clean,
     }
     aug_stats = {
         "wall_time_s": aug_wall,
         "n_samples": len(aug_clean),
         "n_unique_scaffolds": _unique_scaffold_count(aug_clean),
-        "mean_pairwise_tanimoto_distance": _mean_pairwise_tanimoto_distance(
-            aug_clean
-        ),
+        "mean_pairwise_tanimoto_distance": _mean_pairwise_tanimoto_distance(aug_clean),
         "samples": aug_clean,
     }
     lift = float(aug_stats["n_unique_scaffolds"] - base_stats["n_unique_scaffolds"])
@@ -822,16 +812,16 @@ def benchmark_medchem_diversity(
 # SMILES that exercise all 3 non-click med-chem rules.  Deterministic
 # across runs so the benchmark is reproducible.
 _DEFAULT_BENCHMARK_SEEDS: Tuple[str, ...] = (
-    "NCC(=O)O",                  # glycine (peptide + Boc substrate)
-    "CC(N)C(=O)O",               # alanine (peptide substrate)
-    "O=Cc1ccccc1",               # benzaldehyde (reductive amination)
-    "CN",                        # methylamine (Boc substrate)
-    "CC=O",                      # acetaldehyde (reductive amination)
-    "NCC(Cc1ccccc1)C(=O)O",      # phenylalanine
-    "CCC=O",                     # propionaldehyde
-    "CCCN",                      # propylamine (Boc substrate)
-    "O=CCc1ccccc1",              # phenylacetaldehyde (reductive amination)
-    "NCC(=O)NCC(=O)O",           # glycyl-glycine (peptide substrate)
+    "NCC(=O)O",  # glycine (peptide + Boc substrate)
+    "CC(N)C(=O)O",  # alanine (peptide substrate)
+    "O=Cc1ccccc1",  # benzaldehyde (reductive amination)
+    "CN",  # methylamine (Boc substrate)
+    "CC=O",  # acetaldehyde (reductive amination)
+    "NCC(Cc1ccccc1)C(=O)O",  # phenylalanine
+    "CCC=O",  # propionaldehyde
+    "CCCN",  # propylamine (Boc substrate)
+    "O=CCc1ccccc1",  # phenylacetaldehyde (reductive amination)
+    "NCC(=O)NCC(=O)O",  # glycyl-glycine (peptide substrate)
 )
 
 
@@ -886,6 +876,7 @@ def build_default_integration(
             CLICK_REACTIONS,
             METAL_COORDINATION_RULES,
         )
+
         for n, r in CLICK_REACTIONS.items():
             resolver.register_click(n, r)
         for n, r in METAL_COORDINATION_RULES.items():
@@ -924,10 +915,14 @@ if __name__ == "__main__":  # pragma: no cover
         use_non_click_prob=0.5,
         rng=_random.Random(0),
     )
-    print(f"# medchem_gen_integration — non-click rules: {list(aug.non_click_rules.keys())}")
+    print(
+        f"# medchem_gen_integration — non-click rules: {list(aug.non_click_rules.keys())}"
+    )
     print(f"# known rules in resolver: {sorted(resolver.known_rule_names())}")
-    print(f"# resolve(AmideCoupling, peptide_bond) -> "
-          f"{resolver.resolve('AmideCoupling', 'peptide_bond')}")
+    print(
+        f"# resolve(AmideCoupling, peptide_bond) -> "
+        f"{resolver.resolve('AmideCoupling', 'peptide_bond')}"
+    )
     out = benchmark_medchem_diversity(
         base_gen=MedChemAugmentedGenerator(
             base_generator=base,
@@ -939,5 +934,7 @@ if __name__ == "__main__":  # pragma: no cover
         n_seeds=2,
         n_samples_per_seed=3,
     )
-    print(f"# benchmark: diversity_lift={out['diversity_lift']}, "
-          f"wall_time_overhead_s={out['wall_time_overhead_s']:.4f}")
+    print(
+        f"# benchmark: diversity_lift={out['diversity_lift']}, "
+        f"wall_time_overhead_s={out['wall_time_overhead_s']:.4f}"
+    )

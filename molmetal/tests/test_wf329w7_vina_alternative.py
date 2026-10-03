@@ -57,9 +57,7 @@ WF84_VINA_CLI = Path("/home/hugo/.local/micromamba/envs/molmetal_vina/bin/vina")
 PROJECT_VENV_PY = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
 PROJECT_VENV_PY = PROJECT_ROOT / ".venv" / "bin" / "python"
 
-DOCKED_POSE_METRIC = (
-    PROJECT_ROOT / "metrics" / "by_metric" / "docked_pose_rmsd.json"
-)
+DOCKED_POSE_METRIC = PROJECT_ROOT / "metrics" / "by_metric" / "docked_pose_rmsd.json"
 WF320H_SUMMARY = (
     PROJECT_ROOT / "molmetal" / "reports" / "wf320h_vina_phase2" / "summary.json"
 )
@@ -85,15 +83,12 @@ def test_vina_cli_binary_exists_at_canonical_path() -> None:
         f"If it was actually deleted, recovery path: "
         f"`mamba create -n vina-cp -c conda-forge vina=1.2.7 -y`."
     )
-    assert WF84_VINA_CLI.stat().st_size > 0, (
-        f"Vina CLI at {WF84_VINA_CLI} is empty."
-    )
+    assert WF84_VINA_CLI.stat().st_size > 0, f"Vina CLI at {WF84_VINA_CLI} is empty."
     # Verify executable bit
     import stat
+
     mode = WF84_VINA_CLI.stat().st_mode
-    assert mode & stat.S_IXUSR, (
-        f"Vina CLI at {WF84_VINA_CLI} is not user-executable."
-    )
+    assert mode & stat.S_IXUSR, f"Vina CLI at {WF84_VINA_CLI} is not user-executable."
 
 
 # ---------------------------------------------------------------------------
@@ -117,9 +112,9 @@ def test_wf84_install_log_records_successful_install() -> None:
         f"Per Wf-323G, the recovery path is `mamba create -n vina-cp -c "
         f"conda-forge vina=1.2.7 -y`."
     )
-    assert last.get("version", "").startswith("AutoDock Vina"), (
-        f"Unexpected Vina version: {last.get('version')}"
-    )
+    assert last.get("version", "").startswith(
+        "AutoDock Vina"
+    ), f"Unexpected Vina version: {last.get('version')}"
     # The final_path must point to a real file
     final = Path(log.get("final_path", ""))
     assert final.is_file(), f"final_path {final} does not exist on disk."
@@ -150,9 +145,9 @@ def test_docked_pose_rmsd_metric_is_measured_not_blocked() -> None:
 
     # Must have a numeric value field
     value = payload.get("aggregate_median_across_pockets") or payload.get("value")
-    assert isinstance(value, (int, float)), (
-        f"docked_pose_rmsd.json has no numeric value; got {value!r}."
-    )
+    assert isinstance(
+        value, (int, float)
+    ), f"docked_pose_rmsd.json has no numeric value; got {value!r}."
     assert value > 0, f"docked_pose_rmsd value {value} not positive."
 
     # SOTA gate (Trott & Olson 2010 convention: median_best_rmsd <= 2.0 Å)
@@ -184,9 +179,9 @@ def test_m6_driver_references_both_recovery_paths() -> None:
         f"in-process Vina Python binding lives at /home/hugo/codes/"
         f"/home/hugo/codes/mol-metal/.venv/bin/python and must be the primary path."
     )
-    assert str(PROJECT_VENV_PY) in text, (
-        f"Driver does NOT reference the canonical CadButEaas path {PROJECT_VENV_PY}."
-    )
+    assert (
+        str(PROJECT_VENV_PY) in text
+    ), f"Driver does NOT reference the canonical CadButEaas path {PROJECT_VENV_PY}."
 
     # Reference 2: CLI fallback at WF84_VINA_CLI
     assert "WF84_VINA_CLI" in text, (
@@ -194,9 +189,9 @@ def test_m6_driver_references_both_recovery_paths() -> None:
         f"fallback at {WF84_VINA_CLI} must be defined so the probe-miss "
         f"regression cannot recur."
     )
-    assert str(WF84_VINA_CLI) in text, (
-        f"Driver does NOT reference the canonical CLI fallback path {WF84_VINA_CLI}."
-    )
+    assert (
+        str(WF84_VINA_CLI) in text
+    ), f"Driver does NOT reference the canonical CLI fallback path {WF84_VINA_CLI}."
 
     # Reference 3: the Wf-320H summary must report interpreter_has_vina=true
     if WF320H_SUMMARY.is_file():
@@ -239,9 +234,9 @@ def test_wf320h_phase2_actual_results_are_measured() -> None:
     )
 
     rmsd_sum = agg.get("rmsd_summary_angstrom", {})
-    assert rmsd_sum.get("n", 0) == n_measured, (
-        f"RMSD summary n={rmsd_sum.get('n')} != n_measured={n_measured}."
-    )
+    assert (
+        rmsd_sum.get("n", 0) == n_measured
+    ), f"RMSD summary n={rmsd_sum.get('n')} != n_measured={n_measured}."
 
 
 # ---------------------------------------------------------------------------

@@ -7,6 +7,7 @@ and the ``r_admet`` opt-in channel.
 
 Spot-checks only — no sweep / benchmark / large experiment runs.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -104,12 +105,12 @@ def test_closed_loop_emits_per_channel_breakdown() -> None:
     # Wire stub callables that return constant positive values so we
     # can verify each channel is reported with the expected contribution.
     agg = build_todo01_reward_aggregator(
-        r_vina=lambda s: -10.0,           # -> -(-10) = 10 normalised
-        r_posebusters=lambda s: 0.8,      # 0.8 * w_posebusters
-        r_retro=lambda s: 0.5,            # 0.5 * w_retro
-        r_pic50=lambda s: 7.0,            # 7.0 * w_pic50
-        r_qed=lambda s: 0.6,              # 0.6 * w_qed
-        r_sa=lambda s: 2.0,               # sa_norm = 1 - 1/9 ≈ 0.889 * w_sa
+        r_vina=lambda s: -10.0,  # -> -(-10) = 10 normalised
+        r_posebusters=lambda s: 0.8,  # 0.8 * w_posebusters
+        r_retro=lambda s: 0.5,  # 0.5 * w_retro
+        r_pic50=lambda s: 7.0,  # 7.0 * w_pic50
+        r_qed=lambda s: 0.6,  # 0.6 * w_qed
+        r_sa=lambda s: 2.0,  # sa_norm = 1 - 1/9 ≈ 0.889 * w_sa
     )
     bd = decompose_reward(agg, state=None)
     # Every required channel must be present.
@@ -173,7 +174,10 @@ def test_closed_loop_weights_override_via_cli() -> None:
     assert "--reward-weights" in help_text
 
     with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".yaml", delete=False, encoding="utf-8",
+        mode="w",
+        suffix=".yaml",
+        delete=False,
+        encoding="utf-8",
     ) as fh:
         fh.write("w_vina: 0.7\nw_posebusters: 0.3\n")
         path = fh.name
@@ -271,6 +275,7 @@ def test_admet_channel_opt_in() -> None:
 # ---------------------------------------------------------------------------
 def test_decompose_reward_never_raises() -> None:
     """decompose_reward must never raise — channels degrade to 0.0."""
+
     def _boom(_state: Any) -> float:
         raise RuntimeError("simulated adapter failure")
 
@@ -281,10 +286,10 @@ def test_decompose_reward_never_raises() -> None:
             raise TypeError("non-numeric channel value")
 
     agg = build_todo01_reward_aggregator(
-        r_vina=_boom,                  # raises inside the callable
+        r_vina=_boom,  # raises inside the callable
         r_posebusters=lambda s: _NonNumeric(),  # raises inside float()
-        r_retro=lambda s: None,        # returns None -> 0.0 via float()
-        r_pic50=lambda s: "nope",      # raises inside float()
+        r_retro=lambda s: None,  # returns None -> 0.0 via float()
+        r_pic50=lambda s: "nope",  # raises inside float()
     )
     bd = decompose_reward(agg, state=None)
     # All gracefully degraded to 0.0.

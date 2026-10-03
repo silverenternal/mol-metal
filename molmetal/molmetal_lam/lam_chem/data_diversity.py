@@ -30,6 +30,7 @@ import numpy as np
 try:
     from rdkit import Chem, RDLogger
     from rdkit.Chem import AllChem, DataStructs
+
     _HAS_RDKIT = True
     RDLogger.DisableLog("rdApp.*")
 except Exception:  # pragma: no cover - RDKit is required, surface ImportError
@@ -226,7 +227,9 @@ METAL_CYTOTOX_DEFAULT = Path("/mnt/storage/data/molmetal/MetalCytoToxDB.csv")
 TMQM_DEFAULT_DIR = Path("/mnt/storage/data/molmetal/tmQM")
 
 
-def load_platinai_smiles(path: Optional[Path] = None, max_rows: Optional[int] = None) -> list:
+def load_platinai_smiles(
+    path: Optional[Path] = None, max_rows: Optional[int] = None
+) -> list:
     """Load PlatinAI_MBFinder SMILES (Pt complexes).  Best-effort CSV fallback."""
     path = Path(path) if path else PLATINAI_DEFAULT
     if not path.is_file():
@@ -235,6 +238,7 @@ def load_platinai_smiles(path: Optional[Path] = None, max_rows: Optional[int] = 
     rows = []
     try:
         import pandas as pd
+
         df = pd.read_excel(path) if str(path).endswith(".xlsx") else pd.read_csv(path)
         for cand in ("SMILES", "smiles", "SMILES_Ligand", "SMILES_Ligands"):
             if cand in df.columns:
@@ -256,6 +260,7 @@ def load_platinai_smiles(path: Optional[Path] = None, max_rows: Optional[int] = 
         # CSV fallback if openpyxl is not installed.
         try:
             import csv
+
             with path.open(newline="") as f:
                 reader = csv.DictReader(f)
                 for r in reader:
@@ -280,6 +285,7 @@ def load_metal_cytotox_smiles(
     rows = []
     try:
         import pandas as pd
+
         df = pd.read_csv(path, sep=None, engine="python")
         col = "SMILES_Ligands" if "SMILES_Ligands" in df.columns else df.columns[0]
         for s in df[col].dropna().astype(str).tolist():
@@ -289,10 +295,15 @@ def load_metal_cytotox_smiles(
     except Exception:
         try:
             import csv
+
             with path.open(newline="") as f:
                 reader = csv.DictReader(f)
                 for r in reader:
-                    val = r.get("SMILES_Ligands") or r.get("SMILES") or next(iter(r.values()), None)
+                    val = (
+                        r.get("SMILES_Ligands")
+                        or r.get("SMILES")
+                        or next(iter(r.values()), None)
+                    )
                     if val:
                         rows.append(val)
                     if max_rows is not None and len(rows) >= max_rows:
@@ -338,6 +349,7 @@ def load_tmqm_smiles(
     for csv_path in candidates:
         try:
             import csv
+
             with csv_path.open(newline="") as f:
                 reader = csv.reader(f, delimiter=";")
                 header = next(reader, None)
@@ -464,12 +476,14 @@ def load_known_pt_drugs(csv_path: Optional[Path] = None) -> List[Dict[str, str]]
             smi = (r.get("smiles") or "").strip()
             if not smi:
                 continue
-            rows.append({
-                "name": (r.get("name") or "").strip(),
-                "smiles": smi,
-                "fda_approved_year": (r.get("fda_approved_year") or "").strip(),
-                "primary_indication": (r.get("primary_indication") or "").strip(),
-            })
+            rows.append(
+                {
+                    "name": (r.get("name") or "").strip(),
+                    "smiles": smi,
+                    "fda_approved_year": (r.get("fda_approved_year") or "").strip(),
+                    "primary_indication": (r.get("primary_indication") or "").strip(),
+                }
+            )
     return rows
 
 
@@ -482,9 +496,7 @@ def _tanimoto_sim_uint8(a: np.ndarray, b: np.ndarray) -> float:
     a = np.asarray(a, dtype=np.uint8).reshape(-1)
     b = np.asarray(b, dtype=np.uint8).reshape(-1)
     if a.size != b.size:
-        raise ValueError(
-            f"fingerprint length mismatch: a={a.size} vs b={b.size}"
-        )
+        raise ValueError(f"fingerprint length mismatch: a={a.size} vs b={b.size}")
     inter = int(np.bitwise_and(a, b).sum())
     union = int(a.sum()) + int(b.sum()) - inter
     if union <= 0:
@@ -533,22 +545,34 @@ def metric_max_sim_known_pt_drugs(
                                    (caller can drop in JSON).
     """
     if not _HAS_RDKIT:
-        return dict(max_sim=0.0, closest_drug="",
-                    any_drug_above_0_7=False, any_drug_above_0_4=False,
-                    per_drug=[])
+        return dict(
+            max_sim=0.0,
+            closest_drug="",
+            any_drug_above_0_7=False,
+            any_drug_above_0_4=False,
+            per_drug=[],
+        )
     drugs = load_known_pt_drugs(drug_db_path)
     if not drugs:
-        return dict(max_sim=0.0, closest_drug="",
-                    any_drug_above_0_7=False, any_drug_above_0_4=False,
-                    per_drug=[])
+        return dict(
+            max_sim=0.0,
+            closest_drug="",
+            any_drug_above_0_7=False,
+            any_drug_above_0_4=False,
+            per_drug=[],
+        )
     fp = morgan_fp(smiles, radius=radius, n_bits=n_bits)
     if fp is None:
         # Parse failure: 0.0 max sim, but the caller may still want
         # the audit trail of the DB being scanned.  We return the
         # closest_drug="" so downstream risk flags default to False.
-        return dict(max_sim=0.0, closest_drug="",
-                    any_drug_above_0_7=False, any_drug_above_0_4=False,
-                    per_drug=[])
+        return dict(
+            max_sim=0.0,
+            closest_drug="",
+            any_drug_above_0_7=False,
+            any_drug_above_0_4=False,
+            per_drug=[],
+        )
     per_drug: List[Tuple[str, float]] = []
     max_sim = 0.0
     closest = ""

@@ -145,9 +145,7 @@ class TestMetalCytotoxDataset:
     def test_filter_year_range(self) -> None:
         if not CSV_PATH.exists():
             pytest.skip("CSV missing")
-        ds = MetalCytotoxDataset.from_csv(
-            CSV_PATH, year_min=2020, year_max=2022
-        )
+        ds = MetalCytotoxDataset.from_csv(CSV_PATH, year_min=2020, year_max=2022)
         years = ds.years
         assert (years >= 2020).all()
         assert (years <= 2022).all()
@@ -179,7 +177,9 @@ class TestSplitters:
         all_idx = np.concatenate([result.train_idx, result.val_idx, result.test_idx])
         assert len(np.unique(all_idx)) == n
 
-    def test_random_split_seed_reproducible(self, full_dataset: MetalCytotoxDataset) -> None:
+    def test_random_split_seed_reproducible(
+        self, full_dataset: MetalCytotoxDataset
+    ) -> None:
         sp1 = RandomSplitter(seed=123)
         sp2 = RandomSplitter(seed=123)
         r1 = sp1(full_dataset)
@@ -207,7 +207,9 @@ class TestSplitters:
         from molmetal.data.cytotox import _add_pic50, _add_active
 
         small = MetalCytotoxDataset(ds.df.iloc[:1000].copy())
-        sp = ChemicalSplitter(test_fraction=0.2, val_fraction=0.1, threshold=0.7, seed=42)
+        sp = ChemicalSplitter(
+            test_fraction=0.2, val_fraction=0.1, threshold=0.7, seed=42
+        )
         result = sp(small)
         n = len(small)
         # Total assigned should be ≤ n (random_bucket fallback may leave some out)
@@ -222,11 +224,7 @@ class TestSplitters:
         # Build a tiny synthetic dataset with 3 distinct SMILES × 10 rows each
         import pandas as pd
 
-        smiles = (
-            ["CCO"] * 10
-            + ["c1ccccc1"] * 10
-            + ["CC(=O)Oc1ccccc1C(=O)O"] * 10
-        )
+        smiles = ["CCO"] * 10 + ["c1ccccc1"] * 10 + ["CC(=O)Oc1ccccc1C(=O)O"] * 10
         n = len(smiles)
         df = pd.DataFrame(
             {
@@ -240,10 +238,14 @@ class TestSplitters:
                 "Oxidation_state": [2] * n,
             }
         )
-        ds = MetalCytotoxDataset.from_csv(
-            "/mnt/storage/data/molmetal/MetalCytoToxDB.csv",
-            filters=None,
-        ) if False else MetalCytotoxDataset(df=df)
+        ds = (
+            MetalCytotoxDataset.from_csv(
+                "/mnt/storage/data/molmetal/MetalCytoToxDB.csv",
+                filters=None,
+            )
+            if False
+            else MetalCytotoxDataset(df=df)
+        )
         sp = LigandDeduplicatedSplitter(strategy="largest_first", seed=42)
         result = sp(ds)
         # Every index assigned exactly once
@@ -251,6 +253,7 @@ class TestSplitters:
         assert len(np.unique(all_idx)) == n
         # No canonical SMILES appears in two splits
         from molmetal.data.leakage_utils import canonicalize_smiles
+
         train_canon = {canonicalize_smiles(s) for s in ds.smiles[result.train_idx]}
         val_canon = {canonicalize_smiles(s) for s in ds.smiles[result.val_idx]}
         test_canon = {canonicalize_smiles(s) for s in ds.smiles[result.test_idx]}
@@ -328,6 +331,7 @@ class TestSplitters:
         # helper logic on the assigned indices.
         from rdkit import Chem, RDLogger
         from rdkit.Chem.Scaffolds import MurckoScaffold
+
         RDLogger.DisableLog("rdApp.*")
 
         def _key(smi: str) -> str:
@@ -346,7 +350,9 @@ class TestSplitters:
         assert train_keys.isdisjoint(test_keys)
         assert val_keys.isdisjoint(test_keys)
 
-    def test_scaffold_split_handles_ru_subset(self, ru_dataset: MetalCytotoxDataset) -> None:
+    def test_scaffold_split_handles_ru_subset(
+        self, ru_dataset: MetalCytotoxDataset
+    ) -> None:
         """ScaffoldSplitter runs on the real Ru subset and partitions all rows."""
         sp = ScaffoldSplitter(strategy="largest_first", seed=42)
         result = sp(ru_dataset)

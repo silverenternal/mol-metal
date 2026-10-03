@@ -59,13 +59,10 @@ TRAIN_SCRIPT = (
     PROJECT_ROOT / "molmetal" / "scripts" / "train_cisplatin_resistance_v2.py"
 )
 VERIFY_SCRIPT = (
-    PROJECT_ROOT / "molmetal" / "scripts"
-    / "verify_train_cisplatin_resistance_v2.py"
+    PROJECT_ROOT / "molmetal" / "scripts" / "verify_train_cisplatin_resistance_v2.py"
 )
 DEFAULT_DATA = PROJECT_ROOT / "molmetal" / "data" / "platinai_4cell.csv"
-VENV_PY = (
-    PROJECT_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
-)
+VENV_PY = PROJECT_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
 
 
 def _scripts_path() -> str:
@@ -82,38 +79,43 @@ def tiny_platinai_csv(tmp_path: Path) -> Path:
     csv_path = tmp_path / "tiny_platinai.csv"
     rows: List[dict] = []
     smiles_pool = [
-        "[Pt](N)(N)(Cl)Cl",                 # cisplatin
-        "[Pt](N)(Cl)(N)Cl",                 # trans-platin
-        "COc1c(OC)c(N(=O)=O)c(N(=O)=O)c(OC)c1OC.[Pt]",   # satraplatin-like
-        "c1ccc(P(c2ccccc2)c2ccccc2)cc1",    # triphenylphosphine
-        "CCN(CC)CC.Cl.Cl.[Pt]",             # Pt(NEt3)2Cl2
-        "c1ccncc1.c1ccncc1.Cl.Cl.[Pt]",     # Pt(pyridine)2Cl2
-        "CCS",                              # ethanethiol
-        "CCO",                              # ethanol
-        "c1ccccc1",                         # benzene
-        "CC(=O)O",                          # acetic acid
+        "[Pt](N)(N)(Cl)Cl",  # cisplatin
+        "[Pt](N)(Cl)(N)Cl",  # trans-platin
+        "COc1c(OC)c(N(=O)=O)c(N(=O)=O)c(OC)c1OC.[Pt]",  # satraplatin-like
+        "c1ccc(P(c2ccccc2)c2ccccc2)cc1",  # triphenylphosphine
+        "CCN(CC)CC.Cl.Cl.[Pt]",  # Pt(NEt3)2Cl2
+        "c1ccncc1.c1ccncc1.Cl.Cl.[Pt]",  # Pt(pyridine)2Cl2
+        "CCS",  # ethanethiol
+        "CCO",  # ethanol
+        "c1ccccc1",  # benzene
+        "CC(=O)O",  # acetic acid
     ]
     for i in range(50):
         smi = smiles_pool[i % len(smiles_pool)]
         # Synthesize 4 IC50 values, mix of active / inactive.
         for c in range(4):
             ic50 = (i * 137 + c * 911) % 20000 + 1
-            rows.append({
-                "complex_id": f"tiny_{i}",
-                "smiles": smi,
-                "ic50_mcf7_nm": float(ic50),
-                "ic50_a549_nm": float((ic50 + c * 1000) % 25000 + 1),
-                "ic50_a2780_nm": float((ic50 + c * 500) % 18000 + 1),
-                "ic50_a2780cis_nm": float((ic50 + c * 2000) % 30000 + 1),
-                "source": "tiny",
-            })
+            rows.append(
+                {
+                    "complex_id": f"tiny_{i}",
+                    "smiles": smi,
+                    "ic50_mcf7_nm": float(ic50),
+                    "ic50_a549_nm": float((ic50 + c * 1000) % 25000 + 1),
+                    "ic50_a2780_nm": float((ic50 + c * 500) % 18000 + 1),
+                    "ic50_a2780cis_nm": float((ic50 + c * 2000) % 30000 + 1),
+                    "source": "tiny",
+                }
+            )
     with csv_path.open("w", newline="") as fh:
         writer = csv.DictWriter(
             fh,
             fieldnames=[
-                "complex_id", "smiles",
-                "ic50_mcf7_nm", "ic50_a549_nm",
-                "ic50_a2780_nm", "ic50_a2780cis_nm",
+                "complex_id",
+                "smiles",
+                "ic50_mcf7_nm",
+                "ic50_a549_nm",
+                "ic50_a2780_nm",
+                "ic50_a2780cis_nm",
                 "source",
             ],
         )
@@ -143,14 +145,10 @@ def test_help_exits_zero() -> None:
     assert "--epochs" in result.stdout
     # The 4 init choices from the Wf-31 spec.
     for init in ("tmqm", "se3sb", "transport", "multiph"):
-        assert init in result.stdout, (
-            f"--init {init} missing from --help output"
-        )
+        assert init in result.stdout, f"--init {init} missing from --help output"
     # The 4 cell-line choices.
     for cl in ("MCF7", "A549", "A2780", "A2780cis"):
-        assert cl in result.stdout, (
-            f"--cell-line {cl} missing from --help output"
-        )
+        assert cl in result.stdout, f"--cell-line {cl} missing from --help output"
 
 
 # ---------------------------------------------------------------------------
@@ -181,12 +179,19 @@ def test_parse_args_overrides() -> None:
     sys.path.insert(0, _scripts_path())
     import train_cisplatin_resistance_v2 as w31p2  # type: ignore[import-not-found]
 
-    args = w31p2.parse_args([
-        "--cell-line", "MCF7",
-        "--seeds", "0", "1",
-        "--epochs", "5",
-        "--init", "se3sb",
-    ])
+    args = w31p2.parse_args(
+        [
+            "--cell-line",
+            "MCF7",
+            "--seeds",
+            "0",
+            "1",
+            "--epochs",
+            "5",
+            "--init",
+            "se3sb",
+        ]
+    )
     assert args.cell_line == "MCF7"
     assert args.seeds == [0, 1]
     assert args.epochs == 5
@@ -246,9 +251,9 @@ def test_model_forward_contract() -> None:
     with torch.no_grad():
         out = model(smis, cid, rf)
     # All 4 cell-line keys must be present.
-    assert set(out.keys()) == set(w31p2.CELL_LINES), (
-        f"output keys must be {set(w31p2.CELL_LINES)}; got {set(out.keys())}"
-    )
+    assert set(out.keys()) == set(
+        w31p2.CELL_LINES
+    ), f"output keys must be {set(w31p2.CELL_LINES)}; got {set(out.keys())}"
     for cl in w31p2.CELL_LINES:
         lg = out[cl]
         assert lg.shape == (3, 2), f"{cl}: shape {tuple(lg.shape)} != (3, 2)"
@@ -272,8 +277,7 @@ def test_four_cell_loss_and_backward() -> None:
     model.train()
     out = model(smis, cid, rf)
     targets = {
-        cl: torch.tensor([0, 1, 0, 1], dtype=torch.long)
-        for cl in w31p2.CELL_LINES
+        cl: torch.tensor([0, 1, 0, 1], dtype=torch.long) for cl in w31p2.CELL_LINES
     }
     loss = w31p2.four_cell_loss(out, targets)
     assert torch.isfinite(loss), f"loss is non-finite: {loss.item()}"
@@ -287,9 +291,9 @@ def test_four_cell_loss_and_backward() -> None:
             f"cell_heads[{cl}][0].weight.grad is None — backward did not "
             f"propagate to {cl} head"
         )
-        assert torch.isfinite(first_linear.weight.grad).all(), (
-            f"cell_heads[{cl}][0].weight.grad contains NaN/Inf"
-        )
+        assert torch.isfinite(
+            first_linear.weight.grad
+        ).all(), f"cell_heads[{cl}][0].weight.grad contains NaN/Inf"
 
 
 # ---------------------------------------------------------------------------
@@ -304,18 +308,18 @@ def test_load_dataset_on_real_csv() -> None:
         pytest.skip(f"platinai_4cell.csv not found at {DEFAULT_DATA}")
     smiles, active, res_feat = w31p2.load_dataset(DEFAULT_DATA)
     assert len(smiles) > 4000, f"expected >4000 rows; got {len(smiles)}"
-    assert active.shape == (len(smiles), w31p2.N_CELLS), (
-        f"active shape {active.shape} != ({len(smiles)}, {w31p2.N_CELLS})"
-    )
+    assert active.shape == (
+        len(smiles),
+        w31p2.N_CELLS,
+    ), f"active shape {active.shape} != ({len(smiles)}, {w31p2.N_CELLS})"
     assert res_feat.shape == (len(smiles), w31p2.N_RESIST_FEAT), (
-        f"res_feat shape {res_feat.shape} != "
-        f"({len(smiles)}, {w31p2.N_RESIST_FEAT})"
+        f"res_feat shape {res_feat.shape} != " f"({len(smiles)}, {w31p2.N_RESIST_FEAT})"
     )
     # Active labels are 0/1 or -1 (missing).
     unique = np.unique(active)
-    assert set(unique.tolist()).issubset({-1, 0, 1}), (
-        f"active labels must be in {{-1, 0, 1}}; got {unique.tolist()}"
-    )
+    assert set(unique.tolist()).issubset(
+        {-1, 0, 1}
+    ), f"active labels must be in {{-1, 0, 1}}; got {unique.tolist()}"
     # Each cell line must have at least some active labels.
     for c in range(w31p2.N_CELLS):
         n_pos = int((active[:, c] == 1).sum())
@@ -333,32 +337,54 @@ def test_aggregate_per_cell_matches_numpy() -> None:
     import train_cisplatin_resistance_v2 as w31p2  # type: ignore[import-not-found]
 
     seed_results = [
-        {"test_auc_per_cell": {"MCF7": 0.80, "A549": 0.70,
-                                "A2780": 0.60, "A2780cis": 0.50}},
-        {"test_auc_per_cell": {"MCF7": 0.82, "A549": 0.72,
-                                "A2780": 0.62, "A2780cis": 0.52}},
-        {"test_auc_per_cell": {"MCF7": 0.84, "A549": 0.74,
-                                "A2780": 0.64, "A2780cis": 0.54}},
+        {
+            "test_auc_per_cell": {
+                "MCF7": 0.80,
+                "A549": 0.70,
+                "A2780": 0.60,
+                "A2780cis": 0.50,
+            }
+        },
+        {
+            "test_auc_per_cell": {
+                "MCF7": 0.82,
+                "A549": 0.72,
+                "A2780": 0.62,
+                "A2780cis": 0.52,
+            }
+        },
+        {
+            "test_auc_per_cell": {
+                "MCF7": 0.84,
+                "A549": 0.74,
+                "A2780": 0.64,
+                "A2780cis": 0.54,
+            }
+        },
     ]
     cells = w31p2.CELL_LINES
     means, stds = w31p2.aggregate_per_cell(seed_results, cells)
     for c in cells:
-        expected_mean = float(np.mean(
-            [r["test_auc_per_cell"][c] for r in seed_results]
-        ))
-        expected_std = float(np.std(
-            [r["test_auc_per_cell"][c] for r in seed_results], ddof=0,
-        ))
-        assert abs(means[c] - expected_mean) < 1e-9, (
-            f"means[{c}] = {means[c]} != expected {expected_mean}"
+        expected_mean = float(
+            np.mean([r["test_auc_per_cell"][c] for r in seed_results])
         )
-        assert abs(stds[c] - expected_std) < 1e-9, (
-            f"stds[{c}] = {stds[c]} != expected {expected_std}"
+        expected_std = float(
+            np.std(
+                [r["test_auc_per_cell"][c] for r in seed_results],
+                ddof=0,
+            )
         )
+        assert (
+            abs(means[c] - expected_mean) < 1e-9
+        ), f"means[{c}] = {means[c]} != expected {expected_mean}"
+        assert (
+            abs(stds[c] - expected_std) < 1e-9
+        ), f"stds[{c}] = {stds[c]} != expected {expected_std}"
     # NaN-only list must yield NaN.
     nan_only = [{"test_auc_per_cell": {"MCF7": float("nan")}}]
     m, s = w31p2.aggregate_per_cell(nan_only, ("MCF7",))
     import math
+
     assert math.isnan(m["MCF7"]), f"NaN-only must yield NaN mean; got {m}"
     assert math.isnan(s["MCF7"]), f"NaN-only must yield NaN std; got {s}"
 
@@ -378,28 +404,26 @@ def test_attach_init_components_all_modes() -> None:
         if init == "tmqm":
             assert comps == {}, f"tmqm must be no-op; got {comps}"
         elif init == "se3sb":
-            assert "se3_field" in comps, (
-                f"se3sb must attach se3_field; got {comps}"
-            )
+            assert "se3_field" in comps, f"se3sb must attach se3_field; got {comps}"
             from molmetal.adapters.se3_sb_integration import SE3SBVelocityField
+
             assert isinstance(comps["se3_field"], SE3SBVelocityField)
         elif init == "transport":
             if comps:
-                assert "relax_term" in comps, (
-                    f"transport must attach relax_term; got {comps}"
-                )
+                assert (
+                    "relax_term" in comps
+                ), f"transport must attach relax_term; got {comps}"
         elif init == "multiph":
             if comps:
-                assert "mphp" in comps, (
-                    f"multiph must attach mphp; got {comps}"
-                )
+                assert "mphp" in comps, f"multiph must attach mphp; got {comps}"
 
 
 # ---------------------------------------------------------------------------
 # 10. End-to-end main() smoke (1 seed, 1 epoch, tiny CSV fixture)
 # ---------------------------------------------------------------------------
 def test_main_smoke_one_seed_one_epoch(
-    tmp_path: Path, tiny_platinai_csv: Path,
+    tmp_path: Path,
+    tiny_platinai_csv: Path,
 ) -> None:
     """Full :func:`main` runs to completion on a tiny CSV — no AttributeError."""
     out_dir = tmp_path / "ckpt"
@@ -457,7 +481,8 @@ def test_main_smoke_one_seed_one_epoch(
 # 11. After main(), per-seed metrics JSON contains the recipe + headline stats
 # ---------------------------------------------------------------------------
 def test_metrics_json_after_smoke(
-    tmp_path: Path, tiny_platinai_csv: Path,
+    tmp_path: Path,
+    tiny_platinai_csv: Path,
 ) -> None:
     """After smoke, ``metrics_path`` records recipe + per_cell mean/std + headline."""
     out_dir = tmp_path / "ckpt"
@@ -519,7 +544,8 @@ def test_metrics_json_after_smoke(
 # 12. Summary JSON contains the headline mean ± std
 # ---------------------------------------------------------------------------
 def test_summary_json_headline(
-    tmp_path: Path, tiny_platinai_csv: Path,
+    tmp_path: Path,
+    tiny_platinai_csv: Path,
 ) -> None:
     """``summary_path`` records the Wf-31 Phase 2 headline mean ± std."""
     out_dir = tmp_path / "ckpt"
@@ -576,7 +602,8 @@ def test_summary_json_headline(
 # 13. Ckpt file is written for the single seed
 # ---------------------------------------------------------------------------
 def test_ckpt_file_written(
-    tmp_path: Path, tiny_platinai_csv: Path,
+    tmp_path: Path,
+    tiny_platinai_csv: Path,
 ) -> None:
     """After smoke, ``out_dir/cisplatin_resistance_v2_*_seed0.pt`` exists."""
     out_dir = tmp_path / "ckpt"
@@ -623,7 +650,8 @@ def test_ckpt_file_written(
 # 14. --init tmqm mode also works (no SE(3) twist head)
 # ---------------------------------------------------------------------------
 def test_main_smoke_tmqm_init(
-    tmp_path: Path, tiny_platinai_csv: Path,
+    tmp_path: Path,
+    tiny_platinai_csv: Path,
 ) -> None:
     """``--init tmqm`` mode runs without attaching the SE(3) twist head."""
     out_dir = tmp_path / "ckpt"
@@ -659,7 +687,10 @@ def test_main_smoke_tmqm_init(
         "A2780cis",
     ]
     result = subprocess.run(
-        cmd, capture_output=True, text=True, timeout=180,
+        cmd,
+        capture_output=True,
+        text=True,
+        timeout=180,
     )
     assert result.returncode == 0, (
         f"--init tmqm exited {result.returncode}\n"
@@ -680,13 +711,13 @@ def test_init_choices_in_help() -> None:
     """``--help`` lists all 4 Wf-31 init choices (tmqm / se3sb / transport / multiph)."""
     result = subprocess.run(
         [str(VENV_PY), str(TRAIN_SCRIPT), "--help"],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     assert result.returncode == 0
     for init in ("tmqm", "se3sb", "transport", "multiph"):
-        assert init in result.stdout, (
-            f"--init {init} missing from --help output"
-        )
+        assert init in result.stdout, f"--init {init} missing from --help output"
 
 
 # ---------------------------------------------------------------------------
@@ -696,13 +727,13 @@ def test_cell_line_choices_in_help() -> None:
     """``--help`` lists all 4 cell-line choices (MCF7 / A549 / A2780 / A2780cis)."""
     result = subprocess.run(
         [str(VENV_PY), str(TRAIN_SCRIPT), "--help"],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     assert result.returncode == 0
     for cl in ("MCF7", "A549", "A2780", "A2780cis"):
-        assert cl in result.stdout, (
-            f"--cell-line {cl} missing from --help output"
-        )
+        assert cl in result.stdout, f"--cell-line {cl} missing from --help output"
 
 
 # ---------------------------------------------------------------------------

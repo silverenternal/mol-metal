@@ -38,6 +38,7 @@ Examples
 >>> "logP" in out and "Bioavailability_Ma" in out
 True
 """
+
 from __future__ import annotations
 
 import logging
@@ -166,6 +167,7 @@ def _get_admet_model():
             _sys.stdout = _io.StringIO()
             _sys.stderr = _io.StringIO()
             from admet_ai import ADMETModel
+
             _ADMET_MODEL = ADMETModel(num_workers=1)
         finally:
             _sys.stdout = old_stdout
@@ -255,17 +257,25 @@ def _compute_rdkit_descriptors(smiles: str) -> Dict[str, float]:
         try:
             from rdkit.Chem import RDConfig  # noqa: F401
             import os as _os
+
             contrib_path = _os.path.join(
-                _os.path.dirname(__file__), "..", "..", ".venv", "lib",
+                _os.path.dirname(__file__),
+                "..",
+                "..",
+                ".venv",
+                "lib",
             )
             # fallback: ask rdkit for its contrib path
             from rdkit.Chem import RDConfig as _RC
+
             sascorer_path = _os.path.join(_RC.RDContribDir, "SA_Score")  # type: ignore[attr-defined]
             import sys as _sys
+
             if sascorer_path not in _sys.path:
                 _sys.path.append(sascorer_path)
             try:
                 import sascorer  # type: ignore[import-not-found]
+
                 out["SA"] = float(sascorer.calculateScore(mol))
             except Exception:
                 out["SA"] = float("nan")
@@ -347,8 +357,15 @@ def predict_admet(smiles: str) -> Dict[str, float]:
                 # dm.descriptors returns a pandas Series of physchem
                 descs = dm.descriptors.compute_many_descriptors(
                     mol,
-                    descriptors=["mw", "clogp", "n_lipinski_hbd", "n_lipinski_hba",
-                                 "tpsa", "n_rotatable_bonds", "qed"],
+                    descriptors=[
+                        "mw",
+                        "clogp",
+                        "n_lipinski_hbd",
+                        "n_lipinski_hba",
+                        "tpsa",
+                        "n_rotatable_bonds",
+                        "qed",
+                    ],
                 )
                 if descs is not None and len(descs) > 0:
                     row = descs.iloc[0] if hasattr(descs, "iloc") else descs

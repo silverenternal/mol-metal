@@ -70,7 +70,8 @@ ALL_7 = [
 
 # Expected DRY_RUN.log emission paths for wrappers that emit per Wf-363-A1 schema
 EXPECTED_DRY_RUN_LOGS = {
-    "Wf-355-A1": REPO_ROOT / "molmetal/reports/wf310e_r20_p3_drugood_full_launch/r1/DRY_RUN.log",
+    "Wf-355-A1": REPO_ROOT
+    / "molmetal/reports/wf310e_r20_p3_drugood_full_launch/r1/DRY_RUN.log",
     "Wf-355-A2": REPO_ROOT / "molmetal/reports/wf355a2_r20_p4_bindingdb/r1/DRY_RUN.log",
     "Wf-355-A3": REPO_ROOT / "molmetal/reports/wf355a3_r20_p5_tmqm_plat/DRY_RUN.log",
     "Wf-355-B1": REPO_ROOT / "molmetal/reports/wf131_p3_deferred_runs/DRY_RUN.log",
@@ -106,7 +107,9 @@ def test_bash_syntax_all_7() -> None:
             cwd=REPO_ROOT,
         )
         if result.returncode != 0:
-            failed.append(f"{label}: exit={result.returncode} stderr={result.stderr.strip()[:200]}")
+            failed.append(
+                f"{label}: exit={result.returncode} stderr={result.stderr.strip()[:200]}"
+            )
     assert not failed, f"syntax failures: {failed}"
 
 
@@ -142,8 +145,10 @@ def test_user_ok_gate_enforced(
     # G5 lacks USER_OK gate per Wf-355-C1 §2.2 (legacy wrapper predates Wf-300C pattern).
     # Without --dry-run, G5 attempts a full ~5 hr launch — skip the timeout test.
     if label == "Wf-124-G5":
-        pytest.skip(f"{label}: legacy wrapper lacks Wf-300C USER_OK gate; "
-                    f"G5 relies on --dry-run marker for CPU-only verification")
+        pytest.skip(
+            f"{label}: legacy wrapper lacks Wf-300C USER_OK gate; "
+            f"G5 relies on --dry-run marker for CPU-only verification"
+        )
 
     # Run with reasonable timeout (30s)
     try:
@@ -164,9 +169,7 @@ def test_user_ok_gate_enforced(
     # gate message must be present in stderr.
     combined = result.stdout + result.stderr
     gate_msg_present = (
-        "USER_OK" in combined
-        or "user_ok" in combined
-        or "user-ok" in combined
+        "USER_OK" in combined or "user_ok" in combined or "user-ok" in combined
     )
     assert exit_code != 0 or gate_msg_present, (
         f"{label}: USER_OK gate not enforced; exit=0 with no USER_OK message. "
@@ -221,17 +224,18 @@ def test_dry_run_all_7(
 # ---------------------------------------------------------------------------
 # Test #5 — DRY_RUN.log emission (5 Wf-355 wrappers with schema)
 # ---------------------------------------------------------------------------
-@pytest.mark.parametrize("label,expected_path", [
-    (label, p) for label, p in EXPECTED_DRY_RUN_LOGS.items() if p is not None
-])
+@pytest.mark.parametrize(
+    "label,expected_path",
+    [(label, p) for label, p in EXPECTED_DRY_RUN_LOGS.items() if p is not None],
+)
 def test_dry_run_log_emission(label: str, expected_path: Path) -> None:
     """5 Wf-355 wrappers must emit DRY_RUN.log at expected paths.
 
     Per Wf-363-A1 schema: ``DRY-RUN launcher for <title>`` header line required.
     """
-    assert expected_path.exists(), (
-        f"{label}: expected DRY_RUN.log not found at {expected_path}"
-    )
+    assert (
+        expected_path.exists()
+    ), f"{label}: expected DRY_RUN.log not found at {expected_path}"
     text = expected_path.read_text()
     # Validate canonical Wf-363-A1 schema markers
     required_markers = ["DRY-RUN launcher for", "wrapper:", "mode:", "ts:"]
@@ -273,7 +277,9 @@ def test_preflight_gpu_dry_run() -> None:
     # print a "DRY-RUN" message and may exit non-zero on missing env. Tolerate
     # exit 0 OR exit-non-zero-with-DRY-RUN-message.
     combined = result.stdout + result.stderr
-    dry_run_marker = "DRY-RUN" in combined or "dry-run" in combined or "DRY_RUN" in combined
+    dry_run_marker = (
+        "DRY-RUN" in combined or "dry-run" in combined or "DRY_RUN" in combined
+    )
     assert result.returncode == 0 or dry_run_marker, (
         f"pre_flight_gpu_ready.sh --dry-run failed: exit={result.returncode}. "
         f"stdout={result.stdout[-300:]} stderr={result.stderr[-300:]}"
@@ -316,7 +322,9 @@ def test_integration_end_to_end_smoke() -> None:
     # Step 2: All pass syntax
     syntax_ok = []
     for label, path, *_ in ALL_7:
-        r = subprocess.run(["bash", "-n", str(path)], capture_output=True, cwd=REPO_ROOT)
+        r = subprocess.run(
+            ["bash", "-n", str(path)], capture_output=True, cwd=REPO_ROOT
+        )
         syntax_ok.append((label, r.returncode == 0))
     # Step 3: Helper scripts exist
     helpers_ok = PRE_FLIGHT_GPU.exists() and WAVE_BUDGET.exists()

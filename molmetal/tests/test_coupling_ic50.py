@@ -41,12 +41,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 REPO_ROOT = PROJECT_ROOT
-SCRIPT_PATH = (
-    REPO_ROOT
-    / "molmetal"
-    / "scripts"
-    / "bench_coupling_ic50.py"
-)
+SCRIPT_PATH = REPO_ROOT / "molmetal" / "scripts" / "bench_coupling_ic50.py"
 DEFAULT_CSV = REPO_ROOT / "molmetal" / "data" / "platinai_5k.csv"
 DEFAULT_BRIDGE_NPZ = REPO_ROOT / "models" / "coupling_adapter_platinai5k.npz"
 
@@ -61,7 +56,8 @@ def _import_module():
     if not SCRIPT_PATH.exists():
         pytest.skip(f"benchmark script not found: {SCRIPT_PATH}")
     spec = importlib.util.spec_from_file_location(
-        "bench_coupling_ic50", str(SCRIPT_PATH),
+        "bench_coupling_ic50",
+        str(SCRIPT_PATH),
     )
     if spec is None or spec.loader is None:  # pragma: no cover
         pytest.skip(f"could not load spec from {SCRIPT_PATH}")
@@ -97,12 +93,18 @@ def _run_benchmark(
     out_dir = tmp_path / "wf39_coupling_bench_out"
     cmd = [
         sys.executable,
-        "-m", "molmetal.scripts.bench_coupling_ic50",
-        "--n-samples", str(int(n_samples)),
-        "--seeds", "1",
-        "--n-steps", str(int(n_steps)),
-        "--output", str(out_dir / "coupling_bench.json"),
-        "--method", *((methods or EXPECTED_METHODS)),
+        "-m",
+        "molmetal.scripts.bench_coupling_ic50",
+        "--n-samples",
+        str(int(n_samples)),
+        "--seeds",
+        "1",
+        "--n-steps",
+        str(int(n_steps)),
+        "--output",
+        str(out_dir / "coupling_bench.json"),
+        "--method",
+        *(methods or EXPECTED_METHODS),
     ]
     proc = subprocess.run(
         cmd,
@@ -113,9 +115,7 @@ def _run_benchmark(
         check=False,
     )
     if proc.returncode != 0:
-        pytest.skip(
-            f"benchmark exited {proc.returncode}: {proc.stderr[:500]}"
-        )
+        pytest.skip(f"benchmark exited {proc.returncode}: {proc.stderr[:500]}")
     out_path = out_dir / "coupling_bench.json"
     if not out_path.exists():
         pytest.skip(f"benchmark did not write {out_path}")
@@ -142,7 +142,10 @@ def small_payload(tmp_path):
 def bridge_only_payload(tmp_path):
     """Run the benchmark with 8 samples × 1 seed × ``bridge`` only."""
     return _run_benchmark(
-        n_samples=8, tmp_path=tmp_path, n_steps=5, methods=("bridge",),
+        n_samples=8,
+        tmp_path=tmp_path,
+        n_steps=5,
+        methods=("bridge",),
     )
 
 
@@ -215,11 +218,16 @@ def test_per_method_aggregate_shape(small_payload) -> None:
     for m in EXPECTED_METHODS:
         agg = pm[m]
         for key in (
-            "bridge_rmse_mean", "bridge_rmse_std",
-            "lambda_determinism_mean", "lambda_separability_mean",
-            "lambda_norm_mean", "lambda_norm_std",
-            "wall_s_mean", "wall_s_std",
-            "peak_mem_mb_mean", "peak_mem_mb_std",
+            "bridge_rmse_mean",
+            "bridge_rmse_std",
+            "lambda_determinism_mean",
+            "lambda_separability_mean",
+            "lambda_norm_mean",
+            "lambda_norm_std",
+            "wall_s_mean",
+            "wall_s_std",
+            "peak_mem_mb_mean",
+            "peak_mem_mb_std",
             "n_records",
             "per_seed",
         ):
@@ -234,9 +242,13 @@ def test_per_seed_block_per_method(small_payload) -> None:
         per_seed = pm[m]["per_seed"]
         assert "0" in per_seed
         for k in (
-            "bridge_rmse", "lambda_determinism", "lambda_separability",
-            "lambda_norm_mean", "lambda_norm_std",
-            "wall_s", "peak_mem_mb",
+            "bridge_rmse",
+            "lambda_determinism",
+            "lambda_separability",
+            "lambda_norm_mean",
+            "lambda_norm_std",
+            "wall_s",
+            "peak_mem_mb",
         ):
             assert k in per_seed["0"], f"{m}/seed 0 missing {k!r}"
 
@@ -246,13 +258,20 @@ def test_config_block_shape(small_payload) -> None:
     _, payload = small_payload
     cfg = payload["config"]
     for key in (
-        "dataset", "csv_path", "bridge_npz",
-        "n_samples_requested", "n_samples_loaded",
-        "seeds", "methods",
-        "n_steps_cfm", "pocket_size",
-        "lambda_dim", "embed_dim",
+        "dataset",
+        "csv_path",
+        "bridge_npz",
+        "n_samples_requested",
+        "n_samples_loaded",
+        "seeds",
+        "methods",
+        "n_steps_cfm",
+        "pocket_size",
+        "lambda_dim",
+        "embed_dim",
         "bridge_rmse_gate",
-        "timestamp_utc", "version",
+        "timestamp_utc",
+        "version",
     ):
         assert key in cfg, f"config missing {key!r}"
     assert cfg["methods"] == list(EXPECTED_METHODS)
@@ -286,9 +305,7 @@ def test_lambda_determinism_one(small_payload) -> None:
         assert np.isfinite(det), f"{m} determinism not finite"
         # Equal-bit determinism means 1.0 exactly; allow tiny float
         # slack from the mean-of-means aggregation across seeds.
-        assert det == pytest.approx(1.0, abs=1e-9), (
-            f"{m} determinism {det} != 1.0"
-        )
+        assert det == pytest.approx(1.0, abs=1e-9), f"{m} determinism {det} != 1.0"
 
 
 def test_lambda_separability_bounded(small_payload) -> None:

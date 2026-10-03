@@ -306,20 +306,20 @@ class SE3SBOTSampler:
                 f"lift_to_se3_twist expects (B, N, 3) input, got "
                 f"{tuple(coords.shape)}"
             )
-        centroid = coords.mean(dim=1)                                # (B, 3)
-        centred = coords - centroid.unsqueeze(1)                    # (B, N, 3)
+        centroid = coords.mean(dim=1)  # (B, 3)
+        centred = coords - centroid.unsqueeze(1)  # (B, N, 3)
         # Covariance matrix per batch (B, 3, 3) = centred.T @ centred / N
         cov = centred.transpose(-1, -2) @ centred / max(1, centred.shape[1])
         # Rotation-vector proxy: read the off-diagonal entries of the
         # skew part of ``cov``.  This is the same closed-form
         # reduction :func:`so3_log` uses on rotation matrices; here we
         # apply it to the *covariance* as a rotation-invariant proxy.
-        skew = 0.5 * (cov - cov.transpose(-1, -2))                   # (B, 3, 3)
+        skew = 0.5 * (cov - cov.transpose(-1, -2))  # (B, 3, 3)
         omega = torch.stack(
             [skew[..., 2, 1], skew[..., 0, 2], skew[..., 1, 0]],
             dim=-1,
-        )                                                            # (B, 3)
-        return torch.cat([centroid, omega], dim=-1)                  # (B, 6)
+        )  # (B, 3)
+        return torch.cat([centroid, omega], dim=-1)  # (B, 6)
 
     # ------------------------------------------------------------------
     # Public API
@@ -379,15 +379,15 @@ class SE3SBOTSampler:
         # Pairwise SE(3) twist cost (the SE(3) geodesic proxy, eq. (12)
         # of Mahmood 2026): squared L2 distance in twist space.
         b = xi0.shape[0]
-        diff = xi0.unsqueeze(1) - xi1.unsqueeze(0)                   # (B, B, 6)
-        C = (diff * diff).sum(dim=-1)                                # (B, B)
+        diff = xi0.unsqueeze(1) - xi1.unsqueeze(0)  # (B, B, 6)
+        C = (diff * diff).sum(dim=-1)  # (B, B)
         # Uniform marginals (the SB self-bridge convention).
         a = torch.full((b,), 1.0 / b, dtype=xi0.dtype, device=xi0.device)
         # Log-domain Sinkhorn — stable for eps down to 1e-3 (see math
         # layer docstring line 562-566).
         _loss, P = self._sinkhorn.forward(xi0, xi1, C=C, a=a, b=a)
         # Hard assignment: per source i pick argmax_j P[i, j].
-        idx = P.argmax(dim=-1).to(torch.long)                        # (B,)
+        idx = P.argmax(dim=-1).to(torch.long)  # (B,)
         return idx
 
 

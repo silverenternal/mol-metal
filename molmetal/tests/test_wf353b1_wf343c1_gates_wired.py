@@ -142,11 +142,12 @@ def _load_preflight_module():
     ``test_wf343c4_integration.py``.
     """
     spec = importlib.util.spec_from_file_location(
-        "pre_flight_check_under_test", PREFLIGHT_SCRIPT,
+        "pre_flight_check_under_test",
+        PREFLIGHT_SCRIPT,
     )
-    assert spec is not None and spec.loader is not None, (
-        f"pre_flight_check.py has no import spec ({PREFLIGHT_SCRIPT})"
-    )
+    assert (
+        spec is not None and spec.loader is not None
+    ), f"pre_flight_check.py has no import spec ({PREFLIGHT_SCRIPT})"
     mod = importlib.util.module_from_spec(spec)
     sys.modules["pre_flight_check_under_test"] = mod
     spec.loader.exec_module(mod)
@@ -265,9 +266,9 @@ class TestGateWiring:
             (r for n, r in all_runners if n == "p3_gate_count_consistency_audit"),
             None,
         )
-        assert audit_runner is not None, (
-            "Wf-321D gate_count_consistency_audit NOT in build_gates('all')"
-        )
+        assert (
+            audit_runner is not None
+        ), "Wf-321D gate_count_consistency_audit NOT in build_gates('all')"
         audit_result = audit_runner()
         assert audit_result.status == "PASS", (
             f"Wf-321D gate_count_audit FAILed with status="
@@ -301,46 +302,46 @@ class TestGateWiring:
         runner_by_name: Dict[str, any] = {
             n: r for n, r in all_runners if n.startswith("p3_wf353b1_")
         }
-        assert len(runner_by_name) == 22, (
-            f"expected 22 p3_wf353b1_* runners, got {len(runner_by_name)}"
-        )
+        assert (
+            len(runner_by_name) == 22
+        ), f"expected 22 p3_wf353b1_* runners, got {len(runner_by_name)}"
 
         ALLOWED_STATUSES = {"PASS", "FAIL", "SKIP"}
 
         for gate_name in EXPECTED_NEW_GATE_NAMES:
-            assert gate_name in runner_by_name, (
-                f"{gate_name} missing from build_gates('all') runner map"
-            )
+            assert (
+                gate_name in runner_by_name
+            ), f"{gate_name} missing from build_gates('all') runner map"
             runner = runner_by_name[gate_name]
-            assert callable(runner), (
-                f"{gate_name} runner is not callable; got {type(runner)}"
-            )
+            assert callable(
+                runner
+            ), f"{gate_name} runner is not callable; got {type(runner)}"
 
             # Invoke the runner; it must return a GateResult (not raise).
             result = runner()
 
             # Canonical GateResult schema (mirrors pre_flight_check.GateResult).
-            assert result is not None, (
-                f"{gate_name} returned None instead of GateResult"
-            )
-            assert hasattr(result, "status"), (
-                f"{gate_name} result missing 'status' attribute"
-            )
-            assert hasattr(result, "evidence"), (
-                f"{gate_name} result missing 'evidence' attribute"
-            )
-            assert hasattr(result, "wall_sec"), (
-                f"{gate_name} result missing 'wall_sec' attribute"
-            )
-            assert hasattr(result, "name"), (
-                f"{gate_name} result missing 'name' attribute"
-            )
-            assert hasattr(result, "priority"), (
-                f"{gate_name} result missing 'priority' attribute"
-            )
-            assert hasattr(result, "pipeline"), (
-                f"{gate_name} result missing 'pipeline' attribute"
-            )
+            assert (
+                result is not None
+            ), f"{gate_name} returned None instead of GateResult"
+            assert hasattr(
+                result, "status"
+            ), f"{gate_name} result missing 'status' attribute"
+            assert hasattr(
+                result, "evidence"
+            ), f"{gate_name} result missing 'evidence' attribute"
+            assert hasattr(
+                result, "wall_sec"
+            ), f"{gate_name} result missing 'wall_sec' attribute"
+            assert hasattr(
+                result, "name"
+            ), f"{gate_name} result missing 'name' attribute"
+            assert hasattr(
+                result, "priority"
+            ), f"{gate_name} result missing 'priority' attribute"
+            assert hasattr(
+                result, "pipeline"
+            ), f"{gate_name} result missing 'pipeline' attribute"
 
             # Status must be one of the 3 canonical values.
             assert result.status in ALLOWED_STATUSES, (
@@ -350,21 +351,19 @@ class TestGateWiring:
 
             # Evidence must be a non-empty string.
             assert isinstance(result.evidence, str), (
-                f"{gate_name} evidence must be a str; got "
-                f"{type(result.evidence)}"
+                f"{gate_name} evidence must be a str; got " f"{type(result.evidence)}"
             )
-            assert len(result.evidence) > 0, (
-                f"{gate_name} evidence must be non-empty; got empty string"
-            )
+            assert (
+                len(result.evidence) > 0
+            ), f"{gate_name} evidence must be non-empty; got empty string"
 
             # Wall time must be a non-negative float.
             assert isinstance(result.wall_sec, (int, float)), (
-                f"{gate_name} wall_sec must be numeric; got "
-                f"{type(result.wall_sec)}"
+                f"{gate_name} wall_sec must be numeric; got " f"{type(result.wall_sec)}"
             )
-            assert result.wall_sec >= 0.0, (
-                f"{gate_name} wall_sec must be >= 0; got {result.wall_sec}"
-            )
+            assert (
+                result.wall_sec >= 0.0
+            ), f"{gate_name} wall_sec must be >= 0; got {result.wall_sec}"
 
     def test_preflight_fresh_run_passes_22_new_gates(self, preflight) -> None:
         """Pin: on a fresh-run pre-flight, all 22 NEW Wf-343c1 gates
@@ -388,16 +387,17 @@ class TestGateWiring:
         runner_by_name: Dict[str, any] = {
             n: r for n, r in all_runners if n.startswith("p3_wf353b1_")
         }
-        assert len(runner_by_name) == 22, (
-            f"expected 22 p3_wf353b1_* runners; got {len(runner_by_name)}"
-        )
+        assert (
+            len(runner_by_name) == 22
+        ), f"expected 22 p3_wf353b1_* runners; got {len(runner_by_name)}"
 
         # Expected verdicts per the Wf-343c1 design contract:
         #   * 21 PASS  (10 code + 3 ablation + 6 data + 1 test + 1 honest_framing)
         #   *  1 SKIP  (§2.1.6 BindingDB external — honest-negative)
         #   *  0 FAIL  (any FAIL = regression on canonical repo state)
         expected_pass_names: Tuple[str, ...] = tuple(
-            n for n in EXPECTED_NEW_GATE_NAMES
+            n
+            for n in EXPECTED_NEW_GATE_NAMES
             if n != "p3_wf353b1_data_2_1_6_bindingdb_external_honest_negative"
         )
         expected_skip_names: Tuple[str, ...] = (

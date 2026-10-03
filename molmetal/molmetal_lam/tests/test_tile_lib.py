@@ -1,4 +1,5 @@
 """Tests for the tile_lib module (Tile dataclass + 12 click tiles)."""
+
 from __future__ import annotations
 
 import dataclasses

@@ -34,6 +34,7 @@ Honest framing (party-twenty-spirit §3.5):
     bit-equivalent to the existing --use-edm-precond path.
   - Default OFF for safety; all wire-ups are opt-in.
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -52,6 +53,7 @@ PYTHON = sys.executable
 # ---------------------------------------------------------------------------
 # Test 1: c_skip / c_out / c_in / c_noise formulas match Karras 2022
 # ---------------------------------------------------------------------------
+
 
 def test_edm_formulas_match_reference():
     """Verify c_skip/c_out/c_in/c_noise match Karras 2022 closed-form.
@@ -74,8 +76,8 @@ def test_edm_formulas_match_reference():
     sigma = torch.logspace(-3, 2, steps=200)  # 1e-3 -> 100
     c_skip, c_out, c_in, c_noise = edm_precondition_factors(sigma, cfg)
 
-    sd2 = cfg.sigma_data ** 2
-    denom = sigma ** 2 + sd2
+    sd2 = cfg.sigma_data**2
+    denom = sigma**2 + sd2
     exp_c_skip = sd2 / denom
     exp_c_out = sigma * cfg.sigma_data / denom.sqrt()
     exp_c_in = 1.0 / denom.sqrt()
@@ -90,8 +92,7 @@ def test_edm_formulas_match_reference():
         f"{(c_out - exp_c_out).abs().max().item():.2e}"
     )
     assert torch.allclose(c_in, exp_c_in, atol=1e-8), (
-        f"c_in mismatch: max abs err = "
-        f"{(c_in - exp_c_in).abs().max().item():.2e}"
+        f"c_in mismatch: max abs err = " f"{(c_in - exp_c_in).abs().max().item():.2e}"
     )
     assert torch.allclose(c_noise, exp_c_noise, atol=1e-8), (
         f"c_noise mismatch: max abs err = "
@@ -102,6 +103,7 @@ def test_edm_formulas_match_reference():
 # ---------------------------------------------------------------------------
 # Test 2: sigma -> 0 limit (clamp floor) gives plain MSE
 # ---------------------------------------------------------------------------
+
 
 def test_sigma_zero_limit_equals_plain_mse():
     """At sigma -> cfg.sigma_min, the EDM loss weight -> 1.0.
@@ -146,6 +148,7 @@ def test_sigma_zero_limit_equals_plain_mse():
 # Test 3: log-normal sigma sampling schedule
 # ---------------------------------------------------------------------------
 
+
 def test_log_normal_sigma_sampling_schedule():
     """EDM sigma sampler yields the expected Karras 2022 distribution.
 
@@ -168,26 +171,27 @@ def test_log_normal_sigma_sampling_schedule():
     sigma = sample_edm_sigma(16384, cfg, torch.device("cpu"))
     # sigma = exp(N(P_mean, P_std^2)) -> median(sigma) = exp(P_mean)
     # = exp(-1.2) ≈ 0.301.  Bound is [0.1, 0.5] (sigma-data dominance).
-    assert 0.1 < sigma.median().item() < 0.5, (
-        f"sigma median should be ~exp(-1.2)≈0.30, got {sigma.median().item()}"
-    )
+    assert (
+        0.1 < sigma.median().item() < 0.5
+    ), f"sigma median should be ~exp(-1.2)≈0.30, got {sigma.median().item()}"
     # Mean > 0 always; for P_mean=-1.2 / P_std=1.2, mean(exp(X)) is
     # exp(p_mean + 0.5*p_std^2) = exp(-1.2 + 0.72) = exp(-0.48) ≈ 0.62.
-    assert 0.3 < sigma.mean().item() < 3.0, (
-        f"sigma mean should be in [0.3, 3.0], got {sigma.mean().item()}"
-    )
-    assert sigma.max().item() <= cfg.sigma_max + 1e-6, (
-        f"sigma max exceeds cfg.sigma_max: {sigma.max().item()} > {cfg.sigma_max}"
-    )
-    assert sigma.min().item() >= cfg.sigma_min - 1e-6, (
-        f"sigma min below cfg.sigma_min: {sigma.min().item()} < {cfg.sigma_min}"
-    )
+    assert (
+        0.3 < sigma.mean().item() < 3.0
+    ), f"sigma mean should be in [0.3, 3.0], got {sigma.mean().item()}"
+    assert (
+        sigma.max().item() <= cfg.sigma_max + 1e-6
+    ), f"sigma max exceeds cfg.sigma_max: {sigma.max().item()} > {cfg.sigma_max}"
+    assert (
+        sigma.min().item() >= cfg.sigma_min - 1e-6
+    ), f"sigma min below cfg.sigma_min: {sigma.min().item()} < {cfg.sigma_min}"
 
 
 # ---------------------------------------------------------------------------
 # Test 4: backward-compat default OFF — sigma_preconditioned_loss with
 #         cfg=None reduces to plain MSE
 # ---------------------------------------------------------------------------
+
 
 def test_backward_compat_default_off():
     """Without --edm-precond (cfg=None), the new function is plain MSE.
@@ -206,7 +210,7 @@ def test_backward_compat_default_off():
     v_pred = torch.randn(b, n, d)
     target = torch.randn(b, n, d)
     sigma = torch.rand(b)  # ignored when cfg=None
-    t = torch.rand(b)       # ignored when cfg=None
+    t = torch.rand(b)  # ignored when cfg=None
 
     # Plain reference: sum-of-atom-MSE divided by total mask sum, i.e.
     # Σ_i Σ_j (v_pred[i,j] - target[i,j])^2 / (B*N).  This matches the
@@ -222,7 +226,9 @@ def test_backward_compat_default_off():
 
     # Also: with mask supplied, behavior is identical (mask=None == ones).
     mask = torch.ones(b, n, 1)
-    out_masked = sigma_preconditioned_loss(t, sigma, v_pred, target, mask=mask, cfg=None)
+    out_masked = sigma_preconditioned_loss(
+        t, sigma, v_pred, target, mask=mask, cfg=None
+    )
     assert torch.allclose(out_masked, ref, atol=1e-6), (
         f"mask=ones should give same result as mask=None; "
         f"diff = {(out_masked - ref).abs().item():.2e}"
@@ -232,6 +238,7 @@ def test_backward_compat_default_off():
 # ---------------------------------------------------------------------------
 # Test 5: trainer CLI --edm-preconditioning alias flag accepted
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_cli_alias_flag():
     """The trainer accepts --edm-preconditioning as alias for --use-edm-precond.
@@ -248,50 +255,63 @@ def test_trainer_cli_alias_flag():
     env = {"PYTHONPATH": str(REPO_ROOT)}
     result = subprocess.run(
         [PYTHON, str(TRAINER), "--help"],
-        env=env, capture_output=True, text=True, timeout=60,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     # argparse exits 0 for --help.
-    assert result.returncode == 0, (
-        f"--help failed: stderr={result.stderr!r}"
-    )
-    assert "--edm-preconditioning" in result.stdout, (
-        "alias flag --edm-preconditioning missing from --help output"
-    )
-    assert "--use-edm-precond" in result.stdout, (
-        "primary flag --use-edm-precond missing from --help output"
-    )
+    assert result.returncode == 0, f"--help failed: stderr={result.stderr!r}"
+    assert (
+        "--edm-preconditioning" in result.stdout
+    ), "alias flag --edm-preconditioning missing from --help output"
+    assert (
+        "--use-edm-precond" in result.stdout
+    ), "primary flag --use-edm-precond missing from --help output"
 
     # Sanity: confirm that both flags can be parsed (without running the
     # full trainer).  Use argparse on the trainer's parser directly.
     import importlib.util
+
     spec = importlib.util.spec_from_file_location("trainer_probe", str(TRAINER))
     # Don't actually execute main(); we only need argparse to recognize
     # the flag.  The fastest way: spawn the trainer with both flags on
     # the CLI and expect argparse to error on missing required args
     # (NOT on the flag itself).
     result2 = subprocess.run(
-        [PYTHON, str(TRAINER),
-         "--edm-preconditioning", "--use-edm-precond",
-         "--pocket-id", "1", "--epochs", "0"],
-        env=env, capture_output=True, text=True, timeout=60,
+        [
+            PYTHON,
+            str(TRAINER),
+            "--edm-preconditioning",
+            "--use-edm-precond",
+            "--pocket-id",
+            "1",
+            "--epochs",
+            "0",
+        ],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     # With --epochs 0 the trainer should reach main() but skip the
     # training loop.  Even if it errors on missing args, the error
     # should NOT be 'unrecognized argument --edm-preconditioning'.
     combined = result2.stderr + result2.stdout
     assert "unrecognized arguments" not in combined, (
-        f"alias flag not recognized by trainer argparse: "
-        f"stderr={result2.stderr!r}"
+        f"alias flag not recognized by trainer argparse: " f"stderr={result2.stderr!r}"
     )
-    assert "--edm-preconditioning" not in combined.split("Traceback")[-1] \
-        if "Traceback" in combined else True, (
-        "argparse rejected --edm-preconditioning"
-    )
+    assert (
+        "--edm-preconditioning" not in combined.split("Traceback")[-1]
+        if "Traceback" in combined
+        else True
+    ), "argparse rejected --edm-preconditioning"
 
 
 # ---------------------------------------------------------------------------
 # Test 6: integration with synthetic CFM velocity batch (trainer-shape)
 # ---------------------------------------------------------------------------
+
 
 def test_integration_with_train_cfm_trainer():
     """sigma_preconditioned_loss is finite + non-NaN on trainer-shaped input.
@@ -323,6 +343,4 @@ def test_integration_with_train_cfm_trainer():
     # Backward works.
     loss.backward()
     assert v_pred.grad is not None
-    assert torch.isfinite(v_pred.grad).all(), (
-        "v_pred.grad has non-finite entries"
-    )
+    assert torch.isfinite(v_pred.grad).all(), "v_pred.grad has non-finite entries"

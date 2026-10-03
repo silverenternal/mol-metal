@@ -18,6 +18,7 @@ L8 — binding/types.py
     L8.5 WARHEAD_HIT_RATE              (defaults to metal-coordination)
     L8.6 PIC50_COMPONENT_RESIDUAL      (sigma < 1.5 on MMP2)
 """
+
 from __future__ import annotations
 
 import pytest
@@ -61,6 +62,7 @@ def _valid_tiles():
     resolvable inputs.
     """
     from rdkit import Chem  # type: ignore
+
     out = []
     for t in STANDARD_12_TILES():
         mol = Chem.MolFromSmiles(t.smiles)
@@ -168,6 +170,7 @@ def test_l7_05_well_typed_fraction():
     l7_metrics()["well_typed_fraction"]
     # Drug-like probe: ibuprofen (MW=206, passes REOS MW floor).
     from rdkit import Chem  # type: ignore
+
     ibu = Chem.MolFromSmiles("CC(C)Cc1ccc(C(C)C(=O)O)cc1")
     assert ibu is not None
     assert well_typed(ibu, ALL_ADMET), "ibuprofen should be well-typed"

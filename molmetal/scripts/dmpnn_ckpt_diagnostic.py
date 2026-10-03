@@ -70,13 +70,13 @@ from molmetal.baselines.dmpnn import (
 
 # Probe SMILES — small, drug-like, drawn from common MetalCytotox ligands
 PROBE_SMILES: Tuple[str, ...] = (
-    "CCO",                                              # ethanol
-    "c1ccccc1",                                         # benzene
-    "CC(=O)Oc1ccccc1C(=O)O",                            # aspirin
-    "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",                     # caffeine
-    "O=C([O-])c1ccccc1",                                # benzoate
-    "C1N2CN3CN1CP(C2)C3",                               # small N-donor cage
-    "Cl[P](Cl)(Cl)Cl",                                  # PtCl4 fragment (dative)
+    "CCO",  # ethanol
+    "c1ccccc1",  # benzene
+    "CC(=O)Oc1ccccc1C(=O)O",  # aspirin
+    "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",  # caffeine
+    "O=C([O-])c1ccccc1",  # benzoate
+    "C1N2CN3CN1CP(C2)C3",  # small N-donor cage
+    "Cl[P](Cl)(Cl)Cl",  # PtCl4 fragment (dative)
 )
 
 
@@ -112,6 +112,7 @@ def _sha256_prefix(path: Path, n_bytes: int = 8) -> str:
 
 def _utc_iso(ts: float) -> str:
     import datetime as _dt
+
     return _dt.datetime.fromtimestamp(ts, tz=_dt.timezone.utc).isoformat()
 
 
@@ -160,7 +161,7 @@ def load_ckpt_diagnostic(
     load_result = model.load_state_dict(state_dict, strict=False)
     missing = list(load_result.missing_keys)
     unexpected = list(load_result.unexpected_keys)
-    strict_ok = (len(missing) == 0 and len(unexpected) == 0)
+    strict_ok = len(missing) == 0 and len(unexpected) == 0
 
     # Inference smoke
     graphs = featurize_smiles_list(list(probe_smiles))
@@ -337,17 +338,23 @@ def main(argv: Optional[List[str]] = None) -> int:
             "Quality (pIC50 R²) is reported in training_summary.json."
         ),
     }
-    (args.out_dir / "ckpt_inventory.json").write_text(json.dumps(inventory_payload, indent=2))
+    (args.out_dir / "ckpt_inventory.json").write_text(
+        json.dumps(inventory_payload, indent=2)
+    )
 
     load_payload = {
         "wf_tag": "Wf-84 Phase 3 — D-MPNN pIC50 ckpt load report",
         "n_checkpoints": len(load_reports),
         "n_strict_ok": sum(1 for r in load_reports if r.get("load_strict_ok")),
-        "n_load_errors": sum(1 for r in load_reports if "ERROR" in r.get("load_status", "")),
+        "n_load_errors": sum(
+            1 for r in load_reports if "ERROR" in r.get("load_status", "")
+        ),
         "reports": load_reports,
         "timestamp_utc": _utc_iso(time.time()),
     }
-    (args.out_dir / "ckpt_load_report.json").write_text(json.dumps(load_payload, indent=2))
+    (args.out_dir / "ckpt_load_report.json").write_text(
+        json.dumps(load_payload, indent=2)
+    )
 
     inference_payload = {
         "wf_tag": "Wf-84 Phase 3 — D-MPNN pIC50 inference smoke",
@@ -361,7 +368,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         "reports": inference_reports,
         "timestamp_utc": _utc_iso(time.time()),
     }
-    (args.out_dir / "inference_smoke.json").write_text(json.dumps(inference_payload, indent=2))
+    (args.out_dir / "inference_smoke.json").write_text(
+        json.dumps(inference_payload, indent=2)
+    )
 
     # Synthesis markdown
     md_lines: List[str] = [
@@ -387,14 +396,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         keys = load_r.get("state_dict_keys", "?")
         strict_ok = "yes" if load_r.get("load_strict_ok") else "no"
         rng = inf_r.get("inference_pic50_range", [float("nan"), float("nan")])
-        rng_s = (
-            f"[{rng[0]:+.3f}, {rng[1]:+.3f}]"
-            if all(np.isfinite(rng))
-            else "[n/a]"
-        )
-        md_lines.append(
-            f"| {name} | {size:>8} | {keys} | {strict_ok} | {rng_s} |"
-        )
+        rng_s = f"[{rng[0]:+.3f}, {rng[1]:+.3f}]" if all(np.isfinite(rng)) else "[n/a]"
+        md_lines.append(f"| {name} | {size:>8} | {keys} | {strict_ok} | {rng_s} |")
     md_lines += [
         "",
         "## Honest framing",

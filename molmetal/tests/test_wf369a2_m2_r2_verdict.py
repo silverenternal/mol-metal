@@ -18,6 +18,7 @@ Honest framing (party-twenty-spirit §3.5):
   * If the verdict doc is missing or has fewer than 7 sections: FAIL.
   * If the verdict doc fails to reference Wf-335-M2 or Wf-367-B1: FAIL.
 """
+
 from __future__ import annotations
 
 import os

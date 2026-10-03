@@ -100,9 +100,9 @@ class CytotoxFilter:
     that metal.
     """
 
-    time_threshold: Optional[float] = None        # hours, drop Time(h) > t
-    ic50_min: Optional[float] = None             # uM,    drop IC50 < t
-    ic50_max: Optional[float] = None             # uM,    drop IC50 > t
+    time_threshold: Optional[float] = None  # hours, drop Time(h) > t
+    ic50_min: Optional[float] = None  # uM,    drop IC50 < t
+    ic50_max: Optional[float] = None  # uM,    drop IC50 > t
     metal_whitelist: Optional[Sequence[str]] = None  # e.g. ["Ru"]
     year_min: Optional[int] = None
     year_max: Optional[int] = None
@@ -145,8 +145,16 @@ class MetalCytotoxDataset:
         self._lru_max = int(conformer_cache_lru)
         self._conformer_cache: "OrderedDict[str, Molecule]" = OrderedDict()
         # Pre-extract year / metal as plain numpy arrays for fast splits
-        self._years = self.df["Year"].to_numpy() if "Year" in self.df.columns else np.zeros(len(self.df))
-        self._metals = self.df["Metal"].astype(str).to_numpy() if "Metal" in self.df.columns else np.array(["?"] * len(self.df))
+        self._years = (
+            self.df["Year"].to_numpy()
+            if "Year" in self.df.columns
+            else np.zeros(len(self.df))
+        )
+        self._metals = (
+            self.df["Metal"].astype(str).to_numpy()
+            if "Metal" in self.df.columns
+            else np.array(["?"] * len(self.df))
+        )
 
     # ------------------------------------------------------------------
     # Constructors

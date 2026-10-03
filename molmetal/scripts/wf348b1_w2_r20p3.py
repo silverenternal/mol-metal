@@ -63,6 +63,7 @@ CLI:
             --out-dir molmetal/reports/wf348b1_w2_r20p3 \\
             --n-max 200 --n-bins 32 --pll-k 128
 """
+
 from __future__ import annotations
 
 import argparse
@@ -84,6 +85,7 @@ import torch
 # minimal environments; actual call sites guard on availability.
 try:  # pragma: no cover — import-only check
     from sklearn.linear_model import Ridge
+
     _HAS_SKLEARN = True
 except Exception:  # pragma: no cover — defensive
     Ridge = None  # type: ignore
@@ -91,6 +93,7 @@ except Exception:  # pragma: no cover — defensive
 
 try:  # pragma: no cover — import-only check
     from rdkit import Chem, RDLogger
+
     RDLogger.DisableLog("rdApp.*")
     _RDKIT_AVAILABLE = True
 except Exception:  # pragma: no cover
@@ -130,11 +133,14 @@ def _resolve_repo_path(path: str) -> str:
 # ---------------------------------------------------------------------------
 # Constants — R20-P3 32-bin Fourier + 128-d PLL feature dims
 # ---------------------------------------------------------------------------
-FOURIER_BIN_COUNT_DEFAULT: int = 32     # Kim & Jung 2026 §4
-PLL_TOP_K_DEFAULT: int = 128            # Liu & Feng 2026 (full top-k)
-MULTI_PH_N_BINS_DEFAULT: int = 32       # Kim & Jung 2026 §4.1
+FOURIER_BIN_COUNT_DEFAULT: int = 32  # Kim & Jung 2026 §4
+PLL_TOP_K_DEFAULT: int = 128  # Liu & Feng 2026 (full top-k)
+MULTI_PH_N_BINS_DEFAULT: int = 32  # Kim & Jung 2026 §4.1
 PLATINAI_4CELL_CELLS: Tuple[str, ...] = (
-    "mcf7", "a549", "a2780", "a2780cis",
+    "mcf7",
+    "a549",
+    "a2780",
+    "a2780cis",
 )
 PLATINAI_IC50_COL: Dict[str, str] = {
     "mcf7": "ic50_mcf7_nm",
@@ -168,6 +174,7 @@ def _import_extractor():
         from molmetal.molmetal_lam.lam_chem.multi_ph_pll_integration import (
             MultiPHPLLError,
         )
+
         return MultiPHPLLFeatureExtractor, MultiPHPLLError
     except Exception as exc:
         return None, exc
@@ -189,9 +196,7 @@ def extract_r20p3_features(
     """
     extractor_cls, err = _import_extractor()
     if extractor_cls is None:
-        raise RuntimeError(
-            f"MultiPHPLLFeatureExtractor unavailable: {err}"
-        )
+        raise RuntimeError(f"MultiPHPLLFeatureExtractor unavailable: {err}")
     extractor = extractor_cls(n_bins=int(n_bins), k=int(pll_k))
     fourier_rows: List[np.ndarray] = []
     multi_ph_rows: List[np.ndarray] = []
@@ -311,7 +316,10 @@ def _wasserstein_1d_numpy(a: np.ndarray, b: np.ndarray) -> float:
 
 
 def _wasserstein_sliced_numpy(
-    a: np.ndarray, b: np.ndarray, n_mc: int = 256, seed: int = 0,
+    a: np.ndarray,
+    b: np.ndarray,
+    n_mc: int = 256,
+    seed: int = 0,
 ) -> float:
     """Sliced-W₂ distance for multi-D inputs (pure-numpy).
 
@@ -345,8 +353,7 @@ def _wasserstein_sliced_numpy(
     a_proj = a @ proj.T  # (N, n_mc)
     b_proj = b @ proj.T  # (M, n_mc)
     contribs = [
-        _wasserstein_1d_numpy(a_proj[:, i], b_proj[:, i])
-        for i in range(int(n_mc))
+        _wasserstein_1d_numpy(a_proj[:, i], b_proj[:, i]) for i in range(int(n_mc))
     ]
     return float(np.mean(contribs))
 
@@ -386,13 +393,15 @@ def compute_w2_per_cell(
             out[cell] = float("nan")
             continue
         ref = (
-            y if reference_per_cell is None
-            else np.asarray(reference_per_cell.get(cell, y), dtype=np.float64).reshape(-1)
+            y
+            if reference_per_cell is None
+            else np.asarray(reference_per_cell.get(cell, y), dtype=np.float64).reshape(
+                -1
+            )
         )
         # Per-row 1-D W₂ distance (mean across rows).
         per_row = [
-            _wasserstein_1d_numpy(np.array([yi], dtype=np.float64), ref)
-            for yi in y
+            _wasserstein_1d_numpy(np.array([yi], dtype=np.float64), ref) for yi in y
         ]
         out[cell] = float(np.mean(per_row))
     return out
@@ -437,8 +446,7 @@ def compute_w2_per_cohort(
     else:
         reference = np.asarray(reference, dtype=np.float64).reshape(-1)
     per_row = [
-        _wasserstein_1d_numpy(np.array([yi], dtype=np.float64), reference)
-        for yi in y
+        _wasserstein_1d_numpy(np.array([yi], dtype=np.float64), reference) for yi in y
     ]
     return {
         "mean_per_row_w2": float(np.mean(per_row)),
@@ -540,8 +548,10 @@ def joint_fourier_pll_feature(
     joint : ``(N, n_bins + pll_k)`` np.ndarray
     """
     return np.concatenate(
-        [np.asarray(fourier_batch, dtype=np.float64),
-         np.asarray(pll_batch, dtype=np.float64)],
+        [
+            np.asarray(fourier_batch, dtype=np.float64),
+            np.asarray(pll_batch, dtype=np.float64),
+        ],
         axis=-1,
     )
 
@@ -581,27 +591,21 @@ def sota_band_check(
     """
     band_low = 0.01
     band_high = 10.0
-    finite_per_cell = [
-        v for v in w2_per_cell.values() if math.isfinite(float(v))
-    ]
+    finite_per_cell = [v for v in w2_per_cell.values() if math.isfinite(float(v))]
     per_cell_pass = bool(
-        finite_per_cell
-        and all(band_low <= v <= band_high for v in finite_per_cell)
+        finite_per_cell and all(band_low <= v <= band_high for v in finite_per_cell)
     )
     # Only check ``mean_per_row_w2`` (the others are by-definition 0
     # for self-reference and would always fail the band floor of 0.01).
     cohort_mean = float(w2_per_cohort.get("mean_per_row_w2", float("nan")))
     per_cohort_pass = bool(
-        math.isfinite(cohort_mean)
-        and band_low <= cohort_mean <= band_high
+        math.isfinite(cohort_mean) and band_low <= cohort_mean <= band_high
     )
     cross_finite = [
-        float(v) for v in w2_cross_cohort.values()
-        if math.isfinite(float(v))
+        float(v) for v in w2_cross_cohort.values() if math.isfinite(float(v))
     ]
     cross_cohort_pass = bool(
-        cross_finite
-        and all(band_low <= v <= band_high for v in cross_finite)
+        cross_finite and all(band_low <= v <= band_high for v in cross_finite)
     )
     if per_cell_pass and per_cohort_pass and cross_cohort_pass:
         verdict = "SOTA_BAND_PASS"
@@ -672,7 +676,9 @@ def run_wf348b1(
     t0 = time.perf_counter()
     # ---- 1. R20-P3 feature extraction (Fourier + PLL canonical axis) ----
     fourier_b, multi_ph_b, pll_b, valid_mask = extract_r20p3_features(
-        smiles_list, n_bins=int(n_bins), pll_k=int(pll_k),
+        smiles_list,
+        n_bins=int(n_bins),
+        pll_k=int(pll_k),
     )
     feature_wall = float(time.perf_counter() - t0)
 
@@ -680,8 +686,7 @@ def run_wf348b1(
 
     # ---- 2. Per-cell W₂ alignment --------------------------------------
     y_per_cell_arrays: Dict[str, np.ndarray] = {
-        c: np.asarray(per_cell_pic50[c], dtype=np.float64)
-        for c in PLATINAI_4CELL_CELLS
+        c: np.asarray(per_cell_pic50[c], dtype=np.float64) for c in PLATINAI_4CELL_CELLS
     }
     # Use the per-cell array as both the row population and the
     # reference (leave-one-in convention, matching Wf-329-W5 §
@@ -716,8 +721,12 @@ def run_wf348b1(
         cross_per_cell[cell] = compute_w2_cross_cohort(
             y_a=y_a[: int(0.8 * len(y_a))] if len(y_a) > 1 else y_a,
             y_b=y_a[int(0.8 * len(y_a)) :] if len(y_a) > 1 else y_a,
-            feature_a=joint_feat[: int(0.8 * len(joint_feat))] if len(joint_feat) > 1 else joint_feat,
-            feature_b=joint_feat[int(0.8 * len(joint_feat)) :] if len(joint_feat) > 1 else joint_feat,
+            feature_a=joint_feat[: int(0.8 * len(joint_feat))]
+            if len(joint_feat) > 1
+            else joint_feat,
+            feature_b=joint_feat[int(0.8 * len(joint_feat)) :]
+            if len(joint_feat) > 1
+            else joint_feat,
             n_mc=128,
             seed=int(seed),
         )
@@ -753,7 +762,9 @@ def run_wf348b1(
             "multi_ph_n_bins": int(n_bins),
             "pll_k": int(pll_k),
             "joint_fourier_pll": int(n_bins) + int(pll_k),
-            "joint_full_fourier_multiph_pll": int(n_bins) * int(n_bins) + int(n_bins) + int(pll_k),
+            "joint_full_fourier_multiph_pll": int(n_bins) * int(n_bins)
+            + int(n_bins)
+            + int(pll_k),
         },
         "w2_per_cell": {c: float(v) for c, v in w2_per_cell.items()},
         "w2_per_cohort": {k: float(v) for k, v in w2_per_cohort.items()},
@@ -837,8 +848,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         f"+ pll={fd['pll_k']} = joint_full={fd['joint_full_fourier_multiph_pll']} "
         f"(160-d Fourier + PLL = {fd['joint_fourier_pll']})"
     )
-    print(f"  wall: {result['wall_seconds']:.2f}s "
-          f"(feature_extraction={result['feature_extraction_wall_seconds']:.2f}s)")
+    print(
+        f"  wall: {result['wall_seconds']:.2f}s "
+        f"(feature_extraction={result['feature_extraction_wall_seconds']:.2f}s)"
+    )
     print(f"  w2_per_cell:")
     for c, v in result["w2_per_cell"].items():
         print(f"    {c:>10s}: W₂={v:+.4f}")

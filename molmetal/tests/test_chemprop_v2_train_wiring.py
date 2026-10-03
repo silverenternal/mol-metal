@@ -61,9 +61,9 @@ def test_train_metal_lomo_v2_chemprop_v2_class_resolves() -> None:
         "ChempropV2MTModel — the previous stub may have been restored."
     )
     # And the ChempropV2MTModel import must be present.
-    assert "ChempropV2MTModel" in src, (
-        "train_metal_lomo_v2.py does not import ChempropV2MTModel."
-    )
+    assert (
+        "ChempropV2MTModel" in src
+    ), "train_metal_lomo_v2.py does not import ChempropV2MTModel."
 
 
 def test_train_metal_lomo_v2_chemprop_v2_instantiates() -> None:
@@ -95,9 +95,10 @@ def test_train_metal_lomo_v2_chemprop_v2_instantiates() -> None:
     # Per-metal (B, 2) logits + (B, n_coord_classes) coord logits.
     B = len(smiles_list)
     for metal in model.metals:
-        assert out[metal].shape == (B, 2), (
-            f"{metal} logits shape mismatch: got {tuple(out[metal].shape)}"
-        )
+        assert out[metal].shape == (
+            B,
+            2,
+        ), f"{metal} logits shape mismatch: got {tuple(out[metal].shape)}"
     assert out["coord"].shape == (B, model.n_coord_classes)
 
 
@@ -125,13 +126,13 @@ def test_train_metal_lomo_v2_chemprop_v2_legacy_loop_still_blocks() -> None:
         runner._check_model_compat()
     msg = str(exc_info.value)
     # The error must NOT say "class does not exist" — that stub was removed.
-    assert "does not exist" not in msg.lower(), (
-        f"The old 'class does not exist' stub is still in the message: {msg}"
-    )
+    assert (
+        "does not exist" not in msg.lower()
+    ), f"The old 'class does not exist' stub is still in the message: {msg}"
     # It SHOULD say "IS instantiated" — the new honest framing.
-    assert "is instantiated" in msg.lower(), (
-        f"Expected new honest framing 'IS instantiated' in: {msg}"
-    )
+    assert (
+        "is instantiated" in msg.lower()
+    ), f"Expected new honest framing 'IS instantiated' in: {msg}"
 
 
 # ---------------------------------------------------------------------------
@@ -222,17 +223,17 @@ def test_train_metal_lomo_v2_chemprop_v2_cli_help_exits_cleanly() -> None:
 
     result = subprocess.run(
         [sys.executable, str(_SCRIPT_DIR / "train_metal_lomo_v2.py"), "--help"],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
-    assert result.returncode == 0, (
-        f"--help failed: stderr={result.stderr}"
-    )
-    assert "chemprop_v2" in result.stdout, (
-        f"--model chemprop_v2 missing from --help text:\n{result.stdout}"
-    )
-    assert "v4" in result.stdout, (
-        f"--model v4 missing from --help text:\n{result.stdout}"
-    )
+    assert result.returncode == 0, f"--help failed: stderr={result.stderr}"
+    assert (
+        "chemprop_v2" in result.stdout
+    ), f"--model chemprop_v2 missing from --help text:\n{result.stdout}"
+    assert (
+        "v4" in result.stdout
+    ), f"--model v4 missing from --help text:\n{result.stdout}"
 
 
 def test_train_dmpnn_multitask_chemprop_v2_cli_help_exits_cleanly() -> None:
@@ -243,14 +244,14 @@ def test_train_dmpnn_multitask_chemprop_v2_cli_help_exits_cleanly() -> None:
 
     result = subprocess.run(
         [sys.executable, str(_SCRIPT_DIR / "train_dmpnn_multitask.py"), "--help"],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
-    assert result.returncode == 0, (
-        f"--help failed: stderr={result.stderr}"
-    )
-    assert "chemprop_v2" in result.stdout, (
-        f"--model chemprop_v2 missing from --help text:\n{result.stdout}"
-    )
-    assert "v4" in result.stdout, (
-        f"--model v4 missing from --help text:\n{result.stdout}"
-    )
+    assert result.returncode == 0, f"--help failed: stderr={result.stderr}"
+    assert (
+        "chemprop_v2" in result.stdout
+    ), f"--model chemprop_v2 missing from --help text:\n{result.stdout}"
+    assert (
+        "v4" in result.stdout
+    ), f"--model v4 missing from --help text:\n{result.stdout}"

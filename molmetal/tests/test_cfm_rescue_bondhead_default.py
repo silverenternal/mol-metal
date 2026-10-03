@@ -36,17 +36,24 @@ def _tiny_mol_list(n_mols: int = 2):
         torch.manual_seed(k)
         positions = torch.randn(8, 3) * 0.5
         atom_types = torch.randint(1, 10, (8,))
-        bonds = torch.tensor([
-            [0, 0, 1, 2, 3, 4, 5, 6, 7],
-            [1, 2, 3, 4, 5, 6, 7, 0, 0],
-        ], dtype=torch.long)
+        bonds = torch.tensor(
+            [
+                [0, 0, 1, 2, 3, 4, 5, 6, 7],
+                [1, 2, 3, 4, 5, 6, 7, 0, 0],
+            ],
+            dtype=torch.long,
+        )
         bond_types = torch.ones(bonds.shape[1], dtype=torch.long)
         formal_charges = torch.zeros(8, dtype=torch.long)
-        out.append(Molecule(
-            coords=positions, atom_types=atom_types,
-            bonds=bonds, bond_types=bond_types,
-            formal_charges=formal_charges,
-        ))
+        out.append(
+            Molecule(
+                coords=positions,
+                atom_types=atom_types,
+                bonds=bonds,
+                bond_types=bond_types,
+                formal_charges=formal_charges,
+            )
+        )
     return out
 
 
@@ -61,8 +68,11 @@ def test_joint_train_default_train_step_runs():
     """
     torch.manual_seed(0)
     adapter = LipmanFlowMatchingAdapter(
-        hidden_dim=64, n_layers=2, max_atomic_number=20,
-        use_bond_head=True, joint_train=True,
+        hidden_dim=64,
+        n_layers=2,
+        max_atomic_number=20,
+        use_bond_head=True,
+        joint_train=True,
     )
     adapter.setup(device="cpu")
     mols = _tiny_mol_list(2)
@@ -81,14 +91,19 @@ def test_bond_head_receives_gradient_when_joint_train_true():
     """After one train_step, the BondOrderHead params have non-None .grad."""
     torch.manual_seed(0)
     adapter = LipmanFlowMatchingAdapter(
-        hidden_dim=64, n_layers=2, max_atomic_number=20,
-        use_bond_head=True, joint_train=True,
+        hidden_dim=64,
+        n_layers=2,
+        max_atomic_number=20,
+        use_bond_head=True,
+        joint_train=True,
     )
     adapter.setup(device="cpu")
     mols = _tiny_mol_list(2)
     adapter.train_step(pocket=None, mols=mols)
     if adapter.bond_head is not None:
-        n_with_grad = sum(1 for p in adapter.bond_head.parameters() if p.grad is not None)
+        n_with_grad = sum(
+            1 for p in adapter.bond_head.parameters() if p.grad is not None
+        )
         assert n_with_grad >= 1, (
             "BondOrderHead should have at least one parameter with .grad after "
             "joint_train=True train_step; got 0"
@@ -102,14 +117,19 @@ def test_bond_head_no_gradient_when_joint_train_false():
     """Backward compat: joint_train=False keeps bond_head params frozen."""
     torch.manual_seed(0)
     adapter = LipmanFlowMatchingAdapter(
-        hidden_dim=64, n_layers=2, max_atomic_number=20,
-        use_bond_head=True, joint_train=False,
+        hidden_dim=64,
+        n_layers=2,
+        max_atomic_number=20,
+        use_bond_head=True,
+        joint_train=False,
     )
     adapter.setup(device="cpu")
     mols = _tiny_mol_list(2)
     adapter.train_step(pocket=None, mols=mols)
     if adapter.bond_head is not None:
-        n_with_grad = sum(1 for p in adapter.bond_head.parameters() if p.grad is not None)
+        n_with_grad = sum(
+            1 for p in adapter.bond_head.parameters() if p.grad is not None
+        )
         assert n_with_grad == 0, (
             f"With joint_train=False, BondOrderHead params must NOT receive "
             f"gradients; got {n_with_grad} with .grad"
@@ -123,10 +143,13 @@ def test_legacy_no_bond_head_works():
     """Backward compat: use_bond_head=False works with no bond_head at all."""
     torch.manual_seed(0)
     adapter = LipmanFlowMatchingAdapter(
-        hidden_dim=64, n_layers=2, max_atomic_number=20,
-        use_bond_head=False, joint_train=False,
+        hidden_dim=64,
+        n_layers=2,
+        max_atomic_number=20,
+        use_bond_head=False,
+        joint_train=False,
     )
     adapter.setup(device="cpu")
-    assert adapter.bond_head is None, (
-        "use_bond_head=False must NOT construct BondOrderHead"
-    )
+    assert (
+        adapter.bond_head is None
+    ), "use_bond_head=False must NOT construct BondOrderHead"

@@ -50,6 +50,7 @@ Run with::
     uv run pytest -q --ignore=molmetal/references \\
         molmetal/molmetal_lam/tests/test_mcts_properties.py --tb=short
 """
+
 from __future__ import annotations
 
 import math
@@ -78,6 +79,7 @@ def _import_atom_combinators():
         PRIMITIVE_ATOMS,
         Atom,
     )
+
     return Atom, PRIMITIVE_ATOMS, METAL_ATOMS
 
 
@@ -88,6 +90,7 @@ def _import_lam_chem():
         LamNode,
         LamVar,
     )
+
     return LamAbs, LamApp, LamNode, LamVar
 
 
@@ -98,11 +101,13 @@ def _import_canonical_cache():
         clear_cache,
         precompute_library,
     )
+
     return canonicalize, clear_cache, precompute_library, cache_hit_rate
 
 
 def _import_rotation_kernel():
     from triton_kernels import rotation_from_axis_angle
+
     return rotation_from_axis_angle
 
 
@@ -238,6 +243,7 @@ def _rdkit_canon(smi: str) -> Optional[str]:
 # 1. α-equivalent LamNode trees yield the same canonical SMILES
 # ---------------------------------------------------------------------------
 
+
 @given(raw=_smiles_molecule_strategy())
 @settings(
     max_examples=20,
@@ -301,6 +307,7 @@ def test_alpha_equivalent_implies_same_canonical_smi(raw):
 # 2. β-NF idempotence — re-reducing a NF term returns the same term
 # ---------------------------------------------------------------------------
 
+
 @given(node=_lamnode_strategy(max_depth=3))
 @settings(
     max_examples=20,
@@ -334,6 +341,7 @@ def test_beta_normal_form_unique(node):
 # ---------------------------------------------------------------------------
 # 3. Virtual-loss round-trip — release restores PUCT score
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class _StubMCTSNode:
@@ -416,14 +424,15 @@ def test_vloss_release_restores_puct_score(
     post = _puct_score(parent, child, c_puct)
 
     # 4) Post-release PUCT must equal pre-apply within float tolerance.
-    assert math.isclose(pre, post, rel_tol=1e-9, abs_tol=1e-12), (
-        f"vloss release did not restore PUCT: pre={pre} post={post}"
-    )
+    assert math.isclose(
+        pre, post, rel_tol=1e-9, abs_tol=1e-12
+    ), f"vloss release did not restore PUCT: pre={pre} post={post}"
 
 
 # ---------------------------------------------------------------------------
 # 4. Transposition-table invariants — N unique inserts, FIFO eviction
 # ---------------------------------------------------------------------------
+
 
 def _t_table_insert(
     table: Dict[str, Any],
@@ -488,27 +497,30 @@ def test_tt_cache_invariants(n_unique: int, max_size: int):
             max_size=max_size,
         )
     # The table must be exactly max_size — FIFO eviction worked.
-    assert len(table) == max_size, (
-        f"Transposition table grew to {len(table)} > max_size={max_size}"
-    )
+    assert (
+        len(table) == max_size
+    ), f"Transposition table grew to {len(table)} > max_size={max_size}"
 
 
 # ---------------------------------------------------------------------------
 # 5. Canonical-cache idempotence — second pass has hit rate 1.0
 # ---------------------------------------------------------------------------
 
+
 @given(
     raw_smiles_list=st.lists(
-        st.sampled_from([
-            "CCN=[N+]=[N-]",
-            "C#CC",
-            "OCCCN=[N+]=[N-]",
-            "c1ccc2ncccc2c1",
-            "CC(=C)C=C",
-            "CCN",
-            "c1ccccc1",
-            "CCO",
-        ]),
+        st.sampled_from(
+            [
+                "CCN=[N+]=[N-]",
+                "C#CC",
+                "OCCCN=[N+]=[N-]",
+                "c1ccc2ncccc2c1",
+                "CC(=C)C=C",
+                "CCN",
+                "c1ccccc1",
+                "CCO",
+            ]
+        ),
         min_size=2,
         max_size=8,
     ),
@@ -533,7 +545,9 @@ def test_tile_canonical_smi_cache_idempotent(raw_smiles_list):
     To stay deterministic we require the list to be duplicate-free
     (so the second pass produces exactly N hits and 0 misses).
     """
-    canonicalize, clear_cache, precompute_library, cache_hit_rate = _import_canonical_cache()
+    canonicalize, clear_cache, precompute_library, cache_hit_rate = (
+        _import_canonical_cache()
+    )
 
     # Dedup defensively — duplicates don't break the test, they just
     # make the hit-rate threshold harder to state crisply.
@@ -547,9 +561,9 @@ def test_tile_canonical_smi_cache_idempotent(raw_smiles_list):
     precompute_library(unique)
     rate_after_first = cache_hit_rate()
     # After N misses and 0 hits the rate must be 0.0.
-    assert rate_after_first == 0.0, (
-        f"After first pass, hit_rate should be 0.0; got {rate_after_first}"
-    )
+    assert (
+        rate_after_first == 0.0
+    ), f"After first pass, hit_rate should be 0.0; got {rate_after_first}"
 
     # Second pass — every call is a hit.  Drive enough repeat calls
     # so the cumulative hit count strictly dominates the miss count.
@@ -565,19 +579,22 @@ def test_tile_canonical_smi_cache_idempotent(raw_smiles_list):
     # unless the miss count is exactly zero).  We accept anything
     # strictly above the pre-second-pass rate and ≥ 0.95.
     assert rate_after_second > rate_after_first
-    assert rate_after_second >= 0.95, (
-        f"After {K} repeat passes, hit_rate should be ≥ 0.95; got {rate_after_second}"
-    )
+    assert (
+        rate_after_second >= 0.95
+    ), f"After {K} repeat passes, hit_rate should be ≥ 0.95; got {rate_after_second}"
 
 
 # ---------------------------------------------------------------------------
 # 6. EGNN coord-rotation inverse — negate the angle to undo the rotation
 # ---------------------------------------------------------------------------
 
+
 @given(
     axis_idx=st.integers(min_value=0, max_value=2),
     axis_sign=st.sampled_from([-1, 1]),
-    angle=st.floats(min_value=-math.pi, max_value=math.pi, allow_nan=False, allow_infinity=False),
+    angle=st.floats(
+        min_value=-math.pi, max_value=math.pi, allow_nan=False, allow_infinity=False
+    ),
     coord=st.tuples(
         st.floats(min_value=-2.0, max_value=2.0, allow_nan=False, allow_infinity=False),
         st.floats(min_value=-2.0, max_value=2.0, allow_nan=False, allow_infinity=False),

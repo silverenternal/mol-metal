@@ -49,6 +49,7 @@ Run::
     uv run --no-sync python molmetal/scripts/bench_multi_ph_diversity.py \\
         --n-samples 200 --output molmetal/reports/wf31_multi_ph_diversity
 """
+
 from __future__ import annotations
 
 import argparse
@@ -232,7 +233,8 @@ def _mean_pairwise_cosine_distance(feats: Sequence[Any]) -> float:
     if len(feats) < 2:
         return 0.0
     flat = torch.stack(
-        [f.reshape(-1).to(torch.float32) for f in feats], dim=0,
+        [f.reshape(-1).to(torch.float32) for f in feats],
+        dim=0,
     )  # (k, F)
     # Cosine *distance* = 1 - cos(x, y).  Normalise rows to unit norm.
     norm = flat.norm(dim=-1, keepdim=True).clamp_min(1e-12)
@@ -315,9 +317,7 @@ def compute_pairwise_tanimoto_distance(fps: "np.ndarray") -> float:
     inter = np.zeros((fps.shape[0], fps.shape[0]), dtype=np.float32)
     for i in range(0, fps.shape[0], block):
         end = min(i + block, fps.shape[0])
-        inter[i:end] = (
-            fps[i:end].astype(np.float32) @ fps.T.astype(np.float32)
-        )
+        inter[i:end] = fps[i:end].astype(np.float32) @ fps.T.astype(np.float32)
     union_pop = fps.sum(axis=1).astype(np.float32)
     denom = union_pop[:, None] + union_pop[None, :] - inter
     sim = np.where(denom > 0, inter / np.maximum(denom, 1e-9), 0.0)
@@ -383,7 +383,8 @@ def run_bench(
     print(f"[2/3] Extracting Multi-PH + single-PH features (n_bins={n_bins})...")
     t0 = time.perf_counter()
     multi_ph, single_ph, mph_stats = extract_multi_ph_features(
-        smiles_list, n_bins=int(n_bins),
+        smiles_list,
+        n_bins=int(n_bins),
     )
     mph_wall = float(time.perf_counter() - t0)
     print(
@@ -400,9 +401,7 @@ def run_bench(
     # Use the same SMILES pool for the diversity bench (canonical
     # canonical via RDKit inside ``compute_morgan_fps``).
     diversity = compute_diversity(smiles_list)
-    diversity_meets_floor = (
-        diversity["mean_tanimoto_distance"] >= DIVERSITY_FLOOR
-    )
+    diversity_meets_floor = diversity["mean_tanimoto_distance"] >= DIVERSITY_FLOOR
 
     return {
         "n_samples": int(n_samples),
@@ -424,9 +423,7 @@ def run_bench(
             "multi_ph_more_expressive": bool(expressivity["delta"] > 0.0),
         },
         "diversity": {
-            "mean_tanimoto_distance": float(
-                diversity["mean_tanimoto_distance"]
-            ),
+            "mean_tanimoto_distance": float(diversity["mean_tanimoto_distance"]),
             "meets_m7_floor": bool(diversity_meets_floor),
             "m7_floor": float(DIVERSITY_FLOOR),
         },
@@ -469,8 +466,7 @@ def render_table(metrics: Dict[str, Any]) -> str:
         f"| Mean pairwise Tanimoto distance | "
         f"{div['mean_tanimoto_distance']:.3f} |",
         f"| m7 floor (R18 PLAN §3) | {div['m7_floor']:.3f} |",
-        f"| Meets m7 floor | "
-        f"{'PASS' if div['meets_m7_floor'] else 'FAIL'} |",
+        f"| Meets m7 floor | " f"{'PASS' if div['meets_m7_floor'] else 'FAIL'} |",
         "",
         "## Wall-time",
         "",
@@ -507,26 +503,33 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     p.add_argument(
-        "--data", type=str,
+        "--data",
+        type=str,
         default="molmetal/data/platinai_5k.csv",
         help="PlatinAI 5K CSV path (SMILES source).",
     )
     p.add_argument(
-        "--n-samples", type=int, default=200,
+        "--n-samples",
+        type=int,
+        default=200,
         help="Number of SMILES to sample (default: 200).",
     )
     p.add_argument(
-        "--n-bins", type=int, default=MULTI_PH_N_BINS,
-        help=f"Multi-PH bin count per filter axis (default: "
-             f"{MULTI_PH_N_BINS}).",
+        "--n-bins",
+        type=int,
+        default=MULTI_PH_N_BINS,
+        help=f"Multi-PH bin count per filter axis (default: " f"{MULTI_PH_N_BINS}).",
     )
     p.add_argument(
-        "--output", type=str,
+        "--output",
+        type=str,
         default="molmetal/reports/wf31_multi_ph_diversity",
         help="Output directory for metrics + Markdown.",
     )
     p.add_argument(
-        "--seed", type=int, default=42,
+        "--seed",
+        type=int,
+        default=42,
         help="Random seed for SMILES sampling (default: 42).",
     )
     return p.parse_args(argv)
@@ -577,11 +580,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     div = metrics["diversity"]
     log.info(
         "  expressivity multi_ph=%.3f single_ph=%.3f delta=%+.3f",
-        exp["multi_ph"], exp["single_ph"], exp["delta"],
+        exp["multi_ph"],
+        exp["single_ph"],
+        exp["delta"],
     )
     log.info(
         "  diversity tanimoto=%.3f meets_m7_floor=%s",
-        div["mean_tanimoto_distance"], div["meets_m7_floor"],
+        div["mean_tanimoto_distance"],
+        div["meets_m7_floor"],
     )
     log.info("Done.")
     return 0

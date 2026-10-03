@@ -93,9 +93,7 @@ def _load_platinai_smiles(csv_path: Path, n: int) -> List[str]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description=__doc__.splitlines()[0]
-    )
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
         "--n-samples",
         type=int,
@@ -130,10 +128,7 @@ def main() -> int:
         "--out-dir",
         type=str,
         default=str(
-            _REPO_ROOT
-            / "molmetal"
-            / "reports"
-            / "wf_lambda_cfm_coupling_audit"
+            _REPO_ROOT / "molmetal" / "reports" / "wf_lambda_cfm_coupling_audit"
         ),
         help="Output directory for benchmark.json.",
     )
@@ -151,9 +146,7 @@ def main() -> int:
 
     pipe = load_joint_pipeline(alpha=float(args.alpha), seed=0)
     bridge_source = (
-        str(pipe.bridge.source_path)
-        if pipe.bridge.source_path is not None
-        else "stub"
+        str(pipe.bridge.source_path) if pipe.bridge.source_path is not None else "stub"
     )
 
     pocket = np.zeros(int(args.pocket_size), dtype=np.float32)

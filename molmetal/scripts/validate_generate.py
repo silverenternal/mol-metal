@@ -54,7 +54,7 @@ LOG_PATH = REPORT_DIR / "generate_validation.json"
 # Sampling
 N_SAMPLES = 100
 N_STEPS = 20
-N_ATOMS = 8            # matches LipmanFlowMatchingAdapter.generate() default
+N_ATOMS = 8  # matches LipmanFlowMatchingAdapter.generate() default
 N_TRAIN_MOLS = 200
 MAX_ATOMS = 30
 BATCH_SIZE = 8
@@ -66,8 +66,9 @@ METAL = "Ru"
 # ---------------------------------------------------------------------------
 # Data loading
 # ---------------------------------------------------------------------------
-def load_unique_smiles(metal: str = METAL, n: int = N_TRAIN_MOLS,
-                        max_atoms: int = MAX_ATOMS) -> List[str]:
+def load_unique_smiles(
+    metal: str = METAL, n: int = N_TRAIN_MOLS, max_atoms: int = MAX_ATOMS
+) -> List[str]:
     """Load MetalCytoToxDB, filter ``metal``, drop missing IC50, dedup
     by canonical SMILES, cap to ``n`` unique molecules with ≤ ``max_atoms``
     heavy atoms.
@@ -194,11 +195,16 @@ def evaluate_set(mols: List[Molecule]) -> dict:
         row = None
         if mol is not None:
             try:
-                values = np.asarray([
-                    Descriptors.qed(mol), Descriptors.MolWt(mol),
-                    rdMolDescriptors.CalcTPSA(mol), Crippen.MolLogP(mol),
-                    rdMolDescriptors.CalcNumRotatableBonds(mol),
-                ], dtype=np.float64)
+                values = np.asarray(
+                    [
+                        Descriptors.qed(mol),
+                        Descriptors.MolWt(mol),
+                        rdMolDescriptors.CalcTPSA(mol),
+                        Crippen.MolLogP(mol),
+                        rdMolDescriptors.CalcNumRotatableBonds(mol),
+                    ],
+                    dtype=np.float64,
+                )
                 if np.isfinite(values).all():
                     row = values
             except Exception:
@@ -213,7 +219,8 @@ def evaluate_set(mols: List[Molecule]) -> dict:
 
     matrix = np.asarray(rows, dtype=np.float64).reshape(-1, 5)
     result = {
-        "n_total": len(mols), "n_valid": len(rows),
+        "n_total": len(mols),
+        "n_valid": len(rows),
         "n_invalid": len(mols) - len(rows),
         "fraction_denominator": "all_input_candidates",
         "std_ddof": 0,
@@ -268,8 +275,13 @@ def atom_type_histogram(mols: List[Molecule], bins=(1, 21)) -> Counter:
 # ---------------------------------------------------------------------------
 # Training
 # ---------------------------------------------------------------------------
-def train(adapter: LipmanFlowMatchingAdapter, mols: List[Molecule],
-          n_steps: int, batch_size: int, seed: int) -> list[dict]:
+def train(
+    adapter: LipmanFlowMatchingAdapter,
+    mols: List[Molecule],
+    n_steps: int,
+    batch_size: int,
+    seed: int,
+) -> list[dict]:
     """Run ``n_steps`` CFM + atom-CE train steps and log per-step losses."""
     torch.manual_seed(seed)
     losses = []
@@ -292,9 +304,11 @@ def train(adapter: LipmanFlowMatchingAdapter, mols: List[Molecule],
         }
         losses.append(record)
         if step < 5 or step == n_steps - 1 or step % 10 == 0:
-            print(f"[validate] step {step:3d}: total={loss:.4f}  "
-                  f"cfm={ll['cfm']:.4f}  atom={ll['atom']:.4f}  "
-                  f"({dt*1000:.1f} ms)")
+            print(
+                f"[validate] step {step:3d}: total={loss:.4f}  "
+                f"cfm={ll['cfm']:.4f}  atom={ll['atom']:.4f}  "
+                f"({dt*1000:.1f} ms)"
+            )
     return losses
 
 
@@ -319,18 +333,28 @@ def render_report(
     lines.append("")
     lines.append("## Setup")
     lines.append("")
-    lines.append(f"- Adapter: `LipmanFlowMatchingAdapter` (hidden_dim={config['hidden_dim']}, "
-                 f"n_layers={config['n_layers']}, lr={config['lr']}, "
-                 f"atom_loss_weight={config['atom_loss_weight']})")
-    lines.append(f"- Device: `{config['device']}`  "
-                 f"(ROCm active: {device_info.get('roc_active')}, "
-                 f"HIP: {device_info.get('hip_version')}, "
-                 f"name: {device_info.get('device_0_name')})")
-    lines.append(f"- Train molecules: {config['n_train_mols']} unique Ru SMILES "
-                 f"with ≤{config['max_atoms']} heavy atoms")
-    lines.append(f"- Training: {config['n_train_steps']} steps × batch_size={config['batch_size']}")
-    lines.append(f"- Generation: n_samples={config['n_samples']}, n_steps={config['n_steps']}, "
-                 f"n_atoms={config['n_atoms']}")
+    lines.append(
+        f"- Adapter: `LipmanFlowMatchingAdapter` (hidden_dim={config['hidden_dim']}, "
+        f"n_layers={config['n_layers']}, lr={config['lr']}, "
+        f"atom_loss_weight={config['atom_loss_weight']})"
+    )
+    lines.append(
+        f"- Device: `{config['device']}`  "
+        f"(ROCm active: {device_info.get('roc_active')}, "
+        f"HIP: {device_info.get('hip_version')}, "
+        f"name: {device_info.get('device_0_name')})"
+    )
+    lines.append(
+        f"- Train molecules: {config['n_train_mols']} unique Ru SMILES "
+        f"with ≤{config['max_atoms']} heavy atoms"
+    )
+    lines.append(
+        f"- Training: {config['n_train_steps']} steps × batch_size={config['batch_size']}"
+    )
+    lines.append(
+        f"- Generation: n_samples={config['n_samples']}, n_steps={config['n_steps']}, "
+        f"n_atoms={config['n_atoms']}"
+    )
     lines.append("")
 
     lines.append("## Training Loss Curve")
@@ -338,35 +362,57 @@ def render_report(
     lines.append("| Step | Total | CFM | Atom-CE | ms/step |")
     lines.append("|------|-------|-----|---------|---------|")
     for r in losses:
-        lines.append(f"| {r['step']} | {r['loss']:.4f} | {r['cfm']:.4f} | "
-                     f"{r['atom']:.4f} | {r['dt']*1000:.1f} |")
+        lines.append(
+            f"| {r['step']} | {r['loss']:.4f} | {r['cfm']:.4f} | "
+            f"{r['atom']:.4f} | {r['dt']*1000:.1f} |"
+        )
     lines.append("")
     if losses:
         first, last = losses[0], losses[-1]
-        lines.append(f"- Initial loss: total={first['loss']:.4f} "
-                     f"(cfm={first['cfm']:.4f}, atom={first['atom']:.4f})")
-        lines.append(f"- Final loss:   total={last['loss']:.4f} "
-                     f"(cfm={last['cfm']:.4f}, atom={last['atom']:.4f})")
-        lines.append(f"- Loss drop (total / cfm / atom): "
-                     f"{first['loss']/max(last['loss'], 1e-12):.2f}x / "
-                     f"{first['cfm']/max(last['cfm'], 1e-12):.2f}x / "
-                     f"{first['atom']/max(last['atom'], 1e-12):.2f}x")
+        lines.append(
+            f"- Initial loss: total={first['loss']:.4f} "
+            f"(cfm={first['cfm']:.4f}, atom={first['atom']:.4f})"
+        )
+        lines.append(
+            f"- Final loss:   total={last['loss']:.4f} "
+            f"(cfm={last['cfm']:.4f}, atom={last['atom']:.4f})"
+        )
+        lines.append(
+            f"- Loss drop (total / cfm / atom): "
+            f"{first['loss']/max(last['loss'], 1e-12):.2f}x / "
+            f"{first['cfm']/max(last['cfm'], 1e-12):.2f}x / "
+            f"{first['atom']/max(last['atom'], 1e-12):.2f}x"
+        )
     lines.append("")
 
     lines.append("## Generated Molecule Quality")
     lines.append("")
     lines.append("| Metric | Generated | Training Reference |")
     lines.append("|--------|-----------|--------------------|")
-    lines.append(f"| Valid (RDKit-parseable) | {gen_metrics['n_valid']} / {config['n_samples']} "
-                 f"| {ref_metrics['n_valid']} / {config['n_train_mols']} |")
-    lines.append(f"| QED mean | {gen_metrics['qed_mean']:.4f} | {ref_metrics['qed_mean']:.4f} |")
-    lines.append(f"| QED std  | {gen_metrics['qed_std']:.4f} | {ref_metrics['qed_std']:.4f} |")
-    lines.append(f"| QED median | {gen_metrics['qed_median']:.4f} | {ref_metrics['qed_median']:.4f} |")
-    lines.append(f"| Fraction drug-like (QED ≥ 0.5) | {gen_metrics['frac_druglike_qed05']:.3f} "
-                 f"| {ref_metrics['frac_druglike_qed05']:.3f} |")
-    lines.append(f"| MolWt mean | {gen_metrics['mw_mean']:.1f} | {ref_metrics['mw_mean']:.1f} |")
-    lines.append(f"| MolWt in [200, 500] | {gen_metrics['mw_frac_druglike']:.3f} "
-                 f"| {ref_metrics['mw_frac_druglike']:.3f} |")
+    lines.append(
+        f"| Valid (RDKit-parseable) | {gen_metrics['n_valid']} / {config['n_samples']} "
+        f"| {ref_metrics['n_valid']} / {config['n_train_mols']} |"
+    )
+    lines.append(
+        f"| QED mean | {gen_metrics['qed_mean']:.4f} | {ref_metrics['qed_mean']:.4f} |"
+    )
+    lines.append(
+        f"| QED std  | {gen_metrics['qed_std']:.4f} | {ref_metrics['qed_std']:.4f} |"
+    )
+    lines.append(
+        f"| QED median | {gen_metrics['qed_median']:.4f} | {ref_metrics['qed_median']:.4f} |"
+    )
+    lines.append(
+        f"| Fraction drug-like (QED ≥ 0.5) | {gen_metrics['frac_druglike_qed05']:.3f} "
+        f"| {ref_metrics['frac_druglike_qed05']:.3f} |"
+    )
+    lines.append(
+        f"| MolWt mean | {gen_metrics['mw_mean']:.1f} | {ref_metrics['mw_mean']:.1f} |"
+    )
+    lines.append(
+        f"| MolWt in [200, 500] | {gen_metrics['mw_frac_druglike']:.3f} "
+        f"| {ref_metrics['mw_frac_druglike']:.3f} |"
+    )
     for name, label in (("logp", "logP"), ("tpsa", "TPSA (Å²)"), ("rotb", "RotB")):
         lines.append(
             f"| {label} mean ± std | {gen_metrics[name + '_mean']:.2f} ± "
@@ -382,53 +428,72 @@ def render_report(
     ):
         lines.append(f"| {label} | {gen_metrics[key]:.3f} | {ref_metrics[key]:.3f} |")
     lines.append("")
-    lines.append("Descriptor means and population std (ddof=0) use valid candidates. "
-                 "Range fractions use all input candidates; invalid samples never pass. "
-                 "MW flags are descriptive: high-MW candidates remain in the evaluation. "
-                 "For the IV anticancer route, TPSA >75 Å² is acceptable within the "
-                 "stated range. These descriptors do not measure hERG or clinical safety.")
+    lines.append(
+        "Descriptor means and population std (ddof=0) use valid candidates. "
+        "Range fractions use all input candidates; invalid samples never pass. "
+        "MW flags are descriptive: high-MW candidates remain in the evaluation. "
+        "For the IV anticancer route, TPSA >75 Å² is acceptable within the "
+        "stated range. These descriptors do not measure hERG or clinical safety."
+    )
     lines.append("")
 
     lines.append("## Atom-Type Distribution")
     lines.append("")
     lines.append("| Bin | Generated | Training Reference |")
     lines.append("|-----|-----------|--------------------|")
-    all_bins = sorted(set(gen_hist.keys()) | set(ref_hist.keys()),
-                      key=lambda k: (
-                          0 if k == "z0_padding" else
-                          -1 if k == "Z>20" else
-                          -2 if k.startswith("Z<") else
-                          int(k.split("=")[1])
-                      ))
+    all_bins = sorted(
+        set(gen_hist.keys()) | set(ref_hist.keys()),
+        key=lambda k: (
+            0
+            if k == "z0_padding"
+            else -1
+            if k == "Z>20"
+            else -2
+            if k.startswith("Z<")
+            else int(k.split("=")[1])
+        ),
+    )
     for k in all_bins:
         lines.append(f"| {k} | {gen_hist.get(k, 0)} | {ref_hist.get(k, 0)} |")
     lines.append("")
     if gen_hist.get("z0_padding", 0) == 0:
-        lines.append("- No Z=0 padding atoms in generated molecules "
-                     "(the `atom_logits[..., 0] = -inf` mask is working).")
+        lines.append(
+            "- No Z=0 padding atoms in generated molecules "
+            "(the `atom_logits[..., 0] = -inf` mask is working)."
+        )
     else:
-        lines.append(f"- **{gen_hist['z0_padding']} Z=0 padding atoms leaked into generated samples** "
-                     f"— investigate the categorical mask in `generate()`.")
+        lines.append(
+            f"- **{gen_hist['z0_padding']} Z=0 padding atoms leaked into generated samples** "
+            f"— investigate the categorical mask in `generate()`."
+        )
     lines.append("")
 
     # Qualitative judgement
     lines.append("## Verdict")
     lines.append("")
     if losses:
-        ratio = losses[0]['loss'] / max(losses[-1]['loss'], 1e-12)
+        ratio = losses[0]["loss"] / max(losses[-1]["loss"], 1e-12)
         if ratio >= 2.0:
-            lines.append(f"- Training **converged** (total loss dropped {ratio:.2f}x over "
-                         f"{config['n_train_steps']} steps).")
+            lines.append(
+                f"- Training **converged** (total loss dropped {ratio:.2f}x over "
+                f"{config['n_train_steps']} steps)."
+            )
         else:
-            lines.append(f"- Training **inconclusive** (total loss only dropped {ratio:.2f}x). "
-                         "Try a higher lr or more steps.")
-    lines.append(f"- Generated QED mean = {gen_metrics['qed_mean']:.3f}; "
-                 f"reference = {ref_metrics['qed_mean']:.3f}. "
-                 "With only 30 train steps the model is far from converged; "
-                 "the distribution should sharpen as we increase the budget.")
-    lines.append(f"- Atom-type histogram coverage = "
-                 f"{sum(1 for k in gen_hist if k.startswith('Z=') and k != 'Z=0')} unique elements. "
-                 "We expect this to grow with more training.")
+            lines.append(
+                f"- Training **inconclusive** (total loss only dropped {ratio:.2f}x). "
+                "Try a higher lr or more steps."
+            )
+    lines.append(
+        f"- Generated QED mean = {gen_metrics['qed_mean']:.3f}; "
+        f"reference = {ref_metrics['qed_mean']:.3f}. "
+        "With only 30 train steps the model is far from converged; "
+        "the distribution should sharpen as we increase the budget."
+    )
+    lines.append(
+        f"- Atom-type histogram coverage = "
+        f"{sum(1 for k in gen_hist if k.startswith('Z=') and k != 'Z=0')} unique elements. "
+        "We expect this to grow with more training."
+    )
     lines.append("")
     return "\n".join(lines) + "\n"
 
@@ -458,17 +523,23 @@ def main() -> int:
     )
     adapter.setup()
     device_info = adapter.device_info
-    print(f"[validate] device = {adapter.device}, "
-          f"roc_active = {device_info.get('roc_active')}")
+    print(
+        f"[validate] device = {adapter.device}, "
+        f"roc_active = {device_info.get('roc_active')}"
+    )
 
     # ---- 3. Train --------------------------------------------------------
-    print(f"[validate] training for {N_TRAIN_STEPS} steps "
-          f"(batch={BATCH_SIZE}, lr=5e-3) ...")
+    print(
+        f"[validate] training for {N_TRAIN_STEPS} steps "
+        f"(batch={BATCH_SIZE}, lr=5e-3) ..."
+    )
     losses = train(adapter, train_mols, N_TRAIN_STEPS, BATCH_SIZE, SEED)
 
     # ---- 4. Generate ------------------------------------------------------
-    print(f"[validate] generating {N_SAMPLES} molecules "
-          f"({N_STEPS} ODE steps, {N_ATOMS} atoms each) ...")
+    print(
+        f"[validate] generating {N_SAMPLES} molecules "
+        f"({N_STEPS} ODE steps, {N_ATOMS} atoms each) ..."
+    )
     # GenerationConfig is frozen and has no `n_atoms` field; the adapter
     # uses ``getattr(config, "n_atoms", 8)``.  A SimpleNamespace with the
     # same attributes is enough for the duck-typed contract.
@@ -515,16 +586,19 @@ def main() -> int:
         "device": str(adapter.device),
         "metal": METAL,
     }
-    md = render_report(losses, gen_metrics, ref_metrics, gen_hist,
-                       ref_hist, config, device_info)
+    md = render_report(
+        losses, gen_metrics, ref_metrics, gen_hist, ref_hist, config, device_info
+    )
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     REPORT_PATH.write_text(md)
     print(f"[validate] wrote Markdown report to {REPORT_PATH}")
 
     json_payload = {
         "config": config,
-        "device_info": {k: device_info.get(k) for k in
-                        ("roc_active", "hip_version", "device_0_name", "device_count")},
+        "device_info": {
+            k: device_info.get(k)
+            for k in ("roc_active", "hip_version", "device_0_name", "device_count")
+        },
         "losses": losses,
         "gen_metrics": gen_metrics,
         "ref_metrics": ref_metrics,
@@ -539,19 +613,33 @@ def main() -> int:
     print("=" * 70)
     print("SUMMARY")
     print("=" * 70)
-    print(f"  Device              : {adapter.device}  "
-          f"(roc_active={device_info.get('roc_active')})")
-    print(f"  Train loss drop     : {losses[0]['loss']:.4f} -> {losses[-1]['loss']:.4f}  "
-          f"({losses[0]['loss']/max(losses[-1]['loss'], 1e-12):.2f}x)")
-    print(f"  Generated QED mean  : {gen_metrics['qed_mean']:.3f}  "
-          f"(reference: {ref_metrics['qed_mean']:.3f})")
-    print(f"  Generated MolWt mean: {gen_metrics['mw_mean']:.1f}  "
-          f"(reference: {ref_metrics['mw_mean']:.1f})")
-    print(f"  Drug-like fraction  : {gen_metrics['frac_druglike_qed05']:.3f}  "
-          f"(reference: {ref_metrics['frac_druglike_qed05']:.3f})")
-    print(f"  Z=0 padding atoms   : {gen_hist.get('z0_padding', 0)}  "
-          f"(should be 0 → masking is working)")
-    print(f"  Unique elements     : {sum(1 for k in gen_hist if k.startswith('Z=') and k != 'Z=0')}")
+    print(
+        f"  Device              : {adapter.device}  "
+        f"(roc_active={device_info.get('roc_active')})"
+    )
+    print(
+        f"  Train loss drop     : {losses[0]['loss']:.4f} -> {losses[-1]['loss']:.4f}  "
+        f"({losses[0]['loss']/max(losses[-1]['loss'], 1e-12):.2f}x)"
+    )
+    print(
+        f"  Generated QED mean  : {gen_metrics['qed_mean']:.3f}  "
+        f"(reference: {ref_metrics['qed_mean']:.3f})"
+    )
+    print(
+        f"  Generated MolWt mean: {gen_metrics['mw_mean']:.1f}  "
+        f"(reference: {ref_metrics['mw_mean']:.1f})"
+    )
+    print(
+        f"  Drug-like fraction  : {gen_metrics['frac_druglike_qed05']:.3f}  "
+        f"(reference: {ref_metrics['frac_druglike_qed05']:.3f})"
+    )
+    print(
+        f"  Z=0 padding atoms   : {gen_hist.get('z0_padding', 0)}  "
+        f"(should be 0 → masking is working)"
+    )
+    print(
+        f"  Unique elements     : {sum(1 for k in gen_hist if k.startswith('Z=') and k != 'Z=0')}"
+    )
     return 0
 
 

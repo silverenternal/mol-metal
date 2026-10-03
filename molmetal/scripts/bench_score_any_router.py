@@ -90,6 +90,7 @@ Usage
     uv run --no-sync python molmetal/scripts/bench_score_any_router.py \\
         --n-scripts 10 --seeds 0
 """
+
 from __future__ import annotations
 
 import argparse
@@ -178,9 +179,18 @@ DEFAULT_SCRIPT_REGISTRY: Tuple[Dict[str, Any], ...] = (
     {
         "script": "bench_mcts_real_trajectory.py",
         "module": "bench_mcts_real_trajectory",
-        "smoke_args": ["--smoke", "--n-trajectories", "2",
-                       "--n-simulations", "2", "--max-depth", "2",
-                       "--skip-metalcyto", "--mode", "real"],
+        "smoke_args": [
+            "--smoke",
+            "--n-trajectories",
+            "2",
+            "--n-simulations",
+            "2",
+            "--max-depth",
+            "2",
+            "--skip-metalcyto",
+            "--mode",
+            "real",
+        ],
         "expected_metrics": ("sa_score",),
         "expected_tools": ("SA score (RDKit Ertl)",),
         "metric_layer": True,
@@ -236,8 +246,7 @@ DEFAULT_SCRIPT_REGISTRY: Tuple[Dict[str, Any], ...] = (
     {
         "script": "benchmark_mcts_real.py",
         "module": "benchmark_mcts_real",
-        "smoke_args": ["--n-samples", "3", "--n-simulations", "2",
-                       "--max-depth", "2"],
+        "smoke_args": ["--n-samples", "3", "--n-simulations", "2", "--max-depth", "2"],
         "expected_metrics": ("sa_score",),
         "expected_tools": ("SA score (RDKit Ertl)",),
         "metric_layer": True,
@@ -248,8 +257,7 @@ DEFAULT_SCRIPT_REGISTRY: Tuple[Dict[str, Any], ...] = (
         "module": "bench_pb_valid",
         # bench_pb_valid has no --smoke; use --pockets to limit the run
         # to a tiny subset.
-        "smoke_args": ["--pockets", "pdk1", "--n-candidates", "1",
-                       "--quiet"],
+        "smoke_args": ["--pockets", "pdk1", "--n-candidates", "1", "--quiet"],
         "expected_metrics": ("pb_pass_rate",),
         "expected_tools": ("PoseBusters (Buttenschoen 2024)",),
         "metric_layer": True,
@@ -303,9 +311,8 @@ def _score_any_recorder(
     # through ``importlib.import_module`` (which is idempotent and
     # respects ``sys.modules`` once the module is loaded).
     import importlib
-    _score_any_module = importlib.import_module(
-        "molmetal.scoring.score_any"
-    )
+
+    _score_any_module = importlib.import_module("molmetal.scoring.score_any")
     # ``importlib.import_module`` returns the same object as
     # ``sys.modules[...]`` *unless* the parent package has rebound
     # the attribute name.  In that pathological case, the actual
@@ -349,9 +356,7 @@ def _score_any_recorder(
                     # never sees this value because we already raised
                     # to the harness (not the script).  Returning
                     # keeps the bench loop going.
-                    return [0.0] * max(
-                        1, len(ctx.get("molecules", []) or [])
-                    )
+                    return [0.0] * max(1, len(ctx.get("molecules", []) or []))
                 # Strict Wf-43 mode: propagate.
                 raise
             except Exception as exc:
@@ -361,9 +366,7 @@ def _score_any_recorder(
                 rec.status = "FAIL"
                 rec.error = f"{type(exc).__name__}: {exc}"
                 if mock_unavailable:
-                    return [float("nan")] * max(
-                        1, len(ctx.get("molecules", []) or [])
-                    )
+                    return [float("nan")] * max(1, len(ctx.get("molecules", []) or []))
                 raise AdapterUnavailable(
                     f"Real tool `{orig_refs[metric_name].tool_name}` "
                     f"failed for metric {metric_name!r}: "
@@ -434,7 +437,9 @@ def _run_pre_post_probes(
     return wall, out
 
 
-def _classify_missing_dep(exc: Exception, optional_deps: Sequence[str]) -> Tuple[str, ...]:
+def _classify_missing_dep(
+    exc: Exception, optional_deps: Sequence[str]
+) -> Tuple[str, ...]:
     """Return the subset of ``optional_deps`` referenced in the exception.
 
     Used to decide whether a script-under-test failure is due to a
@@ -494,9 +499,7 @@ def _invoke_script(
             try:
                 module = importlib.import_module(str(entry["module"]))
             except ModuleNotFoundError as exc:
-                missing = _classify_missing_dep(
-                    exc, entry.get("optional_deps", ())
-                )
+                missing = _classify_missing_dep(exc, entry.get("optional_deps", ()))
                 rep.status = "EXPECTED_FAIL"
                 rep.error = (
                     f"host missing optional dep(s) "
@@ -504,17 +507,14 @@ def _invoke_script(
                 )
             except ImportError as exc:
                 rep.status = "EXPECTED_FAIL"
-                rep.error = (
-                    f"import error: {type(exc).__name__}: {exc}"
-                )
+                rep.error = f"import error: {type(exc).__name__}: {exc}"
             if module is not None:
                 # Pick the canonical entry-point — most scripts use
                 # ``main(argv=...)``; bench_mcts_real_trajectory uses
                 # ``_cli_main(argv=...)`` because ``main`` is the
                 # script's public-facing name for the bench fn.
-                entry_fn = (
-                    getattr(module, "_cli_main", None)
-                    or getattr(module, "main", None)
+                entry_fn = getattr(module, "_cli_main", None) or getattr(
+                    module, "main", None
                 )
                 try:
                     if entry_fn is None:
@@ -528,14 +528,13 @@ def _invoke_script(
                         # actually accepts it (some mains take no
                         # args at all).
                         import inspect
+
                         try:
                             sig = inspect.signature(entry_fn)
                         except (TypeError, ValueError):
                             sig = None
                         params: List[inspect.Parameter] = (
-                            list(sig.parameters.values())
-                            if sig is not None
-                            else []
+                            list(sig.parameters.values()) if sig is not None else []
                         )
                         kwargs: Dict[str, Any] = {}
                         args_list: List[Any] = []
@@ -548,8 +547,7 @@ def _invoke_script(
                         if not params:
                             pass  # call with no args
                         elif any(
-                            p.kind == inspect.Parameter.VAR_KEYWORD
-                            for p in params
+                            p.kind == inspect.Parameter.VAR_KEYWORD for p in params
                         ) or any(
                             p.name == "argv"
                             and p.kind
@@ -561,8 +559,7 @@ def _invoke_script(
                         ):
                             kwargs["argv"] = argv
                         elif all(
-                            p.kind == inspect.Parameter.POSITIONAL_ONLY
-                            for p in params
+                            p.kind == inspect.Parameter.POSITIONAL_ONLY for p in params
                         ) and any(
                             p.kind
                             in (
@@ -588,15 +585,11 @@ def _invoke_script(
                             rc = entry_fn(*args_list, **kwargs)
                         finally:
                             sys.argv = orig_argv
-                        if rc is None or (
-                            isinstance(rc, int) and rc in (0, None)
-                        ):
+                        if rc is None or (isinstance(rc, int) and rc in (0, None)):
                             pass
                         else:
                             rep.status = "FAIL"
-                            rep.error = (
-                                f"script returned exit code {rc}"
-                            )
+                            rep.error = f"script returned exit code {rc}"
                 except SystemExit as exc:
                     code = exc.code if isinstance(exc.code, int) else 0
                     if code not in (0, None):
@@ -618,14 +611,8 @@ def _invoke_script(
                     # classify as expected_fail when they match one of
                     # the script's ``optional_deps`` or are clearly
                     # ``ModuleNotFoundError`` / ``ImportError``.
-                    missing = _classify_missing_dep(
-                        exc, entry.get("optional_deps", ())
-                    )
-                    if (
-                        missing
-                        or "ModuleNotFoundError" in tb
-                        or "ImportError" in tb
-                    ):
+                    missing = _classify_missing_dep(exc, entry.get("optional_deps", ()))
+                    if missing or "ModuleNotFoundError" in tb or "ImportError" in tb:
                         rep.status = "EXPECTED_FAIL"
                         rep.error = (
                             f"host missing optional dep(s) "
@@ -659,10 +646,7 @@ def _invoke_script(
             rep.accuracy = "FAIL"
             if rep.status == "OK":
                 rep.status = "FAIL"
-            rep.error = (
-                (rep.error or "")
-                + f" | missing expected metric(s): {missing}"
-            )
+            rep.error = (rep.error or "") + f" | missing expected metric(s): {missing}"
 
         return rep, records, []
     except Exception as exc:  # pragma: no cover - top-level defensive
@@ -749,17 +733,16 @@ def _write_markdown(path: Path, payload: Dict[str, Any]) -> None:
     lines.append(f"- n_routing_fail: `{agg.get('n_routing_fail')}`")
     lines.append(f"- mean_wall_time_s: `{agg.get('mean_wall_time_s'):.4f}`")
     lines.append(
-        f"- mean_router_overhead_s: "
-        f"`{agg.get('mean_router_overhead_s'):.4f}`"
+        f"- mean_router_overhead_s: " f"`{agg.get('mean_router_overhead_s'):.4f}`"
     )
-    lines.append(f"- tools_used_aggregate: "
-                 f"`{', '.join(agg.get('tools_used_aggregate', []))}`")
+    lines.append(
+        f"- tools_used_aggregate: "
+        f"`{', '.join(agg.get('tools_used_aggregate', []))}`"
+    )
     lines.append("")
     lines.append("## Per-script")
     lines.append("")
-    lines.append(
-        "| script | status | wall_s | overhead_s | tools_used | accuracy |"
-    )
+    lines.append("| script | status | wall_s | overhead_s | tools_used | accuracy |")
     lines.append("|---|---|---:|---:|---|---|")
     for r in payload.get("per_script", []):
         lines.append(
@@ -831,14 +814,31 @@ def _build_argparser() -> argparse.ArgumentParser:
             "score_any() and record routing + wall-time per script."
         ),
     )
-    p.add_argument("--n-scripts", type=int, default=10,
-                   help="Number of scripts to run (default 10 — the Wf-43 ship set).")
-    p.add_argument("--seeds", type=int, nargs="*", default=[0],
-                   help="Seed(s) for the bench (default [0]).")
-    p.add_argument("--out-dir", type=str, default="molmetal/reports/wf48_score_any",
-                   help="Output directory for the bench report.")
-    p.add_argument("--timeout-s", type=float, default=60.0,
-                   help="Per-script timeout (default 60s).")
+    p.add_argument(
+        "--n-scripts",
+        type=int,
+        default=10,
+        help="Number of scripts to run (default 10 — the Wf-43 ship set).",
+    )
+    p.add_argument(
+        "--seeds",
+        type=int,
+        nargs="*",
+        default=[0],
+        help="Seed(s) for the bench (default [0]).",
+    )
+    p.add_argument(
+        "--out-dir",
+        type=str,
+        default="molmetal/reports/wf48_score_any",
+        help="Output directory for the bench report.",
+    )
+    p.add_argument(
+        "--timeout-s",
+        type=float,
+        default=60.0,
+        help="Per-script timeout (default 60s).",
+    )
     p.add_argument(
         "--no-mock-unavailable",
         action="store_true",

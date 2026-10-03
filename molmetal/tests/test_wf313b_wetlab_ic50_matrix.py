@@ -27,6 +27,7 @@ IC50 fixtures; no real wet-lab data is shipped. The pipeline runs end-to-end
 on the synthetic data and writes the schema that real wet-lab data will
 populate.
 """
+
 from __future__ import annotations
 
 import json
@@ -46,6 +47,7 @@ import pytest
 # Lazy import
 try:
     from molmetal.scripts import template_ic50_pipeline as ic50p  # noqa: E402
+
     _HAS_IC50P = True
 except Exception as exc:
     ic50p = None
@@ -65,8 +67,17 @@ pytestmark = pytest.mark.skipif(
 CISP_4CELL = ["MCF7", "A549", "A2780", "A2780cis"]
 RU_4CELL = ["A549", "MCF7", "A2780", "A2780cis"]
 IR_4CELL = ["A549", "MCF7", "A2780", "A2780cis"]
-PT_NCI60_9CELL = ["CCRF-CEM", "HCT-116", "SF-539", "LOX-IMVI",
-                  "OVCAR-3", "A498", "PC-3", "A549", "MCF7"]
+PT_NCI60_9CELL = [
+    "CCRF-CEM",
+    "HCT-116",
+    "SF-539",
+    "LOX-IMVI",
+    "OVCAR-3",
+    "A498",
+    "PC-3",
+    "A549",
+    "MCF7",
+]
 
 
 def _make_matrix_fixture(
@@ -122,8 +133,11 @@ def test_cisp_4cell_resistance_fold():
     # Pt-class: A2780cis should show 1.5× shift (per template_ic50_pipeline.make_synthetic_fixture)
     wells = ic50p.make_synthetic_fixture()
     per_compound = ic50p.build_per_compound_records(wells, n_boot=50)
-    pt_records = {cell: rec for (cpd, cell), rec in per_compound.items()
-                  if rec.get("metal") == "Pt"}
+    pt_records = {
+        cell: rec
+        for (cpd, cell), rec in per_compound.items()
+        if rec.get("metal") == "Pt"
+    }
     # Synthetic fixture only covers 4-cell; check that A2780 + A2780cis records exist
     assert "A2780" in pt_records
     assert "A2780cis" in pt_records
@@ -203,8 +217,11 @@ def test_ru_4cell_resistance_fold():
     # verify the records exist.
     wells = ic50p.make_synthetic_fixture()
     per_compound = ic50p.build_per_compound_records(wells, n_boot=50)
-    ru_records = {cell: rec for (cpd, cell), rec in per_compound.items()
-                  if rec.get("metal") == "Ru"}
+    ru_records = {
+        cell: rec
+        for (cpd, cell), rec in per_compound.items()
+        if rec.get("metal") == "Ru"
+    }
     # Synthetic fixture has Ru records
     assert len(ru_records) > 0
 
@@ -224,8 +241,11 @@ def test_ru_4cell_cross_metal_comparability():
     """Matrix 2 — Ru-class pIC50 spread on synthetic fixture."""
     wells = ic50p.make_synthetic_fixture()
     per_compound = ic50p.build_per_compound_records(wells, n_boot=50)
-    ru_pic50 = [float(r["pic50"]) for r in per_compound.values()
-                if r.get("metal") == "Ru" and r.get("pic50") is not None]
+    ru_pic50 = [
+        float(r["pic50"])
+        for r in per_compound.values()
+        if r.get("metal") == "Ru" and r.get("pic50") is not None
+    ]
     assert len(ru_pic50) > 0
     # All Ru pIC50 should be finite
     for v in ru_pic50:
@@ -270,8 +290,11 @@ def test_ir_4cell_resistance_fold():
     """Matrix 3 — Ir-class may show strongly positive resistance slope (kinase-target class)."""
     wells = ic50p.make_synthetic_fixture()
     per_compound = ic50p.build_per_compound_records(wells, n_boot=50)
-    ir_records = {cell: rec for (cpd, cell), rec in per_compound.items()
-                  if rec.get("metal") == "Ir"}
+    ir_records = {
+        cell: rec
+        for (cpd, cell), rec in per_compound.items()
+        if rec.get("metal") == "Ir"
+    }
     assert len(ir_records) > 0
 
 
@@ -289,8 +312,11 @@ def test_ir_4cell_cross_metal_comparability():
     """Matrix 3 — Ir-class pIC50 spread on synthetic fixture."""
     wells = ic50p.make_synthetic_fixture()
     per_compound = ic50p.build_per_compound_records(wells, n_boot=50)
-    ir_pic50 = [float(r["pic50"]) for r in per_compound.values()
-                if r.get("metal") == "Ir" and r.get("pic50") is not None]
+    ir_pic50 = [
+        float(r["pic50"])
+        for r in per_compound.values()
+        if r.get("metal") == "Ir" and r.get("pic50") is not None
+    ]
     assert len(ir_pic50) > 0
     for v in ir_pic50:
         assert np.isfinite(v)
@@ -340,8 +366,11 @@ def test_pt_nci60_9cell_resistance_fold():
     # We verify the schema is extendable.
     wells = ic50p.make_synthetic_fixture()
     per_compound = ic50p.build_per_compound_records(wells, n_boot=50)
-    pt_pic50 = [float(r["pic50"]) for r in per_compound.values()
-                if r.get("metal") == "Pt" and r.get("pic50") is not None]
+    pt_pic50 = [
+        float(r["pic50"])
+        for r in per_compound.values()
+        if r.get("metal") == "Pt" and r.get("pic50") is not None
+    ]
     assert len(pt_pic50) > 0
 
 
@@ -370,6 +399,7 @@ def test_pt_nci60_9cell_cross_metal_comparability():
     # that the schema is extendable to 9 cells by checking the function
     # signature.
     import inspect
+
     sig = inspect.signature(ic50p.build_per_compound_records)
     # The function accepts wells, n_boot; no hard-coded cell filter
     assert "wells" in sig.parameters
@@ -387,8 +417,11 @@ def test_pt_nci60_9cell_honest_framing():
         qc = rec.get("qc_flags", [])
         for flag in qc:
             assert flag in {
-                "hill_outlier", "asymptote_outlier", "insufficient_doses",
-                "fit_fail", "replicate_mismatch",
+                "hill_outlier",
+                "asymptote_outlier",
+                "insufficient_doses",
+                "fit_fail",
+                "replicate_mismatch",
             }, f"Unexpected fabricated flag: {flag}"
 
 
@@ -422,14 +455,35 @@ def test_matrix_enhancement_report_writes_json(tmp_path):
         },
         "matrices": matrix_definitions,
         "per_compound_records": len(per_compound),
-        "anova_per_metal": {m: {"F": (float(v.get("F")) if not np.isnan(v.get("F", float("nan"))) else None),
-                                  "p_raw": (float(v.get("p_raw")) if not np.isnan(v.get("p_raw", float("nan"))) else None),
-                                  "n_groups": int(v.get("n_groups", 0))}
-                            for m, v in anova.items()},
+        "anova_per_metal": {
+            m: {
+                "F": (
+                    float(v.get("F"))
+                    if not np.isnan(v.get("F", float("nan")))
+                    else None
+                ),
+                "p_raw": (
+                    float(v.get("p_raw"))
+                    if not np.isnan(v.get("p_raw", float("nan")))
+                    else None
+                ),
+                "n_groups": int(v.get("n_groups", 0)),
+            }
+            for m, v in anova.items()
+        },
         "agreement_per_metal_cell": {
-            k: {"pearson_r": (float(v["pearson_r"]) if v.get("pearson_r") is not None else None),
-                "spearman_rho": (float(v["spearman_rho"]) if v.get("spearman_rho") is not None else None),
-                "n": int(v.get("n", 0)), "gate_pass": bool(v.get("gate_pass", False))}
+            k: {
+                "pearson_r": (
+                    float(v["pearson_r"]) if v.get("pearson_r") is not None else None
+                ),
+                "spearman_rho": (
+                    float(v["spearman_rho"])
+                    if v.get("spearman_rho") is not None
+                    else None
+                ),
+                "n": int(v.get("n", 0)),
+                "gate_pass": bool(v.get("gate_pass", False)),
+            }
             for k, v in agreement.items()
         },
     }

@@ -26,6 +26,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -64,6 +65,7 @@ from molmetal.molmetal_lam.sbdd_env.groupnorm_replacement import (
 try:
     from molmetal.data.four_domain_combined import FourDomainDataset
     from molmetal.data.four_domain_weights import make_four_domain_sampler
+
     _FOUR_DOMAIN_AVAILABLE = True
 except Exception as _exc:  # pragma: no cover — defensive import
     _FOUR_DOMAIN_AVAILABLE = False
@@ -91,7 +93,9 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "--data-config four-domain so DrugOOD rows are loaded)."
         ),
     )
-    p.add_argument("--epochs", type=int, default=30, help="Training epochs (default: 30)")
+    p.add_argument(
+        "--epochs", type=int, default=30, help="Training epochs (default: 30)"
+    )
     p.add_argument(
         "--batch",
         type=int,
@@ -370,10 +374,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--ckpt-every",
         type=int,
         default=5,
-        help=(
-            "Save full checkpoint every N epochs (default: 5). "
-            "0 disables."
-        ),
+        help=("Save full checkpoint every N epochs (default: 5). " "0 disables."),
     )
     p.add_argument(
         "--resume",
@@ -448,6 +449,7 @@ def build_dataloader(
     # ``MOLMETAL_DATA_DIR`` env-var convention and fall back to the
     # project-local ``.data/molmetal/`` tree before giving up.
     import os
+
     env_root = os.environ.get("MOLMETAL_DATA_DIR")
     candidates: List[Path] = []
     if csv_path is not None:
@@ -455,10 +457,12 @@ def build_dataloader(
     else:
         if env_root:
             candidates.append(Path(env_root) / "MetalCytoToxDB.csv")
-        candidates.extend([
-            PROJECT_ROOT / ".data" / "molmetal" / "MetalCytoToxDB.csv",
-            Path("/mnt/storage/data/molmetal/MetalCytoToxDB.csv"),
-        ])
+        candidates.extend(
+            [
+                PROJECT_ROOT / ".data" / "molmetal" / "MetalCytoToxDB.csv",
+                Path("/mnt/storage/data/molmetal/MetalCytoToxDB.csv"),
+            ]
+        )
     csv_file: Optional[Path] = None
     for c in candidates:
         if c.exists():
@@ -477,12 +481,12 @@ def build_dataloader(
     # cache_dir — follow the pattern from
     # :mod:`molmetal.data.four_domain_combined`.
     cache_dir = Path(
-        os.environ.get("MOLMETAL_3D_CACHE_DIR")
-        or str(csv_file.parent / "3d_cache")
+        os.environ.get("MOLMETAL_3D_CACHE_DIR") or str(csv_file.parent / "3d_cache")
     )
     cache_dir.mkdir(parents=True, exist_ok=True)
     import pandas as pd
     from molmetal.data.cytotox import _add_active, _add_pic50, _apply_filters
+
     df = pd.read_csv(csv_file, low_memory=False)
     df = _apply_filters(df, filters)
     if filters.compute_pic50:
@@ -492,11 +496,13 @@ def build_dataloader(
     ds = MetalCytotoxDataset(df=df, cache_dir=cache_dir)
     if len(ds) == 0:
         raise RuntimeError(f"No rows for metal={metal!r} (CSV={csv_file})")
+
     # ``worker_init_fn`` seeds each worker's numpy + torch RNGs.  This is the
     # documented PyTorch pattern for reproducible multi-worker loaders.
     def _seed_worker(worker_id: int) -> None:
         import numpy as np
-        worker_seed = (seed + worker_id) % (2 ** 32)
+
+        worker_seed = (seed + worker_id) % (2**32)
         np.random.seed(worker_seed)
         torch.manual_seed(worker_seed)
 
@@ -526,9 +532,7 @@ def build_dataloader(
 # ~4-5x faster per step than calling ``_featurize_batch`` (RDKit) at
 # every step — the 186ms CPU featurize step is replaced by a single
 # ``tensor.to('cuda', non_blocking=True)`` index lookup.
-PRE_FEATURIZED_DIR = (
-    PROJECT_ROOT / "molmetal" / "data" / "pre_featurized"
-)
+PRE_FEATURIZED_DIR = PROJECT_ROOT / "molmetal" / "data" / "pre_featurized"
 PRE_FEATURIZED_ALL = PRE_FEATURIZED_DIR / "all_pretrain.pt"
 
 
@@ -582,8 +586,14 @@ def build_pretrain_dataloader(
         )
     pack = torch.load(src, map_location="cpu", weights_only=False)
     keys_tensors = [
-        "atom_features", "edge_index", "edge_attr", "atom_mask",
-        "metal_idx", "y", "active", "domain",
+        "atom_features",
+        "edge_index",
+        "edge_attr",
+        "atom_mask",
+        "metal_idx",
+        "y",
+        "active",
+        "domain",
     ]
     tensors = [pack[k] for k in keys_tensors]
     # TODO-160 §4.2 — canonical-metal filter.
@@ -801,21 +811,25 @@ def run_pretrain_training(
             active_labels = (act_clean >= 0.5).long()
             y_true = {m: active_labels for m in SUPPORTED_METALS}
             # Coord target — clip domain id into [0, n_coord_classes).
-            coord_true = torch.clamp(
-                domain, 0, model.n_coord_classes - 1
-            )
+            coord_true = torch.clamp(domain, 0, model.n_coord_classes - 1)
 
             # ----- Forward (cached, RDKit-free) -----
             if use_bf16:
                 with torch.amp.autocast("cuda", dtype=torch.bfloat16):
                     out = model.forward_cached(
-                        af, ei, metal_ids,
-                        atom_mask=mask, edge_attr=ea,
+                        af,
+                        ei,
+                        metal_ids,
+                        atom_mask=mask,
+                        edge_attr=ea,
                     )
             else:
                 out = model.forward_cached(
-                    af, ei, metal_ids,
-                    atom_mask=mask, edge_attr=ea,
+                    af,
+                    ei,
+                    metal_ids,
+                    atom_mask=mask,
+                    edge_attr=ea,
                 )
             forward_cached_calls += 1
 
@@ -980,24 +994,32 @@ def main(argv: list[str] | None = None) -> int:
         if args.split in ("assay", "size"):
             drugood_sub = four_ds._domain_1  # _DrugOODRows instance
             try:
-                drugood_split = AssayGroupSplitter(seed=args.seed) if args.split == "assay" \
+                drugood_split = (
+                    AssayGroupSplitter(seed=args.seed)
+                    if args.split == "assay"
                     else SizeGroupSplitter(seed=args.seed)
+                )
                 # Honor the per-domain cap by slicing the head (the
                 # _DrugOODRows indices 0..cap are the ones in the cap'd
                 # effective range).
                 cap = four_ds._caps.get(1)
                 if cap is not None and cap < len(drugood_sub):
+
                     class _HeadView:
                         """Wrap _DrugOODRows so the splitter only sees the
                         first ``cap`` rows (matches FourDomainDataset's
                         effective range)."""
+
                         def __init__(self, src, n):
                             self._src = src
                             self._n = int(n)
+
                         def __len__(self):
                             return self._n
+
                         def __getitem__(self, i):
                             return self._src[int(i)]
+
                     drugood_view = _HeadView(drugood_sub, cap)
                 else:
                     drugood_view = drugood_sub
@@ -1007,8 +1029,10 @@ def main(argv: list[str] | None = None) -> int:
                     attr = "assay_id"
                 else:
                     attr = "size_id"
+
                 def _grp_keys(idx_arr):
                     return {int(drugood_view[i][attr]) for i in idx_arr}
+
                 train_g = _grp_keys(drugood_result.train_idx)
                 val_g = _grp_keys(drugood_result.val_idx)
                 test_g = _grp_keys(drugood_result.test_idx)
@@ -1121,15 +1145,20 @@ def main(argv: list[str] | None = None) -> int:
     # When ``--ckpt-dir ""`` we explicitly disable checkpointing by passing
     # ``ckpt_dir=None`` so the user can opt out without touching the env.
     ckpt_dir_arg = args.ckpt_dir if (args.ckpt_dir and args.ckpt_dir.strip()) else None
-    kwargs = dict(metal=args.metal, seed=args.seed, splitter=splitter,
-                  epochs=args.epochs, alpha=args.alpha,
-                  use_kendall_loss=args.use_kendall_loss,
-                  use_dann=args.use_dann,
-                  lambda_grl=args.lambda_grl,
-                  domain_id=args.domain_id,
-                  ckpt_dir=ckpt_dir_arg,
-                  ckpt_every=args.ckpt_every,
-                  resume=args.resume)
+    kwargs = dict(
+        metal=args.metal,
+        seed=args.seed,
+        splitter=splitter,
+        epochs=args.epochs,
+        alpha=args.alpha,
+        use_kendall_loss=args.use_kendall_loss,
+        use_dann=args.use_dann,
+        lambda_grl=args.lambda_grl,
+        domain_id=args.domain_id,
+        ckpt_dir=ckpt_dir_arg,
+        ckpt_every=args.ckpt_every,
+        resume=args.resume,
+    )
     if args.lr is not None:
         kwargs["lr"] = args.lr
     runner = DMPNNMultiTaskBaseline(**kwargs)
@@ -1306,19 +1335,21 @@ def main(argv: list[str] | None = None) -> int:
         # Merge the loader config (from earlier) with the new training
         # summary so downstream tooling has one JSON blob to replay.
         full_payload: Dict[str, object] = dict(pretrain_payload or {})
-        full_payload.update({
-            "training": train_summary,
-            "elapsed_seconds": float(elapsed),
-            "data_config": "pretrain",
-            "seed": int(args.seed),
-            "epochs": int(args.epochs),
-            "batch_size": int(args.batch),
-            "lr": float(args.lr) if args.lr is not None else 1e-3,
-            "bf16_enabled": bool(args.bf16),
-            "kendall_loss_enabled": bool(args.use_kendall_loss),
-            "split": args.split,
-            "rdkit_called": False,
-        })
+        full_payload.update(
+            {
+                "training": train_summary,
+                "elapsed_seconds": float(elapsed),
+                "data_config": "pretrain",
+                "seed": int(args.seed),
+                "epochs": int(args.epochs),
+                "batch_size": int(args.batch),
+                "lr": float(args.lr) if args.lr is not None else 1e-3,
+                "bf16_enabled": bool(args.bf16),
+                "kendall_loss_enabled": bool(args.use_kendall_loss),
+                "split": args.split,
+                "rdkit_called": False,
+            }
+        )
         out_path.write_text(json.dumps(full_payload, indent=2, default=str))
         print(
             f"[dmpnn_multitask] pretrain training COMPLETE: "

@@ -56,6 +56,7 @@ Public API
 * :func:`aggregate_extended_r2`      MEAN ± STD + lift vs 12-d baseline
 * :func:`run_wf433_m2_extended`      main entry point
 """
+
 from __future__ import annotations
 
 import argparse
@@ -68,6 +69,7 @@ import numpy as np
 
 try:
     from sklearn.linear_model import Ridge  # type: ignore
+
     _HAS_SKLEARN = True
 except Exception:  # pragma: no cover — defensive
     _HAS_SKLEARN = False
@@ -75,6 +77,7 @@ except Exception:  # pragma: no cover — defensive
 try:
     from rdkit import Chem  # type: ignore
     from rdkit.Chem import AllChem, rdMolDescriptors  # type: ignore
+
     _HAS_RDKIT = True
 except Exception:  # pragma: no cover — defensive
     _HAS_RDKIT = False
@@ -87,6 +90,7 @@ from molmetal.scripts.wf331r5_r2_w2_chemprop import (
     METALCYTOTOX_TARGET_COLUMN,
     WF325A_BASELINE_R2,
 )
+
 # Reuse Wf-388-A1 per-cohort loader signatures.
 from molmetal.scripts.wf388a1_m2_per_cohort_real import (
     load_platinai_4cell,
@@ -101,9 +105,9 @@ from molmetal.scripts.wf388a1_m2_per_cohort_real import (
 # ---------------------------------------------------------------------------
 # Per `metrics/by_metric/m2_r2_per_cohort.json::per_cohort` (2026-09-30):
 WF388A1_12D_BASELINE_R2: Dict[str, float] = {
-    "platinai_4cell":        -0.14401547578768395,  # 12-d RDKit + Ridge α=1.0
-    "hilbert":               -0.14401547578768395,  # same loader + seed_offset=10
-    "metalcytotox_combined":  0.19808189300924267,  # 32-d RDKit+chemprop+Hilbert + Ridge α=0.1
+    "platinai_4cell": -0.14401547578768395,  # 12-d RDKit + Ridge α=1.0
+    "hilbert": -0.14401547578768395,  # same loader + seed_offset=10
+    "metalcytotox_combined": 0.19808189300924267,  # 32-d RDKit+chemprop+Hilbert + Ridge α=0.1
 }
 
 
@@ -111,9 +115,9 @@ WF388A1_12D_BASELINE_R2: Dict[str, float] = {
 # Wf-335-M2 best R² per cohort (the Wf-388-A1 baseline anchor)
 # ---------------------------------------------------------------------------
 WF335M2_BEST_R2: Dict[str, float] = {
-    "platinai_4cell":        -0.12505399802714393,  # 12d_baseline, seed=0
-    "hilbert":               -0.1268,               # 12d_baseline, seed_offset=10
-    "metalcytotox_combined":  0.22268113216745766,  # full_static_combined_plus_w2_best_axis
+    "platinai_4cell": -0.12505399802714393,  # 12d_baseline, seed=0
+    "hilbert": -0.1268,  # 12d_baseline, seed_offset=10
+    "metalcytotox_combined": 0.22268113216745766,  # full_static_combined_plus_w2_best_axis
 }
 
 
@@ -259,8 +263,8 @@ def compute_extended_features(smiles_list: List[str]) -> np.ndarray:
 # Per-cohort loader convenience (re-export from Wf-388-A1)
 # ---------------------------------------------------------------------------
 load_cohort_dict: Dict[str, Any] = {
-    "platinai_4cell":        load_platinai_4cell,
-    "hilbert":               load_hilbert,
+    "platinai_4cell": load_platinai_4cell,
+    "hilbert": load_hilbert,
     "metalcytotox_combined": load_metalcytotox_combined,
 }
 
@@ -343,25 +347,29 @@ def aggregate_extended_r2(
             verdict = "HONEST_NEGATIVE_R2_DEEP_OVERFIT"
         else:
             verdict = "HONEST_NEGATIVE_R2_DEEP"
-        cohorts_out.append({
-            "cohort": cohort,
-            "r2_mean": r2_mean,
-            "r2_std": res["r2_std"],
-            "n_splits_effective": res["n_splits_effective"],
-            "baseline_12d_r2": baseline,
-            "baseline_335m2_best_r2": baseline_best,
-            "lift_vs_12d": lift_vs_12d,
-            "lift_vs_335m2_best": lift_vs_335m2,
-            "verdict": verdict,
-        })
+        cohorts_out.append(
+            {
+                "cohort": cohort,
+                "r2_mean": r2_mean,
+                "r2_std": res["r2_std"],
+                "n_splits_effective": res["n_splits_effective"],
+                "baseline_12d_r2": baseline,
+                "baseline_335m2_best_r2": baseline_best,
+                "lift_vs_12d": lift_vs_12d,
+                "lift_vs_335m2_best": lift_vs_335m2,
+                "verdict": verdict,
+            }
+        )
     n_above_zero = sum(1 for c in cohorts_out if c["r2_mean"] > 0)
     n_ceiling_break = sum(1 for c in cohorts_out if c["verdict"] == "CEILING_BREAK")
     n_weak_recovery = sum(1 for c in cohorts_out if c["verdict"] == "WEAK_RECOVERY")
     n_honest_negative = sum(1 for c in cohorts_out if "HONEST_NEGATIVE" in c["verdict"])
     aggregate_status = (
-        "CEILING_BREAK_PARTIAL" if n_ceiling_break >= 1 else
-        "MEASURED_PARTIAL_LIFT" if n_weak_recovery >= 1 else
-        "MEASURED_HONEST_NEGATIVE_R2_DEEP_OVERFIT"
+        "CEILING_BREAK_PARTIAL"
+        if n_ceiling_break >= 1
+        else "MEASURED_PARTIAL_LIFT"
+        if n_weak_recovery >= 1
+        else "MEASURED_HONEST_NEGATIVE_R2_DEEP_OVERFIT"
     )
     return {
         "cohorts": cohorts_out,
@@ -397,7 +405,9 @@ def run_wf433_m2_extended(
         X, y, smiles_list, target_name = load_fn()
         # For metalcytotox_combined we need to slice to 32-d RDKit + 128-d PLL.
         # The loaders return the full RDKit 32-d matrix; we use EXTENDED on top.
-        res = train_eval_extended(smiles_list, y, n_seeds=n_seeds, n_folds=n_folds, alpha=alpha)
+        res = train_eval_extended(
+            smiles_list, y, n_seeds=n_seeds, n_folds=n_folds, alpha=alpha
+        )
         cohort_results[cohort] = res
     agg = aggregate_extended_r2(cohort_results)
     return {
@@ -428,21 +438,33 @@ def _main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         description="Wf-433-A2 — m2 R² EXTENDED features diagnostic"
     )
-    parser.add_argument("--cohorts", nargs="+",
-                        default=["platinai_4cell", "hilbert", "metalcytotox_combined"],
-                        help="Cohort names to evaluate.")
-    parser.add_argument("--n-seeds", type=int, default=5,
-                        help="Number of seeds for K-fold CV.")
-    parser.add_argument("--n-folds", type=int, default=5,
-                        help="Number of folds per seed.")
-    parser.add_argument("--alpha", type=float, default=1.0,
-                        help="Ridge regularization parameter.")
-    parser.add_argument("--out-dir", type=str,
-                        default="molmetal/reports/wf433_m2_extended",
-                        help="Output directory for result.json.")
-    parser.add_argument("--write-catalog", action="store_true",
-                        help="Also update metrics/by_metric/m2_r2_per_cohort.json "
-                             "with EXTENDED values via atomic_write_file.")
+    parser.add_argument(
+        "--cohorts",
+        nargs="+",
+        default=["platinai_4cell", "hilbert", "metalcytotox_combined"],
+        help="Cohort names to evaluate.",
+    )
+    parser.add_argument(
+        "--n-seeds", type=int, default=5, help="Number of seeds for K-fold CV."
+    )
+    parser.add_argument(
+        "--n-folds", type=int, default=5, help="Number of folds per seed."
+    )
+    parser.add_argument(
+        "--alpha", type=float, default=1.0, help="Ridge regularization parameter."
+    )
+    parser.add_argument(
+        "--out-dir",
+        type=str,
+        default="molmetal/reports/wf433_m2_extended",
+        help="Output directory for result.json.",
+    )
+    parser.add_argument(
+        "--write-catalog",
+        action="store_true",
+        help="Also update metrics/by_metric/m2_r2_per_cohort.json "
+        "with EXTENDED values via atomic_write_file.",
+    )
     args = parser.parse_args(argv)
 
     out_dir = args.out_dir
@@ -474,6 +496,7 @@ def _main(argv: Optional[List[str]] = None) -> int:
     # Write result.json via atomic_write_file per AGENTS.md §5.6.
     try:
         from molmetal.scripts.wf386a3_atomic_write import atomic_write_file
+
         atomic_write_file(out_path, json.dumps(result, indent=2, sort_keys=False))
         print(f"\nresult.json written via atomic_write_file: {out_path}")
     except ImportError:
@@ -500,26 +523,30 @@ def _main(argv: Optional[List[str]] = None) -> int:
         for c in result["per_cohort"]:
             baseline_12d = WF388A1_12D_BASELINE_R2.get(c["cohort"], float("nan"))
             baseline_335 = WF335M2_BEST_R2.get(c["cohort"], float("nan"))
-            new_entries.append({
-                "cohort": c["cohort"],
-                "config_features": "extended_160d_rdkit32_pll_proxy128",
-                "config_model": "ridge",
-                "n_features_used": 160,
-                "alpha_used": result["config"]["ridge_alpha"],
-                "r2_mean": c["r2_mean"],
-                "r2_std": c["r2_std"],
-                "n_splits_effective": c["n_splits_effective"],
-                "baseline_12d_r2": baseline_12d,
-                "lift_vs_baseline_12d": c["r2_mean"] - baseline_12d,
-                "lift_vs_wf335m2_best": c["r2_mean"] - baseline_335,
-                "verdict": (
-                    "HONEST_NEGATIVE_R2_DEEP_OVERFIT" if c["r2_mean"] < baseline_12d - 0.05
-                    else "WEAK_RECOVERY" if c["r2_mean"] > 0
-                    else "HONEST_NEGATIVE_R2_DEEP"
-                ),
-                "source": "molmetal/scripts/wf433_m2_extended.py",
-                "wf_tag": "Wf-433-A2 m2 R² EXTENDED features diagnostic",
-            })
+            new_entries.append(
+                {
+                    "cohort": c["cohort"],
+                    "config_features": "extended_160d_rdkit32_pll_proxy128",
+                    "config_model": "ridge",
+                    "n_features_used": 160,
+                    "alpha_used": result["config"]["ridge_alpha"],
+                    "r2_mean": c["r2_mean"],
+                    "r2_std": c["r2_std"],
+                    "n_splits_effective": c["n_splits_effective"],
+                    "baseline_12d_r2": baseline_12d,
+                    "lift_vs_baseline_12d": c["r2_mean"] - baseline_12d,
+                    "lift_vs_wf335m2_best": c["r2_mean"] - baseline_335,
+                    "verdict": (
+                        "HONEST_NEGATIVE_R2_DEEP_OVERFIT"
+                        if c["r2_mean"] < baseline_12d - 0.05
+                        else "WEAK_RECOVERY"
+                        if c["r2_mean"] > 0
+                        else "HONEST_NEGATIVE_R2_DEEP"
+                    ),
+                    "source": "molmetal/scripts/wf433_m2_extended.py",
+                    "wf_tag": "Wf-433-A2 m2 R² EXTENDED features diagnostic",
+                }
+            )
         # Merge: replace existing entries for same cohort with new EXTENDED entries.
         merged = []
         for nc in new_entries:
@@ -550,7 +577,10 @@ def _main(argv: Optional[List[str]] = None) -> int:
         }
         try:
             from molmetal.scripts.wf386a3_atomic_write import atomic_write_file
-            atomic_write_file(catalog_path, json.dumps(catalog, indent=2, sort_keys=False))
+
+            atomic_write_file(
+                catalog_path, json.dumps(catalog, indent=2, sort_keys=False)
+            )
             print(f"catalog updated via atomic_write_file: {catalog_path}")
         except ImportError:
             with open(catalog_path, "w") as f:

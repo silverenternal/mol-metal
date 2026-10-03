@@ -1,4 +1,5 @@
 """Tests for the MLC Synthesis layer (synthesis/derivations.py)."""
+
 from __future__ import annotations
 
 import pytest
@@ -35,6 +36,7 @@ def test_imports() -> None:
 def test_synthesis_path_is_dataclass() -> None:
     """SynthesisPath is a dataclass with the three required fields."""
     import dataclasses
+
     assert dataclasses.is_dataclass(SynthesisPath)
     field_names = {f.name for f in dataclasses.fields(SynthesisPath)}
     assert {"target", "steps", "starting_materials"} <= field_names
@@ -209,6 +211,7 @@ def test_synthesis_path_is_mass_balanced_detects_imbalance() -> None:
         MoleculeClosedTerm.from_smiles("C", embed_3d=False),
         MoleculeClosedTerm.from_smiles("O", embed_3d=False),
     ]
+
     # Fake rule that "loses" an oxygen (e.g. decarboxylation).
     # We can't override the parent's field default cleanly with a
     # dataclass subclass (the parent's ``field(default_factory=...)``

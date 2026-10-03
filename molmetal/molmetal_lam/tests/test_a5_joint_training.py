@@ -27,6 +27,7 @@ Tests in this file:
 
 All tests run on CPU (no GPU required) and complete in <10 s.
 """
+
 from __future__ import annotations
 
 import math
@@ -84,9 +85,13 @@ def _build_test_molecule(smiles: str, n_atoms: int | None = None) -> Molecule:
     return Molecule.from_rdkit_mol(mol)
 
 
-def _build_adapter(use_bond_head: bool = True, joint_train: bool = True,
-                   hidden_dim: int = 32, n_layers: int = 1,
-                   bond_loss_weight: float = 1.0) -> LipmanFlowMatchingAdapter:
+def _build_adapter(
+    use_bond_head: bool = True,
+    joint_train: bool = True,
+    hidden_dim: int = 32,
+    n_layers: int = 1,
+    bond_loss_weight: float = 1.0,
+) -> LipmanFlowMatchingAdapter:
     """Build an adapter with the joint-training knobs set, without invoking
     :meth:`setup` (so the test stays independent of the flow_matching clone).
     """
@@ -104,8 +109,9 @@ def _build_adapter(use_bond_head: bool = True, joint_train: bool = True,
     )
 
 
-def _build_bond_head(training_mode: str = "frozen",
-                     atom_vocab=EXPECTED_VOCAB) -> BondOrderHead:
+def _build_bond_head(
+    training_mode: str = "frozen", atom_vocab=EXPECTED_VOCAB
+) -> BondOrderHead:
     return BondOrderHead(
         in_dim=9,
         hidden_dim=32,
@@ -178,9 +184,9 @@ def test_training_mode_joint_adds_to_optimizer() -> None:
     BondOrderHead and check its ``training_mode`` flag.
     """
     head = _build_bond_head(training_mode="joint")
-    assert head.training_mode == "joint", (
-        f"expected training_mode='joint', got {head.training_mode!r}"
-    )
+    assert (
+        head.training_mode == "joint"
+    ), f"expected training_mode='joint', got {head.training_mode!r}"
     # Sanity: the head has parameters.
     n_params = sum(p.numel() for p in head.parameters())
     assert n_params > 0, "BondOrderHead has zero parameters"
@@ -246,15 +252,23 @@ def test_bond_loss_backward_grad_to_atom_head() -> None:
     )
 
     adapter.velocity_field = EGNNVelocityField(
-        hidden_dim=16, n_layers=1, max_atomic_number=100,
+        hidden_dim=16,
+        n_layers=1,
+        max_atomic_number=100,
     ).to(adapter.device)
     adapter.pocket_encoder = PocketEncoder(
-        hidden_dim=16, max_atomic_number=100,
+        hidden_dim=16,
+        max_atomic_number=100,
     ).to(adapter.device)
     from molmetal.models.bond_head import BondOrderHead
+
     adapter.bond_head = BondOrderHead(
-        in_dim=9, hidden_dim=16, dropout=0.0, num_classes=5,
-        atom_vocab=adapter.atom_vocab, training_mode="joint",
+        in_dim=9,
+        hidden_dim=16,
+        dropout=0.0,
+        num_classes=5,
+        atom_vocab=adapter.atom_vocab,
+        training_mode="joint",
     ).to(adapter.device)
     adapter.optimizer = torch.optim.AdamW(
         list(adapter.velocity_field.parameters())
@@ -267,6 +281,7 @@ def test_bond_loss_backward_grad_to_atom_head() -> None:
     from molmetal.adapters.flow_matching_lipman._reference_loader import (
         configure_reference,
     )
+
     configure_reference("molmetal/references/flow_matching")
     from molmetal.adapters.flow_matching_lipman._reference.path import (
         AffineProbPath,
@@ -274,6 +289,7 @@ def test_bond_loss_backward_grad_to_atom_head() -> None:
     from molmetal.adapters.flow_matching_lipman._reference.path.scheduler import (
         CondOTScheduler,
     )
+
     adapter.scheduler = CondOTScheduler()
     adapter.path = AffineProbPath(scheduler=adapter.scheduler)
 
@@ -282,33 +298,32 @@ def test_bond_loss_backward_grad_to_atom_head() -> None:
     total_loss = adapter.train_step(pocket=None, mols=mols_list)
     assert math.isfinite(total_loss), f"non-finite total loss: {total_loss}"
     # Bond loss is present in the metrics dict.
-    assert "bond" in adapter.last_losses, (
-        f"bond loss missing from metrics: {adapter.last_losses.keys()}"
-    )
+    assert (
+        "bond" in adapter.last_losses
+    ), f"bond loss missing from metrics: {adapter.last_losses.keys()}"
     bond_loss_initial = adapter.last_losses["bond"]
     # The CH3OH molecule has a C-O single bond — so bond_loss is NOT
     # guaranteed to be zero (the head must learn the bond order).
-    assert bond_loss_initial >= 0.0, (
-        f"bond loss must be >= 0 (CE is non-negative), got {bond_loss_initial}"
-    )
+    assert (
+        bond_loss_initial >= 0.0
+    ), f"bond loss must be >= 0 (CE is non-negative), got {bond_loss_initial}"
     # Manual backward pass to verify gradients flow.
     # Force a second backward call after re-running forward to inspect
     # grad flow on the atom head weights.
-    atom_head_weight_before = (
-        adapter.velocity_field.atom_head.weight.detach().clone()
-    )
-    bond_head_weight_before = (
-        adapter.bond_head.fc1.weight.detach().clone()
-    )
+    atom_head_weight_before = adapter.velocity_field.atom_head.weight.detach().clone()
+    bond_head_weight_before = adapter.bond_head.fc1.weight.detach().clone()
     # Train one more step.
     adapter.train_step(pocket=None, mols=mols_list)
     # After one optimizer step, both weights should have moved.
     atom_head_delta = (
-        adapter.velocity_field.atom_head.weight - atom_head_weight_before
-    ).abs().max().item()
+        (adapter.velocity_field.atom_head.weight - atom_head_weight_before)
+        .abs()
+        .max()
+        .item()
+    )
     bond_head_delta = (
-        adapter.bond_head.fc1.weight - bond_head_weight_before
-    ).abs().max().item()
+        (adapter.bond_head.fc1.weight - bond_head_weight_before).abs().max().item()
+    )
     # The atom head is also updated via its own CE loss — so its
     # delta must be > 0.  The bond head is updated via the joint
     # bond loss — its delta must also be > 0.
@@ -341,28 +356,42 @@ def test_bond_loss_zero_with_no_true_bonds() -> None:
     bond_types = torch.zeros(0, dtype=torch.long)
     formal_charges = torch.zeros(1, dtype=torch.long)
     m = Molecule(
-        coords=coords, atom_types=atom_types, bonds=bonds,
-        bond_types=bond_types, formal_charges=formal_charges,
+        coords=coords,
+        atom_types=atom_types,
+        bonds=bonds,
+        bond_types=bond_types,
+        formal_charges=formal_charges,
     )
     # Adapter in joint mode.
     adapter = _build_adapter(
-        use_bond_head=True, joint_train=True, hidden_dim=16, n_layers=1,
+        use_bond_head=True,
+        joint_train=True,
+        hidden_dim=16,
+        n_layers=1,
     )
     import torch.nn as nn
     from molmetal.adapters.flow_matching_lipman import (
-        EGNNVelocityField, PocketEncoder,
+        EGNNVelocityField,
+        PocketEncoder,
     )
     from molmetal.models.bond_head import BondOrderHead
 
     adapter.velocity_field = EGNNVelocityField(
-        hidden_dim=16, n_layers=1, max_atomic_number=100,
+        hidden_dim=16,
+        n_layers=1,
+        max_atomic_number=100,
     ).to(adapter.device)
     adapter.pocket_encoder = PocketEncoder(
-        hidden_dim=16, max_atomic_number=100,
+        hidden_dim=16,
+        max_atomic_number=100,
     ).to(adapter.device)
     adapter.bond_head = BondOrderHead(
-        in_dim=9, hidden_dim=16, dropout=0.0, num_classes=5,
-        atom_vocab=adapter.atom_vocab, training_mode="joint",
+        in_dim=9,
+        hidden_dim=16,
+        dropout=0.0,
+        num_classes=5,
+        atom_vocab=adapter.atom_vocab,
+        training_mode="joint",
     ).to(adapter.device)
     adapter.optimizer = torch.optim.AdamW(
         list(adapter.velocity_field.parameters())
@@ -374,6 +403,7 @@ def test_bond_loss_zero_with_no_true_bonds() -> None:
     from molmetal.adapters.flow_matching_lipman._reference_loader import (
         configure_reference,
     )
+
     configure_reference("molmetal/references/flow_matching")
     from molmetal.adapters.flow_matching_lipman._reference.path import (
         AffineProbPath,
@@ -381,6 +411,7 @@ def test_bond_loss_zero_with_no_true_bonds() -> None:
     from molmetal.adapters.flow_matching_lipman._reference.path.scheduler import (
         CondOTScheduler,
     )
+
     adapter.scheduler = CondOTScheduler()
     adapter.path = AffineProbPath(scheduler=adapter.scheduler)
 
@@ -522,8 +553,10 @@ def test_gather_edge_features_shape() -> None:
 def test_construct_adapter_with_joint_train_knobs() -> None:
     """The constructor accepts the A5 knobs without raising."""
     a = LipmanFlowMatchingAdapter(
-        use_bond_head=True, joint_train=True,
-        bond_loss_weight=0.5, bond_pattern_mask=False,
+        use_bond_head=True,
+        joint_train=True,
+        bond_loss_weight=0.5,
+        bond_pattern_mask=False,
     )
     assert a.use_bond_head is True
     assert a.joint_train is True

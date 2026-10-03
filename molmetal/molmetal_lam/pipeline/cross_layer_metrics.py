@@ -37,6 +37,7 @@ try:
         batch_sa_score as _batch_sa,
         sa_score_ertl as _sa_one,
     )
+
     _SA_OK = True
 except Exception:  # pragma: no cover
     _SA_OK = False
@@ -45,6 +46,7 @@ try:
     from molmetal_lam.sbdd_env.aizynth_adapter import (  # noqa: F401
         AiZynthAdapter as _Aiz,
     )
+
     _AIZ_OK = True
 except Exception:  # pragma: no cover
     _AIZ_OK = False

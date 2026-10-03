@@ -33,6 +33,7 @@ CPU-only — uses the same ``from_smiles`` path the production
 harness uses.  RDKit is mocked via ``sys.modules`` to keep the
 test suite RDKit-optional.
 """
+
 from __future__ import annotations
 
 import inspect
@@ -60,6 +61,7 @@ def _get_search_default() -> bool:
     on-disk default (not a hard-coded constant).
     """
     from molmetal_lam.search_alg.proof_search import MCTSProofSearch
+
     sig = inspect.signature(MCTSProofSearch.search)
     return sig.parameters["materialize_3d"].default
 
@@ -84,7 +86,9 @@ def test_explicit_false_skips_embedding():
         Chem = object()
         AllChem = object()
 
-    real_import = __builtins__.__import__ if hasattr(__builtins__, "__import__") else __import__
+    real_import = (
+        __builtins__.__import__ if hasattr(__builtins__, "__import__") else __import__
+    )
 
     def _spy_import(name, *args, **kwargs):
         if "rdkit" in name:
@@ -95,8 +99,7 @@ def test_explicit_false_skips_embedding():
     # just verify the guard short-circuits before RDKit is touched.
     src = inspect.getsource(ps.MCTSProofSearch.search)
     assert "if materialize_3d:" in src, (
-        "search() must guard the RDKit co-emit block with "
-        "if materialize_3d:"
+        "search() must guard the RDKit co-emit block with " "if materialize_3d:"
     )
 
 
@@ -118,9 +121,7 @@ def test_pocket_macro_debug_log_when_unavailable(caplog):
     # Patch the import inside proof_search.search so it returns our
     # stub.
     real_import = (
-        __builtins__.__import__
-        if hasattr(__builtins__, "__import__")
-        else __import__
+        __builtins__.__import__ if hasattr(__builtins__, "__import__") else __import__
     )
 
     def _fake_import(name, globals=None, locals=None, fromlist=(), level=0):
@@ -159,7 +160,7 @@ def test_search_signature_preserves_kwargs():
 
     sig = inspect.signature(MCTSProofSearch.search)
     expected = {
-        "materialize_3d": True,           # NEW default
+        "materialize_3d": True,  # NEW default
         "pocket_features": None,
         "pocket_boost_strength": 1.0,
         "learned_prior": None,
@@ -192,16 +193,14 @@ def test_no_materialize_3d_cli_flag_exists():
     args_off = parser.parse_args(
         ["--no-materialize-3d", "--output-dir", "/tmp/pytest_p22"]
     )
-    assert args_off.materialize_3d is False, (
-        "--no-materialize-3d must invert materialize_3d to False"
-    )
+    assert (
+        args_off.materialize_3d is False
+    ), "--no-materialize-3d must invert materialize_3d to False"
     # Round-trip: parse without the flag → materialize_3d True (default)
-    args_on = parser.parse_args(
-        ["--output-dir", "/tmp/pytest_p22"]
-    )
-    assert args_on.materialize_3d is True, (
-        "default materialize_3d must be True after the TODO-30 P2.2 flip"
-    )
+    args_on = parser.parse_args(["--output-dir", "/tmp/pytest_p22"])
+    assert (
+        args_on.materialize_3d is True
+    ), "default materialize_3d must be True after the TODO-30 P2.2 flip"
 
 
 def test_search_returns_list_on_rdtype_failure(monkeypatch, caplog):
@@ -214,9 +213,7 @@ def test_search_returns_list_on_rdtype_failure(monkeypatch, caplog):
     # harness.  Instead we directly inspect the search() source
     # code (file-level — inspect.getsource is limited because the
     # method is large and gets truncated by ``return``).
-    src_path = (
-        Path(ps.__file__).resolve()
-    )
+    src_path = Path(ps.__file__).resolve()
     src = src_path.read_text(encoding="utf-8")
     # The actual log strings may be split across lines; we just
     # look for the substring "RDKit could not" which is unique.

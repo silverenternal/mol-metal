@@ -38,6 +38,7 @@ Run with::
 
     uv run --no-sync pytest -q molmetal/tests/test_closure_ood_30metals.py --tb=short
 """
+
 from __future__ import annotations
 
 import csv
@@ -111,13 +112,15 @@ from molmetal.scripts.bench_closure_ood_30metals import (  # noqa: E402
 def _have_rdkit() -> bool:
     try:
         from rdkit import Chem  # noqa: F401
+
         return True
     except Exception:
         return False
 
 
 pytestmark_rdkit = pytest.mark.skipif(
-    not _have_rdkit(), reason="RDKit not available",
+    not _have_rdkit(),
+    reason="RDKit not available",
 )
 
 
@@ -245,7 +248,10 @@ def test_filter_ood_subset_empty_train() -> None:
 def test_aggregate_per_metal_no_data() -> None:
     """Empty records → reachability_rate = None (honest framing)."""
     out = _aggregate_per_metal(
-        [], n_input_total=0, n_ood_total=0, n_cross_domain_sources=0,
+        [],
+        n_input_total=0,
+        n_ood_total=0,
+        n_cross_domain_sources=0,
     )
     assert out["n_samples"] == 0
     assert out["n_closure_ok"] == 0
@@ -262,27 +268,41 @@ def test_aggregate_per_metal_with_data() -> None:
     """Populated records → reachability_rate is a float in [0, 1]."""
     fake_records = [
         {
-            "idx": 0, "metal": "Pt", "source": "platinai_5k",
-            "closure_ok": True, "status": "ok",
-            "wall_time_s": 0.05, "memory_mb": 1.0,
+            "idx": 0,
+            "metal": "Pt",
+            "source": "platinai_5k",
+            "closure_ok": True,
+            "status": "ok",
+            "wall_time_s": 0.05,
+            "memory_mb": 1.0,
             "max_tanimoto": 0.1,
         },
         {
-            "idx": 1, "metal": "Pt", "source": "platinai_5k",
-            "closure_ok": False, "status": "ok",
-            "wall_time_s": 0.04, "memory_mb": 0.8,
+            "idx": 1,
+            "metal": "Pt",
+            "source": "platinai_5k",
+            "closure_ok": False,
+            "status": "ok",
+            "wall_time_s": 0.04,
+            "memory_mb": 0.8,
             "max_tanimoto": 0.2,
         },
         {
-            "idx": 2, "metal": "Pt", "source": "platinai_5k",
-            "closure_ok": True, "status": "ok",
-            "wall_time_s": 0.06, "memory_mb": 1.1,
+            "idx": 2,
+            "metal": "Pt",
+            "source": "platinai_5k",
+            "closure_ok": True,
+            "status": "ok",
+            "wall_time_s": 0.06,
+            "memory_mb": 1.1,
             "max_tanimoto": 0.05,
         },
     ]
     out = _aggregate_per_metal(
         fake_records,
-        n_input_total=10, n_ood_total=3, n_cross_domain_sources=1,
+        n_input_total=10,
+        n_ood_total=3,
+        n_cross_domain_sources=1,
     )
     assert out["n_samples"] == 3
     assert out["n_closure_ok"] == 2
@@ -300,19 +320,29 @@ def test_source_breakdown_in_aggregate() -> None:
     """Aggregate includes per-source breakdown (platinai / metalcytotox)."""
     fake_records = [
         {
-            "idx": 0, "metal": "Ru", "source": "platinai_5k",
-            "closure_ok": True, "status": "ok",
-            "wall_time_s": 0.05, "memory_mb": 1.0,
+            "idx": 0,
+            "metal": "Ru",
+            "source": "platinai_5k",
+            "closure_ok": True,
+            "status": "ok",
+            "wall_time_s": 0.05,
+            "memory_mb": 1.0,
         },
         {
-            "idx": 1, "metal": "Ru", "source": "metalcytotox_5metal",
-            "closure_ok": False, "status": "ok",
-            "wall_time_s": 0.04, "memory_mb": 0.8,
+            "idx": 1,
+            "metal": "Ru",
+            "source": "metalcytotox_5metal",
+            "closure_ok": False,
+            "status": "ok",
+            "wall_time_s": 0.04,
+            "memory_mb": 0.8,
         },
     ]
     out = _aggregate_per_metal(
         fake_records,
-        n_input_total=20, n_ood_total=2, n_cross_domain_sources=2,
+        n_input_total=20,
+        n_ood_total=2,
+        n_cross_domain_sources=2,
     )
     assert "source_breakdown" in out
     sb = out["source_breakdown"]
@@ -333,6 +363,7 @@ def test_parse_args_defaults() -> None:
     from molmetal.scripts.bench_closure_ood_30metals import (
         _build_argparser,
     )
+
     parser = _build_argparser()
     args = parser.parse_args([])
     assert args.n_metals == DEFAULT_N_METALS == 30
@@ -404,7 +435,12 @@ def test_smoke_run_3_metals_end_to_end(tmp_path: Path) -> None:
 def test_per_metal_files_written(tmp_path: Path) -> None:
     """Per-metal JSON written for every metal in the run."""
     out_dir = tmp_path / "wf130_p3_permetal"
-    metals = ("Pt", "Ru", "Re", "Au")  # 4 metals: Pt/Au/Ru (PlatinAI), Ru/Ir/Re (MetalCytoTox)
+    metals = (
+        "Pt",
+        "Ru",
+        "Re",
+        "Au",
+    )  # 4 metals: Pt/Au/Ru (PlatinAI), Ru/Ir/Re (MetalCytoTox)
     payload = run_benchmark(
         n_metals=4,
         n_samples=3,

@@ -31,6 +31,7 @@ Honest framing (party-twenty-spirit §3.5):
   the rest of the panel — no fabricated readings, no hand-rolled
   constants.
 """
+
 from __future__ import annotations
 
 import json
@@ -67,7 +68,7 @@ pytestmark_rdkit = pytest.mark.skipif(
 
 
 @pytest.mark.skipif(not _MV2_AVAILABLE, reason="metrics_v2 import failed")
-@ pytestmark_rdkit
+@pytestmark_rdkit
 def test_wf315a_sa_score_function_correctness():
     """sa_score returns SA in [1, 10] for valid SMILES (aspirin ~ 1.5)."""
     sa = _mv2.sa_score("CC(=O)Oc1ccccc1C(=O)O")
@@ -81,7 +82,7 @@ def test_wf315a_sa_score_function_correctness():
 
 
 @pytest.mark.skipif(not _MV2_AVAILABLE, reason="metrics_v2 import failed")
-@ pytestmark_rdkit
+@pytestmark_rdkit
 def test_wf315a_qed_score_function_correctness():
     """qed_score returns QED in [0, 1] for valid SMILES (aspirin ~ 0.55)."""
     q = _mv2.qed_score("CC(=O)Oc1ccccc1C(=O)O")
@@ -171,9 +172,9 @@ PRE_FLIGHT_SCRIPT = REPO_ROOT / "molmetal" / "scripts" / "pre_flight_check.py"
 def test_wf315a_p3_sa_score_metric_present_gate_defined():
     """p3_sa_score_metric_present gate is registered in pre_flight_check.py."""
     text = PRE_FLIGHT_SCRIPT.read_text()
-    assert '"p3_sa_score_metric_present"' in text, (
-        "p3_sa_score_metric_present gate not found in pre_flight_check.py"
-    )
+    assert (
+        '"p3_sa_score_metric_present"' in text
+    ), "p3_sa_score_metric_present gate not found in pre_flight_check.py"
     # Confirm the gate points at admet_sa_score_json
     assert "admet_sa_score_json" in text
     # Confirm both pipelines (frontier + all) carry the gate
@@ -187,9 +188,9 @@ def test_wf315a_p3_sa_score_metric_present_gate_defined():
 def test_wf315a_p3_qed_score_metric_present_gate_defined():
     """p3_qed_score_metric_present gate is registered in pre_flight_check.py."""
     text = PRE_FLIGHT_SCRIPT.read_text()
-    assert '"p3_qed_score_metric_present"' in text, (
-        "p3_qed_score_metric_present gate not found in pre_flight_check.py"
-    )
+    assert (
+        '"p3_qed_score_metric_present"' in text
+    ), "p3_qed_score_metric_present gate not found in pre_flight_check.py"
     # Confirm the gate points at admet_qed_score_json
     assert "admet_qed_score_json" in text
     # Confirm both pipelines (frontier + all) carry the gate
@@ -210,9 +211,9 @@ PAPER_DASHBOARD_SCRIPT = REPO_ROOT / "molmetal" / "scripts" / "paper_dashboard.p
 def test_wf315a_paper_dashboard_sa_score_claim_card_registered():
     """paper_dashboard CLAIM_CATALOG carries the Wf-315A sa_score claim card."""
     text = PAPER_DASHBOARD_SCRIPT.read_text()
-    assert '"claim_wf315a_sa_score_honest_negative"' in text, (
-        "claim_wf315a_sa_score_honest_negative card missing from paper_dashboard.py"
-    )
+    assert (
+        '"claim_wf315a_sa_score_honest_negative"' in text
+    ), "claim_wf315a_sa_score_honest_negative card missing from paper_dashboard.py"
     # Confirm the card references the on-disk JSON
     assert "sa_score.json" in text
     # Confirm the card mentions the honest-negative framing
@@ -226,9 +227,9 @@ def test_wf315a_paper_dashboard_sa_score_claim_card_registered():
 def test_wf315a_paper_dashboard_qed_score_claim_card_registered():
     """paper_dashboard CLAIM_CATALOG carries the Wf-315A qed_score claim card."""
     text = PAPER_DASHBOARD_SCRIPT.read_text()
-    assert '"claim_wf315a_qed_score_honest_negative"' in text, (
-        "claim_wf315a_qed_score_honest_negative card missing from paper_dashboard.py"
-    )
+    assert (
+        '"claim_wf315a_qed_score_honest_negative"' in text
+    ), "claim_wf315a_qed_score_honest_negative card missing from paper_dashboard.py"
     # Confirm the card references the on-disk JSON
     assert "qed_score.json" in text
     # Confirm the card mentions the honest-negative framing

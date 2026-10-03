@@ -192,10 +192,7 @@ class SampleLedger:
         """Return the canonical path for a (metal, seed, epoch) shard."""
         metal_safe = str(metal).replace(os.sep, "_")
         return (
-            self.root
-            / metal_safe
-            / f"seed_{int(seed)}"
-            / f"epoch_{int(epoch)}.parquet"
+            self.root / metal_safe / f"seed_{int(seed)}" / f"epoch_{int(epoch)}.parquet"
         )
 
     def sidecar_path(self, shard_path: Path) -> Path:
@@ -205,9 +202,7 @@ class SampleLedger:
     # ------------------------------------------------------------------
     # Write API
     # ------------------------------------------------------------------
-    def begin_shard(
-        self, metal: str, seed: int, epoch: int
-    ) -> SampleLedgerShard:
+    def begin_shard(self, metal: str, seed: int, epoch: int) -> SampleLedgerShard:
         """Allocate a shard slot.  No filesystem writes happen here."""
         metal = str(metal)
         seed = int(seed)
@@ -286,7 +281,11 @@ class SampleLedger:
         if not self.root.exists():
             return []
         out: List[Path] = []
-        metals = [metal] if metal is not None else [p.name for p in self.root.iterdir() if p.is_dir()]
+        metals = (
+            [metal]
+            if metal is not None
+            else [p.name for p in self.root.iterdir() if p.is_dir()]
+        )
         for m in metals:
             m_dir = self.root / m
             if not m_dir.is_dir():
@@ -308,7 +307,11 @@ class SampleLedger:
     # ------------------------------------------------------------------
     def stats(self) -> Dict[str, Any]:
         """Per-metal × per-seed × per-epoch row counts."""
-        out: Dict[str, Any] = {"version": LEDGER_VERSION, "root": str(self.root), "metals": {}}
+        out: Dict[str, Any] = {
+            "version": LEDGER_VERSION,
+            "root": str(self.root),
+            "metals": {},
+        }
         if not self.root.exists():
             return out
         for m_dir in sorted(self.root.iterdir()):

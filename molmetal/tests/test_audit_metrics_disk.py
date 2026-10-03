@@ -35,6 +35,7 @@ Verifies the per-metric disk audit script:
 
 All tests run on CPU in <3s — no GPU, no RDKit, no metric value fabrication.
 """
+
 from __future__ import annotations
 
 import json
@@ -148,7 +149,11 @@ def test_audit_no_fabricated_value() -> None:
             assert (
                 primary["measured_count"] >= 1
                 or (primary["latest_value"] is not None)
-                or (primary["exists"] and fallback is not None and fallback["measured_count"] >= 1)
+                or (
+                    primary["exists"]
+                    and fallback is not None
+                    and fallback["measured_count"] >= 1
+                )
             ), f"{r['metric_id']} MEASURED without numeric/measurement evidence: {primary}"
         elif state == "DEFERRED":
             # Deferred entries must carry a deferred_reason or have a
@@ -160,7 +165,9 @@ def test_audit_no_fabricated_value() -> None:
         elif state == "DEFERRED_HOST_GAP":
             # Honest-DEFERRED per Wf-61 §1.4-1.6 may lack a deferred_reason
             # string but must still have at least one DEFERRED/DESIGN token.
-            assert primary["deferred_count"] >= 1, f"{r['metric_id']} DEFERRED_HOST_GAP without DEFERRED token"
+            assert (
+                primary["deferred_count"] >= 1
+            ), f"{r['metric_id']} DEFERRED_HOST_GAP without DEFERRED token"
         # REVIEW_NEEDED is allowed for markdown-only pointer refs.
 
 
@@ -191,7 +198,9 @@ def test_audit_cross_ref_index_17() -> None:
 def test_audit_strong_real_metrics_are_measured() -> None:
     """All 10 STRONG_REAL rows should be MEASURED on disk post Wf-87 audit."""
     audit = _load_audit()
-    strong = [r for r in audit["per_metric_rows"] if r["category_bucket"] == "STRONG_REAL"]
+    strong = [
+        r for r in audit["per_metric_rows"] if r["category_bucket"] == "STRONG_REAL"
+    ]
     assert len(strong) >= 10
     for r in strong:
         assert r["on_disk_state"] == "MEASURED", (
@@ -202,9 +211,13 @@ def test_audit_strong_real_metrics_are_measured() -> None:
 
 def test_audit_vina_test_001_deferred() -> None:
     audit = _load_audit()
-    target = next((r for r in audit["per_metric_rows"] if r["metric_id"] == "vina_test_001"), None)
+    target = next(
+        (r for r in audit["per_metric_rows"] if r["metric_id"] == "vina_test_001"), None
+    )
     assert target is not None, "vina_test_001 row missing"
-    assert target["on_disk_state"] in {"DEFERRED", "DEFERRED_HOST_GAP"}, target["on_disk_state"]
+    assert target["on_disk_state"] in {"DEFERRED", "DEFERRED_HOST_GAP"}, target[
+        "on_disk_state"
+    ]
     assert target["primary_audit"]["deferred_reason"] is not None
 
 

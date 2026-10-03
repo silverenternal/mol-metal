@@ -21,7 +21,11 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-CATALOG_PATH = Path(__file__).resolve().parent.parent.parent / "docs" / "HONEST_NEGATIVE_CATALOG.md"
+CATALOG_PATH = (
+    Path(__file__).resolve().parent.parent.parent
+    / "docs"
+    / "HONEST_NEGATIVE_CATALOG.md"
+)
 
 
 def _read_catalog() -> str:
@@ -32,8 +36,12 @@ def _read_catalog() -> str:
 def test_wf375a2_catalog_has_wetlab_section():
     """§7 WETLAB_DEPRECATED header must exist in the catalog."""
     text = _read_catalog()
-    assert "## §7 WETLAB_DEPRECATED entries" in text, "missing §7 WETLAB_DEPRECATED section header"
-    assert "per-file + per-launcher + per-workflow" in text, "§7 category description missing"
+    assert (
+        "## §7 WETLAB_DEPRECATED entries" in text
+    ), "missing §7 WETLAB_DEPRECATED section header"
+    assert (
+        "per-file + per-launcher + per-workflow" in text
+    ), "§7 category description missing"
 
 
 def test_wf375a2_catalog_has_six_wetlab_entries():
@@ -46,10 +54,14 @@ def test_wf375a2_catalog_has_six_wetlab_entries():
     section = text[section_start:section_end]
     # Count §7.N sub-entries
     subentries = re.findall(r"### §7\.(\d+)\s", section)
-    assert len(subentries) == 6, f"expected 6 §7 sub-entries, found {len(subentries)}: {subentries}"
+    assert (
+        len(subentries) == 6
+    ), f"expected 6 §7 sub-entries, found {len(subentries)}: {subentries}"
     # Verify all 6 expected sub-entries are present (in order)
     expected = ["1", "2", "3", "4", "5", "6"]
-    assert subentries == expected, f"§7 sub-entry IDs out of order: {subentries} vs {expected}"
+    assert (
+        subentries == expected
+    ), f"§7 sub-entry IDs out of order: {subentries} vs {expected}"
 
 
 def test_wf375a2_entry_1_loi_drafts():
@@ -67,7 +79,9 @@ def test_wf375a2_entry_1_loi_drafts():
     assert "wetlab_loi_ornl_protein_metal" in entry, "§7.1 missing ORNL LOI file path"
     assert "wetlab_loi_pku_cisplatin_ic50" in entry, "§7.1 missing PKU LOI file path"
     assert "wetlab_loi_xiehe_nci60" in entry, "§7.1 missing 协和 LOI file path"
-    assert "wetlab_loi_rusanov_2025_platinai" in entry, "§7.1 missing Rusanov LOI file path"
+    assert (
+        "wetlab_loi_rusanov_2025_platinai" in entry
+    ), "§7.1 missing Rusanov LOI file path"
     assert "Tier-2" in entry, "§7.1 missing Tier-2 substitution mechanism reference"
     assert "AGENTS.md §5.4" in entry, "§7.1 missing AGENTS.md §5.4 cross-ref"
 
@@ -83,9 +97,15 @@ def test_wf375a2_entry_2_wetlab_sops():
     assert entry_match, "§7.2 entry not found"
     entry = entry_match.group(1)
     assert "DO NOT EXECUTE" in entry, "§7.2 missing DO NOT EXECUTE status"
-    assert "wetlab_sop_cytotoxicity_assay" in entry, "§7.2 missing cytotoxicity SOP file"
-    assert "wetlab_sop_cellular_uptake_assay" in entry, "§7.2 missing cellular uptake SOP file"
-    assert "wetlab_sop_binding_affinity_assay" in entry, "§7.2 missing binding affinity SOP file"
+    assert (
+        "wetlab_sop_cytotoxicity_assay" in entry
+    ), "§7.2 missing cytotoxicity SOP file"
+    assert (
+        "wetlab_sop_cellular_uptake_assay" in entry
+    ), "§7.2 missing cellular uptake SOP file"
+    assert (
+        "wetlab_sop_binding_affinity_assay" in entry
+    ), "§7.2 missing binding affinity SOP file"
     assert "in-silico" in entry, "§7.2 missing in-silico substitution mechanism"
     assert "AGENTS.md §5.4" in entry, "§7.2 missing AGENTS.md §5.4 cross-ref"
 
@@ -120,7 +140,9 @@ def test_wf375a2_entry_4_r20_p6_wetlab():
     assert "R20-P6" in entry, "§7.4 missing R20-P6 reference"
     assert "TODO-97" in entry, "§7.4 missing TODO-97 reference"
     assert "in-silico" in entry, "§7.4 missing in-silico substitution mechanism"
-    assert "IMPROVEMENT_ENUM_2026_09_27" in entry, "§7.4 missing IMPROVEMENT_ENUM cross-ref"
+    assert (
+        "IMPROVEMENT_ENUM_2026_09_27" in entry
+    ), "§7.4 missing IMPROVEMENT_ENUM cross-ref"
 
 
 def test_wf375a2_entry_5_wf74_v2_outreach():
@@ -135,10 +157,12 @@ def test_wf375a2_entry_5_wf74_v2_outreach():
     entry = entry_match.group(1)
     assert "DEPRECATED" in entry, "§7.5 missing DEPRECATED status"
     assert "Wf-74" in entry, "§7.5 missing Wf-74 reference"
-    assert "116_wf74_wetlab_outreach_partial" in entry or "TODO-116" in entry, (
-        "§7.5 missing TODO-116 file reference"
-    )
-    assert "DrugOOD" in entry or "DANN" in entry, "§7.5 missing computational substitution mechanism"
+    assert (
+        "116_wf74_wetlab_outreach_partial" in entry or "TODO-116" in entry
+    ), "§7.5 missing TODO-116 file reference"
+    assert (
+        "DrugOOD" in entry or "DANN" in entry
+    ), "§7.5 missing computational substitution mechanism"
 
 
 def test_wf375a2_entry_6_lambda_roadmap():
@@ -155,9 +179,9 @@ def test_wf375a2_entry_6_lambda_roadmap():
     assert "LAMBDA_ROADMAP" in entry, "§7.6 missing LAMBDA_ROADMAP file"
     assert "R22-P1" in entry, "§7.6 missing R22-P1 reference"
     assert "R23" in entry, "§7.6 missing R23 reference"
-    assert "AlphaFold-Multimer" in entry or "computational-only" in entry, (
-        "§7.6 missing computational-only substitution mechanism"
-    )
+    assert (
+        "AlphaFold-Multimer" in entry or "computational-only" in entry
+    ), "§7.6 missing computational-only substitution mechanism"
 
 
 def test_wf375a2_total_entries_count_is_71():
@@ -182,19 +206,25 @@ def test_wf375a2_subsection_8_and_9_renumbered():
     # §8 Closing (renamed from §7)
     assert "## §8 Closing" in text, "missing §8 Closing (renamed from §7)"
     # §9 Cross-references (renamed from §8)
-    assert "## §9 Cross-references" in text, "missing §9 Cross-references (renamed from §8)"
+    assert (
+        "## §9 Cross-references" in text
+    ), "missing §9 Cross-references (renamed from §8)"
     # Old §7 Closing header must NOT exist anymore
     old_section_7_closing_match = re.search(r"^## §7 Closing", text, re.MULTILINE)
-    assert old_section_7_closing_match is None, "old §7 Closing header still present (should be §8)"
+    assert (
+        old_section_7_closing_match is None
+    ), "old §7 Closing header still present (should be §8)"
     # Old §8 Cross-references header must NOT exist anymore
     old_section_8_match = re.search(r"^## §8 Cross-references", text, re.MULTILINE)
-    assert old_section_8_match is None, "old §8 Cross-references header still present (should be §9)"
+    assert (
+        old_section_8_match is None
+    ), "old §8 Cross-references header still present (should be §9)"
 
 
 def test_wf375a2_zero_new_preflight_gates():
     """Wf-375-A2 adds zero NEW pre-flight gates (per closing + standing directives)."""
     text = _read_catalog()
     # Closing section should mention zero NEW pre-flight gates added by Wf-375-A2
-    assert "zero NEW pre-flight gates added by Wf-375-A2" in text, (
-        "closing section should mention zero NEW pre-flight gates added by Wf-375-A2"
-    )
+    assert (
+        "zero NEW pre-flight gates added by Wf-375-A2" in text
+    ), "closing section should mention zero NEW pre-flight gates added by Wf-375-A2"

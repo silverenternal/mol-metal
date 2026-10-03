@@ -60,9 +60,9 @@ def test_gate_wf343c2_per_wave_runtime_check_no_strict_invocation() -> None:
     sub-checks (preflight_freshness_24h + preflight_no_fail_gates +
     yuelbond_decoder_registered + wave_budget_remaining_nonneg) PASSed.
     """
-    assert PREFLIGHT_CHECK_SCRIPT.is_file(), (
-        f"pre_flight_check.py missing: {PREFLIGHT_CHECK_SCRIPT}"
-    )
+    assert (
+        PREFLIGHT_CHECK_SCRIPT.is_file()
+    ), f"pre_flight_check.py missing: {PREFLIGHT_CHECK_SCRIPT}"
     # Use the pre-flight script's GateResult machinery by invoking the
     # gate function directly via a tiny driver.  Easier: subprocess-run
     # the pre-flight script with --pipeline all and grep the gate's
@@ -72,15 +72,15 @@ def test_gate_wf343c2_per_wave_runtime_check_no_strict_invocation() -> None:
     driver_script = SCRIPTS_DIR / "_wf367a2_inline_gate_runner.py"
     driver_script.write_text(
         '"""Inline driver for Wf-367-A2 regression test (deleted after run)."""\n'
-        'import sys\n'
-        'from pathlib import Path\n'
-        'sys.path.insert(0, str(Path(__file__).resolve().parent.parent))\n'
-        'from molmetal.scripts.pre_flight_check import gate_wf343c2_per_wave_runtime_check\n'
-        'result = gate_wf343c2_per_wave_runtime_check(\n'
+        "import sys\n"
+        "from pathlib import Path\n"
+        "sys.path.insert(0, str(Path(__file__).resolve().parent.parent))\n"
+        "from molmetal.scripts.pre_flight_check import gate_wf343c2_per_wave_runtime_check\n"
+        "result = gate_wf343c2_per_wave_runtime_check(\n"
         '    "p3_wf343c2_per_wave_runtime_check",\n'
         '    "P3", "wf347a1",\n'
         '    Path(__file__).resolve().parent / "wf343c2_per_wave_check.py",\n'
-        ')\n'
+        ")\n"
         'print(f"STATUS={result.status}")\n'
         'print(f"EVIDENCE={result.evidence}")\n'
     )
@@ -104,9 +104,7 @@ def test_gate_wf343c2_per_wave_runtime_check_no_strict_invocation() -> None:
     status_line = next((l for l in out_lines if l.startswith("STATUS=")), "")
     evidence_line = next((l for l in out_lines if l.startswith("EVIDENCE=")), "")
     assert status_line, f"STATUS= line missing from driver stdout: {proc.stdout!r}"
-    assert evidence_line, (
-        f"EVIDENCE= line missing from driver stdout: {proc.stdout!r}"
-    )
+    assert evidence_line, f"EVIDENCE= line missing from driver stdout: {proc.stdout!r}"
     status = status_line.split("=", 1)[1]
     evidence = evidence_line.split("=", 1)[1]
     # Primary contract: the gate must PASS (per Wf-367-A2 fix).
@@ -129,6 +127,7 @@ def test_gate_wf343c2_per_wave_runtime_check_no_strict_invocation() -> None:
     # Find the gate function body (from 'def gate_wf343c2_per_wave_runtime_check'
     # to the next 'def ' at column 0).
     import re
+
     m = re.search(
         r"^def gate_wf343c2_per_wave_runtime_check\(.*?(?=\n^def |\Z)",
         pre_flight_src,

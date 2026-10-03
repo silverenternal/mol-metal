@@ -36,15 +36,32 @@ def led() -> FreeSiteLedger:
     return FreeSiteLedger()
 
 
-def C(): return distinct(PRIMITIVE_ATOMS["C"])
-def H(): return distinct(PRIMITIVE_ATOMS["H"])
-def O(): return distinct(PRIMITIVE_ATOMS["O"])
-def N(): return distinct(PRIMITIVE_ATOMS["N"])
-def Cl(): return distinct(PRIMITIVE_ATOMS["Cl"])
-def Pt(): return distinct(METAL_ATOMS["Pt_II"])
+def C():
+    return distinct(PRIMITIVE_ATOMS["C"])
+
+
+def H():
+    return distinct(PRIMITIVE_ATOMS["H"])
+
+
+def O():
+    return distinct(PRIMITIVE_ATOMS["O"])
+
+
+def N():
+    return distinct(PRIMITIVE_ATOMS["N"])
+
+
+def Cl():
+    return distinct(PRIMITIVE_ATOMS["Cl"])
+
+
+def Pt():
+    return distinct(METAL_ATOMS["Pt_II"])
 
 
 # ---------------------------------------------------------------- covalent
+
 
 def test_covalent_decrements_both_atoms(led):
     c, h = C(), H()
@@ -79,14 +96,15 @@ def test_no_self_application(led):
 
 # ------------------------------------------------------------------ dative
 
+
 def test_dative_is_curried_metal_keeps_free_sites(led):
     """Pt(NH3) must keep 3 free sites — the defining MLC currying claim."""
     pt, nh3 = Pt(), make_ligand("NH3")
     b = Bond.dative(nh3, pt, ledger=led)
     assert b.is_dative and b.kind == DATIVE
     assert b.acceptor is pt and b.donor is nh3
-    assert free_sites(pt, led) == 3        # curried: arity 4 -> 3
-    assert free_sites(nh3, led) == 0       # ligand collapsed to a value
+    assert free_sites(pt, led) == 3  # curried: arity 4 -> 3
+    assert free_sites(nh3, led) == 0  # ligand collapsed to a value
     assert is_valid(b)
 
 
@@ -127,6 +145,7 @@ def test_coordinate_alias(led):
 
 # ---------------------------------------------------------------- aromatic
 
+
 def test_benzene_gives_six_aromatic_bonds(led):
     ring = [C() for _ in range(6)]
     bonds = Bond.aromatic(ring, ledger=led)
@@ -156,6 +175,7 @@ def test_aromatic_requires_three_atoms(led):
 
 # ---------------------------------------------------------------- hydrogen
 
+
 def test_hydrogen_requires_saturated_partners(led):
     n, o = N(), O()
     with pytest.raises(BondError):
@@ -170,6 +190,7 @@ def test_hydrogen_requires_saturated_partners(led):
 
 
 # -------------------------------------------------------------- dispatcher
+
 
 def test_dispatcher_picks_dative_for_metal(led):
     b = bond(Pt(), make_ligand("NH3"), ledger=led)
@@ -190,12 +211,13 @@ def test_dispatcher_picks_hydrogen_for_two_values(led):
 
 def test_dispatcher_raises_when_nothing_fits(led):
     h1, h2 = H(), H()
-    Bond.covalent(h1, C(), ledger=led)          # h1 now saturated
+    Bond.covalent(h1, C(), ledger=led)  # h1 now saturated
     with pytest.raises(BondError):
-        bond(h1, h2, ledger=led)                 # saturated + unsaturated H
+        bond(h1, h2, ledger=led)  # saturated + unsaturated H
 
 
 # ------------------------------------------------------------------ can_bond
+
 
 def test_can_bond_is_non_mutating(led):
     c, h = C(), H()
@@ -214,13 +236,14 @@ def test_can_bond_unknown_kind(led):
 
 # ------------------------------------------------------------- beta-reduce
 
+
 def test_apply_returns_molecule_dict(led):
     pt, nh3 = Pt(), make_ligand("NH3")
     mol = Bond.dative(nh3, pt, ledger=led).apply(led)
     assert set(mol) >= {"atoms", "bonds", "free_sites_per_atom", "is_closed"}
     assert len(mol["atoms"]) == 2 and len(mol["bonds"]) == 1
     assert sum(mol["free_sites_per_atom"].values()) == 3
-    assert mol["is_closed"] is False       # Pt still expects 3 arguments
+    assert mol["is_closed"] is False  # Pt still expects 3 arguments
     assert mol["valid"] is True
 
 
@@ -246,18 +269,19 @@ def test_cisplatin_is_closed_beta_normal_form():
 
 # ---------------------------------------------------------------- is_valid
 
+
 def test_is_valid_rejects_handmade_bond_without_snapshot():
     assert not is_valid(Bond(atom_a=C(), atom_b=H()))
     assert not is_valid("not a bond")
 
 
 def test_is_valid_rejects_unknown_kind():
-    b = Bond(atom_a=C(), atom_b=H(), kind="ionic",
-             free_a_before=4, free_b_before=1)
+    b = Bond(atom_a=C(), atom_b=H(), kind="ionic", free_a_before=4, free_b_before=1)
     assert not is_valid(b)
 
 
 # ---------------------------------------------------------------- resolution
+
 
 def test_resolve_atom_accepts_symbols_and_none():
     assert resolve_atom("C").symbol == "C"

@@ -198,7 +198,9 @@ def test_stablevm_variance_reduction_smoke() -> None:
         x1 = torch.randn(8, 4) + 2.0
         class_ids = torch.tensor([0, 1, 0, 1, 0, 1, 0, 1])
         cfm_losses.append(float(cfm(x0, x1, t=0.5, class_ids=class_ids).item()))
-        stablevm_losses.append(float(stablevm(x0, x1, t=0.5, class_ids=class_ids).item()))
+        stablevm_losses.append(
+            float(stablevm(x0, x1, t=0.5, class_ids=class_ids).item())
+        )
 
     cfm_var = torch.tensor(cfm_losses).var(unbiased=False).item()
     stablevm_var = torch.tensor(stablevm_losses).var(unbiased=False).item()

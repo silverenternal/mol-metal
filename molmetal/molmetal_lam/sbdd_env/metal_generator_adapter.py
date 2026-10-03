@@ -32,6 +32,7 @@ Notes
   complexes are *valid* SMILES but they are intentionally not
   desolvated — downstream PoseBusters / Vina passes can drop them.
 """
+
 from __future__ import annotations
 
 import logging
@@ -119,6 +120,7 @@ class MetalLigandAdapter:
         # pure-string and doesn't need RDKit).
         try:
             from rdkit import Chem  # noqa: F401
+
             self._initialised = True
         except Exception as exc:  # pragma: no cover
             logger.warning(
@@ -168,13 +170,16 @@ class MetalLigandAdapter:
         # 1. Reconstruct the full multi-component SMILES (string-only;
         #    no RDKit dependency).
         full_smi = reconstruct_complex_smiles(
-            ligand_smiles, str(metal), int(config.oxidation_state),
+            ligand_smiles,
+            str(metal),
+            int(config.oxidation_state),
         )
         if not full_smi:
             logger.warning(
                 "MetalLigandAdapter.generate: empty reconstruction for "
                 "metal=%r ligands=%r — returning no Complexes.",
-                metal, ligand_smiles,
+                metal,
+                ligand_smiles,
             )
             return []
 
@@ -182,7 +187,8 @@ class MetalLigandAdapter:
         mols: List[Molecule] = []
         if self.embed_3d and config.embed_3d:
             mols = self._embed_to_molecules(
-                full_smi, n_samples=int(config.n_samples),
+                full_smi,
+                n_samples=int(config.n_samples),
             )
         else:
             # No 3-D embedding — single placeholder Molecule; downstream
@@ -215,7 +221,9 @@ class MetalLigandAdapter:
         )
 
     def _embed_to_molecules(
-        self, full_smi: str, n_samples: int,
+        self,
+        full_smi: str,
+        n_samples: int,
     ) -> List[Molecule]:
         """Embed ``full_smi`` via RDKit; return up to ``n_samples`` Molecules.
 
@@ -250,12 +258,15 @@ class MetalLigandAdapter:
                     pass
             Chem.RemoveHs(rdmol)
             coords = np.asarray(
-                [list(rdmol.GetConformer().GetAtomPosition(a.GetIdx()))
-                 for a in rdmol.GetAtoms()],
+                [
+                    list(rdmol.GetConformer().GetAtomPosition(a.GetIdx()))
+                    for a in rdmol.GetAtoms()
+                ],
                 dtype=np.float32,
             )
             atom_types = np.asarray(
-                [a.GetAtomicNum() for a in rdmol.GetAtoms()], dtype=np.int64,
+                [a.GetAtomicNum() for a in rdmol.GetAtoms()],
+                dtype=np.int64,
             )
             n_bonds = rdmol.GetNumBonds()
             bond_index = np.zeros((2, n_bonds), dtype=np.int64)
@@ -277,7 +288,8 @@ class MetalLigandAdapter:
             logger.warning(
                 "MetalLigandAdapter._embed_to_molecules failed for %r (%s); "
                 "returning placeholder.",
-                full_smi, exc,
+                full_smi,
+                exc,
             )
             return [self._placeholder_molecule(full_smi)] * n_samples
         # Replicate to n_samples — sampling multiple distinct 3-D

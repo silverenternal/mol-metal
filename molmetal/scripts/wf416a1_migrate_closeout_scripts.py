@@ -16,6 +16,7 @@ The migration is idempotent — re-running the helper on an already-migrated scr
 is a no-op (the import block check skips reinsertion; the Write sites have already
 been replaced).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -27,7 +28,7 @@ from typing import List, Tuple
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 # Import block template (idempotent: _WF416_HAS_ATOMIC guard prevents double-write)
-_IMPORT_BLOCK = '''try:
+_IMPORT_BLOCK = """try:
     from molmetal.scripts.wf386a3_atomic_write import (
         atomic_write_file,
         safe_overwrite_check,
@@ -39,7 +40,7 @@ except ImportError:  # pragma: no cover — fallback when running as standalone
     atomic_write_file = None  # type: ignore[assignment]
     safe_overwrite_check = None  # type: ignore[assignment]
     detect_truncation = None  # type: ignore[assignment]
-'''
+"""
 
 # Migration helper template for replacing path.write_text(content)
 _MIGRATE_HELPER = '''def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
@@ -122,7 +123,11 @@ def insert_helper(content: str) -> Tuple[str, bool]:
     # Find the first top-level def statement at column 0
     insert_idx = None
     for i, line in enumerate(lines):
-        if line.startswith("def ") or line.startswith("class ") or line.startswith("if __name__"):
+        if (
+            line.startswith("def ")
+            or line.startswith("class ")
+            or line.startswith("if __name__")
+        ):
             insert_idx = i
             break
     if insert_idx is None:
@@ -186,7 +191,7 @@ def replace_write_text_calls(content: str) -> Tuple[str, int]:
             out_parts.append(content[i:])
             break
         # Append everything before the match
-        out_parts.append(content[i:m.start()])
+        out_parts.append(content[i : m.start()])
         prefix_raw = m.group("prefix")
         # Trim trailing `)` and whitespace that the non-greedy quantifier
         # may have absorbed from a previous call.
@@ -196,7 +201,7 @@ def replace_write_text_calls(content: str) -> Tuple[str, int]:
         close_idx = _find_balanced_paren(content, open_paren_idx)
         if close_idx == -1:
             # Unbalanced — bail out
-            out_parts.append(content[m.start():])
+            out_parts.append(content[m.start() :])
             break
         args = content[open_paren_idx + 1 : close_idx - 1]
         # Skip if args contain `encoding=` (non-default encoding pass-through)
@@ -207,7 +212,9 @@ def replace_write_text_calls(content: str) -> Tuple[str, int]:
         n_replaced += 1
         # The trim removed the trailing `)`; we need to keep it as part of
         # the output. We re-insert it after the prefix in the replacement.
-        out_parts.append(f"_wf416_atomic_write_text({prefix}{_trailing_chars(prefix_raw, prefix_trimmed)}, {args.strip()})")
+        out_parts.append(
+            f"_wf416_atomic_write_text({prefix}{_trailing_chars(prefix_raw, prefix_trimmed)}, {args.strip()})"
+        )
         i = close_idx
     return "".join(out_parts), n_replaced
 
@@ -217,7 +224,7 @@ def _trailing_chars(prefix_raw: str, prefix_trimmed: str) -> str:
     Used to re-insert them after the replacement prefix.
     """
     if len(prefix_raw) > len(prefix_trimmed):
-        return prefix_raw[len(prefix_trimmed):]
+        return prefix_raw[len(prefix_trimmed) :]
     return ""
 
 
@@ -257,8 +264,9 @@ SCRIPTS: List[str] = [
 
 def main(argv: List[str]) -> int:
     parser = argparse.ArgumentParser(description="Wf-416-A1 atomic migration helper")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Print plan without modifying files")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Print plan without modifying files"
+    )
     args = parser.parse_args(argv)
 
     results = []
@@ -277,12 +285,18 @@ def main(argv: List[str]) -> int:
 
     print("=== Wf-416-A1 migration plan ===")
     for path, msg in results:
-        flag = "OK " if msg in {"already_migrated", "no_change"} or msg.startswith("migrated") else "?? "
+        flag = (
+            "OK "
+            if msg in {"already_migrated", "no_change"} or msg.startswith("migrated")
+            else "?? "
+        )
         print(f"  {flag}{path}: {msg}")
     n_changed = sum(1 for _, msg in results if msg.startswith("migrated"))
     n_skipped = sum(1 for _, msg in results if msg == "already_migrated")
     n_missing = sum(1 for _, msg in results if msg == "MISSING_on_disk")
-    print(f"\nTotal: {n_changed} migrated, {n_skipped} already migrated, {n_missing} missing")
+    print(
+        f"\nTotal: {n_changed} migrated, {n_skipped} already migrated, {n_missing} missing"
+    )
     return 0
 
 

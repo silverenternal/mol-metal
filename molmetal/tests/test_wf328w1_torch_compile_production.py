@@ -92,6 +92,7 @@ except ImportError:  # Wf-A16: feature not implemented — SKIP, do not ERROR
 # Fixtures + helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_synthetic_graph_batch(
     B: int = 4,
     V: int = 24,
@@ -120,6 +121,7 @@ def _build_small_encoder(hidden: int = 32, depth: int = 2) -> DMPNNMultiTaskMode
 # ---------------------------------------------------------------------------
 # 1: CLI flag wiring (test_torch_compile_flag_passed)
 # ---------------------------------------------------------------------------
+
 
 def test_torch_compile_flag_passed() -> None:
     """``--torch-compile`` / ``--no-torch-compile`` / ``--torch-compile-mode``
@@ -158,17 +160,27 @@ def test_torch_compile_flag_passed() -> None:
     args_off = parse_args(
         ["--metals", "Ru", "--seeds", "0", "--epochs", "1", "--no-torch-compile"]
     )
-    assert args_off.torch_compile is False, (
-        f"--no-torch-compile should set torch_compile=False, got {args_off.torch_compile}"
-    )
+    assert (
+        args_off.torch_compile is False
+    ), f"--no-torch-compile should set torch_compile=False, got {args_off.torch_compile}"
 
     # --torch-compile-mode accepts the four Inductor modes
-    for mode in ("default", "reduce-overhead", "max-autotune",
-                 "max-autotune-no-cudagraphs"):
+    for mode in (
+        "default",
+        "reduce-overhead",
+        "max-autotune",
+        "max-autotune-no-cudagraphs",
+    ):
         args_mode = parse_args(
             [
-                "--metals", "Ru", "--seeds", "0", "--epochs", "1",
-                "--torch-compile-mode", mode,
+                "--metals",
+                "Ru",
+                "--seeds",
+                "0",
+                "--epochs",
+                "1",
+                "--torch-compile-mode",
+                mode,
             ]
         )
         assert args_mode.torch_compile_mode == mode, (
@@ -180,8 +192,14 @@ def test_torch_compile_flag_passed() -> None:
     with pytest.raises(SystemExit):
         parse_args(
             [
-                "--metals", "Ru", "--seeds", "0", "--epochs", "1",
-                "--torch-compile-mode", "not-a-mode",
+                "--metals",
+                "Ru",
+                "--seeds",
+                "0",
+                "--epochs",
+                "1",
+                "--torch-compile-mode",
+                "not-a-mode",
             ]
         )
 
@@ -189,6 +207,7 @@ def test_torch_compile_flag_passed() -> None:
 # ---------------------------------------------------------------------------
 # 2: Encoder monkey-patch (test_model_encoder_wrapped_with_compile)
 # ---------------------------------------------------------------------------
+
 
 def test_model_encoder_wrapped_with_compile() -> None:
     """:func:`_make_compiled_encoder_forward` returns a callable that
@@ -223,11 +242,17 @@ def test_model_encoder_wrapped_with_compile() -> None:
         with torch.no_grad():
             # First call triggers Inductor compile
             out_compiled_first = encoder._forward_one_mol(
-                atom_f, bond_f, e_src, e_dst,
+                atom_f,
+                bond_f,
+                e_src,
+                e_dst,
             )
             # Second call hits the Inductor cache
             out_compiled_second = encoder._forward_one_mol(
-                atom_f, bond_f, e_src, e_dst,
+                atom_f,
+                bond_f,
+                e_src,
+                e_dst,
             )
 
         assert out_compiled_first.shape == out_eager.shape, (
@@ -236,12 +261,12 @@ def test_model_encoder_wrapped_with_compile() -> None:
         )
         diff_first = (out_eager - out_compiled_first).abs().max().item()
         diff_second = (out_eager - out_compiled_second).abs().max().item()
-        assert diff_first < 1e-3, (
-            f"compiled encoder first-call output mismatch: {diff_first}"
-        )
-        assert diff_second < 1e-3, (
-            f"compiled encoder second-call output mismatch: {diff_second}"
-        )
+        assert (
+            diff_first < 1e-3
+        ), f"compiled encoder first-call output mismatch: {diff_first}"
+        assert (
+            diff_second < 1e-3
+        ), f"compiled encoder second-call output mismatch: {diff_second}"
     finally:
         # Restore the original — matches the production trainer's
         # try/finally restore in :func:`train_one_metal_one_seed`.
@@ -251,6 +276,7 @@ def test_model_encoder_wrapped_with_compile() -> None:
 # ---------------------------------------------------------------------------
 # 3: W₂ wrapper thread-through (test_w2_loss_wrapped_with_compile)
 # ---------------------------------------------------------------------------
+
 
 def test_w2_loss_wrapped_with_compile() -> None:
     """:func:`_make_compiled_w2_penalty` returns a callable that produces
@@ -268,7 +294,9 @@ def test_w2_loss_wrapped_with_compile() -> None:
     target = torch.randn(128)
 
     w_eager = wasserstein_pic50_gradient(
-        pred, target.detach(), w_weight=1.0,
+        pred,
+        target.detach(),
+        w_weight=1.0,
     )
     grad_eager = torch.autograd.grad(w_eager, pred, retain_graph=False)[0]
 
@@ -278,7 +306,9 @@ def test_w2_loss_wrapped_with_compile() -> None:
     pred2 = pred.detach().clone().requires_grad_(True)
     w_compiled = compiled_w2(pred2, target.detach())
     grad_compiled = torch.autograd.grad(
-        w_compiled, pred2, retain_graph=False,
+        w_compiled,
+        pred2,
+        retain_graph=False,
     )[0]
 
     diff_w = (w_eager - w_compiled).abs().item()
@@ -291,6 +321,7 @@ def test_w2_loss_wrapped_with_compile() -> None:
 # ---------------------------------------------------------------------------
 # 4: End-to-end integration with the trainer (test_compile_integration_with_trainer)
 # ---------------------------------------------------------------------------
+
 
 def test_compile_integration_with_trainer() -> None:
     """End-to-end smoke: the compiled encoder + W₂ wrap cleanly into
@@ -311,6 +342,7 @@ def test_compile_integration_with_trainer() -> None:
     torch.manual_seed(3)
     np_seed = 3
     import numpy as np
+
     np.random.seed(np_seed)
 
     hidden = 32
@@ -319,7 +351,10 @@ def test_compile_integration_with_trainer() -> None:
     device = torch.device("cpu")
 
     model = MultiTaskWassersteinModel(
-        n_metals=n_metals, hidden=hidden, depth=depth, dropout=0.0,
+        n_metals=n_metals,
+        hidden=hidden,
+        depth=depth,
+        dropout=0.0,
     ).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     criterion = MultiTaskLoss(alpha=0.5, use_kendall_loss=False)
@@ -327,10 +362,12 @@ def test_compile_integration_with_trainer() -> None:
     # Patch encoder forward with the compiled wrapper — matches the
     # production trainer pattern in :func:`train_one_metal_one_seed`.
     compiled_encoder = _make_compiled_encoder_forward(
-        model.encoder, mode="reduce-overhead",
+        model.encoder,
+        mode="reduce-overhead",
     )
     compiled_w2 = _make_compiled_w2_penalty(
-        w_weight=1.0, mode="reduce-overhead",
+        w_weight=1.0,
+        mode="reduce-overhead",
     )
     original_forward_one_mol = model.encoder._forward_one_mol
     model.encoder._forward_one_mol = compiled_encoder  # type: ignore[assignment]
@@ -338,7 +375,10 @@ def test_compile_integration_with_trainer() -> None:
     try:
         # Synthetic batch — (B=4, V=24, E=48)
         atom_f, bond_f, e_src, e_dst = _make_synthetic_graph_batch(
-            B=4, V=24, E=48, seed=4,
+            B=4,
+            V=24,
+            E=48,
+            seed=4,
         )
         mids_t = torch.tensor([0, 1, 2, 3], dtype=torch.long)
         pic50_t = torch.tensor([5.1, 6.2, 4.3, 7.5], dtype=torch.float32)
@@ -368,16 +408,15 @@ def test_compile_integration_with_trainer() -> None:
         # be None or zero and the trainer sits at signal-floor R²
         # (TODO-179 root cause).
         encoder_param_grads = [
-            p for n, p in model.encoder.named_parameters()
-            if p.grad is not None
+            p for n, p in model.encoder.named_parameters() if p.grad is not None
         ]
         assert len(encoder_param_grads) > 0, (
             "no encoder parameter received a gradient — compiled forward "
             "broke the autograd graph"
         )
-        encoder_grad_norm = sum(
-            (p.grad.norm().item() ** 2 for p in encoder_param_grads)
-        ) ** 0.5
+        encoder_grad_norm = (
+            sum((p.grad.norm().item() ** 2 for p in encoder_param_grads)) ** 0.5
+        )
         assert encoder_grad_norm > 1e-6, (
             f"encoder gradient norm is zero after compiled+predict pipeline: "
             f"||grad||={encoder_grad_norm}"

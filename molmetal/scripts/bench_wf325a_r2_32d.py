@@ -38,6 +38,7 @@ Honest framing (party-twenty-spirit §3.5)
   chemprop v2 graph features (GPU portion, deferred to Wf-325B+).
 * CPU-only; no torch / no GPU.
 """
+
 from __future__ import annotations
 
 import csv
@@ -55,6 +56,7 @@ try:
     from sklearn.linear_model import Ridge
     from sklearn.model_selection import train_test_split
     from sklearn.preprocessing import StandardScaler
+
     _HAS_SKLEARN = True
 except Exception:  # pragma: no cover — defensive
     Ridge = None  # type: ignore
@@ -68,17 +70,41 @@ except Exception:  # pragma: no cover — defensive
 # molmetal.data.rdkit_2d_extended.
 # ---------------------------------------------------------------------------
 PLATINAI_12D_COLUMNS: Tuple[str, ...] = (
-    "MolWt", "MolLogP", "TPSA", "HBA", "HBD", "NRotB", "HeavyAtoms",
-    "RingCount", "NumAromaticRings", "FractionCSP3", "MolMR", "BalabanJ",
+    "MolWt",
+    "MolLogP",
+    "TPSA",
+    "HBA",
+    "HBD",
+    "NRotB",
+    "HeavyAtoms",
+    "RingCount",
+    "NumAromaticRings",
+    "FractionCSP3",
+    "MolMR",
+    "BalabanJ",
 )
 
 PLATINAI_32D_COLUMNS: Tuple[str, ...] = PLATINAI_12D_COLUMNS + (
-    "BertzCT", "Chi0v", "Chi0n", "Chi1n", "HallKierAlpha",
-    "Kappa1", "Kappa2", "Kappa3", "LabuteASA",
-    "MaxPartialCharge", "MinPartialCharge",
-    "MaxAbsPartialCharge", "MinAbsPartialCharge",
-    "NumAliphaticRings", "NumSaturatedRings", "NumHeteroatoms",
-    "NHOHCount", "NOCount", "fr_halogen", "fr_Al_COO",
+    "BertzCT",
+    "Chi0v",
+    "Chi0n",
+    "Chi1n",
+    "HallKierAlpha",
+    "Kappa1",
+    "Kappa2",
+    "Kappa3",
+    "LabuteASA",
+    "MaxPartialCharge",
+    "MinPartialCharge",
+    "MaxAbsPartialCharge",
+    "MinAbsPartialCharge",
+    "NumAliphaticRings",
+    "NumSaturatedRings",
+    "NumHeteroatoms",
+    "NHOHCount",
+    "NOCount",
+    "fr_halogen",
+    "fr_Al_COO",
 )
 
 METALCYTOTOX_12D_COLUMNS: Tuple[str, ...] = PLATINAI_12D_COLUMNS
@@ -86,7 +112,10 @@ METALCYTOTOX_32D_COLUMNS: Tuple[str, ...] = PLATINAI_32D_COLUMNS
 
 # Target columns (per-cohort)
 PLATINAI_PIC50_COLUMNS: Tuple[str, ...] = (
-    "pIC50_mcf7", "pIC50_a549", "pIC50_a2780", "pIC50_a2780cis",
+    "pIC50_mcf7",
+    "pIC50_a549",
+    "pIC50_a2780",
+    "pIC50_a2780cis",
 )
 METALCYTOTOX_TARGET_COLUMN: str = "activity"
 
@@ -140,7 +169,9 @@ def _read_csv(path: str) -> Tuple[List[str], List[List[str]]]:
     return header, rows
 
 
-def _row_to_floats(row: List[str], columns: Tuple[str, ...], header: List[str]) -> np.ndarray:
+def _row_to_floats(
+    row: List[str], columns: Tuple[str, ...], header: List[str]
+) -> np.ndarray:
     """Extract a float matrix (n_rows, n_columns) from a CSV row list."""
     idx = [header.index(c) for c in columns]
     out = np.zeros((len(row), len(columns)), dtype=np.float64)
@@ -311,6 +342,7 @@ def compute_metalcytotox_32d(
         compute_rdkit_2d_extended,
         RDKit2DExtendedError,
     )
+
     header, rows = _read_csv(csv_path)
     if max_samples and len(rows) > max_samples:
         rng = np.random.default_rng(seed)
@@ -330,7 +362,9 @@ def compute_metalcytotox_32d(
         try:
             vec = compute_rdkit_2d_extended(r[smiles_idx])
         except RDKit2DExtendedError:
-            return _fallback_metalcytotox_32d(header, rows, max_samples, seed, reason=str(RDKit2DExtendedError))
+            return _fallback_metalcytotox_32d(
+                header, rows, max_samples, seed, reason=str(RDKit2DExtendedError)
+            )
         except Exception:  # pragma: no cover — defensive
             continue
         if vec is None:
@@ -492,16 +526,18 @@ def run_wf325a(
     X12, y = load_platinai_4cell_12d(smiles_filter=smi32_set)
     r2_12d = ridge_r2_eval(X12, y, alpha=1.0, seed=seed)["r2"]
     r2_32d = ridge_r2_eval(X32, y, alpha=1.0, seed=seed)["r2"]
-    cohorts.append({
-        "name": "platinai_4cell",
-        "n_samples": int(X12.shape[0]),
-        "r2_12d": r2_12d,
-        "r2_32d": r2_32d,
-        "lift": r2_32d - r2_12d,
-        "verdict": _summarise_lift(r2_12d, r2_32d),
-        "source_12d": "molmetal/data/platinai_4cell_rdkit_features.csv",
-        "source_32d": "molmetal/data/platinai_4cell_rdkit_extended_features.csv",
-    })
+    cohorts.append(
+        {
+            "name": "platinai_4cell",
+            "n_samples": int(X12.shape[0]),
+            "r2_12d": r2_12d,
+            "r2_32d": r2_32d,
+            "lift": r2_32d - r2_12d,
+            "verdict": _summarise_lift(r2_12d, r2_32d),
+            "source_12d": "molmetal/data/platinai_4cell_rdkit_features.csv",
+            "source_32d": "molmetal/data/platinai_4cell_rdkit_extended_features.csv",
+        }
+    )
 
     # ----- Cohort 2: hilbert (platinai 4-cell, fresh split / different seed) -----
     # Use a different test seed to give an independent R² reading on
@@ -509,17 +545,19 @@ def run_wf325a(
     # hilbert_4cell_r2 metric (mean combined R² across seeds).
     r2_12d_h = ridge_r2_eval(X12, y, alpha=1.0, seed=seed + 1)["r2"]
     r2_32d_h = ridge_r2_eval(X32, y, alpha=1.0, seed=seed + 1)["r2"]
-    cohorts.append({
-        "name": "hilbert",
-        "n_samples": int(X12.shape[0]),
-        "r2_12d": r2_12d_h,
-        "r2_32d": r2_32d_h,
-        "lift": r2_32d_h - r2_12d_h,
-        "verdict": _summarise_lift(r2_12d_h, r2_32d_h),
-        "source_12d": "molmetal/data/platinai_4cell_rdkit_features.csv",
-        "source_32d": "molmetal/data/platinai_4cell_rdkit_extended_features.csv",
-        "note": "Same data as platinai_4cell; different test-seed for an independent reading.",
-    })
+    cohorts.append(
+        {
+            "name": "hilbert",
+            "n_samples": int(X12.shape[0]),
+            "r2_12d": r2_12d_h,
+            "r2_32d": r2_32d_h,
+            "lift": r2_32d_h - r2_12d_h,
+            "verdict": _summarise_lift(r2_12d_h, r2_32d_h),
+            "source_12d": "molmetal/data/platinai_4cell_rdkit_features.csv",
+            "source_32d": "molmetal/data/platinai_4cell_rdkit_extended_features.csv",
+            "note": "Same data as platinai_4cell; different test-seed for an independent reading.",
+        }
+    )
 
     # ----- Cohort 3: metalcytotox_combined (5-metal) -----
     X12m, ym = load_metalcytotox_12d(max_samples=metalcytotox_max, seed=seed)
@@ -535,21 +573,25 @@ def run_wf325a(
         )
     r2_12d_m = ridge_r2_eval(X12m, ym, alpha=1.0, seed=seed)["r2"]
     r2_32d_m = ridge_r2_eval(X32m, ym, alpha=1.0, seed=seed)["r2"]
-    cohorts.append({
-        "name": "metalcytotox_combined",
-        "n_samples": int(X12m.shape[0]),
-        "r2_12d": r2_12d_m,
-        "r2_32d": r2_32d_m,
-        "lift": r2_32d_m - r2_12d_m,
-        "verdict": _summarise_lift(r2_12d_m, r2_32d_m),
-        "source_12d": "molmetal/data/metalcytotox_rdkit_features.csv",
-        "source_32d": "computed on the fly via molmetal.data.rdkit_2d_extended",
-    })
+    cohorts.append(
+        {
+            "name": "metalcytotox_combined",
+            "n_samples": int(X12m.shape[0]),
+            "r2_12d": r2_12d_m,
+            "r2_32d": r2_32d_m,
+            "lift": r2_32d_m - r2_12d_m,
+            "verdict": _summarise_lift(r2_12d_m, r2_32d_m),
+            "source_12d": "molmetal/data/metalcytotox_rdkit_features.csv",
+            "source_32d": "computed on the fly via molmetal.data.rdkit_2d_extended",
+        }
+    )
 
     # ----- Aggregate honest framing -----
     any_lift = any(c["lift"] > 0.05 for c in cohorts)
     any_ceiling_break = any(c["verdict"] == "CEILING_BREAK" for c in cohorts)
-    any_still_negative = any(c["verdict"] == "STILL_NEGATIVE_HONEST_NEGATIVE" for c in cohorts)
+    any_still_negative = any(
+        c["verdict"] == "STILL_NEGATIVE_HONEST_NEGATIVE" for c in cohorts
+    )
     if any_ceiling_break:
         honest_negative_status = "PARTIAL_RELIEF"
     elif any_lift:
@@ -567,8 +609,7 @@ def run_wf325a(
         "per_cohort": cohorts,
         "honest_negative_status": honest_negative_status,
         "per_cohort_r2_12d_vs_32d": {
-            c["name"]: {"r2_12d": c["r2_12d"], "r2_32d": c["r2_32d"]}
-            for c in cohorts
+            c["name"]: {"r2_12d": c["r2_12d"], "r2_32d": c["r2_32d"]} for c in cohorts
         },
         "per_cohort_lift": {c["name"]: c["lift"] for c in cohorts},
         "verdicts": {c["name"]: c["verdict"] for c in cohorts},

@@ -45,9 +45,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
-TRAIN_SCRIPT = (
-    PROJECT_ROOT / "molmetal" / "scripts" / "train_metal_lomo_wasserstein.py"
-)
+TRAIN_SCRIPT = PROJECT_ROOT / "molmetal" / "scripts" / "train_metal_lomo_wasserstein.py"
 DEFAULT_CSV = PROJECT_ROOT / "molmetal" / "data" / "metal_lomo.csv"
 OUT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf226_lomo_sweep"
 CKPT_DIR = PROJECT_ROOT / "molmetal" / "checkpoints" / "wf226_lomo"
@@ -56,8 +54,13 @@ CKPT_DIR = PROJECT_ROOT / "molmetal" / "checkpoints" / "wf226_lomo"
 # (Ru seed=0 done at Wf-131 P3; Ir/Os/Ru × seeds 0-4 + Rh × seeds 0-2
 # already on disk in Wf-131 P3; Wf-193 added Ir × seeds 1,2.)
 MISSING_PAIRS: list[tuple[str, int]] = [
-    ("Rh", 3), ("Rh", 4),
-    ("Re", 0), ("Re", 1), ("Re", 2), ("Re", 3), ("Re", 4),
+    ("Rh", 3),
+    ("Rh", 4),
+    ("Re", 0),
+    ("Re", 1),
+    ("Re", 2),
+    ("Re", 3),
+    ("Re", 4),
 ]
 
 
@@ -78,16 +81,26 @@ def run_one_pair(
     cmd = [
         PY,
         str(TRAIN_SCRIPT),
-        "--metals", metal,
-        "--seeds", str(seed),
-        "--epochs", str(epochs),
-        "--hidden", str(hidden),
-        "--depth", str(depth),
-        "--batch-size", str(batch_size),
-        "--wasserstein-weight", str(wasserstein_weight),
-        "--rh-oversample", str(rh_oversample),
-        "--csv", str(DEFAULT_CSV),
-        "--out-dir", str(OUT_DIR),
+        "--metals",
+        metal,
+        "--seeds",
+        str(seed),
+        "--epochs",
+        str(epochs),
+        "--hidden",
+        str(hidden),
+        "--depth",
+        str(depth),
+        "--batch-size",
+        str(batch_size),
+        "--wasserstein-weight",
+        str(wasserstein_weight),
+        "--rh-oversample",
+        str(rh_oversample),
+        "--csv",
+        str(DEFAULT_CSV),
+        "--out-dir",
+        str(OUT_DIR),
     ]
     env = os.environ.copy()
     # Cap threads per process so 4 parallel runs share the 32 cores.
@@ -117,16 +130,28 @@ def run_one_pair(
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Wf-226 — LOMO 50-epoch CPU sweep")
-    p.add_argument("--n-parallel", type=int, default=4,
-                   help="Number of parallel (metal, seed) pair runs (default 4)")
+    p.add_argument(
+        "--n-parallel",
+        type=int,
+        default=4,
+        help="Number of parallel (metal, seed) pair runs (default 4)",
+    )
     p.add_argument("--epochs", type=int, default=50, help="Epochs per pair")
     p.add_argument("--hidden", type=int, default=64, help="Backbone hidden dim")
     p.add_argument("--depth", type=int, default=2, help="Backbone depth")
     p.add_argument("--batch-size", type=int, default=64, help="Batch size")
-    p.add_argument("--wasserstein-weight", type=float, default=0.05,
-                   help="Wasserstein transfer loss weight")
-    p.add_argument("--rh-oversample", type=int, default=500,
-                   help="Synthetic Rh cohort count (applied to all folds)")
+    p.add_argument(
+        "--wasserstein-weight",
+        type=float,
+        default=0.05,
+        help="Wasserstein transfer loss weight",
+    )
+    p.add_argument(
+        "--rh-oversample",
+        type=int,
+        default=500,
+        help="Synthetic Rh cohort count (applied to all folds)",
+    )
     p.add_argument(
         "--log-dir",
         type=Path,
@@ -166,9 +191,15 @@ def main(argv: list[str] | None = None) -> int:
         futs = {
             ex.submit(
                 run_one_pair,
-                metal, seed, args.epochs, args.hidden, args.depth,
-                args.batch_size, args.wasserstein_weight,
-                args.rh_oversample, args.log_dir,
+                metal,
+                seed,
+                args.epochs,
+                args.hidden,
+                args.depth,
+                args.batch_size,
+                args.wasserstein_weight,
+                args.rh_oversample,
+                args.log_dir,
             ): (metal, seed)
             for metal, seed in pairs
         }
@@ -179,8 +210,7 @@ def main(argv: list[str] | None = None) -> int:
             wall = res["wall_seconds"]
             rc = res["returncode"]
             print(
-                f"[wf226] DONE {ms} seed={sd} "
-                f"wall={wall:.1f}s returncode={rc}",
+                f"[wf226] DONE {ms} seed={sd} " f"wall={wall:.1f}s returncode={rc}",
                 flush=True,
             )
     total_wall = time.time() - t_start

@@ -13,7 +13,13 @@ import pytest
 
 from molmetal_lam.atoms.combinators import METAL_ATOMS, PRIMITIVE_ATOMS, from_smiles
 from molmetal_lam.bonds.application import (
-    Bond, COVALENT, DATIVE, AROMATIC, HYDROGEN, FreeSiteLedger, distinct,
+    Bond,
+    COVALENT,
+    DATIVE,
+    AROMATIC,
+    HYDROGEN,
+    FreeSiteLedger,
+    distinct,
 )
 from molmetal_lam.tile_lib.fragment_pool import fragments_from_chembl_reactive
 from molmetal_lam.tile_lib.property_tests import assert_library_well_formed
@@ -69,7 +75,10 @@ def test_bond_kind_distribution() -> None:
         *Bond.aromatic([distinct("C") for _ in range(3)], ledger=ledger),
         Bond.hydrogen(distinct("N"), distinct("O"), ledger=ledger, strict=False),
     ]
-    counts = {kind: sum(b.kind == kind for b in bonds) for kind in (COVALENT, DATIVE, AROMATIC, HYDROGEN)}
+    counts = {
+        kind: sum(b.kind == kind for b in bonds)
+        for kind in (COVALENT, DATIVE, AROMATIC, HYDROGEN)
+    }
     print(f"BOND_KIND_DISTRIBUTION={counts}")
     assert all(count > 0 for count in counts.values())
 
@@ -81,8 +90,13 @@ def test_click_rule_coverage() -> None:
         exposed = {name.lower() for name in dir(rules)}
     except ModuleNotFoundError:
         exposed = set()
-    found = sum(any(token in item for item in exposed) for token in ("cuaac", "spaac", "thiol", "suzuki", "amide"))
-    print(f"CLICK_RULE_COVERAGE={found}/5; requested={names}; rules.py={'present' if exposed else 'missing'}")
+    found = sum(
+        any(token in item for item in exposed)
+        for token in ("cuaac", "spaac", "thiol", "suzuki", "amide")
+    )
+    print(
+        f"CLICK_RULE_COVERAGE={found}/5; requested={names}; rules.py={'present' if exposed else 'missing'}"
+    )
     assert found == 5
 
 

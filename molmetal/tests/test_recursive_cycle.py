@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Tests for --num-cycle recursive inference cycle (mirror OmegaFoldCycle)."""
+
 import torch
 import pytest
 
@@ -20,7 +21,9 @@ class TestRecursiveCycle:
         assert prev_state.shape == (num_res, 128)
         # State should have evolved (not all zeros)
         assert prev_state.abs().sum().item() > 0.0
-        print(f"test_num_cycle_state_carry PASS: final state norm={prev_state.norm():.4f}")
+        print(
+            f"test_num_cycle_state_carry PASS: final state norm={prev_state.norm():.4f}"
+        )
 
     def test_num_cycle_confidence_head_per_cycle(self):
         """Per-cycle confidence head output stability across cycles."""
@@ -35,14 +38,18 @@ class TestRecursiveCycle:
             confidences.append(float(plddt.mean().item()))
         assert len(confidences) == 4
         assert all(0.0 <= c <= 1.0 for c in confidences)
-        print(f"test_num_cycle_confidence_head_per_cycle PASS: confidences={confidences}")
+        print(
+            f"test_num_cycle_confidence_head_per_cycle PASS: confidences={confidences}"
+        )
 
     def test_num_cycle_cli_flag_default_1(self):
         """Verify --num-cycle default = 1 (no recursion, bit-exact backward compat)."""
         import sys
+
         sys.path.insert(0, "/home/hugo/codes/mol-metal/molmetal/scripts")
         from train_cfm_yuelbond_wasserstein import parse_args as trainer_parse
         import argparse
+
         # Mock sys.argv
         original_argv = sys.argv
         sys.argv = ["train_cfm_yuelbond_wasserstein.py"]

@@ -157,9 +157,7 @@ class RelaxedOT:
         if eps <= 0.0:
             raise ValueError(f"eps must be > 0, got {eps}")
         if lambda_relax < 0.0:
-            raise ValueError(
-                f"lambda_relax must be >= 0, got {lambda_relax}"
-            )
+            raise ValueError(f"lambda_relax must be >= 0, got {lambda_relax}")
         if n_iters < 1:
             raise ValueError(f"n_iters must be >= 1, got {n_iters}")
         self.eps = float(eps)
@@ -172,9 +170,7 @@ class RelaxedOT:
         """``alpha = lambda_relax / (1 + lambda_relax)`` ∈ [0, 1)."""
         return self.lambda_relax / (1.0 + self.lambda_relax)
 
-    def _soft_marginals(
-        self, a: Tensor, b: Tensor
-    ) -> Tuple[Tensor, Tensor]:
+    def _soft_marginals(self, a: Tensor, b: Tensor) -> Tuple[Tensor, Tensor]:
         """Compute ``(tilde a, tilde b)`` from the target marginals.
 
         Implements the convex blend ``tilde a = (1 - alpha) a + alpha u_n``
@@ -291,14 +287,7 @@ class RelaxedOT:
         log_soft_a = torch.log(soft_a.clamp_min(_EPS_LOG))
         log_soft_b = torch.log(soft_b.clamp_min(_EPS_LOG))
         # KL(P || soft_a ⊗ soft_b) = sum P (log P - log soft_a - log soft_b)
-        kl = (
-            P
-            * (
-                log_P
-                - log_soft_a.unsqueeze(1)
-                - log_soft_b.unsqueeze(0)
-            )
-        ).sum()
+        kl = (P * (log_P - log_soft_a.unsqueeze(1) - log_soft_b.unsqueeze(0))).sum()
         cost = (P * C).sum()
         return cost + self.eps * kl
 
@@ -440,9 +429,7 @@ class TransportRelaxationTerm:
 
     def __init__(self, lambda_relax: float = 1e-3) -> None:
         if lambda_relax < 0.0:
-            raise ValueError(
-                f"lambda_relax must be >= 0, got {lambda_relax}"
-            )
+            raise ValueError(f"lambda_relax must be >= 0, got {lambda_relax}")
         self.lambda_relax = float(lambda_relax)
 
     def kl_divergence(self, p_T: Tensor, q_T: Tensor) -> Tensor:

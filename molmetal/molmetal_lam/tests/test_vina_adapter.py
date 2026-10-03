@@ -17,6 +17,7 @@ Per env constraint ``DO NOT run a full sweep / benchmark / large
 experiment`` we only do import / metadata assertions here — no real
 docking call.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -35,15 +36,15 @@ def test_vina_adapter_loads() -> None:
     mod = importlib.import_module(
         "molmetal_lam.sbdd_env.vina_adapter",
     )
-    assert hasattr(mod, "VinaDockingAdapter"), (
-        "VinaDockingAdapter missing from vina_adapter"
-    )
+    assert hasattr(
+        mod, "VinaDockingAdapter"
+    ), "VinaDockingAdapter missing from vina_adapter"
     assert hasattr(mod, "dock_smiles"), "dock_smiles helper missing"
     assert hasattr(mod, "redock_for_test"), "redock_for_test helper missing"
     # New in Phase 2 — engine='auto' support
-    assert "auto" in mod.SUPPORTED_ENGINES, (
-        f"'auto' not in SUPPORTED_ENGINES: {mod.SUPPORTED_ENGINES}"
-    )
+    assert (
+        "auto" in mod.SUPPORTED_ENGINES
+    ), f"'auto' not in SUPPORTED_ENGINES: {mod.SUPPORTED_ENGINES}"
     # round-7 wire-vina: DEFAULT_ENGINE is now 'vina' (Python binding
     # preferred). 'auto' remains supported as a back-compat alias for
     # the resolution path.
@@ -76,14 +77,11 @@ def test_vina_adapter_picks_engine() -> None:
     # We don't care which concrete engine got picked as long as it's
     # one of the four known values.
     assert adapter._engine in mod.SUPPORTED_ENGINES, (
-        f"resolved engine {adapter._engine!r} not in "
-        f"{mod.SUPPORTED_ENGINES}"
+        f"resolved engine {adapter._engine!r} not in " f"{mod.SUPPORTED_ENGINES}"
     )
     # And not the literal string 'auto' (that must be resolved by
     # construction time).
-    assert adapter._engine != "auto", (
-        "engine='auto' was not resolved during __init__"
-    )
+    assert adapter._engine != "auto", "engine='auto' was not resolved during __init__"
     # get_metadata() should expose the resolved engine.
     meta = adapter.get_metadata()
     assert meta["engine"] == adapter._engine
@@ -121,9 +119,9 @@ def test_vina_adapter_handles_missing_pkg(
     monkeypatch.setitem(sys.modules, "vina", None)
 
     # Sanity: confirm the probe picks up the poisoning.
-    assert mod._have_vina() is False, (
-        "test fixture failed — sys.modules poisoning did not take effect"
-    )
+    assert (
+        mod._have_vina() is False
+    ), "test fixture failed — sys.modules poisoning did not take effect"
 
     # Snapshot the install: on this box, qvina / quickvina2 are also
     # absent.  If both the python binding and all CLI binaries are
@@ -149,14 +147,14 @@ def test_vina_adapter_handles_missing_pkg(
                 mod.VinaDockingAdapter(engine="auto")
             msg = str(excinfo.value)
             assert (
-                "vina" in msg.lower()
-                or "engine" in msg.lower()
+                "vina" in msg.lower() or "engine" in msg.lower()
             ), f"unexpected RuntimeError text: {msg!r}"
 
         # Either way the canonical fallback log line must appear when
         # the python pkg is unavailable.  Caplog captures WARNING+.
         matching = [
-            r for r in caplog.records
+            r
+            for r in caplog.records
             if "vina Python pkg not installed" in r.getMessage()
             or "uv add vina" in r.getMessage()
         ]
@@ -215,9 +213,9 @@ def test_vina_adapter_engine_field_default() -> None:
         "VinaDockingAdapter must expose public 'engine' attribute "
         "(round-7 wire-vina refactor)"
     )
-    assert adapter.engine == mod.DEFAULT_ENGINE, (
-        f"adapter.engine={adapter.engine!r} != DEFAULT_ENGINE={mod.DEFAULT_ENGINE!r}"
-    )
+    assert (
+        adapter.engine == mod.DEFAULT_ENGINE
+    ), f"adapter.engine={adapter.engine!r} != DEFAULT_ENGINE={mod.DEFAULT_ENGINE!r}"
     # Mirrors the private field
     assert adapter.engine == adapter._engine
 
@@ -288,10 +286,12 @@ def test_vina_adapter_python_api_path() -> None:
     if not mod._have_vina():
         pytest.skip("vina Python pkg not installed")
     import vina  # noqa: F401
+
     # Canonical Python API surface per Eberhardt 2021 paper:
     # Vina(sf_name=...) -> set_receptor / set_ligand_from_file /
     # compute_vina_maps / dock / energies / poses.
     from vina import Vina  # type: ignore
+
     assert hasattr(Vina, "set_receptor")
     assert hasattr(Vina, "set_ligand_from_file")
     assert hasattr(Vina, "compute_vina_maps")
@@ -340,9 +340,9 @@ def test_vina_adapter_subprocess_fallback(monkeypatch: pytest.MonkeyPatch) -> No
         with pytest.raises(RuntimeError) as excinfo:
             mod.VinaDockingAdapter(engine="auto")
         msg = str(excinfo.value).lower()
-        assert "vina" in msg or "engine" in msg, (
-            f"unclear RuntimeError when no engine is available: {excinfo.value!r}"
-        )
+        assert (
+            "vina" in msg or "engine" in msg
+        ), f"unclear RuntimeError when no engine is available: {excinfo.value!r}"
 
 
 def test_vina_adapter_cli_flag_present() -> None:

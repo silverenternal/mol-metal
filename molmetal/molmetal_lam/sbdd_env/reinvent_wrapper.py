@@ -22,6 +22,7 @@ import numpy as np
 try:
     from rdkit import Chem  # type: ignore
     from rdkit.Chem import AllChem, Descriptors, QED, rdMolDescriptors  # type: ignore
+
     _HAVE_RDKIT = True
 except Exception:  # pragma: no cover
     _HAVE_RDKIT = False
@@ -54,7 +55,9 @@ class REINVENT4Scorer:
     """
 
     reinvent_repo_path: str = "molmetal/references/REINVENT4"
-    weights: Dict[str, float] = field(default_factory=lambda: dict(DEFAULT_SCORER_WEIGHTS))
+    weights: Dict[str, float] = field(
+        default_factory=lambda: dict(DEFAULT_SCORER_WEIGHTS)
+    )
 
     # Optional: a reference SMILES set used by ``_compute_novelty``.
     train_smiles_set: Optional[set] = None
@@ -121,12 +124,16 @@ class REINVENT4Scorer:
         except Exception:
             return 0.0
 
-    def _compute_novelty(self, smiles: str, train_smiles_set: Optional[Iterable[str]] = None) -> float:
+    def _compute_novelty(
+        self, smiles: str, train_smiles_set: Optional[Iterable[str]] = None
+    ) -> float:
         """1 - max(Tanimoto similarity) to training set. Higher = more novel.
 
         Falls back to 0.5 (neutral) when no train set is available.
         """
-        ref_set = train_smiles_set if train_smiles_set is not None else self.train_smiles_set
+        ref_set = (
+            train_smiles_set if train_smiles_set is not None else self.train_smiles_set
+        )
         if ref_set is None or not _HAVE_RDKIT:
             return 0.5
         try:
@@ -142,11 +149,14 @@ class REINVENT4Scorer:
             for s in ref_set:
                 m = Chem.MolFromSmiles(s)
                 if m is not None:
-                    self._train_fps.append(AllChem.GetMorganFingerprintAsBitVect(m, radius=2, nBits=2048))
+                    self._train_fps.append(
+                        AllChem.GetMorganFingerprintAsBitVect(m, radius=2, nBits=2048)
+                    )
             if not self._train_fps:
                 return 0.5
 
         from rdkit import DataStructs  # type: ignore
+
         sims = DataStructs.BulkTanimotoSimilarity(fp_query, self._train_fps)
         max_sim = max(sims) if sims else 0.0
         return float(1.0 - max_sim)
@@ -200,7 +210,9 @@ class REINVENT4Scorer:
 # ---------------------------------------------------------------------------
 # Functional helpers (convenience wrappers)
 # ---------------------------------------------------------------------------
-def batch_score(smiles_list: Sequence[str], weights: Optional[Dict[str, float]] = None) -> np.ndarray:
+def batch_score(
+    smiles_list: Sequence[str], weights: Optional[Dict[str, float]] = None
+) -> np.ndarray:
     """One-shot batch scoring with a fresh :class:`REINVENT4Scorer`."""
     scorer = REINVENT4Scorer(weights=weights or DEFAULT_SCORER_WEIGHTS)
     return scorer.batch_score(smiles_list)

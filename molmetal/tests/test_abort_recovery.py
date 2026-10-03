@@ -71,10 +71,14 @@ def test_cli_exposes_contract_flags():
     must all be present in the argparse parser."""
     ns = abort_recovery.parse_argv(
         [
-            "--pattern", "NaN",
-            "--metal", "Ru",
-            "--seed", "0",
-            "--report-json", "/tmp/foo.json",
+            "--pattern",
+            "NaN",
+            "--metal",
+            "Ru",
+            "--seed",
+            "0",
+            "--report-json",
+            "/tmp/foo.json",
         ]
     )
     assert ns.pattern == "NaN"
@@ -102,12 +106,12 @@ def test_cli_exposes_contract_flags():
 def test_report_json_default_is_wf262_path():
     """Per 207 v2 §7.3, --report-json default must be
     ``molmetal/reports/wf262_recovery/recovery_report.json``."""
-    ns = abort_recovery.parse_argv(
-        ["--pattern", "NaN", "--metal", "Ru"]
-    )
+    ns = abort_recovery.parse_argv(["--pattern", "NaN", "--metal", "Ru"])
     assert ns.report_json == abort_recovery.DEFAULT_REPORT_JSON
     expected = (
-        abort_recovery.MOLMETAL_ROOT / "reports" / "wf262_recovery"
+        abort_recovery.MOLMETAL_ROOT
+        / "reports"
+        / "wf262_recovery"
         / "recovery_report.json"
     )
     assert ns.report_json == expected
@@ -127,15 +131,17 @@ def test_discover_finds_real_ru_ckpt(tmp_path: Path):
         pytest.skip("molmetal/checkpoints/ not present (fresh clone)")
     globs = abort_recovery.DEFAULT_CKPT_GLOBS
     last_good, candidates = abort_recovery.discover_last_good_ckpt(
-        "Ru", 0, globs=globs,
+        "Ru",
+        0,
+        globs=globs,
     )
     # The repo ships at least ``dmpnn_mtw_ru_seed0.pt`` per
     # `ls molmetal/checkpoints/`.  When ``molmetal/checkpoints/`` is
     # present, the assertion below is non-vacuous.
     if candidates:
-        assert last_good is not None, (
-            "expected at least one Ru/seed=0 ckpt among real candidates"
-        )
+        assert (
+            last_good is not None
+        ), "expected at least one Ru/seed=0 ckpt among real candidates"
         assert last_good.exists()
         assert "ru" in last_good.stem.lower()
         # Seed token must be present (e.g. ``_seed0`` or ``_seed0_``).
@@ -155,11 +161,15 @@ def test_recovery_happy_path_dry_run(tmp_path: Path):
     report_path = tmp_path / "report.json"
     rc = abort_recovery.main(
         [
-            "--pattern", "NaN",
-            "--metal", "Ru",
-            "--seed", "0",
+            "--pattern",
+            "NaN",
+            "--metal",
+            "Ru",
+            "--seed",
+            "0",
             "--dry-run",
-            "--report-json", str(report_path),
+            "--report-json",
+            str(report_path),
         ]
     )
     # In --dry-run mode the smoke is a constant finite stub, so recovery
@@ -180,6 +190,7 @@ def test_recovery_happy_path_dry_run(tmp_path: Path):
 
 def math_finite(x):
     import math
+
     return x is not None and math.isfinite(float(x))
 
 
@@ -194,13 +205,18 @@ def test_recovery_hard_fail_no_ckpt(tmp_path: Path):
     report_path = tmp_path / "fail_report.json"
     rc = abort_recovery.main(
         [
-            "--pattern", "OOM",
-            "--metal", "Ir",
-            "--seed", "1",
+            "--pattern",
+            "OOM",
+            "--metal",
+            "Ir",
+            "--seed",
+            "1",
             "--no-default-glob",
-            "--ckpt-glob", str(tmp_path / "*.pt"),  # nothing matches
+            "--ckpt-glob",
+            str(tmp_path / "*.pt"),  # nothing matches
             "--dry-run",
-            "--report-json", str(report_path),
+            "--report-json",
+            str(report_path),
         ]
     )
     assert rc == 1, f"expected hard-fail rc=1, got rc={rc}"
@@ -223,12 +239,16 @@ def test_report_json_schema_complete(tmp_path: Path):
     report_path = tmp_path / "schema.json"
     abort_recovery.main(
         [
-            "--pattern", "IndexError",
-            "--metal", "Os",
+            "--pattern",
+            "IndexError",
+            "--metal",
+            "Os",
             "--no-default-glob",
-            "--ckpt-glob", str(tmp_path / "*.pt"),  # empty -> hard-fail
+            "--ckpt-glob",
+            str(tmp_path / "*.pt"),  # empty -> hard-fail
             "--dry-run",
-            "--report-json", str(report_path),
+            "--report-json",
+            str(report_path),
         ]
     )
     report = json.loads(report_path.read_text())
@@ -281,24 +301,34 @@ def test_subprocess_via_venv():
     # --help smoke (exit 0)
     rc = subprocess.run(
         [VENV_PY, str(abort_recovery.__file__), "--help"],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
     ).returncode
     assert rc == 0, f"--help failed: {rc}"
     # Hard-fail smoke (exit 1)
     import tempfile
+
     with tempfile.TemporaryDirectory() as d:
         report_path = Path(d) / "subproc_report.json"
         rc2 = subprocess.run(
             [
-                VENV_PY, str(abort_recovery.__file__),
-                "--pattern", "cfm-collapse",
-                "--metal", "Re",
+                VENV_PY,
+                str(abort_recovery.__file__),
+                "--pattern",
+                "cfm-collapse",
+                "--metal",
+                "Re",
                 "--no-default-glob",
-                "--ckpt-glob", str(Path(d) / "*.pt"),
+                "--ckpt-glob",
+                str(Path(d) / "*.pt"),
                 "--dry-run",
-                "--report-json", str(report_path),
+                "--report-json",
+                str(report_path),
             ],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
         ).returncode
         assert rc2 == 1, f"expected rc=1 (hard-fail), got rc={rc2}"
         assert report_path.exists()

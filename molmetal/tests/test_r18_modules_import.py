@@ -39,6 +39,7 @@ from the script to guarantee the two stay in lock-step.
 
 CPU-only, no GPU, no fixtures, no mutable state.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -57,8 +58,7 @@ import pytest
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _SCRIPT_DIR = _REPO_ROOT / "molmetal" / "scripts"
 _REPORT_FILE = (
-    _REPO_ROOT / "molmetal" / "reports" / "wf46_r18_verification"
-    / "import_check.json"
+    _REPO_ROOT / "molmetal" / "reports" / "wf46_r18_verification" / "import_check.json"
 )
 
 if str(_REPO_ROOT) not in sys.path:
@@ -134,9 +134,9 @@ def test_module_has_public_callables(logical_id: str, fqmn: str) -> None:
         if inspect.isclass(attr) or inspect.isfunction(attr):
             has_public = True
             break
-    assert has_public, (
-        f"{fqmn} exposes no public class or function; module appears empty"
-    )
+    assert (
+        has_public
+    ), f"{fqmn} exposes no public class or function; module appears empty"
 
 
 # ===========================================================================
@@ -183,20 +183,15 @@ def test_help_ship_script(logical_id: str, rel_path: str) -> None:
         pytest.fail(f"{rel_path} not found")
 
     has_traceback = "Traceback" in stderr
-    has_import_error = (
-        "ImportError" in stderr or "ModuleNotFoundError" in stderr
-    )
+    has_import_error = "ImportError" in stderr or "ModuleNotFoundError" in stderr
 
     assert rc in (0, 1), (
-        f"{rel_path} --help exited {rc}; stderr first 240: "
-        f"{stderr[:240]}"
+        f"{rel_path} --help exited {rc}; stderr first 240: " f"{stderr[:240]}"
     )
-    assert not has_traceback, (
-        f"{rel_path} --help raised a traceback: {stderr[:240]}"
-    )
-    assert not has_import_error, (
-        f"{rel_path} --help raised an ImportError: {stderr[:240]}"
-    )
+    assert not has_traceback, f"{rel_path} --help raised a traceback: {stderr[:240]}"
+    assert (
+        not has_import_error
+    ), f"{rel_path} --help raised an ImportError: {stderr[:240]}"
 
 
 # ===========================================================================
@@ -223,11 +218,24 @@ def test_json_artefact_keys() -> None:
         pytest.skip(f"JSON artefact not present: {_REPORT_FILE}")
     data = json.loads(_REPORT_FILE.read_text(encoding="utf-8"))
     expected = {
-        "timestamp", "tool", "workflow", "repo_root", "python",
-        "python_version", "n_modules_total", "n_modules_passed",
-        "n_modules_failed", "n_scripts_total", "n_scripts_passed",
-        "n_scripts_failed", "all_ok", "module_groups", "module_results",
-        "module_failures", "module_successes", "script_failures",
+        "timestamp",
+        "tool",
+        "workflow",
+        "repo_root",
+        "python",
+        "python_version",
+        "n_modules_total",
+        "n_modules_passed",
+        "n_modules_failed",
+        "n_scripts_total",
+        "n_scripts_passed",
+        "n_scripts_failed",
+        "all_ok",
+        "module_groups",
+        "module_results",
+        "module_failures",
+        "module_successes",
+        "script_failures",
         "script_successes",
     }
     missing = expected - set(data.keys())
@@ -298,16 +306,16 @@ def test_json_artefact_all_ok() -> None:
 # ===========================================================================
 def test_total_modules_is_32() -> None:
     """Hard pin: the R18 manifest is exactly 32 modules."""
-    assert len(SHIP_MODULES) == 32, (
-        f"R18 manifest changed: got {len(SHIP_MODULES)}, expected 32"
-    )
+    assert (
+        len(SHIP_MODULES) == 32
+    ), f"R18 manifest changed: got {len(SHIP_MODULES)}, expected 32"
 
 
 def test_total_scripts_is_52() -> None:
     """Hard pin: the R18 ship-script list is exactly 52 entries."""
-    assert len(SHIP_SCRIPTS) == 52, (
-        f"R18 script manifest changed: got {len(SHIP_SCRIPTS)}, expected 52"
-    )
+    assert (
+        len(SHIP_SCRIPTS) == 52
+    ), f"R18 script manifest changed: got {len(SHIP_SCRIPTS)}, expected 52"
 
 
 def test_math_skills_count_is_9() -> None:
@@ -386,9 +394,7 @@ def test_all_script_files_exist_on_disk() -> None:
     """Each ship-script path resolves to an existing .py on disk."""
     for _logical_id, rel_path in SHIP_SCRIPTS:
         abs_path = _REPO_ROOT / rel_path
-        assert abs_path.is_file(), (
-            f"{rel_path} not found on disk; update SHIP_SCRIPTS"
-        )
+        assert abs_path.is_file(), f"{rel_path} not found on disk; update SHIP_SCRIPTS"
 
 
 def test_verify_script_itself_imports_clean() -> None:
@@ -396,15 +402,12 @@ def test_verify_script_itself_imports_clean() -> None:
 
     Catches regressions where a refactor breaks the verifier.
     """
-    importlib.import_module(
-        "molmetal.scripts.verify_r18_modules_import"
-    )
+    importlib.import_module("molmetal.scripts.verify_r18_modules_import")
 
 
 def test_verify_script_help_runs() -> None:
     """The Wf-46 Phase 2 verifier's own ``--help`` must run cleanly."""
-    abs_path = _REPO_ROOT / "molmetal" / "scripts" / \
-        "verify_r18_modules_import.py"
+    abs_path = _REPO_ROOT / "molmetal" / "scripts" / "verify_r18_modules_import.py"
     proc = subprocess.run(
         [sys.executable, str(abs_path), "--help"],
         cwd=str(_REPO_ROOT),
@@ -413,12 +416,10 @@ def test_verify_script_help_runs() -> None:
         timeout=30,
     )
     assert proc.returncode in (0, 1), (
-        f"verifier --help exited {proc.returncode}; "
-        f"stderr: {proc.stderr[:240]}"
+        f"verifier --help exited {proc.returncode}; " f"stderr: {proc.stderr[:240]}"
     )
     assert "usage:" in proc.stdout.lower(), (
-        f"verifier --help did not print usage; "
-        f"stdout: {proc.stdout[:240]}"
+        f"verifier --help did not print usage; " f"stdout: {proc.stdout[:240]}"
     )
 
 

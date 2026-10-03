@@ -143,7 +143,9 @@ def _list_ckpts(globs: Iterable[str]) -> List[Path]:
 
 
 def _filter_ckpts_by_metal_seed(
-    ckpts: List[Path], metal: str, seed: Optional[int],
+    ckpts: List[Path],
+    metal: str,
+    seed: Optional[int],
 ) -> List[Path]:
     """Filter a list of ckpts down to those whose basename matches the metal
     and (when provided) the seed.  Matching is case-insensitive on the
@@ -190,6 +192,7 @@ def _payload_state_dict(payload: Any) -> Optional[Dict[str, Any]]:
 def _params_finite(sd: Dict[str, Any]) -> Tuple[bool, Optional[int]]:
     """All tensors in the state_dict must be finite (no NaN, no Inf)."""
     import torch  # local import — only needed when we actually load a ckpt
+
     n_params = 0
     for _name, tensor in sd.items():
         if isinstance(tensor, torch.Tensor):
@@ -202,6 +205,7 @@ def _params_finite(sd: Dict[str, Any]) -> Tuple[bool, Optional[int]]:
 
 def _torch_load(path: Path, *, weights_only: bool = False) -> Any:
     import torch
+
     try:
         return torch.load(str(path), map_location="cpu", weights_only=weights_only)
     except TypeError:
@@ -215,6 +219,7 @@ def _tiny_smoke_ndarray(metal: str) -> "tuple":
     the recovered model emits finite forward outputs for ~5 batches of
     batch=64 pseudo-inputs."""
     import numpy as np
+
     rng = np.random.default_rng(0)
     n_features = 32  # tiny feature vector; recovered model just needs to consume it
     metal_idx = {"Ru": 0, "Ir": 1, "Os": 2, "Rh": 3, "Re": 4}.get(metal, 0)
@@ -238,7 +243,10 @@ def _tiny_smoke_ndarray(metal: str) -> "tuple":
 
 
 def discover_last_good_ckpt(
-    metal: str, seed: Optional[int], *, globs: Iterable[str],
+    metal: str,
+    seed: Optional[int],
+    *,
+    globs: Iterable[str],
 ) -> Tuple[Optional[Path], List[Path]]:
     """Return (last_good, candidates_scanned).  ``last_good`` is the most
     recently modified ckpt whose basename contains the metal token (and
@@ -251,7 +259,9 @@ def discover_last_good_ckpt(
 
 
 def verify_resume(
-    ckpt_path: Path, metal: str, seed: Optional[int],
+    ckpt_path: Path,
+    metal: str,
+    seed: Optional[int],
 ) -> Dict[str, Any]:
     """Load the ckpt and return a ``verify`` sub-record with finite / NaN
     diagnostics.  Never raises — every failure is captured as ``ok=False``."""
@@ -314,9 +324,7 @@ def run_one_epoch_smoke(metal: str, *, dry_run: bool = False) -> Dict[str, Any]:
             "smoke_finite": False,
             "error": f"smoke raised: {type(exc).__name__}: {exc}",
         }
-    finite = bool(math.isfinite(mean_loss)) and all(
-        math.isfinite(l) for l in losses
-    )
+    finite = bool(math.isfinite(mean_loss)) and all(math.isfinite(l) for l in losses)
     return {
         "losses": losses,
         "mean_loss": mean_loss,
@@ -374,7 +382,7 @@ def parse_argv(argv: Optional[List[str]] = None) -> argparse.Namespace:
         type=int,
         default=None,
         help="Seed index (0..4); optional.  When omitted, the most recent "
-             "ckpt for the metal is selected regardless of seed.",
+        "ckpt for the metal is selected regardless of seed.",
     )
     p.add_argument(
         "--wave",
@@ -406,7 +414,7 @@ def parse_argv(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "--dry-run",
         action="store_true",
         help="Skip the 1-epoch smoke; emit a stubbed loss instead (useful "
-             "for unit tests / sanity checks).",
+        "for unit tests / sanity checks).",
     )
     p.add_argument(
         "--verbose",
@@ -440,7 +448,9 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # 1. Discover last-good ckpt
     last_good, candidates = discover_last_good_ckpt(
-        args.metal, args.seed, globs=globs,
+        args.metal,
+        args.seed,
+        globs=globs,
     )
     n_candidates = len(candidates)
 

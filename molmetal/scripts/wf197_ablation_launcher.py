@@ -73,14 +73,62 @@ LOG_DIR = OUT_DIR / "logs"
 # Config code: 3-bit string e.g. "111" = all on, "000" = all off (baseline)
 ABLATION_CONFIGS: list[dict] = [
     # config_code, multi_task, w_weight, l2_guard, label
-    {"code": "000", "multi_task": False, "w_weight": 0.0,  "l2_guard": False, "label": "baseline (no levers)"},
-    {"code": "100", "multi_task": True,  "w_weight": 0.0,  "l2_guard": False, "label": "multi-task only"},
-    {"code": "010", "multi_task": False, "w_weight": 0.05, "l2_guard": False, "label": "Wasserstein only"},
-    {"code": "001", "multi_task": False, "w_weight": 0.0,  "l2_guard": True,  "label": "L2 guard only"},
-    {"code": "110", "multi_task": True,  "w_weight": 0.05, "l2_guard": False, "label": "multi-task + W"},
-    {"code": "101", "multi_task": True,  "w_weight": 0.0,  "l2_guard": True,  "label": "multi-task + L2 guard"},
-    {"code": "011", "multi_task": False, "w_weight": 0.05, "l2_guard": True,  "label": "W + L2 guard"},
-    {"code": "111", "multi_task": True,  "w_weight": 0.05, "l2_guard": True,  "label": "full recipe (Wf-124 P3 default)"},
+    {
+        "code": "000",
+        "multi_task": False,
+        "w_weight": 0.0,
+        "l2_guard": False,
+        "label": "baseline (no levers)",
+    },
+    {
+        "code": "100",
+        "multi_task": True,
+        "w_weight": 0.0,
+        "l2_guard": False,
+        "label": "multi-task only",
+    },
+    {
+        "code": "010",
+        "multi_task": False,
+        "w_weight": 0.05,
+        "l2_guard": False,
+        "label": "Wasserstein only",
+    },
+    {
+        "code": "001",
+        "multi_task": False,
+        "w_weight": 0.0,
+        "l2_guard": True,
+        "label": "L2 guard only",
+    },
+    {
+        "code": "110",
+        "multi_task": True,
+        "w_weight": 0.05,
+        "l2_guard": False,
+        "label": "multi-task + W",
+    },
+    {
+        "code": "101",
+        "multi_task": True,
+        "w_weight": 0.0,
+        "l2_guard": True,
+        "label": "multi-task + L2 guard",
+    },
+    {
+        "code": "011",
+        "multi_task": False,
+        "w_weight": 0.05,
+        "l2_guard": True,
+        "label": "W + L2 guard",
+    },
+    {
+        "code": "111",
+        "multi_task": True,
+        "w_weight": 0.05,
+        "l2_guard": True,
+        "label": "full recipe (Wf-124 P3 default)",
+    },
 ]
 
 
@@ -99,16 +147,26 @@ def run_one_config(
     cmd = [
         PY,
         str(TRAIN_SCRIPT),
-        "--metals", "Ru",
-        "--seeds", "0",
-        "--epochs", str(epochs),
-        "--hidden", str(hidden),
-        "--depth", str(depth),
-        "--batch-size", str(batch_size),
-        "--device", "cpu",
-        "--data-csv", str(DATA_CSV),
-        "--out-dir", str(OUT_DIR / "per_config"),
-        "--ckpt-dir", str(CKPT_DIR / f"cfg{cfg['code']}"),
+        "--metals",
+        "Ru",
+        "--seeds",
+        "0",
+        "--epochs",
+        str(epochs),
+        "--hidden",
+        str(hidden),
+        "--depth",
+        str(depth),
+        "--batch-size",
+        str(batch_size),
+        "--device",
+        "cpu",
+        "--data-csv",
+        str(DATA_CSV),
+        "--out-dir",
+        str(OUT_DIR / "per_config"),
+        "--ckpt-dir",
+        str(CKPT_DIR / f"cfg{cfg['code']}"),
     ]
     if cfg["multi_task"]:
         cmd.extend(["--metals", "Ru", "Ir", "Os", "Rh", "Re"])
@@ -128,14 +186,16 @@ def run_one_config(
     t0 = time.time()
     with open(log_path, "w") as f:
         proc = subprocess.run(
-            cmd, stdout=f, stderr=subprocess.STDOUT, env=env, cwd=str(PROJECT_ROOT),
+            cmd,
+            stdout=f,
+            stderr=subprocess.STDOUT,
+            env=env,
+            cwd=str(PROJECT_ROOT),
         )
     wall = time.time() - t0
 
     # Read test_auc from per-seed metrics
-    metrics_path = (
-        OUT_DIR / "per_config" / "ru" / f"per_seed_metrics_seed{seed}.json"
-    )
+    metrics_path = OUT_DIR / "per_config" / "ru" / f"per_seed_metrics_seed{seed}.json"
     test_auc = None
     test_pearson = None
     if metrics_path.exists():
@@ -191,12 +251,14 @@ def compute_attribution(results: list[dict]) -> dict:
     # Bit positions: index 0 = multi_task (MT), index 1 = wasserstein (W), index 2 = l2_guard (L2)
     def interaction(a_pos: int, b_pos: int, ab_pos: int) -> float | None:
         """Compute I_AB given positions of A, B, and the third lever (fixed at 0)."""
+
         # Build configs for (A, B, third=0) combinations
         def cfg_code(a: int, b: int) -> str:
             bits = ["0", "0", "0"]
             bits[a_pos] = str(a)
             bits[b_pos] = str(b)
             return "".join(bits)
+
         a_v = auc(cfg_code(1, 0))
         b_v = auc(cfg_code(0, 1))
         ab_v = auc(cfg_code(1, 1))
@@ -206,9 +268,9 @@ def compute_attribution(results: list[dict]) -> dict:
         return ab_v - a_v - b_v + c_v
 
     interactions: dict[str, float | None] = {
-        "I_MT_W": interaction(0, 1, 2),   # MT × W, L2=0
+        "I_MT_W": interaction(0, 1, 2),  # MT × W, L2=0
         "I_MT_L2": interaction(0, 2, 1),  # MT × L2, W=0
-        "I_W_L2": interaction(1, 2, 0),   # W × L2, MT=0
+        "I_W_L2": interaction(1, 2, 0),  # W × L2, MT=0
     }
 
     # Full recipe (111) lift vs baseline
@@ -244,20 +306,45 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         description="Wf-197 — Per-innovation ablation launcher (TODO-182 ship)"
     )
-    p.add_argument("--n-parallel", type=int, default=6,
-                   help="Number of parallel ablation configs (default 6)")
-    p.add_argument("--epochs", type=int, default=30,
-                   help="Training epochs per config (default 30 — apples-to-apples with Wf-124 P3)")
-    p.add_argument("--hidden", type=int, default=64,
-                   help="Backbone hidden dim (default 64 — CPU-friendly per Wf-196)")
-    p.add_argument("--depth", type=int, default=2,
-                   help="Backbone depth (default 2 — CPU-friendly per Wf-196)")
-    p.add_argument("--batch-size", type=int, default=64,
-                   help="Mini-batch size (default 64)")
-    p.add_argument("--seed", type=int, default=0,
-                   help="Single seed for ablation (default 0 — anchor Wf-124 P3)")
-    p.add_argument("--max-wall-min", type=int, default=55,
-                   help="Hard wall-time cap in minutes (default 55; task budget is 60)")
+    p.add_argument(
+        "--n-parallel",
+        type=int,
+        default=6,
+        help="Number of parallel ablation configs (default 6)",
+    )
+    p.add_argument(
+        "--epochs",
+        type=int,
+        default=30,
+        help="Training epochs per config (default 30 — apples-to-apples with Wf-124 P3)",
+    )
+    p.add_argument(
+        "--hidden",
+        type=int,
+        default=64,
+        help="Backbone hidden dim (default 64 — CPU-friendly per Wf-196)",
+    )
+    p.add_argument(
+        "--depth",
+        type=int,
+        default=2,
+        help="Backbone depth (default 2 — CPU-friendly per Wf-196)",
+    )
+    p.add_argument(
+        "--batch-size", type=int, default=64, help="Mini-batch size (default 64)"
+    )
+    p.add_argument(
+        "--seed",
+        type=int,
+        default=0,
+        help="Single seed for ablation (default 0 — anchor Wf-124 P3)",
+    )
+    p.add_argument(
+        "--max-wall-min",
+        type=int,
+        default=55,
+        help="Hard wall-time cap in minutes (default 55; task budget is 60)",
+    )
     args = p.parse_args(argv)
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -277,9 +364,15 @@ def main(argv: list[str] | None = None) -> int:
         futs = {
             ex.submit(
                 run_one_config,
-                cfg, args.epochs, args.hidden, args.depth,
-                args.batch_size, args.seed, LOG_DIR,
-            ): cfg for cfg in ABLATION_CONFIGS
+                cfg,
+                args.epochs,
+                args.hidden,
+                args.depth,
+                args.batch_size,
+                args.seed,
+                LOG_DIR,
+            ): cfg
+            for cfg in ABLATION_CONFIGS
         }
         for fut in as_completed(futs):
             try:
@@ -325,7 +418,9 @@ def main(argv: list[str] | None = None) -> int:
     summary = {
         "wf_tag": "Wf-197 — TODO-182 per-innovation ablation (full 2^3 permutations)",
         "n_configs_planned": n_configs,
-        "n_configs_completed": len([r for r in results if r.get("test_auc") is not None]),
+        "n_configs_completed": len(
+            [r for r in results if r.get("test_auc") is not None]
+        ),
         "n_parallel": args.n_parallel,
         "epochs": args.epochs,
         "hidden": args.hidden,
@@ -392,24 +487,28 @@ def write_synthesis(summary: dict, attribution: dict) -> None:
             f"{r.get('label', '')} |"
         )
 
-    lines.extend([
-        "",
-        "## §3 Per-config measured test_auc (Ru seed=0, 30ep, h=64, d=2, CPU)",
-        "",
-        "| Code | test_auc | wall (s) | return |",
-        "|---|---|---|---|",
-    ])
+    lines.extend(
+        [
+            "",
+            "## §3 Per-config measured test_auc (Ru seed=0, 30ep, h=64, d=2, CPU)",
+            "",
+            "| Code | test_auc | wall (s) | return |",
+            "|---|---|---|---|",
+        ]
+    )
     for r in summary["results"]:
         lines.append(
             f"| {r['code']} | {r.get('test_auc', 'N/A')} | "
             f"{r.get('wall_seconds', 0):.1f} | {r.get('returncode', 'N/A')} |"
         )
 
-    lines.extend([
-        "",
-        "## §4 Per-lever lift attribution (within-cohort, h=64 d=2)",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            "## §4 Per-lever lift attribution (within-cohort, h=64 d=2)",
+            "",
+        ]
+    )
     if "error" in attribution:
         lines.append(f"**Error**: {attribution['error']}")
     else:
@@ -434,7 +533,9 @@ def write_synthesis(summary: dict, attribution: dict) -> None:
         lines.append(f"### §4.3 Full recipe (111) lift vs baseline")
         lines.append("")
         if attribution["full_recipe_lift"] is not None:
-            lines.append(f"- Full recipe (111): test_auc={attribution['baseline_auc'] + attribution['full_recipe_lift']:.4f}")
+            lines.append(
+                f"- Full recipe (111): test_auc={attribution['baseline_auc'] + attribution['full_recipe_lift']:.4f}"
+            )
             lines.append(f"- Δ vs baseline: {attribution['full_recipe_lift']:+.4f}")
         else:
             lines.append("- 111 not measured")
@@ -445,29 +546,33 @@ def write_synthesis(summary: dict, attribution: dict) -> None:
             lines.append(
                 f"- Σ single-lever lifts = {attribution['sum_single_levers']:+.4f}"
             )
-            lines.append(
-                f"- Σ interactions = {attribution['sum_interactions']:+.4f}"
-            )
-            lines.append(
-                f"- Full recipe lift = {attribution['full_recipe_lift']:+.4f}"
-            )
+            lines.append(f"- Σ interactions = {attribution['sum_interactions']:+.4f}")
+            lines.append(f"- Full recipe lift = {attribution['full_recipe_lift']:+.4f}")
             lines.append(
                 f"- **Additivity gap** = full_recipe - Σ - I = "
                 f"{attribution['additivity_gap']:+.4f}"
             )
             lines.append("")
             if abs(attribution["additivity_gap"]) < 0.005:
-                lines.append("**Verdict**: levers are approximately additive (gap < 0.005).")
+                lines.append(
+                    "**Verdict**: levers are approximately additive (gap < 0.005)."
+                )
             elif abs(attribution["additivity_gap"]) < 0.02:
-                lines.append("**Verdict**: small interaction effect (0.005 < gap < 0.02).")
+                lines.append(
+                    "**Verdict**: small interaction effect (0.005 < gap < 0.02)."
+                )
             else:
-                lines.append("**Verdict**: large interaction term — levers are NOT independent.")
+                lines.append(
+                    "**Verdict**: large interaction term — levers are NOT independent."
+                )
 
-    lines.extend([
-        "",
-        "## §5 Per-lever lift % attribution",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            "## §5 Per-lever lift % attribution",
+            "",
+        ]
+    )
     if attribution.get("single_lever_lift"):
         baseline = attribution["baseline_auc"]
         total_lift = attribution.get("full_recipe_lift") or 0.0
@@ -482,36 +587,38 @@ def write_synthesis(summary: dict, attribution: dict) -> None:
         else:
             lines.append("Full recipe lift not positive — cannot compute %.")
 
-    lines.extend([
-        "",
-        "## §6 Honest framing (party-twenty-spirit §3.5)",
-        "",
-        "**MEASURED**:",
-        "- Per-config test_auc for all 8 permutations at h=64, d=2, 30ep, Ru seed=0, CPU",
-        "- Per-lever lift attribution WITHIN this cohort (relative)",
-        "",
-        "**PROJECTED — DO NOT CITE AS MEASURED**:",
-        "- The Wf-124 P3 +0.049 absolute lift (h=128, d=3, GPU) is **NOT directly reproducible**",
-        "  at h=64, d=2 (CPU). The smaller backbone yields different absolute numbers.",
-        "- The +0.049 anchor was on GPU with full backbone at 30ep.",
-        "- The per-lever % attribution computed here is **WITHIN-COHORT** relative.",
-        "",
-        "**INTERACTION CAVEAT**:",
-        "- If the additivity gap (§4.4) is large, the 3 levers are NOT independent.",
-        "- Simple additive decomposition (Δ_total ≈ Δ_MT + Δ_W + Δ_L2) may be misleading.",
-        "",
-        "**PER-METAL CAVEAT**:",
-        "- Only Ru seed=0 was ablated (single metal, single seed).",
-        "- Per-metal attribution for Ir/Os/Rh/Re requires the full 5-metal × 3-seed",
-        "  sweep — DEFERRED to TODO-181 GPU follow-up.",
-        "",
-        "**NO FABRICATION**:",
-        "- Per-lever attribution % is reported WITH std (single seed → std=N/A).",
-        "- Per-lever lift = single config vs baseline; no best-seed selection.",
-        "",
-        "## §7 Acceptance verdict",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            "## §6 Honest framing (party-twenty-spirit §3.5)",
+            "",
+            "**MEASURED**:",
+            "- Per-config test_auc for all 8 permutations at h=64, d=2, 30ep, Ru seed=0, CPU",
+            "- Per-lever lift attribution WITHIN this cohort (relative)",
+            "",
+            "**PROJECTED — DO NOT CITE AS MEASURED**:",
+            "- The Wf-124 P3 +0.049 absolute lift (h=128, d=3, GPU) is **NOT directly reproducible**",
+            "  at h=64, d=2 (CPU). The smaller backbone yields different absolute numbers.",
+            "- The +0.049 anchor was on GPU with full backbone at 30ep.",
+            "- The per-lever % attribution computed here is **WITHIN-COHORT** relative.",
+            "",
+            "**INTERACTION CAVEAT**:",
+            "- If the additivity gap (§4.4) is large, the 3 levers are NOT independent.",
+            "- Simple additive decomposition (Δ_total ≈ Δ_MT + Δ_W + Δ_L2) may be misleading.",
+            "",
+            "**PER-METAL CAVEAT**:",
+            "- Only Ru seed=0 was ablated (single metal, single seed).",
+            "- Per-metal attribution for Ir/Os/Rh/Re requires the full 5-metal × 3-seed",
+            "  sweep — DEFERRED to TODO-181 GPU follow-up.",
+            "",
+            "**NO FABRICATION**:",
+            "- Per-lever attribution % is reported WITH std (single seed → std=N/A).",
+            "- Per-lever lift = single config vs baseline; no best-seed selection.",
+            "",
+            "## §7 Acceptance verdict",
+            "",
+        ]
+    )
     n_done = summary["n_configs_completed"]
     n_total = summary["n_configs_planned"]
     if n_done == n_total and attribution.get("single_lever_lift"):
@@ -522,11 +629,19 @@ def write_synthesis(summary: dict, attribution: dict) -> None:
         single_sum = attribution.get("sum_single_levers")
         if full_lift is not None and single_sum is not None:
             if abs(full_lift) < 0.001:
-                lines.append("⚠️ **G3 NEGATIVE** — Full recipe lift not positive; cannot attribute +0.049")
-                lines.append("  (The h=64, d=2 CPU ablation did NOT reproduce the Wf-124 P3 +0.049 lift.")
-                lines.append("  This is itself a finding — Wf-196 showed the smaller backbone regressed.")
+                lines.append(
+                    "⚠️ **G3 NEGATIVE** — Full recipe lift not positive; cannot attribute +0.049"
+                )
+                lines.append(
+                    "  (The h=64, d=2 CPU ablation did NOT reproduce the Wf-124 P3 +0.049 lift."
+                )
+                lines.append(
+                    "  This is itself a finding — Wf-196 showed the smaller backbone regressed."
+                )
             else:
-                lines.append("✅ **G3 PASS** — Per-lever lift attributed (within-cohort)")
+                lines.append(
+                    "✅ **G3 PASS** — Per-lever lift attributed (within-cohort)"
+                )
         else:
             lines.append("⚠️ **G3 PARTIAL** — Some permutations missing")
         lines.append("✅ **G4 PASS** — Honest framing documented (§6)")
@@ -534,16 +649,18 @@ def write_synthesis(summary: dict, attribution: dict) -> None:
         lines.append(f"⚠️ **G1 PARTIAL** — {n_done}/{n_total} permutations complete")
         lines.append(f"⚠️ See §3 for missing configs and §6 for honest framing")
 
-    lines.extend([
-        "",
-        "## §8 Follow-ups",
-        "",
-        "1. **TODO-181 GPU follow-up**: full-backbone (h=128, d=3) 50-epoch ablation",
-        "   for apples-to-apples comparison with Wf-124 P3 0.7613 anchor.",
-        "2. **Per-metal ablation**: 5-metal × 3-seed full permutation (TODO-181 §3.2).",
-        "3. **Paper §3 attribution**: cite per-lever % only after GPU ablation completes.",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            "## §8 Follow-ups",
+            "",
+            "1. **TODO-181 GPU follow-up**: full-backbone (h=128, d=3) 50-epoch ablation",
+            "   for apples-to-apples comparison with Wf-124 P3 0.7613 anchor.",
+            "2. **Per-metal ablation**: 5-metal × 3-seed full permutation (TODO-181 §3.2).",
+            "3. **Paper §3 attribution**: cite per-lever % only after GPU ablation completes.",
+            "",
+        ]
+    )
     synth_path = OUT_DIR / "synthesis.md"
     synth_path.write_text("\n".join(lines))
     print(f"[wf197] wrote synthesis: {synth_path}", flush=True)

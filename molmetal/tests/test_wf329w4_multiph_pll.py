@@ -40,6 +40,7 @@ Run with::
         /home/hugo/codes/mol-metal/.venv/bin/python -m pytest \\
         molmetal/tests/test_wf329w4_multiph_pll.py -v
 """
+
 from __future__ import annotations
 
 import sys
@@ -73,6 +74,7 @@ def _import_module():
             wire_m7_diversity_recovery,
             wire_r2_recovery,
         )
+
         return {
             "FOURIER_BIN_COUNT": FOURIER_BIN_COUNT,
             "MULTI_PH_N_BINS": MULTI_PH_N_BINS,
@@ -112,7 +114,9 @@ def test_fourier_32bin_features_shape_and_finite(mod):
     # The DC bin (r=0) holds the total sum — should equal feat.sum()
     # exactly (modulo numerical noise).
     np.testing.assert_allclose(
-        fourier[0], float(feat.sum()), atol=1e-6,
+        fourier[0],
+        float(feat.sum()),
+        atol=1e-6,
     )
 
 
@@ -148,26 +152,24 @@ def test_multiph_pll_extractor_triple_modality(mod):
         pytest.skip(f"RDKit unavailable: {exc}")
     # Fourier: (32,)
     assert fourier.shape == (extractor.fourier_dim,), (
-        f"Fourier shape mismatch: {fourier.shape} vs "
-        f"{extractor.fourier_dim}"
+        f"Fourier shape mismatch: {fourier.shape} vs " f"{extractor.fourier_dim}"
     )
     assert np.isfinite(fourier).all()
     assert (fourier >= 0.0).all()
     # Multi-PH: (32, 32)
     assert multi_ph.shape == (
-        extractor.n_bins, extractor.n_bins,
+        extractor.n_bins,
+        extractor.n_bins,
     ), f"multi-PH shape mismatch: {multi_ph.shape}"
     assert np.isfinite(multi_ph).all()
     assert (multi_ph >= 0.0).all()
     # PLL: (32,)
-    assert pll.shape == (extractor.pll_dim,), (
-        f"PLL shape mismatch: {pll.shape} vs {extractor.pll_dim}"
-    )
+    assert pll.shape == (
+        extractor.pll_dim,
+    ), f"PLL shape mismatch: {pll.shape} vs {extractor.pll_dim}"
     assert np.isfinite(pll).all()
     # PLL eigenvalues should be in descending order (Liu-Feng 2026).
-    assert np.all(pll[:-1] >= pll[1:]) - 1e-9, (
-        "PLL eigenvalues must be descending"
-    )
+    assert np.all(pll[:-1] >= pll[1:]) - 1e-9, "PLL eigenvalues must be descending"
 
 
 # ---------------------------------------------------------------------------
@@ -184,9 +186,7 @@ def test_pll_signature_extracted(mod):
     # All real, finite, in [0, 2] (normalised Laplacian bound).
     assert np.isfinite(pll).all()
     assert (pll >= 0.0).all()
-    assert (pll <= 2.0 + 1e-9).all(), (
-        f"PLL eigenvalue max={pll.max():.4f} exceeds 2.0"
-    )
+    assert (pll <= 2.0 + 1e-9).all(), f"PLL eigenvalue max={pll.max():.4f} exceeds 2.0"
     # Descending sort.
     diffs = np.diff(pll)
     assert (diffs <= 1e-9).all(), "PLL eigenvalues not descending"
@@ -204,6 +204,7 @@ def test_multiph_integration_recovery_path(mod):
         pytest.skip(f"metallo CSV not found at {csv_path}")
     # Read first 5 SMILES.
     import csv
+
     smiles_list: list = []
     with open(csv_path, "r", encoding="utf-8") as fh:
         reader = csv.DictReader(fh)
@@ -216,7 +217,9 @@ def test_multiph_integration_recovery_path(mod):
     fourier_b, multi_ph_b, pll_b = extractor.compute_batch(smiles_list)
     # Multi-PH batch shape: (B, 32, 32).
     assert multi_ph_b.shape == (
-        len(smiles_list), extractor.n_bins, extractor.n_bins,
+        len(smiles_list),
+        extractor.n_bins,
+        extractor.n_bins,
     ), f"multi-PH batch shape: {multi_ph_b.shape}"
     # Fourier + PLL batch shape: (B, 32).
     assert fourier_b.shape == (len(smiles_list), extractor.n_bins)
@@ -235,6 +238,7 @@ def test_m6_kappa_wire_in_returns_aggregated_report(mod):
         pytest.skip(f"metallo CSV not found at {csv_path}")
     # Subset (8 SMILES — enough for the Ridge 80/20 split).
     import csv
+
     smiles_list: list = []
     with open(csv_path, "r", encoding="utf-8") as fh:
         reader = csv.DictReader(fh)
@@ -264,6 +268,7 @@ def test_m7_diversity_wire_in_returns_pll_distance(mod):
     if not csv_path.exists():
         pytest.skip(f"metallo CSV not found at {csv_path}")
     import csv
+
     smiles_list: list = []
     with open(csv_path, "r", encoding="utf-8") as fh:
         reader = csv.DictReader(fh)
@@ -274,7 +279,9 @@ def test_m7_diversity_wire_in_returns_pll_distance(mod):
             if len(smiles_list) >= 10:
                 break
     out = mod["wire_m7_diversity_recovery"](
-        smiles_list, extractor, sample_size=10,
+        smiles_list,
+        extractor,
+        sample_size=10,
     )
     assert "m7_diversity_baseline" in out
     assert "m7_diversity_pll" in out
@@ -297,6 +304,7 @@ def test_r2_wire_in_joint_dim_matches(mod):
     if not csv_path.exists():
         pytest.skip(f"metallo CSV not found at {csv_path}")
     import csv
+
     smiles_list: list = []
     with open(csv_path, "r", encoding="utf-8") as fh:
         reader = csv.DictReader(fh)
@@ -307,12 +315,10 @@ def test_r2_wire_in_joint_dim_matches(mod):
             if len(smiles_list) >= 10:
                 break
     out = mod["wire_r2_recovery"](smiles_list, extractor)
-    expected_joint = (
-        extractor.fourier_dim + extractor.multi_ph_dim + extractor.pll_dim
-    )
-    assert out["joint_dim"] == expected_joint, (
-        f"joint_dim={out['joint_dim']} vs expected={expected_joint}"
-    )
+    expected_joint = extractor.fourier_dim + extractor.multi_ph_dim + extractor.pll_dim
+    assert (
+        out["joint_dim"] == expected_joint
+    ), f"joint_dim={out['joint_dim']} vs expected={expected_joint}"
     expected_baseline = extractor.fourier_dim + extractor.pll_dim
     assert out["baseline_dim"] == expected_baseline
     # R² values must be finite floats (NaN allowed only if n < 4).

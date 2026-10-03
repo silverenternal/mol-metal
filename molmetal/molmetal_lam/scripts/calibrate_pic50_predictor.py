@@ -30,6 +30,7 @@ The companion predictor wrapper lives at
 ``molmetal/molmetal_lam/sbdd_env/pic50_predictor.py`` and replaces the
 sklearn MLP previously inlined in ``baselines.py``.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -41,9 +42,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 # Path bootstrap so ``import molmetal.baselines.*`` works regardless of cwd.
-_PKG_PARENT = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..")
-)
+_PKG_PARENT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 if _PKG_PARENT not in sys.path:
     sys.path.insert(0, _PKG_PARENT)
 
@@ -180,7 +179,7 @@ def train_one_epoch(
     np.random.shuffle(indices)
 
     for start in range(0, len(indices), batch_size):
-        batch_idx = indices[start:start + batch_size]
+        batch_idx = indices[start : start + batch_size]
         batch_graphs = [graphs[i] for i in batch_idx]
         batch_labels = labels[batch_idx]
 
@@ -223,7 +222,7 @@ def predict_regression(
     model.eval()
     out: List[float] = []
     for start in range(0, len(graphs), batch_size):
-        batch_graphs = graphs[start:start + batch_size]
+        batch_graphs = graphs[start : start + batch_size]
         valid = [g for g in batch_graphs if g is not None]
         if not valid:
             out.extend([0.0] * len(batch_graphs))
@@ -262,6 +261,7 @@ def _safe_spearman(y_true: np.ndarray, y_pred: np.ndarray) -> float:
         return float("nan")
     try:
         from scipy.stats import spearmanr  # type: ignore
+
         rho, _ = spearmanr(y_true, y_pred)
         return float(rho) if rho == rho else float("nan")
     except Exception:
@@ -271,6 +271,7 @@ def _safe_spearman(y_true: np.ndarray, y_pred: np.ndarray) -> float:
             ranks = np.empty_like(order, dtype=np.float64)
             ranks[order] = np.arange(1, len(x) + 1)
             return ranks
+
         return _safe_pearson(_rank(y_true), _rank(y_pred))
 
 
@@ -363,8 +364,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     n_train = int(0.8 * len(idx))
     n_val = int(0.1 * len(idx))
     idx_train = idx[:n_train]
-    idx_val = idx[n_train:n_train + n_val]
-    idx_test = idx[n_train + n_val:]
+    idx_val = idx[n_train : n_train + n_val]
+    idx_test = idx[n_train + n_val :]
     print(
         f"[calibrate_pic50_predictor] split: train={len(idx_train)} "
         f"val={len(idx_val)} test={len(idx_test)}"
@@ -403,12 +404,19 @@ def main(argv: Optional[List[str]] = None) -> int:
     for epoch in range(args.epochs):
         t0 = time.time()
         train_loss = train_one_epoch(
-            model, optimizer, graphs_train, y_train,
-            batch_size=args.batch_size, device=device,
+            model,
+            optimizer,
+            graphs_train,
+            y_train,
+            batch_size=args.batch_size,
+            device=device,
         )
         val_metrics = evaluate(
-            model, graphs_val, y_val,
-            batch_size=args.batch_size, device=device,
+            model,
+            graphs_val,
+            y_val,
+            batch_size=args.batch_size,
+            device=device,
         )
         elapsed = time.time() - t0
 
@@ -425,9 +433,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         if val_metrics["mse"] < best_val_mse:
             best_val_mse = val_metrics["mse"]
-            best_state = {
-                k: v.cpu().clone() for k, v in model.state_dict().items()
-            }
+            best_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
 
         print(
             f"[epoch {epoch:3d}] train_mse={train_loss:.4f} "
@@ -442,16 +448,25 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # Final test.
     train_metrics = evaluate(
-        model, graphs_train, y_train,
-        batch_size=args.batch_size, device=device,
+        model,
+        graphs_train,
+        y_train,
+        batch_size=args.batch_size,
+        device=device,
     )
     val_metrics = evaluate(
-        model, graphs_val, y_val,
-        batch_size=args.batch_size, device=device,
+        model,
+        graphs_val,
+        y_val,
+        batch_size=args.batch_size,
+        device=device,
     )
     test_metrics = evaluate(
-        model, graphs_test, y_test,
-        batch_size=args.batch_size, device=device,
+        model,
+        graphs_test,
+        y_test,
+        batch_size=args.batch_size,
+        device=device,
     )
 
     print()

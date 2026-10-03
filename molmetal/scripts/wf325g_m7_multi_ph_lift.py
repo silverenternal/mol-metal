@@ -46,6 +46,7 @@ Run with::
         molmetal/scripts/wf325g_m7_multi_ph_lift.py \\
         --report-dir molmetal/reports/wf325g_m7_multi_ph_lift
 """
+
 from __future__ import annotations
 
 import argparse
@@ -71,6 +72,7 @@ except Exception:
 # readable.
 try:
     from rdkit import RDLogger
+
     RDLogger.DisableLog("rdApp.*")
 except Exception:
     pass
@@ -132,7 +134,9 @@ def load_metallo_drugs(csv_path: Path) -> Tuple[List[str], List[str]]:
 # ---------------------------------------------------------------------------
 # Diversity computation (matches Wf-186 Tanimoto methodology)
 # ---------------------------------------------------------------------------
-def morgan_fp_batch(smiles: Sequence[str], radius: int = 2, n_bits: int = 2048) -> np.ndarray:
+def morgan_fp_batch(
+    smiles: Sequence[str], radius: int = 2, n_bits: int = 2048
+) -> np.ndarray:
     """Return ``(n, n_bits)`` uint8 Morgan-ECFP4 fingerprint matrix.
 
     Falls back to a zero-row if RDKit cannot parse a SMILES — the
@@ -157,6 +161,7 @@ def morgan_fp_batch(smiles: Sequence[str], radius: int = 2, n_bits: int = 2048) 
             fp = AllChem.GetMorganFingerprintAsBitVect(mol, radius, nBits=n_bits)
             arr = np.zeros((n_bits,), dtype=np.uint8)
             from rdkit import DataStructs
+
             DataStructs.ConvertToNumpyArray(fp, arr)
             out[i] = arr
         except Exception:
@@ -188,7 +193,7 @@ def _pack_bits_to_uint64(fps: np.ndarray) -> np.ndarray:
     grouped = bits_T.reshape(n_words, 32, n)  # (words, bits, n)
     bit_shifts = np.arange(32, dtype=np.uint64).reshape(32, 1)  # (bits, 1)
     # shift each of the 32 bit positions into its slot
-    shifted = (grouped << bit_shifts)  # broadcast: (words, 32, n) shifted by (32,1)
+    shifted = grouped << bit_shifts  # broadcast: (words, 32, n) shifted by (32,1)
     # sum across the 32 bit positions → (words, n)
     packed = shifted.sum(axis=1).T  # (n, words)
     return packed
@@ -209,7 +214,11 @@ def mean_pairwise_tanimoto_distance(fps: np.ndarray) -> float:
     # pairwise AND popcount: sum over words of popcount(a_i & b_j).
     # Broadcasting: packed[:, None, :] is (n, 1, words); packed[None, :, :]
     # is (1, n, words); AND reduces to (n, n, words); popcount on last axis.
-    inter = np.bitwise_count(packed[:, None, :] & packed[None, :, :]).sum(axis=-1).astype(np.int64)
+    inter = (
+        np.bitwise_count(packed[:, None, :] & packed[None, :, :])
+        .sum(axis=-1)
+        .astype(np.int64)
+    )
     union = total_bits[:, None] + total_bits[None, :] - inter
     sim = np.where(union > 0, inter / np.maximum(union, 1), 0.0)
     iu = np.triu_indices(n, k=1)
@@ -243,10 +252,13 @@ def build_multi_ph_selector():
         from molmetal.molmetal_lam.lam_chem.multi_ph_pll_integration import (
             _build_default_signature,
         )
+
         sig = _build_default_signature()
         return sig
     except Exception as exc:  # pragma: no cover
-        print(f"[Wf-325G] Multi-PH unavailable ({exc}); falling back to fp-only selector")
+        print(
+            f"[Wf-325G] Multi-PH unavailable ({exc}); falling back to fp-only selector"
+        )
         return None
 
 
@@ -323,7 +335,9 @@ def select_top_n_by_multi_ph_distance(
         # in :func:`build_multi_ph_selector`).
         fallback_fps = morgan_fp_batch(pool_smiles)
         fallback_packed = _pack_bits_to_uint64(fallback_fps)
-        fallback_total_bits = np.bitwise_count(fallback_packed).sum(axis=1).astype(np.int64)
+        fallback_total_bits = (
+            np.bitwise_count(fallback_packed).sum(axis=1).astype(np.int64)
+        )
 
         def _tanimoto_dist(i: int, j: int) -> float:
             inter = int(np.bitwise_count(fallback_packed[i] & fallback_packed[j]).sum())
@@ -377,7 +391,9 @@ def select_top_n_by_multi_ph_distance(
 # ---------------------------------------------------------------------------
 # Pool generation
 # ---------------------------------------------------------------------------
-def generate_pools(smiles: Sequence[str], n_pools: int, pool_size: int) -> List[List[int]]:
+def generate_pools(
+    smiles: Sequence[str], n_pools: int, pool_size: int
+) -> List[List[int]]:
     """Generate ``n_pools`` disjoint sub-pools of indices, each of
     size ``pool_size``.
 
@@ -409,7 +425,9 @@ def generate_pools(smiles: Sequence[str], n_pools: int, pool_size: int) -> List[
 # ---------------------------------------------------------------------------
 # Aggregation
 # ---------------------------------------------------------------------------
-def aggregate_selected(pools: Sequence[Sequence[int]], selections: Sequence[Sequence[int]]) -> List[int]:
+def aggregate_selected(
+    pools: Sequence[Sequence[int]], selections: Sequence[Sequence[int]]
+) -> List[int]:
     """Flatten pool selections into a single ordered list of unique indices."""
     seen = set()
     out: List[int] = []
@@ -462,13 +480,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     t_load = time.time() - t0
     print(f"[Wf-325G] Loaded {len(smiles)} SMILES in {t_load:.2f}s")
 
-    print("[Wf-325G] Computing pool-ceiling diversity (Morgan-ECFP4 mean pairwise Tanimoto distance on full 449-pool) ...")
+    print(
+        "[Wf-325G] Computing pool-ceiling diversity (Morgan-ECFP4 mean pairwise Tanimoto distance on full 449-pool) ..."
+    )
     t0 = time.time()
     fps_full = morgan_fp_batch(smiles)
     m7_pool_ceiling = mean_pairwise_tanimoto_distance(fps_full)
     t_baseline = time.time() - t0
-    print(f"[Wf-325G] pool-ceiling diversity MEASURED = {m7_pool_ceiling:.6f}  "
-          f"(this is the upper bound on what MCTS could ever generate from this pool)  [{t_baseline:.2f}s]")
+    print(
+        f"[Wf-325G] pool-ceiling diversity MEASURED = {m7_pool_ceiling:.6f}  "
+        f"(this is the upper bound on what MCTS could ever generate from this pool)  [{t_baseline:.2f}s]"
+    )
 
     # Honest framing note: m7 metric 0.1366 is the GENERATED-cohort
     # diversity from R12 EV-3 (10x3 sweep), not the pool diversity.
@@ -476,31 +498,41 @@ def main(argv: Sequence[str] | None = None) -> int:
     # generated-cohort diversity (~0.13) is the floor / current
     # state.  Lift is measured against the generated-cohort baseline.
 
-    print(f"[Wf-325G] Generating {args.n_pools} pools × {args.pool_size} SMILES each ...")
+    print(
+        f"[Wf-325G] Generating {args.n_pools} pools × {args.pool_size} SMILES each ..."
+    )
     pools = generate_pools(smiles, args.n_pools, args.pool_size)
 
     print("[Wf-325G] Building Multi-PH selector (CPU-only) ...")
     sig = None if args.disable_multiph else build_multi_ph_selector()
     multi_ph_ok = sig is not None
-    print(f"[Wf-325G] Multi-PH selector: {'OK' if multi_ph_ok else 'UNAVAILABLE (fp fallback)'}; "
-          f"max-multiph-per-pool={args.max_multiph_per_pool}")
+    print(
+        f"[Wf-325G] Multi-PH selector: {'OK' if multi_ph_ok else 'UNAVAILABLE (fp fallback)'}; "
+        f"max-multiph-per-pool={args.max_multiph_per_pool}"
+    )
 
     # Establish generated-cohort baseline by averaging diversity
     # across raw pools (each pool = what MCTS would generate if it
     # samples uniformly from the pool — the simulated "current
     # MCTS cohort" baseline).
-    print("[Wf-325G] Establishing generated-cohort baseline (avg pool diversity, no selection) ...")
+    print(
+        "[Wf-325G] Establishing generated-cohort baseline (avg pool diversity, no selection) ..."
+    )
     generated_baseline_diversities: List[float] = []
     for pool in pools:
         pool_smiles = [smiles[i] for i in pool]
         fps = morgan_fp_batch(pool_smiles)
         generated_baseline_diversities.append(mean_pairwise_tanimoto_distance(fps))
     m7_generated_baseline = float(np.mean(generated_baseline_diversities))
-    print(f"[Wf-325G] generated-cohort baseline (this run, {args.n_pools} raw pools) = "
-          f"{m7_generated_baseline:.6f}  (R12 EV-3 reference = {M7_BASELINE_MEASURED:.6f})")
+    print(
+        f"[Wf-325G] generated-cohort baseline (this run, {args.n_pools} raw pools) = "
+        f"{m7_generated_baseline:.6f}  (R12 EV-3 reference = {M7_BASELINE_MEASURED:.6f})"
+    )
 
-    print(f"[Wf-325G] Selecting top-{args.top_n} per pool via "
-          f"{'Multi-PH' if multi_ph_ok else 'Tanimoto'} MaxMin selector ...")
+    print(
+        f"[Wf-325G] Selecting top-{args.top_n} per pool via "
+        f"{'Multi-PH' if multi_ph_ok else 'Tanimoto'} MaxMin selector ..."
+    )
     per_cohort: List[Dict[str, Any]] = []
     t_select = time.time()
     selections: List[List[int]] = []
@@ -532,14 +564,16 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if _smiles_to_multiph_or_none(sig, smi) is not None:
                     multi_ph_success_count += 1
 
-        per_cohort.append({
-            "pool_idx": p_idx,
-            "n_pool": len(pool),
-            "n_selected": len(sel),
-            "diversity_pool_before": float(d_pool),
-            "diversity_pool_after": float(d_sel),
-            "lift": float(d_sel - d_pool),
-        })
+        per_cohort.append(
+            {
+                "pool_idx": p_idx,
+                "n_pool": len(pool),
+                "n_selected": len(sel),
+                "diversity_pool_before": float(d_pool),
+                "diversity_pool_after": float(d_sel),
+                "lift": float(d_sel - d_pool),
+            }
+        )
     t_select = time.time() - t_select
 
     # Aggregate across all pools
@@ -548,8 +582,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     agg_fps = morgan_fp_batch(agg_smiles)
     m7_lift = mean_pairwise_tanimoto_distance(agg_fps)
     n_agg = len(agg_smiles)
-    print(f"[Wf-325G] aggregate m7 after Multi-PH 100-pool lift = {m7_lift:.6f}  "
-          f"(n_aggregate={n_agg}, {t_select:.2f}s selection)")
+    print(
+        f"[Wf-325G] aggregate m7 after Multi-PH 100-pool lift = {m7_lift:.6f}  "
+        f"(n_aggregate={n_agg}, {t_select:.2f}s selection)"
+    )
 
     delta_vs_generated_baseline = m7_lift - m7_generated_baseline
     delta_vs_r12_ev3 = m7_lift - M7_BASELINE_MEASURED
@@ -574,14 +610,21 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     multi_ph_success_rate = (
         multi_ph_success_count / multi_ph_total_count
-        if multi_ph_total_count > 0 else 0.0
+        if multi_ph_total_count > 0
+        else 0.0
     )
-    print(f"[Wf-325G] Multi-PH signature success rate on metallo cohort: "
-          f"{multi_ph_success_count}/{multi_ph_total_count} = {multi_ph_success_rate:.4f}")
-    print(f"[Wf-325G] per-pool lift: mean={per_pool_lift_mean:.6f} "
-          f"min={per_pool_lift_min:.6f} max={per_pool_lift_max:.6f} "
-          f"pools_with_lift={n_pools_with_lift}/{len(per_cohort)}")
-    print(f"[Wf-325G] delta vs generated-cohort baseline (this run): {delta_vs_generated_baseline:+.6f}")
+    print(
+        f"[Wf-325G] Multi-PH signature success rate on metallo cohort: "
+        f"{multi_ph_success_count}/{multi_ph_total_count} = {multi_ph_success_rate:.4f}"
+    )
+    print(
+        f"[Wf-325G] per-pool lift: mean={per_pool_lift_mean:.6f} "
+        f"min={per_pool_lift_min:.6f} max={per_pool_lift_max:.6f} "
+        f"pools_with_lift={n_pools_with_lift}/{len(per_cohort)}"
+    )
+    print(
+        f"[Wf-325G] delta vs generated-cohort baseline (this run): {delta_vs_generated_baseline:+.6f}"
+    )
     print(f"[Wf-325G] delta vs R12 EV-3 reference (0.1366): {delta_vs_r12_ev3:+.6f}")
     print(f"[Wf-325G] Verdict: {verdict} ({lift_status})")
 
@@ -654,9 +697,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "structural_fix_needed": "fragment-pool expansion (per WEAK_TO_STRONG_PLAN §2.5)",
             "long_term_scope": "R19+ Lambda × CFM coupling TODO-21 may lift +0.30 to +0.45",
             "honest_negative_if_lift_lt_005": True,
-            "multiph_embeds_fail_on_metallo_drugs": (
-                multi_ph_success_rate < 0.5
-            ),
+            "multiph_embeds_fail_on_metallo_drugs": (multi_ph_success_rate < 0.5),
             "multiph_fallback_used": "Tanimoto MaxMin on Morgan-ECFP4 fingerprints",
         },
     }
@@ -670,7 +711,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     with open(csv_out, "w", newline="", encoding="utf-8") as fh:
         writer = csv.DictWriter(
             fh,
-            fieldnames=["pool_idx", "n_pool", "n_selected", "diversity_pool_before", "diversity_pool_after", "lift"],
+            fieldnames=[
+                "pool_idx",
+                "n_pool",
+                "n_selected",
+                "diversity_pool_before",
+                "diversity_pool_after",
+                "lift",
+            ],
         )
         writer.writeheader()
         for row in per_cohort:

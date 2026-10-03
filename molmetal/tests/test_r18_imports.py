@@ -33,6 +33,7 @@ the two stay in lock-step.
 
 CPU-only, no GPU, no fixtures, no mutable state.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -105,8 +106,7 @@ def test_math_skills_all_9() -> None:
 def test_adapters_all_7() -> None:
     """All 7 adapter modules import (3 integration + 4 SOTA-clones)."""
     assert len(GROUPS["adapters"]) == 7, (
-        f"expected 7 adapters, got {len(GROUPS['adapters'])}: "
-        f"{GROUPS['adapters']}"
+        f"expected 7 adapters, got {len(GROUPS['adapters'])}: " f"{GROUPS['adapters']}"
     )
     for lid in GROUPS["adapters"]:
         fqmn = next(f for _lid, f, _d in SHIP_MODULES if _lid == lid)
@@ -122,8 +122,7 @@ def test_lam_chem_new_11() -> None:
     ``wf_t30_p12_fg_veto`` ship report.  Both paths are exercised here.
     """
     assert len(GROUPS["lam_chem"]) == 11, (
-        f"expected 11 lam_chem, got {len(GROUPS['lam_chem'])}: "
-        f"{GROUPS['lam_chem']}"
+        f"expected 11 lam_chem, got {len(GROUPS['lam_chem'])}: " f"{GROUPS['lam_chem']}"
     )
     for lid in GROUPS["lam_chem"]:
         fqmn = next(f for _lid, f, _d in SHIP_MODULES if _lid == lid)
@@ -154,9 +153,7 @@ def test_flow_matching_lipman_w_flow() -> None:
 
 def test_flow_matching_lipman_m5_schedulers() -> None:
     """m5_schedulers (variance-preserving schedulers) imports."""
-    importlib.import_module(
-        "molmetal.adapters.flow_matching_lipman.m5_schedulers"
-    )
+    importlib.import_module("molmetal.adapters.flow_matching_lipman.m5_schedulers")
 
 
 def test_adapters_coordination_gnn() -> None:
@@ -174,9 +171,9 @@ def test_adapters_quotient_space_diffusion() -> None:
 # ---------------------------------------------------------------------------
 def test_total_modules_at_least_30() -> None:
     """The full ship manifest must contain at least 30 modules."""
-    assert len(SHIP_MODULES) >= 30, (
-        f"expected >= 30 ship modules, got {len(SHIP_MODULES)}"
-    )
+    assert (
+        len(SHIP_MODULES) >= 30
+    ), f"expected >= 30 ship modules, got {len(SHIP_MODULES)}"
 
 
 def test_total_modules_is_32() -> None:
@@ -186,9 +183,9 @@ def test_total_modules_is_32() -> None:
     Update this test (and the JSON ``n_modules_total`` field) together
     if a future round genuinely expands the manifest.
     """
-    assert len(SHIP_MODULES) == 32, (
-        f"R18 manifest changed: got {len(SHIP_MODULES)}, expected 32"
-    )
+    assert (
+        len(SHIP_MODULES) == 32
+    ), f"R18 manifest changed: got {len(SHIP_MODULES)}, expected 32"
 
 
 def test_math_skills_count_is_9() -> None:
@@ -242,6 +239,7 @@ def test_json_artefact_matches_manifest() -> None:
             f"{json_path}"
         )
     import json as _json
+
     data = _json.loads(json_path.read_text(encoding="utf-8"))
     assert data["n_modules_total"] == len(SHIP_MODULES), (
         f"JSON n_modules_total={data['n_modules_total']} != "
@@ -278,13 +276,11 @@ def test_json_artefact_reports_all_ok() -> None:
     if not json_path.is_file():
         pytest.skip(f"JSON artefact not present: {json_path}")
     import json as _json
+
     data = _json.loads(json_path.read_text(encoding="utf-8"))
-    assert data["all_ok"] is True, (
-        f"JSON reports failures: {data['failures']}"
-    )
+    assert data["all_ok"] is True, f"JSON reports failures: {data['failures']}"
     assert data["n_passed"] == data["n_modules_total"], (
-        f"n_passed={data['n_passed']} != "
-        f"n_modules_total={data['n_modules_total']}"
+        f"n_passed={data['n_passed']} != " f"n_modules_total={data['n_modules_total']}"
     )
 
 

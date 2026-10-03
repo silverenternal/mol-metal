@@ -48,7 +48,9 @@ from typing import Any, Dict, List, Optional
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DOT_DATA_DIR = REPO_ROOT / ".data" / "molmetal"
 DEFAULT_PT_CSV = DOT_DATA_DIR / "platinai_4cell.csv"
-DEFAULT_POOL_OUT = REPO_ROOT / "molmetal" / "reports" / "wf319b_uff_min_pt_pool" / "pool.json"
+DEFAULT_POOL_OUT = (
+    REPO_ROOT / "molmetal" / "reports" / "wf319b_uff_min_pt_pool" / "pool.json"
+)
 DEFAULT_METRICS_OUT = REPO_ROOT / "metrics" / "by_metric" / "uff_energy_pt_pool.json"
 
 
@@ -144,12 +146,30 @@ def _uff_minimize_one(smiles: str, max_iter: int) -> Optional[Dict[str, Any]]:
     embed_status = -1
     embed_method = None
     for method_name, params in (
-        ("ETKDGv3+randomCoords", lambda: (
-            (lambda p: (setattr(p, "randomSeed", 0xC0FFEE), setattr(p, "useRandomCoords", True), p)[-1])(AllChem.ETKDGv3())
-        )),
-        ("ETKDGv2+randomCoords", lambda: (
-            (lambda p: (setattr(p, "randomSeed", 0xC0FFEE), setattr(p, "useRandomCoords", True), p)[-1])(AllChem.ETKDGv2())
-        )),
+        (
+            "ETKDGv3+randomCoords",
+            lambda: (
+                (
+                    lambda p: (
+                        setattr(p, "randomSeed", 0xC0FFEE),
+                        setattr(p, "useRandomCoords", True),
+                        p,
+                    )[-1]
+                )(AllChem.ETKDGv3())
+            ),
+        ),
+        (
+            "ETKDGv2+randomCoords",
+            lambda: (
+                (
+                    lambda p: (
+                        setattr(p, "randomSeed", 0xC0FFEE),
+                        setattr(p, "useRandomCoords", True),
+                        p,
+                    )[-1]
+                )(AllChem.ETKDGv2())
+            ),
+        ),
     ):
         try:
             embed_status = AllChem.EmbedMolecule(mol_h, params())
@@ -267,19 +287,39 @@ def _summarize(
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[1] if __doc__ else "")
-    parser.add_argument("--n-conformers", type=int, default=100,
-                        help="number of Pt conformers to UFF-minimize")
-    parser.add_argument("--seed", type=int, default=42,
-                        help="sampling seed (for active/inactive split)")
-    parser.add_argument("--max-iter", type=int, default=200,
-                        help="UFFOptimizeMolecule maxIters")
-    parser.add_argument("--csv", type=Path, default=DEFAULT_PT_CSV,
-                        help="Pt-source CSV (default platinai_4cell.csv)")
-    parser.add_argument("--json-out", type=Path, default=DEFAULT_POOL_OUT,
-                        help="per-conformer pool JSON")
-    parser.add_argument("--metrics-out", type=Path, default=DEFAULT_METRICS_OUT,
-                        help="summary metrics JSON")
+    parser = argparse.ArgumentParser(
+        description=__doc__.splitlines()[1] if __doc__ else ""
+    )
+    parser.add_argument(
+        "--n-conformers",
+        type=int,
+        default=100,
+        help="number of Pt conformers to UFF-minimize",
+    )
+    parser.add_argument(
+        "--seed", type=int, default=42, help="sampling seed (for active/inactive split)"
+    )
+    parser.add_argument(
+        "--max-iter", type=int, default=200, help="UFFOptimizeMolecule maxIters"
+    )
+    parser.add_argument(
+        "--csv",
+        type=Path,
+        default=DEFAULT_PT_CSV,
+        help="Pt-source CSV (default platinai_4cell.csv)",
+    )
+    parser.add_argument(
+        "--json-out",
+        type=Path,
+        default=DEFAULT_POOL_OUT,
+        help="per-conformer pool JSON",
+    )
+    parser.add_argument(
+        "--metrics-out",
+        type=Path,
+        default=DEFAULT_METRICS_OUT,
+        help="summary metrics JSON",
+    )
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args(argv)
 
@@ -292,8 +332,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     print(f"[Wf-319B] Pt rows in source: {len(rows)}", file=sys.stderr)
 
     sampled = _sample_balanced(rows, n=args.n_conformers, seed=args.seed)
-    print(f"[Wf-319B] sampled {len(sampled)} Pt compounds (50/50 active/inactive if possible)",
-          file=sys.stderr)
+    print(
+        f"[Wf-319B] sampled {len(sampled)} Pt compounds (50/50 active/inactive if possible)",
+        file=sys.stderr,
+    )
 
     records: List[Dict[str, Any]] = []
     n_embed_failed = 0
@@ -307,7 +349,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             records.append(rec)
         if args.verbose and i % 10 == 0:
             elapsed = time.perf_counter() - t0
-            print(f"[Wf-319B] progress: {i}/{len(sampled)} ({elapsed:.1f}s)", file=sys.stderr)
+            print(
+                f"[Wf-319B] progress: {i}/{len(sampled)} ({elapsed:.1f}s)",
+                file=sys.stderr,
+            )
     elapsed = time.perf_counter() - t0
 
     summary = _summarize(
@@ -358,10 +403,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         json.dump(summary, fh, indent=2, ensure_ascii=False)
 
     print(f"[Wf-319B] DONE in {elapsed:.1f}s", file=sys.stderr)
-    print(f"[Wf-319B] n_conformers_generated={summary['n_conformers_generated']}",
-          file=sys.stderr)
-    print(f"[Wf-319B] mean energy = {summary['energy_kcal_per_mol']['mean']}",
-          file=sys.stderr)
+    print(
+        f"[Wf-319B] n_conformers_generated={summary['n_conformers_generated']}",
+        file=sys.stderr,
+    )
+    print(
+        f"[Wf-319B] mean energy = {summary['energy_kcal_per_mol']['mean']}",
+        file=sys.stderr,
+    )
     print(f"[Wf-319B] pool: {args.json_out}", file=sys.stderr)
     print(f"[Wf-319B] metrics: {args.metrics_out}", file=sys.stderr)
     return 0

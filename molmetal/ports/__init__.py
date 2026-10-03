@@ -36,8 +36,8 @@ class GenerationConfig:
     """Inputs to :meth:`MoleculeGenerator.generate`."""
 
     n_samples: int = 100
-    n_steps: int = 50                # number of ODE integration steps
-    temperature: float = 1.0         # noise scale (>1 → more diverse)
+    n_steps: int = 50  # number of ODE integration steps
+    temperature: float = 1.0  # noise scale (>1 → more diverse)
     seed: int = 42
     conditioning: dict = field(default_factory=dict)  # pocket embeddings etc.
     # ODE solver method. One of {"euler", "midpoint", "dopri5", "heun3"}.
@@ -57,7 +57,7 @@ class GenerationConfig:
 class DockingConfig:
     """Inputs to :meth:`DockingEngine.dock`."""
 
-    n_poses: int = 10                 # top-K poses per (mol, pocket)
+    n_poses: int = 10  # top-K poses per (mol, pocket)
     exhaustiveness: int = 8
     use_confidence: bool = True
     seed: int = 42
@@ -113,6 +113,7 @@ class DockingEngine(Protocol):
     ) -> List[Complex]:
         """Return top-N poses (each is a Complex with transformed molecule)."""
         ...
+
     def get_metadata(self) -> dict: ...
 
 
@@ -132,7 +133,7 @@ class PropertyPrediction:
     num_h_acceptors: int = 0
     num_rotatable_bonds: int = 0
     binding_affinity_pic50: Optional[float] = None  # from EGNN/D-MPNN
-    metal_binding_score: Optional[float] = None     # for our metal extension
+    metal_binding_score: Optional[float] = None  # for our metal extension
 
 
 @runtime_checkable
@@ -148,6 +149,7 @@ class PropertyPredictor(Protocol):
         complex: Optional[Complex] = None,
     ) -> PropertyPrediction: ...
     def get_metadata(self) -> dict: ...
+
 
 # ---------------------------------------------------------------------------
 # Port 4: ScoringFunction

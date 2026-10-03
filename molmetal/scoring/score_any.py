@@ -38,6 +38,7 @@ Adding a new metric
    view in sync with the in-process dict.
 7. Add a test in :mod:`molmetal.tests.test_score_any`.
 """
+
 from __future__ import annotations
 
 import os
@@ -54,6 +55,7 @@ from typing import (
     Sequence,
     Tuple,
 )
+
 
 # ---------------------------------------------------------------------------
 # Public exception
@@ -327,8 +329,12 @@ def _w_vina_min_score(ctx: Dict[str, Any]) -> Dict[str, float]:
     scores = _w_vina_score(ctx)
     valid = [s for s in scores if s == s]  # drop NaN
     if not valid:
-        return {"min": float("nan"), "median": float("nan"),
-                "n_below_cutoff": 0, "n_total": 0}
+        return {
+            "min": float("nan"),
+            "median": float("nan"),
+            "n_below_cutoff": 0,
+            "n_total": 0,
+        }
     sorted_s = sorted(valid)
     median = sorted_s[len(sorted_s) // 2]
     return {
@@ -400,11 +406,11 @@ def _w_vina_metal_fallback(ctx: Dict[str, Any]) -> List[float]:
             complexes = []
 
         scores = [
-            c.vina_score for c in complexes
+            c.vina_score
+            for c in complexes
             if c is not None and c.vina_score is not None
         ]
-        valid_scores = [s for s in scores
-                        if isinstance(s, float) and s == s]
+        valid_scores = [s for s in scores if isinstance(s, float) and s == s]
         if valid_scores:
             out.append(float(min(valid_scores)))
             continue
@@ -509,9 +515,7 @@ def _w_af2_confidence(ctx: Dict[str, Any]) -> List[float]:
     vox = _import_voxelization()
     pocket = ctx["pocket"]
     if pocket is None:
-        raise AdapterUnavailable(
-            "af2_confidence requires a pocket; none supplied."
-        )
+        raise AdapterUnavailable("af2_confidence requires a pocket; none supplied.")
     tiles = vox.pocket_to_spatial_tiles(
         pocket,
         grid_size=int(ctx.get("grid_size", 24)),
@@ -521,13 +525,12 @@ def _w_af2_confidence(ctx: Dict[str, Any]) -> List[float]:
     # binding-site shape complexity).
     if not tiles:
         return [0.0]
-    counts = [len(t.atom_indices) if hasattr(t, "atom_indices") else 1
-              for t in tiles]
+    counts = [len(t.atom_indices) if hasattr(t, "atom_indices") else 1 for t in tiles]
     if not counts:
         return [0.0]
     mean = sum(counts) / len(counts)
     var = sum((c - mean) ** 2 for c in counts) / len(counts)
-    return [float(var ** 0.5)]
+    return [float(var**0.5)]
 
 
 def _w_pb_pass_rate(ctx: Dict[str, Any]) -> float:
@@ -573,7 +576,9 @@ def _w_vina_qvina2(ctx: Dict[str, Any]) -> List[float]:
         )
     out: List[float] = []
     for smi in smiles_list:
-        scores = qv2.q_vina2_score(smi, pocket, exhaustiveness=int(ctx.get("exhaustiveness", 8)))
+        scores = qv2.q_vina2_score(
+            smi, pocket, exhaustiveness=int(ctx.get("exhaustiveness", 8))
+        )
         out.append(float(min(scores)) if scores else float("nan"))
     return out
 
@@ -618,9 +623,7 @@ def _w_targetdiff(ctx: Dict[str, Any]) -> List[float]:
     # The sampler is created on demand; cap at 1 sample per call to
     # keep wall-time bounded — callers wanting more should batch.
     n_samples = int(ctx.get("n_samples", 1))
-    samples = td.PocketToLigandSampler().sample(
-        pocket=pocket, n_samples=n_samples
-    )
+    samples = td.PocketToLigandSampler().sample(pocket=pocket, n_samples=n_samples)
     return [float(getattr(s, "n_atoms", 0)) for s in samples]
 
 
@@ -661,7 +664,9 @@ def _w_vina_gpu(ctx: Dict[str, Any]) -> List[float]:
     smiles_list = _as_smiles_list(ctx["molecules"])
     out: List[float] = []
     for smi in smiles_list:
-        complexes = vgpu.dock_smiles_gpu(smi, pocket, n_poses=int(ctx.get("n_poses", 5)))
+        complexes = vgpu.dock_smiles_gpu(
+            smi, pocket, n_poses=int(ctx.get("n_poses", 5))
+        )
         if not complexes:
             out.append(float("nan"))
         else:
@@ -717,168 +722,240 @@ def _w_flowr(ctx: Dict[str, Any]) -> List[float]:
 # ---------------------------------------------------------------------------
 # Populate REGISTRY
 # ---------------------------------------------------------------------------
-_register("vina_score", ToolRef(
-    wrapper=_w_vina_score,
-    tool_name="AutoDock Vina 1.2.7",
-    backend="python+cli",
-    notes="Real Meeko+AutoDock-Vina Python binding (preferred) or "
-          "vina CLI binary. Routes to Q-Vina2 when env "
-          "MOLMETAL_VINA_ENGINE=qvina2 is set.",
-))
-_register("vina_high_affinity", ToolRef(
-    wrapper=_w_vina_high_affinity,
-    tool_name="AutoDock Vina 1.2.7",
-    backend="python+cli",
-    notes="Boolean classifier on top of vina_score (cutoff_kcal, "
-          "default -8.0 kcal/mol).",
-))
-_register("vina_min_score", ToolRef(
-    wrapper=_w_vina_min_score,
-    tool_name="AutoDock Vina 1.2.7",
-    backend="python+cli",
-    notes="Aggregates vina_score over a batch — min / median / "
-          "count-below-cutoff.",
-))
-_register("vina_metal_fallback", ToolRef(
-    wrapper=_w_vina_metal_fallback,
-    tool_name="AutoDock Vina 1.2.7 + boltz_affinity (D-MPNN pIC50) fallback",
-    backend="python+cli",
-    notes=(
-        "Metallodrug-safe Vina docking wrapper: tries Wf-121 P1/P2 "
-        "metal-PDBQT path first; on MetalPDBQTUnavailable or non-finite "
-        "score falls back to boltz_affinity (Wf-120 D-MPNN pIC50). "
-        "Both paths are real, neither is a mock. See "
-        "molmetal/reports/wf121_cisplatin_real_vina/ for sweep evidence."
+_register(
+    "vina_score",
+    ToolRef(
+        wrapper=_w_vina_score,
+        tool_name="AutoDock Vina 1.2.7",
+        backend="python+cli",
+        notes="Real Meeko+AutoDock-Vina Python binding (preferred) or "
+        "vina CLI binary. Routes to Q-Vina2 when env "
+        "MOLMETAL_VINA_ENGINE=qvina2 is set.",
     ),
-))
-_register("vina_gpu", ToolRef(
-    wrapper=_w_vina_gpu,
-    tool_name="Vina-GPU",
-    backend="python+CUDA",
-    notes="GPU-accelerated Vina; same kcal/mol semantics as "
-          "vina_score. Requires CUDA device + vina_gpu extension.",
-))
-_register("vina_qvina2", ToolRef(
-    wrapper=_w_vina_qvina2,
-    tool_name="QuickVina 2 (CASO-derived)",
-    backend="cli",
-    notes="Real qvina02 binary on PATH; same kcal/mol semantics as "
-          "AutoDock Vina. Routes via q_vina2_swap.py.",
-))
-_register("diffdock_pose", ToolRef(
-    wrapper=_w_diffdock_pose,
-    tool_name="DiffDock (R17 ship)",
-    backend="python",
-    notes="Real DiffDock inference; confidence ∈ [0, 1].",
-))
-_register("equibind_pose", ToolRef(
-    wrapper=_w_equibind_pose,
-    tool_name="EquiBind (NOT SHIPPED)",
-    backend="python",
-    notes="Reserved metric — adapter not yet in repo. Use "
-          "diffdock_pose / flowdock_pose as the SE(3)-equivariant "
-          "surrogate.",
-))
-_register("flowdock_pose", ToolRef(
-    wrapper=_w_flowdock,
-    tool_name="FlowDock (R17 ship)",
-    backend="python",
-    notes="Real flow-matching docking confidence ∈ [0, 1].",
-))
-_register("pocket2mol", ToolRef(
-    wrapper=_w_pocket2mol,
-    tool_name="Pocket2Mol (R17 ship)",
-    backend="python",
-    notes="Real Pocket2Mol sampler; atom-count is the validity proxy.",
-))
-_register("boltz_affinity", ToolRef(
-    wrapper=_w_boltz_affinity,
-    tool_name="Boltz-style pIC50 (R17 ship, D-MPNN)",
-    backend="python",
-    notes="Real locally-trained Attentive D-MPNN pIC50 predictor; "
-          "swap to Boltz foundation-model pIC50 head when shipped.",
-))
-_register("af2_confidence", ToolRef(
-    wrapper=_w_af2_confidence,
-    tool_name="Voxelization complexity (AF2 surrogate)",
-    backend="python",
-    notes="Real voxelization complexity proxy (deterministic). "
-          "Swap to AF2 pLDDT inference once shipped.",
-))
-_register("pb_pass_rate", ToolRef(
-    wrapper=_w_pb_pass_rate,
-    tool_name="PoseBusters (R17 ship)",
-    backend="python",
-    notes="Real PoseBusters 26-check validation.",
-))
-_register("aizynth_synthesis", ToolRef(
-    wrapper=_w_aizynth_synthesis,
-    tool_name="AiZynthFinder (R17 ship)",
-    backend="python",
-    notes="Real AiZynthFinder MCTS retrosynthesis with SMARTS "
-          "fallback when AiZynthFinder is not installed.",
-))
-_register("pl_likelihood", ToolRef(
-    wrapper=_w_pl_likelihood,
-    tool_name="PLL signature (R17 ship)",
-    backend="python",
-    notes="Real Persistent Local Laplacian signature from "
-          "molmetal.molmetal_lam.lam_chem.pll_signature.",
-))
-_register("decomp_diff", ToolRef(
-    wrapper=_w_decomp_diff,
-    tool_name="DecompDiff (NOT SHIPPED)",
-    backend="python",
-    notes="Reserved metric — adapter pending.",
-))
-_register("molcraft", ToolRef(
-    wrapper=_w_molcraft,
-    tool_name="MolCraft (NOT SHIPPED)",
-    backend="python",
-    notes="Reserved metric — adapter pending.",
-))
-_register("targetdiff", ToolRef(
-    wrapper=_w_targetdiff,
-    tool_name="TargetDiff (R17 ship)",
-    backend="python",
-    notes="Real TargetDiff sampler; atom-count is the validity proxy.",
-))
-_register("imold_ood", ToolRef(
-    wrapper=_w_imold_ood,
-    tool_name="IMOLDE OOD (NOT SHIPPED)",
-    backend="python",
-    notes="Reserved metric — adapter pending.",
-))
-_register("drugood_ood", ToolRef(
-    wrapper=_w_drugood_ood,
-    tool_name="DrugOOD OOD (NOT SHIPPED)",
-    backend="python",
-    notes="Reserved metric — adapter pending.",
-))
-_register("glide_score", ToolRef(
-    wrapper=_w_glide_score,
-    tool_name="Glide (Schrödinger, NOT SHIPPED)",
-    backend="commercial",
-    notes="Reserved metric — commercial tool, requires licence.",
-))
-_register("sa_score", ToolRef(
-    wrapper=_w_sa_score,
-    tool_name="SA score (RDKit Ertl)",
-    backend="python",
-    notes="Real Ertl-Schuffenhauer synthesis accessibility 1..10.",
-))
-_register("qed", ToolRef(
-    wrapper=_w_qed,
-    tool_name="QED (RDKit Bickerton)",
-    backend="python",
-    notes="Real Bickerton drug-likeness 0..1.",
-))
-_register("flowr", ToolRef(
-    wrapper=_w_flowr,
-    tool_name="FlowER retrosynthesis (R17 ship)",
-    backend="python",
-    notes="Real FlowER / FlowER retrosynthesis sampler.",
-))
+)
+_register(
+    "vina_high_affinity",
+    ToolRef(
+        wrapper=_w_vina_high_affinity,
+        tool_name="AutoDock Vina 1.2.7",
+        backend="python+cli",
+        notes="Boolean classifier on top of vina_score (cutoff_kcal, "
+        "default -8.0 kcal/mol).",
+    ),
+)
+_register(
+    "vina_min_score",
+    ToolRef(
+        wrapper=_w_vina_min_score,
+        tool_name="AutoDock Vina 1.2.7",
+        backend="python+cli",
+        notes="Aggregates vina_score over a batch — min / median / "
+        "count-below-cutoff.",
+    ),
+)
+_register(
+    "vina_metal_fallback",
+    ToolRef(
+        wrapper=_w_vina_metal_fallback,
+        tool_name="AutoDock Vina 1.2.7 + boltz_affinity (D-MPNN pIC50) fallback",
+        backend="python+cli",
+        notes=(
+            "Metallodrug-safe Vina docking wrapper: tries Wf-121 P1/P2 "
+            "metal-PDBQT path first; on MetalPDBQTUnavailable or non-finite "
+            "score falls back to boltz_affinity (Wf-120 D-MPNN pIC50). "
+            "Both paths are real, neither is a mock. See "
+            "molmetal/reports/wf121_cisplatin_real_vina/ for sweep evidence."
+        ),
+    ),
+)
+_register(
+    "vina_gpu",
+    ToolRef(
+        wrapper=_w_vina_gpu,
+        tool_name="Vina-GPU",
+        backend="python+CUDA",
+        notes="GPU-accelerated Vina; same kcal/mol semantics as "
+        "vina_score. Requires CUDA device + vina_gpu extension.",
+    ),
+)
+_register(
+    "vina_qvina2",
+    ToolRef(
+        wrapper=_w_vina_qvina2,
+        tool_name="QuickVina 2 (CASO-derived)",
+        backend="cli",
+        notes="Real qvina02 binary on PATH; same kcal/mol semantics as "
+        "AutoDock Vina. Routes via q_vina2_swap.py.",
+    ),
+)
+_register(
+    "diffdock_pose",
+    ToolRef(
+        wrapper=_w_diffdock_pose,
+        tool_name="DiffDock (R17 ship)",
+        backend="python",
+        notes="Real DiffDock inference; confidence ∈ [0, 1].",
+    ),
+)
+_register(
+    "equibind_pose",
+    ToolRef(
+        wrapper=_w_equibind_pose,
+        tool_name="EquiBind (NOT SHIPPED)",
+        backend="python",
+        notes="Reserved metric — adapter not yet in repo. Use "
+        "diffdock_pose / flowdock_pose as the SE(3)-equivariant "
+        "surrogate.",
+    ),
+)
+_register(
+    "flowdock_pose",
+    ToolRef(
+        wrapper=_w_flowdock,
+        tool_name="FlowDock (R17 ship)",
+        backend="python",
+        notes="Real flow-matching docking confidence ∈ [0, 1].",
+    ),
+)
+_register(
+    "pocket2mol",
+    ToolRef(
+        wrapper=_w_pocket2mol,
+        tool_name="Pocket2Mol (R17 ship)",
+        backend="python",
+        notes="Real Pocket2Mol sampler; atom-count is the validity proxy.",
+    ),
+)
+_register(
+    "boltz_affinity",
+    ToolRef(
+        wrapper=_w_boltz_affinity,
+        tool_name="Boltz-style pIC50 (R17 ship, D-MPNN)",
+        backend="python",
+        notes="Real locally-trained Attentive D-MPNN pIC50 predictor; "
+        "swap to Boltz foundation-model pIC50 head when shipped.",
+    ),
+)
+_register(
+    "af2_confidence",
+    ToolRef(
+        wrapper=_w_af2_confidence,
+        tool_name="Voxelization complexity (AF2 surrogate)",
+        backend="python",
+        notes="Real voxelization complexity proxy (deterministic). "
+        "Swap to AF2 pLDDT inference once shipped.",
+    ),
+)
+_register(
+    "pb_pass_rate",
+    ToolRef(
+        wrapper=_w_pb_pass_rate,
+        tool_name="PoseBusters (R17 ship)",
+        backend="python",
+        notes="Real PoseBusters 26-check validation.",
+    ),
+)
+_register(
+    "aizynth_synthesis",
+    ToolRef(
+        wrapper=_w_aizynth_synthesis,
+        tool_name="AiZynthFinder (R17 ship)",
+        backend="python",
+        notes="Real AiZynthFinder MCTS retrosynthesis with SMARTS "
+        "fallback when AiZynthFinder is not installed.",
+    ),
+)
+_register(
+    "pl_likelihood",
+    ToolRef(
+        wrapper=_w_pl_likelihood,
+        tool_name="PLL signature (R17 ship)",
+        backend="python",
+        notes="Real Persistent Local Laplacian signature from "
+        "molmetal.molmetal_lam.lam_chem.pll_signature.",
+    ),
+)
+_register(
+    "decomp_diff",
+    ToolRef(
+        wrapper=_w_decomp_diff,
+        tool_name="DecompDiff (NOT SHIPPED)",
+        backend="python",
+        notes="Reserved metric — adapter pending.",
+    ),
+)
+_register(
+    "molcraft",
+    ToolRef(
+        wrapper=_w_molcraft,
+        tool_name="MolCraft (NOT SHIPPED)",
+        backend="python",
+        notes="Reserved metric — adapter pending.",
+    ),
+)
+_register(
+    "targetdiff",
+    ToolRef(
+        wrapper=_w_targetdiff,
+        tool_name="TargetDiff (R17 ship)",
+        backend="python",
+        notes="Real TargetDiff sampler; atom-count is the validity proxy.",
+    ),
+)
+_register(
+    "imold_ood",
+    ToolRef(
+        wrapper=_w_imold_ood,
+        tool_name="IMOLDE OOD (NOT SHIPPED)",
+        backend="python",
+        notes="Reserved metric — adapter pending.",
+    ),
+)
+_register(
+    "drugood_ood",
+    ToolRef(
+        wrapper=_w_drugood_ood,
+        tool_name="DrugOOD OOD (NOT SHIPPED)",
+        backend="python",
+        notes="Reserved metric — adapter pending.",
+    ),
+)
+_register(
+    "glide_score",
+    ToolRef(
+        wrapper=_w_glide_score,
+        tool_name="Glide (Schrödinger, NOT SHIPPED)",
+        backend="commercial",
+        notes="Reserved metric — commercial tool, requires licence.",
+    ),
+)
+_register(
+    "sa_score",
+    ToolRef(
+        wrapper=_w_sa_score,
+        tool_name="SA score (RDKit Ertl)",
+        backend="python",
+        notes="Real Ertl-Schuffenhauer synthesis accessibility 1..10.",
+    ),
+)
+_register(
+    "qed",
+    ToolRef(
+        wrapper=_w_qed,
+        tool_name="QED (RDKit Bickerton)",
+        backend="python",
+        notes="Real Bickerton drug-likeness 0..1.",
+    ),
+)
+_register(
+    "flowr",
+    ToolRef(
+        wrapper=_w_flowr,
+        tool_name="FlowER retrosynthesis (R17 ship)",
+        backend="python",
+        notes="Real FlowER / FlowER retrosynthesis sampler.",
+    ),
+)
 
 
 # ---------------------------------------------------------------------------
@@ -889,329 +966,331 @@ _register("flowr", ToolRef(
 # callers can do ``ROUTING_POLICY[metric].primary_tool`` / ``.wf43_status``
 # / ``.fallback_chain`` without parsing nested dicts.
 # ---------------------------------------------------------------------------
-_policy_register_many({
-    "vina_score": PolicyEntry(
-        primary_tool="AutoDock Vina 1.2.7",
-        backend="python+cli",
-        module="molmetal.molmetal_lam.sbdd_env.vina_adapter.VinaDockingAdapter",
-        license="Apache-2.0",
-        fallback_chain=("vina_qvina2", "vina_gpu"),
-        required_data=("smiles", "pocket_pdbqt"),
-        wf43_status="MEASURED",
-        notes="Meeko+Vina Python binding (preferred) or vina CLI binary. "
-              "Engine selection via MOLMETAL_VINA_ENGINE env var "
-              "(unset → AutoDock, qvina2 → QuickVina 2, gpu → Vina-GPU).",
-    ),
-    "vina_high_affinity": PolicyEntry(
-        primary_tool="AutoDock Vina 1.2.7",
-        backend="python+cli",
-        module="molmetal.molmetal_lam.sbdd_env.vina_adapter.VinaDockingAdapter",
-        license="Apache-2.0",
-        fallback_chain=("vina_qvina2", "vina_gpu"),
-        required_data=("smiles", "pocket_pdbqt"),
-        wf43_status="MEASURED",
-        notes="Boolean classifier on top of vina_score (cutoff_kcal default -8.0).",
-    ),
-    "vina_min_score": PolicyEntry(
-        primary_tool="AutoDock Vina 1.2.7",
-        backend="python+cli",
-        module="molmetal.molmetal_lam.sbdd_env.vina_adapter.VinaDockingAdapter",
-        license="Apache-2.0",
-        fallback_chain=("vina_qvina2", "vina_gpu"),
-        required_data=("smiles", "pocket_pdbqt"),
-        wf43_status="MEASURED",
-        notes="Aggregates vina_score over a batch — min / median / n_below_cutoff.",
-    ),
-    "vina_metal_fallback": PolicyEntry(
-        primary_tool="AutoDock Vina 1.2.7 (Wf-121 P1/P2 metal path)",
-        backend="python+cli",
-        module="molmetal.molmetal_lam.sbdd_env.vina_adapter.VinaDockingAdapter",
-        license="Apache-2.0",
-        fallback_chain=("boltz_affinity",),
-        required_data=("smiles", "pocket_pdbqt"),
-        wf43_status="MEASURED",
-        notes=(
-            "Metallodrug-safe Vina wrapper (Wf-121 P3). On metal-PDBQT "
-            "success returns real Vina kcal/mol with the generic VDW "
-            "atype for Pt-group metals; on PDBQT failure (MetalPDBQTUnavailable "
-            "or non-finite kcal/mol) falls back to boltz_affinity (Wf-120 "
-            "D-MPNN pIC50 inference). Both paths are real. Sweep evidence: "
-            "molmetal/reports/wf121_cisplatin_real_vina/."
+_policy_register_many(
+    {
+        "vina_score": PolicyEntry(
+            primary_tool="AutoDock Vina 1.2.7",
+            backend="python+cli",
+            module="molmetal.molmetal_lam.sbdd_env.vina_adapter.VinaDockingAdapter",
+            license="Apache-2.0",
+            fallback_chain=("vina_qvina2", "vina_gpu"),
+            required_data=("smiles", "pocket_pdbqt"),
+            wf43_status="MEASURED",
+            notes="Meeko+Vina Python binding (preferred) or vina CLI binary. "
+            "Engine selection via MOLMETAL_VINA_ENGINE env var "
+            "(unset → AutoDock, qvina2 → QuickVina 2, gpu → Vina-GPU).",
         ),
-    ),
-    "vina_qvina2": PolicyEntry(
-        primary_tool="QuickVina 2 (CASO-derived qvina02)",
-        backend="cli",
-        module="molmetal.scripts.q_vina2_swap",
-        license="Apache-2.0",
-        fallback_chain=(),
-        required_data=("smiles", "pocket_pdbqt"),
-        wf43_status="RESERVED",
-        notes="Routes through q_vina2_swap.py calling the vendored "
-              "qvina02 binary at references/SoftMol/gated_mcts/utils/docking/qvina02. "
-              "Engine selected via MOLMETAL_VINA_ENGINE=qvina2.",
-    ),
-    "vina_gpu": PolicyEntry(
-        primary_tool="Vina-GPU (Doerr 2021)",
-        backend="python+CUDA",
-        module="molmetal.molmetal_lam.sbdd_env.vina_gpu_adapter.QuickVinaGPUAdapter",
-        license="Apache-2.0",
-        fallback_chain=("vina_score",),
-        required_data=("smiles", "pocket_pdbqt"),
-        wf43_status="RESERVED",
-        notes="GPU-accelerated Vina; same kcal/mol semantics as vina_score. "
-              "Requires CUDA + the vina_gpu extension. The "
-              "QuickVina2-GPU-2-1 vendor build is AMD-only; on NVIDIA "
-              "Blackwell we fall back to vina_score. Engine selected via "
-              "MOLMETAL_VINA_ENGINE=gpu.",
-    ),
-    "diffdock_pose": PolicyEntry(
-        primary_tool="DiffDock (Corso 2024 NeurIPS)",
-        backend="python",
-        module="molmetal.molmetal_lam.sbdd_env.diffdock_adapter.DiffDockAdapter",
-        license="MIT",
-        fallback_chain=("flowdock_pose",),
-        required_data=("smiles", "pocket_pdb"),
-        wf43_status="MEASURED",
-        notes="Real DiffDock inference; confidence ∈ [0, 1]. "
-              "Requires GPU + torch_cluster/torch_scatter. Falls back to "
-              "FlowDock when DiffDock backend is unavailable.",
-    ),
-    "equibind_pose": PolicyEntry(
-        primary_tool="EquiBind (Stärk 2022)",
-        backend="python",
-        module="NOT_SHIPPED",
-        license="MIT",
-        fallback_chain=("flowdock_pose", "diffdock_pose"),
-        required_data=("smiles", "pocket_pdb"),
-        wf43_status="RESERVED",
-        notes="EquiBind adapter not yet shipped. Reserved metric — the "
-              "wrapper raises AdapterUnavailable until the adapter lands. "
-              "Use flowdock_pose / diffdock_pose as SE(3)-equivariant surrogate.",
-    ),
-    "flowdock_pose": PolicyEntry(
-        primary_tool="FlowDock (R17 ship)",
-        backend="python",
-        module="molmetal.molmetal_lam.sbdd_env.flowdock_adapter.FlowDockAdapter",
-        license="MIT",
-        fallback_chain=("diffdock_pose",),
-        required_data=("smiles", "pocket_pdb"),
-        wf43_status="MEASURED",
-        notes="Real flow-matching docking confidence ∈ [0, 1]. CPU-friendly "
-              "fallback for DiffDock GPU stack.",
-    ),
-    "pocket2mol": PolicyEntry(
-        primary_tool="Pocket2Mol (Peng 2022 ICLR-W)",
-        backend="python",
-        module="molmetal.molmetal_lam.sbdd_env.pocket2mol_adapter.Pocket2MolSampler",
-        license="MIT",
-        fallback_chain=(),
-        required_data=("pocket_pdb",),
-        wf43_status="RESERVED",
-        notes="Real Pocket2Mol sampler; atom-count is the validity proxy. "
-              "Requires official Pocket2Mol weights at the path returned by "
-              "pocket2mol_adapter._checkpoint_path().",
-    ),
-    "boltz_affinity": PolicyEntry(
-        primary_tool="D-MPNN pIC50 (R17 ship, locally-trained attentive fp)",
-        backend="python",
-        module="molmetal.molmetal_lam.sbdd_env.pic50_predictor.predict_pic50",
-        license="MIT",
-        fallback_chain=(),
-        required_data=("smiles",),
-        wf43_status="MEASURED",
-        notes="Real locally-trained Attentive D-MPNN pIC50 predictor; "
-              "nan on parse-fail or missing checkpoint. Swap to Boltz "
-              "foundation-model pIC50 head when shipped.",
-    ),
-    "af2_confidence": PolicyEntry(
-        primary_tool="Voxelization complexity (AF2 surrogate)",
-        backend="python",
-        module="molmetal.molmetal_lam.sbdd_env.voxelization.pocket_to_spatial_tiles",
-        license="MIT",
-        fallback_chain=(),
-        required_data=("pocket",),
-        wf43_status="MEASURED",
-        notes="Real voxelization complexity proxy (deterministic std-of-tile-occupancy). "
-              "Swap to AlphaFold pLDDT inference when the AF2 backend is shipped.",
-    ),
-    "pb_pass_rate": PolicyEntry(
-        primary_tool="PoseBusters (Buttenschoen 2024)",
-        backend="python",
-        module="molmetal.molmetal_lam.sbdd_env.posebusters_adapter.PoseBustersAdapter",
-        license="MIT",
-        fallback_chain=(),
-        required_data=("smiles", "pocket_pdb"),
-        wf43_status="MEASURED",
-        notes="Real PoseBusters 26-check validation (14 chemistry + 12 protein-aware "
-              "in 'dock' mode; 14 chemistry-only in 'mol' mode).",
-    ),
-    "aizynth_synthesis": PolicyEntry(
-        primary_tool="AiZynthFinder (Genheden 2020)",
-        backend="python",
-        module="molmetal.molmetal_lam.sbdd_env.aizynth_adapter.check_list",
-        license="MIT",
-        fallback_chain=(),
-        required_data=("smiles",),
-        wf43_status="MEASURED",
-        notes="Real AiZynthFinder MCTS retrosynthesis with SMARTS fallback "
-              "when AiZynthFinder is not installed.",
-    ),
-    "pl_likelihood": PolicyEntry(
-        primary_tool="PLL signature (Liu/Feng 2026)",
-        backend="python",
-        module="molmetal.molmetal_lam.lam_chem.pll_signature.compute_pll",
-        license="MIT",
-        fallback_chain=(),
-        required_data=("smiles",),
-        wf43_status="MEASURED",
-        notes="Real Persistent Local Laplacian signature.",
-    ),
-    "decomp_diff": PolicyEntry(
-        primary_tool="DecompDiff (Guan 2024)",
-        backend="python",
-        module="NOT_SHIPPED",
-        license="MIT",
-        fallback_chain=(),
-        required_data=("pocket_pdb",),
-        wf43_status="RESERVED",
-        notes="DecompDiff adapter not yet shipped. Reserved metric — the "
-              "wrapper raises AdapterUnavailable until the adapter lands.",
-    ),
-    "molcraft": PolicyEntry(
-        primary_tool="MolCraft (Qu 2024)",
-        backend="python",
-        module="NOT_SHIPPED",
-        license="MIT",
-        fallback_chain=(),
-        required_data=("pocket_pdb",),
-        wf43_status="RESERVED",
-        notes="MolCraft adapter not yet shipped. Reserved metric — the "
-              "wrapper raises AdapterUnavailable until the adapter lands.",
-    ),
-    "targetdiff": PolicyEntry(
-        primary_tool="TargetDiff (Guan 2023 ICLR)",
-        backend="python",
-        module="molmetal.molmetal_lam.sbdd_env.targetdiff_adapter.PocketToLigandSampler",
-        license="MIT",
-        fallback_chain=(),
-        required_data=("pocket_pdb",),
-        wf43_status="MEASURED",
-        notes="Real TargetDiff sampler; atom-count is the validity proxy.",
-    ),
-    "imold_ood": PolicyEntry(
-        primary_tool="IMOLDE OOD (Mervin 2024)",
-        backend="python",
-        module="NOT_SHIPPED",
-        license="MIT",
-        fallback_chain=(),
-        required_data=("smiles", "split"),
-        wf43_status="RESERVED",
-        notes="IMOLDE OOD adapter not yet shipped. Reserved metric.",
-    ),
-    "drugood_ood": PolicyEntry(
-        primary_tool="DrugOOD OOD (Ji 2022 NeurIPS-DB)",
-        backend="python",
-        module="NOT_SHIPPED",
-        license="MIT",
-        fallback_chain=(),
-        required_data=("smiles", "split"),
-        wf43_status="RESERVED",
-        notes="DrugOOD OOD adapter not yet shipped. Reserved metric.",
-    ),
-    "glide_score": PolicyEntry(
-        primary_tool="Glide (Schrödinger)",
-        backend="commercial",
-        module="NOT_SHIPPED",
-        license="Schrödinger commercial",
-        fallback_chain=("vina_score",),
-        required_data=("smiles", "pocket_pdb"),
-        wf43_status="RESERVED",
-        notes="Commercial docking tool. No Schrödinger licence in this "
-              "open-source repo. Use vina_score as OSS surrogate.",
-    ),
-    "sa_score": PolicyEntry(
-        primary_tool="SA score (Ertl-Schuffenhauer 2008)",
-        backend="python",
-        module="molmetal.molmetal_lam.sbdd_env.sa_score.sa_score_ertl",
-        license="MIT",
-        fallback_chain=(),
-        required_data=("smiles",),
-        wf43_status="MEASURED",
-        notes="Real Ertl-Schuffenhauer synthesis accessibility 1..10 (RDKit Contrib).",
-    ),
-    "qed": PolicyEntry(
-        primary_tool="QED (Bickerton 2012)",
-        backend="python",
-        module="molmetal.molmetal_lam.sbdd_env.qed_scorer.qed_from_smiles",
-        license="BSD",
-        fallback_chain=(),
-        required_data=("smiles",),
-        wf43_status="MEASURED",
-        notes="Real Bickerton drug-likeness 0..1 (RDKit built-in).",
-    ),
-    "flowr": PolicyEntry(
-        primary_tool="FlowER retrosynthesis (Kuznetsov 2022)",
-        backend="python",
-        module="molmetal.molmetal_lam.sbdd_env.flowr_adapter.FlowRSampler",
-        license="MIT",
-        fallback_chain=(),
-        required_data=("smiles",),
-        wf43_status="MEASURED",
-        notes="Real FlowER retrosynthesis-flow validity. Adapter under references/FLOWR.",
-    ),
-    # ---- MOCK_DELETED — Phase-4A external scorers (module absent) ----
-    "coord_geometry_proxy": PolicyEntry(
-        primary_tool="DELETED — module molmetal_lam.sbdd_env.external_scorers not present",
-        backend="N/A",
-        module="N/A",
-        license="N/A",
-        fallback_chain=(),
-        required_data=("smiles", "metal_label"),
-        wf43_status="MOCK_DELETED",
-        notes="Phase-4A external scorer was a stub interface in "
-              "metrics_v2.py:870 referencing a non-existent module. "
-              "Wf-43 Phase 2 marks this MOCK_DELETED. Real alternative: "
-              "metal_coord_compliance (RDKit SMARTS, real).",
-    ),
-    "phototherapy_activity": PolicyEntry(
-        primary_tool="DELETED — module molmetal_lam.sbdd_env.external_scorers not present",
-        backend="N/A",
-        module="N/A",
-        license="N/A",
-        fallback_chain=(),
-        required_data=("smiles",),
-        wf43_status="MOCK_DELETED",
-        notes="Phase-4A external scorer was a stub interface. "
-              "Real alternative: attentive D-MPNN trained on phototherapy "
-              "labels (no ship in repo yet).",
-    ),
-    "ptiv_reduction_potential": PolicyEntry(
-        primary_tool="DELETED — module molmetal_lam.sbdd_env.external_scorers not present",
-        backend="N/A",
-        module="N/A",
-        license="N/A",
-        fallback_chain=(),
-        required_data=("smiles",),
-        wf43_status="MOCK_DELETED",
-        notes="Phase-4A external scorer was a stub interface. "
-              "Real alternative: Pt(IV) DFT reduction potential surrogate "
-              "(outside scope of this repo).",
-    ),
-    "metalloprotein_affinity": PolicyEntry(
-        primary_tool="DELETED — module molmetal_lam.sbdd_env.external_scorers not present",
-        backend="N/A",
-        module="N/A",
-        license="N/A",
-        fallback_chain=(),
-        required_data=("smiles",),
-        wf43_status="MOCK_DELETED",
-        notes="Phase-4A external scorer was a stub interface. "
-              "Real alternative: D-MPNN trained on "
-              "molmetal/data/protein_metal_binding.csv (the protein-metal "
-              "binding CSV).",
-    ),
-})
+        "vina_high_affinity": PolicyEntry(
+            primary_tool="AutoDock Vina 1.2.7",
+            backend="python+cli",
+            module="molmetal.molmetal_lam.sbdd_env.vina_adapter.VinaDockingAdapter",
+            license="Apache-2.0",
+            fallback_chain=("vina_qvina2", "vina_gpu"),
+            required_data=("smiles", "pocket_pdbqt"),
+            wf43_status="MEASURED",
+            notes="Boolean classifier on top of vina_score (cutoff_kcal default -8.0).",
+        ),
+        "vina_min_score": PolicyEntry(
+            primary_tool="AutoDock Vina 1.2.7",
+            backend="python+cli",
+            module="molmetal.molmetal_lam.sbdd_env.vina_adapter.VinaDockingAdapter",
+            license="Apache-2.0",
+            fallback_chain=("vina_qvina2", "vina_gpu"),
+            required_data=("smiles", "pocket_pdbqt"),
+            wf43_status="MEASURED",
+            notes="Aggregates vina_score over a batch — min / median / n_below_cutoff.",
+        ),
+        "vina_metal_fallback": PolicyEntry(
+            primary_tool="AutoDock Vina 1.2.7 (Wf-121 P1/P2 metal path)",
+            backend="python+cli",
+            module="molmetal.molmetal_lam.sbdd_env.vina_adapter.VinaDockingAdapter",
+            license="Apache-2.0",
+            fallback_chain=("boltz_affinity",),
+            required_data=("smiles", "pocket_pdbqt"),
+            wf43_status="MEASURED",
+            notes=(
+                "Metallodrug-safe Vina wrapper (Wf-121 P3). On metal-PDBQT "
+                "success returns real Vina kcal/mol with the generic VDW "
+                "atype for Pt-group metals; on PDBQT failure (MetalPDBQTUnavailable "
+                "or non-finite kcal/mol) falls back to boltz_affinity (Wf-120 "
+                "D-MPNN pIC50 inference). Both paths are real. Sweep evidence: "
+                "molmetal/reports/wf121_cisplatin_real_vina/."
+            ),
+        ),
+        "vina_qvina2": PolicyEntry(
+            primary_tool="QuickVina 2 (CASO-derived qvina02)",
+            backend="cli",
+            module="molmetal.scripts.q_vina2_swap",
+            license="Apache-2.0",
+            fallback_chain=(),
+            required_data=("smiles", "pocket_pdbqt"),
+            wf43_status="RESERVED",
+            notes="Routes through q_vina2_swap.py calling the vendored "
+            "qvina02 binary at references/SoftMol/gated_mcts/utils/docking/qvina02. "
+            "Engine selected via MOLMETAL_VINA_ENGINE=qvina2.",
+        ),
+        "vina_gpu": PolicyEntry(
+            primary_tool="Vina-GPU (Doerr 2021)",
+            backend="python+CUDA",
+            module="molmetal.molmetal_lam.sbdd_env.vina_gpu_adapter.QuickVinaGPUAdapter",
+            license="Apache-2.0",
+            fallback_chain=("vina_score",),
+            required_data=("smiles", "pocket_pdbqt"),
+            wf43_status="RESERVED",
+            notes="GPU-accelerated Vina; same kcal/mol semantics as vina_score. "
+            "Requires CUDA + the vina_gpu extension. The "
+            "QuickVina2-GPU-2-1 vendor build is AMD-only; on NVIDIA "
+            "Blackwell we fall back to vina_score. Engine selected via "
+            "MOLMETAL_VINA_ENGINE=gpu.",
+        ),
+        "diffdock_pose": PolicyEntry(
+            primary_tool="DiffDock (Corso 2024 NeurIPS)",
+            backend="python",
+            module="molmetal.molmetal_lam.sbdd_env.diffdock_adapter.DiffDockAdapter",
+            license="MIT",
+            fallback_chain=("flowdock_pose",),
+            required_data=("smiles", "pocket_pdb"),
+            wf43_status="MEASURED",
+            notes="Real DiffDock inference; confidence ∈ [0, 1]. "
+            "Requires GPU + torch_cluster/torch_scatter. Falls back to "
+            "FlowDock when DiffDock backend is unavailable.",
+        ),
+        "equibind_pose": PolicyEntry(
+            primary_tool="EquiBind (Stärk 2022)",
+            backend="python",
+            module="NOT_SHIPPED",
+            license="MIT",
+            fallback_chain=("flowdock_pose", "diffdock_pose"),
+            required_data=("smiles", "pocket_pdb"),
+            wf43_status="RESERVED",
+            notes="EquiBind adapter not yet shipped. Reserved metric — the "
+            "wrapper raises AdapterUnavailable until the adapter lands. "
+            "Use flowdock_pose / diffdock_pose as SE(3)-equivariant surrogate.",
+        ),
+        "flowdock_pose": PolicyEntry(
+            primary_tool="FlowDock (R17 ship)",
+            backend="python",
+            module="molmetal.molmetal_lam.sbdd_env.flowdock_adapter.FlowDockAdapter",
+            license="MIT",
+            fallback_chain=("diffdock_pose",),
+            required_data=("smiles", "pocket_pdb"),
+            wf43_status="MEASURED",
+            notes="Real flow-matching docking confidence ∈ [0, 1]. CPU-friendly "
+            "fallback for DiffDock GPU stack.",
+        ),
+        "pocket2mol": PolicyEntry(
+            primary_tool="Pocket2Mol (Peng 2022 ICLR-W)",
+            backend="python",
+            module="molmetal.molmetal_lam.sbdd_env.pocket2mol_adapter.Pocket2MolSampler",
+            license="MIT",
+            fallback_chain=(),
+            required_data=("pocket_pdb",),
+            wf43_status="RESERVED",
+            notes="Real Pocket2Mol sampler; atom-count is the validity proxy. "
+            "Requires official Pocket2Mol weights at the path returned by "
+            "pocket2mol_adapter._checkpoint_path().",
+        ),
+        "boltz_affinity": PolicyEntry(
+            primary_tool="D-MPNN pIC50 (R17 ship, locally-trained attentive fp)",
+            backend="python",
+            module="molmetal.molmetal_lam.sbdd_env.pic50_predictor.predict_pic50",
+            license="MIT",
+            fallback_chain=(),
+            required_data=("smiles",),
+            wf43_status="MEASURED",
+            notes="Real locally-trained Attentive D-MPNN pIC50 predictor; "
+            "nan on parse-fail or missing checkpoint. Swap to Boltz "
+            "foundation-model pIC50 head when shipped.",
+        ),
+        "af2_confidence": PolicyEntry(
+            primary_tool="Voxelization complexity (AF2 surrogate)",
+            backend="python",
+            module="molmetal.molmetal_lam.sbdd_env.voxelization.pocket_to_spatial_tiles",
+            license="MIT",
+            fallback_chain=(),
+            required_data=("pocket",),
+            wf43_status="MEASURED",
+            notes="Real voxelization complexity proxy (deterministic std-of-tile-occupancy). "
+            "Swap to AlphaFold pLDDT inference when the AF2 backend is shipped.",
+        ),
+        "pb_pass_rate": PolicyEntry(
+            primary_tool="PoseBusters (Buttenschoen 2024)",
+            backend="python",
+            module="molmetal.molmetal_lam.sbdd_env.posebusters_adapter.PoseBustersAdapter",
+            license="MIT",
+            fallback_chain=(),
+            required_data=("smiles", "pocket_pdb"),
+            wf43_status="MEASURED",
+            notes="Real PoseBusters 26-check validation (14 chemistry + 12 protein-aware "
+            "in 'dock' mode; 14 chemistry-only in 'mol' mode).",
+        ),
+        "aizynth_synthesis": PolicyEntry(
+            primary_tool="AiZynthFinder (Genheden 2020)",
+            backend="python",
+            module="molmetal.molmetal_lam.sbdd_env.aizynth_adapter.check_list",
+            license="MIT",
+            fallback_chain=(),
+            required_data=("smiles",),
+            wf43_status="MEASURED",
+            notes="Real AiZynthFinder MCTS retrosynthesis with SMARTS fallback "
+            "when AiZynthFinder is not installed.",
+        ),
+        "pl_likelihood": PolicyEntry(
+            primary_tool="PLL signature (Liu/Feng 2026)",
+            backend="python",
+            module="molmetal.molmetal_lam.lam_chem.pll_signature.compute_pll",
+            license="MIT",
+            fallback_chain=(),
+            required_data=("smiles",),
+            wf43_status="MEASURED",
+            notes="Real Persistent Local Laplacian signature.",
+        ),
+        "decomp_diff": PolicyEntry(
+            primary_tool="DecompDiff (Guan 2024)",
+            backend="python",
+            module="NOT_SHIPPED",
+            license="MIT",
+            fallback_chain=(),
+            required_data=("pocket_pdb",),
+            wf43_status="RESERVED",
+            notes="DecompDiff adapter not yet shipped. Reserved metric — the "
+            "wrapper raises AdapterUnavailable until the adapter lands.",
+        ),
+        "molcraft": PolicyEntry(
+            primary_tool="MolCraft (Qu 2024)",
+            backend="python",
+            module="NOT_SHIPPED",
+            license="MIT",
+            fallback_chain=(),
+            required_data=("pocket_pdb",),
+            wf43_status="RESERVED",
+            notes="MolCraft adapter not yet shipped. Reserved metric — the "
+            "wrapper raises AdapterUnavailable until the adapter lands.",
+        ),
+        "targetdiff": PolicyEntry(
+            primary_tool="TargetDiff (Guan 2023 ICLR)",
+            backend="python",
+            module="molmetal.molmetal_lam.sbdd_env.targetdiff_adapter.PocketToLigandSampler",
+            license="MIT",
+            fallback_chain=(),
+            required_data=("pocket_pdb",),
+            wf43_status="MEASURED",
+            notes="Real TargetDiff sampler; atom-count is the validity proxy.",
+        ),
+        "imold_ood": PolicyEntry(
+            primary_tool="IMOLDE OOD (Mervin 2024)",
+            backend="python",
+            module="NOT_SHIPPED",
+            license="MIT",
+            fallback_chain=(),
+            required_data=("smiles", "split"),
+            wf43_status="RESERVED",
+            notes="IMOLDE OOD adapter not yet shipped. Reserved metric.",
+        ),
+        "drugood_ood": PolicyEntry(
+            primary_tool="DrugOOD OOD (Ji 2022 NeurIPS-DB)",
+            backend="python",
+            module="NOT_SHIPPED",
+            license="MIT",
+            fallback_chain=(),
+            required_data=("smiles", "split"),
+            wf43_status="RESERVED",
+            notes="DrugOOD OOD adapter not yet shipped. Reserved metric.",
+        ),
+        "glide_score": PolicyEntry(
+            primary_tool="Glide (Schrödinger)",
+            backend="commercial",
+            module="NOT_SHIPPED",
+            license="Schrödinger commercial",
+            fallback_chain=("vina_score",),
+            required_data=("smiles", "pocket_pdb"),
+            wf43_status="RESERVED",
+            notes="Commercial docking tool. No Schrödinger licence in this "
+            "open-source repo. Use vina_score as OSS surrogate.",
+        ),
+        "sa_score": PolicyEntry(
+            primary_tool="SA score (Ertl-Schuffenhauer 2008)",
+            backend="python",
+            module="molmetal.molmetal_lam.sbdd_env.sa_score.sa_score_ertl",
+            license="MIT",
+            fallback_chain=(),
+            required_data=("smiles",),
+            wf43_status="MEASURED",
+            notes="Real Ertl-Schuffenhauer synthesis accessibility 1..10 (RDKit Contrib).",
+        ),
+        "qed": PolicyEntry(
+            primary_tool="QED (Bickerton 2012)",
+            backend="python",
+            module="molmetal.molmetal_lam.sbdd_env.qed_scorer.qed_from_smiles",
+            license="BSD",
+            fallback_chain=(),
+            required_data=("smiles",),
+            wf43_status="MEASURED",
+            notes="Real Bickerton drug-likeness 0..1 (RDKit built-in).",
+        ),
+        "flowr": PolicyEntry(
+            primary_tool="FlowER retrosynthesis (Kuznetsov 2022)",
+            backend="python",
+            module="molmetal.molmetal_lam.sbdd_env.flowr_adapter.FlowRSampler",
+            license="MIT",
+            fallback_chain=(),
+            required_data=("smiles",),
+            wf43_status="MEASURED",
+            notes="Real FlowER retrosynthesis-flow validity. Adapter under references/FLOWR.",
+        ),
+        # ---- MOCK_DELETED — Phase-4A external scorers (module absent) ----
+        "coord_geometry_proxy": PolicyEntry(
+            primary_tool="DELETED — module molmetal_lam.sbdd_env.external_scorers not present",
+            backend="N/A",
+            module="N/A",
+            license="N/A",
+            fallback_chain=(),
+            required_data=("smiles", "metal_label"),
+            wf43_status="MOCK_DELETED",
+            notes="Phase-4A external scorer was a stub interface in "
+            "metrics_v2.py:870 referencing a non-existent module. "
+            "Wf-43 Phase 2 marks this MOCK_DELETED. Real alternative: "
+            "metal_coord_compliance (RDKit SMARTS, real).",
+        ),
+        "phototherapy_activity": PolicyEntry(
+            primary_tool="DELETED — module molmetal_lam.sbdd_env.external_scorers not present",
+            backend="N/A",
+            module="N/A",
+            license="N/A",
+            fallback_chain=(),
+            required_data=("smiles",),
+            wf43_status="MOCK_DELETED",
+            notes="Phase-4A external scorer was a stub interface. "
+            "Real alternative: attentive D-MPNN trained on phototherapy "
+            "labels (no ship in repo yet).",
+        ),
+        "ptiv_reduction_potential": PolicyEntry(
+            primary_tool="DELETED — module molmetal_lam.sbdd_env.external_scorers not present",
+            backend="N/A",
+            module="N/A",
+            license="N/A",
+            fallback_chain=(),
+            required_data=("smiles",),
+            wf43_status="MOCK_DELETED",
+            notes="Phase-4A external scorer was a stub interface. "
+            "Real alternative: Pt(IV) DFT reduction potential surrogate "
+            "(outside scope of this repo).",
+        ),
+        "metalloprotein_affinity": PolicyEntry(
+            primary_tool="DELETED — module molmetal_lam.sbdd_env.external_scorers not present",
+            backend="N/A",
+            module="N/A",
+            license="N/A",
+            fallback_chain=(),
+            required_data=("smiles",),
+            wf43_status="MOCK_DELETED",
+            notes="Phase-4A external scorer was a stub interface. "
+            "Real alternative: D-MPNN trained on "
+            "molmetal/data/protein_metal_binding.csv (the protein-metal "
+            "binding CSV).",
+        ),
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -1347,15 +1426,14 @@ def _as_smiles_list(molecules: Iterable[Any]) -> List[str]:
 def _pocket_to_pdb_string(pocket: Optional[Any]) -> str:
     """Convert a Pocket object / PDB path / PDB string to a PDB string."""
     if pocket is None:
-        raise AdapterUnavailable(
-            "pocket is required for this metric but was None."
-        )
+        raise AdapterUnavailable("pocket is required for this metric but was None.")
     if isinstance(pocket, str):
         # Heuristic: short strings are SMILES, longer are PDB text.
         if "\n" in pocket or pocket.startswith(("ATOM", "HEADER", "MODEL")):
             return pocket
         # Assume it's a path.
         from pathlib import Path
+
         return Path(pocket).read_text()
     # Pocket-like object: delegate to the vina adapter helper if
     # available, else raise.
@@ -1366,8 +1444,7 @@ def _pocket_to_pdb_string(pocket: Optional[Any]) -> str:
         raise
     except Exception as e:
         raise AdapterUnavailable(
-            f"Could not serialise pocket to PDB string: "
-            f"{type(e).__name__}: {e}"
+            f"Could not serialise pocket to PDB string: " f"{type(e).__name__}: {e}"
         ) from e
 
 

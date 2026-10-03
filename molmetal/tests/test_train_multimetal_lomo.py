@@ -62,9 +62,7 @@ VERIFY_SCRIPT = (
 DEFAULT_DATA = (
     PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 )
-VENV_PY = (
-    PROJECT_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
-)
+VENV_PY = PROJECT_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
 
 
 def _scripts_path() -> str:
@@ -78,22 +76,26 @@ def _repo_root_path() -> str:
 def _build_tiny_csv(tmp_path: Path) -> Path:
     """Build a tiny 5-metal CSV (4 train × 2 val × 2 test rows per metal)."""
     import csv as _csv
+
     csv_path = tmp_path / "tiny_5metal.csv"
     rows = []
     metals = ("Ru", "Ir", "Rh", "Re", "Os")
     for m in metals:
         for sp, n in (("train", 4), ("val", 2), ("test", 2)):
             for i in range(n):
-                rows.append({
-                    "smiles": ["CCO", "c1ccccc1", "CC(=O)O", "CC(C)C"][i % 4],
-                    "metal": m,
-                    "scaffold_id": f"s_{m}_{i}",
-                    "split": sp,
-                    "activity": str(i % 2),
-                })
+                rows.append(
+                    {
+                        "smiles": ["CCO", "c1ccccc1", "CC(=O)O", "CC(C)C"][i % 4],
+                        "metal": m,
+                        "scaffold_id": f"s_{m}_{i}",
+                        "split": sp,
+                        "activity": str(i % 2),
+                    }
+                )
     with csv_path.open("w", newline="") as fh:
         writer = _csv.DictWriter(
-            fh, fieldnames=["smiles", "metal", "scaffold_id", "split", "activity"],
+            fh,
+            fieldnames=["smiles", "metal", "scaffold_id", "split", "activity"],
         )
         writer.writeheader()
         writer.writerows(rows)
@@ -121,9 +123,7 @@ def test_help_exits_zero() -> None:
     assert "--init" in result.stdout
     # The 3 init choices from the Wf-32 spec.
     for init in ("tmqm", "se3sb", "hilbert"):
-        assert init in result.stdout, (
-            f"--init {init} missing from --help output"
-        )
+        assert init in result.stdout, f"--init {init} missing from --help output"
 
 
 # ---------------------------------------------------------------------------
@@ -156,12 +156,20 @@ def test_parse_args_overrides() -> None:
     sys.path.insert(0, _repo_root_path())
     import train_multimetal_lomo as m32  # type: ignore[import-not-found]
 
-    args = m32.parse_args([
-        "--folds", "leave-Ru-out", "leave-Ir-out",
-        "--seeds", "0", "1",
-        "--epochs", "5",
-        "--init", "tmqm",
-    ])
+    args = m32.parse_args(
+        [
+            "--folds",
+            "leave-Ru-out",
+            "leave-Ir-out",
+            "--seeds",
+            "0",
+            "1",
+            "--epochs",
+            "5",
+            "--init",
+            "tmqm",
+        ]
+    )
     assert args.folds == ["leave-Ru-out", "leave-Ir-out"]
     assert args.seeds == [0, 1]
     assert args.epochs == 5
@@ -273,10 +281,7 @@ def test_build_lomo_view_isolates_held_out() -> None:
     sys.path.insert(0, _repo_root_path())
     import train_multimetal_lomo as m32  # type: ignore[import-not-found]
 
-    data = {
-        m: {"train": [], "val": [], "test": []}
-        for m in m32.SUPPORTED_METALS
-    }
+    data = {m: {"train": [], "val": [], "test": []} for m in m32.SUPPORTED_METALS}
     for m in m32.SUPPORTED_METALS:
         data[m]["train"] = [(f"smi_{m}_train_{j}", j % 2) for j in range(4)]
         data[m]["val"] = [(f"smi_{m}_val_{j}", j % 2) for j in range(2)]
@@ -311,16 +316,25 @@ def test_aggregates_match_numpy() -> None:
 
     fold_results = {
         "Ru": [
-            {"test_auc": 0.80}, {"test_auc": 0.82}, {"test_auc": 0.84},
-            {"test_auc": 0.78}, {"test_auc": 0.86},
+            {"test_auc": 0.80},
+            {"test_auc": 0.82},
+            {"test_auc": 0.84},
+            {"test_auc": 0.78},
+            {"test_auc": 0.86},
         ],
         "Ir": [
-            {"test_auc": 0.70}, {"test_auc": 0.72}, {"test_auc": 0.74},
-            {"test_auc": 0.68}, {"test_auc": 0.76},
+            {"test_auc": 0.70},
+            {"test_auc": 0.72},
+            {"test_auc": 0.74},
+            {"test_auc": 0.68},
+            {"test_auc": 0.76},
         ],
         "Rh": [
-            {"test_auc": 0.60}, {"test_auc": 0.62}, {"test_auc": 0.64},
-            {"test_auc": 0.58}, {"test_auc": 0.66},
+            {"test_auc": 0.60},
+            {"test_auc": 0.62},
+            {"test_auc": 0.64},
+            {"test_auc": 0.58},
+            {"test_auc": 0.66},
         ],
     }
     per_fold_mean, per_fold_std = m32.aggregate_per_fold(fold_results)
@@ -335,6 +349,7 @@ def test_aggregates_match_numpy() -> None:
 
     # NaN-only fold → NaN.
     import math
+
     nan_fold = {"Ru": [{"test_auc": float("nan")}]}
     m_, s_ = m32.aggregate_per_fold(nan_fold)
     assert math.isnan(m_["Ru"])
@@ -352,12 +367,18 @@ def test_attach_hilbert_components_wires_or_noop() -> None:
     from molmetal.models.v4_multitask_dmpnn import V4MultiTaskDMPNN
 
     bb = V4MultiTaskDMPNN(
-        hidden_dim=32, n_layers=2, n_metals=5, n_coord_classes=5,
+        hidden_dim=32,
+        n_layers=2,
+        n_metals=5,
+        n_coord_classes=5,
     )
     head = m32.Ru5MetalSe3SBHead(backbone=bb)
     device = torch.device("cpu")
     comps = m32.attach_hilbert_components(
-        head, device, population_dim=16, n_iters=4,
+        head,
+        device,
+        population_dim=16,
+        n_iters=4,
     )
     if m32._HilbertASTSRComposite is None:
         assert comps == {}
@@ -378,20 +399,34 @@ def test_main_smoke_se3sb(tmp_path: Path) -> None:
     metrics_path = tmp_path / "metrics.json"
     summary_path = tmp_path / "summary.json"
     cmd: List[str] = [
-        str(VENV_PY), str(TRAIN_SCRIPT),
-        "--data", str(csv_path),
-        "--out-dir", str(out_dir),
-        "--metrics-path", str(metrics_path),
-        "--summary-path", str(summary_path),
-        "--init", "se3sb",
-        "--seeds", "0",
-        "--epochs", "1",
-        "--batch", "16",
-        "--hidden", "32",
-        "--depth", "2",
-        "--train-max-per-metal", "4",
-        "--se3-n-steps", "2",
-        "--folds", "leave-Ru-out",
+        str(VENV_PY),
+        str(TRAIN_SCRIPT),
+        "--data",
+        str(csv_path),
+        "--out-dir",
+        str(out_dir),
+        "--metrics-path",
+        str(metrics_path),
+        "--summary-path",
+        str(summary_path),
+        "--init",
+        "se3sb",
+        "--seeds",
+        "0",
+        "--epochs",
+        "1",
+        "--batch",
+        "16",
+        "--hidden",
+        "32",
+        "--depth",
+        "2",
+        "--train-max-per-metal",
+        "4",
+        "--se3-n-steps",
+        "2",
+        "--folds",
+        "leave-Ru-out",
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
     assert result.returncode == 0, (
@@ -414,20 +449,34 @@ def test_metrics_json_after_smoke(tmp_path: Path) -> None:
     metrics_path = tmp_path / "metrics.json"
     summary_path = tmp_path / "summary.json"
     cmd: List[str] = [
-        str(VENV_PY), str(TRAIN_SCRIPT),
-        "--data", str(csv_path),
-        "--out-dir", str(out_dir),
-        "--metrics-path", str(metrics_path),
-        "--summary-path", str(summary_path),
-        "--init", "se3sb",
-        "--seeds", "0",
-        "--epochs", "1",
-        "--batch", "16",
-        "--hidden", "32",
-        "--depth", "2",
-        "--train-max-per-metal", "4",
-        "--se3-n-steps", "2",
-        "--folds", "leave-Ru-out",
+        str(VENV_PY),
+        str(TRAIN_SCRIPT),
+        "--data",
+        str(csv_path),
+        "--out-dir",
+        str(out_dir),
+        "--metrics-path",
+        str(metrics_path),
+        "--summary-path",
+        str(summary_path),
+        "--init",
+        "se3sb",
+        "--seeds",
+        "0",
+        "--epochs",
+        "1",
+        "--batch",
+        "16",
+        "--hidden",
+        "32",
+        "--depth",
+        "2",
+        "--train-max-per-metal",
+        "4",
+        "--se3-n-steps",
+        "2",
+        "--folds",
+        "leave-Ru-out",
     ]
     subprocess.run(cmd, capture_output=True, text=True, timeout=180, check=True)
     assert metrics_path.exists(), f"metrics JSON not written at {metrics_path}"
@@ -462,20 +511,34 @@ def test_summary_json_headline(tmp_path: Path) -> None:
     metrics_path = tmp_path / "metrics.json"
     summary_path = tmp_path / "summary.json"
     cmd: List[str] = [
-        str(VENV_PY), str(TRAIN_SCRIPT),
-        "--data", str(csv_path),
-        "--out-dir", str(out_dir),
-        "--metrics-path", str(metrics_path),
-        "--summary-path", str(summary_path),
-        "--init", "se3sb",
-        "--seeds", "0",
-        "--epochs", "1",
-        "--batch", "16",
-        "--hidden", "32",
-        "--depth", "2",
-        "--train-max-per-metal", "4",
-        "--se3-n-steps", "2",
-        "--folds", "leave-Ru-out",
+        str(VENV_PY),
+        str(TRAIN_SCRIPT),
+        "--data",
+        str(csv_path),
+        "--out-dir",
+        str(out_dir),
+        "--metrics-path",
+        str(metrics_path),
+        "--summary-path",
+        str(summary_path),
+        "--init",
+        "se3sb",
+        "--seeds",
+        "0",
+        "--epochs",
+        "1",
+        "--batch",
+        "16",
+        "--hidden",
+        "32",
+        "--depth",
+        "2",
+        "--train-max-per-metal",
+        "4",
+        "--se3-n-steps",
+        "2",
+        "--folds",
+        "leave-Ru-out",
     ]
     subprocess.run(cmd, capture_output=True, text=True, timeout=180, check=True)
     assert summary_path.exists(), f"summary JSON not written at {summary_path}"
@@ -501,19 +564,32 @@ def test_main_smoke_tmqm_init(tmp_path: Path) -> None:
     metrics_path = tmp_path / "metrics.json"
     summary_path = tmp_path / "summary.json"
     cmd: List[str] = [
-        str(VENV_PY), str(TRAIN_SCRIPT),
-        "--data", str(csv_path),
-        "--out-dir", str(out_dir),
-        "--metrics-path", str(metrics_path),
-        "--summary-path", str(summary_path),
-        "--init", "tmqm",
-        "--seeds", "0",
-        "--epochs", "1",
-        "--batch", "16",
-        "--hidden", "32",
-        "--depth", "2",
-        "--train-max-per-metal", "4",
-        "--folds", "leave-Ir-out",
+        str(VENV_PY),
+        str(TRAIN_SCRIPT),
+        "--data",
+        str(csv_path),
+        "--out-dir",
+        str(out_dir),
+        "--metrics-path",
+        str(metrics_path),
+        "--summary-path",
+        str(summary_path),
+        "--init",
+        "tmqm",
+        "--seeds",
+        "0",
+        "--epochs",
+        "1",
+        "--batch",
+        "16",
+        "--hidden",
+        "32",
+        "--depth",
+        "2",
+        "--train-max-per-metal",
+        "4",
+        "--folds",
+        "leave-Ir-out",
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
     assert result.returncode == 0, (
@@ -537,6 +613,7 @@ def test_main_smoke_hilbert_init(tmp_path: Path) -> None:
     sys.path.insert(0, _scripts_path())
     sys.path.insert(0, _repo_root_path())
     import train_multimetal_lomo as m32  # type: ignore[import-not-found]
+
     if m32._HilbertASTSRComposite is None:
         pytest.skip("HilbertASTSRComposite adapter unavailable in venv")
     csv_path = _build_tiny_csv(tmp_path)
@@ -544,19 +621,32 @@ def test_main_smoke_hilbert_init(tmp_path: Path) -> None:
     metrics_path = tmp_path / "metrics.json"
     summary_path = tmp_path / "summary.json"
     cmd: List[str] = [
-        str(VENV_PY), str(TRAIN_SCRIPT),
-        "--data", str(csv_path),
-        "--out-dir", str(out_dir),
-        "--metrics-path", str(metrics_path),
-        "--summary-path", str(summary_path),
-        "--init", "hilbert",
-        "--seeds", "0",
-        "--epochs", "1",
-        "--batch", "16",
-        "--hidden", "32",
-        "--depth", "2",
-        "--train-max-per-metal", "4",
-        "--folds", "leave-Os-out",
+        str(VENV_PY),
+        str(TRAIN_SCRIPT),
+        "--data",
+        str(csv_path),
+        "--out-dir",
+        str(out_dir),
+        "--metrics-path",
+        str(metrics_path),
+        "--summary-path",
+        str(summary_path),
+        "--init",
+        "hilbert",
+        "--seeds",
+        "0",
+        "--epochs",
+        "1",
+        "--batch",
+        "16",
+        "--hidden",
+        "32",
+        "--depth",
+        "2",
+        "--train-max-per-metal",
+        "4",
+        "--folds",
+        "leave-Os-out",
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
     assert result.returncode == 0, (
@@ -589,9 +679,7 @@ def test_verify_script_runs() -> None:
     )
     # All 8 numbered checks must have printed.
     for i in range(1, 9):
-        assert f"[{i}/8]" in result.stdout, (
-            f"check [{i}/8] missing from verify stdout"
-        )
+        assert f"[{i}/8]" in result.stdout, f"check [{i}/8] missing from verify stdout"
     # The final smoke line must be there.
     assert "Wf-32 Phase 2 verify: imports OK" in result.stdout
     assert "CPU smoke 0/8 fail" in result.stdout

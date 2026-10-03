@@ -108,34 +108,34 @@ logger = logging.getLogger(__name__)
 RH_SEED_SCAFFOLDS: Tuple[str, ...] = (
     # === Rh(I) square-planar (4-coordinate) ===
     # Olefin / carbonyl / Cp / diene Rh(I) complexes
-    "[Rh](C=C)(C=C)(C=C)C=C",                 # Rh(I)-ethene (4-ene, sq-pl)
-    "[Rh](C1CC1)(C1CC1)C1CC1",                # Rh(I)-cyclopropane analog
-    "[Rh](C=O)(C=O)(C=O)C=O",                 # Rh(I)-carbonyl tetrakis
-    "[Rh]C1=CC=CC=C1C1=CC=CC=C1",             # Rh(I)-Cp analog
+    "[Rh](C=C)(C=C)(C=C)C=C",  # Rh(I)-ethene (4-ene, sq-pl)
+    "[Rh](C1CC1)(C1CC1)C1CC1",  # Rh(I)-cyclopropane analog
+    "[Rh](C=O)(C=O)(C=O)C=O",  # Rh(I)-carbonyl tetrakis
+    "[Rh]C1=CC=CC=C1C1=CC=CC=C1",  # Rh(I)-Cp analog
     # === Rh(III) octahedral (6-coordinate) ===
     # Mono-cyclopentadienyl Rh(III) "half-sandwich" complexes
-    "[Rh](N)(N)(N)(N)(N)N",                    # Rh(III)-hexaammine
-    "[Rh](N)(N)(N)(N)(N)Cl",                  # Rh(III)-pentaammine-chloro
-    "[Rh](N)(N)(N)(N)(Cl)Cl",                 # Rh(III)-tetraammine-dichloro
-    "[Rh](N)(N)(N)(Cl)(Cl)Cl",                # Rh(III)-triammine-trichloro
-    "[Rh](N)(N)(Cl)(Cl)(Cl)Cl",               # Rh(III)-diamm-tetrachloro
-    "[Rh](N)(Cl)(Cl)(Cl)(Cl)Cl",              # Rh(III)-amm-pentachloro
-    "[Rh](N)(N)(N)(O)(O)O",                   # Rh(III)-triamm-aqua-hydroxo
-    "[Rh](N)(N)(N)(N)(O)O",                   # Rh(III)-tetraamm-aqua-hydroxo
-    "[Rh](N)(N)(N)(N)(N)O",                   # Rh(III)-pentaamm-aqua
-    "[Rh](N)(N)(N)(O)(O)Cl",                  # Rh(III)-triamm-aqua-aqua-chloro
-    "[Rh](N)(N)(O)(O)(O)O",                   # Rh(III)-diamm-aqua-aqua-aqua-hydroxo
-    "[Rh](N)(N)(N)(N)(S)S",                   # Rh(III)-tetraamm-thiolato-thiolato
+    "[Rh](N)(N)(N)(N)(N)N",  # Rh(III)-hexaammine
+    "[Rh](N)(N)(N)(N)(N)Cl",  # Rh(III)-pentaammine-chloro
+    "[Rh](N)(N)(N)(N)(Cl)Cl",  # Rh(III)-tetraammine-dichloro
+    "[Rh](N)(N)(N)(Cl)(Cl)Cl",  # Rh(III)-triammine-trichloro
+    "[Rh](N)(N)(Cl)(Cl)(Cl)Cl",  # Rh(III)-diamm-tetrachloro
+    "[Rh](N)(Cl)(Cl)(Cl)(Cl)Cl",  # Rh(III)-amm-pentachloro
+    "[Rh](N)(N)(N)(O)(O)O",  # Rh(III)-triamm-aqua-hydroxo
+    "[Rh](N)(N)(N)(N)(O)O",  # Rh(III)-tetraamm-aqua-hydroxo
+    "[Rh](N)(N)(N)(N)(N)O",  # Rh(III)-pentaamm-aqua
+    "[Rh](N)(N)(N)(O)(O)Cl",  # Rh(III)-triamm-aqua-aqua-chloro
+    "[Rh](N)(N)(O)(O)(O)O",  # Rh(III)-diamm-aqua-aqua-aqua-hydroxo
+    "[Rh](N)(N)(N)(N)(S)S",  # Rh(III)-tetraamm-thiolato-thiolato
     # === Rh(III) octahedral bidentate / mixed-donor ===
-    "[Rh](N)(N)(N)(N)(P)P",                   # Rh(III)-tetraamm-diphosphine
-    "[Rh](N)(N)(N)(P)(P)P",                   # Rh(III)-triamm-triphosphine
-    "[Rh](N)(N)(P)(P)(P)P",                   # Rh(III)-diamm-tetraphosphine
-    "[Rh](N)(N)(N)(N)(S)Cl",                  # Rh(III)-tetraamm-thiolato-chloro
-    "[Rh](N)(N)(N)(S)(S)Cl",                  # Rh(III)-triamm-dithiolato-chloro
-    "[Rh](N)(N)(S)(S)(S)Cl",                  # Rh(III)-diamm-trithiolato-chloro
+    "[Rh](N)(N)(N)(N)(P)P",  # Rh(III)-tetraamm-diphosphine
+    "[Rh](N)(N)(N)(P)(P)P",  # Rh(III)-triamm-triphosphine
+    "[Rh](N)(N)(P)(P)(P)P",  # Rh(III)-diamm-tetraphosphine
+    "[Rh](N)(N)(N)(N)(S)Cl",  # Rh(III)-tetraamm-thiolato-chloro
+    "[Rh](N)(N)(N)(S)(S)Cl",  # Rh(III)-triamm-dithiolato-chloro
+    "[Rh](N)(N)(S)(S)(S)Cl",  # Rh(III)-diamm-trithiolato-chloro
     # === Rh(I) / Rh(III) carboxylate "paddlewheel" precursors ===
-    "[Rh](OC=O)(OC=O)(OC=O)OC=O",             # Rh(II)-tetracarboxylate
-    "[Rh](OC=O)(OC=O)(OC=O)(N)N",             # Rh(III)-tricarboxylate-diamine
+    "[Rh](OC=O)(OC=O)(OC=O)OC=O",  # Rh(II)-tetracarboxylate
+    "[Rh](OC=O)(OC=O)(OC=O)(N)N",  # Rh(III)-tricarboxylate-diamine
 )
 
 
@@ -144,13 +144,13 @@ RH_SEED_SCAFFOLDS: Tuple[str, ...] = (
 #: fallback partner set when the caller does not override
 #: ``partner_smis``.
 CLOSURE_PARTNERS: Tuple[str, ...] = (
-    "C#CCN",        # alkyne (CuAAC, SPAAC)
+    "C#CCN",  # alkyne (CuAAC, SPAAC)
     "CCN=[N+]=[N-]",  # azide (CuAAC, SPAAC)
-    "C#CC",         # terminal alkyne (CuAAC)
-    "CS",           # thiol (ThiolEne)
-    "C=CC",         # terminal alkene (ThiolEne)
+    "C#CC",  # terminal alkyne (CuAAC)
+    "CS",  # thiol (ThiolEne)
+    "C=CC",  # terminal alkene (ThiolEne)
     "OC(=O)c1ccccc1",  # benzoic acid (AmideCoupling)
-    "NCC",          # primary amine (AmideCoupling)
+    "NCC",  # primary amine (AmideCoupling)
 )
 
 
@@ -164,16 +164,36 @@ CLOSURE_PARTNERS: Tuple[str, ...] = (
 #: the BFS budget.
 RICH_PARTNERS: Tuple[str, ...] = (
     # CuAAC + SPAAC partners (azides + alkynes)
-    "C#CCN", "CCN=[N+]=[N-]", "C#CC", "C#Cc1ccccc1", "N=Cc1ccccc1",
+    "C#CCN",
+    "CCN=[N+]=[N-]",
+    "C#CC",
+    "C#Cc1ccccc1",
+    "N=Cc1ccccc1",
     # ThiolEne partners (thiols + alkenes)
-    "CS", "C=CC", "C=CCO", "C=CCc1ccccc1", "CC=CC",
+    "CS",
+    "C=CC",
+    "C=CCO",
+    "C=CCc1ccccc1",
+    "CC=CC",
     # AmideCoupling partners (carboxylic acids + amines)
-    "OC(=O)c1ccccc1", "OC(=O)C", "OC(=O)CC", "OC(=O)CC(=O)O",
-    "NCC", "NCCc1ccccc1", "NC1CCCCC1", "NCC(=O)O",
+    "OC(=O)c1ccccc1",
+    "OC(=O)C",
+    "OC(=O)CC",
+    "OC(=O)CC(=O)O",
+    "NCC",
+    "NCCc1ccccc1",
+    "NC1CCCCC1",
+    "NCC(=O)O",
     # Suzuki partners (aryl halides + boronic acids)
-    "Brc1ccccc1", "Brc1ccncc1", "c1ccc(B(O)O)cc1", "c1ccncc1",
+    "Brc1ccccc1",
+    "Brc1ccncc1",
+    "c1ccc(B(O)O)cc1",
+    "c1ccncc1",
     # Aromatic / heterocyclic building blocks
-    "C=Cc1ccccc1", "C=Cc1ccncc1", "C=Cc1cccnc1", "c1ccoc1",
+    "C=Cc1ccccc1",
+    "C=Cc1ccncc1",
+    "C=Cc1cccnc1",
+    "c1ccoc1",
     # Carboxylate variants
     "CC(=O)O",
 )
@@ -326,9 +346,7 @@ class ClosureOversampler:
         if max_depth < 1:
             raise ValueError(f"max_depth must be >= 1, got {max_depth}")
         if per_scaffold_cap < 1:
-            raise ValueError(
-                f"per_scaffold_cap must be >= 1, got {per_scaffold_cap}"
-            )
+            raise ValueError(f"per_scaffold_cap must be >= 1, got {per_scaffold_cap}")
         if target_cohort_size < 1:
             raise ValueError(
                 f"target_cohort_size must be >= 1, got {target_cohort_size}"
@@ -350,12 +368,25 @@ class ClosureOversampler:
         """Lazily import the closure machinery (defer RDKit import)."""
         from molmetal_lam.lam_chem.closure import ProductiveSpace
         from molmetal_lam.lam_chem.rules import (
-            AmideCoupling, CuAAC, SPAAC, Suzuki, ThiolEne,
+            AmideCoupling,
+            CuAAC,
+            SPAAC,
+            Suzuki,
+            ThiolEne,
         )
         from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
-        return ProductiveSpace, MoleculeClosedTerm, [
-            CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling,
-        ]
+
+        return (
+            ProductiveSpace,
+            MoleculeClosedTerm,
+            [
+                CuAAC,
+                SPAAC,
+                ThiolEne,
+                Suzuki,
+                AmideCoupling,
+            ],
+        )
 
     def _load_catherine(self):
         """Lazily import the Catherine 6/6 verifier."""
@@ -363,6 +394,7 @@ class ClosureOversampler:
             verify_all_catherine_properties,
             synthetic_closure_summary,
         )
+
         return verify_all_catherine_properties, synthetic_closure_summary
 
     @staticmethod
@@ -412,11 +444,24 @@ class ClosureOversampler:
             DEFAULT_COORDINATION_GEOMETRY,
             GEOMETRY_MAX_CN,
         )
+
         witness = getattr(closed_term, "_closure_witness", None)
-        max_depth_seen = max((d for d, _t, _w in (
-            [(i + 1, t, getattr(t, "_closure_witness", []))
-             for i, t in enumerate([closed_term])]
-        )), default=1) if witness else 0
+        max_depth_seen = (
+            max(
+                (
+                    d
+                    for d, _t, _w in (
+                        [
+                            (i + 1, t, getattr(t, "_closure_witness", []))
+                            for i, t in enumerate([closed_term])
+                        ]
+                    )
+                ),
+                default=1,
+            )
+            if witness
+            else 0
+        )
         n_visited = 1 + len(witness or [])
         products_per_depth = {0: 1}
         if witness:
@@ -438,10 +483,8 @@ class ClosureOversampler:
             tok = f"[{metal}"
             idx = smiles.find(tok)
             if idx >= 0:
-                after = smiles[idx + len(tok) + 1:idx + len(tok) + 32]
-                donor_count = sum(
-                    1 for c in after if c in ("N", "O", "S", "P")
-                )
+                after = smiles[idx + len(tok) + 1 : idx + len(tok) + 32]
+                donor_count = sum(1 for c in after if c in ("N", "O", "S", "P"))
                 if donor_count > cn_cap:
                     coord_violations = 1
         except Exception:
@@ -459,10 +502,7 @@ class ClosureOversampler:
             "closure_ok": True,
         }
         verdict = verify_all_catherine_properties(metal, summary)
-        per_property = {
-            pid: res.passed
-            for pid, res in verdict.per_property.items()
-        }
+        per_property = {pid: res.passed for pid, res in verdict.per_property.items()}
         return per_property, verdict.six_of_six_pass
 
     # -- main entry -----------------------------------------------------------
@@ -486,13 +526,12 @@ class ClosureOversampler:
         partners = []
         for s in self.partner_smis:
             try:
-                partners.append(
-                    MoleculeClosedTerm.from_smiles(s, embed_3d=False)
-                )
+                partners.append(MoleculeClosedTerm.from_smiles(s, embed_3d=False))
             except Exception as exc:  # noqa: BLE001 — partner parse fail
                 logger.warning(
                     "[closure_oversample] partner %r parse failed: %s",
-                    s, exc,
+                    s,
+                    exc,
                 )
 
         per_compound: List[RhSyntheticCompound] = []
@@ -504,13 +543,12 @@ class ClosureOversampler:
             if len(per_compound) >= self.target_cohort_size:
                 break
             try:
-                seed_term = MoleculeClosedTerm.from_smiles(
-                    seed_smi, embed_3d=False
-                )
+                seed_term = MoleculeClosedTerm.from_smiles(seed_smi, embed_3d=False)
             except Exception as exc:  # noqa: BLE001 — seed parse fail
                 logger.warning(
                     "[closure_oversample] seed %r parse failed: %s",
-                    seed_smi, exc,
+                    seed_smi,
+                    exc,
                 )
                 continue
 
@@ -537,10 +575,8 @@ class ClosureOversampler:
                     if not self._metal_in_smiles(self.metal, smi):
                         continue
                     # Run the per-compound Catherine 6/6 check.
-                    per_property, six_of_six = (
-                        self._catherine_summary_for_compound(
-                            term, smi, self.metal
-                        )
+                    per_property, six_of_six = self._catherine_summary_for_compound(
+                        term, smi, self.metal
                     )
                     if not six_of_six:
                         continue
@@ -584,9 +620,7 @@ class ClosureOversampler:
             n_products_raw=int(n_products_raw),
             n_compounds_kept=int(n_kept),
             n_compounds_discarded=int(max(n_products_raw - n_kept, 0)),
-            catherine_pass_rate=(
-                float(n_kept) / max(int(n_products_raw), 1)
-            ),
+            catherine_pass_rate=(float(n_kept) / max(int(n_products_raw), 1)),
             target_cohort_size=int(self.target_cohort_size),
             per_compound=per_compound,
             wall_time_s=float(wall),

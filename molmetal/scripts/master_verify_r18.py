@@ -95,6 +95,7 @@ class ScriptSpec:
         "GPU env",
     )
 
+
 # The eight trainers called out in the Wf-35 plan.  Six are shipped
 # today; the remaining two ("v2" / "bench_pb_valid") auto-skip with a
 # "PENDING" status until they are authored.
@@ -156,6 +157,7 @@ def _to_jsonable(obj: Any) -> Any:
         return str(obj)
     try:
         import numpy as np  # noqa: WPS433
+
         if isinstance(obj, np.floating):
             return float(obj.item())
         if isinstance(obj, np.integer):
@@ -212,12 +214,14 @@ def _run_subprocess(
         return proc.returncode, proc.stdout, proc.stderr, dt
     except subprocess.TimeoutExpired as exc:
         dt = time.time() - t0
-        out = exc.stdout.decode() if isinstance(exc.stdout, bytes) else (
-            exc.stdout or ""
+        out = (
+            exc.stdout.decode() if isinstance(exc.stdout, bytes) else (exc.stdout or "")
         )
-        err = exc.stderr.decode() if isinstance(exc.stderr, bytes) else (
-            exc.stderr or ""
-        ) + "\n[master_verify_r18] TIMEOUT"
+        err = (
+            exc.stderr.decode()
+            if isinstance(exc.stderr, bytes)
+            else (exc.stderr or "") + "\n[master_verify_r18] TIMEOUT"
+        )
         return -1, out, err, dt
 
 
@@ -233,22 +237,30 @@ def _check_import(spec: ScriptSpec) -> CheckResult:
         mod = importlib.import_module(path.stem)
         if mod is None:
             return CheckResult(
-                "import", False, seconds=time.time() - t0,
+                "import",
+                False,
+                seconds=time.time() - t0,
                 message="importlib.import_module returned None",
             )
-        missing = [
-            n for n in ("parse_args", "main") if not hasattr(mod, n)
-        ]
+        missing = [n for n in ("parse_args", "main") if not hasattr(mod, n)]
         if missing:
             return CheckResult(
-                "import", False, seconds=time.time() - t0,
+                "import",
+                False,
+                seconds=time.time() - t0,
                 message=f"missing symbols: {', '.join(missing)}",
             )
-        return CheckResult("import", True, seconds=time.time() - t0,
-                           message="parse_args + main present")
+        return CheckResult(
+            "import",
+            True,
+            seconds=time.time() - t0,
+            message="parse_args + main present",
+        )
     except Exception as exc:  # pragma: no cover — defensive
         return CheckResult(
-            "import", False, seconds=time.time() - t0,
+            "import",
+            False,
+            seconds=time.time() - t0,
             message=f"import raised {type(exc).__name__}: {exc}",
         )
 
@@ -261,7 +273,9 @@ def _check_argparse(spec: ScriptSpec) -> CheckResult:
     t0 = time.time()
     if not VENV_PY.exists():
         return CheckResult(
-            "argparse", False, skipped=True,
+            "argparse",
+            False,
+            skipped=True,
             seconds=time.time() - t0,
             message=f"venv python not at {VENV_PY}",
         )
@@ -273,17 +287,23 @@ def _check_argparse(spec: ScriptSpec) -> CheckResult:
     )
     if rc != 0:
         return CheckResult(
-            "argparse", False, seconds=dt,
+            "argparse",
+            False,
+            seconds=dt,
             message=f"--help exit {rc}: {err.strip().splitlines()[-1] if err else ''}",
         )
     missing = [g for g in spec.expected_groups if g not in out]
     if missing:
         return CheckResult(
-            "argparse", False, seconds=dt,
+            "argparse",
+            False,
+            seconds=dt,
             message=f"missing arg groups in --help: {missing}",
         )
     return CheckResult(
-        "argparse", True, seconds=dt,
+        "argparse",
+        True,
+        seconds=dt,
         message="--help exited 0 with " + ", ".join(spec.expected_groups),
     )
 
@@ -296,7 +316,9 @@ def _check_smoke(spec: ScriptSpec, tmpdir: Path) -> CheckResult:
     t0 = time.time()
     if not VENV_PY.exists():
         return CheckResult(
-            "smoke", False, skipped=True,
+            "smoke",
+            False,
+            skipped=True,
             seconds=time.time() - t0,
             message=f"venv python not at {VENV_PY}",
         )
@@ -310,20 +332,30 @@ def _check_smoke(spec: ScriptSpec, tmpdir: Path) -> CheckResult:
     env["CUDA_VISIBLE_DEVICES"] = ""
 
     cmd = [
-        str(VENV_PY), str(script_path),
-        "--epochs", "1",
-        "--train-max-per-metal", "50",
-        "--out-dir", str(out_dir),
-        "--metrics-path", str(metrics_path),
+        str(VENV_PY),
+        str(script_path),
+        "--epochs",
+        "1",
+        "--train-max-per-metal",
+        "50",
+        "--out-dir",
+        str(out_dir),
+        "--metrics-path",
+        str(metrics_path),
     ]
     rc, out, err, dt = _run_subprocess(
-        cmd, timeout=600, cwd=PROJECT_ROOT, env=env,
+        cmd,
+        timeout=600,
+        cwd=PROJECT_ROOT,
+        env=env,
     )
     last_err = err.strip().splitlines()[-1] if err.strip() else ""
 
     if rc != 0:
         return CheckResult(
-            "smoke", False, seconds=dt,
+            "smoke",
+            False,
+            seconds=dt,
             message=f"exit {rc}: {last_err or out.strip().splitlines()[-1] if out.strip() else 'no output'}",
         )
     # Confirm metrics file got written (decorator pipeline ran) even if
@@ -331,14 +363,17 @@ def _check_smoke(spec: ScriptSpec, tmpdir: Path) -> CheckResult:
     # made it through ``parse_args`` + ``setup_gpu_env`` + ``main()``.
     if not metrics_path.exists():
         return CheckResult(
-            "smoke", False, seconds=dt,
+            "smoke",
+            False,
+            seconds=dt,
             message="exit 0 but --metrics-path was not written",
         )
     return CheckResult(
-        "smoke", True, seconds=dt,
+        "smoke",
+        True,
+        seconds=dt,
         message=(
-            f"1-epoch + 50/mol ran in {dt:.1f}s, "
-            f"metrics @ {metrics_path.name}"
+            f"1-epoch + 50/mol ran in {dt:.1f}s, " f"metrics @ {metrics_path.name}"
         ),
     )
 
@@ -346,12 +381,10 @@ def _check_smoke(spec: ScriptSpec, tmpdir: Path) -> CheckResult:
 # ---------------------------------------------------------------------------
 # Per-script driver
 # ---------------------------------------------------------------------------
-def _verify_script(spec: ScriptSpec, *,
-                    skip_smoke: bool = False) -> ScriptReport:
+def _verify_script(spec: ScriptSpec, *, skip_smoke: bool = False) -> ScriptReport:
     """Run all three checks against one script."""
     start = time.time()
-    rep = ScriptReport(script=spec.name, wf_tag=spec.wf_tag,
-                       status="PENDING")
+    rep = ScriptReport(script=spec.name, wf_tag=spec.wf_tag, status="PENDING")
 
     if not _is_shipped(spec):
         rep.status = "PENDING"
@@ -383,16 +416,20 @@ def _verify_script(spec: ScriptSpec, *,
         rep.checks.append(_check_argparse(spec))
         # Check 3: 1-epoch smoke.  CPU only — caller may skip via flag.
         if skip_smoke:
-            rep.checks.append(CheckResult(
-                "smoke", passed=True, skipped=True, seconds=0.0,
-                message="smoke skipped via --skip-smoke (CPU host)",
-            ))
+            rep.checks.append(
+                CheckResult(
+                    "smoke",
+                    passed=True,
+                    skipped=True,
+                    seconds=0.0,
+                    message="smoke skipped via --skip-smoke (CPU host)",
+                )
+            )
         else:
             rep.checks.append(_check_smoke(spec, tmpdir))
 
     rep.status = "PASS" if all(c.passed for c in rep.checks) else "FAIL"
-    rep.error = "" if rep.status == "PASS" else _summarise_failed_checks(
-        rep.checks)
+    rep.error = "" if rep.status == "PASS" else _summarise_failed_checks(rep.checks)
     rep.elapsed_seconds = time.time() - start
     return rep
 
@@ -406,8 +443,9 @@ def _summarise_failed_checks(checks: List[CheckResult]) -> str:
 # ---------------------------------------------------------------------------
 # Report emission
 # ---------------------------------------------------------------------------
-def _write_json(reports: List[ScriptReport], *, started: str,
-                finished: str, total_seconds: float) -> None:
+def _write_json(
+    reports: List[ScriptReport], *, started: str, finished: str, total_seconds: float
+) -> None:
     payload = {
         "schema_version": "1.0",
         "workflow": "Wf-35 Phase 3",
@@ -428,8 +466,9 @@ def _write_json(reports: List[ScriptReport], *, started: str,
     JSON_OUT.write_text(json.dumps(payload, indent=2, sort_keys=True))
 
 
-def _write_markdown(reports: List[ScriptReport], *, started: str,
-                    finished: str, total_seconds: float) -> None:
+def _write_markdown(
+    reports: List[ScriptReport], *, started: str, finished: str, total_seconds: float
+) -> None:
     n_total = len(reports)
     n_pass = sum(1 for r in reports if r.status == "PASS")
     n_fail = sum(1 for r in reports if r.status == "FAIL")
@@ -476,16 +515,22 @@ def _write_markdown(reports: List[ScriptReport], *, started: str,
     lines.append("")
     lines.append("## Methodology")
     lines.append("")
-    lines.append("- **Check 1 — Import**: in-process via `importlib`."
-                 " Verifies `parse_args` + `main` exist.")
-    lines.append("- **Check 2 — argparse**: subprocess `--help` against "
-                 "the venv python. Expects `Common recipe` + `GPU env` "
-                 "argument groups from `_common_train_args`.")
-    lines.append("- **Check 3 — 1-epoch smoke**: subprocess "
-                 "`--epochs 1 --train-max-per-metal 50` with "
-                 "`CUDA_VISIBLE_DEVICES=\"\"`. Confirms the "
-                 "`MEASURED_vs_PROJECTED_decorator` pipeline runs to "
-                 "completion and writes `--metrics-path`.")
+    lines.append(
+        "- **Check 1 — Import**: in-process via `importlib`."
+        " Verifies `parse_args` + `main` exist."
+    )
+    lines.append(
+        "- **Check 2 — argparse**: subprocess `--help` against "
+        "the venv python. Expects `Common recipe` + `GPU env` "
+        "argument groups from `_common_train_args`."
+    )
+    lines.append(
+        "- **Check 3 — 1-epoch smoke**: subprocess "
+        "`--epochs 1 --train-max-per-metal 50` with "
+        '`CUDA_VISIBLE_DEVICES=""`. Confirms the '
+        "`MEASURED_vs_PROJECTED_decorator` pipeline runs to "
+        "completion and writes `--metrics-path`."
+    )
     lines.append("")
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     MD_OUT.write_text("\n".join(lines))
@@ -499,18 +544,22 @@ def _parse_argv(argv: Optional[Sequence[str]]) -> argparse.Namespace:
         description="Wf-35 Phase 3 — master verify all R18 train scripts.",
     )
     p.add_argument(
-        "--only-shipped", action="store_true",
+        "--only-shipped",
+        action="store_true",
         help="Skip the planned-but-not-yet-authored scripts "
-             "(default: include them with status=PENDING).",
+        "(default: include them with status=PENDING).",
     )
     p.add_argument(
-        "--exclude", action="append", default=[],
+        "--exclude",
+        action="append",
+        default=[],
         help="Substring(s) of script filenames to exclude (repeatable).",
     )
     p.add_argument(
-        "--skip-smoke", action="store_true",
+        "--skip-smoke",
+        action="store_true",
         help="Skip the 1-epoch smoke subprocess (use on CPU-only hosts "
-             "where the underlying Triton / CUDA paths are unavailable).",
+        "where the underlying Triton / CUDA paths are unavailable).",
     )
     return p.parse_args(argv)
 
@@ -520,18 +569,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     print(f"[master_verify_r18] venv = {VENV_PY}")
     if not VENV_PY.exists():
-        print(f"[master_verify_r18] ERROR: venv missing — cannot run "
-              f"subprocess checks.")
+        print(
+            f"[master_verify_r18] ERROR: venv missing — cannot run "
+            f"subprocess checks."
+        )
         return 2
     if not SCRIPTS_DIR.exists():
-        print(f"[master_verify_r18] ERROR: scripts dir missing — "
-              f"{SCRIPTS_DIR}")
+        print(f"[master_verify_r18] ERROR: scripts dir missing — " f"{SCRIPTS_DIR}")
         return 2
 
     started = datetime.now(timezone.utc).isoformat()
     t0 = time.time()
-    print(f"[master_verify_r18] {started} — verifying "
-          f"{len(ALL_SCRIPTS)} scripts")
+    print(f"[master_verify_r18] {started} — verifying " f"{len(ALL_SCRIPTS)} scripts")
 
     to_run: List[ScriptSpec] = []
     for spec in ALL_SCRIPTS:
@@ -558,25 +607,27 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 ck_parts.append(f"✗{c.name}")
         ck = ", ".join(ck_parts)
         suffix = (" (" + rep.error + ")") if rep.error else ""
-        print(f"[master_verify_r18]   {rep.status}  [{ck}]  "
-              f"{rep.elapsed_seconds:.1f}s{suffix}")
+        print(
+            f"[master_verify_r18]   {rep.status}  [{ck}]  "
+            f"{rep.elapsed_seconds:.1f}s{suffix}"
+        )
 
     finished = datetime.now(timezone.utc).isoformat()
     total_s = time.time() - t0
 
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    _write_json(reports, started=started, finished=finished,
-                total_seconds=total_s)
-    _write_markdown(reports, started=started, finished=finished,
-                    total_seconds=total_s)
+    _write_json(reports, started=started, finished=finished, total_seconds=total_s)
+    _write_markdown(reports, started=started, finished=finished, total_seconds=total_s)
 
     n_fail = sum(1 for r in reports if r.status == "FAIL")
     n_pass = sum(1 for r in reports if r.status == "PASS")
     n_pend = sum(1 for r in reports if r.status == "PENDING")
 
     print()
-    print(f"[master_verify_r18] DONE in {total_s:.1f}s — "
-          f"pass={n_pass} fail={n_fail} pending={n_pend}")
+    print(
+        f"[master_verify_r18] DONE in {total_s:.1f}s — "
+        f"pass={n_pass} fail={n_fail} pending={n_pend}"
+    )
     print(f"[master_verify_r18] reports/  : {REPORTS_DIR}")
     print(f"[master_verify_r18] json out  : {JSON_OUT}")
     print(f"[master_verify_r18] md out    : {MD_OUT}")

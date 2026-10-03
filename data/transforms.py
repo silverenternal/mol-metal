@@ -88,6 +88,7 @@ def _set_coords(sample: Any, new_coords: torch.Tensor) -> Any:
         # Build a *new* instance rather than mutating so callers can
         # safely use these transforms in transforms pipelines.
         from dataclasses import replace
+
         return replace(sample, coords=new_coords)
     if hasattr(sample, "coords"):
         sample.coords = new_coords  # type: ignore[attr-defined]
@@ -121,9 +122,7 @@ def random_rotation_3d(
     rotation applied.
     """
     if coords.shape[-1] != 3:
-        raise ValueError(
-            f"random_rotation_3d expects last dim = 3, got {coords.shape}"
-        )
+        raise ValueError(f"random_rotation_3d expects last dim = 3, got {coords.shape}")
     device = coords.device
     dtype = coords.dtype
 

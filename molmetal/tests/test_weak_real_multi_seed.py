@@ -56,7 +56,9 @@ def test_recipes_catalogue_has_all_three_metrics() -> None:
 def test_recipes_have_paths_that_resolve(tmp_path: Path) -> None:
     """Each recipe's trainer_path must point to an actual .py file."""
     for recipe in RECIPES.values():
-        assert recipe.trainer_path.exists(), f"{recipe.metric} -> {recipe.trainer_path} missing"
+        assert (
+            recipe.trainer_path.exists()
+        ), f"{recipe.metric} -> {recipe.trainer_path} missing"
         assert recipe.trainer_path.suffix == ".py"
 
 
@@ -69,9 +71,9 @@ def test_recipes_use_strict_scaffold_and_seed_param() -> None:
     contract applies to m1 + m2.
     """
     for metric in ("m1", "m2"):
-        assert "--scaffold-split" in RECIPES[metric].extra_args, (
-            f"{metric} missing --scaffold-split in extra_args"
-        )
+        assert (
+            "--scaffold-split" in RECIPES[metric].extra_args
+        ), f"{metric} missing --scaffold-split in extra_args"
     # The wrapper itself passes --seeds; ensure recipes do not pre-declare seeds.
     for recipe in RECIPES.values():
         assert "--seeds" not in recipe.extra_args
@@ -123,11 +125,15 @@ def test_parse_args_cuda_visible_devices_default_is_gpu1() -> None:
 # ---------------------------------------------------------------------------
 # Aggregation
 # ---------------------------------------------------------------------------
-def _make_runinfo(metric: str, rc: int = 0, values: List[float] | None = None) -> Dict[str, object]:
+def _make_runinfo(
+    metric: str, rc: int = 0, values: List[float] | None = None
+) -> Dict[str, object]:
     out_dir = Path(f"/tmp/wf60_fake_{metric}")
     out_dir.mkdir(parents=True, exist_ok=True)
     payload = {
-        "value_per_seed" if metric == "m1" else (
+        "value_per_seed"
+        if metric == "m1"
+        else (
             "value_overall_mean_auc_per_seed" if metric == "m2" else "per_run_auc"
         ): values or [],
         "value": 0.0,
@@ -226,9 +232,7 @@ def test_synthesis_md_handles_failed_metrics_gracefully(tmp_path: Path) -> None:
     """A failed metric must render as FAILED, not crash the synthesis."""
     summary = {
         "generated_at": "2026-09-26T00:00:00Z",
-        "metrics": {
-            "m2": {"status": "FAILED", "returncode": 1, "log_path": "/tmp/x"}
-        },
+        "metrics": {"m2": {"status": "FAILED", "returncode": 1, "log_path": "/tmp/x"}},
     }
     runinfo = {
         "recipe": "m2",
@@ -244,7 +248,9 @@ def test_synthesis_md_handles_failed_metrics_gracefully(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # subprocess invocation (mocked — no GPU required)
 # ---------------------------------------------------------------------------
-def test_dry_run_prints_commands_without_invoking(capsys: pytest.CaptureFixture[str]) -> None:
+def test_dry_run_prints_commands_without_invoking(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """dry-run should build cmd strings and exit without subprocess.run."""
     fake_results: Dict[str, Dict[str, object]] = {}
     # Skip the run loop — call main with argv programmatically.
@@ -254,6 +260,7 @@ def test_dry_run_prints_commands_without_invoking(capsys: pytest.CaptureFixture[
     try:
         sys.argv = ["bench_weak_real_multi_seed.py", *argv]
         from molmetal.scripts.bench_weak_real_multi_seed import main as wf60_main
+
         rc = wf60_main(argv)
     finally:
         sys.argv = saved
@@ -306,7 +313,9 @@ def test_run_one_metric_returns_runinfo_dict(tmp_path: Path) -> None:
 def test_wrapper_does_not_import_torch_or_rdkit() -> None:
     """The wrapper is a thin orchestrator — heavy ML imports must stay inside subprocesses."""
     # Read the script source and assert no torch / rdkit imports leak through.
-    src = Path(PROJECT_ROOT / "molmetal" / "scripts" / "bench_weak_real_multi_seed.py").read_text()
+    src = Path(
+        PROJECT_ROOT / "molmetal" / "scripts" / "bench_weak_real_multi_seed.py"
+    ).read_text()
     assert "import torch" not in src
     assert "from torch" not in src
     assert "from rdkit" not in src

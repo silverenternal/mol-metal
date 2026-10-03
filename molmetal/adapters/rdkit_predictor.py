@@ -45,8 +45,11 @@ def _try_import_sascorer():
         if os.path.isdir(contrib_path) and contrib_path not in sys.path:
             sys.path.append(contrib_path)
         # Check the SA score data file actually ships with the install.
-        sa_data = os.path.join(RDConfig.RDDataDir, "SA_Score.sdf.gz") \
-            if hasattr(RDConfig, "RDDataDir") else ""
+        sa_data = (
+            os.path.join(RDConfig.RDDataDir, "SA_Score.sdf.gz")
+            if hasattr(RDConfig, "RDDataDir")
+            else ""
+        )
         if sa_data and not os.path.exists(sa_data):
             return None
         from rdkit.Contrib.SA_Score import sascorer  # type: ignore  # noqa: WPS433
@@ -213,8 +216,13 @@ class RDKitPropertyPredictor(PropertyPredictor):
                 else "1/(1+NumAromaticRings) proxy"
             ),
             "fields_computed": [
-                "qed", "logp", "mol_weight", "tpsa",
-                "num_h_donors", "num_h_acceptors", "num_rotatable_bonds",
+                "qed",
+                "logp",
+                "mol_weight",
+                "tpsa",
+                "num_h_donors",
+                "num_h_acceptors",
+                "num_rotatable_bonds",
                 "sa_score",
             ],
             "fields_left_none": ["binding_affinity_pic50", "metal_binding_score"],

@@ -28,6 +28,7 @@ Combined Wf-406-A3 (3) + Wf-410-A3 (5) + Wf-414-A3 (5) + Wf-416-A1 (10) = 23 of 
 scripts migrated to the canonical I/O substrate per AGENTS.md §5.6 atomic write protocol
 adoption rule.
 """
+
 from __future__ import annotations
 
 import ast
@@ -100,6 +101,7 @@ def _load_script_module(path: Path):
 def importlib_spec_safe(path: Path):
     """Return a module spec for the script without executing."""
     import importlib.util
+
     return importlib.util.spec_from_file_location(path.stem, path)
 
 
@@ -132,9 +134,9 @@ def test_wf416a1_helper_defined(script_rel: str) -> None:
     """The migrated script must define the _wf416_atomic_write_text helper."""
     path = (REPO_ROOT / script_rel).resolve()
     content = path.read_text(encoding="utf-8")
-    assert "def _wf416_atomic_write_text(" in content, (
-        f"{script_rel} is missing the _wf416_atomic_write_text helper function."
-    )
+    assert (
+        "def _wf416_atomic_write_text(" in content
+    ), f"{script_rel} is missing the _wf416_atomic_write_text helper function."
 
 
 @pytest.mark.parametrize("script_rel", MIGRATED_SCRIPTS)
@@ -142,9 +144,9 @@ def test_wf416a1_tryexcept_import_fallback(script_rel: str) -> None:
     """The migration uses a try/except ImportError fallback to preserve backward compat."""
     path = (REPO_ROOT / script_rel).resolve()
     content = path.read_text(encoding="utf-8")
-    assert "except ImportError" in content, (
-        f"{script_rel} must use try/except ImportError fallback for the atomic import."
-    )
+    assert (
+        "except ImportError" in content
+    ), f"{script_rel} must use try/except ImportError fallback for the atomic import."
 
 
 @pytest.mark.parametrize("script_rel", MIGRATED_SCRIPTS)
@@ -168,9 +170,9 @@ def test_wf416a1_helper_calls_atomic_write_file(script_rel: str) -> None:
     """The _wf416_atomic_write_text helper must call atomic_write_file when available."""
     path = (REPO_ROOT / script_rel).resolve()
     content = path.read_text(encoding="utf-8")
-    assert "atomic_write_file(" in content, (
-        f"{script_rel} helper does not call atomic_write_file — migration is incomplete."
-    )
+    assert (
+        "atomic_write_file(" in content
+    ), f"{script_rel} helper does not call atomic_write_file — migration is incomplete."
 
 
 # --------------------------------------------------------------------------------------
@@ -204,9 +206,9 @@ def test_wf416a1_combined_migration_total() -> None:
         # Wf-416-A1 (10 scripts)
         *MIGRATED_SCRIPTS,
     }
-    assert len(ALL_MIGRATED) == 23, (
-        f"Expected 23 total migrated scripts (3+5+5+10), got {len(ALL_MIGRATED)}."
-    )
+    assert (
+        len(ALL_MIGRATED) == 23
+    ), f"Expected 23 total migrated scripts (3+5+5+10), got {len(ALL_MIGRATED)}."
     n_with_marker = 0
     for rel_path in ALL_MIGRATED:
         full = (REPO_ROOT / rel_path).resolve()
@@ -214,11 +216,13 @@ def test_wf416a1_combined_migration_total() -> None:
             continue  # Skip scripts not in this repo snapshot
         content = full.read_text(encoding="utf-8")
         # Check for any of the 4 migration markers OR direct atomic_write_file usage
-        if "_WF416_HAS_ATOMIC" in content or \
-           "_WF414_HAS_ATOMIC" in content or \
-           "_WF410_HAS_ATOMIC" in content or \
-           "_WF406_HAS_ATOMIC" in content or \
-           "atomic_write_file(" in content:
+        if (
+            "_WF416_HAS_ATOMIC" in content
+            or "_WF414_HAS_ATOMIC" in content
+            or "_WF410_HAS_ATOMIC" in content
+            or "_WF406_HAS_ATOMIC" in content
+            or "atomic_write_file(" in content
+        ):
             n_with_marker += 1
     # Allow some slack for scripts not in this snapshot (forward-compat)
     assert n_with_marker >= 18, (
@@ -234,6 +238,7 @@ def test_wf416a1_atomic_primitive_loads() -> None:
         safe_overwrite_check,
         detect_truncation,
     )
+
     # All three names are callable
     assert callable(atomic_write_file)
     assert callable(safe_overwrite_check)
@@ -245,6 +250,7 @@ def test_wf416a1_migration_helper_idempotent(tmp_path: Path) -> None:
     (idempotency). Use a copy of m6_wf320h_vina_phase2.py as test input.
     """
     import shutil
+
     src = REPO_ROOT / "molmetal/scripts/m6_wf320h_vina_phase2.py"
     if not src.exists():
         pytest.skip("Source script not found")
@@ -253,8 +259,11 @@ def test_wf416a1_migration_helper_idempotent(tmp_path: Path) -> None:
     before = test_path.read_text(encoding="utf-8")
     # Import the migration helper
     from molmetal.scripts.wf416a1_migrate_closeout_scripts import migrate_one
+
     changed, msg = migrate_one(test_path)
     after = test_path.read_text(encoding="utf-8")
-    assert changed is False, "Migration helper should be idempotent on already-migrated file."
+    assert (
+        changed is False
+    ), "Migration helper should be idempotent on already-migrated file."
     assert msg == "already_migrated", f"Expected 'already_migrated', got {msg!r}"
     assert before == after, "File content must be unchanged for idempotent migration."

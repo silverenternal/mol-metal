@@ -52,6 +52,7 @@ import fails here instead of shipping.  Two layers:
 Adding a script to the guarded set requires no edit here: carry the marker
 and it is covered.
 """
+
 from __future__ import annotations
 
 import re
@@ -84,10 +85,10 @@ MIGRATION_MARKERS = ("_wf416_atomic_write_text", "_WF416_HAS_ATOMIC")
 #: word character, so there is no boundary between ``dataclass`` and
 #: ``_transform``).
 _DECORATOR_CLOBBER = re.compile(
-    r"^[ \t]*@dataclass\b[^\n]*\n"
-    r"[ \t]*(?:async[ \t]+)?def[ \t]",
+    r"^[ \t]*@dataclass\b[^\n]*\n" r"[ \t]*(?:async[ \t]+)?def[ \t]",
     re.MULTILINE,
 )
+
 
 #: Every script, not just the marked ones — the Wf-424 instance was unmarked.
 def _all_scripts() -> list[Path]:

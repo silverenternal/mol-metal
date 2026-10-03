@@ -73,6 +73,7 @@ def _probe_pysr() -> bool:
         return _PYSR_AVAILABLE
     try:
         from pysr import PySRRegressor  # noqa: F401
+
         _PYSR_AVAILABLE = True
     except Exception as exc:  # noqa: BLE001
         _PYSR_AVAILABLE = False
@@ -125,6 +126,7 @@ class PySRFitResult:
         Names PySR was given via ``variable_names``. ``("x0", "x1", ...)``
         is the default if not supplied.
     """
+
     formula_str: str
     complexity: int
     loss: float
@@ -246,13 +248,15 @@ def fit(
     if n_samples < 5:
         logger.warning(
             "pysr_adapter.fit: n_samples=%d < 5; PySR search needs >=5 "
-            "rows; returning None", n_samples,
+            "rows; returning None",
+            n_samples,
         )
         return None
     if y_arr.shape[0] != n_samples:
         logger.warning(
-            "pysr_adapter.fit: X and y shape mismatch (%d vs %d); "
-            "returning None", n_samples, y_arr.shape[0],
+            "pysr_adapter.fit: X and y shape mismatch (%d vs %d); " "returning None",
+            n_samples,
+            y_arr.shape[0],
         )
         return None
     if np.isnan(X_arr).any() or np.isnan(y_arr).any():
@@ -265,7 +269,8 @@ def fit(
         if n_samples < 5:
             logger.warning(
                 "pysr_adapter.fit: after NaN filter, n_samples=%d < 5; "
-                "returning None", n_samples,
+                "returning None",
+                n_samples,
             )
             return None
 
@@ -305,8 +310,8 @@ def fit(
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning(
-            "pysr_adapter.fit: PySRRegressor __init__ failed: %s; "
-            "returning None", exc,
+            "pysr_adapter.fit: PySRRegressor __init__ failed: %s; " "returning None",
+            exc,
         )
         return None
 
@@ -317,8 +322,8 @@ def fit(
         # PySR's first call downloads the Julia depot; that failure mode
         # is the most common. Surface the underlying reason in the log.
         logger.warning(
-            "pysr_adapter.fit: PySRRegressor.fit failed: %s; "
-            "returning None", exc,
+            "pysr_adapter.fit: PySRRegressor.fit failed: %s; " "returning None",
+            exc,
         )
         return None
 
@@ -333,6 +338,7 @@ def fit(
     # ``equations_`` is either a DataFrame (single-output) or a list
     # of DataFrames (multi-output). We only support single-output here.
     import pandas as pd  # local import; pandas is already a dep
+
     if isinstance(equations, list):
         if not equations:
             return None
@@ -396,6 +402,7 @@ def evaluate(formula_str: str, X: np.ndarray) -> np.ndarray:
     parse errors.
     """
     import sympy as sp  # local import; keeps import-time light
+
     X_arr = np.asarray(X, dtype=float)
     if X_arr.ndim == 1:
         X_arr = X_arr.reshape(-1, 1)

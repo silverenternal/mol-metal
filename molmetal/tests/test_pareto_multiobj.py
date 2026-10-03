@@ -243,8 +243,24 @@ def test_synthesize_pareto_front_returns_full_kpis():
 
 def test_synthesize_pareto_front_custom_pop():
     pop = [
-        {"id": 0, "toxicity": 0.0, "efficacy": 1.0, "admet": 1.0, "selectivity": 1.0, "metal": "Pt", "cell_line": "A2780"},
-        {"id": 1, "toxicity": 1.0, "efficacy": 0.0, "admet": 0.0, "selectivity": 0.0, "metal": "Au", "cell_line": "MCF7"},
+        {
+            "id": 0,
+            "toxicity": 0.0,
+            "efficacy": 1.0,
+            "admet": 1.0,
+            "selectivity": 1.0,
+            "metal": "Pt",
+            "cell_line": "A2780",
+        },
+        {
+            "id": 1,
+            "toxicity": 1.0,
+            "efficacy": 0.0,
+            "admet": 0.0,
+            "selectivity": 0.0,
+            "metal": "Au",
+            "cell_line": "MCF7",
+        },
     ]
     out = synthesize_pareto_front(pop=pop, cfg=ParetoConfig(), seed=0, n=2)
     # First row dominates second (in the sign-flipped space); front size should be 1.

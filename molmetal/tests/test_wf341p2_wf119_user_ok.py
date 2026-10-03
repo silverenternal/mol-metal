@@ -42,6 +42,7 @@ PRE_FLIGHT = ROOT / "molmetal/scripts/pre_flight_check.py"
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _read_wrapper() -> str:
     assert WRAPPER.exists(), f"wrapper missing: {WRAPPER}"
     return WRAPPER.read_text()
@@ -70,6 +71,7 @@ def _body_start(src: str) -> int:
 # Test 1: USER_OK gate enforces non-zero exit (exit 64 or exit 1)
 # ---------------------------------------------------------------------------
 
+
 def test_user_ok_gate_enforces_exit_64():
     """Without USER_OK env var, wrapper must exit non-zero BEFORE GPU work.
 
@@ -83,9 +85,9 @@ def test_user_ok_gate_enforces_exit_64():
     assert "USER OK REQUIRED" in src, "USER OK REQUIRED message missing"
     assert "kill_then_adapt" in src, "kill_then_adapt reference missing"
     # Gate path is gated on USER_OK != 1
-    assert 'if [[ "${USER_OK:-}" != "1" ]]' in src, (
-        "USER_OK != 1 gate condition missing from wrapper"
-    )
+    assert (
+        'if [[ "${USER_OK:-}" != "1" ]]' in src
+    ), "USER_OK != 1 gate condition missing from wrapper"
     # Real end-to-end: invocation without USER_OK exits non-zero
     proc = subprocess.run(
         ["bash", str(WRAPPER)],
@@ -99,9 +101,9 @@ def test_user_ok_gate_enforces_exit_64():
         f"wrapper exited 0 without USER_OK; expected gate block. "
         f"stdout={proc.stdout[-200:]!r}"
     )
-    assert "USER OK REQUIRED" in proc.stdout, (
-        f"gate block message missing from stdout; got {proc.stdout[-200:]!r}"
-    )
+    assert (
+        "USER OK REQUIRED" in proc.stdout
+    ), f"gate block message missing from stdout; got {proc.stdout[-200:]!r}"
     # Acceptable exit codes: 64 (Wf-338v2/Wf-310E convention) or 1 (legacy)
     assert proc.returncode in (1, 64), (
         f"unexpected exit code {proc.returncode}; expected 1 (legacy) or "
@@ -112,6 +114,7 @@ def test_user_ok_gate_enforces_exit_64():
 # ---------------------------------------------------------------------------
 # Test 2: VRAM budget check (AGENTS.md §5.1 standing GPU auth)
 # ---------------------------------------------------------------------------
+
 
 def test_vram_budget_check():
     """VRAM budget check must probe nvidia-smi free memory + abort on low VRAM.
@@ -145,18 +148,19 @@ def test_vram_budget_check():
     # If any VRAM plumbing is present, validate it parses + aborts on low VRAM
     assert has_nvidia_smi, "VRAM check uses nvidia-smi"
     # The VRAM gate should be BEFORE the actual trainer launch
-    body = src[_body_start(src):]
+    body = src[_body_start(src) :]
     gate_idx = body.find("nvidia-smi")
     trainer_idx = body.find("train_chemprop_v2_v3.py")
     if gate_idx > 0 and trainer_idx > 0:
-        assert gate_idx < trainer_idx, (
-            "VRAM check must precede trainer launch invocation"
-        )
+        assert (
+            gate_idx < trainer_idx
+        ), "VRAM check must precede trainer launch invocation"
 
 
 # ---------------------------------------------------------------------------
 # Test 3: Wf-328 + Wf-335 fixes wired
 # ---------------------------------------------------------------------------
+
 
 def test_wf328_wf335_fixes_wired():
     """Wf-328-W2 (--num-workers 8) + Wf-328-W3 (--no-bf16 default off) must
@@ -174,14 +178,14 @@ def test_wf328_wf335_fixes_wired():
     src = _read_wrapper()
 
     # Wf-328-W2: --num-workers 8 must appear in COMMON_ARGS
-    assert "--num-workers 8" in src or "--num-workers=8" in src, (
-        "Wf-328-W2 fix (--num-workers 8) missing from COMMON_ARGS"
-    )
+    assert (
+        "--num-workers 8" in src or "--num-workers=8" in src
+    ), "Wf-328-W2 fix (--num-workers 8) missing from COMMON_ARGS"
 
     # Wf-328-W3: --no-bf16 must be passed (chemprop smoke exception)
-    assert "--no-bf16" in src, (
-        "Wf-328-W3 fix (--no-bf16 default off for chemprop smoke) missing"
-    )
+    assert (
+        "--no-bf16" in src
+    ), "Wf-328-W3 fix (--no-bf16 default off for chemprop smoke) missing"
 
     # Wf-335-R1: documented N/A for chemprop trainer (no torch.compile)
     # Verify the wrapper documents this exception explicitly
@@ -197,12 +201,8 @@ def test_wf328_wf335_fixes_wired():
     )
 
     # The trainer must accept --num-workers and --no-bf16
-    assert "--num-workers" in trainer_src, (
-        "trainer missing --num-workers CLI arg"
-    )
-    assert "--no-bf16" in trainer_src, (
-        "trainer missing --no-bf16 CLI arg"
-    )
+    assert "--num-workers" in trainer_src, "trainer missing --num-workers CLI arg"
+    assert "--no-bf16" in trainer_src, "trainer missing --no-bf16 CLI arg"
 
     # Wf-328-W3 reference: --no-bf16 uses argparse with dest="bf16" and
     # default=True (so BF16 is ON by default; --no-bf16 opts out).
@@ -218,6 +218,7 @@ def test_wf328_wf335_fixes_wired():
 # ---------------------------------------------------------------------------
 # Test 4: backward compat (dry-run idempotent + pre-flight ordering)
 # ---------------------------------------------------------------------------
+
 
 def test_backward_compat_dry_run_idempotent():
     """--dry-run path must remain idempotent + exit 0 with USER_OK=1 set.
@@ -263,36 +264,33 @@ def test_backward_compat_dry_run_idempotent():
     dry_run_block = src[dry_run_idx:dry_run_close_idx]
     pre_flight_idx = dry_run_block.find("pre_flight_check.py")
     ablation_enum_idx = dry_run_block.find("for ablation in")
-    assert pre_flight_idx > 0, (
-        "--dry-run block must probe pre_flight_check.py"
-    )
-    assert ablation_enum_idx > 0, (
-        "--dry-run block must enumerate the 4 ablations"
-    )
-    assert pre_flight_idx < ablation_enum_idx, (
-        "pre-flight must precede ablation enumeration in dry-run block"
-    )
+    assert pre_flight_idx > 0, "--dry-run block must probe pre_flight_check.py"
+    assert ablation_enum_idx > 0, "--dry-run block must enumerate the 4 ablations"
+    assert (
+        pre_flight_idx < ablation_enum_idx
+    ), "pre-flight must precede ablation enumeration in dry-run block"
 
     # Idempotency: --dry-run output tails should be stable
     tail1 = proc1.stdout.strip().splitlines()[-5:]
     tail2 = proc2.stdout.strip().splitlines()[-5:]
-    assert tail1 == tail2, (
-        f"--dry-run not idempotent:\n  run1 tail: {tail1}\n  run2 tail: {tail2}"
-    )
+    assert (
+        tail1 == tail2
+    ), f"--dry-run not idempotent:\n  run1 tail: {tail1}\n  run2 tail: {tail2}"
 
     # Backward compat: --chemprop-mode + --chemprop-min-epochs +
     # --chemprop-lomo-init-scale are all present in --help (sanity probe)
     proc_help = subprocess.run(
-        ["/home/hugo/codes/mol-metal/.venv/bin/python",
-         str(TRAINER), "--help"],
+        ["/home/hugo/codes/mol-metal/.venv/bin/python", str(TRAINER), "--help"],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
         env={**os.environ, "PYTHONPATH": str(ROOT)},
         timeout=30,
     )
-    for tok in ("--chemprop-mode", "--chemprop-min-epochs",
-                "--chemprop-lomo-init-scale", "v3-fix"):
-        assert tok in proc_help.stdout, (
-            f"chemprop trainer --help missing token: {tok}"
-        )
+    for tok in (
+        "--chemprop-mode",
+        "--chemprop-min-epochs",
+        "--chemprop-lomo-init-scale",
+        "v3-fix",
+    ):
+        assert tok in proc_help.stdout, f"chemprop trainer --help missing token: {tok}"

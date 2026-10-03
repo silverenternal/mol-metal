@@ -45,7 +45,9 @@ if str(PROJECT_ROOT) not in sys.path:
 # Helpers
 # ---------------------------------------------------------------------------
 def _toy_pocket(
-    b: int = 2, p: int = 8, seed: int = 0,
+    b: int = 2,
+    p: int = 8,
+    seed: int = 0,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """Deterministic (coords, atom_types) pocket clouds for tests."""
     g = torch.Generator().manual_seed(int(seed))
@@ -55,7 +57,9 @@ def _toy_pocket(
 
 
 def _identical_pocket(
-    b: int = 3, p: int = 8, seed: int = 0,
+    b: int = 3,
+    p: int = 8,
+    seed: int = 0,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """Per-sample distinct + one shared cloud — used by the symmetry tests."""
     g = torch.Generator().manual_seed(int(seed))
@@ -66,11 +70,13 @@ def _identical_pocket(
 
 def _rotation_matrix_z(angle: float) -> torch.Tensor:
     c, s = math.cos(angle), math.sin(angle)
-    return torch.tensor([
-        [c, -s, 0.0],
-        [s,  c, 0.0],
-        [0.0, 0.0, 1.0],
-    ])
+    return torch.tensor(
+        [
+            [c, -s, 0.0],
+            [s, c, 0.0],
+            [0.0, 0.0, 1.0],
+        ]
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -87,9 +93,7 @@ def test_multi_ph_pocket_features_shape():
     feats = MultiPHPocketFeatures(max_radius=5.0, max_coord=4.0, n_bins=32)
     coords, atom_types = _toy_pocket(b=4, p=10, seed=42)
     out = feats.compute_with_atom_types(coords, atom_types)
-    assert out.shape == (4, 32, 32), (
-        f"expected (4, 32, 32), got {tuple(out.shape)}"
-    )
+    assert out.shape == (4, 32, 32), f"expected (4, 32, 32), got {tuple(out.shape)}"
 
 
 # ---------------------------------------------------------------------------
@@ -224,9 +228,9 @@ def test_metal_coord_head_set_reference_changes_output():
     head.set_reference(ref_coords, ref_atom_types)
     logits_ref = head(out).detach().clone()
     # The two outputs must differ — set_reference has taken effect.
-    assert not torch.allclose(logits_default, logits_ref, atol=1e-6), (
-        "set_reference must change the head's output"
-    )
+    assert not torch.allclose(
+        logits_default, logits_ref, atol=1e-6
+    ), "set_reference must change the head's output"
 
 
 # ---------------------------------------------------------------------------
@@ -245,9 +249,9 @@ def test_metal_coord_head_logits_finite():
         coords, atom_types = _toy_pocket(b=b, p=6, seed=b)
         out = feats.compute_with_atom_types(coords, atom_types)
         logits = head(out)
-        assert torch.isfinite(logits).all(), (
-            f"logits must be finite at b={b}; got NaN/Inf"
-        )
+        assert torch.isfinite(
+            logits
+        ).all(), f"logits must be finite at b={b}; got NaN/Inf"
 
 
 # ---------------------------------------------------------------------------
@@ -268,17 +272,33 @@ def test_multi_ph_kernel_sliced_wasserstein():
     coords_a, atom_a = _toy_pocket(b=2, p=6, seed=1)
     coords_b, atom_b = _toy_pocket(b=2, p=6, seed=2)
     diagram_a = TwoParameterDiagram.from_filtration(
-        coords_a, atom_a, max_radius=4.0, max_coord=3.0, n_bins=12,
+        coords_a,
+        atom_a,
+        max_radius=4.0,
+        max_coord=3.0,
+        n_bins=12,
     )
     diagram_b = TwoParameterDiagram.from_filtration(
-        coords_b, atom_b, max_radius=4.0, max_coord=3.0, n_bins=12,
+        coords_b,
+        atom_b,
+        max_radius=4.0,
+        max_coord=3.0,
+        n_bins=12,
     )
 
     k_ab = sliced_wasserstein_kernel(
-        diagram_a, diagram_b, n_projections=4, sigma=2.0, seed=7,
+        diagram_a,
+        diagram_b,
+        n_projections=4,
+        sigma=2.0,
+        seed=7,
     )
     k_ba = sliced_wasserstein_kernel(
-        diagram_b, diagram_a, n_projections=4, sigma=2.0, seed=7,
+        diagram_b,
+        diagram_a,
+        n_projections=4,
+        sigma=2.0,
+        seed=7,
     )
     torch.testing.assert_close(k_ab, k_ba.T, rtol=1e-5, atol=1e-5)
 
@@ -295,14 +315,25 @@ def test_multi_ph_kernel_self_similarity_one():
 
     coords, atom_types = _toy_pocket(b=3, p=6, seed=11)
     diagram = TwoParameterDiagram.from_filtration(
-        coords, atom_types, max_radius=4.0, max_coord=3.0, n_bins=12,
+        coords,
+        atom_types,
+        max_radius=4.0,
+        max_coord=3.0,
+        n_bins=12,
     )
     k = sliced_wasserstein_kernel(
-        diagram, diagram, n_projections=4, sigma=2.0, seed=11,
+        diagram,
+        diagram,
+        n_projections=4,
+        sigma=2.0,
+        seed=11,
     )
     diag = torch.diagonal(k)
     torch.testing.assert_close(
-        diag, torch.ones_like(diag), rtol=1e-5, atol=1e-5,
+        diag,
+        torch.ones_like(diag),
+        rtol=1e-5,
+        atol=1e-5,
     )
 
 
@@ -320,13 +351,25 @@ def test_multi_ph_kernel_in_unit_interval():
     coords_a, atom_a = _toy_pocket(b=2, p=6, seed=1)
     coords_b, atom_b = _toy_pocket(b=2, p=6, seed=99)
     diagram_a = TwoParameterDiagram.from_filtration(
-        coords_a, atom_a, max_radius=4.0, max_coord=3.0, n_bins=10,
+        coords_a,
+        atom_a,
+        max_radius=4.0,
+        max_coord=3.0,
+        n_bins=10,
     )
     diagram_b = TwoParameterDiagram.from_filtration(
-        coords_b, atom_b, max_radius=4.0, max_coord=3.0, n_bins=10,
+        coords_b,
+        atom_b,
+        max_radius=4.0,
+        max_coord=3.0,
+        n_bins=10,
     )
     k = sliced_wasserstein_kernel(
-        diagram_a, diagram_b, n_projections=4, sigma=2.0, seed=3,
+        diagram_a,
+        diagram_b,
+        n_projections=4,
+        sigma=2.0,
+        seed=3,
     )
     assert (k > 0).all() and (k <= 1.0 + 1e-6).all(), (
         f"kernel values must be in (0, 1]; got min={k.min().item()} "
@@ -370,9 +413,10 @@ def test_augment_pocket_embedding_shape():
     base = torch.randn(b, h)
     features = torch.randn(b, n_bins, n_bins)
     out = augment_pocket_embedding(base, features)
-    assert out.shape == (b, h + n_bins ** 2), (
-        f"expected ({b}, {h + n_bins ** 2}); got {tuple(out.shape)}"
-    )
+    assert out.shape == (
+        b,
+        h + n_bins**2,
+    ), f"expected ({b}, {h + n_bins ** 2}); got {tuple(out.shape)}"
 
 
 # ---------------------------------------------------------------------------
@@ -409,7 +453,10 @@ def test_augment_pocket_embedding_first_slice_equals_base():
     out = augment_pocket_embedding(base, features)
     torch.testing.assert_close(out[:, :h], base, rtol=0.0, atol=0.0)
     torch.testing.assert_close(
-        out[:, h:].reshape(b, n_bins, n_bins), features, rtol=0.0, atol=0.0,
+        out[:, h:].reshape(b, n_bins, n_bins),
+        features,
+        rtol=0.0,
+        atol=0.0,
     )
 
 
@@ -462,21 +509,22 @@ def test_multi_ph_uses_existing_pocket_encoder_without_modification():
         "molmetal.adapters.flow_matching_lipman",
     )
     # Confirm the public symbol still exists with the expected name.
-    assert hasattr(lipman, "PocketEncoder"), (
-        "PocketEncoder must remain exported after W2.3"
-    )
+    assert hasattr(
+        lipman, "PocketEncoder"
+    ), "PocketEncoder must remain exported after W2.3"
 
     # Now import the W2.3 adapter.  This must NOT silently modify
     # the lipman module — we re-check by id comparison.
     lipman_id_before = id(lipman)
     from molmetal.adapters import multi_ph_integration  # noqa: F401
+
     lipman_id_after = id(lipman)
-    assert lipman_id_before == lipman_id_after, (
-        "W2.3 adapter must not replace the lipman module"
-    )
-    assert hasattr(lipman, "PocketEncoder"), (
-        "W2.3 adapter must not delete PocketEncoder"
-    )
+    assert (
+        lipman_id_before == lipman_id_after
+    ), "W2.3 adapter must not replace the lipman module"
+    assert hasattr(
+        lipman, "PocketEncoder"
+    ), "W2.3 adapter must not delete PocketEncoder"
 
 
 # ---------------------------------------------------------------------------
@@ -554,9 +602,9 @@ def test_metal_coord_head_has_learned_linear():
 
     head = MultiPHMetalCoordHead(n_metals=8)
     linears = [m for m in head.modules() if isinstance(m, nn.Linear)]
-    assert len(linears) == 1, (
-        f"head must hold exactly one nn.Linear; got {len(linears)}"
-    )
+    assert (
+        len(linears) == 1
+    ), f"head must hold exactly one nn.Linear; got {len(linears)}"
     lin = linears[0]
     assert lin.weight.shape == (8, 8)
     # Should have a bias by default.

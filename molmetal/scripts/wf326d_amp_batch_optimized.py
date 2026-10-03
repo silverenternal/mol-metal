@@ -189,7 +189,9 @@ def _measure_one_config(
 
     # ---- Warmup (excluded from timing) ----
     for _ in range(n_warmup):
-        batch = _build_synthetic_batch(batch_size, n_atoms, n_edges, atom_dim, bond_dim, device)
+        batch = _build_synthetic_batch(
+            batch_size, n_atoms, n_edges, atom_dim, bond_dim, device
+        )
         optimizer.zero_grad()
         with torch.autocast(
             device_type="cuda" if is_cuda else "cpu",
@@ -201,10 +203,9 @@ def _measure_one_config(
             cls = head_cls(h_pool)
             target_pic50 = torch.zeros_like(pic50)
             target_cls = torch.zeros(cls.shape[0], dtype=torch.long, device=device)
-            loss = (
-                torch.nn.functional.mse_loss(pic50, target_pic50)
-                + torch.nn.functional.cross_entropy(cls, target_cls)
-            )
+            loss = torch.nn.functional.mse_loss(
+                pic50, target_pic50
+            ) + torch.nn.functional.cross_entropy(cls, target_cls)
         loss.backward()
         optimizer.step()
 
@@ -217,7 +218,9 @@ def _measure_one_config(
     overflow = False
     try:
         for _ in range(n_measure):
-            batch = _build_synthetic_batch(batch_size, n_atoms, n_edges, atom_dim, bond_dim, device)
+            batch = _build_synthetic_batch(
+                batch_size, n_atoms, n_edges, atom_dim, bond_dim, device
+            )
             optimizer.zero_grad()
             with torch.autocast(
                 device_type="cuda" if is_cuda else "cpu",
@@ -229,10 +232,9 @@ def _measure_one_config(
                 cls = head_cls(h_pool)
                 target_pic50 = torch.zeros_like(pic50)
                 target_cls = torch.zeros(cls.shape[0], dtype=torch.long, device=device)
-                loss = (
-                    torch.nn.functional.mse_loss(pic50, target_pic50)
-                    + torch.nn.functional.cross_entropy(cls, target_cls)
-                )
+                loss = torch.nn.functional.mse_loss(
+                    pic50, target_pic50
+                ) + torch.nn.functional.cross_entropy(cls, target_cls)
             loss.backward()
             optimizer.step()
     except (RuntimeError, torch.cuda.OutOfMemoryError) as exc:
@@ -249,7 +251,7 @@ def _measure_one_config(
 
     peak_mb: Optional[float] = None
     if is_cuda and not overflow:
-        peak_mb = float(torch.cuda.max_memory_allocated(device)) / (1024 ** 2)
+        peak_mb = float(torch.cuda.max_memory_allocated(device)) / (1024**2)
 
     if overflow or elapsed <= 0:
         throughput = 0.0
@@ -268,7 +270,9 @@ def _measure_one_config(
     )
 
 
-def _encode_only(model, batch: Dict[str, "torch.Tensor"], hidden: int) -> "torch.Tensor":
+def _encode_only(
+    model, batch: Dict[str, "torch.Tensor"], hidden: int
+) -> "torch.Tensor":
     """Run the multi-task encoder's pooling on a batch.
 
     We don't need the per-metal head selection for the bench — we just
@@ -581,7 +585,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             flush=True,
         )
         for row in sweep.rows:
-            mem_str = f"{row.peak_memory_mb:.1f}" if row.peak_memory_mb is not None else "n/a"
+            mem_str = (
+                f"{row.peak_memory_mb:.1f}" if row.peak_memory_mb is not None else "n/a"
+            )
             print(
                 f"  {row.batch_size:>6d} {row.dtype:>6s} "
                 f"{row.throughput_samples_per_sec:>12.2f} {mem_str:>14s} "

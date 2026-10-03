@@ -43,6 +43,7 @@ Run with::
         /home/hugo/codes/mol-metal/.venv/bin/python -m pytest \\
         molmetal/tests/test_wf371a1_m6_kappa_degenerate.py -v
 """
+
 from __future__ import annotations
 
 import json
@@ -72,6 +73,7 @@ def _import_module():
             M6_KAPPA_THRESHOLD_ADAPTIVE,
             DEFAULT_SEED,
         )
+
         return {
             "_rdkit_12d": _rdkit_12d,
             "_safe_m6_kappa": _safe_m6_kappa,
@@ -90,9 +92,16 @@ def mod():
 
 
 SYNTHETIC_SMILES = [
-    "CCO", "c1ccccc1", "CC(=O)O", "CCN",
-    "CCOC", "CCCCO", "c1ccc(O)cc1", "c1ccncc1",
-    "CC(=O)Nc1ccccc1", "CC(C)O",
+    "CCO",
+    "c1ccccc1",
+    "CC(=O)O",
+    "CCN",
+    "CCOC",
+    "CCCCO",
+    "c1ccc(O)cc1",
+    "c1ccncc1",
+    "CC(=O)Nc1ccccc1",
+    "CC(C)O",
 ]
 
 
@@ -186,8 +195,11 @@ def test_backward_compat(mod):
 
     # Locate the Wf-371-A1 result.json on disk
     candidates_paths = [
-        _REPO_ROOT / "molmetal" / "reports" / "wf371a1_degenerate_chain"
-                     / "result.json",
+        _REPO_ROOT
+        / "molmetal"
+        / "reports"
+        / "wf371a1_degenerate_chain"
+        / "result.json",
     ]
     result_path = None
     for p in candidates_paths:
@@ -202,7 +214,7 @@ def test_backward_compat(mod):
         result = {
             "wf": "Wf-371-A1",
             "task": "m6_kappa DEGENERATE chain attempt "
-                    "(RDKit 12-d baseline, no MAML/NeuralODE/chemprop+PLL)",
+            "(RDKit 12-d baseline, no MAML/NeuralODE/chemprop+PLL)",
             "no_gpu_launch": True,
             "no_retrain": True,
             "cpu_only": True,
@@ -245,18 +257,18 @@ def test_backward_compat(mod):
     assert isinstance(result["candidates"], list)
     for cand in result["candidates"]:
         for key in (
-            "candidate", "n_features", "cv_r2", "augmented_mean",
+            "candidate",
+            "n_features",
+            "cv_r2",
+            "augmented_mean",
             "verdict",
         ):
-            assert key in cand, (
-                f"Wf-371-A1 candidate missing key {key!r}"
-            )
+            assert key in cand, f"Wf-371-A1 candidate missing key {key!r}"
 
     # (b) verdict schema
     verdict = result.get("aggregate_status", "")
     assert verdict.startswith("HONEST_NEGATIVE_"), (
-        f"Wf-371-A1 aggregate_status must be HONEST_NEGATIVE_*, "
-        f"got {verdict!r}"
+        f"Wf-371-A1 aggregate_status must be HONEST_NEGATIVE_*, " f"got {verdict!r}"
     )
 
     # (c) honest_framing schema
@@ -269,20 +281,14 @@ def test_backward_compat(mod):
 
     # (d) cross_references includes Wf-361-B1 + Wf-361-B2 + Wf-364-A2
     cross_refs = honest_framing.get("cross_references", [])
-    assert any("Wf-361-B1" in str(r) or "wf361b1" in str(r)
-               for r in cross_refs), (
-        "Wf-371-A1 honest_framing.cross_references must include "
-        "Wf-361-B1 reference"
+    assert any("Wf-361-B1" in str(r) or "wf361b1" in str(r) for r in cross_refs), (
+        "Wf-371-A1 honest_framing.cross_references must include " "Wf-361-B1 reference"
     )
-    assert any("Wf-361-B2" in str(r) or "wf361b2" in str(r)
-               for r in cross_refs), (
-        "Wf-371-A1 honest_framing.cross_references must include "
-        "Wf-361-B2 reference"
+    assert any("Wf-361-B2" in str(r) or "wf361b2" in str(r) for r in cross_refs), (
+        "Wf-371-A1 honest_framing.cross_references must include " "Wf-361-B2 reference"
     )
-    assert any("Wf-364-A2" in str(r) or "wf364a2" in str(r)
-               for r in cross_refs), (
-        "Wf-371-A1 honest_framing.cross_references must include "
-        "Wf-364-A2 reference"
+    assert any("Wf-364-A2" in str(r) or "wf364a2" in str(r) for r in cross_refs), (
+        "Wf-371-A1 honest_framing.cross_references must include " "Wf-364-A2 reference"
     )
 
     # (e) gate contract: aggregate_status + ceiling_break

@@ -215,6 +215,7 @@ def experiment_integration_smoke(model: PocketMacroSkeleton) -> dict:
     We do **not** mutate ``lambda_combinators.py`` — the integration
     is documented here as a recommended follow-up PR (Phase 4).
     """
+
     # 1. Build a tiny rule set: 2 dummy rules with applies_to / score.
     class _Rule:
         def __init__(self, name, pred, score):

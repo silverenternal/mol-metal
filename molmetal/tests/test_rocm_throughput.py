@@ -75,7 +75,7 @@ def test_matmul_in_rocm():
 
     # Also assert minimum throughput for diagnostic purposes (this is
     # NOT a hard fail threshold — it just prints a warning).
-    gflops = 2 * 1024 ** 3 / mean_s / 1e9
+    gflops = 2 * 1024**3 / mean_s / 1e9
     print(f"FP32 1024³ matmul: {mean_s * 1000:.3f} ms  ({gflops:.1f} GFLOP/s)")
 
 
@@ -111,7 +111,10 @@ def test_dmpnn_30_atoms_batch_10():
     h_atom = torch.randn(batch_size, n_atoms, 39, device=device)
     edge_attr = torch.randn(batch_size, edge_index.shape[-1], 6, device=device)
     batch_idx = (
-        torch.arange(batch_size, device=device).view(-1, 1).expand(-1, n_atoms).contiguous()
+        torch.arange(batch_size, device=device)
+        .view(-1, 1)
+        .expand(-1, n_atoms)
+        .contiguous()
     )
 
     # Warmup

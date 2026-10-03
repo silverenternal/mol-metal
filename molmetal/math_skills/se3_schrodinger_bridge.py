@@ -122,9 +122,7 @@ def so3_exp(omega: Tensor) -> Tensor:
         Rotation matrix of shape ``(..., 3, 3)``.
     """
     if omega.shape[-1] != 3:
-        raise ValueError(
-            f"so3_exp expects last dim 3, got shape {tuple(omega.shape)}"
-        )
+        raise ValueError(f"so3_exp expects last dim 3, got shape {tuple(omega.shape)}")
 
     theta = omega.norm(dim=-1, keepdim=True).clamp_min(_EPS_ROT)  # (..., 1)
     n = omega / theta  # unit axis (..., 3)
@@ -329,9 +327,7 @@ def se3_exp(xi: Tensor) -> Tensor:
         Homogeneous SE(3) matrix of shape ``(..., 4, 4)``.
     """
     if xi.shape[-1] != 6:
-        raise ValueError(
-            f"se3_exp expects last dim 6, got shape {tuple(xi.shape)}"
-        )
+        raise ValueError(f"se3_exp expects last dim 6, got shape {tuple(xi.shape)}")
     upsilon = xi[..., :3]
     omega = xi[..., 3:]
     theta = omega.norm(dim=-1, keepdim=True).clamp_min(_EPS_ROT)  # (..., 1)
@@ -409,9 +405,7 @@ def se3_log(T: Tensor) -> Tensor:
         Twist of shape ``(..., 6)``.
     """
     if T.shape[-2:] != (4, 4):
-        raise ValueError(
-            f"se3_log expects last two dims (4, 4), got {tuple(T.shape)}"
-        )
+        raise ValueError(f"se3_log expects last two dims (4, 4), got {tuple(T.shape)}")
     R = T[..., :3, :3]
     p = T[..., :3, 3]
 
@@ -435,8 +429,8 @@ def se3_log(T: Tensor) -> Tensor:
     theta_v = theta.unsqueeze(-1)
 
     K2 = K @ K
-    a = (1.0 - cos_t) / (theta_v ** 2)
-    b = (theta_v - sin_t) / (theta_v ** 3)
+    a = (1.0 - cos_t) / (theta_v**2)
+    b = (theta_v - sin_t) / (theta_v**3)
     V = eye3 + a * K + b * K2  # (..., 3, 3) SO(3) left Jacobian.
 
     # Numerical inverse — see docstring for why we avoid the
@@ -516,7 +510,9 @@ class SE3Geodesic:
         R_ref_inv = T_ref[..., :3, :3].transpose(-1, -2)
         T_ref_inv = torch.zeros_like(T_ref)
         T_ref_inv[..., :3, :3] = R_ref_inv
-        T_ref_inv[..., :3, 3] = -(R_ref_inv @ T_ref[..., :3, 3].unsqueeze(-1)).squeeze(-1)
+        T_ref_inv[..., :3, 3] = -(R_ref_inv @ T_ref[..., :3, 3].unsqueeze(-1)).squeeze(
+            -1
+        )
         T_ref_inv[..., 3, 3] = 1.0
         return se3_log(T_ref_inv @ T)
 

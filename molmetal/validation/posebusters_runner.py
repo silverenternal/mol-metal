@@ -34,6 +34,7 @@ The module is intentionally **independent** of
 have to import the heavy adapter module when all they want is the
 outer-gate pass/fail.
 """
+
 from __future__ import annotations
 
 import logging
@@ -51,6 +52,7 @@ def _have_rdkit() -> bool:
     try:
         import rdkit  # noqa: F401  - probe only
         from rdkit import Chem  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -66,6 +68,7 @@ def posebusters_available() -> bool:
     """
     try:
         import posebusters  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -123,7 +126,9 @@ def _embed_conformers(
     # ``n_conformers`` 3D coordinates. Returns a vector of conformer IDs,
     # not an integer count; IDs need not be consecutive.
     try:
-        conformer_ids = list(AllChem.EmbedMultipleConfs(mol, numConfs=int(n_conformers), params=params))
+        conformer_ids = list(
+            AllChem.EmbedMultipleConfs(mol, numConfs=int(n_conformers), params=params)
+        )
     except Exception:
         conformer_ids = []
     if not conformer_ids:
@@ -155,6 +160,7 @@ def _embed_conformers(
 def _binary_value(value):
     """Accept actual booleans only; NaN, pd.NA, strings and numeric 1 fail closed."""
     import numpy as np
+
     return bool(value) if isinstance(value, (bool, np.bool_)) else None
 
 
@@ -169,22 +175,39 @@ def _report_checks(df, config) -> Dict[str, Any]:
     for module in config.get("modules", []):
         for output in module.get("chosen_binary_test_output", []):
             name = module.get("rename_outputs", {}).get(
-                output, output + module.get("rename_suffix", ""))
+                output, output + module.get("rename_suffix", "")
+            )
             name = name.lower().replace(" ", "_")
             if name not in expected:
                 expected.append(name)
     if not expected or df is None or len(df) == 0:
-        return {"pb_valid": False, "checks": {key: None for key in expected},
-                "row_checks": [], "missing_checks": expected,
-                "failures": ["empty_report" if expected else "missing_check_schema"]}
-    row_checks = [{key: _binary_value(row[key]) if key in df.columns else None
-                   for key in expected} for _, row in df.iterrows()]
+        return {
+            "pb_valid": False,
+            "checks": {key: None for key in expected},
+            "row_checks": [],
+            "missing_checks": expected,
+            "failures": ["empty_report" if expected else "missing_check_schema"],
+        }
+    row_checks = [
+        {
+            key: _binary_value(row[key]) if key in df.columns else None
+            for key in expected
+        }
+        for _, row in df.iterrows()
+    ]
     missing = [key for key in expected if any(row[key] is None for row in row_checks)]
-    checks = {key: (None if key in missing else all(row[key] for row in row_checks))
-              for key in expected}
+    checks = {
+        key: (None if key in missing else all(row[key] for row in row_checks))
+        for key in expected
+    }
     failures = [key for key, value in checks.items() if value is not True]
-    return {"pb_valid": not failures, "checks": checks, "row_checks": row_checks,
-            "missing_checks": missing, "failures": failures}
+    return {
+        "pb_valid": not failures,
+        "checks": checks,
+        "row_checks": row_checks,
+        "missing_checks": missing,
+        "failures": failures,
+    }
 
 
 def check_docked_pose(mol, receptor_path) -> Dict[str, Any]:
@@ -197,14 +220,24 @@ def check_docked_pose(mol, receptor_path) -> Dict[str, Any]:
     that does not replace the evaluated input pose. No reference ligand is
     supplied, so no redocking RMSD is implied.
     """
-    result = {"pb_valid": False, "backend": "posebusters", "config": "dock",
-              "status": "invalid_input", "checks": {}, "row_checks": [],
-              "missing_checks": [], "failures": [], "skipped": False,
-              "n_conformers": 0, "version": None,
-              "coordinates_preserved": True}
+    result = {
+        "pb_valid": False,
+        "backend": "posebusters",
+        "config": "dock",
+        "status": "invalid_input",
+        "checks": {},
+        "row_checks": [],
+        "missing_checks": [],
+        "failures": [],
+        "skipped": False,
+        "n_conformers": 0,
+        "version": None,
+        "coordinates_preserved": True,
+    }
     try:
         from rdkit import Chem
         import numpy as np
+
         if mol is None or not isinstance(mol, Chem.Mol) or not mol.GetNumAtoms():
             raise ValueError("missing_or_empty_molecule")
         if mol.GetNumConformers() != 1:
@@ -214,18 +247,25 @@ def check_docked_pose(mol, receptor_path) -> Dict[str, Any]:
         receptor_path = os.fspath(receptor_path)
         if not os.path.isfile(receptor_path):
             raise ValueError("receptor_file_missing")
-        pose = Chem.Mol(mol)  # preserve graph/conformer and protect the caller from backend mutation
+        pose = Chem.Mol(
+            mol
+        )  # preserve graph/conformer and protect the caller from backend mutation
         result["n_conformers"] = 1
     except Exception as exc:
         result["failures"] = [str(exc)]
         return result
     if not posebusters_available():
-        result.update(pb_valid=None, skipped=True, status="unavailable",
-                      failures=["posebusters_not_installed"])
+        result.update(
+            pb_valid=None,
+            skipped=True,
+            status="unavailable",
+            failures=["posebusters_not_installed"],
+        )
         return result
     try:
         from importlib.metadata import version, PackageNotFoundError
         from posebusters import PoseBusters
+
         try:
             result["version"] = version("posebusters")
         except PackageNotFoundError:
@@ -235,7 +275,9 @@ def check_docked_pose(mol, receptor_path) -> Dict[str, Any]:
         result.update(_report_checks(df, pb.config))
         result["status"] = "passed" if result["pb_valid"] else "failed"
     except Exception as exc:
-        result.update(status="error", failures=["posebusters_bust_failed"], error=str(exc))
+        result.update(
+            status="error", failures=["posebusters_bust_failed"], error=str(exc)
+        )
     return result
 
 
@@ -324,6 +366,7 @@ def check_posebusters(
     # can also extract per-check failure names.
     try:
         from posebusters import PoseBusters  # type: ignore
+
         pb = PoseBusters(config="mol")
         df = pb.bust(mol, full_report=True)
     except Exception as exc:
@@ -342,11 +385,17 @@ def check_posebusters(
     try:
         report = _report_checks(df, pb.config)
     except Exception:
-        report = {"pb_valid": False, "checks": {}, "row_checks": [],
-                  "missing_checks": [], "failures": ["report_parse_failed"]}
+        report = {
+            "pb_valid": False,
+            "checks": {},
+            "row_checks": [],
+            "missing_checks": [],
+            "failures": ["report_parse_failed"],
+        }
     return {
         **report,
-        "backend": "posebusters", "config": "mol",
+        "backend": "posebusters",
+        "config": "mol",
         "status": "passed" if report["pb_valid"] else "failed",
         "skipped": False,
         "n_conformers": int(len(conformers)),
@@ -385,8 +434,12 @@ def pb_pass_rate(results: List[Dict[str, Any]]) -> float:
     """
     if not results:
         return 0.0
-    n_passed = sum(isinstance(r, dict) and _binary_value(r.get("pb_valid")) is True
-                   and _binary_value(r.get("skipped", False)) is False for r in results)
+    n_passed = sum(
+        isinstance(r, dict)
+        and _binary_value(r.get("pb_valid")) is True
+        and _binary_value(r.get("skipped", False)) is False
+        for r in results
+    )
     return float(n_passed) / len(results)
 
 

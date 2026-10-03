@@ -122,8 +122,7 @@ def test_build_dataset_default_constructs_real_dataset():
     declared = str(cfg.get("data", {}).get("dataset", "")).lower()
     if declared == "qm9":
         assert type_name == "QM9Dataset", (
-            f"default config declares qm9 but build_dataset produced "
-            f"{type_name!r}."
+            f"default config declares qm9 but build_dataset produced " f"{type_name!r}."
         )
     elif declared in {"metalcytotox", "metalcytotoxdb"}:
         assert type_name == "MetalCytoToxDataset", (

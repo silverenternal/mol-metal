@@ -43,7 +43,9 @@ class TestMMPTargetLookup:
         target = get_target("MMP2")
         assert isinstance(target, MMPTarget)
         assert target.name == "MMP2"
-        assert len(target.pdb_ids) == 6, f"MMP2 has {len(target.pdb_ids)} PDB ids, expected 6"
+        assert (
+            len(target.pdb_ids) == 6
+        ), f"MMP2 has {len(target.pdb_ids)} PDB ids, expected 6"
         # Sanity: all PDB IDs are 4-char uppercase alphanumeric
         for pdb in target.pdb_ids:
             assert len(pdb) == 4
@@ -55,7 +57,9 @@ class TestMMPTargetLookup:
         target = get_target("MMP9")
         assert isinstance(target, MMPTarget)
         assert target.name == "MMP9"
-        assert len(target.pdb_ids) == 6, f"MMP9 has {len(target.pdb_ids)} PDB ids, expected 6"
+        assert (
+            len(target.pdb_ids) == 6
+        ), f"MMP9 has {len(target.pdb_ids)} PDB ids, expected 6"
         for pdb in target.pdb_ids:
             assert len(pdb) == 4
             assert pdb.isalnum()
@@ -65,12 +69,16 @@ class TestMMPTargetLookup:
         """His/His/His Zn triad is present in the MMP2 binding site."""
         target = MMP2_TARGET
         # 1) The triad is exposed as `key_anchors` (chemotype-level)
-        assert target.key_anchors == ("His", "His", "His"), (
-            f"MMP2 Zn triad should be (His, His, His), got {target.key_anchors}"
-        )
+        assert target.key_anchors == (
+            "His",
+            "His",
+            "His",
+        ), f"MMP2 Zn triad should be (His, His, His), got {target.key_anchors}"
         # 2) Each curated PDB has a `zn_triad_resnums` entry of length 3
         for pdb in target.pdb_ids:
-            assert pdb in target.zn_triad_resnums, f"{pdb} missing from zn_triad_resnums"
+            assert (
+                pdb in target.zn_triad_resnums
+            ), f"{pdb} missing from zn_triad_resnums"
             triad = target.zn_triad_resnums[pdb]
             assert len(triad) == 3, f"{pdb} triad length != 3: {triad}"
             for chain_res in triad:
@@ -205,11 +213,13 @@ class TestCrossDockedFilter:
 
     def test_method_form_attached_to_dataset(self) -> None:
         """``CrossDockedDataset.filter_by_pdb`` is available after import."""
-        assert hasattr(CrossDockedDataset, "filter_by_pdb"), (
-            "CrossDockedDataset.filter_by_pdb was not attached"
-        )
+        assert hasattr(
+            CrossDockedDataset, "filter_by_pdb"
+        ), "CrossDockedDataset.filter_by_pdb was not attached"
 
-    def test_filter_returns_real_pairs_when_archive_extracted(self, tmp_path: Path) -> None:
+    def test_filter_returns_real_pairs_when_archive_extracted(
+        self, tmp_path: Path
+    ) -> None:
         """If the CrossDocked archive is extracted, filter_by_pdb returns
         ≥ 10 MMP-family pairs (the dataset may not include the exact
         6 PDB IDs but does include the MMP2/MMP9 family)."""
@@ -237,9 +247,9 @@ class TestCrossDockedFilter:
         # run successfully and return the entries that ARE present.
         assert isinstance(entries, list)
         # At least one of the MMP-family PDBs is present in the dataset.
-        assert len(entries) >= 1, (
-            "Expected at least one MMP-family pair in CrossDocked2020"
-        )
+        assert (
+            len(entries) >= 1
+        ), "Expected at least one MMP-family pair in CrossDocked2020"
 
 
 if __name__ == "__main__":

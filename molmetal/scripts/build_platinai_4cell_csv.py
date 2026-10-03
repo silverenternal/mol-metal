@@ -76,14 +76,14 @@ if str(PROJECT_ROOT) not in sys.path:
 # Cell-line pIC50 offsets (real Pt-drug literature — see module docstring)
 # ---------------------------------------------------------------------------
 CELL_OFFSETS: Dict[str, float] = {
-    "MCF7": 0.0,         # baseline (cisplatin IC50 ~ 1-5 µM)
-    "A549": +0.15,       # A549 needs ~1.4x more Pt -> higher pIC50
-    "A2780": -0.30,      # A2780 sensitive -> lower IC50, higher pIC50
-    "A2780cis": +0.40,   # cisplatin-resistant -> higher IC50, lower pIC50
+    "MCF7": 0.0,  # baseline (cisplatin IC50 ~ 1-5 µM)
+    "A549": +0.15,  # A549 needs ~1.4x more Pt -> higher pIC50
+    "A2780": -0.30,  # A2780 sensitive -> lower IC50, higher pIC50
+    "A2780cis": +0.40,  # cisplatin-resistant -> higher IC50, lower pIC50
 }
 CELL_LINES: Tuple[str, ...] = ("MCF7", "A549", "A2780", "A2780cis")
-BASE_PIC50: float = 6.0       # ~1 µM
-SIGMA: float = 0.45           # log-scale assay noise
+BASE_PIC50: float = 6.0  # ~1 µM
+SIGMA: float = 0.45  # log-scale assay noise
 RESISTANCE_BONUS: float = 0.30  # pIC50 boost for large Pt complexes in A2780cis
 
 
@@ -92,6 +92,7 @@ RESISTANCE_BONUS: float = 0.30  # pIC50 boost for large Pt complexes in A2780cis
 # ---------------------------------------------------------------------------
 try:
     from rdkit import Chem, RDLogger  # type: ignore
+
     RDLogger.DisableLog("rdApp.*")
     _HAS_RDKIT = True
 except Exception:  # pragma: no cover
@@ -184,7 +185,7 @@ def _collect_from_tmqm(env_dir: Path) -> List[Tuple[str, str]]:
 # ---------------------------------------------------------------------------
 def _row_seed(complex_id: str, smiles: str) -> int:
     """Stable per-row seed derived from id+smiles hash."""
-    h = abs(hash((complex_id, smiles))) % (2 ** 31 - 1)
+    h = abs(hash((complex_id, smiles))) % (2**31 - 1)
     return int(h)
 
 
@@ -202,13 +203,10 @@ def _generate_pic50(
     out: Dict[str, float] = {}
     for line in CELL_LINES:
         eps = rng.gauss(0.0, SIGMA)
-        resistance_bonus = RESISTANCE_BONUS if (line == "A2780cis" and n_heavy > 25) else 0.0
-        pic50 = (
-            BASE_PIC50
-            + CELL_OFFSETS[line]
-            + resistance_bonus
-            + eps
+        resistance_bonus = (
+            RESISTANCE_BONUS if (line == "A2780cis" and n_heavy > 25) else 0.0
         )
+        pic50 = BASE_PIC50 + CELL_OFFSETS[line] + resistance_bonus + eps
         # Clip to [3.0, 10.0] for numerical sanity
         pic50 = max(3.0, min(10.0, pic50))
         out[line] = float(pic50)
@@ -262,7 +260,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         for src in args.source:
             sp = Path(src)
             if not sp.is_file():
-                print(f"[platinai-4cell-csv] WARNING: --source missing: {sp}", flush=True)
+                print(
+                    f"[platinai-4cell-csv] WARNING: --source missing: {sp}", flush=True
+                )
                 continue
             with sp.open() as f:
                 r = csv.DictReader(f)

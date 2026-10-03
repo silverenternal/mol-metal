@@ -30,6 +30,7 @@ Honest framing
   outside this test (it requires ``wf179_bd9_m15_rmsd_p2`` on disk
   and is slow).
 """
+
 from __future__ import annotations
 
 import json
@@ -62,9 +63,9 @@ def test_loaded_crystal_ligand() -> None:
     for pid in POCKET_IDS:
         crystal = load_crystal_ligand(pid)
         assert crystal.pocket_id == pid
-        assert 19 <= crystal.heavy_atom_count <= 31, (
-            f"unexpected heavy-atom count for {pid}: {crystal.heavy_atom_count}"
-        )
+        assert (
+            19 <= crystal.heavy_atom_count <= 31
+        ), f"unexpected heavy-atom count for {pid}: {crystal.heavy_atom_count}"
         assert len(crystal.coords_angstrom) == crystal.heavy_atom_count
         assert len(crystal.element_types) == crystal.heavy_atom_count
 
@@ -91,9 +92,9 @@ def test_adapter_evaluates_all_five_pockets(adapter: LigandVsPocketRMSD) -> None
         result = adapter.evaluate(smiles_list=[crystal.smiles], pocket_id=pid)
         assert result.n_poses_evaluated == 1
         assert not result.errors, f"errors for {pid}: {result.errors}"
-        assert result.median_rmsd < 1.0, (
-            f"{pid} self-RMSD too large: {result.median_rmsd:.4f}"
-        )
+        assert (
+            result.median_rmsd < 1.0
+        ), f"{pid} self-RMSD too large: {result.median_rmsd:.4f}"
         # success_20A must be 1.0 (self-alignment trivially passes)
         assert result.success_20A == 1.0
 

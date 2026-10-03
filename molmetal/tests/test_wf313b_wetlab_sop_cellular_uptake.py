@@ -15,6 +15,7 @@ analysis pipeline (`molmetal/scripts/template_ic50_pipeline.py`).
 edge-case thresholds are **validated as logical checks**, not against real
 ICP-MS measurements.
 """
+
 from __future__ import annotations
 
 import sys
@@ -32,6 +33,7 @@ import pytest
 # Lazy import
 try:
     from molmetal.scripts import template_ic50_pipeline as ic50p  # noqa: E402
+
     _HAS_IC50P = True
 except Exception as exc:
     ic50p = None
@@ -86,8 +88,13 @@ def test_matrix_interference_detection():
 def test_digestion_blank_above_lod_flag():
     """§6a.2 — Digestion blank > 0.5 × LOD → `digestion_blank_above_lod`."""
     # For each metal, compute the LOD-adjusted threshold
-    lods = {"Pt": LOD_PT_NG_ML, "Pd": LOD_PD_NG_ML, "Au": LOD_AU_NG_ML,
-            "Ru": LOD_RU_NG_ML, "Ir": LOD_IR_NG_ML}
+    lods = {
+        "Pt": LOD_PT_NG_ML,
+        "Pd": LOD_PD_NG_ML,
+        "Au": LOD_AU_NG_ML,
+        "Ru": LOD_RU_NG_ML,
+        "Ir": LOD_IR_NG_ML,
+    }
     # Pt blank at 0.003 ng/mL (> 0.5 × 0.005 = 0.0025)
     pt_blank = 0.003
     threshold = 0.5 * lods["Pt"]

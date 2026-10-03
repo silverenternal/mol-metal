@@ -88,7 +88,7 @@ class EGNNPropertyPredictor(PropertyPredictor):
         # resolver so this adapter follows HIP_VISIBLE_DEVICES and CPU
         # fallback consistently with the rest of the stack.
         self._device = str(get_device())
-        self._model = None           # lazily allocated in setup()
+        self._model = None  # lazily allocated in setup()
         self._checkpoint_loaded = False
 
     # ------------------------------------------------------------------
@@ -113,10 +113,7 @@ class EGNNPropertyPredictor(PropertyPredictor):
             self._model = None
 
         # Optionally load a pretrained checkpoint.
-        if (
-            self._config.checkpoint_path is not None
-            and self._model is not None
-        ):
+        if self._config.checkpoint_path is not None and self._model is not None:
             ckpt_path = Path(self._config.checkpoint_path)
             if ckpt_path.is_file():
                 try:
@@ -192,7 +189,9 @@ class EGNNPropertyPredictor(PropertyPredictor):
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
-def _build_egnn_stub(in_node_dim: int, in_edge_dim: int, hidden_dim: int, n_layers: int):
+def _build_egnn_stub(
+    in_node_dim: int, in_edge_dim: int, hidden_dim: int, n_layers: int
+):
     """Construct a minimal EGNN-style module.
 
     Tries to import :class:`torch_geometric.nn.EGNN`.  If unavailable

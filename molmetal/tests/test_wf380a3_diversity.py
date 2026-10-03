@@ -74,14 +74,15 @@ def test_nucleus_sampling(div_mod):
     # Construct logits such that softmax gives probs ≈ [0.4, 0.3, 0.2, 0.1].
     # log([0.4, 0.3, 0.2, 0.1]) ≈ [-0.9163, -1.2040, -1.6094, -2.3026].
     logits_top_p = torch.tensor(
-        [[-0.9163, -1.2040, -1.6094, -2.3026]], dtype=torch.float32,
+        [[-0.9163, -1.2040, -1.6094, -2.3026]],
+        dtype=torch.float32,
     )
     # Sanity-check our reference probabilities.
     probs = torch.softmax(logits_top_p, dim=-1)
     expected_first = 0.4
-    assert abs(probs[0, 0].item() - expected_first) < 1e-3, (
-        f"Setup: expected prob[0] ≈ 0.4, got {probs[0, 0].item():.4f}"
-    )
+    assert (
+        abs(probs[0, 0].item() - expected_first) < 1e-3
+    ), f"Setup: expected prob[0] ≈ 0.4, got {probs[0, 0].item():.4f}"
 
     # With p=0.5 the cumulative mask is [0.4, 0.7, 0.9, 1.0] >
     # 0.5 → mask = [F, T, T, T] shifted right = [F, F, T, T].
@@ -99,7 +100,8 @@ def test_nucleus_sampling(div_mod):
     # With k=2, only the top-2 logits (positions 0, 1) survive
     # regardless of p.  Sample many times to confirm only {0, 1}.
     logits_top_k = torch.tensor(
-        [[3.0, 2.0, 1.0, 0.0]], dtype=torch.float32,
+        [[3.0, 2.0, 1.0, 0.0]],
+        dtype=torch.float32,
     )
     gen = torch.Generator().manual_seed(0)
     samples_k2 = []
@@ -109,8 +111,7 @@ def test_nucleus_sampling(div_mod):
         samples_k2.append(int(s.item()))
     unique = set(samples_k2)
     assert unique.issubset({0, 1}), (
-        f"With k=2 only top-2 tokens should appear in samples; "
-        f"got {unique}"
+        f"With k=2 only top-2 tokens should appear in samples; " f"got {unique}"
     )
 
     # ---- (c) Temperature scaling preserves uniformity ----
@@ -125,18 +126,17 @@ def test_nucleus_sampling(div_mod):
     counts = [samples_tau.count(i) for i in range(5)]
     # Each bucket should be roughly 100 — accept ±50.
     for i, c in enumerate(counts):
-        assert 50 <= c <= 150, (
-            f"Uniform logits should sample uniformly; bucket {i} got {c}/500"
-        )
+        assert (
+            50 <= c <= 150
+        ), f"Uniform logits should sample uniformly; bucket {i} got {c}/500"
 
     # ---- (d) Argmax fast path (p <= 0) ----
     logits_argmax = torch.tensor(
-        [[0.5, 2.0, 0.1, -1.0]], dtype=torch.float32,
+        [[0.5, 2.0, 0.1, -1.0]],
+        dtype=torch.float32,
     )
     s = nucleus_sample(logits_argmax, p=0.0, k=4, temperature=1.0)
-    assert s.item() == 1, (
-        f"p=0.0 must return argmax; got {s.item()}"
-    )
+    assert s.item() == 1, f"p=0.0 must return argmax; got {s.item()}"
 
     # ---- (e) Bit-for-bit determinism with same generator ----
     gen1 = torch.Generator().manual_seed(2026)
@@ -183,9 +183,7 @@ def test_mmd_loss(div_mod):
     a = torch.randn((8, 4), dtype=torch.float32)
     b = torch.randn((8, 4), dtype=torch.float32) + 2.0  # shifted
     val = mmd_loss(a, b, kernel="rbf", sigma=1.0, unbiased=True)
-    assert val.item() >= 0.0, (
-        f"MMD^2 must be non-negative; got {val.item()}"
-    )
+    assert val.item() >= 0.0, f"MMD^2 must be non-negative; got {val.item()}"
 
     # ---- (b) Symmetry ----
     val_ab = mmd_loss(a, b, kernel="rbf", sigma=1.0, unbiased=True)
@@ -197,9 +195,9 @@ def test_mmd_loss(div_mod):
 
     # ---- (c) Identity collapse ----
     val_aa = mmd_loss(a, a, kernel="rbf", sigma=1.0, unbiased=True)
-    assert val_aa.item() < 1e-4, (
-        f"MMD(A, A) must collapse to ≈0 for the RBF kernel; got {val_aa.item()}"
-    )
+    assert (
+        val_aa.item() < 1e-4
+    ), f"MMD(A, A) must collapse to ≈0 for the RBF kernel; got {val_aa.item()}"
 
     # ---- (d) Bias with separation ----
     # Two well-separated clusters should give a strictly larger
@@ -250,7 +248,8 @@ def test_repulsion_loss(div_mod):
 
     # ---- (a) Identity collapse ----
     same = torch.tensor(
-        [[1.0, 0.0], [1.0, 0.0], [0.0, 1.0]], dtype=torch.float32,
+        [[1.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
+        dtype=torch.float32,
     )
     # Pairs: (0,1) cos=1, (0,2) cos=0, (1,2) cos=0.
     # With margin=0.95: penalty = mean(relu([1.0-0.95, 0, 0]))
@@ -265,14 +264,15 @@ def test_repulsion_loss(div_mod):
     # ---- (b) Orthogonal rows → zero penalty ----
     ortho = torch.eye(3, dtype=torch.float32)
     loss_ortho = repulsion_loss(ortho, margin=0.5, reduce=True)
-    assert loss_ortho.item() == 0.0, (
-        f"Orthogonal rows must yield zero repulsion; got {loss_ortho.item()}"
-    )
+    assert (
+        loss_ortho.item() == 0.0
+    ), f"Orthogonal rows must yield zero repulsion; got {loss_ortho.item()}"
 
     # ---- (c) Monotonic in similarity ----
     # Sample A: highly similar (cosine ~0.95); sample B: random.
     similar_cluster = torch.tensor(
-        [[1.0, 0.05], [1.0, -0.05], [0.95, 0.0]], dtype=torch.float32,
+        [[1.0, 0.05], [1.0, -0.05], [0.95, 0.0]],
+        dtype=torch.float32,
     )
     random_cluster = torch.randn((3, 4), dtype=torch.float32)
     loss_sim = repulsion_loss(similar_cluster, margin=0.9, reduce=True)
@@ -294,17 +294,18 @@ def test_repulsion_loss(div_mod):
     # ---- (e) Single-sample degenerate ----
     single = torch.tensor([[1.0, 2.0, 3.0]], dtype=torch.float32)
     loss_single = repulsion_loss(single, margin=0.5, reduce=True)
-    assert loss_single.item() == 0.0, (
-        f"Single sample must yield zero penalty; got {loss_single.item()}"
-    )
+    assert (
+        loss_single.item() == 0.0
+    ), f"Single sample must yield zero penalty; got {loss_single.item()}"
 
     # ---- (f) reduce=False returns a tensor ----
     penalty_matrix = repulsion_loss(similar_cluster, margin=0.9, reduce=False)
-    assert penalty_matrix.shape == (3, 3), (
-        f"reduce=False must return (N, N) matrix; got {tuple(penalty_matrix.shape)}"
-    )
+    assert penalty_matrix.shape == (
+        3,
+        3,
+    ), f"reduce=False must return (N, N) matrix; got {tuple(penalty_matrix.shape)}"
     # The diagonal is always zero (mask is upper-triangular i<j).
     diag = penalty_matrix.diagonal()
-    assert torch.all(diag == 0.0), (
-        f"Diagonal of repulsion mask must be zero; got {diag.tolist()}"
-    )
+    assert torch.all(
+        diag == 0.0
+    ), f"Diagonal of repulsion mask must be zero; got {diag.tolist()}"

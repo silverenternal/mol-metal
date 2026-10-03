@@ -90,7 +90,9 @@ class TestWf372B1ZoteroCslIntegration:
         )
         # Verify the binary actually exists and is executable
         zotero_bin = Path(zotero_path)
-        assert zotero_bin.exists(), f"Zotero path exists but file missing: {zotero_path}"
+        assert (
+            zotero_bin.exists()
+        ), f"Zotero path exists but file missing: {zotero_path}"
         assert zotero_bin.is_file(), f"Zotero path is not a file: {zotero_path}"
         assert zotero_bin.stat().st_size > 0, f"Zotero binary is empty: {zotero_path}"
 
@@ -115,16 +117,16 @@ class TestWf372B1ZoteroCslIntegration:
 
         # Root must be <style> with CSL namespace
         assert root.tag.endswith("style"), f"CSL root must be <style>, got <{root.tag}>"
-        assert "purl.org/net/xbiblio/csl" in root.tag, (
-            f"CSL root must declare CSL namespace, got {root.tag}"
-        )
+        assert (
+            "purl.org/net/xbiblio/csl" in root.tag
+        ), f"CSL root must declare CSL namespace, got {root.tag}"
 
         # Required child elements
         csl_text = MOL_DIVERS_CSL.read_text(encoding="utf-8")
         for required_element in ("<citation", "<bibliography", "<info"):
-            assert required_element in csl_text, (
-                f"CSL missing required element: {required_element}"
-            )
+            assert (
+                required_element in csl_text
+            ), f"CSL missing required element: {required_element}"
 
         # HONEST_NEGATIVE_CSL_MIS_TITLED: filename says mol-divers but title is BJOC.
         # We document the discrepancy but do NOT fail the integration test
@@ -162,6 +164,7 @@ class TestWf372B1ZoteroCslIntegration:
 
         # Check executable bit
         import stat
+
         mode = PYBTEX_WRAPPER.stat().st_mode
         assert mode & stat.S_IXUSR, f"pybtex wrapper not executable: {PYBTEX_WRAPPER}"
 
@@ -177,9 +180,12 @@ class TestWf372B1ZoteroCslIntegration:
                 [
                     python_bin,
                     str(PYBTEX_WRAPPER),
-                    "--bib", str(BIB_PATH),
-                    "--out", str(out_bbl),
-                    "--style", "plain",
+                    "--bib",
+                    str(BIB_PATH),
+                    "--out",
+                    str(out_bbl),
+                    "--style",
+                    "plain",
                 ],
                 capture_output=True,
                 text=True,

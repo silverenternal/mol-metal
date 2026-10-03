@@ -65,13 +65,13 @@ try:
         safe_overwrite_check,
         detect_truncation,
     )
+
     _WF424_HAS_ATOMIC = True
 except ImportError:  # pragma: no cover — fallback when running as standalone
     _WF424_HAS_ATOMIC = False
     atomic_write_file = None  # type: ignore[assignment]
     safe_overwrite_check = None  # type: ignore[assignment]
     detect_truncation = None  # type: ignore[assignment]
-
 
 
 # ---------------------------------------------------------------------------
@@ -129,7 +129,9 @@ ABORT_CRITERIA: Dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 
-def _wf424_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
+def _wf424_atomic_write_text(
+    path, content: str, min_lines: int = 50, expected_min_length: int = 200
+) -> None:
     """Wf-424-A4 atomic-write-protocol wrapper around direct write_text.
 
     Falls back to direct write_text if atomic_write_file is unavailable
@@ -141,21 +143,26 @@ def _wf424_atomic_write_text(path, content: str, min_lines: int = 50, expected_m
             _risk = safe_overwrite_check(path, content, min_lines=min_lines)
             if _risk is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-424-A4] safe_overwrite_check diff_ratio=%.3f at %s",
-                    _risk, path,
+                    _risk,
+                    path,
                 )
         atomic_write_file(path, content, encoding="utf-8")
         if detect_truncation is not None:
             _trunc = detect_truncation(content, expected_min_length=expected_min_length)
             if _trunc is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-424-A4] detect_truncation reason=%r at %s",
-                    _trunc, path,
+                    _trunc,
+                    path,
                 )
     else:  # pragma: no cover — fallback when atomic primitive unavailable
         Path(path).write_text(content, encoding="utf-8")
+
 
 def _now_iso() -> str:
     """ISO-8601 UTC timestamp, e.g. ``2026-09-28T13:00:00+00:00``."""
@@ -369,19 +376,20 @@ def _expected_metrics_path(metal: str, seed: int) -> str:
 
 
 def _collect_per_pair(
-    metals: List[str], seeds: List[int],
+    metals: List[str],
+    seeds: List[int],
 ) -> List[Dict[str, Any]]:
     """Walk the (metal, seed) grid; for each pair, determine:
 
-      - ``expected_ckpt`` — the canonical ckpt path
-      - ``expected_metrics_json`` — the canonical per-seed metrics path
-      - ``ckpt_exists`` — ``True`` when the ckpt is on disk
-      - ``expected_auc`` — extracted from per-seed JSON when present,
-        else ``None``
-      - ``status`` — ``"DONE"`` (ckpt + metrics), ``"IN-FLIGHT"``
-        (metrics partial), or ``"PENDING"`` (no evidence yet)
-      - ``wall_sec`` — elapsed time from the per-seed metrics JSON
-        (when available)
+    - ``expected_ckpt`` — the canonical ckpt path
+    - ``expected_metrics_json`` — the canonical per-seed metrics path
+    - ``ckpt_exists`` — ``True`` when the ckpt is on disk
+    - ``expected_auc`` — extracted from per-seed JSON when present,
+      else ``None``
+    - ``status`` — ``"DONE"`` (ckpt + metrics), ``"IN-FLIGHT"``
+      (metrics partial), or ``"PENDING"`` (no evidence yet)
+    - ``wall_sec`` — elapsed time from the per-seed metrics JSON
+      (when available)
     """
     rows: List[Dict[str, Any]] = []
     for metal in metals:
@@ -491,9 +499,7 @@ def _detect_abort_criteria_active(
             active.append("7.2.4_os_collapse")
             break
     # 7.2.5 — decode_ratio collapse
-    cfm_metrics = (
-        REPORTS_DIR / "wf124_p2_cfm_full" / "per_epoch_metrics.json"
-    )
+    cfm_metrics = REPORTS_DIR / "wf124_p2_cfm_full" / "per_epoch_metrics.json"
     if cfm_metrics.exists():
         try:
             with open(str(cfm_metrics), "r", encoding="utf-8") as fh:
@@ -519,7 +525,8 @@ def _detect_abort_criteria_active(
 
 
 def _extract_time_budget_hr(
-    yaml_obj: Optional[Dict[str, Any]], fallback: float,
+    yaml_obj: Optional[Dict[str, Any]],
+    fallback: float,
 ) -> float:
     """Extract ``protocol.time_budget_hr`` / ``directives.time_budget``
     hours-as-string. Falls back to ``fallback`` on missing keys.
@@ -605,21 +612,20 @@ def _render_markdown(
 ) -> str:
     """Render the per-wave checklist to a human-readable Markdown table.
 
-    Sections:
-      * header (wave name, generated-at, JSON location)
-      * summary row (preflight pass/fail counts)
-      * P0 / P1 / P2 gate tables (one row per gate)
-      * Config summary block
-      * Wave budget + abort criteria
-      * Per-pair sub-checklist table
-185    * Footer with honest-framing note
+        Sections:
+          * header (wave name, generated-at, JSON location)
+          * summary row (preflight pass/fail counts)
+          * P0 / P1 / P2 gate tables (one row per gate)
+          * Config summary block
+          * Wave budget + abort criteria
+          * Per-pair sub-checklist table
+    185    * Footer with honest-framing note
     """
     lines: List[str] = []
     lines.append(f"# Per-Wave Checklist — {wave}")
     lines.append("")
     lines.append(
-        f"_Generated: {obj.get('generated_at', '?')}_  "
-        f"_Schema: {SCHEMA_VERSION}_"
+        f"_Generated: {obj.get('generated_at', '?')}_  " f"_Schema: {SCHEMA_VERSION}_"
     )
     lines.append("")
 
@@ -702,11 +708,7 @@ def _render_markdown(
         lines.append("|---|---|---|---|---|---|")
         for r in pp:
             auc = "—" if r.get("expected_auc") is None else f"{r['expected_auc']:.4f}"
-            wall = (
-                "—"
-                if r.get("wall_sec") is None
-                else f"{r['wall_sec']:.1f}"
-            )
+            wall = "—" if r.get("wall_sec") is None else f"{r['wall_sec']:.1f}"
             lines.append(
                 f"| {r['metal']} | {r['seed']} | "
                 f"`{Path(str(r.get('expected_ckpt', ''))).name}` | "
@@ -841,7 +843,8 @@ def build_per_wave_checklist(
 
     # 4. Wave budget
     obj["wave_budget_hr"] = _extract_time_budget_hr(
-        yaml_obj if parse_ok else None, time_budget_hr,
+        yaml_obj if parse_ok else None,
+        time_budget_hr,
     )
 
     # 5. Per-pair sub-checklist
@@ -850,7 +853,8 @@ def build_per_wave_checklist(
 
     # 6. Abort criteria
     obj["abort_criteria_active"] = _detect_abort_criteria_active(
-        per_pair, time_budget_hr=obj["wave_budget_hr"],
+        per_pair,
+        time_budget_hr=obj["wave_budget_hr"],
     )
 
     # 7. Wave remaining
@@ -904,7 +908,8 @@ def _validate_schema(obj: Dict[str, Any]) -> bool:
     # p3_paper_grade_gates: optional, default to empty list for
     # backward-compat with pre-Wf-343C4 dicts.
     if "p3_paper_grade_gates" in obj and not isinstance(
-        obj["p3_paper_grade_gates"], list,
+        obj["p3_paper_grade_gates"],
+        list,
     ):
         return False
     # per-pair rows must have the contract fields
@@ -996,9 +1001,7 @@ def parse_argv(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "--pairs-seeds",
         type=str,
         default=DEFAULT_PAIRS_SEEDS,
-        help=(
-            f"Comma-separated seed list (default: {DEFAULT_PAIRS_SEEDS})."
-        ),
+        help=(f"Comma-separated seed list (default: {DEFAULT_PAIRS_SEEDS})."),
     )
     p.add_argument(
         "--time-budget-hr",

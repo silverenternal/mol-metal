@@ -11,6 +11,7 @@ test is exactly the one the dispatch harness consumes.  Skips
 automatically when ``molmetal/scripts/smoke/`` is not present (e.g. an
 empty branch checkout) so the rest of the suite still runs.
 """
+
 from __future__ import annotations
 
 import shutil
@@ -157,9 +158,9 @@ def test_smoke_script_completes_under_120s(script_name: str):
         timeout=180.0,
     )
     wall = time.time() - t0
-    assert proc.returncode == 0, (
-        f"{script_name} returned rc={proc.returncode} in {wall:.1f}s; expected 0."
-    )
-    assert wall < 120.0, (
-        f"{script_name} took {wall:.1f}s; expected < 120 s (IMPROVEMENT_BACKLOG §I2 budget)."
-    )
+    assert (
+        proc.returncode == 0
+    ), f"{script_name} returned rc={proc.returncode} in {wall:.1f}s; expected 0."
+    assert (
+        wall < 120.0
+    ), f"{script_name} took {wall:.1f}s; expected < 120 s (IMPROVEMENT_BACKLOG §I2 budget)."

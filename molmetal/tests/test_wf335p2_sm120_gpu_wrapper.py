@@ -25,6 +25,7 @@ Honest framing (per AGENTS.md §5.2):
     config-aligned).
   * Full GPU retune remains DEFERRED per AGENTS.md §5.1.
 """
+
 from __future__ import annotations
 
 import json
@@ -82,11 +83,9 @@ class TestWrapperInitialization:
         subset = ("matmul_fn", "fused_silu_mlp")  # out of alphabetical order
         plan = _w.build_launch_plan(use_per_kernel=True, kernels=subset)
         assert plan.selected_kernels == (
-            "fused_silu_mlp", "matmul_fn",
-        ), (
-            f"Subset plan should preserve audit order; got "
-            f"{plan.selected_kernels}."
-        )
+            "fused_silu_mlp",
+            "matmul_fn",
+        ), f"Subset plan should preserve audit order; got " f"{plan.selected_kernels}."
 
     def test_06_unknown_kernel_raises_value_error(self):
         """Unknown kernel name raises ValueError (not silent skip)."""
@@ -99,8 +98,9 @@ class TestWrapperInitialization:
         """Every per-kernel (num_warps, num_stages) is in the Wf-331-X3 grid."""
         plan = _w.build_launch_plan(use_per_kernel=True)
         import wf331x3_sm120_retune as _x3
+
         for name, pairs in plan.per_kernel_configs.items():
-            for (nw, ns) in pairs:
+            for nw, ns in pairs:
                 cfg = {"num_warps": nw, "num_stages": ns}
                 assert _x3.is_sm120_config_safe(cfg), (
                     f"Plan config ({nw}, {ns}) for kernel {name!r} "
@@ -150,12 +150,17 @@ class TestWrapperCliArgs:
         assert body["per_kernel_total_configs"] == 117
         assert body["generic_total_configs"] == 288
 
-    def test_11_dump_launch_plan_only_emits_per_kernel_plan(self, tmp_path: Path, capsys):
+    def test_11_dump_launch_plan_only_emits_per_kernel_plan(
+        self, tmp_path: Path, capsys
+    ):
         """--dump-launch-plan-only emits the per-kernel plan JSON."""
-        rc = _w.main([
-            "--dump-launch-plan-only",
-            "--output-dir", str(tmp_path),
-        ])
+        rc = _w.main(
+            [
+                "--dump-launch-plan-only",
+                "--output-dir",
+                str(tmp_path),
+            ]
+        )
         assert rc == 0
         out = capsys.readouterr().out
         body = json.loads(out)
@@ -168,12 +173,16 @@ class TestWrapperCliArgs:
 
     def test_12_per_kernel_flag_is_default(self, tmp_path: Path, capsys):
         """--per-kernel flag works; --kernels subset restricts the plan."""
-        rc = _w.main([
-            "--per-kernel",
-            "--kernels", "fused_silu_mlp,matmul_fn",
-            "--dump-launch-plan-only",
-            "--output-dir", str(tmp_path),
-        ])
+        rc = _w.main(
+            [
+                "--per-kernel",
+                "--kernels",
+                "fused_silu_mlp,matmul_fn",
+                "--dump-launch-plan-only",
+                "--output-dir",
+                str(tmp_path),
+            ]
+        )
         assert rc == 0
         out = capsys.readouterr().out
         body = json.loads(out)
@@ -183,13 +192,18 @@ class TestWrapperCliArgs:
         assert body["total_configs_to_sweep"] == 12
 
     def test_13_launch_without_prereq_confirmed_refuses_with_exit_2(
-        self, tmp_path: Path, capsys,
+        self,
+        tmp_path: Path,
+        capsys,
     ):
         """--launch without --launch-prereqs-confirmed exits 2 + gate JSON."""
-        rc = _w.main([
-            "--launch",
-            "--output-dir", str(tmp_path),
-        ])
+        rc = _w.main(
+            [
+                "--launch",
+                "--output-dir",
+                str(tmp_path),
+            ]
+        )
         assert rc == 2
         err = capsys.readouterr().err
         gate = json.loads(err)
@@ -197,14 +211,19 @@ class TestWrapperCliArgs:
         assert len(gate["prereqs_required"]) == 3
 
     def test_14_launch_with_prereq_confirmed_emits_launch_accepted(
-        self, tmp_path: Path, capsys,
+        self,
+        tmp_path: Path,
+        capsys,
     ):
         """--launch + --launch-prereqs-confirmed exits 0 with launch_accepted=True."""
-        rc = _w.main([
-            "--launch",
-            "--launch-prereqs-confirmed",
-            "--output-dir", str(tmp_path),
-        ])
+        rc = _w.main(
+            [
+                "--launch",
+                "--launch-prereqs-confirmed",
+                "--output-dir",
+                str(tmp_path),
+            ]
+        )
         assert rc == 0
         out = capsys.readouterr().out
         body = json.loads(out)
@@ -215,9 +234,13 @@ class TestWrapperCliArgs:
 
     def test_15_unknown_kernel_via_cli_returns_exit_1(self, tmp_path: Path, capsys):
         """--kernels with unknown name returns 1 (CLI-side validation)."""
-        rc = _w.main([
-            "--kernels", "not_a_real_kernel_xyz",
-            "--dump-launch-plan-only",
-            "--output-dir", str(tmp_path),
-        ])
+        rc = _w.main(
+            [
+                "--kernels",
+                "not_a_real_kernel_xyz",
+                "--dump-launch-plan-only",
+                "--output-dir",
+                str(tmp_path),
+            ]
+        )
         assert rc == 1

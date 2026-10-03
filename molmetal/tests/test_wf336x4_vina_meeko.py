@@ -65,9 +65,7 @@ if str(PROJECT_ROOT) not in sys.path:
 # Canonical paths (per Wf-329-W7 + Wf-30 staging)
 # ---------------------------------------------------------------------------
 WF30_POCKET_PREP = PROJECT_ROOT / "molmetal" / "reports" / "wf30_pocket_prep"
-WF336X4_SCRIPT = (
-    PROJECT_ROOT / "molmetal" / "scripts" / "cfm_vina_dock_panel.py"
-)
+WF336X4_SCRIPT = PROJECT_ROOT / "molmetal" / "scripts" / "cfm_vina_dock_panel.py"
 PROJECT_VENV_PY = PROJECT_ROOT / ".venv" / "bin" / "python"
 WF179_POCKETS = ("1h36", "3eml", "3ny8", "4aaw", "4rlu")
 
@@ -104,9 +102,9 @@ def test_meeko_alternative_probe_returns_measured_status() -> None:
             f"_probe_meeko_alternative raised: {exc!r}; must return "
             f"a dict even when meeko is unavailable."
         )
-    assert isinstance(probe, dict), (
-        f"Probe returned {type(probe).__name__}; expected dict."
-    )
+    assert isinstance(
+        probe, dict
+    ), f"Probe returned {type(probe).__name__}; expected dict."
     for key in (
         "available",
         "version",
@@ -124,18 +122,16 @@ def test_meeko_alternative_probe_returns_measured_status() -> None:
     # When meeko IS importable (project venv path), expect the Wf-329-W7
     # canonical state: available=True, version=0.8.x, both classes.
     if probe.get("available"):
-        assert probe["version"], (
-            f"meeko is available but version is empty: {probe}"
-        )
-        assert probe["moleculeprep_class"] == "MoleculePreparation", (
-            f"Unexpected moleculeprep_class: {probe['moleculeprep_class']}"
-        )
-        assert probe["pdbqt_writer"] == "PDBQTWriterLegacy", (
-            f"Unexpected pdbqt_writer: {probe['pdbqt_writer']}"
-        )
-        assert not probe["import_error"], (
-            f"available=True but import_error populated: {probe['import_error']!r}"
-        )
+        assert probe["version"], f"meeko is available but version is empty: {probe}"
+        assert (
+            probe["moleculeprep_class"] == "MoleculePreparation"
+        ), f"Unexpected moleculeprep_class: {probe['moleculeprep_class']}"
+        assert (
+            probe["pdbqt_writer"] == "PDBQTWriterLegacy"
+        ), f"Unexpected pdbqt_writer: {probe['pdbqt_writer']}"
+        assert not probe[
+            "import_error"
+        ], f"available=True but import_error populated: {probe['import_error']!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -163,9 +159,9 @@ def test_meeko_alternative_integration_produces_meeko_prep_only_status() -> None
         f"{STATUS_MEEKO_PREP_ONLY!r}; downstream consumers may "
         f"break."
     )
-    assert STATUS_STUB_FALLBACK == "STUB_FALLBACK", (
-        f"Backward-compat: STUB_FALLBACK constant changed."
-    )
+    assert (
+        STATUS_STUB_FALLBACK == "STUB_FALLBACK"
+    ), f"Backward-compat: STUB_FALLBACK constant changed."
 
     # We need at least one pocket staged.  Use whatever Wf-30 pocket
     # is staged on disk; if none are, skip the smoke test.
@@ -206,12 +202,10 @@ def test_meeko_alternative_integration_produces_meeko_prep_only_status() -> None
 
     # Metadata fields populated by the probe.
     meta = panel["metadata"]
-    assert meta.get("meeko_available") is True, (
-        f"meeko_available must be True on the project venv: {meta}"
-    )
-    assert meta.get("meeko_version"), (
-        f"meeko_version empty: {meta}"
-    )
+    assert (
+        meta.get("meeko_available") is True
+    ), f"meeko_available must be True on the project venv: {meta}"
+    assert meta.get("meeko_version"), f"meeko_version empty: {meta}"
     assert meta.get("meeko_alternative_path") is True, (
         f"meeko_alternative_path must be True when Vina missing + "
         f"meeko available: {meta}"
@@ -231,12 +225,9 @@ def test_meeko_alternative_integration_produces_meeko_prep_only_status() -> None
         # The cell note must reference the prepared PDBQT path so a
         # downstream consumer can pick it up.
         note = cell["note"]
-        assert "meeko" in note.lower(), (
-            f"Cell note should mention meeko prep: {note!r}"
-        )
+        assert "meeko" in note.lower(), f"Cell note should mention meeko prep: {note!r}"
         assert ".pdbqt" in note, (
-            f"Cell note should reference the prepared PDBQT path: "
-            f"{note!r}"
+            f"Cell note should reference the prepared PDBQT path: " f"{note!r}"
         )
         # No kcal/mol is fabricated — best_kcal_mol is None.
         assert cell["best_kcal_mol"] is None, (
@@ -244,14 +235,13 @@ def test_meeko_alternative_integration_produces_meeko_prep_only_status() -> None
             f"got {cell['best_kcal_mol']}"
         )
         n_meeko += 1
-    assert n_meeko == len(smiles), (
-        f"Expected {len(smiles)} meeko-prep cells, got {n_meeko}."
-    )
+    assert n_meeko == len(
+        smiles
+    ), f"Expected {len(smiles)} meeko-prep cells, got {n_meeko}."
 
     # Cohort counter + per-pocket counter agree.
     assert panel["n_meeko_prep_only"] == len(smiles), (
-        f"Cohort n_meeko_prep_only={panel['n_meeko_prep_only']} != "
-        f"{len(smiles)}."
+        f"Cohort n_meeko_prep_only={panel['n_meeko_prep_only']} != " f"{len(smiles)}."
     )
     per_pocket = panel["aggregate"]["per_pocket"][staged_pocket]
     assert per_pocket["n_meeko_prep_only"] == len(smiles), (
@@ -330,9 +320,9 @@ def test_meeko_alternative_falls_back_to_stub_when_meeko_unavailable(
         f"Expected meeko_available=False when meeko is unavailable: "
         f"{panel['metadata']}"
     )
-    assert panel["metadata"]["meeko_import_error"], (
-        f"Expected meeko_import_error populated: {panel['metadata']}"
-    )
+    assert panel["metadata"][
+        "meeko_import_error"
+    ], f"Expected meeko_import_error populated: {panel['metadata']}"
     assert panel["metadata"]["meeko_alternative_path"] is False
 
     # Per-cell: every cell falls back to STUB_FALLBACK.
@@ -343,28 +333,37 @@ def test_meeko_alternative_falls_back_to_stub_when_meeko_unavailable(
             f"missing; got {cell['status']!r}."
         )
         assert "Vina binary missing" in cell["note"], (
-            f"Cell note should reference Vina binary missing: "
-            f"{cell['note']!r}"
+            f"Cell note should reference Vina binary missing: " f"{cell['note']!r}"
         )
 
     # CLI parser must surface ``--meeko-only``.
     parser = cvdp._build_parser()
-    parsed = parser.parse_args([
-        "--smiles-csv", "/tmp/x.csv",
-        "--pocket-pdb-dir", str(WF30_POCKET_PREP),
-        "--out-json", "/tmp/x.json",
-        "--meeko-only",
-    ])
-    assert parsed.meeko_only is True, (
-        f"--meeko-only flag parsed as {parsed.meeko_only}; expected True."
+    parsed = parser.parse_args(
+        [
+            "--smiles-csv",
+            "/tmp/x.csv",
+            "--pocket-pdb-dir",
+            str(WF30_POCKET_PREP),
+            "--out-json",
+            "/tmp/x.json",
+            "--meeko-only",
+        ]
     )
+    assert (
+        parsed.meeko_only is True
+    ), f"--meeko-only flag parsed as {parsed.meeko_only}; expected True."
 
     # CLI parser default must be False (backward-compat).
-    parsed_default = parser.parse_args([
-        "--smiles-csv", "/tmp/x.csv",
-        "--pocket-pdb-dir", str(WF30_POCKET_PREP),
-        "--out-json", "/tmp/x.json",
-    ])
+    parsed_default = parser.parse_args(
+        [
+            "--smiles-csv",
+            "/tmp/x.csv",
+            "--pocket-pdb-dir",
+            str(WF30_POCKET_PREP),
+            "--out-json",
+            "/tmp/x.json",
+        ]
+    )
     assert parsed_default.meeko_only is False, (
         f"--meeko-only default must be False for backward-compat; "
         f"got {parsed_default.meeko_only}."
@@ -438,9 +437,7 @@ def test_meeko_alternative_integration_on_wf179_m15_pockets() -> None:
             for cell in m["per_pocket"].values()
             if cell["status"] == STATUS_NO_RECEPTOR
         )
-        n_meeko_expected = (
-            len(smiles) * len(staged)
-        )
+        n_meeko_expected = len(smiles) * len(staged)
         assert n_meeko == n_meeko_expected, (
             f"Cohort n_meeko_prep_only={n_meeko}; expected "
             f"{n_meeko_expected} = {len(smiles)} SMILES × "
@@ -470,6 +467,7 @@ def test_meeko_alternative_integration_on_wf179_m15_pockets() -> None:
         # (so downstream consumers can pick it up).  The work_dir is
         # still alive inside the ``with`` block.
         import re
+
         for m in panel["per_molecule"]:
             for pocket, cell in m["per_pocket"].items():
                 if cell["status"] != STATUS_MEEKO_PREP_ONLY:
@@ -482,17 +480,16 @@ def test_meeko_alternative_integration_on_wf179_m15_pockets() -> None:
                 # Extract the path and verify it exists on disk.
                 m_pdbqt = re.search(r"(/tmp/[^ ]+\.pdbqt)", note)
                 assert m_pdbqt, (
-                    f"Could not extract PDBQT path from cell note: "
-                    f"{note!r}"
+                    f"Could not extract PDBQT path from cell note: " f"{note!r}"
                 )
                 pdbqt_path = Path(m_pdbqt.group(1))
                 assert pdbqt_path.is_file(), (
                     f"Meeko-prep PDBQT path {pdbqt_path} should exist on "
                     f"disk but does not."
                 )
-                assert pdbqt_path.stat().st_size > 0, (
-                    f"Meeko-prep PDBQT {pdbqt_path} is empty."
-                )
+                assert (
+                    pdbqt_path.stat().st_size > 0
+                ), f"Meeko-prep PDBQT {pdbqt_path} is empty."
 
     # Verify the script itself imports the new helper symbols.
     src = WF336X4_SCRIPT.read_text()

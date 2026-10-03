@@ -71,11 +71,12 @@ def test_fused_adam_cli_flag_wired() -> None:
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import (
         parse_args as dmpnn_parse_args,
     )
+
     # Default OFF (backward-compat with Wf-131 P1 / Wf-181 G5 / Wf-182 G6).
     args_default = dmpnn_parse_args(["--epochs", "1"])
-    assert hasattr(args_default, "fused_adam"), (
-        "D-MPNN trainer is missing the --fused-adam flag (Wf-357-D1)"
-    )
+    assert hasattr(
+        args_default, "fused_adam"
+    ), "D-MPNN trainer is missing the --fused-adam flag (Wf-357-D1)"
     assert args_default.fused_adam is False, (
         f"D-MPNN --fused-adam default must be False (backward-compat); "
         f"got {args_default.fused_adam}"
@@ -96,26 +97,27 @@ def test_fused_adam_cli_flag_wired() -> None:
     # chemprop_v2_v3 trainer (parse_args lives inside main() for this
     # trainer; verify the source-text integration via source-grep).
     chemprop_src_path = (
-        Path(__file__).resolve().parent.parent
-        / "scripts" / "train_chemprop_v2_v3.py"
+        Path(__file__).resolve().parent.parent / "scripts" / "train_chemprop_v2_v3.py"
     )
     chemprop_src = chemprop_src_path.read_text()
-    assert '"--fused-adam"' in chemprop_src, (
-        f"chemprop_v2_v3 trainer must declare --fused-adam CLI flag"
-    )
-    assert '"--no-fused-adam"' in chemprop_src, (
-        f"chemprop_v2_v3 trainer must declare --no-fused-adam CLI flag"
-    )
+    assert (
+        '"--fused-adam"' in chemprop_src
+    ), f"chemprop_v2_v3 trainer must declare --fused-adam CLI flag"
+    assert (
+        '"--no-fused-adam"' in chemprop_src
+    ), f"chemprop_v2_v3 trainer must declare --no-fused-adam CLI flag"
 
     # CFM trainer (parse_args takes no positional args; uses sys.argv)
     from molmetal.scripts.train_cfm_yuelbond_wasserstein import (
         parse_args as cfm_parse_args,
     )
+
     # Default OFF (backward-compat with Wf-299 / Wf-291C shipped).
     # We construct the Namespace directly via subprocess to avoid
     # the trainer's parse_args reaching into sys.argv (which would
     # pollute the test runner).
     import subprocess
+
     cfm_probe = subprocess.run(
         [
             "/home/hugo/codes/mol-metal/.venv/bin/python",
@@ -130,7 +132,9 @@ def test_fused_adam_cli_flag_wired() -> None:
         ],
         cwd=str(PROJECT_ROOT),
         env={"PYTHONPATH": str(PROJECT_ROOT), "PATH": "/usr/bin:/bin"},
-        capture_output=True, text=True, timeout=60,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     assert "FUSED_ADAM_DEFAULT: False" in cfm_probe.stdout, (
         f"CFM parse_args default for fused_adam must be False; "
@@ -158,17 +162,20 @@ def test_fused_adam_backward_compat() -> None:
     # Wf-357-D1 default path: the same call when --fused-adam is OFF.
     # Both must produce a torch.optim.Adam instance with NO `fused`
     # kwarg set (the legacy API doesn't accept it).
-    assert type(legacy_optim) is torch.optim.Adam, (
-        f"Legacy optimizer must be torch.optim.Adam; got {type(legacy_optim)}"
-    )
+    assert (
+        type(legacy_optim) is torch.optim.Adam
+    ), f"Legacy optimizer must be torch.optim.Adam; got {type(legacy_optim)}"
 
     # Confirm that the optimizer factory's default-OFF behaviour
     # produces an equivalent instance (same class; same default fused
     # state for the CPU backend where `fused` is unsupported).
     from molmetal.baselines.dmpnn_p0wins import make_optimized_adam
+
     # fused=False explicitly: legacy bit-for-bit equivalent.
     optim_explicit_off = make_optimized_adam(
-        model.parameters(), lr=lr, fused=False,
+        model.parameters(),
+        lr=lr,
+        fused=False,
     )
     assert type(optim_explicit_off) is torch.optim.Adam, (
         f"make_optimized_adam(fused=False) must be torch.optim.Adam; "
@@ -210,16 +217,17 @@ def test_fused_adam_factory_correctness() -> None:
 
     # Verify the factory exists and has the documented signature.
     import inspect
+
     sig = inspect.signature(make_optimized_adam)
-    assert "params" in sig.parameters, (
-        f"make_optimized_adam must accept 'params'; got {list(sig.parameters)}"
-    )
-    assert "lr" in sig.parameters, (
-        f"make_optimized_adam must accept 'lr'; got {list(sig.parameters)}"
-    )
-    assert "fused" in sig.parameters, (
-        f"make_optimized_adam must accept 'fused'; got {list(sig.parameters)}"
-    )
+    assert (
+        "params" in sig.parameters
+    ), f"make_optimized_adam must accept 'params'; got {list(sig.parameters)}"
+    assert (
+        "lr" in sig.parameters
+    ), f"make_optimized_adam must accept 'lr'; got {list(sig.parameters)}"
+    assert (
+        "fused" in sig.parameters
+    ), f"make_optimized_adam must accept 'fused'; got {list(sig.parameters)}"
     assert sig.parameters["fused"].default is True, (
         f"make_optimized_adam 'fused' default must be True "
         f"(matches docstring + Wf-326G §3.4); got "
@@ -236,7 +244,9 @@ def test_fused_adam_factory_correctness() -> None:
     # silently on CPU when the param shapes / groups are simple).
     try:
         optim_fused = make_optimized_adam(
-            model.parameters(), lr=1e-3, fused=True,
+            model.parameters(),
+            lr=1e-3,
+            fused=True,
         )
         assert isinstance(optim_fused, torch.optim.Adam), (
             f"make_optimized_adam(fused=True) must return torch.optim.Adam; "
@@ -264,8 +274,7 @@ def test_fused_adam_factory_correctness() -> None:
     loss.backward()
     optim_off.step()
     assert torch.isfinite(loss).all(), (
-        f"make_optimized_adam step produced non-finite loss; "
-        f"loss={loss.item()}"
+        f"make_optimized_adam step produced non-finite loss; " f"loss={loss.item()}"
     )
 
 
@@ -309,7 +318,8 @@ def test_fused_adam_integration_with_trainer() -> None:
     # the Wf-357-D1 NEW marker so future maintainers can find it.
     src_path = (
         Path(__file__).resolve().parent.parent
-        / "scripts" / "train_dmpnn_multitask_wasserstein.py"
+        / "scripts"
+        / "train_dmpnn_multitask_wasserstein.py"
     )
     src_text = src_path.read_text()
     assert "Wf-357-D1" in src_text, (
@@ -318,23 +328,21 @@ def test_fused_adam_integration_with_trainer() -> None:
     )
     # Confirm the make_optimized_adam factory call site is present.
     assert "make_optimized_adam" in src_text, (
-        f"D-MPNN trainer must call make_optimized_adam when "
-        f"use_fused_adam=True"
+        f"D-MPNN trainer must call make_optimized_adam when " f"use_fused_adam=True"
     )
     # Confirm the CLI flag is declared in parse_args.
-    assert '"--fused-adam"' in src_text, (
-        f"D-MPNN trainer must declare --fused-adam CLI flag"
-    )
+    assert (
+        '"--fused-adam"' in src_text
+    ), f"D-MPNN trainer must declare --fused-adam CLI flag"
 
     # Confirm the chemprop_v2_v3 trainer is also wired.
     chemprop_src_path = (
-        Path(__file__).resolve().parent.parent
-        / "scripts" / "train_chemprop_v2_v3.py"
+        Path(__file__).resolve().parent.parent / "scripts" / "train_chemprop_v2_v3.py"
     )
     chemprop_src = chemprop_src_path.read_text()
-    assert "Wf-357-D1" in chemprop_src, (
-        f"chemprop_v2_v3 trainer must contain the Wf-357-D1 marker"
-    )
+    assert (
+        "Wf-357-D1" in chemprop_src
+    ), f"chemprop_v2_v3 trainer must contain the Wf-357-D1 marker"
     assert "make_optimized_adam" in chemprop_src, (
         f"chemprop_v2_v3 trainer must call make_optimized_adam when "
         f"use_fused_adam=True"
@@ -343,15 +351,13 @@ def test_fused_adam_integration_with_trainer() -> None:
     # Confirm the CFM trainer is also wired.
     cfm_src_path = (
         Path(__file__).resolve().parent.parent
-        / "scripts" / "train_cfm_yuelbond_wasserstein.py"
+        / "scripts"
+        / "train_cfm_yuelbond_wasserstein.py"
     )
     cfm_src = cfm_src_path.read_text()
-    assert "Wf-357-D1" in cfm_src, (
-        f"CFM trainer must contain the Wf-357-D1 marker"
-    )
+    assert "Wf-357-D1" in cfm_src, f"CFM trainer must contain the Wf-357-D1 marker"
     assert "make_optimized_adam" in cfm_src, (
-        f"CFM trainer must call make_optimized_adam when "
-        f"args.fused_adam=True"
+        f"CFM trainer must call make_optimized_adam when " f"args.fused_adam=True"
     )
 
     # Confirm the summary JSON includes the Wf-357-D1 flag for paper

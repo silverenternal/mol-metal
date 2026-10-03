@@ -42,8 +42,11 @@ import pre_flight_check  # noqa: E402 — direct module import for unit tests
 def _gate(*args, **kwargs):
     """Helper to call gate functions with the standard (name, priority, pipeline)
     positional args pre-populated."""
-    return pre_flight_check.gate_yaml_dataset_authorized(*args, **kwargs) \
-        if False else None  # placeholder — real calls below
+    return (
+        pre_flight_check.gate_yaml_dataset_authorized(*args, **kwargs)
+        if False
+        else None
+    )  # placeholder — real calls below
 
 
 def _write_yaml(tmp_path: Path, name: str, content: str) -> Path:
@@ -76,17 +79,19 @@ honest_framing:
 # Gate 1 — p3_protocol_alignment_yaml_dataset_authorized
 # ---------------------------------------------------------------------------
 
+
 def test_yaml_dataset_authorized_valid(tmp_path):
     """yaml data.dataset ∈ Tier-1 authorized benchmark list → PASS."""
     p = _write_yaml(tmp_path, "ok.yaml", _VALID_DATASET_YAML)
     res = pre_flight_check.gate_p3_protocol_alignment_yaml_dataset_authorized(
         "p3_protocol_alignment_yaml_dataset_authorized",
-        "P3", "all",
+        "P3",
+        "all",
         (p,),
     )
-    assert res.status == "PASS", (
-        f"expected PASS for valid dataset=platinum; got {res.status}: {res.evidence}"
-    )
+    assert (
+        res.status == "PASS"
+    ), f"expected PASS for valid dataset=platinum; got {res.status}: {res.evidence}"
 
 
 def test_yaml_dataset_authorized_invalid(tmp_path):
@@ -103,12 +108,13 @@ entry:
     p = _write_yaml(tmp_path, "bad.yaml", bad)
     res = pre_flight_check.gate_p3_protocol_alignment_yaml_dataset_authorized(
         "p3_protocol_alignment_yaml_dataset_authorized",
-        "P3", "all",
+        "P3",
+        "all",
         (p,),
     )
-    assert res.status == "FAIL", (
-        f"expected FAIL for invalid dataset=qm9; got {res.status}: {res.evidence}"
-    )
+    assert (
+        res.status == "FAIL"
+    ), f"expected FAIL for invalid dataset=qm9; got {res.status}: {res.evidence}"
     assert "qm9" in res.evidence
     assert "Tier-1 authorized" in res.evidence
 
@@ -116,6 +122,7 @@ entry:
 # ---------------------------------------------------------------------------
 # Gate 2 — p3_protocol_alignment_yaml_split_matches_baseline
 # ---------------------------------------------------------------------------
+
 
 def test_yaml_split_baseline_match(tmp_path):
     """yaml data.split.type='per_cell_line' (Rusanov 2025) → PASS."""
@@ -132,12 +139,13 @@ entry:
     p = _write_yaml(tmp_path, "ok.yaml", yaml_text)
     res = pre_flight_check.gate_p3_protocol_alignment_yaml_split_matches_baseline(
         "p3_protocol_alignment_yaml_split_matches_baseline",
-        "P3", "all",
+        "P3",
+        "all",
         (p,),
     )
-    assert res.status == "PASS", (
-        f"expected PASS for per_cell_line; got {res.status}: {res.evidence}"
-    )
+    assert (
+        res.status == "PASS"
+    ), f"expected PASS for per_cell_line; got {res.status}: {res.evidence}"
 
 
 def test_yaml_split_baseline_mismatch(tmp_path):
@@ -155,12 +163,13 @@ entry:
     p = _write_yaml(tmp_path, "bad.yaml", yaml_text)
     res = pre_flight_check.gate_p3_protocol_alignment_yaml_split_matches_baseline(
         "p3_protocol_alignment_yaml_split_matches_baseline",
-        "P3", "all",
+        "P3",
+        "all",
         (p,),
     )
-    assert res.status == "FAIL", (
-        f"expected FAIL for random_holdout; got {res.status}: {res.evidence}"
-    )
+    assert (
+        res.status == "FAIL"
+    ), f"expected FAIL for random_holdout; got {res.status}: {res.evidence}"
     assert "random_holdout" in res.evidence
     assert "Rusanov" in res.evidence
 
@@ -168,6 +177,7 @@ entry:
 # ---------------------------------------------------------------------------
 # Gate 3 — p3_protocol_alignment_yaml_target_in_baseline_range
 # ---------------------------------------------------------------------------
+
 
 def test_yaml_target_in_range(tmp_path):
     """yaml target_per_cell_line.A2780=0.75 (in Rusanov 2025 band [0.70,0.80]) → PASS."""
@@ -188,12 +198,13 @@ entry:
     p = _write_yaml(tmp_path, "ok.yaml", yaml_text)
     res = pre_flight_check.gate_p3_protocol_alignment_yaml_target_in_baseline_range(
         "p3_protocol_alignment_yaml_target_in_baseline_range",
-        "P3", "all",
+        "P3",
+        "all",
         (p,),
     )
-    assert res.status == "PASS", (
-        f"expected PASS for in-range targets; got {res.status}: {res.evidence}"
-    )
+    assert (
+        res.status == "PASS"
+    ), f"expected PASS for in-range targets; got {res.status}: {res.evidence}"
 
 
 def test_yaml_target_out_of_range(tmp_path):
@@ -210,12 +221,13 @@ entry:
     p = _write_yaml(tmp_path, "bad.yaml", yaml_text)
     res = pre_flight_check.gate_p3_protocol_alignment_yaml_target_in_baseline_range(
         "p3_protocol_alignment_yaml_target_in_baseline_range",
-        "P3", "all",
+        "P3",
+        "all",
         (p,),
     )
-    assert res.status == "FAIL", (
-        f"expected FAIL for wildly-out-of-range target=0.95; got {res.status}: {res.evidence}"
-    )
+    assert (
+        res.status == "FAIL"
+    ), f"expected FAIL for wildly-out-of-range target=0.95; got {res.status}: {res.evidence}"
     assert "A2780" in res.evidence
     assert "0.95" in res.evidence
     assert "Rusanov 2025" in res.evidence
@@ -224,6 +236,7 @@ entry:
 # ---------------------------------------------------------------------------
 # Gate 4 — p3_protocol_alignment_yaml_no_inline_cli
 # ---------------------------------------------------------------------------
+
 
 def test_yaml_no_inline_cli_valid(tmp_path):
     """yaml entry.command only has --config <yaml_path> (no inline flags) → PASS."""
@@ -237,12 +250,13 @@ entry:
     p = _write_yaml(tmp_path, "ok.yaml", yaml_text)
     res = pre_flight_check.gate_p3_protocol_alignment_yaml_no_inline_cli(
         "p3_protocol_alignment_yaml_no_inline_cli",
-        "P3", "all",
+        "P3",
+        "all",
         (p,),
     )
-    assert res.status == "PASS", (
-        f"expected PASS for config-only command; got {res.status}: {res.evidence}"
-    )
+    assert (
+        res.status == "PASS"
+    ), f"expected PASS for config-only command; got {res.status}: {res.evidence}"
 
 
 def test_yaml_no_inline_cli_invalid(tmp_path):
@@ -257,12 +271,13 @@ entry:
     p = _write_yaml(tmp_path, "bad.yaml", yaml_text)
     res = pre_flight_check.gate_p3_protocol_alignment_yaml_no_inline_cli(
         "p3_protocol_alignment_yaml_no_inline_cli",
-        "P3", "all",
+        "P3",
+        "all",
         (p,),
     )
-    assert res.status == "FAIL", (
-        f"expected FAIL for inline CLI; got {res.status}: {res.evidence}"
-    )
+    assert (
+        res.status == "FAIL"
+    ), f"expected FAIL for inline CLI; got {res.status}: {res.evidence}"
     # The forbidden flag should appear in the evidence.
     assert "--metals" in res.evidence
     # The user-voice rationale should be cited.
@@ -272,6 +287,7 @@ entry:
 # ---------------------------------------------------------------------------
 # Optional: end-to-end smoke via build_gates() to verify registration
 # ---------------------------------------------------------------------------
+
 
 def test_yaml_gates_registered_in_all_pipeline():
     """Per AGENTS.md §5.7 wire-in smoke rule: every NEW gate must be
@@ -302,7 +318,9 @@ def test_yaml_gates_registered_in_chemprop_v2_v3_pipeline():
         "p3_protocol_alignment_yaml_no_inline_cli",
     }
     missing = expected - names
-    assert not missing, f"NEW yaml gates missing from build_gates('chemprop_v2_v3'): {missing}"
+    assert (
+        not missing
+    ), f"NEW yaml gates missing from build_gates('chemprop_v2_v3'): {missing}"
 
 
 def test_yaml_gates_excluded_from_cfm_pipeline():

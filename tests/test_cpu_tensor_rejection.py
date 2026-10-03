@@ -54,7 +54,9 @@ def test_aggregate_vectors_rejects_cpu_mask_with_clear_message():
     if _has_gpu():
         # Build most tensors on CUDA but leave `mask` on CPU to mimic
         # the regression (caller forgot to move it).
-        edge_index = torch.tensor([[0, 1, 2], [1, 2, 0]], dtype=torch.long, device="cuda")
+        edge_index = torch.tensor(
+            [[0, 1, 2], [1, 2, 0]], dtype=torch.long, device="cuda"
+        )
         edge_features = torch.randn(3, 4, device="cuda", dtype=torch.float32)
         edge_mask = torch.tensor([1, 1, 0], dtype=torch.uint8)  # CPU!
 
@@ -144,9 +146,9 @@ def test_aggregate_vectors_cuda_parity_at_8_128():
     ref = torch.zeros(n_atoms, feat_dim, device="cuda", dtype=torch.float32)
     ref.index_add_(0, dst.long(), edge_features)
 
-    assert torch.allclose(out, ref, atol=1e-5), (
-        f"max diff = {(out - ref).abs().max().item()}"
-    )
+    assert torch.allclose(
+        out, ref, atol=1e-5
+    ), f"max diff = {(out - ref).abs().max().item()}"
 
 
 @pytest.mark.skipif(not _has_gpu(), reason="CUDA not available")
@@ -181,6 +183,6 @@ def test_aggregate_vectors_cuda_parity_with_padding():
     ref = torch.zeros(n_atoms, feat_dim, device="cuda", dtype=torch.float32)
     ref.index_add_(0, dst[valid].long(), edge_features[valid])
 
-    assert torch.allclose(out, ref, atol=1e-5), (
-        f"max diff = {(out - ref).abs().max().item()}"
-    )
+    assert torch.allclose(
+        out, ref, atol=1e-5
+    ), f"max diff = {(out - ref).abs().max().item()}"

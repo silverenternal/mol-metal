@@ -52,6 +52,7 @@ Exit codes:
     1 — at least one check failed.
     2 — orchestrator could not run (venv missing, repo missing).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -86,8 +87,7 @@ JSON_OUT: Path = REPORTS_DIR / "integration_report.json"
 MD_OUT: Path = REPORTS_DIR / "integration_report.md"
 PER_SCRIPT_OUT: Path = REPORTS_DIR / "per_script_routing.json"
 MASTER_REPORT_JSON: Path = (
-    PROJECT_ROOT / "molmetal" / "reports" / "wf35_master_verify"
-    / "master_report.json"
+    PROJECT_ROOT / "molmetal" / "reports" / "wf35_master_verify" / "master_report.json"
 )
 VENV_PY: Path = (
     PROJECT_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
@@ -205,6 +205,7 @@ def _to_jsonable(obj: Any) -> Any:
         return str(obj)
     try:
         import numpy as np  # noqa: WPS433
+
         if isinstance(obj, np.floating):
             return float(obj.item())
         if isinstance(obj, np.integer):
@@ -231,13 +232,17 @@ def _run_master_verify(*, skip_smoke: bool) -> CheckResult:
     t0 = time.time()
     if not VENV_PY.exists():
         return CheckResult(
-            "master_verify", passed=False, skipped=True,
+            "master_verify",
+            passed=False,
+            skipped=True,
             seconds=time.time() - t0,
             message=f"venv python missing at {VENV_PY}",
         )
     if not SCRIPTS_DIR.exists():
         return CheckResult(
-            "master_verify", passed=False, skipped=True,
+            "master_verify",
+            passed=False,
+            skipped=True,
             seconds=time.time() - t0,
             message=f"scripts dir missing at {SCRIPTS_DIR}",
         )
@@ -252,18 +257,25 @@ def _run_master_verify(*, skip_smoke: bool) -> CheckResult:
     try:
         proc = subprocess.run(
             cmd,
-            capture_output=True, text=True, timeout=300,
-            cwd=str(PROJECT_ROOT), env=env,
+            capture_output=True,
+            text=True,
+            timeout=300,
+            cwd=str(PROJECT_ROOT),
+            env=env,
         )
     except subprocess.TimeoutExpired as exc:
         return CheckResult(
-            "master_verify", passed=False, seconds=time.time() - t0,
+            "master_verify",
+            passed=False,
+            seconds=time.time() - t0,
             message=f"master_verify_r18 timed out after {exc.timeout}s",
         )
 
     if proc.returncode not in (0, 1):
         return CheckResult(
-            "master_verify", passed=False, seconds=time.time() - t0,
+            "master_verify",
+            passed=False,
+            seconds=time.time() - t0,
             message=(
                 f"master_verify_r18 exited {proc.returncode}: "
                 + (proc.stderr.strip().splitlines()[-1] if proc.stderr else "no stderr")
@@ -272,7 +284,9 @@ def _run_master_verify(*, skip_smoke: bool) -> CheckResult:
 
     if not MASTER_REPORT_JSON.exists():
         return CheckResult(
-            "master_verify", passed=False, seconds=time.time() - t0,
+            "master_verify",
+            passed=False,
+            seconds=time.time() - t0,
             message=f"master_report.json not produced at {MASTER_REPORT_JSON}",
         )
 
@@ -284,7 +298,9 @@ def _run_master_verify(*, skip_smoke: bool) -> CheckResult:
     n_pending = summary["n_pending"]
     passed = n_failed == 0 and n_total > 0 and n_passed >= 1
     return CheckResult(
-        "master_verify", passed=passed, seconds=time.time() - t0,
+        "master_verify",
+        passed=passed,
+        seconds=time.time() - t0,
         message=(
             f"{n_passed}/{n_total} scripts PASS, {n_pending} PENDING, "
             f"{n_failed} FAIL (Wf-35 Phase 3 re-run)"
@@ -307,9 +323,9 @@ def _run_master_verify(*, skip_smoke: bool) -> CheckResult:
 #: All entries pass RDKit sanitisation so SA / QED / pIC50 / PLL
 #: adapters can actually exercise their real model.
 _FIXTURE_SMILES: Tuple[str, ...] = (
-    "CCO",                                     # ethanol
-    "CC(=O)Oc1ccccc1C(=O)O",                   # aspirin
-    "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",            # caffeine
+    "CCO",  # ethanol
+    "CC(=O)Oc1ccccc1C(=O)O",  # aspirin
+    "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",  # caffeine
 )
 
 #: Metrics that can be exercised with a small fixture list and no
@@ -349,13 +365,17 @@ def _run_score_any_metric(metric: str) -> CheckResult:
         )
     except Exception as exc:  # pragma: no cover — defensive
         return CheckResult(
-            f"score_any:{metric}", passed=False, seconds=time.time() - t0,
+            f"score_any:{metric}",
+            passed=False,
+            seconds=time.time() - t0,
             message=f"score_any import failed: {type(exc).__name__}: {exc}",
         )
 
     if metric not in REGISTRY:
         return CheckResult(
-            f"score_any:{metric}", passed=False, seconds=time.time() - t0,
+            f"score_any:{metric}",
+            passed=False,
+            seconds=time.time() - t0,
             message=f"{metric!r} not in REGISTRY",
         )
 
@@ -366,13 +386,17 @@ def _run_score_any_metric(metric: str) -> CheckResult:
         missing_keys = expected_keys - set(result.keys())
         if missing_keys:
             return CheckResult(
-                f"score_any:{metric}", passed=False, seconds=time.time() - t0,
+                f"score_any:{metric}",
+                passed=False,
+                seconds=time.time() - t0,
                 message=f"missing keys in result: {sorted(missing_keys)}",
                 detail={"result": _to_jsonable(result)},
             )
         if result["status"] != "MEASURED":
             return CheckResult(
-                f"score_any:{metric}", passed=False, seconds=time.time() - t0,
+                f"score_any:{metric}",
+                passed=False,
+                seconds=time.time() - t0,
                 message=(
                     f"unexpected status {result['status']!r} (expected "
                     f"'MEASURED'); tool={result.get('tool')!r}"
@@ -380,7 +404,9 @@ def _run_score_any_metric(metric: str) -> CheckResult:
                 detail={"result": _to_jsonable(result)},
             )
         return CheckResult(
-            f"score_any:{metric}", passed=True, seconds=time.time() - t0,
+            f"score_any:{metric}",
+            passed=True,
+            seconds=time.time() - t0,
             message=(
                 f"MEASURED via {result['tool']} ({result['backend']}); "
                 f"n={result['n']}"
@@ -400,7 +426,9 @@ def _run_score_any_metric(metric: str) -> CheckResult:
         # job (refusing to fabricate a number). The "skipped" flag
         # distinguishes this from a MEASURED hit in the report.
         return CheckResult(
-            f"score_any:{metric}", passed=True, skipped=True,
+            f"score_any:{metric}",
+            passed=True,
+            skipped=True,
             seconds=time.time() - t0,
             message=f"AdapterUnavailable (real tool not on PATH / host): {exc}",
             detail={
@@ -413,10 +441,10 @@ def _run_score_any_metric(metric: str) -> CheckResult:
         )
     except Exception as exc:  # pragma: no cover — defensive
         return CheckResult(
-            f"score_any:{metric}", passed=False, seconds=time.time() - t0,
-            message=(
-                f"unexpected {type(exc).__name__}: {exc}"
-            ),
+            f"score_any:{metric}",
+            passed=False,
+            seconds=time.time() - t0,
+            message=(f"unexpected {type(exc).__name__}: {exc}"),
             detail={"exception_class": type(exc).__name__},
         )
 
@@ -430,10 +458,14 @@ def _run_score_any_section() -> SectionReport:
     except Exception as exc:  # pragma: no cover — defensive
         section.status = "FAIL"
         section.elapsed_seconds = time.time() - t0
-        section.checks.append(CheckResult(
-            "score_any:import", passed=False, seconds=0.0,
-            message=f"REGISTRY import failed: {type(exc).__name__}: {exc}",
-        ))
+        section.checks.append(
+            CheckResult(
+                "score_any:import",
+                passed=False,
+                seconds=0.0,
+                message=f"REGISTRY import failed: {type(exc).__name__}: {exc}",
+            )
+        )
         return section
 
     # Every metric in REGISTRY must be exercised — either via the
@@ -538,7 +570,9 @@ def _audit_script(name: str) -> CheckResult:
         src = _read_source(name)
     except FileNotFoundError as exc:
         return CheckResult(
-            f"per_script:{name}", passed=False, seconds=time.time() - t0,
+            f"per_script:{name}",
+            passed=False,
+            seconds=time.time() - t0,
             message=str(exc),
         )
 
@@ -550,7 +584,9 @@ def _audit_script(name: str) -> CheckResult:
     # Case A — script is expected to use score_any() and does.
     if expected and has_ref and set(expected).issubset(referenced):
         return CheckResult(
-            f"per_script:{name}", passed=True, seconds=time.time() - t0,
+            f"per_script:{name}",
+            passed=True,
+            seconds=time.time() - t0,
             message=(
                 f"score_any() wired for {sorted(expected)} "
                 f"(found {sorted(referenced)})"
@@ -566,7 +602,9 @@ def _audit_script(name: str) -> CheckResult:
     # Case B — script is expected to use score_any() but does not.
     if expected and not has_ref:
         return CheckResult(
-            f"per_script:{name}", passed=False, seconds=time.time() - t0,
+            f"per_script:{name}",
+            passed=False,
+            seconds=time.time() - t0,
             message=(
                 f"expected score_any({sorted(expected)}) but no "
                 f"molmetal.scoring.score_any import / call found"
@@ -584,7 +622,9 @@ def _audit_script(name: str) -> CheckResult:
     if expected:
         missing = set(expected) - referenced
         return CheckResult(
-            f"per_script:{name}", passed=False, seconds=time.time() - t0,
+            f"per_script:{name}",
+            passed=False,
+            seconds=time.time() - t0,
             message=(
                 f"expected score_any({sorted(expected)}) but only "
                 f"score_any({sorted(referenced)}) found (missing "
@@ -603,7 +643,9 @@ def _audit_script(name: str) -> CheckResult:
     # there is no forbidden mock-scorer function defined.
     if forbidden:
         return CheckResult(
-            f"per_script:{name}", passed=False, seconds=time.time() - t0,
+            f"per_script:{name}",
+            passed=False,
+            seconds=time.time() - t0,
             message=(
                 f"forbidden mock-scorer function(s) defined at top "
                 f"level: {forbidden}"
@@ -617,7 +659,9 @@ def _audit_script(name: str) -> CheckResult:
         )
 
     return CheckResult(
-        f"per_script:{name}", passed=True, seconds=time.time() - t0,
+        f"per_script:{name}",
+        passed=True,
+        seconds=time.time() - t0,
         message=(
             f"no score_any() redirect required (no-mock / CPU "
             f"scaffolding / label-text); no forbidden mock defs"
@@ -676,13 +720,18 @@ def _deprecation_section() -> SectionReport:
     n_fail = sum(1 for c in section.checks if not c.passed)
     n_skip = sum(1 for c in section.checks if c.skipped)
     section.status = "PASS" if n_fail == 0 else "FAIL"
-    section.checks.insert(0, CheckResult(
-        "deprecation_summary", passed=True, seconds=0.0,
-        message=(
-            f"{len(section.checks) - 1}/{len(WF43_PHASE3_SCRIPTS)} Wf-43 "
-            f"Phase 3 scripts PASS ({n_skip} skip); {n_fail} FAIL"
+    section.checks.insert(
+        0,
+        CheckResult(
+            "deprecation_summary",
+            passed=True,
+            seconds=0.0,
+            message=(
+                f"{len(section.checks) - 1}/{len(WF43_PHASE3_SCRIPTS)} Wf-43 "
+                f"Phase 3 scripts PASS ({n_skip} skip); {n_fail} FAIL"
+            ),
         ),
-    ))
+    )
     return section
 
 
@@ -708,24 +757,17 @@ def _write_reports(
         "venv_python": str(VENV_PY),
         "summary": {
             "n_sections": len(sections),
-            "n_sections_passed": sum(
-                1 for s in sections if s.status == "PASS"
-            ),
-            "n_sections_failed": sum(
-                1 for s in sections if s.status == "FAIL"
-            ),
+            "n_sections_passed": sum(1 for s in sections if s.status == "PASS"),
+            "n_sections_failed": sum(1 for s in sections if s.status == "FAIL"),
             "n_checks_total": sum(len(s.checks) for s in sections),
             "n_checks_passed": sum(
-                sum(1 for c in s.checks if c.passed)
-                for s in sections
+                sum(1 for c in s.checks if c.passed) for s in sections
             ),
             "n_checks_failed": sum(
-                sum(1 for c in s.checks if not c.passed)
-                for s in sections
+                sum(1 for c in s.checks if not c.passed) for s in sections
             ),
             "n_checks_skipped": sum(
-                sum(1 for c in s.checks if c.skipped)
-                for s in sections
+                sum(1 for c in s.checks if c.skipped) for s in sections
             ),
         },
         "sections": [_to_jsonable(asdict(s)) for s in sections],
@@ -749,21 +791,21 @@ def _write_reports(
             entry = {
                 "script": name,
                 "expected_metrics": c.detail.get("expected_metrics", []),
-                "referenced_metrics": c.detail.get(
-                    "referenced_metrics", []
-                ),
+                "referenced_metrics": c.detail.get("referenced_metrics", []),
                 "has_score_any": c.detail.get("has_score_any", False),
-                "forbidden_mock_defs": c.detail.get(
-                    "forbidden_mock_defs", []
-                ),
+                "forbidden_mock_defs": c.detail.get("forbidden_mock_defs", []),
                 "passed": c.passed,
                 "skipped": c.skipped,
                 "message": c.message,
                 "buckets": [
-                    b for b in (
+                    b
+                    for b in (
                         "r18_shipped" if name in R18_SHIPPED_SCRIPTS else None,
-                        "wf43_phase3_deprecated" if name in WF43_PHASE3_SCRIPTS else None,
-                    ) if b is not None
+                        "wf43_phase3_deprecated"
+                        if name in WF43_PHASE3_SCRIPTS
+                        else None,
+                    )
+                    if b is not None
                 ],
             }
             if name in R18_SHIPPED_SCRIPTS:
@@ -785,8 +827,7 @@ def _write_reports(
         "",
         f"- **Sections**: "
         f"{payload['summary']['n_sections_passed']}/{payload['summary']['n_sections']} PASS",
-        f"- **Checks**: {n_pass}/{n_total} PASS, {n_fail} FAIL, "
-        f"{n_skip} SKIP",
+        f"- **Checks**: {n_pass}/{n_total} PASS, {n_fail} FAIL, " f"{n_skip} SKIP",
         f"- **venv python**: `{VENV_PY}`",
         "",
         "## Section roll-up",
@@ -805,9 +846,7 @@ def _write_reports(
     for s in sections:
         lines.append(f"## Section: `{s.section}` ({s.status})")
         lines.append("")
-        lines.append(
-            "| Check | Status | Skipped | Seconds | Message |"
-        )
+        lines.append("| Check | Status | Skipped | Seconds | Message |")
         lines.append("|---|---|---|---|---|")
         for c in s.checks:
             status = "PASS"
@@ -870,20 +909,22 @@ def _write_reports(
 def _parse_argv(argv: Optional[Sequence[str]]) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description=(
-            "Wf-43 Phase 4 — master_verify_r18 + score_any() "
-            "comprehensive verify."
+            "Wf-43 Phase 4 — master_verify_r18 + score_any() " "comprehensive verify."
         ),
     )
     p.add_argument(
-        "--skip-master", action="store_true",
+        "--skip-master",
+        action="store_true",
         help="Skip the master_verify_r18 re-run (use existing report).",
     )
     p.add_argument(
-        "--skip-score-any", action="store_true",
+        "--skip-score-any",
+        action="store_true",
         help="Skip the score_any() per-metric section.",
     )
     p.add_argument(
-        "--skip-per-script", action="store_true",
+        "--skip-per-script",
+        action="store_true",
         help="Skip the per (script, metric) audit section.",
     )
     return p.parse_args(argv)
@@ -894,9 +935,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     print(f"[integration_verify_scoring] venv = {VENV_PY}")
     if not VENV_PY.exists():
-        print(
-            f"[integration_verify_scoring] ERROR: venv missing at {VENV_PY}"
-        )
+        print(f"[integration_verify_scoring] ERROR: venv missing at {VENV_PY}")
         return 2
     if not SCRIPTS_DIR.exists():
         print(
@@ -912,25 +951,23 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     # Section 1 — master_verify_r18
     if args.skip_master:
-        sections.append(SectionReport(
-            section="master_verify",
-            status="SKIPPED",
-            elapsed_seconds=0.0,
-        ))
+        sections.append(
+            SectionReport(
+                section="master_verify",
+                status="SKIPPED",
+                elapsed_seconds=0.0,
+            )
+        )
     else:
         print("[integration_verify_scoring] Section 1: master_verify_r18")
         sec = SectionReport(section="master_verify")
         sec_t0 = time.time()
         sec.checks.append(_run_master_verify(skip_smoke=True))
         sec.elapsed_seconds = time.time() - sec_t0
-        sec.status = (
-            "PASS" if all(c.passed for c in sec.checks) else "FAIL"
-        )
+        sec.status = "PASS" if all(c.passed for c in sec.checks) else "FAIL"
         sections.append(sec)
         c = sec.checks[0]
-        status = "PASS" if c.passed else (
-            "SKIP" if c.skipped else "FAIL"
-        )
+        status = "PASS" if c.passed else ("SKIP" if c.skipped else "FAIL")
         print(
             f"[integration_verify_scoring]   {status} "
             f"[{c.seconds:.1f}s] {c.message}"
@@ -938,11 +975,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     # Section 2 — score_any() per-metric
     if args.skip_score_any:
-        sections.append(SectionReport(
-            section="score_any_per_metric",
-            status="SKIPPED",
-            elapsed_seconds=0.0,
-        ))
+        sections.append(
+            SectionReport(
+                section="score_any_per_metric",
+                status="SKIPPED",
+                elapsed_seconds=0.0,
+            )
+        )
     else:
         print("[integration_verify_scoring] Section 2: score_any per-metric")
         sec = _run_score_any_section()
@@ -956,18 +995,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     # Section 3 — per (script, metric) audit
     if args.skip_per_script:
-        sections.append(SectionReport(
-            section="per_script_routing",
-            status="SKIPPED",
-            elapsed_seconds=0.0,
-        ))
+        sections.append(
+            SectionReport(
+                section="per_script_routing",
+                status="SKIPPED",
+                elapsed_seconds=0.0,
+            )
+        )
         # Section 4 still needs the per-script results, so build a
         # minimal stand-in.
-        sections.append(SectionReport(
-            section="deprecated_mocks_replaced",
-            status="SKIPPED",
-            elapsed_seconds=0.0,
-        ))
+        sections.append(
+            SectionReport(
+                section="deprecated_mocks_replaced",
+                status="SKIPPED",
+                elapsed_seconds=0.0,
+            )
+        )
     else:
         print("[integration_verify_scoring] Section 3: per-script routing")
         sec = _per_script_section()
@@ -993,8 +1036,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     finished = datetime.now(timezone.utc).isoformat()
     total_s = time.time() - t0
 
-    _write_reports(sections, started=started, finished=finished,
-                   total_seconds=total_s)
+    _write_reports(sections, started=started, finished=finished, total_seconds=total_s)
 
     n_sec_fail = sum(1 for s in sections if s.status == "FAIL")
     n_sec_pass = sum(1 for s in sections if s.status == "PASS")

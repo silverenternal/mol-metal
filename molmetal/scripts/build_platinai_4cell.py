@@ -111,10 +111,10 @@ if str(PROJECT_ROOT) not in sys.path:
 # We choose offsets so that *overall active rate* is ~50 % per cell line
 # (a learnable signal exists but no cell line is trivially easy / hard).
 CELL_OFFSETS_NM: Dict[str, float] = {
-    "MCF7": 0.0,         # baseline
-    "A549": +0.15,       # A549 needs ~1.4× more Pt → higher IC50
-    "A2780": -0.30,      # A2780 sensitive → lower IC50
-    "A2780cis": +0.40,   # cisplatin-resistant → higher IC50
+    "MCF7": 0.0,  # baseline
+    "A549": +0.15,  # A549 needs ~1.4× more Pt → higher IC50
+    "A2780": -0.30,  # A2780 sensitive → lower IC50
+    "A2780cis": +0.40,  # cisplatin-resistant → higher IC50
 }
 CELL_LINES: Tuple[str, ...] = ("MCF7", "A549", "A2780", "A2780cis")
 BASE_LOG10_IC50_NM: float = 3.95  # ~9 µM (just below active threshold)
@@ -127,6 +127,7 @@ RESISTANCE_BOOST: float = 0.30  # pIC50 boost for large Pt complexes in resistan
 # ---------------------------------------------------------------------------
 try:
     from rdkit import Chem, RDLogger
+
     RDLogger.DisableLog("rdApp.*")
     _HAS_RDKIT = True
 except Exception:  # pragma: no cover
@@ -230,7 +231,7 @@ def _collect_from_tmqm(env_dir: Path) -> List[Tuple[str, str]]:
 # ---------------------------------------------------------------------------
 def _row_seed(complex_id: str, smiles: str) -> int:
     """Stable per-row seed derived from id+smiles hash."""
-    h = abs(hash((complex_id, smiles))) % (2 ** 31 - 1)
+    h = abs(hash((complex_id, smiles))) % (2**31 - 1)
     return int(h)
 
 
@@ -255,16 +256,13 @@ def _generate_ic50_nm(
     out: Dict[str, float] = {}
     for line in CELL_LINES:
         eps = r.gauss(0.0, SIGMA)
-        resistance_bonus = RESISTANCE_BOOST if (line == "A2780cis" and n_heavy > 25) else 0.0
-        # log10 nM
-        log10_nm = (
-            BASE_LOG10_IC50_NM
-            + CELL_OFFSETS_NM[line]
-            - resistance_bonus
-            + eps
+        resistance_bonus = (
+            RESISTANCE_BOOST if (line == "A2780cis" and n_heavy > 25) else 0.0
         )
+        # log10 nM
+        log10_nm = BASE_LOG10_IC50_NM + CELL_OFFSETS_NM[line] - resistance_bonus + eps
         # Convert to nM, clip to [1, 1e6] nM
-        ic50_nm = 10 ** log10_nm
+        ic50_nm = 10**log10_nm
         ic50_nm = max(1.0, min(1.0e6, ic50_nm))
         out[line] = float(ic50_nm)
     return out
@@ -387,8 +385,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Write CSV (deterministic order by complex_id)
     rows.sort(key=lambda r: r["complex_id"])
     fieldnames = [
-        "complex_id", "smiles",
-        "ic50_mcf7_nm", "ic50_a549_nm", "ic50_a2780_nm", "ic50_a2780cis_nm",
+        "complex_id",
+        "smiles",
+        "ic50_mcf7_nm",
+        "ic50_a549_nm",
+        "ic50_a2780_nm",
+        "ic50_a2780cis_nm",
         "source",
     ]
     with out_path.open("w", newline="") as f:
@@ -406,8 +408,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     for line in CELL_LINES:
         n = n_active_per_line[line]
         print(
-            f"[platinai-4cell]   {line}: {n}/{n_written} "
-            f"({100*n/n_written:.1f}%)",
+            f"[platinai-4cell]   {line}: {n}/{n_written} " f"({100*n/n_written:.1f}%)",
             flush=True,
         )
 
@@ -429,7 +430,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         "active_threshold_nm": 10000.0,
         "n_active_per_cell_line": n_active_per_line,
         "ic50_columns": [
-            "ic50_mcf7_nm", "ic50_a549_nm", "ic50_a2780_nm", "ic50_a2780cis_nm"
+            "ic50_mcf7_nm",
+            "ic50_a549_nm",
+            "ic50_a2780_nm",
+            "ic50_a2780cis_nm",
         ],
         "framing": (
             "synthetic IC50 labels for pipeline test; "

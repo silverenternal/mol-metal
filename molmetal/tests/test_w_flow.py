@@ -205,12 +205,12 @@ def test_w_flow_cfm_shape_preserved(z0, linear_velocity_fn):
     with torch.no_grad():
         out = w_cfm.forward(z0.clone(), t=1.0)
 
-    assert out.shape == z0.shape, (
-        f"WFlowCFM.forward shape {tuple(out.shape)} != z0 shape {tuple(z0.shape)}"
-    )
-    assert out.dtype == z0.dtype, (
-        f"WFlowCFM.forward dtype {out.dtype} != z0 dtype {z0.dtype}"
-    )
+    assert (
+        out.shape == z0.shape
+    ), f"WFlowCFM.forward shape {tuple(out.shape)} != z0 shape {tuple(z0.shape)}"
+    assert (
+        out.dtype == z0.dtype
+    ), f"WFlowCFM.forward dtype {out.dtype} != z0 dtype {z0.dtype}"
 
 
 # ---------------------------------------------------------------------------
@@ -221,7 +221,7 @@ def test_w_flow_cfm_zero_window_falls_back_to_legacy(z0, linear_velocity_fn):
     # Single-window W-Flow.
     w_solver_single = WaveformRelaxationSolver(
         n_windows=1,
-        n_iters_per_window=1,           # one pass; no iteration
+        n_iters_per_window=1,  # one pass; no iteration
         tol=1e-6,
         method="midpoint",
         n_substeps_per_window=20,
@@ -260,12 +260,12 @@ def test_compare_solvers_wall_time_returns_finite(z0, base_solver):
         t=1.0,
         n_steps_base=20,
     )
-    assert math.isfinite(report["speedup"]), (
-        f"compare_solvers['speedup'] must be finite; got {report['speedup']!r}"
-    )
-    assert report["speedup"] > 0.0, (
-        f"compare_solvers['speedup'] must be > 0; got {report['speedup']!r}"
-    )
+    assert math.isfinite(
+        report["speedup"]
+    ), f"compare_solvers['speedup'] must be finite; got {report['speedup']!r}"
+    assert (
+        report["speedup"] > 0.0
+    ), f"compare_solvers['speedup'] must be > 0; got {report['speedup']!r}"
     assert math.isfinite(report["w_total_time_s"])
     assert math.isfinite(report["base_total_time_s"])
 
@@ -290,9 +290,9 @@ def test_compare_solvers_accuracy_within_tol(z0, base_solver):
         n_steps_base=40,
         tol_accuracy=0.05,
     )
-    assert math.isfinite(report["max_abs_diff"]), (
-        f"max_abs_diff must be finite; got {report['max_abs_diff']!r}"
-    )
+    assert math.isfinite(
+        report["max_abs_diff"]
+    ), f"max_abs_diff must be finite; got {report['max_abs_diff']!r}"
     assert report["within_tol"] is True, (
         f"W-Flow trajectory not within tol: max_abs_diff={report['max_abs_diff']:.4e}, "
         f"tol=0.05.  W-Flow solver convergence_report={report['convergence']}"
@@ -512,9 +512,9 @@ def test_compare_solvers_report_keys_complete(z0, base_solver):
         "n_runs",
         "z0_shape",
     }
-    assert set(report.keys()) == expected_keys, (
-        f"compare_solvers keys {set(report.keys())} != expected {expected_keys}"
-    )
+    assert (
+        set(report.keys()) == expected_keys
+    ), f"compare_solvers keys {set(report.keys())} != expected {expected_keys}"
     assert isinstance(report["convergence"], dict)
     assert report["n_runs"] == 1
     assert tuple(report["z0_shape"]) == tuple(z0.shape)

@@ -181,7 +181,7 @@ def test_lift_to_hilbert_dim_includes_polynomial_block() -> None:
     out = lift_to_hilbert_dim(X, target_dim=64)
     np.testing.assert_allclose(out[:, 1:6], X, atol=1e-12)
     # Squares live at cols 16..20 (1 + 5 + 10 = 16).
-    np.testing.assert_allclose(out[:, 16:21], X ** 2, atol=1e-12)
+    np.testing.assert_allclose(out[:, 16:21], X**2, atol=1e-12)
 
 
 # ---------------------------------------------------------------------------
@@ -226,9 +226,14 @@ def test_evaluate_backend_on_fold_returns_fold_result() -> None:
     X = rng.standard_normal((40, 5))
     y = X[:, 0] ** 2 + 0.05 * rng.standard_normal(40)
     res = evaluate_backend_on_fold(
-        "evolutionary", X[:30], y[:30], X[30:], y[30:],
+        "evolutionary",
+        X[:30],
+        y[:30],
+        X[30:],
+        y[30:],
         feature_names=("f0", "f1", "f2", "f3", "f4"),
-        fold_idx=0, seed=0,
+        fold_idx=0,
+        seed=0,
     )
     assert isinstance(res, FoldResult)
     assert res.backend == "evolutionary"
@@ -246,9 +251,14 @@ def test_evaluate_backend_rejects_unknown_name() -> None:
     y = X[:, 0] + 0.05 * rng.standard_normal(20)
     with pytest.raises(ValueError, match="Unknown backend"):
         evaluate_backend_on_fold(
-            "bogus", X[:15], y[:15], X[15:], y[15:],
+            "bogus",
+            X[:15],
+            y[:15],
+            X[15:],
+            y[15:],
             feature_names=("f0",) * 5,
-            fold_idx=0, seed=0,
+            fold_idx=0,
+            seed=0,
         )
 
 
@@ -262,7 +272,9 @@ def test_run_extended_cv_benchmark_small_smoke() -> None:
     # a small (N=30) PlatinAI subset (RDKit features only need ~2 s).
     t0 = time.perf_counter()
     payload = run_extended_cv_benchmark(
-        n_samples=30, k_folds=3, seed=0,
+        n_samples=30,
+        k_folds=3,
+        seed=0,
     )
     elapsed = time.perf_counter() - t0
     assert elapsed < 60.0, f"benchmark took {elapsed:.1f}s, expected <60s"
@@ -275,14 +287,23 @@ def test_run_extended_cv_benchmark_small_smoke() -> None:
 def test_run_extended_cv_benchmark_has_required_keys() -> None:
     """The payload exposes the keys mandated by the spec."""
     payload = run_extended_cv_benchmark(
-        n_samples=30, k_folds=3, seed=0,
+        n_samples=30,
+        k_folds=3,
+        seed=0,
     )
     for key in (
-        "n_samples", "k_folds", "seed", "feature_names",
-        "evolutionary", "hilbert",
-        "evo_r2_mean", "evo_r2_std",
-        "evo_wall_time", "hilbert_wall_time",
-        "hilbert_r2_mean", "hilbert_r2_std",
+        "n_samples",
+        "k_folds",
+        "seed",
+        "feature_names",
+        "evolutionary",
+        "hilbert",
+        "evo_r2_mean",
+        "evo_r2_std",
+        "evo_wall_time",
+        "hilbert_wall_time",
+        "hilbert_r2_mean",
+        "hilbert_r2_std",
     ):
         assert key in payload, f"missing required key {key!r}"
 
@@ -290,30 +311,36 @@ def test_run_extended_cv_benchmark_has_required_keys() -> None:
 def test_run_extended_cv_benchmark_aggregates_match_records() -> None:
     """The aggregate mean / std are consistent with the per-fold records."""
     payload = run_extended_cv_benchmark(
-        n_samples=30, k_folds=3, seed=0,
+        n_samples=30,
+        k_folds=3,
+        seed=0,
     )
     evo = payload["evolutionary"]
     evo_r2s = [f["r2_test"] for f in evo["fold_records"]]
-    np.testing.assert_allclose(
-        evo["r2_mean"], float(np.mean(evo_r2s)), atol=1e-9
-    )
-    np.testing.assert_allclose(
-        evo["r2_std"], float(np.std(evo_r2s, ddof=1)), atol=1e-9
-    )
+    np.testing.assert_allclose(evo["r2_mean"], float(np.mean(evo_r2s)), atol=1e-9)
+    np.testing.assert_allclose(evo["r2_std"], float(np.std(evo_r2s, ddof=1)), atol=1e-9)
 
 
 def test_run_extended_cv_benchmark_records_per_fold_metadata() -> None:
     """Each fold record carries ``fold_idx``, ``n_train``, ``n_test``,
     ``r2_test``, ``wall_s``, ``seed``."""
     payload = run_extended_cv_benchmark(
-        n_samples=30, k_folds=3, seed=0,
+        n_samples=30,
+        k_folds=3,
+        seed=0,
     )
     for backend_key in ("evolutionary", "hilbert"):
         records = payload[backend_key]["fold_records"]
         assert len(records) == 3
         for f in records:
-            assert {"fold_idx", "n_train", "n_test", "r2_test",
-                    "wall_s", "seed"} <= set(f.keys())
+            assert {
+                "fold_idx",
+                "n_train",
+                "n_test",
+                "r2_test",
+                "wall_s",
+                "seed",
+            } <= set(f.keys())
 
 
 # ---------------------------------------------------------------------------
@@ -322,11 +349,11 @@ def test_run_extended_cv_benchmark_records_per_fold_metadata() -> None:
 def test_hilbert_r2_comparable_within_tolerance() -> None:
     """``|evo_r2_mean - hilbert_r2_mean| < R2_DELTA_TOL + 0.02`` on small case."""
     payload = run_extended_cv_benchmark(
-        n_samples=60, k_folds=3, seed=0,
+        n_samples=60,
+        k_folds=3,
+        seed=0,
     )
-    delta = abs(
-        payload["evo_r2_mean"] - payload["hilbert_r2_mean"]
-    )
+    delta = abs(payload["evo_r2_mean"] - payload["hilbert_r2_mean"])
     # Slightly looser than the production gate (0.05) so the test is
     # robust to small RNG / rdkit-version drift.
     assert delta < R2_DELTA_TOL + 0.02, (
@@ -345,7 +372,9 @@ def test_hilbert_faster_wall_time_than_evolutionary() -> None:
     ``n_iters=50000, lr=0.005`` give Hilbert a ~5× speedup.
     """
     payload = run_extended_cv_benchmark(
-        n_samples=60, k_folds=3, seed=0,
+        n_samples=60,
+        k_folds=3,
+        seed=0,
         hilbert_n_iters=200,
     )
     assert payload["hilbert_wall_time"] < payload["evo_wall_time"], (
@@ -357,7 +386,9 @@ def test_hilbert_faster_wall_time_than_evolutionary() -> None:
 def test_speedup_ratio_is_finite() -> None:
     """The ``speedup_mean`` is a finite, positive number."""
     payload = run_extended_cv_benchmark(
-        n_samples=60, k_folds=3, seed=0,
+        n_samples=60,
+        k_folds=3,
+        seed=0,
     )
     assert payload["speedup_mean"] > 0
     assert math.isfinite(payload["speedup_mean"])
@@ -369,7 +400,9 @@ def test_speedup_ratio_is_finite() -> None:
 def test_write_results_produces_valid_json(tmp_path: Path) -> None:
     """``write_results`` writes valid JSON parseable by ``json.loads``."""
     payload = run_extended_cv_benchmark(
-        n_samples=30, k_folds=3, seed=0,
+        n_samples=30,
+        k_folds=3,
+        seed=0,
     )
     out_path = tmp_path / "cv_results.json"
     written = write_results(payload, out_path)
@@ -397,10 +430,24 @@ def test_aggregate_folds_handles_empty_input() -> None:
 def test_aggregate_folds_matches_records_for_synthetic() -> None:
     """``aggregate_folds`` mean / std matches the input records."""
     folds = [
-        FoldResult(backend="x", fold_idx=0, n_train=10, n_test=5,
-                   r2_test=0.5, wall_s=1.0, seed=0),
-        FoldResult(backend="x", fold_idx=1, n_train=10, n_test=5,
-                   r2_test=0.7, wall_s=3.0, seed=0),
+        FoldResult(
+            backend="x",
+            fold_idx=0,
+            n_train=10,
+            n_test=5,
+            r2_test=0.5,
+            wall_s=1.0,
+            seed=0,
+        ),
+        FoldResult(
+            backend="x",
+            fold_idx=1,
+            n_train=10,
+            n_test=5,
+            r2_test=0.7,
+            wall_s=3.0,
+            seed=0,
+        ),
     ]
     out = aggregate_folds(folds)
     assert out["r2_mean"] == pytest.approx(0.6, abs=1e-9)

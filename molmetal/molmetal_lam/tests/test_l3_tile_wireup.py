@@ -49,6 +49,7 @@ Run with::
     uv run pytest -q --ignore=molmetal/references \\
         molmetal/molmetal_lam/tests/test_l3_tile_wireup.py --tb=short
 """
+
 from __future__ import annotations
 
 import random
@@ -103,9 +104,7 @@ class _StubRule:
         else:
             state, tile = molecule, None
         try:
-            tile_smi = (
-                str(tile.canonical_smiles()) if tile is not None else ""
-            )
+            tile_smi = str(tile.canonical_smiles()) if tile is not None else ""
         except Exception:
             tile_smi = ""
         try:
@@ -166,8 +165,7 @@ def test_default_uses_204_pool() -> None:
     )
     # expand_pool_size should equal the resolved pool size.
     assert int(mcts.expand_pool_size) == len(pool), (
-        f"expand_pool_size={mcts.expand_pool_size} must equal "
-        f"len(pool)={len(pool)}"
+        f"expand_pool_size={mcts.expand_pool_size} must equal " f"len(pool)={len(pool)}"
     )
     # R10 axis A — the resolved pool is now the canonical 200-tile
     # library + 20 click-handle tiles (4 × 5 new families).  We
@@ -233,9 +231,7 @@ def test_branching_count_1020() -> None:
         f"FRAGMENT_LIBRARY_200_TILES() size {canonical} + 18; "
         f"got delta={n_pool - canonical}"
     )
-    assert n_pool >= 200, (
-        f"L-3 pool must contain >= 200 tiles; got {n_pool}"
-    )
+    assert n_pool >= 200, f"L-3 pool must contain >= 200 tiles; got {n_pool}"
 
     # Drive one _expand() call — nfe_reductions should advance by
     # n_rules * n_pool.
@@ -256,8 +252,7 @@ def test_branching_count_1020() -> None:
     # drift across platforms.
     if n_pool >= 224:
         assert expected == 5 * n_pool, (
-            f"Branching factor must be 5 * {n_pool} = {5 * n_pool}; "
-            f"got {expected}"
+            f"Branching factor must be 5 * {n_pool} = {5 * n_pool}; " f"got {expected}"
         )
     else:
         # n_pool is the canonical library size; the 1020 contract is
@@ -312,19 +307,19 @@ def test_embed_fail_rate_under_5pct() -> None:
     # (the curated handle SMILES are smaller and more likely to
     # embed cleanly, but we don't want the test to flake on a
     # single new-family failure).
-    assert {"azide", "alkyne", "diene", "thiol"} <= set(metrics.keys()), (
-        f"Missing legacy L-3 categories; got {sorted(metrics.keys())}"
-    )
+    assert {"azide", "alkyne", "diene", "thiol"} <= set(
+        metrics.keys()
+    ), f"Missing legacy L-3 categories; got {sorted(metrics.keys())}"
     total_input = 0
     total_embed_fail = 0
     for cat in ("azide", "alkyne", "diene", "thiol"):
         m = metrics[cat]
-        assert m["input"] >= 50, (
-            f"Category {cat!r} must have >= 50 input SMILES (got {m['input']})"
-        )
-        assert m["valid"] >= 1, (
-            f"Category {cat!r} must have >= 1 valid tile (got {m['valid']})"
-        )
+        assert (
+            m["input"] >= 50
+        ), f"Category {cat!r} must have >= 50 input SMILES (got {m['input']})"
+        assert (
+            m["valid"] >= 1
+        ), f"Category {cat!r} must have >= 1 valid tile (got {m['valid']})"
         # Per-category embed_fail rate < 10% (relaxed from 5% to
         # accommodate RDKit embed drift; the L-3 spec calls for
         # <5% overall, not per-category).
@@ -344,9 +339,9 @@ def test_embed_fail_rate_under_5pct() -> None:
     # Round-3 measured 1.9% — assert it is *strictly* below the 5%
     # gate (we don't pin to 1.9% so the test does not flake on
     # platform-dependent embed results).
-    assert total_input >= 200, (
-        f"Pool must validate >= 200 input SMILES (got {total_input})"
-    )
+    assert (
+        total_input >= 200
+    ), f"Pool must validate >= 200 input SMILES (got {total_input})"
 
 
 # ---------------------------------------------------------------------------
@@ -369,8 +364,7 @@ def test_no_fragment_pool_falls_back_to_12() -> None:
       * keep the branching factor at ``n_rules * 12`` per expand call.
     """
     # 12-tile library: 12 distinct SMILES, so |tile_library| == 12.
-    twelve = ["C", "N", "O", "S", "P", "F", "Cl", "Br", "I", "CC",
-              "CCC", "C=O"]
+    twelve = ["C", "N", "O", "S", "P", "F", "Cl", "Br", "I", "CC", "CCC", "C=O"]
     tile_library = _tile_library(twelve)
     assert len(tile_library) == 12
 
@@ -390,9 +384,9 @@ def test_no_fragment_pool_falls_back_to_12() -> None:
         f"use_fragment_pool=False must fall back to the 12-tile "
         f"tile_library (got {len(pool)})"
     )
-    assert pool == tile_library, (
-        "use_fragment_pool=False must return tile_library unchanged"
-    )
+    assert (
+        pool == tile_library
+    ), "use_fragment_pool=False must return tile_library unchanged"
     # expand_pool_size stays at 0 (L-3 not loaded).
     assert int(mcts.expand_pool_size) == 0, (
         f"expand_pool_size must stay 0 when use_fragment_pool=False "

@@ -31,9 +31,9 @@ from molmetal.ports import GenerationConfig
 def test_generation_config_method_default_midpoint():
     """GenerationConfig.method defaults to "midpoint" (Phase 2 Fix #2 ship)."""
     cfg = GenerationConfig()
-    assert cfg.method == "midpoint", (
-        f"GenerationConfig.method should default to 'midpoint', got {cfg.method!r}"
-    )
+    assert (
+        cfg.method == "midpoint"
+    ), f"GenerationConfig.method should default to 'midpoint', got {cfg.method!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -60,20 +60,24 @@ def test_generate_impl_reads_config_method():
 
     adapter._ODESolver = _RecordingODESolver
     from molmetal.domain import Pocket
+
     g = torch.Generator().manual_seed(7)
     pcoords = torch.randn(12, 3, generator=g) * 2.0
     pocket = Pocket(
-        pdb_id="test_pocket", coords=pcoords,
+        pdb_id="test_pocket",
+        coords=pcoords,
         atom_types=torch.randint(1, 18, (12,), generator=g),
         residue_ids=torch.zeros(12, dtype=torch.long),
         chain_ids=torch.zeros(12, dtype=torch.long),
         mask=torch.ones(12, dtype=torch.bool),
-        center=pcoords.mean(0), radius=6.0,
+        center=pcoords.mean(0),
+        radius=6.0,
     )
     cfg_mid = GenerationConfig(n_samples=2, n_steps=8, seed=42, method="midpoint")
     fixed_atoms = torch.randint(1, 10, (2, 8))
     cfg_mid.conditioning["fixed_atom_types"] = fixed_atoms
     from unittest.mock import patch
+
     with patch.object(adapter, "_bond_decoder", None, create=True):
         try:
             adapter.generate(pocket, cfg_mid)
@@ -156,6 +160,7 @@ def test_n_atoms_via_generation_config():
     cfg = GenerationConfig()
     # n_atoms is a config-level field; SizedGenerationConfig extends it
     from molmetal.scripts.r10_cfg_real_crossdocked import SizedGenerationConfig
+
     sized = SizedGenerationConfig()
     assert sized.n_atoms == 19, (
         f"SizedGenerationConfig.n_atoms should default to 19 for CrossDocked, "
@@ -172,19 +177,22 @@ def test_solver_produces_finite_coords_with_midpoint():
     adapter = LipmanFlowMatchingAdapter(hidden_dim=128, n_layers=2)
     adapter.setup(device="cpu")
     from molmetal.domain import Pocket
+
     g = torch.Generator().manual_seed(11)
     pcoords = torch.randn(12, 3, generator=g) * 2.0
     pocket = Pocket(
-        pdb_id="p1", coords=pcoords,
+        pdb_id="p1",
+        coords=pcoords,
         atom_types=torch.randint(1, 18, (12,), generator=g),
         residue_ids=torch.zeros(12, dtype=torch.long),
         chain_ids=torch.zeros(12, dtype=torch.long),
         mask=torch.ones(12, dtype=torch.bool),
-        center=pcoords.mean(0), radius=6.0,
+        center=pcoords.mean(0),
+        radius=6.0,
     )
     cfg = GenerationConfig(n_samples=2, n_steps=4, seed=42)  # default method=midpoint
     out = adapter.generate(pocket, cfg)
     for m in out:
-        assert torch.isfinite(m.coords).all(), (
-            "Midpoint solver produced non-finite coords (regression)"
-        )
+        assert torch.isfinite(
+            m.coords
+        ).all(), "Midpoint solver produced non-finite coords (regression)"

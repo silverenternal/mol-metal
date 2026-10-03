@@ -59,7 +59,9 @@ class MeasuredVsProjected:
 
     measured: list[str] = field(default_factory=list)  # What is MEASURED on disk today
     projected_stretch: list[str] = field(default_factory=list)  # Stretch target (PROJ.)
-    projected_realistic: list[str] = field(default_factory=list)  # Realistic target (PROJ.)
+    projected_realistic: list[str] = field(
+        default_factory=list
+    )  # Realistic target (PROJ.)
 
 
 @dataclass
@@ -76,7 +78,9 @@ class R22PlanTemplate:
     depends_on: list[str] = field(default_factory=list)
     phases: list[Phase] = field(default_factory=list)
     cross_skill_strategy: list[CrossSkillStrategy] = field(default_factory=list)
-    measured_vs_projected: MeasuredVsProjected = field(default_factory=MeasuredVsProjected)
+    measured_vs_projected: MeasuredVsProjected = field(
+        default_factory=MeasuredVsProjected
+    )
     output_dir: str = ""
     tests_estimate: int = 0
     parent_refs: list[str] = field(default_factory=list)
@@ -93,7 +97,11 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
         "priority": "HIGH",
         "hardware": "CPU-only (parser + BFS) + Blackwell sm_120 GPU-0 for 30-metal sweep",
         "wall_time": "3-4 weeks (1 wk CPU parser + 1 wk GPU-0 sweep + 1-2 wk analysis)",
-        "depends_on": ["L1 (closure theorem verifier)", "L6 (closure d-block bench)", "L10 (3-way integration)"],
+        "depends_on": [
+            "L1 (closure theorem verifier)",
+            "L6 (closure d-block bench)",
+            "L10 (3-way integration)",
+        ],
         "tests_estimate": 25,
         "output_dir": "molmetal/reports/wf75_r22_p1/",
         "phases": [
@@ -103,7 +111,11 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
                 wall_human="1 wk CPU",
                 output="molmetal/molmetal_lam/lam_chem/dative_bond_parser.py + tests/test_dative_bond_parser.py",
                 verification="parser PASS on [M+]<-X SMARTS for Pt/Pd/Au/Ru/Ir",
-                sub_tasks=["Dative-bond SMARTS grammar", "Valence accounting undercount fix", "PT/Pd/Au/Ru/Ir coverage"],
+                sub_tasks=[
+                    "Dative-bond SMARTS grammar",
+                    "Valence accounting undercount fix",
+                    "PT/Pd/Au/Ru/Ir coverage",
+                ],
             ),
             Phase(
                 id="P1.2",
@@ -111,7 +123,10 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
                 wall_human="1 wk CPU",
                 output="molmetal/molmetal_lam/lam_chem/hierarchical_bfs.py + tests/test_hierarchical_bfs.py",
                 verification="reachability lift on 5 metal clusters >= +0.05",
-                sub_tasks=["M-M bond graph depth>=2 BFS", "Pt-Pt / Pt-Ru / Ru-Ru / Pt-Au / Au-Au clusters"],
+                sub_tasks=[
+                    "M-M bond graph depth>=2 BFS",
+                    "Pt-Pt / Pt-Ru / Ru-Ru / Pt-Au / Au-Au clusters",
+                ],
             ),
             Phase(
                 id="P1.3",
@@ -119,7 +134,11 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
                 wall_human="1 wk GPU-0",
                 output="multimetal_cluster_30metals.json (30 metals x 1000 samples)",
                 verification="per-metal reachability >= 0.85 on >= 25/30 metals",
-                sub_tasks=["30-metal sweep", "per-metal reachability", "lift vs Wf-37 P2 baseline 0.5891"],
+                sub_tasks=[
+                    "30-metal sweep",
+                    "per-metal reachability",
+                    "lift vs Wf-37 P2 baseline 0.5891",
+                ],
             ),
             Phase(
                 id="P1.4",
@@ -127,7 +146,10 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
                 wall_human="2-3 days CPU",
                 output="transeffect_propagation.json",
                 verification="trans-effect ordering matches Reedijk 2008 experimental literature",
-                sub_tasks=["Pt(II) trans-effect ordering Cl- > NH3 > H2O", "kinetic trans-effect capture"],
+                sub_tasks=[
+                    "Pt(II) trans-effect ordering Cl- > NH3 > H2O",
+                    "kinetic trans-effect capture",
+                ],
             ),
             Phase(
                 id="P1.5",
@@ -135,14 +157,34 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
                 wall_human="2 days CPU",
                 output="TODO/completed/105_r22_p1_hierarchical_multimetal.md + LAMBDA_ROADMAP §4.2 L13 row",
                 verification="INDEX §17.6 cross-ref update + party-twenty-spirit §3.5 honest framing",
-                sub_tasks=["close-out file", "INDEX cross-ref", "LAMBDA_ROADMAP §4.2 patch"],
+                sub_tasks=[
+                    "close-out file",
+                    "INDEX cross-ref",
+                    "LAMBDA_ROADMAP §4.2 patch",
+                ],
             ),
         ],
         "cross_skill_strategy": [
-            CrossSkillStrategy("Chemistry-aware dative-bond parser", "mol-metal-lambda-calculus", "mol-metal-click-chemistry"),
-            CrossSkillStrategy("Hierarchical M-M closure BFS", "mol-metal-lambda-calculus", "mol-metal-r18-math (M26 Score-Rep)"),
-            CrossSkillStrategy("Multi-metal cluster centers", "mol-metal-r18-math (T1 SE3 SB)", "mol-metal-lambda-calculus"),
-            CrossSkillStrategy("Trans-effect propagation", "mol-metal-click-chemistry", "mol-metal-lambda-calculus"),
+            CrossSkillStrategy(
+                "Chemistry-aware dative-bond parser",
+                "mol-metal-lambda-calculus",
+                "mol-metal-click-chemistry",
+            ),
+            CrossSkillStrategy(
+                "Hierarchical M-M closure BFS",
+                "mol-metal-lambda-calculus",
+                "mol-metal-r18-math (M26 Score-Rep)",
+            ),
+            CrossSkillStrategy(
+                "Multi-metal cluster centers",
+                "mol-metal-r18-math (T1 SE3 SB)",
+                "mol-metal-lambda-calculus",
+            ),
+            CrossSkillStrategy(
+                "Trans-effect propagation",
+                "mol-metal-click-chemistry",
+                "mol-metal-lambda-calculus",
+            ),
         ],
         "measured_vs_projected": MeasuredVsProjected(
             measured=[
@@ -186,7 +228,11 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
                 wall_human="1 wk GPU-1",
                 output="molmetal/molmetal_lam/lam_chem/gnn_ode.py + tests/test_gnn_ode.py",
                 verification="backbone PASS on synthetic Pt(II)/Pd(II)/Ru(II) redox cycle",
-                sub_tasks=["GRU-ODE-Bayes backbone", "dopri5 ODE solver", "synthetic redox cycle test"],
+                sub_tasks=[
+                    "GRU-ODE-Bayes backbone",
+                    "dopri5 ODE solver",
+                    "synthetic redox cycle test",
+                ],
             ),
             Phase(
                 id="P2.2",
@@ -194,7 +240,11 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
                 wall_human="1 wk GPU-1",
                 output="gnn_ode_ligand_exchange.json (per-metal rate constants)",
                 verification="t1/2 RMSE <= 0.5 vs Reedijk 2008 experimental",
-                sub_tasks=["Cl-/H2O/GSH exchange rates", "literature kinetics data integration", "t1/2 RMSE measurement"],
+                sub_tasks=[
+                    "Cl-/H2O/GSH exchange rates",
+                    "literature kinetics data integration",
+                    "t1/2 RMSE measurement",
+                ],
             ),
             Phase(
                 id="P2.3",
@@ -202,7 +252,11 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
                 wall_human="1 wk GPU-1",
                 output="hydrolysis_t12.json + redox_cycling_potential.json",
                 verification="multi-task loss: static R^2 + kinetic rate constant MSE + t1/2 classification",
-                sub_tasks=["cisplatin aquation kinetics", "Pt(II)/Pt(IV) redox potential", "multi-task loss ablation"],
+                sub_tasks=[
+                    "cisplatin aquation kinetics",
+                    "Pt(II)/Pt(IV) redox potential",
+                    "multi-task loss ablation",
+                ],
             ),
             Phase(
                 id="P2.4",
@@ -210,14 +264,34 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
                 wall_human="2 days CPU",
                 output="TODO/completed/106_r22_p2_gnn_ode_kinetics.md + LAMBDA_ROADMAP §4.2 L14 row",
                 verification="INDEX §17.6 cross-ref update + party-twenty-spirit §3.5 honest framing",
-                sub_tasks=["close-out file", "INDEX cross-ref", "LAMBDA_ROADMAP §4.2 patch"],
+                sub_tasks=[
+                    "close-out file",
+                    "INDEX cross-ref",
+                    "LAMBDA_ROADMAP §4.2 patch",
+                ],
             ),
         ],
         "cross_skill_strategy": [
-            CrossSkillStrategy("GNN-ODE backbone (GRU-ODE-Bayes)", "mol-metal-r18-math (T1 SE3 SB)", "mol-metal-lambda-calculus"),
-            CrossSkillStrategy("Ligand-exchange ODE (Cl-/H2O/GSH)", "mol-metal-click-chemistry", "mol-metal-r18-math (T7 SB-Bass)"),
-            CrossSkillStrategy("Hydrolysis kinetics (cisplatin aquation)", "mol-metal-anticancer", "mol-metal-click-chemistry"),
-            CrossSkillStrategy("Redox cycling ODE (Pt(II)<->Pt(IV))", "mol-metal-r18-math (T7 SB-Bass)", "mol-metal-anticancer"),
+            CrossSkillStrategy(
+                "GNN-ODE backbone (GRU-ODE-Bayes)",
+                "mol-metal-r18-math (T1 SE3 SB)",
+                "mol-metal-lambda-calculus",
+            ),
+            CrossSkillStrategy(
+                "Ligand-exchange ODE (Cl-/H2O/GSH)",
+                "mol-metal-click-chemistry",
+                "mol-metal-r18-math (T7 SB-Bass)",
+            ),
+            CrossSkillStrategy(
+                "Hydrolysis kinetics (cisplatin aquation)",
+                "mol-metal-anticancer",
+                "mol-metal-click-chemistry",
+            ),
+            CrossSkillStrategy(
+                "Redox cycling ODE (Pt(II)<->Pt(IV))",
+                "mol-metal-r18-math (T7 SB-Bass)",
+                "mol-metal-anticancer",
+            ),
         ],
         "measured_vs_projected": MeasuredVsProjected(
             measured=[
@@ -250,7 +324,10 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
         "priority": "MEDIUM",
         "hardware": "CPU-only (NSGA-III bench) + Blackwell sm_120 GPU-0 for 30-metal sweep",
         "wall_time": "3 weeks (1 wk CPU NSGA-III + 1 wk GPU-0 sweep + 1 wk analysis)",
-        "depends_on": ["L3 (ScoreRep + VariancePUCT + MCTS)", "L8 (ASTSR <-> Hilbert <-> MCTS triangle)"],
+        "depends_on": [
+            "L3 (ScoreRep + VariancePUCT + MCTS)",
+            "L8 (ASTSR <-> Hilbert <-> MCTS triangle)",
+        ],
         "tests_estimate": 20,
         "output_dir": "molmetal/reports/wf77_r22_p3/",
         "phases": [
@@ -260,7 +337,11 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
                 wall_human="3 days CPU",
                 output="TODO/02_metrics/METRICS_TARGETS.md §m18-m20 + tests/test_metric_definitions.py",
                 verification="metric PASS on retrospective + scaffold split",
-                sub_tasks=["m18 Protein-Metal binding AUC", "m19 LOMO 5-fold", "m20 Tumor-specific AUC"],
+                sub_tasks=[
+                    "m18 Protein-Metal binding AUC",
+                    "m19 LOMO 5-fold",
+                    "m20 Tumor-specific AUC",
+                ],
             ),
             Phase(
                 id="P3.2",
@@ -268,7 +349,11 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
                 wall_human="1 wk CPU",
                 output="molmetal/molmetal_lam/search_alg/nsga3_pareto.py + tests/test_nsga3_pareto.py",
                 verification="NSGA-III PASS on synthetic 3-objective test (ZDT1 / DTLZ2)",
-                sub_tasks=["NSGA-III reference-point backbone", "3-objective Pareto (m18 + toxicity + ADMET)", "synthetic ZDT1/DTLZ2 test"],
+                sub_tasks=[
+                    "NSGA-III reference-point backbone",
+                    "3-objective Pareto (m18 + toxicity + ADMET)",
+                    "synthetic ZDT1/DTLZ2 test",
+                ],
             ),
             Phase(
                 id="P3.3",
@@ -276,7 +361,11 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
                 wall_human="2-3 days CPU",
                 output="molmetal/molmetal_lam/search_alg/mcts_nsga3_bridge.py + tests/test_mcts_nsga3_bridge.py",
                 verification="bridge PASS on 30-metal x 1000-sample pareto front",
-                sub_tasks=["VariancePUCT as offspring generator", "MCTS-NSGA-III bridge", "30-metal pareto front"],
+                sub_tasks=[
+                    "VariancePUCT as offspring generator",
+                    "MCTS-NSGA-III bridge",
+                    "30-metal pareto front",
+                ],
             ),
             Phase(
                 id="P3.4",
@@ -284,7 +373,11 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
                 wall_human="2-3 days GPU-0",
                 output="hypervolume_indicator.json (3-objective hypervolume)",
                 verification="hypervolume >= 0.6 (stretch) / >= 0.4 (realistic) on PlatinAI 4-cell",
-                sub_tasks=["hypervolume metric", "PlatinAI 4-cell hypervolume", "per-cohort hypervolume breakdown"],
+                sub_tasks=[
+                    "hypervolume metric",
+                    "PlatinAI 4-cell hypervolume",
+                    "per-cohort hypervolume breakdown",
+                ],
             ),
             Phase(
                 id="P3.5",
@@ -292,14 +385,34 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
                 wall_human="2 days CPU",
                 output="TODO/completed/107_r22_p3_pareto_front.md + LAMBDA_ROADMAP §4.2 L15 row",
                 verification="INDEX §17.6 cross-ref update + party-twenty-spirit §3.5 honest framing",
-                sub_tasks=["close-out file", "INDEX cross-ref", "LAMBDA_ROADMAP §4.2 patch"],
+                sub_tasks=[
+                    "close-out file",
+                    "INDEX cross-ref",
+                    "LAMBDA_ROADMAP §4.2 patch",
+                ],
             ),
         ],
         "cross_skill_strategy": [
-            CrossSkillStrategy("NSGA-III backbone (Deb & Jain 2014)", "mol-metal-r18-math (T5 Multi-PH)", "mol-metal-lambda-calculus"),
-            CrossSkillStrategy("3-objective Pareto (m18 + toxicity + ADMET)", "mol-metal-anticancer", "mol-metal-mechanism-mapping"),
-            CrossSkillStrategy("Hypervolume indicator", "mol-metal-r18-math (T5 Multi-PH)", "mol-metal-anticancer"),
-            CrossSkillStrategy("MCTS <-> NSGA-III bridge", "mol-metal-lambda-calculus (M26 Score-Rep)", "mol-metal-r18-math (T5)"),
+            CrossSkillStrategy(
+                "NSGA-III backbone (Deb & Jain 2014)",
+                "mol-metal-r18-math (T5 Multi-PH)",
+                "mol-metal-lambda-calculus",
+            ),
+            CrossSkillStrategy(
+                "3-objective Pareto (m18 + toxicity + ADMET)",
+                "mol-metal-anticancer",
+                "mol-metal-mechanism-mapping",
+            ),
+            CrossSkillStrategy(
+                "Hypervolume indicator",
+                "mol-metal-r18-math (T5 Multi-PH)",
+                "mol-metal-anticancer",
+            ),
+            CrossSkillStrategy(
+                "MCTS <-> NSGA-III bridge",
+                "mol-metal-lambda-calculus (M26 Score-Rep)",
+                "mol-metal-r18-math (T5)",
+            ),
         ],
         "measured_vs_projected": MeasuredVsProjected(
             measured=[
@@ -343,7 +456,11 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
                 wall_human="1 mo wet-lab",
                 output="LOI signed + NDA + 20 compounds synthesized",
                 verification="LOI signed + 20/20 compounds QC-pass",
-                sub_tasks=["ORNL/PKU/协和 outreach", "LOI + NDA", "20 compound synthesis"],
+                sub_tasks=[
+                    "ORNL/PKU/协和 outreach",
+                    "LOI + NDA",
+                    "20 compound synthesis",
+                ],
             ),
             Phase(
                 id="P4.2",
@@ -351,7 +468,11 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
                 wall_human="3 mo wet-lab",
                 output="wetlab_ic50_q1.json (per-compound x per-cell IC50 +/- std, 9 cell lines)",
                 verification="full panel IC50 measured",
-                sub_tasks=["MCF7/A549/A2780/A2780cis", "+5 NCI-60 cells", "MTT/SRB/CellTiter-Glo assay"],
+                sub_tasks=[
+                    "MCF7/A549/A2780/A2780cis",
+                    "+5 NCI-60 cells",
+                    "MTT/SRB/CellTiter-Glo assay",
+                ],
             ),
             Phase(
                 id="P4.3",
@@ -359,7 +480,11 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
                 wall_human="2 wk CPU",
                 output="bayes_opt_convergence.json (top-20 candidate acquisition + 5-candidate batches per cycle)",
                 verification="GP calibration + q-EI convergence >= 5 cycles",
-                sub_tasks=["GP surrogate", "q-EI batch acquisition", "5-cycle convergence"],
+                sub_tasks=[
+                    "GP surrogate",
+                    "q-EI batch acquisition",
+                    "5-cycle convergence",
+                ],
             ),
             Phase(
                 id="P4.4",
@@ -367,7 +492,11 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
                 wall_human="1 mo CPU",
                 output="silico_vs_wetlab_agreement.json (Pearson r on top-20 candidates)",
                 verification="Pearson r >= 0.7 (stretch) / >= 0.5 (realistic)",
-                sub_tasks=["D-MPNN vs wet-lab IC50", "Pearson r measurement", "per-cell breakdown"],
+                sub_tasks=[
+                    "D-MPNN vs wet-lab IC50",
+                    "Pearson r measurement",
+                    "per-cell breakdown",
+                ],
             ),
             Phase(
                 id="P4.5",
@@ -379,10 +508,26 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
             ),
         ],
         "cross_skill_strategy": [
-            CrossSkillStrategy("Gaussian-process surrogate", "mol-metal-r18-math (T7 SB-Bass)", "mol-metal-anticancer"),
-            CrossSkillStrategy("q-EI batch acquisition", "mol-metal-r18-math (T5 Multi-PH)", "mol-metal-lambda-calculus"),
-            CrossSkillStrategy("Wet-lab cycle (9 cell lines)", "mol-metal-anticancer", "mol-metal-wetlab-protocol"),
-            CrossSkillStrategy("In-silico vs wet-lab agreement", "mol-metal-anticancer", "mol-metal-mechanism-mapping"),
+            CrossSkillStrategy(
+                "Gaussian-process surrogate",
+                "mol-metal-r18-math (T7 SB-Bass)",
+                "mol-metal-anticancer",
+            ),
+            CrossSkillStrategy(
+                "q-EI batch acquisition",
+                "mol-metal-r18-math (T5 Multi-PH)",
+                "mol-metal-lambda-calculus",
+            ),
+            CrossSkillStrategy(
+                "Wet-lab cycle (9 cell lines)",
+                "mol-metal-anticancer",
+                "mol-metal-wetlab-protocol",
+            ),
+            CrossSkillStrategy(
+                "In-silico vs wet-lab agreement",
+                "mol-metal-anticancer",
+                "mol-metal-mechanism-mapping",
+            ),
         ],
         "measured_vs_projected": MeasuredVsProjected(
             measured=[
@@ -428,7 +573,10 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
                 wall_human="1 wk CPU",
                 output="TODO/completed/r21_status_ledger_2026_09_26.md",
                 verification="ledger PASS review",
-                sub_tasks=["R21 ledger mirroring R20 format", "8 R21-P plan items status"],
+                sub_tasks=[
+                    "R21 ledger mirroring R20 format",
+                    "8 R21-P plan items status",
+                ],
             ),
             Phase(
                 id="P5.2",
@@ -436,7 +584,11 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
                 wall_human="1 wk CPU",
                 output="TODO/02_metrics/EVALUATORS_MIGRATED.md §audit-trail + tests/test_closeout_audit.py",
                 verification="audit PASS on 50 R20 sub-tasks",
-                sub_tasks=["50 R20 sub-task audit", "MEASURED-vs-PROJECTED traceability", "audit test scripts"],
+                sub_tasks=[
+                    "50 R20 sub-task audit",
+                    "MEASURED-vs-PROJECTED traceability",
+                    "audit test scripts",
+                ],
             ),
             Phase(
                 id="P5.3",
@@ -444,7 +596,11 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
                 wall_human="1 wk CPU",
                 output="molmetal/reports/bench_reproducibility/{per_metric_hash,per_report_sha256}.json",
                 verification="hash chain PASS",
-                sub_tasks=["per-metric hash", "per-report sha256", "hash chain verification"],
+                sub_tasks=[
+                    "per-metric hash",
+                    "per-report sha256",
+                    "hash chain verification",
+                ],
             ),
             Phase(
                 id="P5.4",
@@ -452,7 +608,11 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
                 wall_human="2-3 days CPU",
                 output="TODO/02_metrics/MEASURED_VS_PROJECTED_AUDIT.md + tests/test_measured_vs_projected.py",
                 verification="audit PASS on all R20+R21 close-out files",
-                sub_tasks=["audit log structure", "close-out file audit", "audit test scripts"],
+                sub_tasks=[
+                    "audit log structure",
+                    "close-out file audit",
+                    "audit test scripts",
+                ],
             ),
             Phase(
                 id="P5.5",
@@ -464,10 +624,26 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
             ),
         ],
         "cross_skill_strategy": [
-            CrossSkillStrategy("R20+R21 ledger verification", "party-twenty-spirit §3.5", "mol-metal-mechanism-mapping"),
-            CrossSkillStrategy("Close-out traceability audit", "mol-metal-mechanism-mapping", "party-twenty-spirit §3.5"),
-            CrossSkillStrategy("Benchmark reproducibility bench", "mol-metal-r18-math (T5 Multi-PH)", "party-twenty-spirit §3.5"),
-            CrossSkillStrategy("MEASURED-vs-PROJECTED audit log", "party-twenty-spirit §3.5", "mol-metal-mechanism-mapping"),
+            CrossSkillStrategy(
+                "R20+R21 ledger verification",
+                "party-twenty-spirit §3.5",
+                "mol-metal-mechanism-mapping",
+            ),
+            CrossSkillStrategy(
+                "Close-out traceability audit",
+                "mol-metal-mechanism-mapping",
+                "party-twenty-spirit §3.5",
+            ),
+            CrossSkillStrategy(
+                "Benchmark reproducibility bench",
+                "mol-metal-r18-math (T5 Multi-PH)",
+                "party-twenty-spirit §3.5",
+            ),
+            CrossSkillStrategy(
+                "MEASURED-vs-PROJECTED audit log",
+                "party-twenty-spirit §3.5",
+                "mol-metal-mechanism-mapping",
+            ),
         ],
         "measured_vs_projected": MeasuredVsProjected(
             measured=[
@@ -538,10 +714,24 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
             ),
         ],
         "cross_skill_strategy": [
-            CrossSkillStrategy("L13 SKILL.md", "mol-metal-lambda-calculus", "mol-metal-r18-math"),
-            CrossSkillStrategy("L14 SKILL.md", "mol-metal-r18-math (T1 SE3 SB)", "mol-metal-lambda-calculus"),
-            CrossSkillStrategy("L15 SKILL.md", "mol-metal-r18-math (T5 Multi-PH)", "mol-metal-anticancer"),
-            CrossSkillStrategy("L16 SKILL.md", "mol-metal-anticancer", "mol-metal-r18-math (T7 SB-Bass)"),
+            CrossSkillStrategy(
+                "L13 SKILL.md", "mol-metal-lambda-calculus", "mol-metal-r18-math"
+            ),
+            CrossSkillStrategy(
+                "L14 SKILL.md",
+                "mol-metal-r18-math (T1 SE3 SB)",
+                "mol-metal-lambda-calculus",
+            ),
+            CrossSkillStrategy(
+                "L15 SKILL.md",
+                "mol-metal-r18-math (T5 Multi-PH)",
+                "mol-metal-anticancer",
+            ),
+            CrossSkillStrategy(
+                "L16 SKILL.md",
+                "mol-metal-anticancer",
+                "mol-metal-r18-math (T7 SB-Bass)",
+            ),
         ],
         "measured_vs_projected": MeasuredVsProjected(
             measured=[
@@ -566,7 +756,9 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
 def build_r22_plan_template(plan_id: str) -> R22PlanTemplate:
     """Build a single R22-P plan template from PLAN_DEFINITIONS."""
     if plan_id not in PLAN_DEFINITIONS:
-        raise ValueError(f"Unknown plan_id: {plan_id}. Valid: {sorted(PLAN_DEFINITIONS.keys())}")
+        raise ValueError(
+            f"Unknown plan_id: {plan_id}. Valid: {sorted(PLAN_DEFINITIONS.keys())}"
+        )
     spec = PLAN_DEFINITIONS[plan_id]
     return R22PlanTemplate(
         plan_id=plan_id,
@@ -635,8 +827,13 @@ def main(argv: list[str] | None = None) -> int:
         for plan_id in sorted(PLAN_DEFINITIONS.keys()):
             template = build_r22_plan_template(plan_id)
             out_path = output_dir / f"{plan_id}_template.json"
-            out_path.write_text(json.dumps(template_to_dict(template), indent=2, ensure_ascii=False) + "\n")
-            print(f"[OK] {out_path} ({len(template.phases)} phases, status={template.status})")
+            out_path.write_text(
+                json.dumps(template_to_dict(template), indent=2, ensure_ascii=False)
+                + "\n"
+            )
+            print(
+                f"[OK] {out_path} ({len(template.phases)} phases, status={template.status})"
+            )
         return 0
 
     # Single-plan mode
@@ -645,7 +842,9 @@ def main(argv: list[str] | None = None) -> int:
     template = build_r22_plan_template(args.plan_id)
     out_path = Path(args.output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(template_to_dict(template), indent=2, ensure_ascii=False) + "\n")
+    out_path.write_text(
+        json.dumps(template_to_dict(template), indent=2, ensure_ascii=False) + "\n"
+    )
     print(f"[OK] {out_path} ({len(template.phases)} phases, status={template.status})")
     return 0
 

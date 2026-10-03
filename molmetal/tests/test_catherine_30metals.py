@@ -28,6 +28,7 @@ Run via::
     uv run --no-sync python -m pytest \\
         molmetal/tests/test_catherine_30metals.py -v
 """
+
 from __future__ import annotations
 
 import json
@@ -46,6 +47,7 @@ try:
 except Exception:  # pragma: no cover - import path fallback
     import sys as _sys
     from pathlib import Path as _Path
+
     _here = _Path(__file__).resolve().parent.parent
     if str(_here / "scripts") not in _sys.path:
         _sys.path.insert(0, str(_here / "scripts"))
@@ -66,12 +68,10 @@ REPO_ROOT = "/home/hugo/codes/mol-metal"
 
 def test_default_30_metals_has_30_unique_entries():
     """G2_catherine_30metal — the default cohort must be 30 unique d-block metals."""
-    assert len(DEFAULT_30_METALS) == 30, (
-        f"DEFAULT_30_METALS must have 30 metals; got {len(DEFAULT_30_METALS)}"
-    )
-    assert len(set(DEFAULT_30_METALS)) == 30, (
-        "DEFAULT_30_METALS contains duplicates"
-    )
+    assert (
+        len(DEFAULT_30_METALS) == 30
+    ), f"DEFAULT_30_METALS must have 30 metals; got {len(DEFAULT_30_METALS)}"
+    assert len(set(DEFAULT_30_METALS)) == 30, "DEFAULT_30_METALS contains duplicates"
 
 
 def test_default_30_metals_covers_3d_4d_5d_plus_la():
@@ -90,9 +90,9 @@ def test_default_30_metals_covers_3d_4d_5d_plus_la():
 def test_default_30_metals_includes_task_spec_9_metals():
     """The 9 task-spec metals (Wf-37 P2) must be a subset of the 30."""
     for m in TASK_SPEC_9_METALS:
-        assert m in DEFAULT_30_METALS, (
-            f"task-spec metal {m} missing from DEFAULT_30_METALS"
-        )
+        assert (
+            m in DEFAULT_30_METALS
+        ), f"task-spec metal {m} missing from DEFAULT_30_METALS"
 
 
 def test_task_spec_9_metals_match_wf37_subset():
@@ -136,7 +136,15 @@ def test_select_metals_at_9_returns_task_spec_like_subset():
     expected_3d = ("Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu")
     # Wait — 3d has 10 metals (Sc..Zn); first 9 = Sc..Cu.
     expected_first_9 = (
-        "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu",
+        "Sc",
+        "Ti",
+        "V",
+        "Cr",
+        "Mn",
+        "Fe",
+        "Co",
+        "Ni",
+        "Cu",
     )
     assert metals == list(expected_first_9)
 
@@ -175,8 +183,10 @@ def test_cli_9_metals_runs_as_backward_compat():
             sys.executable,
             "-m",
             "molmetal.scripts.bench_catherine_30metals",
-            "--metals", "9",
-            "--max-depth", "0",
+            "--metals",
+            "9",
+            "--max-depth",
+            "0",
             "--output-dir",
             "/tmp/wf255_catherine_9metals_test",
         ],
@@ -200,8 +210,10 @@ def test_cli_30_metals_full_run():
             sys.executable,
             "-m",
             "molmetal.scripts.bench_catherine_30metals",
-            "--metals", "30",
-            "--max-depth", "0",
+            "--metals",
+            "30",
+            "--max-depth",
+            "0",
             "--output-dir",
             "/tmp/wf255_catherine_30metals_full_test",
         ],
@@ -217,9 +229,7 @@ def test_cli_30_metals_full_run():
     assert "n_metals                 : 30" in out.stdout
     assert "[PASS] Catherine 30-metal bench ran on 30 metals" in out.stdout
     # Output JSON must contain 30 per_metal entries.
-    json_path = Path(
-        "/tmp/wf255_catherine_30metals_full_test/per_metal_pass.json"
-    )
+    json_path = Path("/tmp/wf255_catherine_30metals_full_test/per_metal_pass.json")
     assert json_path.exists(), f"per_metal_pass.json not written at {json_path}"
     data = json.loads(json_path.read_text())
     assert data["n_metals"] == 30

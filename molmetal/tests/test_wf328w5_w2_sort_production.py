@@ -135,7 +135,9 @@ def test_sort_based_w2_gradient_correctness_vs_sliced():
 
     # --- Sort path (the Wf-328-W5 production default) ---
     w2_sort = wasserstein_pic50_gradient(
-        pred, ref.detach(), w_weight=1.0,
+        pred,
+        ref.detach(),
+        w_weight=1.0,
     )
     assert torch.isfinite(w2_sort).item()
     assert w2_sort.item() >= 0.0
@@ -170,11 +172,12 @@ def test_sort_based_w2_gradient_correctness_vs_sliced():
     # --- Sanity: zero W₂ when pred ≡ ref ---
     pred_zero = ref.clone().requires_grad_(True)
     w2_zero = wasserstein_pic50_gradient(
-        pred_zero, ref.detach(), w_weight=1.0,
+        pred_zero,
+        ref.detach(),
+        w_weight=1.0,
     )
     assert torch.isclose(w2_zero, torch.zeros(()), atol=1e-5).item(), (
-        f"sort-mode W2 on identical pred/ref must be zero; got "
-        f"{w2_zero.item():.6f}"
+        f"sort-mode W2 on identical pred/ref must be zero; got " f"{w2_zero.item():.6f}"
     )
 
     # --- Cross-check: sort and sliced agree within MC noise on 1-D ---
@@ -184,11 +187,15 @@ def test_sort_based_w2_gradient_correctness_vs_sliced():
     cfg = WassersteinConfig(n_mc=256, seed=0)
     ref_for_sliced = ref.detach()
     w2_sort_v = wasserstein_pic50_gradient(
-        pred.detach(), ref_for_sliced, w_weight=1.0,
+        pred.detach(),
+        ref_for_sliced,
+        w_weight=1.0,
     )
     w2_sliced_v = wasserstein_pic50_loss(
-        pred.detach(), ref_for_sliced,
-        n_mc=cfg.n_mc, seed=cfg.seed,
+        pred.detach(),
+        ref_for_sliced,
+        n_mc=cfg.n_mc,
+        seed=cfg.seed,
     )
     assert abs(w2_sort_v.item() - w2_sliced_v.item()) < 0.2, (
         f"sort vs sliced W2 should agree within MC noise on 1-D; got "
@@ -326,11 +333,13 @@ def test_integration_with_trainer():
     assert len(losses_sort) == 4
     total_l, cls_l, reg_l, w_l = losses_sort
     for name, val in zip(
-        ("total", "cls", "reg", "w"), (total_l, cls_l, reg_l, w_l),
+        ("total", "cls", "reg", "w"),
+        (total_l, cls_l, reg_l, w_l),
     ):
         assert isinstance(val, float)
         assert val == val, f"{name} loss is NaN"  # NaN check via self-inequality
         import math
+
         assert math.isfinite(val), f"{name} loss not finite: {val}"
 
     # --- Sliced path (backward-compat) ---
@@ -353,10 +362,12 @@ def test_integration_with_trainer():
     )
     assert len(losses_sliced) == 4
     for name, val in zip(
-        ("total", "cls", "reg", "w"), losses_sliced,
+        ("total", "cls", "reg", "w"),
+        losses_sliced,
     ):
         assert val == val, f"{name} loss is NaN"
         import math
+
         assert math.isfinite(val), f"{name} loss not finite: {val}"
 
     # --- CLI default verification: parse_args([]) → "sort" ---

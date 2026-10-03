@@ -50,6 +50,7 @@ from torch import Tensor
 try:  # pragma: no cover - import-only check
     from rdkit import Chem  # type: ignore
     from rdkit.Chem import AllChem  # type: ignore
+
     _RDKIT_AVAILABLE: bool = True
 except Exception:  # pragma: no cover - degrade gracefully
     Chem = None  # type: ignore
@@ -126,9 +127,7 @@ def _smiles_to_pocket_cloud(smiles: str) -> Tuple[Tensor, int]:
         )
     mol = Chem.MolFromSmiles(str(smiles))
     if mol is None:
-        raise MultiPHPLLError(
-            f"RDKit could not parse SMILES {smiles!r}"
-        )
+        raise MultiPHPLLError(f"RDKit could not parse SMILES {smiles!r}")
     mol = Chem.AddHs(mol)
     status = AllChem.EmbedMolecule(mol, randomSeed=0xC0FFEE)
     if int(status) != 0:
@@ -148,9 +147,7 @@ def _smiles_to_pocket_cloud(smiles: str) -> Tuple[Tensor, int]:
         coords[i, 1] = float(pos.y)
         coords[i, 2] = float(pos.z)
     if not np.isfinite(coords).all():
-        raise MultiPHPLLError(
-            f"conformer contains non-finite coords for {smiles!r}"
-        )
+        raise MultiPHPLLError(f"conformer contains non-finite coords for {smiles!r}")
     return torch.from_numpy(coords).to(torch.float32), 0
 
 
@@ -260,6 +257,7 @@ class MultiPHPLLSignature:
             from molmetal.math_skills.multi_parameter_ph import (
                 TwoParameterFiltration,
             )
+
             self._multi_ph = TwoParameterFiltration(n_bins=int(n_bins))
             self._n_bins = int(n_bins)
         elif hasattr(multi_ph, "compute"):
@@ -279,6 +277,7 @@ class MultiPHPLLSignature:
             from molmetal.molmetal_lam.lam_chem.pll_signature import (
                 compute_pll,
             )
+
             self._base_pll = compute_pll
         elif callable(base_pll):
             self._base_pll = base_pll
@@ -356,13 +355,9 @@ class MultiPHPLLSignature:
         # 1. Parse SMILES -> RDKit Mol (with Hs).
         mol = Chem.MolFromSmiles(mol_smiles)
         if mol is None:
-            raise MultiPHPLLError(
-                f"RDKit could not parse {mol_smiles!r}"
-            )
+            raise MultiPHPLLError(f"RDKit could not parse {mol_smiles!r}")
         mol_h = Chem.AddHs(mol)
-        embed_status = int(
-            AllChem.EmbedMolecule(mol_h, randomSeed=0xC0FFEE)
-        )
+        embed_status = int(AllChem.EmbedMolecule(mol_h, randomSeed=0xC0FFEE))
         if embed_status != 0:
             raise MultiPHPLLError(
                 f"AllChem.EmbedMolecule failed for {mol_smiles!r} "
@@ -382,13 +377,16 @@ class MultiPHPLLSignature:
         # Atomic numbers: use explicit z_i to feed the d-filter.
         atom_types = _pocket_cloud_to_atom_types(mol_h).unsqueeze(0)  # (1, N)
         feat = self._multi_ph.compute_with_atom_types(
-            coords_t, atom_types,
+            coords_t,
+            atom_types,
         )  # (1, n_bins, n_bins)
         feat = feat[0]  # squeeze the singleton batch dim
 
         # 3. PLL spectrum: invoke the *base* callable unchanged.
         pll_sig = self._base_pll(
-            mol_h, k=int(self._k), k_nn=int(self._knn),
+            mol_h,
+            k=int(self._k),
+            k_nn=int(self._knn),
         )
         eigvals = np.asarray(pll_sig.eigenvalues, dtype=np.float64)
         # Some ARPACK paths return fewer than ``k`` eigenvalues for
@@ -431,7 +429,9 @@ class MultiPHPLLSignature:
 
     # -- distance ---------------------------------------------------------
 
-    def distance(self, sig1: Tuple[Tensor, Tensor], sig2: Tuple[Tensor, Tensor]) -> float:
+    def distance(
+        self, sig1: Tuple[Tensor, Tensor], sig2: Tuple[Tensor, Tensor]
+    ) -> float:
         """Distance between two (multi-PH, PLL) signatures.
 
         The combined distance is the *sum* of two scalars:
@@ -585,15 +585,12 @@ class MultiPHPLLAugment:
             )
         if multi_ph.dim() != 3:
             raise MultiPHPLLError(
-                f"multi_ph must be (B, n_bins, n_bins); got "
-                f"{tuple(multi_ph.shape)}"
+                f"multi_ph must be (B, n_bins, n_bins); got " f"{tuple(multi_ph.shape)}"
             )
         b_pll = pll_features.shape[0]
         b_mph = multi_ph.shape[0]
         if b_pll != b_mph:
-            raise MultiPHPLLError(
-                f"batch mismatch: pll={b_pll} vs multi_ph={b_mph}"
-            )
+            raise MultiPHPLLError(f"batch mismatch: pll={b_pll} vs multi_ph={b_mph}")
         flat = multi_ph.reshape(b_mph, -1)  # (B, n_bins ** 2)
         return torch.cat([pll_features, flat], dim=-1)
 
@@ -668,15 +665,14 @@ def compare_multi_ph_vs_single_pll(
             "compare_multi_ph_vs_single_pll received an empty mols list"
         )
     if n_runs < 1:
-        raise MultiPHPLLError(
-            f"n_runs must be >= 1; got {n_runs}"
-        )
+        raise MultiPHPLLError(f"n_runs must be >= 1; got {n_runs}")
 
     # 1. Build the signature once.
     if signature is None:
         signature = MultiPHPLLSignature(n_bins=32, k=16)
     # Bare PLL callable — direct, no wrapper.
     from molmetal.molmetal_lam.lam_chem.pll_signature import compute_pll
+
     bare_pll = compute_pll
 
     # 2. Compute the augmented signatures (multi-PH + PLL).
@@ -689,9 +685,7 @@ def compare_multi_ph_vs_single_pll(
         if mol is None:
             continue
         mol_h = Chem.AddHs(mol)
-        embed_status = int(
-            AllChem.EmbedMolecule(mol_h, randomSeed=0xC0FFEE)
-        )
+        embed_status = int(AllChem.EmbedMolecule(mol_h, randomSeed=0xC0FFEE))
         if embed_status != 0:
             continue
         pll_sig = bare_pll(mol_h, k=int(signature.k), k_nn=int(signature.knn))
@@ -699,8 +693,7 @@ def compare_multi_ph_vs_single_pll(
 
     if len(augmented) < 2:
         raise MultiPHPLLError(
-            "compare_multi_ph_vs_single_pll needs >=2 successfully-"
-            "parsed molecules"
+            "compare_multi_ph_vs_single_pll needs >=2 successfully-" "parsed molecules"
         )
 
     # 3. Pairwise distances under both descriptors.
@@ -758,13 +751,13 @@ def compare_multi_ph_vs_single_pll(
                 if mol is None:
                     continue
                 mol_h = Chem.AddHs(mol)
-                embed_status = int(
-                    AllChem.EmbedMolecule(mol_h, randomSeed=0xC0FFEE)
-                )
+                embed_status = int(AllChem.EmbedMolecule(mol_h, randomSeed=0xC0FFEE))
                 if embed_status != 0:
                     continue
                 _ = bare_pll(
-                    mol_h, k=int(signature.k), k_nn=int(signature.knn),
+                    mol_h,
+                    k=int(signature.k),
+                    k_nn=int(signature.knn),
                 )
         elapsed_bare = time.perf_counter() - t0
         n_calls_bare = max(1, int(n_runs) * len(mols))

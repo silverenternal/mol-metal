@@ -42,6 +42,7 @@ Per AGENTS.md §5.2 honest framing, all assertions are MEASURED via
 stat() / subprocess / re.compile against the actual on-disk state.
 No PROJECTED claims — every assertion has a verifiable source path.
 """
+
 from __future__ import annotations
 
 import os
@@ -118,9 +119,9 @@ def test_loi_status_header_present_in_4_files() -> None:
         )
         # Specific assertion: each LOI carries TEMPLATE_NOT_NEEDED_FOR_TIER2
         # (canonical per AGENTS.md §5.4 + Wf-405-A3 + Wf-408-A3)
-        assert TIER2_MARKER in text, (
-            f"{path.name}: missing TIER2_MARKER literal 'TEMPLATE_NOT_NEEDED_FOR_TIER2'"
-        )
+        assert (
+            TIER2_MARKER in text
+        ), f"{path.name}: missing TIER2_MARKER literal 'TEMPLATE_NOT_NEEDED_FOR_TIER2'"
 
 
 def test_loi_status_regex_accepts_tier2_marker() -> None:
@@ -136,18 +137,20 @@ def test_loi_status_regex_accepts_tier2_marker() -> None:
         sample = f"**Status:** **{marker}** — historical artifact per AGENTS.md §10"
         m = EXPECTED_LOI_STATUS_REGEX.search(sample)
         assert m is not None, f"regex must accept marker {marker!r}; got no match"
-        assert m.group(1) == marker, f"group(1) must equal {marker!r}; got {m.group(1)!r}"
+        assert (
+            m.group(1) == marker
+        ), f"group(1) must equal {marker!r}; got {m.group(1)!r}"
 
     # Negative: a malformed header does NOT match
     bogus = "**Status:** INVALID_FORMAT — Wf-408-A3 negative test"
-    assert EXPECTED_LOI_STATUS_REGEX.search(bogus) is None, (
-        "regex must reject INVALID_FORMAT marker — would mask LOI parse failures"
-    )
+    assert (
+        EXPECTED_LOI_STATUS_REGEX.search(bogus) is None
+    ), "regex must reject INVALID_FORMAT marker — would mask LOI parse failures"
 
     # Negative: empty status does NOT match
-    assert EXPECTED_LOI_STATUS_REGEX.search("**Status:**  ") is None, (
-        "regex must reject empty status header"
-    )
+    assert (
+        EXPECTED_LOI_STATUS_REGEX.search("**Status:**  ") is None
+    ), "regex must reject empty status header"
 
 
 def test_anchor_freshness_refresh_under_24h() -> None:
@@ -168,9 +171,9 @@ def test_anchor_freshness_refresh_under_24h() -> None:
         assert path.is_file(), f"anchor missing on disk: {path}"
         mtime = path.stat().st_mtime
         age_sec = now - mtime
-        assert age_sec <= max_age_sec, (
-            f"{relpath}: age={age_sec/3600:.1f}h > 24h — Wf-408-A3 refresh did not stick"
-        )
+        assert (
+            age_sec <= max_age_sec
+        ), f"{relpath}: age={age_sec/3600:.1f}h > 24h — Wf-408-A3 refresh did not stick"
 
 
 def test_launcher_accepts_wave_letters_and_all() -> None:
@@ -191,28 +194,28 @@ def test_launcher_accepts_wave_letters_and_all() -> None:
     src = LAUNCHER_PATH.read_text(encoding="utf-8")
 
     # Wf-408-A3 fix: numeric aliases 1/2/3 mapped to A/B/C
-    assert "1) WAVE_TARGET=\"A\"" in src, (
-        "launcher missing numeric alias 1 → A mapping (Wf-408-A3 §3)"
-    )
-    assert "2) WAVE_TARGET=\"B\"" in src, (
-        "launcher missing numeric alias 2 → B mapping (Wf-408-A3 §3)"
-    )
-    assert "3) WAVE_TARGET=\"C\"" in src, (
-        "launcher missing numeric alias 3 → C mapping (Wf-408-A3 §3)"
-    )
+    assert (
+        '1) WAVE_TARGET="A"' in src
+    ), "launcher missing numeric alias 1 → A mapping (Wf-408-A3 §3)"
+    assert (
+        '2) WAVE_TARGET="B"' in src
+    ), "launcher missing numeric alias 2 → B mapping (Wf-408-A3 §3)"
+    assert (
+        '3) WAVE_TARGET="C"' in src
+    ), "launcher missing numeric alias 3 → C mapping (Wf-408-A3 §3)"
 
     # Wf-408-A3 fix: error message lists the new numeric aliases
-    assert "1 | 2 | 3" in src, (
-        "launcher error message must include numeric aliases (Wf-408-A3 §3)"
-    )
+    assert (
+        "1 | 2 | 3" in src
+    ), "launcher error message must include numeric aliases (Wf-408-A3 §3)"
 
     # Canonical forms preserved
-    assert "[ \"${WAVE_TARGET}\" = \"all\" ]" in src, (
-        "canonical --wave all form must remain in validation (no regression)"
-    )
-    assert "[ \"${WAVE_TARGET}\" = \"A\" ]" in src
-    assert "[ \"${WAVE_TARGET}\" = \"B\" ]" in src
-    assert "[ \"${WAVE_TARGET}\" = \"C\" ]" in src
+    assert (
+        '[ "${WAVE_TARGET}" = "all" ]' in src
+    ), "canonical --wave all form must remain in validation (no regression)"
+    assert '[ "${WAVE_TARGET}" = "A" ]' in src
+    assert '[ "${WAVE_TARGET}" = "B" ]' in src
+    assert '[ "${WAVE_TARGET}" = "C" ]' in src
 
 
 def test_launcher_accepts_wave_1_2_3_aliases() -> None:
@@ -267,16 +270,15 @@ def test_wf408a3_smoke_integration() -> None:
     n_loi_ok = sum(
         1
         for fname in LOI_PATHS
-        if TIER2_MARKER in (REPO_ROOT / "TODO" / "pending" / fname).read_text(
-            encoding="utf-8"
-        )
+        if TIER2_MARKER
+        in (REPO_ROOT / "TODO" / "pending" / fname).read_text(encoding="utf-8")
     )
     assert n_loi_ok == 4, f"only {n_loi_ok}/4 LOI files carry TIER2_MARKER"
 
     # (2) regex
-    assert EXPECTED_LOI_STATUS_REGEX.search(
-        f"**Status:** **{TIER2_MARKER}**"
-    ) is not None
+    assert (
+        EXPECTED_LOI_STATUS_REGEX.search(f"**Status:** **{TIER2_MARKER}**") is not None
+    )
 
     # (3) anchors freshness
     max_age_sec = 24 * 3600.0
@@ -286,16 +288,16 @@ def test_wf408a3_smoke_integration() -> None:
         for relpath in ANCHOR_REFRESH_TARGETS
         if (now - (REPO_ROOT / relpath).stat().st_mtime) <= max_age_sec
     )
-    assert n_anchors_fresh == len(ANCHOR_REFRESH_TARGETS), (
-        f"only {n_anchors_fresh}/{len(ANCHOR_REFRESH_TARGETS)} anchor refresh targets < 24h"
-    )
+    assert (
+        n_anchors_fresh == len(ANCHOR_REFRESH_TARGETS)
+    ), f"only {n_anchors_fresh}/{len(ANCHOR_REFRESH_TARGETS)} anchor refresh targets < 24h"
 
     # (4) launcher source
     src = LAUNCHER_PATH.read_text(encoding="utf-8")
     for line in (
-        "1) WAVE_TARGET=\"A\"",
-        "2) WAVE_TARGET=\"B\"",
-        "3) WAVE_TARGET=\"C\"",
+        '1) WAVE_TARGET="A"',
+        '2) WAVE_TARGET="B"',
+        '3) WAVE_TARGET="C"',
         "1 | 2 | 3",
     ):
         assert line in src, f"launcher source missing: {line!r}"
@@ -307,9 +309,9 @@ def test_wf408a3_smoke_integration() -> None:
         capture_output=True,
         text=True,
     )
-    assert bash_check.returncode == 0, (
-        f"launcher bash -n failed: stderr={bash_check.stderr[:500]}"
-    )
+    assert (
+        bash_check.returncode == 0
+    ), f"launcher bash -n failed: stderr={bash_check.stderr[:500]}"
 
     # (6) launcher accepts each numeric alias (USER_OK=1 + --dry-run + --wave N)
     env = os.environ.copy()
@@ -328,6 +330,7 @@ def test_wf408a3_smoke_integration() -> None:
             f"--wave {alias}: Wf-408-A3 case normalisation failed; "
             f"rc={result.returncode}; stderr={result.stderr[:500]}"
         )
+
 
 def test_wf408a3_wave_alias() -> None:
     """Wf-408-A3 alias mapping patch — regression guard for the Wf-410-A4 fix.
@@ -370,12 +373,11 @@ def test_wf408a3_wave_alias() -> None:
         assert required in src, f"Wf-408-A3 alias mapping missing: {required!r}"
 
     # (b) extended validator message includes numeric aliases
-    assert "1 | 2 | 3" in src, (
-        "Wf-408-A3 extended validator message missing 1 | 2 | 3"
-    )
+    assert "1 | 2 | 3" in src, "Wf-408-A3 extended validator message missing 1 | 2 | 3"
 
     # (c) Wf-410-A4 verifier end-to-end PASS
     import importlib.util as importlib_util
+
     verifier_path = REPO_ROOT / "molmetal/scripts/wf410a4_wf299_re_verify.py"
     if verifier_path.exists():
         spec = importlib_util.spec_from_file_location("wf410a4", verifier_path)
@@ -389,15 +391,15 @@ def test_wf408a3_wave_alias() -> None:
             f"accepted={alias_result['accepted_aliases']}; "
             f"mapped_targets={alias_result['mapped_targets']}"
         )
-        assert alias_result["accepted_aliases"] == ["1", "2", "3"], (
-            f"Wf-410-A4 verifier regex fix regression: accepted_aliases={alias_result['accepted_aliases']}"
-        )
-        assert alias_result["mapped_targets"] == {"1": "A", "2": "B", "3": "C"}, (
-            f"Wf-410-A4 verifier regex fix regression: mapped_targets={alias_result['mapped_targets']}"
-        )
-        assert alias_result["contract_satisfied"], (
-            f"Wf-410-A4 verifier contract_satisfied={alias_result['contract_satisfied']}"
-        )
+        assert (
+            alias_result["accepted_aliases"] == ["1", "2", "3"]
+        ), f"Wf-410-A4 verifier regex fix regression: accepted_aliases={alias_result['accepted_aliases']}"
+        assert (
+            alias_result["mapped_targets"] == {"1": "A", "2": "B", "3": "C"}
+        ), f"Wf-410-A4 verifier regex fix regression: mapped_targets={alias_result['mapped_targets']}"
+        assert alias_result[
+            "contract_satisfied"
+        ], f"Wf-410-A4 verifier contract_satisfied={alias_result['contract_satisfied']}"
 
     # (d) subprocess --wave N emits "wave target = <letter>"
     env = os.environ.copy()

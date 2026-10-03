@@ -20,6 +20,7 @@ Run via::
     uv run --no-sync python -m pytest \\
         molmetal/tests/test_variance_puct_integration.py -v
 """
+
 from __future__ import annotations
 
 import math
@@ -76,8 +77,7 @@ def _mk_root(n_children: int = 4, prior: float = 0.5) -> IntegrationNode:
         node_id="root",
         prior=float(prior),
         children=[
-            IntegrationNode(node_id=f"a{i}", prior=1.0)
-            for i in range(int(n_children))
+            IntegrationNode(node_id=f"a{i}", prior=1.0) for i in range(int(n_children))
         ],
     )
 
@@ -105,7 +105,7 @@ class TestIntegrationNode:
         root = _mk_root(n_children=5)
         assert root.action_count() == 5
         leaf = IntegrationNode(node_id="leaf")
-        assert leaf.action_count() == 1   # at-least-1 floor
+        assert leaf.action_count() == 1  # at-least-1 floor
 
 
 # ===========================================================================
@@ -138,15 +138,17 @@ class TestVarianceControlledPUCT:
     def test_variance_puct_high_variance(self) -> None:
         """High variance on the high-Q arm → selector down-weights it."""
         sel = VarianceControlledPUCT(
-            c_puct=0.0, c_var=1.0, n_min_visits=2,
+            c_puct=0.0,
+            c_var=1.0,
+            n_min_visits=2,
         )
         root = _mk_root(n_children=2)
         # Arm 0: high value but high variance.
         for _ in range(3):
-            sel.update(root, 0, value=1.0, variance=0.5 ** 2)
+            sel.update(root, 0, value=1.0, variance=0.5**2)
         # Arm 1: lower value, low variance.
         for _ in range(3):
-            sel.update(root, 1, value=0.5, variance=0.0 ** 2)
+            sel.update(root, 1, value=0.5, variance=0.0**2)
         # With c_var=1, c_puct=0 the penalty should push arm 1
         # above arm 0 even though Q(0) > Q(1).
         # Need many visits to activate penalty (n_min_visits=2).
@@ -155,11 +157,13 @@ class TestVarianceControlledPUCT:
         # Q(0)=1, Q(1)=0.5; net: arm 0=0.875, arm 1=0.5 → arm 0 still wins.
         # Bump c_var and zero out Q via many visits to force penalty:
         sel_big = VarianceControlledPUCT(
-            c_puct=0.0, c_var=5.0, n_min_visits=2,
+            c_puct=0.0,
+            c_var=5.0,
+            n_min_visits=2,
         )
         for _ in range(3):
-            sel_big.update(root, 0, value=1.0, variance=1.0 ** 2)
-            sel_big.update(root, 1, value=1.0, variance=0.0 ** 2)
+            sel_big.update(root, 0, value=1.0, variance=1.0**2)
+            sel_big.update(root, 1, value=1.0, variance=0.0**2)
         # arm 0: penalty = 5 * 1 / 4 = 1.25 > Q=1
         # arm 1: penalty = 0; Q=1
         a = sel_big.select(root)
@@ -209,7 +213,9 @@ class TestVarianceControlledPUCT:
         the audit.
         """
         sel = VarianceControlledPUCT(
-            c_puct=1.0, c_var=0.5, n_min_visits=1,
+            c_puct=1.0,
+            c_var=0.5,
+            n_min_visits=1,
         )
         root = _mk_root(n_children=2)
         # One visit so variance term is active.
@@ -231,7 +237,9 @@ class TestDirichletVarianceComparator:
     def test_dirichlet_vs_score_repellent_variance(self) -> None:
         """Score-repellent samples have lower marginal variance than Dirichlet."""
         cmp = DirichletVarianceComparator(
-            alpha=1.0, score_repellent_alpha=0.5, n_iters=20,
+            alpha=1.0,
+            score_repellent_alpha=0.5,
+            n_iters=20,
         )
         report = cmp.compare(priors=[0.25, 0.25, 0.25, 0.25], n_samples=256)
         assert "per_arm_var_dirichlet" in report
@@ -323,6 +331,7 @@ class TestMCTSVarianceWrapper:
 class TestIntegrationWithProofSearch:
     def test_integration_wall_time(self) -> None:
         """Integration smoke harness records wall time + per-run counts."""
+
         # Provide a stub that returns 3 candidates each call.
         class StubProof:
             tile_library = ["stub_root"]
@@ -334,7 +343,9 @@ class TestIntegrationWithProofSearch:
                 return 0.5
 
         report = integration_with_proof_search(
-            search_proof=StubProof(), n_runs=3, max_depth=2,
+            search_proof=StubProof(),
+            n_runs=3,
+            max_depth=2,
         )
         assert report["wall_time_s"] >= 0.0
         assert report["per_run_candidate_count"] == [3, 3, 3]
@@ -349,7 +360,8 @@ class TestIntegrationWithProofSearch:
             tile_library = []
 
         report = integration_with_proof_search(
-            search_proof=EmptyProof(), n_runs=1,
+            search_proof=EmptyProof(),
+            n_runs=1,
         )
         assert "error" in report
 
@@ -357,5 +369,6 @@ class TestIntegrationWithProofSearch:
         """``n_runs < 1`` raises ``VariancePUCTError``."""
         with pytest.raises(VariancePUCTError):
             integration_with_proof_search(
-                search_proof=object(), n_runs=0,
+                search_proof=object(),
+                n_runs=0,
             )

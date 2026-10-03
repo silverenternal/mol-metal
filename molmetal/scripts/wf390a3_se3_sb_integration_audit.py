@@ -91,6 +91,7 @@ N_SE3_SPECIFIC_FLAGS_TOTAL = 10
 # Trainer audit
 # ---------------------------------------------------------------------------
 
+
 def audit_se3_sb_trainer(repo_root: Path | None = None) -> Dict[str, Any]:
     """Audit the SE(3) SB trainer surface (CPU-only file-system + AST).
 
@@ -111,7 +112,11 @@ def audit_se3_sb_trainer(repo_root: Path | None = None) -> Dict[str, Any]:
     instantiation). Compatible with both pre-flight PASS and SKIP modes.
     """
     if repo_root is None:
-        repo_root = Path(os.environ.get("MOLMETAL_ROOT", Path(__file__).resolve().parent.parent.parent))
+        repo_root = Path(
+            os.environ.get(
+                "MOLMETAL_ROOT", Path(__file__).resolve().parent.parent.parent
+            )
+        )
 
     trainer_abs = repo_root / TRAINER_REL_PATH
     result: Dict[str, Any] = {
@@ -145,9 +150,7 @@ def audit_se3_sb_trainer(repo_root: Path | None = None) -> Dict[str, Any]:
         if isinstance(node, ast.FunctionDef) and node.name == "parse_args":
             result["parse_args_importable"] = True
             result["parse_args_loc"] = node.lineno
-            result["parse_args_loc_match"] = (
-                node.lineno == TRAINER_PARSE_ARGS_LOC
-            )
+            result["parse_args_loc_match"] = node.lineno == TRAINER_PARSE_ARGS_LOC
             break
 
     # Count `--use-se3-*` flags in the parse_args block
@@ -160,6 +163,7 @@ def audit_se3_sb_trainer(repo_root: Path | None = None) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Smoke step count audit
 # ---------------------------------------------------------------------------
+
 
 def smoke_se3_sb_step_count() -> Dict[str, Any]:
     """Return Wf-383-A1 §3.2 PROJECTED step count bands as acceptance criteria.
@@ -214,6 +218,7 @@ def smoke_se3_sb_step_count() -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # CLI entry point — emit JSON to stdout for downstream tooling
 # ---------------------------------------------------------------------------
+
 
 def main() -> int:
     """Run both audits + emit JSON. Exit 0 on success, 1 on audit FAIL."""

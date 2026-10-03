@@ -9,6 +9,7 @@ config has its own log, race-safe) and rebuilds the summary JSON.
 Usage:
     ${PY} molmetal/scripts/wf216_verify_attribution.py
 """
+
 from __future__ import annotations
 
 import json
@@ -71,7 +72,9 @@ def main() -> int:
             r["race_condition_detected"] = True
             fixed_count += 1
         else:
-            print(f"  cfg={cfg_code}: VERIFIED test_auc={log_auc:.4f} (matches launcher)")
+            print(
+                f"  cfg={cfg_code}: VERIFIED test_auc={log_auc:.4f} (matches launcher)"
+            )
             r["race_condition_detected"] = False
             verified_count += 1
         # Save per-config JSON
@@ -80,6 +83,7 @@ def main() -> int:
 
     # Re-compute attribution with corrected values
     from wf216_ablation_launcher import compute_attribution
+
     attribution = compute_attribution(summary["results"])
     summary["attribution"] = attribution
     summary["n_fixed_from_race"] = fixed_count

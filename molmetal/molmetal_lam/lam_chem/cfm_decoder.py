@@ -195,8 +195,10 @@ class CFMDecoder:
             from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (
                 YuelBondBondDecoder,
             )
+
             self._yuelbond_decoder = YuelBondBondDecoder(
-                hidden_dim=64, n_layers=3,
+                hidden_dim=64,
+                n_layers=3,
             )
         return self._yuelbond_decoder
 
@@ -207,15 +209,18 @@ class CFMDecoder:
                 DecoderRework,
                 ReworkedDecoder,
             )
+
             if self._bond_head is None:
                 from molmetal.models.bond_head import (
                     default_trained_head,
                 )
+
                 self._bond_head = default_trained_head()
             inner = BondAwareDecoder(bond_head=self._bond_head)
             rework = DecoderRework()
             self._rework_decoder = ReworkedDecoder(
-                inner=inner, rework=rework,
+                inner=inner,
+                rework=rework,
             )
         return self._rework_decoder
 
@@ -298,8 +303,11 @@ def smoke_decode_ratio(
     from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (
         build_synthetic_pt_click_clouds,
     )
+
     clouds = build_synthetic_pt_click_clouds(
-        n_clouds=n_clouds, jitter=jitter, seed=seed,
+        n_clouds=n_clouds,
+        jitter=jitter,
+        seed=seed,
     )
     decoder = build_cfm_decoder(use_yuelbond=use_yuelbond)
     results: List[CFMDecodeResult] = []

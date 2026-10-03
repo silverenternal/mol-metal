@@ -36,6 +36,7 @@ flag-presence checks; pre-flight subprocess calls ~2-3 s wall each).
 
 CPU-only by design. 0 GPU launches per AGENTS.md §5.1 + kill_then_adapt §0.
 """
+
 from __future__ import annotations
 
 import json
@@ -79,9 +80,9 @@ CFM_WF380_FLAGS = [
 ]
 # 3 NEW Wf-388-A2/A3 trainer flags per Wf-392-A3
 CFM_WF388_FLAGS = [
-    "--scaffold-conditioning",   # Wf-388-A2 #6 (boolean store_true default False; activated via wrapper pass-through)
-    "--sa-penalty",              # Wf-388-A3 #1 (default 0.0 OFF preserves Wf-380-B1 numerics)
-    "--sa-target",               # Wf-388-A3 #2 (default 2.8 = Ertl 2009 cutoff)
+    "--scaffold-conditioning",  # Wf-388-A2 #6 (boolean store_true default False; activated via wrapper pass-through)
+    "--sa-penalty",  # Wf-388-A3 #1 (default 0.0 OFF preserves Wf-380-B1 numerics)
+    "--sa-target",  # Wf-388-A3 #2 (default 2.8 = Ertl 2009 cutoff)
 ]
 # Total = 16 flags; --flowmol-unified intentionally NOT in list (LICENSE-GATED)
 EXPECTED_CFM_FLAGS = CFM_WF380_FLAGS + CFM_WF388_FLAGS  # 13 + 3 = 16
@@ -121,7 +122,7 @@ def verify_wf299_user_ok_gate(launcher_path: Path = LAUNCHER) -> Dict[str, Any]:
 
     # Find the position of the --dry-run block.
     dry_run_pattern = re.compile(
-        r'--dry-run\)\s*DRY_RUN=1',
+        r"--dry-run\)\s*DRY_RUN=1",
         re.MULTILINE,
     )
     dry_run_match = dry_run_pattern.search(src)
@@ -184,8 +185,7 @@ def verify_wf299_pre_flight(launcher_path: Path = LAUNCHER) -> Dict[str, Any]:
         "all_gates_present": all(gates_exist.values()),
         "any_gate_referenced": any(launcher_references.values()),
         "evidence": (
-            f"gates_exist={gates_exist}; "
-            f"launcher_references={launcher_references}"
+            f"gates_exist={gates_exist}; " f"launcher_references={launcher_references}"
         ),
     }
 
@@ -244,9 +244,7 @@ def verify_wf299_3_wave_separation(launcher_path: Path = LAUNCHER) -> Dict[str, 
         src,
         re.MULTILINE | re.DOTALL,
     )
-    wave_c_full_sweep = bool(
-        wave_c_block and "60" in wave_c_block.group(0)
-    )
+    wave_c_full_sweep = bool(wave_c_block and "60" in wave_c_block.group(0))
 
     # Case statement must include all 3 waves + 'all'.
     case_pattern = re.search(
@@ -256,7 +254,7 @@ def verify_wf299_3_wave_separation(launcher_path: Path = LAUNCHER) -> Dict[str, 
     )
     case_text = case_pattern.group(1) if case_pattern else ""
     case_statement_complete = all(
-        f"\"{w}\")" in case_text or f"{w})" in case_text for w in EXPECTED_WAVES
+        f'"{w}")' in case_text or f"{w})" in case_text for w in EXPECTED_WAVES
     )
 
     return {
@@ -307,7 +305,7 @@ def verify_wf299_w388_flags(launcher_path: Path = LAUNCHER) -> Dict[str, Any]:
                 if stripped == "CFM_NEW_FLAGS=(":
                     continue
                 # Otherwise the opening line may have content (rare); fall through.
-                after_open = stripped[len("CFM_NEW_FLAGS=("):]
+                after_open = stripped[len("CFM_NEW_FLAGS=(") :]
                 if after_open.strip():
                     array_text += after_open + "\n"
                 continue

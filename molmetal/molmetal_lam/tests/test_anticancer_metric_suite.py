@@ -1,26 +1,33 @@
 from molmetal_lam.priors.anticancer_metric_suite import AnticancerMetricSuite
 from molmetal_lam.search_alg.proof_search import RewardAggregator
 
+
 def test_invalid_smiles_fallbacks():
     s = AnticancerMetricSuite()
     for fn in (s.logp_anticancer, s.tpsa_iv, s.rotatable_bonds, s.herg_proxy):
         assert fn("not-a-smiles") == 0.5
 
+
 def test_composite_unit_interval():
     assert 0.0 <= AnticancerMetricSuite().composite_score("Cl[Pt](N)(N)Cl") <= 1.0
 
+
 def test_l5_snapshot():
     assert len(AnticancerMetricSuite().l5_metrics()) >= 6
+
 
 def test_register_wires_composite_and_state_smiles():
     suite = AnticancerMetricSuite()
     agg = RewardAggregator()
     agg.register_anticancer_channels(suite)
+
     class State:
         def canonical_smiles(self):
             return "CCO"
+
     assert "anticancer_composite" in agg.metrics()
     assert 0.0 <= agg.r_anticancer_composite(State()) <= 1.0
+
 
 def test_mw_flags_expose_metal_adjusted_protocol():
     suite = AnticancerMetricSuite()
@@ -28,6 +35,7 @@ def test_mw_flags_expose_metal_adjusted_protocol():
     assert set(flags) == {"mw_lipinski", "mw_metal_adjusted"}
     assert suite.molecular_weight("Cl[Pt](N)(N)Cl") > 290.0
     assert suite.adjusted_flags("not-a-smiles")["mw_lipinski"] is False
+
 
 def test_descriptor_report_exposes_raw_iv_metrics_and_invalid_flags():
     suite = AnticancerMetricSuite()
@@ -64,8 +72,17 @@ def test_empty_rdkit_molecule_is_invalid(monkeypatch):
     assert not suite.descriptor_report("CCO")["descriptor_valid"]
 
 
-@pytest.mark.parametrize("mw,expected", [(299.999, False), (300, True), (500, True),
-                                        (700, True), (700.001, False), (800, False)])
+@pytest.mark.parametrize(
+    "mw,expected",
+    [
+        (299.999, False),
+        (300, True),
+        (500, True),
+        (700, True),
+        (700.001, False),
+        (800, False),
+    ],
+)
 def test_metal_mw_descriptive_range_boundaries(monkeypatch, mw, expected):
     monkeypatch.setattr(metrics_module.Descriptors, "MolWt", lambda mol: mw)
     suite = AnticancerMetricSuite()
@@ -76,14 +93,18 @@ def test_metal_mw_descriptive_range_boundaries(monkeypatch, mw, expected):
 
 @pytest.mark.parametrize("rotb,expected", [(9, True), (10, False), (11, False)])
 def test_raw_rotb_is_strict_but_reward_remains_compatible(monkeypatch, rotb, expected):
-    monkeypatch.setattr(metrics_module.Descriptors, "NumRotatableBonds", lambda mol: rotb)
+    monkeypatch.setattr(
+        metrics_module.Descriptors, "NumRotatableBonds", lambda mol: rotb
+    )
     suite = AnticancerMetricSuite()
     assert suite.descriptor_report("CCO")["RotB_in_range"] is expected
     if rotb == 10:
         assert suite.rotatable_bonds("CCO") == 1.0
 
 
-@pytest.mark.parametrize("descriptor", ["MolWt", "MolLogP", "TPSA", "NumRotatableBonds"])
+@pytest.mark.parametrize(
+    "descriptor", ["MolWt", "MolLogP", "TPSA", "NumRotatableBonds"]
+)
 @pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf")])
 def test_nonfinite_descriptor_invalidates_entire_report(monkeypatch, descriptor, value):
     monkeypatch.setattr(metrics_module.Descriptors, descriptor, lambda mol: value)
@@ -96,9 +117,11 @@ def test_flags_parse_once(monkeypatch):
     suite = AnticancerMetricSuite()
     original = suite._mol
     calls = []
+
     def parse(s):
         calls.append(s)
         return original(s)
+
     monkeypatch.setattr(suite, "_mol", parse)
     suite.adjusted_flags("CCO")
     assert calls == ["CCO"]
@@ -110,8 +133,13 @@ def _complex(smiles, vina):
 
 def test_pilot_uses_all_input_denominators_and_finite_means():
     from molmetal_lam.scripts.pocket2mol_vs_lambda_1h36 import _aggregate_metrics
-    rows = [_complex("CCO", -8), _complex("", None), _complex("*", float("nan")),
-            _complex("bad-smiles", float("inf"))]
+
+    rows = [
+        _complex("CCO", -8),
+        _complex("", None),
+        _complex("*", float("nan")),
+        _complex("bad-smiles", float("inf")),
+    ]
     metrics = _aggregate_metrics(rows)
     assert metrics["n_ligands"] == 4
     assert metrics["n_descriptor_valid"] == metrics["mw_n_valid"] == 1
@@ -122,12 +150,17 @@ def test_pilot_uses_all_input_denominators_and_finite_means():
     assert metrics["success_rate"] == 0.25
     assert metrics["success_rate_docked"] == 1.0
     assert metrics["mean_vina"] == -8
-    assert metrics["mw_mean"] == pytest.approx(AnticancerMetricSuite().molecular_weight("CCO"))
+    assert metrics["mw_mean"] == pytest.approx(
+        AnticancerMetricSuite().molecular_weight("CCO")
+    )
 
 
-@pytest.mark.parametrize("rows", [[], [_complex("", float("nan")), _complex("*", None)]])
+@pytest.mark.parametrize(
+    "rows", [[], [_complex("", float("nan")), _complex("*", None)]]
+)
 def test_empty_and_all_invalid_aggregation_has_no_nanmean_warning(rows):
     from molmetal_lam.scripts.pocket2mol_vs_lambda_1h36 import _aggregate_metrics
+
     with warnings.catch_warnings():
         warnings.simplefilter("error", RuntimeWarning)
         metrics = _aggregate_metrics(rows)

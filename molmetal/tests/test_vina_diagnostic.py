@@ -20,6 +20,7 @@ Channels under test
 The tests do not assume the host has (or lacks) a real Vina binary —
 they install their own probes via ``monkeypatch``.
 """
+
 from __future__ import annotations
 
 import json
@@ -60,7 +61,7 @@ def fake_vina_binary(tmp_path: Path) -> Path:
     bin_path = tmp_path / "vina"
     bin_path.write_text(
         "#!/bin/sh\n"
-        "if [ \"$1\" = \"--version\" ]; then\n"
+        'if [ "$1" = "--version" ]; then\n'
         "  echo 'AutoDock Vina 1.2.7-fake' 1>&2\n"
         "  exit 0\n"
         "fi\n"
@@ -75,11 +76,7 @@ def fake_vina_binary(tmp_path: Path) -> Path:
 def broken_vina_binary(tmp_path: Path) -> Path:
     """Create a fake executable that prints garbage (banner-mismatch)."""
     bin_path = tmp_path / "vina"
-    bin_path.write_text(
-        "#!/bin/sh\n"
-        "echo 'NotVina 0.0.1' 1>&2\n"
-        "exit 0\n"
-    )
+    bin_path.write_text("#!/bin/sh\n" "echo 'NotVina 0.0.1' 1>&2\n" "exit 0\n")
     bin_path.chmod(0o755)
     return bin_path
 
@@ -90,7 +87,7 @@ def nondeterministic_binary(tmp_path: Path) -> Path:
     bin_path = tmp_path / "qvina02"
     bin_path.write_text(
         "#!/bin/sh\n"
-        "if [ \"$1\" = \"--version\" ]; then\n"
+        'if [ "$1" = "--version" ]; then\n'
         "  echo 'AutoDock Vina 1.1.2-qvina' 1>&2\n"
         "  exit 1\n"
         "fi\n"
@@ -105,14 +102,16 @@ def nondeterministic_binary(tmp_path: Path) -> Path:
 class TestParseVersion:
     def test_parses_banner_in_stderr(self):
         version_line, full_version = _parse_version(
-            "AutoDock Vina 1.2.7 (build hash)\n", "",
+            "AutoDock Vina 1.2.7 (build hash)\n",
+            "",
         )
         assert version_line == "AutoDock Vina 1.2.7 (build hash)"
         assert full_version == "1.2.7 (build hash)"
 
     def test_parses_banner_in_stdout(self):
         version_line, full_version = _parse_version(
-            "", "AutoDock Vina f458505-mod\n",
+            "",
+            "AutoDock Vina f458505-mod\n",
         )
         assert version_line == "AutoDock Vina f458505-mod"
         assert full_version == "f458505-mod"
@@ -127,7 +126,8 @@ class TestParseVersion:
 
     def test_picks_first_matching_line(self):
         version_line, _ = _parse_version(
-            "AutoDock Vina 1.2.7\nAutoDock Vina 1.2.6\n", "",
+            "AutoDock Vina 1.2.7\nAutoDock Vina 1.2.6\n",
+            "",
         )
         assert version_line == "AutoDock Vina 1.2.7"
 
@@ -170,7 +170,9 @@ class TestProbeBinary:
 # ---------------------------------------------------------------------------
 class TestDetectVinaEnvOverride:
     def test_molmetal_vina_bin_override_picks_up_binary(
-        self, fake_vina_binary, monkeypatch,
+        self,
+        fake_vina_binary,
+        monkeypatch,
     ):
         monkeypatch.setenv("MOLMETAL_VINA_BIN", str(fake_vina_binary))
         # Force all other channels to return no hits.
@@ -201,16 +203,22 @@ class TestDetectVinaEnvOverride:
         assert any(h.source == "env_override" for h in result.hits)
 
     def test_molmetal_qvina_bin_override_also_picked_up(
-        self, fake_vina_binary, monkeypatch,
+        self,
+        fake_vina_binary,
+        monkeypatch,
     ):
         monkeypatch.delenv("MOLMETAL_VINA_BIN", raising=False)
         monkeypatch.setenv("MOLMETAL_QVINA_BIN", str(fake_vina_binary))
         for ch in (
-            "_resolve_from_path", "_resolve_from_active_conda_envs",
-            "_resolve_from_conda_pkg_hints", "_resolve_from_project_venv",
+            "_resolve_from_path",
+            "_resolve_from_active_conda_envs",
+            "_resolve_from_conda_pkg_hints",
+            "_resolve_from_project_venv",
             "_resolve_from_sweep",
         ):
-            monkeypatch.setattr(f"molmetal.scripts.vina_diagnostic.{ch}", lambda *a, **k: [])
+            monkeypatch.setattr(
+                f"molmetal.scripts.vina_diagnostic.{ch}", lambda *a, **k: []
+            )
         result = detect_vina_binary()
         assert result.status == "OK"
         assert result.bin == str(fake_vina_binary.resolve())
@@ -219,11 +227,15 @@ class TestDetectVinaEnvOverride:
         monkeypatch.setenv("MOLMETAL_VINA_BIN", "")
         monkeypatch.setenv("MOLMETAL_QVINA_BIN", "")
         for ch in (
-            "_resolve_from_path", "_resolve_from_active_conda_envs",
-            "_resolve_from_conda_pkg_hints", "_resolve_from_project_venv",
+            "_resolve_from_path",
+            "_resolve_from_active_conda_envs",
+            "_resolve_from_conda_pkg_hints",
+            "_resolve_from_project_venv",
             "_resolve_from_sweep",
         ):
-            monkeypatch.setattr(f"molmetal.scripts.vina_diagnostic.{ch}", lambda *a, **k: [])
+            monkeypatch.setattr(
+                f"molmetal.scripts.vina_diagnostic.{ch}", lambda *a, **k: []
+            )
         result = detect_vina_binary()
         assert result.status == "MISSING_DEP"
         assert result.bin is None
@@ -234,7 +246,8 @@ class TestDetectVinaEnvOverride:
 # ---------------------------------------------------------------------------
 class TestDetectVinaMissing:
     def test_no_channels_yields_miss(
-        self, monkeypatch,
+        self,
+        monkeypatch,
     ):
         # ``_resolve_from_env`` returns Optional[ProbeHit]; stub it to None.
         monkeypatch.setattr(
@@ -243,11 +256,15 @@ class TestDetectVinaMissing:
         )
         # The remaining channels return List[ProbeHit]; stub to [].
         for ch in (
-            "_resolve_from_path", "_resolve_from_active_conda_envs",
-            "_resolve_from_conda_pkg_hints", "_resolve_from_project_venv",
+            "_resolve_from_path",
+            "_resolve_from_active_conda_envs",
+            "_resolve_from_conda_pkg_hints",
+            "_resolve_from_project_venv",
             "_resolve_from_sweep",
         ):
-            monkeypatch.setattr(f"molmetal.scripts.vina_diagnostic.{ch}", lambda *a, **k: [])
+            monkeypatch.setattr(
+                f"molmetal.scripts.vina_diagnostic.{ch}", lambda *a, **k: []
+            )
         result = detect_vina_binary()
         assert result.status == "MISSING_DEP"
         assert result.bin is None
@@ -264,19 +281,27 @@ class TestDetectVinaMissing:
             lambda cands: None,
         )
         for ch in (
-            "_resolve_from_path", "_resolve_from_active_conda_envs",
-            "_resolve_from_conda_pkg_hints", "_resolve_from_project_venv",
+            "_resolve_from_path",
+            "_resolve_from_active_conda_envs",
+            "_resolve_from_conda_pkg_hints",
+            "_resolve_from_project_venv",
             "_resolve_from_sweep",
         ):
-            monkeypatch.setattr(f"molmetal.scripts.vina_diagnostic.{ch}", lambda *a, **k: [])
+            monkeypatch.setattr(
+                f"molmetal.scripts.vina_diagnostic.{ch}", lambda *a, **k: []
+            )
         result = detect_vina_binary().as_dict()
         # wf60 schema
         for k in ("status", "bin", "version", "reason", "checked_paths"):
             assert k in result, f"missing top-level key: {k}"
         # Wf-84 extensions
         for k in (
-            "python_binding_version", "hits", "misses",
-            "channels_probed", "recommended_install", "host",
+            "python_binding_version",
+            "hits",
+            "misses",
+            "channels_probed",
+            "recommended_install",
+            "host",
             "captured_at",
         ):
             assert k in result, f"missing wf84 key: {k}"
@@ -287,7 +312,10 @@ class TestDetectVinaMissing:
 # ---------------------------------------------------------------------------
 class TestPrimaryHitOrdering:
     def test_env_override_wins_over_path(
-        self, fake_vina_binary, tmp_path, monkeypatch,
+        self,
+        fake_vina_binary,
+        tmp_path,
+        monkeypatch,
     ):
         # PATH version (less preferred).
         path_vina = tmp_path / "vina"
@@ -296,26 +324,36 @@ class TestPrimaryHitOrdering:
         monkeypatch.setenv("MOLMETAL_VINA_BIN", str(fake_vina_binary))
         monkeypatch.setattr(
             "molmetal.scripts.vina_diagnostic._resolve_from_path",
-            lambda cands: [ProbeHit(
-                path=str(path_vina.resolve()),
-                source="path",
-                version_line="AutoDock Vina 1.2.7-path",
-                full_version="1.2.7-path",
-            )] if "vina" in cands else [],
+            lambda cands: [
+                ProbeHit(
+                    path=str(path_vina.resolve()),
+                    source="path",
+                    version_line="AutoDock Vina 1.2.7-path",
+                    full_version="1.2.7-path",
+                )
+            ]
+            if "vina" in cands
+            else [],
         )
         for ch in (
             "_resolve_from_active_conda_envs",
-            "_resolve_from_conda_pkg_hints", "_resolve_from_project_venv",
+            "_resolve_from_conda_pkg_hints",
+            "_resolve_from_project_venv",
             "_resolve_from_sweep",
         ):
-            monkeypatch.setattr(f"molmetal.scripts.vina_diagnostic.{ch}", lambda *a, **k: [])
+            monkeypatch.setattr(
+                f"molmetal.scripts.vina_diagnostic.{ch}", lambda *a, **k: []
+            )
         result = detect_vina_binary()
         # env_override should be primary
         assert result.bin == str(fake_vina_binary.resolve())
         assert result.hits[0].source == "env_override"
 
     def test_primary_is_first_in_source_priority(
-        self, fake_vina_binary, tmp_path, monkeypatch,
+        self,
+        fake_vina_binary,
+        tmp_path,
+        monkeypatch,
     ):
         sweep_vina = tmp_path / "vina-sweep"
         sweep_vina.write_text("#!/bin/sh\necho 'AutoDock Vina 1.2.7-sweep'\n")
@@ -336,21 +374,25 @@ class TestPrimaryHitOrdering:
         )
         monkeypatch.setattr(
             "molmetal.scripts.vina_diagnostic._resolve_from_project_venv",
-            lambda: [ProbeHit(
-                path=str(fake_vina_binary.resolve()),
-                source="venv",
-                version_line="AutoDock Vina 1.2.7-fake",
-                full_version="1.2.7-fake",
-            )],
+            lambda: [
+                ProbeHit(
+                    path=str(fake_vina_binary.resolve()),
+                    source="venv",
+                    version_line="AutoDock Vina 1.2.7-fake",
+                    full_version="1.2.7-fake",
+                )
+            ],
         )
         monkeypatch.setattr(
             "molmetal.scripts.vina_diagnostic._resolve_from_sweep",
-            lambda: [ProbeHit(
-                path=str(sweep_vina.resolve()),
-                source="sweep",
-                version_line="AutoDock Vina 1.2.7-sweep",
-                full_version="1.2.7-sweep",
-            )],
+            lambda: [
+                ProbeHit(
+                    path=str(sweep_vina.resolve()),
+                    source="sweep",
+                    version_line="AutoDock Vina 1.2.7-sweep",
+                    full_version="1.2.7-sweep",
+                )
+            ],
         )
         result = detect_vina_binary()
         # venv beats sweep
@@ -368,11 +410,15 @@ class TestHostFingerprint:
             lambda cands: None,
         )
         for ch in (
-            "_resolve_from_path", "_resolve_from_active_conda_envs",
-            "_resolve_from_conda_pkg_hints", "_resolve_from_project_venv",
+            "_resolve_from_path",
+            "_resolve_from_active_conda_envs",
+            "_resolve_from_conda_pkg_hints",
+            "_resolve_from_project_venv",
             "_resolve_from_sweep",
         ):
-            monkeypatch.setattr(f"molmetal.scripts.vina_diagnostic.{ch}", lambda *a, **k: [])
+            monkeypatch.setattr(
+                f"molmetal.scripts.vina_diagnostic.{ch}", lambda *a, **k: []
+            )
         result = detect_vina_binary().as_dict()
         host = result["host"]
         assert "python" in host

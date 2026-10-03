@@ -122,9 +122,9 @@ def rh_cohort() -> tuple:
 def test_load_metal_cohort_ru_shape(ru_cohort):
     X, y, mid, smiles = ru_cohort
     assert X.ndim == 2
-    assert X.shape[1] == FEATURE_DIM, (
-        f"expected {FEATURE_DIM}-d features; got {X.shape[1]}"
-    )
+    assert (
+        X.shape[1] == FEATURE_DIM
+    ), f"expected {FEATURE_DIM}-d features; got {X.shape[1]}"
     assert y.ndim == 1
     assert X.shape[0] == y.shape[0]
     assert mid.shape[0] == X.shape[0]
@@ -150,12 +150,15 @@ def test_load_metal_cohort_csv_fallback(tmp_path):
         "C=O,Ru,s5,val,1\n"
     )
     X, y, mid, smiles = load_metal_cohort(
-        "Ru", npz_path=npz_path, csv_path=csv_path, max_rows=200,
+        "Ru",
+        npz_path=npz_path,
+        csv_path=csv_path,
+        max_rows=200,
     )
     assert X.shape[1] == FEATURE_DIM
     # MPH + PLL streams are zero in CSV fallback.
-    assert np.allclose(X[:, RDKIT_DIM: RDKIT_DIM + MULTI_PH_DIM], 0.0)
-    assert np.allclose(X[:, RDKIT_DIM + MULTI_PH_DIM:], 0.0)
+    assert np.allclose(X[:, RDKIT_DIM : RDKIT_DIM + MULTI_PH_DIM], 0.0)
+    assert np.allclose(X[:, RDKIT_DIM + MULTI_PH_DIM :], 0.0)
 
 
 # ---------------------------------------------------------------------------
@@ -170,7 +173,10 @@ def test_fit_hilbert_stream_finite_weights(ru_cohort):
     tr, te = perm[:n_tr], perm[n_tr:]
     X_tr_z, X_te_z = _zscore(X[tr].astype(float), X[te].astype(float))
     w, train_r2, aug_te = fit_hilbert_stream(
-        X_tr_z, y[tr], X_te_z, hilbert_dim=DEFAULT_HILBERT_DIM,
+        X_tr_z,
+        y[tr],
+        X_te_z,
+        hilbert_dim=DEFAULT_HILBERT_DIM,
     )
     assert np.all(np.isfinite(w))
     assert math.isfinite(train_r2)
@@ -261,12 +267,22 @@ def test_evaluate_fold_returns_fit_record(ru_cohort):
     splits = _random_kfold_indices(n, 5, seed=0)
     tr, te = splits[0]
     rec = evaluate_fold(
-        metal="Ru", seed=0, fold=0, tr=tr, te=te,
-        X=X, y=y, mid=mid,
-        epochs=5, hilbert_dim=DEFAULT_HILBERT_DIM,
-        lr=0.05, w_w=DEFAULT_W_W,
-        use_l2_guard=True, use_astr_scale_guard=True,
-        multitask_backbone=False, device="cpu",
+        metal="Ru",
+        seed=0,
+        fold=0,
+        tr=tr,
+        te=te,
+        X=X,
+        y=y,
+        mid=mid,
+        epochs=5,
+        hilbert_dim=DEFAULT_HILBERT_DIM,
+        lr=0.05,
+        w_w=DEFAULT_W_W,
+        use_l2_guard=True,
+        use_astr_scale_guard=True,
+        multitask_backbone=False,
+        device="cpu",
     )
     assert isinstance(rec, FitRecord)
     assert math.isfinite(rec.combined_r2)
@@ -285,14 +301,23 @@ def test_evaluate_fold_returns_fit_record(ru_cohort):
 def test_evaluate_metal_returns_records(ru_cohort):
     """Smoke run for the full eval pipeline on the Ru cohort."""
     from bench_3way_real_metalcytotox import (
-        DEFAULT_NPZ_PATH, DEFAULT_METALCSV_PATH, evaluate_metal,
+        DEFAULT_NPZ_PATH,
+        DEFAULT_METALCSV_PATH,
+        evaluate_metal,
     )
+
     records = evaluate_metal(
-        metal="Ru", seeds=(0,), n_folds=2,
-        epochs=3, hilbert_dim=DEFAULT_HILBERT_DIM,
-        lr=0.05, w_w=DEFAULT_W_W,
-        use_l2_guard=True, use_astr_scale_guard=True,
-        multitask_backbone=False, device="cpu",
+        metal="Ru",
+        seeds=(0,),
+        n_folds=2,
+        epochs=3,
+        hilbert_dim=DEFAULT_HILBERT_DIM,
+        lr=0.05,
+        w_w=DEFAULT_W_W,
+        use_l2_guard=True,
+        use_astr_scale_guard=True,
+        multitask_backbone=False,
+        device="cpu",
         npz_path=DEFAULT_NPZ_PATH,
         csv_path=DEFAULT_METALCSV_PATH,
         max_rows=80,
@@ -310,14 +335,32 @@ def test_evaluate_metal_returns_records(ru_cohort):
 def test_aggregate_metal_per_seed_summary():
     records = [
         FitRecord(
-            metal="Ru", seed=0, fold=0, n_train=40, n_test=10,
-            combined_r2=-0.05, hilbert_r2=-0.10, mph_r2=-0.20, astr_r2=-0.30,
-            wall_s=1.0, peak_mem_mb=10.0, collapse_detected=False,
+            metal="Ru",
+            seed=0,
+            fold=0,
+            n_train=40,
+            n_test=10,
+            combined_r2=-0.05,
+            hilbert_r2=-0.10,
+            mph_r2=-0.20,
+            astr_r2=-0.30,
+            wall_s=1.0,
+            peak_mem_mb=10.0,
+            collapse_detected=False,
         ),
         FitRecord(
-            metal="Ru", seed=0, fold=1, n_train=40, n_test=10,
-            combined_r2=0.10, hilbert_r2=-0.05, mph_r2=0.05, astr_r2=-0.20,
-            wall_s=1.2, peak_mem_mb=10.5, collapse_detected=True,
+            metal="Ru",
+            seed=0,
+            fold=1,
+            n_train=40,
+            n_test=10,
+            combined_r2=0.10,
+            hilbert_r2=-0.05,
+            mph_r2=0.05,
+            astr_r2=-0.20,
+            wall_s=1.2,
+            peak_mem_mb=10.5,
+            collapse_detected=True,
         ),
     ]
     out = aggregate_metal(records)
@@ -337,14 +380,32 @@ def test_aggregate_metal_per_seed_summary():
 def test_write_synthesis_md_contains_metals(tmp_path):
     records = [
         FitRecord(
-            metal="Ru", seed=0, fold=0, n_train=40, n_test=10,
-            combined_r2=-0.10, hilbert_r2=-0.20, mph_r2=-0.05, astr_r2=-0.30,
-            wall_s=1.0, peak_mem_mb=10.0, collapse_detected=False,
+            metal="Ru",
+            seed=0,
+            fold=0,
+            n_train=40,
+            n_test=10,
+            combined_r2=-0.10,
+            hilbert_r2=-0.20,
+            mph_r2=-0.05,
+            astr_r2=-0.30,
+            wall_s=1.0,
+            peak_mem_mb=10.0,
+            collapse_detected=False,
         ),
         FitRecord(
-            metal="Ir", seed=0, fold=0, n_train=30, n_test=8,
-            combined_r2=0.05, hilbert_r2=-0.05, mph_r2=0.02, astr_r2=-0.10,
-            wall_s=1.5, peak_mem_mb=12.0, collapse_detected=False,
+            metal="Ir",
+            seed=0,
+            fold=0,
+            n_train=30,
+            n_test=8,
+            combined_r2=0.05,
+            hilbert_r2=-0.05,
+            mph_r2=0.02,
+            astr_r2=-0.10,
+            wall_s=1.5,
+            peak_mem_mb=12.0,
+            collapse_detected=False,
         ),
     ]
     write_synthesis(tmp_path, records)
@@ -365,18 +426,19 @@ def test_smoke_bench_produces_artifacts(tmp_path):
     out_dir = tmp_path / "wf128_p2_smoke"
     argv = [
         "--smoke",
-        "--out-dir", str(out_dir),
-        "--max-rows", "120",
+        "--out-dir",
+        str(out_dir),
+        "--max-rows",
+        "120",
     ]
     # Run main() in-process.
     from bench_3way_real_metalcytotox import main
+
     rc = main(argv)
     assert rc == 0
     assert (out_dir / "synthesis.md").exists()
     assert (out_dir / "Ru" / "per_seed_metrics.json").exists()
-    payload = json.loads(
-        (out_dir / "Ru" / "per_seed_metrics.json").read_text()
-    )
+    payload = json.loads((out_dir / "Ru" / "per_seed_metrics.json").read_text())
     assert payload["metal"] == "Ru"
     assert "per_seed" in payload and len(payload["per_seed"]) == 1
     assert "config" in payload
@@ -394,19 +456,22 @@ def test_wasserstein_weight_and_guards_serialised(tmp_path):
     out_dir = tmp_path / "wf128_p2_serialise"
     argv = [
         "--smoke",
-        "--metals", "Ru",
-        "--out-dir", str(out_dir),
-        "--wasserstein-weight", "0.10",
+        "--metals",
+        "Ru",
+        "--out-dir",
+        str(out_dir),
+        "--wasserstein-weight",
+        "0.10",
         "--no-l2-guard",
         "--no-astr-scale-guard",
-        "--max-rows", "100",
+        "--max-rows",
+        "100",
     ]
     from bench_3way_real_metalcytotox import main
+
     rc = main(argv)
     assert rc == 0
-    payload = json.loads(
-        (out_dir / "Ru" / "per_seed_metrics.json").read_text()
-    )
+    payload = json.loads((out_dir / "Ru" / "per_seed_metrics.json").read_text())
     cfg = payload["config"]
     assert cfg["wasserstein_weight"] == 0.10
     assert cfg["use_l2_guard"] is False

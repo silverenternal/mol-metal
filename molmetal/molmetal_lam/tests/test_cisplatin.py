@@ -52,6 +52,7 @@ from molmetal_lam.bonds.application import (
 # Build cisplatin step by step as a curried partial application
 # ---------------------------------------------------------------------------
 
+
 def build_cisplatin_term() -> dict:
     """Build cisplatin = Pt_II(NH3)(NH3)(Cl)(Cl) as 4 dative bonds.
 
@@ -83,10 +84,10 @@ def build_cisplatin_term() -> dict:
     # The resulting term is closed after 4 applications: Pt had 4 free
     # sites, and the 4 ligands each accept 1.
     bonds: List[Bond] = [
-        Bond.dative(pt, nh3_a, ledger=led),   # (Pt_II NH3)
-        Bond.dative(pt, nh3_b, ledger=led),   # ((Pt_II NH3) NH3)
-        Bond.dative(pt, cl_a, ledger=led),    # (((Pt_II NH3) NH3) Cl)
-        Bond.dative(pt, cl_b, ledger=led),    # ((((Pt_II NH3) NH3) Cl) Cl)
+        Bond.dative(pt, nh3_a, ledger=led),  # (Pt_II NH3)
+        Bond.dative(pt, nh3_b, ledger=led),  # ((Pt_II NH3) NH3)
+        Bond.dative(pt, cl_a, ledger=led),  # (((Pt_II NH3) NH3) Cl)
+        Bond.dative(pt, cl_b, ledger=led),  # ((((Pt_II NH3) NH3) Cl) Cl)
     ]
 
     mol = assemble(bonds, ledger=led)
@@ -99,6 +100,7 @@ def build_cisplatin_term() -> dict:
 # ---------------------------------------------------------------------------
 # Test 1: build cisplatin
 # ---------------------------------------------------------------------------
+
 
 def test_cisplatin_builds_via_mlc_primitives() -> None:
     """Build cisplatin with Pt_II + 2 NH3 + 2 Cl via MLC primitives."""
@@ -118,6 +120,7 @@ def test_cisplatin_builds_via_mlc_primitives() -> None:
 # Test 2: Pt_II arity = 4
 # ---------------------------------------------------------------------------
 
+
 def test_pt_ii_arity_is_four() -> None:
     """The Pt_II combinator must have arity 4 (square-planar fits 4)."""
     pt = METAL_ATOMS["Pt_II"]
@@ -132,6 +135,7 @@ def test_pt_ii_arity_is_four() -> None:
 # ---------------------------------------------------------------------------
 # Test 3: 4 ligands = 4 free sites on Pt
 # ---------------------------------------------------------------------------
+
 
 def test_total_free_sites_match_four_ligands() -> None:
     """Total free sites on Pt (4) must match the 4 ligands (each 1 bond)."""
@@ -161,6 +165,7 @@ def test_total_free_sites_match_four_ligands() -> None:
 # ---------------------------------------------------------------------------
 # Test 4: each dative bond preserves 1 free site on Pt
 # ---------------------------------------------------------------------------
+
 
 def test_each_dative_bond_preserves_one_free_site_on_pt() -> None:
     """Each dative application consumes EXACTLY one Pt free site (currying)."""
@@ -192,6 +197,7 @@ def test_each_dative_bond_preserves_one_free_site_on_pt() -> None:
 # Test 5: the resulting molecule is_closed=True
 # ---------------------------------------------------------------------------
 
+
 def test_cisplatin_molecule_is_closed() -> None:
     """After all 4 dative applications the term is closed (β-NF)."""
     mol = build_cisplatin_term()
@@ -209,6 +215,7 @@ def test_cisplatin_molecule_is_closed() -> None:
 # Test 6: print the λ-expression
 # ---------------------------------------------------------------------------
 
+
 def test_cisplatin_lambda_expression() -> None:
     """Print the λ-expression for cisplatin (the central thesis witness)."""
     mol = build_cisplatin_term()
@@ -219,8 +226,10 @@ def test_cisplatin_lambda_expression() -> None:
     print("CISPLATIN AS A MOLECULAR LAMBDA CALCULUS TERM")
     print("=" * 72)
     print(f"Lambda expression: {expr}")
-    print(f"Number of atoms  : {len(mol['atoms'])}  "
-          f"({[a.symbol for a in mol['atoms']]})")
+    print(
+        f"Number of atoms  : {len(mol['atoms'])}  "
+        f"({[a.symbol for a in mol['atoms']]})"
+    )
     print(f"Number of bonds  : {len(mol['bonds'])}  (all dative)")
     print(f"Is closed        : {mol['is_closed']}")
     print(f"Free sites per atom:")
@@ -239,6 +248,7 @@ def test_cisplatin_lambda_expression() -> None:
 # Test 7: cisplatin inhabits the PT_DNA_MAJOR_GROOVE binding type
 # ---------------------------------------------------------------------------
 
+
 def test_cisplatin_inhabits_dna_major_groove_binding_type() -> None:
     """Cisplatin should type-check against PT_DNA_MAJOR_GROOVE.
 
@@ -251,6 +261,7 @@ def test_cisplatin_inhabits_dna_major_groove_binding_type() -> None:
     # This is a different code path from the Bond.dative assembly
     # above; it tests that the framework handles real molecules too.
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
     # RDKit SMILES for cisplatin (no stereochemistry): [H][N]([H])([H])[Pt](Cl)(Cl)([N]([H])([H])[H])[H]
     # Simpler: use the disconnected form so RDKit is happy.
     smiles = "[NH3][Pt](Cl)(Cl)[NH3]"
@@ -273,6 +284,7 @@ def test_cisplatin_inhabits_dna_major_groove_binding_type() -> None:
 # ---------------------------------------------------------------------------
 # Test 8: cisplatin is in β-normal form
 # ---------------------------------------------------------------------------
+
 
 def test_cisplatin_is_beta_normal_form() -> None:
     """The cisplatin term is in β-normal form (no redexes left)."""
@@ -304,6 +316,7 @@ def test_cisplatin_is_beta_normal_form() -> None:
 # ---------------------------------------------------------------------------
 # Test 9: alpha-equivalence — different assembly orders give same molecule
 # ---------------------------------------------------------------------------
+
 
 def test_cisplatin_alpha_equivalent_to_itself() -> None:
     """Cisplatin is α-equivalent to itself (canonical SMILES equality)."""
@@ -337,6 +350,7 @@ def test_cisplatin_alpha_equivalent_to_itself() -> None:
 # Test 10: currying semantics — Pt after one application is still arity 3
 # ---------------------------------------------------------------------------
 
+
 def test_currying_pt_after_one_dative_application() -> None:
     """After one NH3, Pt should still expect 3 more ligands (arity 3)."""
     led = FreeSiteLedger()
@@ -357,4 +371,5 @@ if __name__ == "__main__":
     # Allow running this file directly for quick verification:
     #     python -m molmetal.molmetal_lam.tests.test_cisplatin
     import sys
+
     sys.exit(pytest.main([__file__, "-v"]))

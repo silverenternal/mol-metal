@@ -99,16 +99,15 @@ _BUILDER_EXCEPTIONS: int = 0
 
 def builder_exception_snapshot() -> Dict[str, object]:
     """Return {calls, exceptions, rate} for BUILDER_EXCEPTION_RATE."""
-    rate = (
-        float(_BUILDER_EXCEPTIONS) / _BUILDER_CALLS
-        if _BUILDER_CALLS > 0 else 0.0
+    rate = float(_BUILDER_EXCEPTIONS) / _BUILDER_CALLS if _BUILDER_CALLS > 0 else 0.0
+    _METRICS.history.append(
+        {
+            "metric": "BUILDER_EXCEPTION_RATE",
+            "value": rate,
+            "n_calls": _BUILDER_CALLS,
+            "n_exceptions": _BUILDER_EXCEPTIONS,
+        }
     )
-    _METRICS.history.append({
-        "metric": "BUILDER_EXCEPTION_RATE",
-        "value": rate,
-        "n_calls": _BUILDER_CALLS,
-        "n_exceptions": _BUILDER_EXCEPTIONS,
-    })
     return {
         "calls": _BUILDER_CALLS,
         "exceptions": _BUILDER_EXCEPTIONS,
@@ -130,6 +129,7 @@ def safe_factory(callable_, *args, **kwargs):
     except Exception:
         _BUILDER_EXCEPTIONS += 1
         return None
+
 
 # Bond kind tags (also the eta-equivalence class labels).
 COVALENT = "covalent"
@@ -155,6 +155,7 @@ class BondError(ValueError):
 # ---------------------------------------------------------------------------
 # Atom resolution helpers
 # ---------------------------------------------------------------------------
+
 
 def resolve_atom(atom: AtomLike) -> Atom:
     """Coerce ``atom`` into an :class:`Atom`.
@@ -192,6 +193,7 @@ def distinct(atom: AtomLike) -> Atom:
 # ---------------------------------------------------------------------------
 # Free-site bookkeeping (the "environment" of the lambda-term)
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class AtomSite:
@@ -279,9 +281,7 @@ class FreeSiteLedger:
 
     def snapshot(self, atoms: Sequence[Atom]) -> Dict[str, int]:
         """``{label: free_sites}`` for ``atoms``, labelled ``symbol#index``."""
-        return {
-            f"{a.symbol}#{i}": self.free_sites(a) for i, a in enumerate(atoms)
-        }
+        return {f"{a.symbol}#{i}": self.free_sites(a) for i, a in enumerate(atoms)}
 
     def check_arity_conservation(self, bonds: Sequence[Bond]) -> bool:
         """Verify free-site accounting balances across ``bonds``.
@@ -369,6 +369,7 @@ def reset_free_sites(ledger: Optional[FreeSiteLedger] = None) -> None:
 # The Bond = one application
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class Bond:
     """A bond IS an application ``(atom_a atom_b)`` = one beta-reduction.
@@ -403,9 +404,7 @@ class Bond:
     donor_is_a: bool = True
     free_a_before: int = -1
     free_b_before: int = -1
-    ledger: Optional[FreeSiteLedger] = field(
-        default=None, compare=False, repr=False
-    )
+    ledger: Optional[FreeSiteLedger] = field(default=None, compare=False, repr=False)
 
     # -- orientation ----------------------------------------------------
 
@@ -479,8 +478,14 @@ class Bond:
         site_a.consume(min(order, free_a))
         site_b.consume(min(order, free_b))
         return cls(
-            atom_a=a, atom_b=b, order=order, is_dative=False, kind=COVALENT,
-            donor_is_a=True, free_a_before=free_a, free_b_before=free_b,
+            atom_a=a,
+            atom_b=b,
+            order=order,
+            is_dative=False,
+            kind=COVALENT,
+            donor_is_a=True,
+            free_a_before=free_a,
+            free_b_before=free_b,
             ledger=led,
         )
 
@@ -534,7 +539,11 @@ class Bond:
         # bond mirrors the call, while donor_is_a records the chemistry.
         donor_is_a = donor_is_first
         return cls(
-            atom_a=first, atom_b=second, order=1, is_dative=True, kind=DATIVE,
+            atom_a=first,
+            atom_b=second,
+            order=1,
+            is_dative=True,
+            kind=DATIVE,
             donor_is_a=donor_is_a,
             free_a_before=free_d if donor_is_first else free_acc,
             free_b_before=free_acc if donor_is_first else free_d,
@@ -596,11 +605,19 @@ class Bond:
             free_a, free_b = site_a.free_sites, site_b.free_sites
             site_a.consume(min(1, free_a))
             site_b.consume(min(1, free_b))
-            bonds.append(cls(
-                atom_a=a, atom_b=b, order=1, is_dative=False, kind=AROMATIC,
-                donor_is_a=True, free_a_before=free_a, free_b_before=free_b,
-                ledger=led,
-            ))
+            bonds.append(
+                cls(
+                    atom_a=a,
+                    atom_b=b,
+                    order=1,
+                    is_dative=False,
+                    kind=AROMATIC,
+                    donor_is_a=True,
+                    free_a_before=free_a,
+                    free_b_before=free_b,
+                    ledger=led,
+                )
+            )
         return bonds
 
     @classmethod
@@ -631,8 +648,14 @@ class Bond:
                 "(call saturate(atom) first)"
             )
         return cls(
-            atom_a=d, atom_b=a, order=0, is_dative=False, kind=HYDROGEN,
-            donor_is_a=True, free_a_before=free_d, free_b_before=free_a,
+            atom_a=d,
+            atom_b=a,
+            order=0,
+            is_dative=False,
+            kind=HYDROGEN,
+            donor_is_a=True,
+            free_a_before=free_d,
+            free_b_before=free_a,
             ledger=led,
         )
 
@@ -676,6 +699,7 @@ class Bond:
 # Orientation & dispatch
 # ---------------------------------------------------------------------------
 
+
 def _orient_dative(first: Atom, second: Atom) -> Tuple[Atom, Atom, bool]:
     """Return ``(donor, acceptor, donor_is_first)`` for a dative pair.
 
@@ -684,7 +708,7 @@ def _orient_dative(first: Atom, second: Atom) -> Tuple[Atom, Atom, bool]:
     matches the declared ``(donor, acceptor)`` signature).
     """
     if first.is_metal and not second.is_metal:
-        return second, first, False          # swap: metal must be acceptor
+        return second, first, False  # swap: metal must be acceptor
     if second.is_metal and not first.is_metal:
         return first, second, True
     # Neither (or both) is a metal: honour the declared signature.
@@ -746,6 +770,7 @@ def bond(
 # ---------------------------------------------------------------------------
 # Validity
 # ---------------------------------------------------------------------------
+
 
 def is_valid(b: Bond) -> bool:
     """Is ``b`` a well-typed application?
@@ -822,6 +847,7 @@ def can_bond(
 # beta-reduction of a bond list -> molecule-like dict
 # ---------------------------------------------------------------------------
 
+
 def assemble(
     bonds: Iterable[Bond],
     extra_atoms: Sequence[AtomLike] = (),
@@ -895,41 +921,55 @@ def assemble(
             # degree; if degree ∉ {5,6,7} the ring size is wrong.
             if n_atoms_ring not in {5, 6, 7}:
                 aromatic_size_bad += 1
-    _METRICS.history.append({
-        "metric": "BOND_KIND_DISTRIBUTION",
-        "value": dict(kind_counts),
-        "n_bonds": len(bond_list),
-    })
+    _METRICS.history.append(
+        {
+            "metric": "BOND_KIND_DISTRIBUTION",
+            "value": dict(kind_counts),
+            "n_bonds": len(bond_list),
+        }
+    )
     denom = max(1, len(bond_list))
-    _METRICS.history.append({
-        "metric": "DATIVE_FRACTION",
-        "value": float(n_dative) / denom,
-        "n_dative": n_dative,
-        "n_total": len(bond_list),
-    })
-    _METRICS.history.append({
-        "metric": "FREE_SITES_AFTER_ASSEMBLE",
-        "value": {"open_sites": open_sites, "is_closed": open_sites == 0},
-        "n_atoms": len(atoms),
-    })
-    _METRICS.history.append({
-        "metric": "BOND_VALIDITY_RATE",
-        "value": float(valid_all),
-        "n_bonds": len(bond_list),
-        "n_valid": sum(1 for b in bond_list if is_valid(b)),
-    })
-    _METRICS.history.append({
-        "metric": "AROMATIC_RING_SIZE_OK",
-        "value": float(1.0 - (aromatic_size_bad / max(1, n_aromatic))) if n_aromatic else 1.0,
-        "n_aromatic": n_aromatic,
-        "n_bad_size": aromatic_size_bad,
-    })
-    _METRICS.history.append({
-        "metric": "BOND_STEREO_RATE",
-        "value": float(n_double_stereo) / max(1, n_double),
-        "n_double": n_double,
-        "n_stereo": n_double_stereo,
-    })
+    _METRICS.history.append(
+        {
+            "metric": "DATIVE_FRACTION",
+            "value": float(n_dative) / denom,
+            "n_dative": n_dative,
+            "n_total": len(bond_list),
+        }
+    )
+    _METRICS.history.append(
+        {
+            "metric": "FREE_SITES_AFTER_ASSEMBLE",
+            "value": {"open_sites": open_sites, "is_closed": open_sites == 0},
+            "n_atoms": len(atoms),
+        }
+    )
+    _METRICS.history.append(
+        {
+            "metric": "BOND_VALIDITY_RATE",
+            "value": float(valid_all),
+            "n_bonds": len(bond_list),
+            "n_valid": sum(1 for b in bond_list if is_valid(b)),
+        }
+    )
+    _METRICS.history.append(
+        {
+            "metric": "AROMATIC_RING_SIZE_OK",
+            "value": float(1.0 - (aromatic_size_bad / max(1, n_aromatic)))
+            if n_aromatic
+            else 1.0,
+            "n_aromatic": n_aromatic,
+            "n_bad_size": aromatic_size_bad,
+        }
+    )
+    _METRICS.history.append(
+        {
+            "metric": "BOND_STEREO_RATE",
+            "value": float(n_double_stereo) / max(1, n_double),
+            "n_double": n_double,
+            "n_stereo": n_double_stereo,
+        }
+    )
     return {
         "atoms": atoms,
         "bonds": bond_list,
@@ -943,6 +983,7 @@ def assemble(
 # ---------------------------------------------------------------------------
 # Worked example: cisplatin as a curried partial application
 # ---------------------------------------------------------------------------
+
 
 def cisplatin() -> Dict[str, object]:
     """Build ``Pt_II NH3 NH3 Cl Cl`` — the canonical MLC witness.

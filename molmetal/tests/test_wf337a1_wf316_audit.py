@@ -102,9 +102,7 @@ TIER2_DIRECTIVE_RE = re.compile(
 )
 # Forbidden softer labels — if a file only carries these (without the
 # canonical marker), it is still wrongly framed as "to be done".
-DEPRECATION_ONLY_RE = re.compile(
-    r"(?i)DEPRECATED(?!.*?TEMPLATE_NOT_NEEDED_FOR_TIER2)"
-)
+DEPRECATION_ONLY_RE = re.compile(r"(?i)DEPRECATED(?!.*?TEMPLATE_NOT_NEEDED_FOR_TIER2)")
 
 
 # ---------------------------------------------------------------------------
@@ -155,8 +153,7 @@ def test_all_wetlab_items_reclassified():
     assert not missing, (
         f"Wf-316 audit reclassification incomplete: {len(missing)}/10 "
         f"wetlab file(s) lack the canonical "
-        f"'{MARKER_CANONICAL_TOKEN}' marker:\n"
-        + "\n".join(f"  - {n}" for n in missing)
+        f"'{MARKER_CANONICAL_TOKEN}' marker:\n" + "\n".join(f"  - {n}" for n in missing)
     )
 
     # Sanity: no extra wetlab_*.md files in TODO/pending/ beyond the 10.
@@ -215,7 +212,9 @@ def test_no_items_still_marked_still_pending():
         # NO `TEMPLATE_NOT_NEEDED_FOR_TIER2` token → still wrongly
         # framed as "softer deprecation".
         if re.search(r"(?i)DEPRECATED", text) and MARKER_CANONICAL_TOKEN not in text:
-            bad.append((name, "DEPRECATED without TEMPLATE_NOT_NEEDED_FOR_TIER2 qualifier"))
+            bad.append(
+                (name, "DEPRECATED without TEMPLATE_NOT_NEEDED_FOR_TIER2 qualifier")
+            )
 
     assert not bad, (
         f"{len(bad)} wetlab file(s) still framed as STILL_PENDING / "
@@ -256,7 +255,9 @@ def test_tier2_strategy_compliance():
     )
 
     # 2. INDEX.md §0.4 references AGENTS.md §5.4.
-    assert "§0.4" in index_text, "INDEX.md §0.4 missing (Tier-2 + wet-lab directive section)"
+    assert (
+        "§0.4" in index_text
+    ), "INDEX.md §0.4 missing (Tier-2 + wet-lab directive section)"
     # The §0.4 "Paper target + wet-lab directive" header is at the
     # AGENTS.md §5.4 directive section boundary. INDEX.md has multiple
     # `### §0.4 ...` headers (line 56 Wf-316E ship-wave + line 609
@@ -266,9 +267,9 @@ def test_tier2_strategy_compliance():
         index_text,
         re.DOTALL,
     )
-    assert section_04 is not None, (
-        "INDEX.md §0.4 Paper target + wet-lab directive section not found"
-    )
+    assert (
+        section_04 is not None
+    ), "INDEX.md §0.4 Paper target + wet-lab directive section not found"
     section_04_text = section_04.group(0)
     assert AGENTS_SECTION_RE.search(section_04_text), (
         "INDEX.md §0.4 does not cite AGENTS.md §5.4 — the cross-link is "
@@ -318,13 +319,13 @@ def test_index_section18_updated():
     index_text = _load_index()
 
     # 1. INDEX.md §18 header is present.
-    assert "§18" in index_text, "INDEX.md §18 missing (Tier-2 paper submission package section)"
+    assert (
+        "§18" in index_text
+    ), "INDEX.md §18 missing (Tier-2 paper submission package section)"
     section_18 = re.search(
         r"##\s*§18.*?(?=##\s*§1[9-9]|##\s*§[2-9]|\Z)", index_text, re.DOTALL
     )
-    assert section_18 is not None, (
-        "INDEX.md §18 section header not found"
-    )
+    assert section_18 is not None, "INDEX.md §18 section header not found"
     section_18_text = section_18.group(0)
 
     # 2. §18 cross-references the Wf-337-A1 / Wf-337-W1 / Wf-337-W3 wave.
@@ -332,8 +333,7 @@ def test_index_section18_updated():
     # may cite either `TODO/completed/337a1_wf316_audit.md` or
     # `molmetal/tests/test_wf337a1_wf316_audit.py`.
     wf337_a3_signal = (
-        "337a1" in section_18_text.lower()
-        or "wf-337-a1" in section_18_text.lower()
+        "337a1" in section_18_text.lower() or "wf-337-a1" in section_18_text.lower()
     )
     assert wf337_a3_signal, (
         "INDEX.md §18 does not cross-reference Wf-337-A1 / 337a1 — "
@@ -346,9 +346,9 @@ def test_index_section18_updated():
     table_match = re.search(
         r"### Wetlab planning artifacts.*?(?=###|\Z)", index_text, re.DOTALL
     )
-    assert table_match is not None, (
-        "INDEX.md §0.4 wetlab-planning-artifacts subsection not found"
-    )
+    assert (
+        table_match is not None
+    ), "INDEX.md §0.4 wetlab-planning-artifacts subsection not found"
     table_text = table_match.group(0)
 
     missing_in_table = []
@@ -382,6 +382,4 @@ def test_index_section18_updated():
     # 6. Sanity: the test file itself exists (this file — defensive
     # against accidental deletion that would silently void the audit).
     test_file = Path(__file__)
-    assert test_file.exists(), (
-        f"Wf-337-A1 test file missing: {test_file}"
-    )
+    assert test_file.exists(), f"Wf-337-A1 test file missing: {test_file}"

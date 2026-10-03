@@ -106,14 +106,39 @@ ASTSR_FEATURE_COLUMNS: Tuple[str, ...] = (
 
 DMPNN_ATOM_FEATURE_NAMES: Tuple[str, ...] = (
     # one-hot Z  — 14 dims (z_counts 13 + z_other 1)
-    "z_C", "z_N", "z_O", "z_F", "z_P", "z_S", "z_Cl", "z_Fe", "z_Cu",
-    "z_Rh", "z_Pd", "z_Ir", "z_Pt", "z_other",
+    "z_C",
+    "z_N",
+    "z_O",
+    "z_F",
+    "z_P",
+    "z_S",
+    "z_Cl",
+    "z_Fe",
+    "z_Cu",
+    "z_Rh",
+    "z_Pd",
+    "z_Ir",
+    "z_Pt",
+    "z_other",
     # one-hot formal charge — 5 dims
-    "fc_-2", "fc_-1", "fc_0", "fc_+1", "fc_+2",
+    "fc_-2",
+    "fc_-1",
+    "fc_0",
+    "fc_+1",
+    "fc_+2",
     # one-hot hybridization — 6 dims
-    "hyb_SP", "hyb_SP2", "hyb_SP3", "hyb_SP3D", "hyb_SP3D2", "hyb_other",
+    "hyb_SP",
+    "hyb_SP2",
+    "hyb_SP3",
+    "hyb_SP3D",
+    "hyb_SP3D2",
+    "hyb_other",
     # in-ring, aromatic, degree, H, chiral tag
-    "in_ring", "aromatic", "degree", "total_h", "chiral",
+    "in_ring",
+    "aromatic",
+    "degree",
+    "total_h",
+    "chiral",
 )
 
 DMPNN_POOLS: Tuple[str, ...] = ("sum", "mean", "max")
@@ -122,6 +147,7 @@ DMPNN_POOLS: Tuple[str, ...] = ("sum", "mean", "max")
 # ---------------------------------------------------------------------------
 # Dataset descriptors
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class DatasetSpec:
@@ -140,6 +166,7 @@ class DatasetSpec:
 # Feature extraction
 # ---------------------------------------------------------------------------
 
+
 def _safe_pIC50_from_nM(ic50_nM: np.ndarray) -> np.ndarray:
     """Convert IC50 [nM] → pIC50 = -log10(IC50_M)."""
     # 1 nM = 1e-9 M, so IC50_M = IC50_nM * 1e-9
@@ -149,9 +176,7 @@ def _safe_pIC50_from_nM(ic50_nM: np.ndarray) -> np.ndarray:
     return out
 
 
-def extract_astsr_features(
-    smiles: Sequence[str], rng_seed: int = 0
-) -> np.ndarray:
+def extract_astsr_features(smiles: Sequence[str], rng_seed: int = 0) -> np.ndarray:
     """Compute the 5-d ASTSR / Hilbert feature vector per molecule.
 
     For real molecules we delegate to :mod:`molmetal.molmetal_lam.reward.lambda_astsr`'s
@@ -209,9 +234,7 @@ def extract_astsr_features(
     return out
 
 
-def extract_dmpnn_features(
-    smiles: Sequence[str], max_atoms: int = 64
-) -> np.ndarray:
+def extract_dmpnn_features(smiles: Sequence[str], max_atoms: int = 64) -> np.ndarray:
     """Compute the 117-d D-MPNN feature vector per molecule.
 
     Per-atom features are aggregated by sum + mean + max pooling.
@@ -272,9 +295,7 @@ def extract_dmpnn_features(
             feats.append(0)
         return np.array(feats[:atom_dim], dtype=np.float32)
 
-    per_atom = np.full(
-        (n_smiles, max_atoms, atom_dim), np.nan, dtype=np.float64
-    )
+    per_atom = np.full((n_smiles, max_atoms, atom_dim), np.nan, dtype=np.float64)
     valid = np.zeros(n_smiles, dtype=bool)
     for i, smi in enumerate(smiles):
         mol = Chem.MolFromSmiles(str(smi))
@@ -289,9 +310,9 @@ def extract_dmpnn_features(
 
     # Replace NaN with 0 for the pooling step.
     per_atom = np.nan_to_num(per_atom, nan=0.0)
-    sum_pool = per_atom.sum(axis=1)     # (N, atom_dim)
-    mean_pool = per_atom.mean(axis=1)   # (N, atom_dim)
-    max_pool = per_atom.max(axis=1)     # (N, atom_dim)
+    sum_pool = per_atom.sum(axis=1)  # (N, atom_dim)
+    mean_pool = per_atom.mean(axis=1)  # (N, atom_dim)
+    max_pool = per_atom.max(axis=1)  # (N, atom_dim)
 
     feats = np.concatenate([sum_pool, mean_pool, max_pool], axis=1)
     # Zero out rows whose molecule failed to featurize.
@@ -303,8 +324,10 @@ def extract_dmpnn_features(
 # Dataset loaders
 # ---------------------------------------------------------------------------
 
+
 def _load_platinai_5k(spec: DatasetSpec) -> Tuple[List[str], np.ndarray, List[str]]:
     import csv
+
     smiles: List[str] = []
     targets: List[float] = []
     target_names: List[str] = []
@@ -337,12 +360,17 @@ def _load_platinai_5k(spec: DatasetSpec) -> Tuple[List[str], np.ndarray, List[st
         targets_arr = np.asarray(targets, dtype=np.float64)
     # Drop NaN targets (failed pIC50 conversion).
     keep = np.isfinite(targets_arr)
-    return [smiles[i] for i in range(len(smiles)) if keep[i]], targets_arr[keep], [target_names[i] for i in range(len(target_names)) if keep[i]]
+    return (
+        [smiles[i] for i in range(len(smiles)) if keep[i]],
+        targets_arr[keep],
+        [target_names[i] for i in range(len(target_names)) if keep[i]],
+    )
 
 
 def _load_platinai_4cell(spec: DatasetSpec) -> Tuple[List[str], np.ndarray, List[str]]:
     """Load PlatinAI 4cell — 4 pIC50 columns, return (smiles, (N, 4), per-col name)."""
     import csv
+
     smiles: List[str] = []
     targets: List[List[float]] = []
     with open(spec.path, "r", encoding="utf-8") as f:
@@ -382,6 +410,7 @@ def _load_platinai_4cell(spec: DatasetSpec) -> Tuple[List[str], np.ndarray, List
 def _load_metalcytotox(spec: DatasetSpec) -> Tuple[List[str], np.ndarray, List[str]]:
     """Load MetalCytoToxDB 5-metal — single binary activity target."""
     import csv
+
     smiles: List[str] = []
     targets: List[float] = []
     target_col = spec.target_cols[0]
@@ -412,6 +441,7 @@ def _load_metalcytotox(spec: DatasetSpec) -> Tuple[List[str], np.ndarray, List[s
 # ---------------------------------------------------------------------------
 # Correlation primitives
 # ---------------------------------------------------------------------------
+
 
 def _safe_pearsonr(x: np.ndarray, y: np.ndarray) -> Tuple[float, float, int]:
     """Pearson r + p-value with NaN-safe handling."""
@@ -445,7 +475,9 @@ def _safe_spearmanr(x: np.ndarray, y: np.ndarray) -> Tuple[float, float, int]:
     return float(rho), float(p), n
 
 
-def _safe_mutual_info(x: np.ndarray, y: np.ndarray, n_bins: int = 16) -> Tuple[float, int]:
+def _safe_mutual_info(
+    x: np.ndarray, y: np.ndarray, n_bins: int = 16
+) -> Tuple[float, int]:
     """Mutual information via equal-width binning.
 
     Uses ``sklearn.feature_selection.mutual_info_regression`` when
@@ -460,6 +492,7 @@ def _safe_mutual_info(x: np.ndarray, y: np.ndarray, n_bins: int = 16) -> Tuple[f
         return 0.0, n
     try:
         from sklearn.feature_selection import mutual_info_regression
+
         mi = mutual_info_regression(x.reshape(-1, 1), y, random_state=0, n_neighbors=3)
         mi_val = float(mi[0]) if np.ndim(mi) else float(mi)
     except Exception:
@@ -472,6 +505,7 @@ def _safe_mutual_info(x: np.ndarray, y: np.ndarray, n_bins: int = 16) -> Tuple[f
 # ---------------------------------------------------------------------------
 # Per-dataset analysis
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class FeatureStats:
@@ -514,7 +548,9 @@ def analyse_dataset(
     if targets.ndim == 1:
         target_iter: Sequence[Tuple[str, np.ndarray]] = [(target_names[0], targets)]
     else:
-        target_iter = [(target_names[j], targets[:, j]) for j in range(targets.shape[1])]
+        target_iter = [
+            (target_names[j], targets[:, j]) for j in range(targets.shape[1])
+        ]
 
     # ASTSR triples.
     for j, fname in enumerate(ASTSR_FEATURE_COLUMNS):
@@ -523,12 +559,19 @@ def analyse_dataset(
             r, p, n = _safe_pearsonr(col, tcol)
             rho, p_s, n_s = _safe_spearmanr(col, tcol)
             mi, n_mi = _safe_mutual_info(col, tcol)
-            out.append(TripleResult(
-                feature_name=fname, target_name=tname, dataset=dataset_name,
-                n_samples=n, pearson_r=r, pearson_p=p,
-                spearman_rho=rho, spearman_p=p_s,
-                mutual_info=mi,
-            ))
+            out.append(
+                TripleResult(
+                    feature_name=fname,
+                    target_name=tname,
+                    dataset=dataset_name,
+                    n_samples=n,
+                    pearson_r=r,
+                    pearson_p=p,
+                    spearman_rho=rho,
+                    spearman_p=p_s,
+                    mutual_info=mi,
+                )
+            )
 
     # D-MPNN triples.
     for j, fname in enumerate(dmpnn_feature_names):
@@ -537,12 +580,19 @@ def analyse_dataset(
             r, p, n = _safe_pearsonr(col, tcol)
             rho, p_s, n_s = _safe_spearmanr(col, tcol)
             mi, n_mi = _safe_mutual_info(col, tcol)
-            out.append(TripleResult(
-                feature_name=fname, target_name=tname, dataset=dataset_name,
-                n_samples=n, pearson_r=r, pearson_p=p,
-                spearman_rho=rho, spearman_p=p_s,
-                mutual_info=mi,
-            ))
+            out.append(
+                TripleResult(
+                    feature_name=fname,
+                    target_name=tname,
+                    dataset=dataset_name,
+                    n_samples=n,
+                    pearson_r=r,
+                    pearson_p=p,
+                    spearman_rho=rho,
+                    spearman_p=p_s,
+                    mutual_info=mi,
+                )
+            )
 
     return out
 
@@ -560,35 +610,46 @@ def _build_default_datasets() -> List[DatasetSpec]:
     data_root = Path(".data/molmetal")
     specs: List[DatasetSpec] = []
     if (root / "platinai_5k.csv").exists():
-        specs.append(DatasetSpec(
-            name="platinai_5k",
-            path=root / "platinai_5k.csv",
-            smiles_col="smiles",
-            target_cols=("ic50_nm",),
-            transform="pIC50_nM",
-            metal_filter=None,
-            max_rows=2000,
-        ))
+        specs.append(
+            DatasetSpec(
+                name="platinai_5k",
+                path=root / "platinai_5k.csv",
+                smiles_col="smiles",
+                target_cols=("ic50_nm",),
+                transform="pIC50_nM",
+                metal_filter=None,
+                max_rows=2000,
+            )
+        )
     if (root / "platinai_4cell.csv").exists():
-        specs.append(DatasetSpec(
-            name="platinai_4cell",
-            path=root / "platinai_4cell.csv",
-            smiles_col="smiles",
-            target_cols=("ic50_mcf7_nm", "ic50_a549_nm", "ic50_a2780_nm", "ic50_a2780cis_nm"),
-            transform="pIC50_nM",
-            metal_filter=None,
-            max_rows=2000,
-        ))
+        specs.append(
+            DatasetSpec(
+                name="platinai_4cell",
+                path=root / "platinai_4cell.csv",
+                smiles_col="smiles",
+                target_cols=(
+                    "ic50_mcf7_nm",
+                    "ic50_a549_nm",
+                    "ic50_a2780_nm",
+                    "ic50_a2780cis_nm",
+                ),
+                transform="pIC50_nM",
+                metal_filter=None,
+                max_rows=2000,
+            )
+        )
     if (data_root / "metalcytotox_5metal_multitask_v4.csv").exists():
-        specs.append(DatasetSpec(
-            name="metalcytotox_5metal",
-            path=data_root / "metalcytotox_5metal_multitask_v4.csv",
-            smiles_col="smiles",
-            target_cols=("activity",),
-            transform="binary",
-            metal_filter="Ru",
-            max_rows=2000,
-        ))
+        specs.append(
+            DatasetSpec(
+                name="metalcytotox_5metal",
+                path=data_root / "metalcytotox_5metal_multitask_v4.csv",
+                smiles_col="smiles",
+                target_cols=("activity",),
+                transform="binary",
+                metal_filter="Ru",
+                max_rows=2000,
+            )
+        )
     return specs
 
 
@@ -634,34 +695,49 @@ def run_full_analysis(datasets: Optional[List[DatasetSpec]] = None) -> Dict[str,
         stats: List[FeatureStats] = []
         for j, fname in enumerate(ASTSR_FEATURE_COLUMNS):
             col = astsr_feats[:, j]
-            stats.append(FeatureStats(
-                feature_name=fname, feature_index=j, n_samples=int(col.size),
-                mean=float(np.nanmean(col)) if col.size else 0.0,
-                std=float(np.nanstd(col)) if col.size else 0.0,
-                min=float(np.nanmin(col)) if col.size else 0.0,
-                max=float(np.nanmax(col)) if col.size else 0.0,
-            ))
+            stats.append(
+                FeatureStats(
+                    feature_name=fname,
+                    feature_index=j,
+                    n_samples=int(col.size),
+                    mean=float(np.nanmean(col)) if col.size else 0.0,
+                    std=float(np.nanstd(col)) if col.size else 0.0,
+                    min=float(np.nanmin(col)) if col.size else 0.0,
+                    max=float(np.nanmax(col)) if col.size else 0.0,
+                )
+            )
         for j, fname in enumerate(dmpnn_names):
             col = dmpnn_feats[:, j]
-            stats.append(FeatureStats(
-                feature_name=fname, feature_index=len(ASTSR_FEATURE_COLUMNS) + j,
-                n_samples=int(col.size),
-                mean=float(np.nanmean(col)) if col.size else 0.0,
-                std=float(np.nanstd(col)) if col.size else 0.0,
-                min=float(np.nanmin(col)) if col.size else 0.0,
-                max=float(np.nanmax(col)) if col.size else 0.0,
-            ))
+            stats.append(
+                FeatureStats(
+                    feature_name=fname,
+                    feature_index=len(ASTSR_FEATURE_COLUMNS) + j,
+                    n_samples=int(col.size),
+                    mean=float(np.nanmean(col)) if col.size else 0.0,
+                    std=float(np.nanstd(col)) if col.size else 0.0,
+                    min=float(np.nanmin(col)) if col.size else 0.0,
+                    max=float(np.nanmax(col)) if col.size else 0.0,
+                )
+            )
         feature_stats_per_dataset[spec.name] = stats
 
         # ---- correlations
         triples = analyse_dataset(
-            spec.name, smiles, targets, tnames, astsr_feats, dmpnn_feats, dmpnn_names,
+            spec.name,
+            smiles,
+            targets,
+            tnames,
+            astsr_feats,
+            dmpnn_feats,
+            dmpnn_names,
         )
         all_triples.extend(triples)
         per_dataset_summary[spec.name] = {
             "n_samples": int(targets.shape[0]),
             "n_targets": int(targets.shape[1] if targets.ndim > 1 else 1),
-            "target_names": list(tnames[: (targets.shape[1] if targets.ndim > 1 else 1)]),
+            "target_names": list(
+                tnames[: (targets.shape[1] if targets.ndim > 1 else 1)]
+            ),
             "astsr_feature_count": len(ASTSR_FEATURE_COLUMNS),
             "dmpnn_feature_count": len(dmpnn_names),
             "n_triples": len(triples),
@@ -683,7 +759,9 @@ def run_full_analysis(datasets: Optional[List[DatasetSpec]] = None) -> Dict[str,
     ]
 
     # ---- Top-10 by absolute Spearman ρ.
-    by_abs_spearman = sorted(all_triples, key=lambda t: abs(t.spearman_rho), reverse=True)
+    by_abs_spearman = sorted(
+        all_triples, key=lambda t: abs(t.spearman_rho), reverse=True
+    )
     top10_spearman = [
         {
             "feature": t.feature_name,
@@ -713,7 +791,9 @@ def run_full_analysis(datasets: Optional[List[DatasetSpec]] = None) -> Dict[str,
     matrix_n: Dict[str, Dict[str, int]] = {f: {} for f in feature_names}
     for (fname, tname), triples in by_pair.items():
         matrix_pearson[fname][tname] = float(np.mean([t.pearson_r for t in triples]))
-        matrix_spearman[fname][tname] = float(np.mean([t.spearman_rho for t in triples]))
+        matrix_spearman[fname][tname] = float(
+            np.mean([t.spearman_rho for t in triples])
+        )
         matrix_mi[fname][tname] = float(np.mean([t.mutual_info for t in triples]))
         matrix_n[fname][tname] = int(np.mean([t.n_samples for t in triples]))
 
@@ -723,8 +803,12 @@ def run_full_analysis(datasets: Optional[List[DatasetSpec]] = None) -> Dict[str,
     #   (b) max |Spearman ρ| across all triples < 0.05
     # If max |Pearson| > 0.1 OR max |Spearman| > 0.1, features carry
     # signal — Cause C8 is NOT the dominant root.
-    max_pearson = float(max(abs(t.pearson_r) for t in all_triples)) if all_triples else 0.0
-    max_spearman = float(max(abs(t.spearman_rho) for t in all_triples)) if all_triples else 0.0
+    max_pearson = (
+        float(max(abs(t.pearson_r) for t in all_triples)) if all_triples else 0.0
+    )
+    max_spearman = (
+        float(max(abs(t.spearman_rho) for t in all_triples)) if all_triples else 0.0
+    )
     max_mi = float(max(t.mutual_info for t in all_triples)) if all_triples else 0.0
     c8_trip = (max_pearson < 0.05) and (max_spearman < 0.05)
     c8_partial = (max_pearson < 0.10) or (max_spearman < 0.10)
@@ -751,9 +835,11 @@ def run_full_analysis(datasets: Optional[List[DatasetSpec]] = None) -> Dict[str,
             "c8_trip": c8_trip,
             "c8_partial": c8_partial,
             "verdict": (
-                "features_truly_weak" if c8_trip else
-                "features_partially_correlated" if c8_partial else
-                "features_carry_signal"
+                "features_truly_weak"
+                if c8_trip
+                else "features_partially_correlated"
+                if c8_partial
+                else "features_carry_signal"
             ),
         },
         "top_10_by_abs_pearson": top10_pearson,
@@ -767,9 +853,7 @@ def run_full_analysis(datasets: Optional[List[DatasetSpec]] = None) -> Dict[str,
             "n_samples": matrix_n,
         },
         "feature_stats": {
-            ds: [
-                asdict(s) for s in stats
-            ]
+            ds: [asdict(s) for s in stats]
             for ds, stats in feature_stats_per_dataset.items()
         },
     }
@@ -778,6 +862,7 @@ def run_full_analysis(datasets: Optional[List[DatasetSpec]] = None) -> Dict[str,
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
 
 def _to_jsonable(o: Any) -> Any:
     if isinstance(o, (np.floating, np.integer)):
@@ -800,11 +885,14 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         description="Wf-44 Phase 5 — feature-target correlation analysis.",
     )
     p.add_argument(
-        "--out-dir", type=Path, default=Path("molmetal/reports/wf44_r2_debug"),
+        "--out-dir",
+        type=Path,
+        default=Path("molmetal/reports/wf44_r2_debug"),
         help="Directory for correlation_analysis.json.",
     )
     p.add_argument(
-        "--quiet", action="store_true",
+        "--quiet",
+        action="store_true",
         help="Suppress progress prints.",
     )
     return p.parse_args(argv)

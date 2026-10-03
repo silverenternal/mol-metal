@@ -77,9 +77,7 @@ _REV_SPC = "[*:1]=[P:4]>>[N]=[N]=[N:1].[P:4]"
 # Diels-Alder: cyclohexene  ->  diene  +  dienophile.  Aromatic
 # perception does not kick in for unsubstituted cyclohexenes, so the
 # Kekulé form works; we keep the 6-ring ``[C]1[C][C][C][C][C]1``.
-_REV_DA = (
-    "[C:1]1=[C:2][C:3][C:4][C:5][C:6]1>>[C:1]=[C:2]-[C:3]=[C:4].[C:5]=[C:6]"
-)
+_REV_DA = "[C:1]1=[C:2][C:3][C:4][C:5][C:6]1>>[C:1]=[C:2]-[C:3]=[C:4].[C:5]=[C:6]"
 
 # Thiol-Ene: thioether adduct  ->  thiol  +  alkene.  This is a
 # structural rewrite, not a SMARTS match (RDKit has no canonical
@@ -88,11 +86,11 @@ _REV_DA = (
 # A registry of name -> reverse SMARTS / handler.  Tuples are
 # (handler_name, *args) where handler_name in {"smarts", "thiol_ene"}.
 _RETRO_RULES = [
-    ("CuAAC",      "smarts", _REV_CUAAC),
-    ("SPAAC",      "smarts", _REV_SPAAC),
-    ("SPC",        "smarts", _REV_SPC),
+    ("CuAAC", "smarts", _REV_CUAAC),
+    ("SPAAC", "smarts", _REV_SPAAC),
+    ("SPC", "smarts", _REV_SPC),
     ("DielsAlder", "smarts", _REV_DA),
-    ("ThiolEne",   "thiol_ene", None),
+    ("ThiolEne", "thiol_ene", None),
 ]
 
 
@@ -114,6 +112,7 @@ def _rdkit_mol(smiles: str):
     try:
         from rdkit import Chem  # type: ignore
         from rdkit import RDLogger  # type: ignore
+
         RDLogger.DisableLog("rdApp.*")
         return Chem.MolFromSmiles(s)
     except Exception:
@@ -127,6 +126,7 @@ def _canonical(smiles: str) -> Optional[str]:
         return None
     try:
         from rdkit import Chem  # type: ignore
+
         return Chem.MolToSmiles(mol)
     except Exception:
         return None
@@ -148,12 +148,14 @@ def _smarts_reversible(product_smiles: str, rev_smarts: str) -> bool:
     try:
         from rdkit.Chem import rdChemReactions  # type: ignore
         from rdkit import RDLogger  # type: ignore
+
         RDLogger.DisableLog("rdApp.*")
         # RDKit's ReactionFromSmarts sometimes prints a spurious
         # "(null): No such file or directory" to stderr when the
         # SMARTS uses atom maps — this is harmless.  Redirect stderr
         # to /dev/null for the duration of the call.
         import contextlib, os
+
         with contextlib.redirect_stderr(open(os.devnull, "w")):
             rxn = rdChemReactions.ReactionFromSmarts(rev_smarts)
         if rxn is None:
@@ -170,11 +172,11 @@ def _has_thioether(mol) -> bool:
     """True if ``mol`` contains at least one C-S single bond."""
     try:
         from rdkit import Chem  # type: ignore
+
         for bond in mol.GetBonds():
             if bond.GetBondType() != Chem.BondType.SINGLE:
                 continue
-            syms = {bond.GetBeginAtom().GetSymbol(),
-                    bond.GetEndAtom().GetSymbol()}
+            syms = {bond.GetBeginAtom().GetSymbol(), bond.GetEndAtom().GetSymbol()}
             if syms == {"C", "S"}:
                 return True
     except Exception:
@@ -231,6 +233,7 @@ _AIZYNTH_AVAILABLE = False
 _AIZYNTH_ERROR: Optional[str] = None
 try:
     import aizynthfinder  # noqa: F401
+
     _AIZYNTH_AVAILABLE = True
 except Exception as _e:  # pragma: no cover - optional dep
     _AIZYNTH_ERROR = repr(_e)
@@ -257,6 +260,7 @@ def retrosynthesize_aizynth(
         return False
     try:
         from aizynthfinder.interfaces.aizynthcli import AiZynthCli  # type: ignore
+
         cli = AiZynthCli(
             filename=smiles,
             output_name=None,
@@ -363,6 +367,7 @@ __all__ = [
 
 if __name__ == "__main__":  # quick smoke
     import sys
+
     # Silence RDKit's "No such file or directory" stderr noise.
     try:
         sys.stderr = open("/dev/null", "w")
@@ -371,10 +376,10 @@ if __name__ == "__main__":  # quick smoke
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     samples = [
         ("aspirin (drug-like, NOT click)", "CC(=O)Oc1ccccc1C(=O)O"),
-        ("benzyl azide (click reactant)",   "N(=[N+]=[N-])Cc1ccccc1"),
-        ("propyne (click reactant)",        "C#CC"),
-        ("benzene (random)",                "c1ccccc1"),
-        ("ethanol (random)",                "CCO"),
+        ("benzyl azide (click reactant)", "N(=[N+]=[N-])Cc1ccccc1"),
+        ("propyne (click reactant)", "C#CC"),
+        ("benzene (random)", "c1ccccc1"),
+        ("ethanol (random)", "CCO"),
     ]
     for label, smi in samples:
         ok, fired = retrosynthesize_with_report(smi)

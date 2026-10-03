@@ -1,4 +1,5 @@
 """Reaction availability, finite trees, and cached dead ends in real search."""
+
 import random
 
 from molmetal_lam.binding.types import PROTEASE_GENERIC
@@ -14,12 +15,21 @@ def term(smi):
 
 
 def search_for(rule, tile, **options):
-    defaults = dict(tile_library=[term(tile)], rules={rule: CLICK_REACTIONS[rule]},
-                    target_predicates=[LIPINSKI], binding_site=PROTEASE_GENERIC,
-                    reward=build_reward(), n_simulations=3, top_k=10,
-                    rng=random.Random(42), dirichlet_alpha=0, dirichlet_fraction=0,
-                    leaf_oracle_call_top_k_only=False, use_fragment_pool=False,
-                    prior_refit_every=0)
+    defaults = dict(
+        tile_library=[term(tile)],
+        rules={rule: CLICK_REACTIONS[rule]},
+        target_predicates=[LIPINSKI],
+        binding_site=PROTEASE_GENERIC,
+        reward=build_reward(),
+        n_simulations=3,
+        top_k=10,
+        rng=random.Random(42),
+        dirichlet_alpha=0,
+        dirichlet_fraction=0,
+        leaf_oracle_call_top_k_only=False,
+        use_fragment_pool=False,
+        prior_refit_every=0,
+    )
     defaults.update(options)
     return MCTSProofSearch(**defaults)
 
@@ -44,7 +54,9 @@ def test_real_diacid_reacts_twice_without_dirichlet_bypass():
 
 def test_depth_one_excludes_real_second_coupling():
     search = search_for("AmideCoupling", "CN")
-    actual = {p.canonical_smiles() for p in search.search(term("O=C(O)CC(=O)O"), max_depth=1)}
+    actual = {
+        p.canonical_smiles() for p in search.search(term("O=C(O)CC(=O)O"), max_depth=1)
+    }
     assert "CNC(=O)CC(=O)O" in actual
     assert "CNC(=O)CC(=O)NC" not in actual
     assert max(search.rollout_depth_hist) == 1
@@ -85,9 +97,15 @@ class SyntheticSearch(MCTSProofSearch):
 
 
 def synthetic(edges):
-    search = SyntheticSearch(tile_library=[], rules={}, target_predicates=[],
-                             binding_site=PROTEASE_GENERIC, n_simulations=3,
-                             rng=random.Random(42), prior_refit_every=0)
+    search = SyntheticSearch(
+        tile_library=[],
+        rules={},
+        target_predicates=[],
+        binding_site=PROTEASE_GENERIC,
+        n_simulations=3,
+        rng=random.Random(42),
+        prior_refit_every=0,
+    )
     search.edges = edges
     search.rollout_depth_hist = {}
     return search
@@ -116,7 +134,10 @@ def test_diamond_does_not_reparent_existing_branch_node():
     assert left.children[0].parent is left
     assert right.children[0].parent is right
     assert left.children[0] is not right.children[0]
-    assert left.children[0].state.canonical_smiles() == right.children[0].state.canonical_smiles()
+    assert (
+        left.children[0].state.canonical_smiles()
+        == right.children[0].state.canonical_smiles()
+    )
 
 
 def test_leaf_collection_is_idempotent_and_never_updates_tree_visits():

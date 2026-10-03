@@ -61,9 +61,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 TRAINER_PATH = (
     PROJECT_ROOT / "molmetal" / "scripts" / "train_dmpnn_multitask_wasserstein.py"
 )
-DEFAULT_CSV = (
-    PROJECT_ROOT / ".data" / "molmetal" / "MetalCytoToxDB.csv"
-)
+DEFAULT_CSV = PROJECT_ROOT / ".data" / "molmetal" / "MetalCytoToxDB.csv"
 DEFAULT_VENV = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
 SMOKE_OUT_DIR = Path("/tmp/wf335r2_smoke")
 SMOKE_OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -83,6 +81,7 @@ def _parse_args(argv: Optional[List[str]] = None):
         argv = ["--metals", "Ru", "--seeds", "0", "--epochs", "1"]
     sys.path.insert(0, str(PROJECT_ROOT))
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import parse_args
+
     return parse_args(argv)
 
 
@@ -157,20 +156,31 @@ def test_no_cudagraphs_runtime_error_on_smoke() -> None:
     cmd = [
         str(DEFAULT_VENV),
         "molmetal/scripts/train_dmpnn_multitask_wasserstein.py",
-        "--max-joint-rows", "200",
-        "--device", "cpu",
+        "--max-joint-rows",
+        "200",
+        "--device",
+        "cpu",
         "--torch-compile",
         "--no-bf16",
         "--tf32",
-        "--w2-gradient-mode", "sort",
-        "--num-workers", "4",
-        "--dmpnn-backend", "pyg",
-        "--data-csv", str(DEFAULT_CSV),
-        "--metals", "Ru",
-        "--seeds", "0",
-        "--epochs", "1",
-        "--hidden", "32",
-        "--depth", "2",
+        "--w2-gradient-mode",
+        "sort",
+        "--num-workers",
+        "4",
+        "--dmpnn-backend",
+        "pyg",
+        "--data-csv",
+        str(DEFAULT_CSV),
+        "--metals",
+        "Ru",
+        "--seeds",
+        "0",
+        "--epochs",
+        "1",
+        "--hidden",
+        "32",
+        "--depth",
+        "2",
     ]
     t0 = time.time()
     proc = subprocess.run(
@@ -185,19 +195,17 @@ def test_no_cudagraphs_runtime_error_on_smoke() -> None:
     out = (proc.stdout or "") + (proc.stderr or "")
 
     # R1+R3 fix active
-    assert "torch_compile_mode=max-autotune-no-cudagraphs" in out, (
-        f"banner missing R1+R3 post-fix mode marker; tail:\n{out[-400:]}"
-    )
+    assert (
+        "torch_compile_mode=max-autotune-no-cudagraphs" in out
+    ), f"banner missing R1+R3 post-fix mode marker; tail:\n{out[-400:]}"
     # No CUDAGraphs RuntimeError substring
-    assert "CUDAGraphs" not in out or "overwritten" not in out, (
-        f"CUDAGraphs RuntimeError substring present in output:\n{out[-600:]}"
-    )
+    assert (
+        "CUDAGraphs" not in out or "overwritten" not in out
+    ), f"CUDAGraphs RuntimeError substring present in output:\n{out[-600:]}"
     # Smoke completed (1 epoch on Ru seed=0 with hidden=32, depth=2
     # fits in < 180s on a 24-core host per Wf-334-U1 reference)
     assert wall_s < 180, f"smoke wall={wall_s:.1f}s exceeds 180s budget"
-    assert proc.returncode == 0, (
-        f"smoke exited {proc.returncode}; tail:\n{out[-400:]}"
-    )
+    assert proc.returncode == 0, f"smoke exited {proc.returncode}; tail:\n{out[-400:]}"
 
 
 # ---------------------------------------------------------------------------
@@ -220,7 +228,7 @@ def test_torch_compile_mode_default_is_max_autotune_no_cudagraphs() -> None:
     # Line 2028: ``default="max-autotune-no-cudagraphs",``
     # We look for the post-fix default line.
     pattern_cli = re.compile(
-        r'choices=\(\s*'
+        r"choices=\(\s*"
         r'"default",\s*"reduce-overhead",\s*"max-autotune",\s*'
         r'"max-autotune-no-cudagraphs",?\s*\),\s*'
         r'\s*default="max-autotune-no-cudagraphs"',
@@ -268,8 +276,14 @@ def test_backward_compat_with_explicit_reduce_overhead() -> None:
     """
     args = _parse_args(
         [
-            "--metals", "Ru", "--seeds", "0", "--epochs", "1",
-            "--torch-compile-mode", "reduce-overhead",
+            "--metals",
+            "Ru",
+            "--seeds",
+            "0",
+            "--epochs",
+            "1",
+            "--torch-compile-mode",
+            "reduce-overhead",
             "--cudagraphs",  # opt back into CUDA Graphs (Wf-335-R3)
         ]
     )

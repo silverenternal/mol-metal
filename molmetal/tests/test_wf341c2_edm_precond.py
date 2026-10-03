@@ -27,6 +27,7 @@ Honest framing (party-twenty-spirit §3.5):
     (Karras 2022 benchmarks on ImageNet U-Net, not Mol-Metal EGNN).
   - Default OFF for safety.
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -46,6 +47,7 @@ PYTHON = sys.executable  # use the current Python (pytest venv)
 # ---------------------------------------------------------------------------
 # Test 1: EDM preconditioning correctness
 # ---------------------------------------------------------------------------
+
 
 def test_edm_preconditioning_correctness():
     """Verify ``edm_precondition_factors`` matches Karras 2022 closed-form.
@@ -69,12 +71,12 @@ def test_edm_preconditioning_correctness():
     cfg = EDMPreconditionerConfig(sigma_data=1.0)
     sigma_data = cfg.sigma_data
     # 100-point log-spaced σ grid.
-    sigma = torch.logspace(-3, 1, steps = 100)  # 1e-3 → 10
+    sigma = torch.logspace(-3, 1, steps=100)  # 1e-3 → 10
     c_skip, c_out, c_in, c_noise = edm_precondition_factors(sigma, cfg)
 
     # Reference (closed-form) values.
-    s2 = sigma ** 2
-    sd2 = sigma_data ** 2
+    s2 = sigma**2
+    sd2 = sigma_data**2
     denom = s2 + sd2
     expected_c_skip = sd2 / denom
     expected_c_out = sigma * sigma_data / denom.sqrt()
@@ -101,9 +103,7 @@ def test_edm_preconditioning_correctness():
 
     # Loss weight: λ(σ) = (c_skip² + σ_data²) / (c_out² · σ²).
     lw = edm_loss_weight(sigma, cfg)
-    expected_lw = (c_skip ** 2 + sigma_data ** 2) / (
-        c_out ** 2 * sigma ** 2 + 1e-12
-    )
+    expected_lw = (c_skip**2 + sigma_data**2) / (c_out**2 * sigma**2 + 1e-12)
     assert torch.allclose(lw, expected_lw, atol=1e-6), (
         f"loss weight mismatch: max abs err = "
         f"{(lw - expected_lw).abs().max().item():.2e}"
@@ -115,6 +115,7 @@ def test_edm_preconditioning_correctness():
 # ---------------------------------------------------------------------------
 # Test 2: Sigma reparam correctness
 # ---------------------------------------------------------------------------
+
 
 def test_sigma_reparam():
     """Verify Karras 2022 sigma reparam: σ = (1-t)/t is the bridge.
@@ -138,25 +139,25 @@ def test_sigma_reparam():
     sigma = sigma_from_cfm_t(t, cfg)
     # t=1 → σ → 0, but clamped to σ_min (default 0.002).  So we check
     # σ is at most σ_min + tiny epsilon.
-    assert sigma[0].item() <= cfg.sigma_min + 1e-6, (
-        f"t=1 should give σ ≤ σ_min, got {sigma[0].item()}"
-    )
+    assert (
+        sigma[0].item() <= cfg.sigma_min + 1e-6
+    ), f"t=1 should give σ ≤ σ_min, got {sigma[0].item()}"
     # t=0.5 → σ=1.
-    assert abs(sigma[1].item() - 1.0) < 1e-3, (
-        f"t=0.5 should give σ=1, got {sigma[1].item()}"
-    )
+    assert (
+        abs(sigma[1].item() - 1.0) < 1e-3
+    ), f"t=0.5 should give σ=1, got {sigma[1].item()}"
     # t=0.25 → σ=3.
-    assert abs(sigma[2].item() - 3.0) < 1e-3, (
-        f"t=0.25 should give σ=3, got {sigma[2].item()}"
-    )
+    assert (
+        abs(sigma[2].item() - 3.0) < 1e-3
+    ), f"t=0.25 should give σ=3, got {sigma[2].item()}"
     # t=0.1 → σ=9 (within σ_max=80).
-    assert abs(sigma[3].item() - 9.0) < 1e-3, (
-        f"t=0.1 should give σ=9, got {sigma[3].item()}"
-    )
+    assert (
+        abs(sigma[3].item() - 9.0) < 1e-3
+    ), f"t=0.1 should give σ=9, got {sigma[3].item()}"
     # t=0.01 → σ=99 → clamped to σ_max=80.
-    assert sigma[4].item() >= cfg.sigma_max - 1e-6, (
-        f"t=0.01 should give σ ≥ σ_max, got {sigma[4].item()}"
-    )
+    assert (
+        sigma[4].item() >= cfg.sigma_max - 1e-6
+    ), f"t=0.01 should give σ ≥ σ_max, got {sigma[4].item()}"
 
     # Roundtrip on a 4096-point log-normal sample (sensitive test).
     torch.manual_seed(42)
@@ -171,9 +172,7 @@ def test_sigma_reparam():
     )
     if in_bounds.any():
         err = (t_sample[in_bounds] - t_recovered[in_bounds]).abs().max().item()
-        assert err < 1e-5, (
-            f"t ↔ σ roundtrip max abs err = {err:.2e} (expected < 1e-5)"
-        )
+        assert err < 1e-5, f"t ↔ σ roundtrip max abs err = {err:.2e} (expected < 1e-5)"
 
     # σ median from log-normal sampling should be > 0.5 (more mass at
     # small t).  Empirically, with P_mean=-1.2, median(t) ≈ 0.30 ⇒
@@ -188,6 +187,7 @@ def test_sigma_reparam():
 # Test 3: Integration with trainer CLI (standalone script)
 # ---------------------------------------------------------------------------
 
+
 def test_integration_with_trainer_cli():
     """Invoke the standalone ``wf341c2_edm_precond.py`` CLI; verify exit 0.
 
@@ -200,9 +200,11 @@ def test_integration_with_trainer_cli():
     env = {"PYTHONPATH": str(REPO_ROOT)}
     # Default args: both flags OFF.
     result = subprocess.run(
-        [PYTHON, str(SCRIPT), "--batch-size", "8", "--n-atoms", "4",
-         "--n-steps", "3"],
-        env=env, capture_output=True, text=True, timeout=60,
+        [PYTHON, str(SCRIPT), "--batch-size", "8", "--n-atoms", "4", "--n-steps", "3"],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     assert result.returncode == 0, (
         f"default-flag run failed: stdout={result.stdout!r} "
@@ -212,9 +214,22 @@ def test_integration_with_trainer_cli():
     assert "sigma_reparam = False" in result.stdout
     # Both flags ON.
     result = subprocess.run(
-        [PYTHON, str(SCRIPT), "--edm-precond", "--sigma-reparam",
-         "--batch-size", "8", "--n-atoms", "4", "--n-steps", "3"],
-        env=env, capture_output=True, text=True, timeout=60,
+        [
+            PYTHON,
+            str(SCRIPT),
+            "--edm-precond",
+            "--sigma-reparam",
+            "--batch-size",
+            "8",
+            "--n-atoms",
+            "4",
+            "--n-steps",
+            "3",
+        ],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     assert result.returncode == 0, (
         f"--edm-precond --sigma-reparam run failed: stdout={result.stdout!r} "
@@ -225,19 +240,31 @@ def test_integration_with_trainer_cli():
     # Each flag individually.
     for flag in ("--edm-precond", "--sigma-reparam"):
         result = subprocess.run(
-            [PYTHON, str(SCRIPT), flag, "--batch-size", "4",
-             "--n-atoms", "4", "--n-steps", "2"],
-            env=env, capture_output=True, text=True, timeout=60,
+            [
+                PYTHON,
+                str(SCRIPT),
+                flag,
+                "--batch-size",
+                "4",
+                "--n-atoms",
+                "4",
+                "--n-steps",
+                "2",
+            ],
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=60,
         )
         assert result.returncode == 0, (
-            f"{flag} run failed: stdout={result.stdout!r} "
-            f"stderr={result.stderr!r}"
+            f"{flag} run failed: stdout={result.stdout!r} " f"stderr={result.stderr!r}"
         )
 
 
 # ---------------------------------------------------------------------------
 # Test 4: CPU bench — loss-weighting overhead vs no-EDM baseline
 # ---------------------------------------------------------------------------
+
 
 def test_cpu_bench():
     """Measure CPU wall-time of EDM preconditioning vs plain MSE.

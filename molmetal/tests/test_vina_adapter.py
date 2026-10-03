@@ -8,6 +8,7 @@ Three tiers:
 
 Tests are skipped if vina or meeko are not installed.
 """
+
 from __future__ import annotations
 
 import os
@@ -59,9 +60,23 @@ def _real_pocket() -> Pocket:
     coords_arr = np.asarray(coords, dtype=np.float32)
     atomic_nums = np.asarray(
         [
-            {"C": 6, "N": 7, "O": 8, "S": 16, "P": 15, "H": 1,
-             "Fe": 26, "Zn": 30, "Mg": 12, "Mn": 25, "Ca": 20,
-             "Cl": 17, "Br": 35, "I": 53, "F": 9}.get(s, 6)
+            {
+                "C": 6,
+                "N": 7,
+                "O": 8,
+                "S": 16,
+                "P": 15,
+                "H": 1,
+                "Fe": 26,
+                "Zn": 30,
+                "Mg": 12,
+                "Mn": 25,
+                "Ca": 20,
+                "Cl": 17,
+                "Br": 35,
+                "I": 53,
+                "F": 9,
+            }.get(s, 6)
             for s in types
         ],
         dtype=np.int64,
@@ -131,7 +146,8 @@ class TestImports:
     not (_have_vina() and _have_meeko()), reason="vina/meeko not installed"
 )
 @pytest.mark.skipif(
-    not Path(EXAMPLE_PDB).exists(), reason=f"example PDB not at {EXAMPLE_PDB}",
+    not Path(EXAMPLE_PDB).exists(),
+    reason=f"example PDB not at {EXAMPLE_PDB}",
 )
 class TestDockingPipeline:
     def test_setup_is_noop(self):
@@ -151,6 +167,7 @@ class TestDockingPipeline:
             smiles="CC(=O)Oc1ccccc1C(=O)O",  # aspirin
         )
         from molmetal.ports import DockingConfig
+
         cfg = DockingConfig(n_poses=2, exhaustiveness=4)
         complexes = adapter.dock(dummy, pocket, cfg)
         assert len(complexes) >= 1, "Docking should return ≥1 Complex"
@@ -191,6 +208,7 @@ class TestDockingPipeline:
 class TestRobustness:
     def test_bad_smiles_raises(self):
         from molmetal.ports import DockingConfig
+
         adapter = VinaDockingAdapter()
         pocket = _synthetic_pocket()
         bad = Molecule(
@@ -206,6 +224,7 @@ class TestRobustness:
 
     def test_empty_smiles_raises(self):
         from molmetal.ports import DockingConfig
+
         adapter = VinaDockingAdapter()
         pocket = _synthetic_pocket()
         empty = Molecule(

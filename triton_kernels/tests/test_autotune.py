@@ -22,4 +22,7 @@ def test_autotune_fn_is_callable() -> None:
 def test_triton_config_is_module_level_dispatch_gate() -> None:
     """The package exposes one process-wide TritonConfig gate."""
     assert isinstance(tk.triton_config, TritonConfig)
-    assert tk.triton_config is __import__("triton_kernels.config", fromlist=["triton_config"]).triton_config
+    assert (
+        tk.triton_config
+        is __import__("triton_kernels.config", fromlist=["triton_config"]).triton_config
+    )

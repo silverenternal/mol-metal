@@ -110,7 +110,8 @@ class MetalCytoToxDataset(BaseMoleculeDataset):
 
         # 2. drop unwanted string-y columns -------------------------------------
         auto_drop = [
-            c for c in df.columns
+            c
+            for c in df.columns
             if df[c].dtype == "object"
             and any(token in c.lower() for token in ("smile", "mol", "name", "id"))
         ]
@@ -138,8 +139,9 @@ class MetalCytoToxDataset(BaseMoleculeDataset):
 
         # 5. numeric -> float32 stack ------------------------------------------
         numeric_features = (
-            df[numeric_cols].to_numpy(dtype=np.float32) if numeric_cols else
-            np.zeros((len(df), 0), dtype=np.float32)
+            df[numeric_cols].to_numpy(dtype=np.float32)
+            if numeric_cols
+            else np.zeros((len(df), 0), dtype=np.float32)
         )
 
         # 6. categorical -> one-hot --------------------------------------------

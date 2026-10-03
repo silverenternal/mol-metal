@@ -33,6 +33,7 @@ the :data:`EXPECTED_CATEGORIES` set in lock-step with
 ``run_all_r18_tests.R18_CATEGORY_STEMS``.  Bumping the lower bounds
 must come with an updated spec.
 """
+
 from __future__ import annotations
 
 import json
@@ -55,13 +56,7 @@ if str(_REPO_ROOT) not in sys.path:
 # ---------------------------------------------------------------------------
 # Constants — the spec floors + the canonical category roster.
 # ---------------------------------------------------------------------------
-JSON_PATH = (
-    _REPO_ROOT
-    / "molmetal"
-    / "reports"
-    / "wf_pytest_runner"
-    / "results.json"
-)
+JSON_PATH = _REPO_ROOT / "molmetal" / "reports" / "wf_pytest_runner" / "results.json"
 
 # The brief states "~30 test files" and "~900 tests" — pin to
 # slightly-loose lower bounds so a future expansion is not a regression.
@@ -72,13 +67,15 @@ MIN_TESTS = 800
 # also emits an ``r18_orchestrator`` bucket for ``test_r18_*.py``
 # files; that is a runner-internal bucket and is *not* part of the
 # brief's category list.
-EXPECTED_CATEGORIES: frozenset[str] = frozenset({
-    "math_skills",
-    "integration",
-    "adapter",
-    "pitfall",
-    "ml_methods",
-})
+EXPECTED_CATEGORIES: frozenset[str] = frozenset(
+    {
+        "math_skills",
+        "integration",
+        "adapter",
+        "pitfall",
+        "ml_methods",
+    }
+)
 
 # Tolerated ceiling on collection errors.  Some R18-era test files
 # are intentionally torch-gated (and so ERROR during collection on a
@@ -196,15 +193,12 @@ def test_r18_categories_present(report: dict) -> None:
     cats = report.get("per_category_count", {})
     missing = sorted(c for c in EXPECTED_CATEGORIES if cats.get(c, 0) <= 0)
     assert not missing, (
-        f"categories present but zero-test: {missing}.  Per-category "
-        f"counts: {cats}"
+        f"categories present but zero-test: {missing}.  Per-category " f"counts: {cats}"
     )
 
 
 @pytest.mark.parametrize("category", sorted(EXPECTED_CATEGORIES))
-def test_each_expected_category_has_minimum_tests(
-    report: dict, category: str
-) -> None:
+def test_each_expected_category_has_minimum_tests(report: dict, category: str) -> None:
     """Each spec-aligned category must contribute ≥ 5 tests.
 
     Parametrised so a regression on a single category fails with a
@@ -310,12 +304,7 @@ def test_runner_script_exists() -> None:
     A missing runner is a regression — without it the JSON would be
     stale and the meta-tests would not be exercising anything.
     """
-    script = (
-        _REPO_ROOT
-        / "molmetal"
-        / "scripts"
-        / "run_all_r18_tests.py"
-    )
+    script = _REPO_ROOT / "molmetal" / "scripts" / "run_all_r18_tests.py"
     assert script.is_file(), (
         f"runner script missing: {script.relative_to(_REPO_ROOT)}.  "
         f"Restore it or update the path in this test."
@@ -329,13 +318,14 @@ def test_runner_script_has_categorisation_table() -> None:
     fail loudly if the table is renamed or removed.
     """
     from molmetal.scripts import run_all_r18_tests as runner
+
     assert hasattr(runner, "R18_CATEGORY_STEMS"), (
         "runner module lost R18_CATEGORY_STEMS — meta-tests cannot "
         "verify category rollups."
     )
-    assert isinstance(runner.R18_CATEGORY_STEMS, list), (
-        "R18_CATEGORY_STEMS must be a list (table of tuples)."
-    )
+    assert isinstance(
+        runner.R18_CATEGORY_STEMS, list
+    ), "R18_CATEGORY_STEMS must be a list (table of tuples)."
     assert len(runner.R18_CATEGORY_STEMS) >= 30, (
         f"R18_CATEGORY_STEMS has only {len(runner.R18_CATEGORY_STEMS)} "
         f"entries; the R18 manifest expects 30+ substrings."
@@ -354,18 +344,18 @@ def test_runner_classify_stem_recognises_each_category() -> None:
     count test.
     """
     from molmetal.scripts import run_all_r18_tests as runner
+
     samples = {
-        "math_skills":   "bass_existence",
-        "integration":   "hilbert_astsr_integration",
-        "adapter":       "vina_adapter",
-        "pitfall":       "pitfall_guards",
-        "ml_methods":    "dmpnn_baseline",
+        "math_skills": "bass_existence",
+        "integration": "hilbert_astsr_integration",
+        "adapter": "vina_adapter",
+        "pitfall": "pitfall_guards",
+        "ml_methods": "dmpnn_baseline",
     }
     for expected_cat, stem in samples.items():
         cat, _desc = runner.classify_stem(stem)
         assert cat == expected_cat, (
-            f"classify_stem({stem!r}) returned {cat!r}, expected "
-            f"{expected_cat!r}."
+            f"classify_stem({stem!r}) returned {cat!r}, expected " f"{expected_cat!r}."
         )
 
 
@@ -380,10 +370,10 @@ def test_at_least_15_inventory_tests() -> None:
     silently.
     """
     import inspect
+
     tests = [
-        name for name, obj in inspect.getmembers(
-            sys.modules[__name__], inspect.isfunction
-        )
+        name
+        for name, obj in inspect.getmembers(sys.modules[__name__], inspect.isfunction)
         if name.startswith("test_")
     ]
     assert len(tests) >= 15, (
@@ -402,13 +392,11 @@ def test_total_tests_matches_per_category_sum(report: dict) -> None:
     (once for the per-file view, once for the per-category view) and
     the two diverged — a clear bug.
     """
-    cats_sum = sum(
-        int(v) for v in report.get("per_category_count", {}).values()
-    )
+    cats_sum = sum(int(v) for v in report.get("per_category_count", {}).values())
     n_tests = int(report.get("n_tests", 0))
-    assert cats_sum == n_tests, (
-        f"per_category_count sums to {cats_sum} but n_tests={n_tests}."
-    )
+    assert (
+        cats_sum == n_tests
+    ), f"per_category_count sums to {cats_sum} but n_tests={n_tests}."
 
 
 def test_total_files_matches_per_category_files(report: dict) -> None:
@@ -417,11 +405,8 @@ def test_total_files_matches_per_category_files(report: dict) -> None:
     Same idea as :func:`test_total_tests_matches_per_category_sum`
     but for the per-file dimension; both views must reconcile.
     """
-    cat_files_sum = sum(
-        int(v) for v in report.get("per_category_files", {}).values()
-    )
+    cat_files_sum = sum(int(v) for v in report.get("per_category_files", {}).values())
     n_files = int(report.get("n_test_files", 0))
     assert cat_files_sum == n_files, (
-        f"per_category_files sums to {cat_files_sum} but "
-        f"n_test_files={n_files}."
+        f"per_category_files sums to {cat_files_sum} but " f"n_test_files={n_files}."
     )

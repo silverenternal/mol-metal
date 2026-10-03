@@ -16,6 +16,7 @@ Honest framing
   ``sb_bass_martingale``, and ``monge_ampere_regularity`` are
   research-only and are NOT wired into ``flow_matching_lipman``.
 """
+
 from __future__ import annotations
 
 import inspect

@@ -117,7 +117,8 @@ DEFAULT_N_RUNS: int = 10
 # Helpers
 # ---------------------------------------------------------------------------
 def _rotation_block_from_trajectory(
-    x0: Tensor, x1: Tensor,
+    x0: Tensor,
+    x1: Tensor,
 ) -> Tensor:
     """Build a synthetic SE(3) trajectory's rotation block for auditing.
 
@@ -141,22 +142,22 @@ def _rotation_block_from_trajectory(
         )
     b, n = x0.shape[:2]
     # Centre x0, x1 on the centroid (rigid-body identification).
-    c0 = x0.mean(dim=1, keepdim=True)            # (B, 1, 3)
-    c1 = x1.mean(dim=1, keepdim=True)            # (B, 1, 3)
-    p0 = (x0 - c0)                               # (B, N, 3)
-    p1 = (x1 - c1)                               # (B, N, 3)
+    c0 = x0.mean(dim=1, keepdim=True)  # (B, 1, 3)
+    c1 = x1.mean(dim=1, keepdim=True)  # (B, 1, 3)
+    p0 = x0 - c0  # (B, N, 3)
+    p1 = x1 - c1  # (B, N, 3)
     # Kabsch rotation: closest rotation R mapping p0 -> p1.
     # H = P0.T @ P1 has shape (B, 3, 3) — sum of outer products of
     # centred positions.  SVD: H = U S V^T.  The rotation is
     # R = V @ diag(1, 1, sign(det(V U^T))) @ U^T.  This is the
     # standard closed-form for the orthogonal Procrustes problem.
-    h = p0.transpose(-1, -2) @ p1                # (B, 3, 3)
-    u, _s, v = torch.linalg.svd(h)               # (B, 3, 3) each
+    h = p0.transpose(-1, -2) @ p1  # (B, 3, 3)
+    u, _s, v = torch.linalg.svd(h)  # (B, 3, 3) each
     # Correction sign for proper rotation (det = +1).
-    d = torch.det(v @ u.transpose(-1, -2))       # (B,)
+    d = torch.det(v @ u.transpose(-1, -2))  # (B,)
     diag = torch.eye(3, dtype=d.dtype, device=d.device).expand(b, 3, 3).clone()
     diag[..., 2, 2] = d
-    R = v @ diag @ u.transpose(-1, -2)           # (B, 3, 3)
+    R = v @ diag @ u.transpose(-1, -2)  # (B, 3, 3)
     return R
 
 
@@ -260,8 +261,7 @@ class SE3LipmanSolver:
             raise ValueError(f"n_steps must be >= 1; got {n_steps!r}")
         if method not in {"euler", "midpoint"}:
             raise ValueError(
-                f"method must be one of {{'euler', 'midpoint'}}, "
-                f"got {method!r}"
+                f"method must be one of {{'euler', 'midpoint'}}, " f"got {method!r}"
             )
         if not math.isfinite(float(ortho_tol)) or float(ortho_tol) <= 0:
             raise ValueError(
@@ -278,6 +278,7 @@ class SE3LipmanSolver:
                 from molmetal.adapters.flow_matching_lipman._reference.solver import (  # noqa: E501
                     ODESolver,
                 )
+
                 base_lipman_solver = ODESolver(method=method, n_steps=int(n_steps))
             except Exception:
                 # Defensive — if the shim import fails (e.g. upstream
@@ -294,6 +295,7 @@ class SE3LipmanSolver:
             class _ZeroEGNN(nn.Module):
                 def forward(self, x, t, pocket=None):
                     return torch.zeros_like(x)
+
             se3_adapter = SE3SBVelocityField(base_velocity_net=_ZeroEGNN())
         if not isinstance(se3_adapter, SE3SBVelocityField):
             raise TypeError(
@@ -348,18 +350,12 @@ class SE3LipmanSolver:
             If ``t_span[0] >= t_span[1]`` or ``x0.dim() != 3``.
         """
         if x0.dim() != 3 or x0.shape[-1] != 3:
-            raise ValueError(
-                f"x0 must have shape (B, N, 3); got {tuple(x0.shape)}"
-            )
+            raise ValueError(f"x0 must have shape (B, N, 3); got {tuple(x0.shape)}")
         if len(t_span) != 2:
-            raise ValueError(
-                f"t_span must be a 2-tuple; got {len(t_span)}-tuple"
-            )
+            raise ValueError(f"t_span must be a 2-tuple; got {len(t_span)}-tuple")
         t0, t1 = float(t_span[0]), float(t_span[1])
         if not (t0 < t1):
-            raise ValueError(
-                f"require t_span[0] < t_span[1]; got {t_span}"
-            )
+            raise ValueError(f"require t_span[0] < t_span[1]; got {t_span}")
 
         # Build a closure that matches the SE3SBVelocityField
         # contract: ``forward(x_T, t, pocket=None) -> (B, 6)``.  We
@@ -373,7 +369,7 @@ class SE3LipmanSolver:
 
         def _se3_velocity(x_t: Tensor, t_scalar: Tensor) -> Tensor:
             t_b = _as_0d_tensor(t_scalar, dtype=dtype, device=device)
-            t_b = t_b.expand(b)            # (B,)
+            t_b = t_b.expand(b)  # (B,)
             try:
                 v_euclid = velocity_fn(x_t, t_b)
             except TypeError:
@@ -425,8 +421,8 @@ class SE3LipmanSolver:
 
             def forward(
                 self,
-                x: Tensor,                # (B, N, 3)
-                t: Tensor,                # (B,) or scalar
+                x: Tensor,  # (B, N, 3)
+                t: Tensor,  # (B,) or scalar
                 pocket: Optional[Tensor] = None,
             ) -> Tensor:
                 # Compute the per-atom Euclidean velocity via the
@@ -610,7 +606,10 @@ def compare_se3_lipman_vs_base(
         start = time.perf_counter()
         try:
             se3_final = se3_solver.solve(
-                velocity_fn=_v_fn, x0=z0, t_span=(0.0, 1.0), pocket=None,
+                velocity_fn=_v_fn,
+                x0=z0,
+                t_span=(0.0, 1.0),
+                pocket=None,
             )
         except Exception:
             se3_times.append(float("inf"))
@@ -632,7 +631,9 @@ def compare_se3_lipman_vs_base(
                 getattr(lipman_solver, "sample", None)
             ):
                 base_final = lipman_solver.sample(
-                    z0, n_steps=n_steps_base, method=method_base,
+                    z0,
+                    n_steps=n_steps_base,
+                    method=method_base,
                 )
             elif callable(lipman_solver):
                 base_final = lipman_solver(z0, n_steps=n_steps_base, method=method_base)
@@ -653,13 +654,13 @@ def compare_se3_lipman_vs_base(
     # ---- Accuracy diff (SE3 vs base, when both finite) ----
     accuracy_diff_norm = float("nan")
     if (
-        se3_final is not None and base_final is not None
+        se3_final is not None
+        and base_final is not None
         and base_final.shape == se3_final.shape
-        and torch.isfinite(se3_final).all() and torch.isfinite(base_final).all()
+        and torch.isfinite(se3_final).all()
+        and torch.isfinite(base_final).all()
     ):
-        accuracy_diff_norm = float(
-            (se3_final - base_final).norm().item()
-        )
+        accuracy_diff_norm = float((se3_final - base_final).norm().item())
 
     # ---- Shape preservation audit ----
     shape_preserved = (
@@ -747,9 +748,7 @@ class SE3CFMComposite:
         method: str = "midpoint",
     ) -> None:
         if not callable(base_cfm):
-            raise TypeError(
-                f"base_cfm must be callable; got {type(base_cfm).__name__}"
-            )
+            raise TypeError(f"base_cfm must be callable; got {type(base_cfm).__name__}")
         if not isinstance(se3_solver, SE3LipmanSolver):
             raise TypeError(
                 f"se3_solver must be a SE3LipmanSolver instance; "
@@ -759,8 +758,7 @@ class SE3CFMComposite:
             raise ValueError(f"n_steps must be >= 1; got {n_steps!r}")
         if method not in {"euler", "midpoint"}:
             raise ValueError(
-                f"method must be one of {{'euler', 'midpoint'}}, "
-                f"got {method!r}"
+                f"method must be one of {{'euler', 'midpoint'}}, " f"got {method!r}"
             )
         self.base_cfm = base_cfm
         self.se3_solver = se3_solver
@@ -808,9 +806,7 @@ class SE3CFMComposite:
         if float(t) <= 0:
             raise ValueError(f"t must be > 0; got {t!r}")
         if z0.dim() != 3 or z0.shape[-1] != 3:
-            raise ValueError(
-                f"z0 must have shape (B, N, 3); got {tuple(z0.shape)}"
-            )
+            raise ValueError(f"z0 must have shape (B, N, 3); got {tuple(z0.shape)}")
 
         # Build the velocity_fn closure.  We probe whether
         # ``base_cfm`` accepts a ``pocket`` kwarg — some legacy

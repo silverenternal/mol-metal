@@ -32,6 +32,7 @@ Honest framing (party-twenty-spirit §3.5):
 * USER_OK gate behavior is the SAFEST test surface (exit 64 on
   refusal = kill_then_adapt safety contract preserved bit-for-bit)
 """
+
 from __future__ import annotations
 
 import json
@@ -66,6 +67,7 @@ def wrapper_executable() -> bool:
     if not WRAPPER.exists():
         return False
     import os
+
     return os.access(WRAPPER, os.X_OK)
 
 
@@ -151,12 +153,12 @@ def test_user_ok_gate_REFUSED_default(wrapper_exists):
         f"USER_OK gate default: expected rc=64, got rc={result.returncode}\n"
         f"stdout: {result.stdout}\nstderr: {result.stderr}"
     )
-    assert "USER_OK gate refused" in result.stderr, (
-        f"USER_OK refusal message not in stderr:\n{result.stderr}"
-    )
-    assert "USER_OK=1" in result.stderr, (
-        f"USER_OK=1 hint not in stderr:\n{result.stderr}"
-    )
+    assert (
+        "USER_OK gate refused" in result.stderr
+    ), f"USER_OK refusal message not in stderr:\n{result.stderr}"
+    assert (
+        "USER_OK=1" in result.stderr
+    ), f"USER_OK=1 hint not in stderr:\n{result.stderr}"
 
 
 # -----------------------------------------------------------------------------
@@ -228,12 +230,13 @@ def test_user_ok_gate_PASSED_dry_run(wrapper_exists):
     # Verify 3-run CONTROLD PAIR enumeration in stdout
     assert "3 CONTROLD PAIR runs" in result.stdout or "synthetic" in result.stdout
     pair_lines = [
-        line for line in result.stdout.splitlines()
+        line
+        for line in result.stdout.splitlines()
         if "run_mode=" in line and "->" in line
     ]
-    assert len(pair_lines) == 3, (
-        f"Expected 3 CONTROLD PAIR runs enumerated, got {len(pair_lines)}"
-    )
+    assert (
+        len(pair_lines) == 3
+    ), f"Expected 3 CONTROLD PAIR runs enumerated, got {len(pair_lines)}"
 
 
 # -----------------------------------------------------------------------------
@@ -258,9 +261,9 @@ def test_dry_run_emission_schema(wrapper_exists, dry_run_artifacts):
     pair_label_count = dry_run_text.count("pair:    ")
     # The `pair:` lines (one per run) + the per_pair block below.
     # Each pair appears in BOTH blocks (lines 1 + lines 2).
-    assert pair_label_count >= 3, (
-        f"Expected ≥3 `pair:    <name>` rows, got {pair_label_count}"
-    )
+    assert (
+        pair_label_count >= 3
+    ), f"Expected ≥3 `pair:    <name>` rows, got {pair_label_count}"
     # Count actual CONTROLD PAIR tuples
     expected_pairs = ["run_mode=synthetic", "run_mode=real", "run_mode=none"]
     for pair in expected_pairs:
@@ -318,11 +321,19 @@ def test_3_run_controlled_pair_enumeration(wrapper_exists, dry_run_artifacts):
     # Check DRY_RUN.log order (per Wf-363-A1: `pair:` lines emitted in order)
     pair_section = re.search(r"per_pair:\n(.*?)(?:\n\n|$)", dry_run_text, re.DOTALL)
     assert pair_section is not None, "per_pair block not found"
-    pairs = [line.strip() for line in pair_section.group(1).splitlines() if line.strip()]
+    pairs = [
+        line.strip() for line in pair_section.group(1).splitlines() if line.strip()
+    ]
     assert len(pairs) == 3, f"Expected 3 pairs, got {len(pairs)}"
-    assert pairs[0].endswith("run_mode=synthetic"), f"1st pair should be synthetic, got {pairs[0]}"
-    assert pairs[1].endswith("run_mode=real"), f"2nd pair should be real, got {pairs[1]}"
-    assert pairs[2].endswith("run_mode=none"), f"3rd pair should be none, got {pairs[2]}"
+    assert pairs[0].endswith(
+        "run_mode=synthetic"
+    ), f"1st pair should be synthetic, got {pairs[0]}"
+    assert pairs[1].endswith(
+        "run_mode=real"
+    ), f"2nd pair should be real, got {pairs[1]}"
+    assert pairs[2].endswith(
+        "run_mode=none"
+    ), f"3rd pair should be none, got {pairs[2]}"
     # Check plan.json order
     data = json.loads(plan_text)
     assert data["run_modes"] == ["synthetic", "real", "none"]
@@ -359,7 +370,7 @@ def test_synthetic_or_real_flag_handling(wrapper_exists):
     assert common_args_match is not None, "COMMON_ARGS=() array not detected"
     common_args_body = common_args_match.group(1)
     assert "--epochs" in common_args_body
-    assert "--metals \"Rh\"" in common_args_body
+    assert '--metals "Rh"' in common_args_body
     assert "--seeds 0" in common_args_body
     assert "--wasserstein-weight 0.05" in common_args_body
     assert "--use-l2-guard" in common_args_body

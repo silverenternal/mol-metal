@@ -78,9 +78,7 @@ PLATINAI_OUT = PROJECT_ROOT / "molmetal" / "data" / "platinai_5k_rdkit_features.
 PLATINAI_4CELL_OUT = (
     PROJECT_ROOT / "molmetal" / "data" / "platinai_4cell_rdkit_features.csv"
 )
-METALCYTO_OUT = (
-    PROJECT_ROOT / "molmetal" / "data" / "metalcytotox_rdkit_features.csv"
-)
+METALCYTO_OUT = PROJECT_ROOT / "molmetal" / "data" / "metalcytotox_rdkit_features.csv"
 PLATINAI_SUMMARY = (
     PROJECT_ROOT
     / "molmetal"
@@ -118,7 +116,15 @@ EXPECTED_DESC_NAMES = [
     "BalabanJ",
 ]
 
-EXPECTED_PLATINAI_METALS = {"Pt", "Pd", "Au", "Ru", "Ir", "Rh", "Os"}  # platinai_5k.csv metals
+EXPECTED_PLATINAI_METALS = {
+    "Pt",
+    "Pd",
+    "Au",
+    "Ru",
+    "Ir",
+    "Rh",
+    "Os",
+}  # platinai_5k.csv metals
 
 
 def _skip_if_missing(path: Path) -> None:
@@ -155,9 +161,7 @@ def test_platinai_csv_shape() -> None:
         f"  actual   (any order): {sorted(header)}"
     )
     # 5,000 rows tolerance: source CSV has 5,000 data rows; allow ±10.
-    assert len(rows) == 5000, (
-        f"PlatinAI expected 5,000 rows, got {len(rows)}."
-    )
+    assert len(rows) == 5000, f"PlatinAI expected 5,000 rows, got {len(rows)}."
 
 
 # ---------------------------------------------------------------------------
@@ -167,7 +171,7 @@ def test_platinai_descriptor_columns_in_order() -> None:
     _skip_if_missing(PLATINAI_OUT)
     header, _ = _load_csv(PLATINAI_OUT)
     # Desc columns live at index 5..16 (after 5 metadata cols).
-    desc_cols = header[5:5 + len(EXPECTED_DESC_NAMES)]
+    desc_cols = header[5 : 5 + len(EXPECTED_DESC_NAMES)]
     assert desc_cols == EXPECTED_DESC_NAMES, (
         f"Descriptor columns out of order.\n"
         f"  expected: {EXPECTED_DESC_NAMES}\n"
@@ -206,12 +210,24 @@ def test_platinai_pIC50_transformation() -> None:
     # Layout: smiles, metal, ic50_mcf7_nm, ic50_a549_nm, ic50_a2780_nm,
     # ic50_a2780cis_nm, pIC50_mcf7, pIC50_a549, pIC50_a2780,
     # pIC50_a2780cis, +12 desc cols.
-    ic50_idx = [header.index(c) for c in [
-        "ic50_mcf7_nm", "ic50_a549_nm", "ic50_a2780_nm", "ic50_a2780cis_nm",
-    ]]
-    pic50_idx = [header.index(c) for c in [
-        "pIC50_mcf7", "pIC50_a549", "pIC50_a2780", "pIC50_a2780cis",
-    ]]
+    ic50_idx = [
+        header.index(c)
+        for c in [
+            "ic50_mcf7_nm",
+            "ic50_a549_nm",
+            "ic50_a2780_nm",
+            "ic50_a2780cis_nm",
+        ]
+    ]
+    pic50_idx = [
+        header.index(c)
+        for c in [
+            "pIC50_mcf7",
+            "pIC50_a549",
+            "pIC50_a2780",
+            "pIC50_a2780cis",
+        ]
+    ]
     n_checked = 0
     n_off = 0
     max_err = 0.0
@@ -236,8 +252,7 @@ def test_platinai_pIC50_transformation() -> None:
                 n_off += 1
             n_checked += 1
     assert n_checked > 1000, (
-        f"Only {n_checked} cell-line rows had finite IC50 + pIC50; "
-        f"expected >1000."
+        f"Only {n_checked} cell-line rows had finite IC50 + pIC50; " f"expected >1000."
     )
     assert n_off == 0, (
         f"{n_off}/{n_checked} PlatinAI 4-cell rows have pIC50 off by >1e-6; "
@@ -252,18 +267,25 @@ def test_platinai_4cell_csv_shape() -> None:
     _skip_if_missing(PLATINAI_4CELL_OUT)
     header, rows = _load_csv(PLATINAI_4CELL_OUT)
     expected_cols = {
-        "smiles", "metal",
-        "ic50_mcf7_nm", "ic50_a549_nm", "ic50_a2780_nm", "ic50_a2780cis_nm",
-        "pIC50_mcf7", "pIC50_a549", "pIC50_a2780", "pIC50_a2780cis",
+        "smiles",
+        "metal",
+        "ic50_mcf7_nm",
+        "ic50_a549_nm",
+        "ic50_a2780_nm",
+        "ic50_a2780cis_nm",
+        "pIC50_mcf7",
+        "pIC50_a549",
+        "pIC50_a2780",
+        "pIC50_a2780cis",
     } | set(EXPECTED_DESC_NAMES)
     assert set(header) == expected_cols, (
         f"PlatinAI 4-cell header mismatch.\n"
         f"  expected (any order): {sorted(expected_cols)}\n"
         f"  actual   (any order): {sorted(header)}"
     )
-    assert 4000 < len(rows) < 4200, (
-        f"PlatinAI 4-cell expected ~4,078 rows, got {len(rows)}."
-    )
+    assert (
+        4000 < len(rows) < 4200
+    ), f"PlatinAI 4-cell expected ~4,078 rows, got {len(rows)}."
 
 
 # ---------------------------------------------------------------------------
@@ -279,9 +301,9 @@ def test_metalcytotox_csv_shape() -> None:
         f"  actual   (any order): {sorted(header)}"
     )
     # Source has ~26,800 rows. Allow ±500 for the parse-failure margin.
-    assert 20000 < len(rows) < 30000, (
-        f"MetalCytoTox expected ~26,800 rows, got {len(rows)}."
-    )
+    assert (
+        20000 < len(rows) < 30000
+    ), f"MetalCytoTox expected ~26,800 rows, got {len(rows)}."
 
 
 # ---------------------------------------------------------------------------
@@ -321,14 +343,11 @@ def test_mollogp_pic50_pearson_r_in_range() -> None:
     _skip_if_missing(PLATINAI_4CELL_SUMMARY)
     payload = _load_summary(PLATINAI_4CELL_SUMMARY)
     assert payload is not None
-    corr_block = {
-        c["name"]: c["pearson_r"]
-        for c in payload["correlations_vs_target"]
-    }
+    corr_block = {c["name"]: c["pearson_r"] for c in payload["correlations_vs_target"]}
     r = corr_block.get("MolLogP")
-    assert r is not None, (
-        "MolLogP pearson_r entry missing in platinai_4cell feature_summary.json."
-    )
+    assert (
+        r is not None
+    ), "MolLogP pearson_r entry missing in platinai_4cell feature_summary.json."
     assert math.isfinite(r), f"MolLogP pearson_r not finite: {r}"
     assert -1.0 <= r <= 1.0, f"MolLogP pearson_r out of [-1, 1]: {r}"
 
@@ -371,9 +390,9 @@ def test_platinai_per_metal_counts() -> None:
     )
     # The 4-cell cohort is Pt-only; the 5K cohort is mixed. Pt is
     # present in both, so we just sanity-check Pt count > 500.
-    assert per_metal.get("Pt", 0) > 500, (
-        f"PlatinAI Pt count suspiciously low: {per_metal.get('Pt', 0)}"
-    )
+    assert (
+        per_metal.get("Pt", 0) > 500
+    ), f"PlatinAI Pt count suspiciously low: {per_metal.get('Pt', 0)}"
 
 
 # ---------------------------------------------------------------------------
@@ -411,6 +430,7 @@ def test_descriptor_columns_cover_lipinski() -> None:
         f"  present:  {sorted(EXPECTED_DESC_NAMES)}"
     )
 
+
 # ---------------------------------------------------------------------------
 # TODO-91 follow-up tests: --require-labels guard + n_samples_warning emission
 # ---------------------------------------------------------------------------
@@ -436,10 +456,13 @@ def test_require_labels_guard_blocks_platinai(tmp_path) -> None:
     cmd = [
         sys.executable,
         str(script),
-        "--dataset", "platinai",
+        "--dataset",
+        "platinai",
         "--require-labels",
-        "--out-dir", str(tmp_path / "out"),
-        "--report-dir", str(tmp_path / "rep"),
+        "--out-dir",
+        str(tmp_path / "out"),
+        "--report-dir",
+        str(tmp_path / "rep"),
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
     assert result.returncode != 0, (
@@ -471,11 +494,15 @@ def test_require_labels_guard_allows_platinai_4cell(tmp_path) -> None:
     cmd = [
         sys.executable,
         str(script),
-        "--dataset", "platinai_4cell",
+        "--dataset",
+        "platinai_4cell",
         "--require-labels",
-        "--out-dir", str(tmp_path / "out"),
-        "--report-dir", str(tmp_path / "rep"),
-        "--max-rows", "50",
+        "--out-dir",
+        str(tmp_path / "out"),
+        "--report-dir",
+        str(tmp_path / "rep"),
+        "--max-rows",
+        "50",
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     assert result.returncode == 0, (
@@ -501,10 +528,14 @@ def test_platinai_5k_emits_n_samples_warning(tmp_path) -> None:
     cmd = [
         sys.executable,
         str(script),
-        "--dataset", "platinai",
-        "--out-dir", str(tmp_path / "out"),
-        "--report-dir", str(tmp_path / "rep"),
-        "--max-rows", "20",
+        "--dataset",
+        "platinai",
+        "--out-dir",
+        str(tmp_path / "out"),
+        "--report-dir",
+        str(tmp_path / "rep"),
+        "--max-rows",
+        "20",
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     summary_path = tmp_path / "rep" / "platinai_5k_feature_summary.json"
@@ -516,12 +547,12 @@ def test_platinai_5k_emits_n_samples_warning(tmp_path) -> None:
     payload = json.loads(summary_path.read_text())
     # On the 2026-09-26 snapshot platinai_5k.csv has empty ic50_nm / selectivity
     # columns → correlations block has n_samples=0 → warning must be present.
-    assert "n_samples_warning" in payload, (
-        "n_samples_warning top-level field missing from platinai_5k summary"
-    )
-    assert "n_samples=0" in payload["n_samples_warning"], (
-        f"n_samples_warning text unexpected: {payload['n_samples_warning']}"
-    )
+    assert (
+        "n_samples_warning" in payload
+    ), "n_samples_warning top-level field missing from platinai_5k summary"
+    assert (
+        "n_samples=0" in payload["n_samples_warning"]
+    ), f"n_samples_warning text unexpected: {payload['n_samples_warning']}"
 
 
 def test_platinai_4cell_no_n_samples_warning(tmp_path) -> None:
@@ -537,10 +568,14 @@ def test_platinai_4cell_no_n_samples_warning(tmp_path) -> None:
     cmd = [
         sys.executable,
         str(script),
-        "--dataset", "platinai_4cell",
-        "--out-dir", str(tmp_path / "out"),
-        "--report-dir", str(tmp_path / "rep"),
-        "--max-rows", "20",
+        "--dataset",
+        "platinai_4cell",
+        "--out-dir",
+        str(tmp_path / "out"),
+        "--report-dir",
+        str(tmp_path / "rep"),
+        "--max-rows",
+        "20",
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     summary_path = tmp_path / "rep" / "platinai_4cell_feature_summary.json"
@@ -553,8 +588,7 @@ def test_platinai_4cell_no_n_samples_warning(tmp_path) -> None:
     # platinai_4cell has labelled pIC50 columns → correlations should carry
     # n_samples > 0 for every descriptor (or at least most).
     n_zero = sum(
-        1 for c in payload["correlations_vs_target"]
-        if c.get("n_samples", 0) == 0
+        1 for c in payload["correlations_vs_target"] if c.get("n_samples", 0) == 0
     )
     assert n_zero == 0, (
         f"platinai_4cell has {n_zero}/{len(payload['correlations_vs_target'])} "
@@ -577,10 +611,14 @@ def test_platinai_4cell_per_cell_correlations_block(tmp_path) -> None:
     cmd = [
         sys.executable,
         str(script),
-        "--dataset", "platinai_4cell",
-        "--out-dir", str(tmp_path / "out"),
-        "--report-dir", str(tmp_path / "rep"),
-        "--max-rows", "20",
+        "--dataset",
+        "platinai_4cell",
+        "--out-dir",
+        str(tmp_path / "out"),
+        "--report-dir",
+        str(tmp_path / "rep"),
+        "--max-rows",
+        "20",
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     summary_path = tmp_path / "rep" / "platinai_4cell_feature_summary.json"
@@ -597,9 +635,12 @@ def test_platinai_4cell_per_cell_correlations_block(tmp_path) -> None:
             f"{len(payload['per_cell_correlations'])}"
         )
         for cell, corrs in payload["per_cell_correlations"].items():
-            assert cell in {"pIC50_mcf7", "pIC50_a549", "pIC50_a2780", "pIC50_a2780cis"}, (
-                f"Unknown cell line {cell}"
-            )
+            assert cell in {
+                "pIC50_mcf7",
+                "pIC50_a549",
+                "pIC50_a2780",
+                "pIC50_a2780cis",
+            }, f"Unknown cell line {cell}"
             assert len(corrs) == 12, (
                 f"per_cell_correlations[{cell}] should have 12 descriptors; "
                 f"got {len(corrs)}"
@@ -619,10 +660,14 @@ def test_platinai_4cell_csv_has_pIC50_columns(tmp_path) -> None:
     cmd = [
         sys.executable,
         str(script),
-        "--dataset", "platinai_4cell",
-        "--out-dir", str(tmp_path / "out"),
-        "--report-dir", str(tmp_path / "rep"),
-        "--max-rows", "10",
+        "--dataset",
+        "platinai_4cell",
+        "--out-dir",
+        str(tmp_path / "out"),
+        "--report-dir",
+        str(tmp_path / "rep"),
+        "--max-rows",
+        "10",
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     out_csv = tmp_path / "out" / "platinai_4cell_rdkit_features.csv"
@@ -635,9 +680,9 @@ def test_platinai_4cell_csv_has_pIC50_columns(tmp_path) -> None:
         reader = csv.reader(fh)
         header = next(reader)
         for col in ("pIC50_mcf7", "pIC50_a549", "pIC50_a2780", "pIC50_a2780cis"):
-            assert col in header, (
-                f"platinai_4cell CSV missing {col}; got header {header}"
-            )
+            assert (
+                col in header
+            ), f"platinai_4cell CSV missing {col}; got header {header}"
 
 
 def test_metalcytotox_no_n_samples_warning(tmp_path) -> None:
@@ -655,10 +700,14 @@ def test_metalcytotox_no_n_samples_warning(tmp_path) -> None:
     cmd = [
         sys.executable,
         str(script),
-        "--dataset", "metalcytotox",
-        "--out-dir", str(tmp_path / "out"),
-        "--report-dir", str(tmp_path / "rep"),
-        "--max-rows", "20",
+        "--dataset",
+        "metalcytotox",
+        "--out-dir",
+        str(tmp_path / "out"),
+        "--report-dir",
+        str(tmp_path / "rep"),
+        "--max-rows",
+        "20",
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     summary_path = tmp_path / "rep" / "metalcytotox_5metal_feature_summary.json"
@@ -686,10 +735,14 @@ def test_all_datasets_emits_three_summaries(tmp_path) -> None:
     cmd = [
         sys.executable,
         str(script),
-        "--dataset", "all",
-        "--out-dir", str(tmp_path / "out"),
-        "--report-dir", str(tmp_path / "rep"),
-        "--max-rows", "10",
+        "--dataset",
+        "all",
+        "--out-dir",
+        str(tmp_path / "out"),
+        "--report-dir",
+        str(tmp_path / "rep"),
+        "--max-rows",
+        "10",
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     assert result.returncode == 0, (
@@ -711,6 +764,7 @@ def test_write_feature_summary_persists_warning(tmp_path) -> None:
     persist the warning in the JSON.
     """
     import importlib.util
+
     spec = importlib.util.spec_from_file_location(
         "erd",
         Path(__file__).resolve().parent.parent
@@ -729,7 +783,16 @@ def test_write_feature_summary_persists_warning(tmp_path) -> None:
         n_rows_parsed=5,
         n_rows_dropped=5,
         per_metal_counts={"Pt": 5},
-        desc_stats=[{"name": "MolWt", "mean": 100.0, "std": 10.0, "min": 80.0, "max": 120.0, "median": 100.0}],
+        desc_stats=[
+            {
+                "name": "MolWt",
+                "mean": 100.0,
+                "std": 10.0,
+                "min": 80.0,
+                "max": 120.0,
+                "median": 100.0,
+            }
+        ],
         correlations=[
             {"n_samples": 0, "name": "MolWt", "pearson_r": None},
             {"n_samples": 100, "name": "MolLogP", "pearson_r": 0.2},
@@ -748,6 +811,7 @@ def test_write_feature_summary_omits_warning_when_none(tmp_path) -> None:
     NOT persist the field (clean JSON).
     """
     import importlib.util
+
     spec = importlib.util.spec_from_file_location(
         "erd",
         Path(__file__).resolve().parent.parent
@@ -765,7 +829,16 @@ def test_write_feature_summary_omits_warning_when_none(tmp_path) -> None:
         n_rows_parsed=10,
         n_rows_dropped=0,
         per_metal_counts={"Pt": 10},
-        desc_stats=[{"name": "MolWt", "mean": 100.0, "std": 10.0, "min": 80.0, "max": 120.0, "median": 100.0}],
+        desc_stats=[
+            {
+                "name": "MolWt",
+                "mean": 100.0,
+                "std": 10.0,
+                "min": 80.0,
+                "max": 120.0,
+                "median": 100.0,
+            }
+        ],
         correlations=[
             {"n_samples": 100, "name": "MolWt", "pearson_r": 0.1},
         ],

@@ -38,6 +38,7 @@ from molmetal.adapters.egnn_rocm_checkpoint import (
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(autouse=True)
 def _restore_gate_after_test():
     """Snapshot the process-wide default before each test, restore after.
@@ -59,6 +60,7 @@ def _small_block() -> nn.Module:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_checkpoint_wrap_basic() -> None:
     """Wrapped Linear still produces gradients on input + parameters."""
@@ -95,9 +97,9 @@ def test_checkpoint_disabled_passthrough() -> None:
     with torch.no_grad():
         direct = block(x)
         via_wrap = wrap(x)
-    assert torch.equal(direct, via_wrap), (
-        "enabled=False must produce a bit-exact passthrough"
-    )
+    assert torch.equal(
+        direct, via_wrap
+    ), "enabled=False must produce a bit-exact passthrough"
 
 
 def test_checkpoint_preserve_rng() -> None:
@@ -183,7 +185,8 @@ def test_checkpoint_use_reentrant_false() -> None:
         # wrapped block — they are NOT part of ``block.forward``'s
         # signature.
         forward_kwargs = {
-            k: v for k, v in kwargs.items()
+            k: v
+            for k, v in kwargs.items()
             if k not in {"use_reentrant", "preserve_rng_state"}
         }
         recorded["function"] = function
@@ -198,6 +201,7 @@ def test_checkpoint_use_reentrant_false() -> None:
     # miss it — we also rewrite the module-level binding explicitly.
     import torch.utils.checkpoint as _cp_mod
     from molmetal.adapters import egnn_rocm_checkpoint as _wrap_mod
+
     original_pkg = _cp_mod.checkpoint
     original_mod = _wrap_mod._torch_checkpoint
     _cp_mod.checkpoint = _recording_checkpoint
@@ -214,9 +218,9 @@ def test_checkpoint_use_reentrant_false() -> None:
 
     assert recorded, "checkpoint was not called"
     kwargs = recorded["kwargs"]
-    assert "use_reentrant" in kwargs, (
-        f"wrapper must pass use_reentrant explicitly; got kwargs={kwargs}"
-    )
+    assert (
+        "use_reentrant" in kwargs
+    ), f"wrapper must pass use_reentrant explicitly; got kwargs={kwargs}"
     assert kwargs["use_reentrant"] is False, (
         f"use_reentrant must be False on ROCm 7.2 + gfx1101; "
         f"got {kwargs['use_reentrant']!r}"
@@ -251,19 +255,21 @@ def test_env_var_disabled() -> None:
     os.environ["MOLMETAL_EGNN_CHECKPOINT"] = "0"
     try:
         from molmetal.adapters import egnn_rocm_checkpoint as _wrap_mod
+
         importlib.reload(_wrap_mod)
-        assert _wrap_mod.egnn_checkpoint_default_enabled() is False, (
-            "env var MOLMETAL_EGNN_CHECKPOINT=0 must turn the default off"
-        )
+        assert (
+            _wrap_mod.egnn_checkpoint_default_enabled() is False
+        ), "env var MOLMETAL_EGNN_CHECKPOINT=0 must turn the default off"
 
         from molmetal.adapters import egnn_rocm as _egnn_mod
+
         importlib.reload(_egnn_mod)
         net = _egnn_mod.EGNN(in_node_dim=4, hidden_dim=4, n_layers=2)
         assert len(net.layers) == 2
         for i, layer in enumerate(net.layers):
-            assert isinstance(layer, _wrap_mod.CheckpointedEGNNLayer), (
-                f"layer {i} is not a CheckpointedEGNNLayer wrap"
-            )
+            assert isinstance(
+                layer, _wrap_mod.CheckpointedEGNNLayer
+            ), f"layer {i} is not a CheckpointedEGNNLayer wrap"
             assert layer.enabled is False, (
                 f"layer {i} must be disabled when env var = 0; "
                 f"got enabled={layer.enabled}"
@@ -273,6 +279,8 @@ def test_env_var_disabled() -> None:
         # Reload once more so the test-side mutation doesn't leak into
         # the rest of the suite.
         from molmetal.adapters import egnn_rocm_checkpoint as _wrap_mod
+
         importlib.reload(_wrap_mod)
         from molmetal.adapters import egnn_rocm as _egnn_mod
+
         importlib.reload(_egnn_mod)

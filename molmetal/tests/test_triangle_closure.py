@@ -56,8 +56,12 @@ def test_triangle_vertex_with_metadata() -> None:
     """Metadata dict is propagated verbatim."""
     meta = {"backend": "hilbert", "n_iters": 50}
     v = tc.TriangleVertex(
-        name="hilbert", wall_s=0.1, r2=0.9, n_actions=4,
-        variance_reduction=0.1, metadata=meta,
+        name="hilbert",
+        wall_s=0.1,
+        r2=0.9,
+        n_actions=4,
+        variance_reduction=0.1,
+        metadata=meta,
     )
     assert v.name == "hilbert"
     assert v.wall_s == pytest.approx(0.1)
@@ -69,9 +73,13 @@ def test_triangle_vertex_with_metadata() -> None:
 
 def test_vertex_to_dict_round_trip() -> None:
     """``_vertex_to_dict`` produces a JSON-safe dict."""
-    v = tc.TriangleVertex(name="mcts", wall_s=0.05, n_actions=4,
-                          variance_reduction=0.2,
-                          metadata={"mean_q": 0.7})
+    v = tc.TriangleVertex(
+        name="mcts",
+        wall_s=0.05,
+        n_actions=4,
+        variance_reduction=0.2,
+        metadata={"mean_q": 0.7},
+    )
     d = tc._vertex_to_dict(v)
     # All values must be JSON-encodable.
     s = json.dumps(d)
@@ -107,8 +115,12 @@ def test_closure_default_construction() -> None:
 def test_closure_custom_kwargs() -> None:
     """Custom kwargs override the defaults."""
     closure = tc.TriangleClosure(
-        n_trajectories=32, n_rounds=5, n_features=8,
-        n_arms=6, seed=7, hilbert_iters=20,
+        n_trajectories=32,
+        n_rounds=5,
+        n_features=8,
+        n_arms=6,
+        seed=7,
+        hilbert_iters=20,
     )
     assert closure.n_trajectories == 32
     assert closure.n_rounds == 5
@@ -121,7 +133,11 @@ def test_closure_custom_kwargs() -> None:
 def test_closure_feature_names_length() -> None:
     """``feature_names_`` length matches ``n_features`` after ``run``."""
     closure = tc.TriangleClosure(
-        n_trajectories=8, n_rounds=1, n_features=7, n_arms=4, seed=0,
+        n_trajectories=8,
+        n_rounds=1,
+        n_features=7,
+        n_arms=4,
+        seed=0,
     )
     closure.run()
     assert len(closure.feature_names_) == 7
@@ -158,8 +174,13 @@ def test_run_astsr_vertex_returns_finite_r2() -> None:
     cl = tc.TriangleClosure(seed=0, n_trajectories=24, n_features=5)
     X, y = cl._make_design(n=24, dim=5, seed=0)
     v = cl._run_astsr_vertex(
-        X, y, cl.feature_names_, depth=3, population=12,
-        generations=8, seed=0,
+        X,
+        y,
+        cl.feature_names_,
+        depth=3,
+        population=12,
+        generations=8,
+        seed=0,
     )
     assert v.name == "astsr"
     assert v.wall_s >= 0.0
@@ -172,12 +193,22 @@ def test_run_astsr_vertex_deterministic_seed() -> None:
     cl = tc.TriangleClosure(seed=42, n_trajectories=20, n_features=5)
     X, y = cl._make_design(n=20, dim=5, seed=42)
     v1 = cl._run_astsr_vertex(
-        X, y, cl.feature_names_, depth=3, population=12,
-        generations=8, seed=42,
+        X,
+        y,
+        cl.feature_names_,
+        depth=3,
+        population=12,
+        generations=8,
+        seed=42,
     )
     v2 = cl._run_astsr_vertex(
-        X, y, cl.feature_names_, depth=3, population=12,
-        generations=8, seed=42,
+        X,
+        y,
+        cl.feature_names_,
+        depth=3,
+        population=12,
+        generations=8,
+        seed=42,
     )
     assert v1.r2 == pytest.approx(v2.r2)
 
@@ -188,8 +219,13 @@ def test_run_astsr_vertex_metadata_keys() -> None:
     cl = tc.TriangleClosure(seed=0, n_trajectories=16, n_features=5)
     X, y = cl._make_design(n=16, dim=5, seed=0)
     v = cl._run_astsr_vertex(
-        X, y, cl.feature_names_, depth=3, population=10,
-        generations=6, seed=0,
+        X,
+        y,
+        cl.feature_names_,
+        depth=3,
+        population=10,
+        generations=6,
+        seed=0,
     )
     assert "depth" in v.metadata
     assert "population" in v.metadata
@@ -206,7 +242,10 @@ def test_run_hilbert_vertex_returns_finite_r2() -> None:
     cl = tc.TriangleClosure(seed=0, n_trajectories=24, n_features=5)
     X, y = cl._make_design(n=24, dim=5, seed=0)
     v = cl._run_hilbert_vertex(
-        X, y, n_iters=20, seed=0,
+        X,
+        y,
+        n_iters=20,
+        seed=0,
     )
     assert v.name == "hilbert"
     assert v.wall_s >= 0.0
@@ -222,7 +261,10 @@ def test_run_hilbert_vertex_handles_dim_mismatch() -> None:
     cl = tc.TriangleClosure(seed=0, n_trajectories=16, n_features=3)
     X, y = cl._make_design(n=16, dim=3, seed=0)
     v = cl._run_hilbert_vertex(
-        X, y, n_iters=10, seed=0,
+        X,
+        y,
+        n_iters=10,
+        seed=0,
     )
     assert math.isfinite(v.r2)
     # population_dim must be at least n_features.
@@ -237,8 +279,12 @@ def test_run_hilbert_vertex_metadata_keys() -> None:
     X, y = cl._make_design(n=16, dim=5, seed=0)
     v = cl._run_hilbert_vertex(X, y, n_iters=15, seed=0)
     for key in (
-        "n_iters", "lr_primal", "lr_dual",
-        "convergence_rate", "population_dim", "backend",
+        "n_iters",
+        "lr_primal",
+        "lr_dual",
+        "convergence_rate",
+        "population_dim",
+        "backend",
     ):
         assert key in v.metadata, key
 
@@ -249,11 +295,17 @@ def test_run_hilbert_vertex_metadata_keys() -> None:
 def test_run_mcts_vertex_returns_stats() -> None:
     """MCTS vertex returns ``n_actions`` and tree stats."""
     cl = tc.TriangleClosure(
-        seed=0, n_trajectories=16, n_features=5, n_arms=4,
+        seed=0,
+        n_trajectories=16,
+        n_features=5,
+        n_arms=4,
     )
     X, y = cl._make_design(n=16, dim=5, seed=0)
     v = cl._run_mcts_vertex(
-        features=X, hilbert_r2=0.5, n_arms=4, seed=0,
+        features=X,
+        hilbert_r2=0.5,
+        n_arms=4,
+        seed=0,
     )
     assert v.name == "mcts"
     assert v.n_actions == 4
@@ -268,11 +320,17 @@ def test_run_mcts_vertex_returns_stats() -> None:
 def test_run_mcts_vertex_priors_sum_to_one() -> None:
     """MCTS vertex priors sum to ``1.0`` (a valid distribution)."""
     cl = tc.TriangleClosure(
-        seed=0, n_trajectories=16, n_features=5, n_arms=4,
+        seed=0,
+        n_trajectories=16,
+        n_features=5,
+        n_arms=4,
     )
     X, y = cl._make_design(n=16, dim=5, seed=0)
     v = cl._run_mcts_vertex(
-        features=X, hilbert_r2=0.5, n_arms=4, seed=0,
+        features=X,
+        hilbert_r2=0.5,
+        n_arms=4,
+        seed=0,
     )
     priors = v.metadata["priors"]
     assert len(priors) == 4
@@ -283,11 +341,17 @@ def test_run_mcts_vertex_priors_sum_to_one() -> None:
 def test_run_mcts_vertex_variance_reduction_finite() -> None:
     """MCTS variance reduction is finite (and in ``[-2, 1]``)."""
     cl = tc.TriangleClosure(
-        seed=0, n_trajectories=16, n_features=5, n_arms=4,
+        seed=0,
+        n_trajectories=16,
+        n_features=5,
+        n_arms=4,
     )
     X, y = cl._make_design(n=16, dim=5, seed=0)
     v = cl._run_mcts_vertex(
-        features=X, hilbert_r2=0.7, n_arms=4, seed=0,
+        features=X,
+        hilbert_r2=0.7,
+        n_arms=4,
+        seed=0,
     )
     assert math.isfinite(v.variance_reduction)
     assert -2.0 <= v.variance_reduction <= 1.0
@@ -300,12 +364,16 @@ def test_feedback_dataset_extends_rows() -> None:
     """``_feedback_dataset`` adds exactly ``ceil(n_traj / n_arms)``
     new rows to ``(X, y)``."""
     cl = tc.TriangleClosure(
-        seed=0, n_trajectories=16, n_features=5, n_arms=4,
+        seed=0,
+        n_trajectories=16,
+        n_features=5,
+        n_arms=4,
     )
     X = np.zeros((16, 5))
     y = np.zeros(16)
     mcts_v = tc.TriangleVertex(
-        name="mcts", n_actions=4,
+        name="mcts",
+        n_actions=4,
     )
     X2, y2 = cl._feedback_dataset(X, y, mcts_v, round_idx=0)
     # 16 + ceil(16 / 4) = 16 + 4 = 20.
@@ -317,12 +385,19 @@ def test_run_triangle_astr_hilbert_coupling() -> None:
     """The ASTSR → Hilbert edge produces a Hilbert R² that is
     informed by the ASTSR formula (i.e. the closure is non-trivial)."""
     cl = tc.TriangleClosure(
-        seed=0, n_trajectories=24, n_features=5,
+        seed=0,
+        n_trajectories=24,
+        n_features=5,
     )
     X, y = cl._make_design(n=24, dim=5, seed=0)
     astsr_v = cl._run_astsr_vertex(
-        X, y, cl.feature_names_, depth=3, population=12,
-        generations=8, seed=0,
+        X,
+        y,
+        cl.feature_names_,
+        depth=3,
+        population=12,
+        generations=8,
+        seed=0,
     )
     hilbert_v = cl._run_hilbert_vertex(X, y, n_iters=20, seed=0)
     # Both R² values are finite (the coupling is well-defined).
@@ -334,7 +409,10 @@ def test_run_triangle_hilbert_mcts_coupling() -> None:
     """The Hilbert → MCTS edge feeds the Hilbert R² into the MCTS
     ``base_value`` seed."""
     cl = tc.TriangleClosure(
-        seed=0, n_trajectories=16, n_features=5, n_arms=4,
+        seed=0,
+        n_trajectories=16,
+        n_features=5,
+        n_arms=4,
     )
     X, y = cl._make_design(n=16, dim=5, seed=0)
     # Run two MCTS vertices with different Hilbert R² seeds; the
@@ -350,14 +428,17 @@ def test_run_triangle_mcts_astsr_coupling() -> None:
     """The MCTS → ASTSR closure produces a non-degenerate
     ``X2, y2`` pair (the next round's training set)."""
     cl = tc.TriangleClosure(
-        seed=0, n_trajectories=16, n_features=5, n_arms=4,
+        seed=0,
+        n_trajectories=16,
+        n_features=5,
+        n_arms=4,
     )
     X = np.random.default_rng(0).standard_normal((16, 5))
     y = np.random.default_rng(1).standard_normal(16)
     mcts_v = tc.TriangleVertex(name="mcts", n_actions=4)
     X2, y2 = cl._feedback_dataset(X, y, mcts_v, round_idx=0)
     assert X2.shape[1] == X.shape[1]  # feature dim preserved
-    assert X2.shape[0] > X.shape[0]    # row count grew
+    assert X2.shape[0] > X.shape[0]  # row count grew
     assert np.all(np.isfinite(X2))
     assert np.all(np.isfinite(y2))
 
@@ -368,8 +449,11 @@ def test_run_triangle_mcts_astsr_coupling() -> None:
 def test_full_triangle_smoke() -> None:
     """Smoke pipeline: 8 trajectories × 3 rounds runs end-to-end."""
     ok = tc.smoke_run(
-        n_trajectories=8, n_rounds=3,
-        n_features=5, n_arms=4, seed=42,
+        n_trajectories=8,
+        n_rounds=3,
+        n_features=5,
+        n_arms=4,
+        seed=42,
     )
     assert ok is True
 
@@ -378,16 +462,22 @@ def test_full_triangle_runs_in_reasonable_time() -> None:
     """Full triangle on 16 × 4 × 5 × 4 completes in <30 s."""
     t0 = __import__("time").perf_counter()
     report = tc.build_report(
-        n_trajectories=16, n_rounds=4, n_features=5,
-        n_arms=4, seed=42, hilbert_iters=20,
+        n_trajectories=16,
+        n_rounds=4,
+        n_features=5,
+        n_arms=4,
+        seed=42,
+        hilbert_iters=20,
     )
     wall = __import__("time").perf_counter() - t0
     assert wall < 30.0
     # Summary must carry the four canonical keys.
     s = report["summary"]
     for key in (
-        "mean_hilbert_r2", "mean_evolutionary_r2",
-        "mean_variance_reduction", "triangle_convergence_rate",
+        "mean_hilbert_r2",
+        "mean_evolutionary_r2",
+        "mean_variance_reduction",
+        "triangle_convergence_rate",
     ):
         assert key in s, key
         assert math.isfinite(s[key]), (key, s[key])
@@ -399,36 +489,44 @@ def test_full_triangle_runs_in_reasonable_time() -> None:
 def test_build_report_deterministic() -> None:
     """Same kwargs → identical summary."""
     r1 = tc.build_report(
-        n_trajectories=12, n_rounds=3, n_features=5,
-        n_arms=4, seed=42, hilbert_iters=20,
+        n_trajectories=12,
+        n_rounds=3,
+        n_features=5,
+        n_arms=4,
+        seed=42,
+        hilbert_iters=20,
     )
     r2 = tc.build_report(
-        n_trajectories=12, n_rounds=3, n_features=5,
-        n_arms=4, seed=42, hilbert_iters=20,
+        n_trajectories=12,
+        n_rounds=3,
+        n_features=5,
+        n_arms=4,
+        seed=42,
+        hilbert_iters=20,
     )
     assert r1["summary"] == r2["summary"]
     assert len(r1["per_round"]) == len(r2["per_round"]) == 3
     # Per-round R² values match.
     for a, b in zip(r1["per_round"], r2["per_round"]):
-        assert (
-            a["vertices"]["hilbert"]["r2"]
-            == b["vertices"]["hilbert"]["r2"]
-        )
-        assert (
-            a["vertices"]["astsr"]["r2"]
-            == b["vertices"]["astsr"]["r2"]
-        )
+        assert a["vertices"]["hilbert"]["r2"] == b["vertices"]["hilbert"]["r2"]
+        assert a["vertices"]["astsr"]["r2"] == b["vertices"]["astsr"]["r2"]
 
 
 def test_write_report_emits_json_and_md(tmp_path: Path) -> None:
     """``write_report`` emits both ``triangle_bench.json`` and the
     optional ``triangle_bench.md``."""
     report = tc.build_report(
-        n_trajectories=8, n_rounds=2, n_features=4,
-        n_arms=3, seed=42, hilbert_iters=10,
+        n_trajectories=8,
+        n_rounds=2,
+        n_features=4,
+        n_arms=3,
+        seed=42,
+        hilbert_iters=10,
     )
     json_path, md_path = tc.write_report(
-        out_dir=str(tmp_path), report=report, also_markdown=True,
+        out_dir=str(tmp_path),
+        report=report,
+        also_markdown=True,
     )
     assert json_path.exists()
     assert json_path.name == "triangle_bench.json"
@@ -454,10 +552,13 @@ def test_cli_help_exits_zero() -> None:
 
     result = subprocess.run(
         [
-            _sys.executable, "-m",
-            "molmetal.scripts.triangle_closure", "--help",
+            _sys.executable,
+            "-m",
+            "molmetal.scripts.triangle_closure",
+            "--help",
         ],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
         cwd=str(tc._REPO_ROOT),
         timeout=60,
     )
@@ -472,10 +573,13 @@ def test_cli_smoke_exits_zero() -> None:
 
     result = subprocess.run(
         [
-            _sys.executable, "-m",
-            "molmetal.scripts.triangle_closure", "--smoke",
+            _sys.executable,
+            "-m",
+            "molmetal.scripts.triangle_closure",
+            "--smoke",
         ],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
         cwd=str(tc._REPO_ROOT),
         timeout=60,
     )

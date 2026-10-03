@@ -46,6 +46,7 @@ Exit codes:
 The script is CPU-only, AST-only, idempotent, and never mutates
 anything outside its own output directory.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -96,155 +97,173 @@ MD_OUT = REPORT_DIR / "test_inventory.md"
 # ---------------------------------------------------------------------------
 R18_SHIP_TEST_STEMS: dict[str, tuple[str, str]] = {
     # math_skills T1..T9
-    "bass_existence":                   ("r18_math_skills", "T8 Bass martingale coupling"),
-    "bergman_kernel":                   ("r18_math_skills", "T9 Bergman kernel BSD"),
-    "monge_ampere_regularity":          ("r18_math_skills", "T3 Monge-Ampere regularity"),
-    "multi_parameter_ph":               ("r18_math_skills", "T5 multi-parameter PH"),
-    "ph_hardness_guardrail":            ("r18_math_skills", "T6 PH hardness guardrail"),
-    "sb_bass_martingale":               ("r18_math_skills", "T7 SB-Bass martingale"),
-    "se3_schrodinger_bridge":           ("r18_math_skills", "T1 SE(3) Schrodinger bridge"),
-    "transport_relaxation":             ("r18_math_skills", "T2 transport relaxation"),
-    "wasserstein_gradient_flow":        ("r18_math_skills", "T4 Wasserstein gradient flow"),
+    "bass_existence": ("r18_math_skills", "T8 Bass martingale coupling"),
+    "bergman_kernel": ("r18_math_skills", "T9 Bergman kernel BSD"),
+    "monge_ampere_regularity": ("r18_math_skills", "T3 Monge-Ampere regularity"),
+    "multi_parameter_ph": ("r18_math_skills", "T5 multi-parameter PH"),
+    "ph_hardness_guardrail": ("r18_math_skills", "T6 PH hardness guardrail"),
+    "sb_bass_martingale": ("r18_math_skills", "T7 SB-Bass martingale"),
+    "se3_schrodinger_bridge": ("r18_math_skills", "T1 SE(3) Schrodinger bridge"),
+    "transport_relaxation": ("r18_math_skills", "T2 transport relaxation"),
+    "wasserstein_gradient_flow": ("r18_math_skills", "T4 Wasserstein gradient flow"),
     # math_skill adapters
-    "coordination_gnn":                 ("r18_math_adapters", "Coordination-GNN scaffold"),
-    "quotient_space_diffusion":         ("r18_math_adapters", "Quotient-space diffusion"),
-    "multi_ph_integration":             ("r18_math_adapters", "T5 multi-PH integration"),
-    "se3_sb_integration":               ("r18_math_adapters", "T1 SE(3)-SB integration"),
-    "transport_relaxation_integration": ("r18_math_adapters", "T2 transport-relax integration"),
-    "hilbert_primal_dual":              ("r18_reward", "Hilbert primal-dual reward"),
-    "hilbert_score_repellent_integration": ("r18_math_adapters", "Hilbert + score-repellent"),
-    "score_repellent_mc":               ("r18_search_alg", "Score-repellent MCTS"),
-    "variance_puct_integration":        ("r18_search_alg", "Variance-aware PUCT"),
-    "w_flow":                           ("r18_flow_lipman", "Wasserstein-flow backbone"),
-    "m5_schedulers":                    ("r18_flow_lipman", "M5 noise schedulers"),
+    "coordination_gnn": ("r18_math_adapters", "Coordination-GNN scaffold"),
+    "quotient_space_diffusion": ("r18_math_adapters", "Quotient-space diffusion"),
+    "multi_ph_integration": ("r18_math_adapters", "T5 multi-PH integration"),
+    "se3_sb_integration": ("r18_math_adapters", "T1 SE(3)-SB integration"),
+    "transport_relaxation_integration": (
+        "r18_math_adapters",
+        "T2 transport-relax integration",
+    ),
+    "hilbert_primal_dual": ("r18_reward", "Hilbert primal-dual reward"),
+    "hilbert_score_repellent_integration": (
+        "r18_math_adapters",
+        "Hilbert + score-repellent",
+    ),
+    "score_repellent_mc": ("r18_search_alg", "Score-repellent MCTS"),
+    "variance_puct_integration": ("r18_search_alg", "Variance-aware PUCT"),
+    "w_flow": ("r18_flow_lipman", "Wasserstein-flow backbone"),
+    "m5_schedulers": ("r18_flow_lipman", "M5 noise schedulers"),
     # lam_chem ship modules
-    "coupling_adapter":                 ("r18_lam_chem", "Coupling adapter"),
-    "coupling_adapter_platinai5k":      ("r18_lam_chem", "PlatinAI-5k coupling adapter"),
-    "lambda_astsr":                     ("r18_lam_chem", "Lambda ASTSR"),
-    "lambda_combinators_expansion":     ("r18_lam_chem", "Lambda combinators expansion"),
-    "lambda_measured_reward_dispatch":  ("r18_lam_chem", "Lambda measured-reward dispatch"),
-    "lambda_reward_coupling":           ("r18_lam_chem", "Lambda reward coupling"),
-    "lambda_cfm_integration":           ("r18_lam_chem", "Lambda-CFM integration"),
-    "lambda_cfm_joint_inference":       ("r18_lam_chem", "Lambda-CFM joint inference"),
-    "cross_attention_m4":               ("r18_lam_chem", "Cross-attention M4 fusion"),
-    "cross_attention_fusion":           ("r18_lam_chem", "Cross-attention fusion (v0)"),
-    "cross_attention_v3":               ("r18_lam_chem", "Cross-attention v3"),
-    "decoder_m3_sequence":              ("r18_lam_chem", "Decoder M3 sequence"),
-    "layered_generation":               ("r18_lam_chem", "Layered generation"),
-    "buyable_gate":                     ("r18_lam_chem", "Buyable reactant gate"),
-    "ood_protocol":                     ("r18_lam_chem", "OOD protocol scaffold"),
-    "macroguide_ph":                    ("r18_lam_chem", "Macrocycle guide + PH"),
-    "non_click_medchem_rules":          ("r18_lam_chem", "Non-click med-chem rules"),
-    "skeleton_jump":                    ("r18_lam_chem", "Skeleton-jump fragment swap"),
-    "md_relaxation_stub":               ("r18_lam_chem", "MD relaxation stub"),
-    "pt_click_compat_smoke":            ("r18_lam_chem", "PT click compat smoke"),
-    "pt_metal_ligand_exchange_known":   ("r18_lam_chem", "PT metal-ligand exchange known"),
-    "click_rule_effect_size_study":     ("r18_lam_chem", "Click rule effect size study"),
+    "coupling_adapter": ("r18_lam_chem", "Coupling adapter"),
+    "coupling_adapter_platinai5k": ("r18_lam_chem", "PlatinAI-5k coupling adapter"),
+    "lambda_astsr": ("r18_lam_chem", "Lambda ASTSR"),
+    "lambda_combinators_expansion": ("r18_lam_chem", "Lambda combinators expansion"),
+    "lambda_measured_reward_dispatch": (
+        "r18_lam_chem",
+        "Lambda measured-reward dispatch",
+    ),
+    "lambda_reward_coupling": ("r18_lam_chem", "Lambda reward coupling"),
+    "lambda_cfm_integration": ("r18_lam_chem", "Lambda-CFM integration"),
+    "lambda_cfm_joint_inference": ("r18_lam_chem", "Lambda-CFM joint inference"),
+    "cross_attention_m4": ("r18_lam_chem", "Cross-attention M4 fusion"),
+    "cross_attention_fusion": ("r18_lam_chem", "Cross-attention fusion (v0)"),
+    "cross_attention_v3": ("r18_lam_chem", "Cross-attention v3"),
+    "decoder_m3_sequence": ("r18_lam_chem", "Decoder M3 sequence"),
+    "layered_generation": ("r18_lam_chem", "Layered generation"),
+    "buyable_gate": ("r18_lam_chem", "Buyable reactant gate"),
+    "ood_protocol": ("r18_lam_chem", "OOD protocol scaffold"),
+    "macroguide_ph": ("r18_lam_chem", "Macrocycle guide + PH"),
+    "non_click_medchem_rules": ("r18_lam_chem", "Non-click med-chem rules"),
+    "skeleton_jump": ("r18_lam_chem", "Skeleton-jump fragment swap"),
+    "md_relaxation_stub": ("r18_lam_chem", "MD relaxation stub"),
+    "pt_click_compat_smoke": ("r18_lam_chem", "PT click compat smoke"),
+    "pt_metal_ligand_exchange_known": (
+        "r18_lam_chem",
+        "PT metal-ligand exchange known",
+    ),
+    "click_rule_effect_size_study": ("r18_lam_chem", "Click rule effect size study"),
     # CFM pipeline rescue + fixes (the 10 R18 ship CFM hardening tests)
-    "cfm_rescue_bondhead_default":      ("r18_cfm_rescue", "CFM rescue: bondhead default"),
-    "cfm_rescue_data_scale":            ("r18_cfm_rescue", "CFM rescue: data scale"),
-    "cfm_rescue_decode_smoke":          ("r18_cfm_rescue", "CFM rescue: decode smoke"),
-    "cfm_rescue_ode_solver":           ("r18_cfm_rescue", "CFM rescue: ODE solver"),
-    "cfm_rescue_yuelbond":              ("r18_cfm_rescue", "CFM rescue: YuelBond"),
-    "cfm_fix1_bond_head_default":       ("r18_cfm_rescue", "CFM fix1: bond-head default"),
-    "cfm_fix2_midpoint_solver":         ("r18_cfm_rescue", "CFM fix2: midpoint solver"),
-    "cfm_fix3_decode_smoke":            ("r18_cfm_rescue", "CFM fix3: decode smoke"),
-    "cfm_p1_fixes":                     ("r18_cfm_rescue", "CFM P1 fixes aggregator"),
-    "cfm_path_import":                  ("r18_cfm_rescue", "CFM path import guard"),
+    "cfm_rescue_bondhead_default": ("r18_cfm_rescue", "CFM rescue: bondhead default"),
+    "cfm_rescue_data_scale": ("r18_cfm_rescue", "CFM rescue: data scale"),
+    "cfm_rescue_decode_smoke": ("r18_cfm_rescue", "CFM rescue: decode smoke"),
+    "cfm_rescue_ode_solver": ("r18_cfm_rescue", "CFM rescue: ODE solver"),
+    "cfm_rescue_yuelbond": ("r18_cfm_rescue", "CFM rescue: YuelBond"),
+    "cfm_fix1_bond_head_default": ("r18_cfm_rescue", "CFM fix1: bond-head default"),
+    "cfm_fix2_midpoint_solver": ("r18_cfm_rescue", "CFM fix2: midpoint solver"),
+    "cfm_fix3_decode_smoke": ("r18_cfm_rescue", "CFM fix3: decode smoke"),
+    "cfm_p1_fixes": ("r18_cfm_rescue", "CFM P1 fixes aggregator"),
+    "cfm_path_import": ("r18_cfm_rescue", "CFM path import guard"),
     # r18 import sweep mirror
-    "r18_imports":                      ("r18_lam_chem", "R18 ship-modules import mirror"),
+    "r18_imports": ("r18_lam_chem", "R18 ship-modules import mirror"),
 }
 
 R17_SHIP_TEST_STEMS: dict[str, tuple[str, str]] = {
-    "r17_legacy_compat":                ("r17_legacy", "R17 legacy compat canary"),
-    "r17_paper_sweep_presets":          ("r17_legacy", "R17 paper-sweep presets"),
-    "reproduce_R17":                    ("r17_legacy", "wf_reproduce_R17 end-to-end driver"),
-    "atom_training_contract":           ("r17_legacy", "R17 vocabulary M15 regression pair"),
-    "duplicate_tile_fix":               ("r17_legacy", "R17 duplicate-tile defensive fix"),
+    "r17_legacy_compat": ("r17_legacy", "R17 legacy compat canary"),
+    "r17_paper_sweep_presets": ("r17_legacy", "R17 paper-sweep presets"),
+    "reproduce_R17": ("r17_legacy", "wf_reproduce_R17 end-to-end driver"),
+    "atom_training_contract": ("r17_legacy", "R17 vocabulary M15 regression pair"),
+    "duplicate_tile_fix": ("r17_legacy", "R17 duplicate-tile defensive fix"),
 }
 
 P2_ML_TEST_STEMS: dict[str, tuple[str, str]] = {
     # dmpnn
-    "dmpnn":                            ("p2_ml_baselines", "D-MPNN baseline"),
-    "dmpnn_attn":                       ("p2_ml_baselines", "D-MPNN attentive FP"),
-    "dmpnn_baseline":                   ("p2_ml_baselines", "D-MPNN baseline (Krasnov 2026)"),
-    "dmpnn_multitask":                  ("p2_ml_baselines", "D-MPNN multi-task Ru"),
-    "dmpnn_scatter_wiring":             ("p2_ml_baselines", "D-MPNN scatter wiring"),
-    "attentive_dmpnn_padding":          ("p2_ml_baselines", "Attentive D-MPNN padding"),
-    "v4_multitask_dmpnn":               ("p2_ml_baselines", "V4 multi-task D-MPNN"),
-    "baselines":                        ("p2_ml_baselines", "Baseline harness"),
+    "dmpnn": ("p2_ml_baselines", "D-MPNN baseline"),
+    "dmpnn_attn": ("p2_ml_baselines", "D-MPNN attentive FP"),
+    "dmpnn_baseline": ("p2_ml_baselines", "D-MPNN baseline (Krasnov 2026)"),
+    "dmpnn_multitask": ("p2_ml_baselines", "D-MPNN multi-task Ru"),
+    "dmpnn_scatter_wiring": ("p2_ml_baselines", "D-MPNN scatter wiring"),
+    "attentive_dmpnn_padding": ("p2_ml_baselines", "Attentive D-MPNN padding"),
+    "v4_multitask_dmpnn": ("p2_ml_baselines", "V4 multi-task D-MPNN"),
+    "baselines": ("p2_ml_baselines", "Baseline harness"),
     "baselines_lightgbm_lomo_temporal": ("p2_ml_baselines", "LightGBM LOMO temporal"),
     # metal_hybrid
-    "metal_hybrid":                     ("p2_ml_metal_hybrid", "Metal hybrid V0"),
-    "metal_hybrid_v3":                  ("p2_ml_metal_hybrid", "Metal hybrid V3"),
-    "metal_hybrid_v4":                  ("p2_ml_metal_hybrid", "Metal hybrid V4"),
-    "metal_smiles":                     ("p2_ml_metal_hybrid", "Metal SMILES parser"),
-    "metal_ligand_exchange_matrix":     ("p2_ml_metal_hybrid", "Metal-ligand exchange matrix"),
-    "metal_generator_adapter":          ("p2_ml_metal_hybrid", "Metal generator adapter"),
-    "metal_geometry_known_pt":          ("p2_ml_metal_hybrid", "Metal geometry known-Pt"),
-    "f2a_metal_ligand_exchange":        ("p2_ml_metal_hybrid", "F2A metal-ligand exchange"),
-    "explicit_metal_prior_sampling":    ("p2_ml_metal_hybrid", "Explicit metal prior sampling"),
+    "metal_hybrid": ("p2_ml_metal_hybrid", "Metal hybrid V0"),
+    "metal_hybrid_v3": ("p2_ml_metal_hybrid", "Metal hybrid V3"),
+    "metal_hybrid_v4": ("p2_ml_metal_hybrid", "Metal hybrid V4"),
+    "metal_smiles": ("p2_ml_metal_hybrid", "Metal SMILES parser"),
+    "metal_ligand_exchange_matrix": (
+        "p2_ml_metal_hybrid",
+        "Metal-ligand exchange matrix",
+    ),
+    "metal_generator_adapter": ("p2_ml_metal_hybrid", "Metal generator adapter"),
+    "metal_geometry_known_pt": ("p2_ml_metal_hybrid", "Metal geometry known-Pt"),
+    "f2a_metal_ligand_exchange": ("p2_ml_metal_hybrid", "F2A metal-ligand exchange"),
+    "explicit_metal_prior_sampling": (
+        "p2_ml_metal_hybrid",
+        "Explicit metal prior sampling",
+    ),
     # pretrain
-    "tmqm_loading":                     ("p2_ml_pretrain", "TMQM loading"),
-    "tmqm_pretrain":                    ("p2_ml_pretrain", "TMQM pretraining"),
-    "tmqm_shape_bridge":                ("p2_ml_pretrain", "TMQM shape bridge"),
-    "tmqm_wireup":                      ("p2_ml_pretrain", "TMQM wireup"),
-    "aizynth_adapter":                  ("p2_ml_pretrain", "AiZynth adapter"),
-    "aizynth_isolated":                 ("p2_ml_pretrain", "AiZynth isolated"),
-    "aizynth_real_backend":             ("p2_ml_pretrain", "AiZynth real backend"),
-    "aizynth_v4_api":                   ("p2_ml_pretrain", "AiZynth v4 API"),
-    "retrosynthesis":                   ("p2_ml_pretrain", "Retrosynthesis smoke"),
+    "tmqm_loading": ("p2_ml_pretrain", "TMQM loading"),
+    "tmqm_pretrain": ("p2_ml_pretrain", "TMQM pretraining"),
+    "tmqm_shape_bridge": ("p2_ml_pretrain", "TMQM shape bridge"),
+    "tmqm_wireup": ("p2_ml_pretrain", "TMQM wireup"),
+    "aizynth_adapter": ("p2_ml_pretrain", "AiZynth adapter"),
+    "aizynth_isolated": ("p2_ml_pretrain", "AiZynth isolated"),
+    "aizynth_real_backend": ("p2_ml_pretrain", "AiZynth real backend"),
+    "aizynth_v4_api": ("p2_ml_pretrain", "AiZynth v4 API"),
+    "retrosynthesis": ("p2_ml_pretrain", "Retrosynthesis smoke"),
 }
 
 DOCKING_TEST_STEMS: dict[str, tuple[str, str]] = {
-    "vina_adapter":                     ("docking_vina", "Vina CPU adapter"),
-    "vina_gpu_adapter":                 ("docking_vina", "Vina GPU adapter"),
-    "vina_3engine_parity":              ("docking_vina", "Vina 3-engine parity"),
-    "docking_adapters":                 ("docking_vina", "Docking adapters harness"),
-    "docking_pose_chemistry":           ("docking_vina", "Docking pose chemistry"),
-    "posebusters_adapter":              ("docking_vina", "PoseBusters adapter"),
-    "posebusters_doc":                  ("docking_vina", "PoseBusters doc"),
-    "posebusters_mmff94s_relax":        ("docking_vina", "PoseBusters MMFF94s relax"),
+    "vina_adapter": ("docking_vina", "Vina CPU adapter"),
+    "vina_gpu_adapter": ("docking_vina", "Vina GPU adapter"),
+    "vina_3engine_parity": ("docking_vina", "Vina 3-engine parity"),
+    "docking_adapters": ("docking_vina", "Docking adapters harness"),
+    "docking_pose_chemistry": ("docking_vina", "Docking pose chemistry"),
+    "posebusters_adapter": ("docking_vina", "PoseBusters adapter"),
+    "posebusters_doc": ("docking_vina", "PoseBusters doc"),
+    "posebusters_mmff94s_relax": ("docking_vina", "PoseBusters MMFF94s relax"),
     "receptor_preparation_for_evaluation": ("docking_vina", "Receptor preparation"),
-    "prepare_crossdocked_receptor":     ("docking_vina", "CrossDocked receptor prep"),
-    "pocket_conditioned_lipman":        ("docking_vina", "Pocket-conditioned Lipman"),
-    "pocket_docking_reward":            ("docking_vina", "Pocket docking reward"),
-    "pocket_invariance_combined":       ("docking_vina", "Pocket invariance combined"),
-    "pocket_macro_inference_path":      ("docking_vina", "Pocket macro inference"),
+    "prepare_crossdocked_receptor": ("docking_vina", "CrossDocked receptor prep"),
+    "pocket_conditioned_lipman": ("docking_vina", "Pocket-conditioned Lipman"),
+    "pocket_docking_reward": ("docking_vina", "Pocket docking reward"),
+    "pocket_invariance_combined": ("docking_vina", "Pocket invariance combined"),
+    "pocket_macro_inference_path": ("docking_vina", "Pocket macro inference"),
 }
 
 PITFALL_TEST_STEMS: dict[str, tuple[str, str]] = {
-    "pitfall_guards":                   ("pitfall_guards", "Pitfall guard rules"),
-    "pitfall_guard_json":               ("pitfall_guards", "Pitfall guard JSON"),
+    "pitfall_guards": ("pitfall_guards", "Pitfall guard rules"),
+    "pitfall_guard_json": ("pitfall_guards", "Pitfall guard JSON"),
 }
 
 LAYER_METRICS_TEST_STEMS: dict[str, tuple[str, str]] = {
-    "layer_metrics_l1_l3":              ("layer_metrics", "Layer metrics L1..L3"),
-    "layer_metrics_l4_l6":              ("layer_metrics", "Layer metrics L4..L6"),
-    "layer_metrics_l7_l8":              ("layer_metrics", "Layer metrics L7..L8"),
-    "layer_metrics_l9_cross":           ("layer_metrics", "Layer metrics L9 cross-layer"),
+    "layer_metrics_l1_l3": ("layer_metrics", "Layer metrics L1..L3"),
+    "layer_metrics_l4_l6": ("layer_metrics", "Layer metrics L4..L6"),
+    "layer_metrics_l7_l8": ("layer_metrics", "Layer metrics L7..L8"),
+    "layer_metrics_l9_cross": ("layer_metrics", "Layer metrics L9 cross-layer"),
 }
 
 INTEGRATION_TEST_STEMS: dict[str, tuple[str, str]] = {
-    "e2e":                              ("integration_e2e", "End-to-end"),
-    "integration":                      ("integration_e2e", "Integration smoke"),
-    "design_loop":                      ("integration_e2e", "Design loop"),
-    "full_pipeline_demo":               ("integration_e2e", "Full pipeline demo"),
-    "hybrid":                           ("integration_e2e", "Hybrid atom+token"),
-    "smoke_scripts":                    ("integration_e2e", "smoke_* script smoke"),
+    "e2e": ("integration_e2e", "End-to-end"),
+    "integration": ("integration_e2e", "Integration smoke"),
+    "design_loop": ("integration_e2e", "Design loop"),
+    "full_pipeline_demo": ("integration_e2e", "Full pipeline demo"),
+    "hybrid": ("integration_e2e", "Hybrid atom+token"),
+    "smoke_scripts": ("integration_e2e", "smoke_* script smoke"),
 }
 
 # ---------------------------------------------------------------------------
 # Combined classification table — order matters (first match wins).
 # ---------------------------------------------------------------------------
 SHIP_CLASSIFICATION: list[tuple[str, dict[str, tuple[str, str]]]] = [
-    ("R18 ship",     R18_SHIP_TEST_STEMS),
-    ("R17 ship",     R17_SHIP_TEST_STEMS),
-    ("P2 ML",        P2_ML_TEST_STEMS),
-    ("Docking",      DOCKING_TEST_STEMS),
-    ("Pitfall",      PITFALL_TEST_STEMS),
-    ("Layer metrics",LAYER_METRICS_TEST_STEMS),
-    ("Integration",  INTEGRATION_TEST_STEMS),
+    ("R18 ship", R18_SHIP_TEST_STEMS),
+    ("R17 ship", R17_SHIP_TEST_STEMS),
+    ("P2 ML", P2_ML_TEST_STEMS),
+    ("Docking", DOCKING_TEST_STEMS),
+    ("Pitfall", PITFALL_TEST_STEMS),
+    ("Layer metrics", LAYER_METRICS_TEST_STEMS),
+    ("Integration", INTEGRATION_TEST_STEMS),
 ]
 
 
@@ -334,19 +353,24 @@ def collect() -> dict:
     files = sorted(p for p in TESTS_DIR.glob("test_*.py") if p.is_file())
     entries = []
     by_category: dict[str, dict] = defaultdict(
-        lambda: {"n_files": 0, "n_tests": 0, "n_skip": 0,
-                 "n_skipif": 0, "n_xfail": 0, "files": []},
+        lambda: {
+            "n_files": 0,
+            "n_tests": 0,
+            "n_skip": 0,
+            "n_skipif": 0,
+            "n_xfail": 0,
+            "files": [],
+        },
     )
     by_wave: dict[str, dict] = defaultdict(
-        lambda: {"n_files": 0, "n_tests": 0, "n_skip": 0,
-                 "n_skipif": 0, "n_xfail": 0},
+        lambda: {"n_files": 0, "n_tests": 0, "n_skip": 0, "n_skipif": 0, "n_xfail": 0},
     )
 
     total_tests = total_skip = total_skipif = total_xfail = 0
     parse_errors = 0
 
     for path in files:
-        stem = path.stem[len("test_"):]  # strip leading "test_"
+        stem = path.stem[len("test_") :]  # strip leading "test_"
         wave, category, description = classify(stem)
         counts = count_tests_in_file(path)
         entry = {
@@ -385,32 +409,34 @@ def collect() -> dict:
             parse_errors += 1
 
     # Stable ordering for JSON output.
-    categories_sorted = sorted(by_category.items(),
-                                key=lambda kv: (-kv[1]["n_tests"], kv[0]))
-    waves_sorted = sorted(by_wave.items(),
-                           key=lambda kv: (-kv[1]["n_tests"], kv[0]))
+    categories_sorted = sorted(
+        by_category.items(), key=lambda kv: (-kv[1]["n_tests"], kv[0])
+    )
+    waves_sorted = sorted(by_wave.items(), key=lambda kv: (-kv[1]["n_tests"], kv[0]))
 
     # Top-level "categories" rollup — a shorter, spec-aligned view that
     # the paper dashboard can consume without knowing the internal
     # wave/category two-level hierarchy.  Each entry is {name: n_tests}.
     categories_summary: dict[str, int] = {
-        "math_skills":      by_category.get("r18_math_skills", {}).get("n_tests", 0),
-        "adapters":         by_category.get("r18_math_adapters", {}).get("n_tests", 0),
-        "search_alg":       by_category.get("r18_search_alg", {}).get("n_tests", 0),
-        "reward":           by_category.get("r18_reward", {}).get("n_tests", 0),
-        "flow_lipman":      by_category.get("r18_flow_lipman", {}).get("n_tests", 0),
-        "lam_chem":         by_category.get("r18_lam_chem", {}).get("n_tests", 0),
-        "cfm_pipeline":     by_category.get("r18_cfm_rescue", {}).get("n_tests", 0),
-        "lambda_cfm":       by_category.get("r18_lam_chem", {}).get("n_tests", 0),
-        "pitfall":          by_category.get("pitfall_guards", {}).get("n_tests", 0),
-        "integration":      by_category.get("integration_e2e", {}).get("n_tests", 0),
-        "p2_ml":            (by_category.get("p2_ml_baselines", {}).get("n_tests", 0)
-                             + by_category.get("p2_ml_metal_hybrid", {}).get("n_tests", 0)
-                             + by_category.get("p2_ml_pretrain", {}).get("n_tests", 0)),
-        "docking":          by_category.get("docking_vina", {}).get("n_tests", 0),
-        "layer_metrics":    by_category.get("layer_metrics", {}).get("n_tests", 0),
-        "r17_legacy":       by_category.get("r17_legacy", {}).get("n_tests", 0),
-        "misc":             by_category.get("misc", {}).get("n_tests", 0),
+        "math_skills": by_category.get("r18_math_skills", {}).get("n_tests", 0),
+        "adapters": by_category.get("r18_math_adapters", {}).get("n_tests", 0),
+        "search_alg": by_category.get("r18_search_alg", {}).get("n_tests", 0),
+        "reward": by_category.get("r18_reward", {}).get("n_tests", 0),
+        "flow_lipman": by_category.get("r18_flow_lipman", {}).get("n_tests", 0),
+        "lam_chem": by_category.get("r18_lam_chem", {}).get("n_tests", 0),
+        "cfm_pipeline": by_category.get("r18_cfm_rescue", {}).get("n_tests", 0),
+        "lambda_cfm": by_category.get("r18_lam_chem", {}).get("n_tests", 0),
+        "pitfall": by_category.get("pitfall_guards", {}).get("n_tests", 0),
+        "integration": by_category.get("integration_e2e", {}).get("n_tests", 0),
+        "p2_ml": (
+            by_category.get("p2_ml_baselines", {}).get("n_tests", 0)
+            + by_category.get("p2_ml_metal_hybrid", {}).get("n_tests", 0)
+            + by_category.get("p2_ml_pretrain", {}).get("n_tests", 0)
+        ),
+        "docking": by_category.get("docking_vina", {}).get("n_tests", 0),
+        "layer_metrics": by_category.get("layer_metrics", {}).get("n_tests", 0),
+        "r17_legacy": by_category.get("r17_legacy", {}).get("n_tests", 0),
+        "misc": by_category.get("misc", {}).get("n_tests", 0),
     }
 
     timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -466,17 +492,21 @@ def _render_text(report: dict) -> str:
 
     L.append("by wave:")
     for wave, info in report["by_wave"].items():
-        L.append(f"  {wave:<14s}  files={info['n_files']:>3d}"
-                 f"  tests={info['n_tests']:>4d}"
-                 f"  skip={info['n_skip']:>2d} skipif={info['n_skipif']:>2d}"
-                 f"  xfail={info['n_xfail']:>2d}")
+        L.append(
+            f"  {wave:<14s}  files={info['n_files']:>3d}"
+            f"  tests={info['n_tests']:>4d}"
+            f"  skip={info['n_skip']:>2d} skipif={info['n_skipif']:>2d}"
+            f"  xfail={info['n_xfail']:>2d}"
+        )
     L.append("")
 
     L.append("by category (top 15 by n_tests):")
     for cat, info in list(report["by_category"].items())[:15]:
-        L.append(f"  {cat:<28s}  files={info['n_files']:>3d}"
-                 f"  tests={info['n_tests']:>4d}"
-                 f"  skip={info['n_skip']:>2d} skipif={info['n_skipif']:>2d}")
+        L.append(
+            f"  {cat:<28s}  files={info['n_files']:>3d}"
+            f"  tests={info['n_tests']:>4d}"
+            f"  skip={info['n_skip']:>2d} skipif={info['n_skipif']:>2d}"
+        )
     L.append("")
     return "\n".join(L)
 
@@ -487,7 +517,9 @@ def _render_markdown(report: dict) -> str:
     L.append("")
     L.append(f"Generated: `{report['timestamp']}`  ")
     L.append(f"Tool: `{report['tool']}`  ")
-    L.append(f"Mode: **{report['mode']}** (no pytest execution; counts are AST-estimated).")
+    L.append(
+        f"Mode: **{report['mode']}** (no pytest execution; counts are AST-estimated)."
+    )
     L.append("")
     L.append("## Summary")
     L.append("")
@@ -619,15 +651,18 @@ def main(argv: list[str] | None = None) -> int:
         description="R17 + R18 ship test inventory (read-only AST collect).",
     )
     parser.add_argument(
-        "--json", action="store_true",
+        "--json",
+        action="store_true",
         help="emit the JSON inventory to stdout; no files written",
     )
     parser.add_argument(
-        "--md", action="store_true",
+        "--md",
+        action="store_true",
         help="emit the Markdown summary to stdout; no files written",
     )
     parser.add_argument(
-        "--check", action="store_true",
+        "--check",
+        action="store_true",
         help="text-only check; do not write JSON or Markdown files",
     )
     args = parser.parse_args(argv)
@@ -635,9 +670,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         report = collect()
     except Exception as exc:  # noqa: BLE001
-        sys.stderr.write(
-            f"collector itself failed: {type(exc).__name__}: {exc}\n"
-        )
+        sys.stderr.write(f"collector itself failed: {type(exc).__name__}: {exc}\n")
         return 2
 
     if args.json:

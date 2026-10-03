@@ -53,9 +53,7 @@ TRAIN_SCRIPT = PROJECT_ROOT / "molmetal" / "scripts" / "train_se3sb.py"
 DEFAULT_DATA = (
     PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 )
-VENV_PY = (
-    PROJECT_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
-)
+VENV_PY = PROJECT_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
 
 
 # ---------------------------------------------------------------------------
@@ -88,9 +86,9 @@ def test_parse_args_se3_attribute_names() -> None:
 
     args = train_se3sb.parse_args([])
     # The fix: only ``se3_use_sinkhorn`` should exist.
-    assert hasattr(args, "se3_use_sinkhorn"), (
-        "parse_args missing se3_use_sinkhorn — argparse regressed"
-    )
+    assert hasattr(
+        args, "se3_use_sinkhorn"
+    ), "parse_args missing se3_use_sinkhorn — argparse regressed"
     assert hasattr(args, "se3_sinkhorn_eps")
     assert hasattr(args, "se3_sinkhorn_iters")
     # The bug: there must NOT be a bare ``se3_sinkhorn`` attribute.
@@ -171,9 +169,9 @@ def test_main_smoke_one_seed_one_epoch(tmp_path: Path) -> None:
     )
     # The AttributeError signature must NOT appear anywhere in the output.
     combined = result.stdout + result.stderr
-    assert "AttributeError" not in combined, (
-        f"AttributeError leaked:\n{combined[-1500:]}"
-    )
+    assert (
+        "AttributeError" not in combined
+    ), f"AttributeError leaked:\n{combined[-1500:]}"
     assert "'Namespace' object has no attribute" not in combined
 
 
@@ -309,9 +307,9 @@ def test_se3_init_meta_records_flag(tmp_path: Path) -> None:
     ]
     subprocess.run(cmd_on, capture_output=True, text=True, timeout=300, check=True)
     payload_on = json.loads(metrics_path.read_text())
-    assert payload_on["se3_init_meta"]["use_sinkhorn"] is True, (
-        "--se3-use-sinkhorn must flip use_sinkhorn to True"
-    )
+    assert (
+        payload_on["se3_init_meta"]["use_sinkhorn"] is True
+    ), "--se3-use-sinkhorn must flip use_sinkhorn to True"
 
 
 # ---------------------------------------------------------------------------

@@ -99,12 +99,8 @@ class TestHelpers:
         assert primary_metal("CCO") is None
 
     def test_is_transition_metal_present(self):
-        assert is_transition_metal_present(
-            "[NH3][Pt+2]([NH3])([Cl-])[Cl-]", "Pt"
-        )
-        assert not is_transition_metal_present(
-            "[NH3][Pt+2]([NH3])([Cl-])[Cl-]", "Ru"
-        )
+        assert is_transition_metal_present("[NH3][Pt+2]([NH3])([Cl-])[Cl-]", "Pt")
+        assert not is_transition_metal_present("[NH3][Pt+2]([NH3])([Cl-])[Cl-]", "Ru")
         # Iterable input
         assert is_transition_metal_present(
             "[NH3][Pt+2]([NH3])([Cl-])[Cl-]", ["Pt", "Ru"]
@@ -146,9 +142,9 @@ class TestPlatinAI:
         ds = PlatinAIDataset(n_max=2000)
         smiles = ds.get_smiles_list()
         # No duplicate SMILES
-        assert len(smiles) == len(set(smiles)), (
-            f"Found {len(smiles) - len(set(smiles))} duplicates"
-        )
+        assert len(smiles) == len(
+            set(smiles)
+        ), f"Found {len(smiles) - len(set(smiles))} duplicates"
 
     def test_platinai_split_sizes(self):
         # Use a small n_max to keep test fast
@@ -174,8 +170,10 @@ class TestPlatinAI:
         assert mat.shape[1] == 2
         # At least some rows should have *some* non-NaN activity
         # (PlatinAI provides predicted_0 for the full 226k subset)
-        finite_per_row = (~mat.isnan()).any(axis=1) if hasattr(mat, "isnan") else (
-            ~((mat != mat).any(axis=1))
+        finite_per_row = (
+            (~mat.isnan()).any(axis=1)
+            if hasattr(mat, "isnan")
+            else (~((mat != mat).any(axis=1)))
         )
         n_with_activity = int(finite_per_row.sum())
         # If join files are not reachable (e.g. in CI), allow zero
@@ -253,9 +251,7 @@ class TestMetalloDrugUnion:
             assert isinstance(activity, dict)
             assert metal is None or metal in TRANSITION_METALS
             # At least one of these keys should appear
-            assert any(
-                k in activity for k in ("a2780", "mcf7", "ic50_dark")
-            )
+            assert any(k in activity for k in ("a2780", "mcf7", "ic50_dark"))
 
     def test_metallo_drugs_500_subset(self):
         plat = PlatinAIDataset(n_max=2000)
@@ -297,9 +293,7 @@ class TestCrossCutting:
         # already filter on this, so verify nothing slipped through).
         ds = PlatinAIDataset(n_max=200)
         for smi, _, _ in ds:
-            assert canonicalise(smi) == smi, (
-                f"Record not RDKit-canonical: {smi}"
-            )
+            assert canonicalise(smi) == smi, f"Record not RDKit-canonical: {smi}"
 
     def test_heavy_atom_range_enforced(self):
         ds = PlatinAIDataset(n_max=500)

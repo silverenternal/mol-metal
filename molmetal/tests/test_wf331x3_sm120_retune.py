@@ -38,6 +38,7 @@ Run::
     PYTHONPATH=/home/hugo/codes/mol-metal \\
         python -m pytest molmetal/tests/test_wf331x3_sm120_retune.py -v
 """
+
 from __future__ import annotations
 
 import importlib
@@ -52,11 +53,11 @@ import pytest
 # Path bootstrap (mirrors the pattern in other molmetal tests)
 # ---------------------------------------------------------------------------
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-_AUDIT_PATH = _PROJECT_ROOT / "molmetal" / "reports" / "wf326e_triton_audit" / "audit.json"
-_SCRIPT_PATH = _PROJECT_ROOT / "molmetal" / "scripts" / "wf331x3_sm120_retune.py"
-_DEFAULT_REPORT_DIR = (
-    _PROJECT_ROOT / "molmetal" / "reports" / "wf331x3_sm120_retune"
+_AUDIT_PATH = (
+    _PROJECT_ROOT / "molmetal" / "reports" / "wf326e_triton_audit" / "audit.json"
 )
+_SCRIPT_PATH = _PROJECT_ROOT / "molmetal" / "scripts" / "wf331x3_sm120_retune.py"
+_DEFAULT_REPORT_DIR = _PROJECT_ROOT / "molmetal" / "reports" / "wf331x3_sm120_retune"
 
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
@@ -91,9 +92,9 @@ def _load_scaffold_module():
 # ---------------------------------------------------------------------------
 def _load_audit() -> dict:
     """Load the Wf-326E audit JSON from disk (source of truth)."""
-    assert _AUDIT_PATH.is_file(), (
-        f"Wf-326E audit missing at {_AUDIT_PATH}. Run the audit first."
-    )
+    assert (
+        _AUDIT_PATH.is_file()
+    ), f"Wf-326E audit missing at {_AUDIT_PATH}. Run the audit first."
     with _AUDIT_PATH.open() as fh:
         return json.load(fh)
 
@@ -142,12 +143,12 @@ class TestAutotuneWrapper:
         mod = _load_scaffold_module()
 
         # (a) Module imports cleanly.
-        assert hasattr(mod, "sm120_autotune"), (
-            "Scaffold module must export sm120_autotune()."
-        )
-        assert hasattr(mod, "SM120_AUTOTUNE_CONFIGS"), (
-            "Scaffold module must export SM120_AUTOTUNE_CONFIGS."
-        )
+        assert hasattr(
+            mod, "sm120_autotune"
+        ), "Scaffold module must export sm120_autotune()."
+        assert hasattr(
+            mod, "SM120_AUTOTUNE_CONFIGS"
+        ), "Scaffold module must export SM120_AUTOTUNE_CONFIGS."
 
         # (b) Apply the decorator over a @triton.jit function (required
         # by :func:`triton.autotune` — needs ``arg_names`` attribute).
@@ -164,12 +165,12 @@ class TestAutotuneWrapper:
             )
 
         # (c) Autotuner exposes .configs and .run.
-        assert hasattr(kernel, "configs"), (
-            "sm120_autotune-wrapped kernel must expose .configs."
-        )
-        assert hasattr(kernel, "run"), (
-            "sm120_autotune-wrapped kernel must expose .run method."
-        )
+        assert hasattr(
+            kernel, "configs"
+        ), "sm120_autotune-wrapped kernel must expose .configs."
+        assert hasattr(
+            kernel, "run"
+        ), "sm120_autotune-wrapped kernel must expose .run method."
         assert len(kernel.configs) == len(mod.SM120_AUTOTUNE_CONFIGS), (
             f"sm120_autotune-wrapped kernel has {len(kernel.configs)} "
             f"configs; expected {len(mod.SM120_AUTOTUNE_CONFIGS)}."
@@ -179,6 +180,7 @@ class TestAutotuneWrapper:
         n_sm120 = len(mod.SM120_AUTOTUNE_CONFIGS)
         try:
             import triton_kernels
+
             n_gfx1101 = len(triton_kernels.AUTOTUNE_CONFIGS)
         except Exception:
             n_gfx1101 = 9
@@ -228,9 +230,7 @@ class TestSm120ConfigPresets:
 
         # (b) Cover the Wf-326E-A grid: num_warps in {4, 8, 16},
         # num_stages in {2, 3, 4}.
-        seen_pairs = {
-            (_has_num_warps(c), _has_num_stages(c)) for c in configs
-        }
+        seen_pairs = {(_has_num_warps(c), _has_num_stages(c)) for c in configs}
         for nw in (4, 8, 16):
             for ns in (2, 3, 4):
                 assert (nw, ns) in seen_pairs, (
@@ -247,6 +247,7 @@ class TestSm120ConfigPresets:
             )
         # Out-of-range config (num_warps=64, num_stages=8) is NOT safe.
         import triton
+
         bogus = triton.Config({}, num_warps=64, num_stages=8)
         assert not mod.is_sm120_config_safe(bogus), (
             "Bogus config (num_warps=64, num_stages=8) should NOT be "
@@ -303,12 +304,8 @@ class TestSm120ConfigPresets:
             )
 
         # (d) Fallback ⊆ full.
-        fallback_pairs = {
-            (_has_num_warps(c), _has_num_stages(c)) for c in fallback
-        }
-        full_pairs = {
-            (_has_num_warps(c), _has_num_stages(c)) for c in full
-        }
+        fallback_pairs = {(_has_num_warps(c), _has_num_stages(c)) for c in fallback}
+        full_pairs = {(_has_num_warps(c), _has_num_stages(c)) for c in full}
         assert fallback_pairs <= full_pairs, (
             f"SM120_AUTOTUNE_CONFIGS_FALLBACK is not a subset of "
             f"SM120_AUTOTUNE_CONFIGS. "
@@ -337,9 +334,9 @@ class TestGfx1101Fallback:
           (d) the call order is recorded correctly
         """
         mod = _load_scaffold_module()
-        assert hasattr(mod, "safe_kernel_call"), (
-            "Scaffold module must export safe_kernel_call()."
-        )
+        assert hasattr(
+            mod, "safe_kernel_call"
+        ), "Scaffold module must export safe_kernel_call()."
 
         # (b) Fallback path: sm_120 raises, gfx1101 returns "ok".
         calls: list = []
@@ -394,9 +391,7 @@ class TestGfx1101Fallback:
             calls.append(("gfx1101", x, y))
             return x * y
 
-        result_args = mod.safe_kernel_call(
-            _sm120_with_args, _gfx1101_with_args, 3, y=4
-        )
+        result_args = mod.safe_kernel_call(_sm120_with_args, _gfx1101_with_args, 3, y=4)
         assert result_args == 7, (
             f"safe_kernel_call should pass through positional + kwarg; "
             f"got {result_args}."

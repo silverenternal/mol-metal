@@ -44,10 +44,10 @@ _UPSTREAM = _HERE.parents[1] / "references" / "flow_matching"
 if _UPSTREAM.is_dir() and str(_UPSTREAM) not in sys.path:
     sys.path.insert(0, str(_UPSTREAM))
 
-from flow_matching.path import AffineProbPath           # noqa: E402
+from flow_matching.path import AffineProbPath  # noqa: E402
 from flow_matching.path.scheduler import CondOTScheduler  # noqa: E402
-from flow_matching.solver import ODESolver              # noqa: E402
-from flow_matching.utils import ModelWrapper            # noqa: E402
+from flow_matching.solver import ODESolver  # noqa: E402
+from flow_matching.utils import ModelWrapper  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -67,7 +67,13 @@ class _SimpleVelocityField(nn.Module):
         self.proj_in = nn.Linear(3 + 1, hidden_dim)
         self.proj_out = nn.Linear(hidden_dim, 3)
 
-    def forward(self, x: torch.Tensor = None, x_t: torch.Tensor = None, t: torch.Tensor = None, **extras) -> torch.Tensor:
+    def forward(
+        self,
+        x: torch.Tensor = None,
+        x_t: torch.Tensor = None,
+        t: torch.Tensor = None,
+        **extras,
+    ) -> torch.Tensor:
         # Accept either ``x`` (upstream ModelWrapper convention) or
         # ``x_t`` (intuitive name).  ``t`` may be (B,) or scalar (0-D);
         # torchdiffeq passes a 0-D tensor during ODE integration.
@@ -126,7 +132,9 @@ class FacebookFMWrapper:
         self.scheduler = None
         self._odesolver: Optional[ODESolver] = None
         self.device: torch.device = torch.device(
-            device if device is not None else ("cuda" if torch.cuda.is_available() else "cpu")
+            device
+            if device is not None
+            else ("cuda" if torch.cuda.is_available() else "cpu")
         )
         self.last_losses: dict = {}
 
@@ -151,9 +159,7 @@ class FacebookFMWrapper:
         # 4) ODESolver — the upstream solver expects a ModelWrapper (or callable)
         # that takes ``(x, t, **extras)``.  ModelWrapper stores a model and
         # forwards extras; our SimpleVelocityField already accepts (x, t).
-        self._odesolver = ODESolver(
-            velocity_model=ModelWrapper(self.velocity_field)
-        )
+        self._odesolver = ODESolver(velocity_model=ModelWrapper(self.velocity_field))
 
         # 5) Atom-type head + joint optimizer (created lazily in train_step
         # too; we seed it here so the optim knows the params before step 0).
@@ -166,7 +172,7 @@ class FacebookFMWrapper:
     # ------------------------------------------------------------------
     def train_step(
         self,
-        mols,                         # List[dict-like] with .coords .atom_types
+        mols,  # List[dict-like] with .coords .atom_types
         atom_loss_weight: float = 0.1,
     ) -> float:
         """One CFM step using the upstream AffineProbPath.sample(...).
@@ -207,7 +213,7 @@ class FacebookFMWrapper:
         # We use 11 atomic-number classes (1, 6, 7, 8, 9, 15, 16, 17,
         # 34, 35, 53) — same set as the handwritten adapter's vocab_mask.
         atom_logits = self._atom_head(v_pred)  # (B, N, 11)
-        flat_logits = atom_logits[mask]        # (M, 11)
+        flat_logits = atom_logits[mask]  # (M, 11)
         flat_targets = atom_types[mask].clamp(min=1, max=11) - 1  # to 0..10
         atom_loss = F.cross_entropy(flat_logits, flat_targets)
 
@@ -246,7 +252,7 @@ class FacebookFMWrapper:
 
         x_1 = self._odesolver.sample(
             x_init=x_init,
-            step_size=None,           # let the time_grid drive stepping
+            step_size=None,  # let the time_grid drive stepping
             method="euler",
             time_grid=time_grid,
             return_intermediates=False,
@@ -255,14 +261,21 @@ class FacebookFMWrapper:
 
         # Dummy atom-types for now (round-trip with upstream, no
         # chemistry decoder — that lives in the real EGNNVelocityField).
-        atom_types = torch.zeros(n_samples, n_atoms, dtype=torch.long, device=self.device)
+        atom_types = torch.zeros(
+            n_samples, n_atoms, dtype=torch.long, device=self.device
+        )
 
         class _M:
             __slots__ = ("coords", "atom_types")
+
             def __init__(self, coords, atom_types):
                 self.coords = coords
                 self.atom_types = atom_types
-        return [_M(x_1[i].detach().cpu(), atom_types[i].detach().cpu()) for i in range(n_samples)]
+
+        return [
+            _M(x_1[i].detach().cpu(), atom_types[i].detach().cpu())
+            for i in range(n_samples)
+        ]
 
 
 __all__ = ["FacebookFMWrapper"]

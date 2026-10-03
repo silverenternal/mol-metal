@@ -51,6 +51,7 @@ re-definition closes the gap.
 
 CPU-only RDKit; no GPU dependency.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -162,7 +163,9 @@ def _aggregate(values: Sequence[float]) -> Dict[str, float]:
     }
 
 
-def _score_rdkit_validity_and_props(smiles_list: Sequence[str]) -> List[Dict[str, object]]:
+def _score_rdkit_validity_and_props(
+    smiles_list: Sequence[str],
+) -> List[Dict[str, object]]:
     """Per-SMILES RDKit validity + Lipinski + QED."""
     try:
         from rdkit import Chem
@@ -170,8 +173,7 @@ def _score_rdkit_validity_and_props(smiles_list: Sequence[str]) -> List[Dict[str
     except Exception as exc:  # pragma: no cover
         LOG.warning("[sa_closure_gen] RDKit not available: %s", exc)
         return [
-            {"valid": False, "lipinski_pass": False, "qed": None}
-            for _ in smiles_list
+            {"valid": False, "lipinski_pass": False, "qed": None} for _ in smiles_list
         ]
 
     out: List[Dict[str, object]] = []
@@ -287,17 +289,11 @@ def _run_pocket(pocket_id: str, n: int, seed: int) -> PocketGenerationRecord:
 
     sa_stats = _aggregate(sa_values)
     valid_count = sum(1 for p in rdkit_props if p.get("valid"))
-    rdkit_validity_rate = (
-        float(valid_count) / max(len(rdkit_props), 1)
-    )
-    lipinski_count = sum(
-        1 for p in rdkit_props if p.get("lipinski_pass") is True
-    )
+    rdkit_validity_rate = float(valid_count) / max(len(rdkit_props), 1)
+    lipinski_count = sum(1 for p in rdkit_props if p.get("lipinski_pass") is True)
     lipinski_pass_rate = float(lipinski_count) / max(len(rdkit_props), 1)
     qed_values: List[float] = [
-        float(p["qed"])
-        for p in rdkit_props
-        if p.get("qed") is not None
+        float(p["qed"]) for p in rdkit_props if p.get("qed") is not None
     ]
     qed_stats = _aggregate(qed_values)
     aizynth_synth = sum(1 for syn, _ in aizynth_tags if syn)
@@ -415,12 +411,7 @@ def run(
     Returns the aggregate sa_metrics.json dict.
     """
     if out_dir is None:
-        out_dir = (
-            PROJECT_ROOT
-            / "molmetal"
-            / "reports"
-            / "wf139_p6_sa_closure_bias"
-        )
+        out_dir = PROJECT_ROOT / "molmetal" / "reports" / "wf139_p6_sa_closure_bias"
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -578,9 +569,7 @@ def run(
             else float("nan")
         )
         std_of_means = (
-            float(statistics.pstdev(pocket_means))
-            if len(pocket_means) > 1
-            else 0.0
+            float(statistics.pstdev(pocket_means)) if len(pocket_means) > 1 else 0.0
         )
     else:
         simple_mean = float("nan")
@@ -591,9 +580,7 @@ def run(
     # Aggregate cross-pocket statistics (use per-pocket summary)
     # ------------------------------------------------------------------
     n_total_emissions = int(sum(per_pocket_emissions.values()))
-    n_total_unique = int(
-        sum(len(s) for s in per_pocket_unique_all_seeds.values())
-    )
+    n_total_unique = int(sum(len(s) for s in per_pocket_unique_all_seeds.values()))
     n_pockets_meeting_target_3p0 = int(
         sum(
             1
@@ -614,8 +601,7 @@ def run(
         sum(
             1
             for s in per_pocket_summary.values()
-            if s["sa_mean_weighted"] is not None
-            and s["sa_mean_weighted"] <= 2.65
+            if s["sa_mean_weighted"] is not None and s["sa_mean_weighted"] <= 2.65
         )
     )
 
@@ -629,15 +615,13 @@ def run(
         "sa_mean_weighted_5pocket": _safe_float(weighted_mean),
         "sa_std_of_5pocket_means": _safe_float(std_of_means),
         "sa_per_pocket": {
-            pid: s["sa_mean_weighted"]
-            for pid, s in per_pocket_summary.items()
+            pid: s["sa_mean_weighted"] for pid, s in per_pocket_summary.items()
         },
         "n_pockets_meeting_target_3p0": n_pockets_meeting_target_3p0,
         "n_pockets_meeting_stretch_2p8": n_pockets_meeting_stretch_2p8,
         "n_pockets_meeting_targetdiff_2p65": n_pockets_meeting_targetdiff_2p65,
         "aggregate_passes_stretch_2p8": bool(
-            simple_mean == simple_mean
-            and simple_mean <= TARGET_SA_MEAN_AGGREGATE
+            simple_mean == simple_mean and simple_mean <= TARGET_SA_MEAN_AGGREGATE
         ),
     }
 
@@ -801,9 +785,7 @@ def _cli() -> argparse.Namespace:
     p.add_argument(
         "--out-dir",
         type=str,
-        default=str(
-            PROJECT_ROOT / "molmetal" / "reports" / "wf139_p6_sa_closure_bias"
-        ),
+        default=str(PROJECT_ROOT / "molmetal" / "reports" / "wf139_p6_sa_closure_bias"),
     )
     p.add_argument(
         "--log-level",

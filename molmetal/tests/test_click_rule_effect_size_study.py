@@ -14,6 +14,7 @@ returns a fixed ``CellResult``.  This keeps the test CPU-only and
 under 5 s.  The real Lambda stack is NOT exercised here — that's
 what the production run does.
 """
+
 from __future__ import annotations
 
 import csv
@@ -44,10 +45,10 @@ class _StubCell:
         # and Cohen's d can be computed (even if degenerate n=1).
         seed_offset = (seed % 5) * 0.01
         rule_offset = {
-            "CuAAC":         0.30,
-            "SPAAC":         0.20,
-            "ThiolEne":      0.10,
-            "Suzuki":        0.05,
+            "CuAAC": 0.30,
+            "SPAAC": 0.20,
+            "ThiolEne": 0.10,
+            "Suzuki": 0.05,
             "AmideCoupling": 0.01,
         }.get(rule, 0.0)
         self.pocket_id = pocket_id
@@ -75,12 +76,20 @@ class _StubCell:
 def test_study_cli_help():
     proc = subprocess.run(
         [sys.executable, str(SCRIPT), "--help"],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     assert proc.returncode == 0
     out = (proc.stdout or "") + (proc.stderr or "")
-    for needle in ("--pockets", "--seeds", "--n-simulations",
-                   "--output-dir", "--manifest", "--metal-seed"):
+    for needle in (
+        "--pockets",
+        "--seeds",
+        "--n-simulations",
+        "--output-dir",
+        "--manifest",
+        "--metal-seed",
+    ):
         assert needle in out, f"--help missing flag {needle}"
 
 
@@ -93,9 +102,16 @@ def test_study_smoke_1x1_per_rule(tmp_path, monkeypatch):
     # Bypass real MCTS search with the deterministic stub.
     from molmetal.scripts import r4_lambda_only_run
 
-    def fake_run_one_cell(*, pocket_id, reference_smiles, seed,
-                          n_simulations, n_top_k, click_rules=None,
-                          **kwargs):
+    def fake_run_one_cell(
+        *,
+        pocket_id,
+        reference_smiles,
+        seed,
+        n_simulations,
+        n_top_k,
+        click_rules=None,
+        **kwargs,
+    ):
         # click_rules is a list like ['CuAAC']
         rule = click_rules[0] if click_rules else "CuAAC"
         return _StubCell(pocket_id, seed, rule)
@@ -113,8 +129,10 @@ def test_study_smoke_1x1_per_rule(tmp_path, monkeypatch):
     # Point load_reference_smiles at a deterministic stub too.
     def fake_load_reference_smiles(ligand_path):
         return "CCO"
-    monkeypatch.setattr(r4_lambda_only_run, "load_reference_smiles",
-                        fake_load_reference_smiles)
+
+    monkeypatch.setattr(
+        r4_lambda_only_run, "load_reference_smiles", fake_load_reference_smiles
+    )
 
     output_dir = tmp_path / "study_out"
     payload = ces.run_study(
@@ -158,7 +176,7 @@ def test_effect_size_cohen_d_correctness():
         d = (4.8 - 1.8) / sqrt(0.7) ~= 4.0 / 0.83666 ~= 3.5857
     """
     treatment = [4, 5, 6, 5, 4]
-    baseline  = [1, 2, 3, 2, 1]
+    baseline = [1, 2, 3, 2, 1]
     d = ces.cohens_d(treatment, baseline)
     assert d is not None
     # 0.01 tolerance for finite-precision rounding
@@ -194,7 +212,11 @@ def test_effect_size_cohen_d_correctness():
 def test_5_rules_iteration():
     assert len(ces.STUDY_RULES) == 5
     assert set(ces.STUDY_RULES) == {
-        "CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling",
+        "CuAAC",
+        "SPAAC",
+        "ThiolEne",
+        "Suzuki",
+        "AmideCoupling",
     }
 
 
@@ -205,9 +227,16 @@ def test_output_json_schema(tmp_path, monkeypatch):
     """Run a minimal study and check JSON schema completeness."""
     from molmetal.scripts import r4_lambda_only_run
 
-    def fake_run_one_cell(*, pocket_id, reference_smiles, seed,
-                          n_simulations, n_top_k, click_rules=None,
-                          **kwargs):
+    def fake_run_one_cell(
+        *,
+        pocket_id,
+        reference_smiles,
+        seed,
+        n_simulations,
+        n_top_k,
+        click_rules=None,
+        **kwargs,
+    ):
         rule = click_rules[0] if click_rules else "CuAAC"
         return _StubCell(pocket_id, seed, rule)
 
@@ -215,8 +244,9 @@ def test_output_json_schema(tmp_path, monkeypatch):
         return "CCO"
 
     monkeypatch.setattr(r4_lambda_only_run, "run_one_cell", fake_run_one_cell)
-    monkeypatch.setattr(r4_lambda_only_run, "load_reference_smiles",
-                        fake_load_reference_smiles)
+    monkeypatch.setattr(
+        r4_lambda_only_run, "load_reference_smiles", fake_load_reference_smiles
+    )
 
     tiny_manifest = tmp_path / "manifest.csv"
     tiny_manifest.write_text(
@@ -235,9 +265,17 @@ def test_output_json_schema(tmp_path, monkeypatch):
     )
 
     # Top-level keys
-    for key in ("rules", "metrics", "panel_mean", "panel_std",
-                "panel_n", "effect_sizes", "rule_citations",
-                "config", "cells"):
+    for key in (
+        "rules",
+        "metrics",
+        "panel_mean",
+        "panel_std",
+        "panel_n",
+        "effect_sizes",
+        "rule_citations",
+        "config",
+        "cells",
+    ):
         assert key in payload, f"missing top-level key: {key}"
 
     # rules + metrics dimension check
@@ -251,9 +289,7 @@ def test_output_json_schema(tmp_path, monkeypatch):
             assert metric in payload["panel_mean"][rule]
             # mean is in [0, 1] for the four metrics we care about
             v = payload["panel_mean"][rule][metric]
-            assert 0.0 <= v <= 1.0, (
-                f"{rule}/{metric} mean {v} out of [0,1]"
-            )
+            assert 0.0 <= v <= 1.0, f"{rule}/{metric} mean {v} out of [0,1]"
 
     # effect_sizes: 5 rules x 4 metrics, each value is float or None
     for rule in ces.STUDY_RULES:
@@ -270,9 +306,16 @@ def test_output_csv_schema(tmp_path, monkeypatch):
     """CSV must have the rule + metric + 4 numeric columns."""
     from molmetal.scripts import r4_lambda_only_run
 
-    def fake_run_one_cell(*, pocket_id, reference_smiles, seed,
-                          n_simulations, n_top_k, click_rules=None,
-                          **kwargs):
+    def fake_run_one_cell(
+        *,
+        pocket_id,
+        reference_smiles,
+        seed,
+        n_simulations,
+        n_top_k,
+        click_rules=None,
+        **kwargs,
+    ):
         rule = click_rules[0] if click_rules else "CuAAC"
         return _StubCell(pocket_id, seed, rule)
 
@@ -280,8 +323,9 @@ def test_output_csv_schema(tmp_path, monkeypatch):
         return "CCO"
 
     monkeypatch.setattr(r4_lambda_only_run, "run_one_cell", fake_run_one_cell)
-    monkeypatch.setattr(r4_lambda_only_run, "load_reference_smiles",
-                        fake_load_reference_smiles)
+    monkeypatch.setattr(
+        r4_lambda_only_run, "load_reference_smiles", fake_load_reference_smiles
+    )
 
     tiny_manifest = tmp_path / "manifest.csv"
     tiny_manifest.write_text(
@@ -319,6 +363,6 @@ def test_output_csv_schema(tmp_path, monkeypatch):
         key = (r["rule"], r["metric"])
         assert key not in seen, f"duplicate row {key}"
         seen.add(key)
-    assert seen == {(rule, metric)
-                    for rule in ces.STUDY_RULES
-                    for metric in ces.STUDY_METRICS}
+    assert seen == {
+        (rule, metric) for rule in ces.STUDY_RULES for metric in ces.STUDY_METRICS
+    }

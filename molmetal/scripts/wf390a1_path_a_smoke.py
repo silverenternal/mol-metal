@@ -74,7 +74,17 @@ PATH_A_METALS: Tuple[str, ...] = ("Ru", "Ir", "Rh", "Os", "Re")
 
 # Wf-379-A2 11-metal set (would FAIL argparse; preserved for negative test)
 WF379A2_METALS: Tuple[str, ...] = (
-    "Cr", "Mn", "Cu", "Zn", "Ru", "Rh", "Pd", "Ag", "Pt", "Ir", "Au"
+    "Cr",
+    "Mn",
+    "Cu",
+    "Zn",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Pt",
+    "Ir",
+    "Au",
 )
 
 # Path A per-cohort config (per Wf-380-A2 + Wf-388-A1 SCAFFOLD/APPLIED pattern)
@@ -105,10 +115,7 @@ PATH_A_COHORT_CONFIGS: List[Dict[str, object]] = [
         "cohort_id": "metalcytotox_5metal_multitask_v4",
         "n_smiles": 26800,
         "csv_path": str(
-            PROJECT_ROOT
-            / ".data"
-            / "molmetal"
-            / "metalcytotox_5metal_multitask_v4.csv"
+            PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
         ),
         "metals": list(PATH_A_METALS),
         "seeds": [0, 1, 2, 3, 4],

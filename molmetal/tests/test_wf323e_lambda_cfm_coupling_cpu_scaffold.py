@@ -152,9 +152,9 @@ def test_wf323e_adapter_deterministic_and_pocket_embedding() -> None:
 
     # Different pocket names → distinct embeddings
     e_ir = adapter.embed_pocket(None, pocket_name="Ir_99")
-    assert not np.allclose(e_none_a, e_ir), (
-        "different pocket_name should shift the fallback embedding"
-    )
+    assert not np.allclose(
+        e_none_a, e_ir
+    ), "different pocket_name should shift the fallback embedding"
 
 
 def test_wf323e_adapter_env_var_gate() -> None:
@@ -171,9 +171,9 @@ def test_wf323e_adapter_env_var_gate() -> None:
     # Truthy values
     for truthy in ("1", "true", "True", "TRUE", "yes", "YES", "on"):
         os.environ["COUPLING_ENABLED"] = truthy
-        assert mod.is_coupling_enabled() is True, (
-            f"COUPLING_ENABLED={truthy!r} should be truthy"
-        )
+        assert (
+            mod.is_coupling_enabled() is True
+        ), f"COUPLING_ENABLED={truthy!r} should be truthy"
         assert mod.coupling_enabled_or(default=False) is True
 
     # Falsy values: when env var is set to a non-empty falsy string, the
@@ -181,9 +181,9 @@ def test_wf323e_adapter_env_var_gate() -> None:
     # because the env var is present and parsable.
     for falsy in ("0", "false", "no", "off", "random"):
         os.environ["COUPLING_ENABLED"] = falsy
-        assert mod.is_coupling_enabled() is False, (
-            f"COUPLING_ENABLED={falsy!r} should be falsy"
-        )
+        assert (
+            mod.is_coupling_enabled() is False
+        ), f"COUPLING_ENABLED={falsy!r} should be falsy"
         assert mod.coupling_enabled_or(default=False) is False
         assert mod.coupling_enabled_or(default=True) is False  # parsed wins
 
@@ -276,16 +276,16 @@ def test_wf323e_cascaded_refiner_identity_and_finite() -> None:
     assert out.shape == (mod.EMBED_DIM,)
     assert np.isfinite(out).all()
     norm = float(np.linalg.norm(out))
-    assert 0.99 <= norm <= 1.01, (
-        f"refiner output should be L2-normalised; got norm={norm}"
-    )
+    assert (
+        0.99 <= norm <= 1.01
+    ), f"refiner output should be L2-normalised; got norm={norm}"
 
     # Cascade must be closer to cfm than to lam (geometric decay)
     d_out_to_cfm = float(np.linalg.norm(out - cfm))
     d_lam_to_cfm = float(np.linalg.norm(lam - cfm))
-    assert d_out_to_cfm < d_lam_to_cfm, (
-        "CascadedRefiner must move lambda_output toward cfm_output"
-    )
+    assert (
+        d_out_to_cfm < d_lam_to_cfm
+    ), "CascadedRefiner must move lambda_output toward cfm_output"
 
 
 # ---------------------------------------------------------------------------

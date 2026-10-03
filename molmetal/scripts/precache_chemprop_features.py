@@ -201,7 +201,9 @@ def _molgraph_to_arrays(
 
 
 # Module-level worker — top-level so multiprocess.Pool can pickle it.
-def _save_one_npz(args: Tuple[str, np.ndarray, np.ndarray, np.ndarray, np.ndarray, str]) -> str:
+def _save_one_npz(
+    args: Tuple[str, np.ndarray, np.ndarray, np.ndarray, np.ndarray, str],
+) -> str:
     """Persist one (canon SMILES → 4 arrays) tuple to compressed npz.
 
     Returns the canonical SMILES for the parent process to repopulate
@@ -297,8 +299,12 @@ def _featurize_and_cache(
 
         # Phase 3 — convert + persist + populate in-memory dict.
         t0 = time.time()
-        save_args: List[Tuple[str, np.ndarray, np.ndarray, np.ndarray, np.ndarray, str]] = []
-        arrays_by_canon: Dict[str, Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]] = {}
+        save_args: List[
+            Tuple[str, np.ndarray, np.ndarray, np.ndarray, np.ndarray, str]
+        ] = []
+        arrays_by_canon: Dict[
+            str, Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+        ] = {}
         for smi, mg in zip(valid_canon, cache):
             V, E, edge_index, rev = _molgraph_to_arrays(mg)
             path = str(cache_dir / f"{_hash_canon(smi)}.npz")
@@ -355,9 +361,7 @@ def _build_batch_molgraph(
                 "edge_index": np.zeros((2, 0), dtype=np.int64),
                 "rev_edge_index": np.zeros((0,), dtype=np.int64),
             }
-        mgs.append(
-            MolGraph(d["V"], d["E"], d["edge_index"], d["rev_edge_index"])
-        )
+        mgs.append(MolGraph(d["V"], d["E"], d["edge_index"], d["rev_edge_index"]))
     bmg = BatchMolGraph(mgs)
     bmg.V = bmg.V.to(device)
     bmg.E = bmg.E.to(device)
@@ -382,7 +386,9 @@ def main() -> Tuple[int, float, float, bool]:
         default=("cuda:0" if torch.cuda.is_available() else "cpu"),
     )
     parser.add_argument(
-        "--metals", nargs="+", default=list(METALS),
+        "--metals",
+        nargs="+",
+        default=list(METALS),
         help="Subset of metals to precache (default: all 5).",
     )
     parser.add_argument(
@@ -426,8 +432,14 @@ def main() -> Tuple[int, float, float, bool]:
     df["canon"] = canon_results
     n_null = int(df["canon"].isna().sum())
     if n_null > 0:
-        print(f"[precache] WARNING: {n_null} rows had invalid SMILES; dropped", flush=True)
-        df = df[df["canon"].notna()].reset_index(drop=False).rename(columns={"index": "row_idx"})
+        print(
+            f"[precache] WARNING: {n_null} rows had invalid SMILES; dropped", flush=True
+        )
+        df = (
+            df[df["canon"].notna()]
+            .reset_index(drop=False)
+            .rename(columns={"index": "row_idx"})
+        )
     else:
         df = df.reset_index(drop=False).rename(columns={"index": "row_idx"})
     print(
@@ -450,9 +462,7 @@ def main() -> Tuple[int, float, float, bool]:
     sample = next(iter(featurized.values()))
     atom_fdim = int(sample["V"].shape[1])
     bond_fdim = int(sample["E"].shape[1]) if sample["E"].ndim > 1 else 14
-    print(
-        f"[precache] atom_fdim={atom_fdim}, bond_fdim={bond_fdim}", flush=True
-    )
+    print(f"[precache] atom_fdim={atom_fdim}, bond_fdim={bond_fdim}", flush=True)
 
     # --- Build per-metal batches (deterministic order: row index ascending) ---
     metal_batches: Dict[str, List[Dict]] = {}
@@ -586,23 +596,19 @@ def main() -> Tuple[int, float, float, bool]:
         for _ in range(3):
             metal = random.choice(list(metal_batches.keys()))
             seed = random.choice(args.seeds)
-            batch_idx = random.randint(
-                0, len(metal_batches[metal]) - 1
-            )
-            path = (
-                args.out_dir / metal / f"seed{seed}" / f"batch{batch_idx}.pt"
-            )
+            batch_idx = random.randint(0, len(metal_batches[metal]) - 1)
+            path = args.out_dir / metal / f"seed{seed}" / f"batch{batch_idx}.pt"
             obj = torch.load(path, map_location="cpu")
             assert "pooled" in obj, f"missing 'pooled' key in {path}"
-            assert obj["pooled"].dim() == 2, (
-                f"pooled shape {obj['pooled'].shape} != (B, d_h)"
-            )
-            assert obj["pooled"].size(1) == D_H, (
-                f"pooled dim {obj['pooled'].size(1)} != d_h={D_H}"
-            )
-            assert len(obj["row_indices"]) == obj["pooled"].size(0), (
-                f"row_indices {len(obj['row_indices'])} != pooled B={obj['pooled'].size(0)}"
-            )
+            assert (
+                obj["pooled"].dim() == 2
+            ), f"pooled shape {obj['pooled'].shape} != (B, d_h)"
+            assert (
+                obj["pooled"].size(1) == D_H
+            ), f"pooled dim {obj['pooled'].size(1)} != d_h={D_H}"
+            assert (
+                len(obj["row_indices"]) == obj["pooled"].size(0)
+            ), f"row_indices {len(obj['row_indices'])} != pooled B={obj['pooled'].size(0)}"
         print(f"[precache] Smoke load OK: 3 random batches verified", flush=True)
     except Exception as e:
         print(f"[precache] Smoke load FAILED: {e}", flush=True)

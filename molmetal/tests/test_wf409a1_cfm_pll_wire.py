@@ -136,9 +136,7 @@ def test_cfm_pll_flag_off_zero_contribution(cfm_parse_args):
     # (b) When --cfm-multiph-pll is OFF but weight is set, the trainer
     # still preserves zero contribution because the kwarg gate
     # `if bool(cfm_multiph_pll) and _pll_weight > 0.0` short-circuits.
-    args = _round_trip(
-        cfm_parse_args, ["--cfm-multiph-pll-weight", "0.1"]
-    )
+    args = _round_trip(cfm_parse_args, ["--cfm-multiph-pll-weight", "0.1"])
     assert args.cfm_multiph_pll is False
     assert args.cfm_multiph_pll_weight == 0.1
     # The trainer's pll_term collapses to torch.zeros() when
@@ -150,7 +148,9 @@ def test_cfm_pll_flag_off_zero_contribution(cfm_parse_args):
 # Test 2 — CFM --cfm-multiph-pll flag ON → positive PLL contribution
 # ===========================================================================
 def test_cfm_pll_flag_on_positive_contribution(
-    cfm_parse_args, pll_features_mod, rdkit_chem,
+    cfm_parse_args,
+    pll_features_mod,
+    rdkit_chem,
 ):
     """Wf-409-A1 — CFM ``--cfm-multiph-pll --cfm-multiph-pll-weight > 0``
     triggers the PLL feature stream via the Wf-382-A1 adapter; the
@@ -159,17 +159,19 @@ def test_cfm_pll_flag_on_positive_contribution(
     """
     # (a) When --cfm-multiph-pll is ON, the flag surfaces as True.
     args = _round_trip(cfm_parse_args, ["--cfm-multiph-pll"])
-    assert args.cfm_multiph_pll is True, (
-        "Wf-409-A1: --cfm-multiph-pll must surface as True when set"
-    )
+    assert (
+        args.cfm_multiph_pll is True
+    ), "Wf-409-A1: --cfm-multiph-pll must surface as True when set"
     # (b) --cfm-multiph-pll-top-k and --cfm-multiph-pll-weight
     # surface as expected when set.
     args = _round_trip(
         cfm_parse_args,
         [
             "--cfm-multiph-pll",
-            "--cfm-multiph-pll-top-k", "5",
-            "--cfm-multiph-pll-weight", "0.3",
+            "--cfm-multiph-pll-top-k",
+            "5",
+            "--cfm-multiph-pll-weight",
+            "0.3",
         ],
     )
     assert args.cfm_multiph_pll is True
@@ -190,14 +192,19 @@ def test_cfm_pll_flag_on_positive_contribution(
         # AllChem.EmbedMolecule required per canonical PLL contract —
         # see pll_signature.py:577 "call AllChem.EmbedMolecule first".
         from rdkit.Chem import AllChem as _AllChem  # type: ignore
+
         if _AllChem.EmbedMolecule(mol, randomSeed=42) != 0:
             # Embedding failed for this molecule; skip it.
             continue
         pll = pll_features_mod.persistent_laplacian(
-            mol, k=10, k_nn=8, smiles=smi,
+            mol,
+            k=10,
+            k_nn=8,
+            smiles=smi,
         )
         fv = pll_features_mod.pll_to_feature_vector(
-            pll_features_mod.pll_eigenvalues(pll), top_k=5,
+            pll_features_mod.pll_eigenvalues(pll),
+            top_k=5,
         )
         # 5-d feature vector per Wf-382-A1 §3.1; mean should be in
         # [0, 2] band per von Luxburg 2007 (normalised Laplacian).

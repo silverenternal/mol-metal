@@ -119,6 +119,7 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 import numpy as np
 
+
 # ---------------------------------------------------------------------------
 # Phase-3J-coupling env gate (TODO-21 / 2026-09-16)
 # ---------------------------------------------------------------------------
@@ -130,6 +131,7 @@ import numpy as np
 def _coupling_env_enabled() -> bool:
     raw = os.environ.get("COUPLING_ENABLED", "").strip().lower()
     return raw in {"1", "true", "yes", "on"}
+
 
 # ---------------------------------------------------------------------------
 # Constants — the 64-d feature budget and the per-feature names
@@ -364,15 +366,19 @@ def pocket_features(
         pocket_volume = 0.0
     else:
         aa_codes = {r.one_letter for r in shell}
-        hydrophobic_count = sum(1 for r in shell if r.one_letter in HYDROPHOBIC_RESIDUES)
+        hydrophobic_count = sum(
+            1 for r in shell if r.one_letter in HYDROPHOBIC_RESIDUES
+        )
         positive_count = sum(1 for r in shell if r.one_letter in POSITIVE_RESIDUES)
         negative_count = sum(1 for r in shell if r.one_letter in NEGATIVE_RESIDUES)
         donor_count = sum(1 for r in shell if r.one_letter in HBOND_DONOR_RESIDUES)
-        acceptor_count = sum(1 for r in shell if r.one_letter in HBOND_ACCEPTOR_RESIDUES)
+        acceptor_count = sum(
+            1 for r in shell if r.one_letter in HBOND_ACCEPTOR_RESIDUES
+        )
 
         # 4. Convex-hull-of-Cα proxy for pocket volume.
         r_eff = float(radius_per_residue_A)
-        pocket_volume = n_shell * (4.0 / 3.0) * math.pi * (r_eff ** 3)
+        pocket_volume = n_shell * (4.0 / 3.0) * math.pi * (r_eff**3)
 
         v7 = np.zeros(7, dtype=np.float32)
         v7[0] = math.log(1.0 + n_shell)
@@ -540,10 +546,7 @@ def modify_root_prior(
     w_state = float(state_fraction)
     w_pocket = float(pocket_fraction) * float(pocket_bias_strength)
     total_weight = max(1e-6, w_state + w_pocket)
-    logits = (
-        w_state * state_scalar
-        + w_pocket * pocket_scores
-    ) / total_weight
+    logits = (w_state * state_scalar + w_pocket * pocket_scores) / total_weight
 
     # 4. Softmax over actions.
     logits = logits - logits.max()  # numerical stability

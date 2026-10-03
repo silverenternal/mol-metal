@@ -100,7 +100,9 @@ def _extract_recipe_summary(name: str, payload: dict) -> dict:
     per_seed = payload.get("per_seed") or []
     ru_auc_per_seed = payload.get("ru_test_auc_per_seed") or []
     headline = float(payload.get("ru_mean_test_auc", float("nan")))
-    wall = float(payload.get("wall_seconds", payload.get("wall_seconds_total", float("nan"))))
+    wall = float(
+        payload.get("wall_seconds", payload.get("wall_seconds_total", float("nan")))
+    )
     per_metal = _per_metal_auc_from_per_seed(per_seed)
     return {
         "recipe": name,
@@ -143,7 +145,9 @@ def aggregate_smoke(smoke_dir: Path, recipes: Sequence[str]) -> Tuple[dict, List
             "(see per_recipe[*].ru_mean_test_auc)"
         ),
         "best_recipe": (
-            max(summaries, key=lambda s: s.get("ru_mean_test_auc") or float("-inf"))["recipe"]
+            max(summaries, key=lambda s: s.get("ru_mean_test_auc") or float("-inf"))[
+                "recipe"
+            ]
             if summaries
             else None
         ),
@@ -168,14 +172,20 @@ def render_comparison_md(bench_summary: dict) -> str:
     lines.append("")
     lines.append(f"_Generated_: {bench_summary['date_utc']}  ")
     lines.append(f"_Smoke dir_: `{bench_summary['smoke_dir']}`  ")
-    lines.append(f"_Recipes recorded_: {', '.join(bench_summary['recipes_recorded']) or '(none)'}  ")
+    lines.append(
+        f"_Recipes recorded_: {', '.join(bench_summary['recipes_recorded']) or '(none)'}  "
+    )
     if bench_summary.get("recipes_skipped_missing"):
-        lines.append(f"_Recipes skipped (missing metrics.json)_: "
-                     f"{', '.join(bench_summary['recipes_skipped_missing'])}  ")
+        lines.append(
+            f"_Recipes skipped (missing metrics.json)_: "
+            f"{', '.join(bench_summary['recipes_skipped_missing'])}  "
+        )
     lines.append("")
     lines.append("## Per-recipe headline (Ru test AUC)")
     lines.append("")
-    lines.append("| Recipe | Init | n_seeds | Ru AUC mean | Ru AUC per seed | Wall (s) | Epochs | Provenance |")
+    lines.append(
+        "| Recipe | Init | n_seeds | Ru AUC mean | Ru AUC per seed | Wall (s) | Epochs | Provenance |"
+    )
     lines.append("|---|---|---|---|---|---|---|---|")
     for s in bench_summary["per_recipe"]:
         per_seed_str = ", ".join(f"{x:.3f}" for x in s["ru_test_auc_per_seed"])
@@ -219,21 +229,26 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     )
     p.add_argument("--smoke-dir", type=Path, default=DEFAULT_SMOKE_DIR)
     p.add_argument(
-        "--recipes", nargs="+", default=list(DEFAULT_RECIPES),
+        "--recipes",
+        nargs="+",
+        default=list(DEFAULT_RECIPES),
         help="Recipe sub-directories under --smoke-dir to consolidate.",
     )
     p.add_argument(
-        "--summary-path", type=Path,
+        "--summary-path",
+        type=Path,
         default=DEFAULT_SMOKE_DIR / "wf29_summary.json",
     )
     p.add_argument(
-        "--comparison-md", type=Path,
+        "--comparison-md",
+        type=Path,
         default=DEFAULT_SMOKE_DIR / "comparison_phase2.md",
     )
     p.add_argument(
-        "--also-refresh", action="store_true",
+        "--also-refresh",
+        action="store_true",
         help="If set, also rewrite the existing bench_summary.json + comparison.md "
-             "(the Wf-29 trainers write these under their own names).",
+        "(the Wf-29 trainers write these under their own names).",
     )
     return p.parse_args(argv)
 

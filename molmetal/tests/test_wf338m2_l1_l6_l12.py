@@ -39,6 +39,7 @@ Run with::
     /home/hugo/codes/mol-metal/.venv/bin/python -m pytest \\
         molmetal/tests/test_wf338m2_l1_l6_l12.py -v
 """
+
 from __future__ import annotations
 
 import json
@@ -64,12 +65,12 @@ L6_OVERALL_JSON = L6_REPORT_DIR / "reachability_overall.json"
 L12_OVERALL_JSON = L12_REPORT_DIR / "ood_reachability_overall.json"
 
 # Per skill §8.5.1 MEASURED anchors (Wf-67 P2 + Wf-41 P2 baseline; pre-Wf-130)
-SKILL_L1_ANCHOR = 0.5108     # β-NF enumeration (TODO-83j §3.1, 2026-09-15)
-SKILL_L6_ANCHOR = 0.5891     # Wf-37 P2 d-block reachability, 2026-09-26
-SKILL_L12_ANCHOR = 0.5581    # Wf-41 P2 PlatinAI OOD, 2026-09-26
+SKILL_L1_ANCHOR = 0.5108  # β-NF enumeration (TODO-83j §3.1, 2026-09-15)
+SKILL_L6_ANCHOR = 0.5891  # Wf-37 P2 d-block reachability, 2026-09-26
+SKILL_L12_ANCHOR = 0.5581  # Wf-41 P2 PlatinAI OOD, 2026-09-26
 
 # Wf-130 measured (TODO-133 §0)
-WF130_L6_MEASURED = 0.5589    # 30 × 5000 = 150 000 samples; macro 0.5589 ± 0.1526
+WF130_L6_MEASURED = 0.5589  # 30 × 5000 = 150 000 samples; macro 0.5589 ± 0.1526
 WF130_L12_METALS_WITH_DATA = 8  # 8/30 cross-domain (Pt/Pd/Ru/Rh/Ir/Os/Au/Re)
 
 # Honest-negative / gate thresholds (carried from existing bench scripts)
@@ -79,9 +80,36 @@ L12_GATE = 0.30
 L12_HONEST_NEGATIVE = 0.30
 
 EXPECTED_30_METALS = [
-    "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
-    "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
-    "La", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg",
+    "Sc",
+    "Ti",
+    "V",
+    "Cr",
+    "Mn",
+    "Fe",
+    "Co",
+    "Ni",
+    "Cu",
+    "Zn",
+    "Y",
+    "Zr",
+    "Nb",
+    "Mo",
+    "Tc",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Cd",
+    "La",
+    "Hf",
+    "Ta",
+    "W",
+    "Re",
+    "Os",
+    "Ir",
+    "Pt",
+    "Au",
+    "Hg",
 ]
 
 
@@ -123,9 +151,9 @@ def test_l1_closure_beta_nf_enumeration() -> None:
     # Every metal must be 6/6 PASS on the synthetic CPU-only path
     n_pass = 0
     for metal, row in metals.items():
-        assert row.get("six_of_six_pass") is True, (
-            f"L1 audit FAIL on {metal}: expected six_of_six_pass=True"
-        )
+        assert (
+            row.get("six_of_six_pass") is True
+        ), f"L1 audit FAIL on {metal}: expected six_of_six_pass=True"
         assert row.get("n_pass") == 6, f"L1 {metal} n_pass != 6"
         assert row.get("n_fail") == 0, f"L1 {metal} n_fail != 0"
         n_pass += 1
@@ -167,9 +195,9 @@ def test_l6_closure_dblock_reachability() -> None:
         f"[{L6_HONEST_NEGATIVE}, {L6_GATE}); gate PASS unexpected"
     )
     # tighter equality check vs recorded Wf-130 P2 measurement
-    assert macro == pytest.approx(WF130_L6_MEASURED, abs=1e-4), (
-        f"L6 macro {macro} != Wf-130 P2 measured {WF130_L6_MEASURED}"
-    )
+    assert macro == pytest.approx(
+        WF130_L6_MEASURED, abs=1e-4
+    ), f"L6 macro {macro} != Wf-130 P2 measured {WF130_L6_MEASURED}"
 
     # aggregate honest framing
     assert payload.get("overall_gate_pass") is False
@@ -183,14 +211,16 @@ def test_l6_closure_dblock_reachability() -> None:
     # every per-metal row must have closure_reachability_rate in [0, 1]
     for metal, row in per_metal.items():
         rate = row.get("closure_reachability_rate")
-        assert rate is not None, f"L6 per_metal[{metal}] missing closure_reachability_rate"
+        assert (
+            rate is not None
+        ), f"L6 per_metal[{metal}] missing closure_reachability_rate"
         assert 0.0 <= rate <= 1.0, f"L6 per_metal[{metal}] rate out of range: {rate}"
 
     # Per-metal highlights per TODO-133 §B: Zn 0.8180, La 0.8000, Cu 0.7678
     zn_rate = per_metal.get("Zn", {}).get("closure_reachability_rate")
-    assert zn_rate == pytest.approx(0.8180, abs=1e-3), (
-        f"L6 Zn reachability changed from 0.8180 to {zn_rate}"
-    )
+    assert zn_rate == pytest.approx(
+        0.8180, abs=1e-3
+    ), f"L6 Zn reachability changed from 0.8180 to {zn_rate}"
 
 
 # ---------------------------------------------------------------------------
@@ -217,7 +247,9 @@ def test_l12_closure_platinai_ood() -> None:
 
     # Wf-41 P2 baselines (skill §8.5.1 cross-link)
     assert payload.get("wf41_pt_reachability") == pytest.approx(0.5833)
-    assert payload.get("wf41_platinai_macro_reachability") == pytest.approx(SKILL_L12_ANCHOR)
+    assert payload.get("wf41_platinai_macro_reachability") == pytest.approx(
+        SKILL_L12_ANCHOR
+    )
     assert payload.get("wf41_metalcyto_macro_reachability") == pytest.approx(0.0300)
 
     # Aggregate: 8 metals with data, 22 without, macro 0.0 (CPU-only no-RDKit)
@@ -227,7 +259,9 @@ def test_l12_closure_platinai_ood() -> None:
 
     # Honest framing gate markers
     assert payload.get("gate_target_per_metal_reachability") == pytest.approx(L12_GATE)
-    assert payload.get("honest_negative_threshold") == pytest.approx(L12_HONEST_NEGATIVE)
+    assert payload.get("honest_negative_threshold") == pytest.approx(
+        L12_HONEST_NEGATIVE
+    )
     assert payload.get("overall_gate_pass") is False
 
     # Honest framing block must be present
@@ -246,9 +280,9 @@ def test_l12_closure_platinai_ood() -> None:
             n_no_source += 1
         elif status == "ok":
             n_with_data += 1
-            assert metal in cross_domain_metals, (
-                f"L12 cross-domain metal {metal} not in canonical 8"
-            )
+            assert (
+                metal in cross_domain_metals
+            ), f"L12 cross-domain metal {metal} not in canonical 8"
         else:
             pytest.fail(f"L12 per_metal[{metal}] unexpected status: {status}")
     assert n_with_data == WF130_L12_METALS_WITH_DATA
@@ -301,9 +335,9 @@ def test_per_metal_reachability_consistency() -> None:
     # Per-metal reachability schema consistency (L6 + L12)
     for metal in canonical:
         l6_row = l6_per_metal[metal]
-        assert "closure_reachability_rate" in l6_row, (
-            f"L6 {metal} missing closure_reachability_rate"
-        )
+        assert (
+            "closure_reachability_rate" in l6_row
+        ), f"L6 {metal} missing closure_reachability_rate"
         assert "n_samples" in l6_row, f"L6 {metal} missing n_samples"
         assert "n_closure_ok" in l6_row, f"L6 {metal} missing n_closure_ok"
 

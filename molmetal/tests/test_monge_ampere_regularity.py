@@ -122,8 +122,11 @@ def test_kantorovich_potential_call_quadratic_form() -> None:
     x = torch.tensor([1.0, -1.0, 2.0])
     val = phi(x)
     # Q = 2 I, c = (0.1, 0.2, 0.3), d = 0.5
-    expected = 0.5 * (x @ (2.0 * torch.eye(3)) * x).sum() + \
-        (x * torch.tensor([0.1, 0.2, 0.3])).sum() + 0.5
+    expected = (
+        0.5 * (x @ (2.0 * torch.eye(3)) * x).sum()
+        + (x * torch.tensor([0.1, 0.2, 0.3])).sum()
+        + 0.5
+    )
     assert torch.allclose(val, expected, atol=1e-5)
 
 
@@ -263,9 +266,9 @@ def test_monge_ampere_solver_solve_returns_spd() -> None:
     solver = MongeAmpereSolver(n_iters=40, lr=0.05)
     Q = solver.solve(rho_0, rho_1, n_samples=32, seed=7)
     eigvals = torch.linalg.eigvalsh(Q)
-    assert bool((eigvals > 0).all()), (
-        f"Output Hessian must be SPD; eigenvalues = {eigvals.tolist()}"
-    )
+    assert bool(
+        (eigvals > 0).all()
+    ), f"Output Hessian must be SPD; eigenvalues = {eigvals.tolist()}"
 
 
 def test_monge_ampere_solver_solve_shape_matches_dim() -> None:

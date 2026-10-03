@@ -102,10 +102,14 @@ def test_cli_exposes_contract_flags():
     contract minimum are also recognised."""
     ns = per_wave_checklist.parse_argv(
         [
-            "--wave", "Wave-1 chemprop v2 retrain",
-            "--config", "/tmp/foo.yaml",
-            "--preflight", "/tmp/preflight.json",
-            "--out", "/tmp/wave1.json",
+            "--wave",
+            "Wave-1 chemprop v2 retrain",
+            "--config",
+            "/tmp/foo.yaml",
+            "--preflight",
+            "/tmp/preflight.json",
+            "--out",
+            "/tmp/wave1.json",
         ]
     )
     assert ns.wave == "Wave-1 chemprop v2 retrain"
@@ -113,9 +117,7 @@ def test_cli_exposes_contract_flags():
     assert str(ns.preflight) == "/tmp/preflight.json"
     assert str(ns.out) == "/tmp/wave1.json"
     # Bonus flags beyond the contract minimum (G2 ≥ 4):
-    raw = per_wave_checklist.parse_argv(
-        ["--wave", "Wave-1 chemprop v2 retrain"]
-    )
+    raw = per_wave_checklist.parse_argv(["--wave", "Wave-1 chemprop v2 retrain"])
     assert hasattr(raw, "out_md")
     assert hasattr(raw, "pairs_metals")
     assert hasattr(raw, "pairs_seeds")
@@ -315,13 +317,20 @@ def test_e2e_against_real_preflight_and_ru_seed0(tmp_path: Path):
     out_md = tmp_path / "e2e.md"
     rc = per_wave_checklist.main(
         [
-            "--wave", "Wave-1 chemprop v2 retrain (e2e)",
-            "--preflight", str(real_pf),
-            "--config", str(real_cfg),
-            "--out", str(out_json),
-            "--out-md", str(out_md),
-            "--pairs-metals", "Ru,Ir",
-            "--pairs-seeds", "0",
+            "--wave",
+            "Wave-1 chemprop v2 retrain (e2e)",
+            "--preflight",
+            str(real_pf),
+            "--config",
+            str(real_cfg),
+            "--out",
+            str(out_json),
+            "--out-md",
+            str(out_md),
+            "--pairs-metals",
+            "Ru,Ir",
+            "--pairs-seeds",
+            "0",
         ]
     )
     assert rc == 0, f"main() returned {rc}"
@@ -329,14 +338,17 @@ def test_e2e_against_real_preflight_and_ru_seed0(tmp_path: Path):
     assert obj["schema_valid"] is True
     # Ru/seed=0 row should have a real expected_auc (per Wf-124 P3 ship)
     ru0 = next(
-        (r for r in obj["per_pair_sub_checklist"]
-         if r["metal"] == "Ru" and r["seed"] == 0),
+        (
+            r
+            for r in obj["per_pair_sub_checklist"]
+            if r["metal"] == "Ru" and r["seed"] == 0
+        ),
         None,
     )
     assert ru0 is not None
-    assert ru0["expected_auc"] is not None, (
-        "expected_auc should be populated from on-disk per_seed_metrics_seed0.json"
-    )
+    assert (
+        ru0["expected_auc"] is not None
+    ), "expected_auc should be populated from on-disk per_seed_metrics_seed0.json"
     assert 0.5 < float(ru0["expected_auc"]) < 1.0
     # Markdown exists too
     assert out_md.exists()
@@ -352,9 +364,10 @@ def test_e2e_against_real_preflight_and_ru_seed0(tmp_path: Path):
 def test_yaml_schema_missing_keys(tmp_path: Path):
     """A yaml WITHOUT one of the required keys (e.g. ``flow``) reports
     ``parse_ok=False`` with the missing key listed."""
-    pf = {"summary": {"pass": 1, "fail": 0, "skip": 0, "total": 1},
-          "gates": [{"name": "g", "priority": "P1", "status": "PASS",
-                     "evidence": "ok"}]}
+    pf = {
+        "summary": {"pass": 1, "fail": 0, "skip": 0, "total": 1},
+        "gates": [{"name": "g", "priority": "P1", "status": "PASS", "evidence": "ok"}],
+    }
     (tmp_path / "pf.json").write_text(json.dumps(pf), encoding="utf-8")
     yaml_text = (
         "data: {csv: foo.csv}\n"
@@ -383,9 +396,13 @@ def test_yaml_schema_missing_keys(tmp_path: Path):
     cs = obj["config_summary"]
     assert cs["parse_ok"] is False
     assert "flow" in cs["missing_keys"]
-    assert cs["n_required_keys_present"] == len(
-        per_wave_checklist.REQUIRED_CONFIG_KEYS,
-    ) - 1
+    assert (
+        cs["n_required_keys_present"]
+        == len(
+            per_wave_checklist.REQUIRED_CONFIG_KEYS,
+        )
+        - 1
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -396,9 +413,10 @@ def test_yaml_schema_missing_keys(tmp_path: Path):
 def test_abort_criteria_3_consecutive(tmp_path: Path):
     """When 3 consecutive seeds for the same metal have no ckpt + no
     metrics, ``7.2.2_failure_pattern_3consec`` fires."""
-    pf = {"summary": {"pass": 1, "fail": 0, "skip": 0, "total": 1},
-          "gates": [{"name": "g", "priority": "P1", "status": "PASS",
-                     "evidence": "ok"}]}
+    pf = {
+        "summary": {"pass": 1, "fail": 0, "skip": 0, "total": 1},
+        "gates": [{"name": "g", "priority": "P1", "status": "PASS", "evidence": "ok"}],
+    }
     (tmp_path / "pf.json").write_text(json.dumps(pf), encoding="utf-8")
     pf_path = tmp_path / "pf.json"
     yaml_text = (
@@ -410,6 +428,7 @@ def test_abort_criteria_3_consecutive(tmp_path: Path):
     # Use a temp checkpoints dir so no real Ru ckpt is found; pair it
     # with a temp per-seed metrics dir that is also empty.
     import tempfile
+
     with tempfile.TemporaryDirectory() as d:
         fake_ckpt = Path(d) / "checkpoints"
         fake_ckpt.mkdir()
@@ -461,9 +480,14 @@ def test_validate_schema_strict():
     base["p0_blocker_gates"] = []
     base["p1_verify_gates"] = []
     base["p2_documented_gates"] = []
-    base["config_summary"] = {"yaml_path": "x", "parse_ok": True,
-                              "n_required_keys": 0, "missing_keys": [],
-                              "n_required_keys_present": 0, "error": ""}
+    base["config_summary"] = {
+        "yaml_path": "x",
+        "parse_ok": True,
+        "n_required_keys": 0,
+        "missing_keys": [],
+        "n_required_keys_present": 0,
+        "error": "",
+    }
     base["wave_budget_hr"] = 10.0
     base["wave_remaining_hr"] = 10.0
     base["abort_criteria_active"] = []
@@ -488,7 +512,9 @@ def test_subprocess_via_venv(tmp_path: Path):
     # --help (rc=0)
     rc = subprocess.run(
         [VENV_PY, str(per_wave_checklist.__file__), "--help"],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
     ).returncode
     assert rc == 0, f"--help failed: {rc}"
     # Real checklist run against the pre-flight + cfm_full_retrain.yaml
@@ -500,16 +526,26 @@ def test_subprocess_via_venv(tmp_path: Path):
     out_md = tmp_path / "subproc_out.md"
     rc2 = subprocess.run(
         [
-            VENV_PY, str(per_wave_checklist.__file__),
-            "--wave", "Wave-subproc",
-            "--preflight", str(real_pf),
-            "--config", str(real_cfg),
-            "--out", str(out_json),
-            "--out-md", str(out_md),
-            "--pairs-metals", "Ru",
-            "--pairs-seeds", "0,1",
+            VENV_PY,
+            str(per_wave_checklist.__file__),
+            "--wave",
+            "Wave-subproc",
+            "--preflight",
+            str(real_pf),
+            "--config",
+            str(real_cfg),
+            "--out",
+            str(out_json),
+            "--out-md",
+            str(out_md),
+            "--pairs-metals",
+            "Ru",
+            "--pairs-seeds",
+            "0,1",
         ],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True,
+        text=True,
+        timeout=60,
     ).returncode
     assert rc2 == 0, f"real run failed: rc={rc2} stderr={rc2 and ''}"
     assert out_json.exists()

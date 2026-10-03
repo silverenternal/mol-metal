@@ -93,9 +93,13 @@ def test_bindingdb_csv_header_has_id1_x1_id2_x2_y() -> None:
     with DEFAULT_BINDINGDB_CSV.open("r", encoding="utf-8", errors="replace") as fh:
         reader = csv.reader(fh)
         header = next(reader)
-    assert header[:5] == ["ID1", "X1", "ID2", "X2", "Y"], (
-        f"unexpected header: {header[:5]}"
-    )
+    assert header[:5] == [
+        "ID1",
+        "X1",
+        "ID2",
+        "X2",
+        "Y",
+    ], f"unexpected header: {header[:5]}"
 
 
 @requires_real_bindingdb
@@ -131,9 +135,9 @@ def test_bindingdb_loader_item_has_required_keys() -> None:
         assert k in item, f"missing key {k!r} in BindingDB item"
     assert isinstance(item["smiles"], str) and item["smiles"], "empty SMILES"
     assert isinstance(item["pIC50"], float), f"pIC50 not float: {item['pIC50']!r}"
-    assert -2.0 <= item["pIC50"] <= 14.0, (
-        f"pIC50 {item['pIC50']} out of expected [-2, 14] range"
-    )
+    assert (
+        -2.0 <= item["pIC50"] <= 14.0
+    ), f"pIC50 {item['pIC50']} out of expected [-2, 14] range"
     assert isinstance(item["active"], bool)
     assert isinstance(item["target_id"], str)
 
@@ -147,13 +151,13 @@ def test_bindingdb_pic50_in_active_range() -> None:
     for i in range(0, n, 7):  # sparse sample
         item = loader[i]
         if item["active"]:
-            assert item["pIC50"] >= 5.0, (
-                f"row {i}: active=True but pIC50={item['pIC50']}"
-            )
+            assert (
+                item["pIC50"] >= 5.0
+            ), f"row {i}: active=True but pIC50={item['pIC50']}"
         else:
-            assert item["pIC50"] < 5.0, (
-                f"row {i}: active=False but pIC50={item['pIC50']}"
-            )
+            assert (
+                item["pIC50"] < 5.0
+            ), f"row {i}: active=False but pIC50={item['pIC50']}"
 
 
 @requires_real_bindingdb
@@ -166,9 +170,9 @@ def test_bindingdb_conversion_y_nm_to_pic50_correct() -> None:
     loader = _BindingDBRows()
     item = loader[0]
     expected_pIC50 = 9.0 - math.log10(50_000.0)
-    assert math.isclose(item["pIC50"], expected_pIC50, abs_tol=1e-6), (
-        f"row 0 pIC50={item['pIC50']}, expected {expected_pIC50}"
-    )
+    assert math.isclose(
+        item["pIC50"], expected_pIC50, abs_tol=1e-6
+    ), f"row 0 pIC50={item['pIC50']}, expected {expected_pIC50}"
 
 
 # ---------------------------------------------------------------------------
@@ -185,13 +189,11 @@ def test_four_domain_dataset_bindingdb_length_reflects_symlink() -> None:
     ds = FourDomainDataset()
     n3 = ds._lens[DOMAIN_BINDINGDB]  # type: ignore[attr-defined]
     if _has_real_bindingdb_symlink():
-        assert n3 >= 100_000, (
-            f"BindingDB domain-3 has {n3} rows; expected ≥ 100K with symlink"
-        )
+        assert (
+            n3 >= 100_000
+        ), f"BindingDB domain-3 has {n3} rows; expected ≥ 100K with symlink"
     else:
-        assert 5_000 < n3 < 6_000, (
-            f"BindingDB fallback has {n3} rows; expected ~5,258"
-        )
+        assert 5_000 < n3 < 6_000, f"BindingDB fallback has {n3} rows; expected ~5,258"
 
 
 @requires_real_bindingdb
@@ -201,9 +203,7 @@ def test_four_domain_dataset_bindingdb_item_carries_target_id() -> None:
     # The first item of domain 3 is at offset = sum(other domains)
     item = ds[ds._offsets[DOMAIN_BINDINGDB]]  # type: ignore[attr-defined]
     assert item.domain_id == DOMAIN_BINDINGDB
-    assert "target_id" in item.aux, (
-        f"target_id missing from domain-3 aux: {item.aux}"
-    )
+    assert "target_id" in item.aux, f"target_id missing from domain-3 aux: {item.aux}"
 
 
 # ---------------------------------------------------------------------------
@@ -212,9 +212,9 @@ def test_four_domain_dataset_bindingdb_item_carries_target_id() -> None:
 def test_bindingdb_loader_docstring_cites_cc_by_3() -> None:
     """The ``_BindingDBRows`` docstring cites CC BY 3.0 (BindingDB license)."""
     doc = _BindingDBRows.__doc__ or ""
-    assert "CC BY 3.0" in doc, (
-        "_BindingDBRows docstring must cite BindingDB's CC BY 3.0 license"
-    )
+    assert (
+        "CC BY 3.0" in doc
+    ), "_BindingDBRows docstring must cite BindingDB's CC BY 3.0 license"
 
 
 def test_four_domain_combined_docstring_cites_cc_by_3() -> None:
@@ -222,9 +222,9 @@ def test_four_domain_combined_docstring_cites_cc_by_3() -> None:
     from molmetal.data import four_domain_combined
 
     doc = four_domain_combined.__doc__ or ""
-    assert "CC BY 3.0" in doc, (
-        "four_domain_combined module docstring must cite BindingDB's CC BY 3.0 license"
-    )
+    assert (
+        "CC BY 3.0" in doc
+    ), "four_domain_combined module docstring must cite BindingDB's CC BY 3.0 license"
 
 
 # ---------------------------------------------------------------------------
@@ -234,12 +234,12 @@ def test_four_domain_combined_docstring_cites_cc_by_3() -> None:
 def test_bindingdb_symlink_points_to_pocket_data_tdc() -> None:
     """The symlink resolves to a real file under ``pocket/data/tdc/``."""
     target = os.readlink(DEFAULT_BINDINGDB_CSV)
-    assert "pocket/data/tdc/bindingdb_ic50.csv" in target, (
-        f"unexpected symlink target: {target}"
-    )
+    assert (
+        "pocket/data/tdc/bindingdb_ic50.csv" in target
+    ), f"unexpected symlink target: {target}"
     resolved = (DEFAULT_BINDINGDB_CSV.parent / target).resolve()
     assert resolved.exists(), f"symlink target missing: {resolved}"
     # 838 MB file — allow some slack for housekeeping copies
-    assert resolved.stat().st_size > 100_000_000, (
-        f"BindingDB IC50 file is only {resolved.stat().st_size} bytes; expected > 100MB"
-    )
+    assert (
+        resolved.stat().st_size > 100_000_000
+    ), f"BindingDB IC50 file is only {resolved.stat().st_size} bytes; expected > 100MB"

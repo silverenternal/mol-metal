@@ -315,12 +315,7 @@ def compute_lipinski_violations(
     desc = _compute_descriptors(mol)
     mw, logp, hbd, hba = desc["MW"], desc["logP"], desc["HBD"], desc["HBA"]
     b_mw, b_logp, b_hbd, b_hba = lipinski_bounds
-    return int(
-        (mw > b_mw)
-        + (logp > b_logp)
-        + (hbd > b_hbd)
-        + (hba > b_hba)
-    )
+    return int((mw > b_mw) + (logp > b_logp) + (hbd > b_hbd) + (hba > b_hba))
 
 
 def compute_veber_violations(
@@ -417,9 +412,7 @@ def compute_pharmacophore_report(
     # Lipinski
     mw, logp, hbd, hba = desc["MW"], desc["logP"], desc["HBD"], desc["HBA"]
     b_mw, b_logp, b_hbd, b_hba = lipinski_bounds
-    lip = int(
-        (mw > b_mw) + (logp > b_logp) + (hbd > b_hbd) + (hba > b_hba)
-    )
+    lip = int((mw > b_mw) + (logp > b_logp) + (hbd > b_hbd) + (hba > b_hba))
     # Veber
     psa, rotb = desc["PSA"], desc["rotB"]
     b_psa, b_rotb = veber_bounds
@@ -528,11 +521,11 @@ if __name__ == "__main__":  # pragma: no cover — manual smoke entrypoint
     import sys
 
     inputs = sys.argv[1:] or [
-        "CC(=O)OC1=CC=CC=C1C(=O)O",   # aspirin — should pass
-        "C1=CC=CC=C1",                 # benzene — should pass (no rotB but ring OK)
-        "O=S(=O)(N)c1ccccc1",          # sulfonamide (modest)
-        "[Pt](N)(N)(Cl)Cl",            # cisplatin — should pass
-        "C" * 200,                     # long alkane — should fail MW/rotB
+        "CC(=O)OC1=CC=CC=C1C(=O)O",  # aspirin — should pass
+        "C1=CC=CC=C1",  # benzene — should pass (no rotB but ring OK)
+        "O=S(=O)(N)c1ccccc1",  # sulfonamide (modest)
+        "[Pt](N)(N)(Cl)Cl",  # cisplatin — should pass
+        "C" * 200,  # long alkane — should fail MW/rotB
     ]
     survivors, reports = filter_molecules(inputs, return_reports=True)
     for rep in reports:

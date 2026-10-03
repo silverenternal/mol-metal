@@ -13,6 +13,7 @@ and appends a new wf379a1_7runs_update block to metal_lomo_auc.json with:
 Usage:
   python3 molmetal/scripts/wf379a1_update_m1_auc.py
 """
+
 import json
 import sys
 from pathlib import Path
@@ -86,15 +87,18 @@ def main() -> int:
         n = len(aucs)
         mean = sum(aucs) / n
         var = sum((v - mean) ** 2 for v in aucs) / n  # population std
-        std = var ** 0.5
+        std = var**0.5
         # 95% CI using z = 1.96 (small sample approx)
-        ci_half = 1.96 * std / (n ** 0.5) if n > 0 else 0.0
+        ci_half = 1.96 * std / (n**0.5) if n > 0 else 0.0
         gate_pass = mean >= KRASNOV_GATE
         gate_margin = mean - KRASNOV_GATE
         verdict = (
-            "MEASURED_PASS_GATE" if gate_pass
-            else "MEASURED_FAIL_GATE" if n >= 3
-            else "HONEST_NEGATIVE_1SEED" if n == 1
+            "MEASURED_PASS_GATE"
+            if gate_pass
+            else "MEASURED_FAIL_GATE"
+            if n >= 3
+            else "HONEST_NEGATIVE_1SEED"
+            if n == 1
             else "PARTIAL_2SEED"
         )
         per_metal_agg[metal] = {
@@ -116,7 +120,9 @@ def main() -> int:
         "wrapper": "scripts/launch_wf131_p3_deferred_runs.sh",
         "data_source": RUNS_DIR,
         "actual_data_path": str(RUNS_DIR),
-        "actual_data_status": "COMPLETE" if not missing else f"PARTIAL ({len(missing)} missing)",
+        "actual_data_status": "COMPLETE"
+        if not missing
+        else f"PARTIAL ({len(missing)} missing)",
         "n_total_runs": len(DEFERRED_PAIRS),
         "n_completed_runs": len(DEFERRED_PAIRS) - len(missing),
         "missing_runs": missing,
@@ -132,7 +138,8 @@ def main() -> int:
             "to establish the per-metal AUC envelope on the BUGGY cohort."
         ),
         "status": (
-            "COMPLETE" if not missing
+            "COMPLETE"
+            if not missing
             else f"PARTIAL ({len(missing)} of {len(DEFERRED_PAIRS)} missing)"
         ),
     }

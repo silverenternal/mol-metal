@@ -91,8 +91,8 @@ class _DummyLipmanEGNN(nn.Module):
 
     def forward(
         self,
-        x: torch.Tensor,           # (B, N, 3)
-        t: torch.Tensor,           # (B,) or scalar
+        x: torch.Tensor,  # (B, N, 3)
+        t: torch.Tensor,  # (B,) or scalar
         pocket: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         if t.dim() == 0:
@@ -220,9 +220,9 @@ def test_se3_lipman_solver_finite():
         x0=x0,
         t_span=(0.0, 1.0),
     )
-    assert torch.isfinite(out).all(), (
-        f"SE3LipmanSolver.solve output must be finite; got NaN/Inf in {out}"
-    )
+    assert torch.isfinite(
+        out
+    ).all(), f"SE3LipmanSolver.solve output must be finite; got NaN/Inf in {out}"
 
 
 # ---------------------------------------------------------------------------
@@ -331,9 +331,9 @@ def test_compare_se3_vs_base_returns_dict():
         se3_solver=se3_solver,
         n_runs=2,
     )
-    assert isinstance(report, dict), (
-        f"compare_se3_lipman_vs_base must return a dict; got {type(report).__name__}"
-    )
+    assert isinstance(
+        report, dict
+    ), f"compare_se3_lipman_vs_base must return a dict; got {type(report).__name__}"
 
 
 # ---------------------------------------------------------------------------
@@ -383,12 +383,12 @@ def test_compare_se3_vs_base_wall_time_finite():
         se3_solver=se3_solver,
         n_runs=2,
     )
-    assert math.isfinite(report["se3_wall_time_s"]), (
-        f"se3_wall_time_s must be finite; got {report['se3_wall_time_s']}"
-    )
-    assert report["se3_wall_time_s"] > 0.0, (
-        f"se3_wall_time_s must be positive; got {report['se3_wall_time_s']}"
-    )
+    assert math.isfinite(
+        report["se3_wall_time_s"]
+    ), f"se3_wall_time_s must be finite; got {report['se3_wall_time_s']}"
+    assert (
+        report["se3_wall_time_s"] > 0.0
+    ), f"se3_wall_time_s must be positive; got {report['se3_wall_time_s']}"
 
 
 # ---------------------------------------------------------------------------
@@ -408,9 +408,7 @@ def test_compare_se3_vs_base_speedup_factor_positive():
     )
     sf = report["speedup_factor"]
     if sf is not None:
-        assert sf > 0.0, (
-            f"speedup_factor must be positive; got {sf}"
-        )
+        assert sf > 0.0, f"speedup_factor must be positive; got {sf}"
 
 
 # ---------------------------------------------------------------------------
@@ -494,9 +492,9 @@ def test_se3_cfm_composite_forward_finite():
     torch.manual_seed(7)
     z0 = torch.randn(3, 6, 3)
     out = composite.forward(z0, t=1.0)
-    assert torch.isfinite(out).all(), (
-        f"SE3CFMComposite.forward output must be finite; got NaN/Inf in {out}"
-    )
+    assert torch.isfinite(
+        out
+    ).all(), f"SE3CFMComposite.forward output must be finite; got NaN/Inf in {out}"
 
 
 # ---------------------------------------------------------------------------
@@ -598,6 +596,7 @@ def test_integration_layer_does_not_modify_flow_matching_lipman():
     # Force re-import to exercise the import path.
     import importlib
     from molmetal.adapters import se3_lipman_integration
+
     importlib.reload(se3_lipman_integration)
     post = set(dir(flow_matching_lipman))
     removed = pre - post
@@ -612,6 +611,6 @@ def test_integration_layer_does_not_modify_flow_matching_lipman():
     )
     # The integration layer must expose the three required symbols.
     for name in ("SE3LipmanSolver", "SE3CFMComposite", "compare_se3_lipman_vs_base"):
-        assert hasattr(se3_lipman_integration, name), (
-            f"se3_lipman_integration must expose {name!r}"
-        )
+        assert hasattr(
+            se3_lipman_integration, name
+        ), f"se3_lipman_integration must expose {name!r}"

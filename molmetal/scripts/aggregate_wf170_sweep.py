@@ -1,4 +1,5 @@
 """Aggregate the per-seed JSONs into sweep_summary.json (Wf-199 / TODO-181)."""
+
 from __future__ import annotations
 
 import json
@@ -29,10 +30,16 @@ def main() -> int:
     aucs_across_metals: list = []
     total_time = 0.0
     for metal in METALS:
-        vals = [v["auc"] for v in per_metal_seed_auc[metal].values()
-                if v["auc"] is not None and v["auc"] == v["auc"]]
-        times = [v["time_sec"] for v in per_metal_seed_auc[metal].values()
-                 if v["time_sec"] is not None]
+        vals = [
+            v["auc"]
+            for v in per_metal_seed_auc[metal].values()
+            if v["auc"] is not None and v["auc"] == v["auc"]
+        ]
+        times = [
+            v["time_sec"]
+            for v in per_metal_seed_auc[metal].values()
+            if v["time_sec"] is not None
+        ]
         if vals:
             mean_auc = float(statistics.mean(vals))
             std_auc = float(statistics.pstdev(vals)) if len(vals) > 1 else 0.0
@@ -44,10 +51,16 @@ def main() -> int:
             aucs_across_metals.append(mean_auc)
             total_time += sum(times)
         else:
-            per_metal_summary[metal] = {"mean_auc": float("nan"), "std": float("nan"), "n_seeds": 0}
+            per_metal_summary[metal] = {
+                "mean_auc": float("nan"),
+                "std": float("nan"),
+                "n_seeds": 0,
+            }
 
     mean_auc_across_metals = (
-        float(statistics.mean(aucs_across_metals)) if aucs_across_metals else float("nan")
+        float(statistics.mean(aucs_across_metals))
+        if aucs_across_metals
+        else float("nan")
     )
 
     out_json = {
@@ -69,10 +82,13 @@ def main() -> int:
         ),
     }
     (OUT_DIR / "sweep_summary.json").write_text(json.dumps(out_json, indent=2))
-    print(f"wrote sweep_summary.json — mean_auc_across_metals={mean_auc_across_metals:.4f}")
+    print(
+        f"wrote sweep_summary.json — mean_auc_across_metals={mean_auc_across_metals:.4f}"
+    )
     return 0
 
 
 if __name__ == "__main__":
     import sys
+
     sys.exit(main())

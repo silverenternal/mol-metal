@@ -57,6 +57,7 @@ def test_diffdock_adapter_importable() -> None:
         DockResult,
         DockingOracle,
     )
+
     # Adapter instance + dataclass + Protocol + exception all importable.
     adapter = DiffDockAdapter()
     assert adapter.name == "DiffDock-L"
@@ -102,7 +103,16 @@ def test_diffdock_subprocess_call_routed(tmp_path: Path, monkeypatch) -> None:
 
     # Real-looking 10-SMILES batch (covers organic + aromatic + amine + alcohol).
     batch = [
-        "CCO", "CCN", "c1ccccc1", "CO", "CN", "CCO", "CCN", "CCC", "CCCO", "COC",
+        "CCO",
+        "CCN",
+        "c1ccccc1",
+        "CO",
+        "CN",
+        "CCO",
+        "CCN",
+        "CCC",
+        "CCCO",
+        "COC",
     ]
 
     # Stable per-SMILES confidence value (hash → [-2.5, -0.5]) so the
@@ -126,6 +136,7 @@ def test_diffdock_subprocess_call_routed(tmp_path: Path, monkeypatch) -> None:
         class _Result:
             returncode = 0
             stderr = ""
+
         return _Result()
 
     monkeypatch.setattr(scoring.subprocess, "run", _fake_subprocess_run)
@@ -138,7 +149,8 @@ def test_diffdock_subprocess_call_routed(tmp_path: Path, monkeypatch) -> None:
     repo_root = str(ROOT / "molmetal/references/DiffDock")
     candidates = [{"smiles": s} for s in batch]
     col = scoring.score_candidates(
-        candidates, str(fake_pdb),
+        candidates,
+        str(fake_pdb),
         repo_root=repo_root,
         samples_per_complex=2,
         timeout_sec=30.0,
@@ -177,25 +189,43 @@ def test_diffdock_score_recorded_in_report(tmp_path: Path, monkeypatch) -> None:
     synthetic :class:`PocketResult` and a ``diffdock_config``; then we
     inspect the worker output JSON for the new columns.
     """
+
     # Stub out run_one_pocket so we don't actually invoke Lambda.
     def _fake_run_one_pocket(*args, **kwargs):
         from molmetal.scripts.r4_c_full_sweep import PocketResult
+
         return PocketResult(
             pocket_id="fake_000",
             status="ok",
             n_candidates=2,
             candidates=[
-                {"smiles": "CCO", "is_generated": True, "sa": 1.0, "qed": 0.5,
-                 "lipinski": True, "vina_proxy": -7.0},
-                {"smiles": "CCN", "is_generated": True, "sa": 1.5, "qed": 0.4,
-                 "lipinski": True, "vina_proxy": -6.5},
+                {
+                    "smiles": "CCO",
+                    "is_generated": True,
+                    "sa": 1.0,
+                    "qed": 0.5,
+                    "lipinski": True,
+                    "vina_proxy": -7.0,
+                },
+                {
+                    "smiles": "CCN",
+                    "is_generated": True,
+                    "sa": 1.5,
+                    "qed": 0.4,
+                    "lipinski": True,
+                    "vina_proxy": -6.5,
+                },
             ],
             top1_smiles="CCO",
-            top1_sa=1.0, top1_qed=0.5, top1_lipinski=True,
+            top1_sa=1.0,
+            top1_qed=0.5,
+            top1_lipinski=True,
             top1_vina_proxy=-7.0,
-            mean_sa=1.25, mean_qed=0.45,
+            mean_sa=1.25,
+            mean_qed=0.45,
             lipinski_pass_count=2,
-            n_generated_candidates=2, n_seed_candidates=0,
+            n_generated_candidates=2,
+            n_seed_candidates=0,
             receptor_path=str(tmp_path / "fake.pdb"),
             ligand_path=str(tmp_path / "fake.sdf"),
             seed=42,
@@ -220,6 +250,7 @@ def test_diffdock_score_recorded_in_report(tmp_path: Path, monkeypatch) -> None:
         class _Result:
             returncode = 0
             stderr = ""
+
         return _Result()
 
     monkeypatch.setattr(scoring.subprocess, "run", _fake_subprocess_run)
@@ -249,13 +280,19 @@ def test_diffdock_score_recorded_in_report(tmp_path: Path, monkeypatch) -> None:
 
     # Patch run_one_pocket inside the r4_c_full_sweep module.
     import importlib
+
     r4 = importlib.import_module("molmetal.scripts.r4_c_full_sweep")
     monkeypatch.setattr(r4, "run_one_pocket", _fake_run_one_pocket)
 
     # Clear pytest-added args so argparse only sees --worker-input/--worker-output.
     saved_argv = sys.argv[:]
-    sys.argv = [saved_argv[0], "--worker-input", str(worker_input),
-                "--worker-output", str(worker_output)]
+    sys.argv = [
+        saved_argv[0],
+        "--worker-input",
+        str(worker_input),
+        "--worker-output",
+        str(worker_output),
+    ]
     try:
         rc = r4.main()
     finally:
@@ -295,10 +332,12 @@ def test_diffdock_score_recorded_in_report(tmp_path: Path, monkeypatch) -> None:
 def test_diffdock_score_candidates_unavailable(tmp_path: Path) -> None:
     """When the vendored DiffDock repo is missing, status='unavailable'."""
     from molmetal_lam.sbdd_env.diffdock_sota_scoring import score_candidates
+
     fake_pdb = tmp_path / "fake.pdb"
     fake_pdb.write_text("ATOM\nEND\n")
     col = score_candidates(
-        [{"smiles": "CCO"}], str(fake_pdb),
+        [{"smiles": "CCO"}],
+        str(fake_pdb),
         repo_root=str(tmp_path / "no_such_diffdock_repo"),
     )
     assert col.status == "unavailable"
@@ -314,12 +353,16 @@ def test_diffdock_score_candidates_unavailable(tmp_path: Path) -> None:
 def test_diffdock_parse_confidence_from_outdir(tmp_path: Path) -> None:
     """The outdir parser returns NaN when the rank1 file is absent."""
     from molmetal_lam.sbdd_env.diffdock_adapter import DiffDockAdapter
+
     complex_dir = tmp_path / "r4_complex"
     complex_dir.mkdir()
     # No rank1 file yet -> NaN.
-    assert math.isnan(DiffDockAdapter.parse_confidence_from_outdir(
-        str(tmp_path), "r4_complex"))
+    assert math.isnan(
+        DiffDockAdapter.parse_confidence_from_outdir(str(tmp_path), "r4_complex")
+    )
     # Write a rank1 file with negative confidence.
     (complex_dir / "rank1_confidence-2.50.sdf").write_text("stub")
-    assert DiffDockAdapter.parse_confidence_from_outdir(
-        str(tmp_path), "r4_complex") == -2.5
+    assert (
+        DiffDockAdapter.parse_confidence_from_outdir(str(tmp_path), "r4_complex")
+        == -2.5
+    )

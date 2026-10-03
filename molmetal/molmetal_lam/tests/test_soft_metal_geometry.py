@@ -156,17 +156,18 @@ def test_soft_score_cisplatin():
     from molmetal.molmetal_lam.priors.metal_geometry import (
         soft_score_metal_geometry,
     )
+
     state = _cisplatin_like()
     score = soft_score_metal_geometry(state)
     # CN=4 hits the coord-deviation goal; angle-deviation is 0
     # because CN matches the ideal.  Charge deviation is 0 (no
     # explicit formal charge is set, defaults to 0).
-    assert score > 0.8, (
-        f"Cisplatin (Pt(II) CN=4) should score near 1.0; got {score:.4f}"
-    )
-    assert score <= 1.0, (
-        f"soft_score must be ≤ 1.0 (continuous [0, 1]); got {score:.4f}"
-    )
+    assert (
+        score > 0.8
+    ), f"Cisplatin (Pt(II) CN=4) should score near 1.0; got {score:.4f}"
+    assert (
+        score <= 1.0
+    ), f"soft_score must be ≤ 1.0 (continuous [0, 1]); got {score:.4f}"
 
 
 # ---------------------------------------------------------------------------
@@ -183,6 +184,7 @@ def test_soft_score_trans_platin():
     from molmetal.molmetal_lam.priors.metal_geometry import (
         soft_score_metal_geometry,
     )
+
     cis_state = _cisplatin_like()
     trans_state = _trans_platin_like()
     cis_score = soft_score_metal_geometry(cis_state)
@@ -198,9 +200,9 @@ def test_soft_score_trans_platin():
         f"trans-platin (Pt(II) CN=4) should still be moderate; "
         f"got {trans_score:.4f}"
     )
-    assert trans_score <= 1.0, (
-        f"trans-platin soft_score must be ≤ 1.0; got {trans_score:.4f}"
-    )
+    assert (
+        trans_score <= 1.0
+    ), f"trans-platin soft_score must be ≤ 1.0; got {trans_score:.4f}"
     # Cis and trans share the same CN so the score is the same;
     # the angle-deviation proxy cannot distinguish them without
     # 3-D coordinates (this is the documented honest limitation).
@@ -219,13 +221,14 @@ def test_soft_score_pt_iv_octahedral():
     from molmetal.molmetal_lam.priors.metal_geometry import (
         soft_score_metal_geometry,
     )
+
     state = _pt_iv_octahedral_like()
     score = soft_score_metal_geometry(state)
     # CN=6 vs target CN=4 → d_coord = 2/4 = 0.5
     # → score ≤ max(0, 1 - 0.5 * 0.5) = 0.75
-    assert 0.0 <= score <= 0.75, (
-        f"Pt(IV) CN=6 should score ≤ 0.75 (coord deviation); got {score:.4f}"
-    )
+    assert (
+        0.0 <= score <= 0.75
+    ), f"Pt(IV) CN=6 should score ≤ 0.75 (coord deviation); got {score:.4f}"
     # And must be strictly less than the cisplatin score (CN=4 is
     # the ideal for Pt(II) — the default cn_targets mapping).
     cisplatin_state = _cisplatin_like()
@@ -249,11 +252,10 @@ def test_soft_score_organic():
     from molmetal.molmetal_lam.priors.metal_geometry import (
         soft_score_metal_geometry,
     )
+
     state = _organic_benzene_like()
     score = soft_score_metal_geometry(state)
-    assert score == 0.0, (
-        f"Organic ligand (no metal) must score 0.0; got {score:.4f}"
-    )
+    assert score == 0.0, f"Organic ligand (no metal) must score 0.0; got {score:.4f}"
 
 
 # ---------------------------------------------------------------------------
@@ -270,6 +272,7 @@ def test_soft_score_continuous():
     from molmetal.molmetal_lam.priors.metal_geometry import (
         soft_score_metal_geometry,
     )
+
     # Build CN=3 Pt (off-by-one from the ideal CN=4).
     pt = _atom("Pt", 78, is_metal=True)
     donors = [_atom("Cl", 17) for _ in range(3)]
@@ -289,8 +292,7 @@ def test_soft_score_continuous():
     # d_charge = 0 → score = max(0, 1 - 0.5*0.25 - 0.3*0.25 - 0.2*0)
     #                  = 1 - 0.125 - 0.075 = 0.8.
     assert math.isclose(cn3_score, 0.8, abs_tol=0.05), (
-        f"Expected CN=3 score ≈ 0.8 (1 - 0.5*0.25 - 0.3*0.25); "
-        f"got {cn3_score:.4f}"
+        f"Expected CN=3 score ≈ 0.8 (1 - 0.5*0.25 - 0.3*0.25); " f"got {cn3_score:.4f}"
     )
 
 
@@ -302,18 +304,21 @@ def test_soft_score_disabled_returns_zero():
     from molmetal.molmetal_lam.priors.metal_geometry import (
         soft_score_metal_geometry,
     )
+
     cisplatin_score_off = soft_score_metal_geometry(_cisplatin_like(), enabled=False)
     pt_iv_score_off = soft_score_metal_geometry(_pt_iv_octahedral_like(), enabled=False)
-    organic_score_off = soft_score_metal_geometry(_organic_benzene_like(), enabled=False)
-    assert cisplatin_score_off == 0.0, (
-        f"enabled=False must zero the cisplatin score; got {cisplatin_score_off}"
+    organic_score_off = soft_score_metal_geometry(
+        _organic_benzene_like(), enabled=False
     )
-    assert pt_iv_score_off == 0.0, (
-        f"enabled=False must zero the Pt(IV) score; got {pt_iv_score_off}"
-    )
-    assert organic_score_off == 0.0, (
-        f"enabled=False must zero the organic score; got {organic_score_off}"
-    )
+    assert (
+        cisplatin_score_off == 0.0
+    ), f"enabled=False must zero the cisplatin score; got {cisplatin_score_off}"
+    assert (
+        pt_iv_score_off == 0.0
+    ), f"enabled=False must zero the Pt(IV) score; got {pt_iv_score_off}"
+    assert (
+        organic_score_off == 0.0
+    ), f"enabled=False must zero the organic score; got {organic_score_off}"
 
 
 # ---------------------------------------------------------------------------
@@ -322,27 +327,28 @@ def test_soft_score_disabled_returns_zero():
 def test_aggregator_wires_soft_channel():
     """``register_soft_metal_geometry_channel`` plugs the channel."""
     from molmetal.molmetal_lam.search_alg.proof_search import RewardAggregator
+
     agg = RewardAggregator()
     assert agg.r_metal_geom_soft is None, (
         "Default state should have r_metal_geom_soft = None (channel "
         "is opt-in so existing reward is bit-for-bit identical)."
     )
     agg.register_soft_metal_geometry_channel()
-    assert callable(agg.r_metal_geom_soft), (
-        "After registration, r_metal_geom_soft should be callable."
-    )
+    assert callable(
+        agg.r_metal_geom_soft
+    ), "After registration, r_metal_geom_soft should be callable."
     # Calling on cisplatin returns a high score (continuous).
     cisplatin = _cisplatin_like()
     score = agg.r_metal_geom_soft(cisplatin)
-    assert 0.8 < score <= 1.0, (
-        f"Cisplat via aggregator channel should be near 1.0; got {score:.4f}"
-    )
+    assert (
+        0.8 < score <= 1.0
+    ), f"Cisplat via aggregator channel should be near 1.0; got {score:.4f}"
     # Calling on organic returns 0.0.
     organic = _organic_benzene_like()
     organic_score = agg.r_metal_geom_soft(organic)
-    assert organic_score == 0.0, (
-        f"Organic via aggregator channel must be 0.0; got {organic_score}"
-    )
+    assert (
+        organic_score == 0.0
+    ), f"Organic via aggregator channel must be 0.0; got {organic_score}"
 
 
 # ---------------------------------------------------------------------------
@@ -351,10 +357,11 @@ def test_aggregator_wires_soft_channel():
 def test_aggregator_default_weight_is_zero():
     """``w_metal_geom_soft`` defaults to 0.0 (channel opt-in)."""
     from molmetal.molmetal_lam.search_alg.proof_search import RewardAggregator
+
     agg = RewardAggregator()
-    assert agg.w_metal_geom_soft == 0.0, (
-        f"Default weight must be 0.0 (opt-in); got {agg.w_metal_geom_soft}"
-    )
+    assert (
+        agg.w_metal_geom_soft == 0.0
+    ), f"Default weight must be 0.0 (opt-in); got {agg.w_metal_geom_soft}"
     # Even when the channel is registered, w=0 keeps the aggregator's
     # reward bit-for-bit identical to the no-soft-channel case.
     agg.register_soft_metal_geometry_channel()
@@ -370,15 +377,15 @@ def test_aggregator_default_weight_is_zero():
     # With w=0.0, the contribution is 0 — verify the aggregator
     # reads the weight at call-time.
     weighted_contribution_zero = agg.w_metal_geom_soft * reward_unweighted
-    assert weighted_contribution_zero == 0.0, (
-        "w=0 must zero the contribution even when the channel is wired."
-    )
+    assert (
+        weighted_contribution_zero == 0.0
+    ), "w=0 must zero the contribution even when the channel is wired."
     # Now enable the weight and confirm it contributes.
     agg.w_metal_geom_soft = 1.0
     weighted_contribution_one = agg.w_metal_geom_soft * reward_unweighted
-    assert weighted_contribution_one > 0.8, (
-        f"w=1.0 should pass the soft score through; got {weighted_contribution_one}"
-    )
+    assert (
+        weighted_contribution_one > 0.8
+    ), f"w=1.0 should pass the soft score through; got {weighted_contribution_one}"
 
 
 # ---------------------------------------------------------------------------
@@ -396,13 +403,14 @@ def test_soft_score_3d_agnostic():
     from molmetal.molmetal_lam.priors.metal_geometry import (
         soft_score_metal_geometry,
     )
+
     # The cisplatin state has no .coords attribute at all.
     cisplatin_state = _cisplatin_like()
     assert not hasattr(cisplatin_state, "coords")
     score = soft_score_metal_geometry(cisplatin_state)
-    assert 0.8 < score <= 1.0, (
-        f"Coord-free cisplatin score should be near 1.0; got {score:.4f}"
-    )
+    assert (
+        0.8 < score <= 1.0
+    ), f"Coord-free cisplatin score should be near 1.0; got {score:.4f}"
     # The state has no .canon_smiles or .atoms list; we built a
     # minimal _FakeState with .atoms + .bonds only.  The function
     # must work without any RDKit/SMILES round-trip.

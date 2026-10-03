@@ -118,9 +118,7 @@ class ReplayProbe:
     """
 
     def reveal(self, cells: Sequence[Any]) -> List["RevealedRecord"]:
-        raise NotImplementedError(
-            f"{type(self).__name__} must implement reveal()"
-        )
+        raise NotImplementedError(f"{type(self).__name__} must implement reveal()")
 
     # Async-mirroring surface so a probe can be plugged into either
     # an async or sync caller.
@@ -187,12 +185,12 @@ class VinaReplayNode:
             pf = padded
         self.pocket_features = pf
 
-        if not isinstance(self.vina_score, (int, float)) or math.isnan(
-            float(self.vina_score)
-        ) or math.isinf(float(self.vina_score)):
-            raise ValueError(
-                f"vina_score must be finite; got {self.vina_score!r}"
-            )
+        if (
+            not isinstance(self.vina_score, (int, float))
+            or math.isnan(float(self.vina_score))
+            or math.isinf(float(self.vina_score))
+        ):
+            raise ValueError(f"vina_score must be finite; got {self.vina_score!r}")
         if not isinstance(self.smiles, str) or not self.smiles:
             raise ValueError("smiles must be a non-empty string")
         if not isinstance(self.pocket_id, str) or not self.pocket_id:
@@ -289,15 +287,11 @@ class VinaReplayPool:
                 )
                 continue
             if not isinstance(raw, list):
-                log.warning(
-                    "VinaReplayPool: %s is not a JSON list; resetting", path
-                )
+                log.warning("VinaReplayPool: %s is not a JSON list; resetting", path)
                 continue
             for entry in raw:
                 try:
-                    self._by_pocket[pocket_id].append(
-                        VinaReplayNode.from_dict(entry)
-                    )
+                    self._by_pocket[pocket_id].append(VinaReplayNode.from_dict(entry))
                 except Exception as exc:
                     log.warning(
                         "VinaReplayPool: skipping bad entry in %s (%s)",
@@ -416,9 +410,7 @@ class VinaReplaySimulator(ReplayProbe):
     def __init__(self, pool: VinaReplayPool) -> None:
         self.pool = pool
 
-    def reveal(
-        self, cells: Sequence[Tuple[str, str]]
-    ) -> List[RevealedRecord]:
+    def reveal(self, cells: Sequence[Tuple[str, str]]) -> List[RevealedRecord]:
         """Reveal cached ``(smiles, pocket_id)`` pairs.
 
         ``cells`` is a sequence of ``(smiles, pocket_id)`` tuples.
@@ -517,9 +509,7 @@ class VinaSurrogate:
         hidden: int = MLP_HIDDEN,
     ) -> None:
         if backend not in ("ridge", "mlp"):
-            raise ValueError(
-                f"backend must be 'ridge' or 'mlp'; got {backend!r}"
-            )
+            raise ValueError(f"backend must be 'ridge' or 'mlp'; got {backend!r}")
         self.backend = backend
         self.alpha = float(alpha)
         self.hidden = int(hidden)
@@ -562,7 +552,7 @@ class VinaSurrogate:
         """
         X, y = self._collect_Xy(pools)
         n, d = X.shape if X.ndim == 2 else (0, DEFAULT_EMBED_DIM + DEFAULT_POCKET_DIM)
-        self._is_low_coverage = (n < MIN_POOL_FOR_SURROGATE)
+        self._is_low_coverage = n < MIN_POOL_FOR_SURROGATE
 
         if n == 0:
             # Degenerate prior — zero weight + zero bias.
@@ -637,9 +627,7 @@ class VinaSurrogate:
     # ------------------------------------------------------------------
     def _raw_predict(self, X: np.ndarray) -> np.ndarray:
         if not self._fitted or self._weights is None:
-            raise RuntimeError(
-                "VinaSurrogate: call fit() before predict()."
-            )
+            raise RuntimeError("VinaSurrogate: call fit() before predict().")
         if self.backend == "ridge":
             return X @ self._weights + self._bias
         # MLP backend
@@ -726,9 +714,7 @@ class VinaSurrogate:
             padded_pf[:copy] = pf[:copy]
             pf = padded_pf
 
-        X = np.concatenate(
-            [emb_matrix, np.tile(pf[None, :], (n, 1))], axis=1
-        )
+        X = np.concatenate([emb_matrix, np.tile(pf[None, :], (n, 1))], axis=1)
         preds = self._raw_predict(X)
         confidence = "low" if self._is_low_coverage else "medium"
 
@@ -834,8 +820,7 @@ def combined_v0_vm_ranking(
         blended.append(
             (
                 smiles,
-                float(v0_weight) * float(v0_baseline)
-                + float(vm_weight) * float(vm),
+                float(v0_weight) * float(v0_baseline) + float(vm_weight) * float(vm),
             )
         )
     blended.sort(key=lambda t: t[1])

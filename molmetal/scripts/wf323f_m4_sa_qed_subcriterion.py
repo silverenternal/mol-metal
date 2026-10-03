@@ -69,6 +69,7 @@ Outputs (CPU-only, no GPU, no chemprop)
       "wf_tag": "Wf-323F m4 SA/QED sub-criterion smoke (CPU-only)",
     }
 """
+
 from __future__ import annotations
 
 import argparse
@@ -88,10 +89,12 @@ def _load_sascorer():
     """Late-import RDKit SA scorer (same trick as cfm_property_panel.py)."""
     from rdkit.Chem import RDConfig  # noqa: WPS433
     import os as _os
+
     sa_dir = _os.path.join(RDConfig.RDContribDir, "SA_Score")
     if sa_dir not in sys.path:
         sys.path.append(sa_dir)
     import sascorer  # type: ignore[import-not-found]  # noqa: WPS433
+
     return sascorer
 
 
@@ -134,8 +137,7 @@ def _read_smiles_csv(path: Path) -> list[str]:
                 lowered = [c.strip().lower() for c in row]
                 if "smiles" not in lowered:
                     raise ValueError(
-                        f"CSV at {path} has no 'smiles' column "
-                        f"(header={row!r})"
+                        f"CSV at {path} has no 'smiles' column " f"(header={row!r})"
                     )
                 header = row
                 col_idx = lowered.index("smiles")
@@ -198,16 +200,18 @@ def compute_sub_rate(smiles_csv: Path) -> dict[str, Any]:
     sascorer = _load_sascorer()
     per_molecule = [_compute_one(s, sascorer) for s in smiles_list]
 
-    parsed = [m for m in per_molecule
-              if isinstance(m.get("sa"), (int, float))
-              and isinstance(m.get("qed"), (int, float))]
+    parsed = [
+        m
+        for m in per_molecule
+        if isinstance(m.get("sa"), (int, float))
+        and isinstance(m.get("qed"), (int, float))
+    ]
     n_input = len(per_molecule)
     n_parsed = len(parsed)
     n_failed = n_input - n_parsed
 
     sub_sa_qed = sum(
-        1 for m in parsed
-        if m["sa"] < SA_MAX_THRESHOLD and m["qed"] > QED_MIN_THRESHOLD
+        1 for m in parsed if m["sa"] < SA_MAX_THRESHOLD and m["qed"] > QED_MIN_THRESHOLD
     )
     sub_sa_only = sum(1 for m in parsed if m["sa"] < SA_MAX_THRESHOLD)
     sub_qed_only = sum(1 for m in parsed if m["qed"] > QED_MIN_THRESHOLD)
@@ -253,11 +257,15 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--smiles-csv", required=True, type=Path,
+        "--smiles-csv",
+        required=True,
+        type=Path,
         help="CSV with a 'smiles' column (canonical: metallo_drugs_500_train.csv).",
     )
     p.add_argument(
-        "--out-json", required=True, type=Path,
+        "--out-json",
+        required=True,
+        type=Path,
         help="Output JSON path (will be created or overwritten).",
     )
     return p

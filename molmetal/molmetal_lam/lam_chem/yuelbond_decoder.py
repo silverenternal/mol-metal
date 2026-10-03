@@ -127,14 +127,16 @@ class YuelBondDecoderHead(nn.Module):
         # Atom encoder: Z one-hot -> hidden_dim
         self.atom_encoder = nn.Linear(len(_YUELBOND_Z_TABLE), hidden_dim)
         # Message MLP: input [h_i, h_j, d_ij, is_short, is_long, is_dative]
-        self.msg_mlps = nn.ModuleList([
-            nn.Sequential(
-                nn.Linear(hidden_dim * 2 + 4, hidden_dim),
-                nn.ReLU(),
-                nn.Linear(hidden_dim, hidden_dim),
-            )
-            for _ in range(n_layers)
-        ])
+        self.msg_mlps = nn.ModuleList(
+            [
+                nn.Sequential(
+                    nn.Linear(hidden_dim * 2 + 4, hidden_dim),
+                    nn.ReLU(),
+                    nn.Linear(hidden_dim, hidden_dim),
+                )
+                for _ in range(n_layers)
+            ]
+        )
         # Pair head: [h_i, h_j, d_ij, dative] -> NUM_BOND_CLASSES logits
         self.pair_head = nn.Sequential(
             nn.Linear(hidden_dim * 2 + 3, hidden_dim),
@@ -192,21 +194,27 @@ class YuelBondDecoderHead(nn.Module):
         # Per-edge features (now all shape (E,))
         is_short = (d < 1.7).float().unsqueeze(-1)
         is_long = (d > 3.0).float().unsqueeze(-1)
-        is_dative = ((atomic_numbers[i_idx] == 7) | (atomic_numbers[i_idx] == 8)
-                     | (atomic_numbers[i_idx] == 16)) & (
-                     atomic_numbers[j_idx] == 78)
+        is_dative = (
+            (atomic_numbers[i_idx] == 7)
+            | (atomic_numbers[i_idx] == 8)
+            | (atomic_numbers[i_idx] == 16)
+        ) & (atomic_numbers[j_idx] == 78)
         is_dative = is_dative.float().unsqueeze(-1)
         # K message-passing iterations
         for k in range(self.n_layers):
             h_i = h[i_idx]
             h_j = h[j_idx]
-            msg_in = torch.cat([
-                h_i, h_j,
-                d.unsqueeze(-1),
-                is_short,
-                is_long,
-                is_dative,
-            ], dim=-1)
+            msg_in = torch.cat(
+                [
+                    h_i,
+                    h_j,
+                    d.unsqueeze(-1),
+                    is_short,
+                    is_long,
+                    is_dative,
+                ],
+                dim=-1,
+            )
             msg = self.msg_mlps[k](msg_in)
             # Aggregate by scatter-add onto each atom's h
             h_new = h.clone()
@@ -215,12 +223,16 @@ class YuelBondDecoderHead(nn.Module):
         # Pair head
         h_i_final = h[i_idx]
         h_j_final = h[j_idx]
-        pair_in = torch.cat([
-            h_i_final, h_j_final,
-            d.unsqueeze(-1),
-            is_dative,
-            is_short,
-        ], dim=-1)
+        pair_in = torch.cat(
+            [
+                h_i_final,
+                h_j_final,
+                d.unsqueeze(-1),
+                is_dative,
+                is_short,
+            ],
+            dim=-1,
+        )
         logits = self.pair_head(pair_in)
         return logits, (i_idx, j_idx)
 
@@ -233,8 +245,8 @@ class YuelBondResult:
     """Result of a YuelBond decode pass."""
 
     pair_features: Optional[PairFeature]
-    logits: torch.Tensor           # (E, 5)
-    edge_index: torch.Tensor       # (2, E)
+    logits: torch.Tensor  # (E, 5)
+    edge_index: torch.Tensor  # (2, E)
     decode_succeeded: bool
     error: Optional[str] = None
 
@@ -254,8 +266,13 @@ class YuelBondDecoder:
         hidden_dim: int = 64,
         n_layers: int = 3,
     ) -> None:
-        self.head = head if head is not None else YuelBondDecoderHead(
-            hidden_dim=hidden_dim, n_layers=n_layers,
+        self.head = (
+            head
+            if head is not None
+            else YuelBondDecoderHead(
+                hidden_dim=hidden_dim,
+                n_layers=n_layers,
+            )
         )
 
     def featurise(self, cloud: AtomCloud) -> YuelBondResult:
@@ -271,22 +288,27 @@ class YuelBondDecoder:
                 logits, (i_idx, j_idx) = out
             else:
                 return YuelBondResult(
-                    pair_features=None, logits=torch.zeros(0, NUM_BOND_CLASSES),
+                    pair_features=None,
+                    logits=torch.zeros(0, NUM_BOND_CLASSES),
                     edge_index=torch.zeros(2, 0, dtype=torch.long),
                     decode_succeeded=False,
                     error="head_returned_unexpected_format",
                 )
         except Exception as exc:
             return YuelBondResult(
-                pair_features=None, logits=torch.zeros(0, NUM_BOND_CLASSES),
+                pair_features=None,
+                logits=torch.zeros(0, NUM_BOND_CLASSES),
                 edge_index=torch.zeros(2, 0, dtype=torch.long),
-                decode_succeeded=False, error=f"head_forward_failed:{type(exc).__name__}",
+                decode_succeeded=False,
+                error=f"head_forward_failed:{type(exc).__name__}",
             )
         edge_index = torch.stack([i_idx, j_idx], dim=0).long()
         if edge_index.shape[1] == 0:
             return YuelBondResult(
-                pair_features=None, logits=logits,
-                edge_index=edge_index, decode_succeeded=False,
+                pair_features=None,
+                logits=logits,
+                edge_index=edge_index,
+                decode_succeeded=False,
                 error="empty_edge_list",
             )
         # Compute pair features (distance, z_i, z_j, angle=0, dative=bool)
@@ -295,7 +317,14 @@ class YuelBondDecoder:
         z_i = cloud.atomic_numbers[edge_index[0]].long()
         z_j = cloud.atomic_numbers[edge_index[1]].long()
         # Crude dative detector: N/O/S <-> Pt (either ordering)
-        donor_mask = (z_i == 7) | (z_i == 8) | (z_i == 16) | (z_j == 7) | (z_j == 8) | (z_j == 16)
+        donor_mask = (
+            (z_i == 7)
+            | (z_i == 8)
+            | (z_i == 16)
+            | (z_j == 7)
+            | (z_j == 8)
+            | (z_j == 16)
+        )
         is_dative = donor_mask & ((z_i == 78) | (z_j == 78))
         pf = PairFeature(
             edge_index=edge_index,
@@ -306,8 +335,10 @@ class YuelBondDecoder:
             is_dative_candidate=is_dative,
         )
         return YuelBondResult(
-            pair_features=pf, logits=logits,
-            edge_index=edge_index, decode_succeeded=True,
+            pair_features=pf,
+            logits=logits,
+            edge_index=edge_index,
+            decode_succeeded=True,
         )
 
 

@@ -58,6 +58,7 @@ via the project-local ``.venv``.  The script writes
 :file:`molmetal/reports/wf_mcts_real_bench/results.json` plus a
 ``benchmark_log.md`` summary next to it.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -288,21 +289,13 @@ def _summarise_strategy(
     report.n_errors = sum(1 for r in per_sample if r.error is not None)
     report.n_success = sum(1 for r in ok if r.n_candidates >= 1)
     report.total_wall_time_s = float(sum(r.wall_time_s for r in ok))
-    report.mean_wall_time_s = float(
-        report.total_wall_time_s / max(1, len(ok))
-    )
-    report.max_wall_time_s = float(
-        max((r.wall_time_s for r in ok), default=0.0)
-    )
+    report.mean_wall_time_s = float(report.total_wall_time_s / max(1, len(ok)))
+    report.max_wall_time_s = float(max((r.wall_time_s for r in ok), default=0.0))
     report.success_rate = float(report.n_success / max(1, len(ok)))
     report.total_candidates = int(sum(r.n_candidates for r in ok))
-    report.mean_candidates = float(
-        sum(r.n_candidates for r in ok) / max(1, len(ok))
-    )
+    report.mean_candidates = float(sum(r.n_candidates for r in ok) / max(1, len(ok)))
     report.total_distinct = int(sum(r.n_distinct for r in ok))
-    report.mean_distinct = float(
-        sum(r.n_distinct for r in ok) / max(1, len(ok))
-    )
+    report.mean_distinct = float(sum(r.n_distinct for r in ok) / max(1, len(ok)))
     report.n_distinct_observed = int(sum(r.n_distinct_observed for r in ok))
     return report
 
@@ -376,21 +369,33 @@ def _build_strategy_searches(
         the caller.
     """
     base = _build_search(
-        tiles=tiles, rules=rules,
-        target_predicates=target_predicates, binding_site=binding_site,
-        reward=reward, n_simulations=n_simulations, top_k=top_k,
+        tiles=tiles,
+        rules=rules,
+        target_predicates=target_predicates,
+        binding_site=binding_site,
+        reward=reward,
+        n_simulations=n_simulations,
+        top_k=top_k,
         rng=random.Random(int(seed)),
     )
     variance_puct = _build_search(
-        tiles=tiles, rules=rules,
-        target_predicates=target_predicates, binding_site=binding_site,
-        reward=reward, n_simulations=n_simulations, top_k=top_k,
+        tiles=tiles,
+        rules=rules,
+        target_predicates=target_predicates,
+        binding_site=binding_site,
+        reward=reward,
+        n_simulations=n_simulations,
+        top_k=top_k,
         rng=random.Random(int(seed)),
     )
     variance_mcts = _build_search(
-        tiles=tiles, rules=rules,
-        target_predicates=target_predicates, binding_site=binding_site,
-        reward=reward, n_simulations=n_simulations, top_k=top_k,
+        tiles=tiles,
+        rules=rules,
+        target_predicates=target_predicates,
+        binding_site=binding_site,
+        reward=reward,
+        n_simulations=n_simulations,
+        top_k=top_k,
         rng=random.Random(int(seed)),
     )
     return base, variance_puct, variance_mcts
@@ -424,7 +429,7 @@ def _run_base_strategy(
     n_cand = len(cands) if cands is not None else 0
     distinct: set = set()
     n_observed = 0
-    for c in (cands or []):
+    for c in cands or []:
         s = _safe_canonical_smiles(c)
         if s is None:
             continue
@@ -449,7 +454,8 @@ def _run_variance_puct_strategy(
     t0 = time.time()
     try:
         report = wrapper.search_with_proof_search(
-            seed, max_depth=max_depth,
+            seed,
+            max_depth=max_depth,
         )
     except Exception as exc:  # pragma: no cover - defensive
         return SampleResult(
@@ -468,7 +474,8 @@ def _run_variance_puct_strategy(
             n_candidates=0,
             n_distinct=0,
             n_distinct_observed=0,
-            error=str(report.get("error")) if isinstance(report, dict)
+            error=str(report.get("error"))
+            if isinstance(report, dict)
             else "non-dict report",
         )
     cands = report.get("candidates", []) or []
@@ -500,7 +507,8 @@ def _run_variance_mcts_strategy(
     t0 = time.time()
     try:
         report = wrapper.search_with_proof_search(
-            seed, max_depth=max_depth,
+            seed,
+            max_depth=max_depth,
         )
     except Exception as exc:  # pragma: no cover - defensive
         return SampleResult(
@@ -519,7 +527,8 @@ def _run_variance_mcts_strategy(
             n_candidates=0,
             n_distinct=0,
             n_distinct_observed=0,
-            error=str(report.get("error")) if isinstance(report, dict)
+            error=str(report.get("error"))
+            if isinstance(report, dict)
             else "non-dict report",
         )
     cands = report.get("candidates", []) or []
@@ -570,8 +579,10 @@ def run_benchmark(args: argparse.Namespace) -> Dict[str, Any]:
         VarianceMCTSWrapper,
     )
 
-    tiles = [MoleculeClosedTerm.from_smiles(t.smiles, embed_3d=False)
-             for t in STANDARD_12_TILES()]
+    tiles = [
+        MoleculeClosedTerm.from_smiles(t.smiles, embed_3d=False)
+        for t in STANDARD_12_TILES()
+    ]
     zero_reward = RewardAggregator()
     rules = dict(REACTION_RULES)
 
@@ -583,49 +594,66 @@ def run_benchmark(args: argparse.Namespace) -> Dict[str, Any]:
     for idx, row in enumerate(rows):
         try:
             seed_term = MoleculeClosedTerm.from_smiles(
-                row["smiles"], embed_3d=False,
+                row["smiles"],
+                embed_3d=False,
             )
         except Exception:
             n_parse_errors += 1
             continue
 
         base, vp, vm = _build_strategy_searches(
-            tiles=tiles, rules=rules,
-            target_predicates=[LIPINSKI], binding_site=PROTEASE_GENERIC,
+            tiles=tiles,
+            rules=rules,
+            target_predicates=[LIPINSKI],
+            binding_site=PROTEASE_GENERIC,
             reward=zero_reward,
             n_simulations=args.n_simulations,
             top_k=args.top_k,
             seed=args.seed + idx,
         )
         vpuct_wrapper = MCTSVarianceWrapper(
-            base_search=vp, score_repellent=True,
+            base_search=vp,
+            score_repellent=True,
         )
         vmcts_wrapper = VarianceMCTSWrapper(base_search=vm)
 
         # Run sequentially.  Parallelising would require pickling
         # ``MoleculeClosedTerm`` (which carries dative-bond state)
         # across processes — out of scope for the Wf benchmark.
-        base_results.append(_run_base_strategy(
-            base, seed_term, args.max_depth, idx,
-        ))
-        vpuct_results.append(_run_variance_puct_strategy(
-            vpuct_wrapper, seed_term, args.max_depth, idx,
-        ))
-        vmcts_results.append(_run_variance_mcts_strategy(
-            vmcts_wrapper, seed_term, args.max_depth, idx,
-        ))
+        base_results.append(
+            _run_base_strategy(
+                base,
+                seed_term,
+                args.max_depth,
+                idx,
+            )
+        )
+        vpuct_results.append(
+            _run_variance_puct_strategy(
+                vpuct_wrapper,
+                seed_term,
+                args.max_depth,
+                idx,
+            )
+        )
+        vmcts_results.append(
+            _run_variance_mcts_strategy(
+                vmcts_wrapper,
+                seed_term,
+                args.max_depth,
+                idx,
+            )
+        )
 
     base_summary = _summarise_strategy("base", base_results)
     vpuct_summary = _summarise_strategy("variance_puct", vpuct_results)
     vmcts_summary = _summarise_strategy("variance_mcts", vmcts_results)
 
     wall_ratio_vp = float(
-        vpuct_summary.total_wall_time_s
-        / max(1e-9, base_summary.total_wall_time_s)
+        vpuct_summary.total_wall_time_s / max(1e-9, base_summary.total_wall_time_s)
     )
     wall_ratio_vm = float(
-        vmcts_summary.total_wall_time_s
-        / max(1e-9, base_summary.total_wall_time_s)
+        vmcts_summary.total_wall_time_s / max(1e-9, base_summary.total_wall_time_s)
     )
 
     summary: Dict[str, Any] = {
@@ -727,15 +755,29 @@ def _write_benchmark_log(
     lines.append(f"- top_k         = {top_k}")
     lines.append(f"- RNG seed      = {summary['seed']}")
     lines.append(f"- Tile library  : STANDARD_12_TILES (canonical Phase-0 12 tiles)")
-    lines.append(f"- Reaction rules: REACTION_RULES ({summary['strategy_reports']['base']['n_samples']} samples searched)")
+    lines.append(
+        f"- Reaction rules: REACTION_RULES ({summary['strategy_reports']['base']['n_samples']} samples searched)"
+    )
     lines.append("")
     lines.append("## Per-strategy results")
     lines.append("")
-    lines.append("| strategy      | wall-time (s) | mean/sample (s) | max/sample (s) | success_rate | total_cands | n_distinct (mean) | errors |")
-    lines.append("|---------------|--------------:|----------------:|---------------:|-------------:|------------:|------------------:|-------:|")
+    lines.append(
+        "| strategy      | wall-time (s) | mean/sample (s) | max/sample (s) | success_rate | total_cands | n_distinct (mean) | errors |"
+    )
+    lines.append(
+        "|---------------|--------------:|----------------:|---------------:|-------------:|------------:|------------------:|-------:|"
+    )
 
-    def _row(label: str, total: float, mean: float, mx: float,
-             sr: float, tc: int, nd: float, errs: int) -> str:
+    def _row(
+        label: str,
+        total: float,
+        mean: float,
+        mx: float,
+        sr: float,
+        tc: int,
+        nd: float,
+        errs: int,
+    ) -> str:
         return (
             f"| {label:<13} | {total:>12.3f} | {mean:>14.4f} | "
             f"{mx:>13.4f} | {sr:>11.4f} | {tc:>10d} | "
@@ -743,36 +785,42 @@ def _write_benchmark_log(
         )
 
     sr = summary["strategy_reports"]
-    lines.append(_row(
-        "base",
-        sr["base"]["total_wall_time_s"],
-        sr["base"]["mean_wall_time_s"],
-        sr["base"]["max_wall_time_s"],
-        sr["base"]["success_rate"],
-        sr["base"]["total_candidates"],
-        sr["base"]["mean_distinct"],
-        sr["base"]["n_errors"],
-    ))
-    lines.append(_row(
-        "variance_puct",
-        sr["variance_puct"]["total_wall_time_s"],
-        sr["variance_puct"]["mean_wall_time_s"],
-        sr["variance_puct"]["max_wall_time_s"],
-        sr["variance_puct"]["success_rate"],
-        sr["variance_puct"]["total_candidates"],
-        sr["variance_puct"]["mean_distinct"],
-        sr["variance_puct"]["n_errors"],
-    ))
-    lines.append(_row(
-        "variance_mcts",
-        sr["variance_mcts"]["total_wall_time_s"],
-        sr["variance_mcts"]["mean_wall_time_s"],
-        sr["variance_mcts"]["max_wall_time_s"],
-        sr["variance_mcts"]["success_rate"],
-        sr["variance_mcts"]["total_candidates"],
-        sr["variance_mcts"]["mean_distinct"],
-        sr["variance_mcts"]["n_errors"],
-    ))
+    lines.append(
+        _row(
+            "base",
+            sr["base"]["total_wall_time_s"],
+            sr["base"]["mean_wall_time_s"],
+            sr["base"]["max_wall_time_s"],
+            sr["base"]["success_rate"],
+            sr["base"]["total_candidates"],
+            sr["base"]["mean_distinct"],
+            sr["base"]["n_errors"],
+        )
+    )
+    lines.append(
+        _row(
+            "variance_puct",
+            sr["variance_puct"]["total_wall_time_s"],
+            sr["variance_puct"]["mean_wall_time_s"],
+            sr["variance_puct"]["max_wall_time_s"],
+            sr["variance_puct"]["success_rate"],
+            sr["variance_puct"]["total_candidates"],
+            sr["variance_puct"]["mean_distinct"],
+            sr["variance_puct"]["n_errors"],
+        )
+    )
+    lines.append(
+        _row(
+            "variance_mcts",
+            sr["variance_mcts"]["total_wall_time_s"],
+            sr["variance_mcts"]["mean_wall_time_s"],
+            sr["variance_mcts"]["max_wall_time_s"],
+            sr["variance_mcts"]["success_rate"],
+            sr["variance_mcts"]["total_candidates"],
+            sr["variance_mcts"]["mean_distinct"],
+            sr["variance_mcts"]["n_errors"],
+        )
+    )
     lines.append("")
     lines.append("## Wall-time ratios (variance / base)")
     lines.append("")
@@ -804,9 +852,11 @@ def _write_benchmark_log(
             f"(``leaf_value_var``, ``puct_exploit_ratio_var``) adds a small overhead."
         )
     lines.append("")
-    lines.append(f"- Total candidates: base = {summary['total_candidates_base']}, "
-                 f"variance_puct = {summary['total_candidates_variance_puct']}, "
-                 f"variance_mcts = {summary['total_candidates_variance_mcts']}.")
+    lines.append(
+        f"- Total candidates: base = {summary['total_candidates_base']}, "
+        f"variance_puct = {summary['total_candidates_variance_puct']}, "
+        f"variance_mcts = {summary['total_candidates_variance_mcts']}."
+    )
     lines.append(
         f"- Success rates: base = {summary['success_rate_base']:.3f}, "
         f"variance_puct = {summary['success_rate_variance_puct']:.3f}, "
@@ -842,36 +892,51 @@ def _build_argparser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--n-samples", type=int, default=DEFAULT_N_SAMPLES,
+        "--n-samples",
+        type=int,
+        default=DEFAULT_N_SAMPLES,
         help="Number of PlatinAI samples to evaluate (default 100).",
     )
     p.add_argument(
-        "--n-simulations", type=int, default=DEFAULT_N_SIMULATIONS,
+        "--n-simulations",
+        type=int,
+        default=DEFAULT_N_SIMULATIONS,
         help="MCTS simulation budget per sample (default 5).",
     )
     p.add_argument(
-        "--max-depth", type=int, default=DEFAULT_MAX_DEPTH,
+        "--max-depth",
+        type=int,
+        default=DEFAULT_MAX_DEPTH,
         help="MCTS rollout depth per simulation (default 2).",
     )
     p.add_argument(
-        "--top-k", type=int, default=DEFAULT_TOP_K,
+        "--top-k",
+        type=int,
+        default=DEFAULT_TOP_K,
         help="Top-K returned by MCTSProofSearch.search (default 5).",
     )
     p.add_argument(
-        "--seed", type=int, default=DEFAULT_SEED,
+        "--seed",
+        type=int,
+        default=DEFAULT_SEED,
         help="RNG seed (default 0).",
     )
     p.add_argument(
-        "--csv", type=str, default=DEFAULT_CSV,
+        "--csv",
+        type=str,
+        default=DEFAULT_CSV,
         help="Path to the PlatinAI 5K CSV (default molmetal/data/platinai_5k.csv).",
     )
     p.add_argument(
-        "--out-dir", type=str, default=DEFAULT_OUT_DIR,
+        "--out-dir",
+        type=str,
+        default=DEFAULT_OUT_DIR,
         help="Output directory for results.json + benchmark_log.md "
-             "(default molmetal/reports/wf_mcts_real_bench).",
+        "(default molmetal/reports/wf_mcts_real_bench).",
     )
     p.add_argument(
-        "--quiet", action="store_true",
+        "--quiet",
+        action="store_true",
         help="Suppress per-sample stdout progress.",
     )
     return p
@@ -900,7 +965,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         out_dir = Path.cwd() / out_dir
     json_path = _write_results_json(out_dir, summary)
     log_path = _write_benchmark_log(
-        out_dir, summary,
+        out_dir,
+        summary,
         n_simulations=args.n_simulations,
         max_depth=args.max_depth,
         top_k=args.top_k,
@@ -928,8 +994,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     print(f"n_distinct_variance_puct: {summary['n_distinct_variance_puct']:.4f}")
     print(f"n_distinct_variance_mcts: {summary['n_distinct_variance_mcts']:.4f}")
     print("-" * 72)
-    print(f"variance_puct/base wall : {summary['wall_time_ratio_variance_puct_over_base']:.4f}")
-    print(f"variance_mcts/base wall : {summary['wall_time_ratio_variance_mcts_over_base']:.4f}")
+    print(
+        f"variance_puct/base wall : {summary['wall_time_ratio_variance_puct_over_base']:.4f}"
+    )
+    print(
+        f"variance_mcts/base wall : {summary['wall_time_ratio_variance_mcts_over_base']:.4f}"
+    )
     print("-" * 72)
     print(f"total script wall       : {wall_total:.3f} s")
     print(f"results.json            : {json_path}")

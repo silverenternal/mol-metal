@@ -10,6 +10,7 @@ When the REINVENT4 binary is missing the tests still pass: they
 short-circuit to asserting the documented failure mode
 (``reason == "missing_binary"`` or ``"invalid_smiles"``).
 """
+
 from __future__ import annotations
 
 import json
@@ -23,7 +24,9 @@ from pathlib import Path
 
 # Ensure the project root is on sys.path so ``molmetal_lam.*`` imports
 # resolve when pytest collects from anywhere.
-_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+_PROJECT_ROOT = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "..")
+)
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
@@ -34,12 +37,8 @@ WORKER_PATH = (
     / "sbdd_env"
     / "reinvent4_multiproperty_jsonl_worker.py"
 )
-DEFAULT_PYTHON = (
-    "/mnt/storage/env-projects/reinvent4-rocm/.venv/bin/python"
-)
-REINVENT_BIN = (
-    "/mnt/storage/env-projects/reinvent4-rocm/.venv/bin/reinvent"
-)
+DEFAULT_PYTHON = "/mnt/storage/env-projects/reinvent4-rocm/.venv/bin/python"
+REINVENT_BIN = "/mnt/storage/env-projects/reinvent4-rocm/.venv/bin/reinvent"
 
 
 def _worker_available() -> bool:
@@ -191,7 +190,8 @@ class TestReinvent4MultipropertyWorker(unittest.TestCase):
                 timed_out = True
                 break
         self.assertTrue(
-            timed_out or (last_response is not None and last_response.get("reason") == "timeout"),
+            timed_out
+            or (last_response is not None and last_response.get("reason") == "timeout"),
             msg=(
                 "expected worker to surface a 'timeout' reason after a "
                 f"deliberately short timeout; got last_response={last_response}"
@@ -208,6 +208,7 @@ class TestReinvent4MultipropertyWorkerUnit(unittest.TestCase):
         # Use importlib so we can import a module with the same name as
         # the worker file without polluting sys.modules permanently.
         import importlib.util
+
         spec = importlib.util.spec_from_file_location(
             "_r4mp_worker_under_test", str(WORKER_PATH)
         )
@@ -233,9 +234,7 @@ class TestReinvent4MultipropertyWorkerUnit(unittest.TestCase):
 
     def test_zero_weight_component_dropped(self) -> None:
         """A weight <= 0 is treated as 'disable this component'."""
-        fragments = self.mod._build_scoring_fragments(
-            {"qed": 0.0, "logp": 0.5}
-        )
+        fragments = self.mod._build_scoring_fragments({"qed": 0.0, "logp": 0.5})
         joined = "".join(fragments)
         self.assertNotIn("[scoring.component.QED]", joined)
         self.assertIn("[scoring.component.SlogP]", joined)

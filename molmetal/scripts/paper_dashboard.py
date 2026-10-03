@@ -92,12 +92,8 @@ SCHEMA_VERSION = "308b.v1"
 DEFAULT_PAPER_DOC = (
     REPO_ROOT / "TODO" / "completed" / "188_paper_4_krasnov_protocol_aligned.md"
 )
-DEFAULT_COLLECT_JSON = (
-    MOLMETAL_ROOT / "reports" / "wf265_collect" / "all_results.json"
-)
-DEFAULT_OUT_HTML = (
-    MOLMETAL_ROOT / "reports" / "wf265_dashboard" / "dashboard.html"
-)
+DEFAULT_COLLECT_JSON = MOLMETAL_ROOT / "reports" / "wf265_collect" / "all_results.json"
+DEFAULT_OUT_HTML = MOLMETAL_ROOT / "reports" / "wf265_dashboard" / "dashboard.html"
 DEFAULT_CHECKLIST_DOC = (
     REPO_ROOT / "TODO" / "completed" / "207_unified_pre_flight_checklist_v2.md"
 )
@@ -812,9 +808,7 @@ CLAIM_CATALOG: List[Dict[str, Any]] = [
             "MEASURED; the lift is real but reported on the 2-seed overlap "
             "subset (Ru seed=2 retry pending)."
         ),
-        "value": (
-            "Δ=+0.0300 (G4 30ep 0.7561 → G5 50ep 0.7860, n=2 seeds overlap)"
-        ),
+        "value": ("Δ=+0.0300 (G4 30ep 0.7561 → G5 50ep 0.7860, n=2 seeds overlap)"),
         "json_path": (
             "results/wf124_p3_50epoch_full_sweep_g5/training_summary.json::"
             "ru_auc_baseline_30epoch_g4 + ru_30ep_vs_50ep_delta + "
@@ -1823,7 +1817,12 @@ def _extract_cfm_m14_cohort(collect: Dict[str, Any]) -> Dict[str, Any]:
         {"metal": "Os", "n_total": 1118, "n_decode_ok": 1118, "decode_ratio": 1.0000},
         {"metal": "Rh", "n_total": 1134, "n_decode_ok": 1134, "decode_ratio": 1.0000},
         {"metal": "Re", "n_total": 868, "n_decode_ok": 868, "decode_ratio": 1.0000},
-        {"metal": "TOTAL", "n_total": 26801, "n_decode_ok": 26687, "decode_ratio": 0.9958},
+        {
+            "metal": "TOTAL",
+            "n_total": 26801,
+            "n_decode_ok": 26687,
+            "decode_ratio": 0.9958,
+        },
     ]
     return {
         "title": "CFM m14 real decode_ratio (Wf-188, n=26,801)",
@@ -2260,9 +2259,7 @@ def _render_cfm_m7_table(cohort: Dict[str, Any]) -> str:
     rows: List[str] = []
     for r in cohort.get("rows", []):
         lift = r.get("lift")
-        lift_cell = (
-            f"+{lift * 100:.1f}%" if isinstance(lift, (int, float)) else "n/a"
-        )
+        lift_cell = f"+{lift * 100:.1f}%" if isinstance(lift, (int, float)) else "n/a"
         rows.append(
             f"""
             <tr>
@@ -2345,8 +2342,7 @@ def _render_wf266_lomo_fix_table(cohort: Dict[str, Any]) -> str:
     for r in cohort.get("rows", []):
         default_v = r.get("default")
         default_cell = (
-            f"{default_v}" if not isinstance(default_v, float)
-            else f"{default_v:g}"
+            f"{default_v}" if not isinstance(default_v, float) else f"{default_v:g}"
         )
         rows.append(
             f"""
@@ -2362,7 +2358,8 @@ def _render_wf266_lomo_fix_table(cohort: Dict[str, Any]) -> str:
     audit_fields = cohort.get("audit_trail_fields", [])
     audit_cell = (
         "<code>" + "</code>, <code>".join(audit_fields) + "</code>"
-        if audit_fields else "n/a"
+        if audit_fields
+        else "n/a"
     )
     n_files = cohort.get("n_files_modified", "?")
     n_new = cohort.get("n_new_tests", "?")
@@ -2416,7 +2413,11 @@ def _render_wf286b_ecfp4_direct_table(cohort: Dict[str, Any]) -> str:
     )
     wf185 = cohort.get("wf185_baseline", {})
     remaining = cohort.get("remaining_hypotheses", [])
-    rem_html = "<li>" + "</li><li>".join(_escape(h) for h in remaining) + "</li>" if remaining else "n/a"
+    rem_html = (
+        "<li>" + "</li><li>".join(_escape(h) for h in remaining) + "</li>"
+        if remaining
+        else "n/a"
+    )
     caveat = _escape(cohort.get("caveat_subset_mismatch", "?"))
     pass_gate = _escape(cohort.get("pass_gate", "?"))
     delta_str = _escape(cohort.get("delta_vs_wf185", "?"))
@@ -2486,9 +2487,12 @@ def _render_high_level_gates(gates: List[Dict[str, Any]]) -> str:
     for g in gates:
         v = g.get("value")
         v_str = (
-            "true" if v is True
-            else "false" if v is False
-            else _escape(str(v)) if v is not None
+            "true"
+            if v is True
+            else "false"
+            if v is False
+            else _escape(str(v))
+            if v is not None
             else "—"
         )
         rows.append(
@@ -2713,7 +2717,11 @@ def build_dashboard_html(
         # mercy of an LLM/parser reading the markdown.
         if paper_doc is not None:
             try:
-                text = paper_doc_text if paper_doc_text is not None else _read_text(paper_doc)
+                text = (
+                    paper_doc_text
+                    if paper_doc_text is not None
+                    else _read_text(paper_doc)
+                )
                 obj["paper_doc_text_len"] = len(text)
                 obj["paper_doc_text_first_120"] = text[:120]
             except Exception as exc:  # noqa: BLE001
@@ -2779,24 +2787,21 @@ def build_dashboard_html(
         drugoood_html = _render_drugood_table(drugoood)
         cfm_m14_html = _render_cfm_m14_table(cfm_m14)
         cfm_m7_html = _render_cfm_m7_table(cfm_m7)
-        chemprop_v3_fallback_html = _render_chemprop_v3_fallback_table(chemprop_v3_fallback)
+        chemprop_v3_fallback_html = _render_chemprop_v3_fallback_table(
+            chemprop_v3_fallback
+        )
         wf266_lomo_fix_html = _render_wf266_lomo_fix_table(wf266_lomo_fix)
-        wf286b_ecfp4_direct_html = _render_wf286b_ecfp4_direct_table(wf286b_ecfp4_direct)
+        wf286b_ecfp4_direct_html = _render_wf286b_ecfp4_direct_table(
+            wf286b_ecfp4_direct
+        )
         honest_neg_html = _render_honest_negative_list()
         gates_html = _render_high_level_gates(gates)
 
         # Build per-badge discipline summary (Wf-268C-Dash explicit
         # MEASURED-vs-PROJECTED discipline).
-        n_meas = sum(
-            1 for c in CLAIM_CATALOG if c.get("badge") == BADGE_MEASURED
-        )
-        n_proj = sum(
-            1 for c in CLAIM_CATALOG if c.get("badge") == BADGE_PROJECTED
-        )
-        n_neg = sum(
-            1 for c in CLAIM_CATALOG
-            if c.get("badge") == BADGE_HONEST_NEGATIVE
-        )
+        n_meas = sum(1 for c in CLAIM_CATALOG if c.get("badge") == BADGE_MEASURED)
+        n_proj = sum(1 for c in CLAIM_CATALOG if c.get("badge") == BADGE_PROJECTED)
+        n_neg = sum(1 for c in CLAIM_CATALOG if c.get("badge") == BADGE_HONEST_NEGATIVE)
         n_hn_list = len(HONEST_NEGATIVE_CATALOG)
         badge_discipline_html = f"""
     <section class="gate-banner">
@@ -3114,7 +3119,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     # dashboard at minimum renders the honest-negative catalog).
     out_html: Path = args.out_html
     out_html.parent.mkdir(parents=True, exist_ok=True)
-    html_str = obj.get("html") or "<!doctype html><html><body><h1>paper_dashboard: build failed</h1></body></html>"
+    html_str = (
+        obj.get("html")
+        or "<!doctype html><html><body><h1>paper_dashboard: build failed</h1></body></html>"
+    )
     with open(str(out_html), "w", encoding="utf-8") as fh:
         fh.write(html_str)
 

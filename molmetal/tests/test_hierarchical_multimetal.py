@@ -66,6 +66,7 @@ def _toy_pool() -> MetalPool:
 
 def _constant_scorer(value: float = 0.42):
     """Return a scorer that always emits a fixed value (for stability tests)."""
+
     def _scorer(target_id: str, metal: str) -> float:
         return value
 
@@ -166,7 +167,9 @@ def test_synthetic_mock_score_seed_sensitivity() -> None:
     # Hash function is deterministic across seeds; the chance of a
     # collision is 1 in 2**32 — vanishingly small for the test pair
     # below, but we keep the assertion loose for safety.
-    assert r0 != r1 or r0 == r1  # tautology-safe; the strict check is in test_determinism_across_runs
+    assert (
+        r0 != r1 or r0 == r1
+    )  # tautology-safe; the strict check is in test_determinism_across_runs
 
 
 def test_synthetic_mock_score_validation() -> None:

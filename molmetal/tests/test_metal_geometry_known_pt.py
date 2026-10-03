@@ -109,11 +109,11 @@ def test_cisplatin_sq_planar_with_2nh3_2cl():
     """
     # Pt at origin; donors at +/-x, +/-y at 2.0 Å (canonical Pt-L bond).
     coords_list = [
-        [0.0, 0.0, 0.0],    # Pt (Z=78)
-        [2.0, 0.0, 0.0],    # N  +x (NH3)
-        [-2.0, 0.0, 0.0],   # N  -x (NH3)
-        [0.0, 2.0, 0.0],    # Cl +y
-        [0.0, -2.0, 0.0],   # Cl -y
+        [0.0, 0.0, 0.0],  # Pt (Z=78)
+        [2.0, 0.0, 0.0],  # N  +x (NH3)
+        [-2.0, 0.0, 0.0],  # N  -x (NH3)
+        [0.0, 2.0, 0.0],  # Cl +y
+        [0.0, -2.0, 0.0],  # Cl -y
     ]
     atom_types_list = [PT_ATOMIC_NUMBER, 7, 7, 17, 17]
     coords, atom_types, edge_index, edge_types = _make_wired_complex(
@@ -123,9 +123,12 @@ def test_cisplatin_sq_planar_with_2nh3_2cl():
     assert int(atom_types[0].item()) == PT_ATOMIC_NUMBER
     # Sanity: the 4 donor atoms include 2 N (NH3) and 2 Cl.
     donor_z = [int(atom_types[i].item()) for i in range(1, 5)]
-    assert sorted(donor_z) == [7, 7, 17, 17], (
-        f"expected 2 NH3 + 2 Cl donors; got {donor_z}"
-    )
+    assert sorted(donor_z) == [
+        7,
+        7,
+        17,
+        17,
+    ], f"expected 2 NH3 + 2 Cl donors; got {donor_z}"
 
     # Apply the prior with SQUARE_PLANAR geometry.
     prior = MetalGeometryPrior(weight=1.0)
@@ -161,10 +164,10 @@ def test_carboplatin_sq_planar_with_2nh3_2o_donor():
     """
     # Pt at origin; 2 NH3 on x-axis, 2 O donors on y-axis at 2.0 Å.
     coords_list = [
-        [0.0, 0.0, 0.0],    # Pt
-        [2.0, 0.0, 0.0],    # N +x (NH3)
-        [-2.0, 0.0, 0.0],   # N -x (NH3)
-        [0.0, 1.95, 0.0],   # O +y (CBDCA carboxylate arm 1)
+        [0.0, 0.0, 0.0],  # Pt
+        [2.0, 0.0, 0.0],  # N +x (NH3)
+        [-2.0, 0.0, 0.0],  # N -x (NH3)
+        [0.0, 1.95, 0.0],  # O +y (CBDCA carboxylate arm 1)
         [0.0, -1.95, 0.0],  # O -y (CBDCA carboxylate arm 2)
     ]
     atom_types_list = [PT_ATOMIC_NUMBER, 7, 7, 8, 8]
@@ -173,9 +176,7 @@ def test_carboplatin_sq_planar_with_2nh3_2o_donor():
     )
     # Sanity: 2 N + 2 O donors (no Cl in carboplatin).
     donor_z = [int(atom_types[i].item()) for i in range(1, 5)]
-    assert sorted(donor_z) == [7, 7, 8, 8], (
-        f"expected 2 N + 2 O donors; got {donor_z}"
-    )
+    assert sorted(donor_z) == [7, 7, 8, 8], f"expected 2 N + 2 O donors; got {donor_z}"
     # Sanity: no Cl donors (carboxylate replaces both Cl in carboplatin).
     assert 17 not in donor_z
 
@@ -216,13 +217,13 @@ def test_satraplain_pt_iv_octahedral_with_2ac_2cl_2nh3():
     #   +x = N (NH3), -x = N (NH3), +y = Cl, -y = Cl,
     #   +z = O (acetate), -z = O (acetate)
     coords_list = [
-        [0.0, 0.0, 0.0],    # Pt (Z=78)
-        [2.0, 0.0, 0.0],    # N +x (NH3)
-        [-2.0, 0.0, 0.0],   # N -x (NH3)
-        [0.0, 2.0, 0.0],    # Cl +y
-        [0.0, -2.0, 0.0],   # Cl -y
-        [0.0, 0.0, 2.0],    # O +z (acetate axial)
-        [0.0, 0.0, -2.0],   # O -z (acetate axial)
+        [0.0, 0.0, 0.0],  # Pt (Z=78)
+        [2.0, 0.0, 0.0],  # N +x (NH3)
+        [-2.0, 0.0, 0.0],  # N -x (NH3)
+        [0.0, 2.0, 0.0],  # Cl +y
+        [0.0, -2.0, 0.0],  # Cl -y
+        [0.0, 0.0, 2.0],  # O +z (acetate axial)
+        [0.0, 0.0, -2.0],  # O -z (acetate axial)
     ]
     atom_types_list = [PT_ATOMIC_NUMBER, 7, 7, 17, 17, 8, 8]
     coords, atom_types, edge_index, edge_types = _make_wired_complex(
@@ -230,9 +231,14 @@ def test_satraplain_pt_iv_octahedral_with_2ac_2cl_2nh3():
     )
     # Sanity: 6 donors = 2 N + 2 Cl + 2 O.
     donor_z = [int(atom_types[i].item()) for i in range(1, 7)]
-    assert sorted(donor_z) == [7, 7, 8, 8, 17, 17], (
-        f"expected 2 N + 2 Cl + 2 O donors; got {donor_z}"
-    )
+    assert sorted(donor_z) == [
+        7,
+        7,
+        8,
+        8,
+        17,
+        17,
+    ], f"expected 2 N + 2 Cl + 2 O donors; got {donor_z}"
 
     # Apply the prior with OCTAHEDRAL geometry.
     prior = MetalGeometryPrior(weight=1.0)
@@ -287,9 +293,9 @@ def test_pt_geometry_prior_differentiable_square_planar():
     assert coords.grad is not None, "gradient must flow through arccos"
     # Gradient norm should be small but finite for a perfect geometry.
     grad_norm = float(coords.grad.norm().item())
-    assert 0.0 <= grad_norm < 1.0, (
-        f"perfect-geometry gradient norm should be small; got {grad_norm}"
-    )
+    assert (
+        0.0 <= grad_norm < 1.0
+    ), f"perfect-geometry gradient norm should be small; got {grad_norm}"
 
 
 # ---------------------------------------------------------------------------
@@ -304,15 +310,9 @@ def test_distorted_cisplatin_produces_positive_penalty():
     coords_list = [
         [0.0, 0.0, 0.0],
         [2.0, 0.0, 0.0],
-        [math.cos(math.radians(45)) * 2.0,
-         math.sin(math.radians(45)) * 2.0,
-         0.0],
-        [math.cos(math.radians(90)) * 2.0,
-         math.sin(math.radians(90)) * 2.0,
-         0.0],
-        [math.cos(math.radians(135)) * 2.0,
-         math.sin(math.radians(135)) * 2.0,
-         0.0],
+        [math.cos(math.radians(45)) * 2.0, math.sin(math.radians(45)) * 2.0, 0.0],
+        [math.cos(math.radians(90)) * 2.0, math.sin(math.radians(90)) * 2.0, 0.0],
+        [math.cos(math.radians(135)) * 2.0, math.sin(math.radians(135)) * 2.0, 0.0],
     ]
     atom_types_list = [PT_ATOMIC_NUMBER, 7, 7, 17, 17]
     coords, atom_types, edge_index, edge_types = _make_wired_complex(

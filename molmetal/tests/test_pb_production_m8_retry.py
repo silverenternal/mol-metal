@@ -46,9 +46,12 @@ def test_module_imports():
     sys.path.insert(0, str(SCRIPTS))
     try:
         from bench_pb_production_m8_retry import (  # type: ignore
-            PocketMetrics, PBCandResult,
-            _have_real_pb, _load_fixture_candidates,
-            aggregate, _clean,
+            PocketMetrics,
+            PBCandResult,
+            _have_real_pb,
+            _load_fixture_candidates,
+            aggregate,
+            _clean,
         )
     except Exception as exc:
         pytest.fail(f"module import failed: {exc}")
@@ -62,6 +65,7 @@ def test_module_imports():
 def test_fixture_loader_parses_real_format():
     sys.path.insert(0, str(SCRIPTS))
     from bench_pb_production_m8_retry import _load_fixture_candidates
+
     cands = _load_fixture_candidates(str(SCRIPTS / "_demo_5_metaldrugs.txt"))
     assert len(cands) == 5, f"expected 5 metal drugs; got {len(cands)}"
     names = [name for name, _ in cands]
@@ -73,6 +77,7 @@ def test_fixture_loader_parses_real_format():
 def test_fixture_loader_handles_missing_file(tmp_path):
     sys.path.insert(0, str(SCRIPTS))
     from bench_pb_production_m8_retry import _load_fixture_candidates
+
     cands = _load_fixture_candidates(str(tmp_path / "nope.txt"))
     assert cands == []
 
@@ -83,10 +88,12 @@ def test_fixture_loader_handles_missing_file(tmp_path):
 def test_have_real_pb_returns_bool():
     sys.path.insert(0, str(SCRIPTS))
     from bench_pb_production_m8_retry import _have_real_pb
+
     result = _have_real_pb()
     assert isinstance(result, bool)
     # The result must match the underlying probe (no cached state).
     from molmetal_lam.sbdd_env.posebusters_adapter import _have_posebusters
+
     assert result == _have_posebusters()
 
 
@@ -96,6 +103,7 @@ def test_have_real_pb_returns_bool():
 def test_aggregate_empty_sweep():
     sys.path.insert(0, str(SCRIPTS))
     from bench_pb_production_m8_retry import aggregate, PocketMetrics
+
     agg = aggregate([])
     assert agg["n_cells_total"] == 0
     assert agg["pb_pass_rate_macro"] is None
@@ -109,16 +117,35 @@ def test_aggregate_empty_sweep():
 def test_aggregate_multi_pocket_synthetic():
     sys.path.insert(0, str(SCRIPTS))
     from bench_pb_production_m8_retry import aggregate, PocketMetrics
+
     cells = [
-        PocketMetrics(pocket_id="p1", n_candidates=5, n_pb_eligible=5,
-                      n_pb_pass=5, pb_pass_rate=1.0,
-                      pb_pass_rate_mol=1.0, n_checks_total=70),
-        PocketMetrics(pocket_id="p2", n_candidates=5, n_pb_eligible=5,
-                      n_pb_pass=3, pb_pass_rate=0.6,
-                      pb_pass_rate_mol=0.6, n_checks_total=70),
-        PocketMetrics(pocket_id="p3", n_candidates=5, n_pb_eligible=5,
-                      n_pb_pass=4, pb_pass_rate=0.8,
-                      pb_pass_rate_mol=0.8, n_checks_total=70),
+        PocketMetrics(
+            pocket_id="p1",
+            n_candidates=5,
+            n_pb_eligible=5,
+            n_pb_pass=5,
+            pb_pass_rate=1.0,
+            pb_pass_rate_mol=1.0,
+            n_checks_total=70,
+        ),
+        PocketMetrics(
+            pocket_id="p2",
+            n_candidates=5,
+            n_pb_eligible=5,
+            n_pb_pass=3,
+            pb_pass_rate=0.6,
+            pb_pass_rate_mol=0.6,
+            n_checks_total=70,
+        ),
+        PocketMetrics(
+            pocket_id="p3",
+            n_candidates=5,
+            n_pb_eligible=5,
+            n_pb_pass=4,
+            pb_pass_rate=0.8,
+            pb_pass_rate_mol=0.8,
+            n_checks_total=70,
+        ),
     ]
     agg = aggregate(cells)
     assert agg["n_cells_total"] == 3
@@ -137,11 +164,14 @@ def test_aggregate_multi_pocket_synthetic():
 def test_clean_replaces_nan_inf():
     sys.path.insert(0, str(SCRIPTS))
     from bench_pb_production_m8_retry import _clean
+
     assert _clean(float("nan")) is None
     assert _clean(float("inf")) is None
     assert _clean(float("-inf")) is None
-    assert _clean({"a": float("nan"), "b": [1.0, float("inf")]}) == \
-        {"a": None, "b": [1.0, None]}
+    assert _clean({"a": float("nan"), "b": [1.0, float("inf")]}) == {
+        "a": None,
+        "b": [1.0, None],
+    }
     assert _clean((1.0, float("nan"))) == [1.0, None]
 
 
@@ -151,12 +181,20 @@ def test_clean_replaces_nan_inf():
 def test_cli_help():
     proc = subprocess.run(
         [sys.executable, str(SCRIPT_PATH), "--help"],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     assert proc.returncode == 0
     out = (proc.stdout or "") + (proc.stderr or "")
-    for needle in ("--pockets", "--cands", "--seeds",
-                   "--use-real-pb", "--output-dir", "--organic-fallback"):
+    for needle in (
+        "--pockets",
+        "--cands",
+        "--seeds",
+        "--use-real-pb",
+        "--output-dir",
+        "--organic-fallback",
+    ):
         assert needle in out, f"--help missing flag {needle}"
 
 
@@ -164,24 +202,40 @@ def test_cli_help():
 # 8) Single-pocket smoke run produces valid JSON (real PB path)
 # ---------------------------------------------------------------------------
 @pytest.mark.skipif(
-    not (PROJECT_ROOT / "molmetal" / "molmetal_lam" / "sbdd_env"
-         / "posebusters_adapter.py").is_file(),
+    not (
+        PROJECT_ROOT
+        / "molmetal"
+        / "molmetal_lam"
+        / "sbdd_env"
+        / "posebusters_adapter.py"
+    ).is_file(),
     reason="PB adapter module not on disk",
 )
 def test_smoke_single_pocket_real_pb(tmp_path):
     sys.path.insert(0, str(SCRIPTS))
     from molmetal_lam.sbdd_env.posebusters_adapter import (
-        PoseBustersAdapter, _have_posebusters,
+        PoseBustersAdapter,
+        _have_posebusters,
     )
+
     if not _have_posebusters():
         pytest.skip("posebusters not installed")
     proc = subprocess.run(
-        [sys.executable, str(SCRIPT_PATH),
-         "--pockets", "830c",
-         "--cands", "5",
-         "--seeds", "0",
-         "--output-dir", str(tmp_path / "wf63_smoke")],
-        capture_output=True, text=True, timeout=180,
+        [
+            sys.executable,
+            str(SCRIPT_PATH),
+            "--pockets",
+            "830c",
+            "--cands",
+            "5",
+            "--seeds",
+            "0",
+            "--output-dir",
+            str(tmp_path / "wf63_smoke"),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=180,
     )
     # Exit 0 (real PB exercised) or 2 (HONEST_NEGATIVE no PB)
     assert proc.returncode in (0, 2), f"unexpected exit: {proc.returncode}"
@@ -194,7 +248,8 @@ def test_smoke_single_pocket_real_pb(tmp_path):
     assert payload["pb_mode"] == "mol"
     # Per-pocket PB rate is either a float or None (no candidates)
     assert payload["pb_pass_rate"] is None or isinstance(
-        payload["pb_pass_rate"], (int, float))
+        payload["pb_pass_rate"], (int, float)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -203,10 +258,10 @@ def test_smoke_single_pocket_real_pb(tmp_path):
 def test_builtin_organic_fallback_size():
     sys.path.insert(0, str(SCRIPTS))
     from bench_pb_production_m8_retry import BUILTIN_ORGANIC_FALLBACK
+
     assert len(BUILTIN_ORGANIC_FALLBACK) == 5
     names = [n for n, _ in BUILTIN_ORGANIC_FALLBACK]
-    for expected in ("aspirin", "caffeine", "ibuprofen", "benzene",
-                     "paracetamol"):
+    for expected in ("aspirin", "caffeine", "ibuprofen", "benzene", "paracetamol"):
         assert expected in names, f"missing {expected} in fallback"
 
 
@@ -214,27 +269,36 @@ def test_builtin_organic_fallback_size():
 # 10) Real PB on the BUILTIN_ORGANIC_FALLBACK → all 5 pass (target ≥0.7)
 # ---------------------------------------------------------------------------
 @pytest.mark.skipif(
-    not (PROJECT_ROOT / "molmetal" / "molmetal_lam" / "sbdd_env"
-         / "posebusters_adapter.py").is_file(),
+    not (
+        PROJECT_ROOT
+        / "molmetal"
+        / "molmetal_lam"
+        / "sbdd_env"
+        / "posebusters_adapter.py"
+    ).is_file(),
     reason="PB adapter module not on disk",
 )
 def test_builtin_organic_fallback_all_pass_pb():
     sys.path.insert(0, str(SCRIPTS))
     from molmetal_lam.sbdd_env.posebusters_adapter import (
-        PoseBustersAdapter, _have_posebusters,
+        PoseBustersAdapter,
+        _have_posebusters,
     )
+
     if not _have_posebusters():
         pytest.skip("posebusters not installed")
     from bench_pb_production_m8_retry import (
-        BUILTIN_ORGANIC_FALLBACK, _per_pocket_cell,
+        BUILTIN_ORGANIC_FALLBACK,
+        _per_pocket_cell,
     )
+
     adapter = PoseBustersAdapter(mode="mol")
     cell = _per_pocket_cell(
         "test_pocket", list(BUILTIN_ORGANIC_FALLBACK), adapter, "mol"
     )
-    assert cell.pb_pass_rate == 1.0, (
-        f"organic fallback should all pass PB; got rate={cell.pb_pass_rate}"
-    )
+    assert (
+        cell.pb_pass_rate == 1.0
+    ), f"organic fallback should all pass PB; got rate={cell.pb_pass_rate}"
     assert cell.n_pb_eligible == 5
     assert cell.n_pb_pass == 5
 
@@ -245,15 +309,22 @@ def test_builtin_organic_fallback_all_pass_pb():
 def test_per_pocket_cell_stub_returns_honest_zero():
     sys.path.insert(0, str(SCRIPTS))
     from bench_pb_production_m8_retry import _per_pocket_cell, PocketMetrics
+
     # Adapter=None forces the stub path inside _per_pocket_cell — but the
     # current implementation requires an adapter arg.  We test the
     # stub-mode behaviour via the public main() loop directly:
     # build a PocketMetrics with the stub status fields and assert the
     # contract.
     cell = PocketMetrics(
-        pocket_id="stub", n_candidates=5, n_pb_eligible=0, n_pb_pass=0,
-        pb_pass_rate=0.0, pb_pass_rate_mol=0.0, n_checks_total=0,
-        pb_binary_installed=False, pb_mode="mol",
+        pocket_id="stub",
+        n_candidates=5,
+        n_pb_eligible=0,
+        n_pb_pass=0,
+        pb_pass_rate=0.0,
+        pb_pass_rate_mol=0.0,
+        n_checks_total=0,
+        pb_binary_installed=False,
+        pb_mode="mol",
         status="honest_stub_no_real_pb",
         notes="real_posebusters_not_installed",
     )
@@ -268,28 +339,56 @@ def test_per_pocket_cell_stub_returns_honest_zero():
 def test_markdown_writer_emits_headline(tmp_path):
     sys.path.insert(0, str(SCRIPTS))
     from bench_pb_production_m8_retry import (
-        PocketMetrics, aggregate, write_summary_md,
+        PocketMetrics,
+        aggregate,
+        write_summary_md,
     )
+
     cells = [
-        PocketMetrics(pocket_id="p1", n_candidates=5, n_pb_eligible=5,
-                      n_pb_pass=5, pb_pass_rate=1.0,
-                      pb_pass_rate_mol=1.0, n_checks_total=70,
-                      wall_seconds=1.0, status="ok"),
-        PocketMetrics(pocket_id="p2", n_candidates=5, n_pb_eligible=5,
-                      n_pb_pass=4, pb_pass_rate=0.8,
-                      pb_pass_rate_mol=0.8, n_checks_total=70,
-                      wall_seconds=1.0, status="ok"),
+        PocketMetrics(
+            pocket_id="p1",
+            n_candidates=5,
+            n_pb_eligible=5,
+            n_pb_pass=5,
+            pb_pass_rate=1.0,
+            pb_pass_rate_mol=1.0,
+            n_checks_total=70,
+            wall_seconds=1.0,
+            status="ok",
+        ),
+        PocketMetrics(
+            pocket_id="p2",
+            n_candidates=5,
+            n_pb_eligible=5,
+            n_pb_pass=4,
+            pb_pass_rate=0.8,
+            pb_pass_rate_mol=0.8,
+            n_checks_total=70,
+            wall_seconds=1.0,
+            status="ok",
+        ),
     ]
     agg = aggregate(cells)
     out = tmp_path / "summary.md"
-    write_summary_md(cells, agg, out, pb_installed=True,
-                     n_pockets=2, n_cands=5, n_seeds=1,
-                     use_real_mcts=False, target_met=True)
+    write_summary_md(
+        cells,
+        agg,
+        out,
+        pb_installed=True,
+        n_pockets=2,
+        n_cands=5,
+        n_seeds=1,
+        use_real_mcts=False,
+        target_met=True,
+    )
     text = out.read_text()
-    for needle in ("m8 PoseBusters production re-run",
-                   "Real PoseBusters binary installed",
-                   "PASS",
-                   "p1", "p2"):
+    for needle in (
+        "m8 PoseBusters production re-run",
+        "Real PoseBusters binary installed",
+        "PASS",
+        "p1",
+        "p2",
+    ):
         assert needle in text, f"markdown missing {needle!r}"
 
 
@@ -299,21 +398,38 @@ def test_markdown_writer_emits_headline(tmp_path):
 def test_markdown_writer_honest_negative(tmp_path):
     sys.path.insert(0, str(SCRIPTS))
     from bench_pb_production_m8_retry import (
-        PocketMetrics, aggregate, write_summary_md,
+        PocketMetrics,
+        aggregate,
+        write_summary_md,
     )
+
     cells = [
-        PocketMetrics(pocket_id="p1", n_candidates=5, n_pb_eligible=0,
-                      n_pb_pass=0, pb_pass_rate=0.0,
-                      pb_pass_rate_mol=0.0, n_checks_total=0,
-                      wall_seconds=0.5,
-                      status="honest_stub_no_real_pb",
-                      pb_binary_installed=False),
+        PocketMetrics(
+            pocket_id="p1",
+            n_candidates=5,
+            n_pb_eligible=0,
+            n_pb_pass=0,
+            pb_pass_rate=0.0,
+            pb_pass_rate_mol=0.0,
+            n_checks_total=0,
+            wall_seconds=0.5,
+            status="honest_stub_no_real_pb",
+            pb_binary_installed=False,
+        ),
     ]
     agg = aggregate(cells)
     out = tmp_path / "summary.md"
-    write_summary_md(cells, agg, out, pb_installed=False,
-                     n_pockets=1, n_cands=5, n_seeds=1,
-                     use_real_mcts=False, target_met=False)
+    write_summary_md(
+        cells,
+        agg,
+        out,
+        pb_installed=False,
+        n_pockets=1,
+        n_cands=5,
+        n_seeds=1,
+        use_real_mcts=False,
+        target_met=False,
+    )
     text = out.read_text()
     assert "HONEST_NEGATIVE" in text
     assert "NOT installed" in text
@@ -323,23 +439,40 @@ def test_markdown_writer_honest_negative(tmp_path):
 # 14) Smoke run with organic fallback → macro ≥ 0.7 (target met)
 # ---------------------------------------------------------------------------
 @pytest.mark.skipif(
-    not (PROJECT_ROOT / "molmetal" / "molmetal_lam" / "sbdd_env"
-         / "posebusters_adapter.py").is_file(),
+    not (
+        PROJECT_ROOT
+        / "molmetal"
+        / "molmetal_lam"
+        / "sbdd_env"
+        / "posebusters_adapter.py"
+    ).is_file(),
     reason="PB adapter module not on disk",
 )
 def test_smoke_organic_fallback_meets_target(tmp_path):
     sys.path.insert(0, str(SCRIPTS))
     from molmetal_lam.sbdd_env.posebusters_adapter import _have_posebusters
+
     if not _have_posebusters():
         pytest.skip("posebusters not installed")
     proc = subprocess.run(
-        [sys.executable, str(SCRIPT_PATH),
-         "--pockets", "830c", "1h36", "3eml",
-         "--cands", "10",
-         "--seeds", "0",
-         "--organic-fallback",
-         "--output-dir", str(tmp_path / "wf63_organic")],
-        capture_output=True, text=True, timeout=120,
+        [
+            sys.executable,
+            str(SCRIPT_PATH),
+            "--pockets",
+            "830c",
+            "1h36",
+            "3eml",
+            "--cands",
+            "10",
+            "--seeds",
+            "0",
+            "--organic-fallback",
+            "--output-dir",
+            str(tmp_path / "wf63_organic"),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=120,
     )
     assert proc.returncode == 0
     summary = tmp_path / "wf63_organic" / "m8_summary.json"
@@ -347,9 +480,9 @@ def test_smoke_organic_fallback_meets_target(tmp_path):
     payload = json.loads(summary.read_text())
     assert payload["real_pb_installed"] is True
     macro = payload["aggregate"]["pb_pass_rate_macro"]
-    assert macro is not None and macro >= 0.5, (
-        f"macro={macro}; expected >= 0.5 with organic fallback"
-    )
+    assert (
+        macro is not None and macro >= 0.5
+    ), f"macro={macro}; expected >= 0.5 with organic fallback"
 
 
 # ---------------------------------------------------------------------------
@@ -358,17 +491,26 @@ def test_smoke_organic_fallback_meets_target(tmp_path):
 def test_aggregate_per_check_aggregation():
     sys.path.insert(0, str(SCRIPTS))
     from bench_pb_production_m8_retry import aggregate, PocketMetrics
+
     cells = [
         PocketMetrics(
-            pocket_id="p1", n_candidates=3, n_pb_eligible=3,
-            n_pb_pass=2, pb_pass_rate=2/3, pb_pass_rate_mol=2/3,
+            pocket_id="p1",
+            n_candidates=3,
+            n_pb_eligible=3,
+            n_pb_pass=2,
+            pb_pass_rate=2 / 3,
+            pb_pass_rate_mol=2 / 3,
             n_checks_total=42,
             per_check_pass={"a": 1, "b": 2},
             per_check_total={"a": 2, "b": 3},
         ),
         PocketMetrics(
-            pocket_id="p2", n_candidates=3, n_pb_eligible=3,
-            n_pb_pass=2, pb_pass_rate=2/3, pb_pass_rate_mol=2/3,
+            pocket_id="p2",
+            n_candidates=3,
+            n_pb_eligible=3,
+            n_pb_pass=2,
+            pb_pass_rate=2 / 3,
+            pb_pass_rate_mol=2 / 3,
             n_checks_total=42,
             per_check_pass={"a": 2, "b": 1},
             per_check_total={"a": 2, "b": 2},

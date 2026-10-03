@@ -22,7 +22,9 @@ import unittest
 from pathlib import Path
 
 # Ensure the project root is on sys.path so the test runs in isolation.
-_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+_PROJECT_ROOT = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "..")
+)
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
@@ -78,7 +80,12 @@ class TestJSONLinesBridge(unittest.TestCase):
     """The isolated bridge validates the wire contract without REINVENT4."""
 
     def test_rdkit_bridge_scores_and_handles_invalid_smiles(self) -> None:
-        worker = Path(__file__).parents[2] / "molmetal_lam" / "sbdd_env" / "reinvent4_jsonl_worker.py"
+        worker = (
+            Path(__file__).parents[2]
+            / "molmetal_lam"
+            / "sbdd_env"
+            / "reinvent4_jsonl_worker.py"
+        )
         adapter = REINVENT4Adapter(binary=str(worker), heartbeat_interval=0.05)
         try:
             self.assertTrue(adapter.available)

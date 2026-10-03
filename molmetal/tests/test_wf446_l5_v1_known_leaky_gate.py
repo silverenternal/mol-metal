@@ -77,9 +77,7 @@ class TestV1KnownLeakyGate:
         assert "p0_csv_hash_verify" in r.evidence
 
     def test_skip_on_missing_file(self, tmp_path: Path) -> None:
-        r = gate_metalcytotox_v1_known_leaky(
-            "t", "P0", "data", tmp_path / "nope.csv"
-        )
+        r = gate_metalcytotox_v1_known_leaky("t", "P0", "data", tmp_path / "nope.csv")
         assert r.status == "SKIP", r.evidence
         assert "p0_csv_hash_verify" in r.evidence
 
@@ -101,9 +99,7 @@ class TestV1KnownLeakyGate:
         assert "pandas" in r.evidence
         assert "env gap" in r.evidence
 
-    def test_fail_on_unparsable_probe_output(
-        self, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_fail_on_unparsable_probe_output(self, tmp_path: Path, monkeypatch) -> None:
         p = tmp_path / "present.csv"
         p.write_text("split,scaffold_id\ntrain,s1\n", encoding="utf-8")
 

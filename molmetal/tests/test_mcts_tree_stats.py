@@ -31,6 +31,7 @@ Run via::
     uv run --no-sync python -m pytest \\
         molmetal/tests/test_mcts_tree_stats.py -v
 """
+
 from __future__ import annotations
 
 import importlib
@@ -51,9 +52,7 @@ import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCRIPT_PATH = (
-    REPO_ROOT / "molmetal" / "scripts" / "bench_mcts_tree_stats.py"
-)
+SCRIPT_PATH = REPO_ROOT / "molmetal" / "scripts" / "bench_mcts_tree_stats.py"
 PLATINAI_CSV = REPO_ROOT / "molmetal" / "data" / "platinai_5k.csv"
 METALCYTO_CSV = REPO_ROOT / ".data" / "molmetal" / "MetalCytoToxDB.csv"
 
@@ -74,7 +73,8 @@ def _import_bench_module() -> Any:
         return importlib.import_module("molmetal.scripts.bench_mcts_tree_stats")
     except Exception:
         sys.path.insert(
-            0, str(REPO_ROOT / "molmetal" / "scripts"),
+            0,
+            str(REPO_ROOT / "molmetal" / "scripts"),
         )
         try:
             return importlib.import_module("bench_mcts_tree_stats")
@@ -88,13 +88,20 @@ def _run_cli_smoke(tmp_path: Path, *args: str) -> Dict[str, Any]:
     out_dir = tmp_path / "wf40_smoke"
     out_dir.mkdir(parents=True, exist_ok=True)
     cmd: List[str] = [
-        sys.executable, str(SCRIPT_PATH),
+        sys.executable,
+        str(SCRIPT_PATH),
         "--smoke",
-        "--n-trees", "2",
-        "--n-simulations", "20",
-        "--max-depth", "2",
-        "--seeds", "0", "1",
-        "--out-dir", str(out_dir),
+        "--n-trees",
+        "2",
+        "--n-simulations",
+        "20",
+        "--max-depth",
+        "2",
+        "--seeds",
+        "0",
+        "1",
+        "--out-dir",
+        str(out_dir),
         "--skip-metalcyto",
     ]
     cmd.extend(args)
@@ -189,15 +196,24 @@ class TestDefaults:
     def test_argparser_accepts_all_spec_flags(self) -> None:
         mod = _import_bench_module()
         parser = mod._build_argparser()
-        args = parser.parse_args([
-            "--n-trees", "10",
-            "--n-simulations", "100",
-            "--max-depth", "2",
-            "--seeds", "0", "1",
-            "--c-puct", "1.0",
-            "--c-var", "0.3",
-            "--smoke",
-        ])
+        args = parser.parse_args(
+            [
+                "--n-trees",
+                "10",
+                "--n-simulations",
+                "100",
+                "--max-depth",
+                "2",
+                "--seeds",
+                "0",
+                "1",
+                "--c-puct",
+                "1.0",
+                "--c-var",
+                "0.3",
+                "--smoke",
+            ]
+        )
         assert int(args.n_trees) == 10
         assert int(args.n_simulations) == 100
         assert int(args.max_depth) == 2
@@ -220,7 +236,9 @@ class TestLoaders:
             pytest.skip(f"platinai csv missing: {PLATINAI_CSV}")
         mod = _import_bench_module()
         rows = mod._load_platinai(
-            str(PLATINAI_CSV), n_samples=3, seed=42,
+            str(PLATINAI_CSV),
+            n_samples=3,
+            seed=42,
         )
         assert isinstance(rows, list)
         assert len(rows) == 3

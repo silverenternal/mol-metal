@@ -48,6 +48,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -99,7 +100,9 @@ SIZE_HEAVY_ATOM_THRESHOLD = 30
 # ---------------------------------------------------------------------------
 # Dataset loading (DrugOOD -> MetalCytoToxDB fallback)
 # ---------------------------------------------------------------------------
-def _try_load_drugood_native() -> Optional[Tuple[List[str], np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
+def _try_load_drugood_native() -> (
+    Optional[Tuple[List[str], np.ndarray, np.ndarray, np.ndarray, np.ndarray]]
+):
     """Try to load DrugOOD IC50 splits from a few canonical paths.
 
     Returns (smiles, labels, assay_id, scaffold_id, size_id) or None if not
@@ -167,7 +170,9 @@ def _load_drugood_dir(
     )
 
 
-def _load_metacytotox_fallback() -> Tuple[List[str], np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def _load_metacytotox_fallback() -> (
+    Tuple[List[str], np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+):
     """Build a DrugOOD-style 5-tuple from MetalCytoToxDB.
 
     Returns
@@ -193,8 +198,11 @@ def _load_metacytotox_fallback() -> Tuple[List[str], np.ndarray, np.ndarray, np.
     unique_lines = sorted(set(cell_lines))
     line_to_id = {ln: i for i, ln in enumerate(unique_lines)}
     assay_id = np.asarray([line_to_id[c] for c in cell_lines], dtype=np.int64)
-    print(f"[drugood:fallback] loaded n={len(smiles)}  cell_lines={len(unique_lines)}  "
-          f"pos_rate={labels.mean():.3f}", flush=True)
+    print(
+        f"[drugood:fallback] loaded n={len(smiles)}  cell_lines={len(unique_lines)}  "
+        f"pos_rate={labels.mean():.3f}",
+        flush=True,
+    )
 
     # scaffold_id: each unique Bemis-Murcko scaffold -> integer id
     scaffold_to_idx: Dict[str, int] = {}
@@ -251,7 +259,9 @@ def _bemis_murcko(smiles: str) -> str:
 # ---------------------------------------------------------------------------
 # Featurisation
 # ---------------------------------------------------------------------------
-def _morgan_features(smiles_list: List[str], n_bits: int = 2048, radius: int = 2) -> np.ndarray:
+def _morgan_features(
+    smiles_list: List[str], n_bits: int = 2048, radius: int = 2
+) -> np.ndarray:
     out = np.zeros((len(smiles_list), n_bits), dtype=np.uint8)
     for i, smi in enumerate(smiles_list):
         mol = Chem.MolFromSmiles(smi)
@@ -279,8 +289,12 @@ def _build_assay_split(
     rng = np.random.default_rng(seed)
     perm = rng.permutation(len(train_idx))
     val_idx = train_idx[perm[: max(1, len(perm) // 10)]]
-    train_idx = train_idx[perm[max(1, len(perm) // 10):]]
-    return train_idx.astype(np.int64), val_idx.astype(np.int64), test_idx.astype(np.int64)
+    train_idx = train_idx[perm[max(1, len(perm) // 10) :]]
+    return (
+        train_idx.astype(np.int64),
+        val_idx.astype(np.int64),
+        test_idx.astype(np.int64),
+    )
 
 
 def _build_scaffold_split(
@@ -320,7 +334,9 @@ def _build_scaffold_split(
 
 
 def _build_size_split(
-    labels: np.ndarray, size_id: np.ndarray, seed: int,
+    labels: np.ndarray,
+    size_id: np.ndarray,
+    seed: int,
     heavy_atoms: Optional[np.ndarray] = None,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """OOD-Size: stratified-by-decile split on heavy-atom count.
@@ -465,10 +481,16 @@ def _train_eval_one_seed(
         with torch.no_grad():
             v_logits = model(X_val).cpu().numpy()
         v_score = 1.0 / (1.0 + np.exp(-v_logits))
-        v_auc = float(roc_auc_score(y_val_np, v_score)) if len(np.unique(y_val_np)) >= 2 else float("nan")
+        v_auc = (
+            float(roc_auc_score(y_val_np, v_score))
+            if len(np.unique(y_val_np)) >= 2
+            else float("nan")
+        )
         if not np.isnan(v_auc) and v_auc > best_val:
             best_val = v_auc
-            best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+            best_state = {
+                k: v.detach().cpu().clone() for k, v in model.state_dict().items()
+            }
 
     if best_state is not None:
         model.load_state_dict(best_state)
@@ -654,7 +676,9 @@ def _write_report(
 # CLI / main
 # ---------------------------------------------------------------------------
 def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="DrugOOD-style OOD generalisation benchmark.")
+    p = argparse.ArgumentParser(
+        description="DrugOOD-style OOD generalisation benchmark."
+    )
     p.add_argument(
         "--split",
         dest="splits",
@@ -690,11 +714,22 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = _parse_args(argv)
     out_dir = PROJECT_ROOT / args.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_metric = Path(args.out_metric) if args.out_metric else METRICS_DIR / "drugood_ood_auc.json"
-    out_report = Path(args.out_report) if out_report_set(args.out_report) else REPORTS_DIR / "wf_tier1_metric17_drugood" / "final.md"
+    out_metric = (
+        Path(args.out_metric)
+        if args.out_metric
+        else METRICS_DIR / "drugood_ood_auc.json"
+    )
+    out_report = (
+        Path(args.out_report)
+        if out_report_set(args.out_report)
+        else REPORTS_DIR / "wf_tier1_metric17_drugood" / "final.md"
+    )
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    print(f"[drugood] device={device}  splits={args.splits}  seeds={args.seeds}", flush=True)
+    print(
+        f"[drugood] device={device}  splits={args.splits}  seeds={args.seeds}",
+        flush=True,
+    )
 
     # Load DrugOOD-native if available, else use MetalCytoToxDB fallback
     native = _try_load_drugood_native()
@@ -704,12 +739,20 @@ def main(argv: Optional[List[str]] = None) -> int:
         used_native = True
         print("[drugood] using native DrugOOD data", flush=True)
     else:
-        smiles, labels, assay_id, scaffold_id, size_id, heavy_atoms = _load_metacytotox_fallback()
+        smiles, labels, assay_id, scaffold_id, size_id, heavy_atoms = (
+            _load_metacytotox_fallback()
+        )
         used_native = False
-        print("[drugood] using MetalCytoToxDB fallback for DrugOOD-style OOD splits", flush=True)
+        print(
+            "[drugood] using MetalCytoToxDB fallback for DrugOOD-style OOD splits",
+            flush=True,
+        )
 
     # Featurize once
-    print(f"[drugood] featurizing {len(smiles)} SMILES -> Morgan FP(2048, r=2)...", flush=True)
+    print(
+        f"[drugood] featurizing {len(smiles)} SMILES -> Morgan FP(2048, r=2)...",
+        flush=True,
+    )
     X_all = _morgan_features(smiles, n_bits=2048, radius=2).astype(np.float32)
 
     all_results: Dict[str, Dict[str, object]] = {}
@@ -719,25 +762,43 @@ def main(argv: Optional[List[str]] = None) -> int:
         for seed in args.seeds:
             try:
                 train_idx, val_idx, test_idx = _build_split(
-                    split, labels, assay_id, scaffold_id, size_id, seed,
+                    split,
+                    labels,
+                    assay_id,
+                    scaffold_id,
+                    size_id,
+                    seed,
                     heavy_atoms=heavy_atoms,
                 )
                 r = _train_eval_one_seed(
-                    split, seed, X_all, labels,
-                    train_idx, val_idx, test_idx,
-                    args.epochs, args.batch_size, args.lr, args.hidden, device,
+                    split,
+                    seed,
+                    X_all,
+                    labels,
+                    train_idx,
+                    val_idx,
+                    test_idx,
+                    args.epochs,
+                    args.batch_size,
+                    args.lr,
+                    args.hidden,
+                    device,
                 )
                 per_seed.append(r)
-                (out_dir / f"{split}_seed{seed}.json").write_text(json.dumps(r, indent=2))
+                (out_dir / f"{split}_seed{seed}.json").write_text(
+                    json.dumps(r, indent=2)
+                )
             except Exception as e:
                 print(f"[drugood:{split} seed={seed}] FAILED: {e}", flush=True)
-                per_seed.append({
-                    "split": split,
-                    "seed": seed,
-                    "error": str(e),
-                    "ood_test_auc": float("nan"),
-                    "id_test_auc": float("nan"),
-                })
+                per_seed.append(
+                    {
+                        "split": split,
+                        "seed": seed,
+                        "error": str(e),
+                        "ood_test_auc": float("nan"),
+                        "id_test_auc": float("nan"),
+                    }
+                )
         agg = _aggregate_per_seed(per_seed)
         agg["per_seed"] = per_seed
         all_results[split] = agg
@@ -768,7 +829,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         "imold_reference": IMOLD_TARGETS,
         "erm_baseline": ERM_BASELINES,
         "gate_margin": GATE_MARGIN,
-        "results": {s: {k: v for k, v in all_results[s].items() if k != "per_seed"} for s in args.splits},
+        "results": {
+            s: {k: v for k, v in all_results[s].items() if k != "per_seed"}
+            for s in args.splits
+        },
         "gate_pass": gate_pass,
         "overall_pass": overall_pass,
     }
@@ -776,7 +840,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     out_metric.write_text(json.dumps(payload, indent=2))
     print(f"[drugood] wrote {out_metric}", flush=True)
 
-    _write_report(out_report, all_results, gate_pass, overall_pass, used_native, args.splits)
+    _write_report(
+        out_report, all_results, gate_pass, overall_pass, used_native, args.splits
+    )
     print(f"[drugood] wrote {out_report}", flush=True)
     return 0
 

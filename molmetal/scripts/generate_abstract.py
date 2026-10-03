@@ -63,7 +63,9 @@ def _load(path: Path) -> Optional[Dict[str, Any]]:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
-        print(f"[generate_abstract] WARN: failed to load {path}: {exc}", file=sys.stderr)
+        print(
+            f"[generate_abstract] WARN: failed to load {path}: {exc}", file=sys.stderr
+        )
         return None
 
 
@@ -127,9 +129,13 @@ def para_results(snapshot: Dict[str, Dict[str, Any]]) -> str:
     ru_target = _fmt_pct(ru.get("gate_target"))
     pt_overall = _fmt_pct(pt.get("value_overall_mean_auc"))
     pt_a549 = _fmt_pct((pt.get("per_cell_line") or {}).get("A549", {}).get("auc_mean"))
-    pt_a2780cis = _fmt_pct((pt.get("per_cell_line") or {}).get("A2780cis", {}).get("auc_mean"))
+    pt_a2780cis = _fmt_pct(
+        (pt.get("per_cell_line") or {}).get("A2780cis", {}).get("auc_mean")
+    )
     cfm_best = _fmt_pct(cfm.get("aggregate", {}).get("best_measured"))
-    ood_assay = _fmt_pct((ood.get("results") or {}).get("assay", {}).get("ood_auc_mean"))
+    ood_assay = _fmt_pct(
+        (ood.get("results") or {}).get("assay", {}).get("ood_auc_mean")
+    )
     imold_assay = _fmt_pct((ood.get("imold_reference") or {}).get("assay"))
     nd_best = _fmt_int(nd.get("aggregate", {}).get("best_measured_with_all_fixes"))
 
@@ -219,7 +225,13 @@ def render_draft(snapshot: Dict[str, Dict[str, Any]], today: str) -> str:
 
 
 def load_snapshot(metrics_dir: Path) -> Dict[str, Dict[str, Any]]:
-    keys = ("metalcytotox_ru_auc", "platinai_4cell_auc", "decode_ratio", "drugood_ood_auc", "n_distinct")
+    keys = (
+        "metalcytotox_ru_auc",
+        "platinai_4cell_auc",
+        "decode_ratio",
+        "drugood_ood_auc",
+        "n_distinct",
+    )
     return {k: (_load(metrics_dir / f"{k}.json") or {}) for k in keys}
 
 
@@ -230,9 +242,13 @@ def load_snapshot(metrics_dir: Path) -> Dict[str, Dict[str, Any]]:
 
 def main(argv: Optional[list] = None) -> int:
     p = argparse.ArgumentParser(description="Paper abstract draft auto-generator")
-    p.add_argument("--metrics-dir", default=str(DEFAULT_METRICS_DIR), help="Snapshot dir")
+    p.add_argument(
+        "--metrics-dir", default=str(DEFAULT_METRICS_DIR), help="Snapshot dir"
+    )
     p.add_argument("--out", default=str(DEFAULT_OUT), help="Output .tex path")
-    p.add_argument("--dry-run", action="store_true", help="Print draft to stdout; skip file write")
+    p.add_argument(
+        "--dry-run", action="store_true", help="Print draft to stdout; skip file write"
+    )
     args = p.parse_args(argv)
 
     snapshot = load_snapshot(Path(args.metrics_dir))
@@ -246,7 +262,10 @@ def main(argv: Optional[list] = None) -> int:
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(draft, encoding="utf-8")
-    print(f"[generate_abstract] wrote {out_path} (4 paragraphs, {len(draft)} bytes)", file=sys.stderr)
+    print(
+        f"[generate_abstract] wrote {out_path} (4 paragraphs, {len(draft)} bytes)",
+        file=sys.stderr,
+    )
     return 0
 
 

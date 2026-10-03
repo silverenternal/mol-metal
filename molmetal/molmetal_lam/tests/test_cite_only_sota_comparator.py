@@ -19,6 +19,7 @@ Honest framing
 * 9 SOTA rows are CITED-ONLY; tests verify the citation shape, not
   whether the values match a re-run (they cannot, by design).
 """
+
 from __future__ import annotations
 
 import os
@@ -50,8 +51,9 @@ from molmetal_lam.sbdd_env.cite_only_sota_comparator import (  # noqa: E402
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
-TEX_PATH = ("/home/hugo/codes/try_triton_on_rocm/molmetal/reports/"
-            "wf_3_citeonly_sota.tex")
+TEX_PATH = (
+    "/home/hugo/codes/try_triton_on_rocm/molmetal/reports/" "wf_3_citeonly_sota.tex"
+)
 
 
 @pytest.fixture
@@ -117,9 +119,9 @@ def test_parser_handles_9_row_latex_table(tex_path: Path) -> None:
 def test_hardcoded_inventory_shape() -> None:
     """Hardcoded SOTA_ROWS / PROTOCOL_MISMATCH_FLAGS have the expected shapes."""
     assert len(SOTA_ROWS) == 9, f"expected 9 SOTA rows, got {len(SOTA_ROWS)}"
-    assert len(PROTOCOL_MISMATCH_FLAGS) == 7, (
-        f"expected 7 protocol-mismatch flags M1-M7, got {len(PROTOCOL_MISMATCH_FLAGS)}"
-    )
+    assert (
+        len(PROTOCOL_MISMATCH_FLAGS) == 7
+    ), f"expected 7 protocol-mismatch flags M1-M7, got {len(PROTOCOL_MISMATCH_FLAGS)}"
     codes = {f.code for f in PROTOCOL_MISMATCH_FLAGS}
     expected_codes = {f"M{i}" for i in range(1, 8)}
     assert codes == expected_codes, f"flag codes mismatch: {codes} vs {expected_codes}"
@@ -147,20 +149,26 @@ def test_gap_calculation_our_minus_target(default_protocol_flags: dict) -> None:
 
     # Our value is -7.0 (worse than TargetDiff's -8.45).
     # Expected gap = -7.0 - (-8.45) = +1.45 (positive = worse).
-    reports = cmp.compare(our_value=-7.0, num_samples=100,
-                          protocol_flags=default_protocol_flags,
-                          row_name="TargetDiff")
+    reports = cmp.compare(
+        our_value=-7.0,
+        num_samples=100,
+        protocol_flags=default_protocol_flags,
+        row_name="TargetDiff",
+    )
     assert len(reports) == 1
     gap = reports[0].gap
-    assert gap.vina == pytest.approx(1.45, abs=1e-6), (
-        f"expected gap=+1.45, got {gap.vina}"
-    )
+    assert gap.vina == pytest.approx(
+        1.45, abs=1e-6
+    ), f"expected gap=+1.45, got {gap.vina}"
 
     # Our value is -9.0 (better than TargetDiff's -8.45).
     # Expected gap = -9.0 - (-8.45) = -0.55 (negative = better).
-    reports = cmp.compare(our_value=-9.0, num_samples=100,
-                          protocol_flags=default_protocol_flags,
-                          row_name="TargetDiff")
+    reports = cmp.compare(
+        our_value=-9.0,
+        num_samples=100,
+        protocol_flags=default_protocol_flags,
+        row_name="TargetDiff",
+    )
     assert reports[0].gap.vina == pytest.approx(-0.55, abs=1e-6)
 
 
@@ -176,19 +184,21 @@ def test_protocol_mismatch_flags_set(default_protocol_flags: dict) -> None:
 
     # TargetDiff should match all 7 flags with default_protocol_flags.
     targetdiff_reports = cmp.compare(
-        our_value=-7.0, num_samples=100,
+        our_value=-7.0,
+        num_samples=100,
         protocol_flags=default_protocol_flags,
         row_name="TargetDiff",
     )
     targetdiff_flags = targetdiff_reports[0].applicable_flags
-    assert targetdiff_flags == [], (
-        f"TargetDiff should match default protocol_flags; got {targetdiff_flags}"
-    )
+    assert (
+        targetdiff_flags == []
+    ), f"TargetDiff should match default protocol_flags; got {targetdiff_flags}"
     assert targetdiff_reports[0].fairness_verdict == "comparable"
 
     # FLOWr uses SPINDR split + DiffDock-L → M1 + M2.
     flowr_reports = cmp.compare(
-        our_value=-7.0, num_samples=100,
+        our_value=-7.0,
+        num_samples=100,
         protocol_flags=default_protocol_flags,
         row_name="FLOWr",
     )
@@ -206,8 +216,12 @@ def test_seed_mismatch_triggers_m6() -> None:
     cmp = CiteOnlySOTAComparator()
     flags_3seeds = dict(DEFAULT_PROTOCOL_FLAGS)
     flags_3seeds["n_seeds"] = 3
-    reports = cmp.compare(our_value=-7.0, num_samples=100,
-                          protocol_flags=flags_3seeds, row_name="TargetDiff")
+    reports = cmp.compare(
+        our_value=-7.0,
+        num_samples=100,
+        protocol_flags=flags_3seeds,
+        row_name="TargetDiff",
+    )
     assert "M6" in reports[0].applicable_flags
 
 
@@ -219,10 +233,12 @@ def test_dataclass_shape_consistent_across_runs(default_protocol_flags: dict) ->
     with identical dataclass shape (same fields, same types).
     """
     cmp = CiteOnlySOTAComparator()
-    reports_a = cmp.compare(our_value=-7.0, num_samples=100,
-                            protocol_flags=default_protocol_flags)
-    reports_b = cmp.compare(our_value=-8.5, num_samples=200,
-                            protocol_flags=default_protocol_flags)
+    reports_a = cmp.compare(
+        our_value=-7.0, num_samples=100, protocol_flags=default_protocol_flags
+    )
+    reports_b = cmp.compare(
+        our_value=-8.5, num_samples=200, protocol_flags=default_protocol_flags
+    )
 
     assert len(reports_a) == len(reports_b) == 9
     for ra, rb in zip(reports_a, reports_b):
@@ -230,9 +246,16 @@ def test_dataclass_shape_consistent_across_runs(default_protocol_flags: dict) ->
         assert isinstance(ra.gap, GapMetrics)
         assert isinstance(ra.row, SOTARow)
         # All ComparisonReport fields must be present.
-        for field_name in ("row", "our_value", "gap", "applicable_flags",
-                           "n_samples_ours", "n_samples_target",
-                           "fairness_verdict", "notes"):
+        for field_name in (
+            "row",
+            "our_value",
+            "gap",
+            "applicable_flags",
+            "n_samples_ours",
+            "n_samples_target",
+            "fairness_verdict",
+            "notes",
+        ):
             assert hasattr(ra, field_name), f"missing field {field_name}"
             assert hasattr(rb, field_name), f"missing field {field_name}"
         # To-dict round-trip.
@@ -252,17 +275,30 @@ def test_compare_per_pocket_emits_csv_ready_rows(default_protocol_flags: dict) -
     fairness_verdict).
     """
     cmp = CiteOnlySOTAComparator()
-    rows = cmp.compare_per_pocket("test_001", our_value=-7.5, num_samples=100,
-                                  protocol_flags=default_protocol_flags)
+    rows = cmp.compare_per_pocket(
+        "test_001",
+        our_value=-7.5,
+        num_samples=100,
+        protocol_flags=default_protocol_flags,
+    )
     assert len(rows) == 9
-    expected_keys = {"pocket_id", "paper", "dataset", "vina_target",
-                     "vina_std_target", "gap_vina", "n_samples_ours",
-                     "n_samples_target", "applicable_flags", "fairness_verdict",
-                     "notes"}
+    expected_keys = {
+        "pocket_id",
+        "paper",
+        "dataset",
+        "vina_target",
+        "vina_std_target",
+        "gap_vina",
+        "n_samples_ours",
+        "n_samples_target",
+        "applicable_flags",
+        "fairness_verdict",
+        "notes",
+    }
     for row in rows:
-        assert expected_keys.issubset(row.keys()), (
-            f"missing keys: {expected_keys - row.keys()}"
-        )
+        assert expected_keys.issubset(
+            row.keys()
+        ), f"missing keys: {expected_keys - row.keys()}"
         assert row["pocket_id"] == "test_001"
 
 
@@ -274,9 +310,9 @@ def test_build_per_pocket_comparison_rows_helper(default_protocol_flags: dict) -
     the same shape as ``compare_per_pocket`` and is suitable for
     direct integration with ``r4_c_full_sweep.py``.
     """
-    rows = build_per_pocket_comparison_rows("1h36", our_value=-5.923,
-                                           num_samples=50,
-                                           protocol_flags=default_protocol_flags)
+    rows = build_per_pocket_comparison_rows(
+        "1h36", our_value=-5.923, num_samples=50, protocol_flags=default_protocol_flags
+    )
     assert len(rows) == 9
     targetdiff_row = next(r for r in rows if "TargetDiff" in r["paper"])
     # -5.923 - (-8.45) = +2.527 (we are worse than TargetDiff; single pocket 1h36)
@@ -291,9 +327,12 @@ def test_rmsd_only_rows_have_no_vina_gap(default_protocol_flags: dict) -> None:
     must be None for those rows (not a float).
     """
     cmp = CiteOnlySOTAComparator()
-    reports = cmp.compare(our_value=-7.0, num_samples=100,
-                          protocol_flags=default_protocol_flags,
-                          row_name="DiffDock")
+    reports = cmp.compare(
+        our_value=-7.0,
+        num_samples=100,
+        protocol_flags=default_protocol_flags,
+        row_name="DiffDock",
+    )
     assert len(reports) == 1
     assert reports[0].row.vina_mean is None
     assert reports[0].gap.vina is None

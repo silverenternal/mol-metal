@@ -49,8 +49,8 @@ from molmetal.molmetal_lam.lam_chem.non_click_medchem_rules import (
 # ---------------------------------------------------------------------------
 
 # Canonical amino-acid SMILES used as test inputs.
-GLYCINE = "NCC(=O)O"           # H2N-CH2-COOH (Gly, neutral form)
-ALANINE = "CC(N)C(=O)O"        # H2N-CH(CH3)-COOH (Ala, neutral form)
+GLYCINE = "NCC(=O)O"  # H2N-CH2-COOH (Gly, neutral form)
+ALANINE = "CC(N)C(=O)O"  # H2N-CH(CH3)-COOH (Ala, neutral form)
 PHENYLALANINE = "NCC(Cc1ccccc1)C(=O)O"  # H2N-CH(CH2Ph)-COOH
 
 
@@ -68,14 +68,9 @@ def test_peptide_bond_gly_gly():
     product = rule.apply(GLYCINE, GLYCINE)
     assert product is not None, "Gly + Gly must produce a peptide SMILES"
     # Should contain the amide motif in EITHER canonical orientation.
-    amide_present = (
-        "C(=O)N" in product
-        or "C(=O)[NH]" in product
-        or "NC(=O)" in product
-    )
+    amide_present = "C(=O)N" in product or "C(=O)[NH]" in product or "NC(=O)" in product
     assert amide_present, (
-        f"Gly-Gly must carry the amide motif (C(=O)N or NC(=O)); "
-        f"got {product!r}"
+        f"Gly-Gly must carry the amide motif (C(=O)N or NC(=O)); " f"got {product!r}"
     )
 
 
@@ -91,14 +86,9 @@ def test_peptide_bond_gly_ala():
     rule = PeptideBondRule()
     product = rule.apply(GLYCINE, ALANINE)
     assert product is not None, "Gly + Ala must produce a peptide SMILES"
-    amide_present = (
-        "C(=O)N" in product
-        or "C(=O)[NH]" in product
-        or "NC(=O)" in product
-    )
+    amide_present = "C(=O)N" in product or "C(=O)[NH]" in product or "NC(=O)" in product
     assert amide_present, (
-        f"Gly-Ala must carry an amide motif (C(=O)N or NC(=O)); "
-        f"got {product!r}"
+        f"Gly-Ala must carry an amide motif (C(=O)N or NC(=O)); " f"got {product!r}"
     )
 
 
@@ -107,14 +97,9 @@ def test_peptide_bond_ala_phe():
     rule = PeptideBondRule()
     product = rule.apply(ALANINE, PHENYLALANINE)
     assert product is not None, "Ala + Phe must produce a peptide SMILES"
-    amide_present = (
-        "C(=O)N" in product
-        or "C(=O)[NH]" in product
-        or "NC(=O)" in product
-    )
+    amide_present = "C(=O)N" in product or "C(=O)[NH]" in product or "NC(=O)" in product
     assert amide_present, (
-        f"Ala-Phe must carry an amide motif (C(=O)N or NC(=O)); "
-        f"got {product!r}"
+        f"Ala-Phe must carry an amide motif (C(=O)N or NC(=O)); " f"got {product!r}"
     )
 
 
@@ -127,9 +112,7 @@ def test_peptide_bond_invalid_substrate_not_carboxylic_acid():
     rule = PeptideBondRule()
     # Methylamine — no -COOH, no carboxylic acid pattern.
     product = rule.apply("CN", GLYCINE)
-    assert product is None, (
-        f"methylamine substrate must be rejected; got {product!r}"
-    )
+    assert product is None, f"methylamine substrate must be rejected; got {product!r}"
 
 
 def test_peptide_bond_invalid_substrate_formic_acid():
@@ -156,13 +139,13 @@ def test_peptide_bond_relaxes_min_atoms_threshold():
     inclusive).
     """
     rule_strict = PeptideBondRule(n_substrate_atoms_min=6)
-    assert rule_strict.is_substrate_compatible(GLYCINE) is False, (
-        "strict threshold (6) must reject Gly (5 heavy atoms)"
-    )
+    assert (
+        rule_strict.is_substrate_compatible(GLYCINE) is False
+    ), "strict threshold (6) must reject Gly (5 heavy atoms)"
     rule_loose = PeptideBondRule(n_substrate_atoms_min=5)
-    assert rule_loose.is_substrate_compatible(GLYCINE) is True, (
-        "loose threshold (5) must accept Gly (5 heavy atoms)"
-    )
+    assert (
+        rule_loose.is_substrate_compatible(GLYCINE) is True
+    ), "loose threshold (5) must accept Gly (5 heavy atoms)"
 
 
 def test_peptide_bond_is_substrate_compatible_true_carboxylic_acid():
@@ -216,9 +199,9 @@ def test_boc_protection_methylamine():
     rule = BocProtectionRule()
     product = rule.apply("CN")
     assert product is not None, "methylamine must be Boc-protected"
-    assert "NC(=O)OC(C)(C)C" in product or "C(=O)OC(C)(C)C" in product, (
-        f"Boc product must carry the carbamate motif; got {product!r}"
-    )
+    assert (
+        "NC(=O)OC(C)(C)C" in product or "C(=O)OC(C)(C)C" in product
+    ), f"Boc product must carry the carbamate motif; got {product!r}"
 
 
 def test_boc_protection_glycine_free_amine():
@@ -235,7 +218,7 @@ def test_boc_protection_glycine_free_amine():
     assert product is not None, "glycine must be Boc-protected"
     carbamate_present = (
         "C(=O)OC(C)(C)C" in product  # walk from carbonyl side
-        or "OC(=O)N" in product       # walk from tert-butoxy side
+        or "OC(=O)N" in product  # walk from tert-butoxy side
     )
     assert carbamate_present, (
         f"N-Boc glycine must carry the carbamate motif (either "
@@ -270,9 +253,9 @@ def test_boc_deprotection_returns_original_amine():
     # The deprotected SMILES must be recognisably methylamine
     # (``CN`` or any canonicalised equivalent that carries the
     # primary-amine motif).
-    assert deprotected in ("CN",) or "N" in deprotected, (
-        f"deprotected SMILES must look like methylamine; got {deprotected!r}"
-    )
+    assert (
+        deprotected in ("CN",) or "N" in deprotected
+    ), f"deprotected SMILES must look like methylamine; got {deprotected!r}"
 
 
 def test_boc_deprotection_invalid_substrate_no_boc_motif():
@@ -347,9 +330,9 @@ def test_reductive_amination_incompatible_no_aldehyde():
     """
     rule = ReductiveAminationRule()
     # Acetone SMILES: ``CC(=O)C``.
-    assert rule.is_compatible("CC(=O)C", "CN") is False, (
-        "acetone (ketone) must be rejected by reductive amination"
-    )
+    assert (
+        rule.is_compatible("CC(=O)C", "CN") is False
+    ), "acetone (ketone) must be rejected by reductive amination"
     assert rule.apply("CC(=O)C", "CN") is None
 
 
@@ -390,9 +373,9 @@ def test_registry_get_rules_returns_full_map():
     registry = NonClickMedChemRegistry()
     register_non_click_rules(registry)
     rules = registry.get_rules()
-    assert set(rules.keys()) == set(DEFAULT_RULE_TYPES), (
-        f"registry must contain all 3 canonical rule types; got {set(rules.keys())}"
-    )
+    assert set(rules.keys()) == set(
+        DEFAULT_RULE_TYPES
+    ), f"registry must contain all 3 canonical rule types; got {set(rules.keys())}"
 
 
 def test_registry_count_three_rules():
@@ -404,9 +387,9 @@ def test_registry_count_three_rules():
     n = register_non_click_rules(registry)
     # ``register_non_click_rules`` returns the count registered (3).
     assert n == 3, f"must register exactly 3 rules; got {n}"
-    assert len(registry.get_rules()) == 3, (
-        f"registry must hold 3 rules; got {len(registry.get_rules())}"
-    )
+    assert (
+        len(registry.get_rules()) == 3
+    ), f"registry must hold 3 rules; got {len(registry.get_rules())}"
 
 
 def test_registry_register_overwrites_existing():
@@ -501,6 +484,7 @@ def test_module_import_surface():
     """The module exposes the canonical public API surface used by
     the synthesis layer / downstream callers."""
     from molmetal.molmetal_lam.lam_chem import non_click_medchem_rules
+
     expected = {
         "NonClickMedChemRuleError",
         "NonClickMedChemRegistry",
@@ -512,6 +496,6 @@ def test_module_import_surface():
         "render_non_click_rules_table",
     }
     for name in expected:
-        assert hasattr(non_click_medchem_rules, name), (
-            f"non_click_medchem_rules missing public attribute {name!r}"
-        )
+        assert hasattr(
+            non_click_medchem_rules, name
+        ), f"non_click_medchem_rules missing public attribute {name!r}"

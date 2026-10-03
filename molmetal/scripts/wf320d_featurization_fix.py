@@ -66,8 +66,8 @@ from rdkit import Chem
 # ---------------------------------------------------------------------------
 # Constants — match chemprop v2 SimpleMoleculeMolGraphFeaturizer output shape.
 # ---------------------------------------------------------------------------
-ATOM_FDIM_DEFAULT: int = 72   # chemprop v2 default atom feature dim
-BOND_FDIM_DEFAULT: int = 14   # chemprop v2 default bond feature dim
+ATOM_FDIM_DEFAULT: int = 72  # chemprop v2 default atom feature dim
+BOND_FDIM_DEFAULT: int = 14  # chemprop v2 default bond feature dim
 
 
 # ---------------------------------------------------------------------------
@@ -93,7 +93,20 @@ class FastAtomFeaturizer:
     # Bit allocation for the 72-dim vector.
     # Bit sum: 6 + 6 + 8 + 5 + 5 + 5 + 4 + 5 + 4 + 4 + 4 + 6 + 4 + 6 = 72
     BIT_SIZES: Tuple[int, ...] = (
-        6, 6, 8, 5, 5, 5, 4, 5, 4, 4, 4, 6, 4, 6,
+        6,
+        6,
+        8,
+        5,
+        5,
+        5,
+        4,
+        5,
+        4,
+        4,
+        4,
+        6,
+        4,
+        6,
     )
     assert sum(BIT_SIZES) == 72, "BIT_SIZES must sum to 72"
 
@@ -245,11 +258,16 @@ class FastBondFeaturizer:
         out[7] = float(bd)  # symmetric — same value on both slots
         # Length bin (rough heuristic from begin/end distance squared)
         try:
-            d = bond.GetBeginAtom().GetOwningMol().GetConformer().GetAtomPosition(
-                bond.GetBeginAtomIdx()
-            ).Distance(
-                bond.GetBeginAtom().GetOwningMol().GetConformer().GetAtomPosition(
-                    bond.GetEndAtomIdx()
+            d = (
+                bond.GetBeginAtom()
+                .GetOwningMol()
+                .GetConformer()
+                .GetAtomPosition(bond.GetBeginAtomIdx())
+                .Distance(
+                    bond.GetBeginAtom()
+                    .GetOwningMol()
+                    .GetConformer()
+                    .GetAtomPosition(bond.GetEndAtomIdx())
                 )
             )
             out[8] = float(self._bin(d, (1.3, 1.5, 1.7, 1.9, 2.1)))
@@ -409,6 +427,7 @@ class PerEpochFeatureCache:
         else:
             # chemprop v2 default featurizer (fallback path)
             from chemprop.featurizers import SimpleMoleculeMolGraphFeaturizer
+
             ftr = SimpleMoleculeMolGraphFeaturizer()
             for smi in smiles_list:
                 if smi in self._mols:
@@ -426,8 +445,12 @@ class PerEpochFeatureCache:
                     self._mols[smi] = {
                         "V": np.ascontiguousarray(mg.V.astype(np.float32)),
                         "E": np.ascontiguousarray(mg.E.astype(np.float32)),
-                        "edge_index": np.ascontiguousarray(mg.edge_index.astype(np.int64)),
-                        "rev_edge_index": np.ascontiguousarray(mg.rev_edge_index.astype(np.int64)),
+                        "edge_index": np.ascontiguousarray(
+                            mg.edge_index.astype(np.int64)
+                        ),
+                        "rev_edge_index": np.ascontiguousarray(
+                            mg.rev_edge_index.astype(np.int64)
+                        ),
                     }
         self.stats.build_wall_s += time.time() - t0
 
@@ -542,10 +565,22 @@ def main(argv: Optional[List[str]] = None) -> int:
     import argparse
 
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--smiles", nargs="+",
-                   default=["CCO", "c1ccccc1", "CC(=O)O", "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
-                            "CC(C)CC(N)C(=O)O", "OC(=O)C(=O)O", "C1CCCCC1", "CCN",
-                            "CC(=O)N", "C(C(C(C(C(C(C=O)O)O)O)O)O)O"])
+    p.add_argument(
+        "--smiles",
+        nargs="+",
+        default=[
+            "CCO",
+            "c1ccccc1",
+            "CC(=O)O",
+            "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
+            "CC(C)CC(N)C(=O)O",
+            "OC(=O)C(=O)O",
+            "C1CCCCC1",
+            "CCN",
+            "CC(=O)N",
+            "C(C(C(C(C(C(C=O)O)O)O)O)O)O",
+        ],
+    )
     args = p.parse_args(argv)
 
     print(f"Smiles: {args.smiles}")
@@ -562,6 +597,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # Chemprop v2 default featurizer.
     from chemprop.featurizers import SimpleMoleculeMolGraphFeaturizer
+
     ftr = SimpleMoleculeMolGraphFeaturizer()
     t0 = time.time()
     for smi in args.smiles:
@@ -584,4 +620,5 @@ def main(argv: Optional[List[str]] = None) -> int:
 
 if __name__ == "__main__":
     import sys as _sys
+
     _sys.exit(main())

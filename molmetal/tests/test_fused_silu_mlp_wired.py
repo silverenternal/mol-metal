@@ -33,9 +33,7 @@ import torch.nn.functional as F
 
 # Ensure the project root is on sys.path so the test can import
 # ``molmetal`` without requiring ``uv run``-style path injection.
-_PROJECT_ROOT = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..")
-)
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
@@ -240,9 +238,7 @@ def test_flow_matching_time_mlp_parity():
         vf.time_mlp.linear2.bias,
     )
     ref = _sequential_silu_mlp(t, w1, b1, w2, b2)
-    torch.testing.assert_close(
-        y_fused, ref, rtol=_PARITY_RTOL, atol=_PARITY_ATOL
-    )
+    torch.testing.assert_close(y_fused, ref, rtol=_PARITY_RTOL, atol=_PARITY_ATOL)
 
     triton_config.set_enabled(True)
 
@@ -264,6 +260,4 @@ def test_fused_silu_mlp_matches_sequential_smoke():
 
     triton_config.set_enabled(True)
     out_fused = fused_silu_mlp(x, w1_tr, b1, w2_tr, b2)
-    torch.testing.assert_close(
-        out_fused, ref, rtol=_PARITY_RTOL, atol=_PARITY_ATOL
-    )
+    torch.testing.assert_close(out_fused, ref, rtol=_PARITY_RTOL, atol=_PARITY_ATOL)

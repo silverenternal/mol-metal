@@ -94,6 +94,7 @@ def _require_closure_importable() -> bool:
     try:
         from molmetal_lam.lam_chem.closure import ProductiveSpace  # noqa: F401
         from molmetal_lam.molecules.closed_term import MoleculeClosedTerm  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -170,9 +171,7 @@ def _r_squared(pred: Sequence[float], ref: Sequence[float]) -> float:
     Returns NaN if the reference has zero variance.
     """
     if len(pred) != len(ref):
-        raise ValueError(
-            f"length mismatch: pred={len(pred)} vs ref={len(ref)}"
-        )
+        raise ValueError(f"length mismatch: pred={len(pred)} vs ref={len(ref)}")
     if len(pred) < 2:
         return float("nan")
     ref_arr = [float(v) for v in ref]
@@ -315,9 +314,7 @@ class TestCrossModuleFiniteness:
         _set_seed(0)
         cand = torch.randn(32, 8)
         ref_lig = torch.randn(32, 8) + 0.5
-        loss = wasserstein_pocket_loss(
-            cand, ref_lig, pocket_id=bias.pocket_id, n_mc=64
-        )
+        loss = wasserstein_pocket_loss(cand, ref_lig, pocket_id=bias.pocket_id, n_mc=64)
         assert loss.dim() == 0
         assert bool(torch.isfinite(loss))
 
@@ -411,9 +408,7 @@ class TestPlatinai4CellProbeR2:
         r2 = _r_squared(mean_pred, mcf7)
         assert abs(r2) < 1.0e-9
 
-    def test_wasserstein_aligned_predictor_yields_zero_r2_floor(
-        self, platinai_probe
-    ):
+    def test_wasserstein_aligned_predictor_yields_zero_r2_floor(self, platinai_probe):
         """Integration probe (CPU-only): compute the per-pocket
         Wasserstein penalty aligning the predicted MCF7 cohort against
         the same cohort (anchor distribution).  The R² of the
@@ -447,9 +442,9 @@ class TestPlatinai4CellProbeR2:
         mcf7_t = torch.tensor(mcf7, dtype=torch.float32)
         loss_self = wasserstein_pic50_loss(mcf7_t, mcf7_t)
         assert bool(torch.isfinite(loss_self))
-        assert float(loss_self) < 1.0e-6, (
-            f"W₂(MCF7, MCF7) should be ≈ 0; got {float(loss_self)}"
-        )
+        assert (
+            float(loss_self) < 1.0e-6
+        ), f"W₂(MCF7, MCF7) should be ≈ 0; got {float(loss_self)}"
 
         # The signal-floor invariant — mean predictor against the same
         # cohort has R² = 0 (definition of a constant predictor on the
@@ -458,17 +453,13 @@ class TestPlatinai4CellProbeR2:
         mean_mcf7 = sum(mcf7) / len(mcf7)
         aligned_pred = [mean_mcf7] * len(mcf7)
         r2 = _r_squared(aligned_pred, mcf7)
-        assert abs(r2) < 1.0e-9, (
-            f"signal floor R² should be exactly 0; got {r2:.6f}"
-        )
+        assert abs(r2) < 1.0e-9, f"signal floor R² should be exactly 0; got {r2:.6f}"
 
         # Cross-cohort W₂ — the W₂ between MCF7 and A2780 (a different
         # cell line) is positive and finite.  A trained W₂ alignment
         # would close this gap by tightening the predicted
         # distribution toward the A2780 manifold.
-        a2780_t = torch.tensor(
-            platinai_probe["A2780"], dtype=torch.float32
-        )
+        a2780_t = torch.tensor(platinai_probe["A2780"], dtype=torch.float32)
         loss_cross = wasserstein_pic50_loss(mcf7_t, a2780_t)
         assert float(loss_cross) > 0.0
         assert float(loss_cross) < 2.0
@@ -498,7 +489,7 @@ class TestPlatinai4CellProbeR2:
         by construction)."""
         cell_lines = ("MCF7", "A549", "A2780", "A2780cis")
         for i, cl_a in enumerate(cell_lines):
-            for cl_b in cell_lines[i + 1:]:
+            for cl_b in cell_lines[i + 1 :]:
                 a = torch.tensor(platinai_probe[cl_a], dtype=torch.float32)
                 b = torch.tensor(platinai_probe[cl_b], dtype=torch.float32)
                 loss_ab = wasserstein_pic50_loss(a, b)
@@ -526,8 +517,16 @@ class TestDecayCheckOnClosureCohortHistory:
         """10-step strictly-decreasing loss history — passes the JKO
         CFL gate at the spec default window=10, tol=1e-3."""
         hist = [
-            0.85, 0.80, 0.76, 0.72, 0.69,
-            0.66, 0.63, 0.61, 0.58, 0.56,
+            0.85,
+            0.80,
+            0.76,
+            0.72,
+            0.69,
+            0.66,
+            0.63,
+            0.61,
+            0.58,
+            0.56,
         ]
         assert wasserstein_decay_check(hist) is True
 
@@ -536,10 +535,26 @@ class TestDecayCheckOnClosureCohortHistory:
         curve: fast early drop, slower plateau — passes the JKO gate
         at tol=0.05 (loose enough for the noisy plateau)."""
         hist = [
-            1.20, 0.90, 0.71, 0.59, 0.51,
-            0.45, 0.41, 0.38, 0.36, 0.345,
-            0.34, 0.335, 0.333, 0.331, 0.330,
-            0.329, 0.3285, 0.328, 0.3275, 0.327,
+            1.20,
+            0.90,
+            0.71,
+            0.59,
+            0.51,
+            0.45,
+            0.41,
+            0.38,
+            0.36,
+            0.345,
+            0.34,
+            0.335,
+            0.333,
+            0.331,
+            0.330,
+            0.329,
+            0.3285,
+            0.328,
+            0.3275,
+            0.327,
         ]
         assert wasserstein_decay_check(hist, window=10, tol=0.05) is True
 
@@ -547,8 +562,16 @@ class TestDecayCheckOnClosureCohortHistory:
         """If the W₂ penalty diverges (e.g. closure-cohort explodes
         to off-manifold samples), the decay check must fail."""
         hist = [
-            0.85, 0.80, 0.76, 0.72, 0.69,
-            0.66, 0.65, 0.70, 0.85, 1.20,
+            0.85,
+            0.80,
+            0.76,
+            0.72,
+            0.69,
+            0.66,
+            0.65,
+            0.70,
+            0.85,
+            1.20,
         ]
         assert wasserstein_decay_check(hist, window=10, tol=1e-3) is False
 
@@ -648,7 +671,15 @@ def _write_metalcytotox_audit_sidecar(
     # Required schema columns per TODO-178 §3.1 (smiles, metal, pic50,
     # activity, cell_line, split, source). We confirm presence by reading
     # the file once at audit time (cheap, idempotent).
-    schema_required = {"smiles", "metal", "pic50", "activity", "cell_line", "split", "source"}
+    schema_required = {
+        "smiles",
+        "metal",
+        "pic50",
+        "activity",
+        "cell_line",
+        "split",
+        "source",
+    }
     schema_present: Dict[str, bool] = {}
     try:
         with open(path) as f:
@@ -667,9 +698,7 @@ def _write_metalcytotox_audit_sidecar(
         "total_rows": total_rows,
         "smoke_test_outcome": "PASS" if loss_value is not None else "PREFLIGHT_PASS",
         "smoke_w2_loss_value": (
-            float(loss_value.detach().cpu().item())
-            if loss_value is not None
-            else None
+            float(loss_value.detach().cpu().item()) if loss_value is not None else None
         ),
         "audit_date": time.strftime("%Y-%m-%d"),
         "owner": "Hugo Lee + ultracode agent",
@@ -703,9 +732,9 @@ class TestCrossMetalTransfer:
         # back-propagated through during trainer steps.
         loss.backward()
         for m, emb in per_metal.items():
-            assert emb.grad is not None, (
-                f"no gradient for metal {m!r}; check leaf-tensor setup"
-            )
+            assert (
+                emb.grad is not None
+            ), f"no gradient for metal {m!r}; check leaf-tensor setup"
             assert bool(torch.isfinite(emb.grad).all()), m
 
     def test_metalcytotox_csv_integration_smoke(self):
@@ -750,9 +779,7 @@ class TestCrossMetalTransfer:
         }
         # Transfer loss needs 2-D inputs — promote the 1-D activity
         # column to (N, 1).
-        per_metal_2d = {
-            m: t.unsqueeze(-1) for m, t in per_metal_t.items()
-        }
+        per_metal_2d = {m: t.unsqueeze(-1) for m, t in per_metal_t.items()}
         loss = wasserstein_transfer_loss(per_metal_2d, n_mc=32)
         assert loss.dim() == 0
         assert bool(torch.isfinite(loss))
@@ -795,20 +822,23 @@ class TestCrossMetalTransfer:
             )
 
         # Write the audit sidecar and confirm it lands on disk.
-        sidecar = _write_metalcytotox_audit_sidecar(
-            path, audit_counts, loss_value=None
-        )
-        assert sidecar.exists(), (
-            f"meta-test: audit sidecar was not written at {sidecar}"
-        )
+        sidecar = _write_metalcytotox_audit_sidecar(path, audit_counts, loss_value=None)
+        assert (
+            sidecar.exists()
+        ), f"meta-test: audit sidecar was not written at {sidecar}"
         # Re-read the audit JSON to confirm it has the expected keys
         # (defence-in-depth against silent I/O failures).
         with open(sidecar) as f:
             payload = json.load(f)
         for key in (
-            "csv_path", "exists", "schema_valid",
-            "row_counts_per_metal", "total_rows",
-            "smoke_test_outcome", "audit_date", "owner",
+            "csv_path",
+            "exists",
+            "schema_valid",
+            "row_counts_per_metal",
+            "total_rows",
+            "smoke_test_outcome",
+            "audit_date",
+            "owner",
         ):
             assert key in payload, (
                 f"meta-test: audit sidecar missing required key {key!r}; "
@@ -833,6 +863,7 @@ class TestCombinedEngineTags:
         from molmetal.molmetal_lam.reward.wasserstein_loss import (
             build_per_loss_verification,
         )
+
         rec = build_per_loss_verification()
         for name, entry in rec.items():
             assert entry["engine"] == "wasserstein_reg", name
@@ -922,9 +953,7 @@ class TestHonestSignalFloorReport:
             assert bias.is_known_pocket
             cand = torch.randn(16, 8)
             ref = torch.randn(16, 8) + 0.5
-            w2 = wasserstein_pocket_loss(
-                cand, ref, pocket_id=pid, n_mc=64
-            )
+            w2 = wasserstein_pocket_loss(cand, ref, pocket_id=pid, n_mc=64)
             per_pocket_w2[pid] = float(w2)
 
         # R² floor — MCF7 mean-predictor against the A2780 cohort
@@ -935,8 +964,16 @@ class TestHonestSignalFloorReport:
 
         # Decay check — synthetic trainer history.
         hist = [
-            0.90, 0.83, 0.77, 0.72, 0.68,
-            0.65, 0.62, 0.60, 0.58, 0.56,
+            0.90,
+            0.83,
+            0.77,
+            0.72,
+            0.68,
+            0.65,
+            0.62,
+            0.60,
+            0.58,
+            0.56,
         ]
         decay_ok = bool(wasserstein_decay_check(hist))
 
@@ -980,7 +1017,8 @@ class TestHonestSignalFloorReport:
                     math.isfinite(v) for v in per_pocket_w2.values()
                 ),
                 "m2_closure_bias_finite": all(
-                    bias_v is not None for bias_v in [
+                    bias_v is not None
+                    for bias_v in [
                         pocket_specific_closure_bias(pid).bias_sum
                         for pid in SUPPORTED_POCKETS
                     ]

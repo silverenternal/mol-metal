@@ -45,7 +45,8 @@ sys.path.insert(0, str(REPO_ROOT))
 import importlib.util as _ilu
 
 _PFC_SPEC = _ilu.spec_from_file_location(
-    "_wf432a1_pfc", SCRIPT_DIR / "pre_flight_check.py",
+    "_wf432a1_pfc",
+    SCRIPT_DIR / "pre_flight_check.py",
 )
 _pfc = _ilu.module_from_spec(_PFC_SPEC)
 _PFC_SPEC.loader.exec_module(_pfc)
@@ -130,9 +131,9 @@ def test_wf432a1_all_32_new_gates_present_in_build_gates():
     runners = _pfc.build_gates("all")
     names = {r[0] for r in runners}
     missing = [g for g in EXPECTED_NEW_GATES if g not in names]
-    assert not missing, (
-        f"build_gates('all') missing {len(missing)} NEW gates: {missing}"
-    )
+    assert (
+        not missing
+    ), f"build_gates('all') missing {len(missing)} NEW gates: {missing}"
 
 
 def test_wf432a1_frontier_pipeline_subset_unchanged():
@@ -151,14 +152,14 @@ def test_wf432a1_all_32_new_gate_functions_callable():
     cd_csv = MOLMETAL_ROOT / "data" / "crossdocked100_manifest.csv"
     nc_csv = MOLMETAL_ROOT / "data" / "nci60_precious_9cell.csv"
     bal_json = (
-        MOLMETAL_ROOT / "reports" / "wf387a2_balanced_rh_cohort"
+        MOLMETAL_ROOT
+        / "reports"
+        / "wf387a2_balanced_rh_cohort"
         / "balanced_rh_cohort.json"
     )
     dg_loader = MOLMETAL_ROOT / "data" / "drugood_loader.py"
     leak = MOLMETAL_ROOT / "data" / "leakage_utils.py"
-    dg_results = (
-        MOLMETAL_ROOT / "reports" / "wf265_collect" / "all_results.json"
-    )
+    dg_results = MOLMETAL_ROOT / "reports" / "wf265_collect" / "all_results.json"
     eval_all = SCRIPT_DIR / "eval_all_evaluators.py"
     t_metal = SCRIPT_DIR / "train_metal_cytotox.py"
     t_plat = SCRIPT_DIR / "train_platinai_4cell.py"
@@ -195,38 +196,49 @@ def test_wf432a1_all_32_new_gate_functions_callable():
 
     arg_sets = {
         "p3_protocol_alignment_dataset_match": (
-            mc_csv, pl_csv, cd_csv, nc_csv, bal_json, dg_loader,
+            mc_csv,
+            pl_csv,
+            cd_csv,
+            nc_csv,
+            bal_json,
+            dg_loader,
         ),
         "p3_protocol_alignment_split_match": (leak, dg_results),
         "p3_protocol_alignment_metric_match": (eval_all,),
         "p3_protocol_alignment_seed_cohort_per_seed_per_split": (
-            t_metal, t_plat, t_nci, per_seed_dir,
+            t_metal,
+            t_plat,
+            t_nci,
+            per_seed_dir,
         ),
-        "p3_protocol_alignment_honest_limitation_minor_section": (
-            honest_cat,
-        ),
+        "p3_protocol_alignment_honest_limitation_minor_section": (honest_cat,),
         "p3_protocol_alignment_paper_section_6_template": (
-            s6_tpl, s6_v4,
+            s6_tpl,
+            s6_v4,
         ),
         "p3_protocol_alignment_user_ok_gate": (scripts_dir, wrapper_names),
         "p3_protocol_alignment_baseline_paper_refs_bib": (refs,),
         "p3_protocol_recommended_seed_count_3": (
-            t_metal, t_plat, t_nci,
+            t_metal,
+            t_plat,
+            t_nci,
         ),
         "p3_protocol_recommended_per_cell_breakdown": (
-            t_plat, t_nci, m2_json,
+            t_plat,
+            t_nci,
+            m2_json,
         ),
         "p3_protocol_recommended_5_fold_cv_compatibility_50x": (
-            t_metal, dg_loader,
+            t_metal,
+            dg_loader,
         ),
         "p3_protocol_recommended_krasnov_paper_table_4_replication": (
             MOLMETAL_ROOT / "reports",
         ),
-        "p3_protocol_recommended_drugood_3_splits_full_alignment": (
-            dg_results,
-        ),
+        "p3_protocol_recommended_drugood_3_splits_full_alignment": (dg_results,),
         "p3_protocol_recommended_rusanov_per_cell_line_baseline_lookup": (
-            MOLMETAL_ROOT / "reports", t_plat,
+            MOLMETAL_ROOT / "reports",
+            t_plat,
         ),
         "p3_protocol_recommended_section_6_honest_minor_section_auto_emit": (
             auto_emit,
@@ -237,24 +249,37 @@ def test_wf432a1_all_32_new_gate_functions_callable():
         "p3_mock_to_real_m17_drugood_assay_REAL_3_seeds": (dg_auc,),
         "p3_mock_to_real_m21_nci60_precious_9cell_REAL_3_seeds": (nci60,),
         "p3_honest_neg_closure_m2_r2": (
-            m2_json, honest_cat, s3_v4, s6_v4,
+            m2_json,
+            honest_cat,
+            s3_v4,
+            s6_v4,
         ),
         "p3_honest_neg_closure_m6_kappa": (
             m6_kappa_json := REPO_ROOT / "metrics" / "by_metric" / "m6_kappa.json",
-            honest_cat, m6_drop, s3_v4, s6_v4,
+            honest_cat,
+            m6_drop,
+            s3_v4,
+            s6_v4,
         ),
         "p3_honest_neg_closure_m1_re_fold": (
-            ml_auc, honest_cat, s3_v4, s6_v4,
+            ml_auc,
+            honest_cat,
+            s3_v4,
+            s6_v4,
         ),
         "krasnov_m1_per_seed_per_split_5fold_5metal": (pv_dir, ml_auc),
         "krasnov_m21_per_cell_line_per_seed": (pv_dir, nci60_dir),
         "krasnov_protocol_alignment_diffs_documented": (
-            pv_dir, honest_cat, pa_matrix,
+            pv_dir,
+            honest_cat,
+            pa_matrix,
         ),
         "rusanov_m2_per_cell_line_per_cohort": (pv_dir, m2_json),
         "rusanov_m2_4cell_baseline_comparison": (pv_dir, ru_dir, m2_json),
         "rusanov_protocol_alignment_diffs_documented": (
-            pv_dir, honest_cat, pa_matrix,
+            pv_dir,
+            honest_cat,
+            pa_matrix,
         ),
         "drugood_m17_assay_split_auc": (pv_dir, dg_results),
         "drugood_m17_scaffold_split_auc": (pv_dir, dg_results),
@@ -262,70 +287,38 @@ def test_wf432a1_all_32_new_gate_functions_callable():
     }
 
     fn_map = {
-        "p3_protocol_alignment_dataset_match":
-            _pfc.gate_p3_protocol_alignment_dataset_match,
-        "p3_protocol_alignment_split_match":
-            _pfc.gate_p3_protocol_alignment_split_match,
-        "p3_protocol_alignment_metric_match":
-            _pfc.gate_p3_protocol_alignment_metric_match,
-        "p3_protocol_alignment_seed_cohort_per_seed_per_split":
-            _pfc.gate_p3_protocol_alignment_seed_cohort_per_seed_per_split,
-        "p3_protocol_alignment_honest_limitation_minor_section":
-            _pfc.gate_p3_protocol_alignment_honest_limitation_minor_section,
-        "p3_protocol_alignment_paper_section_6_template":
-            _pfc.gate_p3_protocol_alignment_paper_section_6_template,
-        "p3_protocol_alignment_user_ok_gate":
-            _pfc.gate_p3_protocol_alignment_user_ok_gate,
-        "p3_protocol_alignment_baseline_paper_refs_bib":
-            _pfc.gate_p3_protocol_alignment_baseline_paper_refs_bib,
-        "p3_protocol_recommended_seed_count_3":
-            _pfc.gate_p3_protocol_recommended_seed_count_3,
-        "p3_protocol_recommended_per_cell_breakdown":
-            _pfc.gate_p3_protocol_recommended_per_cell_breakdown,
-        "p3_protocol_recommended_5_fold_cv_compatibility_50x":
-            _pfc.gate_p3_protocol_recommended_5_fold_cv_compatibility_50x,
-        "p3_protocol_recommended_krasnov_paper_table_4_replication":
-            _pfc.gate_p3_protocol_recommended_krasnov_paper_table_4_replication,
-        "p3_protocol_recommended_drugood_3_splits_full_alignment":
-            _pfc.gate_p3_protocol_recommended_drugood_3_splits_full_alignment,
-        "p3_protocol_recommended_rusanov_per_cell_line_baseline_lookup":
-            _pfc.gate_p3_protocol_recommended_rusanov_per_cell_line_baseline_lookup,
-        "p3_protocol_recommended_section_6_honest_minor_section_auto_emit":
-            _pfc.gate_p3_protocol_recommended_section_6_honest_minor_section_auto_emit,
-        "p3_mock_to_real_m3_vina_kcal_per_mol_REAL_5_pocket":
-            _pfc.gate_p3_mock_to_real_m3_vina_kcal_per_mol_REAL_5_pocket,
-        "p3_mock_to_real_m15_rmsd_REAL_5_pocket":
-            _pfc.gate_p3_mock_to_real_m15_rmsd_REAL_5_pocket,
-        "p3_mock_to_real_m14_decode_ratio_REAL_30_probes":
-            _pfc.gate_p3_mock_to_real_m14_decode_ratio_REAL_30_probes,
-        "p3_mock_to_real_m17_drugood_assay_REAL_3_seeds":
-            _pfc.gate_p3_mock_to_real_m17_drugood_assay_REAL_3_seeds,
-        "p3_mock_to_real_m21_nci60_precious_9cell_REAL_3_seeds":
-            _pfc.gate_p3_mock_to_real_m21_nci60_precious_9cell_REAL_3_seeds,
-        "p3_honest_neg_closure_m2_r2":
-            _pfc.gate_p3_honest_neg_closure_m2_r2,
-        "p3_honest_neg_closure_m6_kappa":
-            _pfc.gate_p3_honest_neg_closure_m6_kappa,
-        "p3_honest_neg_closure_m1_re_fold":
-            _pfc.gate_p3_honest_neg_closure_m1_re_fold,
-        "krasnov_m1_per_seed_per_split_5fold_5metal":
-            _pfc.gate_krasnov_m1_per_seed_per_split_5fold_5metal,
-        "krasnov_m21_per_cell_line_per_seed":
-            _pfc.gate_krasnov_m21_per_cell_line_per_seed,
-        "krasnov_protocol_alignment_diffs_documented":
-            _pfc.gate_krasnov_protocol_alignment_diffs_documented,
-        "rusanov_m2_per_cell_line_per_cohort":
-            _pfc.gate_rusanov_m2_per_cell_line_per_cohort,
-        "rusanov_m2_4cell_baseline_comparison":
-            _pfc.gate_rusanov_m2_4cell_baseline_comparison,
-        "rusanov_protocol_alignment_diffs_documented":
-            _pfc.gate_rusanov_protocol_alignment_diffs_documented,
-        "drugood_m17_assay_split_auc":
-            _pfc.gate_drugood_m17_assay_split_auc,
-        "drugood_m17_scaffold_split_auc":
-            _pfc.gate_drugood_m17_scaffold_split_auc,
-        "drugood_m17_size_split_auc":
-            _pfc.gate_drugood_m17_size_split_auc,
+        "p3_protocol_alignment_dataset_match": _pfc.gate_p3_protocol_alignment_dataset_match,
+        "p3_protocol_alignment_split_match": _pfc.gate_p3_protocol_alignment_split_match,
+        "p3_protocol_alignment_metric_match": _pfc.gate_p3_protocol_alignment_metric_match,
+        "p3_protocol_alignment_seed_cohort_per_seed_per_split": _pfc.gate_p3_protocol_alignment_seed_cohort_per_seed_per_split,
+        "p3_protocol_alignment_honest_limitation_minor_section": _pfc.gate_p3_protocol_alignment_honest_limitation_minor_section,
+        "p3_protocol_alignment_paper_section_6_template": _pfc.gate_p3_protocol_alignment_paper_section_6_template,
+        "p3_protocol_alignment_user_ok_gate": _pfc.gate_p3_protocol_alignment_user_ok_gate,
+        "p3_protocol_alignment_baseline_paper_refs_bib": _pfc.gate_p3_protocol_alignment_baseline_paper_refs_bib,
+        "p3_protocol_recommended_seed_count_3": _pfc.gate_p3_protocol_recommended_seed_count_3,
+        "p3_protocol_recommended_per_cell_breakdown": _pfc.gate_p3_protocol_recommended_per_cell_breakdown,
+        "p3_protocol_recommended_5_fold_cv_compatibility_50x": _pfc.gate_p3_protocol_recommended_5_fold_cv_compatibility_50x,
+        "p3_protocol_recommended_krasnov_paper_table_4_replication": _pfc.gate_p3_protocol_recommended_krasnov_paper_table_4_replication,
+        "p3_protocol_recommended_drugood_3_splits_full_alignment": _pfc.gate_p3_protocol_recommended_drugood_3_splits_full_alignment,
+        "p3_protocol_recommended_rusanov_per_cell_line_baseline_lookup": _pfc.gate_p3_protocol_recommended_rusanov_per_cell_line_baseline_lookup,
+        "p3_protocol_recommended_section_6_honest_minor_section_auto_emit": _pfc.gate_p3_protocol_recommended_section_6_honest_minor_section_auto_emit,
+        "p3_mock_to_real_m3_vina_kcal_per_mol_REAL_5_pocket": _pfc.gate_p3_mock_to_real_m3_vina_kcal_per_mol_REAL_5_pocket,
+        "p3_mock_to_real_m15_rmsd_REAL_5_pocket": _pfc.gate_p3_mock_to_real_m15_rmsd_REAL_5_pocket,
+        "p3_mock_to_real_m14_decode_ratio_REAL_30_probes": _pfc.gate_p3_mock_to_real_m14_decode_ratio_REAL_30_probes,
+        "p3_mock_to_real_m17_drugood_assay_REAL_3_seeds": _pfc.gate_p3_mock_to_real_m17_drugood_assay_REAL_3_seeds,
+        "p3_mock_to_real_m21_nci60_precious_9cell_REAL_3_seeds": _pfc.gate_p3_mock_to_real_m21_nci60_precious_9cell_REAL_3_seeds,
+        "p3_honest_neg_closure_m2_r2": _pfc.gate_p3_honest_neg_closure_m2_r2,
+        "p3_honest_neg_closure_m6_kappa": _pfc.gate_p3_honest_neg_closure_m6_kappa,
+        "p3_honest_neg_closure_m1_re_fold": _pfc.gate_p3_honest_neg_closure_m1_re_fold,
+        "krasnov_m1_per_seed_per_split_5fold_5metal": _pfc.gate_krasnov_m1_per_seed_per_split_5fold_5metal,
+        "krasnov_m21_per_cell_line_per_seed": _pfc.gate_krasnov_m21_per_cell_line_per_seed,
+        "krasnov_protocol_alignment_diffs_documented": _pfc.gate_krasnov_protocol_alignment_diffs_documented,
+        "rusanov_m2_per_cell_line_per_cohort": _pfc.gate_rusanov_m2_per_cell_line_per_cohort,
+        "rusanov_m2_4cell_baseline_comparison": _pfc.gate_rusanov_m2_4cell_baseline_comparison,
+        "rusanov_protocol_alignment_diffs_documented": _pfc.gate_rusanov_protocol_alignment_diffs_documented,
+        "drugood_m17_assay_split_auc": _pfc.gate_drugood_m17_assay_split_auc,
+        "drugood_m17_scaffold_split_auc": _pfc.gate_drugood_m17_scaffold_split_auc,
+        "drugood_m17_size_split_auc": _pfc.gate_drugood_m17_size_split_auc,
     }
 
     failures = []
@@ -338,12 +331,12 @@ def test_wf432a1_all_32_new_gate_functions_callable():
             continue
         # GateResult shape: name + status + evidence
         assert hasattr(result, "status"), f"{gate_name}: missing status"
-        assert result.status in ("PASS", "FAIL", "WARN"), (
-            f"{gate_name}: bad status={result.status!r}"
-        )
-    assert not failures, (
-        f"{len(failures)} NEW gates failed smoke call: {failures}"
-    )
+        assert result.status in (
+            "PASS",
+            "FAIL",
+            "WARN",
+        ), f"{gate_name}: bad status={result.status!r}"
+    assert not failures, f"{len(failures)} NEW gates failed smoke call: {failures}"
 
 
 @pytest.mark.parametrize("gate_name", EXPECTED_NEW_GATES)
@@ -351,18 +344,16 @@ def test_wf432a1_each_new_gate_appears_in_all_pipeline(gate_name):
     """§3.4 — every NEW gate appears in build_gates('all') (not frontier/cfm)."""
     runners = _pfc.build_gates("all")
     names = {r[0] for r in runners}
-    assert gate_name in names, (
-        f"{gate_name} missing from build_gates('all')"
-    )
+    assert gate_name in names, f"{gate_name} missing from build_gates('all')"
     # All NEW gates route to 'all' only per §3.4 design contract
     frontier_names = {r[0] for r in _pfc.build_gates("frontier")}
     cfm_names = {r[0] for r in _pfc.build_gates("cfm")}
-    assert gate_name not in frontier_names, (
-        f"{gate_name} should NOT be in 'frontier' per §3.4 design contract"
-    )
-    assert gate_name not in cfm_names, (
-        f"{gate_name} should NOT be in 'cfm' per §3.4 design contract"
-    )
+    assert (
+        gate_name not in frontier_names
+    ), f"{gate_name} should NOT be in 'frontier' per §3.4 design contract"
+    assert (
+        gate_name not in cfm_names
+    ), f"{gate_name} should NOT be in 'cfm' per §3.4 design contract"
 
 
 def test_wf432a1_no_existing_gate_renamed_or_removed():
@@ -389,7 +380,9 @@ def test_wf432a1_pre_flight_runs_clean():
     refs_bib = REPO_ROOT / "paper" / "refs.bib"
     if refs_bib.exists():
         result = gate_fn(
-            "p3_protocol_alignment_baseline_paper_refs_bib", "P3", "all",
+            "p3_protocol_alignment_baseline_paper_refs_bib",
+            "P3",
+            "all",
             refs_bib,
         )
         assert result.status in ("PASS", "FAIL", "WARN")

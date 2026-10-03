@@ -64,13 +64,13 @@ if str(PROJECT_ROOT) not in sys.path:
 class MetricRecipe:
     metric: str
     label: str
-    trainer_module: str           # dotted path to the trainer script's main()
-    trainer_path: Path            # absolute file path (for subprocess)
-    extra_args: tuple             # extra CLI flags forwarded to the trainer
-    per_seed_pattern: str         # field name in the per-seed JSON
-    out_metric_relpath: str       # metric → JSON path (under out-dir)
-    gate_baseline: float          # R17 baseline for comparison
-    gate_target: float            # Wf-60 pass criterion (mean across seeds)
+    trainer_module: str  # dotted path to the trainer script's main()
+    trainer_path: Path  # absolute file path (for subprocess)
+    extra_args: tuple  # extra CLI flags forwarded to the trainer
+    per_seed_pattern: str  # field name in the per-seed JSON
+    out_metric_relpath: str  # metric → JSON path (under out-dir)
+    gate_baseline: float  # R17 baseline for comparison
+    gate_target: float  # Wf-60 pass criterion (mean across seeds)
 
 
 RECIPES: Dict[str, MetricRecipe] = {
@@ -78,8 +78,7 @@ RECIPES: Dict[str, MetricRecipe] = {
         metric="m1",
         label="Ru 5-metal multitask (D-MPNN, scaffold strict)",
         trainer_module="molmetal.scripts.train_metal_cytotox",
-        trainer_path=PROJECT_ROOT
-        / "molmetal" / "scripts" / "train_metal_cytotox.py",
+        trainer_path=PROJECT_ROOT / "molmetal" / "scripts" / "train_metal_cytotox.py",
         extra_args=("--metal", "Ru", "--scaffold-split", "--epochs", "50"),
         per_seed_pattern="value_per_seed",
         out_metric_relpath="m1/per_seed_metrics.json",
@@ -90,8 +89,7 @@ RECIPES: Dict[str, MetricRecipe] = {
         metric="m2",
         label="Pt 4-cell multitask (D-MPNN, scaffold strict)",
         trainer_module="molmetal.scripts.train_platinai_4cell",
-        trainer_path=PROJECT_ROOT
-        / "molmetal" / "scripts" / "train_platinai_4cell.py",
+        trainer_path=PROJECT_ROOT / "molmetal" / "scripts" / "train_platinai_4cell.py",
         extra_args=("--scaffold-split", "--epochs", "50"),
         per_seed_pattern="value_overall_mean_auc_per_seed",
         out_metric_relpath="m2/per_seed_metrics.json",
@@ -102,8 +100,7 @@ RECIPES: Dict[str, MetricRecipe] = {
         metric="m19",
         label="Multi-metal LOMO 5-fold (D-MPNN, scaffold strict)",
         trainer_module="molmetal.scripts.train_metal_lomo",
-        trainer_path=PROJECT_ROOT
-        / "molmetal" / "scripts" / "train_metal_lomo.py",
+        trainer_path=PROJECT_ROOT / "molmetal" / "scripts" / "train_metal_lomo.py",
         extra_args=("--metals", "Ru", "Ir", "Os", "Rh", "Re", "--epochs", "30"),
         per_seed_pattern="per_run_auc",
         out_metric_relpath="m19/per_seed_metrics.json",
@@ -141,10 +138,14 @@ def _run_one_metric(
         "-u",
         str(recipe.trainer_path),
         *recipe.extra_args,
-        "--seeds", *[str(s) for s in seeds],
-        "--out-dir", str(metric_dir),
-        "--out-metric", str(per_seed_json),
-        "--out-report", str(report_md),
+        "--seeds",
+        *[str(s) for s in seeds],
+        "--out-dir",
+        str(metric_dir),
+        "--out-metric",
+        str(per_seed_json),
+        "--out-report",
+        str(report_md),
     ]
 
     env = dict(os.environ)
@@ -289,21 +290,30 @@ def _write_synthesis_md(
             continue
         entry = metrics[metric]
         if not isinstance(entry, dict) or entry.get("status") == "FAILED":
-            verdict = entry.get("status", "FAILED") if isinstance(entry, dict) else "FAILED"
-            lines.append(f"| {metric} | — | — | — | — | {recipe.gate_baseline} "
-                         f"| {recipe.gate_target} | — | {verdict} |")
+            verdict = (
+                entry.get("status", "FAILED") if isinstance(entry, dict) else "FAILED"
+            )
+            lines.append(
+                f"| {metric} | — | — | — | — | {recipe.gate_baseline} "
+                f"| {recipe.gate_target} | — | {verdict} |"
+            )
             continue
         ns = entry.get("n_seeds_observed", 0)
         per_seed_str = (
             ", ".join(f"{v:.4f}" for v in entry["per_seed_values"])
-            if entry["per_seed_values"] else "—"
+            if entry["per_seed_values"]
+            else "—"
         )
         mean = entry["mean_across_seeds"]
         std = entry["std_across_seeds"]
         delta = entry["delta_vs_r17_baseline"]
         delta_str = "—" if delta is None else f"{delta:+.4f}"
         passed = entry.get("gate_pass", False)
-        verdict = "PASS" if passed else ("CLOSE" if mean and mean >= recipe.gate_baseline else "FAIL")
+        verdict = (
+            "PASS"
+            if passed
+            else ("CLOSE" if mean and mean >= recipe.gate_baseline else "FAIL")
+        )
         lines.append(
             f"| {metric} | {ns} | {per_seed_str} | {mean:.4f} | {std:.4f} "
             f"| {recipe.gate_baseline} | {recipe.gate_target} | {delta_str} | {verdict} |"
@@ -346,7 +356,10 @@ def _parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         help="Which metrics to run (default: m1 m2 m19)",
     )
     p.add_argument(
-        "--seeds", type=int, nargs="+", default=[0, 1, 2, 3, 4],
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=[0, 1, 2, 3, 4],
         help="Seeds (default: 0 1 2 3 4)",
     )
     p.add_argument(
@@ -400,9 +413,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.dry_run:
         for recipe in recipes_to_run:
             cmd = [
-                sys.executable, "-u", str(recipe.trainer_path),
-                *recipe.extra_args, "--seeds", *[str(s) for s in args.seeds],
-                "--out-dir", str(out_dir / recipe.metric),
+                sys.executable,
+                "-u",
+                str(recipe.trainer_path),
+                *recipe.extra_args,
+                "--seeds",
+                *[str(s) for s in args.seeds],
+                "--out-dir",
+                str(out_dir / recipe.metric),
             ]
             print(" ".join(cmd))
         return 0
@@ -434,12 +452,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     print(f"[Wf-60] synthesis.md   -> {synthesis_md}", flush=True)
     # Exit code: 0 if all subprocs returned 0 + all gate_pass >= baseline; else 1
     failures = [
-        m for m, info in summary["metrics"].items()
+        m
+        for m, info in summary["metrics"].items()
         if not isinstance(info, dict) or info.get("status") == "FAILED"
     ]
     if failures or any(
         not (isinstance(info, dict) and info.get("gate_pass"))
-        for info in summary["metrics"].values() if isinstance(info, dict)
+        for info in summary["metrics"].values()
+        if isinstance(info, dict)
     ):
         return 1
     return 0

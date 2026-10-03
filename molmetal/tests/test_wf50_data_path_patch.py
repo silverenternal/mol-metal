@@ -1,4 +1,5 @@
 """Regression test: Wf-50 pre-condition patch, MOLMETAL_DATA_DIR honored."""
+
 from __future__ import annotations
 import sys
 from pathlib import Path
@@ -25,6 +26,7 @@ def test_wf50_pre_amble_present(rel_path):
 @pytest.mark.parametrize("rel_path", TARGETS)
 def test_wf50_no_hard_mnt_storage(rel_path):
     import re as _re
+
     p = PROJECT_ROOT / rel_path
     txt = p.read_text()
     hard_default = _re.search(r'default=[`\'"]/mnt/storage', txt)

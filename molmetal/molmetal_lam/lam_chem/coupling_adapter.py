@@ -145,13 +145,11 @@ class CouplingAdapter:
                 object.__setattr__(self, name, arr)
         if self.embed_w.shape != (INPUT_DIM, EMBED_DIM):
             raise ValueError(
-                f"embed_w shape {self.embed_w.shape} != "
-                f"({INPUT_DIM}, {EMBED_DIM})"
+                f"embed_w shape {self.embed_w.shape} != " f"({INPUT_DIM}, {EMBED_DIM})"
             )
         if self.head_w.shape != (EMBED_DIM, EMBED_DIM):
             raise ValueError(
-                f"head_w shape {self.head_w.shape} != "
-                f"({EMBED_DIM}, {EMBED_DIM})"
+                f"head_w shape {self.head_w.shape} != " f"({EMBED_DIM}, {EMBED_DIM})"
             )
 
     # ------------------------------------------------------------------
@@ -222,10 +220,13 @@ class CouplingAdapter:
         """
         if pocket_features is None:
             # Deterministic fallback — small but pocket-specific.
-            h = int.from_bytes(
-                pocket_name.encode("utf-8") if pocket_name else b"empty",
-                "little",
-            ) & 0xFFFF
+            h = (
+                int.from_bytes(
+                    pocket_name.encode("utf-8") if pocket_name else b"empty",
+                    "little",
+                )
+                & 0xFFFF
+            )
             base = np.zeros(INPUT_DIM, dtype=np.float32)
             base[7] = 1.0 if "Pt" in pocket_name else 0.0
             return self.embed_features(base).reshape(-1) + 0.001 * h
@@ -375,21 +376,21 @@ def _safe_reward_channels(
 #: source.  Covering a Lipinski-friendly MW range (78-300 Da) ensures
 #: the reward proxy hits non-trivial values for every pool member.
 _FIXED_SMILES_POOL: tuple = (
-    "CC(=O)Oc1ccccc1C(=O)O",       # aspirin (180 Da, qed=0.55)
-    "CN1C=NC2=C1C(=O)N(C(=O)N2C)C", # caffeine (194 Da, qed=0.54)
-    "CC(C)Cc1ccc(cc1)C(C)C(=O)O",   # ibuprofen (206 Da, qed=0.59)
-    "Nc1ccccc1",                     # aniline (93 Da)
-    "O=C(N)c1ccccc1",                # benzamide (121 Da)
-    "Cc1ccc(O)cc1",                  # p-cresol (108 Da)
-    "OC(=O)c1ccccc1O",               # salicylic acid (138 Da)
-    "CC(=O)N",                       # acetamide (59 Da)
-    "C1CCCCC1",                      # cyclohexane (84 Da)
-    "c1ccccc1",                      # benzene (78 Da)
-    "CCN(CC)CC",                     # triethylamine (101 Da)
-    "CCO",                           # ethanol (46 Da)
-    "Nc1ncccn1",                     # pyrimidin-2-amine (95 Da)
-    "OC1=CC=C(C=C1)C(=O)O",         # 4-hydroxybenzoic acid (138 Da)
-    "CN1CCC[C@H]1c1cccnc1",         # nicotine (162 Da)
+    "CC(=O)Oc1ccccc1C(=O)O",  # aspirin (180 Da, qed=0.55)
+    "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",  # caffeine (194 Da, qed=0.54)
+    "CC(C)Cc1ccc(cc1)C(C)C(=O)O",  # ibuprofen (206 Da, qed=0.59)
+    "Nc1ccccc1",  # aniline (93 Da)
+    "O=C(N)c1ccccc1",  # benzamide (121 Da)
+    "Cc1ccc(O)cc1",  # p-cresol (108 Da)
+    "OC(=O)c1ccccc1O",  # salicylic acid (138 Da)
+    "CC(=O)N",  # acetamide (59 Da)
+    "C1CCCCC1",  # cyclohexane (84 Da)
+    "c1ccccc1",  # benzene (78 Da)
+    "CCN(CC)CC",  # triethylamine (101 Da)
+    "CCO",  # ethanol (46 Da)
+    "Nc1ncccn1",  # pyrimidin-2-amine (95 Da)
+    "OC1=CC=C(C=C1)C(=O)O",  # 4-hydroxybenzoic acid (138 Da)
+    "CN1CCC[C@H]1c1cccnc1",  # nicotine (162 Da)
 )
 
 
@@ -446,7 +447,9 @@ def lambda_samples_to_reward_targets(
     picked = indices[:pick_n]
     adapter = load_coupling_adapter()
     pocket_name = str(pocket_id) if pocket_id is not None else ""
-    pocket_emb_norm = float(np.linalg.norm(adapter.embed_pocket(pocket_name=pocket_name)))
+    pocket_emb_norm = float(
+        np.linalg.norm(adapter.embed_pocket(pocket_name=pocket_name))
+    )
     out: List[Tuple[str, Dict[str, float]]] = []
     for i in picked:
         smi = pool[i]

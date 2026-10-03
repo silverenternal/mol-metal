@@ -10,6 +10,7 @@ Writes:
   metrics/by_metric/hilbert_4cell_r2.json (REFRESHED)
   metrics/by_metric/metalcytotox_combined_r2.json (REFRESHED)
 """
+
 from __future__ import annotations
 
 import json
@@ -206,12 +207,12 @@ def refresh_metalcytotox_combined_r2(out_dir: Path) -> None:
         refreshed["per_method"]["wf127_p4_5metal_l2_scale_guard"] = {
             "overall_r2_mean": agg["aggregate_combined_r2_mean"],
             "overall_r2_std": agg["aggregate_combined_r2_std"],
-            "n_seeds": sum(
-                v.get("n_seeds") or 0 for v in agg["per_metal"].values()
-            ),
+            "n_seeds": sum(v.get("n_seeds") or 0 for v in agg["per_metal"].values()),
             "n_metals": agg["n_metals"],
             "cohorts": agg["aggregate_metals"],
-            "per_metal": {k: v["combined_r2_mean"] for k, v in agg["per_metal"].items()},
+            "per_metal": {
+                k: v["combined_r2_mean"] for k, v in agg["per_metal"].items()
+            },
             "guards": "Wf-127 P2 L2 weight-decay + Wf-127 P3 ASTSR scale-clip (-10, 10)",
             "epochs": 30,
             "verdict": agg["verdict"],

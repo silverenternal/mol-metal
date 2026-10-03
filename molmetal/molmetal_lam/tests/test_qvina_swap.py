@@ -11,6 +11,7 @@ These tests cover the QVina / QuickVina2 swap path specifically —
 general engine-field / Python-API / subprocess tests live in
 ``test_vina_adapter.py``.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -42,7 +43,11 @@ def binary_discovery(monkeypatch, tmp_path):
 def test_both_engines_find_bundle_without_path(binary_discovery, engine):
     mod, executable = binary_discovery
     bundle = executable("qvina02")
-    candidates = mod._QVINA_BIN_CANDIDATES if engine == "qvina" else mod._QUICKVINA2_BIN_CANDIDATES
+    candidates = (
+        mod._QVINA_BIN_CANDIDATES
+        if engine == "qvina"
+        else mod._QUICKVINA2_BIN_CANDIDATES
+    )
     assert mod._resolve_binary(candidates) == str(bundle)
 
 
@@ -50,7 +55,11 @@ def test_both_engines_find_bundle_without_path(binary_discovery, engine):
 def test_upstream_quickvina_names_on_path(binary_discovery, monkeypatch, name):
     mod, executable = binary_discovery
     binary = executable(name)
-    monkeypatch.setattr(mod.shutil, "which", lambda candidate: str(binary) if candidate == name else None)
+    monkeypatch.setattr(
+        mod.shutil,
+        "which",
+        lambda candidate: str(binary) if candidate == name else None,
+    )
     assert mod._resolve_binary(mod._QUICKVINA2_BIN_CANDIDATES) == str(binary)
 
 
@@ -59,7 +68,9 @@ def test_override_then_path_then_bundle(binary_discovery, monkeypatch):
     bundle = executable("qvina02")
     on_path = executable("quickvina2")
     override = executable("custom-engine")
-    monkeypatch.setattr(mod.shutil, "which", lambda name: str(on_path) if name == "quickvina2" else None)
+    monkeypatch.setattr(
+        mod.shutil, "which", lambda name: str(on_path) if name == "quickvina2" else None
+    )
     monkeypatch.setenv("MOLMETAL_QUICKVINA2_BIN", str(override))
     assert mod._resolve_binary(mod._QUICKVINA2_BIN_CANDIDATES) == str(override)
     monkeypatch.delenv("MOLMETAL_QUICKVINA2_BIN")
@@ -100,9 +111,9 @@ def test_engine_field_default() -> None:
         "molmetal_lam.sbdd_env.vina_adapter",
     )
     # Module-level constant sanity check.
-    assert hasattr(mod, "DEFAULT_ENGINE"), (
-        "vina_adapter.DEFAULT_ENGINE missing — module not refactored"
-    )
+    assert hasattr(
+        mod, "DEFAULT_ENGINE"
+    ), "vina_adapter.DEFAULT_ENGINE missing — module not refactored"
     # Round-7 default is 'vina' (Python binding preferred).  'auto' is
     # accepted as a legacy default for back-compat, but the spec for
     # the new refactor is 'vina'.
@@ -114,9 +125,7 @@ def test_engine_field_default() -> None:
     # The Python binding must be installed for the default path to
     # construct — skip cleanly otherwise.
     if not mod._have_vina():
-        pytest.skip(
-            "vina Python pkg not installed — cannot exercise default path"
-        )
+        pytest.skip("vina Python pkg not installed — cannot exercise default path")
     if not mod._have_meeko():
         pytest.skip("meeko not installed — cannot exercise default path")
 
@@ -169,8 +178,7 @@ def test_auto_engine_silently_downgrades(monkeypatch) -> None:
     )
     if mod._have_vina() is False:
         pytest.skip(
-            "vina Python pkg not installed — cannot exercise auto "
-            "downgrade path"
+            "vina Python pkg not installed — cannot exercise auto " "downgrade path"
         )
     if mod._have_meeko() is False:
         pytest.skip("meeko not installed")
@@ -179,9 +187,9 @@ def test_auto_engine_silently_downgrades(monkeypatch) -> None:
     # No CLI on PATH — auto must downgrade to vina (Python binding),
     # not raise.
     adapter = mod.VinaDockingAdapter(engine="auto")
-    assert adapter.engine == "vina", (
-        f"engine='auto' should downgrade to vina, got {adapter.engine!r}"
-    )
+    assert (
+        adapter.engine == "vina"
+    ), f"engine='auto' should downgrade to vina, got {adapter.engine!r}"
     assert adapter._engine_dispatched() == "python"
 
 
@@ -203,9 +211,10 @@ def test_engine_dispatched_returns_known_values() -> None:
         pytest.skip("vina + meeko not installed")
     adapter = mod.VinaDockingAdapter(engine="vina")
     dispatch = adapter._engine_dispatched()
-    assert dispatch in {"python", "subprocess"}, (
-        f"_engine_dispatched() returned unknown value: {dispatch!r}"
-    )
+    assert dispatch in {
+        "python",
+        "subprocess",
+    }, f"_engine_dispatched() returned unknown value: {dispatch!r}"
     assert dispatch == "python"  # engine='vina' is always python
 
 

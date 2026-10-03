@@ -50,7 +50,9 @@ def _alpha_rename(node: "LamNode", avoid: Set[str]) -> "LamNode":
             # Replace the binder, then recurse so the body uses the
             # new name in place of the old one.
             renamed_body = node.body.subst(node.var.name, fresh)
-            return LamAbs(var=fresh, body=_alpha_rename(renamed_body, avoid | {fresh.name}))
+            return LamAbs(
+                var=fresh, body=_alpha_rename(renamed_body, avoid | {fresh.name})
+            )
         return LamAbs(
             var=node.var,
             body=_alpha_rename(node.body, avoid | {node.var.name}),

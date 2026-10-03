@@ -40,6 +40,7 @@ Test inventory
     ``per_seed_metrics.json`` is well-formed JSON with all required
     keys + a non-zero ``n_samples``.
 """
+
 from __future__ import annotations
 
 import csv
@@ -58,9 +59,12 @@ import pytest
 _HERE = Path(__file__).resolve().parent
 # Tests live in molmetal/tests/; the repo root is one level above molmetal.
 _REPO_ROOT = _HERE.parent  # molmetal/
-while _REPO_ROOT != _REPO_ROOT.parent and not (
-    _REPO_ROOT / "molmetal" / "scripts" / "bench_hilbert_astr_real_metalcytotox.py"
-).exists():
+while (
+    _REPO_ROOT != _REPO_ROOT.parent
+    and not (
+        _REPO_ROOT / "molmetal" / "scripts" / "bench_hilbert_astr_real_metalcytotox.py"
+    ).exists()
+):
     _REPO_ROOT = _REPO_ROOT.parent
 for _p in (str(_HERE.parent), str(_REPO_ROOT)):
     if _p not in sys.path:
@@ -249,8 +253,11 @@ def test_kfold_dispatcher_strict_scaffold() -> None:
     # When strict_scaffold=True and scaffold_ids provided, use strict split.
     scaffolds = [f"sc_{i // 10}" for i in range(50)]
     splits = _kfold_indices(
-        n=50, k=5, seed=0,
-        scaffold_ids=scaffolds, strict_scaffold=True,
+        n=50,
+        k=5,
+        seed=0,
+        scaffold_ids=scaffolds,
+        strict_scaffold=True,
     )
     for tr, te in splits:
         te_sc = set(scaffolds[i] for i in te)
@@ -262,8 +269,11 @@ def test_kfold_dispatcher_random_fallback() -> None:
     # When strict_scaffold=False, use random split.
     scaffolds = [f"sc_{i // 10}" for i in range(50)]
     splits = _kfold_indices(
-        n=50, k=5, seed=0,
-        scaffold_ids=scaffolds, strict_scaffold=False,
+        n=50,
+        k=5,
+        seed=0,
+        scaffold_ids=scaffolds,
+        strict_scaffold=False,
     )
     for tr, te in splits:
         assert len(set(tr.tolist()) & set(te.tolist())) == 0
@@ -326,16 +336,19 @@ def test_combined_baseline_smoke() -> None:
         cmd = [
             sys.executable,
             "molmetal/scripts/bench_hilbert_astr_real_metalcytotox.py",
-            "--metals", "Re",
-            "--seeds", "0",
-            "--epochs", "5",
-            "--strict-scaffold", "true",
-            "--out-dir", str(out_dir),
+            "--metals",
+            "Re",
+            "--seeds",
+            "0",
+            "--epochs",
+            "5",
+            "--strict-scaffold",
+            "true",
+            "--out-dir",
+            str(out_dir),
         ]
         env = os.environ.copy()
-        env["PYTHONPATH"] = (
-            str(_HERE.parent) + os.pathsep + env.get("PYTHONPATH", "")
-        )
+        env["PYTHONPATH"] = str(_HERE.parent) + os.pathsep + env.get("PYTHONPATH", "")
         proc = subprocess.run(
             cmd,
             cwd=str(_REPO_ROOT),
@@ -344,19 +357,28 @@ def test_combined_baseline_smoke() -> None:
             text=True,
             timeout=300,
         )
-        assert proc.returncode == 0, (
-            f"Script failed:\nSTDOUT:\n{proc.stdout}\nSTDERR:\n{proc.stderr}"
-        )
+        assert (
+            proc.returncode == 0
+        ), f"Script failed:\nSTDOUT:\n{proc.stdout}\nSTDERR:\n{proc.stderr}"
         per_seed_path = out_dir / "Re" / "per_seed_metrics.json"
         assert per_seed_path.exists()
         with open(per_seed_path) as f:
             d = json.load(f)
         for key in (
-            "metal", "target_col", "n_samples", "n_features",
-            "feature_columns", "n_seeds", "strict_scaffold",
-            "combined_r2_mean", "combined_r2_std",
-            "hilbert_r2_mean", "hilbert_r2_std",
-            "astr_r2_mean", "astr_r2_std", "per_seed",
+            "metal",
+            "target_col",
+            "n_samples",
+            "n_features",
+            "feature_columns",
+            "n_seeds",
+            "strict_scaffold",
+            "combined_r2_mean",
+            "combined_r2_std",
+            "hilbert_r2_mean",
+            "hilbert_r2_std",
+            "astr_r2_mean",
+            "astr_r2_std",
+            "per_seed",
         ):
             assert key in d, f"Missing key {key!r}"
         assert d["metal"] == "Re"
@@ -364,10 +386,16 @@ def test_combined_baseline_smoke() -> None:
         assert len(d["per_seed"]) == 1
         per_seed0 = d["per_seed"][0]
         for k in (
-            "seed", "combined_r2_overall", "hilbert_r2_overall",
-            "astr_r2_overall", "combined_r2_per_fold_mean",
-            "alpha_mean", "wall_time_s", "n_samples",
-            "n_folds", "per_fold",
+            "seed",
+            "combined_r2_overall",
+            "hilbert_r2_overall",
+            "astr_r2_overall",
+            "combined_r2_per_fold_mean",
+            "alpha_mean",
+            "wall_time_s",
+            "n_samples",
+            "n_folds",
+            "per_fold",
         ):
             assert k in per_seed0, f"Missing per_seed key {k!r}"
         assert per_seed0["n_folds"] == 5

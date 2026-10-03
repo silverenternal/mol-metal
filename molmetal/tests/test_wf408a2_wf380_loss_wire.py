@@ -135,9 +135,9 @@ def test_cfm_so3_average_flag(so3_average_mod, cfm_parse_args):
     )
     # (b) When set, surfaces as True
     args = _round_trip(cfm_parse_args, ["--so3-average"])
-    assert args.so3_average is True, (
-        "Wf-408-A2: --so3-average must surface as True when set"
-    )
+    assert (
+        args.so3_average is True
+    ), "Wf-408-A2: --so3-average must surface as True when set"
     args = _round_trip(cfm_parse_args, ["--so3-average", "--so3-average-weight", "0.2"])
     assert abs(args.so3_average_weight - 0.2) < 1e-6, (
         f"Wf-408-A2: --so3-average-weight 0.2 must surface as 0.2; "
@@ -147,6 +147,7 @@ def test_cfm_so3_average_flag(so3_average_mod, cfm_parse_args):
     # of x_t + target yields the same loss value (SO(3)-equivariance
     # property).
     import torch as _t
+
     n = 8
     x_t = _t.randn(n, 3)
     target = _t.randn(n, 3)
@@ -195,21 +196,23 @@ def test_cfm_log_normal_t_flag(log_normal_t_mod, cfm_parse_args):
     )
     # (b) When set, surfaces as True
     args = _round_trip(cfm_parse_args, ["--log-normal-t"])
-    assert args.log_normal_t is True, (
-        "Wf-408-A2: --log-normal-t must surface as True when set"
-    )
+    assert (
+        args.log_normal_t is True
+    ), "Wf-408-A2: --log-normal-t must surface as True when set"
     args = _round_trip(
         cfm_parse_args,
-        ["--log-normal-t", "--log-normal-t-mu", "-1.0",
-         "--log-normal-t-sigma", "1.2"],
+        ["--log-normal-t", "--log-normal-t-mu", "-1.0", "--log-normal-t-sigma", "1.2"],
     )
     assert abs(args.log_normal_t_mu + 1.0) < 1e-6
     assert abs(args.log_normal_t_sigma - 1.2) < 1e-6
     # (c) Validate the underlying primitive: log_normal_t_sampling
     # returns valid t-values in (0, 1) with batch_size + mu + sigma.
     import torch as _t
+
     t = log_normal_t_mod.log_normal_t_sampling(
-        batch_size=16, mu=-0.5, sigma=1.0,
+        batch_size=16,
+        mu=-0.5,
+        sigma=1.0,
     )
     assert t.shape == (16,), f"expected shape (16,); got {t.shape}"
     assert _t.all(t > 0.0).item() and _t.all(t < 1.0).item(), (
@@ -239,9 +242,9 @@ def test_cfm_edm_preconditioning_flag(edm_preconditioning_mod, cfm_parse_args):
     )
     # (b) When set, surfaces as True
     args = _round_trip(cfm_parse_args, ["--edm-preconditioning"])
-    assert args.edm_preconditioning is True, (
-        "Wf-408-A2: --edm-preconditioning must surface as True when set"
-    )
+    assert (
+        args.edm_preconditioning is True
+    ), "Wf-408-A2: --edm-preconditioning must surface as True when set"
     args = _round_trip(
         cfm_parse_args,
         ["--edm-preconditioning", "--edm-sigma-data", "2.0"],
@@ -250,6 +253,7 @@ def test_cfm_edm_preconditioning_flag(edm_preconditioning_mod, cfm_parse_args):
     # (c) Validate the underlying primitive: c_inv_s + c_skip satisfy
     # c_inv(c_skip(x_t)) == x_t (Karras eq. 2 identity).
     import torch as _t
+
     sigma = _t.tensor([1.5])
     cfg = edm_preconditioning_mod.EDMConfig(sigma_data=1.5)
     c_skip = edm_preconditioning_mod.c_skip(sigma, cfg)
@@ -267,10 +271,10 @@ def test_cfm_edm_preconditioning_flag(edm_preconditioning_mod, cfm_parse_args):
 # ===========================================================================
 def test_cfm_chemprop_v3_cache_flag(cfm_parse_args):
     """Wf-408-A2 — CFM ``--chemprop-v3-cache`` flag default OFF
-    preserves Wf-388-A3 / Wf-405-A2 baseline (no cache); when set,
-    ``args.chemprop_v3_cache`` is True.  The actual cache lives in
-   ``molmetal/scripts/wf392a2_chemprop_v3_cache_wire.py`` (chemprop-
-   trainer-primary; this CFM flag is a side-channel dispatcher)."""
+     preserves Wf-388-A3 / Wf-405-A2 baseline (no cache); when set,
+     ``args.chemprop_v3_cache`` is True.  The actual cache lives in
+    ``molmetal/scripts/wf392a2_chemprop_v3_cache_wire.py`` (chemprop-
+    trainer-primary; this CFM flag is a side-channel dispatcher)."""
     # (a) Default OFF
     args = _round_trip(cfm_parse_args, [])
     assert args.chemprop_v3_cache is False, (
@@ -279,9 +283,9 @@ def test_cfm_chemprop_v3_cache_flag(cfm_parse_args):
     )
     # (b) When set, surfaces as True
     args = _round_trip(cfm_parse_args, ["--chemprop-v3-cache"])
-    assert args.chemprop_v3_cache is True, (
-        "Wf-408-A2: --chemprop-v3-cache must surface as True when set"
-    )
+    assert (
+        args.chemprop_v3_cache is True
+    ), "Wf-408-A2: --chemprop-v3-cache must surface as True when set"
 
 
 # ===========================================================================
@@ -300,12 +304,16 @@ def test_aggregate_all_four_wf408a2_flags_on(cfm_parse_args):
         cfm_parse_args,
         [
             "--so3-average",
-            "--so3-average-weight", "0.2",
+            "--so3-average-weight",
+            "0.2",
             "--log-normal-t",
-            "--log-normal-t-mu", "-1.0",
-            "--log-normal-t-sigma", "1.2",
+            "--log-normal-t-mu",
+            "-1.0",
+            "--log-normal-t-sigma",
+            "1.2",
             "--edm-preconditioning",
-            "--edm-sigma-data", "2.0",
+            "--edm-sigma-data",
+            "2.0",
             "--chemprop-v3-cache",
         ],
     )
@@ -438,9 +446,9 @@ def test_count_wf407_a3_flags_wired(cfm_parse_args):
         ("edm_preconditioning", bool),
     ]
     for attr_name, attr_type in expected_attrs:
-        assert hasattr(args, attr_name), (
-            f"Wf-408-A2: expected attr {attr_name!r} not present in parse_args"
-        )
+        assert hasattr(
+            args, attr_name
+        ), f"Wf-408-A2: expected attr {attr_name!r} not present in parse_args"
         attr_val = getattr(args, attr_name)
         assert isinstance(attr_val, attr_type), (
             f"Wf-408-A2: {attr_name!r} expected type {attr_type.__name__}; "
@@ -483,30 +491,23 @@ def test_decode_ratio_and_loss_decrease_floor():
     log_blob = "\n".join(simulated_log_lines)
 
     # (a) decode_ratio > 0 invariant (canonical §5.7 floor).
-    decode_ratio_pattern = re.compile(
-        r"decode_ratio\s*=\s*([0-9]+(?:\.[0-9]+)?)"
-    )
+    decode_ratio_pattern = re.compile(r"decode_ratio\s*=\s*([0-9]+(?:\.[0-9]+)?)")
     matches = decode_ratio_pattern.findall(log_blob)
-    assert len(matches) == 50, (
-        f"expected 50 decode_ratio regex matches; got {len(matches)}"
-    )
+    assert (
+        len(matches) == 50
+    ), f"expected 50 decode_ratio regex matches; got {len(matches)}"
     for m in matches:
         assert float(m) > 0.0, (
-            f"§5.7 floor: every epoch's decode_ratio must be > 0; "
-            f"got {m}"
+            f"§5.7 floor: every epoch's decode_ratio must be > 0; " f"got {m}"
         )
 
     # (b) loss[0] > loss[49] invariant (monotone non-increasing loss).
-    loss_pattern = re.compile(
-        r"train_loss=([0-9]+\.[0-9]+)"
-    )
+    loss_pattern = re.compile(r"train_loss=([0-9]+\.[0-9]+)")
     losses = [float(m) for m in loss_pattern.findall(log_blob)]
-    assert len(losses) == 50, (
-        f"expected 50 train_loss regex matches; got {len(losses)}"
-    )
-    assert losses[0] > losses[-1], (
-        f"§5.7 floor: loss[0]={losses[0]} must be > loss[49]={losses[-1]}"
-    )
+    assert len(losses) == 50, f"expected 50 train_loss regex matches; got {len(losses)}"
+    assert (
+        losses[0] > losses[-1]
+    ), f"§5.7 floor: loss[0]={losses[0]} must be > loss[49]={losses[-1]}"
     # Monotone non-increasing: each loss[i+1] <= loss[i]
     for i in range(len(losses) - 1):
         assert losses[i + 1] <= losses[i] + 1e-6, (
@@ -524,13 +525,12 @@ def test_stable_vm_loss_primitive(stable_vm_mod):
     test exercises the SCAFFOLD-only stable_vm_loss function directly
     to ensure it remains valid."""
     import torch as _t
+
     pred = _t.randn(8, 16)
     target = _t.randn(8, 16)
     loss = stable_vm_mod.stable_vm_loss(pred, target, n_scales=4)
     assert loss.ndim == 0, "stable_vm_loss must return scalar tensor"
-    assert loss.item() >= 0.0, (
-        f"stable_vm_loss must be non-negative; got {loss.item()}"
-    )
+    assert loss.item() >= 0.0, f"stable_vm_loss must be non-negative; got {loss.item()}"
 
 
 # ===========================================================================
@@ -546,6 +546,7 @@ def test_edm_preconditioning_primitive(edm_preconditioning_mod):
     When ON, the primitive computes the preconditioned weighted MSE.
     """
     import torch as _t
+
     cfg = edm_preconditioning_mod.EDMConfig(sigma_data=1.5)
     sigma = _t.tensor([1.5, 2.0, 0.5])
     c_skip = edm_preconditioning_mod.c_skip(sigma, cfg)
@@ -575,6 +576,7 @@ def test_so3_average_primitive(so3_average_mod):
     the primitive computes the SO(3)-averaged MSE.
     """
     import torch as _t
+
     # (a) random_so3_matrix: returns (n, 3, 3) with det = +1.
     R = so3_average_mod.random_so3_matrix(8)
     assert R.shape == (8, 3, 3)
@@ -590,9 +592,9 @@ def test_so3_average_primitive(so3_average_mod):
     # Rotation preserves distances.
     d_orig = _t.cdist(x, x)
     d_rot = _t.cdist(x_rot, x_rot)
-    assert _t.allclose(d_orig, d_rot, atol=1e-5), (
-        "rotate_coords must preserve pairwise distances"
-    )
+    assert _t.allclose(
+        d_orig, d_rot, atol=1e-5
+    ), "rotate_coords must preserve pairwise distances"
 
 
 # ===========================================================================
@@ -608,6 +610,7 @@ def test_log_normal_t_primitive(log_normal_t_mod):
     returns t-values in (0, 1).
     """
     import torch as _t
+
     # (a) Default mu=-0.5, sigma=1.0
     t = log_normal_t_mod.log_normal_t_sampling(batch_size=128, mu=-0.5, sigma=1.0)
     assert t.shape == (128,)

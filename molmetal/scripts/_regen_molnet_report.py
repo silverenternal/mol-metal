@@ -68,19 +68,27 @@ def main() -> int:
         "hidden": 256,
         "tasks": {
             task: {k: v for k, v in all_results[task].items() if k != "per_seed"}
-            for task in TASKS if task in all_results
+            for task in TASKS
+            if task in all_results
         },
         "gate_mean_auc_threshold": 0.80,
-        "chemprop_dmpnn_baseline_mean": float(np.mean([CHEMPROP_DMPNN_BASELINE[t] for t in TASKS])),
+        "chemprop_dmpnn_baseline_mean": float(
+            np.mean([CHEMPROP_DMPNN_BASELINE[t] for t in TASKS])
+        ),
     }
     out_metric = METRICS_DIR / "moleculenet_auc.json"
     out_metric.parent.mkdir(parents=True, exist_ok=True)
     out_metric.write_text(json.dumps(payload, indent=2))
     print(f"[regen] wrote {out_metric}", flush=True)
 
-    mean_auc = float(np.mean([all_results[t]["test_auc_mean"] for t in TASKS if t in all_results]))
+    mean_auc = float(
+        np.mean([all_results[t]["test_auc_mean"] for t in TASKS if t in all_results])
+    )
     gate_pass = mean_auc >= 0.80
-    print(f"[regen] mean AUC = {mean_auc:.4f}  (gate ≥ 0.80)  {'PASS' if gate_pass else 'BELOW GATE'}", flush=True)
+    print(
+        f"[regen] mean AUC = {mean_auc:.4f}  (gate ≥ 0.80)  {'PASS' if gate_pass else 'BELOW GATE'}",
+        flush=True,
+    )
 
     out_report = REPORTS_DIR / "final.md"
     _write_report(out_report, all_results, gate_pass, TASKS)

@@ -103,6 +103,7 @@ from molmetal.scripts.train_platinai_4cell import (
 
 try:
     from rdkit import RDLogger
+
     RDLogger.DisableLog("rdApp.*")
 except Exception:
     pass
@@ -113,10 +114,16 @@ except Exception:
 # ---------------------------------------------------------------------------
 N_CELL_LINES: int = len(CELL_LINES)
 PIC50_STD_GATE: float = 0.15  # 3-seed reproducibility gate (log units)
-AUC_GATE: float = 0.73       # m18 anchor (Wf-31/32 baseline 0.7393)
+AUC_GATE: float = 0.73  # m18 anchor (Wf-31/32 baseline 0.7393)
 N_DEFAULT_SEEDS: Tuple[int, ...] = (0, 1, 2)
 DEFAULT_EPOCHS: int = 100
-DEFAULT_TOP20: Path = PROJECT_ROOT / "molmetal" / "reports" / "wf58_wetlab_dryrun" / "top20_candidates.csv"
+DEFAULT_TOP20: Path = (
+    PROJECT_ROOT
+    / "molmetal"
+    / "reports"
+    / "wf58_wetlab_dryrun"
+    / "top20_candidates.csv"
+)
 DEFAULT_DATA: Path = PROJECT_ROOT / "molmetal" / "data" / "platinai_4cell.csv"
 DEFAULT_OUT: Path = PROJECT_ROOT / "molmetal" / "reports" / "wf58_dmpnn_predictions"
 
@@ -187,7 +194,7 @@ def predict_pic50_external(
 
     device = runner.device
     for start in range(0, n, batch_size):
-        batch_graphs = graphs[start:start + batch_size]
+        batch_graphs = graphs[start : start + batch_size]
         valid_rows: List[int] = []
         g_list: List = []
         for k, g in enumerate(batch_graphs):
@@ -199,6 +206,7 @@ def predict_pic50_external(
             continue
         # Collate + forward
         from molmetal.baselines.dmpnn import collate_graphs
+
         batch_data = collate_graphs(g_list)
         if batch_data is None:
             continue
@@ -234,8 +242,10 @@ def run_one_seed(
     )
 
     splitter = ScaffoldSplitter(seed=seed, fractions=(0.7, 0.1, 0.2))
-    device = torch.device(args.device) if args.device else torch.device(
-        "cuda:0" if torch.cuda.is_available() else "cpu"
+    device = (
+        torch.device(args.device)
+        if args.device
+        else torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     )
     runner = FourCellDMPNNRunner(
         hidden=args.hidden,
@@ -335,7 +345,9 @@ def aggregate_per_compound_std(
                 "per_cell_mean": per_cell_mean,
                 "per_cell_std": per_cell_std,
                 "std_pooled_log_units": std_pooled,
-                "gate_pass": bool(std_pooled <= PIC50_STD_GATE) if not np.isnan(std_pooled) else False,
+                "gate_pass": bool(std_pooled <= PIC50_STD_GATE)
+                if not np.isnan(std_pooled)
+                else False,
                 "n_seeds": n_seeds,
             }
         )
@@ -347,8 +359,10 @@ def aggregate_per_cell(
 ) -> Dict[str, Dict[str, float]]:
     """For each cell line, compute mean ± std across 20 candidates × n_seeds."""
     if not per_seed_outputs:
-        return {line: {"mean": float("nan"), "std": float("nan"), "n": 0}
-                for line in CELL_LINES}
+        return {
+            line: {"mean": float("nan"), "std": float("nan"), "n": 0}
+            for line in CELL_LINES
+        }
     stack_all = np.stack([arr for _, arr, _ in per_seed_outputs], axis=0)  # (S, 20, 4)
     out: Dict[str, Dict[str, float]] = {}
     for j, line in enumerate(CELL_LINES):
@@ -403,7 +417,13 @@ def build_synthesis_md(
         f"± {float(np.std(auc_a2780cis)):.4f} | — |",
     ]
     # Per-cell breakdown
-    lines += ["", "## Per-cell-line mean pIC50 across top-20 (3-seed pooled)", "", "| Cell line | Mean | Median | Std | Min | Max | n |", "|---|---|---|---|---|---|---|"]
+    lines += [
+        "",
+        "## Per-cell-line mean pIC50 across top-20 (3-seed pooled)",
+        "",
+        "| Cell line | Mean | Median | Std | Min | Max | n |",
+        "|---|---|---|---|---|---|---|",
+    ]
     for line_name in CELL_LINES:
         s = per_cell_agg.get(line_name, {})
         lines.append(
@@ -435,8 +455,9 @@ def build_synthesis_md(
     for c in by_rank:
         # mean across cells from pooled mean
         per_cell_mean = c["per_cell_mean"]
-        valid_means = [per_cell_mean[l] for l in CELL_LINES
-                       if not np.isnan(per_cell_mean[l])]
+        valid_means = [
+            per_cell_mean[l] for l in CELL_LINES if not np.isnan(per_cell_mean[l])
+        ]
         mean_pic50 = float(np.mean(valid_means)) if valid_means else float("nan")
         lines.append(
             f"| {c['rank']} | {c['compound_id']} | {c['metal']} | "
@@ -578,7 +599,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     # 1) Load top-20 + training data
     top20 = load_top20(args.top20)
     if len(top20) == 0:
-        print(f"[wf58dmpnn] ERROR: no candidates loaded from {args.top20}", file=sys.stderr)
+        print(
+            f"[wf58dmpnn] ERROR: no candidates loaded from {args.top20}",
+            file=sys.stderr,
+        )
         return 2
     print(
         f"[wf58dmpnn] Loaded {len(top20)} candidates from {args.top20}",
@@ -682,8 +706,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     atomic_write_file(auc_per_seed_json, _auc_payload, encoding="utf-8")
 
     # 5) Synthesis markdown
-    build_synthesis_md(args, top20, per_seed_meta, per_seed_pic50,
-                       per_compound_std, per_cell_agg, synthesis_md)
+    build_synthesis_md(
+        args,
+        top20,
+        per_seed_meta,
+        per_seed_pic50,
+        per_compound_std,
+        per_cell_agg,
+        synthesis_md,
+    )
 
     # 6) Verify gates
     n_records = len(per_compound_table)

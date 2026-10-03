@@ -184,8 +184,7 @@ def test_wf345a3_stale_anchor_detection():
 def audit_data():
     """Load the audit artifact at the canonical path."""
     audit_path = (
-        REPO_ROOT / "molmetal" / "reports" / "wf345a3_anchor_audit"
-        / "audit.json"
+        REPO_ROOT / "molmetal" / "reports" / "wf345a3_anchor_audit" / "audit.json"
     )
     if not audit_path.exists():
         pytest.skip(
@@ -242,12 +241,10 @@ def test_wf345a3_audit_json_schema_valid(audit_data):
         f"{audit_data['max_age_sec']}"
     )
     assert audit_data["max_age_hr"] == MAX_AGE_HR, (
-        f"max_age_hr drift: expected {MAX_AGE_HR}, got "
-        f"{audit_data['max_age_hr']}"
+        f"max_age_hr drift: expected {MAX_AGE_HR}, got " f"{audit_data['max_age_hr']}"
     )
     assert audit_data["n_anchors_total"] == 11, (
-        f"n_anchors_total drift: expected 11, got "
-        f"{audit_data['n_anchors_total']}"
+        f"n_anchors_total drift: expected 11, got " f"{audit_data['n_anchors_total']}"
     )
     # n_anchors_stale MAY be 0..11 (refresh in Phase 3 will drop it);
     # but at audit-write time, it must == 4 (MEASURED count).
@@ -255,9 +252,7 @@ def test_wf345a3_audit_json_schema_valid(audit_data):
         f"n_anchors_stale drift: expected 4 at audit-write time, got "
         f"{audit_data['n_anchors_stale']}"
     )
-    assert (
-        len(audit_data["stale_anchors"]) == audit_data["n_anchors_stale"]
-    ), (
+    assert len(audit_data["stale_anchors"]) == audit_data["n_anchors_stale"], (
         f"stale_anchors list length drift: "
         f"len={len(audit_data['stale_anchors'])} "
         f"vs n_anchors_stale={audit_data['n_anchors_stale']}"

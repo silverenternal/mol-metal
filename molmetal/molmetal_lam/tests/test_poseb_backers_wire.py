@@ -58,11 +58,20 @@ if str(ROOT) not in sys.path:
 # ---------------------------------------------------------------------------
 def test_posebusters_adapter_importable() -> None:
     """The PoseBustersAdapter class imports cleanly and exposes its API."""
-    from molmetal_lam.sbdd_env.posebusters_adapter import PoseBustersAdapter, ValidityReport
+    from molmetal_lam.sbdd_env.posebusters_adapter import (
+        PoseBustersAdapter,
+        ValidityReport,
+    )
+
     # ValidityReport is a frozen dataclass with the documented fields.
     rep = ValidityReport(
-        smiles="CCO", passed=True, n_checks=10, n_passed=10, pass_rate=1.0,
-        failed_checks=(), details={"a": True},
+        smiles="CCO",
+        passed=True,
+        n_checks=10,
+        n_passed=10,
+        pass_rate=1.0,
+        failed_checks=(),
+        details={"a": True},
     )
     assert rep.smiles == "CCO"
     assert rep.passed is True
@@ -85,6 +94,7 @@ def test_posebusters_adapter_importable() -> None:
 def test_pocket_result_has_pb_check_fields() -> None:
     """PocketResult dataclass has the new --pb-check columns."""
     from molmetal.scripts.r4_c_full_sweep import PocketResult
+
     pr = PocketResult(pocket_id="p1")
     # n_pb_pass / pb_pass_rate / pb_status / pb_check must be present.
     assert hasattr(pr, "n_pb_pass")
@@ -104,15 +114,24 @@ def test_pocket_result_has_pb_check_fields() -> None:
 def test_aggregate_includes_pb_columns() -> None:
     """aggregate() emits the new PB-summary columns."""
     from molmetal.scripts.r4_c_full_sweep import PocketResult, aggregate
+
     results = [
         PocketResult(
-            pocket_id="p1", status="ok", n_candidates=2,
-            n_generated_candidates=2, n_pb_pass=1, pb_pass_rate=0.5,
+            pocket_id="p1",
+            status="ok",
+            n_candidates=2,
+            n_generated_candidates=2,
+            n_pb_pass=1,
+            pb_pass_rate=0.5,
             pb_status="completed",
         ),
         PocketResult(
-            pocket_id="p2", status="ok", n_candidates=2,
-            n_generated_candidates=2, n_pb_pass=0, pb_pass_rate=0.0,
+            pocket_id="p2",
+            status="ok",
+            n_candidates=2,
+            n_generated_candidates=2,
+            n_pb_pass=0,
+            pb_pass_rate=0.0,
             pb_status="completed",
         ),
     ]
@@ -138,21 +157,43 @@ def test_worker_records_pb_check_in_output_json(tmp_path: Path, monkeypatch) -> 
     worker output JSON records ``n_pb_pass``, ``pb_pass_rate`` and
     ``pb_status``.
     """
+
     # Stub out run_one_pocket so we don't invoke Lambda.
     def _fake_run_one_pocket(*args, **kwargs):
         from molmetal.scripts.r4_c_full_sweep import PocketResult
+
         return PocketResult(
-            pocket_id="fake_000", status="ok", n_candidates=2,
+            pocket_id="fake_000",
+            status="ok",
+            n_candidates=2,
             candidates=[
-                {"smiles": "CCO", "is_generated": True, "sa": 1.0, "qed": 0.5,
-                 "lipinski": True, "vina_proxy": -7.0},
-                {"smiles": "CCN", "is_generated": True, "sa": 1.5, "qed": 0.4,
-                 "lipinski": True, "vina_proxy": -6.5},
+                {
+                    "smiles": "CCO",
+                    "is_generated": True,
+                    "sa": 1.0,
+                    "qed": 0.5,
+                    "lipinski": True,
+                    "vina_proxy": -7.0,
+                },
+                {
+                    "smiles": "CCN",
+                    "is_generated": True,
+                    "sa": 1.5,
+                    "qed": 0.4,
+                    "lipinski": True,
+                    "vina_proxy": -6.5,
+                },
             ],
-            top1_smiles="CCO", top1_sa=1.0, top1_qed=0.5, top1_lipinski=True,
-            top1_vina_proxy=-7.0, mean_sa=1.25, mean_qed=0.45,
+            top1_smiles="CCO",
+            top1_sa=1.0,
+            top1_qed=0.5,
+            top1_lipinski=True,
+            top1_vina_proxy=-7.0,
+            mean_sa=1.25,
+            mean_qed=0.45,
             lipinski_pass_count=2,
-            n_generated_candidates=2, n_seed_candidates=0,
+            n_generated_candidates=2,
+            n_seed_candidates=0,
             receptor_path=str(tmp_path / "fake.pdb"),
             ligand_path=str(tmp_path / "fake.sdf"),
             seed=42,
@@ -162,16 +203,19 @@ def test_worker_records_pb_check_in_output_json(tmp_path: Path, monkeypatch) -> 
     fake_pb_module = SimpleNamespace(
         PoseBustersAdapter=lambda mode="mol": _FakePBAdapter(),
     )
-    monkeypatch.setitem(sys.modules,
-                        "molmetal_lam.sbdd_env.posebusters_adapter",
-                        fake_pb_module)
+    monkeypatch.setitem(
+        sys.modules, "molmetal_lam.sbdd_env.posebusters_adapter", fake_pb_module
+    )
 
     # Build a worker input that includes pb_config.
     worker_input = tmp_path / "input.json"
     worker_output = tmp_path / "output.json"
     payload = {
-        "pocket_dir": str(tmp_path), "n_simulations": 4, "max_depth": 3,
-        "seed": 42, "pocket_id": "fake_000",
+        "pocket_dir": str(tmp_path),
+        "n_simulations": 4,
+        "max_depth": 3,
+        "seed": 42,
+        "pocket_id": "fake_000",
         "receptor_path": str(tmp_path / "fake.pdb"),
         "ligand_path": str(tmp_path / "fake.sdf"),
         "pb_config": {"mode": "mol"},
@@ -180,12 +224,18 @@ def test_worker_records_pb_check_in_output_json(tmp_path: Path, monkeypatch) -> 
 
     # Patch run_one_pocket inside r4_c_full_sweep.
     import importlib
+
     r4 = importlib.import_module("molmetal.scripts.r4_c_full_sweep")
     monkeypatch.setattr(r4, "run_one_pocket", _fake_run_one_pocket)
 
     saved_argv = sys.argv[:]
-    sys.argv = [saved_argv[0], "--worker-input", str(worker_input),
-                "--worker-output", str(worker_output)]
+    sys.argv = [
+        saved_argv[0],
+        "--worker-input",
+        str(worker_input),
+        "--worker-output",
+        str(worker_output),
+    ]
     try:
         rc = r4.main()
     finally:
@@ -215,17 +265,22 @@ def test_worker_records_pb_check_in_output_json(tmp_path: Path, monkeypatch) -> 
 def test_pb_check_requires_physical_docking(tmp_path: Path) -> None:
     """``--pb-check`` is rejected at preflight without ``--physical-docking``."""
     import importlib
+
     r4 = importlib.import_module("molmetal.scripts.r4_c_full_sweep")
     # Build a synthetic Namespace that mirrors what main() would set up
     # after argparse, then drive the preflight ValidationError directly.
     ns = SimpleNamespace(
-        pb_check=True, physical_docking=False, pb_mode="mol",
+        pb_check=True,
+        physical_docking=False,
+        pb_mode="mol",
     )
     with pytest.raises(ValueError, match="--pb-check requires --physical-docking"):
         # Replicate the preflight branch from main() to keep the test
         # independent of YAML schema and manifest validation.
         if ns.pb_check and not ns.physical_docking:
-            raise ValueError("--pb-check requires --physical-docking (PB runs after Vina docking)")
+            raise ValueError(
+                "--pb-check requires --physical-docking (PB runs after Vina docking)"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -233,12 +288,18 @@ def test_pb_check_requires_physical_docking(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 def test_pb_check_handles_missing_posebusters(tmp_path: Path, monkeypatch) -> None:
     """Worker sets pb_status='unavailable' when PoseBustersAdapter raises ImportError."""
+
     def _fake_run_one_pocket(*args, **kwargs):
         from molmetal.scripts.r4_c_full_sweep import PocketResult
+
         return PocketResult(
-            pocket_id="fake_000", status="ok", n_candidates=1,
+            pocket_id="fake_000",
+            status="ok",
+            n_candidates=1,
             candidates=[{"smiles": "CCO", "is_generated": True}],
-            top1_smiles="CCO", n_generated_candidates=1, n_seed_candidates=0,
+            top1_smiles="CCO",
+            n_generated_candidates=1,
+            n_seed_candidates=0,
             receptor_path=str(tmp_path / "fake.pdb"),
             ligand_path=str(tmp_path / "fake.sdf"),
             seed=42,
@@ -250,15 +311,18 @@ def test_pb_check_handles_missing_posebusters(tmp_path: Path, monkeypatch) -> No
         raise ImportError("posebusters not installed")
 
     fake_pb_module = SimpleNamespace(PoseBustersAdapter=_boom)
-    monkeypatch.setitem(sys.modules,
-                        "molmetal_lam.sbdd_env.posebusters_adapter",
-                        fake_pb_module)
+    monkeypatch.setitem(
+        sys.modules, "molmetal_lam.sbdd_env.posebusters_adapter", fake_pb_module
+    )
 
     worker_input = tmp_path / "input.json"
     worker_output = tmp_path / "output.json"
     payload = {
-        "pocket_dir": str(tmp_path), "n_simulations": 4, "max_depth": 3,
-        "seed": 42, "pocket_id": "fake_000",
+        "pocket_dir": str(tmp_path),
+        "n_simulations": 4,
+        "max_depth": 3,
+        "seed": 42,
+        "pocket_id": "fake_000",
         "receptor_path": str(tmp_path / "fake.pdb"),
         "ligand_path": str(tmp_path / "fake.sdf"),
         "pb_config": {"mode": "mol"},
@@ -266,12 +330,18 @@ def test_pb_check_handles_missing_posebusters(tmp_path: Path, monkeypatch) -> No
     worker_input.write_text(json.dumps(payload))
 
     import importlib
+
     r4 = importlib.import_module("molmetal.scripts.r4_c_full_sweep")
     monkeypatch.setattr(r4, "run_one_pocket", _fake_run_one_pocket)
 
     saved_argv = sys.argv[:]
-    sys.argv = [saved_argv[0], "--worker-input", str(worker_input),
-                "--worker-output", str(worker_output)]
+    sys.argv = [
+        saved_argv[0],
+        "--worker-input",
+        str(worker_input),
+        "--worker-output",
+        str(worker_output),
+    ]
     try:
         rc = r4.main()
     finally:
@@ -292,12 +362,24 @@ def test_validate_list_produces_per_smiles_reports() -> None:
     """validate_list yields one ValidityReport per input SMILES (mocked adapter)."""
     # Build a fake adapter and call the real validate_list path through it.
     fake_reports = [
-        SimpleNamespace(smiles="CCO", passed=True, n_checks=10,
-                        n_passed=10, pass_rate=1.0, failed_checks=(),
-                        details={"x": True}),
-        SimpleNamespace(smiles="CCN", passed=False, n_checks=10,
-                        n_passed=8, pass_rate=0.8,
-                        failed_checks=("a",), details={"a": False}),
+        SimpleNamespace(
+            smiles="CCO",
+            passed=True,
+            n_checks=10,
+            n_passed=10,
+            pass_rate=1.0,
+            failed_checks=(),
+            details={"x": True},
+        ),
+        SimpleNamespace(
+            smiles="CCN",
+            passed=False,
+            n_checks=10,
+            n_passed=8,
+            pass_rate=0.8,
+            failed_checks=("a",),
+            details={"a": False},
+        ),
     ]
 
     class _FakeAdapter:
@@ -317,11 +399,17 @@ def test_validate_list_produces_per_smiles_reports() -> None:
             return [self.validate_mol(s) for s in smiles_list]
 
         def pass_rate(self, smiles_list):
-            return sum(self.validate_mol(s).passed for s in smiles_list) / len(smiles_list)
+            return sum(self.validate_mol(s).passed for s in smiles_list) / len(
+                smiles_list
+            )
 
         def get_metadata(self):
-            return {"name": self.name, "engine": "fake",
-                    "engine_version": self._version, "mode": self._mode}
+            return {
+                "name": self.name,
+                "engine": "fake",
+                "engine_version": self._version,
+                "mode": self._mode,
+            }
 
     a = _FakeAdapter()
     reports = a.validate_list(["CCO", "CCN"])
@@ -348,6 +436,7 @@ def test_pb_adapter_metadata_shape() -> None:
     monkeypatch_save.start()
     try:
         from molmetal_lam.sbdd_env.posebusters_adapter import PoseBustersAdapter
+
         adapter = PoseBustersAdapter(mode="mol")
         meta = adapter.get_metadata()
         assert "name" in meta
@@ -400,16 +489,16 @@ def test_pb_validate_chemistry_only() -> None:
 
     # Real-looking 10-SMILES batch (alcohols, amines, aromatics, etc.).
     batch = [
-        "CCO",            # ethanol
-        "CCN",            # ethylamine
-        "c1ccccc1",       # benzene
-        "CO",             # methanol
-        "CN",             # methylamine
-        "CC(=O)O",        # acetic acid
-        "CCOC",           # diethyl ether
-        "CC(=O)N",        # acetamide
-        "CC#N",           # acetonitrile
-        "CCBr",           # bromoethane
+        "CCO",  # ethanol
+        "CCN",  # ethylamine
+        "c1ccccc1",  # benzene
+        "CO",  # methanol
+        "CN",  # methylamine
+        "CC(=O)O",  # acetic acid
+        "CCOC",  # diethyl ether
+        "CC(=O)N",  # acetamide
+        "CC#N",  # acetonitrile
+        "CCBr",  # bromoethane
     ]
 
     reports = adapter.validate_list(batch)
@@ -425,9 +514,9 @@ def test_pb_validate_chemistry_only() -> None:
         assert hasattr(rep, "details")
         assert rep.smiles == smiles
         # 14 chemistry checks is the documented mol-mode count.
-        assert rep.n_checks == 14, (
-            f"expected 14 chemistry checks for {smiles!r}, got {rep.n_checks}"
-        )
+        assert (
+            rep.n_checks == 14
+        ), f"expected 14 chemistry checks for {smiles!r}, got {rep.n_checks}"
         assert 0 <= rep.n_passed <= rep.n_checks
         assert 0.0 <= rep.pass_rate <= 1.0
         assert isinstance(rep.passed, bool)
@@ -504,9 +593,9 @@ def test_pb_validate_protein_clash(tmp_path: Path) -> None:
         assert pb.mode == "dock"
         assert pb.receptor_pdb == str(receptor_pdb)
         assert isinstance(pb.extra_checks, tuple)
-        assert len(pb.extra_checks) >= 3, (
-            f"expected ≥3 protein-aware checks; got {pb.extra_checks!r}"
-        )
+        assert (
+            len(pb.extra_checks) >= 3
+        ), f"expected ≥3 protein-aware checks; got {pb.extra_checks!r}"
         # ValidityReport inside PBResult carries the full 26-check count.
         # The on-host PB wheel may add optional cofactor/water checks
         # on top of the documented 26; we accept the documented minimum
@@ -515,9 +604,9 @@ def test_pb_validate_protein_clash(tmp_path: Path) -> None:
         rep = pb.report
         assert isinstance(rep, ValidityReport)
         assert rep.smiles == smiles
-        assert 26 <= rep.n_checks <= 30, (
-            f"expected 26-30 checks for {smiles!r}, got {rep.n_checks}"
-        )
+        assert (
+            26 <= rep.n_checks <= 30
+        ), f"expected 26-30 checks for {smiles!r}, got {rep.n_checks}"
         assert 0 <= rep.n_passed <= rep.n_checks
         assert 0.0 <= rep.pass_rate <= 1.0
 
@@ -531,7 +620,6 @@ def test_pb_validate_protein_clash(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-
 def test_pb_mode_mol_backward_compat(tmp_path: Path, monkeypatch) -> None:
     """pb_mode='mol' keeps the legacy behavior (validate_list, no dock extras).
 
@@ -542,17 +630,35 @@ def test_pb_mode_mol_backward_compat(tmp_path: Path, monkeypatch) -> None:
         shape (back-compat with the existing test
         :func:`test_worker_records_pb_check_in_output_json`).
     """
+
     def _fake_run_one_pocket(*args, **kwargs):
         from molmetal.scripts.r4_c_full_sweep import PocketResult
+
         return PocketResult(
-            pocket_id="fake_mol_000", status="ok", n_candidates=2,
+            pocket_id="fake_mol_000",
+            status="ok",
+            n_candidates=2,
             candidates=[
-                {"smiles": "CCO", "is_generated": True, "sa": 1.0, "qed": 0.5,
-                 "lipinski": True, "vina_proxy": -7.0},
-                {"smiles": "CCN", "is_generated": True, "sa": 1.5, "qed": 0.4,
-                 "lipinski": True, "vina_proxy": -6.5},
+                {
+                    "smiles": "CCO",
+                    "is_generated": True,
+                    "sa": 1.0,
+                    "qed": 0.5,
+                    "lipinski": True,
+                    "vina_proxy": -7.0,
+                },
+                {
+                    "smiles": "CCN",
+                    "is_generated": True,
+                    "sa": 1.5,
+                    "qed": 0.4,
+                    "lipinski": True,
+                    "vina_proxy": -6.5,
+                },
             ],
-            top1_smiles="CCO", n_generated_candidates=2, n_seed_candidates=0,
+            top1_smiles="CCO",
+            n_generated_candidates=2,
+            n_seed_candidates=0,
             receptor_path=str(tmp_path / "fake.pdb"),
             ligand_path=str(tmp_path / "fake.sdf"),
             seed=42,
@@ -571,10 +677,13 @@ def test_pb_mode_mol_backward_compat(tmp_path: Path, monkeypatch) -> None:
         def validate_mol(self, smiles):
             passed = smiles == "CCO"
             return SimpleNamespace(
-                smiles=smiles, passed=passed,
-                n_checks=14, n_passed=14 if passed else 12,
-                pass_rate=1.0 if passed else 12/14,
-                failed_checks=() if passed else ("bond_lengths",), details={},
+                smiles=smiles,
+                passed=passed,
+                n_checks=14,
+                n_passed=14 if passed else 12,
+                pass_rate=1.0 if passed else 12 / 14,
+                failed_checks=() if passed else ("bond_lengths",),
+                details={},
             )
 
         def validate_docked(self, smiles, receptor_pdb):
@@ -588,18 +697,27 @@ def test_pb_mode_mol_backward_compat(tmp_path: Path, monkeypatch) -> None:
             return 1.0
 
         def get_metadata(self):
-            return {"name": self.name, "engine": "PoseBusters (Python API)",
-                    "engine_version": self._version, "mode": self._mode}
+            return {
+                "name": self.name,
+                "engine": "PoseBusters (Python API)",
+                "engine_version": self._version,
+                "mode": self._mode,
+            }
 
-    monkeypatch.setitem(sys.modules,
-                        "molmetal_lam.sbdd_env.posebusters_adapter",
-                        SimpleNamespace(PoseBustersAdapter=lambda mode="mol": _FakeAdapter(mode=mode)))
+    monkeypatch.setitem(
+        sys.modules,
+        "molmetal_lam.sbdd_env.posebusters_adapter",
+        SimpleNamespace(PoseBustersAdapter=lambda mode="mol": _FakeAdapter(mode=mode)),
+    )
 
     worker_input = tmp_path / "input.json"
     worker_output = tmp_path / "output.json"
     payload = {
-        "pocket_dir": str(tmp_path), "n_simulations": 4, "max_depth": 3,
-        "seed": 42, "pocket_id": "fake_mol_000",
+        "pocket_dir": str(tmp_path),
+        "n_simulations": 4,
+        "max_depth": 3,
+        "seed": 42,
+        "pocket_id": "fake_mol_000",
         "receptor_path": str(tmp_path / "fake.pdb"),
         "ligand_path": str(tmp_path / "fake.sdf"),
         "pb_config": {"mode": "mol"},
@@ -607,12 +725,18 @@ def test_pb_mode_mol_backward_compat(tmp_path: Path, monkeypatch) -> None:
     worker_input.write_text(json.dumps(payload))
 
     import importlib
+
     r4 = importlib.import_module("molmetal.scripts.r4_c_full_sweep")
     monkeypatch.setattr(r4, "run_one_pocket", _fake_run_one_pocket)
 
     saved_argv = sys.argv[:]
-    sys.argv = [saved_argv[0], "--worker-input", str(worker_input),
-                "--worker-output", str(worker_output)]
+    sys.argv = [
+        saved_argv[0],
+        "--worker-input",
+        str(worker_input),
+        "--worker-output",
+        str(worker_output),
+    ]
     try:
         rc = r4.main()
     finally:
@@ -647,10 +771,12 @@ def test_validate_docked_signature() -> None:
     We mock the posebusters package so the test does not need the wheel.
     """
     from molmetal_lam.sbdd_env import posebusters_adapter as pba
+
     assert hasattr(pba.PoseBustersAdapter, "validate_docked")
     assert hasattr(pba, "PBResult")
     # PBResult exposes mode + receptor_pdb + extra_checks.
     import dataclasses
+
     fields = {f.name for f in dataclasses.fields(pba.PBResult)}
     assert "report" in fields
     assert "mode" in fields
@@ -674,9 +800,13 @@ class _FakePBAdapter:
         # CCO passes everything; CCN fails one check.
         passed = smiles == "CCO"
         return SimpleNamespace(
-            smiles=smiles, passed=passed, n_checks=10,
-            n_passed=10 if passed else 8, pass_rate=1.0 if passed else 0.8,
-            failed_checks=() if passed else ("clash",), details={},
+            smiles=smiles,
+            passed=passed,
+            n_checks=10,
+            n_passed=10 if passed else 8,
+            pass_rate=1.0 if passed else 0.8,
+            failed_checks=() if passed else ("clash",),
+            details={},
         )
 
     def validate_list(self, smiles_list):
@@ -686,5 +816,9 @@ class _FakePBAdapter:
         return sum(self.validate_mol(s).passed for s in smiles_list) / len(smiles_list)
 
     def get_metadata(self):
-        return {"name": self.name, "engine": "PoseBusters (Python API)",
-                "engine_version": self._version, "mode": self._mode}
+        return {
+            "name": self.name,
+            "engine": "PoseBusters (Python API)",
+            "engine_version": self._version,
+            "mode": self._mode,
+        }

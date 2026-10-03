@@ -96,7 +96,9 @@ def test_fused_ce_parity(batch, n_classes, reduction):
     torch.manual_seed(batch + n_classes)
     logits = torch.randn(batch, n_classes, device=DEVICE, dtype=torch.float32)
     targets = torch.randint(0, n_classes, (batch,), device=DEVICE, dtype=torch.int64)
-    out_fused = fused_cross_entropy(logits, targets, ignore_index=-100, reduction=reduction)
+    out_fused = fused_cross_entropy(
+        logits, targets, ignore_index=-100, reduction=reduction
+    )
     out_ref = F.cross_entropy(logits, targets, ignore_index=-100, reduction=reduction)
     # Cross-entropy uses ``tl.exp`` / ``tl.log`` (approx); allow 1e-4.
     assert torch.allclose(out_fused, out_ref, atol=1e-4, rtol=1e-4), (
@@ -112,7 +114,9 @@ def test_fused_ce_ignore_index():
     logits = torch.randn(batch, n_classes, device=DEVICE, dtype=torch.float32)
     targets = torch.randint(0, n_classes, (batch,), device=DEVICE, dtype=torch.int64)
     targets[0] = -100  # masked row
-    out_fused = fused_cross_entropy(logits, targets, ignore_index=-100, reduction="none")
+    out_fused = fused_cross_entropy(
+        logits, targets, ignore_index=-100, reduction="none"
+    )
     out_ref = F.cross_entropy(logits, targets, ignore_index=-100, reduction="none")
     assert torch.allclose(out_fused, out_ref, atol=1e-4, rtol=1e-4)
     # Masked row's loss is exactly zero.
@@ -122,7 +126,9 @@ def test_fused_ce_ignore_index():
 def test_fused_ce_backward_mean():
     torch.manual_seed(4)
     batch, n_classes = 16, 32
-    logits_ref = torch.randn(batch, n_classes, device=DEVICE, dtype=torch.float32, requires_grad=True)
+    logits_ref = torch.randn(
+        batch, n_classes, device=DEVICE, dtype=torch.float32, requires_grad=True
+    )
     logits_fused = logits_ref.detach().clone().requires_grad_(True)
     targets = torch.randint(0, n_classes, (batch,), device=DEVICE, dtype=torch.int64)
     F.cross_entropy(logits_ref, targets, reduction="mean").backward()
@@ -136,12 +142,16 @@ def test_fused_ce_backward_mean():
 def test_fused_ce_backward_with_ignore_index():
     torch.manual_seed(5)
     batch, n_classes = 16, 32
-    logits_ref = torch.randn(batch, n_classes, device=DEVICE, dtype=torch.float32, requires_grad=True)
+    logits_ref = torch.randn(
+        batch, n_classes, device=DEVICE, dtype=torch.float32, requires_grad=True
+    )
     logits_fused = logits_ref.detach().clone().requires_grad_(True)
     targets = torch.randint(0, n_classes, (batch,), device=DEVICE, dtype=torch.int64)
     targets[3] = -100
     F.cross_entropy(logits_ref, targets, ignore_index=-100, reduction="mean").backward()
-    fused_cross_entropy(logits_fused, targets, ignore_index=-100, reduction="mean").backward()
+    fused_cross_entropy(
+        logits_fused, targets, ignore_index=-100, reduction="mean"
+    ).backward()
     assert torch.allclose(logits_fused.grad, logits_ref.grad, atol=1e-4, rtol=1e-4), (
         f"CE ignore_index backward mismatch: max diff "
         f"{(logits_fused.grad - logits_ref.grad).abs().max().item()}"

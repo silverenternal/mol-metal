@@ -245,7 +245,9 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p.add_argument("--ckpt-dir", type=Path, default=DEFAULT_CKPT_DIR)
     p.add_argument("--status-json", type=Path, default=DEFAULT_STATUS_JSON)
     p.add_argument(
-        "--out", type=Path, default=None,
+        "--out",
+        type=Path,
+        default=None,
         help="Optional path to write the report JSON (default: stdout only).",
     )
     return p.parse_args(argv)

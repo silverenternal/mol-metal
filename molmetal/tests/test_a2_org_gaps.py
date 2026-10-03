@@ -9,6 +9,7 @@ Three small tests that cover the 3 NEW SOURCE files:
   3. :mod:`scripts._add_license_headers` is idempotent — a second pass
      on the same file tree modifies 0 files.
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -17,7 +18,9 @@ from pathlib import Path
 
 import pytest
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent  # tests/ → molmetal/ → repo root
+PROJECT_ROOT = (
+    Path(__file__).resolve().parent.parent.parent
+)  # tests/ → molmetal/ → repo root
 
 
 def test_make_config_recursive_namespaces():
@@ -117,5 +120,5 @@ def test_pyproject_name_fixed():
     """Project name = ``mol-metal`` (was ``try-triton-on-rocm`` per Wf-440 typo)."""
     pyproject = (PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8")
     # First line of [project] block should declare name = "mol-metal"
-    assert "name = \"mol-metal\"" in pyproject
+    assert 'name = "mol-metal"' in pyproject
     assert "try-triton-on-rocm" not in pyproject

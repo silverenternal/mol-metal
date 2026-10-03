@@ -50,6 +50,7 @@ DNA/protein pockets in the Wf-179 m15 reference set.
         --pt-strip \\
         --out-json molmetal/reports/wf305d_vina_pt_strip/panel.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -118,9 +119,7 @@ def _resolve_pocket_pdb_dir(pocket_id: str, override: Optional[Path]) -> Path:
     """
     if override is not None:
         return Path(override)
-    return (
-        PROJECT_ROOT / "molmetal" / "reports" / "wf30_pocket_prep"
-    )
+    return PROJECT_ROOT / "molmetal" / "reports" / "wf30_pocket_prep"
 
 
 # ---------------------------------------------------------------------------
@@ -135,57 +134,86 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         )
     )
     p.add_argument(
-        "--csv", type=Path,
+        "--csv",
+        type=Path,
         default=PROJECT_ROOT / ".data" / "molmetal" / "platinai_4cell_mbfinder.csv",
         help="PlatinAI mbfinder CSV (100 Pt complexes).",
     )
     p.add_argument(
-        "--pocket-id", default="1h36",
+        "--pocket-id",
+        default="1h36",
         help="Single Wf-179 m15 pocket to dock against (default 1h36).",
     )
     p.add_argument(
-        "--pockets", nargs="+", default=None,
+        "--pockets",
+        nargs="+",
+        default=None,
         help="Override the full pocket list (default: --pocket-id only).",
     )
     p.add_argument(
-        "--n-mols", type=int, default=100,
+        "--n-mols",
+        type=int,
+        default=100,
         help="Number of PlatinAI mbfinder molecules to dock (default 100).",
     )
     p.add_argument(
-        "--pocket-pdb-dir", type=Path, default=None,
+        "--pocket-pdb-dir",
+        type=Path,
+        default=None,
         help="Override the pocket PDB dir (default: wf30_pocket_prep).",
     )
     p.add_argument(
-        "--out", type=Path,
-        default=PROJECT_ROOT / "molmetal" / "reports" / "wf305d_vina_pt_strip" / "panel.json",
+        "--out",
+        type=Path,
+        default=PROJECT_ROOT
+        / "molmetal"
+        / "reports"
+        / "wf305d_vina_pt_strip"
+        / "panel.json",
         help="Output JSON path.",
     )
     p.add_argument(
-        "--work-dir", type=Path, default=None,
+        "--work-dir",
+        type=Path,
+        default=None,
         help="Working directory for per-dock PDBQT + log files.",
     )
     p.add_argument(
-        "--vina-bin", type=str, default=DEFAULT_VINA_BIN,
+        "--vina-bin",
+        type=str,
+        default=DEFAULT_VINA_BIN,
         help=f"Path to the AutoDock Vina CLI binary. Default: {DEFAULT_VINA_BIN}",
     )
     p.add_argument(
-        "--exhaustiveness", type=int, default=DEFAULT_EXHAUSTIVENESS,
+        "--exhaustiveness",
+        type=int,
+        default=DEFAULT_EXHAUSTIVENESS,
     )
     p.add_argument(
-        "--n-poses", type=int, default=DEFAULT_N_POSES,
+        "--n-poses",
+        type=int,
+        default=DEFAULT_N_POSES,
     )
     p.add_argument(
-        "--box-size", type=float, default=DEFAULT_BOX_SIZE,
+        "--box-size",
+        type=float,
+        default=DEFAULT_BOX_SIZE,
     )
     p.add_argument(
-        "--seed", type=int, default=DEFAULT_SEED,
+        "--seed",
+        type=int,
+        default=DEFAULT_SEED,
     )
     p.add_argument(
-        "--dock-timeout", type=int, default=DEFAULT_DOCK_TIMEOUT,
+        "--dock-timeout",
+        type=int,
+        default=DEFAULT_DOCK_TIMEOUT,
     )
     p.add_argument(
-        "--pt-strip", dest="pt_strip",
-        action="store_true", default=True,
+        "--pt-strip",
+        dest="pt_strip",
+        action="store_true",
+        default=True,
         help=(
             "Strip the precious-metal coordination shell before "
             "3D embedding + UFF + PDBQT conversion (Wf-301B). "
@@ -193,7 +221,8 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
-        "--no-pt-strip", dest="pt_strip",
+        "--no-pt-strip",
+        dest="pt_strip",
         action="store_false",
     )
     return p.parse_args(argv)

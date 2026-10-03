@@ -57,6 +57,7 @@ Usage examples
     uv run --no-sync python -m molmetal.scripts.run_proof_search_variance_puct \\
         --disable-variance-puct --smoke
 """
+
 from __future__ import annotations
 
 import argparse
@@ -156,12 +157,14 @@ def _run_proof_search(
     per_arm = []
     for i in range(int(n_actions)):
         st = selector.stats_.get((root.node_id, i), {})
-        per_arm.append({
-            "action": i,
-            "n_visits": int(st.get("N", 0.0)),
-            "Q": float(st.get("Q", 0.0)),
-            "sigma": float(st.get("sigma", 0.0)),
-        })
+        per_arm.append(
+            {
+                "action": i,
+                "n_visits": int(st.get("N", 0.0)),
+                "Q": float(st.get("Q", 0.0)),
+                "sigma": float(st.get("sigma", 0.0)),
+            }
+        )
 
     return {
         "selector_kind": (
@@ -302,9 +305,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         # the selector must be variance_puct.  When they asked for the
         # legacy path, the selector must be dirichlet_puct_legacy.
         (
-            (report["requested_use_variance_puct"] and report["selector_kind"] == "variance_puct")
-            or
-            (not report["requested_use_variance_puct"] and report["selector_kind"] == "dirichlet_puct_legacy")
+            (
+                report["requested_use_variance_puct"]
+                and report["selector_kind"] == "variance_puct"
+            )
+            or (
+                not report["requested_use_variance_puct"]
+                and report["selector_kind"] == "dirichlet_puct_legacy"
+            )
         )
         and sum(report["selected_counts"]) == report["n_steps"]
         and all(

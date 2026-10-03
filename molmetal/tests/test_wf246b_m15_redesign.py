@@ -39,6 +39,7 @@ Tests are **skipped (not failed)** when the artefacts are missing — so
 CI on a fresh checkout does not get red until the Wf-246-B deliverable
 has shipped.
 """
+
 from __future__ import annotations
 
 import json
@@ -126,9 +127,9 @@ def test_metric_has_per_pocket_with_difficulty() -> None:
     metric = _load_metric()
     assert "per_pocket_with_difficulty" in metric
     pp = metric["per_pocket_with_difficulty"]
-    assert set(pp.keys()) == set(EXPECTED_POCKETS), (
-        f"Expected pockets {EXPECTED_POCKETS}, got {list(pp.keys())}"
-    )
+    assert set(pp.keys()) == set(
+        EXPECTED_POCKETS
+    ), f"Expected pockets {EXPECTED_POCKETS}, got {list(pp.keys())}"
 
 
 @pytest.mark.skipif(
@@ -207,11 +208,17 @@ def test_difficulty_flag_logic() -> None:
         median = d["median_best_rmsd_angstrom"]
         flag = d["difficulty_flag"]
         if median < 0.5:
-            assert flag == "EASY", f"{pocket_id}: median {median} should be EASY, got {flag}"
+            assert (
+                flag == "EASY"
+            ), f"{pocket_id}: median {median} should be EASY, got {flag}"
         elif median < 1.0:
-            assert flag == "MEDIUM", f"{pocket_id}: median {median} should be MEDIUM, got {flag}"
+            assert (
+                flag == "MEDIUM"
+            ), f"{pocket_id}: median {median} should be MEDIUM, got {flag}"
         else:
-            assert flag == "HARD", f"{pocket_id}: median {median} should be HARD, got {flag}"
+            assert (
+                flag == "HARD"
+            ), f"{pocket_id}: median {median} should be HARD, got {flag}"
 
 
 @pytest.mark.skipif(

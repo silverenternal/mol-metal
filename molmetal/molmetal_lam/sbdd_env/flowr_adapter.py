@@ -62,9 +62,9 @@ class FLOWRReferenceAdapter:
     repo_path: str = "molmetal/references/FLOWR"
     fallback_smiles: List[str] = field(
         default_factory=lambda: [
-            "CCO",                         # ethanol
-            "CCN(CC)CC",                   # triethylamine
-            "c1ccccc1",                    # benzene
+            "CCO",  # ethanol
+            "CCN(CC)CC",  # triethylamine
+            "c1ccccc1",  # benzene
         ],
     )
     _loaded: bool = False

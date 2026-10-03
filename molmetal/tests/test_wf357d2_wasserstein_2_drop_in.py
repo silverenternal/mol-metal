@@ -38,6 +38,7 @@ Honest framing (party-twenty-spirit §3.5):
   - Default OFF for backward compat with Wf-131 P1 / Wf-181 G5 /
     Wf-182 G6 shipped behaviour.
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -57,6 +58,7 @@ PYTHON = sys.executable
 # Test 1: wasserstein_2 formula matches the canonical OT closed-form
 # ---------------------------------------------------------------------------
 
+
 def test_wasserstein_2_formula_matches_reference():
     """W₂ = sqrt((1/n) Σ |sort(x_i) - sort(y_i)|²) per Peyré & Cuturi 2019.
 
@@ -74,30 +76,40 @@ def test_wasserstein_2_formula_matches_reference():
     cases = []
     rng = torch.Generator().manual_seed(0)
     # Uniform
-    cases.append((
-        torch.rand(64, generator=rng),
-        torch.rand(64, generator=rng),
-    ))
+    cases.append(
+        (
+            torch.rand(64, generator=rng),
+            torch.rand(64, generator=rng),
+        )
+    )
     # Gaussian
-    cases.append((
-        torch.randn(64, generator=rng),
-        torch.randn(64, generator=rng),
-    ))
+    cases.append(
+        (
+            torch.randn(64, generator=rng),
+            torch.randn(64, generator=rng),
+        )
+    )
     # Constant shift (analytic check)
-    cases.append((
-        torch.arange(64, dtype=torch.float32),
-        torch.arange(64, dtype=torch.float32) + 1.0,
-    ))
+    cases.append(
+        (
+            torch.arange(64, dtype=torch.float32),
+            torch.arange(64, dtype=torch.float32) + 1.0,
+        )
+    )
     # Outlier
-    cases.append((
-        torch.cat([torch.zeros(32), torch.full((32,), 5.0)]),
-        torch.linspace(0.0, 4.0, 32).repeat(2),
-    ))
+    cases.append(
+        (
+            torch.cat([torch.zeros(32), torch.full((32,), 5.0)]),
+            torch.linspace(0.0, 4.0, 32).repeat(2),
+        )
+    )
     # Bimodal
-    cases.append((
-        torch.cat([torch.full((32,), -1.0), torch.full((32,), 1.0)]),
-        torch.cat([torch.full((32,), 0.5), torch.full((32,), 2.5)]),
-    ))
+    cases.append(
+        (
+            torch.cat([torch.full((32,), -1.0), torch.full((32,), 1.0)]),
+            torch.cat([torch.full((32,), 0.5), torch.full((32,), 2.5)]),
+        )
+    )
 
     for i, (pred, ref) in enumerate(cases):
         w2 = wasserstein_2_1d_torchsort(pred, ref)
@@ -135,6 +147,7 @@ def test_wasserstein_2_formula_matches_reference():
 # Test 2: W₁ vs W₂ are measurably different on non-trivial distributions
 # ---------------------------------------------------------------------------
 
+
 def test_wasserstein_2_distinguishes_from_w1():
     """W₁ vs W₂ give different values on outlier distributions.
 
@@ -161,13 +174,12 @@ def test_wasserstein_2_distinguishes_from_w1():
     w2 = wasserstein_2_1d_torchsort(pred, ref).item()
     # W₁ (L1) = 1.75, W₂ (L2) ≈ 1.9365
     assert abs(w1 - 1.75) < 1e-5, f"W₁ should be 1.75, got {w1}"
-    assert abs(w2 - (15 / 4) ** 0.5) < 1e-5, (
-        f"W₂ should be sqrt(15/4) ≈ {(15/4)**0.5:.4f}, got {w2:.4f}"
-    )
+    assert (
+        abs(w2 - (15 / 4) ** 0.5) < 1e-5
+    ), f"W₂ should be sqrt(15/4) ≈ {(15/4)**0.5:.4f}, got {w2:.4f}"
     # W₂ > W₁ on outlier-heavy distributions (L2 norm amplifies outliers).
     assert w2 > w1, (
-        f"W₂ should exceed W₁ on outlier-heavy distribution; "
-        f"got W₁={w1}, W₂={w2}"
+        f"W₂ should exceed W₁ on outlier-heavy distribution; " f"got W₁={w1}, W₂={w2}"
     )
     # The numerical difference should be on the order of the outlier magnitude.
     delta = w2 - w1
@@ -177,6 +189,7 @@ def test_wasserstein_2_distinguishes_from_w1():
 # ---------------------------------------------------------------------------
 # Test 3: backward-compat + forward-pass + gradient flow
 # ---------------------------------------------------------------------------
+
 
 def test_backward_compat_default_off():
     """Default order=1 path is bit-identical to legacy L1 closed-form.
@@ -235,19 +248,23 @@ def test_backward_compat_default_off():
 
     pred_g = pred.detach().clone().requires_grad_(True)
     loss = wasserstein_pic50_gradient(
-        pred_g, ref.detach(), w_weight=0.05, wasserstein_order=2,
+        pred_g,
+        ref.detach(),
+        w_weight=0.05,
+        wasserstein_order=2,
     )
     loss.backward()
     assert pred_g.grad is not None
     assert torch.isfinite(pred_g.grad).all()
-    assert (pred_g.grad != 0).all(), (
-        "Gradient should be non-zero for non-degenerate pred/ref"
-    )
+    assert (
+        pred_g.grad != 0
+    ).all(), "Gradient should be non-zero for non-degenerate pred/ref"
 
 
 # ---------------------------------------------------------------------------
 # Test 4: trainer CLI flag accepted + default-OFF
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_cli_flag_accepted():
     """``--use-wasserstein-2`` is a valid trainer CLI argument.
@@ -270,9 +287,9 @@ def test_trainer_cli_flag_accepted():
 
     # (a) + (c) Default: flag absent → use_wasserstein_2 = False.
     args_default = parse_args(["--metals", "Ru"])
-    assert hasattr(args_default, "use_wasserstein_2"), (
-        "args.use_wasserstein_2 should be present after parse_args"
-    )
+    assert hasattr(
+        args_default, "use_wasserstein_2"
+    ), "args.use_wasserstein_2 should be present after parse_args"
     assert args_default.use_wasserstein_2 is False, (
         f"Default should be False (backward compat), got "
         f"{args_default.use_wasserstein_2}"

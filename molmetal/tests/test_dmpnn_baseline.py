@@ -65,20 +65,21 @@ from molmetal.baselines.eval_utils import compute_metrics
 # Helpers
 # ---------------------------------------------------------------------------
 SMILES_8 = [
-    "CCO",                # ethanol
-    "CC(=O)O",            # acetic acid
-    "c1ccccc1",           # benzene
-    "CC(C)C",             # isobutane
-    "CCC",                # propane
-    "C1CCCCC1",           # cyclohexane
-    "CCOCC",              # diethyl ether
-    "CCCC",               # butane
+    "CCO",  # ethanol
+    "CC(=O)O",  # acetic acid
+    "c1ccccc1",  # benzene
+    "CC(C)C",  # isobutane
+    "CCC",  # propane
+    "C1CCCCC1",  # cyclohexane
+    "CCOCC",  # diethyl ether
+    "CCCC",  # butane
 ]
 
 
 def _collate(smiles_list):
     """Featurise + collate 8 SMILES → (atom_f, bond_f, e_src, e_dst)."""
     from molmetal.baselines.dmpnn import collate_graphs
+
     graphs = featurize_smiles_list(smiles_list)
     batch = collate_graphs(graphs)
     return batch
@@ -92,9 +93,12 @@ def test_regression_metrics_emits_expected_keys():
     y_true = np.array([5.0, 6.0, 7.0, 8.0], dtype=float)
     y_pred = np.array([5.0, 6.0, 7.0, 8.0], dtype=float)
     out = regression_metrics(y_true, y_pred)
-    assert set(out.keys()) == {"mae", "rmse", "pearson", "n"}, (
-        f"Expected keys {{mae, rmse, pearson, n}}, got {set(out.keys())}"
-    )
+    assert set(out.keys()) == {
+        "mae",
+        "rmse",
+        "pearson",
+        "n",
+    }, f"Expected keys {{mae, rmse, pearson, n}}, got {set(out.keys())}"
     assert out["mae"] == pytest.approx(0.0, abs=1e-6)
     assert out["rmse"] == pytest.approx(0.0, abs=1e-6)
     assert out["pearson"] == pytest.approx(1.0, abs=1e-6)
@@ -130,16 +134,19 @@ def test_mol_to_graph_shapes_ethanol():
     """mol_to_graph on ethanol → atom_f shape (3, 39), bond_f shape (4, 10)
     (each undirected bond becomes 2 directed edges)."""
     from rdkit import Chem
+
     mol = Chem.MolFromSmiles("CCO")
     assert mol is not None
     atom_f, bond_f, e_src, e_dst = mol_to_graph(mol)
-    assert atom_f.shape == (3, ATOM_FEATURE_DIM), (
-        f"Expected (3, {ATOM_FEATURE_DIM}), got {atom_f.shape}"
-    )
+    assert atom_f.shape == (
+        3,
+        ATOM_FEATURE_DIM,
+    ), f"Expected (3, {ATOM_FEATURE_DIM}), got {atom_f.shape}"
     # 2 undirected bonds × 2 directed edges = 4 directed edges
-    assert bond_f.shape == (4, BOND_FEATURE_DIM), (
-        f"Expected (4, {BOND_FEATURE_DIM}), got {bond_f.shape}"
-    )
+    assert bond_f.shape == (
+        4,
+        BOND_FEATURE_DIM,
+    ), f"Expected (4, {BOND_FEATURE_DIM}), got {bond_f.shape}"
     assert e_src.shape == (4,)
     assert e_dst.shape == (4,)
     # Directed edges: each (src, dst) must be a valid atom index
@@ -151,6 +158,7 @@ def test_mol_to_graph_shapes_ethanol():
 def test_mol_to_graph_handles_empty():
     """Empty molecule (no atoms) returns empty arrays gracefully."""
     from rdkit import Chem
+
     empty_mol = Chem.MolFromSmiles("")
     if empty_mol is None:
         pytest.skip("RDKit returns None for empty SMILES — skip")
@@ -200,9 +208,10 @@ def test_multitask_model_returns_dual_head():
     with torch.no_grad():
         pic50, active_logits = model(atom_f, bond_f, e_src, e_dst)
     assert pic50.shape == (8,), f"Expected pic50 shape (8,), got {pic50.shape}"
-    assert active_logits.shape == (8, 2), (
-        f"Expected active_logits (8, 2), got {active_logits.shape}"
-    )
+    assert active_logits.shape == (
+        8,
+        2,
+    ), f"Expected active_logits (8, 2), got {active_logits.shape}"
     assert torch.isfinite(pic50).all()
     assert torch.isfinite(active_logits).all()
 
@@ -224,6 +233,7 @@ def test_end_to_end_baseline_run_small_subset():
     end-to-end and emits well-formed metrics.
     """
     from molmetal.baselines.dmpnn_multitask import quick_smoke_mt
+
     result = quick_smoke_mt(metal="Ru", max_rows=200, alpha=MT_ALPHA)
     assert isinstance(result, DMPNNMultiTaskResult)
     # Train/val/test split
@@ -232,21 +242,21 @@ def test_end_to_end_baseline_run_small_subset():
     assert result.n_test > 0
     # Classification metrics
     for key in ("roc_auc", "pr_auc", "hit_rate_top5pct"):
-        assert key in result.test_metrics, (
-            f"Missing test_metrics['{key}'] in {sorted(result.test_metrics.keys())}"
-        )
-        assert np.isfinite(result.test_metrics[key]), (
-            f"test_metrics['{key}'] = {result.test_metrics[key]} is not finite"
-        )
+        assert (
+            key in result.test_metrics
+        ), f"Missing test_metrics['{key}'] in {sorted(result.test_metrics.keys())}"
+        assert np.isfinite(
+            result.test_metrics[key]
+        ), f"test_metrics['{key}'] = {result.test_metrics[key]} is not finite"
     # Regression metrics
     for key in ("mae", "rmse", "pearson"):
-        assert key in result.test_pic50_metrics, (
-            f"Missing test_pic50_metrics['{key}'] in {sorted(result.test_pic50_metrics.keys())}"
-        )
+        assert (
+            key in result.test_pic50_metrics
+        ), f"Missing test_pic50_metrics['{key}'] in {sorted(result.test_pic50_metrics.keys())}"
         # pearson can be NaN if y has zero variance, but mae/rmse must be finite
-        assert np.isfinite(result.test_pic50_metrics[key]), (
-            f"test_pic50_metrics['{key}'] = {result.test_pic50_metrics[key]} not finite"
-        )
+        assert np.isfinite(
+            result.test_pic50_metrics[key]
+        ), f"test_pic50_metrics['{key}'] = {result.test_pic50_metrics[key]} not finite"
     # per_cell_line may be empty for very small test sets; allow that
     assert isinstance(result.per_cell_line, dict)
     # Alpha / metal round-trip
@@ -262,7 +272,9 @@ def test_train_dmpnn_multitask_cli_importable():
     from molmetal.scripts import train_dmpnn_multitask as cli
 
     assert hasattr(cli, "main"), "train_dmpnn_multitask must expose main()"
-    assert hasattr(cli, "_parse_args"), "train_dmpnn_multitask must expose _parse_args()"
+    assert hasattr(
+        cli, "_parse_args"
+    ), "train_dmpnn_multitask must expose _parse_args()"
     # Argparse smoke test
     args = cli._parse_args(["--metal", "Ru", "--epochs", "1", "--split", "random"])
     assert args.metal == "Ru"
@@ -283,8 +295,8 @@ def test_splitter_factories_keys():
 def _synth_targets(B: int = 8):
     torch.manual_seed(0)
     return (
-        4.0 + 4.0 * torch.rand(B),                # pIC50
-        torch.randint(0, 2, (B,)),                 # active
+        4.0 + 4.0 * torch.rand(B),  # pIC50
+        torch.randint(0, 2, (B,)),  # active
     )
 
 
@@ -342,9 +354,9 @@ def test_multitask_predict_returns_probabilities_and_pic50():
     assert y_score.shape == (8,)
     assert pic50_pred.shape == (8,)
     # Probabilities in [0, 1]
-    assert ((y_score >= 0.0) & (y_score <= 1.0)).all(), (
-        f"Scores not in [0, 1]: {y_score}"
-    )
+    assert (
+        (y_score >= 0.0) & (y_score <= 1.0)
+    ).all(), f"Scores not in [0, 1]: {y_score}"
     # compute_metrics should accept the output without raising
     metrics = compute_metrics(y_t, y_score)
     assert "roc_auc" in metrics
@@ -363,8 +375,11 @@ def test_dmpnn_result_to_json_round_trip():
         val_pic50_metrics={"mae": 0.5, "rmse": 0.7, "pearson": 0.4, "n": 50},
         per_cell_line={"HeLa": 0.55, "A549": 0.6},
         alpha=MT_ALPHA,
-        n_train=200, n_val=50, n_test=50,
-        pos_rate_train=0.27, pos_rate_test=0.30,
+        n_train=200,
+        n_val=50,
+        n_test=50,
+        pos_rate_train=0.27,
+        pos_rate_test=0.30,
     )
     payload = json.loads(res.to_json())
     assert payload["metal"] == "Ru"

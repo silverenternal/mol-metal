@@ -50,15 +50,9 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-TRAINER_PATH = (
-    REPO_ROOT / "molmetal" / "scripts" / "train_cfm_yuelbond_wasserstein.py"
-)
+TRAINER_PATH = REPO_ROOT / "molmetal" / "scripts" / "train_cfm_yuelbond_wasserstein.py"
 SA_PENALTY_MODULE_PATH = (
-    REPO_ROOT
-    / "molmetal"
-    / "adapters"
-    / "flow_matching_lipman"
-    / "sa_penalty.py"
+    REPO_ROOT / "molmetal" / "adapters" / "flow_matching_lipman" / "sa_penalty.py"
 )
 
 
@@ -117,6 +111,7 @@ def _sa_penalty_module_available() -> bool:
             DEFAULT_TARGET_SA,
             DEFAULT_SA_WEIGHT,
         )
+
         return True
     except ModuleNotFoundError:
         return False
@@ -149,11 +144,9 @@ def test_sa_loss_off_zero_contribution() -> None:
     # 2. The full wire-in must call the surrogate when sa_scores_batch
     # is not injected from outer scope.
     assert (
-        "_sa_scores = locals().get(\"sa_scores_batch\", None)" in src
+        '_sa_scores = locals().get("sa_scores_batch", None)' in src
     ), "Wf-404-A3: outer-scope injection pattern must be preserved"
-    assert (
-        "_sa_scores = _synthesize_sa_scores_from_clouds(batch_clouds)" in src
-    ), (
+    assert "_sa_scores = _synthesize_sa_scores_from_clouds(batch_clouds)" in src, (
         "Wf-404-A3: full wire-in must call _synthesize_sa_scores_from_clouds "
         "when sa_scores_batch is None and batch_clouds is non-empty"
     )
@@ -197,15 +190,14 @@ def test_sa_loss_off_zero_contribution() -> None:
         ):
             fn_src = ast.get_source_segment(src, node)
             break
-    assert fn_src is not None, (
-        "Wf-404-A3: helper must be a top-level function in the trainer"
-    )
-    assert "atomic_numbers.shape" in fn_src, (
-        "Wf-404-A3: surrogate must read cloud.atomic_numbers.shape (n_atoms)"
-    )
+    assert (
+        fn_src is not None
+    ), "Wf-404-A3: helper must be a top-level function in the trainer"
+    assert (
+        "atomic_numbers.shape" in fn_src
+    ), "Wf-404-A3: surrogate must read cloud.atomic_numbers.shape (n_atoms)"
     assert "atomic_numbers.unique" in fn_src, (
-        "Wf-404-A3: surrogate must read cloud.atomic_numbers.unique() "
-        "(n_distinct)"
+        "Wf-404-A3: surrogate must read cloud.atomic_numbers.unique() " "(n_distinct)"
     )
 
     # 7. The surrogate must clamp its output to the canonical SA range
@@ -215,9 +207,7 @@ def test_sa_loss_off_zero_contribution() -> None:
         or "min(10.0, max(1.0, raw))" in fn_src
         or re.search(r"clip.*raw.*1\.0.*10\.0", fn_src) is not None
         or "np.clip" in fn_src
-    ), (
-        "Wf-404-A3: surrogate output must be clamped to canonical SA [1, 10]"
-    )
+    ), "Wf-404-A3: surrogate output must be clamped to canonical SA [1, 10]"
 
 
 # ---------------------------------------------------------------------------
@@ -273,7 +263,8 @@ def test_sa_loss_on_positive_penalty() -> None:
         AtomCloud(
             positions=torch.randn(12, 3),
             atomic_numbers=torch.tensor(
-                [78, 6, 6, 7, 8, 6, 6, 7, 8, 6, 6, 7], dtype=torch.long,
+                [78, 6, 6, 7, 8, 6, 6, 7, 8, 6, 6, 7],
+                dtype=torch.long,
             ),
         ),
         AtomCloud(
@@ -286,7 +277,8 @@ def test_sa_loss_on_positive_penalty() -> None:
         AtomCloud(
             positions=torch.randn(8, 3),
             atomic_numbers=torch.tensor(
-                [78, 6, 6, 7, 8, 6, 6, 7], dtype=torch.long,
+                [78, 6, 6, 7, 8, 6, 6, 7],
+                dtype=torch.long,
             ),
         ),
     ]
@@ -308,10 +300,13 @@ def test_sa_loss_on_positive_penalty() -> None:
     target_sa = 1.5
     sa_weight = DEFAULT_SA_WEIGHT  # 0.3
     penalty = sa_aware_sampling_penalty(
-        sa_scores, target_sa=target_sa, sa_weight=sa_weight,
+        sa_scores,
+        target_sa=target_sa,
+        sa_weight=sa_weight,
     )
     # Canonical formula check: penalty[i] = max(0, sa_i - target) * sa_weight.
     import numpy as np
+
     expected = np.maximum(0.0, np.asarray(sa_scores) - target_sa) * sa_weight
     np.testing.assert_allclose(
         np.asarray(penalty, dtype=np.float64),
@@ -334,7 +329,9 @@ def test_sa_loss_on_positive_penalty() -> None:
     # Sanity: when target_sa is set ABOVE all surrogate values, the
     # penalty collapses to zero (boundary contract from Ertl 2009 §3).
     boundary_penalty = sa_aware_sampling_penalty(
-        sa_scores, target_sa=11.0, sa_weight=sa_weight,
+        sa_scores,
+        target_sa=11.0,
+        sa_weight=sa_weight,
     )
     assert float(np.mean(boundary_penalty)) == pytest.approx(0.0, abs=1e-12), (
         "Wf-404-A3: penalty must be exactly 0 when target_sa is above "

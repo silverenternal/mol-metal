@@ -24,6 +24,7 @@ all --strict`` run, NOT a hand-coded expectation. The 3 invariants
 above are pinned to Wf-415-A3 v3 + Wf-413-B1 baseline MEASURED values
 stored at ``molmetal/reports/wf415a3_preflight_freshrun.txt``.
 """
+
 from __future__ import annotations
 
 import json
@@ -35,9 +36,7 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 PRE_FLIGHT_SCRIPT = REPO_ROOT / "molmetal" / "scripts" / "pre_flight_check.py"
-FRESH_RUN_REPORT = (
-    REPO_ROOT / "molmetal" / "reports" / "wf415a3_preflight_freshrun.txt"
-)
+FRESH_RUN_REPORT = REPO_ROOT / "molmetal" / "reports" / "wf415a3_preflight_freshrun.txt"
 
 
 def _run_preflight() -> dict:

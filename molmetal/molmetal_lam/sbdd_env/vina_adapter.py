@@ -32,6 +32,7 @@ Note
 This module imports :mod:`vina` and :mod:`meeko` lazily, so importing
 the rest of :mod:`molmetal.molmetal_lam` does not require them.
 """
+
 from __future__ import annotations
 
 import logging
@@ -72,16 +73,21 @@ DEFAULT_ENGINE = "vina"
 # ``engine='auto'`` before we get here, so the values below are always
 # one of these four concrete names.
 _ENGINE_DISPATCH = {
-    "vina":       "python",
-    "vina-cli":   "subprocess",
-    "qvina":      "subprocess",
+    "vina": "python",
+    "vina-cli": "subprocess",
+    "qvina": "subprocess",
     "quickvina2": "subprocess",
 }
 
 # Canonical binary names on PATH.
 _QVINA_BIN_CANDIDATES = ("qvina", "qvina2", "qvina02", "qvina2.1", "qvina.exe")
 _QUICKVINA2_BIN_CANDIDATES = (
-    "quickvina2", "quickvina", "qvina2", "qvina02", "qvina2.1", "quickvina2.exe",
+    "quickvina2",
+    "quickvina",
+    "qvina2",
+    "qvina02",
+    "qvina2.1",
+    "quickvina2.exe",
 )
 
 # The vendored qvina02 is QuickVina 2, byte-identical to QVina/qvina's
@@ -89,7 +95,16 @@ _QUICKVINA2_BIN_CANDIDATES = (
 # Its --version still says AutoDock Vina 1.1.2; see the identity evidence in
 # reports/quickvina2_binary_identity.md. Both public engine names can use it.
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
-_BUNDLED_QVINA = _PROJECT_ROOT / "molmetal" / "references" / "SoftMol" / "gated_mcts" / "utils" / "docking" / "qvina02"
+_BUNDLED_QVINA = (
+    _PROJECT_ROOT
+    / "molmetal"
+    / "references"
+    / "SoftMol"
+    / "gated_mcts"
+    / "utils"
+    / "docking"
+    / "qvina02"
+)
 
 
 # -----------------------------------------------------------------
@@ -98,13 +113,16 @@ _BUNDLED_QVINA = _PROJECT_ROOT / "molmetal" / "references" / "SoftMol" / "gated_
 def _have_vina() -> bool:
     try:
         import vina  # noqa: F401
+
         return True
     except Exception:
         return False
 
+
 def _have_meeko() -> bool:
     try:
         from meeko import MoleculePreparation, PDBQTWriterLegacy  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -134,7 +152,10 @@ def _resolve_binary(candidates: Tuple[str, ...]) -> Optional[str]:
             continue
         try:
             probe = subprocess.run(
-                [path, "--help"], capture_output=True, check=False, timeout=5,
+                [path, "--help"],
+                capture_output=True,
+                check=False,
+                timeout=5,
             )
         except (OSError, subprocess.TimeoutExpired):
             continue
@@ -177,7 +198,9 @@ def _probe_vina_binary() -> Optional[str]:
         try:
             proc = subprocess.run(
                 [path, "--help"],
-                check=False, capture_output=True, timeout=5,
+                check=False,
+                capture_output=True,
+                timeout=5,
             )
         except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
             continue
@@ -204,10 +227,10 @@ def _pocket_to_pdb_string(pocket: Pocket) -> str:
 
     # (atom_name, element) cycle for a single ALA residue:
     ALA_BACKBONE = [
-        ("N",  "N"),  # backbone nitrogen
+        ("N", "N"),  # backbone nitrogen
         ("CA", "C"),  # alpha carbon
-        ("C",  "C"),  # backbone carbon
-        ("O",  "O"),  # backbone oxygen
+        ("C", "C"),  # backbone carbon
+        ("O", "O"),  # backbone oxygen
         ("CB", "C"),  # beta carbon
     ]
 
@@ -254,16 +277,24 @@ def _receptor_from_pocket(pocket: Pocket, tmpdir: Path) -> Path:
             basename = tmpdir / f"{pocket.pdb_id}_receptor"
             pdbqt_path = basename.with_suffix(".pdbqt")
             proc = subprocess.run(
-                ["mk_prepare_receptor.py", "--read_pdb", str(pdb_path),
-                 "-o", str(basename), "-p"],
-                check=False, capture_output=True, timeout=120,
+                [
+                    "mk_prepare_receptor.py",
+                    "--read_pdb",
+                    str(pdb_path),
+                    "-o",
+                    str(basename),
+                    "-p",
+                ],
+                check=False,
+                capture_output=True,
+                timeout=120,
             )
             if proc.returncode == 0 and pdbqt_path.exists():
                 return pdbqt_path
             logger.info(
-                "mk_prepare_receptor.py on original PDB failed "
-                "(rc=%s, stderr=%s)",
-                proc.returncode, proc.stderr.decode(errors="ignore")[:200],
+                "mk_prepare_receptor.py on original PDB failed " "(rc=%s, stderr=%s)",
+                proc.returncode,
+                proc.stderr.decode(errors="ignore")[:200],
             )
             return pdb_path
 
@@ -274,15 +305,25 @@ def _receptor_from_pocket(pocket: Pocket, tmpdir: Path) -> Path:
     pdbqt_path = basename.with_suffix(".pdbqt")
     try:
         proc = subprocess.run(
-            ["mk_prepare_receptor.py", "--read_pdb", str(pdb_path),
-             "-o", str(basename), "-p", "--allow_bad_res"],
-            check=False, capture_output=True, timeout=120,
+            [
+                "mk_prepare_receptor.py",
+                "--read_pdb",
+                str(pdb_path),
+                "-o",
+                str(basename),
+                "-p",
+                "--allow_bad_res",
+            ],
+            check=False,
+            capture_output=True,
+            timeout=120,
         )
         if proc.returncode == 0 and pdbqt_path.exists():
             return pdbqt_path
         logger.info(
             "mk_prepare_receptor.py failed (rc=%s, stderr=%s); using raw PDB",
-            proc.returncode, proc.stderr.decode(errors="ignore")[:200],
+            proc.returncode,
+            proc.stderr.decode(errors="ignore")[:200],
         )
         return pdb_path
     except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
@@ -362,6 +403,7 @@ def _ligand_to_pdbqt(smiles: str, tmpdir: Path, name: str = "lig") -> Path:
     if embed_status == -1:
         # try ETKDGv3 with coord map 0, then UFF relax
         from rdkit.Chem import AllChem as AC  # type: ignore
+
         params = AC.ETKDGv3()
         params.randomSeed = 42
         AllChem.EmbedMolecule(mol, params)
@@ -405,11 +447,13 @@ def _ligand_to_pdbqt(smiles: str, tmpdir: Path, name: str = "lig") -> Path:
             else:
                 logger.warning(
                     "add_metal_atom_types failed (%s); meeko will likely "
-                    "reject the metal atoms", exc,
+                    "reject the metal atoms",
+                    exc,
                 )
         logger.info(
             "_ligand_to_pdbqt: detected Pt-group metals %s; injected "
-            "SMARTS atom-type overrides", present_metals,
+            "SMARTS atom-type overrides",
+            present_metals,
         )
         # RDKit's Gasteiger charge model has no parameters for the
         # Pt-group metals — it returns NaN, which causes meeko's
@@ -460,9 +504,9 @@ class VinaDockingAdapter(DockingEngine):
     def name(self) -> str:
         # Reflects the engine selected at construction (used by telemetry).
         return {
-            "vina":       "AutoDockVina_v1",
-            "vina-cli":   "AutoDockVina_CLI",
-            "qvina":      "QVina",
+            "vina": "AutoDockVina_v1",
+            "vina-cli": "AutoDockVina_CLI",
+            "qvina": "QVina",
             "quickvina2": "QuickVina2",
         }.get(self._engine, f"VinaAdapter[{self._engine}]")
 
@@ -477,8 +521,7 @@ class VinaDockingAdapter(DockingEngine):
         engine = str(engine).lower().strip()
         if engine not in SUPPORTED_ENGINES:
             raise ValueError(
-                f"Unknown docking engine {engine!r}; "
-                f"supported: {SUPPORTED_ENGINES}"
+                f"Unknown docking engine {engine!r}; " f"supported: {SUPPORTED_ENGINES}"
             )
 
         # ``auto`` resolution — pick the first available path:
@@ -599,9 +642,13 @@ class VinaDockingAdapter(DockingEngine):
         # mutation by mistake stays loud (no setter).
         self.engine: str = engine
         if engine == "qvina":
-            self._engine_binary = engine_binary or _resolve_binary(_QVINA_BIN_CANDIDATES)
+            self._engine_binary = engine_binary or _resolve_binary(
+                _QVINA_BIN_CANDIDATES
+            )
         elif engine == "quickvina2":
-            self._engine_binary = engine_binary or _resolve_binary(_QUICKVINA2_BIN_CANDIDATES)
+            self._engine_binary = engine_binary or _resolve_binary(
+                _QUICKVINA2_BIN_CANDIDATES
+            )
         elif engine == "vina-cli":
             self._engine_binary = engine_binary or _probe_vina_binary()
         else:
@@ -690,7 +737,8 @@ class VinaDockingAdapter(DockingEngine):
         try:
             pdbqt_mol = PDBQTMolecule(poses_pdbqt, is_dlg=False)
             rdkit_mols = RDKitMolCreate.from_pdbqt_mol(
-                pdbqt_mol, only_cluster_leads=False,
+                pdbqt_mol,
+                only_cluster_leads=False,
             )
         except Exception as exc:  # pragma: no cover
             logger.warning("PDBQT → RDKit conversion failed: %s", exc)
@@ -702,7 +750,11 @@ class VinaDockingAdapter(DockingEngine):
         rdkit_mol = Chem.RemoveHs(rdkit_mols[0])
         conformers = list(rdkit_mol.GetConformers())
         if len(conformers) != len(energies):
-            logger.warning("Pose/energy count mismatch (%d/%d); refusing ambiguous scores", len(conformers), len(energies))
+            logger.warning(
+                "Pose/energy count mismatch (%d/%d); refusing ambiguous scores",
+                len(conformers),
+                len(energies),
+            )
             return complexes
         for i in range(min(int(config.n_poses), len(conformers), len(energies))):
             # energies[i, 0] is total binding affinity (kcal/mol). Columns:
@@ -730,7 +782,9 @@ class VinaDockingAdapter(DockingEngine):
             # when the flag is disabled, ``_compute_metal_coord_adjustment``
             # returns 0.0 — Vina's score is preserved verbatim.
             score_val_adj, coord_term = self._compute_metal_coord_adjustment(
-                molecule.smiles, score_val, pocket,
+                molecule.smiles,
+                score_val,
+                pocket,
             )
             confidence = self._vina_to_confidence(score_val_adj)
             complexes.append(
@@ -757,16 +811,16 @@ class VinaDockingAdapter(DockingEngine):
             "name": self.name,
             "engine": self._engine,
             "engine_label": {
-                "vina":       "AutoDock Vina (Python binding)",
-                "vina-cli":   "AutoDock Vina (CLI binary)",
-                "qvina":      "QVina (CLI binary)",
+                "vina": "AutoDock Vina (Python binding)",
+                "vina-cli": "AutoDock Vina (CLI binary)",
+                "qvina": "QVina (CLI binary)",
                 "quickvina2": "QuickVina2 (CLI binary)",
             }.get(self._engine, self._engine),
             "engine_binary": self._engine_binary,
             "engine_version": (
-                _vina_version() if self._engine == "vina" else _cli_binary_version(
-                    self._engine_binary
-                )
+                _vina_version()
+                if self._engine == "vina"
+                else _cli_binary_version(self._engine_binary)
             ),
             "scoring_function": self._sf_name,
             "default_box_padding_A": self._padding,
@@ -798,8 +852,13 @@ class VinaDockingAdapter(DockingEngine):
         # Python Vina treats zero as random. Preserve normal positive seeds,
         # map the remaining uint32 experiment seeds into its nonzero int32 range.
         effective_seed = native_vina_seed(config.seed)
-        self.last_docking_seed = {"requested": int(config.seed), "effective": effective_seed}
-        v = vina.Vina(sf_name=self._sf_name, cpu=self._cpu, seed=effective_seed, verbosity=0)
+        self.last_docking_seed = {
+            "requested": int(config.seed),
+            "effective": effective_seed,
+        }
+        v = vina.Vina(
+            sf_name=self._sf_name, cpu=self._cpu, seed=effective_seed, verbosity=0
+        )
         v.set_receptor(str(receptor_pdbqt))
         v.set_ligand_from_file(str(lig_pdbqt))
         v.compute_vina_maps(
@@ -837,37 +896,59 @@ class VinaDockingAdapter(DockingEngine):
             return np.zeros((0, 0)), ""
 
         out_pdbqt = self._tmpdir / f"docked_{os.getpid()}.pdbqt"
-        self.last_docking_seed = {"requested": int(config.seed), "effective": int(config.seed)}
+        self.last_docking_seed = {
+            "requested": int(config.seed),
+            "effective": int(config.seed),
+        }
         cmd = [
             self._engine_binary,
-            "--receptor", str(receptor_pdbqt),
-            "--ligand",   str(lig_pdbqt),
-            "--center_x", str(float(center[0])),
-            "--center_y", str(float(center[1])),
-            "--center_z", str(float(center[2])),
-            "--size_x",   str(float(box_size[0])),
-            "--size_y",   str(float(box_size[1])),
-            "--size_z",   str(float(box_size[2])),
-            "--out",      str(out_pdbqt),
-            "--exhaustiveness", str(int(config.exhaustiveness)),
-            "--num_modes",      str(int(config.n_poses)),
-            "--seed",           str(int(config.seed)),
-            "--cpu",            str(int(self._cpu)) if int(self._cpu) > 0 else "0",
+            "--receptor",
+            str(receptor_pdbqt),
+            "--ligand",
+            str(lig_pdbqt),
+            "--center_x",
+            str(float(center[0])),
+            "--center_y",
+            str(float(center[1])),
+            "--center_z",
+            str(float(center[2])),
+            "--size_x",
+            str(float(box_size[0])),
+            "--size_y",
+            str(float(box_size[1])),
+            "--size_z",
+            str(float(box_size[2])),
+            "--out",
+            str(out_pdbqt),
+            "--exhaustiveness",
+            str(int(config.exhaustiveness)),
+            "--num_modes",
+            str(int(config.n_poses)),
+            "--seed",
+            str(int(config.seed)),
+            "--cpu",
+            str(int(self._cpu)) if int(self._cpu) > 0 else "0",
         ]
         try:
             proc = subprocess.run(
-                cmd, check=False, capture_output=True, timeout=600,
+                cmd,
+                check=False,
+                capture_output=True,
+                timeout=600,
             )
         except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
             logger.warning(
-                "%s CLI failed (%s); returning empty pose", self._engine, exc,
+                "%s CLI failed (%s); returning empty pose",
+                self._engine,
+                exc,
             )
             return np.zeros((0, 0)), ""
 
         if proc.returncode != 0 or not out_pdbqt.exists():
             logger.warning(
                 "%s CLI failed (rc=%s, stderr=%s)",
-                self._engine, proc.returncode,
+                self._engine,
+                proc.returncode,
                 proc.stderr.decode(errors="ignore")[:200],
             )
             return np.zeros((0, 0)), ""
@@ -899,6 +980,7 @@ class VinaDockingAdapter(DockingEngine):
             from molmetal.molmetal_lam.sbdd_env.metal_coord_term import (
                 MetalCoordinationTerm,
             )
+
             self._metal_coord_term = MetalCoordinationTerm()
         return self._metal_coord_term
 
@@ -931,8 +1013,10 @@ class VinaDockingAdapter(DockingEngine):
             pocket_donor_counts_from_atomicnums,
             _METAL_ATOMIC_NUMS,
         )
+
         try:
             from rdkit import Chem, RDLogger  # type: ignore
+
             RDLogger.DisableLog("rdApp.*")
             mol = Chem.MolFromSmiles(smiles or "")
         except Exception:
@@ -940,8 +1024,7 @@ class VinaDockingAdapter(DockingEngine):
         if mol is None:
             return float(base_score), None
         has_metal = any(
-            int(a.GetAtomicNum()) in _METAL_ATOMIC_NUMS
-            for a in mol.GetAtoms()
+            int(a.GetAtomicNum()) in _METAL_ATOMIC_NUMS for a in mol.GetAtoms()
         )
         if not has_metal:
             return float(base_score), None
@@ -981,6 +1064,7 @@ class VinaDockingAdapter(DockingEngine):
 def _vina_version() -> str:
     try:
         import vina  # type: ignore
+
         return getattr(vina, "__version__", "unknown")
     except Exception:
         return "uninstalled"
@@ -1001,7 +1085,9 @@ def _cli_binary_version(binary_path: Optional[str]) -> str:
     try:
         proc = subprocess.run(
             [binary_path, "--version"],
-            check=False, capture_output=True, timeout=10,
+            check=False,
+            capture_output=True,
+            timeout=10,
         )
         out = (proc.stdout or proc.stderr).decode(errors="ignore").strip()
         return out.splitlines()[0] if out else "unknown"
@@ -1021,8 +1107,10 @@ def _parse_vina_result_energies(pdbqt_text: str) -> np.ndarray:
     model_rows: List[List[float]] = []
     current = None
     current_seen = False
+
     def energy_row(value):
         return [value, *([float("nan")] * 4)]
+
     for line in pdbqt_text.splitlines():
         line = line.strip()
         if line.startswith("MODEL "):
@@ -1035,7 +1123,7 @@ def _parse_vina_result_energies(pdbqt_text: str) -> np.ndarray:
             current = None
             continue
         if line.startswith("REMARK "):
-            line = line[len("REMARK "):].lstrip()
+            line = line[len("REMARK ") :].lstrip()
         if line.startswith("VINA RESULT:"):
             score = float("nan")
             try:
@@ -1065,6 +1153,7 @@ def build_arg_parser():
     is library-first; this keeps the constructor and CLI in lock-step).
     """
     import argparse  # local import — module is library-first
+
     p = argparse.ArgumentParser(
         prog="vina_adapter",
         description="AutoDock Vina / QVina / QuickVina2 docking adapter.",
@@ -1085,15 +1174,21 @@ def build_arg_parser():
             "missing."
         ),
     )
-    p.add_argument("--cpu", type=int, default=0,
-                   help="CPU threads (0 = all cores).")
-    p.add_argument("--box-padding", type=float, default=8.0,
-                   help="Box padding around the pocket (Å).")
-    p.add_argument("--sf-name", default="vina",
-                   help="Scoring function name (vina/ad4).")
+    p.add_argument("--cpu", type=int, default=0, help="CPU threads (0 = all cores).")
     p.add_argument(
-        "--enable-metal-coord", dest="enable_metal_coord",
-        action="store_true", default=True,
+        "--box-padding",
+        type=float,
+        default=8.0,
+        help="Box padding around the pocket (Å).",
+    )
+    p.add_argument(
+        "--sf-name", default="vina", help="Scoring function name (vina/ad4)."
+    )
+    p.add_argument(
+        "--enable-metal-coord",
+        dest="enable_metal_coord",
+        action="store_true",
+        default=True,
         help=(
             "Wf-246-C: enable the metal-coordination term "
             "(coordination geometry + HSAB + M-ligand distance) "
@@ -1102,7 +1197,8 @@ def build_arg_parser():
         ),
     )
     p.add_argument(
-        "--disable-metal-coord", dest="enable_metal_coord",
+        "--disable-metal-coord",
+        dest="enable_metal_coord",
         action="store_false",
         help="Wf-246-C: disable the metal-coordination term.",
     )
@@ -1147,8 +1243,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(f"vina_adapter: {exc}", file=sys.stderr)
         return 1
     except Exception as exc:  # noqa: BLE001
-        print(f"vina_adapter: failed to construct adapter: {exc}",
-              file=sys.stderr)
+        print(f"vina_adapter: failed to construct adapter: {exc}", file=sys.stderr)
         return 1
 
     meta = adapter.get_metadata()
@@ -1222,8 +1317,10 @@ def redock_for_test(
     )
     try:
         complexes = dock_smiles(
-            ref_ligand_smiles, pocket,
-            n_poses=1, exhaustiveness=exhaustiveness,
+            ref_ligand_smiles,
+            pocket,
+            n_poses=1,
+            exhaustiveness=exhaustiveness,
         )
         return complexes[0].vina_score if complexes else None
     except Exception as exc:  # pragma: no cover
@@ -1262,10 +1359,7 @@ __all__ = [
 import yaml as _yaml  # noqa: E402  (lazy import — most callers do not need yaml)
 
 _VINA_PER_POCKET_YAML_PATH = (
-    _PROJECT_ROOT
-    / "molmetal"
-    / "configs"
-    / "sota_aligned_targetdiff.yaml"
+    _PROJECT_ROOT / "molmetal" / "configs" / "sota_aligned_targetdiff.yaml"
 )
 
 #: Public alias for the canonical config file path.
@@ -1277,12 +1371,22 @@ VINA_PER_POCKET_YAML_PATH: Path = _VINA_PER_POCKET_YAML_PATH
 #: :class:`molmetal.ports.DockingConfig` kwargs + a ``scoring_file`` hint
 #: used by AD4Zn.dat lookups (Eberhardt 2021).
 DEFAULT_VINA_PER_POCKET: dict = {
-    "1h36":   {"exhaustiveness": 32, "n_poses": 20, "scoring": "ad4", "scoring_file": "AD4Zn.dat"},
-    "3eml":   {"exhaustiveness": 8,  "n_poses": 9,  "scoring": "vina"},
-    "3ny8":   {"exhaustiveness": 16, "n_poses": 15, "scoring": "vina"},
-    "4aaw":   {"exhaustiveness": 32, "n_poses": 20, "scoring": "ad4", "scoring_file": "AD4Zn.dat"},
-    "4rlu":   {"exhaustiveness": 16, "n_poses": 15, "scoring": "vina"},
-    "default": {"exhaustiveness": 8, "n_poses": 9,  "scoring": "vina"},
+    "1h36": {
+        "exhaustiveness": 32,
+        "n_poses": 20,
+        "scoring": "ad4",
+        "scoring_file": "AD4Zn.dat",
+    },
+    "3eml": {"exhaustiveness": 8, "n_poses": 9, "scoring": "vina"},
+    "3ny8": {"exhaustiveness": 16, "n_poses": 15, "scoring": "vina"},
+    "4aaw": {
+        "exhaustiveness": 32,
+        "n_poses": 20,
+        "scoring": "ad4",
+        "scoring_file": "AD4Zn.dat",
+    },
+    "4rlu": {"exhaustiveness": 16, "n_poses": 15, "scoring": "vina"},
+    "default": {"exhaustiveness": 8, "n_poses": 9, "scoring": "vina"},
 }
 
 
@@ -1330,7 +1434,8 @@ def resolve_per_pocket_config(pocket_id: str) -> dict:
         logger.debug(
             "[wf250-fix2] could not load %s (%s); using "
             "DEFAULT_VINA_PER_POCKET fallback",
-            _VINA_PER_POCKET_YAML_PATH, exc,
+            _VINA_PER_POCKET_YAML_PATH,
+            exc,
         )
         table = dict(DEFAULT_VINA_PER_POCKET)
 

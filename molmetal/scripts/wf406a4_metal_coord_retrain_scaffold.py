@@ -97,9 +97,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "--kcal-per-unit",
         type=float,
         default=1.0,
-        help=(
-            "kcal/mol scale for the metal-coord term (default 1.0)."
-        ),
+        help=("kcal/mol scale for the metal-coord term (default 1.0)."),
     )
     p.add_argument(
         "--metals",
@@ -122,9 +120,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "--out-dir",
         type=str,
         default="molmetal/reports/wf406a4_metal_coord_scaffold",
-        help=(
-            "Output directory for result.json + per-epoch kcal audit."
-        ),
+        help=("Output directory for result.json + per-epoch kcal audit."),
     )
     p.add_argument(
         "--smoke",
@@ -201,12 +197,16 @@ def build_metal_coord_term(
             weight_distance=weight_distance,
             kcal_per_unit=kcal_per_unit,
         )
-        return True, term, (
-            f"build_ok; kcal_per_unit={kcal_per_unit}; "
-            f"weight_geometry={weight_geometry}; "
-            f"weight_hsab={weight_hsab}; "
-            f"weight_distance={weight_distance}; "
-            f"MetalCoordinationTerm ready for SCAFFOLD wire-in"
+        return (
+            True,
+            term,
+            (
+                f"build_ok; kcal_per_unit={kcal_per_unit}; "
+                f"weight_geometry={weight_geometry}; "
+                f"weight_hsab={weight_hsab}; "
+                f"weight_distance={weight_distance}; "
+                f"MetalCoordinationTerm ready for SCAFFOLD wire-in"
+            ),
         )
     except Exception as exc:  # pragma: no cover
         return False, None, f"build_failed: {type(exc).__name__}: {exc}"

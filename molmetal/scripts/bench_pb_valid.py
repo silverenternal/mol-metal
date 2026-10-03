@@ -115,15 +115,28 @@ for _p in (str(_HERE.parent), str(_REPO_ROOT)):
 # Constants
 # ---------------------------------------------------------------------------
 DEFAULT_POCKETS: Tuple[str, ...] = (
-    "830c", "1h36", "3eml", "3ny8", "4aaw",
-    "4rlu", "1g9v", "2hnx", "4rn0", "1fmc",
+    "830c",
+    "1h36",
+    "3eml",
+    "3ny8",
+    "4aaw",
+    "4rlu",
+    "1g9v",
+    "2hnx",
+    "4rn0",
+    "1fmc",
 )
 # PB modes (mol = 14 chemistry checks, dock = 26 with protein-aware).
 DEFAULT_PB_MODES: Tuple[str, ...] = ("mol", "dock")
 # Trajectory-generator tags (matches Wf-30 docking methods).  Recorded
 # as a metadata field so the PB-Valid JSON can be cross-referenced
 # with the Wf-30 docking metrics; no separate sweep logic.
-DEFAULT_TRAJECTORY_METHODS: Tuple[str, ...] = ("se3sb", "transport", "multiph", "baseline")
+DEFAULT_TRAJECTORY_METHODS: Tuple[str, ...] = (
+    "se3sb",
+    "transport",
+    "multiph",
+    "baseline",
+)
 DEFAULT_METHOD: str = "se3sb"
 DEFAULT_N_CANDIDATES: int = 5
 
@@ -139,8 +152,8 @@ WF30_POCKET_DIR = _REPO_ROOT / "molmetal" / "reports" / "wf30_pocket_prep"
 DEFAULT_CANDIDATES_TXT = _REPO_ROOT / "molmetal" / "scripts" / "_demo_5_metaldrugs.txt"
 
 # PoseBusters check counts (paper-grade, R17 ship).
-N_PB_CHECKS_MOL: int = 14       # chemistry + geometry only
-N_PB_CHECKS_DOCK: int = 26      # adds 12 protein-aware checks
+N_PB_CHECKS_MOL: int = 14  # chemistry + geometry only
+N_PB_CHECKS_DOCK: int = 26  # adds 12 protein-aware checks
 N_PB_CHECKS_TOTAL: int = N_PB_CHECKS_DOCK  # for "26" headline number
 
 log = logging.getLogger("bench_pb_valid")
@@ -173,16 +186,16 @@ class PBResult:
     pocket_id: str
     candidate: str
     candidate_name: str
-    method: str                              # pb mode: "mol" | "dock"
-    trajectory_method: str                   # generation tag: se3sb / transport / ...
-    status: str                              # "passed" | "failed" | "skipped" | "error"
-    pb_valid: Optional[bool]                 # None when skipped
+    method: str  # pb mode: "mol" | "dock"
+    trajectory_method: str  # generation tag: se3sb / transport / ...
+    status: str  # "passed" | "failed" | "skipped" | "error"
+    pb_valid: Optional[bool]  # None when skipped
     n_checks: int
     n_passed: int
     n_failed: int
     n_skipped: int
-    pass_rate: float                         # n_passed / max(n_checks, 1)
-    failed_checks: Tuple[str, ...]           # names of failing checks
+    pass_rate: float  # n_passed / max(n_checks, 1)
+    failed_checks: Tuple[str, ...]  # names of failing checks
     missing_checks: Tuple[str, ...]
     elapsed_s: float
     note: Optional[str] = None
@@ -296,7 +309,9 @@ def _coerce_status(report: Dict[str, object]) -> Tuple[str, Optional[bool]]:
     return "error", None
 
 
-def _per_check_counts(report: Dict[str, object]) -> Tuple[int, int, int, int, Tuple[str, ...], Tuple[str, ...]]:
+def _per_check_counts(
+    report: Dict[str, object],
+) -> Tuple[int, int, int, int, Tuple[str, ...], Tuple[str, ...]]:
     """Pull per-check counts and failing-check names out of a PB report.
 
     Returns ``(n_checks, n_passed, n_failed, n_skipped, failed, missing)``.
@@ -313,12 +328,21 @@ def _per_check_counts(report: Dict[str, object]) -> Tuple[int, int, int, int, Tu
     n_skipped = sum(1 for v in checks.values() if v is None) + len(missing)
     # Failed names — prefer ``failures`` list when present (PB's
     # canonical ordering), fall back to keys whose value is False.
-    failed_names = tuple(failed_list) if failed_list else tuple(
-        k for k, v in checks.items() if v is False
+    failed_names = (
+        tuple(failed_list)
+        if failed_list
+        else tuple(k for k, v in checks.items() if v is False)
     )
     if n_total == 0:
         n_total = N_PB_CHECKS_MOL if report.get("config") == "mol" else N_PB_CHECKS_DOCK
-    return int(n_total), int(n_passed), int(n_failed), int(n_skipped), failed_names, missing
+    return (
+        int(n_total),
+        int(n_passed),
+        int(n_failed),
+        int(n_skipped),
+        failed_names,
+        missing,
+    )
 
 
 def run_pb_one(
@@ -337,7 +361,7 @@ def run_pb_one(
             check_posebusters,
             posebusters_available,
         )
-    except Exception as exc:                                # pragma: no cover
+    except Exception as exc:  # pragma: no cover
         log.warning("posebusters_runner import failed: %s", exc)
         return PBResult(
             pocket_id=pocket.pocket_id,
@@ -406,9 +430,7 @@ def run_pb_one(
         # resulting mol to ``check_docked_pose``.
         report = _run_dock_with_embed(candidate.smiles, pocket.pdbqt_path)
     else:
-        raise ValueError(
-            f"unknown method {method!r}; valid: {('mol', 'dock')}"
-        )
+        raise ValueError(f"unknown method {method!r}; valid: {('mol', 'dock')}")
 
     status, pb_valid = _coerce_status(report)
     n_total, n_passed, n_failed, n_skipped, failed, missing = _per_check_counts(report)
@@ -443,15 +465,21 @@ def _run_dock_with_embed(smiles: str, receptor_path: Path) -> Dict[str, object]:
     docked-pose check is comparable to the mol-mode check.
     """
     from molmetal.validation.posebusters_runner import check_docked_pose
+
     try:
         from rdkit import Chem
         from rdkit.Chem import AllChem
+
         mol = Chem.MolFromSmiles(smiles)
         if mol is None or mol.GetNumAtoms() == 0:
             return {
-                "pb_valid": False, "skipped": False, "config": "dock",
+                "pb_valid": False,
+                "skipped": False,
+                "config": "dock",
                 "status": "invalid_input",
-                "checks": {}, "missing_checks": (), "failures": ["smiles_parse"],
+                "checks": {},
+                "missing_checks": (),
+                "failures": ["smiles_parse"],
                 "n_conformers": 0,
             }
         mol = Chem.AddHs(mol)
@@ -460,9 +488,13 @@ def _run_dock_with_embed(smiles: str, receptor_path: Path) -> Dict[str, object]:
         embed_status = AllChem.EmbedMolecule(mol, params)
         if embed_status == -1:
             return {
-                "pb_valid": False, "skipped": False, "config": "dock",
+                "pb_valid": False,
+                "skipped": False,
+                "config": "dock",
                 "status": "embed_failed",
-                "checks": {}, "missing_checks": (), "failures": ["embed_3d"],
+                "checks": {},
+                "missing_checks": (),
+                "failures": ["embed_3d"],
                 "n_conformers": 0,
             }
         try:
@@ -474,11 +506,15 @@ def _run_dock_with_embed(smiles: str, receptor_path: Path) -> Dict[str, object]:
                 pass
         Chem.RemoveHs(mol)
         return check_docked_pose(mol, str(receptor_path))
-    except Exception as exc:                                # pragma: no cover
+    except Exception as exc:  # pragma: no cover
         return {
-            "pb_valid": False, "skipped": False, "config": "dock",
+            "pb_valid": False,
+            "skipped": False,
+            "config": "dock",
             "status": "error",
-            "checks": {}, "missing_checks": (), "failures": ["dock_dispatch_failed"],
+            "checks": {},
+            "missing_checks": (),
+            "failures": ["dock_dispatch_failed"],
             "error": str(exc),
             "n_conformers": 0,
         }
@@ -504,9 +540,7 @@ def run_sweep(
     valid = {"mol", "dock"}
     for m in pb_modes:
         if m not in valid:
-            raise ValueError(
-                f"unknown pb_mode {m!r}; valid: {sorted(valid)}"
-            )
+            raise ValueError(f"unknown pb_mode {m!r}; valid: {sorted(valid)}")
     results: List[PBResult] = []
     n_total = len(pockets) * len(candidates) * len(pb_modes)
     counter = 0
@@ -520,17 +554,25 @@ def run_sweep(
         for cand in candidates:
             for mode in pb_modes:
                 counter += 1
-                res = run_pb_one(mode, cand, bundle, trajectory_method=trajectory_method)
+                res = run_pb_one(
+                    mode, cand, bundle, trajectory_method=trajectory_method
+                )
                 results.append(res)
                 if counter % max(1, n_total // 20) == 0 or counter == n_total:
                     elapsed = time.monotonic() - t_start
                     log.info(
                         "sweep %d/%d (%.0f%%) — %s %s pb=%s traj=%s status=%s "
                         "pass_rate=%.3f (%.1fs total)",
-                        counter, n_total,
+                        counter,
+                        n_total,
                         100.0 * counter / max(1, n_total),
-                        pocket_id, cand.name, mode, trajectory_method,
-                        res.status, res.pass_rate, elapsed,
+                        pocket_id,
+                        cand.name,
+                        mode,
+                        trajectory_method,
+                        res.status,
+                        res.pass_rate,
+                        elapsed,
                     )
     return results
 
@@ -596,7 +638,8 @@ def overall_pass_rate(
     can be compared against ``transport``-generated ones).
     """
     rates = [
-        r.pass_rate for r in results
+        r.pass_rate
+        for r in results
         if r.method == pb_mode
         and (trajectory_method is None or r.trajectory_method == trajectory_method)
     ]
@@ -692,41 +735,54 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     )
     p.add_argument("--pockets", nargs="+", default=list(DEFAULT_POCKETS))
     p.add_argument(
-        "--pb-modes", nargs="+",
+        "--pb-modes",
+        nargs="+",
         choices=("mol", "dock"),
         default=list(DEFAULT_PB_MODES),
         help="PoseBusters modes to run (mol = 14 chemistry checks; "
-             "dock = 26 chemistry + protein-aware checks).",
+        "dock = 26 chemistry + protein-aware checks).",
     )
     p.add_argument(
-        "--method", choices=DEFAULT_TRAJECTORY_METHODS,
+        "--method",
+        choices=DEFAULT_TRAJECTORY_METHODS,
         default=DEFAULT_METHOD,
         help="Trajectory-generator tag (matches Wf-30 docking methods). "
-             "Recorded as a metadata field for cross-referencing with "
-             "the Wf-30 docking metrics.",
+        "Recorded as a metadata field for cross-referencing with "
+        "the Wf-30 docking metrics.",
     )
     p.add_argument("--n-candidates", type=int, default=DEFAULT_N_CANDIDATES)
     p.add_argument(
-        "--candidates-csv", type=Path, default=None,
+        "--candidates-csv",
+        type=Path,
+        default=None,
         help="Optional 2-column CSV (name,smiles); default reads "
-             "_demo_5_metaldrugs.txt.",
+        "_demo_5_metaldrugs.txt.",
     )
     p.add_argument(
-        "--candidates-txt", type=Path, default=DEFAULT_CANDIDATES_TXT,
+        "--candidates-txt",
+        type=Path,
+        default=DEFAULT_CANDIDATES_TXT,
     )
     p.add_argument(
-        "--pocket-dir", type=Path, default=WF30_POCKET_DIR,
+        "--pocket-dir",
+        type=Path,
+        default=WF30_POCKET_DIR,
         help="WF-30 staging directory with <pocket>/receptor.pdbqt files.",
     )
     p.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR)
     p.add_argument(
-        "--metrics-path", type=Path, default=DEFAULT_METRICS_PATH,
+        "--metrics-path",
+        type=Path,
+        default=DEFAULT_METRICS_PATH,
     )
     p.add_argument(
-        "--summary-path", type=Path, default=DEFAULT_SUMMARY_PATH,
+        "--summary-path",
+        type=Path,
+        default=DEFAULT_SUMMARY_PATH,
     )
     p.add_argument(
-        "--quiet", action="store_true",
+        "--quiet",
+        action="store_true",
         help="Suppress per-evaluation logging.",
     )
     return p.parse_args(argv)
@@ -747,8 +803,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     log.info(
         "bench_pb_valid starting: pockets=%d pb_modes=%s "
         "trajectory_method=%s n_candidates=%d",
-        len(args.pockets), args.pb_modes,
-        args.method, args.n_candidates,
+        len(args.pockets),
+        args.pb_modes,
+        args.method,
+        args.n_candidates,
     )
 
     if args.candidates_csv is not None:
@@ -766,14 +824,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         trajectory_method=args.method,
     )
 
-    n_total_cells = (
-        len(args.pockets) * len(candidates) * len(args.pb_modes)
-    )
+    n_total_cells = len(args.pockets) * len(candidates) * len(args.pb_modes)
     per_pocket, aggregate = aggregate_results(results)
-    overall = {
-        m: overall_pass_rate(results, m, args.method)
-        for m in args.pb_modes
-    }
+    overall = {m: overall_pass_rate(results, m, args.method) for m in args.pb_modes}
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     args.metrics_path.parent.mkdir(parents=True, exist_ok=True)
@@ -789,9 +842,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "n_target_evaluations": int(n_total_cells),
         "pb_modes": list(args.pb_modes),
         "pockets": list(args.pockets),
-        "candidates": [
-            {"name": c.name, "smiles": c.smiles} for c in candidates
-        ],
+        "candidates": [{"name": c.name, "smiles": c.smiles} for c in candidates],
         "n_pb_checks_mol": N_PB_CHECKS_MOL,
         "n_pb_checks_dock": N_PB_CHECKS_DOCK,
         "n_pb_checks_total": N_PB_CHECKS_TOTAL,
@@ -818,14 +869,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             for r in results
         ],
         "per_pocket_per_method": _to_jsonable(per_pocket),
-        "aggregate": {
-            f"{k[0]}|{k[1]}": _to_jsonable(v) for k, v in aggregate.items()
-        },
+        "aggregate": {f"{k[0]}|{k[1]}": _to_jsonable(v) for k, v in aggregate.items()},
         "overall_pb_pass_rate": _to_jsonable(overall),
     }
-    args.metrics_path.write_text(
-        json.dumps(metrics_payload, indent=2) + "\n"
-    )
+    args.metrics_path.write_text(json.dumps(metrics_payload, indent=2) + "\n")
     log.info("wrote %s", args.metrics_path)
 
     summary_payload = {
@@ -842,14 +889,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             f"{k[0]}|{k[1]}": _to_jsonable(v) for k, v in aggregate.items()
         },
         "overall_pb_pass_rate": _to_jsonable(overall),
-        "aggregate": {
-            f"{k[0]}|{k[1]}": _to_jsonable(v) for k, v in aggregate.items()
-        },
+        "aggregate": {f"{k[0]}|{k[1]}": _to_jsonable(v) for k, v in aggregate.items()},
         "date_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
     }
-    args.summary_path.write_text(
-        json.dumps(summary_payload, indent=2) + "\n"
-    )
+    args.summary_path.write_text(json.dumps(summary_payload, indent=2) + "\n")
     log.info("wrote %s", args.summary_path)
 
     # Headline log

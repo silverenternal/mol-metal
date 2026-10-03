@@ -56,11 +56,12 @@ def test_random_ast_depth_bound() -> None:
     for d in (1, 2, 3, 4, 5):
         for _ in range(40):
             ast = random_ast(
-                rng, ("f0", "f1", "f2"), max_depth=d, p_var=0.45,
+                rng,
+                ("f0", "f1", "f2"),
+                max_depth=d,
+                p_var=0.45,
             )
-            assert ast.depth <= d, (
-                f"depth {ast.depth} exceeds max_depth {d}"
-            )
+            assert ast.depth <= d, f"depth {ast.depth} exceeds max_depth {d}"
 
 
 def test_random_ast_uses_only_provided_features() -> None:
@@ -70,9 +71,9 @@ def test_random_ast_uses_only_provided_features() -> None:
     for _ in range(20):
         ast = random_ast(rng, features, max_depth=3, p_var=0.7)
         used = ast.used_features()
-        assert used.issubset(set(features)), (
-            f"AST references features outside pool: {used - set(features)}"
-        )
+        assert used.issubset(
+            set(features)
+        ), f"AST references features outside pool: {used - set(features)}"
 
 
 def test_default_feature_columns() -> None:
@@ -174,11 +175,21 @@ def test_fit_deterministic_same_seed() -> None:
     N, F = 40, 4
     X = rng.uniform(0, 1, (N, F))
     y = 2.0 * X[:, 0] + X[:, 1] - 0.5 * X[:, 2]
-    a = LambdaASTSR(depth=3, population=32, generations=20, seed=7,
-                    feature_names=("a", "b", "c", "d"))
+    a = LambdaASTSR(
+        depth=3,
+        population=32,
+        generations=20,
+        seed=7,
+        feature_names=("a", "b", "c", "d"),
+    )
     a.fit(X, y)
-    b = LambdaASTSR(depth=3, population=32, generations=20, seed=7,
-                    feature_names=("a", "b", "c", "d"))
+    b = LambdaASTSR(
+        depth=3,
+        population=32,
+        generations=20,
+        seed=7,
+        feature_names=("a", "b", "c", "d"),
+    )
     b.fit(X, y)
     assert a.best_r2_train_ == pytest.approx(b.best_r2_train_, abs=1e-9)
 
@@ -303,9 +314,9 @@ def test_lambda_string_round_trip() -> None:
     rng = random.Random(0)
     ast = random_ast(rng, ("f", "g"), max_depth=3)
     s = ast.to_lambda_string()
-    assert s.startswith("λ"), (
-        f"λ-string must start with the binder character; got {s[:20]}"
-    )
+    assert s.startswith(
+        "λ"
+    ), f"λ-string must start with the binder character; got {s[:20]}"
     # The string must reference at least one feature or constant.
     assert any(c.isalnum() for c in s)
 
@@ -335,7 +346,10 @@ def test_make_lambda_astsr_reward_channel_enabled() -> None:
     X = rng.uniform(0, 1, (30, 3))
     y = X[:, 0] + X[:, 1]
     astsr = LambdaASTSR(
-        depth=3, population=32, generations=10, seed=0,
+        depth=3,
+        population=32,
+        generations=10,
+        seed=0,
         feature_names=("a", "b", "c"),
     )
     astsr.fit(X, y)
@@ -353,12 +367,16 @@ def test_swap_f5_for_astsr_mutates_module(monkeypatch) -> None:
     X = rng.uniform(0, 1, (40, 3))
     y = X[:, 0] + 0.5 * X[:, 1]
     astsr = LambdaASTSR(
-        depth=3, population=16, generations=5, seed=0,
+        depth=3,
+        population=16,
+        generations=5,
+        seed=0,
         feature_names=("a", "b", "c"),
     )
     astsr.fit(X, y)
 
     from molmetal.molmetal_lam.reward import learned_shaping as ls_module
+
     # Snapshot the original load_best_formula so we can restore it.
     original_load = ls_module.load_best_formula
     try:

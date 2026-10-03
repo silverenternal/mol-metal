@@ -34,6 +34,7 @@ Verify::
 
     pytest molmetal/tests/test_integration_scoring.py -v
 """
+
 from __future__ import annotations
 
 import ast
@@ -55,12 +56,9 @@ JSON_OUT = REPORTS_DIR / "integration_report.json"
 MD_OUT = REPORTS_DIR / "integration_report.md"
 PER_SCRIPT_OUT = REPORTS_DIR / "per_script_routing.json"
 DEPRECATION_REPORT = (
-    PROJECT_ROOT / "molmetal" / "reports" / "wf43_deprecation"
-    / "deprecated_mocks.md"
+    PROJECT_ROOT / "molmetal" / "reports" / "wf43_deprecation" / "deprecated_mocks.md"
 )
-VENV_PY = (
-    PROJECT_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
-)
+VENV_PY = PROJECT_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
 
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
@@ -74,11 +72,14 @@ def test_integration_verify_scoring_imports() -> None:
     if not VENV_PY.exists():
         pytest.skip(f"venv python missing at {VENV_PY}")
     proc = importlib.import_module("integration_verify_scoring")
-    for name in ("main", "_run_master_verify", "_run_score_any_section",
-                 "_per_script_section", "_deprecation_section"):
-        assert hasattr(proc, name), (
-            f"missing public symbol: {name}"
-        )
+    for name in (
+        "main",
+        "_run_master_verify",
+        "_run_score_any_section",
+        "_per_script_section",
+        "_deprecation_section",
+    ):
+        assert hasattr(proc, name), f"missing public symbol: {name}"
 
 
 def test_module_exposes_expected_constants() -> None:
@@ -226,14 +227,14 @@ def test_bench_pb_valid_uses_score_any_for_pb_pass_rate() -> None:
     ``score_any()`` (for ``pb_pass_rate``). Confirm the import +
     call site is present."""
     src = _read_source("bench_pb_valid.py")
-    assert "from molmetal.scoring.score_any import" in src, (
-        "bench_pb_valid.py must import from molmetal.scoring.score_any"
-    )
-    assert 'score_any("pb_pass_rate"' in src or (
-        "score_any(\n            \"pb_pass_rate\"" in src
-    ) or 'score_any(\n        "pb_pass_rate"' in src, (
-        "bench_pb_valid.py must call score_any(\"pb_pass_rate\", ...)"
-    )
+    assert (
+        "from molmetal.scoring.score_any import" in src
+    ), "bench_pb_valid.py must import from molmetal.scoring.score_any"
+    assert (
+        'score_any("pb_pass_rate"' in src
+        or ('score_any(\n            "pb_pass_rate"' in src)
+        or 'score_any(\n        "pb_pass_rate"' in src
+    ), 'bench_pb_valid.py must call score_any("pb_pass_rate", ...)'
 
 
 # ===========================================================================
@@ -247,7 +248,8 @@ def test_integration_verify_runs_end_to_end() -> None:
         pytest.skip(f"venv python missing at {VENV_PY}")
 
     cmd = [
-        str(VENV_PY), str(SCRIPTS_DIR / "integration_verify_scoring.py"),
+        str(VENV_PY),
+        str(SCRIPTS_DIR / "integration_verify_scoring.py"),
     ]
     proc = subprocess_run_with_timeout(cmd, timeout=600)
     assert proc.returncode == 0, (
@@ -285,8 +287,7 @@ def test_per_script_routing_json_lists_every_audited_script() -> None:
     if not PER_SCRIPT_OUT.exists():
         # Run the orchestrator first.
         proc = subprocess_run_with_timeout(
-            [str(VENV_PY),
-             str(SCRIPTS_DIR / "integration_verify_scoring.py")],
+            [str(VENV_PY), str(SCRIPTS_DIR / "integration_verify_scoring.py")],
             timeout=600,
         )
         assert proc.returncode == 0, proc.stderr
@@ -298,7 +299,8 @@ def test_per_script_routing_json_lists_every_audited_script() -> None:
     assert len(payload["wf43_phase3_deprecated"]) == 10
     # Spot-check one entry.
     pb_valid_entry = next(
-        e for e in payload["wf43_phase3_deprecated"]
+        e
+        for e in payload["wf43_phase3_deprecated"]
         if e["script"] == "bench_pb_valid.py"
     )
     assert "pb_pass_rate" in pb_valid_entry["expected_metrics"]
@@ -315,8 +317,7 @@ def test_markdown_report_contains_section_table() -> None:
         pytest.skip(f"venv python missing at {VENV_PY}")
     if not MD_OUT.exists():
         proc = subprocess_run_with_timeout(
-            [str(VENV_PY),
-             str(SCRIPTS_DIR / "integration_verify_scoring.py")],
+            [str(VENV_PY), str(SCRIPTS_DIR / "integration_verify_scoring.py")],
             timeout=600,
         )
         assert proc.returncode == 0, proc.stderr
@@ -338,23 +339,20 @@ def test_score_any_section_covers_every_registered_metric() -> None:
         pytest.skip(f"venv python missing at {VENV_PY}")
     if not JSON_OUT.exists():
         proc = subprocess_run_with_timeout(
-            [str(VENV_PY),
-             str(SCRIPTS_DIR / "integration_verify_scoring.py")],
+            [str(VENV_PY), str(SCRIPTS_DIR / "integration_verify_scoring.py")],
             timeout=600,
         )
         assert proc.returncode == 0, proc.stderr
 
     payload = json.loads(JSON_OUT.read_text())
-    sec = next(
-        s for s in payload["sections"]
-        if s["section"] == "score_any_per_metric"
-    )
+    sec = next(s for s in payload["sections"] if s["section"] == "score_any_per_metric")
     checked_metrics = {
         c["name"].split(":", 1)[-1]
         for c in sec["checks"]
         if c["name"].startswith("score_any:")
     }
     from molmetal.scoring import available_metrics
+
     registered = set(available_metrics())
     missing = registered - checked_metrics
     assert not missing, (
@@ -366,9 +364,9 @@ def test_score_any_section_covers_every_registered_metric() -> None:
 def test_deprecation_report_anchor_present() -> None:
     """The Wf-43 Phase 3 deprecation report is the upstream anchor
     for the Wf-43 Phase 4 audit. Confirm it is present."""
-    assert DEPRECATION_REPORT.exists(), (
-        f"Wf-43 Phase 3 deprecation report missing at {DEPRECATION_REPORT}"
-    )
+    assert (
+        DEPRECATION_REPORT.exists()
+    ), f"Wf-43 Phase 3 deprecation report missing at {DEPRECATION_REPORT}"
     body = DEPRECATION_REPORT.read_text()
     assert "bench_mcts_real_trajectory.py" in body
     assert "bench_pb_valid.py" in body
@@ -379,9 +377,7 @@ def test_main_help_exits_zero() -> None:
     if not VENV_PY.exists():
         pytest.skip(f"venv python missing at {VENV_PY}")
     proc = subprocess_run_with_timeout(
-        [str(VENV_PY),
-         str(SCRIPTS_DIR / "integration_verify_scoring.py"),
-         "--help"],
+        [str(VENV_PY), str(SCRIPTS_DIR / "integration_verify_scoring.py"), "--help"],
         timeout=30,
     )
     assert proc.returncode == 0, proc.stderr
@@ -390,6 +386,7 @@ def test_main_help_exits_zero() -> None:
 def test_py_compile() -> None:
     """``python -m py_compile`` must succeed on the orchestrator."""
     import py_compile
+
     script = SCRIPTS_DIR / "integration_verify_scoring.py"
     py_compile.compile(str(script), doraise=True)
 
@@ -399,7 +396,11 @@ def test_py_compile() -> None:
 # ===========================================================================
 def subprocess_run_with_timeout(cmd, *, timeout):
     import subprocess
+
     return subprocess.run(
-        cmd, capture_output=True, text=True, timeout=timeout,
+        cmd,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
         cwd=str(PROJECT_ROOT),
     )

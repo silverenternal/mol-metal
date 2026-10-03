@@ -216,14 +216,21 @@ def test_pretrain_short_circuit_writes_json(
     # don't try to load the 45 GB production file.
     monkeypatch.setattr(td, "PRE_FEATURIZED_ALL", synthetic_pretrain_pt)
     out_path = tmp_path / "pretrain_record.json"
-    rc = td.main([
-        "--data-config", "pretrain",
-        "--batch", "4",
-        "--out", str(out_path),
-        "--metal", "Ru",
-        "--epochs", "1",
-        "--no-bf16",
-    ])
+    rc = td.main(
+        [
+            "--data-config",
+            "pretrain",
+            "--batch",
+            "4",
+            "--out",
+            str(out_path),
+            "--metal",
+            "Ru",
+            "--epochs",
+            "1",
+            "--no-bf16",
+        ]
+    )
     assert rc == 0
     payload = json.loads(out_path.read_text())
     # Loader config (legacy fields, kept for backward compat).
@@ -231,9 +238,9 @@ def test_pretrain_short_circuit_writes_json(
     assert payload["pin_memory"] is False
     assert payload["rdkit_called"] is False
     # NEW (Wf-125 fix): the training loop actually ran.
-    assert "training" in payload, (
-        "payload missing 'training' block — short-circuit was not removed."
-    )
+    assert (
+        "training" in payload
+    ), "payload missing 'training' block — short-circuit was not removed."
     training = payload["training"]
     assert int(training["n_steps_total"]) >= 1, (
         f"n_steps_total={training['n_steps_total']} < 1 — training loop "

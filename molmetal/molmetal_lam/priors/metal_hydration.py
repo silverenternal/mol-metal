@@ -4,6 +4,7 @@ The qualitative defaults are informed by Reedijk (1996), Lippard (1999),
 and Hartinger (2006).  These are screening proxies, not measured rate
 constants; RDKit is used only for lightweight ligand-structure features.
 """
+
 from __future__ import annotations
 
 from typing import Dict
@@ -27,11 +28,15 @@ class MetalHydrationAnalyzer:
     DEFAULT_D_ELECTRONS = {"Pt": 8, "Ru": 6, "Ir": 6}
     METAL_GROUP = {"Pt": 10, "Ru": 8, "Ir": 9}
 
-    def __init__(self, metal: str = "Pt", oxidation_state: int = 2, default_pH: float = 7.4):
+    def __init__(
+        self, metal: str = "Pt", oxidation_state: int = 2, default_pH: float = 7.4
+    ):
         self.metal = str(metal).title()
         self.oxidation_state = int(oxidation_state)
         self.default_pH = float(default_pH)
-        self._base = self.DEFAULT_PRIORS.get(self.metal, {}).get(self.oxidation_state, 0.5)
+        self._base = self.DEFAULT_PRIORS.get(self.metal, {}).get(
+            self.oxidation_state, 0.5
+        )
 
     def _mol(self, smiles):
         if Chem is None or not isinstance(smiles, str):
@@ -44,7 +49,9 @@ class MetalHydrationAnalyzer:
             try:
                 mol = Chem.MolFromSmiles(smiles, sanitize=False)
                 if mol is not None:
-                    Chem.SanitizeMol(mol, sanitizeOps=Chem.SanitizeFlags.SANITIZE_PROPERTIES)
+                    Chem.SanitizeMol(
+                        mol, sanitizeOps=Chem.SanitizeFlags.SANITIZE_PROPERTIES
+                    )
             except Exception:
                 mol = None
         if mol is None:
@@ -73,12 +80,17 @@ class MetalHydrationAnalyzer:
         chelate = 0
         ri = mol.GetRingInfo()
         for ring in ri.AtomRings():
-            if metal.GetIdx() in ring and sum(i in ring for i in [a.GetIdx() for a in neigh]) >= 2:
+            if (
+                metal.GetIdx() in ring
+                and sum(i in ring for i in [a.GetIdx() for a in neigh]) >= 2
+            ):
                 chelate += 1
         # More generally, N/O/S ring donors around a metal are chelating motifs.
         if chelate == 0 and len(neigh) >= 2:
             chelate = max(0, len(neigh) - 2) // 2
-        pi_acceptor = any(a.GetSymbol() in ("C", "P", "S") and a.GetIsAromatic() for a in neigh)
+        pi_acceptor = any(
+            a.GetSymbol() in ("C", "P", "S") and a.GetIsAromatic() for a in neigh
+        )
         bulky = any(a.GetDegree() >= 3 for a in neigh)
         if not bulky:
             # Steric bulk is often on the carbons alpha to an aromatic
@@ -89,18 +101,35 @@ class MetalHydrationAnalyzer:
                     if bulky:
                         break
         if aromatic_n == 0:
-            aromatic_n = sum(a.GetSymbol() == "N" and a.GetIsAromatic() for a in mol.GetAtoms())
+            aromatic_n = sum(
+                a.GetSymbol() == "N" and a.GetIsAromatic() for a in mol.GetAtoms()
+            )
         if not bulky:
-            bulky = any(a.GetIsAromatic() and a.GetDegree() >= 3 for a in mol.GetAtoms())
-        return dict(cl=cl, sulfur=sulfur, n=n, aromatic_n=aromatic_n,
-                    chelate=chelate, pi_acceptor=pi_acceptor, bulky=bulky,
-                    d=self.DEFAULT_D_ELECTRONS.get(self.metal, 5))
+            bulky = any(
+                a.GetIsAromatic() and a.GetDegree() >= 3 for a in mol.GetAtoms()
+            )
+        return dict(
+            cl=cl,
+            sulfur=sulfur,
+            n=n,
+            aromatic_n=aromatic_n,
+            chelate=chelate,
+            pi_acceptor=pi_acceptor,
+            bulky=bulky,
+            d=self.DEFAULT_D_ELECTRONS.get(self.metal, 5),
+        )
 
     def aquation_rate_proxy(self, smiles: str) -> float:
         f = self._features(smiles)
         if f is None:
             return 0.5
-        value = self._base + 0.10 * f["cl"] - 0.10 * f["chelate"] - 0.06 * f["aromatic_n"] + 0.04 * f["sulfur"]
+        value = (
+            self._base
+            + 0.10 * f["cl"]
+            - 0.10 * f["chelate"]
+            - 0.06 * f["aromatic_n"]
+            + 0.04 * f["sulfur"]
+        )
         if f["d"] <= 6:
             value -= 0.12
         return max(0.0, min(1.0, value))
@@ -109,7 +138,12 @@ class MetalHydrationAnalyzer:
         f = self._features(smiles)
         if f is None:
             return 0.5
-        value = 0.25 + 0.07 * f["d"] + 0.14 * f["chelate"] + (0.10 if f["pi_acceptor"] else 0)
+        value = (
+            0.25
+            + 0.07 * f["d"]
+            + 0.14 * f["chelate"]
+            + (0.10 if f["pi_acceptor"] else 0)
+        )
         if f["d"] == 6:
             value += 0.12
         return max(0.0, min(1.0, value))
@@ -124,12 +158,18 @@ class MetalHydrationAnalyzer:
         f = self._features(smiles)
         if f is None:
             return "moderately_reduced"
-        if self.oxidation_state >= 4 or (self.metal == "Ru" and self.oxidation_state >= 3):
+        if self.oxidation_state >= 4 or (
+            self.metal == "Ru" and self.oxidation_state >= 3
+        ):
             score = 0
         else:
             score = 1
         score += min(1, f["chelate"] + (1 if f["aromatic_n"] else 0))
-        return "easily_reduced" if score == 0 else ("moderately_reduced" if score == 1 else "hard_to_reduce")
+        return (
+            "easily_reduced"
+            if score == 0
+            else ("moderately_reduced" if score == 1 else "hard_to_reduce")
+        )
 
     def trans_effect_indicator(self, smiles: str) -> dict:
         """Estimate trans-effect donor strength and the likely labile site.
@@ -139,16 +179,26 @@ class MetalHydrationAnalyzer:
         Invalid input or a molecule without this analyzer's metal returns a
         neutral fallback indicator.
         """
-        fallback = {"strongest_trans_donor": None,
-                    "trans_labilization_score": 0.5,
-                    "labile_position_index": None}
+        fallback = {
+            "strongest_trans_donor": None,
+            "trans_labilization_score": 0.5,
+            "labile_position_index": None,
+        }
         mol, metal = self._mol(smiles)
         if mol is None or metal is None:
             return fallback
 
-        strengths = {"CN-": 1.0, "CO": 0.95, "PR3": 0.9, "C2H4": 0.85,
-                     "NO2-": 0.8, "NCS-": 0.7, "Cl-": 0.4,
-                     "NH3": 0.3, "H2O": 0.25}
+        strengths = {
+            "CN-": 1.0,
+            "CO": 0.95,
+            "PR3": 0.9,
+            "C2H4": 0.85,
+            "NO2-": 0.8,
+            "NCS-": 0.7,
+            "Cl-": 0.4,
+            "NH3": 0.3,
+            "H2O": 0.25,
+        }
 
         def donor(atom):
             symbol = atom.GetSymbol()
@@ -156,22 +206,45 @@ class MetalHydrationAnalyzer:
             if symbol == "Cl":
                 return "Cl-"
             if symbol == "O":
-                return "CO" if any(b.GetBondTypeAsDouble() == 2 and b.GetOtherAtom(atom).GetSymbol() == "C"
-                                    for b in atom.GetBonds()) else "H2O"
+                return (
+                    "CO"
+                    if any(
+                        b.GetBondTypeAsDouble() == 2
+                        and b.GetOtherAtom(atom).GetSymbol() == "C"
+                        for b in atom.GetBonds()
+                    )
+                    else "H2O"
+                )
             if symbol == "P":
                 return "PR3"
             if symbol == "N":
-                if any(b.GetBondTypeAsDouble() >= 2.5 and b.GetOtherAtom(atom).GetSymbol() == "C" for b in atom.GetBonds()):
+                if any(
+                    b.GetBondTypeAsDouble() >= 2.5
+                    and b.GetOtherAtom(atom).GetSymbol() == "C"
+                    for b in atom.GetBonds()
+                ):
                     return "CN-"
-                if any(b.GetOtherAtom(atom).GetSymbol() == "S" for b in atom.GetBonds()):
+                if any(
+                    b.GetOtherAtom(atom).GetSymbol() == "S" for b in atom.GetBonds()
+                ):
                     return "NCS-"
-                if any(b.GetOtherAtom(atom).GetSymbol() == "O" for b in atom.GetBonds()):
+                if any(
+                    b.GetOtherAtom(atom).GetSymbol() == "O" for b in atom.GetBonds()
+                ):
                     return "NO2-"
                 return "NH3"
             if symbol == "C":
-                if any(b.GetBondTypeAsDouble() == 2 and b.GetOtherAtom(atom).GetSymbol() == "O" for b in atom.GetBonds()):
+                if any(
+                    b.GetBondTypeAsDouble() == 2
+                    and b.GetOtherAtom(atom).GetSymbol() == "O"
+                    for b in atom.GetBonds()
+                ):
                     return "CO"
-                if any(b.GetBondTypeAsDouble() == 2 and b.GetOtherAtom(atom).GetSymbol() == "C" for b in atom.GetBonds()):
+                if any(
+                    b.GetBondTypeAsDouble() == 2
+                    and b.GetOtherAtom(atom).GetSymbol() == "C"
+                    for b in atom.GetBonds()
+                ):
                     return "C2H4"
                 return "CH3-"
             return None
@@ -186,10 +259,16 @@ class MetalHydrationAnalyzer:
         # SMILES neighbour order is used as a deterministic proxy for square-planar
         # trans pairs (0↔2 and 1↔3) when Pt(II) has four donors.
         if self.metal == "Pt" and self.oxidation_state == 2 and len(ligands) == 4:
-            pos = next(i for i, (a, _) in enumerate(ligands) if a.GetIdx() == strongest_atom.GetIdx())
+            pos = next(
+                i
+                for i, (a, _) in enumerate(ligands)
+                if a.GetIdx() == strongest_atom.GetIdx()
+            )
             opposite = pos + 2 if pos < 2 else pos - 2
             labile = opposite
             score = max(score, strengths[ligands[opposite][1]])
-        return {"strongest_trans_donor": strongest,
-                "trans_labilization_score": float(max(0.0, min(1.0, score))),
-                "labile_position_index": labile}
+        return {
+            "strongest_trans_donor": strongest,
+            "trans_labilization_score": float(max(0.0, min(1.0, score))),
+            "labile_position_index": labile,
+        }

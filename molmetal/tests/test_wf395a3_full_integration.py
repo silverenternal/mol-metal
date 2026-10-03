@@ -156,9 +156,9 @@ def _extract_add_argument_flags(
         if isinstance(node, ast.FunctionDef) and node.name == function_name:
             target_fn = node
             break
-    assert target_fn is not None, (
-        f"function {function_name!r} not found in {trainer_path}"
-    )
+    assert (
+        target_fn is not None
+    ), f"function {function_name!r} not found in {trainer_path}"
     flags: Set[str] = set()
     for node in ast.walk(target_fn):
         if not isinstance(node, ast.Call):
@@ -210,7 +210,8 @@ class TestAll388392FlagsCompose(unittest.TestCase):
         flags = _extract_add_argument_flags(trainer, "parse_args")
         # parse_args must declare at least the 8 NEW Wf-388 flags.
         self.assertGreaterEqual(
-            len(flags), len(WF388_ALL_FLAGS),
+            len(flags),
+            len(WF388_ALL_FLAGS),
             f"parse_args declares {len(flags)} flags; expected ≥ "
             f"{len(WF388_ALL_FLAGS)} (8 NEW Wf-388 + baseline). "
             f"Declared flags: {sorted(flags)}",
@@ -221,7 +222,8 @@ class TestAll388392FlagsCompose(unittest.TestCase):
         flags = _extract_add_argument_flags(trainer, "parse_args")
         for flag in WF388_DIVERSITY_FLAGS:
             self.assertIn(
-                flag, flags,
+                flag,
+                flags,
                 f"Wf-388-A2 diversity flag {flag} must be wired into "
                 f"train_cfm_yuelbond_wasserstein.py:parse_args",
             )
@@ -231,7 +233,8 @@ class TestAll388392FlagsCompose(unittest.TestCase):
         flags = _extract_add_argument_flags(trainer, "parse_args")
         for flag in WF388_SA_FLAGS:
             self.assertIn(
-                flag, flags,
+                flag,
+                flags,
                 f"Wf-388-A3 SA flag {flag} must be wired into "
                 f"train_cfm_yuelbond_wasserstein.py:parse_args",
             )
@@ -243,9 +246,7 @@ class TestAll388392FlagsCompose(unittest.TestCase):
         try:
             ast.parse(trainer.read_text(encoding="utf-8"))
         except SyntaxError as exc:
-            self.fail(
-                f"train_cfm_yuelbond_wasserstein.py has a syntax error: {exc}"
-            )
+            self.fail(f"train_cfm_yuelbond_wasserstein.py has a syntax error: {exc}")
 
     def test_flags_compose_in_argparse_namespace(self) -> None:
         """Verify all 8 NEW Wf-388 flags compose in a sample argparse
@@ -260,22 +261,31 @@ class TestAll388392FlagsCompose(unittest.TestCase):
         parser.add_argument("--mmd-weight", type=float, default=0.0)
         parser.add_argument("--repulsion-weight", type=float, default=0.0)
         parser.add_argument(
-            "--scaffold-conditioning", dest="scaffold_conditioning",
-            action="store_true", default=False,
+            "--scaffold-conditioning",
+            dest="scaffold_conditioning",
+            action="store_true",
+            default=False,
         )
         # SA flags.
         parser.add_argument("--sa-penalty", type=float, default=0.0)
         parser.add_argument("--sa-target", type=float, default=2.8)
         # Sample invocation with all 8 flags ON.
         argv = [
-            "--top-p", "0.9",
-            "--top-k", "50",
-            "--temperature", "0.8",
-            "--mmd-weight", "0.1",
-            "--repulsion-weight", "0.05",
+            "--top-p",
+            "0.9",
+            "--top-k",
+            "50",
+            "--temperature",
+            "0.8",
+            "--mmd-weight",
+            "0.1",
+            "--repulsion-weight",
+            "0.05",
             "--scaffold-conditioning",
-            "--sa-penalty", "0.1",
-            "--sa-target", "2.8",
+            "--sa-penalty",
+            "0.1",
+            "--sa-target",
+            "2.8",
         ]
         ns = parser.parse_args(argv)
         self.assertEqual(ns.top_p, 0.9)
@@ -309,16 +319,16 @@ class TestWf385GateIntegration(unittest.TestCase):
         try:
             import wf385a3_scaffold_wire_in_gate as gate_module  # noqa: F401
         except ImportError as exc:
-            self.fail(
-                f"Wf-385-A3 gate module must be importable: {exc}"
-            )
+            self.fail(f"Wf-385-A3 gate module must be importable: {exc}")
 
     def test_gate_module_has_canonical_scaffold_table(self) -> None:
         """The SCAFFOLD_MODULES table must contain 11 entries per the
         Wf-380-B1 ship surface (11 SCAFFOLD modules)."""
         import wf385a3_scaffold_wire_in_gate as gate_module
+
         self.assertEqual(
-            len(gate_module.SCAFFOLD_MODULES), 11,
+            len(gate_module.SCAFFOLD_MODULES),
+            11,
             "expected 11 SCAFFOLD modules per Wf-380-B1 ship surface",
         )
 
@@ -339,18 +349,28 @@ class TestWf385GateIntegration(unittest.TestCase):
                 gate_module,
                 "verify_module_exports",
                 return_value=[
-                    {"filename": f"m{i}.py", "module_attr": f"a{i}",
-                     "expected": f"fn{i}", "on_disk": True,
-                     "export_ok": True, "present": True, "error": None}
+                    {
+                        "filename": f"m{i}.py",
+                        "module_attr": f"a{i}",
+                        "expected": f"fn{i}",
+                        "on_disk": True,
+                        "export_ok": True,
+                        "present": True,
+                        "error": None,
+                    }
                     for i in range(11)
                 ],
             ):
-                rc = gate_module.main([
-                    "--out-dir", str(out_dir),
-                    "--skip-smoke",
-                ])
+                rc = gate_module.main(
+                    [
+                        "--out-dir",
+                        str(out_dir),
+                        "--skip-smoke",
+                    ]
+                )
                 self.assertEqual(
-                    rc, 0,
+                    rc,
+                    0,
                     f"gate_main should return 0 on happy path; got rc={rc}",
                 )
                 gate_json = out_dir / "gate_result.json"
@@ -360,7 +380,8 @@ class TestWf385GateIntegration(unittest.TestCase):
                 )
                 payload = json.loads(gate_json.read_text())
                 self.assertEqual(
-                    payload["verdict"], "PASS",
+                    payload["verdict"],
+                    "PASS",
                     f"verdict must be PASS on happy path; got "
                     f"{payload['verdict']!r}",
                 )
@@ -369,31 +390,47 @@ class TestWf385GateIntegration(unittest.TestCase):
         """When 1 of 11 modules fails export verification, gate must
         return 1 (FAIL)."""
         import wf385a3_scaffold_wire_in_gate as gate_module
+
         with tempfile.TemporaryDirectory() as tmp:
             out_dir = Path(tmp) / "wf395a3_test_fail"
             with mock.patch.object(
                 gate_module,
                 "verify_module_exports",
                 return_value=[
-                    {"filename": f"m{i}.py", "module_attr": f"a{i}",
-                     "expected": f"fn{i}", "on_disk": True,
-                     "export_ok": True, "present": True, "error": None}
+                    {
+                        "filename": f"m{i}.py",
+                        "module_attr": f"a{i}",
+                        "expected": f"fn{i}",
+                        "on_disk": True,
+                        "export_ok": True,
+                        "present": True,
+                        "error": None,
+                    }
                     for i in range(10)
-                ] + [
-                    {"filename": "broken.py", "module_attr": "broken",
-                     "expected": "fn_broken", "on_disk": True,
-                     "export_ok": False, "present": False,
-                     "error": "missing export"}
+                ]
+                + [
+                    {
+                        "filename": "broken.py",
+                        "module_attr": "broken",
+                        "expected": "fn_broken",
+                        "on_disk": True,
+                        "export_ok": False,
+                        "present": False,
+                        "error": "missing export",
+                    }
                 ],
             ):
-                rc = gate_module.main([
-                    "--out-dir", str(out_dir),
-                    "--skip-smoke",
-                ])
+                rc = gate_module.main(
+                    [
+                        "--out-dir",
+                        str(out_dir),
+                        "--skip-smoke",
+                    ]
+                )
                 self.assertEqual(
-                    rc, 1,
-                    f"gate_main should return 1 when 1 module fails; "
-                    f"got rc={rc}",
+                    rc,
+                    1,
+                    f"gate_main should return 1 when 1 module fails; " f"got rc={rc}",
                 )
 
     def test_gate_main_verdict_is_in_known_set(self) -> None:
@@ -401,27 +438,36 @@ class TestWf385GateIntegration(unittest.TestCase):
         else is a contract violation per the gate's design (§5 of
         Wf-385-A3 closeout)."""
         import wf385a3_scaffold_wire_in_gate as gate_module
+
         with tempfile.TemporaryDirectory() as tmp:
             out_dir = Path(tmp) / "wf395a3_test_verdict"
             with mock.patch.object(
                 gate_module,
                 "verify_module_exports",
                 return_value=[
-                    {"filename": f"m{i}.py", "module_attr": f"a{i}",
-                     "expected": f"fn{i}", "on_disk": True,
-                     "export_ok": True, "present": True, "error": None}
+                    {
+                        "filename": f"m{i}.py",
+                        "module_attr": f"a{i}",
+                        "expected": f"fn{i}",
+                        "on_disk": True,
+                        "export_ok": True,
+                        "present": True,
+                        "error": None,
+                    }
                     for i in range(11)
                 ],
             ):
-                rc = gate_module.main([
-                    "--out-dir", str(out_dir),
-                    "--skip-smoke",
-                ])
-                payload = json.loads(
-                    (out_dir / "gate_result.json").read_text()
+                rc = gate_module.main(
+                    [
+                        "--out-dir",
+                        str(out_dir),
+                        "--skip-smoke",
+                    ]
                 )
+                payload = json.loads((out_dir / "gate_result.json").read_text())
                 self.assertIn(
-                    payload["verdict"], {"PASS", "FAIL", "SKIP"},
+                    payload["verdict"],
+                    {"PASS", "FAIL", "SKIP"},
                     f"verdict {payload['verdict']!r} is not in "
                     f"{{PASS, FAIL, SKIP}}",
                 )
@@ -449,18 +495,19 @@ class TestPreFlightPipelineAll(unittest.TestCase):
             from molmetal.scripts import pre_flight_check  # noqa: F401
         except ImportError as exc:
             self.fail(
-                f"molmetal.scripts.pre_flight_check must be importable: "
-                f"{exc}",
+                f"molmetal.scripts.pre_flight_check must be importable: " f"{exc}",
             )
 
     def test_build_gates_all_returns_list(self) -> None:
         """build_gates('all') must return a non-empty list of
         (name, runner) tuples."""
         from molmetal.scripts import pre_flight_check
+
         gates = pre_flight_check.build_gates("all")
         self.assertIsInstance(gates, list)
         self.assertGreater(
-            len(gates), 0,
+            len(gates),
+            0,
             "build_gates('all') must return at least one gate",
         )
 
@@ -468,10 +515,12 @@ class TestPreFlightPipelineAll(unittest.TestCase):
         """The Wf-385-A3 gate must be registered under the canonical
         name ``p3_wf385_scaffold_loss_wire_in_verified``."""
         from molmetal.scripts import pre_flight_check
+
         gates = pre_flight_check.build_gates("all")
         gate_names = [name for name, _ in gates]
         self.assertIn(
-            "p3_wf385_scaffold_loss_wire_in_verified", gate_names,
+            "p3_wf385_scaffold_loss_wire_in_verified",
+            gate_names,
             "Wf-385-A3 gate must be wired into build_gates('all')",
         )
 
@@ -479,6 +528,7 @@ class TestPreFlightPipelineAll(unittest.TestCase):
         """The gate function ``gate_wf385_scaffold_loss_wire_in_verified``
         must be a top-level symbol in ``pre_flight_check.py``."""
         from molmetal.scripts import pre_flight_check
+
         self.assertTrue(
             hasattr(
                 pre_flight_check,
@@ -492,9 +542,11 @@ class TestPreFlightPipelineAll(unittest.TestCase):
         """The 'all' pipeline must have at least 95 gates (94 baseline
         per Wf-353-B1 + 1 NEW Wf-385-A3 per Wf-385-A3 §5)."""
         from molmetal.scripts import pre_flight_check
+
         gates = pre_flight_check.build_gates("all")
         self.assertGreaterEqual(
-            len(gates), 95,
+            len(gates),
+            95,
             f"actual gate count {len(gates)} must be ≥ 95 "
             f"(94 pre-Wf-385 + 1 NEW Wf-385-A3 per Wf-385-A3 §5)",
         )
@@ -505,6 +557,7 @@ class TestPreFlightPipelineAll(unittest.TestCase):
         per AGENTS.md §4)."""
         from molmetal.scripts import pre_flight_check
         import inspect
+
         gates = pre_flight_check.build_gates("all")
         wf385 = [
             (name, runner)
@@ -516,7 +569,8 @@ class TestPreFlightPipelineAll(unittest.TestCase):
         # pipeline); inspect the source to confirm priority="P3".
         src = inspect.getsource(wf385[0][1])
         self.assertIn(
-            '"P3"', src,
+            '"P3"',
+            src,
             "Wf-385-A3 gate must carry P3 priority label per AGENTS.md §4",
         )
 
@@ -545,17 +599,14 @@ class TestTrainer14Plus8Flags(unittest.TestCase):
         try:
             tree = ast.parse(source)
         except SyntaxError as exc:
-            self.fail(
-                f"train_cfm_yuelbond_wasserstein.py AST-parse failed: {exc}"
-            )
+            self.fail(f"train_cfm_yuelbond_wasserstein.py AST-parse failed: {exc}")
         # Confirm at least one top-level FunctionDef named parse_args.
         func_names = [
-            node.name
-            for node in tree.body
-            if isinstance(node, ast.FunctionDef)
+            node.name for node in tree.body if isinstance(node, ast.FunctionDef)
         ]
         self.assertIn(
-            "parse_args", func_names,
+            "parse_args",
+            func_names,
             f"trainer must define parse_args; got top-level functions: "
             f"{func_names}",
         )
@@ -574,7 +625,8 @@ class TestTrainer14Plus8Flags(unittest.TestCase):
         flags = _extract_add_argument_flags(trainer, "parse_args")
         missing = [f for f in WF388_ALL_FLAGS if f not in flags]
         self.assertEqual(
-            missing, [],
+            missing,
+            [],
             f"the following Wf-388 flags are NOT wired into "
             f"train_cfm_yuelbond_wasserstein.py:parse_args: {missing}",
         )
@@ -586,16 +638,29 @@ class TestTrainer14Plus8Flags(unittest.TestCase):
         trainer = _trainer_path()
         flags = _extract_add_argument_flags(trainer, "parse_args")
         baseline_flags = (
-            "--epochs", "--batch-size", "--n-train", "--n-val",
-            "--hidden-dim", "--n-layers", "--lr", "--patience",
-            "--use-yuelbond", "--wasserstein-weight", "--closure-bounded",
-            "--pocket-id", "--seed", "--device",
-            "--cuda-visible-devices", "--out-dir", "--ckpt-dir",
+            "--epochs",
+            "--batch-size",
+            "--n-train",
+            "--n-val",
+            "--hidden-dim",
+            "--n-layers",
+            "--lr",
+            "--patience",
+            "--use-yuelbond",
+            "--wasserstein-weight",
+            "--closure-bounded",
+            "--pocket-id",
+            "--seed",
+            "--device",
+            "--cuda-visible-devices",
+            "--out-dir",
+            "--ckpt-dir",
             "--target-decode-ratio",
         )
         missing = [f for f in baseline_flags if f not in flags]
         self.assertEqual(
-            missing, [],
+            missing,
+            [],
             f"baseline flags missing after Wf-388 wire-in: {missing}",
         )
 
@@ -625,7 +690,8 @@ class TestTrainer14Plus8Flags(unittest.TestCase):
         # deserving its own wave, not a silent integration.
         present_wf380 = [f for f in WF380_SCAFFOLD_FLAGS if f in flags]
         self.assertLess(
-            len(present_wf380), len(WF380_SCAFFOLD_FLAGS),
+            len(present_wf380),
+            len(WF380_SCAFFOLD_FLAGS),
             f"all {len(WF380_SCAFFOLD_FLAGS)} Wf-380 SCAFFOLD flags "
             f"are now present in parse_args — this implies the Wf-380 "
             f"wire-in has landed; please close this honest-negative "
@@ -649,7 +715,8 @@ class TestTrainer14Plus8Flags(unittest.TestCase):
         cfm_flags = _extract_add_argument_flags(cfm_trainer, "parse_args")
         for flag, _trainer in WF392_FLAGS:
             self.assertNotIn(
-                flag, cfm_flags,
+                flag,
+                cfm_flags,
                 f"Wf-392 flag {flag} should live in {_trainer} — "
                 f"NOT in train_cfm_yuelbond_wasserstein.py",
             )

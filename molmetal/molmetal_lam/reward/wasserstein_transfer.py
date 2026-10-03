@@ -197,8 +197,7 @@ class WassersteinTransferLoss:
     ) -> None:
         if reduction not in self._REDUCTIONS:
             raise ValueError(
-                f"reduction must be one of {self._REDUCTIONS}, got "
-                f"{reduction!r}"
+                f"reduction must be one of {self._REDUCTIONS}, got " f"{reduction!r}"
             )
         if n_mc < 1:
             raise ValueError(f"n_mc must be >= 1, got {n_mc}")
@@ -266,14 +265,12 @@ class WassersteinTransferLoss:
             embedding_dim = 0
         metals = sorted(cleaned.keys())
         if len(metals) < 2:
-            raise ValueError(
-                f"need at least 2 metals for W₂; got {metals}"
-            )
+            raise ValueError(f"need at least 2 metals for W₂; got {metals}")
 
         t0 = time.perf_counter()
         per_pair: List[WassersteinPairResult] = []
         for i, anchor in enumerate(metals):
-            for partner in metals[i + 1:]:
+            for partner in metals[i + 1 :]:
                 w2_tensor = _m1_transfer_loss(
                     {anchor: cleaned[anchor], partner: cleaned[partner]},
                     n_mc=self.n_mc,
@@ -361,9 +358,9 @@ def pairwise_w2_matrix(
             if j <= i:
                 continue
             w2_t = _m1_transfer_loss(
-                {m_a: per_metal_embeddings[m_a],
-                 m_b: per_metal_embeddings[m_b]},
-                n_mc=int(n_mc), seed=int(seed),
+                {m_a: per_metal_embeddings[m_a], m_b: per_metal_embeddings[m_b]},
+                n_mc=int(n_mc),
+                seed=int(seed),
             )
             w2 = float(w2_t.item())
             matrix[i, j] = w2

@@ -61,6 +61,7 @@ Constraints
 * USE ``${PY}`` — falls back to ``/home/hugo/codes/mol-metal/.venv/bin/python``.
 * CPU-only (RDKit is a CPU library).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -77,6 +78,7 @@ try:
         safe_overwrite_check,
         detect_truncation,
     )
+
     _WF424_HAS_ATOMIC = True
 except ImportError:  # pragma: no cover — fallback when running as standalone
     _WF424_HAS_ATOMIC = False
@@ -95,7 +97,9 @@ DEFAULT_SEEDS = (0, 1, 2)
 DEFAULT_N_POSES = 5
 
 
-def _wf424_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
+def _wf424_atomic_write_text(
+    path, content: str, min_lines: int = 50, expected_min_length: int = 200
+) -> None:
     """Wf-424-A4 atomic-write-protocol wrapper around direct write_text.
 
     Falls back to direct write_text if atomic_write_file is unavailable
@@ -107,21 +111,26 @@ def _wf424_atomic_write_text(path, content: str, min_lines: int = 50, expected_m
             _risk = safe_overwrite_check(path, content, min_lines=min_lines)
             if _risk is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-424-A4] safe_overwrite_check diff_ratio=%.3f at %s",
-                    _risk, path,
+                    _risk,
+                    path,
                 )
         atomic_write_file(path, content, encoding="utf-8")
         if detect_truncation is not None:
             _trunc = detect_truncation(content, expected_min_length=expected_min_length)
             if _trunc is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-424-A4] detect_truncation reason=%r at %s",
-                    _trunc, path,
+                    _trunc,
+                    path,
                 )
     else:  # pragma: no cover — fallback when atomic primitive unavailable
         Path(path).write_text(content, encoding="utf-8")
+
 
 def _resolve_py() -> str:
     """Honor ``${PY}`` if set; else fall back to venv python."""
@@ -147,6 +156,7 @@ def _smiles_from_pdbqt(pdbqt_path: Path) -> Optional[str]:
         from molmetal.adapters.ligand_vs_pocket_rmsd_adapter import (
             smiles_from_pdbqt_remark,
         )
+
         return smiles_from_pdbqt_remark(pdbqt_path)
     except Exception:
         # Fallback: parse line-by-line
@@ -172,41 +182,56 @@ def collect_poses(
         for pose_pdbqt in pose_paths:
             smi = _smiles_from_pdbqt(pose_pdbqt)
             if smi is None:
-                print(f"  [{pocket}] {pose_pdbqt.name}: NO_REMARK_SMILES", file=sys.stderr)
+                print(
+                    f"  [{pocket}] {pose_pdbqt.name}: NO_REMARK_SMILES", file=sys.stderr
+                )
                 continue
             try:
                 from molmetal.adapters.ligand_vs_pocket_rmsd_adapter import (
                     heavy_atom_coords_from_pdbqt,
                 )
+
                 coords = heavy_atom_coords_from_pdbqt(pose_pdbqt)
             except Exception as exc:
-                print(f"  [{pocket}] {pose_pdbqt.name}: PDBQT_PARSE_FAIL {exc}", file=sys.stderr)
+                print(
+                    f"  [{pocket}] {pose_pdbqt.name}: PDBQT_PARSE_FAIL {exc}",
+                    file=sys.stderr,
+                )
                 continue
-            out[pocket].append({
-                "smiles": smi,
-                "coords": coords,
-                "source": str(pose_pdbqt.relative_to(REPO)),
-            })
+            out[pocket].append(
+                {
+                    "smiles": smi,
+                    "coords": coords,
+                    "source": str(pose_pdbqt.relative_to(REPO)),
+                }
+            )
     return out
 
 
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--pockets", nargs="+", default=list(DEFAULT_POCKETS),
+        "--pockets",
+        nargs="+",
+        default=list(DEFAULT_POCKETS),
         help="Pockets to evaluate (default: 5-pocket Wf-126/Wf-179 cohort)",
     )
     parser.add_argument(
         "--smiles-json",
-        type=Path, default=None,
+        type=Path,
+        default=None,
         help="Optional pre-computed {pocket: [smiles, ...]} JSON; bypasses PDBQT parse",
     )
     parser.add_argument(
-        "--out-dir", type=Path, default=OUT_DIR,
+        "--out-dir",
+        type=Path,
+        default=OUT_DIR,
         help=f"Output directory (default: {OUT_DIR})",
     )
     parser.add_argument(
-        "--n-poses-per-seed", type=int, default=DEFAULT_N_POSES,
+        "--n-poses-per-seed",
+        type=int,
+        default=DEFAULT_N_POSES,
         help="Expected poses per seed per pocket (default 5); used for honest reporting only",
     )
     args = parser.parse_args(argv)
@@ -245,7 +270,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             continue
         smis = [p["smiles"] for p in poses]
         probe_coords = [p["coords"] for p in poses]
-        result = adapter.evaluate(smiles_list=smis, pocket_id=pocket, probe_coords_list=probe_coords)
+        result = adapter.evaluate(
+            smiles_list=smis, pocket_id=pocket, probe_coords_list=probe_coords
+        )
         per_pocket_results[pocket] = result.to_dict()
         per_pocket_results[pocket]["status"] = "MEASURED"
         # Also load the legacy Wf-179 Kabsch+Hungarian median for comparison
@@ -266,15 +293,19 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # --- Cross-pocket aggregate ---------------------------------------------
     measured_medians = [
-        v["median_rmsd"] for v in per_pocket_results.values()
-        if v.get("status") == "MEASURED" and isinstance(v.get("median_rmsd"), (int, float))
+        v["median_rmsd"]
+        for v in per_pocket_results.values()
+        if v.get("status") == "MEASURED"
+        and isinstance(v.get("median_rmsd"), (int, float))
     ]
     measured_succ20 = [
-        v["success_20A"] for v in per_pocket_results.values()
+        v["success_20A"]
+        for v in per_pocket_results.values()
         if v.get("status") == "MEASURED"
     ]
     measured_n_poses = [
-        v["n_poses_evaluated"] for v in per_pocket_results.values()
+        v["n_poses_evaluated"]
+        for v in per_pocket_results.values()
         if v.get("status") == "MEASURED"
     ]
 
@@ -283,11 +314,21 @@ def main(argv: Optional[List[str]] = None) -> int:
         "n_pockets_requested": len(args.pockets),
         "n_poses_total": int(sum(measured_n_poses)),
         "median_rmsds_per_pocket": measured_medians,
-        "median_across_pockets": float(statistics.median(measured_medians)) if measured_medians else None,
-        "std_across_pockets": float(statistics.pstdev(measured_medians)) if len(measured_medians) > 1 else 0.0,
-        "min_across_pockets": float(min(measured_medians)) if measured_medians else None,
-        "max_across_pockets": float(max(measured_medians)) if measured_medians else None,
-        "mean_success_20A": float(statistics.mean(measured_succ20)) if measured_succ20 else 0.0,
+        "median_across_pockets": float(statistics.median(measured_medians))
+        if measured_medians
+        else None,
+        "std_across_pockets": float(statistics.pstdev(measured_medians))
+        if len(measured_medians) > 1
+        else 0.0,
+        "min_across_pockets": float(min(measured_medians))
+        if measured_medians
+        else None,
+        "max_across_pockets": float(max(measured_medians))
+        if measured_medians
+        else None,
+        "mean_success_20A": float(statistics.mean(measured_succ20))
+        if measured_succ20
+        else 0.0,
         "n_pockets_passed_2_5A": sum(1 for v in measured_medians if v <= 2.5),
         "n_pockets_passed_2_0A": sum(1 for v in measured_medians if v <= 2.0),
     }
@@ -456,9 +497,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         "G4_per_pocket_success_2A": any(
             v.get("status") == "MEASURED" for v in per_pocket_results.values()
         ),
-        "G5_75_poses_evaluated": n_poses_total >= 75 or n_poses_total == sum(
-            v.get("n_poses_evaluated", 0) for v in per_pocket_results.values()
-        ),
+        "G5_75_poses_evaluated": n_poses_total >= 75
+        or n_poses_total
+        == sum(v.get("n_poses_evaluated", 0) for v in per_pocket_results.values()),
         "G6_test_added": True,
         "G7_cli_script_added": True,
         "G8_report_written": bool(summary_path.exists()),

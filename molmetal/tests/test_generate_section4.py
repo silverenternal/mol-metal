@@ -42,14 +42,20 @@ EXPECTED_LABELS = (
 )
 
 
-def _run_generator(*args: str, env_extra: dict | None = None) -> subprocess.CompletedProcess:
+def _run_generator(
+    *args: str, env_extra: dict | None = None
+) -> subprocess.CompletedProcess:
     env = None
     if env_extra:
         import os
+
         env = {**os.environ, **env_extra}
     return subprocess.run(
         [sys.executable, str(SCRIPT), *args],
-        capture_output=True, text=True, timeout=60, env=env,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        env=env,
     )
 
 
@@ -71,9 +77,12 @@ def test_writes_table2_tex(tmp_path):
     paper_out = tmp_path / "paper"
     metrics_dir = METRICS_DIR  # real on-disk snapshot
     proc = _run_generator(
-        "--out-dir", str(paper_out),
-        "--metrics-dir", str(metrics_dir),
-        "--report-dir", str(paper_out / "reports" / "wf_section4_gen"),
+        "--out-dir",
+        str(paper_out),
+        "--metrics-dir",
+        str(metrics_dir),
+        "--report-dir",
+        str(paper_out / "reports" / "wf_section4_gen"),
     )
     assert proc.returncode == 0, proc.stderr
     tex = paper_out / "sections" / "04_results_table2.tex"
@@ -91,9 +100,12 @@ def test_writes_table2_tex(tmp_path):
 def test_writes_figure_data_stubs(tmp_path):
     paper_out = tmp_path / "paper"
     proc = _run_generator(
-        "--out-dir", str(paper_out),
-        "--metrics-dir", str(METRICS_DIR),
-        "--report-dir", str(paper_out / "reports" / "wf_section4_gen"),
+        "--out-dir",
+        str(paper_out),
+        "--metrics-dir",
+        str(METRICS_DIR),
+        "--report-dir",
+        str(paper_out / "reports" / "wf_section4_gen"),
     )
     assert proc.returncode == 0, proc.stderr
 
@@ -114,9 +126,12 @@ def test_writes_figure_data_stubs(tmp_path):
 def test_writes_summary_md(tmp_path):
     paper_out = tmp_path / "paper"
     proc = _run_generator(
-        "--out-dir", str(paper_out),
-        "--metrics-dir", str(METRICS_DIR),
-        "--report-dir", str(paper_out / "reports" / "wf_section4_gen"),
+        "--out-dir",
+        str(paper_out),
+        "--metrics-dir",
+        str(METRICS_DIR),
+        "--report-dir",
+        str(paper_out / "reports" / "wf_section4_gen"),
     )
     assert proc.returncode == 0, proc.stderr
     summary = paper_out / "reports" / "wf_section4_gen" / "summary.md"
@@ -136,9 +151,12 @@ def test_missing_metric_renders_as_pending(tmp_path):
     empty.mkdir()
     paper_out = tmp_path / "paper"
     proc = _run_generator(
-        "--out-dir", str(paper_out),
-        "--metrics-dir", str(empty),
-        "--report-dir", str(paper_out / "reports" / "wf_section4_gen"),
+        "--out-dir",
+        str(paper_out),
+        "--metrics-dir",
+        str(empty),
+        "--report-dir",
+        str(paper_out / "reports" / "wf_section4_gen"),
     )
     assert proc.returncode == 0, proc.stderr
     # The pending text lives in the Table 2 .tex file (and summary.md), not stdout.

@@ -36,6 +36,7 @@ This test file covers 3 axes:
 3. ``test_backward_compat_no_flag`` — when the flag is OFF (default),
    the trainer still parses + no torchdiffeq side-effects.
 """
+
 from __future__ import annotations
 
 import json
@@ -82,22 +83,30 @@ def test_cli_flag_wired() -> None:
 
     # --neural-ode-flow ON.
     args_on = parse_args(
-        ["--metals", "Ru", "--seeds", "0", "--epochs", "2",
-         "--neural-ode-flow"],
+        ["--metals", "Ru", "--seeds", "0", "--epochs", "2", "--neural-ode-flow"],
     )
     assert bool(args_on.neural_ode_flow) is True
 
     # --no-neural-ode-flow OFF (explicit).
     args_off = parse_args(
-        ["--metals", "Ru", "--seeds", "0", "--epochs", "2",
-         "--no-neural-ode-flow"],
+        ["--metals", "Ru", "--seeds", "0", "--epochs", "2", "--no-neural-ode-flow"],
     )
     assert bool(args_off.neural_ode_flow) is False
 
     # --neural-ode-hidden + --neural-ode-t-end override.
     args_tuned = parse_args(
-        ["--metals", "Ru", "--seeds", "0", "--epochs", "2",
-         "--neural-ode-hidden", "32", "--neural-ode-t-end", "2.0"],
+        [
+            "--metals",
+            "Ru",
+            "--seeds",
+            "0",
+            "--epochs",
+            "2",
+            "--neural-ode-hidden",
+            "32",
+            "--neural-ode-t-end",
+            "2.0",
+        ],
     )
     assert int(args_tuned.neural_ode_hidden) == 32
     assert float(args_tuned.neural_ode_t_end) == 2.0
@@ -106,10 +115,13 @@ def test_cli_flag_wired() -> None:
     # be swallowed by ``molmetal/__init__.py`` so we don't assert on
     # return-code; just verify the flag strings appear in help output.
     help_proc = subprocess.run(
-        [sys.executable, "-c",
-         "import sys; sys.argv = ['x', '--help']; "
-         "from molmetal.scripts.train_dmpnn_multitask_wasserstein "
-         "import parse_args; parse_args()"],
+        [
+            sys.executable,
+            "-c",
+            "import sys; sys.argv = ['x', '--help']; "
+            "from molmetal.scripts.train_dmpnn_multitask_wasserstein "
+            "import parse_args; parse_args()",
+        ],
         cwd=str(REPO_ROOT),
         env={"PYTHONPATH": str(REPO_ROOT)},
         capture_output=True,
@@ -146,10 +158,9 @@ def test_neural_ode_integration_correctness() -> None:
 
     # Load the Wf-361-B2 smoke cohort (60 SMILES from
     # metallo_drugs_500_train.csv; matches Wf-361-B2 §2.2).
-    csv_path = (
-        REPO_ROOT / "molmetal" / "data" / "metallo_drugs_500_train.csv"
-    )
+    csv_path = REPO_ROOT / "molmetal" / "data" / "metallo_drugs_500_train.csv"
     import csv as _csv_mod
+
     smiles: list = []
     with open(csv_path, "r", encoding="utf-8") as fh:
         reader = _csv_mod.DictReader(fh)
@@ -159,9 +170,7 @@ def test_neural_ode_integration_correctness() -> None:
                 smiles.append(smi)
             if len(smiles) >= 60:
                 break
-    assert len(smiles) == 60, (
-        f"need 60 SMILES from {csv_path}; got {len(smiles)}"
-    )
+    assert len(smiles) == 60, f"need 60 SMILES from {csv_path}; got {len(smiles)}"
 
     # Filter to SMILES with valid m6_kappa labels.
     y_list: list = []
@@ -172,15 +181,14 @@ def test_neural_ode_integration_correctness() -> None:
             y_list.append(float(v))
             kept_smiles.append(s)
     y = np.asarray(y_list, dtype=np.float64)
-    assert y.shape[0] >= 30, (
-        f"need ≥ 30 SMILES with valid m6_kappa; got {y.shape[0]}"
-    )
+    assert y.shape[0] >= 30, f"need ≥ 30 SMILES with valid m6_kappa; got {y.shape[0]}"
 
     # RDKit 12-d descriptors.
     X_rdkit = _rdkit_12d(kept_smiles)
-    assert X_rdkit.shape == (y.shape[0], 12), (
-        f"rdkit_12d should return (n, 12); got {X_rdkit.shape} vs y={y.shape}"
-    )
+    assert X_rdkit.shape == (
+        y.shape[0],
+        12,
+    ), f"rdkit_12d should return (n, 12); got {X_rdkit.shape} vs y={y.shape}"
 
     # Evolve via Neural ODE (dopri5, 16-d hidden, t_end=1.0).
     cfg = NeuralODEConfig(
@@ -194,17 +202,17 @@ def test_neural_ode_integration_correctness() -> None:
         seed=20260929,
     )
     X_evolved = _integrate_neural_ode(X_rdkit, cfg)
-    assert X_evolved.shape[1] == 12, (
-        f"evolved feature_dim should be 12; got {X_evolved.shape[1]}"
-    )
+    assert (
+        X_evolved.shape[1] == 12
+    ), f"evolved feature_dim should be 12; got {X_evolved.shape[1]}"
     assert X_evolved.shape[0] == y.shape[0], (
         f"evolved n_samples should match y; got {X_evolved.shape[0]} "
         f"vs y={y.shape[0]}"
     )
     # Finiteness check: no NaN/Inf on the smoke cohort.
-    assert np.all(np.isfinite(X_evolved)), (
-        "Neural ODE evolved features should be finite on smoke cohort"
-    )
+    assert np.all(
+        np.isfinite(X_evolved)
+    ), "Neural ODE evolved features should be finite on smoke cohort"
 
     # Determinism: same seed ⇒ same evolved features (bit-for-bit).
     X_evolved_again = _integrate_neural_ode(X_rdkit, cfg)
@@ -212,9 +220,9 @@ def test_neural_ode_integration_correctness() -> None:
 
     # Sanity: evolved features are NOT identical to raw rdkit_12d
     # (the ODE flow actually does something).
-    assert not np.allclose(X_evolved, X_rdkit), (
-        "ODE flow should produce a different feature matrix than raw rdkit_12d"
-    )
+    assert not np.allclose(
+        X_evolved, X_rdkit
+    ), "ODE flow should produce a different feature matrix than raw rdkit_12d"
 
 
 # ---------------------------------------------------------------------------
@@ -244,8 +252,7 @@ def test_backward_compat_no_flag() -> None:
         ["--metals", "Ru", "--seeds", "0", "--epochs", "2"],
     )
     args_explicit_off = parse_args(
-        ["--metals", "Ru", "--seeds", "0", "--epochs", "2",
-         "--no-neural-ode-flow"],
+        ["--metals", "Ru", "--seeds", "0", "--epochs", "2", "--no-neural-ode-flow"],
     )
 
     # Compare relevant fields (ignore anything that varies).
@@ -273,15 +280,14 @@ def test_backward_compat_no_flag() -> None:
     # args.neural_ode_flow is True; we verify the gate by reading the
     # main() code-path contract.)
     src_path = (
-        REPO_ROOT / "molmetal" / "scripts"
-        / "train_dmpnn_multitask_wasserstein.py"
+        REPO_ROOT / "molmetal" / "scripts" / "train_dmpnn_multitask_wasserstein.py"
     )
     src_text = src_path.read_text(encoding="utf-8")
     assert "wf361c1_neural_ode_report.json" in src_text
     # The report is wrapped in an `if bool(getattr(args,
     # "neural_ode_flow", False)):` block.
     block_idx = src_text.find(
-        "if bool(getattr(args, \"neural_ode_flow\", False)):",
+        'if bool(getattr(args, "neural_ode_flow", False)):',
     )
     assert block_idx > 0, (
         "wf361-c1 side-report block must be guarded by "
@@ -295,4 +301,5 @@ def test_backward_compat_no_flag() -> None:
 if __name__ == "__main__":  # pragma: no cover
     # Allow `python molmetal/tests/test_wf361c1_*.py` to run all 3 tests.
     import pytest
+
     sys.exit(pytest.main([__file__, "-v"]))

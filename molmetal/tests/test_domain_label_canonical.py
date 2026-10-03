@@ -67,10 +67,10 @@ if str(PROJECT_ROOT) not in sys.path:
 # Canonical mapping — MUST match four_domain_combined.py and the
 # train_dmpnn_multitask.py docstring.
 CANONICAL_DOMAIN_ID = {
-    "metal_cytotox": 0,   # MetalCytoToxDB
-    "drugood":       1,   # DrugOOD
-    "nci60":         2,   # NCI-60
-    "binding_db":    3,   # BindingDB
+    "metal_cytotox": 0,  # MetalCytoToxDB
+    "drugood": 1,  # DrugOOD
+    "nci60": 2,  # NCI-60
+    "binding_db": 3,  # BindingDB
 }
 
 PRE_FEATURIZE = PROJECT_ROOT / "molmetal" / "scripts" / "pre_featurize_dmpnn.py"
@@ -84,9 +84,9 @@ def test_pre_featurize_uses_canonical():
     """pre_featurize_dmpnn.py.DOMAIN_ID must match CANONICAL_DOMAIN_ID."""
     from molmetal.scripts import pre_featurize_dmpnn
 
-    assert hasattr(pre_featurize_dmpnn, "DOMAIN_ID"), (
-        "pre_featurize_dmpnn.py must expose DOMAIN_ID"
-    )
+    assert hasattr(
+        pre_featurize_dmpnn, "DOMAIN_ID"
+    ), "pre_featurize_dmpnn.py must expose DOMAIN_ID"
     assert dict(pre_featurize_dmpnn.DOMAIN_ID) == CANONICAL_DOMAIN_ID, (
         f"pre_featurize_dmpnn.DOMAIN_ID drifted from canonical mapping.\n"
         f"  got:      {dict(pre_featurize_dmpnn.DOMAIN_ID)}\n"
@@ -102,9 +102,9 @@ def test_pre_featurize_uses_canonical():
     "filename,old_id,canonical_id,name",
     [
         ("metal_cytotox.pt", 0, 0, "MetalCytoToxDB"),
-        ("nci60.pt",         1, 2, "NCI-60"),
-        ("binding_db.pt",    2, 3, "BindingDB"),
-        ("drugood.pt",       3, 1, "DrugOOD"),
+        ("nci60.pt", 1, 2, "NCI-60"),
+        ("binding_db.pt", 2, 3, "BindingDB"),
+        ("drugood.pt", 3, 1, "DrugOOD"),
     ],
 )
 def test_pre_featurize_existing_pt_files_use_old_mapping(

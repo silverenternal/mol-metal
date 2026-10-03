@@ -36,6 +36,7 @@ Verify
     uv run --no-sync python -m pytest \\
         molmetal/tests/test_integration_r18.py -v
 """
+
 from __future__ import annotations
 
 import importlib
@@ -82,11 +83,15 @@ def test_module_help_exits_zero() -> None:
     """``--help`` exits 0 (smoke for argparse contract)."""
     result = subprocess.run(
         [
-            sys.executable, "-m",
-            "molmetal.scripts.integration_verify_r18", "--help",
+            sys.executable,
+            "-m",
+            "molmetal.scripts.integration_verify_r18",
+            "--help",
         ],
-        capture_output=True, text=True,
-        cwd=str(PROJECT_ROOT), timeout=60,
+        capture_output=True,
+        text=True,
+        cwd=str(PROJECT_ROOT),
+        timeout=60,
     )
     assert result.returncode == 0
     assert "Wf-46" in (result.stdout + result.stderr)
@@ -97,9 +102,7 @@ def test_module_exposes_test_registry() -> None:
     mod = importlib.import_module("integration_verify_r18")
     assert hasattr(mod, "TESTS")
     assert isinstance(mod.TESTS, tuple)
-    assert len(mod.TESTS) == 5, (
-        f"expected 5 integration tests; got {len(mod.TESTS)}"
-    )
+    assert len(mod.TESTS) == 5, f"expected 5 integration tests; got {len(mod.TESTS)}"
     ids = [t[0] for t in mod.TESTS]
     for required in ("T1", "T2", "T3", "T4", "T5"):
         assert required in ids, f"missing test {required} in {ids}"
@@ -140,9 +143,9 @@ def test_each_test_has_callable_driver() -> None:
     mod = importlib.import_module("integration_verify_r18")
     for test_id, test_name, fn in mod.TESTS:
         assert callable(fn), f"{test_id}: driver is not callable"
-        assert fn.__name__.startswith("_test_"), (
-            f"{test_id}: driver name {fn.__name__!r} doesn't start with '_test_'"
-        )
+        assert fn.__name__.startswith(
+            "_test_"
+        ), f"{test_id}: driver name {fn.__name__!r} doesn't start with '_test_'"
 
 
 def test_each_test_docstring_mentions_wf() -> None:
@@ -182,15 +185,25 @@ def test_json_schema_round_trip(tmp_path: Path) -> None:
     assert body["workflow"] == "Wf-46 Phase 4"
     # Summary keys.
     for k in (
-        "n_total", "n_passed", "n_failed", "n_skipped",
-        "n_assertions_total", "n_assertions_passed", "n_assertions_skipped",
+        "n_total",
+        "n_passed",
+        "n_failed",
+        "n_skipped",
+        "n_assertions_total",
+        "n_assertions_passed",
+        "n_assertions_skipped",
     ):
         assert k in body["summary"], f"missing summary key: {k}"
     # Per-test rows.
     for row in body["tests"]:
         for k in (
-            "test_id", "test_name", "status", "checks",
-            "elapsed_seconds", "inputs", "outputs",
+            "test_id",
+            "test_name",
+            "status",
+            "checks",
+            "elapsed_seconds",
+            "inputs",
+            "outputs",
         ):
             assert k in row, f"missing row key: {k}"
         assert row["status"] in ("PASS", "FAIL", "SKIPPED")
@@ -244,6 +257,7 @@ def _safe_call(fn) -> Any:
     except Exception as exc:  # pragma: no cover - defensive
         from dataclasses import dataclass, field
         from typing import List
+
         @dataclass
         class _Stub:
             test_id: str = "?"
@@ -254,6 +268,7 @@ def _safe_call(fn) -> Any:
             error: str = ""
             inputs: dict = field(default_factory=dict)
             outputs: dict = field(default_factory=dict)
+
         return _Stub(error=f"{type(exc).__name__}: {exc}")
 
 
@@ -341,6 +356,7 @@ def test_json_payload_is_json_safe() -> None:
     """``_to_jsonable`` coerces numpy / Path to JSON-safe primitives."""
     mod = importlib.import_module("integration_verify_r18")
     import numpy as np
+
     obj = {
         "arr": np.array([1.0, 2.0]),
         "scalar": np.float64(0.5),
@@ -354,7 +370,14 @@ def test_json_payload_is_json_safe() -> None:
     assert parsed["arr"] == [1.0, 2.0]
     assert parsed["scalar"] == 0.5
     assert parsed["path"] == "/tmp"
-    assert parsed["set"] in ([1, 2, 3], [1, 3, 2], [2, 1, 3], [2, 3, 1], [3, 1, 2], [3, 2, 1])
+    assert parsed["set"] in (
+        [1, 2, 3],
+        [1, 3, 2],
+        [2, 1, 3],
+        [2, 3, 1],
+        [3, 1, 2],
+        [3, 2, 1],
+    )
     assert parsed["tuple"] == [1, 2]
 
 

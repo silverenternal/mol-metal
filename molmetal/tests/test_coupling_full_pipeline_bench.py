@@ -41,12 +41,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 REPO_ROOT = PROJECT_ROOT
-SCRIPT_PATH = (
-    REPO_ROOT
-    / "molmetal"
-    / "scripts"
-    / "coupling_full_pipeline_bench.py"
-)
+SCRIPT_PATH = REPO_ROOT / "molmetal" / "scripts" / "coupling_full_pipeline_bench.py"
 DEFAULT_CSV = REPO_ROOT / "molmetal" / "data" / "platinai_5k.csv"
 
 EXPECTED_PIPELINE_STEPS = (
@@ -69,7 +64,8 @@ def _import_module():
     if not SCRIPT_PATH.exists():
         pytest.skip(f"benchmark script not found: {SCRIPT_PATH}")
     spec = importlib.util.spec_from_file_location(
-        "coupling_full_pipeline_bench", str(SCRIPT_PATH),
+        "coupling_full_pipeline_bench",
+        str(SCRIPT_PATH),
     )
     if spec is None or spec.loader is None:  # pragma: no cover
         pytest.skip(f"could not load spec from {SCRIPT_PATH}")
@@ -103,9 +99,12 @@ def _run_benchmark(
     cmd = [
         sys.executable,
         str(SCRIPT_PATH),
-        "--n-samples", str(int(n_samples)),
-        "--n-steps", str(int(n_steps)),
-        "--out-dir", str(out_dir),
+        "--n-samples",
+        str(int(n_samples)),
+        "--n-steps",
+        str(int(n_steps)),
+        "--out-dir",
+        str(out_dir),
     ]
     proc = subprocess.run(
         cmd,
@@ -116,9 +115,7 @@ def _run_benchmark(
         check=False,
     )
     if proc.returncode != 0:
-        pytest.skip(
-            f"benchmark exited {proc.returncode}: {proc.stderr[:500]}"
-        )
+        pytest.skip(f"benchmark exited {proc.returncode}: {proc.stderr[:500]}")
     out_path = out_dir / "benchmark.json"
     if not out_path.exists():
         pytest.skip(f"benchmark did not write {out_path}")
@@ -194,14 +191,18 @@ def test_benchmark_does_not_modify_ship_modules(module_under_test) -> None:
     import subprocess
 
     result = subprocess.run(
-        [sys.executable, "-c", (
-            "import importlib.util, sys;\n"
-            "spec = importlib.util.spec_from_file_location("
-            "'m', 'molmetal/scripts/coupling_full_pipeline_bench.py');\n"
-            "m = importlib.util.module_from_spec(spec);\n"
-            "spec.loader.exec_module(m);\n"
-            "print('OK')\n"
-        )],
+        [
+            sys.executable,
+            "-c",
+            (
+                "import importlib.util, sys;\n"
+                "spec = importlib.util.spec_from_file_location("
+                "'m', 'molmetal/scripts/coupling_full_pipeline_bench.py');\n"
+                "m = importlib.util.module_from_spec(spec);\n"
+                "spec.loader.exec_module(m);\n"
+                "print('OK')\n"
+            ),
+        ],
         cwd=str(REPO_ROOT),
         capture_output=True,
         text=True,

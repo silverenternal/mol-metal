@@ -270,8 +270,11 @@ class TestAdaptiveCurriculumSampler:
             ("C", "3eml", 0.3),
         ]
         batch = CurriculumBatch(
-            rows=rows, n_pool_used=10,
-            difficulty_temp=1.0, weight_floor=1e-3, is_low_coverage=False,
+            rows=rows,
+            n_pool_used=10,
+            difficulty_temp=1.0,
+            weight_floor=1e-3,
+            is_low_coverage=False,
         )
         assert batch.smiles() == ["A", "B", "C"]
         assert batch.pockets() == ["1h36", "1h36", "3eml"]

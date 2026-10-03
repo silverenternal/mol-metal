@@ -55,11 +55,7 @@ import pytest
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _PENALTY_PATH = (
-    _REPO_ROOT
-    / "molmetal"
-    / "adapters"
-    / "flow_matching_lipman"
-    / "sa_penalty.py"
+    _REPO_ROOT / "molmetal" / "adapters" / "flow_matching_lipman" / "sa_penalty.py"
 )
 
 
@@ -152,7 +148,9 @@ class TestWf381A3SaPenaltyContract:
         case is critical because the trainer compares ``sa <= target_sa``
         with ``np.isclose``-style semantic."""
         penalty_at_target = sa_penalty_module.sa_aware_sampling_penalty(
-            np.array([DEFAULT_TARGET_SA]), target_sa=DEFAULT_TARGET_SA, sa_weight=DEFAULT_SA_WEIGHT
+            np.array([DEFAULT_TARGET_SA]),
+            target_sa=DEFAULT_TARGET_SA,
+            sa_weight=DEFAULT_SA_WEIGHT,
         )
         assert penalty_at_target.shape == (1,)
         assert float(penalty_at_target[0]) == 0.0, (
@@ -171,7 +169,10 @@ class TestWf381A3SaPenaltyContract:
         above_target = penalty[3:]
         # Expected: max(0, sa - 2.8) * 0.3
         expected_above = np.array(
-            [max(0.0, sa - DEFAULT_TARGET_SA) * DEFAULT_SA_WEIGHT for sa in SA_COHORT[3:]]
+            [
+                max(0.0, sa - DEFAULT_TARGET_SA) * DEFAULT_SA_WEIGHT
+                for sa in SA_COHORT[3:]
+            ]
         )
         assert np.allclose(above_target, expected_above), (
             f"penalty above target should be max(0, sa - target_sa) * sa_weight, "

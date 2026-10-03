@@ -91,9 +91,7 @@ def _check_decoder() -> None:
     z1 = torch.eye(4).expand(b, 4, 4).clone()
     z1[..., :3, 3] = torch.randn(b, 3) * 0.5
     out = decoder.decode(z0, z1, t_values=torch.tensor([0.0, 0.5, 1.0]))
-    assert out.shape == (b, 3, 4, 4), (
-        f"expected ({b}, 3, 4, 4), got {tuple(out.shape)}"
-    )
+    assert out.shape == (b, 3, 4, 4), f"expected ({b}, 3, 4, 4), got {tuple(out.shape)}"
     assert torch.isfinite(out).all(), "decoder output contains NaN/Inf"
     # Self-bridge at t=0 contract.
     z = torch.eye(4).expand(b, 4, 4).clone()
@@ -116,12 +114,12 @@ def _check_integrator(dry_run: bool) -> None:
     samples = torch.randn(2, 6, 3)
     out_euler = integrate_with_cfm(samples, field, n_steps=10, method="euler")
     out_mid = integrate_with_cfm(samples, field, n_steps=10, method="midpoint")
-    assert out_euler.shape == samples.shape, (
-        f"Euler output shape {tuple(out_euler.shape)} != input {tuple(samples.shape)}"
-    )
-    assert out_mid.shape == samples.shape, (
-        f"Midpoint output shape {tuple(out_mid.shape)} != input {tuple(samples.shape)}"
-    )
+    assert (
+        out_euler.shape == samples.shape
+    ), f"Euler output shape {tuple(out_euler.shape)} != input {tuple(samples.shape)}"
+    assert (
+        out_mid.shape == samples.shape
+    ), f"Midpoint output shape {tuple(out_mid.shape)} != input {tuple(samples.shape)}"
     assert torch.isfinite(out_euler).all(), "Euler output contains NaN/Inf"
     assert torch.isfinite(out_mid).all(), "Midpoint output contains NaN/Inf"
     # Larger step count must remain numerically stable.
@@ -141,7 +139,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         "--dry-run",
         action="store_true",
         help="Skip the (slowest) integrate_with_cfm step; only verify the "
-             "velocity field and decoder on CPU.",
+        "velocity field and decoder on CPU.",
     )
     args = parser.parse_args(argv)
 

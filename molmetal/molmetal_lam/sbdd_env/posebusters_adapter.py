@@ -31,6 +31,7 @@ fail to generate physically valid poses or generalise to novel
 sequences*, Chem. Sci. 2024, 15, 3130-3139.
 doi:10.1039/D3SC04185A
 """
+
 from __future__ import annotations
 
 import logging
@@ -51,6 +52,7 @@ logger = logging.getLogger(__name__)
 def _have_posebusters() -> bool:
     try:
         from posebusters import PoseBusters  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -61,12 +63,12 @@ class ValidityReport:
     """Result of validating a single molecule."""
 
     smiles: str
-    passed: bool                         # True iff ALL checks passed
-    n_checks: int                        # total checks run
-    n_passed: int                        # # checks that passed
-    pass_rate: float                     # n_passed / n_checks
-    failed_checks: tuple                 # names of failing checks
-    details: dict                        # per-check pass/fail dict
+    passed: bool  # True iff ALL checks passed
+    n_checks: int  # total checks run
+    n_passed: int  # # checks that passed
+    pass_rate: float  # n_passed / n_checks
+    failed_checks: tuple  # names of failing checks
+    details: dict  # per-check pass/fail dict
 
     def to_dict(self) -> dict:
         return {
@@ -96,7 +98,7 @@ class PBResult:
     report: ValidityReport
     mode: str
     receptor_pdb: Optional[str] = None
-    extra_checks: tuple = ()            # clash / distance checks added in dock mode
+    extra_checks: tuple = ()  # clash / distance checks added in dock mode
 
     @property
     def smiles(self) -> str:
@@ -128,11 +130,13 @@ class PBResult:
 
     def to_dict(self) -> dict:
         d = self.report.to_dict()
-        d.update({
-            "mode": self.mode,
-            "receptor_pdb": self.receptor_pdb,
-            "extra_checks": list(self.extra_checks),
-        })
+        d.update(
+            {
+                "mode": self.mode,
+                "receptor_pdb": self.receptor_pdb,
+                "extra_checks": list(self.extra_checks),
+            }
+        )
         return d
 
 
@@ -160,6 +164,7 @@ class PoseBustersAdapter:
                 "`source .venv/bin/activate && uv pip install posebusters`"
             )
         from posebusters import PoseBusters  # type: ignore
+
         self._pb = PoseBusters(config=mode)
         self._mode = str(mode)
         self._full_report = bool(full_report)
@@ -173,15 +178,23 @@ class PoseBustersAdapter:
 
         if not smiles or not isinstance(smiles, str):
             return ValidityReport(
-                smiles=smiles or "", passed=False, n_checks=0, n_passed=0,
-                pass_rate=0.0, failed_checks=("empty_smiles",),
+                smiles=smiles or "",
+                passed=False,
+                n_checks=0,
+                n_passed=0,
+                pass_rate=0.0,
+                failed_checks=("empty_smiles",),
                 details={"empty_smiles": False},
             )
         mol = Chem.MolFromSmiles(smiles)
         if mol is None or mol.GetNumAtoms() == 0:
             return ValidityReport(
-                smiles=smiles, passed=False, n_checks=0, n_passed=0,
-                pass_rate=0.0, failed_checks=("smiles_parse",),
+                smiles=smiles,
+                passed=False,
+                n_checks=0,
+                n_passed=0,
+                pass_rate=0.0,
+                failed_checks=("smiles_parse",),
                 details={"smiles_parse": False},
             )
         mol = Chem.AddHs(mol)
@@ -200,8 +213,12 @@ class PoseBustersAdapter:
             # Last resort: 2D embed → no 3D validity checks possible.
             Chem.RemoveHs(mol)
             return ValidityReport(
-                smiles=smiles, passed=False, n_checks=0, n_passed=0,
-                pass_rate=0.0, failed_checks=("embed_3d",),
+                smiles=smiles,
+                passed=False,
+                n_checks=0,
+                n_passed=0,
+                pass_rate=0.0,
+                failed_checks=("embed_3d",),
                 details={"embed_3d": False},
             )
         # Prefer MMFF94 over UFF: MMFF has better bonded/non-bonded
@@ -265,7 +282,9 @@ class PoseBustersAdapter:
         from rdkit.Chem import AllChem  # type: ignore
 
         if not receptor_pdb:
-            raise ValueError("validate_docked requires receptor_pdb (a path to a receptor PDB)")
+            raise ValueError(
+                "validate_docked requires receptor_pdb (a path to a receptor PDB)"
+            )
         if not Path(receptor_pdb).is_file():
             raise FileNotFoundError(f"Receptor PDB not found: {receptor_pdb}")
 
@@ -273,21 +292,34 @@ class PoseBustersAdapter:
         # and mol runs are comparable on the same 3D conformer.
         if not smiles or not isinstance(smiles, str):
             empty = ValidityReport(
-                smiles=smiles or "", passed=False, n_checks=0, n_passed=0,
-                pass_rate=0.0, failed_checks=("empty_smiles",),
+                smiles=smiles or "",
+                passed=False,
+                n_checks=0,
+                n_passed=0,
+                pass_rate=0.0,
+                failed_checks=("empty_smiles",),
                 details={"empty_smiles": False},
             )
-            return PBResult(report=empty, mode=self._mode, receptor_pdb=receptor_pdb,
-                            extra_checks=())
+            return PBResult(
+                report=empty,
+                mode=self._mode,
+                receptor_pdb=receptor_pdb,
+                extra_checks=(),
+            )
         mol = Chem.MolFromSmiles(smiles)
         if mol is None or mol.GetNumAtoms() == 0:
             bad = ValidityReport(
-                smiles=smiles, passed=False, n_checks=0, n_passed=0,
-                pass_rate=0.0, failed_checks=("smiles_parse",),
+                smiles=smiles,
+                passed=False,
+                n_checks=0,
+                n_passed=0,
+                pass_rate=0.0,
+                failed_checks=("smiles_parse",),
                 details={"smiles_parse": False},
             )
-            return PBResult(report=bad, mode=self._mode, receptor_pdb=receptor_pdb,
-                            extra_checks=())
+            return PBResult(
+                report=bad, mode=self._mode, receptor_pdb=receptor_pdb, extra_checks=()
+            )
         mol = Chem.AddHs(mol)
         params = AllChem.ETKDGv3()
         params.randomSeed = 42
@@ -295,12 +327,17 @@ class PoseBustersAdapter:
         if embed_status == -1:
             Chem.RemoveHs(mol)
             bad = ValidityReport(
-                smiles=smiles, passed=False, n_checks=0, n_passed=0,
-                pass_rate=0.0, failed_checks=("embed_3d",),
+                smiles=smiles,
+                passed=False,
+                n_checks=0,
+                n_passed=0,
+                pass_rate=0.0,
+                failed_checks=("embed_3d",),
                 details={"embed_3d": False},
             )
-            return PBResult(report=bad, mode=self._mode, receptor_pdb=receptor_pdb,
-                            extra_checks=())
+            return PBResult(
+                report=bad, mode=self._mode, receptor_pdb=receptor_pdb, extra_checks=()
+            )
         try:
             mmff_status = AllChem.MMFF94OptimizeMolecule(mol, maxIters=200)
         except Exception:
@@ -322,8 +359,12 @@ class PoseBustersAdapter:
         # PB to enumerate its bool columns; if anything goes wrong we
         # fall back to a hard-coded set (stable across posebusters 0.x).
         extras = self._protein_aware_extras(df)
-        return PBResult(report=report, mode=self._mode, receptor_pdb=receptor_pdb,
-                        extra_checks=extras)
+        return PBResult(
+            report=report,
+            mode=self._mode,
+            receptor_pdb=receptor_pdb,
+            extra_checks=extras,
+        )
 
     def validate_list(
         self,
@@ -377,9 +418,11 @@ class PoseBustersAdapter:
         )
         try:
             from posebusters import PoseBusters  # type: ignore
+
             probe = PoseBusters(config="mol")
             from rdkit import Chem  # type: ignore
             from rdkit.Chem import AllChem  # type: ignore
+
             # Build a probe mol that EMBEDS reliably — bare ``C`` (methane)
             # often fails ETKDGv3 on small systems, so we use ethanol
             # which embeds deterministically and gives a full conformer
@@ -395,14 +438,8 @@ class PoseBustersAdapter:
                     AllChem.UFFOptimizeMolecule(pm, maxIters=200)
                 Chem.RemoveHs(pm)
             probe_df = probe.bust(pm, full_report=True)
-            mol_bool_cols = {
-                c for c in probe_df.columns
-                if probe_df[c].dtype == bool
-            }
-            dock_bool_cols = {
-                c for c in df.columns
-                if df[c].dtype == bool
-            }
+            mol_bool_cols = {c for c in probe_df.columns if probe_df[c].dtype == bool}
+            dock_bool_cols = {c for c in df.columns if df[c].dtype == bool}
             extras = dock_bool_cols - mol_bool_cols
             # Always exclude loaders.
             extras -= {"mol_pred_loaded", "mol_cond_loaded", "mol_true_loaded"}
@@ -417,8 +454,12 @@ class PoseBustersAdapter:
         # and one boolean column per check. We treat the first row.
         if df is None or df.empty:
             return ValidityReport(
-                smiles=smiles, passed=False, n_checks=0, n_passed=0,
-                pass_rate=0.0, failed_checks=("empty_report",),
+                smiles=smiles,
+                passed=False,
+                n_checks=0,
+                n_passed=0,
+                pass_rate=0.0,
+                failed_checks=("empty_report",),
                 details={},
             )
         row = df.iloc[0]
@@ -429,19 +470,21 @@ class PoseBustersAdapter:
         # checks, otherwise int(0) gets misread as "False = failed"
         # (see _df_to_report_old which produced 0% pass-rate spuriously).
         skip = {
-            "file", "molecule", "position", "molecule_id", "name",
+            "file",
+            "molecule",
+            "position",
+            "molecule_id",
+            "name",
             # Reference-file loading checks (we have no experimental
             # pose in de novo generation, so these are always False
             # and would otherwise cap pass-rate at ~85%).
-            "mol_true_loaded", "mol_cond_loaded",
+            "mol_true_loaded",
+            "mol_cond_loaded",
             # Pred file loading (we always supply one, so this is True;
             # listed for clarity).
             "mol_pred_loaded",
         }
-        check_cols = [
-            c for c in df.columns
-            if c not in skip and df[c].dtype == bool
-        ]
+        check_cols = [c for c in df.columns if c not in skip and df[c].dtype == bool]
         details: dict = {}
         for c in check_cols:
             v = row[c]
@@ -468,6 +511,7 @@ class PoseBustersAdapter:
 def _pb_version() -> str:
     try:
         import posebusters  # type: ignore
+
         return getattr(posebusters, "__version__", "unknown")
     except Exception:
         return "uninstalled"
@@ -522,8 +566,13 @@ def mmff94s_relax_pose(mol, max_iters: int = 200) -> dict:
     relaxation — this helper mutates ``mol`` in place (consistent with
     RDKit's MMFFOptimizeMolecule contract).
     """
-    result = {"ok": False, "status": -1, "variant": "MMFF94s",
-              "max_iters": int(max_iters), "error": None}
+    result = {
+        "ok": False,
+        "status": -1,
+        "variant": "MMFF94s",
+        "max_iters": int(max_iters),
+        "error": None,
+    }
     try:
         from rdkit import Chem  # type: ignore
         from rdkit.Chem import AllChem  # type: ignore

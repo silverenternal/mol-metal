@@ -60,6 +60,7 @@ Run::
         molmetal/scripts/wf371a1_m6_kappa_degenerate_chain.py \\
         --epochs 5 --out-dir molmetal/reports/wf371a1_degenerate_chain/
 """
+
 from __future__ import annotations
 
 import csv
@@ -88,9 +89,7 @@ WF_359A1_MEASURED_BASELINE: float = 0.35607258930918284
 WF_361B2_NEURAL_ODE_AUG_MEAN: float = 0.449462
 WF_364A2_RDKIT_BASELINE_AUG_MEAN: float = 0.449256  # candidate 3 anchor
 
-DEFAULT_CSV: str = str(
-    REPO_ROOT / "molmetal" / "data" / "metallo_drugs_500_train.csv"
-)
+DEFAULT_CSV: str = str(REPO_ROOT / "molmetal" / "data" / "metallo_drugs_500_train.csv")
 DEFAULT_OUT_DIR: str = str(
     REPO_ROOT / "molmetal" / "reports" / "wf371a1_degenerate_chain"
 )
@@ -124,6 +123,7 @@ def _safe_m6_kappa(smi: str) -> Optional[float]:
         from molmetal.molmetal_lam.sbdd_env.metrics_v2 import (
             m6_kappa_from_smiles,
         )
+
         v = m6_kappa_from_smiles(smi)
     except Exception:
         return None
@@ -133,7 +133,8 @@ def _safe_m6_kappa(smi: str) -> Optional[float]:
 
 
 def _compute_baseline_pass_rate(
-    values: Sequence[float], threshold: float,
+    values: Sequence[float],
+    threshold: float,
 ) -> float:
     """Fraction of ``values`` that meet ``threshold`` (NaN-safe)."""
     finite = [v for v in values if v == v]
@@ -155,9 +156,18 @@ def _rdkit_12d(smiles_list: Sequence[str]) -> np.ndarray:
         return np.zeros((len(smiles_list), 12), dtype="float64")
 
     cols = [
-        "MolWt", "MolLogP", "TPSA", "HBA", "HBD", "NRotB",
-        "HeavyAtoms", "RingCount", "NumAromaticRings",
-        "FractionCSP3", "MolMR", "BalabanJ",
+        "MolWt",
+        "MolLogP",
+        "TPSA",
+        "HBA",
+        "HBD",
+        "NRotB",
+        "HeavyAtoms",
+        "RingCount",
+        "NumAromaticRings",
+        "FractionCSP3",
+        "MolMR",
+        "BalabanJ",
     ]
     fns = {
         "MolWt": Descriptors.MolWt,
@@ -224,7 +234,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 raw = argv[i + 1]
                 default_val = parser_args.get(key)
                 if isinstance(default_val, bool):
-                    parser_args[key] = (raw.lower() in ("true", "1", "yes"))
+                    parser_args[key] = raw.lower() in ("true", "1", "yes")
                 elif isinstance(default_val, int):
                     parser_args[key] = int(raw)
                 elif isinstance(default_val, float):
@@ -240,8 +250,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # ---- Stage 1: Load cohort + baseline m6_kappa ----
-    print(f"[Wf-371-A1] Loading cohort from {csv_path} "
-          f"(max {parser_args['max_samples']}) ...")
+    print(
+        f"[Wf-371-A1] Loading cohort from {csv_path} "
+        f"(max {parser_args['max_samples']}) ..."
+    )
     t0 = time.time()
     smiles = _load_cohort(csv_path, int(parser_args["max_samples"]))
     t_load = time.time() - t0
@@ -249,8 +261,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     if not smiles:
         smiles = ["CCO", "c1ccccc1", "[Pt](N)(N)(Cl)Cl"]
-        print(f"[Wf-371-A1] CSV empty; using synthetic fallback "
-              f"({len(smiles)} SMILES)")
+        print(
+            f"[Wf-371-A1] CSV empty; using synthetic fallback "
+            f"({len(smiles)} SMILES)"
+        )
 
     print("[Wf-371-A1] Computing baseline m6_kappa on cohort ...")
     t0 = time.time()
@@ -265,17 +279,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     baseline_mean = float(sum(baseline_clean) / n_parsed)
     baseline_std = float(np.std(baseline_clean, ddof=1)) if n_parsed > 1 else 0.0
     baseline_pass_rate = _compute_baseline_pass_rate(
-        baseline_clean, M6_KAPPA_THRESHOLD,
+        baseline_clean,
+        M6_KAPPA_THRESHOLD,
     )
     baseline_pass_rate_adaptive = _compute_baseline_pass_rate(
-        baseline_clean, M6_KAPPA_THRESHOLD_ADAPTIVE,
+        baseline_clean,
+        M6_KAPPA_THRESHOLD_ADAPTIVE,
     )
-    print(f"[Wf-371-A1] baseline m6_kappa: mean={baseline_mean:.4f} "
-          f"(std={baseline_std:.4f}, n_parsed={n_parsed}, "
-          f"n_failed={n_failed}, "
-          f"pass_rate@{M6_KAPPA_THRESHOLD:.2f}={baseline_pass_rate:.4f}, "
-          f"pass_rate_adaptive@{M6_KAPPA_THRESHOLD_ADAPTIVE:.2f}="
-          f"{baseline_pass_rate_adaptive:.4f}, {t_baseline:.2f}s)")
+    print(
+        f"[Wf-371-A1] baseline m6_kappa: mean={baseline_mean:.4f} "
+        f"(std={baseline_std:.4f}, n_parsed={n_parsed}, "
+        f"n_failed={n_failed}, "
+        f"pass_rate@{M6_KAPPA_THRESHOLD:.2f}={baseline_pass_rate:.4f}, "
+        f"pass_rate_adaptive@{M6_KAPPA_THRESHOLD_ADAPTIVE:.2f}="
+        f"{baseline_pass_rate_adaptive:.4f}, {t_baseline:.2f}s)"
+    )
 
     # Keep only valid rows
     kept_smiles: List[str] = []
@@ -288,14 +306,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     y = np.asarray(y_list, dtype=np.float64)
 
     # ---- Stage 2: RDKit 12-d features (degenerate — no augmentation) ----
-    print("[Wf-371-A1] Computing RDKit 12-d descriptor features "
-          "(degenerate chain — NO MAML, NO NeuralODE, NO chemprop+PLL) ...")
+    print(
+        "[Wf-371-A1] Computing RDKit 12-d descriptor features "
+        "(degenerate chain — NO MAML, NO NeuralODE, NO chemprop+PLL) ..."
+    )
     t0 = time.time()
     X_rdkit = _rdkit_12d(kept_smiles)
     t_rdkit = time.time() - t0
-    print(f"[Wf-371-A1] RDKit 12-d features: shape={X_rdkit.shape}, "
-          f"min={X_rdkit.min():.4f}, max={X_rdkit.max():.4f}, "
-          f"mean={X_rdkit.mean():.4f} ({t_rdkit:.2f}s)")
+    print(
+        f"[Wf-371-A1] RDKit 12-d features: shape={X_rdkit.shape}, "
+        f"min={X_rdkit.min():.4f}, max={X_rdkit.max():.4f}, "
+        f"mean={X_rdkit.mean():.4f} ({t_rdkit:.2f}s)"
+    )
 
     # ---- Stage 3: Run DEGENERATE K-fold Ridge ----
     from sklearn.linear_model import Ridge
@@ -307,8 +329,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     epochs = int(parser_args["epochs"])
     seed = int(parser_args["seed"])
 
-    print(f"[Wf-371-A1] Running DEGENERATE K-fold Ridge "
-          f"(alpha={alpha}, cv={cv_folds}, epochs={epochs}) ...")
+    print(
+        f"[Wf-371-A1] Running DEGENERATE K-fold Ridge "
+        f"(alpha={alpha}, cv={cv_folds}, epochs={epochs}) ..."
+    )
     t0 = time.time()
     # Single deterministic CV (no MAML, no inner-loop, no chemprop)
     model = Ridge(alpha=alpha)
@@ -316,10 +340,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     cv_r2 = float(_r2_score(y, y_pred_cv))
     augmented_mean = float(np.mean(y_pred_cv))
     pass_rate_augmented = _compute_baseline_pass_rate(
-        y_pred_cv, M6_KAPPA_THRESHOLD,
+        y_pred_cv,
+        M6_KAPPA_THRESHOLD,
     )
     pass_rate_augmented_adaptive = _compute_baseline_pass_rate(
-        y_pred_cv, M6_KAPPA_THRESHOLD_ADAPTIVE,
+        y_pred_cv,
+        M6_KAPPA_THRESHOLD_ADAPTIVE,
     )
     pass_rate_lift = float(pass_rate_augmented - baseline_pass_rate)
     pass_rate_lift_adaptive = float(
@@ -327,10 +353,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     delta_mean = float(augmented_mean - baseline_mean)
     t_cv = time.time() - t0
-    print(f"[Wf-371-A1] DEGENERATE: cv_r2={cv_r2:+.4f}, "
-          f"aug_mean={augmented_mean:.4f}, "
-          f"pass_lift={pass_rate_lift:+.4f}, "
-          f"lift_adapt={pass_rate_lift_adaptive:+.4f} ({t_cv:.2f}s)")
+    print(
+        f"[Wf-371-A1] DEGENERATE: cv_r2={cv_r2:+.4f}, "
+        f"aug_mean={augmented_mean:.4f}, "
+        f"pass_lift={pass_rate_lift:+.4f}, "
+        f"lift_adapt={pass_rate_lift_adaptive:+.4f} ({t_cv:.2f}s)"
+    )
 
     candidate = {
         "candidate": "rdkit_12d_baseline_degenerate",
@@ -359,30 +387,30 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     # Number of paths exhausted prior to Wf-371-A1
     PATHS_EXHAUSTED_PRIOR = 6  # Wf-335-M1 + Wf-348-B3 + Wf-359-A1
-                              # + Wf-361-B1 + Wf-361-B2 + Wf-364-A2
+    # + Wf-361-B1 + Wf-361-B2 + Wf-364-A2
     paths_exhausted_total = PATHS_EXHAUSTED_PRIOR + 1
 
     print()
     print("=" * 80)
     print("Wf-371-A1 DEGENERATE CHAIN SUMMARY")
-    print(f"  m6_kappa baseline mean        : {baseline_mean:.4f} "
-          f"(Wf-325D MEASURED={WF_325D_MEASURED_BASELINE:.4f}, "
-          f"Wf-359-A1 platinai_4cell={WF_359A1_MEASURED_BASELINE:.4f})")
+    print(
+        f"  m6_kappa baseline mean        : {baseline_mean:.4f} "
+        f"(Wf-325D MEASURED={WF_325D_MEASURED_BASELINE:.4f}, "
+        f"Wf-359-A1 platinai_4cell={WF_359A1_MEASURED_BASELINE:.4f})"
+    )
     print(f"  pass_rate @0.60               : {baseline_pass_rate:.4f}")
-    print(f"  pass_rate @0.55 (adaptive)    : "
-          f"{baseline_pass_rate_adaptive:.4f}")
+    print(f"  pass_rate @0.55 (adaptive)    : " f"{baseline_pass_rate_adaptive:.4f}")
     print()
     print(f"  DEGENERATE candidate          : {candidate['candidate']}")
     print(f"  n_features                    : {candidate['n_features']}")
     print(f"  CV-R²                         : {candidate['cv_r2']:+.4f}")
-    print(f"  augmented_mean                : "
-          f"{candidate['augmented_mean']:.4f}")
-    print(f"  delta_mean                    : "
-          f"{candidate['delta_mean']:+.4f}")
-    print(f"  pass_rate_lift @0.60          : "
-          f"{candidate['pass_rate_lift']:+.4f}")
-    print(f"  pass_rate_lift @0.55 (adapt)  : "
-          f"{candidate['pass_rate_lift_adaptive']:+.4f}")
+    print(f"  augmented_mean                : " f"{candidate['augmented_mean']:.4f}")
+    print(f"  delta_mean                    : " f"{candidate['delta_mean']:+.4f}")
+    print(f"  pass_rate_lift @0.60          : " f"{candidate['pass_rate_lift']:+.4f}")
+    print(
+        f"  pass_rate_lift @0.55 (adapt)  : "
+        f"{candidate['pass_rate_lift_adaptive']:+.4f}"
+    )
     print(f"  verdict                       : {candidate['verdict']}")
     print(f"  aggregate_status              : {aggregate_status}")
     print(f"  ceiling_break                 : {ceiling_break}")
@@ -395,7 +423,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     result: Dict[str, Any] = {
         "wf": "Wf-371-A1",
         "task": "m6_kappa DEGENERATE chain attempt "
-                "(RDKit 12-d baseline, no MAML/NeuralODE/chemprop+PLL)",
+        "(RDKit 12-d baseline, no MAML/NeuralODE/chemprop+PLL)",
         "date_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "no_gpu_launch": True,
         "no_retrain": True,
@@ -452,10 +480,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "baseline per Wf-369-A3 §5 forward-looking recommendation."
             ),
             "m6_kappa_lift_status": (
-                "RESOLVED" if aggregate_status == "HONEST_NEGATIVE_M6_KAPPA_RESOLVED"
+                "RESOLVED"
+                if aggregate_status == "HONEST_NEGATIVE_M6_KAPPA_RESOLVED"
                 else f"PERSISTENT (PARTIAL_STRUCTURAL preserved — "
-                     f"FINAL FINAL after {paths_exhausted_total} paths "
-                     f"exhausted)"
+                f"FINAL FINAL after {paths_exhausted_total} paths "
+                f"exhausted)"
             ),
             "interpretation_note": (
                 f"Wf-371-A1 is the LAST CPU-only path per Wf-369-A3 §5 "
@@ -512,26 +541,38 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     csv_out = out_dir / "per_axis.csv"
     with open(csv_out, "w", newline="") as fh:
         writer = csv.writer(fh)
-        writer.writerow([
-            "candidate", "n_features", "cv_r2", "augmented_mean",
-            "delta_mean", "pass_rate_baseline", "pass_rate_augmented",
-            "pass_rate_lift", "pass_rate_baseline_adaptive",
-            "pass_rate_augmented_adaptive", "pass_rate_lift_adaptive",
-            "verdict",
-        ])
-        writer.writerow([
-            candidate["candidate"], candidate["n_features"],
-            f"{candidate['cv_r2']:+.6f}",
-            f"{candidate['augmented_mean']:.6f}",
-            f"{candidate['delta_mean']:+.6f}",
-            f"{candidate['pass_rate_baseline']:.6f}",
-            f"{candidate['pass_rate_augmented']:.6f}",
-            f"{candidate['pass_rate_lift']:+.6f}",
-            f"{candidate['pass_rate_baseline_adaptive']:.6f}",
-            f"{candidate['pass_rate_augmented_adaptive']:.6f}",
-            f"{candidate['pass_rate_lift_adaptive']:+.6f}",
-            candidate["verdict"],
-        ])
+        writer.writerow(
+            [
+                "candidate",
+                "n_features",
+                "cv_r2",
+                "augmented_mean",
+                "delta_mean",
+                "pass_rate_baseline",
+                "pass_rate_augmented",
+                "pass_rate_lift",
+                "pass_rate_baseline_adaptive",
+                "pass_rate_augmented_adaptive",
+                "pass_rate_lift_adaptive",
+                "verdict",
+            ]
+        )
+        writer.writerow(
+            [
+                candidate["candidate"],
+                candidate["n_features"],
+                f"{candidate['cv_r2']:+.6f}",
+                f"{candidate['augmented_mean']:.6f}",
+                f"{candidate['delta_mean']:+.6f}",
+                f"{candidate['pass_rate_baseline']:.6f}",
+                f"{candidate['pass_rate_augmented']:.6f}",
+                f"{candidate['pass_rate_lift']:+.6f}",
+                f"{candidate['pass_rate_baseline_adaptive']:.6f}",
+                f"{candidate['pass_rate_augmented_adaptive']:.6f}",
+                f"{candidate['pass_rate_lift_adaptive']:+.6f}",
+                candidate["verdict"],
+            ]
+        )
     print(f"[Wf-371-A1] Wrote {csv_out}")
 
     # Plain-text OUTPUT (AGENTS.md §8.3)

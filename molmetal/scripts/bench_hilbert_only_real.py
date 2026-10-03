@@ -107,6 +107,7 @@ Pytest
 
     pytest molmetal/tests/test_hilbert_only_real.py -v
 """
+
 from __future__ import annotations
 
 import argparse
@@ -371,7 +372,8 @@ def hilbert_feature_map(
         out_tr = np.concatenate([aug_tr, pad], axis=1)
         if aug_te is not None:
             pad_te = np.zeros(
-                (n_te, hilbert_dim - aug_te.shape[1]), dtype=np.float32,
+                (n_te, hilbert_dim - aug_te.shape[1]),
+                dtype=np.float32,
             )
             out_te = np.concatenate([aug_te, pad_te], axis=1)
             return out_tr, out_te
@@ -509,6 +511,7 @@ def fit_hilbert_cpu(
     from molmetal.molmetal_lam.reward.hilbert_primal_dual import (
         LambdaASTSRHilbert,
     )
+
     pop_dim = X_tr_n.shape[1]
     try:
         opt = LambdaASTSRHilbert(
@@ -635,7 +638,9 @@ def _run_one_seed(
     """Run a single seed on the strict-scaffold split."""
     # Z-score (per train fold).
     train_idx, val_idx, test_idx = _strict_scaffold_split(
-        smiles, fractions=fractions, seed=seed,
+        smiles,
+        fractions=fractions,
+        seed=seed,
     )
     X_tr, X_va, X_te = X[train_idx], X[val_idx], X[test_idx]
     y_tr, y_va, y_te = y[train_idx], y[val_idx], y[test_idx]
@@ -651,7 +656,8 @@ def _run_one_seed(
 
     # Hilbert feature map.
     X_tr_h, X_te_h = hilbert_feature_map(
-        X_tr_n.astype(np.float32), hilbert_dim,
+        X_tr_n.astype(np.float32),
+        hilbert_dim,
         X_12d_test=np.concatenate([X_va_n, X_te_n], axis=0).astype(np.float32),
     )
     X_te_h = X_te_h  # Combined val+test feature map.
@@ -663,20 +669,29 @@ def _run_one_seed(
         # GPU-0 Blackwell path via the CUDA wrapper.
         try:
             bp, _ = fit_hilbert_cuda(
-                X_tr_h, y_tr,
-                epochs=epochs, seed=seed, device="cuda:0",
+                X_tr_h,
+                y_tr,
+                epochs=epochs,
+                seed=seed,
+                device="cuda:0",
             )
             used_cuda = True
         except Exception:
             # Fall back to CPU if CUDA is unavailable.
             bp, _ = fit_hilbert_cpu(
-                X_tr_h, y_tr, epochs=epochs, seed=seed,
+                X_tr_h,
+                y_tr,
+                epochs=epochs,
+                seed=seed,
             )
             used_cuda = False
     else:
         try:
             bp, _ = fit_hilbert_cpu(
-                X_tr_h, y_tr, epochs=epochs, seed=seed,
+                X_tr_h,
+                y_tr,
+                epochs=epochs,
+                seed=seed,
             )
             if bp is not None and bp.dtype == np.float64:
                 used_fp64 = True
@@ -684,7 +699,7 @@ def _run_one_seed(
             bp = np.zeros(hilbert_dim, dtype=np.float64)
 
     y_hat_va = predict_hilbert(X_te_h[: len(X_va_n)], bp)
-    y_hat_te = predict_hilbert(X_te_h[len(X_va_n):], bp)
+    y_hat_te = predict_hilbert(X_te_h[len(X_va_n) :], bp)
 
     r2_train = _compute_r2(y_tr, predict_hilbert(X_tr_h, bp))
     r2_val = _compute_r2(y_va, y_hat_va)
@@ -755,7 +770,9 @@ def evaluate_cell_line(
     for seed in seeds:
         seed_int = int(seed) if not isinstance(seed, list) else int(seed[0])
         result = _run_one_seed(
-            X, y, smiles,
+            X,
+            y,
+            smiles,
             seed=seed_int,
             epochs=epochs,
             hilbert_dim=hilbert_dim,
@@ -862,9 +879,7 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
         )
         test_means.append(r["hilbert_r2_test_mean"])
     aggregate = float(np.mean(test_means)) if test_means else 0.0
-    aggregate_std = (
-        float(np.std(test_means)) if len(test_means) > 1 else 0.0
-    )
+    aggregate_std = float(np.std(test_means)) if len(test_means) > 1 else 0.0
     lines.append(
         "| **4-cell aggregate** | — | **{agg:+.4f} ± {ags:.4f}** | — | — | {c} |".format(
             agg=aggregate,
@@ -877,12 +892,16 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
     lines.append("")
     n_pos = sum(1 for m in test_means if m > 0.0)
     if n_pos >= 1:
-        verdict = "✅ **MEASURED PASS** (at least one cell line has Hilbert test R² mean > 0)"
+        verdict = (
+            "✅ **MEASURED PASS** (at least one cell line has Hilbert test R² mean > 0)"
+        )
     elif aggregate >= 0.0:
         verdict = "🟡 **MEASURED PARTIAL** (aggregate R² ≥ 0 but no positive cell line)"
     else:
         verdict = "❌ **HONEST NEGATIVE** (no cell-line R² > 0; per-cell honest-negative reporting)"
-    lines.append(f"**Aggregate Hilbert test R² (mean of 4 cell-line means) = {aggregate:+.4f}** — {verdict}")
+    lines.append(
+        f"**Aggregate Hilbert test R² (mean of 4 cell-line means) = {aggregate:+.4f}** — {verdict}"
+    )
     lines.append("")
     lines.append(
         f"**Per-cell Hilbert test R²**: {n_pos} of {len(test_means)} cell lines have "
@@ -895,7 +914,9 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
     for r in all_results:
         lines.append(f"### {r['cell_line']} ({r['target_col']})")
         lines.append("")
-        lines.append("| seed | test R² | val R² | train R² | n_train/n_val/n_test | collapse | fp64 / cuda | wall_s |")
+        lines.append(
+            "| seed | test R² | val R² | train R² | n_train/n_val/n_test | collapse | fp64 / cuda | wall_s |"
+        )
         lines.append("|---:|---:|---:|---:|---|:---:|---|---:|")
         for s in r["per_seed"]:
             lines.append(
@@ -916,19 +937,29 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
         lines.append("")
     lines.append("## Honest framing")
     lines.append("")
-    lines.append("- **REAL retrain (not scaffold reuse)**: 5 seeds × 50 epochs of "
-                 "`LambdaASTSRHilbert.optimize` on the strict Bemis-Murcko scaffold split; "
-                 "test R² is computed on completely held-out scaffolds (never seen at training time).")
-    lines.append("- **No ASTSR, no Multi-PH + PLL, no composite blend** — this is the "
-                 "**Hilbert-only R² anchor** for the Wf-56 R20-P2 final ship and the Wf-83 P2 "
-                 "combined Hilbert+ASTSR lift attribution.")
-    lines.append("- **CPU smoke**: per-seed wall-time on CPU is roughly 0.5–2 s × "
-                 "5 seeds = < 15 s per cell line on a single CPU core; full "
-                 "5-seed × 4-cell run < 1 minute.")
-    lines.append("- **GPU-0 Blackwell path**: `--device cuda` dispatches via "
-                 ":mod:`hilbert_astsr_cuda` batch wrapper; CUDA-unavailable falls back to CPU fp32.")
-    lines.append("- **Collapse detector**: `pred_std / y_test_std < 0.10` flagged per seed "
-                 "and reported as `collapse_detected=yes` in the per-seed JSON.")
+    lines.append(
+        "- **REAL retrain (not scaffold reuse)**: 5 seeds × 50 epochs of "
+        "`LambdaASTSRHilbert.optimize` on the strict Bemis-Murcko scaffold split; "
+        "test R² is computed on completely held-out scaffolds (never seen at training time)."
+    )
+    lines.append(
+        "- **No ASTSR, no Multi-PH + PLL, no composite blend** — this is the "
+        "**Hilbert-only R² anchor** for the Wf-56 R20-P2 final ship and the Wf-83 P2 "
+        "combined Hilbert+ASTSR lift attribution."
+    )
+    lines.append(
+        "- **CPU smoke**: per-seed wall-time on CPU is roughly 0.5–2 s × "
+        "5 seeds = < 15 s per cell line on a single CPU core; full "
+        "5-seed × 4-cell run < 1 minute."
+    )
+    lines.append(
+        "- **GPU-0 Blackwell path**: `--device cuda` dispatches via "
+        ":mod:`hilbert_astsr_cuda` batch wrapper; CUDA-unavailable falls back to CPU fp32."
+    )
+    lines.append(
+        "- **Collapse detector**: `pred_std / y_test_std < 0.10` flagged per seed "
+        "and reported as `collapse_detected=yes` in the per-seed JSON."
+    )
     lines.append("")
     lines.append(
         "Per `party-twenty-spirit §3.5`: per-cell test R² ≥ 0 means are "
@@ -981,8 +1012,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         nargs="+",
         default=["mcf7", "a549", "a2780", "a2780cis"],
         help=(
-            "PlatinAI cell lines to benchmark "
-            "(default: mcf7 a549 a2780 a2780cis)."
+            "PlatinAI cell lines to benchmark " "(default: mcf7 a549 a2780 a2780cis)."
         ),
     )
     parser.add_argument(
@@ -1042,8 +1072,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         type=Path,
         default=Path("molmetal/reports/wf85_p1_hilbert_only_real"),
         help=(
-            "Output directory "
-            "(default: molmetal/reports/wf85_p1_hilbert_only_real)."
+            "Output directory " "(default: molmetal/reports/wf85_p1_hilbert_only_real)."
         ),
     )
     args = parser.parse_args(argv)

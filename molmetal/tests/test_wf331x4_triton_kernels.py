@@ -53,7 +53,9 @@ import torch.nn.functional as F
 # Path bootstrap
 # ---------------------------------------------------------------------------
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-_REFERENCE_DIR = _PROJECT_ROOT / "molmetal" / "adapters" / "flow_matching_lipman" / "_reference"
+_REFERENCE_DIR = (
+    _PROJECT_ROOT / "molmetal" / "adapters" / "flow_matching_lipman" / "_reference"
+)
 
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
@@ -106,9 +108,9 @@ class TestFusedReLUMlp:
         baseline = F.linear(F.relu(F.linear(x, w1, b1)), w2, b2)
         # CPU fallback (no CUDA → auto PyTorch reference path).
         out = _fused_relu_mlp(x, w1, b1, w2, b2)
-        assert out.shape == baseline.shape, (
-            f"shape mismatch: got {tuple(out.shape)}, expected {tuple(baseline.shape)}"
-        )
+        assert (
+            out.shape == baseline.shape
+        ), f"shape mismatch: got {tuple(out.shape)}, expected {tuple(baseline.shape)}"
         diff = (out - baseline).abs().max().item()
         assert diff < 1e-5, (
             f"fused_relu_mlp CPU fallback diverges from independent "
@@ -116,9 +118,9 @@ class TestFusedReLUMlp:
         )
         # Also verify the module-level PyTorch reference matches.
         ref = _pt_relu_mlp(x, w1, b1, w2, b2)
-        assert torch.allclose(out, ref, atol=1e-6), (
-            "fused_relu_mlp output diverges from module pytorch_reference()"
-        )
+        assert torch.allclose(
+            out, ref, atol=1e-6
+        ), "fused_relu_mlp output diverges from module pytorch_reference()"
 
     def test_02_fused_relu_mlp_fallback_when_triton_unavailable(self):
         """Verify ``fused_relu_mlp`` returns the PyTorch reference when
@@ -132,10 +134,16 @@ class TestFusedReLUMlp:
         w2 = torch.randn(N2, N1)
         # force_pytorch=True → always PyTorch.
         out = _fused_relu_mlp(
-            x, w1, None, w2, None, force_pytorch=True,
+            x,
+            w1,
+            None,
+            w2,
+            None,
+            force_pytorch=True,
         )
         expected = _pt_relu_mlp(
-            x, w1,
+            x,
+            w1,
             torch.zeros(N1, dtype=x.dtype),
             w2,
             torch.zeros(N2, dtype=x.dtype),
@@ -210,9 +218,9 @@ class TestFusedWassersteinSliced:
         assert out.item() >= 0.0
         # Sanity: W₂(x, x) ≈ 0 (identical distributions → 0 distance).
         out_xx = _fused_w2(x, x, n_mc=n_mc, seed=seed)
-        assert out_xx.abs().item() < 1e-3, (
-            f"W₂(x, x) should be ~0, got {out_xx.item():.6f}"
-        )
+        assert (
+            out_xx.abs().item() < 1e-3
+        ), f"W₂(x, x) should be ~0, got {out_xx.item():.6f}"
 
     def test_04_fused_wasserstein_sliced_fallback_when_triton_unavailable(self):
         """Verify ``fused_wasserstein_sliced`` with ``force_pytorch=True``
@@ -233,7 +241,11 @@ class TestFusedWassersteinSliced:
         )
         # Empty input → zero.
         empty_out = _fused_w2(
-            torch.zeros(0, 3), y, n_mc=4, seed=0, force_pytorch=True,
+            torch.zeros(0, 3),
+            y,
+            n_mc=4,
+            seed=0,
+            force_pytorch=True,
         )
         assert empty_out.item() == 0.0
         # Shape mismatch raises.
@@ -300,7 +312,9 @@ class TestFusedBondHeadAggregation:
         # No-bias path: force_pytorch=True with b=None should default to zeros.
         weights_no_bias = [(w1, None), (w2, None), (w3, None)]
         out = _fused_bond_head(
-            pair_features, weights_no_bias, force_pytorch=True,
+            pair_features,
+            weights_no_bias,
+            force_pytorch=True,
         )
         ref = _pt_bond_head(
             pair_features,
@@ -349,9 +363,21 @@ class TestFusedSmilesFeaturize:
         # Independent PyTorch baseline (inlined).
         n = len(symbols)
         sym_idx = [
-            {"C": 0, "N": 1, "O": 2, "F": 3, "P": 4, "S": 5,
-             "Cl": 6, "Br": 7, "I": 8, "B": 9, "Si": 10, "Se": 11,
-             "H": 12}.get(s, 13)
+            {
+                "C": 0,
+                "N": 1,
+                "O": 2,
+                "F": 3,
+                "P": 4,
+                "S": 5,
+                "Cl": 6,
+                "Br": 7,
+                "I": 8,
+                "B": 9,
+                "Si": 10,
+                "Se": 11,
+                "H": 12,
+            }.get(s, 13)
             for s in symbols
         ]
         deg_idx = [min(d, 5) for d in degrees]
@@ -370,9 +396,10 @@ class TestFusedSmilesFeaturize:
         # CPU fallback.
         out = _fused_smiles(symbols, degrees, in_ring, aromatic, formal_charge)
         # Verify dimensions.
-        assert out.shape == (n, _FEATURE_DIM), (
-            f"shape mismatch: got {tuple(out.shape)}, expected ({n}, {_FEATURE_DIM})"
-        )
+        assert out.shape == (
+            n,
+            _FEATURE_DIM,
+        ), f"shape mismatch: got {tuple(out.shape)}, expected ({n}, {_FEATURE_DIM})"
         diff_baseline = (out - baseline).abs().max().item()
         diff_ref = (out - ref).abs().max().item()
         assert diff_baseline < 1e-5, (
@@ -403,7 +430,11 @@ class TestFusedSmilesFeaturize:
         formal_charge = [0, 0, 0]
         # force_pytorch=True → always PyTorch reference.
         out = _fused_smiles(
-            symbols, degrees, in_ring, aromatic, formal_charge,
+            symbols,
+            degrees,
+            in_ring,
+            aromatic,
+            formal_charge,
             force_pytorch=True,
         )
         ref = _pt_smiles(symbols, degrees, in_ring, aromatic, formal_charge)
@@ -413,17 +444,31 @@ class TestFusedSmilesFeaturize:
         )
         # Empty input → empty output.
         empty_out = _fused_smiles(
-            [], [], [], [], [], force_pytorch=True,
+            [],
+            [],
+            [],
+            [],
+            [],
+            force_pytorch=True,
         )
         assert empty_out.shape == (0, _FEATURE_DIM)
         # Mismatched lengths → ValueError.
         with pytest.raises(ValueError, match="same length"):
             _fused_smiles(
-                ["C", "N"], [4], [True, False], [False, False], [0, 0],
+                ["C", "N"],
+                [4],
+                [True, False],
+                [False, False],
+                [0, 0],
                 force_pytorch=True,
             )
         # Unknown symbol falls into the "Other" slot (idx 13).
         out_unknown = _fused_smiles(
-            ["Xx"], [0], [False], [False], [0], force_pytorch=True,
+            ["Xx"],
+            [0],
+            [False],
+            [False],
+            [0],
+            force_pytorch=True,
         )
         assert out_unknown[0, 13].item() == 1.0

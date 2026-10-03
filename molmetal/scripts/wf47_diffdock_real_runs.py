@@ -106,6 +106,7 @@ def _probe_real_diffdock_adapter() -> Dict[str, Any]:
             AdapterUnavailable,
             DiffDockAdapter,
         )
+
         info["adapter_class_loaded"] = True
         adapter = DiffDockAdapter()
         info["is_available"] = bool(adapter.is_available())
@@ -248,22 +249,32 @@ def run_bench_mcts_real_trajectory(
         command=[
             str(script_path),
             "--smoke",
-            "--n-trajectories", "3",
-            "--n-simulations", "3",
-            "--max-depth", "2",
-            "--out-dir", str(out_dir / "script2_bench_mcts_real_trajectory"),
-            "--mode", "real",
+            "--n-trajectories",
+            "3",
+            "--n-simulations",
+            "3",
+            "--max-depth",
+            "2",
+            "--out-dir",
+            str(out_dir / "script2_bench_mcts_real_trajectory"),
+            "--mode",
+            "real",
         ],
     )
     rc, elapsed, out_tail, err_tail = _run_script_subprocess(
         script_path,
         [
             "--smoke",
-            "--n-trajectories", "3",
-            "--n-simulations", "3",
-            "--max-depth", "2",
-            "--out-dir", str(out_dir / "script2_bench_mcts_real_trajectory"),
-            "--mode", "real",
+            "--n-trajectories",
+            "3",
+            "--n-simulations",
+            "3",
+            "--max-depth",
+            "2",
+            "--out-dir",
+            str(out_dir / "script2_bench_mcts_real_trajectory"),
+            "--mode",
+            "real",
         ],
         cwd=_REPO_ROOT,
         timeout_sec=timeout_sec,
@@ -313,15 +324,26 @@ def run_dock_10pockets_se3sb(
     sub_metrics = sub_out / "metrics_real.json"
     sub_summary = sub_out / "summary_real.json"
     args_list = [
-        "--pockets", "830c", "1h36",
-        "--n-candidates", "2",
-        "--n-seeds", "1",
-        "--seeds", "0",
-        "--methods", "baseline", "se3sb",
-        "--n-steps", "8",
-        "--out-dir", str(sub_out),
-        "--metrics-path", str(sub_metrics),
-        "--summary-path", str(sub_summary),
+        "--pockets",
+        "830c",
+        "1h36",
+        "--n-candidates",
+        "2",
+        "--n-seeds",
+        "1",
+        "--seeds",
+        "0",
+        "--methods",
+        "baseline",
+        "se3sb",
+        "--n-steps",
+        "8",
+        "--out-dir",
+        str(sub_out),
+        "--metrics-path",
+        str(sub_metrics),
+        "--summary-path",
+        str(sub_summary),
         "--quiet",
     ]
     rec = ScriptRecord(
@@ -341,8 +363,7 @@ def run_dock_10pockets_se3sb(
     rec.stdout_tail = out_tail
     rec.stderr_tail = err_tail
     rec.diffdock_status = (
-        "MEASURED" if diffdock_probe.get("is_available")
-        else "AdapterUnavailable"
+        "MEASURED" if diffdock_probe.get("is_available") else "AdapterUnavailable"
     )
     rec.mock_to_real_diff = (
         "mock: diffdock column disabled (DiffDock never invoked) → "
@@ -386,16 +407,25 @@ def run_r4_c_full_sweep(
             _REPO_ROOT / "molmetal" / "data" / "crossdocked100_manifest.csv"
         )
     args_list = [
-        "--output-prefix", str(sub_out / "r4c_vina_real"),
-        "--manifest", str(staged_manifest),
-        "--n-pockets", "1",
-        "--pocket-offset", "0",
-        "--n-simulations", "3",
-        "--seeds", "0",
+        "--output-prefix",
+        str(sub_out / "r4c_vina_real"),
+        "--manifest",
+        str(staged_manifest),
+        "--n-pockets",
+        "1",
+        "--pocket-offset",
+        "0",
+        "--n-simulations",
+        "3",
+        "--seeds",
+        "0",
         "--sota-diffdock",
-        "--sota-diffdock-samples", "1",
-        "--sota-diffdock-timeout", "10.0",
-        "--sota-diffdock-repo", str(_REPO_ROOT / "molmetal" / "references" / "DiffDock"),
+        "--sota-diffdock-samples",
+        "1",
+        "--sota-diffdock-timeout",
+        "10.0",
+        "--sota-diffdock-repo",
+        str(_REPO_ROOT / "molmetal" / "references" / "DiffDock"),
     ]
     rec = ScriptRecord(
         script=script,
@@ -414,8 +444,7 @@ def run_r4_c_full_sweep(
     rec.stdout_tail = out_tail
     rec.stderr_tail = err_tail
     rec.diffdock_status = (
-        "MEASURED" if diffdock_probe.get("is_available")
-        else "AdapterUnavailable"
+        "MEASURED" if diffdock_probe.get("is_available") else "AdapterUnavailable"
     )
     rec.mock_to_real_diff = (
         "mock: diffdock column disabled → real: --sota-diffdock enables "
@@ -451,9 +480,7 @@ def _render_summary_md(
     lines.append("")
     lines.append(f"* Adapter module: `{diffdock_probe.get('adapter_module', '?')}`")
     lines.append(f"* Adapter class:  `{diffdock_probe.get('adapter_class', '?')}`")
-    lines.append(
-        f"* `is_available()`: **{diffdock_probe.get('is_available', False)}**"
-    )
+    lines.append(f"* `is_available()`: **{diffdock_probe.get('is_available', False)}**")
     lines.append(
         f"* First `dock()` status: **{diffdock_probe.get('first_dock_status', '?')}**"
     )
@@ -474,7 +501,9 @@ def _render_summary_md(
     lines.append("")
     lines.append("## Per-script roll-up")
     lines.append("")
-    lines.append("| # | Script | Exit | Elapsed (s) | DiffDock status | Mock→Real diff |")
+    lines.append(
+        "| # | Script | Exit | Elapsed (s) | DiffDock status | Mock→Real diff |"
+    )
     lines.append("|---|---|---:|---:|---|---|")
     for i, rec in enumerate(records, 1):
         lines.append(
@@ -585,9 +614,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         "--strict-exit-0",
         action="store_true",
         help="Treat exit code 1 (seed_only / no_candidates) as PASS only "
-             "when the DiffDock adapter was exercised honestly.  "
-             "Default: any exit code <= 1 + DiffDock adapter exercised "
-             "is recorded as PASS_HONEST_NEGATIVE.",
+        "when the DiffDock adapter was exercised honestly.  "
+        "Default: any exit code <= 1 + DiffDock adapter exercised "
+        "is recorded as PASS_HONEST_NEGATIVE.",
     )
     parser.add_argument("--verbose", "-v", action="store_true")
     args = parser.parse_args(argv)
@@ -637,7 +666,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         records.append(rec)
         log.info(
             "  exit=%d elapsed=%.1fs diffdock=%s",
-            rec.exit_code, rec.elapsed_s, rec.diffdock_status,
+            rec.exit_code,
+            rec.elapsed_s,
+            rec.diffdock_status,
         )
     total_elapsed = time.monotonic() - t0
 
@@ -690,17 +721,31 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     json_path = out_dir / "diffdock_real_run.json"
     md_path = out_dir / "diffdock_summary.md"
-    json_path.write_text(json.dumps(record_payload, indent=2, ensure_ascii=False) + "\n")
-    md_path.write_text(_render_summary_md(
-        diffdock_probe, records, n_exit_0, n_total, total_elapsed, gate_verdict,
-    ))
+    json_path.write_text(
+        json.dumps(record_payload, indent=2, ensure_ascii=False) + "\n"
+    )
+    md_path.write_text(
+        _render_summary_md(
+            diffdock_probe,
+            records,
+            n_exit_0,
+            n_total,
+            total_elapsed,
+            gate_verdict,
+        )
+    )
 
     log.info("Outputs written:")
     log.info("  %s", json_path)
     log.info("  %s", md_path)
     log.info(
         "Gate verdict: %s  (n_exit_0=%d/%d, n_exit_le_1=%d/%d, total %.1fs)",
-        gate_verdict, n_exit_0, n_total, n_exit_le_1, n_total, total_elapsed,
+        gate_verdict,
+        n_exit_0,
+        n_total,
+        n_exit_le_1,
+        n_total,
+        total_elapsed,
     )
 
     # The harness exits 0 when every script ran to completion (exit

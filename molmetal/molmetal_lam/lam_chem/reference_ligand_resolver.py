@@ -118,7 +118,7 @@ POCKET_REFERENCE_LIGANDS: Dict[str, Tuple[str, str, str]] = {
     # thiadiazole.  The sulfonamide NH and the thiadiazole N are
     # free variables the MCTS can fire CuAAC against (with a
     # separately supplied azide educt).
-    "CA2":       (
+    "CA2": (
         "acetazolamide_seed",
         # Aromatic sulfonamide-N-thiadiazole.  6 heavy-atom free
         # variables (sulfonamide NH ×2, thiadiazole N ×4) — high
@@ -129,7 +129,7 @@ POCKET_REFERENCE_LIGANDS: Dict[str, Tuple[str, str, str]] = {
     # MMP2 / MMP9 — hydroxamate + peptide backbone.  The hydroxamic
     # acid -C(=O)NHOH is the Zn-binding warhead; the peptide
     # backbone (3 amide bonds) gives free variables for AmideCoupling.
-    "MMP2":      (
+    "MMP2": (
         "marimastat_seed",
         # Hydroxamic acid + dipeptide amide backbone.
         # 5 heavy-atom free variables (hydroxamate -OH ×2, amide NH ×2,
@@ -140,7 +140,7 @@ POCKET_REFERENCE_LIGANDS: Dict[str, Tuple[str, str, str]] = {
     # HDAC2 — thiol-bearing coumarin probe.  The -SH thiolate is the
     # Zn-binding warhead; the coumarin lactone is a rigid aromatic
     # scaffold that can carry an alkyne handle for SPAAC.
-    "HDAC2":     (
+    "HDAC2": (
         "coumarin_thiol_seed",
         # Thiol-coumarin-acetylene.  4 free variables: -SH ×1,
         # aromatic H ×2, terminal alkyne H ×1.
@@ -181,10 +181,10 @@ POCKET_REFERENCE_LIGANDS: Dict[str, Tuple[str, str, str]] = {
 #   neg - pos >= +0.05 AND neg >= 0.15 → MMP2 bucket (zincin)
 #   otherwise → pocket_011 bucket (mixed / unknown default)
 _SLOT_FALLBACK_BUCKETS: Dict[str, str] = {
-    "CA2":       "CA2",
-    "MMP2":      "MMP2",
-    "HDAC2":     "HDAC2",
-    "default":   "pocket_011",
+    "CA2": "CA2",
+    "MMP2": "MMP2",
+    "HDAC2": "HDAC2",
+    "default": "pocket_011",
 }
 
 # Legacy fallback (used when pocket_features is None / empty / no
@@ -353,9 +353,7 @@ def resolve_reference_ligand(
 
     # Unknown pocket_name with non-empty string → slot contrast path.
     # (We don't WARN here — the slot contrast may still match.)
-    return _resolve_by_slot_contrast(
-        pocket_features, t0, smiles_only, warn_on_fallback
-    )
+    return _resolve_by_slot_contrast(pocket_features, t0, smiles_only, warn_on_fallback)
 
 
 # ---------------------------------------------------------------------------

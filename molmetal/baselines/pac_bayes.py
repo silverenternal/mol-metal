@@ -72,6 +72,7 @@ References
   McAllester bound tracks empirical test loss in over-
   parameterised networks (Theorem 2.1).
 """
+
 from __future__ import annotations
 
 import math
@@ -221,9 +222,7 @@ def pac_bayes_bound(
             "the bound is undefined outside this range"
         )
     if int(n) < 1:
-        raise ValueError(
-            f"n must be >= 1, got {n}; the bound is undefined for n <= 0"
-        )
+        raise ValueError(f"n must be >= 1, got {n}; the bound is undefined for n <= 0")
 
     is_valid = True
     emp = float(empirical_risk)
@@ -437,6 +436,6 @@ def kl_l2_proxy(
                 f"parameter shape mismatch: {tuple(p_pri.shape)} "
                 f"vs {tuple(p_post.shape)}"
             )
-        diff = (p_post.detach() - p_pri.detach())
+        diff = p_post.detach() - p_pri.detach()
         total += float((diff * diff).sum().item())
     return 0.5 * total

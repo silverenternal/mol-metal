@@ -29,6 +29,7 @@ Markers
 backend binary / module is missing). The CPU paths run without the
 marker.
 """
+
 from __future__ import annotations
 
 import json
@@ -149,10 +150,13 @@ class TestVinaGPU:
             gpu_wrappers.vina_gpu,
             "_select_engine",
             lambda **kw: EngineInfo(
-                backend="rocm", binary_path="/tmp/fake",
-                opencl_device="opencl:0", expected_device="gfx1101",
+                backend="rocm",
+                binary_path="/tmp/fake",
+                opencl_device="opencl:0",
+                expected_device="gfx1101",
             ),
         )
+
         # Patch ``_get_adapter`` so it doesn't try to instantiate the
         # real adapter (which would refuse the fake binary).
         class _FakeAdapter:
@@ -161,6 +165,7 @@ class TestVinaGPU:
                 # (anything with a .vina_score attribute).
                 class _C:
                     vina_score = -7.5
+
                 return [_C()]
 
         monkeypatch.setattr(
@@ -185,8 +190,10 @@ class TestVinaGPU:
             gpu_wrappers.vina_gpu,
             "_select_engine",
             lambda **kw: EngineInfo(
-                backend="rocm", binary_path="/tmp/fake",
-                opencl_device="opencl:0", expected_device="gfx1101",
+                backend="rocm",
+                binary_path="/tmp/fake",
+                opencl_device="opencl:0",
+                expected_device="gfx1101",
             ),
         )
 
@@ -194,6 +201,7 @@ class TestVinaGPU:
             def dock_smiles_gpu(self, smi, pocket, n_poses):
                 class _C:
                     vina_score = -9.0 if smi == "CCO" else -5.0
+
                 return [_C()]
 
         monkeypatch.setattr(
@@ -202,7 +210,9 @@ class TestVinaGPU:
             lambda *a, **kw: _FakeAdapter(),
         )
         flags = vina_high_affinity_gpu(
-            ["CCO", "CCN"], pocket="p", cutoff_kcal=-8.0,
+            ["CCO", "CCN"],
+            pocket="p",
+            cutoff_kcal=-8.0,
         )
         assert flags == [True, False]
 
@@ -213,8 +223,10 @@ class TestVinaGPU:
             gpu_wrappers.vina_gpu,
             "_select_engine",
             lambda **kw: EngineInfo(
-                backend="rocm", binary_path="/tmp/fake",
-                opencl_device="opencl:0", expected_device="gfx1101",
+                backend="rocm",
+                binary_path="/tmp/fake",
+                opencl_device="opencl:0",
+                expected_device="gfx1101",
             ),
         )
 
@@ -223,8 +235,10 @@ class TestVinaGPU:
 
             def dock_smiles_gpu(self, smi, pocket, n_poses):
                 idx = abs(hash(smi)) % len(self._scores)
+
                 class _C:
                     vina_score = self._scores[idx]
+
                 return [_C()]
 
         monkeypatch.setattr(
@@ -248,9 +262,7 @@ class TestDiffDockBatch:
     def test_diffdock_pose_batch_requires_backend(self, monkeypatch):
         from molmetal.scoring.gpu_wrappers import diffdock_batch
 
-        monkeypatch.setattr(
-            diffdock_batch, "_detect_diffdock_backend", lambda: None
-        )
+        monkeypatch.setattr(diffdock_batch, "_detect_diffdock_backend", lambda: None)
         with pytest.raises(AdapterUnavailable):
             diffdock_pose_batch(["CCO"], pocket_pdb="<none>")
 
@@ -262,20 +274,22 @@ class TestDiffDockBatch:
         monkeypatch.setattr(
             diffdock_batch, "_detect_diffdock_backend", lambda: "/tmp/fake"
         )
-        monkeypatch.setattr(
-            diffdock_batch, "_is_cuda_available", lambda: False
-        )
+        monkeypatch.setattr(diffdock_batch, "_is_cuda_available", lambda: False)
         with pytest.raises(AdapterUnavailable):
             diffdock_pose_batch(
-                ["CCO"], pocket_pdb="<none>", device="cuda:0",
+                ["CCO"],
+                pocket_pdb="<none>",
+                device="cuda:0",
             )
 
     def test_diffdock_pose_batch_vram_ceiling(self):
         # Reduce the ceiling so the projection trips the cap.
         with pytest.raises(AdapterUnavailable):
             diffdock_pose_batch(
-                ["CCO"] * 4, pocket_pdb="<none>",
-                exhaustiveness=64, expected_vram_mb=10,
+                ["CCO"] * 4,
+                pocket_pdb="<none>",
+                exhaustiveness=64,
+                expected_vram_mb=10,
             )
 
     def test_diffdock_pose_batch_adapter_unavailable(self, monkeypatch):
@@ -296,7 +310,9 @@ class TestDiffDockBatch:
                 return False
 
         monkeypatch.setattr(
-            diffdock_batch.dd_mod if hasattr(diffdock_batch, "dd_mod") else diffdock_batch._diffdock_module(),
+            diffdock_batch.dd_mod
+            if hasattr(diffdock_batch, "dd_mod")
+            else diffdock_batch._diffdock_module(),
             "DiffDockAdapter",
             lambda **kw: _FakeAdapter(),
         )
@@ -315,7 +331,8 @@ class TestBoltzBatch:
         from molmetal.scoring.gpu_wrappers import boltz_batch
 
         monkeypatch.setattr(
-            boltz_batch, "_check_ckpt_available",
+            boltz_batch,
+            "_check_ckpt_available",
             lambda: (_ for _ in ()).throw(AdapterUnavailable("missing ckpt")),
         )
         with pytest.raises(AdapterUnavailable):
@@ -333,9 +350,7 @@ class TestBoltzBatch:
             def predict_pic50_batch(self, smiles_list, batch_size=16):
                 return [7.5 for _ in smiles_list]
 
-        monkeypatch.setattr(
-            boltz_batch, "_check_ckpt_available", lambda: None
-        )
+        monkeypatch.setattr(boltz_batch, "_check_ckpt_available", lambda: None)
 
         # Build a fake pic50 module that exposes ``get_predictor`` and
         # ``AttentiveDMPNNPredictor`` (so the optional device-reload
@@ -356,10 +371,14 @@ class TestBoltzBatch:
                     return [7.5 for _ in smiles_list]
 
         monkeypatch.setattr(
-            boltz_batch, "_pic50_module", lambda: _FakePic50Module,
+            boltz_batch,
+            "_pic50_module",
+            lambda: _FakePic50Module,
         )
         monkeypatch.setattr(
-            boltz_batch, "_is_cuda_available", lambda: False,
+            boltz_batch,
+            "_is_cuda_available",
+            lambda: False,
         )
         out = boltz_affinity_batch(SMILES_50, batch_size=64)
         assert len(out) == 50
@@ -383,9 +402,7 @@ class TestBoltzBatch:
             def predict_pic50_batch(self, smiles_list, batch_size=16):
                 return [6.5 for _ in smiles_list]
 
-        monkeypatch.setattr(
-            boltz_batch, "_check_ckpt_available", lambda: None
-        )
+        monkeypatch.setattr(boltz_batch, "_check_ckpt_available", lambda: None)
 
         class _FakePic50Module:
             DEFAULT_CKPT = "/tmp/fake.pt"
@@ -403,10 +420,14 @@ class TestBoltzBatch:
                     return [6.5 for _ in smiles_list]
 
         monkeypatch.setattr(
-            boltz_batch, "_pic50_module", lambda: _FakePic50Module,
+            boltz_batch,
+            "_pic50_module",
+            lambda: _FakePic50Module,
         )
         monkeypatch.setattr(
-            boltz_batch, "_is_cuda_available", lambda: False,
+            boltz_batch,
+            "_is_cuda_available",
+            lambda: False,
         )
         out = boltz_affinity_with_loader(SMILES_50, batch_size=32, device="cpu")
         assert len(out) == 50
@@ -434,8 +455,13 @@ class TestPoseBustersBatch:
         class _FakeAdapter:
             def validate_mol(self, smi):
                 return pb_batch._EmptyReportShim(
-                    smiles=smi, passed=True, n_checks=14, n_passed=14,
-                    pass_rate=1.0, failed_checks=(), details={},
+                    smiles=smi,
+                    passed=True,
+                    n_checks=14,
+                    n_passed=14,
+                    pass_rate=1.0,
+                    failed_checks=(),
+                    details={},
                 )
 
         monkeypatch.setattr(pb_batch, "_build_adapter", lambda **kw: _FakeAdapter())
@@ -450,7 +476,8 @@ class TestPoseBustersBatch:
                 # Every other SMILES fails.
                 ok = hash(smi) % 2 == 0
                 return pb_batch._EmptyReportShim(
-                    smiles=smi, passed=ok,
+                    smiles=smi,
+                    passed=ok,
                     n_checks=14,
                     n_passed=14 if ok else 12,
                     pass_rate=1.0 if ok else 12 / 14,
@@ -468,8 +495,13 @@ class TestPoseBustersBatch:
         class _FakeAdapter:
             def validate_mol(self, smi):
                 return pb_batch._EmptyReportShim(
-                    smiles=smi, passed=True, n_checks=14, n_passed=14,
-                    pass_rate=1.0, failed_checks=(), details={},
+                    smiles=smi,
+                    passed=True,
+                    n_checks=14,
+                    n_passed=14,
+                    pass_rate=1.0,
+                    failed_checks=(),
+                    details={},
                 )
 
         monkeypatch.setattr(pb_batch, "_build_adapter", lambda **kw: _FakeAdapter())
@@ -493,7 +525,9 @@ class TestHilbertASTSRCUDA:
     def test_hilbert_astsr_optimize_single_cpu(self):
         feats, tgt, _ = self._make_problem()
         out = hilbert_astsr_optimize_single(
-            feats, tgt, params=HilbertCUDAParams(n_iters=10, seed=0),
+            feats,
+            tgt,
+            params=HilbertCUDAParams(n_iters=10, seed=0),
             device="cpu",
         )
         assert out.shape == (64,)
@@ -504,13 +538,17 @@ class TestHilbertASTSRCUDA:
             pytest.skip("no CUDA on this host")
         feats, tgt, _ = self._make_problem()
         out = hilbert_astsr_optimize_single(
-            feats, tgt, params=HilbertCUDAParams(n_iters=10, seed=0),
+            feats,
+            tgt,
+            params=HilbertCUDAParams(n_iters=10, seed=0),
             device="cuda:0",
         )
         assert out.shape == (64,)
         assert torch.isfinite(out).all()
 
-    def test_hilbert_astsr_optimize_single_rejects_cuda_when_unavailable(self, has_cuda):
+    def test_hilbert_astsr_optimize_single_rejects_cuda_when_unavailable(
+        self, has_cuda
+    ):
         if has_cuda:
             pytest.skip("CUDA is available — the rejection path is unobservable")
         feats, tgt, _ = self._make_problem()
@@ -537,7 +575,9 @@ class TestHilbertASTSRCUDA:
         feats, tgt, _ = self._make_problem(n=10_000)
         with pytest.raises(AdapterUnavailable):
             hilbert_astsr_optimize_batch(
-                [feats], [tgt], device="cpu",
+                [feats],
+                [tgt],
+                device="cpu",
                 expected_vram_mb=1,
             )
 
@@ -548,7 +588,9 @@ class TestHilbertASTSRCUDA:
         tgt_bad = np.zeros((10,), dtype=np.float32)
         with pytest.raises(ValueError):
             hilbert_astsr_optimize_single(
-                feats_bad, tgt_bad, device="cpu",
+                feats_bad,
+                tgt_bad,
+                device="cpu",
                 params=HilbertCUDAParams(population_dim=64),
             )
 
@@ -562,6 +604,7 @@ class TestHilbertASTSRCUDA:
             _loss_grad as _lg,
             _make_loss_grad,
         )
+
         # Compile eagerly so the fallback is observable.
         _make_loss_grad()
         loss, grad = _lg(x, feats, tgt)
@@ -630,7 +673,8 @@ class TestBenchmarkEmitsJSON:
         # --- Hilbert ASTSR CUDA ------------------------------------
         t0 = time.monotonic()
         hilbert_astsr_optimize_batch(
-            [feats] * 5, [tgt] * 5,
+            [feats] * 5,
+            [tgt] * 5,
             params=HilbertCUDAParams(n_iters=50, seed=0),
             device="cuda:0",
         )
@@ -639,7 +683,8 @@ class TestBenchmarkEmitsJSON:
 
         t0 = time.monotonic()
         hilbert_astsr_optimize_batch(
-            [feats] * 5, [tgt] * 5,
+            [feats] * 5,
+            [tgt] * 5,
             params=HilbertCUDAParams(n_iters=50, seed=0),
             device="cpu",
         )
@@ -703,8 +748,13 @@ class TestBenchmarkEmitsJSON:
         class _FakeAdapter:
             def validate_mol(self, smi):
                 return pb_batch._EmptyReportShim(
-                    smiles=smi, passed=True, n_checks=14, n_passed=14,
-                    pass_rate=1.0, failed_checks=(), details={},
+                    smiles=smi,
+                    passed=True,
+                    n_checks=14,
+                    n_passed=14,
+                    pass_rate=1.0,
+                    failed_checks=(),
+                    details={},
                 )
 
         old_build = pb_batch._build_adapter
@@ -724,7 +774,7 @@ class TestBenchmarkEmitsJSON:
             "peak_vram_mb": 0,
             "vram_ceiling_mb": 0,
             "note": "PB is RDKit-bound; speed-up comes from "
-                    "ThreadPoolExecutor dispatch (1 worker vs 8).",
+            "ThreadPoolExecutor dispatch (1 worker vs 8).",
         }
 
         # --- Vina-GPU / DiffDock: report backend presence only ----
@@ -736,7 +786,7 @@ class TestBenchmarkEmitsJSON:
             "peak_vram_mb": None,
             "vram_ceiling_mb": 1200,
             "note": f"backend={engine.backend}; "
-                    f"binary={engine.binary_path or '<none>'}",
+            f"binary={engine.binary_path or '<none>'}",
         }
 
         from molmetal.scoring.gpu_wrappers import diffdock_batch

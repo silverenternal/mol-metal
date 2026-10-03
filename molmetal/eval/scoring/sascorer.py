@@ -11,6 +11,7 @@ Ertl, P. & Schuffenhauer, A. "Estimation of Synthetic Accessibility Score
 of Drug-like Molecules based on Molecular Complexity and Fragment
 Contributions." J. Cheminform. 1:8 (2009).
 """
+
 from __future__ import annotations
 
 import gzip
@@ -112,7 +113,7 @@ def compute_sa_score(mol: Chem.Mol) -> float:
         if len(ring) > 8:
             n_macro += 1
 
-    size_penalty = n_atoms ** 1.005 - n_atoms
+    size_penalty = n_atoms**1.005 - n_atoms
     stereo_penalty = math.log10(max(1, n_chiral))
     spiro_penalty = math.log10(max(1, n_spiro))
     bridge_penalty = math.log10(max(1, n_bridge))

@@ -104,9 +104,7 @@ class TestReconstructMetalComplex:
 
     def test_overflow_truncation(self):
         # 8 donors for an octahedral metal → 6 kept.
-        result = reconstruct_metal_complex(
-            "N.N.N.N.N.N.N.N", "Ru", 2
-        )
+        result = reconstruct_metal_complex("N.N.N.N.N.N.N.N", "Ru", 2)
         # 6 ligand fragments + 1 metal = 6 dots
         assert result.count(".") == 6
         # All retained fragments are 'N' (homogeneous input).
@@ -127,9 +125,7 @@ class TestReconstructMetalComplex:
 
     def test_oxidation_state_implicit(self):
         # Pt(IV) is octahedral (6-coord), distinct from Pt(II) square planar.
-        result = reconstruct_metal_complex(
-            "N.N.Cl.Cl", "Pt", 4
-        )
+        result = reconstruct_metal_complex("N.N.Cl.Cl", "Pt", 4)
         # 6-coord: 4 provided ligands + 2 water placeholders ⇒ 6 dots
         assert result.count(".") == 6
         assert result.count("[OH2]") == 2
@@ -185,6 +181,7 @@ class TestMultiComponentReconstruction:
         assert result == "N.N.Cl.Cl.[Pt]"
         # RDKit round-trip 100%
         from rdkit import Chem, RDLogger
+
         RDLogger.DisableLog("rdApp.*")
         mol = Chem.MolFromSmiles(result)
         assert mol is not None
@@ -197,6 +194,7 @@ class TestMultiComponentReconstruction:
         result = reconstruct_multi_component("N.N.N.N.Cl.Cl", "Ru", 2)
         assert result == "N.N.N.N.Cl.Cl.[Ru]"
         from rdkit import Chem, RDLogger
+
         RDLogger.DisableLog("rdApp.*")
         mol = Chem.MolFromSmiles(result)
         assert mol is not None
@@ -215,6 +213,7 @@ class TestMultiComponentReconstruction:
         assert result.count("[OH2]") == 1
         # RDKit must parse cleanly.
         from rdkit import Chem, RDLogger
+
         RDLogger.DisableLog("rdApp.*")
         mol = Chem.MolFromSmiles(result)
         assert mol is not None
@@ -234,12 +233,15 @@ class TestMultiComponentReconstruction:
         Skips silently if the data file is not available on the test host.
         """
         import os
+
         csv_path = "/mnt/storage/data/molmetal/MetalCytoToxDB.csv"
         if not os.path.exists(csv_path):
             pytest.skip(f"MetalCytoToxDB not found at {csv_path}")
         from rdkit import Chem, RDLogger
+
         RDLogger.DisableLog("rdApp.*")
         from molmetal.data.cytotox import MetalCytotoxDataset
+
         ds = MetalCytotoxDataset.from_csv(csv_path)
         df = ds.df
         # Deterministic subset: first 100 with non-empty ligand SMILES.
@@ -266,8 +268,7 @@ class TestMultiComponentReconstruction:
         assert n_total > 0, "no rows tested"
         # Multi-component form should achieve 100% on this corpus.
         assert n_ok == n_total, (
-            f"Round-trip {n_ok}/{n_total} = {100*n_ok/n_total:.1f}% "
-            "(expected 100%)"
+            f"Round-trip {n_ok}/{n_total} = {100*n_ok/n_total:.1f}% " "(expected 100%)"
         )
 
 

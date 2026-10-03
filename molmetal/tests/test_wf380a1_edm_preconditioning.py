@@ -52,14 +52,14 @@ def test_preconditioned_loss_zero_when_pred_matches_target():
     sigma_b = sigma.view(-1, 1)
     pred_raw = (target - c_skip(sigma_b, cfg) * x_t) / c_out(sigma_b, cfg)
     loss = preconditioned_loss(pred_raw, x_t, target, sigma, cfg)
-    assert torch.allclose(loss, torch.tensor(0.0), atol=1e-5), (
-        f"loss must be 0 when pred matches target; got {loss.item()}"
-    )
+    assert torch.allclose(
+        loss, torch.tensor(0.0), atol=1e-5
+    ), f"loss must be 0 when pred matches target; got {loss.item()}"
 
 
 def test_c_noise_logarithmic():
     """c_noise(σ) = 0.5 · ln(σ) per Karras 2022 eq. 2."""
-    sigma = torch.tensor([1.0, math.e, math.e ** 2], dtype=torch.float32)
+    sigma = torch.tensor([1.0, math.e, math.e**2], dtype=torch.float32)
     expected = torch.tensor([0.0, 0.5, 1.0], dtype=torch.float32)
     assert torch.allclose(c_noise(sigma), expected, atol=1e-6)
 

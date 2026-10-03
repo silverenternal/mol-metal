@@ -18,9 +18,9 @@ def test_v1_mirror_removed():
         from molmetal_lam.lam_chem import pocket_macro_inference as pmi
     except Exception as exc:
         pytest.skip(f"not importable: {exc}")
-    assert not hasattr(pmi, "_PocketMacroSkeletonV1"), (
-        "v1 mirror still present; should be replaced by v2"
-    )
+    assert not hasattr(
+        pmi, "_PocketMacroSkeletonV1"
+    ), "v1 mirror still present; should be replaced by v2"
 
 
 def test_v2_mirror_exists():
@@ -48,6 +48,7 @@ def test_v2_uses_per_residue_features_33():
     from molmetal_lam.lam_chem.pocket_macro_inference import (
         V1_PER_RESIDUE_FEATURES,
     )
+
     assert V1_PER_RESIDUE_FEATURES == 33
 
 
@@ -60,12 +61,12 @@ def test_v2_checkpoint_path_is_v2():
         )
     except Exception as exc:
         pytest.skip(f"not importable: {exc}")
-    assert "v2" in DEFAULT_CHECKPOINT_PATH, (
-        f"expected v2 path, got {DEFAULT_CHECKPOINT_PATH!r}"
-    )
-    assert "v2" in DEFAULT_METADATA_PATH, (
-        f"expected v2 metadata path, got {DEFAULT_METADATA_PATH!r}"
-    )
+    assert (
+        "v2" in DEFAULT_CHECKPOINT_PATH
+    ), f"expected v2 path, got {DEFAULT_CHECKPOINT_PATH!r}"
+    assert (
+        "v2" in DEFAULT_METADATA_PATH
+    ), f"expected v2 metadata path, got {DEFAULT_METADATA_PATH!r}"
 
 
 def test_v2_v1_mirror_compat_alias_works():

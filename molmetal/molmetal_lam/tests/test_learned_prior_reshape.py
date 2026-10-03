@@ -37,6 +37,7 @@ def _reduce(arr, n_out=5):
     module loads even when torch is unavailable.
     """
     from molmetal_lam.search_alg.learned_prior import reduce_coupling_bias
+
     return reduce_coupling_bias(np.asarray(arr, dtype=np.float32), n_out=n_out)
 
 
@@ -57,9 +58,9 @@ def test_l64_produces_valid_5d_zero_mean_tensor() -> None:
     assert out.dtype == np.float32, f"expected float32, got {out.dtype}"
     assert np.isfinite(out).all(), "output must be finite"
     # Zero-mean is the contract that keeps the softmax neutral.
-    assert abs(out.mean()) < 1e-5, (
-        f"reduce_coupling_bias must return zero-mean output, got mean={out.mean()}"
-    )
+    assert (
+        abs(out.mean()) < 1e-5
+    ), f"reduce_coupling_bias must return zero-mean output, got mean={out.mean()}"
 
 
 # ---------------------------------------------------------------------------
@@ -76,9 +77,9 @@ def test_l_too_short_raises_informative_error() -> None:
     with pytest.raises(ValueError) as exc:
         _reduce(arr, n_out=5)
     msg = str(exc.value)
-    assert "too short" in msg or "arr.size" in msg, (
-        f"error must mention shape/length, got: {msg!r}"
-    )
+    assert (
+        "too short" in msg or "arr.size" in msg
+    ), f"error must mention shape/length, got: {msg!r}"
     # Test edge case L=0 (empty)
     with pytest.raises(ValueError):
         _reduce(np.zeros(0, dtype=np.float32), n_out=5)
@@ -137,10 +138,12 @@ def test_l128_truncates_to_first_64_then_reduces() -> None:
     """
     rng = np.random.default_rng(42)
     # Use 2 constant halves so the answer is easy to predict.
-    arr = np.concatenate([
-        np.ones(64, dtype=np.float32) * 1.0,
-        np.ones(64, dtype=np.float32) * 100.0,
-    ])  # size=128
+    arr = np.concatenate(
+        [
+            np.ones(64, dtype=np.float32) * 1.0,
+            np.ones(64, dtype=np.float32) * 100.0,
+        ]
+    )  # size=128
     # Truncate-then-block: we keep the first 5*26 = 130 slots, but
     # we only have 128 so we pad with 2 zeros.  The first 64 slots
     # are 1.0; slots 64..127 are 100.0; slots 128..129 are 0.0.
@@ -150,8 +153,13 @@ def test_l128_truncates_to_first_64_then_reduces() -> None:
     # Block 3: slots 78..103 → 50 hundreds → mean 100.0
     # Block 4: slots 104..129 → 24 hundreds + 2 zeros → mean 96.0
     block_means = np.array(
-        [1.0, 1.0, (12 * 1.0 + 14 * 100.0) / 26.0, 100.0,
-         (24 * 100.0 + 2 * 0.0) / 26.0],
+        [
+            1.0,
+            1.0,
+            (12 * 1.0 + 14 * 100.0) / 26.0,
+            100.0,
+            (24 * 100.0 + 2 * 0.0) / 26.0,
+        ],
         dtype=np.float32,
     )
     expected = block_means - block_means.mean()
@@ -169,9 +177,7 @@ def test_zero_mean_holds_for_all_L(L: int) -> None:
     rng = np.random.default_rng(L)  # deterministic per L
     arr = rng.standard_normal(L).astype(np.float32) * 100.0
     out = _reduce(arr, n_out=5)
-    assert abs(out.mean()) < 1e-4, (
-        f"zero-mean violated at L={L}: mean={out.mean()}"
-    )
+    assert abs(out.mean()) < 1e-4, f"zero-mean violated at L={L}: mean={out.mean()}"
 
 
 # ---------------------------------------------------------------------------
@@ -359,6 +365,7 @@ def test_non_finite_adapter_output_falls_back_to_no_bias() -> None:
         # Python's logging.captureWarnings which returns None in some
         # Python builds).
         import logging as _logging
+
         prior = LearnedPolicyPrior(
             coupling_adapter=_NaNAdapter(),  # type: ignore[arg-type]
         )
@@ -387,10 +394,9 @@ def test_coupling_adapter_wiring_uses_narrow_exception_catch() -> None:
     no torch required, deterministic, additive.
     """
     from pathlib import Path
+
     src_path = (
-        Path(__file__).resolve().parent.parent
-        / "search_alg"
-        / "learned_prior.py"
+        Path(__file__).resolve().parent.parent / "search_alg" / "learned_prior.py"
     )
     src = src_path.read_text()
     # The narrow-catch contract: ``except (TypeError, ValueError)``.

@@ -45,6 +45,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -54,6 +55,7 @@ del _wf130_os
 #  on this host, causing Wf-60 P1 m1/m2/m19 FileNotFoundError 5/5 seeds).
 import os as _wf50_os
 from pathlib import Path as _wf50_Path
+
 _wf50_proj_root = _wf50_Path(__file__).resolve().parent.parent.parent
 _wf50_default_data = _wf50_proj_root / ".data" / "molmetal"
 if not _wf50_os.environ.get("MOLMETAL_DATA_DIR") and _wf50_default_data.exists():
@@ -100,6 +102,7 @@ try:
         safe_overwrite_check,
         detect_truncation,
     )
+
     _WF416_HAS_ATOMIC = True
 except ImportError:  # pragma: no cover — fallback when running as standalone
     _WF416_HAS_ATOMIC = False
@@ -111,6 +114,7 @@ except ImportError:  # pragma: no cover — fallback when running as standalone
 RDLogger = None
 try:
     from rdkit import RDLogger as _RD
+
     RDLogger = _RD
     _RD.DisableLog("rdApp.*")
 except Exception:
@@ -140,7 +144,9 @@ REPORTS_DIR = PROJECT_ROOT / "molmetal" / "reports"
 # ---------------------------------------------------------------------------
 # Four-cell-line multi-task model
 # ---------------------------------------------------------------------------
-def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
+def _wf416_atomic_write_text(
+    path, content: str, min_lines: int = 50, expected_min_length: int = 200
+) -> None:
     """Wf-416-A1 atomic-write-protocol wrapper around direct write_text.
 
     Falls back to direct write_text if atomic_write_file is unavailable
@@ -152,21 +158,26 @@ def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_m
             _risk = safe_overwrite_check(path, content, min_lines=min_lines)
             if _risk is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-416-A1] safe_overwrite_check diff_ratio=%.3f at %s",
-                    _risk, path,
+                    _risk,
+                    path,
                 )
         atomic_write_file(path, content, encoding="utf-8")
         if detect_truncation is not None:
             _trunc = detect_truncation(content, expected_min_length=expected_min_length)
             if _trunc is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-416-A1] detect_truncation reason=%r at %s",
-                    _trunc, path,
+                    _trunc,
+                    path,
                 )
     else:  # pragma: no cover — fallback when atomic primitive unavailable
         Path(path).write_text(content, encoding="utf-8")
+
 
 class FourCellReadout(nn.Module):
     """Shared trunk + 4 (regression + classification) head pairs.
@@ -184,24 +195,28 @@ class FourCellReadout(nn.Module):
             nn.ReLU(),
             nn.Dropout(dropout),
         )
-        self.reg_heads = nn.ModuleList([
-            nn.Sequential(
-                nn.Linear(hidden, hidden // 2),
-                nn.ReLU(),
-                nn.Dropout(dropout),
-                nn.Linear(hidden // 2, 1),
-            )
-            for _ in range(n_lines)
-        ])
-        self.cls_heads = nn.ModuleList([
-            nn.Sequential(
-                nn.Linear(hidden, hidden // 2),
-                nn.ReLU(),
-                nn.Dropout(dropout),
-                nn.Linear(hidden // 2, 2),
-            )
-            for _ in range(n_lines)
-        ])
+        self.reg_heads = nn.ModuleList(
+            [
+                nn.Sequential(
+                    nn.Linear(hidden, hidden // 2),
+                    nn.ReLU(),
+                    nn.Dropout(dropout),
+                    nn.Linear(hidden // 2, 1),
+                )
+                for _ in range(n_lines)
+            ]
+        )
+        self.cls_heads = nn.ModuleList(
+            [
+                nn.Sequential(
+                    nn.Linear(hidden, hidden // 2),
+                    nn.ReLU(),
+                    nn.Dropout(dropout),
+                    nn.Linear(hidden // 2, 2),
+                )
+                for _ in range(n_lines)
+            ]
+        )
 
     def forward(self, h_pool: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """Returns (pic50_pred [B, n_lines], cls_logits [B, n_lines, 2])."""
@@ -275,12 +290,10 @@ class DMPNNFourCellModel(nn.Module):
         pooled_list: List[torch.Tensor] = []
         for b in range(B):
             V = atom_feats.size(1)
-            valid_edges = (bond_feats[b].abs().sum(dim=-1) > 0)
+            valid_edges = bond_feats[b].abs().sum(dim=-1) > 0
             E = valid_edges.sum().item()
             if E == 0 or V == 0:
-                pooled_list.append(
-                    torch.zeros(2 * self.hidden, device=device)
-                )
+                pooled_list.append(torch.zeros(2 * self.hidden, device=device))
                 continue
             pooled_list.append(
                 self._forward_one_mol(
@@ -311,11 +324,11 @@ class FourCellMultiTaskLoss(nn.Module):
 
     def forward(
         self,
-        pic50_pred: torch.Tensor,      # (B, n_lines)
-        cls_logits: torch.Tensor,      # (B, n_lines, 2)
-        pic50_targets: torch.Tensor,   # (B, n_lines)
+        pic50_pred: torch.Tensor,  # (B, n_lines)
+        cls_logits: torch.Tensor,  # (B, n_lines, 2)
+        pic50_targets: torch.Tensor,  # (B, n_lines)
         active_targets: torch.Tensor,  # (B, n_lines) long
-        valid_mask: torch.Tensor,      # (B, n_lines) bool — True where label valid
+        valid_mask: torch.Tensor,  # (B, n_lines) bool — True where label valid
     ) -> Tuple[torch.Tensor, float, float]:
         device = pic50_pred.device
         bce_loss = torch.zeros((), device=device)
@@ -351,10 +364,10 @@ class FourCellMultiTaskLoss(nn.Module):
 # ---------------------------------------------------------------------------
 @dataclass
 class PlatinAI4Cell:
-    smiles: np.ndarray           # (N,) canonical SMILES
-    ic50_nm: np.ndarray          # (N, 4) IC50 in nM
-    pic50: np.ndarray            # (N, 4) pIC50 = -log10(IC50_nm / 1e9)
-    active: np.ndarray           # (N, 4) int8 — 1 if IC50 ≤ 10 µM else 0
+    smiles: np.ndarray  # (N,) canonical SMILES
+    ic50_nm: np.ndarray  # (N, 4) IC50 in nM
+    pic50: np.ndarray  # (N, 4) pIC50 = -log10(IC50_nm / 1e9)
+    active: np.ndarray  # (N, 4) int8 — 1 if IC50 ≤ 10 µM else 0
 
     @classmethod
     def from_csv(cls, path: Path) -> "PlatinAI4Cell":
@@ -410,7 +423,7 @@ def _train_one_epoch(
     indices = np.arange(len(graphs))
     np.random.shuffle(indices)
     for start in range(0, len(indices), batch_size):
-        batch_idx = indices[start:start + batch_size]
+        batch_idx = indices[start : start + batch_size]
         batch_graphs = [graphs[i] for i in batch_idx]
         batch_pic50 = pic50_labels[batch_idx]
         batch_active = active_labels[batch_idx]
@@ -477,8 +490,8 @@ def _predict(
     out_active = np.full((n, N_CELL_LINES), -1, dtype=np.int32)
     out_prob = np.zeros((n, N_CELL_LINES), dtype=np.float32)
     for start in range(0, n, batch_size):
-        batch_graphs = graphs[start:start + batch_size]
-        batch_active = active_labels[start:start + batch_size]
+        batch_graphs = graphs[start : start + batch_size]
+        batch_active = active_labels[start : start + batch_size]
         valid_rows: List[int] = []
         g_list: List = []
         for k, g in enumerate(batch_graphs):
@@ -552,9 +565,12 @@ class FourCellDMPNNRunner:
             return res.train_idx, res.val_idx, res.test_idx
         # Fallback: random 70/10/20
         from sklearn.model_selection import train_test_split
+
         idx = np.arange(len(dataset))
         np.random.seed(self.seed)
-        idx_train, idx_tmp = train_test_split(idx, test_size=0.3, random_state=self.seed)
+        idx_train, idx_tmp = train_test_split(
+            idx, test_size=0.3, random_state=self.seed
+        )
         idx_val, idx_test = train_test_split(
             idx_tmp, test_size=2 / 3, random_state=self.seed
         )
@@ -610,14 +626,22 @@ class FourCellDMPNNRunner:
         for epoch in range(self.epochs):
             t0 = time.time()
             train_loss, cls_loss, reg_loss = _train_one_epoch(
-                self.model, optimizer, criterion,
-                graphs_train, pic50_train, active_train,
-                batch_size=self.batch_size, device=self.device,
+                self.model,
+                optimizer,
+                criterion,
+                graphs_train,
+                pic50_train,
+                active_train,
+                batch_size=self.batch_size,
+                device=self.device,
             )
             # Val
             y_v, s_v = _predict(
-                self.model, graphs_val, active_val,
-                batch_size=self.batch_size, device=self.device,
+                self.model,
+                graphs_val,
+                active_val,
+                batch_size=self.batch_size,
+                device=self.device,
             )
             # Flatten per cell line, compute AUC per line, then mean
             per_line_auc_val = {}
@@ -669,8 +693,11 @@ class FourCellDMPNNRunner:
         active_test = ds.active[idx_test]
         pic50_test = ds.pic50[idx_test]
         y_t, s_t = _predict(
-            self.model, graphs_test, active_test,
-            batch_size=self.batch_size, device=self.device,
+            self.model,
+            graphs_test,
+            active_test,
+            batch_size=self.batch_size,
+            device=self.device,
         )
         per_line_auc: Dict[str, float] = {}
         per_line_ap: Dict[str, float] = {}
@@ -685,7 +712,11 @@ class FourCellDMPNNRunner:
             per_line_ap[line] = m["pr_auc"]
             per_line_n[line] = int(mask.sum())
             per_line_active_rate[line] = float(y_t[mask, j].mean())
-        auc_mean = float(np.mean(list(per_line_auc.values()))) if per_line_auc else float("nan")
+        auc_mean = (
+            float(np.mean(list(per_line_auc.values())))
+            if per_line_auc
+            else float("nan")
+        )
         return {
             "per_line_auc": per_line_auc,
             "per_line_ap": per_line_ap,
@@ -703,7 +734,9 @@ class FourCellDMPNNRunner:
 # CLI
 # ---------------------------------------------------------------------------
 def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Train Mol-Metal on PlatinAI 4-cell-line Pt dataset.")
+    p = argparse.ArgumentParser(
+        description="Train Mol-Metal on PlatinAI 4-cell-line Pt dataset."
+    )
     p.add_argument(
         "--data",
         default=str(PROJECT_ROOT / "molmetal" / "data" / "platinai_4cell.csv"),
@@ -720,7 +753,9 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "--epochs", type=int, default=MT2_EPOCHS, help="Epochs per seed (default: 50)"
     )
     p.add_argument(
-        "--cuda-visible-devices", type=str, default="",
+        "--cuda-visible-devices",
+        type=str,
+        default="",
         help=(
             "Override CUDA_VISIBLE_DEVICES before device resolution.  "
             "Empty '' → default '1' (RTX 5090 on kanzi, GPU 0 = VLM "
@@ -728,7 +763,10 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
-        "--batch-size", type=int, default=MT2_BATCH_SIZE, help="Batch size (default: 32)"
+        "--batch-size",
+        type=int,
+        default=MT2_BATCH_SIZE,
+        help="Batch size (default: 32)",
     )
     p.add_argument(
         "--lr", type=float, default=MT2_LR, help="Learning rate (default: 1e-3)"
@@ -775,7 +813,10 @@ def _run_one_seed(args: argparse.Namespace, seed: int) -> Dict[str, object]:
     from molmetal.molmetal_lam.sbdd_env.training_utils import (
         apply_default_cuda_visible_devices,
     )
-    apply_default_cuda_visible_devices(override=getattr(args, "cuda_visible_devices", ""))
+
+    apply_default_cuda_visible_devices(
+        override=getattr(args, "cuda_visible_devices", "")
+    )
     print(
         f"\n[metric2] === seed {seed} (epochs={args.epochs}, bs={args.batch_size}, "
         f"lr={args.lr}, alpha={args.alpha}, scaffold={args.scaffold_split}) ===",
@@ -883,10 +924,10 @@ def _write_report(
         n_avg = float(np.mean([d["per_line_n"].get(line, 0) for d in per_seed]))
         avg = aggregate[f"auc_{line}_avg"]
         std = aggregate[f"auc_{line}_std"]
-        ar = float(np.mean([d["per_line_active_rate"].get(line, 0.0) for d in per_seed]))
-        lines.append(
-            f"| {line} | {n_avg:.0f} | {avg:.4f} ± {std:.4f} | {ar:.2%} |"
+        ar = float(
+            np.mean([d["per_line_active_rate"].get(line, 0.0) for d in per_seed])
         )
+        lines.append(f"| {line} | {n_avg:.0f} | {avg:.4f} ± {std:.4f} | {ar:.2%} |")
     overall_mean = aggregate["auc_mean_avg"]
     overall_std = aggregate["auc_mean_std"]
     lines += [
@@ -918,7 +959,9 @@ def _write_report(
         "",
         "## Per-seed detail",
         "",
-        "| Seed | n_test | AUC mean | " + " | ".join(f"AUC {l}" for l in CELL_LINES) + " |",
+        "| Seed | n_test | AUC mean | "
+        + " | ".join(f"AUC {l}" for l in CELL_LINES)
+        + " |",
         "|---|---|---|---|" + "---|" * N_CELL_LINES,
     ]
     for d in per_seed:
@@ -943,6 +986,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         except Exception as exc:
             print(f"[metric2] seed {seed} FAILED: {exc!r}", flush=True)
             import traceback
+
             traceback.print_exc()
             d = {"seed": seed, "error": repr(exc)}
         per_seed.append(d)
@@ -975,7 +1019,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
     aggregate_path = out_dir / "aggregate.json"
-    _wf416_atomic_write_text(aggregate_path, json.dumps(full_payload, indent=2, default=str))
+    _wf416_atomic_write_text(
+        aggregate_path, json.dumps(full_payload, indent=2, default=str)
+    )
     print(
         f"\n[metric2] === AGGREGATE ===",
         f"\n[metric2] AUC mean = {aggregate['auc_mean_avg']:.4f} ± {aggregate['auc_mean_std']:.4f}",

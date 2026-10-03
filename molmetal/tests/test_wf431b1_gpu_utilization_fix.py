@@ -48,18 +48,28 @@ TRAINER_PATH = str(
 SMOKE_OUT_DIR = "/tmp/wf431b1_smoke"
 SMOKE_METRICS_PATH = f"{SMOKE_OUT_DIR}/per_epoch_metrics.json"
 SMOKE_FLAGS_BASE = [
-    "--epochs", "3", "--n-train", "200", "--n-val", "8",
-    "--batch-size", "8", "--device", "cpu",
-    "--pocket-id", "pocket_a", "--seed", "0",
-    "--out-dir", SMOKE_OUT_DIR,
+    "--epochs",
+    "3",
+    "--n-train",
+    "200",
+    "--n-val",
+    "8",
+    "--batch-size",
+    "8",
+    "--device",
+    "cpu",
+    "--pocket-id",
+    "pocket_a",
+    "--seed",
+    "0",
+    "--out-dir",
+    SMOKE_OUT_DIR,
 ]
 
 
 def _read_metrics():
     metrics_path = Path(SMOKE_METRICS_PATH)
-    assert metrics_path.exists(), (
-        f"per_epoch_metrics.json missing at {metrics_path}"
-    )
+    assert metrics_path.exists(), f"per_epoch_metrics.json missing at {metrics_path}"
     return json.loads(metrics_path.read_text())
 
 
@@ -79,8 +89,11 @@ def _invoke_trainer(extra_flags: list[str], capture_metrics: bool = True):
         *extra_flags,
     ]
     completed = subprocess.run(
-        cmd, cwd=str(REPO_ROOT),
-        capture_output=True, text=True, timeout=120,
+        cmd,
+        cwd=str(REPO_ROOT),
+        capture_output=True,
+        text=True,
+        timeout=120,
     )
     return completed.returncode, completed.stdout, completed.stderr
 
@@ -102,12 +115,16 @@ def test_default_off_decode_ratio_positive():
     assert rc == 0, f"rc={rc}; stderr_tail={stderr[-300:]}"
     metrics = _read_metrics()
     assert "per_epoch_metrics" in metrics
-    drs = [m["decode_ratio_val"] / max(m["decode_ratio_n"], 1)
-           for m in metrics["per_epoch_metrics"]]
+    drs = [
+        m["decode_ratio_val"] / max(m["decode_ratio_n"], 1)
+        for m in metrics["per_epoch_metrics"]
+    ]
     assert all(dr > 0.0 for dr in drs), f"decode_ratio ≤ 0; drs={drs}"
     # Best decode_ratio should be 1.0 on smoke (small cohort).
-    best = max(m["decode_ratio_val"] / max(m["decode_ratio_n"], 1)
-               for m in metrics["per_epoch_metrics"])
+    best = max(
+        m["decode_ratio_val"] / max(m["decode_ratio_n"], 1)
+        for m in metrics["per_epoch_metrics"]
+    )
     assert best >= 0.8, f"best decode_ratio < 0.8; best={best}"
 
 
@@ -118,9 +135,7 @@ def test_default_off_loss_decreasing():
     metrics = _read_metrics()
     losses = [float(m["train_loss"]) for m in metrics["per_epoch_metrics"]]
     assert len(losses) >= 2
-    assert losses[0] > losses[-1], (
-        f"loss not decreasing; losses={losses}"
-    )
+    assert losses[0] > losses[-1], f"loss not decreasing; losses={losses}"
 
 
 # ---------------------------------------------------------------------------
@@ -147,12 +162,14 @@ def test_each_new_flag_trainer_imports_clean(flag_name: str) -> None:
 
 def test_all_4_new_flags_combined_trainer_runs_clean():
     """All 4 NEW flags combined: trainer imports + initialises + first epoch runs."""
-    rc, stdout, stderr = _invoke_trainer([
-        "--torch-compile",
-        "--cudnn-benchmark",
-        "--tf32",
-        "--channels-last",
-    ])
+    rc, stdout, stderr = _invoke_trainer(
+        [
+            "--torch-compile",
+            "--cudnn-benchmark",
+            "--tf32",
+            "--channels-last",
+        ]
+    )
     assert rc == 0, (
         f"combined-4-flag trainer FAILED rc={rc}; "
         f"stdout_tail={stdout[-300:]} stderr_tail={stderr[-300:]}"
@@ -161,10 +178,14 @@ def test_all_4_new_flags_combined_trainer_runs_clean():
 
 def test_parse_args_accepts_all_4_new_flags():
     """parse_args accepts --torch-compile --tf32 --cudnn-benchmark --channels-last."""
-    rc, stdout, stderr = _invoke_trainer([
-        "--torch-compile", "--tf32",
-        "--cudnn-benchmark", "--channels-last",
-    ])
+    rc, stdout, stderr = _invoke_trainer(
+        [
+            "--torch-compile",
+            "--tf32",
+            "--cudnn-benchmark",
+            "--channels-last",
+        ]
+    )
     # If parse_args rejected any flag, argparse would print error and exit 2.
     assert rc == 0, f"parse_args rejected a flag rc={rc}; stderr_tail={stderr[-300:]}"
 

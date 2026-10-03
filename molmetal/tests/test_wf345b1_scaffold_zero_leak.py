@@ -94,6 +94,7 @@ Cross-references
 * ``TODO/completed/345b1_scaffold_zero_leak_fix.md`` — this
   Wf-345B1 ship surface.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -132,11 +133,12 @@ def _load_preflight_module():
     ``torch.cuda.is_available()``).
     """
     spec = importlib.util.spec_from_file_location(
-        "pre_flight_check_under_test_wf345b1", PREFLIGHT_SCRIPT,
+        "pre_flight_check_under_test_wf345b1",
+        PREFLIGHT_SCRIPT,
     )
-    assert spec is not None and spec.loader is not None, (
-        f"pre_flight_check.py has no import spec ({PREFLIGHT_SCRIPT})"
-    )
+    assert (
+        spec is not None and spec.loader is not None
+    ), f"pre_flight_check.py has no import spec ({PREFLIGHT_SCRIPT})"
     mod = importlib.util.module_from_spec(spec)
     sys.modules["pre_flight_check_under_test_wf345b1"] = mod
     spec.loader.exec_module(mod)
@@ -204,11 +206,13 @@ def test_gate_scaffold_zero_leak_pass_on_valid_csv(preflight, tmp_path) -> None:
     """
     csv_path = _write_disjoint_scaffold_csv(tmp_path / "scaffold_disjoint.csv")
     result = preflight.gate_scaffold_zero_leak(
-        "wf345b1_sc_pass", "P0", "data", csv_path,
+        "wf345b1_sc_pass",
+        "P0",
+        "data",
+        csv_path,
     )
     assert result.status == "PASS", (
-        f"disjoint-scaffold CSV should PASS; got {result.status}: "
-        f"{result.evidence}"
+        f"disjoint-scaffold CSV should PASS; got {result.status}: " f"{result.evidence}"
     )
     assert "OK 0 scaffold leak" in result.evidence, (
         f"PASS evidence must contain 'OK 0 scaffold leak' for "
@@ -223,7 +227,9 @@ def test_gate_scaffold_zero_leak_pass_on_valid_csv(preflight, tmp_path) -> None:
 
 
 def test_gate_scaffold_zero_leak_skip_when_pandas_missing(
-    preflight, tmp_path, monkeypatch: pytest.MonkeyPatch,
+    preflight,
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Wf-345B1 — gate SKIPs (NOT FAIL) when pandas import fails.
 
@@ -262,7 +268,10 @@ def test_gate_scaffold_zero_leak_skip_when_pandas_missing(
     )
 
     def fake_run(
-        cmd: Any, *, timeout: Any = None, cwd: Any = None,
+        cmd: Any,
+        *,
+        timeout: Any = None,
+        cwd: Any = None,
     ) -> Tuple[int, str, str]:
         return (1, "", synth_stderr)
 
@@ -272,7 +281,10 @@ def test_gate_scaffold_zero_leak_skip_when_pandas_missing(
     monkeypatch.setattr(preflight, "_run", fake_run)
 
     result = preflight.gate_scaffold_zero_leak(
-        "wf345b1_sc_skip", "P0", "data", csv_path,
+        "wf345b1_sc_skip",
+        "P0",
+        "data",
+        csv_path,
     )
 
     assert result.status == "SKIP", (
@@ -291,9 +303,7 @@ def test_gate_scaffold_zero_leak_skip_when_pandas_missing(
     # The expected runtime per AGENTS.md §5.1 standing GPU grant +
     # §5.9 single-venv rule: the repo-local canonical .venv is THE
     # pandas-enabled runtime.
-    assert (
-        "/home/hugo/codes/mol-metal/.venv/bin/python" in result.evidence
-    ), (
+    assert "/home/hugo/codes/mol-metal/.venv/bin/python" in result.evidence, (
         f"SKIP evidence must name the expected pandas-enabled "
         f"runtime per AGENTS.md §5.1; got: {result.evidence}"
     )

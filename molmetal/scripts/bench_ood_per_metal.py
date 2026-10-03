@@ -60,6 +60,7 @@ Usage
     uv run --no-sync python molmetal/scripts/bench_ood_per_metal.py \\
         --metals Rh --n-samples 200 --seeds 5
 """
+
 from __future__ import annotations
 
 import argparse
@@ -93,18 +94,18 @@ log = logging.getLogger("wf73_ood_per_metal")
 # Defaults — MetalCytoToxDB 5-metal + tmQM d-block
 # ---------------------------------------------------------------------------
 METALCYTOTOX_METALS: Tuple[str, ...] = (
-    "Ru", "Ir", "Os", "Rh", "Re",
+    "Ru",
+    "Ir",
+    "Os",
+    "Rh",
+    "Re",
 )
 
 DEFAULT_METALCYTOTOX_CSV: Path = (
     _REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 )
-DEFAULT_TMQM_CSV: Path = (
-    _REPO_ROOT / "molmetal" / "data" / "tmqm_dblock_subset.csv"
-)
-DEFAULT_OUTPUT_DIR: Path = (
-    _REPO_ROOT / "molmetal" / "reports" / "wf73_p2_ood_permetal"
-)
+DEFAULT_TMQM_CSV: Path = _REPO_ROOT / "molmetal" / "data" / "tmqm_dblock_subset.csv"
+DEFAULT_OUTPUT_DIR: Path = _REPO_ROOT / "molmetal" / "reports" / "wf73_p2_ood_permetal"
 
 DEFAULT_N_SAMPLES: int = 80
 DEFAULT_TANIMOTO_THRESHOLD: float = 0.4
@@ -114,7 +115,11 @@ DEFAULT_SEEDS: int = 3
 
 # Per-metal atomic-number map (for coordination sanity checks).
 METAL_Z: Dict[str, int] = {
-    "Ru": 44, "Ir": 77, "Os": 76, "Rh": 45, "Re": 75,
+    "Ru": 44,
+    "Ir": 77,
+    "Os": 76,
+    "Rh": 45,
+    "Re": 75,
 }
 
 # Click-rule partner terms (5 click handles + amine + benzoic acid;
@@ -143,13 +148,19 @@ def _memory_mb(snapshot_diff: int) -> float:
 
 def _load_click_rules() -> List[Any]:
     from molmetal_lam.lam_chem.rules import (
-        AmideCoupling, CuAAC, SPAAC, Suzuki, ThiolEne,
+        AmideCoupling,
+        CuAAC,
+        SPAAC,
+        Suzuki,
+        ThiolEne,
     )
+
     return [CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling]
 
 
 def _load_partner_terms() -> List[Any]:
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
     out: List[Any] = []
     for smi in PARTNER_SMILE_LIST:
         try:
@@ -161,6 +172,7 @@ def _load_partner_terms() -> List[Any]:
 
 def _load_tanimoto_protocol(threshold: float = DEFAULT_TANIMOTO_THRESHOLD) -> Any:
     from molmetal_lam.lam_chem.ood_protocol import TanimotoOODProtocol
+
     return TanimotoOODProtocol(threshold=float(threshold))
 
 
@@ -319,6 +331,7 @@ def _benchmark_one(
                 from molmetal_lam.molecules.closed_term import (
                     MoleculeClosedTerm as _MCT,
                 )
+
                 term_obj = _MCT.from_smiles(smiles, embed_3d=False)
                 mol = term_obj.to_rdkit()
                 if mol is not None:
@@ -386,7 +399,9 @@ def _aggregate_per_metal(records: List[Dict[str, Any]]) -> Dict[str, float]:
         "metal_coordination_rate": float((n_metal / n) if n else 0.0),
         "mean_max_tanimoto_tmQM": float(
             statistics.fmean([r["max_tanimoto_tmQM"] for r in records])
-        ) if records else 0.0,
+        )
+        if records
+        else 0.0,
     }
 
 
@@ -409,15 +424,16 @@ def run_ood_per_metal_benchmark(
     log.info(
         "[wf73_ood_per_metal] start: metals=%s, n_per_metal=%d, "
         "seeds=%d, threshold=%.2f, max_depth=%d",
-        list(metals), int(n_samples), int(seeds),
-        float(tanimoto_threshold), int(max_depth),
+        list(metals),
+        int(n_samples),
+        int(seeds),
+        float(tanimoto_threshold),
+        int(max_depth),
     )
 
     click_rules = _load_click_rules()
     partner_terms = _load_partner_terms()
-    click_rule_names = [
-        getattr(r, "name", type(r).__name__) for r in click_rules
-    ]
+    click_rule_names = [getattr(r, "name", type(r).__name__) for r in click_rules]
     train_pool = _load_tmqm_train_pool(Path(tmqm_csv))
     ood_protocol = _load_tanimoto_protocol(threshold=tanimoto_threshold)
 
@@ -457,12 +473,16 @@ def run_ood_per_metal_benchmark(
             )
             log.info(
                 "[wf73_ood_per_metal] metal=%s seed=%d offset=%d n_loaded=%d",
-                metal, seed, offset, len(smiles_list),
+                metal,
+                seed,
+                offset,
+                len(smiles_list),
             )
             if not smiles_list:
                 log.warning(
                     "[wf73_ood_per_metal] no SMILES for metal=%s seed=%d",
-                    metal, seed,
+                    metal,
+                    seed,
                 )
                 continue
 
@@ -498,9 +518,7 @@ def run_ood_per_metal_benchmark(
     for metal in metals:
         seed_block = payload["per_metal"].get(metal, {}).get("per_seed", {})
         for s, agg in seed_block.items():
-            seed_index[int(s)][metal] = float(
-                agg.get("reachability_rate", 0.0)
-            )
+            seed_index[int(s)][metal] = float(agg.get("reachability_rate", 0.0))
     cross_metal_corr: Dict[str, Dict[str, float]] = {}
     metals_list = list(metals)
     for i, ma in enumerate(metals_list):
@@ -509,13 +527,19 @@ def run_ood_per_metal_benchmark(
             if i == j:
                 cross_metal_corr[ma][mb] = 1.0
                 continue
-            xs = [seed_index[s][ma] for s in seed_index if ma in seed_index[s] and mb in seed_index[s]]
-            ys = [seed_index[s][mb] for s in seed_index if ma in seed_index[s] and mb in seed_index[s]]
+            xs = [
+                seed_index[s][ma]
+                for s in seed_index
+                if ma in seed_index[s] and mb in seed_index[s]
+            ]
+            ys = [
+                seed_index[s][mb]
+                for s in seed_index
+                if ma in seed_index[s] and mb in seed_index[s]
+            ]
             if len(xs) >= 2 and len(set(xs)) > 1 and len(set(ys)) > 1:
                 try:
-                    cross_metal_corr[ma][mb] = float(
-                        statistics.correlation(xs, ys)
-                    )
+                    cross_metal_corr[ma][mb] = float(statistics.correlation(xs, ys))
                 except Exception:
                     cross_metal_corr[ma][mb] = 0.0
             else:
@@ -526,13 +550,15 @@ def run_ood_per_metal_benchmark(
     rh = payload["per_metal"].get("Rh", {}).get("aggregate", {})
     others = [
         payload["per_metal"][m]["aggregate"]
-        for m in metals if m != "Rh"
-        and m in payload["per_metal"]
+        for m in metals
+        if m != "Rh" and m in payload["per_metal"]
     ]
     rh_rate = float(rh.get("reachability_rate", 0.0))
-    others_mean = float(statistics.fmean(
-        [o["reachability_rate"] for o in others]
-    )) if others else 0.0
+    others_mean = (
+        float(statistics.fmean([o["reachability_rate"] for o in others]))
+        if others
+        else 0.0
+    )
     payload["rh_bottleneck"] = {
         "rh_reachability_rate": rh_rate,
         "other_metals_reachability_mean": others_mean,
@@ -562,7 +588,9 @@ def save_ood_per_metal_benchmark(
         with (metal_dir / "ood_reachability.json").open("w") as fh:
             json.dump(
                 payload["per_metal"][metal],
-                fh, indent=2, sort_keys=True,
+                fh,
+                indent=2,
+                sort_keys=True,
             )
     with (out / "wf73_ood_per_metal_full.json").open("w") as fh:
         json.dump(payload, fh, indent=2, sort_keys=True)
@@ -580,35 +608,53 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
-        "--n-samples", type=int, default=DEFAULT_N_SAMPLES,
+        "--n-samples",
+        type=int,
+        default=DEFAULT_N_SAMPLES,
         help=f"SMILES per metal per seed (default {DEFAULT_N_SAMPLES}).",
     )
     parser.add_argument(
-        "--metals", nargs="+", default=list(METALCYTOTOX_METALS),
+        "--metals",
+        nargs="+",
+        default=list(METALCYTOTOX_METALS),
         help="Subset of metals to run (default: all 5).",
     )
     parser.add_argument(
-        "--tanimoto-thresh", type=float, default=DEFAULT_TANIMOTO_THRESHOLD,
+        "--tanimoto-thresh",
+        type=float,
+        default=DEFAULT_TANIMOTO_THRESHOLD,
         help=f"OOD threshold (default {DEFAULT_TANIMOTO_THRESHOLD}).",
     )
     parser.add_argument(
-        "--seeds", type=int, default=DEFAULT_SEEDS,
+        "--seeds",
+        type=int,
+        default=DEFAULT_SEEDS,
         help=f"Number of disjoint SMILES slices per metal (default {DEFAULT_SEEDS}).",
     )
     parser.add_argument(
-        "--max-depth", type=int, default=DEFAULT_MAX_DEPTH,
+        "--max-depth",
+        type=int,
+        default=DEFAULT_MAX_DEPTH,
     )
     parser.add_argument(
-        "--max-products", type=int, default=DEFAULT_MAX_PRODUCTS,
+        "--max-products",
+        type=int,
+        default=DEFAULT_MAX_PRODUCTS,
     )
     parser.add_argument(
-        "--metalcyto-csv", type=Path, default=DEFAULT_METALCYTOTOX_CSV,
+        "--metalcyto-csv",
+        type=Path,
+        default=DEFAULT_METALCYTOTOX_CSV,
     )
     parser.add_argument(
-        "--tmqm-csv", type=Path, default=DEFAULT_TMQM_CSV,
+        "--tmqm-csv",
+        type=Path,
+        default=DEFAULT_TMQM_CSV,
     )
     parser.add_argument(
-        "--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR,
+        "--output-dir",
+        type=Path,
+        default=DEFAULT_OUTPUT_DIR,
     )
     return parser.parse_args(argv)
 
@@ -631,13 +677,23 @@ def main(argv: Optional[List[str]] = None) -> int:
         seeds=int(args.seeds),
     )
     save_ood_per_metal_benchmark(payload, output_dir=args.output_dir)
-    print(json.dumps(
-        {k: payload[k] for k in (
-            "tool", "date_utc", "metals", "seeds", "n_samples_per_metal_per_seed",
-            "rh_bottleneck",
-        )},
-        indent=2, sort_keys=True,
-    ))
+    print(
+        json.dumps(
+            {
+                k: payload[k]
+                for k in (
+                    "tool",
+                    "date_utc",
+                    "metals",
+                    "seeds",
+                    "n_samples_per_metal_per_seed",
+                    "rh_bottleneck",
+                )
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
     for metal, blk in payload["per_metal"].items():
         agg = blk["aggregate"]
         print(

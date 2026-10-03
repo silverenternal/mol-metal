@@ -107,15 +107,15 @@ class TestDrugOODSchema:
             split="train",
             prefer_library=False,
         )
-        assert pd.api.types.is_numeric_dtype(df["pIC50"]), (
-            f"pIC50 should be numeric, got {df['pIC50'].dtype}"
-        )
-        assert int(df["pIC50"].isna().sum()) == 0, (
-            f"drugood has {int(df['pIC50'].isna().sum())} NaN pIC50"
-        )
-        assert df["pIC50"].apply(lambda v: math.isfinite(float(v))).all(), (
-            "drugood has non-finite pIC50"
-        )
+        assert pd.api.types.is_numeric_dtype(
+            df["pIC50"]
+        ), f"pIC50 should be numeric, got {df['pIC50'].dtype}"
+        assert (
+            int(df["pIC50"].isna().sum()) == 0
+        ), f"drugood has {int(df['pIC50'].isna().sum())} NaN pIC50"
+        assert (
+            df["pIC50"].apply(lambda v: math.isfinite(float(v))).all()
+        ), "drugood has non-finite pIC50"
 
     def test_metal_and_cell_line_NA_filled(self) -> None:
         """DrugOOD carries no per-row metal / cell-line identifier.
@@ -170,9 +170,9 @@ class TestDrugOODRowAndSplit:
             f"got {len(unique_assays)}"
         )
         # And the assay_ids are non-empty (no degenerate empty-string).
-        assert all(str(a).strip() != "" for a in unique_assays), (
-            f"drugood has empty assay_id: {unique_assays[:5]}"
-        )
+        assert all(
+            str(a).strip() != "" for a in unique_assays
+        ), f"drugood has empty assay_id: {unique_assays[:5]}"
 
     def test_scaffold_split_subsample(self) -> None:
         """Bemis-Murcko scaffold split partitions a 2k-row subsample.
@@ -186,11 +186,15 @@ class TestDrugOODRowAndSplit:
 
         RDLogger.DisableLog("rdApp.*")
 
-        df = load_drugood(
-            subset="lbap_refined_ic50_assay",
-            split="train",
-            prefer_library=False,
-        ).sample(n=2000, random_state=0).reset_index(drop=True)
+        df = (
+            load_drugood(
+                subset="lbap_refined_ic50_assay",
+                split="train",
+                prefer_library=False,
+            )
+            .sample(n=2000, random_state=0)
+            .reset_index(drop=True)
+        )
 
         scaffolds: dict[str, list[int]] = {}
         parseable = 0
@@ -204,9 +208,9 @@ class TestDrugOODRowAndSplit:
 
         # ≥90 % SMILES parseable (DrugOOD is a ligand panel so this is
         # a more lenient threshold than binding_db).
-        assert parseable / len(df) >= 0.90, (
-            f"only {parseable}/{len(df)} drugood SMILES are RDKit-parseable"
-        )
+        assert (
+            parseable / len(df) >= 0.90
+        ), f"only {parseable}/{len(df)} drugood SMILES are RDKit-parseable"
 
         # Partition 80/10/10
         sorted_groups = sorted(scaffolds.values(), key=len, reverse=True)
@@ -224,12 +228,10 @@ class TestDrugOODRowAndSplit:
                 test_idx.extend(grp)
 
         all_idx = set(train_idx) | set(val_idx) | set(test_idx)
-        assert len(all_idx) == n, (
-            f"scaffold split lost rows: {n - len(all_idx)} missing"
-        )
         assert (
-            len(train_idx) > 0 and len(val_idx) > 0 and len(test_idx) > 0
-        )
+            len(all_idx) == n
+        ), f"scaffold split lost rows: {n - len(all_idx)} missing"
+        assert len(train_idx) > 0 and len(val_idx) > 0 and len(test_idx) > 0
 
 
 # ---------------------------------------------------------------------------
@@ -256,9 +258,10 @@ class TestDrugOODEdgeCases:
                 split="not_a_valid_split",
                 prefer_library=False,
             )
-        assert "not_a_valid_split" in str(excinfo.value) or "valid" in str(
-            excinfo.value
-        ).lower()
+        assert (
+            "not_a_valid_split" in str(excinfo.value)
+            or "valid" in str(excinfo.value).lower()
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -277,6 +280,7 @@ class TestDrugOODIntegration:
         curated ligand panel — closer to 99 % in practice).
         """
         from rdkit import Chem, RDLogger
+
         RDLogger.DisableLog("rdApp.*")
 
         df = load_drugood(
@@ -309,14 +313,14 @@ class TestDrugOODIntegration:
             split="train",
             prefer_library=False,
         )
-        assert pd.api.types.is_string_dtype(df["smiles"]), (
-            f"smiles should be string-like, got {df['smiles'].dtype}"
-        )
+        assert pd.api.types.is_string_dtype(
+            df["smiles"]
+        ), f"smiles should be string-like, got {df['smiles'].dtype}"
         assert pd.api.types.is_numeric_dtype(df["pIC50"])
         assert df["active"].dtype == bool
-        assert pd.api.types.is_string_dtype(df["protein"]), (
-            f"protein should be string-like, got {df['protein'].dtype}"
-        )
+        assert pd.api.types.is_string_dtype(
+            df["protein"]
+        ), f"protein should be string-like, got {df['protein'].dtype}"
         # And no NaN in string columns (metal + cell_line are
         # 'NA'-filled, protein carries real assay_ids).
         for c in ("smiles", "metal", "cell_line", "protein"):
@@ -357,6 +361,4 @@ class TestDrugOODCrossLoaderPairing:
     def test_default_target_root_path_attribute(self) -> None:
         """``DEFAULT_DRUGOOD_TARGET_ROOT`` points at the project-shipped JSON root."""
         assert isinstance(DEFAULT_DRUGOOD_TARGET_ROOT, Path)
-        assert str(DEFAULT_DRUGOOD_TARGET_ROOT).endswith(
-            "drugood/ic50/official"
-        )
+        assert str(DEFAULT_DRUGOOD_TARGET_ROOT).endswith("drugood/ic50/official")

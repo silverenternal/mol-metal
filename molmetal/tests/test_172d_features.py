@@ -25,6 +25,7 @@ References
 * TODO/pending/94_r20_p3_multiph_pll_feature.md
 * TODO/completed/91_wf41_3way_integration.md
 """
+
 from __future__ import annotations
 
 import json
@@ -194,9 +195,9 @@ def test_compute_172d_concat_order_is_rdkit_multiph_pll() -> None:
         pytest.skip("RDKit or full-stack failed on CCO on this host")
     # First 12 entries are the RDKit 12-d.
     for i in range(12):
-        assert math_close(full[i], rdkit_only[i], atol=1e-5), (
-            f"stack[{i}] != rdkit[{i}] (concat-order broken)"
-        )
+        assert math_close(
+            full[i], rdkit_only[i], atol=1e-5
+        ), f"stack[{i}] != rdkit[{i}] (concat-order broken)"
 
 
 def test_compute_172d_handles_all_stream_failures_gracefully() -> None:
@@ -211,9 +212,27 @@ def test_compute_172d_handles_all_stream_failures_gracefully() -> None:
 def test_build_feature_stack_produces_five_arrays(tmp_path: Path) -> None:
     """``build_feature_stack`` returns the five-array payload contract."""
     rows = [
-        {"smiles": "CCO", "metal": "Ru", "scaffold_id": "s1", "split": "train", "activity": "0"},
-        {"smiles": "c1ccccc1", "metal": "Ir", "scaffold_id": "s2", "split": "train", "activity": "1"},
-        {"smiles": "CC(=O)O", "metal": "Os", "scaffold_id": "s3", "split": "val", "activity": "0"},
+        {
+            "smiles": "CCO",
+            "metal": "Ru",
+            "scaffold_id": "s1",
+            "split": "train",
+            "activity": "0",
+        },
+        {
+            "smiles": "c1ccccc1",
+            "metal": "Ir",
+            "scaffold_id": "s2",
+            "split": "train",
+            "activity": "1",
+        },
+        {
+            "smiles": "CC(=O)O",
+            "metal": "Os",
+            "scaffold_id": "s3",
+            "split": "val",
+            "activity": "0",
+        },
     ]
     payload = m.build_feature_stack(rows, max_rows=None, seed=0)
     for key in ("X", "y", "metal_id", "smiles_hash", "row_meta"):
@@ -228,8 +247,20 @@ def test_build_feature_stack_produces_five_arrays(tmp_path: Path) -> None:
 def test_write_npz_writes_loadable_archive(tmp_path: Path) -> None:
     """``write_npz`` writes a valid ``.npz`` archive with the expected keys."""
     rows = [
-        {"smiles": "CCO", "metal": "Ru", "scaffold_id": "s1", "split": "train", "activity": "0"},
-        {"smiles": "c1ccccc1", "metal": "Ir", "scaffold_id": "s2", "split": "train", "activity": "1"},
+        {
+            "smiles": "CCO",
+            "metal": "Ru",
+            "scaffold_id": "s1",
+            "split": "train",
+            "activity": "0",
+        },
+        {
+            "smiles": "c1ccccc1",
+            "metal": "Ir",
+            "scaffold_id": "s2",
+            "split": "train",
+            "activity": "1",
+        },
     ]
     payload = m.build_feature_stack(rows)
     out_path = tmp_path / "features_172d.npz"

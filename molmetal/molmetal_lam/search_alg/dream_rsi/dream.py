@@ -279,7 +279,9 @@ def _format_report(
     selected: int,
     monotone: bool,
 ) -> str:
-    lines = [f"dream phase: {len(worlds)} replay world(s), {len(evaluations)} version(s) evaluated"]
+    lines = [
+        f"dream phase: {len(worlds)} replay world(s), {len(evaluations)} version(s) evaluated"
+    ]
     for index, ev in enumerate(evaluations):
         mean_probes = sum(w["probes"] for w in ev.per_world) / max(1, len(ev.per_world))
         mean_rounds = sum(w["rounds"] for w in ev.per_world) / max(1, len(ev.per_world))
@@ -287,9 +289,7 @@ def _format_report(
             f"  pi_{index}: V={ev.v_mean:.4f} probes={mean_probes:.1f} rounds={mean_rounds:.1f}"
             + (f" error={ev.error}" if ev.error else "")
         )
-    lines.append(
-        f"selected pi_{selected} (V* >= V_0: {monotone})"
-    )
+    lines.append(f"selected pi_{selected} (V* >= V_0: {monotone})")
     return "\n".join(lines)
 
 

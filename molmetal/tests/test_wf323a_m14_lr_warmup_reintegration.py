@@ -44,6 +44,7 @@ Cross-references
   (constructor + train_step LR ramp).
 * ``TODO/completed/323a_m14_lr_warmup_reintegration.md`` — the ship doc.
 """
+
 from __future__ import annotations
 
 import json
@@ -87,9 +88,9 @@ def test_harness_accepts_lr_warmup_steps_flag():
         timeout=60,
     )
     help_blob = (proc.stdout + "\n" + proc.stderr).lower()
-    assert proc.returncode == 0, (
-        f"metallo_drug_smoke_retrain.py --help failed: {proc.stderr}"
-    )
+    assert (
+        proc.returncode == 0
+    ), f"metallo_drug_smoke_retrain.py --help failed: {proc.stderr}"
     assert "--lr-warmup-steps" in help_blob, (
         "EXPECTED FIX: --lr-warmup-steps must be a CLI flag on "
         "metallo_drug_smoke_retrain.py (Wf-323A re-integration "
@@ -118,14 +119,13 @@ def test_adapter_constructor_accepts_lr_warmup_steps_with_default_200():
         "contract violated)"
     )
     assert adapter._lr_warmup_steps == 200, (
-        f"expected default lr_warmup_steps == 200, got "
-        f"{adapter._lr_warmup_steps}"
+        f"expected default lr_warmup_steps == 200, got " f"{adapter._lr_warmup_steps}"
     )
     # Sanity: base_lr mirrors the constructor's ``lr`` so the post-ramp
     # LR equals the requested LR.
-    assert adapter._base_lr == 1e-4, (
-        f"expected _base_lr == 1e-4, got {adapter._base_lr}"
-    )
+    assert (
+        adapter._base_lr == 1e-4
+    ), f"expected _base_lr == 1e-4, got {adapter._base_lr}"
 
 
 def test_adapter_lr_warmup_ramp_is_linear_with_spectral_correctness():
@@ -143,6 +143,7 @@ def test_adapter_lr_warmup_ramp_is_linear_with_spectral_correctness():
     For ``lr_warmup_steps == 4`` the ramp goes 1/4, 2/4, 3/4, 1.0, 1.0
     across steps 1..5.
     """
+
     # Build the ramp manually using the same arithmetic as
     # LipmanFlowMatchingAdapter.train_step (spectral test, no torch).
     def _expected_factor(step: int, warmup_steps: int) -> float:
@@ -162,8 +163,7 @@ def test_adapter_lr_warmup_ramp_is_linear_with_spectral_correctness():
     for step, want in enumerate(expected_seq, start=1):
         got = _expected_factor(step, 4)
         assert got == pytest.approx(want), (
-            f"step={step} warmup=4 expected factor={want:.4f}, got "
-            f"{got:.4f}"
+            f"step={step} warmup=4 expected factor={want:.4f}, got " f"{got:.4f}"
         )
 
     # Warmup_steps == 200 → at step 50 factor should be 0.25.
@@ -176,9 +176,9 @@ def test_adapter_lr_warmup_ramp_is_linear_with_spectral_correctness():
     # Spectral — base_lr * factor for lr=1e-4, warmup=200, step=100.
     base_lr = 1e-4
     computed = base_lr * _expected_factor(100, 200)
-    assert computed == pytest.approx(5e-5), (
-        f"base_lr * factor at step=100 should equal 5e-5, got {computed}"
-    )
+    assert computed == pytest.approx(
+        5e-5
+    ), f"base_lr * factor at step=100 should equal 5e-5, got {computed}"
 
 
 # ---------------------------------------------------------------------------
@@ -193,7 +193,8 @@ def _import_runner_module():
 
     return SimpleNamespace(
         **runpy.run_path(
-            str(RUNNER_PATH), run_name="ablation_runner_test",
+            str(RUNNER_PATH),
+            run_name="ablation_runner_test",
         )
     )
 
@@ -215,13 +216,13 @@ def test_m14_spec_has_lr_warmup_steps_in_extra_args(runner):
     table = {s.ablation_id: s for s in runner.ABLATION_TABLE}
     spec = table["M14"]
     assert spec.ablation_id == "M14"
-    assert spec.toggle == "toggleable", (
-        f"M14 expected toggle='toggleable', got {spec.toggle!r}"
-    )
+    assert (
+        spec.toggle == "toggleable"
+    ), f"M14 expected toggle='toggleable', got {spec.toggle!r}"
     # The extra_args list contains --lr-warmup-steps and a value of "0".
-    assert "--lr-warmup-steps" in spec.extra_args, (
-        f"M14 extra_args missing --lr-warmup-steps: {spec.extra_args!r}"
-    )
+    assert (
+        "--lr-warmup-steps" in spec.extra_args
+    ), f"M14 extra_args missing --lr-warmup-steps: {spec.extra_args!r}"
     idx = spec.extra_args.index("--lr-warmup-steps")
     assert spec.extra_args[idx + 1] == "0", (
         f"M14 expected --lr-warmup-steps 0 (disable warmup), got "
@@ -238,9 +239,9 @@ def test_m14_spec_target_metric_is_m14_decode_ratio_label(runner):
     """
     table = {s.ablation_id: s for s in runner.ABLATION_TABLE}
     spec = table["M14"]
-    assert spec.target_metric == "m14", (
-        f"M14 target_metric expected 'm14', got {spec.target_metric!r}"
-    )
+    assert (
+        spec.target_metric == "m14"
+    ), f"M14 target_metric expected 'm14', got {spec.target_metric!r}"
     # Honest contract: the §5 prediction is qualitative (NaN / late
     # divergence), so predicted_value is None.
     assert spec.predicted_value is None, (
@@ -264,17 +265,22 @@ def test_m14_cmd_construction_includes_lr_warmup_steps_zero(runner):
     cmd = [
         sys.executable,
         str(TRAIN_SCRIPT.relative_to(REPO_ROOT)),
-        "--steps", "200",
-        "--decode-smoke-every", "200",
-        "--decode-smoke-samples", "16",
-        "--csv", str(TRAIN_CSV.relative_to(REPO_ROOT)),
-        "--out-dir", "molmetal/reports/wf_ablation_runner/M14",
+        "--steps",
+        "200",
+        "--decode-smoke-every",
+        "200",
+        "--decode-smoke-samples",
+        "16",
+        "--csv",
+        str(TRAIN_CSV.relative_to(REPO_ROOT)),
+        "--out-dir",
+        "molmetal/reports/wf_ablation_runner/M14",
     ] + spec_m14.extra_args
     cmd_str = " ".join(cmd)
     # Both the flag and the value must appear in the cmd.
-    assert "--lr-warmup-steps 0" in cmd_str, (
-        f"M14 cmd missing --lr-warmup-steps 0 fragment; got: {cmd_str}"
-    )
+    assert (
+        "--lr-warmup-steps 0" in cmd_str
+    ), f"M14 cmd missing --lr-warmup-steps 0 fragment; got: {cmd_str}"
 
 
 # ---------------------------------------------------------------------------
@@ -292,13 +298,20 @@ def test_m14_subprocess_does_not_crash_on_unknown_flag():
     """
     proc = subprocess.run(
         [
-            sys.executable, str(TRAIN_SCRIPT),
-            "--lr-warmup-steps", "0",
-            "--steps", "1",
-            "--decode-smoke-every", "1",
-            "--decode-smoke-samples", "1",
-            "--csv", str(TRAIN_CSV.relative_to(REPO_ROOT)),
-            "--out-dir", "molmetal/reports/wf_ablation_runner/M14_smoke",
+            sys.executable,
+            str(TRAIN_SCRIPT),
+            "--lr-warmup-steps",
+            "0",
+            "--steps",
+            "1",
+            "--decode-smoke-every",
+            "1",
+            "--decode-smoke-samples",
+            "1",
+            "--csv",
+            str(TRAIN_CSV.relative_to(REPO_ROOT)),
+            "--out-dir",
+            "molmetal/reports/wf_ablation_runner/M14_smoke",
         ],
         cwd=str(REPO_ROOT),
         capture_output=True,
@@ -311,9 +324,9 @@ def test_m14_subprocess_does_not_crash_on_unknown_flag():
         f"M14 ablation is still broken (Wf-323A re-integration "
         f"incomplete).  stderr: {proc.stderr!r}"
     )
-    assert "error: unrecognized" not in combined, (
-        f"argparse reported error: unrecognized argument --lr-warmup-steps"
-    )
+    assert (
+        "error: unrecognized" not in combined
+    ), f"argparse reported error: unrecognized argument --lr-warmup-steps"
 
 
 def test_default_lr_warmup_steps_is_200():
@@ -326,12 +339,18 @@ def test_default_lr_warmup_steps_is_200():
     """
     proc = subprocess.run(
         [
-            sys.executable, str(TRAIN_SCRIPT),
-            "--steps", "1",
-            "--decode-smoke-every", "1",
-            "--decode-smoke-samples", "1",
-            "--csv", str(TRAIN_CSV.relative_to(REPO_ROOT)),
-            "--out-dir", "molmetal/reports/wf_ablation_runner/M14_default_smoke",
+            sys.executable,
+            str(TRAIN_SCRIPT),
+            "--steps",
+            "1",
+            "--decode-smoke-every",
+            "1",
+            "--decode-smoke-samples",
+            "1",
+            "--csv",
+            str(TRAIN_CSV.relative_to(REPO_ROOT)),
+            "--out-dir",
+            "molmetal/reports/wf_ablation_runner/M14_default_smoke",
         ],
         cwd=str(REPO_ROOT),
         capture_output=True,

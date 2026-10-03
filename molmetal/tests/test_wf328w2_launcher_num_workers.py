@@ -191,21 +191,23 @@ def test_suggest_num_workers_returns_valid() -> None:
     preventing runaway worker counts on big hosts)."""
     cases = [
         # (n_physical_cores, n_gpus, cap, expected_floor, expected_ceiling)
-        (24, 1, 12, 0, 12),   # this host (24 physical), default cap
-        (24, 1, 8, 0, 8),     # Wf-326B OPTIMAL cap
-        (4, 1, 12, 0, 12),    # small box
-        (64, 1, 12, 0, 12),   # large box, cap holds (no runaway)
-        (1, 1, 12, 0, 12),    # 1-core box
-        (24, 2, 12, 0, 12),   # 2 GPUs share cap
-        (24, 1, 4, 0, 4),     # tight cap
+        (24, 1, 12, 0, 12),  # this host (24 physical), default cap
+        (24, 1, 8, 0, 8),  # Wf-326B OPTIMAL cap
+        (4, 1, 12, 0, 12),  # small box
+        (64, 1, 12, 0, 12),  # large box, cap holds (no runaway)
+        (1, 1, 12, 0, 12),  # 1-core box
+        (24, 2, 12, 0, 12),  # 2 GPUs share cap
+        (24, 1, 4, 0, 4),  # tight cap
     ]
     for n_phys, n_gpus, cap, lo, hi in cases:
         result = _wf326b.suggest_num_workers(
-            n_physical_cores=n_phys, n_gpus=n_gpus, cap=cap,
+            n_physical_cores=n_phys,
+            n_gpus=n_gpus,
+            cap=cap,
         )
-        assert isinstance(result, int), (
-            f"suggest_num_workers returned non-int: {type(result).__name__}"
-        )
+        assert isinstance(
+            result, int
+        ), f"suggest_num_workers returned non-int: {type(result).__name__}"
         assert lo <= result <= hi, (
             f"suggest_num_workers(n_physical_cores={n_phys}, n_gpus={n_gpus}, "
             f"cap={cap}) returned {result}; out of [{lo}, {hi}]"

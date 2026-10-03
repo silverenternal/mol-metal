@@ -20,6 +20,7 @@ Run with::
 
     pytest molmetal/molmetal_lam/tests/test_mcts_early_stop.py --tb=short
 """
+
 from __future__ import annotations
 
 import random
@@ -120,18 +121,18 @@ def test_mcts_early_stop_terminates_before_budget() -> None:
     # 2) Termination happened within <50 sims (the strict bound from
     # the task spec).  With patience=5 the actual bound is tighter but
     # we leave a generous slack so the test is not flaky on slow CI.
-    assert len(mcts.history) < 50, (
-        f"expected early-stop within <50 sims, got {len(mcts.history)}"
-    )
+    assert (
+        len(mcts.history) < 50
+    ), f"expected early-stop within <50 sims, got {len(mcts.history)}"
 
     # 3) Final history entry carries the EARLY_STOPPED flag.
     final = mcts.history[-1]
-    assert final.get("EARLY_STOPPED") is True, (
-        f"final history entry must carry EARLY_STOPPED=True, got: {final!r}"
-    )
-    assert "EARLY_STOPPED_AT_ITER" in final, (
-        f"final history entry must carry EARLY_STOPPED_AT_ITER, got: {final!r}"
-    )
+    assert (
+        final.get("EARLY_STOPPED") is True
+    ), f"final history entry must carry EARLY_STOPPED=True, got: {final!r}"
+    assert (
+        "EARLY_STOPPED_AT_ITER" in final
+    ), f"final history entry must carry EARLY_STOPPED_AT_ITER, got: {final!r}"
     # The at-iter field must be < patience (the test mandates this
     # explicitly per the task brief).
     assert int(final["EARLY_STOPPED_AT_ITER"]) < 5, (
@@ -173,9 +174,9 @@ def test_mcts_early_stop_disabled_runs_full_budget() -> None:
     )
     # No EARLY_STOPPED flag should appear on the final entry.
     final = mcts.history[-1]
-    assert final.get("EARLY_STOPPED") is not True, (
-        f"early_stop=False must not emit EARLY_STOPPED, got: {final!r}"
-    )
+    assert (
+        final.get("EARLY_STOPPED") is not True
+    ), f"early_stop=False must not emit EARLY_STOPPED, got: {final!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -211,18 +212,16 @@ def test_mcts_nfe_counters_nonzero() -> None:
     assert int(mcts.nfe_oracle) >= 0
     # With n_simulations=8 and a real rollout the nfe counter should
     # be strictly positive.
-    assert int(mcts.nfe) > 0, (
-        f"expected nfe>0 after a real search, got nfe={mcts.nfe}"
-    )
+    assert int(mcts.nfe) > 0, f"expected nfe>0 after a real search, got nfe={mcts.nfe}"
 
     # Per-iteration history entries carry CUMULATIVE_NFE* keys.
     nfe_history: List[int] = []
     nfe_reductions_history: List[int] = []
     nfe_oracle_history: List[int] = []
     for entry in mcts.history:
-        assert "CUMULATIVE_NFE" in entry, (
-            f"history entry must carry CUMULATIVE_NFE: {entry!r}"
-        )
+        assert (
+            "CUMULATIVE_NFE" in entry
+        ), f"history entry must carry CUMULATIVE_NFE: {entry!r}"
         assert "CUMULATIVE_NFE_REDUCTIONS" in entry
         assert "CUMULATIVE_NFE_ORACLE" in entry
         nfe_history.append(int(entry["CUMULATIVE_NFE"]))
@@ -265,9 +264,9 @@ def test_mcts_nfe_resets_between_search_calls() -> None:
     initial = _minimal_tile_library()[0]
     mcts.search(initial_state=initial, max_depth=1)
     nfe_after_first = int(mcts.nfe)
-    assert nfe_after_first > 0, (
-        f"first search must produce positive NFE, got {nfe_after_first}"
-    )
+    assert (
+        nfe_after_first > 0
+    ), f"first search must produce positive NFE, got {nfe_after_first}"
 
     mcts.search(initial_state=initial, max_depth=1)
     # The second search's counter is independent — it equals the new
@@ -275,9 +274,9 @@ def test_mcts_nfe_resets_between_search_calls() -> None:
     assert int(mcts.nfe) > 0
     # And it must be <= the lifetime total (the counter was reset and
     # then incremented for the second search).
-    assert int(mcts.nfe) <= int(nfe_after_first) + int(mcts.nfe), (
-        "nfe counter must remain non-negative and finite across calls"
-    )
+    assert int(mcts.nfe) <= int(nfe_after_first) + int(
+        mcts.nfe
+    ), "nfe counter must remain non-negative and finite across calls"
 
 
 # ---------------------------------------------------------------------------
@@ -325,7 +324,9 @@ class _MockMCTSForLoop:
     _root: Optional[Any] = None
     call_count: int = 0
 
-    def search(self, initial_state: Any = None, max_depth: int = 3) -> List[MoleculeClosedTerm]:
+    def search(
+        self, initial_state: Any = None, max_depth: int = 3
+    ) -> List[MoleculeClosedTerm]:
         self.call_count += 1
         # Mimic the real MCTSProofSearch contract: reset per-search
         # NFE counters at the top of each search() call so the closed
@@ -334,11 +335,13 @@ class _MockMCTSForLoop:
         self.nfe_reductions = 2
         self.nfe_oracle = 1
         # Push a history entry the loop can read for early-stop flags.
-        self.history = [{
-            "iteration": 0,
-            "EARLY_STOPPED": (self.call_count > 1),
-            "EARLY_STOPPED_AT_ITER": 0 if self.call_count > 1 else -1,
-        }]
+        self.history = [
+            {
+                "iteration": 0,
+                "EARLY_STOPPED": (self.call_count > 1),
+                "EARLY_STOPPED_AT_ITER": 0 if self.call_count > 1 else -1,
+            }
+        ]
         return [MoleculeClosedTerm()]
 
     def _count_nodes(self, root: Any) -> int:
@@ -376,9 +379,9 @@ def test_closed_loop_emits_nfe_keys() -> None:
 
     # Every iteration must carry the three cumulative NFE keys.
     for i, rec in enumerate(results):
-        assert "cumulative_nfe" in rec, (
-            f"iter {i} missing cumulative_nfe: {list(rec.keys())!r}"
-        )
+        assert (
+            "cumulative_nfe" in rec
+        ), f"iter {i} missing cumulative_nfe: {list(rec.keys())!r}"
         assert "cumulative_nfe_reductions" in rec
         assert "cumulative_nfe_oracle" in rec
         # early-stop flags must be present (default False / -1).
@@ -386,9 +389,9 @@ def test_closed_loop_emits_nfe_keys() -> None:
         assert "early_stopped_at_iter" in rec
         # The mock increments NFE by 3 each call, so each iteration's
         # cumulative_nfe is exactly 3 (counters reset per search).
-        assert int(rec["cumulative_nfe"]) == 3, (
-            f"iter {i} cumulative_nfe expected 3, got {rec['cumulative_nfe']!r}"
-        )
+        assert (
+            int(rec["cumulative_nfe"]) == 3
+        ), f"iter {i} cumulative_nfe expected 3, got {rec['cumulative_nfe']!r}"
         assert int(rec["cumulative_nfe_reductions"]) == 2
         assert int(rec["cumulative_nfe_oracle"]) == 1
 

@@ -56,6 +56,7 @@ from typing import Callable, List, Optional, Sequence, Tuple
 try:
     from rdkit import Chem, RDLogger
     from rdkit.Chem import AllChem, DataStructs
+
     _HAS_RDKIT = True
     RDLogger.DisableLog("rdApp.*")  # keep stdout clean
 except Exception:  # pragma: no cover
@@ -184,6 +185,7 @@ class PlatinAIOracle:
             return False
         try:
             import pandas as pd  # local: pandas pulls nothing for oracle core
+
             mb = pd.read_excel(self.mbfinder_path)
             smiles_list = mb["smiles"].astype(str).tolist()
         except Exception as e:
@@ -225,8 +227,11 @@ class PlatinAIOracle:
             return out
         try:
             import pandas as pd
+
             df = pd.read_excel(path)
-            for raw_smi, pred in zip(df["smiles"].astype(str), df["pred_0"].astype(float)):
+            for raw_smi, pred in zip(
+                df["smiles"].astype(str), df["pred_0"].astype(float)
+            ):
                 canon = _safe_canon(raw_smi)
                 if canon is None:
                     continue
@@ -267,9 +272,7 @@ class PlatinAIOracle:
         if n > len(sims):
             n = len(sims)
         # Partial selection — O(n_corpus) is fine for ~227K rows.
-        indexed = sorted(
-            enumerate(sims), key=lambda kv: kv[1], reverse=True
-        )[:n]
+        indexed = sorted(enumerate(sims), key=lambda kv: kv[1], reverse=True)[:n]
         out: List[PlatinAINeighbour] = []
         for idx, tan in indexed:
             if tan < self.tanimoto_min:

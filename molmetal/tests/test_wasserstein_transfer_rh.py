@@ -142,12 +142,8 @@ def test_wasserstein_loss_symmetric_via_transfer():
     g = torch.Generator().manual_seed(0)
     emb_a = torch.randn(20, 8, generator=g)
     emb_b = torch.randn(25, 8, generator=g) + 0.5
-    w2_ab = wasserstein_transfer_loss(
-        {"A": emb_a, "B": emb_b}, n_mc=32, seed=42
-    )
-    w2_ba = wasserstein_transfer_loss(
-        {"B": emb_b, "A": emb_a}, n_mc=32, seed=42
-    )
+    w2_ab = wasserstein_transfer_loss({"A": emb_a, "B": emb_b}, n_mc=32, seed=42)
+    w2_ba = wasserstein_transfer_loss({"B": emb_b, "A": emb_a}, n_mc=32, seed=42)
     assert math.isclose(float(w2_ab.item()), float(w2_ba.item()), abs_tol=1e-5)
 
 
@@ -188,9 +184,7 @@ def test_wasserstein_loss_value_reductions():
 def test_pairwise_w2_matrix_is_symmetric_with_zero_diagonal():
     """pairwise_w2_matrix returns a symmetric matrix with zero diagonal."""
     per_metal = _per_metal_sample(n_per_metal=20, dim=4, seed=2)
-    metals, matrix = pairwise_w2_matrix(
-        per_metal, n_mc=16, seed=42
-    )
+    metals, matrix = pairwise_w2_matrix(per_metal, n_mc=16, seed=42)
     assert metals == ["Ir", "Os", "Re", "Rh", "Ru"]
     K = len(metals)
     assert matrix.shape == (K, K)
@@ -361,12 +355,17 @@ def test_driver_script_writes_three_artifacts(tmp_path):
 
     out_dir = tmp_path / "wf125_p1"
     # Quick mode: 50 compounds, 200 train rows per metal — runs in < 30s.
-    rc = driver.main([
-        "--target-cohort-size", "50",
-        "--max-train-rows", "200",
-        "--out-dir", str(out_dir),
-        "--quick",
-    ])
+    rc = driver.main(
+        [
+            "--target-cohort-size",
+            "50",
+            "--max-train-rows",
+            "200",
+            "--out-dir",
+            str(out_dir),
+            "--quick",
+        ]
+    )
     assert rc == 0
     # Verify all three artefacts exist
     assert (out_dir / "synthetic_rh_cohort.json").exists()
@@ -376,9 +375,14 @@ def test_driver_script_writes_three_artifacts(tmp_path):
     # The cohort JSON is parseable and has the expected top-level keys.
     payload = json.loads((out_dir / "synthetic_rh_cohort.json").read_text())
     for key in (
-        "workflow", "phase", "metal", "n_compounds_kept",
-        "catherine_pass_rate", "all_catherine_6of6_pass",
-        "per_compound", "wass_decay",
+        "workflow",
+        "phase",
+        "metal",
+        "n_compounds_kept",
+        "catherine_pass_rate",
+        "all_catherine_6of6_pass",
+        "per_compound",
+        "wass_decay",
     ):
         assert key in payload, f"missing key: {key}"
     assert payload["metal"] == "Rh"

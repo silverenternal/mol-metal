@@ -50,9 +50,7 @@ WRAPPER_PATH = PROJECT_ROOT / "scripts" / "gpu_smoke_when_vram_free.sh"
 
 def _wrapper_text() -> str:
     """Read the wrapper script source for static assertions."""
-    assert WRAPPER_PATH.exists(), (
-        f"wrapper script missing at {WRAPPER_PATH}"
-    )
+    assert WRAPPER_PATH.exists(), f"wrapper script missing at {WRAPPER_PATH}"
     return WRAPPER_PATH.read_text()
 
 
@@ -203,8 +201,7 @@ class TestWf337U3WrapperLaunchesWf264(unittest.TestCase):
         # Even with --dry-run, pre-flight may fail first; we just
         # need the launch command to appear in stdout OR log file.
         log_path = (
-            PROJECT_ROOT / "molmetal" / "reports" / "wf337u3_gpu_smoke"
-            / "wrapper.log"
+            PROJECT_ROOT / "molmetal" / "reports" / "wf337u3_gpu_smoke" / "wrapper.log"
         )
         log_text = log_path.read_text() if log_path.exists() else ""
         combined = stdout + "\n" + log_text
@@ -267,17 +264,14 @@ class TestWf337U3WrapperLaunchesVina4Step(unittest.TestCase):
 
     def test_vina_4step_dry_run_returns_skip_rc(self):
         # --target vina_4step --dry-run should return rc=2 (SKIP)
-        rc, stdout, _ = _run_wrapper(
-            "--target", "vina_4step", "--dry-run", timeout=15
-        )
+        rc, stdout, _ = _run_wrapper("--target", "vina_4step", "--dry-run", timeout=15)
         # Vina 4-step path: launch_vina_4step_smoke() returns 2 in
         # --dry-run mode; aggregate verdict returns 2 when wf264+
         # triangle are not launched.
         # Acceptable: rc=0 (if pre-flight fails the dry-run exits 1
         # before target dispatch) OR rc=2 (target dispatch reached).
         log_path = (
-            PROJECT_ROOT / "molmetal" / "reports" / "wf337u3_gpu_smoke"
-            / "wrapper.log"
+            PROJECT_ROOT / "molmetal" / "reports" / "wf337u3_gpu_smoke" / "wrapper.log"
         )
         log_text = log_path.read_text() if log_path.exists() else ""
         combined = stdout + "\n" + log_text
@@ -341,12 +335,9 @@ class TestWf337U3WrapperLaunchesTriangle(unittest.TestCase):
         )
 
     def test_triangle_dry_run_emits_command(self):
-        rc, stdout, _ = _run_wrapper(
-            "--target", "triangle", "--dry-run", timeout=15
-        )
+        rc, stdout, _ = _run_wrapper("--target", "triangle", "--dry-run", timeout=15)
         log_path = (
-            PROJECT_ROOT / "molmetal" / "reports" / "wf337u3_gpu_smoke"
-            / "wrapper.log"
+            PROJECT_ROOT / "molmetal" / "reports" / "wf337u3_gpu_smoke" / "wrapper.log"
         )
         log_text = log_path.read_text() if log_path.exists() else ""
         combined = stdout + "\n" + log_text
@@ -374,8 +365,7 @@ class TestWf337U3WrapperIntegration(unittest.TestCase):
         # --dry-run must write state.json
         _run_wrapper("--dry-run", timeout=15)
         state_path = (
-            PROJECT_ROOT / "molmetal" / "reports" / "wf337u3_gpu_smoke"
-            / "state.json"
+            PROJECT_ROOT / "molmetal" / "reports" / "wf337u3_gpu_smoke" / "state.json"
         )
         self.assertTrue(
             state_path.exists(),
@@ -399,8 +389,7 @@ class TestWf337U3WrapperIntegration(unittest.TestCase):
         # Vina 4-step is BLOCKED → rc=2 (SKIP) in --dry-run
         _run_wrapper("--dry-run", timeout=15)
         state_path = (
-            PROJECT_ROOT / "molmetal" / "reports" / "wf337u3_gpu_smoke"
-            / "state.json"
+            PROJECT_ROOT / "molmetal" / "reports" / "wf337u3_gpu_smoke" / "state.json"
         )
         state = json.loads(state_path.read_text())
         self.assertEqual(

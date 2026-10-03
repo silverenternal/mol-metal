@@ -66,10 +66,7 @@ TRAINER_PATH = (
     PROJECT_ROOT / "molmetal" / "scripts" / "train_dmpnn_multitask_wasserstein.py"
 )
 DEFAULT_CSV = (
-    PROJECT_ROOT
-    / ".data"
-    / "molmetal"
-    / "metalcytotox_5metal_multitask_v4.csv"
+    PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 )
 DEFAULT_VENV = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
 SMOKE_OUT_DIR = Path("/tmp/wf334u1_cpu_smoke")
@@ -161,12 +158,12 @@ def test_smoke_flag_does_not_exist_honest_negative():
     smoke-scaling knob is ``--max-joint-rows`` (line 1797).
     """
     src = TRAINER_PATH.read_text(encoding="utf-8")
-    assert '"--smoke"' not in src, (
-        "unexpected: trainer gained a --smoke flag after 2026-09-29"
-    )
-    assert '"--max-joint-rows"' in src, (
-        "trainer must keep --max-joint-rows as the smoke-scaling knob"
-    )
+    assert (
+        '"--smoke"' not in src
+    ), "unexpected: trainer gained a --smoke flag after 2026-09-29"
+    assert (
+        '"--max-joint-rows"' in src
+    ), "trainer must keep --max-joint-rows as the smoke-scaling knob"
 
 
 def test_dmpnn_backend_pyg_wired_w334u1():
@@ -182,9 +179,9 @@ def test_dmpnn_backend_pyg_wired_w334u1():
     import ast
 
     src = TRAINER_PATH.read_text(encoding="utf-8")
-    assert '"--dmpnn-backend"' in src, (
-        "expected --dmpnn-backend flag in trainer argparse"
-    )
+    assert (
+        '"--dmpnn-backend"' in src
+    ), "expected --dmpnn-backend flag in trainer argparse"
     # Parse and walk the AST to confirm the add_argument call exists.
     tree = ast.parse(src)
     flag_names: List[str] = []
@@ -256,23 +253,40 @@ def test_cpu_smoke_runs_with_w328_optimizations():
     cmd = [
         str(DEFAULT_VENV),
         str(TRAINER_PATH.relative_to(PROJECT_ROOT)),
-        "--metals", "Ru",
-        "--seeds", "0",
-        "--csv", str(DEFAULT_CSV),
-        "--data-csv", str(DEFAULT_CSV),
-        "--out-dir", str(SMOKE_OUT_DIR),
-        "--ckpt-dir", str(SMOKE_OUT_DIR / "ckpts"),
-        "--epochs", "1",
-        "--batch-size", "8",
-        "--hidden", "32",
-        "--depth", "2",
-        "--lr", "1e-3",
-        "--alpha", "0.5",
-        "--w2-gradient-mode", "sort",
-        "--wasserstein-weight", "0.0",
-        "--device", "cpu",
-        "--cpu-num-workers", "0",
-        "--max-joint-rows", "8",
+        "--metals",
+        "Ru",
+        "--seeds",
+        "0",
+        "--csv",
+        str(DEFAULT_CSV),
+        "--data-csv",
+        str(DEFAULT_CSV),
+        "--out-dir",
+        str(SMOKE_OUT_DIR),
+        "--ckpt-dir",
+        str(SMOKE_OUT_DIR / "ckpts"),
+        "--epochs",
+        "1",
+        "--batch-size",
+        "8",
+        "--hidden",
+        "32",
+        "--depth",
+        "2",
+        "--lr",
+        "1e-3",
+        "--alpha",
+        "0.5",
+        "--w2-gradient-mode",
+        "sort",
+        "--wasserstein-weight",
+        "0.0",
+        "--device",
+        "cpu",
+        "--cpu-num-workers",
+        "0",
+        "--max-joint-rows",
+        "8",
         "--no-torch-compile",
         "--no-kendall",
         "--no-dann",
@@ -281,7 +295,11 @@ def test_cpu_smoke_runs_with_w328_optimizations():
     t0 = time.time()
     try:
         proc = subprocess.run(
-            cmd, cwd=cwd, capture_output=True, text=True, timeout=120,
+            cmd,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=120,
         )
     except subprocess.TimeoutExpired:
         pytest.skip(
@@ -346,9 +364,7 @@ def test_vram_occupied_recovery_path():
     # If a GPU has ≥ 16 GiB free, the recovery contract allows
     # smoke. We do NOT auto-launch here (kept manual via
     # ``--require-gpu``) to avoid races with other GPU jobs.
-    free_indices = [
-        r["index"] for r in rows if int(r["free_mib"]) >= 16_384
-    ]
+    free_indices = [r["index"] for r in rows if int(r["free_mib"]) >= 16_384]
     assert free_indices, "expected at least one GPU with ≥ 16 GiB free"
 
 

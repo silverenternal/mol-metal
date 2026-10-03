@@ -40,6 +40,7 @@ The synthetic-summary path is the primary test target; real
 closure-theorem BFS would slow the suite down by 30-60s and is not
 required for Wf-57 ship.
 """
+
 from __future__ import annotations
 
 import json
@@ -81,11 +82,38 @@ from molmetal.math_skills.catherine_properties import (
 
 EXPECTED_30_METALS = {
     # 3d
-    "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
+    "Sc",
+    "Ti",
+    "V",
+    "Cr",
+    "Mn",
+    "Fe",
+    "Co",
+    "Ni",
+    "Cu",
+    "Zn",
     # 4d
-    "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
+    "Y",
+    "Zr",
+    "Nb",
+    "Mo",
+    "Tc",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Cd",
     # 5d + La
-    "La", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg",
+    "La",
+    "Hf",
+    "Ta",
+    "W",
+    "Re",
+    "Os",
+    "Ir",
+    "Pt",
+    "Au",
+    "Hg",
 }
 
 # Five representative metals for the Wf-57 ship target (5 metals ×
@@ -114,16 +142,16 @@ def test_dblock_30_metals_matches_expected():
 
 def test_default_coordination_geometry_covers_all_metals():
     for m in DBLOCK_30_METALS:
-        assert m in DEFAULT_COORDINATION_GEOMETRY, (
-            f"{m} missing from DEFAULT_COORDINATION_GEOMETRY"
-        )
+        assert (
+            m in DEFAULT_COORDINATION_GEOMETRY
+        ), f"{m} missing from DEFAULT_COORDINATION_GEOMETRY"
 
 
 def test_geometry_max_cn_is_strictly_positive():
     for geom, cn in GEOMETRY_MAX_CN.items():
-        assert isinstance(cn, int) and 1 <= cn <= 8, (
-            f"GEOMETRY_MAX_CN[{geom!r}]={cn} not in [1..8]"
-        )
+        assert (
+            isinstance(cn, int) and 1 <= cn <= 8
+        ), f"GEOMETRY_MAX_CN[{geom!r}]={cn} not in [1..8]"
 
 
 def test_per_property_verifiers_dict_has_all_six():
@@ -145,10 +173,17 @@ def test_synthetic_closure_summary_default_passes_all_six():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("verifier", [
-    verify_p1_reflexivity, verify_p2_transitivity, verify_p3_symmetry,
-    verify_p4_dblock, verify_p5_reachability, verify_p6_composability,
-])
+@pytest.mark.parametrize(
+    "verifier",
+    [
+        verify_p1_reflexivity,
+        verify_p2_transitivity,
+        verify_p3_symmetry,
+        verify_p4_dblock,
+        verify_p5_reachability,
+        verify_p6_composability,
+    ],
+)
 def test_each_verifier_passes_on_synthetic_pass_summary(verifier):
     s = synthetic_closure_summary()
     result = verifier("Pt", s)
@@ -160,10 +195,17 @@ def test_each_verifier_passes_on_synthetic_pass_summary(verifier):
 
 
 @pytest.mark.parametrize("metal", SHIP_TARGET_METALS)
-@pytest.mark.parametrize("verifier", [
-    verify_p1_reflexivity, verify_p2_transitivity, verify_p3_symmetry,
-    verify_p4_dblock, verify_p5_reachability, verify_p6_composability,
-])
+@pytest.mark.parametrize(
+    "verifier",
+    [
+        verify_p1_reflexivity,
+        verify_p2_transitivity,
+        verify_p3_symmetry,
+        verify_p4_dblock,
+        verify_p5_reachability,
+        verify_p6_composability,
+    ],
+)
 def test_each_verifier_passes_on_5_metals(verifier, metal):
     """30 tests = 5 metals × 6 properties — the Wf-57 pytest ship target."""
     s = synthetic_closure_summary()
@@ -218,7 +260,8 @@ def test_p6_composability_fails_when_depth_distribution_is_skewed():
     is not associative at this depth.
     """
     s = synthetic_closure_summary(
-        n_visited=6, max_depth_seen=2,
+        n_visited=6,
+        max_depth_seen=2,
         products_per_depth={0: 1, 1: 0, 2: 5},
     )
     r = verify_p6_composability("Pt", s)
@@ -296,8 +339,13 @@ def test_sweep_summary_stats_counts_pass_5_of_6_correctly():
     # Per-property: P2 should show 4/5 pass (Cu broken).
     assert stats["properties_pass_count"]["P2_transitivity"] == 4
     # All other properties should show 5/5 pass.
-    for pid in ("P1_reflexivity", "P3_symmetry", "P4_dblock",
-                "P5_reachability", "P6_composability"):
+    for pid in (
+        "P1_reflexivity",
+        "P3_symmetry",
+        "P4_dblock",
+        "P5_reachability",
+        "P6_composability",
+    ):
         assert stats["properties_pass_count"][pid] == 5
 
 
@@ -310,6 +358,7 @@ def test_sweep_summary_stats_counts_pass_5_of_6_correctly():
 def bench_module():
     sys.path.insert(0, str(_REPO_ROOT / "molmetal" / "scripts"))
     import bench_catherine_6_props_25metals as M  # noqa: E402
+
     return M
 
 
@@ -335,8 +384,13 @@ def test_bench_render_markdown_contains_expected_sections(bench_module):
             "passed_properties": list(EXPECTED_6_PROPERTY_IDS),
             "failed_properties": [],
             "per_property": {
-                pid: {"passed": True, "n_samples": 12, "n_violations": 0,
-                      "wall_time_s": 1e-4, "notes": ""}
+                pid: {
+                    "passed": True,
+                    "n_samples": 12,
+                    "n_violations": 0,
+                    "wall_time_s": 1e-4,
+                    "notes": "",
+                }
                 for pid in EXPECTED_6_PROPERTY_IDS
             },
             "wall_time_s": 0.01,
@@ -345,19 +399,28 @@ def test_bench_render_markdown_contains_expected_sections(bench_module):
     }
     fake_summaries = {
         m: {
-            "n_visited": 12, "n_products": 11, "max_depth_seen": 1,
+            "n_visited": 12,
+            "n_products": 11,
+            "max_depth_seen": 1,
             "products_per_depth": {0: 1, 1: 11},
-            "witness_rate": 1.0, "well_typed_rate": 1.0,
-            "coord_violations": 0, "reachability_rate": 1.0,
+            "witness_rate": 1.0,
+            "well_typed_rate": 1.0,
+            "coord_violations": 0,
+            "reachability_rate": 1.0,
         }
         for m in metals
     }
     payload = {
         "metadata": {
-            "wf": "Wf-57", "phase": "Phase 3",
-            "n_metals": len(metals), "n_seeds": 5,
-            "max_depth": 1, "max_products": 64, "use_gpu": False,
-            "timestamp": "2026-09-26T00:00:00Z", "wall_time_s_total": 0.05,
+            "wf": "Wf-57",
+            "phase": "Phase 3",
+            "n_metals": len(metals),
+            "n_seeds": 5,
+            "max_depth": 1,
+            "max_products": 64,
+            "use_gpu": False,
+            "timestamp": "2026-09-26T00:00:00Z",
+            "wall_time_s_total": 0.05,
         },
         "metals": fake_verdicts,
         "summaries": fake_summaries,
@@ -375,13 +438,25 @@ def test_bench_render_markdown_contains_expected_sections(bench_module):
 def test_bench_sweep_smoke_runs_5_metals_synthetic(tmp_path, bench_module):
     """End-to-end smoke: 5 metals × 2 seeds, synthetic CPU-only, < 1s."""
     out_dir = tmp_path / "wf57_smoke"
-    rc = bench_module.main([
-        "--metals-list", "Pt", "Ru", "Fe", "Cu", "Au",
-        "--seeds", "0", "1",
-        "--max-depth", "1",
-        "--max-products", "32",
-        "--out-dir", str(out_dir),
-    ])
+    rc = bench_module.main(
+        [
+            "--metals-list",
+            "Pt",
+            "Ru",
+            "Fe",
+            "Cu",
+            "Au",
+            "--seeds",
+            "0",
+            "1",
+            "--max-depth",
+            "1",
+            "--max-products",
+            "32",
+            "--out-dir",
+            str(out_dir),
+        ]
+    )
     assert rc == 0
     # Output files were written.
     assert (out_dir / "per_metal_pass.json").exists()
@@ -390,31 +465,37 @@ def test_bench_sweep_smoke_runs_5_metals_synthetic(tmp_path, bench_module):
     assert payload["metadata"]["n_metals"] == 5
     assert payload["metadata"]["n_seeds"] == 2
     # All five metals PASS 6/6 on synthetic path.
-    assert all(
-        payload["metals"][m]["six_of_six_pass"] for m in SHIP_TARGET_METALS
-    ), (
+    assert all(payload["metals"][m]["six_of_six_pass"] for m in SHIP_TARGET_METALS), (
         "synthetic CPU-only bench should produce 6/6 PASS on every "
-        "metal: " + repr({m: payload["metals"][m]["six_of_six_pass"] for m in SHIP_TARGET_METALS})
+        "metal: "
+        + repr({m: payload["metals"][m]["six_of_six_pass"] for m in SHIP_TARGET_METALS})
     )
 
 
 def test_bench_sweep_25_metals_runs(tmp_path, bench_module):
     """Wf-57 ship target: 25 metals × 5 seeds, CPU-only."""
     out_dir = tmp_path / "wf57_25metals"
-    rc = bench_module.main([
-        "--metals", "25",
-        "--seeds", "0", "1", "2", "3", "4",
-        "--out-dir", str(out_dir),
-    ])
+    rc = bench_module.main(
+        [
+            "--metals",
+            "25",
+            "--seeds",
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "--out-dir",
+            str(out_dir),
+        ]
+    )
     assert rc == 0
     payload = json.loads((out_dir / "per_metal_pass.json").read_text())
     # Wf-57 ship target — 25 metals × 6 / 6 PASS on synthetic path.
     assert payload["metadata"]["n_metals"] == 25
     n_pass = sum(
-        1 for m in payload["metals"]
-        if payload["metals"][m]["six_of_six_pass"]
+        1 for m in payload["metals"] if payload["metals"][m]["six_of_six_pass"]
     )
     assert n_pass == 25, (
-        f"Wf-57 ship target requires 25/25 metals × 6/6 PASS; got "
-        f"{n_pass}/25"
+        f"Wf-57 ship target requires 25/25 metals × 6/6 PASS; got " f"{n_pass}/25"
     )

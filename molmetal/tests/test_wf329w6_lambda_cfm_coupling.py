@@ -70,16 +70,14 @@ def _try_import_train_cfm_script():
         # Use subprocess to query --help output (avoids importing
         # the heavy torch / RDKit top-level deps the script has).
         spec_path = (
-            PROJECT_ROOT
-            / "molmetal"
-            / "scripts"
-            / "train_cfm_yuelbond_wasserstein.py"
+            PROJECT_ROOT / "molmetal" / "scripts" / "train_cfm_yuelbond_wasserstein.py"
         )
         if not spec_path.exists():
             return None
         proc = subprocess.run(
             [sys.executable, str(spec_path), "--help"],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
             env={**os.environ, "PYTHONPATH": str(PROJECT_ROOT)},
             timeout=30,
         )
@@ -88,6 +86,7 @@ def _try_import_train_cfm_script():
         help_text = (proc.stdout or "") + (proc.stderr or "")
         if "--lambda-cfm-coupling" not in help_text:
             return None
+
         # Return a callable that runs --help and returns the text.
         def _help_runner(argv):
             return help_text
@@ -118,8 +117,7 @@ def test_wf329w6_lambda_cfm_coupling_flag_wired():
         "in --help output (1-line adapter change)."
     )
     assert "--lambda-cfm-coupling-weight" in help_text, (
-        "Wf-329-W6: --lambda-cfm-coupling-weight flag must appear "
-        "in --help output."
+        "Wf-329-W6: --lambda-cfm-coupling-weight flag must appear " "in --help output."
     )
     # Verify default False for CPU-safe backward-compat is documented.
     assert "Default False" in help_text, (
@@ -201,13 +199,13 @@ def test_wf329w6_joint_inference_skeleton_callable():
     except Exception as exc:  # pragma: no cover - graceful skip
         pytest.skip(f"coupling_joint_inference not importable: {exc}")
     # The smoke test is the canonical end-to-end callable surface.
-    assert callable(smoke_test_full_pipeline), (
-        "Wf-329-W6: smoke_test_full_pipeline must remain callable."
-    )
+    assert callable(
+        smoke_test_full_pipeline
+    ), "Wf-329-W6: smoke_test_full_pipeline must remain callable."
     # LambdaCFMPipeline class must still be importable.
-    assert LambdaCFMPipeline is not None, (
-        "Wf-329-W6: LambdaCFMPipeline must be importable."
-    )
+    assert (
+        LambdaCFMPipeline is not None
+    ), "Wf-329-W6: LambdaCFMPipeline must be importable."
 
 
 # ---------------------------------------------------------------------------
@@ -230,7 +228,9 @@ def test_wf329w6_downstream_consumer_integration():
         pytest.skip(f"lambda_reward_dataset not importable: {exc}")
     # n_samples=4 keeps the test fast; pocket_id is the Wf-323E default.
     ds = build_lambda_reward_dataset(
-        n_samples=4, pocket_id="test_001", seed=0,
+        n_samples=4,
+        pocket_id="test_001",
+        seed=0,
     )
     # Empty dataset is the CPU-safe fallback (no RDKit available).
     assert ds is not None, (
@@ -247,18 +247,17 @@ def test_wf329w6_downstream_consumer_integration():
     from molmetal.molmetal_lam.lam_chem.coupling_adapter import (  # noqa: E501
         is_coupling_enabled,
     )
+
     # Save + restore env var to avoid leaking test state.
     prev = os.environ.get("COUPLING_ENABLED")
     try:
         os.environ["COUPLING_ENABLED"] = "1"
         assert is_coupling_enabled() is True, (
-            "Wf-329-W6: is_coupling_enabled() must honour "
-            "COUPLING_ENABLED=1."
+            "Wf-329-W6: is_coupling_enabled() must honour " "COUPLING_ENABLED=1."
         )
         os.environ["COUPLING_ENABLED"] = "0"
         assert is_coupling_enabled() is False, (
-            "Wf-329-W6: is_coupling_enabled() must honour "
-            "COUPLING_ENABLED=0."
+            "Wf-329-W6: is_coupling_enabled() must honour " "COUPLING_ENABLED=0."
         )
     finally:
         if prev is None:

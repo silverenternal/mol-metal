@@ -31,6 +31,7 @@ Run via::
     cd /home/hugo/codes/mol-metal
     PYTHONPATH=/home/hugo/codes/mol-metal /home/hugo/codes/mol-metal/.venv/bin/python -m pytest molmetal/tests/test_wf329w8_skill_wiring.py -v
 """
+
 from __future__ import annotations
 
 import re
@@ -49,7 +50,7 @@ SKILLS_ROOT = REPO_ROOT / ".claude" / "skills"
 TARGET_SKILLS: Dict[str, Tuple[str, str]] = {
     # name: (R-phase, expected LOC floor)
     "mol-metal-closure-catherine": ("R20-P5 (TODO-96)", 100),  # Wf-329-W8 wire target
-    "mol-metal-triangle-closure":  ("R21 (TODO-93 L8)", 400),  # Wf-327-F10 WIRED
+    "mol-metal-triangle-closure": ("R21 (TODO-93 L8)", 400),  # Wf-327-F10 WIRED
 }
 
 # Code anchors that MUST resolve on disk for each skill to be considered WIRED.
@@ -109,7 +110,7 @@ def _split_frontmatter(text: str) -> Tuple[str, str]:
     if end is None:
         return "", text
     front = "\n".join(lines[1:end])
-    body = "\n".join(lines[end + 1:])
+    body = "\n".join(lines[end + 1 :])
     return front, body
 
 
@@ -177,18 +178,18 @@ def test_skill_md_exists_with_frontmatter(skill_name: str) -> None:
     frontmatter, _body = _split_frontmatter(text)
     assert frontmatter, f"{skill_name} SKILL.md lacks YAML frontmatter"
     name_field = _extract_yaml_field(frontmatter, "name")
-    assert name_field == skill_name, (
-        f"{skill_name} frontmatter name mismatch: got {name_field!r}"
-    )
+    assert (
+        name_field == skill_name
+    ), f"{skill_name} frontmatter name mismatch: got {name_field!r}"
     desc_field = _extract_yaml_field(frontmatter, "description")
     assert len(desc_field) > 50, (
         f"{skill_name} description too short ({len(desc_field)} chars); "
         "skill discovery needs a substantive description"
     )
     tools_field = _extract_yaml_field(frontmatter, "tools")
-    assert tools_field, (
-        f"{skill_name} frontmatter missing 'tools:' field (per Wf-327 WIRED contract)"
-    )
+    assert (
+        tools_field
+    ), f"{skill_name} frontmatter missing 'tools:' field (per Wf-327 WIRED contract)"
 
 
 # ---------------------------------------------------------------------------
@@ -210,9 +211,9 @@ def test_skill_md_has_eight_sections(skill_name: str) -> None:
     )
     # §8 cross-references ship surface
     has_section_8 = bool(re.search(r"^## §8\s+", body, re.MULTILINE))
-    assert has_section_8, (
-        f"{skill_name} missing §8 (Cross-references) — Wf-329-W8 wire contract"
-    )
+    assert (
+        has_section_8
+    ), f"{skill_name} missing §8 (Cross-references) — Wf-329-W8 wire contract"
 
 
 # ---------------------------------------------------------------------------
@@ -260,15 +261,13 @@ def test_skill_activation_and_anchors(skill_name: str) -> None:
     desc = _extract_yaml_field(frontmatter, "description")
     # Activation keywords (skill discovery via description match)
     for kw in ACTIVATION_KEYWORDS[skill_name]:
-        assert kw.lower() in desc.lower(), (
-            f"{skill_name} description missing activation keyword {kw!r}"
-        )
+        assert (
+            kw.lower() in desc.lower()
+        ), f"{skill_name} description missing activation keyword {kw!r}"
     # Code anchors must resolve on disk
     for anchor_rel in CODE_ANCHORS[skill_name]:
         anchor_path = REPO_ROOT / anchor_rel
-        assert anchor_path.exists(), (
-            f"{skill_name} code anchor missing: {anchor_rel}"
-        )
+        assert anchor_path.exists(), f"{skill_name} code anchor missing: {anchor_rel}"
 
 
 # ---------------------------------------------------------------------------
@@ -280,12 +279,10 @@ def test_skill_md_above_stub_threshold(skill_name: str) -> None:
     text = _skill_path(skill_name).read_text(encoding="utf-8")
     loc = len(text.splitlines())
     floor = TARGET_SKILLS[skill_name][1]
-    assert loc >= 50, (
-        f"{skill_name} SKILL.md is STUB ({loc} LOC, < 50 threshold)"
-    )
-    assert loc >= floor, (
-        f"{skill_name} SKILL.md below expected LOC floor {floor}: got {loc}"
-    )
+    assert loc >= 50, f"{skill_name} SKILL.md is STUB ({loc} LOC, < 50 threshold)"
+    assert (
+        loc >= floor
+    ), f"{skill_name} SKILL.md below expected LOC floor {floor}: got {loc}"
 
 
 # ---------------------------------------------------------------------------
@@ -296,17 +293,14 @@ def test_wf329w8_audit_both_wired() -> None:
     agents_md = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
     for skill_name, (phase, _floor) in TARGET_SKILLS.items():
         # Look for the skill name + WIRED marker in §3.3
-        assert skill_name in agents_md, (
-            f"{skill_name} not found in AGENTS.md §3.3 catalog"
-        )
+        assert (
+            skill_name in agents_md
+        ), f"{skill_name} not found in AGENTS.md §3.3 catalog"
         # WIRED marker can be from any Wf — Wf-327-F9 / F10 / Wf-329-W8
         # Pattern: `mol-metal-xxx | R20-P5 | TBD (**WIRED per Wf-NNN | ...)` or `(**WIRED`
-        pattern = (
-            rf"\`{re.escape(skill_name)}\`.*?\*\*WIRED"
-        )
+        pattern = rf"\`{re.escape(skill_name)}\`.*?\*\*WIRED"
         assert re.search(pattern, agents_md, re.DOTALL), (
-            f"{skill_name} lacks WIRED marker in AGENTS.md §3.3 "
-            f"(audit gate failed)"
+            f"{skill_name} lacks WIRED marker in AGENTS.md §3.3 " f"(audit gate failed)"
         )
 
 
@@ -344,6 +338,6 @@ def test_triangle_closure_wf327f10_acknowledged() -> None:
 def test_closure_catherine_wf329w8_wire_marker() -> None:
     """closure-catherine SKILL.md carries Wf-329-W8 WIRED marker."""
     text = _skill_path("mol-metal-closure-catherine").read_text(encoding="utf-8")
-    assert "Wf-329-W8" in text, (
-        "mol-metal-closure-catherine SKILL.md lacks Wf-329-W8 WIRED marker"
-    )
+    assert (
+        "Wf-329-W8" in text
+    ), "mol-metal-closure-catherine SKILL.md lacks Wf-329-W8 WIRED marker"

@@ -136,6 +136,7 @@ def _safe_canonical(smiles: str) -> str:
         return ""
     try:
         from rdkit import Chem  # type: ignore
+
         mol = Chem.MolFromSmiles(smiles)
         if mol is None:
             return smiles.strip()
@@ -205,8 +206,11 @@ def load_assays(
     out: List[Assay] = []
     try:
         with open(path, "r", encoding="utf-8") as fh:
-            lines = [ln for ln in fh.readlines()
-                     if ln.strip() and not ln.lstrip().startswith(comment)]
+            lines = [
+                ln
+                for ln in fh.readlines()
+                if ln.strip() and not ln.lstrip().startswith(comment)
+            ]
     except OSError:
         return out
 
@@ -232,23 +236,27 @@ def load_assays(
             lines = [lines[0]] + lines[1:]  # keep data rows
         else:
             opt_indices = {
-                "cell_line": header.index("cell_line")
-                if "cell_line" in header else -1,
+                "cell_line": header.index("cell_line") if "cell_line" in header else -1,
                 "target_protein": header.index("target_protein")
-                if "target_protein" in header else -1,
+                if "target_protein" in header
+                else -1,
                 "outcome_metric": header.index("outcome_metric")
-                if "outcome_metric" in header else -1,
+                if "outcome_metric" in header
+                else -1,
                 "outcome_unit": header.index("outcome_unit")
-                if "outcome_unit" in header else -1,
-                "assay_id": header.index("assay_id")
-                if "assay_id" in header else -1,
+                if "outcome_unit" in header
+                else -1,
+                "assay_id": header.index("assay_id") if "assay_id" in header else -1,
                 "collaborator": header.index("collaborator")
-                if "collaborator" in header else -1,
-                "date": header.index("date")
-                if "date" in header else -1,
+                if "collaborator" in header
+                else -1,
+                "date": header.index("date") if "date" in header else -1,
             }
-            known_cols = {column_smiles.lower(), column_value.lower(),
-                          *opt_indices.keys()}
+            known_cols = {
+                column_smiles.lower(),
+                column_value.lower(),
+                *opt_indices.keys(),
+            }
             extra_cols = [tok for tok in header if tok not in known_cols]
 
     if has_header:
@@ -287,8 +295,11 @@ def load_assays(
             if extras:
                 kwargs["extra"] = extras
 
-        out.append(Assay(**{k: v for k, v in kwargs.items()
-                            if k in Assay.__dataclass_fields__}))
+        out.append(
+            Assay(
+                **{k: v for k, v in kwargs.items() if k in Assay.__dataclass_fields__}
+            )
+        )
 
     return out
 
@@ -387,9 +398,9 @@ def describe_assays(assays: Sequence[Assay]) -> Dict[str, object]:
         "n_assays": len(assays),
         "metric_counts": metric_counts,
         "cell_line_counts": cell_line_counts,
-        "collaborators": sorted({str(r.collaborator)
-                                 for r in assays
-                                 if r.collaborator}),
+        "collaborators": sorted(
+            {str(r.collaborator) for r in assays if r.collaborator}
+        ),
     }
 
 

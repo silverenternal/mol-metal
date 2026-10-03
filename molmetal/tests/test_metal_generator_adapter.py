@@ -9,6 +9,7 @@ Three required test cases (T4):
    metal token (``[Pt]`` / ``[Ru]`` …) and the metal is *not* lost
    downstream.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -28,7 +29,8 @@ from molmetal_lam.sbdd_env.metal_generator_adapter import (
 def _make_pocket(n_atoms: int = 4) -> Pocket:
     coords = torch.zeros(n_atoms, 3, dtype=torch.float32)
     atom_types = torch.tensor(
-        [6, 7, 8, 16] * (n_atoms // 4 + 1), dtype=torch.long,
+        [6, 7, 8, 16] * (n_atoms // 4 + 1),
+        dtype=torch.long,
     )[:n_atoms]
     residue_ids = torch.zeros(n_atoms, dtype=torch.long)
     chain_ids = torch.zeros(n_atoms, dtype=torch.long)
@@ -75,7 +77,10 @@ class TestProtocolCompliance:
 
     def test_config_dataclass_construction(self):
         cfg = MetalLigandConfig(
-            n_samples=3, oxidation_state=4, seed=7, embed_3d=False,
+            n_samples=3,
+            oxidation_state=4,
+            seed=7,
+            embed_3d=False,
         )
         assert cfg.n_samples == 3
         assert cfg.oxidation_state == 4
@@ -101,7 +106,8 @@ class TestMultiComponentRoundTrip:
         adapter = MetalLigandAdapter()
         pocket = _make_pocket(n_atoms=4)
         complexes = adapter.generate(
-            pocket, metal="Pt",
+            pocket,
+            metal="Pt",
             ligand_smiles="N.N.Cl.Cl",
             config=MetalLigandConfig(n_samples=2, oxidation_state=2),
         )
@@ -120,7 +126,8 @@ class TestMultiComponentRoundTrip:
         adapter = MetalLigandAdapter()
         pocket = _make_pocket()
         complexes = adapter.generate(
-            pocket, metal="Pt",
+            pocket,
+            metal="Pt",
             ligand_smiles="N.N.Cl.Cl",
             config=MetalLigandConfig(n_samples=1, oxidation_state=2),
         )
@@ -136,7 +143,8 @@ class TestMultiComponentRoundTrip:
         adapter = MetalLigandAdapter()
         pocket = _make_pocket()
         complexes = adapter.generate(
-            pocket, metal="Pt",
+            pocket,
+            metal="Pt",
             ligand_smiles="",
             config=MetalLigandConfig(n_samples=1, oxidation_state=2),
         )
@@ -151,7 +159,8 @@ class TestMetalTokenInjection:
         adapter = MetalLigandAdapter()
         pocket = _make_pocket()
         complexes = adapter.generate(
-            pocket, metal="Pt",
+            pocket,
+            metal="Pt",
             ligand_smiles="N.N.Cl.Cl",
             config=MetalLigandConfig(n_samples=1, oxidation_state=2),
         )
@@ -164,7 +173,8 @@ class TestMetalTokenInjection:
         adapter = MetalLigandAdapter()
         pocket = _make_pocket()
         complexes = adapter.generate(
-            pocket, metal="Ru",
+            pocket,
+            metal="Ru",
             ligand_smiles="N.N.N.N.Cl.Cl",
             config=MetalLigandConfig(n_samples=1, oxidation_state=2),
         )
@@ -182,7 +192,8 @@ class TestMetalTokenInjection:
         # placeholders gives a clean 6-fragment complex.  Use bracketed
         # donors so they survive the counter-ion / solvent filter.
         complexes = adapter.generate(
-            pocket, metal="Ir",
+            pocket,
+            metal="Ir",
             ligand_smiles="N.N.[OH].[OH]",
             config=MetalLigandConfig(n_samples=1, oxidation_state=3),
         )
@@ -199,12 +210,14 @@ class TestMetalTokenInjection:
         pocket = _make_pocket()
         # Same ligands, different oxidation states.
         pt2 = adapter.generate(
-            pocket, metal="Pt",
+            pocket,
+            metal="Pt",
             ligand_smiles="N.N.Cl.Cl",
             config=MetalLigandConfig(n_samples=1, oxidation_state=2),
         )[0].molecule.smiles
         pt4 = adapter.generate(
-            pocket, metal="Pt",
+            pocket,
+            metal="Pt",
             ligand_smiles="N.N.Cl.Cl",
             config=MetalLigandConfig(n_samples=1, oxidation_state=4),
         )[0].molecule.smiles
@@ -223,7 +236,8 @@ class TestMetalTokenInjection:
         adapter = MetalLigandAdapter()
         pocket = _make_pocket()
         complexes = adapter.generate(
-            pocket, metal="Pt",
+            pocket,
+            metal="Pt",
             ligand_smiles=["N", "N", "Cl", "Cl"],
             config=MetalLigandConfig(n_samples=3, oxidation_state=2),
         )
@@ -233,9 +247,7 @@ class TestMetalTokenInjection:
             rdmol = Chem.MolFromSmiles(c.molecule.smiles)
             assert rdmol is not None
             # Confirm a Pt atom is present.
-            pt_atoms = [
-                a for a in rdmol.GetAtoms() if a.GetSymbol() == "Pt"
-            ]
+            pt_atoms = [a for a in rdmol.GetAtoms() if a.GetSymbol() == "Pt"]
             assert len(pt_atoms) == 1
 
 

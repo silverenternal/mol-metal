@@ -48,6 +48,7 @@ Test inventory
     ``per_seed_metrics.json`` is well-formed JSON with all
     required keys.
 """
+
 from __future__ import annotations
 
 import csv
@@ -65,9 +66,10 @@ import pytest
 
 _HERE = Path(__file__).resolve().parent
 _REPO_ROOT = _HERE.parent  # molmetal/
-while _REPO_ROOT != _REPO_ROOT.parent and not (
-    _REPO_ROOT / "molmetal" / "scripts" / "bench_astr_only_real.py"
-).exists():
+while (
+    _REPO_ROOT != _REPO_ROOT.parent
+    and not (_REPO_ROOT / "molmetal" / "scripts" / "bench_astr_only_real.py").exists()
+):
     _REPO_ROOT = _REPO_ROOT.parent
 for _p in (str(_HERE.parent), str(_REPO_ROOT)):
     if _p not in sys.path:
@@ -184,6 +186,7 @@ def test_load_platinai_cell_mcf7() -> None:
         _REPO_ROOT,
         load_platinai_cell,
     )
+
     X, y, smiles = load_platinai_cell(_REPO_ROOT, "mcf7", n_max=50)
     assert X.shape[0] == y.shape[0] == len(smiles)
     assert X.shape[0] >= 1
@@ -197,6 +200,7 @@ def test_load_platinai_cell_unknown_raises() -> None:
         _REPO_ROOT,
         load_platinai_cell,
     )
+
     with pytest.raises(ValueError):
         load_platinai_cell(_REPO_ROOT, "hela_unknown")
 
@@ -239,10 +243,15 @@ def test_astr_regressor_fit_predict_shape() -> None:
     n, d = 200, len(FEATURE_COLUMNS_RDKIT_2D)
     X = rng.normal(0.0, 1.0, (n, d)).astype(np.float32)
     y = (X @ rng.normal(0.0, 0.3, d)).astype(np.float32) + rng.normal(
-        0.0, 0.05, n,
+        0.0,
+        0.05,
+        n,
     ).astype(np.float32)
     reg = ASTRRegressor(
-        population=8, generations=5, depth=3, seed=0,
+        population=8,
+        generations=5,
+        depth=3,
+        seed=0,
         feature_names=FEATURE_COLUMNS_RDKIT_2D,
     ).fit(X, y)
     y_hat = reg.predict(X)
@@ -261,10 +270,15 @@ def test_astr_regressor_best_ast_lisp() -> None:
     n, d = 120, len(FEATURE_COLUMNS_RDKIT_2D)
     X = rng.normal(0.0, 1.0, (n, d)).astype(np.float32)
     y = (X[:, 0] * 0.5 + X[:, 1] * 0.3).astype(np.float32) + rng.normal(
-        0.0, 0.1, n,
+        0.0,
+        0.1,
+        n,
     ).astype(np.float32)
     reg = ASTRRegressor(
-        population=8, generations=5, depth=3, seed=0,
+        population=8,
+        generations=5,
+        depth=3,
+        seed=0,
         feature_names=FEATURE_COLUMNS_RDKIT_2D,
     ).fit(X, y)
     lisp = reg.best_ast_lisp()
@@ -278,9 +292,7 @@ def test_astr_regressor_best_ast_lisp() -> None:
 # ---------------------------------------------------------------------------
 def test_strict_scaffold_split_disjoint() -> None:
     smiles = ["CCO", "c1ccccc1", "CC(=O)O", "CCN", "CCC", "c1ccc2ccccc2c1"]
-    train, val, test = _strict_scaffold_split(
-        smiles, (0.5, 0.25, 0.25), seed=42
-    )
+    train, val, test = _strict_scaffold_split(smiles, (0.5, 0.25, 0.25), seed=42)
     assert len(np.intersect1d(train, val)) == 0
     assert len(np.intersect1d(train, test)) == 0
     assert len(np.intersect1d(val, test)) == 0
@@ -288,9 +300,7 @@ def test_strict_scaffold_split_disjoint() -> None:
 
 def test_strict_scaffold_split_covers_all() -> None:
     smiles = ["CCO", "c1ccccc1", "CC(=O)O", "CCN", "CCC", "c1ccc2ccccc2c1"]
-    train, val, test = _strict_scaffold_split(
-        smiles, (0.5, 0.25, 0.25), seed=42
-    )
+    train, val, test = _strict_scaffold_split(smiles, (0.5, 0.25, 0.25), seed=42)
     covered = np.sort(np.concatenate([train, val, test]))
     expected = np.sort(np.arange(len(smiles)))
     assert np.array_equal(covered, expected)
@@ -340,7 +350,10 @@ def test_astr_only_real_smoke() -> None:
         subset_csv = tmp / "platinai_subset.csv"
         real_csv = _REPO_ROOT / "molmetal" / "data" / "platinai_4cell.csv"
         with open(real_csv, "r", encoding="utf-8") as fin, open(
-            subset_csv, "w", encoding="utf-8", newline="",
+            subset_csv,
+            "w",
+            encoding="utf-8",
+            newline="",
         ) as fout:
             fout.write(fin.readline())  # header
             for i, line in enumerate(fin):
@@ -375,9 +388,7 @@ def test_astr_only_real_smoke() -> None:
             )
         )
         env = os.environ.copy()
-        env["PYTHONPATH"] = (
-            str(_REPO_ROOT) + os.pathsep + env.get("PYTHONPATH", "")
-        )
+        env["PYTHONPATH"] = str(_REPO_ROOT) + os.pathsep + env.get("PYTHONPATH", "")
         proc = subprocess.run(
             [sys.executable, str(wrapper)],
             cwd=str(_REPO_ROOT),

@@ -84,6 +84,7 @@ def _import_module():
     """Import the bench_100pocket_10seed module via importlib (handles hyphen-less name)."""
     import importlib.util
     import sys as _sys
+
     spec = importlib.util.spec_from_file_location(
         "bench_100pocket_10seed",
         str(SCRIPTS_DIR / "bench_100pocket_10seed.py"),
@@ -214,7 +215,9 @@ def test_stub_score_differs_for_different_pocket():
     mod = _import_module()
     smiles = "[Pt](N)(N)(Cl)Cl"
     seed = 0
-    scores = {pocket: mod._stub_score(smiles, seed, pocket) for pocket in mod.WF30_TEN_POCKETS}
+    scores = {
+        pocket: mod._stub_score(smiles, seed, pocket) for pocket in mod.WF30_TEN_POCKETS
+    }
     # All ten scores must be distinct (SHA-256 over (smiles, seed, pocket_id))
     distinct = set(round(v, 6) for v in scores.values())
     assert len(distinct) == len(scores), f"pockets aliased: {scores}"
@@ -234,6 +237,7 @@ def test_vina_binary_present_returns_path_or_none():
     assert not resolved.is_dir()
     # os.access check
     import os
+
     assert os.access(str(resolved), os.X_OK), f"vina at {resolved} is not executable"
 
 
@@ -244,11 +248,13 @@ def _wf30_bundles_stub() -> Dict[str, "mod.PocketBundle"]:
     mod = _import_module()
     return {
         "830c": mod.PocketBundle(
-            pocket_id="830c", source="wf30_mmp13",
+            pocket_id="830c",
+            source="wf30_mmp13",
             receptor_pdbqt=Path("/tmp/dummy/830c/receptor.pdbqt"),
         ),
         "1fmc": mod.PocketBundle(
-            pocket_id="1fmc", source="wf30_mmp13",
+            pocket_id="1fmc",
+            source="wf30_mmp13",
             receptor_pdbqt=Path("/tmp/dummy/1fmc/receptor.pdbqt"),
         ),
     }
@@ -309,7 +315,11 @@ def test_select_pockets_respects_unique():
     mod = _import_module()
     wf30 = _wf30_bundles_stub()
     crossdocked_rows = [
-        {"pocket_id": "830c", "receptor_path": "/n/a", "ligand_path": "/n/a"},  # dup with Wf-30
+        {
+            "pocket_id": "830c",
+            "receptor_path": "/n/a",
+            "ligand_path": "/n/a",
+        },  # dup with Wf-30
         {"pocket_id": "test_000", "receptor_path": "/n/a", "ligand_path": "/n/a"},
         {"pocket_id": "test_001", "receptor_path": "/n/a", "ligand_path": "/n/a"},
     ]
@@ -345,7 +355,11 @@ def test_run_sweep_smoke_two_pockets(tmp_path):
     mod = _import_module()
     wf30 = _wf30_bundles_stub()
     crossdocked_rows = [
-        {"pocket_id": "test_999", "receptor_path": "/n/a/p.pdb", "ligand_path": "/n/a/l.sdf"}
+        {
+            "pocket_id": "test_999",
+            "receptor_path": "/n/a/p.pdb",
+            "ligand_path": "/n/a/l.sdf",
+        }
     ]
     candidates = mod.load_candidates(mod.DEFAULT_CANDIDATES)[:1]  # 1 candidate
 

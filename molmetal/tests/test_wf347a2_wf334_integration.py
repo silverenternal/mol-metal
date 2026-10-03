@@ -54,6 +54,7 @@ WF343C3_SCRIPT = PROJECT_ROOT / "molmetal" / "scripts" / "wf343c3_data_quality_c
 # Test 1: pipeline master references Wf-343C2 per-wave check script
 # ---------------------------------------------------------------------------
 
+
 def test_wf334u2_pipeline_master_references_wf343c2():
     """Wf-347-A2 task contract — pipeline master must reference
     ``molmetal/scripts/wf343c2_per_wave_check.py`` via the wf343c4_gate()
@@ -66,12 +67,8 @@ def test_wf334u2_pipeline_master_references_wf343c2():
       - The Wf-343C2 invocation includes the ``--wave`` flag (per its
         CLI contract — see wf343c2_per_wave_check.py:34).
     """
-    assert PIPELINE_MASTER.exists(), (
-        f"pipeline master missing: {PIPELINE_MASTER}"
-    )
-    assert WF343C2_SCRIPT.exists(), (
-        f"Wf-343C2 script missing on disk: {WF343C2_SCRIPT}"
-    )
+    assert PIPELINE_MASTER.exists(), f"pipeline master missing: {PIPELINE_MASTER}"
+    assert WF343C2_SCRIPT.exists(), f"Wf-343C2 script missing on disk: {WF343C2_SCRIPT}"
 
     text = PIPELINE_MASTER.read_text()
 
@@ -88,9 +85,9 @@ def test_wf334u2_pipeline_master_references_wf343c2():
     )
 
     # The runner must be invoked from at least one phase entry (phase2 or phase3)
-    assert "WF343C4_GATE=1" in text or "WF343C4_GATE:-0" in text, (
-        "pipeline master missing WF343C4_GATE env-var opt-in switch"
-    )
+    assert (
+        "WF343C4_GATE=1" in text or "WF343C4_GATE:-0" in text
+    ), "pipeline master missing WF343C4_GATE env-var opt-in switch"
 
     # The Wf-343C2 invocation must use --wave (per CLI contract)
     # Find the ACTUAL python invocation (not the docstring comment) — skip
@@ -103,15 +100,16 @@ def test_wf334u2_pipeline_master_references_wf343c2():
         f"(expected '{python_invocation_marker}')"
     )
     # Look 800 chars ahead for the --wave flag
-    nearby = text[wf343c2_block_idx:wf343c2_block_idx + 800]
-    assert "--wave" in nearby, (
-        f"Wf-343C2 invocation must include --wave flag (CLI contract): {nearby[:200]!r}"
-    )
+    nearby = text[wf343c2_block_idx : wf343c2_block_idx + 800]
+    assert (
+        "--wave" in nearby
+    ), f"Wf-343C2 invocation must include --wave flag (CLI contract): {nearby[:200]!r}"
 
 
 # ---------------------------------------------------------------------------
 # Test 2: pipeline master references Wf-343C3 data quality check script
 # ---------------------------------------------------------------------------
+
 
 def test_wf334u2_pipeline_master_references_wf343c3():
     """Wf-347-A2 task contract — pipeline master must reference
@@ -126,12 +124,8 @@ def test_wf334u2_pipeline_master_references_wf343c3():
         internal check gates (the structural integration with the
         pre-flight v2 gate set).
     """
-    assert PIPELINE_MASTER.exists(), (
-        f"pipeline master missing: {PIPELINE_MASTER}"
-    )
-    assert WF343C3_SCRIPT.exists(), (
-        f"Wf-343C3 script missing on disk: {WF343C3_SCRIPT}"
-    )
+    assert PIPELINE_MASTER.exists(), f"pipeline master missing: {PIPELINE_MASTER}"
+    assert WF343C3_SCRIPT.exists(), f"Wf-343C3 script missing on disk: {WF343C3_SCRIPT}"
 
     text = PIPELINE_MASTER.read_text()
 
@@ -149,10 +143,10 @@ def test_wf334u2_pipeline_master_references_wf343c3():
         f"Wf-343C3 python invocation block not present in pipeline master "
         f"(expected '{python_invocation_marker}')"
     )
-    nearby = text[wf343c3_block_idx:wf343c3_block_idx + 800]
-    assert "--out-dir" in nearby, (
-        f"Wf-343C3 invocation must include --out-dir flag (CLI contract): {nearby[:200]!r}"
-    )
+    nearby = text[wf343c3_block_idx : wf343c3_block_idx + 800]
+    assert (
+        "--out-dir" in nearby
+    ), f"Wf-343C3 invocation must include --out-dir flag (CLI contract): {nearby[:200]!r}"
 
     # The integration cross-references the 4 NEW Wf-343C4 gates (structural
     # integration with the pre-flight v2 66-gate set per Wf-343c4).

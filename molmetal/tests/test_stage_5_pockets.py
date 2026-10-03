@@ -84,12 +84,10 @@ def test_honest_framing_block_present() -> None:
     assert "partial staging" in diagnosis
     assert "self-RMSD" in diagnosis
     assert "1.241" in diagnosis
-    assert block.get("what_this_pass_does"), (
-        "honest_framing.what_this_pass_does must be set"
-    )
-    assert block.get("stage_recipe"), (
-        "honest_framing.stage_recipe must be set"
-    )
+    assert block.get(
+        "what_this_pass_does"
+    ), "honest_framing.what_this_pass_does must be set"
+    assert block.get("stage_recipe"), "honest_framing.stage_recipe must be set"
 
 
 @pytest.mark.parametrize("pocket_id", WF126_POCKETS)
@@ -108,9 +106,9 @@ def test_pocket_pdbqt_is_parseable(pocket_id: str) -> None:
     pdbqt_path = WF126_DIR / pocket_id / "receptor.pdbqt"
     body = pdbqt_path.read_text().splitlines()
     atom_lines = [line for line in body if line.startswith(("ATOM", "HETATM"))]
-    assert len(atom_lines) > 10, (
-        f"pdbqt for {pocket_id} has only {len(atom_lines)} ATOM/HETATM lines"
-    )
+    assert (
+        len(atom_lines) > 10
+    ), f"pdbqt for {pocket_id} has only {len(atom_lines)} ATOM/HETATM lines"
     # Meeko always emits AutoDock type in cols 77-79.
     for line in atom_lines[:20]:
         assert len(line) >= 78, f"short pdbqt line: {line!r}"
@@ -137,13 +135,11 @@ def test_status_json_records_ready(pocket_id: str) -> None:
     _skip_if_not_staged()
     payload = _status()
     record = next(
-        entry
-        for entry in payload["pockets"]
-        if entry["pocket_id"] == pocket_id
+        entry for entry in payload["pockets"] if entry["pocket_id"] == pocket_id
     )
-    assert record["status"] == "READY", (
-        f"{pocket_id} status={record['status']}; error={record.get('error')}"
-    )
+    assert (
+        record["status"] == "READY"
+    ), f"{pocket_id} status={record['status']}; error={record.get('error')}"
     assert record["pdbqt_path"] is not None
     assert record["pdbqt_size_bytes"] > 0
     assert record["pdbqt_sha256"] is not None
@@ -162,15 +158,11 @@ def test_pdbqt_sha_matches_wf30(pocket_id: str) -> None:
     wf126_pdbqt = WF126_DIR / pocket_id / "receptor.pdbqt"
     wf30_pdbqt = WF30_DIR / pocket_id / "receptor.pdbqt"
     if not wf30_pdbqt.exists():
-        pytest.skip(
-            f"wf30 staging not present for {pocket_id}; "
-            "comparison skipped."
-        )
+        pytest.skip(f"wf30 staging not present for {pocket_id}; " "comparison skipped.")
     wf126_sha = _sha256(wf126_pdbqt)
     wf30_sha = _sha256(wf30_pdbqt)
     assert wf126_sha == wf30_sha, (
-        f"sha mismatch for {pocket_id}: "
-        f"wf126={wf126_sha} vs wf30={wf30_sha}"
+        f"sha mismatch for {pocket_id}: " f"wf126={wf126_sha} vs wf30={wf30_sha}"
     )
 
 
@@ -180,9 +172,7 @@ def test_status_json_source_sha_matches_disk(pocket_id: str) -> None:
     _skip_if_not_staged()
     payload = _status()
     record = next(
-        entry
-        for entry in payload["pockets"]
-        if entry["pocket_id"] == pocket_id
+        entry for entry in payload["pockets"] if entry["pocket_id"] == pocket_id
     )
     src = Path(record["source_pdb"])
     actual = hashlib.sha256(src.read_bytes()).hexdigest()
@@ -198,14 +188,10 @@ def test_metric_provenance_attached(pocket_id: str) -> None:
     _skip_if_not_staged()
     payload = _status()
     record = next(
-        entry
-        for entry in payload["pockets"]
-        if entry["pocket_id"] == pocket_id
+        entry for entry in payload["pockets"] if entry["pocket_id"] == pocket_id
     )
     block = record.get("metric_provenance")
-    assert isinstance(block, dict), (
-        f"missing metric_provenance for {pocket_id}"
-    )
+    assert isinstance(block, dict), f"missing metric_provenance for {pocket_id}"
     assert block.get("metric_status") == "MEASURED"
     assert block.get("mean") is not None
     assert block.get("n_samples") is not None
@@ -229,11 +215,7 @@ def test_all_five_pocket_ids_present() -> None:
     """The status payload must mention exactly the five expected pockets."""
     _skip_if_not_staged()
     payload = _status()
-    ids = {
-        entry["pocket_id"]
-        for entry in payload["pockets"]
-        if entry.get("pocket_id")
-    }
+    ids = {entry["pocket_id"] for entry in payload["pockets"] if entry.get("pocket_id")}
     assert ids == set(WF126_POCKETS), (
         f"unexpected pocket ids: {ids - set(WF126_POCKETS)}; "
         f"missing: {set(WF126_POCKETS) - ids}"
@@ -246,9 +228,7 @@ def test_no_duplicate_source_pdb_paths() -> None:
     payload = _status()
     sources = [entry["source_pdb"] for entry in payload["pockets"]]
     assert all(sources), "all pockets must have a source_pdb"
-    assert len(set(sources)) == len(sources), (
-        f"duplicate source paths in {sources}"
-    )
+    assert len(set(sources)) == len(sources), f"duplicate source paths in {sources}"
 
 
 # A combined helper for downstream consumers that want to do an

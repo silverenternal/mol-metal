@@ -44,31 +44,41 @@ METRICS: List[Dict[str, Any]] = [
     },
     {
         "name": "sa_mean",
-        "extractor": lambda rep: float(rep.get("aggregate", {}).get("sa_mean", float("nan"))),
+        "extractor": lambda rep: float(
+            rep.get("aggregate", {}).get("sa_mean", float("nan"))
+        ),
         "target": 3.5,
         "comparator": "<",
     },
     {
         "name": "qed_mean",
-        "extractor": lambda rep: float(rep.get("aggregate", {}).get("qed_mean", float("nan"))),
+        "extractor": lambda rep: float(
+            rep.get("aggregate", {}).get("qed_mean", float("nan"))
+        ),
         "target": 0.55,
         "comparator": ">=",
     },
     {
         "name": "div_tanimoto",
-        "extractor": lambda rep: float(rep.get("aggregate", {}).get("diversity_tanimoto", float("nan"))),
+        "extractor": lambda rep: float(
+            rep.get("aggregate", {}).get("diversity_tanimoto", float("nan"))
+        ),
         "target": 0.6,
         "comparator": ">=",
     },
     {
         "name": "synth_rate",
-        "extractor": lambda rep: float(rep.get("aggregate", {}).get("synthesizability_rate", float("nan"))),
+        "extractor": lambda rep: float(
+            rep.get("aggregate", {}).get("synthesizability_rate", float("nan"))
+        ),
         "target": 0.95,
         "comparator": ">=",
     },
     {
         "name": "validity_rate",
-        "extractor": lambda rep: float(rep.get("aggregate", {}).get("validity_rate", float("nan"))),
+        "extractor": lambda rep: float(
+            rep.get("aggregate", {}).get("validity_rate", float("nan"))
+        ),
         "target": 1.0,
         "comparator": "==",
     },
@@ -132,27 +142,44 @@ def main() -> None:
     # Compute mean ± std across seeds for every metric.
     rows: List[Dict[str, Any]] = []
     for m in METRICS:
-        per_seed = [seed_values[s].get(m["name"], float("nan")) for s in SEEDS if s in seed_values]
+        per_seed = [
+            seed_values[s].get(m["name"], float("nan"))
+            for s in SEEDS
+            if s in seed_values
+        ]
         mean = _safe_stat(per_seed, statistics.fmean)
         std = (
             _safe_stat(per_seed, statistics.stdev)
             if sum(1 for v in per_seed if not math.isnan(v)) >= 2
             else 0.0
         )
-        rows.append({
-            "metric": m["name"],
-            "target": m["target"],
-            "comparator": m["comparator"],
-            "mean": mean,
-            "std": std,
-            "n_seeds": int(sum(1 for v in per_seed if not math.isnan(v))),
-            "hit": _hit(mean, m["target"], m["comparator"]),
-            **{s: seed_values.get(s, {}).get(m["name"], float("nan")) for s in SEEDS},
-        })
+        rows.append(
+            {
+                "metric": m["name"],
+                "target": m["target"],
+                "comparator": m["comparator"],
+                "mean": mean,
+                "std": std,
+                "n_seeds": int(sum(1 for v in per_seed if not math.isnan(v))),
+                "hit": _hit(mean, m["target"], m["comparator"]),
+                **{
+                    s: seed_values.get(s, {}).get(m["name"], float("nan"))
+                    for s in SEEDS
+                },
+            }
+        )
 
     # ---- CSV ------------------------------------------------------------
     csv_path = ROOT / "aggregate.csv"
-    fieldnames = ["metric", "target", "comparator", "mean", "std", "n_seeds", "hit"] + list(SEEDS)
+    fieldnames = [
+        "metric",
+        "target",
+        "comparator",
+        "mean",
+        "std",
+        "n_seeds",
+        "hit",
+    ] + list(SEEDS)
     with csv_path.open("w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=fieldnames)
         w.writeheader()
@@ -166,10 +193,16 @@ def main() -> None:
         "schema_version": 1,
         "tool": "logs/lambda_p4_sweep/aggregate.py",
         "spec": {
-            "n_pockets": (seed_meta.get(SEEDS[0], {}).get("config", {}) or {}).get("n_pockets"),
+            "n_pockets": (seed_meta.get(SEEDS[0], {}).get("config", {}) or {}).get(
+                "n_pockets"
+            ),
             "seeds": (seed_meta.get(SEEDS[0], {}).get("config", {}) or {}).get("seeds"),
-            "n_simulations": (seed_meta.get(SEEDS[0], {}).get("config", {}) or {}).get("n_simulations"),
-            "n_top_k": (seed_meta.get(SEEDS[0], {}).get("config", {}) or {}).get("n_top_k"),
+            "n_simulations": (seed_meta.get(SEEDS[0], {}).get("config", {}) or {}).get(
+                "n_simulations"
+            ),
+            "n_top_k": (seed_meta.get(SEEDS[0], {}).get("config", {}) or {}).get(
+                "n_top_k"
+            ),
         },
         "n_seeds": len(seed_reports),
         "seeds": seed_meta,
@@ -182,7 +215,10 @@ def main() -> None:
                 "std": r["std"],
                 "n_seeds": r["n_seeds"],
                 "hit": r["hit"],
-                "per_seed": {s: seed_values.get(s, {}).get(r["metric"], float("nan")) for s in SEEDS},
+                "per_seed": {
+                    s: seed_values.get(s, {}).get(r["metric"], float("nan"))
+                    for s in SEEDS
+                },
             }
             for r in rows
         ],
@@ -198,9 +234,15 @@ def main() -> None:
         mean = r["mean"]
         std = r["std"]
         mean_s = f"{mean:.4f}" if not math.isnan(mean) else "n/a"
-        std_s = f"{std:.4f}" if not (isinstance(std, float) and math.isnan(std)) else "n/a"
-        target_s = f"{r['target']:.4f}" if isinstance(r["target"], float) else str(r["target"])
-        print(f"{r['metric']:<18} {target_s:>8} {r['comparator']:^11} {mean_s:>10} ± {std_s:<10} {r['hit']}")
+        std_s = (
+            f"{std:.4f}" if not (isinstance(std, float) and math.isnan(std)) else "n/a"
+        )
+        target_s = (
+            f"{r['target']:.4f}" if isinstance(r["target"], float) else str(r["target"])
+        )
+        print(
+            f"{r['metric']:<18} {target_s:>8} {r['comparator']:^11} {mean_s:>10} ± {std_s:<10} {r['hit']}"
+        )
 
 
 def _fmt(v: Any) -> str:

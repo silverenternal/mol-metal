@@ -22,6 +22,7 @@ Run via::
     uv run --no-sync python -m pytest \\
         molmetal/tests/test_variance_mcts_wasserstein.py -v
 """
+
 from __future__ import annotations
 
 import json
@@ -140,7 +141,10 @@ class TestComputeW2Penalty:
     def test_zero_alpha_returns_zero(self) -> None:
         cfg = W2RegConfig(alpha=0.0)
         out = _compute_w2_penalty(
-            [0.5, 0.5], [0.5, 0.5], cfg, seed=0,
+            [0.5, 0.5],
+            [0.5, 0.5],
+            cfg,
+            seed=0,
         )
         assert out == 0.0
 
@@ -151,7 +155,10 @@ class TestComputeW2Penalty:
     def test_alpha_zero_with_nonzero_prior_returns_zero(self) -> None:
         cfg = W2RegConfig(alpha=0.0)
         out = _compute_w2_penalty(
-            [0.3, 0.7], [0.5, 0.5], cfg, seed=0,
+            [0.3, 0.7],
+            [0.5, 0.5],
+            cfg,
+            seed=0,
         )
         assert out == 0.0
 
@@ -162,7 +169,10 @@ class TestComputeW2Penalty:
         except Exception:
             pytest.skip("torch unavailable — skip w2 penalty check")
         out = _compute_w2_penalty(
-            [0.5, 0.5], [0.5, 0.5], cfg, seed=0,
+            [0.5, 0.5],
+            [0.5, 0.5],
+            cfg,
+            seed=0,
         )
         # Identical distributions -> W_2 == 0 (or very close) -> penalty ~ 0
         assert 0.0 <= out <= 1.0
@@ -175,10 +185,16 @@ class TestComputeW2Penalty:
         prior = [0.2, 0.8]
         ref = [0.5, 0.5]
         p_small = _compute_w2_penalty(
-            prior, ref, W2RegConfig(alpha=0.05, n_mc=64), seed=0,
+            prior,
+            ref,
+            W2RegConfig(alpha=0.05, n_mc=64),
+            seed=0,
         )
         p_large = _compute_w2_penalty(
-            prior, ref, W2RegConfig(alpha=0.20, n_mc=64), seed=0,
+            prior,
+            ref,
+            W2RegConfig(alpha=0.20, n_mc=64),
+            seed=0,
         )
         # Linear scaling: ratio == alpha_large / alpha_small.
         if p_small > 0.0:
@@ -202,13 +218,19 @@ class TestApplyW2Regulariser:
             MCTSProofSearch,
             VarianceMCTSWrapper,
         )
+
         if MCTSProofSearch is None or VarianceMCTSWrapper is None:
             pytest.skip("MCTSProofSearch / VarianceMCTSWrapper unavailable")
         try:
             base = MCTSProofSearch(
-                tile_library=[], rules={}, target_predicates=[],
-                binding_site=None, scorer=lambda x: 0.0,
-                n_simulations=2, c_puct=1.4, top_k=1,
+                tile_library=[],
+                rules={},
+                target_predicates=[],
+                binding_site=None,
+                scorer=lambda x: 0.0,
+                n_simulations=2,
+                c_puct=1.4,
+                top_k=1,
                 rng=random.Random(0),
             )
         except Exception:
@@ -219,7 +241,11 @@ class TestApplyW2Regulariser:
         wrapper = self._make_wrapper()
         cfg = W2RegConfig(alpha=0.05, n_mc=64, decay_check=True)
         diag = _apply_w2_regulariser(
-            wrapper, 4, cfg, random.Random(0), seed=0,
+            wrapper,
+            4,
+            cfg,
+            random.Random(0),
+            seed=0,
         )
         assert "engine_tag" in diag
         assert diag["engine_tag"] == "wasserstein_reg"
@@ -230,10 +256,17 @@ class TestApplyW2Regulariser:
     def test_decay_check_records_pass_flag(self) -> None:
         wrapper = self._make_wrapper()
         cfg = W2RegConfig(
-            alpha=0.05, n_mc=64, decay_check=True, decay_window=4,
+            alpha=0.05,
+            n_mc=64,
+            decay_check=True,
+            decay_window=4,
         )
         diag = _apply_w2_regulariser(
-            wrapper, 4, cfg, random.Random(0), seed=0,
+            wrapper,
+            4,
+            cfg,
+            random.Random(0),
+            seed=0,
         )
         if diag.get("applied") is True:
             assert "decay_gate_pass" in diag
@@ -250,24 +283,42 @@ class TestVarianceReductionMath:
 
     def test_zero_when_equal(self) -> None:
         r = StrategyResult(
-            strategy="x", seed=0, n_trajectories=1,
-            n_candidates_total=0, mean_score=0.0, best_score=0.0,
-            mean_var=0.5, max_var=0.5, wall_time_s=0.0,
+            strategy="x",
+            seed=0,
+            n_trajectories=1,
+            n_candidates_total=0,
+            mean_score=0.0,
+            best_score=0.0,
+            mean_var=0.5,
+            max_var=0.5,
+            wall_time_s=0.0,
             success_rate=1.0,
         )
         assert _variance_reduction(r, r) == pytest.approx(0.0)
 
     def test_positive_when_candidate_lower(self) -> None:
         base = StrategyResult(
-            strategy="x", seed=0, n_trajectories=1,
-            n_candidates_total=0, mean_score=0.0, best_score=0.0,
-            mean_var=1.0, max_var=1.0, wall_time_s=0.0,
+            strategy="x",
+            seed=0,
+            n_trajectories=1,
+            n_candidates_total=0,
+            mean_score=0.0,
+            best_score=0.0,
+            mean_var=1.0,
+            max_var=1.0,
+            wall_time_s=0.0,
             success_rate=1.0,
         )
         cand = StrategyResult(
-            strategy="y", seed=0, n_trajectories=1,
-            n_candidates_total=0, mean_score=0.0, best_score=0.0,
-            mean_var=0.4, max_var=0.4, wall_time_s=0.0,
+            strategy="y",
+            seed=0,
+            n_trajectories=1,
+            n_candidates_total=0,
+            mean_score=0.0,
+            best_score=0.0,
+            mean_var=0.4,
+            max_var=0.4,
+            wall_time_s=0.0,
             success_rate=1.0,
         )
         # 1 - 0.4 / 1.0 == 0.6 — improvement.
@@ -275,15 +326,27 @@ class TestVarianceReductionMath:
 
     def test_negative_when_candidate_higher(self) -> None:
         base = StrategyResult(
-            strategy="x", seed=0, n_trajectories=1,
-            n_candidates_total=0, mean_score=0.0, best_score=0.0,
-            mean_var=0.5, max_var=0.5, wall_time_s=0.0,
+            strategy="x",
+            seed=0,
+            n_trajectories=1,
+            n_candidates_total=0,
+            mean_score=0.0,
+            best_score=0.0,
+            mean_var=0.5,
+            max_var=0.5,
+            wall_time_s=0.0,
             success_rate=1.0,
         )
         cand = StrategyResult(
-            strategy="y", seed=0, n_trajectories=1,
-            n_candidates_total=0, mean_score=0.0, best_score=0.0,
-            mean_var=0.7, max_var=0.7, wall_time_s=0.0,
+            strategy="y",
+            seed=0,
+            n_trajectories=1,
+            n_candidates_total=0,
+            mean_score=0.0,
+            best_score=0.0,
+            mean_var=0.7,
+            max_var=0.7,
+            wall_time_s=0.0,
             success_rate=1.0,
         )
         # 1 - 0.7 / 0.5 == -0.4 — regression.
@@ -293,15 +356,27 @@ class TestVarianceReductionMath:
         # When the baseline mean_var is 0.0 we must NOT divide by
         # zero — the helper clamps to 1e-12.
         base = StrategyResult(
-            strategy="x", seed=0, n_trajectories=1,
-            n_candidates_total=0, mean_score=0.0, best_score=0.0,
-            mean_var=0.0, max_var=0.0, wall_time_s=0.0,
+            strategy="x",
+            seed=0,
+            n_trajectories=1,
+            n_candidates_total=0,
+            mean_score=0.0,
+            best_score=0.0,
+            mean_var=0.0,
+            max_var=0.0,
+            wall_time_s=0.0,
             success_rate=1.0,
         )
         cand = StrategyResult(
-            strategy="y", seed=0, n_trajectories=1,
-            n_candidates_total=0, mean_score=0.0, best_score=0.0,
-            mean_var=0.5, max_var=0.5, wall_time_s=0.0,
+            strategy="y",
+            seed=0,
+            n_trajectories=1,
+            n_candidates_total=0,
+            mean_score=0.0,
+            best_score=0.0,
+            mean_var=0.5,
+            max_var=0.5,
+            wall_time_s=0.0,
             success_rate=1.0,
         )
         # 1 - 0.5 / 1e-12 is a huge negative number — we only
@@ -309,6 +384,7 @@ class TestVarianceReductionMath:
         out = _variance_reduction(base, cand)
         assert isinstance(out, float)
         import math
+
         assert math.isfinite(out)
 
 
@@ -322,28 +398,48 @@ class TestStrategyResultToDict:
 
     def test_to_dict_keys(self) -> None:
         r = StrategyResult(
-            strategy="vanilla", seed=7, n_trajectories=2,
-            n_candidates_total=4, mean_score=0.5, best_score=0.9,
-            mean_var=0.1, max_var=0.2, wall_time_s=0.01,
+            strategy="vanilla",
+            seed=7,
+            n_trajectories=2,
+            n_candidates_total=4,
+            mean_score=0.5,
+            best_score=0.9,
+            mean_var=0.1,
+            max_var=0.2,
+            wall_time_s=0.01,
             success_rate=1.0,
         )
         d = r.to_dict()
-        for k in ("strategy", "seed", "n_trajectories",
-                  "n_candidates_total", "mean_score", "best_score",
-                  "mean_var", "max_var", "wall_time_s",
-                  "success_rate", "w2_diagnostics"):
+        for k in (
+            "strategy",
+            "seed",
+            "n_trajectories",
+            "n_candidates_total",
+            "mean_score",
+            "best_score",
+            "mean_var",
+            "max_var",
+            "wall_time_s",
+            "success_rate",
+            "w2_diagnostics",
+        ):
             assert k in d
         assert d["strategy"] == "vanilla"
         assert d["seed"] == 7
 
     def test_to_dict_json_roundtrip(self) -> None:
         r = StrategyResult(
-            strategy="w2_reg", seed=3, n_trajectories=5,
-            n_candidates_total=10, mean_score=0.3, best_score=0.7,
-            mean_var=0.05, max_var=0.1, wall_time_s=0.02,
+            strategy="w2_reg",
+            seed=3,
+            n_trajectories=5,
+            n_candidates_total=10,
+            mean_score=0.3,
+            best_score=0.7,
+            mean_var=0.05,
+            max_var=0.1,
+            wall_time_s=0.02,
             success_rate=0.8,
-            w2_diagnostics=[{"engine_tag": "wasserstein_reg",
-                              "w2_penalty": 0.001}],
+            w2_diagnostics=[{"engine_tag": "wasserstein_reg", "w2_penalty": 0.001}],
         )
         s = json.dumps(r.to_dict())
         d = json.loads(s)
@@ -363,7 +459,10 @@ class TestAggregatePerSeed:
             pytest.skip("MCTS / VarianceMCTSWrapper unavailable (torch)")
         cfg = W2RegConfig(alpha=0.05, n_mc=64, decay_check=True)
         report = _aggregate_per_seed(
-            seeds=[0], n_trajectories=2, sims=3, depth=2,
+            seeds=[0],
+            n_trajectories=2,
+            sims=3,
+            depth=2,
             config=cfg,
         )
         assert "per_strategy_per_seed" in report
@@ -384,7 +483,10 @@ class TestAggregatePerSeed:
             pytest.skip("MCTS / VarianceMCTSWrapper unavailable (torch)")
         cfg = W2RegConfig(alpha=0.05, n_mc=64)
         report = _aggregate_per_seed(
-            seeds=[0], n_trajectories=2, sims=3, depth=2,
+            seeds=[0],
+            n_trajectories=2,
+            sims=3,
+            depth=2,
             config=cfg,
         )
         # The w2_reg path must record diagnostics.
@@ -408,7 +510,10 @@ class TestPerSeedJsonSchema:
             pytest.skip("MCTS / VarianceMCTSWrapper unavailable (torch)")
         cfg = W2RegConfig(alpha=0.05, n_mc=64, decay_check=True)
         report = _aggregate_per_seed(
-            seeds=[0, 1], n_trajectories=2, sims=3, depth=2,
+            seeds=[0, 1],
+            n_trajectories=2,
+            sims=3,
+            depth=2,
             config=cfg,
         )
         _write_per_seed_json(report, tmp_path)
@@ -443,7 +548,10 @@ class TestSynthesisVerdict:
             pytest.skip("MCTS / VarianceMCTSWrapper unavailable (torch)")
         cfg = W2RegConfig(alpha=0.05, n_mc=64, decay_check=True)
         report = _aggregate_per_seed(
-            seeds=[0], n_trajectories=2, sims=3, depth=2,
+            seeds=[0],
+            n_trajectories=2,
+            sims=3,
+            depth=2,
             config=cfg,
         )
         _write_synthesis(report, tmp_path, target=-0.05)
@@ -463,7 +571,10 @@ class TestSynthesisVerdict:
             pytest.skip("MCTS / VarianceMCTSWrapper unavailable (torch)")
         cfg = W2RegConfig(alpha=0.05, n_mc=64, decay_check=True)
         report = _aggregate_per_seed(
-            seeds=[0], n_trajectories=1, sims=2, depth=2,
+            seeds=[0],
+            n_trajectories=1,
+            sims=2,
+            depth=2,
             config=cfg,
         )
         _write_synthesis(report, tmp_path)
@@ -484,11 +595,15 @@ class TestCliSmoke:
     def test_smoke_run_writes_files(self, tmp_path: Path) -> None:
         if MCTSProofSearch is None or VarianceMCTSWrapper is None:
             pytest.skip("MCTS / VarianceMCTSWrapper unavailable (torch)")
-        rc = main([
-            "--smoke",
-            "--report-path", str(tmp_path),
-            "--seeds", "0",
-        ])
+        rc = main(
+            [
+                "--smoke",
+                "--report-path",
+                str(tmp_path),
+                "--seeds",
+                "0",
+            ]
+        )
         assert rc == 0
         # Files written.
         assert (tmp_path / "per_seed_metrics.json").exists()

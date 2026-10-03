@@ -33,12 +33,12 @@ def small_corpus() -> list:
     """Tiny corpus used by most tests — fully deterministic, no I/O."""
     return [
         # rule A + scaffold X: 3 successes out of 4 → smoothed 4/6 = 0.6667
-        Reaction("A", "X", success=True,  source="lit"),
-        Reaction("A", "X", success=True,  source="lit"),
-        Reaction("A", "X", success=True,  source="lit"),
+        Reaction("A", "X", success=True, source="lit"),
+        Reaction("A", "X", success=True, source="lit"),
+        Reaction("A", "X", success=True, source="lit"),
         Reaction("A", "X", success=False, source="lit"),
         # rule B + scaffold X: 1 success out of 1 → smoothed 2/3 ≈ 0.6667
-        Reaction("B", "X", success=True,  source="lit"),
+        Reaction("B", "X", success=True, source="lit"),
         # rule A + scaffold Y: 0 out of 1 (only failure) → smoothed 1/3 ≈ 0.3333
         Reaction("A", "Y", success=False, source="lit"),
     ]
@@ -138,8 +138,15 @@ def test_persistence_roundtrip(small_corpus):
     for rule, smi in [("A", "X"), ("B", "X"), ("A", "Y"), ("NEW", "NEW")]:
         assert est.predict(rule, smi) == loaded.predict(rule, smi)
     # summary also matches
-    assert loaded.summary()["n_input_rows" if "n_input_rows" in loaded.summary() else "n_rows_total"] == (
-        est.summary()["n_input_rows" if "n_input_rows" in est.summary() else "n_rows_total"]
+    assert (
+        loaded.summary()[
+            "n_input_rows" if "n_input_rows" in loaded.summary() else "n_rows_total"
+        ]
+        == (
+            est.summary()[
+                "n_input_rows" if "n_input_rows" in est.summary() else "n_rows_total"
+            ]
+        )
     )
 
 
@@ -203,8 +210,8 @@ def test_fit_is_idempotent_under_double_call():
     # Use an asymmetric corpus so re-fitting actually changes the
     # smoothed estimate (Laplace is not idempotent in general).
     corpus = [
-        Reaction("A", "X", success=True,  source="lit"),
-        Reaction("A", "X", success=True,  source="lit"),
+        Reaction("A", "X", success=True, source="lit"),
+        Reaction("A", "X", success=True, source="lit"),
         Reaction("A", "X", success=False, source="lit"),
     ]
     est = ReactionConfidence().fit(corpus)

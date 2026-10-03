@@ -62,6 +62,7 @@ Usage
     # Smoke (no PDBQT parsing — read existing docked_pose_rmsd.json)
     python molmetal/scripts/wf341t1_m15_rmsd_redesign.py --from-disk
 """
+
 from __future__ import annotations
 
 import argparse
@@ -86,7 +87,11 @@ RMSD_PRACTICAL_THRESHOLD_ANGSTROM: float = 2.5
 PER_POCKET_SUCCESS_RATE: float = 0.80
 #: Canonical 5-pocket m15 cohort (organic cofactor set).
 DEFAULT_POCKETS: Tuple[str, ...] = (
-    "1h36", "3eml", "3ny8", "4aaw", "4rlu",
+    "1h36",
+    "3eml",
+    "3ny8",
+    "4aaw",
+    "4rlu",
 )
 #: Canonical seed cohort (matches Wf-179 BD-9).
 DEFAULT_SEEDS: Tuple[int, ...] = (0, 1, 2)
@@ -180,6 +185,7 @@ def _probe_meeko_available() -> bool:
     """Return ``True`` iff meeko 0.8.0 is importable in the current env."""
     try:
         import meeko  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -305,6 +311,7 @@ def evaluate_rmsd_with_threshold(
             "threshold_angstrom": RMSD_SOTA_THRESHOLD_ANGSTROM,
         }
     import numpy as np
+
     d_idx, c_idx = zip(*matches)
     d_coords = np.asarray(docked_coords, dtype=float)[list(d_idx)]
     c_coords = np.asarray(crystal_coords, dtype=float)[list(c_idx)]
@@ -328,6 +335,7 @@ def evaluate_posebusters_validity(smiles: str) -> Dict[str, Any]:
             check_posebusters,
             posebusters_available,
         )
+
         if not posebusters_available():
             return {
                 "pb_status": PB_SKIPPED,
@@ -428,11 +436,11 @@ def per_pocket_rmsd_bench(
         # ``passes_2_0a_sota`` (per-pocket), but we re-derive here so
         # the bench is independent of the upstream aggregation.
         n_pass_2_0 = sum(
-            1 for r in per_seed
-            if r is not None and r <= RMSD_SOTA_THRESHOLD_ANGSTROM
+            1 for r in per_seed if r is not None and r <= RMSD_SOTA_THRESHOLD_ANGSTROM
         )
         n_pass_2_5 = sum(
-            1 for r in per_seed
+            1
+            for r in per_seed
             if r is not None and r <= RMSD_PRACTICAL_THRESHOLD_ANGSTROM
         )
         rate_2_0 = (n_pass_2_0 / n_total) if n_total else 0.0
@@ -510,7 +518,9 @@ def bench_m15_rmsd_redesign(
             r.pb_status = pb["pb_status"]
             r.pb_pass_rate = pb["pb_pass_rate"]
             r.pb_failures = pb["pb_failures"]
-            posebusters_available_flag = posebusters_available_flag or pb.get("pb_available", False)
+            posebusters_available_flag = posebusters_available_flag or pb.get(
+                "pb_available", False
+            )
             if pb["pb_status"] == PB_VALID:
                 n_pb_valid += 1
             elif pb["pb_status"] == PB_INVALID:
@@ -555,7 +565,9 @@ def bench_m15_rmsd_redesign(
     )
 
 
-def write_summary(summary: M15RedesignSummary, out_dir: Path = OUT_DIR) -> Dict[str, str]:
+def write_summary(
+    summary: M15RedesignSummary, out_dir: Path = OUT_DIR
+) -> Dict[str, str]:
     """Write per-pocket + summary JSON to ``out_dir``.
 
     Returns a dict of paths written.
@@ -627,7 +639,9 @@ def _parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
+    )
     args = _parse_args(argv)
     summary = bench_m15_rmsd_redesign(
         pockets=tuple(args.pockets),

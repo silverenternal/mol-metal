@@ -44,6 +44,7 @@ from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
 try:
     from rdkit import Chem  # type: ignore
     from rdkit.Chem import Descriptors, rdMolDescriptors  # type: ignore
+
     _HAVE_RDKIT = True
 except Exception:  # pragma: no cover - environment dependent
     _HAVE_RDKIT = False
@@ -97,14 +98,18 @@ def molecule_to_features(m: MoleculeClosedTerm) -> np.ndarray:
 
     smi = m.canonical_smiles if hasattr(m, "canonical_smiles") else None
     if not smi:
-        return np.array([n_atoms, 0.0, 0.0, 0.0, n_clicks, 0.0, 0.0, 0.0], dtype=np.float32)
+        return np.array(
+            [n_atoms, 0.0, 0.0, 0.0, n_clicks, 0.0, 0.0, 0.0], dtype=np.float32
+        )
 
     try:
         mol = Chem.MolFromSmiles(smi)
     except Exception:
         mol = None
     if mol is None:
-        return np.array([n_atoms, 0.0, 0.0, 0.0, n_clicks, 0.0, 0.0, 0.0], dtype=np.float32)
+        return np.array(
+            [n_atoms, 0.0, 0.0, 0.0, n_clicks, 0.0, 0.0, 0.0], dtype=np.float32
+        )
 
     try:
         mw = float(Descriptors.MolWt(mol))

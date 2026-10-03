@@ -64,6 +64,7 @@ Honest framing
   not modified, not imported, not aliased.  R18 callers pick one
   shaper per process via ``set_use_hilbert_primal_dual(True)``.
 """
+
 from __future__ import annotations
 
 import math
@@ -112,8 +113,7 @@ class HilbertSpace:
             raise ValueError(f"dim must be positive; got {dim}")
         if basis not in self.SUPPORTED_BASES:
             raise ValueError(
-                f"basis {basis!r} not supported; "
-                f"choose from {self.SUPPORTED_BASES}"
+                f"basis {basis!r} not supported; " f"choose from {self.SUPPORTED_BASES}"
             )
         self.dim = int(dim)
         self.basis = str(basis)
@@ -341,15 +341,11 @@ class PrimalDualOptimizer:
                 f"step_size_decay must be in (0, 1]; got {self.step_size_decay}"
             )
         if self.min_step_size <= 0.0:
-            raise ValueError(
-                f"min_step_size must be > 0; got {self.min_step_size}"
-            )
+            raise ValueError(f"min_step_size must be > 0; got {self.min_step_size}")
         # Wf-127 Phase 2: reject negative L2 weight (zero / positive
         # values are accepted; zero = original behaviour).
         if self.l2_weight < 0.0:
-            raise ValueError(
-                f"l2_weight must be >= 0; got {self.l2_weight}"
-            )
+            raise ValueError(f"l2_weight must be >= 0; got {self.l2_weight}")
         self.effective_lr_primal_ = float(self.lr_primal)
         self.effective_lr_dual_ = float(self.lr_dual)
 
@@ -500,16 +496,13 @@ class PrimalDualOptimizer:
         # gradient step, before the proximal shrinkage).  When
         # ``l2_weight == 0`` this is identically 0.
         self.last_l2_penalty_ = float(
-            0.5 * self.l2_weight * (float(np.sum(x * x))
-                                    + float(np.sum(y * y)))
+            0.5 * self.l2_weight * (float(np.sum(x * x)) + float(np.sum(y * y)))
         )
 
         # ----- Wf-44 Phase 4: step-size decay on NaN / inf -----------
         # If the iterate is non-finite, shrink the step size by
         # ``step_size_decay`` (capped below by ``min_step_size``).
-        if (
-            not np.all(np.isfinite(x_new)) or not np.all(np.isfinite(y_new))
-        ):
+        if not np.all(np.isfinite(x_new)) or not np.all(np.isfinite(y_new)):
             self.n_steps_with_nan_ += 1
             if (
                 self.effective_lr_primal_ > self.min_step_size
@@ -529,10 +522,12 @@ class PrimalDualOptimizer:
             # retry is consistent with the first pass.  If still
             # non-finite, the nan_to_num guard below will map it.
             retry_primal_decay = max(
-                0.0, 1.0 - self.effective_lr_primal_ * self.l2_weight,
+                0.0,
+                1.0 - self.effective_lr_primal_ * self.l2_weight,
             )
             retry_dual_decay = max(
-                0.0, 1.0 - self.effective_lr_dual_ * self.l2_weight,
+                0.0,
+                1.0 - self.effective_lr_dual_ * self.l2_weight,
             )
             x_new = x - self.effective_lr_primal_ * grad
             x_new = retry_primal_decay * x_new
@@ -735,17 +730,11 @@ class LambdaASTSRHilbert:
     # ------------------------------------------------------------------
     def __post_init__(self) -> None:
         if self.population_dim <= 0:
-            raise ValueError(
-                f"population_dim must be > 0; got {self.population_dim}"
-            )
+            raise ValueError(f"population_dim must be > 0; got {self.population_dim}")
         if self.l2_lambda < 0.0:
-            raise ValueError(
-                f"l2_lambda must be >= 0; got {self.l2_lambda}"
-            )
+            raise ValueError(f"l2_lambda must be >= 0; got {self.l2_lambda}")
         if self.val_check_every <= 0:
-            raise ValueError(
-                f"val_check_every must be > 0; got {self.val_check_every}"
-            )
+            raise ValueError(f"val_check_every must be > 0; got {self.val_check_every}")
         if self.max_l2_lambda < self.l2_lambda:
             raise ValueError(
                 f"max_l2_lambda ({self.max_l2_lambda}) must be >= "
@@ -757,22 +746,22 @@ class LambdaASTSRHilbert:
                 f"got {self.init_mode!r}"
             )
         if self.init_scale < 0.0:
-            raise ValueError(
-                f"init_scale must be >= 0; got {self.init_scale}"
-            )
+            raise ValueError(f"init_scale must be >= 0; got {self.init_scale}")
         # Wf-127 Phase 2: reject negative l2_weight; zero is the
         # backward-compat sentinel (no proximal shrinkage).
         if self.l2_weight < 0.0:
-            raise ValueError(
-                f"l2_weight must be >= 0; got {self.l2_weight}"
-            )
+            raise ValueError(f"l2_weight must be >= 0; got {self.l2_weight}")
         self._hilbert = HilbertSpace(dim=int(self.population_dim))
 
     # ------------------------------------------------------------------
-    def _objective(self, x: np.ndarray, features: np.ndarray,
-                   target: np.ndarray,
-                   *,
-                   l2_lambda: Optional[float] = None) -> Tuple[float, np.ndarray]:
+    def _objective(
+        self,
+        x: np.ndarray,
+        features: np.ndarray,
+        target: np.ndarray,
+        *,
+        l2_lambda: Optional[float] = None,
+    ) -> Tuple[float, np.ndarray]:
         """Ridge-regularised least-squares objective + its gradient.
 
         Wf-122 Phase 1 (L2 fix) modifies the bare MSE ``0.5 ||X x - y||²``
@@ -895,9 +884,9 @@ class LambdaASTSRHilbert:
             val_features is not None and val_target is not None
         )
         if adaptive_enabled:
-            val_feats = np.asarray(
-                val_features, dtype=float
-            ).reshape(-1, self.population_dim)
+            val_feats = np.asarray(val_features, dtype=float).reshape(
+                -1, self.population_dim
+            )
             val_tgt = np.asarray(val_target, dtype=float).reshape(-1)
             if val_feats.shape[0] != val_tgt.shape[0]:
                 raise ValueError(
@@ -940,11 +929,17 @@ class LambdaASTSRHilbert:
             bound = math.sqrt(6.0 / (fan_in + fan_out))
             x = rng.uniform(-bound, bound, size=self.population_dim).astype(float)
             y_init = rng.uniform(
-                -bound, bound, size=self.population_dim,
+                -bound,
+                bound,
+                size=self.population_dim,
             ).astype(float)
         else:  # "random_normal" — the Wf-122/R18 default
-            x = rng.standard_normal(self.population_dim).astype(float) * float(self.init_scale)
-            y_init = rng.standard_normal(self.population_dim).astype(float) * float(self.init_scale)
+            x = rng.standard_normal(self.population_dim).astype(float) * float(
+                self.init_scale
+            )
+            y_init = rng.standard_normal(self.population_dim).astype(float) * float(
+                self.init_scale
+            )
         y = y_init
         ls = float(loss_scale) if loss_scale > 0.0 else 1.0
 
@@ -978,12 +973,16 @@ class LambdaASTSRHilbert:
         self.history_ = []
         for k in range(int(self.n_iters)):
             objective = lambda xk, _lc=lam_cell: self._objective(
-                xk, feats, tgt, l2_lambda=_lc[0],
+                xk,
+                feats,
+                tgt,
+                l2_lambda=_lc[0],
             )
             x, y = opt.step(x, y, objective, loss_scale=ls)
             # Wf-122 Phase 1: inner-val check + adaptive L2 doubling.
-            if adaptive_enabled and ((k + 1) % int(self.val_check_every) == 0
-                                     or k == int(self.n_iters) - 1):
+            if adaptive_enabled and (
+                (k + 1) % int(self.val_check_every) == 0 or k == int(self.n_iters) - 1
+            ):
                 assert val_feats is not None and val_tgt is not None
                 cur_val_r2 = _val_r2(x)
                 # Snapshot if this is the new best (strict improvement)
@@ -995,8 +994,7 @@ class LambdaASTSRHilbert:
                 # Inner-val regression detection: a regression relative
                 # to best_val_r2 -> double lambda (capped at max).
                 if cur_val_r2 < best_val_r2 - 1e-12:
-                    new_lam = min(current_lambda * 2.0,
-                                  float(self.max_l2_lambda))
+                    new_lam = min(current_lambda * 2.0, float(self.max_l2_lambda))
                     if new_lam > current_lambda + 1e-12:
                         current_lambda = float(new_lam)
                         lam_cell[0] = current_lambda
@@ -1008,21 +1006,24 @@ class LambdaASTSRHilbert:
             # we append it so callers can plot the decay trajectory.
             self.l2_weight_history_.append(float(opt.last_l2_penalty_))
             # Track the primal-dual gap proxy: ||x_{k+1} - x_k||².
-            gap_proxy = float(np.mean((x - opt.primal if opt.primal is not None
-                                       else x) ** 2))
-            self.history_.append({
-                "iteration": float(k),
-                "gap": gap_proxy,
-                "convergence_rate": primal_dual_convergence_rate(k + 1),
-                "effective_lr_primal": float(opt.effective_lr_primal_),
-                "effective_lr_dual": float(opt.effective_lr_dual_),
-                "current_l2_lambda": float(current_lambda),
-                "l2_penalty": float(opt.last_l2_penalty_),
-                "grad_clipped": bool(
-                    opt.n_steps_with_clipped_grad_ > 0 and
-                    k == int(self.n_iters) - 1
-                ),
-            })
+            gap_proxy = float(
+                np.mean((x - opt.primal if opt.primal is not None else x) ** 2)
+            )
+            self.history_.append(
+                {
+                    "iteration": float(k),
+                    "gap": gap_proxy,
+                    "convergence_rate": primal_dual_convergence_rate(k + 1),
+                    "effective_lr_primal": float(opt.effective_lr_primal_),
+                    "effective_lr_dual": float(opt.effective_lr_dual_),
+                    "current_l2_lambda": float(current_lambda),
+                    "l2_penalty": float(opt.last_l2_penalty_),
+                    "grad_clipped": bool(
+                        opt.n_steps_with_clipped_grad_ > 0
+                        and k == int(self.n_iters) - 1
+                    ),
+                }
+            )
 
         # Wf-122 Phase 1: final snapshot for adaptive path (covers the
         # case where inner-val was never checked because n_iters <
@@ -1131,7 +1132,10 @@ class LambdaASTSRHilbert:
             # --- Evolutionary (R17 ship) ---
             t0 = time.perf_counter()
             astsr = LambdaASTSR(
-                depth=4, population=64, generations=50, seed=int(s),
+                depth=4,
+                population=64,
+                generations=50,
+                seed=int(s),
                 feature_names=tuple(f"f{i}" for i in range(self.population_dim)),
             )
             astsr.fit(feats, tgt)
@@ -1146,8 +1150,7 @@ class LambdaASTSRHilbert:
         avg_hilbert_wall = float(np.mean(hilbert_walls))
         avg_evol_wall = float(np.mean(evol_walls))
         speedup = (
-            avg_evol_wall / avg_hilbert_wall
-            if avg_hilbert_wall > 0 else float("inf")
+            avg_evol_wall / avg_hilbert_wall if avg_hilbert_wall > 0 else float("inf")
         )
         return {
             "hilbert_wall_s": avg_hilbert_wall,

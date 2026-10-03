@@ -19,6 +19,7 @@ Per `party-twenty-spirit §3.5` (0-tolerance honest framing):
 CPU-only docs — no GPU retrain executed. paper-gate (TODO-84) honored — no
 paper work touched.
 """
+
 from __future__ import annotations
 
 import datetime as _dt
@@ -57,13 +58,22 @@ EXPECTED_METRICS: List[Dict[str, str]] = [
     {"id": "m19", "source": "metrics/by_metric/metal_lomo_auc.json"},
     {"id": "m21", "source": "metrics/by_metric/nci60_precious_9cell_auc.json"},
     {"id": "ring_size", "source": "metrics/by_metric/ring_size_distribution.json"},
-    {"id": "metallodrug_vc", "source": "metrics/by_metric/metallodrug_vertical_coverage.json"},
-    {"id": "external_scorers", "source": "metrics/by_metric/external_scorers_summary.json"},
+    {
+        "id": "metallodrug_vc",
+        "source": "metrics/by_metric/metallodrug_vertical_coverage.json",
+    },
+    {
+        "id": "external_scorers",
+        "source": "metrics/by_metric/external_scorers_summary.json",
+    },
     {"id": "per_pocket_vina", "source": "metrics/by_metric/vina_high_affinity.json"},
     # NEW_3 (m22-m24 from R20/R21 ship)
     {"id": "m22", "source": "metrics/by_metric/metric18_protein_metal_v2.json"},
     {"id": "m23", "source": "metrics/by_metric/platinai_3cell_resistance.json"},
-    {"id": "m24", "source": "molmetal/reports/wf71_p3_wf49_cross_round2/cross_dataset_summary.json"},
+    {
+        "id": "m24",
+        "source": "molmetal/reports/wf71_p3_wf49_cross_round2/cross_dataset_summary.json",
+    },
 ]
 
 # §17.4 cross-reference file paths (anchor patterns → expected on-disk files)
@@ -240,11 +250,13 @@ def verify_cross_refs() -> List[Dict[str, Any]]:
     out = []
     for ref in CROSS_REF_FILES:
         path = REPO_ROOT / ref
-        out.append({
-            "path": ref,
-            "exists": path.exists(),
-            "size_bytes": path.stat().st_size if path.exists() else 0,
-        })
+        out.append(
+            {
+                "path": ref,
+                "exists": path.exists(),
+                "size_bytes": path.stat().st_size if path.exists() else 0,
+            }
+        )
     return out
 
 
@@ -269,14 +281,28 @@ def main() -> int:
     n_cross_ref_missing = sum(1 for r in cross_refs if not r["exists"])
 
     # Cross-check STRONG_REAL claimed count against actual on-disk value presence
-    strong_claimed_metrics = ["m11", "m13", "m14", "m17", "m21", "m22", "m23", "m24",
-                               "ring_size", "metallodrug_vc"]
-    strong_actually_measured = [r["metric_id"] for r in per_metric
-                                if r["metric_id"] in strong_claimed_metrics
-                                and r["has_measured_value"]]
-    strong_actually_missing = [r["metric_id"] for r in per_metric
-                               if r["metric_id"] in strong_claimed_metrics
-                               and not r["has_measured_value"]]
+    strong_claimed_metrics = [
+        "m11",
+        "m13",
+        "m14",
+        "m17",
+        "m21",
+        "m22",
+        "m23",
+        "m24",
+        "ring_size",
+        "metallodrug_vc",
+    ]
+    strong_actually_measured = [
+        r["metric_id"]
+        for r in per_metric
+        if r["metric_id"] in strong_claimed_metrics and r["has_measured_value"]
+    ]
+    strong_actually_missing = [
+        r["metric_id"]
+        for r in per_metric
+        if r["metric_id"] in strong_claimed_metrics and not r["has_measured_value"]
+    ]
 
     report = {
         "generated_utc": _dt.datetime.now(_dt.timezone.utc).isoformat(),
@@ -384,9 +410,17 @@ def main() -> int:
 
     print(f"WROTE {OUT_JSON.relative_to(REPO_ROOT)}")
     print(f"WROTE {OUT_MD.relative_to(REPO_ROOT)}")
-    print(f"STRONG_REAL claimed={strong_n} | cross-check verdict={report['strong_audit']['verdict']}")
+    print(
+        f"STRONG_REAL claimed={strong_n} | cross-check verdict={report['strong_audit']['verdict']}"
+    )
     print(f"Cross-refs missing: {n_cross_ref_missing}/{len(CROSS_REF_FILES)}")
-    return 0 if report["strong_audit"]["verdict"] == "PASS" and n_missing == 0 and n_cross_ref_missing == 0 else 0  # WARN-only, not fail
+    return (
+        0
+        if report["strong_audit"]["verdict"] == "PASS"
+        and n_missing == 0
+        and n_cross_ref_missing == 0
+        else 0
+    )  # WARN-only, not fail
 
 
 if __name__ == "__main__":

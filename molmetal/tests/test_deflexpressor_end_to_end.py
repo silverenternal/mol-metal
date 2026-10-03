@@ -122,9 +122,9 @@ def test_load_platinai_4cell_pic50_finite(platinai_rows):
     for row in platinai_rows:
         assert "smiles" in row and row["smiles"]
         assert math.isfinite(row["pic50"])
-        assert 2.0 <= row["pic50"] <= 10.0, (
-            f"pic50 out of expected [2, 10]: {row['pic50']}"
-        )
+        assert (
+            2.0 <= row["pic50"] <= 10.0
+        ), f"pic50 out of expected [2, 10]: {row['pic50']}"
 
 
 # ---------------------------------------------------------------------------
@@ -135,9 +135,9 @@ def test_load_nci60_precious_pic50_finite(nci60_rows):
     for row in nci60_rows:
         assert "smiles" in row and row["smiles"]
         assert math.isfinite(row["pic50"])
-        assert 2.0 <= row["pic50"] <= 10.0, (
-            f"pic50 out of expected [2, 10]: {row['pic50']}"
-        )
+        assert (
+            2.0 <= row["pic50"] <= 10.0
+        ), f"pic50 out of expected [2, 10]: {row['pic50']}"
 
 
 # ---------------------------------------------------------------------------
@@ -152,9 +152,9 @@ def test_featurize_smiles_returns_12d(platinai_rows, nci60_rows):
         if feats is None:
             n_fail += 1
             continue
-        assert len(feats) == N_DESCRIPTORS, (
-            f"featurize returned {len(feats)} features, expected {N_DESCRIPTORS}"
-        )
+        assert (
+            len(feats) == N_DESCRIPTORS
+        ), f"featurize returned {len(feats)} features, expected {N_DESCRIPTORS}"
         n_total += 1
     assert n_total >= 50, f"only {n_total} featurised; expected ≥ 50"
     # Allow up to 10 % parse failures (some d-block SMILES are tricky).
@@ -222,8 +222,13 @@ def test_stable_pd_fit_finite(toy_dataset):
     X_tr, _ = zscore(X[train_idx], X[train_idx[:1]])
     X_tr_64, _ = pad_to_hilbert_dim(X_tr, HILBERT_DIM)
     best_x, train_r2 = _stable_pd_fit(
-        X_tr_64, y[train_idx],
-        hilbert_dim=HILBERT_DIM, lr=0.05, n_iters=200, seed=0, ridge_alpha=0.1,
+        X_tr_64,
+        y[train_idx],
+        hilbert_dim=HILBERT_DIM,
+        lr=0.05,
+        n_iters=200,
+        seed=0,
+        ridge_alpha=0.1,
     )
     assert best_x.shape == (HILBERT_DIM,)
     assert np.all(np.isfinite(best_x)), "best_x has NaN/Inf"
@@ -249,13 +254,18 @@ def test_stable_pd_fit_train_r2_improves_over_init(toy_dataset):
     ss_tot = float(np.sum((y[train_idx] - np.mean(y[train_idx])) ** 2))
     r2_init = 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
     _, r2_fit = _stable_pd_fit(
-        X_tr_64, y[train_idx],
-        hilbert_dim=HILBERT_DIM, lr=0.05, n_iters=200, seed=0, ridge_alpha=0.1,
+        X_tr_64,
+        y[train_idx],
+        hilbert_dim=HILBERT_DIM,
+        lr=0.05,
+        n_iters=200,
+        seed=0,
+        ridge_alpha=0.1,
     )
     # The converged iterate should not regress on training R².
-    assert r2_fit >= r2_init - 1e-6, (
-        f"fit regressed: init={r2_init:+.4f} fit={r2_fit:+.4f}"
-    )
+    assert (
+        r2_fit >= r2_init - 1e-6
+    ), f"fit regressed: init={r2_init:+.4f} fit={r2_fit:+.4f}"
 
 
 # ---------------------------------------------------------------------------
@@ -274,7 +284,12 @@ def test_fit_ast_returns_finite_r2(toy_dataset):
     # Use a small population so the test runs in <5 s.
     hp.update({"depth": 2, "population": 8, "generations": 4})
     r2, train_r2, branch = fit_ast(
-        X_tr_n, y[train_idx], X_te_n, y[test_idx], seed=0, hp=hp,
+        X_tr_n,
+        y[train_idx],
+        X_te_n,
+        y[test_idx],
+        seed=0,
+        hp=hp,
     )
     assert math.isfinite(r2), f"AST test R² not finite: {r2}"
     assert branch == "ast"
@@ -296,7 +311,12 @@ def test_fit_hilbert_returns_finite_r2(toy_dataset):
     hp = dict(DEFAULT_HYPERPARAMS["hilbert"])
     hp.update({"n_iters": 50, "ridge_alpha": 0.1})
     r2, train_r2, branch = fit_hilbert(
-        X_tr_64, y[train_idx], X_te_64, y[test_idx], seed=0, hp=hp,
+        X_tr_64,
+        y[train_idx],
+        X_te_64,
+        y[test_idx],
+        seed=0,
+        hp=hp,
     )
     assert math.isfinite(r2), f"Hilbert test R² not finite: {r2}"
     assert -1e6 < r2 < 1e6, f"Hilbert test R² out of bounds: {r2}"
@@ -317,10 +337,24 @@ def test_fit_composite_picks_better_branch(toy_dataset):
     X_tr_n, X_te_n = zscore(X[train_idx], X[test_idx])
     X_tr_64, X_te_64 = pad_to_hilbert_dim(X_tr_n, HILBERT_DIM, X_te_n)
     hp = dict(DEFAULT_HYPERPARAMS["composite"])
-    hp.update({"n_iters": 50, "ridge_alpha": 0.1, "depth": 2, "population": 8, "generations": 4})
+    hp.update(
+        {
+            "n_iters": 50,
+            "ridge_alpha": 0.1,
+            "depth": 2,
+            "population": 8,
+            "generations": 4,
+        }
+    )
     r2, train_r2, branch = fit_composite(
-        X_tr_n, y[train_idx], X_te_n, y[test_idx], X_tr_64, X_te_64,
-        seed=0, hp=hp,
+        X_tr_n,
+        y[train_idx],
+        X_te_n,
+        y[test_idx],
+        X_tr_64,
+        X_te_64,
+        seed=0,
+        hp=hp,
     )
     assert branch in ("ast", "hilbert"), f"composite branch invalid: {branch}"
     assert math.isfinite(r2), f"composite R² not finite: {r2}"
@@ -333,8 +367,12 @@ def test_run_one_records_wall_and_mem(nci60_rows):
     hp = dict(DEFAULT_HYPERPARAMS["hilbert"])
     hp.update({"n_iters": 30, "ridge_alpha": 0.1})
     rec = _run_one(
-        method="hilbert", seed=0, rows=nci60_rows, hp=hp,
-        test_frac=0.2, epochs=30,
+        method="hilbert",
+        seed=0,
+        rows=nci60_rows,
+        hp=hp,
+        test_frac=0.2,
+        epochs=30,
     )
     assert isinstance(rec, FitRecord)
     assert rec.wall_s > 0.0
@@ -356,9 +394,16 @@ def test_run_benchmark_produces_payload(nci60_rows):
         epochs=20,
         test_frac=0.2,
         hyperparams={
-            m: {**DEFAULT_HYPERPARAMS[m],
-                **{"depth": 2, "population": 8, "generations": 4,
-                   "n_iters": 20, "ridge_alpha": 0.1}}
+            m: {
+                **DEFAULT_HYPERPARAMS[m],
+                **{
+                    "depth": 2,
+                    "population": 8,
+                    "generations": 4,
+                    "n_iters": 20,
+                    "ridge_alpha": 0.1,
+                },
+            }
             for m in ("ast", "hilbert")
         },
     )
@@ -388,8 +433,10 @@ def test_payload_is_json_serialisable(nci60_rows):
         epochs=20,
         test_frac=0.2,
         hyperparams={
-            "hilbert": {**DEFAULT_HYPERPARAMS["hilbert"],
-                         **{"n_iters": 20, "ridge_alpha": 0.1}},
+            "hilbert": {
+                **DEFAULT_HYPERPARAMS["hilbert"],
+                **{"n_iters": 20, "ridge_alpha": 0.1},
+            },
         },
     )
     # Must round-trip through json.dumps without raising.
@@ -410,9 +457,16 @@ def test_render_markdown_contains_method_table(nci60_rows):
         epochs=20,
         test_frac=0.2,
         hyperparams={
-            m: {**DEFAULT_HYPERPARAMS[m],
-                **{"depth": 2, "population": 8, "generations": 4,
-                   "n_iters": 20, "ridge_alpha": 0.1}}
+            m: {
+                **DEFAULT_HYPERPARAMS[m],
+                **{
+                    "depth": 2,
+                    "population": 8,
+                    "generations": 4,
+                    "n_iters": 20,
+                    "ridge_alpha": 0.1,
+                },
+            }
             for m in ("ast", "hilbert")
         },
     )

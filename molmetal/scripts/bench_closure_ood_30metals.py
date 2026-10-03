@@ -77,6 +77,7 @@ Usage examples
     uv run --no-sync python molmetal/scripts/bench_closure_ood_30metals.py \\
         --metals Pt Ru Re --n-samples 5 --smoke
 """
+
 from __future__ import annotations
 
 import argparse
@@ -114,20 +115,72 @@ log = logging.getLogger("wf130_p3_ood_30")
 #: follows the periodic-table row layout (3d / 4d / 5d + La).
 DBLOCK_30_METALS: Tuple[str, ...] = (
     # 3d
-    "Sc", "Ti", "V",  "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
+    "Sc",
+    "Ti",
+    "V",
+    "Cr",
+    "Mn",
+    "Fe",
+    "Co",
+    "Ni",
+    "Cu",
+    "Zn",
     # 4d
-    "Y",  "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
+    "Y",
+    "Zr",
+    "Nb",
+    "Mo",
+    "Tc",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Cd",
     # 5d + La
-    "La", "Hf", "Ta", "W",  "Re", "Os", "Ir", "Pt", "Au", "Hg",
+    "La",
+    "Hf",
+    "Ta",
+    "W",
+    "Re",
+    "Os",
+    "Ir",
+    "Pt",
+    "Au",
+    "Hg",
 )
 
 #: Per-metal atomic-number map for coordination-count sanity checks.
 METAL_Z: Dict[str, int] = {
-    "Sc": 21, "Ti": 22, "V":  23, "Cr": 24, "Mn": 25, "Fe": 26,
-    "Co": 27, "Ni": 28, "Cu": 29, "Zn": 30, "Y":  39, "Zr": 40,
-    "Nb": 41, "Mo": 42, "Tc": 43, "Ru": 44, "Rh": 45, "Pd": 46,
-    "Ag": 47, "Cd": 48, "La": 57, "Hf": 72, "Ta": 73, "W":  74,
-    "Re": 75, "Os": 76, "Ir": 77, "Pt": 78, "Au": 79, "Hg": 80,
+    "Sc": 21,
+    "Ti": 22,
+    "V": 23,
+    "Cr": 24,
+    "Mn": 25,
+    "Fe": 26,
+    "Co": 27,
+    "Ni": 28,
+    "Cu": 29,
+    "Zn": 30,
+    "Y": 39,
+    "Zr": 40,
+    "Nb": 41,
+    "Mo": 42,
+    "Tc": 43,
+    "Ru": 44,
+    "Rh": 45,
+    "Pd": 46,
+    "Ag": 47,
+    "Cd": 48,
+    "La": 57,
+    "Hf": 72,
+    "Ta": 73,
+    "W": 74,
+    "Re": 75,
+    "Os": 76,
+    "Ir": 77,
+    "Pt": 78,
+    "Au": 79,
+    "Hg": 80,
 }
 
 #: Wf-130 P3 success criterion: per-metal reachability ≥ 0.30.
@@ -158,14 +211,10 @@ DEFAULT_MAX_PRODUCTS: int = 64
 DEFAULT_SEEDS: int = 1
 DEFAULT_TANIMOTO_THRESHOLD: float = 0.4  # Pocket2Mol / TargetDiff OOD convention
 DEFAULT_SAMPLE_SEED: int = 42  # for with-replacement sampling
-DEFAULT_OUTPUT_DIR: Path = (
-    _REPO_ROOT / "molmetal" / "reports" / "wf130_p3_ood_30"
-)
+DEFAULT_OUTPUT_DIR: Path = _REPO_ROOT / "molmetal" / "reports" / "wf130_p3_ood_30"
 
 #: Path to the PlatinAI 5K CSV (R17 ship).
-DEFAULT_PLATINAI_CSV: Path = (
-    _REPO_ROOT / "molmetal" / "data" / "platinai_5k.csv"
-)
+DEFAULT_PLATINAI_CSV: Path = _REPO_ROOT / "molmetal" / "data" / "platinai_5k.csv"
 #: Path to the MetalCytoToxDB 5-metal CSV (Wf-21 ship).
 DEFAULT_METALCYTO_CSV: Path = Path(
     "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
@@ -175,19 +224,17 @@ FALLBACK_METALCYTO_CSV: Path = (
 )
 #: Path to the tmQM d-block 5K subset (Wf-28 ship) — used as the
 #: **train pool** for OOD detection.
-DEFAULT_TMQM_CSV: Path = (
-    _REPO_ROOT / "molmetal" / "data" / "tmqm_dblock_subset.csv"
-)
+DEFAULT_TMQM_CSV: Path = _REPO_ROOT / "molmetal" / "data" / "tmqm_dblock_subset.csv"
 
 #: 7 partner terms (same as Wf-37 P2 / Wf-41 P2 / Wf-130 P2).
 PARTNER_SMILE_LIST: List[str] = [
-    "C#CCN",                  # propargylamine  — alkyne + amine
-    "CCN=[N+]=[N-]",          # ethyl azide     — CuAAC
-    "C#CC",                   # propyne         — CuAAC
-    "CS",                     # methanethiol    — ThiolEne
-    "C=CC",                   # propene         — ThiolEne
-    "OC(=O)c1ccccc1",         # benzoic acid    — AmideCoupling
-    "NCC",                    # ethylamine      — AmideCoupling
+    "C#CCN",  # propargylamine  — alkyne + amine
+    "CCN=[N+]=[N-]",  # ethyl azide     — CuAAC
+    "C#CC",  # propyne         — CuAAC
+    "CS",  # methanethiol    — ThiolEne
+    "C=CC",  # propene         — ThiolEne
+    "OC(=O)c1ccccc1",  # benzoic acid    — AmideCoupling
+    "NCC",  # ethylamine      — AmideCoupling
 ]
 
 
@@ -216,12 +263,14 @@ def _load_click_rules() -> List[Any]:
         Suzuki,
         ThiolEne,
     )
+
     return [CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling]
 
 
 def _load_partner_terms() -> List[Any]:
     """Build partner terms from :data:`PARTNER_SMILE_LIST`."""
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
     out: List[Any] = []
     for smi in PARTNER_SMILE_LIST:
         try:
@@ -236,6 +285,7 @@ def _load_tanimoto_protocol(
 ) -> Any:
     """Construct a :class:`TanimotoOODProtocol` (Wf-7 ship)."""
     from molmetal_lam.lam_chem.ood_protocol import TanimotoOODProtocol
+
     return TanimotoOODProtocol(threshold=float(threshold))
 
 
@@ -267,13 +317,17 @@ def _load_metal_samples(
         if metal_col not in fields:
             log.error(
                 "Column %r missing from %s; fields=%r",
-                metal_col, csv_path, fields,
+                metal_col,
+                csv_path,
+                fields,
             )
             return out
         if smiles_col not in fields:
             log.error(
                 "Column %r missing from %s; fields=%r",
-                smiles_col, csv_path, fields,
+                smiles_col,
+                csv_path,
+                fields,
             )
             return out
         for row in reader:
@@ -353,10 +407,8 @@ def _filter_ood_subset(
         "n_ood": int(n_ood),
         "n_not_ood": int(n_not_ood),
         "ood_rate": float(n_ood / n_total) if n_total else 0.0,
-        "mean_max_tanimoto": float(statistics.fmean(max_sims))
-        if max_sims else 0.0,
-        "median_max_tanimoto": float(statistics.median(max_sims))
-        if max_sims else 0.0,
+        "mean_max_tanimoto": float(statistics.fmean(max_sims)) if max_sims else 0.0,
+        "median_max_tanimoto": float(statistics.median(max_sims)) if max_sims else 0.0,
         "max_max_tanimoto": float(max(max_sims)) if max_sims else 0.0,
         "threshold": float(ood_protocol.threshold),
         "metal": str(metal),
@@ -437,9 +489,7 @@ def _benchmark_one(
         record["n_visited"] = int(last_result.get("n_visited", 0))
         record["n_products"] = int(last_result.get("n_products", 0))
         record["max_depth_seen"] = int(last_result.get("max_depth_seen", 0))
-        record["well_typed_rate"] = float(
-            last_result.get("well_typed_rate", 1.0)
-        )
+        record["well_typed_rate"] = float(last_result.get("well_typed_rate", 1.0))
     except Exception as exc:
         record["status"] = "error"
         record["parse_error"] = f"{type(exc).__name__}: {exc}"[:240]
@@ -513,9 +563,7 @@ def _aggregate_per_metal(
         walls = [float(r["wall_time_s"]) for r in ok_records]
         mems = [float(r["memory_mb"]) for r in ok_records]
         mean_wall = float(statistics.fmean(walls))
-        std_wall = (
-            float(statistics.stdev(walls)) if len(walls) >= 2 else 0.0
-        )
+        std_wall = float(statistics.stdev(walls)) if len(walls) >= 2 else 0.0
         median_wall = float(statistics.median(walls))
         peak_mem = float(max(mems)) if mems else 0.0
         total_wall = float(sum(walls))
@@ -592,14 +640,20 @@ def _benchmark_metal_worker(
     # Gather cross-domain union (PlatinAI + MetalCytoTox).
     source_smis: Dict[str, List[str]] = {}
     platinai_smis = _load_metal_samples(
-        platinai_csv, str(metal), int(n_samples),
-        smiles_col="smiles", metal_col="metal",
+        platinai_csv,
+        str(metal),
+        int(n_samples),
+        smiles_col="smiles",
+        metal_col="metal",
     )
     if platinai_smis:
         source_smis["platinai_5k"] = platinai_smis
     metalcyto_smis = _load_metal_samples(
-        metalcyto_csv, str(metal), int(n_samples),
-        smiles_col="smiles", metal_col="metal",
+        metalcyto_csv,
+        str(metal),
+        int(n_samples),
+        smiles_col="smiles",
+        metal_col="metal",
     )
     if metalcyto_smis:
         source_smis["metalcytotox_5metal"] = metalcyto_smis
@@ -608,6 +662,7 @@ def _benchmark_metal_worker(
     logging.getLogger("wf130_p3_ood_30").setLevel(logging.WARNING)
     # Also silence molmetal_lam's beta_reductions registration warnings.
     import warnings as _w
+
     _w.filterwarnings("ignore", category=UserWarning, module=r"molmetal_lam.*")
 
     n_input_total = 0
@@ -623,13 +678,18 @@ def _benchmark_metal_worker(
     for source_name, smis in source_smis.items():
         n_input_total += len(smis)
         ood_subset, audit = _filter_ood_subset(
-            smis, train_pool, ood_protocol, str(metal),
+            smis,
+            train_pool,
+            ood_protocol,
+            str(metal),
         )
         n_ood_total += len(ood_subset)
         audit_dict[source_name] = audit
         for idx, smi, max_tan in ood_subset:
             rec = _benchmark_one(
-                smi, idx, str(metal),
+                smi,
+                idx,
+                str(metal),
                 source=str(source_name),
                 click_rules=click_rules,
                 partner_terms=partner_terms,
@@ -706,8 +766,11 @@ def run_benchmark(
     log.info(
         "[wf130_p3] start: n_metals=%d n_samples=%d max_depth=%d "
         "threshold=%.2f seeds=%d",
-        int(n_metals), int(n_samples), int(max_depth),
-        float(tanimoto_threshold), int(seeds),
+        int(n_metals),
+        int(n_samples),
+        int(max_depth),
+        float(tanimoto_threshold),
+        int(seeds),
     )
 
     platinai_csv = Path(platinai_csv)
@@ -729,7 +792,8 @@ def run_benchmark(
     if not metalcyto_csv.is_file():
         log.warning(
             "MetalCytoTox CSV missing at %s; falling back to %s",
-            metalcyto_csv, metalcyto_fallback_csv,
+            metalcyto_csv,
+            metalcyto_fallback_csv,
         )
         metalcyto_csv = Path(metalcyto_fallback_csv)
 
@@ -750,7 +814,9 @@ def run_benchmark(
 
     log.info(
         "[wf130_p3] CSVs: platinai=%s metalcyto=%s tmqm=%s",
-        platinai_csv, metalcyto_csv, tmqm_csv,
+        platinai_csv,
+        metalcyto_csv,
+        tmqm_csv,
     )
 
     t_total_0 = time.perf_counter()
@@ -764,6 +830,7 @@ def run_benchmark(
     if use_parallel:
         try:
             import multiprocessing as _mp
+
             cpu_count = _mp.cpu_count()
         except Exception:
             cpu_count = 1
@@ -772,13 +839,15 @@ def run_benchmark(
         else:
             max_workers = min(int(max_workers), cpu_count, len(metals))
         log.info(
-            "[wf130_p3] parallelism: max_workers=%d (cpu_count=%d, "
-            "n_metals=%d)",
-            int(max_workers), int(cpu_count), int(len(metals)),
+            "[wf130_p3] parallelism: max_workers=%d (cpu_count=%d, " "n_metals=%d)",
+            int(max_workers),
+            int(cpu_count),
+            int(len(metals)),
         )
 
     if use_parallel and int(max_workers) > 1:
         from concurrent.futures import ProcessPoolExecutor, as_completed
+
         worker_args = [
             (
                 str(metal),
@@ -804,7 +873,8 @@ def run_benchmark(
                 except Exception as exc:
                     log.error(
                         "[wf130_p3] metal %s worker failed: %r",
-                        metal_submitted, exc,
+                        metal_submitted,
+                        exc,
                     )
                     continue
                 per_metal_records[metal_name] = records
@@ -814,21 +884,31 @@ def run_benchmark(
                 log.info(
                     "[wf130_p3] %s: n_input=%d n_ood=%d closure_ok=%d "
                     "rate=%s gate_pass=%s sources=%d",
-                    metal_name, agg["n_input"], agg["n_ood"],
+                    metal_name,
+                    agg["n_input"],
+                    agg["n_ood"],
                     agg["n_closure_ok"],
-                    (f"{agg['closure_reachability_rate']:.4f}"
-                     if agg["closure_reachability_rate"] is not None
-                     else "None"),
-                    agg["gate_pass"], agg["n_cross_domain_sources"],
+                    (
+                        f"{agg['closure_reachability_rate']:.4f}"
+                        if agg["closure_reachability_rate"] is not None
+                        else "None"
+                    ),
+                    agg["gate_pass"],
+                    agg["n_cross_domain_sources"],
                 )
     else:
         # Single-threaded fallback (also used when ``parallel=False``,
         # when only 1 metal is requested, or in tests).
         for metal in metals:
             metal_name, records, summary, audit = _benchmark_metal_worker(
-                str(metal), str(platinai_csv), str(metalcyto_csv),
-                str(tmqm_csv), int(n_samples), float(tanimoto_threshold),
-                int(max_depth), int(max_products),
+                str(metal),
+                str(platinai_csv),
+                str(metalcyto_csv),
+                str(tmqm_csv),
+                int(n_samples),
+                float(tanimoto_threshold),
+                int(max_depth),
+                int(max_products),
             )
             per_metal_records[metal_name] = records
             per_metal_summary[metal_name] = summary
@@ -837,12 +917,17 @@ def run_benchmark(
             log.info(
                 "[wf130_p3] %s: n_input=%d n_ood=%d closure_ok=%d "
                 "rate=%s gate_pass=%s sources=%d",
-                metal_name, agg["n_input"], agg["n_ood"],
+                metal_name,
+                agg["n_input"],
+                agg["n_ood"],
                 agg["n_closure_ok"],
-                (f"{agg['closure_reachability_rate']:.4f}"
-                 if agg["closure_reachability_rate"] is not None
-                 else "None"),
-                agg["gate_pass"], agg["n_cross_domain_sources"],
+                (
+                    f"{agg['closure_reachability_rate']:.4f}"
+                    if agg["closure_reachability_rate"] is not None
+                    else "None"
+                ),
+                agg["gate_pass"],
+                agg["n_cross_domain_sources"],
             )
 
     # Flatten all per-metal records into a single list.
@@ -864,7 +949,8 @@ def run_benchmark(
         macro_reachability = float(statistics.fmean(per_metal_rates))
         macro_std = (
             float(statistics.stdev(per_metal_rates))
-            if len(per_metal_rates) >= 2 else 0.0
+            if len(per_metal_rates) >= 2
+            else 0.0
         )
     else:
         macro_reachability = 0.0
@@ -873,27 +959,24 @@ def run_benchmark(
     # Micro (weighted) reachability: sum(closure_ok) / sum(n_samples).
     total_n = sum(s["n_samples"] for s in per_metal_summary.values())
     total_ok = sum(s["n_closure_ok"] for s in per_metal_summary.values())
-    micro_reachability = (
-        float(total_ok / total_n) if total_n else 0.0
-    )
+    micro_reachability = float(total_ok / total_n) if total_n else 0.0
 
-    n_metals_pass = sum(
-        1 for s in per_metal_summary.values() if s["gate_pass"]
-    )
+    n_metals_pass = sum(1 for s in per_metal_summary.values() if s["gate_pass"])
     n_metals_actually_run = int(len(metals))
     n_metals_with_data = sum(
-        1 for s in per_metal_summary.values()
-        if s["n_samples"] > 0
+        1 for s in per_metal_summary.values() if s["n_samples"] > 0
     )
     n_metals_without_data = n_metals_actually_run - n_metals_with_data
     n_metals_below_negative = sum(
-        1 for s in per_metal_summary.values()
+        1
+        for s in per_metal_summary.values()
         if s["closure_reachability_rate"] is not None
         and s["closure_reachability_rate"] < HONEST_NEGATIVE_THRESHOLD
     )
 
     try:
         import torch  # local; cheap
+
         torch_ver = torch.__version__
     except Exception:
         torch_ver = "n/a"
@@ -914,9 +997,7 @@ def run_benchmark(
         "seeds": int(seeds),
         "sample_seed": int(sample_seed),
         "tanimoto_threshold": float(tanimoto_threshold),
-        "gate_target_per_metal_reachability": (
-            GATE_TARGET_PER_METAL_REACHABILITY
-        ),
+        "gate_target_per_metal_reachability": (GATE_TARGET_PER_METAL_REACHABILITY),
         "honest_negative_threshold": HONEST_NEGATIVE_THRESHOLD,
         "wf41_pt_reachability": WF41_PT_REACHABILITY,
         "wf41_pd_reachability": WF41_PD_REACHABILITY,
@@ -951,12 +1032,9 @@ def run_benchmark(
             ),
         },
         "n_metals_pass": int(n_metals_pass),
-        "n_metals_below_honest_negative_threshold": int(
-            n_metals_below_negative
-        ),
+        "n_metals_below_honest_negative_threshold": int(n_metals_below_negative),
         "overall_gate_pass": bool(
-            n_metals_pass >= n_metals_with_data
-            and n_metals_with_data > 0
+            n_metals_pass >= n_metals_with_data and n_metals_with_data > 0
         ),
         "total_wall_time_s": float(total_wall_s),
         "timestamp_utc": _utcnow_iso(),
@@ -997,38 +1075,53 @@ def save_per_metal(
         rec_path = metal_dir / "ood_reachability.json"
         per_metal = payload["per_metal"][metal]
         per_metal_records = payload.get("per_metal_records", {}).get(
-            metal, [],
+            metal,
+            [],
         )
         per_metal_audit = payload.get("per_metal_audit", {}).get(
-            metal, {},
+            metal,
+            {},
         )
         sample_records = [
-            {k: r[k] for k in (
-                "idx", "source", "closure_ok", "max_tanimoto",
-                "n_visited", "n_products", "max_depth_seen",
-                "well_typed_rate", "wall_time_s", "parse_error",
-                "status", "n_atoms_start",
-            ) if k in r}
+            {
+                k: r[k]
+                for k in (
+                    "idx",
+                    "source",
+                    "closure_ok",
+                    "max_tanimoto",
+                    "n_visited",
+                    "n_products",
+                    "max_depth_seen",
+                    "well_typed_rate",
+                    "wall_time_s",
+                    "parse_error",
+                    "status",
+                    "n_atoms_start",
+                )
+                if k in r
+            }
             for r in per_metal_records
         ]
-        rec_path.write_text(json.dumps(
-            {
-                "metal": metal,
-                "summary": per_metal,
-                "ood_audit": per_metal_audit,
-                "n_samples_in_run": per_metal["n_samples"],
-                "samples": sample_records,
-            },
-            indent=2,
-            default=str,
-        ))
+        rec_path.write_text(
+            json.dumps(
+                {
+                    "metal": metal,
+                    "summary": per_metal,
+                    "ood_audit": per_metal_audit,
+                    "n_samples_in_run": per_metal["n_samples"],
+                    "samples": sample_records,
+                },
+                indent=2,
+                default=str,
+            )
+        )
         paths[metal] = rec_path
 
     overall_path = output_dir / "ood_reachability_overall.json"
     # Strip per_metal_records (huge) from the overall file.
     overall_only = {
-        k: v for k, v in payload.items()
-        if k not in ("per_metal_records", "per_sample")
+        k: v for k, v in payload.items() if k not in ("per_metal_records", "per_sample")
     }
     overall_path.write_text(json.dumps(overall_only, indent=2, default=str))
     paths["overall"] = overall_path
@@ -1134,9 +1227,7 @@ def write_synthesis(
     for metal in payload["metals"]:
         m = payload["per_metal"][metal]
         rate = m["closure_reachability_rate"]
-        rate_str = (
-            f"{rate:.4f}" if rate is not None else "—"
-        )
+        rate_str = f"{rate:.4f}" if rate is not None else "—"
         status_str = str(m.get("status", "ok"))
         sources_str = f"{m['n_cross_domain_sources']}"
         lines.append(
@@ -1190,14 +1281,14 @@ def write_synthesis(
     lines.append("## Honest-negative metals")
     lines.append("")
     honest_neg = [
-        m for m in payload["metals"]
+        m
+        for m in payload["metals"]
         if payload["per_metal"][m].get("closure_reachability_rate") is not None
         and payload["per_metal"][m]["closure_reachability_rate"]
         < HONEST_NEGATIVE_THRESHOLD
     ]
     no_data = [
-        m for m in payload["metals"]
-        if payload["per_metal"][m].get("n_samples", 0) == 0
+        m for m in payload["metals"] if payload["per_metal"][m].get("n_samples", 0) == 0
     ]
     if honest_neg:
         lines.append(
@@ -1249,11 +1340,18 @@ def _build_argparser() -> argparse.ArgumentParser:
             "train pool, CPU-only, deterministic)."
         ),
     )
-    p.add_argument("--n-metals", type=int, default=DEFAULT_N_METALS,
-                   help="Number of d-block metals (default 30).")
-    p.add_argument("--n-samples", type=int, default=DEFAULT_N_SAMPLES,
-                   help="Cross-domain samples per metal per source "
-                        "(default 100).")
+    p.add_argument(
+        "--n-metals",
+        type=int,
+        default=DEFAULT_N_METALS,
+        help="Number of d-block metals (default 30).",
+    )
+    p.add_argument(
+        "--n-samples",
+        type=int,
+        default=DEFAULT_N_SAMPLES,
+        help="Cross-domain samples per metal per source " "(default 100).",
+    )
     p.add_argument("--metals", nargs="+", default=list(DBLOCK_30_METALS))
     p.add_argument("--platinai-csv", type=Path, default=DEFAULT_PLATINAI_CSV)
     p.add_argument("--metalcyto-csv", type=Path, default=DEFAULT_METALCYTO_CSV)
@@ -1263,22 +1361,32 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--max-products", type=int, default=DEFAULT_MAX_PRODUCTS)
     p.add_argument("--seeds", type=int, default=DEFAULT_SEEDS)
     p.add_argument("--sample-seed", type=int, default=DEFAULT_SAMPLE_SEED)
-    p.add_argument("--tanimoto-threshold", type=float,
-                   default=DEFAULT_TANIMOTO_THRESHOLD)
-    p.add_argument("--smoke", action="store_true",
-                   help="Smoke mode (caller controls --n-samples, "
-                        "--n-metals).")
-    p.add_argument("--max-workers", type=int, default=0,
-                   help=(
-                       "ProcessPoolExecutor max_workers for per-metal "
-                       "parallelism (default 0 = auto = min(8, cpu_count, "
-                       "n_metals)). Pass 1 to disable parallelism."
-                   ))
-    p.add_argument("--no-parallel", action="store_true",
-                   help="Disable multiprocessing (single-threaded "
-                        "fallback).")
-    p.add_argument("--log-level", default="INFO",
-                   choices=("DEBUG", "INFO", "WARNING", "ERROR"))
+    p.add_argument(
+        "--tanimoto-threshold", type=float, default=DEFAULT_TANIMOTO_THRESHOLD
+    )
+    p.add_argument(
+        "--smoke",
+        action="store_true",
+        help="Smoke mode (caller controls --n-samples, " "--n-metals).",
+    )
+    p.add_argument(
+        "--max-workers",
+        type=int,
+        default=0,
+        help=(
+            "ProcessPoolExecutor max_workers for per-metal "
+            "parallelism (default 0 = auto = min(8, cpu_count, "
+            "n_metals)). Pass 1 to disable parallelism."
+        ),
+    )
+    p.add_argument(
+        "--no-parallel",
+        action="store_true",
+        help="Disable multiprocessing (single-threaded " "fallback).",
+    )
+    p.add_argument(
+        "--log-level", default="INFO", choices=("DEBUG", "INFO", "WARNING", "ERROR")
+    )
     return p
 
 
@@ -1291,7 +1399,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     metals_arg = list(args.metals)
     if len(metals_arg) == 1 and metals_arg[0].lower() in (
-        "all", "all_dblock", "30",
+        "all",
+        "all_dblock",
+        "30",
     ):
         metals_arg = list(DBLOCK_30_METALS)
     known = set(DBLOCK_30_METALS)
@@ -1329,8 +1439,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     log.info(
         "[wf130_p3] DONE: n_metals=%d n_with_data=%d n_samples=%d "
         "closure_ok=%d macro=%.4f micro=%.4f total_wall=%.2fs",
-        agg["n_metals"], agg["n_metals_with_data"], agg["n_samples"],
-        agg["n_closure_ok"], macro, micro,
+        agg["n_metals"],
+        agg["n_metals_with_data"],
+        agg["n_samples"],
+        agg["n_closure_ok"],
+        macro,
+        micro,
         payload["total_wall_time_s"],
     )
     print(

@@ -22,6 +22,7 @@ CLI
     source .venv/bin/activate && cd /home/hugo/codes/try_triton_on_rocm
     python -c "from molmetal.molmetal_lam.sbdd_env.pic50_predictor import predict_pic50; print(predict_pic50('O=C1CN(CC1)C(=O)c1ccc(cc1)Cl'))"
 """
+
 from __future__ import annotations
 
 import os
@@ -34,9 +35,7 @@ from typing import List, Optional
 # Layout: pic50_predictor.py lives at
 # PROJECT_ROOT/molmetal/molmetal_lam/sbdd_env/pic50_predictor.py
 # so PROJECT_ROOT = 3 hops up from __file__.
-_PKG_PARENT = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..")
-)
+_PKG_PARENT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 if _PKG_PARENT not in sys.path:
     sys.path.insert(0, _PKG_PARENT)
 
@@ -142,7 +141,7 @@ class AttentiveDMPNNPredictor:
         from molmetal.baselines.dmpnn_attentive import collate_graphs
 
         for start in range(0, len(graphs), batch_size):
-            batch = graphs[start:start + batch_size]
+            batch = graphs[start : start + batch_size]
             valid = [g for g in batch if g is not None]
             preds: List[float] = []
             if valid:

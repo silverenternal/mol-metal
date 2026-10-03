@@ -7,6 +7,7 @@ never imports REINVENT4 or PyTorch, and can run from a separate environment.
 It is a protocol bridge, not a claim that REINVENT4's learned plugins are
 available.
 """
+
 from __future__ import annotations
 
 import json
@@ -18,6 +19,7 @@ def _score(smiles: str) -> dict[str, float | None]:
     try:
         from rdkit import Chem
         from rdkit.Chem import Crippen, Descriptors, QED
+
         mol = Chem.MolFromSmiles(str(smiles))
         if mol is None:
             return {"qed": None, "sa": None, "binding": None, "novelty": None}

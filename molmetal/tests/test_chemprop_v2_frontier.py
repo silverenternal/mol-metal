@@ -64,7 +64,9 @@ def _make_frontier(
         config.monge_ampere_weight = 0.0
         config.multi_ph_weight = 0.0
     return ChempropV2Frontier(
-        config=config, hidden_dim=hidden_dim, depth=depth,
+        config=config,
+        hidden_dim=hidden_dim,
+        depth=depth,
     )
 
 
@@ -174,7 +176,9 @@ def test_frontier_smoke_helper_returns_working_model():
     """quick_smoke_chemprop_v2_frontier returns a working model + batch."""
     _set_seed(0)
     model, loss_fn, batch, labels = quick_smoke_chemprop_v2_frontier(
-        hidden_dim=64, depth=2, enable_all=True,
+        hidden_dim=64,
+        depth=2,
+        enable_all=True,
     )
     out = batch["out"]
     info = batch["info"]
@@ -297,9 +301,7 @@ def test_frontier_smoke_100_real_samples_loss_finite():
     metals_list = sub["metal"].tolist()
     actives_list = sub["active"].astype(float).tolist()
     metal_to_id = {m: i for i, m in enumerate(SUPPORTED_METALS)}
-    metal_ids = torch.tensor(
-        [metal_to_id[m] for m in metals_list], dtype=torch.long
-    )
+    metal_ids = torch.tensor([metal_to_id[m] for m in metals_list], dtype=torch.long)
     y_true = {}
     for metal in SUPPORTED_METALS:
         per_row = torch.tensor(
@@ -313,10 +315,17 @@ def test_frontier_smoke_100_real_samples_loss_finite():
 
     def _coord_label_for(metal_name: str) -> int:
         table = {
-            "Pt": 3, "Pd": 3, "Au": 3,
-            "Ru": 4, "Ir": 4, "Os": 4, "Rh": 4, "Re": 4,
+            "Pt": 3,
+            "Pd": 3,
+            "Au": 3,
+            "Ru": 4,
+            "Ir": 4,
+            "Os": 4,
+            "Rh": 4,
+            "Re": 4,
         }
         return table.get(metal_name, 3)
+
     coord_true = torch.tensor(
         [_coord_label_for(m) for m in metals_list], dtype=torch.long
     )

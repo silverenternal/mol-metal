@@ -245,6 +245,7 @@ def test_backward_compat_no_flags_means_baseline() -> None:
       * parse_args([]) resolves to production defaults
     """
     import importlib
+
     _trainer = importlib.import_module(
         "molmetal.scripts.train_dmpnn_multitask_wasserstein"
     )
@@ -339,23 +340,27 @@ def test_trainer_help_shows_all_wf328_flags() -> None:
     against accidental removal of any of the Wf-328 CLI surfaces.
     """
     proc = subprocess.run(
-        [sys.executable,
-         str(TEST_SCRIPTS_DIR / "train_dmpnn_multitask_wasserstein.py"),
-         "--help"],
-        capture_output=True, text=True, timeout=60,
+        [
+            sys.executable,
+            str(TEST_SCRIPTS_DIR / "train_dmpnn_multitask_wasserstein.py"),
+            "--help",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
-    assert proc.returncode == 0, (
-        f"trainer --help failed (rc={proc.returncode}): {proc.stderr}"
-    )
+    assert (
+        proc.returncode == 0
+    ), f"trainer --help failed (rc={proc.returncode}): {proc.stderr}"
     out = proc.stdout
 
     expected = [
-        "--cpu-num-workers",     # W2
-        "--num-workers",          # W6 (chemprop)
-        "--tf32",                 # W4
-        "--bf16",                 # W3
-        "--torch-compile",        # W1
-        "--w2-gradient-mode",     # W5
+        "--cpu-num-workers",  # W2
+        "--num-workers",  # W6 (chemprop)
+        "--tf32",  # W4
+        "--bf16",  # W3
+        "--torch-compile",  # W1
+        "--w2-gradient-mode",  # W5
     ]
     for flag in expected:
         assert flag in out, (

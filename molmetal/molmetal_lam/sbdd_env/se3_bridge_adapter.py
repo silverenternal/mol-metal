@@ -147,13 +147,10 @@ def kabsch_align(
     """
     if P.shape != Q.shape:
         raise ValueError(
-            f"P and Q must share shape, got {tuple(P.shape)} vs "
-            f"{tuple(Q.shape)}"
+            f"P and Q must share shape, got {tuple(P.shape)} vs " f"{tuple(Q.shape)}"
         )
     if P.ndim != 2 or P.shape[-1] != 3:
-        raise ValueError(
-            f"kabsch_align expects (N, 3) inputs, got {tuple(P.shape)}"
-        )
+        raise ValueError(f"kabsch_align expects (N, 3) inputs, got {tuple(P.shape)}")
     if P.shape[0] < 1:
         raise ValueError("kabsch_align needs at least one point")
 
@@ -263,9 +260,7 @@ def _pose_to_se3(
         SE(3) homogeneous matrix of shape ``(4, 4)``.
     """
     if atoms.ndim != 2 or atoms.shape[-1] != 3:
-        raise ValueError(
-            f"_pose_to_se3 expects (N, 3) input, got {tuple(atoms.shape)}"
-        )
+        raise ValueError(f"_pose_to_se3 expects (N, 3) input, got {tuple(atoms.shape)}")
     n = int(atoms.shape[0])
     centroid = atoms.mean(dim=0)
     if reference_origin is not None:
@@ -305,9 +300,7 @@ def _apply_se3(atoms: Tensor, T: Tensor) -> Tensor:
     out of :func:`se3_exp`.
     """
     if atoms.ndim != 2 or atoms.shape[-1] != 3:
-        raise ValueError(
-            f"_apply_se3 expects (N, 3) input, got {tuple(atoms.shape)}"
-        )
+        raise ValueError(f"_apply_se3 expects (N, 3) input, got {tuple(atoms.shape)}")
     if T.shape != (4, 4):
         raise ValueError(
             f"_apply_se3 expects (4, 4) SE(3) matrix, got {tuple(T.shape)}"
@@ -385,9 +378,7 @@ class SE3BridgePosePredictor:
                 f"sinkhorn_iters must be >= 1, got {self.config.sinkhorn_iters}"
             )
         if self.config.sigma <= 0.0:
-            raise ValueError(
-                f"sigma must be > 0, got {self.config.sigma}"
-            )
+            raise ValueError(f"sigma must be > 0, got {self.config.sigma}")
         self._sinkhorn = LogSinkhornLoss(
             eps=self.config.sinkhorn_eps,
             n_iters=self.config.sinkhorn_iters,
@@ -428,12 +419,16 @@ class SE3BridgePosePredictor:
         n_ref = ref_twists.shape[0]
         n_init = init_twists.shape[0]
         a = torch.full(
-            (n_ref,), 1.0 / max(n_ref, 1),
-            dtype=ref_twists.dtype, device=ref_twists.device,
+            (n_ref,),
+            1.0 / max(n_ref, 1),
+            dtype=ref_twists.dtype,
+            device=ref_twists.device,
         )
         b = torch.full(
-            (n_init,), 1.0 / max(n_init, 1),
-            dtype=ref_twists.dtype, device=ref_twists.device,
+            (n_init,),
+            1.0 / max(n_init, 1),
+            dtype=ref_twists.dtype,
+            device=ref_twists.device,
         )
         _loss, P = self._sinkhorn.forward(ref_twists, init_twists, C=C, a=a, b=b)
         return P
@@ -496,8 +491,8 @@ class SE3BridgePosePredictor:
         # work with, instead of a (N, 6) per-atom distribution.
         T_init = _pose_to_se3(init_atoms)
         T_ref = _pose_to_se3(ref_atoms)
-        xi_init = se3_log(T_init).unsqueeze(0)   # (1, 6)
-        xi_ref = se3_log(T_ref).unsqueeze(0)     # (1, 6)
+        xi_init = se3_log(T_init).unsqueeze(0)  # (1, 6)
+        xi_ref = se3_log(T_ref).unsqueeze(0)  # (1, 6)
 
         # Self-bridge: we use the (1, 6) twist set as both source and
         # target.  This matches the convention used in
@@ -519,7 +514,9 @@ class SE3BridgePosePredictor:
         # coordinates (the canonical pose-perturbation convention —
         # we keep the *shape* of the molecule fixed and just change
         # its global SE(3) pose).
-        pred_list = [_apply_se3(init_atoms, T_samples[i]) for i in range(int(n_samples))]
+        pred_list = [
+            _apply_se3(init_atoms, T_samples[i]) for i in range(int(n_samples))
+        ]
         return torch.stack(pred_list, dim=0)  # (n_samples, N, 3)
 
     def predict_best(
@@ -618,9 +615,7 @@ class WassersteinPoseLoss:
                 f"n_projections must be >= 1, got {self.config.n_projections}"
             )
         if self.config.weight < 0.0:
-            raise ValueError(
-                f"weight must be >= 0, got {self.config.weight}"
-            )
+            raise ValueError(f"weight must be >= 0, got {self.config.weight}")
 
     def _to_twists(self, poses: Tensor) -> Tensor:
         """Map a batch of ``(B, N, 3)`` poses to ``(B, 6)`` twists.
@@ -629,9 +624,7 @@ class WassersteinPoseLoss:
         SE(3) matrix, then :func:`se3_log` projects to a twist.
         """
         if poses.ndim != 3 or poses.shape[-1] != 3:
-            raise ValueError(
-                f"_to_twists expects (B, N, 3), got {tuple(poses.shape)}"
-            )
+            raise ValueError(f"_to_twists expects (B, N, 3), got {tuple(poses.shape)}")
         b = poses.shape[0]
         out = torch.empty((b, 6), dtype=poses.dtype, device=poses.device)
         for i in range(b):
@@ -649,16 +642,19 @@ class WassersteinPoseLoss:
         d = x.shape[-1]
         g = torch.Generator().manual_seed(int(self.config.seed))
         proj = torch.randn(
-            int(self.config.n_projections), d,
-            generator=g, dtype=torch.float32,
+            int(self.config.n_projections),
+            d,
+            generator=g,
+            dtype=torch.float32,
         )
         proj = proj / proj.norm(dim=-1, keepdim=True).clamp_min(_EPS_DIV)
         x32 = x.to(torch.float32)
         y32 = y.to(torch.float32)
-        proj_x = (proj @ x32.T)  # (L, n_x)
-        proj_y = (proj @ y32.T)  # (L, n_y)
+        proj_x = proj @ x32.T  # (L, n_x)
+        proj_y = proj @ y32.T  # (L, n_y)
         per = torch.empty(
-            int(self.config.n_projections), dtype=torch.float32,
+            int(self.config.n_projections),
+            dtype=torch.float32,
         )
         for ell in range(int(self.config.n_projections)):
             xs, _ = torch.sort(proj_x[ell])
@@ -669,12 +665,14 @@ class WassersteinPoseLoss:
                 common = max(n_x, n_y)
                 if n_x < common:
                     xs = torch.quantile(
-                        xs, torch.linspace(0.0, 1.0, common),
+                        xs,
+                        torch.linspace(0.0, 1.0, common),
                         interpolation="linear",
                     )
                 if n_y < common:
                     ys = torch.quantile(
-                        ys, torch.linspace(0.0, 1.0, common),
+                        ys,
+                        torch.linspace(0.0, 1.0, common),
                         interpolation="linear",
                     )
             sq = ((xs - ys) * (xs - ys)).sum()
@@ -701,9 +699,7 @@ class WassersteinPoseLoss:
             Sliced-W₂ estimate (non-negative).
         """
         if pred_poses.ndim != 3 or ref_poses.ndim != 3:
-            raise ValueError(
-                f"WassersteinPoseLoss.raw expects (B, N, 3) inputs"
-            )
+            raise ValueError(f"WassersteinPoseLoss.raw expects (B, N, 3) inputs")
         if pred_poses.shape[-1] != 3 or ref_poses.shape[-1] != 3:
             raise ValueError(
                 f"Last dim must be 3, got pred={tuple(pred_poses.shape)} "

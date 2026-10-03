@@ -44,7 +44,9 @@ from molmetal.molmetal_lam.reward.hilbert_primal_dual import LambdaASTSRHilbert
 # Helpers — small deterministic design matrices for fast tests
 # ---------------------------------------------------------------------------
 def _toy_astr_design(
-    n: int = 24, dim: int = 4, seed: int = 0,
+    n: int = 24,
+    dim: int = 4,
+    seed: int = 0,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Build a deterministic ``(X_astr, y)`` with a known linear structure."""
     rng = np.random.default_rng(seed)
@@ -55,7 +57,9 @@ def _toy_astr_design(
 
 
 def _toy_multi_ph_design(
-    n: int = 24, n_bins: int = 4, seed: int = 1,
+    n: int = 24,
+    n_bins: int = 4,
+    seed: int = 1,
 ) -> np.ndarray:
     """Build a deterministic ``(N, n_bins, n_bins)`` multi-PH feature map."""
     rng = np.random.default_rng(seed)
@@ -64,7 +68,10 @@ def _toy_multi_ph_design(
 
 
 def _toy_joint_inputs(
-    n: int = 24, dim_astr: int = 4, n_bins: int = 4, seed: int = 0,
+    n: int = 24,
+    dim_astr: int = 4,
+    n_bins: int = 4,
+    seed: int = 0,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Build matched (astr_X, multi_ph_X, y) with informative streams."""
     rng = np.random.default_rng(seed)
@@ -161,7 +168,8 @@ def test_joint_hilbert_optimizer_fit_returns_high_r2() -> None:
     """``fit`` returns R² ≥ 0.5 on a noiseless-ish linear problem."""
     astr, mph, y = _toy_joint_inputs(n=24, dim_astr=4, n_bins=4, seed=2)
     opt = JointHilbertOptimizer(
-        hilbert_dim=8, normalize=False,
+        hilbert_dim=8,
+        normalize=False,
     )
     res = opt.fit(astr, mph, y)
     assert "r2" in res and "wall_s" in res
@@ -254,7 +262,8 @@ def test_joint_hilbert_optimizer_rejects_empty_target() -> None:
 # 3. JointVsSeparateComparator (8 tests)
 # ---------------------------------------------------------------------------
 def _toy_separate_hilbert_factory(
-    population_dim: int = 4, seed: int = 0,
+    population_dim: int = 4,
+    seed: int = 0,
 ) -> LambdaASTSRHilbert:
     """Build a deterministic ``LambdaASTSRHilbert`` for the comparator tests.
 
@@ -281,8 +290,12 @@ def test_joint_vs_separate_returns_full_dict() -> None:
     )
     out = comp.compare((astr, mph), y, n_seeds=2)
     for key in (
-        "joint_wall_s", "separate_wall_s", "joint_r2",
-        "separate_r2", "speedup", "n_seeds",
+        "joint_wall_s",
+        "separate_wall_s",
+        "joint_r2",
+        "separate_r2",
+        "speedup",
+        "n_seeds",
     ):
         assert key in out, f"missing {key}"
     assert out["n_seeds"] == 2
@@ -349,8 +362,7 @@ def test_joint_vs_separate_joint_at_least_separate_r2() -> None:
     # is theoretically at least as informative as the sum of the
     # separate regressors under a linear-Gaussian data model.
     assert out["joint_r2"] + 0.05 >= out["separate_r2"], (
-        f"joint R² {out['joint_r2']:.4f} < separate R² "
-        f"{out['separate_r2']:.4f}"
+        f"joint R² {out['joint_r2']:.4f} < separate R² " f"{out['separate_r2']:.4f}"
     )
 
 
@@ -384,7 +396,9 @@ def test_joint_vs_separate_does_not_mutate_joint_optimizer() -> None:
     """``compare`` does not silently rewire the joint optimizer's config."""
     astr, mph, y = _toy_joint_inputs(n=16, dim_astr=3, n_bins=2, seed=15)
     joint = JointHilbertOptimizer(
-        hilbert_dim=4, normalize=False, feature_columns=("a", "b", "c"),
+        hilbert_dim=4,
+        normalize=False,
+        feature_columns=("a", "b", "c"),
     )
     fc_before = tuple(joint.feature_columns)
     norm_before = bool(joint.normalize)
@@ -406,6 +420,7 @@ def test_does_not_mutate_hilbert_astsr_integration() -> None:
         astsr_multiph_hilbert,
         hilbert_astsr_integration,
     )
+
     # The new module exposes exactly the documented public API.
     assert hasattr(astsr_multiph_hilbert, "JointHilbertOptimizer")
     assert hasattr(astsr_multiph_hilbert, "JointFeatureConcatenator")
@@ -464,7 +479,9 @@ def _toy_pocket(n: int = 12, seed: int = 0) -> Tuple[np.ndarray, np.ndarray]:
 
 
 def _toy_pocket_batch(
-    b: int = 4, n: int = 12, seed: int = 0,
+    b: int = 4,
+    n: int = 12,
+    seed: int = 0,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Deterministic batched pocket coords + atomic numbers + mask."""
     rng = np.random.default_rng(int(seed))
@@ -612,7 +629,11 @@ def test_multi_ph_concat_adapter_normalize_path() -> None:
     coords, atoms, mask = _toy_pocket_batch(b=8, n=12)
     astr = np.random.default_rng(0).standard_normal((8, 6)) * 5.0
     combined = adapter.extract_joint(
-        astr, coords, atoms, pocket_mask=mask, normalize=True,
+        astr,
+        coords,
+        atoms,
+        pocket_mask=mask,
+        normalize=True,
     )
     # After z-score, per-column mean ≈ 0 and per-column std ≈ 1 *for the
     # dense (ASTSR) columns*.  The multi-PH columns are sparse, so many
@@ -656,7 +677,12 @@ def test_multi_ph_concat_adapter_fit_joint_hilbert_smoke() -> None:
     target = np.random.default_rng(1).standard_normal(8)
     joint = JointHilbertOptimizer(hilbert_dim=8, n_iters=20, lr=0.05)
     result = adapter.fit_joint_hilbert(
-        joint, astr, coords, atoms, target, pocket_mask=mask,
+        joint,
+        astr,
+        coords,
+        atoms,
+        target,
+        pocket_mask=mask,
     )
     assert "r2" in result
     assert "wall_s" in result
@@ -673,21 +699,27 @@ def test_multi_ph_concat_adapter_fit_joint_hilbert_smoke() -> None:
 def test_multi_ph_two_parameter_filter_correctness() -> None:
     """2-PH filter: small-radius / small-coord pocket has near-empty cells at large r/d."""
     extractor = StableMultiPHExtractor(
-        max_radius=1.0, max_coord=1.0, n_bins=8,
+        max_radius=1.0,
+        max_coord=1.0,
+        n_bins=8,
     )
     # Two clusters 0.5 Å apart — within the radius filter but with
     # large atomic-number differences.  The high-r + low-d corner of
     # the (r, d) grid should be populated; the low-r + high-d corner
     # should be empty.
     rng = np.random.default_rng(0)
-    coords = np.concatenate([
-        rng.standard_normal((6, 3)) * 0.1,        # cluster 1
-        rng.standard_normal((6, 3)) * 0.1 + 0.5,  # cluster 2
-    ]).astype(np.float32)
-    atoms = np.concatenate([
-        np.full(6, 6, dtype=np.int64),   # all carbon
-        np.full(6, 78, dtype=np.int64),  # all platinum
-    ])
+    coords = np.concatenate(
+        [
+            rng.standard_normal((6, 3)) * 0.1,  # cluster 1
+            rng.standard_normal((6, 3)) * 0.1 + 0.5,  # cluster 2
+        ]
+    ).astype(np.float32)
+    atoms = np.concatenate(
+        [
+            np.full(6, 6, dtype=np.int64),  # all carbon
+            np.full(6, 78, dtype=np.int64),  # all platinum
+        ]
+    )
     feat = extractor.compute(coords, atoms).reshape(8, 8)
     # The first row of feat (low-r cells) should be near zero (no
     # short edges within the small cluster), and the d-range that

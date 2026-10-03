@@ -22,6 +22,7 @@ features).  The default ``--ablation-config mtl_baseline`` is unchanged
 is unchanged (current sliced-W₂ path).  ``DMPNN_HIDDEN=128`` is preserved
 so the per-metal single-task baseline is unaffected.
 """
+
 from __future__ import annotations
 
 import json
@@ -47,10 +48,12 @@ def test_f1_feature_columns_32d_constant_exists():
         FEATURE_COLUMNS_32D,
         N_DESCRIPTORS_32D,
     )
+
     assert len(FEATURE_COLUMNS_32D) == 32
     assert N_DESCRIPTORS_32D == 32
     # First 12 columns match the 12-d baseline (Wf-49 P1 frozen order).
     from molmetal.data.rdkit_2d_extended import RDKIT_2D_FEATURE_COLUMNS
+
     assert list(FEATURE_COLUMNS_32D[:12]) == list(RDKIT_2D_FEATURE_COLUMNS)
 
 
@@ -60,14 +63,44 @@ def test_f1_load_f5_32d_csv_smoke(tmp_path):
         FEATURE_COLUMNS_32D,
         load_f5_32d_csv,
     )
+
     csv_path = tmp_path / "plat_fake.csv"
     header = ["smiles", "metal", "pIC50_mcf7"] + list(FEATURE_COLUMNS_32D)
     row = ["Cc1ccccc1", "Pt", "6.5"] + [
         # 12 base (Wf-49 P1 frozen)
-        "92.14", "2.13", "0.0", "0", "0", "0", "6", "1", "1", "1.0", "40.0", "2.0",
+        "92.14",
+        "2.13",
+        "0.0",
+        "0",
+        "0",
+        "0",
+        "6",
+        "1",
+        "1",
+        "1.0",
+        "40.0",
+        "2.0",
         # 20 Wf-218 expansion
-        "100.0", "5.0", "5.0", "3.0", "2.0", "8.0", "5.0", "1.0", "80.0",
-        "0.1", "-0.1", "0.1", "0.1", "0", "0", "1", "0", "0", "0", "0",
+        "100.0",
+        "5.0",
+        "5.0",
+        "3.0",
+        "2.0",
+        "8.0",
+        "5.0",
+        "1.0",
+        "80.0",
+        "0.1",
+        "-0.1",
+        "0.1",
+        "0.1",
+        "0",
+        "0",
+        "1",
+        "0",
+        "0",
+        "0",
+        "0",
     ]
     csv_path.write_text(",".join(header) + "\n" + ",".join(row) + "\n")
     smiles_list, X, y, rows_meta = load_f5_32d_csv(csv_path)
@@ -84,6 +117,7 @@ def test_f1_build_design_matrix_from_32d_smoke(tmp_path):
         FEATURE_COLUMNS_32D,
         build_design_matrix_from_32d,
     )
+
     csv_path = tmp_path / "plat_fake.csv"
     header = ["smiles", "metal", "pIC50_mcf7"] + list(FEATURE_COLUMNS_32D)
     row1 = ["Cc1ccccc1", "Pt", "6.5"] + ["0"] * 32
@@ -103,7 +137,9 @@ def test_f1_build_design_matrix_from_32d_smoke(tmp_path):
 
 def test_f1_train_script_help_shows_feature_set_flag():
     """--feature-set flag appears in the trainer's help text."""
-    script = _PROJECT_ROOT / "molmetal" / "scripts" / "train_hilbert_astsr_end_to_end.py"
+    script = (
+        _PROJECT_ROOT / "molmetal" / "scripts" / "train_hilbert_astsr_end_to_end.py"
+    )
     proc = subprocess.run(
         [sys.executable, str(script), "--help"],
         check=True,
@@ -130,7 +166,8 @@ def test_f2_mt_prod_constants_present():
     """
     proc = subprocess.run(
         [
-            sys.executable, "-c",
+            sys.executable,
+            "-c",
             "from molmetal.baselines.dmpnn_multitask import "
             "MT_HIDDEN, MT_PROD_HIDDEN, MT_PROD_DEPTH; "
             "assert MT_PROD_HIDDEN == 300; "
@@ -153,7 +190,8 @@ def test_f2_dmpnn_multitask_model_instantiable_at_prod_backbone():
     """DMPNNMultiTaskModel instantiates with hidden=MT_PROD_HIDDEN (subprocess)."""
     proc = subprocess.run(
         [
-            sys.executable, "-c",
+            sys.executable,
+            "-c",
             "import torch; "
             "from molmetal.baselines.dmpnn_multitask import ("
             "DMPNNMultiTaskModel, MT_PROD_DEPTH, MT_PROD_HIDDEN); "
@@ -177,7 +215,9 @@ def test_f2_dmpnn_multitask_model_instantiable_at_prod_backbone():
 # ---------------------------------------------------------------------------
 def test_f3_train_script_help_shows_ablation_config_flag():
     """--ablation-config flag appears in the multitask trainer's help text."""
-    script = _PROJECT_ROOT / "molmetal" / "scripts" / "train_dmpnn_multitask_wasserstein.py"
+    script = (
+        _PROJECT_ROOT / "molmetal" / "scripts" / "train_dmpnn_multitask_wasserstein.py"
+    )
     proc = subprocess.run(
         [sys.executable, str(script), "--help"],
         check=True,
@@ -199,12 +239,19 @@ def test_f3_grid_driver_help_and_dry_run(tmp_path):
     out_dir = tmp_path / "wf251_f3_grid"
     proc = subprocess.run(
         [
-            sys.executable, str(script),
-            "--configs", "mtl_baseline", "single_task",
-            "--metals", "Ru",
-            "--seeds", "0",
-            "--epochs", "1",
-            "--out-dir", str(out_dir),
+            sys.executable,
+            str(script),
+            "--configs",
+            "mtl_baseline",
+            "single_task",
+            "--metals",
+            "Ru",
+            "--seeds",
+            "0",
+            "--epochs",
+            "1",
+            "--out-dir",
+            str(out_dir),
             "--dry-run",
         ],
         check=True,
@@ -234,6 +281,7 @@ def test_f4_wasserstein_1d_torchsort_gradient_flows():
     from molmetal.molmetal_lam.reward.wasserstein_loss import (
         wasserstein_1d_torchsort,
     )
+
     pred = torch.randn(64, requires_grad=True)
     target = torch.randn(64)
     w2 = wasserstein_1d_torchsort(pred, target)
@@ -254,6 +302,7 @@ def test_f4_wasserstein_pic50_gradient_scales_by_weight():
         wasserstein_1d_torchsort,
         wasserstein_pic50_gradient,
     )
+
     pred = torch.randn(64, requires_grad=True)
     target = torch.randn(64)
     w0 = wasserstein_1d_torchsort(pred, target)
@@ -264,7 +313,9 @@ def test_f4_wasserstein_pic50_gradient_scales_by_weight():
 
 def test_f4_train_script_help_shows_w2_gradient_mode_flag():
     """--w2-gradient-mode flag appears in the multitask trainer's help text."""
-    script = _PROJECT_ROOT / "molmetal" / "scripts" / "train_dmpnn_multitask_wasserstein.py"
+    script = (
+        _PROJECT_ROOT / "molmetal" / "scripts" / "train_dmpnn_multitask_wasserstein.py"
+    )
     proc = subprocess.run(
         [sys.executable, str(script), "--help"],
         check=True,
@@ -305,14 +356,15 @@ def test_f5_synthetic_xlsx_round_trip(tmp_path):
     loader, verify the output CSV has the expected schema."""
     pytest.importorskip("openpyxl")
     import openpyxl
+
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.append(["SMILES", "IC50_nM", "Metal", "CellLine"])
     # Synthetic Pt complex SMILES (real examples from PlatinAI literature).
     ws.append(["[Pt](N)(N)Cl", "1000", "Pt", "MCF7"])  # pic50 = 3.0
-    ws.append(["[Pt](N)(N)Cl", "100", "Pt", "MCF7"])   # pic50 = 4.0 (replicate)
+    ws.append(["[Pt](N)(N)Cl", "100", "Pt", "MCF7"])  # pic50 = 4.0 (replicate)
     ws.append(["[Pt](N)(N)Cl", "100", "Pt", "A2780"])  # pic50 = 4.0
-    ws.append(["CCO", "10000", "Pt", "MCF7"])           # pic50 = 2.0
+    ws.append(["CCO", "10000", "Pt", "MCF7"])  # pic50 = 2.0
     xlsx_path = tmp_path / "synthetic_rusanov.xlsx"
     wb.save(str(xlsx_path))
     out_csv = tmp_path / "out.csv"
@@ -320,10 +372,18 @@ def test_f5_synthetic_xlsx_round_trip(tmp_path):
     proc = subprocess.run(
         [
             sys.executable,
-            str(_PROJECT_ROOT / "molmetal" / "scripts" / "build_platinai_rusanov_5metal.py"),
-            "--xlsx-path", str(xlsx_path),
-            "--out-csv", str(out_csv),
-            "--summary", str(summary_path),
+            str(
+                _PROJECT_ROOT
+                / "molmetal"
+                / "scripts"
+                / "build_platinai_rusanov_5metal.py"
+            ),
+            "--xlsx-path",
+            str(xlsx_path),
+            "--out-csv",
+            str(out_csv),
+            "--summary",
+            str(summary_path),
             "--no-rdkit-validate",  # skip for synthetic
         ],
         check=True,

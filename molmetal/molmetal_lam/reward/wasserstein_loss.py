@@ -165,13 +165,9 @@ class WassersteinConfig:
         if int(self.n_mc) < 1:
             raise ValueError(f"n_mc must be >= 1, got {self.n_mc}")
         if int(self.decay_window) < 2:
-            raise ValueError(
-                f"decay_window must be >= 2, got {self.decay_window}"
-            )
+            raise ValueError(f"decay_window must be >= 2, got {self.decay_window}")
         if float(self.decay_tol) < 0.0:
-            raise ValueError(
-                f"decay_tol must be >= 0, got {self.decay_tol}"
-            )
+            raise ValueError(f"decay_tol must be >= 0, got {self.decay_tol}")
         self.n_mc = int(self.n_mc)
         self.seed = int(self.seed)
         self.decay_window = int(self.decay_window)
@@ -249,8 +245,7 @@ def _sliced_w2(
         )
     if x.shape[1] != y.shape[1]:
         raise ValueError(
-            "x and y must share the last dim d, got "
-            f"{x.shape[1]} vs {y.shape[1]}"
+            "x and y must share the last dim d, got " f"{x.shape[1]} vs {y.shape[1]}"
         )
     if n_mc < 1:
         raise ValueError(f"n_mc must be >= 1, got {n_mc}")
@@ -501,13 +496,11 @@ def wasserstein_transfer_loss(
         t = per_metal_embeds[k]
         if not isinstance(t, Tensor):
             raise TypeError(
-                f"per_metal_embeds[{k!r}] must be a Tensor, got "
-                f"{type(t).__name__}"
+                f"per_metal_embeds[{k!r}] must be a Tensor, got " f"{type(t).__name__}"
             )
         if t.dim() != 2:
             raise ValueError(
-                f"per_metal_embeds[{k!r}] must be 2-D, got "
-                f"{tuple(t.shape)}"
+                f"per_metal_embeds[{k!r}] must be 2-D, got " f"{tuple(t.shape)}"
             )
         if t.shape[0] > 0:
             valid_keys.append(k)
@@ -519,7 +512,7 @@ def wasserstein_transfer_loss(
     total = torch.zeros((), dtype=torch.float32)
     n_pairs = 0
     for i, ki in enumerate(valid_keys):
-        for kj in valid_keys[i + 1:]:
+        for kj in valid_keys[i + 1 :]:
             ti = per_metal_embeds[ki]
             tj = per_metal_embeds[kj]
             if ti.shape[1] != tj.shape[1]:
@@ -625,15 +618,12 @@ def wasserstein_pose_loss(
     if ref_pose.dim() == 3:
         ref_pose = ref_pose.reshape(-1, ref_pose.shape[-1])
     if pred_pose.shape[-1] != 3:
-        raise ValueError(
-            f"pred_pose last dim must be 3, got {pred_pose.shape[-1]}"
-        )
+        raise ValueError(f"pred_pose last dim must be 3, got {pred_pose.shape[-1]}")
     if ref_pose.shape[-1] != 3:
-        raise ValueError(
-            f"ref_pose last dim must be 3, got {ref_pose.shape[-1]}"
-        )
-    return _sliced_w2(pred_pose.float(), ref_pose.float(),
-                      n_mc=int(n_mc), seed=int(seed))
+        raise ValueError(f"ref_pose last dim must be 3, got {ref_pose.shape[-1]}")
+    return _sliced_w2(
+        pred_pose.float(), ref_pose.float(), n_mc=int(n_mc), seed=int(seed)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -822,7 +812,9 @@ def build_per_loss_verification(
 
     # 6. wasserstein_decay_check
     fake_history = [10.0, 9.5, 9.1, 8.8, 8.5, 8.3, 8.1, 7.95, 7.82, 7.7]
-    v6 = wasserstein_decay_check(fake_history, window=cfg.decay_window, tol=cfg.decay_tol)
+    v6 = wasserstein_decay_check(
+        fake_history, window=cfg.decay_window, tol=cfg.decay_tol
+    )
 
     def _record(value) -> Dict[str, Union[float, bool, str]]:
         if isinstance(value, Tensor):

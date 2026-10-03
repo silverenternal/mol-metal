@@ -154,28 +154,30 @@ class TestMetalCytotoxCanonicalContract:
         )
 
         # Non-empty load — the canonical CSV carries 26801 rows.
-        assert len(df) > 0, "Loader returned 0 rows; IC50_Dark_value fallback regressed."
+        assert (
+            len(df) > 0
+        ), "Loader returned 0 rows; IC50_Dark_value fallback regressed."
 
         # dtypes per Wf-323B contract: smiles/str, metal/str, pIC50/float, active/bool.
-        assert pd.api.types.is_string_dtype(df["smiles"]), (
-            f"smiles dtype regressed: {df['smiles'].dtype}"
-        )
-        assert pd.api.types.is_string_dtype(df["metal"]), (
-            f"metal dtype regressed: {df['metal'].dtype}"
-        )
-        assert pd.api.types.is_numeric_dtype(df["pIC50"]), (
-            f"pIC50 dtype regressed: {df['pIC50'].dtype}"
-        )
-        assert df["active"].dtype == bool, (
-            f"active dtype regressed: {df['active'].dtype} (must be bool)"
-        )
+        assert pd.api.types.is_string_dtype(
+            df["smiles"]
+        ), f"smiles dtype regressed: {df['smiles'].dtype}"
+        assert pd.api.types.is_string_dtype(
+            df["metal"]
+        ), f"metal dtype regressed: {df['metal'].dtype}"
+        assert pd.api.types.is_numeric_dtype(
+            df["pIC50"]
+        ), f"pIC50 dtype regressed: {df['pIC50'].dtype}"
+        assert (
+            df["active"].dtype == bool
+        ), f"active dtype regressed: {df['active'].dtype} (must be bool)"
 
         # No NaN pIC50 — derive path drops NaN inputs already; this
         # guards against a future regression where a non-derive path
         # leaks NaN into the canonical column.
-        assert df["pIC50"].notna().all(), (
-            f"pIC50 contains NaN values: {df['pIC50'].isna().sum()} rows"
-        )
+        assert (
+            df["pIC50"].notna().all()
+        ), f"pIC50 contains NaN values: {df['pIC50'].isna().sum()} rows"
 
         # The active column MUST have BOTH True and False values on
         # the canonical CSV — this proves _derive_active (10 µM

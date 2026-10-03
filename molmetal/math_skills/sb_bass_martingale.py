@@ -264,18 +264,12 @@ class BassMartingale:
             property :math:`\\Pi \\, p_1 = a \\otimes p_0`.
         """
         if p0.ndim not in (1, 2):
-            raise ValueError(
-                f"p0 must be (n,) or (n, d), got shape {tuple(p0.shape)}"
-            )
+            raise ValueError(f"p0 must be (n,) or (n, d), got shape {tuple(p0.shape)}")
         if p1.ndim not in (1, 2):
-            raise ValueError(
-                f"p1 must be (m,) or (m, d), got shape {tuple(p1.shape)}"
-            )
+            raise ValueError(f"p1 must be (m,) or (m, d), got shape {tuple(p1.shape)}")
         n, m = p0.shape[0], p1.shape[0]
         if n < 1 or m < 1:
-            raise ValueError(
-                f"p0 and p1 must have >= 1 row each, got n={n}, m={m}"
-            )
+            raise ValueError(f"p0 and p1 must have >= 1 row each, got n={n}, m={m}")
 
         # Promote 1-D inputs to (n, 1) so the downstream tensor ops
         # have a uniform contract.
@@ -353,9 +347,7 @@ class BassMartingale:
         self._p1 = p1_2d
         return Pi
 
-    def mean_preserving(
-        self, coupling: Tensor, atol: float = _MARTINGALE_ATOL
-    ) -> bool:
+    def mean_preserving(self, coupling: Tensor, atol: float = _MARTINGALE_ATOL) -> bool:
         """Verify ``E[X_1 | X_0] = X_0`` (the martingale property).
 
         The check uses the source / target samples cached by the last
@@ -471,8 +463,7 @@ class BassMartingaleDiscrepancy:
         """
         if coupling.ndim != 2:
             raise ValueError(
-                f"coupling must be a 2-D matrix, got shape "
-                f"{tuple(coupling.shape)}"
+                f"coupling must be a 2-D matrix, got shape " f"{tuple(coupling.shape)}"
             )
         n, m = coupling.shape
         if marginals.shape != (n,):
@@ -606,9 +597,7 @@ class BassCalibrationHead:
         # per-trajectory endpoint values, not on a batched global
         # statistic).
         B = trajectory.shape[0]
-        losses = [
-            self._single_trajectory_loss(trajectory[b]) for b in range(B)
-        ]
+        losses = [self._single_trajectory_loss(trajectory[b]) for b in range(B)]
         return torch.stack(losses).mean()
 
     # -- internal helpers --------------------------------------------------
@@ -619,8 +608,7 @@ class BassCalibrationHead:
         T = T_plus_1 - 1
         if T < 0:
             raise ValueError(
-                f"trajectory must have at least one state, got "
-                f"{T_plus_1} states"
+                f"trajectory must have at least one state, got " f"{T_plus_1} states"
             )
 
         x0 = trajectory[0]  # (n, d)
@@ -639,8 +627,7 @@ class BassCalibrationHead:
                 f"trajectory source / target must have the same number "
                 f"of atoms, got n={n} and xT.shape[0]={xT.shape[0]}"
             )
-        a = torch.full((n,), 1.0 / n, dtype=trajectory.dtype,
-                       device=trajectory.device)
+        a = torch.full((n,), 1.0 / n, dtype=trajectory.dtype, device=trajectory.device)
         implied = torch.diag(a)
 
         # L2 distance between the trajectory-implied coupling and the

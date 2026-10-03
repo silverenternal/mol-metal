@@ -13,6 +13,7 @@ This script produces a JSON audit report that confirms the current state:
 * Which adapters are USED (not just imported) by __init__.py
 * Wire-in delta (what glue would be needed to drop them in)
 """
+
 from __future__ import annotations
 
 import importlib
@@ -32,7 +33,10 @@ WIRE_READY_ADAPTERS = [
     ("multi_ph_integration", "W2.3 Multi-PH + PLL signature (Kim-Jung 2026)"),
     ("se3_lipman_integration", "W2.1 SE(3) Lipman (Mahmood 2026)"),
     ("se3_sb_integration", "W2.1 SE(3) Schrödinger Bridge (Mahmood 2026)"),
-    ("transport_relaxation_integration", "W2.2 Transport relaxation (Jiang-Xu-Zhang 2026)"),
+    (
+        "transport_relaxation_integration",
+        "W2.2 Transport relaxation (Jiang-Xu-Zhang 2026)",
+    ),
 ]
 RESEARCH_ONLY = [
     ("bass_existence", "Bass existence (Backhoff-Veraguas 2020)"),
@@ -76,8 +80,7 @@ def main():
             err = str(e)
 
         imported_by_init = (
-            f"from .{mod_name}" in init_text
-            or f"import {mod_name}" in init_text
+            f"from .{mod_name}" in init_text or f"import {mod_name}" in init_text
         )
         referenced_in_init = mod_name in init_text
 
@@ -132,11 +135,13 @@ def main():
     for file_stem in LOCAL_FLOW_FILES:
         path = FLOW_DIR / f"{file_stem}.py"
         if not path.exists():
-            report["local_flow_files"].append({
-                "file": f"{file_stem}.py",
-                "exists": False,
-                "wire_in_status": "MISSING",
-            })
+            report["local_flow_files"].append(
+                {
+                    "file": f"{file_stem}.py",
+                    "exists": False,
+                    "wire_in_status": "MISSING",
+                }
+            )
             continue
         text = path.read_text()
         imported = (
@@ -151,17 +156,21 @@ def main():
         else:
             status = "STANDALONE (shipped in flow_matching_lipman/ but not wired into __init__.py)"
 
-        report["local_flow_files"].append({
-            "file": f"{file_stem}.py",
-            "exists": True,
-            "n_lines": n_lines,
-            "imported_by_init": imported,
-            "wire_in_status": status,
-        })
+        report["local_flow_files"].append(
+            {
+                "file": f"{file_stem}.py",
+                "exists": True,
+                "n_lines": n_lines,
+                "imported_by_init": imported,
+                "wire_in_status": status,
+            }
+        )
 
     # 4. Summary verdict
     n_wire_ready_total = len(report["wire_ready_adapters"])
-    n_wired_outer = sum(1 for e in report["wire_ready_adapters"] if e["imported_by_init"])
+    n_wired_outer = sum(
+        1 for e in report["wire_ready_adapters"] if e["imported_by_init"]
+    )
     n_wired_local = sum(1 for e in report["local_flow_files"] if e["imported_by_init"])
     n_remaining = n_wire_ready_total - n_wired_outer
     report["summary"] = {
@@ -186,7 +195,9 @@ def main():
         ),
     }
 
-    out_path = Path("/home/hugo/codes/mol-metal/molmetal/reports/wf304c_todo_impl/wire_in_audit.json")
+    out_path = Path(
+        "/home/hugo/codes/mol-metal/molmetal/reports/wf304c_todo_impl/wire_in_audit.json"
+    )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(report, indent=2))
     print(f"Wrote {out_path}")

@@ -183,7 +183,8 @@ def _featurize_smiles(smiles: str) -> Optional[List[float]]:
 
 
 def _build_12d_matrix(
-    smiles_list: List[str], y_target: np.ndarray,
+    smiles_list: List[str],
+    y_target: np.ndarray,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Build (X, y) with rows where RDKit succeeds.  Drops NaN target rows."""
     X_rows: List[List[float]] = []
@@ -231,7 +232,7 @@ def test_per_dimension_r2_contribution() -> None:
         y_std = y.std() + 1e-12
         rho = float(((x_j - x_mean) * (y - y_mean)).mean() / (x_std * y_std))
         rhos[col] = rho
-        r2_per_dim[col] = rho ** 2
+        r2_per_dim[col] = rho**2
 
     # The strongest single dimension has |ρ| < 0.20 (Wf-127 §Cause 2).
     max_abs_rho = max(abs(r) for r in rhos.values())
@@ -252,7 +253,7 @@ def test_per_dimension_r2_contribution() -> None:
     # subsets have larger ρ variance than the full cohort; we use
     # a generous bound that still confirms the order-of-magnitude
     # finding from Wf-127 §Cause 2 (full cohort ceiling 0.0043).
-    ceiling_estimate = max_abs_rho ** 2 * 12
+    ceiling_estimate = max_abs_rho**2 * 12
     assert ceiling_estimate < SUBSET_CEILING_UPPER_BOUND, (
         f"Estimated 12-d signal floor {ceiling_estimate:.4f} is "
         f"larger than expected subset bound {SUBSET_CEILING_UPPER_BOUND}; "
@@ -299,7 +300,10 @@ def test_12d_signal_floor() -> None:
     from sklearn.model_selection import train_test_split
 
     X_tr, X_te, y_tr, y_te = train_test_split(
-        X, y, test_size=0.2, random_state=0,
+        X,
+        y,
+        test_size=0.2,
+        random_state=0,
     )
 
     model = LinearRegression()
@@ -380,7 +384,11 @@ def test_w2_vs_rdkit_comparison() -> None:
 
     # Sliced-W₂ implementation (matches Wf-131 P1 / Wf-129 P3).
     def sliced_w2(
-        pred: np.ndarray, ref: np.ndarray, *, n_proj: int = 32, seed: int = 0,
+        pred: np.ndarray,
+        ref: np.ndarray,
+        *,
+        n_proj: int = 32,
+        seed: int = 0,
     ) -> float:
         rng = np.random.default_rng(seed)
         dists: List[float] = []
@@ -389,7 +397,7 @@ def test_w2_vs_rdkit_comparison() -> None:
             proj_p = np.sort(pred * v)
             proj_r = np.sort(ref * v)
             diff = proj_p - proj_r[: proj_p.size]
-            dists.append(float(np.mean(diff ** 2)))
+            dists.append(float(np.mean(diff**2)))
         return float(np.sqrt(np.mean(dists)))
 
     # W₂ when prediction is collapsed to mean.
@@ -400,17 +408,11 @@ def test_w2_vs_rdkit_comparison() -> None:
     w2_shifted = sliced_w2(y + 0.5, y, seed=0)
 
     # W₂ is positive when distributions differ.
-    assert w2_collapse > 0.0, (
-        f"W₂(pred=mean, ref=y) should be positive: {w2_collapse}"
-    )
+    assert w2_collapse > 0.0, f"W₂(pred=mean, ref=y) should be positive: {w2_collapse}"
     # W₂ is ~zero when pred == ref.
-    assert w2_match < 1e-9, (
-        f"W₂(y, y) should be ~zero: {w2_match}"
-    )
+    assert w2_match < 1e-9, f"W₂(y, y) should be ~zero: {w2_match}"
     # W₂ scales with the shift.
-    assert w2_shifted > 0.0, (
-        f"W₂(y+0.5, y) should be positive: {w2_shifted}"
-    )
+    assert w2_shifted > 0.0, f"W₂(y+0.5, y) should be positive: {w2_shifted}"
 
     # Demonstrate the W₂-vs-R² separation: the linear R² ceiling
     # remains capped at ~0.0043 regardless of W₂ weight.
@@ -579,23 +581,19 @@ def test_mechanism_attribution() -> None:
     assert "M35" in mechanisms_lift_floor
     assert "M43" in mechanisms_lift_floor
     assert all(
-        mechanisms_lift_floor[k]["axis"] == "feature"
-        for k in mechanisms_lift_floor
+        mechanisms_lift_floor[k]["axis"] == "feature" for k in mechanisms_lift_floor
     ), "Lift-floor mechanisms must all be feature-axis"
     assert all(
-        mechanisms_cannot_lift[k]["axis"] != "feature"
-        for k in mechanisms_cannot_lift
+        mechanisms_cannot_lift[k]["axis"] != "feature" for k in mechanisms_cannot_lift
     ), "Cannot-lift mechanisms must not be feature-axis"
 
     # The recovery axis for the 12-d signal floor is **feature
     # augmentation**, not regression-head improvement or
     # regulariser adjustment.
-    lift_axes = {
-        mechanisms_lift_floor[k]["axis"] for k in mechanisms_lift_floor
-    }
-    assert lift_axes == {"feature"}, (
-        f"All floor-lifting mechanisms must be feature-axis, got: {lift_axes}"
-    )
+    lift_axes = {mechanisms_lift_floor[k]["axis"] for k in mechanisms_lift_floor}
+    assert lift_axes == {
+        "feature"
+    }, f"All floor-lifting mechanisms must be feature-axis, got: {lift_axes}"
 
     # Persist to JSON.
     report = {

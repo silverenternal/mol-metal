@@ -150,17 +150,15 @@ def test_per_pocket_metrics_summary_per_pocket_per_method() -> None:
     for pocket_id in WF30_POCKETS:
         block = summary.get(pocket_id, {})
         for method in ("se3sb", "baseline"):
-            assert method in block, (
-                f"{pocket_id} missing method={method} in per-pocket summary"
-            )
+            assert (
+                method in block
+            ), f"{pocket_id} missing method={method} in per-pocket summary"
             stats = block[method]
             # Stub path always populates these; real-vina path may leave them
             # empty for the metal-drug cohort.  Accept either.
             if stats:
                 for key in ("mean", "std", "min", "max", "median", "n"):
-                    assert key in stats, (
-                        f"{pocket_id} {method}: missing stat {key!r}"
-                    )
+                    assert key in stats, f"{pocket_id} {method}: missing stat {key!r}"
                 assert stats["n"] >= 1
                 assert math.isfinite(stats["mean"])
 
@@ -183,14 +181,14 @@ def test_comparison_md_has_10_pocket_rows() -> None:
     body = COMPARISON_MD.read_text()
     rows = [line for line in body.splitlines() if line.startswith("|")]
     # Header + separator + 10 pocket rows + bonus rows = at least 12
-    assert len(rows) >= N_POCKETS + 2, (
-        f"expected >= {N_POCKETS + 2} table rows in comparison.md, got {len(rows)}"
-    )
+    assert (
+        len(rows) >= N_POCKETS + 2
+    ), f"expected >= {N_POCKETS + 2} table rows in comparison.md, got {len(rows)}"
     for pocket_id in WF30_POCKETS:
         # Pocket IDs appear as the first cell of their row
-        assert re.search(rf"\|\s*{pocket_id}\s*\|", body), (
-            f"comparison.md missing row for {pocket_id}"
-        )
+        assert re.search(
+            rf"\|\s*{pocket_id}\s*\|", body
+        ), f"comparison.md missing row for {pocket_id}"
 
 
 # ---------------------------------------------------------------------------
@@ -205,13 +203,11 @@ def test_best_m3_summary_json_well_formed() -> None:
     assert "se3sb" in per_method
     assert "baseline" in per_method
     for method, info in per_method.items():
-        assert info["n_pockets"] == N_POCKETS, (
-            f"{method}: expected {N_POCKETS} pockets, got {info['n_pockets']}"
-        )
+        assert (
+            info["n_pockets"] == N_POCKETS
+        ), f"{method}: expected {N_POCKETS} pockets, got {info['n_pockets']}"
         for key in ("median_kcal_mol", "mean_kcal_mol", "min_kcal_mol", "max_kcal_mol"):
-            assert math.isfinite(info[key]), (
-                f"{method}: non-finite {key}={info[key]!r}"
-            )
+            assert math.isfinite(info[key]), f"{method}: non-finite {key}={info[key]!r}"
         # Per-pocket best table must include all 10 pockets
         per_pocket_best = info.get("per_pocket_best", {})
         assert set(per_pocket_best.keys()) == set(WF30_POCKETS)
@@ -232,9 +228,10 @@ def test_best_m3_summary_scorer_field_is_set() -> None:
     _skip_if_missing(BEST_M3)
     payload = _load(BEST_M3)
     scorer = payload.get("scorer")
-    assert scorer in ("stub", "vina"), (
-        f"unexpected scorer field {scorer!r} in best_m3_summary.json"
-    )
+    assert scorer in (
+        "stub",
+        "vina",
+    ), f"unexpected scorer field {scorer!r} in best_m3_summary.json"
 
 
 def test_per_pocket_metrics_scorer_field_is_set() -> None:
@@ -242,6 +239,7 @@ def test_per_pocket_metrics_scorer_field_is_set() -> None:
     _skip_if_missing(PER_POCKET)
     payload = _load(PER_POCKET)
     scorer = payload.get("scorer")
-    assert scorer in ("stub", "vina"), (
-        f"unexpected scorer field {scorer!r} in per_pocket_metrics.json"
-    )
+    assert scorer in (
+        "stub",
+        "vina",
+    ), f"unexpected scorer field {scorer!r} in per_pocket_metrics.json"

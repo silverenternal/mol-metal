@@ -105,6 +105,7 @@ _EPS_N = 1
 # mean_field_step_size — closed-form dt from Xue 2026 Lecture 4
 # ---------------------------------------------------------------------------
 
+
 def mean_field_step_size(
     batch_size: int,
     score_norm: float,
@@ -160,18 +161,14 @@ def mean_field_step_size(
         possible — accept the unit step).
     """
     if batch_size < 1:
-        raise ValueError(
-            f"batch_size must be >= 1, got {batch_size}"
-        )
+        raise ValueError(f"batch_size must be >= 1, got {batch_size}")
     if score_norm < 0.0 or reference_norm < 0.0:
         raise ValueError(
             "score norms must be non-negative, got "
             f"score_norm={score_norm} and reference_norm={reference_norm}"
         )
     if relative_tol <= 0.0 or relative_tol >= 1.0:
-        raise ValueError(
-            f"relative_tol must be in (0, 1), got {relative_tol}"
-        )
+        raise ValueError(f"relative_tol must be in (0, 1), got {relative_tol}")
     delta = (float(score_norm) - float(reference_norm)) ** 2
     if delta < _EPS_LOG:
         return 1.0
@@ -184,6 +181,7 @@ def mean_field_step_size(
 # ---------------------------------------------------------------------------
 # MeanFieldW2Plan — wrapper exposing the mean-field bound
 # ---------------------------------------------------------------------------
+
 
 class MeanFieldW2Plan:
     """Wrap an OT plan with the Xue (2026) mean-field limit bound.
@@ -213,17 +211,11 @@ class MeanFieldW2Plan:
         relative_tol: float = _EPS_RELATIVE,
         mean_field_tol: float = 1.0,
     ) -> None:
-        self.flow = (
-            flow if flow is not None else W2GradientFlow(kernel="none")
-        )
+        self.flow = flow if flow is not None else W2GradientFlow(kernel="none")
         if relative_tol <= 0.0 or relative_tol >= 1.0:
-            raise ValueError(
-                f"relative_tol must be in (0, 1), got {relative_tol}"
-            )
+            raise ValueError(f"relative_tol must be in (0, 1), got {relative_tol}")
         if mean_field_tol <= 0.0:
-            raise ValueError(
-                f"mean_field_tol must be > 0, got {mean_field_tol}"
-            )
+            raise ValueError(f"mean_field_tol must be > 0, got {mean_field_tol}")
         self.relative_tol = float(relative_tol)
         self.mean_field_tol = float(mean_field_tol)
 
@@ -286,9 +278,7 @@ class MeanFieldW2Plan:
             otherwise (a warning is emitted).
         """
         if step_size < 0.0:
-            raise ValueError(
-                f"step_size must be >= 0, got {step_size}"
-            )
+            raise ValueError(f"step_size must be >= 0, got {step_size}")
         dt_star = mean_field_step_size(
             int(batch_size),
             float(score_norm),
@@ -302,7 +292,8 @@ class MeanFieldW2Plan:
                 f"overshoot the JKO contraction. Score norm="
                 f"{score_norm:.4g}, ref norm={reference_norm:.4g}, "
                 f"N={batch_size}.",
-                RuntimeWarning, stacklevel=2,
+                RuntimeWarning,
+                stacklevel=2,
             )
             return False
         residual = self.mean_field_residual(int(batch_size))
@@ -313,7 +304,8 @@ class MeanFieldW2Plan:
                 f"{self.relative_tol:.4g} (N={batch_size} too small "
                 f"for the chosen dt); additive 1/sqrt(N) term may "
                 f"overwhelm the per-step KL contraction.",
-                RuntimeWarning, stacklevel=2,
+                RuntimeWarning,
+                stacklevel=2,
             )
             return False
         return True
@@ -343,6 +335,7 @@ class MeanFieldW2Plan:
 # ---------------------------------------------------------------------------
 # mean_field_score_smoothed_ot_plan — kernel-smoothed cost bias
 # ---------------------------------------------------------------------------
+
 
 def mean_field_score_smoothed_ot_plan(
     x0: torch.Tensor,
@@ -425,8 +418,7 @@ def mean_field_score_smoothed_ot_plan(
         raise ValueError(f"alpha must be >= 0, got {alpha}")
     if kernel not in W2GradientFlow._KERNELS:
         raise ValueError(
-            f"kernel must be one of {W2GradientFlow._KERNELS}, "
-            f"got {kernel!r}"
+            f"kernel must be one of {W2GradientFlow._KERNELS}, " f"got {kernel!r}"
         )
 
     b, d = x0.shape[0], int(torch.tensor(x0.shape[1:]).prod().item())
@@ -438,10 +430,7 @@ def mean_field_score_smoothed_ot_plan(
     else:
         score0 = reference_score0
     smoothed_score = flow._smooth_score(x0, score0)
-    ref0 = (
-        reference_score0 if reference_score0 is not None
-        else torch.zeros_like(x0)
-    )
+    ref0 = reference_score0 if reference_score0 is not None else torch.zeros_like(x0)
     effective_score = smoothed_score - ref0
 
     # Build the augmented cost matrix (B, B).
@@ -480,9 +469,7 @@ def mean_field_score_smoothed_ot_plan(
     if mode == "random":
         return compute_ot_plan(x0, x1, mode="random", seed=seed)
     if mode != "hungarian":
-        raise ValueError(
-            f"mode must be 'random' or 'hungarian'; got {mode!r}"
-        )
+        raise ValueError(f"mode must be 'random' or 'hungarian'; got {mode!r}")
 
     # Hungarian on the augmented cost matrix.
     try:
@@ -491,7 +478,8 @@ def mean_field_score_smoothed_ot_plan(
         warnings.warn(
             f"SciPy unavailable ({type(exc).__name__}: {exc}); "
             f"falling back to random pairing for mean-field OT.",
-            RuntimeWarning, stacklevel=2,
+            RuntimeWarning,
+            stacklevel=2,
         )
         return compute_ot_plan(x0, x1, mode="random", seed=seed)
 
@@ -593,8 +581,7 @@ def ma_regularization_factor(
         )
     if x0.shape[0] < 2:
         raise ValueError(
-            f"x0 needs at least 2 samples for MA-regularity; got "
-            f"B={x0.shape[0]}"
+            f"x0 needs at least 2 samples for MA-regularity; got " f"B={x0.shape[0]}"
         )
     if not (0.0 < alpha <= 1.0):
         raise ValueError(f"alpha must be in (0, 1], got {alpha}")
@@ -729,7 +716,9 @@ def ma_regularized_ot_plan(
         return idx, diag_zero
 
     Q, is_regular, reg_factor = ma_regularization_factor(
-        x0, alpha=alpha, degenerate_threshold=degenerate_threshold,
+        x0,
+        alpha=alpha,
+        degenerate_threshold=degenerate_threshold,
     )
     activated = (not is_regular) and reg_factor > 0.0
     diag = {
@@ -763,7 +752,8 @@ def ma_regularized_ot_plan(
         warnings.warn(
             f"SciPy unavailable ({type(exc).__name__}: {exc}); "
             f"falling back to random pairing for MA-regularised OT.",
-            RuntimeWarning, stacklevel=2,
+            RuntimeWarning,
+            stacklevel=2,
         )
         idx = compute_ot_plan(x0, x1, mode="random", seed=seed)
         if return_diagnostics:
@@ -783,6 +773,7 @@ def ma_regularized_ot_plan(
 # ---------------------------------------------------------------------------
 # MeanFieldW2Plan — MA-regularity-aware verification extension (Wf-236)
 # ---------------------------------------------------------------------------
+
 
 def _extend_mean_field_plan_with_ma() -> None:
     """Attach a MA-regularity verifier to :class:`MeanFieldW2Plan`.
@@ -813,7 +804,9 @@ def _extend_mean_field_plan_with_ma() -> None:
         regularisation factor.
         """
         Q, is_regular, reg_factor = ma_regularization_factor(
-            x0, alpha=alpha, degenerate_threshold=degenerate_threshold,
+            x0,
+            alpha=alpha,
+            degenerate_threshold=degenerate_threshold,
         )
         return {
             "Q": Q,

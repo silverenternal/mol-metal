@@ -208,7 +208,10 @@ def test_lambda_astsr_default_feature_names_is_rdkit_2d() -> None:
 def test_lambda_astsr_legacy_f5_backward_compat() -> None:
     """Passing legacy_f5_feature_columns() selects the F5 5-feature path."""
     astsr = LambdaASTSR(
-        depth=2, population=4, generations=0, seed=0,
+        depth=2,
+        population=4,
+        generations=0,
+        seed=0,
         feature_names=legacy_f5_feature_columns(),
     )
     assert astsr.feature_names == DEFAULT_FEATURE_COLUMNS
@@ -240,7 +243,10 @@ def test_astsr_rdkit_2d_toy_r2_above_threshold() -> None:
     y += rng.normal(0.0, 0.5, N)
 
     astsr = LambdaASTSR(
-        depth=4, population=64, generations=80, seed=42,
+        depth=4,
+        population=64,
+        generations=80,
+        seed=42,
         feature_names=RDKIT_2D_FEATURE_COLUMNS,
     )
     astsr.fit(desc, y)
@@ -270,9 +276,9 @@ def test_ast_evaluation_respects_rdkit_2d_column_order() -> None:
     row = {name: 0.0 for name in RDKIT_2D_FEATURE_COLUMNS}
     row["MolLogP"] = 1.7
     val = ast.evaluate(row)
-    assert val == pytest.approx(3.4, abs=1e-9), (
-        f"AST evaluation with MolLogP=1.7 should yield 2*1.7=3.4; got {val}"
-    )
+    assert val == pytest.approx(
+        3.4, abs=1e-9
+    ), f"AST evaluation with MolLogP=1.7 should yield 2*1.7=3.4; got {val}"
 
 
 # ---------------------------------------------------------------------------
@@ -300,24 +306,21 @@ def test_ast_evaluation_nan_safe_with_rdkit_2d_features() -> None:
 def test_rdkit_2d_feature_names_match_phase1_extractor() -> None:
     """RDKIT_2D_FEATURE_COLUMNS order matches Wf-49 Phase 1 extractor output."""
     from pathlib import Path
+
     PROJECT_ROOT = Path(__file__).resolve().parents[2]
-    phase1_csv = (
-        PROJECT_ROOT
-        / "molmetal"
-        / "data"
-        / "platinai_5k_rdkit_features.csv"
-    )
+    phase1_csv = PROJECT_ROOT / "molmetal" / "data" / "platinai_5k_rdkit_features.csv"
     if not phase1_csv.exists():
         pytest.skip(
             f"Wf-49 Phase 1 artefact missing: {phase1_csv}; "
             "run extract_rdkit_2d_descriptors.py first."
         )
     import csv
+
     with phase1_csv.open() as fh:
         reader = csv.reader(fh)
         header = next(reader)
     # Header layout: smiles, metal, ic50_nm, selectivity, pIC50 + 12 desc.
-    desc_cols = header[5:5 + 12]
+    desc_cols = header[5 : 5 + 12]
     assert desc_cols == list(RDKIT_2D_FEATURE_COLUMNS), (
         f"Wf-49 Phase 1 extractor output drifted from RDKIT_2D_FEATURE_COLUMNS.\n"
         f"  extractor: {desc_cols}\n"
@@ -378,12 +381,16 @@ def test_mutate_ast_preserves_validity_under_rdkit_2d() -> None:
 # ---------------------------------------------------------------------------
 # 12. feature_set parity check between wrappers and flag form
 # ---------------------------------------------------------------------------
-@pytest.mark.parametrize("feature_set,expected", [
-    ("rdkit_2d", RDKIT_2D_FEATURE_COLUMNS),
-    ("f5_legacy", DEFAULT_FEATURE_COLUMNS),
-])
+@pytest.mark.parametrize(
+    "feature_set,expected",
+    [
+        ("rdkit_2d", RDKIT_2D_FEATURE_COLUMNS),
+        ("f5_legacy", DEFAULT_FEATURE_COLUMNS),
+    ],
+)
 def test_default_feature_columns_parametrized(
-    feature_set: str, expected: tuple,
+    feature_set: str,
+    expected: tuple,
 ) -> None:
     """Parametrised: flag form returns the right tuple for each set."""
     cols = default_feature_columns(feature_set=feature_set)
@@ -397,6 +404,7 @@ def test_default_feature_columns_parametrized(
 def test_registry_constants_are_exported() -> None:
     """DEFAULT_FEATURE_COLUMNS, RDKIT_2D_FEATURE_COLUMNS are module exports."""
     import molmetal.molmetal_lam.reward.lambda_astsr as mod
+
     assert hasattr(mod, "DEFAULT_FEATURE_COLUMNS")
     assert hasattr(mod, "RDKIT_2D_FEATURE_COLUMNS")
     assert hasattr(mod, "legacy_f5_feature_columns")
@@ -498,10 +506,7 @@ def test_rdkit_2d_extended_first_12_match_legacy_rdkit() -> None:
     hard-codes the 12-d column order still sees the same leading 12
     descriptors in the 32-d path.
     """
-    assert (
-        RDKIT_2D_EXTENDED_FEATURE_COLUMNS[:12]
-        == RDKIT_2D_FEATURE_COLUMNS
-    ), (
+    assert RDKIT_2D_EXTENDED_FEATURE_COLUMNS[:12] == RDKIT_2D_FEATURE_COLUMNS, (
         "First 12 entries of RDKIT_2D_EXTENDED_FEATURE_COLUMNS drifted "
         "from RDKIT_2D_FEATURE_COLUMNS; this breaks backward-compat for "
         "the 12-d path."
@@ -522,20 +527,32 @@ def test_rdkit_2d_extended_feature_columns_covers_shape_charge_halogen() -> None
     """The 20 expansion descriptors cover shape, charge, halogen, and heteroatoms."""
     required = {
         # Shape / topology
-        "BertzCT", "Chi0v", "Chi0n", "Chi1n", "HallKierAlpha",
+        "BertzCT",
+        "Chi0v",
+        "Chi0n",
+        "Chi1n",
+        "HallKierAlpha",
         # Kappa shape indices
-        "Kappa1", "Kappa2", "Kappa3",
+        "Kappa1",
+        "Kappa2",
+        "Kappa3",
         # Surface area
         "LabuteASA",
         # Partial charge
-        "MaxPartialCharge", "MinPartialCharge",
-        "MaxAbsPartialCharge", "MinAbsPartialCharge",
+        "MaxPartialCharge",
+        "MinPartialCharge",
+        "MaxAbsPartialCharge",
+        "MinAbsPartialCharge",
         # Ring features
-        "NumAliphaticRings", "NumSaturatedRings",
+        "NumAliphaticRings",
+        "NumSaturatedRings",
         # Heteroatoms / functional groups
-        "NumHeteroatoms", "NHOHCount", "NOCount",
+        "NumHeteroatoms",
+        "NHOHCount",
+        "NOCount",
         # Halogen + carboxylate (Pt-coordination relevant)
-        "fr_halogen", "fr_Al_COO",
+        "fr_halogen",
+        "fr_Al_COO",
     }
     assert required.issubset(set(RDKIT_2D_EXTENDED_FEATURE_COLUMNS)), (
         f"RDKit 2D 32-d registry missing Wf-218 expansion descriptors: "
@@ -603,7 +620,10 @@ def test_rdkit_2d_extended_feature_columns_returns_fresh_tuple() -> None:
 def test_lambda_astsr_with_extended_feature_names_uses_32d() -> None:
     """``LambdaASTSR(feature_names=rdkit_2d_extended_feature_columns())`` picks up 32-d."""
     astsr = LambdaASTSR(
-        depth=2, population=4, generations=0, seed=0,
+        depth=2,
+        population=4,
+        generations=0,
+        seed=0,
         feature_names=rdkit_2d_extended_feature_columns(),
     )
     assert astsr.feature_names == RDKIT_2D_EXTENDED_FEATURE_COLUMNS
@@ -645,7 +665,10 @@ def test_astsr_rdkit_2d_extended_toy_r2_above_threshold() -> None:
     y += rng.normal(0.0, 0.5, N)
 
     astsr = LambdaASTSR(
-        depth=4, population=64, generations=80, seed=42,
+        depth=4,
+        population=64,
+        generations=80,
+        seed=42,
         feature_names=RDKIT_2D_EXTENDED_FEATURE_COLUMNS,
     )
     astsr.fit(desc, y)
@@ -669,12 +692,18 @@ def test_fit_deterministic_with_rdkit_2d_extended() -> None:
     y = X[:, 1] + 0.5 * X[:, 2] + 0.3 * X[:, 16]  # MolLogP + TPSA + HallKierAlpha
 
     a = LambdaASTSR(
-        depth=3, population=32, generations=15, seed=7,
+        depth=3,
+        population=32,
+        generations=15,
+        seed=7,
         feature_names=RDKIT_2D_EXTENDED_FEATURE_COLUMNS,
     )
     a.fit(X, y)
     b = LambdaASTSR(
-        depth=3, population=32, generations=15, seed=7,
+        depth=3,
+        population=32,
+        generations=15,
+        seed=7,
         feature_names=RDKIT_2D_EXTENDED_FEATURE_COLUMNS,
     )
     b.fit(X, y)
@@ -688,6 +717,7 @@ def test_fit_deterministic_with_rdkit_2d_extended() -> None:
 def test_registry_constants_are_exported_wf218() -> None:
     """RDKIT_2D_EXTENDED_FEATURE_COLUMNS, rdkit_2d_extended_feature_columns exported."""
     import molmetal.molmetal_lam.reward.lambda_astsr as mod
+
     assert hasattr(mod, "RDKIT_2D_EXTENDED_FEATURE_COLUMNS")
     assert hasattr(mod, "rdkit_2d_extended_feature_columns")
     assert "RDKIT_2D_EXTENDED_FEATURE_COLUMNS" in mod.__all__
@@ -702,6 +732,7 @@ def test_extractor_rdkit_2d_extended_descriptor_count() -> None:
     from molmetal.scripts.extract_rdkit_2d_descriptors import (
         RDKIT_2D_EXTENDED_DESCRIPTORS,
     )
+
     assert len(RDKIT_2D_EXTENDED_DESCRIPTORS) == 32
     # First 12 names match the Wf-49 P1 frozen order (backward-compat).
     first12_names = [n for n, _ in RDKIT_2D_EXTENDED_DESCRIPTORS[:12]]
@@ -717,7 +748,7 @@ def test_extractor_compute_rdkit_extended_descriptors_returns_32d() -> None:
         from molmetal.scripts.extract_rdkit_2d_descriptors import (
             compute_rdkit_extended_descriptors,
         )
-    except Exception as exc:                                            # pragma: no cover
+    except Exception as exc:  # pragma: no cover
         pytest.skip(
             f"RDKit unavailable or extractor import failed: {_exc}; "
             "skipping 32-d extractor smoke test."
@@ -732,6 +763,7 @@ def test_extractor_compute_rdkit_extended_descriptors_returns_32d() -> None:
     from molmetal.scripts.extract_rdkit_2d_descriptors import (
         compute_rdkit_descriptors,
     )
+
     vec_12 = compute_rdkit_descriptors("CCO")
     assert vec_12 is not None
     assert vec[:12] == vec_12, (
@@ -746,7 +778,7 @@ def test_extractor_compute_rdkit_extended_invalid_smiles_returns_none() -> None:
         from molmetal.scripts.extract_rdkit_2d_descriptors import (
             compute_rdkit_extended_descriptors,
         )
-    except Exception as exc:                                            # pragma: no cover
+    except Exception as exc:  # pragma: no cover
         pytest.skip(f"RDKit unavailable: {_exc}")
     vec = compute_rdkit_extended_descriptors("NOT_A_SMILES_@@@")
     assert vec is None

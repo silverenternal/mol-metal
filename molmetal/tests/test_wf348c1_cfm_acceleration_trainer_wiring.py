@@ -57,14 +57,10 @@ if str(PROJECT_ROOT) not in sys.path:
 # ---------------------------------------------------------------------------
 def _import_module_safe():
     """Import the trainer script without executing main()."""
-    script = (
-        PROJECT_ROOT
-        / "molmetal"
-        / "scripts"
-        / "train_cfm_yuelbond_wasserstein.py"
-    )
+    script = PROJECT_ROOT / "molmetal" / "scripts" / "train_cfm_yuelbond_wasserstein.py"
     spec = importlib.util.spec_from_file_location(
-        "train_cfm_yuelbond_wasserstein_348c1", str(script),
+        "train_cfm_yuelbond_wasserstein_348c1",
+        str(script),
     )
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod
@@ -80,6 +76,7 @@ def _small_train_clouds(n: int = 8) -> List["AtomCloud"]:
     from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (
         build_synthetic_pt_click_clouds,
     )
+
     return build_synthetic_pt_click_clouds(n_clouds=n, jitter=0.10, seed=0)
 
 
@@ -92,16 +89,24 @@ def test_train_one_epoch_so3_averaged_fm_runs() -> None:
     from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (
         YuelBondBondDecoder,
     )
+
     torch.manual_seed(0)
     model = mod.CFMJointModel(hidden_dim=16, n_layers=2)
     decoder = YuelBondBondDecoder(
-        head=model.head, hidden_dim=16, n_layers=2,
+        head=model.head,
+        hidden_dim=16,
+        n_layers=2,
     )
     opt = torch.optim.Adam(model.parameters(), lr=1e-3)
     train_clouds = _small_train_clouds(8)
     ref = mod.build_reference_positions()
-    closure_bias = {"CuAAC": 0.30, "SPAAC": 0.10, "Suzuki": 0.20,
-                    "AmideCoupling": 0.30, "ThiolEne": 0.10}
+    closure_bias = {
+        "CuAAC": 0.30,
+        "SPAAC": 0.10,
+        "Suzuki": 0.20,
+        "AmideCoupling": 0.30,
+        "ThiolEne": 0.10,
+    }
     out_tuple = mod.train_one_epoch(
         model=model,
         decoder=decoder,
@@ -143,17 +148,25 @@ def test_train_one_epoch_lr_warmup_step_counter_advances() -> None:
     from molmetal.adapters.flow_matching_lipman.acceleration import (
         LinearWarmupLRScheduler,
     )
+
     torch.manual_seed(0)
     model = mod.CFMJointModel(hidden_dim=16, n_layers=2)
     decoder = YuelBondBondDecoder(
-        head=model.head, hidden_dim=16, n_layers=2,
+        head=model.head,
+        hidden_dim=16,
+        n_layers=2,
     )
     opt = torch.optim.Adam(model.parameters(), lr=1e-3)
     warmup = LinearWarmupLRScheduler(opt, warmup_steps=10)
     train_clouds = _small_train_clouds(8)
     ref = mod.build_reference_positions()
-    closure_bias = {"CuAAC": 0.30, "SPAAC": 0.10, "Suzuki": 0.20,
-                    "AmideCoupling": 0.30, "ThiolEne": 0.10}
+    closure_bias = {
+        "CuAAC": 0.30,
+        "SPAAC": 0.10,
+        "Suzuki": 0.20,
+        "AmideCoupling": 0.30,
+        "ThiolEne": 0.10,
+    }
     out_tuple = mod.train_one_epoch(
         model=model,
         decoder=decoder,
@@ -168,14 +181,12 @@ def test_train_one_epoch_lr_warmup_step_counter_advances() -> None:
         catherine_target_audit=False,
         accel_lr_scheduler=warmup,
     )
-    assert warmup.step_count >= 1, (
-        f"warmup.step_count should advance; got {warmup.step_count}"
-    )
+    assert (
+        warmup.step_count >= 1
+    ), f"warmup.step_count should advance; got {warmup.step_count}"
     # Live lr should be bounded by base_lr (= 1e-3).
     live_lr = opt.param_groups[0]["lr"]
-    assert 0.0 < live_lr <= 1e-3, (
-        f"live_lr={live_lr} outside [0, base_lr=1e-3]"
-    )
+    assert 0.0 < live_lr <= 1e-3, f"live_lr={live_lr} outside [0, base_lr=1e-3]"
 
 
 # ---------------------------------------------------------------------------
@@ -192,18 +203,22 @@ def test_evaluate_decode_ratio_ema_swap_restores_live_weights() -> None:
     from molmetal.adapters.flow_matching_lipman.acceleration import (
         ExponentialMovingAverage,
     )
+
     torch.manual_seed(0)
     model = mod.CFMJointModel(hidden_dim=16, n_layers=2)
     decoder = YuelBondBondDecoder(
-        head=model.head, hidden_dim=16, n_layers=2,
+        head=model.head,
+        hidden_dim=16,
+        n_layers=2,
     )
     # Capture live weights BEFORE eval.
     pre_state = {
-        name: param.detach().clone()
-        for name, param in model.named_parameters()
+        name: param.detach().clone() for name, param in model.named_parameters()
     }
     ema = ExponentialMovingAverage(
-        model, halflife_kimg=0.001, batch_size=4,
+        model,
+        halflife_kimg=0.001,
+        batch_size=4,
     )  # Very short halflife => EMA shadow tracks model closely.
     val_clouds = _small_train_clouds(4)
     n_ok, n_total = mod.evaluate_decode_ratio(
@@ -219,9 +234,9 @@ def test_evaluate_decode_ratio_ema_swap_restores_live_weights() -> None:
     assert n_total == 4
     # Restore check: every parameter is bit-equal to pre_state.
     for name, param in model.named_parameters():
-        assert torch.equal(param.data, pre_state[name].data), (
-            f"param {name!r} was not restored after EMA swap"
-        )
+        assert torch.equal(
+            param.data, pre_state[name].data
+        ), f"param {name!r} was not restored after EMA swap"
 
 
 # ---------------------------------------------------------------------------
@@ -235,13 +250,16 @@ def test_exact_ot_cohort_pairing_reorders_train_clouds() -> None:
     from molmetal.adapters.flow_matching_lipman.optimal_transport_v2 import (
         exact_minibatch_ot_coupling,
     )
+
     torch.manual_seed(0)
     # Build a deterministic (B, D) descriptor matrix.
     B, D = 6, 4
     x_0 = torch.randn(B, D)
     x_1 = torch.randn(B, D)
     perm_x0, perm_x1 = exact_minibatch_ot_coupling(
-        x_0, x_1, exact_max_batch=B,
+        x_0,
+        x_1,
+        exact_max_batch=B,
     )
     # Same shapes.
     assert perm_x0.shape == x_0.shape == perm_x1.shape == x_1.shape
@@ -256,9 +274,9 @@ def test_exact_ot_cohort_pairing_reorders_train_clouds() -> None:
     # Permutation should be a derangement (no identity rows when the
     # random pairings differ).  We just assert the index set is a
     # valid permutation of {0..B-1}.
-    assert sorted(idx0) == list(range(B)), (
-        f"OT output is not a row-permutation: idx0={idx0}"
-    )
+    assert sorted(idx0) == list(
+        range(B)
+    ), f"OT output is not a row-permutation: idx0={idx0}"
 
 
 # ---------------------------------------------------------------------------
@@ -274,9 +292,9 @@ def test_cudagraphs_cfm_wrap_is_idempotent_and_default_off() -> None:
         args = mod.parse_args()
     finally:
         sys.argv = argv_backup
-    assert hasattr(args, "use_cudagraphs_cfm"), (
-        "parse_args must expose --use-cudagraphs-cfm flag"
-    )
+    assert hasattr(
+        args, "use_cudagraphs_cfm"
+    ), "parse_args must expose --use-cudagraphs-cfm flag"
     assert args.use_cudagraphs_cfm is False, (
         f"default should be False (safety lever per Wf-335-R3); got "
         f"{args.use_cudagraphs_cfm}"

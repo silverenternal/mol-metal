@@ -11,6 +11,7 @@ The molmetal adapter still calls into the legacy names via
 ``_import_fm_lib``. To keep the adapter code unchanged, this shim package
 re-exposes the modern symbols under the legacy paths.
 """
+
 from __future__ import annotations
 
 import sys
@@ -45,9 +46,7 @@ if _ref is None:  # pragma: no cover
 # adjust `_UPSTREAM` accordingly so the auto-bootstrap loop finds the upstream
 # `interpolation.py` + `loss.py` + `sampler.py` modules.
 _UPSTREAM_CANDIDATE = _ref / "flow_matching"
-if _UPSTREAM_CANDIDATE.is_dir() and (
-    _UPSTREAM_CANDIDATE / "__init__.py"
-).is_file():
+if _UPSTREAM_CANDIDATE.is_dir() and (_UPSTREAM_CANDIDATE / "__init__.py").is_file():
     _ref = _UPSTREAM_CANDIDATE
 
 # Inject the upstream clone into sys.modules under the ``flow_matching``
@@ -84,7 +83,9 @@ if _NSNAME not in sys.modules:
             _subpkg.__path__ = [str(_sub)]
             _subpkg.__file__ = str(_sub / "__init__.py")
             sys.modules[_subname] = _subpkg
-            _spec = importlib.util.spec_from_file_location(_subname, _sub / "__init__.py")
+            _spec = importlib.util.spec_from_file_location(
+                _subname, _sub / "__init__.py"
+            )
             _mod = importlib.util.module_from_spec(_spec)  # type: ignore[arg-type]
             sys.modules[_subname] = _mod
             _spec.loader.exec_module(_mod)  # type: ignore[union-attr]

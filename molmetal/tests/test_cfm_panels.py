@@ -71,12 +71,8 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 
-SCRIPT_PATH_PROP = (
-    PROJECT_ROOT / "molmetal" / "scripts" / "cfm_property_panel.py"
-)
-SCRIPT_PATH_VINA = (
-    PROJECT_ROOT / "molmetal" / "scripts" / "cfm_vina_dock_panel.py"
-)
+SCRIPT_PATH_PROP = PROJECT_ROOT / "molmetal" / "scripts" / "cfm_property_panel.py"
+SCRIPT_PATH_VINA = PROJECT_ROOT / "molmetal" / "scripts" / "cfm_vina_dock_panel.py"
 
 
 # ---------------------------------------------------------------------------
@@ -86,9 +82,7 @@ def _load_vina():
     """Load cfm_vina_dock_panel.py as a module."""
     mod_name = "cfm_vina_dock_panel"
     spec = importlib.util.spec_from_file_location(mod_name, str(SCRIPT_PATH_VINA))
-    assert spec and spec.loader, (
-        "cfm_vina_dock_panel.py must exist and be importable"
-    )
+    assert spec and spec.loader, "cfm_vina_dock_panel.py must exist and be importable"
     mod = importlib.util.module_from_spec(spec)
     sys.modules[mod_name] = mod
     try:
@@ -103,9 +97,7 @@ def _load_prop():
     """Load cfm_property_panel.py as a module."""
     mod_name = "cfm_property_panel"
     spec = importlib.util.spec_from_file_location(mod_name, str(SCRIPT_PATH_PROP))
-    assert spec and spec.loader, (
-        "cfm_property_panel.py must exist and be importable"
-    )
+    assert spec and spec.loader, "cfm_property_panel.py must exist and be importable"
     mod = importlib.util.module_from_spec(spec)
     sys.modules[mod_name] = mod
     try:
@@ -162,15 +154,13 @@ class TestSmilesToPdbqtStringSTUBDicipline:
             assert len(pdbqt) > 0
             assert isinstance(pdbqt, str)
             # Heuristic PDBQT shape: should start with ROOT/ATOM.
-            assert ("ROOT" in pdbqt or "ATOM" in pdbqt)
+            assert "ROOT" in pdbqt or "ATOM" in pdbqt
         else:
             # Must be PDBQT_FAIL (or DOCK_FAIL if Meeko missing).
             assert status in (
                 mod.STATUS_PDBQT_FAIL,
                 mod.STATUS_DOCK_FAIL,
-            ), (
-                f"Unexpected status {status!r} with note {note!r}"
-            )
+            ), f"Unexpected status {status!r} with note {note!r}"
             assert pdbqt is None
 
 
@@ -221,12 +211,11 @@ class TestDockOneFailurePaths:
         # test does not depend on a real Vina binary.  We simulate
         # TimeoutExpired.
         def _fake_run(*args, **kwargs):
-            raise subprocess.TimeoutExpired(cmd=kwargs.get("args", args[0]),
-                                            timeout=kwargs.get("timeout", 1))
+            raise subprocess.TimeoutExpired(
+                cmd=kwargs.get("args", args[0]), timeout=kwargs.get("timeout", 1)
+            )
 
-        monkeypatch.setattr(
-            mod.subprocess, "run", _fake_run, raising=True
-        )
+        monkeypatch.setattr(mod.subprocess, "run", _fake_run, raising=True)
 
         cell = mod._dock_one(
             smiles="CCO",
@@ -292,8 +281,7 @@ class TestDockOneFailurePaths:
             # with the cmd as a positional arg in the panel source.
             cmd = kwargs.get("args", args[0] if args else None)
             out_path = Path(cmd[cmd.index("--out") + 1])
-            out_path.write_text("REMARK no VINA RESULT lines here\n",
-                                encoding="utf-8")
+            out_path.write_text("REMARK no VINA RESULT lines here\n", encoding="utf-8")
             return _FakeCP()
 
         monkeypatch.setattr(mod.subprocess, "run", _fake_run)
@@ -667,16 +655,14 @@ class TestPropertyPanelPercentilesEmpty:
     def test_empty_input_returns_none_keys(self):
         mod = _load_prop()
         agg = mod._percentiles([])
-        for k in ("mean", "std", "p10", "p25", "p50", "p75", "p90",
-                  "min", "max"):
+        for k in ("mean", "std", "p10", "p25", "p50", "p75", "p90", "min", "max"):
             assert agg[k] is None, f"key {k!r} should be None on empty"
         assert agg["n"] == 0
 
     def test_all_none_input_returns_none_keys(self):
         mod = _load_prop()
         agg = mod._percentiles([None, None, None])
-        for k in ("mean", "std", "p10", "p25", "p50", "p75", "p90",
-                  "min", "max"):
+        for k in ("mean", "std", "p10", "p25", "p50", "p75", "p90", "min", "max"):
             assert agg[k] is None, f"key {k!r} should be None"
         assert agg["n"] == 0
 
@@ -715,7 +701,8 @@ class TestStubFallbackAggregateDiscipline:
         pockets_dir = self._stage_receptors(tmp_path)
 
         from molmetal.scripts.cfm_vina_dock_panel import (
-            PocketCell, STATUS_STUB_FALLBACK,
+            PocketCell,
+            STATUS_STUB_FALLBACK,
         )
 
         class _MixedRunner:
@@ -764,9 +751,9 @@ class TestStubFallbackAggregateDiscipline:
         for p in ("1h36", "3eml", "4aaw", "4rlu"):
             assert agg[p]["n_real_vina"] == 0
             assert agg[p]["n_stub_fallback"] == 1
-            assert agg[p]["mean"] is None, (
-                f"STUB_FALLBACK scores must NOT enter mean for {p}"
-            )
+            assert (
+                agg[p]["mean"] is None
+            ), f"STUB_FALLBACK scores must NOT enter mean for {p}"
             assert agg[p]["min"] is None
             assert agg[p]["max"] is None
 

@@ -32,6 +32,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 # Import the script as a module so we can exercise its internals.
 import importlib.util
+
 _spec = importlib.util.spec_from_file_location(
     "bench_cfm_decode_real",
     str(PROJECT_ROOT / "molmetal" / "scripts" / "bench_cfm_decode_real.py"),
@@ -66,16 +67,29 @@ def test_benchmark_report_defaults():
 def test_seed_metrics_dataclass_serialisable():
     """SeedMetrics must round-trip through asdict + JSON."""
     sm = bench.SeedMetrics(
-        seed=0, n_samples=10, n_ok=3, decode_ratio=0.3,
-        wall_time_s=1.5, device="cpu",
-        closure_bounded=True, pocket_id="1h36",
+        seed=0,
+        n_samples=10,
+        n_ok=3,
+        decode_ratio=0.3,
+        wall_time_s=1.5,
+        device="cpu",
+        closure_bounded=True,
+        pocket_id="1h36",
     )
-    d = sm.__dict__ if hasattr(sm, "__dict__") else {
-        "seed": sm.seed, "n_samples": sm.n_samples, "n_ok": sm.n_ok,
-        "decode_ratio": sm.decode_ratio, "wall_time_s": sm.wall_time_s,
-        "device": sm.device, "closure_bounded": sm.closure_bounded,
-        "pocket_id": sm.pocket_id,
-    }
+    d = (
+        sm.__dict__
+        if hasattr(sm, "__dict__")
+        else {
+            "seed": sm.seed,
+            "n_samples": sm.n_samples,
+            "n_ok": sm.n_ok,
+            "decode_ratio": sm.decode_ratio,
+            "wall_time_s": sm.wall_time_s,
+            "device": sm.device,
+            "closure_bounded": sm.closure_bounded,
+            "pocket_id": sm.pocket_id,
+        }
+    )
     s = json.dumps(d)
     parsed = json.loads(s)
     assert parsed["seed"] == 0
@@ -88,6 +102,7 @@ def test_seed_metrics_dataclass_serialisable():
 def test_cli_default_args():
     """argparse defaults should match the Wf-139 P5 spec."""
     from argparse import Namespace
+
     # Default values hard-coded in the script:
     assert bench.DEFAULT_CKPT_PATH.name == "cfm_yuelbond_wasserstein.pt"
     assert bench.DEFAULT_DATA_PATH.name == "platinai_5k.csv"
@@ -98,13 +113,13 @@ def test_cli_smoke_flag(monkeypatch):
     """--smoke should reduce n_samples to 20 and seeds to [0]."""
     # The smoke flag is consumed in main(), not parse_args(); check main().
     import inspect
+
     src = inspect.getsource(bench.main)
-    assert "--smoke" in inspect.getsource(bench.parse_args), \
-        "--smoke flag must be present in parse_args"
-    assert "args.n_samples = 20" in src, \
-        "main() must reset n_samples to 20 on --smoke"
-    assert "args.seeds = [0]" in src, \
-        "main() must reset seeds to [0] on --smoke"
+    assert "--smoke" in inspect.getsource(
+        bench.parse_args
+    ), "--smoke flag must be present in parse_args"
+    assert "args.n_samples = 20" in src, "main() must reset n_samples to 20 on --smoke"
+    assert "args.seeds = [0]" in src, "main() must reset seeds to [0] on --smoke"
 
 
 # ---------------------------------------------------------------------------
@@ -224,6 +239,7 @@ def test_load_checkpoint_missing_file(tmp_path):
 def test_load_checkpoint_existing(tmp_path):
     """Existing checkpoint should load (even with empty state)."""
     import torch
+
     ckpt = tmp_path / "fake.pt"
     # We don't have a real CFM model available in CPU-only tests easily,
     # so test the missing-file path which is more important for safety.
@@ -234,8 +250,13 @@ def test_load_checkpoint_existing(tmp_path):
     device = torch.device("cpu")
     # Build a real model and save its state to disk.
     model = bench.CFMJointModel(hidden_dim=64, n_layers=2)
-    torch.save({"model_state_dict": model.state_dict(),
-                "args": {"hidden_dim": 64, "n_layers": 2}}, ckpt)
+    torch.save(
+        {
+            "model_state_dict": model.state_dict(),
+            "args": {"hidden_dim": 64, "n_layers": 2},
+        },
+        ckpt,
+    )
     loaded_model, loaded_decoder, payload = bench.load_checkpoint(ckpt, device)
     assert loaded_model is not None
     assert loaded_decoder is not None
@@ -256,21 +277,33 @@ def test_smoke_run_end_to_end(tmp_path, monkeypatch):
         pytest.skip("rdkit not available")
 
     # Use a real checkpoint if present, else skip (loading requires real model).
-    ckpt_path = PROJECT_ROOT / "molmetal" / "checkpoints" / "cfm_yuelbond_wasserstein.pt"
+    ckpt_path = (
+        PROJECT_ROOT / "molmetal" / "checkpoints" / "cfm_yuelbond_wasserstein.pt"
+    )
     if not ckpt_path.exists():
         pytest.skip("trained checkpoint not present in this checkout")
 
     out_dir = tmp_path / "wf139_smoke"
     # Run main() with very small args.
-    monkeypatch.setattr(sys, "argv", [
-        "bench_cfm_decode_real.py",
-        "--n-samples", "5",
-        "--seeds", "0",
-        "--device", "cpu",
-        "--ckpt-path", str(ckpt_path),
-        "--data-path", str(csv_path),
-        "--out-dir", str(out_dir),
-    ])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "bench_cfm_decode_real.py",
+            "--n-samples",
+            "5",
+            "--seeds",
+            "0",
+            "--device",
+            "cpu",
+            "--ckpt-path",
+            str(ckpt_path),
+            "--data-path",
+            str(csv_path),
+            "--out-dir",
+            str(out_dir),
+        ],
+    )
     rc = bench.main()
     # rc in {0 (PASS/PARTIAL), 3 (HALT <100 samples), 4 (HALT zero decode)}
     assert rc in (0, 3, 4), f"unexpected return code {rc}"
@@ -285,12 +318,26 @@ def test_smoke_run_end_to_end(tmp_path, monkeypatch):
 def test_aggregate_decode_ratio_arithmetic():
     """Aggregate ratio = sum(n_ok) / sum(n_total)."""
     seeds = [
-        bench.SeedMetrics(seed=0, n_samples=10, n_ok=3, decode_ratio=0.3,
-                          wall_time_s=1.0, device="cpu",
-                          closure_bounded=True, pocket_id="1h36"),
-        bench.SeedMetrics(seed=1, n_samples=10, n_ok=5, decode_ratio=0.5,
-                          wall_time_s=1.0, device="cpu",
-                          closure_bounded=True, pocket_id="1h36"),
+        bench.SeedMetrics(
+            seed=0,
+            n_samples=10,
+            n_ok=3,
+            decode_ratio=0.3,
+            wall_time_s=1.0,
+            device="cpu",
+            closure_bounded=True,
+            pocket_id="1h36",
+        ),
+        bench.SeedMetrics(
+            seed=1,
+            n_samples=10,
+            n_ok=5,
+            decode_ratio=0.5,
+            wall_time_s=1.0,
+            device="cpu",
+            closure_bounded=True,
+            pocket_id="1h36",
+        ),
     ]
     agg_ok = sum(s.n_ok for s in seeds)
     agg_n = sum(s.n_samples for s in seeds)
@@ -301,6 +348,7 @@ def test_aggregate_decode_ratio_arithmetic():
 
 def test_honest_framing_strings():
     """Honest framing verdict strings must be one of the four canonical forms."""
+
     # We can't easily run the full main() here without data, so just exercise
     # the same logic inline.
     def verdict(agg_n, ratio, synth):
@@ -311,6 +359,7 @@ def test_honest_framing_strings():
         if ratio < synth:
             return "PARTIAL"
         return "PASS"
+
     assert verdict(50, 0.5, 1.0) == "HALT"
     assert verdict(200, 0.0, 1.0) == "HALT-zero"
     assert verdict(200, 0.3, 1.0) == "PARTIAL"
@@ -336,15 +385,22 @@ def test_per_seed_metrics_file_is_valid_json(tmp_path):
         "aggregate_decode_ratio": 0.25,
         "per_seed": [
             {
-                "seed": 0, "n_samples": 100, "n_ok": 25, "decode_ratio": 0.25,
-                "wall_time_s": 12.3, "device": "cuda:1",
-                "closure_bounded": True, "pocket_id": "1h36",
+                "seed": 0,
+                "n_samples": 100,
+                "n_ok": 25,
+                "decode_ratio": 0.25,
+                "wall_time_s": 12.3,
+                "device": "cuda:1",
+                "closure_bounded": True,
+                "pocket_id": "1h36",
             },
         ],
         "wall_time_s": 12.3,
         "honest_framing": "PARTIAL: real 0.2500 < synthetic 1.000",
         "constraints": {
-            "device": "cuda:1", "jitter": 0.05, "pocket_id": "1h36",
+            "device": "cuda:1",
+            "jitter": 0.05,
+            "pocket_id": "1h36",
             "smoke": False,
         },
     }

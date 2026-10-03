@@ -32,6 +32,7 @@ Usage:
         --n-samples 500 \\
         --output molmetal/reports/wf348b3_hilbert_r20p3
 """
+
 from __future__ import annotations
 
 import argparse
@@ -58,10 +59,10 @@ if str(_REPO_ROOT) not in sys.path:
 # ---------------------------------------------------------------------------
 
 #: R20-P3 feature dims (32-bin Fourier Multi-PH + 128-d PLL).
-N_BINS_MULTI_PH = 32          # Multi-PH 32-bin Fourier (Kim & Jung 2026)
-K_PLL = 128                   # PLL top-128 eigenvalues (Liu & Feng 2026)
+N_BINS_MULTI_PH = 32  # Multi-PH 32-bin Fourier (Kim & Jung 2026)
+K_PLL = 128  # PLL top-128 eigenvalues (Liu & Feng 2026)
 MULTI_PH_DIM = N_BINS_MULTI_PH * N_BINS_MULTI_PH  # 1024-d
-PLL_DIM = K_PLL                # 128-d
+PLL_DIM = K_PLL  # 128-d
 TOTAL_DIM = MULTI_PH_DIM + PLL_DIM  # 1152-d
 
 #: Hilbert primal-dual hyperparameters.
@@ -102,6 +103,7 @@ EPS_STD = 1e-3
 # ---------------------------------------------------------------------------
 # Strict-scaffold split (Bemis-Murcko largest-first).
 # ---------------------------------------------------------------------------
+
 
 def _canonicalize_smiles(smi: str) -> str:
     try:
@@ -189,6 +191,7 @@ def _strict_scaffold_split(
 # Hilbert primal-dual regressor (per R18 ship + Wf-44 P4 numerical fix).
 # ---------------------------------------------------------------------------
 
+
 def fit_hilbert_cpu(
     X_tr_n: np.ndarray,
     y_tr: np.ndarray,
@@ -214,6 +217,7 @@ def fit_hilbert_cpu(
     from molmetal.molmetal_lam.reward.hilbert_primal_dual import (
         LambdaASTSRHilbert,
     )
+
     pop_dim = X_tr_n.shape[1]
     info: Dict[str, float] = {}
     t0 = time.perf_counter()
@@ -263,6 +267,7 @@ def predict_hilbert(
 # R20-P3 feature extraction.
 # ---------------------------------------------------------------------------
 
+
 def extract_r20_p3_features(
     smiles_list: Sequence[str],
     *,
@@ -308,8 +313,8 @@ def extract_r20_p3_features(
             mph, pll = signature.compute(str(smi))
             mph_flat = np.asarray(mph.reshape(-1).cpu(), dtype=np.float32)
             pll_flat = np.asarray(pll.reshape(-1).cpu(), dtype=np.float32)
-            if mph_flat.shape[0] != n_bins ** 2:
-                mph_flat = np.zeros(n_bins ** 2, dtype=np.float32)
+            if mph_flat.shape[0] != n_bins**2:
+                mph_flat = np.zeros(n_bins**2, dtype=np.float32)
             if pll_flat.shape[0] != k_pll:
                 pll_flat = np.zeros(k_pll, dtype=np.float32)
             row = np.concatenate([mph_flat, pll_flat], axis=0)
@@ -329,6 +334,7 @@ def extract_r20_p3_features(
 # ---------------------------------------------------------------------------
 # Per-cell-line evaluation.
 # ---------------------------------------------------------------------------
+
 
 def _compute_r2(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     y_true = np.asarray(y_true, dtype=np.float64)
@@ -369,7 +375,9 @@ def evaluate_cell_line(
 
     for seed in seeds:
         train_idx, val_idx, test_idx = _strict_scaffold_split(
-            smiles, fractions=fractions, seed=seed,
+            smiles,
+            fractions=fractions,
+            seed=seed,
         )
         X_tr, X_va, X_te = X[train_idx], X[val_idx], X[test_idx]
         y_tr, y_va, y_te = y[train_idx], y[val_idx], y[test_idx]
@@ -412,7 +420,7 @@ def evaluate_cell_line(
                 if len(keep) >= hilbert_dim:
                     break
                 keep.append(int(idx))
-            keep_arr = np.asarray(sorted(set(keep))[: hilbert_dim], dtype=int)
+            keep_arr = np.asarray(sorted(set(keep))[:hilbert_dim], dtype=int)
             X_tr_n = X_tr_n[:, keep_arr]
             X_va_n = X_va_n[:, keep_arr]
             X_te_n = X_te_n[:, keep_arr]
@@ -425,7 +433,8 @@ def evaluate_cell_line(
             X_te_n = np.concatenate([X_te_n, pad_te], axis=1)
 
         bp, info = fit_hilbert_cpu(
-            X_tr_n, y_tr,
+            X_tr_n,
+            y_tr,
             epochs=epochs,
             seed=int(seed),
             lr_primal=DEFAULT_LR,
@@ -473,12 +482,24 @@ def evaluate_cell_line(
             "fractions": list(fractions),
             "splitter": "BemisMurckoScaffold_largest_first",
         },
-        "hilbert_r2_test_mean": float(np.mean(r2_test_per_seed)) if r2_test_per_seed else 0.0,
-        "hilbert_r2_test_std": float(np.std(r2_test_per_seed)) if len(r2_test_per_seed) > 1 else 0.0,
-        "hilbert_r2_val_mean": float(np.mean(r2_val_per_seed)) if r2_val_per_seed else 0.0,
-        "hilbert_r2_val_std": float(np.std(r2_val_per_seed)) if len(r2_val_per_seed) > 1 else 0.0,
-        "hilbert_r2_train_mean": float(np.mean(r2_train_per_seed)) if r2_train_per_seed else 0.0,
-        "hilbert_r2_train_std": float(np.std(r2_train_per_seed)) if len(r2_train_per_seed) > 1 else 0.0,
+        "hilbert_r2_test_mean": float(np.mean(r2_test_per_seed))
+        if r2_test_per_seed
+        else 0.0,
+        "hilbert_r2_test_std": float(np.std(r2_test_per_seed))
+        if len(r2_test_per_seed) > 1
+        else 0.0,
+        "hilbert_r2_val_mean": float(np.mean(r2_val_per_seed))
+        if r2_val_per_seed
+        else 0.0,
+        "hilbert_r2_val_std": float(np.std(r2_val_per_seed))
+        if len(r2_val_per_seed) > 1
+        else 0.0,
+        "hilbert_r2_train_mean": float(np.mean(r2_train_per_seed))
+        if r2_train_per_seed
+        else 0.0,
+        "hilbert_r2_train_std": float(np.std(r2_train_per_seed))
+        if len(r2_train_per_seed) > 1
+        else 0.0,
         "per_seed": per_seed,
     }
     return summary
@@ -529,6 +550,7 @@ def load_platinai_cell(
 # ---------------------------------------------------------------------------
 # Main CLI.
 # ---------------------------------------------------------------------------
+
 
 def _write_json(path: Path, obj: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -621,7 +643,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     csv_path = _REPO_ROOT / "molmetal" / "data" / "platinai_4cell.csv"
 
     print(f"[wf348b3] features={args.features} dataset={args.dataset}")
-    print(f"[wf348b3] n_samples={args.n_samples} epochs={args.epochs} seeds={args.seeds}")
+    print(
+        f"[wf348b3] n_samples={args.n_samples} epochs={args.epochs} seeds={args.seeds}"
+    )
     print(f"[wf348b3] Multi-PH bins={args.n_bins} PLL k={args.k_pll}")
     print(f"[wf348b3] output={args.output}")
 
@@ -654,7 +678,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # (which is the most populated) so all 4 cell-lines see the same molecules.
     print(f"[wf348b3] Loading PlatinAI 4-cell from {csv_path}")
     _, _, master_smiles = load_platinai_cell(
-        csv_path, "mcf7", n_max=args.n_samples,
+        csv_path,
+        "mcf7",
+        n_max=args.n_samples,
     )
     # Filter to the smallest cell-line cohort so all 4 cells see the
     # same molecules (R20-P3 features are per-row identical across cells).
@@ -674,10 +700,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if not valid_smiles:
         raise RuntimeError("No molecules present in all 4 cell-line cohorts.")
 
-    print(f"[wf348b3] Cohort size: {len(valid_smiles)} molecules present in all 4 cell-lines")
+    print(
+        f"[wf348b3] Cohort size: {len(valid_smiles)} molecules present in all 4 cell-lines"
+    )
 
     # Extract R20-P3 features once (per-molecule — same across all 4 cells).
-    print(f"[wf348b3] Extracting R20-P3 features (Multi-PH {args.n_bins}^2 + PLL {args.k_pll})")
+    print(
+        f"[wf348b3] Extracting R20-P3 features (Multi-PH {args.n_bins}^2 + PLL {args.k_pll})"
+    )
     feat_extraction_t0 = time.perf_counter()
     X_r20p3, ext_stats = extract_r20_p3_features(
         valid_smiles,
@@ -698,7 +728,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     for cell_line in args.cell_lines:
         # Load this cell-line's targets aligned to valid_smiles order.
-        _, y, smi_list = load_platinai_cell(csv_path, cell_line, n_max=len(valid_smiles))
+        _, y, smi_list = load_platinai_cell(
+            csv_path, cell_line, n_max=len(valid_smiles)
+        )
         smi_to_y = {s: yi for s, yi in zip(smi_list, y)}
         y_aligned = np.asarray(
             [smi_to_y[s] for s in valid_smiles if s in smi_to_y],
@@ -756,7 +788,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     print("[wf348b3] Computing joint R² across 4 cell-lines")
     joint_records: List[Dict[str, float]] = []
     for cell_line in args.cell_lines:
-        _, y, smi_list = load_platinai_cell(csv_path, cell_line, n_max=len(valid_smiles))
+        _, y, smi_list = load_platinai_cell(
+            csv_path, cell_line, n_max=len(valid_smiles)
+        )
         smi_to_y = {s: yi for s, yi in zip(smi_list, y)}
         y_aligned = np.asarray(
             [smi_to_y[s] for s in valid_smiles if s in smi_to_y],
@@ -766,7 +800,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         smiles_array = valid_smiles[: len(y_aligned)]
 
         train_idx, val_idx, test_idx = _strict_scaffold_split(
-            smiles_array, fractions=DEFAULT_FRACTIONS, seed=0,
+            smiles_array,
+            fractions=DEFAULT_FRACTIONS,
+            seed=0,
         )
         X_tr, X_te = X_aligned[train_idx], X_aligned[test_idx]
         y_tr, y_te = y_aligned[train_idx], y_aligned[test_idx]
@@ -798,7 +834,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 if len(keep) >= hilbert_dim:
                     break
                 keep.append(int(idx))
-            keep_arr = np.asarray(sorted(set(keep))[: hilbert_dim], dtype=int)
+            keep_arr = np.asarray(sorted(set(keep))[:hilbert_dim], dtype=int)
             X_tr_n = X_tr_n[:, keep_arr]
             X_te_n = X_te_n[:, keep_arr]
         elif X_tr_n.shape[1] < hilbert_dim:
@@ -808,7 +844,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             X_te_n = np.concatenate([X_te_n, pad_te], axis=1)
 
         bp, info = fit_hilbert_cpu(
-            X_tr_n, y_tr,
+            X_tr_n,
+            y_tr,
             epochs=args.epochs,
             seed=0,
             lr_primal=DEFAULT_LR,
@@ -819,14 +856,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         y_hat_te = predict_hilbert(X_te_n, bp)
         for yt, yp in zip(y_te.tolist(), y_hat_te.tolist()):
-            joint_records.append({"cell_line": cell_line, "y_true": float(yt), "y_pred": float(yp)})
+            joint_records.append(
+                {"cell_line": cell_line, "y_true": float(yt), "y_pred": float(yp)}
+            )
 
     joint_y_true = np.asarray([r["y_true"] for r in joint_records], dtype=np.float64)
     joint_y_pred = np.asarray([r["y_pred"] for r in joint_records], dtype=np.float64)
     joint_r2 = _compute_r2(joint_y_true, joint_y_pred)
     per_cell_test_means = [r["hilbert_r2_test_mean"] for r in all_results]
     aggregate_r2 = float(np.mean(per_cell_test_means)) if per_cell_test_means else 0.0
-    aggregate_std = float(np.std(per_cell_test_means)) if len(per_cell_test_means) > 1 else 0.0
+    aggregate_std = (
+        float(np.std(per_cell_test_means)) if len(per_cell_test_means) > 1 else 0.0
+    )
 
     # Verdict.
     gate_threshold = HONESTY_GATE_R2
@@ -888,7 +929,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "verdict_label": verdict_label,
         "per_cell_test_r2_list": [float(m) for m in per_cell_test_means],
         "per_cell_per_seed_test_r2": {
-            r["cell_line"]: [s["hilbert_r2_test"] for s in r["per_seed"]] for r in all_results
+            r["cell_line"]: [s["hilbert_r2_test"] for s in r["per_seed"]]
+            for r in all_results
         },
         "joint_records_count": int(len(joint_records)),
     }
@@ -936,23 +978,35 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         f"{'yes' if collapse_any else 'no'} |"
     )
     syn_lines.append("")
-    syn_lines.append(f"| **4-cell joint (seed=0 test split)** | — | **{joint_r2:+.4f}** | — | — | — |")
+    syn_lines.append(
+        f"| **4-cell joint (seed=0 test split)** | — | **{joint_r2:+.4f}** | — | — | — |"
+    )
     syn_lines.append("")
     syn_lines.append("## Verdict (honesty gate)")
     syn_lines.append("")
-    syn_lines.append(f"**Hilbert test R² per-cohort aggregate (mean of 4 cell-line means) = {aggregate_r2:+.4f}**")
-    syn_lines.append(f"**Hilbert test R² joint (across 4 cell-lines, seed=0 test split) = {joint_r2:+.4f}**")
+    syn_lines.append(
+        f"**Hilbert test R² per-cohort aggregate (mean of 4 cell-line means) = {aggregate_r2:+.4f}**"
+    )
+    syn_lines.append(
+        f"**Hilbert test R² joint (across 4 cell-lines, seed=0 test split) = {joint_r2:+.4f}**"
+    )
     syn_lines.append(f"**Cells with R² ≥ {gate_threshold}: {n_pass_cells} / 4**")
     syn_lines.append(f"**Cells with R² > 0: {n_pos_cells} / 4**")
     syn_lines.append("")
     if gate_status == "LIFTED":
-        syn_lines.append(f"**Gate status: LIFTED** — joint R² {joint_r2:+.4f} ≥ {gate_threshold}")
+        syn_lines.append(
+            f"**Gate status: LIFTED** — joint R² {joint_r2:+.4f} ≥ {gate_threshold}"
+        )
         syn_lines.append(f"**Verdict label**: {verdict_label}")
     elif gate_status == "PARTIAL_LIFTED":
-        syn_lines.append(f"**Gate status: PARTIAL_LIFTED** — aggregate R² {aggregate_r2:+.4f} ≥ {gate_threshold}")
+        syn_lines.append(
+            f"**Gate status: PARTIAL_LIFTED** — aggregate R² {aggregate_r2:+.4f} ≥ {gate_threshold}"
+        )
         syn_lines.append(f"**Verdict label**: {verdict_label}")
     else:
-        syn_lines.append(f"**Gate status: PRESERVED** — aggregate R² {aggregate_r2:+.4f} < {gate_threshold}; joint R² {joint_r2:+.4f} < {gate_threshold}")
+        syn_lines.append(
+            f"**Gate status: PRESERVED** — aggregate R² {aggregate_r2:+.4f} < {gate_threshold}; joint R² {joint_r2:+.4f} < {gate_threshold}"
+        )
         syn_lines.append(f"**Verdict label**: {verdict_label}")
     syn_lines.append("")
     syn_lines.append("## Per-cell-line per-seed test R² detail")
@@ -960,7 +1014,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     for r in all_results:
         syn_lines.append(f"### {r['cell_line']} ({r['target_col']})")
         syn_lines.append("")
-        syn_lines.append("| seed | test R² | val R² | train R² | n_train/n_val/n_test | collapse | fp64 | wall_s |")
+        syn_lines.append(
+            "| seed | test R² | val R² | train R² | n_train/n_val/n_test | collapse | fp64 | wall_s |"
+        )
         syn_lines.append("|---:|---:|---:|---:|---|:---:|---|---:|")
         for s in r["per_seed"]:
             syn_lines.append(
@@ -980,12 +1036,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         syn_lines.append("")
     syn_lines.append("## Honest framing")
     syn_lines.append("")
-    syn_lines.append("- **Real Hilbert regression on R20-P3 features** = Multi-PH 32-bin Fourier + 128-d PLL.")
-    syn_lines.append("- **Per `party-twenty-spirit §3.5`**: MEASURED R² reported honestly; no PROJECTED values.")
+    syn_lines.append(
+        "- **Real Hilbert regression on R20-P3 features** = Multi-PH 32-bin Fourier + 128-d PLL."
+    )
+    syn_lines.append(
+        "- **Per `party-twenty-spirit §3.5`**: MEASURED R² reported honestly; no PROJECTED values."
+    )
     syn_lines.append("- **CPU-only evaluation**; fp64 fallback on numerical failure.")
-    syn_lines.append("- **Collapse detector**: `pred_std / y_test_std < 0.10` flagged per seed.")
-    syn_lines.append("- **Sample limit**: `--n-samples 500` default for wall-time budget; "
-                     f"actual cohort used: {len(valid_smiles)} molecules present in all 4 cell-lines.")
+    syn_lines.append(
+        "- **Collapse detector**: `pred_std / y_test_std < 0.10` flagged per seed."
+    )
+    syn_lines.append(
+        "- **Sample limit**: `--n-samples 500` default for wall-time budget; "
+        f"actual cohort used: {len(valid_smiles)} molecules present in all 4 cell-lines."
+    )
     syn_lines.append("")
     syn_lines.append(
         f"**Aggregate Hilbert test R² (mean of 4 cell-line means) = {aggregate_r2:+.4f}; "
@@ -1019,7 +1083,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     print(f"[wf348b3] run.log written to {args.output / 'run.log'}")
     print(
         f"[wf348b3] DONE — aggregate R²={aggregate_r2:+.4f} ± {aggregate_std:.4f}; "
-            f"joint R²={joint_r2:+.4f}; gate_status={gate_status} ({verdict_label})"
+        f"joint R²={joint_r2:+.4f}; gate_status={gate_status} ({verdict_label})"
     )
     return 0
 

@@ -51,6 +51,7 @@ Usage
         --out molmetal/data/features_172d_5metal.npz \\
         --max-rows 5000 --seed 0
 """
+
 from __future__ import annotations
 
 import argparse
@@ -81,6 +82,7 @@ import numpy as np
 # ---------------------------------------------------------------------------
 try:
     import torch  # type: ignore
+
     _HAS_TORCH = True
     _TORCH_ERR: Optional[BaseException] = None
 except Exception as _exc:  # pragma: no cover
@@ -95,6 +97,7 @@ except Exception as _exc:  # pragma: no cover
 try:
     from rdkit import Chem, RDLogger  # type: ignore
     from rdkit.Chem import AllChem, Descriptors, rdMolDescriptors  # type: ignore
+
     RDLogger.DisableLog("rdApp.*")
     _HAS_RDKIT = True
 except Exception as _exc:  # pragma: no cover
@@ -163,9 +166,7 @@ def compute_rdkit_12d(smiles: str) -> Optional[List[float]]:
     the caller can decide on the imputation strategy.
     """
     if not _HAS_RDKIT:
-        raise RuntimeError(
-            f"RDKit is required for the 12-d stream ({_RDKIT_ERR!r})."
-        )
+        raise RuntimeError(f"RDKit is required for the 12-d stream ({_RDKIT_ERR!r}).")
     mol = Chem.MolFromSmiles(smiles)
     if mol is None or mol.GetNumHeavyAtoms() == 0:
         return None
@@ -254,7 +255,7 @@ def _multi_ph_pool_32d(flat_1024: np.ndarray) -> np.ndarray:
     slab_size = MULTI_PH_N_BINS
     pooled = np.zeros(MULTI_PH_N_BINS, dtype=np.float32)
     for i in range(MULTI_PH_N_BINS):
-        slab = flat_1024[i * slab_size: (i + 1) * slab_size]
+        slab = flat_1024[i * slab_size : (i + 1) * slab_size]
         pooled[i] = float(np.mean(slab)) if slab.size > 0 else 0.0
     return pooled
 
@@ -483,22 +484,42 @@ def build_feature_stack(
         if not smiles:
             n_fail_all += 1
             fail_per_stream["smiles_empty"] += 1
-            row_meta.append("|".join(["", row.get("metal", ""), row.get("scaffold_id", ""), row.get("split", "")]))
+            row_meta.append(
+                "|".join(
+                    [
+                        "",
+                        row.get("metal", ""),
+                        row.get("scaffold_id", ""),
+                        row.get("split", ""),
+                    ]
+                )
+            )
             continue
         feats = compute_172d(smiles)
         if feats is None:
             n_fail_all += 1
             fail_per_stream["all_three"] += 1
-            row_meta.append("|".join([smiles, row.get("metal", ""), row.get("scaffold_id", ""), row.get("split", "")]))
+            row_meta.append(
+                "|".join(
+                    [
+                        smiles,
+                        row.get("metal", ""),
+                        row.get("scaffold_id", ""),
+                        row.get("split", ""),
+                    ]
+                )
+            )
             continue
         X[i] = feats
 
         # Per-stream failure tally (rows that parsed but had NaN/zero on one stream).
         if np.allclose(feats[:RDKIT_DIM], 0.0):
             fail_per_stream["rdkit"] += 1
-        if np.allclose(feats[RDKIT_DIM: RDKIT_DIM + MULTI_PH_DIM], 0.0):
+        if np.allclose(feats[RDKIT_DIM : RDKIT_DIM + MULTI_PH_DIM], 0.0):
             fail_per_stream["multiph"] += 1
-        if np.allclose(feats[RDKIT_DIM + MULTI_PH_DIM: RDKIT_DIM + MULTI_PH_DIM + PLL_DIM], 0.0):
+        if np.allclose(
+            feats[RDKIT_DIM + MULTI_PH_DIM : RDKIT_DIM + MULTI_PH_DIM + PLL_DIM], 0.0
+        ):
             fail_per_stream["pll"] += 1
 
         y[i] = float(row.get("activity") or 0.0)
@@ -509,7 +530,9 @@ def build_feature_stack(
             metal_id[i] = -1
             fail_per_stream["unknown_metal"] += 1
         smiles_h[i] = _smiles_hash(smiles)
-        row_meta.append("|".join([smiles, m, row.get("scaffold_id", ""), row.get("split", "")]))
+        row_meta.append(
+            "|".join([smiles, m, row.get("scaffold_id", ""), row.get("split", "")])
+        )
 
     # Column-mean imputation for the zero columns of partial failures.
     nonzero_mask = ~(np.all(X == 0.0, axis=0))
@@ -572,7 +595,9 @@ def write_npz(
         summary = dict(payload["_stats"])
         # Add the row count of arrays for the report.
         summary["n_X"] = int(payload["X"].shape[0])
-        summary["n_features"] = int(payload["X"].shape[1]) if payload["X"].ndim == 2 else 0
+        summary["n_features"] = (
+            int(payload["X"].shape[1]) if payload["X"].ndim == 2 else 0
+        )
         with open(summary_path, "w") as fh:
             json.dump(summary, fh, indent=2)
     return out_path
@@ -612,7 +637,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         type=Path,
         default=None,
         help="Optional path for the build report (Markdown). "
-             "Default: <out>.report.md",
+        "Default: <out>.report.md",
     )
     return p.parse_args(list(argv) if argv is not None else None)
 

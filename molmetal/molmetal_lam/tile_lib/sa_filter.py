@@ -64,20 +64,22 @@ __all__ = [
 #   9  CC(N=[N+]=[N-])C(=O)O             3.914  azide  (2-azidopropanoic acid)
 #  10  C#CCSC                            3.887  alkyne (propargyl methyl sulfide, thiol-yne competition)
 TOP10_HIGHEST_SA_PAIRS: List[Tuple[int, str, float]] = [
-    (1,  "C1=C[SH]=C1",                 5.8081076618525955),
-    (2,  "[N-]=[N+]=NC(O)CO",           4.70000358052036),
-    (3,  "C1=CC2C=CC1C2",               4.698507961190864),
-    (4,  "CC(O)N=[N+]=[N-]",            4.6403474653593655),
-    (5,  "C=Cc1cnn[nH]1",               4.369602048062541),
-    (6,  "C=CCN=[N+]=[N-]",             4.133113240593854),
-    (7,  "CCN=[N+]=[N-]",               4.091661518383038),
-    (8,  "[N-]=[N+]=Nc1ccn[nH]1",       3.9635812400139168),
-    (9,  "CC(N=[N+]=[N-])C(=O)O",       3.9144544781573547),
-    (10, "C#CCSC",                      3.8873987964895464),
+    (1, "C1=C[SH]=C1", 5.8081076618525955),
+    (2, "[N-]=[N+]=NC(O)CO", 4.70000358052036),
+    (3, "C1=CC2C=CC1C2", 4.698507961190864),
+    (4, "CC(O)N=[N+]=[N-]", 4.6403474653593655),
+    (5, "C=Cc1cnn[nH]1", 4.369602048062541),
+    (6, "C=CCN=[N+]=[N-]", 4.133113240593854),
+    (7, "CCN=[N+]=[N-]", 4.091661518383038),
+    (8, "[N-]=[N+]=Nc1ccn[nH]1", 3.9635812400139168),
+    (9, "CC(N=[N+]=[N-])C(=O)O", 3.9144544781573547),
+    (10, "C#CCSC", 3.8873987964895464),
 ]
 
 # Convenience: bare SMILES set for O(1) membership tests.
-TOP10_HIGHEST_SA_SMILES: FrozenSet[str] = frozenset(p[1] for p in TOP10_HIGHEST_SA_PAIRS)
+TOP10_HIGHEST_SA_SMILES: FrozenSet[str] = frozenset(
+    p[1] for p in TOP10_HIGHEST_SA_PAIRS
+)
 
 
 def is_top10_highest_sa(smiles: str) -> bool:
@@ -111,7 +113,9 @@ def top10_filter_pool(tiles, *, keep_high_sa: bool = False):
     materialised = list(tiles)
     if keep_high_sa:
         return materialised
-    filtered = [t for t in materialised if not is_top10_highest_sa(getattr(t, "smiles", ""))]
+    filtered = [
+        t for t in materialised if not is_top10_highest_sa(getattr(t, "smiles", ""))
+    ]
     # Defensive: if every tile was on the blacklist (cannot happen in
     # practice because the pool has 220 tiles and the blacklist has
     # 10, but guard anyway) return the unfiltered pool so downstream

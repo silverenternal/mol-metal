@@ -46,6 +46,7 @@ Tests (count target: 18):
     RDKIT_2D_BASE_DIM, RDKIT_2D_EXTENDED_FEATURE_COLUMNS,
     RDKIT_2D_FEATURE_COLUMNS, RDKit2DExtendedError).
 """
+
 from __future__ import annotations
 
 from typing import List
@@ -61,7 +62,7 @@ import pytest
 TOLUENE = "Cc1ccccc1"
 ASPIRIN = "CC(=O)Oc1ccccc1C(=O)O"
 WATER = "O"
-HALOGEN_RICH = "ClC(Cl)C(Cl)Cl"   # 1,1,2,2-tetrachloroethane (fr_halogen = 4)
+HALOGEN_RICH = "ClC(Cl)C(Cl)Cl"  # 1,1,2,2-tetrachloroethane (fr_halogen = 4)
 CAFFEINE = "CN1C=NC2=C1C(=O)N(C(=O)N2C)C"  # canonical multi-ring
 INVALID_SMILES = "@@@invalid@@@"
 
@@ -128,6 +129,7 @@ EXPECTED_12D_NAMES: tuple = (
 # ---------------------------------------------------------------------------
 try:
     from rdkit import Chem  # type: ignore
+
     _HAS_RDKIT = True
 except Exception:
     _HAS_RDKIT = False
@@ -145,6 +147,7 @@ def _skip_if_no_rdkit() -> None:
 def mod():
     _skip_if_no_rdkit()
     import importlib
+
     return importlib.import_module("molmetal.data.rdkit_2d_extended")
 
 
@@ -191,24 +194,38 @@ def test_32d_set_covers_shape_charge_halogen_heteroatoms(mod) -> None:
     """The 20-d expansion covers shape, charge, and halogen features."""
     required = {
         # Shape / topology (Wf-218 expansion)
-        "BertzCT", "Chi0v", "Chi0n", "Chi1n", "HallKierAlpha",
+        "BertzCT",
+        "Chi0v",
+        "Chi0n",
+        "Chi1n",
+        "HallKierAlpha",
         # Kappa shape indices
-        "Kappa1", "Kappa2", "Kappa3",
+        "Kappa1",
+        "Kappa2",
+        "Kappa3",
         # Surface area
         "LabuteASA",
         # Partial charge
-        "MaxPartialCharge", "MinPartialCharge",
-        "MaxAbsPartialCharge", "MinAbsPartialCharge",
+        "MaxPartialCharge",
+        "MinPartialCharge",
+        "MaxAbsPartialCharge",
+        "MinAbsPartialCharge",
         # Ring features
-        "NumAliphaticRings", "NumSaturatedRings",
+        "NumAliphaticRings",
+        "NumSaturatedRings",
         # Heteroatom / functional group counts
-        "NumHeteroatoms", "NHOHCount", "NOCount",
+        "NumHeteroatoms",
+        "NHOHCount",
+        "NOCount",
         # Halogen + carboxylate (Pt-coordination relevant)
-        "fr_halogen", "fr_Al_COO",
+        "fr_halogen",
+        "fr_Al_COO",
     }
     cols = set(mod.RDKIT_2D_EXTENDED_FEATURE_COLUMNS)
     missing = required - cols
-    assert not missing, f"32-d set missing Wf-218 expansion descriptors: {sorted(missing)}"
+    assert (
+        not missing
+    ), f"32-d set missing Wf-218 expansion descriptors: {sorted(missing)}"
 
 
 def test_dim_constants_are_32_and_12(mod) -> None:
@@ -302,11 +319,12 @@ def test_first_12_of_32d_match_12d_bit_for_bit(mod, smi: str) -> None:
     """For every probe SMILES, the first 12 entries of 32-d == 12-d."""
     v32 = mod.compute_rdkit_2d_extended(smi)
     v12 = mod.compute_rdkit_2d_12d(smi)
-    assert v32 is not None and v12 is not None, (
-        f"Both compute_* must succeed on {smi!r}; got v32={v32}, v12={v12}."
-    )
+    assert (
+        v32 is not None and v12 is not None
+    ), f"Both compute_* must succeed on {smi!r}; got v32={v32}, v12={v12}."
     np.testing.assert_array_equal(
-        v32[:12], v12,
+        v32[:12],
+        v12,
         err_msg=(
             f"first 12 entries of compute_rdkit_2d_extended drifted from "
             f"compute_rdkit_2d_12d on {smi!r}; this breaks backward-compat "
@@ -341,7 +359,8 @@ def test_per_descriptor_values_match_rdkit_directly(mod) -> None:
     v = mod.compute_rdkit_2d_extended(ASPIRIN)
     assert v is not None
     np.testing.assert_array_equal(
-        v, expected_arr,
+        v,
+        expected_arr,
         err_msg=(
             "compute_rdkit_2d_extended values diverged from "
             "rdkit.Chem.Descriptors on aspirin — the 32-d pipeline is "
@@ -358,9 +377,9 @@ def test_fr_halogen_count_correct_on_halogen_rich_smiles(mod) -> None:
     v = mod.compute_rdkit_2d_extended(HALOGEN_RICH)
     assert v is not None
     halo_idx = mod.RDKIT_2D_EXTENDED_FEATURE_COLUMNS.index("fr_halogen")
-    assert v[halo_idx] == pytest.approx(4.0, abs=1e-6), (
-        f"fr_halogen on {HALOGEN_RICH} expected 4.0; got {v[halo_idx]}."
-    )
+    assert v[halo_idx] == pytest.approx(
+        4.0, abs=1e-6
+    ), f"fr_halogen on {HALOGEN_RICH} expected 4.0; got {v[halo_idx]}."
 
 
 def test_lipinski_drivers_present_and_finite_on_aspirin(mod) -> None:
@@ -370,13 +389,13 @@ def test_lipinski_drivers_present_and_finite_on_aspirin(mod) -> None:
     cols = mod.RDKIT_2D_EXTENDED_FEATURE_COLUMNS
     for drv in ("MolWt", "MolLogP", "TPSA", "HBA", "HBD"):
         idx = cols.index(drv)
-        assert np.isfinite(v[idx]), (
-            f"Lipinski driver {drv} is not finite on aspirin: {v[idx]}."
-        )
+        assert np.isfinite(
+            v[idx]
+        ), f"Lipinski driver {drv} is not finite on aspirin: {v[idx]}."
     # And the values are in physically meaningful ranges.
-    assert v[cols.index("MolWt")] == pytest.approx(180.16, abs=0.1), (
-        f"Aspirin MolWt expected ~180.16; got {v[cols.index('MolWt')]}."
-    )
+    assert v[cols.index("MolWt")] == pytest.approx(
+        180.16, abs=0.1
+    ), f"Aspirin MolWt expected ~180.16; got {v[cols.index('MolWt')]}."
 
 
 # ---------------------------------------------------------------------------
@@ -412,6 +431,7 @@ def test_base_feature_columns_returns_fresh_tuple(mod) -> None:
 def test_module_load_completes_without_error() -> None:
     """Importing the module does not raise (smoke test on the module)."""
     import importlib
+
     importlib.import_module("molmetal.data.rdkit_2d_extended")
 
 

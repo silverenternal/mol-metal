@@ -91,9 +91,9 @@ EXPECTED_CASCADE_IDS: list[str] = [
 @pytest.fixture(scope="module")
 def catalog_text() -> str:
     """Read the catalog markdown file once per module."""
-    assert CATALOG_PATH.exists(), (
-        f"docs/HONEST_NEGATIVE_CATALOG.md must exist at {CATALOG_PATH}"
-    )
+    assert (
+        CATALOG_PATH.exists()
+    ), f"docs/HONEST_NEGATIVE_CATALOG.md must exist at {CATALOG_PATH}"
     return CATALOG_PATH.read_text(encoding="utf-8")
 
 
@@ -114,9 +114,9 @@ def main_sections(catalog_text: str) -> list[str]:
 # ---------------------------------------------------------------------------
 # Group A — Catalog size + Wf-426-A4 NEW entry coverage (1 test)
 # ---------------------------------------------------------------------------
-def test_catalog_size(catalog_text: str,
-                      catalog_entries: list[str],
-                      main_sections: list[str]) -> None:
+def test_catalog_size(
+    catalog_text: str, catalog_entries: list[str], main_sections: list[str]
+) -> None:
     """Wf-426-A4 test: catalog must have ≥ 86 entries (post Wf-426-A4 expansion).
 
     Per Wf-426-A4 task brief §2: add 4 NEW §6 entries (§6.27-§6.30)
@@ -137,9 +137,9 @@ def test_catalog_size(catalog_text: str,
     no external network.
     """
     # 1) File exists at the canonical location.
-    assert CATALOG_PATH.exists(), (
-        f"docs/HONEST_NEGATIVE_CATALOG.md must exist at {CATALOG_PATH}"
-    )
+    assert (
+        CATALOG_PATH.exists()
+    ), f"docs/HONEST_NEGATIVE_CATALOG.md must exist at {CATALOG_PATH}"
     file_size = CATALOG_PATH.stat().st_size
     assert file_size > 10_000, (
         f"catalog must be substantial (>10KB after §6.27-§6.30 expansion); "
@@ -175,17 +175,19 @@ def test_catalog_size(catalog_text: str,
     section_6_blocks = section_6_pattern.findall(catalog_text)
     section_6_full_text = "\n".join(section_6_blocks)
     for entry_id, _, _ in EXPECTED_NEW_ENTRIES:
-        assert entry_id in section_6_full_text, (
-            f"Wf-426-A4 NEW entry ID `{entry_id}` must appear in §6.27-§6.30"
-        )
+        assert (
+            entry_id in section_6_full_text
+        ), f"Wf-426-A4 NEW entry ID `{entry_id}` must appear in §6.27-§6.30"
 
     # 6) Each NEW entry must be attributed to its source workflow
     # (Wf-425 / Wf-426 / Wf-426-A3 / Wf-425-B1).
-    block_starts = list(re.finditer(
-        r"^### §6\.\d+\s+",
-        catalog_text,
-        re.MULTILINE,
-    ))
+    block_starts = list(
+        re.finditer(
+            r"^### §6\.\d+\s+",
+            catalog_text,
+            re.MULTILINE,
+        )
+    )
     for entry_id, expected_wf, _ in EXPECTED_NEW_ENTRIES:
         matched_block = None
         for i, bm in enumerate(block_starts):
@@ -199,9 +201,9 @@ def test_catalog_size(catalog_text: str,
             if entry_id in block:
                 matched_block = block
                 break
-        assert matched_block is not None, (
-            f"could not extract block for entry `{entry_id}`"
-        )
+        assert (
+            matched_block is not None
+        ), f"could not extract block for entry `{entry_id}`"
         assert expected_wf in matched_block, (
             f"NEW entry `{entry_id}` must cite workflow `{expected_wf}` "
             f"in its §6 block (found block lacks attribution)"
@@ -209,12 +211,12 @@ def test_catalog_size(catalog_text: str,
 
     # 7) Honest framing discipline preserved (per `party-twenty-spirit`
     # §3.5). Catalog must contain both MEASURED and PROJECTED tags.
-    assert "MEASURED" in catalog_text, (
-        "catalog must use MEASURED tag discipline (party-twenty-spirit §3.5)"
-    )
-    assert "PROJECTED" in catalog_text, (
-        "catalog must use PROJECTED tag discipline for non-measured claims"
-    )
+    assert (
+        "MEASURED" in catalog_text
+    ), "catalog must use MEASURED tag discipline (party-twenty-spirit §3.5)"
+    assert (
+        "PROJECTED" in catalog_text
+    ), "catalog must use PROJECTED tag discipline for non-measured claims"
 
     # 8) Source citations: every NEW entry must cite at least one
     # `TODO/completed/...md` or `molmetal/reports/...json` source path.
@@ -231,17 +233,17 @@ def test_catalog_size(catalog_text: str,
             if entry_id in block:
                 matched_block = block
                 break
-        assert matched_block is not None, (
-            f"could not extract block for entry `{entry_id}`"
-        )
+        assert (
+            matched_block is not None
+        ), f"could not extract block for entry `{entry_id}`"
         source_citation = re.search(
             r"(TODO/completed/[^\s\)]+|molmetal/reports/[^\s\)]+\.json"
             r"|molmetal/reports/[^\s\)]+/)",
             matched_block,
         )
-        assert source_citation, (
-            f"NEW entry `{entry_id}` must cite a MEASURED source path on disk"
-        )
+        assert (
+            source_citation
+        ), f"NEW entry `{entry_id}` must cite a MEASURED source path on disk"
 
     # 9) WETLAB_DEPRECATED section (§7) preserved (per AGENTS.md §5.4).
     section_7_entries = [e for e in catalog_entries if e.startswith("7.")]
@@ -251,25 +253,25 @@ def test_catalog_size(catalog_text: str,
     )
 
     # 10) AGENTS.md §5.5 filesystem-truth rule preserved (per Wf-426-A4).
-    assert "§5.5" in catalog_text, (
-        "AGENTS.md §5.5 filesystem-truth rule reference must be preserved"
-    )
-    assert "filesystem-truth" in catalog_text or "filesystem truth" in catalog_text, (
-        "filesystem-truth rule must be cited by name in the catalog"
-    )
+    assert (
+        "§5.5" in catalog_text
+    ), "AGENTS.md §5.5 filesystem-truth rule reference must be preserved"
+    assert (
+        "filesystem-truth" in catalog_text or "filesystem truth" in catalog_text
+    ), "filesystem-truth rule must be cited by name in the catalog"
 
     # 11) AGENTS.md §5.6 atomic write protocol reference preserved (per
     # Wf-426-A4 closeout-author discipline).
-    assert "§5.6" in catalog_text, (
-        "AGENTS.md §5.6 atomic write protocol reference must be preserved"
-    )
+    assert (
+        "§5.6" in catalog_text
+    ), "AGENTS.md §5.6 atomic write protocol reference must be preserved"
 
     # 12) Standing directives preserved (per AGENTS.md §5):
     # §5.1 GPU grant, §5.2 honest framing, §5.3 no paper, §5.4 Tier-2.
     for sd in ("§5.1", "§5.2", "§5.3", "§5.4"):
-        assert sd in catalog_text, (
-            f"AGENTS.md {sd} standing directive reference must be preserved"
-        )
+        assert (
+            sd in catalog_text
+        ), f"AGENTS.md {sd} standing directive reference must be preserved"
 
     print(
         f"  [test_catalog_size] catalog OK: path={CATALOG_PATH.name} "
@@ -309,9 +311,9 @@ def test_section_6_27_cascade_id_coverage(catalog_text: str) -> None:
         re.MULTILINE | re.DOTALL,
     )
     section_match = section_pattern.search(catalog_text)
-    assert section_match is not None, (
-        "§6.27 Wf-425 cumulative false-claim cascade audit block must exist"
-    )
+    assert (
+        section_match is not None
+    ), "§6.27 Wf-425 cumulative false-claim cascade audit block must exist"
     section_block = section_match.group(0)
 
     # Verify each cascade ID appears in the §6.27 block.
@@ -321,17 +323,14 @@ def test_section_6_27_cascade_id_coverage(catalog_text: str) -> None:
             missing_cascades.append(cascade_id)
 
     assert not missing_cascades, (
-        f"§6.27 must reference all 8 cascade IDs; "
-        f"missing: {missing_cascades}"
+        f"§6.27 must reference all 8 cascade IDs; " f"missing: {missing_cascades}"
     )
 
     # Verify the section header line contains the Wf-426-A4 wave attribution.
-    assert "Wf-425" in section_block, (
-        "§6.27 must cite Wf-425 wave attribution"
-    )
-    assert "Wf-426-A4" in section_block, (
-        "§6.27 must cite Wf-426-A4 wave attribution (this wave)"
-    )
+    assert "Wf-425" in section_block, "§6.27 must cite Wf-425 wave attribution"
+    assert (
+        "Wf-426-A4" in section_block
+    ), "§6.27 must cite Wf-426-A4 wave attribution (this wave)"
 
     print(
         f"  [test_section_6_27_cascade_id_coverage] cascade OK: "
@@ -358,15 +357,15 @@ def test_filesystem_truth_rule_citation(catalog_text: str) -> None:
         re.MULTILINE | re.DOTALL,
     )
     section_6_new_matches = list(section_6_pattern.finditer(catalog_text))
-    assert len(section_6_new_matches) == 4, (
-        f"expected 4 NEW §6.27-§6.30 entries; got {len(section_6_new_matches)}"
-    )
+    assert (
+        len(section_6_new_matches) == 4
+    ), f"expected 4 NEW §6.27-§6.30 entries; got {len(section_6_new_matches)}"
     section_6_full_text = "\n".join(m.group(0) for m in section_6_new_matches)
 
     # The §5.5 filesystem-truth rule must be cited at least once in §6.27-§6.30.
-    assert "§5.5" in section_6_full_text, (
-        "§6.27-§6.30 NEW entries must cite AGENTS.md §5.5 filesystem-truth rule"
-    )
+    assert (
+        "§5.5" in section_6_full_text
+    ), "§6.27-§6.30 NEW entries must cite AGENTS.md §5.5 filesystem-truth rule"
 
     # The rule must be cited by name at least once (filesystem-truth OR
     # filesystem truth OR filesystem is the source of truth).

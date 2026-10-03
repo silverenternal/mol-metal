@@ -40,6 +40,7 @@ Output contract (2)
 All tests are CPU-only, deterministic, and complete in < 180 s
 combined.  Smoke runs use ``--n-samples 2 --seeds 1`` for sub-30 s CI.
 """
+
 from __future__ import annotations
 
 import json
@@ -94,6 +95,7 @@ from molmetal.scripts.bench_ood_per_element import (  # noqa: E402
 def _have_rdkit() -> bool:
     try:
         from rdkit import Chem  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -229,7 +231,11 @@ def test_smoke_5elements_1seed(tmp_path: Path) -> None:
     )
     assert "per_element" in payload
     assert set(payload["per_element"].keys()) == {
-        "Sc", "Ti", "V", "Cr", "Mn",
+        "Sc",
+        "Ti",
+        "V",
+        "Cr",
+        "Mn",
     }
 
 

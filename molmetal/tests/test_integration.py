@@ -89,9 +89,7 @@ import torch
 # were migrated onto the single canonical venv (AGENTS.md §5.9), which left the
 # tuple holding the same path twice. Collapsed to one entry rather than keeping
 # a duplicate that looks like a fallback chain but is not one.
-_VENV_BIN_CANDIDATES = (
-    Path("/home/hugo/codes/mol-metal/.venv/bin"),
-)
+_VENV_BIN_CANDIDATES = (Path("/home/hugo/codes/mol-metal/.venv/bin"),)
 for _candidate in _VENV_BIN_CANDIDATES:
     if _candidate.is_dir():
         bin_path = str(_candidate)
@@ -113,10 +111,12 @@ except ImportError:  # pragma: no cover - pytest-timeout optional
 
     def _timeout_marker(seconds: int):  # type: ignore[no-redef]
         """No-op decorator when ``pytest-timeout`` is not installed."""
+
         def _decorator(fn):
             return fn
 
         return _decorator
+
 
 # --- Import-order discipline (I1 anti-fragility) ---------------------------
 # These top-level imports are deliberately listed in dependency order so a
@@ -175,16 +175,16 @@ from molmetal_lam.reactions.rule_registry import list_rules as list_rules_top  #
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 TEST_PDB = Path("/tmp/test_pocket.pdb")
 SAMPLE_TEN_SMILES: tuple = (
-    "CCO",                                       # ethanol
-    "CC(=O)Oc1ccccc1C(=O)O",                     # aspirin
-    "c1ccccc1O",                                 # phenol
-    "CC(C)Cc1ccc(C(C)C(=O)O)cc1",                # ibuprofen
-    "Cn1cnc2c1c(=O)n(C)c(=O)n2C",                # caffeine
-    "c1ccc2[nH]ccc2c1",                          # indole
-    "Nc1ccccc1",                                 # aniline
-    "OC(=O)c1ccccc1O",                           # salicylic acid
-    "CC(=O)Nc1ccc(O)cc1",                        # paracetamol
-    "Brc1ccc(N)cc1",                             # 4-bromoaniline
+    "CCO",  # ethanol
+    "CC(=O)Oc1ccccc1C(=O)O",  # aspirin
+    "c1ccccc1O",  # phenol
+    "CC(C)Cc1ccc(C(C)C(=O)O)cc1",  # ibuprofen
+    "Cn1cnc2c1c(=O)n(C)c(=O)n2C",  # caffeine
+    "c1ccc2[nH]ccc2c1",  # indole
+    "Nc1ccccc1",  # aniline
+    "OC(=O)c1ccccc1O",  # salicylic acid
+    "CC(=O)Nc1ccc(O)cc1",  # paracetamol
+    "Brc1ccc(N)cc1",  # 4-bromoaniline
 )
 
 
@@ -240,9 +240,23 @@ def _make_vina_pocket_from_pdb(pdb_path: Path) -> Pocket:
     coords_arr = np.asarray(coords, dtype=np.float32)
     atomic_nums = np.asarray(
         [
-            {"C": 6, "N": 7, "O": 8, "S": 16, "P": 15, "H": 1,
-             "Fe": 26, "Zn": 30, "Mg": 12, "Mn": 25, "Ca": 20,
-             "Cl": 17, "Br": 35, "I": 53, "F": 9}.get(s, 6)
+            {
+                "C": 6,
+                "N": 7,
+                "O": 8,
+                "S": 16,
+                "P": 15,
+                "H": 1,
+                "Fe": 26,
+                "Zn": 30,
+                "Mg": 12,
+                "Mn": 25,
+                "Ca": 20,
+                "Cl": 17,
+                "Br": 35,
+                "I": 53,
+                "F": 9,
+            }.get(s, 6)
             for s in types
         ],
         dtype=np.int64,
@@ -276,12 +290,18 @@ def _ensure_vina_pdb() -> Path:
     """
     candidates = [
         TEST_PDB,
-        Path("/home/hugo/codes/mol-metal/molmetal/references/targetdiff/"
-             "examples/1h36_A_rec_1h36_r88_lig_tt_docked_0_pocket10.pdb"),
-        Path("/home/hugo/codes/try_triton_on_rocm/molmetal/references/targetdiff/"
-             "examples/1h36_A_rec_1h36_r88_lig_tt_docked_0_pocket10.pdb"),
-        Path("/home/hugo/codes/pocket/new/external_baselines/TargetDiff/"
-             "examples/1h36_A_rec_1h36_r88_lig_tt_docked_0_pocket10.pdb"),
+        Path(
+            "/home/hugo/codes/mol-metal/molmetal/references/targetdiff/"
+            "examples/1h36_A_rec_1h36_r88_lig_tt_docked_0_pocket10.pdb"
+        ),
+        Path(
+            "/home/hugo/codes/try_triton_on_rocm/molmetal/references/targetdiff/"
+            "examples/1h36_A_rec_1h36_r88_lig_tt_docked_0_pocket10.pdb"
+        ),
+        Path(
+            "/home/hugo/codes/pocket/new/external_baselines/TargetDiff/"
+            "examples/1h36_A_rec_1h36_r88_lig_tt_docked_0_pocket10.pdb"
+        ),
     ]
     for p in candidates:
         if p.is_file():
@@ -337,9 +357,9 @@ def test_001_lipman_to_vina_e2e(tmp_path: Path) -> None:
     pocket = _make_dummy_pocket(n_atoms=8, radius=6.0)
     config = GenerationConfig(n_samples=10, n_steps=4, seed=0)
     lipman_mols = adapter.generate(pocket, config)
-    assert len(lipman_mols) == 10, (
-        f"Lipman.generate(n_samples=10) returned {len(lipman_mols)} mols"
-    )
+    assert (
+        len(lipman_mols) == 10
+    ), f"Lipman.generate(n_samples=10) returned {len(lipman_mols)} mols"
     for i, m in enumerate(lipman_mols):
         assert m.n_atoms > 0, f"Lipman mol {i} has 0 atoms"
         assert torch.isfinite(m.coords).all(), f"Lipman mol {i} has non-finite coords"
@@ -368,9 +388,7 @@ def test_001_lipman_to_vina_e2e(tmp_path: Path) -> None:
         try:
             complexes = vina.dock(mol, pocket_for_vina, docking_cfg)
         except Exception as exc:  # noqa: BLE001
-            pytest.fail(
-                f"Vina.dock({mol.smiles!r}) raised {type(exc).__name__}: {exc}"
-            )
+            pytest.fail(f"Vina.dock({mol.smiles!r}) raised {type(exc).__name__}: {exc}")
         if not complexes:
             # Ligand could not be prepared (rare for our curated list).
             # Treat as score=NaN; the assertion below will flag it.
@@ -378,9 +396,9 @@ def test_001_lipman_to_vina_e2e(tmp_path: Path) -> None:
             continue
         c = complexes[0]
         assert c.vina_score is not None, f"Complex {idx} has None vina_score"
-        assert isinstance(c.vina_score, float), (
-            f"Complex {idx} vina_score is not float: {type(c.vina_score)}"
-        )
+        assert isinstance(
+            c.vina_score, float
+        ), f"Complex {idx} vina_score is not float: {type(c.vina_score)}"
         scores.append(c.vina_score)
 
     # --- 5. Assert all 10 produce a valid (finite, not NaN) score ------
@@ -395,9 +413,7 @@ def test_001_lipman_to_vina_e2e(tmp_path: Path) -> None:
     # Realistic Vina range: kcal/mol ∈ [-15, 0] for drug-like binders.
     # Loosen to [-30, +5] to tolerate noisy pockets without false fails.
     for idx, s in enumerate(scores):
-        assert -30.0 <= s <= 5.0, (
-            f"score {idx} outside realistic Vina range: {s:.3f}"
-        )
+        assert -30.0 <= s <= 5.0, f"score {idx} outside realistic Vina range: {s:.3f}"
 
 
 # ---------------------------------------------------------------------------
@@ -454,13 +470,17 @@ def test_002_mcts_sa_qed_pipeline() -> None:
     _seed_everything(0)
 
     # --- 1-2. Build tile library + rules -------------------------------
-    tile_smiles = ("c1ccccc1O", "CC(=O)Oc1ccccc1C(=O)O",
-                   "Cn1cnc2c1c(=O)n(C)c(=O)n2C", "CC(C)Cc1ccc(C(C)C(=O)O)cc1")
+    tile_smiles = (
+        "c1ccccc1O",
+        "CC(=O)Oc1ccccc1C(=O)O",
+        "Cn1cnc2c1c(=O)n(C)c(=O)n2C",
+        "CC(C)Cc1ccc(C(C)C(=O)O)cc1",
+    )
     tiles = [_smiles_to_closed_term(s) for s in tile_smiles]
     rules = {"identity": _IdentityRule()}
-    binding_site = type("BS", (), {"name": "empty_site",
-                                   "constraints": [],
-                                   "geometry_hints": {}})()
+    binding_site = type(
+        "BS", (), {"name": "empty_site", "constraints": [], "geometry_hints": {}}
+    )()
 
     # --- 3. Run MCTS — 5 calls × 20 simulations = 100 iterations ------
     rng = random.Random(0)
@@ -496,9 +516,9 @@ def test_002_mcts_sa_qed_pipeline() -> None:
     # needed so the SA+QED loop below still has 5 entries to score.
     while len(all_candidates) < 5:
         all_candidates.append(initial)
-    assert len(all_candidates) == 5, (
-        f"Expected 5 candidates after MCTS, got {len(all_candidates)}"
-    )
+    assert (
+        len(all_candidates) == 5
+    ), f"Expected 5 candidates after MCTS, got {len(all_candidates)}"
 
     # --- 4. Score each candidate with SA + QED -------------------------
     sa_qed_results: List[tuple] = []
@@ -519,8 +539,7 @@ def test_002_mcts_sa_qed_pipeline() -> None:
 
     # --- 5. Assert at least 3 candidates have SA<5 AND QED>0.4 ---------
     passing = sum(
-        1 for sa, qed in sa_qed_results
-        if np.isfinite(sa) and sa < 5.0 and qed > 0.4
+        1 for sa, qed in sa_qed_results if np.isfinite(sa) and sa < 5.0 and qed > 0.4
     )
     assert passing >= 3, (
         f"Expected >=3 candidates with SA<5 AND QED>0.4; got {passing}/5. "
@@ -579,9 +598,9 @@ def test_003_lambda_astsr_coupling_adapter() -> None:
 
     # --- 3. Coupling adapter bridge — finite-vector sanity -------------
     adapter = load_coupling_adapter(prefer_stub=False)  # falls back to stub
-    assert isinstance(adapter, CouplingAdapter), (
-        f"load_coupling_adapter returned {type(adapter).__name__}"
-    )
+    assert isinstance(
+        adapter, CouplingAdapter
+    ), f"load_coupling_adapter returned {type(adapter).__name__}"
     # Sanity: use the FIRST ROW of X as the pocket feature vector.
     # INPUT_DIM is the CouplingAdapter's input width (9 in the
     # canonical stub).  We feed a row of X (length F=4) padded to
@@ -596,9 +615,9 @@ def test_003_lambda_astsr_coupling_adapter() -> None:
         row_in = np.zeros(INPUT_DIM, dtype=np.float32)
         row_in[: min(INPUT_DIM, F)] = X[i, : min(INPUT_DIM, F)]
         emb_row = adapter.embed_features(row_in)
-        assert np.isfinite(emb_row).all(), (
-            f"CouplingAdapter row {i} produced non-finite embedding"
-        )
+        assert np.isfinite(
+            emb_row
+        ).all(), f"CouplingAdapter row {i} produced non-finite embedding"
 
     # --- 4-5. ASTSR R² > 0.5 (the verify gate) -------------------------
     r2 = compute_r2(y, y_pred)
@@ -677,20 +696,20 @@ def test_004_mle_matrix_click_compat() -> None:
     valid_verdicts = {"compatible", "marginal", "incompatible"}
     pt_smiles_samples = (
         # (smiles, friendly_name_hint)
-        ("N.N.N.N.[Pt+2]", "cisplatin_seed"),                  # strict_Pt_II
+        ("N.N.N.N.[Pt+2]", "cisplatin_seed"),  # strict_Pt_II
         ("OC(=O)CCCCCC(=O)O.N.N.[Pt+2]", "nedaplatin_seed"),  # Pt_II_chelating
-        ("OC(=O)C(=O)O.N.N.[Pt+2]", "carboplatin_seed"),       # Pt_II_chelating
-        ("[NH2]CCOCCOCC[NH2].[Pt+2]", "oxaliplatin_seed"),     # Pt_II_chelating
-        ("[Pt+4](Cl)(Cl)(Cl)(Cl)(N)N", "satraplatin_seed"),    # Pt_IV octahedral
+        ("OC(=O)C(=O)O.N.N.[Pt+2]", "carboplatin_seed"),  # Pt_II_chelating
+        ("[NH2]CCOCCOCC[NH2].[Pt+2]", "oxaliplatin_seed"),  # Pt_II_chelating
+        ("[Pt+4](Cl)(Cl)(Cl)(Cl)(N)N", "satraplatin_seed"),  # Pt_IV octahedral
     )
     valid_transformations = 0
     per_scaffold = {s: 0 for s in SCAFFOLD_NAMES}
     for smi, hint in pt_smiles_samples:
         scaffold = detect_scaffold(smi, name_hint=hint)
         per_scaffold[scaffold] += 1
-        assert scaffold in SCAFFOLD_NAMES, (
-            f"detect_scaffold returned unknown scaffold {scaffold!r} for {hint}"
-        )
+        assert (
+            scaffold in SCAFFOLD_NAMES
+        ), f"detect_scaffold returned unknown scaffold {scaffold!r} for {hint}"
         # Every (scaffold, click_rule) verdict must be a valid string.
         # This is the integration contract: COMPAT_MATRIX is fully
         # populated for every cell, so a transformation "is" a populated
@@ -753,13 +772,20 @@ def test_005_end_to_end_smoke(tmp_path: Path) -> None:
     cmd = [
         sys.executable,
         str(script_path),
-        "--steps", "100",
-        "--batch-size", "4",
-        "--seed", "0",
-        "--hidden-dim", "64",
-        "--n-layers", "2",
-        "--out-dir", str(out_dir),
-        "--csv", str(PROJECT_ROOT / "molmetal" / "data" / "metallo_drugs_500_train.csv"),
+        "--steps",
+        "100",
+        "--batch-size",
+        "4",
+        "--seed",
+        "0",
+        "--hidden-dim",
+        "64",
+        "--n-layers",
+        "2",
+        "--out-dir",
+        str(out_dir),
+        "--csv",
+        str(PROJECT_ROOT / "molmetal" / "data" / "metallo_drugs_500_train.csv"),
     ]
 
     t0 = time.time()
@@ -790,18 +816,17 @@ def test_005_end_to_end_smoke(tmp_path: Path) -> None:
     # --- 3c. ckpt.pt saved (and finite) --------------------------------
     ckpt_path = out_dir / "ckpt.pt"
     assert ckpt_path.is_file(), (
-        f"smoke script did not save {ckpt_path}; "
-        f"stdout tail: {proc.stdout[-500:]}"
+        f"smoke script did not save {ckpt_path}; " f"stdout tail: {proc.stdout[-500:]}"
     )
     ckpt = torch.load(ckpt_path, weights_only=False)
     assert isinstance(ckpt, dict), f"ckpt.pt is not a dict: {type(ckpt)}"
-    assert "velocity_field" in ckpt, (
-        "ckpt.pt missing 'velocity_field' state_dict (integration contract drift?)"
-    )
+    assert (
+        "velocity_field" in ckpt
+    ), "ckpt.pt missing 'velocity_field' state_dict (integration contract drift?)"
     vf_sd = ckpt["velocity_field"]
-    assert isinstance(vf_sd, dict), (
-        f"ckpt['velocity_field'] is not a state_dict: {type(vf_sd)}"
-    )
+    assert isinstance(
+        vf_sd, dict
+    ), f"ckpt['velocity_field'] is not a state_dict: {type(vf_sd)}"
     # Sanity: at least one tensor in the state_dict must be finite.
     finite_tensors = 0
     for k, v in vf_sd.items():
@@ -813,6 +838,6 @@ def test_005_end_to_end_smoke(tmp_path: Path) -> None:
     )
 
     # --- 4. Wall-budget guard (one-sided) ------------------------------
-    assert elapsed < 150.0, (
-        f"smoke run took {elapsed:.1f}s; the I1 gate requires <150s on CPU."
-    )
+    assert (
+        elapsed < 150.0
+    ), f"smoke run took {elapsed:.1f}s; the I1 gate requires <150s on CPU."

@@ -59,6 +59,7 @@ Cross-references
 * molmetal/tests/test_wf313d_todo220_acceptance_gates.py — 12 Wf-313D smoke tests
 * mol-metal-gpu-execution skill §0 — kill_then_adapt directive
 """
+
 from __future__ import annotations
 
 import re
@@ -87,6 +88,7 @@ SIGNAL_FLOOR_CLOSE = ROOT / "TODO/completed/137_l5_l7_l10_arch_ceiling_honest.md
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _read_text(path: Path) -> str:
     assert path.exists(), f"required file missing: {path}"
     return path.read_text()
@@ -109,34 +111,46 @@ def test_todo_220_ship_status():
     * §6.4 explicitly declares PC3 honest-negative (0.1667 < 0.5 random)
     """
     # All 3 TODO-220 docs must exist in completed/
-    assert TODO_220_DRIVER.exists(), "TODO-220 parent driver must be in completed/ (Wf-316A move)"
-    assert TODO_220_TEMPORAL.exists(), "TODO-220 §6.3 temporal-split acceptance doc must be in completed/"
-    assert TODO_220_NCI60.exists(), "TODO-220 §6.4 NCI-60 9-cell acceptance doc must be in completed/"
+    assert (
+        TODO_220_DRIVER.exists()
+    ), "TODO-220 parent driver must be in completed/ (Wf-316A move)"
+    assert (
+        TODO_220_TEMPORAL.exists()
+    ), "TODO-220 §6.3 temporal-split acceptance doc must be in completed/"
+    assert (
+        TODO_220_NCI60.exists()
+    ), "TODO-220 §6.4 NCI-60 9-cell acceptance doc must be in completed/"
 
     # Parent driver doc must be in completed/ (Wf-316A moved it)
     driver_text = _read_text(TODO_220_DRIVER)
     assert "STATUS" in driver_text.upper(), "TODO-220 driver doc must declare STATUS"
-    assert "P1" in driver_text or "PENDING" in driver_text.upper(), (
-        "TODO-220 driver doc must reference P1 priority / PENDING state"
-    )
+    assert (
+        "P1" in driver_text or "PENDING" in driver_text.upper()
+    ), "TODO-220 driver doc must reference P1 priority / PENDING state"
 
     # §6.3 temporal-split doc — must declare smoke MEASURED + GPU PROJECTED
     sec_6_3 = _read_text(TODO_220_TEMPORAL)
-    assert "§6.3" in sec_6_3 or "6.3" in sec_6_3, "§6.3 temporal-split doc must have §6.3 section anchors"
+    assert (
+        "§6.3" in sec_6_3 or "6.3" in sec_6_3
+    ), "§6.3 temporal-split doc must have §6.3 section anchors"
     assert "MEASURED" in sec_6_3, "§6.3 must have at least one MEASURED tag"
     assert "PROJECTED" in sec_6_3, "§6.3 must have at least one PROJECTED tag"
-    assert "Krasnov" in sec_6_3 or "krasnov" in sec_6_3, "§6.3 must reference Krasnov 2026 protocol"
+    assert (
+        "Krasnov" in sec_6_3 or "krasnov" in sec_6_3
+    ), "§6.3 must reference Krasnov 2026 protocol"
     assert "temporal" in sec_6_3.lower(), "§6.3 must reference temporal split"
 
     # §6.4 NCI-60 9-cell doc — must declare smoke MEASURED + PC3 honest-negative
     sec_6_4 = _read_text(TODO_220_NCI60)
-    assert "§6.4" in sec_6_4 or "6.4" in sec_6_4, "§6.4 NCI-60 9-cell doc must have §6.4 section anchors"
+    assert (
+        "§6.4" in sec_6_4 or "6.4" in sec_6_4
+    ), "§6.4 NCI-60 9-cell doc must have §6.4 section anchors"
     assert "MEASURED" in sec_6_4, "§6.4 must have at least one MEASURED tag"
     assert "PROJECTED" in sec_6_4, "§6.4 must have at least one PROJECTED tag"
     assert "PC3" in sec_6_4, "§6.4 must reference PC3 (honest-negative cell)"
-    assert "honest-negative" in sec_6_4.lower() or "honest_negative" in sec_6_4.lower(), (
-        "§6.4 must declare PC3 honest-negative per party-twenty-spirit §3.5"
-    )
+    assert (
+        "honest-negative" in sec_6_4.lower() or "honest_negative" in sec_6_4.lower()
+    ), "§6.4 must declare PC3 honest-negative per party-twenty-spirit §3.5"
     assert "HCT116" in sec_6_4, "§6.4 must reference HCT116 (highlight cell)"
 
     # §6.4 must NOT paraphrase PC3 honest-negative as "achievable"
@@ -148,9 +162,11 @@ def test_todo_220_ship_status():
         # (it's only acceptable if explicitly negated)
         if "achievable" in pc3_text.lower():
             # If "achievable" appears, it MUST be negated
-            assert "not" in pc3_text.lower() or "NOT" in pc3_text or "no " in pc3_text.lower(), (
-                "PC3 honest-negative: if 'achievable' appears, must be negated"
-            )
+            assert (
+                "not" in pc3_text.lower()
+                or "NOT" in pc3_text
+                or "no " in pc3_text.lower()
+            ), "PC3 honest-negative: if 'achievable' appears, must be negated"
 
 
 # ===========================================================================
@@ -170,50 +186,58 @@ def test_todo_179_ship_status():
     """
     # TODO-179 must remain in pending/ (Wf-316A kept it STATUS_HOLD)
     assert TODO_179.exists(), "TODO-179 must exist in pending/ (Wf-316A STATUS_HOLD)"
-    assert "pending" in str(TODO_179.parent), "TODO-179 must remain in pending/ (not moved to completed)"
+    assert "pending" in str(
+        TODO_179.parent
+    ), "TODO-179 must remain in pending/ (not moved to completed)"
 
     text = _read_text(TODO_179)
 
     # STATUS_HOLD marker must be present (per Wf-316A audit)
-    assert "STATUS_HOLD" in text, "TODO-179 must have explicit STATUS_HOLD marker (Wf-316A)"
-    assert "Wf-316A" in text or "wf-316a" in text.lower() or "316A" in text, (
-        "TODO-179 must cite Wf-316A as the source of STATUS_HOLD marker"
-    )
+    assert (
+        "STATUS_HOLD" in text
+    ), "TODO-179 must have explicit STATUS_HOLD marker (Wf-316A)"
+    assert (
+        "Wf-316A" in text or "wf-316a" in text.lower() or "316A" in text
+    ), "TODO-179 must cite Wf-316A as the source of STATUS_HOLD marker"
 
     # W₂ recipe must be declared HONEST_NEGATIVE
-    assert "HONEST_NEGATIVE" in text or "honest-negative" in text.lower(), (
-        "TODO-179 must declare W₂ alignment attempt HONEST_NEGATIVE per Wf-313G dashboard"
-    )
+    assert (
+        "HONEST_NEGATIVE" in text or "honest-negative" in text.lower()
+    ), "TODO-179 must declare W₂ alignment attempt HONEST_NEGATIVE per Wf-313G dashboard"
 
     # Architectural fix path: Wf-94 R20-P3 Multi-PH + PLL
-    assert "Wf-94" in text, "TODO-179 must reference Wf-94 R20-P3 (architectural fix path)"
+    assert (
+        "Wf-94" in text
+    ), "TODO-179 must reference Wf-94 R20-P3 (architectural fix path)"
     assert "R20-P3" in text, "TODO-179 must reference R20-P3 phase"
-    assert "Multi-PH" in text or "multiph" in text.lower() or "MultiPH" in text, (
-        "TODO-179 must reference Multi-PH feature expansion"
-    )
+    assert (
+        "Multi-PH" in text or "multiph" in text.lower() or "MultiPH" in text
+    ), "TODO-179 must reference Multi-PH feature expansion"
     assert "PLL" in text, "TODO-179 must reference PLL feature expansion"
 
     # Wf-122 P3 + Wf-129 P3 MEASURED numbers
-    assert "Wf-122" in text and "Wf-129" in text, (
-        "TODO-179 must reference Wf-122 P3 + Wf-129 P3 attempts"
-    )
+    assert (
+        "Wf-122" in text and "Wf-129" in text
+    ), "TODO-179 must reference Wf-122 P3 + Wf-129 P3 attempts"
     # R² numbers must be present (HONEST_NEGATIVE values)
-    assert "-5.66" in text or "-0.0780" in text, (
-        "TODO-179 must cite Wf-122 P3 / Wf-129 P3 MEASURED R² numbers"
-    )
+    assert (
+        "-5.66" in text or "-0.0780" in text
+    ), "TODO-179 must cite Wf-122 P3 / Wf-129 P3 MEASURED R² numbers"
 
     # The §0 Wf-316A status-hold marker section must exist
-    assert "§0" in text or "status-hold marker" in text.lower(), (
-        "TODO-179 §0 must declare Wf-316A status-hold marker"
-    )
+    assert (
+        "§0" in text or "status-hold marker" in text.lower()
+    ), "TODO-179 §0 must declare Wf-316A status-hold marker"
 
     # TODO-179 must NOT contain a fabrication / aspiration: e.g. R² ≥ 0.85
     # without PROJECTED tag and signal-floor caveat
     if "R² ≥ 0.85" in text or "R^2 >= 0.85" in text or "R² >= 0.85" in text:
         # If R² ≥ 0.85 is mentioned, it MUST be qualified
-        assert "PROJECTED" in text or "ceiling" in text.lower() or "architectural" in text.lower(), (
-            "TODO-179 must qualify R² ≥ 0.85 as PROJECTED or signal-floor-blocked"
-        )
+        assert (
+            "PROJECTED" in text
+            or "ceiling" in text.lower()
+            or "architectural" in text.lower()
+        ), "TODO-179 must qualify R² ≥ 0.85 as PROJECTED or signal-floor-blocked"
 
 
 # ===========================================================================
@@ -234,9 +258,9 @@ def test_wf316a_status_hold_reason():
     # Wf-316 INDEX update must mention 179 as STATUS-HOLD per Wf-316A
     idx_text = _read_text(WF316_INDEX_UPDATE)
     assert "179" in idx_text, "Wf-316 INDEX update must reference TODO-179"
-    assert "STATUS" in idx_text.upper() or "status" in idx_text, (
-        "Wf-316 INDEX update must declare status for pending files"
-    )
+    assert (
+        "STATUS" in idx_text.upper() or "status" in idx_text
+    ), "Wf-316 INDEX update must declare status for pending files"
     # The row pattern: "| 1 | `179_wf123_p3_w2_pic50_alignment.md` ... STATUS-HOLD per Wf-316A"
     assert re.search(
         r"179[^\n]*STATUS[- ]?HOLD[^\n]*Wf-316A",
@@ -252,7 +276,9 @@ def test_wf316a_status_hold_reason():
     # Wf-316F synthesis — pending/ categorization
     synth_text = _read_text(WF316_FINAL_SYNTHESIS)
     assert "179" in synth_text, "Wf-316F synthesis must reference TODO-179"
-    assert "STILL_PENDING" in synth_text, "Wf-316F synthesis must categorize STILL_PENDING files"
+    assert (
+        "STILL_PENDING" in synth_text
+    ), "Wf-316F synthesis must categorize STILL_PENDING files"
     assert "220" in synth_text, "Wf-316F synthesis must reference TODO-220"
     # The 3 STILL_PENDING files: 179 / 182 / 183
     assert "182" in synth_text, "Wf-316F synthesis must list TODO-182 as STILL_PENDING"
@@ -260,21 +286,24 @@ def test_wf316a_status_hold_reason():
 
     # Verify TODO-220 is NOT in the STILL_PENDING list (it was moved to completed)
     # The 6 moved files include 220 — search for explicit MOVE evidence
-    assert "MOVE" in synth_text or "moved" in synth_text.lower(), (
-        "Wf-316F synthesis must document the MOVE actions"
-    )
+    assert (
+        "MOVE" in synth_text or "moved" in synth_text.lower()
+    ), "Wf-316F synthesis must document the MOVE actions"
 
     # Wf-313G dashboard — TODO-122 L5 Hilbert R² HONEST_NEGATIVE
     dashboard_text = _read_text(WF313G_DASHBOARD)
-    assert "TODO-122" in dashboard_text or "todo-122" in dashboard_text.lower() or "todo_122" in dashboard_text.lower(), (
-        "Wf-313G dashboard must reference TODO-122 (the L5 Hilbert R² parent)"
-    )
-    assert "HONEST_NEGATIVE" in dashboard_text or "honest-negative" in dashboard_text.lower(), (
-        "Wf-313G dashboard must declare HONEST_NEGATIVE verdict for TODO-122 L5"
-    )
-    assert "§3.4" in dashboard_text or "3.4" in dashboard_text, (
-        "Wf-313G dashboard must reference §3.4 (HONEST_NEGATIVE section)"
-    )
+    assert (
+        "TODO-122" in dashboard_text
+        or "todo-122" in dashboard_text.lower()
+        or "todo_122" in dashboard_text.lower()
+    ), "Wf-313G dashboard must reference TODO-122 (the L5 Hilbert R² parent)"
+    assert (
+        "HONEST_NEGATIVE" in dashboard_text
+        or "honest-negative" in dashboard_text.lower()
+    ), "Wf-313G dashboard must declare HONEST_NEGATIVE verdict for TODO-122 L5"
+    assert (
+        "§3.4" in dashboard_text or "3.4" in dashboard_text
+    ), "Wf-313G dashboard must reference §3.4 (HONEST_NEGATIVE section)"
 
 
 # ===========================================================================
@@ -294,25 +323,25 @@ def test_signal_floor_documentation():
     """
     # TODO-179 §2 — Why the W₂ recipe is architecturally infeasible
     todo_179_text = _read_text(TODO_179)
-    assert "12-d RDKit" in todo_179_text or "12-d RDKit 2D" in todo_179_text, (
-        "TODO-179 must document the 12-d RDKit 2D feature ceiling"
-    )
+    assert (
+        "12-d RDKit" in todo_179_text or "12-d RDKit 2D" in todo_179_text
+    ), "TODO-179 must document the 12-d RDKit 2D feature ceiling"
     # The architectural fix path must be present
-    assert "F5_RDKIT_2D" in todo_179_text or "feature expansion" in todo_179_text.lower(), (
-        "TODO-179 must reference F5_RDKIT_2D feature expansion (architectural fix)"
-    )
+    assert (
+        "F5_RDKIT_2D" in todo_179_text or "feature expansion" in todo_179_text.lower()
+    ), "TODO-179 must reference F5_RDKIT_2D feature expansion (architectural fix)"
     # R² upper bound math must be present
-    assert "0.0043" in todo_179_text or "0.004" in todo_179_text, (
-        "TODO-179 must cite the R² ≤ 0.0043 upper bound (12-d RDKit signal floor)"
-    )
-    assert "|ρ| ≤ 0.019" in todo_179_text or "0.019" in todo_179_text, (
-        "TODO-179 must cite |ρ| ≤ 0.019 (linear correlation ceiling)"
-    )
+    assert (
+        "0.0043" in todo_179_text or "0.004" in todo_179_text
+    ), "TODO-179 must cite the R² ≤ 0.0043 upper bound (12-d RDKit signal floor)"
+    assert (
+        "|ρ| ≤ 0.019" in todo_179_text or "0.019" in todo_179_text
+    ), "TODO-179 must cite |ρ| ≤ 0.019 (linear correlation ceiling)"
 
     # Wf-139 P4 close-out reference
-    assert "Wf-139" in todo_179_text or "137_l5_l7_l10" in todo_179_text, (
-        "TODO-179 must reference Wf-139 P4 close-out (signal-floor close-out)"
-    )
+    assert (
+        "Wf-139" in todo_179_text or "137_l5_l7_l10" in todo_179_text
+    ), "TODO-179 must reference Wf-139 P4 close-out (signal-floor close-out)"
 
     # Wf-313G dashboard — must reference 12-d signal floor
     dashboard_text = _read_text(WF313G_DASHBOARD)

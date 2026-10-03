@@ -49,6 +49,7 @@ Notes
   the Python binding is not importable; if neither is available, it
   returns ``float('nan')`` with an error key.
 """
+
 from __future__ import annotations
 
 import json
@@ -137,8 +138,7 @@ def resolve_pocket(
             center = [0.0, 0.0, 0.0]
         center_t = torch.tensor(center, dtype=torch.float32)
         # Coords in a sphere around ``center_t``.
-        coords = (torch.randn(n_atoms, 3, generator=gen) * radius
-                  + center_t)
+        coords = torch.randn(n_atoms, 3, generator=gen) * radius + center_t
         atom_types = torch.randint(1, 18, (n_atoms,), generator=gen)
         return Pocket(
             pdb_id=pocket_id,
@@ -158,8 +158,10 @@ def resolve_pocket(
         try:
             return Pocket.from_pdb_file(p, c, radius=radius)
         except Exception:
-            logger.warning("resolve_pocket: PDB parse failed for %s; "
-                           "falling back to synthetic", p)
+            logger.warning(
+                "resolve_pocket: PDB parse failed for %s; " "falling back to synthetic",
+                p,
+            )
 
     # Plain PDB-ID — seed a synthetic pocket by the ID.
     seed = abs(hash(pocket_id)) % (2**32)
@@ -167,8 +169,7 @@ def resolve_pocket(
     if center is None:
         center = [0.0, 0.0, 0.0]
     center_t = torch.tensor(center, dtype=torch.float32)
-    coords = (torch.randn(n_atoms, 3, generator=gen) * radius
-              + center_t)
+    coords = torch.randn(n_atoms, 3, generator=gen) * radius + center_t
     atom_types = torch.randint(1, 18, (n_atoms,), generator=gen)
     return Pocket(
         pdb_id=pocket_id,
@@ -243,12 +244,18 @@ def compute_vina_min(
         )
         from molmetal.ports import DockingConfig
     except Exception as exc:
-        return _wrap(name, started, error=f"imports failed: {exc}",
-                     pocket_id=pocket_id, n_samples=n_samples,
-                     best_score=float("nan"), scores=[])
+        return _wrap(
+            name,
+            started,
+            error=f"imports failed: {exc}",
+            pocket_id=pocket_id,
+            n_samples=n_samples,
+            best_score=float("nan"),
+            scores=[],
+        )
 
     pocket = resolve_pocket(pocket_id, center=center, radius=radius)
-    smiles_use = list(smiles_list)[:max(1, int(n_samples))]
+    smiles_use = list(smiles_list)[: max(1, int(n_samples))]
     scores: List[float] = []
     errors: List[str] = []
 
@@ -258,9 +265,15 @@ def compute_vina_min(
         adapter.setup()
         from molmetal.domain import Molecule
     except Exception as exc:
-        return _wrap(name, started, error=f"Vina setup failed: {exc}",
-                     pocket_id=pocket_id, n_samples=n_samples,
-                     best_score=float("nan"), scores=[])
+        return _wrap(
+            name,
+            started,
+            error=f"Vina setup failed: {exc}",
+            pocket_id=pocket_id,
+            n_samples=n_samples,
+            best_score=float("nan"),
+            scores=[],
+        )
 
     # Wf-250 Fix #2 (A2): per-pocket Vina dispatch.
     # Resolve a pocket-specific exhaustiveness + scoring override before
@@ -276,6 +289,7 @@ def compute_vina_min(
             from molmetal.molmetal_lam.sbdd_env.vina_adapter import (
                 resolve_per_pocket_config,
             )
+
             pp_cfg = resolve_per_pocket_config(pocket_id)
             effective_exhaustiveness = int(pp_cfg["exhaustiveness"])
             effective_scoring = str(pp_cfg.get("scoring") or "vina")
@@ -283,14 +297,18 @@ def compute_vina_min(
             logger.debug(
                 "[wf250-fix2] pocket=%s -> exhaustiveness=%d n_poses=%d "
                 "scoring=%s scoring_file=%s",
-                pocket_id, effective_exhaustiveness, pp_cfg["n_poses"],
-                effective_scoring, pp_cfg.get("scoring_file"),
+                pocket_id,
+                effective_exhaustiveness,
+                pp_cfg["n_poses"],
+                effective_scoring,
+                pp_cfg.get("scoring_file"),
             )
         except Exception as exc:
             logger.debug(
                 "[wf250-fix2] per-pocket dispatch unavailable (%s); "
                 "falling back to caller-supplied exhaustiveness=%d",
-                exc, effective_exhaustiveness,
+                exc,
+                effective_exhaustiveness,
             )
 
     for smi in smiles_use:
@@ -318,7 +336,8 @@ def compute_vina_min(
 
     best_score = float(min(scores)) if scores else float("nan")
     payload = _wrap(
-        name, started,
+        name,
+        started,
         pocket_id=pocket_id,
         n_samples=int(n_samples),
         n_docked=len(scores),
@@ -383,31 +402,45 @@ def compute_multi_cell_auc(
     try:
         from molmetal.baselines.eval_utils import per_cell_line_auc
     except Exception as exc:
-        return _wrap(name, started, error=f"imports failed: {exc}",
-                     per_cell_auc={}, n_smiles=int(len(smiles_list)))
+        return _wrap(
+            name,
+            started,
+            error=f"imports failed: {exc}",
+            per_cell_auc={},
+            n_smiles=int(len(smiles_list)),
+        )
 
     n = len(smiles_list)
     if n == 0 or len(cell_lines) != n:
-        return _wrap(name, started, error="smiles/cell_lines length mismatch",
-                     per_cell_auc={}, n_smiles=int(n))
+        return _wrap(
+            name,
+            started,
+            error="smiles/cell_lines length mismatch",
+            per_cell_auc={},
+            n_smiles=int(n),
+        )
 
     # Predict — handle both the raw model and the .predict wrapper.
     try:
         if hasattr(model, "predict_smiles"):
-            scores = np.asarray(model.predict_smiles(list(smiles_list)),
-                                dtype=float)
+            scores = np.asarray(model.predict_smiles(list(smiles_list)), dtype=float)
         elif hasattr(model, "predict"):
             # DMPNNMultiTaskBaseline-style API: forward() returns (pic50, cls_logits).
-            scores = np.asarray(model.predict(np.asarray(smiles_list)),
-                                dtype=float)
+            scores = np.asarray(model.predict(np.asarray(smiles_list)), dtype=float)
         elif hasattr(model, "forward"):
             from molmetal.baselines.dmpnn import featurize_smiles_list
             from molmetal.baselines.dmpnn_attentive import collate_graphs
+
             graphs = featurize_smiles_list(list(smiles_list))
             valid = [(g, s) for g, s in zip(graphs, smiles_list) if g is not None]
             if not valid:
-                return _wrap(name, started, error="no featurisable SMILES",
-                             per_cell_auc={}, n_smiles=int(n))
+                return _wrap(
+                    name,
+                    started,
+                    error="no featurisable SMILES",
+                    per_cell_auc={},
+                    n_smiles=int(n),
+                )
             batch = collate_graphs([g for g, _ in valid])
             with torch.no_grad():
                 pic50, cls_logits = model(*batch)
@@ -422,12 +455,22 @@ def compute_multi_cell_auc(
                     j += 1
             scores = np.nan_to_num(full, nan=0.5)
         else:
-            return _wrap(name, started, error="model has no predict API",
-                         per_cell_auc={}, n_smiles=int(n))
+            return _wrap(
+                name,
+                started,
+                error="model has no predict API",
+                per_cell_auc={},
+                n_smiles=int(n),
+            )
     except Exception as exc:
-        return _wrap(name, started, error=f"predict failed: {exc}",
-                     trace=traceback.format_exc(limit=4),
-                     per_cell_auc={}, n_smiles=int(n))
+        return _wrap(
+            name,
+            started,
+            error=f"predict failed: {exc}",
+            trace=traceback.format_exc(limit=4),
+            per_cell_auc={},
+            n_smiles=int(n),
+        )
 
     # Ground truth — random if not provided.
     if y_true is None:
@@ -437,15 +480,20 @@ def compute_multi_cell_auc(
         y = np.asarray(y_true).astype(int)
 
     try:
-        per_cell = per_cell_line_auc(list(cell_lines), y, scores,
-                                     min_count=2)
+        per_cell = per_cell_line_auc(list(cell_lines), y, scores, min_count=2)
     except Exception as exc:
-        return _wrap(name, started, error=f"per_cell_line_auc failed: {exc}",
-                     trace=traceback.format_exc(limit=4),
-                     per_cell_auc={}, n_smiles=int(n))
+        return _wrap(
+            name,
+            started,
+            error=f"per_cell_line_auc failed: {exc}",
+            trace=traceback.format_exc(limit=4),
+            per_cell_auc={},
+            n_smiles=int(n),
+        )
 
     payload = _wrap(
-        name, started,
+        name,
+        started,
         n_smiles=int(n),
         n_cell_lines=len(per_cell),
         per_cell_auc={k: float(v) for k, v in per_cell.items()},
@@ -528,7 +576,8 @@ def compute_decode_ratio(
 
     try:
         adapter = LipmanFlowMatchingAdapter(
-            hidden_dim=int(hidden_dim), n_layers=int(n_layers),
+            hidden_dim=int(hidden_dim),
+            n_layers=int(n_layers),
         )
         adapter.setup(device="cpu")
 
@@ -546,16 +595,16 @@ def compute_decode_ratio(
                     adapter.load_state_dict(state, strict=False)
                 payload_extras["checkpoint_loaded"] = True
             except Exception as exc:
-                payload_extras["checkpoint_load_error"] = (
-                    f"{type(exc).__name__}: {exc}"
-                )
+                payload_extras["checkpoint_load_error"] = f"{type(exc).__name__}: {exc}"
 
         pocket = resolve_pocket(pocket_id, n_atoms=32, radius=6.0)
-        config = GenerationConfig(n_samples=int(n_samples),
-                                  n_steps=int(n_steps), seed=42)
+        config = GenerationConfig(
+            n_samples=int(n_samples), n_steps=int(n_steps), seed=42
+        )
         mols = adapter.generate(pocket, config)
-        n_decoded = sum(1 for m in mols
-                         if m.bonds is not None and m.bonds.shape[-1] > 0)
+        n_decoded = sum(
+            1 for m in mols if m.bonds is not None and m.bonds.shape[-1] > 0
+        )
         ratio = float(n_decoded) / max(1, int(n_samples))
 
         payload_extras["n_decoded"] = int(n_decoded)

@@ -8,6 +8,7 @@ This module verifies:
 2. m6_kappa augmented_mean is updated in metrics/by_metric/m6_kappa.json.
 3. Gate status verdict (PRESERVED if < 0.6, else LIFTED) matches the JSON record.
 """
+
 from __future__ import annotations
 
 import json
@@ -62,9 +63,9 @@ class TestW2RecipeOnR20P3:
         with open(RESULT_JSON) as f:
             result = json.load(f)
         band = result["sota_band_check"]
-        assert band["per_cell_pass"], (
-            f"per_cell_pass=False; W₂ = {result['w2_per_cell']} out of SOTA band"
-        )
+        assert band[
+            "per_cell_pass"
+        ], f"per_cell_pass=False; W₂ = {result['w2_per_cell']} out of SOTA band"
 
     def test_w2_feature_dims_canonical_160d(self):
         """Verify canonical 32+128=160-d joint feature dim per Wf-348-B1 §1.3."""
@@ -73,9 +74,9 @@ class TestW2RecipeOnR20P3:
         with open(RESULT_JSON) as f:
             result = json.load(f)
         fd = result["feature_dims"]
-        assert fd["joint_fourier_pll"] == 160, (
-            f"joint_fourier_pll = {fd['joint_fourier_pll']}, expected 160"
-        )
+        assert (
+            fd["joint_fourier_pll"] == 160
+        ), f"joint_fourier_pll = {fd['joint_fourier_pll']}, expected 160"
         assert fd["fourier_n_bins"] == 32
         assert fd["pll_k"] == 128
 
@@ -103,9 +104,9 @@ class TestM6KappaAugmentedMean:
             pytest.skip(f"Missing {METRICS_JSON}")
         with open(METRICS_JSON) as f:
             d = json.load(f)
-        assert "wf359a1_w2_r20p3_verify" in d, (
-            "Missing wf359a1_w2_r20p3_verify field in m6_kappa.json"
-        )
+        assert (
+            "wf359a1_w2_r20p3_verify" in d
+        ), "Missing wf359a1_w2_r20p3_verify field in m6_kappa.json"
         verify = d["wf359a1_w2_r20p3_verify"]
         assert "value" in verify
         assert "gate_status" in verify
@@ -123,13 +124,13 @@ class TestGateStatus:
         v = d["value"]
         status = d["gate_status"]
         if v >= GATE_THRESHOLD:
-            assert "LIFTED" in status, (
-                f"value = {v} > {GATE_THRESHOLD} but status = {status}"
-            )
+            assert (
+                "LIFTED" in status
+            ), f"value = {v} > {GATE_THRESHOLD} but status = {status}"
         else:
-            assert "PRESERVED" in status and "HONEST_NEGATIVE" in status, (
-                f"value = {v} < {GATE_THRESHOLD} but status = {status}"
-            )
+            assert (
+                "PRESERVED" in status and "HONEST_NEGATIVE" in status
+            ), f"value = {v} < {GATE_THRESHOLD} but status = {status}"
 
     def test_metrics_gate_status_consistent(self):
         """metrics/by_metric/m6_kappa.json gate_status must match value vs threshold."""
@@ -156,9 +157,10 @@ class TestGateStatus:
             d = json.load(f)
         # Original verdict is FAIL (augmented_mean=0.4719 < 0.6)
         # After Wf-359-A1 verification (0.3561 on platinai_4cell), verdict remains FAIL
-        assert d.get("verdict") in ("FAIL", "PASS"), (
-            f"verdict = {d.get('verdict')}, expected FAIL or PASS"
-        )
+        assert d.get("verdict") in (
+            "FAIL",
+            "PASS",
+        ), f"verdict = {d.get('verdict')}, expected FAIL or PASS"
 
 
 if __name__ == "__main__":

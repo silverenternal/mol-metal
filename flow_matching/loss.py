@@ -165,8 +165,11 @@ class ConditionalFlowMatchingLoss(nn.Module):
                 "`ConditionalFlowMatchingLoss.forward`."
             )
         h_node, _ = self.encoder(
-            atomic_numbers, positions, edge_index,
-            edge_mask=edge_mask, node_mask=node_mask,
+            atomic_numbers,
+            positions,
+            edge_index,
+            edge_mask=edge_mask,
+            node_mask=node_mask,
         )
         return h_node
 
@@ -241,9 +244,7 @@ class ConditionalFlowMatchingLoss(nn.Module):
                 f"{tuple(x1.shape)}."
             )
         if x0.dim() != 3 or x0.shape[-1] != 3:
-            raise ValueError(
-                f"`x0` and `x1` must be (B, N, 3); got {tuple(x0.shape)}."
-            )
+            raise ValueError(f"`x0` and `x1` must be (B, N, 3); got {tuple(x0.shape)}.")
         if edge_index is None:
             raise ValueError("`edge_index` is required for the velocity net.")
 
@@ -258,7 +259,9 @@ class ConditionalFlowMatchingLoss(nn.Module):
                 raise ValueError(
                     "`batch_idx` is required when `use_minibatch_ot=True`."
                 )
-            ot_idx = mini_batch_ot_coupling(x1, x0, batch_idx, diagnostics=ot_diagnostics)
+            ot_idx = mini_batch_ot_coupling(
+                x1, x0, batch_idx, diagnostics=ot_diagnostics
+            )
             x1 = x1.index_select(0, ot_idx.to(device=x1.device))
 
         # 1. Sample t, build interpolated state and target velocity.
@@ -269,8 +272,12 @@ class ConditionalFlowMatchingLoss(nn.Module):
 
         # 2. Encode (if needed) and predict velocity.
         h_node_eff = self._get_h_node(
-            h_node, atomic_numbers, x_t, edge_index,
-            edge_mask=edge_mask, node_mask=node_mask,
+            h_node,
+            atomic_numbers,
+            x_t,
+            edge_index,
+            edge_mask=edge_mask,
+            node_mask=node_mask,
         )
         # If a conditioner was supplied, treat ``cond`` as raw scalar
         # features (e.g. a single QM9 property) and lift them through the
@@ -279,8 +286,13 @@ class ConditionalFlowMatchingLoss(nn.Module):
         if cond_eff is not None and self.conditioner is not None:
             cond_eff = self.conditioner(cond_eff)
         pred_v = self.model(
-            h_node_eff, x_t, t, edge_index, cond=cond_eff,
-            edge_mask=edge_mask, node_mask=node_mask,
+            h_node_eff,
+            x_t,
+            t,
+            edge_index,
+            cond=cond_eff,
+            edge_mask=edge_mask,
+            node_mask=node_mask,
         )
 
         if pred_v.shape != x_t.shape:

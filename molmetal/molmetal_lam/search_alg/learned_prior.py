@@ -109,6 +109,7 @@ def _coupling_env_enabled() -> bool:
     raw = os.environ.get("COUPLING_ENABLED", "").strip().lower()
     return raw in {"1", "true", "yes", "on"}
 
+
 try:
     import torch
     from torch import nn
@@ -214,8 +215,8 @@ def reduce_coupling_bias(
         # into the last bin by averaging them into out[-1] BEFORE
         # the block-mean reduction (this keeps the reduction
         # deterministic without a special case in the call site).
-        block_size = (n + n_out - 1) // n_out          # ceil(n/n_out)
-        n_used = block_size * n_out                    # ≥ n
+        block_size = (n + n_out - 1) // n_out  # ceil(n/n_out)
+        n_used = block_size * n_out  # ≥ n
         if n_used <= n:
             truncated = arr[:n_used].astype(np.float32)
         else:
@@ -232,11 +233,28 @@ def reduce_coupling_bias(
     out = out - out.mean()
     return out.astype(np.float32)
 
+
 TOKEN_VOCAB: Tuple[str, ...] = (
-    "C", "N", "O", "S", "P", "F", "Cl", "Br", "I",
-    "[Pt]", "[Ru]", "[Ir]",
-    "c", "n", "o", "s",
-    "=", "#", "(", ")",
+    "C",
+    "N",
+    "O",
+    "S",
+    "P",
+    "F",
+    "Cl",
+    "Br",
+    "I",
+    "[Pt]",
+    "[Ru]",
+    "[Ir]",
+    "c",
+    "n",
+    "o",
+    "s",
+    "=",
+    "#",
+    "(",
+    ")",
 )
 """Atomic-token vocabulary used by the encoder.  Padding = 0, OOV = 1,
 real tokens start at index 2.  Order is canonical — never reorder."""
@@ -416,17 +434,18 @@ if _TORCH_AVAILABLE:
 
         def forward(self, token_ids: "torch.Tensor") -> "torch.Tensor":
             # token_ids: (B, T) — T-padded with PAD_ID
-            emb = self.embed(token_ids)              # (B, T, h)
-            out, _ = self.gru(emb)                   # (B, T, h)
+            emb = self.embed(token_ids)  # (B, T, h)
+            out, _ = self.gru(emb)  # (B, T, h)
             # Use the last *non-pad* index per row for readout.
             # Build a mask (B, T) where True = real token.
             mask = (token_ids != PAD_ID).float().unsqueeze(-1)  # (B, T, 1)
             masked = out * mask
-            denom = mask.sum(dim=1).clamp(min=1.0)    # (B, 1)
-            pooled = masked.sum(dim=1) / denom        # (B, h)
-            return self.classifier(pooled)            # (B, n_rules)
+            denom = mask.sum(dim=1).clamp(min=1.0)  # (B, 1)
+            pooled = masked.sum(dim=1) / denom  # (B, h)
+            return self.classifier(pooled)  # (B, n_rules)
 
 else:  # pragma: no cover — torch unavailable, fall back to numpy stub
+
     class LearnedPriorGRU:  # type: ignore[no-redef]
         def __init__(self, *args, **kwargs):
             raise RuntimeError(
@@ -499,10 +518,7 @@ class LearnedPolicyPrior:
         # is **added** to the classifier readout.  The GRU forward
         # pass is unchanged for backward compatibility.
         self._coupling_bias = None
-        if (
-            self.coupling_adapter is not None
-            and _coupling_env_enabled()
-        ):
+        if self.coupling_adapter is not None and _coupling_env_enabled():
             try:
                 pocket_vec = self.coupling_adapter.embed_pocket(
                     None, pocket_name="coupling_default"
@@ -520,9 +536,7 @@ class LearnedPolicyPrior:
                 # We now route through ``reduce_coupling_bias``,
                 # which is total over all sizes ≥ n_out.
                 blocks = reduce_coupling_bias(arr, n_out=len(self.click_rules))
-                self._coupling_bias = torch.tensor(
-                    blocks, dtype=torch.float32
-                )
+                self._coupling_bias = torch.tensor(blocks, dtype=torch.float32)
             except (TypeError, ValueError) as exc:
                 # Adapter returned a non-reducible pocket vector.  Narrow
                 # catch (no silent ``Exception``) so unexpected runtime
@@ -554,7 +568,7 @@ class LearnedPolicyPrior:
         # If all ids are PAD or OOV (e.g. a single unparseable char), the
         # pooled vector is zero; the zero-init classifier head returns
         # 0 logits → softmax = uniform.  No special-case needed.
-        logits = self.model(ids)               # (1, n_rules)
+        logits = self.model(ids)  # (1, n_rules)
         # Phase-3J-coupling wiring (TODO-21 / 2026-09-16).  When a
         # coupling bias is cached we add it to the readout before
         # softmax.  The bias is zero-mean by construction so it shifts
@@ -573,8 +587,10 @@ class LearnedPolicyPrior:
         return {r: v / s for r, v in mixed.items()}
 
     def set_coupling_pocket(
-        self, pocket_features: Optional[Sequence[float]] = None,
-        *, pocket_name: str = "",
+        self,
+        pocket_features: Optional[Sequence[float]] = None,
+        *,
+        pocket_name: str = "",
     ) -> None:
         """Refresh the cached coupling bias from a fresh pocket vector.
 
@@ -620,12 +636,11 @@ class LearnedPolicyPrior:
         if not state_smiles_list:
             return []
         ids_list = [
-            pad_token_sequence(tokenize_smiles(s), 64)[0]
-            for s in state_smiles_list
+            pad_token_sequence(tokenize_smiles(s), 64)[0] for s in state_smiles_list
         ]
         ids_t = torch.tensor(ids_list, dtype=torch.long)
         with torch.no_grad():
-            logits = self.model(ids_t)                 # (B, n_rules)
+            logits = self.model(ids_t)  # (B, n_rules)
             if self._coupling_bias is not None:
                 logits = logits + self._coupling_bias.unsqueeze(0)
             probs = torch.softmax(logits, dim=-1)
@@ -635,9 +650,7 @@ class LearnedPolicyPrior:
         for i in range(len(state_smiles_list)):
             row = probs[i].tolist()
             learned = {r: float(p) for r, p in zip(self.click_rules, row)}
-            mixed = {
-                r: (1.0 - α) * u + α * learned[r] for r in self.click_rules
-            }
+            mixed = {r: (1.0 - α) * u + α * learned[r] for r in self.click_rules}
             ssum = sum(mixed.values())
             out.append({r: v / ssum for r, v in mixed.items()})
         return out
@@ -667,12 +680,9 @@ class LearnedPolicyPrior:
         # Some rows may sum to 0 (no rule matches); filter them out.
         keep = [i for i, r in enumerate(rows) if sum(r.values()) > 0]
         if not keep:
-            raise ValueError(
-                "no SMILES with at least one SMARTS match — fit aborted"
-            )
+            raise ValueError("no SMILES with at least one SMARTS match — fit aborted")
         x_ids = [
-            pad_token_sequence(tokenize_smiles(smiles_list[i]), 64)[0]
-            for i in keep
+            pad_token_sequence(tokenize_smiles(smiles_list[i]), 64)[0] for i in keep
         ]
         y_targets = []
         for i in keep:
@@ -693,14 +703,9 @@ class LearnedPolicyPrior:
             opt.step()
             losses.append(float(loss.item()))
             if verbose and (epoch % 10 == 0 or epoch == epochs - 1):
-                print(
-                    f"[learned_prior] epoch={epoch:3d}  "
-                    f"loss={loss.item():.4f}"
-                )
+                print(f"[learned_prior] epoch={epoch:3d}  " f"loss={loss.item():.4f}")
         self.fitted = True
-        self._history = [
-            {"epoch": i, "loss": v} for i, v in enumerate(losses)
-        ]
+        self._history = [{"epoch": i, "loss": v} for i, v in enumerate(losses)]
         return losses
 
     # ----- diagnostics --------------------------------------------------

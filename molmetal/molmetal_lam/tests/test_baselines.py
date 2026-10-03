@@ -1,4 +1,5 @@
 """Tests for scripts/baselines.py — Lambda vs SBDD comparison harness."""
+
 from __future__ import annotations
 
 import os
@@ -8,7 +9,9 @@ from typing import Dict
 import pytest
 
 # Path bootstrap: when invoked via pytest from project root this is a no-op.
-_PKG_PARENT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
+_PKG_PARENT = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "..")
+)
 if _PKG_PARENT not in sys.path:
     sys.path.insert(0, _PKG_PARENT)
 

@@ -32,6 +32,7 @@ Failure mode
 * Binary present but refuses NVIDIA Blackwell → raise with the same
   message the adapter surfaces.
 """
+
 from __future__ import annotations
 
 import logging
@@ -122,10 +123,17 @@ def _select_engine(
         if hit:
             candidates.append(hit)
 
-    pkg_root = Path(__file__).resolve().parents[3]  # molmetal/scoring/gpu_wrappers -> molmetal
+    pkg_root = (
+        Path(__file__).resolve().parents[3]
+    )  # molmetal/scoring/gpu_wrappers -> molmetal
     vendor = (
-        pkg_root / "references" / "SoftMol" / "gated_mcts" / "utils"
-        / "docking" / "quickvina2-gpu-2-1"
+        pkg_root
+        / "references"
+        / "SoftMol"
+        / "gated_mcts"
+        / "utils"
+        / "docking"
+        / "quickvina2-gpu-2-1"
     )
     if vendor.is_dir():
         for sub in ("quickvina2-gpu", "quickvina-gpu"):
@@ -259,16 +267,14 @@ def vina_score_gpu(
             "vina_score_gpu: Vina-GPU backend not available on this host "
             "(no binary on PATH, no $VINA_GPU_BIN, no vendored tree). "
             "The wrapper does NOT fall back to vina_score automatically — "
-            "use score_any(\"vina_score\", ...) for the CPU path."
+            'use score_any("vina_score", ...) for the CPU path.'
         )
 
     # VRAM ceiling: estimate = gpu_threads * search_depth * 8 bytes.
     # 32 000 lanes × depth 1 × 8 B = 256 KB; plus a fixed 800 MB receptor
     # cache ⇒ ~1 GB peak. We keep the ceiling configurable but default
     # to 1.2 GB to match the audit's VRAM estimate.
-    projected_mb = int(
-        800 + (int(gpu_threads) * int(search_depth) * 8) / (1024 * 1024)
-    )
+    projected_mb = int(800 + (int(gpu_threads) * int(search_depth) * 8) / (1024 * 1024))
     if projected_mb > expected_vram_mb:
         raise AdapterUnavailable(
             f"vina_score_gpu: projected peak VRAM {projected_mb} MB exceeds "

@@ -57,8 +57,7 @@ GAP_SIGNAL_PATTERNS: Dict[str, List[Tuple[str, str, str]]] = {
     "deferred_phase": [
         # GPU retrain deferred / wet-lab deferred -> L14 (GNN-ODE kinetics
         # would replace static bench with dynamic)
-        (r"GPU retrain.*deferred|retrain.*deferred", "gpu_retrain_deferred",
-         "L14"),
+        (r"GPU retrain.*deferred|retrain.*deferred", "gpu_retrain_deferred", "L14"),
         # in-flight R20-P1 -> L15 (Pareto-front replaces single-scalar opt)
         (r"in\s*flight", "in_flight_r20_p1", "L15"),
         # OOD Phase 2 NOT re-measured -> L16 (wet-lab-in-loop would close)
@@ -76,24 +75,31 @@ GAP_SIGNAL_PATTERNS: Dict[str, List[Tuple[str, str, str]]] = {
     ],
     "design_gap": [
         # m18 multi-modal binding UNDEFINED -> L15 (Pareto multi-obj)
-        (r"m18.*UNDEFINED|UNDEFINED.*m18|protein.metal binding",
-         "m18_multimodal_undefined", "L15"),
+        (
+            r"m18.*UNDEFINED|UNDEFINED.*m18|protein.metal binding",
+            "m18_multimodal_undefined",
+            "L15",
+        ),
         # m19 LOMO UNDEFINED -> L15 (Pareto over toxicity/efficacy/ADMET)
-        (r"m19.*UNDEFINED|UNDEFINED.*m19|multi.metal LOMO",
-         "m19_lomo_undefined", "L15"),
+        (
+            r"m19.*UNDEFINED|UNDEFINED.*m19|multi.metal LOMO",
+            "m19_lomo_undefined",
+            "L15",
+        ),
         # m20 tumor UNDEFINED -> L15 (Pareto tumor-specific)
-        (r"m20.*UNDEFINED|UNDEFINED.*m20|tumor.specific",
-         "m20_tumor_undefined", "L15"),
+        (r"m20.*UNDEFINED|UNDEFINED.*m20|tumor.specific", "m20_tumor_undefined", "L15"),
         # multi-objective Pareto references -> L15
         (r"Pareto|multi.objective", "pareto_design_gap", "L15"),
         # kinetic / GNN-ODE references -> L14
         (r"kinetic|GNN.ODE|graph neural ODE", "kinetics_design_gap", "L14"),
         # hierarchical / multi-metal coordination -> L13
-        (r"hierarchical|multi.metal coordination", "hierarchical_design_gap",
-         "L13"),
+        (r"hierarchical|multi.metal coordination", "hierarchical_design_gap", "L13"),
         # wet-lab-in-the-loop / Bayesian opt -> L16
-        (r"wet-lab-in-the-loop|Bayesian optimization|in.silico.vs.wet",
-         "bayes_opt_design_gap", "L16"),
+        (
+            r"wet-lab-in-the-loop|Bayesian optimization|in.silico.vs.wet",
+            "bayes_opt_design_gap",
+            "L16",
+        ),
     ],
     "tier1_metric_undefined": [
         # All m18/m19/m20 UNDEFINED cluster -> L15
@@ -346,9 +352,7 @@ def aggregate_signals(
     return results, meta
 
 
-def render_signals_json(
-    results: Dict[str, GapAnalysisResult], meta: dict
-) -> dict:
+def render_signals_json(results: Dict[str, GapAnalysisResult], meta: dict) -> dict:
     """Render the canonical gap_signals.json output."""
     payload: dict = {
         "$schema": "wf72_l13_l16_gap_signals/v1",
@@ -382,26 +386,31 @@ def render_signals_json(
     return payload
 
 
-def render_synthesis_md(
-    results: Dict[str, GapAnalysisResult], meta: dict
-) -> str:
+def render_synthesis_md(results: Dict[str, GapAnalysisResult], meta: dict) -> str:
     """Render a short machine-readable synthesis.md for human review."""
     lines: List[str] = []
     lines.append("# Wf-72 L13-L16 Gap Signals — synthesis\n")
     lines.append(f"Generated UTC: {meta['generated_at_utc']}\n")
     lines.append(f"Files scanned: {meta['n_files_scanned']}\n")
     lines.append(f"Total signals: {meta['n_signals_total']}\n")
-    lines.append(f"Existing grid: L1-L{meta['lambda_grid_existing'][-1]} "
-                 f"({len(meta['lambda_grid_existing'])} rows)\n")
-    lines.append(f"After extension: L1-L{meta['lambda_grid_after_extension'][-1]} "
-                 f"({len(meta['lambda_grid_after_extension'])} rows)\n\n")
+    lines.append(
+        f"Existing grid: L1-L{meta['lambda_grid_existing'][-1]} "
+        f"({len(meta['lambda_grid_existing'])} rows)\n"
+    )
+    lines.append(
+        f"After extension: L1-L{meta['lambda_grid_after_extension'][-1]} "
+        f"({len(meta['lambda_grid_after_extension'])} rows)\n\n"
+    )
 
-    lines.append("| Candidate | Title | Priority | R first close | Signals | Top kinds |\n")
+    lines.append(
+        "| Candidate | Title | Priority | R first close | Signals | Top kinds |\n"
+    )
     lines.append("|---|---|---|---|---:|---|\n")
     for cand, r in results.items():
-        kinds = ", ".join(f"{k}={v}" for k, v in
-                          sorted(r.matched_kinds.items(),
-                                 key=lambda kv: -kv[1])[:3])
+        kinds = ", ".join(
+            f"{k}={v}"
+            for k, v in sorted(r.matched_kinds.items(), key=lambda kv: -kv[1])[:3]
+        )
         lines.append(
             f"| **{cand}** | {r.title} | {r.priority} | {r.r_first_close} | "
             f"{r.signal_count} | {kinds or '(no scan hits - evidence by file)'} |\n"
@@ -446,12 +455,16 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
 
     # Stdout summary (handy for shell piping).
-    print(f"[wf72] scanned {meta['n_files_scanned']} files; "
-          f"{meta['n_signals_total']} signals; "
-          f"{len(results)} candidates.")
+    print(
+        f"[wf72] scanned {meta['n_files_scanned']} files; "
+        f"{meta['n_signals_total']} signals; "
+        f"{len(results)} candidates."
+    )
     for cand, r in results.items():
-        print(f"[wf72] {cand} priority={r.priority} "
-              f"signals={r.signal_count} r_close={r.r_first_close}")
+        print(
+            f"[wf72] {cand} priority={r.priority} "
+            f"signals={r.signal_count} r_close={r.r_first_close}"
+        )
     return 0
 
 

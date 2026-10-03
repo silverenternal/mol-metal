@@ -4,6 +4,7 @@
 Run with the isolated project: uv run --project environments/aizynth python ...
 No package installation or main environment mutation happens in this script.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -26,7 +27,11 @@ def sha256(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--asset-dir", type=Path, default=Path("/mnt/storage/data/molmetal/aizynth_public"))
+    parser.add_argument(
+        "--asset-dir",
+        type=Path,
+        default=Path("/mnt/storage/data/molmetal/aizynth_public"),
+    )
     parser.add_argument("--timeout", type=float, default=30)
     parser.add_argument("--attempts", type=int, default=3)
     args = parser.parse_args()
@@ -42,31 +47,43 @@ def main():
             if not dest.exists():
                 variants = [spec["url"]]
                 if "zenodo.org/record/" in spec["url"]:
-                    variants += [spec["url"].replace("/record/", "/records/"),
-                                 spec["url"].replace("/record/", "/records/") + "?download=1"]
+                    variants += [
+                        spec["url"].replace("/record/", "/records/"),
+                        spec["url"].replace("/record/", "/records/") + "?download=1",
+                    ]
                 for attempt in range(max(1, args.attempts)):
                     url = variants[attempt % len(variants)]
                     try:
-                        with requests.get(url, stream=True, timeout=(10, args.timeout)) as response:
+                        with requests.get(
+                            url, stream=True, timeout=(10, args.timeout)
+                        ) as response:
                             response.raise_for_status()
                             row["resolved_url"] = response.url.split("?")[0]
                             ctype = response.headers.get("Content-Type", "")
                             if "text/html" in ctype or response.status_code != 200:
-                                raise ValueError(f"Unexpected asset response: {response.status_code} {ctype}")
+                                raise ValueError(
+                                    f"Unexpected asset response: {response.status_code} {ctype}"
+                                )
                             expected = int(response.headers.get("Content-Length", "0"))
                             with temp.open("wb") as handle:
                                 for chunk in response.iter_content(1024 * 1024):
                                     handle.write(chunk)
-                            if not temp.stat().st_size or (expected and temp.stat().st_size != expected):
+                            if not temp.stat().st_size or (
+                                expected and temp.stat().st_size != expected
+                            ):
                                 raise ValueError("Asset response size mismatch")
                             temp.replace(dest)
                         row["attempts"].append({"url": url, "status": "downloaded"})
                         break
                     except Exception as exc:
-                        row["attempts"].append({"url": url, "error": f"{type(exc).__name__}: {exc}"})
+                        row["attempts"].append(
+                            {"url": url, "error": f"{type(exc).__name__}: {exc}"}
+                        )
                         if attempt + 1 >= max(1, args.attempts):
                             raise
-            row.update(status="downloaded", size_bytes=dest.stat().st_size, sha256=sha256(dest))
+            row.update(
+                status="downloaded", size_bytes=dest.stat().st_size, sha256=sha256(dest)
+            )
         except Exception as exc:
             row.update(status="unavailable", error=f"{type(exc).__name__}: {exc}")
             temp.unlink(missing_ok=True)
@@ -91,9 +108,12 @@ def main():
         "publisher_checksum_verified": False,
         "checksum_scope": "local SHA256; compatibility is verified separately by real model load/search",
         "status": "assets_downloaded" if ready else "blocked_asset_download",
-        "config_path": str(config_path.resolve()), "assets": rows,
+        "config_path": str(config_path.resolve()),
+        "assets": rows,
     }
-    (args.asset_dir / "asset_manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    (args.asset_dir / "asset_manifest.json").write_text(
+        json.dumps(manifest, indent=2) + "\n"
+    )
     return 0 if ready else 2
 
 

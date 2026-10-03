@@ -53,6 +53,7 @@ Honest framing
   DielsAlder, ThiolEne).  See :mod:`retrosynthesis` for the exact
   reverse-templates and their justification.
 """
+
 from __future__ import annotations
 
 import logging
@@ -117,6 +118,7 @@ def aizynthfinder_available() -> bool:
     """True iff :mod:`aizynthfinder` is importable in the current Python."""
     try:
         import aizynthfinder  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -210,14 +212,23 @@ def score_candidates(
     if mode == "smarts":
         return _score_smarts(smiles_list, column)
     if mode == "aizynthfinder":
-        return _score_aizynthfinder(smiles_list, column, config_path=config_path,
-                                    max_iterations=max_iterations, time_limit_s=time_limit_s)
+        return _score_aizynthfinder(
+            smiles_list,
+            column,
+            config_path=config_path,
+            max_iterations=max_iterations,
+            time_limit_s=time_limit_s,
+        )
     if mode == "aizynthfinder_isolated":
         return _score_aizynthfinder_isolated(
-            smiles_list, column,
-            config_path=config_path, isolated_run_sh=isolated_run_sh,
-            timeout_sec=timeout_sec, max_iterations=max_iterations,
-            time_limit_s=time_limit_s, seed=seed,
+            smiles_list,
+            column,
+            config_path=config_path,
+            isolated_run_sh=isolated_run_sh,
+            timeout_sec=timeout_sec,
+            max_iterations=max_iterations,
+            time_limit_s=time_limit_s,
+            seed=seed,
         )
     column.status = "unavailable"
     column.notes = f"unknown synthesis-oracle mode: {mode!r}"
@@ -227,23 +238,34 @@ def score_candidates(
 # ---------------------------------------------------------------------------
 # SMARTS fallback (always available)
 # ---------------------------------------------------------------------------
-def _score_smarts(smiles_list: List[str], column: AiZynthScoreColumn) -> AiZynthScoreColumn:
+def _score_smarts(
+    smiles_list: List[str], column: AiZynthScoreColumn
+) -> AiZynthScoreColumn:
     from molmetal_lam.sbdd_env.retrosynthesis import retrosynthesize
+
     per_smiles: Dict[str, Dict[str, Any]] = {}
     for smi in smiles_list:
         try:
             ok, depth, engine, leaves = _smarts_one(smi)
         except Exception as exc:  # pragma: no cover - defensive
-            per_smiles[smi] = {"synthesizable": False, "depth": 0,
-                                "engine": "smarts_error",
-                                "route_smiles": [],
-                                "error": f"{type(exc).__name__}: {exc}"}
+            per_smiles[smi] = {
+                "synthesizable": False,
+                "depth": 0,
+                "engine": "smarts_error",
+                "route_smiles": [],
+                "error": f"{type(exc).__name__}: {exc}",
+            }
             continue
-        per_smiles[smi] = {"synthesizable": bool(ok), "depth": int(depth),
-                           "engine": str(engine),
-                           "route_smiles": list(leaves)}
+        per_smiles[smi] = {
+            "synthesizable": bool(ok),
+            "depth": int(depth),
+            "engine": str(engine),
+            "route_smiles": list(leaves),
+        }
     column.per_smiles = per_smiles
-    n_route, n_scored = _finite_bool_rate(row["synthesizable"] for row in per_smiles.values())
+    n_route, n_scored = _finite_bool_rate(
+        row["synthesizable"] for row in per_smiles.values()
+    )
     column.n_scored = n_scored
     column.n_synthesis_route = n_route
     column.synthesis_success_rate = (n_route / n_scored) if n_scored else None
@@ -260,6 +282,7 @@ def _smarts_one(smiles: str) -> tuple[bool, int, str, List[str]]:
     rule as one retrosynthesis step (depth 1).
     """
     from molmetal_lam.sbdd_env.retrosynthesis import retrosynthesize_with_report
+
     ok, rule_names = retrosynthesize_with_report(smiles)
     n_rules = len(rule_names) if rule_names else 0
     return bool(ok), int(n_rules), "smarts_fallback", list(rule_names)
@@ -289,9 +312,12 @@ def _score_aizynthfinder(
         return column
     try:
         from molmetal_lam.sbdd_env.aizynth_adapter import AiZynthAdapter
-        adapter = AiZynthAdapter(config_path=config_path,
-                                 max_iterations=max_iterations,
-                                 time_limit_s=time_limit_s)
+
+        adapter = AiZynthAdapter(
+            config_path=config_path,
+            max_iterations=max_iterations,
+            time_limit_s=time_limit_s,
+        )
         reports = adapter.check_list(smiles_list)
         per_smiles: Dict[str, Dict[str, Any]] = {}
         for smi, report in zip(smiles_list, reports):
@@ -302,7 +328,9 @@ def _score_aizynthfinder(
                 "route_smiles": list(report.route_smiles),
             }
         column.per_smiles = per_smiles
-        n_route, n_scored = _finite_bool_rate(row["synthesizable"] for row in per_smiles.values())
+        n_route, n_scored = _finite_bool_rate(
+            row["synthesizable"] for row in per_smiles.values()
+        )
         column.n_scored = n_scored
         column.n_synthesis_route = n_route
         column.synthesis_success_rate = (n_route / n_scored) if n_scored else None
@@ -340,6 +368,7 @@ def _score_aizynthfinder_isolated(
         return column
     try:
         from molmetal_lam.sbdd_env.aizynth_isolated import IsolatedAiZynthChecker
+
         checker = IsolatedAiZynthChecker(
             config_path=str(config_path),
             max_iterations=max_iterations,
@@ -356,12 +385,16 @@ def _score_aizynthfinder_isolated(
                 "route_smiles": list(report.route_smiles),
             }
         column.per_smiles = per_smiles
-        n_route, n_scored = _finite_bool_rate(row["synthesizable"] for row in per_smiles.values())
+        n_route, n_scored = _finite_bool_rate(
+            row["synthesizable"] for row in per_smiles.values()
+        )
         column.n_scored = n_scored
         column.n_synthesis_route = n_route
         column.synthesis_success_rate = (n_route / n_scored) if n_scored else None
         column.status = "ok" if n_scored else "unavailable"
-        column.notes = f"isolated AiZynthFinder via {isolated_run_sh}; config={config_path}"
+        column.notes = (
+            f"isolated AiZynthFinder via {isolated_run_sh}; config={config_path}"
+        )
     except Exception as exc:  # pragma: no cover - subprocess
         column.status = "error"
         column.notes = f"{type(exc).__name__}: {exc}"

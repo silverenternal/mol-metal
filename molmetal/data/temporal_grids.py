@@ -108,7 +108,9 @@ def temporal_split_at_threshold(
         ``active_col == True``.
     """
     if year_col not in df.columns:
-        raise KeyError(f"year_col={year_col!r} not in dataframe (have {list(df.columns)})")
+        raise KeyError(
+            f"year_col={year_col!r} not in dataframe (have {list(df.columns)})"
+        )
     years = df[year_col].to_numpy()
     # Boolean masks
     pre_mask = years < threshold
@@ -182,7 +184,9 @@ def _compute_stats(
     """Compute :class:`TemporalSplitStats` for the given splits."""
     n_train = int(len(train_df))
     n_test = int(len(test_df))
-    mean_year_train = float(np.mean(train_df["Year"].to_numpy())) if n_train > 0 else 0.0
+    mean_year_train = (
+        float(np.mean(train_df["Year"].to_numpy())) if n_train > 0 else 0.0
+    )
     mean_year_test = float(np.mean(test_df["Year"].to_numpy())) if n_test > 0 else 0.0
     if active_col in train_df.columns and n_train > 0:
         hit_rate_train = float(train_df[active_col].astype(bool).mean())
@@ -213,9 +217,7 @@ def resolve_grid(
     Raises :class:`KeyError` for unknown names or the special ``'rolling_...'`` value.
     """
     if name not in TEMPORAL_GRIDS:
-        raise KeyError(
-            f"Unknown grid {name!r}.  Known grids: {sorted(TEMPORAL_GRIDS)}"
-        )
+        raise KeyError(f"Unknown grid {name!r}.  Known grids: {sorted(TEMPORAL_GRIDS)}")
     val = TEMPORAL_GRIDS[name]
     if val == "rolling":
         raise ValueError(

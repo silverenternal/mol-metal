@@ -312,6 +312,7 @@ def synthesizability_via_lambda_paths(
             from molmetal_lam.lam_chem.well_formedness import (
                 check_beta_normal_form_for_rdkit_term as _check_valence_bnf_term,
             )
+
             # Term-level valence-based BNF — uses RDKit's
             # ``valence_used`` (implicit-H-inclusive) plus bond-ledger
             # used_sites as a cross-check.  This is the chemistry-

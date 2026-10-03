@@ -30,7 +30,9 @@ SCRIPT_PATH = PROJECT_ROOT / "molmetal" / "scripts" / "cfm_property_panel.py"
 
 def _load_module():
     """Load cfm_property_panel.py as a module."""
-    spec = importlib.util.spec_from_file_location("cfm_property_panel", str(SCRIPT_PATH))
+    spec = importlib.util.spec_from_file_location(
+        "cfm_property_panel", str(SCRIPT_PATH)
+    )
     assert spec and spec.loader, "cfm_property_panel.py must exist and be importable"
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -143,9 +145,12 @@ def test_cli_end_to_end(tmp_path):
 
     result = subprocess.run(
         [
-            sys.executable, str(SCRIPT_PATH),
-            "--smiles-csv", str(csv_path),
-            "--out-json", str(out_path),
+            sys.executable,
+            str(SCRIPT_PATH),
+            "--smiles-csv",
+            str(csv_path),
+            "--out-json",
+            str(out_path),
         ],
         capture_output=True,
         text=True,
@@ -166,9 +171,7 @@ def test_cli_end_to_end(tmp_path):
     assert "sa" in panel["aggregate"]
     assert "qed" in panel["aggregate"]
     # Cross-check with in-process build_panel (independent code path).
-    panel_ref = mod.build_panel(
-        ["CCO", "CC(=O)Oc1ccccc1C(=O)O", "c1ccccc1"]
-    )
+    panel_ref = mod.build_panel(["CCO", "CC(=O)Oc1ccccc1C(=O)O", "c1ccccc1"])
     sa_ref = [m["sa"] for m in panel_ref["per_molecule"]]
     sa_out = [m["sa"] for m in panel["per_molecule"]]
     for a, b in zip(sa_ref, sa_out):

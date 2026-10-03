@@ -52,10 +52,8 @@ def test_f1_v3_driver_accepts_use_click_aug():
     execution to avoid sys.exit() at import time on this driver.
     """
     import ast
-    src = (
-        PROJECT_ROOT
-        / "molmetal/scripts/train_chemprop_v2_v3.py"
-    ).read_text()
+
+    src = (PROJECT_ROOT / "molmetal/scripts/train_chemprop_v2_v3.py").read_text()
     tree = ast.parse(src)
     # Find argparse calls inside main() with --use-click-aug flag.
     found_flag = False
@@ -63,15 +61,9 @@ def test_f1_v3_driver_accepts_use_click_aug():
         if not isinstance(node, ast.Call):
             continue
         # p.add_argument("--use-click-aug", ...) — keyword args.
-        if (
-            isinstance(node.func, ast.Attribute)
-            and node.func.attr == "add_argument"
-        ):
+        if isinstance(node.func, ast.Attribute) and node.func.attr == "add_argument":
             for arg in node.args:
-                if (
-                    isinstance(arg, ast.Constant)
-                    and arg.value == "--use-click-aug"
-                ):
+                if isinstance(arg, ast.Constant) and arg.value == "--use-click-aug":
                     found_flag = True
                     break
     assert found_flag, (
@@ -119,11 +111,11 @@ def test_f2_m6_kappa_returns_value_in_unit_range():
         pytest.skip(f"metrics_v2 import failed: {exc}")
     # Standard platinum reference drugs (RDKit-parseable SMILES).
     smis = [
-        "Cl[Pt](Cl)(N)N",            # cisplatin
+        "Cl[Pt](Cl)(N)N",  # cisplatin
         "O=C1O[Pt]2(OC1=O)N1CC2CCC1",  # carboplatin (schematic)
         "O=C1O[Pt]2(OC1=O)N1CC2CC1",  # oxaliplatin (schematic)
-        "c1ccccc1",                   # benzene
-        "CC(=O)O",                    # acetic acid
+        "c1ccccc1",  # benzene
+        "CC(=O)O",  # acetic acid
     ]
     for s in smis:
         v = m6_kappa_from_smiles(s)
@@ -152,9 +144,7 @@ def test_f3_m11_emit_emits_flat_schema():
     """F3 — m11_emit emits metrics/by_metric/per_metal_pic50_wasserstein.json
     with the standard FLAT schema (metric / per_metal / status fields).
     """
-    metrics_path = (
-        PROJECT_ROOT / "metrics/by_metric/per_metal_pic50_wasserstein.json"
-    )
+    metrics_path = PROJECT_ROOT / "metrics/by_metric/per_metal_pic50_wasserstein.json"
     if not metrics_path.exists():
         pytest.skip(f"missing {metrics_path} — m11_emit not yet run")
     with open(metrics_path) as f:
@@ -205,9 +195,7 @@ def test_f5_drugood_v3_scaffold_emits_flat_schema():
     with per_metal + status + honest_framing_note (regardless of whether
     DrugOOD data was on disk).
     """
-    metrics_path = (
-        PROJECT_ROOT / "metrics/by_metric/drugood_v3_scaffold.json"
-    )
+    metrics_path = PROJECT_ROOT / "metrics/by_metric/drugood_v3_scaffold.json"
     if not metrics_path.exists():
         pytest.skip(f"missing {metrics_path} — drugood_reeval not yet run")
     with open(metrics_path) as f:

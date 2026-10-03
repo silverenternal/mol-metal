@@ -17,7 +17,11 @@ import torch
 
 from molmetal.models.dmpnn import DirectedMPNN, MPNNConfig
 from molmetal.models.loss import MetalCytotoxLoss
-from molmetal.models.metal_hybrid import MetalHybridConfig, MetalHybridModel, Pic50RegressionOutput
+from molmetal.models.metal_hybrid import (
+    MetalHybridConfig,
+    MetalHybridModel,
+    Pic50RegressionOutput,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -90,19 +94,22 @@ def test_hybrid_forward_shape():
     with torch.no_grad():
         out = model(smiles_list, coords, metal_types)
 
-    assert isinstance(out, Pic50RegressionOutput), (
-        f"Expected Pic50RegressionOutput, got {type(out)}"
-    )
-    assert out.pic50.shape == (B,), (
-        f"pic50 shape: expected ({B},), got {tuple(out.pic50.shape)}"
-    )
-    assert out.active_logits.shape == (B, 2), (
-        f"active_logits shape: expected ({B}, 2), got {tuple(out.active_logits.shape)}"
-    )
+    assert isinstance(
+        out, Pic50RegressionOutput
+    ), f"Expected Pic50RegressionOutput, got {type(out)}"
+    assert out.pic50.shape == (
+        B,
+    ), f"pic50 shape: expected ({B},), got {tuple(out.pic50.shape)}"
+    assert out.active_logits.shape == (
+        B,
+        2,
+    ), f"active_logits shape: expected ({B}, 2), got {tuple(out.active_logits.shape)}"
     assert torch.isfinite(out.pic50).all(), "pic50 contains NaN/Inf"
     assert torch.isfinite(out.active_logits).all(), "active_logits contains NaN/Inf"
-    print(f"test_hybrid_forward_shape PASSED  (B={B}, pic50={tuple(out.pic50.shape)}, "
-          f"active_logits={tuple(out.active_logits.shape)})")
+    print(
+        f"test_hybrid_forward_shape PASSED  (B={B}, pic50={tuple(out.pic50.shape)}, "
+        f"active_logits={tuple(out.active_logits.shape)})"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -117,13 +124,22 @@ def test_hybrid_loss_finite():
     loss_fn = MetalCytotoxLoss(alpha=0.5)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
-    smiles_list = ["CCO", "CC(=O)O", "c1ccccc1", "CC(C)C", "CCN", "CCCC", "CCOCC", "CCOC"]
+    smiles_list = [
+        "CCO",
+        "CC(=O)O",
+        "c1ccccc1",
+        "CC(C)C",
+        "CCN",
+        "CCCC",
+        "CCOCC",
+        "CCOC",
+    ]
     B = len(smiles_list)
     _, coords, metal_types = _make_batch(smiles_list, n_max=20)
     device = next(model.parameters()).device
     coords = coords.to(device)
     metal_types = metal_types.to(device)
-    pic50_true = (torch.rand(B).to(device) * 5 + 4)  # pIC50 in [4, 9]
+    pic50_true = torch.rand(B).to(device) * 5 + 4  # pIC50 in [4, 9]
     active_label = (pic50_true > 6.0).long()
 
     losses = []
@@ -131,21 +147,23 @@ def test_hybrid_loss_finite():
     for step in range(5):
         optimizer.zero_grad()
         out = model(smiles_list, coords, metal_types)
-        loss = loss_fn(out.pic50, pic50_true, active_label, active_logits=out.active_logits)
+        loss = loss_fn(
+            out.pic50, pic50_true, active_label, active_logits=out.active_logits
+        )
         assert torch.isfinite(loss), f"step {step}: loss not finite ({loss.item()})"
         loss.backward()
         # Verify at least one gradient is finite (others may be unused)
         grads = [p.grad for p in model.parameters() if p.grad is not None]
-        assert any(torch.isfinite(g).all() for g in grads), (
-            f"step {step}: all grads are NaN/Inf"
-        )
+        assert any(
+            torch.isfinite(g).all() for g in grads
+        ), f"step {step}: all grads are NaN/Inf"
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
         losses.append(loss.item())
 
-    assert all(np.isfinite(l) for l in losses), (
-        f"Loss contains non-finite values: {losses}"
-    )
+    assert all(
+        np.isfinite(l) for l in losses
+    ), f"Loss contains non-finite values: {losses}"
     print(f"test_hybrid_loss_finite PASSED  (losses: {[f'{l:.4f}' for l in losses]})")
 
 
@@ -167,7 +185,16 @@ def test_hybrid_beats_dmpnn_on_dummy():
     set_seed(0)
     n_train = 64
     n_test = 32
-    smiles_pool = ["CCO", "CC(=O)O", "c1ccccc1", "CC(C)C", "CCN", "CCCC", "CCOCC", "CCOC"]
+    smiles_pool = [
+        "CCO",
+        "CC(=O)O",
+        "c1ccccc1",
+        "CC(C)C",
+        "CCN",
+        "CCCC",
+        "CCOCC",
+        "CCOC",
+    ]
     train_smiles = [smiles_pool[i % len(smiles_pool)] for i in range(n_train)]
     test_smiles = [smiles_pool[i % len(smiles_pool)] for i in range(n_test)]
 
@@ -212,9 +239,7 @@ def test_hybrid_beats_dmpnn_on_dummy():
             return y, coords
         # Resample coords with mixed scale to ensure variance
         for attempt in range(20):
-            new_coords = torch.cat(
-                [coords, torch.randn_like(coords) * 3.5], dim=0
-            )
+            new_coords = torch.cat([coords, torch.randn_like(coords) * 3.5], dim=0)
             new_y = label_from_coords(new_coords)
             n_pos = int((new_y == 1).sum().item())
             n_neg = int((new_y == 0).sum().item())
@@ -231,15 +256,19 @@ def test_hybrid_beats_dmpnn_on_dummy():
     # ---- D-MPNN baseline (2D-only) ----
     dmpnn = DirectedMPNN(MPNNConfig(hidden_dim=64, n_layers=2))
     head_dmpnn = torch.nn.Linear(64, 1)
-    opt_d = torch.optim.Adam(list(dmpnn.parameters()) + list(head_dmpnn.parameters()), lr=1e-3)
+    opt_d = torch.optim.Adam(
+        list(dmpnn.parameters()) + list(head_dmpnn.parameters()), lr=1e-3
+    )
     loss_fn_d = torch.nn.BCEWithLogitsLoss()
 
     # We need a batched wrapper. Use the model's per-molecule forward via a small wrapper.
     from molmetal.data.featurize import GraphFeaturizer
+
     feat = GraphFeaturizer()
 
     def featurize_one(smi):
         from rdkit import Chem
+
         m = Chem.MolFromSmiles(smi)
         if m is None:
             return None
@@ -270,7 +299,9 @@ def test_hybrid_beats_dmpnn_on_dummy():
             batch_loss = torch.stack(losses).mean()
             opt_d.zero_grad()
             batch_loss.backward()
-            torch.nn.utils.clip_grad_norm_(list(dmpnn.parameters()) + list(head_dmpnn.parameters()), 1.0)
+            torch.nn.utils.clip_grad_norm_(
+                list(dmpnn.parameters()) + list(head_dmpnn.parameters()), 1.0
+            )
             opt_d.step()
             total += batch_loss.item()
             n_batches += 1
@@ -323,7 +354,9 @@ def test_hybrid_beats_dmpnn_on_dummy():
             active_label = train_y[idx]
             opt_h.zero_grad()
             out = hybrid(smis, coords, metal_types)
-            loss = loss_fn_h(out.pic50, pic50_true, active_label, active_logits=out.active_logits)
+            loss = loss_fn_h(
+                out.pic50, pic50_true, active_label, active_logits=out.active_logits
+            )
             loss.backward()
             torch.nn.utils.clip_grad_norm_(hybrid.parameters(), 1.0)
             opt_h.step()
@@ -351,9 +384,9 @@ def test_hybrid_beats_dmpnn_on_dummy():
         f"D-MPNN AUC={dmpnn_auc:.3f} (margin={margin})"
     )
     # And in absolute terms, the hybrid must beat random (0.5).
-    assert hybrid_auc > 0.5, (
-        f"hybrid AUC {hybrid_auc:.3f} is at or below random chance (0.5)"
-    )
+    assert (
+        hybrid_auc > 0.5
+    ), f"hybrid AUC {hybrid_auc:.3f} is at or below random chance (0.5)"
     print(
         f"test_hybrid_beats_dmpnn_on_dummy PASSED  "
         f"(D-MPNN AUC={dmpnn_auc:.3f}, Hybrid AUC={hybrid_auc:.3f})"

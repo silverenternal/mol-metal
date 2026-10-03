@@ -88,7 +88,10 @@ def _aggregate_per_pocket(panel: Dict) -> Dict[str, Dict[str, float]]:
         per_pocket = mol.get("per_pocket", {})
         any_docked = False
         for pocket_id, dock in per_pocket.items():
-            if dock.get("status") == "REAL_VINA" and dock.get("best_kcal_mol") is not None:
+            if (
+                dock.get("status") == "REAL_VINA"
+                and dock.get("best_kcal_mol") is not None
+            ):
                 kcal = float(dock["best_kcal_mol"])
                 per_pocket_vals[pocket_id].append(kcal)
                 cur_best = per_pocket_best.get(pocket_id)
@@ -102,9 +105,11 @@ def _aggregate_per_pocket(panel: Dict) -> Dict[str, Dict[str, float]]:
     for pocket_id, vals in per_pocket_vals.items():
         n = len(vals)
         mean_kcal = float(sum(vals) / n) if n else float("nan")
-        std_kcal = float(
-            (sum((v - mean_kcal) ** 2 for v in vals) / max(n - 1, 1)) ** 0.5
-        ) if n > 1 else 0.0
+        std_kcal = (
+            float((sum((v - mean_kcal) ** 2 for v in vals) / max(n - 1, 1)) ** 0.5)
+            if n > 1
+            else 0.0
+        )
         summary[pocket_id] = {
             "n_docked": n,
             "mean_kcal_mol": mean_kcal,
@@ -122,8 +127,12 @@ def _aggregate_per_pocket(panel: Dict) -> Dict[str, Dict[str, float]]:
     }
 
 
-def _verdict(per_pocket: Dict[str, Dict[str, float]],
-             grand_mean: float, n_docked: int, n_total: int) -> str:
+def _verdict(
+    per_pocket: Dict[str, Dict[str, float]],
+    grand_mean: float,
+    n_docked: int,
+    n_total: int,
+) -> str:
     """Per Wf-301B honest-negative verdict convention."""
     n_in_band = 0
     for s in per_pocket.values():
@@ -131,8 +140,10 @@ def _verdict(per_pocket: Dict[str, Dict[str, float]],
         if FIELD_AVG_TARGET_LO <= m <= FIELD_AVG_TARGET_HI:
             n_in_band += 1
 
-    in_field_avg_band = grand_mean >= FIELD_AVG_TARGET_LO and grand_mean <= FIELD_AVG_TARGET_HI
-    docks_all = (n_docked == n_total and n_total > 0)
+    in_field_avg_band = (
+        grand_mean >= FIELD_AVG_TARGET_LO and grand_mean <= FIELD_AVG_TARGET_HI
+    )
+    docks_all = n_docked == n_total and n_total > 0
 
     if in_field_avg_band and docks_all:
         return (
@@ -157,11 +168,17 @@ def _verdict(per_pocket: Dict[str, Dict[str, float]],
     )
 
 
-def _format_claim_cards(per_pocket: Dict[str, Dict[str, float]],
-                        grand_mean: float, grand_std: float,
-                        n_docked: int, n_total: int,
-                        n_pdbqt_ok: int, n_parse_ok: int,
-                        wall_min: float, verdict: str) -> str:
+def _format_claim_cards(
+    per_pocket: Dict[str, Dict[str, float]],
+    grand_mean: float,
+    grand_std: float,
+    n_docked: int,
+    n_total: int,
+    n_pdbqt_ok: int,
+    n_parse_ok: int,
+    wall_min: float,
+    verdict: str,
+) -> str:
     lines = [
         f"# Wf-310D Vina pt-strip full aggregation -- claim cards",
         "",
@@ -183,46 +200,49 @@ def _format_claim_cards(per_pocket: Dict[str, Dict[str, float]],
             f"| {pocket} | {s['n_docked']} | {m:.3f} | "
             f"{s['std_kcal_mol']:.3f} | {s['best_kcal_mol']:.3f} | {in_band} |"
         )
-    lines.extend([
-        "",
-        "## Card 2 -- pass-gate verdict (MEASURED)",
-        "",
-        f"- Field-avg band: [{FIELD_AVG_TARGET_LO}, {FIELD_AVG_TARGET_HI}] kcal/mol",
-        f"- Wf-301B smoke (CPU, 5 mols on 1h36): {WF301B_SMOKE_MEAN_KCAL:.2f} kcal/mol",
-        f"- Full grand mean: {grand_mean:.3f} kcal/mol",
-        f"- n_docked: {n_docked}/{n_total}",
-        "",
-        "## Card 3 -- honest-negative flags (per Wf-301B honest-negative)",
-        "",
-        "- Wf-301B smoke mean (-4.60) is ABOVE field-avg band (-7.5 to -9.5);",
-        "  recovery axis is *being able to dock at all* (pt-strip enables",
-        "  docking; absolute binding affinity is a follow-up).",
-        "- Top-1 kcal/mol may exceed -9.5 even when grand mean is in band",
-        "  (per Wf-301B honest-negative: -10.299 vs -9.5).",
-        "- Full 4-pocket panel provides per-pocket spread; use min/max to",
-        "  bracket the pocket-cohort variance.",
-        "",
-        "## Card 4 -- wall + GPU cost",
-        "",
-        f"- Wall: {wall_min:.1f} min ({wall_min/60:.2f} hr) -- MEASURED.",
-        "- GPU: CPU-only (Vina binary is single-threaded; cuda:1 unused).",
-        "- ~1-2 hr PROJECTED per Wf-306A Phase-B budget.",
-        "",
-        "## Card 5 -- verdict",
-        "",
-        verdict,
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            "## Card 2 -- pass-gate verdict (MEASURED)",
+            "",
+            f"- Field-avg band: [{FIELD_AVG_TARGET_LO}, {FIELD_AVG_TARGET_HI}] kcal/mol",
+            f"- Wf-301B smoke (CPU, 5 mols on 1h36): {WF301B_SMOKE_MEAN_KCAL:.2f} kcal/mol",
+            f"- Full grand mean: {grand_mean:.3f} kcal/mol",
+            f"- n_docked: {n_docked}/{n_total}",
+            "",
+            "## Card 3 -- honest-negative flags (per Wf-301B honest-negative)",
+            "",
+            "- Wf-301B smoke mean (-4.60) is ABOVE field-avg band (-7.5 to -9.5);",
+            "  recovery axis is *being able to dock at all* (pt-strip enables",
+            "  docking; absolute binding affinity is a follow-up).",
+            "- Top-1 kcal/mol may exceed -9.5 even when grand mean is in band",
+            "  (per Wf-301B honest-negative: -10.299 vs -9.5).",
+            "- Full 4-pocket panel provides per-pocket spread; use min/max to",
+            "  bracket the pocket-cohort variance.",
+            "",
+            "## Card 4 -- wall + GPU cost",
+            "",
+            f"- Wall: {wall_min:.1f} min ({wall_min/60:.2f} hr) -- MEASURED.",
+            "- GPU: CPU-only (Vina binary is single-threaded; cuda:1 unused).",
+            "- ~1-2 hr PROJECTED per Wf-306A Phase-B budget.",
+            "",
+            "## Card 5 -- verdict",
+            "",
+            verdict,
+            "",
+        ]
+    )
     return "\n".join(lines)
 
 
 def main(argv: Optional[List[str]] = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    p.add_argument("--panel",
-                   default="molmetal/reports/wf306a_drugood_vina_launch/phase_b/panel.json",
-                   help="Wf-301B full panel.json (or smoke vina.json).")
-    p.add_argument("--out-dir",
-                   default="molmetal/reports/wf310d_vina_full")
+    p.add_argument(
+        "--panel",
+        default="molmetal/reports/wf306a_drugood_vina_launch/phase_b/panel.json",
+        help="Wf-301B full panel.json (or smoke vina.json).",
+    )
+    p.add_argument("--out-dir", default="molmetal/reports/wf310d_vina_full")
     args = p.parse_args(argv)
 
     panel_path = Path(args.panel)
@@ -245,13 +265,21 @@ def main(argv: Optional[List[str]] = None) -> int:
     all_vals: List[float] = []
     for mol in panel.get("per_molecule", []):
         for pocket_id, dock in mol.get("per_pocket", {}).items():
-            if dock.get("status") == "REAL_VINA" and dock.get("best_kcal_mol") is not None:
+            if (
+                dock.get("status") == "REAL_VINA"
+                and dock.get("best_kcal_mol") is not None
+            ):
                 all_vals.append(float(dock["best_kcal_mol"]))
 
     grand_mean = float(sum(all_vals) / len(all_vals)) if all_vals else float("nan")
-    grand_std = float(
-        (sum((v - grand_mean) ** 2 for v in all_vals) / max(len(all_vals) - 1, 1)) ** 0.5
-    ) if len(all_vals) > 1 else 0.0
+    grand_std = (
+        float(
+            (sum((v - grand_mean) ** 2 for v in all_vals) / max(len(all_vals) - 1, 1))
+            ** 0.5
+        )
+        if len(all_vals) > 1
+        else 0.0
+    )
 
     wall_min = (time.time() - t0) / 60.0
 
@@ -287,15 +315,25 @@ def main(argv: Optional[List[str]] = None) -> int:
     _log(f"wrote {out_agg}")
 
     out_cards = out_dir / "claim_cards.md"
-    out_cards.write_text(_format_claim_cards(
-        per_pocket, grand_mean, grand_std,
-        n_docked, n_total, n_pdbqt_ok, n_parse_ok,
-        wall_min, verdict,
-    ))
+    out_cards.write_text(
+        _format_claim_cards(
+            per_pocket,
+            grand_mean,
+            grand_std,
+            n_docked,
+            n_total,
+            n_pdbqt_ok,
+            n_parse_ok,
+            wall_min,
+            verdict,
+        )
+    )
     _log(f"wrote {out_cards}")
 
-    _log(f"n_docked={n_docked}/{n_total}  grand_mean={grand_mean:.3f}  "
-         f"verdict={verdict}")
+    _log(
+        f"n_docked={n_docked}/{n_total}  grand_mean={grand_mean:.3f}  "
+        f"verdict={verdict}"
+    )
     return 0
 
 

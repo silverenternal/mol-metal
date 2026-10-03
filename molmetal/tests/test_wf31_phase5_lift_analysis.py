@@ -8,6 +8,7 @@ These tests verify that:
 5. No fabricated MEASURED headline values exist (m1 + m2 = null; m7 = real value with comparability caveat)
 6. The R20 plan items are referenced (P2 + P3 + P8 NEW)
 """
+
 from __future__ import annotations
 
 import json
@@ -16,8 +17,12 @@ from pathlib import Path
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-LIFT_ANALYSIS_JSON = PROJECT_ROOT / "molmetal" / "reports" / "wf31_m1_m2_m7_lift_analysis.json"
-LIFT_SUMMARY_MD = PROJECT_ROOT / "molmetal" / "reports" / "wf31_m1_m2_m7_lift_summary.md"
+LIFT_ANALYSIS_JSON = (
+    PROJECT_ROOT / "molmetal" / "reports" / "wf31_m1_m2_m7_lift_analysis.json"
+)
+LIFT_SUMMARY_MD = (
+    PROJECT_ROOT / "molmetal" / "reports" / "wf31_m1_m2_m7_lift_summary.md"
+)
 METRICS_RU = PROJECT_ROOT / "metrics" / "by_metric" / "metalcytotox_ru_auc.json"
 METRICS_NCI60 = PROJECT_ROOT / "metrics" / "by_metric" / "nci60_precious_9cell_auc.json"
 METRICS_DIVERSITY = PROJECT_ROOT / "metrics" / "by_metric" / "diversity_tanimoto.json"
@@ -34,9 +39,9 @@ def _load_text(path: Path) -> str:
 
 class TestLiftAnalysisJsonExists:
     def test_lift_analysis_json_exists(self):
-        assert LIFT_ANALYSIS_JSON.exists(), (
-            f"Wf-31 Phase 5 lift analysis JSON not found at {LIFT_ANALYSIS_JSON}"
-        )
+        assert (
+            LIFT_ANALYSIS_JSON.exists()
+        ), f"Wf-31 Phase 5 lift analysis JSON not found at {LIFT_ANALYSIS_JSON}"
 
     def test_lift_analysis_json_is_valid_json(self):
         data = _load_json(LIFT_ANALYSIS_JSON)
@@ -87,15 +92,19 @@ class TestLiftSummaryMdExists:
 
     def test_lift_summary_md_honest_negative_provenance(self):
         text = _load_text(LIFT_SUMMARY_MD)
-        assert "honest-negative" in text.lower() or "HONEST-NEGATIVE" in text or "HONEST-NO-MEASURED" in text
+        assert (
+            "honest-negative" in text.lower()
+            or "HONEST-NEGATIVE" in text
+            or "HONEST-NO-MEASURED" in text
+        )
 
 
 class TestM1Metric:
     def test_ru_metrics_has_wf31_entry(self):
         data = _load_json(METRICS_RU)
-        assert "wf31_phase5_lift_update" in data, (
-            "metrics/by_metric/metalcytotox_ru_auc.json must have wf31_phase5_lift_update"
-        )
+        assert (
+            "wf31_phase5_lift_update" in data
+        ), "metrics/by_metric/metalcytotox_ru_auc.json must have wf31_phase5_lift_update"
 
     def test_ru_r17_baseline_preserved(self):
         data = _load_json(METRICS_RU)
@@ -135,7 +144,10 @@ class TestM2Metric:
     def test_nci60_A2780cis_per_cell_preserved(self):
         data = _load_json(METRICS_NCI60)
         # R17 broader A2780cis per-cell AUC = 0.7278 (different cohort from m2 R17 baseline 0.6476)
-        assert abs(data["per_cell_line"]["A2780cis"]["auc_mean"] - 0.7277591973244147) < 1e-6
+        assert (
+            abs(data["per_cell_line"]["A2780cis"]["auc_mean"] - 0.7277591973244147)
+            < 1e-6
+        )
 
     def test_nci60_wf31_no_measured_value(self):
         data = _load_json(METRICS_NCI60)

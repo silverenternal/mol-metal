@@ -30,6 +30,7 @@ modules so the chain is exercised fresh (mirrors :mod:`test_cfm_infrastructure`)
 
 All 4 tests are CPU-only and run in <2 s.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -144,9 +145,9 @@ def test_chain_repo_relative_path_from_foreign_cwd(foreign_cwd):
     # local shim — both are valid; the point is the chain succeeded).
     AffineProbPath = classes[0]
     path_inst = AffineProbPath()
-    assert hasattr(path_inst, "sample"), (
-        "AffineProbPath lacks .sample() — chain returned a stub class"
-    )
+    assert hasattr(
+        path_inst, "sample"
+    ), "AffineProbPath lacks .sample() — chain returned a stub class"
 
 
 # ---------------------------------------------------------------------------

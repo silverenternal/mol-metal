@@ -3,6 +3,7 @@
 
 Appends AGENTS.md section 6 row + updates TODO/README.md trailer per section 5.5 + section 5.6.
 """
+
 from pathlib import Path
 from molmetal.scripts.wf386a3_atomic_write import atomic_write_file
 

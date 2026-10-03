@@ -76,9 +76,11 @@ def test_so3_obj_matches_kabsch_for_simple_cases():
     # is exactly zero — easiest possible case.
     v_pred = target.clone()
     identity_rotation = torch.eye(3).unsqueeze(0)  # (1, 3, 3)
+
     # SO(3)-averaged loss with K=1 + identity rotation should give zero.
     def velocity_fn(x):
         return v_pred
+
     loss_so3 = so3_averaged_fm_loss(
         velocity_fn=velocity_fn,
         x_t=x_t,
@@ -132,11 +134,13 @@ def test_so3_obj_numerical_stability():
     # Tiny coordinates (1e-6 Å scale — extreme shrink).
     b, n = 2, 3
     x_t = (torch.randn(b, n, 3) * 1e-6).requires_grad_(True)
-    target = (torch.randn(b, n, 3) * 1e-6)
+    target = torch.randn(b, n, 3) * 1e-6
+
     # Velocity fn that returns a fixed linear combination — keeps the
     # gradient non-trivial.
     def velocity_fn(x):
         return x * 2.0 + 1e-6
+
     loss = so3_averaged_fm_loss(
         velocity_fn=velocity_fn,
         x_t=x_t,
@@ -150,14 +154,12 @@ def test_so3_obj_numerical_stability():
     # Backward + gradient sanity.
     loss.backward()
     assert x_t.grad is not None, "x_t did not receive a gradient"
-    assert torch.isfinite(x_t.grad).all(), (
-        f"Gradient w.r.t. x_t has NaN/Inf: max abs = {x_t.grad.abs().max()}"
-    )
+    assert torch.isfinite(
+        x_t.grad
+    ).all(), f"Gradient w.r.t. x_t has NaN/Inf: max abs = {x_t.grad.abs().max()}"
     # The gradient norm should be small but non-zero (we ARE training).
     gnorm = x_t.grad.norm().item()
-    assert gnorm > 0.0 and math.isfinite(gnorm), (
-        f"Gradient norm is suspicious: {gnorm}"
-    )
+    assert gnorm > 0.0 and math.isfinite(gnorm), f"Gradient norm is suspicious: {gnorm}"
 
 
 # ---------------------------------------------------------------------------
@@ -311,22 +313,30 @@ def test_so3_obj_integration_with_apo_pocket_refiner():
     x_test = torch.randn(1, 3, 3)
     t_test = torch.tensor([0.5])
     edge_index_test = LipmanFlowMatchingAdapter._make_dummy_edge_index(
-        1, 3, torch.device("cpu"),
+        1,
+        3,
+        torch.device("cpu"),
     )
     out = adapter.velocity_field(
-        x_test, torch.zeros(1, 3, dtype=torch.long),
-        edge_index_test, t_test,
+        x_test,
+        torch.zeros(1, 3, dtype=torch.long),
+        edge_index_test,
+        t_test,
     )
     v_pred_test = out["vel"]
     # Manual SO(3)-averaged loss + backward.
     from molmetal.adapters.flow_matching_lipman.so3_averaged_fm import (
         so3_averaged_fm_loss as _so3_loss_fn,
     )
+
     def velocity_fn(x):
         return adapter.velocity_field.forward_velocity(
-            x, torch.zeros(1, 3, dtype=torch.long),
-            edge_index_test, t_test,
+            x,
+            torch.zeros(1, 3, dtype=torch.long),
+            edge_index_test,
+            t_test,
         )
+
     target_test = torch.randn(1, 3, 3)
     # Use a fresh tensor with requires_grad=True so we can verify
     # the gradient flows back to the *input* (not a detached copy).

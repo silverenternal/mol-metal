@@ -107,22 +107,47 @@ def default_off_combo() -> FlagCombo:
 def single_flag_combos() -> List[FlagCombo]:
     """Each of the 8 NEW flags activated in isolation."""
     return [
-        FlagCombo(name="single_flag_top_p_0.9", top_p=0.9,
-                  notes="Wf-380 SCAFFOLD banner default for --top-p"),
-        FlagCombo(name="single_flag_top_k_50", top_k=50,
-                  notes="Wf-380 SCAFFOLD banner default for --top-k"),
-        FlagCombo(name="single_flag_temperature_0.7", temperature=0.7,
-                  notes="moderate temperature rescale"),
-        FlagCombo(name="single_flag_mmd_weight_0.1", mmd_weight=0.1,
-                  notes="Wf-380 SCAFFOLD banner default for --mmd-weight"),
-        FlagCombo(name="single_flag_repulsion_weight_0.05", repulsion_weight=0.05,
-                  notes="Wf-380 SCAFFOLD banner default for --repulsion-weight"),
-        FlagCombo(name="single_flag_scaffold_conditioning", scaffold_conditioning=True,
-                  notes="Wf-388-A2 NEW flag, default False"),
-        FlagCombo(name="single_flag_sa_penalty_0.1", sa_penalty=0.1,
-                  notes="moderate SA penalty weight"),
-        FlagCombo(name="single_flag_sa_target_2.5", sa_penalty=0.1, sa_target=2.5,
-                  notes="SA target threshold shifted"),
+        FlagCombo(
+            name="single_flag_top_p_0.9",
+            top_p=0.9,
+            notes="Wf-380 SCAFFOLD banner default for --top-p",
+        ),
+        FlagCombo(
+            name="single_flag_top_k_50",
+            top_k=50,
+            notes="Wf-380 SCAFFOLD banner default for --top-k",
+        ),
+        FlagCombo(
+            name="single_flag_temperature_0.7",
+            temperature=0.7,
+            notes="moderate temperature rescale",
+        ),
+        FlagCombo(
+            name="single_flag_mmd_weight_0.1",
+            mmd_weight=0.1,
+            notes="Wf-380 SCAFFOLD banner default for --mmd-weight",
+        ),
+        FlagCombo(
+            name="single_flag_repulsion_weight_0.05",
+            repulsion_weight=0.05,
+            notes="Wf-380 SCAFFOLD banner default for --repulsion-weight",
+        ),
+        FlagCombo(
+            name="single_flag_scaffold_conditioning",
+            scaffold_conditioning=True,
+            notes="Wf-388-A2 NEW flag, default False",
+        ),
+        FlagCombo(
+            name="single_flag_sa_penalty_0.1",
+            sa_penalty=0.1,
+            notes="moderate SA penalty weight",
+        ),
+        FlagCombo(
+            name="single_flag_sa_target_2.5",
+            sa_penalty=0.1,
+            sa_target=2.5,
+            notes="SA target threshold shifted",
+        ),
     ]
 
 
@@ -135,21 +160,34 @@ def combination_combos() -> List[FlagCombo]:
     return [
         FlagCombo(
             name="combination_wf380_scaffold_banner",
-            top_p=0.9, top_k=50, mmd_weight=0.1, repulsion_weight=0.05,
+            top_p=0.9,
+            top_k=50,
+            mmd_weight=0.1,
+            repulsion_weight=0.05,
             notes="Wf-380 SCAFFOLD banner combination (suspected regression source)",
         ),
         FlagCombo(
             name="combination_default_off_explicit",
-            top_p=1.0, top_k=0, temperature=1.0, mmd_weight=0.0,
-            repulsion_weight=0.0, scaffold_conditioning=False,
-            sa_penalty=0.0, sa_target=2.8,
+            top_p=1.0,
+            top_k=0,
+            temperature=1.0,
+            mmd_weight=0.0,
+            repulsion_weight=0.0,
+            scaffold_conditioning=False,
+            sa_penalty=0.0,
+            sa_target=2.8,
             notes="all flags at OFF — sanity check vs baseline",
         ),
         FlagCombo(
             name="combination_all_flags_on",
-            top_p=0.9, top_k=50, temperature=0.7, mmd_weight=0.1,
-            repulsion_weight=0.05, scaffold_conditioning=True,
-            sa_penalty=0.1, sa_target=2.5,
+            top_p=0.9,
+            top_k=50,
+            temperature=0.7,
+            mmd_weight=0.1,
+            repulsion_weight=0.05,
+            scaffold_conditioning=True,
+            sa_penalty=0.1,
+            sa_target=2.5,
             notes="worst case: all flags activated",
         ),
     ]
@@ -173,6 +211,7 @@ def _decode_with_rdkit_strict(decoder, cloud) -> bool:
         return False
     try:
         from rdkit import Chem  # type: ignore
+
         mol = Chem.MolFromSmiles(smi)
         if mol is None:
             return False
@@ -216,12 +255,16 @@ def decoder_only_decode_ratio(
     try:
         torch.manual_seed(seed)
         clouds = build_synthetic_pt_click_clouds(
-            n_clouds=n_clouds, jitter=SYNTHETIC_JITTER, seed=seed,
+            n_clouds=n_clouds,
+            jitter=SYNTHETIC_JITTER,
+            seed=seed,
         )
         # Freshly-init head (small hidden_dim for fast CPU smoke).
         head = YuelBondDecoderHead(hidden_dim=32, n_layers=2)
         decoder = YuelBondBondDecoder(
-            head=head, hidden_dim=32, n_layers=2,
+            head=head,
+            hidden_dim=32,
+            n_layers=2,
         )
         n_ok = 0
         for cloud in clouds:
@@ -290,50 +333,62 @@ def trainer_path_decode_ratio(combo: FlagCombo) -> Dict[str, Any]:
         device = torch.device("cpu")
         torch.manual_seed(SYNTHETIC_SEED)
         train_clouds = build_synthetic_pt_click_clouds(
-            n_clouds=SYNTHETIC_N_CLOUDS, jitter=SYNTHETIC_JITTER,
+            n_clouds=SYNTHETIC_N_CLOUDS,
+            jitter=SYNTHETIC_JITTER,
             seed=SYNTHETIC_SEED,
         )
         val_clouds = build_synthetic_pt_click_clouds(
-            n_clouds=SYNTHETIC_N_CLOUDS, jitter=SYNTHETIC_JITTER,
+            n_clouds=SYNTHETIC_N_CLOUDS,
+            jitter=SYNTHETIC_JITTER,
             seed=SYNTHETIC_SEED + 1,
         )
         train_clouds_d = [
             AtomCloud(
                 positions=c.positions.to(device),
                 atomic_numbers=c.atomic_numbers.to(device),
-            ) for c in train_clouds
+            )
+            for c in train_clouds
         ]
         val_clouds_d = [
             AtomCloud(
                 positions=c.positions.to(device),
                 atomic_numbers=c.atomic_numbers.to(device),
-            ) for c in val_clouds
+            )
+            for c in val_clouds
         ]
         model = CFMJointModel(hidden_dim=32, n_layers=2).to(device)
         from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (
             YuelBondBondDecoder,
         )
+
         decoder = YuelBondBondDecoder(
-            head=model.head, hidden_dim=32, n_layers=2,
+            head=model.head,
+            hidden_dim=32,
+            n_layers=2,
         )
         optimiser = torch.optim.Adam(model.parameters(), lr=1e-3)
         reference_positions = build_reference_positions().to(device)
         closure_bias = {
-            "CuAAC": 0.30, "SPAAC": 0.10, "ThiolEne": 0.10,
-            "Suzuki": 0.20, "AmideCoupling": 0.30,
+            "CuAAC": 0.30,
+            "SPAAC": 0.10,
+            "ThiolEne": 0.10,
+            "Suzuki": 0.20,
+            "AmideCoupling": 0.30,
         }
         batch_size = min(8, len(train_clouds_d))
         for step in range(N_TRAIN_STEPS):
             start_idx = (step * batch_size) % max(
                 1, len(train_clouds_d) - batch_size + 1
             )
-            mini_batch = train_clouds_d[
-                start_idx: start_idx + batch_size
-            ]
+            mini_batch = train_clouds_d[start_idx : start_idx + batch_size]
             if len(mini_batch) < 1:
                 mini_batch = train_clouds_d[:batch_size]
             train_one_epoch(
-                model, decoder, optimiser, mini_batch, device,
+                model,
+                decoder,
+                optimiser,
+                mini_batch,
+                device,
                 batch_size=batch_size,
                 wasserstein_weight=0.1,
                 closure_bounded=True,
@@ -350,9 +405,12 @@ def trainer_path_decode_ratio(combo: FlagCombo) -> Dict[str, Any]:
                 sa_weight=0.3,
             )
         n_ok, n_total = evaluate_decode_ratio(
-            model=model, decoder=decoder, val_clouds=val_clouds_d,
+            model=model,
+            decoder=decoder,
+            val_clouds=val_clouds_d,
             device=device,
-            closure_bounded=True, closure_bias=closure_bias,
+            closure_bounded=True,
+            closure_bias=closure_bias,
         )
         decode_ratio = float(n_ok) / max(n_total, 1)
         return {

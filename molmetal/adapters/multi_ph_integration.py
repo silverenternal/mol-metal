@@ -204,8 +204,7 @@ class MultiPHPocketFeatures(nn.Module):
         b, p, _ = pocket_clouds.shape
         # Default atomic-number tensor: 1-hot fallback so non-pocket
         # callers can still get a feature map.
-        atom_types = torch.ones(b, p, dtype=torch.long,
-                                device=pocket_clouds.device)
+        atom_types = torch.ones(b, p, dtype=torch.long, device=pocket_clouds.device)
         out = two_param_filtration(
             pocket_clouds,
             atom_types,
@@ -372,7 +371,9 @@ class MultiPHMetalCoordHead(nn.Module):
         # kernel evaluation below.
         reference_features = out["features"]  # (n_metals, n_bins, n_bins)
         self.register_buffer(
-            "reference_features", reference_features, persistent=False,
+            "reference_features",
+            reference_features,
+            persistent=False,
         )
 
     # ------------------------------------------------------------------
@@ -410,15 +411,18 @@ class MultiPHMetalCoordHead(nn.Module):
             # max_coord / 2)`` with per-metal centre offsets.
             device = pocket_features.device
             dtype = pocket_features.dtype
-            ref = torch.zeros(self.n_metals, self.n_bins, self.n_bins,
-                              dtype=dtype, device=device)
+            ref = torch.zeros(
+                self.n_metals, self.n_bins, self.n_bins, dtype=dtype, device=device
+            )
             # Distinct centre per metal so the kernel has signal.
             for m in range(self.n_metals):
                 r_idx = (m * 3) % self.n_bins
                 d_idx = (m * 5 + 7) % self.n_bins
                 ref[m, r_idx, d_idx] = 1.0
             self.register_buffer(
-                "reference_features", ref, persistent=False,
+                "reference_features",
+                ref,
+                persistent=False,
             )
 
         # Build per-sample TwoParameterDiagram objects on the fly.
@@ -459,12 +463,15 @@ class MultiPHMetalCoordHead(nn.Module):
 
         # Per-pocket × per-metal kernel matrix (B, n_metals).
         sims = torch.zeros(
-            pocket_features.shape[0], self.n_metals,
-            dtype=pocket_features.dtype, device=pocket_features.device,
+            pocket_features.shape[0],
+            self.n_metals,
+            dtype=pocket_features.dtype,
+            device=pocket_features.device,
         )
         for m in range(self.n_metals):
             sims[:, m] = sliced_wasserstein_kernel(
-                pocket_diagram, ref_diagrams[m],
+                pocket_diagram,
+                ref_diagrams[m],
                 n_projections=self.n_projections,
                 sigma=self.sigma,
                 seed=m,

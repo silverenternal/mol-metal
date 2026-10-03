@@ -78,30 +78,97 @@ EXPECTED_TOTAL_METALS: int = 82
 # Per-section expected counts (must sum to 82).
 EXPECTED_ALKALI: Tuple[str, ...] = ("Li", "Na", "K", "Rb", "Cs")
 EXPECTED_ALKALINE_EARTH: Tuple[str, ...] = (
-    "Be", "Mg", "Ca", "Sr", "Ba",
+    "Be",
+    "Mg",
+    "Ca",
+    "Sr",
+    "Ba",
 )
 EXPECTED_D_BLOCK_P4: Tuple[str, ...] = (
-    "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
+    "Sc",
+    "Ti",
+    "V",
+    "Cr",
+    "Mn",
+    "Fe",
+    "Co",
+    "Ni",
+    "Cu",
+    "Zn",
 )
 EXPECTED_D_BLOCK_P5: Tuple[str, ...] = (
-    "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
+    "Y",
+    "Zr",
+    "Nb",
+    "Mo",
+    "Tc",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Cd",
 )
 EXPECTED_D_BLOCK_P6: Tuple[str, ...] = (
-    "Lu", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg",
+    "Lu",
+    "Hf",
+    "Ta",
+    "W",
+    "Re",
+    "Os",
+    "Ir",
+    "Pt",
+    "Au",
+    "Hg",
 )
 EXPECTED_D_BLOCK_P7: Tuple[str, ...] = (
-    "Rf", "Db", "Sg", "Bh", "Hs",
+    "Rf",
+    "Db",
+    "Sg",
+    "Bh",
+    "Hs",
 )
 EXPECTED_P_BLOCK_METALS: Tuple[str, ...] = (
-    "Al", "Ga", "In", "Sn", "Tl", "Pb", "Bi", "Po",
+    "Al",
+    "Ga",
+    "In",
+    "Sn",
+    "Tl",
+    "Pb",
+    "Bi",
+    "Po",
 )
 EXPECTED_LANTHANIDES: Tuple[str, ...] = (
-    "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd",
-    "Tb", "Dy", "Ho", "Er", "Tm", "Yb",
+    "La",
+    "Ce",
+    "Pr",
+    "Nd",
+    "Pm",
+    "Sm",
+    "Eu",
+    "Gd",
+    "Tb",
+    "Dy",
+    "Ho",
+    "Er",
+    "Tm",
+    "Yb",
 )
 EXPECTED_ACTINIDES: Tuple[str, ...] = (
-    "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm",
-    "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr",
+    "Ac",
+    "Th",
+    "Pa",
+    "U",
+    "Np",
+    "Pu",
+    "Am",
+    "Cm",
+    "Bk",
+    "Cf",
+    "Es",
+    "Fm",
+    "Md",
+    "No",
+    "Lr",
 )
 
 
@@ -150,9 +217,9 @@ def test_82_metal_count_is_exactly_82():
         f"expected exactly {EXPECTED_TOTAL_METALS}."
     )
     # Per-section breakdown must sum to 82.
-    assert _sum_sections() == EXPECTED_TOTAL_METALS, (
-        f"Per-section sum = {_sum_sections()}; expected {EXPECTED_TOTAL_METALS}."
-    )
+    assert (
+        _sum_sections() == EXPECTED_TOTAL_METALS
+    ), f"Per-section sum = {_sum_sections()}; expected {EXPECTED_TOTAL_METALS}."
 
 
 def test_82_metal_symbols_are_unique():
@@ -170,33 +237,33 @@ def test_82_metal_symbols_are_unique():
 def test_alkali_metals_present():
     """5 alkali metals (Li, Na, K, Rb, Cs) are all in the curated list."""
     for m in EXPECTED_ALKALI:
-        assert m in METAL_LIGAND_EXCHANGE_82_METAL_SYMBOLS, (
-            f"Alkali metal '{m}' missing from curated list."
-        )
+        assert (
+            m in METAL_LIGAND_EXCHANGE_82_METAL_SYMBOLS
+        ), f"Alkali metal '{m}' missing from curated list."
 
 
 def test_alkaline_earth_metals_present():
     """5 alkaline earth metals (Be, Mg, Ca, Sr, Ba) are all present."""
     for m in EXPECTED_ALKALINE_EARTH:
-        assert m in METAL_LIGAND_EXCHANGE_82_METAL_SYMBOLS, (
-            f"Alkaline earth metal '{m}' missing from curated list."
-        )
+        assert (
+            m in METAL_LIGAND_EXCHANGE_82_METAL_SYMBOLS
+        ), f"Alkaline earth metal '{m}' missing from curated list."
 
 
 def test_d_block_period_4_present():
     """10 d-block period-4 metals (Sc-Zn) are all present."""
     for m in EXPECTED_D_BLOCK_P4:
-        assert m in METAL_LIGAND_EXCHANGE_82_METAL_SYMBOLS, (
-            f"d-block p4 metal '{m}' missing from curated list."
-        )
+        assert (
+            m in METAL_LIGAND_EXCHANGE_82_METAL_SYMBOLS
+        ), f"d-block p4 metal '{m}' missing from curated list."
 
 
 def test_d_block_period_5_present():
     """10 d-block period-5 metals (Y-Cd) are all present."""
     for m in EXPECTED_D_BLOCK_P5:
-        assert m in METAL_LIGAND_EXCHANGE_82_METAL_SYMBOLS, (
-            f"d-block p5 metal '{m}' missing from curated list."
-        )
+        assert (
+            m in METAL_LIGAND_EXCHANGE_82_METAL_SYMBOLS
+        ), f"d-block p5 metal '{m}' missing from curated list."
 
 
 def test_d_block_period_6_present():
@@ -207,33 +274,33 @@ def test_d_block_period_6_present():
     list below (La-Yb only).
     """
     for m in EXPECTED_D_BLOCK_P6:
-        assert m in METAL_LIGAND_EXCHANGE_82_METAL_SYMBOLS, (
-            f"d-block p6 metal '{m}' missing from curated list."
-        )
+        assert (
+            m in METAL_LIGAND_EXCHANGE_82_METAL_SYMBOLS
+        ), f"d-block p6 metal '{m}' missing from curated list."
 
 
 def test_d_block_period_7_present():
     """5 d-block period-7 metals (Rf-Hs) are all present (synthetic)."""
     for m in EXPECTED_D_BLOCK_P7:
-        assert m in METAL_LIGAND_EXCHANGE_82_METAL_SYMBOLS, (
-            f"d-block p7 metal '{m}' missing from curated list."
-        )
+        assert (
+            m in METAL_LIGAND_EXCHANGE_82_METAL_SYMBOLS
+        ), f"d-block p7 metal '{m}' missing from curated list."
 
 
 def test_p_block_metals_present():
     """8 p-block metals (Al-Po) are all present."""
     for m in EXPECTED_P_BLOCK_METALS:
-        assert m in METAL_LIGAND_EXCHANGE_82_METAL_SYMBOLS, (
-            f"p-block metal '{m}' missing from curated list."
-        )
+        assert (
+            m in METAL_LIGAND_EXCHANGE_82_METAL_SYMBOLS
+        ), f"p-block metal '{m}' missing from curated list."
 
 
 def test_lanthanides_present():
     """14 lanthanides (La-Yb) are all present.  Lu is NOT here (d-block p6)."""
     for m in EXPECTED_LANTHANIDES:
-        assert m in METAL_LIGAND_EXCHANGE_82_METAL_SYMBOLS, (
-            f"Lanthanide '{m}' missing from curated list."
-        )
+        assert (
+            m in METAL_LIGAND_EXCHANGE_82_METAL_SYMBOLS
+        ), f"Lanthanide '{m}' missing from curated list."
     # Lu is in d-block p6 only — make sure Lu is NOT counted in
     # the lanthanides section.
     assert "Lu" not in EXPECTED_LANTHANIDES, (
@@ -245,9 +312,9 @@ def test_lanthanides_present():
 def test_actinides_present():
     """15 actinides (Ac-Lr) are all present."""
     for m in EXPECTED_ACTINIDES:
-        assert m in METAL_LIGAND_EXCHANGE_82_METAL_SYMBOLS, (
-            f"Actinide '{m}' missing from curated list."
-        )
+        assert (
+            m in METAL_LIGAND_EXCHANGE_82_METAL_SYMBOLS
+        ), f"Actinide '{m}' missing from curated list."
 
 
 # ---------------------------------------------------------------------------
@@ -293,9 +360,9 @@ def test_82_rule_library_has_exactly_82_entries():
 def test_82_rule_names_match_82_metal_symbols():
     """Each rule's ``name`` field must be the metal symbol; ordering matches."""
     rule_names = [r[0] for r in METAL_LIGAND_EXCHANGE_82_METAL_RULES]
-    assert rule_names == list(METAL_LIGAND_EXCHANGE_82_METAL_SYMBOLS), (
-        "Rule names must match the curated 82-metal symbol list in order."
-    )
+    assert rule_names == list(
+        METAL_LIGAND_EXCHANGE_82_METAL_SYMBOLS
+    ), "Rule names must match the curated 82-metal symbol list in order."
 
 
 def test_82_rule_smarts_all_parse_with_rdkit():
@@ -306,6 +373,7 @@ def test_82_rule_smarts_all_parse_with_rdkit():
     typos in the SMARTS builder.
     """
     from rdkit.Chem import AllChem  # type: ignore
+
     for name, smarts, desc in METAL_LIGAND_EXCHANGE_82_METAL_RULES:
         rxn = AllChem.ReactionFromSmarts(smarts)
         assert rxn is not None, (
@@ -327,8 +395,7 @@ def test_82_rule_smarts_canonical_shape():
     """
     for name, smarts, desc in METAL_LIGAND_EXCHANGE_82_METAL_RULES:
         expected = (
-            f"[{name}:1]([Cl:2])[*:3].[NH3:4]"
-            f">>[{name}:1]([NH3:4])[*:3].[Cl:2]"
+            f"[{name}:1]([Cl:2])[*:3].[NH3:4]" f">>[{name}:1]([NH3:4])[*:3].[Cl:2]"
         )
         assert smarts == expected, (
             f"SMARTS for metal '{name}' has unexpected shape; "
@@ -339,16 +406,14 @@ def test_82_rule_smarts_canonical_shape():
 def test_82_rule_description_non_empty():
     """Every rule's description is non-empty (used for audit reports)."""
     for name, smarts, desc in METAL_LIGAND_EXCHANGE_82_METAL_RULES:
-        assert isinstance(desc, str) and len(desc) > 0, (
-            f"Rule '{name}' has empty description."
-        )
+        assert (
+            isinstance(desc, str) and len(desc) > 0
+        ), f"Rule '{name}' has empty description."
 
 
 def test_82_rule_canonical_lippard_for_pt():
     """Pt's description must mention Lippard 1995 (the canonical Pt text)."""
-    pt_rule = next(
-        r for r in METAL_LIGAND_EXCHANGE_82_METAL_RULES if r[0] == "Pt"
-    )
+    pt_rule = next(r for r in METAL_LIGAND_EXCHANGE_82_METAL_RULES if r[0] == "Pt")
     assert "Lippard" in pt_rule[2], (
         f"Pt description must cite Lippard 1995 (canonical Pt text); "
         f"got '{pt_rule[2]}'."
@@ -417,8 +482,13 @@ def test_list_registered_rules_returns_7():
     )
     # Pin the 5 click names + 2 metal-coord names.
     expected_names = (
-        "CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling",
-        "metal_ligand_exchange", "aqua_exchange",
+        "CuAAC",
+        "SPAAC",
+        "ThiolEne",
+        "Suzuki",
+        "AmideCoupling",
+        "metal_ligand_exchange",
+        "aqua_exchange",
     )
     assert set(rules) == set(expected_names)
 
@@ -433,16 +503,19 @@ def test_backward_compat_comp_matrix_unchanged():
     after the Wf-223 additions.  This guards against an accidental
     refactor that drops a scaffold or click-rule column.
     """
-    assert len(SCAFFOLD_NAMES) == 5, (
-        f"SCAFFOLD_NAMES has {len(SCAFFOLD_NAMES)} entries; expected 5."
-    )
-    assert len(CLICK_RULE_NAMES) == 7, (
-        f"CLICK_RULE_NAMES has {len(CLICK_RULE_NAMES)} entries; expected 7."
-    )
+    assert (
+        len(SCAFFOLD_NAMES) == 5
+    ), f"SCAFFOLD_NAMES has {len(SCAFFOLD_NAMES)} entries; expected 5."
+    assert (
+        len(CLICK_RULE_NAMES) == 7
+    ), f"CLICK_RULE_NAMES has {len(CLICK_RULE_NAMES)} entries; expected 7."
     # The 5 scaffold names are exactly the canonical set.
     expected_scaffolds = (
-        "strict_Pt_II", "Pt_II_chelating", "Pt_IV",
-        "labile_metal", "unknown",
+        "strict_Pt_II",
+        "Pt_II_chelating",
+        "Pt_IV",
+        "labile_metal",
+        "unknown",
     )
     assert set(SCAFFOLD_NAMES) == set(expected_scaffolds)
 
@@ -472,9 +545,7 @@ def test_section_breakdown_sums_to_82():
         + 14  # lanthanides (La-Yb; Lu moved to d-block p6)
         + 15  # actinides
     )
-    assert expected_sum == 82, (
-        f"Per-section sum = {expected_sum}; expected 82."
-    )
+    assert expected_sum == 82, f"Per-section sum = {expected_sum}; expected 82."
     assert _sum_sections() == expected_sum
 
 
@@ -501,12 +572,32 @@ def test_honest_framing_curated_list_not_full_periodic_table():
     drop these exclusions.
     """
     excluded_must_not_be_in_82 = (
-        "H", "He", "B", "C", "N", "O", "F", "Ne",
-        "Si", "P", "S", "Cl", "Ar",
-        "Ge", "As", "Se", "Br", "Kr",
-        "Sb", "Te", "I", "Xe",
-        "At", "Rn",
-        "Fr", "Ra",
+        "H",
+        "He",
+        "B",
+        "C",
+        "N",
+        "O",
+        "F",
+        "Ne",
+        "Si",
+        "P",
+        "S",
+        "Cl",
+        "Ar",
+        "Ge",
+        "As",
+        "Se",
+        "Br",
+        "Kr",
+        "Sb",
+        "Te",
+        "I",
+        "Xe",
+        "At",
+        "Rn",
+        "Fr",
+        "Ra",
     )
     for m in excluded_must_not_be_in_82:
         assert m not in METAL_LIGAND_EXCHANGE_82_METAL_SYMBOLS, (

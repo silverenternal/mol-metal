@@ -50,9 +50,11 @@ if str(_SCRIPTS_DIR) not in sys.path:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _pot_available() -> bool:
     try:
         import ot  # noqa: F401
+
         return True
     except ImportError:
         return False
@@ -61,6 +63,7 @@ def _pot_available() -> bool:
 def _scipy_available() -> bool:
     try:
         from scipy.optimize import linear_sum_assignment  # noqa: F401
+
         return True
     except ImportError:
         return False
@@ -86,6 +89,7 @@ def _synthetic_batch(batch: int = 32, dim: int = 8, seed: int = 0) -> tuple:
 # Test 1 — Tong 2024 mini-batch OT coupling correctness
 # ---------------------------------------------------------------------------
 
+
 def test_minibatch_ot_coupling_correctness():
     """Verify the exact / hungarian backends minimise paired distance.
 
@@ -103,7 +107,11 @@ def test_minibatch_ot_coupling_correctness():
 
     x_0, x_1 = _synthetic_batch(batch=32, dim=8, seed=0)
     perm_x_0, perm_x_1, diag = minibatch_ot_couple(
-        x_0, x_1, mode=mode, return_diagnostics=True, seed=0,
+        x_0,
+        x_1,
+        mode=mode,
+        return_diagnostics=True,
+        seed=0,
     )
     # Output shape contract: perm_x_0 == x_0 (unchanged), perm_x_1
     # is a permutation of x_1's rows.
@@ -112,9 +120,9 @@ def test_minibatch_ot_coupling_correctness():
         f"expected {tuple(x_0.shape)}"
     )
     assert perm_x_1.shape == x_1.shape
-    assert torch.equal(perm_x_0, x_0), (
-        "perm_x_0 must equal x_0 (source row order preserved)"
-    )
+    assert torch.equal(
+        perm_x_0, x_0
+    ), "perm_x_0 must equal x_0 (source row order preserved)"
     assert diag is not None and diag.get("requested_mode") == mode
 
     # Tong 2024 lower bound: paired cost ≤ random pairing cost.
@@ -126,8 +134,7 @@ def test_minibatch_ot_coupling_correctness():
     rand_idx = torch.randperm(x_1.shape[0])
     rand = (x_0 - x_1[rand_idx]).pow(2).sum(dim=-1).mean().item()
     assert paired <= rand + 1e-5, (
-        f"optimal coupling must be ≤ random: paired={paired:.4f}, "
-        f"random={rand:.4f}"
+        f"optimal coupling must be ≤ random: paired={paired:.4f}, " f"random={rand:.4f}"
     )
     # Exact / Hungarian must recover the latent permutation —
     # paired should be substantially smaller than random (≥10%
@@ -142,14 +149,16 @@ def test_minibatch_ot_coupling_correctness():
     # Convert to sets of row-hashes for robust comparison.
     def _hash_rows(t: torch.Tensor) -> set:
         return {tuple(row.tolist()) for row in t}
-    assert _hash_rows(perm_x_1) == _hash_rows(x_1), (
-        "perm_x_1 must be a permutation of x_1 (no duplicates / losses)"
-    )
+
+    assert _hash_rows(perm_x_1) == _hash_rows(
+        x_1
+    ), "perm_x_1 must be a permutation of x_1 (no duplicates / losses)"
 
 
 # ---------------------------------------------------------------------------
 # Test 2 — Trainer CLI integration: --minibatch-ot flag
 # ---------------------------------------------------------------------------
+
 
 def test_integration_with_trainer_cli():
     """Verify the wrapper exposes a ``--minibatch-ot`` CLI flag with
@@ -167,13 +176,14 @@ def test_integration_with_trainer_cli():
     # Each supported mode is parseable individually.
     for mode in ("off", "exact", "sinkhorn", "hungarian"):
         args = p.parse_args(["--minibatch-ot", mode])
-        assert args.minibatch_ot == mode, (
-            f"--minibatch-ot {mode!r} parse failed: got {args.minibatch_ot!r}"
-        )
+        assert (
+            args.minibatch_ot == mode
+        ), f"--minibatch-ot {mode!r} parse failed: got {args.minibatch_ot!r}"
     # Invalid mode → argparse exits with error (SystemExit).  We
     # simulate by calling parse_args with a bad value via
     # ``p.parse_args`` in a guarded block.
     import argparse as _ap
+
     try:
         p.parse_args(["--minibatch-ot", "bogus"])
     except SystemExit:
@@ -188,6 +198,7 @@ def test_integration_with_trainer_cli():
 # Test 3 — Backward-compat: --minibatch-ot off == identity permutation
 # ---------------------------------------------------------------------------
 
+
 def test_backward_compat_default_off():
     """Verify ``mode='off'`` is bit-identical to identity permutation.
 
@@ -200,15 +211,19 @@ def test_backward_compat_default_off():
 
     x_0, x_1 = _synthetic_batch(batch=16, dim=4, seed=42)
     perm_x_0, perm_x_1, diag = minibatch_ot_couple(
-        x_0, x_1, mode="off", return_diagnostics=True, seed=42,
+        x_0,
+        x_1,
+        mode="off",
+        return_diagnostics=True,
+        seed=42,
     )
     # Identity permutation: bit-identical.
-    assert torch.equal(perm_x_0, x_0), (
-        "mode='off' must return x_0 unchanged (identity permutation)"
-    )
-    assert torch.equal(perm_x_1, x_1), (
-        "mode='off' must return x_1 unchanged (identity permutation)"
-    )
+    assert torch.equal(
+        perm_x_0, x_0
+    ), "mode='off' must return x_0 unchanged (identity permutation)"
+    assert torch.equal(
+        perm_x_1, x_1
+    ), "mode='off' must return x_1 unchanged (identity permutation)"
     assert diag is not None and diag["effective_backend"] == "identity_off"
     # Cost is zero for identity permutation.
     assert diag["cost"] == 0.0
@@ -226,6 +241,7 @@ def test_backward_compat_default_off():
 # ---------------------------------------------------------------------------
 # Test 4 — CPU bench: per-call wall-time is bounded
 # ---------------------------------------------------------------------------
+
 
 def test_cpu_bench():
     """CPU wall-time bench: per-call cost is bounded across backends.
@@ -264,12 +280,10 @@ def test_cpu_bench():
 
     # Sanity: off mode must be present and ≤ 1 ms per call (CPU
     # baseline is just a dictionary write).
-    assert "off" in timings, (
-        f"'off' mode timing missing; got {list(timings.keys())}"
-    )
-    assert timings["off"] < 1e-2, (
-        f"'off' mode per-call wall too slow: {timings['off']:.4f}s"
-    )
+    assert "off" in timings, f"'off' mode timing missing; got {list(timings.keys())}"
+    assert (
+        timings["off"] < 1e-2
+    ), f"'off' mode per-call wall too slow: {timings['off']:.4f}s"
 
     # All other backends must fit inside an absolute bound (50 ms
     # per call on batch=64 CPU).  This catches runaway costs

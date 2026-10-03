@@ -22,6 +22,7 @@ Lit anchor:
   the de-facto diversity metric for SBDD benchmarks (TargetDiff
   Guan 2023 reports 0.860).
 """
+
 from __future__ import annotations
 
 import json
@@ -50,6 +51,7 @@ def _mean_pairwise_morgan_tanimoto(smiles_list: Sequence[str]) -> float:
         from molmetal_lam.lam_chem.medchem_gen_integration import (
             _mean_pairwise_tanimoto_distance,
         )
+
         return float(_mean_pairwise_tanimoto_distance(list(smiles_list)))
     except Exception:
         return 0.0
@@ -128,9 +130,7 @@ def _run_cell(
         "diversity_homotype": float(getattr(cell, "diversity_homotype", 0.0)),
         "n_distinct": int(getattr(cell, "n_distinct", 0)),
         "sa_mean": float(getattr(cell, "sa_mean", 0.0)),
-        "metal_compliance_rate": float(
-            getattr(cell, "metal_compliance_rate", 0.0)
-        ),
+        "metal_compliance_rate": float(getattr(cell, "metal_compliance_rate", 0.0)),
         # Wf-180 — the real "Tanimoto distance" the new reward shapes.
         "morgan_tanimoto_distance": float(morgan_td),
         "n_candidates": int(getattr(cell, "n_candidates", 0)),
@@ -148,26 +148,36 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--n-simulations", type=int, default=100,
+        "--n-simulations",
+        type=int,
+        default=100,
         help="MCTS simulations per cell (default 100; smke scale)",
     )
     parser.add_argument(
-        "--tanimoto-weight", type=float, default=0.10,
+        "--tanimoto-weight",
+        type=float,
+        default=0.10,
         help="w_tanimoto_distance for the 'with' arm (default 0.10)",
     )
     parser.add_argument(
-        "--tanimoto-floor", type=float, default=0.0,
+        "--tanimoto-floor",
+        type=float,
+        default=0.0,
         help="min_tanimoto_floor for the 'with' arm (default 0.0)",
     )
     parser.add_argument(
-        "--metal-seed", type=str, default="cisplatin",
+        "--metal-seed",
+        type=str,
+        default="cisplatin",
     )
     parser.add_argument(
-        "--baseline-only", action="store_true",
+        "--baseline-only",
+        action="store_true",
         help="Skip the 'with' arm (faster smoke check).",
     )
     parser.add_argument(
-        "--with-only", action="store_true",
+        "--with-only",
+        action="store_true",
         help="Skip the 'baseline' arm.",
     )
     args = parser.parse_args()
@@ -221,10 +231,16 @@ def main() -> None:
     # Compute the lift if both arms ran.
     if not args.baseline_only and not args.with_only:
         # (a) SE(3) diversity_tanimoto lift (the script-native metric).
-        base_dt = out["baseline"].get("diversity_tanimoto", 0.0) \
-            if isinstance(out["baseline"], dict) else 0.0
-        new_dt = out["with_tanimoto"].get("diversity_tanimoto", 0.0) \
-            if isinstance(out["with_tanimoto"], dict) else 0.0
+        base_dt = (
+            out["baseline"].get("diversity_tanimoto", 0.0)
+            if isinstance(out["baseline"], dict)
+            else 0.0
+        )
+        new_dt = (
+            out["with_tanimoto"].get("diversity_tanimoto", 0.0)
+            if isinstance(out["with_tanimoto"], dict)
+            else 0.0
+        )
         se3_lift = float(new_dt) - float(base_dt)
         out["lift_se3_tanimoto"] = se3_lift
         out["lift_above_baseline_se3"] = bool(se3_lift > 0.0)
@@ -232,11 +248,16 @@ def main() -> None:
         # new reward directly optimises).  When the candidate SMILES
         # set is byte-identical across arms (singleton collapse) both
         # metrics will be 0.0 → reported honestly as lift=0.0.
-        base_mt = out["baseline"].get("morgan_tanimoto_distance", 0.0) \
-            if isinstance(out["baseline"], dict) else 0.0
-        new_mt = out["with_tanimoto"].get(
-            "morgan_tanimoto_distance", 0.0
-        ) if isinstance(out["with_tanimoto"], dict) else 0.0
+        base_mt = (
+            out["baseline"].get("morgan_tanimoto_distance", 0.0)
+            if isinstance(out["baseline"], dict)
+            else 0.0
+        )
+        new_mt = (
+            out["with_tanimoto"].get("morgan_tanimoto_distance", 0.0)
+            if isinstance(out["with_tanimoto"], dict)
+            else 0.0
+        )
         morgan_lift = float(new_mt) - float(base_mt)
         out["morgan_lift"] = morgan_lift
         out["lift_above_baseline_morgan"] = bool(morgan_lift > 0.0)
@@ -268,8 +289,9 @@ def main() -> None:
                 )
             )
 
-    out["wall_sec"] = float(out.get("baseline_wall_sec", 0.0)) + \
-        float(out.get("with_tanimoto_wall_sec", 0.0))
+    out["wall_sec"] = float(out.get("baseline_wall_sec", 0.0)) + float(
+        out.get("with_tanimoto_wall_sec", 0.0)
+    )
     out["date_utc"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
     with out_json.open("w") as f:

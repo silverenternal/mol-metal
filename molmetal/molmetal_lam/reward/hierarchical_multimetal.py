@@ -96,6 +96,7 @@ Lit anchors
 * Reedijk 2008 *Platinum Metals Rev.* (trans-effect ordering,
   deferred to Wf-79 R22-P1 P1.4).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -122,9 +123,9 @@ SUPPORTED_METALS: Tuple[str, ...] = (
     "Au",
     "Re",
 )
-assert len(SUPPORTED_METALS) == 8, (
-    f"L13 metal pool must stay at 8 metals; got {len(SUPPORTED_METALS)}"
-)
+assert (
+    len(SUPPORTED_METALS) == 8
+), f"L13 metal pool must stay at 8 metals; got {len(SUPPORTED_METALS)}"
 
 
 @dataclass(frozen=True)
@@ -181,7 +182,9 @@ class TargetSpec:
 
     def __post_init__(self) -> None:
         if not isinstance(self.target_id, str) or not self.target_id:
-            raise ValueError(f"target_id must be a non-empty string; got {self.target_id!r}")
+            raise ValueError(
+                f"target_id must be a non-empty string; got {self.target_id!r}"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -367,9 +370,7 @@ class HierarchicalCoordinator:
 
     pool: MetalPool
     targets: Sequence[TargetSpec]
-    config: HierarchicalCoordConfig = field(
-        default_factory=HierarchicalCoordConfig
-    )
+    config: HierarchicalCoordConfig = field(default_factory=HierarchicalCoordConfig)
 
     def __post_init__(self) -> None:
         if not isinstance(self.pool, MetalPool):

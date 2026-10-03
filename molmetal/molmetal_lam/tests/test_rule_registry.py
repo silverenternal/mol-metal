@@ -80,9 +80,11 @@ def test_register_then_list_returns_the_rule():
     rec = register_rule(
         "t30_demo_cuaac",
         smarts="[C:1]#[C:2].[N:3]=[N+:4]=[N-:5]>>[c:1]1[c:2][n:3][n:4][n:5]1",
-        metadata={"yield_range": (0.40, 0.95),
-                  "fg_compat": ["azide", "alkyne"],
-                  "partner_tiles": 60},
+        metadata={
+            "yield_range": (0.40, 0.95),
+            "fg_compat": ["azide", "alkyne"],
+            "partner_tiles": 60,
+        },
         scope="click",
     )
     assert isinstance(rec, RuleRecord)
@@ -129,9 +131,11 @@ def test_vet_rule_returns_metadata_before_any_usage():
     register_rule(
         "t30_pre_use",
         smarts="[Pt:1]([Cl:2])[*:3].[NH3:4]>>[Pt:1]([NH3:4])[*:3].[Cl:2]",
-        metadata={"yield_range": (0.50, 0.95),
-                  "fg_compat": ["leaving_group", "neutral_2e_donor"],
-                  "partner_tiles": 12},
+        metadata={
+            "yield_range": (0.50, 0.95),
+            "fg_compat": ["leaving_group", "neutral_2e_donor"],
+            "partner_tiles": 12,
+        },
         scope="Pt",
     )
     rec = vet_rule("t30_pre_use")
@@ -159,16 +163,21 @@ def test_multiple_scopes_coexist():
     # All five visible in the unfiltered list.
     all_rules = list_rules()
     names = sorted(r.name for r in all_rules)
-    assert names == sorted([
-        "t30_cuaac", "t30_metal_lig_exch", "t30_ru_demo",
-        "t30_au_demo", "t30_custom_demo",
-    ])
+    assert names == sorted(
+        [
+            "t30_cuaac",
+            "t30_metal_lig_exch",
+            "t30_ru_demo",
+            "t30_au_demo",
+            "t30_custom_demo",
+        ]
+    )
 
     # Each scope filter returns exactly one record.
     assert [r.name for r in list_rules(scope="click")] == ["t30_cuaac"]
-    assert [r.name for r in list_rules(scope="Pt")]   == ["t30_metal_lig_exch"]
-    assert [r.name for r in list_rules(scope="Ru")]   == ["t30_ru_demo"]
-    assert [r.name for r in list_rules(scope="Au")]   == ["t30_au_demo"]
+    assert [r.name for r in list_rules(scope="Pt")] == ["t30_metal_lig_exch"]
+    assert [r.name for r in list_rules(scope="Ru")] == ["t30_ru_demo"]
+    assert [r.name for r in list_rules(scope="Au")] == ["t30_au_demo"]
     assert [r.name for r in list_rules(scope="custom")] == ["t30_custom_demo"]
 
     # Unknown scope returns empty.
@@ -192,7 +201,10 @@ def test_duplicate_registration_raises_informative_error():
 
     # ``overwrite=True`` succeeds and replaces the record.
     new = register_rule(
-        "t30_dup", smarts="Y", scope="Pt", overwrite=True,
+        "t30_dup",
+        smarts="Y",
+        scope="Pt",
+        overwrite=True,
     )
     assert new.scope == "Pt"
     assert vet_rule("t30_dup").scope == "Pt"
@@ -234,9 +246,11 @@ def test_record_test_result_preserves_other_fields():
     register_rule(
         "t30_test_record",
         smarts="[Pt:1]([Cl:2])[*:3].[NH3:4]>>[Pt:1]([NH3:4])[*:3].[Cl:2]",
-        metadata={"yield_range": (0.50, 0.95),
-                  "fg_compat": ["leaving_group"],
-                  "partner_tiles": 7},
+        metadata={
+            "yield_range": (0.50, 0.95),
+            "fg_compat": ["leaving_group"],
+            "partner_tiles": 7,
+        },
         scope="Pt",
     )
     before = vet_rule("t30_test_record")
@@ -340,15 +354,24 @@ def test_register_rule_rejects_empty_name():
 def test_register_rule_rejects_bad_yield_range():
     """``yield_range`` must be a 2-tuple of floats."""
     with pytest.raises(ValueError):
-        register_rule("t30_bad_yield", smarts="X",
-                       metadata={"yield_range": (0.5,)}, scope="custom")
+        register_rule(
+            "t30_bad_yield",
+            smarts="X",
+            metadata={"yield_range": (0.5,)},
+            scope="custom",
+        )
     with pytest.raises(ValueError):
-        register_rule("t30_bad_yield2", smarts="X",
-                       metadata={"yield_range": "0.5"}, scope="custom")
+        register_rule(
+            "t30_bad_yield2",
+            smarts="X",
+            metadata={"yield_range": "0.5"},
+            scope="custom",
+        )
 
 
 def test_register_rule_rejects_negative_partner_tiles():
     """``partner_tiles`` must be a non-negative int."""
     with pytest.raises(ValueError):
-        register_rule("t30_bad_pt", smarts="X",
-                       metadata={"partner_tiles": -1}, scope="custom")
+        register_rule(
+            "t30_bad_pt", smarts="X", metadata={"partner_tiles": -1}, scope="custom"
+        )

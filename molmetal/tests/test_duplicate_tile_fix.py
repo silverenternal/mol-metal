@@ -73,28 +73,28 @@ def test_specific_duplicate_pairs_are_resolved():
     pairs_to_check = {
         # (kept, replaced) — both should be RDKit-distinct now
         "3-azidopropanol": (
-            "OCCCN=[N+]=[N-]",        # kept (idx 10 in source list)
-            "N(=[N+]=[N-])CC=C",      # replaced (was 3-azido-1-propanol)
+            "OCCCN=[N+]=[N-]",  # kept (idx 10 in source list)
+            "N(=[N+]=[N-])CC=C",  # replaced (was 3-azido-1-propanol)
         ),
         "naphthyl-azides": (
             "N(=[N+]=[N-])C1=CC=C2C=CC=CC2=C1",  # 1-naphthyl, kept
             "N(=[N+]=[N-])C1=CC=C2C=CC=CC2=N1",  # 8-azidoquinoline, new
         ),
         "hexadienes": (
-            "C=CC=CC",                # 1,3-hexadiene, kept
-            "C=CCC=CC",               # 1,4-hexadiene, new
+            "C=CC=CC",  # 1,3-hexadiene, kept
+            "C=CCC=CC",  # 1,4-hexadiene, new
         ),
         "isoprene": (
-            "CC(=C)C=C",              # isoprene, kept
-            "C=CC(=C)CO",             # 2-methylene-3-buten-1-ol, new
+            "CC(=C)C=C",  # isoprene, kept
+            "C=CC(=C)CO",  # 2-methylene-3-buten-1-ol, new
         ),
         "cyclohexadiene": (
-            "C1C=CC=C1",              # cyclopentadiene, kept
-            "C1=CCCC=C1",             # 1,4-cyclohexadiene, new
+            "C1C=CC=C1",  # cyclopentadiene, kept
+            "C1=CCCC=C1",  # 1,4-cyclohexadiene, new
         ),
         "quinoline-pair": (
-            "C1=CC=C2C=CC=CC2=N1",    # quinoline, kept
-            "C1=CC=C2N=CC=CC2=N1",    # quinoxaline, new
+            "C1=CC=C2C=CC=CC2=N1",  # quinoline, kept
+            "C1=CC=C2N=CC=CC2=N1",  # quinoxaline, new
         ),
     }
     for name, (a, b) in pairs_to_check.items():

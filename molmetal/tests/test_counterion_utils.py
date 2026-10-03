@@ -99,6 +99,7 @@ def test_merge_counterion_features():
 
     # NaN counterion → all-zero features
     import math
+
     row_nan = {"smiles": "CCO", "Counterion": float("nan")}
     out_nan = merge_counterion_features(row_nan)
     for k in FEATURE_NAMES:
@@ -130,7 +131,9 @@ def test_configs_three():
     assert np.all(X_feat[2, 2048:] == 0.0)
 
     # counterion_concat_smiles: feature dim == morgan_nbits
-    X_concat = apply_config(smiles, counterions, "counterion_concat_smiles", morgan_nbits=2048)
+    X_concat = apply_config(
+        smiles, counterions, "counterion_concat_smiles", morgan_nbits=2048
+    )
     assert X_concat.shape == (3, 2048), X_concat.shape
     assert X_concat.dtype == np.uint8
 

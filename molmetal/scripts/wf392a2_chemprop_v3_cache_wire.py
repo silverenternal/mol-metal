@@ -73,6 +73,7 @@ try:
         safe_overwrite_check,
         detect_truncation,
     )
+
     _WF414_HAS_ATOMIC = True
 except ImportError:  # pragma: no cover — fallback when running as standalone
     _WF414_HAS_ATOMIC = False
@@ -91,28 +92,28 @@ BACKUP_SUFFIX: str = ".bak.wf392a2"
 # inside the trainer file. Both markers exist verbatim in the trainer
 # (verified at Wf-392-A2 author time).
 ARGPARSE_END_MARKER: str = (
-    'p.add_argument(\n'
+    "p.add_argument(\n"
     '        "--allow-single-seed", action="store_true",\n'
-    '        help=(\n'
+    "        help=(\n"
     '            "Bypass the --n-seeds-min check (for smoke tests; not for "\n'
     '            "paper claims).  Wf-245 Fix."\n'
-    '        ),\n'
-    '    )\n'
-    '    args = p.parse_args(argv)\n'
+    "        ),\n"
+    "    )\n"
+    "    args = p.parse_args(argv)\n"
 )
 
 ARGPARSE_END_MARKER_INSERT: str = (
-    'p.add_argument(\n'
+    "p.add_argument(\n"
     '        "--allow-single-seed", action="store_true",\n'
-    '        help=(\n'
+    "        help=(\n"
     '            "Bypass the --n-seeds-min check (for smoke tests; not for "\n'
     '            "paper claims).  Wf-245 Fix."\n'
-    '        ),\n'
-    '    )\n'
-    '    # Wf-392-A2 wired: --chemprop-v3-cache CLI flag inserted.\n'
-    '    p.add_argument(\n'
+    "        ),\n"
+    "    )\n"
+    "    # Wf-392-A2 wired: --chemprop-v3-cache CLI flag inserted.\n"
+    "    p.add_argument(\n"
     '        "--chemprop-v3-cache", action="store_true", default=False,\n'
-    '        help=(\n'
+    "        help=(\n"
     '            "Enable chemprop v3 featurization cache (default: OFF; "\n'
     '            "preserves bit-for-bit backward compat). When ON, the "\n'
     '            "trainer initializes a ChempropV3FeaturizationCache "\n'
@@ -120,9 +121,9 @@ ARGPARSE_END_MARKER_INSERT: str = (
     '            "reuse across epochs. SCAFFOLD: full training-loop "\n'
     '            "wire-in is a follow-up wave; this flag is wired + "\n'
     '            "smoke-tested only."\n'
-    '        ),\n'
-    '    )\n'
-    '    args = p.parse_args(argv)\n'
+    "        ),\n"
+    "    )\n"
+    "    args = p.parse_args(argv)\n"
 )
 
 
@@ -218,8 +219,16 @@ def smoke_cache_hit_rate(
 
     # Synthetic SMILES cohort (canonical, diverse drug-like).
     synthetic = [
-        "CCO", "c1ccccc1", "CC(=O)O", "CN", "CCN", "CC(C)O",
-        "C1CCCCC1", "c1ccc(O)cc1", "CC(=O)N", "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
+        "CCO",
+        "c1ccccc1",
+        "CC(=O)O",
+        "CN",
+        "CCN",
+        "CC(C)O",
+        "C1CCCCC1",
+        "c1ccc(O)cc1",
+        "CC(=O)N",
+        "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
     ]
     cohort = synthetic[: int(cohort_size)]
 
@@ -232,6 +241,7 @@ def smoke_cache_hit_rate(
     tier2_error: Optional[str] = None
     try:
         from chemprop.data.molgraph import BatchMolGraph  # type: ignore
+
         for ep in range(int(epochs)):
             cache.begin_epoch(ep)
             for bi in range(int(batches_per_epoch)):
@@ -247,9 +257,7 @@ def smoke_cache_hit_rate(
         tier2_error = f"unexpected: {type(e).__name__}: {e}"
 
     info = cache.cache_info()
-    trainer_exists = (
-        Path(trainer_path).is_file() if trainer_path is not None else None
-    )
+    trainer_exists = Path(trainer_path).is_file() if trainer_path is not None else None
     return {
         "cache_info": info,
         "hit_rate": info["stats"]["hit_rate"],
@@ -283,23 +291,32 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help="Exercise the Wf-382-A2 cache on a synthetic cohort.",
     )
     p.add_argument(
-        "--cohort-size", type=int, default=10,
+        "--cohort-size",
+        type=int,
+        default=10,
         help="Synthetic cohort size for --smoke-cache-hit-rate (default 10).",
     )
     p.add_argument(
-        "--epochs", type=int, default=2,
+        "--epochs",
+        type=int,
+        default=2,
         help="Synthetic epochs for --smoke-cache-hit-rate (default 2).",
     )
     p.add_argument(
-        "--batches-per-epoch", type=int, default=5,
+        "--batches-per-epoch",
+        type=int,
+        default=5,
         help="Synthetic batches per epoch (default 5).",
     )
     p.add_argument(
-        "--batch-size", type=int, default=4,
+        "--batch-size",
+        type=int,
+        default=4,
         help="SMILES per batch (default 4).",
     )
     p.add_argument(
-        "--out", default="/tmp/wf392a2_chemprop_v3_cache_wire_smoke.json",
+        "--out",
+        default="/tmp/wf392a2_chemprop_v3_cache_wire_smoke.json",
         help="Output JSON path for --smoke-cache-hit-rate.",
     )
     args = p.parse_args(argv)

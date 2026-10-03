@@ -50,6 +50,7 @@ pytestmark = pytest.mark.skipif(
 # batch_mol_from_smiles
 # ---------------------------------------------------------------------------
 
+
 def test_batch_mol_from_smiles_returns_correct_length() -> None:
     """100 SMILES -> 100 RDKit mols (or None for invalid)."""
     smiles = [ASPIRIN, ETHANOL, BENZENE, CAFFEINE, INVALID] * 20
@@ -81,6 +82,7 @@ def test_batch_mol_from_smiles_empty_input() -> None:
 # ---------------------------------------------------------------------------
 # batch_qed
 # ---------------------------------------------------------------------------
+
 
 def test_batch_qed_matches_scalar_aspirin() -> None:
     """batch_qed on [aspirin] equals scalar QED.qed."""
@@ -126,6 +128,7 @@ def test_batch_qed_empty_input_returns_empty_array() -> None:
 # batch_sa
 # ---------------------------------------------------------------------------
 
+
 def test_batch_sa_matches_scalar_aspirin() -> None:
     """batch_sa matches the Ertl-style SA proxy formula."""
     expected = br._sa_proxy_one(ASPIRIN)
@@ -149,6 +152,7 @@ def test_batch_sa_returns_nan_for_invalid_smiles() -> None:
 # ---------------------------------------------------------------------------
 # batch_lipinski
 # ---------------------------------------------------------------------------
+
 
 def test_batch_lipinski_matches_scalar_aspirin() -> None:
     """Aspirin passes Ro5 — both scalar and batch agree."""
@@ -201,6 +205,7 @@ def test_batch_lipinski_returns_bool_dtype() -> None:
 # batch_descriptors_from_smiles
 # ---------------------------------------------------------------------------
 
+
 def test_batch_descriptors_mw_matches_scalar() -> None:
     """batch_descriptors(mw) matches Descriptors.MolWt on a small corpus."""
     smiles = [ASPIRIN, ETHANOL, BENZENE, CAFFEINE]
@@ -225,7 +230,9 @@ def test_batch_descriptors_logp_matches_scalar() -> None:
 
 def test_batch_descriptors_unknown_name_returns_nan() -> None:
     """An unknown descriptor name returns NaN (length-correct)."""
-    out = batch_descriptors_from_smiles([ASPIRIN, ETHANOL], "definitely_not_a_real_descriptor")
+    out = batch_descriptors_from_smiles(
+        [ASPIRIN, ETHANOL], "definitely_not_a_real_descriptor"
+    )
     assert out.shape == (2,)
     assert math.isnan(float(out[0]))
     assert math.isnan(float(out[1]))
@@ -241,6 +248,7 @@ def test_batch_descriptors_case_insensitive() -> None:
 # ---------------------------------------------------------------------------
 # Multiprocessing fallback (the sequential path)
 # ---------------------------------------------------------------------------
+
 
 def test_sequential_fallback_for_mol_from_smiles(monkeypatch) -> None:
     """When is_parallel_safe() is False, we use the serial code path."""
@@ -273,25 +281,26 @@ def test_sequential_fallback_for_lipinski(monkeypatch) -> None:
 
 def test_pool_failure_falls_back_to_sequential(monkeypatch) -> None:
     """If the Pool raises, we fall back to the serial path (no crash)."""
+
     def _raise_pool(*a, **kw):  # noqa: ANN001
         raise RuntimeError("simulated pool failure")
 
     monkeypatch.setattr(br, "_PROBE_RESULT", True)
     monkeypatch.setattr(br, "is_parallel_safe", lambda: True)
-    monkeypatch.setattr(br, "_mp", type("_Dummy", (), {"get_context": staticmethod(_raise_pool)}))
+    monkeypatch.setattr(
+        br, "_mp", type("_Dummy", (), {"get_context": staticmethod(_raise_pool)})
+    )
 
     # Should not raise — we silently fall back to the sequential code path.
     out = batch_qed([ASPIRIN, ETHANOL])
-    expected = [
-        float(QED.qed(Chem.MolFromSmiles(s)))
-        for s in (ASPIRIN, ETHANOL)
-    ]
+    expected = [float(QED.qed(Chem.MolFromSmiles(s))) for s in (ASPIRIN, ETHANOL)]
     np.testing.assert_allclose(out, expected, rtol=1e-9, atol=1e-9)
 
 
 # ---------------------------------------------------------------------------
 # Multiprocessing probe
 # ---------------------------------------------------------------------------
+
 
 def test_is_parallel_safe_returns_bool() -> None:
     """is_parallel_safe is a callable returning a bool."""
@@ -319,6 +328,7 @@ def test_pool_succeeds_on_two_workers() -> None:
 # ---------------------------------------------------------------------------
 # Internal _scalar_descriptor
 # ---------------------------------------------------------------------------
+
 
 def test_scalar_descriptor_nan_for_invalid() -> None:
     """_scalar_descriptor returns NaN for an unparseable SMILES."""

@@ -17,6 +17,7 @@ The script is CPU-only and never touches
 :mod:`proof_search` / :mod:`score_repellent_mc` /
 :mod:`variance_puct_integration` / :mod:`variance_mcts_integration`.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -48,8 +49,10 @@ def _build_stub_search():
             return self._smi
 
     candidates = [
-        _StubMol("CCO"), _StubMol("CCN"),
-        _StubMol("CCC"), _StubMol("CCCC"),
+        _StubMol("CCO"),
+        _StubMol("CCN"),
+        _StubMol("CCC"),
+        _StubMol("CCCC"),
     ]
     scores = [0.3, 0.7, 0.5, 0.9]
     priors = [0.25, 0.25, 0.25, 0.25]
@@ -57,24 +60,28 @@ def _build_stub_search():
     variances = [0.01, 0.02, 0.015, 0.005]
 
     class _StubSearch:
-        history = [{
-            "candidates": list(candidates),
-            "scores": list(scores),
-            "priors": list(priors),
-            "visits": list(visits),
-            "variances": list(variances),
-        }]
-        debug_trace = []
-        _root_children_cache_for_search = None
-
-        def search(self, root):
-            self.history.append({
+        history = [
+            {
                 "candidates": list(candidates),
                 "scores": list(scores),
                 "priors": list(priors),
                 "visits": list(visits),
                 "variances": list(variances),
-            })
+            }
+        ]
+        debug_trace = []
+        _root_children_cache_for_search = None
+
+        def search(self, root):
+            self.history.append(
+                {
+                    "candidates": list(candidates),
+                    "scores": list(scores),
+                    "priors": list(priors),
+                    "visits": list(visits),
+                    "variances": list(variances),
+                }
+            )
             return int(np.argmax(np.asarray(scores)))
 
     return _StubSearch()
@@ -92,7 +99,9 @@ def _run_smoke(n_samples: int) -> int:
     base = _build_stub_search()
     buf = MCTSReplayBuffer(max_size=max(n_samples * 2, 64), seed=42)
     wrapper = MCTSReplayWrapper(
-        base_search=base, buffer=buf, n_top_actions=4,
+        base_search=base,
+        buffer=buf,
+        n_top_actions=4,
     )
 
     # 2. Drive n_samples replay-augmented searches.
@@ -104,8 +113,7 @@ def _run_smoke(n_samples: int) -> int:
     loss = wrapper.train_value_network()
 
     # 4. Bias the prior of a fresh search from the accumulated replay.
-    rg = ReplayGuidedMCTS(base_search=base, replay_buffer=buf,
-                          alpha_replay=0.5)
+    rg = ReplayGuidedMCTS(base_search=base, replay_buffer=buf, alpha_replay=0.5)
     biased = rg.bias_prior(root="CCO", n_actions=4)
 
     # 5. Pretty-print the report.
@@ -124,8 +132,10 @@ def _run_smoke(n_samples: int) -> int:
     print(f"buffer.mean_prior    : {stats['mean_prior']:.6f}")
     print(f"buffer.mean_variance : {stats['mean_variance']:.6f}")
     print(f"buffer.mean_visit    : {stats['mean_visit_count']:.6f}")
-    print(f"buffer.value_range   : "
-          f"({stats['value_range'][0]:.4f}, {stats['value_range'][1]:.4f})")
+    print(
+        f"buffer.value_range   : "
+        f"({stats['value_range'][0]:.4f}, {stats['value_range'][1]:.4f})"
+    )
     print()
     print("Replay-guided prior (root='CCO', n_actions=4):")
     print(f"  bias_prior         : {biased.tolist()}")

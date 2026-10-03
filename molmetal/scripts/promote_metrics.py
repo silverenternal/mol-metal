@@ -33,6 +33,7 @@ Pytest (Wf-87 P2 close-out)::
 
     pytest molmetal/tests/test_promote_metrics.py -v
 """
+
 from __future__ import annotations
 
 import argparse
@@ -207,8 +208,12 @@ def build_hilbert_4cell_r2(
         n_seeds_total += len(per_seed)
         per_cell[cell] = {
             "combined_r2_mean": float(combined_mean),
-            "combined_r2_std": float(combined_std) if combined_std is not None else None,
-            "hilbert_r2_mean": float(hilbert_mean) if hilbert_mean is not None else None,
+            "combined_r2_std": float(combined_std)
+            if combined_std is not None
+            else None,
+            "hilbert_r2_mean": float(hilbert_mean)
+            if hilbert_mean is not None
+            else None,
             "astr_r2_mean": float(astr_mean) if astr_mean is not None else None,
             "n_seeds": len(per_seed),
             "source": rel,
@@ -234,8 +239,12 @@ def build_hilbert_4cell_r2(
         "aggregate_cell_lines": sorted(per_cell.keys()),
         "per_cell_line": per_cell,
         "timestamp": TIMESTAMP,
-        "status": "MEASURED_BELOW_GATE" if aggregate_mean is not None and aggregate_mean < 0 else "MEASURED",
-        "verdict": "MEASURED_HONEST_NEGATIVE_R2" if aggregate_mean is not None and aggregate_mean < 0 else "MEASURED",
+        "status": "MEASURED_BELOW_GATE"
+        if aggregate_mean is not None and aggregate_mean < 0
+        else "MEASURED",
+        "verdict": "MEASURED_HONEST_NEGATIVE_R2"
+        if aggregate_mean is not None and aggregate_mean < 0
+        else "MEASURED",
         "honest_framing_note": (
             "Combined R² can be negative when the learned predictor is "
             "worse than the constant-mean baseline; Wf-83 §honest-framing "
@@ -264,8 +273,12 @@ def build_platinai_combined_r2(
         per_target = data.get("per_target_summary", {})
         n_seeds = data.get("n_seeds")
         per_source[key] = {
-            "overall_r2_mean": float(overall_mean) if overall_mean is not None else None,
-            "overall_r2_std": float(data["overall_r2_std"]) if data.get("overall_r2_std") is not None else None,
+            "overall_r2_mean": float(overall_mean)
+            if overall_mean is not None
+            else None,
+            "overall_r2_std": float(data["overall_r2_std"])
+            if data.get("overall_r2_std") is not None
+            else None,
             "n_seeds": n_seeds,
             "per_target_summary": per_target,
             "source": rel,
@@ -311,8 +324,12 @@ def build_metalcytotox_combined_r2(
         key = rel.replace("molmetal/reports/", "").replace("/per_seed_metrics.json", "")
         overall_mean = data.get("overall_r2_mean")
         per_source[key] = {
-            "overall_r2_mean": float(overall_mean) if overall_mean is not None else None,
-            "overall_r2_std": float(data["overall_r2_std"]) if data.get("overall_r2_std") is not None else None,
+            "overall_r2_mean": float(overall_mean)
+            if overall_mean is not None
+            else None,
+            "overall_r2_std": float(data["overall_r2_std"])
+            if data.get("overall_r2_std") is not None
+            else None,
             "n_seeds": data.get("n_seeds"),
             "n_samples": data.get("n_samples"),
             "cohorts": data.get("cohorts"),
@@ -375,12 +392,18 @@ def build_metalcytotox_5metal_r2(
         n_seeds_total += len(per_seed)
         per_metal[metal] = {
             "combined_r2_mean": float(combined_mean),
-            "combined_r2_std": float(combined_std) if combined_std is not None else None,
-            "hilbert_r2_mean": float(hilbert_mean) if hilbert_mean is not None else None,
+            "combined_r2_std": float(combined_std)
+            if combined_std is not None
+            else None,
+            "hilbert_r2_mean": float(hilbert_mean)
+            if hilbert_mean is not None
+            else None,
             "astr_r2_mean": float(astr_mean) if astr_mean is not None else None,
             "n_samples": int(n_samples) if n_samples is not None else None,
             "n_seeds": len(per_seed),
-            "strict_scaffold": bool(strict_scaffold) if strict_scaffold is not None else None,
+            "strict_scaffold": bool(strict_scaffold)
+            if strict_scaffold is not None
+            else None,
             "source": rel,
         }
 
@@ -405,8 +428,12 @@ def build_metalcytotox_5metal_r2(
         "aggregate_metals": sorted(per_metal.keys()),
         "per_metal": per_metal,
         "timestamp": TIMESTAMP,
-        "status": "MEASURED_BELOW_GATE" if aggregate_mean is not None and aggregate_mean < 0 else "MEASURED",
-        "verdict": "MEASURED_HONEST_NEGATIVE_R2" if aggregate_mean is not None and aggregate_mean < 0 else "MEASURED",
+        "status": "MEASURED_BELOW_GATE"
+        if aggregate_mean is not None and aggregate_mean < 0
+        else "MEASURED",
+        "verdict": "MEASURED_HONEST_NEGATIVE_R2"
+        if aggregate_mean is not None and aggregate_mean < 0
+        else "MEASURED",
         "honest_framing_note": (
             "Combined R² can be negative when the learned predictor is "
             "worse than the constant-mean baseline; Wf-86 §honest-framing "
@@ -436,18 +463,10 @@ def build_tmqm_combined_r2(
             # Wf-71 P3 cross-dataset summary JSON
             cross_summary = {
                 "n_datasets": data.get("n_datasets"),
-                "cross_dataset_macro_r2_mean": data.get(
-                    "cross_dataset_macro_r2_mean"
-                ),
-                "cross_dataset_macro_r2_std": data.get(
-                    "cross_dataset_macro_r2_std"
-                ),
-                "per_dataset_macro_r2_mean": data.get(
-                    "per_dataset_macro_r2_mean", {}
-                ),
-                "per_dataset_macro_r2_std": data.get(
-                    "per_dataset_macro_r2_std", {}
-                ),
+                "cross_dataset_macro_r2_mean": data.get("cross_dataset_macro_r2_mean"),
+                "cross_dataset_macro_r2_std": data.get("cross_dataset_macro_r2_std"),
+                "per_dataset_macro_r2_mean": data.get("per_dataset_macro_r2_mean", {}),
+                "per_dataset_macro_r2_std": data.get("per_dataset_macro_r2_std", {}),
                 "per_dataset_n_cohorts": data.get("per_dataset_n_cohorts", {}),
                 "target_met": data.get("target_met"),
                 "source": rel,
@@ -460,7 +479,9 @@ def build_tmqm_combined_r2(
         n_cohorts_total += n_cohorts
         per_dataset[ds] = {
             "macro_r2_mean": float(macro_mean) if macro_mean is not None else None,
-            "macro_r2_std": float(data["macro_r2_std"]) if data.get("macro_r2_std") is not None else None,
+            "macro_r2_std": float(data["macro_r2_std"])
+            if data.get("macro_r2_std") is not None
+            else None,
             "n_cohorts": n_cohorts,
             "cohort_names": data.get("cohort_names"),
             "n_total_rows": data.get("n_total_rows"),
@@ -523,7 +544,9 @@ def build_ood_per_metal(
         }
 
     rates = [
-        m["ood_pass_rate"] for m in per_metal.values() if m.get("ood_pass_rate") is not None
+        m["ood_pass_rate"]
+        for m in per_metal.values()
+        if m.get("ood_pass_rate") is not None
     ]
     agg_pass = sum(rates) / len(rates) if rates else None
     return {
@@ -574,7 +597,9 @@ def build_ood_per_element(
         }
 
     rates = [
-        e["ood_pass_rate"] for e in per_element.values() if e.get("ood_pass_rate") is not None
+        e["ood_pass_rate"]
+        for e in per_element.values()
+        if e.get("ood_pass_rate") is not None
     ]
     agg_pass = sum(rates) / len(rates) if rates else None
     return {
@@ -693,17 +718,15 @@ def build_vina_status(
         "meeko_installed": meeko_ok,
         "vina_binary_available": vina_ok,
         "last_real_vina_value_kcal_per_mol": (
-            vina_data.get("aggregate", {}).get("best_measured")
-            if vina_data
-            else None
+            vina_data.get("aggregate", {}).get("best_measured") if vina_data else None
         ),
-        "stub_floor_artifact": vina_data.get("aggregate", {}).get("best_measured_caveat")
+        "stub_floor_artifact": vina_data.get("aggregate", {}).get(
+            "best_measured_caveat"
+        )
         if vina_data
         else None,
         "n_measurements": len(measurements),
-        "vina_min_score_value": (
-            vina_min_data.get("value") if vina_min_data else None
-        ),
+        "vina_min_score_value": (vina_min_data.get("value") if vina_min_data else None),
         "timestamp": TIMESTAMP,
         "status": "MEASURED",
         "honest_framing_note": (
@@ -803,8 +826,7 @@ PROMOTIONS: List[Promoter] = [
         ],
         build_fn=build_ood_per_metal,
         description=(
-            "Wf-73 P2 — per-precious-metal OOD reachability "
-            "(Ru/Ir/Os/Rh/Re)."
+            "Wf-73 P2 — per-precious-metal OOD reachability " "(Ru/Ir/Os/Rh/Re)."
         ),
     ),
     Promoter(
@@ -826,17 +848,13 @@ PROMOTIONS: List[Promoter] = [
         target_relpath="metrics/by_metric/dmpnn_ckpt_status.json",
         source_relpaths=[],
         build_fn=build_dmpnn_ckpt_status,
-        description=(
-            "D-MPNN checkpoint inventory — read-only filesystem scan."
-        ),
+        description=("D-MPNN checkpoint inventory — read-only filesystem scan."),
     ),
     Promoter(
         target_relpath="metrics/by_metric/vina_status.json",
         source_relpaths=[],
         build_fn=build_vina_status,
-        description=(
-            "Vina engine availability + last measured kcal/mol snapshot."
-        ),
+        description=("Vina engine availability + last measured kcal/mol snapshot."),
     ),
 ]
 
@@ -877,12 +895,8 @@ def promote_one(
     existing = _existing_target_audit(target)
 
     # Decide status
-    missing_sources = [
-        s["path"] for s in source_audits if not s["exists"]
-    ]
-    sources_present = [
-        s for s in source_audits if s["exists"] and s["size_bytes"] > 0
-    ]
+    missing_sources = [s["path"] for s in source_audits if not s["exists"]]
+    sources_present = [s for s in source_audits if s["exists"] and s["size_bytes"] > 0]
 
     if not sources_present and promoter.target_relpath not in {
         "metrics/by_metric/dmpnn_ckpt_status.json",
@@ -969,8 +983,12 @@ def run_all(dry_run: bool = False, force: bool = False) -> Dict[str, Any]:
                 collisions.append(
                     {
                         "target": row["target"],
-                        "existing_size_bytes": row["existing_target_audit"].get("size_bytes"),
-                        "existing_measured_count": row["existing_target_audit"].get("measured_count"),
+                        "existing_size_bytes": row["existing_target_audit"].get(
+                            "size_bytes"
+                        ),
+                        "existing_measured_count": row["existing_target_audit"].get(
+                            "measured_count"
+                        ),
                         "resolution": "preserved",
                     }
                 )

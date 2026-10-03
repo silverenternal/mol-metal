@@ -223,9 +223,7 @@ def test_load_metalcytotox_smiles_returns_smiles(metalcyto_csv_path) -> None:
 
 def test_load_metalcytotox_smiles_filter_metal(metalcyto_csv_path) -> None:
     """``metals`` filter restricts the returned rows to the whitelist."""
-    rows = _load_metalcytotox_smiles(
-        metalcyto_csv_path, n=200, metals=("Ru",)
-    )
+    rows = _load_metalcytotox_smiles(metalcyto_csv_path, n=200, metals=("Ru",))
     for row in rows:
         assert row["metal"] == "Ru"
 
@@ -242,9 +240,7 @@ def test_load_metalcytotox_smiles_caps_at_n(metalcyto_csv_path) -> None:
 def test_run_lambda_to_cfm_returns_dict(pipe_forward) -> None:
     """``lambda_to_cfm`` returns ``(True, dict, wall)`` on a known seed."""
     pocket = np.zeros(8, dtype=np.float32)
-    ok, payload, wall = _run_lambda_to_cfm(
-        pipe_forward, "CCO", pocket, n_steps=10
-    )
+    ok, payload, wall = _run_lambda_to_cfm(pipe_forward, "CCO", pocket, n_steps=10)
     assert ok is True
     assert isinstance(payload, dict)
     assert "cfm_output" in payload
@@ -255,26 +251,25 @@ def test_run_lambda_to_cfm_returns_dict(pipe_forward) -> None:
 def test_run_lambda_to_cfm_finite_cfm(pipe_forward) -> None:
     """``cfm_output`` is a finite (EMBED_DIM,) array."""
     pocket = np.zeros(8, dtype=np.float32)
-    ok, payload, _ = _run_lambda_to_cfm(
-        pipe_forward, "CCO", pocket, n_steps=10
-    )
+    ok, payload, _ = _run_lambda_to_cfm(pipe_forward, "CCO", pocket, n_steps=10)
     assert ok is True
     cfm = np.asarray(payload["cfm_output"], dtype=np.float32).reshape(-1)
     assert cfm.shape == (EMBED_DIM,)
     assert np.isfinite(cfm).all()
 
 
-def test_run_cfm_to_lambda_returns_reconstructed(
-    pipe_forward, reverse_obj
-) -> None:
+def test_run_cfm_to_lambda_returns_reconstructed(pipe_forward, reverse_obj) -> None:
     """``cfm_to_lambda`` returns a 32-d reconstructed feature."""
     pocket = np.zeros(8, dtype=np.float32)
     ok, payload, wall = _run_cfm_to_lambda(
-        "CCO", pocket, n_steps=10,
+        "CCO",
+        pocket,
+        n_steps=10,
         pipe_forward=pipe_forward,
         reverse_obj=reverse_obj,
         lamterm_to_features_fn=lamterm_to_features,
-        lambda_dim=LAMBDA_DIM, embed_dim=EMBED_DIM,
+        lambda_dim=LAMBDA_DIM,
+        embed_dim=EMBED_DIM,
     )
     assert ok is True
     assert wall >= 0.0
@@ -290,9 +285,7 @@ def test_run_bidirectional_returns_round_trip_loss(
 ) -> None:
     """``bidirectional`` returns a finite ``round_trip_loss``."""
     pocket = np.zeros(8, dtype=np.float32)
-    ok, payload, wall = _run_bidirectional(
-        bidirectional_obj, "CCO", pocket, n_steps=10
-    )
+    ok, payload, wall = _run_bidirectional(bidirectional_obj, "CCO", pocket, n_steps=10)
     assert ok is True
     assert wall >= 0.0
     rt = float(payload["round_trip_loss"])
@@ -303,15 +296,9 @@ def test_run_bidirectional_returns_round_trip_loss(
 def test_run_bidirectional_deterministic(bidirectional_obj) -> None:
     """``bidirectional`` is deterministic — same seed → same loss."""
     pocket = np.zeros(8, dtype=np.float32)
-    _, a, _ = _run_bidirectional(
-        bidirectional_obj, "c1ccccc1", pocket, n_steps=10
-    )
-    _, b, _ = _run_bidirectional(
-        bidirectional_obj, "c1ccccc1", pocket, n_steps=10
-    )
-    assert a["round_trip_loss"] == pytest.approx(
-        b["round_trip_loss"], abs=1e-6
-    )
+    _, a, _ = _run_bidirectional(bidirectional_obj, "c1ccccc1", pocket, n_steps=10)
+    _, b, _ = _run_bidirectional(bidirectional_obj, "c1ccccc1", pocket, n_steps=10)
+    assert a["round_trip_loss"] == pytest.approx(b["round_trip_loss"], abs=1e-6)
 
 
 # ---------------------------------------------------------------------------
@@ -349,9 +336,7 @@ def test_bridge_rmse_handles_shape_mismatch() -> None:
     """``_bridge_rmse`` accepts inputs of any size (pads internally)."""
     feats = np.zeros(LAMBDA_DIM, dtype=np.float32)
     cfm = np.zeros(EMBED_DIM * 2, dtype=np.float32)  # oversized
-    rmse = _bridge_rmse(
-        feats, cfm, lambda_dim=LAMBDA_DIM, embed_dim=EMBED_DIM
-    )
+    rmse = _bridge_rmse(feats, cfm, lambda_dim=LAMBDA_DIM, embed_dim=EMBED_DIM)
     assert math.isfinite(rmse)
     assert rmse >= 0.0
 
@@ -407,13 +392,17 @@ def test_bench_method_on_dataset_smoke(
     """A 3-sample smoke block runs in < 5 s and returns the expected schema."""
     samples = _load_platinai_smiles(platinai_csv_path, n=3)
     block = _bench_method_on_dataset(
-        "lambda_to_cfm", samples, 0,
+        "lambda_to_cfm",
+        samples,
+        0,
         pipe_forward=pipe_forward,
         reverse_obj=reverse_obj,
         lamterm_to_features_fn=lamterm_to_features,
         bidirectional_obj=bidirectional_obj,
-        lambda_dim=LAMBDA_DIM, embed_dim=EMBED_DIM,
-        n_steps=10, pocket_size=8,
+        lambda_dim=LAMBDA_DIM,
+        embed_dim=EMBED_DIM,
+        n_steps=10,
+        pocket_size=8,
     )
     assert block["method"] == "lambda_to_cfm"
     assert block["seed"] == 0
@@ -433,15 +422,18 @@ def test_bench_dataset_two_methods_two_seeds(
     """Per-dataset bench runs 2 methods × 2 seeds and aggregates correctly."""
     samples = _load_platinai_smiles(platinai_csv_path, n=4)
     rep = _bench_dataset(
-        "platinai_5k", samples,
+        "platinai_5k",
+        samples,
         methods=("lambda_to_cfm", "bidirectional"),
         seeds=(0, 1),
         pipe_forward=pipe_forward,
         reverse_obj=reverse_obj,
         lamterm_to_features_fn=lamterm_to_features,
         bidirectional_obj=bidirectional_obj,
-        lambda_dim=LAMBDA_DIM, embed_dim=EMBED_DIM,
-        n_steps=10, pocket_size=8,
+        lambda_dim=LAMBDA_DIM,
+        embed_dim=EMBED_DIM,
+        n_steps=10,
+        pocket_size=8,
     )
     assert rep["dataset"] == "platinai_5k"
     assert rep["n_samples"] == 4

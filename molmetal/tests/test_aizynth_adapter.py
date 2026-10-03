@@ -13,6 +13,7 @@ Tests in this module:
 4. Bulk check on the 12 click tiles.
 5. Bulk pass-rate.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -113,6 +114,7 @@ class TestBulk:
         # cyclohexene). That's correct behaviour for the fallback. The
         # real test would invoke AiZynthFinder against a stock file.
         from molmetal.molmetal_lam.tile_lib.click_tiles import STANDARD_12_TILES
+
         smiles_list = [t.smiles for t in STANDARD_12_TILES()]
         adapter = AiZynthAdapter()
         frac = adapter.synthesizable_fraction(smiles_list)
@@ -126,10 +128,10 @@ class TestBulk:
         # We construct them by hand so the test does not depend on the
         # click-reaction function signatures.
         products = [
-            "c1cn(C)nn1",           # 1-methyl-1,2,4-triazole (CuAAC product)
-            "c1cc(C)nn1C",          # 1,5-disubstituted triazole
-            "CC=NC",                # imine (SPC product)
-            "C1CC=CCC1",            # cyclohexene (Diels-Alder)
+            "c1cn(C)nn1",  # 1-methyl-1,2,4-triazole (CuAAC product)
+            "c1cc(C)nn1C",  # 1,5-disubstituted triazole
+            "CC=NC",  # imine (SPC product)
+            "C1CC=CCC1",  # cyclohexene (Diels-Alder)
         ]
         adapter = AiZynthAdapter()
         frac = adapter.synthesizable_fraction(products)

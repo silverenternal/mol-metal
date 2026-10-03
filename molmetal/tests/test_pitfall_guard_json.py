@@ -47,13 +47,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-CHECK_ALL = (
-    REPO_ROOT
-    / "molmetal"
-    / "scripts"
-    / "wf_pitfall_guard"
-    / "check_all.py"
-)
+CHECK_ALL = REPO_ROOT / "molmetal" / "scripts" / "wf_pitfall_guard" / "check_all.py"
 
 
 def _has_runners() -> bool:
@@ -159,20 +153,19 @@ def test_pitfall_guard_json_has_required_top_level_fields():
     # Type pinning — keep CI consumers from having to .isdigit()
     # the counter fields.
     assert isinstance(payload["guards_total"], int), (
-        f"guards_total is {type(payload['guards_total']).__name__}, "
-        "expected int"
+        f"guards_total is {type(payload['guards_total']).__name__}, " "expected int"
     )
     for key in ("guards_pass", "guards_fail", "guards_skip"):
-        assert isinstance(payload[key], int), (
-            f"{key} is {type(payload[key]).__name__}, expected int"
-        )
-    assert isinstance(payload["guards"], list), (
-        f"guards is {type(payload['guards']).__name__}, expected list"
-    )
+        assert isinstance(
+            payload[key], int
+        ), f"{key} is {type(payload[key]).__name__}, expected int"
+    assert isinstance(
+        payload["guards"], list
+    ), f"guards is {type(payload['guards']).__name__}, expected list"
     # timestamp should be a non-empty string (ISO-8601-ish).
-    assert isinstance(payload["timestamp"], str) and payload["timestamp"], (
-        f"timestamp is {payload['timestamp']!r}, expected non-empty string"
-    )
+    assert (
+        isinstance(payload["timestamp"], str) and payload["timestamp"]
+    ), f"timestamp is {payload['timestamp']!r}, expected non-empty string"
 
 
 def test_pitfall_guard_json_guards_total_is_seven():
@@ -182,9 +175,9 @@ def test_pitfall_guard_json_guards_total_is_seven():
         f"guards_total = {payload['guards_total']}; expected 7.  "
         "Did someone add or remove a pitfall ID from PITFALL_IDS?"
     )
-    assert len(payload["guards"]) == 7, (
-        f"len(guards) = {len(payload['guards'])}; expected 7."
-    )
+    assert (
+        len(payload["guards"]) == 7
+    ), f"len(guards) = {len(payload['guards'])}; expected 7."
 
 
 def test_pitfall_guard_json_all_seven_pass_after_r17_fixes():
@@ -228,28 +221,24 @@ def test_pitfall_guard_json_per_guard_shape():
     valid_statuses = {"PASS", "FAIL", "SKIP", "MISS"}
     seen_names = set()
     for entry in payload["guards"]:
-        assert isinstance(entry, dict), (
-            f"guards entry is {type(entry).__name__}, expected dict: {entry!r}"
-        )
+        assert isinstance(
+            entry, dict
+        ), f"guards entry is {type(entry).__name__}, expected dict: {entry!r}"
         for key in ("name", "status", "message"):
-            assert key in entry, (
-                f"guards entry missing {key!r}: {entry!r}"
-            )
+            assert key in entry, f"guards entry missing {key!r}: {entry!r}"
             assert isinstance(entry[key], str), (
                 f"guards entry[{key!r}] is {type(entry[key]).__name__}, "
                 f"expected str: {entry!r}"
             )
-            assert entry[key], (
-                f"guards entry[{key!r}] is empty: {entry!r}"
-            )
+            assert entry[key], f"guards entry[{key!r}] is empty: {entry!r}"
         assert entry["status"] in valid_statuses, (
             f"guards entry status={entry['status']!r} is not in "
             f"{sorted(valid_statuses)}: {entry!r}"
         )
         # Names must be unique — duplicate names break dashboard joins.
-        assert entry["name"] not in seen_names, (
-            f"duplicate guards name {entry['name']!r}; names must be unique"
-        )
+        assert (
+            entry["name"] not in seen_names
+        ), f"duplicate guards name {entry['name']!r}; names must be unique"
         seen_names.add(entry["name"])
 
 
@@ -262,10 +251,7 @@ def test_pitfall_guard_json_counters_match_array():
     payload = json.loads(_run_check_all_json().stdout)
     miss = payload.get("guards_miss", 0)
     summed = (
-        payload["guards_pass"]
-        + payload["guards_fail"]
-        + payload["guards_skip"]
-        + miss
+        payload["guards_pass"] + payload["guards_fail"] + payload["guards_skip"] + miss
     )
     assert summed == payload["guards_total"], (
         f"counters do not sum to guards_total: "
@@ -274,33 +260,20 @@ def test_pitfall_guard_json_counters_match_array():
     )
     # The counters must also match the actual array tally — guards_pass
     # in particular is what the main assertion relies on.
-    array_pass = sum(
-        1 for g in payload["guards"] if g.get("status") == "PASS"
-    )
-    array_fail = sum(
-        1 for g in payload["guards"] if g.get("status") == "FAIL"
-    )
-    array_skip = sum(
-        1 for g in payload["guards"] if g.get("status") == "SKIP"
-    )
-    array_miss = sum(
-        1 for g in payload["guards"] if g.get("status") == "MISS"
-    )
+    array_pass = sum(1 for g in payload["guards"] if g.get("status") == "PASS")
+    array_fail = sum(1 for g in payload["guards"] if g.get("status") == "FAIL")
+    array_skip = sum(1 for g in payload["guards"] if g.get("status") == "SKIP")
+    array_miss = sum(1 for g in payload["guards"] if g.get("status") == "MISS")
     assert array_pass == payload["guards_pass"], (
-        f"array PASS count {array_pass} != guards_pass "
-        f"{payload['guards_pass']}"
+        f"array PASS count {array_pass} != guards_pass " f"{payload['guards_pass']}"
     )
     assert array_fail == payload["guards_fail"], (
-        f"array FAIL count {array_fail} != guards_fail "
-        f"{payload['guards_fail']}"
+        f"array FAIL count {array_fail} != guards_fail " f"{payload['guards_fail']}"
     )
     assert array_skip == payload["guards_skip"], (
-        f"array SKIP count {array_skip} != guards_skip "
-        f"{payload['guards_skip']}"
+        f"array SKIP count {array_skip} != guards_skip " f"{payload['guards_skip']}"
     )
-    assert array_miss == miss, (
-        f"array MISS count {array_miss} != guards_miss {miss}"
-    )
+    assert array_miss == miss, f"array MISS count {array_miss} != guards_miss {miss}"
 
 
 if __name__ == "__main__":

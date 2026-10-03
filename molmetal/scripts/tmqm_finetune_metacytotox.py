@@ -60,18 +60,36 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         description="Fine-tune tmQM-pretrained DMPNN on MetalCytoToxDB Ru subset.",
     )
     p.add_argument("--metal", default="Ru", help="Metal centre to fine-tune on.")
-    p.add_argument("--epochs", type=int, default=1,
-                   help="Number of fine-tune epochs (default 1 for CI smoke test).")
-    p.add_argument("--batch", type=int, default=16,
-                   help="Batch size (small to avoid OOM on the dev box).")
-    p.add_argument("--lr", type=float, default=1e-4,
-                   help="AdamW learning rate for fine-tuning (1e-4 is a safe default "
-                        "because the encoder is already converged on tmQM).")
+    p.add_argument(
+        "--epochs",
+        type=int,
+        default=1,
+        help="Number of fine-tune epochs (default 1 for CI smoke test).",
+    )
+    p.add_argument(
+        "--batch",
+        type=int,
+        default=16,
+        help="Batch size (small to avoid OOM on the dev box).",
+    )
+    p.add_argument(
+        "--lr",
+        type=float,
+        default=1e-4,
+        help="AdamW learning rate for fine-tuning (1e-4 is a safe default "
+        "because the encoder is already converged on tmQM).",
+    )
     p.add_argument("--seed", type=int, default=42)
-    p.add_argument("--ckpt-in", default=str(DEFAULT_TMQM_CKPT),
-                   help="Path to the tmQM pre-trained checkpoint.")
-    p.add_argument("--ckpt-out", default=str(DEFAULT_OUT),
-                   help="Where to save the fine-tuned encoder.")
+    p.add_argument(
+        "--ckpt-in",
+        default=str(DEFAULT_TMQM_CKPT),
+        help="Path to the tmQM pre-trained checkpoint.",
+    )
+    p.add_argument(
+        "--ckpt-out",
+        default=str(DEFAULT_OUT),
+        help="Where to save the fine-tuned encoder.",
+    )
     return p.parse_args(argv)
 
 
@@ -80,6 +98,7 @@ def _build_encoder_from_ckpt(ckpt_path: Path) -> tuple[DirectedMPNN, dict]:
     raw = torch.load(ckpt_path, map_location="cpu")
     cfg = raw.get("mpnn_config", {})
     from molmetal.models.dmpnn import MPNNConfig
+
     mpnn_cfg = MPNNConfig(
         atom_feat_dim=cfg.get("atom_feat_dim", 39),
         edge_feat_dim=cfg.get("edge_feat_dim", 6),
@@ -210,7 +229,7 @@ def main(argv: list[str] | None = None) -> int:
         perm = torch.randperm(n).tolist()
         ep_losses: list[float] = []
         for start in range(0, n, args.batch):
-            batch_idx = perm[start:start + args.batch]
+            batch_idx = perm[start : start + args.batch]
             try:
                 # The full fine-tune path uses
                 # ``DMPNNMultiTaskModel.forward(smiles_list)`` which

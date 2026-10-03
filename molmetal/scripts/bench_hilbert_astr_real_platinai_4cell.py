@@ -122,6 +122,7 @@ Pytest
 
     pytest molmetal/tests/test_hilbert_astr_real_platinai_4cell.py -v
 """
+
 from __future__ import annotations
 
 import argparse
@@ -280,11 +281,40 @@ def _bemis_murcko_scaffold(smi: str) -> str:
             for atom in rwmol.GetAtoms():
                 sym = atom.GetSymbol()
                 if sym in (
-                    "Pt", "Pd", "Ru", "Ir", "Os", "Rh",
-                    "Au", "Ag", "Cu", "Ni", "Fe", "Co", "Zn",
-                    "Mn", "Cr", "V", "Ti", "Sc", "Y", "Zr",
-                    "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Cd",
-                    "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt",
+                    "Pt",
+                    "Pd",
+                    "Ru",
+                    "Ir",
+                    "Os",
+                    "Rh",
+                    "Au",
+                    "Ag",
+                    "Cu",
+                    "Ni",
+                    "Fe",
+                    "Co",
+                    "Zn",
+                    "Mn",
+                    "Cr",
+                    "V",
+                    "Ti",
+                    "Sc",
+                    "Y",
+                    "Zr",
+                    "Nb",
+                    "Mo",
+                    "Tc",
+                    "Ru",
+                    "Rh",
+                    "Pd",
+                    "Cd",
+                    "Hf",
+                    "Ta",
+                    "W",
+                    "Re",
+                    "Os",
+                    "Ir",
+                    "Pt",
                     "Hg",
                 ):
                     atoms_to_remove.append(atom.GetIdx())
@@ -455,7 +485,8 @@ def hilbert_feature_map(
         out_tr = np.concatenate([aug_tr, pad], axis=1)
         if aug_te is not None:
             pad_te = np.zeros(
-                (n_te, hilbert_dim - aug_te.shape[1]), dtype=np.float32,
+                (n_te, hilbert_dim - aug_te.shape[1]),
+                dtype=np.float32,
             )
             out_te = np.concatenate([aug_te, pad_te], axis=1)
             return out_tr, out_te
@@ -499,6 +530,7 @@ def fit_hilbert(
     from molmetal.molmetal_lam.reward.hilbert_primal_dual import (
         LambdaASTSRHilbert,
     )
+
     opt = LambdaASTSRHilbert(
         population_dim=hilbert_dim,
         lr_primal=lr,
@@ -548,6 +580,7 @@ def fit_astr(
 ) -> "LambdaASTSR":
     """Fit LambdaASTSR on the raw 12-d RDKit descriptor (no augmentation)."""
     from molmetal.molmetal_lam.reward.lambda_astsr import LambdaASTSR
+
     reg = LambdaASTSR(
         depth=depth,
         population=population,
@@ -767,9 +800,9 @@ def evaluate_cell_line(
             # 90/10 inner validation split for alpha selection.
             n_inner_te = max(1, int(round(len(tr) * 0.10)))
             seed_int = int(seed) if not isinstance(seed, list) else int(seed[0])
-            inner_perm = np.random.default_rng(
-                seed_int * 1000 + fold_idx
-            ).permutation(len(tr))
+            inner_perm = np.random.default_rng(seed_int * 1000 + fold_idx).permutation(
+                len(tr)
+            )
             inner_te_idx = inner_perm[:n_inner_te]
             inner_tr_idx = inner_perm[n_inner_te:]
 
@@ -787,21 +820,29 @@ def evaluate_cell_line(
             X_tr_n = np.nan_to_num(X_tr_n, nan=0.0, posinf=0.0, neginf=0.0)
             X_te_n = np.nan_to_num(X_te_n, nan=0.0, posinf=0.0, neginf=0.0)
             X_tr_inner_n = np.nan_to_num(
-                X_tr_inner_n, nan=0.0, posinf=0.0, neginf=0.0,
+                X_tr_inner_n,
+                nan=0.0,
+                posinf=0.0,
+                neginf=0.0,
             )
             X_te_inner_n = np.nan_to_num(
-                X_te_inner_n, nan=0.0, posinf=0.0, neginf=0.0,
+                X_te_inner_n,
+                nan=0.0,
+                posinf=0.0,
+                neginf=0.0,
             )
 
             # Hilbert feature map: build on inner-train (for alpha
             # selection) AND on full outer-train (for final test
             # prediction). Each call returns aligned train + (test | None).
             X_tr_inner_h, X_te_inner_h = hilbert_feature_map(
-                X_tr_inner_n.astype(np.float32), hilbert_dim,
+                X_tr_inner_n.astype(np.float32),
+                hilbert_dim,
                 X_12d_test=X_te_inner_n.astype(np.float32),
             )
             X_tr_h, X_te_h = hilbert_feature_map(
-                X_tr_n.astype(np.float32), hilbert_dim,
+                X_tr_n.astype(np.float32),
+                hilbert_dim,
                 X_12d_test=X_te_n.astype(np.float32),
             )
 
@@ -884,8 +925,7 @@ def evaluate_cell_line(
                     "combined_r2": float(r2_c),
                     "alpha_chosen": float(alpha),
                     "collapse_detected": bool(collapse_c),
-                    "wall_s": float(time.perf_counter() - t0)
-                    / max(fold_idx + 1, 1),
+                    "wall_s": float(time.perf_counter() - t0) / max(fold_idx + 1, 1),
                 }
             )
             # Per-fold progress to stdout (line-buffered via ``-u``).
@@ -933,7 +973,9 @@ def evaluate_cell_line(
                 "hilbert_r2_per_fold_mean": seed_r2_h,
                 "astr_r2_per_fold_mean": seed_r2_a,
                 "alpha_mean": float(np.mean(alphas_chosen)) if alphas_chosen else 1.0,
-                "alpha_std": float(np.std(alphas_chosen)) if len(alphas_chosen) > 1 else 0.0,
+                "alpha_std": float(np.std(alphas_chosen))
+                if len(alphas_chosen) > 1
+                else 0.0,
                 "per_fold": per_fold,
                 "wall_time_s": float(time.perf_counter() - t0),
                 "n_samples": int(n),
@@ -956,17 +998,21 @@ def evaluate_cell_line(
         "n_seeds": len(seeds),
         "strict_scaffold": bool(strict_scaffold),
         "combined_r2_mean": float(np.mean(r2_combined_per_seed))
-        if r2_combined_per_seed else 0.0,
+        if r2_combined_per_seed
+        else 0.0,
         "combined_r2_std": float(np.std(r2_combined_per_seed))
-        if len(r2_combined_per_seed) > 1 else 0.0,
+        if len(r2_combined_per_seed) > 1
+        else 0.0,
         "hilbert_r2_mean": float(np.mean(r2_hilbert_per_seed))
-        if r2_hilbert_per_seed else 0.0,
+        if r2_hilbert_per_seed
+        else 0.0,
         "hilbert_r2_std": float(np.std(r2_hilbert_per_seed))
-        if len(r2_hilbert_per_seed) > 1 else 0.0,
-        "astr_r2_mean": float(np.mean(r2_astr_per_seed))
-        if r2_astr_per_seed else 0.0,
+        if len(r2_hilbert_per_seed) > 1
+        else 0.0,
+        "astr_r2_mean": float(np.mean(r2_astr_per_seed)) if r2_astr_per_seed else 0.0,
         "astr_r2_std": float(np.std(r2_astr_per_seed))
-        if len(r2_astr_per_seed) > 1 else 0.0,
+        if len(r2_astr_per_seed) > 1
+        else 0.0,
         "per_seed": per_seed,
     }
     return summary
@@ -991,7 +1037,8 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
     """Write ``<out_dir>/synthesis.md`` cross-cell-line summary."""
     out_dir.mkdir(parents=True, exist_ok=True)
     strict_str = (
-        "strict-scaffold disjoint" if all_results and all_results[0].get("strict_scaffold")
+        "strict-scaffold disjoint"
+        if all_results and all_results[0].get("strict_scaffold")
         else "random"
     )
     lines: List[str] = [
@@ -1028,9 +1075,7 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
         )
         combined_means.append(r["combined_r2_mean"])
     aggregate = float(np.mean(combined_means)) if combined_means else 0.0
-    aggregate_std = (
-        float(np.std(combined_means)) if len(combined_means) > 1 else 0.0
-    )
+    aggregate_std = float(np.std(combined_means)) if len(combined_means) > 1 else 0.0
     lines.append(
         "| **4-cell aggregate** | — | **{agg:+.4f} ± {ags:.4f}** | — | — |".format(
             agg=aggregate,
@@ -1038,14 +1083,18 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
         )
     )
     lines.append("")
-    lines.append("## Verify gate (target ≥ +0.30 mean across 4 cell lines, vs Wf-85 P3 anchor)")
+    lines.append(
+        "## Verify gate (target ≥ +0.30 mean across 4 cell lines, vs Wf-85 P3 anchor)"
+    )
     lines.append("")
     if aggregate >= 0.30:
         verdict = "✅ **PASS** (combined R² ≥ +0.30 across 4 cell lines on average)"
     elif aggregate >= 0.0:
         verdict = "🟡 **PARTIAL** (combined R² ≥ 0.0 but below Wf-85 P3 anchor)"
     else:
-        verdict = "❌ **FAIL** (combined R² < 0.0; honest per-cell-line breakdown below)"
+        verdict = (
+            "❌ **FAIL** (combined R² < 0.0; honest per-cell-line breakdown below)"
+        )
     lines.append(
         f"**Aggregate combined R² (mean of 4 cell-line means) = {aggregate:+.4f}** — {verdict}"
     )
@@ -1084,12 +1133,18 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
         lines.append("")
     lines.append("## Honest framing")
     lines.append("")
-    lines.append("- **MEASURED today**: 5 seeds × 5-fold × 4 cell lines on PlatinAI 4-cell")
-    lines.append("  synthetic pIC50 data; Hilbert+ASTSR convex blend with per-fold alpha selection.")
+    lines.append(
+        "- **MEASURED today**: 5 seeds × 5-fold × 4 cell lines on PlatinAI 4-cell"
+    )
+    lines.append(
+        "  synthetic pIC50 data; Hilbert+ASTSR convex blend with per-fold alpha selection."
+    )
     lines.append("- **Strict-scaffold split**: Bemis-Murcko scaffold is computed")
     lines.append("  on-the-fly from canonical SMILES, with a two-tier fallback to")
     lines.append("  canonicalised ligand SMILES when Bemis-Murcko returns empty")
-    lines.append("  (PlatinAI 4-cell has many Pt-coordination complexes with open-chain")
+    lines.append(
+        "  (PlatinAI 4-cell has many Pt-coordination complexes with open-chain"
+    )
     lines.append("  or saturated ligands that lack ring systems).")
     lines.append("  Each scaffold is assigned to exactly one fold's test set; this")
     lines.append("  eliminates scaffold leakage between train and test.")
@@ -1097,12 +1152,24 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
     lines.append("  a2780=4078, a2780cis=4078 (PlatinAI 4-cell has the same")
     lines.append("  rows × 4 cell-line IC50 columns).")
     lines.append("- **Alpha selection**: per-fold 90/10 inner validation; grid over")
-    lines.append("  alpha ∈ {0.0, 0.25, 0.5, 0.75, 1.0}; reported as `alpha_chosen` per fold.")
-    lines.append("- **Collapse detector**: `pred_std / y_test_std < 0.10` flagged in `per_fold`.")
-    lines.append("- **No Multi-PH + PLL**: this is the **combined Hilbert+ASTSR** anchor;")
-    lines.append("  Multi-PH/PLL augmentation is a separate workstream (Wf-79 P2 3-way + PLL).")
-    lines.append("- **CPU smoke**: per-cell-line fits in < 5 min on a single CPU core for")
-    lines.append("  the 4 078-row cohort (full 4-cell × 5-seed × 5-fold benchmark runs in")
+    lines.append(
+        "  alpha ∈ {0.0, 0.25, 0.5, 0.75, 1.0}; reported as `alpha_chosen` per fold."
+    )
+    lines.append(
+        "- **Collapse detector**: `pred_std / y_test_std < 0.10` flagged in `per_fold`."
+    )
+    lines.append(
+        "- **No Multi-PH + PLL**: this is the **combined Hilbert+ASTSR** anchor;"
+    )
+    lines.append(
+        "  Multi-PH/PLL augmentation is a separate workstream (Wf-79 P2 3-way + PLL)."
+    )
+    lines.append(
+        "- **CPU smoke**: per-cell-line fits in < 5 min on a single CPU core for"
+    )
+    lines.append(
+        "  the 4 078-row cohort (full 4-cell × 5-seed × 5-fold benchmark runs in"
+    )
     lines.append("  ~20 min total).  GPU-0 Blackwell optional but not required.")
     lines.append("")
     lines.append(
@@ -1151,8 +1218,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         nargs="+",
         default=list(DEFAULT_CELL_LINES),
         help=(
-            "PlatinAI cell lines to benchmark "
-            "(default: mcf7 a549 a2780 a2780cis)."
+            "PlatinAI cell lines to benchmark " "(default: mcf7 a549 a2780 a2780cis)."
         ),
     )
     parser.add_argument(
@@ -1255,9 +1321,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         f"seeds={args.seeds} epochs={args.epochs} "
         f"strict_scaffold={args.strict_scaffold} device={args.device}"
     )
-    print(
-        f"[wf86-p3] CSV path: {_REPO_ROOT / PLATINAI_CSV}"
-    )
+    print(f"[wf86-p3] CSV path: {_REPO_ROOT / PLATINAI_CSV}")
 
     all_results: List[Dict[str, Any]] = []
     for cell_line in args.cell_lines:

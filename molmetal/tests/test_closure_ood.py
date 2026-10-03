@@ -33,6 +33,7 @@ Run with::
 
     uv run --no-sync pytest -q molmetal/tests/test_closure_ood.py --tb=short
 """
+
 from __future__ import annotations
 
 import csv
@@ -95,6 +96,7 @@ from molmetal.scripts.bench_closure_ood import (  # noqa: E402
 def _have_rdkit() -> bool:
     try:
         from rdkit import Chem  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -166,9 +168,7 @@ def test_domain_specs_have_csv_paths() -> None:
         assert "smiles_col" in spec, f"{name} missing 'smiles_col'"
         assert "metals" in spec, f"{name} missing 'metals'"
         assert "description" in spec, f"{name} missing 'description'"
-        assert Path(spec["csv"]).is_file(), (
-            f"{name} CSV missing at {spec['csv']}"
-        )
+        assert Path(spec["csv"]).is_file(), f"{name} CSV missing at {spec['csv']}"
 
 
 # ---------------------------------------------------------------------------
@@ -207,12 +207,9 @@ def test_metalcyto_metals_subset() -> None:
 # ---------------------------------------------------------------------------
 def test_common_metals_intersection() -> None:
     """COMMON_METALS = PLATINAI_METALS ∩ METALCYTO_METALS."""
-    expected = tuple(
-        m for m in PLATINAI_METALS if m in METALCYTO_METALS
-    )
+    expected = tuple(m for m in PLATINAI_METALS if m in METALCYTO_METALS)
     assert COMMON_METALS == expected, (
-        f"COMMON_METALS={COMMON_METALS} != intersection "
-        f"{expected}"
+        f"COMMON_METALS={COMMON_METALS} != intersection " f"{expected}"
     )
 
 
@@ -271,7 +268,8 @@ def test_tanimoto_protocol_loads() -> None:
     assert float(p.threshold) == DEFAULT_TANIMOTO_THRESHOLD
     # Self-similarity is 1.0 (canonical convention).
     assert p.compute_tanimoto("c1ccccc1O", "c1ccccc1O") == pytest.approx(
-        1.0, abs=1e-6,
+        1.0,
+        abs=1e-6,
     )
 
 
@@ -287,10 +285,10 @@ def test_filter_ood_subset_filters() -> None:
     """
     train_pool = ["c1ccccc1O", "N#Cc1ccccc1"]  # phenol + benzonitrile
     queries = [
-        "c1ccccc1O",                 # identical to train[0] → NOT OOD
-        "CCCCCCCCCC",                # decane — fully OOD
-        "N#Cc1ccccc1",               # identical to train[1] → NOT OOD
-        "c1ccncc1",                  # pyridine — likely OOD
+        "c1ccccc1O",  # identical to train[0] → NOT OOD
+        "CCCCCCCCCC",  # decane — fully OOD
+        "N#Cc1ccccc1",  # identical to train[1] → NOT OOD
+        "c1ccncc1",  # pyridine — likely OOD
     ]
     p = _load_tanimoto_protocol(threshold=0.4)
     ood_subset, audit = _filter_ood_subset(queries, train_pool, p, "Test")
@@ -309,8 +307,11 @@ def test_filter_ood_subset_filters() -> None:
 def test_load_metal_samples_first_n() -> None:
     """_load_metal_samples returns the first n SMILES tagged with the metal."""
     smis = _load_metal_samples(
-        DEFAULT_PLATINAI_CSV, "Pt", 3,
-        smiles_col="smiles", metal_col="metal",
+        DEFAULT_PLATINAI_CSV,
+        "Pt",
+        3,
+        smiles_col="smiles",
+        metal_col="metal",
     )
     assert len(smis) == 3
     assert all(len(s) > 0 for s in smis)
@@ -320,11 +321,20 @@ def test_load_metal_samples_first_n() -> None:
 # 14. Smoke run unfiltered
 # ---------------------------------------------------------------------------
 EXPECTED_AGGREGATE_KEYS: List[str] = [
-    "n_input", "n_ood", "n_samples", "n_closure_ok",
-    "closure_reachability_rate", "ood_rate",
-    "mean_wall_time", "std_wall_time", "median_wall_time",
-    "peak_memory_mb", "total_wall_time",
-    "n_error", "n_metal_coordinated", "metal_coordination_rate",
+    "n_input",
+    "n_ood",
+    "n_samples",
+    "n_closure_ok",
+    "closure_reachability_rate",
+    "ood_rate",
+    "mean_wall_time",
+    "std_wall_time",
+    "median_wall_time",
+    "peak_memory_mb",
+    "total_wall_time",
+    "n_error",
+    "n_metal_coordinated",
+    "metal_coordination_rate",
 ]
 
 
@@ -345,9 +355,7 @@ def test_smoke_run_platinai_unfiltered(
     assert agg["n_input"] >= 1
     assert agg["n_ood"] == agg["n_input"]  # unfiltered → ood_rate=1
     rate = float(agg["closure_reachability_rate"])
-    assert 0.0 <= rate <= 1.0, (
-        f"closure_reachability_rate out of [0,1]: {rate}"
-    )
+    assert 0.0 <= rate <= 1.0, f"closure_reachability_rate out of [0,1]: {rate}"
 
 
 # ---------------------------------------------------------------------------
@@ -420,15 +428,13 @@ def test_aggregate_per_metal_empty() -> None:
 
 def test_default_csv_paths_exist() -> None:
     """All default CSV paths exist on disk."""
-    assert DEFAULT_PLATINAI_CSV.is_file(), (
-        f"PlatinAI CSV missing at {DEFAULT_PLATINAI_CSV}"
-    )
-    assert DEFAULT_TMQM_CSV.is_file(), (
-        f"tmQM CSV missing at {DEFAULT_TMQM_CSV}"
-    )
-    assert DEFAULT_METALCYTO_CSV.is_file(), (
-        f"MetalCytoTox CSV missing at {DEFAULT_METALCYTO_CSV}"
-    )
+    assert (
+        DEFAULT_PLATINAI_CSV.is_file()
+    ), f"PlatinAI CSV missing at {DEFAULT_PLATINAI_CSV}"
+    assert DEFAULT_TMQM_CSV.is_file(), f"tmQM CSV missing at {DEFAULT_TMQM_CSV}"
+    assert (
+        DEFAULT_METALCYTO_CSV.is_file()
+    ), f"MetalCytoTox CSV missing at {DEFAULT_METALCYTO_CSV}"
 
 
 def test_default_max_depth_is_1() -> None:
@@ -456,7 +462,9 @@ def test_utcnow_iso_format() -> None:
 def test_benchmark_one_smoke() -> None:
     """_benchmark_one on cisplatin returns the expected per-sample record."""
     rec = _benchmark_one(
-        "[NH3][Pt]([NH3])([Cl])([Cl])", 0, "Pt",
+        "[NH3][Pt]([NH3])([Cl])([Cl])",
+        0,
+        "Pt",
         domain="platinai_5k",
         click_rules=_load_click_rules(),
         partner_terms=_load_partner_terms(),
@@ -499,20 +507,28 @@ def test_per_metal_records_have_all_keys() -> None:
         max_products=32,
     )
     expected_keys = {
-        "idx", "metal", "domain", "smiles", "status", "closure_ok",
-        "n_visited", "n_products", "max_depth_seen",
-        "well_typed_rate", "n_metal_coordinated", "n_atoms_start",
-        "parse_error", "wall_time_s", "memory_mb", "depth",
+        "idx",
+        "metal",
+        "domain",
+        "smiles",
+        "status",
+        "closure_ok",
+        "n_visited",
+        "n_products",
+        "max_depth_seen",
+        "well_typed_rate",
+        "n_metal_coordinated",
+        "n_atoms_start",
+        "parse_error",
+        "wall_time_s",
+        "memory_mb",
+        "depth",
     }
     for dom in payload["domains"]:
-        for metal, m_info in (
-            payload["per_domain"][dom]["per_metal"].items()
-        ):
+        for metal, m_info in payload["per_domain"][dom]["per_metal"].items():
             for rec in m_info["records"]:
                 missing = expected_keys - set(rec.keys())
-                assert not missing, (
-                    f"record in {dom}/{metal} missing keys {missing!r}"
-                )
+                assert not missing, f"record in {dom}/{metal} missing keys {missing!r}"
 
 
 def test_method_validation() -> None:
@@ -534,9 +550,7 @@ def test_per_domain_aggregate_keys(
     for dom in smoke_unfiltered_payload["domains"]:
         d_agg = smoke_unfiltered_payload["per_domain"][dom]["aggregate"]
         missing = [k for k in EXPECTED_AGGREGATE_KEYS if k not in d_agg]
-        assert not missing, (
-            f"per-domain aggregate for {dom!r} missing keys {missing!r}"
-        )
+        assert not missing, f"per-domain aggregate for {dom!r} missing keys {missing!r}"
         assert "ood_rate" in d_agg
         assert "n_input" in d_agg
 
@@ -558,6 +572,7 @@ def test_load_tmqm_train_pool_returns_list() -> None:
 def test_is_metal_coordinated_cisplatin() -> None:
     """_is_metal_coordinated returns True for Pt at Z=78."""
     from molmetal_lam.lam_chem.cisplatin_builder import build_cisplatin
+
     c = build_cisplatin()
     assert _is_metal_coordinated(c, 78) is True
     assert _is_metal_coordinated(c, 44) is False  # Ru in cisplatin → False

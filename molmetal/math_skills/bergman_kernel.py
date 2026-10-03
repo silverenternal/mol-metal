@@ -156,9 +156,7 @@ class BoundedSymmetricDomain:
 
     def __init__(self, dimension: int = 5) -> None:
         if dimension < 1:
-            raise ValueError(
-                f"dimension must be >= 1, got {dimension}"
-            )
+            raise ValueError(f"dimension must be >= 1, got {dimension}")
         self.d = int(dimension)
 
     # -- canonical dimensions ----------------------------------------------
@@ -237,7 +235,7 @@ class BoundedSymmetricDomain:
         """
         norm_sq = (occupancy * occupancy).sum(dim=-1, keepdim=True)  # (..., 1)
         # Outer product o_i o_j, then divide by (1 + ||o||^2).
-        outer = occupancy.unsqueeze(-1) * occupancy.unsqueeze(-2)   # (..., d, d)
+        outer = occupancy.unsqueeze(-1) * occupancy.unsqueeze(-2)  # (..., d, d)
         z = outer / (1.0 + norm_sq.unsqueeze(-1))
         # z is automatically symmetric because outer product is symmetric.
         return z
@@ -322,13 +320,9 @@ class BergmanKernel(nn.Module):
     ) -> None:
         super().__init__()
         if dimension < 1:
-            raise ValueError(
-                f"dimension must be >= 1, got {dimension}"
-            )
+            raise ValueError(f"dimension must be >= 1, got {dimension}")
         if n_eigenfunctions < 1:
-            raise ValueError(
-                f"n_eigenfunctions must be >= 1, got {n_eigenfunctions}"
-            )
+            raise ValueError(f"n_eigenfunctions must be >= 1, got {n_eigenfunctions}")
         self.d = int(dimension)
         self.n_eigenfunctions = int(n_eigenfunctions)
         # The exponent (d+1) — multiplicity of the highest root of the
@@ -337,9 +331,7 @@ class BergmanKernel(nn.Module):
         self._domain = BoundedSymmetricDomain(dimension)
         # Sample Nyström anchor points from R_II(d).
         g = torch.Generator().manual_seed(int(seed))
-        anchors = self._domain.random_point(
-            (self.n_eigenfunctions,), generator=g
-        )
+        anchors = self._domain.random_point((self.n_eigenfunctions,), generator=g)
         # Register as a buffer so it follows the module on .to(...)
         # and is saved by state_dict, but receives no gradient.
         self.register_buffer("_anchors", anchors)
@@ -428,10 +420,10 @@ class BergmanKernel(nn.Module):
         # z:        (..., d, d)
         # anchors:  (N, d, d) with N = n_eigenfunctions
         # We want features[i] = K(z, anchors[i]) for each i.
-        z_exp = z.unsqueeze(-3)               # (..., 1, d, d)
-        a_exp = self._anchors.unsqueeze(0)    # (1, N, d, d)
+        z_exp = z.unsqueeze(-3)  # (..., 1, d, d)
+        a_exp = self._anchors.unsqueeze(0)  # (1, N, d, d)
         # Broadcasting over leading dims gives (..., N, d, d).
-        return self.forward(z_exp, a_exp)     # (..., N)
+        return self.forward(z_exp, a_exp)  # (..., N)
 
     # -- diagnostics -------------------------------------------------------
 
@@ -498,18 +490,16 @@ class BergmanKernelEmbedding(nn.Module):
     ) -> None:
         super().__init__()
         if hidden_dim < 1:
-            raise ValueError(
-                f"hidden_dim must be >= 1, got {hidden_dim}"
-            )
+            raise ValueError(f"hidden_dim must be >= 1, got {hidden_dim}")
         if dimension < 1:
-            raise ValueError(
-                f"dimension must be >= 1, got {dimension}"
-            )
+            raise ValueError(f"dimension must be >= 1, got {dimension}")
         self.hidden_dim = int(hidden_dim)
         self.dimension = int(dimension)
         self.domain = BoundedSymmetricDomain(dimension)
         self.kernel = BergmanKernel(
-            dimension=dimension, n_eigenfunctions=hidden_dim, seed=seed,
+            dimension=dimension,
+            n_eigenfunctions=hidden_dim,
+            seed=seed,
         )
 
     def forward(self, occupation: Tensor) -> Tensor:

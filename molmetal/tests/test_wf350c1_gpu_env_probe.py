@@ -76,6 +76,7 @@ Cross-references
 * ``TODO/completed/350c1_gpu_env_probe.md`` — the Wf-350-C1 ship
   summary + per-deliverable MEASURED status.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -94,9 +95,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = REPO_ROOT / "molmetal" / "scripts"
 PREFLIGHT_SCRIPT = SCRIPTS_DIR / "pre_flight_check.py"
 PROBE_SCRIPT = SCRIPTS_DIR / "check_blackwell_env.py"
-ENV_JSON_PATH = (
-    REPO_ROOT / "molmetal" / "reports" / "wf350c1_gpu_env_check.json"
-)
+ENV_JSON_PATH = REPO_ROOT / "molmetal" / "reports" / "wf350c1_gpu_env_check.json"
 
 # Insert repo root into sys.path so `from molmetal.scripts.pre_flight_check`
 # resolves without requiring the test runner to set PYTHONPATH itself.
@@ -114,11 +113,12 @@ def _load_preflight_module():
     _gate_audit.py.
     """
     spec = importlib.util.spec_from_file_location(
-        "pre_flight_check_under_test", PREFLIGHT_SCRIPT,
+        "pre_flight_check_under_test",
+        PREFLIGHT_SCRIPT,
     )
-    assert spec is not None and spec.loader is not None, (
-        f"pre_flight_check.py has no import spec ({PREFLIGHT_SCRIPT})"
-    )
+    assert (
+        spec is not None and spec.loader is not None
+    ), f"pre_flight_check.py has no import spec ({PREFLIGHT_SCRIPT})"
     mod = importlib.util.module_from_spec(spec)
     sys.modules["pre_flight_check_under_test"] = mod
     spec.loader.exec_module(mod)
@@ -162,18 +162,17 @@ def test_gate_wf350c1_gpu_env_probe_pass_on_host(preflight) -> None:
     )
 
     result = preflight.gate_p1_gpu_env_probe(
-        "p1_gpu_env_probe_test", "P3", "wf350c1",
+        "p1_gpu_env_probe_test",
+        "P3",
+        "wf350c1",
         ENV_JSON_PATH,
     )
     assert result.status == "PASS", (
-        f"gate should PASS on live host; got {result.status}: "
-        f"{result.evidence}"
+        f"gate should PASS on live host; got {result.status}: " f"{result.evidence}"
     )
 
     # Env JSON exists, is non-empty, parses as JSON.
-    assert ENV_JSON_PATH.is_file(), (
-        f"env JSON file not on disk: {ENV_JSON_PATH}"
-    )
+    assert ENV_JSON_PATH.is_file(), f"env JSON file not on disk: {ENV_JSON_PATH}"
     raw = ENV_JSON_PATH.read_text(encoding="utf-8")
     assert raw.strip(), f"env JSON file is empty: {ENV_JSON_PATH}"
     env_summary = json.loads(raw)
@@ -201,15 +200,13 @@ def test_gate_wf350c1_gpu_env_probe_pass_on_host(preflight) -> None:
         f"{type(env_summary['gpu_count']).__name__}"
     )
     assert env_summary["gpu_count"] >= 1, (
-        f"env summary['gpu_count']={env_summary['gpu_count']} < 1 "
-        f"(expected >= 1)"
+        f"env summary['gpu_count']={env_summary['gpu_count']} < 1 " f"(expected >= 1)"
     )
 
     # torch_probe must be a dict with the 4 mandatory fields.
     tp = env_summary["torch_probe"]
     assert isinstance(tp, dict), (
-        f"env summary['torch_probe'] is not a dict; got "
-        f"{type(tp).__name__}"
+        f"env summary['torch_probe'] is not a dict; got " f"{type(tp).__name__}"
     )
     for key in ("ok", "device_count", "device_name", "cuda_runtime"):
         assert key in tp, (
@@ -229,13 +226,13 @@ def test_gate_wf350c1_gpu_env_probe_pass_on_host(preflight) -> None:
         f"int >= 1 — torch.cuda.device_count)"
     )
     # 3. GPU model non-empty (torch_probe.device_name)
-    assert tp["device_name"], (
-        f"torch_probe.device_name is empty; got {tp['device_name']!r}"
-    )
+    assert tp[
+        "device_name"
+    ], f"torch_probe.device_name is empty; got {tp['device_name']!r}"
     # 4. CUDA runtime version non-empty (torch_probe.cuda_runtime)
-    assert tp["cuda_runtime"], (
-        f"torch_probe.cuda_runtime is empty; got {tp['cuda_runtime']!r}"
-    )
+    assert tp[
+        "cuda_runtime"
+    ], f"torch_probe.cuda_runtime is empty; got {tp['cuda_runtime']!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -244,7 +241,8 @@ def test_gate_wf350c1_gpu_env_probe_pass_on_host(preflight) -> None:
 
 
 def test_gate_wf350c1_gpu_env_probe_json_schema_validity(
-    preflight, tmp_path,
+    preflight,
+    tmp_path,
 ) -> None:
     """Wf-350-C1 (2) — gate PASS on tmp_path fixture + env JSON on disk.
 
@@ -263,7 +261,9 @@ def test_gate_wf350c1_gpu_env_probe_json_schema_validity(
     """
     fixture_path = tmp_path / "gpu_env_probe_fixture.json"
     result = preflight.gate_p1_gpu_env_probe(
-        "p1_gpu_env_probe_fixture", "P3", "wf350c1",
+        "p1_gpu_env_probe_fixture",
+        "P3",
+        "wf350c1",
         fixture_path,
     )
 
@@ -275,14 +275,11 @@ def test_gate_wf350c1_gpu_env_probe_json_schema_validity(
         f"gate should PASS or FAIL on tmp_path fixture (no SKIP); "
         f"got {result.status}: {result.evidence}"
     )
-    assert fixture_path.is_file(), (
-        f"env JSON not written at {fixture_path}"
-    )
+    assert fixture_path.is_file(), f"env JSON not written at {fixture_path}"
 
     env_summary = json.loads(fixture_path.read_text(encoding="utf-8"))
     assert isinstance(env_summary, dict), (
-        f"tmp_path fixture env JSON is not a dict; got "
-        f"{type(env_summary).__name__}"
+        f"tmp_path fixture env JSON is not a dict; got " f"{type(env_summary).__name__}"
     )
     for key in ("gpu_count", "gpu_names", "torch_probe"):
         assert key in env_summary, (
@@ -402,9 +399,7 @@ def test_gate_wf350c1_gpu_env_probe_registered_in_build_gates(
     # (f) The registered gate function itself PASSes when called via
     #     build_gates('all') (catches schema-drift regression on the
     #     gate function between registration and execution).
-    gpu_probe_runner = next(
-        r for n, r in all_runners if n == "p1_gpu_env_probe"
-    )
+    gpu_probe_runner = next(r for n, r in all_runners if n == "p1_gpu_env_probe")
     gpu_probe_result = gpu_probe_runner()
     assert gpu_probe_result.status == "PASS", (
         f"p1_gpu_env_probe runner FAILed: status="

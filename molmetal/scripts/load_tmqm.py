@@ -51,7 +51,9 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Do not drop entries whose SMILES field is empty",
     )
-    p.add_argument("--refresh", action="store_true", help="Force re-parse of the .gz shards")
+    p.add_argument(
+        "--refresh", action="store_true", help="Force re-parse of the .gz shards"
+    )
     p.add_argument("--out", default=None, help="Output JSON path")
     return p.parse_args(argv)
 
@@ -75,12 +77,18 @@ def main(argv: list[str] | None = None) -> int:
     print(f"[load_tmqm] n_total (all metals, incl. empty SMILES) = {len(raw):,}")
     print(f"[load_tmqm] dropped for empty SMILES = {len(raw) - len(full):,}")
 
-    df = full if metals is None else full[full["metal"].isin(metals)].reset_index(drop=True)
+    df = (
+        full
+        if metals is None
+        else full[full["metal"].isin(metals)].reset_index(drop=True)
+    )
     stats = summarize(df)
 
     label = "ALL" if metals is None else "+".join(metals)
     print(f"\n[load_tmqm] subset = {label}  n = {stats.n_total:,}")
-    print(f"{'metal':<8}{'n':>8}{'mean_CN':>10}{'mean_BO':>10}   coord-number histogram")
+    print(
+        f"{'metal':<8}{'n':>8}{'mean_CN':>10}{'mean_BO':>10}   coord-number histogram"
+    )
     for metal, n in sorted(stats.per_metal.items(), key=lambda kv: -kv[1]):
         hist = stats.coord_distribution[metal]
         top = ", ".join(

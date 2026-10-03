@@ -88,9 +88,7 @@ class BottleneckGuardrail:
                 f"got {approx_ratio}"
             )
         if safety_factor <= 0.0:
-            raise ValueError(
-                f"safety_factor must be > 0, got {safety_factor}"
-            )
+            raise ValueError(f"safety_factor must be > 0, got {safety_factor}")
         self.approx_ratio = float(approx_ratio)
         self.safety_factor = float(safety_factor)
 
@@ -117,15 +115,13 @@ class BottleneckGuardrail:
         """
         if n_persistence_pairs < 0:
             raise ValueError(
-                f"n_persistence_pairs must be >= 0, got "
-                f"{n_persistence_pairs}"
+                f"n_persistence_pairs must be >= 0, got " f"{n_persistence_pairs}"
             )
         if time_budget_s <= 0.0:
-            raise ValueError(
-                f"time_budget_s must be > 0, got {time_budget_s}"
-            )
+            raise ValueError(f"time_budget_s must be > 0, got {time_budget_s}")
         est = PHComplexityEstimator().estimate(
-            n_persistence_pairs, dimension=2,
+            n_persistence_pairs,
+            dimension=2,
         )
         return est > self.safety_factor * time_budget_s
 
@@ -158,13 +154,10 @@ class PHComplexityEstimator:
         dimension_overhead_us: float = _DIM_OVERHEAD_US,
     ) -> None:
         if k_cubic_us <= 0.0:
-            raise ValueError(
-                f"k_cubic_us must be > 0, got {k_cubic_us}"
-            )
+            raise ValueError(f"k_cubic_us must be > 0, got {k_cubic_us}")
         if dimension_overhead_us < 0.0:
             raise ValueError(
-                f"dimension_overhead_us must be >= 0, got "
-                f"{dimension_overhead_us}"
+                f"dimension_overhead_us must be >= 0, got " f"{dimension_overhead_us}"
             )
         self.k_cubic_us = float(k_cubic_us)
         self.dimension_overhead_us = float(dimension_overhead_us)
@@ -181,7 +174,7 @@ class PHComplexityEstimator:
             raise ValueError(f"dimension must be >= 1, got {dimension}")
         n = float(n_pairs)
         d = float(dimension)
-        cubic = self.k_cubic_us * n ** 3
+        cubic = self.k_cubic_us * n**3
         dim_cost = self.dimension_overhead_us * n * d
         return float((cubic + dim_cost) * 1.0e-6)
 
@@ -275,9 +268,7 @@ def approximate_bottleneck(
     i, j = 0, 0
     max_cost = 0.0
     while i < n1 and j < n2:
-        diff = float(
-            (sorted_p1[i] - sorted_p2[j]).abs().max().item()
-        )
+        diff = float((sorted_p1[i] - sorted_p2[j]).abs().max().item())
         max_pers = max(
             float(sorted_pers1[i].item()),
             float(sorted_pers2[j].item()),

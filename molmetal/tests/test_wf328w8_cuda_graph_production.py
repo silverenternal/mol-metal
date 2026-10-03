@@ -73,6 +73,7 @@ def _load_pyg_module():
     """
     import importlib.util
     import sys
+
     if "molmetal.models.dmpnn_pyg" in sys.modules:
         return sys.modules["molmetal.models.dmpnn_pyg"]
     spec = importlib.util.spec_from_file_location(
@@ -86,6 +87,7 @@ def _load_pyg_module():
     # relative imports inside dmpnn_pyg.py resolve correctly.
     if "molmetal.models" not in sys.modules:
         import types
+
         parent_pkg = types.ModuleType("molmetal.models")
         parent_pkg.__path__ = ["/home/hugo/codes/mol-metal/molmetal/models"]
         sys.modules["molmetal.models"] = parent_pkg
@@ -102,8 +104,11 @@ def _make_cpu_pyg_encoder():
     """Small DirectedMPNNPyG for CPU parity tests."""
     pyg = _load_pyg_module()
     cfg = MPNNConfig(
-        atom_feat_dim=39, edge_feat_dim=10, hidden_dim=32,
-        n_layers=2, dropout=0.0,
+        atom_feat_dim=39,
+        edge_feat_dim=10,
+        hidden_dim=32,
+        n_layers=2,
+        dropout=0.0,
     )
     return pyg.DirectedMPNNPyG(cfg).eval()
 
@@ -116,17 +121,25 @@ def _make_cpu_static_batch():
     N_total, E_total = 16, 12
     atom_feats = torch.randn(N_total, 39, device=device)
     edge_index = torch.randint(
-        0, N_total, (2, E_total), device=device, dtype=torch.long,
+        0,
+        N_total,
+        (2, E_total),
+        device=device,
+        dtype=torch.long,
     )
     edge_attr = torch.randn(E_total, 10, device=device)
     batch_idx = torch.tensor(
-        [0] * 8 + [1] * 8, device=device, dtype=torch.long,
+        [0] * 8 + [1] * 8,
+        device=device,
+        dtype=torch.long,
     )
     n_atoms_per_mol = torch.tensor([8, 8], device=device, dtype=torch.long)
     n_edges_per_mol = torch.tensor([6, 6], device=device, dtype=torch.long)
     return pyg.MolGraphBatch(
-        atom_feats=atom_feats, edge_index=edge_index,
-        edge_attr=edge_attr, batch_idx=batch_idx,
+        atom_feats=atom_feats,
+        edge_index=edge_index,
+        edge_attr=edge_attr,
+        batch_idx=batch_idx,
         n_atoms_per_mol=n_atoms_per_mol,
         n_edges_per_mol=n_edges_per_mol,
     )
@@ -182,17 +195,26 @@ def test_cuda_graph_wrapper_replay_matches_eager() -> None:
     N_total, E_total, B = 16, 12, 2
     atom_feats = torch.randn(N_total, 39, device="cuda")
     edge_index = torch.randint(
-        0, N_total, (2, E_total), device="cuda", dtype=torch.long,
+        0,
+        N_total,
+        (2, E_total),
+        device="cuda",
+        dtype=torch.long,
     )
     edge_attr = torch.randn(E_total, 10, device="cuda")
     batch_idx = torch.tensor(
-        [0] * 8 + [1] * 8, device="cuda", dtype=torch.long,
+        [0] * 8 + [1] * 8,
+        device="cuda",
+        dtype=torch.long,
     )
     n_atoms_per_mol = torch.tensor([8, 8], device="cuda", dtype=torch.long)
     n_edges_per_mol = torch.tensor([6, 6], device="cuda", dtype=torch.long)
     batch = pyg.MolGraphBatch(
-        atom_feats=atom_feats, edge_index=edge_index, edge_attr=edge_attr,
-        batch_idx=batch_idx, n_atoms_per_mol=n_atoms_per_mol,
+        atom_feats=atom_feats,
+        edge_index=edge_index,
+        edge_attr=edge_attr,
+        batch_idx=batch_idx,
+        n_atoms_per_mol=n_atoms_per_mol,
         n_edges_per_mol=n_edges_per_mol,
     )
 
@@ -212,9 +234,7 @@ def test_cuda_graph_wrapper_replay_matches_eager() -> None:
     assert diff_1 < 1e-3, f"replay 1 diverges from eager: {diff_1}"
     assert diff_2 < 1e-3, f"replay 2 diverges from replay 1: {diff_2}"
     fc = wrapper.fallback_counts()
-    assert fc["n_replays"] >= 2, (
-        f"expected ≥ 2 replays, got {fc['n_replays']}"
-    )
+    assert fc["n_replays"] >= 2, f"expected ≥ 2 replays, got {fc['n_replays']}"
 
 
 # ---------------------------------------------------------------------------
@@ -245,7 +265,9 @@ def test_cuda_graph_wrapper_fallback_on_shape_change() -> None:
     batch1 = pyg.MolGraphBatch(atom1, ei1, ea1, bi1, na1, ne1)
 
     wrapper = CudaGraphDMPNNWrapper(
-        encoder=encoder, static_n_atoms=N1, static_n_edges=E1,
+        encoder=encoder,
+        static_n_atoms=N1,
+        static_n_edges=E1,
         static_batch_size=2,
     )
     _ = wrapper(batch1)

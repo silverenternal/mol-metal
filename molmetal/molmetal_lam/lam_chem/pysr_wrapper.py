@@ -105,8 +105,14 @@ class HeuristicRegressor:
         probe_pysr_at_fit_time: bool = False,
     ) -> None:
         self.niterations = int(niterations)
-        self.binary_ops = list(binary_ops) if binary_ops is not None else ["+", "*", "/", "-"]
-        self.unary_ops = list(unary_ops) if unary_ops is not None else ["square", "sqrt", "exp", "log"]
+        self.binary_ops = (
+            list(binary_ops) if binary_ops is not None else ["+", "*", "/", "-"]
+        )
+        self.unary_ops = (
+            list(unary_ops)
+            if unary_ops is not None
+            else ["square", "sqrt", "exp", "log"]
+        )
         self.random_state = int(random_state)
         # ``backend_`` is left as ``None`` until ``fit`` is called when
         # ``probe_pysr_at_fit_time`` is True — this lets callers defer
@@ -137,7 +143,9 @@ class HeuristicRegressor:
         X = np.asarray(X, dtype=float)
         y = np.asarray(y, dtype=float)
         if X.ndim != 2:
-            raise ValueError(f"X must be 2-D (n_samples, n_features); got shape {X.shape}")
+            raise ValueError(
+                f"X must be 2-D (n_samples, n_features); got shape {X.shape}"
+            )
         if y.ndim == 1:
             y = y.reshape(-1, 1)
         self._feature_names = [f"x{i}" for i in range(X.shape[1])]
@@ -152,7 +160,9 @@ class HeuristicRegressor:
             return self
         if self._try_sklearn(X, y):
             return self
-        raise RuntimeError("No regression backend available (PySR and sklearn both failed).")
+        raise RuntimeError(
+            "No regression backend available (PySR and sklearn both failed)."
+        )
 
     # -------------------------------------------------------------- predict
     def predict(self, X: np.ndarray) -> np.ndarray:
@@ -177,12 +187,15 @@ class HeuristicRegressor:
         if self.backend_ == "pysr" and self._sympy_expr is not None:
             try:
                 from sympy import pretty  # type: ignore
+
                 return pretty(self._sympy_expr)
             except Exception:
                 return str(self._sympy_expr)
         if self.backend_ == "sklearn" and hasattr(self._model, "coef_"):
             coefs = np.asarray(self._model.coef_).ravel()
-            intercept = float(getattr(self._model, "intercept_", np.zeros(1)).ravel()[0])
+            intercept = float(
+                getattr(self._model, "intercept_", np.zeros(1)).ravel()[0]
+            )
             terms: List[str] = []
             if intercept != 0.0:
                 terms.append(f"{intercept:.4g}")
@@ -194,12 +207,18 @@ class HeuristicRegressor:
         # RandomForest fallback — surface the top-3 most important
         # features so the closed-loop paper_equation carries real
         # semantic content instead of a generic placeholder.
-        if self.backend_ == "sklearn-rf" and hasattr(self._model, "feature_importances_"):
+        if self.backend_ == "sklearn-rf" and hasattr(
+            self._model, "feature_importances_"
+        ):
             try:
                 importances = np.asarray(self._model.feature_importances_).ravel()
-                names = self._feature_names or [f"x{i}" for i in range(len(importances))]
+                names = self._feature_names or [
+                    f"x{i}" for i in range(len(importances))
+                ]
                 top = sorted(
-                    zip(names, importances), key=lambda p: abs(p[1]), reverse=True,
+                    zip(names, importances),
+                    key=lambda p: abs(p[1]),
+                    reverse=True,
                 )[:3]
                 feats_str = ", ".join(f"{n}={w:.3f}" for n, w in top if w > 0)
                 return f"RF(top3: {feats_str})" if feats_str else "RF(<no signal>)"
@@ -363,6 +382,7 @@ class SymbolicRegressor:
         if self._pysr_available:
             try:
                 from pysr import PySRRegressor  # type: ignore
+
                 self._model = PySRRegressor(
                     niterations=self.n_iterations,
                     binary_operators=self.binary_operators,
@@ -376,10 +396,13 @@ class SymbolicRegressor:
                 self._fitted = True
                 return self
             except Exception as exc:
-                log.warning("PySR fit unavailable; using sklearn Ridge fallback: %s", exc)
+                log.warning(
+                    "PySR fit unavailable; using sklearn Ridge fallback: %s", exc
+                )
         else:
             log.warning("PySR/Julia unavailable; using sklearn Ridge fallback")
         from sklearn.linear_model import Ridge
+
         self._model = Ridge(alpha=1.0)
         self._model.fit(X, y)
         self.backend = "sklearn_ridge"
@@ -393,12 +416,28 @@ class SymbolicRegressor:
 
     def equations(self) -> List[dict]:
         if self.backend == "sklearn_ridge":
-            return [{"backend": "sklearn_ridge", "equation": "Ridge regression", "loss": 0.0}]
+            return [
+                {
+                    "backend": "sklearn_ridge",
+                    "equation": "Ridge regression",
+                    "loss": 0.0,
+                }
+            ]
         if self._equations is None:
             return []
-        rows = self._equations.to_dict("records") if hasattr(self._equations, "to_dict") else list(self._equations)
-        return [{"equation": row.get("sympy_format", row.get("equation", "")),
-                 "loss": float(row.get("loss", 0.0)), "backend": "pysr"} for row in rows]
+        rows = (
+            self._equations.to_dict("records")
+            if hasattr(self._equations, "to_dict")
+            else list(self._equations)
+        )
+        return [
+            {
+                "equation": row.get("sympy_format", row.get("equation", "")),
+                "loss": float(row.get("loss", 0.0)),
+                "backend": "pysr",
+            }
+            for row in rows
+        ]
 
     def best_equation(self) -> str:
         if self.backend == "sklearn_ridge":
@@ -410,6 +449,7 @@ class SymbolicRegressor:
         except Exception:
             try:
                 from sympy import latex  # type: ignore
+
                 return latex(self._model.sympy())
             except Exception:
                 eqs = self.equations()
@@ -421,7 +461,9 @@ class MetalCoordinationRegressor(SymbolicRegressor):
 
     def __init__(self, n_iterations: int = 150, **kwargs) -> None:
         operators = kwargs.pop("binary_operators", ["+", "*", "/"])
-        super().__init__(n_iterations=n_iterations, binary_operators=operators, **kwargs)
+        super().__init__(
+            n_iterations=n_iterations, binary_operators=operators, **kwargs
+        )
 
 
 __all__ = ["HeuristicRegressor", "SymbolicRegressor", "MetalCoordinationRegressor"]

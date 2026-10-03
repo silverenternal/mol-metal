@@ -89,9 +89,9 @@ def test_select_training_default_is_32():
     unit tests, debugging scripts) get the production scale.
     """
     default = _get_function_default("select_training", "n_train")
-    assert default == "32", (
-        f"select_training(n_train=...) default must be 32 (was 8).  Got {default}"
-    )
+    assert (
+        default == "32"
+    ), f"select_training(n_train=...) default must be 32 (was 8).  Got {default}"
 
 
 # ---------------------------------------------------------------------------
@@ -137,12 +137,13 @@ def test_select_training_accepts_custom_n_train():
     """
     import inspect
     from molmetal.scripts.r10_cfg_real_crossdocked import select_training
+
     sig = inspect.signature(select_training)
-    assert "n_train" in sig.parameters, (
-        f"select_training must accept n_train kwarg, got {list(sig.parameters)}"
-    )
+    assert (
+        "n_train" in sig.parameters
+    ), f"select_training must accept n_train kwarg, got {list(sig.parameters)}"
     p = sig.parameters["n_train"]
     # Default value is set (we verified in test 2 it's 32)
-    assert p.default == 32, (
-        f"select_training n_train default must be 32, got {p.default}"
-    )
+    assert (
+        p.default == 32
+    ), f"select_training n_train default must be 32, got {p.default}"

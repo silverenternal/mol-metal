@@ -48,7 +48,9 @@ def test_adapter_imports_and_wraps_18_rules(adapter: SynFlowNetEnvAdapter) -> No
     )
 
 
-def test_adapter_supports_forward_for_smarts_rules(adapter: SynFlowNetEnvAdapter) -> None:
+def test_adapter_supports_forward_for_smarts_rules(
+    adapter: SynFlowNetEnvAdapter,
+) -> None:
     """CuAAC/SPAAC/SPC/DielsAlder all have SMARTS and support forward step."""
     for name in ("CuAAC", "SPAAC", "SPC", "DielsAlder"):
         assert adapter.supports_forward(name), f"{name} should support forward"
@@ -104,9 +106,9 @@ def test_backward_step_ethyl_acetate(adapter: SynFlowNetEnvAdapter) -> None:
     """
     pairs = adapter.backward_step("CC(=O)OCC")
     assert isinstance(pairs, list)
-    assert len(pairs) >= 1, (
-        f"Expected >= 1 pair for ethyl acetate, got {len(pairs)}: {pairs}"
-    )
+    assert (
+        len(pairs) >= 1
+    ), f"Expected >= 1 pair for ethyl acetate, got {len(pairs)}: {pairs}"
     for a, b in pairs:
         assert a != "" or b != "", f"Empty slot in pair ({a!r}, {b!r})"
         if a:
@@ -120,13 +122,19 @@ def test_backward_step_ethyl_acetate(adapter: SynFlowNetEnvAdapter) -> None:
 # ------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("rule_name,smi_a,smi_b", [
-    ("CuAAC", "CCN=[N+]=[N-]", "C#CC"),
-    ("DielsAlder", "C=CC=C", "C=C"),
-    ("SPAAC", "[N-]=[N+]=NCc1ccccc1", "C1CCCC#CCC1"),
-])
+@pytest.mark.parametrize(
+    "rule_name,smi_a,smi_b",
+    [
+        ("CuAAC", "CCN=[N+]=[N-]", "C#CC"),
+        ("DielsAlder", "C=CC=C", "C=C"),
+        ("SPAAC", "[N-]=[N+]=NCc1ccccc1", "C1CCCC#CCC1"),
+    ],
+)
 def test_cross_verify_phase1_vs_phase2(
-    adapter: SynFlowNetEnvAdapter, rule_name: str, smi_a: str, smi_b: str,
+    adapter: SynFlowNetEnvAdapter,
+    rule_name: str,
+    smi_a: str,
+    smi_b: str,
 ) -> None:
     """Phase 1 (Lambda's rule.reduce) and Phase 2 (adapter.forward_step)
     must agree on the *molecule* (heavy-atom / charge-invariant identity)

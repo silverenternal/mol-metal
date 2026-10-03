@@ -46,6 +46,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -78,8 +79,18 @@ from molmetal.scripts.train_hybrid import build_dataloader, compute_metrics
 from molmetal.utils.device import get_device
 
 
-METAL_TO_IDX = {"Ru": 0, "Ir": 1, "Rh": 2, "Os": 3, "Re": 4,
-                "Pt": 5, "Pd": 6, "Au": 7, "Ag": 8, "Cu": 9}
+METAL_TO_IDX = {
+    "Ru": 0,
+    "Ir": 1,
+    "Rh": 2,
+    "Os": 3,
+    "Re": 4,
+    "Pt": 5,
+    "Pd": 6,
+    "Au": 7,
+    "Ag": 8,
+    "Cu": 9,
+}
 
 CHECKPOINT_DIR = Path("molmetal/checkpoints")
 REPORT_DIR = Path("molmetal/reports")
@@ -179,9 +190,13 @@ def _maybe_mixup_batch(
 
     # Mix the head outputs that the loss wrapper consumes.
     out_mixed = dict(out)
-    out_mixed["active_logits"] = lam * out["active_logits"] + (1.0 - lam) * out["active_logits"][perm]
+    out_mixed["active_logits"] = (
+        lam * out["active_logits"] + (1.0 - lam) * out["active_logits"][perm]
+    )
     out_mixed["pic50"] = lam * out["pic50"] + (1.0 - lam) * out["pic50"][perm]
-    out_mixed["delta_pred"] = lam * out["delta_pred"] + (1.0 - lam) * out["delta_pred"][perm]
+    out_mixed["delta_pred"] = (
+        lam * out["delta_pred"] + (1.0 - lam) * out["delta_pred"][perm]
+    )
 
     batch_mixed = dict(batch_dict)
     # active label is long — mix as soft targets via interpolation only makes
@@ -192,8 +207,13 @@ def _maybe_mixup_batch(
     # pic50 (continuous regression, mixing is exact).  This matches Zhang et
     # al. 2018 mixup conventions on classification/regression mixtures.
     batch_mixed["active"] = batch_dict["active"]  # keep un-mixed
-    batch_mixed["pic50"] = lam * batch_dict["pic50"] + (1.0 - lam) * batch_dict["pic50"][perm]
-    batch_mixed["target_delta"] = lam * batch_dict["target_delta"] + (1.0 - lam) * batch_dict["target_delta"][perm]
+    batch_mixed["pic50"] = (
+        lam * batch_dict["pic50"] + (1.0 - lam) * batch_dict["pic50"][perm]
+    )
+    batch_mixed["target_delta"] = (
+        lam * batch_dict["target_delta"]
+        + (1.0 - lam) * batch_dict["target_delta"][perm]
+    )
     return out_mixed, batch_mixed, True
 
 
@@ -263,7 +283,15 @@ def safe_train_epoch(
     loss_fn.set_epoch(epoch)
 
     for batch in train_loader:
-        smiles_list, coords, metal_types, pic50_true, active_label, mask, mol_objects = batch
+        (
+            smiles_list,
+            coords,
+            metal_types,
+            pic50_true,
+            active_label,
+            mask,
+            mol_objects,
+        ) = batch
         mask = mask.to(device)
 
         try:
@@ -275,7 +303,9 @@ def safe_train_epoch(
             )
 
             # Compute MMFF94-style Δx target once per batch
-            atom_mask = torch.zeros(coords.size(0), coords.size(1), dtype=torch.bool, device=device)
+            atom_mask = torch.zeros(
+                coords.size(0), coords.size(1), dtype=torch.bool, device=device
+            )
             # Real atoms are the first mask[b].sum() per mol
             for b in range(coords.size(0)):
                 m_b = int(mask[b].item())
@@ -364,14 +394,26 @@ def evaluate(
         n_batches = 0
 
         for batch in loader:
-            smiles_list, coords, metal_types, pic50_true, active_label, mask, mol_objects = batch
+            (
+                smiles_list,
+                coords,
+                metal_types,
+                pic50_true,
+                active_label,
+                mask,
+                mol_objects,
+            ) = batch
             mask = mask.to(device)
             # M-B1 round-3 fix: use two-stage forward for eval too so the
             # test pIC50 prediction matches the multi-fidelity head used
             # in training.
-            out = model.forward_two_stage(smiles_list, coords, metal_types, mol_objects=mol_objects)
+            out = model.forward_two_stage(
+                smiles_list, coords, metal_types, mol_objects=mol_objects
+            )
 
-            atom_mask = torch.zeros(coords.size(0), coords.size(1), dtype=torch.bool, device=device)
+            atom_mask = torch.zeros(
+                coords.size(0), coords.size(1), dtype=torch.bool, device=device
+            )
             for b in range(coords.size(0)):
                 m_b = int(mask[b].item())
                 atom_mask[b, :m_b] = True
@@ -406,7 +448,7 @@ def evaluate(
         if valid.sum() > 0:
             diff = pic50_pred_all[valid] - pic50_true_all[valid]
             metrics["pic50_mae"] = float(np.mean(np.abs(diff)))
-            metrics["pic50_rmse"] = float(np.sqrt(np.mean(diff ** 2)))
+            metrics["pic50_rmse"] = float(np.sqrt(np.mean(diff**2)))
         else:
             metrics["pic50_mae"] = float("nan")
             metrics["pic50_rmse"] = float("nan")
@@ -462,9 +504,19 @@ def evaluate_ensemble(
             base_model.eval()
 
             for batch_i, batch in enumerate(loader):
-                smiles_list, coords, metal_types, pic50_true, active_label, mask, mol_objects = batch
+                (
+                    smiles_list,
+                    coords,
+                    metal_types,
+                    pic50_true,
+                    active_label,
+                    mask,
+                    mol_objects,
+                ) = batch
                 mask = mask.to(device)
-                out = base_model.forward_two_stage(smiles_list, coords, metal_types, mol_objects=mol_objects)
+                out = base_model.forward_two_stage(
+                    smiles_list, coords, metal_types, mol_objects=mol_objects
+                )
                 lg = out["active_logits"][:, 1].cpu().numpy()
                 p5 = out["pic50"].cpu().numpy()
                 al = active_label.cpu().numpy()
@@ -495,7 +547,7 @@ def evaluate_ensemble(
     if valid.sum() > 0:
         diff = pic50_avg[valid] - pic50_true_all[valid]
         metrics["pic50_mae"] = float(np.mean(np.abs(diff)))
-        metrics["pic50_rmse"] = float(np.sqrt(np.mean(diff ** 2)))
+        metrics["pic50_rmse"] = float(np.sqrt(np.mean(diff**2)))
     else:
         metrics["pic50_mae"] = float("nan")
         metrics["pic50_rmse"] = float("nan")
@@ -506,7 +558,9 @@ def evaluate_ensemble(
 # ---------------------------------------------------------------------------
 # Single-seed run
 # ---------------------------------------------------------------------------
-def run_one_seed(seed: int, dataset, train_idx, val_idx, test_idx, args, device, featurizer):
+def run_one_seed(
+    seed: int, dataset, train_idx, val_idx, test_idx, args, device, featurizer
+):
     print(f"\n=== seed={seed} ===")
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -548,16 +602,20 @@ def run_one_seed(seed: int, dataset, train_idx, val_idx, test_idx, args, device,
     sigma_params = [loss_fn.log_s_cls, loss_fn.log_s_reg, loss_fn.log_s_crd]
     # Verify requires_grad (defensive — log_s_* are nn.Parameters so this
     # is always True but we surface a warning if a refactor changes that).
-    non_grad = [n for n, p in zip(("log_s_cls", "log_s_reg", "log_s_crd"),
-                                   sigma_params)
-                if not p.requires_grad]
+    non_grad = [
+        n
+        for n, p in zip(("log_s_cls", "log_s_reg", "log_s_crd"), sigma_params)
+        if not p.requires_grad
+    ]
     if non_grad:
         print(f"  WARNING: Kendall log-sigma params without grad: {non_grad}")
-    param_groups.append({
-        "params": sigma_params,
-        "lr": 1e-3,
-        "name": "kendall_log_sigma",
-    })
+    param_groups.append(
+        {
+            "params": sigma_params,
+            "lr": 1e-3,
+            "name": "kendall_log_sigma",
+        }
+    )
     optimizer = optim.Adam(param_groups, lr=cfg.llrd_lr_top)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 
@@ -582,7 +640,7 @@ def run_one_seed(seed: int, dataset, train_idx, val_idx, test_idx, args, device,
 
     # Top-K val snapshots for ensemble (M-B2)
     topk = max(1, int(getattr(args, "ensemble_k", 3)))
-    top_snapshots = []   # list of {epoch, val_auc, val_pr, state_dict, ema_state}
+    top_snapshots = []  # list of {epoch, val_auc, val_pr, state_dict, ema_state}
 
     # SWA accumulators (M-B2)
     swa_state = {}
@@ -593,7 +651,7 @@ def run_one_seed(seed: int, dataset, train_idx, val_idx, test_idx, args, device,
     best_val_auc = 0.0
     best_val_pr = 0.0
     train_losses, val_aucs, val_prs = [], [], []
-    sigma_trajectory = []   # M-3 round-3: per-epoch log-sigma tracking
+    sigma_trajectory = []  # M-3 round-3: per-epoch log-sigma tracking
     sigma_reg_plateau_warned = False
     epoch_times = []
     total_skipped = 0
@@ -608,8 +666,13 @@ def run_one_seed(seed: int, dataset, train_idx, val_idx, test_idx, args, device,
 
         use_mixup = bool(args.use_mixup)
         train_loss, skipped, last_info = safe_train_epoch(
-            model, train_loader, loss_fn, optimizer, device,
-            epoch=epoch, T=args.epochs,
+            model,
+            train_loader,
+            loss_fn,
+            optimizer,
+            device,
+            epoch=epoch,
+            T=args.epochs,
             use_mixup=use_mixup,
             mixup_rng=mixup_rng,
             args=args,
@@ -619,7 +682,12 @@ def run_one_seed(seed: int, dataset, train_idx, val_idx, test_idx, args, device,
 
         # Evaluate using EMA weights (if available) for early-stop signal
         val_metrics = evaluate(
-            model, val_loader, loss_fn, device, epoch, args.epochs,
+            model,
+            val_loader,
+            loss_fn,
+            device,
+            epoch,
+            args.epochs,
             use_ema=bool(args.use_ema),
         )
         ep_dt = time.time() - ep_t0
@@ -632,22 +700,26 @@ def run_one_seed(seed: int, dataset, train_idx, val_idx, test_idx, args, device,
         # M-3 round-3 fix: log per-epoch sigma trajectory and detect plateau.
         sigma_cls_log_change = float(last_info.get("sigma_cls_log_change", 0.0))
         sigma_reg_log_change = float(last_info.get("sigma_reg_log_change", 0.0))
-        sigma_trajectory.append({
-            "epoch": epoch + 1,
-            "log_s_cls": float(loss_fn.log_s_cls.item()),
-            "log_s_reg": float(loss_fn.log_s_reg.item()),
-            "log_s_crd": float(loss_fn.log_s_crd.item()),
-            "sigma_cls_log_change": sigma_cls_log_change,
-            "sigma_reg_log_change": sigma_reg_log_change,
-        })
+        sigma_trajectory.append(
+            {
+                "epoch": epoch + 1,
+                "log_s_cls": float(loss_fn.log_s_cls.item()),
+                "log_s_reg": float(loss_fn.log_s_reg.item()),
+                "log_s_crd": float(loss_fn.log_s_crd.item()),
+                "sigma_cls_log_change": sigma_cls_log_change,
+                "sigma_reg_log_change": sigma_reg_log_change,
+            }
+        )
 
         # Plateau detection: σ_reg change < 0.01 across 5 epochs → warn
         if not sigma_reg_plateau_warned and epoch >= 5:
             recent_reg = [s["sigma_reg_log_change"] for s in sigma_trajectory[-5:]]
             if all(abs(r) < 0.01 for r in recent_reg):
-                print(f"  [seed={seed}] WARNING: σ_reg plateau detected across "
-                      f"last 5 epochs (changes={recent_reg}). The M-B1 reg head "
-                      f"may be saturating.")
+                print(
+                    f"  [seed={seed}] WARNING: σ_reg plateau detected across "
+                    f"last 5 epochs (changes={recent_reg}). The M-B1 reg head "
+                    f"may be saturating."
+                )
                 sigma_reg_plateau_warned = True
 
         print(
@@ -666,8 +738,12 @@ def run_one_seed(seed: int, dataset, train_idx, val_idx, test_idx, args, device,
             "epoch": epoch,
             "val_auc": val_metrics["roc_auc"],
             "val_pr": val_metrics["pr_auc"],
-            "state_dict": {k: vv.detach().cpu().clone() for k, vv in model.state_dict().items()},
-            "ema_state": None if model._ema_state is None else {k: v.detach().cpu().clone() for k, v in model._ema_state.items()},
+            "state_dict": {
+                k: vv.detach().cpu().clone() for k, vv in model.state_dict().items()
+            },
+            "ema_state": None
+            if model._ema_state is None
+            else {k: v.detach().cpu().clone() for k, v in model._ema_state.items()},
             "model_obj": model,
         }
         # Insert into top_snapshots (max-heap by val_auc, keep top k)
@@ -688,7 +764,9 @@ def run_one_seed(seed: int, dataset, train_idx, val_idx, test_idx, args, device,
                     "epoch": epoch,
                     "model_state": model.state_dict(),
                     "loss_state": loss_fn.state_dict(),
-                    "ema_state": None if model._ema_state is None else {k: v.detach().clone() for k, v in model._ema_state.items()},
+                    "ema_state": None
+                    if model._ema_state is None
+                    else {k: v.detach().clone() for k, v in model._ema_state.items()},
                     "val_auc": best_val_auc,
                     "val_pr": best_val_pr,
                     "n_params": n_params,
@@ -704,8 +782,10 @@ def run_one_seed(seed: int, dataset, train_idx, val_idx, test_idx, args, device,
     if args.use_swa and swa_state:
         _swa_apply(model, swa_state, swa_n)
         swa_applied = True
-        print(f"  [seed={seed}] SWA applied: averaged {len(swa_state)} GRU tensors over "
-              f"{max(swa_n.values()) if swa_n else 0} epochs")
+        print(
+            f"  [seed={seed}] SWA applied: averaged {len(swa_state)} GRU tensors over "
+            f"{max(swa_n.values()) if swa_n else 0} epochs"
+        )
 
     total_dt = time.time() - t_total
 
@@ -718,7 +798,12 @@ def run_one_seed(seed: int, dataset, train_idx, val_idx, test_idx, args, device,
         model.set_epoch(args.epochs - 1)
         loss_fn.set_epoch(args.epochs - 1)
         test_metrics = evaluate(
-            model, test_loader, loss_fn, device, args.epochs - 1, args.epochs,
+            model,
+            test_loader,
+            loss_fn,
+            device,
+            args.epochs - 1,
+            args.epochs,
             use_ema=False,
         )
         ema_test = test_metrics
@@ -726,21 +811,36 @@ def run_one_seed(seed: int, dataset, train_idx, val_idx, test_idx, args, device,
         best_label = "live"
     else:
         # 1) EMA-only test (if EMA enabled)
-        ema_test = evaluate(model, test_loader, loss_fn, device, args.epochs, args.epochs, use_ema=True)
+        ema_test = evaluate(
+            model, test_loader, loss_fn, device, args.epochs, args.epochs, use_ema=True
+        )
         # 2) Ensemble of top-K val snapshots (averaged logits)
         if args.use_ensemble and top_snapshots:
             ens_snaps = []
             for s in top_snapshots:
-                sd = s.get("ema_state") if (args.use_ema and s.get("ema_state") is not None) else s["state_dict"]
-                ens_snaps.append({"state_dict": {k: v.to(device) for k, v in sd.items()}, "model_obj": model})
-            ens_test = evaluate_ensemble(ens_snaps, test_loader, loss_fn, device, args.epochs, args.epochs)
+                sd = (
+                    s.get("ema_state")
+                    if (args.use_ema and s.get("ema_state") is not None)
+                    else s["state_dict"]
+                )
+                ens_snaps.append(
+                    {
+                        "state_dict": {k: v.to(device) for k, v in sd.items()},
+                        "model_obj": model,
+                    }
+                )
+            ens_test = evaluate_ensemble(
+                ens_snaps, test_loader, loss_fn, device, args.epochs, args.epochs
+            )
         else:
             ens_test = None
         # The reported test metric is the best of {EMA-only, ensemble} by AUC.
         candidates = {"ema": ema_test}
         if ens_test is not None:
             candidates["ensemble"] = ens_test
-        best_label, test_metrics = max(candidates.items(), key=lambda kv: kv[1]["roc_auc"])
+        best_label, test_metrics = max(
+            candidates.items(), key=lambda kv: kv[1]["roc_auc"]
+        )
 
     print(
         f"  [seed={seed}] TEST  AUC={test_metrics['roc_auc']:.4f} | "
@@ -767,7 +867,7 @@ def run_one_seed(seed: int, dataset, train_idx, val_idx, test_idx, args, device,
         "train_losses": train_losses,
         "val_aucs": val_aucs,
         "val_prs": val_prs,
-        "sigma_trajectory": sigma_trajectory,    # M-3 round-3
+        "sigma_trajectory": sigma_trajectory,  # M-3 round-3
         "sigma_reg_plateau_warned": sigma_reg_plateau_warned,
         "top_k_epochs": [s["epoch"] for s in top_snapshots],
         "top_k_val_aucs": [s["val_auc"] for s in top_snapshots],
@@ -814,7 +914,9 @@ def write_markdown_report(
     ci_lo, ci_hi = bootstrap_ci(test_aucs.tolist())
 
     lines = []
-    lines.append("# MetalHybrid V4 (Ru temporal) — LLRD + real EGNN + Perceiver + Kendall\n")
+    lines.append(
+        "# MetalHybrid V4 (Ru temporal) — LLRD + real EGNN + Perceiver + Kendall\n"
+    )
     lines.append(
         "V4 wires up the four review recommendations from "
         "`molmetal/reports/review_pretraining_init.md`, "
@@ -838,7 +940,9 @@ def write_markdown_report(
 
     # Per-seed table
     lines.append("## Per-seed results\n")
-    lines.append("| seed | params | best val AUC | best val PR | test AUC | test PR | test pIC50 MAE | wall-clock | avg epoch |")
+    lines.append(
+        "| seed | params | best val AUC | best val PR | test AUC | test PR | test pIC50 MAE | wall-clock | avg epoch |"
+    )
     lines.append("| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
     for r in results:
         lines.append(
@@ -854,10 +958,18 @@ def write_markdown_report(
     lines.append("\n## What V4 changed vs V3\n")
     lines.append("| Aspect | V3 | V4 (this report) |")
     lines.append("| --- | --- | --- |")
-    lines.append("| Encoder | Frozen after tmQM load | **Unfrozen** with LLRD (top 1e-3 → bottom 1e-5, decay 0.95) |")
-    lines.append("| EGNN coord-refine head | Detached gradient + max-Δx clip 0.3 Å | **Real Satorras-2021 EGNN layer**, no detach, no clip (tanh bounds the magnitude) |")
-    lines.append("| Fusion | Gated concat: sigmoid(W_g [h_d\\|\\|h_e]), bias init → σ≈0.5 | **Perceiver latent cross-attn** (16 latents), 8-head concat, FFN, gate init ≈ **0.05**, input dropout 0.1 |")
-    lines.append("| Loss | `α·BCE + (1-α)·MSE + γ·coord` (α=0.5, γ=0.05) | **NormalizedLoss** (R2) + **Kendall** learnable σ + **γ cosine 0.1→0.0** + **label smoothing 0.05** |")
+    lines.append(
+        "| Encoder | Frozen after tmQM load | **Unfrozen** with LLRD (top 1e-3 → bottom 1e-5, decay 0.95) |"
+    )
+    lines.append(
+        "| EGNN coord-refine head | Detached gradient + max-Δx clip 0.3 Å | **Real Satorras-2021 EGNN layer**, no detach, no clip (tanh bounds the magnitude) |"
+    )
+    lines.append(
+        "| Fusion | Gated concat: sigmoid(W_g [h_d\\|\\|h_e]), bias init → σ≈0.5 | **Perceiver latent cross-attn** (16 latents), 8-head concat, FFN, gate init ≈ **0.05**, input dropout 0.1 |"
+    )
+    lines.append(
+        "| Loss | `α·BCE + (1-α)·MSE + γ·coord` (α=0.5, γ=0.05) | **NormalizedLoss** (R2) + **Kendall** learnable σ + **γ cosine 0.1→0.0** + **label smoothing 0.05** |"
+    )
 
     # Bootstrap CI
     lines.append("\n## 3-seed bootstrap CI\n")
@@ -913,36 +1025,69 @@ def main():
     parser.add_argument("--metal", type=str, default="Ru")
     parser.add_argument("--epochs", type=int, default=30)
     parser.add_argument("--batch", type=int, default=8)
-    parser.add_argument("--alpha", type=float, default=0.3,
-                        help="weight on BCE (1-alpha -> MSE), review_multitask_loss.md")
-    parser.add_argument("--active-weight", type=float, default=3.0,
-                        help="M-B1 active-sample weighting on the reg loss")
+    parser.add_argument(
+        "--alpha",
+        type=float,
+        default=0.3,
+        help="weight on BCE (1-alpha -> MSE), review_multitask_loss.md",
+    )
+    parser.add_argument(
+        "--active-weight",
+        type=float,
+        default=3.0,
+        help="M-B1 active-sample weighting on the reg loss",
+    )
     parser.add_argument("--warmup", type=int, default=64)
     parser.add_argument("--cutoff-year", type=int, default=2024)
     parser.add_argument("--time-threshold", type=float, default=24.0)
     parser.add_argument("--ic50-min", type=float, default=0.01)
     parser.add_argument("--max-atoms", type=int, default=50)
     parser.add_argument("--seeds", type=int, nargs="+", default=[42, 133, 256])
-    parser.add_argument("--output-prefix", type=str,
-                        default="metal_hybrid_v4_ru_temporal")
+    parser.add_argument(
+        "--output-prefix", type=str, default="metal_hybrid_v4_ru_temporal"
+    )
     # ---- Stability hooks (M-B2) — DISABLED BY DEFAULT (M-1 round-3 fix) ----
-    parser.add_argument("--use-ema", action="store_true", default=False,
-                        help="Enable EMA (decay 0.999) of model weights (default OFF, M-1)")
+    parser.add_argument(
+        "--use-ema",
+        action="store_true",
+        default=False,
+        help="Enable EMA (decay 0.999) of model weights (default OFF, M-1)",
+    )
     parser.add_argument("--no-ema", dest="use_ema", action="store_false")
     parser.add_argument("--ema-decay", type=float, default=0.999)
-    parser.add_argument("--use-ensemble", action="store_true", default=False,
-                        help="Enable top-K val-epoch checkpoint ensemble (default OFF, M-1)")
+    parser.add_argument(
+        "--use-ensemble",
+        action="store_true",
+        default=False,
+        help="Enable top-K val-epoch checkpoint ensemble (default OFF, M-1)",
+    )
     parser.add_argument("--no-ensemble", dest="use_ensemble", action="store_false")
-    parser.add_argument("--ensemble-k", type=int, default=3,
-                        help="K for top-K val-epoch ensemble (default 3)")
-    parser.add_argument("--use-mixup", action="store_true", default=False,
-                        help="Enable mixup (50%% of batches, lambda~Beta(0.4,0.4)) (default OFF, M-1)")
+    parser.add_argument(
+        "--ensemble-k",
+        type=int,
+        default=3,
+        help="K for top-K val-epoch ensemble (default 3)",
+    )
+    parser.add_argument(
+        "--use-mixup",
+        action="store_true",
+        default=False,
+        help="Enable mixup (50%% of batches, lambda~Beta(0.4,0.4)) (default OFF, M-1)",
+    )
     parser.add_argument("--no-mixup", dest="use_mixup", action="store_false")
-    parser.add_argument("--use-swa", action="store_true", default=False,
-                        help="Enable SWA tail (last N epochs, GRU updates only) (default OFF, M-1)")
+    parser.add_argument(
+        "--use-swa",
+        action="store_true",
+        default=False,
+        help="Enable SWA tail (last N epochs, GRU updates only) (default OFF, M-1)",
+    )
     parser.add_argument("--no-swa", dest="use_swa", action="store_false")
-    parser.add_argument("--swa-tail", type=int, default=10,
-                        help="Number of final epochs over which SWA averages GRU weights")
+    parser.add_argument(
+        "--swa-tail",
+        type=int,
+        default=10,
+        help="Number of final epochs over which SWA averages GRU weights",
+    )
     args = parser.parse_args()
 
     np.random.seed(0)
@@ -968,14 +1113,19 @@ def main():
     splitter = TemporalSplitter(cutoff_year=args.cutoff_year)
     split_result = splitter(dataset)
     train_idx, val_idx, test_idx = (
-        split_result.train_idx, split_result.val_idx, split_result.test_idx
+        split_result.train_idx,
+        split_result.val_idx,
+        split_result.test_idx,
     )
-    print(f"[v4] Temporal (cutoff={args.cutoff_year}): "
-          f"train={len(train_idx)}, val={len(val_idx)}, test={len(test_idx)}")
+    print(
+        f"[v4] Temporal (cutoff={args.cutoff_year}): "
+        f"train={len(train_idx)}, val={len(val_idx)}, test={len(test_idx)}"
+    )
 
     # Filter by atom count
     if args.max_atoms and args.max_atoms > 0:
         from rdkit import Chem, RDLogger
+
         RDLogger.DisableLog("rdApp.*")
 
         def _filter(idx, label):
@@ -1022,8 +1172,10 @@ def main():
     ci_lo, ci_hi = bootstrap_ci(test_aucs.tolist())
     print("\n=== V4 3-seed summary (Ru temporal test set) ===")
     for r in results:
-        print(f"  seed={r['seed']:3d}: test_AUC={r['test_auc']:.4f}  "
-              f"test_PR={r['test_pr']:.4f}  best_val={r['best_val_auc']:.4f}")
+        print(
+            f"  seed={r['seed']:3d}: test_AUC={r['test_auc']:.4f}  "
+            f"test_PR={r['test_pr']:.4f}  best_val={r['best_val_auc']:.4f}"
+        )
     print(f"\n  Mean AUC: {auc_mean:.4f} ± {auc_std:.4f}")
     print(f"  95% bootstrap CI: [{ci_lo:.4f}, {ci_hi:.4f}]")
     print(f"  V3 reference: 0.4708   Δ={auc_mean - 0.4708:+.4f}")

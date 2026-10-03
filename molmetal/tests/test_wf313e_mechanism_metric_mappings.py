@@ -37,8 +37,15 @@ import pytest
 # Constants
 # ---------------------------------------------------------------------------
 
-MAPPING_PATH = Path(__file__).resolve().parents[2] / "TODO" / "02_metrics" / "MECHANISM_METRIC_MAPPING.md"
-METRICS_PATH = Path(__file__).resolve().parents[2] / "TODO" / "02_metrics" / "METRICS_TARGETS.md"
+MAPPING_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "TODO"
+    / "02_metrics"
+    / "MECHANISM_METRIC_MAPPING.md"
+)
+METRICS_PATH = (
+    Path(__file__).resolve().parents[2] / "TODO" / "02_metrics" / "METRICS_TARGETS.md"
+)
 
 # All 23 new R18 mechanisms grouped by wave.
 M22_M28_WAVE1 = ["M22", "M23", "M24", "M25", "M26", "M27", "M28"]
@@ -73,7 +80,7 @@ def _section(text: str, anchor: str) -> str:
     """Return the substring from ``anchor`` to the next ``## `` heading."""
     idx = text.find(anchor)
     assert idx >= 0, f"anchor {anchor!r} not found"
-    rest = text[idx + len(anchor):]
+    rest = text[idx + len(anchor) :]
     nxt = rest.find("\n## ")
     return rest if nxt < 0 else rest[:nxt]
 
@@ -104,7 +111,9 @@ def test_m23_transport_relaxation(mapping_text: str) -> None:
 def test_m24_multi_parameter_ph(mapping_text: str) -> None:
     """M24 Multi-Parameter Persistence: 2-PH filtration + PLL pipeline."""
     body = _section(mapping_text, "### M24 Multi-Parameter Persistence")
-    assert "Kim & Jung 2026" in body or "Kim &amp; Jung 2026" in body, "missing theorem anchor"
+    assert (
+        "Kim & Jung 2026" in body or "Kim &amp; Jung 2026" in body
+    ), "missing theorem anchor"
     for tag in ("m7", "m11"):
         assert tag in body, f"M24 should affect {tag}"
 
@@ -119,7 +128,9 @@ def test_m25_hilbert_primal_dual(mapping_text: str) -> None:
 def test_m26_score_repellent_mc(mapping_text: str) -> None:
     """M26 Score-Repellent Monte Carlo: Burch-Bardsley 2022 Langevin MCMC."""
     body = _section(mapping_text, "### M26 Score-Repellent Monte Carlo")
-    assert "Burch" in body or "score-repellent" in body.lower(), "missing theorem anchor"
+    assert (
+        "Burch" in body or "score-repellent" in body.lower()
+    ), "missing theorem anchor"
     for tag in ("m4", "m7"):
         assert tag in body, f"M26 should affect {tag}"
 
@@ -147,7 +158,9 @@ def test_m28_macroguide_ph(mapping_text: str) -> None:
 def test_m29_coordination_aware_gnn(mapping_text: str) -> None:
     """M29 Coordination-Aware GNN: coordination-class gated messages."""
     body = _section(mapping_text, "### M29 Coordination-Aware GNN")
-    assert "CoordinationAwareGNNLayer" in body or "coordination-class" in body.lower(), "missing module anchor"
+    assert (
+        "CoordinationAwareGNNLayer" in body or "coordination-class" in body.lower()
+    ), "missing module anchor"
     for tag in ("m3", "m21"):
         assert tag in body, f"M29 should affect {tag}"
 
@@ -164,7 +177,9 @@ def test_m30_quotient_space_diffusion(mapping_text: str) -> None:
 def test_m31_quantum_semantics(mapping_text: str) -> None:
     """M31 Quantum semantics: symplectic point per atom (paper §3 only)."""
     body = _section(mapping_text, "### M31 Quantum semantics")
-    assert "symplectic" in body.lower() or "麻小南" in body or "Ma X.-N." in body, "missing theorem anchor"
+    assert (
+        "symplectic" in body.lower() or "麻小南" in body or "Ma X.-N." in body
+    ), "missing theorem anchor"
     assert "paper §3" in body, "M31 is paper §3 only (no metric uplift)"
 
 
@@ -217,7 +232,9 @@ def test_m37_md_relaxation_stub(mapping_text: str) -> None:
     """M37 MD relaxation stub: SimpleForceField LJ-12-6 truncated."""
     body = _section(mapping_text, "### M37 MD relaxation stub")
     assert "SimpleForceField" in body, "missing module anchor"
-    assert "UFF" in body or "Rappé" in body or "central-diff" in body, "missing force-field anchor"
+    assert (
+        "UFF" in body or "Rappé" in body or "central-diff" in body
+    ), "missing force-field anchor"
     for tag in ("m3", "m15"):
         assert tag in body, f"M37 should affect {tag}"
 
@@ -234,9 +251,9 @@ def test_m38_fg_compat_veto(mapping_text: str) -> None:
 def test_m39_layered_generation(mapping_text: str) -> None:
     """M39 Layered generation: scaffold → attach → decorate 3-stage."""
     body = _section(mapping_text, "### M39 Layered generation")
-    assert "ScaffoldStage" in body and "AttachStage" in body and "DecorateStage" in body, (
-        "missing 3-stage orchestrator"
-    )
+    assert (
+        "ScaffoldStage" in body and "AttachStage" in body and "DecorateStage" in body
+    ), "missing 3-stage orchestrator"
     for tag in ("m7", "m11"):
         assert tag in body, f"M39 should affect {tag}"
 
@@ -278,8 +295,12 @@ def test_m44_bass_martingale(mapping_text: str) -> None:
     """M44 Bass martingale: mean-preserving martingale coupling (T1-stable-gated)."""
     body = _section(mapping_text, "### M44 Bass martingale")
     assert "BassMartingale" in body, "missing module anchor"
-    assert "Beiglböck" in body or "Beiglbock" in body or "Bass 1997" in body, "missing theorem anchor"
-    assert "T1-stable-gated" in body or "T1 stability" in body, "missing gating condition"
+    assert (
+        "Beiglböck" in body or "Beiglbock" in body or "Bass 1997" in body
+    ), "missing theorem anchor"
+    assert (
+        "T1-stable-gated" in body or "T1 stability" in body
+    ), "missing gating condition"
 
 
 # ---------------------------------------------------------------------------
@@ -318,7 +339,9 @@ def test_regression_debug_table(mapping_text: str) -> None:
     """
     body_4 = _section(mapping_text, "## 4. 失败模式诊断")
     body_12 = _section(mapping_text, "## 12. 完整 regression-debug 表")
-    covered = set(re.findall(r"\bm\d+\b", body_4)) | set(re.findall(r"\bm\d+\b", body_12))
+    covered = set(re.findall(r"\bm\d+\b", body_4)) | set(
+        re.findall(r"\bm\d+\b", body_12)
+    )
     missing = [m for m in ALL_METRICS if m not in covered]
     assert not missing, (
         f"§4+§12 regression-debug tables do not cover: {missing}; "
@@ -360,9 +383,9 @@ def test_all_23_mechanisms_present(mapping_text: str) -> None:
     for mech in ALL_NEW_MECHANISMS:
         # Each mechanism has a dedicated `### M## Name` subsection.
         pattern = rf"### {re.escape(mech)}\b"
-        assert re.search(pattern, mapping_text), (
-            f"mechanism {mech} missing dedicated subsection"
-        )
+        assert re.search(
+            pattern, mapping_text
+        ), f"mechanism {mech} missing dedicated subsection"
 
 
 def test_pareto_insight_aggregations(mapping_text: str) -> None:
@@ -373,9 +396,9 @@ def test_pareto_insight_aggregations(mapping_text: str) -> None:
         "### R18 Wave 3 关键 insight",
     ):
         body = _section(mapping_text, anchor)
-        assert "Pareto" in body or "主要 mechanisms" in body, (
-            f"{anchor} missing Pareto aggregation"
-        )
+        assert (
+            "Pareto" in body or "主要 mechanisms" in body
+        ), f"{anchor} missing Pareto aggregation"
 
 
 # ---------------------------------------------------------------------------
@@ -394,9 +417,9 @@ def test_projected_tagging_consistency(mapping_text: str) -> None:
         assert m is not None
         body = _section(mapping_text, m.group(0))
         if mech in math_only:
-            assert "paper §3" in body, (
-                f"{mech} must be tagged paper §3 only (no GPU metric uplift)"
-            )
+            assert (
+                "paper §3" in body
+            ), f"{mech} must be tagged paper §3 only (no GPU metric uplift)"
         else:
             assert "PROJECTED" in body, (
                 f"{mech} GPU-blocked target gate must be tagged PROJECTED "

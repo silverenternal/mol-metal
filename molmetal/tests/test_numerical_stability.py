@@ -62,7 +62,9 @@ def test_grad_clip_default_max_norm_is_one() -> None:
 def test_grad_clip_rescales_oversized_gradient() -> None:
     """A gradient whose L² norm exceeds the clip is rescaled to the clip."""
     opt = PrimalDualOptimizer(
-        lr_primal=0.01, lr_dual=0.01, n_iters=5,
+        lr_primal=0.01,
+        lr_dual=0.01,
+        n_iters=5,
         grad_clip_max_norm=1.0,
     )
     x = np.zeros(4)
@@ -84,7 +86,9 @@ def test_grad_clip_rescales_oversized_gradient() -> None:
 def test_grad_clip_zero_disables_clipping() -> None:
     """``grad_clip_max_norm=0.0`` disables clipping entirely."""
     opt = PrimalDualOptimizer(
-        lr_primal=0.01, lr_dual=0.01, n_iters=5,
+        lr_primal=0.01,
+        lr_dual=0.01,
+        n_iters=5,
         grad_clip_max_norm=0.0,
     )
     x = np.zeros(3)
@@ -116,9 +120,12 @@ def test_hilbert_step_size_decay_on_nan() -> None:
     so the step size decays by ``step_size_decay`` (default 0.5).
     """
     opt = PrimalDualOptimizer(
-        lr_primal=0.5, lr_dual=0.5, n_iters=5,
+        lr_primal=0.5,
+        lr_dual=0.5,
+        n_iters=5,
         grad_clip_max_norm=0.0,  # disable clipping so the step sees the full grad
-        step_size_decay=0.5, min_step_size=1e-6,
+        step_size_decay=0.5,
+        min_step_size=1e-6,
     )
     x = np.ones(4) * 1.0
     y = np.ones(4) * 1.0
@@ -147,9 +154,12 @@ def test_step_size_decay_respects_min_step_size() -> None:
     by ``step_size_decay`` until it hits the ``min_step_size`` floor.
     """
     opt = PrimalDualOptimizer(
-        lr_primal=1e-4, lr_dual=1e-4, n_iters=10,
+        lr_primal=1e-4,
+        lr_dual=1e-4,
+        n_iters=10,
         grad_clip_max_norm=0.0,
-        step_size_decay=0.5, min_step_size=1e-6,
+        step_size_decay=0.5,
+        min_step_size=1e-6,
     )
     x = np.ones(2)
     y = np.ones(2)
@@ -168,7 +178,9 @@ def test_step_size_decay_respects_min_step_size() -> None:
 def test_step_size_decay_disabled_with_decay_one() -> None:
     """``step_size_decay=1.0`` disables decay (the step size is preserved)."""
     opt = PrimalDualOptimizer(
-        lr_primal=0.3, lr_dual=0.3, n_iters=5,
+        lr_primal=0.3,
+        lr_dual=0.3,
+        n_iters=5,
         grad_clip_max_norm=0.0,
         step_size_decay=1.0,  # disabled
     )
@@ -176,7 +188,7 @@ def test_step_size_decay_disabled_with_decay_one() -> None:
     y = np.zeros(3)
 
     def objective(xk: np.ndarray):
-        return float(np.sum(xk ** 2)), xk * 1e6  # explosive gradient
+        return float(np.sum(xk**2)), xk * 1e6  # explosive gradient
 
     for _ in range(5):
         x, y = opt.step(x, y, objective)
@@ -213,7 +225,11 @@ def test_loss_scale_no_inf() -> None:
     y = X @ w + 0.01 * rng.standard_normal(40)
     composite = HilbertASTSRComposite(
         hilbert_optimizer=LambdaASTSRHilbert(
-            population_dim=8, lr_primal=0.1, lr_dual=0.1, n_iters=50, seed=0,
+            population_dim=8,
+            lr_primal=0.1,
+            lr_dual=0.1,
+            n_iters=50,
+            seed=0,
         ),
         feature_columns=tuple(f"f{i}" for i in range(8)),
         population_dim=8,
@@ -247,17 +263,29 @@ def test_loss_scale_one_matches_no_scaling() -> None:
     fc = tuple(f"f{i}" for i in range(8))
     comp_a = HilbertASTSRComposite(
         hilbert_optimizer=LambdaASTSRHilbert(
-            population_dim=8, lr_primal=0.1, lr_dual=0.1, n_iters=30, seed=2,
+            population_dim=8,
+            lr_primal=0.1,
+            lr_dual=0.1,
+            n_iters=30,
+            seed=2,
         ),
-        feature_columns=fc, population_dim=8,
-        loss_scale=1.0, fp64_fallback=False,
+        feature_columns=fc,
+        population_dim=8,
+        loss_scale=1.0,
+        fp64_fallback=False,
     )
     comp_b = HilbertASTSRComposite(
         hilbert_optimizer=LambdaASTSRHilbert(
-            population_dim=8, lr_primal=0.1, lr_dual=0.1, n_iters=30, seed=2,
+            population_dim=8,
+            lr_primal=0.1,
+            lr_dual=0.1,
+            n_iters=30,
+            seed=2,
         ),
-        feature_columns=fc, population_dim=8,
-        loss_scale=128.0, fp64_fallback=False,
+        feature_columns=fc,
+        population_dim=8,
+        loss_scale=128.0,
+        fp64_fallback=False,
     )
     res_a = comp_a.fit(X, y)
     res_b = comp_b.fit(X, y)
@@ -285,10 +313,16 @@ def test_fp64_fallback_recovers_finite_r2_on_nan() -> None:
     fc = tuple(f"f{i}" for i in range(8))
     composite = HilbertASTSRComposite(
         hilbert_optimizer=LambdaASTSRHilbert(
-            population_dim=8, lr_primal=0.1, lr_dual=0.1, n_iters=20, seed=4,
+            population_dim=8,
+            lr_primal=0.1,
+            lr_dual=0.1,
+            n_iters=20,
+            seed=4,
         ),
-        feature_columns=fc, population_dim=8,
-        loss_scale=128.0, fp64_fallback=True,
+        feature_columns=fc,
+        population_dim=8,
+        loss_scale=128.0,
+        fp64_fallback=True,
     )
     result = composite.fit(X, y_tiny)
     # Either the fp32 path or the fp64 fallback must produce a finite
@@ -316,12 +350,18 @@ def test_astsr_early_stop_on_nan() -> None:
     X = np.zeros((20, n_features), dtype=float)  # all zeros => div=0/0 chain
     y = np.ones(20, dtype=float) * 5.0
     astsr_nan_early = LambdaASTSR(
-        depth=2, population=4, generations=10, seed=5,
+        depth=2,
+        population=4,
+        generations=10,
+        seed=5,
         feature_names=feature_names,
         early_stop_on_nan=True,
     )
     astsr_nan_no_early = LambdaASTSR(
-        depth=2, population=4, generations=10, seed=5,
+        depth=2,
+        population=4,
+        generations=10,
+        seed=5,
         feature_names=feature_names,
         early_stop_on_nan=False,
     )
@@ -340,8 +380,12 @@ def test_astsr_early_stop_disabled_runs_all_generations() -> None:
     X = np.zeros((10, 3), dtype=float)
     y = np.ones(10, dtype=float) * 5.0
     astsr = LambdaASTSR(
-        depth=1, population=2, generations=4, seed=0,
-        feature_names=feature_names, early_stop_on_nan=False,
+        depth=1,
+        population=2,
+        generations=4,
+        seed=0,
+        feature_names=feature_names,
+        early_stop_on_nan=False,
     )
     astsr.fit(X, y)
     # 4 generations ran, history has 4 entries (no early-stop).
@@ -360,14 +404,21 @@ def test_train_affinity_regression_amp_flag_default_false() -> None:
     """
     pytest.importorskip("torch")
     from molmetal.scripts import train_affinity_regression
+
     # Parse with a minimal argv (data + seeds only) — the default
     # ``args.amp`` must be False so CPU runs are unaffected.
-    args = train_affinity_regression.parse_args([
-        "--dataset", "platinai",
-        "--seeds", "0",
-        "--epochs", "1",
-        "--init", "random",
-    ])
+    args = train_affinity_regression.parse_args(
+        [
+            "--dataset",
+            "platinai",
+            "--seeds",
+            "0",
+            "--epochs",
+            "1",
+            "--init",
+            "random",
+        ]
+    )
     assert args.amp is False
 
 
@@ -398,11 +449,18 @@ def test_r2_reasonable_after_stability_fix() -> None:
     fc = tuple(f"f{i}" for i in range(dim))
     composite = HilbertASTSRComposite(
         hilbert_optimizer=LambdaASTSRHilbert(
-            population_dim=dim, lr_primal=0.1, lr_dual=0.1, n_iters=100, seed=0,
-            grad_clip_max_norm=1.0, step_size_decay=0.5,
+            population_dim=dim,
+            lr_primal=0.1,
+            lr_dual=0.1,
+            n_iters=100,
+            seed=0,
+            grad_clip_max_norm=1.0,
+            step_size_decay=0.5,
         ),
-        feature_columns=fc, population_dim=dim,
-        loss_scale=128.0, fp64_fallback=True,
+        feature_columns=fc,
+        population_dim=dim,
+        loss_scale=128.0,
+        fp64_fallback=True,
     )
     result = composite.fit(X, y)
     assert result["r2"] >= 0.0, (
@@ -427,11 +485,18 @@ def test_r2_strongly_positive_on_noiseless_linear() -> None:
     fc = tuple(f"f{i}" for i in range(dim))
     composite = HilbertASTSRComposite(
         hilbert_optimizer=LambdaASTSRHilbert(
-            population_dim=dim, lr_primal=0.1, lr_dual=0.1, n_iters=200, seed=0,
-            grad_clip_max_norm=1.0, step_size_decay=0.5,
+            population_dim=dim,
+            lr_primal=0.1,
+            lr_dual=0.1,
+            n_iters=200,
+            seed=0,
+            grad_clip_max_norm=1.0,
+            step_size_decay=0.5,
         ),
-        feature_columns=fc, population_dim=dim,
-        loss_scale=128.0, fp64_fallback=True,
+        feature_columns=fc,
+        population_dim=dim,
+        loss_scale=128.0,
+        fp64_fallback=True,
     )
     result = composite.fit(X, y)
     assert result["r2"] > 0.9, (

@@ -80,6 +80,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -109,6 +110,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from sklearn.model_selection import LeaveOneGroupOut
 
 from rdkit import Chem, RDLogger
+
 RDLogger.DisableLog("rdApp.*")
 
 from chemprop.data import BatchMolGraph
@@ -137,7 +139,9 @@ DEFAULT_LR: float = 1e-3
 logger = logging.getLogger("wf156")
 if not logger.handlers:
     h = logging.StreamHandler()
-    h.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s %(name)s :: %(message)s"))
+    h.setFormatter(
+        logging.Formatter("[%(asctime)s] %(levelname)s %(name)s :: %(message)s")
+    )
     logger.addHandler(h)
     logger.setLevel(logging.INFO)
 
@@ -158,8 +162,14 @@ _MOLMETAL_ALLOW_CPU = os.environ.get("MOLMETAL_ALLOW_CPU", "0") == "1"
 # Coord label heuristic (mirrors smoke_chemprop_v2_mt_100).
 # ---------------------------------------------------------------------------
 _COORD_TABLE = {
-    "Pt": 3, "Pd": 3, "Au": 3,
-    "Ru": 4, "Ir": 4, "Os": 4, "Rh": 4, "Re": 4,
+    "Pt": 3,
+    "Pd": 3,
+    "Au": 3,
+    "Ru": 4,
+    "Ir": 4,
+    "Os": 4,
+    "Rh": 4,
+    "Re": 4,
 }
 
 
@@ -338,7 +348,10 @@ def run_one(
         if time_budget_s is not None and (time.time() - t_start) > time_budget_s:
             logger.warning(
                 "[fold=%s seed=%d] timeout at epoch=%d (elapsed=%.1fs)",
-                held_out, seed, epoch, time.time() - t_start,
+                held_out,
+                seed,
+                epoch,
+                time.time() - t_start,
             )
             timed_out = True
             break
@@ -348,7 +361,7 @@ def run_one(
         n_batches = 0
         model.train()
         for start in range(0, n_train, batch_size):
-            batch_idx = indices[start:start + batch_size]
+            batch_idx = indices[start : start + batch_size]
             bmols = [train_mols[i] for i in batch_idx]
             b_metal_ids = torch.from_numpy(train_metal_ids[batch_idx]).long().to(device)
             bmg = batch_molgraphs(bmols).to(device)
@@ -366,9 +379,9 @@ def run_one(
             if use_amp:
                 with torch.amp.autocast("cuda", dtype=torch.bfloat16):
                     H_v = model.encoder.message_passing(bmg)  # (sum_N, hidden_dim)
-                    H = model.encoder.agg(H_v, bmg.batch)       # (B, hidden_dim)
-                    e = model.metal_embed(b_metal_ids)         # (B, metal_embed_dim)
-                    z = torch.cat([H, e], dim=-1)              # (B, head_in_dim)
+                    H = model.encoder.agg(H_v, bmg.batch)  # (B, hidden_dim)
+                    e = model.metal_embed(b_metal_ids)  # (B, metal_embed_dim)
+                    z = torch.cat([H, e], dim=-1)  # (B, head_in_dim)
             else:
                 H_v = model.encoder.message_passing(bmg)
                 H = model.encoder.agg(H_v, bmg.batch)
@@ -378,7 +391,7 @@ def run_one(
             # Per-metal BCE losses (chemprop's BCELoss expects (B, 1)).
             total = z.new_zeros(())
             for metal, head in model.metal_heads.items():
-                logit_1 = head.train_step(z)               # (B, 1)
+                logit_1 = head.train_step(z)  # (B, 1)
                 tgt = y_true_b[metal].unsqueeze(-1).float()  # (B, 1)
                 l = bce_per_metal(logit_1, tgt)
                 total = total + l
@@ -395,7 +408,12 @@ def run_one(
         if epoch % 10 == 0 or epoch == epochs - 1:
             logger.info(
                 "[fold=%s seed=%d] epoch=%d/%d loss=%.4f elapsed=%.1fs",
-                held_out, seed, epoch, epochs, last_train_loss, time.time() - t_start,
+                held_out,
+                seed,
+                epoch,
+                epochs,
+                last_train_loss,
+                time.time() - t_start,
             )
 
     # Test-time scoring — compute per-row active probability via sigmoid
@@ -406,10 +424,12 @@ def run_one(
         labels: List[int] = []
         with torch.no_grad():
             for start in range(0, n_test, batch_size):
-                bmols = test_mols[start:start + batch_size]
-                b_metal_ids = torch.from_numpy(
-                    test_metal_ids[start:start + batch_size]
-                ).long().to(device)
+                bmols = test_mols[start : start + batch_size]
+                b_metal_ids = (
+                    torch.from_numpy(test_metal_ids[start : start + batch_size])
+                    .long()
+                    .to(device)
+                )
                 bmg = batch_molgraphs_to(bmols, device)
                 if use_amp:
                     with torch.amp.autocast("cuda", dtype=torch.bfloat16):
@@ -426,9 +446,10 @@ def run_one(
                     logit_1 = model.metal_heads[held_out].train_step(z)  # (B, 1)
                 p = torch.sigmoid(logit_1.squeeze(-1).float()).cpu().numpy()
                 scores.extend(float(x) for x in p)
-                labels.extend(int(x) for x in test_active[start:start + batch_size])
+                labels.extend(int(x) for x in test_active[start : start + batch_size])
         try:
             from sklearn.metrics import roc_auc_score
+
             if len(set(labels)) < 2:
                 test_auc = float("nan")
             else:
@@ -471,6 +492,7 @@ def make_model_factory(hidden_dim: int, depth: int):
             n_metals=5,
             n_coord_classes=5,
         )
+
     return _factory
 
 
@@ -489,8 +511,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     p.add_argument("--device", default="cuda")
     p.add_argument("--out", default=str(DEFAULT_OUT))
     p.add_argument("--time-budget-s", type=float, default=3600.0)
-    p.add_argument("--quick", action="store_true",
-                   help="1 metal x 1 seed x 2 epochs (smoke).")
+    p.add_argument(
+        "--quick", action="store_true", help="1 metal x 1 seed x 2 epochs (smoke)."
+    )
     # P1 FIX (Wf-190): add --bf16, --num-workers, --pin-memory flags so the
     # chemprop v2 retrain scripts opt into Blackwell sm_120 BF16 autocast
     # (~3x FP32 throughput).  Mirrors wf174_chemprop_v2_drugood_real.py
@@ -511,7 +534,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         type=int,
         default=4,
         help="DataLoader num_workers (default: 4). Currently logged; the manual "
-             "range-based loop at line ~330 is the next-migration target.",
+        "range-based loop at line ~330 is the next-migration target.",
     )
     p.add_argument(
         "--pin-memory",
@@ -552,22 +575,34 @@ def main(argv: Optional[List[str]] = None) -> int:
             "Set MOLMETAL_ALLOW_CPU=0 + --no-bf16 for fail-fast behaviour.",
         )
         device = torch.device("cpu")
-    logger.info("device=%s bf16=%s num_workers=%d pin_memory=%s metals=%s seeds=%s epochs=%d hidden=%d depth=%d",
-                device, args.bf16, args.num_workers, args.pin_memory,
-                args.metals, args.seeds, args.epochs,
-                args.hidden, args.depth)
+    logger.info(
+        "device=%s bf16=%s num_workers=%d pin_memory=%s metals=%s seeds=%s epochs=%d hidden=%d depth=%d",
+        device,
+        args.bf16,
+        args.num_workers,
+        args.pin_memory,
+        args.metals,
+        args.seeds,
+        args.epochs,
+        args.hidden,
+        args.depth,
+    )
 
     # ------------------------------------------------------------------
     # Load + filter MetalCytoToxDB to the 5 LOMO metals.
     # ------------------------------------------------------------------
     from molmetal.data.metal_cytotox import load_metal_cytotox
+
     df_all = load_metal_cytotox()
     df = df_all[df_all["metal"].isin(args.metals)].reset_index(drop=True)
     if df.empty:
         logger.error("no rows after metal filter; aborting.")
         return 1
-    logger.info("filtered MetalCytoToxDB: %d rows across metals=%s",
-                len(df), sorted(set(df["metal"].tolist())))
+    logger.info(
+        "filtered MetalCytoToxDB: %d rows across metals=%s",
+        len(df),
+        sorted(set(df["metal"].tolist())),
+    )
 
     smiles_all = df["smiles"].astype(str).tolist()
     metals_all = df["metal"].astype(str).to_numpy()
@@ -576,12 +611,19 @@ def main(argv: Optional[List[str]] = None) -> int:
     # ------------------------------------------------------------------
     # Pre-featurize ALL SMILES once (CPU).
     # ------------------------------------------------------------------
-    logger.info("pre-featurizing %d SMILES via chemprop v2 SimpleMoleculeMolGraphFeaturizer …",
-                len(smiles_all))
+    logger.info(
+        "pre-featurizing %d SMILES via chemprop v2 SimpleMoleculeMolGraphFeaturizer …",
+        len(smiles_all),
+    )
     t0 = time.time()
     mols_all, atom_fdim, bond_fdim = prefeaturize_all_smiles(smiles_all)
-    logger.info("pre-featurized %d SMILES in %.1fs (atom_fdim=%d bond_fdim=%d)",
-                len(mols_all), time.time() - t0, atom_fdim, bond_fdim)
+    logger.info(
+        "pre-featurized %d SMILES in %.1fs (atom_fdim=%d bond_fdim=%d)",
+        len(mols_all),
+        time.time() - t0,
+        atom_fdim,
+        bond_fdim,
+    )
 
     # Build metal_id tensor (must match model.metals ordering).
     metal_id_lookup = {m: i for i, m in enumerate(SUPPORTED_METALS)}
@@ -590,14 +632,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     keep_mask = np.isin(metals_all, list(SUPPORTED_METALS))
     if not keep_mask.all():
         n_drop = int((~keep_mask).sum())
-        logger.warning("dropping %d rows with metals outside %s", n_drop, SUPPORTED_METALS)
+        logger.warning(
+            "dropping %d rows with metals outside %s", n_drop, SUPPORTED_METALS
+        )
         keep_idx = np.where(keep_mask)[0]
         mols_all = [mols_all[i] for i in keep_idx]
         metals_all = metals_all[keep_idx]
         active_all = active_all[keep_idx]
-    metal_ids_all = np.array(
-        [metal_id_lookup[m] for m in metals_all], dtype=np.int64
-    )
+    metal_ids_all = np.array([metal_id_lookup[m] for m in metals_all], dtype=np.int64)
 
     # ------------------------------------------------------------------
     # LOMO split via sklearn LeaveOneGroupOut.
@@ -610,16 +652,16 @@ def main(argv: Optional[List[str]] = None) -> int:
         # The unique group in test_idx is the held-out metal.
         held = str(np.unique(metals_all[test_idx])[0])
         fold_to_split[held] = (train_idx, test_idx)
-    logger.info("LOMO splits: %s", {m: (len(t), len(te))
-                                    for m, (t, te) in fold_to_split.items()})
+    logger.info(
+        "LOMO splits: %s",
+        {m: (len(t), len(te)) for m, (t, te) in fold_to_split.items()},
+    )
 
     # ------------------------------------------------------------------
     # Sweep.
     # ------------------------------------------------------------------
     model_factory = make_model_factory(args.hidden, args.depth)
-    time_per_run = args.time_budget_s / max(
-        len(args.metals) * len(args.seeds), 1
-    )
+    time_per_run = args.time_budget_s / max(len(args.metals) * len(args.seeds), 1)
     logger.info("time budget per (fold,seed) = %.1fs", time_per_run)
 
     runs: List[LOMORun] = []
@@ -662,8 +704,12 @@ def main(argv: Optional[List[str]] = None) -> int:
                     seed=int(seed),
                     n_train=int(len(train_idx)),
                     n_test=int(len(test_idx)),
-                    pos_rate_train=float(np.mean(active_all[train_idx])) if len(train_idx) else 0.0,
-                    pos_rate_test=float(np.mean(active_all[test_idx])) if len(test_idx) else 0.0,
+                    pos_rate_train=float(np.mean(active_all[train_idx]))
+                    if len(train_idx)
+                    else 0.0,
+                    pos_rate_test=float(np.mean(active_all[test_idx]))
+                    if len(test_idx)
+                    else 0.0,
                     test_auc=float("nan"),
                     elapsed_s=0.0,
                     epoch_count=0,
@@ -673,12 +719,17 @@ def main(argv: Optional[List[str]] = None) -> int:
             runs.append(run)
             logger.info(
                 "fold=%s seed=%d test_auc=%.4f epochs=%d elapsed=%.1fs status=%s",
-                run.fold, run.seed, run.test_auc, run.epoch_count,
-                run.elapsed_s, run.status,
+                run.fold,
+                run.seed,
+                run.test_auc,
+                run.epoch_count,
+                run.elapsed_s,
+                run.status,
             )
             if (time.time() - sweep_t0) > args.time_budget_s:
-                logger.warning("wall budget %.1fs exceeded; aborting sweep.",
-                               args.time_budget_s)
+                logger.warning(
+                    "wall budget %.1fs exceeded; aborting sweep.", args.time_budget_s
+                )
                 break
         if (time.time() - sweep_t0) > args.time_budget_s:
             break
@@ -695,8 +746,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         per_fold = [r for r in runs if r.fold == fold]
         if not per_fold:
             continue
-        aucs = [r.test_auc for r in per_fold
-                if r.status == "ok" and not np.isnan(r.test_auc)]
+        aucs = [
+            r.test_auc
+            for r in per_fold
+            if r.status == "ok" and not np.isnan(r.test_auc)
+        ]
         per_metal_summary[fold] = {
             "mean_auc": float(np.mean(aucs)) if aucs else float("nan"),
             "std": float(np.std(aucs)) if aucs else 0.0,

@@ -23,6 +23,7 @@ Usage
     source .venv/bin/activate && cd /home/hugo/codes/try_triton_on_rocm
     python -m molmetal.molmetal_lam.scripts.lam_demo
 """
+
 from __future__ import annotations
 
 import logging
@@ -72,7 +73,9 @@ class _DemoMCTS:
         self.call_count: int = 0
         self.last_max_depth: int = 0
 
-    def search(self, initial_state: Any = None, max_depth: int = 3) -> List[MoleculeClosedTerm]:
+    def search(
+        self, initial_state: Any = None, max_depth: int = 3
+    ) -> List[MoleculeClosedTerm]:
         self.call_count += 1
         self.last_max_depth = int(max_depth)
         # Rotate the pool per iteration so the loop sees new candidates.

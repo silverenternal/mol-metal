@@ -28,6 +28,7 @@ Run with::
     /home/hugo/codes/mol-metal/.venv/bin/python -m pytest \\
         molmetal/tests/test_wf338v1_wf130_verify.py -v
 """
+
 from __future__ import annotations
 
 import json
@@ -53,20 +54,49 @@ L12_OVERALL_JSON = L12_REPORT_DIR / "ood_reachability_overall.json"
 
 # Skill mol-metal-closure-catherine §8.5.1 MEASURED anchors
 # (extracted from .claude/skills/mol-metal-closure-catherine/SKILL.md §8.5.1)
-SKILL_851_L1_BNF = 0.5108     # TODO/completed/83j_lambda_closeout.md §3.1, 2026-09-15
+SKILL_851_L1_BNF = 0.5108  # TODO/completed/83j_lambda_closeout.md §3.1, 2026-09-15
 SKILL_851_L6_DBLOCK = 0.5891  # Wf-37 P2 ship wf37_closure_dblock/, 2026-09-26
 SKILL_851_L12_PLATINAI = 0.5581  # Wf-41 P2 ship wf41_closure_ood/, 2026-09-26
-SKILL_851_METALCYTO = 0.0300   # Wf-41 P2 ship wf41_closure_ood/, 2026-09-26
-SKILL_851_TANIMOTO = 0.9978    # wf57_tanimoto/, 2026-09-26
+SKILL_851_METALCYTO = 0.0300  # Wf-41 P2 ship wf41_closure_ood/, 2026-09-26
+SKILL_851_TANIMOTO = 0.9978  # wf57_tanimoto/, 2026-09-26
 
 # Per Wf-130 ship surfaces (Wf-130 P1+P2+P3, TODO-133 §0, 2026-09-27)
-WF130_L6_MEASURED = 0.55888    # 30 × 5000 = 150 000 samples macro
-WF130_L6_DELTA_FROM_SKILL = -0.0302  # 0.55888 - 0.5891 = -0.0302 (honest-negative drift)
+WF130_L6_MEASURED = 0.55888  # 30 × 5000 = 150 000 samples macro
+WF130_L6_DELTA_FROM_SKILL = (
+    -0.0302
+)  # 0.55888 - 0.5891 = -0.0302 (honest-negative drift)
 
 EXPECTED_30_METALS = [
-    "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
-    "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
-    "La", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg",
+    "Sc",
+    "Ti",
+    "V",
+    "Cr",
+    "Mn",
+    "Fe",
+    "Co",
+    "Ni",
+    "Cu",
+    "Zn",
+    "Y",
+    "Zr",
+    "Nb",
+    "Mo",
+    "Tc",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Cd",
+    "La",
+    "Hf",
+    "Ta",
+    "W",
+    "Re",
+    "Os",
+    "Ir",
+    "Pt",
+    "Au",
+    "Hg",
 ]
 
 
@@ -94,24 +124,24 @@ def test_wf130_l1_l6_l12_ship_status() -> None:
     # --- L1: Catherine 6/6 audit on 30 d-block ---
     payload = _load_json(L1_OVERALL_JSON)
     metadata = payload.get("metadata", {})
-    assert metadata.get("wf") == "Wf-130", (
-        f"L1 metadata.wf != 'Wf-130': got {metadata.get('wf')!r}"
-    )
+    assert (
+        metadata.get("wf") == "Wf-130"
+    ), f"L1 metadata.wf != 'Wf-130': got {metadata.get('wf')!r}"
     assert metadata.get("phase") == "Phase 1"
     assert metadata.get("r20_plan") == "R20-P5"
     assert metadata.get("n_metals") == 30
-    assert metadata.get("synthetic_only") is True, (
-        "L1 ship surface must be synthetic-only (no RDKit / GPU)"
-    )
+    assert (
+        metadata.get("synthetic_only") is True
+    ), "L1 ship surface must be synthetic-only (no RDKit / GPU)"
     metals = payload.get("metals", {})
     assert len(metals) == 30, f"L1 expected 30 metals, got {len(metals)}"
     missing = sorted(set(EXPECTED_30_METALS) - set(metals.keys()))
     assert not missing, f"L1 ship missing canonical metals: {missing}"
     # every metal ships with six_of_six_pass=True (synthetic CPU-only verdict)
     for metal, row in metals.items():
-        assert row.get("six_of_six_pass") is True, (
-            f"L1 {metal} not six_of_six_pass=True"
-        )
+        assert (
+            row.get("six_of_six_pass") is True
+        ), f"L1 {metal} not six_of_six_pass=True"
         assert row.get("n_pass") == 6 and row.get("n_fail") == 0, (
             f"L1 {metal} expected n_pass=6 n_fail=0, got "
             f"n_pass={row.get('n_pass')} n_fail={row.get('n_fail')}"
@@ -124,7 +154,9 @@ def test_wf130_l1_l6_l12_ship_status() -> None:
     assert payload.get("n_samples") == 5000
     assert payload.get("n_samples_total") == 150000
     agg = payload.get("aggregate", {})
-    assert agg.get("macro_reachability_rate") == pytest.approx(WF130_L6_MEASURED, abs=1e-4)
+    assert agg.get("macro_reachability_rate") == pytest.approx(
+        WF130_L6_MEASURED, abs=1e-4
+    )
     assert "honest_framing" in payload, "L6 ship missing honest_framing block"
     per_metal = payload.get("per_metal", {})
     assert len(per_metal) == 30, f"L6 expected 30 per-metal rows, got {len(per_metal)}"
@@ -144,9 +176,9 @@ def test_wf130_l1_l6_l12_ship_status() -> None:
     n_no_source = sum(
         1 for r in per_metal.values() if r.get("status") == "no_cross_domain_source"
     )
-    assert n_no_source == 22, (
-        f"L12 expected 22 metals with status=no_cross_domain_source, got {n_no_source}"
-    )
+    assert (
+        n_no_source == 22
+    ), f"L12 expected 22 metals with status=no_cross_domain_source, got {n_no_source}"
 
 
 # ---------------------------------------------------------------------------
@@ -189,9 +221,9 @@ def test_skill_851_measured_anchors_match() -> None:
         f"L6 drift delta={delta_l6:.4f} != expected "
         f"honest-negative {WF130_L6_DELTA_FROM_SKILL:+.4f}"
     )
-    assert -0.05 <= delta_l6 <= 0.0, (
-        f"L6 drift {delta_l6:+.4f} outside honest-negative band [-0.05, 0.0]"
-    )
+    assert (
+        -0.05 <= delta_l6 <= 0.0
+    ), f"L6 drift {delta_l6:+.4f} outside honest-negative band [-0.05, 0.0]"
 
     # --- L12 cross-link to skill §8.5.1 ---
     l12_payload = _load_json(L12_OVERALL_JSON)
@@ -207,9 +239,9 @@ def test_skill_851_measured_anchors_match() -> None:
     )
     l12_pt = l12_payload.get("wf41_pt_reachability")
     # Wf-41 P2 Pt-specific reachability is a derived metric — must be present
-    assert l12_pt is not None and 0.0 <= l12_pt <= 1.0, (
-        f"L12 wf41_pt_reachability missing or out of [0,1]: {l12_pt}"
-    )
+    assert (
+        l12_pt is not None and 0.0 <= l12_pt <= 1.0
+    ), f"L12 wf41_pt_reachability missing or out of [0,1]: {l12_pt}"
 
     # --- L1 verdict form: Wf-130 P1 uses 6/6 PASS, not scalar 0.5108 ---
     l1_payload = _load_json(L1_OVERALL_JSON)
@@ -217,15 +249,15 @@ def test_skill_851_measured_anchors_match() -> None:
     # Anchor 0.5108 is the pre-Wf-130 L1 β-NF enumeration MEASURED
     # (TODO-83j §3.1, 2026-09-15); Wf-130 P1 used the 6/6 PASS verdict
     # form. Confirm the verdict form is on disk + cross-linkable.
-    assert l1_metadata.get("r20_plan") == "R20-P5", (
-        "L1 metadata.r20_plan must be R20-P5 (cross-link to skill)"
-    )
+    assert (
+        l1_metadata.get("r20_plan") == "R20-P5"
+    ), "L1 metadata.r20_plan must be R20-P5 (cross-link to skill)"
     l1_metals = l1_payload.get("metals", {})
     assert len(l1_metals) == 30, "L1 must ship 30 d-block metal verdicts"
     for metal, row in l1_metals.items():
-        assert row.get("six_of_six_pass") is True, (
-            f"L1 {metal} not six_of_six_pass=True (verdict form drift)"
-        )
+        assert (
+            row.get("six_of_six_pass") is True
+        ), f"L1 {metal} not six_of_six_pass=True (verdict form drift)"
 
     # --- Skill §8.5.1 anchor values are the lower-bound MEASURED ledger ---
     # These are the canonical anchors that must not drift silently.
@@ -241,6 +273,6 @@ def test_skill_851_measured_anchors_match() -> None:
     for name, value in anchors.items():
         # All anchors must be in (0, 1) range — sanity-check they are
         # not corrupted by a rebase or rename.
-        assert 0.0 < value < 1.0, (
-            f"Skill §8.5.1 anchor {name}={value} out of (0, 1) range"
-        )
+        assert (
+            0.0 < value < 1.0
+        ), f"Skill §8.5.1 anchor {name}={value} out of (0, 1) range"

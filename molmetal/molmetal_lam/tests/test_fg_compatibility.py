@@ -49,21 +49,21 @@ from molmetal_lam.reactions.fg_compatibility import (
 # 1. Module-level invariants
 # ---------------------------------------------------------------------------
 
+
 def test_fg_compat_module_version_is_set() -> None:
     """FG_COMPAT_VERSION should be a non-empty string with the wf-t30 tag."""
     assert isinstance(FG_COMPAT_VERSION, str)
     assert FG_COMPAT_VERSION, "FG_COMPAT_VERSION must be non-empty"
-    assert "wf-t30" in FG_COMPAT_VERSION, (
-        f"expected 'wf-t30' tag in FG_COMPAT_VERSION={FG_COMPAT_VERSION!r}"
-    )
+    assert (
+        "wf-t30" in FG_COMPAT_VERSION
+    ), f"expected 'wf-t30' tag in FG_COMPAT_VERSION={FG_COMPAT_VERSION!r}"
 
 
 def test_all_rule_names_have_entry() -> None:
     """Every name in FG_COMPAT_RULE_NAMES should have an FG_COMPATIBILITY entry."""
     for name in FG_COMPAT_RULE_NAMES:
         assert name in FG_COMPATIBILITY, (
-            f"FG_COMPAT_RULE_NAMES contains {name!r} but "
-            f"FG_COMPATIBILITY does not"
+            f"FG_COMPAT_RULE_NAMES contains {name!r} but " f"FG_COMPATIBILITY does not"
         )
 
 
@@ -109,7 +109,9 @@ _PROPYNE = "CC#C"
 def test_cuaac_rejects_thiol_only_substrate_when_strict() -> None:
     """CuAAC strict mode must reject thiophenol (only -SH, no handle)."""
     ok, matched, reason = check_fg_compatibility(
-        _THIOPHENOL, "CuAAC", strict=True,
+        _THIOPHENOL,
+        "CuAAC",
+        strict=True,
     )
     assert ok is False, (
         f"thiophenol: free -SH and no tolerated handle; expected "
@@ -121,7 +123,9 @@ def test_cuaac_rejects_thiol_only_substrate_when_strict() -> None:
 def test_cuaac_accepts_thiol_substrate_when_not_strict() -> None:
     """CuAAC permissive mode (default) must accept a thiol-bearing SMILES."""
     ok, _, reason = check_fg_compatibility(
-        _THIOPHENOL, "CuAAC", strict=False,
+        _THIOPHENOL,
+        "CuAAC",
+        strict=False,
     )
     assert ok is True
     assert reason == "permissive"
@@ -135,15 +139,17 @@ def test_cuaac_accepts_ethyl_azide_propyne() -> None:
             f"CuAAC strict should accept {smi!r}, got "
             f"ok={ok} matched={matched} reason={reason!r}"
         )
-        assert matched == [], (
-            f"ethyl azide / propyne should have no disfavoured FGs; got {matched}"
-        )
+        assert (
+            matched == []
+        ), f"ethyl azide / propyne should have no disfavoured FGs; got {matched}"
 
 
 def test_cuaac_tolerated_overrides_disfavored() -> None:
     """A SMILES with BOTH a tolerated AND a disfavoured FG must be accepted."""
     ok, matched, reason = check_fg_compatibility(
-        _AZIDO_THIOL, "CuAAC", strict=True,
+        _AZIDO_THIOL,
+        "CuAAC",
+        strict=True,
     )
     assert ok is True, (
         f"2-azidoethanethiol has both -SH and -N3; azide should override "
@@ -171,7 +177,9 @@ _CYCLOOCTyne = "C1CCC#CCCC1"
 def test_spaac_rejects_primary_amine_when_strict() -> None:
     """SPAAC strict mode must reject benzylamine (NH2, no tolerated handle)."""
     ok, matched, reason = check_fg_compatibility(
-        _BENZYLAMINE, "SPAAC", strict=True,
+        _BENZYLAMINE,
+        "SPAAC",
+        strict=True,
     )
     assert ok is False, (
         f"benzylamine: -NH2 attacks strained alkyne; expected "
@@ -185,8 +193,7 @@ def test_spaac_accepts_canonical_pair() -> None:
     for smi in (_BENZYL_AZIDE, _CYCLOOCTyne):
         ok, _, reason = check_fg_compatibility(smi, "SPAAC", strict=True)
         assert ok is True, (
-            f"SPAAC strict should accept {smi!r}, got "
-            f"ok={ok} reason={reason!r}"
+            f"SPAAC strict should accept {smi!r}, got " f"ok={ok} reason={reason!r}"
         )
 
 
@@ -209,15 +216,18 @@ def test_amide_coupling_accepts_glycine() -> None:
     """AmideCoupling strict must accept glycine (canonical AA)."""
     ok, _, reason = check_fg_compatibility(_GLYCINE, "AmideCoupling", strict=True)
     assert ok is True
-    assert reason in ("no-disfavored-match", "tolerated-overrides-disfavored"), (
-        f"unexpected reason {reason!r} for glycine"
-    )
+    assert reason in (
+        "no-disfavored-match",
+        "tolerated-overrides-disfavored",
+    ), f"unexpected reason {reason!r} for glycine"
 
 
 def test_amide_coupling_rejects_cysteine_when_strict() -> None:
     """AmideCoupling strict must reject cysteine (free -SH poison)."""
     ok, matched, reason = check_fg_compatibility(
-        _CYSTEINE_FOR_AMIDE, "AmideCoupling", strict=True,
+        _CYSTEINE_FOR_AMIDE,
+        "AmideCoupling",
+        strict=True,
     )
     # Cysteine has BOTH -NH2/-COOH (tolerated) AND -SH (disfavoured).
     # Tolerated overrides disfavoured — cysteine is *allowed* for the
@@ -236,10 +246,13 @@ def test_amide_coupling_rejects_cysteine_when_strict() -> None:
 # 5. Unknown reaction name — must NOT raise; always permissive
 # ---------------------------------------------------------------------------
 
+
 def test_unknown_reaction_returns_permissive() -> None:
     """Unknown reaction name returns (True, [], 'no-opinion')."""
     ok, matched, reason = check_fg_compatibility(
-        _GLYCINE, "NoSuchReaction", strict=True,
+        _GLYCINE,
+        "NoSuchReaction",
+        strict=True,
     )
     assert ok is True
     assert matched == []
@@ -250,11 +263,14 @@ def test_unknown_reaction_returns_permissive() -> None:
 # 6. Empty / unparseable SMILES — must NOT raise; always permissive
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize("empty_smi", ["", "NOT_A_SMILES_STRING_XYZ123"])
 def test_empty_or_unparseable_returns_permissive(empty_smi: str) -> None:
     """Empty SMILES or unparseable text returns permissive result."""
     ok, matched, reason = check_fg_compatibility(
-        empty_smi, "CuAAC", strict=True,
+        empty_smi,
+        "CuAAC",
+        strict=True,
     )
     assert ok is True
     assert matched == []
@@ -264,6 +280,7 @@ def test_empty_or_unparseable_returns_permissive(empty_smi: str) -> None:
 # ---------------------------------------------------------------------------
 # 7. vet_smiles_against_rule wrapper — the kwarg the reducer consumes
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize(
     "smi,reaction,strict,expected",
@@ -284,7 +301,10 @@ def test_empty_or_unparseable_returns_permissive(empty_smi: str) -> None:
     ],
 )
 def test_vet_smiles_against_rule_parametrized(
-    smi: str, reaction: str, strict: bool, expected: bool,
+    smi: str,
+    reaction: str,
+    strict: bool,
+    expected: bool,
 ) -> None:
     """vet_smiles_against_rule(smi, rule, strict) returns the expected bool.
 
@@ -302,6 +322,7 @@ def test_vet_smiles_against_rule_parametrized(
 # ---------------------------------------------------------------------------
 # 8. ReactionRule.reduce integration — verify the kwarg is plumbed
 # ---------------------------------------------------------------------------
+
 
 def test_reaction_rule_reduce_respects_fg_strict_kwarg() -> None:
     """ReactionRule.reduce(fg_constraints={'strict': True}) must return []
@@ -353,6 +374,7 @@ def test_reaction_rule_reduce_respects_fg_strict_kwarg() -> None:
 # 9. DielsAlder — DielsAlder is forgiving (no disfavoured FGs defined)
 # ---------------------------------------------------------------------------
 
+
 def test_diels_alder_strict_permissive_for_undefined_disfavored() -> None:
     """DielsAlder has no disfavoured FGs defined → always permissive.
 
@@ -363,7 +385,9 @@ def test_diels_alder_strict_permissive_for_undefined_disfavored() -> None:
     # strict mode because DielsAlder has no disfavoured FG entry.
     smi_with_thiol = _THIOPHENOL
     ok, matched, reason = check_fg_compatibility(
-        smi_with_thiol, "DielsAlder", strict=True,
+        smi_with_thiol,
+        "DielsAlder",
+        strict=True,
     )
     assert ok is True
     assert matched == []
@@ -374,6 +398,7 @@ def test_diels_alder_strict_permissive_for_undefined_disfavored() -> None:
 # 10. MetalLigandExchange — thiol + carboxylate disfavoured on Pt-Cl
 # ---------------------------------------------------------------------------
 
+
 def test_metal_ligand_exchange_rejects_thiol_when_strict() -> None:
     """MetalLigandExchange strict must reject cysteine (SH competes for Pt).
 
@@ -383,7 +408,9 @@ def test_metal_ligand_exchange_rejects_thiol_when_strict() -> None:
     disfavored).  We assert the override happens.
     """
     ok, matched, reason = check_fg_compatibility(
-        _CYSTEINE_FOR_AMIDE, "MetalLigandExchange", strict=True,
+        _CYSTEINE_FOR_AMIDE,
+        "MetalLigandExchange",
+        strict=True,
     )
     assert ok is True, (
         f"cysteine has -NH2 (tolerated) for MetalLigandExchange; "
@@ -403,7 +430,9 @@ def test_metal_ligand_exchange_rejects_cooh_when_strict() -> None:
     """
     acetic = "CC(=O)O"
     ok, matched, reason = check_fg_compatibility(
-        acetic, "MetalLigandExchange", strict=True,
+        acetic,
+        "MetalLigandExchange",
+        strict=True,
     )
     assert ok is False, (
         f"acetic acid has -COOH (disfavoured) and no -NH2 (tolerated); "

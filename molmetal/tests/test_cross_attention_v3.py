@@ -155,7 +155,7 @@ def test_equivariant_init():
         egnn_dim=H,
         hidden=hidden,
         n_heads=n_heads,
-        attn_dropout=0.0,   # disable stochasticity for the init test
+        attn_dropout=0.0,  # disable stochasticity for the init test
         output_dropout=0.0,
         residual_scale=0.5,
     )
@@ -163,9 +163,9 @@ def test_equivariant_init():
 
     # 1. All projection biases are zero at init.
     for proj in (fusion.q_dmpnn, fusion.k_egnn, fusion.v_egnn, fusion.out):
-        assert torch.all(proj.bias == 0), (
-            f"{proj.__class__.__name__} bias should be zero at init"
-        )
+        assert torch.all(
+            proj.bias == 0
+        ), f"{proj.__class__.__name__} bias should be zero at init"
 
     # 2. LayerNorm is identity at init.
     assert torch.all(fusion.norm.bias == 0), "LayerNorm bias should be zero at init"

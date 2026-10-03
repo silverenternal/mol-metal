@@ -42,7 +42,9 @@ def test_rejects_bad_weight():
         fused_rmsnorm_residual(x, torch.randn_like(x), torch.ones(7))
 
 
-@pytest.mark.parametrize("batch,dim", list(itertools.product([2, 8, 32, 128], [64, 128, 256, 512])))
+@pytest.mark.parametrize(
+    "batch,dim", list(itertools.product([2, 8, 32, 128], [64, 128, 256, 512]))
+)
 @pytest.mark.parametrize("weight_kind", ["ones", "random"])
 def test_random_shapes_cpu(batch, dim, weight_kind):
     torch.manual_seed(batch + dim)

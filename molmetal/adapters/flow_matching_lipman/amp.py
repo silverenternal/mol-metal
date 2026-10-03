@@ -80,6 +80,7 @@ ROCM_GFX1101_ENV_VARS: Dict[str, str] = {
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def recommended_amp_kwargs() -> Dict[str, Any]:
     """Return gfx1101-safe :func:`torch.autocast` kwargs.
 
@@ -113,9 +114,7 @@ def check_rocm_env_vars(warn: bool = True) -> Dict[str, bool]:
         because some users legitimately override ``expandable_segments``
         with a different policy, e.g. ``max_split_size_mb``).
     """
-    status = {
-        name: name in os.environ for name in ROCM_GFX1101_ENV_VARS
-    }
+    status = {name: name in os.environ for name in ROCM_GFX1101_ENV_VARS}
     if warn:
         missing = [n for n, ok in status.items() if not ok]
         if missing:
@@ -178,6 +177,7 @@ def aggregate_loss(
 # ---------------------------------------------------------------------------
 # CFMAMPContext
 # ---------------------------------------------------------------------------
+
 
 class CFMAMPContext:
     """Context-manager wrapper around :func:`torch.autocast`.
@@ -254,9 +254,9 @@ class CFMAMPContext:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> bool:
-        assert self._inner is not None, (
-            "CFMAMPContext.__exit__ called without matching __enter__"
-        )
+        assert (
+            self._inner is not None
+        ), "CFMAMPContext.__exit__ called without matching __enter__"
         try:
             return self._inner.__exit__(exc_type, exc, tb)
         finally:
@@ -274,7 +274,11 @@ class CFMAMPContext:
         bf16 = self.dtype is torch.bfloat16
         fp16 = self.dtype is torch.float16
         fp32 = self.dtype is torch.float32
-        tf32 = torch.backends.cuda.matmul.allow_tf32 if torch.cuda.is_available() else False
+        tf32 = (
+            torch.backends.cuda.matmul.allow_tf32
+            if torch.cuda.is_available()
+            else False
+        )
         rocm_status = check_rocm_env_vars(warn=False)
         rocm_ok = all(rocm_status.values())
         return (

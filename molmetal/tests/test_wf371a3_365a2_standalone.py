@@ -23,6 +23,7 @@ This test file covers 1 axis (per the computed task brief §5):
    ``TODO/completed/365a2_winner_cli_flag.md`` + has 6 top-level sections
    (TL;DR + §1-§5).
 """
+
 from __future__ import annotations
 
 import re
@@ -104,27 +105,27 @@ def test_365a2_standalone_closeout() -> None:
             )
 
     # Key value presence: Neural ODE 0.4495 vs MAML 0.4288 (per §2 task brief)
-    assert "0.4495" in content, (
-        "Wf-365-A2 §2 should mention Neural ODE augmented_mean 0.4495"
-    )
-    assert "0.4288" in content, (
-        "Wf-365-A2 §2 should mention MAML augmented_mean 0.4288"
-    )
+    assert (
+        "0.4495" in content
+    ), "Wf-365-A2 §2 should mention Neural ODE augmented_mean 0.4495"
+    assert "0.4288" in content, "Wf-365-A2 §2 should mention MAML augmented_mean 0.4288"
 
     # CLI flag wired (--neural-ode-flow default OFF) per §3 task brief
-    assert "--neural-ode-flow" in content, (
-        "Wf-365-A2 §3 should mention --neural-ode-flow CLI flag"
-    )
-    assert "default OFF" in content or "default: False" in content or "store_true" in content, (
-        "Wf-365-A2 §3 should mention --neural-ode-flow default OFF behaviour"
-    )
+    assert (
+        "--neural-ode-flow" in content
+    ), "Wf-365-A2 §3 should mention --neural-ode-flow CLI flag"
+    assert (
+        "default OFF" in content
+        or "default: False" in content
+        or "store_true" in content
+    ), "Wf-365-A2 §3 should mention --neural-ode-flow default OFF behaviour"
 
     # Backward compat per §4 task brief
-    assert "bit-for-bit" in content, (
-        "Wf-365-A2 §4 should mention bit-for-bit backward compat"
-    )
+    assert (
+        "bit-for-bit" in content
+    ), "Wf-365-A2 §4 should mention bit-for-bit backward compat"
 
     # Cross-references per §5 task brief
-    assert "Wf-361-B1" in content and "Wf-361-B2" in content and "Wf-365-A3" in content, (
-        "Wf-365-A2 §5 should cross-reference Wf-361-B1 + Wf-361-B2 + Wf-365-A3"
-    )
+    assert (
+        "Wf-361-B1" in content and "Wf-361-B2" in content and "Wf-365-A3" in content
+    ), "Wf-365-A2 §5 should cross-reference Wf-361-B1 + Wf-361-B2 + Wf-365-A3"

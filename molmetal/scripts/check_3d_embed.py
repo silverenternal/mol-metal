@@ -230,9 +230,9 @@ def _build_synthetic_pt_smiles(n: int) -> List[Tuple[str, str, int]]:
     pool: List[Tuple[str, str, int]] = []
     # Variant A: classical cisplatin (2 N + 2 Cl, Pt(II)).
     for frag in [
-        "N.N.Cl.Cl",            # cisplatin
-        "N.N.N.N",              # tetraammine Pt(II)
-        "N.N.[Cl-]",            # 1 ammonia, 1 chloride — partial complex
+        "N.N.Cl.Cl",  # cisplatin
+        "N.N.N.N",  # tetraammine Pt(II)
+        "N.N.[Cl-]",  # 1 ammonia, 1 chloride — partial complex
         "NCC[NH2].NCC[NH2].Cl.Cl",  # ethylenediamine + 2 Cl (Pt(II))
     ]:
         pool.append((frag, "Pt", 2))
@@ -326,7 +326,10 @@ def run(
             "max_A": max(ds_),
             "expected_A": EXPECTED_DISTANCES.get(key),
             "within_tol_rate": (
-                sum(1 for d in ds_ if abs(d - EXPECTED_DISTANCES[key]) <= BOND_TOLERANCE) / len(ds_)
+                sum(
+                    1 for d in ds_ if abs(d - EXPECTED_DISTANCES[key]) <= BOND_TOLERANCE
+                )
+                / len(ds_)
                 if EXPECTED_DISTANCES.get(key) is not None
                 else None
             ),

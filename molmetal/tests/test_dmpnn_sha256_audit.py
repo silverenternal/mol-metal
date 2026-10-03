@@ -44,6 +44,7 @@ def test_audit_script_importable():
         parse_args,
         sha256_of_file,
     )
+
     assert callable(parse_args)
     assert callable(main)
     assert callable(audit)
@@ -53,13 +54,12 @@ def test_audit_script_importable():
 def test_audit_parse_args_defaults():
     """Default flags point at molmetal/checkpoints + the canonical JSON."""
     from molmetal.scripts.dmpnn_sha256_audit import parse_args
+
     ns = parse_args([])
     # Path comparison is name-based (the default resolves via PROJECT_ROOT
     # but should always end with the expected suffix).
     assert str(ns.ckpt_dir).endswith("molmetal/checkpoints")
-    assert str(ns.status_json).endswith(
-        "metrics/by_metric/dmpnn_ckpt_status.json"
-    )
+    assert str(ns.status_json).endswith("metrics/by_metric/dmpnn_ckpt_status.json")
     assert ns.out is None
 
 
@@ -69,6 +69,7 @@ def test_audit_parse_args_defaults():
 def test_sha256_of_file_matches_hashlib(tmp_path: Path):
     from molmetal.scripts.dmpnn_sha256_audit import sha256_of_file
     import hashlib
+
     target = tmp_path / "x.pt"
     payload = b"DMPNN ckpt fixture \x00\x01\x02" * 1024
     target.write_bytes(payload)
@@ -79,6 +80,7 @@ def test_sha256_of_file_matches_hashlib(tmp_path: Path):
 def test_sha256_of_file_chunking_changes_result_on_corruption(tmp_path: Path):
     """Corrupting the file after hashing yields a different SHA256."""
     from molmetal.scripts.dmpnn_sha256_audit import sha256_of_file
+
     target = tmp_path / "y.pt"
     target.write_bytes(b"abcd" * 1024)
     s1 = sha256_of_file(target)
@@ -92,6 +94,7 @@ def test_sha256_of_file_chunking_changes_result_on_corruption(tmp_path: Path):
 # ---------------------------------------------------------------------------
 def test_discover_dmpnn_ckpts_returns_only_dmpnn_pic50(tmp_path: Path):
     from molmetal.scripts.dmpnn_sha256_audit import discover_dmpnn_ckpts
+
     (tmp_path / "dmpnn_pic50_ru_seed0.pt").write_bytes(b"")
     (tmp_path / "dmpnn_pic50_ru_seed1.pt").write_bytes(b"")
     (tmp_path / "affinity_platinai_seed0.pt").write_bytes(b"")  # not D-MPNN
@@ -106,6 +109,7 @@ def test_discover_dmpnn_ckpts_returns_only_dmpnn_pic50(tmp_path: Path):
 
 def test_parse_filename_valid_pairs():
     from molmetal.scripts.dmpnn_sha256_audit import parse_filename
+
     cases = [
         ("dmpnn_pic50_ru_seed0.pt", ("Ru", 0)),
         ("dmpnn_pic50_ru_seed1.pt", ("Ru", 1)),
@@ -118,10 +122,11 @@ def test_parse_filename_valid_pairs():
 
 def test_parse_filename_rejects_non_dmpnn_or_unknown_metal():
     from molmetal.scripts.dmpnn_sha256_audit import parse_filename
+
     for bad in [
         "affinity_platinai_seed0.pt",
         "dmpnn_pic50_xx_seed0.pt",  # unknown metal
-        "dmpnn_pic50_ru.pt",        # no seed
+        "dmpnn_pic50_ru.pt",  # no seed
         "dmpnn_pic50_ru_seedA.pt",  # non-numeric seed
     ]:
         assert parse_filename(Path(bad)) is None, bad
@@ -139,6 +144,7 @@ def _make_fixture_ckpt_dir(tmp_path: Path, files: dict[str, bytes]) -> Path:
 
 def test_audit_passes_on_unique_sha_fixtures(tmp_path: Path):
     from molmetal.scripts.dmpnn_sha256_audit import audit
+
     ckpt_dir = _make_fixture_ckpt_dir(
         tmp_path,
         {
@@ -161,6 +167,7 @@ def test_audit_passes_on_unique_sha_fixtures(tmp_path: Path):
 def test_audit_fails_on_duplicate_sha_fixtures(tmp_path: Path):
     """Smoking-gun bug: two filenames with the same SHA256 → FAIL."""
     from molmetal.scripts.dmpnn_sha256_audit import audit
+
     shared = b"DUPLICATE_PAYLOAD" * 50
     ckpt_dir = _make_fixture_ckpt_dir(
         tmp_path,
@@ -184,6 +191,7 @@ def test_audit_fails_on_duplicate_sha_fixtures(tmp_path: Path):
 def test_audit_detects_json_sha_mismatch(tmp_path: Path):
     """Status JSON SHA256 does not match on-disk SHA → mismatch reported."""
     from molmetal.scripts.dmpnn_sha256_audit import audit, sha256_of_file
+
     real_payload = b"ACTUAL_CKPT" * 50
     ckpt_dir = _make_fixture_ckpt_dir(
         tmp_path,
@@ -213,15 +221,14 @@ def test_audit_detects_json_sha_mismatch(tmp_path: Path):
 def test_audit_detects_missing_sha_in_status_json(tmp_path: Path):
     """Status JSON entry without ``sha256`` field → missing reported."""
     from molmetal.scripts.dmpnn_sha256_audit import audit
+
     ckpt_dir = _make_fixture_ckpt_dir(
         tmp_path,
         {"dmpnn_pic50_ru_seed0.pt": b"A" * 50},
     )
     status_json = tmp_path / "status.json"
     status_json.write_text(
-        json.dumps(
-            {"checkpoints": [{"filename": "dmpnn_pic50_ru_seed0.pt"}]}
-        )
+        json.dumps({"checkpoints": [{"filename": "dmpnn_pic50_ru_seed0.pt"}]})
     )
     report = audit(ckpt_dir, status_json=status_json)
     # Missing SHA alone is not a fail (back-fill in progress) but is tracked.
@@ -236,15 +243,19 @@ def test_audit_detects_missing_sha_in_status_json(tmp_path: Path):
 def test_real_audit_exits_zero_when_all_unique():
     """If the production ckpt dir is in a healthy state, audit exits 0."""
     from molmetal.scripts.dmpnn_sha256_audit import main
+
     ckpt_dir = PROJECT_ROOT / "molmetal" / "checkpoints"
     if not any(ckpt_dir.glob("dmpnn_pic50_*.pt")):
         pytest.skip("Production ckpt dir has no D-MPNN pIC50 ckpts (run train first).")
     status_json = PROJECT_ROOT / "metrics" / "by_metric" / "dmpnn_ckpt_status.json"
     import sys
+
     argv = [
         "dmpnn_sha256_audit.py",
-        "--ckpt-dir", str(ckpt_dir),
-        "--status-json", str(status_json),
+        "--ckpt-dir",
+        str(ckpt_dir),
+        "--status-json",
+        str(status_json),
     ]
     saved = sys.argv
     try:
@@ -252,7 +263,9 @@ def test_real_audit_exits_zero_when_all_unique():
         rc = main()
     finally:
         sys.argv = saved
-    assert rc == 0, "Production audit failed (SHA256 duplicate or JSON mismatch detected)"
+    assert (
+        rc == 0
+    ), "Production audit failed (SHA256 duplicate or JSON mismatch detected)"
 
 
 # ---------------------------------------------------------------------------
@@ -264,9 +277,9 @@ def test_train_script_has_sha256_overwrite_guard():
     src_path = PROJECT_ROOT / "molmetal" / "scripts" / "train_dmpnn_pic50_real.py"
     text = src_path.read_text()
     # Guard must exist as a function or block
-    assert "_guard_ckpt_overwrite" in text or "sha256" in text, (
-        "train_dmpnn_pic50_real.py lacks an SHA256 overwrite guard"
-    )
+    assert (
+        "_guard_ckpt_overwrite" in text or "sha256" in text
+    ), "train_dmpnn_pic50_real.py lacks an SHA256 overwrite guard"
 
 
 def test_train_script_seed_setting_covers_torch_numpy_random():

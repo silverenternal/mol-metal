@@ -96,6 +96,7 @@ try:
         DEFAULT_HIDDEN_DIM,
         DEFAULT_N_LAYERS,
     )
+
     TRAIN_IMPORT_OK = True
     TRAIN_IMPORT_ERR: Optional[str] = None
 except Exception as _e:  # pragma: no cover — defensive guard
@@ -107,6 +108,7 @@ from molmetal.models.bond_head import AtomCloud  # noqa: E402
 try:
     from rdkit import Chem  # noqa: E402
     from rdkit.Chem import AllChem  # noqa: E402
+
     RDKIT_AVAILABLE = True
 except Exception:  # pragma: no cover
     RDKIT_AVAILABLE = False
@@ -118,24 +120,14 @@ except Exception:  # pragma: no cover
 DEFAULT_CKPT_PATH = (
     PROJECT_ROOT / "molmetal" / "checkpoints" / "cfm_yuelbond_wasserstein.pt"
 )
-DEFAULT_DATA_PATH = (
-    PROJECT_ROOT / "molmetal" / "data" / "platinai_5k.csv"
-)
-DEFAULT_NCI60_PATH = (
-    PROJECT_ROOT / "molmetal" / "data" / "nci60_precious_9cell.csv"
-)
+DEFAULT_DATA_PATH = PROJECT_ROOT / "molmetal" / "data" / "platinai_5k.csv"
+DEFAULT_NCI60_PATH = PROJECT_ROOT / "molmetal" / "data" / "nci60_precious_9cell.csv"
 DEFAULT_DRUGOOD_PATH = (
     PROJECT_ROOT / ".data" / "molmetal" / "drugood" / "ic50" / "data" / "train.csv"
 )
-DEFAULT_OUT_DIR = (
-    PROJECT_ROOT / "molmetal" / "reports" / "wf139_p5_cfm_decode_real"
-)
-DEFAULT_OUT_JSON = (
-    PROJECT_ROOT / "metrics" / "by_metric" / "cfm_decode_real.json"
-)
-DEFAULT_LOG_PATH = (
-    PROJECT_ROOT / "molmetal" / "reports" / "wf148_m14_real_cfm.log"
-)
+DEFAULT_OUT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf139_p5_cfm_decode_real"
+DEFAULT_OUT_JSON = PROJECT_ROOT / "metrics" / "by_metric" / "cfm_decode_real.json"
+DEFAULT_LOG_PATH = PROJECT_ROOT / "molmetal" / "reports" / "wf148_m14_real_cfm.log"
 DEFAULT_CLOSURE_BIAS = {
     "CuAAC": 0.30,
     "SPAAC": 0.10,
@@ -218,7 +210,9 @@ def load_nci60_csv(path: Path) -> List[Dict[str, str]]:
 
 
 def load_drugood_csv(
-    path: Path, n_rows: int, seed: int,
+    path: Path,
+    n_rows: int,
+    seed: int,
 ) -> List[Dict[str, str]]:
     """Load DrugOOD native IC50 train CSV; subsample n_rows rows.
 
@@ -258,9 +252,9 @@ def build_combined_subset(
     return [combined[int(i)] for i in idx]
 
 
-def smiles_to_atomcloud(smiles: str, jitter: float = 0.05,
-                        seed: int = 0,
-                        embed_timeout_s: float = 5.0) -> Optional[AtomCloud]:
+def smiles_to_atomcloud(
+    smiles: str, jitter: float = 0.05, seed: int = 0, embed_timeout_s: float = 5.0
+) -> Optional[AtomCloud]:
     """Convert SMILES → 3D-embedded atom cloud.
 
     Returns None if RDKit cannot parse or embed the molecule, or if
@@ -293,6 +287,7 @@ def smiles_to_atomcloud(smiles: str, jitter: float = 0.05,
     embed_kwargs = dict(randomSeed=seed, maxAttempts=10)
     # Wall-clock guard via SIGALRM (Unix only).
     import platform
+
     if platform.system() != "Windows":
         import signal
 
@@ -300,7 +295,8 @@ def smiles_to_atomcloud(smiles: str, jitter: float = 0.05,
             raise TimeoutError("embedding timeout")
 
         old_handler = signal.signal(
-            signal.SIGALRM, _timeout_handler,
+            signal.SIGALRM,
+            _timeout_handler,
         )
         signal.setitimer(signal.ITIMER_REAL, embed_timeout_s)
         try:
@@ -308,7 +304,9 @@ def smiles_to_atomcloud(smiles: str, jitter: float = 0.05,
                 res = AllChem.EmbedMolecule(mol, **embed_kwargs)
                 if res != 0:
                     res = AllChem.EmbedMolecule(
-                        mol, useRandomCoords=True, **embed_kwargs,
+                        mol,
+                        useRandomCoords=True,
+                        **embed_kwargs,
                     )
                     if res != 0:
                         return None
@@ -322,7 +320,9 @@ def smiles_to_atomcloud(smiles: str, jitter: float = 0.05,
             res = AllChem.EmbedMolecule(mol, **embed_kwargs)
             if res != 0:
                 res = AllChem.EmbedMolecule(
-                    mol, useRandomCoords=True, **embed_kwargs,
+                    mol,
+                    useRandomCoords=True,
+                    **embed_kwargs,
                 )
                 if res != 0:
                     return None
@@ -394,7 +394,8 @@ def load_checkpoint(
         hidden_dim = int(args_dict.get("hidden_dim", hidden_dim))
         n_layers = int(args_dict.get("n_layers", n_layers))
     model = CFMJointModel(
-        hidden_dim=hidden_dim, n_layers=n_layers,
+        hidden_dim=hidden_dim,
+        n_layers=n_layers,
     ).to(device)
     # Load with strict=False to be robust against minor head-shape drift.
     missing, unexpected = model.load_state_dict(state, strict=False)
@@ -405,7 +406,9 @@ def load_checkpoint(
             flush=True,
         )
     decoder = YuelBondBondDecoder(
-        head=model.head, hidden_dim=hidden_dim, n_layers=n_layers,
+        head=model.head,
+        hidden_dim=hidden_dim,
+        n_layers=n_layers,
     )
     model.eval()
     return model, decoder, payload
@@ -432,13 +435,21 @@ def evaluate_seed(
     native subsample).  We do **not** re-load PlatinAI here.
     """
     clouds = build_real_clouds(
-        rows, n_samples=n_samples, seed=seed, jitter=jitter,
+        rows,
+        n_samples=n_samples,
+        seed=seed,
+        jitter=jitter,
     )
     if len(clouds) == 0:
         return SeedMetrics(
-            seed=seed, n_samples=0, n_ok=0, decode_ratio=0.0,
-            wall_time_s=0.0, device=str(device),
-            closure_bounded=closure_bounded, pocket_id=pocket_id,
+            seed=seed,
+            n_samples=0,
+            n_ok=0,
+            decode_ratio=0.0,
+            wall_time_s=0.0,
+            device=str(device),
+            closure_bounded=closure_bounded,
+            pocket_id=pocket_id,
         )
     clouds_d = [
         AtomCloud(
@@ -508,45 +519,89 @@ def parse_args() -> argparse.Namespace:
             "DrugOOD native subset."
         ),
     )
-    p.add_argument("--ckpt-path", type=str,
-                   default=str(DEFAULT_CKPT_PATH),
-                   help="Path to trained CFM checkpoint (default Wf-124 P2).")
-    p.add_argument("--data-path", type=str,
-                   default=str(DEFAULT_DATA_PATH),
-                   help="Path to PlatinAI 5K CSV (legacy Wf-139 path).")
-    p.add_argument("--data-config", type=str,
-                   default="platinai_5k_pt",
-                   choices=["platinai_5k_pt", "nci60", "drugood", "nci60+drugood"],
-                   help=(
-                       "Data source. nci60+drugood concatenates the NCI-60 "
-                       "9-cell CSV with a DrugOOD IC50 train subsample."
-                   ))
-    p.add_argument("--nci60-path", type=str,
-                   default=str(DEFAULT_NCI60_PATH),
-                   help="Path to NCI-60 9-cell CSV.")
-    p.add_argument("--drugood-path", type=str,
-                   default=str(DEFAULT_DRUGOOD_PATH),
-                   help="Path to DrugOOD IC50 train CSV.")
-    p.add_argument("--out-dir", type=str,
-                   default=str(DEFAULT_OUT_DIR),
-                   help="Output directory for per_seed_metrics.json + synthesis.md.")
-    p.add_argument("--out-json", type=str,
-                   default=str(DEFAULT_OUT_JSON),
-                   help="Path to write final decode_ratio JSON for paper §4.5.7.")
-    p.add_argument("--n-samples", type=int, default=2000,
-                   help="Number of Pt-subset samples per seed (default 2000).")
-    p.add_argument("--n-rows", type=int, default=2000,
-                   help="Alias for --n-samples; total samples (split per seed).")
-    p.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2],
-                   help="Random seeds (default: 0 1 2).")
-    p.add_argument("--device", type=str, default="auto",
-                   help="Device: auto / cuda / cuda:0 / cpu.")
-    p.add_argument("--pocket-id", type=str, default="1h36",
-                   help="Pocket ID for closure bias (default 1h36).")
-    p.add_argument("--jitter", type=float, default=0.05,
-                   help="Position jitter in Å (default 0.05).")
-    p.add_argument("--smoke", action="store_true",
-                   help="Smoke run: n_samples=20, single seed.")
+    p.add_argument(
+        "--ckpt-path",
+        type=str,
+        default=str(DEFAULT_CKPT_PATH),
+        help="Path to trained CFM checkpoint (default Wf-124 P2).",
+    )
+    p.add_argument(
+        "--data-path",
+        type=str,
+        default=str(DEFAULT_DATA_PATH),
+        help="Path to PlatinAI 5K CSV (legacy Wf-139 path).",
+    )
+    p.add_argument(
+        "--data-config",
+        type=str,
+        default="platinai_5k_pt",
+        choices=["platinai_5k_pt", "nci60", "drugood", "nci60+drugood"],
+        help=(
+            "Data source. nci60+drugood concatenates the NCI-60 "
+            "9-cell CSV with a DrugOOD IC50 train subsample."
+        ),
+    )
+    p.add_argument(
+        "--nci60-path",
+        type=str,
+        default=str(DEFAULT_NCI60_PATH),
+        help="Path to NCI-60 9-cell CSV.",
+    )
+    p.add_argument(
+        "--drugood-path",
+        type=str,
+        default=str(DEFAULT_DRUGOOD_PATH),
+        help="Path to DrugOOD IC50 train CSV.",
+    )
+    p.add_argument(
+        "--out-dir",
+        type=str,
+        default=str(DEFAULT_OUT_DIR),
+        help="Output directory for per_seed_metrics.json + synthesis.md.",
+    )
+    p.add_argument(
+        "--out-json",
+        type=str,
+        default=str(DEFAULT_OUT_JSON),
+        help="Path to write final decode_ratio JSON for paper §4.5.7.",
+    )
+    p.add_argument(
+        "--n-samples",
+        type=int,
+        default=2000,
+        help="Number of Pt-subset samples per seed (default 2000).",
+    )
+    p.add_argument(
+        "--n-rows",
+        type=int,
+        default=2000,
+        help="Alias for --n-samples; total samples (split per seed).",
+    )
+    p.add_argument(
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=[0, 1, 2],
+        help="Random seeds (default: 0 1 2).",
+    )
+    p.add_argument(
+        "--device", type=str, default="auto", help="Device: auto / cuda / cuda:0 / cpu."
+    )
+    p.add_argument(
+        "--pocket-id",
+        type=str,
+        default="1h36",
+        help="Pocket ID for closure bias (default 1h36).",
+    )
+    p.add_argument(
+        "--jitter",
+        type=float,
+        default=0.05,
+        help="Position jitter in Å (default 0.05).",
+    )
+    p.add_argument(
+        "--smoke", action="store_true", help="Smoke run: n_samples=20, single seed."
+    )
     return p.parse_args()
 
 
@@ -567,17 +622,14 @@ def main() -> int:
         args.n_samples = per_seed_n
 
     if args.device == "auto":
-        device = torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu"
-        )
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     elif args.device.startswith("cuda"):
         device = torch.device(args.device)
     else:
         device = torch.device("cpu")
 
     if not TRAIN_IMPORT_OK:
-        print(f"[Wf-139 P5] FATAL: train import failed: {TRAIN_IMPORT_ERR}",
-              flush=True)
+        print(f"[Wf-139 P5] FATAL: train import failed: {TRAIN_IMPORT_ERR}", flush=True)
         return 2
     if not RDKIT_AVAILABLE:
         print("[Wf-139 P5] FATAL: rdkit not available", flush=True)
@@ -612,8 +664,7 @@ def main() -> int:
     out_json.parent.mkdir(parents=True, exist_ok=True)
 
     if not ckpt_path.exists():
-        print(f"[Wf-139 P5] FATAL: checkpoint missing: {ckpt_path}",
-              flush=True)
+        print(f"[Wf-139 P5] FATAL: checkpoint missing: {ckpt_path}", flush=True)
         return 2
 
     # Resolve data sources per --data-config.
@@ -628,28 +679,32 @@ def main() -> int:
     drugood_rows: List[Dict[str, str]] = []
     if args.data_config in ("nci60", "nci60+drugood"):
         if not nci60_path.exists():
-            print(f"[Wf-139 P5] FATAL: NCI-60 data missing: {nci60_path}",
-                  flush=True)
+            print(f"[Wf-139 P5] FATAL: NCI-60 data missing: {nci60_path}", flush=True)
             return 2
-        print(f"[Wf-139 P5] loading NCI-60 9-cell from {nci60_path}",
-              flush=True)
+        print(f"[Wf-139 P5] loading NCI-60 9-cell from {nci60_path}", flush=True)
         nci60_rows = load_nci60_csv(nci60_path)
-        print(f"[Wf-139 P5] NCI-60 loaded: {len(nci60_rows)} rows",
-              flush=True)
+        print(f"[Wf-139 P5] NCI-60 loaded: {len(nci60_rows)} rows", flush=True)
     if args.data_config in ("drugood", "nci60+drugood"):
         if not drugood_path.exists():
-            print(f"[Wf-139 P5] FATAL: DrugOOD data missing: {drugood_path}",
-                  flush=True)
+            print(
+                f"[Wf-139 P5] FATAL: DrugOOD data missing: {drugood_path}", flush=True
+            )
             return 2
         # Split total_rows / 2 to drugood when combined.
-        drugood_n = total_rows // 2 if args.data_config == "nci60+drugood" else total_rows
-        print(f"[Wf-139 P5] loading DrugOOD native from {drugood_path} "
-              f"(n_rows={drugood_n})", flush=True)
-        drugood_rows = load_drugood_csv(
-            drugood_path, n_rows=drugood_n, seed=0,
+        drugood_n = (
+            total_rows // 2 if args.data_config == "nci60+drugood" else total_rows
         )
-        print(f"[Wf-139 P5] DrugOOD loaded: {len(drugood_rows)} rows",
-              flush=True)
+        print(
+            f"[Wf-139 P5] loading DrugOOD native from {drugood_path} "
+            f"(n_rows={drugood_n})",
+            flush=True,
+        )
+        drugood_rows = load_drugood_csv(
+            drugood_path,
+            n_rows=drugood_n,
+            seed=0,
+        )
+        print(f"[Wf-139 P5] DrugOOD loaded: {len(drugood_rows)} rows", flush=True)
 
     if args.data_config in ("nci60", "drugood", "nci60+drugood"):
         combined = build_combined_subset(
@@ -666,8 +721,7 @@ def main() -> int:
         )
     else:
         if not data_path.exists():
-            print(f"[Wf-139 P5] FATAL: data missing: {data_path}",
-                  flush=True)
+            print(f"[Wf-139 P5] FATAL: data missing: {data_path}", flush=True)
             return 2
         all_rows = load_platinai_csv(data_path)
         eval_rows = filter_pt_subset(all_rows)
@@ -676,7 +730,8 @@ def main() -> int:
     print(
         f"[Wf-139 P5] data_config={args.data_config} "
         f"eval_rows={len(eval_rows)} per_seed_n={args.n_samples} "
-        f"seeds={args.seeds}", flush=True,
+        f"seeds={args.seeds}",
+        flush=True,
     )
 
     overall_t0 = time.time()
@@ -689,16 +744,14 @@ def main() -> int:
         len(load_platinai_csv(data_path)) if data_path.exists() else 0
     )
     report.n_pt_subset = (
-        len(filter_pt_subset(load_platinai_csv(data_path)))
-        if data_path.exists() else 0
+        len(filter_pt_subset(load_platinai_csv(data_path))) if data_path.exists() else 0
     )
 
     per_seed: List[SeedMetrics] = []
     agg_ok = 0
     agg_n = 0
     for seed in args.seeds:
-        print(f"[Wf-139 P5] === seed={seed} n_samples={args.n_samples} ===",
-              flush=True)
+        print(f"[Wf-139 P5] === seed={seed} n_samples={args.n_samples} ===", flush=True)
         sm = evaluate_seed(
             ckpt_path=ckpt_path,
             rows=eval_rows,
@@ -803,10 +856,14 @@ def main() -> int:
         "seeds": list(args.seeds),
         "date_utc": "2026-09-27",
         "status": (
-            "MEASURED_HALT" if report.aggregate_n_total < 100
-            else "MEASURED_ZERO" if report.aggregate_decode_ratio == 0.0
-            else "MEASURED_PASS" if report.aggregate_decode_ratio >= 0.8
-            else "MEASURED_PARTIAL" if report.aggregate_decode_ratio >= 0.5
+            "MEASURED_HALT"
+            if report.aggregate_n_total < 100
+            else "MEASURED_ZERO"
+            if report.aggregate_decode_ratio == 0.0
+            else "MEASURED_PASS"
+            if report.aggregate_decode_ratio >= 0.8
+            else "MEASURED_PARTIAL"
+            if report.aggregate_decode_ratio >= 0.5
             else "MEASURED_LOW"
         ),
         "per_seed": [asdict(m) for m in per_seed],

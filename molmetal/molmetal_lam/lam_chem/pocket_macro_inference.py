@@ -113,8 +113,8 @@ _METADATA_FILENAME: str = "pocket_macro_skeleton_v2.pt.json"
 #: broken whenever the host was invoked from any directory other than
 #: the project root).
 _MODULE_DIR: Path = Path(__file__).resolve().parent
-_PACKAGE_ROOT: Path = _MODULE_DIR.parent                  # ``molmetal_lam/``
-_REPO_PKG_ROOT: Path = _MODULE_DIR.parent.parent           # ``molmetal/``
+_PACKAGE_ROOT: Path = _MODULE_DIR.parent  # ``molmetal_lam/``
+_REPO_PKG_ROOT: Path = _MODULE_DIR.parent.parent  # ``molmetal/``
 _MODULE_RELATIVE_MODELS_DIR: Path = _REPO_PKG_ROOT / "models"
 
 #: Default path of the trained state-dict checkpoint.
@@ -129,15 +129,11 @@ _MODULE_RELATIVE_MODELS_DIR: Path = _REPO_PKG_ROOT / "models"
 #:    (module-relative, works from any CWD)
 #: 2. ``models/pocket_macro_skeleton_v2.pt`` (CWD-relative legacy,
 #:    preserved for backwards compat)
-DEFAULT_CHECKPOINT_PATH: str = str(
-    _MODULE_RELATIVE_MODELS_DIR / _CHECKPOINT_FILENAME
-)
+DEFAULT_CHECKPOINT_PATH: str = str(_MODULE_RELATIVE_MODELS_DIR / _CHECKPOINT_FILENAME)
 
 #: Default path of the training-metadata JSON sidecar.
 #: Same resolution policy as :data:`DEFAULT_CHECKPOINT_PATH`.
-DEFAULT_METADATA_PATH: str = str(
-    _MODULE_RELATIVE_MODELS_DIR / _METADATA_FILENAME
-)
+DEFAULT_METADATA_PATH: str = str(_MODULE_RELATIVE_MODELS_DIR / _METADATA_FILENAME)
 
 
 def _resolve_default_paths(
@@ -217,6 +213,7 @@ def _resolve_default_paths(
     # the error message points at the canonical location.
     return str(module_ckpt), str(module_meta)
 
+
 #: Confidence floor below which we declare ``UNKNOWN`` instead of the
 #: argmax class.  v2 reaches 100.0 % train accuracy on all 6 classes
 #: (66/66) but the softmax masses are spread: CA2 (1AKL) reaches
@@ -257,9 +254,7 @@ class _PocketMacroSkeletonV2(nn.Module):
         self.hidden_dim = hidden_dim
         self.n_scaffold_classes = n_scaffold_classes
         self.residue_encoder = nn.Module()
-        self.residue_encoder.linear = nn.Linear(
-            per_residue_features, hidden_dim
-        )
+        self.residue_encoder.linear = nn.Linear(per_residue_features, hidden_dim)
         self.attention = PocketMacroSkeletonAttention(
             hidden_dim=hidden_dim,
             num_heads=num_heads,
@@ -270,9 +265,7 @@ class _PocketMacroSkeletonV2(nn.Module):
         """Run a (n, 33) per-residue feature matrix through the encoder."""
         return self.residue_encoder.linear(scalars)
 
-    def forward(
-        self, scalars: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, scalars: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """``(n, 33)`` → ``(hidden_dim,)`` skeleton + ``(n_classes,)`` logits."""
         if scalars.shape[0] == 0:
             z1 = torch.zeros(self.hidden_dim, dtype=torch.float32)
@@ -289,9 +282,26 @@ class _PocketMacroSkeletonV2(nn.Module):
 # ---------------------------------------------------------------------------
 
 _AA_VOCAB = (
-    "A", "C", "D", "E", "F", "G", "H", "I",
-    "K", "L", "M", "N", "P", "Q", "R", "S",
-    "T", "V", "W", "Y",
+    "A",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G",
+    "H",
+    "I",
+    "K",
+    "L",
+    "M",
+    "N",
+    "P",
+    "Q",
+    "R",
+    "S",
+    "T",
+    "V",
+    "W",
+    "Y",
 )
 _AA_INDEX = {aa: i for i, aa in enumerate(_AA_VOCAB)}
 
@@ -404,9 +414,24 @@ _FIXTURES: Dict[str, List[dict]] = {
     # CA2 (1AKL) — His-His-His triad → ground truth ZN_TETRA_HHH
     # Documented Phase 2 collapse: model predicts ZN_TETRA_HHE.
     "1AKL": [
-        {"one_letter": "H", "resid": 94, "distance_to_ligand": 2.5, "is_metal_anchor": True},
-        {"one_letter": "H", "resid": 96, "distance_to_ligand": 3.0, "is_metal_anchor": True},
-        {"one_letter": "H", "resid": 119, "distance_to_ligand": 2.0, "is_metal_anchor": True},
+        {
+            "one_letter": "H",
+            "resid": 94,
+            "distance_to_ligand": 2.5,
+            "is_metal_anchor": True,
+        },
+        {
+            "one_letter": "H",
+            "resid": 96,
+            "distance_to_ligand": 3.0,
+            "is_metal_anchor": True,
+        },
+        {
+            "one_letter": "H",
+            "resid": 119,
+            "distance_to_ligand": 2.0,
+            "is_metal_anchor": True,
+        },
         {"one_letter": "V", "resid": 143, "distance_to_ligand": 4.5},
         {"one_letter": "L", "resid": 198, "distance_to_ligand": 3.7},
         {"one_letter": "F", "resid": 131, "distance_to_ligand": 4.9},
@@ -417,9 +442,24 @@ _FIXTURES: Dict[str, List[dict]] = {
     ],
     # ACE (1O86) — His-His-Glu triad → ground truth ZN_TETRA_HHE
     "1O86": [
-        {"one_letter": "H", "resid": 383, "distance_to_ligand": 2.4, "is_metal_anchor": True},
-        {"one_letter": "H", "resid": 387, "distance_to_ligand": 2.8, "is_metal_anchor": True},
-        {"one_letter": "E", "resid": 411, "distance_to_ligand": 2.6, "is_metal_anchor": True},
+        {
+            "one_letter": "H",
+            "resid": 383,
+            "distance_to_ligand": 2.4,
+            "is_metal_anchor": True,
+        },
+        {
+            "one_letter": "H",
+            "resid": 387,
+            "distance_to_ligand": 2.8,
+            "is_metal_anchor": True,
+        },
+        {
+            "one_letter": "E",
+            "resid": 411,
+            "distance_to_ligand": 2.6,
+            "is_metal_anchor": True,
+        },
         {"one_letter": "Y", "resid": 520, "distance_to_ligand": 4.7},
         {"one_letter": "V", "resid": 518, "distance_to_ligand": 4.5},
         {"one_letter": "F", "resid": 391, "distance_to_ligand": 4.8},
@@ -427,9 +467,24 @@ _FIXTURES: Dict[str, List[dict]] = {
     ],
     # MMP2 (1HOV) — His-His-Glu triad → ground truth ZN_TETRA_HHE
     "1HOV": [
-        {"one_letter": "H", "resid": 403, "distance_to_ligand": 2.5, "is_metal_anchor": True},
-        {"one_letter": "H", "resid": 407, "distance_to_ligand": 3.0, "is_metal_anchor": True},
-        {"one_letter": "H", "resid": 413, "distance_to_ligand": 2.0, "is_metal_anchor": True},
+        {
+            "one_letter": "H",
+            "resid": 403,
+            "distance_to_ligand": 2.5,
+            "is_metal_anchor": True,
+        },
+        {
+            "one_letter": "H",
+            "resid": 407,
+            "distance_to_ligand": 3.0,
+            "is_metal_anchor": True,
+        },
+        {
+            "one_letter": "H",
+            "resid": 413,
+            "distance_to_ligand": 2.0,
+            "is_metal_anchor": True,
+        },
         {"one_letter": "E", "resid": 404, "distance_to_ligand": 3.5},
         {"one_letter": "A", "resid": 417, "distance_to_ligand": 4.5},
         {"one_letter": "L", "resid": 418, "distance_to_ligand": 4.7},
@@ -437,16 +492,36 @@ _FIXTURES: Dict[str, List[dict]] = {
     ],
     # PKA (1ATP) — Asp-Lys-Glu triad (catalytic) → MG_OCTA_KINASE
     "1ATP": [
-        {"one_letter": "D", "resid": 184, "distance_to_ligand": 3.0, "is_metal_anchor": True},
-        {"one_letter": "K", "resid": 72, "distance_to_ligand": 3.5, "is_metal_anchor": True},
-        {"one_letter": "E", "resid": 91, "distance_to_ligand": 3.0, "is_metal_anchor": True},
+        {
+            "one_letter": "D",
+            "resid": 184,
+            "distance_to_ligand": 3.0,
+            "is_metal_anchor": True,
+        },
+        {
+            "one_letter": "K",
+            "resid": 72,
+            "distance_to_ligand": 3.5,
+            "is_metal_anchor": True,
+        },
+        {
+            "one_letter": "E",
+            "resid": 91,
+            "distance_to_ligand": 3.0,
+            "is_metal_anchor": True,
+        },
         {"one_letter": "F", "resid": 327, "distance_to_ligand": 4.7},
         {"one_letter": "L", "resid": 173, "distance_to_ligand": 4.8},
         {"one_letter": "V", "resid": 123, "distance_to_ligand": 4.9},
     ],
     # CYP3A4 (1W0G) — Cys heme proximal → FE_HEME_CYS
     "1W0G": [
-        {"one_letter": "C", "resid": 442, "distance_to_ligand": 2.4, "is_metal_anchor": True},
+        {
+            "one_letter": "C",
+            "resid": 442,
+            "distance_to_ligand": 2.4,
+            "is_metal_anchor": True,
+        },
         {"one_letter": "F", "resid": 137, "distance_to_ligand": 4.6},
         {"one_letter": "L", "resid": 244, "distance_to_ligand": 4.4},
         {"one_letter": "V", "resid": 243, "distance_to_ligand": 4.5},
@@ -584,9 +659,7 @@ class PocketMacroInference:
                 f"PocketMacroInference: checkpoint not found at "
                 f"{self.checkpoint_path!r}"
             )
-        state = torch.load(
-            self.checkpoint_path, map_location="cpu", weights_only=False
-        )
+        state = torch.load(self.checkpoint_path, map_location="cpu", weights_only=False)
         model = _PocketMacroSkeletonV2(
             per_residue_features=PER_RESIDUE_FEATURES,
             hidden_dim=HIDDEN_DIM,
@@ -626,18 +699,14 @@ class PocketMacroInference:
         ``.pt.json`` sidecar.  Empty dict if metadata is missing.
         """
         meta = self.get_metadata()
-        per_class = (
-            meta.get("results", {}).get("per_class_accuracy", {}) or {}
-        )
+        per_class = meta.get("results", {}).get("per_class_accuracy", {}) or {}
         return {k: dict(v) for k, v in per_class.items()}
 
     # -------------------------------------------------------------------
     # Residue fixture lookup
     # -------------------------------------------------------------------
 
-    def _resolve_residues(
-        self, target_name: str
-    ) -> Optional[List[dict]]:
+    def _resolve_residues(self, target_name: str) -> Optional[List[dict]]:
         """Translate a target name / PDB id into a residue fixture list.
 
         Accepts either a ``MetalloproteinTarget.name`` (``"CA2"``,
@@ -659,9 +728,7 @@ class PocketMacroInference:
     # Core inference primitives
     # -------------------------------------------------------------------
 
-    def predict_logits(
-        self, target_name: str
-    ) -> Tuple[str, np.ndarray, str]:
+    def predict_logits(self, target_name: str) -> Tuple[str, np.ndarray, str]:
         """Run the model and return ``(predicted_class_name, probs, source)``.
 
         ``source`` is ``"model"`` when the trained weights were used,
@@ -714,9 +781,7 @@ class PocketMacroInference:
         — drops the confidence.  Falls back to ``"UNKNOWN"`` for
         low-confidence predictions (e.g. the CA2 collapse).
         """
-        predicted, _conf = self.predict_scaffold_class_with_confidence(
-            target_name
-        )
+        predicted, _conf = self.predict_scaffold_class_with_confidence(target_name)
         return predicted
 
     def get_embedding(self, target_name: str) -> np.ndarray:
@@ -756,9 +821,7 @@ class PocketMacroInference:
         InferenceResult
             The structured result (also printed to stdout).
         """
-        predicted, conf = self.predict_scaffold_class_with_confidence(
-            target_name
-        )
+        predicted, conf = self.predict_scaffold_class_with_confidence(target_name)
         gt_class = scaffold_class_from_target_name(target_name).name
         source = "model" if self._loaded else "fallback"
         result = InferenceResult(

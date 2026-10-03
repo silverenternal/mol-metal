@@ -12,6 +12,7 @@ If the heavy ``posebusters`` wheel is not installed in the
 production venv, the gate-paths tests SKIP with a clear message
 that maps to HONEST_NEGATIVE_BLOCKED in the 1h36 metric.
 """
+
 from __future__ import annotations
 
 import json
@@ -45,6 +46,7 @@ METRIC_1H36 = METRICS_DIR / "steric_clash_pb_dock_1h36.json"
 # ---------------------------------------------------------------------------
 # Package availability — uses production venv python (not the test venv)
 # ---------------------------------------------------------------------------
+
 
 def _probe_packages():
     """Probe RDKit + PoseBusters availability in the venv.
@@ -87,6 +89,7 @@ def _probe_packages():
 # Test 1: RDKit available in the venv (>= 2025 release)
 # ---------------------------------------------------------------------------
 
+
 def test_1_rdkit_version_in_venv():
     """RDKit must be importable in the venv; record version."""
     ok, rdkit_v, _ = _probe_packages()
@@ -107,6 +110,7 @@ def test_1_rdkit_version_in_venv():
 # Test 2: PoseBusters available in the venv (>= 0.5)
 # ---------------------------------------------------------------------------
 
+
 def test_2_posebusters_version_in_venv():
     """PoseBusters must be importable in the venv; record version."""
     ok, _, pb_v = _probe_packages()
@@ -120,14 +124,16 @@ def test_2_posebusters_version_in_venv():
     major = int(pb_v.split(".")[0])
     assert major >= 0
     # Require at least 0.5 (per Buttenschoen 2024 + DockMode stability)
-    assert (major, int(pb_v.split(".")[1])) >= (0, 5), (
-        f"posebusters {pb_v} is older than 0.5 baseline"
-    )
+    assert (major, int(pb_v.split(".")[1])) >= (
+        0,
+        5,
+    ), f"posebusters {pb_v} is older than 0.5 baseline"
 
 
 # ---------------------------------------------------------------------------
 # Test 3: RDKit AllChem EmbedMolecule round-trip works (sanity)
 # ---------------------------------------------------------------------------
+
 
 def test_3_rdkit_allchem_embed_works():
     """RDKit AllChem.EmbedMolecule on ethanol can ship into a conformer."""
@@ -150,9 +156,9 @@ def test_3_rdkit_allchem_embed_works():
         text=True,
         timeout=20.0,
     )
-    assert out.returncode == 0, (
-        f"AllChem.EmbedMolecule failed in {VENV_PYTHON}: {out.stderr}"
-    )
+    assert (
+        out.returncode == 0
+    ), f"AllChem.EmbedMolecule failed in {VENV_PYTHON}: {out.stderr}"
     cid_line = [l for l in out.stdout.splitlines() if l.startswith("cid=")][0]
     n_confs_line = [l for l in out.stdout.splitlines() if l.startswith("n_confs=")][0]
     cid = int(cid_line.split("=", 1)[1])
@@ -165,6 +171,7 @@ def test_3_rdkit_allchem_embed_works():
 # Test 4: Smoke output exists with valid m8 protein-aware pass rate
 # (or HONEST_NEGATIVE_BLOCKED fallback if packages missing)
 # ---------------------------------------------------------------------------
+
 
 def test_4_1h36_pb_smoke_pass_rate():
     """m8_prod_1h36.json must report a valid pass rate for 1h36.
@@ -202,14 +209,15 @@ def test_4_1h36_pb_smoke_pass_rate():
     assert n_pass <= n_total
     # Cross-check: rate should equal n_pass / n_total (within float epsilon)
     expected_rate = n_pass / n_total
-    assert abs(rate - expected_rate) < 1e-9, (
-        f"rate={rate} != n_pass/n_total={expected_rate}"
-    )
+    assert (
+        abs(rate - expected_rate) < 1e-9
+    ), f"rate={rate} != n_pass/n_total={expected_rate}"
 
 
 # ---------------------------------------------------------------------------
 # Test 5: 1h36 metric file is MEASURED_SMOKE (or HONEST_NEGATIVE_BLOCKED)
 # ---------------------------------------------------------------------------
+
 
 def test_5_1h36_metric_status_transition():
     """steric_clash_pb_dock_1h36.json must be MEASURED_SMOKE (or
@@ -232,9 +240,9 @@ def test_5_1h36_metric_status_transition():
         assert data.get("value", {}).get("rate_protein_aware_subset") is not None
     else:
         # Path (b): packages missing
-        assert data.get("HONEST_NEGATIVE_BLOCKED") is True, (
-            f"packages missing but HONEST_NEGATIVE_BLOCKED={data.get('HONEST_NEGATIVE_BLOCKED')!r}"
-        )
+        assert (
+            data.get("HONEST_NEGATIVE_BLOCKED") is True
+        ), f"packages missing but HONEST_NEGATIVE_BLOCKED={data.get('HONEST_NEGATIVE_BLOCKED')!r}"
         blocker = data.get("blocker_description") or ""
         assert isinstance(blocker, str) and blocker.strip(), (
             "blocker_description must be a non-empty string when "
@@ -245,6 +253,7 @@ def test_5_1h36_metric_status_transition():
 # ---------------------------------------------------------------------------
 # Test 6: Pre-flight gate logic (the gate_wf315d_pb_smoke function)
 # ---------------------------------------------------------------------------
+
 
 def test_6_preflight_gate_wf315d():
     """Pre-flight gate ``p3_pb_packages_available_or_documented`` PASSES.
@@ -263,12 +272,10 @@ def test_6_preflight_gate_wf315d():
         smoke_output=SMOKE_OUTPUT,
         venv_python=VENV_PYTHON,
     )
-    assert isinstance(result, GateResult), (
-        f"gate returned wrong type: {type(result).__name__}"
-    )
-    assert result.status in ("PASS", "FAIL"), (
-        f"unexpected status {result.status!r}"
-    )
+    assert isinstance(
+        result, GateResult
+    ), f"gate returned wrong type: {type(result).__name__}"
+    assert result.status in ("PASS", "FAIL"), f"unexpected status {result.status!r}"
     # When packages are installed + metric is MEASURED_SMOKE + smoke
     # output exists, the gate should PASS.
     ok, rdkit_v, pb_v = _probe_packages()

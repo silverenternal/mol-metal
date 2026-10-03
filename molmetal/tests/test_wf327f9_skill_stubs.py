@@ -26,6 +26,7 @@ Run via::
         /home/hugo/codes/mol-metal/.venv/bin/python -m pytest \
         molmetal/tests/test_wf327f9_skill_stubs.py -v
 """
+
 from __future__ import annotations
 
 import re
@@ -47,9 +48,9 @@ SKILLS_ROOT = REPO_ROOT / ".claude" / "skills"
 # ---------------------------------------------------------------------------
 NEW_R20_SKILLS: Tuple[str, ...] = (
     "mol-metal-variance-puct-default",  # R20-P1, TODO-92
-    "mol-metal-hilbert-astsr-e2e",      # R20-P2, TODO-93
-    "mol-metal-multiph-pll",            # R20-P3, TODO-94
-    "mol-metal-closure-theorem",       # R20-P5, TODO-96
+    "mol-metal-hilbert-astsr-e2e",  # R20-P2, TODO-93
+    "mol-metal-multiph-pll",  # R20-P3, TODO-94
+    "mol-metal-closure-theorem",  # R20-P5, TODO-96
 )
 
 
@@ -201,13 +202,13 @@ def test_skill_frontmatter_complete(skill_name: str):
     fm = _parse_frontmatter(fm_text)
     assert "name" in fm, f"{skill_name} frontmatter missing 'name'"
     assert "description" in fm, f"{skill_name} frontmatter missing 'description'"
-    assert fm["name"] == skill_name, (
-        f"{skill_name} frontmatter name mismatch: {fm['name']!r}"
-    )
+    assert (
+        fm["name"] == skill_name
+    ), f"{skill_name} frontmatter name mismatch: {fm['name']!r}"
     # Description should be substantial (≥ 100 chars)
-    assert len(fm["description"]) >= 100, (
-        f"{skill_name} description too short ({len(fm['description'])} chars)"
-    )
+    assert (
+        len(fm["description"]) >= 100
+    ), f"{skill_name} description too short ({len(fm['description'])} chars)"
 
 
 # ---------------------------------------------------------------------------
@@ -273,9 +274,9 @@ def test_skill_todo_ref_resolves(skill_name: str):
     todo_ref = metadata["todo_ref"]
     assert isinstance(todo_ref, str)
     # Either the TODO doc is referenced in body OR exists on disk
-    assert todo_ref in text or (REPO_ROOT / todo_ref).is_file(), (
-        f"{skill_name} cross-ref missing: {todo_ref} not in body and not on disk"
-    )
+    assert (
+        todo_ref in text or (REPO_ROOT / todo_ref).is_file()
+    ), f"{skill_name} cross-ref missing: {todo_ref} not in body and not on disk"
 
 
 # ---------------------------------------------------------------------------
@@ -291,12 +292,8 @@ def test_skill_has_measured_vs_projected_ledger(skill_name: str):
     text = _read_skill(skill_name)
     # Match "MEASURED" or "PROJECTED" anywhere in body (case-sensitive on
     # the canonical labels)
-    assert "MEASURED" in text, (
-        f"{skill_name} missing 'MEASURED' label in body"
-    )
-    assert "PROJECTED" in text, (
-        f"{skill_name} missing 'PROJECTED' label in body"
-    )
+    assert "MEASURED" in text, f"{skill_name} missing 'MEASURED' label in body"
+    assert "PROJECTED" in text, f"{skill_name} missing 'PROJECTED' label in body"
 
 
 # ---------------------------------------------------------------------------
@@ -316,9 +313,7 @@ def test_all_4_r20_skills_wired():
     # All 4 must be above stub threshold + have ≥ 3 sections
     for name, stats in results.items():
         assert stats["loc"] >= 50, f"{name}: STUB ({stats['loc']} LOC)"
-        assert stats["n_sections"] >= 3, (
-            f"{name}: only {stats['n_sections']} sections"
-        )
+        assert stats["n_sections"] >= 3, f"{name}: only {stats['n_sections']} sections"
 
 
 # ---------------------------------------------------------------------------
@@ -326,11 +321,13 @@ def test_all_4_r20_skills_wired():
 # ---------------------------------------------------------------------------
 def test_skill_ecosystem_audit_wf321b_status():
     """Wf-321B R20+R21 audit doc must exist + mark R20 coverage as 4/4."""
-    audit_path = REPO_ROOT / "TODO" / "completed" / "321b_r20_r21_skill_ecosystem_audit.md"
+    audit_path = (
+        REPO_ROOT / "TODO" / "completed" / "321b_r20_r21_skill_ecosystem_audit.md"
+    )
     if not audit_path.is_file():
         pytest.skip(f"Wf-321B audit doc missing: {audit_path}")
     text = audit_path.read_text(encoding="utf-8")
     # R20 coverage line should be present
-    assert "R20 coverage = 4/4" in text or "R20 4/4" in text, (
-        f"Wf-321B audit missing R20 4/4 coverage marker"
-    )
+    assert (
+        "R20 coverage = 4/4" in text or "R20 4/4" in text
+    ), f"Wf-321B audit missing R20 4/4 coverage marker"

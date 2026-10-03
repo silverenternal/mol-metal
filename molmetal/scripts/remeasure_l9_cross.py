@@ -102,7 +102,10 @@ def build_cisplatin_seed() -> MoleculeClosedTerm:
 def main() -> None:
     rng = random.Random(42)
     seed = build_cisplatin_seed()
-    tiles = [MoleculeClosedTerm.from_smiles(s, embed_3d=False) for s in ("CCO", "CCN", "CCCl", "CCS")]
+    tiles = [
+        MoleculeClosedTerm.from_smiles(s, embed_3d=False)
+        for s in ("CCO", "CCN", "CCCl", "CCS")
+    ]
     rules = {"Pt_ligation": _PtLigandRule()}
 
     # ----- L9 metrics (single 100-sim run) -----
@@ -143,7 +146,9 @@ def main() -> None:
     rollout_guided = 0.0
 
     # L9-6 dirichlet_applied — True iff alpha>0 and fraction>0.
-    dirichlet_applied = bool(search.dirichlet_alpha > 0 and search.dirichlet_fraction > 0)
+    dirichlet_applied = bool(
+        search.dirichlet_alpha > 0 and search.dirichlet_fraction > 0
+    )
 
     # L9-7 closed_loop_iteration_latency — measured below in the loop.
     closed_loop_latency_per_iter: List[float] = []

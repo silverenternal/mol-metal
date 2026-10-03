@@ -28,9 +28,9 @@ def test_v2_checkpoint_loads():
         pytest.skip(f"pocket_macro_inference not importable: {exc}")
 
     inf = PocketMacroInference()
-    assert os.path.exists(DEFAULT_CHECKPOINT_PATH), (
-        f"v2 checkpoint missing at {DEFAULT_CHECKPOINT_PATH!r}"
-    )
+    assert os.path.exists(
+        DEFAULT_CHECKPOINT_PATH
+    ), f"v2 checkpoint missing at {DEFAULT_CHECKPOINT_PATH!r}"
     # Force load even if is_available returned False due to CWD issues.
     try:
         inf.load()
@@ -75,18 +75,21 @@ def test_ca2_classifies_correctly():
 
     predicted, conf = inf.predict_scaffold_class_with_confidence("CA2")
     gt = scaffold_class_from_target_name("CA2").name
-    assert predicted == gt, (
-        f"CA2 mispredicted: predicted={predicted}, gt={gt}, conf={conf}"
-    )
+    assert (
+        predicted == gt
+    ), f"CA2 mispredicted: predicted={predicted}, gt={gt}, conf={conf}"
 
 
 # ---------------------------------------------------------------------------
 # 4. ACE / MMP2 classify correctly with v2
 # ---------------------------------------------------------------------------
-@pytest.mark.parametrize("target_name,expected_class", [
-    ("ACE", "ZN_TETRA_HHE"),
-    ("MMP2", "ZN_TETRA_HHE"),
-])
+@pytest.mark.parametrize(
+    "target_name,expected_class",
+    [
+        ("ACE", "ZN_TETRA_HHE"),
+        ("MMP2", "ZN_TETRA_HHE"),
+    ],
+)
 def test_ace_mmp2_classify_correctly(target_name, expected_class):
     try:
         from molmetal_lam.lam_chem.pocket_macro_inference import (
@@ -168,9 +171,24 @@ def test_v2_feature_builder_exists():
     import torch
 
     residues = [
-        {"one_letter": "H", "resid": 94, "distance_to_ligand": 2.5, "is_metal_anchor": True},
-        {"one_letter": "H", "resid": 96, "distance_to_ligand": 3.0, "is_metal_anchor": True},
-        {"one_letter": "H", "resid": 119, "distance_to_ligand": 2.0, "is_metal_anchor": True},
+        {
+            "one_letter": "H",
+            "resid": 94,
+            "distance_to_ligand": 2.5,
+            "is_metal_anchor": True,
+        },
+        {
+            "one_letter": "H",
+            "resid": 96,
+            "distance_to_ligand": 3.0,
+            "is_metal_anchor": True,
+        },
+        {
+            "one_letter": "H",
+            "resid": 119,
+            "distance_to_ligand": 2.0,
+            "is_metal_anchor": True,
+        },
     ]
     feats = _build_33d_features(residues)
     assert feats.shape == (3, 33), f"expected (3,33) got {feats.shape}"

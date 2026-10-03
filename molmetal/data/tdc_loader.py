@@ -113,6 +113,7 @@ _CANONICAL_COLUMNS = (
 # ``metal`` are usually present).
 _NA_FILL = "NA"
 
+
 # Default cache directory for both PyTDC's tarballs and our DeepChem
 # fallbacks.  Honour ``$MOLMETAL_DATA_DIR`` first, then the canonical
 # project-local path, then the user's home.
@@ -142,6 +143,7 @@ def _import_pytdc():
     try:
         import tdc  # type: ignore  # noqa: F401
         from tdc.single_pred import ADME, HTS  # type: ignore  # noqa: F401
+
         return tdc, ADME, HTS
     except ImportError as exc:
         raise ImportError(
@@ -232,14 +234,16 @@ def load_tdc_bbbp(
             data = ADME(name="bbb_martins")
             df = data.get_data()
             for _, r in df.iterrows():
-                rows.append({
-                    "smiles": str(r["Drug"]),
-                    "metal": _NA_FILL,
-                    "cell_line": _NA_FILL,
-                    "protein": _NA_FILL,
-                    "pIC50": float("nan"),
-                    "active": bool(int(r["Y"])),
-                })
+                rows.append(
+                    {
+                        "smiles": str(r["Drug"]),
+                        "metal": _NA_FILL,
+                        "cell_line": _NA_FILL,
+                        "protein": _NA_FILL,
+                        "pIC50": float("nan"),
+                        "active": bool(int(r["Y"])),
+                    }
+                )
         except Exception as exc:
             warnings.warn(
                 f"PyTDC BBBP path failed ({exc}); falling back to "
@@ -261,14 +265,16 @@ def load_tdc_bbbp(
                 yi = int(r["p_np"])
             except (ValueError, KeyError):
                 continue
-            rows.append({
-                "smiles": str(r["smiles"]),
-                "metal": _NA_FILL,
-                "cell_line": _NA_FILL,
-                "protein": _NA_FILL,
-                "pIC50": float("nan"),
-                "active": bool(yi),
-            })
+            rows.append(
+                {
+                    "smiles": str(r["smiles"]),
+                    "metal": _NA_FILL,
+                    "cell_line": _NA_FILL,
+                    "protein": _NA_FILL,
+                    "pIC50": float("nan"),
+                    "active": bool(yi),
+                }
+            )
     out = pd.DataFrame(rows, columns=list(_CANONICAL_COLUMNS))
     # BBBP has no pIC50 column (binary only); drop the NaN-pIC50 rows
     # to match the convention used elsewhere in the project (rows with
@@ -329,14 +335,20 @@ def load_tdc_bace(
             df = data.get_data()
             # Older PyTDC (<1.0) used (Drug_ID, Drug, Y) schema.
             for _, r in df.iterrows():
-                rows.append({
-                    "smiles": str(r["Drug"]),
-                    "metal": _NA_FILL,
-                    "cell_line": _NA_FILL,
-                    "protein": "BACE",
-                    "pIC50": float(r["Y"]) if str(r["Y"]).replace(".", "", 1).lstrip("-").isdigit() else float("nan"),
-                    "active": bool(int(r["Y"])) if "Class" not in df.columns else bool(int(r["Class"])),
-                })
+                rows.append(
+                    {
+                        "smiles": str(r["Drug"]),
+                        "metal": _NA_FILL,
+                        "cell_line": _NA_FILL,
+                        "protein": "BACE",
+                        "pIC50": float(r["Y"])
+                        if str(r["Y"]).replace(".", "", 1).lstrip("-").isdigit()
+                        else float("nan"),
+                        "active": bool(int(r["Y"]))
+                        if "Class" not in df.columns
+                        else bool(int(r["Class"])),
+                    }
+                )
         except Exception:
             rows = []
 
@@ -347,7 +359,11 @@ def load_tdc_bace(
         )
         df = pd.read_csv(path)
         # DeepChem mirror columns: mol (SMILES), Class (0/1), pIC50 (float)
-        if "mol" not in df.columns or "Class" not in df.columns or "pIC50" not in df.columns:
+        if (
+            "mol" not in df.columns
+            or "Class" not in df.columns
+            or "pIC50" not in df.columns
+        ):
             raise ValueError(
                 f"BACE mirror at {path} is missing required columns "
                 f"(mol, Class, pIC50); got {df.columns.tolist()[:6]}..."
@@ -357,14 +373,16 @@ def load_tdc_bace(
                 active = bool(int(r["Class"]))
             except (ValueError, KeyError):
                 continue
-            rows.append({
-                "smiles": str(r["mol"]),
-                "metal": _NA_FILL,
-                "cell_line": _NA_FILL,
-                "protein": "BACE",
-                "pIC50": float(r["pIC50"]),
-                "active": active,
-            })
+            rows.append(
+                {
+                    "smiles": str(r["mol"]),
+                    "metal": _NA_FILL,
+                    "cell_line": _NA_FILL,
+                    "protein": "BACE",
+                    "pIC50": float(r["pIC50"]),
+                    "active": active,
+                }
+            )
 
     out = pd.DataFrame(rows, columns=list(_CANONICAL_COLUMNS))
     out["pIC50"] = pd.to_numeric(out["pIC50"], errors="coerce")
@@ -409,14 +427,16 @@ def load_tdc_hiv(
             data = HTS(name="hiv")
             df = data.get_data()
             for _, r in df.iterrows():
-                rows.append({
-                    "smiles": str(r["Drug"]),
-                    "metal": _NA_FILL,
-                    "cell_line": _NA_FILL,
-                    "protein": "HIV",
-                    "pIC50": float("nan"),
-                    "active": bool(int(r["Y"])),
-                })
+                rows.append(
+                    {
+                        "smiles": str(r["Drug"]),
+                        "metal": _NA_FILL,
+                        "cell_line": _NA_FILL,
+                        "protein": "HIV",
+                        "pIC50": float("nan"),
+                        "active": bool(int(r["Y"])),
+                    }
+                )
         except Exception as exc:
             warnings.warn(
                 f"PyTDC HIV path failed ({exc}); falling back to "
@@ -446,14 +466,16 @@ def load_tdc_hiv(
                 yi = int(r["HIV_active"])
             except (ValueError, KeyError):
                 continue
-            rows.append({
-                "smiles": str(r["smiles"]),
-                "metal": _NA_FILL,
-                "cell_line": _NA_FILL,
-                "protein": "HIV",
-                "pIC50": float("nan"),
-                "active": bool(yi),
-            })
+            rows.append(
+                {
+                    "smiles": str(r["smiles"]),
+                    "metal": _NA_FILL,
+                    "cell_line": _NA_FILL,
+                    "protein": "HIV",
+                    "pIC50": float("nan"),
+                    "active": bool(yi),
+                }
+            )
     out = pd.DataFrame(rows, columns=list(_CANONICAL_COLUMNS))
     return out.reset_index(drop=True)
 

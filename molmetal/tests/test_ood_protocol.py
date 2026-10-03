@@ -44,6 +44,7 @@ if str(ROOT) not in sys.path:
 def _have_rdkit() -> bool:
     try:
         from rdkit import Chem  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -108,10 +109,7 @@ def ood():
 # Canonical Pt drug SMILES (same as test_pt_metal_ligand_exchange_known.py).
 CISPLATIN = "N.N.[Cl][Pt][Cl]"
 CARBOPLATIN = "N.N.[Pt]12(OC(=O)CCC1)OC(=O)CCC2"
-SATRAPLATIN = (
-    "CC1=C(C(=O)O[Pt]([NH3])([NH3])(OC(=O)c2ccccc2)C(C)(C)C)"
-    "C(C)(C)C=C1"
-)
+SATRAPLATIN = "CC1=C(C(=O)O[Pt]([NH3])([NH3])(OC(=O)c2ccccc2)C(C)(C)C)" "C(C)(C)C=C1"
 
 # Other small drug-like ligands for cross-checks.
 ASPIRIN = "CC(=O)Oc1ccccc1C(=O)O"
@@ -340,12 +338,15 @@ class TestCombinedOODProtocol:
             mmseqs2=None,
         )
         # Cisplatin querying against cisplatin-train → not OOD.
-        assert p.is_ood(
-            query_smi=CISPLATIN,
-            query_seq="ARND",
-            train_smi=[CISPLATIN, ASPIRIN],
-            train_seq=["MKTA"],
-        ) is False
+        assert (
+            p.is_ood(
+                query_smi=CISPLATIN,
+                query_seq="ARND",
+                train_smi=[CISPLATIN, ASPIRIN],
+                train_seq=["MKTA"],
+            )
+            is False
+        )
 
     @requires_rdkit
     def test_empty_train_smi_is_ood(self, ood):
@@ -354,12 +355,15 @@ class TestCombinedOODProtocol:
             tanimoto=ood.TanimotoOODProtocol(threshold=0.4),
             mmseqs2=None,
         )
-        assert p.is_ood(
-            query_smi=CISPLATIN,
-            query_seq="ARND",
-            train_smi=[],
-            train_seq=["MKTA"],
-        ) is True
+        assert (
+            p.is_ood(
+                query_smi=CISPLATIN,
+                query_seq="ARND",
+                train_smi=[],
+                train_seq=["MKTA"],
+            )
+            is True
+        )
 
     @requires_rdkit
     def test_threshold_strictness(self, ood):

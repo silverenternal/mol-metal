@@ -83,6 +83,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -131,6 +132,7 @@ from molmetal.molmetal_lam.reward.wasserstein_loss import (
 
 try:
     from rdkit import RDLogger
+
     RDLogger.DisableLog("rdApp.*")
 except Exception:
     pass
@@ -139,12 +141,8 @@ except Exception:
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-DEFAULT_DATA_CSV = (
-    PROJECT_ROOT / ".data" / "molmetal" / "MetalCytoToxDB.csv"
-)
-DEFAULT_OUT_DIR = (
-    PROJECT_ROOT / "molmetal" / "reports" / "wf124_p3_ablation"
-)
+DEFAULT_DATA_CSV = PROJECT_ROOT / ".data" / "molmetal" / "MetalCytoToxDB.csv"
+DEFAULT_OUT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf124_p3_ablation"
 
 # Default smoke-test config — fast enough to fit in 1800s wall-time while
 # still exercising every code path of the three ablation levers.  The
@@ -198,6 +196,7 @@ def load_cytotox_dataset(
     local_cache.mkdir(parents=True, exist_ok=True)
     df_loaded = pd.read_csv(data_csv, low_memory=False)
     from molmetal.data import cytotox as _cytotox_mod
+
     df_loaded = _cytotox_mod._apply_filters(df_loaded, flt_obj)
     if flt_obj.compute_pic50:
         df_loaded = _cytotox_mod._add_pic50(df_loaded)
@@ -224,6 +223,7 @@ def featurise_with_cache(
     if cache_path.exists():
         try:
             import pickle
+
             with cache_path.open("rb") as f:
                 cached_smiles, cached_graphs = pickle.load(f)
             if list(cached_smiles) == list(smiles):
@@ -236,6 +236,7 @@ def featurise_with_cache(
     elapsed = time.time() - t0
     try:
         import pickle
+
         with cache_path.open("wb") as f:
             pickle.dump(
                 (list(smiles), graphs),
@@ -264,18 +265,25 @@ def split_indices(
     a fair lift comparison).
     """
     from sklearn.model_selection import train_test_split
+
     smiles_all = np.asarray(ds.smiles).astype(str)
     metal_all = np.asarray(ds.metals).astype(str)
     active_all = np.asarray(ds.active).astype(int)
     keep = np.where(metal_all == metal)[0]
     y = active_all[keep]
     idx_tmp, idx_test = train_test_split(
-        keep, test_size=test_frac, stratify=y, random_state=seed,
+        keep,
+        test_size=test_frac,
+        stratify=y,
+        random_state=seed,
     )
     y_tmp = active_all[idx_tmp]
     val_rel = val_frac / (1.0 - test_frac)
     idx_train, idx_val = train_test_split(
-        idx_tmp, test_size=val_rel, stratify=y_tmp, random_state=seed,
+        idx_tmp,
+        test_size=val_rel,
+        stratify=y_tmp,
+        random_state=seed,
     )
     return (
         np.array(sorted(idx_train.tolist())),
@@ -347,7 +355,7 @@ def train_epoch_with_wasserstein(
     np.random.shuffle(indices)
 
     for start in range(0, len(indices), batch_size):
-        batch_idx = indices[start:start + batch_size]
+        batch_idx = indices[start : start + batch_size]
         batch_graphs = [graphs[i] for i in batch_idx]
         batch_pic50 = pic50_labels[batch_idx]
         batch_active = active_labels[batch_idx]
@@ -384,8 +392,10 @@ def train_epoch_with_wasserstein(
         if w_w > 0.0 and pic50_pred.numel() >= 4:
             ref_dev = ref_pic50.to(device).detach()
             w_pen = wasserstein_pic50_loss(
-                pic50_pred, ref_dev,
-                n_mc=w_config.n_mc, seed=w_config.seed,
+                pic50_pred,
+                ref_dev,
+                n_mc=w_config.n_mc,
+                seed=w_config.seed,
             )
 
         total = loss + w_w * w_pen
@@ -476,7 +486,8 @@ def run_one_config(
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     # Wf-187 fix: use_kendall_loss=True ignores the manual ``alpha``.
     criterion = MultiTaskLoss(
-        alpha=alpha, use_kendall_loss=use_kendall,
+        alpha=alpha,
+        use_kendall_loss=use_kendall,
     )
 
     # Reference pIC50 distribution for Wasserstein (fixed, detached).
@@ -494,38 +505,57 @@ def run_one_config(
         ep_t0 = time.time()
         if use_dann:
             train_loss, cls_loss, reg_loss, domain_loss = train_epoch_mt_dann(
-                model, optimizer, criterion,
-                graphs_train, pic50_train, active_train,
+                model,
+                optimizer,
+                criterion,
+                graphs_train,
+                pic50_train,
+                active_train,
                 domain_head=model.domain_head,
                 lambda_grl=lambda_grl,
                 domain_id=0,
                 grl_alpha=grl_alpha,
-                batch_size=batch_size, device=device,
+                batch_size=batch_size,
+                device=device,
             )
             w_pen = 0.0
         elif use_wasserstein:
             train_loss, cls_loss, reg_loss, w_pen = train_epoch_with_wasserstein(
-                model, optimizer, criterion,
-                graphs_train, pic50_train, active_train,
+                model,
+                optimizer,
+                criterion,
+                graphs_train,
+                pic50_train,
+                active_train,
                 w_w=wasserstein_weight,
                 ref_pic50=ref_pic50,
                 w_config=w_config,
-                batch_size=batch_size, device=device,
+                batch_size=batch_size,
+                device=device,
             )
             domain_loss = 0.0
         else:
             train_loss, cls_loss, reg_loss = train_epoch_mt(
-                model, optimizer, criterion,
-                graphs_train, pic50_train, active_train,
-                batch_size=batch_size, device=device,
+                model,
+                optimizer,
+                criterion,
+                graphs_train,
+                pic50_train,
+                active_train,
+                batch_size=batch_size,
+                device=device,
             )
             domain_loss = 0.0
             w_pen = 0.0
 
         # Validate
         y_true_v, y_score_v, pic50_pred_v = predict_mt(
-            model, graphs_val, pic50_val, active_val,
-            batch_size=batch_size, device=device,
+            model,
+            graphs_val,
+            pic50_val,
+            active_val,
+            batch_size=batch_size,
+            device=device,
         )
         val_pic50_m = regression_metrics(pic50_val, pic50_pred_v)
         val_m = compute_metrics(y_true_v, y_score_v)
@@ -568,8 +598,12 @@ def run_one_config(
 
     # Test
     y_true_t, y_score_t, pic50_pred_t = predict_mt(
-        model, graphs_test, pic50_test, active_test,
-        batch_size=batch_size, device=device,
+        model,
+        graphs_test,
+        pic50_test,
+        active_test,
+        batch_size=batch_size,
+        device=device,
     )
     test_m = compute_metrics(y_true_t, y_score_t)
     test_pic50 = regression_metrics(pic50_test, pic50_pred_t)
@@ -617,19 +651,27 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
-        "--metal", default=DEFAULT_METAL, choices=["Ru", "Ir", "Rh", "Os", "Re"],
+        "--metal",
+        default=DEFAULT_METAL,
+        choices=["Ru", "Ir", "Rh", "Os", "Re"],
         help="Target metal (default: Ru — largest single-task cohort).",
     )
     p.add_argument(
-        "--seed", type=int, default=DEFAULT_SEED,
+        "--seed",
+        type=int,
+        default=DEFAULT_SEED,
         help="Single seed for the smoke-test run (default: 0).",
     )
     p.add_argument(
-        "--epochs", type=int, default=DEFAULT_EPOCHS,
+        "--epochs",
+        type=int,
+        default=DEFAULT_EPOCHS,
         help="Epochs per ablation config (default: 5 smoke-test).",
     )
     p.add_argument(
-        "--alpha", type=float, default=DEFAULT_ALPHA,
+        "--alpha",
+        type=float,
+        default=DEFAULT_ALPHA,
         help="BCE weight in MultiTaskLoss (default 0.5; ignored when --use-kendall).",
     )
     p.add_argument("--lr", type=float, default=DEFAULT_LR, help="Adam lr.")
@@ -638,33 +680,43 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     # --- Lever 1: Wasserstein -------------------------------------------
     wass_grp = p.add_mutually_exclusive_group()
     wass_grp.add_argument(
-        "--use-wasserstein", dest="use_wasserstein",
-        action="store_true", default=False,
+        "--use-wasserstein",
+        dest="use_wasserstein",
+        action="store_true",
+        default=False,
         help="Enable sliced-W₂(pIC50_pred, ref_pIC50) penalty.",
     )
     wass_grp.add_argument(
-        "--no-wasserstein", dest="use_wasserstein",
+        "--no-wasserstein",
+        dest="use_wasserstein",
         action="store_false",
         help="Disable Wasserstein (default = baseline, backward compat).",
     )
     p.add_argument(
-        "--wasserstein-weight", type=float, default=DEFAULT_WASSERSTEIN_WEIGHT,
+        "--wasserstein-weight",
+        type=float,
+        default=DEFAULT_WASSERSTEIN_WEIGHT,
         help="Weight w_w on Wasserstein penalty (default 0.05).",
     )
     p.add_argument(
-        "--n-mc", type=int, default=DEFAULT_N_MC,
+        "--n-mc",
+        type=int,
+        default=DEFAULT_N_MC,
         help="Number of sliced-W₂ projections (default 256).",
     )
 
     # --- Lever 2: Kendall MTL loss --------------------------------------
     kend_grp = p.add_mutually_exclusive_group()
     kend_grp.add_argument(
-        "--use-kendall", dest="use_kendall",
-        action="store_true", default=False,
+        "--use-kendall",
+        dest="use_kendall",
+        action="store_true",
+        default=False,
         help="Use Kendall et al. 2018 homoscedastic-uncertainty MTL loss.",
     )
     kend_grp.add_argument(
-        "--no-kendall", dest="use_kendall",
+        "--no-kendall",
+        dest="use_kendall",
         action="store_false",
         help="Use manual alpha-weighted MTL loss (default = baseline).",
     )
@@ -672,44 +724,57 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     # --- Lever 3: DANN adversarial head ---------------------------------
     dann_grp = p.add_mutually_exclusive_group()
     dann_grp.add_argument(
-        "--use-dann", dest="use_dann",
-        action="store_true", default=False,
+        "--use-dann",
+        dest="use_dann",
+        action="store_true",
+        default=False,
         help="Attach DomainAdversarial head (GRL + 4-class classifier).",
     )
     dann_grp.add_argument(
-        "--no-dann", dest="use_dann",
+        "--no-dann",
+        dest="use_dann",
         action="store_false",
         help="No domain-adversarial head (default = baseline).",
     )
     p.add_argument(
-        "--lambda-grl", type=float, default=DEFAULT_LAMBDA_GRL,
+        "--lambda-grl",
+        type=float,
+        default=DEFAULT_LAMBDA_GRL,
         help="Weight on (gradient-reversed) domain loss (default 0.1).",
     )
     p.add_argument(
-        "--grl-alpha", type=float, default=DEFAULT_GRL_ALPHA,
+        "--grl-alpha",
+        type=float,
+        default=DEFAULT_GRL_ALPHA,
         help="Alpha passed to ReverseLayerF (default 0.1).",
     )
 
     # --- Paths / device -------------------------------------------------
     p.add_argument(
-        "--data-csv", type=Path, default=DEFAULT_DATA_CSV,
+        "--data-csv",
+        type=Path,
+        default=DEFAULT_DATA_CSV,
         help=(
             "MetalCytoToxDB.csv path (default .data/molmetal/MetalCytoToxDB.csv; "
             "avoids the hard-coded /mnt/storage path)."
         ),
     )
     p.add_argument(
-        "--out-dir", type=Path, default=DEFAULT_OUT_DIR,
+        "--out-dir",
+        type=Path,
+        default=DEFAULT_OUT_DIR,
         help="Output directory for ablation_report.json.",
     )
     p.add_argument(
-        "--device", default=None,
+        "--device",
+        default=None,
         help="Force device (cuda:0 or cpu). Default: auto-detect.",
     )
 
     # --- Single-config mode (skip the 4-config sweep) -------------------
     p.add_argument(
-        "--config", default=None,
+        "--config",
+        default=None,
         choices=[None, "baseline", "wasserstein", "kendall", "dann"],
         help=(
             "Run ONLY this single configuration instead of the full 4-config "
@@ -860,6 +925,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         cfg_name = prior_cfg.get("config")
         if cfg_name in by_cfg:
             continue
+
         # Rebuild a minimal ConfigRunResult-like dict from the prior row
         # so the lift computation works.  We don't have the dataclass, so
         # we just synthesise a stand-in dict.
@@ -886,6 +952,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             final_reg_loss = prior_cfg.get("final_reg_loss", float("nan"))
             final_domain_loss = prior_cfg.get("final_domain_loss", float("nan"))
             error = prior_cfg.get("error")
+
         by_cfg[cfg_name] = _PriorProxy()
     baseline = by_cfg.get("baseline")
     lift_per_lever: Dict[str, Dict[str, float]] = {}
@@ -921,7 +988,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         "device": str(device),
         "elapsed_seconds_total": float(time.time() - overall_start),
         "wall_time_budget_s": WALL_TIME_BUDGET_S,
-        "per_config": prior_results + [
+        "per_config": prior_results
+        + [
             {
                 "config": r.config_name,
                 "use_wasserstein": r.use_wasserstein,
@@ -950,13 +1018,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         ],
         "per_lever_lift": lift_per_lever,
         "n_configs_run": sum(
-            1 for c in (prior_results + [
-                {"status": r.status} for r in results
-            ])
+            1
+            for c in (prior_results + [{"status": r.status} for r in results])
             if c.get("status") == "OK"
         ),
         "n_levers_run": sum(
-            1 for cfg_name in ("wasserstein", "kendall", "dann")
+            1
+            for cfg_name in ("wasserstein", "kendall", "dann")
             if cfg_name in lift_per_lever
             and lift_per_lever[cfg_name].get("status") == "OK"
         ),

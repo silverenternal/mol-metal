@@ -271,9 +271,7 @@ def mcts_nsga3_bridge(
         else:
             # Keep the closest in the bucket.
             ref_pt = ref_directions[ref_idx]
-            dists = [
-                np.linalg.norm(np.asarray(pop[i]) - ref_pt) for i in bucket
-            ]
+            dists = [np.linalg.norm(np.asarray(pop[i]) - ref_pt) for i in bucket]
             winners = sorted(range(len(ducket := bucket)), key=lambda j: dists[j])
             for w in winners[:1]:
                 survivors.append(ducket[w])
@@ -332,9 +330,36 @@ def per_metal_pareto_rank(
     cfg = cfg or ParetoConfig()
     if metals is None:
         metals = (
-            "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
-            "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
-            "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl",
+            "Sc",
+            "Ti",
+            "V",
+            "Cr",
+            "Mn",
+            "Fe",
+            "Co",
+            "Ni",
+            "Cu",
+            "Zn",
+            "Y",
+            "Zr",
+            "Nb",
+            "Mo",
+            "Tc",
+            "Ru",
+            "Rh",
+            "Pd",
+            "Ag",
+            "Cd",
+            "Hf",
+            "Ta",
+            "W",
+            "Re",
+            "Os",
+            "Ir",
+            "Pt",
+            "Au",
+            "Hg",
+            "Tl",
         )
     groups: Dict[str, List[Dict[str, float]]] = {m: [] for m in metals}
     for row in rows:
@@ -407,11 +432,19 @@ METALDOM_DRUG_TEMPLATES: Tuple[Dict[str, str], ...] = (
     {"metal": "Pt", "smiles": "[Pt](Cl)(Cl)(NH3)NH3", "label": "cisplatin"},
     {"metal": "Pt", "smiles": "[Pt](Cl)(Cl)(NH3)NH3", "label": "transplatin"},
     {"metal": "Pt", "smiles": "[Pt](OC(=O)C)(OC(=O)C)(NH3)NH3", "label": "carboplatin"},
-    {"metal": "Pt", "smiles": "[Pt]1(OC(=O)C2-CCCCC2=1)(NH3)NH3", "label": "nedaplatin"},
+    {
+        "metal": "Pt",
+        "smiles": "[Pt]1(OC(=O)C2-CCCCC2=1)(NH3)NH3",
+        "label": "nedaplatin",
+    },
     {"metal": "Au", "smiles": "S(CC(=O)[Au])c1ccccc1", "label": "auranofin-Au"},
     {"metal": "Ru", "smiles": "[Ru](Cl)(Cl)(C6H6)C6H6", "label": "ru-arene_Cl2"},
     {"metal": "Ir", "smiles": "[Ir](C5NHC)(C5NHC)(C5NHC)", "label": "ir-Cp_star_C5"},
-    {"metal": "Pd", "smiles": "[Pd](Cl)(Cl)(P(c1ccccc1)c1ccccc1)", "label": "pd-PPh3_Cl2"},
+    {
+        "metal": "Pd",
+        "smiles": "[Pd](Cl)(Cl)(P(c1ccccc1)c1ccccc1)",
+        "label": "pd-PPh3_Cl2",
+    },
     {"metal": "Os", "smiles": "[Os](Cl)(C6H6)C6H6", "label": "os-arene_Cl"},
     {"metal": "Rh", "smiles": "[Rh](Cl)(C5H5)(C5H5)", "label": "rh-Cp2_Cl"},
 )
@@ -440,12 +473,19 @@ def build_synthetic_metallodrug_pop(
         metal = metals[i % len(metals)]
         # Reachability ceiling per metal (Sc=lowest, Au=highest on m_efficacy).
         metal_bias = {
-            "Pt": 0.9, "Au": 0.85, "Ru": 0.7, "Ir": 0.7, "Pd": 0.6,
-            "Os": 0.55, "Rh": 0.55,
+            "Pt": 0.9,
+            "Au": 0.85,
+            "Ru": 0.7,
+            "Ir": 0.7,
+            "Pd": 0.6,
+            "Os": 0.55,
+            "Rh": 0.55,
         }.get(metal, 0.5)
         # Mock 4-objective values (clamped 0..1).
         efficacy = float(np.clip(rng.beta(2.0, 2.0) * metal_bias, 0.0, 1.0))
-        toxicity = float(np.clip(rng.beta(2.0, 2.0) * (1.0 - metal_bias * 0.5), 0.0, 1.0))
+        toxicity = float(
+            np.clip(rng.beta(2.0, 2.0) * (1.0 - metal_bias * 0.5), 0.0, 1.0)
+        )
         admet = float(np.clip(rng.beta(2.0, 2.0), 0.0, 1.0))
         selectivity = float(np.clip(rng.beta(2.0, 2.0) * metal_bias, 0.0, 1.0))
 
@@ -457,23 +497,29 @@ def build_synthetic_metallodrug_pop(
         qed = float(np.clip(rng.beta(2.0, 2.0), 0.0, 1.0))
         sa_score = float(np.clip(rng.uniform(1.0, 6.0), 1.0, 10.0))
 
-        pop.append({
-            "id": i,
-            "metal": metal,
-            "cell_line": cell,
-            "label": METALDOM_DRUG_TEMPLATES[i % len(METALDOM_DRUG_TEMPLATES)]["label"]
-            if i < len(METALDOM_DRUG_TEMPLATES)
-            else f"mock_{metal}_{i}",
-            "smiles": METALDOM_DRUG_TEMPLATES[i % len(METALDOM_DRUG_TEMPLATES)]["smiles"]
-            if i < len(METALDOM_DRUG_TEMPLATES)
-            else "C",
-            "toxicity": round(toxicity, 4),
-            "efficacy": round(efficacy, 4),
-            "admet": round(admet, 4),
-            "selectivity": round(selectivity, 4),
-            "qed": round(qed, 4),
-            "sa_score": round(sa_score, 4),
-        })
+        pop.append(
+            {
+                "id": i,
+                "metal": metal,
+                "cell_line": cell,
+                "label": METALDOM_DRUG_TEMPLATES[i % len(METALDOM_DRUG_TEMPLATES)][
+                    "label"
+                ]
+                if i < len(METALDOM_DRUG_TEMPLATES)
+                else f"mock_{metal}_{i}",
+                "smiles": METALDOM_DRUG_TEMPLATES[i % len(METALDOM_DRUG_TEMPLATES)][
+                    "smiles"
+                ]
+                if i < len(METALDOM_DRUG_TEMPLATES)
+                else "C",
+                "toxicity": round(toxicity, 4),
+                "efficacy": round(efficacy, 4),
+                "admet": round(admet, 4),
+                "selectivity": round(selectivity, 4),
+                "qed": round(qed, 4),
+                "sa_score": round(sa_score, 4),
+            }
+        )
     return pop
 
 
@@ -522,9 +568,7 @@ def synthesize_pareto_front(
         "per_cell_line": per_cell_line_breakdown(pop, cell_key="cell_line", cfg=cfg),
         "per_metal": per_metal_pareto_rank(pop, metal_key="metal", cfg=cfg),
         "front_ids": [pop[i]["id"] for i in front_idx],
-        "front_vectors": [
-            [round(v, 4) for v in vec] for vec in front_vectors
-        ],
+        "front_vectors": [[round(v, 4) for v in vec] for vec in front_vectors],
         "weights_used": [o.weight for o in cfg.objectives],
     }
 
@@ -538,6 +582,7 @@ def main() -> None:
     """CPU-only smoke runner — synthesise a 100-candidate pop + Pareto front."""
     import os
     import sys
+
     # Allow running as a standalone script (`python pareto_multiobj.py`)
     # by ensuring the project root is on sys.path so `molmetal.*` resolves.
     here = os.path.dirname(os.path.abspath(__file__))

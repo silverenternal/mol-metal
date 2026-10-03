@@ -51,9 +51,7 @@ import torch
 
 # Make sure the project root is on sys.path so `models._scatter` and
 # `models.velocity_net` resolve without an installed `molmetal` package.
-_PROJECT_ROOT = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..")
-)
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
@@ -196,6 +194,7 @@ def _summarise(
     extras: Optional[dict] = None,
 ) -> BenchResult:
     import math
+
     mean = sum(latencies) / len(latencies)
     var = sum((t - mean) ** 2 for t in latencies) / max(1, len(latencies) - 1)
     std = math.sqrt(var)
@@ -242,7 +241,9 @@ def _gpu_info_block() -> dict:
 
     # Try to surface rocm-smi / rocminfo
     try:
-        rocminfo = subprocess.check_output(["rocminfo"], stderr=subprocess.DEVNULL, timeout=2).decode(errors="replace")
+        rocminfo = subprocess.check_output(
+            ["rocminfo"], stderr=subprocess.DEVNULL, timeout=2
+        ).decode(errors="replace")
         for line in rocminfo.splitlines():
             if "Marketing Name" in line or "Marketing Name:" in line:
                 info.setdefault("rocminfo_marketing", line.strip())
@@ -251,7 +252,9 @@ def _gpu_info_block() -> dict:
     except (FileNotFoundError, subprocess.SubprocessError, subprocess.TimeoutExpired):
         pass
     try:
-        rocm_smi = subprocess.check_output(["rocm-smi", "--showdriverversion"], stderr=subprocess.DEVNULL, timeout=2).decode(errors="replace")
+        rocm_smi = subprocess.check_output(
+            ["rocm-smi", "--showdriverversion"], stderr=subprocess.DEVNULL, timeout=2
+        ).decode(errors="replace")
         info["rocm_smi_driver"] = rocm_smi.strip()
     except (FileNotFoundError, subprocess.SubprocessError, subprocess.TimeoutExpired):
         pass
@@ -261,7 +264,9 @@ def _gpu_info_block() -> dict:
 # ---------------------------------------------------------------------------
 # Benchmark sections
 # ---------------------------------------------------------------------------
-def bench_matmul(M: int, N: int, K: int, dtype: torch.dtype = torch.float32) -> BenchResult:
+def bench_matmul(
+    M: int, N: int, K: int, dtype: torch.dtype = torch.float32
+) -> BenchResult:
     device = get_device()
     a = torch.randn(M, K, device=device, dtype=dtype)
     b = torch.randn(K, N, device=device, dtype=dtype)
@@ -282,7 +287,9 @@ def bench_matmul(M: int, N: int, K: int, dtype: torch.dtype = torch.float32) -> 
     )
 
 
-def bench_dmpnn(n_mols: int = 100, n_atoms: int = 30, batch_size: int = 10) -> BenchResult:
+def bench_dmpnn(
+    n_mols: int = 100, n_atoms: int = 30, batch_size: int = 10
+) -> BenchResult:
     if not _HAS_DMPNN:
         return _summarise(
             f"D-MPNN forward {n_mols} mols × {n_atoms} atoms (batch={batch_size}) — SKIPPED (DirectedMPNN unavailable)",
@@ -294,15 +301,28 @@ def bench_dmpnn(n_mols: int = 100, n_atoms: int = 30, batch_size: int = 10) -> B
     device = get_device()
     model = DirectedMPNN().to(device).eval()
     # Fully-connected directed edges (no self-loops): E = N*(N-1) per mol
-    src = torch.arange(n_atoms, device=device).view(1, -1, 1).expand(batch_size, n_atoms, n_atoms)
-    dst = torch.arange(n_atoms, device=device).view(1, 1, -1).expand(batch_size, n_atoms, n_atoms)
+    src = (
+        torch.arange(n_atoms, device=device)
+        .view(1, -1, 1)
+        .expand(batch_size, n_atoms, n_atoms)
+    )
+    dst = (
+        torch.arange(n_atoms, device=device)
+        .view(1, 1, -1)
+        .expand(batch_size, n_atoms, n_atoms)
+    )
     mask = src != dst
     src_flat = src[mask].view(batch_size, -1)
     dst_flat = dst[mask].view(batch_size, -1)
     edge_index = torch.stack([src_flat, dst_flat], dim=1)  # (B, 2, E)
     h_atom = torch.randn(batch_size, n_atoms, 39, device=device)
     edge_attr = torch.randn(batch_size, edge_index.shape[-1], 6, device=device)
-    batch_idx = torch.arange(batch_size, device=device).view(-1, 1).expand(-1, n_atoms).contiguous()
+    batch_idx = (
+        torch.arange(batch_size, device=device)
+        .view(-1, 1)
+        .expand(-1, n_atoms)
+        .contiguous()
+    )
 
     n_batches = n_mols // batch_size
 
@@ -383,7 +403,9 @@ def bench_egnn(n_graphs: int = 50, n_nodes: int = 20) -> BenchResult:
     )
 
 
-def bench_lipman_train_step(n_mols: int = 16, n_atoms: int = 20, batch_size: int = 4) -> BenchResult:
+def bench_lipman_train_step(
+    n_mols: int = 16, n_atoms: int = 20, batch_size: int = 4
+) -> BenchResult:
     if not _HAS_LIPMAN:
         return _summarise(
             f"LipmanFlowMatchingAdapter.train_step {n_mols} mols × {n_atoms} atoms (batch={batch_size}) — SKIPPED (adapter unavailable)",
@@ -408,16 +430,19 @@ def bench_lipman_train_step(n_mols: int = 16, n_atoms: int = 20, batch_size: int
         )
 
     from molmetal.domain import Molecule
+
     torch.manual_seed(0)
     mols: list = []
     for i in range(batch_size):
-        mols.append(Molecule(
-            coords=torch.randn(n_atoms, 3, dtype=torch.float32),
-            atom_types=torch.randint(1, 10, (n_atoms,), dtype=torch.long),
-            bonds=torch.zeros(2, 0, dtype=torch.long),
-            bond_types=torch.zeros(0, dtype=torch.long),
-            formal_charges=torch.zeros(n_atoms, dtype=torch.long),
-        ))
+        mols.append(
+            Molecule(
+                coords=torch.randn(n_atoms, 3, dtype=torch.float32),
+                atom_types=torch.randint(1, 10, (n_atoms,), dtype=torch.long),
+                bonds=torch.zeros(2, 0, dtype=torch.long),
+                bond_types=torch.zeros(0, dtype=torch.long),
+                formal_charges=torch.zeros(n_atoms, dtype=torch.long),
+            )
+        )
 
     n_steps = n_mols // batch_size
 
@@ -437,7 +462,9 @@ def bench_lipman_train_step(n_mols: int = 16, n_atoms: int = 20, batch_size: int
     )
 
 
-def bench_scatter_sum(n_atoms: int = 8192, rbf_dim: int = 32, repeat: int = 2048) -> BenchResult:
+def bench_scatter_sum(
+    n_atoms: int = 8192, rbf_dim: int = 32, repeat: int = 2048
+) -> BenchResult:
     if not _HAS_SCATTER:
         return _summarise(
             f"models._scatter.scatter_sum N={n_atoms}, R={repeat} — SKIPPED (kernel unavailable)",
@@ -514,11 +541,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(f"  {k:<24s}: {v}")
     # Reuse the canonical probe too
     probe = verify_rocm_active()
-    print(f"  {'verify_rocm_active':<24s}: roc_active={probe.get('roc_active')}, "
-          f"device_count={probe.get('device_count')}, "
-          f"hip_version={probe.get('hip_version')}")
-    print(f"  {'scatter-backend':<24s}: {args.scatter_backend} "
-          f"(resolved={scatter_backend})")
+    print(
+        f"  {'verify_rocm_active':<24s}: roc_active={probe.get('roc_active')}, "
+        f"device_count={probe.get('device_count')}, "
+        f"hip_version={probe.get('hip_version')}"
+    )
+    print(
+        f"  {'scatter-backend':<24s}: {args.scatter_backend} "
+        f"(resolved={scatter_backend})"
+    )
 
     # Sectioned benchmarks
     results: List[BenchResult] = []
@@ -577,6 +608,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     print("Summary (machine-readable)")
     print("=" * 90)
     import json
+
     payload = {
         "gpu_info": info,
         "results": [

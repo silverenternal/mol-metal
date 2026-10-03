@@ -102,6 +102,7 @@ Pytest
 
     pytest molmetal/tests/test_172d_multitask.py -v
 """
+
 from __future__ import annotations
 
 import argparse
@@ -134,6 +135,7 @@ for _p in (str(_HERE.parent), str(_REPO_ROOT)):
 try:
     import torch  # type: ignore
     import torch.nn as nn  # type: ignore
+
     _HAS_TORCH = True
     _TORCH_ERR: Optional[BaseException] = None
 except Exception as _exc:  # pragma: no cover
@@ -166,12 +168,12 @@ DEFAULT_CELL_LINES: Tuple[str, ...] = ("mcf7", "a549", "a2780", "a2780cis")
 
 # Backbone shapes — kept in sync with ``build_multitask_backbone.py``
 # (Wf-128 P1) but with **4 cell lines** instead of 5 metals.
-INPUT_DIM: int = 172          # 12 RDKit + 32 Multi-PH + 128 PLL
-TRUNK_HIDDEN: int = 256       # shared 4-cell trunk hidden width
-TRUNK_LATENT: int = 128       # shared 4-cell trunk latent width
-HEAD_HIDDEN: int = 64         # per-cell-line head hidden width
-HEAD_DROPOUT: float = 0.2     # per-cell-line head dropout
-TRUNK_DROPOUT: float = 0.2    # shared trunk dropout
+INPUT_DIM: int = 172  # 12 RDKit + 32 Multi-PH + 128 PLL
+TRUNK_HIDDEN: int = 256  # shared 4-cell trunk hidden width
+TRUNK_LATENT: int = 128  # shared 4-cell trunk latent width
+HEAD_HIDDEN: int = 64  # per-cell-line head hidden width
+HEAD_DROPOUT: float = 0.2  # per-cell-line head dropout
+TRUNK_DROPOUT: float = 0.2  # shared trunk dropout
 
 # Wasserstein defaults (Wf-123 P1 spec).
 DEFAULT_WASSERSTEIN_WEIGHT: float = 0.05
@@ -460,11 +462,35 @@ def _bemis_murcko_scaffold(smi: str) -> str:
             for atom in rwmol.GetAtoms():
                 sym = atom.GetSymbol()
                 if sym in (
-                    "Pt", "Pd", "Ru", "Ir", "Os", "Rh",
-                    "Au", "Ag", "Cu", "Ni", "Fe", "Co", "Zn",
-                    "Mn", "Cr", "V", "Ti", "Sc", "Y", "Zr",
-                    "Nb", "Mo", "Tc", "Cd", "Hf", "Ta", "W",
-                    "Re", "Hg",
+                    "Pt",
+                    "Pd",
+                    "Ru",
+                    "Ir",
+                    "Os",
+                    "Rh",
+                    "Au",
+                    "Ag",
+                    "Cu",
+                    "Ni",
+                    "Fe",
+                    "Co",
+                    "Zn",
+                    "Mn",
+                    "Cr",
+                    "V",
+                    "Ti",
+                    "Sc",
+                    "Y",
+                    "Zr",
+                    "Nb",
+                    "Mo",
+                    "Tc",
+                    "Cd",
+                    "Hf",
+                    "Ta",
+                    "W",
+                    "Re",
+                    "Hg",
                 ):
                     rwmol.RemoveAtom(atom.GetIdx())
             stripped = rwmol.GetMol()
@@ -484,8 +510,12 @@ def _bemis_murcko_scaffold(smi: str) -> str:
 class _PerCellHead(nn.Module):
     """Per-cell-line regression head: Linear(128 → 64) → ReLU → Dropout → Linear(64 → 1)."""
 
-    def __init__(self, in_dim: int = TRUNK_LATENT, hidden_dim: int = HEAD_HIDDEN,
-                 dropout: float = HEAD_DROPOUT) -> None:
+    def __init__(
+        self,
+        in_dim: int = TRUNK_LATENT,
+        hidden_dim: int = HEAD_HIDDEN,
+        dropout: float = HEAD_DROPOUT,
+    ) -> None:
         super().__init__()
         self.fc1 = nn.Linear(int(in_dim), int(hidden_dim))
         self.act = nn.ReLU()
@@ -501,8 +531,13 @@ class _PerCellHead(nn.Module):
 class _SharedTrunk(nn.Module):
     """Shared 4-cell trunk: Linear(172 → 256) → ReLU → Dropout → Linear(256 → 128) → ReLU."""
 
-    def __init__(self, input_dim: int = INPUT_DIM, hidden_dim: int = TRUNK_HIDDEN,
-                 latent_dim: int = TRUNK_LATENT, dropout: float = TRUNK_DROPOUT) -> None:
+    def __init__(
+        self,
+        input_dim: int = INPUT_DIM,
+        hidden_dim: int = TRUNK_HIDDEN,
+        latent_dim: int = TRUNK_LATENT,
+        dropout: float = TRUNK_DROPOUT,
+    ) -> None:
         super().__init__()
         self.fc1 = nn.Linear(int(input_dim), int(hidden_dim))
         self.act1 = nn.ReLU()
@@ -544,11 +579,14 @@ class MultiTaskFourCellBackbone(nn.Module):
             dropout=trunk_dropout,
         )
         self.heads = nn.ModuleDict(
-            {cl: _PerCellHead(
-                in_dim=trunk_latent,
-                hidden_dim=head_hidden,
-                dropout=head_dropout,
-            ) for cl in self.cell_lines}
+            {
+                cl: _PerCellHead(
+                    in_dim=trunk_latent,
+                    hidden_dim=head_hidden,
+                    dropout=head_dropout,
+                )
+                for cl in self.cell_lines
+            }
         )
 
     def encode(self, x: "torch.Tensor") -> "torch.Tensor":
@@ -575,7 +613,10 @@ def _wasserstein_pic50_torch(
     from molmetal.molmetal_lam.reward.wasserstein_loss import (
         wasserstein_pic50_loss,
     )
-    return wasserstein_pic50_loss(pred.float(), ref.float(), n_mc=int(n_mc), seed=int(seed))
+
+    return wasserstein_pic50_loss(
+        pred.float(), ref.float(), n_mc=int(n_mc), seed=int(seed)
+    )
 
 
 def wasserstein_decay_check_helper(
@@ -591,7 +632,10 @@ def wasserstein_decay_check_helper(
     from molmetal.molmetal_lam.reward.wasserstein_loss import (
         wasserstein_decay_check,
     )
-    return wasserstein_decay_check(list(loss_history), window=int(window), tol=float(tol))
+
+    return wasserstein_decay_check(
+        list(loss_history), window=int(window), tol=float(tol)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -647,9 +691,11 @@ def _train_one_cell_line_one_fold(
     y_tr_t = torch.tensor(y_tr, dtype=torch.float32, device=device)
     X_te_t = torch.tensor(X_te_n, dtype=torch.float32, device=device)
     y_te_t = torch.tensor(y_te, dtype=torch.float32, device=device)
-    ref_dev = ref_pic50_pool.to(device) if isinstance(
-        ref_pic50_pool, torch.Tensor
-    ) else torch.tensor(ref_pic50_pool, dtype=torch.float32, device=device)
+    ref_dev = (
+        ref_pic50_pool.to(device)
+        if isinstance(ref_pic50_pool, torch.Tensor)
+        else torch.tensor(ref_pic50_pool, dtype=torch.float32, device=device)
+    )
 
     head = model.heads[cell_line]
     head.train()
@@ -667,7 +713,7 @@ def _train_one_cell_line_one_fold(
         total_w = 0.0
         n_batches = 0
         for start in range(0, n, int(fold_cfg.batch_size)):
-            idx = perm[start: start + int(fold_cfg.batch_size)]
+            idx = perm[start : start + int(fold_cfg.batch_size)]
             xb = X_tr_t[idx]
             yb = y_tr_t[idx]
 
@@ -676,7 +722,9 @@ def _train_one_cell_line_one_fold(
             pred = head(z).squeeze(-1)
             mse = ((pred - yb) ** 2).mean()
             w_pen = _wasserstein_pic50_torch(
-                pred, ref_dev, n_mc=int(fold_cfg.n_mc),
+                pred,
+                ref_dev,
+                n_mc=int(fold_cfg.n_mc),
                 seed=int(fold_cfg.wasserstein_seed) + epoch,
             )
             loss = mse + float(fold_cfg.wasserstein_weight) * w_pen
@@ -771,8 +819,11 @@ def evaluate_cell_line(
             torch.cuda.manual_seed_all(int(seed))
 
         splits = _kfold_indices(
-            n, n_folds, seed=int(seed),
-            scaffold_ids=scaffold_ids, strict_scaffold=strict_scaffold,
+            n,
+            n_folds,
+            seed=int(seed),
+            scaffold_ids=scaffold_ids,
+            strict_scaffold=strict_scaffold,
         )
         per_fold: List[Dict[str, Any]] = []
         fold_r2: List[float] = []
@@ -849,10 +900,12 @@ def evaluate_cell_line(
             {
                 "seed": int(seed),
                 "r2_per_fold_mean": float(seed_r2),
-                "r2_overall": float(_compute_r2(
-                    np.asarray(all_y_true, dtype=np.float64),
-                    np.asarray(all_y_pred, dtype=np.float64),
-                )),
+                "r2_overall": float(
+                    _compute_r2(
+                        np.asarray(all_y_true, dtype=np.float64),
+                        np.asarray(all_y_pred, dtype=np.float64),
+                    )
+                ),
                 "wasserstein_history": list(wasserstein_hist),
                 "mse_history": list(mse_hist),
                 "per_fold": per_fold,
@@ -861,10 +914,12 @@ def evaluate_cell_line(
                 "n_folds": int(n_folds),
                 "feature_dim": int(d_feat),
                 "device": str(dev),
-                "collapse_detected_overall": bool(_collapse_detected(
-                    np.asarray(all_y_pred, dtype=np.float64),
-                    np.asarray(all_y_true, dtype=np.float64),
-                )),
+                "collapse_detected_overall": bool(
+                    _collapse_detected(
+                        np.asarray(all_y_pred, dtype=np.float64),
+                        np.asarray(all_y_true, dtype=np.float64),
+                    )
+                ),
             }
         )
 
@@ -905,10 +960,15 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
     """Write ``<out_dir>/synthesis.md`` cross-cell-line summary."""
     out_dir.mkdir(parents=True, exist_ok=True)
     strict_str = (
-        "strict-scaffold disjoint" if all_results and all_results[0].get("strict_scaffold")
+        "strict-scaffold disjoint"
+        if all_results and all_results[0].get("strict_scaffold")
         else "random"
     )
-    w_w = all_results[0]["wasserstein_weight"] if all_results else DEFAULT_WASSERSTEIN_WEIGHT
+    w_w = (
+        all_results[0]["wasserstein_weight"]
+        if all_results
+        else DEFAULT_WASSERSTEIN_WEIGHT
+    )
     epochs = all_results[0]["epochs"] if all_results else 50
     lines: List[str] = [
         "# Wf-125 Phase 3 — 172-d feature stack + multi-task 4-cell backbone + Wasserstein pIC50",
@@ -957,9 +1017,7 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
     lines.append("## Verify gate (target: R² ≥ 0 for at least 1 of 4 cell lines)")
     lines.append("")
     n_positive = sum(1 for r2 in r2_means if r2 >= 0.0)
-    best_cell = (
-        max(all_results, key=lambda r: r["r2_mean"]) if all_results else None
-    )
+    best_cell = max(all_results, key=lambda r: r["r2_mean"]) if all_results else None
     if n_positive >= 1:
         verdict = (
             f"✅ **PASS** ({n_positive}/4 cell lines reach R² ≥ 0; "
@@ -970,7 +1028,9 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
             f"❌ **FAIL** (0/4 cell lines reach R² ≥ 0; "
             f"best: {best_cell['cell_line']} = {best_cell['r2_mean']:+.4f})"
         )
-    lines.append(f"**Aggregate R² (mean of 4 cell-line means) = {aggregate:+.4f}** — {verdict}")
+    lines.append(
+        f"**Aggregate R² (mean of 4 cell-line means) = {aggregate:+.4f}** — {verdict}"
+    )
     lines.append("")
     lines.append("## Interpretation")
     lines.append("")
@@ -986,7 +1046,9 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
     for r in all_results:
         lines.append(f"### {r['cell_line']} ({r['target_col']})")
         lines.append("")
-        lines.append("| seed | R² (per-fold mean) | R² (overall) | Wasserstein decay | wall_s |")
+        lines.append(
+            "| seed | R² (per-fold mean) | R² (overall) | Wasserstein decay | wall_s |"
+        )
         lines.append("|---:|---:|---:|---|---:|")
         for s in r["per_seed"]:
             w_hist = s["wasserstein_history"]
@@ -1003,24 +1065,54 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
         lines.append("")
     lines.append("## Honest framing")
     lines.append("")
-    lines.append("- **MEASURED today**: 5 seeds × 5 folds × 4 cell lines on PlatinAI 4-cell")
+    lines.append(
+        "- **MEASURED today**: 5 seeds × 5 folds × 4 cell lines on PlatinAI 4-cell"
+    )
     lines.append("  with the 172-d feature stack + multi-task shared-trunk backbone")
     lines.append("  + Wasserstein pIC50 regularization.")
-    lines.append("- **172-d feature stack**: 12 RDKit + 32 Multi-PH Fourier + 128 PLL; built")
-    lines.append("  per SMILES by ``build_172d_features.compute_172d`` (Wf-128 P1) and cached")
+    lines.append(
+        "- **172-d feature stack**: 12 RDKit + 32 Multi-PH Fourier + 128 PLL; built"
+    )
+    lines.append(
+        "  per SMILES by ``build_172d_features.compute_172d`` (Wf-128 P1) and cached"
+    )
     lines.append("  to ``molmetal/data/features_172d_platinai_4cell.npz``.")
-    lines.append("- **Multi-task backbone**: 4-cell shared MLP trunk (172 → 256 → 128) + per-")
-    lines.append("  cell-line regression heads (128 → 64 → 1).  The shared trunk sees the")
-    lines.append("  same SMILES × 4 IC50 columns; per-cell-line heads specialise on each target.")
-    lines.append("- **Wasserstein pIC50 regularization**: W₂ between predicted pIC50 cloud and")
-    lines.append("  training-set reference pIC50 distribution; weight = 0.05 (Wf-123 P1 spec).")
-    lines.append("- **Strict-scaffold split**: Bemis-Murcko disjoint 5-fold; same convention as")
-    lines.append("  Wf-86 P3 anchor (Bemis-Murcko + ligand-canonicalised fallback for Pt complexes).")
-    lines.append("- **Honest framing per `party-twenty-spirit §3.5`**: the structural 12-d signal")
-    lines.append("  floor on PlatinAI pIC50 (Pearson |ρ| < 0.02) may not be breakable with feature")
-    lines.append("  augmentation alone.  This 172-d + multi-task + Wasserstein recipe is the")
-    lines.append("  strongest honesty-tier lever we have; if R² < 0 for all 4 cell lines, the")
-    lines.append("  L4/L5/L7/L8/L11 central Lambda claim needs a different feature regime (e.g.,")
+    lines.append(
+        "- **Multi-task backbone**: 4-cell shared MLP trunk (172 → 256 → 128) + per-"
+    )
+    lines.append(
+        "  cell-line regression heads (128 → 64 → 1).  The shared trunk sees the"
+    )
+    lines.append(
+        "  same SMILES × 4 IC50 columns; per-cell-line heads specialise on each target."
+    )
+    lines.append(
+        "- **Wasserstein pIC50 regularization**: W₂ between predicted pIC50 cloud and"
+    )
+    lines.append(
+        "  training-set reference pIC50 distribution; weight = 0.05 (Wf-123 P1 spec)."
+    )
+    lines.append(
+        "- **Strict-scaffold split**: Bemis-Murcko disjoint 5-fold; same convention as"
+    )
+    lines.append(
+        "  Wf-86 P3 anchor (Bemis-Murcko + ligand-canonicalised fallback for Pt complexes)."
+    )
+    lines.append(
+        "- **Honest framing per `party-twenty-spirit §3.5`**: the structural 12-d signal"
+    )
+    lines.append(
+        "  floor on PlatinAI pIC50 (Pearson |ρ| < 0.02) may not be breakable with feature"
+    )
+    lines.append(
+        "  augmentation alone.  This 172-d + multi-task + Wasserstein recipe is the"
+    )
+    lines.append(
+        "  strongest honesty-tier lever we have; if R² < 0 for all 4 cell lines, the"
+    )
+    lines.append(
+        "  L4/L5/L7/L8/L11 central Lambda claim needs a different feature regime (e.g.,"
+    )
     lines.append("  reaction-product features from the 5-click productive space).")
     lines.append("")
     lines.append(
@@ -1069,8 +1161,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         nargs="+",
         default=list(DEFAULT_CELL_LINES),
         help=(
-            "PlatinAI cell lines to benchmark "
-            "(default: mcf7 a549 a2780 a2780cis)."
+            "PlatinAI cell lines to benchmark " "(default: mcf7 a549 a2780 a2780cis)."
         ),
     )
     parser.add_argument(
@@ -1166,9 +1257,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             )
 
     if not _HAS_TORCH:
-        raise RuntimeError(
-            f"Torch is required for Wf-125 P3; got {_TORCH_ERR!r}"
-        )
+        raise RuntimeError(f"Torch is required for Wf-125 P3; got {_TORCH_ERR!r}")
 
     print(
         f"[wf125-p3] dataset={args.dataset} cell_lines={args.cell_lines} "
@@ -1195,7 +1284,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # Build Bemis-Murcko scaffold IDs for the strict-scaffold split.
     scaffold_ids: List[str] = []
     if args.strict_scaffold:
-        print("[wf125-p3] computing Bemis-Murcko scaffolds (strict-scaffold split)…", flush=True)
+        print(
+            "[wf125-p3] computing Bemis-Murcko scaffolds (strict-scaffold split)…",
+            flush=True,
+        )
         t_scaff = time.perf_counter()
         for smi in smiles:
             scaffold_ids.append(_bemis_murcko_scaffold(smi))
@@ -1212,9 +1304,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # reference distribution (the Wf-123 P1 spec recommends n ≥ 50).
     finite_pool: List[float] = []
     for cl in DEFAULT_CELL_LINES:
-        finite_pool.extend(
-            float(v) for v in cell_y[cl] if math.isfinite(float(v))
-        )
+        finite_pool.extend(float(v) for v in cell_y[cl] if math.isfinite(float(v)))
     if len(finite_pool) < 10:
         raise RuntimeError(
             f"PlatinAI pIC50 reference pool too small: {len(finite_pool)}"
@@ -1237,7 +1327,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     all_results: List[Dict[str, Any]] = []
     for cell_line in args.cell_lines:
-        print(f"[wf125-p3] cell_line={cell_line}: running 172-d multi-task CV", flush=True)
+        print(
+            f"[wf125-p3] cell_line={cell_line}: running 172-d multi-task CV", flush=True
+        )
         result = evaluate_cell_line(
             cell_line=cell_line,
             seeds=args.seeds,
@@ -1277,7 +1369,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         all_results.append(result)
     write_synthesis(args.out_dir, all_results)
-    print(f"[wf125-p3] synthesis.md written to {args.out_dir / 'synthesis.md'}", flush=True)
+    print(
+        f"[wf125-p3] synthesis.md written to {args.out_dir / 'synthesis.md'}",
+        flush=True,
+    )
     return 0
 
 

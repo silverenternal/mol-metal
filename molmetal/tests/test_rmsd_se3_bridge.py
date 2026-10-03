@@ -48,18 +48,21 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+
 # ---------------------------------------------------------------------------
 # Lazy imports for the adapter (mirrors the convention in
 # test_se3_sb_integration.py).
 # ---------------------------------------------------------------------------
 def _import_adapter():
     from molmetal_lam.sbdd_env import se3_bridge_adapter
+
     return se3_bridge_adapter
 
 
 def _import_bench():
     sys.path.insert(0, str(PROJECT_ROOT / "molmetal" / "scripts"))
     import bench_rmsd_se3_bridge  # type: ignore[import-not-found]
+
     return bench_rmsd_se3_bridge
 
 
@@ -141,7 +144,11 @@ def test_heavy_atom_rmsd_rejects_mismatched_shapes() -> None:
 def test_bridge_pose_config_rejects_invalid_eps() -> None:
     """``sinkhorn_eps <= 0`` raises :class:`ValueError`."""
     ad = _import_adapter()
-    from molmetal_lam.sbdd_env.se3_bridge_adapter import BridgePoseConfig, SE3BridgePosePredictor
+    from molmetal_lam.sbdd_env.se3_bridge_adapter import (
+        BridgePoseConfig,
+        SE3BridgePosePredictor,
+    )
+
     with pytest.raises(ValueError):
         SE3BridgePosePredictor(config=BridgePoseConfig(sinkhorn_eps=0.0))
     with pytest.raises(ValueError):
@@ -151,7 +158,11 @@ def test_bridge_pose_config_rejects_invalid_eps() -> None:
 def test_bridge_pose_config_rejects_invalid_iters() -> None:
     """``sinkhorn_iters < 1`` raises :class:`ValueError`."""
     ad = _import_adapter()
-    from molmetal_lam.sbdd_env.se3_bridge_adapter import BridgePoseConfig, SE3BridgePosePredictor
+    from molmetal_lam.sbdd_env.se3_bridge_adapter import (
+        BridgePoseConfig,
+        SE3BridgePosePredictor,
+    )
+
     with pytest.raises(ValueError):
         SE3BridgePosePredictor(config=BridgePoseConfig(sinkhorn_iters=0))
 
@@ -159,7 +170,11 @@ def test_bridge_pose_config_rejects_invalid_iters() -> None:
 def test_bridge_pose_config_rejects_invalid_sigma() -> None:
     """``sigma <= 0`` raises :class:`ValueError`."""
     ad = _import_adapter()
-    from molmetal_lam.sbdd_env.se3_bridge_adapter import BridgePoseConfig, SE3BridgePosePredictor
+    from molmetal_lam.sbdd_env.se3_bridge_adapter import (
+        BridgePoseConfig,
+        SE3BridgePosePredictor,
+    )
+
     with pytest.raises(ValueError):
         SE3BridgePosePredictor(config=BridgePoseConfig(sigma=0.0))
 
@@ -170,7 +185,10 @@ def test_bridge_pose_config_rejects_invalid_sigma() -> None:
 def test_predict_returns_correct_shape() -> None:
     """predict returns ``(n_samples, N, 3)`` for valid inputs."""
     ad = _import_adapter()
-    from molmetal_lam.sbdd_env.se3_bridge_adapter import BridgePoseConfig, SE3BridgePosePredictor
+    from molmetal_lam.sbdd_env.se3_bridge_adapter import (
+        BridgePoseConfig,
+        SE3BridgePosePredictor,
+    )
 
     predictor = SE3BridgePosePredictor(config=BridgePoseConfig(seed=0))
     torch.manual_seed(1)
@@ -184,7 +202,10 @@ def test_predict_returns_correct_shape() -> None:
 def test_predict_rejects_invalid_input_shape() -> None:
     """Non ``(N, 3)`` inputs raise :class:`ValueError`."""
     ad = _import_adapter()
-    from molmetal_lam.sbdd_env.se3_bridge_adapter import BridgePoseConfig, SE3BridgePosePredictor
+    from molmetal_lam.sbdd_env.se3_bridge_adapter import (
+        BridgePoseConfig,
+        SE3BridgePosePredictor,
+    )
 
     predictor = SE3BridgePosePredictor(config=BridgePoseConfig(seed=0))
     with pytest.raises(ValueError):
@@ -194,7 +215,10 @@ def test_predict_rejects_invalid_input_shape() -> None:
 def test_predict_rejects_invalid_n_samples() -> None:
     """``n_samples < 1`` raises :class:`ValueError`."""
     ad = _import_adapter()
-    from molmetal_lam.sbdd_env.se3_bridge_adapter import BridgePoseConfig, SE3BridgePosePredictor
+    from molmetal_lam.sbdd_env.se3_bridge_adapter import (
+        BridgePoseConfig,
+        SE3BridgePosePredictor,
+    )
 
     predictor = SE3BridgePosePredictor(config=BridgePoseConfig(seed=0))
     with pytest.raises(ValueError):
@@ -204,7 +228,10 @@ def test_predict_rejects_invalid_n_samples() -> None:
 def test_predict_rejects_invalid_t() -> None:
     """``t ∉ [0, 1]`` raises :class:`ValueError`."""
     ad = _import_adapter()
-    from molmetal_lam.sbdd_env.se3_bridge_adapter import BridgePoseConfig, SE3BridgePosePredictor
+    from molmetal_lam.sbdd_env.se3_bridge_adapter import (
+        BridgePoseConfig,
+        SE3BridgePosePredictor,
+    )
 
     predictor = SE3BridgePosePredictor(config=BridgePoseConfig(seed=0))
     with pytest.raises(ValueError):
@@ -214,7 +241,10 @@ def test_predict_rejects_invalid_t() -> None:
 def test_predict_best_returns_minimising_pose() -> None:
     """predict_best returns the single candidate with the lowest RMSD."""
     ad = _import_adapter()
-    from molmetal_lam.sbdd_env.se3_bridge_adapter import BridgePoseConfig, SE3BridgePosePredictor
+    from molmetal_lam.sbdd_env.se3_bridge_adapter import (
+        BridgePoseConfig,
+        SE3BridgePosePredictor,
+    )
 
     predictor = SE3BridgePosePredictor(
         config=BridgePoseConfig(seed=0, sigma=1.0),
@@ -257,7 +287,10 @@ def test_wasserstein_pose_loss_forward_scales_with_weight() -> None:
     import math as _math
 
     ad = _import_adapter()
-    from molmetal_lam.sbdd_env.se3_bridge_adapter import WassersteinPoseLoss, WassersteinPoseLossConfig
+    from molmetal_lam.sbdd_env.se3_bridge_adapter import (
+        WassersteinPoseLoss,
+        WassersteinPoseLossConfig,
+    )
 
     loss = WassersteinPoseLoss(
         config=WassersteinPoseLossConfig(n_projections=32, seed=0, weight=0.5)
@@ -273,7 +306,10 @@ def test_wasserstein_pose_loss_forward_scales_with_weight() -> None:
 def test_wasserstein_pose_loss_rejects_invalid_n_projections() -> None:
     """``n_projections < 1`` raises :class:`ValueError`."""
     ad = _import_adapter()
-    from molmetal_lam.sbdd_env.se3_bridge_adapter import WassersteinPoseLoss, WassersteinPoseLossConfig
+    from molmetal_lam.sbdd_env.se3_bridge_adapter import (
+        WassersteinPoseLoss,
+        WassersteinPoseLossConfig,
+    )
 
     with pytest.raises(ValueError):
         WassersteinPoseLoss(config=WassersteinPoseLossConfig(n_projections=0))
@@ -282,7 +318,10 @@ def test_wasserstein_pose_loss_rejects_invalid_n_projections() -> None:
 def test_wasserstein_pose_loss_rejects_invalid_weight() -> None:
     """``weight < 0`` raises :class:`ValueError`."""
     ad = _import_adapter()
-    from molmetal_lam.sbdd_env.se3_bridge_adapter import WassersteinPoseLoss, WassersteinPoseLossConfig
+    from molmetal_lam.sbdd_env.se3_bridge_adapter import (
+        WassersteinPoseLoss,
+        WassersteinPoseLossConfig,
+    )
 
     with pytest.raises(ValueError):
         WassersteinPoseLoss(config=WassersteinPoseLossConfig(weight=-0.01))
@@ -372,11 +411,13 @@ def test_pocket_metrics_aggregates() -> None:
     """PocketMetrics mean/std/wass helpers are correct on synthetic seeds."""
     mod = _import_bench()
     m = mod.PocketMetrics(pocket_id="test_pocket")
-    m.per_seed.extend([
-        mod.SeedMetrics(seed=0, rmsd_A=1.0, wass=0.05, elapsed_s=0.1, n_samples=4),
-        mod.SeedMetrics(seed=1, rmsd_A=2.0, wass=0.10, elapsed_s=0.1, n_samples=4),
-        mod.SeedMetrics(seed=2, rmsd_A=3.0, wass=0.15, elapsed_s=0.1, n_samples=4),
-    ])
+    m.per_seed.extend(
+        [
+            mod.SeedMetrics(seed=0, rmsd_A=1.0, wass=0.05, elapsed_s=0.1, n_samples=4),
+            mod.SeedMetrics(seed=1, rmsd_A=2.0, wass=0.10, elapsed_s=0.1, n_samples=4),
+            mod.SeedMetrics(seed=2, rmsd_A=3.0, wass=0.15, elapsed_s=0.1, n_samples=4),
+        ]
+    )
     assert m.mean_rmsd_A() == pytest.approx(2.0, abs=1e-6)
     assert m.std_rmsd_A() == pytest.approx(((0 + 1 + 1) / 3) ** 0.5, abs=1e-6)
     assert m.mean_wass() == pytest.approx(0.10, abs=1e-6)
@@ -388,11 +429,13 @@ def test_pocket_metrics_passes_target() -> None:
     """All seeds below the target → passes_target() is True."""
     mod = _import_bench()
     m = mod.PocketMetrics(pocket_id="p")
-    m.per_seed.extend([
-        mod.SeedMetrics(seed=0, rmsd_A=0.1, wass=0.01, elapsed_s=0.1, n_samples=2),
-        mod.SeedMetrics(seed=1, rmsd_A=0.2, wass=0.02, elapsed_s=0.1, n_samples=2),
-        mod.SeedMetrics(seed=2, rmsd_A=0.3, wass=0.03, elapsed_s=0.1, n_samples=2),
-    ])
+    m.per_seed.extend(
+        [
+            mod.SeedMetrics(seed=0, rmsd_A=0.1, wass=0.01, elapsed_s=0.1, n_samples=2),
+            mod.SeedMetrics(seed=1, rmsd_A=0.2, wass=0.02, elapsed_s=0.1, n_samples=2),
+            mod.SeedMetrics(seed=2, rmsd_A=0.3, wass=0.03, elapsed_s=0.1, n_samples=2),
+        ]
+    )
     assert m.passes_target() is True
 
 
@@ -414,15 +457,23 @@ def test_bench_main_writes_outputs(tmp_path: Path) -> None:
     # Tiny CSV demo file (matches the candidates_csv loader).
     demo = tmp_path / "demo.csv"
     demo.write_text("name,smiles\nethanol,CCO\n")
-    rc = mod.main([
-        "--pockets", pocket_id,
-        "--seeds", "0",
-        "--n-samples", "2",
-        "--candidates-csv", str(demo),
-        "--pocket-dir", str(pocket_dir),
-        "--out-dir", str(out_dir),
-        "--quiet",
-    ])
+    rc = mod.main(
+        [
+            "--pockets",
+            pocket_id,
+            "--seeds",
+            "0",
+            "--n-samples",
+            "2",
+            "--candidates-csv",
+            str(demo),
+            "--pocket-dir",
+            str(pocket_dir),
+            "--out-dir",
+            str(out_dir),
+            "--quiet",
+        ]
+    )
     assert rc == 0
     summary = out_dir / "summary.json"
     assert summary.exists()
@@ -434,7 +485,9 @@ def test_bench_main_writes_outputs(tmp_path: Path) -> None:
     assert per_seed.exists()
     per_payload = json.loads(per_seed.read_text())
     assert per_payload["pocket_id"] == pocket_id
-    assert per_payload["per_seed_rmsd_A"] == [pytest.approx(p, abs=1e-3) for p in per_payload["per_seed_rmsd_A"]]
+    assert per_payload["per_seed_rmsd_A"] == [
+        pytest.approx(p, abs=1e-3) for p in per_payload["per_seed_rmsd_A"]
+    ]
 
 
 # ---------------------------------------------------------------------------

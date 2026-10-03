@@ -98,9 +98,9 @@ def test_dry_run_no_protein() -> None:
     smiles_list = ["CCO", "c1ccccc1O", "CC(=O)O", "INVALID_SMILES"]
     scores = mod.biolm_score_batch(smiles_list)
     assert isinstance(scores, list)
-    assert len(scores) == len(smiles_list), (
-        f"score list length {len(scores)} != input length {len(smiles_list)}"
-    )
+    assert len(scores) == len(
+        smiles_list
+    ), f"score list length {len(scores)} != input length {len(smiles_list)}"
     for s in scores:
         assert s == 0.0, f"expected dry-run 0.0, got {s!r}"
 
@@ -121,14 +121,13 @@ def test_oracle_available_reports_false_on_this_host() -> None:
         # legitimately return True — accept either way.
         assert isinstance(avail, bool)
     else:
-        assert avail is False, (
-            "Probe must report False when torch_scatter is missing"
-        )
+        assert avail is False, "Probe must report False when torch_scatter is missing"
 
 
 def _has_torch_scatter() -> bool:
     try:
         import torch_scatter  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -204,9 +203,7 @@ def test_oracle_warns_exactly_once(tmp_path: Path) -> None:
         oracle.score("CCO")
         oracle.score("c1ccccc1O")
         oracle.score_batch(["c1ccccc1O", "CC(=O)O"])
-    biolm_warnings = [
-        w for w in caught if "BioLM" in str(w.message)
-    ]
+    biolm_warnings = [w for w in caught if "BioLM" in str(w.message)]
     assert len(biolm_warnings) == 1, (
         f"Expected exactly one BioLM warning, got {len(biolm_warnings)}: "
         f"{[str(w.message) for w in biolm_warnings]}"
@@ -234,9 +231,7 @@ def test_real_mode_returns_none_when_upstream_missing(tmp_path: Path) -> None:
     assert oracle.available is False
     v = oracle.score("CCO", require_real=True)
     # No upstream available AND require_real → wrapper returns None.
-    assert v is None, (
-        f"Expected None (real-mode without upstream), got {v!r}"
-    )
+    assert v is None, f"Expected None (real-mode without upstream), got {v!r}"
     # Batched path must also return Nones, preserving length.
     v_b = oracle.score_batch(["CCO", "c1ccccc1O"], require_real=True)
     assert len(v_b) == 2

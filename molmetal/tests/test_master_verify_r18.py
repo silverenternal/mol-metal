@@ -39,9 +39,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = PROJECT_ROOT / "molmetal" / "scripts"
 TESTS_DIR = PROJECT_ROOT / "molmetal" / "tests"
 REPORTS_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf35_master_verify"
-VENV_PY = (
-    PROJECT_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
-)
+VENV_PY = PROJECT_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
 
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
@@ -55,12 +53,19 @@ def test_master_verify_r18_imports() -> None:
     if not VENV_PY.exists():
         pytest.skip(f"venv python missing at {VENV_PY}")
     proc = subprocess.run(
-        [str(VENV_PY), "-c",
-         "import importlib, sys; "
-         "sys.path.insert(0, %r); " % str(SCRIPTS_DIR) +
-         "m = importlib.import_module('master_verify_r18'); "
-         "assert hasattr(m, 'main') and hasattr(m, '_verify_script')"],
-        capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT),
+        [
+            str(VENV_PY),
+            "-c",
+            "import importlib, sys; "
+            "sys.path.insert(0, %r); "
+            % str(SCRIPTS_DIR)
+            + "m = importlib.import_module('master_verify_r18'); "
+            "assert hasattr(m, 'main') and hasattr(m, '_verify_script')",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        cwd=str(PROJECT_ROOT),
     )
     assert proc.returncode == 0, proc.stderr
 
@@ -71,6 +76,7 @@ def test_master_verify_r18_imports() -> None:
 def test_registry_has_eight_scripts() -> None:
     """Registry must expose eight scripts: six shipped + two planned."""
     from molmetal.scripts import master_verify_r18 as mv
+
     assert len(mv.ALL_SCRIPTS) == 8, (
         f"expected eight scripts (6 shipped + 2 planned), got "
         f"{len(mv.ALL_SCRIPTS)}: {[s.name for s in mv.ALL_SCRIPTS]}"
@@ -82,6 +88,7 @@ def test_registry_has_eight_scripts() -> None:
 def test_registry_contains_expected_shipped() -> None:
     """Six shipped scripts must match the Wf-35 plan."""
     from molmetal.scripts import master_verify_r18 as mv
+
     shipped = {s.name for s in mv.SHIPPED_SCRIPTS}
     expected = {
         "train_se3sb.py",
@@ -91,19 +98,20 @@ def test_registry_contains_expected_shipped() -> None:
         "train_affinity_regression.py",
         "train_multimetal_lomo.py",
     }
-    assert shipped == expected, (
-        f"shipped registry drifted: {shipped.symmetric_difference(expected)}"
-    )
+    assert (
+        shipped == expected
+    ), f"shipped registry drifted: {shipped.symmetric_difference(expected)}"
 
 
 def test_registry_contains_expected_planned() -> None:
     """Two planned scripts must match the Wf-35 plan."""
     from molmetal.scripts import master_verify_r18 as mv
+
     planned = {s.name for s in mv.PLANNED_SCRIPTS}
     expected = {"train_cisplatin_resistance_v2.py", "bench_pb_valid.py"}
-    assert planned == expected, (
-        f"planned registry drifted: {planned.symmetric_difference(expected)}"
-    )
+    assert (
+        planned == expected
+    ), f"planned registry drifted: {planned.symmetric_difference(expected)}"
 
 
 def test_planned_scripts_in_dynamic_state(tmp_path: Path) -> None:
@@ -164,7 +172,10 @@ def test_planned_scripts_in_dynamic_state(tmp_path: Path) -> None:
     p.write_text(driver)
     proc = subprocess.run(
         [str(VENV_PY), str(p)],
-        capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT),
+        capture_output=True,
+        text=True,
+        timeout=30,
+        cwd=str(PROJECT_ROOT),
     )
     assert proc.returncode == 0, proc.stderr
     assert "OK" in proc.stdout
@@ -173,11 +184,12 @@ def test_planned_scripts_in_dynamic_state(tmp_path: Path) -> None:
 def test_each_script_spec_has_wf_tag() -> None:
     """Every ScriptSpec must declare a ``wf_tag``."""
     from molmetal.scripts import master_verify_r18 as mv
+
     for spec in mv.ALL_SCRIPTS:
         assert spec.wf_tag, f"{spec.name} missing wf_tag"
-        assert spec.wf_tag.startswith("Wf-"), (
-            f"{spec.name}: wf_tag should start with 'Wf-' got {spec.wf_tag!r}"
-        )
+        assert spec.wf_tag.startswith(
+            "Wf-"
+        ), f"{spec.name}: wf_tag should start with 'Wf-' got {spec.wf_tag!r}"
 
 
 # ===========================================================================
@@ -186,6 +198,7 @@ def test_each_script_spec_has_wf_tag() -> None:
 def test_script_spec_is_frozen() -> None:
     """``ScriptSpec`` is a frozen dataclass."""
     from molmetal.scripts import master_verify_r18 as mv
+
     spec = mv.SHIPPED_SCRIPTS[0]
     with pytest.raises((AttributeError, Exception)):
         spec.name = "nope"  # type: ignore[misc]
@@ -194,6 +207,7 @@ def test_script_spec_is_frozen() -> None:
 def test_script_spec_has_expected_groups() -> None:
     """Each ScriptSpec declares the canonical argument groups."""
     from molmetal.scripts import master_verify_r18 as mv
+
     for spec in mv.ALL_SCRIPTS:
         assert "Common recipe" in spec.expected_groups
         assert "GPU env" in spec.expected_groups
@@ -205,6 +219,7 @@ def test_script_spec_has_expected_groups() -> None:
 def test_check_result_defaults() -> None:
     """``CheckResult`` defaults to failed=False, skipped=False."""
     from molmetal.scripts import master_verify_r18 as mv
+
     cr = mv.CheckResult(name="x", passed=True)
     assert cr.passed is True
     assert cr.skipped is False
@@ -215,6 +230,7 @@ def test_check_result_defaults() -> None:
 def test_script_report_defaults() -> None:
     """``ScriptReport`` defaults to status='PENDING' with empty checks."""
     from molmetal.scripts import master_verify_r18 as mv
+
     rep = mv.ScriptReport(script="x.py", wf_tag="Wf-X")
     assert rep.status == "PENDING"
     assert rep.checks == []
@@ -227,6 +243,7 @@ def test_script_report_defaults() -> None:
 def test_to_jsonable_handles_dict() -> None:
     """``_to_jsonable`` recurses through dicts."""
     from molmetal.scripts import master_verify_r18 as mv
+
     out = mv._to_jsonable({"a": 1, "b": [1.0, 2.0]})
     assert out == {"a": 1, "b": [1.0, 2.0]}
 
@@ -234,6 +251,7 @@ def test_to_jsonable_handles_dict() -> None:
 def test_to_jsonable_handles_path() -> None:
     """``_to_jsonable`` converts ``Path`` to ``str``."""
     from molmetal.scripts import master_verify_r18 as mv
+
     out = mv._to_jsonable({"p": Path("/tmp/x")})
     assert out == {"p": "/tmp/x"}
 
@@ -241,6 +259,7 @@ def test_to_jsonable_handles_path() -> None:
 def test_to_jsonable_handles_set() -> None:
     """``_to_jsonable`` sorts sets into a JSON-safe list."""
     from molmetal.scripts import master_verify_r18 as mv
+
     out = mv._to_jsonable({3, 1, 2})
     assert out == [1, 2, 3]
 
@@ -251,6 +270,7 @@ def test_to_jsonable_handles_set() -> None:
 def test_parse_argv_exclude() -> None:
     """``--exclude`` repeats correctly into a list."""
     from molmetal.scripts import master_verify_r18 as mv
+
     ns = mv._parse_argv(["--exclude", "train_se3sb", "--exclude", "multiph"])
     assert "train_se3sb" in ns.exclude
     assert "multiph" in ns.exclude
@@ -259,6 +279,7 @@ def test_parse_argv_exclude() -> None:
 def test_parse_argv_only_shipped() -> None:
     """``--only-shipped`` flips the flag on."""
     from molmetal.scripts import master_verify_r18 as mv
+
     ns = mv._parse_argv(["--only-shipped"])
     assert ns.only_shipped is True
 
@@ -266,6 +287,7 @@ def test_parse_argv_only_shipped() -> None:
 def test_parse_argv_skip_smoke() -> None:
     """``--skip-smoke`` flips the smoke-bypass flag on (CPU hosts)."""
     from molmetal.scripts import master_verify_r18 as mv
+
     ns = mv._parse_argv(["--skip-smoke"])
     assert ns.skip_smoke is True
 
@@ -297,7 +319,10 @@ def test_skip_smoke_marks_check_skipped(tmp_path: Path) -> None:
     p.write_text(driver)
     proc = subprocess.run(
         [str(VENV_PY), str(p)],
-        capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT),
+        capture_output=True,
+        text=True,
+        timeout=30,
+        cwd=str(PROJECT_ROOT),
     )
     assert proc.returncode == 0, proc.stderr
     assert "OK" in proc.stdout
@@ -320,12 +345,16 @@ def test_master_verify_r18_runs_end_to_end(tmp_path: Path) -> None:
         pytest.skip(f"venv python missing at {VENV_PY}")
 
     cmd = [
-        str(VENV_PY), str(SCRIPTS_DIR / "master_verify_r18.py"),
+        str(VENV_PY),
+        str(SCRIPTS_DIR / "master_verify_r18.py"),
         "--skip-smoke",  # CPU-safe path
     ]
     proc = subprocess.run(
         cmd,
-        capture_output=True, text=True, timeout=300, cwd=str(PROJECT_ROOT),
+        capture_output=True,
+        text=True,
+        timeout=300,
+        cwd=str(PROJECT_ROOT),
     )
     assert proc.returncode == 0, (
         f"master_verify_r18.py exited {proc.returncode}\n"
@@ -335,9 +364,7 @@ def test_master_verify_r18_runs_end_to_end(tmp_path: Path) -> None:
     # The canonical artefacts live at molmetal/reports/wf35_master_verify/
     json_path = REPORTS_DIR / "master_report.json"
     md_path = REPORTS_DIR / "master_report.md"
-    assert json_path.exists(), (
-        f"expected {json_path} after end-to-end run"
-    )
+    assert json_path.exists(), f"expected {json_path} after end-to-end run"
     assert md_path.exists(), f"expected {md_path} after end-to-end run"
 
     payload = json.loads(json_path.read_text())
@@ -347,16 +374,17 @@ def test_master_verify_r18_runs_end_to_end(tmp_path: Path) -> None:
     s = payload["summary"]
     assert s["n_total"] == len(payload["scripts"])
     assert s["n_passed"] + s["n_failed"] + s["n_pending"] == s["n_total"]
-    assert s["n_passed"] >= 1, (
-        "the cheapest check (import) should always pass on a shipped script"
-    )
+    assert (
+        s["n_passed"] >= 1
+    ), "the cheapest check (import) should always pass on a shipped script"
 
 
 # ===========================================================================
 # 7. JSON report shape
 # ===========================================================================
-def test_write_json_creates_artefact(tmp_path: Path,
-                                    monkeypatch: pytest.MonkeyPatch) -> None:
+def test_write_json_creates_artefact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """``_write_json`` writes the canonical artefact with the right schema."""
     if not VENV_PY.exists():
         pytest.skip(f"venv python missing at {VENV_PY}")
@@ -385,7 +413,9 @@ def test_write_json_creates_artefact(tmp_path: Path,
     p.write_text(driver)
     proc = subprocess.run(
         [str(VENV_PY), str(p)],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True,
+        text=True,
+        timeout=60,
         cwd=str(PROJECT_ROOT),
     )
     assert proc.returncode == 0, proc.stderr
@@ -430,7 +460,9 @@ def test_write_markdown_creates_artefact(
     p.write_text(driver)
     proc = subprocess.run(
         [str(VENV_PY), str(p)],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True,
+        text=True,
+        timeout=60,
         cwd=str(PROJECT_ROOT),
     )
     assert proc.returncode == 0, proc.stderr
@@ -494,7 +526,10 @@ def test_pending_script_report_when_missing(tmp_path: Path) -> None:
     p.write_text(driver)
     proc = subprocess.run(
         [str(VENV_PY), str(p)],
-        capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT),
+        capture_output=True,
+        text=True,
+        timeout=30,
+        cwd=str(PROJECT_ROOT),
     )
     assert proc.returncode == 0, proc.stderr
     assert "OK" in proc.stdout
@@ -506,6 +541,7 @@ def test_pending_script_report_when_missing(tmp_path: Path) -> None:
 def test_summarise_failed_checks_joins_messages() -> None:
     """``_summarise_failed_checks`` joins all failing check messages."""
     from molmetal.scripts import master_verify_r18 as mv
+
     checks = [
         mv.CheckResult("import", False, message="bad import"),
         mv.CheckResult("argparse", True, message="ok"),
@@ -520,6 +556,7 @@ def test_summarise_failed_checks_joins_messages() -> None:
 def test_summarise_failed_checks_empty_returns_unknown() -> None:
     """Empty list → 'unknown' so the caller can still see the failure."""
     from molmetal.scripts import master_verify_r18 as mv
+
     assert mv._summarise_failed_checks([]) == "unknown"
 
 
@@ -532,7 +569,10 @@ def test_main_help_exits_zero() -> None:
         pytest.skip(f"venv python missing at {VENV_PY}")
     proc = subprocess.run(
         [str(VENV_PY), str(SCRIPTS_DIR / "master_verify_r18.py"), "--help"],
-        capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT),
+        capture_output=True,
+        text=True,
+        timeout=30,
+        cwd=str(PROJECT_ROOT),
     )
     assert proc.returncode == 0, proc.stderr
     assert "Wf-35" in proc.stdout or "master verify" in proc.stdout.lower()

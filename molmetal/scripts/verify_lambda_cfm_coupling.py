@@ -9,6 +9,7 @@ Run::
 
     uv run --no-sync python molmetal/scripts/verify_lambda_cfm_coupling.py --smoke
 """
+
 from __future__ import annotations
 
 import argparse

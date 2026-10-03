@@ -106,24 +106,18 @@ def test_runtime_dispatch_sub_libraries_are_reachable() -> None:
     rt = F2MetalLigandExchangeRuntime()
     loaded_names = set(rt.list_loaded_pattern_names())
     # Curated F2(a) — ``Pt_Cl_NH3`` is the canonical.
-    assert "Pt_Cl_NH3" in loaded_names, (
-        f"curated F2(a) Pt_Cl_NH3 not in loaded library"
-    )
+    assert "Pt_Cl_NH3" in loaded_names, f"curated F2(a) Pt_Cl_NH3 not in loaded library"
     # Matrix — ``Pt_II_Cl_NH3`` is the matrix form of the same reaction.
-    assert "Pt_II_Cl_NH3" in loaded_names, (
-        f"matrix Pt_II_Cl_NH3 not in loaded library"
-    )
+    assert "Pt_II_Cl_NH3" in loaded_names, f"matrix Pt_II_Cl_NH3 not in loaded library"
     # NEW SMARTS — the transmetalation prefix ``transmet_Pt_II_to_Pd_II``
     # should be in the loaded library.
-    assert "transmet_Pt_II_to_Pd_II" in loaded_names, (
-        f"NEW SMARTS transmet_Pt_II_to_Pd_II not in loaded library"
-    )
+    assert (
+        "transmet_Pt_II_to_Pd_II" in loaded_names
+    ), f"NEW SMARTS transmet_Pt_II_to_Pd_II not in loaded library"
     # 82-metal library — bare metal names like ``"Ru"`` survive the
     # dedup race because no curated / matrix / NEW entry uses a bare
     # metal as the pattern name.
-    assert "Ru" in loaded_names, (
-        f"82-metal library bare Ru entry not in loaded library"
-    )
+    assert "Ru" in loaded_names, f"82-metal library bare Ru entry not in loaded library"
 
 
 def test_runtime_render_summary_produces_markdown_table() -> None:
@@ -179,9 +173,9 @@ def test_runtime_covers_at_least_60_metal_symbols() -> None:
     dispatcher covers at least 60 distinct metal symbols (some overlap).
     """
     rt = F2MetalLigandExchangeRuntime()
-    assert rt.n_metal_symbols() >= 60, (
-        f"expected ≥ 60 distinct metal symbols; got {rt.n_metal_symbols()}"
-    )
+    assert (
+        rt.n_metal_symbols() >= 60
+    ), f"expected ≥ 60 distinct metal symbols; got {rt.n_metal_symbols()}"
 
 
 # ===========================================================================
@@ -214,9 +208,7 @@ def test_runtime_count_matches_register_helper_sum() -> None:
     registered_names = {p[0] for p in registered}
     loaded_names = set(rt.list_loaded_pattern_names())
     missing = registered_names - loaded_names
-    assert not missing, (
-        f"runtime is missing entries from register_metal_ligand_exchange_rules(): {missing}"
-    )
+    assert not missing, f"runtime is missing entries from register_metal_ligand_exchange_rules(): {missing}"
 
 
 # ===========================================================================

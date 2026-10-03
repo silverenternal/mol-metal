@@ -41,6 +41,7 @@ import torch
 try:  # pragma: no cover
     import triton
     import triton.language as tl
+
     _TRITON_AVAILABLE = True
 except ImportError:  # pragma: no cover
     _TRITON_AVAILABLE = False
@@ -101,9 +102,20 @@ except ImportError:  # pragma: no cover
 # Symbol table of 14 entries (matches molmetal/data/featurize.py):
 #   C, N, O, F, P, S, Cl, Br, I, B, Si, Se, H, Other → idx 0..13
 _SYMBOL_TO_IDX = {
-    "C": 0, "N": 1, "O": 2, "F": 3, "P": 4, "S": 5,
-    "Cl": 6, "Br": 7, "I": 8, "B": 9, "Si": 10, "Se": 11,
-    "H": 12, "Other": 13,
+    "C": 0,
+    "N": 1,
+    "O": 2,
+    "F": 3,
+    "P": 4,
+    "S": 5,
+    "Cl": 6,
+    "Br": 7,
+    "I": 8,
+    "B": 9,
+    "Si": 10,
+    "Se": 11,
+    "H": 12,
+    "Other": 13,
 }
 _NUM_SYMBOLS = len(_SYMBOL_TO_IDX)  # 14
 
@@ -170,7 +182,12 @@ if _TRITON_AVAILABLE:
     @triton.autotune(configs=_FUSED_SMILES_CONFIGS, key=["N"])
     @triton.jit
     def _fused_smiles_featurize_kernel(  # pragma: no cover — GPU-only
-        sym_ptr, deg_ptr, ring_ptr, arom_ptr, charge_ptr, out_ptr,
+        sym_ptr,
+        deg_ptr,
+        ring_ptr,
+        arom_ptr,
+        charge_ptr,
+        out_ptr,
         N,
         NUM_SYMBOLS: tl.constexpr,
         NUM_DEGREES: tl.constexpr,
@@ -201,11 +218,15 @@ if _TRITON_AVAILABLE:
         charge = tl.load(charge_ptr + offs, mask=mask, other=0)
         feat_offs = tl.arange(0, FEATURE_DIM_P2)
         mask_f = feat_offs < FEATURE_DIM
-        sym_match = (feat_offs[None, :] == sym[:, None]) & (feat_offs[None, :] < NUM_SYMBOLS)
+        sym_match = (feat_offs[None, :] == sym[:, None]) & (
+            feat_offs[None, :] < NUM_SYMBOLS
+        )
         deg_offset = NUM_SYMBOLS
-        deg_match = ((feat_offs[None, :] - deg_offset) == deg[:, None]) & (
-            (feat_offs[None, :] - deg_offset) >= 0
-        ) & ((feat_offs[None, :] - deg_offset) < NUM_DEGREES)
+        deg_match = (
+            ((feat_offs[None, :] - deg_offset) == deg[:, None])
+            & ((feat_offs[None, :] - deg_offset) >= 0)
+            & ((feat_offs[None, :] - deg_offset) < NUM_DEGREES)
+        )
         ring_offset = NUM_SYMBOLS + NUM_DEGREES
         ring_match = (feat_offs[None, :] == ring_offset) & (ring[:, None] == 1)
         arom_offset = ring_offset + 1
@@ -216,7 +237,7 @@ if _TRITON_AVAILABLE:
         # Build the full feature matrix as a sum of (mask * value)
         # contributions.  The charge slot writes the signed value
         # directly (not just an indicator).
-        is_charge_slot = (feat_offs[None, :] == charge_offset)
+        is_charge_slot = feat_offs[None, :] == charge_offset
         charge_contrib = tl.where(
             is_charge_slot & mask_f[None, :],
             charge_clip[:, None],
@@ -232,6 +253,7 @@ if _TRITON_AVAILABLE:
         out_addr = out_ptr + offs[:, None] * FEATURE_DIM + feat_offs[None, :]
         tl.store(out_addr, feat_val, mask=mask[:, None] & mask_f[None, :])
 else:
+
     def _fused_smiles_featurize_kernel(*args, **kwargs):  # type: ignore
         raise RuntimeError(
             "Triton unavailable — _fused_smiles_featurize_kernel cannot run. "
@@ -308,19 +330,29 @@ def fused_smiles_featurize(
         device = torch.device("cuda:0")
         n = len(symbols)
         sym_t = torch.tensor(
-            [symbol_to_idx(s) for s in symbols], dtype=torch.int32, device=device,
+            [symbol_to_idx(s) for s in symbols],
+            dtype=torch.int32,
+            device=device,
         )
         deg_t = torch.tensor(
-            [min(int(d), _NUM_DEGREES - 1) for d in degrees], dtype=torch.int32, device=device,
+            [min(int(d), _NUM_DEGREES - 1) for d in degrees],
+            dtype=torch.int32,
+            device=device,
         )
         ring_t = torch.tensor(
-            [int(bool(r)) for r in in_ring], dtype=torch.int32, device=device,
+            [int(bool(r)) for r in in_ring],
+            dtype=torch.int32,
+            device=device,
         )
         arom_t = torch.tensor(
-            [int(bool(a)) for a in aromatic], dtype=torch.int32, device=device,
+            [int(bool(a)) for a in aromatic],
+            dtype=torch.int32,
+            device=device,
         )
         charge_t = torch.tensor(
-            [int(c) for c in formal_charge], dtype=torch.int32, device=device,
+            [int(c) for c in formal_charge],
+            dtype=torch.int32,
+            device=device,
         )
         out = torch.empty((n, _FEATURE_DIM), dtype=torch.float32, device=device)
         # Pad FEATURE_DIM to next power of 2 (Triton tl.arange requirement).
@@ -329,7 +361,12 @@ def fused_smiles_featurize(
             feat_dim_p2 *= 2
         grid = lambda meta: (triton.cdiv(n, meta["BLOCK_N"]),)
         _fused_smiles_featurize_kernel[grid](
-            sym_t, deg_t, ring_t, arom_t, charge_t, out,
+            sym_t,
+            deg_t,
+            ring_t,
+            arom_t,
+            charge_t,
+            out,
             n,
             NUM_SYMBOLS=_NUM_SYMBOLS,
             NUM_DEGREES=_NUM_DEGREES,

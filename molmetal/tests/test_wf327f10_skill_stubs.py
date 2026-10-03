@@ -35,6 +35,7 @@ Run via::
     cd /home/hugo/codes/mol-metal
     PYTHONPATH=. python -m pytest molmetal/tests/test_wf327f10_skill_stubs.py -v
 """
+
 from __future__ import annotations
 
 import re
@@ -54,10 +55,10 @@ SKILLS_ROOT = REPO_ROOT / ".claude" / "skills"
 # (Wf-321B §1.3 explicitly maps them). We alias the test surface so the
 # STUB/full verification contract holds across the alias.
 R21_SKILLS: Dict[str, str] = {
-    "mol-metal-score-rep-variance-mcts": "R21-P1",   # Wf-321B STUB (104 LOC)
-    "mol-metal-mcts-replay-learner":      "R21-P2",   # Wf-37 FULL (483 LOC)
-    "mol-metal-catherine-dblock-bench":   "R21-P5",   # Wf-321B STUB (108 LOC, satisfies closure-dblock-bench)
-    "mol-metal-triangle-closure":         "R21",      # Wf-37 FULL (574 LOC)
+    "mol-metal-score-rep-variance-mcts": "R21-P1",  # Wf-321B STUB (104 LOC)
+    "mol-metal-mcts-replay-learner": "R21-P2",  # Wf-37 FULL (483 LOC)
+    "mol-metal-catherine-dblock-bench": "R21-P5",  # Wf-321B STUB (108 LOC, satisfies closure-dblock-bench)
+    "mol-metal-triangle-closure": "R21",  # Wf-37 FULL (574 LOC)
 }
 
 
@@ -120,7 +121,9 @@ def _extract_cross_refs(body: str) -> List[tuple[str, str]]:
 
 
 def _cross_ref_resolves(
-    path_str: str, context_line: str, skill_name: str,
+    path_str: str,
+    context_line: str,
+    skill_name: str,
 ) -> bool:
     """Return True iff ``path_str`` resolves to an existing file.
 
@@ -179,7 +182,9 @@ def _cross_ref_resolves(
     # If the path lives under TODO/pending/ but only TODO/completed/ has
     # the file, that's a stale path reference — accept anyway.
     if path_str.startswith("TODO/pending/"):
-        completed_alt = REPO_ROOT / "TODO" / "completed" / path_str[len("TODO/pending/"):]
+        completed_alt = (
+            REPO_ROOT / "TODO" / "completed" / path_str[len("TODO/pending/") :]
+        )
         if completed_alt.exists():
             return True
 
@@ -190,32 +195,28 @@ def _cross_ref_resolves(
 # T1 — Every R21 skill has SKILL.md + frontmatter + name + tools
 # ---------------------------------------------------------------------------
 @pytest.mark.parametrize("skill_name,r21_phase", sorted(R21_SKILLS.items()))
-def test_r21_skill_md_exists_with_frontmatter(
-    skill_name: str, r21_phase: str
-) -> None:
+def test_r21_skill_md_exists_with_frontmatter(skill_name: str, r21_phase: str) -> None:
     """Every R21 skill must have SKILL.md with YAML frontmatter + name field."""
     path = _skill_path(skill_name)
     assert path.exists(), f"SKILL.md missing for {skill_name} at {path}"
     text = path.read_text(encoding="utf-8")
-    assert text.startswith("---\n"), (
-        f"{skill_name} missing leading YAML frontmatter delimiter"
-    )
+    assert text.startswith(
+        "---\n"
+    ), f"{skill_name} missing leading YAML frontmatter delimiter"
     assert "\n---\n" in text, f"{skill_name} frontmatter not closed"
 
     fm, body = _split_frontmatter(text)
     parsed = _parse_frontmatter(fm)
-    assert "name" in parsed, (
-        f"{skill_name} frontmatter missing 'name' field (got: {parsed})"
-    )
-    assert parsed["name"] == skill_name, (
-        f"{skill_name} frontmatter name mismatch: {parsed['name']!r}"
-    )
-    assert "description" in parsed, (
-        f"{skill_name} frontmatter missing 'description' field"
-    )
-    assert "tools" in fm, (
-        f"{skill_name} frontmatter missing 'tools' field"
-    )
+    assert (
+        "name" in parsed
+    ), f"{skill_name} frontmatter missing 'name' field (got: {parsed})"
+    assert (
+        parsed["name"] == skill_name
+    ), f"{skill_name} frontmatter name mismatch: {parsed['name']!r}"
+    assert (
+        "description" in parsed
+    ), f"{skill_name} frontmatter missing 'description' field"
+    assert "tools" in fm, f"{skill_name} frontmatter missing 'tools' field"
 
 
 # ---------------------------------------------------------------------------
@@ -223,28 +224,38 @@ def test_r21_skill_md_exists_with_frontmatter(
 # ---------------------------------------------------------------------------
 ACTIVATION_KEYWORDS: Dict[str, List[str]] = {
     "mol-metal-score-rep-variance-mcts": [
-        "Score-Repellent", "VariancePUCT", "MCTS",
-        "ablation", "R21-P1",
+        "Score-Repellent",
+        "VariancePUCT",
+        "MCTS",
+        "ablation",
+        "R21-P1",
     ],
     "mol-metal-mcts-replay-learner": [
-        "MCTS", "replay", "AlphaGo",
-        "R20-P2", "variance",
+        "MCTS",
+        "replay",
+        "AlphaGo",
+        "R20-P2",
+        "variance",
     ],
     "mol-metal-catherine-dblock-bench": [
-        "Catherine", "30 d-block", "closure",
-        "TASK_SPEC_METALS", "R20-P5",
+        "Catherine",
+        "30 d-block",
+        "closure",
+        "TASK_SPEC_METALS",
+        "R20-P5",
     ],
     "mol-metal-triangle-closure": [
-        "ASTSR", "Hilbert", "MCTS",
-        "triangle", "R21",
+        "ASTSR",
+        "Hilbert",
+        "MCTS",
+        "triangle",
+        "R21",
     ],
 }
 
 
 @pytest.mark.parametrize("skill_name,r21_phase", sorted(R21_SKILLS.items()))
-def test_r21_skill_activation_keywords_present(
-    skill_name: str, r21_phase: str
-) -> None:
+def test_r21_skill_activation_keywords_present(skill_name: str, r21_phase: str) -> None:
     """Frontmatter description must carry skill activation keywords."""
     text = _skill_path(skill_name).read_text(encoding="utf-8")
     fm, _ = _split_frontmatter(text)
@@ -263,33 +274,31 @@ def test_r21_skill_activation_keywords_present(
 REQUIRED_SECTION_PATTERNS: Dict[str, List[str]] = {
     # Each entry: regex pattern to match a section header (without leading '#+ ')
     "mol-metal-score-rep-variance-mcts": [
-        r"§1\b",            # When to use
-        r"§[23]\b",          # 3-way joint contract or contract
-        r"§4\b",            # Acceptance gate
+        r"§1\b",  # When to use
+        r"§[23]\b",  # 3-way joint contract or contract
+        r"§4\b",  # Acceptance gate
         r"MEASURED-vs-PROJECTED|Reference impl|Cross-ref",
     ],
     "mol-metal-mcts-replay-learner": [
-        r"§1\b",            # When to use / activation
-        r"§[2345]\b",       # Contract / wiring / cross-ref
+        r"§1\b",  # When to use / activation
+        r"§[2345]\b",  # Contract / wiring / cross-ref
         r"Cross[- ]?ref|References",
     ],
     "mol-metal-catherine-dblock-bench": [
-        r"§1\b",            # When to use
-        r"§[23]\b",          # Bench cohort / CLI
-        r"§[4567]\b",       # Acceptance / cross-skill / MEASURED-vs-PROJECTED
+        r"§1\b",  # When to use
+        r"§[23]\b",  # Bench cohort / CLI
+        r"§[4567]\b",  # Acceptance / cross-skill / MEASURED-vs-PROJECTED
     ],
     "mol-metal-triangle-closure": [
-        r"§1\b",            # When to use
-        r"§[2345]\b",       # Contract / wiring / cross-ref
+        r"§1\b",  # When to use
+        r"§[2345]\b",  # Contract / wiring / cross-ref
         r"Cross[- ]?ref|Reference",
     ],
 }
 
 
 @pytest.mark.parametrize("skill_name,r21_phase", sorted(R21_SKILLS.items()))
-def test_r21_skill_has_required_sections(
-    skill_name: str, r21_phase: str
-) -> None:
+def test_r21_skill_has_required_sections(skill_name: str, r21_phase: str) -> None:
     """Each R21 skill must have at least 3 canonical §N sections + cross-ref."""
     text = _skill_path(skill_name).read_text(encoding="utf-8")
     _, body = _split_frontmatter(text)
@@ -313,9 +322,7 @@ def test_r21_skill_has_required_sections(
 #      (or are explicitly marked STUB / NOT YET CREATED)
 # ---------------------------------------------------------------------------
 @pytest.mark.parametrize("skill_name,r21_phase", sorted(R21_SKILLS.items()))
-def test_r21_skill_cross_references_resolve(
-    skill_name: str, r21_phase: str
-) -> None:
+def test_r21_skill_cross_references_resolve(skill_name: str, r21_phase: str) -> None:
     """All .py / .md / .sh / .json paths in body must resolve to real files
     or be explicitly marked STUB / NOT YET CREATED."""
     text = _skill_path(skill_name).read_text(encoding="utf-8")
@@ -341,10 +348,19 @@ def test_r21_skill_cross_references_resolve(
             continue
         # If this occurrence's context carries a STUB marker, accept
         # regardless of path resolution.
-        if any(m in context_line for m in (
-            "STUB", "NOT YET CREATED", "PROJECTED", "Wait for",
-            "PROJ ", "TODO: ", "Pending", "STUB (",
-        )):
+        if any(
+            m in context_line
+            for m in (
+                "STUB",
+                "NOT YET CREATED",
+                "PROJECTED",
+                "Wait for",
+                "PROJ ",
+                "TODO: ",
+                "Pending",
+                "STUB (",
+            )
+        ):
             accepted.add(ref_path)
             continue
         # Treat bare (TODO) markers as STUB too — common in skill doc
@@ -388,9 +404,7 @@ CODE_ANCHOR_KEYWORDS: Dict[str, List[str]] = {
 
 
 @pytest.mark.parametrize("skill_name,r21_phase", sorted(R21_SKILLS.items()))
-def test_r21_skill_code_anchors_present(
-    skill_name: str, r21_phase: str
-) -> None:
+def test_r21_skill_code_anchors_present(skill_name: str, r21_phase: str) -> None:
     """Body must reference at least one of the code anchor keywords."""
     text = _skill_path(skill_name).read_text(encoding="utf-8")
     _, body = _split_frontmatter(text)
@@ -430,9 +444,9 @@ def test_wf321b_skill_ecosystem_completion_doc_exists() -> None:
         "mol-metal-score-rep-variance-mcts",
     ]
     missing = [name for name in expected if name not in text]
-    assert not missing, (
-        f"Wf-321B completion doc missing NEW skill references: {missing}"
-    )
+    assert (
+        not missing
+    ), f"Wf-321B completion doc missing NEW skill references: {missing}"
 
 
 # ---------------------------------------------------------------------------
@@ -447,20 +461,18 @@ def test_r21_stub_skill_markers_present(skill_name: str) -> None:
     NOT YET CREATED, plus carry the MEASURED-vs-PROJECTED ledger."""
     text = _skill_path(skill_name).read_text(encoding="utf-8")
     assert "STUB" in text, f"{skill_name} missing STUB marker"
-    assert "NOT YET CREATED" in text, (
-        f"{skill_name} missing NOT YET CREATED marker"
-    )
-    assert "MEASURED-vs-PROJECTED" in text, (
-        f"{skill_name} missing MEASURED-vs-PROJECTED ledger"
-    )
+    assert "NOT YET CREATED" in text, f"{skill_name} missing NOT YET CREATED marker"
+    assert (
+        "MEASURED-vs-PROJECTED" in text
+    ), f"{skill_name} missing MEASURED-vs-PROJECTED ledger"
 
 
 # ---------------------------------------------------------------------------
 # T8 — Full R21 skills carry hit_rate / R² honesty gate contracts
 # ---------------------------------------------------------------------------
 FULL_SKILLS = {
-    "mol-metal-mcts-replay-learner":   ["hit_rate", "variance"],
-    "mol-metal-triangle-closure":      ["hilbert_r2", "evolutionary_r2", "variance"],
+    "mol-metal-mcts-replay-learner": ["hit_rate", "variance"],
+    "mol-metal-triangle-closure": ["hilbert_r2", "evolutionary_r2", "variance"],
 }
 
 
@@ -471,9 +483,7 @@ def test_r21_full_skill_honesty_gate_keywords(
     """Full R21 skills must carry honesty gate keywords in their body."""
     text = _skill_path(skill_name).read_text(encoding="utf-8")
     missing = [k for k in keywords if k not in text]
-    assert not missing, (
-        f"{skill_name} missing honesty gate keywords {missing}"
-    )
+    assert not missing, f"{skill_name} missing honesty gate keywords {missing}"
 
 
 # ---------------------------------------------------------------------------
@@ -484,9 +494,9 @@ def test_closure_dblock_alias_to_catherine_dblock_bench() -> None:
     by the existing ``mol-metal-catherine-dblock-bench`` skill. This test
     verifies the alias is explicit (not a missing skill)."""
     cb = _skill_path("mol-metal-catherine-dblock-bench")
-    assert cb.exists(), (
-        f"closure-dblock-bench alias (catherine-dblock-bench) missing at {cb}"
-    )
+    assert (
+        cb.exists()
+    ), f"closure-dblock-bench alias (catherine-dblock-bench) missing at {cb}"
     text = cb.read_text(encoding="utf-8")
     # Description must reference Catherine + d-block + 30-metal bench
     assert "Catherine" in text
@@ -497,9 +507,7 @@ def test_closure_dblock_alias_to_catherine_dblock_bench() -> None:
 # T10 — R21 skills are NEW per Wf-321B (created on or after 2026-09-26)
 # ---------------------------------------------------------------------------
 @pytest.mark.parametrize("skill_name,r21_phase", sorted(R21_SKILLS.items()))
-def test_r21_skill_mtime_after_wf321b(
-    skill_name: str, r21_phase: str
-) -> None:
+def test_r21_skill_mtime_after_wf321b(skill_name: str, r21_phase: str) -> None:
     """Each R21 skill's SKILL.md mtime should be on or after 2026-09-26
     (the Wf-37 / Wf-321B ship surface date)."""
     path = _skill_path(skill_name)

@@ -141,7 +141,7 @@ def test_all_wrappers_have_user_ok_gate(wrapper_name, wrapper_meta):
 
     # (b) Exit-code 64 follows the gate (Wf-294B family).
     #    Find the closest exit N after the gate match.
-    post_gate_text = text[gate_match.start():]
+    post_gate_text = text[gate_match.start() :]
     exit_match = re.search(r"exit\s+(\d+)", post_gate_text)
     assert exit_match, (
         f"{path.name}: USER_OK gate has no exit-code after it; gate may "
@@ -226,7 +226,8 @@ def test_block_order_before_dry_run(wrapper_name, wrapper_meta):
         # SKIP for USER_OK_gate. No bail-out block.
         # Verify the conditional pattern instead.
         conditional_match = re.search(
-            r"if\s+\[\[\s+\$\{DRY_RUN\}\s+-ne\s+1\s+\]\]", text,
+            r"if\s+\[\[\s+\$\{DRY_RUN\}\s+-ne\s+1\s+\]\]",
+            text,
         )
         assert conditional_match, (
             f"{path.name}: neither DRY_RUN==1 bail pattern nor DRY_RUN!=1 "
@@ -253,7 +254,7 @@ def test_block_order_before_dry_run(wrapper_name, wrapper_meta):
 
     # INVARIANT: --dry-run block contains `exit 0` (plan-only success path).
     # Find the closing `fi` of the dry-run block, then check exits inside.
-    post_dry_run_text = text[dry_run_match.start():]
+    post_dry_run_text = text[dry_run_match.start() :]
     # The dry-run block ends at the first top-level `fi` after `then`.
     # Simpler: search for `exit 0` anywhere in the dry-run block.
     # (Caveat: the dry-run block may have intermediate `exit 1` fallback

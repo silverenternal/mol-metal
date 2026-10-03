@@ -92,14 +92,14 @@ DEFAULT_HILBERT_POP_DIM: int = 8
 
 # Default PlatinAI / MetalCytoTox CSV locations (the same paths the
 # :file:`molmetal/scripts/wf_platinai_bench/` harness uses).
-DEFAULT_PLATINAI_CSV = (
-    _REPO_ROOT / "molmetal" / "data" / "platinai_5k.csv"
-)
+DEFAULT_PLATINAI_CSV = _REPO_ROOT / "molmetal" / "data" / "platinai_5k.csv"
 DEFAULT_METALCYTOTOX_CSV = (
-    Path(os.environ.get(
-        "MOLMETAL_DATA_DIR",
-        str(_REPO_ROOT / ".data" / "molmetal"),
-    ))
+    Path(
+        os.environ.get(
+            "MOLMETAL_DATA_DIR",
+            str(_REPO_ROOT / ".data" / "molmetal"),
+        )
+    )
     / "MetalCytoToxDB.csv"
 )
 
@@ -216,10 +216,14 @@ class R18Pipeline:
     hilbert_composite_: Any = field(default=None, init=False, repr=False)
     # Per-step wall-time accumulator (cleared per ``run_full_pipeline``).
     step_wall_times_: Dict[str, float] = field(
-        default_factory=dict, init=False, repr=False,
+        default_factory=dict,
+        init=False,
+        repr=False,
     )
     step_memory_mb_: Dict[str, float] = field(
-        default_factory=dict, init=False, repr=False,
+        default_factory=dict,
+        init=False,
+        repr=False,
     )
 
     # ------------------------------------------------------------------
@@ -235,6 +239,7 @@ class R18Pipeline:
         # Deterministic seed for closure + SE(3) determinism.
         try:
             import torch  # noqa: F401
+
             torch.manual_seed(int(self.seed))
         except Exception:
             pass
@@ -267,10 +272,12 @@ class R18Pipeline:
             )
             from molmetal_lam.lam_chem.rules import CuAAC
             from molmetal_lam.lam_chem.closure import ProductiveSpace
+
             # Probe with cisplatin-style seed (cheap, parseable).
             seed_smiles = "CCN=[N+]=[N-]"
             start = MoleculeClosedTerm.from_smiles(
-                seed_smiles, embed_3d=False,
+                seed_smiles,
+                embed_3d=False,
             )
             return ProductiveSpace(
                 start_term=start,
@@ -322,6 +329,7 @@ class R18Pipeline:
             from molmetal.molmetal_lam.lam_chem.multi_ph_pll_integration import (
                 MultiPHPLLSignature,
             )
+
             return MultiPHPLLSignature(
                 n_bins=int(self.multiph_n_bins),
                 k=min(8, int(self.multiph_n_bins)),
@@ -337,12 +345,14 @@ class R18Pipeline:
             from molmetal.molmetal_lam.search_alg.variance_mcts_integration import (
                 VarianceMCTSNode,
             )
+
             node = VarianceMCTSNode(
                 prior=1.0 / float(self.mcts_n_actions),
                 c_puct=1.0,
                 c_var=0.5,
                 n_min_visits=2,
-                action_priors=[1.0 / float(self.mcts_n_actions)] * int(self.mcts_n_actions),
+                action_priors=[1.0 / float(self.mcts_n_actions)]
+                * int(self.mcts_n_actions),
             )
             # Seed the node with a single visit per action so the
             # variance term activates deterministically.
@@ -358,9 +368,8 @@ class R18Pipeline:
             from molmetal.molmetal_lam.reward.hilbert_astsr_integration import (
                 HilbertASTSRComposite,
             )
-            feature_cols = tuple(
-                f"f{i}" for i in range(int(self.hilbert_pop_dim))
-            )
+
+            feature_cols = tuple(f"f{i}" for i in range(int(self.hilbert_pop_dim)))
             return HilbertASTSRComposite(
                 feature_columns=feature_cols,
                 population_dim=int(self.hilbert_pop_dim),
@@ -421,7 +430,9 @@ class R18Pipeline:
             tracemalloc.stop()
 
     def step2_se3_sb_ode(
-        self, lam_term: Any, pocket: Optional[np.ndarray] = None,
+        self,
+        lam_term: Any,
+        pocket: Optional[np.ndarray] = None,
     ) -> Dict[str, Any]:
         """Step 2 — SE(3) SB ODE integration on a small noise tensor.
 
@@ -463,7 +474,10 @@ class R18Pipeline:
                 return torch.zeros_like(x)
 
             x_final = self.se3_solver_.solve(
-                velocity_fn=_v, x0=x0, t_span=(0.0, 1.0), pocket=pocket_t,
+                velocity_fn=_v,
+                x0=x0,
+                t_span=(0.0, 1.0),
+                pocket=pocket_t,
             )
             # Orthogonality audit (cheap; reuses the inner solver).
             try:
@@ -495,7 +509,8 @@ class R18Pipeline:
             tracemalloc.stop()
 
     def step3_multiph_features(
-        self, lam_term: Any,
+        self,
+        lam_term: Any,
     ) -> Dict[str, Any]:
         """Step 3 — multi-PH + PLL signature features.
 
@@ -600,7 +615,8 @@ class R18Pipeline:
             tracemalloc.stop()
 
     def step5_hilbert_reward(
-        self, trajectory: Any,
+        self,
+        trajectory: Any,
     ) -> Dict[str, Any]:
         """Step 5 — Hilbert-ASTSR reward on a synthetic trajectory.
 
@@ -685,6 +701,7 @@ class R18Pipeline:
             # ``source_smiles`` attribute (matches MoleculeClosedTerm).
             class _NS:
                 pass
+
             ns = _NS()
             ns.source_smiles = smiles
             lam_term = ns
@@ -770,12 +787,18 @@ class R18PipelineBenchmark:
 
         per_sample: List[Dict[str, Any]] = []
         per_step_walls: Dict[str, List[float]] = {
-            "step1_closure": [], "step2_se3": [],
-            "step3_multiph": [], "step4_mcts": [], "step5_hilbert": [],
+            "step1_closure": [],
+            "step2_se3": [],
+            "step3_multiph": [],
+            "step4_mcts": [],
+            "step5_hilbert": [],
         }
         per_step_mems: Dict[str, List[float]] = {
-            "step1_closure": [], "step2_se3": [],
-            "step3_multiph": [], "step4_mcts": [], "step5_hilbert": [],
+            "step1_closure": [],
+            "step2_se3": [],
+            "step3_multiph": [],
+            "step4_mcts": [],
+            "step5_hilbert": [],
         }
         per_step_status: Dict[str, Dict[str, int]] = {
             k: {"ok": 0, "skipped": 0, "error": 0} for k in per_step_walls
@@ -784,12 +807,14 @@ class R18PipelineBenchmark:
         t_start = time.perf_counter()
         for smi, pock in zip(smiles, pockets):
             res = self.pipeline.run_full_pipeline(smi, pocket=pock)
-            per_sample.append({
-                "smiles": smi[:80],  # truncate for the report
-                "success": res["success"],
-                "total_wall_s": res["total_wall_s"],
-                "statuses": res["statuses"],
-            })
+            per_sample.append(
+                {
+                    "smiles": smi[:80],  # truncate for the report
+                    "success": res["success"],
+                    "total_wall_s": res["total_wall_s"],
+                    "statuses": res["statuses"],
+                }
+            )
             for step_name in per_step_walls:
                 step_dict = res.get(step_name, {})
                 w = float(step_dict.get("wall_time_s", 0.0))
@@ -805,8 +830,8 @@ class R18PipelineBenchmark:
         def _mean(xs: List[float]) -> float:
             return float(sum(xs) / len(xs)) if xs else 0.0
 
-        success_rate = (
-            sum(1 for r in per_sample if r["success"]) / max(1, len(per_sample))
+        success_rate = sum(1 for r in per_sample if r["success"]) / max(
+            1, len(per_sample)
         )
         return {
             "n_samples": int(len(smiles)),
@@ -921,6 +946,7 @@ def _brackets_present(smiles: str, metals: set) -> bool:
     metal bracket appears in ``smiles``.
     """
     import re as _re
+
     if not smiles:
         return False
     pattern = _re.compile(r"\[([A-Z][a-z]?)")
@@ -958,15 +984,23 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         description="R18 pipeline orchestrator — e2e benchmark runner.",
     )
-    parser.add_argument("--smoke", action="store_true",
-                        help="Run a 5-sample PlatinAI smoke + JSON dump.")
-    parser.add_argument("--n-samples", type=int, default=100,
-                        help="Sample count (default 100).")
     parser.add_argument(
-        "--dataset", choices=["platinai", "metalcytotox"], default="platinai",
+        "--smoke",
+        action="store_true",
+        help="Run a 5-sample PlatinAI smoke + JSON dump.",
     )
     parser.add_argument(
-        "--out", type=str, default=None,
+        "--n-samples", type=int, default=100, help="Sample count (default 100)."
+    )
+    parser.add_argument(
+        "--dataset",
+        choices=["platinai", "metalcytotox"],
+        default="platinai",
+    )
+    parser.add_argument(
+        "--out",
+        type=str,
+        default=None,
         help="Override the JSON output path.",
     )
     args = parser.parse_args(argv)
@@ -976,9 +1010,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         report = run_platinai_e2e(n_samples=n)
     else:
         report = run_metalcytotox_e2e(n_samples=n)
-    out_path = Path(args.out) if args.out else (
-        REPORT_DIR / f"{args.dataset}_e2e.json"
-    )
+    out_path = Path(args.out) if args.out else (REPORT_DIR / f"{args.dataset}_e2e.json")
     _write_report(report, out_path)
     print(
         f"R18 e2e: n={report['n_samples']} "

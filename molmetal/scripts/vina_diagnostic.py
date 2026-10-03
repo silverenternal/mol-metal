@@ -43,6 +43,7 @@ Constraints
 * CPU-only diagnostic — no pip install, no apt install, no network.
 * No mutation of the host. Only ``subprocess.run`` against ``--version``.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -68,7 +69,11 @@ if str(PROJECT_ROOT) not in sys.path:
 # ---------------------------------------------------------------------------
 VINA_BIN_CANDIDATES: Tuple[str, ...] = ("vina", "vina.exe", "vina-cli")
 QVINA_BIN_CANDIDATES: Tuple[str, ...] = (
-    "qvina", "qvina2", "qvina02", "qvina2.1", "qvina.exe",
+    "qvina",
+    "qvina2",
+    "qvina02",
+    "qvina2.1",
+    "qvina.exe",
 )
 
 # Env override names.
@@ -171,7 +176,7 @@ def _parse_version(stderr_text: str, stdout_text: str) -> Tuple[str, str]:
             continue
         if VINA_BANNER in line:
             prefix = f"{VINA_BANNER} "
-            return line, line[len(prefix):] if line.startswith(prefix) else line
+            return line, line[len(prefix) :] if line.startswith(prefix) else line
     return "", ""
 
 
@@ -239,12 +244,14 @@ def _resolve_from_path(candidates: Tuple[str, ...]) -> List[ProbeHit]:
         if hit is None:
             continue
         version_line, full_version, _ = hit
-        hits.append(ProbeHit(
-            path=str(Path(path).resolve()),
-            source="path",
-            version_line=version_line,
-            full_version=full_version,
-        ))
+        hits.append(
+            ProbeHit(
+                path=str(Path(path).resolve()),
+                source="path",
+                version_line=version_line,
+                full_version=full_version,
+            )
+        )
     return hits
 
 
@@ -268,18 +275,20 @@ def _resolve_from_conda_pkg_hints() -> List[ProbeHit]:
                 if hit is None:
                     continue
                 version_line, full_version, _ = hit
-                hits.append(ProbeHit(
-                    path=str(cand.resolve()),
-                    source="conda_pkg",
-                    version_line=version_line,
-                    full_version=full_version,
-                ))
+                hits.append(
+                    ProbeHit(
+                        path=str(cand.resolve()),
+                        source="conda_pkg",
+                        version_line=version_line,
+                        full_version=full_version,
+                    )
+                )
     return hits
 
 
-def _resolve_from_sweep(roots: Sequence[str] = SWEEP_ROOTS,
-                        max_depth: int = 6,
-                        limit: int = 50) -> List[ProbeHit]:
+def _resolve_from_sweep(
+    roots: Sequence[str] = SWEEP_ROOTS, max_depth: int = 6, limit: int = 50
+) -> List[ProbeHit]:
     """Bounded recursive sweep of ``/home`` + ``/opt`` for ``vina*`` executables.
 
     We bound ``max_depth`` and ``limit`` so the scan stays under
@@ -324,12 +333,14 @@ def _resolve_from_sweep(roots: Sequence[str] = SWEEP_ROOTS,
             if hit is None:
                 continue
             version_line, full_version, _ = hit
-            hits.append(ProbeHit(
-                path=resolved,
-                source="sweep",
-                version_line=version_line,
-                full_version=full_version,
-            ))
+            hits.append(
+                ProbeHit(
+                    path=resolved,
+                    source="sweep",
+                    version_line=version_line,
+                    full_version=full_version,
+                )
+            )
     return hits
 
 
@@ -357,12 +368,14 @@ def _resolve_from_project_venv() -> List[ProbeHit]:
             if hit is None:
                 continue
             version_line, full_version, _ = hit
-            hits.append(ProbeHit(
-                path=str(cand.resolve()),
-                source="venv",
-                version_line=version_line,
-                full_version=full_version,
-            ))
+            hits.append(
+                ProbeHit(
+                    path=str(cand.resolve()),
+                    source="venv",
+                    version_line=version_line,
+                    full_version=full_version,
+                )
+            )
     return hits
 
 
@@ -412,12 +425,14 @@ def _resolve_from_active_conda_envs() -> List[ProbeHit]:
                 if hit is None:
                     continue
                 version_line, full_version, _ = hit
-                hits.append(ProbeHit(
-                    path=str(cand.resolve()),
-                    source="active_conda_env",
-                    version_line=version_line,
-                    full_version=full_version,
-                ))
+                hits.append(
+                    ProbeHit(
+                        path=str(cand.resolve()),
+                        source="active_conda_env",
+                        version_line=version_line,
+                        full_version=full_version,
+                    )
+                )
     return hits
 
 
@@ -425,6 +440,7 @@ def _python_binding_version() -> Optional[str]:
     """Return the ``vina`` Python module's ``__version__`` if importable, else None."""
     try:
         import vina  # type: ignore
+
         return getattr(vina, "__version__", None)
     except Exception:
         return None
@@ -433,6 +449,7 @@ def _python_binding_version() -> Optional[str]:
 def _have_meeko() -> bool:
     try:
         import meeko  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -469,8 +486,14 @@ def _recommend_install(host: Dict[str, str]) -> List[str]:
 
 
 def _detect_pkg_mgr() -> str:
-    for cand, name in (("apt-get", "apt"), ("dnf", "dnf"), ("yum", "yum"),
-                        ("pacman", "pacman"), ("apk", "apk"), ("zypper", "zypper")):
+    for cand, name in (
+        ("apt-get", "apt"),
+        ("dnf", "dnf"),
+        ("yum", "yum"),
+        ("pacman", "pacman"),
+        ("apk", "apk"),
+        ("zypper", "zypper"),
+    ):
         if shutil.which(cand):
             return name
     return ""
@@ -573,11 +596,14 @@ def _detect_vina_binary_impl() -> DiagnosticResult:
         "platform": sys.platform,
         "python": sys.version.split()[0],
         "pkg_mgr": _detect_pkg_mgr(),
-        "has_conda": str(shutil.which("mamba") is not None
-                          or shutil.which("micromamba") is not None
-                          or shutil.which("conda") is not None).lower(),
-        "has_pip": str(shutil.which("pip") is not None
-                        or shutil.which("uv") is not None).lower(),
+        "has_conda": str(
+            shutil.which("mamba") is not None
+            or shutil.which("micromamba") is not None
+            or shutil.which("conda") is not None
+        ).lower(),
+        "has_pip": str(
+            shutil.which("pip") is not None or shutil.which("uv") is not None
+        ).lower(),
     }
 
     # Assemble the canonical "checked_paths" list expected by the wf60 schema.
@@ -641,7 +667,9 @@ def _detect_vina_binary_impl() -> DiagnosticResult:
 # CLI
 # ---------------------------------------------------------------------------
 def _parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(description=__doc__.splitlines()[1] if __doc__ else None)
+    p = argparse.ArgumentParser(
+        description=__doc__.splitlines()[1] if __doc__ else None
+    )
     p.add_argument(
         "--out-dir",
         default=str(PROJECT_ROOT / "molmetal" / "reports" / "wf84_p1_vina_diagnostic"),
@@ -653,7 +681,10 @@ def _parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         help="Also print the JSON to stdout (useful for piping).",
     )
     p.add_argument(
-        "-v", "--verbose", action="count", default=0,
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
         help="Increase logging verbosity (-v, -vv).",
     )
     return p.parse_args(argv)
@@ -662,7 +693,9 @@ def _parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = _parse_args(argv)
     level = logging.WARNING - 10 * args.verbose
-    logging.basicConfig(level=level, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    logging.basicConfig(
+        level=level, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
+    )
 
     result = detect_vina_binary()
     payload = result.as_dict()

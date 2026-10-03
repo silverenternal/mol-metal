@@ -82,12 +82,12 @@ def test_sa_prior_scores_benzene_higher_than_cisplatin():
     # Both logits are negative (or zero) — they're literally
     # -log(sa) so as long as SA > 1.0 the logit is negative.
     # For benzene SA = 1.0 (the Ertl floor) the logit is exactly 0.0.
-    assert -2.5 <= logit_benzene <= 0.5, (
-        f"benzene SA logit out of expected range: {logit_benzene}"
-    )
-    assert -2.5 <= logit_cisplatin <= 0.5, (
-        f"cisplatin SA logit out of expected range: {logit_cisplatin}"
-    )
+    assert (
+        -2.5 <= logit_benzene <= 0.5
+    ), f"benzene SA logit out of expected range: {logit_benzene}"
+    assert (
+        -2.5 <= logit_cisplatin <= 0.5
+    ), f"cisplatin SA logit out of expected range: {logit_cisplatin}"
     # And the difference is positive (benzene - cisplatin ≥ 0).
     assert logit_benzene >= logit_cisplatin
 
@@ -115,14 +115,12 @@ def test_sa_prior_zero_for_unparseable_smiles(bad_smiles):
     prior = SAPrior()
     logit = float(prior.prior_logit(bad_smiles))
     assert logit == 0.0, (
-        f"Unparseable SMILES {bad_smiles!r} must yield 0.0 logit, "
-        f"got {logit}"
+        f"Unparseable SMILES {bad_smiles!r} must yield 0.0 logit, " f"got {logit}"
     )
     # And the prior_mass helper must also degrade to 0.5 (uniform).
     mass = float(prior.prior_mass(bad_smiles))
     assert mass == 0.5, (
-        f"Unparseable SMILES {bad_smiles!r} must yield prior_mass=0.5, "
-        f"got {mass}"
+        f"Unparseable SMILES {bad_smiles!r} must yield prior_mass=0.5, " f"got {mass}"
     )
 
 
@@ -133,15 +131,18 @@ def test_sa_prior_zero_for_unparseable_smiles(bad_smiles):
 @pytest.mark.parametrize(
     "smiles,expected_sa_lo,expected_sa_hi,expect_nonzero",
     [
-        ("c1ccccc1", 1.0, 3.5, False),       # benzene → SA=1.0 (Ertl floor)
-        ("CCO", 1.0, 3.0, True),             # ethanol → SA≈2.0
+        ("c1ccccc1", 1.0, 3.5, False),  # benzene → SA=1.0 (Ertl floor)
+        ("CCO", 1.0, 3.0, True),  # ethanol → SA≈2.0
         ("CC(=O)Oc1ccccc1C(=O)O", 1.0, 3.0, True),  # aspirin → SA≈1.6
-        ("N.N.N.N.Cl.Cl.[Pt]", 4.0, 8.0, True),     # cisplatin → SA≈5-7
-        ("CCCCCCCCCCCCCCCC", 1.0, 4.0, True),       # hexadecane → SA≈1.1
+        ("N.N.N.N.Cl.Cl.[Pt]", 4.0, 8.0, True),  # cisplatin → SA≈5-7
+        ("CCCCCCCCCCCCCCCC", 1.0, 4.0, True),  # hexadecane → SA≈1.1
     ],
 )
 def test_sa_prior_logit_for_valid_smiles(
-    smiles, expected_sa_lo, expected_sa_hi, expect_nonzero,
+    smiles,
+    expected_sa_lo,
+    expected_sa_hi,
+    expect_nonzero,
 ):
     """Valid SMILES must yield a finite logit in ``(-2.5, 0.0]``
     consistent with the raw SA score being in ``[1, 10]``.
@@ -159,20 +160,18 @@ def test_sa_prior_logit_for_valid_smiles(
 
     prior = SAPrior()
     logit = float(prior.prior_logit(smiles))
-    assert math.isfinite(logit), (
-        f"valid SMILES {smiles!r} must yield finite logit"
-    )
+    assert math.isfinite(logit), f"valid SMILES {smiles!r} must yield finite logit"
     # -log(10) ≈ -2.30, -log(1) = 0.0 — the logit must be in
     # [-2.5, 0.0] for any SA in [1, 10].  We allow a tiny epsilon
     # above 0 for boundary cases (SA < 1 should never happen in
     # practice — the sascorer floor is 1.0 — but we leave slack).
-    assert -2.5 <= logit <= 0.5, (
-        f"logit for {smiles!r} out of expected (-2.5, 0.5]: {logit}"
-    )
+    assert (
+        -2.5 <= logit <= 0.5
+    ), f"logit for {smiles!r} out of expected (-2.5, 0.5]: {logit}"
     if expect_nonzero:
-        assert logit != 0.0, (
-            f"valid SMILES {smiles!r} (SA > 1) must yield non-zero logit"
-        )
+        assert (
+            logit != 0.0
+        ), f"valid SMILES {smiles!r} (SA > 1) must yield non-zero logit"
     # Recover the SA score from the logit and check it falls in the
     # expected band (a stronger property than the loose logit band).
     sa_recovered = math.exp(-logit)
@@ -239,10 +238,14 @@ def test_search_default_off_preserves_legacy_prior(monkeypatch):
     # Patch prior_logit to return a sentinel — if the SA gate ever
     # leaks, _prior will emit 9999.0 (the sentinel) instead of 0.5.
     monkeypatch.setattr(
-        SAPrior, "prior_logit", lambda self, smi: 9999.0,
+        SAPrior,
+        "prior_logit",
+        lambda self, smi: 9999.0,
     )
     monkeypatch.setattr(
-        SAPrior, "prior_mass", lambda self, smi: 0.9999,
+        SAPrior,
+        "prior_mass",
+        lambda self, smi: 0.9999,
     )
 
     state = MoleculeClosedTerm.from_smiles("c1ccccc1", embed_3d=False)
@@ -257,12 +260,8 @@ def test_search_default_off_preserves_legacy_prior(monkeypatch):
     # Without use_sa_prior=True, the search must NOT consult the
     # SAPrior at all — _prior must return the legacy cascade.
     p_off = float(search._prior(state))
-    assert p_off < 0.99, (
-        f"OFF-gate _prior leaked SA signal: {p_off} — must be < 0.99"
-    )
-    assert p_off >= 0.0, (
-        f"OFF-gate _prior emitted negative probability: {p_off}"
-    )
+    assert p_off < 0.99, f"OFF-gate _prior leaked SA signal: {p_off} — must be < 0.99"
+    assert p_off >= 0.0, f"OFF-gate _prior emitted negative probability: {p_off}"
 
 
 # ---------------------------------------------------------------------------
@@ -287,10 +286,14 @@ def test_search_use_sa_prior_true_consults_sa(monkeypatch):
     # = 0.725.  If the SA gate does NOT fire, _prior returns 0.5
     # unchanged.
     monkeypatch.setattr(
-        SAPrior, "prior_logit", lambda self, smi: math.log(0.95),
+        SAPrior,
+        "prior_logit",
+        lambda self, smi: math.log(0.95),
     )
     monkeypatch.setattr(
-        SAPrior, "prior_mass", lambda self, smi: 0.95,
+        SAPrior,
+        "prior_mass",
+        lambda self, smi: 0.95,
     )
 
     state = MoleculeClosedTerm.from_smiles("c1ccccc1", embed_3d=False)
@@ -319,9 +322,7 @@ def test_search_use_sa_prior_true_consults_sa(monkeypatch):
     )
     # And it must be ≤ 0.99 — the SA mass caps at 0.95 with the
     # default blending so the result is at most 0.5 + 0.5 * 0.45.
-    assert p_on < 0.99, (
-        f"ON-gate _prior saturated: {p_on} — SA mass is dominating"
-    )
+    assert p_on < 0.99, f"ON-gate _prior saturated: {p_on} — SA mass is dominating"
 
 
 # ---------------------------------------------------------------------------
@@ -366,6 +367,6 @@ def test_search_sa_prior_strength_zero_equals_off(monkeypatch):
     s_on0._sa_prior_obj_for_search = None
     p_on0 = float(s_on0._prior(state))
 
-    assert p_off == pytest.approx(p_on0, abs=1e-9), (
-        f"sa_prior_strength=0.0 must equal OFF: {p_off} vs {p_on0}"
-    )
+    assert p_off == pytest.approx(
+        p_on0, abs=1e-9
+    ), f"sa_prior_strength=0.0 must equal OFF: {p_off} vs {p_on0}"

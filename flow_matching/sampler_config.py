@@ -42,9 +42,7 @@ class SamplerConfig:
         if self.n_steps < 1:
             raise ValueError("`n_steps` must be >= 1.")
         if self.method not in ("euler", "rk4"):
-            raise ValueError(
-                f"`method` must be 'euler' or 'rk4'; got {self.method!r}."
-            )
+            raise ValueError(f"`method` must be 'euler' or 'rk4'; got {self.method!r}.")
         if self.t_end <= self.t_start:
             raise ValueError(
                 f"`t_end` ({self.t_end}) must be strictly greater than "

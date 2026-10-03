@@ -32,8 +32,7 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FROZEN_ARTIFACT = (
-    REPO_ROOT / "molmetal" / "reports"
-    / "wf188_m14_full_metalcytotox" / "result.json"
+    REPO_ROOT / "molmetal" / "reports" / "wf188_m14_full_metalcytotox" / "result.json"
 )
 
 STUB_VERDICT_FAIL = """import argparse, json, sys
@@ -61,6 +60,7 @@ sys.exit(1)
 
 def _pf():
     from molmetal.scripts import pre_flight_check
+
     return pre_flight_check
 
 
@@ -76,7 +76,10 @@ class TestHistoricalAnchorRelabel:
         copy.write_bytes(FROZEN_ARTIFACT.read_bytes())
         os.utime(copy, None)  # AnchorGuard freshness: copy is "now"
         res = pf.gate_cfm_smoke_decoded_historical(
-            "p1_cfm_smoke_decoded", "P1", "cfm", copy,
+            "p1_cfm_smoke_decoded",
+            "P1",
+            "cfm",
+            copy,
         )
         assert res.status == "PASS", res.evidence
         assert res.name == "p1_cfm_smoke_decoded"
@@ -95,7 +98,10 @@ class TestHistoricalAnchorRelabel:
         bad = tmp_path / "tampered.json"
         bad.write_text(json.dumps(data), encoding="utf-8")
         res = pf.gate_cfm_smoke_decoded_historical(
-            "p1_cfm_smoke_decoded", "P1", "cfm", bad,
+            "p1_cfm_smoke_decoded",
+            "P1",
+            "cfm",
+            bad,
         )
         assert res.status == "FAIL"
         assert "NOT >= 0.5" in res.evidence
@@ -104,7 +110,10 @@ class TestHistoricalAnchorRelabel:
     def test_fails_on_missing_file_with_historical_context(self, tmp_path):
         pf = _pf()
         res = pf.gate_cfm_smoke_decoded_historical(
-            "p1_cfm_smoke_decoded", "P1", "cfm", tmp_path / "nope.json",
+            "p1_cfm_smoke_decoded",
+            "P1",
+            "cfm",
+            tmp_path / "nope.json",
         )
         assert res.status == "FAIL"
         assert "HISTORICAL" in res.evidence
@@ -132,7 +141,10 @@ class TestLiveCanaryWiring:
         stub = tmp_path / "stub_verdict_fail.py"
         stub.write_text(STUB_VERDICT_FAIL, encoding="utf-8")
         res = pf.gate_cfm_live_decode_canary(
-            "p1_cfm_live_decode_canary", "P1", "cfm", stub,
+            "p1_cfm_live_decode_canary",
+            "P1",
+            "cfm",
+            stub,
             out_dir=tmp_path / "out_verdict",
         )
         assert res.status == "FAIL"
@@ -144,7 +156,10 @@ class TestLiveCanaryWiring:
         stub = tmp_path / "stub_rc1.py"
         stub.write_text(STUB_RC1, encoding="utf-8")
         res = pf.gate_cfm_live_decode_canary(
-            "p1_cfm_live_decode_canary", "P1", "cfm", stub,
+            "p1_cfm_live_decode_canary",
+            "P1",
+            "cfm",
+            stub,
             out_dir=tmp_path / "out_rc1",
         )
         assert res.status == "FAIL"
@@ -153,7 +168,9 @@ class TestLiveCanaryWiring:
     def test_missing_script_fails(self, tmp_path):
         pf = _pf()
         res = pf.gate_cfm_live_decode_canary(
-            "p1_cfm_live_decode_canary", "P1", "cfm",
+            "p1_cfm_live_decode_canary",
+            "P1",
+            "cfm",
             tmp_path / "no_such_gate.py",
             out_dir=tmp_path / "out_missing",
         )

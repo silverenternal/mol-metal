@@ -174,9 +174,11 @@ def build_click_tile(
                     conf = mol_h.GetConformer()
                     coords = torch.tensor(
                         [
-                            [conf.GetAtomPosition(i).x,
-                             conf.GetAtomPosition(i).y,
-                             conf.GetAtomPosition(i).z]
+                            [
+                                conf.GetAtomPosition(i).x,
+                                conf.GetAtomPosition(i).y,
+                                conf.GetAtomPosition(i).z,
+                            ]
                             for i in range(mol_h.GetNumAtoms())
                         ],
                         dtype=torch.float32,
@@ -190,15 +192,17 @@ def build_click_tile(
     else:
         _L6_COUNTERS["embed_fail"] += 1
 
-    return _record_tile(Tile(
-        smiles=canonical,
-        coords=coords,
-        functional_groups=list(tags),
-        sas_score=float(sas_score),
-        mw=mw,
-        logp=logp,
-        tpsa=tpsa,
-    ))
+    return _record_tile(
+        Tile(
+            smiles=canonical,
+            coords=coords,
+            functional_groups=list(tags),
+            sas_score=float(sas_score),
+            mw=mw,
+            logp=logp,
+            tpsa=tpsa,
+        )
+    )
 
 
 def build_all_click_tiles(embed_3d: bool = True) -> List[Tile]:
@@ -214,28 +218,41 @@ def build_all_click_tiles(embed_3d: bool = True) -> List[Tile]:
         # alkyl: ethyl azide
         build_click_tile("CCN=[N+]=[N-]", ["azide", "alkyl_azide"], embed_3d=embed_3d),
         # benzyl: benzyl azide
-        build_click_tile("N(=[N+]=[N-])Cc1ccccc1", ["azide", "benzyl_azide"], embed_3d=embed_3d),
+        build_click_tile(
+            "N(=[N+]=[N-])Cc1ccccc1", ["azide", "benzyl_azide"], embed_3d=embed_3d
+        ),
         # PEG: azido-PEG1-OH (HO-CH2-CH2-O-CH2-CH2-N3)
-        build_click_tile("N(=[N+]=[N-])CCOCCO", ["azide", "PEG_azide", "primary_alcohol"], embed_3d=embed_3d),
+        build_click_tile(
+            "N(=[N+]=[N-])CCOCCO",
+            ["azide", "PEG_azide", "primary_alcohol"],
+            embed_3d=embed_3d,
+        ),
         # aryl: phenyl azide
-        build_click_tile("[N-]=[N+]=Nc1ccccc1", ["azide", "aryl_azide"], embed_3d=embed_3d),
-
+        build_click_tile(
+            "[N-]=[N+]=Nc1ccccc1", ["azide", "aryl_azide"], embed_3d=embed_3d
+        ),
         # ----- 4 alkyne handles -----
         # terminal alkyne (propyne)
         build_click_tile("C#CC", ["terminal_alkyne"], embed_3d=embed_3d),
         # propargyl benzene (terminal alkyne + aryl)
-        build_click_tile("C#CCc1ccccc1", ["terminal_alkyne", "aryl"], embed_3d=embed_3d),
+        build_click_tile(
+            "C#CCc1ccccc1", ["terminal_alkyne", "aryl"], embed_3d=embed_3d
+        ),
         # cyclooctyne (true 8-ring with internal C#C — canonical SMILES: C1#CCCCCCC1)
         build_click_tile("C1CCCC#CCC1", ["cyclooctyne"], embed_3d=embed_3d),
         # propargylamine (terminal alkyne + primary amine)
-        build_click_tile("C#CCN", ["terminal_alkyne", "primary_amine"], embed_3d=embed_3d),
-
+        build_click_tile(
+            "C#CCN", ["terminal_alkyne", "primary_amine"], embed_3d=embed_3d
+        ),
         # ----- 4 partner handles -----
         build_click_tile("CP", ["methylphosphine", "phosphine"], embed_3d=embed_3d),
         build_click_tile("C1C=CC=C1", ["diene", "cyclopentadiene"], embed_3d=embed_3d),
-        build_click_tile("C=CC(=O)C", ["dienophile", "alkene", "ketone"], embed_3d=embed_3d),
-        build_click_tile("C1=CC(=O)NC1=O", ["maleimide", "thiol_ene", "imide"], embed_3d=embed_3d),
-
+        build_click_tile(
+            "C=CC(=O)C", ["dienophile", "alkene", "ketone"], embed_3d=embed_3d
+        ),
+        build_click_tile(
+            "C1=CC(=O)NC1=O", ["maleimide", "thiol_ene", "imide"], embed_3d=embed_3d
+        ),
         # ----- 2 thiol handles (Close-Loop #3 addition) -----
         # alkyl thiol: ethanethiol  HS-CH2-CH3  (canonical CCS)
         build_click_tile("CCS", ["thiol", "alkyl_thiol"], embed_3d=embed_3d),
@@ -262,11 +279,11 @@ def _ensure_built() -> List[Tile]:
 # Convenient group accessors. Each returns the corresponding slice of the
 # 12-tile library.  The lists are NEW list objects so callers cannot mutate
 # the cached library.
-def AZIDE_TILES() -> List[Tile]:    # noqa: N802 — caps for module-level API
+def AZIDE_TILES() -> List[Tile]:  # noqa: N802 — caps for module-level API
     return list(_ensure_built()[0:4])
 
 
-def ALKYNE_TILES() -> List[Tile]:   # noqa: N802
+def ALKYNE_TILES() -> List[Tile]:  # noqa: N802
     return list(_ensure_built()[4:8])
 
 
@@ -353,7 +370,9 @@ def _build_v2_partner_tiles(embed_3d: bool = True) -> List[Tile]:
         # is self-contained for callers that only import V2).
         build_click_tile("CCN=[N+]=[N-]", ["azide", "alkyl_azide"], embed_3d=embed_3d),
         # benzyl: benzyl azide (also in canonical library).
-        build_click_tile("N(=[N+]=[N-])Cc1ccccc1", ["azide", "benzyl_azide"], embed_3d=embed_3d),
+        build_click_tile(
+            "N(=[N+]=[N-])Cc1ccccc1", ["azide", "benzyl_azide"], embed_3d=embed_3d
+        ),
         # functional: 4-azidobutanoic acid (NEW — only available in V2).
         # Carboxylic acid + azide gives a bi-functional handle: it can
         # participate in CuAAC at the azide AND in amide coupling at
@@ -364,7 +383,6 @@ def _build_v2_partner_tiles(embed_3d: bool = True) -> List[Tile]:
             ["azide", "alkyl_azide", "carboxylic_acid"],
             embed_3d=embed_3d,
         ),
-
         # ----- 3 boronic acid partner handles (Suzuki-Miyaura) -----
         # aryl: phenylboronic acid.
         build_click_tile(
@@ -384,7 +402,6 @@ def _build_v2_partner_tiles(embed_3d: bool = True) -> List[Tile]:
             ["boronic_acid", "aryl_boronic", "carboxylic_acid"],
             embed_3d=embed_3d,
         ),
-
         # ----- 2 bromide partner handles (Suzuki / direct arylation) -----
         # aryl: bromobenzene.
         build_click_tile(

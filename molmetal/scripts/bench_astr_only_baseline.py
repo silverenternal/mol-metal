@@ -75,6 +75,7 @@ Pytest
 
     pytest molmetal/tests/test_astr_only_baseline.py -v
 """
+
 from __future__ import annotations
 
 import argparse
@@ -177,7 +178,9 @@ class DatasetSpec:
     n_max: int = 10000
 
 
-def _load_dataset(spec: DatasetSpec) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List[str]]:
+def _load_dataset(
+    spec: DatasetSpec,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List[str]]:
     """Return ``(X, Y, cohort_idx, cohort_names)`` for the given dataset spec.
 
     ``X`` is (n_samples, 12) float32; rows with failed SMILES are dropped.
@@ -456,7 +459,8 @@ def _evaluate_dataset(
                         "n_test": int(len(te)),
                         "r2": float(r2),
                         "collapse_detected": bool(collapse),
-                        "wall_s": float(time.perf_counter() - t0) / max(fold_idx + 1, 1)
+                        "wall_s": float(time.perf_counter() - t0)
+                        / max(fold_idx + 1, 1)
                         / max(t_idx + 1, 1),
                     }
                 )
@@ -476,8 +480,7 @@ def _evaluate_dataset(
             np.asarray(all_y_pred, dtype=np.float64),
         )
         per_target_mean = {
-            t: float(np.mean(v)) if v else 0.0
-            for t, v in fold_r2_per_target.items()
+            t: float(np.mean(v)) if v else 0.0 for t, v in fold_r2_per_target.items()
         }
         per_target_std = {
             t: float(np.std(v)) if len(v) > 1 else 0.0
@@ -721,9 +724,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     specs = _build_dataset_specs(_REPO_ROOT, args.datasets)
     all_results: List[Dict[str, Any]] = []
     for spec in specs:
-        print(
-            f"[wf77-p2] {spec.name}: loading {spec.csv_path}"
-        )
+        print(f"[wf77-p2] {spec.name}: loading {spec.csv_path}")
         result = _evaluate_dataset(
             spec,
             args.seeds,
@@ -752,9 +753,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         all_results.append(result)
     _write_synthesis(args.output, all_results)
-    print(
-        f"[wf77-p2] synthesis.md written to {args.output / 'synthesis.md'}"
-    )
+    print(f"[wf77-p2] synthesis.md written to {args.output / 'synthesis.md'}")
     return 0
 
 

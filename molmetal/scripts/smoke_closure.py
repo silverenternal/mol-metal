@@ -13,6 +13,7 @@ Usage
     uv run --no-sync python molmetal/scripts/smoke_closure.py
     uv run --no-sync python molmetal/scripts/smoke_closure.py --smiles '...'
 """
+
 from __future__ import annotations
 
 import argparse
@@ -30,34 +31,38 @@ for _p in (str(_HERE.parent), str(_REPO_ROOT)):
         sys.path.insert(0, _p)
 
 
-PARTNERS = ["C#CCN", "CCN=[N+]=[N-]", "C#CC",
-            "CS", "C=CC", "OC(=O)c1ccccc1", "NCC"]
+PARTNERS = ["C#CCN", "CCN=[N+]=[N-]", "C#CC", "CS", "C=CC", "OC(=O)c1ccccc1", "NCC"]
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     """Run the smoke closure check; return 0 on pass."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
-        "--smiles", default="[NH3][Pt]([NH3])([Cl])([Cl])",
+        "--smiles",
+        default="[NH3][Pt]([NH3])([Cl])([Cl])",
         help="SMILES to test (default: cisplatin).",
     )
     parser.add_argument("--depth", type=int, default=1)
     parser.add_argument("--max-products", type=int, default=200)
     parser.add_argument(
-        "--log-level", default="WARNING",
+        "--log-level",
+        default="WARNING",
         choices=("DEBUG", "INFO", "WARNING", "ERROR"),
     )
     args = parser.parse_args(argv)
 
     from molmetal_lam.lam_chem.closure import closure_theorem
     from molmetal_lam.lam_chem.rules import (
-        AmideCoupling, CuAAC, SPAAC, Suzuki, ThiolEne,
+        AmideCoupling,
+        CuAAC,
+        SPAAC,
+        Suzuki,
+        ThiolEne,
     )
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
 
     rules = [CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling]
-    partners = [MoleculeClosedTerm.from_smiles(s, embed_3d=False)
-                for s in PARTNERS]
+    partners = [MoleculeClosedTerm.from_smiles(s, embed_3d=False) for s in PARTNERS]
 
     try:
         t = MoleculeClosedTerm.from_smiles(args.smiles, embed_3d=False)
@@ -74,8 +79,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         ok = closure_theorem(
-            start_term=t, click_rules=rules, max_depth=args.depth,
-            max_products=args.max_products, partner_terms=partners,
+            start_term=t,
+            click_rules=rules,
+            max_depth=args.depth,
+            max_products=args.max_products,
+            partner_terms=partners,
         )
     print(f"closure_ok: {ok}")
     print(f"wall_time_s: {time.perf_counter() - t0:.4f}")

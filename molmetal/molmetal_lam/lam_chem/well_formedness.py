@@ -69,8 +69,8 @@ class WellFormednessError(ValueError):
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _bonds_consumed_by_atom(bonds: Iterable[Bond], atom_index: int,
-                            atoms: List) -> int:
+
+def _bonds_consumed_by_atom(bonds: Iterable[Bond], atom_index: int, atoms: List) -> int:
     """Return how many free sites ``atoms[atom_index]`` consumed via ``bonds``.
 
     Uses Bond.currying semantics:
@@ -108,6 +108,7 @@ def _bonds_consumed_by_atom(bonds: Iterable[Bond], atom_index: int,
 # ---------------------------------------------------------------------------
 # check_closed_term — full structural well-typedness
 # ---------------------------------------------------------------------------
+
 
 def check_closed_term(term: MoleculeClosedTerm) -> bool:
     """Verify every bond is well-typed: arity matched, no orphans, no oversat.
@@ -147,6 +148,7 @@ def check_closed_term(term: MoleculeClosedTerm) -> bool:
 # ---------------------------------------------------------------------------
 # check_arity_conservation — free-site accounting
 # ---------------------------------------------------------------------------
+
 
 def check_arity_conservation(
     bonds: Iterable[Bond],
@@ -213,7 +215,7 @@ def check_arity_conservation(
             free_after += max(0, b.free_a_before - k)
             free_after += max(0, b.free_b_before - k)
             consumed += 2 * k
-    conserved = (free_before == free_after + consumed)
+    conserved = free_before == free_after + consumed
     return {
         "n_bonds": len(bond_list),
         "free_before": free_before,
@@ -226,6 +228,7 @@ def check_arity_conservation(
 # ---------------------------------------------------------------------------
 # check_beta_normal_form — every atom saturated
 # ---------------------------------------------------------------------------
+
 
 def check_beta_normal_form(term: MoleculeClosedTerm) -> bool:
     """Verify every atom is valence-saturated (legacy arity fallback).
@@ -356,6 +359,7 @@ def check_beta_normal_form_for_rdkit_term(term) -> bool:
 # ---------------------------------------------------------------------------
 # assert_well_formed — raise on failure
 # ---------------------------------------------------------------------------
+
 
 def assert_well_formed(term: MoleculeClosedTerm) -> None:
     """Raise :class:`WellFormednessError` iff ``term`` is ill-formed.

@@ -81,6 +81,7 @@ Usage
     # Smoke (10 samples, ~2 s).
     uv run --no-sync python molmetal/scripts/closure_real_benchmark.py --n-samples 10
 """
+
 from __future__ import annotations
 
 import argparse
@@ -125,13 +126,13 @@ DEFAULT_MAX_PRODUCTS: int = 64
 #: rarely carry both halves of a click pair, so we seed the BFS with
 #: these standard tiles.  Mirrors the Wf-Lambda-4 verify fixture.
 PARTNER_SMILE_LIST: List[str] = [
-    "C#CCN",                  # propargylamine  — alkyne + amine
-    "CCN=[N+]=[N-]",          # ethyl azide     — CuAAC
-    "C#CC",                   # propyne         — CuAAC
-    "CS",                     # methanethiol    — ThiolEne
-    "C=CC",                   # propene         — ThiolEne
-    "OC(=O)c1ccccc1",         # benzoic acid    — AmideCoupling
-    "NCC",                    # ethylamine      — AmideCoupling
+    "C#CCN",  # propargylamine  — alkyne + amine
+    "CCN=[N+]=[N-]",  # ethyl azide     — CuAAC
+    "C#CC",  # propyne         — CuAAC
+    "CS",  # methanethiol    — ThiolEne
+    "C=CC",  # propene         — ThiolEne
+    "OC(=O)c1ccccc1",  # benzoic acid    — AmideCoupling
+    "NCC",  # ethylamine      — AmideCoupling
 ]
 
 
@@ -151,7 +152,9 @@ def _memory_mb(snapshot_diff: int) -> float:
 # Helpers
 # ---------------------------------------------------------------------------
 def _load_platinai_smiles(
-    csv_path: Path, n: int, *,
+    csv_path: Path,
+    n: int,
+    *,
     smiles_column: str = "smiles",
     skip_blank: bool = True,
 ) -> List[str]:
@@ -172,7 +175,9 @@ def _load_platinai_smiles(
         if smiles_column not in fields:
             log.error(
                 "Smiles column %r missing from %s; fields=%r",
-                smiles_column, csv_path, fields,
+                smiles_column,
+                csv_path,
+                fields,
             )
             return out
         for row in reader:
@@ -192,6 +197,7 @@ def _build_partner_terms() -> List[Any]:
     so the BFS doesn't pay 3D-embedding cost per partner.
     """
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
     out: List[Any] = []
     for smi in PARTNER_SMILE_LIST:
         try:
@@ -210,6 +216,7 @@ def _build_click_rules() -> List[Any]:
         Suzuki,
         ThiolEne,
     )
+
     return [CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling]
 
 
@@ -376,7 +383,9 @@ def _aggregate(records: List[Dict[str, Any]]) -> Dict[str, float]:
             "n_status_ok": 0,
         }
 
-    n_parsed = sum(1 for r in records if r["status"] != "error" or r["parse_error"] == "")
+    n_parsed = sum(
+        1 for r in records if r["status"] != "error" or r["parse_error"] == ""
+    )
     n_closure_ok = sum(1 for r in records if r["closure_ok"])
     n_status_ok = sum(1 for r in records if r["status"] == "ok")
     n_error = sum(1 for r in records if r["status"] == "error")
@@ -393,9 +402,7 @@ def _aggregate(records: List[Dict[str, Any]]) -> Dict[str, float]:
         mems = [float(r["memory_mb"]) for r in ok_records]
         mean_beta_depth = float(statistics.fmean(depths))
         mean_wall_time = float(statistics.fmean(walls))
-        std_wall_time = (
-            float(statistics.stdev(walls)) if len(walls) >= 2 else 0.0
-        )
+        std_wall_time = float(statistics.stdev(walls)) if len(walls) >= 2 else 0.0
         median_wall_time = float(statistics.median(walls))
         peak_memory_mb = float(max(mems)) if mems else 0.0
         total_wall_time = float(sum(walls))
@@ -572,10 +579,21 @@ def _write_per_sample_csv(
 ) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     fields = [
-        "idx", "smiles", "status", "closure_ok", "n_visited", "n_products",
-        "max_depth_seen", "witness_rate", "well_typed_rate",
-        "n_pt_coordinated", "n_atoms_start", "wall_time_s", "memory_mb",
-        "depth", "parse_error",
+        "idx",
+        "smiles",
+        "status",
+        "closure_ok",
+        "n_visited",
+        "n_products",
+        "max_depth_seen",
+        "witness_rate",
+        "well_typed_rate",
+        "n_pt_coordinated",
+        "n_atoms_start",
+        "wall_time_s",
+        "memory_mb",
+        "depth",
+        "parse_error",
     ]
     with dest.open("w", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=fields)
@@ -594,6 +612,7 @@ def _write_json(payload: Dict[str, Any], dest: Path) -> None:
     def _coerce(o: Any) -> Any:
         try:
             import numpy as _np  # local; cheap
+
             if isinstance(o, (_np.floating, _np.integer)):
                 return o.item()
             if isinstance(o, _np.ndarray):
@@ -627,7 +646,9 @@ def run_benchmark(
     """
     log.info(
         "[wf_closure_real] start: n_samples=%d, max_depth=%d, csv=%s",
-        int(n_samples), int(max_depth), csv_path,
+        int(n_samples),
+        int(max_depth),
+        csv_path,
     )
 
     smiles_list = _load_platinai_smiles(csv_path, n_samples)
@@ -647,7 +668,8 @@ def run_benchmark(
     records: List[Dict[str, Any]] = []
     for i, smi in enumerate(smiles_list):
         rec = _benchmark_one(
-            smi, i,
+            smi,
+            i,
             click_rules=click_rules,
             partner_terms=partner_terms,
             max_depth=max_depth,
@@ -657,7 +679,8 @@ def run_benchmark(
         if (i + 1) % 100 == 0 or i == n - 1:
             log.info(
                 "[wf_closure_real] progress %d/%d (closure_ok=%d, error=%d)",
-                i + 1, n,
+                i + 1,
+                n,
                 sum(1 for r in records if r["closure_ok"]),
                 sum(1 for r in records if r["status"] == "error"),
             )
@@ -678,6 +701,7 @@ def run_benchmark(
 
     try:
         import torch  # local; cheap
+
         torch_ver = torch.__version__
     except Exception:
         torch_ver = "n/a"
@@ -762,31 +786,43 @@ def _build_argparser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--n-samples", type=int, default=DEFAULT_N_SAMPLES,
+        "--n-samples",
+        type=int,
+        default=DEFAULT_N_SAMPLES,
         help="Number of PlatinAI samples to benchmark (default 500).",
     )
     p.add_argument(
-        "--csv-path", type=Path, default=DEFAULT_PLATINAI_CSV,
+        "--csv-path",
+        type=Path,
+        default=DEFAULT_PLATINAI_CSV,
         help="Path to PlatinAI 5K CSV.",
     )
     p.add_argument(
-        "--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR,
+        "--output-dir",
+        type=Path,
+        default=DEFAULT_OUTPUT_DIR,
         help="Output directory for benchmark.json + per_sample.csv + summary.md.",
     )
     p.add_argument(
-        "--max-depth", type=int, default=DEFAULT_MAX_DEPTH,
+        "--max-depth",
+        type=int,
+        default=DEFAULT_MAX_DEPTH,
         help="Closure BFS max depth (default 1, mirrors Wf-16 P4.1 mock).",
     )
     p.add_argument(
-        "--max-products", type=int, default=DEFAULT_MAX_PRODUCTS,
+        "--max-products",
+        type=int,
+        default=DEFAULT_MAX_PRODUCTS,
         help="ProductiveSpace BFS safety cap (default 64).",
     )
     p.add_argument(
-        "--smoke", action="store_true",
+        "--smoke",
+        action="store_true",
         help="Run a small smoke (caller controls --n-samples, e.g. 10).",
     )
     p.add_argument(
-        "--log-level", default="INFO",
+        "--log-level",
+        default="INFO",
         choices=("DEBUG", "INFO", "WARNING", "ERROR"),
     )
     return p
@@ -812,9 +848,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     log.info(
         "[wf_closure_real] DONE: n=%d closure_ok=%d success_rate=%.4f "
         "mean_wall=%.6fs peak_mem=%.2fMB total_wall=%.2fs",
-        aggregate["n_samples"], aggregate["n_closure_ok"],
+        aggregate["n_samples"],
+        aggregate["n_closure_ok"],
         aggregate["closure_success_rate"],
-        aggregate["mean_wall_time"], aggregate["peak_memory_mb"],
+        aggregate["mean_wall_time"],
+        aggregate["peak_memory_mb"],
         payload["total_wall_time_s"],
     )
     print(

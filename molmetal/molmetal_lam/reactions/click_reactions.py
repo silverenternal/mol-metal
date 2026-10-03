@@ -165,6 +165,7 @@ def _strip_dummy_atoms(mol):
 def _build_tile_from_smiles(smiles: str, tags: List[str]) -> Tile:
     """Construct a :class:`Tile` from SMILES using the standard factory."""
     from molmetal_lam.tile_lib.click_tiles import build_click_tile
+
     return build_click_tile(smiles, tags, embed_3d=False)
 
 
@@ -321,7 +322,12 @@ def _merge_two_handles(
     else:
         # Find the token; if it's enclosed in "(...)", drop the parens too.
         idx = scaffold.find(_TOK_A)
-        if idx > 0 and scaffold[idx - 1] == "(" and idx + len(_TOK_A) < len(scaffold) and scaffold[idx + len(_TOK_A)] == ")":
+        if (
+            idx > 0
+            and scaffold[idx - 1] == "("
+            and idx + len(_TOK_A) < len(scaffold)
+            and scaffold[idx + len(_TOK_A)] == ")"
+        ):
             scaffold = scaffold[: idx - 1] + scaffold[idx + len(_TOK_A) + 1 :]
         else:
             scaffold = scaffold.replace(_TOK_A, "", 1)
@@ -331,7 +337,12 @@ def _merge_two_handles(
         scaffold = scaffold.replace(_TOK_B, rest_b, 1)
     else:
         idx = scaffold.find(_TOK_B)
-        if idx > 0 and scaffold[idx - 1] == "(" and idx + len(_TOK_B) < len(scaffold) and scaffold[idx + len(_TOK_B)] == ")":
+        if (
+            idx > 0
+            and scaffold[idx - 1] == "("
+            and idx + len(_TOK_B) < len(scaffold)
+            and scaffold[idx + len(_TOK_B)] == ")"
+        ):
             scaffold = scaffold[: idx - 1] + scaffold[idx + len(_TOK_B) + 1 :]
         else:
             scaffold = scaffold.replace(_TOK_B, "", 1)
@@ -350,9 +361,7 @@ def _merge_two_handles(
 _CUAAC_TEMPLATE = "[_TOK_A]n1cc([_TOK_B])nn1"
 
 
-def click_cuaac(
-    azide_tile: Tile, alkyne_tile: Tile
-) -> List[ReactionResult]:
+def click_cuaac(azide_tile: Tile, alkyne_tile: Tile) -> List[ReactionResult]:
     """Cu(I)-catalysed azide + terminal-alkyne cycloaddition.
 
     R-N3 + R'-C≡CH  --[Cu(I)]-->  1,4-disubstituted 1,2,3-triazole
@@ -391,13 +400,15 @@ def click_cuaac(
     if canonical is None:
         return []
 
-    return [_result_from_product(
-        canonical,
-        reaction_name="CuAAC",
-        educt_a_smiles=azide_smi,
-        educt_b_smiles=alkyne_smi,
-        product_tags=["triazole", "1,4-disubstituted"],
-    )]
+    return [
+        _result_from_product(
+            canonical,
+            reaction_name="CuAAC",
+            educt_a_smiles=azide_smi,
+            educt_b_smiles=alkyne_smi,
+            product_tags=["triazole", "1,4-disubstituted"],
+        )
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -411,9 +422,7 @@ def click_cuaac(
 _SPAAC_TEMPLATE = "[_TOK_A]n1cc([_TOK_B])nn1"
 
 
-def click_spaac(
-    azide_tile: Tile, cyclooctyne_tile: Tile
-) -> List[ReactionResult]:
+def click_spaac(azide_tile: Tile, cyclooctyne_tile: Tile) -> List[ReactionResult]:
     """Strain-promoted azide + cyclooctyne cycloaddition (no copper).
 
     R-N3 + cyclooctyne-R'  -->  triazole
@@ -451,13 +460,15 @@ def click_spaac(
     if canonical is None:
         return []
 
-    return [_result_from_product(
-        canonical,
-        reaction_name="SPAAC",
-        educt_a_smiles=azide_smi,
-        educt_b_smiles=alkyne_smi,
-        product_tags=["triazole"],
-    )]
+    return [
+        _result_from_product(
+            canonical,
+            reaction_name="SPAAC",
+            educt_a_smiles=azide_smi,
+            educt_b_smiles=alkyne_smi,
+            product_tags=["triazole"],
+        )
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -469,9 +480,7 @@ def click_spaac(
 _SPC_TEMPLATE = "[_TOK_A]N=P[_TOK_B]"
 
 
-def click_spc(
-    azide_tile: Tile, phosphine_tile: Tile
-) -> List[ReactionResult]:
+def click_spc(azide_tile: Tile, phosphine_tile: Tile) -> List[ReactionResult]:
     """Staudinger phosphine-azide coupling.
 
     R-N3 + R'-P(III)  -->  R-N=P-R'  +  N2
@@ -519,13 +528,15 @@ def click_spc(
     if canonical is None:
         return []
 
-    return [_result_from_product(
-        canonical,
-        reaction_name="SPC",
-        educt_a_smiles=azide_smi,
-        educt_b_smiles=phosphine_smi,
-        product_tags=["iminophosphorane"],
-    )]
+    return [
+        _result_from_product(
+            canonical,
+            reaction_name="SPC",
+            educt_a_smiles=azide_smi,
+            educt_b_smiles=phosphine_smi,
+            product_tags=["iminophosphorane"],
+        )
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -537,9 +548,7 @@ def click_spc(
 _DA_TEMPLATE = "[_TOK_A]C1=CC([_TOK_B])CCC1"
 
 
-def click_diels_alder(
-    diene_tile: Tile, dienophile_tile: Tile
-) -> List[ReactionResult]:
+def click_diels_alder(diene_tile: Tile, dienophile_tile: Tile) -> List[ReactionResult]:
     """[4+2] Diels-Alder cycloaddition.
 
     diene + dienophile  -->  cyclohexene
@@ -577,13 +586,15 @@ def click_diels_alder(
     if canonical is None:
         return []
 
-    return [_result_from_product(
-        canonical,
-        reaction_name="DielsAlder",
-        educt_a_smiles=diene_smi,
-        educt_b_smiles=dienophile_smi,
-        product_tags=["cyclohexene"],
-    )]
+    return [
+        _result_from_product(
+            canonical,
+            reaction_name="DielsAlder",
+            educt_a_smiles=diene_smi,
+            educt_b_smiles=dienophile_smi,
+            product_tags=["cyclohexene"],
+        )
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -595,9 +606,9 @@ def click_diels_alder(
 #: :class:`Tile` arguments and returns a list of
 #: :class:`ReactionResult` (possibly empty).
 CLICK_REACTIONS: Dict[str, Callable[[Tile, Tile], List[ReactionResult]]] = {
-    "CuAAC":      click_cuaac,
-    "SPAAC":      click_spaac,
-    "SPC":        click_spc,
+    "CuAAC": click_cuaac,
+    "SPAAC": click_spaac,
+    "SPC": click_spc,
     "DielsAlder": click_diels_alder,
 }
 

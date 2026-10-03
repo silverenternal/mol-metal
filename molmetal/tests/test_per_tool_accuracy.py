@@ -26,6 +26,7 @@ Verifies the integrity of
 
 Test count target: 15 distinct checks.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -88,30 +89,36 @@ def test_dataclass_shapes() -> None:
     # ToolRecord must carry the per-tool KPIs.
     tr_fields = {f.name for f in fields(mod.ToolRecord)}
     for required in (
-        "tool", "metric", "backend", "datasets",
-        "n_calls", "n_measured", "n_adapter_unavailable",
-        "status", "accuracy", "mean_speed_s", "failure_rate",
+        "tool",
+        "metric",
+        "backend",
+        "datasets",
+        "n_calls",
+        "n_measured",
+        "n_adapter_unavailable",
+        "status",
+        "accuracy",
+        "mean_speed_s",
+        "failure_rate",
     ):
-        assert required in tr_fields, (
-            f"ToolRecord missing field {required!r}"
-        )
+        assert required in tr_fields, f"ToolRecord missing field {required!r}"
 
 
 # ---------------------------------------------------------------------------
 # 2. Registry tests — the 11 Wf-48 Phase 2 tools
 # ---------------------------------------------------------------------------
 EXPECTED_TOOLS = (
-    "vina_score",        # AutoDock Vina
-    "diffdock_pose",     # DiffDock
-    "boltz_affinity",    # Boltz-style pIC50
-    "af2_confidence",    # AF2 surrogate
-    "pb_pass_rate",      # PoseBusters
-    "aizynth_synthesis", # AiZynthFinder
-    "equibind_pose",     # EquiBind (reserved)
-    "imold_ood",         # iMoLD (reserved)
-    "drugood_ood",       # DrugOOD (reserved)
-    "pocket2mol",        # Pocket2Mol
-    "targetdiff",        # TargetDiff
+    "vina_score",  # AutoDock Vina
+    "diffdock_pose",  # DiffDock
+    "boltz_affinity",  # Boltz-style pIC50
+    "af2_confidence",  # AF2 surrogate
+    "pb_pass_rate",  # PoseBusters
+    "aizynth_synthesis",  # AiZynthFinder
+    "equibind_pose",  # EquiBind (reserved)
+    "imold_ood",  # iMoLD (reserved)
+    "drugood_ood",  # DrugOOD (reserved)
+    "pocket2mol",  # Pocket2Mol
+    "targetdiff",  # TargetDiff
 )
 
 
@@ -134,6 +141,7 @@ def test_registry_metrics_are_in_score_any() -> None:
     """Every registry metric is registered in score_any (no phantoms)."""
     mod = importlib.import_module("bench_per_tool_accuracy")
     from molmetal.scoring import available_metrics
+
     reg_metrics = {str(entry["metric"]) for entry in mod.DEFAULT_TOOL_REGISTRY}
     avail = set(available_metrics())
     missing = reg_metrics - avail
@@ -144,9 +152,9 @@ def test_registry_tools_are_unique() -> None:
     """No two registry entries share the same metric name."""
     mod = importlib.import_module("bench_per_tool_accuracy")
     metrics = [str(entry["metric"]) for entry in mod.DEFAULT_TOOL_REGISTRY]
-    assert len(metrics) == len(set(metrics)), (
-        f"duplicate metric entries in registry: {metrics}"
-    )
+    assert len(metrics) == len(
+        set(metrics)
+    ), f"duplicate metric entries in registry: {metrics}"
 
 
 # ---------------------------------------------------------------------------
@@ -203,9 +211,7 @@ def test_invoke_tool_records_adapter_unavailable() -> None:
     and the bench never fabricates a value."""
     mod = importlib.import_module("bench_per_tool_accuracy")
     # equibind_pose is reserved — score_any raises AdapterUnavailable.
-    entry = next(
-        e for e in mod.DEFAULT_TOOL_REGISTRY if e["metric"] == "equibind_pose"
-    )
+    entry = next(e for e in mod.DEFAULT_TOOL_REGISTRY if e["metric"] == "equibind_pose")
     cfg = mod.BenchConfig(
         n_tools=1,
         datasets=("platinai_5k",),
@@ -250,9 +256,15 @@ def test_aggregate_schema_is_complete() -> None:
     payload = mod.run_bench(cfg)
     agg = payload["aggregate"]
     for key in (
-        "n_tools", "n_measured", "n_not_shipped", "n_missing_dep",
-        "n_partial", "n_error",
-        "mean_accuracy", "mean_speed_s", "mean_failure_rate",
+        "n_tools",
+        "n_measured",
+        "n_not_shipped",
+        "n_missing_dep",
+        "n_partial",
+        "n_error",
+        "mean_accuracy",
+        "mean_speed_s",
+        "mean_failure_rate",
     ):
         assert key in agg, f"aggregate missing key {key!r}"
 
@@ -291,11 +303,16 @@ def test_cli_writes_per_tool_accuracy_json() -> None:
     cmd = [
         sys.executable,
         str(SCRIPTS / "bench_per_tool_accuracy.py"),
-        "--tools", "3",
-        "--datasets", "platinai_5k",
-        "--n-samples", "2",
-        "--seeds", "0",
-        "--out-dir", str(out_dir),
+        "--tools",
+        "3",
+        "--datasets",
+        "platinai_5k",
+        "--n-samples",
+        "2",
+        "--seeds",
+        "0",
+        "--out-dir",
+        str(out_dir),
     ]
     res = subprocess.run(
         cmd,
@@ -314,13 +331,15 @@ def test_cli_writes_per_tool_accuracy_json() -> None:
         text=True,
         timeout=120,
     )
-    assert res.returncode in (0, 1, 2), (
-        f"bench crashed: rc={res.returncode} stderr={res.stderr[-500:]}"
-    )
+    assert res.returncode in (
+        0,
+        1,
+        2,
+    ), f"bench crashed: rc={res.returncode} stderr={res.stderr[-500:]}"
     json_path = out_dir / "per_tool_accuracy.json"
-    assert json_path.exists(), (
-        f"per_tool_accuracy.json not written: stderr={res.stderr[-500:]}"
-    )
+    assert (
+        json_path.exists()
+    ), f"per_tool_accuracy.json not written: stderr={res.stderr[-500:]}"
     payload = json.loads(json_path.read_text())
     assert payload["recipe"] == "wf48_per_tool_accuracy"
     assert payload["tool"] == "bench_per_tool_accuracy.py"

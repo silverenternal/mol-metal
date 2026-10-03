@@ -104,7 +104,7 @@ WRAPPERS = [
         "wf_origin": "Wf-355-A1",
         "gate_value": "YES",
         "dry_run_policy": "r1_optional",  # R1 skip gate; R3 enforce
-        "mode_arg": "--mode R1",           # R1 to skip gate on dry-run
+        "mode_arg": "--mode R1",  # R1 to skip gate on dry-run
         "emits_dry_run_log": True,
     },
     {
@@ -119,7 +119,7 @@ WRAPPERS = [
         "path": SCRIPTS / "launch_wf310e_r20_p5_tmqm_plat_joint_retrain.sh",
         "wf_origin": "Wf-355-A3",
         "gate_value": "1",
-        "dry_run_policy": "strict",   # even dry-run enforces
+        "dry_run_policy": "strict",  # even dry-run enforces
         "mode_arg": None,
         "emits_dry_run_log": True,
     },
@@ -142,10 +142,10 @@ WRAPPERS = [
     {
         "path": SCRIPTS / "launch_wf124_p3_g5.sh",
         "wf_origin": "TODO-181 G5",
-        "gate_value": None,           # HONEST-NEGATIVE gap (Wf-363-A2)
+        "gate_value": None,  # HONEST-NEGATIVE gap (Wf-363-A2)
         "dry_run_policy": "no_gate",
         "mode_arg": None,
-        "emits_dry_run_log": False,   # does not source the helper
+        "emits_dry_run_log": False,  # does not source the helper
     },
     {
         "path": SCRIPTS / "recover_g6_failed_tuples.sh",
@@ -153,7 +153,7 @@ WRAPPERS = [
         "gate_value": "1",
         "dry_run_policy": "loose_bypass",  # dry-run exits before gate fires
         "mode_arg": None,
-        "emits_dry_run_log": False,         # does not source the helper
+        "emits_dry_run_log": False,  # does not source the helper
     },
 ]
 
@@ -314,9 +314,7 @@ def test_per_wrapper_dry_run_with_user_ok_works(wrapper: dict) -> None:
 # Wrappers that emit_dry_run_log via _dry_run_log_helper.sh should:
 #   - source the helper in their source code
 #   - emit a "DRY-RUN launcher for" header when invoked with --dry-run
-WRAPPERS_WITH_DRY_RUN_LOG = [
-    w for w in WRAPPERS if w["emits_dry_run_log"]
-]
+WRAPPERS_WITH_DRY_RUN_LOG = [w for w in WRAPPERS if w["emits_dry_run_log"]]
 
 
 @pytest.mark.parametrize(

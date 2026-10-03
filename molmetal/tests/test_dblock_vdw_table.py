@@ -33,6 +33,7 @@ Run with::
 
     uv run --no-sync pytest -q molmetal/tests/test_dblock_vdw_table.py --tb=short
 """
+
 from __future__ import annotations
 
 import json
@@ -72,17 +73,17 @@ def _assert_metal_in_range(table: Dict[str, Any], element: str) -> None:
     assert "r_angstrom" in record, f"{element} missing r_angstrom"
     r = record["r_angstrom"]
     assert isinstance(r, (int, float)), f"{element} r_angstrom not numeric"
-    assert _R_MIN <= r <= _R_MAX, (
-        f"{element} r_angstrom={r} outside [{_R_MIN}, {_R_MAX}]"
-    )
+    assert (
+        _R_MIN <= r <= _R_MAX
+    ), f"{element} r_angstrom={r} outside [{_R_MIN}, {_R_MAX}]"
 
     # epsilon_kcal_mol sanity
     assert "epsilon_kcal_mol" in record, f"{element} missing epsilon_kcal_mol"
     eps = record["epsilon_kcal_mol"]
     assert isinstance(eps, (int, float)), f"{element} epsilon_kcal_mol not numeric"
-    assert _EPS_MIN <= eps <= _EPS_MAX, (
-        f"{element} epsilon_kcal_mol={eps} outside [{_EPS_MIN}, {_EPS_MAX}]"
-    )
+    assert (
+        _EPS_MIN <= eps <= _EPS_MAX
+    ), f"{element} epsilon_kcal_mol={eps} outside [{_EPS_MIN}, {_EPS_MAX}]"
 
     # source_primary non-empty
     assert "source_primary" in record, f"{element} missing source_primary"

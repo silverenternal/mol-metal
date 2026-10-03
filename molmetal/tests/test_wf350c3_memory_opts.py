@@ -66,16 +66,26 @@ def test_01_gradient_checkpointing_flag_parsed_and_applied() -> None:
     )
 
     # 1) CLI parsing — flag is captured on the argparse namespace.
-    args = parse_args([
-        "--metals", "Ru", "--seeds", "0", "--epochs", "1",
-        "--gradient-checkpointing",
-    ])
+    args = parse_args(
+        [
+            "--metals",
+            "Ru",
+            "--seeds",
+            "0",
+            "--epochs",
+            "1",
+            "--gradient-checkpointing",
+        ]
+    )
     assert args.gradient_checkpointing is True
     assert args.channels_last is False
 
     # 2) Model construction — flag flows into the model constructor.
     model = MultiTaskWassersteinModel(
-        n_metals=2, hidden=8, depth=2, dropout=0.0,
+        n_metals=2,
+        hidden=8,
+        depth=2,
+        dropout=0.0,
         use_gradient_checkpointing=True,
     )
     assert model.use_gradient_checkpointing is True
@@ -94,7 +104,9 @@ def test_01_gradient_checkpointing_flag_parsed_and_applied() -> None:
     def _spy_checkpoint(fn, *args, **kwargs):
         spy_calls["n"] += 1
         # use_reentrant=False is the post-1.11 recommended setting.
-        assert kwargs.get("use_reentrant", True) is False or "use_reentrant" not in kwargs
+        assert (
+            kwargs.get("use_reentrant", True) is False or "use_reentrant" not in kwargs
+        )
         return fn(*args)
 
     model.train()  # ensures requires_grad flows
@@ -116,9 +128,7 @@ def test_01_gradient_checkpointing_flag_parsed_and_applied() -> None:
 
     # 2 valid mols in the batch — checkpoint wrapper should fire 2x.
     assert h_pool.shape == (B, 2 * 8)
-    assert spy_calls["n"] == B, (
-        f"expected {B} checkpoint calls, got {spy_calls['n']}"
-    )
+    assert spy_calls["n"] == B, f"expected {B} checkpoint calls, got {spy_calls['n']}"
     print(
         f"  [test_01] --gradient-checkpointing OK: model.use_gc="
         f"{model.use_gradient_checkpointing} checkpoint_calls="
@@ -146,16 +156,26 @@ def test_02_channels_last_flag_parsed_and_applied() -> None:
     )
 
     # 1) CLI parsing.
-    args = parse_args([
-        "--metals", "Ru", "--seeds", "0", "--epochs", "1",
-        "--channels-last",
-    ])
+    args = parse_args(
+        [
+            "--metals",
+            "Ru",
+            "--seeds",
+            "0",
+            "--epochs",
+            "1",
+            "--channels-last",
+        ]
+    )
     assert args.channels_last is True
     assert args.gradient_checkpointing is False
 
     # 2) Model construction — flag flows into the model constructor.
     model = MultiTaskWassersteinModel(
-        n_metals=2, hidden=8, depth=2, dropout=0.0,
+        n_metals=2,
+        hidden=8,
+        depth=2,
+        dropout=0.0,
         use_channels_last=True,
     )
     assert model.use_channels_last is True
@@ -177,9 +197,10 @@ def test_02_channels_last_flag_parsed_and_applied() -> None:
     # On CPU the input tensor is not channels_last (the guard skips it).
     # We assert the absence of channels_last layout to confirm the
     # no-op contract on CPU.
-    assert atom_f.is_contiguous() is True or atom_f.is_contiguous(
-        memory_format=torch.contiguous_format
-    ) is True
+    assert (
+        atom_f.is_contiguous() is True
+        or atom_f.is_contiguous(memory_format=torch.contiguous_format) is True
+    )
     print(
         f"  [test_02] --channels-last OK: model.use_cl="
         f"{model.use_channels_last} (CPU path is no-op; CUDA "
@@ -207,15 +228,25 @@ def test_03_backward_compat_default_off() -> None:
     )
 
     # CLI parsing — default OFF.
-    args = parse_args([
-        "--metals", "Ru", "--seeds", "0", "--epochs", "1",
-    ])
+    args = parse_args(
+        [
+            "--metals",
+            "Ru",
+            "--seeds",
+            "0",
+            "--epochs",
+            "1",
+        ]
+    )
     assert args.gradient_checkpointing is False
     assert args.channels_last is False
 
     # Model construction — defaults preserve Wf-131 P1 shipped shape.
     model = MultiTaskWassersteinModel(
-        n_metals=2, hidden=8, depth=2, dropout=0.0,
+        n_metals=2,
+        hidden=8,
+        depth=2,
+        dropout=0.0,
     )
     assert model.use_gradient_checkpointing is False
     assert model.use_channels_last is False
@@ -247,9 +278,9 @@ def test_03_backward_compat_default_off() -> None:
         _cp.checkpoint = _original_checkpoint
 
     assert h_pool.shape == (B, 2 * 8)
-    assert spy_calls["n"] == 0, (
-        f"expected 0 checkpoint calls when flag OFF, got {spy_calls['n']}"
-    )
+    assert (
+        spy_calls["n"] == 0
+    ), f"expected 0 checkpoint calls when flag OFF, got {spy_calls['n']}"
     print(
         f"  [test_03] backward compat OK: both flags OFF, checkpoint "
         f"calls={spy_calls['n']} (Wf-131 P1 / Wf-328-W1 / Wf-335-P3 "
@@ -276,16 +307,27 @@ def test_04_combined_flags_memory_savings() -> None:
     )
 
     # 1) CLI parsing — both flags on simultaneously.
-    args = parse_args([
-        "--metals", "Ru", "--seeds", "0", "--epochs", "1",
-        "--gradient-checkpointing", "--channels-last",
-    ])
+    args = parse_args(
+        [
+            "--metals",
+            "Ru",
+            "--seeds",
+            "0",
+            "--epochs",
+            "1",
+            "--gradient-checkpointing",
+            "--channels-last",
+        ]
+    )
     assert args.gradient_checkpointing is True
     assert args.channels_last is True
 
     # 2) Model construction — both flags wired in.
     model = MultiTaskWassersteinModel(
-        n_metals=2, hidden=8, depth=2, dropout=0.0,
+        n_metals=2,
+        hidden=8,
+        depth=2,
+        dropout=0.0,
         use_gradient_checkpointing=True,
         use_channels_last=True,
     )
@@ -320,9 +362,7 @@ def test_04_combined_flags_memory_savings() -> None:
         _cp.checkpoint = _original_checkpoint
 
     assert h_pool.shape == (B, 2 * 8)
-    assert spy_calls["n"] == B, (
-        f"expected {B} checkpoint calls, got {spy_calls['n']}"
-    )
+    assert spy_calls["n"] == B, f"expected {B} checkpoint calls, got {spy_calls['n']}"
     print(
         f"  [test_04] combined flags OK: gc+cl both ON, checkpoint "
         f"calls={spy_calls['n']} channels_last=no-op-on-CPU "

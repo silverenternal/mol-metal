@@ -145,6 +145,7 @@ def _morgan_bits(mol, n_bits: int = 1024):
         fp = AllChem.GetMorganFingerprintAsBitVect(mol, radius=2, nBits=n_bits)
         arr = np.zeros((n_bits,), dtype=np.uint8)
         from rdkit import DataStructs
+
         DataStructs.ConvertToNumpyArray(fp, arr)
         return arr
     except Exception:
@@ -215,21 +216,26 @@ def _anticancer_proxy(mol, metal_label: str) -> float:
         if n_atoms == 0:
             return 0.0
         n_rings = mol.GetRingInfo().NumRings()
-        n_aromatic = sum(1 for r in mol.GetRingInfo().AtomRings()
-                         if all(mol.GetAtomWithIdx(i).GetIsAromatic()
-                                for i in r))
+        n_aromatic = sum(
+            1
+            for r in mol.GetRingInfo().AtomRings()
+            if all(mol.GetAtomWithIdx(i).GetIsAromatic() for i in r)
+        )
         aromatic_frac = n_aromatic / max(n_rings, 1)
         # Metal base: Pt = 0.7, Pd = 0.6, Au = 0.55, others = 0.45.
         metal_base = {
-            "Pt": 0.70, "Pd": 0.60, "Au": 0.55,
-            "Ir": 0.50, "Rh": 0.45, "Ru": 0.45, "Os": 0.40,
+            "Pt": 0.70,
+            "Pd": 0.60,
+            "Au": 0.55,
+            "Ir": 0.50,
+            "Rh": 0.45,
+            "Ru": 0.45,
+            "Os": 0.40,
         }.get(str(metal_label).strip(), 0.30)
         # Structural adjustment: ring count and aromaticity boost.
         ring_bonus = min(0.20, 0.05 * n_rings)
         aromatic_bonus = 0.10 * aromatic_frac
-        return float(np.clip(
-            metal_base + ring_bonus + aromatic_bonus, 0.0, 1.0
-        ))
+        return float(np.clip(metal_base + ring_bonus + aromatic_bonus, 0.0, 1.0))
     except Exception:
         return float("nan")
 
@@ -253,8 +259,8 @@ def compute_platinai_features(
     """
     if "smiles" not in df.columns:
         raise ValueError(f"input df must have 'smiles' column; got {list(df.columns)}")
-    metal_col = df["metal"] if "metal" in df.columns else pd.Series(
-        ["unknown"] * len(df)
+    metal_col = (
+        df["metal"] if "metal" in df.columns else pd.Series(["unknown"] * len(df))
     )
 
     # Reference fingerprint (cisplatin) — used for diversity_tanimoto.
@@ -382,7 +388,8 @@ def shaper_lambda_astsr(
     info = {
         "best_r2_train": float(model.best_r2_train_),
         "complexity": int(model.best_ast_.complexity())
-        if model.best_ast_ is not None else 0,
+        if model.best_ast_ is not None
+        else 0,
     }
     return y_pred, train_seconds, info
 
@@ -413,9 +420,7 @@ def shaper_f5(
         "n_nonzero": nz,
         "formula": (
             f"{model.intercept_:.4f} + "
-            + " + ".join(
-                f"{c:+.4f}*{n}" for c, n in zip(coefs, feature_names)
-            )
+            + " + ".join(f"{c:+.4f}*{n}" for c, n in zip(coefs, feature_names))
             + f"  [LassoBIC, nz={nz}]"
         ),
     }
@@ -457,9 +462,7 @@ def make_holdout(
     df = pd.read_csv(platinai_csv)
     rng = np.random.default_rng(seed)
     if len(df) < n:
-        raise ValueError(
-            f"PlatinAI CSV has only {len(df)} rows; cannot take {n}"
-        )
+        raise ValueError(f"PlatinAI CSV has only {len(df)} rows; cannot take {n}")
     perm = rng.permutation(len(df))[:n]
     return df.iloc[perm].reset_index(drop=True)
 
@@ -495,16 +498,23 @@ def main(argv: List[str] | None = None) -> int:
         default=TRAIN_FRACTION,
     )
     parser.add_argument(
-        "--astsr-depth", type=int, default=4,
+        "--astsr-depth",
+        type=int,
+        default=4,
     )
     parser.add_argument(
-        "--astsr-population", type=int, default=64,
+        "--astsr-population",
+        type=int,
+        default=64,
     )
     parser.add_argument(
-        "--astsr-generations", type=int, default=50,
+        "--astsr-generations",
+        type=int,
+        default=50,
     )
     parser.add_argument(
-        "--quiet", action="store_true",
+        "--quiet",
+        action="store_true",
     )
     args = parser.parse_args(argv)
 
@@ -513,7 +523,9 @@ def main(argv: List[str] | None = None) -> int:
 
     print(f"[wf_coupling_ablation] reading PlatinAI 5K: {args.platinai_csv}")
     holdout = make_holdout(
-        Path(args.platinai_csv), seed=args.holdout_seed, n=args.holdout_size,
+        Path(args.platinai_csv),
+        seed=args.holdout_seed,
+        n=args.holdout_size,
     )
     print(f"[wf_coupling_ablation] hold-out rows: {len(holdout)}")
 
@@ -536,9 +548,7 @@ def main(argv: List[str] | None = None) -> int:
     train_idx, test_idx = perm[:n_train], perm[n_train:]
     X_train, X_test = X[train_idx], X[test_idx]
     y_train, y_test = y[train_idx], y[test_idx]
-    print(
-        f"[wf_coupling_ablation] split: train={len(X_train)}, test={len(X_test)}"
-    )
+    print(f"[wf_coupling_ablation] split: train={len(X_train)}, test={len(X_test)}")
 
     # ---------------- LambdaASTSR ----------------
     astsr = LambdaASTSR(
@@ -557,7 +567,8 @@ def main(argv: List[str] | None = None) -> int:
     astsr_info = {
         "best_r2_train": float(astsr.best_r2_train_),
         "complexity": int(astsr.best_ast_.complexity())
-        if astsr.best_ast_ is not None else 0,
+        if astsr.best_ast_ is not None
+        else 0,
         "depth": int(astsr.best_ast_.depth) if astsr.best_ast_ is not None else 0,
     }
     print(
@@ -567,7 +578,10 @@ def main(argv: List[str] | None = None) -> int:
 
     # ---------------- F5 (LassoLarsIC BIC) ----------------
     y_pred_f5, f5_train_seconds, f5_info = shaper_f5(
-        X_train, y_train, X_test, FEATURE_NAMES,
+        X_train,
+        y_train,
+        X_test,
+        FEATURE_NAMES,
     )
     f5_r2 = compute_r2(y_test, y_pred_f5)
     f5_rmse = rmse(y_test, y_pred_f5)
@@ -579,7 +593,8 @@ def main(argv: List[str] | None = None) -> int:
 
     # ---------------- No coupling (random baseline) ----------------
     y_pred_none, none_train_seconds, none_info = shaper_no_coupling(
-        y_train, len(X_test),
+        y_train,
+        len(X_test),
     )
     none_r2 = compute_r2(y_test, y_pred_none)
     none_rmse = rmse(y_test, y_pred_none)
@@ -648,9 +663,7 @@ def main(argv: List[str] | None = None) -> int:
         },
     }
     metrics_path = output_dir / "metrics.json"
-    metrics_path.write_text(
-        json.dumps(metrics, indent=2, allow_nan=False) + "\n"
-    )
+    metrics_path.write_text(json.dumps(metrics, indent=2, allow_nan=False) + "\n")
 
     # ---------------- Report ----------------
     report = _render_report(metrics, gate_pass)
@@ -671,8 +684,7 @@ def _render_report(m: Dict, gate_pass: bool) -> str:
     lines = [
         "# wf_coupling_ablation — coupling shaper ablation on PlatinAI 1K",
         "",
-        "**Workflow:** Lambda × CFM coupling shaper ablation "
-        "(TODO-31 §L-R17-B3)",
+        "**Workflow:** Lambda × CFM coupling shaper ablation " "(TODO-31 §L-R17-B3)",
         "**Phase:** SHIP (CPU-only)",
         f"**Date:** {m['date']}",
         f"**Data source:** `{m['data_source']}`",
@@ -692,8 +704,7 @@ def _render_report(m: Dict, gate_pass: bool) -> str:
         "",
         "## 1. Method",
         "",
-        "Three shapers fit on the 70% train split, evaluated on the 30% "
-        "test split:",
+        "Three shapers fit on the 70% train split, evaluated on the 30% " "test split:",
         "",
         "* **LambdaASTSR** — Deflexpressor-style λ-AST symbolic "
         "regression (Yu/Yang/Ren/Zhao 2026).  Bounded-depth "
@@ -718,16 +729,14 @@ def _render_report(m: Dict, gate_pass: bool) -> str:
         f"`{Path(m['data_source']).name}` with seed={m['holdout_seed']} "
         "(deterministic, no test-leakage).",
         "* Compute 5 per-molecule F5 features from RDKit:",
-        "  * `diversity_tanimoto` = 1 − Tanimoto(Morgan(mol), "
-        "Morgan(cisplatin))",
+        "  * `diversity_tanimoto` = 1 − Tanimoto(Morgan(mol), " "Morgan(cisplatin))",
         "  * `diversity_homotype` = 1 − max Tanimoto to any other "
         "cohort molecule (NN-Tanimoto uniqueness proxy)",
         "  * `qed_mean` = RDKit QED",
         "  * `anticancer_index` = deterministic metal-class + ring + "
         "aromaticity proxy",
         "  * `sa_mean_norm` = 1 − SA(Ertl) / 10, clamped to [0, 1]",
-        f"* Feature computation wall-time: "
-        f"{m['feature_seconds']:.2f}s.",
+        f"* Feature computation wall-time: " f"{m['feature_seconds']:.2f}s.",
         f"* Target: synthetic composite "
         f"`{m['target_kind']}` — a pure quadratic so "
         f"LassoLarsIC cannot recover it exactly (F5 R² plateaus "

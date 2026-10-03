@@ -68,6 +68,7 @@ Outputs
 Each JSON has the standard FLAT schema (mirror of `qed.json` /
 `m6_kappa.json`).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -107,6 +108,7 @@ try:
         vdss,
         vdss_mean,
     )
+
     _IMPORT_OK = True
     _IMPORT_ERR = None
 except Exception as exc:  # pragma: no cover — best-effort
@@ -320,9 +322,7 @@ def _emit_degraded_passthrough(
         "description": description,
         "unit": _unit_for(metric_name),
         "scope": "ADMET pass-through panel (Wf-303C T1 / Wf-312C R01 5-NEW extension)",
-        "source": (
-            "molmetal/molmetal_lam/sbdd_env/metrics_v2.py:" + metric_name
-        ),
+        "source": ("molmetal/molmetal_lam/sbdd_env/metrics_v2.py:" + metric_name),
         "value": None,
         "n_samples": int(n_total),
         "data_source": "metallo_drugs_500_train.csv",
@@ -347,7 +347,9 @@ def _unit_for(metric_name: str) -> str:
     if metric_name == "aqueous_solubility_logS":
         return "log S (mol/L); -4 = 0.1 mM; higher = more soluble"
     if metric_name == "caco2_perm":
-        return "log Papp Caco-2 (cm/s); -5.15 = well-permeable threshold; higher = better"
+        return (
+            "log Papp Caco-2 (cm/s); -5.15 = well-permeable threshold; higher = better"
+        )
     if metric_name == "bbb":
         return "logBB; >-1 = BBB-penetrating, <-1 = BBB-excluded"
     if metric_name == "clearance":
@@ -365,6 +367,7 @@ def _unit_for(metric_name: str) -> str:
 
 def _timestamp() -> str:
     import time as _t
+
     return _t.strftime("%Y-%m-%d")
 
 
@@ -437,9 +440,7 @@ def _emit_metric_json(
         "description": description,
         "unit": _unit_for(metric_name),
         "scope": "ADMET pass-through panel (Wf-303C T1 / Wf-312C R01 5-NEW extension)",
-        "source": (
-            "molmetal/molmetal_lam/sbdd_env/metrics_v2.py:" + metric_name
-        ),
+        "source": ("molmetal/molmetal_lam/sbdd_env/metrics_v2.py:" + metric_name),
         "value": (float(mean_val) if mean_val is not None else None),
         "std": (float(std_val) if std_val is not None else None),
         "n_samples": int(n_total),
@@ -451,13 +452,19 @@ def _emit_metric_json(
         "target_band": target_band,
         "verdict": verdict,
         "wf_tag": (
-            "Wf-303C T1 / R03 ADMET pass-through" if metric_name in ("ames_mutagen", "cell_permeability_logPapp", "aqueous_solubility_logS")
-            else "Wf-312C R01 ADMET 5-NEW extension" if metric_name in ("caco2_perm", "bbb", "clearance", "half_life", "vdss")
+            "Wf-303C T1 / R03 ADMET pass-through"
+            if metric_name
+            in ("ames_mutagen", "cell_permeability_logPapp", "aqueous_solubility_logS")
+            else "Wf-312C R01 ADMET 5-NEW extension"
+            if metric_name in ("caco2_perm", "bbb", "clearance", "half_life", "vdss")
             else "Wf-315A SA + QED evaluator wiring (WEAK_TO_STRONG §3.6)"
         ),
         "wf_design_ref": (
-            "molmetal/reports/wf297d_remediation_plan/remediation_plan.md §R03" if metric_name in ("ames_mutagen", "cell_permeability_logPapp", "aqueous_solubility_logS")
-            else "molmetal/reports/wf312c_admet_extension/design.md §R01" if metric_name in ("caco2_perm", "bbb", "clearance", "half_life", "vdss")
+            "molmetal/reports/wf297d_remediation_plan/remediation_plan.md §R03"
+            if metric_name
+            in ("ames_mutagen", "cell_permeability_logPapp", "aqueous_solubility_logS")
+            else "molmetal/reports/wf312c_admet_extension/design.md §R01"
+            if metric_name in ("caco2_perm", "bbb", "clearance", "half_life", "vdss")
             else "TODO/03_plans/WEAK_TO_STRONG_PLAN.md §3.6"
         ),
         "cross_check_via_metrics_v2_mean_helper": cross_check,
@@ -526,8 +533,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         output_path = args.output_dir / filename
         if not _IMPORT_OK or fn is None:
             _emit_degraded_passthrough(
-                metric_name, description, target_band,
-                output_path, n_total, _IMPORT_ERR,
+                metric_name,
+                description,
+                target_band,
+                output_path,
+                n_total,
+                _IMPORT_ERR,
             )
             print(
                 f"[wf303c-t1] DEGRADED_PASSTHROUGH: {output_path}",
@@ -536,9 +547,16 @@ def main(argv: Optional[List[str]] = None) -> int:
             continue
         parsed, n_parsed, n_failed = _compute_metric_for_smiles(smiles_list, fn)
         _emit_metric_json(
-            metric_name, description, target_band,
-            output_path, n_total, n_parsed, n_failed,
-            parsed, mean_fn, smiles_list,
+            metric_name,
+            description,
+            target_band,
+            output_path,
+            n_total,
+            n_parsed,
+            n_failed,
+            parsed,
+            mean_fn,
+            smiles_list,
         )
         mean_val = (sum(parsed) / len(parsed)) if parsed else None
         print(

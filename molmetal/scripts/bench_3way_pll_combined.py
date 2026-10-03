@@ -84,7 +84,9 @@ TEST_FRAC = 0.2
 
 
 def _load_platinai_4cell(
-    csv_path: Path, n_samples: int, seed: int,
+    csv_path: Path,
+    n_samples: int,
+    seed: int,
 ) -> Tuple[List[str], np.ndarray]:
     """Load PlatinAI 4-cell SMILES + mean log10 IC50 (real pIC50 proxy).
 
@@ -106,8 +108,10 @@ def _load_platinai_4cell(
             try:
                 vals = []
                 for col in (
-                    "ic50_mcf7_nm", "ic50_a549_nm",
-                    "ic50_a2780_nm", "ic50_a2780cis_nm",
+                    "ic50_mcf7_nm",
+                    "ic50_a549_nm",
+                    "ic50_a2780_nm",
+                    "ic50_a2780cis_nm",
                 ):
                     v = float(row.get(col) or "nan")
                     if not math.isnan(v) and v > 0:
@@ -130,7 +134,9 @@ def _load_platinai_4cell(
 
 
 def _load_metalcytotox_5metal(
-    csv_path: Path, n_samples: int, seed: int,
+    csv_path: Path,
+    n_samples: int,
+    seed: int,
 ) -> Tuple[List[str], np.ndarray]:
     """Load MetalCytoToxDB 5-metal — use activity (binary) + log-pIC50 proxy.
 
@@ -158,9 +164,9 @@ def _load_metalcytotox_5metal(
             if not smi or not met or math.isnan(act):
                 continue
             # Bypass: lift binary target off the SS_tot collapse.
-            noisy_act = act + float(np.random.default_rng(
-                hash(smi) & 0xFFFFFFFF
-            ).normal(0.0, 0.05))
+            noisy_act = act + float(
+                np.random.default_rng(hash(smi) & 0xFFFFFFFF).normal(0.0, 0.05)
+            )
             by_metal.setdefault(met, []).append((smi, noisy_act))
 
     if not by_metal:
@@ -212,8 +218,10 @@ def _ast_features(smiles_list: Sequence[str]) -> np.ndarray:
 
 
 def _multiph_features(
-    smiles_list: Sequence[str], n_bins: int = MPH_N_BINS,
-    max_radius: float = MPH_MAX_RADIUS, max_coord: float = MPH_MAX_COORD,
+    smiles_list: Sequence[str],
+    n_bins: int = MPH_N_BINS,
+    max_radius: float = MPH_MAX_RADIUS,
+    max_coord: float = MPH_MAX_COORD,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Multi-PH flattened feature map via MultiPHPLLSignature.
 
@@ -241,7 +249,8 @@ def _multiph_features(
 
 
 def _pll_features(
-    smiles_list: Sequence[str], k: int = PLL_K,
+    smiles_list: Sequence[str],
+    k: int = PLL_K,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """PLL top-k eigenvalue signature via MultiPHPLLSignature (PLL-only)."""
     from molmetal.molmetal_lam.lam_chem.multi_ph_pll_integration import (
@@ -255,10 +264,15 @@ def _pll_features(
     # a minimal n_bins=2 TwoParameterFiltration. The PLL spectrum
     # is computed independently of the multi-PH map.
     mph_min = TwoParameterFiltration(
-        max_radius=MPH_MAX_RADIUS, max_coord=MPH_MAX_COORD, n_bins=2,
+        max_radius=MPH_MAX_RADIUS,
+        max_coord=MPH_MAX_COORD,
+        n_bins=2,
     )
     sig = MultiPHPLLSignature(
-        multi_ph=mph_min, n_bins=2, k=int(k), knn=8,
+        multi_ph=mph_min,
+        n_bins=2,
+        k=int(k),
+        knn=8,
     )
 
     feats = np.zeros((len(smiles_list), k), dtype=float)
@@ -276,7 +290,9 @@ def _pll_features(
 
 
 def _stable_ridge_fit(
-    X: np.ndarray, y: np.ndarray, ridge_alpha: float = 0.1,
+    X: np.ndarray,
+    y: np.ndarray,
+    ridge_alpha: float = 0.1,
 ) -> Tuple[np.ndarray, float]:
     """Closed-form ridge regression (Wf-39 P2 / Wf-41 P1 fix).
 
@@ -305,10 +321,14 @@ def _predict(w: np.ndarray, X: np.ndarray) -> np.ndarray:
 
 
 def _train_hilbert(
-    X_train: np.ndarray, y_train: np.ndarray,
-    X_test: np.ndarray, y_test: np.ndarray,
-    hilbert_dim: int = HILBERT_DIM, lr: float = HILBERT_LR,
-    iters: int = HILBERT_ITERS, ridge_alpha: float = 0.1,
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    X_test: np.ndarray,
+    y_test: np.ndarray,
+    hilbert_dim: int = HILBERT_DIM,
+    lr: float = HILBERT_LR,
+    iters: int = HILBERT_ITERS,
+    ridge_alpha: float = 0.1,
 ) -> Tuple[float, float, float, float]:
     """Train a closed-form ridge regressor; return (R^2, train R^2, wall, mem).
 
@@ -318,7 +338,9 @@ def _train_hilbert(
     """
     t0 = time.time()
     w, train_r2 = _stable_ridge_fit(
-        X_train, y_train, ridge_alpha=float(ridge_alpha),
+        X_train,
+        y_train,
+        ridge_alpha=float(ridge_alpha),
     )
     pred_test = _predict(w, X_test)
     pred_train = _predict(w, X_train)
@@ -332,13 +354,16 @@ def _train_hilbert(
         return 1.0 - ss_res / ss_tot
 
     r2_test = float(r2(y_test, pred_test))
-    mem = float(X_train.nbytes + X_test.nbytes) / (1024 ** 2)
+    mem = float(X_train.nbytes + X_test.nbytes) / (1024**2)
     return r2_test, train_r2, wall, mem
 
 
 def _split_and_fit(
-    X: np.ndarray, y: np.ndarray, valid: np.ndarray,
-    test_frac: float = TEST_FRAC, seed: int = 0,
+    X: np.ndarray,
+    y: np.ndarray,
+    valid: np.ndarray,
+    test_frac: float = TEST_FRAC,
+    seed: int = 0,
     hilbert_dim: int = HILBERT_DIM,
 ) -> Dict[str, float]:
     """Per-seed split + fit; return metrics dict."""
@@ -362,7 +387,11 @@ def _split_and_fit(
     Xte = (Xte - mu) / sd
 
     r2_te, r2_tr, wall, mem = _train_hilbert(
-        Xtr, ytr, Xte, yte, hilbert_dim,
+        Xtr,
+        ytr,
+        Xte,
+        yte,
+        hilbert_dim,
     )
     return {
         "r2_test": float(r2_te),
@@ -378,8 +407,13 @@ def _split_and_fit(
 
 def _aggregate(records: List[Dict[str, float]]) -> Dict[str, float]:
     if not records:
-        return {"r2_mean": 0.0, "r2_std": 0.0, "wall_s_mean": 0.0,
-                "wall_s_std": 0.0, "n_seeds": 0}
+        return {
+            "r2_mean": 0.0,
+            "r2_std": 0.0,
+            "wall_s_mean": 0.0,
+            "wall_s_std": 0.0,
+            "n_seeds": 0,
+        }
     r2 = np.array([r["r2_test"] for r in records], dtype=float)
     wall = np.array([r["wall_s"] for r in records], dtype=float)
     return {
@@ -396,19 +430,26 @@ def main(argv: Sequence[str] | None = None) -> int:
         description="Wf-79 P2 3-way + PLL combined R^2 bench",
     )
     parser.add_argument(
-        "--dataset", default="platinai_4cell",
+        "--dataset",
+        default="platinai_4cell",
         choices=["platinai_4cell", "metalcytotox_5metal"],
     )
     parser.add_argument(
-        "--seeds", nargs="*", type=int, default=[0, 1, 2, 3, 4],
+        "--seeds",
+        nargs="*",
+        type=int,
+        default=[0, 1, 2, 3, 4],
     )
     parser.add_argument("--n-samples", type=int, default=200)
     parser.add_argument(
-        "--pll-k", type=int, default=PLL_K,
+        "--pll-k",
+        type=int,
+        default=PLL_K,
         help="PLL signature dim (default 16; PROJECTED 128 @ R20-P3)",
     )
     parser.add_argument(
-        "--output", default="molmetal/reports/wf79_p2_3way_pll",
+        "--output",
+        default="molmetal/reports/wf79_p2_3way_pll",
     )
     parser.add_argument("--data-csv", default=None)
     args = parser.parse_args(list(argv) if argv is not None else None)
@@ -421,29 +462,34 @@ def main(argv: Sequence[str] | None = None) -> int:
     # ---- 1. Load dataset ----
     if args.data_csv is None:
         if args.dataset == "platinai_4cell":
-            args.data_csv = str(
-                PROJ_ROOT / "molmetal" / "data" / "platinai_4cell.csv"
-            )
+            args.data_csv = str(PROJ_ROOT / "molmetal" / "data" / "platinai_4cell.csv")
         else:
             args.data_csv = str(
-                PROJ_ROOT / "molmetal" / "data" /
-                "metalcytotox_5metal_multitask_v4.csv"
+                PROJ_ROOT / "molmetal" / "data" / "metalcytotox_5metal_multitask_v4.csv"
             )
     LOGGER.info(
         "Loading %s from %s (n=%d, seed=42)…",
-        args.dataset, args.data_csv, args.n_samples,
+        args.dataset,
+        args.data_csv,
+        args.n_samples,
     )
     if args.dataset == "platinai_4cell":
         smiles, y = _load_platinai_4cell(
-            Path(args.data_csv), args.n_samples, seed=42,
+            Path(args.data_csv),
+            args.n_samples,
+            seed=42,
         )
     else:
         smiles, y = _load_metalcytotox_5metal(
-            Path(args.data_csv), args.n_samples, seed=42,
+            Path(args.data_csv),
+            args.n_samples,
+            seed=42,
         )
     LOGGER.info(
         "Loaded %d valid rows (target mean=%.3f, std=%.3f).",
-        len(smiles), float(np.mean(y)), float(np.std(y)),
+        len(smiles),
+        float(np.mean(y)),
+        float(np.std(y)),
     )
 
     # ---- 2. Extract three feature streams ----
@@ -457,7 +503,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     mph, mph_valid = _multiph_features(smiles, n_bins=MPH_N_BINS)
     LOGGER.info(
         "Multi-PH features shape=%s, valid=%d/%d, wall=%.2fs",
-        mph.shape, int(mph_valid.sum()), len(smiles), time.time() - t0,
+        mph.shape,
+        int(mph_valid.sum()),
+        len(smiles),
+        time.time() - t0,
     )
 
     LOGGER.info("Extracting PLL %d-d features…", args.pll_k)
@@ -465,14 +514,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     pll, pll_valid = _pll_features(smiles, k=args.pll_k)
     LOGGER.info(
         "PLL features shape=%s, valid=%d/%d, wall=%.2fs",
-        pll.shape, int(pll_valid.sum()), len(smiles), time.time() - t0,
+        pll.shape,
+        int(pll_valid.sum()),
+        len(smiles),
+        time.time() - t0,
     )
 
     # Combined validity mask.
     combined_valid = mph_valid & pll_valid
     LOGGER.info(
         "Combined valid mask: %d/%d samples",
-        int(combined_valid.sum()), len(smiles),
+        int(combined_valid.sum()),
+        len(smiles),
     )
 
     # ---- 3. Build 5 method designs ----
@@ -489,13 +542,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     # ast_s (12-d) × pll_s (k-d) is broadcast-incompatible; instead
     # we add squared PLL terms and a polynomial-only ASTSR×PLL
     # cross-term after projection to matching dim.
-    pll_sq = pll_s ** 2
+    pll_sq = pll_s**2
     # Match dim by stacking ast_s (broadcast) + pll_s — only the
     # first 12 columns of pll_s so we can cross with ast_s.
     k_cross = min(ast_s.shape[1], pll_s.shape[1])
     ast_pll_cross = ast_s[:, :k_cross] * pll_s[:, :k_cross]
     X_3way_pll_aug = np.concatenate(
-        [X_3way, pll_sq, ast_pll_cross], axis=1,
+        [X_3way, pll_sq, ast_pll_cross],
+        axis=1,
     )
     # Joint = ASTSR + Multi-PH (Wf-21 P5 reference)
     X_joint = np.concatenate([ast_s, mph_s], axis=1)
@@ -519,7 +573,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 per_seed[method_name].append(rec)
                 LOGGER.info(
                     "  seed=%d  r2_test=%+.4f  wall=%.3fs",
-                    seed, rec["r2_test"], rec["wall_s"],
+                    seed,
+                    rec["r2_test"],
+                    rec["wall_s"],
                 )
             except Exception as exc:
                 LOGGER.warning("  seed=%d failed: %s", seed, exc)
@@ -533,14 +589,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     if "3way" in summary and "3way_pll_aug" in summary:
         summary["delta_3way_pll_aug_vs_3way"] = {
             "r2_lift": float(
-                summary["3way_pll_aug"]["r2_mean"]
-                - summary["3way"]["r2_mean"]
+                summary["3way_pll_aug"]["r2_mean"] - summary["3way"]["r2_mean"]
             ),
             "r2_lift_pct": float(
-                100.0 * (
-                    summary["3way_pll_aug"]["r2_mean"]
-                    - summary["3way"]["r2_mean"]
-                )
+                100.0
+                * (summary["3way_pll_aug"]["r2_mean"] - summary["3way"]["r2_mean"])
                 / max(1e-6, abs(summary["3way"]["r2_mean"]))
             ),
         }
@@ -548,8 +601,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if "3way" in summary and "pll_only" in summary:
         summary["delta_3way_vs_pll_only"] = {
             "r2_lift": float(
-                summary["3way"]["r2_mean"]
-                - summary["pll_only"]["r2_mean"]
+                summary["3way"]["r2_mean"] - summary["pll_only"]["r2_mean"]
             ),
         }
 
@@ -572,7 +624,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "per_method": per_seed,
                 "summary": summary,
             },
-            fh, indent=2,
+            fh,
+            indent=2,
         )
     LOGGER.info("Wrote per_seed_metrics.json → %s", per_seed_path)
 

@@ -93,6 +93,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -119,6 +120,7 @@ import torch.optim as optim
 
 # Wf-50 precondition: route loaders to project-local .data
 import os as _wf50_os
+
 _wf50_default_data = PROJECT_ROOT / ".data" / "molmetal"
 if not _wf50_os.environ.get("MOLMETAL_DATA_DIR") and _wf50_default_data.exists():
     _wf50_os.environ["MOLMETAL_DATA_DIR"] = str(_wf50_default_data)
@@ -201,9 +203,7 @@ def emit_event(event_type: str, **fields) -> None:
     if _EVENT_ENABLED:
         print(line, flush=True)
     else:
-        msg = " ".join(
-            f"{k}={payload[k]}" for k in sorted(payload) if k != "ts"
-        )
+        msg = " ".join(f"{k}={payload[k]}" for k in sorted(payload) if k != "ts")
         print(f"[EVENT {event_type}] {msg}", flush=True)
     if _EVENT_LOG_PATH is not None:
         global _EVENT_FH
@@ -312,9 +312,7 @@ def build_lr_scheduler(
         warmup = LinearLR(
             optimizer, start_factor=0.01, end_factor=1.0, total_iters=warmup_steps
         )
-        cosine = CosineAnnealingLR(
-            optimizer, T_max=cosine_steps, eta_min=float(min_lr)
-        )
+        cosine = CosineAnnealingLR(optimizer, T_max=cosine_steps, eta_min=float(min_lr))
         if warmup_steps == 0:
             return cosine
         return SequentialLR(
@@ -343,9 +341,9 @@ def build_lr_scheduler(
 # knows the molecules (deferred to TODO-207 Wf-299 USER_OK-gated per
 # AGENTS.md §5.1).
 _CFM_CACHE_SMOKES: Tuple[str, ...] = (
-    "c1ccccc1",     # benzene
-    "C",           # methane
-    "CCO",         # ethanol
+    "c1ccccc1",  # benzene
+    "C",  # methane
+    "CCO",  # ethanol
     "C1=CCNC=C1",  # pyridine
 )
 # Tier-2 batch slicing: 2 batches of 2 SMILES each.
@@ -381,12 +379,8 @@ def _cwm_dummy_batch_molgraph_ctor(mgs):
         pass
 
     out = _StubBatchMG()
-    out.V = _torch.from_numpy(
-        _np.concatenate(Vs, axis=0) if Vs else _np.zeros((0, 72))
-    )
-    out.E = _torch.from_numpy(
-        _np.concatenate(Es, axis=0) if Es else _np.zeros((0, 14))
-    )
+    out.V = _torch.from_numpy(_np.concatenate(Vs, axis=0) if Vs else _np.zeros((0, 72)))
+    out.E = _torch.from_numpy(_np.concatenate(Es, axis=0) if Es else _np.zeros((0, 14)))
 
     offset = 0
     atom_offsets: list = []
@@ -419,6 +413,7 @@ def _cwm_dummy_batch_molgraph_ctor(mgs):
 _BatchMolGraphCtor = _cwm_dummy_batch_molgraph_ctor
 try:
     from chemprop.data.molgraph import BatchMolGraph as _BatchMolGraphCtorReal
+
     _BatchMolGraphCtor = _BatchMolGraphCtorReal
 except ImportError:
     pass
@@ -435,7 +430,8 @@ def _device_safe_z_to_onehot(z: torch.Tensor) -> torch.Tensor:
     """
     z_table = torch.tensor(
         list(_YUELBOND_Z_TABLE),
-        dtype=z.dtype, device=z.device,
+        dtype=z.dtype,
+        device=z.device,
     )
     # For each atomic number in z, find its index in z_table.
     # Use searchsorted — assumes z_table is sorted ascending; check
@@ -450,7 +446,8 @@ def _device_safe_z_to_onehot(z: torch.Tensor) -> torch.Tensor:
     if bool(found.any()):
         idx[found] = pos[found]
     return torch.nn.functional.one_hot(
-        idx, num_classes=len(_YUELBOND_Z_TABLE),
+        idx,
+        num_classes=len(_YUELBOND_Z_TABLE),
     ).float()
 
 
@@ -458,6 +455,7 @@ def _device_safe_z_to_onehot(z: torch.Tensor) -> torch.Tensor:
 # model is on (the original ``_z_to_onehot`` rounds through CPU, and
 # the original ``forward`` builds the upper-triangle pair index on CPU).
 import molmetal.molmetal_lam.lam_chem.yuelbond_decoder as _yb_mod  # noqa: E402
+
 _yb_mod._z_to_onehot = _device_safe_z_to_onehot  # type: ignore[attr-defined]
 
 
@@ -529,12 +527,17 @@ def _device_safe_yuelbond_forward(
         msg = self.msg_mlps[k](msg_in)
         h = h.clone()
         h = h + torch.zeros_like(h).index_add_(
-            0, i_idx, _F.relu(msg),
+            0,
+            i_idx,
+            _F.relu(msg),
         ).index_add_(0, j_idx, _F.relu(msg))
     pair_in = torch.cat(
         [
-            h[i_idx], h[j_idx],
-            d.unsqueeze(-1), is_dative, is_short,
+            h[i_idx],
+            h[j_idx],
+            d.unsqueeze(-1),
+            is_dative,
+            is_short,
         ],
         dim=-1,
     )
@@ -572,6 +575,7 @@ from molmetal.models.bond_head import (
 try:
     from rdkit import Chem
     from rdkit import RDLogger as _RD
+
     _RD.DisableLog("rdApp.*")
     RDKIT_AVAILABLE = True
 except Exception:  # pragma: no cover
@@ -647,12 +651,25 @@ class CFMJointModel(nn.Module):
         hidden_dim: int = DEFAULT_HIDDEN_DIM,
         n_layers: int = DEFAULT_N_LAYERS,
         z_table: Sequence[int] = (
-            0, 1, 6, 7, 8, 9, 15, 16, 17, 34, 35, 53, 78,
+            0,
+            1,
+            6,
+            7,
+            8,
+            9,
+            15,
+            16,
+            17,
+            34,
+            35,
+            53,
+            78,
         ),
     ) -> None:
         super().__init__()
         self.head = YuelBondDecoderHead(
-            hidden_dim=hidden_dim, n_layers=n_layers,
+            hidden_dim=hidden_dim,
+            n_layers=n_layers,
         )
         self.z_dim = len(z_table)
         self.z_table = list(z_table)
@@ -685,7 +702,8 @@ class CFMJointModel(nn.Module):
         z = cloud.atomic_numbers.tolist()
         idx = torch.tensor(
             [self.z_to_idx.get(int(zi), 0) for zi in z],
-            dtype=torch.long, device=cloud.positions.device,
+            dtype=torch.long,
+            device=cloud.positions.device,
         )
         z_oh = F.one_hot(idx, num_classes=self.z_dim).float()
         feats = torch.cat([z_oh, cloud.positions.float()], dim=-1)
@@ -745,14 +763,17 @@ def _bond_target_for_clean_cloud(cloud: AtomCloud, head=None):
     from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (
         YuelBondDecoder,
     )
+
     if head is not None:
         dec = YuelBondDecoder(
-            head=head, hidden_dim=DEFAULT_HIDDEN_DIM,
+            head=head,
+            hidden_dim=DEFAULT_HIDDEN_DIM,
             n_layers=DEFAULT_N_LAYERS,
         )
     else:
         dec = YuelBondDecoder(
-            head=None, hidden_dim=DEFAULT_HIDDEN_DIM,
+            head=None,
+            hidden_dim=DEFAULT_HIDDEN_DIM,
             n_layers=DEFAULT_N_LAYERS,
         )
     yres = dec.featurise(cloud)
@@ -937,7 +958,7 @@ def train_one_epoch(
     rng = np.random.default_rng(seed=int(time.time()) % (2**31 - 1))
     order = rng.permutation(n_train).tolist()
     for batch_start in range(0, n_train, batch_size):
-        batch_indices = order[batch_start:batch_start + batch_size]
+        batch_indices = order[batch_start : batch_start + batch_size]
         if not batch_indices:
             continue
         # Accumulate per-batch loss.
@@ -958,7 +979,8 @@ def train_one_epoch(
             batch_clouds.append(cloud)
             logits, velocities = model(cloud)
             tgt_logits, tgt_y = _bond_target_for_clean_cloud(
-                cloud, head=model.head,
+                cloud,
+                head=model.head,
             )
             if tgt_y is None or tgt_logits is None:
                 continue
@@ -988,6 +1010,7 @@ def train_one_epoch(
                 from molmetal.scripts.wf380a2_m2_r2_per_cohort import (
                     select_features,
                 )
+
                 _pc = select_features(int(len(train_clouds)))
                 _alpha = float(_pc.get("alpha", 0.0))
                 # Clamp alpha to [0.0, 0.9] — alpha >= 1.0 collapses
@@ -995,7 +1018,9 @@ def train_one_epoch(
                 # eliminates the signal.
                 _ls = max(0.0, min(0.9, _alpha))
                 bond_ce = F.cross_entropy(
-                    all_logits, all_targets, label_smoothing=_ls,
+                    all_logits,
+                    all_targets,
+                    label_smoothing=_ls,
                 )
                 # Side-channel audit log (printed once per epoch).
                 if not hasattr(train_one_epoch, "_pc_logged") or (
@@ -1027,13 +1052,15 @@ def train_one_epoch(
                 from molmetal.adapters.flow_matching_lipman import (
                     stable_vm as _svm,
                 )
+
                 vel_stub = torch.cat(batch_velocities, dim=0)
                 # stable_vm_loss takes (pred, target) velocity probes;
                 # all_logits & all_targets are bond logits — use
                 # stable_vm_loss on logits as a drop-in replacement
                 # (it computes the multi-scale mixture MSE).
                 bond_ce = _svm.stable_vm_loss(
-                    all_logits, torch.zeros_like(all_logits),
+                    all_logits,
+                    torch.zeros_like(all_logits),
                 )
             except Exception:
                 # Defensive: fall back to legacy F.cross_entropy so
@@ -1063,6 +1090,7 @@ def train_one_epoch(
                         from molmetal.adapters.flow_matching_lipman import (
                             optimal_transport_v2_solver as _ot_v2,
                         )
+
                         w2_val = _ot_v2.ot_solver(vel, ref)
                     except Exception:
                         # Defensive fallback to legacy wasserstein_loss.
@@ -1078,6 +1106,7 @@ def train_one_epoch(
                         from molmetal.adapters.flow_matching_lipman import (
                             optimal_transport_v2_solver as _ot_v2,
                         )
+
                         w2_val = _ot_v2.ot_solver(vel, vel.detach())
                     except Exception:
                         w2_val = wasserstein_loss(vel, vel.detach())
@@ -1158,17 +1187,17 @@ def train_one_epoch(
                         ref = reference_positions.to(device)
                         n_vel = vel.shape[0]
                         if ref.shape[0] < n_vel:
-                            ref = ref.repeat(
-                                (n_vel // ref.shape[0] + 1, 1)
-                            )[:n_vel]
+                            ref = ref.repeat((n_vel // ref.shape[0] + 1, 1))[:n_vel]
                         # RBF sigma via median-heuristic (Gretton 2012 §6).
                         with torch.no_grad():
                             _sigma = float(
                                 torch.cdist(vel, ref).median().clamp(min=1e-3)
                             )
                         mmd_val = _ds.mmd_loss(
-                            vel.detach(), ref.detach(),
-                            sigma=_sigma, unbiased=False,
+                            vel.detach(),
+                            ref.detach(),
+                            sigma=_sigma,
+                            unbiased=False,
                         )
                         diversity_term = diversity_term + mmd_weight * mmd_val
                 # --- (c) Repulsion loss (Wf-388-A2 §3) ---
@@ -1178,11 +1207,11 @@ def train_one_epoch(
                     vel = torch.cat(batch_velocities, dim=0)
                     if vel.shape[0] >= 2:
                         rep_val = _ds.repulsion_loss(
-                            vel.detach(), margin=0.95, reduce=True,
+                            vel.detach(),
+                            margin=0.95,
+                            reduce=True,
                         )
-                        diversity_term = (
-                            diversity_term + repulsion_weight * rep_val
-                        )
+                        diversity_term = diversity_term + repulsion_weight * rep_val
                 # --- (d) Scaffold conditioning (Wf-388-A2 §4) ---
                 # Apply scaffold_condition to logits before bond-CE.
                 # scaffold_bias=None is the bit-exact identity path
@@ -1196,7 +1225,9 @@ def train_one_epoch(
                     batch_n = all_logits.shape[0]
                     if all_logits.dim() == 2:
                         scaffold_idx = torch.zeros(
-                            batch_n, dtype=torch.long, device=device,
+                            batch_n,
+                            dtype=torch.long,
+                            device=device,
                         )
                         scaffold_bias = torch.zeros(
                             (256, all_logits.shape[-1]),
@@ -1204,8 +1235,10 @@ def train_one_epoch(
                             device=device,
                         )
                         conditioned = _sc.scaffold_condition(
-                            all_logits, scaffold_idx,
-                            n_scaffolds=256, scaffold_bias=scaffold_bias,
+                            all_logits,
+                            scaffold_idx,
+                            n_scaffolds=256,
+                            scaffold_bias=scaffold_bias,
                         )
                         # Re-compute bond-CE on conditioned logits.
                         # This is the audit anchor for the Wf-388-A2
@@ -1247,7 +1280,9 @@ def train_one_epoch(
             if _sa_scores is not None and len(_sa_scores) > 0:
                 try:
                     _sa_pen = sa_aware_sampling_penalty(
-                        _sa_scores, target_sa=_sa_target, sa_weight=_sa_weight_internal,
+                        _sa_scores,
+                        target_sa=_sa_target,
+                        sa_weight=_sa_weight_internal,
                     )
                     sa_loss = torch.tensor(
                         float(_sa_pen.mean()),
@@ -1287,9 +1322,9 @@ def train_one_epoch(
                 # TODO-207 Wf-299 launch USER_OK-gated per AGENTS.md
                 # §5.1).
                 _PLL_SMOKES = (
-                    "c1ccccc1",     # benzene
-                    "C",           # methane
-                    "CCO",         # ethanol
+                    "c1ccccc1",  # benzene
+                    "C",  # methane
+                    "CCO",  # ethanol
                     "C1=CCNC=C1",  # pyridine
                 )
                 _pll_features_batch = []
@@ -1323,17 +1358,14 @@ def train_one_epoch(
                     _pll_features_batch.append(float(_fv.mean()))
                 if _pll_features_batch:
                     _pll_mean = float(np.mean(_pll_features_batch))
-                    pll_term = (
-                        torch.tensor(
-                            float(_pll_weight),
-                            dtype=torch.float32,
-                            device=device,
-                        )
-                        * torch.tensor(
-                            _pll_mean,
-                            dtype=torch.float32,
-                            device=device,
-                        )
+                    pll_term = torch.tensor(
+                        float(_pll_weight),
+                        dtype=torch.float32,
+                        device=device,
+                    ) * torch.tensor(
+                        _pll_mean,
+                        dtype=torch.float32,
+                        device=device,
                     )
             except Exception:
                 # Defensive: never let the PLL term raise; fall back
@@ -1355,10 +1387,12 @@ def train_one_epoch(
         if shortcut_distill:
             try:
                 import torch as _t
+
                 if _t.cuda.is_available() and batch_velocities:
                     from molmetal.adapters.flow_matching_lipman import (
                         shortcut_distillation as _sd,
                     )
+
                     # CPU-safe short-circuit: stub distillation loss on
                     # a synthetic teacher-student pair (zero-grad
                     # teacher).  PROJECTED p_distill=0.5 → ~10-20%
@@ -1370,17 +1404,14 @@ def train_one_epoch(
                         if reference_positions is not None
                         else torch.zeros(_b, 3, device=device)
                     )
-                    shortcut_distill_loss = (
-                        torch.tensor(
-                            float(_p_distill),
-                            dtype=torch.float32,
-                            device=device,
-                        )
-                        * torch.tensor(
-                            0.0,
-                            dtype=torch.float32,
-                            device=device,
-                        )
+                    shortcut_distill_loss = torch.tensor(
+                        float(_p_distill),
+                        dtype=torch.float32,
+                        device=device,
+                    ) * torch.tensor(
+                        0.0,
+                        dtype=torch.float32,
+                        device=device,
                     )
             except Exception:
                 # Defensive: fall back to zero contribution.
@@ -1396,22 +1427,20 @@ def train_one_epoch(
                 from molmetal.adapters.flow_matching_lipman import (
                     consistency_regularization as _cr,
                 )
+
                 # CPU-safe scaffold: set weight to 0 (the user's
                 # consistency_weight multiplier is applied below) so
                 # the loss contribution collapses to zero unless the
                 # SCAFFOLD module is FULLY wired (CPU-only short-circuit
                 # preserves bit-for-bit backward compat).
-                consistency_term = (
-                    torch.tensor(
-                        float(consistency_weight),
-                        dtype=torch.float32,
-                        device=device,
-                    )
-                    * torch.tensor(
-                        0.0,
-                        dtype=torch.float32,
-                        device=device,
-                    )
+                consistency_term = torch.tensor(
+                    float(consistency_weight),
+                    dtype=torch.float32,
+                    device=device,
+                ) * torch.tensor(
+                    0.0,
+                    dtype=torch.float32,
+                    device=device,
                 )
             except Exception:
                 consistency_term = torch.zeros((), device=device)
@@ -1440,25 +1469,23 @@ def train_one_epoch(
                 from molmetal.adapters.flow_matching_lipman import (
                     so3_average as _so3,
                 )
+
                 vel = torch.cat(batch_velocities, dim=0)
                 # Use bond_ce.detach() as the pred_fn surrogate — for the
                 # velocity loss this is a closed-form MSE-equivalent
                 # SCAFFOLD that exercises the rotation code path.
-                so3_term = (
-                        torch.tensor(
-                            float(so3_average_weight),
-                            dtype=torch.float32,
-                            device=device,
-                        )
-                        * _so3.so3_average_loss(
-                            pred_fn=lambda x: vel.detach().expand(
-                                x.shape[0], *vel.shape[1:]
-                            )[:, : vel.shape[-1]],
-                            x_t=vel.detach(),
-                            target=vel.detach(),
-                            n_rotations=2,
-                        )
-                    )
+                so3_term = torch.tensor(
+                    float(so3_average_weight),
+                    dtype=torch.float32,
+                    device=device,
+                ) * _so3.so3_average_loss(
+                    pred_fn=lambda x: vel.detach().expand(x.shape[0], *vel.shape[1:])[
+                        :, : vel.shape[-1]
+                    ],
+                    x_t=vel.detach(),
+                    target=vel.detach(),
+                    n_rotations=2,
+                )
             except Exception:
                 so3_term = torch.zeros((), device=device)
         # (b) log_normal_t — Karras 2022 NeurIPS arXiv:2206.00364 log-
@@ -1475,6 +1502,7 @@ def train_one_epoch(
                 from molmetal.adapters.flow_matching_lipman import (
                     log_normal_t as _lnt,
                 )
+
                 _t = _lnt.log_normal_t_sampling(
                     batch_size=max(int(all_logits.shape[0]), 1),
                     mu=float(log_normal_t_mu),
@@ -1499,6 +1527,7 @@ def train_one_epoch(
                 from molmetal.adapters.flow_matching_lipman import (
                     edm_preconditioning as _edm,
                 )
+
                 vel = torch.cat(batch_velocities, dim=0)
                 # Synthetic sigma schedule: log-normal per Karras §4.3.
                 _sigma = torch.full(
@@ -1528,6 +1557,7 @@ def train_one_epoch(
                 from molmetal.scripts.wf392a2_chemprop_v3_cache_wire import (
                     set_cache_enabled,
                 )
+
                 set_cache_enabled(True)
             except Exception:
                 chemprop_v3_cache_term = torch.zeros((), device=device)
@@ -1545,6 +1575,7 @@ def train_one_epoch(
                 from molmetal.scripts.wf382a2_chemprop_v3_featurization_cache import (  # noqa: E501
                     ChempropV3FeaturizationCache as _Wf409a2Cache,
                 )
+
                 _wf409a2_cache = _Wf409a2Cache(use_fast_featurizer=False)
                 # Tier 1: pre-featurise the deterministic 4-SMILES smoke
                 # cohort exactly once per epoch (idempotent — tier-1
@@ -1585,9 +1616,9 @@ def train_one_epoch(
             # backward compat with Wf-243..Wf-252 HEAD + Wf-388-A2/A3
             # + Wf-405-A2 + Wf-406-A2 + Wf-409-A1 baseline is preserved
             # bit-for-bit when no flag is set on the CLI.
-            + so3_term                # Wf-408-A2 so3_average
-            + log_normal_t_term       # Wf-408-A2 log_normal_t
-            + edm_term                # Wf-408-A2 edm_preconditioning
+            + so3_term  # Wf-408-A2 so3_average
+            + log_normal_t_term  # Wf-408-A2 log_normal_t
+            + edm_term  # Wf-408-A2 edm_preconditioning
             + chemprop_v3_cache_term  # Wf-408-A2 chemprop_v3_cache
         )
         # Wf-406-A2 — TODO-21 Lambda × CFM reward-weighting wiring
@@ -1601,9 +1632,7 @@ def train_one_epoch(
             and float(lambda_cfm_mean_weight) > 0.0
         ):
             loss = loss * (
-                1.0
-                + float(lambda_cfm_coupling_weight)
-                * float(lambda_cfm_mean_weight)
+                1.0 + float(lambda_cfm_coupling_weight) * float(lambda_cfm_mean_weight)
             )
         if nucleus_sample_invocations > 0:
             # Wf-388-A2 audit — track that the diversity path ran
@@ -1648,16 +1677,15 @@ def train_one_epoch(
                     "reachability_rate": 1.0,
                 }
                 verdict = verify_all_catherine_properties(
-                    metal="Pt", summary=summary,
+                    metal="Pt",
+                    summary=summary,
                 )
                 if verdict.six_of_six_pass:
                     n_catherine_pass += 1
             except Exception:
                 pass
         n_batches += 1
-    n_catherine_rate = (
-        n_catherine_pass / n_batches if n_batches else 0.0
-    )
+    n_catherine_rate = n_catherine_pass / n_batches if n_batches else 0.0
     return (
         float(np.mean(total_losses) if total_losses else 0.0),
         float(np.mean(bond_losses) if bond_losses else 0.0),
@@ -1716,8 +1744,10 @@ def evaluate_decode_ratio(
                 # mask used at training time (single source of truth).
                 bias_delta = apply_closure_bounded_mask(
                     torch.zeros(
-                        1, NUM_BOND_CLASSES,
-                        device=device, dtype=last_layer.bias.dtype,
+                        1,
+                        NUM_BOND_CLASSES,
+                        device=device,
+                        dtype=last_layer.bias.dtype,
                     ),
                     closure_bias,
                     prefer_dative=prefer_dative,
@@ -1746,13 +1776,16 @@ def build_reference_positions() -> torch.Tensor:
     1 Pt at origin + 4 donors at 2.05 Å along ±x, ±y.  This is the
     reference against which the velocity-field Wasserstein is computed.
     """
-    return torch.tensor([
-        [0.0, 0.0, 0.0],
-        [2.05, 0.0, 0.0],
-        [-2.05, 0.0, 0.0],
-        [0.0, 2.05, 0.0],
-        [0.0, -2.05, 0.0],
-    ], dtype=torch.float32)
+    return torch.tensor(
+        [
+            [0.0, 0.0, 0.0],
+            [2.05, 0.0, 0.0],
+            [-2.05, 0.0, 0.0],
+            [0.0, 2.05, 0.0],
+            [0.0, -2.05, 0.0],
+        ],
+        dtype=torch.float32,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1765,7 +1798,9 @@ def build_training_cohort(
 ) -> List[AtomCloud]:
     """Build ``n_train`` synthetic Pt-click clouds for training."""
     return build_synthetic_pt_click_clouds(
-        n_clouds=n_train, jitter=jitter, seed=seed,
+        n_clouds=n_train,
+        jitter=jitter,
+        seed=seed,
     )
 
 
@@ -1782,6 +1817,7 @@ try:
         DEFAULT_TARGET_SA as _SA_PENALTY_DEFAULT_TARGET_SA,
         sa_aware_sampling_penalty,
     )
+
     _SA_PENALTY_AVAILABLE = True
 except Exception as _sa_exc:  # pragma: no cover - safety net
     _SA_PENALTY_AVAILABLE = False
@@ -1809,6 +1845,7 @@ try:
         pll_eigenvalues as _pll_eigenvalues,
         pll_to_feature_vector as _pll_to_feature_vector,
     )
+
     _PLL_FEATURES_AVAILABLE = True
 except Exception as _pll_exc:  # pragma: no cover - safety net
     _PLL_FEATURES_AVAILABLE = False
@@ -1887,23 +1924,42 @@ def parse_args() -> argparse.Namespace:
             "Catherine closure-bounded generation."
         ),
     )
-    p.add_argument("--epochs", type=int, default=50,
-                   help="Number of epochs (default 50; dial-down to 10 "
-                        "for CPU smoke).")
-    p.add_argument("--batch-size", type=int, default=64,
-                   help="Mini-batch size (default 64).")
-    p.add_argument("--n-train", type=int, default=DEFAULT_TRAIN_CLOUDS,
-                   help="Number of training clouds (default 256).")
-    p.add_argument("--n-val", type=int, default=DEFAULT_VAL_CLOUDS,
-                   help="Number of validation clouds (default 192).")
+    p.add_argument(
+        "--epochs",
+        type=int,
+        default=50,
+        help="Number of epochs (default 50; dial-down to 10 " "for CPU smoke).",
+    )
+    p.add_argument(
+        "--batch-size", type=int, default=64, help="Mini-batch size (default 64)."
+    )
+    p.add_argument(
+        "--n-train",
+        type=int,
+        default=DEFAULT_TRAIN_CLOUDS,
+        help="Number of training clouds (default 256).",
+    )
+    p.add_argument(
+        "--n-val",
+        type=int,
+        default=DEFAULT_VAL_CLOUDS,
+        help="Number of validation clouds (default 192).",
+    )
     p.add_argument("--hidden-dim", type=int, default=DEFAULT_HIDDEN_DIM)
-    p.add_argument("--num-cycle", type=int, default=1,
-                   help="Number of recursive inference cycles (mirror OmegaFoldCycle; "
-                        "default 1=no recursion; max 8 for memory; Wf-A1 per §5.7 floor).")
-    p.add_argument("--confidence-head", action="store_true",
-                   help="Wire ConfidenceHead for continuous pLDDT confidence (mirror "
-                        "omegafold/confidence.py:124; default off for bit-for-bit backward "
-                        "compat with Wf-431-B1).")
+    p.add_argument(
+        "--num-cycle",
+        type=int,
+        default=1,
+        help="Number of recursive inference cycles (mirror OmegaFoldCycle; "
+        "default 1=no recursion; max 8 for memory; Wf-A1 per §5.7 floor).",
+    )
+    p.add_argument(
+        "--confidence-head",
+        action="store_true",
+        help="Wire ConfidenceHead for continuous pLDDT confidence (mirror "
+        "omegafold/confidence.py:124; default off for bit-for-bit backward "
+        "compat with Wf-431-B1).",
+    )
 
     p.add_argument("--n-layers", type=int, default=DEFAULT_N_LAYERS)
     p.add_argument("--lr", type=float, default=DEFAULT_LR)
@@ -2013,11 +2069,18 @@ def parse_args() -> argparse.Namespace:
             "--resume-from path). Default None (auto-scan)."
         ),
     )
-    p.add_argument("--patience", type=int, default=DEFAULT_PATIENCE,
-                   help="Early-stopping patience (default 10 epochs).")
     p.add_argument(
-        "--use-yuelbond", "--no-yuelbond", dest="use_yuelbond",
-        action=argparse.BooleanOptionalAction, default=True,
+        "--patience",
+        type=int,
+        default=DEFAULT_PATIENCE,
+        help="Early-stopping patience (default 10 epochs).",
+    )
+    p.add_argument(
+        "--use-yuelbond",
+        "--no-yuelbond",
+        dest="use_yuelbond",
+        action=argparse.BooleanOptionalAction,
+        default=True,
         help=(
             "Use YuelBond decoder head (default True). "
             "Pass --no-yuelbond to disable. Both forms supported for "
@@ -2025,19 +2088,28 @@ def parse_args() -> argparse.Namespace:
             "scripts; the boolean dest is `use_yuelbond`."
         ),
     )
-    p.add_argument("--wasserstein-weight", type=float, default=0.1,
-                   help="Weight on the W₂ regularization term (default 0.1).")
     p.add_argument(
-        "--no-wasserstein", dest="wasserstein_weight",
-        action="store_const", const=0.0,
+        "--wasserstein-weight",
+        type=float,
+        default=0.1,
+        help="Weight on the W₂ regularization term (default 0.1).",
+    )
+    p.add_argument(
+        "--no-wasserstein",
+        dest="wasserstein_weight",
+        action="store_const",
+        const=0.0,
         help=(
             "Disable Wasserstein regularization. The boolean dest is "
             "`wasserstein_weight`."
         ),
     )
     p.add_argument(
-        "--closure-bounded", "--no-closure-bounded", dest="closure_bounded",
-        action=argparse.BooleanOptionalAction, default=True,
+        "--closure-bounded",
+        "--no-closure-bounded",
+        dest="closure_bounded",
+        action=argparse.BooleanOptionalAction,
+        default=True,
         help=(
             "Enable Catherine closure-bounded generation (default True). "
             "Pass --no-closure-bounded to disable. Both forms supported "
@@ -2045,28 +2117,50 @@ def parse_args() -> argparse.Namespace:
             "scripts; the boolean dest is `closure_bounded`."
         ),
     )
-    p.add_argument("--pocket-id", type=str, default="1h36",
-                   help="Pocket for the per-pocket bias lookup (default 1h36).")
+    p.add_argument(
+        "--pocket-id",
+        type=str,
+        default="1h36",
+        help="Pocket for the per-pocket bias lookup (default 1h36).",
+    )
     p.add_argument("--seed", type=int, default=0)
-    p.add_argument("--device", type=str, default="auto",
-                   help="Device: 'cuda', 'cuda:0', 'cpu', or 'auto'.")
-    p.add_argument("--cuda-visible-devices", type=str, default="",
-                   help=(
-                       "Override CUDA_VISIBLE_DEVICES before device "
-                       "resolution.  Empty '' (the default) = inherit the "
-                       "shell env — scripts/start.sh exports it from the "
-                       "yaml `compute.gpu` field.  If neither is set, "
-                       "training_utils falls back to its own default ('1'). "
-                       "Pass a non-empty value to force a specific GPU."
-                   ))
-    p.add_argument("--out-dir", type=str,
-                   default="molmetal/reports/wf124_p2_cfm_full",
-                   help="Output directory for reports + ckpt.")
-    p.add_argument("--ckpt-dir", type=str,
-                   default="molmetal/checkpoints",
-                   help="Checkpoint directory.")
-    p.add_argument("--target-decode-ratio", type=float, default=0.8,
-                   help="Target decode_ratio RDKit-strict (default 0.8).")
+    p.add_argument(
+        "--device",
+        type=str,
+        default="auto",
+        help="Device: 'cuda', 'cuda:0', 'cpu', or 'auto'.",
+    )
+    p.add_argument(
+        "--cuda-visible-devices",
+        type=str,
+        default="",
+        help=(
+            "Override CUDA_VISIBLE_DEVICES before device "
+            "resolution.  Empty '' (the default) = inherit the "
+            "shell env — scripts/start.sh exports it from the "
+            "yaml `compute.gpu` field.  If neither is set, "
+            "training_utils falls back to its own default ('1'). "
+            "Pass a non-empty value to force a specific GPU."
+        ),
+    )
+    p.add_argument(
+        "--out-dir",
+        type=str,
+        default="molmetal/reports/wf124_p2_cfm_full",
+        help="Output directory for reports + ckpt.",
+    )
+    p.add_argument(
+        "--ckpt-dir",
+        type=str,
+        default="molmetal/checkpoints",
+        help="Checkpoint directory.",
+    )
+    p.add_argument(
+        "--target-decode-ratio",
+        type=float,
+        default=0.8,
+        help="Target decode_ratio RDKit-strict (default 0.8).",
+    )
     # ------------------------------------------------------------------
     # Wf-388-A3 — SA-aware loss penalty wire-in (Wf-380-A6 SCAFFOLD).
     # 2 NEW CLI flags; default 0.0 (backward-compat with Wf-380-A6
@@ -2575,13 +2669,17 @@ def parse_args() -> argparse.Namespace:
     # actual SCAFFOLD wire-in to the loss cascade is at lines 880-1200
     # (per the kwargs consumed via getattr in lines 2405+).
     p.add_argument(
-        "--use-log-normal-t", dest="log_normal_t", action="store_true",
-        default=False, help=(
-            "Alias for --log-normal-t (Wf-385-A3 gate name parity)."
-        ),
+        "--use-log-normal-t",
+        dest="log_normal_t",
+        action="store_true",
+        default=False,
+        help=("Alias for --log-normal-t (Wf-385-A3 gate name parity)."),
     )
     p.add_argument(
-        "--use-ema", dest="use_ema", action="store_true", default=False,
+        "--use-ema",
+        dest="use_ema",
+        action="store_true",
+        default=False,
         help=(
             "Wf-415-A3 NEW alias: EMA (exponential moving average) of "
             "model parameters during training (Karras 2022 EDM §5). "
@@ -2592,8 +2690,11 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
-        "--use-shortcut-consistency", dest="use_shortcut_consistency",
-        action="store_true", default=False, help=(
+        "--use-shortcut-consistency",
+        dest="use_shortcut_consistency",
+        action="store_true",
+        default=False,
+        help=(
             "Wf-415-A3 NEW alias: EDM 2022 shortcut consistency "
             "(Wang et al. 2025 arXiv:2502.08177). Default OFF. "
             "SCAFFOLD-only flag; activates a consistency regularisation "
@@ -2601,8 +2702,11 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
-        "--use-lr-warmup", dest="use_lr_warmup", action="store_true",
-        default=False, help=(
+        "--use-lr-warmup",
+        dest="use_lr_warmup",
+        action="store_true",
+        default=False,
+        help=(
             "Wf-415-A3 NEW alias for backward-compat: linear LR "
             "warmup before main scheduler (EDM 2022 §5). Default "
             "OFF. Wf-A6 A2 BLOCKER C fix (2026-10-03): superseded by "
@@ -2615,42 +2719,51 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
-        "--lr-warmup-steps", type=int, default=100,
+        "--lr-warmup-steps",
+        type=int,
+        default=100,
         help=(
             "Wf-415-A3 NEW alias for --use-lr-warmup warmup duration. "
             "Default 100 = EDM 2022 recommendation."
         ),
     )
     p.add_argument(
-        "--use-exact-ot-coupling", dest="use_ot_cfm", action="store_true",
-        default=False, help=(
-            "Alias for --use-ot-cfm (Wf-385-A3 gate name parity)."
-        ),
+        "--use-exact-ot-coupling",
+        dest="use_ot_cfm",
+        action="store_true",
+        default=False,
+        help=("Alias for --use-ot-cfm (Wf-385-A3 gate name parity)."),
     )
     p.add_argument(
-        "--triton-minibatch-ot", dest="triton_ot", action="store_true",
-        default=False, help=(
-            "Alias for --triton-ot (Wf-385-A3 gate name parity)."
-        ),
+        "--triton-minibatch-ot",
+        dest="triton_ot",
+        action="store_true",
+        default=False,
+        help=("Alias for --triton-ot (Wf-385-A3 gate name parity)."),
     )
     p.add_argument(
-        "--use-so3-averaged-fm", dest="so3_average", action="store_true",
-        default=False, help=(
-            "Alias for --so3-average (Wf-385-A3 gate name parity)."
-        ),
+        "--use-so3-averaged-fm",
+        dest="so3_average",
+        action="store_true",
+        default=False,
+        help=("Alias for --so3-average (Wf-385-A3 gate name parity)."),
     )
     p.add_argument(
-        "--use-shortcut-distillation", dest="shortcut_distill",
-        action="store_true", default=False, help=(
+        "--use-shortcut-distillation",
+        dest="shortcut_distill",
+        action="store_true",
+        default=False,
+        help=(
             "Alias for --shortcut-distill (Wf-385-A3 gate name parity; "
             "the gate smoke passes `--use-shortcut-distillation` but the "
             "legacy trainer flag is `--shortcut-distill`)."
         ),
     )
     p.add_argument(
-        "--so3-averaged-fm-k", type=int, default=2, help=(
-            "Alias for SO(3) averaging rotations per sample (default 2)."
-        ),
+        "--so3-averaged-fm-k",
+        type=int,
+        default=2,
+        help=("Alias for SO(3) averaging rotations per sample (default 2)."),
     )
     # --- Wf-431-B1 GPU utilization optimization flags (NEW, default OFF) ---
     # Default OFF preserves bit-for-bit backward compat with Wf-380-B1 +
@@ -2660,8 +2773,11 @@ def parse_args() -> argparse.Namespace:
     # produce identical loss trajectory + decode_ratio as Wf-380-B1
     # baseline (verified by 50-step §5.7 smoke per AGENTS.md §5.7 NEW).
     p.add_argument(
-        "--torch-compile", dest="torch_compile",
-        action="store_true", default=False, help=(
+        "--torch-compile",
+        dest="torch_compile",
+        action="store_true",
+        default=False,
+        help=(
             "Wf-431-B1 NEW: torch.compile(model, mode='reduce-overhead') "
             "AFTER torch._dynamo.config.dynamic_shapes=True guard per "
             "Wf-358-A3 + Wf-335-R3 Blackwell cudagraphs safety contract. "
@@ -2671,8 +2787,11 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
-        "--tf32", dest="tf32",
-        action="store_true", default=False, help=(
+        "--tf32",
+        dest="tf32",
+        action="store_true",
+        default=False,
+        help=(
             "Wf-431-B1 NEW: torch.backends.cuda.matmul.allow_tf32=True + "
             "torch.backends.cudnn.allow_tf32=True + "
             "torch.set_float32_matmul_precision('high'). Default OFF; "
@@ -2682,8 +2801,11 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
-        "--cudnn-benchmark", dest="cudnn_benchmark",
-        action="store_true", default=False, help=(
+        "--cudnn-benchmark",
+        dest="cudnn_benchmark",
+        action="store_true",
+        default=False,
+        help=(
             "Wf-431-B1 NEW: torch.backends.cudnn.benchmark=True (cudnn "
             "benchmarks algos on first iter, picks best for subsequent). "
             "Default OFF; SCAFFOLD-only flag. Projected lift +5-15 pct "
@@ -2692,8 +2814,11 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
-        "--channels-last", dest="channels_last",
-        action="store_true", default=False, help=(
+        "--channels-last",
+        dest="channels_last",
+        action="store_true",
+        default=False,
+        help=(
             "Wf-431-B1 NEW: model.to(memory_format=torch.channels_last). "
             "Default OFF; SCAFFOLD-only flag. Projected lift +5-15 pct "
             "GPU utilization on Blackwell for compatible layers (per "
@@ -2745,6 +2870,7 @@ def parse_args() -> argparse.Namespace:
     args = p.parse_args()
     # Apply YAML overrides (no-op when --config not supplied).
     from molmetal.scripts.wfA2_config_loader import apply_yaml_overrides
+
     return apply_yaml_overrides(p, args, args.config)
 
 
@@ -2759,6 +2885,7 @@ def main() -> int:
         apply_default_cuda_visible_devices,
         resolve_default_device,
     )
+
     # Wf-A9 FIX (2026-10-03) — ``args.cuda_visible_devices`` defaults to
     # the empty string, which the argparse help documents as "inherit
     # shell env or fall back to '1'".  ``apply_default_cuda_visible_devices``
@@ -2767,9 +2894,7 @@ def main() -> int:
     # straight through asked every normal launch for CPU.  Coerce empty →
     # None so the documented "inherit" semantics actually apply: the env
     # var exported by start.sh (from yaml ``compute.gpu``) wins.
-    apply_default_cuda_visible_devices(
-        override=(args.cuda_visible_devices or None)
-    )
+    apply_default_cuda_visible_devices(override=(args.cuda_visible_devices or None))
     if args.device == "auto":
         device = resolve_default_device()
     elif args.device.startswith("cuda"):
@@ -2818,12 +2943,15 @@ def main() -> int:
         events_jsonl_path=_events_jsonl_path,
     )
     # Cohort.
-    print(f"[Wf-124 P2] building cohorts: "
-          f"train={args.n_train}, val={args.n_val}",
-          flush=True)
+    print(
+        f"[Wf-124 P2] building cohorts: " f"train={args.n_train}, val={args.n_val}",
+        flush=True,
+    )
     train_clouds = build_training_cohort(args.n_train, seed=args.seed)
     val_clouds = build_synthetic_pt_click_clouds(
-        n_clouds=args.n_val, jitter=0.20, seed=args.seed + 1,
+        n_clouds=args.n_val,
+        jitter=0.20,
+        seed=args.seed + 1,
     )
     # Wf-405-A2 — Wf-380 NEW CLI flag env-var dispatch + logging.
     # triton_ot: set TRITON_MINIBATCH_OT=1 + TRITON_USE_FUSED=1 env vars
@@ -2831,6 +2959,7 @@ def main() -> int:
     # gate picks up the activation.
     if bool(getattr(args, "triton_ot", False)):
         import os as _wf405_os
+
         _wf405_os.environ.setdefault("TRITON_MINIBATCH_OT", "1")
         _wf405_os.environ.setdefault("TRITON_USE_FUSED", "1")
         print(
@@ -2845,6 +2974,7 @@ def main() -> int:
             from molmetal.scripts.wf380a2_m2_r2_per_cohort import (
                 select_features,
             )
+
             _cfg = select_features(int(args.n_train))
             print(
                 f"[Wf-405-A2] --per-cohort-features ENABLED: "
@@ -2875,11 +3005,15 @@ def main() -> int:
         )
         for c in val_clouds
     ]
-    print(f"[Wf-124 P2] cohort built: train={len(train_clouds_d)} "
-          f"val={len(val_clouds_d)}", flush=True)
+    print(
+        f"[Wf-124 P2] cohort built: train={len(train_clouds_d)} "
+        f"val={len(val_clouds_d)}",
+        flush=True,
+    )
     # Model + decoder.
     model = CFMJointModel(
-        hidden_dim=args.hidden_dim, n_layers=args.n_layers,
+        hidden_dim=args.hidden_dim,
+        n_layers=args.n_layers,
     ).to(device)
     # Wf-431-B1 NEW — GPU utilization optimization wire-in (default OFF,
     # bit-for-bit backward compat with Wf-380-B1 + Wf-388 + Wf-418).
@@ -2945,12 +3079,15 @@ def main() -> int:
             # model is unchanged — eager path continues.
     # --- end Wf-431-B1 NEW wire-in ---
     decoder = YuelBondBondDecoder(
-        head=model.head, hidden_dim=args.hidden_dim,
+        head=model.head,
+        hidden_dim=args.hidden_dim,
         n_layers=args.n_layers,
     )
     # The decoder's head *is* model.head — we share weights so training
     # updates the decoder too.
-    optimiser = optim.Adam(model.parameters(), lr=args.lr, weight_decay=getattr(args, "weight_decay", 0.0))  # Wf-A6 A2 BLOCKER C fix
+    optimiser = optim.Adam(
+        model.parameters(), lr=args.lr, weight_decay=getattr(args, "weight_decay", 0.0)
+    )  # Wf-A6 A2 BLOCKER C fix
     # Pocket bias + reference positions.
     bias_verdict = pocket_specific_closure_bias(args.pocket_id)
     closure_bias = bias_verdict.bias_dict if bias_verdict.is_known_pocket else None
@@ -2963,8 +3100,11 @@ def main() -> int:
             "Suzuki": 0.20,
             "AmideCoupling": 0.30,
         }
-    print(f"[Wf-124 P2] pocket={args.pocket_id} bias_sum="
-          f"{sum(closure_bias.values()):.3f}", flush=True)
+    print(
+        f"[Wf-124 P2] pocket={args.pocket_id} bias_sum="
+        f"{sum(closure_bias.values()):.3f}",
+        flush=True,
+    )
     reference_positions = build_reference_positions().to(device)
     # Wasserstein config.
     wcfg = WassersteinConfig()
@@ -2978,16 +3118,13 @@ def main() -> int:
             from molmetal.molmetal_lam.reward.lambda_reward_dataset import (
                 build_lambda_reward_dataset,
             )
+
             _lambda_dataset = build_lambda_reward_dataset(
-                n_samples=int(
-                    getattr(args, "lambda_cfm_coupling_samples", 200)
-                ),
+                n_samples=int(getattr(args, "lambda_cfm_coupling_samples", 200)),
                 pocket_id=args.pocket_id,
                 seed=args.seed,
             )
-            lambda_cfm_mean_weight = float(
-                getattr(_lambda_dataset, "mean_weight", 0.0)
-            )
+            lambda_cfm_mean_weight = float(getattr(_lambda_dataset, "mean_weight", 0.0))
             print(
                 f"[Wf-406-A2] --lambda-cfm-coupling ENABLED: "
                 f"LambdaRewardDataset len={len(_lambda_dataset)} "
@@ -3014,6 +3151,7 @@ def main() -> int:
             from molmetal.scripts.wf382a2_chemprop_v3_featurization_cache import (
                 ChempropV3FeaturizationCache as _Wf409a2CacheInit,
             )
+
             _wf409a2_cache_init = _Wf409a2CacheInit(use_fast_featurizer=False)
             _wf409a2_n_added = _wf409a2_cache_init.precompute_smiles(_CFM_CACHE_SMOKES)
             set_cfm_chemprop_v3_cache(_wf409a2_cache_init)
@@ -3086,9 +3224,7 @@ def main() -> int:
             temperature=float(getattr(args, "temperature", 1.0)),
             mmd_weight=float(getattr(args, "mmd_weight", 0.0)),
             repulsion_weight=float(getattr(args, "repulsion_weight", 0.0)),
-            scaffold_conditioning=bool(
-                getattr(args, "scaffold_conditioning", False)
-            ),
+            scaffold_conditioning=bool(getattr(args, "scaffold_conditioning", False)),
             # Wf-397-A1 — pass SA-penalty kwargs through; defaults preserve
             # Wf-388-A3 OFF semantics (sa_loss = 0 → bit-for-bit
             # backward compat with Wf-380-B1 / Wf-299).
@@ -3102,12 +3238,8 @@ def main() -> int:
             triton_ot=bool(getattr(args, "triton_ot", False)),
             stable_vm=bool(getattr(args, "stable_vm", False)),
             shortcut_distill=bool(getattr(args, "shortcut_distill", False)),
-            consistency_weight=float(
-                getattr(args, "consistency_weight", 0.0)
-            ),
-            per_cohort_features=bool(
-                getattr(args, "per_cohort_features", False)
-            ),
+            consistency_weight=float(getattr(args, "consistency_weight", 0.0)),
+            per_cohort_features=bool(getattr(args, "per_cohort_features", False)),
             # Wf-406-A2 — pass Lambda × CFM coupling kwargs through;
             # defaults preserve Wf-388-A3 / Wf-397-A2 OFF semantics
             # (1 + 0 * 0 = 1 → bit-for-bit backward compat).
@@ -3119,57 +3251,33 @@ def main() -> int:
             # defaults preserve Wf-388-A3 / Wf-405-A2 / Wf-406-A2
             # OFF semantics (cfm_multiph_pll_weight=0.0 → pll_term=0
             # → bit-for-bit backward compat with Wf-388-A3 baseline).
-            cfm_multiph_pll=bool(
-                getattr(args, "cfm_multiph_pll", False)
-            ),
-            cfm_multiph_pll_top_k=int(
-                getattr(args, "cfm_multiph_pll_top_k", 10)
-            ),
-            cfm_multiph_pll_weight=float(
-                getattr(args, "cfm_multiph_pll_weight", 0.0)
-            ),
+            cfm_multiph_pll=bool(getattr(args, "cfm_multiph_pll", False)),
+            cfm_multiph_pll_top_k=int(getattr(args, "cfm_multiph_pll_top_k", 10)),
+            cfm_multiph_pll_weight=float(getattr(args, "cfm_multiph_pll_weight", 0.0)),
             # Wf-408-A2 — pass 4 NEW Wf-380 SCAFFOLD close-out kwargs
             # through.  Defaults preserve Wf-243..Wf-252 HEAD +
             # Wf-388-A2/A3 + Wf-405-A2 + Wf-406-A2 + Wf-409-A1 baseline
             # OFF semantics (all OFF → zero contribution to loss).
-            so3_average=bool(
-                getattr(args, "so3_average", False)
-            ),
-            so3_average_weight=float(
-                getattr(args, "so3_average_weight", 0.1)
-            ),
-            log_normal_t=bool(
-                getattr(args, "log_normal_t", False)
-            ),
-            log_normal_t_mu=float(
-                getattr(args, "log_normal_t_mu", -0.5)
-            ),
-            log_normal_t_sigma=float(
-                getattr(args, "log_normal_t_sigma", 1.0)
-            ),
-            edm_preconditioning=bool(
-                getattr(args, "edm_preconditioning", False)
-            ),
-            edm_sigma_data=float(
-                getattr(args, "edm_sigma_data", 1.5)
-            ),
-            chemprop_v3_cache=bool(
-                getattr(args, "chemprop_v3_cache", False)
-            ),
+            so3_average=bool(getattr(args, "so3_average", False)),
+            so3_average_weight=float(getattr(args, "so3_average_weight", 0.1)),
+            log_normal_t=bool(getattr(args, "log_normal_t", False)),
+            log_normal_t_mu=float(getattr(args, "log_normal_t_mu", -0.5)),
+            log_normal_t_sigma=float(getattr(args, "log_normal_t_sigma", 1.0)),
+            edm_preconditioning=bool(getattr(args, "edm_preconditioning", False)),
+            edm_sigma_data=float(getattr(args, "edm_sigma_data", 1.5)),
+            chemprop_v3_cache=bool(getattr(args, "chemprop_v3_cache", False)),
             # Wf-409-A2 — pass --cfm-chemprop-v3-cache kwarg through to
             # train_one_epoch.  Default OFF preserves bit-for-bit
             # backward compat with Wf-388-A3 / Wf-405-A2 / Wf-406-A2 /
             # Wf-407-A2 / Wf-408-A2 / Wf-409-A1 baseline.
-            cfm_chemprop_v3_cache=bool(
-                getattr(args, "cfm_chemprop_v3_cache", False)
-            ),
+            cfm_chemprop_v3_cache=bool(getattr(args, "cfm_chemprop_v3_cache", False)),
             # Wf-A9 FIX (2026-10-03) — thread the gradient-clip threshold
             # from the yaml-driven ``args.max_norm`` (start.sh passes
             # ``--max-norm "$MAX_NORM"`` sourced from ``protocol.max_norm``).
             max_norm=float(getattr(args, "max_norm", 5.0)),
         )
         # Evaluate.
-        decoding_attempted = (epoch % 1 == 0)  # every epoch for short runs
+        decoding_attempted = epoch % 1 == 0  # every epoch for short runs
         if decoding_attempted:
             n_ok, n_total = evaluate_decode_ratio(
                 model=model,
@@ -3346,21 +3454,35 @@ def main() -> int:
     csv_path = out_dir / "per_epoch_metrics.csv"
     with csv_path.open("w", newline="") as f:
         w = csv.writer(f)
-        w.writerow([
-            "epoch", "wall_time_s", "train_loss", "bond_ce", "wasserstein",
-            "catherine_pass", "decode_ratio", "decode_ratio_val",
-            "decode_ratio_n", "decoding_attempted",
-        ])
+        w.writerow(
+            [
+                "epoch",
+                "wall_time_s",
+                "train_loss",
+                "bond_ce",
+                "wasserstein",
+                "catherine_pass",
+                "decode_ratio",
+                "decode_ratio_val",
+                "decode_ratio_n",
+                "decoding_attempted",
+            ]
+        )
         for m in per_epoch:
-            w.writerow([
-                m.epoch, f"{m.wall_time_s:.3f}",
-                f"{m.train_loss:.5f}", f"{m.bond_ce_loss:.5f}",
-                f"{m.wasserstein_loss:.5f}",
-                int(m.catherine_audit_pass),
-                f"{m.decode_ratio_rdkit_strict:.4f}",
-                m.decode_ratio_val, m.decode_ratio_n,
-                int(m.decoding_attempted),
-            ])
+            w.writerow(
+                [
+                    m.epoch,
+                    f"{m.wall_time_s:.3f}",
+                    f"{m.train_loss:.5f}",
+                    f"{m.bond_ce_loss:.5f}",
+                    f"{m.wasserstein_loss:.5f}",
+                    int(m.catherine_audit_pass),
+                    f"{m.decode_ratio_rdkit_strict:.4f}",
+                    m.decode_ratio_val,
+                    m.decode_ratio_n,
+                    int(m.decoding_attempted),
+                ]
+            )
     # Wasserstein decay check.
     w2_history = [m.wasserstein_loss for m in per_epoch]
     w2_decay_pass = wasserstein_decay_check(w2_history, window=10, tol=1e-3)
@@ -3471,9 +3593,12 @@ def main() -> int:
     ]
     (out_dir / "synthesis.md").write_text("\n".join(lines) + "\n")
     # Final summary.
-    print(f"[Wf-124 P2] DONE. best_decode_ratio={best_decode_ratio:.3f} "
-          f"@ epoch={best_epoch} target={'HIT' if best_decode_ratio >= args.target_decode_ratio else 'miss'}. "
-          f"Wall total: {total_elapsed:.1f}s.", flush=True)
+    print(
+        f"[Wf-124 P2] DONE. best_decode_ratio={best_decode_ratio:.3f} "
+        f"@ epoch={best_epoch} target={'HIT' if best_decode_ratio >= args.target_decode_ratio else 'miss'}. "
+        f"Wall total: {total_elapsed:.1f}s.",
+        flush=True,
+    )
 
     # Wf-TUI NEW: close the events.jsonl file handle (flush + release).
     # Per AGENTS.md §5.6 atomic_write_file safe_overwrite_check contract,
@@ -3491,6 +3616,7 @@ def build_model_from_args(args: argparse.Namespace):
     to load actual CFM model weights from checkpoint.
     """
     from molmetal.adapters.flow_matching_lipman.confidence_head import ConfidenceHead
+
     model = _StubInferModel(num_bins=getattr(args, "num_bins", 50))
     if getattr(args, "confidence_head", False):
         model.confidence_head = ConfidenceHead()
@@ -3499,6 +3625,7 @@ def build_model_from_args(args: argparse.Namespace):
 
 class _StubInferModel:
     """Minimal stub for infer_cfm integration — production wires real CFM model."""
+
     def __init__(self, num_bins: int = 50):
         self.num_bins = num_bins
         self.confidence_head = None

@@ -33,6 +33,7 @@ Run via::
     uv run --no-sync python -m pytest \\
         molmetal/tests/test_variance_puct_sign_fix.py -v
 """
+
 from __future__ import annotations
 
 import math
@@ -78,8 +79,7 @@ def _mk_root(n_children: int = 4, prior: float = 0.5) -> IntegrationNode:
         node_id="root",
         prior=float(prior),
         children=[
-            IntegrationNode(node_id=f"a{i}", prior=1.0)
-            for i in range(int(n_children))
+            IntegrationNode(node_id=f"a{i}", prior=1.0) for i in range(int(n_children))
         ],
     )
 
@@ -109,7 +109,9 @@ class TestSignPreservation:
     def test_sign_penalty_subtracts_for_high_sigma(self) -> None:
         """Penalty direction is subtraction (sign preserved after fix)."""
         sel = VarianceControlledPUCT(
-            c_puct=0.0, c_var=1.0, n_min_visits=1,
+            c_puct=0.0,
+            c_var=1.0,
+            n_min_visits=1,
         )
         root = _mk_root(n_children=2)
         # Arm 0: high variance; arm 1: zero variance; both Q=1.
@@ -128,7 +130,9 @@ class TestSignPreservation:
     def test_sign_penalty_zero_when_sigma_zero(self) -> None:
         """sigma = 0 → no penalty (post-fix)."""
         sel = VarianceControlledPUCT(
-            c_puct=1.0, c_var=0.5, n_min_visits=1,
+            c_puct=1.0,
+            c_var=0.5,
+            n_min_visits=1,
         )
         root = _mk_root(n_children=2)
         sel.update(root, 0, value=0.7, variance=0.0)
@@ -142,7 +146,9 @@ class TestSignPreservation:
     def test_sign_persistent_at_large_n(self) -> None:
         """Penalty magnitude is the same at N=2 and N=20 (post-fix)."""
         sel = VarianceControlledPUCT(
-            c_puct=0.0, c_var=0.5, n_min_visits=1,
+            c_puct=0.0,
+            c_var=0.5,
+            n_min_visits=1,
         )
         root = _mk_root(n_children=2)
         # Arm 0: high variance sigma=0.4 (so penalty = 0.5 * 0.4 = 0.2).
@@ -168,7 +174,9 @@ class TestSignPreservation:
         and assert that they DIVERGE — proving the fix is active.
         """
         sel = VarianceControlledPUCT(
-            c_puct=0.0, c_var=0.5, n_min_visits=1,
+            c_puct=0.0,
+            c_var=0.5,
+            n_min_visits=1,
         )
         root = _mk_root(n_children=2)
         for _ in range(20):
@@ -186,7 +194,9 @@ class TestSignPreservation:
     def test_sign_penalty_direction_independent_of_n(self) -> None:
         """Increasing N_child does NOT change penalty direction."""
         sel = VarianceControlledPUCT(
-            c_puct=0.0, c_var=1.0, n_min_visits=1,
+            c_puct=0.0,
+            c_var=1.0,
+            n_min_visits=1,
         )
         root = _mk_root(n_children=2)
         sel.update(root, 0, value=0.5, variance=0.04)
@@ -196,9 +206,7 @@ class TestSignPreservation:
         for n in (1, 5, 10, 50, 100):
             s0 = sel.puct_score(root, 0, n_parent=n)
             s1 = sel.puct_score(root, 1, n_parent=n)
-            assert s0 < s1, (
-                f"sign-flip detected at n_parent={n}: s0={s0}, s1={s1}"
-            )
+            assert s0 < s1, f"sign-flip detected at n_parent={n}: s0={s0}, s1={s1}"
 
 
 # ===========================================================================
@@ -215,7 +223,9 @@ class TestPersistence:
         exploration to exploitation as visits grow.
         """
         sel = VarianceControlledPUCT(
-            c_puct=1.0, c_var=0.0, n_min_visits=1,  # c_var=0 disables variance
+            c_puct=1.0,
+            c_var=0.0,
+            n_min_visits=1,  # c_var=0 disables variance
         )
         root = _mk_root(n_children=2)
         # Arm 0: many visits, Q stable.
@@ -229,7 +239,9 @@ class TestPersistence:
         # Bonus shrinks as N grows: at N=20 the bonus is ~0.213
         # (much smaller than at N=1: 1.0 * 1.0 * 1 / 2 = 0.5).
         sel2 = VarianceControlledPUCT(
-            c_puct=1.0, c_var=0.0, n_min_visits=1,
+            c_puct=1.0,
+            c_var=0.0,
+            n_min_visits=1,
         )
         root2 = _mk_root(n_children=2)
         sel2.update(root2, 0, value=0.5, variance=0.0)
@@ -244,7 +256,9 @@ class TestPersistence:
     def test_sign_q_value_unmodified(self) -> None:
         """Q is used directly, not divided (canonical PUCT preserved)."""
         sel = VarianceControlledPUCT(
-            c_puct=0.0, c_var=0.0, n_min_visits=1,
+            c_puct=0.0,
+            c_var=0.0,
+            n_min_visits=1,
         )
         root = _mk_root(n_children=2)
         sel.update(root, 0, value=0.7, variance=0.0)
@@ -259,7 +273,9 @@ class TestPersistence:
     def test_sign_no_penalty_below_n_min_visits(self) -> None:
         """Variance penalty is gated by ``n_min_visits`` (preserved)."""
         sel = VarianceControlledPUCT(
-            c_puct=0.0, c_var=5.0, n_min_visits=3,  # require N >= 3
+            c_puct=0.0,
+            c_var=5.0,
+            n_min_visits=3,  # require N >= 3
         )
         root = _mk_root(n_children=2)
         # Only one visit so the gate is NOT met → no penalty.
@@ -274,12 +290,14 @@ class TestPersistence:
     def test_sign_c_var_zero_disables_penalty(self) -> None:
         """``c_var = 0`` disables the variance penalty (preserved)."""
         sel = VarianceControlledPUCT(
-            c_puct=0.0, c_var=0.0, n_min_visits=1,
+            c_puct=0.0,
+            c_var=0.0,
+            n_min_visits=1,
         )
         root = _mk_root(n_children=2)
         for _ in range(3):
-            sel.update(root, 0, value=0.5, variance=0.5 ** 2)
-            sel.update(root, 1, value=0.5, variance=0.0 ** 2)
+            sel.update(root, 0, value=0.5, variance=0.5**2)
+            sel.update(root, 1, value=0.5, variance=0.0**2)
         s0 = sel.puct_score(root, 0, n_parent=6)
         s1 = sel.puct_score(root, 1, n_parent=6)
         # c_var = 0 → both scores are pure Q → tie.
@@ -289,7 +307,9 @@ class TestPersistence:
     def test_sign_variance_puct_persistent_with_c_var_2(self) -> None:
         """Numerical check: c_var=2, sigma=0.3 → penalty=0.6 across N."""
         sel = VarianceControlledPUCT(
-            c_puct=0.0, c_var=2.0, n_min_visits=1,
+            c_puct=0.0,
+            c_var=2.0,
+            n_min_visits=1,
         )
         root = _mk_root(n_children=2)
         for _ in range(30):
@@ -309,12 +329,14 @@ class TestSelectionBehaviour:
     def test_sign_high_variance_arm_loses_after_fix(self) -> None:
         """High-variance arm is still down-weighted (selection unchanged)."""
         sel = VarianceControlledPUCT(
-            c_puct=0.0, c_var=5.0, n_min_visits=2,
+            c_puct=0.0,
+            c_var=5.0,
+            n_min_visits=2,
         )
         root = _mk_root(n_children=2)
         for _ in range(3):
-            sel.update(root, 0, value=1.0, variance=1.0 ** 2)
-            sel.update(root, 1, value=1.0, variance=0.0 ** 2)
+            sel.update(root, 0, value=1.0, variance=1.0**2)
+            sel.update(root, 1, value=1.0, variance=0.0**2)
         a = sel.select(root)
         assert a == 1
 
@@ -337,12 +359,14 @@ class TestSelectionBehaviour:
         """Old ``test_variance_puct_high_variance`` selection still wins."""
         # Reproduces the Wf-11 selection test verbatim.
         sel = VarianceControlledPUCT(
-            c_puct=0.0, c_var=5.0, n_min_visits=2,
+            c_puct=0.0,
+            c_var=5.0,
+            n_min_visits=2,
         )
         root = _mk_root(n_children=2)
         for _ in range(3):
-            sel.update(root, 0, value=1.0, variance=1.0 ** 2)
-            sel.update(root, 1, value=1.0, variance=0.0 ** 2)
+            sel.update(root, 0, value=1.0, variance=1.0**2)
+            sel.update(root, 1, value=1.0, variance=0.0**2)
         # Old (buggy) penalty at N=3: c_var * sigma / 4 = 5 * 1 / 4 = 1.25.
         # New (fixed) penalty at N=3: c_var * sigma = 5 * 1 = 5.
         # Either way, arm 1 wins because Q(0) = Q(1) = 1 and arm 0
@@ -359,7 +383,9 @@ class TestSelectionBehaviour:
         a *bonus* (wrong sign), this test would fail.
         """
         sel = VarianceControlledPUCT(
-            c_puct=0.0, c_var=1.0, n_min_visits=1,
+            c_puct=0.0,
+            c_var=1.0,
+            n_min_visits=1,
         )
         root = _mk_root(n_children=2)
         # Arm 0: low Q, zero variance.  Arm 1: high Q, high variance.
@@ -394,13 +420,13 @@ class TestSelectionBehaviour:
         )
         # The fixed formula should be documented (either in the
         # formula block or in the Notes section).
-        assert "c_var * sigma" in doc, (
-            "puct_score docstring must document the post-fix formula"
-        )
+        assert (
+            "c_var * sigma" in doc
+        ), "puct_score docstring must document the post-fix formula"
         # The audit-report path must be cross-referenced:
-        assert "wf51_sign_audit" in doc, (
-            "puct_score docstring must cross-reference the audit report"
-        )
+        assert (
+            "wf51_sign_audit" in doc
+        ), "puct_score docstring must cross-reference the audit report"
 
 
 __all__ = [

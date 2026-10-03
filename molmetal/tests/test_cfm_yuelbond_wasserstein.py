@@ -66,14 +66,11 @@ if str(PROJECT_ROOT) not in sys.path:
 def _import_module_safe():
     """Import the training script as a module without running main()."""
     import importlib.util
-    script = (
-        PROJECT_ROOT
-        / "molmetal"
-        / "scripts"
-        / "train_cfm_yuelbond_wasserstein.py"
-    )
+
+    script = PROJECT_ROOT / "molmetal" / "scripts" / "train_cfm_yuelbond_wasserstein.py"
     spec = importlib.util.spec_from_file_location(
-        "train_cfm_yuelbond_wasserstein", str(script),
+        "train_cfm_yuelbond_wasserstein",
+        str(script),
     )
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod
@@ -88,13 +85,17 @@ def _import_module_safe():
 
 def _cisplatin_like_cloud() -> "AtomCloud":
     from molmetal.models.bond_head import AtomCloud
-    positions = torch.tensor([
-        [0.0, 0.0, 0.0],
-        [2.05, 0.0, 0.0],
-        [-2.05, 0.0, 0.0],
-        [0.0, 2.05, 0.0],
-        [0.0, -2.05, 0.0],
-    ], dtype=torch.float32)
+
+    positions = torch.tensor(
+        [
+            [0.0, 0.0, 0.0],
+            [2.05, 0.0, 0.0],
+            [-2.05, 0.0, 0.0],
+            [0.0, 2.05, 0.0],
+            [0.0, -2.05, 0.0],
+        ],
+        dtype=torch.float32,
+    )
     atomic_numbers = torch.tensor([78, 17, 17, 7, 7], dtype=torch.long)
     return AtomCloud(positions=positions, atomic_numbers=atomic_numbers)
 
@@ -139,6 +140,7 @@ def test_cfm_joint_model_forward_returns_pair_shapes() -> None:
 def test_cfm_joint_model_handles_variable_atom_count() -> None:
     mod = _import_module_safe()
     from molmetal.models.bond_head import AtomCloud
+
     model = mod.CFMJointModel(hidden_dim=16, n_layers=2)
     for n_atoms in (3, 5, 7, 9):
         positions = torch.randn(n_atoms, 3)
@@ -160,10 +162,17 @@ def test_apply_closure_bounded_mask_preserves_shape() -> None:
     mod = _import_module_safe()
     torch.manual_seed(0)
     logits = torch.randn(7, 5)  # E=7 pairs, 5 classes
-    bias = {"CuAAC": 0.30, "SPAAC": 0.10, "Suzuki": 0.20,
-            "AmideCoupling": 0.30, "ThiolEne": 0.10}
+    bias = {
+        "CuAAC": 0.30,
+        "SPAAC": 0.10,
+        "Suzuki": 0.20,
+        "AmideCoupling": 0.30,
+        "ThiolEne": 0.10,
+    }
     masked = mod.apply_closure_bounded_mask(
-        logits, bias, prefer_dative=True,
+        logits,
+        bias,
+        prefer_dative=True,
     )
     assert masked.shape == logits.shape
     assert not torch.allclose(masked, logits)
@@ -175,20 +184,28 @@ def test_apply_closure_bounded_mask_preserves_shape() -> None:
 def test_apply_closure_bounded_mask_prefers_single_bond() -> None:
     mod = _import_module_safe()
     from molmetal.models.bond_head import BOND_SINGLE
+
     torch.manual_seed(0)
     # All-zero logits, then the mask should boost BOND_SINGLE the most.
     logits = torch.zeros(3, 5)
-    bias = {"CuAAC": 0.30, "SPAAC": 0.10, "Suzuki": 0.20,
-            "AmideCoupling": 0.30, "ThiolEne": 0.10}
+    bias = {
+        "CuAAC": 0.30,
+        "SPAAC": 0.10,
+        "Suzuki": 0.20,
+        "AmideCoupling": 0.30,
+        "ThiolEne": 0.10,
+    }
     masked = mod.apply_closure_bounded_mask(
-        logits, bias, prefer_dative=True,
+        logits,
+        bias,
+        prefer_dative=True,
     )
     # The SINGLE column should have the highest mean boost.
     mean_per_class = masked.mean(dim=0)
     argmax_class = int(mean_per_class.argmax())
-    assert argmax_class == BOND_SINGLE, (
-        f"bias should prefer SINGLE (idx {BOND_SINGLE}), got {argmax_class}"
-    )
+    assert (
+        argmax_class == BOND_SINGLE
+    ), f"bias should prefer SINGLE (idx {BOND_SINGLE}), got {argmax_class}"
 
 
 # ---------------------------------------------------------------------------
@@ -207,12 +224,8 @@ def test_build_reference_positions_is_canonical_square_planar() -> None:
         2.05,  # |ref[3][1]| = 2.05
         2.05,  # |ref[4][1]| = 2.05
     }
-    actual = sorted(
-        [round(float(torch.norm(ref[i]).item()), 3) for i in range(1, 5)]
-    )
-    assert set(actual) == {2.05}, (
-        f"per-atom distances should all be 2.05; got {actual}"
-    )
+    actual = sorted([round(float(torch.norm(ref[i]).item()), 3) for i in range(1, 5)])
+    assert set(actual) == {2.05}, f"per-atom distances should all be 2.05; got {actual}"
 
 
 # ---------------------------------------------------------------------------
@@ -237,16 +250,23 @@ def test_evaluate_decode_ratio_smoke_on_initial_model() -> None:
     from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (
         YuelBondBondDecoder,
     )
+
     model = mod.CFMJointModel(hidden_dim=16, n_layers=2)
     decoder = YuelBondBondDecoder(
-        head=model.head, hidden_dim=16, n_layers=2,
+        head=model.head,
+        hidden_dim=16,
+        n_layers=2,
     )
     val_clouds = mod.build_synthetic_pt_click_clouds(
-        n_clouds=4, jitter=0.20, seed=99,
+        n_clouds=4,
+        jitter=0.20,
+        seed=99,
     )
     # Move to CPU; this test is CPU-only.
     n_ok, n_total = mod.evaluate_decode_ratio(
-        model=model, decoder=decoder, val_clouds=val_clouds,
+        model=model,
+        decoder=decoder,
+        val_clouds=val_clouds,
         device=torch.device("cpu"),
         closure_bounded=False,  # smoke; no bias
     )
@@ -265,12 +285,17 @@ def test_closure_bounded_decoder_weight_swap_restores() -> None:
     from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (
         YuelBondBondDecoder,
     )
+
     model = mod.CFMJointModel(hidden_dim=16, n_layers=2)
     decoder = YuelBondBondDecoder(
-        head=model.head, hidden_dim=16, n_layers=2,
+        head=model.head,
+        hidden_dim=16,
+        n_layers=2,
     )
     val_clouds = mod.build_synthetic_pt_click_clouds(
-        n_clouds=4, jitter=0.20, seed=99,
+        n_clouds=4,
+        jitter=0.20,
+        seed=99,
     )
     # Snapshot pre-call bias from the last pair-head layer.
     pair_head_obj = (
@@ -280,17 +305,25 @@ def test_closure_bounded_decoder_weight_swap_restores() -> None:
     )
     last_layer = pair_head_obj[-1]
     pre = last_layer.bias.data.clone()
-    bias = {"CuAAC": 0.30, "SPAAC": 0.10, "Suzuki": 0.20,
-            "AmideCoupling": 0.30, "ThiolEne": 0.10}
+    bias = {
+        "CuAAC": 0.30,
+        "SPAAC": 0.10,
+        "Suzuki": 0.20,
+        "AmideCoupling": 0.30,
+        "ThiolEne": 0.10,
+    }
     mod.evaluate_decode_ratio(
-        model=model, decoder=decoder, val_clouds=val_clouds,
+        model=model,
+        decoder=decoder,
+        val_clouds=val_clouds,
         device=torch.device("cpu"),
-        closure_bounded=True, closure_bias=bias,
+        closure_bounded=True,
+        closure_bias=bias,
     )
     post = last_layer.bias.data
-    assert torch.allclose(pre, post), (
-        "closure-bounded weight swap should restore head bias"
-    )
+    assert torch.allclose(
+        pre, post
+    ), "closure-bounded weight swap should restore head bias"
 
 
 # ---------------------------------------------------------------------------
@@ -299,6 +332,7 @@ def test_closure_bounded_decoder_weight_swap_restores() -> None:
 def test_per_epoch_metrics_dataclass_round_trip() -> None:
     mod = _import_module_safe()
     from dataclasses import asdict
+
     m = mod.EpochMetrics(
         epoch=3,
         wall_time_s=1.234,
@@ -328,6 +362,7 @@ def test_wasserstein_decay_check_short_window_passes() -> None:
     from molmetal.molmetal_lam.reward.wasserstein_loss import (
         wasserstein_decay_check,
     )
+
     history = [1.0, 0.5, 0.3, 0.2, 0.1, 0.05, 0.04, 0.03, 0.02, 0.01]
     assert wasserstein_decay_check(history, window=5, tol=1e-3) is True
 
@@ -340,6 +375,7 @@ def test_pocket_specific_closure_bias_returns_finite_dict() -> None:
     from molmetal.molmetal_lam.reward.pocket_closure_bias import (
         pocket_specific_closure_bias,
     )
+
     verdict = pocket_specific_closure_bias("1h36")
     assert verdict.is_known_pocket
     assert verdict.bias_sum == pytest.approx(1.0, abs=1e-9)
@@ -356,27 +392,40 @@ def test_evaluate_decode_ratio_does_not_mutate_model_params() -> None:
     from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (
         YuelBondBondDecoder,
     )
+
     torch.manual_seed(0)
     model = mod.CFMJointModel(hidden_dim=16, n_layers=2)
     decoder = YuelBondBondDecoder(
-        head=model.head, hidden_dim=16, n_layers=2,
+        head=model.head,
+        hidden_dim=16,
+        n_layers=2,
     )
     # Snapshot all params.
     pre = {n: p.detach().clone() for n, p in model.named_parameters()}
     val_clouds = mod.build_synthetic_pt_click_clouds(
-        n_clouds=4, jitter=0.20, seed=99,
+        n_clouds=4,
+        jitter=0.20,
+        seed=99,
     )
-    bias = {"CuAAC": 0.30, "SPAAC": 0.10, "Suzuki": 0.20,
-            "AmideCoupling": 0.30, "ThiolEne": 0.10}
+    bias = {
+        "CuAAC": 0.30,
+        "SPAAC": 0.10,
+        "Suzuki": 0.20,
+        "AmideCoupling": 0.30,
+        "ThiolEne": 0.10,
+    }
     mod.evaluate_decode_ratio(
-        model=model, decoder=decoder, val_clouds=val_clouds,
+        model=model,
+        decoder=decoder,
+        val_clouds=val_clouds,
         device=torch.device("cpu"),
-        closure_bounded=True, closure_bias=bias,
+        closure_bounded=True,
+        closure_bias=bias,
     )
     for n, p in model.named_parameters():
-        assert torch.allclose(pre[n], p.detach()), (
-            f"parameter {n} should not be mutated by evaluate_decode_ratio"
-        )
+        assert torch.allclose(
+            pre[n], p.detach()
+        ), f"parameter {n} should not be mutated by evaluate_decode_ratio"
 
 
 # ---------------------------------------------------------------------------
@@ -388,19 +437,31 @@ def test_train_one_epoch_returns_five_floats() -> None:
     from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (
         YuelBondBondDecoder,
     )
+
     model = mod.CFMJointModel(hidden_dim=16, n_layers=2)
     decoder = YuelBondBondDecoder(
-        head=model.head, hidden_dim=16, n_layers=2,
+        head=model.head,
+        hidden_dim=16,
+        n_layers=2,
     )
     optimiser = optim.Adam(model.parameters(), lr=1e-4)
     train_clouds = mod.build_training_cohort(n_train=4, seed=0, jitter=0.10)
     out = mod.train_one_epoch(
-        model=model, decoder=decoder, optimiser=optimiser,
-        train_clouds=train_clouds, device=torch.device("cpu"),
-        batch_size=4, wasserstein_weight=0.1,
+        model=model,
+        decoder=decoder,
+        optimiser=optimiser,
+        train_clouds=train_clouds,
+        device=torch.device("cpu"),
+        batch_size=4,
+        wasserstein_weight=0.1,
         closure_bounded=True,
-        closure_bias={"CuAAC": 0.30, "SPAAC": 0.10, "Suzuki": 0.20,
-                      "AmideCoupling": 0.30, "ThiolEne": 0.10},
+        closure_bias={
+            "CuAAC": 0.30,
+            "SPAAC": 0.10,
+            "Suzuki": 0.20,
+            "AmideCoupling": 0.30,
+            "ThiolEne": 0.10,
+        },
         reference_positions=mod.build_reference_positions(),
     )
     assert len(out) == 5
@@ -416,15 +477,19 @@ def test_target_decode_ratio_set_via_args() -> None:
     mod = _import_module_safe()
     # Use argparse directly to verify the CLI wires the target.
     import argparse
+
     parser = argparse.ArgumentParser()
     # Re-use the training script's parser via a small shim:
     import sys as _sys
+
     saved_argv = _sys.argv
     try:
         _sys.argv = [
             "train_cfm_yuelbond_wasserstein.py",
-            "--target-decode-ratio", "0.85",
-            "--epochs", "5",
+            "--target-decode-ratio",
+            "0.85",
+            "--epochs",
+            "5",
         ]
         args = mod.parse_args()
     finally:

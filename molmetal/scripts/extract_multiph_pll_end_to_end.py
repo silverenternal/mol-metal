@@ -62,6 +62,7 @@ Honest framing
   verify finite features and ``per-seed wall-time < 30 s`` so
   the script can run inside a CI budget.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -80,6 +81,7 @@ try:
         safe_overwrite_check,
         detect_truncation,
     )
+
     _WF424_HAS_ATOMIC = True
 except ImportError:  # pragma: no cover — fallback when running as standalone
     _WF424_HAS_ATOMIC = False
@@ -134,7 +136,10 @@ _EPS_LOG: float = 1.0e-12
 # Loaders — PlatinAI 5K, MetalCytoToxDB, NCI-60 precious
 # ---------------------------------------------------------------------------
 
-def _wf424_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
+
+def _wf424_atomic_write_text(
+    path, content: str, min_lines: int = 50, expected_min_length: int = 200
+) -> None:
     """Wf-424-A4 atomic-write-protocol wrapper around direct write_text.
 
     Falls back to direct write_text if atomic_write_file is unavailable
@@ -146,23 +151,30 @@ def _wf424_atomic_write_text(path, content: str, min_lines: int = 50, expected_m
             _risk = safe_overwrite_check(path, content, min_lines=min_lines)
             if _risk is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-424-A4] safe_overwrite_check diff_ratio=%.3f at %s",
-                    _risk, path,
+                    _risk,
+                    path,
                 )
         atomic_write_file(path, content, encoding="utf-8")
         if detect_truncation is not None:
             _trunc = detect_truncation(content, expected_min_length=expected_min_length)
             if _trunc is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-424-A4] detect_truncation reason=%r at %s",
-                    _trunc, path,
+                    _trunc,
+                    path,
                 )
     else:  # pragma: no cover — fallback when atomic primitive unavailable
         Path(path).write_text(content, encoding="utf-8")
 
-def load_platinai_5k(csv_path: Path, n_max: Optional[int] = None) -> List[Dict[str, Any]]:
+
+def load_platinai_5k(
+    csv_path: Path, n_max: Optional[int] = None
+) -> List[Dict[str, Any]]:
     """Return rows from the PlatinAI 5K CSV (SMILES-only source).
 
     Yields ``{"smiles", "metal", "id"}`` per row.  Used as a SMILES
@@ -175,18 +187,21 @@ def load_platinai_5k(csv_path: Path, n_max: Optional[int] = None) -> List[Dict[s
             smi = (row.get("smiles") or "").strip()
             if not smi:
                 continue
-            out.append({
-                "smiles": smi,
-                "metal": row.get("metal", ""),
-                "id": row.get("id", ""),
-            })
+            out.append(
+                {
+                    "smiles": smi,
+                    "metal": row.get("metal", ""),
+                    "id": row.get("id", ""),
+                }
+            )
             if n_max is not None and len(out) >= n_max:
                 break
     return out
 
 
 def load_metalcytotox_5metal(
-    csv_path: Path, n_max: Optional[int] = None,
+    csv_path: Path,
+    n_max: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
     """Return rows from the 5-metal multi-task CSV.
 
@@ -204,18 +219,21 @@ def load_metalcytotox_5metal(
                 act = float(row.get("activity", "0"))
             except Exception:
                 act = 0.0
-            out.append({
-                "smiles": smi,
-                "metal": row.get("metal", ""),
-                "activity": act,
-            })
+            out.append(
+                {
+                    "smiles": smi,
+                    "metal": row.get("metal", ""),
+                    "activity": act,
+                }
+            )
             if n_max is not None and len(out) >= n_max:
                 break
     return out
 
 
 def load_nci60_precious(
-    csv_path: Path, n_max: Optional[int] = None,
+    csv_path: Path,
+    n_max: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
     """Return rows from the NCI-60 precious-metal long-form CSV.
 
@@ -240,18 +258,21 @@ def load_nci60_precious(
             smi = (row.get("smiles") or "").strip()
             if not smi:
                 continue
-            out.append({
-                "smiles": smi,
-                "pIC50": pic50,
-                "cell_line": row.get("cell_line", ""),
-            })
+            out.append(
+                {
+                    "smiles": smi,
+                    "pIC50": pic50,
+                    "cell_line": row.get("cell_line", ""),
+                }
+            )
             if n_max is not None and len(out) >= n_max:
                 break
     return out
 
 
 def load_platinai_4cell(
-    csv_path: Path, n_max: Optional[int] = None,
+    csv_path: Path,
+    n_max: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
     """Return rows from the PlatinAI 4-cell CSV (synthetic IC50).
 
@@ -284,11 +305,13 @@ def load_platinai_4cell(
                 if not math.isfinite(pic50):
                     continue
                 pic50 = float(max(3.5, min(9.5, pic50)))
-                out.append({
-                    "smiles": smi,
-                    "pIC50": pic50,
-                    "cell_line": cl,
-                })
+                out.append(
+                    {
+                        "smiles": smi,
+                        "pIC50": pic50,
+                        "cell_line": cl,
+                    }
+                )
                 break
             if n_max is not None and len(out) >= n_max:
                 break
@@ -298,6 +321,7 @@ def load_platinai_4cell(
 # ---------------------------------------------------------------------------
 # RDKit 8-d featurizer + 3-D pocket cloud
 # ---------------------------------------------------------------------------
+
 
 def _featurize_8d(smiles: str) -> Optional[List[float]]:
     """Return 8-d RDKit descriptor vector; ``None`` on failure.
@@ -446,6 +470,7 @@ def compute_multiph_features(
 # Design matrix — PlatinAI 5K + MetalCytoToxDB + (NCI-60 / PlatinAI 4-cell)
 # ---------------------------------------------------------------------------
 
+
 def build_design_matrix(
     *,
     dataset: str,
@@ -457,7 +482,10 @@ def build_design_matrix(
     seed: int,
     n_bins: int,
 ) -> Tuple[
-    List[str], List[List[float]], List[List[float]], List[float],
+    List[str],
+    List[List[float]],
+    List[List[float]],
+    List[float],
     Dict[str, Any],
 ]:
     """Build a deterministic ``(smiles, astr, mph, target)`` quadruple.
@@ -542,13 +570,25 @@ def build_design_matrix(
     if dataset in ("nci60", "both") and nci60_csv is not None and nci60_csv.exists():
         nci60_rows = load_nci60_precious(nci60_csv, n_max=4 * int(n_samples))
         rng.shuffle(nci60_rows)
-    if dataset in ("platinai_4cell", "both") and platinai_4cell_csv is not None and platinai_4cell_csv.exists():
+    if (
+        dataset in ("platinai_4cell", "both")
+        and platinai_4cell_csv is not None
+        and platinai_4cell_csv.exists()
+    ):
         p4_rows = load_platinai_4cell(platinai_4cell_csv, n_max=4 * int(n_samples))
         rng.shuffle(p4_rows)
-    if dataset in ("platinai_5k", "both") and platinai_5k_csv is not None and platinai_5k_csv.exists():
+    if (
+        dataset in ("platinai_5k", "both")
+        and platinai_5k_csv is not None
+        and platinai_5k_csv.exists()
+    ):
         pt5k_rows = load_platinai_5k(platinai_5k_csv, n_max=4 * int(n_samples))
         rng.shuffle(pt5k_rows)
-    if dataset in ("metalcytotox", "both") and metalcytotox_csv is not None and metalcytotox_csv.exists():
+    if (
+        dataset in ("metalcytotox", "both")
+        and metalcytotox_csv is not None
+        and metalcytotox_csv.exists()
+    ):
         mc_rows = load_metalcytotox_5metal(metalcytotox_csv, n_max=4 * int(n_samples))
         rng.shuffle(mc_rows)
 
@@ -567,7 +607,9 @@ def build_design_matrix(
 
     # ---- Multi-PH features for the survivor set ----
     mph_feats, mph_stats = compute_multiph_features(
-        smiles_list, n_bins=int(n_bins), max_atoms=MAX_POCKET_ATOMS,
+        smiles_list,
+        n_bins=int(n_bins),
+        max_atoms=MAX_POCKET_ATOMS,
     )
 
     # Align rows: drop smiles where Multi-PH failed.  We re-derive
@@ -619,8 +661,10 @@ def build_design_matrix(
 # Numerical-stability helpers (Wf-25 fixes #2 + #3)
 # ---------------------------------------------------------------------------
 
+
 def _zscore_fit_transform(
-    X_tr: "np.ndarray", X_te: "np.ndarray",
+    X_tr: "np.ndarray",
+    X_te: "np.ndarray",
 ) -> Tuple["np.ndarray", "np.ndarray", "np.ndarray", "np.ndarray"]:
     """Z-score with std floor; per-column mean/std from training rows.
 
@@ -673,7 +717,8 @@ def _join_to_hilbert(
         bias_te = np.ones((n_te, 1), dtype=float)
         mph_flat_te = X_mph_test.reshape(n_te, -1)
         aug_te = np.concatenate(
-            [np.concatenate([X_8d_test, bias_te], axis=1), mph_flat_te], axis=1,
+            [np.concatenate([X_8d_test, bias_te], axis=1), mph_flat_te],
+            axis=1,
         )
     else:
         aug_te = None
@@ -699,9 +744,7 @@ def _join_to_hilbert(
             break
         keep.append(int(idx))
     if len(keep) < hilbert_dim:
-        extras = [
-            int(i) for i in ranked if int(i) not in set(keep)
-        ]
+        extras = [int(i) for i in ranked if int(i) not in set(keep)]
         keep.extend(extras[: hilbert_dim - len(keep)])
     keep_arr = np.asarray(sorted(set(keep))[:hilbert_dim], dtype=int)
     out_tr = aug_tr[:, keep_arr]
@@ -713,6 +756,7 @@ def _join_to_hilbert(
 # ---------------------------------------------------------------------------
 # Hilbert PD with cosine LR + warmup + grad-clip + ridge (Wf-25 fix #3)
 # ---------------------------------------------------------------------------
+
 
 def fit_hilbert_stable(
     X_tr: "np.ndarray",
@@ -790,7 +834,9 @@ def fit_hilbert_stable(
 
 
 def predict_hilbert(
-    best_params: "np.ndarray", X: "np.ndarray", hilbert_dim: int,
+    best_params: "np.ndarray",
+    X: "np.ndarray",
+    hilbert_dim: int,
 ) -> "np.ndarray":
     import numpy as np
 
@@ -802,6 +848,7 @@ def predict_hilbert(
 # ---------------------------------------------------------------------------
 # R² helper (overflow-safe)
 # ---------------------------------------------------------------------------
+
 
 def _compute_r2(y_true: Sequence[float], y_pred: Sequence[float]) -> float:
     """Finite-only R² with predict-clip and SS_tot guard."""
@@ -835,8 +882,11 @@ def _compute_r2(y_true: Sequence[float], y_pred: Sequence[float]) -> float:
 # K-fold indices
 # ---------------------------------------------------------------------------
 
+
 def _kfold_indices(
-    n: int, k: int, seed: int = 0,
+    n: int,
+    k: int,
+    seed: int = 0,
 ) -> List[Tuple[List[int], List[int]]]:
     """Deterministic k-fold split (random shuffle, no stratification)."""
     import numpy as np
@@ -848,9 +898,7 @@ def _kfold_indices(
     out: List[Tuple[List[int], List[int]]] = []
     for i in range(int(k)):
         test_idx = folds[i].tolist()
-        train_idx = np.concatenate(
-            [folds[j] for j in range(int(k)) if j != i]
-        ).tolist()
+        train_idx = np.concatenate([folds[j] for j in range(int(k)) if j != i]).tolist()
         out.append((train_idx, test_idx))
     return out
 
@@ -858,6 +906,7 @@ def _kfold_indices(
 # ---------------------------------------------------------------------------
 # Per-seed extraction + regression
 # ---------------------------------------------------------------------------
+
 
 def run_extraction_one_seed(
     *,
@@ -960,8 +1009,11 @@ def run_extraction_one_seed(
         mph_tr_n, mph_te_n, _mu_m, _sd_m = _zscore_fit_transform(mph_tr, mph_te)
         # Join + truncate to ``hilbert_dim``.
         X_tr, X_te = _join_to_hilbert(
-            astr_tr_n, mph_tr_n, int(hilbert_dim),
-            X_8d_test=astr_te_n, X_mph_test=mph_te_n,
+            astr_tr_n,
+            mph_tr_n,
+            int(hilbert_dim),
+            X_8d_test=astr_te_n,
+            X_mph_test=mph_te_n,
         )
         # Final finite guard on the joined matrix.
         X_tr = np.nan_to_num(X_tr, nan=0.0, posinf=0.0, neginf=0.0)
@@ -976,7 +1028,8 @@ def run_extraction_one_seed(
         y_tr_c = y_tr - y_mean
 
         best_x, info = fit_hilbert_stable(
-            X_tr, y_tr_c,
+            X_tr,
+            y_tr_c,
             hilbert_dim=int(hilbert_dim),
             lr=float(lr),
             epochs=int(epochs),
@@ -984,15 +1037,17 @@ def run_extraction_one_seed(
         )
         y_hat = predict_hilbert(best_x, X_te, int(hilbert_dim)) + y_mean
         r2 = _compute_r2(y_te, y_hat)
-        per_fold.append({
-            "fold": int(fold_idx),
-            "n_train": int(len(tr_idx)),
-            "n_test": int(len(te_idx)),
-            "r2": float(r2),
-            "train_r2": float(info["train_r2"]),
-            "wall_s": float(info["wall_s"]),
-            "n_epochs": int(info["n_epochs"]),
-        })
+        per_fold.append(
+            {
+                "fold": int(fold_idx),
+                "n_train": int(len(tr_idx)),
+                "n_test": int(len(te_idx)),
+                "r2": float(r2),
+                "train_r2": float(info["train_r2"]),
+                "wall_s": float(info["wall_s"]),
+                "n_epochs": int(info["n_epochs"]),
+            }
+        )
         r2s.append(float(r2))
         walls.append(float(info["wall_s"]))
 
@@ -1023,6 +1078,7 @@ def run_extraction_one_seed(
 # Markdown table
 # ---------------------------------------------------------------------------
 
+
 def render_table(per_seed: List[Dict[str, Any]]) -> str:
     """Render a Markdown comparison table from per-seed results."""
     out = [
@@ -1051,15 +1107,17 @@ def render_table(per_seed: List[Dict[str, Any]]) -> str:
     if per_seed:
         avg_r2 = sum(s["r2_mean"] for s in per_seed) / len(per_seed)
         all_r2_min = min(s["r2_min"] for s in per_seed)
-        out.extend([
-            "",
-            f"**Aggregate over {len(per_seed)} seeds**:",
-            f"* Mean R² = **{avg_r2:+.4f}**",
-            f"* Min R² (worst fold, worst seed) = **{all_r2_min:+.4f}**",
-            "",
-            "**Wf-25 baseline (broken)**: joint R² = -0.443 / -9e9 (numerical bug).",
-            "**Wf-37 fix target**: per-seed R² ≥ 0.3 on real spread pIC50.",
-        ])
+        out.extend(
+            [
+                "",
+                f"**Aggregate over {len(per_seed)} seeds**:",
+                f"* Mean R² = **{avg_r2:+.4f}**",
+                f"* Min R² (worst fold, worst seed) = **{all_r2_min:+.4f}**",
+                "",
+                "**Wf-25 baseline (broken)**: joint R² = -0.443 / -9e9 (numerical bug).",
+                "**Wf-37 fix target**: per-seed R² ≥ 0.3 on real spread pIC50.",
+            ]
+        )
     return "\n".join(out) + "\n"
 
 
@@ -1067,66 +1125,88 @@ def render_table(per_seed: List[Dict[str, Any]]) -> str:
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=__doc__.splitlines()[0],
     )
     parser.add_argument(
-        "--dataset", type=str, default="both",
-        choices=("nci60", "platinai_4cell", "platinai_5k",
-                 "metalcytotox", "both"),
+        "--dataset",
+        type=str,
+        default="both",
+        choices=("nci60", "platinai_4cell", "platinai_5k", "metalcytotox", "both"),
         help="Which dataset(s) to draw SMILES from.  Default: both.",
     )
     parser.add_argument(
-        "--n-samples", type=int, default=500,
+        "--n-samples",
+        type=int,
+        default=500,
         help="Max number of SMILES rows to featurize.",
     )
     parser.add_argument(
-        "--seeds", type=int, nargs="+", default=[0, 1, 2, 3, 4],
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=[0, 1, 2, 3, 4],
         help="Random seeds (default: 0..4 = 5 seeds).",
     )
     parser.add_argument(
-        "--n-bins", type=int, default=MULTI_PH_N_BINS_DEFAULT,
+        "--n-bins",
+        type=int,
+        default=MULTI_PH_N_BINS_DEFAULT,
         help="Multi-PH bins per axis (default 16).",
     )
     parser.add_argument(
-        "--hilbert-dim", type=int, default=HILBERT_DIM_DEFAULT,
+        "--hilbert-dim",
+        type=int,
+        default=HILBERT_DIM_DEFAULT,
         help="Joined Hilbert space dim (default 64).",
     )
     parser.add_argument(
-        "--lr", type=float, default=0.05,
+        "--lr",
+        type=float,
+        default=0.05,
         help="Hilbert PD peak learning rate (default 0.05).",
     )
     parser.add_argument(
-        "--epochs", type=int, default=100,
+        "--epochs",
+        type=int,
+        default=100,
         help="Hilbert PD epochs (default 100).",
     )
     parser.add_argument(
-        "--n-folds", type=int, default=5,
+        "--n-folds",
+        type=int,
+        default=5,
         help="K-fold cross-validation folds (default 5).",
     )
     parser.add_argument(
-        "--nci60", type=str,
+        "--nci60",
+        type=str,
         default="molmetal/data/nci60_precious_9cell.csv",
         help="NCI-60 precious-metal CSV (real pIC50).",
     )
     parser.add_argument(
-        "--platinai-4cell", type=str,
+        "--platinai-4cell",
+        type=str,
         default="molmetal/data/platinai_4cell.csv",
         help="PlatinAI 4-cell CSV (synthetic IC50).",
     )
     parser.add_argument(
-        "--platinai-5k", type=str,
+        "--platinai-5k",
+        type=str,
         default="molmetal/data/platinai_5k.csv",
         help="PlatinAI 5K CSV (SMILES pool).",
     )
     parser.add_argument(
-        "--metalcytotox", type=str,
+        "--metalcytotox",
+        type=str,
         default=".data/molmetal/metalcytotox_5metal_multitask_v4.csv",
         help="MetalCytoToxDB 5-metal CSV (SMILES pool).",
     )
     parser.add_argument(
-        "--output", type=str,
+        "--output",
+        type=str,
         default="molmetal/reports/wf37_multiph_pll",
         help="Output directory for the bench JSON / table / run.log.",
     )
@@ -1249,9 +1329,11 @@ def main() -> int:
         f.write(render_table(per_seed))
     print(f"wrote {table_path}")
 
-    print(f"\nAggregate: r2_mean_of_means={aggregate['r2_mean_of_means']:+.4f} "
-          f"r2_min_of_mins={aggregate['r2_min_of_mins']:+.4f} "
-          f"finite={aggregate['finite_features_all_seeds']}")
+    print(
+        f"\nAggregate: r2_mean_of_means={aggregate['r2_mean_of_means']:+.4f} "
+        f"r2_min_of_mins={aggregate['r2_min_of_mins']:+.4f} "
+        f"finite={aggregate['finite_features_all_seeds']}"
+    )
     print("Done.")
     return 0
 

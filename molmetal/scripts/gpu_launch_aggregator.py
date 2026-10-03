@@ -70,20 +70,48 @@ WAVE_BUDGET_REPORT_JSON = (
 )
 
 LAUNCHERS = [
-    ("wf355_a1", f"{PROJECT_ROOT}/molmetal/reports/wf310e_r20_p3_drugood_full_launch",
-     f"{PROJECT_ROOT}/scripts/launch_wf310e_r20_p3_drugood_1.58M_chemprop_v2.sh", 10.0),
-    ("wf355_a2", f"{PROJECT_ROOT}/molmetal/reports/wf355a2_r20_p4_bindingdb",
-     f"{PROJECT_ROOT}/scripts/launch_wf310e_r20_p4_bindingdb_1.07M.sh", 7.0),
-    ("wf355_a3", f"{PROJECT_ROOT}/molmetal/reports/wf355a3_r20_p5_tmqm_plat",
-     f"{PROJECT_ROOT}/scripts/launch_wf310e_r20_p5_tmqm_plat_joint_retrain.sh", 12.0),
-    ("wf355_b1", f"{PROJECT_ROOT}/molmetal/reports/wf131_p3_deferred_runs",
-     f"{PROJECT_ROOT}/scripts/launch_wf131_p3_deferred_runs.sh", 5.0),
-    ("wf355_b2", f"{PROJECT_ROOT}/molmetal/reports/wf146_chemprop_lomo",
-     f"{PROJECT_ROOT}/scripts/launch_wf146_deferred_runs.sh", 3.0),
-    ("g5_retrain", f"{PROJECT_ROOT}/results/wf124_p3_50epoch_full_sweep_g5",
-     f"{PROJECT_ROOT}/scripts/launch_wf124_p3_g5.sh", 5.0),
-    ("g6_recover", f"{PROJECT_ROOT}/results/wf124_p3_per_innovation_ablation_g6",
-     f"{PROJECT_ROOT}/scripts/recover_g6_failed_tuples.sh", 11.4),
+    (
+        "wf355_a1",
+        f"{PROJECT_ROOT}/molmetal/reports/wf310e_r20_p3_drugood_full_launch",
+        f"{PROJECT_ROOT}/scripts/launch_wf310e_r20_p3_drugood_1.58M_chemprop_v2.sh",
+        10.0,
+    ),
+    (
+        "wf355_a2",
+        f"{PROJECT_ROOT}/molmetal/reports/wf355a2_r20_p4_bindingdb",
+        f"{PROJECT_ROOT}/scripts/launch_wf310e_r20_p4_bindingdb_1.07M.sh",
+        7.0,
+    ),
+    (
+        "wf355_a3",
+        f"{PROJECT_ROOT}/molmetal/reports/wf355a3_r20_p5_tmqm_plat",
+        f"{PROJECT_ROOT}/scripts/launch_wf310e_r20_p5_tmqm_plat_joint_retrain.sh",
+        12.0,
+    ),
+    (
+        "wf355_b1",
+        f"{PROJECT_ROOT}/molmetal/reports/wf131_p3_deferred_runs",
+        f"{PROJECT_ROOT}/scripts/launch_wf131_p3_deferred_runs.sh",
+        5.0,
+    ),
+    (
+        "wf355_b2",
+        f"{PROJECT_ROOT}/molmetal/reports/wf146_chemprop_lomo",
+        f"{PROJECT_ROOT}/scripts/launch_wf146_deferred_runs.sh",
+        3.0,
+    ),
+    (
+        "g5_retrain",
+        f"{PROJECT_ROOT}/results/wf124_p3_50epoch_full_sweep_g5",
+        f"{PROJECT_ROOT}/scripts/launch_wf124_p3_g5.sh",
+        5.0,
+    ),
+    (
+        "g6_recover",
+        f"{PROJECT_ROOT}/results/wf124_p3_per_innovation_ablation_g6",
+        f"{PROJECT_ROOT}/scripts/recover_g6_failed_tuples.sh",
+        11.4,
+    ),
 ]
 
 
@@ -136,8 +164,16 @@ def pair_status(pdir: str) -> str:
             if not st:
                 ppt = d.get("per_pair_table", [])
                 if isinstance(ppt, list) and ppt:
-                    ok = sum(1 for r in ppt if isinstance(r, dict) and r.get("status") == "OK")
-                    failed = sum(1 for r in ppt if isinstance(r, dict) and r.get("status") == "FAILED")
+                    ok = sum(
+                        1
+                        for r in ppt
+                        if isinstance(r, dict) and r.get("status") == "OK"
+                    )
+                    failed = sum(
+                        1
+                        for r in ppt
+                        if isinstance(r, dict) and r.get("status") == "FAILED"
+                    )
                     if failed > 0:
                         st = "PARTIAL"
                     elif ok > 0:
@@ -145,7 +181,9 @@ def pair_status(pdir: str) -> str:
             if not st and d.get("elapsed_seconds_total"):
                 if runlog.exists():
                     text = runlog.read_text(errors="ignore")
-                    if "DONE total elapsed=" in text or re.search(r"best_epoch=\d+", text):
+                    if "DONE total elapsed=" in text or re.search(
+                        r"best_epoch=\d+", text
+                    ):
                         st = "OK"
                     elif "FAILED" in text or "Traceback" in text:
                         st = "FAILED"
@@ -231,7 +269,8 @@ def pair_progress_detail(pdir: str) -> dict:
         wall_elapsed_s = int(datetime.now().timestamp() - first_ts)
     last_log_ts = (
         datetime.fromtimestamp(last_ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        if last_ts is not None else None
+        if last_ts is not None
+        else None
     )
     return {
         "metal": metal,
@@ -243,7 +282,12 @@ def pair_progress_detail(pdir: str) -> dict:
 
 
 VALID_PAIR_STATUSES = {
-    "PLANNED", "RUNNING", "COMPLETED", "FAILED", "STALE", "UNKNOWN",
+    "PLANNED",
+    "RUNNING",
+    "COMPLETED",
+    "FAILED",
+    "STALE",
+    "UNKNOWN",
 }
 
 
@@ -273,7 +317,9 @@ def launcher_status(root: str) -> str:
         try:
             with open(summary) as f:
                 d = json.load(f)
-            if d.get("todo_182_g6_total_tuples_planned") or d.get("todo_181_g5_total_pairs"):
+            if d.get("todo_182_g6_total_tuples_planned") or d.get(
+                "todo_181_g5_total_pairs"
+            ):
                 return "PARTIAL"
         except Exception:
             pass
@@ -292,8 +338,9 @@ def launcher_status(root: str) -> str:
     return "NO_PLAN"
 
 
-def aggregate_launcher(name: str, root: str, script: str, wall_proj: float,
-                        include_per_pair: bool = False) -> dict:
+def aggregate_launcher(
+    name: str, root: str, script: str, wall_proj: float, include_per_pair: bool = False
+) -> dict:
     """Build the per-launcher JSON entry.
 
     When include_per_pair=True, also emit a per_pair_progress array with
@@ -318,7 +365,11 @@ def aggregate_launcher(name: str, root: str, script: str, wall_proj: float,
     launch_log = Path(root) / "launch.log"
     if not launch_log.exists():
         launch_log = Path(root) / "master.log"
-    elapsed_sec = int(datetime.now().timestamp() - os.path.getmtime(str(launch_log))) if launch_log.exists() else 0
+    elapsed_sec = (
+        int(datetime.now().timestamp() - os.path.getmtime(str(launch_log)))
+        if launch_log.exists()
+        else 0
+    )
     entry = {
         "name": name,
         "script": script,
@@ -343,8 +394,9 @@ def aggregate_launcher(name: str, root: str, script: str, wall_proj: float,
     return entry
 
 
-def aggregate(filter_launcher: str | None = None,
-              include_per_pair: bool = False) -> dict:
+def aggregate(
+    filter_launcher: str | None = None, include_per_pair: bool = False
+) -> dict:
     """Build the full dashboard JSON.
 
     include_per_pair=True emits a per_pair_progress array per launcher
@@ -358,15 +410,18 @@ def aggregate(filter_launcher: str | None = None,
     for name, root, script, wall_proj in LAUNCHERS:
         if filter_launcher and name != filter_launcher:
             continue
-        entries.append(aggregate_launcher(name, root, script, wall_proj,
-                                          include_per_pair=include_per_pair))
+        entries.append(
+            aggregate_launcher(
+                name, root, script, wall_proj, include_per_pair=include_per_pair
+            )
+        )
     return {
         "dashboard_generated_at": now_iso(),
         "dashboard_schema_version": "1.0",
         "wf_origin": "Wf-360-A3 GPU launch dashboard scaffold",
         "wf_origin_update": "Wf-364-B2: activation gate + status-summary; "
-                            "Wf-363-B1: per-pair completion tracking; "
-                            "Wf-363-B2: budget remaining indicator (budget_status)",
+        "Wf-363-B1: per-pair completion tracking; "
+        "Wf-363-B2: budget remaining indicator (budget_status)",
         "activation_gated": True,
         "user_ok_required": True,
         "launcher_count": len(entries),
@@ -381,13 +436,16 @@ def format_status_summary(result: dict) -> str:
     for entry in result["launchers"]:
         pp = entry["pair_progress"]
         pair_str = f"{pp['ok']}/{pp['total_pairs']}"
-        lines.append(f"{entry['name']}\t{entry['status']}\t{pair_str}\t{entry['wall_projected_hr']}")
+        lines.append(
+            f"{entry['name']}\t{entry['status']}\t{pair_str}\t{entry['wall_projected_hr']}"
+        )
     return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
 # Wf-363-B2 — budget remaining indicator
 # ---------------------------------------------------------------------------
+
 
 def _load_wave_budget_report() -> dict | None:
     """Read wave_budget_tracker.py's report JSON (READ-ONLY).
@@ -419,6 +477,7 @@ def _classify_deferred_class_safe(wave_name: str) -> str:
         # Defer import to function-call time so the aggregator can
         # still be imported in minimal test environments.
         import importlib.util as importlib_util
+
         spec = importlib_util.spec_from_file_location(
             "wave_budget_tracker",
             f"{PROJECT_ROOT}/molmetal/scripts/wave_budget_tracker.py",
@@ -470,17 +529,20 @@ def _deferred_temp_total_hr() -> tuple[float, list[dict]]:
             hr = float(estimated)
             evidence = "PROJECTED_estimated_hr"
         total_hr += hr
-        per_wave.append({
-            "wave_name": name,
-            "deferred_class": "DEFERRED_TEMP",
-            "hr": round(hr, 2),
-            "evidence": evidence,
-        })
+        per_wave.append(
+            {
+                "wave_name": name,
+                "deferred_class": "DEFERRED_TEMP",
+                "hr": round(hr, 2),
+                "evidence": evidence,
+            }
+        )
     return round(total_hr, 6), per_wave
 
 
-def compute_budget_status(entries: list[dict],
-                          session_cap_hr: float = SESSION_CAP_HR) -> dict:
+def compute_budget_status(
+    entries: list[dict], session_cap_hr: float = SESSION_CAP_HR
+) -> dict:
     """Compute the per-launcher + cross-launcher budget remaining state.
 
     Output schema (Wf-363-B2):
@@ -531,19 +593,21 @@ def compute_budget_status(entries: list[dict],
         total_pairs = pp.get("total_pairs", 0) or 0
         ok_pairs = pp.get("ok", 0) or 0
         share = (ok_pairs / total_pairs) if total_pairs > 0 else 0.0
-        per_launcher.append({
-            "launcher": e.get("name", "?"),
-            "budget_hr": round(budget_hr, 6),
-            "remaining_hr": remaining_hr,
-            "status": status,
-            "status_evidence": (
-                f"{round(budget_hr, 2)}h projected vs {session_cap_hr}h session cap "
-                f"= {round(remaining_hr, 2)}h remaining"
-            ),
-            "wall_projected_hr": round(budget_hr, 6),
-            "pair_progress_share": round(share, 6),
-            "launcher_status": e.get("status", "UNKNOWN"),
-        })
+        per_launcher.append(
+            {
+                "launcher": e.get("name", "?"),
+                "budget_hr": round(budget_hr, 6),
+                "remaining_hr": remaining_hr,
+                "status": status,
+                "status_evidence": (
+                    f"{round(budget_hr, 2)}h projected vs {session_cap_hr}h session cap "
+                    f"= {round(remaining_hr, 2)}h remaining"
+                ),
+                "wall_projected_hr": round(budget_hr, 6),
+                "pair_progress_share": round(share, 6),
+                "launcher_status": e.get("status", "UNKNOWN"),
+            }
+        )
         total_projected_hr += budget_hr
 
     deferred_temp_hr, deferred_temp_waves = _deferred_temp_total_hr()
@@ -551,7 +615,9 @@ def compute_budget_status(entries: list[dict],
     deferred_temp_remaining_hr = round(session_cap_hr - deferred_temp_hr, 6)
 
     over_launchers = [pl["launcher"] for pl in per_launcher if pl["status"] == "OVER"]
-    within_launchers = [pl["launcher"] for pl in per_launcher if pl["status"] == "WITHIN"]
+    within_launchers = [
+        pl["launcher"] for pl in per_launcher if pl["status"] == "WITHIN"
+    ]
     honest_lines = [
         f"Session cap = {session_cap_hr}h (per Wf-262 §7.1 budget discipline).",
         f"Per-launcher: {len(within_launchers)} WITHIN ({', '.join(within_launchers) or 'none'}), "
@@ -586,32 +652,56 @@ def compute_budget_status(entries: list[dict],
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Wf-360-A3 GPU launch dashboard aggregator")
-    parser.add_argument("--out", default=DASHBOARD_OUTPUT,
-                        help=f"Output JSON path (default: {DASHBOARD_OUTPUT})")
-    parser.add_argument("--launcher", default=None,
-                        help="Filter to a single launcher name (e.g. wf355_a3)")
-    parser.add_argument("--stdout", action="store_true",
-                        help="Print JSON to stdout INSTEAD of writing to --out")
-    parser.add_argument("--status-summary", action="store_true",
-                        help="Emit compact TSV status summary (NAME\\tSTATUS\\tPAIRS\\tWALL_PROJ_HR) "
-                             "instead of full JSON. Default = off (full JSON).")
-    parser.add_argument("--activate", action="store_true",
-                        help="ACTIVATION GATE: enable LIVE mode (default = READ-ONLY scaffold). "
-                             "Live mode is USER_OK-gated per AGENTS.md §5.1; the operator must "
-                             "explicitly pass --activate to opt in. Output is tagged with "
-                             "'dashboard_mode' = LIVE vs READ-ONLY_SCAFFOLD.")
-    parser.add_argument("--per-pair-detail", action="store_true",
-                        help="Wf-363-B1: emit per_pair_progress array per launcher "
-                             "[{metal, seed, status, wall_elapsed_s, last_log_ts}]. "
-                             "Use with --json or --stdout for machine-readable output.")
-    parser.add_argument("--budget-summary", action="store_true",
-                        help="Wf-363-B2: emit ONLY the budget_status JSON "
-                             "(per-launcher remaining_hr vs 10h session cap + "
-                             "DEFERRED_TEMP aggregate). Default = off (full JSON).")
+    parser = argparse.ArgumentParser(
+        description="Wf-360-A3 GPU launch dashboard aggregator"
+    )
+    parser.add_argument(
+        "--out",
+        default=DASHBOARD_OUTPUT,
+        help=f"Output JSON path (default: {DASHBOARD_OUTPUT})",
+    )
+    parser.add_argument(
+        "--launcher",
+        default=None,
+        help="Filter to a single launcher name (e.g. wf355_a3)",
+    )
+    parser.add_argument(
+        "--stdout",
+        action="store_true",
+        help="Print JSON to stdout INSTEAD of writing to --out",
+    )
+    parser.add_argument(
+        "--status-summary",
+        action="store_true",
+        help="Emit compact TSV status summary (NAME\\tSTATUS\\tPAIRS\\tWALL_PROJ_HR) "
+        "instead of full JSON. Default = off (full JSON).",
+    )
+    parser.add_argument(
+        "--activate",
+        action="store_true",
+        help="ACTIVATION GATE: enable LIVE mode (default = READ-ONLY scaffold). "
+        "Live mode is USER_OK-gated per AGENTS.md §5.1; the operator must "
+        "explicitly pass --activate to opt in. Output is tagged with "
+        "'dashboard_mode' = LIVE vs READ-ONLY_SCAFFOLD.",
+    )
+    parser.add_argument(
+        "--per-pair-detail",
+        action="store_true",
+        help="Wf-363-B1: emit per_pair_progress array per launcher "
+        "[{metal, seed, status, wall_elapsed_s, last_log_ts}]. "
+        "Use with --json or --stdout for machine-readable output.",
+    )
+    parser.add_argument(
+        "--budget-summary",
+        action="store_true",
+        help="Wf-363-B2: emit ONLY the budget_status JSON "
+        "(per-launcher remaining_hr vs 10h session cap + "
+        "DEFERRED_TEMP aggregate). Default = off (full JSON).",
+    )
     args = parser.parse_args(argv)
-    result = aggregate(filter_launcher=args.launcher,
-                        include_per_pair=args.per_pair_detail)
+    result = aggregate(
+        filter_launcher=args.launcher, include_per_pair=args.per_pair_detail
+    )
     # Activation gate: tag the output with dashboard_mode (LIVE vs READ-ONLY_SCAFFOLD).
     # Default = READ-ONLY_SCAFFOLD; LIVE only when --activate is explicitly set.
     result["dashboard_mode"] = "LIVE" if args.activate else "READ-ONLY_SCAFFOLD"
@@ -628,9 +718,11 @@ def main(argv: list[str] | None = None) -> int:
     else:
         Path(args.out).parent.mkdir(parents=True, exist_ok=True)
         Path(args.out).write_text(text)
-        print(f"[{now_iso()}] wrote dashboard → {args.out} "
-              f"({len(result['launchers'])} launchers, mode={result['dashboard_mode']})",
-              file=sys.stderr)
+        print(
+            f"[{now_iso()}] wrote dashboard → {args.out} "
+            f"({len(result['launchers'])} launchers, mode={result['dashboard_mode']})",
+            file=sys.stderr,
+        )
     return 0
 
 

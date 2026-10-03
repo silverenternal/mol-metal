@@ -178,9 +178,9 @@ def test_adapter_joint_train_in_optimizer_when_bond_head_enabled():
         joint_train=True,
     )
     adapter.setup(device="cpu")
-    assert adapter.bond_head is not None, (
-        "BondOrderHead must be constructed when use_bond_head=True"
-    )
+    assert (
+        adapter.bond_head is not None
+    ), "BondOrderHead must be constructed when use_bond_head=True"
     # Confirm the optimizer has parameters belonging to the bond_head.
     bond_head_param_ids = {id(p) for p in adapter.bond_head.parameters()}
     opt_param_ids: set = set()
@@ -237,9 +237,7 @@ def test_legacy_opt_out_still_works():
         "When use_bond_head=True the head must be constructed "
         "(even in joint_train=False mode)"
     )
-    bond_head_param_ids = {
-        id(p) for p in legacy_frozen.bond_head.parameters()
-    }
+    bond_head_param_ids = {id(p) for p in legacy_frozen.bond_head.parameters()}
     opt_param_ids: set = set()
     for group in legacy_frozen.optimizer.param_groups:
         for p in group["params"]:

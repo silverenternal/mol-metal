@@ -65,7 +65,8 @@ try:
     )
 except Exception as exc:  # pragma: no cover
     pytest.skip(
-        f"Vina replay pool module unavailable: {exc}", allow_module_level=True,
+        f"Vina replay pool module unavailable: {exc}",
+        allow_module_level=True,
     )
 
 
@@ -159,13 +160,25 @@ def test_pool_add_and_get():
     pf[0] = 1.0
 
     n1 = pool.add_observation(
-        "CCO", emb, pf, vina_score=-8.5, pocket_id="1h36",
+        "CCO",
+        emb,
+        pf,
+        vina_score=-8.5,
+        pocket_id="1h36",
     )
     n2 = pool.add_observation(
-        "CCN", emb, pf, vina_score=-7.5, pocket_id="1h36",
+        "CCN",
+        emb,
+        pf,
+        vina_score=-7.5,
+        pocket_id="1h36",
     )
     n3 = pool.add_observation(
-        "CCC", emb, pf, vina_score=-9.0, pocket_id="3eml",
+        "CCC",
+        emb,
+        pf,
+        vina_score=-9.0,
+        pocket_id="3eml",
     )
 
     # Returned nodes are typed correctly.
@@ -197,13 +210,25 @@ def test_pool_persistence_roundtrip():
     with tempfile.TemporaryDirectory() as td:
         pool = VinaReplayPool(storage_dir=td)
         pool.add_observation(
-            "CCO", emb, pf, vina_score=-8.5, pocket_id="1h36",
+            "CCO",
+            emb,
+            pf,
+            vina_score=-8.5,
+            pocket_id="1h36",
         )
         pool.add_observation(
-            "CCN", emb, pf, vina_score=-7.5, pocket_id="1h36",
+            "CCN",
+            emb,
+            pf,
+            vina_score=-7.5,
+            pocket_id="1h36",
         )
         pool.add_observation(
-            "CCC", emb, pf, vina_score=-9.0, pocket_id="3eml",
+            "CCC",
+            emb,
+            pf,
+            vina_score=-9.0,
+            pocket_id="3eml",
         )
         pool.save()
 
@@ -287,7 +312,9 @@ def test_rank_candidates_orders_correctly():
         embeddings.append(emb)
 
     rep = surrogate.rank_candidates(
-        smiles_list, embeddings, pf,
+        smiles_list,
+        embeddings,
+        pf,
     )
     assert isinstance(rep, VinaSurrogateReport)
 
@@ -333,7 +360,9 @@ def test_spearman_correlation_above_threshold():
         true_scores.append(_deterministic_score(emb, pf))
 
     rep = surrogate.rank_candidates(
-        smiles_list, embeddings, pf,
+        smiles_list,
+        embeddings,
+        pf,
     )
     pred_by_idx = {idx: float(score) for (idx, score, _) in rep.rankings}
     pred_scores = [pred_by_idx[i] for i in range(n_test)]
@@ -450,7 +479,13 @@ def test_surrogate_parameter_count_under_10k():
     mlp = VinaSurrogate(backend="mlp")
     mlp.fit([pool])
     assert mlp.n_parameters() < 10_000
-    assert mlp.n_parameters() == MLP_HIDDEN * (DEFAULT_EMBED_DIM + DEFAULT_POCKET_DIM) + MLP_HIDDEN + MLP_HIDDEN + 1
+    assert (
+        mlp.n_parameters()
+        == MLP_HIDDEN * (DEFAULT_EMBED_DIM + DEFAULT_POCKET_DIM)
+        + MLP_HIDDEN
+        + MLP_HIDDEN
+        + 1
+    )
 
 
 def test_vina_replay_node_rejects_nonfinite_score():

@@ -43,6 +43,7 @@ def mol_cls():
     if RDKit is not importable."""
     try:
         from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
         return MoleculeClosedTerm
     except Exception as exc:  # pragma: no cover — defensive
         pytest.skip(f"MoleculeClosedTerm unavailable: {exc}")
@@ -52,6 +53,7 @@ def mol_cls():
 def check_bnf():
     try:
         from molmetal_lam.lam_chem.well_formedness import check_beta_normal_form
+
         return check_beta_normal_form
     except Exception as exc:  # pragma: no cover — defensive
         pytest.skip(f"check_beta_normal_form unavailable: {exc}")
@@ -106,9 +108,7 @@ def test_synthesizability_rate_known_good_beta_nf(mol_cls, check_bnf):
             smi = good.canonical_smiles()
             if smi:
                 # Just verify the function returns a finite value in [0, 1].
-                val = lam.synthesizability_via_lambda_paths(
-                    good, check_bnf=check_bnf
-                )
+                val = lam.synthesizability_via_lambda_paths(good, check_bnf=check_bnf)
                 assert 0.0 <= val <= 1.0
         except Exception:
             pass  # RDKit parse failure is acceptable on headless CI.
@@ -117,10 +117,13 @@ def test_synthesizability_rate_known_good_beta_nf(mol_cls, check_bnf):
     bad = _safe_term(mol_cls, "INVALID_SMILES")
     if bad is None:
         # When from_smiles fails the synthesizability trivially returns 0.0.
-        assert lam.synthesizability_via_lambda_paths(
-            type("S", (), {"canonical_smiles": lambda self: "INVALID"})(),
-            check_bnf=check_bnf,
-        ) == 0.0
+        assert (
+            lam.synthesizability_via_lambda_paths(
+                type("S", (), {"canonical_smiles": lambda self: "INVALID"})(),
+                check_bnf=check_bnf,
+            )
+            == 0.0
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -274,12 +277,12 @@ def test_lambda_only_run_reports_homotype(mol_cls, tmp_path):
 
     # Aggregate: both keys present.
     agg = payload["aggregate"]
-    assert "diversity_tanimoto" in agg, (
-        f"aggregate missing diversity_tanimoto: {sorted(agg.keys())}"
-    )
-    assert "diversity_homotype" in agg, (
-        f"aggregate missing diversity_homotype: {sorted(agg.keys())}"
-    )
+    assert (
+        "diversity_tanimoto" in agg
+    ), f"aggregate missing diversity_tanimoto: {sorted(agg.keys())}"
+    assert (
+        "diversity_homotype" in agg
+    ), f"aggregate missing diversity_homotype: {sorted(agg.keys())}"
     assert 0.0 <= float(agg["diversity_tanimoto"]) <= 1.0 + 1e-9
     assert 0.0 <= float(agg["diversity_homotype"]) <= 1.0 + 1e-9
 
@@ -292,24 +295,20 @@ def test_lambda_only_run_reports_homotype(mol_cls, tmp_path):
     # Per-cell rows also carry both diversity fields.
     assert raw["cells"], "no cells in report"
     for row in raw["cells"]:
-        assert "diversity_tanimoto" in row, (
-            f"cell row missing diversity_tanimoto: {sorted(row.keys())}"
-        )
-        assert "diversity_homotype" in row, (
-            f"cell row missing diversity_homotype: {sorted(row.keys())}"
-        )
+        assert (
+            "diversity_tanimoto" in row
+        ), f"cell row missing diversity_tanimoto: {sorted(row.keys())}"
+        assert (
+            "diversity_homotype" in row
+        ), f"cell row missing diversity_homotype: {sorted(row.keys())}"
         assert 0.0 <= float(row["diversity_homotype"]) <= 1.0 + 1e-9
 
     # summary.md also includes both columns.
     summary = out_dir / "summary.md"
     assert summary.exists(), "summary.md not generated"
     md = summary.read_text()
-    assert "diversity_tanimoto" in md, (
-        "summary.md missing diversity_tanimoto column"
-    )
-    assert "diversity_homotype" in md, (
-        "summary.md missing diversity_homotype column"
-    )
+    assert "diversity_tanimoto" in md, "summary.md missing diversity_tanimoto column"
+    assert "diversity_homotype" in md, "summary.md missing diversity_homotype column"
 
 
 def test_homotype_exceeds_tanimoto_for_diverse_set(mol_cls):
@@ -338,8 +337,8 @@ def test_homotype_exceeds_tanimoto_for_diverse_set(mol_cls):
     from rdkit import DataStructs  # type: ignore
 
     # Hand-craft a disjoint-typed-var pair: C-only vs Pt+Cl+N.
-    long_organic = "CCCCCCCCCCCCCCCC"      # typed vars = {C:16}
-    metal_complex = "Cl[Pt](Cl)(N)N"        # typed vars = {Pt:1, Cl:2, N:2}
+    long_organic = "CCCCCCCCCCCCCCCC"  # typed vars = {C:16}
+    metal_complex = "Cl[Pt](Cl)(N)N"  # typed vars = {Pt:1, Cl:2, N:2}
     mol_long = Chem.MolFromSmiles(long_organic)
     mol_metal = Chem.MolFromSmiles(metal_complex)
     if mol_long is None or mol_metal is None:
@@ -407,18 +406,18 @@ def test_homotype_exceeds_tanimoto_for_diverse_set(mol_cls):
 def test_diversity_alpha_bounds(mol_cls):
     """``diversity_alpha`` returns a value in [0, 1] for any input shape."""
     for states in [
-            [],
-            [_safe_term(mol_cls, "CCO")],
-            [_safe_term(mol_cls, "CCO"), _safe_term(mol_cls, "CCN")],
-            [
-                _safe_term(mol_cls, "CCO"),
-                _safe_term(mol_cls, "CCN"),
-                _safe_term(mol_cls, "CCCl"),
-            ],
-        ]:
-            states = [s for s in states if s is not None]
-            v = lam.diversity_alpha(states)
-            assert 0.0 <= v <= 1.0
+        [],
+        [_safe_term(mol_cls, "CCO")],
+        [_safe_term(mol_cls, "CCO"), _safe_term(mol_cls, "CCN")],
+        [
+            _safe_term(mol_cls, "CCO"),
+            _safe_term(mol_cls, "CCN"),
+            _safe_term(mol_cls, "CCCl"),
+        ],
+    ]:
+        states = [s for s in states if s is not None]
+        v = lam.diversity_alpha(states)
+        assert 0.0 <= v <= 1.0
 
 
 def test_reference_tanimoto_self_is_one():
@@ -443,9 +442,7 @@ def test_round_trip_cisplatin(mol_cls):
     closed term whose canonical SMILES is non-empty."""
     smiles = "[NH3][Pt]([NH3])(Cl)Cl"
     term = _safe_term(mol_cls, smiles)
-    assert term is not None, (
-        f"from_smiles rejected RDKit-sanitizable SMILES {smiles!r}"
-    )
+    assert term is not None, f"from_smiles rejected RDKit-sanitizable SMILES {smiles!r}"
     assert term.n_atoms >= 1, f"expected n_atoms>=1, got {term.n_atoms}"
     # Round-trip: canonical SMILES should be non-empty and parseable.
     canon = term.canonical_smiles()
@@ -462,17 +459,15 @@ def test_round_trip_ru_arene(mol_cls):
     # 17 heavy atoms: 1 Ru + 12 aromatic C + 2 N + 2 Cl.
     smiles = "[Ru]([c]1ccccc1)([c]1ccccc1)(Cl)(Cl)([NH3])[NH3]"
     term = _safe_term(mol_cls, smiles)
-    assert term is not None, (
-        f"from_smiles rejected 17-atom Ru SMILES {smiles!r}"
-    )
+    assert term is not None, f"from_smiles rejected 17-atom Ru SMILES {smiles!r}"
     assert term.n_atoms >= 1
     # Round-trip canonical SMILES is parseable / non-empty.
     canon = term.canonical_smiles()
     assert canon and isinstance(canon, str)
     # Heavy-atom count is preserved (>=17).
-    assert term.n_atoms >= 15, (
-        f"expected ~17 heavy atoms after round-trip, got {term.n_atoms}"
-    )
+    assert (
+        term.n_atoms >= 15
+    ), f"expected ~17 heavy atoms after round-trip, got {term.n_atoms}"
     # Ru must be present.
     assert any(a.symbol == "Ru" for a in term.atoms), "Ru absent after parse"
 
@@ -484,20 +479,18 @@ def test_round_trip_30_atom_smiles(mol_cls):
     SMILES via the strict ``check_beta_normal_form`` predicate."""
     smiles = "CC(=O)Oc1ccc(cc1)C(=O)NC2CCC(CC2)NC(=O)c3ccccc3"
     term = _safe_term(mol_cls, smiles)
-    assert term is not None, (
-        f"from_smiles rejected 28-atom generic SMILES {smiles!r}"
-    )
+    assert term is not None, f"from_smiles rejected 28-atom generic SMILES {smiles!r}"
     assert term.n_atoms >= 1
-    assert term.n_atoms >= 25, (
-        f"expected ~28 heavy atoms after round-trip, got {term.n_atoms}"
-    )
+    assert (
+        term.n_atoms >= 25
+    ), f"expected ~28 heavy atoms after round-trip, got {term.n_atoms}"
     canon = term.canonical_smiles()
     assert canon and isinstance(canon, str)
     # Must contain at least one carbonyl (C=O) bond to verify the
     # polyfunctional structure survived.
-    assert "C(=O)" in canon or "C(=O" in canon, (
-        f"carbonyl group lost in canonical SMILES {canon!r}"
-    )
+    assert (
+        "C(=O)" in canon or "C(=O" in canon
+    ), f"carbonyl group lost in canonical SMILES {canon!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -580,13 +573,13 @@ def test_metal_seed_cisplatin_runs(tmp_path):
         "synthesizability_rate",
         "metal_compliance_rate",
     }
-    assert required <= set(payload["aggregate"].keys()), (
-        f"missing metrics: {required - set(payload['aggregate'].keys())}"
-    )
+    assert required <= set(
+        payload["aggregate"].keys()
+    ), f"missing metrics: {required - set(payload['aggregate'].keys())}"
     # The cell's warnings must record the active metal seed (for audit).
-    assert any("metal_seed_active=cisplatin" in w for w in cells[0].warnings), (
-        f"missing metal_seed_active warning in {cells[0].warnings}"
-    )
+    assert any(
+        "metal_seed_active=cisplatin" in w for w in cells[0].warnings
+    ), f"missing metal_seed_active warning in {cells[0].warnings}"
 
 
 def test_metal_seed_ru_arene_runs(tmp_path):
@@ -612,9 +605,9 @@ def test_metal_seed_ru_arene_runs(tmp_path):
     assert payload, "run_sweep returned empty payload"
     assert "aggregate" in payload
     # The cell's warnings must record the active metal seed (for audit).
-    assert any("metal_seed_active=ru_arene" in w for w in cells[0].warnings), (
-        f"missing metal_seed_active warning in {cells[0].warnings}"
-    )
+    assert any(
+        "metal_seed_active=ru_arene" in w for w in cells[0].warnings
+    ), f"missing metal_seed_active warning in {cells[0].warnings}"
 
 
 # ---------------------------------------------------------------------------
@@ -644,9 +637,7 @@ def test_28_atom_smiles_passes_bnf(mol_cls, check_bnf):
 
     smiles = "CC(=O)Oc1ccc(cc1)C(=O)NC2CCC(CC2)NC(=O)c3ccccc3"
     term = _safe_term(mol_cls, smiles)
-    assert term is not None, (
-        f"from_smiles rejected 28-atom generic SMILES {smiles!r}"
-    )
+    assert term is not None, f"from_smiles rejected 28-atom generic SMILES {smiles!r}"
     assert term.n_atoms >= 25, f"expected ~28 atoms, got {term.n_atoms}"
 
     # Term-level valence-based BNF.
@@ -657,7 +648,9 @@ def test_28_atom_smiles_passes_bnf(mol_cls, check_bnf):
 
     # And the synthesizability aggregator agrees (use_valence_bnf=True).
     syn = lam.synthesizability_via_lambda_paths(
-        term, check_bnf=check_bnf, use_valence_bnf=True,
+        term,
+        check_bnf=check_bnf,
+        use_valence_bnf=True,
     )
     assert syn == 1.0, (
         f"synthesizability_via_lambda_paths returned {syn} for "
@@ -685,18 +678,18 @@ def test_cisplatin_passes_bnf(mol_cls, check_bnf):
 
     smiles = "[NH3][Pt]([NH3])(Cl)Cl"
     term = _safe_term(mol_cls, smiles)
-    assert term is not None, (
-        f"from_smiles rejected cisplatin SMILES {smiles!r}"
-    )
+    assert term is not None, f"from_smiles rejected cisplatin SMILES {smiles!r}"
 
     # Term-level valence-based BNF.
-    assert _check_vbnf_term(term) is True, (
-        f"valence-based BNF rejected cisplatin {smiles!r}"
-    )
+    assert (
+        _check_vbnf_term(term) is True
+    ), f"valence-based BNF rejected cisplatin {smiles!r}"
 
     # The synthesizability aggregator agrees under both modes.
     syn_valence = lam.synthesizability_via_lambda_paths(
-        term, check_bnf=check_bnf, use_valence_bnf=True,
+        term,
+        check_bnf=check_bnf,
+        use_valence_bnf=True,
     )
     assert syn_valence == 1.0, f"valence BNF rejected cisplatin: {syn_valence}"
 
@@ -746,7 +739,9 @@ def test_5_atom_radical_fails_bnf(mol_cls, check_bnf):
         # valence-saturated, that's OK as long as synthesizability
         # stays at 0.0 (covered below).
         syn = lam.synthesizability_via_lambda_paths(
-            term, check_bnf=check_bnf, use_valence_bnf=True,
+            term,
+            check_bnf=check_bnf,
+            use_valence_bnf=True,
         )
         # Either the term was rejected by from_smiles (None) or it
         # has unsatisfied atoms — in the latter case syn MUST be 0.0
@@ -762,22 +757,21 @@ def test_5_atom_radical_fails_bnf(mol_cls, check_bnf):
     # AtomSite/Atom pair that is structurally valence-unsaturated.
     from molmetal_lam.atoms.combinators import Atom  # type: ignore
     from molmetal_lam.bonds.application import AtomSite  # type: ignore
-    c_atom = Atom(symbol="C", atomic_num=6, valence=4, lone_pairs=0,
-                  geometry="sp3")
+
+    c_atom = Atom(symbol="C", atomic_num=6, valence=4, lone_pairs=0, geometry="sp3")
     unsaturated_site = AtomSite(atom=c_atom, used_sites=2)  # 2 < 4
     assert _check_vbnf(unsaturated_site, c_atom) is False, (
         "check_beta_normal_form_for_rdkit returned True for C with "
         "used_sites=2 < valence=4 (false positive on radical)"
     )
-    saturated_site = AtomSite(atom=c_atom, used_sites=4)   # 4 == 4
+    saturated_site = AtomSite(atom=c_atom, used_sites=4)  # 4 == 4
     assert _check_vbnf(saturated_site, c_atom) is True, (
         "check_beta_normal_form_for_rdkit returned False for C with "
         "used_sites=4 >= valence=4 (false negative)"
     )
     # An N with 3 covalent bonds and lone_pairs=1 should be valence-
     # saturated (used_sites=3 >= valence=3) even though arity=4.
-    n_atom = Atom(symbol="N", atomic_num=7, valence=3, lone_pairs=1,
-                  geometry="sp3")
+    n_atom = Atom(symbol="N", atomic_num=7, valence=3, lone_pairs=1, geometry="sp3")
     amine_n_site = AtomSite(atom=n_atom, used_sites=3)
     assert _check_vbnf(amine_n_site, n_atom) is True, (
         "check_beta_normal_form_for_rdkit returned False for N with "
@@ -813,11 +807,11 @@ def test_5_atom_radical_fails_bnf(mol_cls, check_bnf):
 # A 5-metal-drug reference set: each is RDKit-sanitizable and exercises
 # a distinct oxidation-state / coordination regime.
 P0_REFERENCE_SMILES = [
-    "N.N.[Cl-].[Cl-].[Pt+2]",       # cisplatin — Pt(II), square-planar
+    "N.N.[Cl-].[Cl-].[Pt+2]",  # cisplatin — Pt(II), square-planar
     "N.N.[Cl-].[Cl-].[Pt+2].C(=O)",  # generic Pt with leaving group
-    "[Pt+2](N)(N)(Cl)Cl",            # Pt(II), explicit
+    "[Pt+2](N)(N)(Cl)Cl",  # Pt(II), explicit
     "[Ru+2](c1ccccc1)(c1ccccc1)(Cl)Cl",  # Ru(II) arene
-    "[Ir+3](C)(C)(C)(C)(C)(C)",      # Ir(III) hexa-coordinate
+    "[Ir+3](C)(C)(C)(C)(C)(C)",  # Ir(III) hexa-coordinate
 ]
 
 
@@ -1005,9 +999,9 @@ def test_sa_weight_zero_default(tmp_path):
     # 2) CLI default.
     parser = lam._build_argparser()
     ns = parser.parse_args(["--output-dir", "sa_default_test"])
-    assert float(ns.sa_weight) == 0.0, (
-        f"--sa-weight CLI default should be 0.0, got {ns.sa_weight}"
-    )
+    assert (
+        float(ns.sa_weight) == 0.0
+    ), f"--sa-weight CLI default should be 0.0, got {ns.sa_weight}"
 
     # 3) End-to-end run_sweep preserves sa_weight=0.0 in the aggregate.
     out_dir = tmp_path / "wf_sa_default_smoke"
@@ -1060,18 +1054,14 @@ def test_sa_weight_positive_lowers_sa(tmp_path):
 
     # ----- arm 1: sa_weight = 0.0 (control) -----
     out_zero = tmp_path / "wf_sa_pilot_zero"
-    payload_zero, _ = lam.run_sweep(
-        output_dir=out_zero, sa_weight=0.0, **base_kwargs
-    )
+    payload_zero, _ = lam.run_sweep(output_dir=out_zero, sa_weight=0.0, **base_kwargs)
     sa_zero = float(payload_zero["aggregate"].get("sa_mean", 0.0))
     qed_zero = float(payload_zero["aggregate"].get("qed_mean", 0.0))
     val_zero = float(payload_zero["aggregate"].get("validity_rate", 0.0))
 
     # ----- arm 2: sa_weight = 0.3 (treatment) -----
     out_three = tmp_path / "wf_sa_pilot_three"
-    payload_three, _ = lam.run_sweep(
-        output_dir=out_three, sa_weight=0.3, **base_kwargs
-    )
+    payload_three, _ = lam.run_sweep(output_dir=out_three, sa_weight=0.3, **base_kwargs)
     sa_three = float(payload_three["aggregate"].get("sa_mean", 0.0))
     qed_three = float(payload_three["aggregate"].get("qed_mean", 0.0))
     val_three = float(payload_three["aggregate"].get("validity_rate", 0.0))
@@ -1161,27 +1151,26 @@ def test_click_rules_all_5_alias_resolves(mol_cls, tmp_path):
     # The legacy self-contradictory warning MUST NOT fire on a known
     # alias.  The new "unknown" warning is for genuinely-misspelled
     # tokens; it must not appear either.
-    assert not any("click_rules_filter_emptied" in w for w in warnings), (
-        f"click_rules_filter_emptied fired on a known alias: {warnings}"
-    )
-    assert not any("click_rules_unknown" in w for w in warnings), (
-        f"click_rules_unknown fired on a known alias: {warnings}"
-    )
+    assert not any(
+        "click_rules_filter_emptied" in w for w in warnings
+    ), f"click_rules_filter_emptied fired on a known alias: {warnings}"
+    assert not any(
+        "click_rules_unknown" in w for w in warnings
+    ), f"click_rules_unknown fired on a known alias: {warnings}"
     # The cell must record the five active rules.
     active = [w for w in warnings if w.startswith("click_rules_active=")]
-    assert active, (
-        f"missing click_rules_active warning in cell warnings: {warnings}"
-    )
+    assert active, f"missing click_rules_active warning in cell warnings: {warnings}"
     names = active[0].split("=", 1)[1]
     # The warning embeds the list via Python's repr (single-quoted
     # strings, comma-separated).  Use ``ast.literal_eval`` so we accept
     # the canonical Python list format.
     import ast as _ast
+
     parsed = sorted(_ast.literal_eval(names))
     expected = sorted(["CuAAC", "SPAAC", "Suzuki", "ThiolEne", "AmideCoupling"])
-    assert parsed == expected, (
-        f"--click-rules all-5 should resolve to all 5 rules; got {parsed}"
-    )
+    assert (
+        parsed == expected
+    ), f"--click-rules all-5 should resolve to all 5 rules; got {parsed}"
     # The aggregate payload's ``config.click_rules`` reflects the alias
     # the user typed (NOT the expanded list — the alias is what they
     # asked for; the cell.warnings[click_rules_active=…] carries the
@@ -1213,19 +1202,18 @@ def test_click_rules_single_alias_works(mol_cls, tmp_path):
     assert payload, "run_sweep returned empty payload"
     assert cells, "run_sweep produced zero cells"
     warnings = list(cells[0].warnings)
-    assert not any("click_rules_filter_emptied" in w for w in warnings), (
-        f"click_rules_filter_emptied fired on a valid single rule: {warnings}"
-    )
+    assert not any(
+        "click_rules_filter_emptied" in w for w in warnings
+    ), f"click_rules_filter_emptied fired on a valid single rule: {warnings}"
     active = [w for w in warnings if w.startswith("click_rules_active=")]
-    assert active, (
-        f"missing click_rules_active warning in cell warnings: {warnings}"
-    )
+    assert active, f"missing click_rules_active warning in cell warnings: {warnings}"
     names = active[0].split("=", 1)[1]
     import ast as _ast
+
     parsed = sorted(_ast.literal_eval(names))
-    assert parsed == ["CuAAC"], (
-        f"--click-rules CuAAC should resolve to ['CuAAC'] only; got {parsed}"
-    )
+    assert parsed == [
+        "CuAAC"
+    ], f"--click-rules CuAAC should resolve to ['CuAAC'] only; got {parsed}"
 
 
 def test_click_rules_filter_emptied_no_warning():
@@ -1249,6 +1237,7 @@ def test_click_rules_filter_emptied_no_warning():
         CLICK_REACTIONS,
         METAL_COORDINATION_RULES,
     )
+
     # Combined set of every rule name that any alias may resolve to.
     all_rules = {**CLICK_REACTIONS, **METAL_COORDINATION_RULES}
 
@@ -1256,12 +1245,9 @@ def test_click_rules_filter_emptied_no_warning():
     for alias, expected in lam.CLICK_RULE_ALIASES.items():
         resolved, unknown = lam._resolve_click_rules_aliases([alias])
         assert not unknown, (
-            f"alias {alias!r} should produce zero unknown tokens; "
-            f"got {unknown!r}"
+            f"alias {alias!r} should produce zero unknown tokens; " f"got {unknown!r}"
         )
-        assert resolved, (
-            f"alias {alias!r} should resolve to a non-empty list"
-        )
+        assert resolved, f"alias {alias!r} should resolve to a non-empty list"
         for name in resolved:
             assert name in all_rules, (
                 f"alias {alias!r} resolved to {name!r} which is NOT a "
@@ -1291,16 +1277,16 @@ def test_click_rules_filter_emptied_no_warning():
     # The specific regression — ``all-5`` MUST NOT trigger the legacy
     # ``click_rules_filter_emptied`` path.  Pre-fix, the alias fell
     # through the dict-comprehension and triggered the warning.
-    assert "all-5" in lam.CLICK_RULE_ALIASES, (
-        "CLICK_RULE_ALIASES must include the canonical 'all-5' alias"
-    )
+    assert (
+        "all-5" in lam.CLICK_RULE_ALIASES
+    ), "CLICK_RULE_ALIASES must include the canonical 'all-5' alias"
     resolved_all5, unknown_all5 = lam._resolve_click_rules_aliases(["all-5"])
-    assert not unknown_all5, (
-        f"'all-5' should resolve cleanly; got unknown={unknown_all5!r}"
-    )
-    assert len(resolved_all5) == 5, (
-        f"'all-5' must resolve to exactly 5 rules; got {len(resolved_all5)}"
-    )
+    assert (
+        not unknown_all5
+    ), f"'all-5' should resolve cleanly; got unknown={unknown_all5!r}"
+    assert (
+        len(resolved_all5) == 5
+    ), f"'all-5' must resolve to exactly 5 rules; got {len(resolved_all5)}"
 
 
 def test_click_rules_unknown_token_warns_and_falls_back(mol_cls, tmp_path):
@@ -1318,8 +1304,10 @@ def test_click_rules_unknown_token_warns_and_falls_back(mol_cls, tmp_path):
     chemistry operations the search actually invokes) and the
     unknown token did NOT make it into the active set."""
     from molmetal_lam.lam_chem.rules import (  # type: ignore
-        CLICK_REACTIONS, METAL_COORDINATION_RULES,
+        CLICK_REACTIONS,
+        METAL_COORDINATION_RULES,
     )
+
     combined_registry = {**CLICK_REACTIONS, **METAL_COORDINATION_RULES}
 
     out_dir = tmp_path / "wf_click_rules_unknown_smoke"
@@ -1345,27 +1333,23 @@ def test_click_rules_unknown_token_warns_and_falls_back(mol_cls, tmp_path):
     assert any(
         "click_rules_unknown" in w or "click_rules_filter_emptied" in w
         for w in warnings
-    ), (
-        f"missing unknown/filter_emptied warning on BogusRule: {warnings}"
-    )
+    ), f"missing unknown/filter_emptied warning on BogusRule: {warnings}"
     active = [w for w in warnings if w.startswith("click_rules_active=")]
-    assert active, (
-        f"missing click_rules_active warning in cell warnings: {warnings}"
-    )
+    assert active, f"missing click_rules_active warning in cell warnings: {warnings}"
     names = active[0].split("=", 1)[1]
     import ast as _ast
+
     parsed = sorted(_ast.literal_eval(names))
     # The canonical 5 rules must be active (they are the chemistry
     # operations the search actually invokes).
     canonical = {"CuAAC", "SPAAC", "Suzuki", "ThiolEne", "AmideCoupling"}
     assert canonical.issubset(set(parsed)), (
-        f"unknown rule should fall back to at least the canonical 5; "
-        f"got {parsed}"
+        f"unknown rule should fall back to at least the canonical 5; " f"got {parsed}"
     )
     # The unknown token must NOT appear in the active set.
-    assert "BogusRule" not in parsed, (
-        f"unknown token leaked into the active rule set: {parsed}"
-    )
+    assert (
+        "BogusRule" not in parsed
+    ), f"unknown token leaked into the active rule set: {parsed}"
     # The fallback uses the combined CLICK_REACTIONS + METAL_COORDINATION_RULES
     # registry, so the full set of registered keys (5 canonical click +
     # aliases + 2 metal-coord + metal-coord aliases) is active.
@@ -1507,7 +1491,9 @@ def test_rigid_rmsd_mean_computed():
     # larger than the same-SMILES case (cand has an extra N replacing O).
     v_diff = lam.metric_rigid_rmsd_mean(cand_diff, ref)
     assert isinstance(v_diff, float)
-    assert v_diff >= 0.0, f"rigid_rmsd(mol_diff, ref) must be non-negative; got {v_diff}"
+    assert (
+        v_diff >= 0.0
+    ), f"rigid_rmsd(mol_diff, ref) must be non-negative; got {v_diff}"
     assert v_diff < 10.0, f"rigid_rmsd {v_diff} implausibly large"
 
     # None inputs — graceful fallback to 0.0.
@@ -1543,13 +1529,13 @@ def test_rigid_rmsd_self_zero():
         # Embed a fresh copy for the alignment; copy preserves identity
         # but ensures the GetBestRMS path is fully exercised.
         ref = Chem.MolFromSmiles(smi)
-        assert lam._embed_3d_for_rmsd(ref) is True, (
-            f"could not embed {smi!r} for self-RMSD test"
-        )
+        assert (
+            lam._embed_3d_for_rmsd(ref) is True
+        ), f"could not embed {smi!r} for self-RMSD test"
         v = lam.metric_rigid_rmsd_mean(mol, ref)
-        assert v == pytest.approx(0.0, abs=1e-6), (
-            f"rigid_rmsd({smi}, {smi}) must be ~0.0; got {v}"
-        )
+        assert v == pytest.approx(
+            0.0, abs=1e-6
+        ), f"rigid_rmsd({smi}, {smi}) must be ~0.0; got {v}"
 
 
 # ---------------------------------------------------------------------------
@@ -1587,9 +1573,9 @@ def test_com_shift_mean_computed():
     # zero when both mols happen to embed with the same CoM, but on
     # ``CCO`` vs ``CCN`` the CoMs differ because O != N atomic mass).
     v = lam.metric_com_shift_mean(cand_diff, ref)
-    assert isinstance(v, float), (
-        f"metric_com_shift_mean must return a float; got {type(v).__name__}"
-    )
+    assert isinstance(
+        v, float
+    ), f"metric_com_shift_mean must return a float; got {type(v).__name__}"
     assert v >= 0.0, f"com_shift must be non-negative; got {v}"
     assert v < 10.0, f"com_shift {v} implausibly large (Å) for these tiny organics"
 
@@ -1626,13 +1612,13 @@ def test_com_shift_self_zero():
         # deterministic ETKDGv3 seed (the helper pins ``randomSeed =
         # 0xF00D``) — CoM of an identical copy must be identical.
         ref = Chem.MolFromSmiles(smi)
-        assert lam._embed_3d_for_rmsd(ref) is True, (
-            f"could not embed {smi!r} for self-CoM-shift test"
-        )
+        assert (
+            lam._embed_3d_for_rmsd(ref) is True
+        ), f"could not embed {smi!r} for self-CoM-shift test"
         v = lam.metric_com_shift_mean(mol, ref)
-        assert v == pytest.approx(0.0, abs=1e-6), (
-            f"com_shift({smi}, {smi}) must be ~0.0; got {v}"
-        )
+        assert v == pytest.approx(
+            0.0, abs=1e-6
+        ), f"com_shift({smi}, {smi}) must be ~0.0; got {v}"
 
 
 # ---------------------------------------------------------------------------
@@ -1671,8 +1657,7 @@ def test_phase4_all_new_metrics_dispatched():
     ]
     for name in expected:
         assert hasattr(lam, name), (
-            f"Phase-4 wiring missing: r4_lambda_only_run has no "
-            f"{name} function"
+            f"Phase-4 wiring missing: r4_lambda_only_run has no " f"{name} function"
         )
         fn = getattr(lam, name)
         assert callable(fn), f"{name} is not callable"
@@ -1690,13 +1675,14 @@ def test_phase4_all_new_metrics_dispatched():
         "diversity_subpocket",
         "metal_coord_compliance",
     ]
-    cell = lam.CellResult(pocket_id="X", seed=0, n_simulations=1, n_top_k=1,
-                          reference_smiles=None)
+    cell = lam.CellResult(
+        pocket_id="X", seed=0, n_simulations=1, n_top_k=1, reference_smiles=None
+    )
     for f in new_fields:
         assert hasattr(cell, f), f"CellResult has no field {f!r}"
-        assert getattr(cell, f) == 0.0, (
-            f"CellResult.{f} should default to 0.0; got {getattr(cell, f)!r}"
-        )
+        assert (
+            getattr(cell, f) == 0.0
+        ), f"CellResult.{f} should default to 0.0; got {getattr(cell, f)!r}"
 
     # (3) Each wrapper returns a finite float on a 3-SMILES input.
     smis = [
@@ -1710,9 +1696,9 @@ def test_phase4_all_new_metrics_dispatched():
             v = fn(smis)
         except Exception as exc:  # pragma: no cover — defensive
             pytest.fail(f"{name}({smis!r}) raised: {exc}")
-        assert isinstance(v, float), (
-            f"{name} returned {type(v).__name__} (expected float)"
-        )
+        assert isinstance(
+            v, float
+        ), f"{name} returned {type(v).__name__} (expected float)"
         # NaN check.
         assert v == v, f"{name} returned NaN"
 
@@ -1733,29 +1719,26 @@ def test_phase4_metrics_v2_smoke_5_smiles():
     ``molmetal/tests/test_metrics_v2.py`` (20 unit tests).
     """
     smis = [
-        "CCO",                          # ethanol
-        "c1ccccc1",                     # benzene
-        "Nc1ccc(cc1)N",                 # p-phenylenediamine (AMES alert)
-        "CC(=O)Oc1ccccc1C(=O)O",        # aspirin
-        "Cl[Pt](Cl)(N)N",               # cisplatin bracket form
+        "CCO",  # ethanol
+        "c1ccccc1",  # benzene
+        "Nc1ccc(cc1)N",  # p-phenylenediamine (AMES alert)
+        "CC(=O)Oc1ccccc1C(=O)O",  # aspirin
+        "Cl[Pt](Cl)(N)N",  # cisplatin bracket form
     ]
     # Build a CellResult and assert all new fields can be written.
-    cell = lam.CellResult(pocket_id="X", seed=0, n_simulations=1, n_top_k=1,
-                          reference_smiles=None)
+    cell = lam.CellResult(
+        pocket_id="X", seed=0, n_simulations=1, n_top_k=1, reference_smiles=None
+    )
     cell.logp7_4_mean = lam.metric_logp7_4_mean(smis)
     cell.gi50_proxy_mean = lam.metric_gi50_proxy_mean(smis)
-    cell.cell_permeability_logPapp_mean = (
-        lam.metric_cell_permeability_logPapp_mean(smis)
+    cell.cell_permeability_logPapp_mean = lam.metric_cell_permeability_logPapp_mean(
+        smis
     )
     cell.herg_cardio_risk_mean = lam.metric_herg_cardio_risk_mean(smis)
     cell.ames_mutagen_mean = lam.metric_ames_mutagen_mean(smis)
     cell.hepatotox_index_mean = lam.metric_hepatotox_index_mean(smis)
-    cell.aqueous_solubility_logS_mean = (
-        lam.metric_aqueous_solubility_logS_mean(smis)
-    )
-    cell.plasma_protein_binding_mean = (
-        lam.metric_plasma_protein_binding_mean(smis)
-    )
+    cell.aqueous_solubility_logS_mean = lam.metric_aqueous_solubility_logS_mean(smis)
+    cell.plasma_protein_binding_mean = lam.metric_plasma_protein_binding_mean(smis)
     cell.diversity_subpocket = lam.metric_subpocket_diversity_mean(smis)
     cell.metal_coord_compliance = lam.metric_metal_coord_compliance_mean(smis)
 
@@ -1790,8 +1773,7 @@ def test_phase4_metal_coord_cisplatin_compliant():
     # 0.0 on organic-only input — cisplatin IS metal, but if probe
     # silently fails we get 0.0; the metric is wired either way).
     assert v in (0.0, 1.0), (
-        f"metal_coord_compliance for cisplatin must be 0.0 or 1.0; "
-        f"got {v}"
+        f"metal_coord_compliance for cisplatin must be 0.0 or 1.0; " f"got {v}"
     )
     # If probe is wired, expect 1.0; tolerate 0.0 as graceful fallback.
     if v == 1.0:
@@ -1808,6 +1790,4 @@ def test_phase4_subpocket_diversity_zero_for_collapsing_set():
     # 1 candidate -> 0.0 (need >= 2 distinct)
     assert lam.metric_subpocket_diversity_mean(["CCO"]) == 0.0
     # All identical -> 0.0 after de-dup
-    assert (
-        lam.metric_subpocket_diversity_mean(["CCO", "CCO", "CCO"]) == 0.0
-    )
+    assert lam.metric_subpocket_diversity_mean(["CCO", "CCO", "CCO"]) == 0.0

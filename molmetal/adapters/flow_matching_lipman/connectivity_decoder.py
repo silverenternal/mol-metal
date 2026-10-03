@@ -390,9 +390,10 @@ class ConnectivityAwareDecoder:
                 ),
             )
         n_comp, largest_size, largest_atoms = _count_connected_components(
-            n_atoms, edges,
+            n_atoms,
+            edges,
         )
-        is_connected = (n_comp == 1)
+        is_connected = n_comp == 1
         reason: Optional[str] = None
         if not is_connected:
             reason = (

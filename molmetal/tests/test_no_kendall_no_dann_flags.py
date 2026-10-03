@@ -122,12 +122,12 @@ def test_subprocess_help_lists_new_flags() -> None:
         f"--help crashed: rc={result.returncode}\n"
         f"stdout={result.stdout}\nstderr={result.stderr}"
     )
-    assert "--no-kendall" in result.stdout, (
-        f"--no-kendall missing from --help:\n{result.stdout}"
-    )
-    assert "--no-dann" in result.stdout, (
-        f"--no-dann missing from --help:\n{result.stdout}"
-    )
+    assert (
+        "--no-kendall" in result.stdout
+    ), f"--no-kendall missing from --help:\n{result.stdout}"
+    assert (
+        "--no-dann" in result.stdout
+    ), f"--no-dann missing from --help:\n{result.stdout}"
 
 
 @pytest.mark.skipif(not VENV_PY.exists(), reason="vlm venv not on disk")
@@ -142,8 +142,7 @@ def test_subprocess_no_kendall_no_dann_smoke_runs() -> None:
     # We deliberately don't run training; only the arg-parser surface is
     # in scope.  ``--help`` proves the flags are recognised.
     result = subprocess.run(
-        [str(VENV_PY), str(script), "--help",
-         "--no-kendall", "--no-dann"],
+        [str(VENV_PY), str(script), "--help", "--no-kendall", "--no-dann"],
         capture_output=True,
         text=True,
         timeout=60,

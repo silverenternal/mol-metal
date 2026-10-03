@@ -130,9 +130,9 @@ def test_get_sigmas_shape():
             f"got {tuple(sigmas.shape)}"
         )
         # Initial log_sigmas = 0 ⇒ sigmas = exp(0) = 1.
-        assert torch.allclose(sigmas, torch.ones(num_tasks)), (
-            f"num_tasks={num_tasks}: expected initial sigmas=1, got {sigmas}"
-        )
+        assert torch.allclose(
+            sigmas, torch.ones(num_tasks)
+        ), f"num_tasks={num_tasks}: expected initial sigmas=1, got {sigmas}"
         # Must be detached (no grad).
         assert sigmas.requires_grad is False
 
@@ -186,8 +186,7 @@ def test_kendall_45_tasks_supported():
     # to drive at least one log_sigma grad negative (the optimizer's
     # signal that this task is too noisy and should be down-weighted).
     losses = [
-        torch.tensor(0.5 + 0.05 * i, requires_grad=True)
-        for i in range(NUM_TASKS)
+        torch.tensor(0.5 + 0.05 * i, requires_grad=True) for i in range(NUM_TASKS)
     ]
     total = loss_fn(losses)
     total.backward()
@@ -200,16 +199,14 @@ def test_kendall_45_tasks_supported():
     # At least some entries (losses > 1) should yield negative log_sigma
     # grads — i.e. the optimizer's "down-weight this task" signal.
     expected_grad = 1.0 - torch.tensor([0.5 + 0.05 * i for i in range(NUM_TASKS)])
-    assert torch.allclose(loss_fn.log_sigmas.grad, expected_grad), (
-        "log_sigma grads should match the analytic 1 - loss_k formula"
-    )
+    assert torch.allclose(
+        loss_fn.log_sigmas.grad, expected_grad
+    ), "log_sigma grads should match the analytic 1 - loss_k formula"
     assert (loss_fn.log_sigmas.grad < 0).any(), (
-        "expected at least one negative log_sigma grad for losses > 1 "
-        "with sigma=1"
+        "expected at least one negative log_sigma grad for losses > 1 " "with sigma=1"
     )
     assert (loss_fn.log_sigmas.grad > 0).any(), (
-        "expected at least one positive log_sigma grad for losses < 1 "
-        "with sigma=1"
+        "expected at least one positive log_sigma grad for losses < 1 " "with sigma=1"
     )
 
 
@@ -242,9 +239,7 @@ def test_v4_multitask_loss_supports_kendall_flag():
     out = model(smiles, metal_ids)
 
     # Build labels and run with the Kendall flag on.
-    loss_fn = V4MultiTaskLoss(
-        n_coord_classes=2, use_kendall_loss=True
-    )
+    loss_fn = V4MultiTaskLoss(n_coord_classes=2, use_kendall_loss=True)
     y_true = {"Ru": torch.tensor([0, 1, 0], dtype=torch.long)}
     coord_true = torch.tensor([0, 1, 1], dtype=torch.long)
     total, info = loss_fn(out, y_true, coord_true)
@@ -252,9 +247,9 @@ def test_v4_multitask_loss_supports_kendall_flag():
     assert torch.isfinite(total)
 
     # Kendall head should expose ``kendall_sigmas`` in info now.
-    assert "kendall_sigmas" in info, (
-        "use_kendall_loss=True should expose kendall_sigmas in info dict"
-    )
+    assert (
+        "kendall_sigmas" in info
+    ), "use_kendall_loss=True should expose kendall_sigmas in info dict"
     assert info["kendall_sigmas"].shape == torch.Size([2])  # Ru + coord
     # And the regular total path (without the flag) does NOT.
     loss_fn_off = V4MultiTaskLoss(n_coord_classes=2)
@@ -292,21 +287,25 @@ def test_api_matches_mtl_uncertainty():
     )
 
     # (a) Same class name + same forward signature (sig + value identity).
-    assert LocalLoss is not UpstreamLoss  # our local re-export is not the upstream class
+    assert (
+        LocalLoss is not UpstreamLoss
+    )  # our local re-export is not the upstream class
     # Module paths must differ (one lives in sbdd_env, the other in mtl_uncertainty_loss).
     assert LocalLoss.__module__ != UpstreamLoss.__module__
     # Forward signature must match: same arg name + annotation.
     assert str(LocalLoss.forward.__doc__ or "") or True  # forward may have a docstring
     assert callable(LocalLoss.forward) and callable(UpstreamLoss.forward)
-    assert LocalLoss(num_tasks=3).__class__.__name__ == UpstreamLoss(num_tasks=3).__class__.__name__
+    assert (
+        LocalLoss(num_tasks=3).__class__.__name__
+        == UpstreamLoss(num_tasks=3).__class__.__name__
+    )
 
     # (b) Loss formula parity: feed the SAME log_sigmas + the SAME per-task
     # losses and confirm both implementations return the same scalar.
     torch.manual_seed(7)
     NUM_TASKS = 5
     losses = [
-        torch.tensor(0.31 + 0.07 * i, requires_grad=True)
-        for i in range(NUM_TASKS)
+        torch.tensor(0.31 + 0.07 * i, requires_grad=True) for i in range(NUM_TASKS)
     ]
     log_sigma_init = torch.tensor([-0.2, 0.1, 0.0, 0.3, -0.5])
 

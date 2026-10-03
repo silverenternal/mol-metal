@@ -63,17 +63,28 @@ from molmetal.molmetal_lam.reward.symbolic_regression import (  # noqa: E402
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Stage 3 symbolic-regression train (Deflex workflow).")
-    parser.add_argument("--output-dir",
-                        default="molmetal/models/symbolic_reward",
-                        help="Where to write the formula pickle + JSON.")
-    parser.add_argument("--family", default="ALL",
-                        choices=list(FORMULA_FAMILIES) + ["ALL"],
-                        help="Formula family to fit (default: ALL → Pareto pick).")
-    parser.add_argument("--n-iterations", type=int, default=100,
-                        help="Reserved for PySR evolutionary search (unused).")
-    parser.add_argument("--report", default=None,
-                        help="Optional path for a markdown verdict report.")
+        description="Stage 3 symbolic-regression train (Deflex workflow)."
+    )
+    parser.add_argument(
+        "--output-dir",
+        default="molmetal/models/symbolic_reward",
+        help="Where to write the formula pickle + JSON.",
+    )
+    parser.add_argument(
+        "--family",
+        default="ALL",
+        choices=list(FORMULA_FAMILIES) + ["ALL"],
+        help="Formula family to fit (default: ALL → Pareto pick).",
+    )
+    parser.add_argument(
+        "--n-iterations",
+        type=int,
+        default=100,
+        help="Reserved for PySR evolutionary search (unused).",
+    )
+    parser.add_argument(
+        "--report", default=None, help="Optional path for a markdown verdict report."
+    )
     args = parser.parse_args()
 
     output_dir = PROJECT_ROOT / args.output_dir
@@ -83,12 +94,16 @@ def main() -> int:
     # 1) Load cells.
     df = load_measured_cells()
     print(f"[train_symbolic_regression] loaded {len(df)} MEASURED cells")
-    print(f"[train_symbolic_regression] cohorts = "
-          f"{df['cohort'].value_counts().to_dict()}")
+    print(
+        f"[train_symbolic_regression] cohorts = "
+        f"{df['cohort'].value_counts().to_dict()}"
+    )
 
     # 2) Per-family subset (drop NaNs in family's required feature columns).
-    print(f"[train_symbolic_regression] feature columns ({len(FEATURE_COLUMNS)}): "
-          f"{FEATURE_COLUMNS}")
+    print(
+        f"[train_symbolic_regression] feature columns ({len(FEATURE_COLUMNS)}): "
+        f"{FEATURE_COLUMNS}"
+    )
 
     # 3) Fit each family and collect results.
     all_results: Dict[str, Any] = {}
@@ -96,8 +111,10 @@ def main() -> int:
         cols = meta["features"]
         df_sub, y_sub = mask_complete_cases(df, feature_cols=cols)
         if len(df_sub) < 5:
-            print(f"  [{fam}] skipping: only {len(df_sub)} complete-case cells "
-                  f"(need ≥5)")
+            print(
+                f"  [{fam}] skipping: only {len(df_sub)} complete-case cells "
+                f"(need ≥5)"
+            )
             all_results[fam] = {
                 "status": "insufficient_data",
                 "n_fit": int(len(df_sub)),
@@ -106,8 +123,9 @@ def main() -> int:
                 "complexity": meta["complexity"],
             }
             continue
-        result = fit_symbolic_reward(df_sub, y_sub, family=fam,
-                                     n_iterations=args.n_iterations)
+        result = fit_symbolic_reward(
+            df_sub, y_sub, family=fam, n_iterations=args.n_iterations
+        )
         cv = loo_cv(df_sub, y_sub, family=fam)
         all_results[fam] = {
             "status": result.status,
@@ -121,23 +139,26 @@ def main() -> int:
             "lit_anchor": meta["lit"],
             "math_prior": meta["math_prior"],
         }
-        print(f"  [{fam}] n={result.n_fit:>3}  R^2={result.r2:.4f}  "
-              f"R^2_LOO={cv['loo_r2']:.4f}  "
-              f"Pearson_LOO={cv['loo_pearson_r']:.4f}  "
-              f"complexity={result.complexity}  "
-              f"lit={meta['lit'][:40]}...")
+        print(
+            f"  [{fam}] n={result.n_fit:>3}  R^2={result.r2:.4f}  "
+            f"R^2_LOO={cv['loo_r2']:.4f}  "
+            f"Pearson_LOO={cv['loo_pearson_r']:.4f}  "
+            f"complexity={result.complexity}  "
+            f"lit={meta['lit'][:40]}..."
+        )
 
     # 4) Pick Pareto-optimal family (highest R^2, then lowest complexity).
-    valid = {k: v for k, v in all_results.items()
-             if v.get("status") == "ok"}
+    valid = {k: v for k, v in all_results.items() if v.get("status") == "ok"}
     if valid:
-        ranked = sorted(valid.items(),
-                        key=lambda kv: (-kv[1]["r2_in_sample"],
-                                        kv[1]["complexity"]))
+        ranked = sorted(
+            valid.items(), key=lambda kv: (-kv[1]["r2_in_sample"], kv[1]["complexity"])
+        )
         best_family, best_meta = ranked[0]
-        print(f"\n[train_symbolic_regression] BEST family = {best_family}  "
-              f"R^2 = {best_meta['r2_in_sample']:.4f}  "
-              f"complexity = {best_meta['complexity']}")
+        print(
+            f"\n[train_symbolic_regression] BEST family = {best_family}  "
+            f"R^2 = {best_meta['r2_in_sample']:.4f}  "
+            f"complexity = {best_meta['complexity']}"
+        )
     else:
         best_family, best_meta = None, None
         print("[train_symbolic_regression] WARNING: no family fit successfully")
@@ -171,15 +192,19 @@ def main() -> int:
         # Re-fit best family to obtain a FitResult for the pickle.
         cols = FORMULA_FAMILIES[best_family]["features"]
         df_sub, y_sub = mask_complete_cases(df, feature_cols=cols)
-        best_result = fit_symbolic_reward(df_sub, y_sub, family=best_family,
-                                          n_iterations=args.n_iterations)
+        best_result = fit_symbolic_reward(
+            df_sub, y_sub, family=best_family, n_iterations=args.n_iterations
+        )
         pkl_path = output_dir / "symbolic_reward.pkl"
         with open(pkl_path, "wb") as f:
-            pickle.dump({
-                "FitResult": best_result,
-                "feature_columns": cols,
-                "all_results": all_results,
-            }, f)
+            pickle.dump(
+                {
+                    "FitResult": best_result,
+                    "feature_columns": cols,
+                    "all_results": all_results,
+                },
+                f,
+            )
         print(f"[train_symbolic_regression] wrote {pkl_path}")
 
         # Honest verdict write-up.

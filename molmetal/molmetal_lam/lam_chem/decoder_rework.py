@@ -152,27 +152,27 @@ DEFAULT_SOFT_SIGMA: float = 0.3
 # When ``PRIMITIVE_ATOMS`` or ``METAL_ATOMS`` is not importable, this
 # table is the canonical fallback.
 _DEFAULT_VALENCES: Dict[int, int] = {
-    1: 1,    # H
-    6: 4,    # C
-    7: 3,    # N (sp3-amine valence; aromatic N can go up to 3)
-    8: 2,    # O
-    9: 1,    # F
-    15: 3,   # P
-    16: 2,   # S
-    17: 1,   # Cl
-    34: 2,   # Se
-    35: 1,   # Br
-    53: 1,   # I
+    1: 1,  # H
+    6: 4,  # C
+    7: 3,  # N (sp3-amine valence; aromatic N can go up to 3)
+    8: 2,  # O
+    9: 1,  # F
+    15: 3,  # P
+    16: 2,  # S
+    17: 1,  # Cl
+    34: 2,  # Se
+    35: 1,  # Br
+    53: 1,  # I
     # Metals — coordination number (max bonds to atom, summing all
     # covalent + dative contributions).  Pt_II / Pd_II / Au_III = 4
     # (square planar); Ru_II / Ir_III = 6 (octahedral); Zn_II = 4
     # (tetrahedral); Cu_II = 4 (square planar or tetrahedral).
-    78: 4,   # Pt
-    44: 6,   # Ru
-    30: 4,   # Zn
-    77: 6,   # Ir
-    29: 4,   # Cu
-    79: 4,   # Au
+    78: 4,  # Pt
+    44: 6,  # Ru
+    30: 4,  # Zn
+    77: 6,  # Ir
+    29: 4,  # Cu
+    79: 4,  # Au
 }
 
 
@@ -233,20 +233,20 @@ DEFAULT_VALENCES: Dict[int, int] = _build_default_valences()
 #     N-N moderate, O-O weak (peroxide, not a linker).
 ATOM_TYPE_COMPAT: Dict[Tuple[int, int], float] = {
     # Strong covalent pairs (organic backbone)
-    (6, 6): 1.00,   # C-C  (canonical covalent)
-    (6, 1): 1.00,   # C-H
-    (6, 7): 0.95,   # C-N
-    (6, 8): 0.95,   # C-O
-    (7, 7): 0.80,   # N-N  (N-N single bonds OK; double bonds rarer)
-    (7, 8): 0.85,   # N-O
-    (7, 1): 1.00,   # N-H
-    (8, 1): 1.00,   # O-H
-    (8, 8): 0.50,   # O-O  (peroxide, weak as a linker)
+    (6, 6): 1.00,  # C-C  (canonical covalent)
+    (6, 1): 1.00,  # C-H
+    (6, 7): 0.95,  # C-N
+    (6, 8): 0.95,  # C-O
+    (7, 7): 0.80,  # N-N  (N-N single bonds OK; double bonds rarer)
+    (7, 8): 0.85,  # N-O
+    (7, 1): 1.00,  # N-H
+    (8, 1): 1.00,  # O-H
+    (8, 8): 0.50,  # O-O  (peroxide, weak as a linker)
     (16, 1): 0.95,  # S-H
     (15, 1): 0.95,  # P-H
     (16, 6): 0.90,  # S-C
     (15, 6): 0.90,  # P-C
-    (16, 16): 0.50, # S-S  (disulfide, weak)
+    (16, 16): 0.50,  # S-S  (disulfide, weak)
     (16, 7): 0.85,  # S-N
     (15, 7): 0.85,  # P-N
     (15, 8): 0.85,  # P-O
@@ -255,39 +255,39 @@ ATOM_TYPE_COMPAT: Dict[Tuple[int, int], float] = {
     (34, 1): 0.90,  # Se-H
     (34, 7): 0.80,  # Se-N
     (34, 8): 0.80,  # Se-O
-    (34, 34): 0.40, # Se-Se
+    (34, 34): 0.40,  # Se-Se
     # Halogens — terminal only, weak compatibility
     (6, 17): 0.50,  # C-Cl
-    (6, 9):  0.40,  # C-F   (terminal F, very weak as a linker)
+    (6, 9): 0.40,  # C-F   (terminal F, very weak as a linker)
     (6, 35): 0.50,  # C-Br
     (6, 53): 0.50,  # C-I
     (7, 17): 0.30,  # N-Cl  (N-Cl bond very weak; N-Cl is mostly a leaving group)
     (8, 17): 0.30,  # O-Cl
-    (16, 17): 0.50, # S-Cl
-    (15, 17): 0.50, # P-Cl
+    (16, 17): 0.50,  # S-Cl
+    (15, 17): 0.50,  # P-Cl
     (6, 34): 0.70,  # C-Se
     # Metal dative pairs (Himo 2005 + Lit-Survey-v2)
     (7, 78): 0.95,  # N → Pt  (dative, strong)
     (8, 78): 0.90,  # O → Pt  (dative, strong)
-    (16, 78): 0.85, # S → Pt
-    (34, 78): 0.80, # Se → Pt
-    (15, 78): 0.85, # P → Pt
-    (17, 78): 0.95, # Cl → Pt (cisplatin-style, strong covalent+dative)
+    (16, 78): 0.85,  # S → Pt
+    (34, 78): 0.80,  # Se → Pt
+    (15, 78): 0.85,  # P → Pt
+    (17, 78): 0.95,  # Cl → Pt (cisplatin-style, strong covalent+dative)
     (7, 29): 0.95,  # N → Cu
     (8, 29): 0.90,  # O → Cu
-    (17, 29): 0.80, # Cl → Cu
+    (17, 29): 0.80,  # Cl → Cu
     (7, 30): 0.85,  # N → Zn
     (8, 30): 0.85,  # O → Zn
-    (17, 30): 0.70, # Cl → Zn
+    (17, 30): 0.70,  # Cl → Zn
     (7, 77): 0.90,  # N → Ir
     (8, 77): 0.85,  # O → Ir
-    (17, 77): 0.85, # Cl → Ir
+    (17, 77): 0.85,  # Cl → Ir
     (7, 44): 0.90,  # N → Ru
     (8, 44): 0.85,  # O → Ru
-    (17, 44): 0.80, # Cl → Ru
+    (17, 44): 0.80,  # Cl → Ru
     (7, 79): 0.90,  # N → Au
     (8, 79): 0.85,  # O → Au
-    (17, 79): 0.90, # Cl → Au
+    (17, 79): 0.90,  # Cl → Au
     # C-Metal covalent (rare outside organometallics)
     (6, 78): 0.30,  # C-Pt  (covalent Pt-C, organometallic only)
     (6, 29): 0.30,  # C-Cu
@@ -296,8 +296,8 @@ ATOM_TYPE_COMPAT: Dict[Tuple[int, int], float] = {
     (6, 44): 0.30,  # C-Ru
     (6, 79): 0.30,  # C-Au
     # Metal-metal bonds (cluster chemistry, rare in SBDD)
-    (78, 78): 0.20, # Pt-Pt
-    (29, 29): 0.20, # Cu-Cu
+    (78, 78): 0.20,  # Pt-Pt
+    (29, 29): 0.20,  # Cu-Cu
 }
 
 
@@ -347,9 +347,7 @@ def soft_distance_mask(
     spread).
     """
     if distances.dim() != 1:
-        raise ValueError(
-            f"distances must be (E,) tensor, got {tuple(distances.shape)}"
-        )
+        raise ValueError(f"distances must be (E,) tensor, got {tuple(distances.shape)}")
     if sigma <= 0.0:
         raise ValueError(f"sigma must be > 0, got {sigma!r}")
     # The negative sign: as ``d`` increases, ``p`` decreases.  We use
@@ -471,7 +469,9 @@ def valence_log_barrier(
         )
     e = bond_orders_soft.shape[0]
     if e == 0:
-        return torch.zeros((), dtype=bond_orders_soft.dtype, device=bond_orders_soft.device)
+        return torch.zeros(
+            (), dtype=bond_orders_soft.dtype, device=bond_orders_soft.device
+        )
     # Per-atom valence cap (N,) — falls back to 4 (carbon) for unknown Z.
     cap = torch.tensor(
         [float(valences.get(int(z[a].item()), 4)) for a in range(n_atoms)],
@@ -480,13 +480,19 @@ def valence_log_barrier(
     )
     # Per-atom bond order sum (N,) — scatter_add of soft orders.
     atom_orders = torch.zeros(
-        (n_atoms,), dtype=bond_orders_soft.dtype, device=bond_orders_soft.device,
+        (n_atoms,),
+        dtype=bond_orders_soft.dtype,
+        device=bond_orders_soft.device,
     )
     atom_orders = atom_orders.scatter_add(
-        0, pair_src.long(), bond_orders_soft,
+        0,
+        pair_src.long(),
+        bond_orders_soft,
     )
     atom_orders = atom_orders.scatter_add(
-        0, pair_dst.long(), bond_orders_soft,
+        0,
+        pair_dst.long(),
+        bond_orders_soft,
     )
     excess = torch.clamp(atom_orders - cap + eps, min=0.0)
     return excess.pow(2).sum()
@@ -562,16 +568,22 @@ class DecoderRework(nn.Module):
             raise ValueError(f"soft_sigma must be > 0, got {soft_sigma!r}")
         self.distance_threshold = float(distance_threshold)
         self.soft_sigma = float(soft_sigma)
-        self.compat_table = compat_table if compat_table is not None else ATOM_TYPE_COMPAT
-        self.valences = dict(valences) if valences is not None else dict(DEFAULT_VALENCES)
+        self.compat_table = (
+            compat_table if compat_table is not None else ATOM_TYPE_COMPAT
+        )
+        self.valences = (
+            dict(valences) if valences is not None else dict(DEFAULT_VALENCES)
+        )
         self.bond_pattern_mask = bool(bond_pattern_mask)
         # Pre-build a (max_z, max_z) dense compat matrix so the
         # per-call lookup is O(1) per pair.  We use MAX_ATOMIC_NUMBER
         # as the index space (matches the BondOrderHead's mask).
         from molmetal.models.bond_head import MAX_ATOMIC_NUMBER
+
         self._max_z = int(MAX_ATOMIC_NUMBER)
         dense = torch.full(
-            (self._max_z, self._max_z), 0.5,
+            (self._max_z, self._max_z),
+            0.5,
             dtype=torch.float32,
         )
         for (a, b), v in self.compat_table.items():
@@ -579,7 +591,9 @@ class DecoderRework(nn.Module):
                 dense[a, b] = float(v)
                 dense[b, a] = float(v)
         self.register_buffer(
-            "_compat_dense", dense, persistent=False,
+            "_compat_dense",
+            dense,
+            persistent=False,
         )
         # Pre-build a (max_z,) valence cap.
         cap = torch.tensor(
@@ -629,7 +643,9 @@ class DecoderRework(nn.Module):
                 p_dist=empty.clone(),
                 p_type=empty.clone(),
                 p_combined=empty.clone(),
-                valence_penalty=torch.zeros((), dtype=coords.dtype, device=coords.device),
+                valence_penalty=torch.zeros(
+                    (), dtype=coords.dtype, device=coords.device
+                ),
             )
         # Build dense pair list (i < j) using a vectorised approach
         # that PRESERVES the autograd graph on ``coords`` (so the
@@ -649,7 +665,9 @@ class DecoderRework(nn.Module):
         z_j = atom_types[dst_flat]
         # --- Prior 1: soft distance mask ---
         p_dist = soft_distance_mask(
-            distances, self.distance_threshold, self.soft_sigma,
+            distances,
+            self.distance_threshold,
+            self.soft_sigma,
         )
         # --- Prior 2: type-compat prior (vectorised via dense lookup) ---
         # Clamp Z into the pre-allocated index space.
@@ -729,6 +747,7 @@ class DecoderRework(nn.Module):
             # No viable bonds — emit an empty mol (caller can decide
             # how to handle).
             from rdkit import Chem
+
             rw = Chem.RWMol()
             for z in cloud.atomic_numbers.tolist():
                 try:
@@ -751,20 +770,27 @@ class DecoderRework(nn.Module):
         src = result.edge_index[0, viable_idx]
         dst = result.edge_index[1, viable_idx]
         distances = torch.norm(
-            cloud.positions[src] - cloud.positions[dst], dim=-1,
+            cloud.positions[src] - cloud.positions[dst],
+            dim=-1,
         )
         z_i = cloud.atomic_numbers[src].long()
         z_j = cloud.atomic_numbers[dst].long()
         # dative flag — same heuristic as BondAwareDecoder._infer_pair_features
         from molmetal.models.bond_head import _is_metal, _is_donor
+
         is_dative = torch.tensor(
             [
                 (
-                    (_is_metal(int(cloud.atomic_numbers[int(s)].item()))
-                     and _is_donor(int(cloud.atomic_numbers[int(d)].item())))
-                    or (_is_metal(int(cloud.atomic_numbers[int(d)].item()))
-                        and _is_donor(int(cloud.atomic_numbers[int(s)].item())))
-                ) and float(distances[k].item()) < 2.5
+                    (
+                        _is_metal(int(cloud.atomic_numbers[int(s)].item()))
+                        and _is_donor(int(cloud.atomic_numbers[int(d)].item()))
+                    )
+                    or (
+                        _is_metal(int(cloud.atomic_numbers[int(d)].item()))
+                        and _is_donor(int(cloud.atomic_numbers[int(s)].item()))
+                    )
+                )
+                and float(distances[k].item()) < 2.5
                 for k, (s, d) in enumerate(zip(src.tolist(), dst.tolist()))
             ],
             dtype=torch.bool,
@@ -782,6 +808,7 @@ class DecoderRework(nn.Module):
         # demonstrate the path).
         if bond_head is None:
             from rdkit import Chem
+
             rw = Chem.RWMol()
             for z in cloud.atomic_numbers.tolist():
                 try:
@@ -870,9 +897,7 @@ class ReworkedDecoder:
         self.inner = inner
         self.rework = rework if rework is not None else DecoderRework()
         if not 0.0 < float(p_threshold) < 1.0:
-            raise ValueError(
-                f"p_threshold must be in (0, 1), got {p_threshold!r}"
-            )
+            raise ValueError(f"p_threshold must be in (0, 1), got {p_threshold!r}")
         self.p_threshold = float(p_threshold)
 
     def decode(self, cloud: AtomCloud) -> DecodedMol:

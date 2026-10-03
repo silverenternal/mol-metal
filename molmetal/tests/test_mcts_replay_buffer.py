@@ -21,6 +21,7 @@ Run via::
     uv run --no-sync python -m pytest \\
         molmetal/tests/test_mcts_replay_buffer.py -v
 """
+
 from __future__ import annotations
 
 import math
@@ -82,9 +83,16 @@ def _mk_entry(
     )
 
 
-def _stub_base_search(candidates=None, scores=None, priors=None,
-                      visits=None, variances=None, raise_exc=None,
-                      has_history=True, return_int=False):
+def _stub_base_search(
+    candidates=None,
+    scores=None,
+    priors=None,
+    visits=None,
+    variances=None,
+    raise_exc=None,
+    has_history=True,
+    return_int=False,
+):
     """Return a minimal stub that mimics ``MCTSProofSearch``.
 
     The stub exposes the public attributes the wrapper consults
@@ -92,6 +100,7 @@ def _stub_base_search(candidates=None, scores=None, priors=None,
     ``debug_trace``).  No real MCTS is required.
     """
     if raise_exc is not None:
+
         class _Broken:
             def search(self, *args, **kwargs):
                 raise RuntimeError(raise_exc)
@@ -102,8 +111,10 @@ def _stub_base_search(candidates=None, scores=None, priors=None,
 
     if candidates is None:
         candidates = [
-            _StubMol("CCO"), _StubMol("CCN"),
-            _StubMol("CCC"), _StubMol("CCCC"),
+            _StubMol("CCO"),
+            _StubMol("CCN"),
+            _StubMol("CCC"),
+            _StubMol("CCCC"),
         ]
     if scores is None:
         scores = [0.3, 0.7, 0.5, 0.9]
@@ -120,15 +131,18 @@ def _stub_base_search(candidates=None, scores=None, priors=None,
     # scoping rules hide the local variable from the class body.
     history_list = []
     if has_history:
-        history_list.append({
-            "candidates": list(candidates),
-            "scores": list(scores),
-            "priors": list(priors),
-            "visits": list(visits),
-            "variances": list(variances),
-        })
+        history_list.append(
+            {
+                "candidates": list(candidates),
+                "scores": list(scores),
+                "priors": list(priors),
+                "visits": list(visits),
+                "variances": list(variances),
+            }
+        )
 
     if return_int:
+
         def _search_int(self, root):
             return int(np.argmax(np.asarray(scores)))
 
@@ -185,8 +199,12 @@ class TestMCTSReplayEntry:
     def test_replay_entry_init(self):
         """A minimal entry round-trips through its constructor."""
         e = MCTSReplayEntry(
-            state="CCO", action="action_0",
-            value=0.7, prior=0.25, variance=0.01, visit_count=8,
+            state="CCO",
+            action="action_0",
+            value=0.7,
+            prior=0.25,
+            variance=0.01,
+            visit_count=8,
         )
         assert e.state == "CCO"
         assert e.action == "action_0"
@@ -202,36 +220,60 @@ class TestMCTSReplayEntry:
         """Non-numeric value / prior / variance raise MCTSReplayError."""
         with pytest.raises(MCTSReplayError):
             MCTSReplayEntry(
-                state="x", action="y", value="not_a_number",
-                prior=0.5, variance=0.0, visit_count=1,
+                state="x",
+                action="y",
+                value="not_a_number",
+                prior=0.5,
+                variance=0.0,
+                visit_count=1,
             )
         with pytest.raises(MCTSReplayError):
             MCTSReplayEntry(
-                state="x", action="y", value=0.5,
-                prior="nope", variance=0.0, visit_count=1,
+                state="x",
+                action="y",
+                value=0.5,
+                prior="nope",
+                variance=0.0,
+                visit_count=1,
             )
         with pytest.raises(MCTSReplayError):
             MCTSReplayEntry(
-                state="x", action="y", value=0.5,
-                prior=0.5, variance=[0.0], visit_count=1,
+                state="x",
+                action="y",
+                value=0.5,
+                prior=0.5,
+                variance=[0.0],
+                visit_count=1,
             )
 
     def test_replay_entry_rejects_invalid_visit_count(self):
         """visit_count must be a positive int."""
         with pytest.raises(MCTSReplayError):
             MCTSReplayEntry(
-                state="x", action="y", value=0.5,
-                prior=0.5, variance=0.0, visit_count=0,
+                state="x",
+                action="y",
+                value=0.5,
+                prior=0.5,
+                variance=0.0,
+                visit_count=0,
             )
         with pytest.raises(MCTSReplayError):
             MCTSReplayEntry(
-                state="x", action="y", value=0.5,
-                prior=0.5, variance=0.0, visit_count=-3,
+                state="x",
+                action="y",
+                value=0.5,
+                prior=0.5,
+                variance=0.0,
+                visit_count=-3,
             )
         with pytest.raises(MCTSReplayError):
             MCTSReplayEntry(
-                state="x", action="y", value=0.5,
-                prior=0.5, variance=0.0, visit_count=1.5,  # type: ignore[arg-type]
+                state="x",
+                action="y",
+                value=0.5,
+                prior=0.5,
+                variance=0.0,
+                visit_count=1.5,  # type: ignore[arg-type]
             )
 
 
@@ -353,7 +395,9 @@ class TestMCTSReplayWrapper:
         base = _stub_base_search()
         buf = MCTSReplayBuffer(max_size=16)
         w = MCTSReplayWrapper(
-            base_search=base, buffer=buf, n_top_actions=3,
+            base_search=base,
+            buffer=buf,
+            n_top_actions=3,
         )
         w.search(root="CCO")
         # Should have recorded up to n_top_actions entries.
@@ -452,7 +496,9 @@ class TestReplayGuidedMCTS:
         base = _stub_base_search()
         buf = MCTSReplayBuffer(max_size=8)
         rg = ReplayGuidedMCTS(
-            base_search=base, replay_buffer=buf, alpha_replay=0.7,
+            base_search=base,
+            replay_buffer=buf,
+            alpha_replay=0.7,
         )
         out = rg.bias_prior(root="CCO", n_actions=4)
         assert np.allclose(out, np.full(4, 0.25))
@@ -462,15 +508,30 @@ class TestReplayGuidedMCTS:
         base = _stub_base_search()
         buf = MCTSReplayBuffer(max_size=16)
         # 10 visits on action_3, 2 visits on action_0, 1 each on others.
-        buf.add(_mk_entry(state="CCO", action="action_3",
-                          value=0.9, prior=0.25, visit_count=10))
-        buf.add(_mk_entry(state="CCO", action="action_0",
-                          value=0.1, prior=0.25, visit_count=2))
+        buf.add(
+            _mk_entry(
+                state="CCO", action="action_3", value=0.9, prior=0.25, visit_count=10
+            )
+        )
+        buf.add(
+            _mk_entry(
+                state="CCO", action="action_0", value=0.1, prior=0.25, visit_count=2
+            )
+        )
         for i in [1, 2]:
-            buf.add(_mk_entry(state="CCO", action=f"action_{i}",
-                             value=0.5, prior=0.25, visit_count=1))
+            buf.add(
+                _mk_entry(
+                    state="CCO",
+                    action=f"action_{i}",
+                    value=0.5,
+                    prior=0.25,
+                    visit_count=1,
+                )
+            )
         rg = ReplayGuidedMCTS(
-            base_search=base, replay_buffer=buf, alpha_replay=1.0,
+            base_search=base,
+            replay_buffer=buf,
+            alpha_replay=1.0,
         )
         out = rg.bias_prior(root="CCO", n_actions=4)
         # action_3 has the highest visit count → highest probability.
@@ -482,17 +543,24 @@ class TestReplayGuidedMCTS:
         """alpha_replay controls the bias / base prior mix."""
         base = _stub_base_search()
         buf = MCTSReplayBuffer(max_size=16)
-        buf.add(_mk_entry(state="X", action="action_2",
-                          value=0.9, prior=0.25, visit_count=10))
+        buf.add(
+            _mk_entry(
+                state="X", action="action_2", value=0.9, prior=0.25, visit_count=10
+            )
+        )
         # alpha=0 → pure base prior → uniform.
         rg_pure_base = ReplayGuidedMCTS(
-            base_search=base, replay_buffer=buf, alpha_replay=0.0,
+            base_search=base,
+            replay_buffer=buf,
+            alpha_replay=0.0,
         )
         out_pure_base = rg_pure_base.bias_prior(root="X", n_actions=4)
         assert np.allclose(out_pure_base, np.full(4, 0.25))
         # alpha=1 → pure replay bias → action_2 dominates.
         rg_pure_replay = ReplayGuidedMCTS(
-            base_search=base, replay_buffer=buf, alpha_replay=1.0,
+            base_search=base,
+            replay_buffer=buf,
+            alpha_replay=1.0,
         )
         out_pure_replay = rg_pure_replay.bias_prior(root="X", n_actions=4)
         assert int(np.argmax(out_pure_replay)) == 2
@@ -501,12 +569,20 @@ class TestReplayGuidedMCTS:
         """bias_prior is deterministic given a fixed replay buffer."""
         base = _stub_base_search()
         buf = MCTSReplayBuffer(max_size=16, seed=0)
-        buf.add(_mk_entry(state="CCO", action="action_0",
-                          value=0.1, prior=0.25, visit_count=4))
-        buf.add(_mk_entry(state="CCO", action="action_1",
-                          value=0.2, prior=0.25, visit_count=8))
+        buf.add(
+            _mk_entry(
+                state="CCO", action="action_0", value=0.1, prior=0.25, visit_count=4
+            )
+        )
+        buf.add(
+            _mk_entry(
+                state="CCO", action="action_1", value=0.2, prior=0.25, visit_count=8
+            )
+        )
         rg = ReplayGuidedMCTS(
-            base_search=base, replay_buffer=buf, alpha_replay=0.5,
+            base_search=base,
+            replay_buffer=buf,
+            alpha_replay=0.5,
         )
         out_a = rg.bias_prior(root="CCO", n_actions=4)
         out_b = rg.bias_prior(root="CCO", n_actions=4)
@@ -516,10 +592,15 @@ class TestReplayGuidedMCTS:
         """When no replay entries match, the bias is uniform."""
         base = _stub_base_search()
         buf = MCTSReplayBuffer(max_size=16)
-        buf.add(_mk_entry(state="OTHER", action="action_0",
-                          value=0.1, prior=0.25, visit_count=4))
+        buf.add(
+            _mk_entry(
+                state="OTHER", action="action_0", value=0.1, prior=0.25, visit_count=4
+            )
+        )
         rg = ReplayGuidedMCTS(
-            base_search=base, replay_buffer=buf, alpha_replay=0.9,
+            base_search=base,
+            replay_buffer=buf,
+            alpha_replay=0.9,
         )
         out = rg.bias_prior(root="CCO", n_actions=4)
         assert np.allclose(out, np.full(4, 0.25))
@@ -529,21 +610,19 @@ class TestReplayGuidedMCTS:
         base = _stub_base_search()
         buf = MCTSReplayBuffer(max_size=4)
         with pytest.raises(MCTSReplayError):
-            ReplayGuidedMCTS(base_search=base, replay_buffer=buf,
-                             alpha_replay=1.5)
+            ReplayGuidedMCTS(base_search=base, replay_buffer=buf, alpha_replay=1.5)
         with pytest.raises(MCTSReplayError):
-            ReplayGuidedMCTS(base_search=base, replay_buffer=buf,
-                             alpha_replay=-0.1)
+            ReplayGuidedMCTS(base_search=base, replay_buffer=buf, alpha_replay=-0.1)
         with pytest.raises(MCTSReplayError):
-            ReplayGuidedMCTS(base_search=base, replay_buffer=buf,
-                             tau=0.0)
+            ReplayGuidedMCTS(base_search=base, replay_buffer=buf, tau=0.0)
         # n_actions must be >= 1.
         rg = ReplayGuidedMCTS(base_search=base, replay_buffer=buf)
         with pytest.raises(MCTSReplayError):
             rg.bias_prior(root="CCO", n_actions=0)
         # Buffer must not be None.
         rg_none = ReplayGuidedMCTS(
-            base_search=base, replay_buffer=buf,
+            base_search=base,
+            replay_buffer=buf,
         )
         rg_none.replay_buffer = None  # type: ignore[assignment]
         with pytest.raises(MCTSReplayError):

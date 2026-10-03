@@ -48,6 +48,7 @@ Unlike :mod:`test_platinai_bench_smoke`, every benchmark shape is
  14. test_median_helper
  15. test_metalcytotox_csv_exists
 """
+
 from __future__ import annotations
 
 import csv
@@ -72,9 +73,7 @@ from molmetal.scripts.benchmark_r18_metalcytotox import (  # noqa: E402
     _run_module,
 )
 
-CSV_PATH = (
-    PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
-)
+CSV_PATH = PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 N_RUNS_SMOKE = 2
 SMOKE_SAMPLES = 16
 SMOKE_METALS = ["Ru", "Ir"]  # subset to keep pytest within 5-min cap
@@ -157,9 +156,9 @@ def test_per_metal_shape(
                     f"expected {N_RUNS_SMOKE}"
                 )
                 for w in wt:
-                    assert w >= 0.0, (
-                        f"({metal}, {mod_id}) reported negative wall-time {w}"
-                    )
+                    assert (
+                        w >= 0.0
+                    ), f"({metal}, {mod_id}) reported negative wall-time {w}"
 
 
 def test_total_wall_time(
@@ -204,9 +203,7 @@ def test_memory_peak(
     peak = tracemalloc.get_traced_memory()[1]
     tracemalloc.stop()
     delta_mb = (peak - base) / (1024 * 1024)
-    assert delta_mb <= 4096.0, (
-        f"peak tracemalloc {delta_mb:.1f} MB exceeds 4 GB cap"
-    )
+    assert delta_mb <= 4096.0, f"peak tracemalloc {delta_mb:.1f} MB exceeds 4 GB cap"
 
 
 # ---------------------------------------------------------------------------
@@ -269,9 +266,9 @@ def test_total_module_count_is_32(registry: Dict[str, object]) -> None:
     ``test_r18_imports.py:test_total_modules_is_32``.  Catches
     accidental additions/removals in the registry.
     """
-    assert len(registry) == 32, (
-        f"R18 benchmark manifest changed: got {len(registry)}, expected 32"
-    )
+    assert (
+        len(registry) == 32
+    ), f"R18 benchmark manifest changed: got {len(registry)}, expected 32"
 
 
 # ---------------------------------------------------------------------------
@@ -380,9 +377,7 @@ def test_wall_time_non_negative(
             wt, st = _run_module(runner, smiles, N_RUNS_SMOKE)
             if st == "ok":
                 for w in wt:
-                    assert w >= 0.0, (
-                        f"({metal}, {mid}) reported negative wall-time {w}"
-                    )
+                    assert w >= 0.0, f"({metal}, {mid}) reported negative wall-time {w}"
 
 
 def test_median_helper() -> None:

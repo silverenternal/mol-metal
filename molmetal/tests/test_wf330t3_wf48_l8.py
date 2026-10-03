@@ -67,6 +67,7 @@ def _make_toy_pic50_dataset(
         from molmetal.molmetal_lam.reward.lambda_astsr import (
             RDKIT_2D_FEATURE_COLUMNS,
         )
+
         feature_names = tuple(RDKIT_2D_FEATURE_COLUMNS)
     rng = np.random.default_rng(seed)
     X = rng.uniform(low=-1.0, high=1.0, size=(n, len(feature_names))).astype(
@@ -80,11 +81,7 @@ def _make_toy_pic50_dataset(
     else:
         i_logp = 0
         i_tpsa = 1
-    y = (
-        1.5 * X[:, i_logp]
-        - 0.3 * X[:, i_tpsa]
-        + 0.05 * rng.standard_normal(n)
-    )
+    y = 1.5 * X[:, i_logp] - 0.3 * X[:, i_tpsa] + 0.05 * rng.standard_normal(n)
     return X, y
 
 
@@ -113,23 +110,22 @@ def test_lambda_astsr_integration() -> None:
     )
 
     # Registry invariants — pin the Wf-49 / Wf-218 feature columns.
-    assert len(RDKIT_2D_FEATURE_COLUMNS) == 12, (
-        "Wf-49 Phase 1 frozen RDKit 2D registry must be 12-d"
-    )
-    assert len(RDKIT_2D_EXTENDED_FEATURE_COLUMNS) == 32, (
-        "Wf-218 expansion must yield 32-d RDKit 2D registry"
-    )
+    assert (
+        len(RDKIT_2D_FEATURE_COLUMNS) == 12
+    ), "Wf-49 Phase 1 frozen RDKit 2D registry must be 12-d"
+    assert (
+        len(RDKIT_2D_EXTENDED_FEATURE_COLUMNS) == 32
+    ), "Wf-218 expansion must yield 32-d RDKit 2D registry"
     # First 12 entries of the 32-d set must match the 12-d set bit-for-bit.
     assert (
-        RDKIT_2D_EXTENDED_FEATURE_COLUMNS[:12]
-        == RDKIT_2D_FEATURE_COLUMNS
+        RDKIT_2D_EXTENDED_FEATURE_COLUMNS[:12] == RDKIT_2D_FEATURE_COLUMNS
     ), "Wf-218 32-d must extend 12-d verbatim"
 
     # default_feature_columns() defaults to RDKit 2D 12-d.
     cols = default_feature_columns()
-    assert tuple(cols) == tuple(RDKIT_2D_FEATURE_COLUMNS), (
-        "default_feature_columns() must default to RDKit 2D 12-d"
-    )
+    assert tuple(cols) == tuple(
+        RDKIT_2D_FEATURE_COLUMNS
+    ), "default_feature_columns() must default to RDKit 2D 12-d"
     assert tuple(rdkit_2d_feature_columns()) == tuple(
         RDKIT_2D_FEATURE_COLUMNS,
     )
@@ -140,16 +136,22 @@ def test_lambda_astsr_integration() -> None:
     # Determinism — same seed yields identical best_ast_ complexity.
     X, y = _make_toy_pic50_dataset()
     reg_a = LambdaASTSR(
-        depth=2, population=8, generations=3, seed=0,
+        depth=2,
+        population=8,
+        generations=3,
+        seed=0,
     ).fit(X, y)
     reg_b = LambdaASTSR(
-        depth=2, population=8, generations=3, seed=0,
+        depth=2,
+        population=8,
+        generations=3,
+        seed=0,
     ).fit(X, y)
     assert reg_a.best_ast_ is not None
     assert reg_b.best_ast_ is not None
-    assert reg_a.best_ast_.to_lisp() == reg_b.best_ast_.to_lisp(), (
-        "ASTSR must be deterministic under fixed seed"
-    )
+    assert (
+        reg_a.best_ast_.to_lisp() == reg_b.best_ast_.to_lisp()
+    ), "ASTSR must be deterministic under fixed seed"
     # complexity() counts internal op nodes; a 1-leaf AST has 0 ops
     # (acceptable — the simplest valid hypothesis under parsimony).
     assert reg_a.best_ast_.complexity() >= 0
@@ -168,6 +170,7 @@ def test_lambda_astsr_integration() -> None:
 
     # swap_f5_for_astsr wires a fitted ASTSR into learned_shaping.
     import molmetal.molmetal_lam.reward.learned_shaping as ls
+
     pre_swap_attr = ls.load_best_formula
     swap_f5_for_astsr(ls, reg_a)
     formula = ls.load_best_formula()
@@ -195,14 +198,14 @@ def test_lambda_astsr_integration() -> None:
     # trip the collapse guard.
     y_const = np.ones(20)
     y_var = np.linspace(-1.0, 1.0, 20)
-    assert collapse_detected(y_const, y_var) is True, (
-        "Constant predictions must trip collapse detection"
-    )
+    assert (
+        collapse_detected(y_const, y_var) is True
+    ), "Constant predictions must trip collapse detection"
     # A well-scaled prediction on a varying target must NOT trip the guard.
     y_good = y_var + 0.01 * np.random.default_rng(0).standard_normal(20)
-    assert collapse_detected(y_good, y_var) is False, (
-        "Well-scaled predictions must not trip collapse detection"
-    )
+    assert (
+        collapse_detected(y_good, y_var) is False
+    ), "Well-scaled predictions must not trip collapse detection"
 
 
 # ---------------------------------------------------------------------------
@@ -254,9 +257,9 @@ def test_l8_reachability_anchor() -> None:
 
     # Convergence rate is a separate anchor — record but do not enforce
     # the same threshold (it is a different metric on a different scale).
-    assert 0.0 <= L8_MEASURED_TRIANGLE_CONVERGENCE_RATE <= 1.0, (
-        "triangle_convergence_rate must be in [0, 1]"
-    )
+    assert (
+        0.0 <= L8_MEASURED_TRIANGLE_CONVERGENCE_RATE <= 1.0
+    ), "triangle_convergence_rate must be in [0, 1]"
 
     # L8 reaches the bench layer — the ASTSR + integration helpers all
     # import cleanly (no missing modules, no circular imports).
@@ -315,7 +318,8 @@ def test_integration_with_closure() -> None:
     reg = LambdaASTSR(depth=2, population=4, generations=2, seed=1).fit(X, y)
     assert reg.best_ast_ is not None
     assert isinstance(reg.best_ast_.lam_node, LamAbs) or isinstance(
-        reg.best_ast_.lam_node, LamApp,
+        reg.best_ast_.lam_node,
+        LamApp,
     ), "ASTSR must wrap its hypothesis in a LamAbs / LamApp MLC node"
     # The LISP rendering of the best AST must be non-empty and finite.
     lisp = reg.best_ast_.to_lisp()
@@ -352,16 +356,14 @@ def test_integration_with_triangle_closure() -> None:
         "scripts",
         "triangle_closure.py",
     )
-    assert os.path.exists(script_path), (
-        f"triangle_closure.py must exist on disk at {script_path}"
-    )
+    assert os.path.exists(
+        script_path
+    ), f"triangle_closure.py must exist on disk at {script_path}"
     with open(script_path) as fh:
         src = fh.read()
     # The triangle closure script must reference lambda_astsr OR
     # LambdaASTSR — the AST vertex of the loop is the ASTSR.
-    assert (
-        "lambda_astsr" in src or "LambdaASTSR" in src
-    ), (
+    assert "lambda_astsr" in src or "LambdaASTSR" in src, (
         "triangle_closure.py must reference lambda_astsr / LambdaASTSR; "
         "the AST vertex of the triangle loop is the ASTSR."
     )
@@ -370,7 +372,10 @@ def test_integration_with_triangle_closure() -> None:
     # valid λ-term that the triangle_closure scoring API can consume.
     X, y = _make_toy_pic50_dataset(n=16, seed=11)
     reg = LambdaASTSR(
-        depth=3, population=8, generations=3, seed=2,
+        depth=3,
+        population=8,
+        generations=3,
+        seed=2,
     ).fit(X, y)
     assert reg.best_ast_ is not None
     # The ASTSR exposes both the LISP form (used by bench harnesses)

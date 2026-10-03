@@ -32,7 +32,9 @@ from typing import Callable, Optional
 import torch
 
 
-def random_so3_matrix(n: int, generator: Optional[torch.Generator] = None) -> torch.Tensor:
+def random_so3_matrix(
+    n: int, generator: Optional[torch.Generator] = None
+) -> torch.Tensor:
     """Sample ``n`` random rotation matrices uniformly from SO(3).
 
     Uses the standard QR-based construction (Stewart 1980, "The

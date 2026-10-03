@@ -106,13 +106,13 @@ DEFAULT_EXTRA_SOURCES: List[Tuple[str, Path, str]] = [
 # ---------------------------------------------------------------------------
 @dataclass
 class Claim:
-    claim_id: str          # short slug, e.g. "per_metal_Ru_mean_test_auc"
-    label: str             # human-readable label for the diff table
-    new_value: float       # value extracted from collect JSON
-    old_value: float       # value parsed out of the paper doc (NaN if missing)
-    old_pattern: str       # the exact substring matched in the doc ("" if missing)
-    json_path: str         # dotted path inside the collect JSON
-    unit: str = ""         # optional unit (e.g. "AUC", "pIC50")
+    claim_id: str  # short slug, e.g. "per_metal_Ru_mean_test_auc"
+    label: str  # human-readable label for the diff table
+    new_value: float  # value extracted from collect JSON
+    old_value: float  # value parsed out of the paper doc (NaN if missing)
+    old_pattern: str  # the exact substring matched in the doc ("" if missing)
+    json_path: str  # dotted path inside the collect JSON
+    unit: str = ""  # optional unit (e.g. "AUC", "pIC50")
 
     @property
     def delta(self) -> float:
@@ -296,9 +296,7 @@ def _extract_claims(collect: Dict[str, Any]) -> List[Tuple[str, float, str]]:
     # Secondary metrics (kept here as scaffolding for the §4 expansion).
     m21 = collect.get("m21_nci60_9cell_mean_auc")
     if isinstance(m21, (int, float)):
-        out.append(
-            ("m21_nci60_9cell_mean_auc", float(m21), "m21_nci60_9cell_mean_auc")
-        )
+        out.append(("m21_nci60_9cell_mean_auc", float(m21), "m21_nci60_9cell_mean_auc"))
 
     return out
 
@@ -542,27 +540,33 @@ def render_diff_md(
         )
 
     lines.append("\n## Provenance\n\n")
-    lines.append("- **NEW values** come from the Wf-265-Collect JSON. "
-                 "Every row carries its dotted JSON path so the number can be "
-                 "back-traced verbatim.\n")
-    lines.append("- **OLD values** are parsed out of the paper doc by the "
-                 "pattern catalogue in `paper_auto_update.py::PATTERNS`. "
-                 "If a pattern fails to match, the row is reported as `—` "
-                 "(missing); this is a **catastrophic failure** signal, not a "
-                 "soft skip — the user must extend the pattern catalogue.\n")
+    lines.append(
+        "- **NEW values** come from the Wf-265-Collect JSON. "
+        "Every row carries its dotted JSON path so the number can be "
+        "back-traced verbatim.\n"
+    )
+    lines.append(
+        "- **OLD values** are parsed out of the paper doc by the "
+        "pattern catalogue in `paper_auto_update.py::PATTERNS`. "
+        "If a pattern fails to match, the row is reported as `—` "
+        "(missing); this is a **catastrophic failure** signal, not a "
+        "soft skip — the user must extend the pattern catalogue.\n"
+    )
 
     if not dry_run:
         lines.append("\n## Apply status\n\n")
-        lines.append("- This diff was applied atomically to the paper doc "
-                     "(`tempfile.NamedTemporaryFile` + `os.replace`).\n")
-        lines.append("- Original paper doc preserved at the user's chosen "
-                     "`--updated-out` path (side-by-side, not in-place).\n")
+        lines.append(
+            "- This diff was applied atomically to the paper doc "
+            "(`tempfile.NamedTemporaryFile` + `os.replace`).\n"
+        )
+        lines.append(
+            "- Original paper doc preserved at the user's chosen "
+            "`--updated-out` path (side-by-side, not in-place).\n"
+        )
     return "".join(lines)
 
 
-def write_diff_md(
-    diff_md: str, out_path: Path, dry_run: bool
-) -> Path:
+def write_diff_md(diff_md: str, out_path: Path, dry_run: bool) -> Path:
     """Write the diff_report.md to ``out_path`` (atomic)."""
     out_path.parent.mkdir(parents=True, exist_ok=True)
     _atomic_write_text(out_path, diff_md)
@@ -603,9 +607,7 @@ def render_updated_doc(paper_doc_text: str, claims: List[Claim]) -> str:
     return out + banner
 
 
-def write_updated_doc(
-    updated_text: str, out_path: Path
-) -> Path:
+def write_updated_doc(updated_text: str, out_path: Path) -> Path:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     _atomic_write_text(out_path, updated_text)
     return out_path
@@ -737,10 +739,7 @@ def _build_argparser() -> argparse.ArgumentParser:
         "--out-diff",
         type=Path,
         default=DEFAULT_DIFF_OUT,
-        help=(
-            "Where to write the diff_report.md "
-            f"(default: {DEFAULT_DIFF_OUT})."
-        ),
+        help=("Where to write the diff_report.md " f"(default: {DEFAULT_DIFF_OUT})."),
     )
     p.add_argument(
         "--updated-out",
@@ -787,8 +786,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 2
     if not args.paper_doc.exists():
         print(
-            f"[paper_auto_update] ERROR: --paper-doc not found: "
-            f"{args.paper_doc}",
+            f"[paper_auto_update] ERROR: --paper-doc not found: " f"{args.paper_doc}",
             file=sys.stderr,
         )
         return 2
@@ -829,9 +827,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if not args.dry_run:
         updated_text = render_updated_doc(paper_text, claims)
         write_updated_doc(updated_text, args.updated_out)
-        print(
-            f"[paper_auto_update] wrote updated paper doc -> {args.updated_out}"
-        )
+        print(f"[paper_auto_update] wrote updated paper doc -> {args.updated_out}")
 
     return 0
 

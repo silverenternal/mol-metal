@@ -39,6 +39,7 @@ Run via::
     uv run --no-sync python -m pytest \\
         molmetal/tests/test_mcts_real_trajectory.py -v
 """
+
 from __future__ import annotations
 
 import csv
@@ -60,9 +61,7 @@ import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCRIPT_PATH = (
-    REPO_ROOT / "molmetal" / "scripts" / "bench_mcts_real_trajectory.py"
-)
+SCRIPT_PATH = REPO_ROOT / "molmetal" / "scripts" / "bench_mcts_real_trajectory.py"
 PLATINAI_CSV = REPO_ROOT / "molmetal" / "data" / "platinai_5k.csv"
 METALCYTO_CSV = REPO_ROOT / ".data" / "molmetal" / "MetalCytoToxDB.csv"
 
@@ -81,10 +80,12 @@ def _import_bench_module() -> Any:
     """
     try:
         import molmetal.scripts.bench_mcts_real_trajectory as mod  # type: ignore
+
         return mod
     except Exception:
         sys.path.insert(0, str(REPO_ROOT / "molmetal"))
         import scripts.bench_mcts_real_trajectory as mod  # type: ignore
+
         return mod
 
 
@@ -110,11 +111,16 @@ def _invoke_cli(
     argv: List[str] = [
         sys.executable,
         str(SCRIPT_PATH),
-        "--n-trajectories", str(int(n_trajectories)),
-        "--n-simulations", str(int(n_simulations)),
-        "--max-depth", str(int(max_depth)),
-        "--seed", str(int(seed)),
-        "--out-dir", str(out_dir),
+        "--n-trajectories",
+        str(int(n_trajectories)),
+        "--n-simulations",
+        str(int(n_simulations)),
+        "--max-depth",
+        str(int(max_depth)),
+        "--seed",
+        str(int(seed)),
+        "--out-dir",
+        str(out_dir),
     ]
     if smoke:
         argv.append("--smoke")
@@ -167,11 +173,16 @@ def _invoke_inproc(
     mod = _import_bench_module()
     parser = mod._build_argparser()
     argv: List[str] = [
-        "--n-trajectories", str(int(n_trajectories)),
-        "--n-simulations", str(int(n_simulations)),
-        "--max-depth", str(int(max_depth)),
-        "--seed", str(int(seed)),
-        "--out-dir", str(out_dir),
+        "--n-trajectories",
+        str(int(n_trajectories)),
+        "--n-simulations",
+        str(int(n_simulations)),
+        "--max-depth",
+        str(int(max_depth)),
+        "--seed",
+        str(int(seed)),
+        "--out-dir",
+        str(out_dir),
     ]
     if smoke:
         argv.append("--smoke")
@@ -302,7 +313,9 @@ class TestLoaders:
         if not METALCYTO_CSV.exists():
             pytest.skip(f"MetalCytoToxDB CSV missing at {METALCYTO_CSV}")
         rows = mod._load_metalcytotox(
-            str(METALCYTO_CSV), 5, 42,
+            str(METALCYTO_CSV),
+            5,
+            42,
             metal_whitelist=tuple(mod.TASK_SPEC_METALS),
         )
         assert isinstance(rows, list)
@@ -326,13 +339,21 @@ class TestTrajectoryDiagnostics:
         """A :func:`_run_proof_search_trajectory` record has all keys."""
         mod = _import_bench_module()
         rec = mod._run_proof_search_trajectory(
-            seed=0, sims=3, depth=2, start_smiles="CCO",
+            seed=0,
+            sims=3,
+            depth=2,
+            start_smiles="CCO",
             exploration_strategy="dirichlet",
         )
         for key in (
-            "strategy", "exploration_strategy", "seed",
-            "wall_time_s", "n_states_explored", "best_score",
-            "leaf_value_var", "error",
+            "strategy",
+            "exploration_strategy",
+            "seed",
+            "wall_time_s",
+            "n_states_explored",
+            "best_score",
+            "leaf_value_var",
+            "error",
         ):
             assert key in rec, f"missing key {key}"
         assert rec["strategy"] == "proof_search"
@@ -346,13 +367,22 @@ class TestTrajectoryDiagnostics:
         """A :func:`_run_variance_trajectory` record has all keys."""
         mod = _import_bench_module()
         rec = mod._run_variance_trajectory(
-            seed=0, sims=3, depth=2, start_smiles="CCN",
+            seed=0,
+            sims=3,
+            depth=2,
+            start_smiles="CCN",
         )
         for key in (
-            "strategy", "exploration_strategy", "seed",
-            "wall_time_s", "n_states_explored", "best_score",
-            "leaf_value_var", "per_candidate_var",
-            "mean_var", "error",
+            "strategy",
+            "exploration_strategy",
+            "seed",
+            "wall_time_s",
+            "n_states_explored",
+            "best_score",
+            "leaf_value_var",
+            "per_candidate_var",
+            "mean_var",
+            "error",
         ):
             assert key in rec, f"missing key {key}"
         assert rec["strategy"] == "variance_mcts"
@@ -365,15 +395,30 @@ class TestTrajectoryDiagnostics:
         """:func:`_aggregate` correctly buckets OK / error records."""
         mod = _import_bench_module()
         records = [
-            {"wall_time_s": 0.1, "n_states_explored": 10,
-             "best_score": 0.5, "leaf_value_var": 0.01,
-             "mean_var": 0.0, "error": None},
-            {"wall_time_s": 0.2, "n_states_explored": 12,
-             "best_score": 0.6, "leaf_value_var": 0.02,
-             "mean_var": 0.0, "error": None},
-            {"wall_time_s": 0.0, "n_states_explored": 0,
-             "best_score": 0.0, "leaf_value_var": 0.0,
-             "mean_var": 0.0, "error": "parse_failed: bad"},
+            {
+                "wall_time_s": 0.1,
+                "n_states_explored": 10,
+                "best_score": 0.5,
+                "leaf_value_var": 0.01,
+                "mean_var": 0.0,
+                "error": None,
+            },
+            {
+                "wall_time_s": 0.2,
+                "n_states_explored": 12,
+                "best_score": 0.6,
+                "leaf_value_var": 0.02,
+                "mean_var": 0.0,
+                "error": None,
+            },
+            {
+                "wall_time_s": 0.0,
+                "n_states_explored": 0,
+                "best_score": 0.0,
+                "leaf_value_var": 0.0,
+                "mean_var": 0.0,
+                "error": "parse_failed: bad",
+            },
         ]
         agg = mod._aggregate(records)
         assert agg.n_trajectories == 3
@@ -431,10 +476,15 @@ class TestVulnerabilityScan:
         """Vuln A verdict is OK when both strategies have 0 errors."""
         mod = _import_bench_module()
         rec = lambda s: {  # noqa: E731
-            "strategy": s, "seed": 0, "wall_time_s": 0.1,
-            "n_states_explored": 10, "best_score": 0.5,
-            "leaf_value_var": 0.01, "mean_var": 0.0,
-            "error": None, "per_candidate_var": [],
+            "strategy": s,
+            "seed": 0,
+            "wall_time_s": 0.1,
+            "n_states_explored": 10,
+            "best_score": 0.5,
+            "leaf_value_var": 0.01,
+            "mean_var": 0.0,
+            "error": None,
+            "per_candidate_var": [],
         }
         proof_records = [rec("proof_search") for _ in range(5)]
         var_records = [rec("variance_mcts") for _ in range(5)]
@@ -449,16 +499,30 @@ class TestVulnerabilityScan:
         # Proof search has leaf_value_var 1.0, variance has 0.5
         # → ratio 0.5 → OK.
         proof_records = [
-            {"strategy": "proof_search", "seed": i, "wall_time_s": 0.1,
-             "n_states_explored": 10, "best_score": 0.5,
-             "leaf_value_var": 1.0, "mean_var": 0.0, "error": None}
+            {
+                "strategy": "proof_search",
+                "seed": i,
+                "wall_time_s": 0.1,
+                "n_states_explored": 10,
+                "best_score": 0.5,
+                "leaf_value_var": 1.0,
+                "mean_var": 0.0,
+                "error": None,
+            }
             for i in range(5)
         ]
         var_records = [
-            {"strategy": "variance_mcts", "seed": i, "wall_time_s": 0.1,
-             "n_states_explored": 10, "best_score": 0.5,
-             "leaf_value_var": 0.5, "mean_var": 0.0,
-             "per_candidate_var": [], "error": None}
+            {
+                "strategy": "variance_mcts",
+                "seed": i,
+                "wall_time_s": 0.1,
+                "n_states_explored": 10,
+                "best_score": 0.5,
+                "leaf_value_var": 0.5,
+                "mean_var": 0.0,
+                "per_candidate_var": [],
+                "error": None,
+            }
             for i in range(5)
         ]
         scan = mod._vulnerability_scan(proof_records, var_records)
@@ -471,9 +535,14 @@ class TestVulnerabilityScan:
         mod = _import_bench_module()
         # All trajectories explore < 15 states → saturation rate 0.
         rec = lambda s: {  # noqa: E731
-            "strategy": s, "seed": 0, "wall_time_s": 0.1,
-            "n_states_explored": 5, "best_score": 0.5,
-            "leaf_value_var": 0.01, "mean_var": 0.0, "error": None,
+            "strategy": s,
+            "seed": 0,
+            "wall_time_s": 0.1,
+            "n_states_explored": 5,
+            "best_score": 0.5,
+            "leaf_value_var": 0.01,
+            "mean_var": 0.0,
+            "error": None,
             "per_candidate_var": [],
         }
         proof_records = [rec("proof_search") for _ in range(5)]
@@ -508,9 +577,7 @@ class TestEndToEndSmoke:
         assert report["config"]["n_trajectories"] == 3
         # Each strategy should have run for the n_trajectories.
         for strat in ("proof_search", "variance_mcts"):
-            assert (
-                report["per_strategy"][strat]["n_trajectories"] == 3
-            )
+            assert report["per_strategy"][strat]["n_trajectories"] == 3
 
     def test_subprocess_writes_csv_and_md(self, tmp_report_dir: Path) -> None:
         """The smoke run writes ``per_strategy.csv`` + ``trajectory_log.md``."""

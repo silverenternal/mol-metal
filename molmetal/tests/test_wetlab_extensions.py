@@ -42,6 +42,7 @@ try:
         AssayDataParser,
         WetLabFeedbackIntegrator,
     )
+
     _HAS_EXT = True
 except Exception:  # pragma: no cover
     WetLabSchedulingHelper = None  # type: ignore[assignment]
@@ -86,15 +87,14 @@ def test_scheduling_helper_schedule():
 def test_scheduling_helper_capacity():
     """Capacity cap is respected within each week bucket."""
     helper = WetLabSchedulingHelper(assay_capacity_per_week=2)
-    priority_list = [
-        {"smiles": f"S{i}", "priority": 1.0} for i in range(5)
-    ]
+    priority_list = [{"smiles": f"S{i}", "priority": 1.0} for i in range(5)]
     scheduled = helper.schedule_assays(priority_list)
     # 5 items, capacity 2 → at least 3 distinct weeks used.
     weeks = sorted({it["week"] for it in scheduled})
     assert len(weeks) >= 3
     # Capacity respected: no week has more than 2 items.
     from collections import Counter
+
     counts = Counter(it["week"] for it in scheduled)
     for w, n in counts.items():
         assert n <= 2
@@ -285,9 +285,7 @@ def test_assay_data_parser_csv():
     with tempfile.TemporaryDirectory() as tmp:
         path = os.path.join(tmp, "assays.csv")
         Path(path).write_text(
-            "smiles,pIC50,cell_line\n"
-            "CCO,5.0,HeLa\n"
-            "CCN,6.5,A2780\n"
+            "smiles,pIC50,cell_line\n" "CCO,5.0,HeLa\n" "CCN,6.5,A2780\n"
         )
         rows = AssayDataParser.parse_csv_assay_data(path)
     assert isinstance(rows, list)
@@ -308,10 +306,14 @@ def test_assay_data_parser_json():
     """JSON list-of-dicts is parsed into a list of dict rows."""
     with tempfile.TemporaryDirectory() as tmp:
         path = os.path.join(tmp, "assays.json")
-        Path(path).write_text(json.dumps([
-            {"smiles": "CCO", "pIC50": 5.0},
-            {"smiles": "CCN", "pIC50": 6.5},
-        ]))
+        Path(path).write_text(
+            json.dumps(
+                [
+                    {"smiles": "CCO", "pIC50": 5.0},
+                    {"smiles": "CCN", "pIC50": 6.5},
+                ]
+            )
+        )
         rows = AssayDataParser.parse_json_assay_data(path)
     assert len(rows) == 2
     assert rows[0]["smiles"] == "CCO"
@@ -322,10 +324,14 @@ def test_assay_data_parser_json_dict_shape():
     """JSON dict-of-dicts (keyed by SMILES) is normalised."""
     with tempfile.TemporaryDirectory() as tmp:
         path = os.path.join(tmp, "assays.json")
-        Path(path).write_text(json.dumps({
-            "CCO": {"pIC50": 5.0, "cell_line": "HeLa"},
-            "CCN": {"pIC50": 6.5},
-        }))
+        Path(path).write_text(
+            json.dumps(
+                {
+                    "CCO": {"pIC50": 5.0, "cell_line": "HeLa"},
+                    "CCN": {"pIC50": 6.5},
+                }
+            )
+        )
         rows = AssayDataParser.parse_json_assay_data(path)
     assert len(rows) == 2
     # The 'smiles' key is injected from the dict key.
@@ -358,7 +364,11 @@ def test_assay_data_parser_json_invalid():
 
 def _fake_recalibrate_ok(results):
     """Recalibrate stub that returns an OK recommendation."""
-    return {"n_overlap": 20, "pearson_r": 0.85, "recommendation": "OK — well-calibrated"}
+    return {
+        "n_overlap": 20,
+        "pearson_r": 0.85,
+        "recommendation": "OK — well-calibrated",
+    }
 
 
 def _fake_recalibrate_retrain(results):
@@ -366,7 +376,10 @@ def _fake_recalibrate_retrain(results):
 
 
 def _fake_recalibrate_bias(results):
-    return {"n_overlap": 12, "recommendation": "RE-TRAIN with bias-correction — intercept=+1.2"}
+    return {
+        "n_overlap": 12,
+        "recommendation": "RE-TRAIN with bias-correction — intercept=+1.2",
+    }
 
 
 def _fake_recalibrate_marginal(results):
@@ -414,6 +427,7 @@ def test_wetlab_feedback_integrator_insufficient_returns_zero():
 
 def test_wetlab_feedback_integrator_recalibrate_raises_returns_zero():
     """If recalibrate_fn raises, integrator returns 0.0 (graceful)."""
+
     def bad_fn(results):
         raise RuntimeError("kaboom")
 

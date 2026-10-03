@@ -57,9 +57,7 @@ def _make_synthetic_pack(
     ei = torch.zeros(n_rows, 2, n_edges, dtype=torch.int64)
     ea = torch.randn(n_rows, n_edges, edge_feat_dim, dtype=torch.float32)
     mask = torch.ones(n_rows, n_atoms, dtype=torch.bool)
-    metal_idx = torch.from_numpy(
-        rng.integers(0, n_metals, size=n_rows)
-    ).long()
+    metal_idx = torch.from_numpy(rng.integers(0, n_metals, size=n_rows)).long()
     y = torch.randn(n_rows, dtype=torch.float32)
     active = torch.from_numpy(rng.integers(0, 2, size=n_rows)).float()
     domain = torch.zeros(n_rows, dtype=torch.int64)
@@ -92,8 +90,9 @@ def test_load_pre_featurized_skips_rdkit(tmp_path: Path) -> None:
     p = tmp_path / "all_pretrain.pt"
     torch.save(pack, p)
 
-    with patch("rdkit.Chem.MolFromSmiles") as mock_mol, \
-         patch("rdkit.Chem.MolToSmiles") as mock_to:
+    with patch("rdkit.Chem.MolFromSmiles") as mock_mol, patch(
+        "rdkit.Chem.MolToSmiles"
+    ) as mock_to:
         loaded = vec.load_pre_featurized(p, max_rows=8, canonical_only=True)
         assert mock_mol.call_count == 0
         assert mock_to.call_count == 0
@@ -123,7 +122,8 @@ def test_load_pre_featurized_canonical_filter(tmp_path: Path) -> None:
 
 
 def test_load_pre_featurized_no_canonical_raises_empty(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """When canonical_only=True and no rows have metal_idx >= 0 the
     loader still returns an empty pack — the operator (not the loader)
@@ -145,8 +145,9 @@ def test_run_steps_grad_flow(synthetic_pack: dict) -> None:
     and gradients flow into the shared encoder + every metal head."""
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    with patch("rdkit.Chem.MolFromSmiles") as mock_mol, \
-         patch("rdkit.Chem.MolToSmiles") as mock_to:
+    with patch("rdkit.Chem.MolFromSmiles") as mock_mol, patch(
+        "rdkit.Chem.MolToSmiles"
+    ) as mock_to:
         res = vec.run_steps(
             synthetic_pack,
             n_steps=3,
@@ -176,8 +177,12 @@ def test_run_steps_rdkit_contract(synthetic_pack: dict) -> None:
 
     with patch("rdkit.Chem.MolFromSmiles"), patch("rdkit.Chem.MolToSmiles"):
         res = vec.run_steps(
-            synthetic_pack, n_steps=2, batch_size=4,
-            hidden_dim=32, n_layers=2, device=device,
+            synthetic_pack,
+            n_steps=2,
+            batch_size=4,
+            hidden_dim=32,
+            n_layers=2,
+            device=device,
         )
     assert res["rdkit_called_in_inner_loop"] is False
     assert res["rdkit_mol_called"] == 0
@@ -191,12 +196,16 @@ def test_run_steps_step_time_under_budget(synthetic_pack: dict) -> None:
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     with patch("rdkit.Chem.MolFromSmiles"), patch("rdkit.Chem.MolToSmiles"):
         res = vec.run_steps(
-            synthetic_pack, n_steps=3, batch_size=4,
-            hidden_dim=32, n_layers=2, device=device,
+            synthetic_pack,
+            n_steps=3,
+            batch_size=4,
+            hidden_dim=32,
+            n_layers=2,
+            device=device,
         )
-    assert 0.0 < res["mean_step_time_ms"] < 30_000.0, (
-        f"mean step time out of plausible range: {res['mean_step_time_ms']:.1f}ms"
-    )
+    assert (
+        0.0 < res["mean_step_time_ms"] < 30_000.0
+    ), f"mean step time out of plausible range: {res['mean_step_time_ms']:.1f}ms"
 
 
 # ---------------------------------------------------------------------------
@@ -213,7 +222,10 @@ def test_v4multitask_cached_full_roundtrip(synthetic_pack: dict) -> None:
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(0)
     model = V4MultiTaskDMPNN(
-        hidden_dim=32, n_layers=2, n_metals=5, n_coord_classes=5,
+        hidden_dim=32,
+        n_layers=2,
+        n_metals=5,
+        n_coord_classes=5,
         use_cached_encoding=True,
     ).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
@@ -230,7 +242,11 @@ def test_v4multitask_cached_full_roundtrip(synthetic_pack: dict) -> None:
         for step in range(3):
             optimizer.zero_grad()
             out = model.forward_cached(
-                af, ei, mi, atom_mask=mask, edge_attr=ea,
+                af,
+                ei,
+                mi,
+                atom_mask=mask,
+                edge_attr=ea,
             )
             y_true = {m: act for m in SUPPORTED_METALS}
             coord_true = act

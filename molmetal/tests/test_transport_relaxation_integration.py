@@ -46,8 +46,10 @@ def _constant_shaping(value: float = 0.0):
     (which would re-run ``register_lambda_astsr`` side effects in
     the test process).  Used by the augmentation + sweep tests.
     """
+
     def _closure(row: dict) -> float:
         return float(value)
+
     return _closure
 
 
@@ -104,9 +106,7 @@ def test_relaxed_endpoint_kl_non_negative():
         trajectory = _toy_trajectory(b=8, t=4, d=3, seed=seed)
         energies = _toy_energies(b=8, seed=seed)
         kl = term.kl(trajectory, energies)
-        assert kl.item() >= -1e-6, (
-            f"KL must be >= 0; got {kl.item()} at seed={seed}"
-        )
+        assert kl.item() >= -1e-6, f"KL must be >= 0; got {kl.item()} at seed={seed}"
 
 
 # ---------------------------------------------------------------------------
@@ -127,9 +127,9 @@ def test_relaxed_endpoint_kl_zero_for_equal_energies():
     trajectory = _toy_trajectory(b=6, t=4, d=3)
     energies = torch.full((6,), 0.5)  # equal energies → uniform q_T
     kl = term.kl(trajectory, energies)
-    assert abs(kl.item()) < 1e-6, (
-        f"KL must be ~0 when energies are equal; got {kl.item()}"
-    )
+    assert (
+        abs(kl.item()) < 1e-6
+    ), f"KL must be ~0 when energies are equal; got {kl.item()}"
 
 
 # ---------------------------------------------------------------------------
@@ -148,17 +148,32 @@ def test_relaxed_endpoint_forward_scales_with_lambda():
 
     trajectory = _toy_trajectory(b=5, t=3, d=3, seed=1)
     energies = _toy_energies(b=5, seed=1)
-    kl_value = RelaxedEndpointTerm(lambda_relax=1.0, eps=0.1).kl(
-        trajectory, energies,
-    ).item()
+    kl_value = (
+        RelaxedEndpointTerm(lambda_relax=1.0, eps=0.1)
+        .kl(
+            trajectory,
+            energies,
+        )
+        .item()
+    )
     lam1 = 1e-3
     lam2 = 5e-3
-    out1 = RelaxedEndpointTerm(lambda_relax=lam1, eps=0.1).forward(
-        trajectory, energies,
-    ).item()
-    out2 = RelaxedEndpointTerm(lambda_relax=lam2, eps=0.1).forward(
-        trajectory, energies,
-    ).item()
+    out1 = (
+        RelaxedEndpointTerm(lambda_relax=lam1, eps=0.1)
+        .forward(
+            trajectory,
+            energies,
+        )
+        .item()
+    )
+    out2 = (
+        RelaxedEndpointTerm(lambda_relax=lam2, eps=0.1)
+        .forward(
+            trajectory,
+            energies,
+        )
+        .item()
+    )
     assert abs(out1 - lam1 * kl_value) < 1e-6
     assert abs(out2 - lam2 * kl_value) < 1e-6
     assert abs(out2 / out1 - lam2 / lam1) < 1e-3
@@ -220,12 +235,10 @@ def test_relaxed_endpoint_kl_finite_at_any_eps():
         energies = torch.full((b,), 0.0)
         energies[0] = -50.0  # concentrated q on index 0
         kl = term.kl(trajectory, energies)
-        assert torch.isfinite(kl), (
-            f"KL must be finite for ε = {eps_val}; got {kl.item()}"
-        )
-        assert kl.item() >= 0.0, (
-            f"KL must be >= 0 for ε = {eps_val}; got {kl.item()}"
-        )
+        assert torch.isfinite(
+            kl
+        ), f"KL must be finite for ε = {eps_val}; got {kl.item()}"
+        assert kl.item() >= 0.0, f"KL must be >= 0 for ε = {eps_val}; got {kl.item()}"
 
 
 # ---------------------------------------------------------------------------
@@ -277,9 +290,9 @@ def test_relaxed_endpoint_nan_energies_repaired():
     trajectory = _toy_trajectory(b=5, t=3, d=3)
     energies = torch.tensor([0.1, float("nan"), 0.3, float("inf"), 0.2])
     out = term.forward(trajectory, energies)
-    assert torch.isfinite(out), (
-        f"penalty must be finite even with NaN/inf energies; got {out.item()}"
-    )
+    assert torch.isfinite(
+        out
+    ), f"penalty must be finite even with NaN/inf energies; got {out.item()}"
 
 
 # ---------------------------------------------------------------------------
@@ -348,9 +361,9 @@ def test_relaxed_endpoint_empirical_distribution_uniform_at_large_eps():
     energies = torch.tensor([0.0, 5.0, -3.0, 1.0])
     q = term.empirical_distribution(energies)
     expected = torch.full((4,), 0.25)
-    assert torch.allclose(q, expected, atol=1e-3), (
-        f"q must be uniform at large ε; got {q.tolist()}"
-    )
+    assert torch.allclose(
+        q, expected, atol=1e-3
+    ), f"q must be uniform at large ε; got {q.tolist()}"
 
 
 # ---------------------------------------------------------------------------
@@ -367,8 +380,11 @@ def test_augment_learned_shaping_shape():
     trajectory = _toy_trajectory(b=4, t=3, d=3)
     energies = _toy_energies(b=4)
     out = augment_learned_shaping(
-        base_scalar, trajectory, energies,
-        lambda_relax=1e-3, eps=0.1,
+        base_scalar,
+        trajectory,
+        energies,
+        lambda_relax=1e-3,
+        eps=0.1,
     )
     assert out.shape == base_scalar.shape
     assert out.dtype == base_scalar.dtype
@@ -390,8 +406,11 @@ def test_augment_learned_shaping_vector_base():
     trajectory = _toy_trajectory(b=4, t=3, d=3)
     energies = _toy_energies(b=4)
     out = augment_learned_shaping(
-        base_vec, trajectory, energies,
-        lambda_relax=1e-3, eps=0.1,
+        base_vec,
+        trajectory,
+        energies,
+        lambda_relax=1e-3,
+        eps=0.1,
     )
     assert out.shape == base_vec.shape
     # Each component must be base_i + penalty (broadcast).
@@ -416,12 +435,14 @@ def test_augment_learned_shaping_zero_lambda_recovers_base():
     trajectory = _toy_trajectory(b=6, t=4, d=3)
     energies = _toy_energies(b=6, seed=11)
     out = augment_learned_shaping(
-        base_scalar, trajectory, energies,
-        lambda_relax=0.0, eps=0.1,
+        base_scalar,
+        trajectory,
+        energies,
+        lambda_relax=0.0,
+        eps=0.1,
     )
     assert torch.allclose(out, base_scalar, atol=1e-7), (
-        f"λ=0 must recover base exactly; got {out.item()} vs "
-        f"{base_scalar.item()}"
+        f"λ=0 must recover base exactly; got {out.item()} vs " f"{base_scalar.item()}"
     )
 
 
@@ -446,9 +467,7 @@ def test_lambda_sweep_best_lambda_in_grid():
     energies = _toy_energies(b=8, seed=3)
     val_features = [None] * 8
     best = sweep.best_lambda(trajectory, energies, val_features)
-    assert best in (1e-4, 1e-3, 1e-2), (
-        f"best_lambda must be from the grid, got {best}"
-    )
+    assert best in (1e-4, 1e-3, 1e-2), f"best_lambda must be from the grid, got {best}"
 
 
 # ---------------------------------------------------------------------------
@@ -473,9 +492,7 @@ def test_lambda_sweep_ties_broken_by_smallest_lambda():
     trajectory = _toy_trajectory(b=6, t=3, d=3)
     energies = torch.full((6,), 0.5)  # equal → KL = 0 everywhere
     best = sweep.best_lambda(trajectory, energies, [None] * 6)
-    assert best == 1e-4, (
-        f"Equal energies must break ties by smallest λ, got {best}"
-    )
+    assert best == 1e-4, f"Equal energies must break ties by smallest λ, got {best}"
 
 
 # ---------------------------------------------------------------------------
@@ -504,9 +521,9 @@ def test_lambda_sweep_evaluate_grid_shape():
     for row in rows:
         for key in ("lambda_relax", "kl", "penalty", "base_mean", "augmented_mean"):
             assert key in row, f"missing key {key!r} in row {row}"
-            assert isinstance(row[key], float), (
-                f"row[{key!r}] must be a float, got {type(row[key])}"
-            )
+            assert isinstance(
+                row[key], float
+            ), f"row[{key!r}] must be a float, got {type(row[key])}"
 
 
 # ---------------------------------------------------------------------------
@@ -555,6 +572,7 @@ def test_adapter_does_not_mutate_flow_matching_lipman():
 
     pre = set(dir(flow_matching_lipman))
     import importlib
+
     importlib.reload(transport_relaxation_integration)
     post = set(dir(flow_matching_lipman))
     removed = pre - post
@@ -573,9 +591,9 @@ def test_adapter_does_not_mutate_flow_matching_lipman():
         "augment_learned_shaping",
         "LambdaRelaxSweep",
     ):
-        assert hasattr(transport_relaxation_integration, name), (
-            f"transport_relaxation_integration must expose {name!r}"
-        )
+        assert hasattr(
+            transport_relaxation_integration, name
+        ), f"transport_relaxation_integration must expose {name!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -593,6 +611,7 @@ def test_adapter_does_not_mutate_learned_shaping():
 
     pre = set(dir(learned_shaping))
     import importlib
+
     importlib.reload(transport_relaxation_integration)
     post = set(dir(learned_shaping))
     # The adapter adds no new public symbols to learned_shaping.
@@ -646,12 +665,22 @@ def test_relaxed_endpoint_kl_grows_as_eps_shrinks():
 
     trajectory = _toy_trajectory(b=8, t=3, d=3, seed=99)
     energies = torch.tensor([0.0, 5.0, -3.0, 1.0, 2.0, -1.0, 4.0, -2.0])
-    kl_large = RelaxedEndpointTerm(lambda_relax=1.0, eps=10.0).kl(
-        trajectory, energies,
-    ).item()
-    kl_small = RelaxedEndpointTerm(lambda_relax=1.0, eps=0.01).kl(
-        trajectory, energies,
-    ).item()
-    assert kl_small > kl_large, (
-        f"KL must grow as ε shrinks; got large={kl_large}, small={kl_small}"
+    kl_large = (
+        RelaxedEndpointTerm(lambda_relax=1.0, eps=10.0)
+        .kl(
+            trajectory,
+            energies,
+        )
+        .item()
     )
+    kl_small = (
+        RelaxedEndpointTerm(lambda_relax=1.0, eps=0.01)
+        .kl(
+            trajectory,
+            energies,
+        )
+        .item()
+    )
+    assert (
+        kl_small > kl_large
+    ), f"KL must grow as ε shrinks; got large={kl_large}, small={kl_small}"

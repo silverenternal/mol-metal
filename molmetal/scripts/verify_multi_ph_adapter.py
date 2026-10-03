@@ -59,19 +59,19 @@ def _check_pocket_features() -> None:
     coords = torch.randn(3, 8, 3)
     atom_types = torch.randint(1, 18, (3, 8))
     out = feats.compute_with_atom_types(coords, atom_types)
-    assert out.shape == (3, 16, 16), (
-        f"expected (3, 16, 16), got {tuple(out.shape)}"
-    )
+    assert out.shape == (3, 16, 16), f"expected (3, 16, 16), got {tuple(out.shape)}"
     assert torch.isfinite(out).all(), "feature map contains NaN/Inf"
     assert (out >= 0).all(), "feature map must be non-negative"
     # SE(3) invariance smoke: rotate + verify equality.
     from math import cos, pi, sin
 
-    R = torch.tensor([
-        [cos(pi / 4), -sin(pi / 4), 0.0],
-        [sin(pi / 4),  cos(pi / 4), 0.0],
-        [0.0, 0.0, 1.0],
-    ])
+    R = torch.tensor(
+        [
+            [cos(pi / 4), -sin(pi / 4), 0.0],
+            [sin(pi / 4), cos(pi / 4), 0.0],
+            [0.0, 0.0, 1.0],
+        ]
+    )
     coords_rot = coords @ R.T
     out_rot = feats.compute_with_atom_types(coords_rot, atom_types)
     torch.testing.assert_close(out, out_rot, rtol=1e-5, atol=1e-5)
@@ -90,9 +90,7 @@ def _check_metal_coord_head(dry_run: bool) -> None:
     atom_types = torch.randint(1, 18, (4, 6))
     out = feats.compute_with_atom_types(coords, atom_types)
     logits = head(out)
-    assert logits.shape == (4, 8), (
-        f"expected (4, 8), got {tuple(logits.shape)}"
-    )
+    assert logits.shape == (4, 8), f"expected (4, 8), got {tuple(logits.shape)}"
     assert torch.isfinite(logits).all(), "logits contain NaN/Inf"
 
     # Setting explicit references must change the output.
@@ -104,9 +102,9 @@ def _check_metal_coord_head(dry_run: bool) -> None:
     ref_atom_types = torch.ones(8, 6, dtype=torch.long) * 6
     head.set_reference(ref_coords, ref_atom_types)
     logits_ref = head(out).detach().clone()
-    assert not torch.allclose(logits_default, logits_ref, atol=1e-6), (
-        "set_reference must change the head's output"
-    )
+    assert not torch.allclose(
+        logits_default, logits_ref, atol=1e-6
+    ), "set_reference must change the head's output"
     print("        -> CPU smoke 0/3 fail")
 
 
@@ -116,9 +114,7 @@ def _check_augmentation() -> None:
     base = torch.randn(4, 16)
     features = torch.randn(4, 8, 8)
     out = augment_pocket_embedding(base, features)
-    assert out.shape == (4, 16 + 64), (
-        f"expected (4, {16 + 64}), got {tuple(out.shape)}"
-    )
+    assert out.shape == (4, 16 + 64), f"expected (4, {16 + 64}), got {tuple(out.shape)}"
     # The leading H columns must equal ``base`` bit-exactly (no mutation).
     torch.testing.assert_close(out[:, :16], base, rtol=0.0, atol=0.0)
     # And no mutation of the input.
@@ -132,14 +128,13 @@ def _check_augmentation() -> None:
 # ---------------------------------------------------------------------------
 def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(
-        description="CPU-only smoke verification of the Multi-PH "
-                    "pocket adapter.",
+        description="CPU-only smoke verification of the Multi-PH " "pocket adapter.",
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Skip the (slowest) MultiPHMetalCoordHead reference-loading "
-             "step; only verify the pocket features + augmentation on CPU.",
+        "step; only verify the pocket features + augmentation on CPU.",
     )
     args = parser.parse_args(argv)
 

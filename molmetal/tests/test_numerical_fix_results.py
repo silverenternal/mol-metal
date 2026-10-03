@@ -20,6 +20,7 @@ correctly:
 6. **Workflow contract** — the top-level ``workflow`` is
    ``"Wf-44 Phase 4"`` (1 test).
 """
+
 from __future__ import annotations
 
 import json
@@ -40,8 +41,12 @@ REPORT_DIR = _REPO_ROOT / "molmetal/reports/wf44_r2_debug"
 RESULTS_PATH = REPORT_DIR / "numerical_fix_results.json"
 SCRIPT_PATH = _REPO_ROOT / "molmetal/scripts/numerical_fix_check.py"
 
-VERDICT_BUCKETS = {"mean_collapse", "weak_signal",
-                   "normal_negative_R2", "normal_positive_R2"}
+VERDICT_BUCKETS = {
+    "mean_collapse",
+    "weak_signal",
+    "normal_negative_R2",
+    "normal_positive_R2",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -50,9 +55,11 @@ VERDICT_BUCKETS = {"mean_collapse", "weak_signal",
 def _import_script():
     import importlib.util
     import sys as _sys
+
     mod_name = "numerical_fix_check"
     spec = importlib.util.spec_from_file_location(
-        mod_name, str(SCRIPT_PATH),
+        mod_name,
+        str(SCRIPT_PATH),
     )
     mod = importlib.util.module_from_spec(spec)
     _sys.modules[mod_name] = mod
@@ -66,7 +73,9 @@ def _run_cli_once() -> None:
         return
     out = subprocess.run(
         [sys.executable, str(SCRIPT_PATH)],
-        capture_output=True, text=True, timeout=180,
+        capture_output=True,
+        text=True,
+        timeout=180,
     )
     if out.returncode != 0:
         raise RuntimeError(
@@ -95,9 +104,17 @@ def report() -> dict:
 
 def test_top_level_keys(report: dict) -> None:
     expected = {
-        "workflow", "title", "description", "seed", "n_models",
-        "improved_count", "regressed_count", "unchanged_count",
-        "mean_before_R2", "mean_after_R2", "models",
+        "workflow",
+        "title",
+        "description",
+        "seed",
+        "n_models",
+        "improved_count",
+        "regressed_count",
+        "unchanged_count",
+        "mean_before_R2",
+        "mean_after_R2",
+        "models",
     }
     missing = expected - set(report.keys())
     assert not missing, f"missing top-level keys: {missing}"
@@ -124,16 +141,25 @@ def first_model(report: dict) -> dict:
 
 def test_per_model_required_keys(first_model: dict) -> None:
     expected = {
-        "model_name", "n_train", "n_test",
-        "before_R2", "before_pred_std", "before_y_test_std",
-        "before_std_ratio", "before_verdict",
-        "after_R2", "after_pred_std", "after_y_test_std",
-        "after_std_ratio", "after_verdict",
+        "model_name",
+        "n_train",
+        "n_test",
+        "before_R2",
+        "before_pred_std",
+        "before_y_test_std",
+        "before_std_ratio",
+        "before_verdict",
+        "after_R2",
+        "after_pred_std",
+        "after_y_test_std",
+        "after_std_ratio",
+        "after_verdict",
         "after_n_steps_with_clipped_grad_",
         "after_n_steps_with_decayed_lr_",
         "after_loss_scale_used_",
         "after_fp64_fallback_used_",
-        "r2_delta", "improved",
+        "r2_delta",
+        "improved",
     }
     missing = expected - set(first_model.keys())
     assert not missing, f"missing per-model keys: {missing}"
@@ -170,9 +196,7 @@ def test_per_model_r2_delta_is_float(first_model: dict) -> None:
 def test_improved_regressed_unchanged_sum(report: dict) -> None:
     """``improved + regressed + unchanged == n_models``."""
     total = (
-        report["improved_count"]
-        + report["regressed_count"]
-        + report["unchanged_count"]
+        report["improved_count"] + report["regressed_count"] + report["unchanged_count"]
     )
     assert total == report["n_models"]
 
@@ -200,6 +224,8 @@ def test_cli_runs_without_error() -> None:
         return
     out = subprocess.run(
         [sys.executable, str(SCRIPT_PATH)],
-        capture_output=True, text=True, timeout=180,
+        capture_output=True,
+        text=True,
+        timeout=180,
     )
     assert out.returncode == 0, out.stderr or out.stdout

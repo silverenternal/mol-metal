@@ -69,9 +69,7 @@ def test_run_log_exists() -> None:
 def metrics() -> dict:
     """Load the artefact ``metrics.json`` once per module."""
     if not METRICS_PATH.exists():
-        pytest.skip(
-            "metrics.json not produced yet; run benchmark_wf25_5seed.py"
-        )
+        pytest.skip("metrics.json not produced yet; run benchmark_wf25_5seed.py")
     with open(METRICS_PATH) as f:
         return json.load(f)
 
@@ -83,10 +81,22 @@ def test_metrics_has_top_level_keys(metrics: dict) -> None:
     assert not missing, f"missing top-level keys: {sorted(missing)}"
 
     metadata_required = {
-        "n_samples", "n_folds", "seeds", "methods", "join_dim",
-        "astr_dim", "mph_dim", "feature_columns", "multi_ph_n_bins",
-        "hilbert_n_iters", "hilbert_lr", "astsr_depth",
-        "astsr_population", "astsr_generations", "hyperparams", "stats",
+        "n_samples",
+        "n_folds",
+        "seeds",
+        "methods",
+        "join_dim",
+        "astr_dim",
+        "mph_dim",
+        "feature_columns",
+        "multi_ph_n_bins",
+        "hilbert_n_iters",
+        "hilbert_lr",
+        "astsr_depth",
+        "astsr_population",
+        "astsr_generations",
+        "hyperparams",
+        "stats",
         "timestamp_utc",
     }
     missing_md = metadata_required - set(metrics["metadata"].keys())
@@ -96,21 +106,23 @@ def test_metrics_has_top_level_keys(metrics: dict) -> None:
 def test_per_method_has_three_methods(metrics: dict) -> None:
     """``per_method`` has exactly the 3 expected methods (ASTSR, Hilbert, Joint)."""
     pm = metrics["per_method"]
-    assert set(pm.keys()) == set(EXPECTED_METHODS), (
-        f"per_method keys {sorted(pm.keys())} != {sorted(EXPECTED_METHODS)}"
-    )
+    assert set(pm.keys()) == set(
+        EXPECTED_METHODS
+    ), f"per_method keys {sorted(pm.keys())} != {sorted(EXPECTED_METHODS)}"
     for method in EXPECTED_METHODS:
         agg = pm[method]
         # Each method has the aggregate + per_seed sub-dict.
         for key in (
-            "r2_mean", "r2_std",
-            "wall_s_mean", "wall_s_std",
-            "peak_mem_mb_mean", "peak_mem_mb_std",
-            "n_records", "per_seed",
+            "r2_mean",
+            "r2_std",
+            "wall_s_mean",
+            "wall_s_std",
+            "peak_mem_mb_mean",
+            "peak_mem_mb_std",
+            "n_records",
+            "per_seed",
         ):
-            assert key in agg, (
-                f"method={method} missing aggregate key {key!r}"
-            )
+            assert key in agg, f"method={method} missing aggregate key {key!r}"
         assert isinstance(agg["per_seed"], dict)
         assert len(agg["per_seed"]) == 5, (
             f"method={method} per_seed has {len(agg['per_seed'])} entries "
@@ -131,11 +143,17 @@ def test_metrics_types_correct(metrics: dict) -> None:
     assert md["join_dim"] == md["astr_dim"] + md["mph_dim"]
     for m in EXPECTED_METHODS:
         agg = metrics["per_method"][m]
-        for key in ("r2_mean", "r2_std", "wall_s_mean", "wall_s_std",
-                    "peak_mem_mb_mean", "peak_mem_mb_std"):
-            assert isinstance(agg[key], (int, float)), (
-                f"{m}.{key} must be numeric; got {type(agg[key]).__name__}"
-            )
+        for key in (
+            "r2_mean",
+            "r2_std",
+            "wall_s_mean",
+            "wall_s_std",
+            "peak_mem_mb_mean",
+            "peak_mem_mb_std",
+        ):
+            assert isinstance(
+                agg[key], (int, float)
+            ), f"{m}.{key} must be numeric; got {type(agg[key]).__name__}"
         assert isinstance(agg["n_records"], int)
         assert agg["n_records"] == md["n_folds"] * len(md["seeds"])
     assert isinstance(metrics["per_fold"], list)
@@ -148,9 +166,9 @@ def test_wall_times_and_mem_non_negative(metrics: dict) -> None:
     """Wall times and peak_mem are non-negative for every method."""
     for m in EXPECTED_METHODS:
         agg = metrics["per_method"][m]
-        assert agg["wall_s_mean"] >= 0.0, (
-            f"{m} wall_s_mean must be non-negative; got {agg['wall_s_mean']}"
-        )
+        assert (
+            agg["wall_s_mean"] >= 0.0
+        ), f"{m} wall_s_mean must be non-negative; got {agg['wall_s_mean']}"
         assert agg["wall_s_std"] >= 0.0
         assert agg["peak_mem_mb_mean"] >= 0.0, (
             f"{m} peak_mem_mb_mean must be non-negative; "
@@ -171,8 +189,7 @@ def test_hilbert_faster_than_astsr(metrics: dict) -> None:
     assert h_wall > 0.0
     assert a_wall > 0.0
     assert h_wall < a_wall, (
-        f"Hilbert wall {h_wall:.3f}s not faster than ASTSR wall "
-        f"{a_wall:.3f}s"
+        f"Hilbert wall {h_wall:.3f}s not faster than ASTSR wall " f"{a_wall:.3f}s"
     )
 
 
@@ -188,17 +205,13 @@ def test_joint_joint_dim_matches_metadata(metrics: dict) -> None:
     assert astr_dim == 8
     assert mph_dim == 256
     assert join_dim == 8 + 256
-    joint_folds = [
-        f for f in metrics["per_fold"] if f["method"] == "joint"
-    ]
+    joint_folds = [f for f in metrics["per_fold"] if f["method"] == "joint"]
     assert len(joint_folds) == 25
     # Each joint fold record carries the same join_dim.
     for f in joint_folds:
         # The record doesn't carry join_dim per-fold but the metadata
         # does; verify the metadata-driven dim matches.
-        assert f["n_train"] + f["n_test"] == int(
-            metrics["metadata"]["n_samples"]
-        )
+        assert f["n_train"] + f["n_test"] == int(metrics["metadata"]["n_samples"])
 
 
 # ---------------------------------------------------------------------------
@@ -243,6 +256,7 @@ def test_per_seed_has_all_seeds(metrics: dict) -> None:
 def test_script_imports_cleanly() -> None:
     """The benchmark module imports cleanly (catches typos / syntax errors)."""
     from molmetal.scripts import benchmark_wf25_5seed  # noqa: F401
+
     assert hasattr(benchmark_wf25_5seed, "run_5seed_benchmark")
     assert hasattr(benchmark_wf25_5seed, "build_design_matrix")
     assert hasattr(benchmark_wf25_5seed, "kfold_indices")
@@ -271,8 +285,8 @@ def test_wf21_phase5_ship_smoke() -> None:
     opt = JointHilbertOptimizer(hilbert_dim=8, normalize=True, n_iters=10)
     result = opt.fit(astr_feat, mph_feat, target)
     assert math.isfinite(result["r2"]), f"non-finite R²: {result['r2']}"
-    assert result["join_dim"] == 8 + 16 * 16, (
-        f"join_dim mismatch: {result['join_dim']} != 264"
-    )
+    assert (
+        result["join_dim"] == 8 + 16 * 16
+    ), f"join_dim mismatch: {result['join_dim']} != 264"
     assert result["backend"] == "joint_hilbert"
     assert opt.is_fitted

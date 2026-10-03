@@ -94,6 +94,7 @@ import numpy as np
 # ---------------------------------------------------------------------------
 try:  # pragma: no cover - import-only check
     from rdkit import Chem  # type: ignore
+
     _RDKIT_AVAILABLE: bool = True
 except Exception as _exc:  # pragma: no cover
     Chem = None  # type: ignore
@@ -112,6 +113,7 @@ else:
 try:  # pragma: no cover - import-only check
     from scipy.sparse import csr_matrix  # type: ignore
     from scipy.sparse.linalg import eigsh  # type: ignore
+
     _SCIPY_AVAILABLE: bool = True
 except Exception as _exc:  # pragma: no cover
     csr_matrix = None  # type: ignore
@@ -276,27 +278,23 @@ def build_knn_graph(
     True
     """
     if coords.ndim != 2 or coords.shape[1] != 3:
-        raise PLLSignatureError(
-            f"coords must be shape (N, 3); got {coords.shape}"
-        )
+        raise PLLSignatureError(f"coords must be shape (N, 3); got {coords.shape}")
     n = coords.shape[0]
     if n < 2:
-        raise PLLSignatureError(
-            f"need at least 2 atoms for a kNN graph; got n={n}"
-        )
+        raise PLLSignatureError(f"need at least 2 atoms for a kNN graph; got n={n}")
     # Clip k_nn so it cannot exceed the max useful value (n - 1).
     k_nn = max(1, min(int(k_nn), n - 1))
 
-    d = _pairwise_distances(coords)             # (N, N) symmetric, d_ii = 0
+    d = _pairwise_distances(coords)  # (N, N) symmetric, d_ii = 0
     # For each row i, find the k_nn nearest indices (excluding i itself).
     # ``np.argpartition`` is O(N * k_nn) per row; ``argsort`` is O(N^2 log N).
     # The partition is correct *up to* an internal order — we don't care.
     # Note: d_ii = 0, so it can sneak into the top-k_nn if all other
     # neighbours are far; guard with a strict-inequality filter.
-    nearest = np.argpartition(d, k_nn, axis=1)[:, :k_nn]   # (N, k_nn)
+    nearest = np.argpartition(d, k_nn, axis=1)[:, :k_nn]  # (N, k_nn)
 
     # Symmetrise: union of directed edges.
-    src = np.repeat(np.arange(n), k_nn)                    # (N * k_nn,)
+    src = np.repeat(np.arange(n), k_nn)  # (N * k_nn,)
     dst = nearest.reshape(-1)
     # Drop self-loops (i -> i) defensively, although d_ii = 0 means they
     # can only appear if k_nn == n - 1 and all neighbours are degenerate.
@@ -310,11 +308,11 @@ def build_knn_graph(
     b = np.maximum(src, dst)
     # Dedup via sorting + unique.
     edges = np.stack([a, b], axis=1)
-    edges = np.unique(edges, axis=0)                        # (M, 2)
-    row = np.concatenate([edges[:, 0], edges[:, 1]])       # 2M edges, symmetric
+    edges = np.unique(edges, axis=0)  # (M, 2)
+    row = np.concatenate([edges[:, 0], edges[:, 1]])  # 2M edges, symmetric
     col = np.concatenate([edges[:, 1], edges[:, 0]])
-    dist = d[row, col]                                      # (2M,)
-    weight = 1.0 / (1.0 + dist * dist)                      # heat-kernel
+    dist = d[row, col]  # (2M,)
+    weight = 1.0 / (1.0 + dist * dist)  # heat-kernel
     return row.astype(np.int64), col.astype(np.int64), weight.astype(np.float64)
 
 
@@ -326,8 +324,8 @@ def _pairwise_distances(coords: np.ndarray) -> np.ndarray:
     avoids the ``O(N^2)`` memory of materialising difference vectors.
     The result is symmetric with ``d_ii = 0`` by construction.
     """
-    sq = np.sum(coords * coords, axis=1)                    # (N,)
-    gram = coords @ coords.T                                 # (N, N)
+    sq = np.sum(coords * coords, axis=1)  # (N,)
+    gram = coords @ coords.T  # (N, N)
     d2 = sq[:, None] + sq[None, :] - 2.0 * gram
     # Numerical noise can push d2 slightly negative — clamp to 0.
     np.maximum(d2, 0.0, out=d2)
@@ -407,8 +405,12 @@ def build_normalised_laplacian(
     #   D^{-1/2} W D^{-1/2} = diag(d_inv_sqrt) @ W @ diag(d_inv_sqrt)
     D = csr_matrix((d_inv_sqrt, (np.arange(n), np.arange(n))), shape=(n, n))
     W_norm = D @ w @ D
-    L = csr_matrix((np.ones(n, dtype=np.float64),
-                    (np.arange(n), np.arange(n))), shape=(n, n)) - W_norm
+    L = (
+        csr_matrix(
+            (np.ones(n, dtype=np.float64), (np.arange(n), np.arange(n))), shape=(n, n)
+        )
+        - W_norm
+    )
     # eigsh requires float64 CSR for stability.
     L = L.astype(np.float64)
     L.sum_duplicates()
@@ -446,9 +448,7 @@ def _pll_eigvals_cached(
             f"scipy is not available ({_SCIPY_IMPORT_ERR!r}); cannot "
             f"compute PLL spectrum"
         )
-    coords = np.frombuffer(coords_bytes, dtype=np.float64).reshape(
-        n_atoms, 3
-    ).copy()
+    coords = np.frombuffer(coords_bytes, dtype=np.float64).reshape(n_atoms, 3).copy()
     # Re-build the kNN graph + Laplacian from cached coords.  Building
     # the graph from the bytes blob keeps the cache *pure* (no
     # mutable numpy arrays in the cache key).
@@ -556,8 +556,7 @@ def compute_pll(
     """
     if not _RDKIT_AVAILABLE:
         raise PLLSignatureError(
-            f"RDKit is not available ({_RDKIT_IMPORT_ERR!r}); "
-            f"cannot read conformer"
+            f"RDKit is not available ({_RDKIT_IMPORT_ERR!r}); " f"cannot read conformer"
         )
     if mol is None:
         raise PLLSignatureError("mol is None")
@@ -565,9 +564,7 @@ def compute_pll(
         raise PLLSignatureError(f"k must be >= 1; got {k}")
     n_atoms = int(mol.GetNumAtoms())
     if n_atoms < 2:
-        raise PLLSignatureError(
-            f"PLL requires at least 2 atoms; got n_atoms={n_atoms}"
-        )
+        raise PLLSignatureError(f"PLL requires at least 2 atoms; got n_atoms={n_atoms}")
 
     # Read the conformer coords.  We pin to conformer id 0 — Track B
     # upstream always writes its single canonical conformer there.

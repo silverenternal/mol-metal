@@ -197,8 +197,7 @@ def main() -> int:
         flush=True,
     )
     print(
-        f"[learned_prior_train] SMARTS coverage computed in "
-        f"{time.time()-t0:.1f}s",
+        f"[learned_prior_train] SMARTS coverage computed in " f"{time.time()-t0:.1f}s",
         flush=True,
     )
     if keep_count == 0:
@@ -242,8 +241,8 @@ def main() -> int:
     probe_smiles = [
         "C#CCN=[N+]=[N-]",  # alkyne + azide
         "c1ccc(B(O)O)cc1",  # aryl-boronic acid
-        "CC(=O)O",          # acetic acid
-        "C=CCS",            # thiol-ene
+        "CC(=O)O",  # acetic acid
+        "C=CCS",  # thiol-ene
     ]
     print("[learned_prior_train] post-train probe (3 rules × 4 states):", flush=True)
     for s in probe_smiles:
@@ -271,10 +270,11 @@ def main() -> int:
     print(f"[learned_prior_train] checkpoint written: {out_path}", flush=True)
     # Side-car JSON so external tools can read the metadata without torch.
     meta = {k: v for k, v in state_dict.items() if k != "model_state_dict"}
-    json.dump(
-        meta, open(out_path.with_suffix(".json"), "w"), indent=2, default=str
+    json.dump(meta, open(out_path.with_suffix(".json"), "w"), indent=2, default=str)
+    print(
+        f"[learned_prior_train] metadata written: {out_path.with_suffix('.json')}",
+        flush=True,
     )
-    print(f"[learned_prior_train] metadata written: {out_path.with_suffix('.json')}", flush=True)
     return 0
 
 

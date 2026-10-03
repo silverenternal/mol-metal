@@ -106,9 +106,9 @@ def _sample_random_so3(seed: int = 0) -> torch.Tensor:
     wz = q3 * q2
     R = torch.stack(
         [
-            torch.stack([1.0 - 2.0 * (yy + zz), 2.0 * (xy - wz),     2.0 * (xz + wy)]),
-            torch.stack([2.0 * (xy + wz),     1.0 - 2.0 * (xx + zz), 2.0 * (yz - wx)]),
-            torch.stack([2.0 * (xz - wy),     2.0 * (yz + wx),     1.0 - 2.0 * (xx + yy)]),
+            torch.stack([1.0 - 2.0 * (yy + zz), 2.0 * (xy - wz), 2.0 * (xz + wy)]),
+            torch.stack([2.0 * (xy + wz), 1.0 - 2.0 * (xx + zz), 2.0 * (yz - wx)]),
+            torch.stack([2.0 * (xz - wy), 2.0 * (yz + wx), 1.0 - 2.0 * (xx + yy)]),
         ],
         dim=0,
     ).squeeze()  # (3, 3)
@@ -160,7 +160,9 @@ def test_forward_and_gradient_flow(deterministic_seed, small_graph):
     assert out.shape == (4, 64), f"unexpected out shape {out.shape}"
 
     # Loss + backward.
-    loss = out.sum() + (x.sum() * 0.0)  # ensure backward reaches x via grad-enabled path
+    loss = out.sum() + (
+        x.sum() * 0.0
+    )  # ensure backward reaches x via grad-enabled path
     # The forward updates `x` in-place; that doesn't add to the autograd graph
     # because we use index_add_ on a leaf.  To force grad to flow through
     # the coord update we apply the loss on the *initial* x via a
@@ -194,30 +196,35 @@ def test_forward_and_gradient_flow(deterministic_seed, small_graph):
     #     signature).
     #   * The coord update is *autograd-differentiable* (verified
     #     separately below via a coord-aware loss path).
-    assert n_with_grad >= int(0.8 * n_total), (
-        f"only {n_with_grad}/{n_total} non-coord_mlps params received gradient"
-    )
+    assert n_with_grad >= int(
+        0.8 * n_total
+    ), f"only {n_with_grad}/{n_total} non-coord_mlps params received gradient"
 
     # Coord-aware loss: build a fresh model + loss that depends on the
     # *trajectory* (final x).  This proves the EGNN coord update is
     # differentiable end-to-end (the autograd chain reaches coord_mlps
     # params via scalar_ij → coord_msg → index_add → x_new = x + accum).
-    coord_model = EquivariantDMPNN(EquivariantMPNNConfig(
-        atom_feat_dim=39,
-        edge_feat_dim=6,
-        hidden_dim=64,
-        n_layers=2,
-        dropout=0.0,
-        n_rbf=16,
-    ))
+    coord_model = EquivariantDMPNN(
+        EquivariantMPNNConfig(
+            atom_feat_dim=39,
+            edge_feat_dim=6,
+            hidden_dim=64,
+            n_layers=2,
+            dropout=0.0,
+            n_rbf=16,
+        )
+    )
     coord_model.train()
     x_leaf3 = x.clone().requires_grad_(True)
     # Re-implement forward + capture the trajectory.
     from molmetal.models.equivariant_dmpnn import _rbf_expansion
+
     h_v = coord_model.base.atom_embed(h_atom)
     if edge_index.size(1) > 0:
         dist = coord_model._pairwise_distances(x_leaf3, edge_index)
-        rbf = _rbf_expansion(dist, n_rbf=coord_model.n_rbf, cutoff=coord_model.rbf_cutoff)
+        rbf = _rbf_expansion(
+            dist, n_rbf=coord_model.n_rbf, cutoff=coord_model.rbf_cutoff
+        )
         edge_attr_aug = coord_model.edge_rbf_proj(torch.cat([edge_attr, rbf], dim=-1))
         h_e = coord_model.base.edge_embed(edge_attr_aug)
         src, dst = edge_index[0], edge_index[1]
@@ -241,9 +248,7 @@ def test_forward_and_gradient_flow(deterministic_seed, small_graph):
     n_with_grad_coord = sum(
         1
         for name, p in coord_model.named_parameters()
-        if "coord_mlps" in name
-        and p.grad is not None
-        and p.grad.abs().sum().item() > 0
+        if "coord_mlps" in name and p.grad is not None and p.grad.abs().sum().item() > 0
     )
     n_total_coord = sum(
         1 for name, _ in coord_model.named_parameters() if "coord_mlps" in name
@@ -253,7 +258,9 @@ def test_forward_and_gradient_flow(deterministic_seed, small_graph):
         f"received gradient through coord-aware loss"
     )
     # Coordinate leaf must receive gradient (proves EGNN coord update is wired).
-    assert x_leaf3.grad is not None, "x_leaf3.grad is None — coord update not differentiable"
+    assert (
+        x_leaf3.grad is not None
+    ), "x_leaf3.grad is None — coord update not differentiable"
     assert x_leaf3.grad.abs().sum().item() > 0, "x_leaf3.grad is zero"
 
 
@@ -295,9 +302,9 @@ def test_so3_rotation_equivariance_probe(deterministic_seed, small_graph):
     # rotation-invariant function of the coords because RBF inputs are
     # distances and the coord update doesn't change the output
     # features; the coord trajectory is discarded).
-    assert max_diff_overall < 1e-3, (
-        f"SO(3) rotation equivariance violated; max_diff={max_diff_overall}"
-    )
+    assert (
+        max_diff_overall < 1e-3
+    ), f"SO(3) rotation equivariance violated; max_diff={max_diff_overall}"
 
 
 # ---------------------------------------------------------------------------
@@ -310,23 +317,21 @@ def test_cli_flag_equivariant_mp_wired(deterministic_seed):
     )
     # Default — flag absent.
     args = train_mod.parse_args([])
-    assert hasattr(args, "equivariant_mp"), (
-        "parse_args() missing --equivariant-mp flag"
-    )
-    assert args.equivariant_mp is False, (
-        f"default equivariant_mp should be False, got {args.equivariant_mp!r}"
-    )
+    assert hasattr(args, "equivariant_mp"), "parse_args() missing --equivariant-mp flag"
+    assert (
+        args.equivariant_mp is False
+    ), f"default equivariant_mp should be False, got {args.equivariant_mp!r}"
 
     # Flag set.
     args = train_mod.parse_args(["--equivariant-mp"])
-    assert args.equivariant_mp is True, (
-        f"--equivariant-mp should set equivariant_mp=True, got {args.equivariant_mp!r}"
-    )
+    assert (
+        args.equivariant_mp is True
+    ), f"--equivariant-mp should set equivariant_mp=True, got {args.equivariant_mp!r}"
 
     # EquivariantDMPNN module symbol exists + ENV flag is observable.
-    assert EQUIVARIANT_MP_ENABLED is False, (
-        "EQUIVARIANT_MP_ENABLED should be False unless EQUIVARIANT_MP=1"
-    )
+    assert (
+        EQUIVARIANT_MP_ENABLED is False
+    ), "EQUIVARIANT_MP_ENABLED should be False unless EQUIVARIANT_MP=1"
 
 
 # ---------------------------------------------------------------------------

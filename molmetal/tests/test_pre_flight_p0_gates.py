@@ -11,6 +11,7 @@ Verifies:
 
 Run with: pytest molmetal/tests/test_pre_flight_p0_gates.py -v
 """
+
 from pathlib import Path
 
 import pytest
@@ -44,9 +45,7 @@ def test_yaml_schema_passes_on_active_configs():
     for p in yaml_paths:
         assert p.is_file(), f"missing config: {p}"
 
-    res = gate_yaml_schema(
-        "test_yaml_schema_passes", "P0", "config", yaml_paths
-    )
+    res = gate_yaml_schema("test_yaml_schema_passes", "P0", "config", yaml_paths)
     assert res.status == "PASS"
     assert "7 YAMLs" in res.evidence
 
@@ -54,9 +53,7 @@ def test_yaml_schema_passes_on_active_configs():
 def test_yaml_schema_fails_on_missing_file(tmp_path):
     """Missing files surface as FAIL with a list."""
     missing = tmp_path / "does_not_exist.yaml"
-    res = gate_yaml_schema(
-        "test_yaml_schema_missing", "P0", "config", [missing]
-    )
+    res = gate_yaml_schema("test_yaml_schema_missing", "P0", "config", [missing])
     assert res.status == "FAIL"
     assert "missing" in res.evidence
 
@@ -65,9 +62,7 @@ def test_yaml_schema_fails_on_malformed_yaml(tmp_path):
     """YAML syntax errors surface as FAIL."""
     bad = tmp_path / "bad.yaml"
     bad.write_text("foo: [unclosed bracket\nbar: : :")
-    res = gate_yaml_schema(
-        "test_yaml_schema_malformed", "P0", "config", [bad]
-    )
+    res = gate_yaml_schema("test_yaml_schema_malformed", "P0", "config", [bad])
     assert res.status == "FAIL"
     assert "invalid" in res.evidence
 
@@ -81,9 +76,7 @@ def test_csv_hash_passes_on_real_metalcytotox():
     """The real MetalCytoToxDB CSV has 26802 lines, well over the 26800 floor."""
     cytox = REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
     assert cytox.is_file()
-    res = gate_csv_hash(
-        "test_csv_hash_cytox", "P0", "data", [(cytox, 26800)]
-    )
+    res = gate_csv_hash("test_csv_hash_cytox", "P0", "data", [(cytox, 26800)])
     assert res.status == "PASS"
 
 
@@ -91,9 +84,7 @@ def test_csv_hash_passes_on_real_metallo_drugs():
     """The real metallo_drugs_500_train.csv has 450 lines."""
     md = REPO_ROOT / "molmetal" / "data" / "metallo_drugs_500_train.csv"
     assert md.is_file()
-    res = gate_csv_hash(
-        "test_csv_hash_md", "P0", "data", [(md, 449)]
-    )
+    res = gate_csv_hash("test_csv_hash_md", "P0", "data", [(md, 449)])
     assert res.status == "PASS"
 
 
@@ -101,9 +92,7 @@ def test_csv_hash_fails_on_breached_threshold(tmp_path):
     """A 1-row CSV breaches a 100-row threshold → FAIL."""
     tiny = tmp_path / "tiny.csv"
     tiny.write_text("a,b,c\n1,2,3\n")
-    res = gate_csv_hash(
-        "test_csv_hash_tiny", "P0", "data", [(tiny, 100)]
-    )
+    res = gate_csv_hash("test_csv_hash_tiny", "P0", "data", [(tiny, 100)])
     assert res.status == "FAIL"
     assert "lines" in res.evidence
 
@@ -111,7 +100,9 @@ def test_csv_hash_fails_on_breached_threshold(tmp_path):
 def test_csv_hash_fails_on_missing(tmp_path):
     """Missing CSV surfaces as FAIL."""
     res = gate_csv_hash(
-        "test_csv_hash_missing", "P0", "data",
+        "test_csv_hash_missing",
+        "P0",
+        "data",
         [(tmp_path / "ghost.csv", 1)],
     )
     assert res.status == "FAIL"
@@ -163,7 +154,9 @@ def test_scaffold_zero_leak_fails_on_missing(tmp_path):
     """A missing CSV surfaces as FAIL."""
     ghost = tmp_path / "ghost_v2.csv"
     res = gate_scaffold_zero_leak(
-        "test_scaffold_zero_leak_missing", "P0", "data",
+        "test_scaffold_zero_leak_missing",
+        "P0",
+        "data",
         [(ghost, "metalcytotox_missing")],
     )
     assert res.status == "FAIL"
@@ -179,7 +172,9 @@ def test_gate_result_fields():
     """Every gate result must carry name/priority/pipeline/status/evidence/wall_sec."""
     configs_dir = REPO_ROOT / "configs"
     res = gate_yaml_schema(
-        "shape_test", "P0", "config",
+        "shape_test",
+        "P0",
+        "config",
         [configs_dir / "cfm_full_retrain.yaml"],
     )
     assert res.name == "shape_test"

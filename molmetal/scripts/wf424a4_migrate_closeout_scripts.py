@@ -20,6 +20,7 @@ been replaced).
 Cumulative migration count after Wf-424-A4:
   Wf-406-A3 (3) + Wf-410-A3 (5) + Wf-414-A3 (5) + Wf-416-A1 (10) + Wf-424-A4 (10) = 33 scripts.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -33,7 +34,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 # Import block template (idempotent: _WF424_HAS_ATOMIC guard prevents double-write).
 # Coexists with Wf-416-A1's _WF416_HAS_ATOMIC marker — both waves' markers are
 # additive, since this script targets DIFFERENT files than Wf-416-A1.
-_IMPORT_BLOCK = '''try:
+_IMPORT_BLOCK = """try:
     from molmetal.scripts.wf386a3_atomic_write import (
         atomic_write_file,
         safe_overwrite_check,
@@ -45,7 +46,7 @@ except ImportError:  # pragma: no cover — fallback when running as standalone
     atomic_write_file = None  # type: ignore[assignment]
     safe_overwrite_check = None  # type: ignore[assignment]
     detect_truncation = None  # type: ignore[assignment]
-'''
+"""
 
 # Migration helper template for replacing path.write_text(content)
 _MIGRATE_HELPER = '''def _wf424_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
@@ -128,7 +129,11 @@ def insert_helper(content: str) -> Tuple[str, bool]:
     lines = content.splitlines(keepends=True)
     insert_idx = None
     for i, line in enumerate(lines):
-        if line.startswith("def ") or line.startswith("class ") or line.startswith("if __name__"):
+        if (
+            line.startswith("def ")
+            or line.startswith("class ")
+            or line.startswith("if __name__")
+        ):
             insert_idx = i
             break
     if insert_idx is None:
@@ -164,7 +169,7 @@ def _find_balanced_paren(text: str, open_idx: int) -> int:
 
 def _trailing_chars(prefix_raw: str, prefix_trimmed: str) -> str:
     if len(prefix_raw) > len(prefix_trimmed):
-        return prefix_raw[len(prefix_trimmed):]
+        return prefix_raw[len(prefix_trimmed) :]
     return ""
 
 
@@ -188,14 +193,14 @@ def replace_write_text_calls(content: str) -> Tuple[str, int]:
         if m is None:
             out_parts.append(content[i:])
             break
-        out_parts.append(content[i:m.start()])
+        out_parts.append(content[i : m.start()])
         prefix_raw = m.group("prefix")
         prefix_trimmed = _WRITE_TEXT_PREFIX_BAD_TRAIL.sub("", prefix_raw).rstrip()
         prefix = prefix_trimmed.strip()
         open_paren_idx = m.end() - 1
         close_idx = _find_balanced_paren(content, open_paren_idx)
         if close_idx == -1:
-            out_parts.append(content[m.start():])
+            out_parts.append(content[m.start() :])
             break
         args = content[open_paren_idx + 1 : close_idx - 1]
         if "encoding=" in args:
@@ -235,6 +240,7 @@ def _WF424_HAS_ATOMIC_PRESENT() -> bool:
     """Check if the canonical atomic primitive is importable in this process."""
     try:
         from molmetal.scripts.wf386a3_atomic_write import atomic_write_file as _a
+
         return _a is not None
     except ImportError:
         return False
@@ -259,8 +265,9 @@ SCRIPTS: List[str] = [
 
 def main(argv: List[str]) -> int:
     parser = argparse.ArgumentParser(description="Wf-424-A4 atomic migration helper")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Print plan without modifying files")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Print plan without modifying files"
+    )
     args = parser.parse_args(argv)
 
     results = []
@@ -279,12 +286,19 @@ def main(argv: List[str]) -> int:
 
     print("=== Wf-424-A4 migration plan ===")
     for path, msg in results:
-        flag = "OK " if msg in {"already_migrated_by_prior_wave", "no_change"} or msg.startswith("migrated") else "?? "
+        flag = (
+            "OK "
+            if msg in {"already_migrated_by_prior_wave", "no_change"}
+            or msg.startswith("migrated")
+            else "?? "
+        )
         print(f"  {flag}{path}: {msg}")
     n_changed = sum(1 for _, msg in results if msg.startswith("migrated"))
     n_skipped = sum(1 for _, msg in results if msg == "already_migrated_by_prior_wave")
     n_missing = sum(1 for _, msg in results if msg == "MISSING_on_disk")
-    print(f"\nTotal: {n_changed} migrated, {n_skipped} already migrated, {n_missing} missing")
+    print(
+        f"\nTotal: {n_changed} migrated, {n_skipped} already migrated, {n_missing} missing"
+    )
     return 0
 
 

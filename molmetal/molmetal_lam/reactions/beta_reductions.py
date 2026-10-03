@@ -84,14 +84,27 @@ from molmetal_lam.lam_chem.pt_metal_ligand_exchange import (
 
 # L4 instrumentation counters (govern_review_L4_L6.md).
 _L4_COUNTERS: Dict[str, Dict[str, int]] = {}
-for _n in ("CuAAC", "SPAAC", "SPC", "DielsAlder", "ThiolEne",
-           "Suzuki", "AmideCoupling",
-           # F2(a): metal-coordination family — Pt_II / Ru_II / Ir_III
-           # specific reductions.  Same counter schema as click rules
-           # so l4_metrics() can audit them uniformly.
-           "MetalLigandExchange", "AquaExchange"):
-    _L4_COUNTERS[_n] = {"fire": 0, "attempts": 0, "products": 0,
-                        "runreactants_err": 0, "thiolene_can_apply": 0}
+for _n in (
+    "CuAAC",
+    "SPAAC",
+    "SPC",
+    "DielsAlder",
+    "ThiolEne",
+    "Suzuki",
+    "AmideCoupling",
+    # F2(a): metal-coordination family — Pt_II / Ru_II / Ir_III
+    # specific reductions.  Same counter schema as click rules
+    # so l4_metrics() can audit them uniformly.
+    "MetalLigandExchange",
+    "AquaExchange",
+):
+    _L4_COUNTERS[_n] = {
+        "fire": 0,
+        "attempts": 0,
+        "products": 0,
+        "runreactants_err": 0,
+        "thiolene_can_apply": 0,
+    }
 _L4_MASS_BALANCE_PASS = {"pass": 0, "fail": 0}
 
 
@@ -178,17 +191,13 @@ class ReactionRule:
     # The concrete reaction template (rdChemReactions.ReactionFromSmarts).
     # Populated lazily by ``_rdkit_reaction`` so we don't pay RDKit's
     # import cost at module load.
-    _rdkit_reaction: Optional[object] = field(
-        default=None, repr=False, compare=False
-    )
+    _rdkit_reaction: Optional[object] = field(default=None, repr=False, compare=False)
 
     # Optional rate predictor wired in by :mod:`reactions.rate_predictor`.
     # Holds a trained :class:`HeuristicRegressor` so the synthesis layer
     # can score ``predict_yield(smi_a, smi_b)`` without re-importing
     # RDKit or sklearn on the hot path.
-    rate_predictor: Optional[object] = field(
-        default=None, repr=False, compare=False
-    )
+    rate_predictor: Optional[object] = field(default=None, repr=False, compare=False)
 
     def attach_rate_predictor(self, predictor) -> None:
         """Attach a trained :class:`RatePredictor` to this rule.
@@ -284,10 +293,13 @@ class ReactionRule:
                 vet_smiles_against_rule = None  # type: ignore[assignment]
             if vet_smiles_against_rule is not None:
                 for r in reactants:
-                    r_smiles = getattr(r, "source_smiles", None) or \
-                        getattr(r, "smiles", None)
+                    r_smiles = getattr(r, "source_smiles", None) or getattr(
+                        r, "smiles", None
+                    )
                     if r_smiles and not vet_smiles_against_rule(
-                        str(r_smiles), self.name, strict=True,
+                        str(r_smiles),
+                        self.name,
+                        strict=True,
                     ):
                         # Silent veto: empty product list (consistent
                         # with "rule does not apply").
@@ -331,9 +343,7 @@ class ReactionRule:
         """
         reactants = list(reactants_smiles)
         products = list(products_smiles)
-        _verify_stoichiometry(
-            self.name, self.stoichiometry, reactants, products
-        )
+        _verify_stoichiometry(self.name, self.stoichiometry, reactants, products)
 
     # ------------------------------------------------------------------
     # Helpers
@@ -352,9 +362,7 @@ class ReactionRule:
         if self._rdkit_reaction is not None:
             return self._rdkit_reaction
         if not self.pattern_smiles:
-            raise ReactionError(
-                f"[{self.name}] no SMARTS pattern set on this rule"
-            )
+            raise ReactionError(f"[{self.name}] no SMARTS pattern set on this rule")
         try:
             from rdkit.Chem import rdChemReactions  # type: ignore[import-not-found]
         except ImportError as exc:  # pragma: no cover
@@ -374,9 +382,7 @@ class ReactionRule:
     # Backward / retrosynthesis (Phase 2: SynFlowNet integration)
     # ------------------------------------------------------------------
 
-    def reverse_can_apply(
-        self, product_smiles: str
-    ) -> List[Tuple[str, List[str]]]:
+    def reverse_can_apply(self, product_smiles: str) -> List[Tuple[str, List[str]]]:
         """Decompose ``product_smiles`` into educts using the swapped SMARTS.
 
         Phase-2 SynFlowNet hook.  Each ``ReactionRule`` exposes the
@@ -401,9 +407,7 @@ class ReactionRule:
             from rdkit import Chem  # type: ignore[import-not-found]
             from rdkit.Chem import rdChemReactions  # type: ignore[import-not-found]
         except ImportError as exc:  # pragma: no cover
-            raise ImportError(
-                "rdChemReactions required for reverse_can_apply"
-            ) from exc
+            raise ImportError("rdChemReactions required for reverse_can_apply") from exc
 
         if ">>" not in self.pattern_smiles:
             return []
@@ -651,8 +655,7 @@ class CuAAC(ReactionRule):
         # SMARTS: azide + terminal alkyne → 1,4-disubstituted 1,2,3-triazole.
         # The triazole ring is [N:1]-[N:2]=[N:3]-[C:4]=[C:5]- (5-membered).
         # Atom-maps 1, 2, 3 track the azide N's; 4, 5 track the alkyne C's.
-        "[N:1]=[N:2]=[N:3].[C:4]#[CH:5]>>"
-        "[C:4]1=[C:5][N:3]=[N:2][N:1]1"
+        "[N:1]=[N:2]=[N:3].[C:4]#[CH:5]>>" "[C:4]1=[C:5][N:3]=[N:2][N:1]1"
     )
     stoichiometry: Dict[str, int] = field(default_factory=dict)
 
@@ -680,9 +683,7 @@ class CuAAC(ReactionRule):
             )
         except Exception as exc:
             _L4_COUNTERS["CuAAC"]["runreactants_err"] += 1
-            raise ReactionError(
-                f"[CuAAC] RDKit RunReactants failed: {exc}"
-            ) from exc
+            raise ReactionError(f"[CuAAC] RDKit RunReactants failed: {exc}") from exc
         products = _rdkit_product_sets_to_closed_terms(product_sets, sanitize)
         _L4_COUNTERS["CuAAC"]["fire"] += 1 if products else 0
         _L4_COUNTERS["CuAAC"]["attempts"] += 1
@@ -720,8 +721,7 @@ class SPAAC(ReactionRule):
         # SMARTS: azide + alkyne (terminal or strained cyclooctyne) →
         # 1,2,3-triazole.  Unlike CuAAC the alkyne C's need not carry an H,
         # which captures the strain-promoted variant.
-        "[N:1]=[N:2]=[N:3].[C:4]#[C:5]>>"
-        "[C:4]1=[C:5][N:3]=[N:2][N:1]1"
+        "[N:1]=[N:2]=[N:3].[C:4]#[C:5]>>" "[C:4]1=[C:5][N:3]=[N:2][N:1]1"
     )
     stoichiometry: Dict[str, int] = field(default_factory=dict)
 
@@ -747,17 +747,13 @@ class SPAAC(ReactionRule):
             )
         except Exception as exc:
             _L4_COUNTERS["SPAAC"]["runreactants_err"] += 1
-            raise ReactionError(
-                f"[SPAAC] RDKit RunReactants failed: {exc}"
-            ) from exc
+            raise ReactionError(f"[SPAAC] RDKit RunReactants failed: {exc}") from exc
         products = _rdkit_product_sets_to_closed_terms(product_sets, sanitize)
         _L4_COUNTERS["SPAAC"]["fire"] += 1 if products else 0
         _L4_COUNTERS["SPAAC"]["attempts"] += 1
         _L4_COUNTERS["SPAAC"]["products"] += len(products)
         for p in products:
-            p.term = (
-                f"SPAAC(R-N3, cyclooctyne R'-C≡C) -> {p.canonical_smiles()}"
-            )
+            p.term = f"SPAAC(R-N3, cyclooctyne R'-C≡C) -> {p.canonical_smiles()}"
         return products
 
 
@@ -804,14 +800,10 @@ class SPC(ReactionRule):
         azide, phosphine = reactants
         rxn = self._rdkit_reaction_template()
         try:
-            product_sets = rxn.RunReactants(
-                (azide.to_rdkit(), phosphine.to_rdkit())
-            )
+            product_sets = rxn.RunReactants((azide.to_rdkit(), phosphine.to_rdkit()))
         except Exception as exc:
             _L4_COUNTERS["SPC"]["runreactants_err"] += 1
-            raise ReactionError(
-                f"[SPC] RDKit RunReactants failed: {exc}"
-            ) from exc
+            raise ReactionError(f"[SPC] RDKit RunReactants failed: {exc}") from exc
         products = _rdkit_product_sets_to_closed_terms(product_sets, sanitize)
         _L4_COUNTERS["SPC"]["fire"] += 1 if products else 0
         _L4_COUNTERS["SPC"]["attempts"] += 1
@@ -843,8 +835,7 @@ class DielsAlder(ReactionRule):
     pattern_smiles: Optional[str] = (
         # SMARTS: conjugated diene (4π) + alkene (2π) → cyclohexene.
         # All six ring atoms are mapped so the product topology is exact.
-        "[C:1]=[C:2]-[C:3]=[C:4].[C:5]=[C:6]>>"
-        "[C:1]1=[C:2][C:3][C:4][C:5][C:6]1"
+        "[C:1]=[C:2]-[C:3]=[C:4].[C:5]=[C:6]>>" "[C:1]1=[C:2][C:3][C:4][C:5][C:6]1"
     )
     stoichiometry: Dict[str, int] = field(default_factory=dict)
 
@@ -862,9 +853,7 @@ class DielsAlder(ReactionRule):
         diene, dienophile = reactants
         rxn = self._rdkit_reaction_template()
         try:
-            product_sets = rxn.RunReactants(
-                (diene.to_rdkit(), dienophile.to_rdkit())
-            )
+            product_sets = rxn.RunReactants((diene.to_rdkit(), dienophile.to_rdkit()))
         except Exception as exc:
             _L4_COUNTERS["DielsAlder"]["runreactants_err"] += 1
             raise ReactionError(
@@ -875,9 +864,7 @@ class DielsAlder(ReactionRule):
         _L4_COUNTERS["DielsAlder"]["attempts"] += 1
         _L4_COUNTERS["DielsAlder"]["products"] += len(products)
         for p in products:
-            p.term = (
-                f"DielsAlder(diene, dienophile) -> {p.canonical_smiles()}"
-            )
+            p.term = f"DielsAlder(diene, dienophile) -> {p.canonical_smiles()}"
         return products
 
 
@@ -927,9 +914,13 @@ class ThiolEne(ReactionRule):
         # ClosedTerm RDKit bridge.
         if not any(atom.symbol == "S" for atom in thiol.atoms):
             return None
-        if not any(bond.kind == "covalent" and bond.order == 2
-                   and bond.atom_a.symbol == "C" and bond.atom_b.symbol == "C"
-                   for bond in alkene.bonds):
+        if not any(
+            bond.kind == "covalent"
+            and bond.order == 2
+            and bond.atom_a.symbol == "C"
+            and bond.atom_b.symbol == "C"
+            for bond in alkene.bonds
+        ):
             return None
         thiol_mol, alkene_mol = thiol.to_rdkit(), alkene.to_rdkit()
         Chem.SanitizeMol(thiol_mol)
@@ -943,29 +934,41 @@ class ThiolEne(ReactionRule):
             # The term ledger preserves bracket/implicit hydrogen counts even
             # when to_rdkit reconstructs an uncharged heavy-atom graph.
             ledger_h = thiol.implicit_h_count.get(atom.GetIdx(), atom.GetTotalNumHs())
-            if (len(heavy_neighbors) == 1 and heavy_neighbors[0].GetAtomicNum() == 6
-                    and ledger_h + explicit_h == 1
-                    and all(b.GetBondType() == Chem.BondType.SINGLE for b in atom.GetBonds())):
+            if (
+                len(heavy_neighbors) == 1
+                and heavy_neighbors[0].GetAtomicNum() == 6
+                and ledger_h + explicit_h == 1
+                and all(
+                    b.GetBondType() == Chem.BondType.SINGLE for b in atom.GetBonds()
+                )
+            ):
                 sulfurs.append(atom.GetIdx())
-        alkenes = [bond for bond in alkene_mol.GetBonds()
-                   if bond.GetBondType() == Chem.BondType.DOUBLE
-                   and not bond.GetIsAromatic()
-                   and bond.GetBeginAtom().GetAtomicNum() == 6
-                   and bond.GetEndAtom().GetAtomicNum() == 6]
+        alkenes = [
+            bond
+            for bond in alkene_mol.GetBonds()
+            if bond.GetBondType() == Chem.BondType.DOUBLE
+            and not bond.GetIsAromatic()
+            and bond.GetBeginAtom().GetAtomicNum() == 6
+            and bond.GetEndAtom().GetAtomicNum() == 6
+        ]
         if not sulfurs or not alkenes:
             return None
         bond = alkenes[0]
         ranks = list(Chem.CanonicalRankAtoms(alkene_mol))
         endpoints = [bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()]
-        endpoints.sort(key=lambda idx: (
-            sum(a.GetAtomicNum() != 1 for a in alkene_mol.GetAtomWithIdx(idx).GetNeighbors()),
-            ranks[idx], idx,
-        ))
+        endpoints.sort(
+            key=lambda idx: (
+                sum(
+                    a.GetAtomicNum() != 1
+                    for a in alkene_mol.GetAtomWithIdx(idx).GetNeighbors()
+                ),
+                ranks[idx],
+                idx,
+            )
+        )
         return thiol_mol, alkene_mol, sulfurs[0], endpoints[0], endpoints[1]
 
-    def can_apply(
-        self, thiol: MoleculeClosedTerm, alkene: MoleculeClosedTerm
-    ) -> bool:
+    def can_apply(self, thiol: MoleculeClosedTerm, alkene: MoleculeClosedTerm) -> bool:
         """Require a neutral R-SH, excluding thioethers, and a partner C=C."""
         result = self._reaction_sites(thiol, alkene) is not None
         _L4_COUNTERS["ThiolEne"]["thiolene_can_apply"] += int(result)
@@ -1001,8 +1004,11 @@ class ThiolEne(ReactionRule):
             # Explicit H atoms, if present, are transferred without deletion;
             # ordinary implicit S-H is reallocated by sanitization after the
             # S-C addition and C=C reduction.
-            explicit_h = [a.GetIdx() for a in rw.GetAtomWithIdx(s_idx).GetNeighbors()
-                          if a.GetAtomicNum() == 1]
+            explicit_h = [
+                a.GetIdx()
+                for a in rw.GetAtomWithIdx(s_idx).GetNeighbors()
+                if a.GetAtomicNum() == 1
+            ]
             if explicit_h:
                 rw.RemoveBond(s_idx, explicit_h[0])
                 rw.AddBond(other_idx, explicit_h[0], Chem.BondType.SINGLE)
@@ -1016,9 +1022,9 @@ class ThiolEne(ReactionRule):
             # including when callers request sanitize=False for other rules.
             Chem.SanitizeMol(product_mol)
             if product_mol.GetNumAtoms() != combined.GetNumAtoms():
-                raise ValueError('ThiolEne changed atom count')
+                raise ValueError("ThiolEne changed atom count")
             if len(Chem.GetMolFrags(product_mol)) != input_fragments - 1:
-                raise ValueError('ThiolEne did not join the two reacting components')
+                raise ValueError("ThiolEne did not join the two reacting components")
             term = MoleculeClosedTerm.from_rdkit(product_mol)
             term.term = f"ThiolEne(R-SH, R'-CH=CH-R'') -> {term.canonical_smiles()}"
             _L4_COUNTERS["ThiolEne"]["fire"] += 1
@@ -1090,17 +1096,13 @@ class Suzuki(ReactionRule):
             )
         except Exception as exc:
             _L4_COUNTERS["Suzuki"]["runreactants_err"] += 1
-            raise ReactionError(
-                f"[Suzuki] RDKit RunReactants failed: {exc}"
-            ) from exc
+            raise ReactionError(f"[Suzuki] RDKit RunReactants failed: {exc}") from exc
         products = _rdkit_product_sets_to_closed_terms(product_sets, sanitize)
         _L4_COUNTERS["Suzuki"]["fire"] += 1 if products else 0
         _L4_COUNTERS["Suzuki"]["attempts"] += 1
         _L4_COUNTERS["Suzuki"]["products"] += len(products)
         for p in products:
-            p.term = (
-                f"Suzuki(R-B(OH)2, R'-X) -> {p.canonical_smiles()}"
-            )
+            p.term = f"Suzuki(R-B(OH)2, R'-X) -> {p.canonical_smiles()}"
         return products
 
 
@@ -1151,9 +1153,7 @@ class AmideCoupling(ReactionRule):
         acid, amine = reactants
         rxn = self._rdkit_reaction_template()
         try:
-            product_sets = rxn.RunReactants(
-                (acid.to_rdkit(), amine.to_rdkit())
-            )
+            product_sets = rxn.RunReactants((acid.to_rdkit(), amine.to_rdkit()))
         except Exception as exc:
             _L4_COUNTERS["AmideCoupling"]["runreactants_err"] += 1
             raise ReactionError(
@@ -1164,9 +1164,7 @@ class AmideCoupling(ReactionRule):
         _L4_COUNTERS["AmideCoupling"]["attempts"] += 1
         _L4_COUNTERS["AmideCoupling"]["products"] += len(products)
         for p in products:
-            p.term = (
-                f"AmideCoupling(R-COOH, R'-NH2) -> {p.canonical_smiles()}"
-            )
+            p.term = f"AmideCoupling(R-COOH, R'-NH2) -> {p.canonical_smiles()}"
         return products
 
 
@@ -1228,8 +1226,7 @@ class MetalLigandExchange(ReactionRule):
         # Atom-maps 1 (Pt), 2 (Cl leaving), 3 (other Pt ligand),
         # 4 (incoming NH3).  The product keeps the Pt-N bond
         # (map 1 + 4) and releases Cl as a separate term.
-        "[Pt:1]([Cl:2])[*:3].[NH3:4]>>"
-        "[Pt:1]([NH3:4])[*:3].[Cl:2]"
+        "[Pt:1]([Cl:2])[*:3].[NH3:4]>>" "[Pt:1]([NH3:4])[*:3].[Cl:2]"
     )
     stoichiometry: Dict[str, int] = field(default_factory=dict)
 
@@ -1336,8 +1333,7 @@ class AquaExchange(ReactionRule):
         # SMARTS: [Pt]-Cl single bond substitution by [OH2] water.
         # Atom-maps 1 (Pt), 2 (Cl leaving), 3 (other Pt ligand),
         # 4 (incoming OH2 → OH after proton loss).
-        "[Pt:1]([Cl:2])[*:3].[OH2:4]>>"
-        "[Pt:1]([OH:4])[*:3].[Cl:2]"
+        "[Pt:1]([Cl:2])[*:3].[OH2:4]>>" "[Pt:1]([OH:4])[*:3].[Cl:2]"
     )
     stoichiometry: Dict[str, int] = field(default_factory=dict)
 
@@ -1416,16 +1412,16 @@ class AquaExchange(ReactionRule):
 #: rule.  The dict is the single source of truth for what reactions are
 #: available to the synthesis / search_alg layers.
 REACTION_RULES: Dict[str, object] = {
-    "CuAAC":         CuAAC(),
-    "SPAAC":         SPAAC(),
-    "SPC":           SPC(),
-    "DielsAlder":    DielsAlder(),
-    "ThiolEne":      ThiolEne(),
+    "CuAAC": CuAAC(),
+    "SPAAC": SPAAC(),
+    "SPC": SPC(),
+    "DielsAlder": DielsAlder(),
+    "ThiolEne": ThiolEne(),
     # R10 axis A — extend the click family from 5 to 7 so the MCTS
     # expansion path can fire Suzuki and AmideCoupling alongside the
     # legacy cycloadditions.  See lam_chem.rules for the public-facing
     # 5-reaction subset that the search exposes via ``rules``.
-    "Suzuki":        Suzuki(),
+    "Suzuki": Suzuki(),
     "AmideCoupling": AmideCoupling(),
     # F2(a): metal-coordination family — Pt_II / Ru_II / Ir_III
     # specific reductions (chloride substitution by NH3 / H2O).
@@ -1433,7 +1429,7 @@ REACTION_RULES: Dict[str, object] = {
     # layer can opt-in via the ``metal-coord`` alias; they are NOT
     # part of the public-facing 5/7 click set.
     "MetalLigandExchange": MetalLigandExchange(),
-    "AquaExchange":        AquaExchange(),
+    "AquaExchange": AquaExchange(),
 }
 
 
@@ -1483,16 +1479,12 @@ def l4_metrics() -> Dict[str, object]:
         "per_rule": {k: dict(v) for k, v in _L4_COUNTERS.items()},
         "mass_balance": dict(_L4_MASS_BALANCE_PASS),
         "catalyst_requirement_coverage": {
-            name: REACTION_RULES[name].requires_catalyst
-            for name in REACTION_RULES
+            name: REACTION_RULES[name].requires_catalyst for name in REACTION_RULES
         },
         "rate_predictor_attach": {
             name: (
                 (REACTION_RULES[name].rate_predictor is not None)
-                + (
-                    1 if getattr(REACTION_RULES[name], "aryl_predictor", None)
-                    else 0
-                )
+                + (1 if getattr(REACTION_RULES[name], "aryl_predictor", None) else 0)
             )
             for name in REACTION_RULES
         },
@@ -1524,11 +1516,11 @@ def attach_all_rate_predictors() -> Dict[str, object]:
 
     fitted: Dict[str, object] = {}
     mapping = {
-        "CuAAC":      "CuAAC",
-        "SPAAC":      "SPAAC",
-        "SPC":        "SPC",
+        "CuAAC": "CuAAC",
+        "SPAAC": "SPAAC",
+        "SPC": "SPC",
         "DielsAlder": "DielsAlder",
-        "ThiolEne":   "ThiolEne",
+        "ThiolEne": "ThiolEne",
     }
     for rule_name, lit_name in mapping.items():
         rule = REACTION_RULES[rule_name]
@@ -1559,9 +1551,7 @@ def verify_mass_balance(rule_name: str = "") -> None:
     that is not mass-balanced by construction raises immediately.
     """
     targets = (
-        [REACTION_RULES[rule_name]]
-        if rule_name
-        else list(REACTION_RULES.values())
+        [REACTION_RULES[rule_name]] if rule_name else list(REACTION_RULES.values())
     )
     for rule in targets:
         # The CuAAC/SPAAC/SPC/DielsAlder/ThiolEne rules are all
@@ -1583,7 +1573,8 @@ def verify_mass_balance(rule_name: str = "") -> None:
 
 
 def cuaac(
-    azide: MoleculeClosedTerm, alkyne: MoleculeClosedTerm,
+    azide: MoleculeClosedTerm,
+    alkyne: MoleculeClosedTerm,
     **kwargs,
 ) -> List[MoleculeClosedTerm]:
     """``CuAAC(azide_tile, alkyne_tile)`` functional shorthand."""
@@ -1591,7 +1582,8 @@ def cuaac(
 
 
 def spaac(
-    azide: MoleculeClosedTerm, alkyne: MoleculeClosedTerm,
+    azide: MoleculeClosedTerm,
+    alkyne: MoleculeClosedTerm,
     **kwargs,
 ) -> List[MoleculeClosedTerm]:
     """``SPAAC(azide_tile, cyclooctyne_tile)`` functional shorthand."""
@@ -1599,7 +1591,8 @@ def spaac(
 
 
 def spc(
-    azide: MoleculeClosedTerm, phosphine: MoleculeClosedTerm,
+    azide: MoleculeClosedTerm,
+    phosphine: MoleculeClosedTerm,
     **kwargs,
 ) -> List[MoleculeClosedTerm]:
     """``SPC(azide_tile, phosphine_tile)`` functional shorthand."""
@@ -1607,7 +1600,8 @@ def spc(
 
 
 def diels_alder(
-    diene: MoleculeClosedTerm, dienophile: MoleculeClosedTerm,
+    diene: MoleculeClosedTerm,
+    dienophile: MoleculeClosedTerm,
     **kwargs,
 ) -> List[MoleculeClosedTerm]:
     """``DielsAlder(diene_tile, dienophile_tile)`` functional shorthand."""
@@ -1615,7 +1609,8 @@ def diels_alder(
 
 
 def thiol_ene(
-    thiol: MoleculeClosedTerm, alkene: MoleculeClosedTerm,
+    thiol: MoleculeClosedTerm,
+    alkene: MoleculeClosedTerm,
     **kwargs,
 ) -> List[MoleculeClosedTerm]:
     """``ThiolEne(thiol_tile, alkene_tile)`` functional shorthand."""

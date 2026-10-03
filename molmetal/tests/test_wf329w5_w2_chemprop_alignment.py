@@ -38,6 +38,7 @@ Honest framing (party-twenty-spirit §3.5):
     versions but the comparison shape (which config beats the
     baseline) is the load-bearing invariant.
 """
+
 from __future__ import annotations
 
 import json
@@ -113,11 +114,11 @@ class TestChempropV2GraphFeatures(unittest.TestCase):
 
     def test_chemprop_v2_graph_features(self) -> None:
         smiles_list = [
-            "c1ccccc1",                # benzene
-            "CCO",                     # ethanol
-            "C",                       # methane (small)
-            "c1ccc2ccccc2c1",          # naphthalene (larger)
-            "O=S(=O)(N)c1ccc(N)cc1",   # sulfanilamide (heteroatoms)
+            "c1ccccc1",  # benzene
+            "CCO",  # ethanol
+            "C",  # methane (small)
+            "c1ccc2ccccc2c1",  # naphthalene (larger)
+            "O=S(=O)(N)c1ccc(N)cc1",  # sulfanilamide (heteroatoms)
         ]
         feats = extract_chemprop_v2_graph_features(smiles_list)
         # Shape invariants
@@ -141,12 +142,8 @@ class TestChempropV2GraphFeatures(unittest.TestCase):
         atom_dim, _ = _probe_chemprop_dims()
         sum_atom_start = 2 * atom_dim
         sum_atom_end = 3 * atom_dim
-        naphthalene_atom_sum = float(
-            feats[3, sum_atom_start:sum_atom_end].sum()
-        )
-        benzene_atom_sum = float(
-            feats[0, sum_atom_start:sum_atom_end].sum()
-        )
+        naphthalene_atom_sum = float(feats[3, sum_atom_start:sum_atom_end].sum())
+        benzene_atom_sum = float(feats[0, sum_atom_start:sum_atom_end].sum())
         self.assertGreater(naphthalene_atom_sum, benzene_atom_sum)
 
 
@@ -286,9 +283,7 @@ class TestR2LiftOnPlatinai4Cell(unittest.TestCase):
 
         # ----- 12-d baseline R² must match Wf-325A MEASURED value -----
         # (within sklearn/numpy tolerance; we use 1e-3 here)
-        cfg_12d = next(
-            c for c in data["per_config"] if c["label"] == "12d_baseline"
-        )
+        cfg_12d = next(c for c in data["per_config"] if c["label"] == "12d_baseline")
         self.assertAlmostEqual(
             cfg_12d["r2"],
             r2_12d_baseline,

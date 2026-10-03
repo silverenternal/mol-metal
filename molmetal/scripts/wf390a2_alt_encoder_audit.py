@@ -273,9 +273,7 @@ def smoke_alt_encoder(
     # Cross-encoder ensemble feature dim: chemprop v3 + D-MPNN + F5_RDKIT_2D 32-d
     if result["n_features_in_chemprop_v3"] and result["n_features_in_dmpnn"]:
         n_ensemble = (
-            result["n_features_in_chemprop_v3"]
-            + result["n_features_in_dmpnn"]
-            + 32
+            result["n_features_in_chemprop_v3"] + result["n_features_in_dmpnn"] + 32
         )
         result["n_features_in_cross_encoder_ensemble"] = n_ensemble
         result["notes"].append(
@@ -353,8 +351,10 @@ def main() -> int:
     print(f"[Wf-390-A2] Inventory written to {inv_path}")
 
     # 2. Smoke alt encoder (CPU-only by default)
-    print(f"[Wf-390-A2] Running smoke: epochs={args.smoke_epochs}, "
-          f"samples={args.smoke_samples}, device={args.device}")
+    print(
+        f"[Wf-390-A2] Running smoke: epochs={args.smoke_epochs}, "
+        f"samples={args.smoke_samples}, device={args.device}"
+    )
     smoke_result = smoke_alt_encoder(
         n_samples=args.smoke_samples,
         n_epochs=args.smoke_epochs,

@@ -85,8 +85,7 @@ def test_egnn_velocity_default_uses_tmqm(capsys):
     # test stays robust to the n_unexpected / n_missing numbers changing
     # as the EGNN evolves.
     assert "Loaded tmQM-pretrained encoder" in captured.out, (
-        f"use_tmqm_init=True must log the transfer summary; "
-        f"got: {captured.out!r}"
+        f"use_tmqm_init=True must log the transfer summary; " f"got: {captured.out!r}"
     )
     # Cross-architecture (DMPNN → EGNN) currently transfers 0 keys by
     # design; assert the honest transfer count appears.
@@ -97,9 +96,9 @@ def test_egnn_velocity_use_tmqm_init_false_legacy_path(capsys):
     """``use_tmqm_init=False`` keeps the legacy random-init path."""
     enc = EGNNVelocityField(hidden_dim=128, n_layers=3, use_tmqm_init=False)
     captured = capsys.readouterr()
-    assert "Loaded tmQM-pretrained encoder" not in captured.out, (
-        "use_tmqm_init=False must NOT log the tmQM load line — legacy path."
-    )
+    assert (
+        "Loaded tmQM-pretrained encoder" not in captured.out
+    ), "use_tmqm_init=False must NOT log the tmQM load line — legacy path."
 
 
 def test_argparser_tmqm_init_flag():

@@ -66,6 +66,7 @@ Cross-references
 * ``TODO/completed/350a2_compute_manifest.md`` — the Wf-350-A2 ship
   summary + per-deliverable MEASURED status.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -83,9 +84,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = REPO_ROOT / "molmetal" / "scripts"
 PREFLIGHT_SCRIPT = SCRIPTS_DIR / "pre_flight_check.py"
-MANIFEST_PATH = (
-    REPO_ROOT / "molmetal" / "reports" / "wf350a2_compute_manifest.json"
-)
+MANIFEST_PATH = REPO_ROOT / "molmetal" / "reports" / "wf350a2_compute_manifest.json"
 
 # Insert repo root into sys.path so `from molmetal.scripts.pre_flight_check`
 # resolves without requiring the test runner to set PYTHONPATH itself.
@@ -102,11 +101,12 @@ def _load_preflight_module():
     + test_wf321d_preflight_gate_audit.py.
     """
     spec = importlib.util.spec_from_file_location(
-        "pre_flight_check_under_test", PREFLIGHT_SCRIPT,
+        "pre_flight_check_under_test",
+        PREFLIGHT_SCRIPT,
     )
-    assert spec is not None and spec.loader is not None, (
-        f"pre_flight_check.py has no import spec ({PREFLIGHT_SCRIPT})"
-    )
+    assert (
+        spec is not None and spec.loader is not None
+    ), f"pre_flight_check.py has no import spec ({PREFLIGHT_SCRIPT})"
     mod = importlib.util.module_from_spec(spec)
     sys.modules["pre_flight_check_under_test"] = mod
     spec.loader.exec_module(mod)
@@ -145,25 +145,23 @@ def test_gate_wf350a2_compute_manifest_pass_on_host(preflight) -> None:
     recommendation; gate #2 of 3).
     """
     result = preflight.gate_wf350a2_compute_manifest(
-        "p1_compute_manifest_test", "P1", "chemprop_v2_v3",
+        "p1_compute_manifest_test",
+        "P1",
+        "chemprop_v2_v3",
         MANIFEST_PATH,
     )
     assert result.status == "PASS", (
-        f"gate should PASS on live host; got {result.status}: "
-        f"{result.evidence}"
+        f"gate should PASS on live host; got {result.status}: " f"{result.evidence}"
     )
 
     # Manifest exists, is non-empty, parses as JSON.
-    assert MANIFEST_PATH.is_file(), (
-        f"manifest file not on disk: {MANIFEST_PATH}"
-    )
+    assert MANIFEST_PATH.is_file(), f"manifest file not on disk: {MANIFEST_PATH}"
     raw = MANIFEST_PATH.read_text(encoding="utf-8")
     assert raw.strip(), f"manifest file is empty: {MANIFEST_PATH}"
     manifest = json.loads(raw)
 
     # Top-level keys (NeurIPS §E.5 schema).
-    for key in ("gpus", "driver_version", "torch_version",
-                "cuda_version", "system"):
+    for key in ("gpus", "driver_version", "torch_version", "cuda_version", "system"):
         assert key in manifest, (
             f"manifest missing top-level key {key!r}; got keys: "
             f"{sorted(manifest.keys())}"
@@ -171,15 +169,13 @@ def test_gate_wf350a2_compute_manifest_pass_on_host(preflight) -> None:
 
     # gpus must be a list.
     assert isinstance(manifest["gpus"], list), (
-        f"manifest['gpus'] is not a list; got "
-        f"{type(manifest['gpus']).__name__}"
+        f"manifest['gpus'] is not a list; got " f"{type(manifest['gpus']).__name__}"
     )
 
     # Per-GPU field check (NeurIPS §E.5 requires index + name + memory).
     for i, gpu in enumerate(manifest["gpus"]):
         assert isinstance(gpu, dict), (
-            f"manifest['gpus'][{i}] is not a dict; got "
-            f"{type(gpu).__name__}"
+            f"manifest['gpus'][{i}] is not a dict; got " f"{type(gpu).__name__}"
         )
         for f in ("index", "name", "memory_total_mb"):
             assert f in gpu, (
@@ -190,25 +186,23 @@ def test_gate_wf350a2_compute_manifest_pass_on_host(preflight) -> None:
     # system block check.
     sys_block = manifest["system"]
     assert isinstance(sys_block, dict), (
-        f"manifest['system'] is not a dict; got "
-        f"{type(sys_block).__name__}"
+        f"manifest['system'] is not a dict; got " f"{type(sys_block).__name__}"
     )
     for key in ("hostname", "kernel", "arch"):
         assert sys_block.get(key), (
-            f"manifest['system'] missing non-empty field {key!r}; got "
-            f"{sys_block!r}"
+            f"manifest['system'] missing non-empty field {key!r}; got " f"{sys_block!r}"
         )
 
     # Driver / torch / CUDA versions are non-empty strings.
-    assert manifest["driver_version"], (
-        f"manifest['driver_version'] is empty; got {manifest['driver_version']!r}"
-    )
-    assert manifest["torch_version"], (
-        f"manifest['torch_version'] is empty; got {manifest['torch_version']!r}"
-    )
-    assert manifest["cuda_version"], (
-        f"manifest['cuda_version'] is empty; got {manifest['cuda_version']!r}"
-    )
+    assert manifest[
+        "driver_version"
+    ], f"manifest['driver_version'] is empty; got {manifest['driver_version']!r}"
+    assert manifest[
+        "torch_version"
+    ], f"manifest['torch_version'] is empty; got {manifest['torch_version']!r}"
+    assert manifest[
+        "cuda_version"
+    ], f"manifest['cuda_version'] is empty; got {manifest['cuda_version']!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -217,7 +211,8 @@ def test_gate_wf350a2_compute_manifest_pass_on_host(preflight) -> None:
 
 
 def test_gate_wf350a2_compute_manifest_json_schema_validity(
-    preflight, tmp_path,
+    preflight,
+    tmp_path,
 ) -> None:
     """Wf-350-A2 (2) — gate PASS on tmp_path fixture + manifest on disk.
 
@@ -237,20 +232,19 @@ def test_gate_wf350a2_compute_manifest_json_schema_validity(
     """
     fixture_path = tmp_path / "compute_manifest_fixture.json"
     result = preflight.gate_wf350a2_compute_manifest(
-        "p1_compute_manifest_fixture", "P1", "chemprop_v2_v3",
+        "p1_compute_manifest_fixture",
+        "P1",
+        "chemprop_v2_v3",
         fixture_path,
     )
     assert result.status == "PASS", (
         f"gate should PASS on tmp_path fixture; got {result.status}: "
         f"{result.evidence}"
     )
-    assert fixture_path.is_file(), (
-        f"manifest not written at {fixture_path}"
-    )
+    assert fixture_path.is_file(), f"manifest not written at {fixture_path}"
 
     manifest = json.loads(fixture_path.read_text(encoding="utf-8"))
-    for key in ("gpus", "driver_version", "torch_version",
-                "cuda_version", "system"):
+    for key in ("gpus", "driver_version", "torch_version", "cuda_version", "system"):
         assert key in manifest, (
             f"tmp_path fixture manifest missing top-level key {key!r}; "
             f"got keys: {sorted(manifest.keys())}"
@@ -262,8 +256,7 @@ def test_gate_wf350a2_compute_manifest_json_schema_validity(
     sys_block = manifest["system"]
     for key in ("hostname", "kernel", "arch"):
         assert sys_block.get(key), (
-            f"tmp_path fixture manifest['system'] missing non-empty "
-            f"field {key!r}"
+            f"tmp_path fixture manifest['system'] missing non-empty " f"field {key!r}"
         )
 
 
@@ -313,8 +306,8 @@ def test_gate_wf350a2_compute_manifest_registered_in_build_gates(
 
     # (b) build_gates('chemprop_v2_v3') count + EXPECTED invariant.
     chemprop_runners = preflight.build_gates("chemprop_v2_v3")
-    assert len(chemprop_runners) == (
-        preflight.EXPECTED_GATE_COUNTS["chemprop_v2_v3"]
+    assert (
+        len(chemprop_runners) == (preflight.EXPECTED_GATE_COUNTS["chemprop_v2_v3"])
     ), (
         f"chemprop_v2_v3 pipeline count {len(chemprop_runners)} != "
         f"EXPECTED_GATE_COUNTS['chemprop_v2_v3']="
@@ -390,9 +383,7 @@ def test_gate_wf350a2_compute_manifest_registered_in_build_gates(
     # (g) The registered gate function itself PASSes when called via
     #     build_gates('all') (catches schema-drift regression on the
     #     gate function between registration and execution).
-    compute_runner = next(
-        r for n, r in all_runners if n == "p1_compute_manifest"
-    )
+    compute_runner = next(r for n, r in all_runners if n == "p1_compute_manifest")
     compute_result = compute_runner()
     assert compute_result.status == "PASS", (
         f"p1_compute_manifest runner FAILed: status="

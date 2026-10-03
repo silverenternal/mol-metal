@@ -66,8 +66,18 @@ def test_aizynth_real_backend_smart_mode() -> None:
     assert metadata["backend"] == "smarts_heuristic"
     assert metadata["learned"] is False
 
-    batch = ["CCO", "CCN", "c1ccccc1", "CO", "CN",
-             "CC(=O)O", "CCOC", "CC(=O)N", "CC#N", "CCBr"]
+    batch = [
+        "CCO",
+        "CCN",
+        "c1ccccc1",
+        "CO",
+        "CN",
+        "CC(=O)O",
+        "CCOC",
+        "CC(=O)N",
+        "CC#N",
+        "CCBr",
+    ]
     for s in batch:
         # SMILES may be passed as plain string or Chem.Mol; both must work.
         try:
@@ -78,11 +88,13 @@ def test_aizynth_real_backend_smart_mode() -> None:
         # The smart-mode checker returns either a bool (True/False) or
         # a RetrosynthesisReport dataclass with ``synthesizable`` field.
         if hasattr(result, "synthesizable"):
-            assert isinstance(result.synthesizable, bool), (
-                f"{s}: smart-mode gate synthesizable={type(result.synthesizable).__name__}"
-            )
+            assert isinstance(
+                result.synthesizable, bool
+            ), f"{s}: smart-mode gate synthesizable={type(result.synthesizable).__name__}"
         else:
-            assert isinstance(result, bool), f"{s}: smart-mode gate returned {type(result).__name__}"
+            assert isinstance(
+                result, bool
+            ), f"{s}: smart-mode gate returned {type(result).__name__}"
 
 
 # ---------------------------------------------------------------------------
@@ -132,15 +144,23 @@ def test_aizynth_real_backend_aizynthfinder_mode() -> None:
 
     if checker is None:
         # Real backend failed to load (e.g. models missing); skip.
-        pytest.skip(
-            f"aizynthfinder backend not ready: status={metadata['status']!r}"
-        )
+        pytest.skip(f"aizynthfinder backend not ready: status={metadata['status']!r}")
 
     assert callable(checker)
 
     # SMILES batch — bounded protocol keeps wall < 10s.
-    batch = ["CCO", "CCN", "c1ccccc1", "CO", "CN",
-             "CC(=O)O", "CCOC", "CC(=O)N", "CC#N", "CCBr"]
+    batch = [
+        "CCO",
+        "CCN",
+        "c1ccccc1",
+        "CO",
+        "CN",
+        "CC(=O)O",
+        "CCOC",
+        "CC(=O)N",
+        "CC#N",
+        "CCBr",
+    ]
     n_resolved = 0
     n_total = 0
     for s in batch:

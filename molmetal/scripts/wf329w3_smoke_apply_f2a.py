@@ -34,6 +34,7 @@ Usage
 
     .venv/bin/python molmetal/scripts/wf329w3_smoke_apply_f2a.py
 """
+
 from __future__ import annotations
 
 import json
@@ -120,9 +121,7 @@ def main() -> int:
     cohort_vina_median = _median(vina_scores)
     cohort_f2a_median = _median(f2a_scores)
     cohort_median_lift = cohort_f2a_median - cohort_vina_median
-    cohort_f2a_gap_to_industry = (
-        cohort_f2a_median - INDUSTRY_CUTOFF_KCAL_MOL
-    )
+    cohort_f2a_gap_to_industry = cohort_f2a_median - INDUSTRY_CUTOFF_KCAL_MOL
     overall_status, overall_gap = scorer.classify_recovery(cohort_f2a_median)
 
     headline = {
@@ -130,9 +129,7 @@ def main() -> int:
         "cohort_f2a_median_kcal_mol": round(cohort_f2a_median, 4),
         "cohort_median_lift_kcal_mol": round(cohort_median_lift, 4),
         "industry_cutoff_kcal_mol": INDUSTRY_CUTOFF_KCAL_MOL,
-        "cohort_f2a_gap_to_industry_kcal_mol": round(
-            cohort_f2a_gap_to_industry, 4
-        ),
+        "cohort_f2a_gap_to_industry_kcal_mol": round(cohort_f2a_gap_to_industry, 4),
         "cohort_overall_recovery_status": overall_status,
         "PROJECTED_cohort_status": (
             "HONEST_NEGATIVE_COVALENT_INSUFFICIENT"
@@ -153,10 +150,8 @@ def main() -> int:
             "engine": "wf329w3_smoke_apply_f2a.py",
             "generated_utc": _utc_now_iso(),
             "scope": "Wf-143 / Wf-325B 5-pocket cisplatin cohort + "
-                     "F2(a) covalent scoring modifier",
-            "modifier_kcal_mol_per_bond": (
-                DEFAULT_COVALENT_MODIFIER_KCAL_MOL
-            ),
+            "F2(a) covalent scoring modifier",
+            "modifier_kcal_mol_per_bond": (DEFAULT_COVALENT_MODIFIER_KCAL_MOL),
             "n_patterns_loaded": scorer.n_patterns_loaded,
             "smiles": CISPLATIN_SMILES,
         },
@@ -190,15 +185,12 @@ def main() -> int:
                 "WEAK_TO_STRONG §3.5"
             ),
         },
-        "honest_negative_key": (
-            "HONEST_NEGATIVE_M3_VINA_COVALENT_INSUFFICIENT"
-        ),
+        "honest_negative_key": ("HONEST_NEGATIVE_M3_VINA_COVALENT_INSUFFICIENT"),
         "exit_status": "PASS",
     }
 
     out_path = (
-        ROOT / "molmetal" / "reports" / "wf329w3_f2a_vina"
-        / "smoke_per_pocket.json"
+        ROOT / "molmetal" / "reports" / "wf329w3_f2a_vina" / "smoke_per_pocket.json"
     )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w", encoding="utf-8") as fh:
@@ -206,15 +198,27 @@ def main() -> int:
 
     print()
     print(f"[wf329w3-f2a-smoke] headline:")
-    print(f"  cohort_vina_median = {headline['cohort_vina_median_kcal_mol']:+.4f} kcal/mol")
-    print(f"  cohort_f2a_median  = {headline['cohort_f2a_median_kcal_mol']:+.4f} kcal/mol")
-    print(f"  cohort_median_lift = {headline['cohort_median_lift_kcal_mol']:+.4f} kcal/mol (PROJECTED: -1.5)")
-    print(f"  industry_cutoff    = {headline['industry_cutoff_kcal_mol']:+.1f} kcal/mol")
-    print(f"  cohort_f2a_gap     = {headline['cohort_f2a_gap_to_industry_kcal_mol']:+.4f} kcal/mol")
+    print(
+        f"  cohort_vina_median = {headline['cohort_vina_median_kcal_mol']:+.4f} kcal/mol"
+    )
+    print(
+        f"  cohort_f2a_median  = {headline['cohort_f2a_median_kcal_mol']:+.4f} kcal/mol"
+    )
+    print(
+        f"  cohort_median_lift = {headline['cohort_median_lift_kcal_mol']:+.4f} kcal/mol (PROJECTED: -1.5)"
+    )
+    print(
+        f"  industry_cutoff    = {headline['industry_cutoff_kcal_mol']:+.1f} kcal/mol"
+    )
+    print(
+        f"  cohort_f2a_gap     = {headline['cohort_f2a_gap_to_industry_kcal_mol']:+.4f} kcal/mol"
+    )
     print(f"  overall_status     = {overall_status}")
     print(f"  PROJECTED_status   = {headline['PROJECTED_cohort_status']}")
-    print(f"  Wf-329-W3 closes the gap by {-cohort_median_lift:.4f} kcal/mol "
-          f"(Wf-325B gap was 3.717 kcal/mol)")
+    print(
+        f"  Wf-329-W3 closes the gap by {-cohort_median_lift:.4f} kcal/mol "
+        f"(Wf-325B gap was 3.717 kcal/mol)"
+    )
     print()
     print(f"  Output: {out_path}")
     return 0
@@ -222,6 +226,7 @@ def main() -> int:
 
 def _utc_now_iso() -> str:
     from datetime import datetime, timezone
+
     return datetime.now(timezone.utc).isoformat()
 
 

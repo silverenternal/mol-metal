@@ -42,6 +42,7 @@ Run::
         --output molmetal/reports/wf25_multiph_real \\
         2>&1 | tee molmetal/reports/wf25_multiph_real/run.log
 """
+
 from __future__ import annotations
 
 import argparse
@@ -253,7 +254,11 @@ def build_design_matrix(
     n_samples: int,
     seed: int = 42,
 ) -> Tuple[
-    List[str], List[int], List[List[float]], List[List[float]], Dict[str, int],
+    List[str],
+    List[int],
+    List[List[float]],
+    List[List[float]],
+    Dict[str, int],
 ]:
     """Build a deterministic ``(smiles, metal_idx, X_rdkit, X_multiph)`` tuple.
 
@@ -315,7 +320,11 @@ def build_design_matrix(
                 n_ru_subset += 1
 
     # ---- 2. Supplement: PlatinAI 5K (Pt) — pseudo-label as Ru (closest) ----
-    if len(smiles_list) < n_samples and platinai_csv is not None and platinai_csv.exists():
+    if (
+        len(smiles_list) < n_samples
+        and platinai_csv is not None
+        and platinai_csv.exists()
+    ):
         pt_rows = load_platinai_5k(platinai_csv)
         rng.shuffle(pt_rows)
         for row in pt_rows:
@@ -341,7 +350,9 @@ def build_design_matrix(
     # ---- 3. Multi-PH features for the full survivor set ----
     print(f"  Computing Multi-PH features for {len(smiles_list)} molecules...")
     X_multiph, mph_stats = compute_multi_ph_features(
-        smiles_list, n_bins=MULTI_PH_N_BINS, max_atoms=MAX_POCKET_ATOMS,
+        smiles_list,
+        n_bins=MULTI_PH_N_BINS,
+        max_atoms=MAX_POCKET_ATOMS,
     )
     # The Multi-PH extractor may fail on some — drop those rows from
     # the corresponding index arrays.  This keeps ``X_multiph`` /
@@ -429,7 +440,7 @@ def _train_mlp(
         # Shuffle per epoch.
         perm = torch.randperm(n)
         for start in range(0, n, int(batch_size)):
-            idx = perm[start:start + int(batch_size)]
+            idx = perm[start : start + int(batch_size)]
             xb = X_tr_t[idx]
             yb = y_tr_t[idx]
             optimizer.zero_grad()
@@ -492,9 +503,7 @@ def _kfold_indices(n: int, k: int, seed: int = 0) -> List[Tuple[List[int], List[
     out: List[Tuple[List[int], List[int]]] = []
     for i in range(int(k)):
         test_idx = folds[i].tolist()
-        train_idx = np.concatenate(
-            [folds[j] for j in range(int(k)) if j != i]
-        ).tolist()
+        train_idx = np.concatenate([folds[j] for j in range(int(k)) if j != i]).tolist()
         out.append((train_idx, test_idx))
     return out
 
@@ -583,19 +592,21 @@ def cross_validate(
         mp_acc = _accuracy(y_te.tolist(), y_hat_mp)
         mp_f1 = _macro_f1(y_te.tolist(), y_hat_mp, n_classes)
 
-        per_fold.append({
-            "fold": fold_idx,
-            "n_train": len(train_idx),
-            "n_test": len(test_idx),
-            "rdkit_acc": float(rd_acc),
-            "rdkit_f1": float(rd_f1),
-            "rdkit_wall_train_s": float(rd_wall_train),
-            "rdkit_wall_pred_s": float(rd_wall_pred),
-            "multiph_acc": float(mp_acc),
-            "multiph_f1": float(mp_f1),
-            "multiph_wall_train_s": float(mp_wall_train),
-            "multiph_wall_pred_s": float(mp_wall_pred),
-        })
+        per_fold.append(
+            {
+                "fold": fold_idx,
+                "n_train": len(train_idx),
+                "n_test": len(test_idx),
+                "rdkit_acc": float(rd_acc),
+                "rdkit_f1": float(rd_f1),
+                "rdkit_wall_train_s": float(rd_wall_train),
+                "rdkit_wall_pred_s": float(rd_wall_pred),
+                "multiph_acc": float(mp_acc),
+                "multiph_f1": float(mp_f1),
+                "multiph_wall_train_s": float(mp_wall_train),
+                "multiph_wall_pred_s": float(mp_wall_pred),
+            }
+        )
         rd_accs.append(rd_acc)
         rd_f1s.append(rd_f1)
         rd_walls_train.append(rd_wall_train)
@@ -694,24 +705,26 @@ def render_table(metrics: Dict[str, Any], stats: Dict[str, Any]) -> str:
             f"{fold['rdkit_acc']:.3f} | {fold['rdkit_f1']:.3f} | "
             f"{fold['multiph_acc']:.3f} | {fold['multiph_f1']:.3f} |"
         )
-    out.extend([
-        "",
-        "## Honest framing",
-        "",
-        "* The Multi-PH branch uses a flattened ``(n_bins, n_bins)`` "
-        "feature map — no learnable parameters in the feature extractor; "
-        "the only trained parameters are in the downstream MLP head.",
-        "* The RDKit-descriptor baseline uses 8 RDKit descriptors "
-        "(parallel to the Wf-25 Phase 1 schema); both branches use the "
-        "same MLP topology and same training schedule.",
-        "* The metal-coordination classifier targets 5 classes "
-        "(``Ru, Ir, Rh, Os, Re``); the Ru subset dominates the "
-        "dataset (~71 %), so macro-F1 surfaces minority-class behaviour "
-        "more honestly than accuracy.",
-        "* Wall-time is **machine-dependent**; the comparison is "
-        "intended for *relative* speedup between the two branches on "
-        "the same CPU.",
-    ])
+    out.extend(
+        [
+            "",
+            "## Honest framing",
+            "",
+            "* The Multi-PH branch uses a flattened ``(n_bins, n_bins)`` "
+            "feature map — no learnable parameters in the feature extractor; "
+            "the only trained parameters are in the downstream MLP head.",
+            "* The RDKit-descriptor baseline uses 8 RDKit descriptors "
+            "(parallel to the Wf-25 Phase 1 schema); both branches use the "
+            "same MLP topology and same training schedule.",
+            "* The metal-coordination classifier targets 5 classes "
+            "(``Ru, Ir, Rh, Os, Re``); the Ru subset dominates the "
+            "dataset (~71 %), so macro-F1 surfaces minority-class behaviour "
+            "more honestly than accuracy.",
+            "* Wall-time is **machine-dependent**; the comparison is "
+            "intended for *relative* speedup between the two branches on "
+            "the same CPU.",
+        ]
+    )
     return "\n".join(out) + "\n"
 
 
@@ -723,34 +736,45 @@ def main() -> int:
         description=__doc__.splitlines()[0],
     )
     parser.add_argument(
-        "--n-samples", type=int, default=500,
+        "--n-samples",
+        type=int,
+        default=500,
         help="Number of (SMILES, target) rows to featurize.",
     )
     parser.add_argument(
-        "--n-folds", type=int, default=5,
+        "--n-folds",
+        type=int,
+        default=5,
         help="Number of cross-validation folds.",
     )
     parser.add_argument(
-        "--data", type=str,
+        "--data",
+        type=str,
         default="molmetal/data/platinai_5k.csv",
         help="PlatinAI 5K CSV path (SMILES source).",
     )
     parser.add_argument(
-        "--metalcytotox", type=str,
+        "--metalcytotox",
+        type=str,
         default=".data/molmetal/metalcytotox_5metal_multitask_v4.csv",
         help="MetalCytoToxDB 5-metal multi-task CSV path.",
     )
     parser.add_argument(
-        "--output", type=str,
+        "--output",
+        type=str,
         default="molmetal/reports/wf25_multiph_real",
         help="Output directory for run.log / metrics.json / comparison_table.md.",
     )
     parser.add_argument(
-        "--seed", type=int, default=42,
+        "--seed",
+        type=int,
+        default=42,
         help="Random seed for SMILES sampling.",
     )
     parser.add_argument(
-        "--n-epochs", type=int, default=30,
+        "--n-epochs",
+        type=int,
+        default=30,
         help="MLP training epochs.",
     )
     args = parser.parse_args()
@@ -804,7 +828,9 @@ def main() -> int:
     # ---- Run CV ----
     print(f"\n[2/3] Running {args.n_folds}-fold cross-validation...")
     metrics = cross_validate(
-        X_rdkit, X_multiph, metal_idx,
+        X_rdkit,
+        X_multiph,
+        metal_idx,
         n_folds=args.n_folds,
         n_classes=len(METAL_ALPHABET),
         hidden=MLP_HIDDEN,

@@ -19,6 +19,7 @@ Honest framing (party-twenty-spirit §3.5):
 * Each test verifies a documented MEASURED file/path against the
   expected state per Wf-433-A1 design doc + AGENTS.md §5.5 filesystem-truth.
 """
+
 from __future__ import annotations
 
 import json
@@ -53,16 +54,19 @@ def test_m6_kappa_drop_decision_block_present() -> None:
 
     Per Wf-433-A1 §0.2 + Wf-424-A15 + AGENTS.md §5.5 filesystem-truth.
     """
-    assert _exists("metrics/by_metric/m6_kappa.json"), (
-        "m6_kappa.json must exist on disk per AGENTS.md §5.5"
-    )
+    assert _exists(
+        "metrics/by_metric/m6_kappa.json"
+    ), "m6_kappa.json must exist on disk per AGENTS.md §5.5"
     catalog = _read_json("metrics/by_metric/m6_kappa.json")
-    assert "wf424a15_drop_decision" in catalog, (
-        "m6_kappa.json must have wf424a15_drop_decision block"
-    )
+    assert (
+        "wf424a15_drop_decision" in catalog
+    ), "m6_kappa.json must have wf424a15_drop_decision block"
     block = catalog["wf424a15_drop_decision"]
     assert block.get("wf") == "Wf-424-A15"
-    assert block.get("verdict_field") == "MEASURED_HONEST_NEGATIVE_PARTIAL_STRUCTURAL_FINAL"
+    assert (
+        block.get("verdict_field")
+        == "MEASURED_HONEST_NEGATIVE_PARTIAL_STRUCTURAL_FINAL"
+    )
     assert block.get("decision") == (
         "DROP_FROM_§3_MAIN_RESULT + PROMOTE_TOP3_TO_§3_SUPPLEMENTARY_SUBTABLE "
         "+ RETAIN_AS_§6_COMPLEMENTARY_HEURISTIC"
@@ -81,18 +85,16 @@ def test_paper_section3_metric_table_final_present() -> None:
         content = f.read()
     # Section 3 main-result table should reference 4 CEILING_BREAK metrics.
     for metric_id in ("m1_auc", "m2", "m3", "m15"):
-        assert metric_id in content, (
-            f"PAPER §3 must reference {metric_id} in main-result table"
-        )
+        assert (
+            metric_id in content
+        ), f"PAPER §3 must reference {metric_id} in main-result table"
     # m6_kappa DROP decision should be present.
-    assert "DROP" in content.upper() or "drop_from_main_result" in content.lower(), (
-        "PAPER §3 must document m6_kappa DROP decision"
-    )
+    assert (
+        "DROP" in content.upper() or "drop_from_main_result" in content.lower()
+    ), "PAPER §3 must document m6_kappa DROP decision"
     # Top-3 alternatives should be promoted.
     for alt in ("MolLogP", "MorganDensity", "Chi3v"):
-        assert alt in content, (
-            f"PAPER §3 supplementary must reference {alt}"
-        )
+        assert alt in content, f"PAPER §3 supplementary must reference {alt}"
 
 
 # ---------------------------------------------------------------------------
@@ -120,9 +122,9 @@ def test_paper_section6_v4_final_has_m6_kappa_section() -> None:
         "9-path, 10-path, path inventory, paths_exhausted)"
     )
     # Wf-365-A3 verdict cross-reference.
-    assert "Wf-365-A3" in content or "365-A3" in content, (
-        "§6.5 must reference Wf-365-A3 verdict"
-    )
+    assert (
+        "Wf-365-A3" in content or "365-A3" in content
+    ), "§6.5 must reference Wf-365-A3 verdict"
 
 
 # ---------------------------------------------------------------------------
@@ -138,21 +140,23 @@ def test_m1_canonical_catalog_7_of_7_aggregate() -> None:
     catalog = _read_json(path)
     # n_runs == 7, n_runs_completed == 7 (per Wf-413-A1 7-of-7 close).
     assert catalog.get("n_runs") == 7, f"n_runs must be 7; got {catalog.get('n_runs')}"
-    assert catalog.get("n_runs_completed") == 7, (
-        f"n_runs_completed must be 7; got {catalog.get('n_runs_completed')}"
-    )
+    assert (
+        catalog.get("n_runs_completed") == 7
+    ), f"n_runs_completed must be 7; got {catalog.get('n_runs_completed')}"
     # value = 0.7577 ± 0.0924.
     val = catalog.get("value")
     val_std = catalog.get("value_std")
     assert abs(val - 0.7577) < 0.005, f"value must be 0.7577 ± 0.005; got {val}"
-    assert abs(val_std - 0.0924) < 0.005, f"value_std must be 0.0924 ± 0.005; got {val_std}"
+    assert (
+        abs(val_std - 0.0924) < 0.005
+    ), f"value_std must be 0.0924 ± 0.005; got {val_std}"
     # Per-fold verdict preserved.
-    assert catalog.get("per_fold_krasnov_verdict", {}).get("Rh") == "PASS", (
-        "Rh fold must PASS Krasnov gate"
-    )
-    assert catalog.get("per_fold_krasnov_verdict", {}).get("Re") == "BELOW", (
-        "Re fold must be BELOW Krasnov gate (HONEST_NEGATIVE preserved)"
-    )
+    assert (
+        catalog.get("per_fold_krasnov_verdict", {}).get("Rh") == "PASS"
+    ), "Rh fold must PASS Krasnov gate"
+    assert (
+        catalog.get("per_fold_krasnov_verdict", {}).get("Re") == "BELOW"
+    ), "Re fold must be BELOW Krasnov gate (HONEST_NEGATIVE preserved)"
 
 
 # ---------------------------------------------------------------------------
@@ -169,9 +173,9 @@ def test_m1_per_run_auc_array_7_entries() -> None:
         assert 0.0 < v < 1.0, f"per_run_auc value must be in (0, 1); got {v}"
     # Mean of per_run_auc should be close to aggregate value.
     per_run_mean = float(np.mean(per_run))
-    assert abs(per_run_mean - catalog["value"]) < 0.001, (
-        f"per_run_auc mean {per_run_mean} must match aggregate value {catalog['value']}"
-    )
+    assert (
+        abs(per_run_mean - catalog["value"]) < 0.001
+    ), f"per_run_auc mean {per_run_mean} must match aggregate value {catalog['value']}"
 
 
 # ---------------------------------------------------------------------------
@@ -182,21 +186,23 @@ def test_m2_per_cohort_extended_160d_block() -> None:
     path = "metrics/by_metric/m2_r2_per_cohort.json"
     assert _exists(path), "m2_r2_per_cohort.json must exist"
     catalog = _read_json(path)
-    assert "per_cohort_extended_160d" in catalog, (
-        "m2_r2_per_cohort.json must have per_cohort_extended_160d block (Wf-433-A2)"
-    )
+    assert (
+        "per_cohort_extended_160d" in catalog
+    ), "m2_r2_per_cohort.json must have per_cohort_extended_160d block (Wf-433-A2)"
     ext = catalog["per_cohort_extended_160d"]
-    assert len(ext) == 3, f"per_cohort_extended_160d must have 3 cohort entries; got {len(ext)}"
+    assert (
+        len(ext) == 3
+    ), f"per_cohort_extended_160d must have 3 cohort entries; got {len(ext)}"
     cohort_names = {c["cohort"] for c in ext}
     expected_cohorts = {"platinai_4cell", "hilbert", "metalcytotox_combined"}
-    assert cohort_names == expected_cohorts, (
-        f"per_cohort_extended_160d cohorts must be {expected_cohorts}; got {cohort_names}"
-    )
+    assert (
+        cohort_names == expected_cohorts
+    ), f"per_cohort_extended_160d cohorts must be {expected_cohorts}; got {cohort_names}"
     # All 3 entries must have r2_mean, n_features_used=160, verdict.
     for c in ext:
-        assert c.get("n_features_used") == 160, (
-            f"n_features_used must be 160; got {c.get('n_features_used')}"
-        )
+        assert (
+            c.get("n_features_used") == 160
+        ), f"n_features_used must be 160; got {c.get('n_features_used')}"
         assert "r2_mean" in c, f"r2_mean must be present in {c['cohort']}"
         assert "verdict" in c, f"verdict must be present in {c['cohort']}"
 
@@ -216,13 +222,13 @@ def test_wf433_m2_extended_result_json_exists() -> None:
     assert "aggregate" in result, "result.json must have aggregate"
     assert "config" in result, "result.json must have config"
     # 3 cohorts tested.
-    assert len(result["per_cohort"]) == 3, (
-        f"per_cohort must have 3 entries; got {len(result['per_cohort'])}"
-    )
+    assert (
+        len(result["per_cohort"]) == 3
+    ), f"per_cohort must have 3 entries; got {len(result['per_cohort'])}"
     # config.n_features == 160.
-    assert result["config"]["n_features"] == 160, (
-        f"config.n_features must be 160; got {result['config']['n_features']}"
-    )
+    assert (
+        result["config"]["n_features"] == 160
+    ), f"config.n_features must be 160; got {result['config']['n_features']}"
 
 
 # ---------------------------------------------------------------------------
@@ -255,12 +261,12 @@ def test_wf433_m2_extended_confirms_structural_limit() -> None:
     # Lift vs 12-d should be negative (OVERFIT axis confirmed).
     platinai_lift = platinai_r2 - baseline_12d
     hilbert_lift = hilbert_r2 - baseline_12d
-    assert platinai_lift < -0.5, (
-        f"platinai lift should be strongly negative (overfit); got {platinai_lift}"
-    )
-    assert hilbert_lift < -0.5, (
-        f"hilbert lift should be strongly negative (overfit); got {hilbert_lift}"
-    )
+    assert (
+        platinai_lift < -0.5
+    ), f"platinai lift should be strongly negative (overfit); got {platinai_lift}"
+    assert (
+        hilbert_lift < -0.5
+    ), f"hilbert lift should be strongly negative (overfit); got {hilbert_lift}"
 
 
 # ---------------------------------------------------------------------------

@@ -48,6 +48,7 @@ References
 * Wf-329W5 — W₂ + chemprop v2 alignment (orthogonal axis).
 * Wf-325D — m6_kappa honest-negative closeout (canonical anchor).
 """
+
 from __future__ import annotations
 
 import json
@@ -62,6 +63,7 @@ try:
     from sklearn.linear_model import Ridge
     from sklearn.model_selection import cross_val_predict
     from sklearn.metrics import r2_score
+
     _SKLEARN_AVAILABLE = True
 except Exception:  # pragma: no cover — defensive
     Ridge = None  # type: ignore
@@ -203,8 +205,9 @@ def _chemprop_v2_pooled_rdkit(smiles_list: Sequence[str]) -> np.ndarray:
             _one_hot(int(atom.GetHybridization()), atom_vocab["hybridization"], 8),
             _one_hot(int(atom.GetIsAromatic()), atom_vocab["is_aromatic"], 2),
             _one_hot(atom.GetTotalNumHs(), atom_vocab["total_num_Hs"], 9),
-            _one_hot(atom.GetNumRadicalElectrons(),
-                     atom_vocab["num_radical_electrons"], 5),
+            _one_hot(
+                atom.GetNumRadicalElectrons(), atom_vocab["num_radical_electrons"], 5
+            ),
             _one_hot(int(atom.IsInRing()), atom_vocab["in_ring"], 2),
         ]
         ring_part = np.zeros(4, dtype=np.float64)
@@ -282,6 +285,7 @@ def _pll_signature_batch(
         from molmetal.molmetal_lam.reward.multiph_pll_feature import (
             MultiPHPLLFeatureExtractor,
         )
+
         extractor = MultiPHPLLFeatureExtractor(k=k, knn=knn)
         fourier_b, multi_ph_b, pll_b = extractor.compute_batch(smiles_list)
         return np.asarray(pll_b, dtype=np.float64)
@@ -333,10 +337,14 @@ class ChempropPLLFeatureExtractor:
     # Introspection: filled lazily on first compute_batch.
     _last_n: int = field(default=-1, init=False, repr=False)
     _last_chemprop: Optional[np.ndarray] = field(
-        default=None, init=False, repr=False,
+        default=None,
+        init=False,
+        repr=False,
     )
     _last_pll: Optional[np.ndarray] = field(
-        default=None, init=False, repr=False,
+        default=None,
+        init=False,
+        repr=False,
     )
 
     @property
@@ -357,7 +365,8 @@ class ChempropPLLFeatureExtractor:
         return self.chemprop_dim + self.pll_dim
 
     def compute_batch(
-        self, smiles_list: Sequence[str],
+        self,
+        smiles_list: Sequence[str],
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Compute chemprop v2 graph + PLL signature for each SMILES.
 
@@ -380,10 +389,13 @@ class ChempropPLLFeatureExtractor:
         chemprop_feat = _chemprop_v2_pooled_rdkit(smiles_list)
         if self.use_chemprop_fallback and chemprop_feat.shape[1] == 0:
             chemprop_feat = np.zeros(
-                (n, self.chemprop_dim), dtype=np.float64,
+                (n, self.chemprop_dim),
+                dtype=np.float64,
             )
         pll_feat = _pll_signature_batch(
-            smiles_list, k=self.pll_k, knn=self.pll_knn,
+            smiles_list,
+            k=self.pll_k,
+            knn=self.pll_knn,
         )
         # Align chemprop_feat to self.chemprop_dim if necessary
         if chemprop_feat.shape[1] != self.chemprop_dim:
@@ -450,12 +462,15 @@ class ChempropPLLRidgeModel:
     threshold_adaptive: float = M6_KAPPA_THRESHOLD_ADAPTIVE
 
     extractor: Optional[ChempropPLLFeatureExtractor] = field(
-        default=None, init=False, repr=False,
+        default=None,
+        init=False,
+        repr=False,
     )
     model_: Optional[Any] = field(default=None, init=False, repr=False)
 
     def _ensure_extractor(
-        self, extractor: Optional[ChempropPLLFeatureExtractor],
+        self,
+        extractor: Optional[ChempropPLLFeatureExtractor],
     ) -> ChempropPLLFeatureExtractor:
         """Return the extractor; default-construct if None."""
         if extractor is None:
@@ -495,8 +510,11 @@ class ChempropPLLRidgeModel:
                 "sklearn is required for fit(); install scikit-learn"
             )
         X = np.concatenate(
-            [np.asarray(chemprop_feat, dtype=np.float64),
-             np.asarray(pll_feat, dtype=np.float64)], axis=-1,
+            [
+                np.asarray(chemprop_feat, dtype=np.float64),
+                np.asarray(pll_feat, dtype=np.float64),
+            ],
+            axis=-1,
         )
         y_arr = np.asarray(y, dtype=np.float64).reshape(-1)
         self.model_ = Ridge(alpha=float(self.alpha))
@@ -516,8 +534,11 @@ class ChempropPLLRidgeModel:
             n = np.asarray(chemprop_feat).shape[0]
             return np.full(n, float("nan"), dtype=np.float64)
         X = np.concatenate(
-            [np.asarray(chemprop_feat, dtype=np.float64),
-             np.asarray(pll_feat, dtype=np.float64)], axis=-1,
+            [
+                np.asarray(chemprop_feat, dtype=np.float64),
+                np.asarray(pll_feat, dtype=np.float64),
+            ],
+            axis=-1,
         )
         return np.asarray(self.model_.predict(X), dtype=np.float64)
 
@@ -535,15 +556,19 @@ class ChempropPLLRidgeModel:
             n = np.asarray(chemprop_feat).shape[0]
             return np.full(n, float("nan"), dtype=np.float64)
         X = np.concatenate(
-            [np.asarray(chemprop_feat, dtype=np.float64),
-             np.asarray(pll_feat, dtype=np.float64)], axis=-1,
+            [
+                np.asarray(chemprop_feat, dtype=np.float64),
+                np.asarray(pll_feat, dtype=np.float64),
+            ],
+            axis=-1,
         )
         y_arr = np.asarray(y, dtype=np.float64).reshape(-1)
         n = X.shape[0]
         cv = min(int(self.cv_folds), max(2, n - 1))
         model = Ridge(alpha=float(self.alpha))
         return np.asarray(
-            cross_val_predict(model, X, y_arr, cv=cv), dtype=np.float64,
+            cross_val_predict(model, X, y_arr, cv=cv),
+            dtype=np.float64,
         )
 
     def cv_r2(
@@ -560,7 +585,9 @@ class ChempropPLLRidgeModel:
         return float(r2_score(y_arr, y_pred))
 
     def pass_rate_at_threshold(
-        self, y_pred: np.ndarray, adaptive: bool = False,
+        self,
+        y_pred: np.ndarray,
+        adaptive: bool = False,
     ) -> float:
         """Pass-rate at the threshold (strict 0.6 or adaptive 0.55)."""
         thr = self.threshold_adaptive if adaptive else self.threshold
@@ -578,17 +605,21 @@ class ChempropPLLRidgeModel:
         return {
             "cv_r2": self.cv_r2(chemprop_feat, pll_feat, y_arr),
             "augmented_mean": float(np.mean(y_pred))
-            if np.isfinite(y_pred).all() else float("nan"),
+            if np.isfinite(y_pred).all()
+            else float("nan"),
             "pass_rate_strict": self._pass_rate(y_pred, self.threshold),
             "pass_rate_adaptive": self._pass_rate(
-                y_pred, self.threshold_adaptive,
+                y_pred,
+                self.threshold_adaptive,
             ),
             "baseline_mean": float(np.mean(y_arr)),
             "baseline_pass_rate_strict": self._pass_rate(
-                y_arr, self.threshold,
+                y_arr,
+                self.threshold,
             ),
             "baseline_pass_rate_adaptive": self._pass_rate(
-                y_arr, self.threshold_adaptive,
+                y_arr,
+                self.threshold_adaptive,
             ),
         }
 
@@ -668,13 +699,16 @@ class ChempropPLLRecoveryReport:
             "pass_rate_augmented": round(self.pass_rate_augmented, 6),
             "pass_rate_lift": round(self.pass_rate_lift, 6),
             "pass_rate_baseline_adaptive": round(
-                self.pass_rate_baseline_adaptive, 6,
+                self.pass_rate_baseline_adaptive,
+                6,
             ),
             "pass_rate_augmented_adaptive": round(
-                self.pass_rate_augmented_adaptive, 6,
+                self.pass_rate_augmented_adaptive,
+                6,
             ),
             "pass_rate_lift_adaptive": round(
-                self.pass_rate_lift_adaptive, 6,
+                self.pass_rate_lift_adaptive,
+                6,
             ),
             "verdict": self.verdict,
             "wall_seconds": round(self.wall_seconds, 4),
@@ -737,8 +771,10 @@ def wire_chemprop_pll_recovery(
             f"y_baseline length {y_arr.shape[0]} != n_smiles {n}"
         )
     model = ChempropPLLRidgeModel(
-        alpha=ridge_alpha, cv_folds=cv_folds,
-        threshold=threshold, threshold_adaptive=threshold_adaptive,
+        alpha=ridge_alpha,
+        cv_folds=cv_folds,
+        threshold=threshold,
+        threshold_adaptive=threshold_adaptive,
     )
     y_pred = model.cv_predict(chemprop_feat, pll_feat, y_arr)
     cv_r2 = model.cv_r2(chemprop_feat, pll_feat, y_arr)
@@ -792,9 +828,13 @@ def write_recovery_report(
         "wf_325d_baseline_measured": WF325D_MEASURED_BASELINE,
         "n_smiles": len(smiles_list),
         "extractor": {
-            "chemprop_dim": (extractor.chemprop_dim if extractor else CHEMPROP_V2_GRAPH_DIM),
+            "chemprop_dim": (
+                extractor.chemprop_dim if extractor else CHEMPROP_V2_GRAPH_DIM
+            ),
             "pll_dim": (extractor.pll_dim if extractor else PLL_TOP_K),
-            "joint_dim": (extractor.joint_dim if extractor else CHEMPROP_V2_GRAPH_DIM + PLL_TOP_K),
+            "joint_dim": (
+                extractor.joint_dim if extractor else CHEMPROP_V2_GRAPH_DIM + PLL_TOP_K
+            ),
             "use_chemprop_fallback": (
                 extractor.use_chemprop_fallback if extractor else True
             ),

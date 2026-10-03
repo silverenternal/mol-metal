@@ -72,6 +72,7 @@ from rdkit.Chem import AllChem  # noqa: F401  (kept for downstream re-embedding)
 from molmetal.domain import Molecule, Pocket
 from molmetal.ports import GenerationConfig, MoleculeGenerator
 
+
 # Click reactions consume Tile-like objects; we use the lightweight
 # ``ReactionResult`` dataclass from the lambda layer.  We import
 # lazily to keep this module importable even when the lambda layer
@@ -81,11 +82,13 @@ def _get_click_dispatch():
         CLICK_REACTIONS,
         apply_click_reaction,
     )
+
     return CLICK_REACTIONS, apply_click_reaction
 
 
 def _get_build_tile():
     from molmetal_lam.tile_lib.click_tiles import build_click_tile
+
     return build_click_tile
 
 
@@ -140,48 +143,39 @@ _EXTRA_VALIDATED_TAGS = {"aromatic", "hydroxyl"}
 # Each tuple = (canonical SMILES, [list of handles carried]).
 CLICK_BUILDING_BLOCKS: List[tuple] = [
     # --- Azide handles (4) ---
-    ("CCN=[N+]=[N-]",            ["azide"]),                   # ethyl azide
-    ("c1ccc(CN=[N+]=[N-])cc1",   ["azide", "aromatic"]),       # benzyl azide
-    ("OCCN=[N+]=[N-]",           ["azide", "hydroxyl"]),       # 2-hydroxyethyl azide
-    ("c1ccc(N=[N+]=[N-])cc1",    ["azide", "aromatic"]),       # phenyl azide
-
+    ("CCN=[N+]=[N-]", ["azide"]),  # ethyl azide
+    ("c1ccc(CN=[N+]=[N-])cc1", ["azide", "aromatic"]),  # benzyl azide
+    ("OCCN=[N+]=[N-]", ["azide", "hydroxyl"]),  # 2-hydroxyethyl azide
+    ("c1ccc(N=[N+]=[N-])cc1", ["azide", "aromatic"]),  # phenyl azide
     # --- Terminal alkyne handles (4) ---
-    ("CC#C",                    ["alkyne"]),                  # propyne
-    ("c1ccc(CC#C)cc1",          ["alkyne", "aromatic"]),      # propargyl benzene
-    ("NCC#C",                   ["alkyne", "amine"]),         # propargylamine
-    ("OCC#C",                   ["alkyne", "hydroxyl"]),      # propargyl alcohol
-
+    ("CC#C", ["alkyne"]),  # propyne
+    ("c1ccc(CC#C)cc1", ["alkyne", "aromatic"]),  # propargyl benzene
+    ("NCC#C", ["alkyne", "amine"]),  # propargylamine
+    ("OCC#C", ["alkyne", "hydroxyl"]),  # propargyl alcohol
     # --- Internal alkyne / cyclooctyne (2) ---
-    ("C1CCCCC#CC1",             ["internal_alkyne"]),         # cyclooctyne (SPAAC partner)
-    ("CC#CC",                   ["internal_alkyne"]),         # 2-butyne
-
+    ("C1CCCCC#CC1", ["internal_alkyne"]),  # cyclooctyne (SPAAC partner)
+    ("CC#CC", ["internal_alkyne"]),  # 2-butyne
     # --- Phosphine (2) ---
-    ("CP(C)C",                  ["phosphine"]),               # trimethylphosphine
+    ("CP(C)C", ["phosphine"]),  # trimethylphosphine
     ("c1ccc(P(c2ccccc2)c2ccccc2)cc1", ["phosphine", "aromatic"]),  # triphenylphosphine
-
     # --- Thiol (2) ---
-    ("CCS",                     ["thiol"]),                   # ethanethiol
-    ("c1ccc(S)cc1",             ["thiol", "aromatic"]),       # thiophenol
-
+    ("CCS", ["thiol"]),  # ethanethiol
+    ("c1ccc(S)cc1", ["thiol", "aromatic"]),  # thiophenol
     # --- Diene (1) ---
-    ("C1=CC=CC1",               ["diene"]),                   # cyclopentadiene
-
+    ("C1=CC=CC1", ["diene"]),  # cyclopentadiene
     # --- Dienophile / alkene (3) ---
-    ("C=CC(=O)C",               ["alkene"]),                  # methyl vinyl ketone
-    ("C=CC#N",                  ["alkene"]),                  # acrylonitrile
-    ("C1(=O)C=CC(=O)N1",        ["maleimide"]),               # maleimide
-
+    ("C=CC(=O)C", ["alkene"]),  # methyl vinyl ketone
+    ("C=CC#N", ["alkene"]),  # acrylonitrile
+    ("C1(=O)C=CC(=O)N1", ["maleimide"]),  # maleimide
     # --- Boronic acid (2) ---
-    ("c1ccc(B(O)O)cc1",         ["boronic_acid", "aromatic"]),  # phenylboronic acid
-    ("B(O)O",                   ["boronic_acid"]),            # boric acid (Suzuki partner)
-
+    ("c1ccc(B(O)O)cc1", ["boronic_acid", "aromatic"]),  # phenylboronic acid
+    ("B(O)O", ["boronic_acid"]),  # boric acid (Suzuki partner)
     # --- Bromide (2) ---
-    ("BrCC",                    ["bromide"]),                 # bromoethane
-    ("c1ccc(Br)cc1",            ["bromide", "aromatic"]),     # bromobenzene
-
+    ("BrCC", ["bromide"]),  # bromoethane
+    ("c1ccc(Br)cc1", ["bromide", "aromatic"]),  # bromobenzene
     # --- Amine (2) ---
-    ("CCN",                     ["amine"]),                   # ethylamine
-    ("c1ccc(N)cc1",             ["amine", "aromatic"]),       # aniline
+    ("CCN", ["amine"]),  # ethylamine
+    ("c1ccc(N)cc1", ["amine", "aromatic"]),  # aniline
 ]
 
 
@@ -293,9 +287,11 @@ def _smiles_to_molecule_safe(smiles: str) -> Optional[Molecule]:
         conf = mol_h.GetConformer()
         coords = torch.tensor(
             [
-                [conf.GetAtomPosition(i).x,
-                 conf.GetAtomPosition(i).y,
-                 conf.GetAtomPosition(i).z]
+                [
+                    conf.GetAtomPosition(i).x,
+                    conf.GetAtomPosition(i).y,
+                    conf.GetAtomPosition(i).z,
+                ]
                 for i in range(n_atoms)
             ],
             dtype=torch.float32,
@@ -312,7 +308,10 @@ def _smiles_to_molecule_safe(smiles: str) -> Optional[Molecule]:
             i, j = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
             bt_name = bond.GetBondType().name
             bt_int = {
-                "SINGLE": 1, "DOUBLE": 2, "TRIPLE": 3, "AROMATIC": 12,
+                "SINGLE": 1,
+                "DOUBLE": 2,
+                "TRIPLE": 3,
+                "AROMATIC": 12,
             }.get(bt_name, 1)
             src_list.extend([i, j])
             dst_list.extend([j, i])
@@ -332,8 +331,9 @@ def _smiles_to_molecule_safe(smiles: str) -> Optional[Molecule]:
             smiles=canonical,
         )
     except Exception as exc:
-        logger.debug("ClickBuildingBlocks: _smiles_to_molecule_safe(%r) failed: %s",
-                    smiles, exc)
+        logger.debug(
+            "ClickBuildingBlocks: _smiles_to_molecule_safe(%r) failed: %s", smiles, exc
+        )
         return None
 
 
@@ -384,7 +384,7 @@ def enumerate_click_products(
     for i, a in enumerate(smiles_list):
         if len(products) >= max_products:
             break
-        for b in smiles_list[i + 1:]:
+        for b in smiles_list[i + 1 :]:
             if len(products) >= max_products:
                 break
             for rxn_name in CLICK_REACTIONS_map:
@@ -448,7 +448,9 @@ class ClickBuildingBlocks:
     def __getattr__(self, item):
         # Avoid recursion on dataclass-owned fields.
         if item in {
-            "adapter", "append_blocks", "max_blocks",
+            "adapter",
+            "append_blocks",
+            "max_blocks",
         }:
             raise AttributeError(item)
         return getattr(self.adapter, item)

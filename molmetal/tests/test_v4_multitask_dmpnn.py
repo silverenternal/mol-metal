@@ -115,13 +115,15 @@ def test_forward_shape():
     # All 5 metals present, each (B, 2)
     assert set(out.keys()) == set(SUPPORTED_METALS) | {"coord"}
     for metal in SUPPORTED_METALS:
-        assert out[metal].shape == (3, 2), (
-            f"{metal} logits expected (3, 2), got {tuple(out[metal].shape)}"
-        )
+        assert out[metal].shape == (
+            3,
+            2,
+        ), f"{metal} logits expected (3, 2), got {tuple(out[metal].shape)}"
     # Coord head
-    assert out["coord"].shape == (3, 5), (
-        f"coord logits expected (3, 5), got {tuple(out['coord'].shape)}"
-    )
+    assert out["coord"].shape == (
+        3,
+        5,
+    ), f"coord logits expected (3, 5), got {tuple(out['coord'].shape)}"
 
 
 def test_forward_shape_mismatched_lengths_raises():
@@ -173,29 +175,29 @@ def test_backward():
     # Encoder bottom layer (atom_embed) gradient is non-zero
     enc_grad = m.encoder.dmpnn.atom_embed[0].weight.grad
     assert enc_grad is not None, "Encoder atom_embed received no gradient"
-    assert enc_grad.abs().sum().item() > 0.0, (
-        "Encoder atom_embed gradient is zero — gradient not flowing"
-    )
+    assert (
+        enc_grad.abs().sum().item() > 0.0
+    ), "Encoder atom_embed gradient is zero — gradient not flowing"
 
     # Every metal head received gradient
     for met in SUPPORTED_METALS:
         head_lin1 = m.metal_heads[met][0]  # first Linear of the Sequential
         g = head_lin1.weight.grad
-        assert g is not None and g.abs().sum().item() > 0.0, (
-            f"metal_head[{met}] received no gradient"
-        )
+        assert (
+            g is not None and g.abs().sum().item() > 0.0
+        ), f"metal_head[{met}] received no gradient"
 
     # Coord head received gradient
     g_coord = m.coord_head[0].weight.grad
-    assert g_coord is not None and g_coord.abs().sum().item() > 0.0, (
-        "coord head received no gradient"
-    )
+    assert (
+        g_coord is not None and g_coord.abs().sum().item() > 0.0
+    ), "coord head received no gradient"
 
     # Metal embedding received gradient
     g_embed = m.metal_embed.weight.grad
-    assert g_embed is not None and g_embed.abs().sum().item() > 0.0, (
-        "metal embedding received no gradient"
-    )
+    assert (
+        g_embed is not None and g_embed.abs().sum().item() > 0.0
+    ), "metal embedding received no gradient"
 
 
 def test_loss_partial_metal_labels():
@@ -223,8 +225,8 @@ def test_metal_routing():
     """Each metal head emits (B, 2) logits; switching metal id swaps the
     routing path through the metal embedding but not the encoder."""
     m = _make_model()
-    metal_ids_a = torch.tensor([0, 0, 0], dtype=torch.long)   # all "Ru"
-    metal_ids_b = torch.tensor([4, 4, 4], dtype=torch.long)   # all "Os"
+    metal_ids_a = torch.tensor([0, 0, 0], dtype=torch.long)  # all "Ru"
+    metal_ids_b = torch.tensor([4, 4, 4], dtype=torch.long)  # all "Os"
 
     m.eval()  # disable dropout so output is deterministic
     out_a = m(SMILES_3, metal_ids_a)
@@ -242,14 +244,14 @@ def test_metal_routing():
     # Different metal id → different metal-embedding → different logits
     # for every metal head (they all see z which depends on e_metal)
     for met in SUPPORTED_METALS:
-        assert not torch.allclose(out_a[met], out_b[met]), (
-            f"{met} head gave identical output for Ru vs Os ids — routing broken"
-        )
+        assert not torch.allclose(
+            out_a[met], out_b[met]
+        ), f"{met} head gave identical output for Ru vs Os ids — routing broken"
 
     # Different metal id → different coord logits too (coord head consumes z)
-    assert not torch.allclose(out_a["coord"], out_b["coord"]), (
-        "Coord head gave identical output for Ru vs Os ids — routing broken"
-    )
+    assert not torch.allclose(
+        out_a["coord"], out_b["coord"]
+    ), "Coord head gave identical output for Ru vs Os ids — routing broken"
 
 
 def test_metal_routing_shared_encoder():
@@ -260,9 +262,7 @@ def test_metal_routing_shared_encoder():
     m.eval()
     h_a = m.encode(SMILES_3)
     h_b = m.encode(SMILES_3)
-    assert torch.allclose(h_a, h_b), (
-        "Encoder output should be independent of metal id"
-    )
+    assert torch.allclose(h_a, h_b), "Encoder output should be independent of metal id"
     assert h_a.shape == (3, m.hidden_dim)
 
 
@@ -407,9 +407,7 @@ def test_pretrain_loss_backward_flows_through_heads():
     # Pretrain losses
     sum_N = int(out["atom_mask"].sum().item())
     atom_labels = torch.randint(0, ATOM_VOCAB_SIZE, (sum_N,))
-    atom_loss = torch.nn.functional.cross_entropy(
-        out["atom_logits"], atom_labels
-    )
+    atom_loss = torch.nn.functional.cross_entropy(out["atom_logits"], atom_labels)
     mol_labels = torch.randint(0, m.n_pretrain_tasks, (3,))
     mol_loss = torch.nn.functional.cross_entropy(out["mol_clf"], mol_labels)
     total = base_loss + 0.1 * atom_loss + 0.1 * mol_loss

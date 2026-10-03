@@ -338,12 +338,14 @@ def apply_cuaac_with_regio(
     azide_mol = _canon(azide_smiles)
     if alkyne_mol is None:
         return _make_failure(
-            alkyne_smiles, azide_smiles,
+            alkyne_smiles,
+            azide_smiles,
             f"alkyne_smiles unparseable: {alkyne_smiles!r}",
         )
     if azide_mol is None:
         return _make_failure(
-            alkyne_smiles, azide_smiles,
+            alkyne_smiles,
+            azide_smiles,
             f"azide_smiles unparseable: {azide_smiles!r}",
         )
 
@@ -362,19 +364,20 @@ def apply_cuaac_with_regio(
     azide_pat = Chem.MolFromSmarts("[N-]=[N+]=[N]")
     if azide_pat is None:
         return _make_failure(
-            alkyne_smiles, azide_smiles,
+            alkyne_smiles,
+            azide_smiles,
             "internal: azide SMARTS pattern failed to compile",
         )
-    if not alkyne_mol.HasSubstructMatch(
-        Chem.MolFromSmarts("C#C")
-    ):
+    if not alkyne_mol.HasSubstructMatch(Chem.MolFromSmarts("C#C")):
         return _make_failure(
-            alkyne_smiles, azide_smiles,
+            alkyne_smiles,
+            azide_smiles,
             "alkyne_smiles does not contain a C#C triple bond",
         )
     if not azide_mol.HasSubstructMatch(azide_pat):
         return _make_failure(
-            alkyne_smiles, azide_smiles,
+            alkyne_smiles,
+            azide_smiles,
             "azide_smiles does not contain an -N=[N+]=[N-] group",
         )
 
@@ -387,14 +390,12 @@ def apply_cuaac_with_regio(
     # mapped as: alkyne-C5 (c:1) - N3-N2-N1 (n:5 n:4 n:3) - alkyne-C4 (c:2).
     # This is the Himo 2005 DFT-supported regio (terminal alkyne
     # carbon becomes C5, internal carbon becomes C4).
-    rxn_smarts = (
-        "[CH1:1]#[C:2].[N-:3]=[N+:4]=[N:5]>>"
-        "[c:1]1[n:5][n:4][n:3][c:2]1"
-    )
+    rxn_smarts = "[CH1:1]#[C:2].[N-:3]=[N+:4]=[N:5]>>" "[c:1]1[n:5][n:4][n:3][c:2]1"
     rxn = AllChem.ReactionFromSmarts(rxn_smarts)
     if rxn is None:
         return _make_failure(
-            alkyne_smiles, azide_smiles,
+            alkyne_smiles,
+            azide_smiles,
             "internal: CuAAC reaction SMARTS failed to compile",
         )
     products = rxn.RunReactants((alkyne_mol, azide_mol))
@@ -402,15 +403,15 @@ def apply_cuaac_with_regio(
         # Fallback: try with generic C atoms instead of [CH1] (some
         # SMILES have explicit H counts that don't match [CH1]).
         fallback_smarts = (
-            "[C:1]#[C:2].[N-:3]=[N+:4]=[N:5]>>"
-            "[c:1]1[n:5][n:4][n:3][c:2]1"
+            "[C:1]#[C:2].[N-:3]=[N+:4]=[N:5]>>" "[c:1]1[n:5][n:4][n:3][c:2]1"
         )
         rxn_fb = AllChem.ReactionFromSmarts(fallback_smarts)
         if rxn_fb is not None:
             products = rxn_fb.RunReactants((alkyne_mol, azide_mol))
     if not products:
         return _make_failure(
-            alkyne_smiles, azide_smiles,
+            alkyne_smiles,
+            azide_smiles,
             "CuAAC reaction produced no products (RDKit RunReactants empty)",
         )
 
@@ -426,7 +427,8 @@ def apply_cuaac_with_regio(
         )
     except Exception as exc:  # noqa: BLE001
         return _make_failure(
-            alkyne_smiles, azide_smiles,
+            alkyne_smiles,
+            azide_smiles,
             f"product failed RDKit sanitisation: {exc}",
         )
     product_smiles = Chem.MolToSmiles(product_mol)
@@ -443,7 +445,9 @@ def apply_cuaac_with_regio(
         "alkyne_terminal": terminal_ok,
     }
     if not terminal_ok:
-        info["warning"] = "alkyne is non-terminal; CuAAC strictly requires a terminal alkyne"
+        info["warning"] = (
+            "alkyne is non-terminal; CuAAC strictly requires a terminal alkyne"
+        )
 
     return StereoReductionResult(
         product_smiles=product_smiles,
@@ -481,19 +485,21 @@ def _is_alkyne_symmetric(mol: Chem.Mol) -> bool:
     to the fused ring, one to the side chain).
     """
     triple_bonds = [
-        b
-        for b in mol.GetBonds()
-        if b.GetBondType() == Chem.BondType.TRIPLE
+        b for b in mol.GetBonds() if b.GetBondType() == Chem.BondType.TRIPLE
     ]
     if not triple_bonds:
         return False
     bond = triple_bonds[0]
     a1, a2 = bond.GetBeginAtom(), bond.GetEndAtom()
     nbrs1 = sorted(
-        (n.GetSymbol(), n.GetDegree()) for n in a1.GetNeighbors() if n.GetIdx() != a2.GetIdx()
+        (n.GetSymbol(), n.GetDegree())
+        for n in a1.GetNeighbors()
+        if n.GetIdx() != a2.GetIdx()
     )
     nbrs2 = sorted(
-        (n.GetSymbol(), n.GetDegree()) for n in a2.GetNeighbors() if n.GetIdx() != a1.GetIdx()
+        (n.GetSymbol(), n.GetDegree())
+        for n in a2.GetNeighbors()
+        if n.GetIdx() != a1.GetIdx()
     )
     return nbrs1 == nbrs2
 
@@ -529,31 +535,33 @@ def apply_spaac_with_regio(
     azide_mol = _canon(azide_smiles)
     if alkyne_mol is None:
         return _make_failure(
-            strained_alkyne_smiles, azide_smiles,
+            strained_alkyne_smiles,
+            azide_smiles,
             f"strained_alkyne_smiles unparseable: {strained_alkyne_smiles!r}",
         )
     if azide_mol is None:
         return _make_failure(
-            strained_alkyne_smiles, azide_smiles,
+            strained_alkyne_smiles,
+            azide_smiles,
             f"azide_smiles unparseable: {azide_smiles!r}",
         )
     if not alkyne_mol.HasSubstructMatch(Chem.MolFromSmarts("C#C")):
         return _make_failure(
-            strained_alkyne_smiles, azide_smiles,
+            strained_alkyne_smiles,
+            azide_smiles,
             "strained_alkyne_smiles does not contain a C#C triple bond",
         )
     azide_pat = Chem.MolFromSmarts("[N-]=[N+]=[N]")
     if azide_pat is None or not azide_mol.HasSubstructMatch(azide_pat):
         return _make_failure(
-            strained_alkyne_smiles, azide_smiles,
+            strained_alkyne_smiles,
+            azide_smiles,
             "azide_smiles does not contain an -N=[N+]=[N-] group",
         )
 
     symmetric = _is_alkyne_symmetric(alkyne_mol)
     regio_label = (
-        "1,4-diazole (symmetric)"
-        if symmetric
-        else "1,5-diazole (unsymmetric)"
+        "1,4-diazole (symmetric)" if symmetric else "1,5-diazole (unsymmetric)"
     )
     regio_prob = SPAAC_REGIO_PROBABILITY[regio_label]
 
@@ -578,13 +586,15 @@ def apply_spaac_with_regio(
     rxn = AllChem.ReactionFromSmarts(rxn_smarts)
     if rxn is None:
         return _make_failure(
-            strained_alkyne_smiles, azide_smiles,
+            strained_alkyne_smiles,
+            azide_smiles,
             "internal: SPAAC reaction SMARTS failed to compile",
         )
     products = rxn.RunReactants((alkyne_mol, azide_mol))
     if not products:
         return _make_failure(
-            strained_alkyne_smiles, azide_smiles,
+            strained_alkyne_smiles,
+            azide_smiles,
             "SPAAC reaction produced no products (RDKit RunReactants empty)",
         )
 
@@ -598,7 +608,8 @@ def apply_spaac_with_regio(
         )
     except Exception as exc:  # noqa: BLE001
         return _make_failure(
-            strained_alkyne_smiles, azide_smiles,
+            strained_alkyne_smiles,
+            azide_smiles,
             f"product failed RDKit sanitisation: {exc}",
         )
     product_smiles = Chem.MolToSmiles(product_mol)
@@ -667,12 +678,14 @@ def apply_suzuki_with_stereo(
     halide_mol = _canon(halide_smiles)
     if boronic_mol is None:
         return _make_failure(
-            boronic_smiles, halide_smiles,
+            boronic_smiles,
+            halide_smiles,
             f"boronic_smiles unparseable: {boronic_smiles!r}",
         )
     if halide_mol is None:
         return _make_failure(
-            boronic_smiles, halide_smiles,
+            boronic_smiles,
+            halide_smiles,
             f"halide_smiles unparseable: {halide_smiles!r}",
         )
 
@@ -681,17 +694,20 @@ def apply_suzuki_with_stereo(
     o_pat = Chem.MolFromSmarts("[B]~[O]")
     if o_pat is None:
         return _make_failure(
-            boronic_smiles, halide_smiles,
+            boronic_smiles,
+            halide_smiles,
             "internal: B-O SMARTS pattern failed to compile",
         )
     if not boronic_mol.HasSubstructMatch(b_pat):
         return _make_failure(
-            boronic_smiles, halide_smiles,
+            boronic_smiles,
+            halide_smiles,
             "boronic_smiles does not contain a boron atom",
         )
     if not boronic_mol.HasSubstructMatch(o_pat):
         return _make_failure(
-            boronic_smiles, halide_smiles,
+            boronic_smiles,
+            halide_smiles,
             "boronic_smiles does not have a B-O bond (not a boronic acid)",
         )
 
@@ -699,7 +715,8 @@ def apply_suzuki_with_stereo(
     halide_pat = Chem.MolFromSmarts("[c,C]~[F,Cl,Br,I]")
     if not halide_mol.HasSubstructMatch(halide_pat):
         return _make_failure(
-            boronic_smiles, halide_smiles,
+            boronic_smiles,
+            halide_smiles,
             "halide_smiles does not contain an sp2 C-halogen bond",
         )
 
@@ -708,19 +725,19 @@ def apply_suzuki_with_stereo(
     # React: collapse B(OH)2 + C-X into a C-C bond, eject B(OH)2X.
     # The SMARTS uses generic * for leaving-group slots; the explicit
     # sp2 carbon of the aryl is mapped to maintain the ring topology.
-    rxn_smarts = (
-        "[c:1][B]([O])[O].[c:2][F,Cl,Br,I]>>[c:1][c:2]"
-    )
+    rxn_smarts = "[c:1][B]([O])[O].[c:2][F,Cl,Br,I]>>[c:1][c:2]"
     rxn = AllChem.ReactionFromSmarts(rxn_smarts)
     if rxn is None:
         return _make_failure(
-            boronic_smiles, halide_smiles,
+            boronic_smiles,
+            halide_smiles,
             "internal: Suzuki reaction SMARTS failed to compile",
         )
     products = rxn.RunReactants((boronic_mol, halide_mol))
     if not products:
         return _make_failure(
-            boronic_smiles, halide_smiles,
+            boronic_smiles,
+            halide_smiles,
             "Suzuki reaction produced no products (RDKit RunReactants empty)",
         )
 
@@ -729,7 +746,8 @@ def apply_suzuki_with_stereo(
         Chem.SanitizeMol(product_mol)
     except Exception as exc:  # noqa: BLE001
         return _make_failure(
-            boronic_smiles, halide_smiles,
+            boronic_smiles,
+            halide_smiles,
             f"product failed RDKit sanitisation: {exc}",
         )
     product_smiles = Chem.MolToSmiles(product_mol)
@@ -793,7 +811,8 @@ def apply_click(
     fn = _REACTION_DISPATCH.get(reaction)
     if fn is None:
         return _make_failure(
-            reagent_a, reagent_b,
+            reagent_a,
+            reagent_b,
             f"unsupported reaction {reaction!r}; "
             f"supported: {sorted(_REACTION_DISPATCH)}",
         )

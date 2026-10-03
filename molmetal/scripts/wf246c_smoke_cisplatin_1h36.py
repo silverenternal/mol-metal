@@ -67,6 +67,7 @@ Honest framing
 * For organic-only ligands the adjustment is exactly 0.0 (backward
   compatible).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -103,6 +104,7 @@ def _have_vina_meeko() -> bool:
     try:
         import vina  # noqa: F401
         import meeko  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -191,7 +193,15 @@ def _rewrite_metal_atype_for_vina(
     """
     METAL_ATYPES = {
         "M",  # generic (per metal_pdbqt_overrides.GENERIC_ATYPE)
-        "Pt", "Ru", "Ir", "Os", "Rh", "Pd", "Au", "Re", "Ag",
+        "Pt",
+        "Ru",
+        "Ir",
+        "Os",
+        "Rh",
+        "Pd",
+        "Au",
+        "Re",
+        "Ag",
     }
     text = lig_pdbqt.read_text()
     new_lines = []
@@ -240,6 +250,7 @@ def _compute_metal_coord_for_smiles(
     from molmetal.molmetal_lam.sbdd_env.metal_coord_term import (
         MetalCoordinationTerm,
     )
+
     term = MetalCoordinationTerm()
     score = term.score(smiles, pocket_donor_counts=pocket_donor_counts)
     return {
@@ -258,6 +269,7 @@ def _generate_cisplatin_pdbqt(out_dir: Path) -> Path:
     Returns the path to the rewritten-atype PDBQT (Mg for Vina).
     """
     from molmetal.molmetal_lam.sbdd_env.vina_adapter import _ligand_to_pdbqt
+
     out_dir.mkdir(parents=True, exist_ok=True)
     raw_pdbqt = _ligand_to_pdbqt(CISPLATIN_SMILES, out_dir, CISPLATIN_NAME)
     # Rewrite ``M`` → ``Mg`` so Vina's strict parser accepts it.
@@ -276,27 +288,37 @@ def main(argv: Optional[List[str]] = None) -> int:
         ),
     )
     parser.add_argument(
-        "--pocket", default=DEFAULT_POCKET,
+        "--pocket",
+        default=DEFAULT_POCKET,
         help="Pocket id (default: 1h36).",
     )
     parser.add_argument(
-        "--seeds", nargs="+", type=int, default=list(DEFAULT_SEEDS),
+        "--seeds",
+        nargs="+",
+        type=int,
+        default=list(DEFAULT_SEEDS),
         help="Seeds for Vina's MC search.",
     )
     parser.add_argument(
-        "--exhaustiveness", type=int, default=DEFAULT_EXHAUSTIVENESS,
+        "--exhaustiveness",
+        type=int,
+        default=DEFAULT_EXHAUSTIVENESS,
         help="Vina exhaustiveness (default: 8).",
     )
     parser.add_argument(
-        "--n-poses", type=int, default=DEFAULT_N_POSES,
+        "--n-poses",
+        type=int,
+        default=DEFAULT_N_POSES,
         help="Number of docked poses (default: 3).",
     )
     parser.add_argument(
-        "--prep-dir", default=str(DEFAULT_PREP_DIR),
+        "--prep-dir",
+        default=str(DEFAULT_PREP_DIR),
         help="Wf-30 pocket prep directory.",
     )
     parser.add_argument(
-        "--out-dir", default=str(DEFAULT_OUT_DIR),
+        "--out-dir",
+        default=str(DEFAULT_OUT_DIR),
         help="Output report directory.",
     )
     args = parser.parse_args(argv)
@@ -307,9 +329,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
 
     if not _have_vina_meeko():
-        LOG.error(
-            "vina/meeko not installed in this environment — cannot run smoke."
-        )
+        LOG.error("vina/meeko not installed in this environment — cannot run smoke.")
         return 2
 
     pocket_id = str(args.pocket)
@@ -331,20 +351,24 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # 1. Generate the cisplatin PDBQT (re-used across seeds).
     LOG.info(
-        "Generating cisplatin PDBQT for pocket %s (n_atoms=%d, "
-        "donor_counts=%s)",
-        pocket_id, n_atoms, pocket_donor_counts,
+        "Generating cisplatin PDBQT for pocket %s (n_atoms=%d, " "donor_counts=%s)",
+        pocket_id,
+        n_atoms,
+        pocket_donor_counts,
     )
     lig_pdbqt = _generate_cisplatin_pdbqt(out_dir / "ligand")
 
     # 2. Compute the metal-coordination composite for the SMILES.
     metal_coord = _compute_metal_coord_for_smiles(
-        CISPLATIN_SMILES, pocket_donor_counts,
+        CISPLATIN_SMILES,
+        pocket_donor_counts,
     )
     LOG.info(
         "Metal-coordination composite for cisplatin: total=%.3f, "
         "kcal_adjustment=%.3f (geom=%s hsab=%s dist=%s)",
-        metal_coord["metal_coord_total"] if metal_coord["metal_coord_total"] is not None else float("nan"),
+        metal_coord["metal_coord_total"]
+        if metal_coord["metal_coord_total"] is not None
+        else float("nan"),
         metal_coord["kcal_adjustment"],
         metal_coord["geometry_score"],
         metal_coord["hsab_score"],
@@ -376,7 +400,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             status = "docking_failed"
 
         adjustment = metal_coord["kcal_adjustment"]
-        adjusted_kcal = raw_kcal + adjustment if math.isfinite(raw_kcal) else float("nan")
+        adjusted_kcal = (
+            raw_kcal + adjustment if math.isfinite(raw_kcal) else float("nan")
+        )
 
         per_seed[str(seed)] = {
             "pocket_id": pocket_id,
@@ -391,7 +417,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         }
         LOG.info(
             "  seed=%d: plain=%.3f, metal_coord=%.3f (Δ=%+.3f)",
-            seed, raw_kcal, adjusted_kcal,
+            seed,
+            raw_kcal,
+            adjusted_kcal,
             adjustment,
         )
 
@@ -412,7 +440,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         "n_seeds": len(seeds),
         "n_seeds_succeeded": len(plain_vals),
         "plain_vina_mean": statistics.mean(plain_vals) if plain_vals else None,
-        "plain_vina_stdev": statistics.stdev(plain_vals) if len(plain_vals) > 1 else 0.0,
+        "plain_vina_stdev": statistics.stdev(plain_vals)
+        if len(plain_vals) > 1
+        else 0.0,
         "metal_coord_mean": statistics.mean(adj_vals) if adj_vals else None,
         "metal_coord_stdev": statistics.stdev(adj_vals) if len(adj_vals) > 1 else 0.0,
         "mean_adjustment": statistics.mean(adjustments) if adjustments else None,
@@ -467,8 +497,7 @@ def _render_synthesis_md(output: Dict[str, Any]) -> str:
         "Vina metal-coordination term\n"
         "**Engine**: AutoDock Vina 1.2.7 (Python binding)  \n"
         "**Exhaustiveness**: 8  \n"
-        "**Seeds**: "
-        + ", ".join(str(s) for s in output["seeds"]) + "\n"
+        "**Seeds**: " + ", ".join(str(s) for s in output["seeds"]) + "\n"
     )
     lines.append("\n## §1 Metal-coordination composite\n")
     lines.append(
@@ -477,7 +506,9 @@ def _render_synthesis_md(output: Dict[str, Any]) -> str:
         f"- **Pocket donor counts**: {output['pocket_donor_counts']}\n"
     )
     lines.append("\n## §2 Per-seed results\n")
-    lines.append("| Seed | Plain Vina (kcal/mol) | Metal-coord (kcal/mol) | Δ (kcal/mol) | Status |")
+    lines.append(
+        "| Seed | Plain Vina (kcal/mol) | Metal-coord (kcal/mol) | Δ (kcal/mol) | Status |"
+    )
     lines.append("|---:|---:|---:|---:|---|")
     for seed_str, rec in p.items():
         lines.append(

@@ -43,6 +43,7 @@ def cfm_module():
         build_synthetic_pt_click_clouds,
         NUM_BOND_CLASSES,
     )
+
     return {
         "torch": torch,
         "YuelBondBondDecoder": YuelBondBondDecoder,
@@ -57,6 +58,7 @@ class TestDecodeRatioMeasurement:
         from molmetal.scripts.train_cfm_yuelbond_wasserstein import (
             evaluate_decode_ratio,
         )
+
         assert callable(evaluate_decode_ratio)
 
     def test_synthetic_clouds_build(self, cfm_module):
@@ -75,6 +77,7 @@ class TestDecodeRatioMeasurement:
             CFMJointModel,
             YuelBondBondDecoder,
         )
+
         torch = cfm_module["torch"]
         build = cfm_module["build_synthetic_pt_click_clouds"]
         clouds = build(n_clouds=8, jitter=0.20, seed=0)
@@ -88,6 +91,7 @@ class TestDecodeRatioMeasurement:
         from molmetal.scripts.train_cfm_yuelbond_wasserstein import (
             evaluate_decode_ratio,
         )
+
         n_ok, n_total = evaluate_decode_ratio(
             model=model,
             decoder=decoder,
@@ -103,6 +107,7 @@ class TestDecodeRatioBackwardCompat:
     def test_metric_file_is_well_formed(self):
         """The ``decode_ratio.json`` metric file is parseable JSON."""
         import json
+
         # Try both possible locations (root + nested).
         for path_str in (
             "metrics/by_metric/decode_ratio.json",
@@ -120,9 +125,9 @@ class TestDecodeRatioBackwardCompat:
     def test_target_decode_ratio_field_present(self, cfm_module):
         """Wf-124 P2 ship target_decode_ratio field is present."""
         import json
+
         report_path = (
-            Path(_REPO)
-            / "molmetal/reports/wf124_p2_cfm_full/per_epoch_metrics.json"
+            Path(_REPO) / "molmetal/reports/wf124_p2_cfm_full/per_epoch_metrics.json"
         )
         if not report_path.exists():
             pytest.skip("Wf-124 P2 per_epoch_metrics.json not found")

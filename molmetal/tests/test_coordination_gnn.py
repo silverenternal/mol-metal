@@ -45,6 +45,7 @@ from molmetal.adapters.coordination_gnn import (
 # Test helpers
 # ---------------------------------------------------------------------------
 
+
 def _seeded_inputs(
     n_atoms: int = 8,
     n_edges: int = 16,
@@ -104,7 +105,9 @@ def _make_layer(
 ) -> CoordinationAwareGNNLayer:
     """Build a coordination-aware GNN layer with deterministic init."""
     torch.manual_seed(seed)
-    return CoordinationAwareGNNLayer(hidden_dim=hidden_dim, n_coordination_classes=n_coord)
+    return CoordinationAwareGNNLayer(
+        hidden_dim=hidden_dim, n_coordination_classes=n_coord
+    )
 
 
 def _make_heads(
@@ -131,6 +134,7 @@ def _make_heads(
 # ---------------------------------------------------------------------------
 # Layer — shape / dtype / device
 # ---------------------------------------------------------------------------
+
 
 def test_layer_shape_preserved_default():
     """Output preserves (n_atoms, hidden_dim) under default config."""
@@ -204,6 +208,7 @@ def test_layer_wrong_coordination_dim_raises():
 # Layer — equivariance / invariance
 # ---------------------------------------------------------------------------
 
+
 def test_layer_se3_invariance_rotation():
     """SE(3)-invariance: rotating coords does NOT change features."""
     layer = _make_layer()
@@ -255,7 +260,9 @@ def test_layer_swap_permutation_consistency():
     n = 9
     perm = torch.tensor([4, 1, 2, 3, 0, 5, 6, 7, 8])  # swap atoms 0 <-> 4
     x, ei, coord, _ = _seeded_inputs(n_atoms=n, n_edges=18, seed=5, with_coords=False)
-    coords = torch.arange(n, dtype=torch.float32).unsqueeze(-1) * torch.tensor([1.7, 2.3, 3.1])
+    coords = torch.arange(n, dtype=torch.float32).unsqueeze(-1) * torch.tensor(
+        [1.7, 2.3, 3.1]
+    )
     coords = coords + 100.0
     out_orig = layer(x, ei, coord, coords=coords)
     x_p = x[perm]
@@ -269,6 +276,7 @@ def test_layer_swap_permutation_consistency():
 # ---------------------------------------------------------------------------
 # Layer — coordination-class sensitivity
 # ---------------------------------------------------------------------------
+
 
 def test_layer_coordination_class_changes_output():
     """Changing the coordination-class one-hot of one atom changes its
@@ -293,6 +301,7 @@ def test_layer_coordination_class_changes_output():
 # ---------------------------------------------------------------------------
 # Layer — gradient / numerical sanity
 # ---------------------------------------------------------------------------
+
 
 def test_layer_gradient_flows():
     """Gradients flow back to x, edge_index leaves, coordination,
@@ -330,6 +339,7 @@ def test_layer_does_not_mutate_inputs():
 # Layer — determinism
 # ---------------------------------------------------------------------------
 
+
 def test_layer_deterministic_seeded():
     """Same seed → identical output (modulo torch's CUDA
     non-determinism; we're on CPU)."""
@@ -343,6 +353,7 @@ def test_layer_deterministic_seeded():
 # ---------------------------------------------------------------------------
 # Heads — shape / finiteness / mass conservation
 # ---------------------------------------------------------------------------
+
 
 def test_number_head_output_shape_default():
     """Number head output shape: (batch, n_metals, max_coordination)."""
@@ -427,6 +438,7 @@ def test_geom_head_wrong_feature_dim_raises():
 # Composite — tuple contract / determinism / pooling
 # ---------------------------------------------------------------------------
 
+
 def test_composite_outputs_tuple_of_three():
     """Composite.forward returns a tuple of 3 tensors."""
     layer = _make_layer()
@@ -475,7 +487,9 @@ def test_composite_run_layer_false_short_circuits_layer():
     (after pooling) — the output must still be finite and shaped."""
     layer = _make_layer()
     num_head, geom_head = _make_heads()
-    composite = CoordinationAwareGNNComposite(layer, num_head, geom_head, run_layer=False)
+    composite = CoordinationAwareGNNComposite(
+        layer, num_head, geom_head, run_layer=False
+    )
     x, ei, coord, coords = _seeded_inputs(n_atoms=8, n_edges=16, seed=14)
     feats, num_logits, geom_logits = composite(x, ei, coord, coords=coords)
     # Node-level features are passed through (raw ``x``) when the
@@ -500,8 +514,12 @@ def test_composite_batch_processing():
     x1 = torch.randn(n1, HIDDEN_DIM_DEFAULT, generator=g)
     x2 = torch.randn(n2, HIDDEN_DIM_DEFAULT, generator=g)
     x = torch.cat([x1, x2], dim=0)
-    coord1 = torch.softmax(torch.randn(n1, N_COORDINATION_CLASSES_DEFAULT, generator=g), dim=-1)
-    coord2 = torch.softmax(torch.randn(n2, N_COORDINATION_CLASSES_DEFAULT, generator=g), dim=-1)
+    coord1 = torch.softmax(
+        torch.randn(n1, N_COORDINATION_CLASSES_DEFAULT, generator=g), dim=-1
+    )
+    coord2 = torch.softmax(
+        torch.randn(n2, N_COORDINATION_CLASSES_DEFAULT, generator=g), dim=-1
+    )
     coord = torch.cat([coord1, coord2], dim=0)
     coords1 = torch.randn(n1, 3, generator=g)
     coords2 = torch.randn(n2, 3, generator=g)
@@ -510,10 +528,12 @@ def test_composite_batch_processing():
     e1 = torch.randint(0, n1, (2, 8), generator=g)
     e2 = torch.randint(0, n2, (2, 10), generator=g) + n1
     edge_index = torch.cat([e1, e2], dim=1)
-    batch = torch.cat([
-        torch.zeros(n1, dtype=torch.long),
-        torch.ones(n2, dtype=torch.long),
-    ])
+    batch = torch.cat(
+        [
+            torch.zeros(n1, dtype=torch.long),
+            torch.ones(n2, dtype=torch.long),
+        ]
+    )
     feats, num_logits, geom_logits = composite(
         x, edge_index, coord, coords=coords, batch=batch
     )
@@ -525,6 +545,7 @@ def test_composite_batch_processing():
 # ---------------------------------------------------------------------------
 # Misc / CPU-only
 # ---------------------------------------------------------------------------
+
 
 def test_layer_cpu_device():
     """Layer is fully CPU-portable (no CUDA / ROCm deps)."""
@@ -539,7 +560,9 @@ def test_layer_cpu_device():
         # CUDA is available — make sure we can also produce a CPU
         # output by constructing on CPU.
         layer = _make_layer().cpu()
-        x, ei, coord, coords = _seeded_inputs(n_atoms=4, n_edges=6, seed=17, device="cpu")
+        x, ei, coord, coords = _seeded_inputs(
+            n_atoms=4, n_edges=6, seed=17, device="cpu"
+        )
         out = layer(x, ei, coord, coords=coords)
         assert out.device.type == "cpu"
 
@@ -559,6 +582,7 @@ def test_layer_extreme_inputs_finite():
 def test_module_imports_exported_classes():
     """Public API surface is exported from the module."""
     import molmetal.adapters.coordination_gnn as m
+
     assert hasattr(m, "CoordinationAwareGNNLayer")
     assert hasattr(m, "CoordinationNumberHead")
     assert hasattr(m, "CoordinationGeometryHead")

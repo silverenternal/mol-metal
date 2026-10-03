@@ -101,9 +101,7 @@ def test_safe_count_counts_finite() -> None:
 # ---------------------------------------------------------------------------
 def test_featurise_smiles_known_drug() -> None:
     """Cisplatin gives finite, sensible 2-D descriptors."""
-    row = bench.featurise_smiles(
-        "Cl[Pt](Cl)(N)N", bench._RDKit(), *_try_get_sa()
-    )
+    row = bench.featurise_smiles("Cl[Pt](Cl)(N)N", bench._RDKit(), *_try_get_sa())
     assert row.mw == row.mw and row.mw > 200
     assert row.logp == row.logp
     assert row.qed == row.qed and 0 <= row.qed <= 1
@@ -112,9 +110,7 @@ def test_featurise_smiles_known_drug() -> None:
 
 def test_featurise_smiles_garbage_returns_nan() -> None:
     """Garbage SMILES → NaN fields (no crash)."""
-    row = bench.featurise_smiles(
-        "not_a_smiles_@@@", bench._RDKit(), *_try_get_sa()
-    )
+    row = bench.featurise_smiles("not_a_smiles_@@@", bench._RDKit(), *_try_get_sa())
     import math
 
     assert math.isnan(row.mw)
@@ -238,9 +234,7 @@ def test_read_csv_smiles_missing_returns_empty(tmp_path: Path) -> None:
 
 def test_read_tmqm_returns_strings(tmp_path: Path) -> None:
     """_read_tmqm yields the 'smiles' column of a minimal CSV."""
-    (tmp_path / "tmqm.csv").write_text(
-        "csd_code,smiles\nA,c1ccccc1\nB,CCO\n"
-    )
+    (tmp_path / "tmqm.csv").write_text("csd_code,smiles\nA,c1ccccc1\nB,CCO\n")
     out = bench._read_tmqm(tmp_path / "tmqm.csv")
     assert out == ["c1ccccc1", "CCO"]
 
@@ -256,18 +250,14 @@ def test_read_nci60_dedupes(tmp_path: Path) -> None:
 
 def test_read_platinai_4cell_returns_smiles(tmp_path: Path) -> None:
     """_read_platinai_4cell reads the 'smiles' column."""
-    (tmp_path / "p4.csv").write_text(
-        "complex_id,smiles\np1,Cl[Pt](Cl)(N)N\np2,NCCN\n"
-    )
+    (tmp_path / "p4.csv").write_text("complex_id,smiles\np1,Cl[Pt](Cl)(N)N\np2,NCCN\n")
     out = bench._read_platinai_4cell(tmp_path / "p4.csv")
     assert out == ["Cl[Pt](Cl)(N)N", "NCCN"]
 
 
 def test_read_platinai_5k_returns_smiles(tmp_path: Path) -> None:
     """_read_platinai_5k reads the 'smiles' column."""
-    (tmp_path / "p5.csv").write_text(
-        "id,smiles\np1,Cl[Pt](Cl)(N)N\np2,NCCN\n"
-    )
+    (tmp_path / "p5.csv").write_text("id,smiles\np1,Cl[Pt](Cl)(N)N\np2,NCCN\n")
     out = bench._read_platinai_5k(tmp_path / "p5.csv")
     assert out == ["Cl[Pt](Cl)(N)N", "NCCN"]
 
@@ -332,15 +322,9 @@ def test_main_runs_end_to_end(tmp_path: Path) -> None:
     (tmp_path / "tmqm.csv").write_text(
         "csd_code,smiles,metal_center\nA,c1ccccc1,C\nB,Cl[Pt](Cl)(N)N,Pt\n"
     )
-    (tmp_path / "nci60.csv").write_text(
-        "smiles,cell_line,pIC50,active\nCCO,A,5.0,1\n"
-    )
-    (tmp_path / "p4.csv").write_text(
-        "complex_id,smiles\np1,Cl[Pt](Cl)(N)N\n"
-    )
-    (tmp_path / "p5.csv").write_text(
-        "id,smiles\np1,c1ccccc1\n"
-    )
+    (tmp_path / "nci60.csv").write_text("smiles,cell_line,pIC50,active\nCCO,A,5.0,1\n")
+    (tmp_path / "p4.csv").write_text("complex_id,smiles\np1,Cl[Pt](Cl)(N)N\n")
+    (tmp_path / "p5.csv").write_text("id,smiles\np1,c1ccccc1\n")
     rc = bench.main(
         [
             "--tmqm-csv",
@@ -414,6 +398,7 @@ def _try_get_sa():
 
         return sa_score_ertl, sa_score_to_unit
     except Exception:  # pragma: no cover - sascorer missing in env
+
         def _noop(_smi: str) -> float:
             return float("nan")
 

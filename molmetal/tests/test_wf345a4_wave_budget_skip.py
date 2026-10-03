@@ -76,6 +76,7 @@ Cross-references
 * ``TODO/completed/345a4_wave_budget_skip.md`` — the Wf-345-A4 ship
   summary + the 3-way verdict design context.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -108,11 +109,12 @@ def _load_preflight_module():
     ``test_wf343c4_integration.py``.
     """
     spec = importlib.util.spec_from_file_location(
-        "pre_flight_check_wf345a4", PREFLIGHT_SCRIPT,
+        "pre_flight_check_wf345a4",
+        PREFLIGHT_SCRIPT,
     )
-    assert spec is not None and spec.loader is not None, (
-        f"pre_flight_check.py has no import spec ({PREFLIGHT_SCRIPT})"
-    )
+    assert (
+        spec is not None and spec.loader is not None
+    ), f"pre_flight_check.py has no import spec ({PREFLIGHT_SCRIPT})"
     mod = importlib.util.module_from_spec(spec)
     sys.modules["pre_flight_check_wf345a4"] = mod
     spec.loader.exec_module(mod)
@@ -131,8 +133,12 @@ def preflight():
 
 
 def _write_wave_budget_report(
-    path: Path, *, budget_hr: float, remaining_hr: float,
-    deferred_waves: list, waves: list,
+    path: Path,
+    *,
+    budget_hr: float,
+    remaining_hr: float,
+    deferred_waves: list,
+    waves: list,
     honest_framing: str = "fixture",
 ) -> Path:
     """Write a Wf-262 §7.1 schema wave_budget_report.json fixture.
@@ -156,9 +162,7 @@ def _write_wave_budget_report(
         "wave_source": "from --waves CLI (Wf-345-A4 fixture)",
         "auto_discovered": False,
         "n_configs_scanned": len(waves),
-        "n_actual_hr_loaded": sum(
-            1 for w in waves if w.get("actual_hr") is not None
-        ),
+        "n_actual_hr_loaded": sum(1 for w in waves if w.get("actual_hr") is not None),
     }
     path.write_text(json.dumps(report, indent=2), encoding="utf-8")
     return path
@@ -170,7 +174,8 @@ def _write_wave_budget_report(
 
 
 def test_gate_wf345a4_skip_when_only_deferred_exhaust_budget(
-    preflight, tmp_path,
+    preflight,
+    tmp_path,
 ) -> None:
     """Wf-345-A4 (1) — gate emits SKIP (not FAIL, not PASS) when
     the over-budget figure is wholly attributable to DEFERRED waves.
@@ -186,19 +191,32 @@ def test_gate_wf345a4_skip_when_only_deferred_exhaust_budget(
     """
     skip_report = _write_wave_budget_report(
         tmp_path / "wave_budget_skip.json",
-        budget_hr=10.0, remaining_hr=-10.0,
+        budget_hr=10.0,
+        remaining_hr=-10.0,
         deferred_waves=["Wave-cfm:cfm_full_retrain"],
         waves=[
             # COMPLETE — already done, excluded from non-deferred cost.
-            {"wave_name": "Wave-1:chemprop_smoke", "estimated_hr": 0.5,
-             "actual_hr": 0.5, "status": "COMPLETE"},
+            {
+                "wave_name": "Wave-1:chemprop_smoke",
+                "estimated_hr": 0.5,
+                "actual_hr": 0.5,
+                "status": "COMPLETE",
+            },
             # PLANNED — WILL run this session, costs 4.0h, fits budget.
-            {"wave_name": "Wave-2:chemprop_v2_full_sweep", "estimated_hr": 4.0,
-             "actual_hr": None, "status": "PLANNED"},
+            {
+                "wave_name": "Wave-2:chemprop_v2_full_sweep",
+                "estimated_hr": 4.0,
+                "actual_hr": None,
+                "status": "PLANNED",
+            },
             # DEFERRED — user-gated CFM wave (would be 16h, but DEFERRED
             # so excluded from non-deferred cost).
-            {"wave_name": "Wave-cfm:cfm_full_retrain", "estimated_hr": 16.0,
-             "actual_hr": None, "status": "DEFERRED"},
+            {
+                "wave_name": "Wave-cfm:cfm_full_retrain",
+                "estimated_hr": 16.0,
+                "actual_hr": None,
+                "status": "DEFERRED",
+            },
         ],
         honest_framing=(
             "10.0h budget exceeded by 10.0h; 1 wave(s) DEFERRED to next "
@@ -206,7 +224,10 @@ def test_gate_wf345a4_skip_when_only_deferred_exhaust_budget(
         ),
     )
     res = preflight.gate_wf343c4_wave_budget_remaining_nonneg(
-        "wf345a4_skip_test", "P3", "wf345a4", skip_report,
+        "wf345a4_skip_test",
+        "P3",
+        "wf345a4",
+        skip_report,
     )
     assert res.status == "SKIP", (
         f"deferred-only budget exhaustion should emit SKIP; got "
@@ -215,20 +236,20 @@ def test_gate_wf345a4_skip_when_only_deferred_exhaust_budget(
     # Evidence must surface both the deferred wave name + the BY-DESIGN
     # framing so downstream consumers know it's an honest negative,
     # not a launch blocker.
-    assert "DEFERRED" in res.evidence, (
-        f"SKIP evidence should name DEFERRED waves; got {res.evidence!r}"
-    )
-    assert "cfm_full_retrain" in res.evidence, (
-        f"SKIP evidence should name the deferred wave; got {res.evidence!r}"
-    )
-    assert "BY-DESIGN" in res.evidence or "non-deferred" in res.evidence.lower(), (
-        f"SKIP evidence should explain the BY-DESIGN framing; got {res.evidence!r}"
-    )
+    assert (
+        "DEFERRED" in res.evidence
+    ), f"SKIP evidence should name DEFERRED waves; got {res.evidence!r}"
+    assert (
+        "cfm_full_retrain" in res.evidence
+    ), f"SKIP evidence should name the deferred wave; got {res.evidence!r}"
+    assert (
+        "BY-DESIGN" in res.evidence or "non-deferred" in res.evidence.lower()
+    ), f"SKIP evidence should explain the BY-DESIGN framing; got {res.evidence!r}"
     # Status must not be FAIL (no real overrun) or PASS (would lie about
     # healthy budget).
-    assert res.status != "FAIL", (
-        f"deferred-only exhaustion must NOT be FAIL; got {res.evidence!r}"
-    )
+    assert (
+        res.status != "FAIL"
+    ), f"deferred-only exhaustion must NOT be FAIL; got {res.evidence!r}"
     assert res.status != "PASS", (
         f"deferred-only exhaustion must NOT be PASS (honest negative); "
         f"got {res.evidence!r}"
@@ -241,7 +262,8 @@ def test_gate_wf345a4_skip_when_only_deferred_exhaust_budget(
 
 
 def test_gate_wf345a4_fail_when_non_deferred_overrun(
-    preflight, tmp_path,
+    preflight,
+    tmp_path,
 ) -> None:
     """Wf-345-A4 (2) — gate emits FAIL when no DEFERRED waves exist
     AND remaining_hr < 0 (real budget overrun — every wave in the
@@ -255,15 +277,24 @@ def test_gate_wf345a4_fail_when_non_deferred_overrun(
     """
     fail_report = _write_wave_budget_report(
         tmp_path / "wave_budget_fail.json",
-        budget_hr=10.0, remaining_hr=-4.0,
+        budget_hr=10.0,
+        remaining_hr=-4.0,
         deferred_waves=[],  # NO DEFERRED — every wave contributes
         waves=[
             # COMPLETE — already incurred.
-            {"wave_name": "Wave-1:chemprop_smoke", "estimated_hr": 0.5,
-             "actual_hr": 0.5, "status": "COMPLETE"},
+            {
+                "wave_name": "Wave-1:chemprop_smoke",
+                "estimated_hr": 0.5,
+                "actual_hr": 0.5,
+                "status": "COMPLETE",
+            },
             # PLANNED — 14h alone exceeds budget.
-            {"wave_name": "Wave-2:chemprop_v2_full_sweep", "estimated_hr": 14.0,
-             "actual_hr": None, "status": "PLANNED"},
+            {
+                "wave_name": "Wave-2:chemprop_v2_full_sweep",
+                "estimated_hr": 14.0,
+                "actual_hr": None,
+                "status": "PLANNED",
+            },
         ],
         honest_framing=(
             "10.0h budget exceeded by 4.0h; 0 wave(s) DEFERRED; "
@@ -271,7 +302,10 @@ def test_gate_wf345a4_fail_when_non_deferred_overrun(
         ),
     )
     res = preflight.gate_wf343c4_wave_budget_remaining_nonneg(
-        "wf345a4_fail_test", "P3", "wf345a4", fail_report,
+        "wf345a4_fail_test",
+        "P3",
+        "wf345a4",
+        fail_report,
     )
     assert res.status == "FAIL", (
         f"real overrun with no DEFERRED waves should emit FAIL; got "
@@ -279,15 +313,15 @@ def test_gate_wf345a4_fail_when_non_deferred_overrun(
     )
     # Evidence must name the no-DEFERRED + negative remaining_hr so the
     # downstream consumer can diagnose the real problem.
-    assert "no DEFERRED" in res.evidence or "0 DEFERRED" in res.evidence, (
-        f"FAIL evidence should clarify no DEFERRED waves; got {res.evidence!r}"
-    )
-    assert "remaining_hr=-4.00h" in res.evidence or "remaining_hr=-4.0h" in res.evidence, (
-        f"FAIL evidence should name the negative remaining_hr; got {res.evidence!r}"
-    )
-    assert "real overrun" in res.evidence.lower(), (
-        f"FAIL evidence should describe the real overrun; got {res.evidence!r}"
-    )
+    assert (
+        "no DEFERRED" in res.evidence or "0 DEFERRED" in res.evidence
+    ), f"FAIL evidence should clarify no DEFERRED waves; got {res.evidence!r}"
+    assert (
+        "remaining_hr=-4.00h" in res.evidence or "remaining_hr=-4.0h" in res.evidence
+    ), f"FAIL evidence should name the negative remaining_hr; got {res.evidence!r}"
+    assert (
+        "real overrun" in res.evidence.lower()
+    ), f"FAIL evidence should describe the real overrun; got {res.evidence!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -296,7 +330,8 @@ def test_gate_wf345a4_fail_when_non_deferred_overrun(
 
 
 def test_gate_wf345a4_pass_when_budget_healthy(
-    preflight, tmp_path,
+    preflight,
+    tmp_path,
 ) -> None:
     """Wf-345-A4 (3) — gate emits PASS when budget is healthy
     (remaining_hr >= 0 AND non-deferred cost fits within budget_hr).
@@ -307,23 +342,34 @@ def test_gate_wf345a4_pass_when_budget_healthy(
     """
     pass_report = _write_wave_budget_report(
         tmp_path / "wave_budget_pass.json",
-        budget_hr=10.0, remaining_hr=6.0,
+        budget_hr=10.0,
+        remaining_hr=6.0,
         deferred_waves=[],
         waves=[
             # COMPLETE — already incurred.
-            {"wave_name": "Wave-1:chemprop_smoke", "estimated_hr": 0.5,
-             "actual_hr": 0.5, "status": "COMPLETE"},
+            {
+                "wave_name": "Wave-1:chemprop_smoke",
+                "estimated_hr": 0.5,
+                "actual_hr": 0.5,
+                "status": "COMPLETE",
+            },
             # PLANNED — WILL run, 4.0h total, fits within budget.
-            {"wave_name": "Wave-2:chemprop_v2_full_sweep", "estimated_hr": 4.0,
-             "actual_hr": None, "status": "PLANNED"},
+            {
+                "wave_name": "Wave-2:chemprop_v2_full_sweep",
+                "estimated_hr": 4.0,
+                "actual_hr": None,
+                "status": "PLANNED",
+            },
         ],
         honest_framing=(
-            "10.0h budget sufficient; 6.0h buffer remaining after "
-            "projected waves."
+            "10.0h budget sufficient; 6.0h buffer remaining after " "projected waves."
         ),
     )
     res = preflight.gate_wf343c4_wave_budget_remaining_nonneg(
-        "wf345a4_pass_test", "P3", "wf345a4", pass_report,
+        "wf345a4_pass_test",
+        "P3",
+        "wf345a4",
+        pass_report,
     )
     assert res.status == "PASS", (
         f"healthy 10h-budget / 4h-non-deferred should PASS; got "
@@ -331,12 +377,12 @@ def test_gate_wf345a4_pass_when_budget_healthy(
     )
     # Evidence must surface the budget + remaining + non-deferred cost
     # so downstream consumers can audit the contract.
-    assert "budget_hr=10" in res.evidence, (
-        f"PASS evidence should name budget_hr; got {res.evidence!r}"
-    )
-    assert "remaining_hr=6.0" in res.evidence, (
-        f"PASS evidence should name remaining_hr; got {res.evidence!r}"
-    )
-    assert "non_deferred_cost=4.00h" in res.evidence, (
-        f"PASS evidence should name non_deferred_cost; got {res.evidence!r}"
-    )
+    assert (
+        "budget_hr=10" in res.evidence
+    ), f"PASS evidence should name budget_hr; got {res.evidence!r}"
+    assert (
+        "remaining_hr=6.0" in res.evidence
+    ), f"PASS evidence should name remaining_hr; got {res.evidence!r}"
+    assert (
+        "non_deferred_cost=4.00h" in res.evidence
+    ), f"PASS evidence should name non_deferred_cost; got {res.evidence!r}"

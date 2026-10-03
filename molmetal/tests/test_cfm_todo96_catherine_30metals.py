@@ -51,17 +51,20 @@ if _REPO not in sys.path:
 class TestDBLOCK30Metals:
     def test_30_metals_present(self):
         from molmetal.math_skills.catherine_properties import DBLOCK_30_METALS
+
         assert len(DBLOCK_30_METALS) == 30
 
     def test_includes_3d_metals(self):
         """First 10 should cover the 3d row (Sc..Zn)."""
         from molmetal.math_skills.catherine_properties import DBLOCK_30_METALS
+
         three_d = {"Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn"}
         assert set(DBLOCK_30_METALS[:10]) == three_d
 
     def test_includes_preferred_metals(self):
         """Pt/Ru/Ir/Os/Rh/Re (the MetalCytoTox 5-metal cohort)."""
         from molmetal.math_skills.catherine_properties import DBLOCK_30_METALS
+
         for m in ("Pt", "Ru", "Ir", "Os", "Rh", "Re"):
             assert m in DBLOCK_30_METALS, f"{m} missing from DBLOCK_30_METALS"
 
@@ -75,6 +78,7 @@ class TestCatherineVerifier:
         from molmetal.math_skills.catherine_properties import (
             verify_all_catherine_properties,
         )
+
         # The verifier may need a minimal witness scaffold; if the
         # helper is not exposed, fall back to a generic call and
         # accept whatever schema is returned.
@@ -96,22 +100,17 @@ class TestCatherineVerifier:
 # ---------------------------------------------------------------------------
 class TestBenchCatherine30Metals:
     def test_bench_script_exists(self):
-        path = (
-            Path(_REPO)
-            / "molmetal/scripts/bench_catherine_30metals.py"
-        )
+        path = Path(_REPO) / "molmetal/scripts/bench_catherine_30metals.py"
         assert path.exists()
 
     def test_bench_script_is_executable(self):
         """``bench_catherine_30metals.py --help`` runs without error."""
         import subprocess
+
         proc = subprocess.run(
             [
                 "/home/hugo/codes/mol-metal/.venv/bin/python",
-                str(
-                    Path(_REPO)
-                    / "molmetal/scripts/bench_catherine_30metals.py"
-                ),
+                str(Path(_REPO) / "molmetal/scripts/bench_catherine_30metals.py"),
                 "--help",
             ],
             capture_output=True,
@@ -137,10 +136,7 @@ class TestBenchCatherine30Metals:
 # ---------------------------------------------------------------------------
 class TestCFMDriverWiresCatherine:
     def test_wf124_p2_closure_engine_tag_present(self):
-        path = (
-            Path(_REPO)
-            / "molmetal/reports/wf124_p2_cfm_full/per_epoch_metrics.json"
-        )
+        path = Path(_REPO) / "molmetal/reports/wf124_p2_cfm_full/per_epoch_metrics.json"
         if not path.exists():
             pytest.skip("Wf-124 P2 per_epoch_metrics.json not found")
         with open(path, "r", encoding="utf-8") as fh:

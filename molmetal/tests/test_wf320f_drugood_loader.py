@@ -52,7 +52,12 @@ def test_wf320f_canonical_columns_exact_order():
     """Returns the canonical 6-col schema in exact order (GATE-6)."""
     df = load_drugood(prefer_library=False)
     assert df.columns.tolist() == [
-        "smiles", "metal", "cell_line", "protein", "pIC50", "active",
+        "smiles",
+        "metal",
+        "cell_line",
+        "protein",
+        "pIC50",
+        "active",
     ]
 
 
@@ -101,7 +106,8 @@ def test_wf320f_scaffold_split_subsample_three_arrays():
             continue
         try:
             scaffold = MurckoScaffold.MurckoScaffoldSmiles(
-                mol=mol, includeChirality=False,
+                mol=mol,
+                includeChirality=False,
             )
         except Exception:
             continue
@@ -145,8 +151,13 @@ def test_wf320f_invalid_split_raises_valueerror(tmp_path: Path):
     payload = {
         "split": {
             "train": [
-                {"smiles": "CCO", "reg_label": 5.5, "assay_id": "A1",
-                 "cls_label": 1, "domain_id": 0},
+                {
+                    "smiles": "CCO",
+                    "reg_label": 5.5,
+                    "assay_id": "A1",
+                    "cls_label": 1,
+                    "domain_id": 0,
+                },
             ],
         },
     }
@@ -168,10 +179,10 @@ def test_wf320f_invalid_split_raises_valueerror(tmp_path: Path):
 def test_wf320f_smiles_rdkit_round_trip_subsample():
     """RDKit can round-trip ≥90% of DrugOOD SMILES (2k subsample)."""
     from rdkit import Chem
+
     df = load_drugood(prefer_library=False).sample(n=2000, random_state=3)
     parsed = sum(
-        1 for smi in df["smiles"].tolist()
-        if Chem.MolFromSmiles(smi) is not None
+        1 for smi in df["smiles"].tolist() if Chem.MolFromSmiles(smi) is not None
     )
     parse_rate = parsed / len(df)
     assert parse_rate >= 0.90, f"SMILES parse rate {parse_rate:.3f} < 0.90"

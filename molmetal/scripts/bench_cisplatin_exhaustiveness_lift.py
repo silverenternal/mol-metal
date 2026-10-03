@@ -69,6 +69,7 @@ Usage
     python molmetal/scripts/bench_cisplatin_exhaustiveness_lift.py \\
         --out-dir molmetal/reports/wf141_ex32_lift
 """
+
 from __future__ import annotations
 
 import argparse
@@ -98,8 +99,16 @@ CISPLATIN_NAME = "cisplatin"
 
 # 10 Wf-30 / Wf-121 P3 pockets — same cohort used at ex=8.
 POCKETS: Tuple[str, ...] = (
-    "830c", "1h36", "3eml", "3ny8", "4aaw",
-    "4rlu", "4rn0", "1fmc", "1g9v", "2hnx",
+    "830c",
+    "1h36",
+    "3eml",
+    "3ny8",
+    "4aaw",
+    "4rlu",
+    "4rn0",
+    "1fmc",
+    "1g9v",
+    "2hnx",
 )
 SEEDS: Tuple[int, ...] = (0, 1, 2)
 
@@ -125,10 +134,10 @@ class SeedRun:
     pocket_id: str
     seed: int
     exhaustiveness: int
-    kcal_min: Optional[float]            # top-pose kcal/mol
-    kcal_mean_top5: Optional[float]      # mean kcal/mol across n_poses
+    kcal_min: Optional[float]  # top-pose kcal/mol
+    kcal_mean_top5: Optional[float]  # mean kcal/mol across n_poses
     elapsed_s: float
-    status: str                          # "MEASURED" | "DOCK_FAILED"
+    status: str  # "MEASURED" | "DOCK_FAILED"
     error: Optional[str] = None
 
 
@@ -145,9 +154,9 @@ class PocketSummary:
     elapsed_s_per_seed: List[float]
     n_seeds_succeeded: int
     n_seeds_failed: int
-    ex8_baseline_mean_kcal: Optional[float]    # from Wf-121 P3
-    delta_vs_ex8_kcal: Optional[float]        # negative = lift
-    status: str                               # "MEASURED" | "MIXED" | "FAILED"
+    ex8_baseline_mean_kcal: Optional[float]  # from Wf-121 P3
+    delta_vs_ex8_kcal: Optional[float]  # negative = lift
+    status: str  # "MEASURED" | "MIXED" | "FAILED"
     engine: str = "vina"
     engine_version: str = ""
 
@@ -176,6 +185,7 @@ def _median(xs: List[float]) -> float:
 def _probe_vina_version() -> str:
     try:
         import vina  # noqa: F401
+
         return getattr(vina, "__version__", "unknown")
     except Exception:
         return "uninstalled"
@@ -255,12 +265,17 @@ def _dock_one(
         v.dock(exhaustiveness=int(exhaustiveness), n_poses=int(n_poses))
         energies = v.energies(n_poses=int(n_poses))
         kcal_min = float(energies[0, 0])
-        kcal_mean = float(_mean([float(energies[i, 0]) for i in range(energies.shape[0])]))
+        kcal_mean = float(
+            _mean([float(energies[i, 0]) for i in range(energies.shape[0])])
+        )
         return kcal_min, kcal_mean, time.time() - t0
     except Exception as exc:  # noqa: BLE001 — honest failure path
         LOG.error(
             "Vina dock failed (seed=%d, ex=%d): %s\n%s",
-            seed, exhaustiveness, exc, traceback.format_exc(),
+            seed,
+            exhaustiveness,
+            exc,
+            traceback.format_exc(),
         )
         return None, None, time.time() - t0
 
@@ -326,7 +341,9 @@ def run_pocket_at_exhaustiveness(
         if kcal_min is None:
             LOG.warning(
                 "%s seed=%d ex=%d failed; retrying once",
-                pocket_id, seed, exhaustiveness,
+                pocket_id,
+                seed,
+                exhaustiveness,
             )
             kcal_min, kcal_mean, elapsed = _dock_one(
                 receptor_pdbqt=receptor_path,
@@ -342,18 +359,22 @@ def run_pocket_at_exhaustiveness(
         kcal_min_per_seed.append(kcal_min)
         kcal_mean_per_seed.append(kcal_mean)
         elapsed_per_seed.append(elapsed)
-        per_seed_records.append({
-            "pocket_id": pocket_id,
-            "seed": seed,
-            "exhaustiveness": exhaustiveness,
-            "kcal_min": kcal_min,
-            "kcal_mean_top5": kcal_mean,
-            "elapsed_s": elapsed,
-            "status": status,
-        })
+        per_seed_records.append(
+            {
+                "pocket_id": pocket_id,
+                "seed": seed,
+                "exhaustiveness": exhaustiveness,
+                "kcal_min": kcal_min,
+                "kcal_mean_top5": kcal_mean,
+                "elapsed_s": elapsed,
+                "status": status,
+            }
+        )
         LOG.info(
             "  %s seed=%d ex=%d -> kcal_min=%s kcal_mean_top5=%s (%.2fs)",
-            pocket_id, seed, exhaustiveness,
+            pocket_id,
+            seed,
+            exhaustiveness,
             f"{kcal_min:.3f}" if kcal_min is not None else "FAILED",
             f"{kcal_mean:.3f}" if kcal_mean is not None else "FAILED",
             elapsed,
@@ -422,9 +443,7 @@ def run_pocket_at_exhaustiveness(
         "_per_seed": per_seed_records,
         "_aggregate": asdict(summary),
     }
-    (pocket_out / output_basename).write_text(
-        json.dumps(payload, indent=2)
-    )
+    (pocket_out / output_basename).write_text(json.dumps(payload, indent=2))
     return summary
 
 
@@ -449,7 +468,9 @@ def run_full_lift(
             continue
         LOG.info(
             "Pocket %s — docking cisplatin at ex=%d × %d seeds...",
-            pocket_id, exhaustiveness_primary, len(SEEDS),
+            pocket_id,
+            exhaustiveness_primary,
+            len(SEEDS),
         )
         primary_summaries[pocket_id] = run_pocket_at_exhaustiveness(
             pocket_id=pocket_id,
@@ -466,12 +487,15 @@ def run_full_lift(
         if pocket_id not in baseline:
             LOG.error(
                 "%s: missing from Wf-121 baseline — cannot run ex=%d upper-bound",
-                pocket_id, exhaustiveness_upper,
+                pocket_id,
+                exhaustiveness_upper,
             )
             continue
         LOG.info(
             "Upper-bound pocket %s — docking cisplatin at ex=%d × %d seeds...",
-            pocket_id, exhaustiveness_upper, len(SEEDS),
+            pocket_id,
+            exhaustiveness_upper,
+            len(SEEDS),
         )
         upper_summaries[pocket_id] = run_pocket_at_exhaustiveness(
             pocket_id=pocket_id,
@@ -493,12 +517,14 @@ def run_full_lift(
             "seeds": ps.seeds,
             "kcal_min_per_seed": ps.kcal_min_per_seed,
             "kcal_mean_top5_per_seed": ps.kcal_mean_top5_per_seed,
-            "kcal_min_mean": _mean(
-                [k for k in ps.kcal_min_per_seed if k is not None]
-            ) if any(k is not None for k in ps.kcal_min_per_seed) else None,
+            "kcal_min_mean": _mean([k for k in ps.kcal_min_per_seed if k is not None])
+            if any(k is not None for k in ps.kcal_min_per_seed)
+            else None,
             "kcal_mean_top5_mean": _mean(
                 [k for k in ps.kcal_mean_top5_per_seed if k is not None]
-            ) if any(k is not None for k in ps.kcal_mean_top5_per_seed) else None,
+            )
+            if any(k is not None for k in ps.kcal_mean_top5_per_seed)
+            else None,
             "ex8_baseline_mean_kcal": ps.ex8_baseline_mean_kcal,
             "delta_vs_ex8_kcal": ps.delta_vs_ex8_kcal,
             "elapsed_s_total": float(_mean(ps.elapsed_s_per_seed)),
@@ -521,12 +547,14 @@ def run_full_lift(
             "seeds": ps.seeds,
             "kcal_min_per_seed": ps.kcal_min_per_seed,
             "kcal_mean_top5_per_seed": ps.kcal_mean_top5_per_seed,
-            "kcal_min_mean": _mean(
-                [k for k in ps.kcal_min_per_seed if k is not None]
-            ) if any(k is not None for k in ps.kcal_min_per_seed) else None,
+            "kcal_min_mean": _mean([k for k in ps.kcal_min_per_seed if k is not None])
+            if any(k is not None for k in ps.kcal_min_per_seed)
+            else None,
             "kcal_mean_top5_mean": _mean(
                 [k for k in ps.kcal_mean_top5_per_seed if k is not None]
-            ) if any(k is not None for k in ps.kcal_mean_top5_per_seed) else None,
+            )
+            if any(k is not None for k in ps.kcal_mean_top5_per_seed)
+            else None,
             "ex8_baseline_mean_kcal": ps.ex8_baseline_mean_kcal,
             "delta_vs_ex8_kcal": ps.delta_vs_ex8_kcal,
             "n_seeds_succeeded": ps.n_seeds_succeeded,
@@ -535,9 +563,7 @@ def run_full_lift(
         }
         for ps in upper_summaries.values()
     }
-    (out_dir / "upper_bound_ex64.json").write_text(
-        json.dumps(upper_payload, indent=2)
-    )
+    (out_dir / "upper_bound_ex64.json").write_text(json.dumps(upper_payload, indent=2))
 
     # ---- synthesis.md ----
     md_lines: List[str] = []
@@ -644,9 +670,7 @@ def run_full_lift(
     md_lines.append("")
     md_lines.append("* `per_pocket_summary.json` — 10 pockets × ex=32.")
     md_lines.append("* `upper_bound_ex64.json` — 2 pockets × ex=64.")
-    md_lines.append(
-        "* `<pocket>/per_seed_metrics.json` — per-seed record per pocket."
-    )
+    md_lines.append("* `<pocket>/per_seed_metrics.json` — per-seed record per pocket.")
     (out_dir / "synthesis.md").write_text("\n".join(md_lines) + "\n")
 
     return {
@@ -682,27 +706,38 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--out-dir", type=Path, default=DEFAULT_OUT_DIR,
+        "--out-dir",
+        type=Path,
+        default=DEFAULT_OUT_DIR,
         help="Output root (default: molmetal/reports/wf141_ex32_lift).",
     )
     p.add_argument(
-        "--wf121-dir", type=Path, default=WF121_DIR,
+        "--wf121-dir",
+        type=Path,
+        default=WF121_DIR,
         help="Wf-121 P3 baseline dir (default: molmetal/reports/wf121_cisplatin_real_vina).",
     )
     p.add_argument(
-        "--exhaustiveness-primary", type=int, default=EXHAUSTIVENESS_PRIMARY,
+        "--exhaustiveness-primary",
+        type=int,
+        default=EXHAUSTIVENESS_PRIMARY,
         help="Primary exhaustiveness (default 32).",
     )
     p.add_argument(
-        "--exhaustiveness-upper", type=int, default=EXHAUSTIVENESS_UPPER,
+        "--exhaustiveness-upper",
+        type=int,
+        default=EXHAUSTIVENESS_UPPER,
         help="Upper-bound exhaustiveness (default 64).",
     )
     p.add_argument(
-        "--n-poses", type=int, default=N_POSES,
+        "--n-poses",
+        type=int,
+        default=N_POSES,
         help="Vina --num_modes (default 5).",
     )
     p.add_argument(
-        "--log-level", default="INFO",
+        "--log-level",
+        default="INFO",
         choices=("DEBUG", "INFO", "WARNING", "ERROR"),
     )
     return p

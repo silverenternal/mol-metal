@@ -5,6 +5,7 @@ usable pocket files) is unavailable it returns ``None``.  The two comparison
 engines are stochastic mocks around that score so the harness remains useful
 in lightweight test environments.
 """
+
 from __future__ import annotations
 
 import csv
@@ -49,6 +50,7 @@ def real_vina_score(smiles: str, pocket: str) -> float | None:
         return None
     try:
         import vina  # type: ignore
+
         # A complete ligand preparation pipeline is project-specific.  Keep
         # this hook real and fail safely until a prepared ligand is supplied.
         _ = vina, smiles, path
@@ -59,7 +61,10 @@ def real_vina_score(smiles: str, pocket: str) -> float | None:
 
 def _mock(smiles: str, pocket: str, sigma: float) -> tuple[float, str]:
     base = real_vina_score(smiles, pocket)
-    return (float(base if base is not None else 0.0) + random.gauss(0.0, sigma), "kcal/mol")
+    return (
+        float(base if base is not None else 0.0) + random.gauss(0.0, sigma),
+        "kcal/mol",
+    )
 
 
 def mock_qvina(smiles: str, pocket: str) -> tuple[float, str]:
@@ -79,26 +84,70 @@ def _pearson(xs: list[float], ys: list[float]) -> float:
     return num / den if den else 0.0
 
 
-def compare_engines(pockets: Iterable[str] | None = None, ligands: Iterable[str] | None = None,
-                    output_dir: str | Path = "molmetal/reports/round11_engine_parity",
-                    pocket_names: Iterable[str] | None = None,
-                    ligand_smiles: Iterable[str] | None = None) -> dict:
+def compare_engines(
+    pockets: Iterable[str] | None = None,
+    ligands: Iterable[str] | None = None,
+    output_dir: str | Path = "molmetal/reports/round11_engine_parity",
+    pocket_names: Iterable[str] | None = None,
+    ligand_smiles: Iterable[str] | None = None,
+) -> dict:
     pockets = list(pocket_names if pocket_names is not None else (pockets or POCKETS))
     ligands = list(ligand_smiles if ligand_smiles is not None else (ligands or LIGANDS))
-    out = Path(output_dir); out.mkdir(parents=True, exist_ok=True)
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
     rows, qd, kd, qv, kv, vv = [], [], [], [], [], []
     for pocket in pockets:
         for ligand in ligands:
             vina_score = real_vina_score(ligand, pocket)
-            if vina_score is None: vina_score = 0.0
-            qscore, _ = mock_qvina(ligand, pocket); kscore, _ = mock_quickvina2(ligand, pocket)
+            if vina_score is None:
+                vina_score = 0.0
+            qscore, _ = mock_qvina(ligand, pocket)
+            kscore, _ = mock_quickvina2(ligand, pocket)
             dq, dk = qscore - vina_score, kscore - vina_score
-            rows.append({"ligand": ligand, "pocket": pocket, "vina_score": vina_score,
-                         "qvina_score": qscore, "quickvina2_score": kscore,
-                         "delta_qvina": dq, "delta_quickvina2": dk})
-            qd.append(dq); kd.append(dk); vv.append(vina_score); qv.append(qscore); kv.append(kscore)
+            rows.append(
+                {
+                    "ligand": ligand,
+                    "pocket": pocket,
+                    "vina_score": vina_score,
+                    "qvina_score": qscore,
+                    "quickvina2_score": kscore,
+                    "delta_qvina": dq,
+                    "delta_quickvina2": dk,
+                }
+            )
+            qd.append(dq)
+            kd.append(dk)
+            vv.append(vina_score)
+            qv.append(qscore)
+            kv.append(kscore)
     with (out / "results.csv").open("w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0]) if rows else ["ligand", "pocket", "vina_score", "qvina_score", "quickvina2_score", "delta_qvina", "delta_quickvina2"]); writer.writeheader(); writer.writerows(rows)
-    summary = {"qvina": {"pearson_r": _pearson(vv, qv), "mad": sum(map(abs, qd))/len(qd) if qd else 0.0, "n_samples": len(qd)}, "quickvina2": {"pearson_r": _pearson(vv, kv), "mad": sum(map(abs, kd))/len(kd) if kd else 0.0, "n_samples": len(kd)}}
+        writer = csv.DictWriter(
+            f,
+            fieldnames=list(rows[0])
+            if rows
+            else [
+                "ligand",
+                "pocket",
+                "vina_score",
+                "qvina_score",
+                "quickvina2_score",
+                "delta_qvina",
+                "delta_quickvina2",
+            ],
+        )
+        writer.writeheader()
+        writer.writerows(rows)
+    summary = {
+        "qvina": {
+            "pearson_r": _pearson(vv, qv),
+            "mad": sum(map(abs, qd)) / len(qd) if qd else 0.0,
+            "n_samples": len(qd),
+        },
+        "quickvina2": {
+            "pearson_r": _pearson(vv, kv),
+            "mad": sum(map(abs, kd)) / len(kd) if kd else 0.0,
+            "n_samples": len(kd),
+        },
+    }
     (out / "summary.json").write_text(json.dumps(summary, indent=2))
     return summary

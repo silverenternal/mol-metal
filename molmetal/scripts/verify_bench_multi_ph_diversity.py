@@ -21,6 +21,7 @@ Usage
     source env.sh
     uv run --no-sync python molmetal/scripts/verify_bench_multi_ph_diversity.py
 """
+
 from __future__ import annotations
 
 import argparse
@@ -48,20 +49,36 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument("--data", default=bench._HERE.parent / "data" / "platinai_5k.csv",
-                   help="PlatinAI 5K CSV (default: data/platinai_5k.csv).")
-    p.add_argument("--n-samples", type=int, default=8,
-                   help="Number of SMILES to sample (default: 8).")
-    p.add_argument("--n-bins", type=int, default=8,
-                   help="Multi-PH bin count (default: 8).")
-    p.add_argument("--out-dir", type=Path,
-                   default=bench._HERE.parent.parent
-                   / "molmetal" / "reports" / "wf31_multi_ph_diversity",
-                   help="Output directory.")
-    p.add_argument("--metrics-path", type=Path,
-                   default=None,
-                   help="Output metrics path (default: <out-dir>/"
-                        "wf31_multi_ph_diversity_verify.json).")
+    p.add_argument(
+        "--data",
+        default=bench._HERE.parent / "data" / "platinai_5k.csv",
+        help="PlatinAI 5K CSV (default: data/platinai_5k.csv).",
+    )
+    p.add_argument(
+        "--n-samples",
+        type=int,
+        default=8,
+        help="Number of SMILES to sample (default: 8).",
+    )
+    p.add_argument(
+        "--n-bins", type=int, default=8, help="Multi-PH bin count (default: 8)."
+    )
+    p.add_argument(
+        "--out-dir",
+        type=Path,
+        default=bench._HERE.parent.parent
+        / "molmetal"
+        / "reports"
+        / "wf31_multi_ph_diversity",
+        help="Output directory.",
+    )
+    p.add_argument(
+        "--metrics-path",
+        type=Path,
+        default=None,
+        help="Output metrics path (default: <out-dir>/"
+        "wf31_multi_ph_diversity_verify.json).",
+    )
     return p.parse_args(argv)
 
 
@@ -81,7 +98,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     log.info(
         "verify_bench_multi_ph_diversity smoke: n_samples=%d n_bins=%d",
-        args.n_samples, args.n_bins,
+        args.n_samples,
+        args.n_bins,
     )
 
     metrics = bench.run_bench(
@@ -100,28 +118,30 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     exp = metrics["expressivity"]
     div = metrics["diversity"]
-    if (
-        metrics["n_parsed_multiph"] < 2
-        or metrics["n_parsed_diversity"] < 2
-    ):
+    if metrics["n_parsed_multiph"] < 2 or metrics["n_parsed_diversity"] < 2:
         log.error(
             "verify_bench_multi_ph_diversity failed: too few samples "
             "(parsed Multi-PH=%d, diversity=%d)",
-            metrics["n_parsed_multiph"], metrics["n_parsed_diversity"],
+            metrics["n_parsed_multiph"],
+            metrics["n_parsed_diversity"],
         )
         return 1
     log.info(
         "  expressivity multi_ph=%.3f single_ph=%.3f delta=%+.3f",
-        exp["multi_ph"], exp["single_ph"], exp["delta"],
+        exp["multi_ph"],
+        exp["single_ph"],
+        exp["delta"],
     )
     log.info(
         "  diversity tanimoto=%.3f meets_m7_floor=%s",
-        div["mean_tanimoto_distance"], div["meets_m7_floor"],
+        div["mean_tanimoto_distance"],
+        div["meets_m7_floor"],
     )
     log.info(
         "verify_bench_multi_ph_diversity PASSED "
         "(parsed_multi_ph=%d, parsed_diversity=%d)",
-        metrics["n_parsed_multiph"], metrics["n_parsed_diversity"],
+        metrics["n_parsed_multiph"],
+        metrics["n_parsed_diversity"],
     )
     return 0
 

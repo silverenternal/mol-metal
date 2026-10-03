@@ -44,9 +44,7 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 SCRIPTS_DIR = PROJECT_ROOT / "molmetal" / "scripts"
 TESTS_DIR = PROJECT_ROOT / "molmetal" / "tests"
-VENV_PY = (
-    PROJECT_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
-)
+VENV_PY = PROJECT_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
 
 # Ensure the scripts directory is importable for the ``importlib`` checks.
 if str(SCRIPTS_DIR) not in sys.path:
@@ -104,19 +102,23 @@ def test_refactored_script_imports_common_args(script_name: str, wf_tag: str) ->
     ), f"{wf_tag} ({script_name}): missing `_common_train_args` import"
 
     # All three helpers + the decorator must be present.
-    for helper in ("add_common_args", "add_gpu_args", "MEASURED_vs_PROJECTED_decorator"):
-        assert helper in src, (
-            f"{wf_tag} ({script_name}): helper {helper!r} not referenced"
-        )
+    for helper in (
+        "add_common_args",
+        "add_gpu_args",
+        "MEASURED_vs_PROJECTED_decorator",
+    ):
+        assert (
+            helper in src
+        ), f"{wf_tag} ({script_name}): helper {helper!r} not referenced"
 
 
 @pytest.mark.parametrize("script_name,wf_tag", SHIPPED_REFACTOR_TARGETS)
 def test_refactored_script_calls_setup_gpu_env(script_name: str, wf_tag: str) -> None:
     """Each script invokes ``setup_gpu_env`` so CUDA_VISIBLE_DEVICES is honoured."""
     src = _read_script(script_name)
-    assert "setup_gpu_env(args)" in src or "setup_gpu_env(" in src, (
-        f"{wf_tag} ({script_name}): setup_gpu_env(...) call missing in main()"
-    )
+    assert (
+        "setup_gpu_env(args)" in src or "setup_gpu_env(" in src
+    ), f"{wf_tag} ({script_name}): setup_gpu_env(...) call missing in main()"
 
 
 # ===========================================================================
@@ -153,9 +155,7 @@ DUPLICATED_FLAG_PATTERNS = (
 
 
 @pytest.mark.parametrize("script_name,wf_tag", SHIPPED_REFACTOR_TARGETS)
-def test_refactored_script_drops_duplicated_args(
-    script_name: str, wf_tag: str
-) -> None:
+def test_refactored_script_drops_duplicated_args(script_name: str, wf_tag: str) -> None:
     """Each script drops the duplicated ``p.add_argument(...)`` calls."""
     src = _read_script(script_name)
     leaked = []
@@ -166,8 +166,7 @@ def test_refactored_script_drops_duplicated_args(
         if re.search(pat, src):
             leaked.append(pat)
     assert not leaked, (
-        f"{wf_tag} ({script_name}): still has duplicated argparse calls: "
-        f"{leaked}"
+        f"{wf_tag} ({script_name}): still has duplicated argparse calls: " f"{leaked}"
     )
 
 
@@ -175,34 +174,28 @@ def test_refactored_script_drops_duplicated_args(
 # 5. Common args helper is invoked in parse_args
 # ===========================================================================
 @pytest.mark.parametrize("script_name,wf_tag", SHIPPED_REFACTOR_TARGETS)
-def test_refactored_script_calls_add_common_args(
-    script_name: str, wf_tag: str
-) -> None:
+def test_refactored_script_calls_add_common_args(script_name: str, wf_tag: str) -> None:
     """Each parse_args() invokes ``add_common_args``."""
     src = _read_script(script_name)
-    assert "add_common_args(" in src, (
-        f"{wf_tag} ({script_name}): parse_args does not call add_common_args"
-    )
+    assert (
+        "add_common_args(" in src
+    ), f"{wf_tag} ({script_name}): parse_args does not call add_common_args"
 
 
 @pytest.mark.parametrize("script_name,wf_tag", SHIPPED_REFACTOR_TARGETS)
-def test_refactored_script_calls_add_gpu_args(
-    script_name: str, wf_tag: str
-) -> None:
+def test_refactored_script_calls_add_gpu_args(script_name: str, wf_tag: str) -> None:
     """Each parse_args() invokes ``add_gpu_args``."""
     src = _read_script(script_name)
-    assert "add_gpu_args(" in src, (
-        f"{wf_tag} ({script_name}): parse_args does not call add_gpu_args"
-    )
+    assert (
+        "add_gpu_args(" in src
+    ), f"{wf_tag} ({script_name}): parse_args does not call add_gpu_args"
 
 
 # ===========================================================================
 # 6. parse_args() is well-formed: subprocess --help exits 0
 # ===========================================================================
 @pytest.mark.parametrize("script_name,wf_tag", SHIPPED_REFACTOR_TARGETS)
-def test_refactored_script_help_exits_zero(
-    script_name: str, wf_tag: str
-) -> None:
+def test_refactored_script_help_exits_zero(script_name: str, wf_tag: str) -> None:
     """``script --help`` exits 0 under the mol-metal-venv interpreter."""
     if not VENV_PY.exists():
         pytest.skip(f"venv python not at {VENV_PY}")
@@ -225,9 +218,16 @@ def test_refactored_script_help_exits_zero(
 # 7. --help output exposes the shared flag groups
 # ===========================================================================
 EXPECTED_SHARED_FLAGS = (
-    "--data", "--seeds", "--epochs", "--batch", "--lr",
-    "--hidden", "--depth",
-    "--cuda-visible-devices", "--mixed-precision", "--num-workers",
+    "--data",
+    "--seeds",
+    "--epochs",
+    "--batch",
+    "--lr",
+    "--hidden",
+    "--depth",
+    "--cuda-visible-devices",
+    "--mixed-precision",
+    "--num-workers",
 )
 
 
@@ -249,15 +249,13 @@ def test_refactored_script_help_lists_shared_flags(
     )
     assert result.returncode == 0
     for flag in EXPECTED_SHARED_FLAGS:
-        assert flag in result.stdout, (
-            f"{wf_tag} ({script_name}): {flag} missing from --help"
-        )
+        assert (
+            flag in result.stdout
+        ), f"{wf_tag} ({script_name}): {flag} missing from --help"
 
 
 @pytest.mark.parametrize("script_name,wf_tag", SHIPPED_REFACTOR_TARGETS)
-def test_refactored_script_help_lists_arg_groups(
-    script_name: str, wf_tag: str
-) -> None:
+def test_refactored_script_help_lists_arg_groups(script_name: str, wf_tag: str) -> None:
     """``--help`` output exposes the named argument groups from the helpers."""
     if not VENV_PY.exists():
         pytest.skip(f"venv python not at {VENV_PY}")
@@ -272,9 +270,9 @@ def test_refactored_script_help_lists_arg_groups(
     )
     assert result.returncode == 0
     for group_label in ("Common recipe", "GPU env"):
-        assert group_label in result.stdout, (
-            f"{wf_tag} ({script_name}): arg group {group_label!r} missing"
-        )
+        assert (
+            group_label in result.stdout
+        ), f"{wf_tag} ({script_name}): arg group {group_label!r} missing"
 
 
 # ===========================================================================
@@ -420,21 +418,19 @@ def test_planned_refactor_target_autoskip(script_name: str) -> None:
     # Once it does ship, this test should start exercising the same
     # contract as the shipped targets.
     src = _read_script(script_name)
-    assert "from molmetal.scripts._common_train_args import" in src, (
-        f"{script_name}: future target must import _common_train_args"
-    )
-    assert "@MEASURED_vs_PROJECTED_decorator()" in src, (
-        f"{script_name}: future target must decorate main()"
-    )
+    assert (
+        "from molmetal.scripts._common_train_args import" in src
+    ), f"{script_name}: future target must import _common_train_args"
+    assert (
+        "@MEASURED_vs_PROJECTED_decorator()" in src
+    ), f"{script_name}: future target must decorate main()"
 
 
 # ===========================================================================
 # 11. Smoke: script-level grep — no leftover import / parse_args mistakes
 # ===========================================================================
 @pytest.mark.parametrize("script_name,wf_tag", SHIPPED_REFACTOR_TARGETS)
-def test_refactored_script_no_syntax_errors(
-    script_name: str, wf_tag: str
-) -> None:
+def test_refactored_script_no_syntax_errors(script_name: str, wf_tag: str) -> None:
     """``python -m py_compile`` must succeed for each refactored script."""
     import py_compile
 

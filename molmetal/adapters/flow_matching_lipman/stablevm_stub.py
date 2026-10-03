@@ -114,9 +114,7 @@ class SampleBank:
                 f"shape {tuple(x0.shape)}. Use add_batch for [B, D] inputs."
             )
         anchor = x0.detach().to("cpu", copy=True)
-        q = self._bank.setdefault(
-            int(class_id), deque(maxlen=self.capacity_per_class)
-        )
+        q = self._bank.setdefault(int(class_id), deque(maxlen=self.capacity_per_class))
         q.append(anchor)
 
     def add_batch(self, class_ids: torch.Tensor, x0_batch: torch.Tensor) -> None:
@@ -218,8 +216,10 @@ class StableVMLoss:
     ) -> None:
         self.velocity_fn = velocity_fn
         self.config = config or StableVMConfig()
-        self.bank = bank if bank is not None else SampleBank(
-            capacity_per_class=self.config.bank_capacity_per_class
+        self.bank = (
+            bank
+            if bank is not None
+            else SampleBank(capacity_per_class=self.config.bank_capacity_per_class)
         )
 
     def __call__(
@@ -243,9 +243,7 @@ class StableVMLoss:
             anchor falls back to the K=1 (standard CFM) path.
         """
         if self.config.k_samples < 1:
-            raise ValueError(
-                f"k_samples must be >= 1, got {self.config.k_samples}"
-            )
+            raise ValueError(f"k_samples must be >= 1, got {self.config.k_samples}")
         # x_t = (1 - t) * x0 + t * x1; we keep this generic so the stub
         # is shape-agnostic (works for both flat and graph-shaped x).
         x_t = (1.0 - t) * x0 + t * x1
@@ -296,7 +294,7 @@ class StableVMLoss:
             per_candidate = stacked.mean(dim=tuple(range(1, stacked.dim())))
             weights = torch.softmax(-per_candidate, dim=0)
             # broadcast weights back across the per-element squared errors
-            weighted = (weights.view(-1, *([1] * (stacked.dim() - 1))) * stacked)
+            weighted = weights.view(-1, *([1] * (stacked.dim() - 1))) * stacked
             return weighted.sum(dim=0).mean()
         # Plain uniform mean.
         return stacked.mean(dim=0).mean()
@@ -340,9 +338,7 @@ def _smoke() -> None:
         cfm_losses.append(float(cfm(x0, x1, t=0.5, class_ids=class_ids).item()))
 
         # StableVM (k=4).
-        stablevm_losses.append(
-            float(loss(x0, x1, t=0.5, class_ids=class_ids).item())
-        )
+        stablevm_losses.append(float(loss(x0, x1, t=0.5, class_ids=class_ids).item()))
 
     cfm_var = torch.tensor(cfm_losses).var(unbiased=False).item()
     stablevm_var = torch.tensor(stablevm_losses).var(unbiased=False).item()

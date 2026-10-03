@@ -285,8 +285,7 @@ def register_rule(
     metadata = metadata or {}
     yield_range = metadata.get("yield_range")
     if yield_range is not None:
-        if (not isinstance(yield_range, (tuple, list))
-                or len(yield_range) != 2):
+        if not isinstance(yield_range, (tuple, list)) or len(yield_range) != 2:
             raise ValueError(
                 f"register_rule: yield_range must be a (low, high) "
                 f"tuple, got {yield_range!r}"
@@ -439,9 +438,7 @@ def record_test_result(
         If no rule with that name is registered.
     """
     if name not in _REGISTRY:
-        raise KeyError(
-            f"record_test_result: no rule registered under {name!r}."
-        )
+        raise KeyError(f"record_test_result: no rule registered under {name!r}.")
     if outcome not in ("PASS", "FAIL", "SKIP", "XFAIL", "XPASS"):
         # Soft warn: do not raise — accept any string so callers
         # can record custom outcomes (e.g. "TIMEOUT").
@@ -513,6 +510,7 @@ def _safe_import_beta_reductions():
     without the full click / metal-coord stack on the path."""
     try:
         from molmetal_lam.reactions import beta_reductions  # type: ignore
+
         return beta_reductions
     except Exception:
         return None
@@ -521,6 +519,7 @@ def _safe_import_beta_reductions():
 def _safe_import_pt_click_compat():
     try:
         from molmetal_lam.lam_chem import pt_click_compat  # type: ignore
+
         return pt_click_compat
     except Exception:
         return None
@@ -549,16 +548,14 @@ def wire_click_rules(*, overwrite: bool = False) -> List[RuleRecord]:
         module is not importable.
     """
     meta: Dict[str, Dict[str, Any]] = {
-        "CuAAC":         {"yield_range": (0.40, 0.95),
-                         "fg_compat":  ["azide", "alkyne"]},
-        "SPAAC":         {"yield_range": (0.60, 0.95),
-                         "fg_compat":  ["azide", "cyclooctyne"]},
-        "ThiolEne":      {"yield_range": (0.50, 0.95),
-                         "fg_compat":  ["thiol", "alkene"]},
-        "Suzuki":        {"yield_range": (0.30, 0.95),
-                         "fg_compat":  ["boronic_acid", "aryl_halide"]},
-        "AmideCoupling": {"yield_range": (0.50, 0.99),
-                         "fg_compat":  ["acid", "amine"]},
+        "CuAAC": {"yield_range": (0.40, 0.95), "fg_compat": ["azide", "alkyne"]},
+        "SPAAC": {"yield_range": (0.60, 0.95), "fg_compat": ["azide", "cyclooctyne"]},
+        "ThiolEne": {"yield_range": (0.50, 0.95), "fg_compat": ["thiol", "alkene"]},
+        "Suzuki": {
+            "yield_range": (0.30, 0.95),
+            "fg_compat": ["boronic_acid", "aryl_halide"],
+        },
+        "AmideCoupling": {"yield_range": (0.50, 0.99), "fg_compat": ["acid", "amine"]},
     }
     out: List[RuleRecord] = []
     try:
@@ -572,19 +569,19 @@ def wire_click_rules(*, overwrite: bool = False) -> List[RuleRecord]:
         if name not in meta:
             continue
         smarts = getattr(rule, "pattern_smiles", "") or ""
-        out.append(register_rule(
-            name=name,
-            smarts=smarts,
-            metadata=meta[name],
-            scope="click",
-            overwrite=overwrite,
-        ))
+        out.append(
+            register_rule(
+                name=name,
+                smarts=smarts,
+                metadata=meta[name],
+                scope="click",
+                overwrite=overwrite,
+            )
+        )
     return out
 
 
-def wire_metal_coordination_rules(
-    *, overwrite: bool = False
-) -> List[RuleRecord]:
+def wire_metal_coordination_rules(*, overwrite: bool = False) -> List[RuleRecord]:
     """Register the 2 metal-coordination rules (MetalLigandExchange +
     AquaExchange) with default metadata.
 
@@ -595,10 +592,14 @@ def wire_metal_coordination_rules(
         ``overwrite=True``).
     """
     meta: Dict[str, Dict[str, Any]] = {
-        "MetalLigandExchange": {"yield_range": (0.50, 0.95),
-                                "fg_compat":  ["leaving_group", "neutral_2e_donor"]},
-        "AquaExchange":        {"yield_range": (0.60, 0.99),
-                                "fg_compat":  ["leaving_group", "water"]},
+        "MetalLigandExchange": {
+            "yield_range": (0.50, 0.95),
+            "fg_compat": ["leaving_group", "neutral_2e_donor"],
+        },
+        "AquaExchange": {
+            "yield_range": (0.60, 0.99),
+            "fg_compat": ["leaving_group", "water"],
+        },
     }
     out: List[RuleRecord] = []
     try:
@@ -609,18 +610,21 @@ def wire_metal_coordination_rules(
         if name not in meta:
             continue
         smarts = getattr(rule, "pattern_smiles", "") or ""
-        out.append(register_rule(
-            name=name,
-            smarts=smarts,
-            metadata=meta[name],
-            scope="Pt",
-            overwrite=overwrite,
-        ))
+        out.append(
+            register_rule(
+                name=name,
+                smarts=smarts,
+                metadata=meta[name],
+                scope="Pt",
+                overwrite=overwrite,
+            )
+        )
     return out
 
 
 def wire_all_default_rules(*, overwrite: bool = False) -> List[RuleRecord]:
     """Register both click + metal-coord rules.  Convenience for the
     audit pipeline + smoke tests."""
-    return wire_click_rules(overwrite=overwrite) + \
-           wire_metal_coordination_rules(overwrite=overwrite)
+    return wire_click_rules(overwrite=overwrite) + wire_metal_coordination_rules(
+        overwrite=overwrite
+    )

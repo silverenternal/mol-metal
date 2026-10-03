@@ -120,6 +120,7 @@ Pytest
 
     pytest molmetal/tests/test_hilbert_astr_real_tmqm.py -v
 """
+
 from __future__ import annotations
 
 import argparse
@@ -208,11 +209,20 @@ BLEND_ALPHAS: Tuple[float, ...] = (0.0, 0.25, 0.5, 0.75, 1.0)
 # Counter-ion SMILES that should be dropped before ligand extraction
 # (tmQM d-block has many multi-component SMILES with [Cl-] etc.).
 _COUNTERION_FRAGMENTS = (
-    "[Cl-]", "[Br-]", "[I-]", "[F-]", "[OH-]", "[O-]",
+    "[Cl-]",
+    "[Br-]",
+    "[I-]",
+    "[F-]",
+    "[OH-]",
+    "[O-]",
     "[N+](=O)[O-]",  # nitrate
-    "[PF6-]", "[BF4-]",
-    "O", "N", "S",  # tiny solvents / single-atom donors
-    "[H]O[H]", "[OH2]",
+    "[PF6-]",
+    "[BF4-]",
+    "O",
+    "N",
+    "S",  # tiny solvents / single-atom donors
+    "[H]O[H]",
+    "[OH2]",
 )
 
 
@@ -330,6 +340,7 @@ def _bemis_murcko_scaffold(smi: str) -> str:
         # Drop metal atoms + dative bond marks for grouping.
         try:
             from rdkit import Chem as _Chem
+
             rwmol = _Chem.RWMol(mol)
             # Remove atoms that are metals or part of the metal-coordination complex.
             atoms_to_remove = []
@@ -337,9 +348,36 @@ def _bemis_murcko_scaffold(smi: str) -> str:
                 sym = atom.GetSymbol()
                 # Remove metal atoms (atomic_num >= 21 and != essential inners)
                 if atom.GetAtomicNum() >= 21 and sym in (
-                    "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
-                    "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
-                    "La", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg",
+                    "Sc",
+                    "Ti",
+                    "V",
+                    "Cr",
+                    "Mn",
+                    "Fe",
+                    "Co",
+                    "Ni",
+                    "Cu",
+                    "Zn",
+                    "Y",
+                    "Zr",
+                    "Nb",
+                    "Mo",
+                    "Tc",
+                    "Ru",
+                    "Rh",
+                    "Pd",
+                    "Ag",
+                    "Cd",
+                    "La",
+                    "Hf",
+                    "Ta",
+                    "W",
+                    "Re",
+                    "Os",
+                    "Ir",
+                    "Pt",
+                    "Au",
+                    "Hg",
                 ):
                     atoms_to_remove.append(atom.GetIdx())
             if atoms_to_remove:
@@ -512,7 +550,8 @@ def hilbert_feature_map(
         out_tr = np.concatenate([aug_tr, pad], axis=1)
         if aug_te is not None:
             pad_te = np.zeros(
-                (n_te, hilbert_dim - aug_te.shape[1]), dtype=np.float32,
+                (n_te, hilbert_dim - aug_te.shape[1]),
+                dtype=np.float32,
             )
             out_te = np.concatenate([aug_te, pad_te], axis=1)
             return out_tr, out_te
@@ -553,6 +592,7 @@ def fit_hilbert(
     from molmetal.molmetal_lam.reward.hilbert_primal_dual import (
         LambdaASTSRHilbert,
     )
+
     opt = LambdaASTSRHilbert(
         population_dim=hilbert_dim,
         lr_primal=lr,
@@ -589,6 +629,7 @@ def fit_astr(
 ) -> "LambdaASTSR":
     """Fit LambdaASTSR on the raw 12-d RDKit descriptor (no augmentation)."""
     from molmetal.molmetal_lam.reward.lambda_astsr import LambdaASTSR
+
     reg = LambdaASTSR(
         depth=depth,
         population=population,
@@ -752,7 +793,8 @@ def evaluate_element(
     ``combined_r2`` per-fold, plus ``strict_scaffold`` flag.
     """
     X, y, smiles, scaffold_ids = load_element_cohort(
-        element, target_col=target_col,
+        element,
+        target_col=target_col,
     )
     n, d_feat = X.shape
 
@@ -811,9 +853,9 @@ def evaluate_element(
             # 90/10 inner validation split for alpha selection.
             n_inner_te = max(1, int(round(len(tr) * 0.10)))
             seed_int = int(seed) if not isinstance(seed, list) else int(seed[0])
-            inner_perm = np.random.default_rng(
-                seed_int * 1000 + fold_idx
-            ).permutation(len(tr))
+            inner_perm = np.random.default_rng(seed_int * 1000 + fold_idx).permutation(
+                len(tr)
+            )
             inner_te_idx = inner_perm[:n_inner_te]
             inner_tr_idx = inner_perm[n_inner_te:]
 
@@ -831,21 +873,29 @@ def evaluate_element(
             X_tr_n = np.nan_to_num(X_tr_n, nan=0.0, posinf=0.0, neginf=0.0)
             X_te_n = np.nan_to_num(X_te_n, nan=0.0, posinf=0.0, neginf=0.0)
             X_tr_inner_n = np.nan_to_num(
-                X_tr_inner_n, nan=0.0, posinf=0.0, neginf=0.0,
+                X_tr_inner_n,
+                nan=0.0,
+                posinf=0.0,
+                neginf=0.0,
             )
             X_te_inner_n = np.nan_to_num(
-                X_te_inner_n, nan=0.0, posinf=0.0, neginf=0.0,
+                X_te_inner_n,
+                nan=0.0,
+                posinf=0.0,
+                neginf=0.0,
             )
 
             # Hilbert feature map: build on inner-train (for alpha
             # selection) AND on full outer-train (for final test
             # prediction). Each call returns aligned train + (test | None).
             X_tr_inner_h, X_te_inner_h = hilbert_feature_map(
-                X_tr_inner_n.astype(np.float32), hilbert_dim,
+                X_tr_inner_n.astype(np.float32),
+                hilbert_dim,
                 X_12d_test=X_te_inner_n.astype(np.float32),
             )
             X_tr_h, X_te_h = hilbert_feature_map(
-                X_tr_n.astype(np.float32), hilbert_dim,
+                X_tr_n.astype(np.float32),
+                hilbert_dim,
                 X_12d_test=X_te_n.astype(np.float32),
             )
 
@@ -928,8 +978,7 @@ def evaluate_element(
                     "combined_r2": float(r2_c),
                     "alpha_chosen": float(alpha),
                     "collapse_detected": bool(collapse_c),
-                    "wall_s": float(time.perf_counter() - t0)
-                    / max(fold_idx + 1, 1),
+                    "wall_s": float(time.perf_counter() - t0) / max(fold_idx + 1, 1),
                 }
             )
             # Per-fold progress to stdout (line-buffered via ``-u``).
@@ -977,7 +1026,9 @@ def evaluate_element(
                 "hilbert_r2_per_fold_mean": seed_r2_h,
                 "astr_r2_per_fold_mean": seed_r2_a,
                 "alpha_mean": float(np.mean(alphas_chosen)) if alphas_chosen else 1.0,
-                "alpha_std": float(np.std(alphas_chosen)) if len(alphas_chosen) > 1 else 0.0,
+                "alpha_std": float(np.std(alphas_chosen))
+                if len(alphas_chosen) > 1
+                else 0.0,
                 "per_fold": per_fold,
                 "wall_time_s": float(time.perf_counter() - t0),
                 "n_samples": int(n),
@@ -1000,17 +1051,21 @@ def evaluate_element(
         "n_seeds": len(seeds),
         "strict_scaffold": bool(strict_scaffold),
         "combined_r2_mean": float(np.mean(r2_combined_per_seed))
-        if r2_combined_per_seed else 0.0,
+        if r2_combined_per_seed
+        else 0.0,
         "combined_r2_std": float(np.std(r2_combined_per_seed))
-        if len(r2_combined_per_seed) > 1 else 0.0,
+        if len(r2_combined_per_seed) > 1
+        else 0.0,
         "hilbert_r2_mean": float(np.mean(r2_hilbert_per_seed))
-        if r2_hilbert_per_seed else 0.0,
+        if r2_hilbert_per_seed
+        else 0.0,
         "hilbert_r2_std": float(np.std(r2_hilbert_per_seed))
-        if len(r2_hilbert_per_seed) > 1 else 0.0,
-        "astr_r2_mean": float(np.mean(r2_astr_per_seed))
-        if r2_astr_per_seed else 0.0,
+        if len(r2_hilbert_per_seed) > 1
+        else 0.0,
+        "astr_r2_mean": float(np.mean(r2_astr_per_seed)) if r2_astr_per_seed else 0.0,
         "astr_r2_std": float(np.std(r2_astr_per_seed))
-        if len(r2_astr_per_seed) > 1 else 0.0,
+        if len(r2_astr_per_seed) > 1
+        else 0.0,
         "per_seed": per_seed,
     }
     return summary
@@ -1035,10 +1090,13 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
     """Write ``<out_dir>/synthesis.md`` cross-element summary."""
     out_dir.mkdir(parents=True, exist_ok=True)
     strict_str = (
-        "strict-scaffold disjoint" if all_results and all_results[0].get("strict_scaffold")
+        "strict-scaffold disjoint"
+        if all_results and all_results[0].get("strict_scaffold")
         else "random"
     )
-    target_col = all_results[0].get("target_col", COORD_COL) if all_results else COORD_COL
+    target_col = (
+        all_results[0].get("target_col", COORD_COL) if all_results else COORD_COL
+    )
     lines: List[str] = [
         "# Wf-86 Phase 2 — REAL Hilbert+ASTSR combined R² on tmQM d-block 5-element",
         "",
@@ -1075,9 +1133,7 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
         )
         combined_means.append(r["combined_r2_mean"])
     aggregate = float(np.mean(combined_means)) if combined_means else 0.0
-    aggregate_std = (
-        float(np.std(combined_means)) if len(combined_means) > 1 else 0.0
-    )
+    aggregate_std = float(np.std(combined_means)) if len(combined_means) > 1 else 0.0
     lines.append(
         "| **5-element aggregate** | — | **{agg:+.4f} ± {ags:.4f}** | — | — |".format(
             agg=aggregate,
@@ -1105,21 +1161,27 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
     lines.append("")
     lines.append("Three observations explain the negative result:")
     lines.append("")
-    lines.append("1. **ASTSR dominates the blend** — `alpha_mean ≈ 0.10` across all 25 "
-                 "(5 elements × 5 seeds) fits.  The inner-validation alpha grid "
-                 "consistently down-weights the Hilbert branch.")
-    lines.append("2. **Hilbert overfits dramatically** — Hilbert-only R² is "
-                 "**−1.9 to −10.2** (way worse than baseline).  This is the "
-                 "**N >> F failure mode** of the primal-dual least-squares "
-                 "solver: 64-d Hilbert feature map on 100-500 train rows "
-                 "leaves the system strongly underdetermined.")
-    lines.append("3. **ASTSR is at-baseline** — ASTSR-only R² ranges from "
-                 "**−0.08 to −0.44**, clustered very close to 0.  This is "
-                 "the expected behaviour for the 12-d RDKit 2D descriptor "
-                 "when no physico-chemical feature strongly correlates with "
-                 "coordination number — `coord_number` is a **structural "
-                 "property of the metal centre**, not a property of the "
-                 "ligand envelope.")
+    lines.append(
+        "1. **ASTSR dominates the blend** — `alpha_mean ≈ 0.10` across all 25 "
+        "(5 elements × 5 seeds) fits.  The inner-validation alpha grid "
+        "consistently down-weights the Hilbert branch."
+    )
+    lines.append(
+        "2. **Hilbert overfits dramatically** — Hilbert-only R² is "
+        "**−1.9 to −10.2** (way worse than baseline).  This is the "
+        "**N >> F failure mode** of the primal-dual least-squares "
+        "solver: 64-d Hilbert feature map on 100-500 train rows "
+        "leaves the system strongly underdetermined."
+    )
+    lines.append(
+        "3. **ASTSR is at-baseline** — ASTSR-only R² ranges from "
+        "**−0.08 to −0.44**, clustered very close to 0.  This is "
+        "the expected behaviour for the 12-d RDKit 2D descriptor "
+        "when no physico-chemical feature strongly correlates with "
+        "coordination number — `coord_number` is a **structural "
+        "property of the metal centre**, not a property of the "
+        "ligand envelope."
+    )
     lines.append("")
     lines.append(
         "**Bottom line**: the negative result is the **MEASURED honest "
@@ -1170,13 +1232,25 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
     lines.append("  both train and test) is preserved trivially when every row has a")
     lines.append("  unique scaffold key.")
     lines.append("- **Alpha selection**: per-fold 90/10 inner validation; grid over")
-    lines.append("  alpha ∈ {0.0, 0.25, 0.5, 0.75, 1.0}; reported as `alpha_chosen` per fold.")
-    lines.append("- **Collapse detector**: `pred_std / y_test_std < 0.10` flagged in `per_fold`.")
-    lines.append("- **No Multi-PH + PLL**: this is the **combined Hilbert+ASTSR** anchor;")
-    lines.append("  Multi-PH/PLL augmentation is a separate workstream (Wf-79 P2 3-way + PLL).")
+    lines.append(
+        "  alpha ∈ {0.0, 0.25, 0.5, 0.75, 1.0}; reported as `alpha_chosen` per fold."
+    )
+    lines.append(
+        "- **Collapse detector**: `pred_std / y_test_std < 0.10` flagged in `per_fold`."
+    )
+    lines.append(
+        "- **No Multi-PH + PLL**: this is the **combined Hilbert+ASTSR** anchor;"
+    )
+    lines.append(
+        "  Multi-PH/PLL augmentation is a separate workstream (Wf-79 P2 3-way + PLL)."
+    )
     lines.append("- **CPU smoke**: per-element fits in < 5 s on a single CPU core for")
-    lines.append("  the typical 100-500 row per-element cohort (full 5-element × 5-seed")
-    lines.append("  × 5-fold benchmark runs in < 60 s total).  GPU-1 RTX 5090 optional.")
+    lines.append(
+        "  the typical 100-500 row per-element cohort (full 5-element × 5-seed"
+    )
+    lines.append(
+        "  × 5-fold benchmark runs in < 60 s total).  GPU-1 RTX 5090 optional."
+    )
     lines.append("")
     lines.append(
         "Per `party-twenty-spirit §3.5`: aggregate combined R² = "
@@ -1223,9 +1297,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         type=_parse_elements,
         nargs="+",
         default=list(DEFAULT_ELEMENTS),
-        help=(
-            "d-block elements to benchmark (default: Cu Fe Ni Zn Co)."
-        ),
+        help=("d-block elements to benchmark (default: Cu Fe Ni Zn Co)."),
     )
     parser.add_argument(
         "--target",
@@ -1330,9 +1402,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         f"seeds={args.seeds} epochs={args.epochs} "
         f"strict_scaffold={args.strict_scaffold} device={args.device}"
     )
-    print(
-        f"[wf86-p2] CSV path: {_resolve_tmqmcsv_path()}"
-    )
+    print(f"[wf86-p2] CSV path: {_resolve_tmqmcsv_path()}")
 
     all_results: List[Dict[str, Any]] = []
     for element in args.elements:

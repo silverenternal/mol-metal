@@ -38,6 +38,7 @@ Honest framing (per ``party-twenty-spirit`` §3.5):
     failure mode is identical to the Wf-338-A3 finding 2 root cause
     and is caught by ``test_help_returns_rc_zero_when_chemprop_installed``.
 """
+
 from __future__ import annotations
 
 import json
@@ -86,8 +87,11 @@ def _help_output() -> tuple[int, str]:
     env.setdefault("PYTHONPATH", str(_REPO_ROOT))
     proc = subprocess.run(
         [py, str(_CHEMPROP), "--help"],
-        capture_output=True, text=True, timeout=30,
-        cwd=str(_REPO_ROOT), env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        cwd=str(_REPO_ROOT),
+        env=env,
     )
     combined = proc.stdout + "\n" + proc.stderr
     return proc.returncode, combined
@@ -120,10 +124,12 @@ def test_wf344a2_gate_p3_todo_119_p14_cpu_smoke_ready_passes():
     env.setdefault("PYTHONPATH", str(_REPO_ROOT))
     out_path = "/tmp/wf344a2_preflight.json"
     proc = subprocess.run(
-        [py, str(_PRE_FLIGHT), "--pipeline", "chemprop_v2_v3",
-         "--json", out_path],
-        capture_output=True, text=True, timeout=300,
-        cwd=str(_REPO_ROOT), env=env,
+        [py, str(_PRE_FLIGHT), "--pipeline", "chemprop_v2_v3", "--json", out_path],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        cwd=str(_REPO_ROOT),
+        env=env,
     )
     assert proc.returncode == 0, (
         f"pre_flight_check.py --pipeline chemprop_v2_v3 exited "
@@ -169,9 +175,9 @@ def test_wf344a2_chemprop_mode_v3_fix_token_in_help():
             f"uninstalled in this venv (Wf-338-A3 finding 2 root cause). "
             f"stderr: {combined[:200]}"
         )
-    assert "--chemprop-mode" in combined, (
-        "--chemprop-mode flag missing from --help output"
-    )
+    assert (
+        "--chemprop-mode" in combined
+    ), "--chemprop-mode flag missing from --help output"
     # The 4 tokens are split on whitespace in gate_help.  'v3-fix'
     # is a stand-alone token (split off '--chemprop-mode ').  Verify
     # it appears as a choice in --chemprop-mode's choices list.
@@ -179,9 +185,9 @@ def test_wf344a2_chemprop_mode_v3_fix_token_in_help():
         r"--chemprop-mode\s+\{[^}]+\}",
         combined,
     )
-    assert block_match is not None, (
-        "--chemprop-mode choices block not found in --help output"
-    )
+    assert (
+        block_match is not None
+    ), "--chemprop-mode choices block not found in --help output"
     choices_str = block_match.group(0)
     assert "v3-fix" in choices_str, (
         f"--chemprop-mode choices missing 'v3-fix': {choices_str!r}. "
@@ -207,8 +213,12 @@ def test_wf344a2_all_four_tokens_cooccur_in_same_help_call():
             f"uninstalled in this venv. Wf-338-A3 finding 2 root cause. "
             f"stderr: {combined[:200]}"
         )
-    expected_tokens = ("--chemprop-mode", "v3-fix",
-                       "--chemprop-min-epochs", "--chemprop-lomo-init-scale")
+    expected_tokens = (
+        "--chemprop-mode",
+        "v3-fix",
+        "--chemprop-min-epochs",
+        "--chemprop-lomo-init-scale",
+    )
     missing = [tok for tok in expected_tokens if tok not in combined]
     assert not missing, (
         f"Missing tokens in --help output (Wf-338-A3 finding 2 "
@@ -258,8 +268,12 @@ def test_wf344a2_help_returns_rc_zero_when_chemprop_installed():
         pytest.fail(msg)
     # When rc=0, also assert the gate_help "4 token(s)" evidence
     # pattern is reproducible — i.e. all 4 tokens still in --help.
-    for tok in ("--chemprop-mode", "v3-fix",
-                "--chemprop-min-epochs", "--chemprop-lomo-init-scale"):
+    for tok in (
+        "--chemprop-mode",
+        "v3-fix",
+        "--chemprop-min-epochs",
+        "--chemprop-lomo-init-scale",
+    ):
         assert tok in combined, (
             f"Token {tok!r} missing from --help output (rc=0 but "
             f"tokens drifted; Wf-338-A3 finding 2 regression)."

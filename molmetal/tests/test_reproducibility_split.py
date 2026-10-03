@@ -13,6 +13,7 @@ Covers:
    identical cli_sha256 + receptor_sha256 across two invocations;
    changing inputs flips the hash.
 """
+
 from __future__ import annotations
 
 import csv
@@ -46,22 +47,27 @@ def test_scaffold_split_produces_three_disjoint_csvs(tmp_path):
     """Train / val / test must have no SMILES in common."""
     split_mod = _import_scaffold_split()
     rows = [
-        {"smiles": "O=C1[O-]->[Pt+2]2(<-[NH2]C3CCCC3)(<-[NH2]C3CCCC3)<-[O-]C1=O",
-         "source": "platinai"},
+        {
+            "smiles": "O=C1[O-]->[Pt+2]2(<-[NH2]C3CCCC3)(<-[NH2]C3CCCC3)<-[O-]C1=O",
+            "source": "platinai",
+        },
         {"smiles": "c1ccc([Pt]([NH3])([Cl])([Cl])[NH3])cc1", "source": "tmqm"},
         {"smiles": "CCO", "source": "smoketest"},
         {"smiles": "CCN", "source": "smoketest"},
         {"smiles": "CC(=O)O[Au]OC(C)=O", "source": "gold_smoketest"},
         {"smiles": "[Pd](<-[NH3])(<-[NH3])(<-[Cl])<-[Cl]", "source": "pd_smoketest"},
         {"smiles": "CC(C)(C)c1ccc(C(C)(C)C)cc1", "source": "ir_smoketest"},
-        {"smiles": "O=[Ru](=O)(<-[O-])(<-[O-])<-[Ru](=O)(=O)(<-[O-])<-[O-]",
-         "source": "ru_smoketest"},
+        {
+            "smiles": "O=[Ru](=O)(<-[O-])(<-[O-])<-[Ru](=O)(=O)(<-[O-])<-[O-]",
+            "source": "ru_smoketest",
+        },
         {"smiles": "c1ccccc1", "source": "benzene"},
         {"smiles": "c1ccc2ccccc2c1", "source": "naphthalene"},
     ]
     out_dir = tmp_path / "split_out"
-    result = split_mod.split_pool(rows, fractions=(0.6, 0.2, 0.2),
-                                  tanimoto_threshold=0.4, seed=42)
+    result = split_mod.split_pool(
+        rows, fractions=(0.6, 0.2, 0.2), tanimoto_threshold=0.4, seed=42
+    )
     paths = split_mod.write_outputs(result, out_dir)
     assert len(paths) == 3, "expected exactly 3 CSV outputs"
     train, val, test = (paths[0], paths[1], paths[2])
@@ -80,12 +86,15 @@ def test_scaffold_split_produces_three_disjoint_csvs(tmp_path):
     val_smiles = set(load_smiles(val))
     test_smiles = set(load_smiles(test))
     # disjoint
-    assert not (train_smiles & val_smiles), \
-        f"train/val overlap: {train_smiles & val_smiles}"
-    assert not (train_smiles & test_smiles), \
-        f"train/test overlap: {train_smiles & test_smiles}"
-    assert not (val_smiles & test_smiles), \
-        f"val/test overlap: {val_smiles & test_smiles}"
+    assert not (
+        train_smiles & val_smiles
+    ), f"train/val overlap: {train_smiles & val_smiles}"
+    assert not (
+        train_smiles & test_smiles
+    ), f"train/test overlap: {train_smiles & test_smiles}"
+    assert not (
+        val_smiles & test_smiles
+    ), f"val/test overlap: {val_smiles & test_smiles}"
     # complete coverage (every input lands somewhere)
     total = train_smiles | val_smiles | test_smiles
     assert total == {r["smiles"] for r in rows}, "missing rows"
@@ -100,14 +109,18 @@ def test_scaffold_split_coverage_per_metal(tmp_path):
     """Every one of the 5 audited metals is reported by coverage_by_metal."""
     split_mod = _import_scaffold_split()
     rows = [
-        {"smiles": "O=C1[O-]->[Pt+2]2(<-[NH2])(<-[NH2])<-[O-]C1=O", "source": "platinai"},
+        {
+            "smiles": "O=C1[O-]->[Pt+2]2(<-[NH2])(<-[NH2])<-[O-]C1=O",
+            "source": "platinai",
+        },
         {"smiles": "c1ccc([Pd]([Cl])[Cl])cc1", "source": "pd"},
         {"smiles": "OC(=O)[Au]OC(C)=O", "source": "au"},
         {"smiles": "[Ir](<-[Cl])(<-[Cl])(<-[Cl])(<-[Cl])<-[Cl]", "source": "ir"},
         {"smiles": "O=[Ru]Cl", "source": "ru"},
     ]
-    result = split_mod.split_pool(rows, fractions=(0.6, 0.2, 0.2),
-                                  tanimoto_threshold=0.4, seed=42)
+    result = split_mod.split_pool(
+        rows, fractions=(0.6, 0.2, 0.2), tanimoto_threshold=0.4, seed=42
+    )
     buckets = result.rows_by_bucket
     coverage = {n: split_mod.coverage_by_metal(rs) for n, rs in buckets.items()}
     metals_seen = set()
@@ -116,19 +129,21 @@ def test_scaffold_split_coverage_per_metal(tmp_path):
     # Pt/Pd/Au/Ir/Ru must be covered by token-detection; the unit
     # test only needs to confirm the audit-relevant metals appear.
     expected = {"Pt", "Pd", "Au", "Ir", "Ru"}
-    assert expected.issubset(metals_seen), \
-        f"missing metals: {expected - metals_seen}"
+    assert expected.issubset(metals_seen), f"missing metals: {expected - metals_seen}"
 
 
 def test_scaffold_split_deterministic(tmp_path):
     """Re-running with the same seed reproduces the same partition."""
     split_mod = _import_scaffold_split()
     rows = [
-        {"smiles": smi, "source": src} for smi, src in [
+        {"smiles": smi, "source": src}
+        for smi, src in [
             ("O=C1[O-]->[Pt+2]2(<-[NH2])(<-[NH2])<-[O-]C1=O", "platinai"),
             ("c1ccc([Pt]([NH3])([Cl])([Cl])[NH3])cc1", "tmqm"),
-            ("CCO", "smoketest"), ("CCN", "smoketest"),
-            ("c1ccccc1", "benzene"), ("c1ccncc1", "pyridine"),
+            ("CCO", "smoketest"),
+            ("CCN", "smoketest"),
+            ("c1ccccc1", "benzene"),
+            ("c1ccncc1", "pyridine"),
             ("O=C1[O-]->[Pd+2]2(<-[NH2])(<-[NH2])<-[O-]C1=O", "pd_smoketest"),
             ("[Au]Cl", "au_smoketest"),
             ("CC(C)(C)c1ccc(C(C)(C)C)cc1", "aromatic_smoketest"),
@@ -136,10 +151,12 @@ def test_scaffold_split_deterministic(tmp_path):
     ]
     out_a = tmp_path / "split_a"
     out_b = tmp_path / "split_b"
-    res_a = split_mod.split_pool(rows, fractions=(0.6, 0.2, 0.2),
-                                  tanimoto_threshold=0.4, seed=123)
-    res_b = split_mod.split_pool(rows, fractions=(0.6, 0.2, 0.2),
-                                  tanimoto_threshold=0.4, seed=123)
+    res_a = split_mod.split_pool(
+        rows, fractions=(0.6, 0.2, 0.2), tanimoto_threshold=0.4, seed=123
+    )
+    res_b = split_mod.split_pool(
+        rows, fractions=(0.6, 0.2, 0.2), tanimoto_threshold=0.4, seed=123
+    )
     p_a = split_mod.write_outputs(res_a, out_a)
     p_b = split_mod.write_outputs(res_b, out_b)
     for pa, pb in zip(p_a, p_b):
@@ -158,11 +175,14 @@ def test_split_training_smiles_scaffold_branch_returns_disjoint_smiles():
     r4_mod = importlib.import_module("molmetal.scripts.r4_lambda_only_run")
     split_mod = _import_scaffold_split()
     rows = [
-        {"smiles": smi, "source": src} for smi, src in [
+        {"smiles": smi, "source": src}
+        for smi, src in [
             ("O=C1[O-]->[Pt+2]2(<-[NH2])(<-[NH2])<-[O-]C1=O", "platinai"),
             ("c1ccc([Pt]([NH3])([Cl])([Cl])[NH3])cc1", "tmqm"),
-            ("CCO", "smoketest"), ("CCN", "smoketest"),
-            ("c1ccccc1", "benzene"), ("c1ccncc1", "pyridine"),
+            ("CCO", "smoketest"),
+            ("CCN", "smoketest"),
+            ("c1ccccc1", "benzene"),
+            ("c1ccncc1", "pyridine"),
             ("O=C1[O-]->[Pd+2]2(<-[NH2])(<-[NH2])<-[O-]C1=O", "pd_smoketest"),
             ("[Au]Cl", "au_smoketest"),
             ("CC(C)(C)c1ccc(C(C)(C)C)cc1", "aromatic_smoketest"),
@@ -170,8 +190,9 @@ def test_split_training_smiles_scaffold_branch_returns_disjoint_smiles():
             ("CCS", "thiol_smoketest"),
         ]
     ]
-    result = split_mod.split_pool(rows, fractions=(0.6, 0.2, 0.2),
-                                  tanimoto_threshold=0.4, seed=7)
+    result = split_mod.split_pool(
+        rows, fractions=(0.6, 0.2, 0.2), tanimoto_threshold=0.4, seed=7
+    )
     train_smiles = {r["smiles"] for r in result.rows_by_bucket["train"]}
     val_smiles = {r["smiles"] for r in result.rows_by_bucket["val"]}
     test_smiles = {r["smiles"] for r in result.rows_by_bucket["test"]}
@@ -202,8 +223,9 @@ def test_split_training_smiles_time_branch_preserves_order():
     split_mod = _import_scaffold_split()
     rows = split_mod.load_input(r4_mod._METALLO_POOL_DEFAULT)
     n_train = int(round(0.7 * len(rows)))
-    assert abs(len(out) - n_train) <= 1, \
-        f"time-split size off: got {len(out)}, expected {n_train} +- 1"
+    assert (
+        abs(len(out) - n_train) <= 1
+    ), f"time-split size off: got {len(out)}, expected {n_train} +- 1"
 
 
 # ---------------------------------------------------------------------------
@@ -234,8 +256,12 @@ def test_seeds_json_roundtrip(tmp_path):
         "seeds": list(report["config"]["seeds"]),
         "n_pockets": int(report["config"]["n_pockets"]),
         "cells": [
-            {"pocket_id": c["pocket_id"], "seed": c["seed"],
-             "run_timestamp": 1700000000, "status": c["status"]}
+            {
+                "pocket_id": c["pocket_id"],
+                "seed": c["seed"],
+                "run_timestamp": 1700000000,
+                "status": c["status"],
+            }
             for c in report["cells"]
         ],
     }
@@ -251,8 +277,9 @@ def test_seeds_json_roundtrip(tmp_path):
 # ---------------------------------------------------------------------------
 # fingerprint.json — sha256 stability across same/different inputs
 # ---------------------------------------------------------------------------
-def _build_fingerprint(*, smiles=("CCO", "CCN"), receptor="receptor-A",
-                       cli_flags=None) -> dict:
+def _build_fingerprint(
+    *, smiles=("CCO", "CCN"), receptor="receptor-A", cli_flags=None
+) -> dict:
     """Tiny replica of the fingerprint dict emitted by r4_c_full_sweep.py.
 
     We test the deterministic-SHA256 contract directly here so the
@@ -314,7 +341,9 @@ def test_fingerprint_roundtrip_json_loadable(tmp_path):
     out_path.write_text(json.dumps(fp, indent=2, sort_keys=True))
     loaded = json.loads(out_path.read_text())
     assert set(loaded.keys()) >= {
-        "cli_sha256", "smiles_concat_sha256", "receptor_sha256"
+        "cli_sha256",
+        "smiles_concat_sha256",
+        "receptor_sha256",
     }
     for k, v in loaded.items():
         assert isinstance(v, str)
@@ -329,27 +358,28 @@ def test_split_flag_default_is_none_in_argparser():
     invocations are bit-for-bit unchanged."""
     import argparse
     from molmetal.scripts import r4_lambda_only_run as r4
+
     # Build a fresh parser and parse with --output-dir (the only
     # required arg).  All other flags fall back to their defaults.
     parser = r4._build_argparser()
     ns = parser.parse_args(["--output-dir", "scratch"])
-    assert ns.split == "none", \
-        f"--split default must be 'none' for backward compat; got {ns.split!r}"
+    assert (
+        ns.split == "none"
+    ), f"--split default must be 'none' for backward compat; got {ns.split!r}"
 
 
 def test_split_flag_accepts_scaffold_alias():
     """The argparser must accept the 4 documented ``--split`` values."""
     from molmetal.scripts import r4_lambda_only_run as r4
+
     parser = r4._build_argparser()
-    ns = parser.parse_args(["--output-dir", "scratch",
-                            "--split", "scaffold"])
+    ns = parser.parse_args(["--output-dir", "scratch", "--split", "scaffold"])
     assert ns.split == "scaffold"
-    ns = parser.parse_args(["--output-dir", "scratch",
-                            "--split", "scaffold_tanimoto_0.4"])
+    ns = parser.parse_args(
+        ["--output-dir", "scratch", "--split", "scaffold_tanimoto_0.4"]
+    )
     assert ns.split == "scaffold_tanimoto_0.4"
-    ns = parser.parse_args(["--output-dir", "scratch",
-                            "--split", "time"])
+    ns = parser.parse_args(["--output-dir", "scratch", "--split", "time"])
     assert ns.split == "time"
-    ns = parser.parse_args(["--output-dir", "scratch",
-                            "--split", "random"])
+    ns = parser.parse_args(["--output-dir", "scratch", "--split", "random"])
     assert ns.split == "random"

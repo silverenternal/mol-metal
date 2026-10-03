@@ -120,9 +120,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "--kcal-per-unit",
         type=float,
         default=1.0,
-        help=(
-            "kcal/mol scale for the metal-coord term (default 1.0)."
-        ),
+        help=("kcal/mol scale for the metal-coord term (default 1.0)."),
     )
     p.add_argument(
         "--metals",
@@ -145,9 +143,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "--out-dir",
         type=str,
         default="molmetal/reports/wf409a3_metal_coord_scaffold",
-        help=(
-            "Output directory for result.json + per-epoch kcal audit."
-        ),
+        help=("Output directory for result.json + per-epoch kcal audit."),
     )
     p.add_argument(
         "--smoke",
@@ -226,12 +222,16 @@ def build_metal_coord_term(
             weight_distance=weight_distance,
             kcal_per_unit=kcal_per_unit,
         )
-        return True, term, (
-            f"build_ok; kcal_per_unit={kcal_per_unit}; "
-            f"weight_geometry={weight_geometry}; "
-            f"weight_hsab={weight_hsab}; "
-            f"weight_distance={weight_distance}; "
-            f"MetalCoordinationTerm ready for SCAFFOLD wire-in"
+        return (
+            True,
+            term,
+            (
+                f"build_ok; kcal_per_unit={kcal_per_unit}; "
+                f"weight_geometry={weight_geometry}; "
+                f"weight_hsab={weight_hsab}; "
+                f"weight_distance={weight_distance}; "
+                f"MetalCoordinationTerm ready for SCAFFOLD wire-in"
+            ),
         )
     except Exception as exc:  # pragma: no cover
         return False, None, f"build_failed: {type(exc).__name__}: {exc}"
@@ -337,9 +337,7 @@ def scaffold_smoke(
     # Per-epoch audit: simulate 5 epochs (smoke) or args.epochs
     # (full sim) and emit per-epoch kcal sign audit.
     n_epochs = 5 if args.smoke else max(5, args.epochs)
-    per_epoch = [
-        simulated_train_epoch(epoch=e, args=args) for e in range(n_epochs)
-    ]
+    per_epoch = [simulated_train_epoch(epoch=e, args=args) for e in range(n_epochs)]
     # Aggregate per-epoch audit verdict: confirm post_fix_kcal_mol is
     # negative whenever composite > 0.5 across all epochs.
     epoch_sign_audit = []

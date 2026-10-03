@@ -91,12 +91,29 @@ log = logging.getLogger("train_reaction_confidence")
 # used in the rule key for tmQM-derived rows.
 # ---------------------------------------------------------------------------
 _DONOR_ATOM_TYPES: Tuple[str, ...] = (
-    "NH3", "NH2", "NR3", "N_hetero", "CN", "NC",
-    "OH2", "OH", "OR", "O_carbonyl", "O_ether",
-    "SH", "SR", "S_thioether",
-    "PR3", "PH3",
-    "Cl", "Br", "I", "F",
-    "H", "C_aryl", "C_alkyl",
+    "NH3",
+    "NH2",
+    "NR3",
+    "N_hetero",
+    "CN",
+    "NC",
+    "OH2",
+    "OH",
+    "OR",
+    "O_carbonyl",
+    "O_ether",
+    "SH",
+    "SR",
+    "S_thioether",
+    "PR3",
+    "PH3",
+    "Cl",
+    "Br",
+    "I",
+    "F",
+    "H",
+    "C_aryl",
+    "C_alkyl",
 )
 
 
@@ -126,6 +143,7 @@ def _project_donor_atom(element: str, ring: bool = False) -> str:
 def _summarise_tmqm_donors(metals: Sequence[str]) -> dict:
     """Per-(metal, donor) histogram for the audit log."""
     from rdkit import Chem  # type: ignore
+
     counts: dict = {}
     df = tmqm_data.load_tmqm(metals=list(metals) if metals else None)
     for _, row in df.iterrows():
@@ -248,7 +266,9 @@ def build_training_rows(
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
-    p = argparse.ArgumentParser(description="Train a ReactionConfidence from tmQM + literature.")
+    p = argparse.ArgumentParser(
+        description="Train a ReactionConfidence from tmQM + literature."
+    )
     p.add_argument(
         "--output",
         default=str(PROJECT_ROOT / "molmetal" / "models" / "reaction_confidence.pkl"),

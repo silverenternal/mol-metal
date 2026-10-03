@@ -114,8 +114,7 @@ def test_property_all_tiles_parse(idx: int) -> None:
     tile = library[real_idx]
     mol = Chem.MolFromSmiles(tile.smiles)
     assert mol is not None, (
-        f"Tile {tile.tile_id} (idx={real_idx}) failed RDKit parse: "
-        f"{tile.smiles!r}"
+        f"Tile {tile.tile_id} (idx={real_idx}) failed RDKit parse: " f"{tile.smiles!r}"
     )
 
 
@@ -204,9 +203,9 @@ def test_property_tile_count_in_range(low: int, high: int) -> None:
     """
     library = _get_library()
     n = len(library)
-    assert low <= n <= high, (
-        f"Fragment library size {n} outside expected range [{low}, {high}]"
-    )
+    assert (
+        low <= n <= high
+    ), f"Fragment library size {n} outside expected range [{low}, {high}]"
 
 
 # ---------------------------------------------------------------------------
@@ -233,9 +232,9 @@ def test_assert_tile_well_formed_accepts_good_tile() -> None:
     if not library:
         pytest.skip("Fragment library is empty")
     for tile in library:
-        assert assert_tile_well_formed(tile), (
-            f"Tile {tile.tile_id} ({tile.smiles!r}) failed well-formedness"
-        )
+        assert assert_tile_well_formed(
+            tile
+        ), f"Tile {tile.tile_id} ({tile.smiles!r}) failed well-formedness"
 
 
 def test_allowed_atoms_set_is_frozen() -> None:
@@ -244,6 +243,6 @@ def test_allowed_atoms_set_is_frozen() -> None:
     for el in ("C", "N", "O", "F", "S", "Cl", "Br", "I", "P"):
         assert el in ALLOWED_ATOMS, f"{el} missing from ALLOWED_ATOMS"
     for el in ("Pt", "Ru", "Zn", "Ir", "Cu", "Au"):
-        assert el not in ALLOWED_ATOMS, (
-            f"Metal {el} should NOT be in ALLOWED_ATOMS (tiles are organic)"
-        )
+        assert (
+            el not in ALLOWED_ATOMS
+        ), f"Metal {el} should NOT be in ALLOWED_ATOMS (tiles are organic)"

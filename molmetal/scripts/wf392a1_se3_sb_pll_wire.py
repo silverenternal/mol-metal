@@ -338,9 +338,9 @@ def smoke_pll_features(
 
     feature_shape_ok = all(s == (top_k,) for s in shapes_list)
     feature_dtype_ok = all(v.dtype == np.float64 for v in feats)
-    feature_not_all_zero_ok = any(
-        not np.allclose(v, 0.0) for v in feats
-    ) if feats else False
+    feature_not_all_zero_ok = (
+        any(not np.allclose(v, 0.0) for v in feats) if feats else False
+    )
 
     return PLLSmokeResult(
         cohort_size=cohort_size,
@@ -392,7 +392,7 @@ def _format_new_flags_block() -> str:
     The snippet is appended to ``parse_args`` AFTER the existing W2.1
     SE(3)-specific block, before ``return p.parse_args(argv)``.
     """
-    return '''
+    return """
     # ------------------------------------------------------------------
     # Wf-392-A1 — Multi-PH + PLL feature wire-in (Wf-382-A1 SCAFFOLD).
     # 3 NEW CLI flags; default OFF for backward-compat with the
@@ -436,7 +436,7 @@ def _format_new_flags_block() -> str:
             "--multiph-pll is False."
         ),
     )
-'''
+"""
 
 
 def wire_pll_to_se3_sb_trainer(
@@ -522,6 +522,7 @@ def wire_pll_to_se3_sb_trainer(
     # AST sanity — must reparse cleanly.
     try:
         import ast as _ast
+
         _ast.parse(new_source)
     except SyntaxError as exc:
         return PLLWireResult(

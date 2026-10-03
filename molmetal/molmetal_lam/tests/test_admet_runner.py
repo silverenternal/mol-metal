@@ -17,6 +17,7 @@ The four required tests are:
 * :func:`test_admet_runner_falls_back_gracefully` — even if admet-ai /
   datamol are missing, RDKit descriptors are still produced.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -127,7 +128,9 @@ def test_admet_runner_falls_back_gracefully(runner):
     # canonical short keys must all be present
     for key in ("MW", "logP", "HBA", "HBD", "TPSA", "RotBonds", "QED"):
         assert key in out, f"missing {key} in RDKit fallback path"
-        assert isinstance(out[key], float), f"{key} should be float, got {type(out[key])}"
+        assert isinstance(
+            out[key], float
+        ), f"{key} should be float, got {type(out[key])}"
         assert math.isfinite(out[key]), f"{key} is NaN/Inf"
     # Aspirin sanity
     assert 178.0 <= out["MW"] <= 182.0
@@ -162,6 +165,7 @@ def test_reward_aggregator_admet_channel_wires(runner):
         RewardAggregator,
         _r_admet_default,
     )
+
     agg = RewardAggregator(w_admet=1.0, r_admet=_r_admet_default)
     assert agg.w_admet == 1.0
     assert callable(agg.r_admet)

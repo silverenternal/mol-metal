@@ -49,6 +49,7 @@ from molmetal_lam.tile_lib.tile import Tile
 def _smiles_has_ring(smiles: str, ring_size: int) -> bool:
     """Return True if the canonical mol contains a ring of size ``ring_size``."""
     from rdkit import Chem
+
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
         return False
@@ -67,7 +68,7 @@ def test_cuaac_smiles_valid() -> None:
     Expected product canonical SMILES: ``CCn1cc(C)nn1``  (heavy atoms = 8).
     The 1,4-disubstituted 1,2,3-triazole should be a 5-membered aromatic ring.
     """
-    azide_tile = AZIDE_TILES()[0]   # ethyl azide: CCN=[N+]=[N-]
+    azide_tile = AZIDE_TILES()[0]  # ethyl azide: CCN=[N+]=[N-]
     alkyne_tile = ALKYNE_TILES()[0]  # propyne: C#CC
 
     results = click_cuaac(azide_tile, alkyne_tile)
@@ -80,11 +81,12 @@ def test_cuaac_smiles_valid() -> None:
     # propyne is 3 atoms (CC≡CH), total = 8.  Cycloaddition conserves heavy atoms.
     assert result.atom_count == 8, f"expected 8 atoms, got {result.atom_count}"
     # Product should contain a 5-membered aromatic ring (the triazole).
-    assert _smiles_has_ring(result.product_smiles, 5), (
-        f"expected 5-ring in {result.product_smiles!r}"
-    )
+    assert _smiles_has_ring(
+        result.product_smiles, 5
+    ), f"expected 5-ring in {result.product_smiles!r}"
     # The product should be parseable by RDKit (sanity).
     from rdkit import Chem
+
     mol = Chem.MolFromSmiles(result.product_smiles)
     assert mol is not None
 
@@ -105,7 +107,7 @@ def test_spaac_with_cyclooctyne() -> None:
     alkyne contribution).  The combination uniquely identifies the
     triazole as a click-chemistry cycloaddition product.
     """
-    azide_tile = AZIDE_TILES()[1]    # benzyl azide
+    azide_tile = AZIDE_TILES()[1]  # benzyl azide
     alkyne_tile = ALKYNE_TILES()[2]  # cyclooctyne
 
     results = click_spaac(azide_tile, alkyne_tile)
@@ -116,6 +118,7 @@ def test_spaac_with_cyclooctyne() -> None:
     # Verify chemical composition of the click product: 3 N's (azide)
     # + 2 C's (alkyne) + the two R-groups should appear.
     from rdkit import Chem
+
     mol = Chem.MolFromSmiles(result.product_smiles)
     assert mol is not None
     n_count = sum(1 for a in mol.GetAtoms() if a.GetSymbol() == "N")
@@ -140,7 +143,7 @@ def test_spc_amide_formation() -> None:
 
     Product is the iminophosphorane: ``CCN=PC``.
     """
-    azide_tile = AZIDE_TILES()[0]      # ethyl azide
+    azide_tile = AZIDE_TILES()[0]  # ethyl azide
     phosphine_tile = PARTNER_TILES()[0]  # methylphosphine (CP)
 
     results = click_spc(azide_tile, phosphine_tile)
@@ -149,12 +152,13 @@ def test_spc_amide_formation() -> None:
     assert result.reaction_name == "SPC"
     # The iminophosphorane has the substructure ``N=P``.
     from rdkit import Chem
+
     mol = Chem.MolFromSmiles(result.product_smiles)
     assert mol is not None
     pat = Chem.MolFromSmarts("[N]=[P]")
-    assert mol.HasSubstructMatch(pat), (
-        f"expected N=P iminophosphorane in {result.product_smiles!r}"
-    )
+    assert mol.HasSubstructMatch(
+        pat
+    ), f"expected N=P iminophosphorane in {result.product_smiles!r}"
     # Heavy atoms conserved except for the 2 N's lost as N2:
     # ethyl azide = 5 atoms; methylphosphine = 2 atoms; total = 7.
     # Product loses 2 N's (released as N2) → 5 heavy atoms remain.
@@ -183,17 +187,16 @@ def test_diels_alder_cyclohexene() -> None:
     # Heavy atom count: butadiene (4) + ethylene (2) = 6 heavy atoms (cycloaddition).
     assert result.atom_count == 6, f"expected 6 atoms, got {result.atom_count}"
     # Product should contain a 6-membered ring (the cyclohexene).
-    assert _smiles_has_ring(result.product_smiles, 6), (
-        f"expected 6-ring cyclohexene in {result.product_smiles!r}"
-    )
+    assert _smiles_has_ring(
+        result.product_smiles, 6
+    ), f"expected 6-ring cyclohexene in {result.product_smiles!r}"
     # And it should contain a C=C double bond (cyclohexene, not cyclohexane).
     from rdkit import Chem
+
     mol = Chem.MolFromSmiles(result.product_smiles)
     assert mol is not None
     pat = Chem.MolFromSmarts("[C]=[C]")
-    assert mol.HasSubstructMatch(pat), (
-        f"expected C=C in {result.product_smiles!r}"
-    )
+    assert mol.HasSubstructMatch(pat), f"expected C=C in {result.product_smiles!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -226,10 +229,11 @@ def test_tile_library_size() -> None:
         ("DielsAlder", pt1, pt2),
     ]:
         results = apply_click_reaction(name, t_a, t_b)
-        assert len(results) >= 1, (
-            f"{name} on ({t_a.smiles}, {t_b.smiles}) produced no products"
-        )
+        assert (
+            len(results) >= 1
+        ), f"{name} on ({t_a.smiles}, {t_b.smiles}) produced no products"
     # Unknown reaction name → ClickReactionError.
     from molmetal_lam.reactions.click_reactions import ClickReactionError
+
     with pytest.raises(ClickReactionError):
         apply_click_reaction("NoSuchReaction", az0, al0)

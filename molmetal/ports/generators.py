@@ -24,6 +24,7 @@ This port extends the abstract ``MoleculeGenerator`` contract from
 remaining *duck-typed* so existing :class:`MoleculeGenerator`
 adapters can be substituted where appropriate.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

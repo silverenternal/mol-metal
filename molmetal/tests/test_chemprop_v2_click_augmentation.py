@@ -36,6 +36,7 @@ Run with::
     uv run --no-sync pytest -q \\
         molmetal/tests/test_chemprop_v2_click_augmentation.py --tb=short
 """
+
 from __future__ import annotations
 
 import random
@@ -88,6 +89,7 @@ def test_imports_click_reactions_module(click_aug_module):
     assert "DielsAlder" in DEFAULT_CLICK_RULE_NAMES
     # Cross-check against the source-of-truth click_reactions registry.
     from molmetal_lam.reactions.click_reactions import CLICK_REACTIONS
+
     assert set(DEFAULT_CLICK_RULE_NAMES) == set(CLICK_REACTIONS.keys()), (
         f"DEFAULT_CLICK_RULE_NAMES={set(DEFAULT_CLICK_RULE_NAMES)} "
         f"does not match CLICK_REACTIONS={set(CLICK_REACTIONS.keys())}. "
@@ -112,9 +114,9 @@ def test_click_augmentation_generates_new_smiles(click_aug_module):
     # Seed candidates that all carry the azide handle — every one of
     # these should fire CuAAC against a propyne partner with prob=1.0.
     smiles_in: List[str] = [
-        "N(=[N+]=[N-])Cc1ccccc1",   # benzyl azide
-        "CCN=[N+]=[N-]",            # ethyl azide
-        "[N-]=[N+]=Nc1ccccc1",      # phenyl azide
+        "N(=[N+]=[N-])Cc1ccccc1",  # benzyl azide
+        "CCN=[N+]=[N-]",  # ethyl azide
+        "[N-]=[N+]=Nc1ccccc1",  # phenyl azide
     ]
     res = augment(
         smiles_in,
@@ -124,25 +126,22 @@ def test_click_augmentation_generates_new_smiles(click_aug_module):
         rng=random.Random(0),
     )
     # The wrapper is monotone — same length as input.
-    assert len(res.augmented_smiles) == len(smiles_in), (
-        f"expected len(.{len(smiles_in)}), got len(.{len(res.augmented_smiles)})"
-    )
+    assert len(res.augmented_smiles) == len(
+        smiles_in
+    ), f"expected len(.{len(smiles_in)}), got len(.{len(res.augmented_smiles)})"
     # At least one entry must be distinct from the input (CuAAC fired).
-    distinct_count = sum(
-        1
-        for a, b in zip(res.augmented_smiles, smiles_in)
-        if a != b
-    )
+    distinct_count = sum(1 for a, b in zip(res.augmented_smiles, smiles_in) if a != b)
     assert distinct_count >= 1, (
         f"expected ≥1 fired CuAAC (distinct SMILES), got {distinct_count}. "
         f"per_rule_fire_count={res.per_rule_fire_count}"
     )
     # The per-rule fire count must be ≥1 on CuAAC.
-    assert res.per_rule_fire_count.get("CuAAC", 0) >= 1, (
-        f"expected ≥1 CuAAC fire, got {res.per_rule_fire_count}"
-    )
+    assert (
+        res.per_rule_fire_count.get("CuAAC", 0) >= 1
+    ), f"expected ≥1 CuAAC fire, got {res.per_rule_fire_count}"
     # Every augmented SMILES must parse via RDKit.
     from rdkit import Chem
+
     for s in res.augmented_smiles:
         mol = Chem.MolFromSmiles(s)
         assert mol is not None, f"augmented SMILES {s!r} failed to parse"
@@ -163,15 +162,15 @@ def test_wrapper_is_monotone_on_short_base(click_aug_module):
     base = lambda seed, n: [seed]
     gen = ClickAugmentedChempropGenerator(
         base_generator=base,
-        use_click_prob=0.0,    # passthrough (backward compat, G4)
+        use_click_prob=0.0,  # passthrough (backward compat, G4)
         rng=random.Random(0),
     )
     out = gen.generate("CCN=[N+]=[N-]", n_samples=5)
     assert len(out) == 5, f"expected len(5), got len({len(out)})"
     # Every entry must equal the seed (passthrough).
-    assert all(s == "CCN=[N+]=[N-]" for s in out), (
-        f"passthrough must emit seed verbatim; got {out}"
-    )
+    assert all(
+        s == "CCN=[N+]=[N-]" for s in out
+    ), f"passthrough must emit seed verbatim; got {out}"
 
 
 def test_wrapper_preserves_baseline_at_zero_prob(click_aug_module):
@@ -194,9 +193,9 @@ def test_wrapper_preserves_baseline_at_zero_prob(click_aug_module):
         f"{res.augmented_smiles} vs {smiles_in}"
     )
     assert res.n_fired == 0, f"expected n_fired=0, got {res.n_fired}"
-    assert res.n_passthrough == len(smiles_in), (
-        f"expected n_passthrough={len(smiles_in)}, got {res.n_passthrough}"
-    )
+    assert res.n_passthrough == len(
+        smiles_in
+    ), f"expected n_passthrough={len(smiles_in)}, got {res.n_passthrough}"
     assert all(v == 0 for v in res.per_rule_fire_count.values()), (
         f"per-rule counts must be 0 in passthrough mode; got "
         f"{res.per_rule_fire_count}"
@@ -222,8 +221,8 @@ def test_diversity_lift_tanimoto_non_negative_when_augmented(click_aug_module):
         "CCN=[N+]=[N-]",
         "[N-]=[N+]=Nc1ccccc1",
         "N(=[N+]=[N-])Cc1ccccc1",
-        "c1ccccc1",       # no click handle — passthrough
-        "CC(=O)O",        # no click handle — passthrough
+        "c1ccccc1",  # no click handle — passthrough
+        "CC(=O)O",  # no click handle — passthrough
     ]
     res = augment(
         smiles_in,
@@ -241,11 +240,8 @@ def test_diversity_lift_tanimoto_non_negative_when_augmented(click_aug_module):
     # base in at least one entry.
     if res.n_fired >= 1:
         assert any(
-            a != b
-            for a, b in zip(res.augmented_smiles, smiles_in)
-        ), (
-            f"n_fired={res.n_fired} but augmented == base verbatim"
-        )
+            a != b for a, b in zip(res.augmented_smiles, smiles_in)
+        ), f"n_fired={res.n_fired} but augmented == base verbatim"
 
 
 # ---------------------------------------------------------------------------
@@ -272,6 +268,5 @@ def test_click_augmentation_does_not_mutate_input_list(click_aug_module):
     _ = augment(smiles_in, use_click_prob=0.5, rng=random.Random(0))
     # Caller's list MUST be unchanged.
     assert smiles_in == snapshot, (
-        f"augment() mutated caller's input list: was {snapshot}, "
-        f"now {smiles_in}"
+        f"augment() mutated caller's input list: was {snapshot}, " f"now {smiles_in}"
     )

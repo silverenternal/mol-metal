@@ -33,6 +33,7 @@ The test joins the existing
 ``molmetal/tests/test_score_any_policy.py`` (Phase 2) +
 ``test_score_any.py`` (Phase 1) as the **Wf-43 acceptance chain**.
 """
+
 from __future__ import annotations
 
 import ast
@@ -50,8 +51,7 @@ import pytest
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _SCRIPTS_DIR = _REPO_ROOT / "molmetal" / "scripts"
 _REPORT_PATH = (
-    _REPO_ROOT / "molmetal" / "reports" / "wf43_deprecation"
-    / "deprecated_mocks.md"
+    _REPO_ROOT / "molmetal" / "reports" / "wf43_deprecation" / "deprecated_mocks.md"
 )
 
 #: The 10 scripts Wf-43 Phase 3 deprecates.
@@ -160,9 +160,9 @@ class TestWf43Phase3Deprecation:
 
     def test_all_target_scripts_exist(self) -> None:
         for name in TARGET_SCRIPTS:
-            assert (_SCRIPTS_DIR / name).exists(), (
-                f"Wf-43 Phase 3 target script missing: {name}"
-            )
+            assert (
+                _SCRIPTS_DIR / name
+            ).exists(), f"Wf-43 Phase 3 target script missing: {name}"
 
     def test_all_target_scripts_parse_cleanly(self) -> None:
         """Every target script must compile (AST parse)."""
@@ -205,19 +205,19 @@ class TestWf43Phase3Deprecation:
 
     def test_deprecation_report_exists(self) -> None:
         """The deprecation report must exist."""
-        assert _REPORT_PATH.exists(), (
-            f"Wf-43 Phase 3 deprecation report missing: {_REPORT_PATH}"
-        )
+        assert (
+            _REPORT_PATH.exists()
+        ), f"Wf-43 Phase 3 deprecation report missing: {_REPORT_PATH}"
         content = _REPORT_PATH.read_text(encoding="utf-8")
         # The report must mention every target script in §2.
         for name in TARGET_SCRIPTS:
-            assert name in content, (
-                f"Deprecation report does not mention target script: {name}"
-            )
+            assert (
+                name in content
+            ), f"Deprecation report does not mention target script: {name}"
         # The report must list at least one score_any() redirect.
-        assert "score_any" in content, (
-            "Deprecation report does not mention score_any()."
-        )
+        assert (
+            "score_any" in content
+        ), "Deprecation report does not mention score_any()."
 
     def test_score_any_metric_registry_has_required_metrics(self) -> None:
         """All metrics referenced by the 10 scripts must be in score_any REGISTRY."""

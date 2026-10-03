@@ -72,6 +72,7 @@ References
 * Schrittwieser J. et al. (2020) "Mastering Atari, Go, Chess and
   Shogi by Planning with a Learned Model".  *Nature* 588, 604-609.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -216,9 +217,7 @@ def featurise_entry(
     key = f"{entry.state}|{entry.action}"
     h = np.zeros(HASH_DIM, dtype=float)
     for i, ch in enumerate(key[: HASH_DIM * 4]):
-        h[i % HASH_DIM] = (
-            31.0 * h[i % HASH_DIM] + float(ord(ch) % 256)
-        ) / 32.0
+        h[i % HASH_DIM] = (31.0 * h[i % HASH_DIM] + float(ord(ch) % 256)) / 32.0
     # Squash to [-1, 1] via tanh so the hash doesn't dominate the
     # value/prior/variance columns.
     feat[:HASH_DIM] = np.tanh(h / 4.0)
@@ -373,7 +372,7 @@ class ValueNetwork:
         gw2 = d_out_hidden.T @ h_post
         gb2 = d_out_hidden.sum(axis=0)
         # Layer 1 grad.
-        d_h_pre = (d_out_hidden @ self.w2) * (1.0 - h_post ** 2)
+        d_h_pre = (d_out_hidden @ self.w2) * (1.0 - h_post**2)
         gw1 = d_h_pre.T @ x
         gb1 = d_h_pre.sum(axis=0)
         # SGD step.
@@ -478,7 +477,9 @@ class PolicyNetwork:
             visit-count-temperature distribution.
         """
         x = np.asarray(x, dtype=float).reshape(-1, self.feature_dim)
-        target_policy = np.asarray(target_policy, dtype=float).reshape(-1, self.n_actions)
+        target_policy = np.asarray(target_policy, dtype=float).reshape(
+            -1, self.n_actions
+        )
         if x.shape[0] == 0:
             return 0.0
         if x.shape[0] != target_policy.shape[0]:
@@ -611,7 +612,9 @@ class MCTSReplayLearner:
         if buffer is None:
             raise MCTSReplayLearnerError("fit() requires a non-None buffer")
         n_epochs_eff = int(n_epochs) if n_epochs is not None else int(self.n_epochs)
-        batch_size_eff = int(batch_size) if batch_size is not None else int(self.batch_size)
+        batch_size_eff = (
+            int(batch_size) if batch_size is not None else int(self.batch_size)
+        )
         if n_epochs_eff < 1:
             raise MCTSReplayLearnerError(
                 f"n_epochs must be >= 1; got {n_epochs_eff}",
@@ -644,7 +647,8 @@ class MCTSReplayLearner:
             )
             # ----- value target -----
             v_targets = np.asarray(
-                [float(np.clip(e.value, -1.0, 1.0)) for e in batch], dtype=float,
+                [float(np.clip(e.value, -1.0, 1.0)) for e in batch],
+                dtype=float,
             )
             value_loss = float(self.value_net.update(feats, v_targets))
             # ----- policy target -----
@@ -657,15 +661,17 @@ class MCTSReplayLearner:
             running_p.append(policy_loss)
             window_v = float(np.mean(running_v[-CONVERGENCE_WINDOW:]))
             window_p = float(np.mean(running_p[-CONVERGENCE_WINDOW:]))
-            self.history_.append({
-                "epoch": int(epoch_idx),
-                "value_loss": float(value_loss),
-                "policy_loss": float(policy_loss),
-                "wall_time_s": float(wall),
-                "n_samples": int(n),
-                "value_loss_running_mean": float(window_v),
-                "policy_loss_running_mean": float(window_p),
-            })
+            self.history_.append(
+                {
+                    "epoch": int(epoch_idx),
+                    "value_loss": float(value_loss),
+                    "policy_loss": float(policy_loss),
+                    "wall_time_s": float(wall),
+                    "n_samples": int(n),
+                    "value_loss_running_mean": float(window_v),
+                    "policy_loss_running_mean": float(window_p),
+                }
+            )
             # Convergence check — running mean of *both* losses falls
             # below ``CONVERGENCE_EPS``.
             if (
@@ -900,6 +906,7 @@ def _coerce(o: Any) -> Any:
     """Coerce numpy / set / tuple objects into JSON-safe primitives."""
     try:
         import numpy as _np
+
         if isinstance(o, (_np.floating, _np.integer)):
             return o.item()
         if isinstance(o, _np.ndarray):
@@ -934,58 +941,82 @@ def _build_argparser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
-        "--smoke", action="store_true",
+        "--smoke",
+        action="store_true",
         help="Smoke harness: synthetic 64-entry buffer × 2 epochs × batch 8.",
     )
     parser.add_argument(
-        "--replay-buffer", type=str, default=None,
+        "--replay-buffer",
+        type=str,
+        default=None,
         help=(
             "Path to a replay buffer file (.pkl / .jsonl).  When "
             "omitted we fall back to the synthetic fixture."
         ),
     )
     parser.add_argument(
-        "--n-epochs", type=int, default=DEFAULT_N_EPOCHS,
+        "--n-epochs",
+        type=int,
+        default=DEFAULT_N_EPOCHS,
         help=f"Number of training epochs (default {DEFAULT_N_EPOCHS}).",
     )
     parser.add_argument(
-        "--batch-size", type=int, default=_REPLAY_DEFAULT_BATCH,
+        "--batch-size",
+        type=int,
+        default=_REPLAY_DEFAULT_BATCH,
         help=f"Mini-batch size (default {_REPLAY_DEFAULT_BATCH}).",
     )
     parser.add_argument(
-        "--lr", type=float, default=DEFAULT_LR,
+        "--lr",
+        type=float,
+        default=DEFAULT_LR,
         help=f"Learning rate (default {DEFAULT_LR}).",
     )
     parser.add_argument(
-        "--feature-dim", type=int, default=DEFAULT_FEATURE_DIM,
+        "--feature-dim",
+        type=int,
+        default=DEFAULT_FEATURE_DIM,
         help=f"Feature dimensionality (default {DEFAULT_FEATURE_DIM}).",
     )
     parser.add_argument(
-        "--hidden-dim", type=int, default=DEFAULT_HIDDEN_DIM,
+        "--hidden-dim",
+        type=int,
+        default=DEFAULT_HIDDEN_DIM,
         help=f"Value-head hidden width (default {DEFAULT_HIDDEN_DIM}).",
     )
     parser.add_argument(
-        "--n-actions", type=int, default=DEFAULT_N_ACTIONS,
+        "--n-actions",
+        type=int,
+        default=DEFAULT_N_ACTIONS,
         help=f"Policy-head output dim (default {DEFAULT_N_ACTIONS}).",
     )
     parser.add_argument(
-        "--seed", type=int, default=0,
+        "--seed",
+        type=int,
+        default=0,
         help="RNG seed (default 0).",
     )
     parser.add_argument(
-        "--synth-entries", type=int, default=64,
+        "--synth-entries",
+        type=int,
+        default=64,
         help="Synthetic fixture entries when no replay file is given.",
     )
     parser.add_argument(
-        "--synth-states", type=int, default=8,
+        "--synth-states",
+        type=int,
+        default=8,
         help="Synthetic fixture states when no replay file is given.",
     )
     parser.add_argument(
-        "--out-dir", type=str, default=DEFAULT_OUTPUT_DIR,
+        "--out-dir",
+        type=str,
+        default=DEFAULT_OUTPUT_DIR,
         help="Output directory for learner_bench.json.",
     )
     parser.add_argument(
-        "--json", action="store_true",
+        "--json",
+        action="store_true",
         help="Emit the full report as a single JSON line on stdout.",
     )
     return parser

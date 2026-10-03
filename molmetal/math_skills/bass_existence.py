@@ -160,9 +160,7 @@ class BassExistenceTheorem:
             Defaults to the Backhoff-Veraguas 2020 Thm. 1.1 text.
         """
         self._dimension = dimension
-        self._statement = (
-            statement if statement is not None else self._STATEMENT
-        )
+        self._statement = statement if statement is not None else self._STATEMENT
 
     # -- public API --------------------------------------------------------
 
@@ -300,9 +298,9 @@ class RegularityCondition:
         # for 2-D inputs use the squared Euclidean norm per sample
         # averaged over the sample dimension.
         if marginal.ndim == 1:
-            second_moment = float((marginal ** 2).mean().item())
+            second_moment = float((marginal**2).mean().item())
         else:
-            second_moment = float((marginal ** 2).sum(dim=-1).mean().item())
+            second_moment = float((marginal**2).sum(dim=-1).mean().item())
         if not (second_moment < self.heavy_tail_threshold):
             return False
         return True
@@ -323,5 +321,5 @@ class RegularityCondition:
         if not self.check(marginal):
             return float("inf")
         if marginal.ndim == 1:
-            return float((marginal ** 2).mean().item())
-        return float((marginal ** 2).sum(dim=-1).mean().item())
+            return float((marginal**2).mean().item())
+        return float((marginal**2).sum(dim=-1).mean().item())

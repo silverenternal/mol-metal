@@ -82,13 +82,18 @@ def _run_one(
     if smoke:
         # Smoke mode: tiny benchmark + manual accuracy check.
         speedup = w_solver.wall_time_speedup(
-            n_runs=n_runs, z0=z0.clone(), t=t, velocity_fn=velocity_fn,
+            n_runs=n_runs,
+            z0=z0.clone(),
+            t=t,
+            velocity_fn=velocity_fn,
         )
         with torch.no_grad():
             w_state = w_solver.solve(velocity_fn, z0.clone(), (0.0, t))
             base_state = w_solver.solve_base(
-                velocity_fn, z0.clone(),
-                n_steps=n_steps_base, method="midpoint",
+                velocity_fn,
+                z0.clone(),
+                n_steps=n_steps_base,
+                method="midpoint",
                 t_span=(0.0, t),
             )
         max_abs_diff = float((w_state - base_state).abs().max().item())
@@ -110,8 +115,15 @@ def _run_one(
             tol_accuracy=1e-2,
         )
         for key in (
-            "strategy", "w_total_time_s", "base_total_time_s", "speedup",
-            "max_abs_diff", "within_tol", "n_windows", "n_runs", "z0_shape",
+            "strategy",
+            "w_total_time_s",
+            "base_total_time_s",
+            "speedup",
+            "max_abs_diff",
+            "within_tol",
+            "n_windows",
+            "n_runs",
+            "z0_shape",
         ):
             val = report[key]
             if isinstance(val, float):

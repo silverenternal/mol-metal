@@ -59,13 +59,16 @@ from molmetal.models.bond_head import (
 
 def _cisplatin_like_cloud() -> AtomCloud:
     """Tiny Pt(II) square-planar cloud with 4 donors at ~2.05 Å."""
-    positions = torch.tensor([
-        [0.0, 0.0, 0.0],     # Pt
-        [2.05, 0.0, 0.0],     # Cl  (right)
-        [-2.05, 0.0, 0.0],    # Cl  (left)
-        [0.0, 2.05, 0.0],     # NH3 (top)
-        [0.0, -2.05, 0.0],    # NH3 (bottom)
-    ], dtype=torch.float32)
+    positions = torch.tensor(
+        [
+            [0.0, 0.0, 0.0],  # Pt
+            [2.05, 0.0, 0.0],  # Cl  (right)
+            [-2.05, 0.0, 0.0],  # Cl  (left)
+            [0.0, 2.05, 0.0],  # NH3 (top)
+            [0.0, -2.05, 0.0],  # NH3 (bottom)
+        ],
+        dtype=torch.float32,
+    )
     atomic_numbers = torch.tensor([78, 17, 17, 7, 7], dtype=torch.long)
     return AtomCloud(positions=positions, atomic_numbers=atomic_numbers)
 
@@ -148,7 +151,10 @@ def test_yuelbond_and_decoder_rework_coexist():
     rework = DecoderRework()
     result = rework.compute_bond_logits(cloud.atomic_numbers, cloud.positions)
     assert logits.shape[0] == i_idx.numel()
-    assert result.p_combined.numel() == cloud.positions.shape[0] * (cloud.positions.shape[0] - 1) // 2
+    assert (
+        result.p_combined.numel()
+        == cloud.positions.shape[0] * (cloud.positions.shape[0] - 1) // 2
+    )
 
 
 # ---------------------------------------------------------------------------

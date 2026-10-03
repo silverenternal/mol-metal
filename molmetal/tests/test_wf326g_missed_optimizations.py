@@ -85,6 +85,7 @@ def _to_tensors(smiles: List[str]):
 # §1 — Per-optimisation correctness (3 tests)
 # ===========================================================================
 
+
 # Test 1: D-MPNN does NOT yet use torch.compile (audit confirmation, §3.1)
 def test_dmpnn_does_not_use_torch_compile():
     """Audit: confirm ``molmetal/baselines/dmpnn.py`` has no ``torch.compile``.
@@ -95,6 +96,7 @@ def test_dmpnn_does_not_use_torch_compile():
     signal the plan needs an update.
     """
     import molmetal.baselines.dmpnn as dmpnn_mod
+
     source = inspect.getsource(dmpnn_mod)
     # No torch.compile wrapper on any function in this module.
     assert "torch.compile" not in source, (
@@ -102,9 +104,9 @@ def test_dmpnn_does_not_use_torch_compile():
         "the plan needs to be updated to reflect the port."
     )
     # No @torch.compile decorator either.
-    assert not re.search(r"@\s*torch\.compile", source), (
-        "Wf-326G §3.1 audit FAIL: found @torch.compile decorator in dmpnn.py."
-    )
+    assert not re.search(
+        r"@\s*torch\.compile", source
+    ), "Wf-326G §3.1 audit FAIL: found @torch.compile decorator in dmpnn.py."
 
 
 # Test 2: D-MPNN does NOT yet use scatter_reduce_ (audit confirmation, §1.2)
@@ -113,6 +115,7 @@ def test_dmpnn_does_not_use_scatter_reduce_():
     ``scatter_reduce_`` (per §1.2 of the Wf-326G plan).
     """
     import molmetal.baselines.dmpnn as dmpnn_mod
+
     source = inspect.getsource(dmpnn_mod)
     # No scatter_reduce_ in this module.
     assert "scatter_reduce_" not in source, (
@@ -132,6 +135,7 @@ def test_dmpnn_does_not_use_batched_mol_graph():
     Python loop and the padded (B, V, A) representation (per §1.1).
     """
     import molmetal.baselines.dmpnn as dmpnn_mod
+
     source = inspect.getsource(dmpnn_mod.DMPNNModel.forward)
     # Per-mol Python loop still present.
     assert "for b in range(B)" in source, (
@@ -148,6 +152,7 @@ def test_dmpnn_does_not_use_batched_mol_graph():
 # ===========================================================================
 # §2 — Per-optimisation port-equivalence (3 tests) — drop-in correctness
 # ===========================================================================
+
 
 # Test 4: scatter_reduce_(include_self=False) is bit-equivalent to index_add_
 def test_scatter_reduce_drop_in_equivalence():
@@ -175,9 +180,7 @@ def test_scatter_reduce_drop_in_equivalence():
     # value into the reduce — equivalent to starting from zero).
     out = torch.zeros(V, H, dtype=torch.float32)
     index_torch = e_dst.unsqueeze(1).repeat(1, H)
-    out.scatter_reduce_(
-        0, index_torch, h_e, reduce="sum", include_self=False
-    )
+    out.scatter_reduce_(0, index_torch, h_e, reduce="sum", include_self=False)
 
     # Numerical equivalence (FP32 reduction-order tolerance).
     assert torch.allclose(ref, out, atol=1e-5), (
@@ -200,9 +203,9 @@ def test_tf32_setting_default_off():
     try:
         # Default = "highest" (no TF32).
         torch.set_float32_matmul_precision("highest")
-        assert torch.get_float32_matmul_precision() == "highest", (
-            "PyTorch state assertion failed: 'highest' should be settable."
-        )
+        assert (
+            torch.get_float32_matmul_precision() == "highest"
+        ), "PyTorch state assertion failed: 'highest' should be settable."
         # Now flip to TF32 / "high" and verify the speedup is measurable.
         torch.set_float32_matmul_precision("high")
         assert torch.get_float32_matmul_precision() == "high"
@@ -252,9 +255,7 @@ def test_forward_loop_is_python_loop():
         elapsed = time.time() - t0
 
     # The forward takes >0 time (sanity check).
-    assert elapsed > 0.0, (
-        "Wf-326G §1.1 sanity FAIL: forward completed in 0 wall time."
-    )
+    assert elapsed > 0.0, "Wf-326G §1.1 sanity FAIL: forward completed in 0 wall time."
     # The source confirms a Python per-mol loop (re-check after warmup in
     # case JIT inlining changed the structure).
     src = inspect.getsource(model.forward)
@@ -268,6 +269,7 @@ def test_forward_loop_is_python_loop():
 # §3 — Integration (2 tests) — full-pipeline audit
 # ===========================================================================
 
+
 # Test 7: basic D-MPNN training does NOT wrap forward in autocast (per §3.5)
 def test_basic_dmpnn_no_autocast():
     """Audit: confirm ``molmetal/baselines/dmpnn.py:train_epoch`` does NOT wrap
@@ -278,6 +280,7 @@ def test_basic_dmpnn_no_autocast():
     of the Wf-326G plan).
     """
     import molmetal.baselines.dmpnn as dmpnn_mod
+
     source = inspect.getsource(dmpnn_mod)
     # No autocast in the basic module.
     assert "autocast" not in source, (
@@ -298,6 +301,7 @@ def test_basic_dmpnn_no_dataloader():
     §3.6 of the Wf-326G plan).
     """
     import molmetal.baselines.dmpnn as dmpnn_mod
+
     source = inspect.getsource(dmpnn_mod)
     # No DataLoader in the basic module.
     assert "DataLoader" not in source, (

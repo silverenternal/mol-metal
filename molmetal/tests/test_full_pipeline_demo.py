@@ -24,6 +24,7 @@ This is a static-only guard.  If you want to verify the demo actually
 
     bash molmetal/scripts/wf_full_pipeline.sh 2>&1 | tee /tmp/full_pipeline_test.log
 """
+
 from __future__ import annotations
 
 import os
@@ -121,9 +122,9 @@ def test_wf_full_pipeline_has_section(section_idx, label, entry_point, needle):
     text = _read_script()
     # Section header pattern, e.g. "[1/6] Eval all evaluators ..."
     pattern = rf"\[{re.escape(section_idx)}\]"
-    assert re.search(pattern, text), (
-        f"section header {section_idx!r} not found in wf_full_pipeline.sh"
-    )
+    assert re.search(
+        pattern, text
+    ), f"section header {section_idx!r} not found in wf_full_pipeline.sh"
     assert needle in text, (
         f"section {section_idx} ({label}) does not invoke {entry_point} "
         f"(missing needle {needle!r} in wf_full_pipeline.sh)"
@@ -140,9 +141,14 @@ def test_wf_full_pipeline_has_exactly_six_sections():
     section_headers = re.findall(r"\[(\d+)/6\]", text)
     # The summary line at the end also reuses "[N/6]" so de-duplicate.
     section_headers = sorted(set(section_headers))
-    assert section_headers == ["1", "2", "3", "4", "5", "6"], (
-        f"expected 6 sections [1..6], got {section_headers}"
-    )
+    assert section_headers == [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+    ], f"expected 6 sections [1..6], got {section_headers}"
 
 
 def test_wf_full_pipeline_critical_flags_present():
@@ -167,9 +173,9 @@ def test_wf_full_pipeline_critical_flags_present():
 def test_wf_full_pipeline_sources_env_sh():
     """If env.sh is present the script must source it (matches project convention)."""
     text = _read_script()
-    assert "source" in text and "env.sh" in text, (
-        "wf_full_pipeline.sh does not source env.sh — uv/venv routing may break"
-    )
+    assert (
+        "source" in text and "env.sh" in text
+    ), "wf_full_pipeline.sh does not source env.sh — uv/venv routing may break"
 
 
 def test_wf_full_pipeline_runs_within_cpu_budget():
@@ -191,6 +197,6 @@ def test_wf_full_pipeline_runs_within_cpu_budget():
             f"F3 <10 min SLA"
         )
     # Sanity: 6 sections => 6 budget variables.
-    assert len(matches) == 6, (
-        f"expected 6 SEC_BUDGET_* variables (one per section), got {len(matches)}"
-    )
+    assert (
+        len(matches) == 6
+    ), f"expected 6 SEC_BUDGET_* variables (one per section), got {len(matches)}"

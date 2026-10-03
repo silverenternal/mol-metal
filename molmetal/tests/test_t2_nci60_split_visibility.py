@@ -17,6 +17,7 @@ metadata said "scaffold". These tests pin the fix:
 The split construction itself is UNTOUCHED — the m21 byte-identical
 comparability is preserved.
 """
+
 from __future__ import annotations
 
 import json
@@ -84,28 +85,51 @@ class TestSplitManifest:
     def test_manifest_roundtrip_and_gate_assertion(self, tmp_path) -> None:
         p = tmp_path / "sub" / "x.split_manifest.json"
         records = [
-            {"cell": "A549", "seed": 0, "path_taken": H.SPLIT_PATH_SCAFFOLD_OOD,
-             "split_label": "scaffold_ood_seed0", "status": "ok",
-             "n_train": 100, "n_val": 20, "n_test": 33},
-            {"cell": "DU145", "seed": 0, "path_taken": H.SPLIT_PATH_RANDOM_FALLBACK,
-             "split_label": "random_80_10_20_fallback_no_scaffold_group",
-             "status": "ok", "n_train": 128, "n_val": 16, "n_test": 17},
+            {
+                "cell": "A549",
+                "seed": 0,
+                "path_taken": H.SPLIT_PATH_SCAFFOLD_OOD,
+                "split_label": "scaffold_ood_seed0",
+                "status": "ok",
+                "n_train": 100,
+                "n_val": 20,
+                "n_test": 33,
+            },
+            {
+                "cell": "DU145",
+                "seed": 0,
+                "path_taken": H.SPLIT_PATH_RANDOM_FALLBACK,
+                "split_label": "random_80_10_20_fallback_no_scaffold_group",
+                "status": "ok",
+                "n_train": 128,
+                "n_val": 16,
+                "n_test": 17,
+            },
         ]
-        written = H.write_split_manifest(p, records, extra={"requested_split": "scaffold"})
+        written = H.write_split_manifest(
+            p, records, extra={"requested_split": "scaffold"}
+        )
         assert written == p and p.exists()
         payload = json.loads(p.read_text())
         assert payload["schema"] == "nci60_split_manifest_v1"
         assert payload["n_records"] == 2
         assert payload["extra"] == {"requested_split": "scaffold"}
         assert [r["path_taken"] for r in payload["records"]] == [
-            "scaffold_ood", "random_fallback",
+            "scaffold_ood",
+            "random_fallback",
         ]
         # The gate use-case: assert scaffold-OOD actually happened.
-        assert all(r["path_taken"] == "scaffold_ood" for r in payload["records"]) is False
+        assert (
+            all(r["path_taken"] == "scaffold_ood" for r in payload["records"]) is False
+        )
 
     def test_manifest_constants_exported(self) -> None:
-        for name in ("SPLIT_PATH_SCAFFOLD_OOD", "SPLIT_PATH_RANDOM_FALLBACK",
-                     "SPLIT_PATH_RANDOM_TEMPORAL", "SPLIT_PATH_UNKNOWN"):
+        for name in (
+            "SPLIT_PATH_SCAFFOLD_OOD",
+            "SPLIT_PATH_RANDOM_FALLBACK",
+            "SPLIT_PATH_RANDOM_TEMPORAL",
+            "SPLIT_PATH_UNKNOWN",
+        ):
             assert name in H.__all__, name
             assert isinstance(getattr(H, name), str)
         assert H.SPLIT_PATH_SCAFFOLD_OOD == "scaffold_ood"
@@ -116,8 +140,17 @@ class TestSplitManifest:
 
 @pytest.mark.skipif(not CSV_DEFAULT.exists(), reason=f"missing {CSV_DEFAULT}")
 class TestRealCsvNineCellPaths:
-    CELLS = ["A549", "MCF7", "A2780", "HCT116", "A2780cis",
-             "PC3", "HL60", "SKOV3", "DU145"]
+    CELLS = [
+        "A549",
+        "MCF7",
+        "A2780",
+        "HCT116",
+        "A2780cis",
+        "PC3",
+        "HL60",
+        "SKOV3",
+        "DU145",
+    ]
 
     def test_all_nine_cells_fall_back_at_default_threshold(self, caplog) -> None:
         """MEASURED T2-FIX 2026-10-03: path@n_test_min=50 = random_fallback 9/9.
@@ -141,7 +174,8 @@ class TestRealCsvNineCellPaths:
                     n_test_min=50,
                 )
                 paths[cell] = (
-                    H.SPLIT_PATH_RANDOM_FALLBACK if out is None
+                    H.SPLIT_PATH_RANDOM_FALLBACK
+                    if out is None
                     else H.SPLIT_PATH_SCAFFOLD_OOD
                 )
         assert paths == {c: H.SPLIT_PATH_RANDOM_FALLBACK for c in self.CELLS}, paths
@@ -153,10 +187,28 @@ class TestDriverExecuteSweepVisibility:
     """T2-FIX caller check: the driver itself must state the path taken."""
 
     # 20 distinct-scaffold SMILES x 3 copies = 60 rows; max scaffold group 6.
-    BASE = ["c1ccccc1", "c1ccncc1", "c1ccc2ccccc2c1", "C1CCCCC1", "C1CCNCC1",
-            "C1CCOCC1", "CC(=O)O", "CC(=O)N", "CCS", "CCBr", "CCI", "CCF",
-            "CCCl", "CCN", "CCC", "CCO", "c1ccsc1", "c1ccoc1",
-            "c1cnc2ccccc2n1", "c1ccc(O)cc1"]
+    BASE = [
+        "c1ccccc1",
+        "c1ccncc1",
+        "c1ccc2ccccc2c1",
+        "C1CCCCC1",
+        "C1CCNCC1",
+        "C1CCOCC1",
+        "CC(=O)O",
+        "CC(=O)N",
+        "CCS",
+        "CCBr",
+        "CCI",
+        "CCF",
+        "CCCl",
+        "CCN",
+        "CCC",
+        "CCO",
+        "c1ccsc1",
+        "c1ccoc1",
+        "c1cnc2ccccc2n1",
+        "c1ccc(O)cc1",
+    ]
 
     def test_execute_sweep_records_fallback_path_and_manifest(
         self, tmp_path, caplog
@@ -174,13 +226,31 @@ class TestDriverExecuteSweepVisibility:
         csv_path = tmp_path / "tiny.csv"
         csv_path.write_text("\n".join(rows) + "\n")
         out = tmp_path / "sweep.json"
-        args = mod.build_argparser().parse_args([
-            "--csv", str(csv_path), "--cells", "T2SMOKE",
-            "--split", "scaffold", "--n-test-min", "50",
-            "--epochs", "1", "--batch-size", "16", "--device", "cpu",
-            "--seeds", "0", "--time-budget-s", "600",
-            "--out", str(out), "--execute",
-        ])
+        args = mod.build_argparser().parse_args(
+            [
+                "--csv",
+                str(csv_path),
+                "--cells",
+                "T2SMOKE",
+                "--split",
+                "scaffold",
+                "--n-test-min",
+                "50",
+                "--epochs",
+                "1",
+                "--batch-size",
+                "16",
+                "--device",
+                "cpu",
+                "--seeds",
+                "0",
+                "--time-budget-s",
+                "600",
+                "--out",
+                str(out),
+                "--execute",
+            ]
+        )
         with caplog.at_level(logging.WARNING):
             result = mod.execute_sweep(args)
 

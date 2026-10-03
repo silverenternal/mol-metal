@@ -93,19 +93,19 @@ AquaExchange = REACTION_RULES["AquaExchange"]
 #: ``"AmideCoupling"``).
 CLICK_REACTIONS: Dict[str, object] = {
     # canonical camelCase
-    "CuAAC":         CuAAC,
-    "SPAAC":         SPAAC,
-    "ThiolEne":      ThiolEne,
-    "Suzuki":        Suzuki,
+    "CuAAC": CuAAC,
+    "SPAAC": SPAAC,
+    "ThiolEne": ThiolEne,
+    "Suzuki": Suzuki,
     "AmideCoupling": AmideCoupling,
     # lower-case-with-dash variant (metrics-harness convention)
-    "cuaac":         CuAAC,
-    "spaac":         SPAAC,
-    "thiol-ene":     ThiolEne,
-    "suzuki":        Suzuki,
+    "cuaac": CuAAC,
+    "spaac": SPAAC,
+    "thiol-ene": ThiolEne,
+    "suzuki": Suzuki,
     "amide coupling": AmideCoupling,
     # lower-case-with-space variant
-    "amide":         AmideCoupling,
+    "amide": AmideCoupling,
     "amide_coupling": AmideCoupling,
 }
 
@@ -115,15 +115,15 @@ CLICK_REACTIONS: Dict[str, object] = {
 #: Opt-in via the ``metal-coord`` alias in
 #: :data:`molmetal.scripts.r4_lambda_only_run.CLICK_RULE_ALIASES`.
 METAL_COORDINATION_RULES: Dict[str, object] = {
-    "MetalLigandExchange":    MetalLigandExchange,
-    "AquaExchange":           AquaExchange,
-    "metal-ligand-exchange":  MetalLigandExchange,
-    "metal_ligand_exchange":  MetalLigandExchange,
-    "ammonia-substitution":   MetalLigandExchange,
-    "ammine-substitution":    MetalLigandExchange,
-    "aqua-exchange":          AquaExchange,
-    "aqua_exchange":          AquaExchange,
-    "aquation":               AquaExchange,
+    "MetalLigandExchange": MetalLigandExchange,
+    "AquaExchange": AquaExchange,
+    "metal-ligand-exchange": MetalLigandExchange,
+    "metal_ligand_exchange": MetalLigandExchange,
+    "ammonia-substitution": MetalLigandExchange,
+    "ammine-substitution": MetalLigandExchange,
+    "aqua-exchange": AquaExchange,
+    "aqua_exchange": AquaExchange,
+    "aquation": AquaExchange,
 }
 
 

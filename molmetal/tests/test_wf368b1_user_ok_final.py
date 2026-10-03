@@ -149,18 +149,18 @@ class TestWf368B1UserOkFinal:
             )
 
         # 8. Wf-366-A1 (GAP-1) + Wf-366-A2 (GAP-2) gap closures referenced
-        assert "Wf-366-A1" in content, (
-            "Wf-368-B1 FINAL checklist must reference Wf-366-A1 GAP-1 closure"
-        )
-        assert "Wf-366-A2" in content, (
-            "Wf-368-B1 FINAL checklist must reference Wf-366-A2 GAP-2 closure"
-        )
-        assert "GAP-1" in content, (
-            "Wf-368-B1 FINAL checklist must mention GAP-1 (G5 USER_OK gate)"
-        )
-        assert "GAP-2" in content, (
-            "Wf-368-B1 FINAL checklist must mention GAP-2 (recover_g6 block-order)"
-        )
+        assert (
+            "Wf-366-A1" in content
+        ), "Wf-368-B1 FINAL checklist must reference Wf-366-A1 GAP-1 closure"
+        assert (
+            "Wf-366-A2" in content
+        ), "Wf-368-B1 FINAL checklist must reference Wf-366-A2 GAP-2 closure"
+        assert (
+            "GAP-1" in content
+        ), "Wf-368-B1 FINAL checklist must mention GAP-1 (G5 USER_OK gate)"
+        assert (
+            "GAP-2" in content
+        ), "Wf-368-B1 FINAL checklist must mention GAP-2 (recover_g6 block-order)"
 
         # 9. m6_kappa HONEST_NEGATIVE_PARTIAL_STRUCTURAL preserved per Wf-365-A3
         assert "HONEST_NEGATIVE_PARTIAL_STRUCTURAL" in content, (
@@ -177,9 +177,9 @@ class TestWf368B1UserOkFinal:
 
         # 11. Forward-looking §7 guidance present (per Wf-368-B1 brief §7)
         # The §7 Forward-looking heading must explicitly appear
-        assert re.search(r"§7\s+(Forward|How|User|Decision)", content), (
-            "Wf-368-B1 FINAL checklist must have §7 forward-looking section"
-        )
+        assert re.search(
+            r"§7\s+(Forward|How|User|Decision)", content
+        ), "Wf-368-B1 FINAL checklist must have §7 forward-looking section"
 
         # 12. Path discipline — checklist lives under docs/, NOT paper/*
         assert "docs/USER_OK_FINAL_CHECKLIST.md" in content, (
@@ -195,20 +195,20 @@ class TestWf368B1UserOkFinal:
 
         # 13. MEASURED-vs-PROJECTED tag discipline preserved
         # (sanity check AGENTS.md §5.2; the file must contain MEASURED + PROJECTED tags)
-        assert "MEASURED" in content, (
-            "Wf-368-B1 FINAL checklist must preserve MEASURED tag discipline"
-        )
-        assert "PROJECTED" in content, (
-            "Wf-368-B1 FINAL checklist must preserve PROJECTED tag discipline"
-        )
+        assert (
+            "MEASURED" in content
+        ), "Wf-368-B1 FINAL checklist must preserve MEASURED tag discipline"
+        assert (
+            "PROJECTED" in content
+        ), "Wf-368-B1 FINAL checklist must preserve PROJECTED tag discipline"
 
         # 14. §6 Cross-references explicitly references AGENTS.md + Wf-368
-        assert "AGENTS.md" in content, (
-            "Wf-368-B1 FINAL checklist must reference AGENTS.md per brief §6"
-        )
-        assert "Wf-368" in content or "Wf-366" in content, (
-            "Wf-368-B1 FINAL checklist must reference Wf-368 or Wf-366 in §6"
-        )
+        assert (
+            "AGENTS.md" in content
+        ), "Wf-368-B1 FINAL checklist must reference AGENTS.md per brief §6"
+        assert (
+            "Wf-368" in content or "Wf-366" in content
+        ), "Wf-368-B1 FINAL checklist must reference Wf-368 or Wf-366 in §6"
 
 
 if __name__ == "__main__":

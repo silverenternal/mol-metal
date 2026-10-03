@@ -83,27 +83,27 @@ class TestWf366C2UserOkFinal:
             )
 
         # 5. Wf-366-A1 (GAP-1) + Wf-366-A2 (GAP-2) gap closures referenced
-        assert "Wf-366-A1" in content, (
-            "Wf-366-C2 final checklist must reference Wf-366-A1 GAP-1 closure"
-        )
-        assert "Wf-366-A2" in content, (
-            "Wf-366-C2 final checklist must reference Wf-366-A2 GAP-2 closure"
-        )
-        assert "GAP-1" in content, (
-            "Wf-366-C2 final checklist must mention GAP-1 (G5 USER_OK gate)"
-        )
-        assert "GAP-2" in content, (
-            "Wf-366-C2 final checklist must mention GAP-2 (recover_g6 block-order)"
-        )
+        assert (
+            "Wf-366-A1" in content
+        ), "Wf-366-C2 final checklist must reference Wf-366-A1 GAP-1 closure"
+        assert (
+            "Wf-366-A2" in content
+        ), "Wf-366-C2 final checklist must reference Wf-366-A2 GAP-2 closure"
+        assert (
+            "GAP-1" in content
+        ), "Wf-366-C2 final checklist must mention GAP-1 (G5 USER_OK gate)"
+        assert (
+            "GAP-2" in content
+        ), "Wf-366-C2 final checklist must mention GAP-2 (recover_g6 block-order)"
 
         # 6. m6_kappa honest-negative preserved per Wf-365-A3
         assert "HONEST_NEGATIVE_PARTIAL_STRUCTURAL" in content, (
             "Wf-366-C2 final checklist must preserve m6_kappa "
             "HONEST_NEGATIVE_PARTIAL_STRUCTURAL FINAL per Wf-365-A3 §2"
         )
-        assert "m6_kappa" in content, (
-            "Wf-366-C2 final checklist must reference m6_kappa metric gate"
-        )
+        assert (
+            "m6_kappa" in content
+        ), "Wf-366-C2 final checklist must reference m6_kappa metric gate"
 
         # 7. Path discipline — checklist lives under docs/, NOT paper/*
         assert "docs/USER_OK_FINAL_CHECKLIST.md" in content, (
@@ -118,12 +118,12 @@ class TestWf366C2UserOkFinal:
 
         # 8. MEASURED-vs-PROJECTED tag discipline preserved
         # (sanity check AGENTS.md §5.2; the file must contain MEASURED + PROJECTED tags)
-        assert "MEASURED" in content, (
-            "Wf-366-C2 final checklist must preserve MEASURED tag discipline"
-        )
-        assert "PROJECTED" in content, (
-            "Wf-366-C2 final checklist must preserve PROJECTED tag discipline"
-        )
+        assert (
+            "MEASURED" in content
+        ), "Wf-366-C2 final checklist must preserve MEASURED tag discipline"
+        assert (
+            "PROJECTED" in content
+        ), "Wf-366-C2 final checklist must preserve PROJECTED tag discipline"
 
         # 9. USER_OK gate pattern documented for all 7 wrappers
         expected_wrappers = [

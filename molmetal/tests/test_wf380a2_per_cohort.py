@@ -27,6 +27,7 @@ Honest framing (party-twenty-spirit §3.5):
   * MEASURED-vs-PROJECTED tag discipline: synthetic R² is MEASURED;
     real-cohort lift is PROJECTED.
 """
+
 from __future__ import annotations
 
 import json
@@ -112,7 +113,9 @@ def test_per_cohort_config_match() -> None:
     assert cfg_yaml["tiers"]["n_gte_1000"]["alpha"] == 0.1
     assert cfg_yaml["per_cohort_targets"]["platinai_4cell"]["tier"] == "n_lt_300"
     assert cfg_yaml["per_cohort_targets"]["hilbert"]["tier"] == "n_lt_300"
-    assert cfg_yaml["per_cohort_targets"]["metalcytotox_combined"]["tier"] == "n_gte_1000"
+    assert (
+        cfg_yaml["per_cohort_targets"]["metalcytotox_combined"]["tier"] == "n_gte_1000"
+    )
     assert cfg_yaml["per_cohort_targets"]["intermediate_n500"]["tier"] == "n_lt_1000"
 
 
@@ -129,7 +132,10 @@ def test_12d_ridge_no_overfit() -> None:
     """
     # n=200 + 12-d
     out = per_cohort_pipeline(
-        cohort_size=200, seed=42, n_splits=5, n_seeds=5,
+        cohort_size=200,
+        seed=42,
+        n_splits=5,
+        n_seeds=5,
     )
     assert out["config"]["tier"] == "n_lt_300"
     assert out["config"]["n_features_expected"] == 12
@@ -155,7 +161,10 @@ def test_24d_intermediate() -> None:
     is the medium-regularization tier.
     """
     out = per_cohort_pipeline(
-        cohort_size=500, seed=42, n_splits=5, n_seeds=5,
+        cohort_size=500,
+        seed=42,
+        n_splits=5,
+        n_seeds=5,
     )
     assert out["config"]["tier"] == "n_lt_1000"
     assert out["config"]["n_features_expected"] == 24
@@ -167,14 +176,17 @@ def test_24d_intermediate() -> None:
     assert out["alpha_used"] == 0.5
     # Also: n>=1000 tier (50-d) should give positive R² on n=2000
     out_2000 = per_cohort_pipeline(
-        cohort_size=2000, seed=42, n_splits=5, n_seeds=5,
+        cohort_size=2000,
+        seed=42,
+        n_splits=5,
+        n_seeds=5,
     )
     assert out_2000["config"]["tier"] == "n_gte_1000"
     assert out_2000["n_features_built"] == 50
     r2_2000 = out_2000["measured_synthetic_r2_mean"]
-    assert r2_2000 > 0, (
-        f"expected positive R² on n=2000 + 50-d synthetic, got {r2_2000:+.4f}"
-    )
+    assert (
+        r2_2000 > 0
+    ), f"expected positive R² on n=2000 + 50-d synthetic, got {r2_2000:+.4f}"
 
 
 if __name__ == "__main__":

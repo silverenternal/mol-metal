@@ -14,7 +14,9 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-VERIFICATION_PY = REPO_ROOT / "molmetal" / "reports" / "wf132_index_audit" / "verification.py"
+VERIFICATION_PY = (
+    REPO_ROOT / "molmetal" / "reports" / "wf132_index_audit" / "verification.py"
+)
 
 
 def _load_verification_module():
@@ -58,9 +60,9 @@ def test_orphan_close_out_links_resolve(report):
     125,126,127,129}_*.md — every one should be present.
     """
     s = report["summary"]
-    assert s["orphan_close_out_failed"] == 0, (
-        f"orphan_close_out has {s['orphan_close_out_failed']} failures"
-    )
+    assert (
+        s["orphan_close_out_failed"] == 0
+    ), f"orphan_close_out has {s['orphan_close_out_failed']} failures"
     assert s["orphan_expected_resolved"] == 7
     assert s["orphan_still_missing"] == 0
     rows = report["checks"]["orphan_close_out"]["rows"]

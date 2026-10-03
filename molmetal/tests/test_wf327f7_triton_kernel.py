@@ -120,9 +120,9 @@ class TestWf327f7KernelCorrectness:
         out_reference = seq(x)
 
         assert out_wrapped.shape == out_reference.shape
-        assert torch.allclose(out_wrapped, out_reference, atol=1e-6, rtol=1e-5), (
-            "maybe_fused_relu_linear CPU fallback diverged from seq(x)."
-        )
+        assert torch.allclose(
+            out_wrapped, out_reference, atol=1e-6, rtol=1e-5
+        ), "maybe_fused_relu_linear CPU fallback diverged from seq(x)."
 
 
 # ===========================================================================
@@ -149,9 +149,9 @@ class TestWf327f7KernelDispatch:
             "triton_relu_linear",
             "gate_open",
         }
-        assert expected_keys.issubset(report.keys()), (
-            f"dispatch_state_report missing keys: {expected_keys - report.keys()}"
-        )
+        assert expected_keys.issubset(
+            report.keys()
+        ), f"dispatch_state_report missing keys: {expected_keys - report.keys()}"
         # Defaults (no env vars set) → all gates closed.
         # (Tests run with no env vars set unless overridden via
         # ``monkeypatch.setenv``.)
@@ -217,12 +217,14 @@ class TestWf327f7KernelDMPNNIntegration:
         edge_feat = 6
         hidden = 32
 
-        mpnn = DirectedMPNN(MPNNConfig(
-            atom_feat_dim=atom_feat,
-            edge_feat_dim=edge_feat,
-            hidden_dim=hidden,
-            n_layers=2,
-        ))
+        mpnn = DirectedMPNN(
+            MPNNConfig(
+                atom_feat_dim=atom_feat,
+                edge_feat_dim=edge_feat,
+                hidden_dim=hidden,
+                n_layers=2,
+            )
+        )
         mpnn.eval()  # disable dropout for deterministic forward
 
         h_atom = torch.randn(n_atoms, atom_feat)

@@ -30,9 +30,7 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 SCRIPTS_DIR = PROJECT_ROOT / "molmetal" / "scripts"
 TESTS_DIR = PROJECT_ROOT / "molmetal" / "tests"
-VENV_PY = (
-    PROJECT_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
-)
+VENV_PY = PROJECT_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
 
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
@@ -115,13 +113,21 @@ def test_add_common_args_exposes_all_recipe_flags() -> None:
 def test_add_common_args_accepts_overrides() -> None:
     """CLI overrides flow through to the namespace."""
     p = _fresh_parser()
-    args = p.parse_args([
-        "--data", "/tmp/x.csv",
-        "--epochs", "10",
-        "--lr", "5e-4",
-        "--seeds", "42", "7",
-        "--init", "random",
-    ])
+    args = p.parse_args(
+        [
+            "--data",
+            "/tmp/x.csv",
+            "--epochs",
+            "10",
+            "--lr",
+            "5e-4",
+            "--seeds",
+            "42",
+            "7",
+            "--init",
+            "random",
+        ]
+    )
     assert args.data == Path("/tmp/x.csv")
     assert args.epochs == 10
     assert args.lr == 5e-4
@@ -176,11 +182,16 @@ def test_add_gpu_args_exposes_env_flags() -> None:
 def test_add_gpu_args_accepts_overrides() -> None:
     """GPU env flag overrides flow through."""
     p = _fresh_parser()
-    args = p.parse_args([
-        "--cuda-visible-devices", "0,1",
-        "--mixed-precision", "fp16",
-        "--num-workers", "8",
-    ])
+    args = p.parse_args(
+        [
+            "--cuda-visible-devices",
+            "0,1",
+            "--mixed-precision",
+            "fp16",
+            "--num-workers",
+            "8",
+        ]
+    )
     assert args.cuda_visible_devices == "0,1"
     assert args.mixed_precision == "fp16"
     assert args.num_workers == 8
@@ -201,11 +212,16 @@ def test_add_benchmark_args_exposes_cv_flags() -> None:
 def test_add_benchmark_args_accepts_overrides() -> None:
     """Benchmark flag overrides flow through."""
     p = _fresh_parser()
-    args = p.parse_args([
-        "--n-folds", "10",
-        "--cv-strategy", "lomo",
-        "--folds-seed", "123",
-    ])
+    args = p.parse_args(
+        [
+            "--n-folds",
+            "10",
+            "--cv-strategy",
+            "lomo",
+            "--folds-seed",
+            "123",
+        ]
+    )
     assert args.n_folds == 10
     assert args.cv_strategy == "lomo"
     assert args.folds_seed == 123
@@ -214,7 +230,9 @@ def test_add_benchmark_args_accepts_overrides() -> None:
 # ===========================================================================
 # 5. setup_gpu_env — side effects
 # ===========================================================================
-def test_setup_gpu_env_sets_cuda_visible_devices(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_setup_gpu_env_sets_cuda_visible_devices(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """``setup_gpu_env`` writes CUDA_VISIBLE_DEVICES when set."""
     monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
     p = _fresh_parser()
@@ -252,6 +270,7 @@ def test_setup_gpu_env_default_is_gpu_one(monkeypatch: pytest.MonkeyPatch) -> No
 def test_setup_gpu_env_seeds_torch() -> None:
     """``setup_gpu_env`` calls ``torch.manual_seed`` with the right seed."""
     import torch
+
     p = _fresh_parser()
     args = p.parse_args(["--seeds", "42", "7"])
     state = cta.setup_gpu_env(args)
@@ -314,7 +333,9 @@ def test_tag_metrics_payload_includes_gpu_env_when_provided() -> None:
 def test_tag_metrics_payload_includes_extra_meta() -> None:
     """``extra_meta`` is exposed under ``_meta``."""
     payload = {"y": 2}
-    out = cta.tag_metrics_payload(payload, extra_meta={"script": "train_x", "n_seeds": 5})
+    out = cta.tag_metrics_payload(
+        payload, extra_meta={"script": "train_x", "n_seeds": 5}
+    )
     assert out["_meta"]["script"] == "train_x"
     assert out["_meta"]["n_seeds"] == 5
 
@@ -355,9 +376,12 @@ def test_decorator_tags_measured_when_ckpt_exists(tmp_path: Path) -> None:
     (out_dir / "seed_0.pt").write_bytes(b"\x00\x01")
 
     argv = [
-        "--out-dir", str(out_dir),
-        "--metrics-path", str(metrics_path),
-        "--seeds", "0",
+        "--out-dir",
+        str(out_dir),
+        "--metrics-path",
+        str(metrics_path),
+        "--seeds",
+        "0",
     ]
 
     @cta.MEASURED_vs_PROJECTED_decorator()
@@ -379,9 +403,12 @@ def test_decorator_tags_projected_when_no_ckpt(tmp_path: Path) -> None:
     metrics_path.write_text(json.dumps({"y": 2}))
 
     argv = [
-        "--out-dir", str(out_dir),
-        "--metrics-path", str(metrics_path),
-        "--seeds", "0",
+        "--out-dir",
+        str(out_dir),
+        "--metrics-path",
+        str(metrics_path),
+        "--seeds",
+        "0",
     ]
 
     @cta.MEASURED_vs_PROJECTED_decorator()
@@ -405,8 +432,10 @@ def test_decorator_preserves_existing_payload_keys(tmp_path: Path) -> None:
     metrics_path.write_text(json.dumps(payload))
 
     argv = [
-        "--out-dir", str(out_dir),
-        "--metrics-path", str(metrics_path),
+        "--out-dir",
+        str(out_dir),
+        "--metrics-path",
+        str(metrics_path),
     ]
 
     @cta.MEASURED_vs_PROJECTED_decorator()
@@ -432,8 +461,10 @@ def test_decorator_swallows_tagging_failure(tmp_path: Path) -> None:
         return 42  # the wrapped return value
 
     argv = [
-        "--out-dir", str(tmp_path),
-        "--metrics-path", str(metrics_path),
+        "--out-dir",
+        str(tmp_path),
+        "--metrics-path",
+        str(metrics_path),
     ]
     # Should NOT raise — metrics_path doesn't exist, so tagging is a no-op.
     result = main(argv)
@@ -451,11 +482,16 @@ def test_decorator_accepts_explicit_args_namespace(tmp_path: Path) -> None:
     @cta.MEASURED_vs_PROJECTED_decorator()
     def main(argv=None):
         p = _fresh_parser()
-        ns = p.parse_args([
-            "--out-dir", str(out_dir),
-            "--metrics-path", str(metrics_path),
-            "--seeds", "0",
-        ])
+        ns = p.parse_args(
+            [
+                "--out-dir",
+                str(out_dir),
+                "--metrics-path",
+                str(metrics_path),
+                "--seeds",
+                "0",
+            ]
+        )
         return (0, ns)
 
     exit_code = main(None)
@@ -474,8 +510,10 @@ def test_decorator_policy_disable_ckpt_check(tmp_path: Path) -> None:
 
     policy = cta.DecoratorPolicy(measured_when_ckpt_exists=False)
     argv = [
-        "--out-dir", str(out_dir),
-        "--metrics-path", str(metrics_path),
+        "--out-dir",
+        str(out_dir),
+        "--metrics-path",
+        str(metrics_path),
     ]
 
     @cta.MEASURED_vs_PROJECTED_decorator(policy=policy)
@@ -518,8 +556,7 @@ def test_help_exits_zero_subprocess() -> None:
             timeout=30,
         )
         assert result.returncode == 0, (
-            f"--help exited {result.returncode}\n"
-            f"stderr:\n{result.stderr}"
+            f"--help exited {result.returncode}\n" f"stderr:\n{result.stderr}"
         )
         # Sanity: each arg group renders in the help output.
         for section in ("Common recipe", "GPU env", "Benchmark / CV"):
@@ -557,10 +594,19 @@ def test_module_help_lists_documented_flags() -> None:
             timeout=30,
         )
         for flag in (
-            "--data", "--seeds", "--epochs", "--batch", "--lr",
-            "--hidden", "--depth", "--init",
-            "--cuda-visible-devices", "--mixed-precision", "--num-workers",
-            "--n-folds", "--cv-strategy",
+            "--data",
+            "--seeds",
+            "--epochs",
+            "--batch",
+            "--lr",
+            "--hidden",
+            "--depth",
+            "--init",
+            "--cuda-visible-devices",
+            "--mixed-precision",
+            "--num-workers",
+            "--n-folds",
+            "--cv-strategy",
         ):
             assert flag in result.stdout, f"{flag} missing from --help output"
     finally:

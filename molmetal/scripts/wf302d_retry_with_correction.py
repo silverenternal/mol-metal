@@ -55,6 +55,7 @@ Wf-285 / Wf-291) confirm the regression is in the schema-extraction
 layer and that a retry loop with explicit correction is the right
 **second-line defence** behind the Wf-301E wrapper detector.
 """
+
 from __future__ import annotations
 
 import logging
@@ -85,7 +86,7 @@ DEFAULT_CORRECTION_PROMPT = (
     "keys like 'type', 'properties', 'required') rather than actual "
     "VALUES matching that schema. Please re-emit a JSON object "
     "containing the VALUES for every field listed in the schema -- "
-    "for example {\"G1_score\": 25, \"G2_label\": \"passed\"} -- not "
+    'for example {"G1_score": 25, "G2_label": "passed"} -- not '
     "the schema definition itself."
 )
 
@@ -119,12 +120,7 @@ def build_correction_prompt(
         properties = schema_dict.get("properties")
         if isinstance(properties, dict) and properties:
             field_names = sorted(properties.keys())
-            base = (
-                base
-                + "  The expected fields are: "
-                + ", ".join(field_names)
-                + "."
-            )
+            base = base + "  The expected fields are: " + ", ".join(field_names) + "."
     return base
 
 

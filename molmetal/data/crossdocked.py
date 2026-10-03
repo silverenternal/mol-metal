@@ -87,9 +87,7 @@ def _parse_cd_entry(buf: bytes, off: int) -> Tuple[dict, int]:
         iattr,
         eattr,
         local_offset,
-    ) = struct.unpack(
-        "<4sHHHHHHIIIHHHHHII", buf[off : off + 46]
-    )
+    ) = struct.unpack("<4sHHHHHHIIIHHHHHII", buf[off : off + 46])
     cur = off + 46
     fname = buf[cur : cur + fnlen].decode("utf-8", errors="replace")
     cur += fnlen
@@ -365,7 +363,9 @@ class CrossDockedDataset:
             )
         pairs = d[self.split]
         if not isinstance(pairs, list):
-            raise ValueError(f"split[{self.split}] should be a list, got {type(pairs).__name__}")
+            raise ValueError(
+                f"split[{self.split}] should be a list, got {type(pairs).__name__}"
+            )
         # Normalise to (str, str) tuples
         out: List[Tuple[str, str]] = []
         for entry in pairs:

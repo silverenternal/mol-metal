@@ -102,7 +102,8 @@ def test_nan_guard_passthrough_when_input_clean() -> None:
     if np.any(np.isnan(p)):
         p = np.nan_to_num(p, nan=0.5)
     np.testing.assert_array_equal(
-        p, p_before,
+        p,
+        p_before,
         err_msg="NaN guard must not modify a clean input array",
     )
 
@@ -133,8 +134,7 @@ def test_nan_guard_output_usable_by_roc_auc_score() -> None:
     from sklearn.metrics import roc_auc_score
 
     labels = np.array([0, 1, 0, 1, 0, 1, 0, 1], dtype=np.int32)
-    p = np.array([0.1, np.nan, 0.3, np.nan, 0.5, np.nan, 0.7, np.nan],
-                 dtype=np.float32)
+    p = np.array([0.1, np.nan, 0.3, np.nan, 0.5, np.nan, 0.7, np.nan], dtype=np.float32)
     if np.any(np.isnan(p)):
         p = np.nan_to_num(p, nan=0.5)
     # Post-guard: must be all-finite + correct length.
@@ -145,9 +145,7 @@ def test_nan_guard_output_usable_by_roc_auc_score() -> None:
     assert np.isfinite(auc), f"post-guard AUC must be finite, got {auc}"
     # With 0.5 substituted for half the scores and the other half ranking
     # above 0.5, the AUC must be ≥ 0.5 (not worse than random).
-    assert auc >= 0.5, (
-        f"post-guard AUC must be >= 0.5, got {auc:.4f}"
-    )
+    assert auc >= 0.5, f"post-guard AUC must be >= 0.5, got {auc:.4f}"
 
 
 # ---------------------------------------------------------------------------
@@ -169,12 +167,12 @@ def test_nan_guard_only_replaces_nan_not_inf() -> None:
     # NaN → 0.5
     assert p[1] == pytest.approx(0.5)
     # +inf / -inf clipped to dtype max / min (default nan_to_num behavior).
-    assert p[2] == np.finfo(np.float64).max, (
-        "posinf clipped to dtype max (no posinf kwarg in driver call)"
-    )
-    assert p[3] == np.finfo(np.float64).min, (
-        "neginf clipped to dtype min (no neginf kwarg in driver call)"
-    )
+    assert (
+        p[2] == np.finfo(np.float64).max
+    ), "posinf clipped to dtype max (no posinf kwarg in driver call)"
+    assert (
+        p[3] == np.finfo(np.float64).min
+    ), "neginf clipped to dtype min (no neginf kwarg in driver call)"
     # Finite untouched.
     assert p[0] == pytest.approx(p_orig[0])
     assert p[4] == pytest.approx(p_orig[4])

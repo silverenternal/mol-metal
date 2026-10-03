@@ -18,6 +18,7 @@ Run via::
     uv run --no-sync python -m pytest \\
         molmetal/tests/test_variance_mcts_integration.py -v
 """
+
 from __future__ import annotations
 
 import math
@@ -98,8 +99,7 @@ def _stub_proof_search(candidates=None, scores=None, error=None):
         leaf_value_std = 0.2
         puct_exploit_ratio_var = 0.97
         history = [
-            {"step": 0, "PUCT_EXPLOIT_RATIO_VAR": 0.97,
-             "LEAF_VALUE_VAR": 0.04},
+            {"step": 0, "PUCT_EXPLOIT_RATIO_VAR": 0.97, "LEAF_VALUE_VAR": 0.04},
         ]
 
         def search(self, initial_state, max_depth: int = 3):
@@ -155,14 +155,17 @@ class TestVarianceMCTSNode:
     def test_variance_mcts_node_high_variance_penalty(self) -> None:
         """High variance on high-Q arm → selector down-weights it."""
         node = _mk_node(
-            n_actions=2, c_puct=0.0, c_var=5.0, n_min_visits=2,
+            n_actions=2,
+            c_puct=0.0,
+            c_var=5.0,
+            n_min_visits=2,
         )
         # Arm 0: high value but high variance (sigma=1).
         for _ in range(3):
-            node.update(value=1.0, variance=1.0 ** 2, action=0)
+            node.update(value=1.0, variance=1.0**2, action=0)
         # Arm 1: same value, zero variance.
         for _ in range(3):
-            node.update(value=1.0, variance=0.0 ** 2, action=1)
+            node.update(value=1.0, variance=0.0**2, action=1)
         # arm 0: penalty = 5 * 1 / 4 = 1.25 > Q=1 → arm 1 wins.
         a = node.select_action()
         assert a == 1
@@ -170,7 +173,10 @@ class TestVarianceMCTSNode:
     def test_variance_mcts_node_zero_variance_no_penalty(self) -> None:
         """Zero variance → selector behaves like canonical PUCT."""
         node = _mk_node(
-            n_actions=3, c_puct=0.0, c_var=0.5, n_min_visits=2,
+            n_actions=3,
+            c_puct=0.0,
+            c_var=0.5,
+            n_min_visits=2,
         )
         for _ in range(3):
             node.update(value=0.5, variance=0.0, action=0)
@@ -197,7 +203,10 @@ class TestVarianceMCTSNode:
         the audit.
         """
         node = _mk_node(
-            n_actions=2, c_puct=1.0, c_var=0.5, n_min_visits=1,
+            n_actions=2,
+            c_puct=1.0,
+            c_var=0.5,
+            n_min_visits=1,
         )
         node.update(value=0.5, variance=0.04, action=0)
         # n_parent = 1, Q=0.5, N=1, P=0.5 (uniform), sigma=0.2
@@ -314,11 +323,17 @@ class TestCompareVarianceVsDirichlet:
         base = _stub_proof_search()
         var = _stub_proof_search()
         report = compare_variance_vs_dirichlet_mcts(
-            base_search=base, variance_search=var, n_runs=2,
+            base_search=base,
+            variance_search=var,
+            n_runs=2,
         )
         for key in (
-            "base", "variance", "variance_reduction",
-            "wall_time_ratio", "n_runs", "max_depth",
+            "base",
+            "variance",
+            "variance_reduction",
+            "wall_time_ratio",
+            "n_runs",
+            "max_depth",
         ):
             assert key in report
 
@@ -335,7 +350,9 @@ class TestCompareVarianceVsDirichlet:
             scores=[0.45, 0.50, 0.55, 0.50],
         )
         report = compare_variance_vs_dirichlet_mcts(
-            base_search=base, variance_search=var, n_runs=2,
+            base_search=base,
+            variance_search=var,
+            n_runs=2,
         )
         assert report["variance"]["mean_var"] < report["base"]["mean_var"]
         # variance_reduction is positive when variance search wins.
@@ -346,7 +363,9 @@ class TestCompareVarianceVsDirichlet:
         base = _stub_proof_search()
         var = _stub_proof_search()
         report = compare_variance_vs_dirichlet_mcts(
-            base_search=base, variance_search=var, n_runs=3,
+            base_search=base,
+            variance_search=var,
+            n_runs=3,
         )
         assert report["wall_time_ratio"] >= 0.0
         assert "wall_time_s" in report["base"]
@@ -357,7 +376,9 @@ class TestCompareVarianceVsDirichlet:
         base = _stub_proof_search()
         var = _stub_proof_search()
         report = compare_variance_vs_dirichlet_mcts(
-            base_search=base, variance_search=var, n_runs=3,
+            base_search=base,
+            variance_search=var,
+            n_runs=3,
         )
         assert 0.0 <= report["base"]["success_rate"] <= 1.0
         assert 0.0 <= report["variance"]["success_rate"] <= 1.0
@@ -367,7 +388,9 @@ class TestCompareVarianceVsDirichlet:
         s = _stub_proof_search()
         with pytest.raises(VarianceMCTSError):
             compare_variance_vs_dirichlet_mcts(
-                base_search=s, variance_search=s, n_runs=1,
+                base_search=s,
+                variance_search=s,
+                n_runs=1,
             )
 
     def test_compare_rejects_bad_n_runs(self) -> None:

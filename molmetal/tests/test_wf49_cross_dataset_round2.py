@@ -49,9 +49,18 @@ def test_rdkit_2d_cols_constant_is_12_columns() -> None:
     LambdaASTSR.rdkit_2d_feature_columns()."""
     assert len(bench.RDKIT_2D_COLS) == 12
     expected = {
-        "MolWt", "MolLogP", "TPSA", "HBA", "HBD", "NRotB",
-        "HeavyAtoms", "RingCount", "NumAromaticRings",
-        "FractionCSP3", "MolMR", "BalabanJ",
+        "MolWt",
+        "MolLogP",
+        "TPSA",
+        "HBA",
+        "HBD",
+        "NRotB",
+        "HeavyAtoms",
+        "RingCount",
+        "NumAromaticRings",
+        "FractionCSP3",
+        "MolMR",
+        "BalabanJ",
     }
     assert set(bench.RDKIT_2D_COLS) == expected
 
@@ -59,7 +68,10 @@ def test_rdkit_2d_cols_constant_is_12_columns() -> None:
 def test_platinai_target_cols_constant_has_4_cell_lines() -> None:
     """PlatinAI 4-cell targets must include all 4 cell-lines from R17/R19 baseline."""
     assert set(bench.PLATINAI_TARGET_COLS.keys()) == {
-        "MCF7", "A549", "A2780", "A2780cis",
+        "MCF7",
+        "A549",
+        "A2780",
+        "A2780cis",
     }
     for cohort, col in bench.PLATINAI_TARGET_COLS.items():
         assert col.startswith("pIC50_"), f"{cohort!r} -> {col!r} must start with pIC50_"
@@ -73,13 +85,13 @@ def test_metalcytotox_metals_constant_has_5_metals() -> None:
 def test_tmqm_dblock_metals_constant_is_d_block_only() -> None:
     """tmQM d-block metals should NOT include La (f-block) or Pb (post-d-block)."""
     for forbidden in ("La", "Pb", "Ce", "Pr", "Nd"):  # f-block examples
-        assert forbidden not in bench.TMQM_DBLOCK_METALS, (
-            f"{forbidden!r} is not a d-block metal"
-        )
+        assert (
+            forbidden not in bench.TMQM_DBLOCK_METALS
+        ), f"{forbidden!r} is not a d-block metal"
     for required in ("Sc", "Ti", "Fe", "Cu", "Ag", "Au", "Hg"):
-        assert required in bench.TMQM_DBLOCK_METALS, (
-            f"{required!r} should be in d-block"
-        )
+        assert (
+            required in bench.TMQM_DBLOCK_METALS
+        ), f"{required!r} should be in d-block"
 
 
 def test_default_out_dir_under_reports() -> None:
@@ -103,34 +115,46 @@ def test_fit_per_cohort_returns_finite_r2_on_synthetic_signal() -> None:
     # y is dominated by column index 1 (MolLogP) + noise
     y = 2.0 * X[:, 1] + 0.1 * rng.standard_normal(n)
     import pandas as pd
+
     df = pd.DataFrame(X, columns=list(bench.RDKIT_2D_COLS))
     df["target"] = y
     df["_cohort"] = "A"
     row = bench.fit_per_cohort(
-        df, cohort_col="_cohort", target_col="target",
-        cohort_name="A", seeds=(0, 1, 2),
+        df,
+        cohort_col="_cohort",
+        target_col="target",
+        cohort_name="A",
+        seeds=(0, 1, 2),
     )
     assert row.n_rows == n
     assert len(row.r2_per_seed) == 3
-    assert row.r2_mean > 0.5, f"R^2 should be > 0.5 on synthetic signal, got {row.r2_mean}"
+    assert (
+        row.r2_mean > 0.5
+    ), f"R^2 should be > 0.5 on synthetic signal, got {row.r2_mean}"
     assert not math.isnan(row.rmse_mean)
 
 
 def test_fit_per_cohort_returns_nan_for_tiny_cohort() -> None:
     """Cohort with < 10 rows should return NaN fields, not crash."""
     import pandas as pd
-    df = pd.DataFrame({
-        "MolWt": [1.0] * 5,
-        "MolLogP": [1.0] * 5,
-        "target": [1.0] * 5,
-        "_cohort": ["A"] * 5,
-    })
+
+    df = pd.DataFrame(
+        {
+            "MolWt": [1.0] * 5,
+            "MolLogP": [1.0] * 5,
+            "target": [1.0] * 5,
+            "_cohort": ["A"] * 5,
+        }
+    )
     for col in bench.RDKIT_2D_COLS:
         if col not in df.columns:
             df[col] = 1.0
     row = bench.fit_per_cohort(
-        df, cohort_col="_cohort", target_col="target",
-        cohort_name="A", seeds=(0,),
+        df,
+        cohort_col="_cohort",
+        target_col="target",
+        cohort_name="A",
+        seeds=(0,),
     )
     assert math.isnan(row.r2_mean)
     assert row.n_rows == 5
@@ -176,7 +200,10 @@ def test_bench_platinai_4cell_has_4_cohorts() -> None:
     s = bench.bench_platinai_4cell(seeds=(0, 1, 2))
     assert s.n_cohorts == 4
     assert set(s.cohort_names) == {
-        "MCF7", "A549", "A2780", "A2780cis",
+        "MCF7",
+        "A549",
+        "A2780",
+        "A2780cis",
     }
     for c in s.per_cohort:
         assert c.dataset == "platinai_4cell"
@@ -193,9 +220,7 @@ def test_bench_metalcytotox_5metal_has_5_cohorts() -> None:
 def test_bench_tmqm_dblock_has_at_least_10_cohorts() -> None:
     """tmQM d-block should produce >= 10 cohorts (29 d-block metals - small ones)."""
     s = bench.bench_tmqm_dblock(seeds=(0, 1, 2), max_per_metal=200)
-    assert s.n_cohorts >= 10, (
-        f"expected >= 10 d-block cohorts, got {s.n_cohorts}"
-    )
+    assert s.n_cohorts >= 10, f"expected >= 10 d-block cohorts, got {s.n_cohorts}"
 
 
 # ---------------------------------------------------------------------------
@@ -252,8 +277,9 @@ def test_cross_dataset_summary_has_target_met_flag(tmp_path: Path) -> None:
     assert macro_r2_means  # at least one finite
     cross_macro = float(np.mean(macro_r2_means))
     target_met = cross_macro >= 0.0
-    cross_path.write_text(json.dumps({"cross_macro": cross_macro,
-                                       "target_met": target_met}, indent=2))
+    cross_path.write_text(
+        json.dumps({"cross_macro": cross_macro, "target_met": target_met}, indent=2)
+    )
     d = json.loads(cross_path.read_text())
     assert "target_met" in d
     assert isinstance(d["target_met"], bool)
@@ -275,16 +301,22 @@ def test_cli_smoke_runs_to_completion(tmp_path: Path) -> None:
         [
             sys.executable,
             str(_BENCH_SCRIPT),
-            "--datasets", "platinai_4cell", "metalcytotox_5metal",
-            "--seeds", "0", "1",
-            "--out-dir", str(tmp_path),
-            "--max-per-metal-tmqm", "100",  # not used here, but accepted
+            "--datasets",
+            "platinai_4cell",
+            "metalcytotox_5metal",
+            "--seeds",
+            "0",
+            "1",
+            "--out-dir",
+            str(tmp_path),
+            "--max-per-metal-tmqm",
+            "100",  # not used here, but accepted
         ],
-        capture_output=True, text=True, timeout=300,
+        capture_output=True,
+        text=True,
+        timeout=300,
     )
-    assert result.returncode == 0, (
-        f"CLI failed: stderr={result.stderr!r}"
-    )
+    assert result.returncode == 0, f"CLI failed: stderr={result.stderr!r}"
     expected_files = [
         "platinai_4cell/per_cohort_metrics.json",
         "metalcytotox_5metal/per_cohort_metrics.json",

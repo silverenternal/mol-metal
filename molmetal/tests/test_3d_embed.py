@@ -48,13 +48,19 @@ def _is_finite_3d(mol: Chem.Mol) -> bool:
         return False
     conf = mol.GetConformer()
     for i in range(mol.GetNumAtoms()):
-        x, y, z = conf.GetAtomPosition(i).x, conf.GetAtomPosition(i).y, conf.GetAtomPosition(i).z
+        x, y, z = (
+            conf.GetAtomPosition(i).x,
+            conf.GetAtomPosition(i).y,
+            conf.GetAtomPosition(i).z,
+        )
         if not (math.isfinite(x) and math.isfinite(y) and math.isfinite(z)):
             return False
     return True
 
 
-def _metal_donor_distances(mol: Chem.Mol, metal_sym: str, donor_sym: str) -> list[float]:
+def _metal_donor_distances(
+    mol: Chem.Mol, metal_sym: str, donor_sym: str
+) -> list[float]:
     """Return all metal→donor distances (Å) in ``mol``."""
     dist_map = _metal_bond_distances(mol, metal_sym)
     return dist_map.get(donor_sym, [])
@@ -84,7 +90,9 @@ def test_embed_cisplatin_pt():
     """Pt(NH3)2Cl2 (cisplatin) → 3-D coords finite + Pt–N ≈ 2.05 Å."""
     cisplatin = _embed_simple("[Pt](N)(N)(Cl)(Cl)", seed=42)
     pt_n = _metal_donor_distances(cisplatin, "Pt", "N")
-    assert len(pt_n) == 2, f"Expected 2 Pt-N bonds in cisplatin, got {len(pt_n)}: {pt_n}"
+    assert (
+        len(pt_n) == 2
+    ), f"Expected 2 Pt-N bonds in cisplatin, got {len(pt_n)}: {pt_n}"
     mean_pt_n = sum(pt_n) / len(pt_n)
     assert abs(mean_pt_n - DEFAULT_PT_N_DISTANCE) <= DEFAULT_BOND_TOL, (
         f"Pt-N mean distance {mean_pt_n:.3f} Å not within "
@@ -101,9 +109,9 @@ def test_embed_ru_octahedral():
     # Atoms count check: Ru + 6 N + H on each amine.
     # RDKit's ``AddHs`` adds one H per bare ``N`` (the input ``N`` is an
     # NH2 already encoded), giving 19 atoms total: 1 Ru + 6 N + 12 H.
-    assert ru.GetNumAtoms() == 19, (
-        f"Expected 19 atoms in [Ru](N)6 + Hs, got {ru.GetNumAtoms()}"
-    )
+    assert (
+        ru.GetNumAtoms() == 19
+    ), f"Expected 19 atoms in [Ru](N)6 + Hs, got {ru.GetNumAtoms()}"
     # Should have 6 Ru-N bonds.
     ru_n = _metal_donor_distances(ru, "Ru", "N")
     assert len(ru_n) == 6, f"Expected 6 Ru-N bonds, got {len(ru_n)}: {ru_n}"

@@ -110,17 +110,15 @@ N_CHECKS = 7
 
 # Anchors
 DEFAULT_PREFLIGHT_JSON = REPORTS_DIR / "wf259_run" / "pre_flight.json"
-DEFAULT_OUT_JSON = (
-    REPORTS_DIR / "wf343c2_per_wave_check" / "per_wave_check.json"
-)
+DEFAULT_OUT_JSON = REPORTS_DIR / "wf343c2_per_wave_check" / "per_wave_check.json"
 DEFAULT_CONFIG_YAML = CONFIGS_DIR / "cfm_full_retrain.yaml"
 
 # Defaults
 DEFAULT_PREFLIGHT_MAX_AGE_SEC = 86400  # 24h (AnchorGuard default; Wf-302A)
 DEFAULT_PAIRS_METALS = "Ru,Ir,Os,Rh,Re"
 DEFAULT_PAIRS_SEEDS = "0,1,2,3,4"
-DEFAULT_MIN_VRAM_MIB = 8192    # 8 GB free VRAM minimum per wave
-DEFAULT_MIN_DISK_GIB = 50      # 50 GB free disk minimum per wave
+DEFAULT_MIN_VRAM_MIB = 8192  # 8 GB free VRAM minimum per wave
+DEFAULT_MIN_DISK_GIB = 50  # 50 GB free disk minimum per wave
 DEFAULT_BUDGET_HR = 10.0
 DEFAULT_NVIDIA_SMI_TIMEOUT_SEC = 10
 DEFAULT_DF_TIMEOUT_SEC = 5
@@ -298,7 +296,8 @@ def check_preflight_no_fail_gates(
     # and exclude it.  This is safe because the parent gate has no other
     # upstream side-effects — its sole purpose is to surface cascade state.
     self_fail_count = sum(
-        1 for g in pf.get("gates", [])
+        1
+        for g in pf.get("gates", [])
         if g.get("status") == "FAIL"
         and g.get("name") == "p3_wf343c2_per_wave_runtime_check"
     )
@@ -359,9 +358,7 @@ def check_yuelbond_decoder_registered(
             elif re.search(r"(?i)bond[_-]head", txt):
                 hits.append(f"config:{config_path.name}(bond_head)")
     # 2. Canonical CFM training script (always present in mol-metal)
-    cfm_script = (
-        MOLMETAL_ROOT / "scripts" / "train_cfm_yuelbond_wasserstein.py"
-    )
+    cfm_script = MOLMETAL_ROOT / "scripts" / "train_cfm_yuelbond_wasserstein.py"
     if cfm_script.is_file():
         hits.append(f"script:{cfm_script.name}")
     # 3. Flow matching adapter directory (canonical home of YuelBond)
@@ -732,8 +729,7 @@ def parse_argv(argv: Optional[List[str]] = None) -> argparse.Namespace:
         type=int,
         default=DEFAULT_MIN_VRAM_MIB,
         help=(
-            f"Minimum free VRAM in MiB per GPU (default: "
-            f"{DEFAULT_MIN_VRAM_MIB})."
+            f"Minimum free VRAM in MiB per GPU (default: " f"{DEFAULT_MIN_VRAM_MIB})."
         ),
     )
     p.add_argument(

@@ -18,14 +18,23 @@ from molmetal.data.splits import TemporalSplitter
 
 def test_dmpnn_attn_forward_shape():
     """8-atom mol, output shape (1,)."""
-    smiles = ["CCO", "CC(=O)O", "c1ccccc1", "CC(C)C", "CCC", "C1CCCCC1", "CCOCC", "CCCC"]
+    smiles = [
+        "CCO",
+        "CC(=O)O",
+        "c1ccccc1",
+        "CC(C)C",
+        "CCC",
+        "C1CCCCC1",
+        "CCOCC",
+        "CCCC",
+    ]
     graphs = featurize_smiles_list(smiles)
     g = graphs[0]  # ethanol
 
-    atom_f = torch.from_numpy(g[0]).unsqueeze(0)   # (1, V, A)
-    bond_f = torch.from_numpy(g[1]).unsqueeze(0)   # (1, E, B)
-    e_src = torch.from_numpy(g[2]).unsqueeze(0)    # (1, E)
-    e_dst = torch.from_numpy(g[3]).unsqueeze(0)    # (1, E)
+    atom_f = torch.from_numpy(g[0]).unsqueeze(0)  # (1, V, A)
+    bond_f = torch.from_numpy(g[1]).unsqueeze(0)  # (1, E, B)
+    e_src = torch.from_numpy(g[2]).unsqueeze(0)  # (1, E)
+    e_dst = torch.from_numpy(g[3]).unsqueeze(0)  # (1, E)
 
     model = AttentiveDMPNNModel(
         atom_dim=ATOM_FEATURE_DIM,
@@ -69,7 +78,11 @@ def test_dmpnn_attn_attention_weights_sum_to_one():
             h_v = torch.relu(model.atom_emb(atom_f))
             # replicate _forward_one_mol logic up to attention
             outgoing = torch.zeros(V, model.hidden)
-            outgoing.index_add_(0, e_src.squeeze(0), torch.relu(model.bond_emb(bond_f.squeeze(0))).unsqueeze(0).squeeze(0))
+            outgoing.index_add_(
+                0,
+                e_src.squeeze(0),
+                torch.relu(model.bond_emb(bond_f.squeeze(0))).unsqueeze(0).squeeze(0),
+            )
             # minimal check: model produces a valid logit
             logit = model(atom_f, bond_f, e_src, e_dst)
             assert logit.shape == (1,)

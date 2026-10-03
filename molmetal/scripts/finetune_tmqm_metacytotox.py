@@ -64,19 +64,32 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "MetalCytoToxDB Ru subset.  NO SWEEP — wire-up run only."
         ),
     )
-    p.add_argument("--metal", default="Ru",
-                   help="Metal centre to fine-tune on (default 'Ru').")
-    p.add_argument("--epochs", type=int, default=1,
-                   help="Number of fine-tune epochs (default 1).")
-    p.add_argument("--batch", type=int, default=8,
-                   help="Batch size (default 8 to avoid OOM on the dev box).")
-    p.add_argument("--lr", type=float, default=1e-4,
-                   help="AdamW learning rate for fine-tuning.")
+    p.add_argument(
+        "--metal", default="Ru", help="Metal centre to fine-tune on (default 'Ru')."
+    )
+    p.add_argument(
+        "--epochs", type=int, default=1, help="Number of fine-tune epochs (default 1)."
+    )
+    p.add_argument(
+        "--batch",
+        type=int,
+        default=8,
+        help="Batch size (default 8 to avoid OOM on the dev box).",
+    )
+    p.add_argument(
+        "--lr", type=float, default=1e-4, help="AdamW learning rate for fine-tuning."
+    )
     p.add_argument("--seed", type=int, default=42)
-    p.add_argument("--ckpt-in", default=str(DEFAULT_TMQM_CKPT),
-                   help="Path to the tmQM pre-trained checkpoint.")
-    p.add_argument("--ckpt-out", default=str(DEFAULT_OUT),
-                   help="Where to save the fine-tuned encoder.")
+    p.add_argument(
+        "--ckpt-in",
+        default=str(DEFAULT_TMQM_CKPT),
+        help="Path to the tmQM pre-trained checkpoint.",
+    )
+    p.add_argument(
+        "--ckpt-out",
+        default=str(DEFAULT_OUT),
+        help="Where to save the fine-tuned encoder.",
+    )
     return p.parse_args(argv)
 
 
@@ -95,6 +108,7 @@ def _build_egnn_from_ckpt(ckpt_path: Path) -> tuple[EGNNVelocityField, dict]:
     # Re-read the checkpoint to recover the mpnn_config block for
     # metadata (the encoder doesn't store it).
     import torch as _torch
+
     raw = _torch.load(ckpt_path, map_location="cpu")
     cfg = raw.get("mpnn_config", {})
     return encoder, cfg
@@ -145,6 +159,7 @@ def _save_checkpoint(
 ) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     import torch as _torch
+
     _torch.save(
         {
             "encoder_state_dict": encoder.state_dict(),
@@ -168,6 +183,7 @@ def _save_checkpoint(
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
     import torch as _torch
+
     _torch.manual_seed(args.seed)
     warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -195,7 +211,8 @@ def main(argv: list[str] | None = None) -> int:
     dataset = _load_cytotox_dataset(args.metal)
     if dataset is None:
         _save_checkpoint(
-            encoder, cfg,
+            encoder,
+            cfg,
             out_path=ckpt_out,
             metal=args.metal,
             n_samples=0,
@@ -232,7 +249,7 @@ def main(argv: list[str] | None = None) -> int:
             perm = _torch.randperm(n).tolist()
             ep_losses: list[float] = []
             for start in range(0, n, args.batch):
-                batch_idx = perm[start:start + args.batch]
+                batch_idx = perm[start : start + args.batch]
                 try:
                     # Synthetic zero target — exercises grad flow without
                     # requiring the full SMILES -> coords featuriser.
@@ -261,7 +278,8 @@ def main(argv: list[str] | None = None) -> int:
                 )
 
     _save_checkpoint(
-        encoder, cfg,
+        encoder,
+        cfg,
         out_path=ckpt_out,
         metal=args.metal,
         n_samples=n,

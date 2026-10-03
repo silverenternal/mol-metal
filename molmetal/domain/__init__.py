@@ -32,13 +32,13 @@ class Pocket:
     """
 
     pdb_id: str
-    coords: torch.Tensor           # (N_atoms, 3)
-    atom_types: torch.Tensor       # (N_atoms,)  atomic numbers
-    residue_ids: torch.Tensor      # (N_atoms,)  residue index in chain
-    chain_ids: torch.Tensor        # (N_atoms,)  chain label
-    mask: torch.Tensor             # (N_atoms,)  bool — True for pocket atoms
-    center: torch.Tensor           # (3,)  binding site centroid (Å)
-    radius: float = 6.0            # pocket sphere radius (Å)
+    coords: torch.Tensor  # (N_atoms, 3)
+    atom_types: torch.Tensor  # (N_atoms,)  atomic numbers
+    residue_ids: torch.Tensor  # (N_atoms,)  residue index in chain
+    chain_ids: torch.Tensor  # (N_atoms,)  chain label
+    mask: torch.Tensor  # (N_atoms,)  bool — True for pocket atoms
+    center: torch.Tensor  # (3,)  binding site centroid (Å)
+    radius: float = 6.0  # pocket sphere radius (Å)
 
     @property
     def n_atoms(self) -> int:
@@ -82,12 +82,12 @@ class Molecule:
     can be re-serialised as RDKit Mol or SMILES downstream.
     """
 
-    coords: torch.Tensor            # (N_atoms, 3)
-    atom_types: torch.Tensor        # (N_atoms,)  atomic numbers
-    bonds: torch.Tensor            # (2, N_bonds)  int64
-    bond_types: torch.Tensor        # (N_bonds,)  int8 (1=single, 2=double, ...)
-    formal_charges: torch.Tensor    # (N_atoms,)  int8
-    smiles: str = ""                # canonical SMILES (empty until decoded)
+    coords: torch.Tensor  # (N_atoms, 3)
+    atom_types: torch.Tensor  # (N_atoms,)  atomic numbers
+    bonds: torch.Tensor  # (2, N_bonds)  int64
+    bond_types: torch.Tensor  # (N_bonds,)  int8 (1=single, 2=double, ...)
+    formal_charges: torch.Tensor  # (N_atoms,)  int8
+    smiles: str = ""  # canonical SMILES (empty until decoded)
     qed: float = 0.0
     sa_score: float = 0.0
     logp: float = 0.0
@@ -140,8 +140,8 @@ class Complex:
 
     pocket: Pocket
     molecule: Molecule
-    pose_confidence: float = 0.0         # 0..1
-    vina_score: Optional[float] = None    # kcal/mol, lower = better
+    pose_confidence: float = 0.0  # 0..1
+    vina_score: Optional[float] = None  # kcal/mol, lower = better
     binding_affinity: Optional[float] = None  # pIC50 / pKi, higher = better
     rmsd_to_reference: Optional[float] = None  # for benchmarking only
 

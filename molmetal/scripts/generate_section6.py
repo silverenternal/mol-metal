@@ -70,9 +70,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 class FailureMode:
     """One row of MECHANISM_METRIC_MAPPING.md §4."""
 
-    symptom: str            # "m14 decode_ratio = 0"
-    mechanism_ids: str      # "M15 → M16 → M17 → M13 → M14"
-    self_check: str         # "pytest molmetal/tests/test_pitfall_guards.py -k shim_or_wrapper"
+    symptom: str  # "m14 decode_ratio = 0"
+    mechanism_ids: str  # "M15 → M16 → M17 → M13 → M14"
+    self_check: str  # "pytest molmetal/tests/test_pitfall_guards.py -k shim_or_wrapper"
 
 
 @dataclass(frozen=True)
@@ -81,12 +81,12 @@ class FailedMetric:
 
     metric_key: str
     display: str
-    status: str             # "MEASURED_BELOW_GATE" | "MEASURED_HONEST_NEGATIVE" | "MEASURED_INSUFFICIENT"
+    status: str  # "MEASURED_BELOW_GATE" | "MEASURED_HONEST_NEGATIVE" | "MEASURED_INSUFFICIENT"
     value: Optional[float]
     target: Optional[float]
     description: str
-    verdict: str            # free text from JSON
-    source_file: str        # JSON filename
+    verdict: str  # free text from JSON
+    source_file: str  # JSON filename
 
 
 # ---------------------------------------------------------------------------
@@ -141,15 +141,19 @@ def parse_failure_modes(mapping_md: Path) -> List[FailureMode]:
             continue
         if cells[0].startswith("---") or "症状" in cells[0]:
             continue
-        out.append(FailureMode(
-            symptom=cells[0],
-            mechanism_ids=cells[1],
-            self_check=cells[2],
-        ))
+        out.append(
+            FailureMode(
+                symptom=cells[0],
+                mechanism_ids=cells[1],
+                self_check=cells[2],
+            )
+        )
     return out
 
 
-def lookup_failure_mode(symptom_keywords: List[str], modes: List[FailureMode]) -> Optional[FailureMode]:
+def lookup_failure_mode(
+    symptom_keywords: List[str], modes: List[FailureMode]
+) -> Optional[FailureMode]:
     """Best-effort lookup: return the first failure mode whose symptom
     matches any keyword (case-insensitive substring match).
 
@@ -240,7 +244,10 @@ def load_failed_metrics(metrics_dir: Path) -> List[FailedMetric]:
         # Reject clearly passing
         if status.startswith("MEASURED") and status == "MEASURED":
             continue
-        if not any(status.startswith(p) or verdict.startswith(p) or agg_verdict.startswith(p) for p in fail_prefixes):
+        if not any(
+            status.startswith(p) or verdict.startswith(p) or agg_verdict.startswith(p)
+            for p in fail_prefixes
+        ):
             continue
 
         # Extract headline value (best-effort)
@@ -249,16 +256,18 @@ def load_failed_metrics(metrics_dir: Path) -> List[FailedMetric]:
             v2 = payload.get("value_overall_mean_auc")
             if isinstance(v2, (int, float)):
                 value = v2
-        out.append(FailedMetric(
-            metric_key=payload.get("metric", jf.stem),
-            display=payload.get("description", jf.stem),
-            status=status or "MEASURED_BELOW_GATE",
-            value=float(value) if isinstance(value, (int, float)) else None,
-            target=payload.get("gate_target"),
-            description=payload.get("description", ""),
-            verdict=verdict or agg_verdict,
-            source_file=jf.name,
-        ))
+        out.append(
+            FailedMetric(
+                metric_key=payload.get("metric", jf.stem),
+                display=payload.get("description", jf.stem),
+                status=status or "MEASURED_BELOW_GATE",
+                value=float(value) if isinstance(value, (int, float)) else None,
+                target=payload.get("gate_target"),
+                description=payload.get("description", ""),
+                verdict=verdict or agg_verdict,
+                source_file=jf.name,
+            )
+        )
     return out
 
 
@@ -357,7 +366,7 @@ def _sanitize_text(s: str) -> str:
     s = s.replace("⇒", r"$\Rightarrow$")
     s = s.replace("←", r"$\leftarrow$")
     s = s.replace("—", "---")  # em dash -> LaTeX ---
-    s = s.replace("–", "--")   # en dash -> LaTeX --
+    s = s.replace("–", "--")  # en dash -> LaTeX --
     s = s.replace("≥", r"$\geq$").replace("≤", r"$\leq$")
     s = s.replace("≠", r"$\neq$").replace("≈", r"$\approx$")
     s = s.replace("§", r"\S{}")
@@ -385,7 +394,11 @@ def render_failed_metric(fm: FailedMetric, mode: Optional[FailureMode]) -> str:
     # escape them so the whole path is math/text-mode safe.
     ref = r"\texttt{metrics/by\_metric/" + source_file_tex + "}"
     value_str = f"${fm.value:.3f}$" if fm.value is not None else r"\textit{n/a}"
-    target_str = f"${fm.target}$" if fm.target is not None else r"\textit{see METRICS\_TARGETS.md}"
+    target_str = (
+        f"${fm.target}$"
+        if fm.target is not None
+        else r"\textit{see METRICS\_TARGETS.md}"
+    )
     # Sanitize verdict + free-text fields.
     verdict_tex = _sanitize_text(fm.verdict or "see source JSON for verdict.")
     if mode is not None:
@@ -428,9 +441,12 @@ def render_index_failed_items(rows: List[str]) -> str:
         r"The following rows in \texttt{TODO/INDEX.md} carry a "
         r"\texttt{FAIL} or \texttt{PARTIAL} marker as of the last "
         r"snapshot:" + "\n"
-        r"\begin{itemize}" + "\n"
-        + items + "\n"
-        + r"\end{itemize}" + "\n"
+        r"\begin{itemize}"
+        + "\n"
+        + items
+        + "\n"
+        + r"\end{itemize}"
+        + "\n"
         + r"\textbf{Impact:} these rows are the source-of-truth for the "
         r"per-metric paragraphs below; if a row disappears from "
         r"\texttt{INDEX.md} the corresponding paragraph is dropped "
@@ -463,12 +479,15 @@ gaps.  \textbf{Future work:} \S{}C1--C2 in
 \texttt{TODO/01\_strategy/IMPROVEMENT\_BACKLOG.md}."""
 
 
-def render_tex(failed: List[FailedMetric], modes: List[FailureMode],
-               index_rows: List[str]) -> str:
+def render_tex(
+    failed: List[FailedMetric], modes: List[FailureMode], index_rows: List[str]
+) -> str:
     """Render the full §6 Limitations LaTeX fragment."""
     # Pair each failed metric with its §4 row
-    paragraphs = [render_failed_metric(fm, lookup_failure_mode([fm.metric_key], modes))
-                  for fm in failed]
+    paragraphs = [
+        render_failed_metric(fm, lookup_failure_mode([fm.metric_key], modes))
+        for fm in failed
+    ]
     # Build the itemize body
     items: List[str] = []
     items.append(render_index_failed_items(index_rows))
@@ -499,8 +518,7 @@ def render_tex(failed: List[FailedMetric], modes: List[FailureMode],
         "absence are kept stable (they describe the engineering "
         "envelope, not the metric snapshot).\n"
         "\n"
-        "\\begin{enumerate}\n\n"
-        + body + "\n\n"
+        "\\begin{enumerate}\n\n" + body + "\n\n"
         "\\end{enumerate}\n"
     )
     return header
@@ -525,7 +543,9 @@ def render_summary_md(failed: List[FailedMetric], index_rows: List[str]) -> str:
     ]
     for fm in failed:
         v = f"{fm.value:.4f}" if fm.value is not None else "n/a"
-        lines.append(f"| `{fm.metric_key}` | {fm.status} | {v} | `metrics/by_metric/{fm.source_file}` |")
+        lines.append(
+            f"| `{fm.metric_key}` | {fm.status} | {v} | `metrics/by_metric/{fm.source_file}` |"
+        )
     lines += [
         "",
         "## Static paragraphs (stable)",
@@ -550,12 +570,19 @@ def render_summary_md(failed: List[FailedMetric], index_rows: List[str]) -> str:
 
 def main(argv: Optional[List[str]] = None) -> int:
     p = argparse.ArgumentParser(description="Paper §6 Limitations auto-generator")
-    p.add_argument("--dry-run", action="store_true", help="Print LaTeX to stdout; skip writes")
+    p.add_argument(
+        "--dry-run", action="store_true", help="Print LaTeX to stdout; skip writes"
+    )
     p.add_argument("--out-dir", default=str(REPO_ROOT / "paper"))
     p.add_argument("--metrics-dir", default=str(REPO_ROOT / "metrics" / "by_metric"))
     p.add_argument("--index-md", default=str(REPO_ROOT / "TODO" / "INDEX.md"))
-    p.add_argument("--mapping-md", default=str(REPO_ROOT / "TODO" / "02_metrics" / "MECHANISM_METRIC_MAPPING.md"))
-    p.add_argument("--report-dir", default=str(REPO_ROOT / "paper" / "reports" / "wf_section6_gen"))
+    p.add_argument(
+        "--mapping-md",
+        default=str(REPO_ROOT / "TODO" / "02_metrics" / "MECHANISM_METRIC_MAPPING.md"),
+    )
+    p.add_argument(
+        "--report-dir", default=str(REPO_ROOT / "paper" / "reports" / "wf_section6_gen")
+    )
     args = p.parse_args(argv)
 
     metrics_dir = Path(args.metrics_dir)
@@ -576,7 +603,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     (out_dir / "sections" / "06_limitations_auto.tex").write_text(tex, encoding="utf-8")
 
     report_dir.mkdir(parents=True, exist_ok=True)
-    (report_dir / "summary.md").write_text(render_summary_md(failed, index_rows), encoding="utf-8")
+    (report_dir / "summary.md").write_text(
+        render_summary_md(failed, index_rows), encoding="utf-8"
+    )
 
     print(
         f"[generate_section6] wrote 06_limitations_auto.tex "

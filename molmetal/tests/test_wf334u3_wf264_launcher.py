@@ -37,6 +37,7 @@ SCRIPT = ROOT / "molmetal" / "scripts" / "cfm_property_panel.py"
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _read_wrapper() -> str:
     assert WRAPPER.exists(), f"wrapper missing: {WRAPPER}"
     return WRAPPER.read_text()
@@ -60,25 +61,29 @@ def _body_start(src: str) -> int:
 # Test 1: launcher script parses (bash -n) + USER_OK gate ordering
 # ---------------------------------------------------------------------------
 
+
 def test_launcher_parses_and_user_ok_gate_blocks_real_launch():
     """Wrapper must:
-      - parse via bash -n (no syntax errors)
-      - contain a USER_OK gate that fires BEFORE the pre-flight check
-        (kill_then_adapt ordering invariant per Wf-300C / Wf-306D)
-      - end-to-end invocation without USER_OK must exit non-zero
-        before any panel work
+    - parse via bash -n (no syntax errors)
+    - contain a USER_OK gate that fires BEFORE the pre-flight check
+      (kill_then_adapt ordering invariant per Wf-300C / Wf-306D)
+    - end-to-end invocation without USER_OK must exit non-zero
+      before any panel work
     """
     src = _read_wrapper()
-    body = src[_body_start(src):]
+    body = src[_body_start(src) :]
 
     # 1.1 — bash syntax check
     proc_syntax = subprocess.run(
         ["bash", "-n", str(WRAPPER)],
-        cwd=str(ROOT), capture_output=True, text=True, timeout=10,
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        timeout=10,
     )
-    assert proc_syntax.returncode == 0, (
-        f"wrapper bash syntax error: stderr={proc_syntax.stderr!r}"
-    )
+    assert (
+        proc_syntax.returncode == 0
+    ), f"wrapper bash syntax error: stderr={proc_syntax.stderr!r}"
 
     # 1.2 — USER_OK gate text present in source
     assert "USER_OK" in src, "USER_OK gate text missing from wrapper"
@@ -86,7 +91,7 @@ def test_launcher_parses_and_user_ok_gate_blocks_real_launch():
 
     # 1.3 — Gate is checked BEFORE pre_flight_check (kill_then_adapt
     # ordering invariant per AGENTS.md §5.1 + Wf-300C pattern).
-    gate_idx = body.find("if [[ -z \"${USER_OK:-}\" ]]")
+    gate_idx = body.find('if [[ -z "${USER_OK:-}" ]]')
     pre_flight_idx = body.find("pre_flight_check.py --pipeline all")
     assert gate_idx > 0, "USER_OK gate if-block not found in body"
     assert pre_flight_idx > 0, "pre_flight_check invocation not found in body"
@@ -109,31 +114,32 @@ def test_launcher_parses_and_user_ok_gate_blocks_real_launch():
         f"wrapper exited 0 without USER_OK; expected gate block. "
         f"stdout={proc.stdout[-200:]!r}"
     )
-    assert "USER OK REQUIRED" in proc.stdout, (
-        f"gate block message missing from stdout; got {proc.stdout[-200:]!r}"
-    )
+    assert (
+        "USER OK REQUIRED" in proc.stdout
+    ), f"gate block message missing from stdout; got {proc.stdout[-200:]!r}"
 
 
 # ---------------------------------------------------------------------------
 # Test 2: pre-flight integration + Wf-328 honest-framing contract
 # ---------------------------------------------------------------------------
 
+
 def test_preflight_integration_and_wf328_honest_negative():
     """Wrapper must:
-      (a) invoke pre_flight_check.py --pipeline all (TODO-207 §1 gate)
-      (b) document the Wf-328 optimization flags as NA for the SA/QED
-          panel (AGENTS.md §5.2 honest-negative contract) — header text
-          + dry-run echo
-      (c) reference the correct panel script + SMILES CSV path
-      (d) reference cfm_property_panel.py, NOT the D-MPNN trainer
+    (a) invoke pre_flight_check.py --pipeline all (TODO-207 §1 gate)
+    (b) document the Wf-328 optimization flags as NA for the SA/QED
+        panel (AGENTS.md §5.2 honest-negative contract) — header text
+        + dry-run echo
+    (c) reference the correct panel script + SMILES CSV path
+    (d) reference cfm_property_panel.py, NOT the D-MPNN trainer
     """
     src = _read_wrapper()
-    body = src[_body_start(src):]
+    body = src[_body_start(src) :]
 
     # (a) pre-flight check wired
-    assert "pre_flight_check.py --pipeline all" in body, (
-        "pre_flight_check.py --pipeline all invocation missing"
-    )
+    assert (
+        "pre_flight_check.py --pipeline all" in body
+    ), "pre_flight_check.py --pipeline all invocation missing"
 
     # (b) Wf-328 honest-negative framing — the Wf-328 flag names must
     # appear in the wrapper header COMMENT + the dry-run echo, each
@@ -141,29 +147,34 @@ def test_preflight_integration_and_wf328_honest_negative():
     # reproduce the honest-negative framing.  Note: the dry-run echo
     # lives INSIDE the --dry-run block which _body_start skips, so we
     # search the full `src` (not `body`) for these strings.
-    for flag in ("--torch-compile", "--bf16", "--tf32",
-                 "--w2-gradient-mode", "--num-workers"):
+    for flag in (
+        "--torch-compile",
+        "--bf16",
+        "--tf32",
+        "--w2-gradient-mode",
+        "--num-workers",
+    ):
         assert flag in src, (
             f"Wf-328 flag {flag} missing from wrapper (header honest-"
             f"negative contract per AGENTS.md §5.2)"
         )
     # Honest-negative framing language present in header
-    assert "do NOT apply" in src or "NA" in src or "do NOT" in src, (
-        "Wf-328 NA / do-not-apply framing language missing from wrapper"
-    )
+    assert (
+        "do NOT apply" in src or "NA" in src or "do NOT" in src
+    ), "Wf-328 NA / do-not-apply framing language missing from wrapper"
     # Section explicitly named in dry-run echo (search src, not body,
     # because the echo is inside the dry-run block that body_start skips)
-    assert "Wf-328 optimization flags: NA for this panel" in src, (
-        "Wf-328 NA dry-run echo missing from wrapper source"
-    )
+    assert (
+        "Wf-328 optimization flags: NA for this panel" in src
+    ), "Wf-328 NA dry-run echo missing from wrapper source"
 
     # (c) Panel script + SMILES CSV referenced correctly
-    assert "cfm_property_panel.py" in src, (
-        "cfm_property_panel.py not referenced in wrapper"
-    )
-    assert str(SMILES_CSV) in src, (
-        f"SMILES CSV path {SMILES_CSV} not referenced in wrapper"
-    )
+    assert (
+        "cfm_property_panel.py" in src
+    ), "cfm_property_panel.py not referenced in wrapper"
+    assert (
+        str(SMILES_CSV) in src
+    ), f"SMILES CSV path {SMILES_CSV} not referenced in wrapper"
 
     # (d) Wrong trainer (the D-MPNN Wasserstein trainer must NOT be
     # referenced — that is a different ship surface).
@@ -191,16 +202,16 @@ def test_preflight_integration_and_wf328_honest_negative():
             f"stdout={proc.stdout[-300:]!r} stderr={proc.stderr[-300:]!r}"
         )
         # Dry-run echo contains honest-negative Wf-328 framing
-        assert "Wf-328 optimization flags: NA for this panel" in proc.stdout, (
-            "Wf-328 honest-negative framing missing from dry-run stdout"
-        )
+        assert (
+            "Wf-328 optimization flags: NA for this panel" in proc.stdout
+        ), "Wf-328 honest-negative framing missing from dry-run stdout"
         # Dry-run exits 0 and CSV sanity check passes
-        assert "DRY-RUN OK" in proc.stdout, (
-            "DRY-RUN OK marker missing from dry-run stdout"
-        )
-        assert "OK: SMILES CSV exists" in proc.stdout, (
-            "SMILES CSV existence check failed in dry-run stdout"
-        )
+        assert (
+            "DRY-RUN OK" in proc.stdout
+        ), "DRY-RUN OK marker missing from dry-run stdout"
+        assert (
+            "OK: SMILES CSV exists" in proc.stdout
+        ), "SMILES CSV existence check failed in dry-run stdout"
         # Pre-flight check is invoked and its result is surfaced in
         # dry-run stdout (either PASS marker or the FAIL-ACK marker for
         # the current project regression state — per AGENTS.md §6 pre-
@@ -208,12 +219,11 @@ def test_preflight_integration_and_wf328_honest_negative():
         # Dry-run does NOT gate on pre-flight FAIL; real-launch path
         # (line ~${PY} pre_flight_check.py || exit 1) does gate.
         preflight_invoked = (
-            "Pre-flight check" in proc.stdout
-            or "PREFLIGHT_FAIL_ACK" in proc.stdout
+            "Pre-flight check" in proc.stdout or "PREFLIGHT_FAIL_ACK" in proc.stdout
         )
-        assert preflight_invoked, (
-            "Pre-flight check invocation not surfaced in dry-run stdout"
-        )
+        assert (
+            preflight_invoked
+        ), "Pre-flight check invocation not surfaced in dry-run stdout"
     else:
         pytest.skip(
             f"SMILES CSV {SMILES_CSV} not present on this host — "

@@ -17,6 +17,7 @@ Validates the Wf-48 Phase 3 fallback chain harness
 
 Test count target: ≥20 distinct checks.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -98,9 +99,7 @@ def test_metadata_audit_no_mock_deleted_refs() -> None:
     from molmetal.scoring.score_any import ROUTING_POLICY
 
     bad = mod._check_chain_no_mock_deleted(ROUTING_POLICY)
-    assert not bad, (
-        f"fallback_chain points at MOCK_DELETED metrics: {bad}"
-    )
+    assert not bad, f"fallback_chain points at MOCK_DELETED metrics: {bad}"
 
 
 def test_metadata_audit_no_cycles() -> None:
@@ -151,12 +150,9 @@ def test_metadata_audit_includes_known_fallback_families() -> None:
         "flowdock_pose",
         "glide_score",
     }
-    actual = {
-        m for m, e in ROUTING_POLICY.items() if e.fallback_chain
-    }
+    actual = {m for m, e in ROUTING_POLICY.items() if e.fallback_chain}
     assert expected_metrics_with_chain <= actual, (
-        f"missing fallback families: "
-        f"{expected_metrics_with_chain - actual}"
+        f"missing fallback families: " f"{expected_metrics_with_chain - actual}"
     )
 
 
@@ -188,9 +184,14 @@ def test_primary_unavailable_propagates_adapter_unavailable() -> None:
 def test_primary_unavailable_propagates_for_all_chain_metrics() -> None:
     """Every metric in the fallback families propagates AdapterUnavailable."""
     metrics = [
-        "vina_score", "vina_high_affinity", "vina_min_score",
-        "vina_gpu", "diffdock_pose", "equibind_pose",
-        "flowdock_pose", "glide_score",
+        "vina_score",
+        "vina_high_affinity",
+        "vina_min_score",
+        "vina_gpu",
+        "diffdock_pose",
+        "equibind_pose",
+        "flowdock_pose",
+        "glide_score",
     ]
     for m in metrics:
         result = _run_primary_unavailable(m)
@@ -218,9 +219,7 @@ def test_primary_unavailable_restores_registry() -> None:
     pre_notes = {k: v.notes for k, v in REGISTRY.items()}
     _run_primary_unavailable("vina_score")
     post_notes = {k: v.notes for k, v in REGISTRY.items()}
-    assert pre_notes == post_notes, (
-        "REGISTRY monkey-patch leaked after scenario"
-    )
+    assert pre_notes == post_notes, "REGISTRY monkey-patch leaked after scenario"
 
 
 # ---------------------------------------------------------------------------
@@ -248,6 +247,7 @@ def test_env_routing_qvina2_for_vina_score(monkeypatch) -> None:
             pass
         # Verify the routing function picks vina_qvina2:
         from molmetal.scoring.score_any import score_any as _sa
+
         # Direct check of the env routing branch via a patched
         # wrapper: replace vina_qvina2 with a sentinel, and verify
         # the sentinel was the one called when env=qvina2.
@@ -277,6 +277,7 @@ def test_env_routing_gpu_for_vina_high_affinity(monkeypatch) -> None:
     monkeypatch.setenv("MOLMETAL_VINA_ENGINE", "gpu")
     pre_vgpu = REGISTRY["vina_gpu"]
     try:
+
         def _sentinel(ctx: Dict[str, Any]) -> List[float]:
             return [-10.5]
 
@@ -286,9 +287,7 @@ def test_env_routing_gpu_for_vina_high_affinity(monkeypatch) -> None:
             backend=pre_vgpu.backend,
             notes="[test-env-routing]",
         )
-        result = score_any(
-            "vina_high_affinity", molecules=["CCO"], pocket=None
-        )
+        result = score_any("vina_high_affinity", molecules=["CCO"], pocket=None)
         assert result["tool"] == pre_vgpu.tool_name
     finally:
         REGISTRY["vina_gpu"] = pre_vgpu
@@ -301,9 +300,7 @@ def test_env_routing_scenario_returns_env_routed_status() -> None:
 
     primary = str(ROUTING_POLICY["vina_score"].primary_tool)
     chain = tuple(ROUTING_POLICY["vina_score"].fallback_chain or ())
-    result = mod._run_env_routing_scenario(
-        "vina_score", primary, chain, "qvina2"
-    )
+    result = mod._run_env_routing_scenario("vina_score", primary, chain, "qvina2")
     assert result.scenario == "env_MOLMETAL_VINA_ENGINE=qvina2"
     assert result.expected_status == "ENV_ROUTED"
 
@@ -324,8 +321,10 @@ def test_run_metric_scenarios_returns_fallback_report() -> None:
         assert "scenario" in sr
         assert "actual_status" in sr
         assert sr["actual_status"] in (
-            "MEASURED", "ADAPTER_UNAVAILABLE",
-            "ENV_ROUTED", "FAIL",
+            "MEASURED",
+            "ADAPTER_UNAVAILABLE",
+            "ENV_ROUTED",
+            "FAIL",
         )
 
 
@@ -352,12 +351,15 @@ def test_aggregate_keys_present() -> None:
             fallback_chain=("vina_qvina2", "vina_gpu"),
             wf43_status="MEASURED",
             results=[
-                {"scenario": "chain_metadata",
-                 "actual_status": "MEASURED"},
-                {"scenario": "primary_unavailable",
-                 "actual_status": "ADAPTER_UNAVAILABLE"},
-                {"scenario": "env_MOLMETAL_VINA_ENGINE=qvina2",
-                 "actual_status": "ENV_ROUTED"},
+                {"scenario": "chain_metadata", "actual_status": "MEASURED"},
+                {
+                    "scenario": "primary_unavailable",
+                    "actual_status": "ADAPTER_UNAVAILABLE",
+                },
+                {
+                    "scenario": "env_MOLMETAL_VINA_ENGINE=qvina2",
+                    "actual_status": "ENV_ROUTED",
+                },
             ],
             overall_status="PASS",
         ),
@@ -397,8 +399,11 @@ def test_run_test_writes_fallback_test_json() -> None:
     assert "per_metric" in on_disk
     assert "aggregate" in on_disk
     for required in (
-        "broken_refs", "mock_deleted_refs",
-        "cycles", "self_refs", "n_metrics_with_chain",
+        "broken_refs",
+        "mock_deleted_refs",
+        "cycles",
+        "self_refs",
+        "n_metrics_with_chain",
     ):
         assert required in on_disk["metadata_audit"]
     assert payload == on_disk
@@ -420,7 +425,8 @@ def test_run_test_exit_code_zero_when_all_pass() -> None:
     cmd = [
         sys.executable,
         str(SCRIPTS / "test_score_any_fallback.py"),
-        "--out-dir", str(FALLBACK_REPORTS),
+        "--out-dir",
+        str(FALLBACK_REPORTS),
     ]
     res = subprocess.run(
         cmd,
@@ -439,9 +445,10 @@ def test_run_test_exit_code_zero_when_all_pass() -> None:
         text=True,
         timeout=120,
     )
-    assert res.returncode in (0, 2), (
-        f"harness crashed: rc={res.returncode} stderr={res.stderr[-500:]}"
-    )
+    assert res.returncode in (
+        0,
+        2,
+    ), f"harness crashed: rc={res.returncode} stderr={res.stderr[-500:]}"
     json_path = FALLBACK_REPORTS / "fallback_test.json"
     assert json_path.exists()
     payload = json.loads(json_path.read_text())
@@ -453,8 +460,7 @@ def test_run_test_exit_code_zero_when_all_pass() -> None:
         and not payload["metadata_audit"]["self_refs"]
     ):
         assert res.returncode == 0, (
-            f"expected rc=0 on clean run, got {res.returncode}: "
-            f"{res.stderr[-500:]}"
+            f"expected rc=0 on clean run, got {res.returncode}: " f"{res.stderr[-500:]}"
         )
 
 
@@ -510,8 +516,7 @@ def test_glide_score_falls_back_to_vina() -> None:
 def test_harness_source_has_no_mock_scorer_definitions() -> None:
     """The harness source code must not define a mock fallback function."""
     src_path = (
-        Path(__file__).resolve().parents[1] / "scripts"
-        / "test_score_any_fallback.py"
+        Path(__file__).resolve().parents[1] / "scripts" / "test_score_any_fallback.py"
     )
     text = src_path.read_text()
     for line in text.splitlines():
@@ -519,9 +524,7 @@ def test_harness_source_has_no_mock_scorer_definitions() -> None:
         if stripped.startswith("#"):
             continue
         if "MockScorer" in stripped or "MockDocker" in stripped:
-            raise AssertionError(
-                f"harness defines a mock fallback: {stripped[:120]}"
-            )
+            raise AssertionError(f"harness defines a mock fallback: {stripped[:120]}")
 
 
 # ---------------------------------------------------------------------------
@@ -538,9 +541,7 @@ def test_capture_fallback_calls_restores_registry() -> None:
         assert "wf48-fallback-counter" in REGISTRY["vina_score"].notes
         assert "wf48-fallback-counter" in REGISTRY["vina_qvina2"].notes
     post_notes = {k: v.notes for k, v in REGISTRY.items()}
-    assert pre_notes == post_notes, (
-        "_capture_fallback_calls leaked monkey-patch"
-    )
+    assert pre_notes == post_notes, "_capture_fallback_calls leaked monkey-patch"
 
 
 def test_capture_fallback_calls_counts_invocation() -> None:
@@ -555,6 +556,7 @@ def test_capture_fallback_calls_counts_invocation() -> None:
 
     pre_qv2 = REGISTRY["vina_qvina2"]
     try:
+
         def _sentinel(ctx: Dict[str, Any]) -> List[float]:
             return [-9.9]
 

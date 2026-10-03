@@ -51,6 +51,7 @@ Run with::
         /home/hugo/codes/mol-metal/.venv/bin/python -m pytest \\
         molmetal/tests/test_wf364a2_m6_kappa_combined.py -v
 """
+
 from __future__ import annotations
 
 import json
@@ -86,6 +87,7 @@ def _import_module():
             ODE_T_END,
             DEFAULT_SEED,
         )
+
         return {
             "_rdkit_12d": _rdkit_12d,
             "_integrate_neural_ode": _integrate_neural_ode,
@@ -109,9 +111,16 @@ def mod():
 
 
 SYNTHETIC_SMILES = [
-    "CCO", "c1ccccc1", "CC(=O)O", "CCN",
-    "CCOC", "CCCCO", "c1ccc(O)cc1", "c1ccncc1",
-    "CC(=O)Nc1ccccc1", "CC(C)O",
+    "CCO",
+    "c1ccccc1",
+    "CC(=O)O",
+    "CCN",
+    "CCOC",
+    "CCCCO",
+    "c1ccc(O)cc1",
+    "c1ccncc1",
+    "CC(=O)Nc1ccccc1",
+    "CC(C)O",
 ]
 
 
@@ -161,7 +170,8 @@ def test_maml_inner_with_neural_ode_forward(mod):
     meta_coef = np.zeros(X_ode.shape[1], dtype=np.float64)
     meta_intercept = 0.5
     inner_coef, inner_intercept = mod["_maml_inner_adapt"](
-        X_support, y_support,
+        X_support,
+        y_support,
         meta_coef=meta_coef,
         meta_intercept=meta_intercept,
         alpha_inner=0.1,
@@ -199,7 +209,8 @@ def test_combined_loss_backward(mod):
     meta_intercept = 0.0
 
     inner_coef, inner_intercept = mod["_maml_inner_adapt"](
-        X_support, y_support,
+        X_support,
+        y_support,
         meta_coef=meta_coef,
         meta_intercept=meta_intercept,
         alpha_inner=0.1,
@@ -248,8 +259,11 @@ def test_backward_compat(mod):
 
     # Locate the Wf-364-A2 result.json on disk
     candidates_paths = [
-        _REPO_ROOT / "molmetal" / "reports" / "wf364a2_m6_kappa_combined"
-                     / "result.json",
+        _REPO_ROOT
+        / "molmetal"
+        / "reports"
+        / "wf364a2_m6_kappa_combined"
+        / "result.json",
     ]
     result_path = None
     for p in candidates_paths:
@@ -301,18 +315,18 @@ def test_backward_compat(mod):
     assert isinstance(result["candidates"], list)
     for cand in result["candidates"]:
         for key in (
-            "candidate", "n_features", "cv_r2", "augmented_mean",
+            "candidate",
+            "n_features",
+            "cv_r2",
+            "augmented_mean",
             "verdict",
         ):
-            assert key in cand, (
-                f"Wf-364-A2 candidate missing key {key!r}"
-            )
+            assert key in cand, f"Wf-364-A2 candidate missing key {key!r}"
 
     # (b) verdict schema
     verdict = result.get("aggregate_status", "")
     assert verdict.startswith("HONEST_NEGATIVE_"), (
-        f"Wf-364-A2 aggregate_status must be HONEST_NEGATIVE_*, "
-        f"got {verdict!r}"
+        f"Wf-364-A2 aggregate_status must be HONEST_NEGATIVE_*, " f"got {verdict!r}"
     )
 
     # (c) honest_framing schema
@@ -324,15 +338,11 @@ def test_backward_compat(mod):
 
     # (d) cross_references includes Wf-361-B1 + Wf-361-B2
     cross_refs = honest_framing.get("cross_references", [])
-    assert any("Wf-361-B1" in str(r) or "wf361b1" in str(r)
-               for r in cross_refs), (
-        "Wf-364-A2 honest_framing.cross_references must include "
-        "Wf-361-B1 reference"
+    assert any("Wf-361-B1" in str(r) or "wf361b1" in str(r) for r in cross_refs), (
+        "Wf-364-A2 honest_framing.cross_references must include " "Wf-361-B1 reference"
     )
-    assert any("Wf-361-B2" in str(r) or "wf361b2" in str(r)
-               for r in cross_refs), (
-        "Wf-364-A2 honest_framing.cross_references must include "
-        "Wf-361-B2 reference"
+    assert any("Wf-361-B2" in str(r) or "wf361b2" in str(r) for r in cross_refs), (
+        "Wf-364-A2 honest_framing.cross_references must include " "Wf-361-B2 reference"
     )
 
     # (e) gate contract: aggregate_status + ceiling_break

@@ -101,7 +101,9 @@ class CurriculumConfig:
             "tanimoto_threshold": float(self.tanimoto_threshold),
             "random_fraction": float(self.random_fraction),
             "k_by_metal": dict(self.k_by_metal) if self.k_by_metal else None,
-            "ledger_root": str(self.ledger_root) if self.ledger_root else LEDGER_ROOT_DEFAULT,
+            "ledger_root": str(self.ledger_root)
+            if self.ledger_root
+            else LEDGER_ROOT_DEFAULT,
             "seed": int(self.seed),
         }
 
@@ -269,7 +271,11 @@ class RSICurriculum:
         else:
             for r in sample_list:
                 pred = (
-                    float(predictor.predict(_placeholder_feature(self.config.predictor_input_dim))[0])
+                    float(
+                        predictor.predict(
+                            _placeholder_feature(self.config.predictor_input_dim)
+                        )[0]
+                    )
                     if predictor.is_fitted
                     else 0.0
                 )
@@ -303,7 +309,9 @@ class RSICurriculum:
         # 6. Drift guard (re-evaluate every ``refit_every`` epochs).
         drift_samples: List[Dict[str, Any]] = []
         on_policy_lookup = {r.row_id: r.loss for r in sample_list}
-        pred_lookup = {a: h for a, h in zip(acquisition.accepted, acquisition.hardness_predicted)}
+        pred_lookup = {
+            a: h for a, h in zip(acquisition.accepted, acquisition.hardness_predicted)
+        }
         for row_id in acquisition.accepted:
             drift_samples.append(
                 {
@@ -322,7 +330,9 @@ class RSICurriculum:
         # Always reported under ``projection_lift``; never surfaced as
         # a measured lift in the audit report.
         if acquisition.hardness_predicted:
-            mean_pred = sum(acquisition.hardness_predicted) / len(acquisition.hardness_predicted)
+            mean_pred = sum(acquisition.hardness_predicted) / len(
+                acquisition.hardness_predicted
+            )
             mean_cohort = (
                 sum(r.loss for r in sample_list) / len(sample_list)
                 if sample_list
@@ -385,6 +395,7 @@ def np_stack_features(records: Sequence[PerSampleRecord], input_dim: int) -> np.
     trainer with the real fingerprint pipeline.
     """
     import hashlib
+
     out = np.zeros((len(records), int(input_dim)), dtype=np.float64)
     for i, rec in enumerate(records):
         h = hashlib.sha256(rec.smiles.encode("utf-8")).digest()

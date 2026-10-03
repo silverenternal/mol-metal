@@ -150,7 +150,9 @@ def _descriptors(mol: Any) -> dict:
 
     rdkit_mol = _resolve_rdkit_mol(mol)
     if rdkit_mol is None:
-        _L7_STATE.rdkit_descriptor_miss += 1  # L7.4: resolver miss (upstream of _descriptors)
+        _L7_STATE.rdkit_descriptor_miss += (
+            1  # L7.4: resolver miss (upstream of _descriptors)
+        )
         raise ValueError(
             "predicates: molecule has no RDKit Mol (mol is None or "
             "could not be serialised via to_rdkit())"
@@ -158,13 +160,13 @@ def _descriptors(mol: Any) -> dict:
 
     _t0 = time.perf_counter()
     out = {
-        "mw":   float(Descriptors.MolWt(rdkit_mol)),
+        "mw": float(Descriptors.MolWt(rdkit_mol)),
         "logp": float(Descriptors.MolLogP(rdkit_mol)),
-        "hbd":  int(Lipinski.NumHDonors(rdkit_mol)),
-        "hba":  int(Lipinski.NumHAcceptors(rdkit_mol)),
+        "hbd": int(Lipinski.NumHDonors(rdkit_mol)),
+        "hba": int(Lipinski.NumHAcceptors(rdkit_mol)),
         "tpsa": float(Descriptors.TPSA(rdkit_mol)),
         "rotb": int(Lipinski.NumRotatableBonds(rdkit_mol)),
-        "qed":  float(Descriptors.qed(rdkit_mol)),
+        "qed": float(Descriptors.qed(rdkit_mol)),
     }
     _L7_STATE.descriptor_compute_ms.append((time.perf_counter() - _t0) * 1000.0)
     return out
@@ -216,10 +218,12 @@ def _lipinski_predicate(mol: Any) -> bool:
     """
     _t0 = time.perf_counter()
     d = _descriptors(mol)
-    ok = (d["mw"] <= 500.0 and d["logp"] <= 5.0 and d["hbd"] <= 5 and d["hba"] <= 10)
+    ok = d["mw"] <= 500.0 and d["logp"] <= 5.0 and d["hbd"] <= 5 and d["hba"] <= 10
     _L7_STATE.per_predicate_calls[LIPINSKI.name] += 1
     _L7_STATE.per_predicate_pass[LIPINSKI.name] += int(ok)
-    _L7_STATE.per_predicate_time_ms[LIPINSKI.name].append((time.perf_counter() - _t0) * 1000.0)
+    _L7_STATE.per_predicate_time_ms[LIPINSKI.name].append(
+        (time.perf_counter() - _t0) * 1000.0
+    )
     return ok
 
 
@@ -237,7 +241,9 @@ def _veber_predicate(mol: Any) -> bool:
     ok = d["tpsa"] <= 140.0 and d["rotb"] <= 10
     _L7_STATE.per_predicate_calls[VEBER.name] += 1
     _L7_STATE.per_predicate_pass[VEBER.name] += int(ok)
-    _L7_STATE.per_predicate_time_ms[VEBER.name].append((time.perf_counter() - _t0) * 1000.0)
+    _L7_STATE.per_predicate_time_ms[VEBER.name].append(
+        (time.perf_counter() - _t0) * 1000.0
+    )
     return ok
 
 
@@ -261,7 +267,9 @@ def _egan_predicate(mol: Any) -> bool:
     ok = d["qed"] >= 0.5
     _L7_STATE.per_predicate_calls[EGAN.name] += 1
     _L7_STATE.per_predicate_pass[EGAN.name] += int(ok)
-    _L7_STATE.per_predicate_time_ms[EGAN.name].append((time.perf_counter() - _t0) * 1000.0)
+    _L7_STATE.per_predicate_time_ms[EGAN.name].append(
+        (time.perf_counter() - _t0) * 1000.0
+    )
     return ok
 
 
@@ -405,6 +413,7 @@ def _metal_symbols() -> List[str]:
     """Return the canonical MLC metal symbols (sourced from atoms layer)."""
     try:
         from molmetal_lam.atoms.combinators import _EXPECTED_METAL_CN
+
         return list(_EXPECTED_METAL_CN.keys())
     except ImportError:  # pragma: no cover - defensive
         return ["Pt_II", "Ru_II", "Zn_II", "Ir_III", "Cu_II", "Au_III"]
@@ -439,7 +448,9 @@ def _reos_predicate(mol: Any) -> bool:
     )
     _L7_STATE.per_predicate_calls[REOS.name] += 1
     _L7_STATE.per_predicate_pass[REOS.name] += int(ok)
-    _L7_STATE.per_predicate_time_ms[REOS.name].append((time.perf_counter() - _t0) * 1000.0)
+    _L7_STATE.per_predicate_time_ms[REOS.name].append(
+        (time.perf_counter() - _t0) * 1000.0
+    )
     return ok
 
 
@@ -526,14 +537,20 @@ class _L7Metrics:
     :func:`_descriptors`. Snapshot via :func:`l7_metrics`.
     """
 
-    per_predicate_calls: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
+    per_predicate_calls: Dict[str, int] = field(
+        default_factory=lambda: defaultdict(int)
+    )
     per_predicate_pass: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
     descriptor_compute_ms: List[float] = field(default_factory=list)
     rdkit_descriptor_miss: int = 0
     well_typed_calls: int = 0
     well_typed_true: int = 0
-    ill_typed_first_reason: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
-    per_predicate_time_ms: Dict[str, List[float]] = field(default_factory=lambda: defaultdict(list))
+    ill_typed_first_reason: Dict[str, int] = field(
+        default_factory=lambda: defaultdict(int)
+    )
+    per_predicate_time_ms: Dict[str, List[float]] = field(
+        default_factory=lambda: defaultdict(list)
+    )
 
 
 _L7_STATE = _L7Metrics()
@@ -574,7 +591,9 @@ def ill_typed_reasons(molecule: Any, predicates: List[TypePredicate]) -> List[st
     """
     reasons = [p.ill_typed_reason(molecule) for p in predicates if not p(molecule)]
     if reasons:
-        _L7_STATE.ill_typed_first_reason[reasons[0].split(":", 1)[0]] += 1  # L7.3: first-failure tally
+        _L7_STATE.ill_typed_first_reason[reasons[0].split(":", 1)[0]] += (
+            1  # L7.3: first-failure tally
+        )
     return reasons
 
 

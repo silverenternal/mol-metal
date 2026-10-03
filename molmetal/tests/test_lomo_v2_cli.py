@@ -66,43 +66,37 @@ class TestLomoV2Help:
         """All P1-fix flags must appear in ``--help`` output."""
         help_text = _run_help()
         # --bf16 / --no-bf16 (BooleanOptionalAction)
-        assert "--bf16" in help_text, (
-            "--bf16 flag missing from --help output"
-        )
-        assert "--no-bf16" in help_text, (
-            "--no-bf16 flag missing from --help output"
-        )
+        assert "--bf16" in help_text, "--bf16 flag missing from --help output"
+        assert "--no-bf16" in help_text, "--no-bf16 flag missing from --help output"
         # --num-workers
-        assert "--num-workers" in help_text, (
-            "--num-workers flag missing from --help output"
-        )
+        assert (
+            "--num-workers" in help_text
+        ), "--num-workers flag missing from --help output"
         # --pin-memory / --no-pin-memory (BooleanOptionalAction)
-        assert "--pin-memory" in help_text, (
-            "--pin-memory flag missing from --help output"
-        )
-        assert "--no-pin-memory" in help_text, (
-            "--no-pin-memory flag missing from --help output"
-        )
+        assert (
+            "--pin-memory" in help_text
+        ), "--pin-memory flag missing from --help output"
+        assert (
+            "--no-pin-memory" in help_text
+        ), "--no-pin-memory flag missing from --help output"
         # --data-config {single,four-domain,pretrain}
-        assert "--data-config" in help_text, (
-            "--data-config flag missing from --help output"
-        )
-        assert "single" in help_text, (
-            "'single' choice missing from --data-config choices"
-        )
-        assert "four-domain" in help_text, (
-            "'four-domain' choice missing from --data-config choices"
-        )
-        assert "pretrain" in help_text, (
-            "'pretrain' choice missing from --data-config choices"
-        )
+        assert (
+            "--data-config" in help_text
+        ), "--data-config flag missing from --help output"
+        assert (
+            "single" in help_text
+        ), "'single' choice missing from --data-config choices"
+        assert (
+            "four-domain" in help_text
+        ), "'four-domain' choice missing from --data-config choices"
+        assert (
+            "pretrain" in help_text
+        ), "'pretrain' choice missing from --data-config choices"
         # --model {v3,v4,v4pretrain}
-        assert "--model" in help_text, (
-            "--model flag missing from --help output"
-        )
-        assert "{v3,v4,v4pretrain}" in help_text, (
-            "--model choices {v3,v4,v4pretrain} missing from --help output"
-        )
+        assert "--model" in help_text, "--model flag missing from --help output"
+        assert (
+            "{v3,v4,v4pretrain}" in help_text
+        ), "--model choices {v3,v4,v4pretrain} missing from --help output"
 
 
 # ---------------------------------------------------------------------------
@@ -141,9 +135,9 @@ class TestLomoV2FlagParse:
         # non-zero exit codes as long as the error is NOT an
         # ``unrecognized arguments`` argparse error.
         combined = (proc.stdout or "") + (proc.stderr or "")
-        assert "unrecognized arguments" not in combined.lower(), (
-            f"--bf16 was not accepted by argparse:\n{combined}"
-        )
+        assert (
+            "unrecognized arguments" not in combined.lower()
+        ), f"--bf16 was not accepted by argparse:\n{combined}"
         assert "error: argument" not in combined.lower() or (
             "unrecognized" not in combined.lower()
         ), f"argparse rejected --bf16:\n{combined}"
@@ -173,9 +167,9 @@ class TestLomoV2FlagParse:
             timeout=180,
         )
         combined = (proc.stdout or "") + (proc.stderr or "")
-        assert "unrecognized arguments" not in combined.lower(), (
-            f"--no-bf16 was not accepted by argparse:\n{combined}"
-        )
+        assert (
+            "unrecognized arguments" not in combined.lower()
+        ), f"--no-bf16 was not accepted by argparse:\n{combined}"
 
     def test_lomo_v2_num_workers_passes(self) -> None:
         """``--num-workers`` parses cleanly (smoke test)."""
@@ -203,9 +197,9 @@ class TestLomoV2FlagParse:
             timeout=180,
         )
         combined = (proc.stdout or "") + (proc.stderr or "")
-        assert "unrecognized arguments" not in combined.lower(), (
-            f"--num-workers was not accepted by argparse:\n{combined}"
-        )
+        assert (
+            "unrecognized arguments" not in combined.lower()
+        ), f"--num-workers was not accepted by argparse:\n{combined}"
 
 
 # ---------------------------------------------------------------------------
@@ -242,6 +236,7 @@ class TestLomoV2Defaults:
                 # at the parse step.  Easier: re-implement _parse here
                 # using the same parser object the script registers.
                 import argparse as _ap
+
                 # We replicate the parser setup here by importing the
                 # script's main and intercepting after parse_args.  But
                 # main() runs the full pipeline.  Instead, build a
@@ -285,18 +280,18 @@ class TestLomoV2Defaults:
             # the choices appear (the choices list itself is part of
             # the default contract: any other choice would be a
             # breaking change).
-            assert "{single,four-domain,pretrain}" in help_text, (
-                "--data-config choices drifted from {single,four-domain,pretrain}"
-            )
-            assert "{v3,v4,v4pretrain}" in help_text, (
-                "--model choices drifted from {v3,v4,v4pretrain}"
-            )
-            assert "(default: True)" in help_text or "default: True" in help_text, (
-                "bf16 default True not documented in --help"
-            )
-            assert "default: 4" in help_text, (
-                "num-workers default 4 not documented in --help"
-            )
+            assert (
+                "{single,four-domain,pretrain}" in help_text
+            ), "--data-config choices drifted from {single,four-domain,pretrain}"
+            assert (
+                "{v3,v4,v4pretrain}" in help_text
+            ), "--model choices drifted from {v3,v4,v4pretrain}"
+            assert (
+                "(default: True)" in help_text or "default: True" in help_text
+            ), "bf16 default True not documented in --help"
+            assert (
+                "default: 4" in help_text
+            ), "num-workers default 4 not documented in --help"
             # pin_memory default True is asserted by the presence of
             # both --pin-memory and --no-pin-memory in the help text
             # (BooleanOptionalAction).
@@ -338,9 +333,9 @@ class TestLomoV2RunnerWiring:
         assert runner.pin_memory is False, "pin_memory flag not stored"
         assert runner.data_config == "single", "data_config flag not stored"
         # CPU BF16 must be a no-op (autocast("cuda", ...) is invalid on CPU).
-        assert runner._use_bf16 is False, (
-            "BF16 autocast should be a no-op on CPU (autocast is CUDA-only)"
-        )
+        assert (
+            runner._use_bf16 is False
+        ), "BF16 autocast should be a no-op on CPU (autocast is CUDA-only)"
 
     def test_runner_default_flags_match_doc(self) -> None:
         """Default values on BalancedLOMORunner match the documented contract."""
@@ -363,16 +358,13 @@ class TestLomoV2RunnerWiring:
         # Defaults per task CONSTRAINT: bf16=True, num_workers=4,
         # pin_memory=True, data_config="single".
         assert runner.bf16 is True, (
-            "default bf16 drifted from True (was: "
-            f"{runner.bf16})"
+            "default bf16 drifted from True (was: " f"{runner.bf16})"
         )
         assert runner.num_workers == 4, (
-            "default num_workers drifted from 4 (was: "
-            f"{runner.num_workers})"
+            "default num_workers drifted from 4 (was: " f"{runner.num_workers})"
         )
         assert runner.pin_memory is True, (
-            "default pin_memory drifted from True (was: "
-            f"{runner.pin_memory})"
+            "default pin_memory drifted from True (was: " f"{runner.pin_memory})"
         )
         assert runner.data_config == "single", (
             "default data_config drifted from 'single' (was: "

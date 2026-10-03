@@ -65,6 +65,7 @@ Usage
     )
     # X.shape == (2, 12), names = ("MolWt", "MolLogP", ..., "BalabanJ")
 """
+
 from __future__ import annotations
 
 import sys
@@ -168,7 +169,8 @@ def compute_features_5d(smiles: str, metal: str = "") -> Tuple[float, ...]:
 # 12-d F5_RDKIT_2D feature extractor (new — Wf-49 P1 backend)
 # ---------------------------------------------------------------------------
 def compute_rdkit_2d_12d(
-    smiles: str, metal: str = "",  # noqa: ARG001 — kept for dispatch parity with compute_features_5d / compute_features_combined
+    smiles: str,
+    metal: str = "",  # noqa: ARG001 — kept for dispatch parity with compute_features_5d / compute_features_combined
 ) -> Tuple[float, ...]:
     """Compute the F5_RDKIT_2D 12-d RDKit 2D descriptor for 1 SMILES.
 
@@ -204,7 +206,7 @@ def compute_rdkit_2d_12d(
         from molmetal.scripts.extract_rdkit_2d_descriptors import (
             compute_rdkit_descriptors,
         )
-    except Exception:                                                  # pragma: no cover
+    except Exception:  # pragma: no cover
         return (0.0,) * len(FEATURE_NAMES_12D)
     feats = compute_rdkit_descriptors(smiles)
     if feats is None:
@@ -302,7 +304,7 @@ def build_triangle_feature_matrix(
             continue
         try:
             row = fn(smi_str, met)
-        except Exception:                                              # pragma: no cover
+        except Exception:  # pragma: no cover
             row = (0.0,) * n_features
         # Pad/truncate so each row is exactly n_features wide.
         row = tuple(row)

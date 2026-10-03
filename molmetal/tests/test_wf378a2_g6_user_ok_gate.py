@@ -59,6 +59,7 @@ HELPER = ROOT / "scripts" / "_dry_run_log_helper.sh"
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _read(path: Path) -> str:
     assert path.exists(), f"file missing: {path}"
     return path.read_text()
@@ -91,6 +92,7 @@ def _run(
 # Test 1: source-level invariants — USER_OK gate BEFORE --dry-run block
 # ---------------------------------------------------------------------------
 
+
 def test_user_ok_gate_present_before_dry_run() -> None:
     """USER_OK gate must fire BEFORE --dry-run exit block (Wf-366-A2 lesson).
 
@@ -115,22 +117,22 @@ def test_user_ok_gate_present_before_dry_run() -> None:
     src = _read(WRAPPER)
 
     # 1. Canonical Wf-366-A1 gate pattern present
-    assert 'USER_OK:-0' in src, "USER_OK env-var check missing from wrapper"
-    assert 'exit 64' in src, "USER_OK gate refusal exit code 64 missing"
-    assert "USER_OK gate refused" in src, (
-        "USER_OK gate FATAL message missing from wrapper"
-    )
+    assert "USER_OK:-0" in src, "USER_OK env-var check missing from wrapper"
+    assert "exit 64" in src, "USER_OK gate refusal exit code 64 missing"
+    assert (
+        "USER_OK gate refused" in src
+    ), "USER_OK gate FATAL message missing from wrapper"
     assert "kill_then_adapt" in src, "kill_then_adapt directive reference missing"
 
     # 2. CORE INVARIANT: USER_OK gate line < --dry-run exit line
     gate_marker = 'if [ "${USER_OK:-0}" != "1" ]; then'
     dry_run_marker = 'if [[ "${DRY_RUN}" == "1" ]]; then'
-    assert gate_marker in src, (
-        f"USER_OK gate block marker not found; expected: {gate_marker!r}"
-    )
-    assert dry_run_marker in src, (
-        f"--dry-run exit block marker not found; expected: {dry_run_marker!r}"
-    )
+    assert (
+        gate_marker in src
+    ), f"USER_OK gate block marker not found; expected: {gate_marker!r}"
+    assert (
+        dry_run_marker in src
+    ), f"--dry-run exit block marker not found; expected: {dry_run_marker!r}"
     gate_idx = src.find(gate_marker)
     dry_run_idx = src.find(dry_run_marker)
     assert gate_idx < dry_run_idx, (
@@ -146,18 +148,18 @@ def test_user_ok_gate_present_before_dry_run() -> None:
     for cand_idx in re.finditer(r"^fi\s*$", src[gate_idx:], re.MULTILINE):
         gate_end_idx = gate_idx + cand_idx.end()
         break
-    assert gate_end_idx is not None, (
-        "Could not locate closing 'fi' of USER_OK gate block"
-    )
+    assert (
+        gate_end_idx is not None
+    ), "Could not locate closing 'fi' of USER_OK gate block"
     gate_block = src[gate_idx:gate_end_idx]
-    assert "exit 64" in gate_block, (
-        "USER_OK gate must use 'exit 64' per Wf-294B family convention"
-    )
+    assert (
+        "exit 64" in gate_block
+    ), "USER_OK gate must use 'exit 64' per Wf-294B family convention"
 
     # 4. DRY_RUN.log helper is sourced
-    assert "_dry_run_log_helper.sh" in src, (
-        "DRY_RUN.log helper source-line missing from wrapper"
-    )
+    assert (
+        "_dry_run_log_helper.sh" in src
+    ), "DRY_RUN.log helper source-line missing from wrapper"
     assert HELPER.exists(), f"helper file missing at {HELPER}"
 
     # 5. DRY_RUN.log emission (emit_dry_run_log) present in --dry-run block
@@ -165,31 +167,30 @@ def test_user_ok_gate_present_before_dry_run() -> None:
     for cand_idx in re.finditer(r"^fi\s*$", src[dry_run_idx:], re.MULTILINE):
         dry_run_end_idx = dry_run_idx + cand_idx.end()
         break
-    assert dry_run_end_idx is not None, (
-        "Could not locate closing 'fi' of --dry-run block"
-    )
+    assert (
+        dry_run_end_idx is not None
+    ), "Could not locate closing 'fi' of --dry-run block"
     dry_run_block = src[dry_run_idx:dry_run_end_idx]
-    assert "emit_dry_run_log" in dry_run_block, (
-        "emit_dry_run_log call missing from --dry-run block"
-    )
+    assert (
+        "emit_dry_run_log" in dry_run_block
+    ), "emit_dry_run_log call missing from --dry-run block"
 
     # 6. plan.json emission present in --dry-run block
-    assert "PLAN_JSON" in src or "plan.json" in src, (
-        "plan.json emission block missing from wrapper"
-    )
-    assert '"user_ok": true' in src, (
-        "plan.json must declare 'user_ok: true' marker"
-    )
+    assert (
+        "PLAN_JSON" in src or "plan.json" in src
+    ), "plan.json emission block missing from wrapper"
+    assert '"user_ok": true' in src, "plan.json must declare 'user_ok: true' marker"
 
     # 7. Reference to Wf-366-A2 / Wf-378-A2 in source comments
-    assert "Wf-378-A2" in src or "Wf-366-A2" in src, (
-        "Wf-378-A2 / Wf-366-A2 reference comment missing from wrapper"
-    )
+    assert (
+        "Wf-378-A2" in src or "Wf-366-A2" in src
+    ), "Wf-378-A2 / Wf-366-A2 reference comment missing from wrapper"
 
 
 # ---------------------------------------------------------------------------
 # Test 2: live-run behaviour — parametrized 3 ways
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize(
     "label, env_extra, args, expected_rc, expect_gate_message",
@@ -264,6 +265,7 @@ def test_no_user_ok_exits_64(
 # Test 3: --dry-run with USER_OK=1 emits DRY_RUN.log + plan.json
 # ---------------------------------------------------------------------------
 
+
 def test_dry_run_with_user_ok_emits_log_and_plan() -> None:
     """USER_OK=1 + --dry-run → exits 0 AND emits DRY_RUN.log AND plan.json.
 
@@ -312,18 +314,18 @@ def test_dry_run_with_user_ok_emits_log_and_plan() -> None:
     plan_json = out_base / "plan.json"
     assert plan_json.exists(), f"plan.json missing at {plan_json}"
     plan = json.loads(plan_json.read_text())
-    assert plan.get("user_ok") is True, (
-        f"plan.json must declare user_ok=true; got {plan!r}"
-    )
-    assert plan.get("dry_run") is True, (
-        f"plan.json must declare dry_run=true; got {plan!r}"
-    )
-    assert plan.get("total_tuples") == 60, (
-        f"plan.json must declare total_tuples=60; got {plan!r}"
-    )
-    assert plan.get("status") == "PLAN_ONLY", (
-        f"plan.json status should be PLAN_ONLY; got {plan!r}"
-    )
+    assert (
+        plan.get("user_ok") is True
+    ), f"plan.json must declare user_ok=true; got {plan!r}"
+    assert (
+        plan.get("dry_run") is True
+    ), f"plan.json must declare dry_run=true; got {plan!r}"
+    assert (
+        plan.get("total_tuples") == 60
+    ), f"plan.json must declare total_tuples=60; got {plan!r}"
+    assert (
+        plan.get("status") == "PLAN_ONLY"
+    ), f"plan.json status should be PLAN_ONLY; got {plan!r}"
     # configs + metals + seeds sanity
     assert set(plan.get("configs", [])) == {
         "no_multi_task",
@@ -331,21 +333,27 @@ def test_dry_run_with_user_ok_emits_log_and_plan() -> None:
         "no_kendall",
         "no_dann",
     }, f"plan.json configs mismatch; got {plan.get('configs')!r}"
-    assert set(plan.get("metals", [])) == {"Ru", "Ir", "Os", "Rh", "Re"}, (
-        f"plan.json metals mismatch; got {plan.get('metals')!r}"
-    )
-    assert plan.get("seeds") == [0, 1, 2], (
-        f"plan.json seeds mismatch; got {plan.get('seeds')!r}"
-    )
+    assert set(plan.get("metals", [])) == {
+        "Ru",
+        "Ir",
+        "Os",
+        "Rh",
+        "Re",
+    }, f"plan.json metals mismatch; got {plan.get('metals')!r}"
+    assert plan.get("seeds") == [
+        0,
+        1,
+        2,
+    ], f"plan.json seeds mismatch; got {plan.get('seeds')!r}"
 
     # Honest-framing block populated per Wf-355-A3 convention
     assert "honest_framing" in plan, "plan.json missing honest_framing block"
     hf = plan["honest_framing"]
     assert "MEASURED_today" in hf, "honest_framing missing MEASURED_today"
     assert "PROJECTED" in hf, "honest_framing missing PROJECTED"
-    assert "kill_then_adapt_directive" in hf, (
-        "honest_framing missing kill_then_adapt_directive reference"
-    )
-    assert "Wf-378-A2" in hf.get("wf378_a2_status", ""), (
-        "honest_framing wf378_a2_status should reference Wf-378-A2"
-    )
+    assert (
+        "kill_then_adapt_directive" in hf
+    ), "honest_framing missing kill_then_adapt_directive reference"
+    assert "Wf-378-A2" in hf.get(
+        "wf378_a2_status", ""
+    ), "honest_framing wf378_a2_status should reference Wf-378-A2"

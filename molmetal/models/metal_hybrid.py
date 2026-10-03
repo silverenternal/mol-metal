@@ -29,8 +29,8 @@ from molmetal.models.fusion import FusionMLP
 class MetalHybridConfig:
     """Configuration for the hybrid model."""
 
-    atom_feat_dim: int = 39    # from GraphFeaturizer
-    edge_feat_dim: int = 6    # from GraphFeaturizer
+    atom_feat_dim: int = 39  # from GraphFeaturizer
+    edge_feat_dim: int = 6  # from GraphFeaturizer
     hidden_dim: int = 128
     n_dmpnn_layers: int = 3
     n_egnn_layers: int = 3
@@ -107,7 +107,9 @@ class MetalHybridModel(nn.Module):
         self.fusion = FusionMLP(h_dim=cfg.hidden_dim, output_dim=cfg.hidden_dim)
 
         # Metal centre embedding (one-hot metal type)
-        self.metal_embed = nn.Embedding(10, metal_embedding_dim)  # Ru,Ir,Rh,Os,Re,Pt,Pd,Au,Ag,Cu
+        self.metal_embed = nn.Embedding(
+            10, metal_embedding_dim
+        )  # Ru,Ir,Rh,Os,Re,Pt,Pd,Au,Ag,Cu
 
         # Readout: pooled fused features + metal embedding -> dual head
         self.head_mlp = nn.Sequential(
@@ -165,9 +167,13 @@ class MetalHybridModel(nn.Module):
                 edge_attrs.append(feat_dict["edge_attr"])
                 n_atoms_list.append(feat_dict["n_atoms"])
             except Exception:
-                atom_feats.append(np.zeros((1, self.cfg.atom_feat_dim), dtype=np.float32))
+                atom_feats.append(
+                    np.zeros((1, self.cfg.atom_feat_dim), dtype=np.float32)
+                )
                 edge_indices.append(np.zeros((2, 0), dtype=np.int64))
-                edge_attrs.append(np.zeros((0, self.cfg.edge_feat_dim), dtype=np.float32))
+                edge_attrs.append(
+                    np.zeros((0, self.cfg.edge_feat_dim), dtype=np.float32)
+                )
                 n_atoms_list.append(1)
 
         N_max = max(max(n_atoms_list), 1)
@@ -236,15 +242,13 @@ class MetalHybridModel(nn.Module):
             if n_a == 0:
                 continue
             h_mol = h_atom[b, :n_a]  # (n_a, atom_dim)
-            ei_mol = edge_index[b]    # (2, E_max)
-            ea_mol = edge_attr[b]     # (E_max, edge_dim)
+            ei_mol = edge_index[b]  # (2, E_max)
+            ea_mol = edge_attr[b]  # (E_max, edge_dim)
 
             # Keep only edges where both src and dst < n_a (drop padded self-loops).
             if ei_mol.size(1) > 0:
                 src_all, dst_all = ei_mol[0], ei_mol[1]
-                valid_mask = (
-                    (src_all < n_a) & (dst_all < n_a) & (src_all != dst_all)
-                )
+                valid_mask = (src_all < n_a) & (dst_all < n_a) & (src_all != dst_all)
                 ei_local = ei_mol[:, valid_mask]
                 ea_local = ea_mol[valid_mask]
             else:
@@ -261,9 +265,9 @@ class MetalHybridModel(nn.Module):
             if n_a == 0:
                 continue
             # coords are already padded with zeros beyond n_a
-            x_mol = coords[b]       # (N_max, 3) — real atoms have valid coords, padding is 0
-            ei_b = edge_index[b]     # (2, E_max) — global batch indices
-            h_mol = dmpnn_per_atom[b] # (N_max, D) — DMPNN features (0 for padding)
+            x_mol = coords[b]  # (N_max, 3) — real atoms have valid coords, padding is 0
+            ei_b = edge_index[b]  # (2, E_max) — global batch indices
+            h_mol = dmpnn_per_atom[b]  # (N_max, D) — DMPNN features (0 for padding)
 
             # Keep only edges within the real atoms of this molecule.
             # Filter on src<dst (drop zero-padded self-loops AND duplicate reverse edges
@@ -272,17 +276,14 @@ class MetalHybridModel(nn.Module):
                 src_all, dst_all = ei_b[0], ei_b[1]
                 # Drop padding (0,0) self-loops and out-of-range edges.
                 # Then drop self-loops where src==dst (real or padded).
-                valid_edge = (
-                    (src_all < n_a) & (dst_all < n_a)
-                    & (src_all != dst_all)
-                )
-                ei_local = ei_b[:, valid_edge]   # (2, E_valid)
+                valid_edge = (src_all < n_a) & (dst_all < n_a) & (src_all != dst_all)
+                ei_local = ei_b[:, valid_edge]  # (2, E_valid)
             else:
                 ei_local = torch.zeros((2, 0), dtype=torch.long, device=device)
 
             # Use only the first n_a rows of dmpnn features and coords
             h_mol_local = dmpnn_per_atom[b, :n_a]  # (n_a, D)
-            x_mol_local = x_mol[:n_a]               # (n_a, 3)
+            x_mol_local = x_mol[:n_a]  # (n_a, 3)
 
             egnn_out = self.egnn.forward_per_atom(h_mol_local, x_mol_local, ei_local)
             egnn_per_atom[b, :n_a] = egnn_out

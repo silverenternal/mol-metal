@@ -38,12 +38,16 @@ def _fused_rmsnorm_residual_kernel(
     mask = offsets < feat_dim
     base = row * feat_dim
     x = tl.load(x_ptr + base + offsets, mask=mask, other=0.0).to(tl.float32)
-    residual = tl.load(residual_ptr + base + offsets, mask=mask, other=0.0).to(tl.float32)
+    residual = tl.load(residual_ptr + base + offsets, mask=mask, other=0.0).to(
+        tl.float32
+    )
     summed = x + residual
     mean_square = tl.sum(tl.where(mask, summed * summed, 0.0), axis=0) / feat_dim
     inv_rms = 1.0 / tl.sqrt(mean_square + eps)
     weight = tl.load(weight_ptr + offsets, mask=mask, other=0.0).to(tl.float32)
-    tl.store(out_ptr + base + offsets, (summed * inv_rms * weight).to(tl.float32), mask=mask)
+    tl.store(
+        out_ptr + base + offsets, (summed * inv_rms * weight).to(tl.float32), mask=mask
+    )
 
 
 def fused_rmsnorm_residual(
@@ -60,14 +64,20 @@ def fused_rmsnorm_residual(
         raise ValueError("residual must have the same shape as x")
     feat_dim = x.shape[-1]
     if weight.shape != (feat_dim,):
-        raise ValueError(f"weight must have shape ({feat_dim},); got {tuple(weight.shape)}")
+        raise ValueError(
+            f"weight must have shape ({feat_dim},); got {tuple(weight.shape)}"
+        )
     if feat_dim <= 0:
         raise ValueError("feature dimension must be positive")
 
     # Keep CPU behavior useful for reference tests and environments without HIP.
     if not x.is_cuda:
         summed = x + residual
-        return summed * torch.rsqrt(summed.square().mean(dim=-1, keepdim=True) + eps) * weight
+        return (
+            summed
+            * torch.rsqrt(summed.square().mean(dim=-1, keepdim=True) + eps)
+            * weight
+        )
 
     # Triton kernels allocate a fresh output tensor and therefore do not
     # participate in PyTorch autograd by themselves.  Keep the fused path
@@ -76,7 +86,11 @@ def fused_rmsnorm_residual(
     # correct on CUDA/HIP.
     if x.requires_grad or residual.requires_grad or weight.requires_grad:
         summed = x + residual
-        return summed * torch.rsqrt(summed.square().mean(dim=-1, keepdim=True) + eps) * weight
+        return (
+            summed
+            * torch.rsqrt(summed.square().mean(dim=-1, keepdim=True) + eps)
+            * weight
+        )
 
     x_c = x.contiguous()
     residual_c = residual.contiguous()
@@ -86,11 +100,17 @@ def fused_rmsnorm_residual(
     block_d = _next_power_of_2(feat_dim)
     if block_d > 4096:
         raise ValueError("feature dimension is too large (maximum 4096)")
-    configs = list(autotune_configs) if autotune_configs is not None else AUTOTUNE_CONFIGS
+    configs = (
+        list(autotune_configs) if autotune_configs is not None else AUTOTUNE_CONFIGS
+    )
     kernel = _fused_rmsnorm_residual_kernel
     if autotune_configs is not None:
-        kernel = triton.autotune(configs=configs, key=["n_rows", "feat_dim"])(_fused_rmsnorm_residual_kernel.fn)
-    kernel[(n_rows,)](x_c, residual_c, weight_c, out, n_rows, feat_dim, float(eps), BLOCK_D=block_d)
+        kernel = triton.autotune(configs=configs, key=["n_rows", "feat_dim"])(
+            _fused_rmsnorm_residual_kernel.fn
+        )
+    kernel[(n_rows,)](
+        x_c, residual_c, weight_c, out, n_rows, feat_dim, float(eps), BLOCK_D=block_d
+    )
     return out.reshape(x.shape)
 
 

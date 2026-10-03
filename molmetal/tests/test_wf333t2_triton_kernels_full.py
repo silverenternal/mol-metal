@@ -95,6 +95,7 @@ from molmetal.adapters.flow_matching_lipman._reference.fused_smiles_featurize im
 _HAVE_CUDA = torch.cuda.is_available()
 try:
     import triton as _triton_mod  # noqa: F401
+
     _HAVE_TRITON = True
 except ImportError:
     _HAVE_TRITON = False
@@ -190,7 +191,9 @@ class TestFusedReLUMlpFull:
         w1, w2 = w1.cuda(), w2.cuda()
         b1, b2 = b1.cuda(), b2.cuda()
         # PyTorch reference (CPU-side, then move result for comparison).
-        ref_cpu = F.linear(F.relu(F.linear(x.cpu(), w1.cpu(), b1.cpu())), w2.cpu(), b2.cpu())
+        ref_cpu = F.linear(
+            F.relu(F.linear(x.cpu(), w1.cpu(), b1.cpu())), w2.cpu(), b2.cpu()
+        )
         # Module-level PyTorch reference (same as above).
         ref_module = _pt_relu_mlp(x.cpu(), w1.cpu(), b1.cpu(), w2.cpu(), b2.cpu())
         # Triton kernel (force_pytorch=False → routes to Triton if env gate open).
@@ -200,12 +203,12 @@ class TestFusedReLUMlpFull:
         # Compare.
         diff_ref = (out_triton_cpu - ref_module).abs().max().item()
         diff_baseline = (out_triton_cpu - ref_cpu).abs().max().item()
-        assert diff_ref < 1e-4, (
-            f"Triton kernel diverges from pytorch_reference by {diff_ref:.6f}"
-        )
-        assert diff_baseline < 1e-4, (
-            f"Triton kernel diverges from independent baseline by {diff_baseline:.6f}"
-        )
+        assert (
+            diff_ref < 1e-4
+        ), f"Triton kernel diverges from pytorch_reference by {diff_ref:.6f}"
+        assert (
+            diff_baseline < 1e-4
+        ), f"Triton kernel diverges from independent baseline by {diff_baseline:.6f}"
         assert out_triton.shape == (x.shape[0], w2.shape[0])
 
     def test_02_fused_relu_mlp_speedup_benchmark_cpu_proxy(self):
@@ -226,15 +229,13 @@ class TestFusedReLUMlpFull:
         # On CPU, dispatch returns the reference path — overhead must
         # be within a generous band (CPU timing is noisy at sub-ms).
         overhead = t_dispatch / max(t_pt, 1e-9)
-        assert 0.5 <= overhead <= 2.0, (
-            f"CPU dispatch overhead {overhead:.3f}x is outside [0.5, 2.0] band"
-        )
+        assert (
+            0.5 <= overhead <= 2.0
+        ), f"CPU dispatch overhead {overhead:.3f}x is outside [0.5, 2.0] band"
         # PROJECTED GPU speedup band (Wf-326E audit, per_kernel_status_table).
         lo, hi = _PROJECTED_SPEEDUP["fused_relu_mlp"]
         # Sanity: speedup band is well-formed.
-        assert 1.0 < lo < hi, (
-            f"PROJECTED speedup band [{lo}, {hi}] is malformed"
-        )
+        assert 1.0 < lo < hi, f"PROJECTED speedup band [{lo}, {hi}] is malformed"
 
 
 # ===========================================================================
@@ -269,16 +270,16 @@ class TestFusedWassersteinSlicedFull:
         # fp32 radix sort vs PyTorch's CUB-based sort.  Tolerance is
         # generous — Wf-310C TODO-179 root cause analysis showed
         # fp32 sort reductions drift ~1-2% from PyTorch baselines.
-        assert diff < 5e-2, (
-            f"Triton kernel diverges from pytorch_reference by {diff:.6f}"
-        )
+        assert (
+            diff < 5e-2
+        ), f"Triton kernel diverges from pytorch_reference by {diff:.6f}"
         # W₂ must be non-negative.
         assert out_triton.item() >= 0.0
         # W₂(x, x) ≈ 0.
         out_xx = _fused_w2(x, x, n_mc=n_mc, seed=seed, force_pytorch=False)
-        assert out_xx.abs().item() < 1e-2, (
-            f"W₂(x, x) should be ~0, got {out_xx.item():.6f}"
-        )
+        assert (
+            out_xx.abs().item() < 1e-2
+        ), f"W₂(x, x) should be ~0, got {out_xx.item():.6f}"
 
     def test_04_fused_wasserstein_sliced_speedup_benchmark_cpu_proxy(self):
         """CPU-proxy speedup benchmark for ``fused_wasserstein_sliced``.
@@ -293,13 +294,11 @@ class TestFusedWassersteinSlicedFull:
         # On CPU, dispatch returns the reference path — overhead must
         # be within a generous band (CPU timing is noisy at sub-ms).
         overhead = t_dispatch / max(t_pt, 1e-9)
-        assert 0.5 <= overhead <= 2.0, (
-            f"CPU dispatch overhead {overhead:.3f}x is outside [0.5, 2.0] band"
-        )
+        assert (
+            0.5 <= overhead <= 2.0
+        ), f"CPU dispatch overhead {overhead:.3f}x is outside [0.5, 2.0] band"
         lo, hi = _PROJECTED_SPEEDUP["fused_wasserstein_sliced"]
-        assert 1.0 < lo < hi, (
-            f"PROJECTED speedup band [{lo}, {hi}] is malformed"
-        )
+        assert 1.0 < lo < hi, f"PROJECTED speedup band [{lo}, {hi}] is malformed"
 
 
 # ===========================================================================
@@ -335,12 +334,12 @@ class TestFusedBondHeadAggregationFull:
         # 3-layer MLP has fp32 accumulation noise from 3 matmuls +
         # 2 ReLU + bias adds.  Tolerance is generous (1e-3) per the
         # Wf-326E audit noting D-MPNN per-layer noise is ~5e-4.
-        assert diff_ref < 1e-3, (
-            f"Triton kernel diverges from pytorch_reference by {diff_ref:.6f}"
-        )
-        assert diff_baseline < 1e-3, (
-            f"Triton kernel diverges from independent baseline by {diff_baseline:.6f}"
-        )
+        assert (
+            diff_ref < 1e-3
+        ), f"Triton kernel diverges from pytorch_reference by {diff_ref:.6f}"
+        assert (
+            diff_baseline < 1e-3
+        ), f"Triton kernel diverges from independent baseline by {diff_baseline:.6f}"
         assert out_triton.shape == (x.shape[0], weights_gpu[2][0].shape[0])
 
     def test_06_fused_bond_head_aggregation_speedup_benchmark_cpu_proxy(self):
@@ -351,13 +350,11 @@ class TestFusedBondHeadAggregationFull:
         # On CPU, dispatch returns the reference path — overhead must
         # be within a generous band (CPU timing is noisy at sub-ms).
         overhead = t_dispatch / max(t_pt, 1e-9)
-        assert 0.5 <= overhead <= 2.0, (
-            f"CPU dispatch overhead {overhead:.3f}x is outside [0.5, 2.0] band"
-        )
+        assert (
+            0.5 <= overhead <= 2.0
+        ), f"CPU dispatch overhead {overhead:.3f}x is outside [0.5, 2.0] band"
         lo, hi = _PROJECTED_SPEEDUP["fused_bond_head_aggregation"]
-        assert 1.0 < lo < hi, (
-            f"PROJECTED speedup band [{lo}, {hi}] is malformed"
-        )
+        assert 1.0 < lo < hi, f"PROJECTED speedup band [{lo}, {hi}] is malformed"
 
 
 # ===========================================================================
@@ -380,13 +377,18 @@ class TestFusedSmilesFeaturizeFull:
         ref_module = _pt_smiles(syms, degs, rings, aroms, charges)
         # Triton kernel.
         out_triton = _fused_smiles(
-            syms, degs, rings, aroms, charges, force_pytorch=False,
+            syms,
+            degs,
+            rings,
+            aroms,
+            charges,
+            force_pytorch=False,
         )
         out_cpu = out_triton.cpu() if out_triton.is_cuda else out_triton
         diff = (out_cpu - ref_module).abs().max().item()
-        assert diff < 1e-5, (
-            f"Triton kernel diverges from pytorch_reference by {diff:.6f}"
-        )
+        assert (
+            diff < 1e-5
+        ), f"Triton kernel diverges from pytorch_reference by {diff:.6f}"
         assert out_triton.shape == (len(syms), _FEATURE_DIM)
 
     def test_08_fused_smiles_featurize_speedup_benchmark_cpu_proxy(self):
@@ -412,10 +414,8 @@ class TestFusedSmilesFeaturizeFull:
         # On CPU, dispatch returns the reference path — overhead must
         # be within a generous band (CPU timing is noisy at sub-ms).
         overhead = t_dispatch / max(t_pt, 1e-9)
-        assert 0.5 <= overhead <= 2.0, (
-            f"CPU dispatch overhead {overhead:.3f}x is outside [0.5, 2.0] band"
-        )
+        assert (
+            0.5 <= overhead <= 2.0
+        ), f"CPU dispatch overhead {overhead:.3f}x is outside [0.5, 2.0] band"
         lo, hi = _PROJECTED_SPEEDUP["fused_smiles_featurize"]
-        assert 1.0 < lo < hi, (
-            f"PROJECTED speedup band [{lo}, {hi}] is malformed"
-        )
+        assert 1.0 < lo < hi, f"PROJECTED speedup band [{lo}, {hi}] is malformed"

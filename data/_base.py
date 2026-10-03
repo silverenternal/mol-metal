@@ -42,9 +42,9 @@ class MoleculeSample:
     ``None``.
     """
 
-    features: torch.Tensor | None = None   # (F,)        - flat descriptor
-    label: torch.Tensor | None = None      # (,) or (T,) - target(s)
-    coords: torch.Tensor | None = None     # (N, 3)
+    features: torch.Tensor | None = None  # (F,)        - flat descriptor
+    label: torch.Tensor | None = None  # (,) or (T,) - target(s)
+    coords: torch.Tensor | None = None  # (N, 3)
     atom_types: torch.Tensor | None = None  # (N,)
 
 
@@ -95,7 +95,5 @@ class BaseMoleculeDataset(Dataset):
 
     def __getitem__(self, idx: int) -> MoleculeSample:
         if not hasattr(self, "_samples"):
-            raise RuntimeError(
-                f"{type(self).__name__}._load_raw() was never called."
-            )
+            raise RuntimeError(f"{type(self).__name__}._load_raw() was never called.")
         return self._samples[idx]

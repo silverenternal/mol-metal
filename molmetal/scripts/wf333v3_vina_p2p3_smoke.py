@@ -49,6 +49,7 @@ Usage
 
     .venv/bin/python molmetal/scripts/wf333v3_vina_p2p3_smoke.py
 """
+
 from __future__ import annotations
 
 import json
@@ -121,7 +122,7 @@ def _distance_score_from_pose(pt_n_distance_angstrom: float) -> float:
     via ``exp(-((d - d_opt) / sigma) ** 2)``.
     """
     diff = float(pt_n_distance_angstrom) - P3_REFERENCE_PT_N_DISTANCE_ANGSTROM
-    return float(math.exp(-(diff / 0.20) ** 2))
+    return float(math.exp(-((diff / 0.20) ** 2)))
 
 
 def _distance_subscore_adjustment_kcal_mol(pt_n_distance_angstrom: float) -> float:
@@ -188,14 +189,10 @@ def main() -> int:
 
         per_pocket[pocket_id] = {
             "vina_kcal_mol": float(vina_kcal),
-            "f2a_pc_kcal_mol": (
-                float(f2a_pc) if f2a_pc is not None else None
-            ),
+            "f2a_pc_kcal_mol": (float(f2a_pc) if f2a_pc is not None else None),
             "f2a_pc_n_bonds": int(pc_n),
             "f2a_pc_modifier": float(pc_mod),
-            "f2a_pb_kcal_mol": (
-                float(f2a_pb) if f2a_pb is not None else None
-            ),
+            "f2a_pb_kcal_mol": (float(f2a_pb) if f2a_pb is not None else None),
             "f2a_pb_n_bonds": int(pb_n),
             "f2a_pb_modifier": float(pb_mod),
             "distance_adjustment_kcal_mol": float(dist_adj),
@@ -206,7 +203,8 @@ def main() -> int:
             "v3_combined_kcal_mol": v3_combined,
             "v3_combined_lift_kcal_mol": (
                 float(v3_combined) - float(vina_kcal)
-                if v3_combined is not None else None
+                if v3_combined is not None
+                else None
             ),
         }
         vina_scores.append(vina_kcal)
@@ -286,14 +284,11 @@ def main() -> int:
         "recovery_verdict_msg": verdict_msg,
         "baseline_wf325b_median_kcal_mol": -3.283,
         "baseline_wf325b_gap_to_industry_kcal_mol": 3.717,
-        "PROJECTED_p2_per_bond_lift_kcal_mol": (
-            PER_BOND_PROJECTED_LIFT_KCAL_MOL
-        ),
-        "PROJECTED_p3_distance_lift_kcal_mol": (
-            P3_PROJECTED_DISTANCE_LIFT_KCAL_MOL
-        ),
+        "PROJECTED_p2_per_bond_lift_kcal_mol": (PER_BOND_PROJECTED_LIFT_KCAL_MOL),
+        "PROJECTED_p3_distance_lift_kcal_mol": (P3_PROJECTED_DISTANCE_LIFT_KCAL_MOL),
         "PROJECTED_total_combined_lift_kcal_mol": (
-            PER_BOND_PROJECTED_LIFT_KCAL_MOL + P3_PROJECTED_DISTANCE_LIFT_KCAL_MOL
+            PER_BOND_PROJECTED_LIFT_KCAL_MOL
+            + P3_PROJECTED_DISTANCE_LIFT_KCAL_MOL
             + DEFAULT_COVALENT_MODIFIER_KCAL_MOL
         ),
     }
@@ -308,15 +303,11 @@ def main() -> int:
                 "V1 per-centre F2(a) + V2 per-bond F2(a) (P2) + "
                 "V3 distance sub-score wire-in (P3)"
             ),
-            "f2a_modifier_kcal_mol_per_bond": (
-                DEFAULT_COVALENT_MODIFIER_KCAL_MOL
-            ),
+            "f2a_modifier_kcal_mol_per_bond": (DEFAULT_COVALENT_MODIFIER_KCAL_MOL),
             "f2a_per_bond_n_smiles": (
                 "Cl[Pt](Cl)(N)N -> 2 Pt-N donor bonds (per-bond)"
             ),
-            "distance_reference_pt_n_angstrom": (
-                P3_REFERENCE_PT_N_DISTANCE_ANGSTROM
-            ),
+            "distance_reference_pt_n_angstrom": (P3_REFERENCE_PT_N_DISTANCE_ANGSTROM),
         },
         "per_pocket": per_pocket,
         "headline": headline,
@@ -366,8 +357,7 @@ def main() -> int:
     }
 
     out_path = (
-        ROOT / "molmetal" / "reports" / "wf333v3_vina_p2p3"
-        / "smoke_per_pocket.json"
+        ROOT / "molmetal" / "reports" / "wf333v3_vina_p2p3" / "smoke_per_pocket.json"
     )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w", encoding="utf-8") as fh:
@@ -392,6 +382,7 @@ def main() -> int:
 
 def _utc_now_iso() -> str:
     from datetime import datetime, timezone
+
     return datetime.now(timezone.utc).isoformat()
 
 

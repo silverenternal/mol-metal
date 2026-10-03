@@ -117,9 +117,14 @@ def _verdict(test_mean: float, test_std: float, n_seeds: int) -> str:
     )
 
 
-def _claim_cards(test_mean: float, test_std: float, delta_wf185: float,
-                 delta_smoke: float, n_seeds: int,
-                 wall_min: float) -> List[str]:
+def _claim_cards(
+    test_mean: float,
+    test_std: float,
+    delta_wf185: float,
+    delta_smoke: float,
+    n_seeds: int,
+    wall_min: float,
+) -> List[str]:
     """Emit paper-grade claim cards per Wf-301A convention."""
     cards = [
         f"# Wf-310D DrugOOD DANN full aggregation -- claim cards ({n_seeds}-seed × 50-epoch)",
@@ -132,10 +137,15 @@ def _claim_cards(test_mean: float, test_std: float, delta_wf185: float,
     return cards
 
 
-def _format_claim_cards(per_seed: List[Dict[str, float]],
-                        test_mean: float, test_std: float,
-                        delta_wf185: float, delta_smoke: float,
-                        n_seeds: int, wall_min: float) -> str:
+def _format_claim_cards(
+    per_seed: List[Dict[str, float]],
+    test_mean: float,
+    test_std: float,
+    delta_wf185: float,
+    delta_smoke: float,
+    n_seeds: int,
+    wall_min: float,
+) -> str:
     """Format per-seed table + MEASURED-vs-PROJECTED claim cards."""
     lines = [
         f"# Wf-310D DrugOOD DANN full aggregation -- claim cards",
@@ -159,47 +169,52 @@ def _format_claim_cards(per_seed: List[Dict[str, float]],
             f"{r.get('elapsed_s', 0.0):.1f} | "
             f"{r.get('n_test', 0)} |"
         )
-    lines.extend([
-        "",
-        "## Card 2 -- pass-gate verdict (MEASURED)",
-        "",
-        f"- Wf-185 v2 baseline: {WF185_BASELINE_MEAN:.4f} ± {WF185_BASELINE_STD:.4f}",
-        f"- Wf-301A smoke (CPU, 1-epoch, 3-seed): {WF301A_SMOKE_MEAN:.4f}",
-        f"- Field-avg target band: {FIELD_AVG_TARGET_LO:.2f} - {FIELD_AVG_TARGET_HI:.2f}",
-        f"- Full DANN {n_seeds}-seed: {test_mean:.4f} ± {test_std:.4f}",
-        f"- delta_vs_wf185: {delta_wf185:+.4f}",
-        f"- delta_vs_wf301a_smoke: {delta_smoke:+.4f}  (full vs smoke -- "
-        f"both ECFP4 + DANN, different epoch count + different seed count)",
-        "",
-        "## Card 3 -- honest-negative flags (per Wf-301A honest-negative)",
-        "",
-        "- Wf-185 Δ is across DIFFERENT subsets (DrugOOD scaffold vs "
-        "  lbap_refined_ic50 scaffold); cross-substrate comparison is "
-        "  directional only.",
-        "- Full run vs smoke Δ mixes epoch-budget effect with seed-noise.",
-        "- DANN scaffold-binning may not generalise beyond top-15 + OOV "
-        "  scaffold frequency (per Wf-301A honest-negative §HONEST_NEGATIVE).",
-        "",
-        "## Card 4 -- wall + GPU cost (PROJECTED)",
-        "",
-        f"- Wall: {wall_min:.1f} min ({wall_min/60:.2f} hr) -- MEASURED.",
-        f"- GPU: cuda:1 (RTX 5090) per Wf-306A launch_wf306a_drugood_vina_gpu.sh.",
-        "- ~3-4 hr GPU-1 PROJECTED per Wf-306A Phase-A budget.",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            "## Card 2 -- pass-gate verdict (MEASURED)",
+            "",
+            f"- Wf-185 v2 baseline: {WF185_BASELINE_MEAN:.4f} ± {WF185_BASELINE_STD:.4f}",
+            f"- Wf-301A smoke (CPU, 1-epoch, 3-seed): {WF301A_SMOKE_MEAN:.4f}",
+            f"- Field-avg target band: {FIELD_AVG_TARGET_LO:.2f} - {FIELD_AVG_TARGET_HI:.2f}",
+            f"- Full DANN {n_seeds}-seed: {test_mean:.4f} ± {test_std:.4f}",
+            f"- delta_vs_wf185: {delta_wf185:+.4f}",
+            f"- delta_vs_wf301a_smoke: {delta_smoke:+.4f}  (full vs smoke -- "
+            f"both ECFP4 + DANN, different epoch count + different seed count)",
+            "",
+            "## Card 3 -- honest-negative flags (per Wf-301A honest-negative)",
+            "",
+            "- Wf-185 Δ is across DIFFERENT subsets (DrugOOD scaffold vs "
+            "  lbap_refined_ic50 scaffold); cross-substrate comparison is "
+            "  directional only.",
+            "- Full run vs smoke Δ mixes epoch-budget effect with seed-noise.",
+            "- DANN scaffold-binning may not generalise beyond top-15 + OOV "
+            "  scaffold frequency (per Wf-301A honest-negative §HONEST_NEGATIVE).",
+            "",
+            "## Card 4 -- wall + GPU cost (PROJECTED)",
+            "",
+            f"- Wall: {wall_min:.1f} min ({wall_min/60:.2f} hr) -- MEASURED.",
+            f"- GPU: cuda:1 (RTX 5090) per Wf-306A launch_wf306a_drugood_vina_gpu.sh.",
+            "- ~3-4 hr GPU-1 PROJECTED per Wf-306A Phase-A budget.",
+            "",
+        ]
+    )
     return "\n".join(lines)
 
 
 def main(argv: Optional[List[str]] = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    p.add_argument("--per-seed-dir",
-                   default="molmetal/reports/wf301a_drugood_dann",
-                   help="Directory containing seed<N>.json from Wf-301A full run.")
-    p.add_argument("--smoke-aggregate",
-                   default="molmetal/reports/wf301a_drugood_dann/aggregate.json",
-                   help="Wf-301A smoke aggregate.json (for Δ smoke tracking).")
-    p.add_argument("--out-dir",
-                   default="molmetal/reports/wf310d_drugood_full")
+    p.add_argument(
+        "--per-seed-dir",
+        default="molmetal/reports/wf301a_drugood_dann",
+        help="Directory containing seed<N>.json from Wf-301A full run.",
+    )
+    p.add_argument(
+        "--smoke-aggregate",
+        default="molmetal/reports/wf301a_drugood_dann/aggregate.json",
+        help="Wf-301A smoke aggregate.json (for Δ smoke tracking).",
+    )
+    p.add_argument("--out-dir", default="molmetal/reports/wf310d_drugood_full")
     p.add_argument("--n-seeds", type=int, default=5)
     args = p.parse_args(argv)
 
@@ -213,16 +228,26 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
     n_seeds = len(per_seed)
 
-    test_aucs = [r["test_auc"] for r in per_seed
-                 if "test_auc" in r and not np.isnan(r["test_auc"])]
-    val_aucs = [r["val_auc"] for r in per_seed
-                if "val_auc" in r and not np.isnan(r["val_auc"])]
-    train_aucs = [r["train_auc"] for r in per_seed
-                  if "train_auc" in r and not np.isnan(r["train_auc"])]
+    test_aucs = [
+        r["test_auc"]
+        for r in per_seed
+        if "test_auc" in r and not np.isnan(r["test_auc"])
+    ]
+    val_aucs = [
+        r["val_auc"] for r in per_seed if "val_auc" in r and not np.isnan(r["val_auc"])
+    ]
+    train_aucs = [
+        r["train_auc"]
+        for r in per_seed
+        if "train_auc" in r and not np.isnan(r["train_auc"])
+    ]
     elapsed = [r.get("elapsed_s", 0.0) for r in per_seed]
 
-    def _m(xs): return float(np.mean(xs)) if xs else float("nan")
-    def _s(xs): return float(np.std(xs)) if len(xs) > 1 else 0.0
+    def _m(xs):
+        return float(np.mean(xs)) if xs else float("nan")
+
+    def _s(xs):
+        return float(np.std(xs)) if len(xs) > 1 else 0.0
 
     test_mean, test_std = _m(test_aucs), _s(test_aucs)
     val_mean, val_std = _m(val_aucs), _s(val_aucs)
@@ -252,9 +277,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         ),
         "per_seed": per_seed,
         "n_seeds_completed": int(n_seeds),
-        "train_auc_mean": train_mean, "train_auc_std": train_std,
-        "val_auc_mean": val_mean, "val_auc_std": val_std,
-        "test_auc_mean": test_mean, "test_auc_std": test_std,
+        "train_auc_mean": train_mean,
+        "train_auc_std": train_std,
+        "val_auc_mean": val_mean,
+        "val_auc_std": val_std,
+        "test_auc_mean": test_mean,
+        "test_auc_std": test_std,
         "wall_min": wall_min,
         "wf185_v2_baseline_mean": WF185_BASELINE_MEAN,
         "wf185_v2_baseline_std": WF185_BASELINE_STD,
@@ -274,16 +302,25 @@ def main(argv: Optional[List[str]] = None) -> int:
     _log(f"wrote {out_agg}")
 
     out_cards = out_dir / "claim_cards.md"
-    out_cards.write_text(_format_claim_cards(
-        per_seed, test_mean, test_std,
-        delta_wf185, delta_smoke, n_seeds, wall_min,
-    ))
+    out_cards.write_text(
+        _format_claim_cards(
+            per_seed,
+            test_mean,
+            test_std,
+            delta_wf185,
+            delta_smoke,
+            n_seeds,
+            wall_min,
+        )
+    )
     _log(f"wrote {out_cards}")
 
-    _log(f"TEST AUC = {test_mean:.4f} ± {test_std:.4f}  "
-         f"vs Wf-185 v2 = {WF185_BASELINE_MEAN:.4f}  "
-         f"vs Wf-301A smoke = {WF301A_SMOKE_MEAN:.4f}  "
-         f"verdict={verdict}")
+    _log(
+        f"TEST AUC = {test_mean:.4f} ± {test_std:.4f}  "
+        f"vs Wf-185 v2 = {WF185_BASELINE_MEAN:.4f}  "
+        f"vs Wf-301A smoke = {WF301A_SMOKE_MEAN:.4f}  "
+        f"verdict={verdict}"
+    )
     return 0
 
 

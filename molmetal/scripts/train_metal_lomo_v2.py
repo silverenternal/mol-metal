@@ -137,6 +137,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -170,6 +171,7 @@ _MOLMETAL_ALLOW_CPU = os.environ.get("MOLMETAL_ALLOW_CPU", "0") == "1"
 # Wf-50 pre-condition: ensure MOLMETAL_DATA_DIR defaults to project-local data dir
 from pathlib import Path as _wf50_Path
 import os as _wf50_os
+
 _wf50_proj_root = _wf50_Path(__file__).resolve().parent.parent.parent
 _wf50_default_data = _wf50_proj_root / ".data" / "molmetal"
 if not _wf50_os.environ.get("MOLMETAL_DATA_DIR") and _wf50_default_data.exists():
@@ -186,7 +188,10 @@ if str(PROJECT_ROOT) not in sys.path:
 # force the writable cache_dir (because the class default arg is bound at
 # class definition time).
 import molmetal.data.cytotox as _cytotox_mod
-_LOCAL_DATA = Path(os.environ.get("MOLMETAL_DATA_DIR", str(PROJECT_ROOT / ".data" / "molmetal")))
+
+_LOCAL_DATA = Path(
+    os.environ.get("MOLMETAL_DATA_DIR", str(PROJECT_ROOT / ".data" / "molmetal"))
+)
 _LOCAL_CACHE = _LOCAL_DATA / "3d_cache"
 _LOCAL_CACHE.mkdir(parents=True, exist_ok=True)
 _cytotox_mod.DEFAULT_DATA_DIR = _LOCAL_DATA
@@ -217,6 +222,7 @@ from molmetal.baselines.dmpnn_multitask import (
     featurize_smiles_list,
     predict_mt,
 )
+
 # Wf-201 — single-task driver.  Imports the vanilla D-MPNN (no per-metal
 # heads, no shared backbone across metals) so ``--task-type single`` can
 # train a per-fold model without the cross-metal information sharing
@@ -264,9 +270,10 @@ DEFAULT_RH_BALANCED_JSON = (
     / "synthetic_rh_pos_neg.json"
 )
 # Allow overriding the cache dir via env (mirrors Wf-50 pre-condition).
-DEFAULT_CACHE_DIR = Path(
-    os.environ.get("MOLMETAL_DATA_DIR", str(PROJECT_ROOT / ".data" / "molmetal"))
-) / "3d_cache"
+DEFAULT_CACHE_DIR = (
+    Path(os.environ.get("MOLMETAL_DATA_DIR", str(PROJECT_ROOT / ".data" / "molmetal")))
+    / "3d_cache"
+)
 
 GATE_AUC = 0.70
 TARGET_RH_AUC = 0.50
@@ -392,9 +399,7 @@ def oversample_underrepresented_metals(
         underrepresented = ["Rh", "Re"]
     target_pos_rate = float(target_pos_rate)
     if not (0.0 < target_pos_rate <= 0.5):
-        raise ValueError(
-            f"target_pos_rate must be in (0, 0.5], got {target_pos_rate}"
-        )
+        raise ValueError(f"target_pos_rate must be in (0, 0.5], got {target_pos_rate}")
 
     smiles = list(smiles)
     active = np.asarray(active, dtype=np.int64)
@@ -423,7 +428,9 @@ def oversample_underrepresented_metals(
             stats[metal] = 0
             continue
         # How many positives do we need to hit target_pos_rate?
-        target_n_pos = int(round(target_pos_rate * (n_pos + n_neg) / (1.0 - target_pos_rate)))
+        target_n_pos = int(
+            round(target_pos_rate * (n_pos + n_neg) / (1.0 - target_pos_rate))
+        )
         n_appended = max(0, target_n_pos - n_pos)
         if n_appended == 0:
             stats[metal] = 0
@@ -434,15 +441,21 @@ def oversample_underrepresented_metals(
         pos_pic50 = pic50[pos_indices]
         pos_metals = [str(metals[i]) for i in pos_indices]
         resampled_smiles = _sk_resample(
-            pos_smiles, n_samples=n_appended, replace=True,
+            pos_smiles,
+            n_samples=n_appended,
+            replace=True,
             random_state=int(seed),
         )
         resampled_pic50 = _sk_resample(
-            pos_pic50, n_samples=n_appended, replace=True,
+            pos_pic50,
+            n_samples=n_appended,
+            replace=True,
             random_state=int(seed) + 1,
         )
         resampled_metals = _sk_resample(
-            pos_metals, n_samples=n_appended, replace=True,
+            pos_metals,
+            n_samples=n_appended,
+            replace=True,
             random_state=int(seed) + 2,
         )
         out_smiles.extend(list(resampled_smiles))
@@ -599,6 +612,7 @@ class BalancedLOMORunner:
         # ------------------------------------------------------------------
         if model_cls is None:
             from molmetal.baselines.dmpnn_multitask import DMPNNMultiTaskModel
+
             model_cls = DMPNNMultiTaskModel
         self._model_cls = model_cls
         # Wf-148 ultracode — keep the CLI alias (e.g. ``chemprop_v2``)
@@ -622,8 +636,10 @@ class BalancedLOMORunner:
         self.alpha = float(alpha)
         self.seed = int(seed)
         self.device = device or torch.device(
-            "cuda:1" if torch.cuda.is_available() and torch.cuda.device_count() > 1
-            else "cuda:0" if torch.cuda.is_available()
+            "cuda:1"
+            if torch.cuda.is_available() and torch.cuda.device_count() > 1
+            else "cuda:0"
+            if torch.cuda.is_available()
             else "cpu"
         )
         self.splitter = BalancedLOMOSplitter(
@@ -678,9 +694,7 @@ class BalancedLOMORunner:
         #   on positive loss.
         # ------------------------------------------------------------------
         self.oversample_positives = bool(oversample_positives)
-        self.pos_weight = (
-            float(pos_weight) if pos_weight is not None else None
-        )
+        self.pos_weight = float(pos_weight) if pos_weight is not None else None
         # ------------------------------------------------------------------
         # Wf-201 — task driver selection (single vs multi).  Default
         # ``"multi"`` preserves backward compat with all prior Wf-131
@@ -844,7 +858,9 @@ class BalancedLOMORunner:
         graphs_val = [graphs_all[i] for i in val_idx] if len(val_idx) else []
         graphs_test = [graphs_all[i] for i in test_idx]
         pic50_train = pic50_all[train_idx]
-        pic50_val = pic50_all[val_idx] if len(val_idx) else np.array([], dtype=np.float32)
+        pic50_val = (
+            pic50_all[val_idx] if len(val_idx) else np.array([], dtype=np.float32)
+        )
         active_train = active_all[train_idx]
         active_val = active_all[val_idx] if len(val_idx) else np.array([], dtype=int)
         pic50_test = pic50_all[test_idx]
@@ -863,7 +879,9 @@ class BalancedLOMORunner:
         target_graphs = featurize_smiles_list([str(s) for s in real_rh_active_smiles])
         target_active = np.ones(len(real_rh_active_smiles), dtype=np.int64)
         target_pic50 = np.full(len(real_rh_active_smiles), 5.0, dtype=np.float32)
-        target_metals = np.array(["Rh_real_active"] * len(real_rh_active_smiles), dtype=object)
+        target_metals = np.array(
+            ["Rh_real_active"] * len(real_rh_active_smiles), dtype=object
+        )
 
         model = self._model_cls(
             hidden=self.hidden,
@@ -874,7 +892,8 @@ class BalancedLOMORunner:
         # Wf-187 m19 Rh oversample fix — wire pos_weight into MultiTaskLoss
         # when set (default None = backward-compatible CrossEntropyLoss).
         criterion = MultiTaskLoss(
-            alpha=self.alpha, pos_weight=self.pos_weight,
+            alpha=self.alpha,
+            pos_weight=self.pos_weight,
         )
 
         best_val_auc = 0.0
@@ -885,7 +904,9 @@ class BalancedLOMORunner:
         all_train_graphs = list(graphs_train) + [
             g for g in synth_graphs if g is not None
         ]
-        all_train_pic50 = np.concatenate([pic50_train, synth_pic50[: len(all_train_graphs) - len(graphs_train)]])
+        all_train_pic50 = np.concatenate(
+            [pic50_train, synth_pic50[: len(all_train_graphs) - len(graphs_train)]]
+        )
         all_train_active = np.concatenate(
             [active_train, synth_active[: len(all_train_graphs) - len(graphs_train)]]
         )
@@ -901,10 +922,9 @@ class BalancedLOMORunner:
             # apply sklearn.utils.resample on the positive-only rows.
             # We need SMILES strings, not graphs — rebuild from the
             # original dataset + balanced cohort.
-            train_smiles = (
-                [str(smiles_all[i]) for i in train_idx]
-                + [str(s) for s in synth_smis]
-            )
+            train_smiles = [str(smiles_all[i]) for i in train_idx] + [
+                str(s) for s in synth_smis
+            ]
             (os_smiles, os_active, os_metals, os_pic50, os_stats) = (
                 oversample_underrepresented_metals(
                     smiles=train_smiles,
@@ -918,7 +938,7 @@ class BalancedLOMORunner:
             )
             if os_stats.get("Rh", 0) > 0 or os_stats.get("Re", 0) > 0:
                 # Featurise the appended SMILES and concatenate.
-                appended_smiles = os_smiles[len(train_smiles):]
+                appended_smiles = os_smiles[len(train_smiles) :]
                 appended_graphs = featurize_smiles_list(
                     [str(s) for s in appended_smiles]
                 )
@@ -931,9 +951,12 @@ class BalancedLOMORunner:
                 logger.info(
                     "fold=%s seed=%d oversample appended Rh=%d Re=%d "
                     "pos_rate_train pre=%.3f post=%.3f",
-                    self.held_out_metal, self.seed,
-                    os_stats.get("Rh", 0), os_stats.get("Re", 0),
-                    pos_rate_train_pre, float(np.mean(all_train_active)),
+                    self.held_out_metal,
+                    self.seed,
+                    os_stats.get("Rh", 0),
+                    os_stats.get("Re", 0),
+                    pos_rate_train_pre,
+                    float(np.mean(all_train_active)),
                 )
         pos_rate_train_post = float(np.mean(all_train_active))
 
@@ -959,7 +982,7 @@ class BalancedLOMORunner:
             total_loss = 0.0
             n_batches = 0
             for start in range(0, len(indices), self.batch_size):
-                batch_idx = indices[start:start + self.batch_size]
+                batch_idx = indices[start : start + self.batch_size]
                 batch_graphs = [all_train_graphs[i] for i in batch_idx]
                 batch_pic50 = all_train_pic50[batch_idx]
                 batch_active = all_train_active[batch_idx]
@@ -989,16 +1012,10 @@ class BalancedLOMORunner:
                 # AND CUDA is the device.  CPU always runs FP32.
                 if self._use_bf16:
                     with torch.amp.autocast("cuda", dtype=torch.bfloat16):
-                        pic50_pred, active_logits = model(
-                            atom_f, bond_f, e_src, e_dst
-                        )
+                        pic50_pred, active_logits = model(atom_f, bond_f, e_src, e_dst)
                 else:
-                    pic50_pred, active_logits = model(
-                        atom_f, bond_f, e_src, e_dst
-                    )
-                loss, _, _ = criterion(
-                    pic50_pred, active_logits, y_pic50_t, y_active_t
-                )
+                    pic50_pred, active_logits = model(atom_f, bond_f, e_src, e_dst)
+                loss, _, _ = criterion(pic50_pred, active_logits, y_pic50_t, y_active_t)
                 # Always cast loss to FP32 before backward for numerical
                 # stability (BF16 autocast leaves loss in BF16).
                 if self._use_bf16:
@@ -1021,8 +1038,12 @@ class BalancedLOMORunner:
             # validation
             if len(graphs_val) >= 2:
                 _, val_score, _ = predict_mt(
-                    model, graphs_val, pic50_val, active_val,
-                    batch_size=self.batch_size, device=self.device,
+                    model,
+                    graphs_val,
+                    pic50_val,
+                    active_val,
+                    batch_size=self.batch_size,
+                    device=self.device,
                 )
                 vm = compute_metrics(active_val, val_score)
                 val_auc = float(vm["roc_auc"])
@@ -1050,7 +1071,12 @@ class BalancedLOMORunner:
             if verbose and (epoch % 1 == 0 or epoch == self.epochs - 1):
                 logger.info(
                     "fold=%s seed=%d epoch=%d loss=%.4f val_auc=%.4f w2=%.4f elapsed=%.1fs",
-                    self.held_out_metal, self.seed, epoch, avg_loss, val_auc, w2_val,
+                    self.held_out_metal,
+                    self.seed,
+                    epoch,
+                    avg_loss,
+                    val_auc,
+                    w2_val,
                     time.time() - t0,
                 )
 
@@ -1063,12 +1089,17 @@ class BalancedLOMORunner:
 
         # final test
         _, test_score, test_pic50_pred = predict_mt(
-            model, graphs_test, pic50_test, active_test,
-            batch_size=self.batch_size, device=self.device,
+            model,
+            graphs_test,
+            pic50_test,
+            active_test,
+            batch_size=self.batch_size,
+            device=self.device,
         )
         test_pic50_pred = np.clip(
             np.asarray(test_pic50_pred, dtype=float),
-            _ASTR_CLIP_MIN, _ASTR_CLIP_MAX,
+            _ASTR_CLIP_MIN,
+            _ASTR_CLIP_MAX,
         )
         tm = compute_metrics(active_test, test_score)
         test_auc = float(tm["roc_auc"])
@@ -1081,7 +1112,7 @@ class BalancedLOMORunner:
         per_metal_w2: Dict[str, float] = {}
         keys = list(train_embeds.keys())
         for i, ki in enumerate(keys):
-            for kj in keys[i + 1:]:
+            for kj in keys[i + 1 :]:
                 ti = train_embeds[ki]
                 tj = train_embeds[kj]
                 if ti.shape[0] == 0 or tj.shape[0] == 0:
@@ -1089,9 +1120,7 @@ class BalancedLOMORunner:
                 if ti.shape[1] != tj.shape[1]:
                     continue
                 with torch.no_grad():
-                    w2 = wasserstein_loss(
-                        ti, tj, n_mc=self.n_mc, seed=self.seed
-                    ).item()
+                    w2 = wasserstein_loss(ti, tj, n_mc=self.n_mc, seed=self.seed).item()
                 per_metal_w2[f"{ki}__{kj}"] = float(w2)
 
         return BalancedLOMOResult(
@@ -1161,11 +1190,10 @@ class BalancedLOMORunner:
         out_embeds: Dict[str, List[torch.Tensor]] = {}
         batch_size = max(1, self.batch_size)
         for start in range(0, len(sampled_idx), batch_size):
-            batch_idx = sampled_idx[start:start + batch_size]
+            batch_idx = sampled_idx[start : start + batch_size]
             batch_metas = [
-                sampled_metals[k] for k in range(
-                    start, min(start + batch_size, len(sampled_idx))
-                )
+                sampled_metals[k]
+                for k in range(start, min(start + batch_size, len(sampled_idx)))
             ]
             g_list = [graphs[i] for i in batch_idx]
             bd = collate_graphs(g_list)
@@ -1179,7 +1207,7 @@ class BalancedLOMORunner:
             B_ = atom_f.size(0)
             for b in range(B_):
                 V = atom_f.size(1)
-                valid_edges = (bond_f[b].abs().sum(dim=-1) > 0)
+                valid_edges = bond_f[b].abs().sum(dim=-1) > 0
                 E = valid_edges.sum().item()
                 if E == 0 or V == 0:
                     continue
@@ -1274,12 +1302,11 @@ class BalancedLOMORunner:
             total_loss = 0.0
             n_batches = 0
             for start in range(0, len(indices), self.batch_size):
-                batch_idx = indices[start:start + self.batch_size]
+                batch_idx = indices[start : start + self.batch_size]
                 batch_graphs = [graphs_train[i] for i in batch_idx]
                 batch_active = active_train[batch_idx]
                 valid = [
-                    (g, a) for g, a in zip(batch_graphs, batch_active)
-                    if g is not None
+                    (g, a) for g, a in zip(batch_graphs, batch_active) if g is not None
                 ]
                 if not valid:
                     continue
@@ -1322,8 +1349,11 @@ class BalancedLOMORunner:
             # Validation AUC.
             if len(graphs_val) >= 2:
                 _, val_score = dmpnn_predict(
-                    model, graphs_val, active_val,
-                    batch_size=self.batch_size, device=self.device,
+                    model,
+                    graphs_val,
+                    active_val,
+                    batch_size=self.batch_size,
+                    device=self.device,
                 )
                 vm = compute_metrics(active_val, val_score)
                 val_auc = float(vm["roc_auc"])
@@ -1334,8 +1364,12 @@ class BalancedLOMORunner:
                 logger.info(
                     "fold=%s seed=%d task_type=single epoch=%d loss=%.4f "
                     "val_auc=%.4f elapsed=%.1fs",
-                    self.held_out_metal, self.seed, epoch, avg_loss,
-                    val_auc, time.time() - ep_t0,
+                    self.held_out_metal,
+                    self.seed,
+                    epoch,
+                    avg_loss,
+                    val_auc,
+                    time.time() - ep_t0,
                 )
 
             if not np.isnan(val_auc) and val_auc > best_val_auc:
@@ -1347,8 +1381,11 @@ class BalancedLOMORunner:
 
         # Final test AUC.
         _, test_score = dmpnn_predict(
-            model, graphs_test, active_test,
-            batch_size=self.batch_size, device=self.device,
+            model,
+            graphs_test,
+            active_test,
+            batch_size=self.batch_size,
+            device=self.device,
         )
         tm = compute_metrics(active_test, test_score)
         test_auc = float(tm["roc_auc"])
@@ -1459,11 +1496,16 @@ def aggregate(
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--metals", nargs="+", default=["Rh", "Ru", "Ir", "Os", "Re"],
+        "--metals",
+        nargs="+",
+        default=["Rh", "Ru", "Ir", "Os", "Re"],
         help="Metals for LOMO (default: Rh Ru Ir Os Re).",
     )
     parser.add_argument(
-        "--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4],
+        "--seeds",
+        nargs="+",
+        type=int,
+        default=[0, 1, 2, 3, 4],
         help="Random seeds (default: 0 1 2 3 4).",
     )
     parser.add_argument("--epochs", type=int, default=50)
@@ -1484,15 +1526,21 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="MetalCytoToxDB LOMO CSV.",
     )
     parser.add_argument(
-        "--use-l2-guard", dest="use_l2_guard", action="store_true", default=True,
+        "--use-l2-guard",
+        dest="use_l2_guard",
+        action="store_true",
+        default=True,
         help="Engage Wf-127 P2 Hilbert L2 grad-norm guard (default ON).",
     )
     parser.add_argument(
-        "--no-l2-guard", dest="use_l2_guard", action="store_false",
+        "--no-l2-guard",
+        dest="use_l2_guard",
+        action="store_false",
         help="Disable L2 guard.",
     )
     parser.add_argument(
-        "--quick", action="store_true",
+        "--quick",
+        action="store_true",
         help="Quick smoke run: 1 metal x 1 seed x 2 epochs.",
     )
     # ------------------------------------------------------------------
@@ -1680,7 +1728,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         path=Path(args.lomo_csv),
         metal_whitelist=list(args.metals),
     )
-    logger.info("loaded dataset: %d rows; metals=%s", len(ds), sorted(set(ds.metals.tolist())))
+    logger.info(
+        "loaded dataset: %d rows; metals=%s", len(ds), sorted(set(ds.metals.tolist()))
+    )
 
     device = torch.device(args.device) if args.device != "cpu" else torch.device("cpu")
     if device.type == "cuda" and not torch.cuda.is_available():
@@ -1727,6 +1777,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Import lazily so the default DMPNNMultiTaskModel path stays
         # dependency-free for users who never opt in.
         from molmetal.models import v4_multitask_dmpnn as _v4_mod
+
         model_cls = (
             _v4_mod.V4MultiTaskDMPNNPretrain
             if args.model == "v4pretrain"
@@ -1735,7 +1786,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         logger.info(
             "[wf145_p2] --model=%s → %s (NOT YET WIRED — "
             "runner.run() will raise NotImplementedError; see TODO-145 §4)",
-            args.model, model_cls.__name__,
+            args.model,
+            model_cls.__name__,
         )
     elif args.model == "v3":
         logger.info(
@@ -1759,14 +1811,21 @@ def main(argv: Optional[List[str]] = None) -> int:
     logger.info(
         "[wf145_p2] bf16=%s num_workers=%d pin_memory=%s data_config=%s "
         "(cpu bf16 is a no-op; num_workers/pin_memory no-op until DataLoader)",
-        args.bf16, args.num_workers, args.pin_memory, args.data_config,
+        args.bf16,
+        args.num_workers,
+        args.pin_memory,
+        args.data_config,
     )
     for metal in args.metals:
         for seed in args.seeds:
             logger.info(
                 "=== fold=%s seed=%s epochs=%d wass_w=%.4f synth=%d device=%s ===",
-                metal, seed, args.epochs, args.wasserstein_weight,
-                len(balanced_smiles), device,
+                metal,
+                seed,
+                args.epochs,
+                args.wasserstein_weight,
+                len(balanced_smiles),
+                device,
             )
             runner = BalancedLOMORunner(
                 ds=ds,

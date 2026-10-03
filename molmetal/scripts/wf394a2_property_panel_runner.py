@@ -58,6 +58,7 @@ from typing import Any, Dict, List, Optional, Sequence
 # Lazy imports of the SA-aware + property panel modules
 # ---------------------------------------------------------------------------
 
+
 def _lazy_import_property_panel():
     """Late-import :mod:`molmetal.scripts.cfm_property_panel` for SA + QED.
 
@@ -66,6 +67,7 @@ def _lazy_import_property_panel():
     the project root on ``sys.path``; add it defensively.
     """
     import importlib
+
     try:
         return importlib.import_module("molmetal.scripts.cfm_property_panel")
     except Exception:
@@ -79,15 +81,14 @@ def _lazy_import_property_panel():
             sys.path.insert(0, repo_root)
         return importlib.import_module("molmetal.scripts.cfm_property_panel")
     except Exception as exc:  # pragma: no cover
-        sys.stderr.write(
-            f"[wf394a2] WARN cannot import cfm_property_panel: {exc}\n"
-        )
+        sys.stderr.write(f"[wf394a2] WARN cannot import cfm_property_panel: {exc}\n")
         return None
 
 
 def _lazy_import_sa_aware_panel():
     """Late-import :mod:`molmetal.scripts.cfm_sa_aware_panel` for SA-aware."""
     import importlib
+
     try:
         return importlib.import_module("molmetal.scripts.cfm_sa_aware_panel")
     except Exception:
@@ -99,15 +100,14 @@ def _lazy_import_sa_aware_panel():
             sys.path.insert(0, repo_root)
         return importlib.import_module("molmetal.scripts.cfm_sa_aware_panel")
     except Exception as exc:  # pragma: no cover
-        sys.stderr.write(
-            f"[wf394a2] WARN cannot import cfm_sa_aware_panel: {exc}\n"
-        )
+        sys.stderr.write(f"[wf394a2] WARN cannot import cfm_sa_aware_panel: {exc}\n")
         return None
 
 
 # ---------------------------------------------------------------------------
 # Config dataclasses (mirror the Wf-388 trainer flags for SA / diversity)
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class DiversityCfg:
@@ -149,6 +149,7 @@ class SaCfg:
 # ---------------------------------------------------------------------------
 # SA + QED + SA-aware evaluation (delegated to existing panels)
 # ---------------------------------------------------------------------------
+
 
 def _read_smiles_csv(path: Path) -> List[str]:
     """Read SMILES from a CSV with a ``smiles`` column.  Lightweight helper.
@@ -272,6 +273,7 @@ def run_property_panel(
 # Diversity pass — Tanimoto / scaffold-distribution post-hoc
 # ---------------------------------------------------------------------------
 
+
 def _compute_diversity_pass(
     smiles_list: List[str],
     sample_size: int = 1000,
@@ -320,11 +322,10 @@ def _compute_diversity_pass(
     # Lazy import of the Wf-380-A3 scaffold helper
     try:
         from molmetal.adapters.flow_matching_lipman import scaffold_conditioning as _sc
+
         scaffold_fn = _sc.murcko_scaffold_from_smiles
     except Exception as exc:
-        sys.stderr.write(
-            f"[wf394a2] WARN scaffold_conditioning import failed: {exc}\n"
-        )
+        sys.stderr.write(f"[wf394a2] WARN scaffold_conditioning import failed: {exc}\n")
         scaffold_fn = None
 
     mols: List[Any] = []
@@ -344,6 +345,7 @@ def _compute_diversity_pass(
         else:
             try:
                 from rdkit.Chem.Scaffolds import MurckoScaffold
+
                 sc = Chem.MolToSmiles(MurckoScaffold.GetScaffoldForMol(mol))
             except Exception:
                 sc = ""
@@ -355,6 +357,7 @@ def _compute_diversity_pass(
 
     # Subsample for Tanimoto
     import random
+
     rng = random.Random(seed)
     if len(mols) > sample_size:
         idxs = rng.sample(range(len(mols)), sample_size)
@@ -363,8 +366,7 @@ def _compute_diversity_pass(
         sub_mols = mols
 
     fps = [
-        AllChem.GetMorganFingerprintAsBitVect(m, radius=2, nBits=2048)
-        for m in sub_mols
+        AllChem.GetMorganFingerprintAsBitVect(m, radius=2, nBits=2048) for m in sub_mols
     ]
 
     pairs: List[float] = []
@@ -384,9 +386,14 @@ def _compute_diversity_pass(
     if not pairs:
         tanimoto_block = {
             "n_pairs": 0,
-            "mean": None, "median": None,
-            "p10": None, "p25": None, "p75": None, "p90": None,
-            "min": None, "max": None,
+            "mean": None,
+            "median": None,
+            "p10": None,
+            "p25": None,
+            "p75": None,
+            "p90": None,
+            "min": None,
+            "max": None,
         }
     else:
         srt = sorted(pairs)
@@ -404,11 +411,7 @@ def _compute_diversity_pass(
             return srt[lo] + (srt[hi] - srt[lo]) * frac
 
         mid = n_p // 2
-        median = (
-            srt[mid]
-            if n_p % 2 == 1
-            else 0.5 * (srt[mid - 1] + srt[mid])
-        )
+        median = srt[mid] if n_p % 2 == 1 else 0.5 * (srt[mid - 1] + srt[mid])
         mean = sum(srt) / n_p
         var = sum((x - mean) ** 2 for x in srt) / n_p
         tanimoto_block = {
@@ -439,7 +442,10 @@ def _compute_diversity_pass(
 # Aggregation over per-mol results
 # ---------------------------------------------------------------------------
 
-def aggregate_panel_metrics(per_mol_results: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
+
+def aggregate_panel_metrics(
+    per_mol_results: Sequence[Dict[str, Any]],
+) -> Dict[str, Any]:
     """Aggregate per-property metrics from a list of per-mol results.
 
     Parameters
@@ -485,8 +491,15 @@ def aggregate_panel_metrics(per_mol_results: Sequence[Dict[str, Any]]) -> Dict[s
 
     def _agg(vals: List[float]) -> Dict[str, Any]:
         if not vals:
-            return {"mean": None, "median": None, "std": None,
-                    "min": None, "max": None, "n_parsed": 0, "n_failed": n_input}
+            return {
+                "mean": None,
+                "median": None,
+                "std": None,
+                "min": None,
+                "max": None,
+                "n_parsed": 0,
+                "n_failed": n_input,
+            }
         srt = sorted(vals)
         n_v = len(srt)
         mid = n_v // 2
@@ -518,6 +531,7 @@ def aggregate_panel_metrics(per_mol_results: Sequence[Dict[str, Any]]) -> Dict[s
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="wf394a2_property_panel_runner",
@@ -529,26 +543,47 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     src = p.add_mutually_exclusive_group(required=True)
-    src.add_argument("--smiles-csv", type=str,
-                     help="CSV with a 'smiles' column.")
-    src.add_argument("--smiles-literal", type=str,
-                     help="Comma-separated SMILES list (smoke mode).")
-    p.add_argument("--out-json", type=str, required=True,
-                   help="Output JSON path.")
+    src.add_argument("--smiles-csv", type=str, help="CSV with a 'smiles' column.")
+    src.add_argument(
+        "--smiles-literal", type=str, help="Comma-separated SMILES list (smoke mode)."
+    )
+    p.add_argument("--out-json", type=str, required=True, help="Output JSON path.")
     # Diversity flags (Wf-388-A2 post-hoc analogue)
-    p.add_argument("--diversity-aware-eval", action="store_true",
-                   help="If set, run Tanimoto / scaffold diversity pass.")
-    p.add_argument("--diversity-sample-size", type=int, default=1000,
-                   help="Max pairwise Tanimoto sample size (default 1000).")
-    p.add_argument("--diversity-seed", type=int, default=42,
-                   help="RNG seed for diversity subsample (default 42).")
+    p.add_argument(
+        "--diversity-aware-eval",
+        action="store_true",
+        help="If set, run Tanimoto / scaffold diversity pass.",
+    )
+    p.add_argument(
+        "--diversity-sample-size",
+        type=int,
+        default=1000,
+        help="Max pairwise Tanimoto sample size (default 1000).",
+    )
+    p.add_argument(
+        "--diversity-seed",
+        type=int,
+        default=42,
+        help="RNG seed for diversity subsample (default 42).",
+    )
     # SA-aware flags (Wf-388-A3 post-hoc analogue)
-    p.add_argument("--sa-aware", action="store_true",
-                   help="If set, compute Wf-380-A6 SA-aware sampling penalty.")
-    p.add_argument("--sa-target", type=float, default=2.8,
-                   help="SA target threshold (default 2.8).")
-    p.add_argument("--sa-weight", type=float, default=0.3,
-                   help="Linear SA penalty weight (default 0.3).")
+    p.add_argument(
+        "--sa-aware",
+        action="store_true",
+        help="If set, compute Wf-380-A6 SA-aware sampling penalty.",
+    )
+    p.add_argument(
+        "--sa-target",
+        type=float,
+        default=2.8,
+        help="SA target threshold (default 2.8).",
+    )
+    p.add_argument(
+        "--sa-weight",
+        type=float,
+        default=0.3,
+        help="Linear SA penalty weight (default 0.3).",
+    )
     return p
 
 
@@ -569,10 +604,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         sample_size=int(args.diversity_sample_size),
         seed=int(args.diversity_seed),
     )
-    sa_cfg = SaCfg(
-        target_sa=float(args.sa_target),
-        sa_weight=float(args.sa_weight),
-    ) if args.sa_aware else None
+    sa_cfg = (
+        SaCfg(
+            target_sa=float(args.sa_target),
+            sa_weight=float(args.sa_weight),
+        )
+        if args.sa_aware
+        else None
+    )
 
     panel = run_property_panel(
         cohort_smiles=smiles_list,
@@ -583,14 +622,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     out_path = Path(args.out_json)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w", encoding="utf-8") as fh:
-        json.dump(panel, fh, indent=2,
-                  default=lambda o: float(o) if isinstance(o, float) else str(o))
+        json.dump(
+            panel,
+            fh,
+            indent=2,
+            default=lambda o: float(o) if isinstance(o, float) else str(o),
+        )
 
     sa_qed = panel.get("sa_qed", {})
     sa_aware = panel.get("sa_aware")
     diversity = panel.get("diversity")
-    sa_mean = (sa_qed.get("aggregate", {}).get("sa", {}).get("mean")
-               if sa_qed else None)
+    sa_mean = sa_qed.get("aggregate", {}).get("sa", {}).get("mean") if sa_qed else None
     sa_mean_str = f"{sa_mean:.4f}" if sa_mean is not None else "n/a"
     sys.stdout.write(
         f"[wf394a2] wrote {out_path} (n_input={panel['n_input']} "

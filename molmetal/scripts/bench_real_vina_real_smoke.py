@@ -3,6 +3,7 @@
 This script verifies the full real-Vina pipeline (Python vina binding + meeko + rdkit)
 and produces real kcal/mol measurements. Replaces the stub-floor -9.6574 floor.
 """
+
 from __future__ import annotations
 
 import json
@@ -21,8 +22,16 @@ REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Pockets from Wf-30 prep (10/10 READY)
 POCKETS = [
-    "1fmc", "1g9v", "1h36", "2hnx", "3eml",
-    "3ny8", "4aaw", "4rlu", "4rn0", "830c",
+    "1fmc",
+    "1g9v",
+    "1h36",
+    "2hnx",
+    "3eml",
+    "3ny8",
+    "4aaw",
+    "4rlu",
+    "4rn0",
+    "830c",
 ]
 
 # Drug-like SMILES (no metals — meeko limitation)
@@ -60,11 +69,13 @@ def compute_pocket_center(receptor_pdbqt: Path) -> list[float]:
         for line in f:
             if line.startswith("ATOM") or line.startswith("HETATM"):
                 try:
-                    coords.append([
-                        float(line[30:38]),
-                        float(line[38:46]),
-                        float(line[46:54]),
-                    ])
+                    coords.append(
+                        [
+                            float(line[30:38]),
+                            float(line[38:46]),
+                            float(line[46:54]),
+                        ]
+                    )
                 except (ValueError, IndexError):
                     continue
     if not coords:
@@ -78,7 +89,7 @@ def dock_one(receptor_pdbqt: Path, ligand_pdbqt: str, center: list[float]) -> di
         lig_path = Path(tmpdir) / "lig.pdbqt"
         lig_path.write_text(ligand_pdbqt)
 
-        v = Vina(sf_name='vina', verbosity=0)
+        v = Vina(sf_name="vina", verbosity=0)
         v.set_receptor(str(receptor_pdbqt))
         v.set_ligand_from_file(str(lig_path))
         v.compute_vina_maps(center=center, box_size=[25, 25, 25])

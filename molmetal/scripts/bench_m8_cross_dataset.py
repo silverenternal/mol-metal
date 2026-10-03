@@ -96,14 +96,18 @@ for _p in (str(_HERE.parent), str(_REPO_ROOT)):
 # Constants
 # ---------------------------------------------------------------------------
 DEFAULT_DATASETS: Tuple[str, ...] = (
-    "platinai_4cell", "metalcytotox_5metal", "tmqm_dblock",
+    "platinai_4cell",
+    "metalcytotox_5metal",
+    "tmqm_dblock",
 )
 DEFAULT_SEEDS: Tuple[int, ...] = (0, 1, 2, 3, 4)
 DEFAULT_N_SAMPLES_PER_DATASET: int = 50
 
 # Repo paths
 PLATINAI_CSV = _REPO_ROOT / "molmetal" / "data" / "platinai_4cell.csv"
-METALCYTOTOX_CSV = _REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
+METALCYTOTOX_CSV = (
+    _REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
+)
 TMQM_CSV = _REPO_ROOT / ".data" / "molmetal" / "tmQM" / "tmqm_parsed.csv"
 
 # MetalCytoToxDB 5-metal whitelist (per R17 Rusanov 2025 anchor)
@@ -113,9 +117,35 @@ METALCYTOTOX_METALS: Tuple[str, ...] = ("Ru", "Ir", "Rh", "Os", "Re")
 # canonical d-block assignment from the IUPAC periodic table groups 3-12
 # (excluding La as f-block).
 TMQM_DBLOCK_METALS: Tuple[str, ...] = (
-    "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
-    "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
-    "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg",
+    "Sc",
+    "Ti",
+    "V",
+    "Cr",
+    "Mn",
+    "Fe",
+    "Co",
+    "Ni",
+    "Cu",
+    "Zn",
+    "Y",
+    "Zr",
+    "Nb",
+    "Mo",
+    "Tc",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Cd",
+    "Hf",
+    "Ta",
+    "W",
+    "Re",
+    "Os",
+    "Ir",
+    "Pt",
+    "Au",
+    "Hg",
 )
 
 # Cell lines for PlatinAI 4-cell dataset (for per-cell-line breakdown)
@@ -136,20 +166,22 @@ log = logging.getLogger("bench_m8_cross_dataset")
 @dataclass(frozen=True)
 class SampleSMILES:
     """One sampled SMILES + its provenance (dataset, metal, etc.)."""
-    sample_id: str            # stable ID (e.g. "platinai_4cell_00042")
+
+    sample_id: str  # stable ID (e.g. "platinai_4cell_00042")
     smiles: str
-    metal: str                # metal symbol, e.g. "Pt"
-    bucket: str               # per-cell-line (PlatinAI) or per-metal (others)
+    metal: str  # metal symbol, e.g. "Pt"
+    bucket: str  # per-cell-line (PlatinAI) or per-metal (others)
 
 
 @dataclass(frozen=True)
 class PBOutcome:
     """One PB ``mol``-config check result."""
+
     sample_id: str
     smiles: str
     metal: str
     bucket: str
-    status: str               # "passed" | "failed" | "skipped" | "error"
+    status: str  # "passed" | "failed" | "skipped" | "error"
     pb_valid: Optional[bool]
     n_checks: int
     n_passed: int
@@ -263,9 +295,7 @@ def select_dataset(name: str) -> List[SampleSMILES]:
         return load_metalcytotox_5metal()
     if name == "tmqm_dblock":
         return load_tmqm_dblock()
-    raise ValueError(
-        f"unknown dataset {name!r}; valid: {DEFAULT_DATASETS}"
-    )
+    raise ValueError(f"unknown dataset {name!r}; valid: {DEFAULT_DATASETS}")
 
 
 # ---------------------------------------------------------------------------
@@ -294,8 +324,9 @@ def _import_pb():
             check_posebusters,
             posebusters_available,
         )
+
         return check_posebusters, posebusters_available
-    except Exception as exc:                                # pragma: no cover
+    except Exception as exc:  # pragma: no cover
         log.warning("posebusters_runner import failed: %s", exc)
         return None, None
 
@@ -312,7 +343,9 @@ def _coerce_status(report: Dict[str, object]) -> Tuple[str, Optional[bool]]:
     return "error", None
 
 
-def _per_check_counts(report: Dict[str, object]) -> Tuple[int, int, int, int, Tuple[str, ...]]:
+def _per_check_counts(
+    report: Dict[str, object],
+) -> Tuple[int, int, int, int, Tuple[str, ...]]:
     """(n_checks, n_passed, n_failed, n_skipped, failed_names)."""
     checks = report.get("checks", {}) or {}
     missing = tuple(report.get("missing_checks", ()) or ())
@@ -321,8 +354,10 @@ def _per_check_counts(report: Dict[str, object]) -> Tuple[int, int, int, int, Tu
     n_passed = sum(1 for v in checks.values() if v is True)
     n_failed = sum(1 for v in checks.values() if v is False)
     n_skipped = sum(1 for v in checks.values() if v is None) + len(missing)
-    failed_names = tuple(failed_list) if failed_list else tuple(
-        k for k, v in checks.items() if v is False
+    failed_names = (
+        tuple(failed_list)
+        if failed_list
+        else tuple(k for k, v in checks.items() if v is False)
     )
     return int(n_total), int(n_passed), int(n_failed), int(n_skipped), failed_names
 
@@ -333,11 +368,18 @@ def run_one_pb(sample: SampleSMILES) -> PBOutcome:
     check_pb, _ = _import_pb()
     if check_pb is None:
         return PBOutcome(
-            sample_id=sample.sample_id, smiles=sample.smiles,
-            metal=sample.metal, bucket=sample.bucket,
-            status="skipped", pb_valid=None,
-            n_checks=0, n_passed=0, n_failed=0, n_skipped=0,
-            failed_checks=(), elapsed_s=time.monotonic() - t0,
+            sample_id=sample.sample_id,
+            smiles=sample.smiles,
+            metal=sample.metal,
+            bucket=sample.bucket,
+            status="skipped",
+            pb_valid=None,
+            n_checks=0,
+            n_passed=0,
+            n_failed=0,
+            n_skipped=0,
+            failed_checks=(),
+            elapsed_s=time.monotonic() - t0,
             note="posebusters_runner import failed",
         )
     report = check_pb(sample.smiles)
@@ -346,12 +388,18 @@ def run_one_pb(sample: SampleSMILES) -> PBOutcome:
     elapsed = time.monotonic() - t0
     note = report.get("error") if status == "error" else None
     return PBOutcome(
-        sample_id=sample.sample_id, smiles=sample.smiles,
-        metal=sample.metal, bucket=sample.bucket,
-        status=status, pb_valid=pb_valid,
-        n_checks=n_total, n_passed=n_passed,
-        n_failed=n_failed, n_skipped=n_skipped,
-        failed_checks=failed, elapsed_s=elapsed,
+        sample_id=sample.sample_id,
+        smiles=sample.smiles,
+        metal=sample.metal,
+        bucket=sample.bucket,
+        status=status,
+        pb_valid=pb_valid,
+        n_checks=n_total,
+        n_passed=n_passed,
+        n_failed=n_failed,
+        n_skipped=n_skipped,
+        failed_checks=failed,
+        elapsed_s=elapsed,
         note=note if note else None,
     )
 
@@ -409,11 +457,15 @@ def run_dataset_seed(
         if (i + 1) % max(1, len(sampled) // 5) == 0 or (i + 1) == len(sampled):
             elapsed = time.monotonic() - t_start
             log.info(
-                "  %s seed=%d %d/%d (%.0f%%) status=%s "
-                "n_checks=%d elapsed=%.1fs",
-                dataset_name, seed, i + 1, len(sampled),
+                "  %s seed=%d %d/%d (%.0f%%) status=%s " "n_checks=%d elapsed=%.1fs",
+                dataset_name,
+                seed,
+                i + 1,
+                len(sampled),
                 100.0 * (i + 1) / max(len(sampled), 1),
-                o.status, o.n_checks, elapsed,
+                o.status,
+                o.n_checks,
+                elapsed,
             )
     return outcomes, aggregate_outcomes(outcomes)
 
@@ -423,11 +475,16 @@ def run_dataset_seed(
 # ---------------------------------------------------------------------------
 def outcome_to_dict(o: PBOutcome) -> Dict[str, object]:
     return {
-        "sample_id": o.sample_id, "smiles": o.smiles,
-        "metal": o.metal, "bucket": o.bucket,
-        "status": o.status, "pb_valid": o.pb_valid,
-        "n_checks": o.n_checks, "n_passed": o.n_passed,
-        "n_failed": o.n_failed, "n_skipped": o.n_skipped,
+        "sample_id": o.sample_id,
+        "smiles": o.smiles,
+        "metal": o.metal,
+        "bucket": o.bucket,
+        "status": o.status,
+        "pb_valid": o.pb_valid,
+        "n_checks": o.n_checks,
+        "n_passed": o.n_passed,
+        "n_failed": o.n_failed,
+        "n_skipped": o.n_skipped,
         "failed_checks": list(o.failed_checks),
         "elapsed_s": float(o.elapsed_s),
         "note": o.note,
@@ -472,7 +529,9 @@ def update_per_seed_summary(
         "schema_version": 1,
         "dataset": dataset,
         "per_seed_pb_pass_rate": [float(x) for x in per_seed],
-        "per_seed_n_samples": [int(aggregate["by_bucket"][b]["n_total"]) for b in aggregate["by_bucket"]],
+        "per_seed_n_samples": [
+            int(aggregate["by_bucket"][b]["n_total"]) for b in aggregate["by_bucket"]
+        ],
         "by_bucket": aggregate["by_bucket"],
         "headline_pb_pass_rate_last_seed": float(aggregate["headline_pb_pass_rate"]),
         "last_seed": int(seed),
@@ -486,12 +545,8 @@ def write_cross_summary(
     per_dataset_pass_rates: Dict[str, List[float]],
 ) -> None:
     """Write the cross-dataset ``m8_cross_summary.json``."""
-    overall_rates = [
-        rates[-1] for rates in per_dataset_pass_rates.values() if rates
-    ]
-    overall = (
-        float(statistics.fmean(overall_rates)) if overall_rates else 0.0
-    )
+    overall_rates = [rates[-1] for rates in per_dataset_pass_rates.values() if rates]
+    overall = float(statistics.fmean(overall_rates)) if overall_rates else 0.0
     payload = {
         "schema_version": 1,
         "recipe": "wf64_phase3_m8_cross_dataset",
@@ -503,8 +558,7 @@ def write_cross_summary(
         "target_met": bool(overall >= TARGET_PASS_RATE),
         "overall_pb_pass_rate_last_seed": float(overall),
         "per_dataset_last_seed": {
-            k: float(v[-1]) if v else 0.0
-            for k, v in per_dataset_pass_rates.items()
+            k: float(v[-1]) if v else 0.0 for k, v in per_dataset_pass_rates.items()
         },
         "per_dataset_seed_history": per_dataset_pass_rates,
         "per_dataset_aggregate": cross_aggregate,
@@ -523,9 +577,7 @@ def write_synthesis_md(
     pb_installed: bool,
 ) -> None:
     """Write ``synthesis.md`` — human-readable honest writeup."""
-    overall_rates = [
-        rates[-1] for rates in per_dataset_pass_rates.values() if rates
-    ]
+    overall_rates = [rates[-1] for rates in per_dataset_pass_rates.values() if rates]
     overall = float(statistics.fmean(overall_rates)) if overall_rates else 0.0
     target_met = "YES" if overall >= TARGET_PASS_RATE else "NO"
     md_lines = [
@@ -554,9 +606,7 @@ def write_synthesis_md(
         rate = agg.get("headline_pb_pass_rate", 0.0)
         n_buckets = len(agg.get("by_bucket", {}))
         n_total = sum(b.get("n_total", 0) for b in agg.get("by_bucket", {}).values())
-        md_lines.append(
-            f"| {ds} | {rate:.4f} | {n_buckets} | {n_total} |"
-        )
+        md_lines.append(f"| {ds} | {rate:.4f} | {n_buckets} | {n_total} |")
     md_lines += [
         "",
         "## Per-seed history",
@@ -565,9 +615,7 @@ def write_synthesis_md(
         "|---|" + "|".join(["---:"] * n_seeds) + "|",
     ]
     for ds, rates in per_dataset_pass_rates.items():
-        md_lines.append(
-            f"| {ds} | " + " | ".join(f"{r:.4f}" for r in rates) + " |"
-        )
+        md_lines.append(f"| {ds} | " + " | ".join(f"{r:.4f}" for r in rates) + " |")
     md_lines += [
         "",
         "## Comparability caveat (vs Wf-32 P2 baseline)",
@@ -601,24 +649,34 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         description="Wf-64 Phase 3 — m8 PB pass_rate cross-dataset retrain"
     )
     parser.add_argument(
-        "--datasets", nargs="+", default=list(DEFAULT_DATASETS),
+        "--datasets",
+        nargs="+",
+        default=list(DEFAULT_DATASETS),
         help=f"Datasets to bench (default: {DEFAULT_DATASETS})",
     )
     parser.add_argument(
-        "--pockets", default="all",
+        "--pockets",
+        default="all",
         help="Reserved for CLI compat — this script does not use the WF-30 pockets "
-             "(the cross-dataset candidates are pure-ligand SMILES, not pre-docked poses).",
+        "(the cross-dataset candidates are pure-ligand SMILES, not pre-docked poses).",
     )
     parser.add_argument(
-        "--seeds", nargs="+", type=int, default=list(DEFAULT_SEEDS),
+        "--seeds",
+        nargs="+",
+        type=int,
+        default=list(DEFAULT_SEEDS),
         help=f"Seeds (default: {DEFAULT_SEEDS})",
     )
     parser.add_argument(
-        "--n-samples", type=int, default=DEFAULT_N_SAMPLES_PER_DATASET,
+        "--n-samples",
+        type=int,
+        default=DEFAULT_N_SAMPLES_PER_DATASET,
         help=f"SMILES per (dataset, seed) — default {DEFAULT_N_SAMPLES_PER_DATASET}",
     )
     parser.add_argument(
-        "--out-dir", type=Path, default=DEFAULT_OUT_DIR,
+        "--out-dir",
+        type=Path,
+        default=DEFAULT_OUT_DIR,
         help=f"Output dir (default: {DEFAULT_OUT_DIR})",
     )
     args = parser.parse_args(argv)
@@ -645,12 +703,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         for seed in args.seeds:
             log.info("dataset=%s seed=%d — begin", dataset, seed)
             outcomes, aggregate = run_dataset_seed(
-                dataset, int(seed), int(args.n_samples),
+                dataset,
+                int(seed),
+                int(args.n_samples),
             )
             write_dataset_outputs(out_dir, dataset, int(seed), outcomes, aggregate)
             seed_rates.append(float(aggregate["headline_pb_pass_rate"]))
             update_per_seed_summary(
-                out_dir, dataset, int(seed), aggregate, seed_rates,
+                out_dir,
+                dataset,
+                int(seed),
+                aggregate,
+                seed_rates,
             )
         per_dataset_pass_rates[dataset] = seed_rates
         if seed_rates:
@@ -660,7 +724,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             }
             # Re-aggregate from latest seed for by_bucket detail
             _, latest = run_dataset_seed(
-                dataset, int(args.seeds[-1]), int(args.n_samples),
+                dataset,
+                int(args.seeds[-1]),
+                int(args.n_samples),
             )
             cross_aggregate[dataset] = latest
 
@@ -674,13 +740,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         pb_installed,
     )
 
-    overall_rates = [
-        rates[-1] for rates in per_dataset_pass_rates.values() if rates
-    ]
+    overall_rates = [rates[-1] for rates in per_dataset_pass_rates.values() if rates]
     overall = float(statistics.fmean(overall_rates)) if overall_rates else 0.0
     log.info(
         "DONE — overall_pb_pass_rate (last seed, macro) = %.4f (target >= %.2f)",
-        overall, TARGET_PASS_RATE,
+        overall,
+        TARGET_PASS_RATE,
     )
     return 0 if overall >= TARGET_PASS_RATE else 2
 

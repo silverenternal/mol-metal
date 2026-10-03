@@ -18,6 +18,7 @@ Pins down the invariants of the Wf-69 P3.1 bug-fix driver:
 
 Count target: 12 tests.
 """
+
 from __future__ import annotations
 
 import json
@@ -41,15 +42,24 @@ from molmetal.scripts.fix_platinai_5k_bug import (  # noqa: E402
 )
 
 PLATINAI_5K_SUMMARY_PATH = (
-    PROJECT_ROOT / "molmetal" / "reports" / "wf49_rdkit_extraction"
+    PROJECT_ROOT
+    / "molmetal"
+    / "reports"
+    / "wf49_rdkit_extraction"
     / "platinai_5k_feature_summary.json"
 )
 PLATINAI_4CELL_SUMMARY_PATH = (
-    PROJECT_ROOT / "molmetal" / "reports" / "wf49_rdkit_extraction"
+    PROJECT_ROOT
+    / "molmetal"
+    / "reports"
+    / "wf49_rdkit_extraction"
     / "platinai_4cell_feature_summary.json"
 )
 EXPECTED_PLATINAI_4CELL_CELLS_REAL = (
-    "pIC50_mcf7", "pIC50_a549", "pIC50_a2780", "pIC50_a2780cis",
+    "pIC50_mcf7",
+    "pIC50_a549",
+    "pIC50_a2780",
+    "pIC50_a2780cis",
 )
 
 
@@ -108,9 +118,7 @@ def test_platinai_4cell_descriptor_names_match(platinai_4cell_real: Dict[str, An
     per_cell = platinai_4cell_real["per_cell_correlations"]
     mcf7_block = per_cell["pIC50_mcf7"]
     names = tuple(e["name"] for e in mcf7_block)
-    assert names == EXPECTED_RDKIT_2D_DESCRIPTORS, (
-        f"Descriptor order changed: {names}"
-    )
+    assert names == EXPECTED_RDKIT_2D_DESCRIPTORS, f"Descriptor order changed: {names}"
 
 
 # ---------------------------------------------------------------------------
@@ -129,9 +137,9 @@ def test_platinai_5k_real_warning_emitted(platinai_5k_real: Dict[str, Any]):
     )
     warning = p5["n_samples_warning"]
     assert warning is not None
-    assert "n_samples=0" in warning, (
-        f"Warning text should mention n_samples=0, got: {warning}"
-    )
+    assert (
+        "n_samples=0" in warning
+    ), f"Warning text should mention n_samples=0, got: {warning}"
 
 
 # ---------------------------------------------------------------------------
@@ -213,8 +221,7 @@ def test_require_labels_guard_fires_on_5k():
     the broken run from proceeding.
     """
     extractor = (
-        PROJECT_ROOT / "molmetal" / "scripts"
-        / "extract_rdkit_2d_descriptors.py"
+        PROJECT_ROOT / "molmetal" / "scripts" / "extract_rdkit_2d_descriptors.py"
     )
     if not extractor.exists():
         pytest.skip(f"{extractor} missing on disk")
@@ -222,9 +229,11 @@ def test_require_labels_guard_fires_on_5k():
         [
             sys.executable,
             str(extractor.relative_to(PROJECT_ROOT)),
-            "--dataset", "platinai",
+            "--dataset",
+            "platinai",
             "--require-labels",
-            "--max-rows", "5",
+            "--max-rows",
+            "5",
         ],
         cwd=PROJECT_ROOT,
         capture_output=True,
@@ -276,8 +285,10 @@ def test_cli_fails_when_no_summaries_present(tmp_path: Path):
     # silence the non-error log lines.
     proc = subprocess.run(
         [
-            sys.executable, str(fix_script.relative_to(PROJECT_ROOT)),
-            "--report-path", str(tmp_path / "nope.json"),
+            sys.executable,
+            str(fix_script.relative_to(PROJECT_ROOT)),
+            "--report-path",
+            str(tmp_path / "nope.json"),
         ],
         cwd=PROJECT_ROOT,
         capture_output=True,
@@ -304,8 +315,7 @@ def test_extractor_schema_backward_compat():
     JSON. Pin the block-shape here.
     """
     extractor = (
-        PROJECT_ROOT / "molmetal" / "scripts"
-        / "extract_rdkit_2d_descriptors.py"
+        PROJECT_ROOT / "molmetal" / "scripts" / "extract_rdkit_2d_descriptors.py"
     )
     assert extractor.exists()
     text = extractor.read_text()
@@ -319,9 +329,9 @@ def test_extractor_schema_backward_compat():
         "per_metal_counts",
         "descriptor_stats",
     ):
-        assert f'"{field}"' in text or f"'{field}'" in text, (
-            f"Legacy field {field!r} missing from extractor schema"
-        )
+        assert (
+            f'"{field}"' in text or f"'{field}'" in text
+        ), f"Legacy field {field!r} missing from extractor schema"
     # New field must be present.
     assert "n_samples_warning" in text
     # --require-labels flag must be present.

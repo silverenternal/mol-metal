@@ -77,12 +77,14 @@ def _load_5metal_csv(csv_path: Path) -> List[Dict]:
                 continue
             if r["metal"] not in ("Ru", "Ir", "Os", "Rh", "Re"):
                 continue
-            rows.append({
-                "smiles": r["smiles"],
-                "metal": r["metal"],
-                "activity": act,
-                "split": r.get("split", ""),
-            })
+            rows.append(
+                {
+                    "smiles": r["smiles"],
+                    "metal": r["metal"],
+                    "activity": act,
+                    "split": r.get("split", ""),
+                }
+            )
     LOGGER.info("loaded %d rows from %s", len(rows), csv_path)
     return rows
 
@@ -142,23 +144,26 @@ def _featurize_smiles(
     for orig_i, smi in enumerate(smiles_list):
         cleaned = _canonicalize_largest_fragment(smi)
         try:
-            g = smiles_to_bigraph(cleaned, node_featurizer=atom_featurizer,
-                                  edge_featurizer=bond_featurizer,
-                                  add_self_loop=False)
+            g = smiles_to_bigraph(
+                cleaned,
+                node_featurizer=atom_featurizer,
+                edge_featurizer=bond_featurizer,
+                add_self_loop=False,
+            )
             if g is None or g.num_nodes() == 0:
                 n_skip += 1
                 continue
             # Add self-loops with zero-padded edge features to avoid
             # GCN's 0-in-degree error.
             g = dgl.add_self_loop(g)
-            cur_e = g.edata['e']
+            cur_e = g.edata["e"]
             # After add_self_loop, edge count grows; pad edge features.
             if cur_e.size(0) != g.num_edges():
                 pad = torch.zeros(
                     (g.num_edges() - cur_e.size(0), BOND_FEAT_SIZE),
                     dtype=cur_e.dtype,
                 )
-                g.edata['e'] = torch.cat([cur_e, pad], dim=0)
+                g.edata["e"] = torch.cat([cur_e, pad], dim=0)
             graphs.append(g)
             kept_orig_idx.append(orig_i)
         except Exception:
@@ -168,7 +173,9 @@ def _featurize_smiles(
     return graphs, kept_orig_idx
 
 
-def _collate_pair(graphs: List[dgl.DGLGraph], labels: List[int]) -> Tuple[dgl.DGLGraph, torch.Tensor]:
+def _collate_pair(
+    graphs: List[dgl.DGLGraph], labels: List[int]
+) -> Tuple[dgl.DGLGraph, torch.Tensor]:
     """Batch graphs and stack labels into (batched_g, label_tensor)."""
     bg = dgl.batch(graphs)
     y = torch.tensor(labels, dtype=torch.float32)
@@ -202,16 +209,21 @@ def train_one(
 
 
 @torch.no_grad()
-def eval_auc_batched(model: nn.Module, graphs: List[dgl.DGLGraph],
-                     labels: List[int], device: torch.device,
-                     batch_size: int = 256) -> float:
+def eval_auc_batched(
+    model: nn.Module,
+    graphs: List[dgl.DGLGraph],
+    labels: List[int],
+    device: torch.device,
+    batch_size: int = 256,
+) -> float:
     """Compute ROC-AUC by mini-batching the test set (avoids OOM on large folds)."""
     model.eval()
     labels_np_all = []
     probs_all = []
     for start in range(0, len(graphs), batch_size):
-        bg, y = _collate_pair(graphs[start : start + batch_size],
-                              labels[start : start + batch_size])
+        bg, y = _collate_pair(
+            graphs[start : start + batch_size], labels[start : start + batch_size]
+        )
         bg = bg.to(device)
         logits = model(bg, bg.ndata["h"]).squeeze(-1)
         probs = torch.sigmoid(logits).cpu().numpy()
@@ -247,8 +259,13 @@ def run_lomo(
     np.random.seed(seed)
 
     train_idx, test_idx = _lomo_indices(rows, held_out)
-    LOGGER.info("[fold=%s seed=%d] train=%d test=%d", held_out, seed,
-                len(train_idx), len(test_idx))
+    LOGGER.info(
+        "[fold=%s seed=%d] train=%d test=%d",
+        held_out,
+        seed,
+        len(train_idx),
+        len(test_idx),
+    )
 
     # If we have pre-featurized graphs, build a map orig_idx -> graph
     if graphs is not None:
@@ -267,15 +284,26 @@ def run_lomo(
         t_fe = time.time()
         train_graphs, _ = _featurize_smiles([r["smiles"] for r in train_rows], af, bf)
         test_graphs, _ = _featurize_smiles([r["smiles"] for r in test_rows], af, bf)
-        LOGGER.info("[fold=%s seed=%d] featurize took %.1fs train=%d test=%d",
-                    held_out, seed, time.time() - t_fe, len(train_graphs), len(test_graphs))
+        LOGGER.info(
+            "[fold=%s seed=%d] featurize took %.1fs train=%d test=%d",
+            held_out,
+            seed,
+            time.time() - t_fe,
+            len(train_graphs),
+            len(test_graphs),
+        )
 
     if len(train_graphs) == 0 or len(test_graphs) == 0:
         return {
-            "fold": held_out, "seed": seed,
-            "test_auc": 0.5, "elapsed_s": 0.0, "epoch_count": 0,
-            "n_train": 0, "n_test": 0,
-            "pos_rate_train": 0.0, "pos_rate_test": 0.0,
+            "fold": held_out,
+            "seed": seed,
+            "test_auc": 0.5,
+            "elapsed_s": 0.0,
+            "epoch_count": 0,
+            "n_train": 0,
+            "n_test": 0,
+            "pos_rate_train": 0.0,
+            "pos_rate_test": 0.0,
             "status": "EMPTY_FEATURIZE",
         }
 
@@ -332,8 +360,15 @@ def run_lomo(
     # Eval (batched to avoid OOM on Ru fold with 19135 test graphs)
     test_auc = eval_auc_batched(model, test_graphs, test_labels, device, batch_size=512)
     elapsed = time.time() - t_start
-    LOGGER.info("[fold=%s seed=%d] test_auc=%.4f epochs=%d elapsed=%.1fs last_loss=%.4f",
-                held_out, seed, test_auc, epochs, elapsed, last_loss)
+    LOGGER.info(
+        "[fold=%s seed=%d] test_auc=%.4f epochs=%d elapsed=%.1fs last_loss=%.4f",
+        held_out,
+        seed,
+        test_auc,
+        epochs,
+        elapsed,
+        last_loss,
+    )
 
     return {
         "fold": held_out,
@@ -352,8 +387,13 @@ def run_lomo(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--csv", type=Path,
-                        default=Path("/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"))
+    parser.add_argument(
+        "--csv",
+        type=Path,
+        default=Path(
+            "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
+        ),
+    )
     parser.add_argument("--metals", nargs="+", default=["Rh", "Ru", "Ir", "Os", "Re"])
     parser.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4])
     parser.add_argument("--epochs", type=int, default=30)
@@ -363,10 +403,20 @@ def main() -> int:
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--time-budget-s", type=int, default=7200)
-    parser.add_argument("--ckpt-dir", type=Path,
-                        default=Path("/home/hugo/codes/mol-metal/molmetal/checkpoints/wf146_dgllifesci_erm"))
-    parser.add_argument("--json-dir", type=Path,
-                        default=Path("/home/hugo/codes/mol-metal/molmetal/reports/wf146_dgllifesci_erm"))
+    parser.add_argument(
+        "--ckpt-dir",
+        type=Path,
+        default=Path(
+            "/home/hugo/codes/mol-metal/molmetal/checkpoints/wf146_dgllifesci_erm"
+        ),
+    )
+    parser.add_argument(
+        "--json-dir",
+        type=Path,
+        default=Path(
+            "/home/hugo/codes/mol-metal/molmetal/reports/wf146_dgllifesci_erm"
+        ),
+    )
     args = parser.parse_args()
 
     args.ckpt_dir.mkdir(parents=True, exist_ok=True)
@@ -379,13 +429,22 @@ def main() -> int:
     )
 
     device = torch.device(args.device)
-    LOGGER.info("device=%s metals=%s seeds=%s epochs=%d hidden=%d layers=%d wall-budget=%ds",
-                args.device, args.metals, args.seeds, args.epochs, args.hidden,
-                args.num_layers, args.time_budget_s)
+    LOGGER.info(
+        "device=%s metals=%s seeds=%s epochs=%d hidden=%d layers=%d wall-budget=%ds",
+        args.device,
+        args.metals,
+        args.seeds,
+        args.epochs,
+        args.hidden,
+        args.num_layers,
+        args.time_budget_s,
+    )
 
     rows = _load_5metal_csv(args.csv)
-    LOGGER.info("metal counts: %s",
-                {m: sum(1 for r in rows if r["metal"] == m) for m in args.metals})
+    LOGGER.info(
+        "metal counts: %s",
+        {m: sum(1 for r in rows if r["metal"] == m) for m in args.metals},
+    )
 
     # Pre-featurize ALL 26801 SMILES ONCE (~120s on RTX 5090 / Blackwell),
     # then subset by train_idx/test_idx for each (metal, seed) pair.
@@ -394,9 +453,13 @@ def main() -> int:
     t_fe0 = time.time()
     all_smiles = [r["smiles"] for r in rows]
     all_graphs, kept_orig_idx = _featurize_smiles(all_smiles, af, bf)
-    LOGGER.info("pre-featurized %d / %d in %.1fs (skip=%d)",
-                len(all_graphs), len(all_smiles), time.time() - t_fe0,
-                len(rows) - len(all_graphs))
+    LOGGER.info(
+        "pre-featurized %d / %d in %.1fs (skip=%d)",
+        len(all_graphs),
+        len(all_smiles),
+        time.time() - t_fe0,
+        len(rows) - len(all_graphs),
+    )
 
     t_wall0 = time.time()
     results: Dict[str, Dict[str, Dict]] = {m: {} for m in args.metals}
@@ -411,8 +474,12 @@ def main() -> int:
 
     for fold, seed in order:
         if time.time() - t_wall0 > args.time_budget_s:
-            LOGGER.warning("time budget %.0fs exceeded, stopping early at %d/%d",
-                           args.time_budget_s, n_completed, n_total)
+            LOGGER.warning(
+                "time budget %.0fs exceeded, stopping early at %d/%d",
+                args.time_budget_s,
+                n_completed,
+                n_total,
+            )
             break
         ckpt_path = args.ckpt_dir / f"{fold}_seed{seed}.pt"
         json_path = args.json_dir / f"{fold}_seed{seed}.json"
@@ -445,8 +512,10 @@ def main() -> int:
         except Exception as e:
             LOGGER.exception("[fold=%s seed=%d] FAILED: %s", fold, seed, e)
             res = {
-                "fold": fold, "seed": seed,
-                "test_auc": None, "elapsed_s": 0.0,
+                "fold": fold,
+                "seed": seed,
+                "test_auc": None,
+                "elapsed_s": 0.0,
                 "status": f"ERROR:{type(e).__name__}",
                 "error": str(e)[:500],
             }
@@ -456,8 +525,15 @@ def main() -> int:
         results[fold][str(seed)] = res
         n_completed += 1
         elapsed_total = time.time() - t_wall0
-        LOGGER.info("[%d/%d] fold=%s seed=%d auc=%s elapsed_total=%.0fs",
-                    n_completed, n_total, fold, seed, res.get("test_auc"), elapsed_total)
+        LOGGER.info(
+            "[%d/%d] fold=%s seed=%d auc=%s elapsed_total=%.0fs",
+            n_completed,
+            n_total,
+            fold,
+            seed,
+            res.get("test_auc"),
+            elapsed_total,
+        )
 
     # Aggregate
     per_metal_seed_auc = {}
@@ -491,21 +567,26 @@ def main() -> int:
             }
         else:
             per_metal_summary[m] = {
-                "mean_auc": None, "std": None, "n_seeds_ok": 0,
-                "n_seeds_total": len(args.seeds), "best_auc": None, "worst_auc": None,
+                "mean_auc": None,
+                "std": None,
+                "n_seeds_ok": 0,
+                "n_seeds_total": len(args.seeds),
+                "best_auc": None,
+                "worst_auc": None,
             }
 
     # Overall mean across metals (macro avg of per-metal means)
-    metal_means = [v["mean_auc"] for v in per_metal_summary.values()
-                   if v["mean_auc"] is not None]
+    metal_means = [
+        v["mean_auc"] for v in per_metal_summary.values() if v["mean_auc"] is not None
+    ]
     mean_auc_across_metals = float(np.mean(metal_means)) if metal_means else None
 
     summary_path = args.json_dir / "summary.json"
     summary = {
         "metric": "wf146_dgllifesci_erm",
         "description": "Wf-146 DGL-LifeSci GIN+ERM baseline on MetalCytoToxDB 5-metal LOMO split. "
-                       "Apples-to-apples counterpart to wf146_chemprop_lomo (same LOMO protocol, "
-                       "same 5-metal subset, same per-(metal, seed) ROC-AUC).",
+        "Apples-to-apples counterpart to wf146_chemprop_lomo (same LOMO protocol, "
+        "same 5-metal subset, same per-(metal, seed) ROC-AUC).",
         "unit": "ROC-AUC (0-1, higher better)",
         "scope": "tier2_sbdd_ood_lomo_dgllifesci_erm",
         "model": "DGL-LifeSci GCNPredictor (continuous feats, 3 layers, hidden=64)",
@@ -522,11 +603,11 @@ def main() -> int:
             "atom_feat_size": ATOM_FEAT_SIZE,
             "bond_feat_size": BOND_FEAT_SIZE,
             "python_env_used": "/home/hugo/.conda_envs/drugood/bin/python (constraint asked for "
-                              "/home/hugo/codes/mol-metal/.venv/bin/python but that venv lacks "
-                              "dgl+dgllife; drugood env has dgl 2.5.0 + dgllife 0.3.1 + torch 2.14.0+cu130)",
+            "/home/hugo/codes/mol-metal/.venv/bin/python but that venv lacks "
+            "dgl+dgllife; drugood env has dgl 2.5.0 + dgllife 0.3.1 + torch 2.14.0+cu130)",
         },
         "split_protocol": "LOMO (leave-one-metal-out): train on {Ru, Ir, Os, Re}\\Rh, test on Rh. "
-                          "Binary cross-entropy with pos_weight=neg/pos, AdamW, no domain-adaptation tricks.",
+        "Binary cross-entropy with pos_weight=neg/pos, AdamW, no domain-adaptation tricks.",
         "n_total_target": n_total,
         "n_completed": n_completed,
         "per_metal_seed_auc": per_metal_seed_auc,
@@ -556,7 +637,9 @@ def main() -> int:
         json.dump(summary, f, indent=2)
     LOGGER.info("wrote summary to %s", summary_path)
     LOGGER.info("mean_auc_across_metals=%s", mean_auc_across_metals)
-    LOGGER.info("n_completed=%d/%d wall=%.0fs", n_completed, n_total, time.time() - t_wall0)
+    LOGGER.info(
+        "n_completed=%d/%d wall=%.0fs", n_completed, n_total, time.time() - t_wall0
+    )
     return 0
 
 

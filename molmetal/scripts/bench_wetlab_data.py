@@ -96,15 +96,9 @@ if str(PROJECT_ROOT) not in sys.path:
 # Default CSV paths
 # ---------------------------------------------------------------------------
 DEFAULT_TMQM_CSV = PROJECT_ROOT / "molmetal" / "data" / "tmqm_dblock_subset.csv"
-DEFAULT_NCI60_CSV = (
-    PROJECT_ROOT / "molmetal" / "data" / "nci60_precious_9cell.csv"
-)
-DEFAULT_PLATINAI_4CELL_CSV = (
-    PROJECT_ROOT / "molmetal" / "data" / "platinai_4cell.csv"
-)
-DEFAULT_PLATINAI_5K_CSV = (
-    PROJECT_ROOT / "molmetal" / "data" / "platinai_5k.csv"
-)
+DEFAULT_NCI60_CSV = PROJECT_ROOT / "molmetal" / "data" / "nci60_precious_9cell.csv"
+DEFAULT_PLATINAI_4CELL_CSV = PROJECT_ROOT / "molmetal" / "data" / "platinai_4cell.csv"
+DEFAULT_PLATINAI_5K_CSV = PROJECT_ROOT / "molmetal" / "data" / "platinai_5k.csv"
 DEFAULT_SUMMARY_MD = (
     PROJECT_ROOT / "molmetal" / "reports" / "wf28_wetlab_data" / "bench_summary.md"
 )
@@ -308,9 +302,7 @@ def summarise_corpus(
         std_qed=_safe_std(qd),
         std_sa=_safe_std(sa),
         parse_failures=parse_failures,
-        parse_failure_rate=(
-            parse_failures / max(1, len(smiles))
-        ),
+        parse_failure_rate=(parse_failures / max(1, len(smiles))),
         secs=secs,
     )
 
@@ -362,7 +354,11 @@ def check_comparability(
     if not comparable:
         for fname, delta in deltas.items():
             ref_std = getattr(ref, f"std_{fname}")
-            if ref_std == ref_std and ref_std > 0 and abs(delta) > sigma_window * ref_std:
+            if (
+                ref_std == ref_std
+                and ref_std > 0
+                and abs(delta) > sigma_window * ref_std
+            ):
                 ref_mean = getattr(ref, f"mean_{fname}")
                 notes_parts.append(
                     f"{fname}: Δ={delta:+.3f} > ±{sigma_window:g}σ_ref "
@@ -432,7 +428,9 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     )
     p.add_argument("--tmqm-csv", type=Path, default=DEFAULT_TMQM_CSV)
     p.add_argument("--nci60-csv", type=Path, default=DEFAULT_NCI60_CSV)
-    p.add_argument("--platinai-4cell-csv", type=Path, default=DEFAULT_PLATINAI_4CELL_CSV)
+    p.add_argument(
+        "--platinai-4cell-csv", type=Path, default=DEFAULT_PLATINAI_4CELL_CSV
+    )
     p.add_argument("--platinai-5k-csv", type=Path, default=DEFAULT_PLATINAI_5K_CSV)
     p.add_argument("--summary-md", type=Path, default=DEFAULT_SUMMARY_MD)
     p.add_argument("--summary-json", type=Path, default=DEFAULT_SUMMARY_JSON)
@@ -459,9 +457,7 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
 # ---------------------------------------------------------------------------
 # Markdown / JSON report writers
 # ---------------------------------------------------------------------------
-def _stats_row(
-    s: CorpusStats, sort_key: Optional[int] = None
-) -> str:
+def _stats_row(s: CorpusStats, sort_key: Optional[int] = None) -> str:
     return (
         f"| {s.name} | {s.n_candidates:,} | {s.n_rows_input:,} | "
         f"{s.mean_mw:.1f} | {s.mean_logp:.2f} | {s.mean_qed:.3f} | "
@@ -528,8 +524,7 @@ def _write_summary_md(
 
     lines.append("## 3. Descriptor stds (reference only)\n\n")
     lines.append(
-        "| Corpus | σ_mw | σ_logp | σ_qed | σ_sa |\n"
-        "|---|---:|---:|---:|---:|\n"
+        "| Corpus | σ_mw | σ_logp | σ_qed | σ_sa |\n" "|---|---:|---:|---:|---:|\n"
     )
     for s in corpora:
         lines.append(
@@ -648,7 +643,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     # ---- Load each corpus ------------------------------------------------
     tmqm = _maybe_cap(_read_tmqm(args.tmqm_csv), args.max_rows)
     nci60 = _maybe_cap(_read_nci60(args.nci60_csv), args.max_rows)
-    plat_4cell = _maybe_cap(_read_platinai_4cell(args.platinai_4cell_csv), args.max_rows)
+    plat_4cell = _maybe_cap(
+        _read_platinai_4cell(args.platinai_4cell_csv), args.max_rows
+    )
     plat_5k = _maybe_cap(_read_platinai_5k(args.platinai_5k_csv), args.max_rows)
 
     print(

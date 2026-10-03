@@ -110,6 +110,7 @@ try:
         safe_overwrite_check,
         detect_truncation,
     )
+
     _WF416_HAS_ATOMIC = True
 except ImportError:  # pragma: no cover — fallback when running as standalone
     _WF416_HAS_ATOMIC = False
@@ -118,20 +119,19 @@ except ImportError:  # pragma: no cover — fallback when running as standalone
     detect_truncation = None  # type: ignore[assignment]
 
 
-
 # ---------------------------------------------------------------------------
 # Defaults — chemprop v2 canonical backbone + per-metal single-task.
 # ---------------------------------------------------------------------------
 METALS_5: Tuple[str, ...] = ("Ru", "Ir", "Os", "Rh", "Re")
 DEFAULT_SEEDS: Tuple[int, ...] = (0, 1, 2, 3, 4)
 DEFAULT_EPOCHS: int = 50
-DEFAULT_HIDDEN: int = 300         # chemprop v2 default
-DEFAULT_DEPTH: int = 3            # chemprop v2 default
+DEFAULT_HIDDEN: int = 300  # chemprop v2 default
+DEFAULT_DEPTH: int = 3  # chemprop v2 default
 DEFAULT_BATCH: int = 64
-DEFAULT_LR: float = 1e-3          # plain Adam (Noam LR scheduler proved brittle in
-                                  # wf146_lomo_v1; see TODO-170 §3.4).
+DEFAULT_LR: float = 1e-3  # plain Adam (Noam LR scheduler proved brittle in
+# wf146_lomo_v1; see TODO-170 §3.4).
 DEFAULT_NUM_WORKERS: int = 4
-DEFAULT_TIME_BUDGET_S: float = 4 * 3600.0   # 4 hr per task spec
+DEFAULT_TIME_BUDGET_S: float = 4 * 3600.0  # 4 hr per task spec
 
 CKPT_DIR = PROJECT_ROOT / "molmetal" / "checkpoints" / "wf194_lomo_v2"
 JSON_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf194_lomo_v2"
@@ -146,7 +146,9 @@ logger = logging.getLogger("wf194_lomo_v2")
 if not logger.handlers:
     h = logging.StreamHandler()
     h.setFormatter(
-        logging.Formatter("[%(asctime)s] %(leveltime)s %(levelname)s %(name)s :: %(message)s")
+        logging.Formatter(
+            "[%(asctime)s] %(leveltime)s %(levelname)s %(name)s :: %(message)s"
+        )
         if False
         else logging.Formatter("[%(asctime)s] %(levelname)s %(name)s :: %(message)s")
     )
@@ -157,7 +159,9 @@ if not logger.handlers:
 # ---------------------------------------------------------------------------
 # Per-(metal, seed) record.
 # ---------------------------------------------------------------------------
-def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
+def _wf416_atomic_write_text(
+    path, content: str, min_lines: int = 50, expected_min_length: int = 200
+) -> None:
     """Wf-416-A1 atomic-write-protocol wrapper around direct write_text.
 
     Falls back to direct write_text if atomic_write_file is unavailable
@@ -169,18 +173,22 @@ def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_m
             _risk = safe_overwrite_check(path, content, min_lines=min_lines)
             if _risk is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-416-A1] safe_overwrite_check diff_ratio=%.3f at %s",
-                    _risk, path,
+                    _risk,
+                    path,
                 )
         atomic_write_file(path, content, encoding="utf-8")
         if detect_truncation is not None:
             _trunc = detect_truncation(content, expected_min_length=expected_min_length)
             if _trunc is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-416-A1] detect_truncation reason=%r at %s",
-                    _trunc, path,
+                    _trunc,
+                    path,
                 )
     else:  # pragma: no cover — fallback when atomic primitive unavailable
         Path(path).write_text(content, encoding="utf-8")
@@ -278,11 +286,15 @@ def run_one(
     # own rdkit Mol + (1,) target label.  chemprop v2 featurizes them in
     # parallel inside MoleculeDataset (n_workers=4).
     train_dps = [
-        MoleculeDatapoint(mol=Chem.MolFromSmiles(smi), y=np.array([lbl], dtype=np.float32))
+        MoleculeDatapoint(
+            mol=Chem.MolFromSmiles(smi), y=np.array([lbl], dtype=np.float32)
+        )
         for smi, lbl in zip(train_smiles, train_labels)
     ]
     val_dps = [
-        MoleculeDatapoint(mol=Chem.MolFromSmiles(smi), y=np.array([lbl], dtype=np.float32))
+        MoleculeDatapoint(
+            mol=Chem.MolFromSmiles(smi), y=np.array([lbl], dtype=np.float32)
+        )
         for smi, lbl in zip(val_smiles, val_labels)
     ]
 
@@ -337,19 +349,25 @@ def run_one(
         if time_budget_s is not None and (time.time() - t_start) > time_budget_s:
             logger.warning(
                 "[seed=%d] timeout at epoch=%d (elapsed=%.1fs)",
-                seed, epoch, time.time() - t_start,
+                seed,
+                epoch,
+                time.time() - t_start,
             )
             timed_out = True
             break
         epoch_done = epoch + 1
-        mp.train(); agg.train(); head.train()
+        mp.train()
+        agg.train()
+        head.train()
         total_loss = 0.0
         nb = 0
         for batch in train_dl:
             bmg = bmg_to_device(batch.bmg, device)
             Y = batch.Y.to(device).float()
             optim.zero_grad()
-            with torch.amp.autocast("cuda", dtype=torch.bfloat16, enabled=autocast_enabled):
+            with torch.amp.autocast(
+                "cuda", dtype=torch.bfloat16, enabled=autocast_enabled
+            ):
                 H_v = mp(bmg)
                 H = agg(H_v, bmg.batch)
                 logit = head.train_step(H)
@@ -363,18 +381,26 @@ def run_one(
         if epoch % 5 == 0 or epoch == epochs - 1:
             logger.info(
                 "[seed=%d] epoch=%d/%d train_loss=%.4f elapsed=%.1fs",
-                seed, epoch, epochs - 1, avg_train_loss, time.time() - t_start,
+                seed,
+                epoch,
+                epochs - 1,
+                avg_train_loss,
+                time.time() - t_start,
             )
 
     # Test-time scoring.
-    mp.eval(); agg.eval(); head.eval()
+    mp.eval()
+    agg.eval()
+    head.eval()
     scores: List[float] = []
     labels: List[int] = []
     with torch.no_grad():
         for batch in val_dl:
             bmg = bmg_to_device(batch.bmg, device)
             Y_cpu = batch.Y.float()
-            with torch.amp.autocast("cuda", dtype=torch.bfloat16, enabled=autocast_enabled):
+            with torch.amp.autocast(
+                "cuda", dtype=torch.bfloat16, enabled=autocast_enabled
+            ):
                 H_v = mp(bmg)
                 H = agg(H_v, bmg.batch)
                 logit = head.train_step(H)
@@ -397,7 +423,7 @@ def run_one(
                 "mp_state": mp.state_dict(),
                 "agg_state": agg.state_dict(),
                 "head_state": head.state_dict(),
-                "metal": "single_task",   # metal name lives in the filename
+                "metal": "single_task",  # metal name lives in the filename
                 "seed": int(seed),
                 "atom_fdim": int(atom_fdim),
                 "bond_fdim": int(bond_fdim),
@@ -466,8 +492,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     logger.info(
         "device=%s metals=%s seeds=%s epochs=%d hidden=%d depth=%d batch=%d "
         "lr=%g num_workers=%d time_budget=%.0fs",
-        device, args.metals, args.seeds, args.epochs, args.hidden,
-        args.depth, args.batch_size, args.lr, args.num_workers,
+        device,
+        args.metals,
+        args.seeds,
+        args.epochs,
+        args.hidden,
+        args.depth,
+        args.batch_size,
+        args.lr,
+        args.num_workers,
         args.time_budget_s,
     )
 
@@ -479,20 +512,25 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
     logger.info(
         "filtered MetalCytoToxDB: %d rows across metals=%s",
-        len(df), sorted(set(df["metal"].tolist())),
+        len(df),
+        sorted(set(df["metal"].tolist())),
     )
 
     # Discover atom/bond fdim from chemprop v2 by featurizing a tiny sample.
     sample_smi = df["smiles"].astype(str).tolist()[:8]
     sample_dps = [
-        MoleculeDatapoint(mol=Chem.MolFromSmiles(s), y=np.array([0.5], dtype=np.float32))
+        MoleculeDatapoint(
+            mol=Chem.MolFromSmiles(s), y=np.array([0.5], dtype=np.float32)
+        )
         for s in sample_smi
     ]
     sample_ds = MoleculeDataset(sample_dps, n_workers=0)
     sample_dl = build_dataloader(sample_ds, batch_size=8, num_workers=0, shuffle=False)
     sample_batch = next(iter(sample_dl))
     atom_fdim = int(sample_batch.bmg.V.shape[1])
-    bond_fdim = int(sample_batch.bmg.E.shape[1]) if sample_batch.bmg.E.numel() > 0 else 14
+    bond_fdim = (
+        int(sample_batch.bmg.E.shape[1]) if sample_batch.bmg.E.numel() > 0 else 14
+    )
     logger.info("atom_fdim=%d bond_fdim=%d", atom_fdim, bond_fdim)
 
     # Pre-compute per-metal (smiles, active) arrays for the sweep.
@@ -504,12 +542,16 @@ def main(argv: Optional[List[str]] = None) -> int:
         per_metal_active[m] = sub["active"].astype(int).to_numpy()
         logger.info(
             "metal=%s n_rows=%d pos_rate=%.4f",
-            m, len(sub), float(per_metal_active[m].mean()),
+            m,
+            len(sub),
+            float(per_metal_active[m].mean()),
         )
 
     n_runs = len(args.metals) * len(args.seeds)
     time_per_run = args.time_budget_s / max(n_runs, 1)
-    logger.info("time budget per (metal, seed) = %.1fs for %d runs", time_per_run, n_runs)
+    logger.info(
+        "time budget per (metal, seed) = %.1fs for %d runs", time_per_run, n_runs
+    )
 
     # Sweep.
     sweep_t0 = time.time()
@@ -545,8 +587,12 @@ def main(argv: Optional[List[str]] = None) -> int:
                     run.status = "timeout"
                 logger.info(
                     "metal=%s seed=%d in_domain_test_auc=%.4f epochs=%d elapsed=%.1fs status=%s",
-                    metal, seed, run.in_domain_test_auc, run.epoch_count,
-                    run.elapsed_s, run.status,
+                    metal,
+                    seed,
+                    run.in_domain_test_auc,
+                    run.epoch_count,
+                    run.elapsed_s,
+                    run.status,
                 )
                 rec = asdict(run)
                 _wf416_atomic_write_text(json_out, json.dumps(rec, indent=2))
@@ -560,7 +606,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             except Exception as exc:
                 logger.error(
                     "metal=%s seed=%d FAILED: %s\n%s",
-                    metal, seed, exc, traceback.format_exc(),
+                    metal,
+                    seed,
+                    exc,
+                    traceback.format_exc(),
                 )
                 rec = {
                     "metal": metal,
@@ -586,7 +635,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
             if (time.time() - sweep_t0) > args.time_budget_s:
                 logger.warning(
-                    "wall budget %.1fs exceeded; aborting sweep.", args.time_budget_s,
+                    "wall budget %.1fs exceeded; aborting sweep.",
+                    args.time_budget_s,
                 )
                 break
         if (time.time() - sweep_t0) > args.time_budget_s:
@@ -607,7 +657,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     for metal in args.metals:
         per_seed = sweep_results.get(metal, {})
         vals = [
-            v["auc"] for v in per_seed.values()
+            v["auc"]
+            for v in per_seed.values()
             if v["status"] == "ok" and v["auc"] == v["auc"]  # auc != NaN
         ]
         # n_train/n_val are stable per metal (independent of seed).
@@ -616,9 +667,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         n_val_m = int(rec_for_metal.n_val) if rec_for_metal else 0
         if vals:
             mean_auc = float(statistics.mean(vals))
-            std_auc = (
-                float(statistics.pstdev(vals)) if len(vals) > 1 else 0.0
-            )
+            std_auc = float(statistics.pstdev(vals)) if len(vals) > 1 else 0.0
             per_metal_summary[metal] = {
                 "mean_auc": mean_auc,
                 "std": std_auc,
@@ -641,7 +690,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             }
 
     mean_auc_overall = (
-        float(statistics.mean(aucs_across_metals)) if aucs_across_metals else float("nan")
+        float(statistics.mean(aucs_across_metals))
+        if aucs_across_metals
+        else float("nan")
     )
 
     # Honest framing note (party-twenty-spirit §3.5).
@@ -727,7 +778,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         "gate_target": "G3: per-metal mean in-domain AUC > 0.7",
         "value": mean_auc_overall,
         "value_std": (
-            float(statistics.pstdev(aucs_across_metals)) if len(aucs_across_metals) > 1 else 0.0
+            float(statistics.pstdev(aucs_across_metals))
+            if len(aucs_across_metals) > 1
+            else 0.0
         ),
         "per_metal_in_domain": {
             m: per_metal_summary.get(m, {}).get("mean_auc", float("nan"))
@@ -737,8 +790,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         "n_runs": n_runs_completed,
         "n_runs_planned": n_runs,
         "verdict": (
-            "MEASURED" if n_runs_completed == n_runs else
-            ("PARTIAL" if n_runs_completed > 0 else "NOT_RUN")
+            "MEASURED"
+            if n_runs_completed == n_runs
+            else ("PARTIAL" if n_runs_completed > 0 else "NOT_RUN")
         ),
         "wall_min": float(total_wall_min),
         "wall_budget_min": float(args.time_budget_s / 60.0),

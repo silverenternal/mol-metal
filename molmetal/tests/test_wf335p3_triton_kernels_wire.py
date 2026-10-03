@@ -79,13 +79,16 @@ def _isolate_wf335_env():
     """Auto-applied to every test in this file: snapshot + restore the
     TRITON_* env vars so cross-test contamination cannot occur.
     """
-    snapshot = {k: os.environ.get(k) for k in (
-        "TRITON_USE_FUSED",
-        "TRITON_RELU_MLP",
-        "TRITON_WASSERSTEIN_SLICED",
-        "TRITON_BOND_HEAD",
-        "TRITON_SMILES_FEATURIZE",
-    )}
+    snapshot = {
+        k: os.environ.get(k)
+        for k in (
+            "TRITON_USE_FUSED",
+            "TRITON_RELU_MLP",
+            "TRITON_WASSERSTEIN_SLICED",
+            "TRITON_BOND_HEAD",
+            "TRITON_SMILES_FEATURIZE",
+        )
+    }
     _clear_wf335_env()
     yield
     # Restore the snapshot.
@@ -115,10 +118,17 @@ def test_01_use_triton_relu_mlp_flag_env_and_path() -> None:
     )
 
     # CLI parsing — flag is captured on the argparse namespace.
-    args = parse_args([
-        "--metals", "Ru", "--seeds", "0", "--epochs", "1",
-        "--use-triton-relu-mlp",
-    ])
+    args = parse_args(
+        [
+            "--metals",
+            "Ru",
+            "--seeds",
+            "0",
+            "--epochs",
+            "1",
+            "--use-triton-relu-mlp",
+        ]
+    )
     assert args.use_triton_relu_mlp is True
     assert args.use_triton_wasserstein_sliced is False
     assert args.use_triton_bond_head is False
@@ -127,13 +137,17 @@ def test_01_use_triton_relu_mlp_flag_env_and_path() -> None:
     # Model construction swaps in the _FusedReLUMLPWrapper for the
     # per-metal reg/cls heads when the flag is set.
     model = MultiTaskWassersteinModel(
-        n_metals=2, hidden=8, depth=2, dropout=0.0,
+        n_metals=2,
+        hidden=8,
+        depth=2,
+        dropout=0.0,
         use_triton_relu_mlp=True,
     )
     assert model.use_triton_relu_mlp is True
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import (
         _FusedReLUMLPWrapper,
     )
+
     assert isinstance(model.reg_heads[0], _FusedReLUMLPWrapper)
     assert isinstance(model.cls_heads[0], _FusedReLUMLPWrapper)
 
@@ -172,11 +186,19 @@ def test_02_use_triton_wasserstein_sliced_flag_env_and_path() -> None:
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import parse_args
 
     # CLI parsing.
-    args = parse_args([
-        "--metals", "Ru", "--seeds", "0", "--epochs", "1",
-        "--w2-gradient-mode", "sliced",
-        "--use-triton-wasserstein-sliced",
-    ])
+    args = parse_args(
+        [
+            "--metals",
+            "Ru",
+            "--seeds",
+            "0",
+            "--epochs",
+            "1",
+            "--w2-gradient-mode",
+            "sliced",
+            "--use-triton-wasserstein-sliced",
+        ]
+    )
     assert args.use_triton_wasserstein_sliced is True
     assert args.w2_gradient_mode == "sliced"
 
@@ -185,6 +207,7 @@ def test_02_use_triton_wasserstein_sliced_flag_env_and_path() -> None:
         fused_wasserstein_sliced as _fws,
         pytorch_reference as _pt_w2,
     )
+
     # Equal-length inputs (the upstream ``_sliced_w2`` pads to
     # max(N, M) via linear interpolation when lengths differ; we use
     # equal length so the PyTorch reference path is the canonical
@@ -218,10 +241,17 @@ def test_03_use_triton_bond_head_flag_env_and_path() -> None:
     """
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import parse_args
 
-    args = parse_args([
-        "--metals", "Ru", "--seeds", "0", "--epochs", "1",
-        "--use-triton-bond-head",
-    ])
+    args = parse_args(
+        [
+            "--metals",
+            "Ru",
+            "--seeds",
+            "0",
+            "--epochs",
+            "1",
+            "--use-triton-bond-head",
+        ]
+    )
     assert args.use_triton_bond_head is True
 
     from molmetal.adapters.flow_matching_lipman._reference.fused_bond_head_aggregation import (
@@ -272,10 +302,17 @@ def test_04_use_triton_smiles_featurize_flag_env_and_path() -> None:
     """
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import parse_args
 
-    args = parse_args([
-        "--metals", "Ru", "--seeds", "0", "--epochs", "1",
-        "--use-triton-smiles-featurize",
-    ])
+    args = parse_args(
+        [
+            "--metals",
+            "Ru",
+            "--seeds",
+            "0",
+            "--epochs",
+            "1",
+            "--use-triton-smiles-featurize",
+        ]
+    )
     assert args.use_triton_smiles_featurize is True
 
     from molmetal.adapters.flow_matching_lipman._reference.fused_smiles_featurize import (
@@ -292,17 +329,29 @@ def test_04_use_triton_smiles_featurize_flag_env_and_path() -> None:
 
     # Force-pytorch path.
     y_force = _fsf(
-        symbols, degrees, in_ring, aromatic, formal_charge,
+        symbols,
+        degrees,
+        in_ring,
+        aromatic,
+        formal_charge,
         force_pytorch=True,
     )
     y_ref = _pt_sf(
-        symbols, degrees, in_ring, aromatic, formal_charge,
+        symbols,
+        degrees,
+        in_ring,
+        aromatic,
+        formal_charge,
     )
     diff_force = (y_force - y_ref).abs().max().item()
 
     # Default dispatch (CPU test → PyTorch ref via torch.cuda.is_available gate).
     y_default = _fsf(
-        symbols, degrees, in_ring, aromatic, formal_charge,
+        symbols,
+        degrees,
+        in_ring,
+        aromatic,
+        formal_charge,
     )
     diff_default = (y_default - y_ref).abs().max().item()
     print(
@@ -333,7 +382,10 @@ def test_05_integration_default_off_bit_for_bit() -> None:
     )
 
     model = MultiTaskWassersteinModel(
-        n_metals=3, hidden=8, depth=2, dropout=0.1,
+        n_metals=3,
+        hidden=8,
+        depth=2,
+        dropout=0.1,
     )
     assert model.use_triton_relu_mlp is False
     # Default heads are nn.Sequential (not _FusedReLUMLPWrapper).
@@ -397,6 +449,7 @@ def test_06_pytorch_fallback_when_env_gate_closed() -> None:
     from molmetal.adapters.flow_matching_lipman._reference.fused_wasserstein_sliced import (
         pytorch_reference as _pt_w2,
     )
+
     y_w2 = _pt_w2(x, y, n_mc=8, seed=0)
     diff_fws = (y_fws - y_w2).abs().max().item()
     assert diff_fws < 1e-4
@@ -412,6 +465,7 @@ def test_06_pytorch_fallback_when_env_gate_closed() -> None:
     from molmetal.adapters.flow_matching_lipman._reference.fused_bond_head_aggregation import (
         pytorch_reference as _pt_bh,
     )
+
     y_bh = _pt_bh(pair_features, weights)
     diff_fbh = (y_fbh - y_bh).abs().max().item()
     assert diff_fbh < 1e-5
@@ -426,6 +480,7 @@ def test_06_pytorch_fallback_when_env_gate_closed() -> None:
     from molmetal.adapters.flow_matching_lipman._reference.fused_smiles_featurize import (
         pytorch_reference as _pt_sf,
     )
+
     y_sf = _pt_sf(symbols, degrees, in_ring, aromatic, formal_charge)
     diff_fsf = (y_fsf - y_sf).abs().max().item()
     assert diff_fsf < 1e-5
@@ -448,7 +503,10 @@ def test_07_wrapper_module_dispatch_stats() -> None:
     )
 
     wrapper = _FusedReLUMLPWrapper(
-        in_dim=8, hidden=4, out_dim=1, dropout_p=0.0,
+        in_dim=8,
+        hidden=4,
+        out_dim=1,
+        dropout_p=0.0,
     )
     x = torch.randn(3, 8)
 
@@ -492,6 +550,7 @@ def test_08_env_var_default_offs_for_safety() -> None:
         fused_smiles_featurize as _m4,
     )
     import importlib
+
     importlib.reload(_m1)
     importlib.reload(_m2)
     importlib.reload(_m3)

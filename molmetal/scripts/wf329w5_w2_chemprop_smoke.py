@@ -56,6 +56,7 @@ Honest framing (party-twenty-spirit §3.5)
   portion (TODO-93).  Wf-329W5 is the CPU-only diagnostic
   for the chemprop v2 + W₂ sub-tree.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -73,6 +74,7 @@ try:
     from sklearn.linear_model import Ridge
     from sklearn.model_selection import train_test_split
     from sklearn.preprocessing import StandardScaler
+
     _HAS_SKLEARN = True
 except Exception:  # pragma: no cover — defensive
     Ridge = None  # type: ignore
@@ -125,6 +127,7 @@ def _wasserstein_distance_1d(a: np.ndarray, b: np.ndarray) -> float:
         return 0.0
     try:
         from scipy.stats import wasserstein_distance as _wd
+
         return float(_wd(a.astype(np.float64), b.astype(np.float64)))
     except Exception:
         # Closed-form fallback (when scipy is unavailable):
@@ -227,6 +230,7 @@ def _probe_chemprop_dims() -> Tuple[int, int]:
     try:
         from rdkit import Chem
         from chemprop.featurizers import SimpleMoleculeMolGraphFeaturizer
+
         ftr = SimpleMoleculeMolGraphFeaturizer()
         mol = Chem.MolFromSmiles("c1ccccc1")
         if mol is None:
@@ -280,6 +284,7 @@ def extract_chemprop_v2_graph_features(
     try:
         from rdkit import Chem, RDLogger
         from chemprop.featurizers import SimpleMoleculeMolGraphFeaturizer
+
         RDLogger.DisableLog("rdApp.*")
         ftr = SimpleMoleculeMolGraphFeaturizer()
         chemprop_available = True
@@ -335,8 +340,8 @@ def extract_chemprop_v2_graph_features(
                     raise ValueError(f"unknown pool op: {pool!r}")
             bond_pool = np.concatenate(bond_pool_parts, axis=0)
 
-        out[i, :atom_pool.size] = atom_pool
-        out[i, atom_pool.size:atom_pool.size + bond_pool.size] = bond_pool
+        out[i, : atom_pool.size] = atom_pool
+        out[i, atom_pool.size : atom_pool.size + bond_pool.size] = bond_pool
 
     return out
 
@@ -384,9 +389,7 @@ def combined_feature_pipeline(
 
     if include_rdkit_32d:
         if X_32d.shape[0] != n:
-            raise ValueError(
-                f"X_32d has {X_32d.shape[0]} rows; expected {n}"
-            )
+            raise ValueError(f"X_32d has {X_32d.shape[0]} rows; expected {n}")
         streams.append(np.asarray(X_32d, dtype=np.float64))
         names.extend([f"rdkit_32d_{i:02d}" for i in range(32)])
 
@@ -478,19 +481,46 @@ def ridge_r2_eval(
 # Data loaders (platinai_4cell 12-d + 32-d + smiles list)
 # ---------------------------------------------------------------------------
 _PLATINAI_12D_COLUMNS: Tuple[str, ...] = (
-    "MolWt", "MolLogP", "TPSA", "HBA", "HBD", "NRotB", "HeavyAtoms",
-    "RingCount", "NumAromaticRings", "FractionCSP3", "MolMR", "BalabanJ",
+    "MolWt",
+    "MolLogP",
+    "TPSA",
+    "HBA",
+    "HBD",
+    "NRotB",
+    "HeavyAtoms",
+    "RingCount",
+    "NumAromaticRings",
+    "FractionCSP3",
+    "MolMR",
+    "BalabanJ",
 )
 _PLATINAI_32D_COLUMNS: Tuple[str, ...] = _PLATINAI_12D_COLUMNS + (
-    "BertzCT", "Chi0v", "Chi0n", "Chi1n", "HallKierAlpha",
-    "Kappa1", "Kappa2", "Kappa3", "LabuteASA",
-    "MaxPartialCharge", "MinPartialCharge",
-    "MaxAbsPartialCharge", "MinAbsPartialCharge",
-    "NumAliphaticRings", "NumSaturatedRings", "NumHeteroatoms",
-    "NHOHCount", "NOCount", "fr_halogen", "fr_Al_COO",
+    "BertzCT",
+    "Chi0v",
+    "Chi0n",
+    "Chi1n",
+    "HallKierAlpha",
+    "Kappa1",
+    "Kappa2",
+    "Kappa3",
+    "LabuteASA",
+    "MaxPartialCharge",
+    "MinPartialCharge",
+    "MaxAbsPartialCharge",
+    "MinAbsPartialCharge",
+    "NumAliphaticRings",
+    "NumSaturatedRings",
+    "NumHeteroatoms",
+    "NHOHCount",
+    "NOCount",
+    "fr_halogen",
+    "fr_Al_COO",
 )
 _PLATINAI_PIC50_COLUMNS: Tuple[str, ...] = (
-    "pIC50_mcf7", "pIC50_a549", "pIC50_a2780", "pIC50_a2780cis",
+    "pIC50_mcf7",
+    "pIC50_a549",
+    "pIC50_a2780",
+    "pIC50_a2780cis",
 )
 
 
@@ -498,13 +528,16 @@ def _read_csv(path: str) -> Tuple[List[str], List[List[str]]]:
     path = _resolve_repo_path(path)
     with open(path, "r", encoding="utf-8") as f:
         import csv
+
         reader = csv.reader(f)
         header = next(reader)
         rows = [r for r in reader if r and any(c.strip() for c in r)]
     return header, rows
 
 
-def _row_to_floats(row: List[str], columns: Tuple[str, ...], header: List[str]) -> np.ndarray:
+def _row_to_floats(
+    row: List[str], columns: Tuple[str, ...], header: List[str]
+) -> np.ndarray:
     idx = [header.index(c) for c in columns]
     out = np.zeros((len(row), len(columns)), dtype=np.float64)
     for i, r in enumerate(row):
@@ -517,7 +550,9 @@ def _row_to_floats(row: List[str], columns: Tuple[str, ...], header: List[str]) 
     return out
 
 
-def _mean_pIC50_target(rows: List[List[str]], header: List[str]) -> Tuple[np.ndarray, np.ndarray]:
+def _mean_pIC50_target(
+    rows: List[List[str]], header: List[str]
+) -> Tuple[np.ndarray, np.ndarray]:
     idx = [header.index(c) for c in _PLATINAI_PIC50_COLUMNS]
     out = np.zeros(len(rows), dtype=np.float64)
     keep = np.zeros(len(rows), dtype=bool)
@@ -619,14 +654,14 @@ def run_wf329w5(
     # ----- Configurations to evaluate -----
     configs: List[Dict[str, Any]] = [
         # (label, include_rdkit_32d, include_chemprop_v2_graph, include_w2_distance)
-        ("12d_baseline",          False, False, False),  # filled below
-        ("32d_rdkit",             True,  False, False),
-        ("32d_rdkit_plus_w2",     True,  False, True),
-        ("32d_rdkit_plus_graph",  True,  True,  False),
+        ("12d_baseline", False, False, False),  # filled below
+        ("32d_rdkit", True, False, False),
+        ("32d_rdkit_plus_w2", True, False, True),
+        ("32d_rdkit_plus_graph", True, True, False),
         ("32d_rdkit_plus_graph_plus_w2", True, True, True),
-        ("graph_only",            False, True,  False),
-        ("w2_only",               False, False, True),
-        ("graph_plus_w2",         False, True,  True),
+        ("graph_only", False, True, False),
+        ("w2_only", False, False, True),
+        ("graph_plus_w2", False, True, True),
     ]
 
     per_config: List[Dict[str, Any]] = []
@@ -648,13 +683,15 @@ def run_wf329w5(
                     include_w2_distance=incl_w2,
                 )
             except Exception as exc:
-                per_config.append({
-                    "label": label,
-                    "error": f"feature pipeline failed: {exc}",
-                    "r2": float("nan"),
-                    "lift_vs_12d": float("nan"),
-                    "verdict": "PIPELINE_ERROR",
-                })
+                per_config.append(
+                    {
+                        "label": label,
+                        "error": f"feature pipeline failed: {exc}",
+                        "r2": float("nan"),
+                        "lift_vs_12d": float("nan"),
+                        "verdict": "PIPELINE_ERROR",
+                    }
+                )
                 continue
         # Drop constant columns defensively (W₂ + graph may yield
         # zero-var columns when SMILES parsing fails for a row).
@@ -663,29 +700,28 @@ def run_wf329w5(
             X_combined = X_combined[:, keep_mask]
         res = ridge_r2_eval(X_combined, y, alpha=1.0, seed=seed)
         r2 = res["r2"]
-        per_config.append({
-            "label": label,
-            "r2": float(r2),
-            "n_train": int(res["n_train"]),
-            "n_test": int(res["n_test"]),
-            "alpha": float(res["alpha"]),
-            "n_features": int(X_combined.shape[1]),
-            "feature_dim_breakdown": {
-                "rdkit_32d": 32 if incl_32 else 0,
-                "chemprop_v2_graph": (
-                    _get_graph_feature_dim() if incl_graph else 0
-                ),
-                "w2_distance": 1 if incl_w2 else 0,
-            },
-            "lift_vs_12d_baseline": float(r2 - WF325A_BASELINE_R2_PLA_12D),
-            "verdict": _summarise_recovery(r2),
-        })
+        per_config.append(
+            {
+                "label": label,
+                "r2": float(r2),
+                "n_train": int(res["n_train"]),
+                "n_test": int(res["n_test"]),
+                "alpha": float(res["alpha"]),
+                "n_features": int(X_combined.shape[1]),
+                "feature_dim_breakdown": {
+                    "rdkit_32d": 32 if incl_32 else 0,
+                    "chemprop_v2_graph": (
+                        _get_graph_feature_dim() if incl_graph else 0
+                    ),
+                    "w2_distance": 1 if incl_w2 else 0,
+                },
+                "lift_vs_12d_baseline": float(r2 - WF325A_BASELINE_R2_PLA_12D),
+                "verdict": _summarise_recovery(r2),
+            }
+        )
 
     # ----- Find the best config (PROJECTED lift, not max-bias) -----
-    finite_r2 = [
-        c for c in per_config
-        if np.isfinite(c.get("r2", float("nan")))
-    ]
+    finite_r2 = [c for c in per_config if np.isfinite(c.get("r2", float("nan")))]
     best_label = None
     best_r2 = float("-inf")
     for c in finite_r2:
@@ -694,15 +730,9 @@ def run_wf329w5(
             best_label = c["label"]
 
     # ----- Aggregate verdict -----
-    any_ceiling_break = any(
-        c.get("verdict") == "CEILING_BREAK" for c in per_config
-    )
-    any_moderate = any(
-        c.get("verdict") == "MODERATE_RECOVERY" for c in per_config
-    )
-    any_weak = any(
-        c.get("verdict") == "WEAK_RECOVERY" for c in per_config
-    )
+    any_ceiling_break = any(c.get("verdict") == "CEILING_BREAK" for c in per_config)
+    any_moderate = any(c.get("verdict") == "MODERATE_RECOVERY" for c in per_config)
+    any_weak = any(c.get("verdict") == "WEAK_RECOVERY" for c in per_config)
     any_negative = any(
         c.get("verdict") == "HONEST_NEGATIVE_R2_DEEP"
         or c.get("verdict") == "NO_LIFT_HONEST_NEGATIVE"
@@ -745,7 +775,8 @@ def run_wf329w5(
             "r2": best_r2 if best_label is not None else float("nan"),
             "lift_vs_12d_baseline": (
                 float(best_r2 - WF325A_BASELINE_R2_PLA_12D)
-                if best_label is not None else float("nan")
+                if best_label is not None
+                else float("nan")
             ),
         },
         "aggregate_status": aggregate_status,
@@ -796,8 +827,11 @@ def run_wf329w5(
 # ---------------------------------------------------------------------------
 def main(argv: Optional[List[str]] = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    p.add_argument("--cohort", default="platinai_4cell",
-                   help="Cohort to evaluate (default: platinai_4cell)")
+    p.add_argument(
+        "--cohort",
+        default="platinai_4cell",
+        help="Cohort to evaluate (default: platinai_4cell)",
+    )
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--output-dir", default="molmetal/reports/wf329w5_w2_chemprop")
     args = p.parse_args(argv)
@@ -816,9 +850,11 @@ def main(argv: Optional[List[str]] = None) -> int:
             f"R²={c['r2']:+.4f}  lift_vs_12d={c['lift_vs_12d_baseline']:+.4f}  "
             f"{c['verdict']}"
         )
-    print(f"  best_config: {result['best_config']['label']}  "
-          f"R²={result['best_config']['r2']:+.4f}  "
-          f"lift={result['best_config']['lift_vs_12d_baseline']:+.4f}")
+    print(
+        f"  best_config: {result['best_config']['label']}  "
+        f"R²={result['best_config']['r2']:+.4f}  "
+        f"lift={result['best_config']['lift_vs_12d_baseline']:+.4f}"
+    )
     print(f"  aggregate_status = {result['aggregate_status']}")
     return 0
 

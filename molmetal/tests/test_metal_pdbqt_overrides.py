@@ -90,9 +90,9 @@ class TestMetalAtomTypeRulesStatic:
         ``ad4_types.json`` (``[#12]`` for Mg, ``[#26]`` for Fe, …).
         """
         for elem, rule in METAL_ATOM_TYPE_RULES.items():
-            assert rule["smarts"] == f"[{elem}]", (
-                f"{elem} smarts={rule['smarts']!r} (expected '[{elem}]')"
-            )
+            assert (
+                rule["smarts"] == f"[{elem}]"
+            ), f"{elem} smarts={rule['smarts']!r} (expected '[{elem}]')"
 
 
 # ---------------------------------------------------------------------------
@@ -127,9 +127,7 @@ class TestMetalSmartsAgainstProbes:
         results = verify_metal_smarts()
         assert set(results.keys()) == set(EXPECTED_ELEMENTS)
         for elem, row in results.items():
-            assert row["ok"], (
-                f"{elem} verify_metal_smarts returned ok=False: {row}"
-            )
+            assert row["ok"], f"{elem} verify_metal_smarts returned ok=False: {row}"
             assert row["matched"] == row["expected"]
             assert row["expected"] >= 1
 

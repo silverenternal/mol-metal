@@ -46,9 +46,9 @@ def _read_smi(pocket_id: str) -> str:
     smi_path = TARGET_DIR / f"pocket_{pocket_id}" / "ref_ligand.smi"
     line = smi_path.read_text().strip()
     parts = line.split("\t")
-    assert len(parts) == 3, (
-        f"ref_ligand.smi for {pocket_id} must have 3 TSV columns; got {len(parts)}"
-    )
+    assert (
+        len(parts) == 3
+    ), f"ref_ligand.smi for {pocket_id} must have 3 TSV columns; got {len(parts)}"
     return parts[0]
 
 
@@ -94,9 +94,9 @@ def test_02_refactor_smiles_matches_wf139_p1(pocket_id: str) -> None:
         if p["pocket_id"] == pocket_id:
             expected = p["smiles"]
             break
-    assert expected is not None, (
-        f"pocket {pocket_id} not found in Wf-139 P1 source metadata"
-    )
+    assert (
+        expected is not None
+    ), f"pocket {pocket_id} not found in Wf-139 P1 source metadata"
     actual = _read_smi(pocket_id)
     assert actual == expected, (
         f"SMILES for {pocket_id} mismatch: Wf-139 P1 had {expected!r}, "
@@ -118,9 +118,9 @@ def test_03_refactor_smiles_is_nonempty_and_drug_like(pocket_id: str) -> None:
 def test_04_refactor_inchi_sidecar_exists(pocket_id: str) -> None:
     """Each pocket must have a ref_ligand_inchi.json sidecar."""
     inchi_path = TARGET_DIR / f"pocket_{pocket_id}" / "ref_ligand_inchi.json"
-    assert inchi_path.is_file(), (
-        f"missing ref_ligand_inchi.json for {pocket_id}: {inchi_path}"
-    )
+    assert (
+        inchi_path.is_file()
+    ), f"missing ref_ligand_inchi.json for {pocket_id}: {inchi_path}"
     data = json.loads(inchi_path.read_text())
     assert data["pocket_id"] == pocket_id
     assert data["smiles"] == _read_smi(pocket_id)
@@ -151,9 +151,9 @@ def test_05_refactor_provenance_cites_wf139_p1(pocket_id: str) -> None:
 def test_06_inchi_keys_unique_across_pockets() -> None:
     """Each pocket's InChIKey must be unique (no collisions across pockets)."""
     inchi_keys = [_read_inchi_key(p) for p in POCKETS]
-    assert len(inchi_keys) == len(set(inchi_keys)), (
-        f"InChIKey collision detected: {inchi_keys}"
-    )
+    assert len(inchi_keys) == len(
+        set(inchi_keys)
+    ), f"InChIKey collision detected: {inchi_keys}"
 
 
 def test_07_inchi_keys_match_wf139_p1_source() -> None:
@@ -262,9 +262,9 @@ def test_12_integration_with_wf139_p1_synthesis_md() -> None:
     summary = _read_extraction_summary()
     source_md_rel = summary["source_synthesis_md"]
     source_md_abs = PROJECT_ROOT / source_md_rel
-    assert source_md_abs.is_file(), (
-        f"Wf-139 P1 synthesis.md not found at {source_md_abs}"
-    )
+    assert (
+        source_md_abs.is_file()
+    ), f"Wf-139 P1 synthesis.md not found at {source_md_abs}"
     # Verify the cited synthesis.md mentions all 6 pockets
     content = source_md_abs.read_text()
     missing = [p for p in POCKETS if p not in content]
@@ -276,6 +276,6 @@ def test_12_integration_with_wf139_p1_synthesis_md() -> None:
     todo134_abs = PROJECT_ROOT / summary["todo134_status_reference"]
     assert todo134_abs.is_file(), f"TODO-134 not found at {todo134_abs}"
     todo134_content = todo134_abs.read_text()
-    assert "Wf-139" in todo134_content or "Phase 1 SHIPPED" in todo134_content, (
-        f"TODO-134 should document Wf-139 P1 as the Phase 1 ship source"
-    )
+    assert (
+        "Wf-139" in todo134_content or "Phase 1 SHIPPED" in todo134_content
+    ), f"TODO-134 should document Wf-139 P1 as the Phase 1 ship source"

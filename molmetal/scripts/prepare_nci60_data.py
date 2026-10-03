@@ -280,9 +280,15 @@ def build_template(
             canon = canonical_smiles(smi)
             # Synthetic pIC50 around 5.0 (1 µM), cell-line-dependent shift
             cell_shift = {
-                "HCT116": 0.1, "MCF7": 0.0, "OVCAR3": -0.2,
-                "PC3": -0.1, "A498": 0.15, "TK10": -0.05,
-                "UACC62": 0.05, "SKMEL2": 0.0, "HL60": -0.1,
+                "HCT116": 0.1,
+                "MCF7": 0.0,
+                "OVCAR3": -0.2,
+                "PC3": -0.1,
+                "A498": 0.15,
+                "TK10": -0.05,
+                "UACC62": 0.05,
+                "SKMEL2": 0.0,
+                "HL60": -0.1,
             }.get(disp, 0.0)
             pic50 = 5.0 + cell_shift + rng.gauss(0.0, 0.45)
             ic50_um = 10 ** (6 - pic50)
@@ -376,9 +382,7 @@ def build_cross_link(
         for smi, pic50_precious, active_precious in by_cell.get(cell, []):
             n_plat = platinai_smiles_count.get(smi, 0)
             plat_pic50s = platinai_pic50.get(smi, [])
-            plat_avg = (
-                sum(plat_pic50s) / len(plat_pic50s) if plat_pic50s else None
-            )
+            plat_avg = sum(plat_pic50s) / len(plat_pic50s) if plat_pic50s else None
             plat_active_rate = (
                 sum(1 for p in plat_pic50s if p >= 5.0) / len(plat_pic50s)
                 if plat_pic50s
@@ -460,32 +464,32 @@ def summarise(
         if active:
             active_by_cell[cell] += 1
     n_in_platinai = sum(1 for r in link_rows if r["in_platinai"])
-    n_overlap_unique = len(
-        {r["smiles"] for r in link_rows if r["in_platinai"]}
-    )
+    n_overlap_unique = len({r["smiles"] for r in link_rows if r["in_platinai"]})
 
     lines: List[str] = []
     lines.append("# Wf-28 Phase 2 — NCI-60 9-cell precious-metal data prep")
     lines.append("")
-    lines.append(f"_Generated_: {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}")
-    lines.append(f"_Source_: `{source}`")
     lines.append(
-        f"_Rows_: {len(nci60_rows)} long-form  |  {len(link_rows)} cross-link"
+        f"_Generated_: {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}"
     )
+    lines.append(f"_Source_: `{source}`")
+    lines.append(f"_Rows_: {len(nci60_rows)} long-form  |  {len(link_rows)} cross-link")
     lines.append("")
     lines.append("## 1. Cell-line coverage")
     lines.append("")
-    lines.append("| Cell line | n_rows | mean pIC50 | n_active (IC50 < 10 µM) | active_rate |")
-    lines.append("|----------:|-------:|-----------:|-------------------------:|------------:|")
+    lines.append(
+        "| Cell line | n_rows | mean pIC50 | n_active (IC50 < 10 µM) | active_rate |"
+    )
+    lines.append(
+        "|----------:|-------:|-----------:|-------------------------:|------------:|"
+    )
     for cell in cell_lines:
         rows = by_cell.get(cell, [])
         n = len(rows)
         mean_pic50 = sum(rows) / n if n else 0.0
         n_act = active_by_cell.get(cell, 0)
         rate = n_act / n if n else 0.0
-        lines.append(
-            f"| {cell} | {n} | {mean_pic50:.3f} | {n_act} | {rate:.3f} |"
-        )
+        lines.append(f"| {cell} | {n} | {mean_pic50:.3f} | {n_act} | {rate:.3f} |")
     lines.append("")
     lines.append("## 2. PlatinAI 4-cell cross-link")
     lines.append("")
@@ -494,9 +498,7 @@ def summarise(
         f"**{n_in_platinai} / {len(link_rows)}** "
         f"({100.0 * n_in_platinai / max(1, len(link_rows)):.1f}%)"
     )
-    lines.append(
-        f"- Unique SMILES appearing in BOTH datasets: **{n_overlap_unique}**"
-    )
+    lines.append(f"- Unique SMILES appearing in BOTH datasets: **{n_overlap_unique}**")
     lines.append("")
     lines.append("## 3. Notes")
     lines.append("")
@@ -512,8 +514,7 @@ def summarise(
             "ONLY — they have no claim on biological truth."
         )
     lines.append(
-        "- Precious metals only: Ru / Ir / Rh / Os / Re (Pt is in "
-        "platinai_4cell)."
+        "- Precious metals only: Ru / Ir / Rh / Os / Re (Pt is in " "platinai_4cell)."
     )
     if n_in_platinai == 0:
         lines.append(
@@ -540,14 +541,30 @@ def main(argv: Optional[List[str]] = None) -> int:
     p = argparse.ArgumentParser(
         description="Wf-28 Phase 2 — NCI-60 9-cell precious-metal data prep",
     )
-    p.add_argument("--cells", nargs="+", default=None,
-                   help="Display cell-line names (default: NCI60_9CELL_EXISTING)")
-    p.add_argument("--n-per-cell", type=int, default=N_PER_CELL_DEFAULT,
-                   help="Max rows per cell line (default: 200)")
-    p.add_argument("--metals", nargs="+", default=list(PRECIOUS_METALS),
-                   help="Precious metal whitelist (default: Ru Ir Rh Os Re)")
-    p.add_argument("--seed", type=int, default=SEED_DEFAULT,
-                   help="Deterministic seed (default: 20260926)")
+    p.add_argument(
+        "--cells",
+        nargs="+",
+        default=None,
+        help="Display cell-line names (default: NCI60_9CELL_EXISTING)",
+    )
+    p.add_argument(
+        "--n-per-cell",
+        type=int,
+        default=N_PER_CELL_DEFAULT,
+        help="Max rows per cell line (default: 200)",
+    )
+    p.add_argument(
+        "--metals",
+        nargs="+",
+        default=list(PRECIOUS_METALS),
+        help="Precious metal whitelist (default: Ru Ir Rh Os Re)",
+    )
+    p.add_argument(
+        "--seed",
+        type=int,
+        default=SEED_DEFAULT,
+        help="Deterministic seed (default: 20260926)",
+    )
     p.add_argument(
         "--out-csv",
         default=str(PROJECT_ROOT / "molmetal" / "data" / "nci60_precious_9cell.csv"),
@@ -566,7 +583,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     p.add_argument(
         "--summary-md",
         default=str(
-            PROJECT_ROOT / "molmetal" / "reports" / "wf28_wetlab_data"
+            PROJECT_ROOT
+            / "molmetal"
+            / "reports"
+            / "wf28_wetlab_data"
             / "nci60_summary.md"
         ),
         help="Summary markdown path (default: .../wf28_wetlab_data/nci60_summary.md)",
@@ -574,13 +594,17 @@ def main(argv: Optional[List[str]] = None) -> int:
     p.add_argument(
         "--link-json",
         default=str(
-            PROJECT_ROOT / "molmetal" / "reports" / "wf28_wetlab_data"
+            PROJECT_ROOT
+            / "molmetal"
+            / "reports"
+            / "wf28_wetlab_data"
             / "nci60_platinai_link.json"
         ),
         help="Cross-link JSON path (default: .../wf28_wetlab_data/nci60_platinai_link.json)",
     )
     p.add_argument(
-        "--force", action="store_true",
+        "--force",
+        action="store_true",
         help="Regenerate the long-form CSV even if it already exists",
     )
     args = p.parse_args(argv)

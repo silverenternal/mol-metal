@@ -73,6 +73,7 @@ Cross-references
 * ``TODO/completed/350a1_runtime_energy_report.md`` — the Wf-350-A1
   ship summary + the NeurIPS §E.4 protocol provenance.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -109,11 +110,12 @@ def _load_preflight_module():
     Wf-350-A1 invocation context.
     """
     spec = importlib.util.spec_from_file_location(
-        "pre_flight_check_under_test_wf350a1", PREFLIGHT_SCRIPT,
+        "pre_flight_check_under_test_wf350a1",
+        PREFLIGHT_SCRIPT,
     )
-    assert spec is not None and spec.loader is not None, (
-        f"pre_flight_check.py has no import spec ({PREFLIGHT_SCRIPT})"
-    )
+    assert (
+        spec is not None and spec.loader is not None
+    ), f"pre_flight_check.py has no import spec ({PREFLIGHT_SCRIPT})"
     mod = importlib.util.module_from_spec(spec)
     sys.modules["pre_flight_check_under_test_wf350a1"] = mod
     spec.loader.exec_module(mod)
@@ -143,7 +145,8 @@ def _has_nvidia_smi() -> bool:
 
 
 def test_gate_p1_runtime_energy_report_pass_on_live_or_skip(
-    preflight, tmp_path,
+    preflight,
+    tmp_path,
 ) -> None:
     """Wf-350-A1 (1) — gate PASSes when nvidia-smi reports ≥ 1 GPU + JSON artefact written.
 
@@ -168,18 +171,20 @@ def test_gate_p1_runtime_energy_report_pass_on_live_or_skip(
 
     artefact = tmp_path / "wf350a1_runtime_energy.json"
     result = preflight.gate_p1_runtime_energy_report(
-        "p1_runtime_energy_report", "P3", "wf350a1", artefact,
+        "p1_runtime_energy_report",
+        "P3",
+        "wf350a1",
+        artefact,
     )
     assert result.status == "PASS", (
         f"gate FAIL: evidence={result.evidence!r}; "
         f"expected PASS on the live NVIDIA host"
     )
-    assert artefact.is_file(), (
-        f"artefact not written to {artefact}; gate should write JSON"
-    )
+    assert (
+        artefact.is_file()
+    ), f"artefact not written to {artefact}; gate should write JSON"
     data = json.loads(artefact.read_text(encoding="utf-8"))
-    for key in ("per_gpu", "total_duration_s", "estimated_energy_j",
-                "n_gpus_reported"):
+    for key in ("per_gpu", "total_duration_s", "estimated_energy_j", "n_gpus_reported"):
         assert key in data, f"mandatory field {key!r} missing from JSON"
     assert data["MEASURED_vs_PROJECTED"] == "MEASURED", (
         f"MEASURED_vs_PROJECTED={data.get('MEASURED_vs_PROJECTED')!r} "
@@ -193,7 +198,8 @@ def test_gate_p1_runtime_energy_report_pass_on_live_or_skip(
 
 
 def test_gate_p1_runtime_energy_report_schema_validity(
-    preflight, tmp_path,
+    preflight,
+    tmp_path,
 ) -> None:
     """Wf-350-A1 (2) — JSON schema validity: per-GPU power readings have correct types.
 
@@ -214,14 +220,17 @@ def test_gate_p1_runtime_energy_report_schema_validity(
 
     artefact = tmp_path / "wf350a1_runtime_energy.json"
     result = preflight.gate_p1_runtime_energy_report(
-        "p1_runtime_energy_report", "P3", "wf350a1", artefact,
+        "p1_runtime_energy_report",
+        "P3",
+        "wf350a1",
+        artefact,
     )
     # On live host the gate should PASS; on a degraded host (e.g.
     # nvidia-smi rc=0 but 0 GPUs reported) the gate FAILs. We test
     # the schema only when the artefact was successfully written.
-    assert artefact.is_file(), (
-        f"artefact not written to {artefact}; gate should write JSON"
-    )
+    assert (
+        artefact.is_file()
+    ), f"artefact not written to {artefact}; gate should write JSON"
     data = json.loads(artefact.read_text(encoding="utf-8"))
     # On a 0-GPU host (rare but possible) the per_gpu list is
     # empty — the schema validity check would naturally fail. We
@@ -236,26 +245,25 @@ def test_gate_p1_runtime_energy_report_schema_validity(
         )
 
     per_gpu = data["per_gpu"]
-    assert isinstance(per_gpu, list), (
-        f"per_gpu is not a list: type={type(per_gpu).__name__}"
-    )
+    assert isinstance(
+        per_gpu, list
+    ), f"per_gpu is not a list: type={type(per_gpu).__name__}"
     assert len(per_gpu) >= 1, (
-        f"per_gpu has 0 entries (expected >= 1 on a host with "
-        f">= 1 NVIDIA GPU)"
+        f"per_gpu has 0 entries (expected >= 1 on a host with " f">= 1 NVIDIA GPU)"
     )
     for i, gpu in enumerate(per_gpu):
-        assert isinstance(gpu, dict), (
-            f"per_gpu[{i}] is not a dict: type={type(gpu).__name__}"
-        )
-        assert "index" in gpu and isinstance(gpu["index"], int), (
-            f"per_gpu[{i}] missing or wrong-type 'index': {gpu!r}"
-        )
-        assert "power_draw_w" in gpu and isinstance(gpu["power_draw_w"], (int, float)), (
-            f"per_gpu[{i}] missing or wrong-type 'power_draw_w': {gpu!r}"
-        )
-        assert "power_limit_w" in gpu and isinstance(gpu["power_limit_w"], (int, float)), (
-            f"per_gpu[{i}] missing or wrong-type 'power_limit_w': {gpu!r}"
-        )
+        assert isinstance(
+            gpu, dict
+        ), f"per_gpu[{i}] is not a dict: type={type(gpu).__name__}"
+        assert "index" in gpu and isinstance(
+            gpu["index"], int
+        ), f"per_gpu[{i}] missing or wrong-type 'index': {gpu!r}"
+        assert "power_draw_w" in gpu and isinstance(
+            gpu["power_draw_w"], (int, float)
+        ), f"per_gpu[{i}] missing or wrong-type 'power_draw_w': {gpu!r}"
+        assert "power_limit_w" in gpu and isinstance(
+            gpu["power_limit_w"], (int, float)
+        ), f"per_gpu[{i}] missing or wrong-type 'power_limit_w': {gpu!r}"
         assert gpu["power_draw_w"] >= 0, (
             f"per_gpu[{i}] power_draw_w={gpu['power_draw_w']} < 0 "
             f"(negative power is impossible)"
@@ -335,6 +343,6 @@ def test_p1_runtime_energy_report_registered_in_build_gates_all(
         f"registered runner name drift: {runner_name!r} != "
         f"'p1_runtime_energy_report'"
     )
-    assert callable(runner_fn), (
-        f"runner_fn is not callable: type={type(runner_fn).__name__}"
-    )
+    assert callable(
+        runner_fn
+    ), f"runner_fn is not callable: type={type(runner_fn).__name__}"

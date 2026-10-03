@@ -63,7 +63,9 @@ ALLOWED_STATUS = {"PASS", "FAIL", "SKIP"}
 ALLOWED_PRIORITY = {"P0", "P1", "P2", "P3"}
 
 
-def _run_script(*args: str, env_extra: dict | None = None) -> subprocess.CompletedProcess:
+def _run_script(
+    *args: str, env_extra: dict | None = None
+) -> subprocess.CompletedProcess:
     """Invoke ``wf343c1_pre_retrain_check.py`` and return the CompletedProcess."""
     env = os.environ.copy()
     if env_extra:
@@ -87,14 +89,15 @@ def test_cli_runs(tmp_path: Path) -> None:
     out_json = tmp_path / "pre_retrain.json"
     # Use --pipeline code so the run completes quickly (no subprocess help).
     result = _run_script("--pipeline", "code", "--json", str(out_json))
-    assert result.returncode in (0, 1), (
-        f"unexpected exit {result.returncode}; stderr={result.stderr!r}"
-    )
+    assert result.returncode in (
+        0,
+        1,
+    ), f"unexpected exit {result.returncode}; stderr={result.stderr!r}"
     assert out_json.exists(), "JSON output file was not written"
     data = json.loads(out_json.read_text(encoding="utf-8"))
-    assert REQUIRED_TOP_KEYS.issubset(data.keys()), (
-        f"missing top-level keys: {REQUIRED_TOP_KEYS - set(data.keys())}"
-    )
+    assert REQUIRED_TOP_KEYS.issubset(
+        data.keys()
+    ), f"missing top-level keys: {REQUIRED_TOP_KEYS - set(data.keys())}"
 
 
 # ---------------------------------------------------------------------------
@@ -105,9 +108,10 @@ def test_cli_runs(tmp_path: Path) -> None:
 def test_json_schema() -> None:
     """--pipeline all: JSON output matches the v1 schema (top-level + per-gate)."""
     result = _run_script("--pipeline", "all")
-    assert result.returncode in (0, 1), (
-        f"unexpected exit {result.returncode}; stderr={result.stderr[-500:]!r}"
-    )
+    assert result.returncode in (
+        0,
+        1,
+    ), f"unexpected exit {result.returncode}; stderr={result.stderr[-500:]!r}"
 
     payload = result.stdout.strip()
     if not payload.startswith("{"):
@@ -118,34 +122,28 @@ def test_json_schema() -> None:
         payload = payload[start : end + 1]
 
     data = json.loads(payload)
-    assert REQUIRED_TOP_KEYS.issubset(data.keys()), (
-        f"missing top-level keys: {REQUIRED_TOP_KEYS - set(data.keys())}"
-    )
+    assert REQUIRED_TOP_KEYS.issubset(
+        data.keys()
+    ), f"missing top-level keys: {REQUIRED_TOP_KEYS - set(data.keys())}"
     assert REQUIRED_SUMMARY_KEYS.issubset(data["summary"].keys()), (
         f"missing summary keys: "
         f"{REQUIRED_SUMMARY_KEYS - set(data['summary'].keys())}"
     )
-    assert isinstance(data["gates"], list) and data["gates"], (
-        "gates must be non-empty list"
-    )
+    assert (
+        isinstance(data["gates"], list) and data["gates"]
+    ), "gates must be non-empty list"
     for gate in data["gates"]:
         missing = REQUIRED_GATE_KEYS - set(gate.keys())
         assert not missing, f"gate missing keys {missing}: {gate}"
-        assert gate["status"] in ALLOWED_STATUS, (
-            f"bad status {gate['status']}"
-        )
-        assert gate["priority"] in ALLOWED_PRIORITY, (
-            f"bad priority {gate['priority']}"
-        )
-        assert isinstance(gate["wall_sec"], (int, float)), (
-            "wall_sec must be numeric"
-        )
+        assert gate["status"] in ALLOWED_STATUS, f"bad status {gate['status']}"
+        assert gate["priority"] in ALLOWED_PRIORITY, f"bad priority {gate['priority']}"
+        assert isinstance(gate["wall_sec"], (int, float)), "wall_sec must be numeric"
         assert isinstance(gate["evidence"], str), "evidence must be string"
     # n_pass + n_fail + n_skip must equal len(gates).
     s = data["summary"]
-    assert s["pass"] + s["fail"] + s["skip"] == len(data["gates"]), (
-        f"summary.totals don't match gates list: {s}"
-    )
+    assert s["pass"] + s["fail"] + s["skip"] == len(
+        data["gates"]
+    ), f"summary.totals don't match gates list: {s}"
 
 
 # ---------------------------------------------------------------------------
@@ -157,19 +155,20 @@ def test_pipeline_filter(tmp_path: Path) -> None:
     """--pipeline code runs ONLY code gates (no data / ablation / etc.)."""
     out_json = tmp_path / "code_only.json"
     result = _run_script("--pipeline", "code", "--json", str(out_json))
-    assert result.returncode in (0, 1), (
-        f"unexpected exit {result.returncode}; stderr={result.stderr!r}"
-    )
+    assert result.returncode in (
+        0,
+        1,
+    ), f"unexpected exit {result.returncode}; stderr={result.stderr!r}"
     data = json.loads(out_json.read_text(encoding="utf-8"))
     pipelines_seen = {g["pipeline"] for g in data["gates"]}
-    assert pipelines_seen == {"code"}, (
-        f"--pipeline code should yield only code gates; saw {pipelines_seen}"
-    )
+    assert pipelines_seen == {
+        "code"
+    }, f"--pipeline code should yield only code gates; saw {pipelines_seen}"
     names = [g["name"] for g in data["gates"]]
     # Sanity: code pipeline emits 10 §1.1.x gates per spec.
-    assert any(n.startswith("code_1_1_") for n in names), (
-        f"expected code_1_1_* gates in --pipeline code; got {names}"
-    )
+    assert any(
+        n.startswith("code_1_1_") for n in names
+    ), f"expected code_1_1_* gates in --pipeline code; got {names}"
     assert all(not n.startswith("data_2_1_") for n in names), (
         f"data gates must NOT appear in --pipeline code; "
         f"saw {[n for n in names if n.startswith('data_')]}"
@@ -188,9 +187,10 @@ def test_pipeline_filter(tmp_path: Path) -> None:
 def test_summary_counts_match_gates() -> None:
     """pass+fail+skip == len(gates) invariant holds for the --pipeline all run."""
     result = _run_script("--pipeline", "all")
-    assert result.returncode in (0, 1), (
-        f"unexpected exit {result.returncode}; stderr={result.stderr[-500:]!r}"
-    )
+    assert result.returncode in (
+        0,
+        1,
+    ), f"unexpected exit {result.returncode}; stderr={result.stderr[-500:]!r}"
     payload = result.stdout.strip()
     if not payload.startswith("{"):
         start = payload.rfind("{")
@@ -222,7 +222,8 @@ def test_gate_count_consistency() -> None:
     """
     result = subprocess.run(
         [
-            VENV_PY, "-c",
+            VENV_PY,
+            "-c",
             "import sys; sys.path.insert(0, '/home/hugo/codes/mol-metal');"
             "from molmetal.scripts.wf343c1_pre_retrain_check import "
             "EXPECTED_GATE_COUNTS; "
@@ -232,13 +233,11 @@ def test_gate_count_consistency() -> None:
         text=True,
         timeout=30,
     )
-    assert result.returncode == 0, (
-        f"could not import EXPECTED_GATE_COUNTS: {result.stderr!r}"
-    )
+    assert (
+        result.returncode == 0
+    ), f"could not import EXPECTED_GATE_COUNTS: {result.stderr!r}"
     counts = json.loads(result.stdout.strip())
-    expected_total = sum(
-        v for v in counts.values() if isinstance(v, int)
-    )
+    expected_total = sum(v for v in counts.values() if isinstance(v, int))
     assert expected_total == 26, (
         f"expected total gate count across all 6 pipelines = 26, "
         f"got {expected_total} (per-pipeline: {counts})"
@@ -267,9 +266,10 @@ def test_post_retrain_skip_is_honest_negative() -> None:
     (data fact, not blocker).
     """
     result = _run_script("--pipeline", "all")
-    assert result.returncode in (0, 1), (
-        f"unexpected exit {result.returncode}; stderr={result.stderr[-500:]!r}"
-    )
+    assert result.returncode in (
+        0,
+        1,
+    ), f"unexpected exit {result.returncode}; stderr={result.stderr[-500:]!r}"
     payload = result.stdout.strip()
     if not payload.startswith("{"):
         start = payload.rfind("{")
@@ -288,15 +288,12 @@ def test_post_retrain_skip_is_honest_negative() -> None:
     ):
         assert gname in by_name, f"{gname} not in gates: {list(by_name)}"
         assert by_name[gname]["status"] == "SKIP", (
-            f"{gname} must be SKIP (post-retrain), got "
-            f"{by_name[gname]['status']}"
+            f"{gname} must be SKIP (post-retrain), got " f"{by_name[gname]['status']}"
         )
 
     # BindingDB §2.1.6 gate must also be SKIP (honest-negative data fact).
     bindingdb_gate = "data_2_1_6_bindingdb_external_honest_negative"
-    assert bindingdb_gate in by_name, (
-        f"{bindingdb_gate} not in gates: {list(by_name)}"
-    )
+    assert bindingdb_gate in by_name, f"{bindingdb_gate} not in gates: {list(by_name)}"
     assert by_name[bindingdb_gate]["status"] == "SKIP", (
         f"{bindingdb_gate} must be SKIP (data fact, not blocker), "
         f"got {by_name[bindingdb_gate]['status']}"
@@ -311,29 +308,28 @@ def test_post_retrain_skip_is_honest_negative() -> None:
 def test_parent_doc_reference_present() -> None:
     """JSON ``parent_doc_reference`` field must point to the parent doc."""
     result = _run_script("--pipeline", "honest_framing")
-    assert result.returncode in (0, 1), (
-        f"unexpected exit {result.returncode}; stderr={result.stderr[-500:]!r}"
-    )
+    assert result.returncode in (
+        0,
+        1,
+    ), f"unexpected exit {result.returncode}; stderr={result.stderr[-500:]!r}"
     payload = result.stdout.strip()
     if not payload.startswith("{"):
         start = payload.rfind("{")
         end = payload.rfind("}")
         payload = payload[start : end + 1]
     data = json.loads(payload)
-    assert "parent_doc_reference" in data, (
-        "JSON missing parent_doc_reference field"
-    )
+    assert "parent_doc_reference" in data, "JSON missing parent_doc_reference field"
     ref = data["parent_doc_reference"]
     # Reference must include the canonical parent doc filename.
-    assert "pre_retrain_checklist" in ref, (
-        f"parent_doc_reference should name the parent doc; got {ref!r}"
-    )
+    assert (
+        "pre_retrain_checklist" in ref
+    ), f"parent_doc_reference should name the parent doc; got {ref!r}"
     # Reference must include the gate-family names so reviewers can
     # trace each gate back to its §-level section.
     for family in ("§1.1", "§1.3", "§2.1", "§3.1", "§5.11", "§8.15"):
-        assert family in ref, (
-            f"parent_doc_reference missing family marker {family}; got {ref!r}"
-        )
+        assert (
+            family in ref
+        ), f"parent_doc_reference missing family marker {family}; got {ref!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -378,20 +374,24 @@ def test_gate_result_helpers_unit() -> None:
     }
 
     # gate_grep PASS path on a known pattern in train_chemprop_v2_v3.py.
-    chemprop_path = (
-        REPO_ROOT / "molmetal" / "scripts" / "train_chemprop_v2_v3.py"
-    )
+    chemprop_path = REPO_ROOT / "molmetal" / "scripts" / "train_chemprop_v2_v3.py"
     res_pass = gate_grep(
-        "unit_grep_pass", "P1", "unit",
-        "indices = train_idx.copy()", chemprop_path,
+        "unit_grep_pass",
+        "P1",
+        "unit",
+        "indices = train_idx.copy()",
+        chemprop_path,
     )
     assert res_pass.status == "PASS"
     assert res_pass.wall_sec >= 0.0
 
     # gate_grep FAIL path on a non-existent pattern.
     res_fail = gate_grep(
-        "unit_grep_fail", "P1", "unit",
-        "definitely_not_present_zzz_xyz", chemprop_path,
+        "unit_grep_fail",
+        "P1",
+        "unit",
+        "definitely_not_present_zzz_xyz",
+        chemprop_path,
     )
     assert res_fail.status == "FAIL"
 
@@ -405,22 +405,36 @@ def test_gate_result_helpers_unit() -> None:
 
     # gate_file_exists PASS on a known existing file.
     res_fe_pass = gate_file_exists(
-        "unit_fe_pass", "P1", "unit", chemprop_path,
+        "unit_fe_pass",
+        "P1",
+        "unit",
+        chemprop_path,
     )
     assert res_fe_pass.status == "PASS"
     # gate_file_exists FAIL on a missing file.
     res_fe_fail = gate_file_exists(
-        "unit_fe_fail", "P1", "unit", Path("/nonexistent/zzz"),
+        "unit_fe_fail",
+        "P1",
+        "unit",
+        Path("/nonexistent/zzz"),
     )
     assert res_fe_fail.status == "FAIL"
 
     # gate_min_lines PASS / FAIL paths.
     res_ml_pass = gate_min_lines(
-        "unit_ml_pass", "P1", "unit", chemprop_path, min_lines=100,
+        "unit_ml_pass",
+        "P1",
+        "unit",
+        chemprop_path,
+        min_lines=100,
     )
     assert res_ml_pass.status == "PASS"
     res_ml_fail = gate_min_lines(
-        "unit_ml_fail", "P1", "unit", chemprop_path, min_lines=10**9,
+        "unit_ml_fail",
+        "P1",
+        "unit",
+        chemprop_path,
+        min_lines=10**9,
     )
     assert res_ml_fail.status == "FAIL"
 

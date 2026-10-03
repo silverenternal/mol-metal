@@ -41,13 +41,19 @@ DASHBOARD_SH = PROJECT_ROOT / "scripts" / "gpu_launch_dashboard.sh"
 AGGREGATOR_PY = PROJECT_ROOT / "molmetal" / "scripts" / "gpu_launch_aggregator.py"
 
 EXPECTED_LAUNCHERS = {
-    "wf355_a1", "wf355_a2", "wf355_a3", "wf355_b1", "wf355_b2",
-    "g5_retrain", "g6_recover",
+    "wf355_a1",
+    "wf355_a2",
+    "wf355_a3",
+    "wf355_b1",
+    "wf355_b2",
+    "g5_retrain",
+    "g6_recover",
 }
 
 # ---------------------------------------------------------------------------
 # Test 1: --status-summary compact output
 # ---------------------------------------------------------------------------
+
 
 def test_01_status_summary_compact_output():
     """Verify --status-summary flag produces compact TSV with 4 columns and ≥ 7 rows.
@@ -61,22 +67,25 @@ def test_01_status_summary_compact_output():
     # bash syntax check
     result = subprocess.run(
         ["bash", "-n", str(DASHBOARD_SH)],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     assert result.returncode == 0, f"bash -n failed: {result.stderr}"
 
     # bash --status-summary
     result = subprocess.run(
         ["bash", str(DASHBOARD_SH), "--status-summary"],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     assert result.returncode == 0, f"--status-summary failed: {result.stderr}"
 
     out = result.stdout.strip()
     # Skip mode-banner lines that start with "dashboard_mode=".
     data_lines = [
-        l for l in out.splitlines()
-        if l.strip() and not l.startswith("dashboard_mode=")
+        l for l in out.splitlines() if l.strip() and not l.startswith("dashboard_mode=")
     ]
     # Header + ≥ 7 launcher rows
     assert len(data_lines) >= 1 + len(EXPECTED_LAUNCHERS), (
@@ -95,25 +104,30 @@ def test_01_status_summary_compact_output():
     # Each data row has 4 tab-separated columns
     for line in data_lines[1:]:
         row_cols = line.split("\t")
-        assert len(row_cols) == 4, f"data row should have 4 columns, got {len(row_cols)}: {line!r}"
+        assert (
+            len(row_cols) == 4
+        ), f"data row should have 4 columns, got {len(row_cols)}: {line!r}"
     # All 7 launchers present in data rows
     body_rows = data_lines[1:]
     launcher_names = {row.split("\t")[0] for row in body_rows}
-    assert launcher_names == EXPECTED_LAUNCHERS, (
-        f"--status-summary launcher mismatch: got {launcher_names}, expected {EXPECTED_LAUNCHERS}"
-    )
+    assert (
+        launcher_names == EXPECTED_LAUNCHERS
+    ), f"--status-summary launcher mismatch: got {launcher_names}, expected {EXPECTED_LAUNCHERS}"
 
     # --- python aggregator --status-summary --stdout ---
     result = subprocess.run(
         [sys.executable, str(AGGREGATOR_PY), "--status-summary", "--stdout"],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
-    assert result.returncode == 0, f"aggregator --status-summary failed: {result.stderr}"
+    assert (
+        result.returncode == 0
+    ), f"aggregator --status-summary failed: {result.stderr}"
 
     out = result.stdout.strip()
     data_lines = [
-        l for l in out.splitlines()
-        if l.strip() and not l.startswith("dashboard_mode=")
+        l for l in out.splitlines() if l.strip() and not l.startswith("dashboard_mode=")
     ]
     assert len(data_lines) >= 1 + len(EXPECTED_LAUNCHERS), (
         f"aggregator --status-summary: expected ≥ {1 + len(EXPECTED_LAUNCHERS)} data lines, "
@@ -134,6 +148,7 @@ def test_01_status_summary_compact_output():
 # Test 2: activation gate (default = READ-ONLY scaffold)
 # ---------------------------------------------------------------------------
 
+
 def test_02_activation_gate_default_readonly():
     """Verify activation gate: default mode is READ-ONLY_SCAFFOLD, --activate flips to LIVE.
 
@@ -149,48 +164,52 @@ def test_02_activation_gate_default_readonly():
     # --- bash dashboard: default mode ---
     result = subprocess.run(
         ["bash", str(DASHBOARD_SH), "--status-summary"],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     assert result.returncode == 0, f"bash default mode failed: {result.stderr}"
     out = result.stdout
     # First line should advertise dashboard_mode
     first_line = out.splitlines()[0]
-    assert first_line.startswith("dashboard_mode="), (
-        f"expected first line to start with 'dashboard_mode=', got: {first_line!r}"
-    )
-    assert "READ-ONLY_SCAFFOLD" in first_line, (
-        f"default mode must be READ-ONLY_SCAFFOLD, got: {first_line!r}"
-    )
+    assert first_line.startswith(
+        "dashboard_mode="
+    ), f"expected first line to start with 'dashboard_mode=', got: {first_line!r}"
+    assert (
+        "READ-ONLY_SCAFFOLD" in first_line
+    ), f"default mode must be READ-ONLY_SCAFFOLD, got: {first_line!r}"
 
     # --- bash dashboard: --activate mode ---
     result = subprocess.run(
         ["bash", str(DASHBOARD_SH), "--status-summary", "--activate"],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     assert result.returncode == 0, f"bash --activate mode failed: {result.stderr}"
     first_line = result.stdout.splitlines()[0]
-    assert "LIVE" in first_line, (
-        f"--activate should set mode=LIVE, got: {first_line!r}"
-    )
+    assert "LIVE" in first_line, f"--activate should set mode=LIVE, got: {first_line!r}"
     # LIVE mode should also emit an ACTIVATION log line to stderr
     stderr = result.stderr
-    assert "LIVE mode" in stderr or "ACTIVATION" in stderr, (
-        f"--activate should emit ACTIVATION log, got stderr: {stderr!r}"
-    )
+    assert (
+        "LIVE mode" in stderr or "ACTIVATION" in stderr
+    ), f"--activate should emit ACTIVATION log, got stderr: {stderr!r}"
 
     # --- python aggregator: default mode (no --activate) ---
     result = subprocess.run(
         [sys.executable, str(AGGREGATOR_PY), "--stdout"],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     assert result.returncode == 0, f"aggregator default mode failed: {result.stderr}"
     data = json.loads(result.stdout)
-    assert data["dashboard_mode"] == "READ-ONLY_SCAFFOLD", (
-        f"default aggregator mode should be READ-ONLY_SCAFFOLD, got: {data['dashboard_mode']!r}"
-    )
-    assert data["activation_flag_set"] is False, (
-        f"default activation_flag_set should be False, got: {data['activation_flag_set']!r}"
-    )
+    assert (
+        data["dashboard_mode"] == "READ-ONLY_SCAFFOLD"
+    ), f"default aggregator mode should be READ-ONLY_SCAFFOLD, got: {data['dashboard_mode']!r}"
+    assert (
+        data["activation_flag_set"] is False
+    ), f"default activation_flag_set should be False, got: {data['activation_flag_set']!r}"
     # activation_gated invariant
     assert data["activation_gated"] is True
     assert data["user_ok_required"] is True
@@ -198,13 +217,15 @@ def test_02_activation_gate_default_readonly():
     # --- python aggregator: --activate mode ---
     result = subprocess.run(
         [sys.executable, str(AGGREGATOR_PY), "--stdout", "--activate"],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     assert result.returncode == 0, f"aggregator --activate mode failed: {result.stderr}"
     data = json.loads(result.stdout)
-    assert data["dashboard_mode"] == "LIVE", (
-        f"--activate should set dashboard_mode=LIVE, got: {data['dashboard_mode']!r}"
-    )
-    assert data["activation_flag_set"] is True, (
-        f"--activate should set activation_flag_set=True, got: {data['activation_flag_set']!r}"
-    )
+    assert (
+        data["dashboard_mode"] == "LIVE"
+    ), f"--activate should set dashboard_mode=LIVE, got: {data['dashboard_mode']!r}"
+    assert (
+        data["activation_flag_set"] is True
+    ), f"--activate should set activation_flag_set=True, got: {data['activation_flag_set']!r}"

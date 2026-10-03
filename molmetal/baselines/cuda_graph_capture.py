@@ -222,7 +222,8 @@ class CudaGraphDMPNNWrapper(nn.Module):
                 logger.warning(
                     "[CudaGraphDMPNNWrapper] capture failed (%s); "
                     "falling back to eager for this call and all future "
-                    "calls until reset().", e,
+                    "calls until reset().",
+                    e,
                 )
                 self.enabled = False
                 return self.encoder.forward_batched(batch)
@@ -266,16 +267,27 @@ class CudaGraphDMPNNWrapper(nn.Module):
 
         # Allocate static input buffers on the capture device.
         static_atom = torch.zeros(
-            N, self.static_atom_feat_dim, device=device, dtype=batch.atom_feats.dtype,
+            N,
+            self.static_atom_feat_dim,
+            device=device,
+            dtype=batch.atom_feats.dtype,
         )
         static_edge_index = torch.zeros(
-            2, E, device=device, dtype=torch.long,
+            2,
+            E,
+            device=device,
+            dtype=torch.long,
         )
         static_edge_attr = torch.zeros(
-            E, self.static_edge_feat_dim, device=device, dtype=batch.edge_attr.dtype,
+            E,
+            self.static_edge_feat_dim,
+            device=device,
+            dtype=batch.edge_attr.dtype,
         )
         static_batch_idx = torch.zeros(
-            N, device=device, dtype=torch.long,
+            N,
+            device=device,
+            dtype=torch.long,
         )
         static_atom.copy_(batch.atom_feats)
         static_edge_index.copy_(batch.edge_index)
@@ -287,12 +299,16 @@ class CudaGraphDMPNNWrapper(nn.Module):
         # atom/edge tensors + batch_idx); we still need to provide them
         # for completeness in the MolGraphBatch dataclass.
         static_n_atoms_per_mol = torch.zeros(
-            B, device=device, dtype=torch.long,
+            B,
+            device=device,
+            dtype=torch.long,
         )
         if batch.n_atoms_per_mol is not None:
             static_n_atoms_per_mol.copy_(batch.n_atoms_per_mol)
         static_n_edges_per_mol = torch.zeros(
-            B, device=device, dtype=torch.long,
+            B,
+            device=device,
+            dtype=torch.long,
         )
         if batch.n_edges_per_mol is not None:
             static_n_edges_per_mol.copy_(batch.n_edges_per_mol)

@@ -157,7 +157,9 @@ def filter_degenerate(mols: List[RealMolecule]) -> Tuple[List[RealMolecule], int
 
 
 def stratified_sample(
-    mols: List[RealMolecule], n_total: int, seed: int,
+    mols: List[RealMolecule],
+    n_total: int,
+    seed: int,
 ) -> Tuple[List[RealMolecule], List[RealMolecule]]:
     """Stratified sample n_total/2 train + n_total/2 val by metal."""
     rng = random.Random(seed)
@@ -194,7 +196,7 @@ def stratified_sample(
         n_train = quota // 2
         n_val = quota - n_train
         train.extend(pool[:n_train])
-        val.extend(pool[n_train:n_train + n_val])
+        val.extend(pool[n_train : n_train + n_val])
     return train, val
 
 
@@ -202,7 +204,9 @@ def stratified_sample(
 # SMILES -> AtomCloud (real-cohort path)
 # ---------------------------------------------------------------------------
 def smiles_to_atomcloud(
-    smiles: str, jitter: float = 0.20, seed: int = 0,
+    smiles: str,
+    jitter: float = 0.20,
+    seed: int = 0,
 ) -> Optional[AtomCloud]:
     """Embed SMILES in 3D, return AtomCloud (positions, atomic_numbers)."""
     rdmol = Chem.MolFromSmiles(smiles)
@@ -241,7 +245,9 @@ def smiles_to_atomcloud(
     if jitter > 0.0:
         rng = np.random.default_rng(seed)
         positions = positions + rng.normal(
-            0.0, jitter, size=positions.shape,
+            0.0,
+            jitter,
+            size=positions.shape,
         ).astype(np.float32)
     return AtomCloud(
         positions=torch.from_numpy(positions),
@@ -266,7 +272,8 @@ def _build_decoder(
         inner = BondAwareDecoder(bond_head=bond_head)
         return ReworkedDecoder(inner=inner)
     return YuelBondBondDecoder(
-        head=model.head, hidden_dim=args.hidden_dim,
+        head=model.head,
+        hidden_dim=args.hidden_dim,
         n_layers=args.n_layers,
     )
 
@@ -325,8 +332,13 @@ def _eval_decode_ratio(
         # closure_bounded only applies to YuelBond decoder (it
         # monkey-patches the head's bias).  For ReworkedDecoder, this
         # is a no-op.
-        if closure_bounded and closure_bias is not None and isinstance(
-            decoder, YuelBondBondDecoder,
+        if (
+            closure_bounded
+            and closure_bias is not None
+            and isinstance(
+                decoder,
+                YuelBondBondDecoder,
+            )
         ):
             try:
                 pair_head_obj = (
@@ -342,14 +354,19 @@ def _eval_decode_ratio(
                     dtype=last_layer.bias.dtype,
                 )
                 from molmetal.scripts.train_cfm_yuelbond_wasserstein import (
-                    apply_closure_bounded_mask, NUM_BOND_CLASSES,
+                    apply_closure_bounded_mask,
+                    NUM_BOND_CLASSES,
                 )  # type: ignore
+
                 bias_delta = apply_closure_bounded_mask(
                     torch.zeros(
-                        1, NUM_BOND_CLASSES,
-                        device=device, dtype=last_layer.bias.dtype,
+                        1,
+                        NUM_BOND_CLASSES,
+                        device=device,
+                        dtype=last_layer.bias.dtype,
                     ),
-                    closure_bias, prefer_dative=True,
+                    closure_bias,
+                    prefer_dative=True,
                 ).squeeze(0)
                 last_layer.bias.data = orig_bias + bias_delta
                 try:
@@ -401,20 +418,18 @@ def run_one_config(
     np.random.seed(args.seed)
 
     model = CFMJointModel(
-        hidden_dim=args.hidden_dim, n_layers=args.n_layers,
+        hidden_dim=args.hidden_dim,
+        n_layers=args.n_layers,
     ).to(device)
     decoder = _build_decoder(args, model, no_yuelbond)
     print(
-        f"[Wf-269C][{config_name}] decoder type = "
-        f"{type(decoder).__name__}",
+        f"[Wf-269C][{config_name}] decoder type = " f"{type(decoder).__name__}",
         flush=True,
     )
     optimiser = torch.optim.Adam(model.parameters(), lr=args.lr)
 
     bias_verdict = pocket_specific_closure_bias(args.pocket_id)
-    closure_bias = (
-        bias_verdict.bias_dict if bias_verdict.is_known_pocket else None
-    )
+    closure_bias = bias_verdict.bias_dict if bias_verdict.is_known_pocket else None
     if closure_bias is None:
         closure_bias = {
             "CuAAC": 0.30,
@@ -453,19 +468,17 @@ def run_one_config(
             )
             for c in val_clouds
         ]
-        train_loss, bond_ce, w2_val, grad_norm, catherine_rate = (
-            train_one_epoch(
-                model=model,
-                decoder=decoder,
-                optimiser=optimiser,
-                train_clouds=train_d,
-                device=device,
-                batch_size=args.batch_size,
-                wasserstein_weight=wasserstein_weight,
-                closure_bounded=closure_bounded,
-                closure_bias=closure_bias,
-                reference_positions=reference_positions,
-            )
+        train_loss, bond_ce, w2_val, grad_norm, catherine_rate = train_one_epoch(
+            model=model,
+            decoder=decoder,
+            optimiser=optimiser,
+            train_clouds=train_d,
+            device=device,
+            batch_size=args.batch_size,
+            wasserstein_weight=wasserstein_weight,
+            closure_bounded=closure_bounded,
+            closure_bias=closure_bias,
+            reference_positions=reference_positions,
         )
         # Evaluate decode ratio via unified helper (handles both
         # YuelBond + ReworkedDecoder)
@@ -478,18 +491,20 @@ def run_one_config(
         )
         decode_ratio = n_ok / max(n_total, 1)
         elapsed = time.time() - epoch_start
-        per_epoch_metrics.append({
-            "epoch": epoch,
-            "train_loss": train_loss,
-            "bond_ce": bond_ce,
-            "w2": w2_val,
-            "grad_norm": grad_norm,
-            "catherine_pass": catherine_rate,
-            "decode_ratio": decode_ratio,
-            "decode_ok": n_ok,
-            "decode_total": n_total,
-            "wall_time_s": elapsed,
-        })
+        per_epoch_metrics.append(
+            {
+                "epoch": epoch,
+                "train_loss": train_loss,
+                "bond_ce": bond_ce,
+                "w2": w2_val,
+                "grad_norm": grad_norm,
+                "catherine_pass": catherine_rate,
+                "decode_ratio": decode_ratio,
+                "decode_ok": n_ok,
+                "decode_total": n_total,
+                "wall_time_s": elapsed,
+            }
+        )
         final_train_loss = train_loss
         final_decode_ratio = decode_ratio
         final_n_ok = n_ok
@@ -530,10 +545,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--device", type=str, default="cpu")
     p.add_argument("--pocket-id", type=str, default="1h36")
     p.add_argument("--wasserstein-weight", type=float, default=0.1)
-    p.add_argument("--cohort-csv", type=str, default="",
-                   help="Override cohort CSV path.")
-    p.add_argument("--out-dir", type=str,
-                   default="molmetal/reports/wf269c_cfm_real")
+    p.add_argument(
+        "--cohort-csv", type=str, default="", help="Override cohort CSV path."
+    )
+    p.add_argument("--out-dir", type=str, default="molmetal/reports/wf269c_cfm_real")
     return p.parse_args()
 
 
@@ -551,8 +566,7 @@ def main() -> int:
     if args.cohort_csv:
         csv_path = PROJECT_ROOT / args.cohort_csv
         if not csv_path.exists():
-            print(f"[Wf-269C] ERROR: --cohort-csv {csv_path} not found",
-                  flush=True)
+            print(f"[Wf-269C] ERROR: --cohort-csv {csv_path} not found", flush=True)
             return 1
     else:
         for cand in REAL_COHORT_CANDIDATES:
@@ -588,8 +602,7 @@ def main() -> int:
     target_n = min(args.n_cohort, len(filtered))
     train_mols, val_mols = stratified_sample(filtered, target_n, seed=args.seed)
     print(
-        f"[Wf-269C] stratified sample: train={len(train_mols)} "
-        f"val={len(val_mols)}",
+        f"[Wf-269C] stratified sample: train={len(train_mols)} " f"val={len(val_mols)}",
         flush=True,
     )
 
@@ -603,8 +616,11 @@ def main() -> int:
             n_train_embed_fail += 1
             continue
         train_clouds.append(c)
-    print(f"[Wf-269C] train clouds = {len(train_clouds)} "
-          f"(embed-fail={n_train_embed_fail})", flush=True)
+    print(
+        f"[Wf-269C] train clouds = {len(train_clouds)} "
+        f"(embed-fail={n_train_embed_fail})",
+        flush=True,
+    )
 
     print(f"[Wf-269C] embedding val mols (3D) ...", flush=True)
     val_clouds: List[AtomCloud] = []
@@ -615,14 +631,16 @@ def main() -> int:
             n_val_embed_fail += 1
             continue
         val_clouds.append(c)
-    print(f"[Wf-269C] val clouds = {len(val_clouds)} "
-          f"(embed-fail={n_val_embed_fail})", flush=True)
+    print(
+        f"[Wf-269C] val clouds = {len(val_clouds)} " f"(embed-fail={n_val_embed_fail})",
+        flush=True,
+    )
 
     # ---- Step 4: Run 4-config ablation -----------------------------------
     configs = [
-        ("full",               False, False, False),
-        ("no_yuelbond",        True,  False, False),
-        ("no_wasserstein",     False, True,  False),
+        ("full", False, False, False),
+        ("no_yuelbond", True, False, False),
+        ("no_wasserstein", False, True, False),
         ("no_closure_bounded", False, False, True),
     ]
     results: List[ConfigResult] = []
@@ -645,17 +663,20 @@ def main() -> int:
                 flush=True,
             )
             import traceback
+
             traceback.print_exc()
-            results.append(ConfigResult(
-                config_name=cfg_name,
-                epochs=args.epochs,
-                final_train_loss=0.0,
-                final_decode_ratio=0.0,
-                decode_ok=0,
-                decode_total=len(val_clouds),
-                mean_grad_norm=0.0,
-                wall_time_s=0.0,
-            ))
+            results.append(
+                ConfigResult(
+                    config_name=cfg_name,
+                    epochs=args.epochs,
+                    final_train_loss=0.0,
+                    final_decode_ratio=0.0,
+                    decode_ok=0,
+                    decode_total=len(val_clouds),
+                    mean_grad_norm=0.0,
+                    wall_time_s=0.0,
+                )
+            )
 
     # ---- Step 5: Summarize + write report -------------------------------
     full = next((r for r in results if r.config_name == "full"), None)
@@ -669,17 +690,14 @@ def main() -> int:
             if r is not None and abs(full_dr - r.final_decode_ratio) > 0.05:
                 deltas_visible = True
 
-    honest_framing = (
-        "Real-cohort ablation completed. " +
-        (
-            "At least one ablation shows ≥0.05 degradation vs full — "
-            "innovation differentiation signal PRESENT."
-            if deltas_visible
-            else "All 4 configs saturated near decode_ratio=1.0 (or 0.0) "
-                 "with no measurable differentiation — deferring ablation "
-                 "quality measurement to TODO-119 P1.3 (real CrossDocked "
-                 "loader) and Wf-268A synthetic re-validation."
-        )
+    honest_framing = "Real-cohort ablation completed. " + (
+        "At least one ablation shows ≥0.05 degradation vs full — "
+        "innovation differentiation signal PRESENT."
+        if deltas_visible
+        else "All 4 configs saturated near decode_ratio=1.0 (or 0.0) "
+        "with no measurable differentiation — deferring ablation "
+        "quality measurement to TODO-119 P1.3 (real CrossDocked "
+        "loader) and Wf-268A synthetic re-validation."
     )
 
     report = {
@@ -705,7 +723,9 @@ def main() -> int:
         "G5_decode_ratio_full": full.final_decode_ratio if full else 0.0,
         "G6_decode_ratio_no_yuelbond": no_yb.final_decode_ratio if no_yb else 0.0,
         "G7_decode_ratio_no_wasserstein": no_w2.final_decode_ratio if no_w2 else 0.0,
-        "G8_decode_ratio_no_closure_bounded": no_cb.final_decode_ratio if no_cb else 0.0,
+        "G8_decode_ratio_no_closure_bounded": no_cb.final_decode_ratio
+        if no_cb
+        else 0.0,
         "G9_deltas_visible": deltas_visible,
         "G10_report_path": str(out_dir / "wf269c_report.json"),
         "honest_framing_note": honest_framing,
@@ -721,14 +741,19 @@ def main() -> int:
         f.write(f"- Cohort source: `{csv_path}`\n")
         f.write(f"- Raw mols: {len(raw)}\n")
         f.write(f"- After degenerate-filter: {len(filtered)}\n")
-        f.write(f"- Train clouds: {len(train_clouds)} "
-                f"(embed-fail={n_train_embed_fail})\n")
-        f.write(f"- Val clouds: {len(val_clouds)} "
-                f"(embed-fail={n_val_embed_fail})\n")
+        f.write(
+            f"- Train clouds: {len(train_clouds)} "
+            f"(embed-fail={n_train_embed_fail})\n"
+        )
+        f.write(
+            f"- Val clouds: {len(val_clouds)} " f"(embed-fail={n_val_embed_fail})\n"
+        )
         f.write(f"- Epochs per config: {args.epochs}\n")
         f.write(f"- Device: {device}\n\n")
         f.write("## Per-config results\n\n")
-        f.write("| Config | Decode ratio | Ok/Total | Train loss | Grad norm | Wall (s) |\n")
+        f.write(
+            "| Config | Decode ratio | Ok/Total | Train loss | Grad norm | Wall (s) |\n"
+        )
         f.write("|---|---|---|---|---|---|\n")
         for r in results:
             f.write(

@@ -118,9 +118,7 @@ def _reveal(
             if i >= len(pending):
                 break
             out.append(
-                RevealedNode(
-                    cell=pending[i].meta.cell_id, node=pending[i].to_dict()
-                )
+                RevealedNode(cell=pending[i].meta.cell_id, node=pending[i].to_dict())
             )
 
     # ---- opened frontier rule ----------------------------------------

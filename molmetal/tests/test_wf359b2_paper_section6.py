@@ -34,7 +34,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 DOC_PATH = PROJECT_ROOT / "docs" / "PAPER_SECTION_6_LIMITATIONS_DRAFT.md"
 
 
-@pytest.mark.skipif(not DOC_PATH.exists(), reason="docs/PAPER_SECTION_6_LIMITATIONS_DRAFT.md not on disk")
+@pytest.mark.skipif(
+    not DOC_PATH.exists(),
+    reason="docs/PAPER_SECTION_6_LIMITATIONS_DRAFT.md not on disk",
+)
 def test_paper_section6_draft_has_six_sections() -> None:
     """The §6 Limitations draft scaffold has 6 canonical §1..§6 sections.
 
@@ -89,7 +92,11 @@ def test_paper_section6_draft_has_six_sections() -> None:
 
     # Verify the doc DOES NOT live in paper/ (TODO-84 honored).
     paper_dir = PROJECT_ROOT / "paper"
-    paper_section6_candidates = list(paper_dir.glob("sections/06_limitations_v4*.tex")) if paper_dir.exists() else []
+    paper_section6_candidates = (
+        list(paper_dir.glob("sections/06_limitations_v4*.tex"))
+        if paper_dir.exists()
+        else []
+    )
     # We only check that THIS doc doesn't claim to be the paper file
     # (the file lives in docs/, not paper/sections/).
     assert "PAPER_SECTION_6" in DOC_PATH.name, (
@@ -108,6 +115,6 @@ def test_paper_section6_draft_has_six_sections() -> None:
     )
 
     # Verify honest-framing posture (per party-twenty-spirit §3.5).
-    assert "MEASURED" in text and "PROJECTED" in text, (
-        "§6 Limitations draft MUST distinguish MEASURED vs PROJECTED values."
-    )
+    assert (
+        "MEASURED" in text and "PROJECTED" in text
+    ), "§6 Limitations draft MUST distinguish MEASURED vs PROJECTED values."

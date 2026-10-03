@@ -41,6 +41,7 @@ Honest framing (party-twenty-spirit §3.5):
     numpy versions but the comparison shape (which config beats
     the Wf-325A baseline) is the load-bearing invariant.
 """
+
 from __future__ import annotations
 
 import json
@@ -88,11 +89,14 @@ class TestW2DistanceAsFeatureCovariate(unittest.TestCase):
         # Synthetic covariate matrix: 100 rows × 3 cols (MolWt-like,
         # MolLogP-like, TPSA-like projections).
         rng = np.random.default_rng(0)
-        X = np.stack([
-            rng.normal(loc=300.0, scale=80.0, size=100),  # MolWt-like
-            rng.normal(loc=2.5, scale=1.2, size=100),    # MolLogP-like
-            rng.normal(loc=80.0, scale=30.0, size=100),  # TPSA-like
-        ], axis=1)
+        X = np.stack(
+            [
+                rng.normal(loc=300.0, scale=80.0, size=100),  # MolWt-like
+                rng.normal(loc=2.5, scale=1.2, size=100),  # MolLogP-like
+                rng.normal(loc=80.0, scale=30.0, size=100),  # TPSA-like
+            ],
+            axis=1,
+        )
 
         # Compute covariate W₂ with MolWt-like projection (axis=0).
         w2 = compute_covariate_w2_distance(X, reference=X, projection_axis=0)
@@ -105,7 +109,9 @@ class TestW2DistanceAsFeatureCovariate(unittest.TestCase):
 
         # Compute again with MolLogP-like projection (axis=1).
         w2_axis1 = compute_covariate_w2_distance(
-            X, reference=X, projection_axis=1,
+            X,
+            reference=X,
+            projection_axis=1,
         )
         self.assertEqual(w2_axis1.shape, (100,))
         self.assertTrue(np.isfinite(w2_axis1).all())
@@ -135,11 +141,11 @@ class TestChempropV2GraphFeaturesPooled(unittest.TestCase):
 
     def test_chemprop_v2_graph_features_pooled(self) -> None:
         smiles_list = [
-            "c1ccccc1",                # benzene
-            "CCO",                     # ethanol
-            "C",                       # methane (small)
-            "c1ccc2ccccc2c1",          # naphthalene (larger)
-            "O=S(=O)(N)c1ccc(N)cc1",   # sulfanilamide (heteroatoms)
+            "c1ccccc1",  # benzene
+            "CCO",  # ethanol
+            "C",  # methane (small)
+            "c1ccc2ccccc2c1",  # naphthalene (larger)
+            "O=S(=O)(N)c1ccc(N)cc1",  # sulfanilamide (heteroatoms)
         ]
         # Default pools: (mean, max, sum)
         feats = extract_graph_features_pooled(smiles_list)
@@ -160,21 +166,19 @@ class TestChempropV2GraphFeaturesPooled(unittest.TestCase):
         # last atom_dim chunk (indices 2*atom_dim : 3*atom_dim).
         sum_atom_start = 2 * atom_dim
         sum_atom_end = 3 * atom_dim
-        naphthalene_atom_sum = float(
-            feats[3, sum_atom_start:sum_atom_end].sum()
-        )
-        benzene_atom_sum = float(
-            feats[0, sum_atom_start:sum_atom_end].sum()
-        )
+        naphthalene_atom_sum = float(feats[3, sum_atom_start:sum_atom_end].sum())
+        benzene_atom_sum = float(feats[0, sum_atom_start:sum_atom_end].sum())
         self.assertGreater(naphthalene_atom_sum, benzene_atom_sum)
         # Custom pools: only mean → dim = (atom_dim + bond_dim)
         feats_mean_only = extract_graph_features_pooled(
-            smiles_list, pools=("mean",),
+            smiles_list,
+            pools=("mean",),
         )
         self.assertEqual(feats_mean_only.shape[1], atom_dim + bond_dim)
         # RDKit-native featurizers also work standalone
         try:
             from rdkit import Chem
+
             mol = Chem.MolFromSmiles("c1ccccc1")
             af = rdkit_chemprop_atom_features(mol)
             bf = rdkit_chemprop_bond_features(mol)
@@ -212,7 +216,8 @@ class TestCombinedPipelineThreeCohorts(unittest.TestCase):
             ["platinai_4cell", "hilbert", "metalcytotox_combined"],
         )
         self.assertEqual(
-            data["w2_method"], "covariate_RDKit_projection (non-leaky)",
+            data["w2_method"],
+            "covariate_RDKit_projection (non-leaky)",
         )
         self.assertIn("per_cohort", data)
         self.assertEqual(len(data["per_cohort"]), 3)
@@ -261,8 +266,7 @@ class TestCombinedPipelineThreeCohorts(unittest.TestCase):
             cohort = cohort_entry["cohort"]
             baseline_r2 = WF325A_BASELINE_R2[cohort]
             cfg_12d = next(
-                (c for c in cohort_entry["per_config"]
-                 if c["label"] == "12d_baseline"),
+                (c for c in cohort_entry["per_config"] if c["label"] == "12d_baseline"),
                 None,
             )
             self.assertIsNotNone(
@@ -323,9 +327,7 @@ class TestR2LiftVsWf325aBaselineThreeCohorts(unittest.TestCase):
                     lift,
                     r2 - baseline_r2,
                     places=6,
-                    msg=(
-                        f"{cohort} / {cfg['label']}: lift ≠ r2 - baseline"
-                    ),
+                    msg=(f"{cohort} / {cfg['label']}: lift ≠ r2 - baseline"),
                 )
                 # Verdict is documented
                 self.assertIn(cfg["verdict"], valid_verdicts)
@@ -359,8 +361,7 @@ class TestR2LiftVsWf325aBaselineThreeCohorts(unittest.TestCase):
         # ----- Honest framing: Wf-325A anchor is preserved -----
         for cohort, baseline_r2 in WF325A_BASELINE_R2.items():
             cohort_entry = next(
-                c for c in result["per_cohort"]
-                if c["cohort"] == cohort
+                c for c in result["per_cohort"] if c["cohort"] == cohort
             )
             self.assertAlmostEqual(
                 float(cohort_entry["wf325a_baseline_r2"]),
@@ -371,9 +372,7 @@ class TestR2LiftVsWf325aBaselineThreeCohorts(unittest.TestCase):
 
         # ----- Print summary for human inspection -----
         print()
-        print(
-            f"  Wf-331-R5 aggregate_status = {result['aggregate_status']}"
-        )
+        print(f"  Wf-331-R5 aggregate_status = {result['aggregate_status']}")
         for cohort_entry in result["per_cohort"]:
             cohort = cohort_entry["cohort"]
             baseline = cohort_entry["wf325a_baseline_r2"]

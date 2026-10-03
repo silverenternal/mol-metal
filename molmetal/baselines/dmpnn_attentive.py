@@ -109,7 +109,9 @@ def _bond_features(bond: Chem.Bond) -> np.ndarray:
     return np.array(feats[:BOND_FEATURE_DIM], dtype=np.float32)
 
 
-def mol_to_graph(mol: Chem.Mol) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def mol_to_graph(
+    mol: Chem.Mol,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Convert RDKit mol to directed-edge graph representation.
 
     Returns:
@@ -292,7 +294,7 @@ class AttentiveDMPNNModel(nn.Module):
 
         # Attention weights: a_v = softmax(MLP(h_v'))
         att_logits = self.attention_mlp(h_v_prime).squeeze(-1)  # (V,)
-        att_weights = torch.softmax(att_logits, dim=0)          # (V,)
+        att_weights = torch.softmax(att_logits, dim=0)  # (V,)
 
         # Attention-weighted sum
         pooled = (att_weights.unsqueeze(-1) * h_v_prime).sum(dim=0)  # (H,)
@@ -316,14 +318,22 @@ class AttentiveDMPNNModel(nn.Module):
         """
         B = atom_feats.size(0)
         device = atom_feats.device
-        if batch_mask is not None and (batch_mask.shape != atom_feats.shape[:2] or batch_mask.dtype != torch.bool):
+        if batch_mask is not None and (
+            batch_mask.shape != atom_feats.shape[:2] or batch_mask.dtype != torch.bool
+        ):
             raise ValueError("batch_mask must be a (B,V) boolean node mask")
         logits = []
         for b in range(B):
-            node_mask = batch_mask[b] if batch_mask is not None else atom_feats[b].abs().sum(-1).ne(0)
+            node_mask = (
+                batch_mask[b]
+                if batch_mask is not None
+                else atom_feats[b].abs().sum(-1).ne(0)
+            )
             node_indices = node_mask.nonzero(as_tuple=True)[0]
             if node_indices.numel() == 0:
-                raise ValueError("A graph with no real atoms cannot receive a prediction")
+                raise ValueError(
+                    "A graph with no real atoms cannot receive a prediction"
+                )
             src, dst = edge_src[b], edge_dst[b]
             if ((src < 0) != (dst < 0)).any():
                 raise ValueError("Both endpoints of padded edges must be negative")
@@ -331,7 +341,9 @@ class AttentiveDMPNNModel(nn.Module):
             src, dst = src[valid_edges], dst[valid_edges]
             if (src >= atom_feats.size(1)).any() or (dst >= atom_feats.size(1)).any():
                 raise ValueError("Edge endpoint outside the node tensor")
-            mapping = torch.full((atom_feats.size(1),), -1, device=device, dtype=torch.long)
+            mapping = torch.full(
+                (atom_feats.size(1),), -1, device=device, dtype=torch.long
+            )
             mapping[node_indices] = torch.arange(node_indices.numel(), device=device)
             src, dst = mapping[src], mapping[dst]
             if (src < 0).any() or (dst < 0).any():
@@ -430,11 +442,13 @@ def train_epoch(
     np.random.shuffle(indices)
 
     for start in range(0, len(indices), batch_size):
-        batch_idx = indices[start:start + batch_size]
+        batch_idx = indices[start : start + batch_size]
         batch_graphs = [graphs[i] for i in batch_idx]
         batch_labels = labels[batch_idx]
 
-        valid_graphs = [(g, l) for g, l in zip(batch_graphs, batch_labels) if g is not None]
+        valid_graphs = [
+            (g, l) for g, l in zip(batch_graphs, batch_labels) if g is not None
+        ]
         if not valid_graphs:
             continue
 
@@ -477,8 +491,8 @@ def predict(
     all_score = []
 
     for start in range(0, len(graphs), batch_size):
-        batch_graphs = graphs[start:start + batch_size]
-        batch_labels = labels[start:start + batch_size]
+        batch_graphs = graphs[start : start + batch_size]
+        batch_labels = labels[start : start + batch_size]
 
         valid = [(g, l) for g, l in zip(batch_graphs, batch_labels) if g is not None]
         if not valid:
@@ -525,9 +539,7 @@ SPLITTER_FACTORIES: Dict[str, callable] = {
     "ligand_dedup": lambda seed: LigandDeduplicatedSplitter(
         strategy="largest_first", seed=seed
     ),
-    "scaffold": lambda seed: ScaffoldSplitter(
-        strategy="largest_first", seed=seed
-    ),
+    "scaffold": lambda seed: ScaffoldSplitter(strategy="largest_first", seed=seed),
     "temporal": lambda seed: TemporalSplitter(cutoff_year=2024),
     "chemical": lambda seed: ChemicalSplitter(threshold=0.7, seed=seed),
 }
@@ -558,7 +570,9 @@ class AttentiveDMPNNBaseline:
         self.batch_size = batch_size
         self.seed = seed
         self.splitter = splitter
-        self.device = device or torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = device or torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        )
         self.model: Optional[AttentiveDMPNNModel] = None
         self._train_idx: Optional[np.ndarray] = None
         self._val_idx: Optional[np.ndarray] = None
@@ -585,14 +599,17 @@ class AttentiveDMPNNBaseline:
             result = self.splitter(dataset)
             return result.train_idx, result.val_idx, result.test_idx
         from sklearn.model_selection import train_test_split
+
         y = np.asarray(dataset.active).astype(int)
         idx = np.arange(len(y))
         idx_train, idx_tmp, _, _ = train_test_split(
             idx, y, test_size=0.2, stratify=y, random_state=self.seed
         )
         idx_val, idx_test, _, _ = train_test_split(
-            idx_tmp, np.asarray(y[idx_tmp]).astype(int),
-            test_size=0.5, stratify=np.asarray(y[idx_tmp]).astype(int),
+            idx_tmp,
+            np.asarray(y[idx_tmp]).astype(int),
+            test_size=0.5,
+            stratify=np.asarray(y[idx_tmp]).astype(int),
             random_state=self.seed,
         )
         return idx_train, idx_val, idx_test
@@ -610,7 +627,9 @@ class AttentiveDMPNNBaseline:
         np.random.seed(self.seed)
 
         if verbose:
-            print(f"[AttentiveDMPNN] Featurizing {len(smiles)} molecules...", flush=True)
+            print(
+                f"[AttentiveDMPNN] Featurizing {len(smiles)} molecules...", flush=True
+            )
         graphs_all = featurize_smiles_list([str(s) for s in smiles])
         graphs_train = [graphs_all[i] for i in idx_train]
         graphs_val = [graphs_all[i] for i in idx_val]
@@ -633,12 +652,19 @@ class AttentiveDMPNNBaseline:
         for epoch in range(self.epochs):
             t0 = time.time()
             train_loss = train_epoch(
-                self.model, optimizer, graphs_train, y_train,
-                batch_size=self.batch_size, device=self.device,
+                self.model,
+                optimizer,
+                graphs_train,
+                y_train,
+                batch_size=self.batch_size,
+                device=self.device,
             )
             y_val_true, y_val_score = predict(
-                self.model, graphs_val, y_val,
-                batch_size=self.batch_size, device=self.device,
+                self.model,
+                graphs_val,
+                y_val,
+                batch_size=self.batch_size,
+                device=self.device,
             )
             val_metrics = compute_metrics(y_val_true, y_val_score)
             elapsed = time.time() - t0
@@ -655,8 +681,7 @@ class AttentiveDMPNNBaseline:
             if val_metrics["roc_auc"] > best_val_auc:
                 best_val_auc = val_metrics["roc_auc"]
                 best_state = {
-                    k: v.cpu().clone()
-                    for k, v in self.model.state_dict().items()
+                    k: v.cpu().clone() for k, v in self.model.state_dict().items()
                 }
 
         if best_state is not None:
@@ -673,8 +698,11 @@ class AttentiveDMPNNBaseline:
         graphs_test = [graphs_all[i] for i in idx_test]
         y_dummy = np.zeros(len(idx_test))
         _, scores = predict(
-            self.model, graphs_test, y_dummy,
-            batch_size=self.batch_size, device=self.device,
+            self.model,
+            graphs_test,
+            y_dummy,
+            batch_size=self.batch_size,
+            device=self.device,
         )
         return scores
 

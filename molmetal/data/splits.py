@@ -68,7 +68,9 @@ class SplitResult:
             ("test_idx", self.test_idx),
         ):
             if not isinstance(arr, np.ndarray):
-                raise TypeError(f"{name} must be a numpy.ndarray, got {type(arr).__name__}")
+                raise TypeError(
+                    f"{name} must be a numpy.ndarray, got {type(arr).__name__}"
+                )
             if arr.dtype.kind not in ("i", "u"):
                 # Cast silently to int64 for downstream torch tensors
                 object.__setattr__(self, name, arr.astype(np.int64))
@@ -170,7 +172,11 @@ class TemporalSplitter:
         n_pre = len(pre_idx_sorted)
         n_val = int(round(self.val_fraction * n_pre))
         # val is the LAST n_val of pre (most-recent)
-        val_idx = pre_idx_sorted[n_pre - n_val :] if n_val > 0 else np.array([], dtype=np.int64)
+        val_idx = (
+            pre_idx_sorted[n_pre - n_val :]
+            if n_val > 0
+            else np.array([], dtype=np.int64)
+        )
         # train is everything else pre
         remaining = pre_idx_sorted[: n_pre - n_val]
         # further split remaining by train_fraction_of_pre to honour 80/10/10 ratios
@@ -296,11 +302,19 @@ class ChemicalSplitter:
             if i in test_set or fps[i] is None:
                 continue
             if not selected_val_fps:
-                if not selected_test_fps or _tanimoto_to_set(fps[i], selected_test_fps).max() < self.threshold:
+                if (
+                    not selected_test_fps
+                    or _tanimoto_to_set(fps[i], selected_test_fps).max()
+                    < self.threshold
+                ):
                     selected_val_fps.append(fps[i])
                     val_idx_list.append(i)
                 continue
-            sims_t = _tanimoto_to_set(fps[i], selected_test_fps) if selected_test_fps else np.array([0.0])
+            sims_t = (
+                _tanimoto_to_set(fps[i], selected_test_fps)
+                if selected_test_fps
+                else np.array([0.0])
+            )
             sims_v = _tanimoto_to_set(fps[i], selected_val_fps)
             if sims_t.max() < self.threshold and sims_v.max() < self.threshold:
                 selected_val_fps.append(fps[i])
@@ -310,7 +324,9 @@ class ChemicalSplitter:
         val_set = set(int(x) for x in val_idx_list)
 
         # Remaining → train (or random bucket for un-fingerprintable rows)
-        unassigned = [int(i) for i in order if int(i) not in test_set and int(i) not in val_set]
+        unassigned = [
+            int(i) for i in order if int(i) not in test_set and int(i) not in val_set
+        ]
         # Split: keep as train if fingerprint exists, otherwise random bucket
         train_idx_list = [i for i in unassigned if fps[i] is not None]
         random_bucket = [i for i in unassigned if fps[i] is None]
@@ -494,7 +510,10 @@ class LigandDeduplicatedSplitter:
             # Pick split with largest remaining capacity (tie-break: train first)
             split = max(
                 ("train", "val", "test"),
-                key=lambda k: (capacities[k], 0 if k == "train" else 1 if k == "val" else 2),
+                key=lambda k: (
+                    capacities[k],
+                    0 if k == "train" else 1 if k == "val" else 2,
+                ),
             )
             capacities[split] -= 1
             for row in g:
@@ -601,7 +620,9 @@ class ScaffoldSplitter:
             mol = Chem.MolFromSmiles(canon_smiles)
             if mol is None:
                 return ""
-            scaffold = MurckoScaffold.GetScaffoldForMol(mol, includeChirality=self.include_chirality)
+            scaffold = MurckoScaffold.GetScaffoldForMol(
+                mol, includeChirality=self.include_chirality
+            )
             if scaffold is None:
                 return ""
             return Chem.MolToSmiles(scaffold)

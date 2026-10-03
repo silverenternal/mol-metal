@@ -154,10 +154,13 @@ def _molgraph_to_arrays(mg: MolGraph):
     return V, E, edge_index, rev
 
 
-def featurize_and_cache(canon_list: List[str], cache_dir: Path,
-                        featurizer: SimpleMoleculeMolGraphFeaturizer,
-                        n_workers: int = 4,
-                        chunk_size: int = 30000) -> Tuple[Dict[str, dict], int, int]:
+def featurize_and_cache(
+    canon_list: List[str],
+    cache_dir: Path,
+    featurizer: SimpleMoleculeMolGraphFeaturizer,
+    n_workers: int = 4,
+    chunk_size: int = 30000,
+) -> Tuple[Dict[str, dict], int, int]:
     """Persistent MolGraphCache + npz on disk.
 
     Returns ``(cached_paths, n_skip, n_new)`` where ``cached_paths`` is
@@ -202,13 +205,17 @@ def featurize_and_cache(canon_list: List[str], cache_dir: Path,
     n_new_total = len(todo)
     if n_corrupted:
         _log(f"  recovered {n_corrupted} corrupted cache entries")
-    _log(f"  featurize: cache_hits={n_skip}  todo={n_new_total}  "
-         f"chunk_size={chunk_size}")
+    _log(
+        f"  featurize: cache_hits={n_skip}  todo={n_new_total}  "
+        f"chunk_size={chunk_size}"
+    )
     # Process todo in chunks.
     for chunk_start in range(0, n_new_total, chunk_size):
-        chunk = todo[chunk_start:chunk_start + chunk_size]
-        _log(f"  featurize chunk [{chunk_start}..{chunk_start + len(chunk)})  "
-             f"({len(chunk)} SMILES)")
+        chunk = todo[chunk_start : chunk_start + chunk_size]
+        _log(
+            f"  featurize chunk [{chunk_start}..{chunk_start + len(chunk)})  "
+            f"({len(chunk)} SMILES)"
+        )
         mols = [Chem.MolFromSmiles(s) for s in chunk]
         valid = [(s, m) for s, m in zip(chunk, mols) if m is not None]
         if not valid:
@@ -232,9 +239,13 @@ def featurize_and_cache(canon_list: List[str], cache_dir: Path,
     return cached_paths, n_skip, n_new
 
 
-def build_batch_molgraph(canon_list: List[str], featurized: Dict[str, dict],
-                         atom_fdim: int, bond_fdim: int,
-                         device: torch.device) -> BatchMolGraph:
+def build_batch_molgraph(
+    canon_list: List[str],
+    featurized: Dict[str, dict],
+    atom_fdim: int,
+    bond_fdim: int,
+    device: torch.device,
+) -> BatchMolGraph:
     """Build a chemprop :class:`BatchMolGraph` from canonical SMILES.
 
     ``featurized`` maps canon_smiles -> ``{"V": ndarray, "E": ndarray,
@@ -266,8 +277,9 @@ def build_batch_molgraph(canon_list: List[str], featurized: Dict[str, dict],
     return bmg
 
 
-def load_cached_features_in_memory(cached_paths: Dict[str, dict],
-                                   target_canon: set) -> Dict[str, dict]:
+def load_cached_features_in_memory(
+    cached_paths: Dict[str, dict], target_canon: set
+) -> Dict[str, dict]:
     """Load the npz arrays for every SMILES in ``target_canon`` into memory.
 
     Avoids the per-batch np.load() disk I/O cost during training/eval.
@@ -310,9 +322,10 @@ class SplitData:
         )
 
 
-def load_all_splits(target_root: Optional[Path] = None,
-                    n_per_split: Optional[Dict[str, int]] = None,
-                    ) -> Dict[str, SplitData]:
+def load_all_splits(
+    target_root: Optional[Path] = None,
+    n_per_split: Optional[Dict[str, int]] = None,
+) -> Dict[str, SplitData]:
     """Load all 5 DrugOOD splits via load_drugood (raw JSON fallback).
 
     If ``n_per_split`` is supplied, take a head of that many rows after
@@ -322,11 +335,18 @@ def load_all_splits(target_root: Optional[Path] = None,
     for sp in SPLITS:
         t0 = time.time()
         df = load_drugood(
-            subset=SUBSET, split=sp, prefer_library=False, target_root=target_root,
+            subset=SUBSET,
+            split=sp,
+            prefer_library=False,
+            target_root=target_root,
         )
         # Canonicalize.
         canon = [_canon_smiles(s) for s in df["smiles"].astype(str).tolist()]
-        valid = [(c, y) for c, y in zip(canon, df["active"].astype(int).tolist()) if c is not None]
+        valid = [
+            (c, y)
+            for c, y in zip(canon, df["active"].astype(int).tolist())
+            if c is not None
+        ]
         if n_per_split is not None and sp in n_per_split:
             valid = valid[: n_per_split[sp]]
         canon_list = [c for c, _ in valid]
@@ -399,16 +419,19 @@ def _eval_split_auc(
     metal_ids = torch.zeros(len(canon_eval), dtype=torch.long, device=device)
     with torch.no_grad():
         for start in range(0, len(canon_eval), batch_size):
-            chunk_canon = canon_eval[start:start + batch_size]
-            bmg = build_batch_molgraph(chunk_canon, featurized, atom_fdim,
-                                       bond_fdim, device)
+            chunk_canon = canon_eval[start : start + batch_size]
+            bmg = build_batch_molgraph(
+                chunk_canon, featurized, atom_fdim, bond_fdim, device
+            )
             H_v = model.encoder.message_passing(bmg)
             H = model.encoder.agg(H_v, bmg.batch)
-            e = model.metal_embed(metal_ids[start:start + len(chunk_canon)])
+            e = model.metal_embed(metal_ids[start : start + len(chunk_canon)])
             z = torch.cat([H, e], dim=-1)
             # Use the "Ru" head (index 0) — single binary classifier.
             logit_1 = model.metal_heads["Ru"].train_step(z).squeeze(-1)
-            scores[start:start + len(chunk_canon)] = torch.sigmoid(logit_1).cpu().numpy()
+            scores[start : start + len(chunk_canon)] = (
+                torch.sigmoid(logit_1).cpu().numpy()
+            )
     return float(roc_auc_score(y_eval, scores)), int(len(y_eval))
 
 
@@ -475,11 +498,12 @@ def run_one_seed(
         # than FP32. CPU paths are no-ops (autocast requires CUDA).
         use_amp = args.bf16 and device.type == "cuda"
         for start in range(0, n_train, args.batch):
-            chunk_idx = perm[start:start + args.batch]
+            chunk_idx = perm[start : start + args.batch]
             chunk_canon = [canon_train[i] for i in chunk_idx]
             chunk_y = torch.from_numpy(y_train[chunk_idx]).to(device)
-            bmg = build_batch_molgraph(chunk_canon, featurized, atom_fdim,
-                                       bond_fdim, device)
+            bmg = build_batch_molgraph(
+                chunk_canon, featurized, atom_fdim, bond_fdim, device
+            )
             metal_ids = torch.zeros(len(chunk_canon), dtype=torch.long, device=device)
             if use_amp:
                 with torch.amp.autocast("cuda", dtype=torch.bfloat16):
@@ -523,7 +547,9 @@ def run_one_seed(
         sd = splits[sp]
         # Subsample eval splits to bound eval wall-time (consistent with
         # wf170_chemprop_drugood RECIPE_EVAL_MAX_SAMPLES=4000).
-        max_eval = args.eval_max_samples if sp != "train" else args.eval_train_max_samples
+        max_eval = (
+            args.eval_max_samples if sp != "train" else args.eval_train_max_samples
+        )
         auc, n = _eval_split_auc(
             model=model,
             canon_list=sd.canon,
@@ -577,18 +603,37 @@ def main(argv: Optional[List[str]] = None) -> int:
     p.add_argument("--device", default="cuda")
     p.add_argument("--out", default=str(DEFAULT_OUT))
     p.add_argument("--cache-dir", default=str(DEFAULT_CACHE_DIR))
-    p.add_argument("--reset-cache", action="store_true",
-                   help="Delete the cache dir before featurizing.")
+    p.add_argument(
+        "--reset-cache",
+        action="store_true",
+        help="Delete the cache dir before featurizing.",
+    )
     p.add_argument("--time-budget-s", type=float, default=DEFAULT_WALL_BUDGET_S)
-    p.add_argument("--eval-max-samples", type=int, default=4000,
-                   help="Subsample non-train splits to this many rows for eval.")
-    p.add_argument("--eval-train-max-samples", type=int, default=8000,
-                   help="Subsample the train split to this many rows for eval AUC.")
-    p.add_argument("--n-train", type=int, default=None,
-                   help="Optional cap on train rows (for smoke runs).")
-    p.add_argument("--n-per-split", type=str, default=None,
-                   help="Comma-separated split=cap dict, e.g. 'train=2000,iid_val=500'. "
-                        "Overrides --n-train.")
+    p.add_argument(
+        "--eval-max-samples",
+        type=int,
+        default=4000,
+        help="Subsample non-train splits to this many rows for eval.",
+    )
+    p.add_argument(
+        "--eval-train-max-samples",
+        type=int,
+        default=8000,
+        help="Subsample the train split to this many rows for eval AUC.",
+    )
+    p.add_argument(
+        "--n-train",
+        type=int,
+        default=None,
+        help="Optional cap on train rows (for smoke runs).",
+    )
+    p.add_argument(
+        "--n-per-split",
+        type=str,
+        default=None,
+        help="Comma-separated split=cap dict, e.g. 'train=2000,iid_val=500'. "
+        "Overrides --n-train.",
+    )
     # P1 FIX (Wf-187): add BF16 autocast + DataLoader-style flags so the
     # chemprop v2 retrain scripts can opt into Blackwell sm_120 BF16 matmul
     # (~3x FP32 throughput) and overlap CPU featurize with GPU forward.
@@ -609,7 +654,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         type=int,
         default=4,
         help="DataLoader num_workers (default: 4). Currently logged; the manual "
-             "range-based loop at line ~460 is the next-migration target.",
+        "range-based loop at line ~460 is the next-migration target.",
     )
     p.add_argument(
         "--pin-memory",
@@ -657,12 +702,14 @@ def main(argv: Optional[List[str]] = None) -> int:
             f"for fail-fast behaviour.",
         )
         device = torch.device("cpu")
-    _log(f"device={device}  bf16={args.bf16}  num_workers={args.num_workers}  "
-         f"pin_memory={args.pin_memory}  seeds={args.seeds}  epochs={args.epochs}  "
-         f"hidden={args.hidden} depth={args.depth} head_hidden={args.head_hidden}  "
-         f"batch={args.batch} lr={args.lr}  "
-         f"time_budget_s={args.time_budget_s}  "
-         f"n_per_split={n_per_split}")
+    _log(
+        f"device={device}  bf16={args.bf16}  num_workers={args.num_workers}  "
+        f"pin_memory={args.pin_memory}  seeds={args.seeds}  epochs={args.epochs}  "
+        f"hidden={args.hidden} depth={args.depth} head_hidden={args.head_hidden}  "
+        f"batch={args.batch} lr={args.lr}  "
+        f"time_budget_s={args.time_budget_s}  "
+        f"n_per_split={n_per_split}"
+    )
 
     # ------------------------------------------------------------------
     # Load all 5 splits.
@@ -675,16 +722,23 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Featurize all unique canonical SMILES across all splits (one-time).
     # ------------------------------------------------------------------
     canon_unique_all = sorted({c for sp in SPLITS for c in splits[sp].canon})
-    _log(f"featurizing {len(canon_unique_all)} unique canonical SMILES "
-         f"(cache_dir={cache_dir})...")
+    _log(
+        f"featurizing {len(canon_unique_all)} unique canonical SMILES "
+        f"(cache_dir={cache_dir})..."
+    )
     featurizer = SimpleMoleculeMolGraphFeaturizer()
     t_fe = time.time()
     cached_paths, n_skip, n_new = featurize_and_cache(
-        canon_unique_all, cache_dir, featurizer, n_workers=4,
+        canon_unique_all,
+        cache_dir,
+        featurizer,
+        n_workers=4,
     )
     fe_wall = time.time() - t_fe
-    _log(f"  featurized n_skip={n_skip}  n_new={n_new}  in {fe_wall:.2f}s  "
-         f"({100*n_skip/max(len(canon_unique_all),1):.1f}% hit)")
+    _log(
+        f"  featurized n_skip={n_skip}  n_new={n_new}  in {fe_wall:.2f}s  "
+        f"({100*n_skip/max(len(canon_unique_all),1):.1f}% hit)"
+    )
 
     # Probe fdim from a sample npz.
     sample_path = next(iter(cached_paths.values()))
@@ -698,8 +752,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     _log(f"loading {len(target_canon)} npz arrays into memory...")
     t_lm = time.time()
     featurized = load_cached_features_in_memory(cached_paths, target_canon)
-    _log(f"  loaded in {time.time() - t_lm:.2f}s "
-         f"({len(featurized)} / {len(target_canon)} entries)")
+    _log(
+        f"  loaded in {time.time() - t_lm:.2f}s "
+        f"({len(featurized)} / {len(target_canon)} entries)"
+    )
 
     # ------------------------------------------------------------------
     # Per-seed training.
@@ -722,36 +778,51 @@ def main(argv: Optional[List[str]] = None) -> int:
             )
         except Exception as exc:
             import traceback
+
             traceback.print_exc()
             _log(f"[seed={seed}] FAILED: {exc}")
             r = SeedResult(
-                seed=seed, epochs_done=0, elapsed_s=0.0,
-                train_auc=float("nan"), iid_val_auc=float("nan"),
-                iid_test_auc=float("nan"), ood_val_auc=float("nan"),
-                ood_test_auc=float("nan"), n_train=0, n_eval={},
-                status="error", error=str(exc),
+                seed=seed,
+                epochs_done=0,
+                elapsed_s=0.0,
+                train_auc=float("nan"),
+                iid_val_auc=float("nan"),
+                iid_test_auc=float("nan"),
+                ood_val_auc=float("nan"),
+                ood_test_auc=float("nan"),
+                n_train=0,
+                n_eval={},
+                status="error",
+                error=str(exc),
             )
         results.append(r)
         # Persist per-seed JSON.
         per_seed_path = out_dir / "per_seed" / f"seed{seed}.json"
-        per_seed_path.write_text(json.dumps({
-            "seed": r.seed,
-            "epochs_done": r.epochs_done,
-            "elapsed_s": r.elapsed_s,
-            "train_auc": r.train_auc,
-            "iid_val_auc": r.iid_val_auc,
-            "iid_test_auc": r.iid_test_auc,
-            "ood_val_auc": r.ood_val_auc,
-            "ood_test_auc": r.ood_test_auc,
-            "n_train": r.n_train,
-            "n_eval": r.n_eval,
-            "status": r.status,
-            "error": r.error,
-        }, indent=2))
-        _log(f"[seed={seed}] FINAL  train={r.train_auc:.4f}  "
-             f"iid_val={r.iid_val_auc:.4f}  iid_test={r.iid_test_auc:.4f}  "
-             f"ood_val={r.ood_val_auc:.4f}  ood_test={r.ood_test_auc:.4f}  "
-             f"({r.elapsed_s:.1f}s status={r.status})")
+        per_seed_path.write_text(
+            json.dumps(
+                {
+                    "seed": r.seed,
+                    "epochs_done": r.epochs_done,
+                    "elapsed_s": r.elapsed_s,
+                    "train_auc": r.train_auc,
+                    "iid_val_auc": r.iid_val_auc,
+                    "iid_test_auc": r.iid_test_auc,
+                    "ood_val_auc": r.ood_val_auc,
+                    "ood_test_auc": r.ood_test_auc,
+                    "n_train": r.n_train,
+                    "n_eval": r.n_eval,
+                    "status": r.status,
+                    "error": r.error,
+                },
+                indent=2,
+            )
+        )
+        _log(
+            f"[seed={seed}] FINAL  train={r.train_auc:.4f}  "
+            f"iid_val={r.iid_val_auc:.4f}  iid_test={r.iid_test_auc:.4f}  "
+            f"ood_val={r.ood_val_auc:.4f}  ood_test={r.ood_test_auc:.4f}  "
+            f"({r.elapsed_s:.1f}s status={r.status})"
+        )
 
     total_wall_min = (time.time() - t_wall_start) / 60.0
 
@@ -817,13 +888,16 @@ def main(argv: Optional[List[str]] = None) -> int:
         "date": time.strftime("%Y-%m-%d"),
         "data_source": f"drugood_{SUBSET}",
         "subset": SUBSET,
-        "splits": {sp: {
-            "n_total": int(splits[sp].n_total),
-            "n_valid": int(splits[sp].n_valid),
-            "n_pos": int(splits[sp].n_pos),
-            "pos_rate": float(splits[sp].n_pos / max(splits[sp].n_valid, 1)),
-            "load_wall_s": float(splits[sp].load_wall_s),
-        } for sp in SPLITS},
+        "splits": {
+            sp: {
+                "n_total": int(splits[sp].n_total),
+                "n_valid": int(splits[sp].n_valid),
+                "n_pos": int(splits[sp].n_pos),
+                "pos_rate": float(splits[sp].n_pos / max(splits[sp].n_valid, 1)),
+                "load_wall_s": float(splits[sp].load_wall_s),
+            }
+            for sp in SPLITS
+        },
         "config": {
             "seeds": list(args.seeds),
             "epochs": int(args.epochs),
@@ -858,15 +932,18 @@ def main(argv: Optional[List[str]] = None) -> int:
         "honest_framing_note": honest_framing_note,
         "results": [
             {
-                "seed": r.seed, "epochs_done": r.epochs_done,
+                "seed": r.seed,
+                "epochs_done": r.epochs_done,
                 "elapsed_s": r.elapsed_s,
                 "train_auc": r.train_auc,
                 "iid_val_auc": r.iid_val_auc,
                 "iid_test_auc": r.iid_test_auc,
                 "ood_val_auc": r.ood_val_auc,
                 "ood_test_auc": r.ood_test_auc,
-                "n_train": r.n_train, "n_eval": r.n_eval,
-                "status": r.status, "error": r.error,
+                "n_train": r.n_train,
+                "n_eval": r.n_eval,
+                "status": r.status,
+                "error": r.error,
             }
             for r in results
         ],

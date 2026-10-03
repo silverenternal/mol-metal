@@ -94,7 +94,9 @@ def test_zero_scaffold_leak(v2_rows):
     """G3 (CRITICAL): every scaffold_id appears in exactly one split."""
     scaf_to_splits = defaultdict(set)
     for r in v2_rows:
-        assert r["scaffold_id"], "v2 CSV has empty scaffold_id (should have been dropped)"
+        assert r[
+            "scaffold_id"
+        ], "v2 CSV has empty scaffold_id (should have been dropped)"
         scaf_to_splits[r["scaffold_id"]].add(r["split"])
     leaks = {s: sorted(ss) for s, ss in scaf_to_splits.items() if len(ss) > 1}
     assert not leaks, (

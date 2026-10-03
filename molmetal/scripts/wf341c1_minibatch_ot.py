@@ -89,6 +89,7 @@ _VALID_MODES: Tuple[str, ...] = ("off", "exact", "sinkhorn", "hungarian")
 # minibatch_ot_couple — Tong 2024 mini-batch OT coupling wrapper
 # ---------------------------------------------------------------------------
 
+
 def minibatch_ot_couple(
     x_0: torch.Tensor,
     x_1: torch.Tensor,
@@ -145,9 +146,7 @@ def minibatch_ot_couple(
     with ``v_t = perm_x_1 - perm_x_0`` without further indexing.
     """
     if mode not in _VALID_MODES:
-        raise ValueError(
-            f"mode must be one of {_VALID_MODES}, got {mode!r}"
-        )
+        raise ValueError(f"mode must be one of {_VALID_MODES}, got {mode!r}")
     if x_0.shape != x_1.shape:
         raise ValueError(
             f"x_0 and x_1 must share shape; got {tuple(x_0.shape)} vs "
@@ -194,7 +193,8 @@ def minibatch_ot_couple(
                 f"degrading to sinkhorn"
             )
             return minibatch_ot_couple(
-                x_0, x_1,
+                x_0,
+                x_1,
                 mode="sinkhorn",
                 exact_max_batch=exact_max_batch,
                 sinkhorn_reg=sinkhorn_reg,
@@ -216,7 +216,8 @@ def minibatch_ot_couple(
             diag["fallback_reason"] = "POT library not installed"
             return _off_fallback(x_0, x_1, diag, return_diagnostics)
         perm_x_0, perm_x_1, cost, marginal_err = _sinkhorn_ot_solve(
-            x_0, x_1,
+            x_0,
+            x_1,
             reg=sinkhorn_reg,
             max_iter=sinkhorn_max_iter,
             seed=seed,
@@ -244,7 +245,8 @@ def minibatch_ot_couple(
                 f"degrading to sinkhorn"
             )
             return minibatch_ot_couple(
-                x_0, x_1,
+                x_0,
+                x_1,
                 mode="sinkhorn",
                 exact_max_batch=exact_max_batch,
                 sinkhorn_reg=sinkhorn_reg,
@@ -267,6 +269,7 @@ def minibatch_ot_couple(
 # Per-backend private solvers
 # ---------------------------------------------------------------------------
 
+
 def _exact_ot_solve(
     x_0: torch.Tensor,
     x_1: torch.Tensor,
@@ -282,6 +285,7 @@ def _exact_ot_solve(
     convention (``x_1[idx]`` is paired with ``x_0``).
     """
     import ot as _pot
+
     b = x_0.shape[0]
     x0f = x_0.detach().to(dtype=torch.float32).reshape(b, -1)
     x1f = x_1.detach().to(dtype=torch.float32).reshape(b, -1)
@@ -310,6 +314,7 @@ def _sinkhorn_ot_solve(
 ) -> Tuple[torch.Tensor, torch.Tensor, float, float]:
     """POT log-domain Sinkhorn solver; greedy hard-permutation round."""
     import ot as _pot
+
     b = x_0.shape[0]
     x0f = x_0.detach().to(dtype=torch.float32).reshape(b, -1)
     x1f = x_1.detach().to(dtype=torch.float32).reshape(b, -1)
@@ -317,9 +322,13 @@ def _sinkhorn_ot_solve(
     a = torch.full((b,), 1.0 / b, dtype=cost.dtype, device=cost.device)
     bvec = torch.full_like(a, 1.0 / b)
     plan = _pot.sinkhorn(
-        a, bvec, cost,
-        reg=float(reg), numItermax=int(max_iter),
-        method="sinkhorn_log", warn=False,
+        a,
+        bvec,
+        cost,
+        reg=float(reg),
+        numItermax=int(max_iter),
+        method="sinkhorn_log",
+        warn=False,
     )
     # Hard-permutation round (greedy with plan-mass priority).
     plan_np = plan.detach().cpu().numpy()
@@ -327,10 +336,12 @@ def _sinkhorn_ot_solve(
     perm_x_0 = x_0.clone()
     perm_x_1 = x_1[idx].clone()
     cost_val = float((plan * cost).sum().item())
-    marginal_err = float(max(
-        (plan.sum(0) - bvec).abs().max().item(),
-        (plan.sum(1) - a).abs().max().item(),
-    ))
+    marginal_err = float(
+        max(
+            (plan.sum(0) - bvec).abs().max().item(),
+            (plan.sum(1) - a).abs().max().item(),
+        )
+    )
     return perm_x_0, perm_x_1, cost_val, marginal_err
 
 
@@ -344,6 +355,7 @@ def _hungarian_ot_solve(
     is the optimal partner of ``x_0[i]`` under the assignment.
     """
     from scipy.optimize import linear_sum_assignment
+
     b = x_0.shape[0]
     x0f = x_0.detach().to(dtype=torch.float32).reshape(b, -1)
     x1f = x_1.detach().to(dtype=torch.float32).reshape(b, -1)
@@ -378,6 +390,7 @@ def _greedy_round(plan: Any, *, seed: Optional[int] = None) -> torch.Tensor:
     has identical coupling behaviour to the legacy path.
     """
     import numpy as _np
+
     n = plan.shape[0]
     primary = plan.argmax(axis=1)
     used = set()
@@ -423,6 +436,7 @@ def _greedy_round(plan: Any, *, seed: Optional[int] = None) -> torch.Tensor:
 # Smoke + bench runners
 # ---------------------------------------------------------------------------
 
+
 def run_minibatch_ot_smoke(
     *,
     mode: MinibatchOTMode = "exact",
@@ -439,7 +453,8 @@ def run_minibatch_ot_smoke(
     x_0 = torch.randn(batch_size, dim)
     x_1 = torch.randn(batch_size, dim) + 1.0  # shifted data distribution
     perm_x_0, perm_x_1, diag = minibatch_ot_couple(
-        x_0, x_1,
+        x_0,
+        x_1,
         mode=mode,
         return_diagnostics=True,
         seed=seed,
@@ -485,7 +500,10 @@ def run_minibatch_ot_bench(
             x_1 = torch.randn(batch_size, dim) + 1.0
             start = time.perf_counter()
             minibatch_ot_couple(
-                x_0, x_1, mode=mode, seed=seed + it,
+                x_0,
+                x_1,
+                mode=mode,
+                seed=seed + it,
             )
             per_iter.append(time.perf_counter() - start)
         m = sum(per_iter) / len(per_iter)
@@ -493,7 +511,7 @@ def run_minibatch_ot_bench(
         var = sum((t - m) ** 2 for t in per_iter) / len(per_iter)
         timings[mode] = {
             "mean_s": float(m),
-            "std_s": float(var ** 0.5),
+            "std_s": float(var**0.5),
             "n_iters": n_iters,
         }
     off_mean = timings["off"]["mean_s"]
@@ -516,6 +534,7 @@ def run_minibatch_ot_bench(
 # CLI surface
 # ---------------------------------------------------------------------------
 
+
 def _build_arg_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description=(
@@ -535,49 +554,68 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--minibatch-batch", type=int, default=32,
+        "--minibatch-batch",
+        type=int,
+        default=32,
         help="Synthetic batch size for the smoke runner (default 32).",
     )
     p.add_argument(
-        "--minibatch-dim", type=int, default=8,
+        "--minibatch-dim",
+        type=int,
+        default=8,
         help="Synthetic feature dim for the smoke runner (default 8).",
     )
     p.add_argument(
-        "--exact-max-batch", type=int, default=128,
+        "--exact-max-batch",
+        type=int,
+        default=128,
         help=(
             "Maximum batch size for the exact / hungarian solver; "
             "above this the wrapper degrades to sinkhorn."
         ),
     )
     p.add_argument(
-        "--sinkhorn-reg", type=float, default=0.05,
+        "--sinkhorn-reg",
+        type=float,
+        default=0.05,
         help="Sinkhorn entropic regularisation strength (default 0.05).",
     )
     p.add_argument(
-        "--sinkhorn-max-iter", type=int, default=200,
+        "--sinkhorn-max-iter",
+        type=int,
+        default=200,
         help="Sinkhorn iteration cap (default 200).",
     )
     p.add_argument(
-        "--seed", type=int, default=0,
+        "--seed",
+        type=int,
+        default=0,
         help="Seed for the synthetic smoke batches (default 0).",
     )
     p.add_argument(
-        "--output-json", type=str, default=None,
+        "--output-json",
+        type=str,
+        default=None,
         help=(
             "Optional JSON path to write the smoke result. Default "
             "writes to molmetal/reports/wf341c1_minibatch_ot/smoke.json."
         ),
     )
     p.add_argument(
-        "--bench", action="store_true",
+        "--bench",
+        action="store_true",
         help="Run the CPU wall-time bench instead of the smoke runner.",
     )
     p.add_argument(
-        "--bench-batch", type=int, default=64,
+        "--bench-batch",
+        type=int,
+        default=64,
         help="Batch size for the CPU bench (default 64).",
     )
     p.add_argument(
-        "--bench-iters", type=int, default=20,
+        "--bench-iters",
+        type=int,
+        default=20,
         help="Iterations per backend in the CPU bench (default 20).",
     )
     return p
@@ -603,7 +641,8 @@ def main(argv: Optional[list] = None) -> int:
 
     # Write to disk.
     out_path = (
-        Path(args.output_json) if args.output_json
+        Path(args.output_json)
+        if args.output_json
         else REPORTS_DIR / ("bench.json" if args.bench else "smoke.json")
     )
     out_path.parent.mkdir(parents=True, exist_ok=True)

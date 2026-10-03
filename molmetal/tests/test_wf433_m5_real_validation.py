@@ -52,12 +52,12 @@ def test_m3_vina_measured():
         f"m3 Vina cisplatin mean expected in [-3.5, -2.5] kcal/mol band; "
         f"got {probe.metric_json_top_value}"
     )
-    assert probe.n_measurements >= 5, (
-        f"m3 Vina expected >=5 measurement records; got {probe.n_measurements}"
-    )
-    assert probe.last_measurement_status.startswith("MEASURED"), (
-        f"m3 Vina last status expected MEASURED_REAL_VINA; got {probe.last_measurement_status}"
-    )
+    assert (
+        probe.n_measurements >= 5
+    ), f"m3 Vina expected >=5 measurement records; got {probe.n_measurements}"
+    assert probe.last_measurement_status.startswith(
+        "MEASURED"
+    ), f"m3 Vina last status expected MEASURED_REAL_VINA; got {probe.last_measurement_status}"
 
 
 def test_m15_rmsd_measured():
@@ -71,9 +71,9 @@ def test_m15_rmsd_measured():
         f"m15 RMSD median should be <= 2.0 Å SOTA gate; "
         f"got {probe.metric_json_top_value}"
     )
-    assert probe.metric_json_top_value < 1.0, (
-        f"m15 RMSD median expected <1.0 Å (high fidelity); got {probe.metric_json_top_value}"
-    )
+    assert (
+        probe.metric_json_top_value < 1.0
+    ), f"m15 RMSD median expected <1.0 Å (high fidelity); got {probe.metric_json_top_value}"
     # Per Wf-246-B: median 0.6578 Å; tolerance ±0.1.
     assert 0.55 < probe.metric_json_top_value < 0.75, (
         f"m15 RMSD median expected in [0.55, 0.75] Å band; "
@@ -179,9 +179,9 @@ def test_audit_json_loads_and_validates():
             "load_ok",
             "honest_negative_note",
         ):
-            assert required in entry, (
-                f"Metric entry missing required field {required!r}: {entry['metric_id']}"
-            )
+            assert (
+                required in entry
+            ), f"Metric entry missing required field {required!r}: {entry['metric_id']}"
 
 
 def test_wf433_report_result_loads():

@@ -37,7 +37,9 @@ from molmetal.ports import DockingConfig, DockingEngine
 def _make_pocket(n_atoms: int = 4) -> Pocket:
     """Tiny Pocket for in-memory tests."""
     coords = torch.zeros(n_atoms, 3, dtype=torch.float32)
-    atom_types = torch.tensor([6, 7, 8, 16] * (n_atoms // 4 + 1), dtype=torch.long)[:n_atoms]
+    atom_types = torch.tensor([6, 7, 8, 16] * (n_atoms // 4 + 1), dtype=torch.long)[
+        :n_atoms
+    ]
     residue_ids = torch.zeros(n_atoms, dtype=torch.long)
     chain_ids = torch.zeros(n_atoms, dtype=torch.long)
     mask = torch.ones(n_atoms, dtype=torch.bool)
@@ -146,8 +148,7 @@ class TestDiffDockAdapter:
         # Original molecule coords are all zeros; at least one Complex
         # must have non-zero coords because the STUB applies SE(3).
         any_perturbed = any(
-            float(c.molecule.coords.abs().sum().item()) > 1e-6
-            for c in complexes
+            float(c.molecule.coords.abs().sum().item()) > 1e-6 for c in complexes
         )
         assert any_perturbed, "STUB should perturb at least one pose."
 
@@ -245,8 +246,7 @@ class TestEquiBindAdapter:
         config = DockingConfig(n_poses=3)
         complexes = adapter.dock(molecule, pocket, config)
         any_perturbed = any(
-            float(c.molecule.coords.abs().sum().item()) > 1e-6
-            for c in complexes
+            float(c.molecule.coords.abs().sum().item()) > 1e-6 for c in complexes
         )
         assert any_perturbed, "STUB should perturb at least one pose."
 

@@ -141,13 +141,24 @@ if _TRITON_AVAILABLE:
     @triton.autotune(configs=_FUSED_RELU_MLP_CONFIGS, key=["M", "N2"])
     @triton.jit
     def _fused_relu_mlp_kernel(  # pragma: no cover — GPU-only
-        x_ptr, w1_ptr, b1_ptr,
-        w2_ptr, b2_ptr, out_ptr,
-        M, N2, K, N1,
-        stride_xm, stride_xk,
-        stride_w1n, stride_w1k,
-        stride_w2n, stride_w2k,
-        stride_om, stride_on,
+        x_ptr,
+        w1_ptr,
+        b1_ptr,
+        w2_ptr,
+        b2_ptr,
+        out_ptr,
+        M,
+        N2,
+        K,
+        N1,
+        stride_xm,
+        stride_xk,
+        stride_w1n,
+        stride_w1k,
+        stride_w2n,
+        stride_w2k,
+        stride_om,
+        stride_on,
         BLOCK_M: tl.constexpr,
         BLOCK_N2: tl.constexpr,
         BLOCK_K: tl.constexpr,
@@ -196,6 +207,7 @@ if _TRITON_AVAILABLE:
             mask=mask_m[:, None] & mask_n2[None, :],
         )
 else:
+
     def _fused_relu_mlp_kernel(*args, **kwargs):  # type: ignore
         raise RuntimeError(
             "Triton unavailable — _fused_relu_mlp_kernel cannot run. "
@@ -254,11 +266,25 @@ def fused_relu_mlp(
     """
     # Explicit overrides.
     if force_pytorch is True:
-        return pytorch_reference(x, w1, b1 if b1 is not None else torch.zeros(
-            w1.shape[0], dtype=x.dtype, device=x.device,
-        ), w2, b2 if b2 is not None else torch.zeros(
-            w2.shape[0], dtype=x.dtype, device=x.device,
-        ))
+        return pytorch_reference(
+            x,
+            w1,
+            b1
+            if b1 is not None
+            else torch.zeros(
+                w1.shape[0],
+                dtype=x.dtype,
+                device=x.device,
+            ),
+            w2,
+            b2
+            if b2 is not None
+            else torch.zeros(
+                w2.shape[0],
+                dtype=x.dtype,
+                device=x.device,
+            ),
+        )
     # CPU → PyTorch reference (Triton kernels require CUDA).
     if not x.is_cuda:
         return pytorch_reference(x, w1, b1, w2, b2)
@@ -284,13 +310,26 @@ def fused_relu_mlp(
             triton.cdiv(N2, meta["BLOCK_N2"]),
         )
         _fused_relu_mlp_kernel[grid](
-            x, w1, b1, w2, b2, out,
-            M, N2, K, N1,
-            x.stride(0), x.stride(1),
-            w1.stride(0), w1.stride(1),
-            w2.stride(0), w2.stride(1),
-            out.stride(0), out.stride(1),
-            BLOCK_K=K, BLOCK_N1=N1,
+            x,
+            w1,
+            b1,
+            w2,
+            b2,
+            out,
+            M,
+            N2,
+            K,
+            N1,
+            x.stride(0),
+            x.stride(1),
+            w1.stride(0),
+            w1.stride(1),
+            w2.stride(0),
+            w2.stride(1),
+            out.stride(0),
+            out.stride(1),
+            BLOCK_K=K,
+            BLOCK_N1=N1,
         )
         return out
     # Default dispatch: gate closed by default → PyTorch.

@@ -261,7 +261,7 @@ def hypervolume(front: Sequence[Sequence[float]], ref: Sequence[float]) -> float
             # not covered by anything else.
             w = 1.0
             for vj, rj in zip(sorted_pts[i], ref):
-                w *= (rj - vj)
+                w *= rj - vj
             hv += w
             continue
         # Inclusion-exclusion over subsets of coordinates.
@@ -388,9 +388,7 @@ def rank_population(
     if n == 0:
         return []
     if weights is not None and len(weights) != len(pop[0]):
-        raise ValueError(
-            "rank_population: weights length must match vector length"
-        )
+        raise ValueError("rank_population: weights length must match vector length")
 
     # Assign each individual a Pareto rank via iterated non-domination.
     rank_of = [0] * n

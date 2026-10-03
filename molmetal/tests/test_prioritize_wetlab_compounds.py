@@ -20,6 +20,7 @@ prioritize_wetlab_compounds.py script:
 14. D-MPNN pIC50 surrogate train/predict is reproducible across seeds.
 15. No paper claims are written (TODO-84 rule).
 """
+
 from __future__ import annotations
 
 import csv
@@ -40,6 +41,7 @@ import pytest
 # when RDKit / sklearn are missing).
 try:
     from molmetal.scripts import prioritize_wetlab_compounds as pwc  # noqa: E402
+
     _IMPORT_OK = True
     _IMPORT_ERR: str = ""
 except Exception as exc:  # pragma: no cover - import guard
@@ -284,8 +286,24 @@ def test_pipeline_is_deterministic_same_seed():
     cand_metals = ["Pt", "Pt", "Pd", "Au"]
     train_smiles = ["Cl[Pt](Cl)(N)N", "c1ccccc1", "CCO", "CCN"]
     train_activity = [1.0, 0.0, 0.0, 1.0]
-    pr1 = run_pipeline(cand_ids, cand_smiles, cand_metals, train_smiles, train_activity, seed=42, top_k=3)
-    pr2 = run_pipeline(cand_ids, cand_smiles, cand_metals, train_smiles, train_activity, seed=42, top_k=3)
+    pr1 = run_pipeline(
+        cand_ids,
+        cand_smiles,
+        cand_metals,
+        train_smiles,
+        train_activity,
+        seed=42,
+        top_k=3,
+    )
+    pr2 = run_pipeline(
+        cand_ids,
+        cand_smiles,
+        cand_metals,
+        train_smiles,
+        train_activity,
+        seed=42,
+        top_k=3,
+    )
     assert pr1.top_ids == pr2.top_ids
 
 
@@ -293,7 +311,9 @@ def test_pipeline_seed_stability_minimum_overlap():
     """Across 5 seeds, top-5 overlap with seed-0 should be >= 3."""
     cand_ids = ["c" + str(i) for i in range(6)]
     # 6 unique SMILES, no empty ones — run_pipeline filters invalid SMILES.
-    cand_smiles = SAMPLE_SMILES[:5] * 2  # 10 entries (cycle SAMPLE_SMILES[:5], no empty)
+    cand_smiles = (
+        SAMPLE_SMILES[:5] * 2
+    )  # 10 entries (cycle SAMPLE_SMILES[:5], no empty)
     cand_smiles = cand_smiles[:6]  # truncate to 6
     cand_metals = ["Pt", "Pt", "Pd", "Au", "C", "C"][:6]
     train_smiles = [
@@ -305,11 +325,27 @@ def test_pipeline_seed_stability_minimum_overlap():
         "CCN",
     ]
     train_activity = [1.0, 0.0, 1.0, 0.0, 0.0, 1.0]
-    pr0 = run_pipeline(cand_ids, cand_smiles, cand_metals, train_smiles, train_activity, seed=0, top_k=5)
+    pr0 = run_pipeline(
+        cand_ids,
+        cand_smiles,
+        cand_metals,
+        train_smiles,
+        train_activity,
+        seed=0,
+        top_k=5,
+    )
     set0 = set(pr0.top_ids)
     mins = []
     for s in (1, 2, 3, 4):
-        pr = run_pipeline(cand_ids, cand_smiles, cand_metals, train_smiles, train_activity, seed=s, top_k=5)
+        pr = run_pipeline(
+            cand_ids,
+            cand_smiles,
+            cand_metals,
+            train_smiles,
+            train_activity,
+            seed=s,
+            top_k=5,
+        )
         mins.append(len(set0 & set(pr.top_ids)))
     assert min(mins) >= 3  # tiny dataset, looser than the production gate (16/20)
 
@@ -344,8 +380,15 @@ def test_write_outputs_writes_csv_with_expected_schema(tmp_path):
         header = next(reader)
         # Per Wf-58 P1 spec: rank + compound_smiles + id + metal + dmpnn_pic50 + qed + sa + vina_kcal + astsr_score
         expected_cols = [
-            "rank", "compound_smiles", "id", "metal",
-            "dmpnn_pic50", "qed", "sa", "vina_kcal", "astsr_score",
+            "rank",
+            "compound_smiles",
+            "id",
+            "metal",
+            "dmpnn_pic50",
+            "qed",
+            "sa",
+            "vina_kcal",
+            "astsr_score",
         ]
         assert header == expected_cols
 
@@ -373,9 +416,11 @@ def test_ranking_summary_includes_honest_framing(tmp_path):
 
 def PipelineResult_type(*, seed: int, top_ids: list, top_rows: list):
     from dataclasses import dataclass
+
     @dataclass
     class _PR:
         seed: int
         top_ids: list
         top_rows: list
+
     return _PR(seed=seed, top_ids=top_ids, top_rows=top_rows)

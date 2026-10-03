@@ -29,6 +29,7 @@ Run with::
 
     uv run pytest -q molmetal/tests/test_round5_kernels_wired.py --tb=short
 """
+
 from __future__ import annotations
 
 import torch
@@ -88,9 +89,7 @@ def test_dmpnn_dropout_only_helper() -> None:
     assert torch.equal(out_p0, x), "p=0.0 dropout must be a no-op identity"
     # training=False -> early-out identity (dropout is no-op in eval).
     out_eval = _maybe_fused_dropout_only(x, p=0.5, training=False)
-    assert torch.equal(out_eval, x), (
-        "training=False dropout must be a no-op identity"
-    )
+    assert torch.equal(out_eval, x), "training=False dropout must be a no-op identity"
 
 
 def test_dmpnn_dropout_residual_helper() -> None:
@@ -120,17 +119,13 @@ def test_metal_hybrid_v4_residual_add_helper() -> None:
     res = torch.randn(4, 8, dtype=torch.float32)
     out = _maybe_fused_residual_add(x, res, training=True)
     # CPU fallback: alpha=1.0, beta=1.0 -> x + res.
-    assert torch.allclose(
-        out, x + res, atol=_PARITY_ATOL, rtol=_PARITY_RTOL
-    ), (
+    assert torch.allclose(out, x + res, atol=_PARITY_ATOL, rtol=_PARITY_RTOL), (
         f"CPU residual_add fallback must equal x + res; "
         f"max diff {(out - (x + res)).abs().max().item()}"
     )
 
     # Scaled alpha / beta path.
-    out_scaled = _maybe_fused_residual_add(
-        x, res, alpha=0.5, beta=2.0, training=True
-    )
+    out_scaled = _maybe_fused_residual_add(x, res, alpha=0.5, beta=2.0, training=True)
     expected_scaled = 0.5 * x + 2.0 * res
     assert torch.allclose(
         out_scaled, expected_scaled, atol=_PARITY_ATOL, rtol=_PARITY_RTOL
@@ -181,9 +176,7 @@ def test_metal_hybrid_v4_batched_silu_mlp_helper() -> None:
     )
     # CPU fallback is the sequential path, so the output must match
     # the reference bit-exactly (no Triton kernel involved on CPU).
-    assert torch.allclose(
-        out, h_ref, atol=_PARITY_ATOL, rtol=_PARITY_RTOL
-    ), (
+    assert torch.allclose(out, h_ref, atol=_PARITY_ATOL, rtol=_PARITY_RTOL), (
         f"_maybe_batched_silu_mlp sequential fallback must match the "
         f"reference; max diff {(out - h_ref).abs().max().item()}"
     )
@@ -230,9 +223,7 @@ def test_pretrain_coordination_batched_gelu_mlp_helper() -> None:
         f"_maybe_batched_gelu_mlp output must be (M, {out_dim}); got "
         f"{tuple(out.shape)}"
     )
-    assert torch.allclose(
-        out, h_ref, atol=_PARITY_ATOL, rtol=_PARITY_RTOL
-    ), (
+    assert torch.allclose(out, h_ref, atol=_PARITY_ATOL, rtol=_PARITY_RTOL), (
         f"_maybe_batched_gelu_mlp sequential fallback must match the "
         f"reference; max diff {(out - h_ref).abs().max().item()}"
     )
@@ -265,6 +256,7 @@ def test_pretrain_coordination_gelu_head_instantiation() -> None:
         "n_nodes": torch.tensor([[n_atoms]], dtype=torch.float32),
     }
     out_head = model(batch)
-    assert out_head.shape == (1, 2), (
-        f"CoordinationPretrainer output must be (B=1, 2); got {tuple(out_head.shape)}"
-    )
+    assert out_head.shape == (
+        1,
+        2,
+    ), f"CoordinationPretrainer output must be (B=1, 2); got {tuple(out_head.shape)}"

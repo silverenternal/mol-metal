@@ -31,6 +31,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -60,19 +61,36 @@ REPORTS_DIR = PROJECT_ROOT / "molmetal" / "reports"
 CHECKPOINT_DIR = PROJECT_ROOT / "molmetal" / "checkpoints"
 CACHE_DIR = Path("/mnt/storage/data/molmetal/3d_cache")
 
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Train Lipman Flow Matching on Ru cytotox data.")
-    p.add_argument("--metal", default="Ru", choices=["Ru", "Ir", "Rh", "Os", "Re", "Pt"])
+    p = argparse.ArgumentParser(
+        description="Train Lipman Flow Matching on Ru cytotox data."
+    )
+    p.add_argument(
+        "--metal", default="Ru", choices=["Ru", "Ir", "Rh", "Os", "Re", "Pt"]
+    )
     p.add_argument("--epochs", type=int, default=50)
-    p.add_argument("--batch", type=int, default=16, help="Batch size for training (keep small to avoid OOM)")
+    p.add_argument(
+        "--batch",
+        type=int,
+        default=16,
+        help="Batch size for training (keep small to avoid OOM)",
+    )
     p.add_argument("--lr", type=float, default=1e-3)
     p.add_argument("--hidden-dim", type=int, default=128)
     p.add_argument("--n-layers", type=int, default=3)
-    p.add_argument("--n-gen", type=int, default=1000, help="Number of molecules to generate for evaluation")
-    p.add_argument("--max-atoms", type=int, default=40, help="Max atoms per molecule (OOM guard)")
+    p.add_argument(
+        "--n-gen",
+        type=int,
+        default=1000,
+        help="Number of molecules to generate for evaluation",
+    )
+    p.add_argument(
+        "--max-atoms", type=int, default=40, help="Max atoms per molecule (OOM guard)"
+    )
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--checkpoint-out", default=None)
     p.add_argument("--plot-out", default=None)
@@ -177,7 +195,9 @@ def evaluate_generated_molecules(
 
         # Morgan FP for pIC50 regression
         try:
-            fp = morgan.fingerprint_mol(predictor._coerce_to_mol(mol, __import__("rdkit").Chem))
+            fp = morgan.fingerprint_mol(
+                predictor._coerce_to_mol(mol, __import__("rdkit").Chem)
+            )
             if fp is not None:
                 pic50 = float(regressor.predict(fp.reshape(1, -1))[0])
                 pic50_pred_list.append(pic50)
@@ -223,6 +243,7 @@ def evaluate_reference_distribution(
     what the model was trained on and what a reasonable distribution looks like.
     """
     import random
+
     rng = random.Random(seed)
     sample = rng.sample(train_mols_valid, min(sample_size, len(train_mols_valid)))
     return evaluate_generated_molecules(sample, predictor, regressor, morgan)
@@ -386,19 +407,29 @@ def main(argv: list[str] | None = None) -> int:
     splitter = TemporalSplitter(cutoff_year=2024)
     split = splitter(ds)
     train_idx, val_idx, test_idx = split.train_idx, split.val_idx, split.test_idx
-    print(f"[train_fm]   train={len(train_idx)}, val={len(val_idx)}, test(ood)={len(test_idx)}")
+    print(
+        f"[train_fm]   train={len(train_idx)}, val={len(val_idx)}, test(ood)={len(test_idx)}"
+    )
 
     # --- 3. Pre-load conformers for training set ----------------------------
     print("[train_fm] Pre-loading 3D conformers for training set (cached on disk) ...")
     t_conf = time.time()
     train_mols = preload_conformers(ds, train_idx, CACHE_DIR, desc="train")
     n_fail = sum(1 for m in train_mols if m is None)
-    print(f"[train_fm]   {len(train_mols) - n_fail}/{len(train_mols)} conformers loaded ({n_fail} failures) in {time.time()-t_conf:.1f}s")
+    print(
+        f"[train_fm]   {len(train_mols) - n_fail}/{len(train_mols)} conformers loaded ({n_fail} failures) in {time.time()-t_conf:.1f}s"
+    )
 
     # Filter to valid conformers with max atoms constraint
-    train_mols_valid = [m for m in train_mols if m is not None and m.n_atoms <= args.max_atoms]
-    n_filtered = sum(1 for m in train_mols if m is not None and m.n_atoms > args.max_atoms)
-    print(f"[train_fm]   {len(train_mols_valid)} molecules with valid 3D conformers (filtered {n_filtered} with >{args.max_atoms} atoms)")
+    train_mols_valid = [
+        m for m in train_mols if m is not None and m.n_atoms <= args.max_atoms
+    ]
+    n_filtered = sum(
+        1 for m in train_mols if m is not None and m.n_atoms > args.max_atoms
+    )
+    print(
+        f"[train_fm]   {len(train_mols_valid)} molecules with valid 3D conformers (filtered {n_filtered} with >{args.max_atoms} atoms)"
+    )
 
     if len(train_mols_valid) == 0:
         print("[train_fm] ERROR: no valid training molecules with 3D conformers")
@@ -413,7 +444,9 @@ def main(argv: list[str] | None = None) -> int:
         lr=args.lr,
     )
     adapter.setup()  # ROCm-first auto-detection
-    gpu_used = str(adapter.device).startswith("cuda") or str(adapter.device).startswith("hip")
+    gpu_used = str(adapter.device).startswith("cuda") or str(adapter.device).startswith(
+        "hip"
+    )
     print(f"[train_fm]   device = {adapter.device}, GPU used = {gpu_used}")
 
     # --- 5. Training loop ---------------------------------------------------
@@ -435,6 +468,7 @@ def main(argv: list[str] | None = None) -> int:
                 if mol_batch:
                     # Dummy pocket (unused in v1)
                     from molmetal.domain import Pocket
+
                     dummy_pocket = Pocket(
                         pdb_id="dummy",
                         coords=torch.zeros(0, 3),
@@ -454,10 +488,16 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  epoch {epoch:4d}: loss={avg_loss:.6f}")
 
     train_time = time.time() - t_train
-    print(f"[train_fm] Training done in {train_time:.1f}s ({train_time/args.epochs:.2f}s/epoch)")
+    print(
+        f"[train_fm] Training done in {train_time:.1f}s ({train_time/args.epochs:.2f}s/epoch)"
+    )
 
     # --- 6. Save checkpoint -------------------------------------------------
-    ckpt_out = Path(args.checkpoint_out) if args.checkpoint_out else CHECKPOINT_DIR / "fm_ru_temporal.pt"
+    ckpt_out = (
+        Path(args.checkpoint_out)
+        if args.checkpoint_out
+        else CHECKPOINT_DIR / "fm_ru_temporal.pt"
+    )
     ckpt_out.parent.mkdir(parents=True, exist_ok=True)
     ckpt = {
         "model_state": adapter.velocity_field.state_dict(),
@@ -470,12 +510,15 @@ def main(argv: list[str] | None = None) -> int:
     print(f"[train_fm] Saved checkpoint to {ckpt_out}")
 
     # --- 7. Plot loss curve -------------------------------------------------
-    plot_out = Path(args.plot_out) if args.plot_out else REPORTS_DIR / "fm_ru_train_loss.png"
+    plot_out = (
+        Path(args.plot_out) if args.plot_out else REPORTS_DIR / "fm_ru_train_loss.png"
+    )
     plot_loss_curve(losses, plot_out)
 
     # --- 8. Generate molecules ----------------------------------------------
     print(f"[train_fm] Generating {args.n_gen} molecules ...")
     from molmetal.domain import Pocket as PocketCls
+
     dummy_pocket = PocketCls(
         pdb_id="dummy",
         coords=torch.zeros(0, 3),
@@ -516,25 +559,44 @@ def main(argv: list[str] | None = None) -> int:
     regressor.fit(X_train, train_pic50)
     train_pred = regressor.predict(X_train)
     train_mse = float(np.mean((train_pred - train_pic50) ** 2))
-    train_r2 = float(1 - np.sum((train_pred - train_pic50)**2) / np.sum((train_pic50 - train_pic50.mean())**2))
+    train_r2 = float(
+        1
+        - np.sum((train_pred - train_pic50) ** 2)
+        / np.sum((train_pic50 - train_pic50.mean()) ** 2)
+    )
     print(f"[train_fm]   regressor train MSE={train_mse:.4f} R2={train_r2:.4f}")
 
     # --- 11. Evaluate generated molecules ---------------------------------
     # Phase-0 limitation: generate() produces placeholder atoms (random element,
     # no bonds). We score the training reference distribution instead and report
     # it alongside the (empty) generation metrics.
-    print("[train_fm] Evaluating generated molecules (training reference distribution) ...")
+    print(
+        "[train_fm] Evaluating generated molecules (training reference distribution) ..."
+    )
     eval_metrics = evaluate_generated_molecules(gen_mols, predictor, regressor, morgan)
-    ref_metrics = evaluate_reference_distribution(train_mols_valid, predictor, regressor, morgan, sample_size=min(1000, len(train_mols_valid)), seed=args.seed)
+    ref_metrics = evaluate_reference_distribution(
+        train_mols_valid,
+        predictor,
+        regressor,
+        morgan,
+        sample_size=min(1000, len(train_mols_valid)),
+        seed=args.seed,
+    )
     print(f"[train_fm]   generated: valid={eval_metrics['n_valid']}")
-    print(f"[train_fm]   reference: valid={ref_metrics['n_valid']}, "
-          f"QED_mean={ref_metrics['qed_mean']:.3f}, "
-          f"frac_druglike={ref_metrics['frac_druglike_qed05']:.3f}, "
-          f"pIC50_pred_mean={ref_metrics['pic50_pred_mean']:.3f}, "
-          f"hit_rate={ref_metrics['hit_rate_top5_pic50']:.3f}")
+    print(
+        f"[train_fm]   reference: valid={ref_metrics['n_valid']}, "
+        f"QED_mean={ref_metrics['qed_mean']:.3f}, "
+        f"frac_druglike={ref_metrics['frac_druglike_qed05']:.3f}, "
+        f"pIC50_pred_mean={ref_metrics['pic50_pred_mean']:.3f}, "
+        f"hit_rate={ref_metrics['hit_rate_top5_pic50']:.3f}"
+    )
 
     # --- 12. Write report --------------------------------------------------
-    report_path = Path(args.report_out) if args.report_out else REPORTS_DIR / "fm_ru_temporal_eval.md"
+    report_path = (
+        Path(args.report_out)
+        if args.report_out
+        else REPORTS_DIR / "fm_ru_temporal_eval.md"
+    )
     write_report(
         args=args,
         split=split,

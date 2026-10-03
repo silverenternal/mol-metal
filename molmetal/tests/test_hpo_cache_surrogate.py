@@ -94,7 +94,9 @@ def _make_hp_dict(
     }
 
 
-def _make_curve(n_epochs: int = 30, start: float = 0.5, step: float = 0.01) -> List[Dict[str, float]]:
+def _make_curve(
+    n_epochs: int = 30, start: float = 0.5, step: float = 0.01
+) -> List[Dict[str, float]]:
     """Synthetic val_auc trajectory rising linearly from ``start``."""
     out: List[Dict[str, float]] = []
     for i in range(n_epochs):
@@ -257,12 +259,7 @@ class TestTrajectoryCacheWriter:
         root = _tmp_root()
         writer = TrajectoryCacheWriter(cache_root=root)
         p = writer.path_for("Ru", 0, "abc123")
-        assert p == (
-            __import__("pathlib").Path(root)
-            / "Ru"
-            / "seed_0"
-            / "abc123.json"
-        )
+        assert p == (__import__("pathlib").Path(root) / "Ru" / "seed_0" / "abc123.json")
 
     def test_read_roundtrip(self):
         root = _tmp_root()
@@ -379,8 +376,7 @@ class TestColdStartSurrogate:
 
     def test_fit_then_predict_label_invariant(self):
         entries = [
-            _make_entry(metal="Ru", seed=i, score=0.6 + 0.01 * i)
-            for i in range(15)
+            _make_entry(metal="Ru", seed=i, score=0.6 + 0.01 * i) for i in range(15)
         ]
         surrogate = ColdStartSurrogate()
         surrogate.fit(entries)
@@ -391,8 +387,13 @@ class TestColdStartSurrogate:
     def test_predict_confidence_high_when_cache_full(self):
         entries = [
             _make_entry(
-                metal="Ru", seed=i, score=0.6 + 0.01 * i,
-                lr=1e-3, hidden=128, depth=3, dropout=0.1,
+                metal="Ru",
+                seed=i,
+                score=0.6 + 0.01 * i,
+                lr=1e-3,
+                hidden=128,
+                depth=3,
+                dropout=0.1,
             )
             for i in range(20)
         ]
@@ -404,29 +405,21 @@ class TestColdStartSurrogate:
         assert d.n_train == 20
 
     def test_predict_confidence_low_below_threshold(self):
-        entries = [
-            _make_entry(metal="Ru", seed=i, score=0.6)
-            for i in range(3)
-        ]
+        entries = [_make_entry(metal="Ru", seed=i, score=0.6) for i in range(3)]
         surrogate = ColdStartSurrogate(low_coverage_threshold=10)
         surrogate.fit(entries)
         d = surrogate.predict(hp_dict=_make_hp_dict(), metal="Ru")
         assert d.confidence == "low"
 
     def test_predict_filters_by_metal(self):
-        entries = (
-            [_make_entry(metal="Ru", seed=i, score=0.7, depth=3) for i in range(5)]
-            + [_make_entry(metal="Ir", seed=i, score=0.5, depth=5) for i in range(5)]
-        )
+        entries = [
+            _make_entry(metal="Ru", seed=i, score=0.7, depth=3) for i in range(5)
+        ] + [_make_entry(metal="Ir", seed=i, score=0.5, depth=5) for i in range(5)]
         surrogate = ColdStartSurrogate()
         surrogate.fit(entries)
         # Asking for Ir must not see Ru rows.
-        d_ru = surrogate.predict(
-            hp_dict=_make_hp_dict(depth=3), metal="Ru"
-        )
-        d_ir = surrogate.predict(
-            hp_dict=_make_hp_dict(depth=5), metal="Ir"
-        )
+        d_ru = surrogate.predict(hp_dict=_make_hp_dict(depth=3), metal="Ru")
+        d_ir = surrogate.predict(hp_dict=_make_hp_dict(depth=5), metal="Ir")
         assert d_ru.n_train == 5
         assert d_ir.n_train == 5
         # Ir scores were lower on average.
@@ -495,8 +488,7 @@ class TestColdStartSurrogate:
         except Exception:
             pytest.skip("sklearn not available")
         entries = [
-            _make_entry(metal="Ru", seed=i, score=0.5 + 0.02 * i)
-            for i in range(12)
+            _make_entry(metal="Ru", seed=i, score=0.5 + 0.02 * i) for i in range(12)
         ]
         surrogate = ColdStartSurrogate(use_sklearn=True)
         surrogate.fit(entries)
@@ -505,10 +497,9 @@ class TestColdStartSurrogate:
         assert d.n_train == 12
 
     def test_per_metal_n_train(self):
-        entries = (
-            [_make_entry(metal="Ru", seed=i, score=0.6) for i in range(7)]
-            + [_make_entry(metal="Ir", seed=i, score=0.6) for i in range(4)]
-        )
+        entries = [_make_entry(metal="Ru", seed=i, score=0.6) for i in range(7)] + [
+            _make_entry(metal="Ir", seed=i, score=0.6) for i in range(4)
+        ]
         surrogate = ColdStartSurrogate()
         surrogate.fit(entries)
         assert surrogate.per_metal_n_train == {"Ru": 7, "Ir": 4}
@@ -588,8 +579,10 @@ class TestEpsilonGreedyAcquisition:
         policy = EpsilonGreedyAcquisition(rng_seed=42)
         # Force epsilon=0 by passing a schedule that yields 0.
         policy.schedule = EpsilonSchedule(
-            epsilon_high=0.0, epsilon_low=0.0,
-            high_cache=30, low_cache=100,
+            epsilon_high=0.0,
+            epsilon_low=0.0,
+            high_cache=30,
+            low_cache=100,
         )
         idx, dec = policy.select(
             self._candidates(), surrogate=surrogate, metal="Ru", cache_size=200
@@ -605,8 +598,10 @@ class TestEpsilonGreedyAcquisition:
         surrogate.fit(entries)
         policy = EpsilonGreedyAcquisition(rng_seed=0)
         policy.schedule = EpsilonSchedule(
-            epsilon_high=1.0, epsilon_low=1.0,
-            high_cache=30, low_cache=100,
+            epsilon_high=1.0,
+            epsilon_low=1.0,
+            high_cache=30,
+            low_cache=100,
         )
         # With epsilon=1 we sample uniformly; pick a few times and
         # check we see more than one distinct index.
@@ -634,17 +629,17 @@ class TestEpsilonGreedyAcquisition:
         surrogate.fit(entries)
         policy = EpsilonGreedyAcquisition(rng_seed=0)
         policy.schedule = EpsilonSchedule(
-            epsilon_high=0.0, epsilon_low=0.0,
-            high_cache=30, low_cache=100,
+            epsilon_high=0.0,
+            epsilon_low=0.0,
+            high_cache=30,
+            low_cache=100,
         )
         # Include one Ir candidate; the exploit arm must skip it.
         cands = [
             {"hp_dict": _make_hp_dict(), "metal": "Ru"},
             {"hp_dict": _make_hp_dict(), "metal": "Ir"},
         ]
-        idx, dec = policy.select(
-            cands, surrogate=surrogate, metal="Ru", cache_size=200
-        )
+        idx, dec = policy.select(cands, surrogate=surrogate, metal="Ru", cache_size=200)
         assert idx == 0
         assert dec.n_train == 15
 
@@ -686,9 +681,7 @@ class TestASHAEarlyStop:
     def test_below_median_and_plateau_stops(self):
         # Build cache where every entry scores 0.7, then provide a
         # trajectory whose val_auc is flat at 0.5.
-        entries = [
-            _make_entry(metal="Ru", seed=i, score=0.7) for i in range(15)
-        ]
+        entries = [_make_entry(metal="Ru", seed=i, score=0.7) for i in range(15)]
         surrogate = ColdStartSurrogate()
         surrogate.fit(entries)
         policy = ASHAEarlyStop(min_epoch=15, plateau_eps=0.005)
@@ -782,6 +775,7 @@ class TestPublicAPI:
             TrajectoryCacheWriter,
             config_hash_from_hp,
         )
+
         assert RSI_ITER >= 0
         assert isinstance(RSI_SCHEMA_FROZEN, str)
         assert DEFAULT_FEATURE_DIM >= 1
@@ -793,6 +787,7 @@ class TestPublicAPI:
         from molmetal.replay import (  # type: ignore
             TrajectoryRecord as ParentRecord,
         )
+
         rec = ParentRecord(
             config_hash="abc",
             hp_dict={"lr": 1e-3},

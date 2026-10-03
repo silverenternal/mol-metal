@@ -49,6 +49,7 @@ class _PtLigandRule(ReactionRule):
         try:
             state, tile = pair
             from molmetal_lam.bonds.application import FreeSiteLedger
+
             new_atoms = list(state.atoms) + list(tile.atoms)
             return [
                 MoleculeClosedTerm(
@@ -106,7 +107,8 @@ class _MockScorer:
     def batch_score(self, smiles_list: List[str]) -> np.ndarray:
         self.calls += 1
         return np.asarray(
-            [float(min(1.0, 0.05 * len(s))) for s in smiles_list], dtype=float,
+            [float(min(1.0, 0.05 * len(s))) for s in smiles_list],
+            dtype=float,
         )
 
 
@@ -159,16 +161,17 @@ def main() -> None:
     )
     t0 = time.time()
     before_results = before_loop.run(
-        pdb_id="demo", n_iterations=3, top_k=5,
-        max_depth=4, n_simulations=100,
+        pdb_id="demo",
+        n_iterations=3,
+        top_k=5,
+        max_depth=4,
+        n_simulations=100,
     )
     t_before = time.time() - t0
     # Capture iter-0 / iter-3 leaf counts by re-running tiny searches.
     before_iter0_n = int(before_results[0].get("tree_node_count", 0))
     before_iter3_n = int(before_results[-1].get("tree_node_count", 0))
-    before_pairs = [
-        int(r.get("n_pairs_seen_by_prior", 0)) for r in before_results
-    ]
+    before_pairs = [int(r.get("n_pairs_seen_by_prior", 0)) for r in before_results]
     print(
         f"BEFORE: tree_node_count iter0={before_iter0_n} "
         f"iter3={before_iter3_n} (stateless ⇒ both rebuilt from scratch)"
@@ -182,7 +185,9 @@ def main() -> None:
     print("AFTER — persistent tree (checkpoint_dir), 3 iters * 1000 sims")
     print("=" * 72)
     ckpt_dir = os.path.join(
-        os.path.dirname(HERE), "checkpoints", "l2_persistent_tree",
+        os.path.dirname(HERE),
+        "checkpoints",
+        "l2_persistent_tree",
     )
     os.makedirs(ckpt_dir, exist_ok=True)
     after_mcts = MCTSProofSearch(
@@ -208,17 +213,19 @@ def main() -> None:
     )
     t0 = time.time()
     after_results = after_loop.run(
-        pdb_id="demo", n_iterations=3, top_k=5,
-        max_depth=4, n_simulations=100,
+        pdb_id="demo",
+        n_iterations=3,
+        top_k=5,
+        max_depth=4,
+        n_simulations=100,
     )
     t_after = time.time() - t0
     after_iter0_n = int(after_results[0].get("tree_node_count", 0))
     after_iter3_n = int(after_results[-1].get("tree_node_count", 0))
-    after_pairs = [
-        int(r.get("n_pairs_seen_by_prior", 0)) for r in after_results
+    after_pairs = [int(r.get("n_pairs_seen_by_prior", 0)) for r in after_results]
+    after_dirichlet = [
+        bool(r.get("dirichlet_reinjected", False)) for r in after_results
     ]
-    after_dirichlet = [bool(r.get("dirichlet_reinjected", False))
-                       for r in after_results]
     after_global = len(getattr(after_loop.mcts, "accumulated_leaf_pairs", []) or [])
     print(
         f"AFTER : tree_node_count iter0={after_iter0_n} "

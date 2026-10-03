@@ -47,6 +47,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -87,6 +88,7 @@ from molmetal.baselines.dmpnn_multitask import (
     predict_mt,
 )
 from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset
+
 # Wf-120 P3 — pure-stdlib SHA256 overwrite guards (no pandas/torch deps).
 # See molmetal/scripts/_dmpnn_sha256_guard.py for the canonical helpers.
 from molmetal.scripts._dmpnn_sha256_guard import (
@@ -98,6 +100,7 @@ from molmetal.scripts._dmpnn_sha256_guard import (
 
 try:
     from rdkit import RDLogger
+
     RDLogger.DisableLog("rdApp.*")
 except Exception:
     pass
@@ -106,7 +109,9 @@ except Exception:
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-DEFAULT_5METAL_CSV = PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
+DEFAULT_5METAL_CSV = (
+    PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
+)
 DEFAULT_OUT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf84_dmpnn_ckpt"
 DEFAULT_CKPT_DIR = PROJECT_ROOT / "molmetal" / "checkpoints"
 
@@ -360,14 +365,23 @@ def train_one_metal_one_seed(
     for epoch in range(epochs):
         ep_t0 = time.time()
         train_loss, cls_loss, reg_loss = train_epoch_mt(
-            model, optimizer, criterion,
-            graphs_train, pic50_train, active_train,
-            batch_size=batch_size, device=device,
+            model,
+            optimizer,
+            criterion,
+            graphs_train,
+            pic50_train,
+            active_train,
+            batch_size=batch_size,
+            device=device,
         )
         # Validate
         y_true_v, y_score_v, pic50_pred_v = predict_mt(
-            model, graphs_val, pic50_val, active_val,
-            batch_size=batch_size, device=device,
+            model,
+            graphs_val,
+            pic50_val,
+            active_val,
+            batch_size=batch_size,
+            device=device,
         )
         val_m = regression_metrics(pic50_val, pic50_pred_v)
         ep_t = time.time() - ep_t0
@@ -381,23 +395,35 @@ def train_one_metal_one_seed(
         # Select best by val RMSE (lower is better)
         if val_m["rmse"] < best_val_rmse and np.isfinite(val_m["rmse"]):
             best_val_rmse = val_m["rmse"]
-            best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+            best_state = {
+                k: v.detach().cpu().clone() for k, v in model.state_dict().items()
+            }
 
     if best_state is None:
         # Fallback: use last epoch weights
-        best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+        best_state = {
+            k: v.detach().cpu().clone() for k, v in model.state_dict().items()
+        }
     train_seconds = time.time() - t_train
 
     # Reload best + test
     model.load_state_dict(best_state)
     y_true_t, y_score_t, pic50_pred_t = predict_mt(
-        model, graphs_test, pic50_test, active_test,
-        batch_size=batch_size, device=device,
+        model,
+        graphs_test,
+        pic50_test,
+        active_test,
+        batch_size=batch_size,
+        device=device,
     )
     test_m = regression_metrics(pic50_test, pic50_pred_t)
     y_true_v2, y_score_v2, pic50_pred_v2 = predict_mt(
-        model, graphs_val, pic50_val, active_val,
-        batch_size=batch_size, device=device,
+        model,
+        graphs_val,
+        pic50_val,
+        active_val,
+        batch_size=batch_size,
+        device=device,
     )
     val_m_final = regression_metrics(pic50_val, pic50_pred_v2)
 
@@ -502,14 +528,18 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default=list(DEFAULT_SEEDS),
         help="Random seeds (one or more ints, e.g. `--seeds 0 1 2`).",
     )
-    p.add_argument("--epochs", type=int, default=DEFAULT_EPOCHS, help="Epochs per seed.")
+    p.add_argument(
+        "--epochs", type=int, default=DEFAULT_EPOCHS, help="Epochs per seed."
+    )
     p.add_argument(
         "--alpha",
         type=float,
         default=DEFAULT_ALPHA,
         help="BCE weight; 1.0 = pure pIC50 regression (default).",
     )
-    p.add_argument("--lr", type=float, default=MT_LR, help="Adam lr (default MT_LR=1e-3).")
+    p.add_argument(
+        "--lr", type=float, default=MT_LR, help="Adam lr (default MT_LR=1e-3)."
+    )
     p.add_argument("--batch-size", type=int, default=MT_BATCH_SIZE, help="Batch size.")
     p.add_argument(
         "--out-dir",
@@ -662,19 +692,28 @@ def main(argv: Optional[List[str]] = None) -> int:
             }
             continue
         pearsons = np.array(
-            [r.test_pic50_metrics.get("pearson", float("nan")) for r in seed_results.values()],
+            [
+                r.test_pic50_metrics.get("pearson", float("nan"))
+                for r in seed_results.values()
+            ],
             dtype=float,
         )
         rmses = np.array(
-            [r.test_pic50_metrics.get("rmse", float("nan")) for r in seed_results.values()],
+            [
+                r.test_pic50_metrics.get("rmse", float("nan"))
+                for r in seed_results.values()
+            ],
             dtype=float,
         )
         maes = np.array(
-            [r.test_pic50_metrics.get("mae", float("nan")) for r in seed_results.values()],
+            [
+                r.test_pic50_metrics.get("mae", float("nan"))
+                for r in seed_results.values()
+            ],
             dtype=float,
         )
         # r² = pearson**2 (sign-aware Pearson squared)
-        r2 = pearsons ** 2
+        r2 = pearsons**2
         first = next(iter(seed_results.values()))
         summary_per_metal[metal] = {
             "n_seeds": len(seed_results),

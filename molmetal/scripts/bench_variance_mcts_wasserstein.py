@@ -68,6 +68,7 @@ Run via::
     uv run --no-sync python molmetal/scripts/bench_variance_mcts_wasserstein.py \\
         --gpu-0 --n-trajectories 50
 """
+
 from __future__ import annotations
 
 import argparse
@@ -234,8 +235,7 @@ def _scorer(state: Any) -> float:
             smi = ""
     smi_hash = float(abs(hash(smi)) % 1000) / 1000.0
     return float(
-        min(1.0, 0.05 * float(n_atoms) + 0.30 * smi_hash
-            + 0.05 * float(n_atoms % 7)),
+        min(1.0, 0.05 * float(n_atoms) + 0.30 * smi_hash + 0.05 * float(n_atoms % 7)),
     )
 
 
@@ -355,14 +355,21 @@ def _compute_w2_penalty(
         return 0.0
     try:
         pred_t = torch.tensor(
-            [[float(v)] for v in per_arm_prior], dtype=torch.float32,
+            [[float(v)] for v in per_arm_prior],
+            dtype=torch.float32,
         )
         ref_t = torch.tensor(
-            [[float(v)] for v in reference], dtype=torch.float32,
+            [[float(v)] for v in reference],
+            dtype=torch.float32,
         )
-        w2 = float(wasserstein_loss(
-            pred_t, ref_t, n_mc=int(config.n_mc), seed=int(seed),
-        ).item())
+        w2 = float(
+            wasserstein_loss(
+                pred_t,
+                ref_t,
+                n_mc=int(config.n_mc),
+                seed=int(seed),
+            ).item()
+        )
     except Exception:
         return 0.0
     return float(config.alpha) * float(w2)
@@ -415,7 +422,10 @@ def _apply_w2_regulariser(
     # posteriors via the standard PUCT update.
     per_arm_prior = [1.0 / float(n_actions_real)] * int(n_actions_real)
     penalty = _compute_w2_penalty(
-        per_arm_prior, reference, config, seed,
+        per_arm_prior,
+        reference,
+        config,
+        seed,
     )
     diag["applied"] = True
     diag["n_actions"] = int(n_actions_real)
@@ -425,13 +435,14 @@ def _apply_w2_regulariser(
     # history that includes the current penalty; passing means the
     # regulariser is "stable enough" to apply.
     if config.decay_check and wasserstein_decay_check is not None:
-        history = [0.0, penalty * 0.5, penalty * 0.6,
-                   penalty * 0.7, float(penalty)]
-        diag["decay_gate_pass"] = bool(wasserstein_decay_check(
-            history,
-            window=int(config.decay_window),
-            tol=float(config.decay_tol),
-        ))
+        history = [0.0, penalty * 0.5, penalty * 0.6, penalty * 0.7, float(penalty)]
+        diag["decay_gate_pass"] = bool(
+            wasserstein_decay_check(
+                history,
+                window=int(config.decay_window),
+                tol=float(config.decay_tol),
+            )
+        )
     elif config.decay_check:
         diag["decay_gate_pass"] = None
     return diag
@@ -494,20 +505,31 @@ def _run_strategy(
         # torch missing at import time — return a no-op result so the
         # aggregate pipeline still records zero-variance entries.
         return StrategyResult(
-            strategy=strategy, seed=int(seed),
+            strategy=strategy,
+            seed=int(seed),
             n_trajectories=int(n_trajectories),
-            n_candidates_total=0, mean_score=0.0, best_score=0.0,
-            mean_var=0.0, max_var=0.0, wall_time_s=0.0,
-            success_rate=0.0, w2_diagnostics=[],
+            n_candidates_total=0,
+            mean_score=0.0,
+            best_score=0.0,
+            mean_var=0.0,
+            max_var=0.0,
+            wall_time_s=0.0,
+            success_rate=0.0,
+            w2_diagnostics=[],
         )
     wrapper = VarianceMCTSWrapper(base_search=base_search)
     initial_state = _default_tiles()[0] if _default_tiles() else None
     if initial_state is None:
         return StrategyResult(
-            strategy=strategy, seed=int(seed),
+            strategy=strategy,
+            seed=int(seed),
             n_trajectories=int(n_trajectories),
-            n_candidates_total=0, mean_score=0.0, best_score=0.0,
-            mean_var=0.0, max_var=0.0, wall_time_s=0.0,
+            n_candidates_total=0,
+            mean_score=0.0,
+            best_score=0.0,
+            mean_var=0.0,
+            max_var=0.0,
+            wall_time_s=0.0,
             success_rate=0.0,
             w2_diagnostics=[],
         )
@@ -527,19 +549,24 @@ def _run_strategy(
         # the per-trajectory diagnostic reflects the live state.
         if strategy in ("w2_reg", "w2_reg_decay") and config is not None:
             cfg = W2RegConfig(
-                alpha=config.alpha, n_mc=config.n_mc,
+                alpha=config.alpha,
+                n_mc=config.n_mc,
                 reference=config.reference,
                 decay_check=(strategy == "w2_reg_decay"),
                 decay_window=config.decay_window,
                 decay_tol=config.decay_tol,
             )
             diag = _apply_w2_regulariser(
-                wrapper, len(_default_tiles()), cfg, local_rng,
+                wrapper,
+                len(_default_tiles()),
+                cfg,
+                local_rng,
                 seed=int(seed),
             )
             w2_diags.append(diag)
         out = wrapper.search_with_proof_search(
-            initial_state, max_depth=int(depth),
+            initial_state,
+            max_depth=int(depth),
         )
         if "error" in out:
             continue
@@ -576,19 +603,23 @@ def _run_strategy(
     mean_var = float(sum_var / max(int(n_success), 1))
     success_rate = float(n_success) / float(max(int(n_trajectories), 1))
     return StrategyResult(
-        strategy=strategy, seed=int(seed),
+        strategy=strategy,
+        seed=int(seed),
         n_trajectories=int(n_trajectories),
         n_candidates_total=int(n_candidates_total),
         mean_score=float(mean_score),
         best_score=float(best_score if best_score != -float("inf") else 0.0),
-        mean_var=float(mean_var), max_var=float(max_var),
-        wall_time_s=float(wall), success_rate=float(success_rate),
+        mean_var=float(mean_var),
+        max_var=float(max_var),
+        wall_time_s=float(wall),
+        success_rate=float(success_rate),
         w2_diagnostics=list(w2_diags),
     )
 
 
 def _variance_reduction(
-    baseline: StrategyResult, candidate: StrategyResult,
+    baseline: StrategyResult,
+    candidate: StrategyResult,
 ) -> float:
     """Compute variance reduction (positive = improvement)."""
     denom = max(float(baseline.mean_var), 1.0e-12)
@@ -609,22 +640,31 @@ def _aggregate_per_seed(
 ) -> Dict[str, Any]:
     """Run all 3 strategies across all seeds and aggregate."""
     per_seed: Dict[str, List[StrategyResult]] = {
-        "vanilla": [], "w2_reg": [], "w2_reg_decay": [],
+        "vanilla": [],
+        "w2_reg": [],
+        "w2_reg_decay": [],
     }
     for seed in seeds:
         for strat in ("vanilla", "w2_reg", "w2_reg_decay"):
             res = _run_strategy(
-                strategy=strat, seed=int(seed),
+                strategy=strat,
+                seed=int(seed),
                 n_trajectories=int(n_trajectories),
-                sims=int(sims), depth=int(depth),
+                sims=int(sims),
+                depth=int(depth),
                 config=config,
             )
             per_seed[strat].append(res)
+
     # Cross-seed aggregate.
     def _agg(results: List[StrategyResult]) -> Dict[str, float]:
         if not results:
-            return {"mean_var": 0.0, "best_score": 0.0, "wall_time_s": 0.0,
-                    "success_rate": 0.0}
+            return {
+                "mean_var": 0.0,
+                "best_score": 0.0,
+                "wall_time_s": 0.0,
+                "success_rate": 0.0,
+            }
         return {
             "mean_var": float(
                 sum(r.mean_var for r in results) / len(results),
@@ -639,14 +679,25 @@ def _aggregate_per_seed(
                 sum(r.success_rate for r in results) / len(results),
             ),
         }
+
     agg = {k: _agg(v) for k, v in per_seed.items()}
     # Variance reduction: w2_reg vs vanilla and w2_reg_decay vs vanilla.
-    vr_w2 = _variance_reduction(
-        per_seed["vanilla"][0], per_seed["w2_reg"][0],
-    ) if per_seed["vanilla"] and per_seed["w2_reg"] else 0.0
-    vr_decay = _variance_reduction(
-        per_seed["vanilla"][0], per_seed["w2_reg_decay"][0],
-    ) if per_seed["vanilla"] and per_seed["w2_reg_decay"] else 0.0
+    vr_w2 = (
+        _variance_reduction(
+            per_seed["vanilla"][0],
+            per_seed["w2_reg"][0],
+        )
+        if per_seed["vanilla"] and per_seed["w2_reg"]
+        else 0.0
+    )
+    vr_decay = (
+        _variance_reduction(
+            per_seed["vanilla"][0],
+            per_seed["w2_reg_decay"][0],
+        )
+        if per_seed["vanilla"] and per_seed["w2_reg_decay"]
+        else 0.0
+    )
     # Cross-seed variance-reduction estimate (mean across seeds).
     vr_w2_per_seed: List[float] = []
     vr_decay_per_seed: List[float] = []
@@ -662,13 +713,16 @@ def _aggregate_per_seed(
             vr_decay_per_seed.append(
                 _variance_reduction(base, per_seed["w2_reg_decay"][s_idx]),
             )
+
     def _mean(xs: Sequence[float]) -> float:
         return float(sum(xs) / len(xs)) if xs else 0.0
+
     def _std(xs: Sequence[float]) -> float:
         if len(xs) < 2:
             return 0.0
         m = _mean(xs)
         return float(math.sqrt(sum((x - m) ** 2 for x in xs) / len(xs)))
+
     return {
         "per_strategy_per_seed": {
             s: [r.to_dict() for r in per_seed[s]] for s in per_seed
@@ -700,7 +754,8 @@ def _aggregate_per_seed(
 
 
 def _write_per_seed_json(
-    report: Dict[str, Any], output_dir: Path,
+    report: Dict[str, Any],
+    output_dir: Path,
 ) -> None:
     """Write per-seed per-strategy metrics to ``output_dir/seeds/<s>``.
 
@@ -722,7 +777,8 @@ def _write_per_seed_json(
             "source": (
                 "molmetal/scripts/bench_variance_mcts_wasserstein.py "
                 "(Wf-129 P1, seed=%d)"
-            ) % int(seed),
+            )
+            % int(seed),
             "unit": "variance_reduction (1 - var(reg)/var(vanilla))",
             "scope": "wf129_variance_wasserstein",
             "value": 0.0,
@@ -739,9 +795,7 @@ def _write_per_seed_json(
         }
         for strat in ("vanilla", "w2_reg", "w2_reg_decay"):
             if s_idx < len(per_strat[strat]):
-                per_seed_doc["strategies"][strat] = (
-                    per_strat[strat][s_idx]
-                )
+                per_seed_doc["strategies"][strat] = per_strat[strat][s_idx]
         # Per-seed variance reduction.
         if s_idx < len(per_strat["vanilla"]):
             base = per_strat["vanilla"][s_idx]
@@ -749,14 +803,16 @@ def _write_per_seed_json(
                 reg = per_strat["w2_reg"][s_idx]
                 per_seed_doc["variance_reduction_w2_reg_vs_vanilla"] = (
                     _variance_reduction(
-                        StrategyResult(**base), StrategyResult(**reg),
+                        StrategyResult(**base),
+                        StrategyResult(**reg),
                     )
                 )
             if s_idx < len(per_strat["w2_reg_decay"]):
                 dec = per_strat["w2_reg_decay"][s_idx]
                 per_seed_doc["variance_reduction_w2_reg_decay_vs_vanilla"] = (
                     _variance_reduction(
-                        StrategyResult(**base), StrategyResult(**dec),
+                        StrategyResult(**base),
+                        StrategyResult(**dec),
                     )
                 )
         per_seed_path = seeds_dir / f"seed_{int(seed)}" / "per_seed_metrics.json"
@@ -777,12 +833,8 @@ def _write_per_seed_json(
         "unit": "variance_reduction (1 - var(reg)/var(vanilla))",
         "scope": "wf129_variance_wasserstein",
         "source": "molmetal/scripts/bench_variance_mcts_wasserstein.py",
-        "value": float(report["variance_reduction"][
-            "w2_reg_per_seed_mean"
-        ]),
-        "value_std": float(report["variance_reduction"][
-            "w2_reg_per_seed_std"
-        ]),
+        "value": float(report["variance_reduction"]["w2_reg_per_seed_mean"]),
+        "value_std": float(report["variance_reduction"]["w2_reg_per_seed_std"]),
         "per_seed_values": [],
         "n_seeds": int(report["variance_reduction"]["n_seeds"]),
         "seeds": [int(s) for s in seeds],
@@ -804,22 +856,27 @@ def _write_per_seed_json(
     # Per-seed list (for easy grep).
     for s_idx, seed in enumerate(seeds):
         if "variance_reduction_w2_reg_vs_vanilla" in (
-            json.loads((seeds_dir / f"seed_{int(seed)}" /
-                        "per_seed_metrics.json").read_text())
+            json.loads(
+                (seeds_dir / f"seed_{int(seed)}" / "per_seed_metrics.json").read_text()
+            )
         ):
             try:
                 ps = json.loads(
-                    (seeds_dir / f"seed_{int(seed)}" /
-                     "per_seed_metrics.json").read_text(),
+                    (
+                        seeds_dir / f"seed_{int(seed)}" / "per_seed_metrics.json"
+                    ).read_text(),
                 )
-                agg_doc["per_seed_values"].append({
-                    "seed": int(seed),
-                    "variance_reduction_w2_reg_vs_vanilla": float(
-                        ps.get(
-                            "variance_reduction_w2_reg_vs_vanilla", 0.0,
+                agg_doc["per_seed_values"].append(
+                    {
+                        "seed": int(seed),
+                        "variance_reduction_w2_reg_vs_vanilla": float(
+                            ps.get(
+                                "variance_reduction_w2_reg_vs_vanilla",
+                                0.0,
+                            ),
                         ),
-                    ),
-                })
+                    }
+                )
             except Exception:
                 continue
     root_path = output_dir / "per_seed_metrics.json"
@@ -832,7 +889,8 @@ def _write_per_seed_json(
 
 
 def _write_synthesis(
-    report: Dict[str, Any], output_dir: Path,
+    report: Dict[str, Any],
+    output_dir: Path,
     target: float = -0.05,
 ) -> None:
     """Write the synthesis.md close-out (honest framing per TODO-92)."""
@@ -849,9 +907,7 @@ def _write_synthesis(
     baseline_success = float(
         agg.get("vanilla", {}).get("success_rate", 0.0),
     )
-    bench_executed = (
-        baseline_var > 0.0 and baseline_success > 0.0
-    )
+    bench_executed = baseline_var > 0.0 and baseline_success > 0.0
     achieved_w2 = bench_executed and (vr_w2 >= float(target))
     achieved_decay = bench_executed and (vr_decay >= float(target))
     n_seeds = int(vr["n_seeds"])
@@ -861,15 +917,15 @@ def _write_synthesis(
     lines: List[str] = []
     lines.append("# Wf-129 Phase 1 — Variance MCTS x Wasserstein (Synthesis)")
     lines.append("")
-    lines.append(
-        "**Date**: " + time.strftime("%Y-%m-%d") + "  "
-    )
+    lines.append("**Date**: " + time.strftime("%Y-%m-%d") + "  ")
     lines.append(
         "**Tool**: `molmetal/scripts/bench_variance_mcts_wasserstein.py` "
         f"({__version__})  "
     )
-    lines.append("**Scope**: Wf-129 P1 — variance_mcts <-> proof_search "
-                 "integration with Wf-123 P1 Wasserstein regulariser.")
+    lines.append(
+        "**Scope**: Wf-129 P1 — variance_mcts <-> proof_search "
+        "integration with Wf-123 P1 Wasserstein regulariser."
+    )
     lines.append("")
     lines.append("## §1 Goal")
     lines.append("")
@@ -888,8 +944,11 @@ def _write_synthesis(
         "Three strategies are run on the Wf-36 P2 mock chemistry "
         "(identity concatenation rule, 4 tile SMILES, hash-derived "
         "scorer) for `n_seeds = %d` (seeds = %s) and "
-        "`n_trajectories = %d` per seed:" % (
-            n_seeds, seeds, int(report["n_trajectories"]),
+        "`n_trajectories = %d` per seed:"
+        % (
+            n_seeds,
+            seeds,
+            int(report["n_trajectories"]),
         ),
     )
     lines.append("")
@@ -928,7 +987,9 @@ def _write_synthesis(
     lines.append("")
     lines.append("### §3.2 Variance reduction vs vanilla")
     lines.append("")
-    lines.append("| Strategy | Variance reduction (per-seed mean +/- std) | Target met |")
+    lines.append(
+        "| Strategy | Variance reduction (per-seed mean +/- std) | Target met |"
+    )
     lines.append("| --- | --- | --- |")
     lines.append(
         f"| `w2_reg` | {vr_w2:+.4f} +/- "
@@ -1011,7 +1072,7 @@ def _write_synthesis(
         "* The W_2 regulariser is a NEW scoring component (per "
         "TODO-126 §7); every per-trajectory diagnostic in "
         "`per_strategy_per_seed[*].w2_diagnostics[*]` carries "
-        "`engine_tag = \"wasserstein_reg\"` so downstream reporting "
+        '`engine_tag = "wasserstein_reg"` so downstream reporting '
         "can attribute Wasserstein contributions honestly.",
     )
     lines.append(
@@ -1022,12 +1083,10 @@ def _write_synthesis(
     lines.append("## §6 Cross-references")
     lines.append("")
     lines.append(
-        "* `molmetal/scripts/bench_variance_mcts_wasserstein.py` "
-        "(this run)",
+        "* `molmetal/scripts/bench_variance_mcts_wasserstein.py` " "(this run)",
     )
     lines.append(
-        "* `molmetal/tests/test_variance_mcts_wasserstein.py` "
-        "(12 unit tests)",
+        "* `molmetal/tests/test_variance_mcts_wasserstein.py` " "(12 unit tests)",
     )
     lines.append(
         "* `molmetal/reports/wf129_p1_variance_wasserstein/per_seed_metrics.json` "
@@ -1064,38 +1123,44 @@ def _write_synthesis(
 def _parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description=(
-            "Wf-129 P1 — variance_mcts x Wasserstein regulariser A/B "
-            "(CPU + GPU-0)."
+            "Wf-129 P1 — variance_mcts x Wasserstein regulariser A/B " "(CPU + GPU-0)."
         ),
     )
     p.add_argument(
-        "--smoke", action="store_true",
+        "--smoke",
+        action="store_true",
         help="Quick run (5 trajectories per seed, 1 seed).",
     )
     p.add_argument("--n-trajectories", type=int, default=20)
     p.add_argument("--sims", type=int, default=10)
     p.add_argument("--depth", type=int, default=3)
     p.add_argument(
-        "--seeds", type=str, default="0,1,2,3,4",
+        "--seeds",
+        type=str,
+        default="0,1,2,3,4",
         help="Comma-separated seeds (default 0..4).",
     )
     p.add_argument("--alpha", type=float, default=0.05)
     p.add_argument("--n-mc", type=int, default=256)
     p.add_argument(
-        "--reference", type=str, default="prior",
+        "--reference",
+        type=str,
+        default="prior",
         choices=("prior", "shuffle"),
     )
     p.add_argument("--decay-window", type=int, default=5)
     p.add_argument("--decay-tol", type=float, default=1.0e-2)
     p.add_argument(
-        "--report-path", type=str,
+        "--report-path",
+        type=str,
         default=(
             "/home/hugo/codes/mol-metal/molmetal/reports/"
             "wf129_p1_variance_wasserstein"
         ),
     )
     p.add_argument(
-        "--gpu-0", action="store_true",
+        "--gpu-0",
+        action="store_true",
         help="(no-op placeholder) — bench runs on CPU + (opt) GPU-0.",
     )
     p.add_argument("--target", type=float, default=-0.05)
@@ -1115,7 +1180,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         sims = int(args.sims)
         depth = int(args.depth)
     config = W2RegConfig(
-        alpha=float(args.alpha), n_mc=int(args.n_mc),
+        alpha=float(args.alpha),
+        n_mc=int(args.n_mc),
         reference=str(args.reference),
         decay_check=True,
         decay_window=int(args.decay_window),
@@ -1127,8 +1193,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         f"n_mc={config.n_mc}"
     )
     report = _aggregate_per_seed(
-        seeds=seeds, n_trajectories=n_trajectories,
-        sims=sims, depth=depth, config=config,
+        seeds=seeds,
+        n_trajectories=n_trajectories,
+        sims=sims,
+        depth=depth,
+        config=config,
     )
     output_dir = Path(args.report_path)
     _write_per_seed_json(report, output_dir)

@@ -83,6 +83,7 @@ Public API
 * :class:`MultiPHConcatAdapter` — pocket coords → multi-PH feature
   matrix + joint Hilbert integration.
 """
+
 from __future__ import annotations
 
 import time
@@ -194,20 +195,15 @@ class JointFeatureConcatenator:
         if astr.ndim == 1:
             astr = astr.reshape(1, -1)
         if astr.ndim != 2:
-            raise ValueError(
-                f"astr_feat must be (N, d_a); got shape {astr.shape}"
-            )
+            raise ValueError(f"astr_feat must be (N, d_a); got shape {astr.shape}")
         if mph.ndim < 2:
             raise ValueError(
-                f"multi_ph_feat must have shape (N, ...) with N>0; "
-                f"got {mph.shape}"
+                f"multi_ph_feat must have shape (N, ...) with N>0; " f"got {mph.shape}"
             )
         n_astr = int(astr.shape[0])
         n_mph = int(mph.shape[0])
         if n_astr != n_mph:
-            raise ValueError(
-                f"batch mismatch: astr N={n_astr} vs multi_ph N={n_mph}"
-            )
+            raise ValueError(f"batch mismatch: astr N={n_astr} vs multi_ph N={n_mph}")
 
         # Flatten trailing multi-PH dims to a single feature axis.
         mph_flat = mph.reshape(n_mph, -1)
@@ -325,13 +321,9 @@ class JointHilbertOptimizer:
     # ------------------------------------------------------------------
     def __post_init__(self) -> None:
         if int(self.hilbert_dim) < 1:
-            raise ValueError(
-                f"hilbert_dim must be >= 1; got {self.hilbert_dim}"
-            )
+            raise ValueError(f"hilbert_dim must be >= 1; got {self.hilbert_dim}")
         if int(self.n_iters) < 1:
-            raise ValueError(
-                f"n_iters must be >= 1; got {self.n_iters}"
-            )
+            raise ValueError(f"n_iters must be >= 1; got {self.n_iters}")
         if float(self.lr) <= 0.0:
             raise ValueError(f"lr must be > 0; got {self.lr}")
         # Owned concatenator.
@@ -373,6 +365,7 @@ class JointHilbertOptimizer:
         from molmetal.molmetal_lam.reward.hilbert_primal_dual import (
             LambdaASTSRHilbert,
         )
+
         hilbert = LambdaASTSRHilbert(
             population_dim=int(pop_dim),
             lr_primal=float(self.lr),
@@ -572,10 +565,12 @@ class JointVsSeparateComparator:
             # --- Separate regressors (one per stream, sum predictions).
             t0 = time.perf_counter()
             astr_reg = self.separate_hilbert(
-                population_dim=int(max(astr_dim, 1)), seed=int(s),
+                population_dim=int(max(astr_dim, 1)),
+                seed=int(s),
             )
             mph_reg = self.separate_hilbert(
-                population_dim=int(max(mph_dim, 1)), seed=int(s),
+                population_dim=int(max(mph_dim, 1)),
+                seed=int(s),
             )
             astr_reg.optimize(astr_flat, tgt)
             mph_reg.optimize(mph_flat, tgt)
@@ -589,10 +584,7 @@ class JointVsSeparateComparator:
 
         avg_joint_wall = float(np.mean(joint_walls))
         avg_sep_wall = float(np.mean(sep_walls))
-        speedup = (
-            avg_sep_wall / avg_joint_wall
-            if avg_joint_wall > 0 else float("inf")
-        )
+        speedup = avg_sep_wall / avg_joint_wall if avg_joint_wall > 0 else float("inf")
         return {
             "joint_wall_s": avg_joint_wall,
             "separate_wall_s": avg_sep_wall,
@@ -795,9 +787,7 @@ class StableMultiPHExtractor:
             pocket_mask = np.ones(coords_arr.shape[:2], dtype=bool)
         mask = np.asarray(pocket_mask, dtype=bool)
         if mask.shape != coords_arr.shape[:2]:
-            raise ValueError(
-                f"pocket_mask must be (B, N); got {tuple(mask.shape)}"
-            )
+            raise ValueError(f"pocket_mask must be (B, N); got {tuple(mask.shape)}")
         # Zero-out the padded atoms so the spatial filter rejects
         # them (||0 - 0|| = 0 satisfies max_radius=0 trivially, but
         # the (0, 0) origin carries no geometric signal).
@@ -936,17 +926,19 @@ class MultiPHConcatAdapter:
             coords_b = np.broadcast_to(coords[None, ...], (n_a,) + coords.shape)
             atoms_b = np.broadcast_to(atoms[None, ...], (n_a,) + atoms.shape)
             multi_ph = self.extractor.compute_batch(
-                coords_b.copy(), atoms_b.copy(),
+                coords_b.copy(),
+                atoms_b.copy(),
                 pocket_mask=None,
             )
         elif coords.ndim == 3:
             if coords.shape[0] != n_a:
                 raise ValueError(
-                    f"batch mismatch: astr N={n_a} vs pockets B="
-                    f"{coords.shape[0]}"
+                    f"batch mismatch: astr N={n_a} vs pockets B=" f"{coords.shape[0]}"
                 )
             multi_ph = self.extractor.compute_batch(
-                coords, atoms, pocket_mask=pocket_mask,
+                coords,
+                atoms,
+                pocket_mask=pocket_mask,
             )
         else:
             raise ValueError(
@@ -959,11 +951,13 @@ class MultiPHConcatAdapter:
         # carry less information than expected.
         if not self.extractor.is_stable(multi_ph):
             import warnings
+
             warnings.warn(
                 "Multi-PH feature map is unstable (zero variance or "
                 "non-finite entries); the joint ASTSR + multi-PH stream "
                 "may not improve over the ASTSR-only baseline.",
-                RuntimeWarning, stacklevel=2,
+                RuntimeWarning,
+                stacklevel=2,
             )
 
         combined = self.concatenator.concatenate(astr, multi_ph)
@@ -997,7 +991,10 @@ class MultiPHConcatAdapter:
             ``multi_ph_stable``.
         """
         multi_ph = self._extract_multi_ph(
-            astr_features, pocket_coords, pocket_atom_types, pocket_mask,
+            astr_features,
+            pocket_coords,
+            pocket_atom_types,
+            pocket_mask,
         )
         result = joint_hilbert.fit(astr_features, multi_ph, target)
         result["multi_ph_stable"] = bool(
@@ -1023,17 +1020,23 @@ class MultiPHConcatAdapter:
         atoms = np.asarray(pocket_atom_types, dtype=np.int64)
         if coords.ndim == 2:
             coords_b = np.broadcast_to(
-                coords[None, ...], (n_a,) + coords.shape,
+                coords[None, ...],
+                (n_a,) + coords.shape,
             )
             atoms_b = np.broadcast_to(
-                atoms[None, ...], (n_a,) + atoms.shape,
+                atoms[None, ...],
+                (n_a,) + atoms.shape,
             )
             return self.extractor.compute_batch(
-                coords_b.copy(), atoms_b.copy(), pocket_mask=None,
+                coords_b.copy(),
+                atoms_b.copy(),
+                pocket_mask=None,
             )
         if coords.ndim == 3 and coords.shape[0] == n_a:
             return self.extractor.compute_batch(
-                coords, atoms, pocket_mask=pocket_mask,
+                coords,
+                atoms,
+                pocket_mask=pocket_mask,
             )
         raise ValueError(
             f"pocket_coords shape {tuple(coords.shape)} incompatible "

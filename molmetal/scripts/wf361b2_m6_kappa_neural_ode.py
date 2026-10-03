@@ -49,6 +49,7 @@ Run::
         molmetal/scripts/wf361b2_m6_kappa_neural_ode.py \\
         --output-dir molmetal/reports/wf361b2_m6_kappa_neural_ode
 """
+
 from __future__ import annotations
 
 import argparse
@@ -73,6 +74,7 @@ except Exception:
 # errors for.
 try:
     from rdkit import RDLogger
+
     RDLogger.DisableLog("rdApp.*")
 except Exception:
     pass
@@ -133,6 +135,7 @@ def _safe_m6_kappa(smi: str) -> Optional[float]:
         from molmetal.molmetal_lam.sbdd_env.metrics_v2 import (
             m6_kappa_from_smiles,
         )
+
         v = m6_kappa_from_smiles(smi)
     except Exception:
         return None
@@ -142,7 +145,8 @@ def _safe_m6_kappa(smi: str) -> Optional[float]:
 
 
 def _compute_baseline_pass_rate(
-    values: Sequence[float], threshold: float,
+    values: Sequence[float],
+    threshold: float,
 ) -> float:
     """Fraction of ``values`` that meet ``threshold`` (NaN-safe)."""
     finite = [v for v in values if v == v]
@@ -161,6 +165,7 @@ def _rdkit_12d(smiles_list: Sequence[str]) -> "np.ndarray":
     Returns ``(n, 12)`` array; zero-rows on RDKit parse failure.
     """
     import numpy as np
+
     try:
         from rdkit import Chem
         from rdkit.Chem import Descriptors
@@ -168,9 +173,18 @@ def _rdkit_12d(smiles_list: Sequence[str]) -> "np.ndarray":
         return np.zeros((len(smiles_list), 12), dtype="float64")
 
     cols = [
-        "MolWt", "MolLogP", "TPSA", "HBA", "HBD", "NRotB",
-        "HeavyAtoms", "RingCount", "NumAromaticRings",
-        "FractionCSP3", "MolMR", "BalabanJ",
+        "MolWt",
+        "MolLogP",
+        "TPSA",
+        "HBA",
+        "HBD",
+        "NRotB",
+        "HeavyAtoms",
+        "RingCount",
+        "NumAromaticRings",
+        "FractionCSP3",
+        "MolMR",
+        "BalabanJ",
     ]
     fns = {
         "MolWt": Descriptors.MolWt,
@@ -228,6 +242,7 @@ class NeuralODEConfig:
     seed : int
         RNG seed for the MLP backbone.
     """
+
     feature_dim: int = 12
     hidden_dim: int = DEFAULT_ODE_HIDDEN
     t_end: float = DEFAULT_ODE_T_END
@@ -239,7 +254,9 @@ class NeuralODEConfig:
 
 
 def _build_ode_mlp(
-    feature_dim: int, hidden_dim: int, seed: int,
+    feature_dim: int,
+    hidden_dim: int,
+    seed: int,
 ):
     """Build the ODE MLP ``f_θ(x, t) -> dx/dt`` (torch.nn.Module).
 
@@ -271,7 +288,8 @@ def _build_ode_mlp(
 
 
 def _integrate_neural_ode(
-    X: "np.ndarray", cfg: NeuralODEConfig,
+    X: "np.ndarray",
+    cfg: NeuralODEConfig,
 ) -> "np.ndarray":
     """Run the Neural ODE forward pass on ``X``.
 
@@ -294,7 +312,9 @@ def _integrate_neural_ode(
     with torch.no_grad():
         try:
             x_traj = torchdiffeq.odeint(
-                fnet, x0, t_eval,
+                fnet,
+                x0,
+                t_eval,
                 method=str(cfg.method),
                 rtol=float(cfg.rtol),
                 atol=float(cfg.atol),
@@ -303,7 +323,9 @@ def _integrate_neural_ode(
             # Fall back to euler if dopri5 fails (numerical stiffness).
             try:
                 x_traj = torchdiffeq.odeint(
-                    fnet, x0, t_eval,
+                    fnet,
+                    x0,
+                    t_eval,
                     method="euler",
                     rtol=float(cfg.rtol),
                     atol=float(cfg.atol),
@@ -320,7 +342,10 @@ def _integrate_neural_ode(
 # CV-Ridge helpers (mirror Wf-333-V4)
 # ---------------------------------------------------------------------------
 def _cv_r2_predict(
-    X: Any, y: Any, alpha: float, cv_folds: int,
+    X: Any,
+    y: Any,
+    alpha: float,
+    cv_folds: int,
 ) -> Dict[str, Any]:
     """Cross-validated Ridge prediction + R²."""
     from sklearn.linear_model import Ridge
@@ -367,18 +392,19 @@ def _run_candidate(
     y_pred = cv["y_pred_cv"]
     augmented_mean = float(np.mean(y_pred))
     augmented_pass_rate = _compute_baseline_pass_rate(
-        y_pred, M6_KAPPA_THRESHOLD,
+        y_pred,
+        M6_KAPPA_THRESHOLD,
     )
     augmented_pass_rate_adaptive = _compute_baseline_pass_rate(
-        y_pred, M6_KAPPA_THRESHOLD_ADAPTIVE,
+        y_pred,
+        M6_KAPPA_THRESHOLD_ADAPTIVE,
     )
     baseline_pass_rate_adaptive = _compute_baseline_pass_rate(
-        y, M6_KAPPA_THRESHOLD_ADAPTIVE,
+        y,
+        M6_KAPPA_THRESHOLD_ADAPTIVE,
     )
     pass_rate_lift = augmented_pass_rate - baseline_pass_rate
-    pass_rate_lift_adaptive = (
-        augmented_pass_rate_adaptive - baseline_pass_rate_adaptive
-    )
+    pass_rate_lift_adaptive = augmented_pass_rate_adaptive - baseline_pass_rate_adaptive
     if augmented_mean >= M6_KAPPA_THRESHOLD:
         verdict = "HONEST_NEGATIVE_M6_KAPPA_RESOLVED"
     else:
@@ -408,16 +434,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--csv",
-        default=str(
-            REPO_ROOT / "molmetal" / "data" / "metallo_drugs_500_train.csv"
-        ),
+        default=str(REPO_ROOT / "molmetal" / "data" / "metallo_drugs_500_train.csv"),
         help="Path to metallo_drugs_500_train.csv",
     )
     parser.add_argument(
         "--output-dir",
-        default=str(
-            REPO_ROOT / "molmetal" / "reports" / "wf361b2_m6_kappa_neural_ode"
-        ),
+        default=str(REPO_ROOT / "molmetal" / "reports" / "wf361b2_m6_kappa_neural_ode"),
         help="Where to write result.json + per-axis csv",
     )
     parser.add_argument(
@@ -425,7 +447,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         type=int,
         default=60,
         help="Cap cohort size for the smoke run (CPU-only); "
-             "default 60 keeps wall < ~5 min on the 12-d RDKit feature.",
+        "default 60 keeps wall < ~5 min on the 12-d RDKit feature.",
     )
     parser.add_argument(
         "--cv-folds",
@@ -456,7 +478,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         type=int,
         default=0,
         help="Warm-up epochs for the MLP backbone (0 = no training, "
-             "use random-init MLP as a feature extractor).",
+        "use random-init MLP as a feature extractor).",
     )
     parser.add_argument(
         "--seed",
@@ -475,8 +497,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # ------------------------------------------------------------------
     # 1. Load cohort
     # ------------------------------------------------------------------
-    print(f"[Wf-361-B2] Loading cohort from {csv_path} "
-          f"(max {args.max_samples}) ...")
+    print(
+        f"[Wf-361-B2] Loading cohort from {csv_path} " f"(max {args.max_samples}) ..."
+    )
     t0 = time.time()
     smiles = _load_cohort(csv_path, args.max_samples)
     t_load = time.time() - t0
@@ -484,8 +507,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     if not smiles:
         smiles = ["CCO", "c1ccccc1", "[Pt](N)(N)(Cl)Cl"]
-        print(f"[Wf-361-B2] CSV empty; using synthetic fallback "
-              f"({len(smiles)} SMILES)")
+        print(
+            f"[Wf-361-B2] CSV empty; using synthetic fallback "
+            f"({len(smiles)} SMILES)"
+        )
 
     # ------------------------------------------------------------------
     # 2. Compute baseline m6_kappa on the cohort
@@ -503,17 +528,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     baseline_mean = float(sum(baseline_clean) / n_parsed)
     baseline_std = float(np.std(baseline_clean, ddof=1)) if n_parsed > 1 else 0.0
     baseline_pass_rate = _compute_baseline_pass_rate(
-        baseline_clean, M6_KAPPA_THRESHOLD,
+        baseline_clean,
+        M6_KAPPA_THRESHOLD,
     )
     baseline_pass_rate_adaptive = _compute_baseline_pass_rate(
-        baseline_clean, M6_KAPPA_THRESHOLD_ADAPTIVE,
+        baseline_clean,
+        M6_KAPPA_THRESHOLD_ADAPTIVE,
     )
-    print(f"[Wf-361-B2] baseline m6_kappa: mean={baseline_mean:.4f} "
-          f"(std={baseline_std:.4f}, n_parsed={n_parsed}, "
-          f"n_failed={n_failed}, "
-          f"pass_rate@{M6_KAPPA_THRESHOLD:.2f}={baseline_pass_rate:.4f}, "
-          f"pass_rate@{M6_KAPPA_THRESHOLD_ADAPTIVE:.2f}="
-          f"{baseline_pass_rate_adaptive:.4f}, {t_baseline:.2f}s)")
+    print(
+        f"[Wf-361-B2] baseline m6_kappa: mean={baseline_mean:.4f} "
+        f"(std={baseline_std:.4f}, n_parsed={n_parsed}, "
+        f"n_failed={n_failed}, "
+        f"pass_rate@{M6_KAPPA_THRESHOLD:.2f}={baseline_pass_rate:.4f}, "
+        f"pass_rate@{M6_KAPPA_THRESHOLD_ADAPTIVE:.2f}="
+        f"{baseline_pass_rate_adaptive:.4f}, {t_baseline:.2f}s)"
+    )
 
     # ------------------------------------------------------------------
     # 3. Compute RDKit 12-d descriptor features
@@ -535,15 +564,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     y = np.asarray(y_baseline, dtype=np.float64)
     X_rdkit = _rdkit_12d(kept_smiles)
     t_rdkit = time.time() - t0
-    print(f"[Wf-361-B2] RDKit 12-d features: shape={X_rdkit.shape}, "
-          f"min={X_rdkit.min():.4f}, max={X_rdkit.max():.4f}, "
-          f"mean={X_rdkit.mean():.4f} ({t_rdkit:.2f}s)")
+    print(
+        f"[Wf-361-B2] RDKit 12-d features: shape={X_rdkit.shape}, "
+        f"min={X_rdkit.min():.4f}, max={X_rdkit.max():.4f}, "
+        f"mean={X_rdkit.mean():.4f} ({t_rdkit:.2f}s)"
+    )
 
     # ------------------------------------------------------------------
     # 4. Evolve features via Neural ODE (continuous dynamics)
     # ------------------------------------------------------------------
-    print("[Wf-361-B2] Evolving features via Neural ODE "
-          f"(dopri5, hidden={args.ode_hidden}, t_end={args.ode_t_end}) ...")
+    print(
+        "[Wf-361-B2] Evolving features via Neural ODE "
+        f"(dopri5, hidden={args.ode_hidden}, t_end={args.ode_t_end}) ..."
+    )
     t0 = time.time()
     cfg = NeuralODEConfig(
         feature_dim=12,
@@ -557,40 +590,60 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     X_evolved = _integrate_neural_ode(X_rdkit, cfg)
     t_ode = time.time() - t0
-    print(f"[Wf-361-B2] Neural ODE evolved features: shape={X_evolved.shape}, "
-          f"min={X_evolved.min():.4f}, max={X_evolved.max():.4f}, "
-          f"mean={X_evolved.mean():.4f} ({t_ode:.2f}s)")
+    print(
+        f"[Wf-361-B2] Neural ODE evolved features: shape={X_evolved.shape}, "
+        f"min={X_evolved.min():.4f}, max={X_evolved.max():.4f}, "
+        f"mean={X_evolved.mean():.4f} ({t_ode:.2f}s)"
+    )
 
     # ------------------------------------------------------------------
     # 5. Run candidates
     # ------------------------------------------------------------------
-    print(f"[Wf-361-B2] Cross-validated Ridge recovery "
-          f"(alpha={args.ridge_alpha}, cv_folds={args.cv_folds}) ...")
+    print(
+        f"[Wf-361-B2] Cross-validated Ridge recovery "
+        f"(alpha={args.ridge_alpha}, cv_folds={args.cv_folds}) ..."
+    )
 
     # Candidate 1: RDKit 12-d baseline (no ODE; structural reference)
     X_baseline = X_rdkit
     cand_baseline = _run_candidate(
-        "rdkit_12d_baseline", X_baseline, y, baseline_pass_rate,
-        alpha=args.ridge_alpha, cv_folds=args.cv_folds,
+        "rdkit_12d_baseline",
+        X_baseline,
+        y,
+        baseline_pass_rate,
+        alpha=args.ridge_alpha,
+        cv_folds=args.cv_folds,
     )
 
     # Candidate 2: Neural ODE evolved features (Wf-361-B2 main candidate)
     cand_neural_ode = _run_candidate(
-        "neural_ode_dopri5", X_evolved, y, baseline_pass_rate,
-        alpha=args.ridge_alpha, cv_folds=args.cv_folds,
+        "neural_ode_dopri5",
+        X_evolved,
+        y,
+        baseline_pass_rate,
+        alpha=args.ridge_alpha,
+        cv_folds=args.cv_folds,
     )
 
     # Candidate 3: joint RDKit + ODE (concat)
     X_joint = np.concatenate([X_rdkit, X_evolved], axis=-1)
     cand_joint = _run_candidate(
-        "joint_rdkit_plus_neural_ode", X_joint, y, baseline_pass_rate,
-        alpha=args.ridge_alpha, cv_folds=args.cv_folds,
+        "joint_rdkit_plus_neural_ode",
+        X_joint,
+        y,
+        baseline_pass_rate,
+        alpha=args.ridge_alpha,
+        cv_folds=args.cv_folds,
     )
 
     # Candidate 4: adaptive threshold (no feature change; gate-relax)
     cand_adaptive = _run_candidate(
-        "adaptive_threshold_relax_0_55", X_evolved, y, baseline_pass_rate,
-        alpha=args.ridge_alpha, cv_folds=args.cv_folds,
+        "adaptive_threshold_relax_0_55",
+        X_evolved,
+        y,
+        baseline_pass_rate,
+        alpha=args.ridge_alpha,
+        cv_folds=args.cv_folds,
     )
 
     candidates = [
@@ -606,16 +659,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     print()
     print("=" * 80)
     print(f"Wf-361-B2 SUMMARY")
-    print(f"  m6_kappa baseline mean : {baseline_mean:.4f} "
-          f"(Wf-325D MEASURED={WF_325D_MEASURED_BASELINE:.4f}, "
-          f"Wf-359-A1 platinai_4cell={WF_359A1_MEASURED_BASELINE:.4f})")
+    print(
+        f"  m6_kappa baseline mean : {baseline_mean:.4f} "
+        f"(Wf-325D MEASURED={WF_325D_MEASURED_BASELINE:.4f}, "
+        f"Wf-359-A1 platinai_4cell={WF_359A1_MEASURED_BASELINE:.4f})"
+    )
     print(f"  pass_rate @0.60       : {baseline_pass_rate:.4f}")
     print(f"  pass_rate @0.55 (ada) : {baseline_pass_rate_adaptive:.4f}")
     print(f"  candidates            : {len(candidates)}")
     print()
-    print(f"  {'candidate':<30s} {'n_feat':>7s} {'cv_r2':>9s} "
-          f"{'aug_mean':>9s} {'pass_lift':>10s} {'lift_adapt':>11s} "
-          f"{'verdict':<30s}")
+    print(
+        f"  {'candidate':<30s} {'n_feat':>7s} {'cv_r2':>9s} "
+        f"{'aug_mean':>9s} {'pass_lift':>10s} {'lift_adapt':>11s} "
+        f"{'verdict':<30s}"
+    )
     for c in candidates:
         print(
             f"  {c['candidate']:<30s} {c['n_features']:>7d} "
@@ -630,17 +687,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # ------------------------------------------------------------------
     best_cv_r2 = max(c["cv_r2"] for c in candidates)
     best_cv_r2_candidate = next(
-        c["candidate"] for c in candidates
-        if c["cv_r2"] == best_cv_r2
+        c["candidate"] for c in candidates if c["cv_r2"] == best_cv_r2
     )
     best_lift_adaptive = max(c["pass_rate_lift_adaptive"] for c in candidates)
     best_lift_candidate = next(
-        c["candidate"] for c in candidates
+        c["candidate"]
+        for c in candidates
         if c["pass_rate_lift_adaptive"] == best_lift_adaptive
     )
     any_resolved = any(
-        c["verdict"] == "HONEST_NEGATIVE_M6_KAPPA_RESOLVED"
-        for c in candidates
+        c["verdict"] == "HONEST_NEGATIVE_M6_KAPPA_RESOLVED" for c in candidates
     )
     if any_resolved:
         aggregate_status = "HONEST_NEGATIVE_M6_KAPPA_RESOLVED"
@@ -654,16 +710,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             aggregate_status = "HONEST_NEGATIVE_PERSISTENT"
 
     # CEILING_BREAK if best candidate's augmented_mean >= 0.6
-    ceiling_break = (
-        max(c["augmented_mean"] for c in candidates)
-        >= M6_KAPPA_THRESHOLD
-    )
+    ceiling_break = max(c["augmented_mean"] for c in candidates) >= M6_KAPPA_THRESHOLD
 
     print()
-    print(f"  best_cv_r2 candidate       : {best_cv_r2_candidate} "
-          f"(CV-R²={best_cv_r2:+.4f})")
-    print(f"  best_adaptive_lift candidate: {best_lift_candidate} "
-          f"(lift={best_lift_adaptive:+.4f})")
+    print(
+        f"  best_cv_r2 candidate       : {best_cv_r2_candidate} "
+        f"(CV-R²={best_cv_r2:+.4f})"
+    )
+    print(
+        f"  best_adaptive_lift candidate: {best_lift_candidate} "
+        f"(lift={best_lift_adaptive:+.4f})"
+    )
     print(f"  aggregate_status           : {aggregate_status}")
     print(f"  ceiling_break              : {ceiling_break}")
     print("=" * 80)
@@ -674,13 +731,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     result: Dict[str, Any] = {
         "wf": "Wf-361-B2",
         "task": "m6_kappa Neural ODE integration exploration (continuous "
-                "dynamics as an alternative to discrete feature engineering)",
+        "dynamics as an alternative to discrete feature engineering)",
         "date_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "no_gpu_launch": True,
         "no_retrain": True,
         "cpu_only": True,
         "wall_seconds": round(
-            t_load + t_baseline + t_rdkit + t_ode, 4,
+            t_load + t_baseline + t_rdkit + t_ode,
+            4,
         ),
         "wall_breakdown": {
             "load": round(t_load, 4),
@@ -725,8 +783,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "is_no_paper_touch": True,
             "baseline_mean_status": "MEASURED (Wf-325D, n=449 full cohort)",
             "smoke_baseline_status": (
-                "MEASURED on this smoke cohort "
-                f"(n={n_parsed}/{len(smiles)})"
+                "MEASURED on this smoke cohort " f"(n={n_parsed}/{len(smiles)})"
             ),
             "cv_r2_status": "MEASURED (5-fold Ridge cross-validation)",
             "augmented_mean_status": (
@@ -742,7 +799,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             ),
             "r2_lift_status": "MEASURED",
             "m6_kappa_lift_status": (
-                "RESOLVED" if aggregate_status == "HONEST_NEGATIVE_M6_KAPPA_RESOLVED"
+                "RESOLVED"
+                if aggregate_status == "HONEST_NEGATIVE_M6_KAPPA_RESOLVED"
                 else "PERSISTENT (PARTIAL_STRUCTURAL preserved)"
             ),
             "neural_ode_architecture": (
@@ -812,31 +870,43 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         writer = csv.DictWriter(
             fh,
             fieldnames=[
-                "axis", "candidate", "n_features", "cv_r2", "augmented_mean",
-                "delta_mean", "pass_rate_baseline", "pass_rate_augmented",
-                "pass_rate_lift", "pass_rate_lift_adaptive",
-                "verdict", "alpha", "cv_folds",
+                "axis",
+                "candidate",
+                "n_features",
+                "cv_r2",
+                "augmented_mean",
+                "delta_mean",
+                "pass_rate_baseline",
+                "pass_rate_augmented",
+                "pass_rate_lift",
+                "pass_rate_lift_adaptive",
+                "verdict",
+                "alpha",
+                "cv_folds",
             ],
         )
         writer.writeheader()
         for c in candidates:
-            writer.writerow({
-                "axis": "m6_kappa",
-                "candidate": c["candidate"],
-                "n_features": c["n_features"],
-                "cv_r2": round(c["cv_r2"], 6),
-                "augmented_mean": round(c["augmented_mean"], 6),
-                "delta_mean": round(c["delta_mean"], 6),
-                "pass_rate_baseline": round(c["pass_rate_baseline"], 6),
-                "pass_rate_augmented": round(c["pass_rate_augmented"], 6),
-                "pass_rate_lift": round(c["pass_rate_lift"], 6),
-                "pass_rate_lift_adaptive": round(
-                    c["pass_rate_lift_adaptive"], 6,
-                ),
-                "verdict": c["verdict"],
-                "alpha": c["alpha"],
-                "cv_folds": c["cv_folds"],
-            })
+            writer.writerow(
+                {
+                    "axis": "m6_kappa",
+                    "candidate": c["candidate"],
+                    "n_features": c["n_features"],
+                    "cv_r2": round(c["cv_r2"], 6),
+                    "augmented_mean": round(c["augmented_mean"], 6),
+                    "delta_mean": round(c["delta_mean"], 6),
+                    "pass_rate_baseline": round(c["pass_rate_baseline"], 6),
+                    "pass_rate_augmented": round(c["pass_rate_augmented"], 6),
+                    "pass_rate_lift": round(c["pass_rate_lift"], 6),
+                    "pass_rate_lift_adaptive": round(
+                        c["pass_rate_lift_adaptive"],
+                        6,
+                    ),
+                    "verdict": c["verdict"],
+                    "alpha": c["alpha"],
+                    "cv_folds": c["cv_folds"],
+                }
+            )
     print(f"[Wf-361-B2] Wrote {csv_path_out}")
 
     # ------------------------------------------------------------------

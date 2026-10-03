@@ -87,9 +87,7 @@ def _smoke_relax() -> dict:
 def _smoke_validator() -> dict:
     """Run validator on a bad-contact poisoned pair."""
     val = GeometryValidator()
-    bad = np.asarray(
-        [[0.0, 0.0, 0.0], [0.5, 0.0, 0.0]], dtype=np.float64
-    )
+    bad = np.asarray([[0.0, 0.0, 0.0], [0.5, 0.0, 0.0]], dtype=np.float64)
     violations = val.report_bad_contacts(bad, ["H", "H"])
     return {
         "n_violations": len(violations),

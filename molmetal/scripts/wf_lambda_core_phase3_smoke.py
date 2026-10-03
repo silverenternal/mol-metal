@@ -48,24 +48,28 @@ from molmetal.molmetal_lam.lam_chem.conformer_embed import (
     generate_conformer,
     has_finite_3d,
 )
+
 # Module L2: pharmacophore filter
 from molmetal.molmetal_lam.lam_chem.pharmacophore_filter import (
     compute_pharmacophore_report,
     filter_molecules,
     pass_pharmacophore,
 )
+
 # Module L3: stereo-aware reduction (we just import annotation; not all
 # SMILES are valid click pairs but we report annotations where applicable)
 from molmetal.molmetal_lam.lam_chem.stereo_aware_reduction import (
     _annotate_smiles_stereo,
     apply_click,
 )
+
 # Module L4: reaction confidence (Laplace-smoothed priors)
 from molmetal.molmetal_lam.reactions.confidence import (
     ReactionConfidence,
     laplace_estimate,
     scaffold_key,
 )
+
 # Module L5: Pareto multi-objective ranking
 from molmetal.molmetal_lam.search_alg.pareto import (
     dominates,
@@ -101,6 +105,7 @@ def _try_sa_score(smi: str) -> float:
     """
     try:
         from rdkit.Chem import RDConfig
+
         sys.path.append(os.path.join(RDConfig.RDContribDir, "SA_Score"))
         # pylint: disable=import-outside-toplevel
         import sascorer  # type: ignore
@@ -214,10 +219,12 @@ def main() -> int:
             v_lip = int(getattr(r, "lipinski_violations", 0))
             v_veb = int(getattr(r, "veber_violations", 0))
             v_ring = bool(getattr(r, "ring_violation", False))
-            tot = int(getattr(r, "total_violations", v_lip + v_veb + (1 if v_ring else 0)))
+            tot = int(
+                getattr(r, "total_violations", v_lip + v_veb + (1 if v_ring else 0))
+            )
             # Compute strict / lenient from totals
-            passes_strict = (tot == 0)
-            passes_lenient = (tot <= 1)
+            passes_strict = tot == 0
+            passes_lenient = tot <= 1
             # Descriptors are nested under r.descriptors dict
             desc = getattr(r, "descriptors", {}) or {}
             pharma_per_mol[smi] = {
@@ -270,9 +277,7 @@ def main() -> int:
         except Exception as exc:  # noqa: BLE001
             stereo_per_mol[smi] = {"error": str(exc)[:80]}
 
-    n_stereo = sum(
-        1 for v in stereo_per_mol.values() if v.get("n_stereo_atoms", 0) > 0
-    )
+    n_stereo = sum(1 for v in stereo_per_mol.values() if v.get("n_stereo_atoms", 0) > 0)
     print(f"[phase3-smoke] stereo-bearing mols: {n_stereo}/{n_total}")
 
     # Step 4: reaction confidence (L4) — uniform-prior Laplace estimate

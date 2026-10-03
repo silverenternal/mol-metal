@@ -263,15 +263,11 @@ class MultiPHAugment(nn.Module):
         coords, atom_types = self._smiles_to_atomic_clouds(smiles_list)
         # ``two_param_filtration`` → (B, n_bins, n_bins).
         try:
-            feat = self.filtration.compute_with_atom_types(
-                coords, atom_types
-            )
+            feat = self.filtration.compute_with_atom_types(coords, atom_types)
         except Exception:
             # Numerical safety net — return zeros on degenerate input.
             B = len(smiles_list)
-            feat = torch.zeros(
-                (B, self.n_bins, self.n_bins), dtype=torch.float32
-            )
+            feat = torch.zeros((B, self.n_bins, self.n_bins), dtype=torch.float32)
         return feat.flatten(start_dim=1)  # (B, n_bins * n_bins)
 
 
@@ -321,7 +317,9 @@ class SE3GeodesicRegulariser(nn.Module):
         xi = torch.cat([omega, v], dim=-1)  # (B, 6)
         # SE(3) exp → (B, 4, 4) — we only use the rotation block (B, 3, 3).
         T = self.geodesic.exp_map(
-            torch.eye(4, device=logits.device, dtype=logits.dtype).unsqueeze(0).expand(B, -1, -1),
+            torch.eye(4, device=logits.device, dtype=logits.dtype)
+            .unsqueeze(0)
+            .expand(B, -1, -1),
             xi,
         )
         # Apply the rotation to a synthetic (B, 3, 2) tensor built from
@@ -332,15 +330,14 @@ class SE3GeodesicRegulariser(nn.Module):
         # To keep the shape contract simple we measure the perturbation
         # effect via a small additive scalar.
         rot_norm = torch.linalg.matrix_norm(
-            T[:, :3, :3] - torch.eye(3, device=logits.device, dtype=logits.dtype).unsqueeze(0),
+            T[:, :3, :3]
+            - torch.eye(3, device=logits.device, dtype=logits.dtype).unsqueeze(0),
             ord="fro",
         )  # (B,)
         # Add a per-sample rotation-noise penalty to the logits.
         # The penalty is small (rotation_norm * 0.1) so it does not
         # dominate the BCE loss.
-        perturbation_term = (
-            rot_norm.unsqueeze(-1) * 0.1
-        )  # (B, 1)
+        perturbation_term = rot_norm.unsqueeze(-1) * 0.1  # (B, 1)
         # Apply to logits — column 0 (active logit) only.
         out = logits.clone()
         out[:, 0] = out[:, 0] + perturbation_term.squeeze(-1)
@@ -620,23 +617,19 @@ class ChempropV2Frontier(nn.Module):
                 with torch.no_grad():
                     proj.weight.zero_()
                     h_dim = self.base_model.hidden_dim
-                    mp_dim = self.config.multi_ph_n_bins ** 2
+                    mp_dim = self.config.multi_ph_n_bins**2
                     e_dim = self.base_model.metal_embed_dim
                     # Pass-through h to proj_out[:h_dim]
-                    proj.weight[:h_dim, :h_dim] = torch.eye(
-                        h_dim, dtype=z.dtype
-                    )
+                    proj.weight[:h_dim, :h_dim] = torch.eye(h_dim, dtype=z.dtype)
                     # Pass-through e to proj_out[h_dim:]
-                    proj.weight[h_dim:, h_dim + mp_dim:h_dim + mp_dim + e_dim] = (
+                    proj.weight[h_dim:, h_dim + mp_dim : h_dim + mp_dim + e_dim] = (
                         torch.eye(e_dim, dtype=z.dtype)
                     )
                 self._proj_back = proj
             z_proj = self._proj_back(z)
             for metal, head in self.base_model.metal_heads.items():
                 logits_1col = head.train_step(z_proj)
-                out[metal] = self.base_model._chemprop_logits_to_v4_shape(
-                    logits_1col
-                )
+                out[metal] = self.base_model._chemprop_logits_to_v4_shape(logits_1col)
             out["coord"] = self.base_model.coord_head(z_proj)
         else:
             # No multi-PH — use the base model forward directly.
@@ -794,13 +787,20 @@ def quick_smoke_chemprop_v2_frontier(
     metal_ids = torch.zeros(B, dtype=torch.long, device=device)
     out, info = model(smiles, metal_ids)
     torch.manual_seed(0)
-    y_true = {m: torch.randint(0, 2, (B,), device=device).float()
-              for m in model.base_model.metals}
-    coord_true = torch.randint(0, n_coord_classes, (B,), device=device)
-    return model, base_loss, {"out": out, "info": info}, {
-        "y_true": y_true,
-        "coord_true": coord_true,
+    y_true = {
+        m: torch.randint(0, 2, (B,), device=device).float()
+        for m in model.base_model.metals
     }
+    coord_true = torch.randint(0, n_coord_classes, (B,), device=device)
+    return (
+        model,
+        base_loss,
+        {"out": out, "info": info},
+        {
+            "y_true": y_true,
+            "coord_true": coord_true,
+        },
+    )
 
 
 __all__ = [

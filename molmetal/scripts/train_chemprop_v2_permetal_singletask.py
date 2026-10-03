@@ -38,6 +38,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -64,6 +65,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from rdkit import Chem, RDLogger
+
 RDLogger.DisableLog("rdApp.*")
 
 from sklearn.metrics import roc_auc_score
@@ -84,8 +86,8 @@ from molmetal.data.metal_cytotox import load_metal_cytotox
 METALS_5: Tuple[str, ...] = ("Ru", "Ir", "Os", "Rh", "Re")
 DEFAULT_SEEDS: Tuple[int, ...] = (0, 1, 2, 3, 4)
 DEFAULT_EPOCHS: int = 50
-DEFAULT_HIDDEN: int = 300         # chemprop v2 default
-DEFAULT_DEPTH: int = 3            # chemprop v2 default
+DEFAULT_HIDDEN: int = 300  # chemprop v2 default
+DEFAULT_DEPTH: int = 3  # chemprop v2 default
 DEFAULT_BATCH: int = 64
 DEFAULT_LR: float = 1e-3
 
@@ -98,7 +100,9 @@ DEFAULT_OUT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf170_permetal_single
 logger = logging.getLogger("wf170_permetal")
 if not logger.handlers:
     h = logging.StreamHandler()
-    h.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s %(name)s :: %(message)s"))
+    h.setFormatter(
+        logging.Formatter("[%(asctime)s] %(levelname)s %(name)s :: %(message)s")
+    )
     logger.addHandler(h)
     logger.setLevel(logging.INFO)
 
@@ -212,7 +216,9 @@ def run_one(
     # 80/20 stratified split.
     idx = np.arange(len(smiles_subset))
     idx_train, idx_val = train_test_split(
-        idx, test_size=0.20, random_state=seed,
+        idx,
+        test_size=0.20,
+        random_state=seed,
         stratify=active_subset.astype(int),
     )
     n_train = len(idx_train)
@@ -277,11 +283,13 @@ def run_one(
     for epoch in range(epochs):
         epoch_done = epoch + 1
         order = np.random.permutation(n_train)
-        mp.train(); agg.train(); head.train()
+        mp.train()
+        agg.train()
+        head.train()
         total_loss = 0.0
         nb = 0
         for s in range(0, n_train, batch_size):
-            bi = order[s:s + batch_size]
+            bi = order[s : s + batch_size]
             bmols = [mols_subset[int(i)] for i in bi]
             bmg = BatchMolGraph(bmols)
             bmg.to(device)
@@ -290,12 +298,12 @@ def run_one(
                 with torch.amp.autocast("cuda", dtype=torch.bfloat16):
                     H_v = mp(bmg)
                     H = agg(H_v, bmg.batch)
-                    logit = head.train_step(H)         # (B, 1)
+                    logit = head.train_step(H)  # (B, 1)
                     loss = bce(logit, tgt)
             else:
                 H_v = mp(bmg)
                 H = agg(H_v, bmg.batch)
-                logit = head.train_step(H)         # (B, 1)
+                logit = head.train_step(H)  # (B, 1)
                 loss = bce(logit, tgt)
             optim.zero_grad()
             loss.backward()
@@ -307,16 +315,22 @@ def run_one(
         if epoch % 10 == 0 or epoch == epochs - 1:
             logger.info(
                 "[seed=%d] epoch=%d/%d loss=%.4f elapsed=%.1fs",
-                seed, epoch, epochs, last_loss, time.time() - t0,
+                seed,
+                epoch,
+                epochs,
+                last_loss,
+                time.time() - t0,
             )
 
     # Test-time scoring on the val holdout.
-    mp.eval(); agg.eval(); head.eval()
+    mp.eval()
+    agg.eval()
+    head.eval()
     scores: List[float] = []
     labels: List[int] = []
     with torch.no_grad():
         for s in range(0, n_val, batch_size):
-            bi = idx_val[s:s + batch_size]
+            bi = idx_val[s : s + batch_size]
             bmols = [mols_subset[int(i)] for i in bi]
             bmg = BatchMolGraph(bmols)
             bmg.to(device)
@@ -348,7 +362,7 @@ def run_one(
                 "mp_state": mp.state_dict(),
                 "agg_state": agg.state_dict(),
                 "head_state": head.state_dict(),
-                "metal": "single_task",   # the metal is implicit from filename
+                "metal": "single_task",  # the metal is implicit from filename
                 "seed": seed,
                 "atom_fdim": atom_fdim,
                 "bond_fdim": bond_fdim,
@@ -361,7 +375,7 @@ def run_one(
         )
 
     return PerMetalRun(
-        metal="?",     # caller fills in
+        metal="?",  # caller fills in
         seed=seed,
         n_train=n_train,
         n_val=n_val,
@@ -390,8 +404,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     p.add_argument("--device", default="cuda")
     p.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR))
     p.add_argument("--time-budget-s", type=float, default=7200.0)
-    p.add_argument("--quick", action="store_true",
-                   help="2 metal x 1 seed x 2 epochs (smoke).")
+    p.add_argument(
+        "--quick", action="store_true", help="2 metal x 1 seed x 2 epochs (smoke)."
+    )
     # P1 FIX (Wf-190): add --bf16, --num-workers, --pin-memory flags so the
     # chemprop v2 retrain scripts opt into Blackwell sm_120 BF16 autocast
     # (~3x FP32 throughput).  Mirrors wf174_chemprop_v2_drugood_real.py
@@ -412,7 +427,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         type=int,
         default=4,
         help="DataLoader num_workers (default: 4). Currently logged; the manual "
-             "range-based loop is the next-migration target.",
+        "range-based loop is the next-migration target.",
     )
     p.add_argument(
         "--pin-memory",
@@ -454,8 +469,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         device = torch.device("cpu")
     logger.info(
         "device=%s bf16=%s num_workers=%d pin_memory=%s metals=%s seeds=%s epochs=%d hidden=%d depth=%d",
-        device, args.bf16, args.num_workers, args.pin_memory,
-        args.metals, args.seeds, args.epochs, args.hidden, args.depth,
+        device,
+        args.bf16,
+        args.num_workers,
+        args.pin_memory,
+        args.metals,
+        args.seeds,
+        args.epochs,
+        args.hidden,
+        args.depth,
     )
 
     # Load MetalCytoToxDB and filter to 5 metals.
@@ -464,8 +486,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     if df.empty:
         logger.error("no rows after metal filter; aborting.")
         return 1
-    logger.info("filtered MetalCytoToxDB: %d rows across metals=%s",
-                len(df), sorted(set(df["metal"].tolist())))
+    logger.info(
+        "filtered MetalCytoToxDB: %d rows across metals=%s",
+        len(df),
+        sorted(set(df["metal"].tolist())),
+    )
 
     # Per-metal subset cache.
     per_metal_smiles: Dict[str, List[str]] = {}
@@ -474,18 +499,27 @@ def main(argv: Optional[List[str]] = None) -> int:
         sub = df[df["metal"] == m].reset_index(drop=True)
         per_metal_smiles[m] = sub["smiles"].astype(str).tolist()
         per_metal_active[m] = sub["active"].astype(int).to_numpy()
-        logger.info("metal=%s n_rows=%d pos_rate=%.4f",
-                    m, len(sub), float(per_metal_active[m].mean()))
+        logger.info(
+            "metal=%s n_rows=%d pos_rate=%.4f",
+            m,
+            len(sub),
+            float(per_metal_active[m].mean()),
+        )
 
     # Pre-featurise a single tiny SMILES once to capture fdim.
     sample_smi = per_metal_smiles[args.metals[0]][:1]
     _, atom_fdim, bond_fdim = prefeaturize_all_smiles(sample_smi)
-    logger.info("atom_fdim=%d bond_fdim=%d (chemprop v2 SimpleMoleculeMolGraphFeaturizer)",
-                atom_fdim, bond_fdim)
+    logger.info(
+        "atom_fdim=%d bond_fdim=%d (chemprop v2 SimpleMoleculeMolGraphFeaturizer)",
+        atom_fdim,
+        bond_fdim,
+    )
 
     n_runs = len(args.metals) * len(args.seeds)
     time_per_run = args.time_budget_s / max(n_runs, 1)
-    logger.info("time budget per (metal,seed) = %.1fs for %d runs", time_per_run, n_runs)
+    logger.info(
+        "time budget per (metal,seed) = %.1fs for %d runs", time_per_run, n_runs
+    )
 
     sweep_t0 = time.time()
     sweep_results: Dict[str, Dict[str, dict]] = {m: {} for m in args.metals}
@@ -494,7 +528,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     for metal in args.metals:
         for seed in args.seeds:
             json_out = out_dir / f"{metal}_seed{seed}.json"
-            ckpt_out = PROJECT_ROOT / "molmetal" / "checkpoints" / "wf170_permetal_singletask" / f"{metal}_seed{seed}.pt"
+            ckpt_out = (
+                PROJECT_ROOT
+                / "molmetal"
+                / "checkpoints"
+                / "wf170_permetal_singletask"
+                / f"{metal}_seed{seed}.pt"
+            )
             # Time slice — leave 10% headroom.
             slice_budget = time_per_run * 0.9
             t_run = time.time()
@@ -519,8 +559,12 @@ def main(argv: Optional[List[str]] = None) -> int:
                     run.status = "timeout"
                 logger.info(
                     "metal=%s seed=%d in_domain_test_auc=%.4f epochs=%d elapsed=%.1fs status=%s",
-                    metal, seed, run.in_domain_test_auc, run.epoch_count,
-                    run.elapsed_s, run.status,
+                    metal,
+                    seed,
+                    run.in_domain_test_auc,
+                    run.epoch_count,
+                    run.elapsed_s,
+                    run.status,
                 )
                 rec = {
                     "metal": metal,
@@ -544,7 +588,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             except Exception as exc:
                 logger.error(
                     "metal=%s seed=%d failed: %s\n%s",
-                    metal, seed, exc, traceback.format_exc(),
+                    metal,
+                    seed,
+                    exc,
+                    traceback.format_exc(),
                 )
                 rec = {
                     "metal": metal,
@@ -566,7 +613,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     aucs_across_metals: List[float] = []
     for metal in args.metals:
         vals = [
-            v["auc"] for v in sweep_results[metal].values()
+            v["auc"]
+            for v in sweep_results[metal].values()
             if v["auc"] == v["auc"]  # not NaN
         ]
         if vals:
@@ -579,10 +627,16 @@ def main(argv: Optional[List[str]] = None) -> int:
             }
             aucs_across_metals.append(mean_auc)
         else:
-            per_metal_summary[metal] = {"mean_auc": float("nan"), "std": float("nan"), "n_seeds": 0}
+            per_metal_summary[metal] = {
+                "mean_auc": float("nan"),
+                "std": float("nan"),
+                "n_seeds": 0,
+            }
 
     mean_auc_across_metals = (
-        float(statistics.mean(aucs_across_metals)) if aucs_across_metals else float("nan")
+        float(statistics.mean(aucs_across_metals))
+        if aucs_across_metals
+        else float("nan")
     )
 
     out_json = {

@@ -17,6 +17,7 @@ Run from the project root::
 
     uv run pytest molmetal/tests/test_reducer.py -q --tb=short
 """
+
 from __future__ import annotations
 
 import csv
@@ -192,9 +193,7 @@ def test_cofinite_termination_on_random_smiles() -> None:
     is_normal_form, _pll, _rs, reduce_to_normal_form = _import_reducer()
     apply, _lam, var = _import_ast()
     csv_path = (
-        Path(__file__).resolve().parents[1]
-        / "data"
-        / "metallo_drugs_500_train.csv"
+        Path(__file__).resolve().parents[1] / "data" / "metallo_drugs_500_train.csv"
     )
     if not csv_path.exists():  # pragma: no cover - defensive
         pytest.skip(f"metallo_drugs CSV not found at {csv_path}")

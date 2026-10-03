@@ -46,6 +46,7 @@ agent claiming 6/6 PASS on the real closure BFS must first close the
 P2 + P3 failure ledger; ``synthetic_only=true`` JSON is NOT a real
 measurement and MUST NOT be cited as such.
 """
+
 from __future__ import annotations
 
 import json
@@ -134,9 +135,7 @@ def test_bench_catherine_runs_on_25_metals() -> None:
     has already been emitted to disk.
     """
     bench_script = SCRIPTS_DIR / "bench_catherine_6_props_25metals.py"
-    assert bench_script.is_file(), (
-        f"bench script missing: {bench_script}"
-    )
+    assert bench_script.is_file(), f"bench script missing: {bench_script}"
 
     smoke_out = REPORTS_DIR / "wf330_closure_c25_smoke"
     smoke_out.mkdir(parents=True, exist_ok=True)
@@ -144,15 +143,24 @@ def test_bench_catherine_runs_on_25_metals() -> None:
     cmd = [
         _python_executable(),
         str(bench_script),
-        "--metals", "3",
-        "--seeds", "0",
-        "--max-depth", "1",
-        "--max-products", "32",
-        "--out-dir", str(smoke_out),
+        "--metals",
+        "3",
+        "--seeds",
+        "0",
+        "--max-depth",
+        "1",
+        "--max-products",
+        "32",
+        "--out-dir",
+        str(smoke_out),
     ]
     env = {"PYTHONPATH": str(PROJECT_ROOT), "PATH": "/usr/bin:/bin"}
     proc = subprocess.run(
-        cmd, env=env, capture_output=True, text=True, timeout=90,
+        cmd,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=90,
     )
     # The bench returns 0 on success; warnings + RDKit noise are tolerated.
     assert proc.returncode == 0, (
@@ -161,9 +169,9 @@ def test_bench_catherine_runs_on_25_metals() -> None:
     )
 
     smoke_json = smoke_out / "per_metal_pass.json"
-    assert smoke_json.is_file(), (
-        f"bench did not write per_metal_pass.json to {smoke_out}"
-    )
+    assert (
+        smoke_json.is_file()
+    ), f"bench did not write per_metal_pass.json to {smoke_out}"
     payload = _load_json(smoke_json)
     assert payload.get("metadata", {}).get("n_metals") == 3
     assert len(payload.get("metals", {})) == 3
@@ -196,16 +204,32 @@ def test_catherine_output_schema_contract() -> None:
       ``summaries``: dict[metal_symbol, dict] with reachability_rate etc.
     """
     required_metadata = {
-        "wf", "phase", "n_metals", "n_seeds", "max_depth", "max_products",
-        "use_gpu", "real_bfs_available", "synthetic_only", "timestamp",
+        "wf",
+        "phase",
+        "n_metals",
+        "n_seeds",
+        "max_depth",
+        "max_products",
+        "use_gpu",
+        "real_bfs_available",
+        "synthetic_only",
+        "timestamp",
         "wall_time_s_total",
     }
     required_pids = {
-        "P1_reflexivity", "P2_transitivity", "P3_symmetry",
-        "P4_dblock", "P5_reachability", "P6_composability",
+        "P1_reflexivity",
+        "P2_transitivity",
+        "P3_symmetry",
+        "P4_dblock",
+        "P5_reachability",
+        "P6_composability",
     }
     required_per_property_keys = {
-        "passed", "n_samples", "n_violations", "wall_time_s", "notes",
+        "passed",
+        "n_samples",
+        "n_violations",
+        "wall_time_s",
+        "notes",
     }
 
     for path, expected_synthetic in [
@@ -229,13 +253,12 @@ def test_catherine_output_schema_contract() -> None:
 
         metals = payload.get("metals", {})
         assert len(metals) == metadata["n_metals"], (
-            f"metals count mismatch: {len(metals)} vs "
-            f"{metadata['n_metals']}"
+            f"metals count mismatch: {len(metals)} vs " f"{metadata['n_metals']}"
         )
         for metal_symbol, verdict in metals.items():
-            assert "six_of_six_pass" in verdict, (
-                f"{metal_symbol} verdict missing six_of_six_pass"
-            )
+            assert (
+                "six_of_six_pass" in verdict
+            ), f"{metal_symbol} verdict missing six_of_six_pass"
             assert isinstance(verdict["six_of_six_pass"], bool)
             per_property = verdict.get("per_property", {})
             assert required_pids.issubset(per_property.keys()), (
@@ -275,14 +298,16 @@ def test_catherine_verdict_schema() -> None:
         if not payload:
             pytest.skip(f"report missing on disk: {path}")
         pids = [
-            "P1_reflexivity", "P2_transitivity", "P3_symmetry",
-            "P4_dblock", "P5_reachability", "P6_composability",
+            "P1_reflexivity",
+            "P2_transitivity",
+            "P3_symmetry",
+            "P4_dblock",
+            "P5_reachability",
+            "P6_composability",
         ]
         for metal_symbol, verdict in payload["metals"].items():
             per_property = verdict["per_property"]
-            expected_six = all(
-                per_property[pid]["passed"] for pid in pids
-            )
+            expected_six = all(per_property[pid]["passed"] for pid in pids)
             assert verdict["six_of_six_pass"] == expected_six, (
                 f"{metal_symbol} verdict inconsistent: "
                 f"6/6={verdict['six_of_six_pass']} vs "
@@ -335,8 +360,12 @@ def test_per_metal_6_of_6_pass_pins_honest_negative() -> None:
 
     # Per-property ledger (real BFS: 4/6 pass; P2 + P3 fail uniformly).
     pids = [
-        "P1_reflexivity", "P2_transitivity", "P3_symmetry",
-        "P4_dblock", "P5_reachability", "P6_composability",
+        "P1_reflexivity",
+        "P2_transitivity",
+        "P3_symmetry",
+        "P4_dblock",
+        "P5_reachability",
+        "P6_composability",
     ]
     expected = {
         "P1_reflexivity": REAL_BFS_P1_PASS_MEASURED,
@@ -348,12 +377,10 @@ def test_per_metal_6_of_6_pass_pins_honest_negative() -> None:
     }
     for pid in pids:
         n_pass = sum(
-            1 for v in real_metals.values()
-            if v["per_property"][pid]["passed"]
+            1 for v in real_metals.values() if v["per_property"][pid]["passed"]
         )
         assert n_pass == expected[pid], (
-            f"Real BFS {pid} count drifted: {n_pass} vs "
-            f"MEASURED {expected[pid]}"
+            f"Real BFS {pid} count drifted: {n_pass} vs " f"MEASURED {expected[pid]}"
         )
 
     # Per-metal reachability ledger (n_visited=18 / 1000 = 0.018).
@@ -383,9 +410,7 @@ def test_per_metal_6_of_6_pass_pins_honest_negative() -> None:
     assert synth_metadata["n_metals"] == SYNTHETIC_N_METALS_MEASURED
     assert synth_metadata["synthetic_only"] is True
 
-    synth_n_6_of_6 = sum(
-        1 for v in synth["metals"].values() if v["six_of_six_pass"]
-    )
+    synth_n_6_of_6 = sum(1 for v in synth["metals"].values() if v["six_of_six_pass"])
     assert synth_n_6_of_6 == SYNTHETIC_6_OF_6_PASS_MEASURED, (
         f"Synthetic 6/6 count drifted: {synth_n_6_of_6} vs "
         f"MEASURED {SYNTHETIC_6_OF_6_PASS_MEASURED}"
@@ -395,8 +420,7 @@ def test_per_metal_6_of_6_pass_pins_honest_negative() -> None:
     real_gap = PROJECTED_6_OF_6_PASS_GATE - n_6_of_6
     synth_gap = PROJECTED_6_OF_6_PASS_GATE - synth_n_6_of_6
     assert real_gap == PROJECTED_6_OF_6_PASS_GATE, (
-        f"Real BFS gap to PROJECTED gate = {real_gap} "
-        f"(HONEST_NEGATIVE_R20_P5)"
+        f"Real BFS gap to PROJECTED gate = {real_gap} " f"(HONEST_NEGATIVE_R20_P5)"
     )
     assert synth_gap == 0, (
         f"Synthetic gap to PROJECTED gate = {synth_gap} "

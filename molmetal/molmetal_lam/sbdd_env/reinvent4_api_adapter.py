@@ -121,6 +121,7 @@ def is_reinvent_importable(reinvent_root: Optional[str] = None) -> bool:
             import reinvent  # noqa: F401
             from reinvent.scoring import Scorer  # noqa: F401
             from reinvent.runmodes.create_adapter import create_adapter  # noqa: F401
+
             return True
         except Exception:
             return False
@@ -295,7 +296,9 @@ class REINVENT4APIAdapter:
             logger.warning(
                 "REINVENT4APIAdapter: cannot import `reinvent` from %s (%s); "
                 "score() will return zeros. %s",
-                root, exc, self.BINARY_MISSING_HINT,
+                root,
+                exc,
+                self.BINARY_MISSING_HINT,
             )
             return
         # Try to build the Scorer.  Any failure flips available=False
@@ -320,7 +323,11 @@ class REINVENT4APIAdapter:
     def _discover_default_config(self) -> Optional[str]:
         """Locate a usable scoring TOML inside the REINVENT4 checkout."""
         root = self.reinvent_root or _DEFAULT_REINVENT_ROOT
-        for name in ("stage1_scoring.toml", "scoring.toml", "scoring_components_example.toml"):
+        for name in (
+            "stage1_scoring.toml",
+            "scoring.toml",
+            "scoring_components_example.toml",
+        ):
             candidate = os.path.join(root, "configs", name)
             if os.path.isfile(candidate):
                 return candidate
@@ -346,9 +353,7 @@ class REINVENT4APIAdapter:
         # "component" list).  REINVENT4's scoring module normalises it
         # internally.
         self._scorer = Scorer(config)
-        self._component_mask = (
-            dict(self.components) if self.components else None
-        )
+        self._component_mask = dict(self.components) if self.components else None
 
     # ------------------------------------------------------------------
     # Scoring
@@ -376,13 +381,12 @@ class REINVENT4APIAdapter:
             return []
         # Build the masks the upstream Scorer expects.
         import numpy as np  # noqa: WPS433 - lazy for hot-loop speed
+
         valid_mask = np.ones(len(batch), dtype=bool)
         duplicate_mask = np.ones(len(batch), dtype=bool)
         try:
             with self._lock:
-                results = self._scorer(
-                    list(batch), valid_mask, duplicate_mask
-                )
+                results = self._scorer(list(batch), valid_mask, duplicate_mask)
         except Exception as exc:  # pragma: no cover - defensive
             logger.warning(
                 "REINVENT4APIAdapter.score: scorer raised (%s); "
@@ -554,13 +558,9 @@ def shape_equivalence_check(
             if val != val:
                 return False, f"index {i} ({label}) is NaN"
             if val < 0.0 or val > 1.0:
-                return False, (
-                    f"index {i} ({label})={val} outside [0, 1]"
-                )
+                return False, (f"index {i} ({label})={val} outside [0, 1]")
         if abs(a - b) > tol:
-            return False, (
-                f"index {i} drift: subprocess={a} api={b} tol={tol}"
-            )
+            return False, (f"index {i} drift: subprocess={a} api={b} tol={tol}")
     return True, "shape+range+drift OK"
 
 

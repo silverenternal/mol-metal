@@ -59,6 +59,7 @@ Honest framing
   "normal") — it is **not** a retraining trigger.  See the
   ``root_cause_catalog.md`` for the full triage workflow.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -81,11 +82,9 @@ import numpy as np
 # ---------------------------------------------------------------------------
 # Diagnostic thresholds (matched to root_cause_catalog.md §1)
 # ---------------------------------------------------------------------------
-STD_RATIO_COLLAPSE: float = 0.1     # pred_std / y_test_std below this ⇒ collapse.
-STD_RATIO_WEAK: float = 0.4         # below this ⇒ "weak signal".
-DEFAULT_OUT_DIR: Path = (
-    _REPO_ROOT / "molmetal" / "reports" / "wf44_r2_debug"
-)
+STD_RATIO_COLLAPSE: float = 0.1  # pred_std / y_test_std below this ⇒ collapse.
+STD_RATIO_WEAK: float = 0.4  # below this ⇒ "weak signal".
+DEFAULT_OUT_DIR: Path = _REPO_ROOT / "molmetal" / "reports" / "wf44_r2_debug"
 DEFAULT_OUT_PATH: Path = DEFAULT_OUT_DIR / "baseline_check.json"
 
 
@@ -97,7 +96,8 @@ def _make_rng(seed: int) -> np.random.Generator:
 
 
 def synthetic_target_collapse(
-    n: int = 4000, seed: int = 0,
+    n: int = 4000,
+    seed: int = 0,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Synthetic target where the optimal predictor IS the mean.
 
@@ -110,11 +110,12 @@ def synthetic_target_collapse(
     mu = 5.0
     sigma = 1.0
     y = rng.normal(loc=mu, scale=sigma, size=int(n)).astype(float)
-    return y[: n // 2], y[n // 2:]
+    return y[: n // 2], y[n // 2 :]
 
 
 def synthetic_target_spread(
-    n: int = 200, seed: int = 0,
+    n: int = 200,
+    seed: int = 0,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Synthetic target with a real linear signal recoverable from features.
 
@@ -129,11 +130,12 @@ def synthetic_target_spread(
     x = rng.normal(loc=0.0, scale=1.0, size=int(n))
     y = 0.7 * x + rng.normal(loc=0.0, scale=0.7, size=int(n)) + mu - 0.0
     # Strip x but keep y (the consumer does not need x here).
-    return y[: n // 2], y[n // 2:]
+    return y[: n // 2], y[n // 2 :]
 
 
 def synthetic_target_below_mean(
-    n: int = 200, seed: int = 0,
+    n: int = 200,
+    seed: int = 0,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Synthetic target that the *wrong* mean baseline would underestimate.
 
@@ -177,7 +179,8 @@ def predict_mean_baseline(y_train: np.ndarray) -> np.ndarray:
 
 
 def run_predict_mean_baseline_check(
-    y_train: np.ndarray, y_test: np.ndarray,
+    y_train: np.ndarray,
+    y_test: np.ndarray,
 ) -> Dict[str, float]:
     """Return the constants of a *constant* baseline predictor.
 
@@ -276,7 +279,9 @@ def check_model(
 # Per-model smoke-runs — re-execute each regressor on a tiny synthetic split
 # ---------------------------------------------------------------------------
 def _build_synthetic_features(
-    y: np.ndarray, seed: int, n_features: int = 12,
+    y: np.ndarray,
+    seed: int,
+    n_features: int = 12,
 ) -> np.ndarray:
     """Build a synthetic 12-d feature matrix with a *real* linear signal in y.
 
@@ -305,13 +310,14 @@ def run_wf25_hilbert_smoke(seed: int = 0) -> Dict[str, Any]:
     from molmetal.molmetal_lam.reward.hilbert_primal_dual import (
         LambdaASTSRHilbert,
     )
+
     rng = _make_rng(seed)
     n = 80
     # Synthetic continuous target (mimic the Wf-25 noisy-binary shift:
     # small variance after binarization means SS_tot is tiny so any
     # deviation is amplified).
     y = rng.normal(loc=5.0, scale=0.05, size=n).astype(float)  # near-constant
-    y_train, y_test = y[: n // 2], y[n // 2:]
+    y_train, y_test = y[: n // 2], y[n // 2 :]
     X_train = _build_synthetic_features(y_train, seed)
     X_test = _build_synthetic_features(y_test, seed + 1)
     opt = LambdaASTSRHilbert(population_dim=int(X_train.shape[1]))
@@ -319,7 +325,9 @@ def run_wf25_hilbert_smoke(seed: int = 0) -> Dict[str, Any]:
     y_pred = opt.predict(X_test).reshape(-1)
     return check_model(
         model_name="Wf-25 Hilbert composite",
-        y_train=y_train, y_test=y_test, y_pred=y_pred,
+        y_train=y_train,
+        y_test=y_test,
+        y_pred=y_pred,
     )
 
 
@@ -346,7 +354,9 @@ def run_wf32_m16_smoke(seed: int = 0) -> Dict[str, Any]:
     y_pred = X_test @ w
     return check_model(
         model_name="Wf-32 m16 affinity",
-        y_train=y_train, y_test=y_test, y_pred=y_pred,
+        y_train=y_train,
+        y_test=y_test,
+        y_pred=y_pred,
     )
 
 
@@ -360,23 +370,27 @@ def run_wf37_evol_smoke(seed: int = 0) -> Dict[str, Any]:
     back to mean.
     """
     from molmetal.molmetal_lam.reward.lambda_astsr import LambdaASTSR
+
     rng = _make_rng(seed)
     n = 120
     y_all = rng.normal(loc=5.0, scale=1.0, size=n).astype(float)
-    y_train, y_test = y_all[: n // 2], y_all[n // 2:]
+    y_train, y_test = y_all[: n // 2], y_all[n // 2 :]
     X_train = _build_synthetic_features(y_train, seed)
     X_test = _build_synthetic_features(y_test, seed + 1)
     astsr = LambdaASTSR(
-        depth=2, population=8, generations=3,
-        seed=int(seed), feature_names=tuple(
-            f"f{i}" for i in range(X_train.shape[1])
-        ),
+        depth=2,
+        population=8,
+        generations=3,
+        seed=int(seed),
+        feature_names=tuple(f"f{i}" for i in range(X_train.shape[1])),
     )
     astsr.fit(X_train, y_train)
     y_pred = astsr.predict(X_test).reshape(-1)
     return check_model(
         model_name="Wf-37 L5 evolutionary",
-        y_train=y_train, y_test=y_test, y_pred=y_pred,
+        y_train=y_train,
+        y_test=y_test,
+        y_pred=y_pred,
     )
 
 
@@ -388,23 +402,27 @@ def run_wf39_ast_smoke(seed: int = 0) -> Dict[str, Any]:
     the hilbert branch) collapses to mean.
     """
     from molmetal.molmetal_lam.reward.lambda_astsr import LambdaASTSR
+
     rng = _make_rng(seed)
     n = 80
     y_all = rng.normal(loc=5.0, scale=0.5, size=n).astype(float)
-    y_train, y_test = y_all[: n // 2], y_all[n // 2:]
+    y_train, y_test = y_all[: n // 2], y_all[n // 2 :]
     X_train = _build_synthetic_features(y_train, seed)
     X_test = _build_synthetic_features(y_test, seed + 1)
     astsr = LambdaASTSR(
-        depth=2, population=4, generations=2,  # even tinier ⇒ forced collapse
-        seed=int(seed), feature_names=tuple(
-            f"f{i}" for i in range(X_train.shape[1])
-        ),
+        depth=2,
+        population=4,
+        generations=2,  # even tinier ⇒ forced collapse
+        seed=int(seed),
+        feature_names=tuple(f"f{i}" for i in range(X_train.shape[1])),
     )
     astsr.fit(X_train, y_train)
     y_pred = astsr.predict(X_test).reshape(-1)
     return check_model(
         model_name="Wf-39 AST composite",
-        y_train=y_train, y_test=y_test, y_pred=y_pred,
+        y_train=y_train,
+        y_test=y_test,
+        y_pred=y_pred,
     )
 
 
@@ -418,11 +436,13 @@ def run_spread_baseline(seed: int = 0) -> Dict[str, Any]:
     rng = _make_rng(seed)
     n = 200
     y_all = rng.normal(loc=5.0, scale=1.0, size=n).astype(float)
-    y_train, y_test = y_all[: n // 2], y_all[n // 2:]
+    y_train, y_test = y_all[: n // 2], y_all[n // 2 :]
     y_pred = np.asarray(y_test, dtype=float).reshape(-1).copy()
     return check_model(
         model_name="sanity_spread_linear",
-        y_train=y_train, y_test=y_test, y_pred=y_pred,
+        y_train=y_train,
+        y_test=y_test,
+        y_pred=y_pred,
     )
 
 
@@ -436,7 +456,9 @@ def run_collapse_baseline(seed: int = 0) -> Dict[str, Any]:
     y_pred = np.full_like(y_test, float(np.mean(y_train)), dtype=float)
     return check_model(
         model_name="sanity_constant_mean",
-        y_train=y_train, y_test=y_test, y_pred=y_pred,
+        y_train=y_train,
+        y_test=y_test,
+        y_pred=y_pred,
     )
 
 
@@ -523,10 +545,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         "--out-path",
         type=Path,
         default=None,
-        help=(
-            "Full output JSON path (default: "
-            "<out-dir>/baseline_check.json)"
-        ),
+        help=("Full output JSON path (default: " "<out-dir>/baseline_check.json)"),
     )
     parser.add_argument(
         "--seed",

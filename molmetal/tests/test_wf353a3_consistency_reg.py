@@ -36,6 +36,7 @@ import torch
 # Test 1: Regularization loss computation
 # ---------------------------------------------------------------------------
 
+
 def test_consistency_regularization_loss_computation():
     """Verify the regularizer returns a finite positive scalar.
 
@@ -73,7 +74,10 @@ def test_consistency_regularization_loss_computation():
     loss = consistency_regularization_loss(
         v_pred_t=v_pred_t,
         velocity_field=_stub_velocity_field,
-        x_t=x_t, t=t, x_0=x_0, x_1=x_1,
+        x_t=x_t,
+        t=t,
+        x_0=x_0,
+        x_1=x_1,
         cfg=cfg,
         path_sampler=_stub_path_sampler,
     )
@@ -88,6 +92,7 @@ def test_consistency_regularization_loss_computation():
 # ---------------------------------------------------------------------------
 # Test 2: Weighted combination with CFM loss
 # ---------------------------------------------------------------------------
+
 
 def test_combined_cfm_consistency_loss_weighted_combination():
     """Verify L_total = L_cfm + weight * L_cons equals the weighted sum.
@@ -107,27 +112,30 @@ def test_combined_cfm_consistency_loss_weighted_combination():
     cfg = ConsistencyRegularizerConfig(weight=weight, dt=0.1)
 
     total = combined_cfm_consistency_loss(
-        cfm_loss_value=cfm_loss, consistency_loss_value=cons_loss, cfg=cfg,
+        cfm_loss_value=cfm_loss,
+        consistency_loss_value=cons_loss,
+        cfg=cfg,
     )
 
     expected = 2.5 + 0.3 * 1.0
-    assert abs(total.item() - expected) < 1e-5, (
-        f"combined loss mismatch: got {total.item()}, expected {expected}"
-    )
+    assert (
+        abs(total.item() - expected) < 1e-5
+    ), f"combined loss mismatch: got {total.item()}, expected {expected}"
 
     # Autograd check: d(L_total)/d(cfm_loss) = 1, d(L_total)/d(cons_loss) = weight.
     total.backward()
-    assert abs(cfm_loss.grad.item() - 1.0) < 1e-5, (
-        f"d(L_total)/d(L_cfm) should be 1, got {cfm_loss.grad.item()}"
-    )
-    assert abs(cons_loss.grad.item() - weight) < 1e-5, (
-        f"d(L_total)/d(L_cons) should be {weight}, got {cons_loss.grad.item()}"
-    )
+    assert (
+        abs(cfm_loss.grad.item() - 1.0) < 1e-5
+    ), f"d(L_total)/d(L_cfm) should be 1, got {cfm_loss.grad.item()}"
+    assert (
+        abs(cons_loss.grad.item() - weight) < 1e-5
+    ), f"d(L_total)/d(L_cons) should be {weight}, got {cons_loss.grad.item()}"
 
 
 # ---------------------------------------------------------------------------
 # Test 3: Numerical stability (no NaN/Inf)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize("batch_size", [1, 2, 64])
 def test_consistency_regularization_numerical_stability(batch_size):
@@ -161,23 +169,27 @@ def test_consistency_regularization_numerical_stability(batch_size):
     loss = consistency_regularization_loss(
         v_pred_t=v_pred_t,
         velocity_field=_stub_velocity_field,
-        x_t=x_t, t=t, x_0=x_0, x_1=x_1,
+        x_t=x_t,
+        t=t,
+        x_0=x_0,
+        x_1=x_1,
         cfg=cfg,
         path_sampler=_stub_path_sampler,
     )
 
-    assert torch.isfinite(loss), (
-        f"consistency loss must be finite for batch={batch_size}, got {loss}"
-    )
+    assert torch.isfinite(
+        loss
+    ), f"consistency loss must be finite for batch={batch_size}, got {loss}"
     assert not torch.isnan(loss), f"loss must not be NaN for batch={batch_size}"
-    assert loss.item() >= 0.0, (
-        f"loss must be non-negative for batch={batch_size}, got {loss.item()}"
-    )
+    assert (
+        loss.item() >= 0.0
+    ), f"loss must be non-negative for batch={batch_size}, got {loss.item()}"
 
 
 # ---------------------------------------------------------------------------
 # Test 4: Backward-compat (default off, weight=0 contributes nothing)
 # ---------------------------------------------------------------------------
+
 
 def test_backward_compat_default_off():
     """Verify weight=0 makes the regularizer contribute zero to L_total.
@@ -196,7 +208,9 @@ def test_backward_compat_default_off():
     cfm_leaf = torch.tensor(cfm_loss_value, requires_grad=True)
     cons_leaf = torch.tensor(1.0, requires_grad=True)  # arbitrary non-zero
     total = combined_cfm_consistency_loss(
-        cfm_loss_value=cfm_leaf, consistency_loss_value=cons_leaf, cfg=cfg_off,
+        cfm_loss_value=cfm_leaf,
+        consistency_loss_value=cons_leaf,
+        cfg=cfg_off,
     )
     assert abs(total.item() - cfm_loss_value) < 1e-5, (
         f"weight=0 must reproduce L_cfm alone; got {total.item()}, "
@@ -204,9 +218,9 @@ def test_backward_compat_default_off():
     )
     # Verify that the autograd through L_cons is suppressed by the zero weight.
     total.backward()
-    assert abs(cons_leaf.grad.item() - 0.0) < 1e-5, (
-        f"weight=0 must zero-out d(L_total)/d(L_cons); got {cons_leaf.grad.item()}"
-    )
+    assert (
+        abs(cons_leaf.grad.item() - 0.0) < 1e-5
+    ), f"weight=0 must zero-out d(L_total)/d(L_cons); got {cons_leaf.grad.item()}"
 
     # Also verify that with weight > 0 (flag-on), the regularizer
     # contributes the expected non-zero amount.
@@ -214,7 +228,9 @@ def test_backward_compat_default_off():
     cfm_leaf2 = torch.tensor(cfm_loss_value, requires_grad=True)
     cons_leaf2 = torch.tensor(1.0, requires_grad=True)
     total_on = combined_cfm_consistency_loss(
-        cfm_loss_value=cfm_leaf2, consistency_loss_value=cons_leaf2, cfg=cfg_on,
+        cfm_loss_value=cfm_leaf2,
+        consistency_loss_value=cons_leaf2,
+        cfg=cfg_on,
     )
     expected_on = cfm_loss_value + 0.1 * 1.0
     assert abs(total_on.item() - expected_on) < 1e-5, (

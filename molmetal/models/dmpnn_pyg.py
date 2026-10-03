@@ -127,9 +127,9 @@ class MolGraphBatch:
 
 
 def coalesce_padded_batch(
-    h_atom: torch.Tensor,         # (B, N_max, A)
-    edge_index: torch.Tensor,     # (B, 2, E_max)
-    edge_attr: torch.Tensor,      # (B, E_max, B_dim)
+    h_atom: torch.Tensor,  # (B, N_max, A)
+    edge_index: torch.Tensor,  # (B, 2, E_max)
+    edge_attr: torch.Tensor,  # (B, E_max, B_dim)
     batch_idx_padded: torch.Tensor,  # (B, N_max)
 ) -> MolGraphBatch:
     """Convert a padded-batch layout into a flat :class:`MolGraphBatch`.
@@ -152,7 +152,7 @@ def coalesce_padded_batch(
     device = h_atom.device
 
     # Per-mol atom count: real atoms are those whose batch_idx matches b.
-    is_real_atom = (batch_idx_padded == torch.arange(B, device=device).unsqueeze(1))
+    is_real_atom = batch_idx_padded == torch.arange(B, device=device).unsqueeze(1)
     n_atoms_per_mol = is_real_atom.sum(dim=1).to(torch.int64)
 
     # Cumulative atom offsets: atom_offsets[b] is the global index of the
@@ -169,8 +169,10 @@ def coalesce_padded_batch(
         n_b = int(n_atoms_per_mol[b].item())
         if n_b > 0:
             atom_feats_list.append(h_atom[b, :n_b])
-    atom_feats = torch.cat(atom_feats_list, dim=0) if atom_feats_list else torch.zeros(
-        0, h_atom.size(-1), device=device, dtype=h_atom.dtype
+    atom_feats = (
+        torch.cat(atom_feats_list, dim=0)
+        if atom_feats_list
+        else torch.zeros(0, h_atom.size(-1), device=device, dtype=h_atom.dtype)
     )
 
     # Per-mol edge count: real edges are those whose src AND dst are
@@ -181,7 +183,12 @@ def coalesce_padded_batch(
     dst_padded = edge_index[:, 1]  # (B, E_max)
     # n_atoms_per_mol broadcast to (B, 1) for vectorised comparison.
     natoms_col = n_atoms_per_mol.unsqueeze(1)  # (B, 1)
-    is_real_edge = (src_padded >= 0) & (dst_padded >= 0) & (src_padded < natoms_col) & (dst_padded < natoms_col)
+    is_real_edge = (
+        (src_padded >= 0)
+        & (dst_padded >= 0)
+        & (src_padded < natoms_col)
+        & (dst_padded < natoms_col)
+    )
     n_edges_per_mol = is_real_edge.sum(dim=1).to(torch.int64)
 
     # Build the flat edge_index + edge_attr tensors.
@@ -206,7 +213,9 @@ def coalesce_padded_batch(
     else:
         edge_src_flat = torch.zeros(0, dtype=torch.int64, device=device)
         edge_dst_flat = torch.zeros(0, dtype=torch.int64, device=device)
-        edge_attr_flat = torch.zeros(0, edge_attr.size(-1), device=device, dtype=edge_attr.dtype)
+        edge_attr_flat = torch.zeros(
+            0, edge_attr.size(-1), device=device, dtype=edge_attr.dtype
+        )
 
     edge_index_flat = torch.stack([edge_src_flat, edge_dst_flat], dim=0)
 
@@ -353,9 +362,9 @@ class DirectedMPNNPyG(nn.Module):
 
     def forward_from_padded(
         self,
-        h_atom: torch.Tensor,         # (B, N_max, A)
-        edge_index: torch.Tensor,     # (B, 2, E_max)
-        edge_attr: torch.Tensor,      # (B, E_max, B_dim)
+        h_atom: torch.Tensor,  # (B, N_max, A)
+        edge_index: torch.Tensor,  # (B, 2, E_max)
+        edge_attr: torch.Tensor,  # (B, E_max, B_dim)
         batch_idx_padded: torch.Tensor,  # (B, N_max)
     ) -> torch.Tensor:
         """End-to-end: convert padded batch → flat → batched forward.

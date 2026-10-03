@@ -40,6 +40,7 @@ table to ``molmetal/reports/_demo_anticancer_metrics.csv``.
 See ``molmetal/reports/todo15_anticancer_metric_suite.md`` for the
 implementation report and the embedded demo table.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -58,24 +59,35 @@ from molmetal_lam.metrics.anticancer_metric_suite import AnticancerMetricSuite
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__,
-                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument(
-        "--input", "-i", type=str, default=None,
+        "--input",
+        "-i",
+        type=str,
+        default=None,
         help="Path to input SMILES file (one SMILES per line, optional "
-             "'# name' comment). If omitted, defaults to the 5-metal-drug demo.",
+        "'# name' comment). If omitted, defaults to the 5-metal-drug demo.",
     )
     parser.add_argument(
-        "--output", "-o", type=str, default=None,
+        "--output",
+        "-o",
+        type=str,
+        default=None,
         help="Path to output CSV. If omitted, defaults to "
-             "molmetal/reports/_demo_anticancer_metrics.csv.",
+        "molmetal/reports/_demo_anticancer_metrics.csv.",
     )
     parser.add_argument(
-        "--name-column", type=str, default="name",
+        "--name-column",
+        type=str,
+        default="name",
         help="Name of the name column when reading a CSV.",
     )
     parser.add_argument(
-        "--smiles-column", type=str, default="smiles",
+        "--smiles-column",
+        type=str,
+        default="smiles",
         help="Name of the SMILES column when reading a CSV.",
     )
     return parser.parse_args()
@@ -118,11 +130,21 @@ def read_inputs(path: Path, name_column: str, smiles_column: str):
 
 
 CSV_COLUMNS = [
-    "name", "smiles",
-    "logP", "TPSA", "RotB", "MW", "NumHA", "NumHD",
-    "iv_window_ok", "mw_iv_flag",
-    "metal_score", "gsh_evasion", "dna_proxy",
-    "is_metal_complex", "anticancer_index",
+    "name",
+    "smiles",
+    "logP",
+    "TPSA",
+    "RotB",
+    "MW",
+    "NumHA",
+    "NumHD",
+    "iv_window_ok",
+    "mw_iv_flag",
+    "metal_score",
+    "gsh_evasion",
+    "dna_proxy",
+    "is_metal_complex",
+    "anticancer_index",
 ]
 
 

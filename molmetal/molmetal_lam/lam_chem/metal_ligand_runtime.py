@@ -78,6 +78,7 @@ from typing import Dict, List, Optional, Tuple
 try:  # pragma: no cover — optional dep
     from rdkit import Chem as _Chem  # type: ignore
     from rdkit.Chem import AllChem as _AllChem  # type: ignore
+
     _RDKIT_AVAILABLE: bool = True
 except Exception:  # pragma: no cover
     _Chem = None  # type: ignore
@@ -487,8 +488,7 @@ class MetalLigandExchangeRuntime:
             verdict = self.yuelbond_precondition_result
             if verdict.recommended_action == "FAIL_FAST":
                 raise RuntimeError(
-                    f"[Wf-319G] YuelBond precondition FAIL_FAST: "
-                    f"{verdict.reason}"
+                    f"[Wf-319G] YuelBond precondition FAIL_FAST: " f"{verdict.reason}"
                 )
             if verdict.recommended_action == "WARN_AND_PROCEED":
                 # Loud WARNING on stderr so the operator sees it.
@@ -639,15 +639,9 @@ def wire_into_proof_search_rules(
 # Self-test — print summary when run as a script.
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":  # pragma: no cover
-    print(
-        f"MATRIX_PATTERN_COUNT = {MATRIX_PATTERN_COUNT} (target 84)"
-    )
-    print(
-        f"NEW_SMARTS_PATTERN_COUNT = {NEW_SMARTS_PATTERN_COUNT} (target 17)"
-    )
-    print(
-        f"TOTAL_PATTERN_COUNT = {TOTAL_PATTERN_COUNT} (target 101)"
-    )
+    print(f"MATRIX_PATTERN_COUNT = {MATRIX_PATTERN_COUNT} (target 84)")
+    print(f"NEW_SMARTS_PATTERN_COUNT = {NEW_SMARTS_PATTERN_COUNT} (target 17)")
+    print(f"TOTAL_PATTERN_COUNT = {TOTAL_PATTERN_COUNT} (target 101)")
     verdict = check_yuelbond_precondition()
     print(
         f"YuelBond precondition (default): "

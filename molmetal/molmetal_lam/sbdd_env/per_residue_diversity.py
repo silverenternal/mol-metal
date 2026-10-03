@@ -121,6 +121,7 @@ The metric is *complementary* to ``diversity_tanimoto`` (whole-molecule)
 and ``diversity_homotype`` (Lambda-native typed-variable Jaccard) —
 it adds an orthogonal axis without replacing either.
 """
+
 from __future__ import annotations
 
 import logging
@@ -177,6 +178,7 @@ def _rdkit_available() -> bool:
         from rdkit import Chem  # noqa: F401
         from rdkit.Chem import AllChem  # noqa: F401
         from rdkit import DataStructs  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -234,14 +236,18 @@ def per_residue_tanimoto_distance(
         try:
             m = Chem.MolFromSmiles(smiles_a)
             if m is not None:
-                fp_a = AllChem.GetMorganFingerprintAsBitVect(m, int(radius), nBits=int(n_bits))
+                fp_a = AllChem.GetMorganFingerprintAsBitVect(
+                    m, int(radius), nBits=int(n_bits)
+                )
         except Exception:
             fp_a = None
     if smiles_b:
         try:
             m = Chem.MolFromSmiles(smiles_b)
             if m is not None:
-                fp_b = AllChem.GetMorganFingerprintAsBitVect(m, int(radius), nBits=int(n_bits))
+                fp_b = AllChem.GetMorganFingerprintAsBitVect(
+                    m, int(radius), nBits=int(n_bits)
+                )
         except Exception:
             fp_b = None
 

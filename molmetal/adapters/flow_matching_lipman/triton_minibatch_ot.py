@@ -210,13 +210,15 @@ _LOG_FLOOR = -1.0e9
 # ---------------------------------------------------------------------------
 
 if _TRITON_AVAILABLE:
+
     @triton.jit
     def _sinkhorn_argmax_kernel(  # pragma: no cover — GPU-only
-        cost_ptr,     # [B, B] squared-L2 cost matrix (fp32)
-        out_ptr,      # [B] argmax permutation (int64)
+        cost_ptr,  # [B, B] squared-L2 cost matrix (fp32)
+        out_ptr,  # [B] argmax permutation (int64)
         B,
         eps,
-        stride_cn, stride_cm,
+        stride_cn,
+        stride_cm,
         BLOCK_B: tl.constexpr,
     ):
         """Fused log-domain Sinkhorn coupling + row-argmax.
@@ -285,6 +287,7 @@ if _TRITON_AVAILABLE:
         tl.store(out_ptr + i, best_j.to(tl.int64))
 
 else:
+
     def _sinkhorn_argmax_kernel(*args, **kwargs):  # type: ignore
         raise RuntimeError(
             "Triton unavailable — _sinkhorn_argmax_kernel cannot run. "
@@ -295,6 +298,7 @@ else:
 # ---------------------------------------------------------------------------
 # Pure-PyTorch reference (CPU-correctness-validated; mirror of Cuturi 2013)
 # ---------------------------------------------------------------------------
+
 
 def pytorch_sinkhorn_minibatch_ot_coupling(
     x0: torch.Tensor,
@@ -378,8 +382,9 @@ def pytorch_sinkhorn_minibatch_ot_coupling(
     assigned = torch.full((b,), False, dtype=torch.bool, device=x0.device)
     idx = torch.full((b,), -1, dtype=torch.long, device=x0.device)
     for i in range(b):
-        masked = torch.where(assigned, torch.full_like(log_plan[i], _LOG_FLOOR),
-                             log_plan[i])
+        masked = torch.where(
+            assigned, torch.full_like(log_plan[i], _LOG_FLOOR), log_plan[i]
+        )
         best_j = int(masked.argmax().item())
         idx[i] = best_j
         assigned[best_j] = True
@@ -389,6 +394,7 @@ def pytorch_sinkhorn_minibatch_ot_coupling(
 # ---------------------------------------------------------------------------
 # Env-var dispatch config + helpers
 # ---------------------------------------------------------------------------
+
 
 def _env_flag(name: str, default: str = "0") -> bool:
     """Read an env-var as a boolean (matches Wf-341-C4 convention)."""
@@ -441,6 +447,7 @@ class TritonMinibatchOTConfig:
 # Top-level dispatch wrapper
 # ---------------------------------------------------------------------------
 
+
 def triton_minibatch_ot_coupling(
     x0: torch.Tensor,
     x1: torch.Tensor,
@@ -482,28 +489,46 @@ def triton_minibatch_ot_coupling(
 
     if force_pytorch is True:
         return pytorch_sinkhorn_minibatch_ot_coupling(
-            x0, x1, eps=eff_eps, n_iters=eff_iters,
+            x0,
+            x1,
+            eps=eff_eps,
+            n_iters=eff_iters,
         )
     if not x0.is_cuda:
         return pytorch_sinkhorn_minibatch_ot_coupling(
-            x0, x1, eps=eff_eps, n_iters=eff_iters,
+            x0,
+            x1,
+            eps=eff_eps,
+            n_iters=eff_iters,
         )
     if not _TRITON_AVAILABLE:
         return pytorch_sinkhorn_minibatch_ot_coupling(
-            x0, x1, eps=eff_eps, n_iters=eff_iters,
+            x0,
+            x1,
+            eps=eff_eps,
+            n_iters=eff_iters,
         )
     if not cfg.gate_open():
         return pytorch_sinkhorn_minibatch_ot_coupling(
-            x0, x1, eps=eff_eps, n_iters=eff_iters,
+            x0,
+            x1,
+            eps=eff_eps,
+            n_iters=eff_iters,
         )
     if x0.dim() != 2 or x1.dim() != 2 or x0.shape != x1.shape:
         return pytorch_sinkhorn_minibatch_ot_coupling(
-            x0, x1, eps=eff_eps, n_iters=eff_iters,
+            x0,
+            x1,
+            eps=eff_eps,
+            n_iters=eff_iters,
         )
     if x0.shape[0] > _BLOCK_B_MAX:
         # Beyond supported tile size — PyTorch fallback (no precision loss).
         return pytorch_sinkhorn_minibatch_ot_coupling(
-            x0, x1, eps=eff_eps, n_iters=eff_iters,
+            x0,
+            x1,
+            eps=eff_eps,
+            n_iters=eff_iters,
         )
 
     if force_pytorch is False:
@@ -512,7 +537,9 @@ def triton_minibatch_ot_coupling(
         b = x0_c.shape[0]
         # Compute cost matrix on host (CPU-portable torch.cdist).
         cost = torch.cdist(
-            x0_c.to(torch.float32), x1_c.to(torch.float32), p=2.0,
+            x0_c.to(torch.float32),
+            x1_c.to(torch.float32),
+            p=2.0,
         ).pow(2)
         out = torch.empty(b, dtype=torch.int64, device=x0.device)
         # Pick smallest power-of-2 BLOCK_B >= B.
@@ -521,14 +548,21 @@ def triton_minibatch_ot_coupling(
             block_b <<= 1
         block_b = max(block_b, 16)
         _sinkhorn_argmax_kernel[(b,)](
-            cost, out, b, eff_eps,
-            cost.stride(0), cost.stride(1),
+            cost,
+            out,
+            b,
+            eff_eps,
+            cost.stride(0),
+            cost.stride(1),
             BLOCK_B=block_b,
         )
         return out
     # Default dispatch: gate closed by default → PyTorch.
     return pytorch_sinkhorn_minibatch_ot_coupling(
-        x0, x1, eps=eff_eps, n_iters=eff_iters,
+        x0,
+        x1,
+        eps=eff_eps,
+        n_iters=eff_iters,
     )
 
 

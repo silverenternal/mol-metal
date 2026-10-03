@@ -134,6 +134,7 @@ Pytest
 
     pytest molmetal/tests/test_hilbert_astr_combined_real.py -v
 """
+
 from __future__ import annotations
 
 import argparse
@@ -400,7 +401,8 @@ def hilbert_feature_map(
         out_tr = np.concatenate([aug_tr, pad], axis=1)
         if aug_te is not None:
             pad_te = np.zeros(
-                (n_te, hilbert_dim - aug_te.shape[1]), dtype=np.float32,
+                (n_te, hilbert_dim - aug_te.shape[1]),
+                dtype=np.float32,
             )
             out_te = np.concatenate([aug_te, pad_te], axis=1)
             return out_tr, out_te
@@ -445,6 +447,7 @@ def fit_hilbert(
     from molmetal.molmetal_lam.reward.hilbert_primal_dual import (
         LambdaASTSRHilbert,
     )
+
     pop_dim = X_tr_n.shape[1]
     try:
         opt = LambdaASTSRHilbert(
@@ -716,7 +719,9 @@ def _run_one_seed(
 ) -> Dict[str, Any]:
     """Run a single seed on the strict-scaffold split + inner-validation alpha."""
     train_idx, val_idx, test_idx = _strict_scaffold_split(
-        smiles, fractions=fractions, seed=seed,
+        smiles,
+        fractions=fractions,
+        seed=seed,
     )
     X_tr, X_va, X_te = X[train_idx], X[val_idx], X[test_idx]
     y_tr, y_va, y_te = y[train_idx], y[val_idx], y[test_idx]
@@ -751,7 +756,8 @@ def _run_one_seed(
         X_tr_inner_n = X_tr_n[inner_tr_idx]
         X_te_inner_n = X_tr_n[inner_te_idx]
         X_tr_inner_h, X_te_inner_h = hilbert_feature_map(
-            X_tr_inner_n.astype(np.float32), hilbert_dim,
+            X_tr_inner_n.astype(np.float32),
+            hilbert_dim,
             X_12d_test=X_te_inner_n.astype(np.float32),
         )
     else:
@@ -759,7 +765,8 @@ def _run_one_seed(
         X_te_inner_h = None
     # Build val+test feature map together (same convention as Wf-85 P1).
     X_tr_h, X_va_te_h = hilbert_feature_map(
-        X_tr_n.astype(np.float32), hilbert_dim,
+        X_tr_n.astype(np.float32),
+        hilbert_dim,
         X_12d_test=np.concatenate([X_va_n, X_te_n], axis=0).astype(np.float32),
     )
     n_va = len(X_va_n)
@@ -809,7 +816,9 @@ def _run_one_seed(
     # Choose alpha (Hilbert share).
     if len(inner_te_idx) > 0:
         alpha, inner_r2 = _choose_alpha(
-            y_tr[inner_te_idx], y_h_inner, y_a_inner,
+            y_tr[inner_te_idx],
+            y_h_inner,
+            y_a_inner,
         )
     else:
         alpha, inner_r2 = 1.0, 0.0
@@ -955,7 +964,9 @@ def evaluate_cell_line(
     for seed in seeds:
         seed_int = int(seed) if not isinstance(seed, list) else int(seed[0])
         result = _run_one_seed(
-            X, y, smiles,
+            X,
+            y,
+            smiles,
             seed=seed_int,
             epochs=epochs,
             hilbert_dim=hilbert_dim,
@@ -1016,9 +1027,7 @@ def evaluate_cell_line(
         "hilbert_r2_test_std": float(np.std(r2_hilbert_test))
         if len(r2_hilbert_test) > 1
         else 0.0,
-        "astr_r2_test_mean": float(np.mean(r2_astr_test))
-        if r2_astr_test
-        else 0.0,
+        "astr_r2_test_mean": float(np.mean(r2_astr_test)) if r2_astr_test else 0.0,
         "astr_r2_test_std": float(np.std(r2_astr_test))
         if len(r2_astr_test) > 1
         else 0.0,
@@ -1045,7 +1054,8 @@ def _write_run_log(path: Path, lines: List[str]) -> None:
 
 
 def _load_p1_p2_anchors(
-    p1_path: Optional[Path], p2_path: Optional[Path],
+    p1_path: Optional[Path],
+    p2_path: Optional[Path],
 ) -> Tuple[Dict[str, float], Dict[str, float]]:
     """Load Wf-85 P1 (Hilbert-only) + P2 (ASTSR-only) per-cell-line
     test R² means for attribution comparison.
@@ -1136,9 +1146,7 @@ def write_synthesis(
         )
         combined_means.append(cm)
     aggregate = float(np.mean(combined_means)) if combined_means else 0.0
-    aggregate_std = (
-        float(np.std(combined_means)) if len(combined_means) > 1 else 0.0
-    )
+    aggregate_std = float(np.std(combined_means)) if len(combined_means) > 1 else 0.0
     lines.append(
         "| **4-cell aggregate** | — | **{agg:+.4f} ± {ags:.4f}** | — | — | — | — |".format(
             agg=aggregate,
@@ -1190,26 +1198,38 @@ def write_synthesis(
         lines.append("")
     lines.append("## Honest framing")
     lines.append("")
-    lines.append("- **REAL retrain (not scaffold reuse)**: 5 seeds × 50 epochs of "
-                 "`LambdaASTSRHilbert.optimize` + `LambdaASTSR.fit` on the strict "
-                 "Bemis-Murcko scaffold split; test R² is computed on completely "
-                 "held-out scaffolds (never seen at training time).")
-    lines.append("- **No Multi-PH + PLL, no 3-way + PLL** — this is the **combined "
-                 "Hilbert+ASTSR** anchor; Multi-PH/PLL augmentation is a separate "
-                 "workstream (Wf-79 P2 3-way + PLL).")
-    lines.append("- **Alpha selection**: per-seed 90/10 inner validation on the "
-                 "training fold; grid over alpha ∈ {0.0, 0.25, 0.5, 0.75, 1.0}; "
-                 "reported as `alpha_chosen` per seed.")
-    lines.append("- **Attribution**: `lift vs P1` = combined − Wf-85 P1 "
-                 "(Hilbert-only) cell-line mean; `lift vs P2` = combined − "
-                 "Wf-85 P2 (ASTSR-only) cell-line mean.  This isolates the lift "
-                 "attributable to the blend vs split variance.")
-    lines.append("- **CPU smoke**: full 5-seed × strict-scaffold × 4-cell runs "
-                 "in < 6 minutes on a single CPU core (verified smoke); "
-                 "GPU-0 Blackwell optional but not required.")
-    lines.append("- **Collapse detector**: `pred_std / y_test_std < 0.10` flagged "
-                 "per seed and reported as `collapse_detected=yes` in the "
-                 "per-seed JSON.")
+    lines.append(
+        "- **REAL retrain (not scaffold reuse)**: 5 seeds × 50 epochs of "
+        "`LambdaASTSRHilbert.optimize` + `LambdaASTSR.fit` on the strict "
+        "Bemis-Murcko scaffold split; test R² is computed on completely "
+        "held-out scaffolds (never seen at training time)."
+    )
+    lines.append(
+        "- **No Multi-PH + PLL, no 3-way + PLL** — this is the **combined "
+        "Hilbert+ASTSR** anchor; Multi-PH/PLL augmentation is a separate "
+        "workstream (Wf-79 P2 3-way + PLL)."
+    )
+    lines.append(
+        "- **Alpha selection**: per-seed 90/10 inner validation on the "
+        "training fold; grid over alpha ∈ {0.0, 0.25, 0.5, 0.75, 1.0}; "
+        "reported as `alpha_chosen` per seed."
+    )
+    lines.append(
+        "- **Attribution**: `lift vs P1` = combined − Wf-85 P1 "
+        "(Hilbert-only) cell-line mean; `lift vs P2` = combined − "
+        "Wf-85 P2 (ASTSR-only) cell-line mean.  This isolates the lift "
+        "attributable to the blend vs split variance."
+    )
+    lines.append(
+        "- **CPU smoke**: full 5-seed × strict-scaffold × 4-cell runs "
+        "in < 6 minutes on a single CPU core (verified smoke); "
+        "GPU-0 Blackwell optional but not required."
+    )
+    lines.append(
+        "- **Collapse detector**: `pred_std / y_test_std < 0.10` flagged "
+        "per seed and reported as `collapse_detected=yes` in the "
+        "per-seed JSON."
+    )
     lines.append("")
     lines.append(
         "Per `party-twenty-spirit §3.5`: per-cell combined test R² ≥ 0 means "
@@ -1262,8 +1282,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         nargs="+",
         default=["mcf7", "a549", "a2780", "a2780cis"],
         help=(
-            "PlatinAI cell lines to benchmark "
-            "(default: mcf7 a549 a2780 a2780cis)."
+            "PlatinAI cell lines to benchmark " "(default: mcf7 a549 a2780 a2780cis)."
         ),
     )
     parser.add_argument(

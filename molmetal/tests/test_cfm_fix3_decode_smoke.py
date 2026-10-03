@@ -125,9 +125,7 @@ def test_r10_decode_smoke_n_steps_default_200():
     gives the decoder no chance of finding an edge).
     """
     default = _run_argparse_default("--decode-smoke-n-steps")
-    assert default == 200, (
-        f"--decode-smoke-n-steps default must be 200; got {default}."
-    )
+    assert default == 200, f"--decode-smoke-n-steps default must be 200; got {default}."
 
 
 # ---------------------------------------------------------------------------
@@ -143,9 +141,7 @@ def test_r10_decode_smoke_warn_after_default_two():
     degeneracy is persistent.
     """
     default = _run_argparse_default("--decode-smoke-warn-after")
-    assert default == 2, (
-        f"--decode-smoke-warn-after default must be 2; got {default}."
-    )
+    assert default == 2, f"--decode-smoke-warn-after default must be 2; got {default}."
 
 
 # ---------------------------------------------------------------------------
@@ -178,9 +174,7 @@ def test_run_decode_smoke_helper_counts_n_decoded():
             self.atom_types = torch.tensor([6], dtype=torch.long)
 
     adapter = MagicMock()
-    adapter.generate.return_value = [
-        _FakeMol(n_edges=4) for _ in range(3)
-    ] + [
+    adapter.generate.return_value = [_FakeMol(n_edges=4) for _ in range(3)] + [
         _FakeMol(n_edges=0) for _ in range(5)
     ]
 
@@ -194,8 +188,11 @@ def test_run_decode_smoke_helper_counts_n_decoded():
         # configured smoke size + steps.
         cfg_cls.return_value = MagicMock(name="SizedGenerationConfig")
         n_decoded, mols = harness.run_decode_smoke(
-            adapter, pocket,
-            n_samples=8, n_steps=200, seed=42,
+            adapter,
+            pocket,
+            n_samples=8,
+            n_steps=200,
+            seed=42,
         )
 
     assert n_decoded == 3, (
@@ -236,13 +233,14 @@ def test_run_decode_smoke_helper_all_zero_returns_zero():
     with patch.object(harness, "SizedGenerationConfig") as cfg_cls:
         cfg_cls.return_value = MagicMock()
         n_decoded, mols = harness.run_decode_smoke(
-            adapter, MagicMock(),
-            n_samples=8, n_steps=200, seed=0,
+            adapter,
+            MagicMock(),
+            n_samples=8,
+            n_steps=200,
+            seed=0,
         )
 
-    assert n_decoded == 0, (
-        f"All-zero mols must yield n_decoded=0; got {n_decoded}."
-    )
+    assert n_decoded == 0, f"All-zero mols must yield n_decoded=0; got {n_decoded}."
     assert len(mols) == 8
 
 
@@ -264,8 +262,10 @@ def test_decode_smoke_block_disabled_when_every_zero():
     the live harness (which requires GPU + crossdocked data) but
     pins the same conditional the harness uses.
     """
+
     class _A:
         decode_smoke_every = 0  # the disabled default
+
     args = _A()
     for step in (1, 10, 100, 1000, 9999):
         fires = (
@@ -290,8 +290,10 @@ def test_decode_smoke_block_fires_on_step_modulo():
     future refactor can't accidentally flip the modulo direction
     (``step % N == 0`` ↔ ``N % step == 0``).
     """
+
     class _A:
         decode_smoke_every = 100
+
     args = _A()
     expected_fires = set()
     for step in range(1, 1001):
@@ -302,6 +304,15 @@ def test_decode_smoke_block_fires_on_step_modulo():
         )
         if fires:
             expected_fires.add(step)
-    assert expected_fires == {100, 200, 300, 400, 500, 600, 700, 800, 900, 1000}, (
-        f"decode_smoke must fire at step % 100 == 0; got {sorted(expected_fires)}"
-    )
+    assert expected_fires == {
+        100,
+        200,
+        300,
+        400,
+        500,
+        600,
+        700,
+        800,
+        900,
+        1000,
+    }, f"decode_smoke must fire at step % 100 == 0; got {sorted(expected_fires)}"

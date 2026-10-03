@@ -64,9 +64,9 @@ def test_hilbert_space_basis_columns_orthonormal() -> None:
     B = h.basis_matrix
     norms_sq = np.sum(B * B, axis=0)
     for i in range(B.shape[1]):
-        assert norms_sq[i] == pytest.approx(1.0, abs=1e-9), (
-            f"column {i} not unit-norm: {norms_sq[i]}"
-        )
+        assert norms_sq[i] == pytest.approx(
+            1.0, abs=1e-9
+        ), f"column {i} not unit-norm: {norms_sq[i]}"
 
 
 def test_hilbert_space_basis_columns_orthogonal() -> None:
@@ -78,9 +78,7 @@ def test_hilbert_space_basis_columns_orthogonal() -> None:
         for j in range(G.shape[1]):
             if i == j:
                 continue
-            assert abs(G[i, j]) < 1e-9, (
-                f"non-orthogonal columns {i},{j}: {G[i, j]}"
-            )
+            assert abs(G[i, j]) < 1e-9, f"non-orthogonal columns {i},{j}: {G[i, j]}"
 
 
 def test_hilbert_space_rejects_bad_dim() -> None:
@@ -210,7 +208,7 @@ def test_primal_dual_optimizer_step_returns_updated() -> None:
     y = np.zeros(8)
 
     def objective(xk: np.ndarray):
-        return float(np.sum(xk ** 2)), 2.0 * xk
+        return float(np.sum(xk**2)), 2.0 * xk
 
     x_new, y_new = opt.step(x, y, objective)
     assert x_new.shape == (8,)
@@ -233,7 +231,9 @@ def test_primal_dual_optimizer_step_changes_nonzero_grad() -> None:
     clipping in this test so the asserted closed-form step is exact.
     """
     opt = PrimalDualOptimizer(
-        lr_primal=0.01, lr_dual=0.01, n_iters=10,
+        lr_primal=0.01,
+        lr_dual=0.01,
+        n_iters=10,
         grad_clip_max_norm=0.0,  # disable clipping for the closed-form check
     )
     x = np.zeros(4)
@@ -261,7 +261,7 @@ def test_primal_dual_optimizer_history_recorded() -> None:
     y = np.zeros(4)
 
     def objective(xk: np.ndarray):
-        return float(np.sum(xk ** 2)), 2.0 * xk
+        return float(np.sum(xk**2)), 2.0 * xk
 
     for _ in range(3):
         x, y = opt.step(x, y, objective)
@@ -314,7 +314,7 @@ def test_primal_dual_optimizer_iterate_norm_decreases() -> None:
 
     def objective(xk: np.ndarray):
         # F(x) = 0.5 ||x - target||² ; ∇F = x - target with target=0.
-        return float(0.5 * np.sum(xk ** 2)), xk
+        return float(0.5 * np.sum(xk**2)), xk
 
     norms = [float(np.linalg.norm(x))]
     for _ in range(200):
@@ -323,7 +323,7 @@ def test_primal_dual_optimizer_iterate_norm_decreases() -> None:
     # The iterates should be monotonically *non-increasing* on a pure
     # quadratic with origin as the optimum; we relax to "non-increasing
     # in the second half" because early transients can overshoot.
-    second_half = norms[len(norms) // 2:]
+    second_half = norms[len(norms) // 2 :]
     assert min(second_half) < norms[0] * 0.5, (
         f"primal iterate did not decay: norms[0]={norms[0]}, "
         f"min(second_half)={min(second_half)}"
@@ -352,7 +352,11 @@ def test_lambda_astsr_hilbert_predict_consistent() -> None:
     # hit R² > 0.95.  The default lr=0.01 is the spec's setting; this
     # test exercises the "PD converges with reasonable lr" path.
     hilbert = LambdaASTSRHilbert(
-        population_dim=8, lr_primal=0.1, lr_dual=0.1, n_iters=200, seed=1,
+        population_dim=8,
+        lr_primal=0.1,
+        lr_dual=0.1,
+        n_iters=200,
+        seed=1,
     )
     rng = np.random.default_rng(1)
     X = rng.standard_normal((16, 8))

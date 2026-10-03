@@ -54,12 +54,9 @@ METRICS = PROJECT_ROOT / "metrics" / "by_metric"
 PLATINAI_CSV = PROJECT_ROOT / "molmetal" / "data" / "platinai_5k.csv"
 
 # Wf-31 Phase-3 outputs (default paths; may not exist on a fresh checkout).
-WF31_METRICS = (
-    REPORTS / "wf31_multi_ph_diversity" / "metrics.json"
-)
+WF31_METRICS = REPORTS / "wf31_multi_ph_diversity" / "metrics.json"
 WF31_VERIFY_METRICS = (
-    REPORTS / "wf31_multi_ph_diversity"
-    / "wf31_multi_ph_diversity_verify.json"
+    REPORTS / "wf31_multi_ph_diversity" / "wf31_multi_ph_diversity_verify.json"
 )
 
 
@@ -101,6 +98,7 @@ def test_module_imports() -> None:
 def test_constants_n_bins() -> None:
     """MULTI_PH_N_BINS must be 16 (matches Wf-25 Phase-2 spec)."""
     from bench_multi_ph_diversity import MULTI_PH_N_BINS  # type: ignore
+
     assert MULTI_PH_N_BINS == 16
 
 
@@ -110,6 +108,7 @@ def test_constants_max_radius_max_coord() -> None:
         MULTI_PH_MAX_COORD,
         MULTI_PH_MAX_RADIUS,
     )
+
     assert MULTI_PH_MAX_RADIUS == 5.0
     assert MULTI_PH_MAX_COORD == 4.0
 
@@ -117,6 +116,7 @@ def test_constants_max_radius_max_coord() -> None:
 def test_constants_diversity_floor() -> None:
     """DIVERSITY_FLOOR must be 0.75 (R18 PLAN §3 m7 floor)."""
     from bench_multi_ph_diversity import DIVERSITY_FLOOR  # type: ignore
+
     assert DIVERSITY_FLOOR == 0.75
 
 
@@ -149,9 +149,11 @@ def test_mean_pairwise_cosine_distance_diagonal_zero() -> None:
     from bench_multi_ph_diversity import (  # type: ignore
         _mean_pairwise_cosine_distance,
     )
+
     rng = np.random.default_rng(0)
-    feats = [torch.tensor(rng.standard_normal(8), dtype=torch.float32)
-             for _ in range(5)]
+    feats = [
+        torch.tensor(rng.standard_normal(8), dtype=torch.float32) for _ in range(5)
+    ]
     out = _mean_pairwise_cosine_distance(feats)
     assert 0.0 <= out <= 2.0 + 1e-6
 
@@ -161,6 +163,7 @@ def test_mean_pairwise_cosine_distance_two_vectors() -> None:
     from bench_multi_ph_diversity import (  # type: ignore
         _mean_pairwise_cosine_distance,
     )
+
     a = torch.tensor([1.0, 0.0, 0.0])
     b = torch.tensor([0.0, 1.0, 0.0])
     out = _mean_pairwise_cosine_distance([a, b])
@@ -176,8 +179,9 @@ def test_compute_pairwise_tanimoto_distance_diagonal_zero() -> None:
     from bench_multi_ph_diversity import (  # type: ignore
         compute_pairwise_tanimoto_distance,
     )
+
     rng = np.random.default_rng(0)
-    fps = (rng.integers(0, 2, size=(6, 32), dtype=np.uint8))
+    fps = rng.integers(0, 2, size=(6, 32), dtype=np.uint8)
     out = compute_pairwise_tanimoto_distance(fps)
     # Mean off-diagonal Tanimoto distance is bounded in [0, 1].
     assert 0.0 <= out <= 1.0 + 1e-6
@@ -195,6 +199,7 @@ def test_compute_pairwise_tanimoto_distance_synthetic() -> None:
     from bench_multi_ph_diversity import (  # type: ignore
         compute_pairwise_tanimoto_distance,
     )
+
     a = np.zeros((1, 8), dtype=np.uint8)
     a[0, 0] = 1
     b = np.zeros((1, 8), dtype=np.uint8)
@@ -220,14 +225,15 @@ def test_extract_multi_ph_features_shape() -> None:
     from bench_multi_ph_diversity import (  # type: ignore
         extract_multi_ph_features,
     )
+
     # Use tiny, RDKit-friendly SMILES (ethanol + propane).
     smiles = ["CCO", "CCC", "CCN", "CCO", "CCC"]
     multi_ph, single_ph, stats = extract_multi_ph_features(
-        smiles, n_bins=8, max_atoms=20,
+        smiles,
+        n_bins=8,
+        max_atoms=20,
     )
-    assert stats["n_parsed"] == len(smiles), (
-        f"expected all SMILES parsed, got {stats}"
-    )
+    assert stats["n_parsed"] == len(smiles), f"expected all SMILES parsed, got {stats}"
     assert len(multi_ph) == len(smiles)
     assert len(single_ph) == len(smiles)
     for f in multi_ph:
@@ -241,9 +247,12 @@ def test_single_ph_is_marginal_sum() -> None:
     from bench_multi_ph_diversity import (  # type: ignore
         extract_multi_ph_features,
     )
+
     smiles = ["CCO", "CCC", "CCN"]
     multi_ph, single_ph, stats = extract_multi_ph_features(
-        smiles, n_bins=8, max_atoms=20,
+        smiles,
+        n_bins=8,
+        max_atoms=20,
     )
     assert stats["n_parsed"] == len(smiles)
     for mp, sp in zip(multi_ph, single_ph):

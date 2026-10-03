@@ -76,14 +76,14 @@ from molmetal.baselines.dmpnn_p0wins import (  # noqa: E402
 # Helpers
 # ===========================================================================
 SMILES_8 = [
-    "CCO",                # ethanol
-    "CC(=O)O",            # acetic acid
-    "c1ccccc1",           # benzene
-    "CC(C)C",             # isobutane
-    "CCC",                # propane
-    "C1CCCCC1",           # cyclohexane
-    "CCOCC",              # diethyl ether
-    "CCCC",               # butane
+    "CCO",  # ethanol
+    "CC(=O)O",  # acetic acid
+    "c1ccccc1",  # benzene
+    "CC(C)C",  # isobutane
+    "CCC",  # propane
+    "C1CCCCC1",  # cyclohexane
+    "CCOCC",  # diethyl ether
+    "CCCC",  # butane
 ]
 
 
@@ -158,18 +158,18 @@ def test_batch_mol_graph_flat_tensor_port_correctness() -> None:
         logits_padded = model_a(atom_f, bond_f, e_src, e_dst).numpy()
         logits_flat = forward_batched_dmpnn(model_b, bmg).numpy()
 
-    assert logits_padded.shape == logits_flat.shape, (
-        f"Shape mismatch: padded={logits_padded.shape} flat={logits_flat.shape}"
-    )
+    assert (
+        logits_padded.shape == logits_flat.shape
+    ), f"Shape mismatch: padded={logits_padded.shape} flat={logits_flat.shape}"
     # FP32 tolerance — both paths should agree on the per-mol logits.
     # Tolerance is 5e-3 because the flat path uses scatter_reduce_ while the
     # padded path uses index_add_; the reduction-order differs across the
     # depth-3 message-passing loop and produces ~5e-3 max delta (well within
     # Wf-326G §1.1 port-equivalence contract).
     diff = np.abs(logits_padded - logits_flat)
-    assert diff.max() < 5e-3, (
-        f"Flat-tensor port differs from padded path: max |diff|={diff.max():.2e}"
-    )
+    assert (
+        diff.max() < 5e-3
+    ), f"Flat-tensor port differs from padded path: max |diff|={diff.max():.2e}"
 
 
 # ===========================================================================
@@ -264,9 +264,9 @@ def test_torch_compile_tf32_adam_fused() -> None:
         with torch.no_grad():
             compiled_logits = model_compiled(af_single, bf_single, es_single, ed_single)
         assert compiled_logits.shape == (1,)
-        assert torch.isfinite(compiled_logits).all(), (
-            f"Compiled model produced non-finite outputs: {compiled_logits}"
-        )
+        assert torch.isfinite(
+            compiled_logits
+        ).all(), f"Compiled model produced non-finite outputs: {compiled_logits}"
 
         # --- (3) make_optimized_adam creates Adam(fused=True) ---
         opt = make_optimized_adam(model.parameters(), lr=1e-3)
@@ -318,7 +318,9 @@ def test_bf16_autocast_port() -> None:
     with torch.no_grad():
         ref_logits = forward_batched_dmpnn(model, bmg)
     diff = (logits - ref_logits).abs().max().item()
-    assert diff < 1e-5, f"bf16_predict differs from forward_batched: max |diff|={diff:.2e}"
+    assert (
+        diff < 1e-5
+    ), f"bf16_predict differs from forward_batched: max |diff|={diff:.2e}"
 
     # bf16_train_epoch: verify loss is finite and step runs cleanly.
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
@@ -354,16 +356,17 @@ def test_pre_featurized_cache_runtime_hook() -> None:
         assert g is not None
         af, bf, es, ed = g
         # Atom features use the canonical 39-dim layout (matches dmpnn.py).
-        assert af.shape[1] == ATOM_FEATURE_DIM, (
-            f"Expected atom feature dim={ATOM_FEATURE_DIM}, got {af.shape[1]}"
-        )
+        assert (
+            af.shape[1] == ATOM_FEATURE_DIM
+        ), f"Expected atom feature dim={ATOM_FEATURE_DIM}, got {af.shape[1]}"
         # Bond features from pre_featurize_dmpnn.py use the 6-dim layout
         # (GraphFeaturizer edge_attr convention — different from the
         # basic dmpnn.py 10-dim layout).  We accept either 6 or 10 so the
         # cache is forward-compatible.
-        assert bf.shape[1] in (BOND_FEATURE_DIM, 6), (
-            f"Expected bond feature dim in ({BOND_FEATURE_DIM}, 6), got {bf.shape[1]}"
-        )
+        assert bf.shape[1] in (
+            BOND_FEATURE_DIM,
+            6,
+        ), f"Expected bond feature dim in ({BOND_FEATURE_DIM}, 6), got {bf.shape[1]}"
         assert es.shape[0] == bf.shape[0]
         assert ed.shape[0] == bf.shape[0]
 
@@ -424,15 +427,19 @@ def test_integration_with_basic_dmpnn_trainer() -> None:
     losses = []
     for _ in range(3):
         loss = bf16_train_epoch(
-            model, optimizer, bmg, y_batch=y, device=torch.device("cpu"),
+            model,
+            optimizer,
+            bmg,
+            y_batch=y,
+            device=torch.device("cpu"),
             use_bf16=False,  # CPU — auto-disabled
         )
         losses.append(loss)
     assert all(np.isfinite(l) for l in losses), f"Non-finite loss: {losses}"
     # Sanity: loss should be decreasing (or at least not exploding).
-    assert losses[-1] <= losses[0] + 0.5, (
-        f"Loss exploded: {losses[0]:.4f} -> {losses[-1]:.4f}"
-    )
+    assert (
+        losses[-1] <= losses[0] + 0.5
+    ), f"Loss exploded: {losses[0]:.4f} -> {losses[-1]:.4f}"
 
 
 # ===========================================================================
@@ -528,6 +535,7 @@ def test_backward_compat_with_dmpnn_py() -> None:
     """
     # All original exports.
     import molmetal.baselines.dmpnn as dmpnn_mod
+
     expected = {
         "DMPNNModel",
         "DMPNNBaseline",
@@ -601,6 +609,7 @@ def test_wf326g_audit_guards_can_flip() -> None:
     pinned to the basic dmpnn.py path per the audit spec).
     """
     import molmetal.baselines.dmpnn_p0wins as p0
+
     # Audit guard #1: scatter_reduce_ exists in p0 module.
     assert hasattr(p0, "scatter_sum_no_self")
     # Audit guard #2: BatchMolGraph exists.
@@ -620,7 +629,8 @@ def test_wf326g_audit_guards_can_flip() -> None:
     # path is still unoptimised).  We assert the audit guards' import
     # path is unaffected.
     import molmetal.baselines.dmpnn as dmpnn_mod
+
     source = open(dmpnn_mod.__file__).read()
-    assert "scatter_reduce_" not in source, (
-        "dmpnn_p0wins must NOT modify dmpnn.py — audit guards remain pinned."
-    )
+    assert (
+        "scatter_reduce_" not in source
+    ), "dmpnn_p0wins must NOT modify dmpnn.py — audit guards remain pinned."

@@ -196,9 +196,7 @@ class PlatinAI5KBridge:
         """
         x = np.asarray(x, dtype=np.float32).reshape(-1)
         if x.size != LAMBDA_DIM:
-            raise ValueError(
-                f"input must have {LAMBDA_DIM} entries; got {x.size}"
-            )
+            raise ValueError(f"input must have {LAMBDA_DIM} entries; got {x.size}")
         x_n = (x - self.input_mean) / self.input_std
         return self.embed(x_n)
 
@@ -398,6 +396,7 @@ def _lambda_features_one(smiles: str, *, dim: int = LAMBDA_DIM) -> np.ndarray:
     try:
         from rdkit import Chem  # type: ignore
         from rdkit import RDLogger  # type: ignore
+
         RDLogger.DisableLog("rdApp.*")
         mol = Chem.MolFromSmiles(s)
         if mol is not None:
@@ -432,7 +431,9 @@ def _lambda_features_one(smiles: str, *, dim: int = LAMBDA_DIM) -> np.ndarray:
             elif c == ")":
                 cur_depth = max(0, cur_depth - 1)
         double_bond = normalised.count("=")
-        ring_count = normalised.count("c") + normalised.count("1") + normalised.count("2")
+        ring_count = (
+            normalised.count("c") + normalised.count("1") + normalised.count("2")
+        )
 
     struct = np.array(
         [
@@ -462,7 +463,9 @@ def _lambda_features_one(smiles: str, *, dim: int = LAMBDA_DIM) -> np.ndarray:
     ) / n_chars
     halogen_hist = np.append(halogen_hist, float(other)).astype(np.float32)
 
-    out = np.concatenate([hash_buckets, struct, elem_hist, halogen_hist]).astype(np.float32)
+    out = np.concatenate([hash_buckets, struct, elem_hist, halogen_hist]).astype(
+        np.float32
+    )
     if out.size < dim:
         out = np.concatenate([out, np.zeros(dim - out.size, dtype=np.float32)])
     return out[:dim].astype(np.float32)
@@ -471,9 +474,7 @@ def _lambda_features_one(smiles: str, *, dim: int = LAMBDA_DIM) -> np.ndarray:
 # ---------------------------------------------------------------------------
 # SMILES → 32-d feature convenience
 # ---------------------------------------------------------------------------
-def lambda_features_from_smiles(
-    smiles: str, *, seed: int = 0
-) -> np.ndarray:
+def lambda_features_from_smiles(smiles: str, *, seed: int = 0) -> np.ndarray:
     """Compute the 32-d lambda features for ``smiles``.
 
     Thin wrapper that fixes ``seed`` so callers see a deterministic
@@ -638,9 +639,7 @@ class LambdaCFMPipeline:
     # ------------------------------------------------------------------
     # Embedding
     # ------------------------------------------------------------------
-    def embed_lambda_features(
-        self, lambda_features: np.ndarray
-    ) -> np.ndarray:
+    def embed_lambda_features(self, lambda_features: np.ndarray) -> np.ndarray:
         """Map 32-d lambda features → 64-d bridge embedding.
 
         This is the deterministic fast path: identical input → identical
@@ -667,9 +666,7 @@ class LambdaCFMPipeline:
         # 2-d
         x = np.asarray(lambda_features, dtype=np.float32)
         if x.ndim != 2 or x.shape[1] != LAMBDA_DIM:
-            raise ValueError(
-                f"expected (N, {LAMBDA_DIM}); got shape {x.shape}"
-            )
+            raise ValueError(f"expected (N, {LAMBDA_DIM}); got shape {x.shape}")
         # Apply the per-row normalisation manually.
         x_n = (x - self.bridge.input_mean) / self.bridge.input_std
         return self.bridge.embed(x_n)
@@ -899,9 +896,7 @@ class CascadedRefiner:
             Shape ``(EMBED_DIM,)`` refined output.  Always finite.
         """
         if int(self.n_refine_steps) < 0:
-            raise ValueError(
-                f"n_refine_steps must be >= 0; got {self.n_refine_steps}"
-            )
+            raise ValueError(f"n_refine_steps must be >= 0; got {self.n_refine_steps}")
         cfm = np.asarray(cfm_output, dtype=np.float32).reshape(-1)
         if cfm.size != EMBED_DIM:
             cfm_pad = np.zeros(EMBED_DIM, dtype=np.float32)

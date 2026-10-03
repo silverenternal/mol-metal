@@ -24,6 +24,7 @@ Verifies the credibility audit script and JSON companion:
 All tests run on CPU in <2s — no GPU, no external evaluators, no
 modification of paper §4.
 """
+
 from __future__ import annotations
 
 import json
@@ -64,9 +65,9 @@ def _cred() -> dict:
 def test_audit_loads_all_metrics():
     audit = _audit()
     metrics = audit.get("metrics", [])
-    assert len(metrics) == 20, (
-        f"metrics_audit.json should contain 20 metric entries, got {len(metrics)}"
-    )
+    assert (
+        len(metrics) == 20
+    ), f"metrics_audit.json should contain 20 metric entries, got {len(metrics)}"
     # m21 is in extras
     assert "metric_21_nci60_precious_9cell_auc" in audit.get("extras", {})
 
@@ -76,9 +77,7 @@ def test_audit_loads_all_metrics():
 # ---------------------------------------------------------------------------
 def test_audit_classifies_strong():
     cred = _cred()
-    assert cred["n_strong"] >= 5, (
-        f"expected ≥5 strong metrics, got {cred['n_strong']}"
-    )
+    assert cred["n_strong"] >= 5, f"expected ≥5 strong metrics, got {cred['n_strong']}"
     assert len(cred["strong_ids"]) == cred["n_strong"]
 
 
@@ -87,9 +86,9 @@ def test_audit_classifies_strong():
 # ---------------------------------------------------------------------------
 def test_audit_classifies_acceptable():
     cred = _cred()
-    assert cred["n_acceptable"] >= 2, (
-        f"expected ≥2 acceptable metrics, got {cred['n_acceptable']}"
-    )
+    assert (
+        cred["n_acceptable"] >= 2
+    ), f"expected ≥2 acceptable metrics, got {cred['n_acceptable']}"
 
 
 # ---------------------------------------------------------------------------
@@ -97,9 +96,7 @@ def test_audit_classifies_acceptable():
 # ---------------------------------------------------------------------------
 def test_audit_classifies_weak():
     cred = _cred()
-    assert cred["n_weak"] >= 8, (
-        f"expected ≥8 weak metrics, got {cred['n_weak']}"
-    )
+    assert cred["n_weak"] >= 8, f"expected ≥8 weak metrics, got {cred['n_weak']}"
 
 
 # ---------------------------------------------------------------------------
@@ -107,9 +104,9 @@ def test_audit_classifies_weak():
 # ---------------------------------------------------------------------------
 def test_audit_classifies_unmeasured():
     cred = _cred()
-    assert cred["n_unmeasured"] >= 1, (
-        f"expected ≥1 unmeasured metric, got {cred['n_unmeasured']}"
-    )
+    assert (
+        cred["n_unmeasured"] >= 1
+    ), f"expected ≥1 unmeasured metric, got {cred['n_unmeasured']}"
 
 
 # ---------------------------------------------------------------------------
@@ -129,29 +126,31 @@ def test_audit_gap_calculation():
         if isinstance(measured, dict) or isinstance(tier1, dict):
             # m17 has measured/tier1/gap as per-split dicts
             # verify each key matches
-            assert isinstance(measured, dict) and isinstance(tier1, dict) and isinstance(gap, dict), (
-                f"{mid}: mixed scalar/dict types for measured/tier1/gap"
-            )
+            assert (
+                isinstance(measured, dict)
+                and isinstance(tier1, dict)
+                and isinstance(gap, dict)
+            ), f"{mid}: mixed scalar/dict types for measured/tier1/gap"
             for key in gap:
                 if measured.get(key) is None or tier1.get(key) is None:
                     continue
                 expected = round(measured[key] - tier1[key], 4)
-                assert abs(gap[key] - expected) < 0.01, (
-                    f"{mid}/{key}: gap={gap[key]}, expected ≈ {expected}"
-                )
+                assert (
+                    abs(gap[key] - expected) < 0.01
+                ), f"{mid}/{key}: gap={gap[key]}, expected ≈ {expected}"
             continue
         if mid in LOWER_IS_BETTER:
             # gap = measured - tier1 (signed; positive = behind = bad)
             expected = round(measured - tier1, 4)
-            assert abs(gap - expected) < 0.01, (
-                f"{mid}: gap={gap}, expected ≈ {expected}"
-            )
+            assert (
+                abs(gap - expected) < 0.01
+            ), f"{mid}: gap={gap}, expected ≈ {expected}"
         else:
             # gap = measured - tier1 (signed; negative = behind = bad)
             expected = round(measured - tier1, 4)
-            assert abs(gap - expected) < 0.01, (
-                f"{mid}: gap={gap}, expected ≈ {expected}"
-            )
+            assert (
+                abs(gap - expected) < 0.01
+            ), f"{mid}: gap={gap}, expected ≈ {expected}"
 
 
 # ---------------------------------------------------------------------------
@@ -162,9 +161,9 @@ def test_audit_no_overclaim():
     assert cred["no_overclaim"] is True, cred["overclaim_msg"]
     weak = set(cred["weak_ids"])
     strong = set(cred["strong_ids"])
-    assert not (weak & strong), (
-        f"overclaim detected: {weak & strong} appear in both weak and strong"
-    )
+    assert not (
+        weak & strong
+    ), f"overclaim detected: {weak & strong} appear in both weak and strong"
 
 
 # ---------------------------------------------------------------------------
@@ -179,11 +178,7 @@ def test_audit_ready_for_paper():
         + cred["n_unmeasured"]
         + cred["n_design_only"]
     )
-    expected_ready = (
-        n_total >= 20
-        and cred["no_overclaim"]
-        and cred["n_strong"] >= 5
-    )
+    expected_ready = n_total >= 20 and cred["no_overclaim"] and cred["n_strong"] >= 5
     assert cred["ready_for_paper"] == expected_ready
 
 
@@ -194,9 +189,9 @@ def test_audit_strong_ids_include_headlines():
     cred = _cred()
     strong = set(cred["strong_ids"])
     for headline in ("m11", "m14", "m17"):
-        assert headline in strong, (
-            f"headline metric {headline} should be strong; got {sorted(strong)}"
-        )
+        assert (
+            headline in strong
+        ), f"headline metric {headline} should be strong; got {sorted(strong)}"
 
 
 # ---------------------------------------------------------------------------
@@ -206,9 +201,9 @@ def test_audit_weak_ids_include_anchors():
     cred = _cred()
     weak = set(cred["weak_ids"])
     for anchor in ("m1", "m3", "m7", "m19"):
-        assert anchor in weak, (
-            f"anchor metric {anchor} should be weak; got {sorted(weak)}"
-        )
+        assert (
+            anchor in weak
+        ), f"anchor metric {anchor} should be weak; got {sorted(weak)}"
 
 
 # ---------------------------------------------------------------------------
@@ -227,9 +222,9 @@ def test_audit_script_runs(tmp_path=None):
         text=True,
         timeout=30,
     )
-    assert result.returncode == 0, (
-        f"script failed: stdout={result.stdout} stderr={result.stderr}"
-    )
+    assert (
+        result.returncode == 0
+    ), f"script failed: stdout={result.stdout} stderr={result.stderr}"
     assert OUT_JSON.exists(), f"{OUT_JSON} not written"
     with OUT_JSON.open() as f:
         payload = json.load(f)
@@ -257,7 +252,12 @@ def test_audit_script_outputs_n_counts():
         subprocess.run(
             [
                 sys.executable,
-                str(PROJECT_ROOT / "molmetal" / "scripts" / "metric_credibility_audit.py"),
+                str(
+                    PROJECT_ROOT
+                    / "molmetal"
+                    / "scripts"
+                    / "metric_credibility_audit.py"
+                ),
                 "--audit",
             ],
             cwd=str(PROJECT_ROOT),
@@ -282,9 +282,9 @@ def test_audit_script_outputs_n_counts():
 # ---------------------------------------------------------------------------
 def test_audit_extras_handled():
     cred = _cred()
-    assert "m21" in cred["acceptable_ids"], (
-        f"m21 (extra) should be in acceptable_ids; got {cred['acceptable_ids']}"
-    )
+    assert (
+        "m21" in cred["acceptable_ids"]
+    ), f"m21 (extra) should be in acceptable_ids; got {cred['acceptable_ids']}"
 
 
 # ---------------------------------------------------------------------------
@@ -296,14 +296,14 @@ def test_audit_lower_better_metrics():
     for mid in LOWER_IS_BETTER:
         assert mid in metrics, f"{mid} missing from audit"
         m = metrics[mid]
-        assert m["direction"] == "lower", (
-            f"{mid}: direction should be 'lower' (kcal/mol), got {m['direction']}"
-        )
+        assert (
+            m["direction"] == "lower"
+        ), f"{mid}: direction should be 'lower' (kcal/mol), got {m['direction']}"
         # gap should be positive (we are behind SOTA)
         if m.get("gap") is not None:
-            assert m["gap"] > 0, (
-                f"{mid}: gap should be >0 (behind SOTA), got {m['gap']}"
-            )
+            assert (
+                m["gap"] > 0
+            ), f"{mid}: gap should be >0 (behind SOTA), got {m['gap']}"
 
 
 # ---------------------------------------------------------------------------

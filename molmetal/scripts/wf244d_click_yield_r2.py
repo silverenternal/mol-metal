@@ -10,6 +10,7 @@ Usage:
     PY=/home/hugo/codes/mol-metal/.venv/bin/python
     $PY molmetal/scripts/wf244d_click_yield_r2.py
 """
+
 from __future__ import annotations
 
 import json
@@ -31,12 +32,8 @@ from sklearn.preprocessing import StandardScaler
 RDLogger.DisableLog("rdApp.*")
 warnings.filterwarnings("ignore")
 
-CSV_PATH = Path(
-    "/home/hugo/codes/mol-metal/.data/molmetal/click_yields_literature.csv"
-)
-REPORT_DIR = Path(
-    "/home/hugo/codes/mol-metal/molmetal/reports/wf244d_click_yield"
-)
+CSV_PATH = Path("/home/hugo/codes/mol-metal/.data/molmetal/click_yields_literature.csv")
+REPORT_DIR = Path("/home/hugo/codes/mol-metal/molmetal/reports/wf244d_click_yield")
 REPORT_JSON = REPORT_DIR / "R2_report.json"
 
 # 12 RDKit 2D descriptors per molecule. Standard chemoinformatics panel
@@ -190,7 +187,9 @@ def main() -> dict:
         "G5_fold_r2": [round(v, 4) for v in fold_r2],
         "G5_mean_r2": round(mean_r2, 4),
         "G5_std_r2": round(std_r2, 4),
-        "G6_per_reaction_r2": {k: (None if (v != v) else round(v, 4)) for k, v in per_rxn.items()},
+        "G6_per_reaction_r2": {
+            k: (None if (v != v) else round(v, 4)) for k, v in per_rxn.items()
+        },
         "G7_top_features": top3,
         "G7_top_feature_coefs": [
             round(float(full_model.coef_[feat_names.index(f)]), 4) for f in top3

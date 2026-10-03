@@ -42,6 +42,7 @@ Test inventory
     ``per_seed_metrics.json`` is well-formed JSON with all required
     keys + a non-zero ``n_samples``.
 """
+
 from __future__ import annotations
 
 import csv
@@ -60,9 +61,12 @@ import pytest
 _HERE = Path(__file__).resolve().parent
 # Tests live in molmetal/tests/; the repo root is one level above molmetal.
 _REPO_ROOT = _HERE.parent  # molmetal/
-while _REPO_ROOT != _REPO_ROOT.parent and not (
-    _REPO_ROOT / "molmetal" / "scripts" / "bench_hilbert_astr_real_tmqm.py"
-).exists():
+while (
+    _REPO_ROOT != _REPO_ROOT.parent
+    and not (
+        _REPO_ROOT / "molmetal" / "scripts" / "bench_hilbert_astr_real_tmqm.py"
+    ).exists()
+):
     _REPO_ROOT = _REPO_ROOT.parent
 for _p in (str(_HERE.parent), str(_REPO_ROOT)):
     if _p not in sys.path:
@@ -126,9 +130,9 @@ def test_tmqmcsv_candidates_constant() -> None:
     assert len(TMQMCSV_CANDIDATES) >= 1
     # At least one of the candidate paths must exist on disk (the
     # ``tmqm_dblock_subset.csv`` shipped with the repo).
-    assert any(c.exists() for c in TMQMCSV_CANDIDATES), (
-        f"None of TMQMCSV_CANDIDATES exist: {[str(c) for c in TMQMCSV_CANDIDATES]}"
-    )
+    assert any(
+        c.exists() for c in TMQMCSV_CANDIDATES
+    ), f"None of TMQMCSV_CANDIDATES exist: {[str(c) for c in TMQMCSV_CANDIDATES]}"
 
 
 def test_counterion_fragments_constant() -> None:
@@ -211,9 +215,9 @@ def test_strict_scaffold_disjoint() -> None:
         # Dedupe scaffolds within this fold's test set first.
         unique_scaffolds_in_fold = {scaffolds[idx] for idx in test}
         for sc in unique_scaffolds_in_fold:
-            assert sc not in seen_in_test_per_scaffold, (
-                f"Scaffold {sc!r} appears in test of multiple folds"
-            )
+            assert (
+                sc not in seen_in_test_per_scaffold
+            ), f"Scaffold {sc!r} appears in test of multiple folds"
             seen_in_test_per_scaffold[sc] = fold_idx
 
 
@@ -249,17 +253,18 @@ def test_random_kfold_no_overlap() -> None:
 def test_kfold_indices_dispatches_to_strict_when_enabled() -> None:
     scaffolds = ["A", "B", "A", "B", "C", "C"]
     splits = _kfold_indices(
-        len(scaffolds), k=2, seed=0,
-        scaffold_ids=scaffolds, strict_scaffold=True,
+        len(scaffolds),
+        k=2,
+        seed=0,
+        scaffold_ids=scaffolds,
+        strict_scaffold=True,
     )
     # Strict path yields disjoint scaffolds per fold.
     seen: dict = {}
     for fold_idx, (_, test) in enumerate(splits):
         unique_scaffolds_in_fold = {scaffolds[idx] for idx in test}
         for sc in unique_scaffolds_in_fold:
-            assert sc not in seen, (
-                f"Scaffold {sc!r} appears in test of multiple folds"
-            )
+            assert sc not in seen, f"Scaffold {sc!r} appears in test of multiple folds"
             seen[sc] = fold_idx
 
 
@@ -306,9 +311,9 @@ def test_load_element_cohort_cu_smoke() -> None:
     # Strict-scaffold scaffolds must be non-empty for the script to
     # work (the two-tier fallback ensures this even for open-chain
     # ligands where Bemis-Murcko returns "").
-    assert all(s for s in scaffolds), (
-        "Some rows have empty scaffold (would collapse strict-scaffold split)"
-    )
+    assert all(
+        s for s in scaffolds
+    ), "Some rows have empty scaffold (would collapse strict-scaffold split)"
 
 
 def test_load_element_cohort_unsupported_target() -> None:
@@ -394,7 +399,9 @@ def test_combined_baseline_smoke(tmp_path: Path) -> None:
     if repo_root.name != "mol-metal":
         # Fallback: walk up to find ``mol-metal``.
         for cand in [_REPO_ROOT, _REPO_ROOT.parent]:
-            if (cand / "molmetal" / "scripts" / "bench_hilbert_astr_real_tmqm.py").exists():
+            if (
+                cand / "molmetal" / "scripts" / "bench_hilbert_astr_real_tmqm.py"
+            ).exists():
                 repo_root = cand
                 break
     cmd = [
@@ -415,23 +422,35 @@ def test_combined_baseline_smoke(tmp_path: Path) -> None:
     env = dict(os.environ)
     env.setdefault("PYTHONPATH", f"{repo_root}:{env.get('PYTHONPATH', '')}")
     proc = subprocess.run(
-        cmd, cwd=str(repo_root), env=env,
-        capture_output=True, text=True, timeout=120,
+        cmd,
+        cwd=str(repo_root),
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=120,
     )
-    assert proc.returncode == 0, (
-        f"script failed:\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
-    )
+    assert (
+        proc.returncode == 0
+    ), f"script failed:\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
     json_path = tmp_path / "Cu" / "per_seed_metrics.json"
     assert json_path.exists()
     with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
     # All required keys present.
     for key in (
-        "element", "target_col", "n_samples", "n_features",
-        "feature_columns", "n_seeds", "strict_scaffold",
-        "combined_r2_mean", "combined_r2_std",
-        "hilbert_r2_mean", "hilbert_r2_std",
-        "astr_r2_mean", "astr_r2_std",
+        "element",
+        "target_col",
+        "n_samples",
+        "n_features",
+        "feature_columns",
+        "n_seeds",
+        "strict_scaffold",
+        "combined_r2_mean",
+        "combined_r2_std",
+        "hilbert_r2_mean",
+        "hilbert_r2_std",
+        "astr_r2_mean",
+        "astr_r2_std",
         "per_seed",
     ):
         assert key in data, f"missing key {key!r} in per_seed_metrics.json"

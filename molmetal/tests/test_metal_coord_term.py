@@ -26,6 +26,7 @@ Honest framing
   of Vina's kcal/mol — it does NOT change the docked pose and
   does NOT modify Vina's underlying scoring function.
 """
+
 from __future__ import annotations
 
 import math
@@ -34,6 +35,7 @@ import pytest
 
 try:
     from rdkit import Chem, RDLogger  # type: ignore
+
     RDLogger.DisableLog("rdApp.*")
     _HAVE_RDKIT = True
 except Exception:  # pragma: no cover
@@ -54,7 +56,8 @@ from molmetal.molmetal_lam.sbdd_env.metal_coord_term import (
 
 
 pytestmark = pytest.mark.skipif(
-    not _HAVE_RDKIT, reason="rdkit not installed",
+    not _HAVE_RDKIT,
+    reason="rdkit not installed",
 )
 
 
@@ -163,7 +166,7 @@ class TestMetalLigandDistanceScore:
         assert score is not None
         assert score < 1.0
         # Gaussian with sigma=0.20, diff=0.26 → exp(-(0.26/0.20)^2)
-        expected = math.exp(-(0.26 / 0.20) ** 2)
+        expected = math.exp(-((0.26 / 0.20) ** 2))
         assert score == pytest.approx(expected, abs=1e-3)
 
     def test_unknown_pair_returns_none(self):
@@ -278,17 +281,20 @@ class TestVinaAdapterMetalCoordIntegration:
 
     def test_default_enable_metal_coord_is_true(self):
         from molmetal.molmetal_lam.sbdd_env.vina_adapter import VinaDockingAdapter
+
         # We don't actually invoke the adapter (it would need a working
         # vina binary + pocket), so we just verify the kwarg path.
         # When `enable_metal_coord` is omitted, the constructor must
         # default to True.
         import inspect
+
         sig = inspect.signature(VinaDockingAdapter.__init__)
         assert "enable_metal_coord" in sig.parameters
         assert sig.parameters["enable_metal_coord"].default is True
 
     def test_cli_flag_enable_metal_coord(self):
         from molmetal.molmetal_lam.sbdd_env.vina_adapter import build_arg_parser
+
         args = build_arg_parser().parse_args([])
         assert args.enable_metal_coord is True
         args = build_arg_parser().parse_args(["--disable-metal-coord"])

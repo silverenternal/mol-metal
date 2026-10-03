@@ -80,22 +80,22 @@ class TestBindingDBSchema:
 
     def test_pIC50_numeric_and_finite(self) -> None:
         df = load_binding_db()
-        assert pd.api.types.is_numeric_dtype(df["pIC50"]), (
-            f"pIC50 should be numeric, got {df['pIC50'].dtype}"
-        )
+        assert pd.api.types.is_numeric_dtype(
+            df["pIC50"]
+        ), f"pIC50 should be numeric, got {df['pIC50'].dtype}"
         # No NaN, no inf
-        assert int(df["pIC50"].isna().sum()) == 0, (
-            f"binding_db has {int(df['pIC50'].isna().sum())} NaN pIC50"
-        )
-        assert df["pIC50"].apply(lambda v: math.isfinite(float(v))).all(), (
-            "binding_db has non-finite pIC50"
-        )
+        assert (
+            int(df["pIC50"].isna().sum()) == 0
+        ), f"binding_db has {int(df['pIC50'].isna().sum())} NaN pIC50"
+        assert (
+            df["pIC50"].apply(lambda v: math.isfinite(float(v))).all()
+        ), "binding_db has non-finite pIC50"
 
     def test_active_is_boolean(self) -> None:
         df = load_binding_db()
-        assert df["active"].dtype == bool, (
-            f"active should be bool, got {df['active'].dtype}"
-        )
+        assert (
+            df["active"].dtype == bool
+        ), f"active should be bool, got {df['active'].dtype}"
         # And it's a sensible binary (no NaN)
         assert df["active"].notna().all()
 
@@ -121,9 +121,9 @@ class TestBindingDBRowAndSplit:
         """
         df = load_binding_db()
         unique_metals = sorted(df["metal"].unique().tolist())
-        assert unique_metals == sorted(EXPECTED_METALS), (
-            f"binding_db metals {unique_metals} != expected {sorted(EXPECTED_METALS)}"
-        )
+        assert unique_metals == sorted(
+            EXPECTED_METALS
+        ), f"binding_db metals {unique_metals} != expected {sorted(EXPECTED_METALS)}"
 
         # Per-metal row count is non-trivial (≥10) — no degenerate single-
         # metal subset.
@@ -162,9 +162,9 @@ class TestBindingDBRowAndSplit:
             scaffolds.setdefault(sc, []).append(i)
 
         # ≥95 % SMILES parseable
-        assert parseable / len(df) >= 0.95, (
-            f"only {parseable}/{len(df)} SMILES are RDKit-parseable"
-        )
+        assert (
+            parseable / len(df) >= 0.95
+        ), f"only {parseable}/{len(df)} SMILES are RDKit-parseable"
 
         # Now partition: sorted by scaffold size (descending) and bucket
         # 80/10/10 in deterministic order.  Verifies the loader output
@@ -185,9 +185,9 @@ class TestBindingDBRowAndSplit:
 
         # 3-way partition covers the full row range, no overlap.
         all_idx = set(train_idx) | set(val_idx) | set(test_idx)
-        assert len(all_idx) == n, (
-            f"scaffold split lost rows: {n - len(all_idx)} missing"
-        )
+        assert (
+            len(all_idx) == n
+        ), f"scaffold split lost rows: {n - len(all_idx)} missing"
         assert len(train_idx) > 0 and len(val_idx) > 0 and len(test_idx) > 0, (
             f"empty partition: train={len(train_idx)} val={len(val_idx)} "
             f"test={len(test_idx)}"
@@ -216,9 +216,9 @@ class TestBindingDBEdgeCases:
             load_binding_db(path=bad)
         msg = str(excinfo.value)
         # Error message names the missing columns
-        assert "cell_line" in msg or "active" in msg, (
-            f"error should list missing required columns: {msg}"
-        )
+        assert (
+            "cell_line" in msg or "active" in msg
+        ), f"error should list missing required columns: {msg}"
 
 
 # ---------------------------------------------------------------------------
@@ -235,6 +235,7 @@ class TestBindingDBIntegration:
         return SMILES that survive RDKit sanitisation.
         """
         from rdkit import Chem, RDLogger
+
         RDLogger.DisableLog("rdApp.*")
 
         df = load_binding_db()
@@ -260,23 +261,23 @@ class TestBindingDBIntegration:
         """
         df = load_binding_db()
         # chemprop v2 reads 'smiles' as str, 'pIC50' as float.
-        assert pd.api.types.is_string_dtype(df["smiles"]), (
-            f"smiles should be string-like, got {df['smiles'].dtype}"
-        )
+        assert pd.api.types.is_string_dtype(
+            df["smiles"]
+        ), f"smiles should be string-like, got {df['smiles'].dtype}"
         assert pd.api.types.is_numeric_dtype(df["pIC50"])
         # 'metal' column is read for per-metal task conditioning.
-        assert pd.api.types.is_string_dtype(df["metal"]), (
-            f"metal should be string-like, got {df['metal'].dtype}"
-        )
+        assert pd.api.types.is_string_dtype(
+            df["metal"]
+        ), f"metal should be string-like, got {df['metal'].dtype}"
         # 'cell_line' is used as an auxiliary label by chemprop v2's
         # multi-task head (NOT a per-row task; consumed as a string
         # feature).
-        assert pd.api.types.is_string_dtype(df["cell_line"]), (
-            f"cell_line should be string-like, got {df['cell_line'].dtype}"
-        )
-        assert pd.api.types.is_string_dtype(df["protein"]), (
-            f"protein should be string-like, got {df['protein'].dtype}"
-        )
+        assert pd.api.types.is_string_dtype(
+            df["cell_line"]
+        ), f"cell_line should be string-like, got {df['cell_line'].dtype}"
+        assert pd.api.types.is_string_dtype(
+            df["protein"]
+        ), f"protein should be string-like, got {df['protein'].dtype}"
         # And no NaN cell_line / metal / protein / smiles
         for c in ("smiles", "metal", "cell_line", "protein"):
             assert df[c].notna().all(), f"binding_db has NaN {c}"
@@ -293,11 +294,7 @@ class TestBindingDBCrossLoaderPairing:
 
     def test_default_csv_path_exists_on_disk(self) -> None:
         """``DEFAULT_CSV`` points at the project-shipped CSV."""
-        assert DEFAULT_CSV.exists(), (
-            f"DEFAULT_CSV {DEFAULT_CSV} does not exist on disk"
-        )
+        assert DEFAULT_CSV.exists(), f"DEFAULT_CSV {DEFAULT_CSV} does not exist on disk"
         # ≥5000 rows minimum (the 5257-row project-shipped subset).
         n_lines = sum(1 for _ in open(DEFAULT_CSV, "r", encoding="utf-8"))
-        assert n_lines >= 5000, (
-            f"DEFAULT_CSV has only {n_lines} lines; expected ≥5000"
-        )
+        assert n_lines >= 5000, f"DEFAULT_CSV has only {n_lines} lines; expected ≥5000"

@@ -81,6 +81,7 @@ class BestFormula:
     Mirrors the dataclass contract requested in the deflex follow-up
     Phase 1 spec (wf_deflex_followup/phase1_f5_adapter.md).
     """
+
     name: str
     formula_str: str
     coefficients: Dict[str, float]
@@ -141,22 +142,46 @@ def enumerate_8_families() -> List[BestFormula]:
     out: List[BestFormula] = []
     # Family metadata mirrors symbolic_regression.FORMULA_FAMILIES.
     families = [
-        ("F1", "Dayan 1997 potential-based reward shaping",
-         "diversity_tanimoto+diversity_homotype+qed_mean+anticancer_index+sa_mean_norm"),
-        ("F2", "Ng 1999 policy-invariant potential shaping",
-         "diversity_tanimoto+diversity_homotype+qed_mean+anticancer_index+sa_mean_norm"),
-        ("F3", "convex combination Dayan 1999 + McAllester 1999",
-         "diversity_tanimoto+diversity_homotype+qed_mean+anticancer_index+sa_mean_norm"),
-        ("F4", "Tanimoto-focal loss (Lin 2017)",
-         "diversity_tanimoto+qed_mean+anticancer_index+sa_mean_norm"),
-        ("F5", "McAllester 1999 PAC-Bayes regularised linear",
-         "diversity_tanimoto+diversity_homotype+qed_mean+anticancer_index+sa_mean_norm"),
-        ("F6", "Schulman 2017 PPO clipped objective",
-         "diversity_tanimoto+diversity_homotype+qed_mean+anticancer_index+sa_mean_norm"),
-        ("F7", "Auger 2013 + Dayan 1997 tiered metal-prior",
-         "diversity_tanimoto+metal_compliance_rate+sa_mean_norm+qed_mean"),
-        ("F8", "Tennie 2024 hierarchical symbolic regression",
-         "diversity_tanimoto+qed_mean+anticancer_index+sa_mean_norm+diversity_homotype"),
+        (
+            "F1",
+            "Dayan 1997 potential-based reward shaping",
+            "diversity_tanimoto+diversity_homotype+qed_mean+anticancer_index+sa_mean_norm",
+        ),
+        (
+            "F2",
+            "Ng 1999 policy-invariant potential shaping",
+            "diversity_tanimoto+diversity_homotype+qed_mean+anticancer_index+sa_mean_norm",
+        ),
+        (
+            "F3",
+            "convex combination Dayan 1999 + McAllester 1999",
+            "diversity_tanimoto+diversity_homotype+qed_mean+anticancer_index+sa_mean_norm",
+        ),
+        (
+            "F4",
+            "Tanimoto-focal loss (Lin 2017)",
+            "diversity_tanimoto+qed_mean+anticancer_index+sa_mean_norm",
+        ),
+        (
+            "F5",
+            "McAllester 1999 PAC-Bayes regularised linear",
+            "diversity_tanimoto+diversity_homotype+qed_mean+anticancer_index+sa_mean_norm",
+        ),
+        (
+            "F6",
+            "Schulman 2017 PPO clipped objective",
+            "diversity_tanimoto+diversity_homotype+qed_mean+anticancer_index+sa_mean_norm",
+        ),
+        (
+            "F7",
+            "Auger 2013 + Dayan 1997 tiered metal-prior",
+            "diversity_tanimoto+metal_compliance_rate+sa_mean_norm+qed_mean",
+        ),
+        (
+            "F8",
+            "Tennie 2024 hierarchical symbolic regression",
+            "diversity_tanimoto+qed_mean+anticancer_index+sa_mean_norm+diversity_homotype",
+        ),
     ]
     for name, lit, _featlist in families:
         if name == "F5":
@@ -220,9 +245,7 @@ def fit_from_metrics(
         # Self-consistency: use F5 closed-form as the target so we can at
         # least verify the fitter reproduces the canonical coefficients.
         df = df.copy()
-        df["reward"] = df.apply(
-            lambda r: shape_reward_full_row(r.to_dict()), axis=1
-        )
+        df["reward"] = df.apply(lambda r: shape_reward_full_row(r.to_dict()), axis=1)
     y = df["reward"].to_numpy(dtype=float)
 
     feat_cols = [c for c in F5_FEATURE_NAMES if c in df.columns]

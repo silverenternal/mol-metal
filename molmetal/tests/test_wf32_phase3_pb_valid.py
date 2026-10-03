@@ -35,12 +35,8 @@ from pathlib import Path
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-METRICS_PATH = (
-    PROJECT_ROOT / "metrics" / "by_metric" / "wf32_pb_valid.json"
-)
-SUMMARY_PATH = (
-    PROJECT_ROOT / "metrics" / "by_metric" / "wf32_pb_valid_summary.json"
-)
+METRICS_PATH = PROJECT_ROOT / "metrics" / "by_metric" / "wf32_pb_valid.json"
+SUMMARY_PATH = PROJECT_ROOT / "metrics" / "by_metric" / "wf32_pb_valid_summary.json"
 
 WF32_POCKETS = (
     "830c",
@@ -80,9 +76,9 @@ def test_wf32_pb_metrics_well_formed() -> None:
     _skip_if_missing(METRICS_PATH)
     payload = _load(METRICS_PATH)
     assert isinstance(payload, dict)
-    assert payload.get("recipe") == "wf32_pb_valid", (
-        f"unexpected recipe tag {payload.get('recipe')!r}"
-    )
+    assert (
+        payload.get("recipe") == "wf32_pb_valid"
+    ), f"unexpected recipe tag {payload.get('recipe')!r}"
 
 
 def test_wf32_pb_metrics_n_cells() -> None:
@@ -93,17 +89,15 @@ def test_wf32_pb_metrics_n_cells() -> None:
     n_candidates = payload.get("n_candidates")
     n_pb_modes = payload.get("n_pb_modes")
     if n_pockets is not None:
-        assert n_pockets == N_POCKETS, (
-            f"n_pockets={n_pockets}, expected {N_POCKETS}"
-        )
+        assert n_pockets == N_POCKETS, f"n_pockets={n_pockets}, expected {N_POCKETS}"
     if n_candidates is not None:
-        assert n_candidates == N_CANDIDATES, (
-            f"n_candidates={n_candidates}, expected {N_CANDIDATES}"
-        )
+        assert (
+            n_candidates == N_CANDIDATES
+        ), f"n_candidates={n_candidates}, expected {N_CANDIDATES}"
     if n_pb_modes is not None:
-        assert n_pb_modes == N_PB_MODES, (
-            f"n_pb_modes={n_pb_modes}, expected {N_PB_MODES}"
-        )
+        assert (
+            n_pb_modes == N_PB_MODES
+        ), f"n_pb_modes={n_pb_modes}, expected {N_PB_MODES}"
     per_evaluation = payload.get("per_evaluation") or []
     if per_evaluation:
         assert len(per_evaluation) >= N_CELLS // 2, (
@@ -126,12 +120,12 @@ def test_wf32_pb_metrics_per_pocket_coverage() -> None:
             if mode in info:
                 stats = info[mode]
                 if stats and "pass_rate" in stats:
-                    assert math.isfinite(stats["pass_rate"]), (
-                        f"{pocket} {mode} pass_rate not finite"
-                    )
-                    assert 0.0 <= stats["pass_rate"] <= 1.0, (
-                        f"{pocket} {mode} pass_rate outside [0, 1]"
-                    )
+                    assert math.isfinite(
+                        stats["pass_rate"]
+                    ), f"{pocket} {mode} pass_rate not finite"
+                    assert (
+                        0.0 <= stats["pass_rate"] <= 1.0
+                    ), f"{pocket} {mode} pass_rate outside [0, 1]"
 
 
 def test_wf32_pb_metrics_overall_per_mode() -> None:
@@ -141,12 +135,12 @@ def test_wf32_pb_metrics_overall_per_mode() -> None:
     overall = payload.get("overall", payload.get("aggregate", {}))
     for mode in ("mol", "dock"):
         if mode in overall:
-            assert math.isfinite(overall[mode]), (
-                f"overall {mode} not finite: {overall[mode]!r}"
-            )
-            assert 0.0 <= overall[mode] <= 1.0, (
-                f"overall {mode} outside [0, 1]: {overall[mode]!r}"
-            )
+            assert math.isfinite(
+                overall[mode]
+            ), f"overall {mode} not finite: {overall[mode]!r}"
+            assert (
+                0.0 <= overall[mode] <= 1.0
+            ), f"overall {mode} outside [0, 1]: {overall[mode]!r}"
 
 
 def test_wf32_pb_metrics_trajectory_method_documented() -> None:
@@ -168,9 +162,9 @@ def test_wf32_pb_summary_well_formed() -> None:
     summary = _load(SUMMARY_PATH)
     assert isinstance(summary, dict)
     recipe = summary.get("recipe", "")
-    assert recipe.startswith("wf32_pb_valid"), (
-        f"unexpected summary recipe tag {recipe!r}"
-    )
+    assert recipe.startswith(
+        "wf32_pb_valid"
+    ), f"unexpected summary recipe tag {recipe!r}"
     metrics = _load(METRICS_PATH)
     if metrics is not None:
         assert summary.get("n_pockets") == metrics.get("n_pockets")

@@ -57,12 +57,7 @@ from pathlib import Path
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-JSON_PATH = (
-    PROJECT_ROOT
-    / "metrics"
-    / "by_metric"
-    / "nci60_precious_9cell_auc.json"
-)
+JSON_PATH = PROJECT_ROOT / "metrics" / "by_metric" / "nci60_precious_9cell_auc.json"
 
 
 def _ensure_repo_on_path() -> None:
@@ -158,9 +153,9 @@ class TestNci60AggregateBlockContract:
 
         # Pillar 1: per_cell_breakdown must be a dict of exactly 9 keys.
         breakdown = block["per_cell_breakdown"]
-        assert isinstance(breakdown, dict), (
-            f"per_cell_breakdown is not a dict (got {type(breakdown).__name__})"
-        )
+        assert isinstance(
+            breakdown, dict
+        ), f"per_cell_breakdown is not a dict (got {type(breakdown).__name__})"
         assert len(breakdown) == 9, (
             f"per_cell_breakdown has {len(breakdown)} keys; expected 9 "
             "(Wf-312B ship contract: 9 unique cell-line keys; HCT-116 "
@@ -184,9 +179,9 @@ class TestNci60AggregateBlockContract:
         # Pillar 4: overall_mean must equal simple mean of per-cell means
         # within 1e-4 tolerance (per Wf-312B gate contract).
         overall_mean = block["overall_mean"]
-        assert isinstance(overall_mean, (int, float)), (
-            f"overall_mean missing or non-numeric (got {type(overall_mean).__name__})"
-        )
+        assert isinstance(
+            overall_mean, (int, float)
+        ), f"overall_mean missing or non-numeric (got {type(overall_mean).__name__})"
         computed_mean = sum(per_cell_means) / len(per_cell_means)
         assert abs(computed_mean - float(overall_mean)) <= 1e-4, (
             f"overall_mean={overall_mean:.6f} does not match computed mean of "
@@ -197,9 +192,9 @@ class TestNci60AggregateBlockContract:
 
         # Pillar 2: highlight must point at a cell with a numeric value.
         highlight = block["highlight"]
-        assert isinstance(highlight, dict), (
-            f"highlight is not a dict (got {type(highlight).__name__})"
-        )
+        assert isinstance(
+            highlight, dict
+        ), f"highlight is not a dict (got {type(highlight).__name__})"
         assert isinstance(highlight.get("value"), (int, float)), (
             f"highlight.value missing or non-numeric "
             f"(got {type(highlight.get('value')).__name__})"
@@ -212,9 +207,9 @@ class TestNci60AggregateBlockContract:
         # Pillar 3: honest_negative must point at a cell with value < 0.5
         # + non-empty reason + badge == 'honest-negative'.
         honest_negative = block["honest_negative"]
-        assert isinstance(honest_negative, dict), (
-            f"honest_negative is not a dict (got {type(honest_negative).__name__})"
-        )
+        assert isinstance(
+            honest_negative, dict
+        ), f"honest_negative is not a dict (got {type(honest_negative).__name__})"
         hn_value = honest_negative.get("value")
         assert isinstance(hn_value, (int, float)), (
             f"honest_negative.value missing or non-numeric "

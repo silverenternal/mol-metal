@@ -59,11 +59,7 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SKILL_PATH = (
-    REPO_ROOT
-    / ".claude"
-    / "skills"
-    / "mol-metal-mechanism-mapping"
-    / "SKILL.md"
+    REPO_ROOT / ".claude" / "skills" / "mol-metal-mechanism-mapping" / "SKILL.md"
 )
 MAPPING_PATH = REPO_ROOT / "TODO" / "02_metrics" / "MECHANISM_METRIC_MAPPING.md"
 METRICS_PATH = REPO_ROOT / "TODO" / "02_metrics" / "METRICS_TARGETS.md"
@@ -230,7 +226,7 @@ def _section(text: str, anchor: str) -> str:
     """Return the substring from ``anchor`` to the next ``## `` heading."""
     idx = text.find(anchor)
     assert idx >= 0, f"anchor {anchor!r} not found"
-    rest = text[idx + len(anchor):]
+    rest = text[idx + len(anchor) :]
     nxt = rest.find("\n## ")
     return rest if nxt < 0 else rest[:nxt]
 
@@ -295,17 +291,21 @@ def test_skill_md_when_to_use_table(skill_text: str) -> None:
 
 def test_skill_md_r18_wave_tables(skill_text: str) -> None:
     """R18 cross-ref table covers all 23 R18 mechanisms (M22-M44)."""
-    section = _section(skill_text, "## R18 mechanism cross-reference — full M22-M44 table")
+    section = _section(
+        skill_text, "## R18 mechanism cross-reference — full M22-M44 table"
+    )
     for mech_id in [f"M{n}" for n in range(22, 45)]:
         assert mech_id in section, f"missing {mech_id} in R18 cross-ref table"
 
 
 def test_skill_md_per_metal_reachability_section_present(skill_text: str) -> None:
     """Per-metal reachability matrix section is present (Wf-330-C4 anchor)."""
-    anchor = "## Per-metal reachability matrix (Wf-330-C4 cross-skill anchor, 2026-09-29)"
-    assert anchor in skill_text, (
-        "missing per-metal reachability matrix section — Wf-338-M1 ship anchor"
+    anchor = (
+        "## Per-metal reachability matrix (Wf-330-C4 cross-skill anchor, 2026-09-29)"
     )
+    assert (
+        anchor in skill_text
+    ), "missing per-metal reachability matrix section — Wf-338-M1 ship anchor"
 
 
 # ---------------------------------------------------------------------------
@@ -378,9 +378,9 @@ def test_activation_keywords_in_description(skill_text: str) -> None:
     assert desc_match is not None, "missing frontmatter description"
     desc = desc_match.group(1)
     for keyword in ACTIVATION_KEYWORDS:
-        assert keyword.lower() in desc.lower(), (
-            f"activation keyword {keyword!r} missing from frontmatter description"
-        )
+        assert (
+            keyword.lower() in desc.lower()
+        ), f"activation keyword {keyword!r} missing from frontmatter description"
 
 
 def test_symptom_action_table_in_when_to_use(skill_text: str) -> None:
@@ -399,7 +399,9 @@ def test_quick_diagnostic_procedure_has_5_steps(skill_text: str) -> None:
     section = _section(skill_text, "## Quick diagnostic procedure (5 minutes)")
     # Count numbered steps "1." through "5." at line starts.
     steps = re.findall(r"^\d+\.\s", section, re.MULTILINE)
-    assert len(steps) >= 5, f"quick diagnostic procedure should have 5+ steps; found {len(steps)}"
+    assert (
+        len(steps) >= 5
+    ), f"quick diagnostic procedure should have 5+ steps; found {len(steps)}"
 
 
 def test_diagnostic_commands_cheatsheet_has_3_commands(skill_text: str) -> None:
@@ -412,9 +414,9 @@ def test_diagnostic_commands_cheatsheet_has_3_commands(skill_text: str) -> None:
     section = _section(skill_text, "## Diagnostic commands cheatsheet")
     # Numbered comments `# 1.` `# 2.` `# 3.` = 3+ commands in single block
     n_commands = len(re.findall(r"^\s*#\s*\d+\.\s", section, re.MULTILINE))
-    assert n_commands >= 3, (
-        f"cheatsheet should have ≥ 3 numbered diagnostic commands; found {n_commands}"
-    )
+    assert (
+        n_commands >= 3
+    ), f"cheatsheet should have ≥ 3 numbered diagnostic commands; found {n_commands}"
     pytest_count = section.count("pytest")
     assert pytest_count >= 1, "cheatsheet should reference pytest at least once"
 
@@ -458,9 +460,9 @@ def test_l12_metalcytotox_rate_anchor_present(skill_text: str) -> None:
         "## Per-metal reachability matrix (Wf-330-C4 cross-skill anchor, 2026-09-29)",
     )
     assert "0.0300" in section, "L12 MetalCytoTox = 0.0300 must be in the matrix"
-    assert "honest-negative" in section.lower() or "honest-neg" in section.lower(), (
-        "0.0300 must be flagged honest-negative per party-twenty-spirit §3.5"
-    )
+    assert (
+        "honest-negative" in section.lower() or "honest-neg" in section.lower()
+    ), "0.0300 must be flagged honest-negative per party-twenty-spirit §3.5"
 
 
 def test_l1_rate_matches_bench_json() -> None:
@@ -473,9 +475,9 @@ def test_l1_rate_matches_bench_json() -> None:
     agg = data.get("aggregate", {})
     rate = agg.get("closure_reachability_rate")
     assert rate is not None, f"{path} missing aggregate.closure_reachability_rate field"
-    assert abs(float(rate) - L1_RATE) < 1e-4, (
-        f"L1 rate drift: bench JSON says {rate}, SKILL.md pins {L1_RATE}"
-    )
+    assert (
+        abs(float(rate) - L1_RATE) < 1e-4
+    ), f"L1 rate drift: bench JSON says {rate}, SKILL.md pins {L1_RATE}"
 
 
 def test_l6_rate_matches_bench_json() -> None:
@@ -488,9 +490,9 @@ def test_l6_rate_matches_bench_json() -> None:
     agg = data.get("aggregate", {})
     rate = agg.get("closure_reachability_rate")
     assert rate is not None, f"{path} missing aggregate.closure_reachability_rate field"
-    assert abs(float(rate) - L6_RATE) < 1e-4, (
-        f"L6 rate drift: bench JSON says {rate}, SKILL.md pins {L6_RATE}"
-    )
+    assert (
+        abs(float(rate) - L6_RATE) < 1e-4
+    ), f"L6 rate drift: bench JSON says {rate}, SKILL.md pins {L6_RATE}"
 
 
 def test_l12_platinai_rate_matches_bench_md(l12_md_text: str) -> None:
@@ -498,17 +500,17 @@ def test_l12_platinai_rate_matches_bench_md(l12_md_text: str) -> None:
     # PlatinAI row in the per-domain table
     assert "platinai_5k" in l12_md_text
     # The exact reachability_rate 0.5581 must appear
-    assert "0.5581" in l12_md_text, (
-        f"L12 PlatinAI 5K rate drift: bench MD does not contain 0.5581"
-    )
+    assert (
+        "0.5581" in l12_md_text
+    ), f"L12 PlatinAI 5K rate drift: bench MD does not contain 0.5581"
 
 
 def test_l12_metalcytotox_rate_matches_bench_md(l12_md_text: str) -> None:
     """L12 MetalCytoTox 5-metal = 0.0300 matches the Wf-41 P2 ood_closure.md table."""
     assert "metalcytotox_5metal" in l12_md_text
-    assert "0.0300" in l12_md_text, (
-        "L12 MetalCytoTox 5-metal rate drift: bench MD does not contain 0.0300"
-    )
+    assert (
+        "0.0300" in l12_md_text
+    ), "L12 MetalCytoTox 5-metal rate drift: bench MD does not contain 0.0300"
 
 
 def test_l6_per_metal_rows_for_precious_metals(skill_text: str) -> None:
@@ -521,9 +523,9 @@ def test_l6_per_metal_rows_for_precious_metals(skill_text: str) -> None:
     for metal in L6_PRECIOUS_METALS:
         # The row should have the metal symbol in the first column
         pattern = rf"\|\s*{re.escape(metal)}\s*\|"
-        assert re.search(pattern, section), (
-            f"L6 precious-metal row missing: {metal}; section must list Pt/Ru/Ir/Rh/Re/Os/Au/Pd/Ag"
-        )
+        assert re.search(
+            pattern, section
+        ), f"L6 precious-metal row missing: {metal}; section must list Pt/Ru/Ir/Rh/Re/Os/Au/Pd/Ag"
 
 
 def test_l6_per_metal_rates_consistent_with_bench_md(
@@ -550,7 +552,9 @@ def test_l6_per_metal_rates_consistent_with_bench_md(
         rate_str = f"{rate:.4f}"
         # Both SKILL.md and bench MD must contain this rate string
         assert rate_str in section, f"L6 {metal} rate {rate_str} missing from SKILL.md"
-        assert rate_str in l6_md_text, f"L6 {metal} rate {rate_str} missing from bench MD"
+        assert (
+            rate_str in l6_md_text
+        ), f"L6 {metal} rate {rate_str} missing from bench MD"
 
 
 def test_l12_platinai_per_metal_rows_for_precious_metals(skill_text: str) -> None:
@@ -561,9 +565,9 @@ def test_l12_platinai_per_metal_rows_for_precious_metals(skill_text: str) -> Non
     )
     for metal in L12_PLATINAI_METALS:
         pattern = rf"\|\s*{re.escape(metal)}\s*\|"
-        assert re.search(pattern, section), (
-            f"L12 PlatinAI 5K row missing: {metal}; section must list Pt/Pd/Ru/Rh/Ir/Os/Au"
-        )
+        assert re.search(
+            pattern, section
+        ), f"L12 PlatinAI 5K row missing: {metal}; section must list Pt/Pd/Ru/Rh/Ir/Os/Au"
 
 
 def test_l12_platinai_per_metal_rates_consistent_with_bench_md(
@@ -585,10 +589,12 @@ def test_l12_platinai_per_metal_rates_consistent_with_bench_md(
     }
     for metal, rate in expected_rates.items():
         rate_str = f"{rate:.4f}"
-        assert rate_str in section, f"L12 PlatinAI {metal} rate {rate_str} missing from SKILL.md"
-        assert rate_str in l12_md_text, (
-            f"L12 PlatinAI {metal} rate {rate_str} missing from bench MD"
-        )
+        assert (
+            rate_str in section
+        ), f"L12 PlatinAI {metal} rate {rate_str} missing from SKILL.md"
+        assert (
+            rate_str in l12_md_text
+        ), f"L12 PlatinAI {metal} rate {rate_str} missing from bench MD"
 
 
 def test_per_metal_matrix_has_self_check_block(skill_text: str) -> None:
@@ -617,7 +623,9 @@ def test_per_metal_matrix_has_cross_reference_table(skill_text: str) -> None:
         "click-chemistry",
         "anticancer",
     ):
-        assert skill_name in section, f"cross-reference table missing skill: {skill_name}"
+        assert (
+            skill_name in section
+        ), f"cross-reference table missing skill: {skill_name}"
 
 
 # ---------------------------------------------------------------------------
@@ -635,9 +643,9 @@ def test_mapping_doc_exists_for_diagnostic_chain() -> None:
 
 def test_metrics_targets_doc_exists_for_tier_gates() -> None:
     """TODO/02_metrics/METRICS_TARGETS.md exists (the §2 source of truth)."""
-    assert METRICS_PATH.exists(), (
-        f"missing {METRICS_PATH}; per AGENTS.md §3.2 this defines Tier 1/2 gates"
-    )
+    assert (
+        METRICS_PATH.exists()
+    ), f"missing {METRICS_PATH}; per AGENTS.md §3.2 this defines Tier 1/2 gates"
 
 
 def test_skill_md_cites_evaluators_migrated() -> None:

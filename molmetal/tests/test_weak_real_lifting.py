@@ -44,9 +44,9 @@ def test_recipe_metadata_consistent():
         assert isinstance(recipe.target, float)
         assert recipe.direction in ("max", "min")
         assert recipe.unit
-        assert recipe.trainer_path.exists(), (
-            f"{metric} trainer path missing: {recipe.trainer_path}"
-        )
+        assert (
+            recipe.trainer_path.exists()
+        ), f"{metric} trainer path missing: {recipe.trainer_path}"
 
 
 def test_m7_target_is_lift_over_r17_baseline():
@@ -96,6 +96,7 @@ def test_cli_metric_filter():
 
 def test_cli_unknown_metric_rejected():
     import pytest
+
     with pytest.raises(SystemExit):
         bwrl._parse_args(["--metrics", "mX"])
 
@@ -223,13 +224,21 @@ def test_aggregate_existing_reads_on_disk(tmp_path: Path):
         mdir = out_dir / metric
         mdir.mkdir(parents=True)
         per_run = mdir / "per_run_metrics.json"
-        per_run.write_text(json.dumps({
-            "diversity": {"mean_tanimoto_distance": [0.15, 0.17, 0.20]},
-        } if metric == "m7" else {
-            "rmsd_median_angstrom": [0.30, 0.32, 0.31],
-        } if metric == "m15" else {
-            "pearson_r_per_seed": [0.21, 0.25, 0.32],
-        }))
+        per_run.write_text(
+            json.dumps(
+                {
+                    "diversity": {"mean_tanimoto_distance": [0.15, 0.17, 0.20]},
+                }
+                if metric == "m7"
+                else {
+                    "rmsd_median_angstrom": [0.30, 0.32, 0.31],
+                }
+                if metric == "m15"
+                else {
+                    "pearson_r_per_seed": [0.21, 0.25, 0.32],
+                }
+            )
+        )
     summary = bwrl._aggregate_existing(out_dir, bwrl.RECIPES)
     assert "metrics" in summary
     for metric in ("m7", "m15", "m16"):
@@ -245,9 +254,15 @@ def test_bench_script_no_deep_learning_imports():
     """The bench script must remain a pure orchestrator (per Phase 1 design)."""
     src_path = Path(bwrl.__file__)
     text = src_path.read_text()
-    forbidden = ["import torch", "from torch", "import rdkit", "from rdkit",
-                 "import sklearn", "from sklearn"]
+    forbidden = [
+        "import torch",
+        "from torch",
+        "import rdkit",
+        "from rdkit",
+        "import sklearn",
+        "from sklearn",
+    ]
     for needle in forbidden:
-        assert needle not in text, (
-            f"Forbidden import '{needle}' leaks the orchestrator's purity"
-        )
+        assert (
+            needle not in text
+        ), f"Forbidden import '{needle}' leaks the orchestrator's purity"

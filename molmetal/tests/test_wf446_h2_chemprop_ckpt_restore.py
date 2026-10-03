@@ -26,6 +26,7 @@ SCRIPT = REPO_ROOT / "molmetal" / "scripts" / "train_chemprop_v2_v3.py"
 
 def _pf():
     from molmetal.scripts import pre_flight_check
+
     return pre_flight_check
 
 
@@ -33,8 +34,7 @@ def _write_metrics(out_dir: Path, initial=-0.2134, final=-1.2563) -> Path:
     p = out_dir / "ru" / "per_seed_metrics_seed0.json"
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(
-        json.dumps({"status": "ok", "initial_loss": initial,
-                    "final_loss": final}),
+        json.dumps({"status": "ok", "initial_loss": initial, "final_loss": final}),
         encoding="utf-8",
     )
     return p
@@ -42,12 +42,14 @@ def _write_metrics(out_dir: Path, initial=-0.2134, final=-1.2563) -> Path:
 
 def _fake_run_overwriting_ckpt(ckpt_path: Path, payload=(-0.2134, -1.2563)):
     """Stub ``_run``: simulate the trainer overwriting the ckpt + metrics."""
+
     def fake_run(cmd, **kw):
         out_dir = Path(cmd[cmd.index("--out-dir") + 1])
         _write_metrics(out_dir, *payload)
         if ckpt_path.is_file():  # mirror trainer torch.save (in place)
             ckpt_path.write_bytes(b"SMOKE-OVERWROTE-THE-SHIPPED-CKPT" * 64)
         return 0, "epoch=0/2 loss=0.0", ""
+
     return fake_run
 
 
@@ -69,7 +71,8 @@ class TestBackupHelper:
         bdir = tmp_path / "backup"
         bdir.mkdir()
         ok, pre_sha, detail = pf._prepare_chemprop_ckpt_backup(
-            tmp_path / "missing.pt", bdir)
+            tmp_path / "missing.pt", bdir
+        )
         assert ok is True, detail
         assert pre_sha is None
         assert "fresh tree" in detail
@@ -164,15 +167,13 @@ class TestRestoreHelper:
 class TestGateWiring:
     """Drive the real gate function with a stubbed smoke process."""
 
-    def test_gate_restores_overwritten_shipped_ckpt(
-            self, tmp_path, monkeypatch):
+    def test_gate_restores_overwritten_shipped_ckpt(self, tmp_path, monkeypatch):
         pf = _pf()
         ckpt = tmp_path / "dmpnn_mtw_v3_ru_seed0.pt"
         ckpt.write_bytes(b"SHIPPED-CHECKPOINT-BYTES")
         pre_sha = pf._sha256_file(ckpt)
         monkeypatch.setattr(pf, "_CHEMPROP_SMOKE_CKPT_PATH", ckpt)
-        monkeypatch.setattr(
-            pf, "_run", _fake_run_overwriting_ckpt(ckpt))
+        monkeypatch.setattr(pf, "_run", _fake_run_overwriting_ckpt(ckpt))
         res = pf._gate_chemprop_quick_smoke(SCRIPT)
         assert res.status == "PASS", res.evidence
         assert pf._sha256_file(ckpt) == pre_sha
@@ -199,8 +200,7 @@ class TestGateWiring:
         assert "checkpoint restore FAILED" in res.evidence
         assert "restore denied" in res.evidence
 
-    def test_gate_refuses_to_run_when_backup_impossible(
-            self, tmp_path, monkeypatch):
+    def test_gate_refuses_to_run_when_backup_impossible(self, tmp_path, monkeypatch):
         pf = _pf()
         ckpt = tmp_path / "dmpnn_mtw_v3_ru_seed0.pt"
         ckpt.write_bytes(b"SHIPPED-CHECKPOINT-BYTES")

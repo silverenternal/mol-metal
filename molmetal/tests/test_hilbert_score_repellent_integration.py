@@ -100,6 +100,7 @@ Run via::
 
     uv run --no-sync python -m pytest molmetal/tests/test_hilbert_score_repellent_integration.py -v
 """
+
 from __future__ import annotations
 
 import math
@@ -190,7 +191,9 @@ def test_hilbert_optimization_with_score_repellent_sampling():
     # Score-repellent chain: dim matches Hilbert; burn-in tail returns
     # the right shape.
     sampler = ScoreRepellentSampler(
-        n_iters=20, step_size=0.05, seed=11,
+        n_iters=20,
+        step_size=0.05,
+        seed=11,
     )
     x0 = torch.zeros(dim, dtype=torch.float32)
     samples = sampler.sample(x0, n_samples=8)
@@ -251,9 +254,9 @@ def test_end_to_end_lambda_optimization():
     # noise sample — both are finite scalars/tensors.
     noise_mean = float(noise.mean())
     integration_output = reward + noise_mean
-    assert math.isfinite(integration_output), (
-        f"integration_output={integration_output} not finite"
-    )
+    assert math.isfinite(
+        integration_output
+    ), f"integration_output={integration_output} not finite"
 
 
 # ---------------------------------------------------------------------------
@@ -347,7 +350,9 @@ def test_hilbert_convergence_rate_at_optimize_iter():
     n_iters = 10
     dim = 4
     hilbert = LambdaASTSRHilbert(
-        population_dim=dim, n_iters=n_iters, seed=3,
+        population_dim=dim,
+        n_iters=n_iters,
+        seed=3,
     )
     X, y = _toy_design(n=8, dim=dim, seed=3)
     _ = hilbert.optimize(X, y)
@@ -373,7 +378,10 @@ def test_score_repellent_variance_bound_under_hilbert_dim():
     """
     dim = 8
     sampler = ScoreRepellentSampler(
-        n_iters=20, step_size=0.1, score_lipschitz=1.0, seed=5,
+        n_iters=20,
+        step_size=0.1,
+        score_lipschitz=1.0,
+        seed=5,
     )
     alpha = sampler.variance_bound()
     assert alpha == pytest.approx(0.2, abs=1.0e-9)
@@ -423,8 +431,7 @@ def test_puct_unvisited_first_under_score_repellent_noise():
         sel.update_q(state, "visited", 0.0)
     chosen = sel.select(state, actions)
     assert chosen == "unvisited", (
-        f"Score-repellent noise must not override unvisited-first; "
-        f"got {chosen}"
+        f"Score-repellent noise must not override unvisited-first; " f"got {chosen}"
     )
 
 
@@ -451,7 +458,8 @@ def test_hilbert_predict_consistent_after_score_repellent_chain():
 
     pred_after = hilbert.predict(X)
     np.testing.assert_array_equal(
-        pred_before, pred_after,
+        pred_before,
+        pred_after,
         err_msg="Hilbert predictions changed after score-repellent chain run",
     )
 
@@ -473,8 +481,11 @@ def test_lambda_astsr_hilbert_via_compare_with_evolutionary():
     X, y = _toy_design(n=8, dim=dim, seed=2)
     out = hilbert.compare_with_evolutionary(X, y, n_seeds=2)
     expected_keys = {
-        "hilbert_wall_s", "evolutionary_wall_s",
-        "hilbert_r2", "evolutionary_r2", "speedup",
+        "hilbert_wall_s",
+        "evolutionary_wall_s",
+        "hilbert_r2",
+        "evolutionary_r2",
+        "speedup",
     }
     assert set(out.keys()) == expected_keys, (
         f"missing keys: {expected_keys - set(out.keys())}; "
@@ -569,8 +580,7 @@ def test_puct_select_with_score_repellent_deterministic_seed():
     a2 = sel2.select(state, actions)
 
     assert a1 == a2, (
-        f"PUCT argmax differs across constructions with same seed: "
-        f"{a1} vs {a2}"
+        f"PUCT argmax differs across constructions with same seed: " f"{a1} vs {a2}"
     )
 
 
@@ -595,8 +605,7 @@ def test_hilbert_then_dirichlet_replacement_simplex_contract():
     assert eta.shape == (32, 4)
     assert (eta >= 0.0).all(), "Dirichlet replacement rows must be non-negative"
     assert np.allclose(eta.sum(axis=1), 1.0, atol=1.0e-5), (
-        f"Dirichlet replacement rows must sum to 1; "
-        f"got sums: {eta.sum(axis=1)[:5]}"
+        f"Dirichlet replacement rows must sum to 1; " f"got sums: {eta.sum(axis=1)[:5]}"
     )
 
 
@@ -616,16 +625,18 @@ def test_history_records_match_optimize_iter_count():
     X, y = _toy_design(n=8, dim=dim, seed=15)
     _ = hilbert.optimize(X, y)
 
-    assert len(hilbert.history_) == n_iters, (
-        f"history_ has {len(hilbert.history_)} entries; expected {n_iters}"
-    )
+    assert (
+        len(hilbert.history_) == n_iters
+    ), f"history_ has {len(hilbert.history_)} entries; expected {n_iters}"
     for k, rec in enumerate(hilbert.history_):
-        assert set(rec.keys()) >= {"iteration", "gap", "convergence_rate"}, (
-            f"history_[{k}] missing keys: {set(rec.keys())}"
-        )
-        assert rec["iteration"] == float(k), (
-            f"history_[{k}] iteration={rec['iteration']} != {float(k)}"
-        )
+        assert set(rec.keys()) >= {
+            "iteration",
+            "gap",
+            "convergence_rate",
+        }, f"history_[{k}] missing keys: {set(rec.keys())}"
+        assert rec["iteration"] == float(
+            k
+        ), f"history_[{k}] iteration={rec['iteration']} != {float(k)}"
 
 
 # ---------------------------------------------------------------------------
@@ -641,12 +652,10 @@ def test_paper_metadata_constants_match_lit_anchors():
     bound ``α = 2 η L = 0.2`` cited throughout the paper.
     """
     assert DEFAULT_N_ITERS == 100, (
-        f"DEFAULT_N_ITERS={DEFAULT_N_ITERS} != 100 "
-        f"(Burch & Bardsley 2022 §4.3)"
+        f"DEFAULT_N_ITERS={DEFAULT_N_ITERS} != 100 " f"(Burch & Bardsley 2022 §4.3)"
     )
     assert DEFAULT_STEP_SIZE == 0.1, (
-        f"DEFAULT_STEP_SIZE={DEFAULT_STEP_SIZE} != 0.1 "
-        f"(Neal 2011 §5.16)"
+        f"DEFAULT_STEP_SIZE={DEFAULT_STEP_SIZE} != 0.1 " f"(Neal 2011 §5.16)"
     )
     assert DEFAULT_SCORE_LIPSCHITZ == 1.0, (
         f"DEFAULT_SCORE_LIPSCHITZ={DEFAULT_SCORE_LIPSCHITZ} != 1.0 "

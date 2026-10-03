@@ -67,6 +67,7 @@ from hypothesis import strategies as st  # noqa: E402
 
 def _import_closure():
     from molmetal_lam.lam_chem.closure import ProductiveSpace
+
     return ProductiveSpace
 
 
@@ -78,11 +79,13 @@ def _import_rules():
         Suzuki,
         ThiolEne,
     )
+
     return CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling
 
 
 def _import_closed_term():
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
     return MoleculeClosedTerm
 
 
@@ -95,16 +98,16 @@ def _import_closed_term():
 # simple functional-group-bearing molecules so that the BFS can fire
 # bi-molecular rules within a small budget.
 _SMILES_ALPHABET = [
-    "CCN=[N+]=[N-]",      # ethyl azide (CuAAC partner)
-    "C#CC",                # propyne (CuAAC partner)
-    "C#CCN",               # propargylamine (CuAAC + AmideCoupling partner)
-    "C(=O)O",              # formic acid (AmideCoupling partner)
-    "CCN",                 # ethylamine (AmideCoupling partner)
-    "CC=C",                # propene (ThiolEne partner)
-    "CCS",                 # ethanethiol (ThiolEne partner)
-    "c1ccccc1",            # benzene (no handles, depth-0 seed)
-    "C",                   # methane (no handles)
-    "CC",                  # ethane (no handles)
+    "CCN=[N+]=[N-]",  # ethyl azide (CuAAC partner)
+    "C#CC",  # propyne (CuAAC partner)
+    "C#CCN",  # propargylamine (CuAAC + AmideCoupling partner)
+    "C(=O)O",  # formic acid (AmideCoupling partner)
+    "CCN",  # ethylamine (AmideCoupling partner)
+    "CC=C",  # propene (ThiolEne partner)
+    "CCS",  # ethanethiol (ThiolEne partner)
+    "c1ccccc1",  # benzene (no handles, depth-0 seed)
+    "C",  # methane (no handles)
+    "CC",  # ethane (no handles)
 ]
 
 
@@ -130,6 +133,7 @@ def _canon_str(smi: str) -> str:
     """Return the RDKit canonical SMILES for a SMILES string, or None on failure."""
     try:
         from rdkit import Chem  # type: ignore[import-not-found]
+
         mol = Chem.MolFromSmiles(smi)
         if mol is None:
             return ""
@@ -318,8 +322,7 @@ def test_closure_witness_roundtrip(seed: str, max_depth: int):
             f"{_canon(t)!r} from seed {seed!r}"
         )
         assert isinstance(witness, list), (
-            f"closure_test returned non-list witness {witness!r} for "
-            f"{_canon(t)!r}"
+            f"closure_test returned non-list witness {witness!r} for " f"{_canon(t)!r}"
         )
         # The witness length must be bounded by max_depth.
         assert len(witness) <= max_depth, (
@@ -390,9 +393,9 @@ def test_closure_depth_monotonic(seed: str, max_depth: int):
     )
     # The start term is in both sets.
     seed_canon = _canon(start)
-    assert seed_canon in small_set, (
-        f"Start term {seed_canon!r} missing from depth={max_depth} reachable set"
-    )
+    assert (
+        seed_canon in small_set
+    ), f"Start term {seed_canon!r} missing from depth={max_depth} reachable set"
     assert seed_canon in large_set, (
         f"Start term {seed_canon!r} missing from depth={max_depth + 1} "
         f"reachable set"
@@ -447,9 +450,9 @@ def test_closure_bounded_by_max_depth(seed: str, max_depth: int):
                 f"closure_test failed for reachable term {_canon(t)!r} "
                 f"from seed {seed!r}"
             )
-        assert isinstance(witness, list), (
-            f"Witness is not a list for {_canon(t)!r}: {type(witness)!r}"
-        )
+        assert isinstance(
+            witness, list
+        ), f"Witness is not a list for {_canon(t)!r}: {type(witness)!r}"
         assert len(witness) <= max_depth, (
             f"BFS emitted term {_canon(t)!r} with witness length "
             f"{len(witness)} > max_depth={max_depth} (bounded-BFS violated)"

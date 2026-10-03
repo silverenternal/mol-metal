@@ -6,6 +6,7 @@ Per AGENTS.md §5.5 rule #2: every closeout MUST include ls -la evidence.
 The §3.2 placeholder was filled at the time of script-run, but the actual
 closeout file was being written; we re-write it now with the real ls -la.
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -31,8 +32,14 @@ close_ls = subprocess.check_output(
 )
 
 # §5.5 rule #2: replace the placeholder §3.1 + §3.2 lines with real ls -la output
-doc_ls_block = doc_ls.rstrip("\n") + "\n- 1 lines  per Wf-355-A1 + Wf-367-A1 schema parity\n- 855 lines (counted via wc -l) — NEW docs file MEASURED on disk per §5.5\n"
-close_ls_block = close_ls.rstrip("\n") + "\n- 1 closeout file MEASURED on disk per §5.5 — this file is itself verified post-write via §5.5 filesystem-truth rule\n"
+doc_ls_block = (
+    doc_ls.rstrip("\n")
+    + "\n- 1 lines  per Wf-355-A1 + Wf-367-A1 schema parity\n- 855 lines (counted via wc -l) — NEW docs file MEASURED on disk per §5.5\n"
+)
+close_ls_block = (
+    close_ls.rstrip("\n")
+    + "\n- 1 closeout file MEASURED on disk per §5.5 — this file is itself verified post-write via §5.5 filesystem-truth rule\n"
+)
 
 # Replace §3.1 DOC_LS_LA block
 old_doc_block = """-rw------- 1 hugo hugo 55370 Oct  1 01:33 docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md

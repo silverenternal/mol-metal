@@ -33,6 +33,7 @@ Run via::
     /home/hugo/codes/mol-metal/.venv/bin/python -m pytest \\
         molmetal/tests/test_wf313g_downstream_lift_dashboard.py -v
 """
+
 from __future__ import annotations
 
 import json
@@ -51,7 +52,14 @@ DASHBOARD_PATH = Path(
     "/home/hugo/codes/mol-metal/molmetal/reports/wf313g_downstream_lift_dashboard/dashboard.json"
 )
 
-EXPECTED_TODOS: tuple = ("TODO-119", "TODO-120", "TODO-121", "TODO-122", "TODO-123", "TODO-125")
+EXPECTED_TODOS: tuple = (
+    "TODO-119",
+    "TODO-120",
+    "TODO-121",
+    "TODO-122",
+    "TODO-123",
+    "TODO-125",
+)
 EXPECTED_CONSUMER_METRICS: tuple = (
     "m14_decode_ratio",
     "m1_ru_auc",
@@ -107,7 +115,10 @@ def test_per_consumer_schema(todo_id: str, metric: str, consumer_index: dict) ->
     assert "status" in consumer
     assert consumer["status"] in EXPECTED_STATUS_VALUES
     # Lift arithmetic (if both baseline and measured are numeric)
-    if consumer["baseline_value"] is not None and consumer["measured_value"] is not None:
+    if (
+        consumer["baseline_value"] is not None
+        and consumer["measured_value"] is not None
+    ):
         assert "lift_abs" in consumer
         assert "lift_pct" in consumer
         # Lift pct must be computed correctly:
@@ -116,9 +127,9 @@ def test_per_consumer_schema(todo_id: str, metric: str, consumer_index: dict) ->
         measured = consumer["measured_value"]
         expected_pct = 100.0 * (measured - baseline) / baseline
         # Compare with small tolerance for floating-point
-        assert math.isclose(consumer["lift_pct"], expected_pct, rel_tol=1e-3, abs_tol=1e-6), (
-            f"{todo_id}: lift_pct={consumer['lift_pct']} vs expected={expected_pct}"
-        )
+        assert math.isclose(
+            consumer["lift_pct"], expected_pct, rel_tol=1e-3, abs_tol=1e-6
+        ), f"{todo_id}: lift_pct={consumer['lift_pct']} vs expected={expected_pct}"
     # Consumer follow-up must be documented
     assert "consumer_followup_wf" in consumer
     assert "wall_time_estimate_hr" in consumer
@@ -177,7 +188,9 @@ def test_lift_calc_m15_rmsd_relative_to_gate(consumer_index: dict) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_status_classification_measured_vs_projected(dashboard: dict, consumer_index: dict) -> None:
+def test_status_classification_measured_vs_projected(
+    dashboard: dict, consumer_index: dict
+) -> None:
     """Verify status values match MEASURED/PROJECTED honest framing.
 
     Expected:
@@ -201,7 +214,11 @@ def test_status_classification_measured_vs_projected(dashboard: dict, consumer_i
         assert actual == exp_status, f"{todo_id}: expected {exp_status}, got {actual}"
 
     # Count HONEST_NEGATIVE consumers
-    hn = [tid for tid in EXPECTED_TODOS if consumer_index[tid]["status"] == "HONEST_NEGATIVE"]
+    hn = [
+        tid
+        for tid in EXPECTED_TODOS
+        if consumer_index[tid]["status"] == "HONEST_NEGATIVE"
+    ]
     assert len(hn) == 3
     # Dashboard-level counts
     assert dashboard["n_honest_negatives"] == 3
@@ -286,6 +303,6 @@ def test_dashboard_schema_validation(dashboard: dict) -> None:
 
     # All pending_actions must declare user_ok_required=True (kill_then_adapt directive)
     for action in dashboard["pending_actions"]:
-        assert action["user_ok_required"] is True, (
-            f"pending_action {action['action']} must require user OK per kill_then_adapt §0"
-        )
+        assert (
+            action["user_ok_required"] is True
+        ), f"pending_action {action['action']} must require user OK per kill_then_adapt §0"

@@ -67,6 +67,7 @@ try:
         safe_overwrite_check,
         detect_truncation,
     )
+
     _WF416_HAS_ATOMIC = True
 except ImportError:  # pragma: no cover — fallback when running as standalone
     _WF416_HAS_ATOMIC = False
@@ -83,7 +84,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # ---------------------------------------------------------------------------
 
 
-def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
+def _wf416_atomic_write_text(
+    path, content: str, min_lines: int = 50, expected_min_length: int = 200
+) -> None:
     """Wf-416-A1 atomic-write-protocol wrapper around direct write_text.
 
     Falls back to direct write_text if atomic_write_file is unavailable
@@ -95,18 +98,22 @@ def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_m
             _risk = safe_overwrite_check(path, content, min_lines=min_lines)
             if _risk is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-416-A1] safe_overwrite_check diff_ratio=%.3f at %s",
-                    _risk, path,
+                    _risk,
+                    path,
                 )
         atomic_write_file(path, content, encoding="utf-8")
         if detect_truncation is not None:
             _trunc = detect_truncation(content, expected_min_length=expected_min_length)
             if _trunc is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-416-A1] detect_truncation reason=%r at %s",
-                    _trunc, path,
+                    _trunc,
+                    path,
                 )
     else:  # pragma: no cover — fallback when atomic primitive unavailable
         Path(path).write_text(content, encoding="utf-8")
@@ -125,172 +132,296 @@ class MetricSpec:
     target_str: str  # human-readable target string ("≥ 0.86")
     tier1_sota: str  # Tier 1 SOTA value+label, e.g. "0.81 Krasnov"
     tier2_sota: str  # Tier 2 SOTA value+label, e.g. "-9.37 TransDiffSBDD"
-    value_extract: str  # how to read the value: "value" | "aggregate.best_measured" | ...
-    verdict_passes: List[float]  # values that count as PASS (incl. direction-aware bounds)
+    value_extract: (
+        str  # how to read the value: "value" | "aggregate.best_measured" | ...
+    )
+    verdict_passes: List[
+        float
+    ]  # values that count as PASS (incl. direction-aware bounds)
     pending_note: str = ""  # additional pending note (e.g. "metric 2 gate ≥ 0.85")
 
 
 # The 20 metrics. order = paper Table 2 order.
 METRIC_REGISTRY: List[MetricSpec] = [
     MetricSpec(
-        row=1, display="Ru subset AUC (MetalCytoToxDB)",
-        json_key="metalcytotox_ru_auc", direction="higher", tier="Tier 1",
-        target_value=0.86, target_str="$\\geq 0.86$",
-        tier1_sota="0.81 Krasnov 2026", tier2_sota="---",
+        row=1,
+        display="Ru subset AUC (MetalCytoToxDB)",
+        json_key="metalcytotox_ru_auc",
+        direction="higher",
+        tier="Tier 1",
+        target_value=0.86,
+        target_str="$\\geq 0.86$",
+        tier1_sota="0.81 Krasnov 2026",
+        tier2_sota="---",
         value_extract="value",
-        verdict_passes=[0.86], pending_note="metric 1",
+        verdict_passes=[0.86],
+        pending_note="metric 1",
     ),
     MetricSpec(
-        row=2, display="Pt MCF-7 AUC (PlatinAI)",
-        json_key="platinai_4cell_auc", direction="higher", tier="Tier 1",
-        target_value=0.70, target_str="$\\geq 0.70$",
-        tier1_sota="Rusanov per-line", tier2_sota="---",
+        row=2,
+        display="Pt MCF-7 AUC (PlatinAI)",
+        json_key="platinai_4cell_auc",
+        direction="higher",
+        tier="Tier 1",
+        target_value=0.70,
+        target_str="$\\geq 0.70$",
+        tier1_sota="Rusanov per-line",
+        tier2_sota="---",
         value_extract="per_cell_line.MCF7.auc_mean",
-        verdict_passes=[0.70], pending_note="metric 2",
+        verdict_passes=[0.70],
+        pending_note="metric 2",
     ),
     MetricSpec(
-        row=3, display="Vina Dock median (kcal/mol)",
-        json_key="vina_kcal_per_mol", direction="lower", tier="Tier 2",
-        target_value=-8.5, target_str="$\\leq -8.5$",
-        tier1_sota="---", tier2_sota="$-9.37$ TransDiffSBDD",
+        row=3,
+        display="Vina Dock median (kcal/mol)",
+        json_key="vina_kcal_per_mol",
+        direction="lower",
+        tier="Tier 2",
+        target_value=-8.5,
+        target_str="$\\leq -8.5$",
+        tier1_sota="---",
+        tier2_sota="$-9.37$ TransDiffSBDD",
         value_extract="value_mean",
-        verdict_passes=[-8.5], pending_note="metric 3",
+        verdict_passes=[-8.5],
+        pending_note="metric 3",
     ),
     MetricSpec(
-        row=4, display="Success Rate (Vina+QED+SA)",
-        json_key="vina_relaxed_success", direction="higher", tier="Tier 2",
-        target_value=0.60, target_str="$\\geq 60\\%$",
-        tier1_sota="---", tier2_sota="$76.7\\%$ ReInvent+Vina",
+        row=4,
+        display="Success Rate (Vina+QED+SA)",
+        json_key="vina_relaxed_success",
+        direction="higher",
+        tier="Tier 2",
+        target_value=0.60,
+        target_str="$\\geq 60\\%$",
+        tier1_sota="---",
+        tier2_sota="$76.7\\%$ ReInvent+Vina",
         value_extract="value_mean",
-        verdict_passes=[0.60], pending_note="metric 4",
+        verdict_passes=[0.60],
+        pending_note="metric 4",
     ),
     MetricSpec(
-        row=5, display="SA score (Ertl, 1=easy)",
-        json_key="sa_mean", direction="higher", tier="Tier 2",
-        target_value=0.65, target_str="$\\geq 0.65$",
-        tier1_sota="---", tier2_sota="$0.74$ TargetDiff",
+        row=5,
+        display="SA score (Ertl, 1=easy)",
+        json_key="sa_mean",
+        direction="higher",
+        tier="Tier 2",
+        target_value=0.65,
+        target_str="$\\geq 0.65$",
+        tier1_sota="---",
+        tier2_sota="$0.74$ TargetDiff",
         value_extract="latest_measured",
-        verdict_passes=[0.65], pending_note="metric 5",
+        verdict_passes=[0.65],
+        pending_note="metric 5",
     ),
     MetricSpec(
-        row=6, display="QED (drug-likeness)",
-        json_key="qed_mean", direction="higher", tier="Tier 2",
-        target_value=0.50, target_str="$\\geq 0.50$",
-        tier1_sota="---", tier2_sota="$0.51$ Pocket2Mol",
+        row=6,
+        display="QED (drug-likeness)",
+        json_key="qed_mean",
+        direction="higher",
+        tier="Tier 2",
+        target_value=0.50,
+        target_str="$\\geq 0.50$",
+        tier1_sota="---",
+        tier2_sota="$0.51$ Pocket2Mol",
         value_extract="latest_measured",
-        verdict_passes=[0.50], pending_note="metric 6",
+        verdict_passes=[0.50],
+        pending_note="metric 6",
     ),
     MetricSpec(
-        row=7, display="Diversity (Morgan ECFP4)",
-        json_key="diversity_tanimoto", direction="higher", tier="Tier 2",
-        target_value=0.65, target_str="$\\geq 0.65$",
-        tier1_sota="---", tier2_sota="$0.76$ MolChord",
+        row=7,
+        display="Diversity (Morgan ECFP4)",
+        json_key="diversity_tanimoto",
+        direction="higher",
+        tier="Tier 2",
+        target_value=0.65,
+        target_str="$\\geq 0.65$",
+        tier1_sota="---",
+        tier2_sota="$0.76$ MolChord",
         value_extract="latest_measured",
-        verdict_passes=[0.65], pending_note="metric 7",
+        verdict_passes=[0.65],
+        pending_note="metric 7",
     ),
     MetricSpec(
-        row=8, display="PB-Valid (PoseBusters)",
-        json_key="pb_pass_rate", direction="higher", tier="Tier 2",
-        target_value=0.90, target_str="$\\geq 90\\%$",
-        tier1_sota="$97.7\\%$ OMTRA", tier2_sota="$88\\%$ DiffSBDD",
+        row=8,
+        display="PB-Valid (PoseBusters)",
+        json_key="pb_pass_rate",
+        direction="higher",
+        tier="Tier 2",
+        target_value=0.90,
+        target_str="$\\geq 90\\%$",
+        tier1_sota="$97.7\\%$ OMTRA",
+        tier2_sota="$88\\%$ DiffSBDD",
         value_extract="value_mean",
-        verdict_passes=[0.90], pending_note="metric 8",
+        verdict_passes=[0.90],
+        pending_note="metric 8",
     ),
     MetricSpec(
-        row=9, display="Interaction Parity",
-        json_key="pharmacophore_pass_rate", direction="higher", tier="Tier 2",
-        target_value=50.0, target_str="$\\geq 50$",
-        tier1_sota="100 OMTRA", tier2_sota="22 Pocket2Mol",
+        row=9,
+        display="Interaction Parity",
+        json_key="pharmacophore_pass_rate",
+        direction="higher",
+        tier="Tier 2",
+        target_value=50.0,
+        target_str="$\\geq 50$",
+        tier1_sota="100 OMTRA",
+        tier2_sota="22 Pocket2Mol",
         value_extract="value_mean",
-        verdict_passes=[50.0], pending_note="metric 9",
+        verdict_passes=[50.0],
+        pending_note="metric 9",
     ),
     MetricSpec(
-        row=10, display="Vina Min (best pose, kcal/mol)",
-        json_key="vina_min_score", direction="lower", tier="Tier 2",
-        target_value=-9.5, target_str="$\\leq -9.5$",
-        tier1_sota="---", tier2_sota="$-9.77$ AlphaDrug",
+        row=10,
+        display="Vina Min (best pose, kcal/mol)",
+        json_key="vina_min_score",
+        direction="lower",
+        tier="Tier 2",
+        target_value=-9.5,
+        target_str="$\\leq -9.5$",
+        tier1_sota="---",
+        tier2_sota="$-9.77$ AlphaDrug",
         value_extract="value.mean",
-        verdict_passes=[-9.5], pending_note="metric 10",
+        verdict_passes=[-9.5],
+        pending_note="metric 10",
     ),
     MetricSpec(
-        row=11, display="$n_{\\mathrm{distinct}}$ metal-ligand pairs",
-        json_key="n_distinct", direction="higher", tier="Tier 1",
-        target_value=3.0, target_str="$\\geq 3$",
-        tier1_sota="R16 Path A 1", tier2_sota="---",
+        row=11,
+        display="$n_{\\mathrm{distinct}}$ metal-ligand pairs",
+        json_key="n_distinct",
+        direction="higher",
+        tier="Tier 1",
+        target_value=3.0,
+        target_str="$\\geq 3$",
+        tier1_sota="R16 Path A 1",
+        tier2_sota="---",
         value_extract="aggregate.best_measured_with_all_fixes",
-        verdict_passes=[3.0], pending_note="metric 11",
+        verdict_passes=[3.0],
+        pending_note="metric 11",
     ),
     MetricSpec(
-        row=12, display="Synthesis rate (SyntheMol)",
-        json_key="synthesis_rate", direction="higher", tier="Tier 3",
-        target_value=0.95, target_str="$\\geq 0.95$",
-        tier1_sota="---", tier2_sota="R16 1.00",
+        row=12,
+        display="Synthesis rate (SyntheMol)",
+        json_key="synthesis_rate",
+        direction="higher",
+        tier="Tier 3",
+        target_value=0.95,
+        target_str="$\\geq 0.95$",
+        tier1_sota="---",
+        tier2_sota="R16 1.00",
         value_extract="value",
-        verdict_passes=[0.95], pending_note="metric 12",
+        verdict_passes=[0.95],
+        pending_note="metric 12",
     ),
     MetricSpec(
-        row=13, display="Validity (RDKit parseable)",
-        json_key="validity_rate", direction="higher", tier="Tier 3",
-        target_value=0.99, target_str="$\\geq 0.99$",
-        tier1_sota="---", tier2_sota="SOTA 0.99--1.00",
+        row=13,
+        display="Validity (RDKit parseable)",
+        json_key="validity_rate",
+        direction="higher",
+        tier="Tier 3",
+        target_value=0.99,
+        target_str="$\\geq 0.99$",
+        tier1_sota="---",
+        tier2_sota="SOTA 0.99--1.00",
         value_extract="value",
-        verdict_passes=[0.99], pending_note="metric 13",
+        verdict_passes=[0.99],
+        pending_note="metric 13",
     ),
     MetricSpec(
-        row=14, display="Decode ratio (CFM)",
-        json_key="decode_ratio", direction="higher", tier="Tier 3",
-        target_value=0.50, target_str="$\\geq 0.50$",
-        tier1_sota="---", tier2_sota="R17 1.000",
+        row=14,
+        display="Decode ratio (CFM)",
+        json_key="decode_ratio",
+        direction="higher",
+        tier="Tier 3",
+        target_value=0.50,
+        target_str="$\\geq 0.50$",
+        tier1_sota="---",
+        tier2_sota="R17 1.000",
         value_extract="aggregate.best_measured",
-        verdict_passes=[0.50], pending_note="metric 14",
+        verdict_passes=[0.50],
+        pending_note="metric 14",
     ),
     MetricSpec(
-        row=15, display="Docking RMSD $<2\\AA$ (\\%)",
-        json_key="rigid_fragment_rmsd", direction="higher", tier="Tier 3",
-        target_value=25.0, target_str="$\\geq 25\\%$",
-        tier1_sota="---", tier2_sota="$38.2\\%$ DiffDock",
+        row=15,
+        display="Docking RMSD $<2\\AA$ (\\%)",
+        json_key="rigid_fragment_rmsd",
+        direction="higher",
+        tier="Tier 3",
+        target_value=25.0,
+        target_str="$\\geq 25\\%$",
+        tier1_sota="---",
+        tier2_sota="$38.2\\%$ DiffDock",
         value_extract="value",
-        verdict_passes=[25.0], pending_note="metric 15",
+        verdict_passes=[25.0],
+        pending_note="metric 15",
     ),
     MetricSpec(
-        row=16, display="Affinity Pearson r (pIC50)",
-        json_key="pearson_r_pic50", direction="higher", tier="Tier 3",
-        target_value=0.75, target_str="$\\geq 0.75$",
-        tier1_sota="$0.86$ Boltz-2", tier2_sota="$\\sim 0.90$ FEP+",
+        row=16,
+        display="Affinity Pearson r (pIC50)",
+        json_key="pearson_r_pic50",
+        direction="higher",
+        tier="Tier 3",
+        target_value=0.75,
+        target_str="$\\geq 0.75$",
+        tier1_sota="$0.86$ Boltz-2",
+        tier2_sota="$\\sim 0.90$ FEP+",
         value_extract="value",
-        verdict_passes=[0.75], pending_note="metric 16",
+        verdict_passes=[0.75],
+        pending_note="metric 16",
     ),
     MetricSpec(
-        row=17, display="DrugOOD OOD (3 splits)",
-        json_key="drugood_ood_auc", direction="higher", tier="Tier 3",
-        target_value=0.66, target_str="$\\geq 0.66$ (iMoLD--0.02)",
-        tier1_sota="---", tier2_sota="72.11 / 68.84 / 67.92 iMoLD",
+        row=17,
+        display="DrugOOD OOD (3 splits)",
+        json_key="drugood_ood_auc",
+        direction="higher",
+        tier="Tier 3",
+        target_value=0.66,
+        target_str="$\\geq 0.66$ (iMoLD--0.02)",
+        tier1_sota="---",
+        tier2_sota="72.11 / 68.84 / 67.92 iMoLD",
         value_extract="mean_ood_auc",
-        verdict_passes=[0.66], pending_note="metric 17",
+        verdict_passes=[0.66],
+        pending_note="metric 17",
     ),
     MetricSpec(
-        row=18, display="Protein-metal binding AUC",
-        json_key="metric18_protein_metal", direction="higher", tier="Tier 1",
-        target_value=0.85, target_str="$\\geq 0.85$",
-        tier1_sota="$>0.92$ 2025 paper", tier2_sota="---",
+        row=18,
+        display="Protein-metal binding AUC",
+        json_key="metric18_protein_metal",
+        direction="higher",
+        tier="Tier 1",
+        target_value=0.85,
+        target_str="$\\geq 0.85$",
+        tier1_sota="$>0.92$ 2025 paper",
+        tier2_sota="---",
         value_extract="value",
-        verdict_passes=[0.85], pending_note="metric 18 (future)",
+        verdict_passes=[0.85],
+        pending_note="metric 18 (future)",
     ),
     MetricSpec(
-        row=19, display="Multi-metal transfer (LOMO)",
-        json_key="metal_lomo_auc", direction="higher", tier="Tier 3",
-        target_value=0.70, target_str="$\\geq 0.70$",
-        tier1_sota="---", tier2_sota="not reported",
+        row=19,
+        display="Multi-metal transfer (LOMO)",
+        json_key="metal_lomo_auc",
+        direction="higher",
+        tier="Tier 3",
+        target_value=0.70,
+        target_str="$\\geq 0.70$",
+        tier1_sota="---",
+        tier2_sota="not reported",
         value_extract="value",
-        verdict_passes=[0.70], pending_note="metric 19",
+        verdict_passes=[0.70],
+        pending_note="metric 19",
     ),
     MetricSpec(
-        row=20, display="NCI-60 precious 9-cell mean AUC",
-        json_key="nci60_precious_9cell_auc", direction="higher", tier="Tier 1",
-        target_value=0.70, target_str="$\\geq 0.70$",
-        tier1_sota="$0.81$ Krasnov Ru", tier2_sota="(no analog)",
+        row=20,
+        display="NCI-60 precious 9-cell mean AUC",
+        json_key="nci60_precious_9cell_auc",
+        direction="higher",
+        tier="Tier 1",
+        target_value=0.70,
+        target_str="$\\geq 0.70$",
+        tier1_sota="$0.81$ Krasnov Ru",
+        tier2_sota="(no analog)",
         value_extract="value_overall_mean_auc",
-        verdict_passes=[0.70], pending_note="metric 21",
+        verdict_passes=[0.70],
+        pending_note="metric 21",
     ),
 ]
 
@@ -331,7 +462,11 @@ def extract_metric_value(spec: MetricSpec, payload: Dict[str, Any]) -> Optional[
         return _coerce_float(payload.get("value_mean"))
     if ve == "value.mean":
         v = _get_nested(payload, "value")
-        return _coerce_float(_get_nested(v, "mean")) if isinstance(v, dict) else _coerce_float(v)
+        return (
+            _coerce_float(_get_nested(v, "mean"))
+            if isinstance(v, dict)
+            else _coerce_float(v)
+        )
     if ve == "latest_measured":
         # Pick the most-recent numeric measurement in the "measurements" list.
         ms = payload.get("measurements") or []
@@ -407,7 +542,9 @@ def passes_gate(spec: MetricSpec, value: Optional[float]) -> str:
 def fmt_value(v: Optional[float], spec: MetricSpec) -> str:
     """Render a measured value as a LaTeX cell."""
     if v is None:
-        return f"\\textit{{pending --- see TODO/METRICS\\_TARGETS.md {spec.pending_note}}}"
+        return (
+            f"\\textit{{pending --- see TODO/METRICS\\_TARGETS.md {spec.pending_note}}}"
+        )
     # 3 sig figs for AUC; 2 decimals for kcal/mol; 1 decimal for counts.
     if abs(v) < 10 and spec.direction != "lower":
         return f"${v:.3f}$"
@@ -435,7 +572,9 @@ def load_all_metrics(metrics_dir: Path) -> Dict[str, Dict[str, Any]]:
     return out
 
 
-def build_table_rows(specs: List[MetricSpec], snapshot: Dict[str, Dict[str, Any]]) -> List[Dict[str, str]]:
+def build_table_rows(
+    specs: List[MetricSpec], snapshot: Dict[str, Dict[str, Any]]
+) -> List[Dict[str, str]]:
     """Build one dict per spec with display, our, tier1, tier2, direction, verdict."""
     rows: List[Dict[str, str]] = []
     for spec in specs:
@@ -475,7 +614,13 @@ def render_table2_tex(rows: List[Dict[str, str]]) -> str:
         out.append(
             f"{r['display']} & {r['our']} & {r['tier1']} & {r['tier2']} & {r['direction']} & {r['verdict']} \\\\"
         )
-    out += ["\\bottomrule", "\\end{tabular}", "\\caption{Paper §4 main panel.\\label{tab:main_v2}}", "\\end{table}", ""]
+    out += [
+        "\\bottomrule",
+        "\\end{tabular}",
+        "\\caption{Paper §4 main panel.\\label{tab:main_v2}}",
+        "\\end{table}",
+        "",
+    ]
     return "\n".join(out)
 
 
@@ -488,13 +633,19 @@ def render_fig7_cell_line(snapshot: Dict[str, Dict[str, Any]]) -> Dict[str, Any]
         "description": "Tier 1 PlatinAI 4-cell + NCI-60 9-cell per-line AUC vs Krasnov/Rusanov baselines",
         "platinai": {
             "cells": ["MCF7", "A549", "A2780", "A2780cis"],
-            "ours": [_get_nested(platinai, f"per_cell_line.{c}.auc_mean") for c in ("MCF7", "A549", "A2780", "A2780cis")],
+            "ours": [
+                _get_nested(platinai, f"per_cell_line.{c}.auc_mean")
+                for c in ("MCF7", "A549", "A2780", "A2780cis")
+            ],
             "rusanov_2025": "PENDING (paper Tables S4-S5 supplementary download)",
             "key_axis": "A2780cis (cisplatin-resistance, gate ≥ 0.85)",
         },
         "nci60_9cell": {
             "cells": nci60.get("cell_lines", []),
-            "ours": [_get_nested(nci60, f"per_cell_line.{c}.auc_mean") for c in (nci60.get("cell_lines") or [])],
+            "ours": [
+                _get_nested(nci60, f"per_cell_line.{c}.auc_mean")
+                for c in (nci60.get("cell_lines") or [])
+            ],
             "krasnov_baseline": nci60.get("krasnov_2026_baseline_auc"),
             "overall_mean_auc": nci60.get("value_overall_mean_auc"),
             "overall_mean_std": nci60.get("value_overall_mean_std"),
@@ -591,7 +742,9 @@ def render_summary_md(rows: List[Dict[str, str]]) -> str:
     lines.append("")
     lines.append("---")
     lines.append("")
-    lines.append("Auto-generated by `molmetal/scripts/generate_section4.py` from `metrics/by_metric/*.json` snapshot.")
+    lines.append(
+        "Auto-generated by `molmetal/scripts/generate_section4.py` from `metrics/by_metric/*.json` snapshot."
+    )
     lines.append("Do NOT edit by hand; re-run after metric refresh.")
     return "\n".join(lines)
 
@@ -603,10 +756,26 @@ def render_summary_md(rows: List[Dict[str, str]]) -> str:
 
 def main(argv: Optional[List[str]] = None) -> int:
     p = argparse.ArgumentParser(description="Paper §4 Results auto-generator")
-    p.add_argument("--dry-run", action="store_true", help="Print Table 2 to stdout; skip file writes")
-    p.add_argument("--out-dir", default=str(REPO_ROOT / "paper"), help="Paper root (sections/ + figures/data/ + reports/)")
-    p.add_argument("--metrics-dir", default=str(REPO_ROOT / "metrics" / "by_metric"), help="Snapshot dir")
-    p.add_argument("--report-dir", default=str(REPO_ROOT / "paper" / "reports" / "wf_section4_gen"), help="Output report dir")
+    p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print Table 2 to stdout; skip file writes",
+    )
+    p.add_argument(
+        "--out-dir",
+        default=str(REPO_ROOT / "paper"),
+        help="Paper root (sections/ + figures/data/ + reports/)",
+    )
+    p.add_argument(
+        "--metrics-dir",
+        default=str(REPO_ROOT / "metrics" / "by_metric"),
+        help="Snapshot dir",
+    )
+    p.add_argument(
+        "--report-dir",
+        default=str(REPO_ROOT / "paper" / "reports" / "wf_section4_gen"),
+        help="Output report dir",
+    )
     args = p.parse_args(argv)
 
     metrics_dir = Path(args.metrics_dir)
@@ -629,15 +798,24 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Figure data → paper/figures/data/{fig7,fig8,fig9}_*.json
     figs_dir = out_dir / "figures" / "data"
     figs_dir.mkdir(parents=True, exist_ok=True)
-    (figs_dir / "fig7_cell_line.json").write_text(json.dumps(render_fig7_cell_line(snapshot), indent=2), encoding="utf-8")
-    (figs_dir / "fig8_ood_radar.json").write_text(json.dumps(render_fig8_ood_radar(snapshot), indent=2), encoding="utf-8")
-    (figs_dir / "fig9_tier1_scorecard.json").write_text(json.dumps(render_fig9_tier1_scorecard(snapshot), indent=2), encoding="utf-8")
+    (figs_dir / "fig7_cell_line.json").write_text(
+        json.dumps(render_fig7_cell_line(snapshot), indent=2), encoding="utf-8"
+    )
+    (figs_dir / "fig8_ood_radar.json").write_text(
+        json.dumps(render_fig8_ood_radar(snapshot), indent=2), encoding="utf-8"
+    )
+    (figs_dir / "fig9_tier1_scorecard.json").write_text(
+        json.dumps(render_fig9_tier1_scorecard(snapshot), indent=2), encoding="utf-8"
+    )
 
     # Summary → paper/reports/wf_section4_gen/summary.md
     report_dir.mkdir(parents=True, exist_ok=True)
     (report_dir / "summary.md").write_text(render_summary_md(rows), encoding="utf-8")
 
-    print(f"[generate_section4] wrote Table 2 ({len(rows)} rows) + 3 figure stubs + summary.md", file=sys.stderr)
+    print(
+        f"[generate_section4] wrote Table 2 ({len(rows)} rows) + 3 figure stubs + summary.md",
+        file=sys.stderr,
+    )
     return 0
 
 

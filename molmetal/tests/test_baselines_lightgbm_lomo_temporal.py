@@ -59,9 +59,9 @@ def test_lightgbm_baseline_class_interface() -> None:
     xgb_params = set(MorganXGBBaseline.__init__.__code__.co_varnames)
     lgb_params = set(MorganLightGBMBaseline.__init__.__code__.co_varnames)
     assert shared_kwargs.issubset(xgb_params), "XGB missing shared kwargs"
-    assert shared_kwargs.issubset(lgb_params), (
-        f"LightGBM baseline missing shared kwargs: {shared_kwargs - lgb_params}"
-    )
+    assert shared_kwargs.issubset(
+        lgb_params
+    ), f"LightGBM baseline missing shared kwargs: {shared_kwargs - lgb_params}"
 
 
 def test_lightgbm_quick_smoke_json_shape() -> None:
@@ -73,9 +73,7 @@ def test_lightgbm_quick_smoke_json_shape() -> None:
     # Tiny Ru cohort
     from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset
 
-    flt = CytotoxFilter(
-        time_threshold=24.0, ic50_min=0.01, metal_whitelist=["Ru"]
-    )
+    flt = CytotoxFilter(time_threshold=24.0, ic50_min=0.01, metal_whitelist=["Ru"])
     ds = MetalCytotoxDataset.from_csv(filters=flt)
     small_df = ds.df.head(120).copy()
 
@@ -85,9 +83,9 @@ def test_lightgbm_quick_smoke_json_shape() -> None:
 
     # Build a small instance and reuse the dataset directly
     baseline = quick_smoke(metal="Ru", max_rows=120)
-    assert isinstance(baseline, MorganXGBResult), (
-        f"LGB result type {type(baseline).__name__} not MorganXGBResult"
-    )
+    assert isinstance(
+        baseline, MorganXGBResult
+    ), f"LGB result type {type(baseline).__name__} not MorganXGBResult"
     # JSON shape parity with XGB
     parsed = json.loads(baseline.to_json())
     assert parsed["model"] == "lightgbm"
@@ -131,18 +129,31 @@ def test_lomo_runs_on_three_metals() -> None:
     assert "aggregate" in report
     assert "metals_skipped" in report
     # At least 2 of 3 metals should have enough rows
-    assert len(report["folds"]) >= 2, (
-        f"only {len(report['folds'])} folds completed; skipped={report['metals_skipped']!r}"
-    )
+    assert (
+        len(report["folds"]) >= 2
+    ), f"only {len(report['folds'])} folds completed; skipped={report['metals_skipped']!r}"
     # Every fold has the expected metric keys
     for fold in report["folds"]:
-        for k in ("metal", "model", "roc_auc", "pr_auc", "pearson_r",
-                  "n_train", "n_test"):
+        for k in (
+            "metal",
+            "model",
+            "roc_auc",
+            "pr_auc",
+            "pearson_r",
+            "n_train",
+            "n_test",
+        ):
             assert k in fold, f"fold missing {k}"
     # Aggregate has mean / std / n for pearson_r
     agg = report["aggregate"]
-    for k in ("pearson_r_mean", "pearson_r_std", "pearson_r_n",
-              "roc_auc_mean", "roc_auc_std", "roc_auc_n"):
+    for k in (
+        "pearson_r_mean",
+        "pearson_r_std",
+        "pearson_r_n",
+        "roc_auc_mean",
+        "roc_auc_std",
+        "roc_auc_n",
+    ):
         assert k in agg, f"aggregate missing {k}"
 
 
@@ -195,8 +206,18 @@ def test_temporal_synthetic_split_runs() -> None:
     assert "folds" in report
     assert len(report["folds"]) >= 1
     fold = report["folds"][0]
-    for k in ("metal", "model", "roc_auc", "pr_auc", "hit_rate_top5pct",
-              "n_train", "n_test", "n_train_pre", "n_test_post", "cutoff_year"):
+    for k in (
+        "metal",
+        "model",
+        "roc_auc",
+        "pr_auc",
+        "hit_rate_top5pct",
+        "n_train",
+        "n_test",
+        "n_train_pre",
+        "n_test_post",
+        "cutoff_year",
+    ):
         assert k in fold, f"fold missing {k}"
     # Cutoff is preserved
     assert fold["cutoff_year"] == 2023
@@ -248,20 +269,26 @@ def test_baselines_cli_help_includes_lightgbm() -> None:
         timeout=30,
     )
     assert proc.returncode == 0, proc.stderr
-    assert "lightgbm" in proc.stdout, (
-        "--help does not mention lightgbm — CLI flag wiring missing"
-    )
+    assert (
+        "lightgbm" in proc.stdout
+    ), "--help does not mention lightgbm — CLI flag wiring missing"
 
 
 def test_baselines_cli_model_xgb_still_works() -> None:
     """Sanity check: the existing xgb path is unaffected (no regression)."""
     proc = subprocess.run(
         [
-            sys.executable, "-m", "molmetal.scripts.baselines",
-            "--metal", "Ru",
-            "--model", "xgb",
-            "--split", "random",
-            "--out", "/tmp/_test_baseline_xgb.json",
+            sys.executable,
+            "-m",
+            "molmetal.scripts.baselines",
+            "--metal",
+            "Ru",
+            "--model",
+            "xgb",
+            "--split",
+            "random",
+            "--out",
+            "/tmp/_test_baseline_xgb.json",
         ],
         cwd=str(PROJECT_ROOT),
         capture_output=True,

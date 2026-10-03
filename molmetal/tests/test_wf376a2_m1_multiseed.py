@@ -46,6 +46,7 @@ if str(PROJECT_ROOT) not in sys.path:
 # Import the scaffold module via importlib to avoid the hyphen-name module
 # file naming convention clashing with the dotted import path.
 import importlib.util
+
 _spec = importlib.util.spec_from_file_location(
     "wf376a2_scaffold_module",
     str(PROJECT_ROOT / "molmetal" / "scripts" / "wf376a2_m1_auc_multiseed_scaffold.py"),
@@ -60,6 +61,7 @@ scaffold = _wf376a2_mod
 # ---------------------------------------------------------------------------
 # Test 1: scaffold structure (CLI flags + main function signature)
 # ---------------------------------------------------------------------------
+
 
 def test_wf376a2_scaffold_structure() -> None:
     """Wf-376-A2 task contract — scaffold has the expected public API.
@@ -91,9 +93,13 @@ def test_wf376a2_scaffold_structure() -> None:
         f"DEFAULT_METALS must be 5-metal Wf-131 P3 subset; "
         f"got {scaffold.DEFAULT_METALS}"
     )
-    assert scaffold.DEFAULT_SEEDS == (0, 1, 2, 3, 4), (
-        f"DEFAULT_SEEDS must be 5-seed; got {scaffold.DEFAULT_SEEDS}"
-    )
+    assert scaffold.DEFAULT_SEEDS == (
+        0,
+        1,
+        2,
+        3,
+        4,
+    ), f"DEFAULT_SEEDS must be 5-seed; got {scaffold.DEFAULT_SEEDS}"
     assert scaffold.N_FOLDS == 5, f"N_FOLDS must be 5; got {scaffold.N_FOLDS}"
 
     # main() is callable
@@ -133,6 +139,7 @@ def test_wf376a2_scaffold_structure() -> None:
 # Test 2: ENV-gated dispatch logic
 # ---------------------------------------------------------------------------
 
+
 def test_wf376a2_env_dispatch_logic() -> None:
     """Wf-376-A2 task contract — ENV-gated dispatch between SCAFFOLD and LIVE.
 
@@ -159,15 +166,15 @@ def test_wf376a2_env_dispatch_logic() -> None:
 
         # Explicit USER_OK_SCAFFOLD=1 → SCAFFOLD
         os.environ["USER_OK_SCAFFOLD"] = "1"
-        assert scaffold.resolve_mode() == "SCAFFOLD", (
-            "USER_OK_SCAFFOLD=1 must yield SCAFFOLD mode"
-        )
+        assert (
+            scaffold.resolve_mode() == "SCAFFOLD"
+        ), "USER_OK_SCAFFOLD=1 must yield SCAFFOLD mode"
 
         # USER_OK=1 wins over USER_OK_SCAFFOLD=1 (operator consent > scaffold)
         os.environ["USER_OK"] = "1"
-        assert scaffold.resolve_mode() == "LIVE", (
-            "USER_OK=1 must yield LIVE mode (operator consent for GPU)"
-        )
+        assert (
+            scaffold.resolve_mode() == "LIVE"
+        ), "USER_OK=1 must yield LIVE mode (operator consent for GPU)"
 
         # aggregate JSON carries the mode field + env snapshot
         aggregate = scaffold.build_aggregate(mode="SCAFFOLD")
@@ -192,14 +199,14 @@ def test_wf376a2_env_dispatch_logic() -> None:
         # either as key names or as field-content text — both must be present
         mea_field = str(s6.get("MEASURED_today", ""))
         proj_field = str(s6.get("PROJECTED_lift_envelope", ""))
-        assert mea_field and proj_field, (
-            "MEASURED_today + PROJECTED_lift_envelope must both be non-empty"
-        )
+        assert (
+            mea_field and proj_field
+        ), "MEASURED_today + PROJECTED_lift_envelope must both be non-empty"
         # Honest-negative posture must be present (per party-twenty-spirit §3.5)
         hn_field = str(s6.get("honest_negative_posture", ""))
-        assert hn_field and ("PROJECTED" in hn_field or "honest" in hn_field.lower()), (
-            f"honest_negative_posture must mention PROJECTED or honest; got {hn_field!r}"
-        )
+        assert hn_field and (
+            "PROJECTED" in hn_field or "honest" in hn_field.lower()
+        ), f"honest_negative_posture must mention PROJECTED or honest; got {hn_field!r}"
     finally:
         # Restore env
         if saved_user_ok is not None:
@@ -215,6 +222,7 @@ def test_wf376a2_env_dispatch_logic() -> None:
 # ---------------------------------------------------------------------------
 # Test 3: per-metal AUC aggregation logic
 # ---------------------------------------------------------------------------
+
 
 def test_wf376a2_per_metal_auc_aggregation() -> None:
     """Wf-376-A2 task contract — per-metal AUC aggregation is correct.
@@ -241,11 +249,13 @@ def test_wf376a2_per_metal_auc_aggregation() -> None:
     block = scaffold.aggregate_metal_multiseed("Ru", seeds, per_seed_aucs)
 
     assert block["metal"] == "Ru"
-    assert block["n_seeds_used"] == 5, f"expected n_seeds=5; got {block['n_seeds_used']}"
+    assert (
+        block["n_seeds_used"] == 5
+    ), f"expected n_seeds=5; got {block['n_seeds_used']}"
     assert block["n_obs_total"] == 25, f"expected n_obs=25; got {block['n_obs_total']}"
-    assert block["verdict"] == "MEASURED", (
-        f"5-seed × 5-fold → MEASURED; got {block['verdict']!r}"
-    )
+    assert (
+        block["verdict"] == "MEASURED"
+    ), f"5-seed × 5-fold → MEASURED; got {block['verdict']!r}"
     assert math.isclose(block["test_auc_mean"], 0.7, abs_tol=1e-9)
     assert math.isclose(block["test_auc_std"], 0.0, abs_tol=1e-9)
     # CI = mean ± z*std/sqrt(n); std=0 → CI = (mean, mean)
@@ -263,9 +273,9 @@ def test_wf376a2_per_metal_auc_aggregation() -> None:
         "Ru", (0,), {0: [0.7613, 0.7613, 0.7613, 0.7613, 0.7613]}
     )
     assert block_1seed["n_seeds_used"] == 1
-    assert block_1seed["verdict"] == "HONEST_NEGATIVE_1SEED", (
-        f"1-seed → HONEST_NEGATIVE_1SEED; got {block_1seed['verdict']!r}"
-    )
+    assert (
+        block_1seed["verdict"] == "HONEST_NEGATIVE_1SEED"
+    ), f"1-seed → HONEST_NEGATIVE_1SEED; got {block_1seed['verdict']!r}"
     assert math.isclose(block_1seed["test_auc_mean"], 0.7613, abs_tol=1e-9)
     assert block_1seed["test_auc_std"] == 0.0
 
@@ -274,9 +284,9 @@ def test_wf376a2_per_metal_auc_aggregation() -> None:
         "Ru", (0, 1), {0: [0.7] * 5, 1: [0.7] * 5}
     )
     assert block_2seed["n_seeds_used"] == 2
-    assert block_2seed["verdict"] == "PARTIAL_2SEED", (
-        f"2-seed → PARTIAL_2SEED; got {block_2seed['verdict']!r}"
-    )
+    assert (
+        block_2seed["verdict"] == "PARTIAL_2SEED"
+    ), f"2-seed → PARTIAL_2SEED; got {block_2seed['verdict']!r}"
 
     # ---- 0-seed NOT_MEASURED contract ----
     block_0seed = scaffold.aggregate_metal_multiseed("Ru", (0,), {})
@@ -295,9 +305,9 @@ def test_wf376a2_per_metal_auc_aggregation() -> None:
     #          = (0.096 + 0.144) / 25 = 0.24 / 25 = 0.0096
     # std = sqrt(0.0096) ≈ 0.09798
     expected_std = math.sqrt(0.0096)
-    assert math.isclose(block_alt["test_auc_std"], expected_std, abs_tol=1e-4), (
-        f"std {block_alt['test_auc_std']} != expected {expected_std:.5f}"
-    )
+    assert math.isclose(
+        block_alt["test_auc_std"], expected_std, abs_tol=1e-4
+    ), f"std {block_alt['test_auc_std']} != expected {expected_std:.5f}"
     # 95% CI margin = 1.96 * std / sqrt(n_obs) = 1.96 * std / sqrt(25) = 1.96 * std / 5
     expected_margin = 1.96 * expected_std / 5.0
     assert math.isclose(

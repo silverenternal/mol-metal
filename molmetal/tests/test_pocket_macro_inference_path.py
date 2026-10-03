@@ -199,8 +199,7 @@ def test_cwd_relative_fallback_when_module_path_missing(tmp_path):
         cwd=tmp_path,
     )
     assert Path(ckpt).resolve() == fake_ckpt.resolve(), (
-        f"CWD-relative fallback failed: got {ckpt!r}, expected "
-        f"{str(fake_ckpt)!r}"
+        f"CWD-relative fallback failed: got {ckpt!r}, expected " f"{str(fake_ckpt)!r}"
     )
     assert Path(meta).resolve() == fake_meta.resolve()
 
@@ -228,12 +227,11 @@ def test_module_relative_wins_when_both_exist(tmp_path):
     cwd_models = fake_cwd / "models"
     cwd_models.mkdir(parents=True, exist_ok=True)
     (cwd_models / "pocket_macro_skeleton_v2.pt").write_bytes(b"CWD-PT")
-    (cwd_models / "pocket_macro_skeleton_v2.pt.json").write_text(
-        '{"source": "cwd"}'
-    )
+    (cwd_models / "pocket_macro_skeleton_v2.pt.json").write_text('{"source": "cwd"}')
 
     ckpt, meta = h["_resolve_default_paths"](
-        module_models_dir=fake_module, cwd=fake_cwd,
+        module_models_dir=fake_module,
+        cwd=fake_cwd,
     )
     assert Path(ckpt).resolve() == fake_module_ckpt.resolve()
     assert Path(meta).resolve() == fake_module_meta.resolve()
@@ -251,12 +249,11 @@ def test_resolve_returns_module_relative_path_when_missing(tmp_path):
     nonexistent_module = tmp_path / "_module_missing"
     nonexistent_cwd = tmp_path / "_cwd_missing"
     ckpt, meta = h["_resolve_default_paths"](
-        module_models_dir=nonexistent_module, cwd=nonexistent_cwd,
+        module_models_dir=nonexistent_module,
+        cwd=nonexistent_cwd,
     )
     assert ckpt == str(nonexistent_module / "pocket_macro_skeleton_v2.pt")
-    assert meta == str(
-        nonexistent_module / "pocket_macro_skeleton_v2.pt.json"
-    )
+    assert meta == str(nonexistent_module / "pocket_macro_skeleton_v2.pt.json")
 
 
 # ---------------------------------------------------------------------------
@@ -267,12 +264,8 @@ def test_real_module_relative_default_exists():
     time points at the real ``molmetal/models/pocket_macro_skeleton_v2.pt``
     file that ships with the repo."""
     h = _load_path_helpers()
-    assert CHECKPOINT.exists(), (
-        f"sanity: real checkpoint must exist at {CHECKPOINT}"
-    )
-    assert METADATA.exists(), (
-        f"sanity: real metadata must exist at {METADATA}"
-    )
+    assert CHECKPOINT.exists(), f"sanity: real checkpoint must exist at {CHECKPOINT}"
+    assert METADATA.exists(), f"sanity: real metadata must exist at {METADATA}"
     default_ckpt = Path(h["DEFAULT_CHECKPOINT_PATH"])
     default_meta = Path(h["DEFAULT_METADATA_PATH"])
     assert default_ckpt.resolve() == CHECKPOINT.resolve()
@@ -348,6 +341,6 @@ def test_subprocess_construction_succeeds_from_each_cwd(tmp_path):
             f"STDOUT:\n{result.stdout}\n"
             f"STDERR:\n{result.stderr}"
         )
-        assert "OK" in result.stdout, (
-            f"subprocess from {cwd} did not print OK: {result.stdout!r}"
-        )
+        assert (
+            "OK" in result.stdout
+        ), f"subprocess from {cwd} did not print OK: {result.stdout!r}"

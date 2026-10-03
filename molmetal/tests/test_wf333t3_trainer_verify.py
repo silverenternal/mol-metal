@@ -56,10 +56,7 @@ import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 TRAINER_PATH = (
-    PROJECT_ROOT
-    / "molmetal"
-    / "scripts"
-    / "train_dmpnn_multitask_wasserstein.py"
+    PROJECT_ROOT / "molmetal" / "scripts" / "train_dmpnn_multitask_wasserstein.py"
 )
 SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 
@@ -67,6 +64,7 @@ SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _read_trainer_source() -> str:
     assert TRAINER_PATH.exists(), f"Trainer file missing: {TRAINER_PATH}"
@@ -81,17 +79,18 @@ def _expected_default_constants() -> dict[str, object]:
     compat test asserts against).
     """
     return {
-        "w2_gradient_mode": "sort",   # Wf-328-W5 (line 249)
-        "tf32": True,                  # Wf-328-W4 (line 262)
-        "bf16": True,                  # Wf-328-W3 (line 276)
-        "dmpnn_backend": "pyg",        # Wf-328-W7 (line 283)
-        "num_workers": 4,              # Wf-260 trainer default
+        "w2_gradient_mode": "sort",  # Wf-328-W5 (line 249)
+        "tf32": True,  # Wf-328-W4 (line 262)
+        "bf16": True,  # Wf-328-W3 (line 276)
+        "dmpnn_backend": "pyg",  # Wf-328-W7 (line 283)
+        "num_workers": 4,  # Wf-260 trainer default
     }
 
 
 # ---------------------------------------------------------------------------
 # Test 1 — trainer parses
 # ---------------------------------------------------------------------------
+
 
 def test_trainer_parses() -> None:
     """AST parse + structural balance + zero Triton-3.x incompat (Wf-333-T3)."""
@@ -121,9 +120,7 @@ def test_trainer_parses() -> None:
     # but require all 3 classes to be present.
     assert v.try_count >= 1, "expected at least one try block in trainer"
     assert v.except_count >= 1, "expected at least one except handler"
-    assert v.finally_count >= 1, (
-        "expected the Wf-328-W1 encoder-restore finally block"
-    )
+    assert v.finally_count >= 1, "expected the Wf-328-W1 encoder-restore finally block"
 
     # No Triton-3.x-incompatible kwargs left over from the Wf-328 race.
     assert "pre_hook" not in src, (
@@ -131,13 +128,15 @@ def test_trainer_parses() -> None:
         "Triton 3.x no longer accepts it. Remove the kwarg."
     )
     assert not re.search(
-        r"@triton\.autotune\s*\(", src,
+        r"@triton\.autotune\s*\(",
+        src,
     ), "Wf-333-T3 found a @triton.autotune(...) decorator; remove or migrate."
 
 
 # ---------------------------------------------------------------------------
 # Test 2 — all 10 Wf-328 integrations present
 # ---------------------------------------------------------------------------
+
 
 def test_all_ten_wf328_integrations_present() -> None:
     """All 10 Wf-328 W* integrations wired into trainer (Wf-333-T3 §2).
@@ -151,10 +150,14 @@ def test_all_ten_wf328_integrations_present() -> None:
     src = _read_trainer_source()
 
     # Wf-328-W1 — torch.compile wrappers for encoder + W₂ closed-form.
-    assert "_make_compiled_encoder_forward" in src, "W1: missing _make_compiled_encoder_forward"
+    assert (
+        "_make_compiled_encoder_forward" in src
+    ), "W1: missing _make_compiled_encoder_forward"
     assert "_make_compiled_w2_penalty" in src, "W1: missing _make_compiled_w2_penalty"
     assert "torch.compile" in src, "W1: missing torch.compile call"
-    assert "compiled_w2_penalty" in src, "W1: missing compiled_w2_penalty thread-through"
+    assert (
+        "compiled_w2_penalty" in src
+    ), "W1: missing compiled_w2_penalty thread-through"
     # --torch-compile default ON; --no-torch-compile lever is opt-out.
     assert "--torch-compile" in src, "W1: missing --torch-compile CLI flag"
     assert "use_compile" in src, "W1: missing use_compile toggle"
@@ -166,9 +169,7 @@ def test_all_ten_wf328_integrations_present() -> None:
         "W2: trainer missing --cpu-num-workers CLI flag (launcher wires "
         "--cpu-num-workers 8 but trainer cannot consume it)."
     )
-    assert "cpu_num_workers" in src, (
-        "W2: trainer missing cpu_num_workers argparse dest"
-    )
+    assert "cpu_num_workers" in src, "W2: trainer missing cpu_num_workers argparse dest"
 
     # Wf-328-W3 — BF16 autocast default ON.
     assert "bf16_autocast" in src, "W3: missing bf16_autocast factory"
@@ -180,21 +181,31 @@ def test_all_ten_wf328_integrations_present() -> None:
 
     # Wf-328-W4 — TF32 default ON.
     assert "configure_tf32" in src, "W4: missing configure_tf32 helper"
-    assert "torch.backends.cuda.matmul.allow_tf32" in src, "W4: missing tf32 matmul flag"
+    assert (
+        "torch.backends.cuda.matmul.allow_tf32" in src
+    ), "W4: missing tf32 matmul flag"
     assert "DEFAULT_TF32" in src, "W4: missing DEFAULT_TF32 constant"
     assert "--no-tf32" in src, "W4: missing --no-tf32 CLI lever"
 
     # Wf-328-W5 — W₂ sort mode default (closed-form 1-D torch.sort).
-    assert "DEFAULT_W2_GRADIENT_MODE" in src, "W5: missing DEFAULT_W2_GRADIENT_MODE constant"
-    assert 'DEFAULT_W2_GRADIENT_MODE: str = "sort"' in src, (
-        "W5: DEFAULT_W2_GRADIENT_MODE must default to 'sort'"
-    )
+    assert (
+        "DEFAULT_W2_GRADIENT_MODE" in src
+    ), "W5: missing DEFAULT_W2_GRADIENT_MODE constant"
+    assert (
+        'DEFAULT_W2_GRADIENT_MODE: str = "sort"' in src
+    ), "W5: DEFAULT_W2_GRADIENT_MODE must default to 'sort'"
     assert "w2_gradient_mode" in src, "W5: missing w2_gradient_mode dispatch"
-    assert "wasserstein_pic50_gradient" in src, "W5: missing closed-form W₂ gradient call"
+    assert (
+        "wasserstein_pic50_gradient" in src
+    ), "W5: missing closed-form W₂ gradient call"
 
     # Wf-328-W6 — Wf-326B build_optimized_loader() factory wire-in.
-    assert "build_optimized_loader" in src, "W6: missing build_optimized_loader factory import"
-    assert "wf326b_dataloader_optimized" in src, "W6: missing wf326b_dataloader_optimized module ref"
+    assert (
+        "build_optimized_loader" in src
+    ), "W6: missing build_optimized_loader factory import"
+    assert (
+        "wf326b_dataloader_optimized" in src
+    ), "W6: missing wf326b_dataloader_optimized module ref"
     assert "effective_num_workers" in src, "W6: missing effective_num_workers resolver"
     assert "suggest_num_workers" in src, "W6: missing suggest_num_workers heuristic"
 
@@ -202,12 +213,12 @@ def test_all_ten_wf328_integrations_present() -> None:
     # :mod:`molmetal.models.dmpnn_pyg`; trainer wires --dmpnn-backend CLI).
     assert "--dmpnn-backend" in src, "W7: missing --dmpnn-backend CLI flag"
     assert "DEFAULT_DMPNN_BACKEND" in src, "W7: missing DEFAULT_DMPNN_BACKEND constant"
-    assert 'DEFAULT_DMPNN_BACKEND: str = "pyg"' in src, (
-        "W7: DEFAULT_DMPNN_BACKEND must default to 'pyg'"
-    )
-    assert (PROJECT_ROOT / "molmetal" / "models" / "dmpnn_pyg.py").exists(), (
-        "W7: PyG port module missing — expected molmetal/models/dmpnn_pyg.py"
-    )
+    assert (
+        'DEFAULT_DMPNN_BACKEND: str = "pyg"' in src
+    ), "W7: DEFAULT_DMPNN_BACKEND must default to 'pyg'"
+    assert (
+        PROJECT_ROOT / "molmetal" / "models" / "dmpnn_pyg.py"
+    ).exists(), "W7: PyG port module missing — expected molmetal/models/dmpnn_pyg.py"
 
     # Wf-328-W8 — CUDA Graphs capture wrapper.
     assert "use_cuda_graph" in src, "W8: missing use_cuda_graph toggle"
@@ -315,6 +326,7 @@ def test_six_launch_scripts_wire_num_workers_8() -> None:
 # Test 4 — backward compat: no flags = baseline
 # ---------------------------------------------------------------------------
 
+
 def test_backward_compat_baseline_no_flags() -> None:
     """When no CLI flags are set, defaults match the documented baseline.
 
@@ -335,31 +347,29 @@ def test_backward_compat_baseline_no_flags() -> None:
     # 1) DEFAULT_* constants present + values match.
     for cname, expected in _expected_default_constants().items():
         if cname == "w2_gradient_mode":
-            assert 'DEFAULT_W2_GRADIENT_MODE: str = "sort"' in src, (
-                f"baseline default {cname} missing or wrong"
-            )
+            assert (
+                'DEFAULT_W2_GRADIENT_MODE: str = "sort"' in src
+            ), f"baseline default {cname} missing or wrong"
         elif cname == "tf32":
-            assert "DEFAULT_TF32: bool = True" in src, (
-                f"baseline default {cname} missing or wrong"
-            )
+            assert (
+                "DEFAULT_TF32: bool = True" in src
+            ), f"baseline default {cname} missing or wrong"
         elif cname == "bf16":
-            assert "DEFAULT_BF16: bool = True" in src, (
-                f"baseline default {cname} missing or wrong"
-            )
+            assert (
+                "DEFAULT_BF16: bool = True" in src
+            ), f"baseline default {cname} missing or wrong"
         elif cname == "dmpnn_backend":
-            assert 'DEFAULT_DMPNN_BACKEND: str = "pyg"' in src, (
-                f"baseline default {cname} missing or wrong"
-            )
+            assert (
+                'DEFAULT_DMPNN_BACKEND: str = "pyg"' in src
+            ), f"baseline default {cname} missing or wrong"
         elif cname == "num_workers":
             # Trainer default num_workers lives in argparse --cpu-num-workers
             # default=4 (line 1837).  Also validated by the help text on
             # line 1839 ("default 4 = forked workers").
-            assert "default=4" in src, (
-                f"baseline default {cname} missing or wrong"
-            )
-            assert "default 4 = " in src or "default 4" in src, (
-                f"baseline default {cname} help-text annotation missing"
-            )
+            assert "default=4" in src, f"baseline default {cname} missing or wrong"
+            assert (
+                "default 4 = " in src or "default 4" in src
+            ), f"baseline default {cname} help-text annotation missing"
 
     # 2) CLI flag defaults match the constants (no hidden override).
     # Use regex to match `default=DEFAULT_<NAME>` patterns inside add_argument.
@@ -376,9 +386,9 @@ def test_backward_compat_baseline_no_flags() -> None:
         assert flag in src, f"baseline CLI flag missing: {flag}"
         if const in ("DEFAULT_TF32", "DEFAULT_BF16"):
             # store_true flags: --no-<flag> lever must point at the default.
-            assert f"--no-{flag.lstrip('--')}" in src, (
-                f"baseline {flag}: expected --no-{flag.lstrip('--')} lever"
-            )
+            assert (
+                f"--no-{flag.lstrip('--')}" in src
+            ), f"baseline {flag}: expected --no-{flag.lstrip('--')} lever"
 
     # 3) Wf-260 default num_workers=4 is the fallback when neither
     # --num-workers nor --cpu-num-workers is set on the CLI.

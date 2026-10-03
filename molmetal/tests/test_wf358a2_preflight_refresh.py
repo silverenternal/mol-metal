@@ -48,9 +48,7 @@ from pathlib import Path
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-PREFLIGHT_JSON = (
-    PROJECT_ROOT / "molmetal" / "reports" / "wf259_run" / "pre_flight.json"
-)
+PREFLIGHT_JSON = PROJECT_ROOT / "molmetal" / "reports" / "wf259_run" / "pre_flight.json"
 SCRIPTS_DIR = PROJECT_ROOT / "molmetal" / "scripts"
 WF343C2_SCRIPT = SCRIPTS_DIR / "wf343c2_per_wave_check.py"
 VENV_PY = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
@@ -98,21 +96,31 @@ def test_wf343c2_cascade_fix_preflight_freshness_24h_pass() -> None:
     assert on the structured ``checks[]`` array.
     """
     assert WF343C2_SCRIPT.is_file(), f"wf343c2 script missing: {WF343C2_SCRIPT}"
-    out_path = PROJECT_ROOT / "molmetal" / "reports" / "wf343c2_per_wave_check" / (
-        "wf358a2_cascade_fix_test.json"
+    out_path = (
+        PROJECT_ROOT
+        / "molmetal"
+        / "reports"
+        / "wf343c2_per_wave_check"
+        / ("wf358a2_cascade_fix_test.json")
     )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     args = [
         str(VENV_PY),
         str(WF343C2_SCRIPT),
-        "--wave", "Wf-358A2 cascade-fix smoke",
-        "--pairs-metals", "Ru,Ir,Os,Rh,Re",
-        "--pairs-seeds", "0,1,2",
-        "--budget-hr", "10.0",
+        "--wave",
+        "Wf-358A2 cascade-fix smoke",
+        "--pairs-metals",
+        "Ru,Ir,Os,Rh,Re",
+        "--pairs-seeds",
+        "0,1,2",
+        "--budget-hr",
+        "10.0",
         "--skip-live",
         "--strict",
-        "--preflight", str(PREFLIGHT_JSON),
-        "--out", str(out_path),
+        "--preflight",
+        str(PREFLIGHT_JSON),
+        "--out",
+        str(out_path),
     ]
     result = subprocess.run(
         args,
@@ -140,6 +148,6 @@ def test_wf343c2_cascade_fix_preflight_freshness_24h_pass() -> None:
         f"{freshness['status']!r} evidence={freshness.get('evidence', '')!r}"
     )
     # Cascade-fix evidence string includes "preflight age ...s ≤ 86400s"
-    assert "86400" in freshness.get("evidence", ""), (
-        f"unexpected evidence format: {freshness.get('evidence')!r}"
-    )
+    assert "86400" in freshness.get(
+        "evidence", ""
+    ), f"unexpected evidence format: {freshness.get('evidence')!r}"

@@ -103,9 +103,12 @@ def _featurize_smiles(
     for orig_i, smi in enumerate(smiles_list):
         cleaned = _canonicalize_largest_fragment(smi)
         try:
-            g = smiles_to_bigraph(cleaned, node_featurizer=atom_featurizer,
-                                  edge_featurizer=bond_featurizer,
-                                  add_self_loop=False)
+            g = smiles_to_bigraph(
+                cleaned,
+                node_featurizer=atom_featurizer,
+                edge_featurizer=bond_featurizer,
+                add_self_loop=False,
+            )
             if g is None or g.num_nodes() == 0:
                 n_skip += 1
                 continue
@@ -126,7 +129,9 @@ def _featurize_smiles(
     return graphs, kept_orig_idx
 
 
-def _collate_pair(graphs: List[dgl.DGLGraph], labels: List[int]) -> Tuple[dgl.DGLGraph, torch.Tensor]:
+def _collate_pair(
+    graphs: List[dgl.DGLGraph], labels: List[int]
+) -> Tuple[dgl.DGLGraph, torch.Tensor]:
     bg = dgl.batch(graphs)
     y = torch.tensor(labels, dtype=torch.float32)
     return bg, y
@@ -168,8 +173,9 @@ def eval_auc_batched(
     labels_np_all = []
     probs_all = []
     for start in range(0, len(graphs), batch_size):
-        bg, y = _collate_pair(graphs[start : start + batch_size],
-                              labels[start : start + batch_size])
+        bg, y = _collate_pair(
+            graphs[start : start + batch_size], labels[start : start + batch_size]
+        )
         bg = bg.to(device)
         logits = model(bg, bg.ndata["h"]).squeeze(-1)
         probs = torch.sigmoid(logits).cpu().numpy()
@@ -266,8 +272,13 @@ def run_one_seed(
         per_split_pos_rate[split] = sum(y) / max(len(y), 1)
 
     elapsed = time.time() - t_start
-    LOGGER.info("[seed=%d] per_split_auc=%s elapsed=%.1fs last_loss=%.4f",
-                seed, per_split_auc, elapsed, last_loss)
+    LOGGER.info(
+        "[seed=%d] per_split_auc=%s elapsed=%.1fs last_loss=%.4f",
+        seed,
+        per_split_auc,
+        elapsed,
+        last_loss,
+    )
     return {
         "seed": seed,
         "per_split_auc": per_split_auc,
@@ -285,8 +296,11 @@ def run_one_seed(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--subset", default="lbap_refined_ic50_assay",
-                        help="DrugOOD refined subset (default: lbap_refined_ic50_assay)")
+    parser.add_argument(
+        "--subset",
+        default="lbap_refined_ic50_assay",
+        help="DrugOOD refined subset (default: lbap_refined_ic50_assay)",
+    )
     parser.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4])
     parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--batch-size", type=int, default=128)
@@ -295,18 +309,40 @@ def main() -> int:
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--device", default="cuda:1")
     parser.add_argument("--time-budget-s", type=int, default=5400)
-    parser.add_argument("--prefer-library", action="store_true", default=True,
-                        help="Use DrugOODDataset (default True; falls back to raw JSON)")
-    parser.add_argument("--train-subsample", type=int, default=10000,
-                        help="Subsample the train split to this many rows for tractability "
-                             "(default 10K matches wf185 chemprop v2 DrugOOD subsample; "
-                             "pass 0 or negative to use full train split).")
-    parser.add_argument("--eval-subsample", type=int, default=0,
-                        help="Subsample each eval split to this many rows (default 0 = full).")
-    parser.add_argument("--ckpt-dir", type=Path,
-                        default=Path("/home/hugo/codes/mol-metal/molmetal/checkpoints/wf202_dgllifesci_erm_drugood"))
-    parser.add_argument("--json-dir", type=Path,
-                        default=Path("/home/hugo/codes/mol-metal/molmetal/reports/wf202_dgllifesci_erm_drugood"))
+    parser.add_argument(
+        "--prefer-library",
+        action="store_true",
+        default=True,
+        help="Use DrugOODDataset (default True; falls back to raw JSON)",
+    )
+    parser.add_argument(
+        "--train-subsample",
+        type=int,
+        default=10000,
+        help="Subsample the train split to this many rows for tractability "
+        "(default 10K matches wf185 chemprop v2 DrugOOD subsample; "
+        "pass 0 or negative to use full train split).",
+    )
+    parser.add_argument(
+        "--eval-subsample",
+        type=int,
+        default=0,
+        help="Subsample each eval split to this many rows (default 0 = full).",
+    )
+    parser.add_argument(
+        "--ckpt-dir",
+        type=Path,
+        default=Path(
+            "/home/hugo/codes/mol-metal/molmetal/checkpoints/wf202_dgllifesci_erm_drugood"
+        ),
+    )
+    parser.add_argument(
+        "--json-dir",
+        type=Path,
+        default=Path(
+            "/home/hugo/codes/mol-metal/molmetal/reports/wf202_dgllifesci_erm_drugood"
+        ),
+    )
     args = parser.parse_args()
 
     args.ckpt_dir.mkdir(parents=True, exist_ok=True)
@@ -325,6 +361,7 @@ def main() -> int:
         if not spec.startswith("cuda:"):
             return spec
         import os as _os
+
         cvd = _os.environ.get("CUDA_VISIBLE_DEVICES", "").strip()
         if not cvd:
             return spec
@@ -347,8 +384,12 @@ def main() -> int:
         return f"cuda:{real_idx}"
 
     device_str = _resolve_device(args.device)
-    LOGGER.info("device resolved: requested=%s -> effective=%s (CUDA_VISIBLE_DEVICES=%r)",
-                args.device, device_str, os.environ.get("CUDA_VISIBLE_DEVICES", "<unset>"))
+    LOGGER.info(
+        "device resolved: requested=%s -> effective=%s (CUDA_VISIBLE_DEVICES=%r)",
+        args.device,
+        device_str,
+        os.environ.get("CUDA_VISIBLE_DEVICES", "<unset>"),
+    )
     args.device = device_str
 
     # Lazy import — DrugOOD is only available in the drugood conda env.
@@ -356,21 +397,36 @@ def main() -> int:
     from molmetal.data.drugood_loader import load_drugood
 
     device = torch.device(args.device)
-    LOGGER.info("device=%s subset=%s seeds=%s epochs=%d hidden=%d layers=%d wall-budget=%ds",
-                args.device, args.subset, args.seeds, args.epochs, args.hidden,
-                args.num_layers, args.time_budget_s)
+    LOGGER.info(
+        "device=%s subset=%s seeds=%s epochs=%d hidden=%d layers=%d wall-budget=%ds",
+        args.device,
+        args.subset,
+        args.seeds,
+        args.epochs,
+        args.hidden,
+        args.num_layers,
+        args.time_budget_s,
+    )
 
     # Load all 5 splits via the canonical loader (BD-1).
     splits_df: Dict[str, object] = {}
-    LOGGER.info("loading DrugOOD splits via molmetal.data.drugood_loader.load_drugood ...")
+    LOGGER.info(
+        "loading DrugOOD splits via molmetal.data.drugood_loader.load_drugood ..."
+    )
     for split in SPLITS:
         t0 = time.time()
-        df = load_drugood(subset=args.subset, split=split,
-                          prefer_library=args.prefer_library)
+        df = load_drugood(
+            subset=args.subset, split=split, prefer_library=args.prefer_library
+        )
         splits_df[split] = df
-        LOGGER.info("loaded split=%s rows=%d (pos=%d, pos_rate=%.3f) in %.1fs",
-                    split, len(df), int(df["active"].sum()),
-                    float(df["active"].mean()), time.time() - t0)
+        LOGGER.info(
+            "loaded split=%s rows=%d (pos=%d, pos_rate=%.3f) in %.1fs",
+            split,
+            len(df),
+            int(df["active"].sum()),
+            float(df["active"].mean()),
+            time.time() - t0,
+        )
 
     # Pre-featurize each split ONCE per (script invocation).  Featurization
     # is the dominant one-time cost (~9 min for all 5 splits on Blackwell).
@@ -399,8 +455,14 @@ def main() -> int:
         # Filter labels to keep only those that survived featurization.
         kept_labels = [labels[i] for i in kept]
         splits_data[split] = (graphs, kept_labels, kept)
-        LOGGER.info("featurized split=%s kept=%d / %d (subsampled from %d) in %.1fs",
-                    split, len(graphs), len(smiles_list), n_total, time.time() - t0)
+        LOGGER.info(
+            "featurized split=%s kept=%d / %d (subsampled from %d) in %.1fs",
+            split,
+            len(graphs),
+            len(smiles_list),
+            n_total,
+            time.time() - t0,
+        )
     LOGGER.info("TOTAL featurization: %.1fs", time.time() - t_fe0)
 
     # Cache the featurization fingerprints to disk so re-runs are faster.
@@ -417,7 +479,8 @@ def main() -> int:
                 },
                 "featurize_total_sec": time.time() - t_fe0,
             },
-            f, indent=2,
+            f,
+            indent=2,
         )
 
     t_wall0 = time.time()
@@ -427,8 +490,12 @@ def main() -> int:
 
     for seed in args.seeds:
         if time.time() - t_wall0 > args.time_budget_s:
-            LOGGER.warning("time budget %.0fs exceeded, stopping early at %d/%d",
-                           args.time_budget_s, n_completed, n_total)
+            LOGGER.warning(
+                "time budget %.0fs exceeded, stopping early at %d/%d",
+                args.time_budget_s,
+                n_completed,
+                n_total,
+            )
             break
         ckpt_path = args.ckpt_dir / f"seed{seed}.pt"
         json_path = args.json_dir / f"seed{seed}.json"
@@ -470,9 +537,15 @@ def main() -> int:
         results[seed] = res
         n_completed += 1
         elapsed_total = time.time() - t_wall0
-        LOGGER.info("[%d/%d] seed=%d status=%s elapsed_total=%.0fs auc_ood_test=%s",
-                    n_completed, n_total, seed, res.get("status"), elapsed_total,
-                    res.get("per_split_auc", {}).get("ood_test"))
+        LOGGER.info(
+            "[%d/%d] seed=%d status=%s elapsed_total=%.0fs auc_ood_test=%s",
+            n_completed,
+            n_total,
+            seed,
+            res.get("status"),
+            elapsed_total,
+            res.get("per_split_auc", {}).get("ood_test"),
+        )
 
     # Aggregate
     per_seed = {}
@@ -495,8 +568,12 @@ def main() -> int:
             }
         else:
             summary_per_split[split] = {
-                "mean_auc": None, "std": None, "n_seeds_ok": 0,
-                "n_seeds_total": len(args.seeds), "best_auc": None, "worst_auc": None,
+                "mean_auc": None,
+                "std": None,
+                "n_seeds_ok": 0,
+                "n_seeds_total": len(args.seeds),
+                "best_auc": None,
+                "worst_auc": None,
             }
 
     for seed in args.seeds:
@@ -584,9 +661,13 @@ def main() -> int:
     with summary_path.open("w") as f:
         json.dump(summary, f, indent=2)
     LOGGER.info("wrote summary to %s", summary_path)
-    LOGGER.info("per_split_summary=%s",
-                {s: v.get("mean_auc") for s, v in summary_per_split.items()})
-    LOGGER.info("n_completed=%d/%d wall=%.0fs", n_completed, n_total, time.time() - t_wall0)
+    LOGGER.info(
+        "per_split_summary=%s",
+        {s: v.get("mean_auc") for s, v in summary_per_split.items()},
+    )
+    LOGGER.info(
+        "n_completed=%d/%d wall=%.0fs", n_completed, n_total, time.time() - t_wall0
+    )
     return 0
 
 

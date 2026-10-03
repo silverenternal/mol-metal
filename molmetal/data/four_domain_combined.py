@@ -71,10 +71,10 @@ if str(PROJECT_ROOT) not in sys.path:
 # ---------------------------------------------------------------------------
 # Domain constants — match TODO-143 §2.5 ordering
 # ---------------------------------------------------------------------------
-DOMAIN_METALCYTOTOX = 0      # MetalCytoToxDB (Ru/Ir/Rh/Os/Re anticancer)
-DOMAIN_DRUGOOD = 1           # DrugOOD native IC50 (ChEMBL_29)
-DOMAIN_NCI60 = 2             # NCI-60 9-cell precious subset
-DOMAIN_BINDINGDB = 3         # BindingDB IC50 (real ~1.07M, fallback 5,258)
+DOMAIN_METALCYTOTOX = 0  # MetalCytoToxDB (Ru/Ir/Rh/Os/Re anticancer)
+DOMAIN_DRUGOOD = 1  # DrugOOD native IC50 (ChEMBL_29)
+DOMAIN_NCI60 = 2  # NCI-60 9-cell precious subset
+DOMAIN_BINDINGDB = 3  # BindingDB IC50 (real ~1.07M, fallback 5,258)
 
 DOMAIN_NAMES = {
     DOMAIN_METALCYTOTOX: "metalcytotox",
@@ -84,12 +84,16 @@ DOMAIN_NAMES = {
 }
 
 # Default paths (override via env MOLMETAL_DATA_DIR or constructor kwargs)
-DEFAULT_DRUGOOD_TRAIN = PROJECT_ROOT / ".data" / "molmetal" / "drugood" / "ic50" / "data" / "train.csv"
+DEFAULT_DRUGOOD_TRAIN = (
+    PROJECT_ROOT / ".data" / "molmetal" / "drugood" / "ic50" / "data" / "train.csv"
+)
 DEFAULT_NCI60_CSV = PROJECT_ROOT / "molmetal" / "data" / "nci60_precious_9cell.csv"
 # BindingDB IC50 — preferred (real ~1.07M rows, symlink to pocket/data/tdc/)
 DEFAULT_BINDINGDB_CSV = PROJECT_ROOT / ".data" / "molmetal" / "bindingdb_ic50.csv"
 # Fallback — local precious-metal subset (5,258 rows, no third-party licensing)
-DEFAULT_BINDINGDB_FALLBACK_CSV = PROJECT_ROOT / "molmetal" / "data" / "protein_metal_binding.csv"
+DEFAULT_BINDINGDB_FALLBACK_CSV = (
+    PROJECT_ROOT / "molmetal" / "data" / "protein_metal_binding.csv"
+)
 
 
 def _resolve_metalcytotox_csv() -> Path:
@@ -106,10 +110,12 @@ def _resolve_metalcytotox_csv() -> Path:
     candidates: List[Path] = []
     if env_root:
         candidates.append(Path(env_root) / "MetalCytoToxDB.csv")
-    candidates.extend([
-        PROJECT_ROOT / ".data" / "molmetal" / "MetalCytoToxDB.csv",
-        Path("/mnt/storage/data/molmetal/MetalCytoToxDB.csv"),
-    ])
+    candidates.extend(
+        [
+            PROJECT_ROOT / ".data" / "molmetal" / "MetalCytoToxDB.csv",
+            Path("/mnt/storage/data/molmetal/MetalCytoToxDB.csv"),
+        ]
+    )
     for c in candidates:
         if c.exists():
             return c
@@ -124,6 +130,7 @@ def _resolve_metalcytotox_csv() -> Path:
 @dataclass
 class _DomainStats:
     """Lightweight stats — exposed by :class:`FourDomainDataset.summary`."""
+
     domain_id: int
     name: str
     n_rows: int
@@ -162,13 +169,15 @@ class _DrugOODRows:
                     continue
                 if y not in (0, 1):
                     continue
-                rows.append((
-                    smi,
-                    y,
-                    int(row.get("assay_id", 0) or 0),
-                    int(row.get("scaffold_split_id", 0) or 0),
-                    int(row.get("size_split_id", 0) or 0),
-                ))
+                rows.append(
+                    (
+                        smi,
+                        y,
+                        int(row.get("assay_id", 0) or 0),
+                        int(row.get("scaffold_split_id", 0) or 0),
+                        int(row.get("size_split_id", 0) or 0),
+                    )
+                )
         self._rows = rows
 
     def __len__(self) -> int:
@@ -426,9 +435,10 @@ class FourDomainItem:
     optional ``aux`` dict carrying domain-specific metadata (metal, cell_line,
     assay_id, etc.).
     """
+
     smiles: str
-    y: object             # float pIC50 or int binary label, depending on domain
-    domain_id: int        # 0/1/2/3
+    y: object  # float pIC50 or int binary label, depending on domain
+    domain_id: int  # 0/1/2/3
     aux: Dict[str, object] = field(default_factory=dict)
 
 
@@ -565,7 +575,9 @@ class FourDomainDataset:
         if idx < 0:
             idx += len(self)
         if not 0 <= idx < len(self):
-            raise IndexError(f"FourDomainDataset index {idx} out of range [0, {len(self)})")
+            raise IndexError(
+                f"FourDomainDataset index {idx} out of range [0, {len(self)})"
+            )
         cum = 0
         for d in range(4):
             cap = self._caps[d]
@@ -645,7 +657,9 @@ class FourDomainDataset:
                     "domain_id": d,
                     "name": DOMAIN_NAMES[d],
                     "n_rows_full": self._lens[d],
-                    "n_rows_effective": (self._lens[d] if self._caps[d] is None else self._caps[d]),
+                    "n_rows_effective": (
+                        self._lens[d] if self._caps[d] is None else self._caps[d]
+                    ),
                     "cap": self._caps[d],
                 }
                 for d in range(4)

@@ -5,6 +5,7 @@ CPU-friendly slice of the data using the chemprop v2 multi-task
 backbone.  Not a training run — just a sanity gate that gradients flow
 and the loss is finite.
 """
+
 from __future__ import annotations
 
 import json
@@ -42,8 +43,14 @@ def _coord_label_for(metal_name: str) -> int:
     target here (the smoke test does not require a calibrated coord head).
     """
     table = {
-        "Pt": 3, "Pd": 3, "Au": 3,                       # square_planar
-        "Ru": 4, "Ir": 4, "Os": 4, "Rh": 4, "Re": 4,   # octahedral
+        "Pt": 3,
+        "Pd": 3,
+        "Au": 3,  # square_planar
+        "Ru": 4,
+        "Ir": 4,
+        "Os": 4,
+        "Rh": 4,
+        "Re": 4,  # octahedral
     }
     return table.get(metal_name, 3)
 
@@ -80,9 +87,7 @@ def main() -> dict:
 
     # Map metal names → ids inside the model's supported tuple.
     metal_to_id = {m: i for i, m in enumerate(SUPPORTED_METALS)}
-    metal_ids = torch.tensor(
-        [metal_to_id[m] for m in metals_list], dtype=torch.long
-    )
+    metal_ids = torch.tensor([metal_to_id[m] for m in metals_list], dtype=torch.long)
 
     # Build y_true dict (one tensor per metal, all rows; missing metals get 0s).
     y_true: dict[str, torch.Tensor] = {}
@@ -112,8 +117,9 @@ def main() -> dict:
     )
 
     # Tiny backbone so the smoke runs in seconds on CPU.
-    print("[smoke] instantiating ChempropV2MTModel (hidden_dim=64, depth=2) …",
-          flush=True)
+    print(
+        "[smoke] instantiating ChempropV2MTModel (hidden_dim=64, depth=2) …", flush=True
+    )
     model = ChempropV2MTModel(
         hidden_dim=64,
         depth=2,
@@ -143,10 +149,15 @@ def main() -> dict:
     smoke_works = bool(loss_finite and not np.isnan(loss_value))
 
     print(f"[smoke] loss = {loss_value:.6f}  finite={loss_finite}", flush=True)
-    print(f"[smoke] per-metal loss: " +
-          ", ".join(f"{k}={v.item():.4f}" for k, v in info.items()
-                    if k.startswith("loss_") and k != "loss_total"),
-          flush=True)
+    print(
+        f"[smoke] per-metal loss: "
+        + ", ".join(
+            f"{k}={v.item():.4f}"
+            for k, v in info.items()
+            if k.startswith("loss_") and k != "loss_total"
+        ),
+        flush=True,
+    )
     print(f"[smoke] step_time = {step_time_ms:.1f} ms", flush=True)
 
     # Checkpoint.

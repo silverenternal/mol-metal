@@ -9,6 +9,7 @@ Canonical entry points:
     - :func:`to_mcts_kwargs`            — config -> kwargs for
       :class:`MCTSProofSearch`
 """
+
 from molmetal_lam.configs.sota_aligned import (
     DockingConfig,
     LambdaSpecificConfig,

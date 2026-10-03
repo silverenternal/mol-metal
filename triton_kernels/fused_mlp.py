@@ -87,7 +87,7 @@ def _silu_fp32(x):
 def _gelu_tanh_fp32(x):
     """Tanh-approximation GELU in FP32 (``nn.GELU(approximate='tanh')`` parity)."""
     # 0.5 * x * (1 + tanh(sqrt(2/pi) * (x + 0.044715 * x^3)))
-    kAlpha = 0.7978845608028654   # sqrt(2 / pi)
+    kAlpha = 0.7978845608028654  # sqrt(2 / pi)
     kBeta = 0.044715
     inner = kAlpha * (x + kBeta * x * x * x)
     # tanh approximation: 1 - 2/(e^{2x}+1) is fine for FP32 here.
@@ -178,16 +178,21 @@ _MLP_ACT_PROJ_CONFIGS = _mlp_act_proj_configs()
 @triton.jit
 def _fused_mlp_act_proj_kernel(
     # Pointers
-    pre_ptr,      # (M, H1)  pre-activation of layer 1 (already on HBM)
-    w2_ptr,       # (H1, H2) weight of second Linear (transposed convention)
-    b2_ptr,       # (H2,)    bias of second Linear   (may be None)
-    y_ptr,        # (M, H2)  output
+    pre_ptr,  # (M, H1)  pre-activation of layer 1 (already on HBM)
+    w2_ptr,  # (H1, H2) weight of second Linear (transposed convention)
+    b2_ptr,  # (H2,)    bias of second Linear   (may be None)
+    y_ptr,  # (M, H2)  output
     # Shape
-    M, H1, H2,
+    M,
+    H1,
+    H2,
     # Strides
-    stride_prem, stride_pren,
-    stride_w2n, stride_w2k,
-    stride_ym, stride_yn,
+    stride_prem,
+    stride_pren,
+    stride_w2n,
+    stride_w2k,
+    stride_ym,
+    stride_yn,
     # Activation: 0 = SiLU, 1 = GELU(tanh)
     ACT: tl.constexpr,
     HAS_B2: tl.constexpr,
@@ -212,10 +217,18 @@ def _fused_mlp_act_proj_kernel(
     mask_n = offs_n < H2
 
     # pre_ptrs: (BLOCK_M, BLOCK_K) over rows of pre.
-    pre_ptrs = pre_ptr + offs_m[:, None] * stride_prem + tl.arange(0, BLOCK_K)[None, :] * stride_pren
+    pre_ptrs = (
+        pre_ptr
+        + offs_m[:, None] * stride_prem
+        + tl.arange(0, BLOCK_K)[None, :] * stride_pren
+    )
     # w2_ptrs: (BLOCK_K, BLOCK_N) — W2 is (H1, H2), so the K-dim stride
     # is along rows of W2.
-    w2_ptrs = w2_ptr + tl.arange(0, BLOCK_K)[:, None] * stride_w2n + offs_n[None, :] * stride_w2k
+    w2_ptrs = (
+        w2_ptr
+        + tl.arange(0, BLOCK_K)[:, None] * stride_w2n
+        + offs_n[None, :] * stride_w2k
+    )
 
     acc = tl.zeros((BLOCK_M, BLOCK_N), dtype=tl.float32)
     for k_start in range(0, tl.cdiv(H1, BLOCK_K)):
@@ -245,7 +258,9 @@ def _fused_mlp_act_proj_kernel(
 
     acc = tl.where(mask_m[:, None] & mask_n[None, :], acc, 0.0)
     y_ptrs = y_ptr + offs_m[:, None] * stride_ym + offs_n[None, :] * stride_yn
-    tl.store(y_ptrs, acc.to(y_ptr.dtype.element_ty), mask=mask_m[:, None] & mask_n[None, :])
+    tl.store(
+        y_ptrs, acc.to(y_ptr.dtype.element_ty), mask=mask_m[:, None] & mask_n[None, :]
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -256,7 +271,6 @@ def _fused_mlp_act_proj_kernel(
 # ``fused_gelu_mlp``) now uses ``torch.matmul`` for the first projection
 # and only the second projection is Triton-fused.
 # ---------------------------------------------------------------------------
-
 
 
 # ---------------------------------------------------------------------------
@@ -312,30 +326,41 @@ _MLP_BWD_CONFIGS = _mlp_backward_configs()
 @triton.jit
 def _fused_mlp_bwd_kernel(
     # Saved from forward
-    x_ptr,        # (M, D)
-    pre_ptr,      # (M, H1)  pre-activation of layer 1
+    x_ptr,  # (M, D)
+    pre_ptr,  # (M, H1)  pre-activation of layer 1
     # Backward input
-    dy_ptr,       # (M, H2)
+    dy_ptr,  # (M, H2)
     # Weights (need them for dx)
-    w1_ptr,       # (H1, D)
-    w2_ptr,       # (H2, H1)
+    w1_ptr,  # (H1, D)
+    w2_ptr,  # (H2, H1)
     # Backward outputs
-    dx_ptr,       # (M, D)
-    dW1_ptr,      # (H1, D)  accumulated atomically
-    dW2_ptr,      # (H2, H1) accumulated atomically
-    db1_ptr,      # (H1,)    accumulated atomically
-    db2_ptr,      # (H2,)    accumulated atomically
+    dx_ptr,  # (M, D)
+    dW1_ptr,  # (H1, D)  accumulated atomically
+    dW2_ptr,  # (H2, H1) accumulated atomically
+    db1_ptr,  # (H1,)    accumulated atomically
+    db2_ptr,  # (H2,)    accumulated atomically
     # Shape
-    M, D, H1, H2,
+    M,
+    D,
+    H1,
+    H2,
     # Strides
-    stride_xm, stride_xd,
-    stride_prem, stride_pren,
-    stride_dym, stride_dyn,
-    stride_dxm, stride_dxd,
-    stride_w1n, stride_w1k,
-    stride_w2n, stride_w2k,
-    stride_dw1n, stride_dw1k,
-    stride_dw2n, stride_dw2k,
+    stride_xm,
+    stride_xd,
+    stride_prem,
+    stride_pren,
+    stride_dym,
+    stride_dyn,
+    stride_dxm,
+    stride_dxd,
+    stride_w1n,
+    stride_w1k,
+    stride_w2n,
+    stride_w2k,
+    stride_dw1n,
+    stride_dw1k,
+    stride_dw2n,
+    stride_dw2k,
     # Constants
     ACT: tl.constexpr,
     BLOCK_M: tl.constexpr,
@@ -425,7 +450,9 @@ def _fused_mlp_bwd_kernel(
     # 4. dW1 += d_pre.T @ x   (BLOCK_N, D)
     # ------------------------------------------------------------------
     # x_ptrs[BLOCK_M, BLOCK_K]   — BLOCK_K chunks over D
-    x_ptrs = x_ptr + offs_m[:, None] * stride_xm + tl.arange(0, BLOCK_K)[None, :] * stride_xd
+    x_ptrs = (
+        x_ptr + offs_m[:, None] * stride_xm + tl.arange(0, BLOCK_K)[None, :] * stride_xd
+    )
     dW1_acc = tl.zeros((BLOCK_N, BLOCK_K), dtype=tl.float32)
     for k_start in range(0, tl.cdiv(D, BLOCK_K)):
         k = k_start * BLOCK_K + tl.arange(0, BLOCK_K)
@@ -470,11 +497,7 @@ def _fused_mlp_bwd_kernel(
         dx_acc = tl.dot(d_pre, tl.trans(w1_blk), acc=dx_acc)
         w1_ptrs += BLOCK_K * stride_w1k
 
-    dx_ptrs = (
-        dx_ptr
-        + offs_m[:, None] * stride_dxm
-        + offs_d[None, :] * stride_dxd
-    )
+    dx_ptrs = dx_ptr + offs_m[:, None] * stride_dxm + offs_d[None, :] * stride_dxd
     tl.store(
         dx_ptrs,
         dx_acc,
@@ -493,21 +516,26 @@ def _fused_mlp_bwd_kernel(
 @triton.jit
 def _fused_mlp_bwd_dW2_kernel(
     # Inputs
-    pre_ptr,      # (M, H1)  pre-activation of layer 1 (to recompute post)
-    dy_ptr,       # (M, H2)
+    pre_ptr,  # (M, H1)  pre-activation of layer 1 (to recompute post)
+    dy_ptr,  # (M, H2)
     # Output
-    dW2_ptr,      # (H2, H1) accumulated atomically
+    dW2_ptr,  # (H2, H1) accumulated atomically
     # Strides
-    stride_prem, stride_pren,
-    stride_dym, stride_dyn,
-    stride_dw2n, stride_dw2k,
+    stride_prem,
+    stride_pren,
+    stride_dym,
+    stride_dyn,
+    stride_dw2n,
+    stride_dw2k,
     # Shape
-    M, H1, H2,
+    M,
+    H1,
+    H2,
     # Constants
     ACT: tl.constexpr,
     BLOCK_M: tl.constexpr,
-    BLOCK_N: tl.constexpr,   # H1 tile
-    BLOCK_K: tl.constexpr,   # H2 tile
+    BLOCK_N: tl.constexpr,  # H1 tile
+    BLOCK_K: tl.constexpr,  # H2 tile
 ):
     pid_n = tl.program_id(axis=0)  # H1 tile
     pid_k = tl.program_id(axis=1)  # H2 tile
@@ -538,11 +566,7 @@ def _fused_mlp_bwd_dW2_kernel(
         )
         acc = tl.dot(tl.trans(post), dy_blk, acc=acc)
 
-    dW2_ptrs = (
-        dW2_ptr
-        + offs_n[:, None] * stride_dw2n
-        + offs_k[None, :] * stride_dw2k
-    )
+    dW2_ptrs = dW2_ptr + offs_n[:, None] * stride_dw2n + offs_k[None, :] * stride_dw2k
     tl.atomic_add(
         dW2_ptrs,
         acc,
@@ -553,10 +577,12 @@ def _fused_mlp_bwd_dW2_kernel(
 @triton.autotune(configs=_MLP_BWD_CONFIGS, key=["M", "H2"])
 @triton.jit
 def _fused_mlp_bwd_db2_kernel(
-    dy_ptr,       # (M, H2)
-    db2_ptr,      # (H2,)
-    stride_dym, stride_dyn,
-    M, H2,
+    dy_ptr,  # (M, H2)
+    db2_ptr,  # (H2,)
+    stride_dym,
+    stride_dyn,
+    M,
+    H2,
     BLOCK_M: tl.constexpr,
     BLOCK_N: tl.constexpr,
 ):
@@ -771,7 +797,11 @@ class _FusedMLPFunction(torch.autograd.Function):
         # dW2 must match w2's (H1, H2) layout:
         #   dW2[i, j] = go[m, j] * post[m, i] summed over m
         # In (H1, H2) layout: ``dW2 = post.T @ go``.
-        post = torch.nn.functional.silu(pre) if act == 0 else torch.nn.functional.gelu(pre, approximate="tanh")
+        post = (
+            torch.nn.functional.silu(pre)
+            if act == 0
+            else torch.nn.functional.gelu(pre, approximate="tanh")
+        )
         dW2 = post.T @ go2  # (H1, H2)
         # Bias grads.
         db1 = d_pre.sum(dim=0) if b1_provided else None

@@ -193,23 +193,16 @@ class TrajectoryCacheEntry:
                 f"config_hash must be non-empty str; got {self.config_hash!r}"
             )
         if not isinstance(self.hp_dict, dict):
-            raise ValueError(
-                f"hp_dict must be dict; got {type(self.hp_dict).__name__}"
-            )
+            raise ValueError(f"hp_dict must be dict; got {type(self.hp_dict).__name__}")
         score = self.final_test_score
         if not isinstance(score, (int, float)):
             raise ValueError(
-                f"final_test_score must be numeric; "
-                f"got {type(score).__name__}"
+                f"final_test_score must be numeric; " f"got {type(score).__name__}"
             )
         if math.isnan(score) or math.isinf(score):
-            raise ValueError(
-                f"final_test_score must be finite; got {score}"
-            )
+            raise ValueError(f"final_test_score must be finite; got {score}")
         if self.rsi_iter < 0:
-            raise ValueError(
-                f"rsi_iter must be >= 0; got {self.rsi_iter}"
-            )
+            raise ValueError(f"rsi_iter must be >= 0; got {self.rsi_iter}")
         if not self.deprecation_date:
             # Default to RSI_SCHEMA_FROZEN + RSI_DEFAULT_DEPRECATION_DAYS.
             # Calendar arithmetic done in ISO-string form to keep the
@@ -226,8 +219,7 @@ class TrajectoryCacheEntry:
             "config_hash": self.config_hash,
             "hp_dict": dict(self.hp_dict),
             "per_epoch_metrics": [
-                {k: float(v) for k, v in ep.items()}
-                for ep in self.per_epoch_metrics
+                {k: float(v) for k, v in ep.items()} for ep in self.per_epoch_metrics
             ],
             "final_test_score": float(self.final_test_score),
             "metal": str(self.metal),
@@ -392,7 +384,7 @@ def _hp_feature_vector(hp_dict: Mapping[str, Any]) -> List[float]:
     multiplicative (lr, hidden, batch_size, weight_decay).
     """
     defaults = {
-        "lr_log": -3.0,        # log10(1e-3)
+        "lr_log": -3.0,  # log10(1e-3)
         "hidden_log": math.log10(128.0),
         "depth": 3.0,
         "dropout": 0.1,
@@ -401,8 +393,12 @@ def _hp_feature_vector(hp_dict: Mapping[str, Any]) -> List[float]:
     }
     out = []
     for key in (
-        "lr_log", "hidden_log", "depth", "dropout",
-        "batch_size_log", "weight_decay_log",
+        "lr_log",
+        "hidden_log",
+        "depth",
+        "dropout",
+        "batch_size_log",
+        "weight_decay_log",
     ):
         if key in hp_dict:
             v = hp_dict[key]
@@ -454,9 +450,7 @@ def _curve_feature_vector(
     return out
 
 
-def _hp_l1_distance(
-    a: Mapping[str, Any], b: Mapping[str, Any]
-) -> float:
+def _hp_l1_distance(a: Mapping[str, Any], b: Mapping[str, Any]) -> float:
     """Cheap HP-space distance (L1 on the 6-D feature vector)."""
     va = _hp_feature_vector(a)
     vb = _hp_feature_vector(b)
@@ -526,7 +520,9 @@ class TrajectoryCacheWriter:
         config_hash: str,
     ) -> Path:
         """Return the absolute on-disk path for a (metal, seed, hash)."""
-        return self.cache_root / str(metal) / f"seed_{int(seed)}" / f"{config_hash}.json"
+        return (
+            self.cache_root / str(metal) / f"seed_{int(seed)}" / f"{config_hash}.json"
+        )
 
     # ------------------------------------------------------------------
     # Write
@@ -783,9 +779,7 @@ class ColdStartSurrogate:
 
         The concatenated vector is the input to the surrogate.
         """
-        return _hp_feature_vector(hp_dict) + _curve_feature_vector(
-            per_epoch_metrics
-        )
+        return _hp_feature_vector(hp_dict) + _curve_feature_vector(per_epoch_metrics)
 
     # ------------------------------------------------------------------
     # Fit / refit
@@ -904,9 +898,7 @@ class ColdStartSurrogate:
             x = x_hp + [0.0] * (self.feature_dim - len(x_hp))
 
         # Per-metal slice (LOO uses the same metal bucket for R²).
-        bucket_idx = [
-            i for i, m in enumerate(self._metal_train) if m == metal
-        ]
+        bucket_idx = [i for i, m in enumerate(self._metal_train) if m == metal]
         n_train = len(bucket_idx)
         if n_train == 0:
             return SurrogateDecision(
@@ -982,20 +974,14 @@ class ColdStartSurrogate:
         """
         if self._sk_model is None:
             return 0.0
-        bucket_idx = [
-            i for i, m in enumerate(self._metal_train) if m == metal
-        ]
+        bucket_idx = [i for i, m in enumerate(self._metal_train) if m == metal]
         if len(bucket_idx) < 2:
             return 0.0
         try:
             import numpy as np  # type: ignore
 
-            Xb = np.asarray(
-                [self._X_train[i] for i in bucket_idx], dtype=float
-            )
-            y = np.asarray(
-                [self._y_train[i] for i in bucket_idx], dtype=float
-            )
+            Xb = np.asarray([self._X_train[i] for i in bucket_idx], dtype=float)
+            y = np.asarray([self._y_train[i] for i in bucket_idx], dtype=float)
             from sklearn.model_selection import LeaveOneOut  # type: ignore
 
             loo = LeaveOneOut()
@@ -1065,17 +1051,11 @@ class EpsilonSchedule:
 
     def __post_init__(self) -> None:
         if not (0.0 <= self.epsilon_high <= 1.0):
-            raise ValueError(
-                f"epsilon_high must be in [0,1]; got {self.epsilon_high}"
-            )
+            raise ValueError(f"epsilon_high must be in [0,1]; got {self.epsilon_high}")
         if not (0.0 <= self.epsilon_low <= 1.0):
-            raise ValueError(
-                f"epsilon_low must be in [0,1]; got {self.epsilon_low}"
-            )
+            raise ValueError(f"epsilon_low must be in [0,1]; got {self.epsilon_low}")
         if self.high_cache < 1:
-            raise ValueError(
-                f"high_cache must be >= 1; got {self.high_cache}"
-            )
+            raise ValueError(f"high_cache must be >= 1; got {self.high_cache}")
         if self.low_cache < self.high_cache:
             raise ValueError(
                 f"low_cache ({self.low_cache}) must be >= high_cache "
@@ -1093,9 +1073,7 @@ class EpsilonSchedule:
         span = self.low_cache - self.high_cache
         delta = n - self.high_cache
         frac = max(0.0, min(1.0, delta / span))
-        return float(
-            self.epsilon_high + frac * (self.epsilon_low - self.epsilon_high)
-        )
+        return float(self.epsilon_high + frac * (self.epsilon_low - self.epsilon_high))
 
 
 class EpsilonGreedyAcquisition:
@@ -1202,9 +1180,7 @@ class EpsilonGreedyAcquisition:
             idx = max(
                 range(len(candidates)),
                 key=lambda i: (
-                    decisions[i].score
-                    if decisions[i].confidence != "low"
-                    else -1e9
+                    decisions[i].score if decisions[i].confidence != "low" else -1e9
                 ),
             )
         return idx, decisions[idx]
@@ -1246,9 +1222,7 @@ class ASHAEarlyStop:
         self.min_epoch = int(min_epoch)
         self.plateau_eps = float(plateau_eps)
 
-    def _median(
-        self, scores: Sequence[float], default: float = 0.5
-    ) -> float:
+    def _median(self, scores: Sequence[float], default: float = 0.5) -> float:
         if not scores:
             return float(default)
         s = sorted(scores)
@@ -1274,10 +1248,7 @@ class ASHAEarlyStop:
         epoch_checked = 0
         if per_epoch_metrics:
             try:
-                epoch_checked = max(
-                    int(ep.get("epoch", 0))
-                    for ep in per_epoch_metrics
-                )
+                epoch_checked = max(int(ep.get("epoch", 0)) for ep in per_epoch_metrics)
             except Exception:
                 epoch_checked = len(per_epoch_metrics)
         else:
@@ -1305,9 +1276,7 @@ class ASHAEarlyStop:
         # Project terminal score from the surrogate using the partial
         # trajectory as evidence.
         hp_dict = (
-            dict(cache_entries_for_metal[0].hp_dict)
-            if cache_entries_for_metal
-            else {}
+            dict(cache_entries_for_metal[0].hp_dict) if cache_entries_for_metal else {}
         )
         decision = surrogate.predict(
             hp_dict=hp_dict,
@@ -1317,11 +1286,7 @@ class ASHAEarlyStop:
 
         # Plateau check — last-vs-previous delta on val_auc.
         last = per_epoch_metrics[-1]
-        prev = (
-            per_epoch_metrics[-2]
-            if len(per_epoch_metrics) >= 2
-            else None
-        )
+        prev = per_epoch_metrics[-2] if len(per_epoch_metrics) >= 2 else None
         last_v = float(last.get("val_auc", float("nan")))
         prev_v = (
             float(prev.get("val_auc", float("nan")))
@@ -1378,9 +1343,7 @@ def _Xb_transpose_row(Xb: List[List[float]], i: int) -> List[float]:
     return Xb[i]
 
 
-def _solve_linear_system(
-    A: List[List[float]], b: List[float]
-) -> List[float]:
+def _solve_linear_system(A: List[List[float]], b: List[float]) -> List[float]:
     """Solve Ax = b via Gaussian elimination with partial pivoting.
 
     Used only by :meth:`ColdStartSurrogate._fit_closed_form`.  The
@@ -1389,9 +1352,7 @@ def _solve_linear_system(
     """
     n = len(A)
     if n != len(b):
-        raise ValueError(
-            f"A and b dimension mismatch: {n} vs {len(b)}"
-        )
+        raise ValueError(f"A and b dimension mismatch: {n} vs {len(b)}")
     # Copy to avoid mutating caller's data.
     M = [row[:] for row in A]
     y = list(b)

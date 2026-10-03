@@ -47,7 +47,9 @@ import torch
 # Path bootstrap
 # ---------------------------------------------------------------------------
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-_REFERENCE_DIR = _PROJECT_ROOT / "molmetal" / "adapters" / "flow_matching_lipman" / "_reference"
+_REFERENCE_DIR = (
+    _PROJECT_ROOT / "molmetal" / "adapters" / "flow_matching_lipman" / "_reference"
+)
 
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
@@ -92,9 +94,9 @@ class TestMinibatchOTTriton:
                 f"[n={n}, d={d}] shape mismatch: got {tuple(out.shape)}, "
                 f"expected ({n},)"
             )
-            assert out.dtype == torch.long, (
-                f"[n={n}, d={d}] dtype mismatch: got {out.dtype}, expected torch.long"
-            )
+            assert (
+                out.dtype == torch.long
+            ), f"[n={n}, d={d}] dtype mismatch: got {out.dtype}, expected torch.long"
             assert torch.equal(out, baseline_idx), (
                 f"[n={n}, d={d}] mini-batch OT coupling diverges from "
                 f"independent PyTorch baseline. "
@@ -160,8 +162,7 @@ class TestMinibatchOTTriton:
         # Module reference.
         ref = pytorch_minibatch_ot_coupling(x0, x1)
         assert torch.equal(out_default, ref), (
-            f"default dispatch output diverges from "
-            f"pytorch_minibatch_ot_coupling()"
+            f"default dispatch output diverges from " f"pytorch_minibatch_ot_coupling()"
         )
         assert torch.equal(out_forced, ref), (
             f"force_pytorch=True output diverges from "
@@ -214,12 +215,11 @@ class TestMinibatchOTTriton:
             idx = pytorch_minibatch_ot_coupling(x0, x1)
             # 1. Index-range validity: every index is in [0, n).
             assert idx.shape == (n,), (
-                f"[n={n}, d={d}] idx shape: got {tuple(idx.shape)}, "
-                f"expected ({n},)"
+                f"[n={n}, d={d}] idx shape: got {tuple(idx.shape)}, " f"expected ({n},)"
             )
-            assert idx.dtype == torch.long, (
-                f"[n={n}, d={d}] idx dtype: got {idx.dtype}, expected torch.long"
-            )
+            assert (
+                idx.dtype == torch.long
+            ), f"[n={n}, d={d}] idx dtype: got {idx.dtype}, expected torch.long"
             assert idx.min().item() >= 0, (
                 f"[n={n}, d={d}] idx has out-of-range negative value: "
                 f"min={idx.min().item()}"
@@ -263,14 +263,18 @@ class TestMinibatchOTConfig:
         try:
             cfg = MinibatchOTTritonConfig.from_env()
             assert cfg.use_fused is False, "default TRITON_USE_FUSED should be False"
-            assert cfg.use_fused_eval is False, "default TRITON_USE_FUSED_EVAL should be False"
-            assert cfg.use_minibatch_ot is False, "default TRITON_MINIBATCH_OT should be False"
-            assert cfg.gate_open() is False, (
-                "default gate should be closed (no TRITON_*=1 in env)"
-            )
-            assert cfg.gate_open(is_eval=True) is False, (
-                "default gate should be closed in eval mode too"
-            )
+            assert (
+                cfg.use_fused_eval is False
+            ), "default TRITON_USE_FUSED_EVAL should be False"
+            assert (
+                cfg.use_minibatch_ot is False
+            ), "default TRITON_MINIBATCH_OT should be False"
+            assert (
+                cfg.gate_open() is False
+            ), "default gate should be closed (no TRITON_*=1 in env)"
+            assert (
+                cfg.gate_open(is_eval=True) is False
+            ), "default gate should be closed in eval mode too"
         finally:
             for k, v in saved.items():
                 os.environ[k] = v
@@ -293,6 +297,6 @@ class TestMinibatchOTConfig:
         assert "supported_d_max" in report
         assert report["supported_n_max"] == 1024
         assert report["supported_d_max"] == 64
-        assert report["gate_open_default"] is False, (
-            "default gate should be closed (no TRITON_*=1 in env)"
-        )
+        assert (
+            report["gate_open_default"] is False
+        ), "default gate should be closed (no TRITON_*=1 in env)"

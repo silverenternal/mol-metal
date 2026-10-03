@@ -104,16 +104,12 @@ def _candidate_paths(pocket_id: str) -> List[Path]:
                 # Prefer the ``_min_0`` minimised pose, then any
                 # ``_pocket10.pdb`` for the same chain. If both empty,
                 # try the next chain.
-                pattern_min = (
-                    f"{pocket_id}_{chain}_rec_*_min_0_pocket10.pdb"
-                )
+                pattern_min = f"{pocket_id}_{chain}_rec_*_min_0_pocket10.pdb"
                 hits = sorted(crossdocked_root.glob(f"*/{pattern_min}"))
                 if hits:
                     candidates.append(hits[0])
                     break
-                pattern_any = (
-                    f"{pocket_id}_{chain}_rec_*_pocket10.pdb"
-                )
+                pattern_any = f"{pocket_id}_{chain}_rec_*_pocket10.pdb"
                 hits = sorted(crossdocked_root.glob(f"*/{pattern_any}"))
                 if hits:
                     candidates.append(hits[0])
@@ -128,13 +124,8 @@ def _candidate_paths(pocket_id: str) -> List[Path]:
 POCKETS: List[PocketSpec] = [
     PocketSpec(
         pocket_id="830c",
-        source_pdb=Path(
-            "/home/hugo/codes/mol-metal/molmetal/data/mmp13_real/830c.pdb"
-        ),
-        metric_path=PROJECT_ROOT
-        / "metrics"
-        / "by_metric"
-        / "vina_score.json",
+        source_pdb=Path("/home/hugo/codes/mol-metal/molmetal/data/mmp13_real/830c.pdb"),
+        metric_path=PROJECT_ROOT / "metrics" / "by_metric" / "vina_score.json",
         notes=(
             "MMP-13 hydroxamate (sulphone hydroxamate RS1). Single-pocket "
             "anchor for WF-30. Already docked successfully in R10 phase-1."
@@ -142,34 +133,22 @@ POCKETS: List[PocketSpec] = [
     ),
     PocketSpec(
         pocket_id="1h36",
-        metric_path=PROJECT_ROOT
-        / "metrics"
-        / "by_metric"
-        / "vina_score_1h36.json",
+        metric_path=PROJECT_ROOT / "metrics" / "by_metric" / "vina_score_1h36.json",
         notes="SQHC_ALIAD (squalene-hopene cyclase) — CrossDocked test_022.",
     ),
     PocketSpec(
         pocket_id="3eml",
-        metric_path=PROJECT_ROOT
-        / "metrics"
-        / "by_metric"
-        / "vina_score_3eml.json",
+        metric_path=PROJECT_ROOT / "metrics" / "by_metric" / "vina_score_3eml.json",
         notes="AA2AR_HUMAN (A2A adenosine receptor TM) — GPCR pocket.",
     ),
     PocketSpec(
         pocket_id="3ny8",
-        metric_path=PROJECT_ROOT
-        / "metrics"
-        / "by_metric"
-        / "vina_score_3ny8.json",
+        metric_path=PROJECT_ROOT / "metrics" / "by_metric" / "vina_score_3ny8.json",
         notes="ADRB2_HUMAN (β2 adrenergic receptor TM) — GPCR pocket.",
     ),
     PocketSpec(
         pocket_id="4aaw",
-        metric_path=PROJECT_ROOT
-        / "metrics"
-        / "by_metric"
-        / "vina_score_4aaw.json",
+        metric_path=PROJECT_ROOT / "metrics" / "by_metric" / "vina_score_4aaw.json",
         notes=(
             "GLMU_STRPN test_001 (glutamate mutarotase, R84 ligand). "
             "CrossDocked standard test entry."
@@ -177,10 +156,7 @@ POCKETS: List[PocketSpec] = [
     ),
     PocketSpec(
         pocket_id="4rlu",
-        metric_path=PROJECT_ROOT
-        / "metrics"
-        / "by_metric"
-        / "vina_score_4rlu.json",
+        metric_path=PROJECT_ROOT / "metrics" / "by_metric" / "vina_score_4rlu.json",
         notes=(
             "Trypsin HCC inhibitor (HCC pocket). Sourced from "
             "pdbbindpp-2020 (full receptor protein, not the pocket cut). "
@@ -336,9 +312,7 @@ def prepare_one(
         cmd.extend(["--delete_residues", spec.delete_residues])
     record["command"] = cmd
     try:
-        proc = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=timeout_s
-        )
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_s)
     except subprocess.TimeoutExpired as exc:
         record["error"] = f"TimeoutExpired after {timeout_s}s"
         record["stderr_tail"] = (exc.stderr or "")[-1500:]
@@ -355,7 +329,9 @@ def prepare_one(
         record["elapsed_seconds"] = time.monotonic() - started
         return record
     if not pdbqt_path.exists() or pdbqt_path.stat().st_size == 0:
-        record["error"] = "mk_prepare_receptor.py reported success but receptor.pdbqt is missing or empty."
+        record["error"] = (
+            "mk_prepare_receptor.py reported success but receptor.pdbqt is missing or empty."
+        )
         record["elapsed_seconds"] = time.monotonic() - started
         return record
     record["pdbqt_path"] = str(pdbqt_path)
@@ -468,9 +444,7 @@ def _render_markdown(
     lines.append("")
     lines.append("## Metric-measured pocket provenance")
     lines.append("")
-    lines.append(
-        "| pocket | metric file | metric status | mean kcal/mol | n samples |"
-    )
+    lines.append("| pocket | metric file | metric status | mean kcal/mol | n samples |")
     lines.append("|---|---|---|---:|---:|")
     for pocket_id, payload in provenance.items():
         lines.append(
@@ -500,8 +474,7 @@ def _render_markdown(
             lines.append(f"- **returncode**: `{record['returncode']}`")
         if record.get("command"):
             lines.append(
-                "- **command**: "
-                + " ".join(str(part) for part in record["command"])
+                "- **command**: " + " ".join(str(part) for part in record["command"])
             )
         lines.append("")
     lines.append("## Reproducibility")

@@ -44,6 +44,7 @@ CLI flag
                               verdict to ``--out-default``.
 * ``--json`` — emit JSON to stdout (no on-disk write).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -223,8 +224,14 @@ def _item_to_scaffold(item: Dict[str, Any]) -> CpuClosureScaffold:
     else:
         primary_keys = [k for k in item if k.startswith("script_")]
         script = ", ".join(item[k] for k in sorted(primary_keys))
-    gate = float(item.get("gate_target", item.get("gate_target_3way",
-            item.get("gate_target_per_domain", float("nan")))))
+    gate = float(
+        item.get(
+            "gate_target",
+            item.get(
+                "gate_target_3way", item.get("gate_target_per_domain", float("nan"))
+            ),
+        )
+    )
     return CpuClosureScaffold(
         todo_id=item["todo_id"],
         title=item["title"],
@@ -246,11 +253,8 @@ def summarize_scaffolds() -> Dict[str, Any]:
     """Return a dict-of-dicts summary suitable for JSON serialization."""
     out: Dict[str, Any] = {
         "n_items": len(R20_PLAN_ITEMS),
-        "n_existing_partial": sum(
-            1 for x in R20_PLAN_ITEMS if x["existing_partial"]
-        ),
-        "items": [dataclasses.asdict(_item_to_scaffold(x))
-                  for x in R20_PLAN_ITEMS],
+        "n_existing_partial": sum(1 for x in R20_PLAN_ITEMS if x["existing_partial"]),
+        "items": [dataclasses.asdict(_item_to_scaffold(x)) for x in R20_PLAN_ITEMS],
         "wall_seconds": 0.0,  # populated by run_self_test
     }
     return out
@@ -281,11 +285,13 @@ def run_self_test() -> Dict[str, Any]:
             if not path.exists():
                 all_scripts_on_disk = False
                 break
-        summary["items_status"].append({
-            "todo_id": item["todo_id"],
-            "all_scripts_on_disk": all_scripts_on_disk,
-            "n_scripts": len(script_keys),
-        })
+        summary["items_status"].append(
+            {
+                "todo_id": item["todo_id"],
+                "all_scripts_on_disk": all_scripts_on_disk,
+                "n_scripts": len(script_keys),
+            }
+        )
     summary["wall_seconds"] = round(time.time() - t0, 6)
     return summary
 
@@ -295,19 +301,25 @@ def _build_argparser() -> argparse.ArgumentParser:
         description="Wf-381-A5 R20 plan CPU closure SCAFFOLD self-test",
     )
     parser.add_argument(
-        "--self-test", action="store_true", default=True,
+        "--self-test",
+        action="store_true",
+        default=True,
         help="Run the 4-item CPU SCAFFOLD self-test (default).",
     )
     parser.add_argument(
-        "--json", action="store_true",
+        "--json",
+        action="store_true",
         help="Emit JSON to stdout (no on-disk write).",
     )
     parser.add_argument(
-        "--out", type=str, default=None,
+        "--out",
+        type=str,
+        default=None,
         help="If set, write JSON verdict to this path.",
     )
     parser.add_argument(
-        "--list", action="store_true",
+        "--list",
+        action="store_true",
         help="Print the 4 R20 plan items as a one-line summary per item.",
     )
     return parser

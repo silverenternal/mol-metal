@@ -110,27 +110,27 @@ __all__ = [
 # ``Chem.SanitizeMol`` and is the one that must be respected for
 # ``sanitized=True`` to come back.
 _COVALENT_VALENCE: Dict[int, int] = {
-    1: 1,    # H
-    6: 4,    # C
-    7: 3,    # N (sp3-amine; aromatic N counts as 3 with one double)
-    8: 2,    # O
-    9: 1,    # F
-    15: 3,   # P
-    16: 2,   # S
-    17: 1,   # Cl
-    34: 2,   # Se
-    35: 1,   # Br
-    53: 1,   # I
+    1: 1,  # H
+    6: 4,  # C
+    7: 3,  # N (sp3-amine; aromatic N counts as 3 with one double)
+    8: 2,  # O
+    9: 1,  # F
+    15: 3,  # P
+    16: 2,  # S
+    17: 1,  # Cl
+    34: 2,  # Se
+    35: 1,  # Br
+    53: 1,  # I
     # Metals — coordination number (max sum of bond orders).
-    78: 4,   # Pt_II  (Pt_IV = 6; we use the conservative Pt_II cap)
-    44: 6,   # Ru_II  (octahedral)
-    30: 4,   # Zn_II
-    77: 6,   # Ir_III
-    29: 4,   # Cu_II
-    79: 4,   # Au_III
-    46: 4,   # Pd_II
-    26: 4,   # Fe_II (default; rare in SBDD ligand sets)
-    28: 4,   # Ni_II
+    78: 4,  # Pt_II  (Pt_IV = 6; we use the conservative Pt_II cap)
+    44: 6,  # Ru_II  (octahedral)
+    30: 4,  # Zn_II
+    77: 6,  # Ir_III
+    29: 4,  # Cu_II
+    79: 4,  # Au_III
+    46: 4,  # Pd_II
+    26: 4,  # Fe_II (default; rare in SBDD ligand sets)
+    28: 4,  # Ni_II
 }
 
 
@@ -242,7 +242,9 @@ class YuelBondBondDecoder:
         valence_cap: Optional[Dict[int, int]] = None,
     ) -> None:
         self._decoder = YuelBondDecoder(
-            head=head, hidden_dim=hidden_dim, n_layers=n_layers,
+            head=head,
+            hidden_dim=hidden_dim,
+            n_layers=n_layers,
         )
         if head is not None:
             self.distance_cutoff = float(head.cutoff)
@@ -270,7 +272,8 @@ class YuelBondBondDecoder:
             return self._empty_decoded(cloud, yres, reason="empty_or_failed")
         # Step 2: valence-aware greedy selector.
         bond_orders, dative_bonds, n_kept, n_overvalent = self._select_bonds(
-            cloud, yres,
+            cloud,
+            yres,
         )
         # Step 3: assemble into an RDKit Mol.
         decoded = self._assemble_mol(cloud, bond_orders, dative_bonds)
@@ -335,9 +338,7 @@ class YuelBondBondDecoder:
         pairs.sort(key=lambda t: t[0], reverse=True)
         # Per-atom remaining valence.
         z_list = cloud.atomic_numbers.tolist()
-        remaining = [
-            int(self.valence_cap.get(int(z), 4)) for z in z_list
-        ]
+        remaining = [int(self.valence_cap.get(int(z), 4)) for z in z_list]
         bond_orders: List[Tuple[int, int, int]] = []
         dative_bonds: List[Tuple[int, int]] = []
         n_overvalent = 0
@@ -384,6 +385,7 @@ class YuelBondBondDecoder:
         the production decoder bit-exactly.
         """
         from rdkit import Chem
+
         rw = Chem.RWMol()
         for z in cloud.atomic_numbers.tolist():
             try:
@@ -443,6 +445,7 @@ class YuelBondBondDecoder:
         N=1, or all pairs > cutoff).
         """
         from rdkit import Chem
+
         rw = Chem.RWMol()
         for z in cloud.atomic_numbers.tolist():
             try:
@@ -479,9 +482,8 @@ class YuelBondBondDecoder:
         return z in (7, 8, 15, 16, 34)
 
     def _is_dative_pair(self, z_i: int, z_j: int) -> bool:
-        return (
-            (self._is_metal(z_i) and self._is_donor(z_j))
-            or (self._is_metal(z_j) and self._is_donor(z_i))
+        return (self._is_metal(z_i) and self._is_donor(z_j)) or (
+            self._is_metal(z_j) and self._is_donor(z_i)
         )
 
 
@@ -533,19 +535,28 @@ def build_synthetic_pt_click_clouds(
     clouds: List[AtomCloud] = []
     for _ in range(n_clouds):
         # Canonical square-planar Pt_II layout: 4 donors at 2.05 Å.
-        positions = torch.tensor([
-            [0.0, 0.0, 0.0],            # Pt
-            [2.05, 0.0, 0.0],            # Cl  (right)
-            [-2.05, 0.0, 0.0],           # Cl  (left)
-            [0.0, 2.05, 0.0],            # NH3 (top)
-            [0.0, -2.05, 0.0],           # NH3 (bottom)
-        ], dtype=torch.float32)
+        positions = torch.tensor(
+            [
+                [0.0, 0.0, 0.0],  # Pt
+                [2.05, 0.0, 0.0],  # Cl  (right)
+                [-2.05, 0.0, 0.0],  # Cl  (left)
+                [0.0, 2.05, 0.0],  # NH3 (top)
+                [0.0, -2.05, 0.0],  # NH3 (bottom)
+            ],
+            dtype=torch.float32,
+        )
         atomic_numbers = torch.tensor([78, 17, 17, 7, 7], dtype=torch.long)
         # Apply jitter (positions only — atomic numbers unchanged).
         if jitter > 0.0:
-            positions = positions + torch.randn(
-                positions.shape, generator=g, dtype=torch.float32,
-            ) * jitter
+            positions = (
+                positions
+                + torch.randn(
+                    positions.shape,
+                    generator=g,
+                    dtype=torch.float32,
+                )
+                * jitter
+            )
         # Optional: drop / extend atoms if n_atoms_per_cloud != 5.
         if n_atoms_per_cloud < 5:
             positions = positions[:n_atoms_per_cloud]
@@ -553,16 +564,22 @@ def build_synthetic_pt_click_clouds(
         elif n_atoms_per_cloud > 5:
             # Pad with extra C / H donors to grow the cloud.
             extra_z = [6] * (n_atoms_per_cloud - 5)
-            extra_p = torch.randn(
-                (n_atoms_per_cloud - 5, 3),
-                generator=g,
-                dtype=torch.float32,
-            ) * 1.5
+            extra_p = (
+                torch.randn(
+                    (n_atoms_per_cloud - 5, 3),
+                    generator=g,
+                    dtype=torch.float32,
+                )
+                * 1.5
+            )
             positions = torch.cat([positions, extra_p], dim=0)
-            atomic_numbers = torch.cat([
-                atomic_numbers,
-                torch.tensor(extra_z, dtype=torch.long),
-            ], dim=0)
+            atomic_numbers = torch.cat(
+                [
+                    atomic_numbers,
+                    torch.tensor(extra_z, dtype=torch.long),
+                ],
+                dim=0,
+            )
         clouds.append(AtomCloud(positions=positions, atomic_numbers=atomic_numbers))
     return clouds
 

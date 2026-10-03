@@ -50,6 +50,7 @@ from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset
 # None` for graceful fallback.  On ImportError the class still loads.
 try:  # pragma: no cover - depends on optional dep
     import lightgbm as _lgb
+
     _LIGHTGBM_AVAILABLE = True
     _LIGHTGBM_VERSION = getattr(_lgb, "__version__", "unknown")
 except ImportError:  # pragma: no cover
@@ -76,14 +77,14 @@ LIGHTGBM_PARAMS: Dict[str, object] = {
     "max_depth": 6,
     "learning_rate": 0.05,
     "subsample": 0.8,
-    "subsample_freq": 1,           # LightGBM requires explicit freq for bagging
+    "subsample_freq": 1,  # LightGBM requires explicit freq for bagging
     "colsample_bytree": 0.8,
     "objective": "binary",
     "metric": "auc",
     "n_jobs": -1,
     "random_state": 42,
     "verbose": -1,
-    "min_child_samples": 5,        # keep small so the imbalanced positives still fire
+    "min_child_samples": 5,  # keep small so the imbalanced positives still fire
 }
 
 RANDOM_SEED = 42

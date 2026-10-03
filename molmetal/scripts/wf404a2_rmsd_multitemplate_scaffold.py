@@ -105,6 +105,7 @@ Usage
     python molmetal/scripts/wf404a2_rmsd_multitemplate_scaffold.py \\
         --top-k -1
 """
+
 from __future__ import annotations
 
 import argparse
@@ -461,8 +462,8 @@ import tempfile as _wf_a5_a5_tempfile
 
 _REAL_BACKEND_REQUIRED_BINARIES = (
     "mk_prepare_ligand.py",  # meeko
-    "vina",                    # AutoDock Vina
-    "gbsa",                    # MM-GBSA scorer (or gnina as fallback)
+    "vina",  # AutoDock Vina
+    "gbsa",  # MM-GBSA scorer (or gnina as fallback)
 )
 
 
@@ -523,10 +524,10 @@ def _real_backend_rmsd_mmgbsa_grid(
     # with their ligand SMILES via the bench_multitemplate_mm_gbsa
     # public API (TODO-207 cross-wires real ligands per pocket).
     SMILES = [
-        "N[Pt](N)(N)N",                 # cisplatin
-        "C/C=N\\O",                       # acetaldoxime (E)
-        "CC(=O)O",                       # acetic acid
-        "Oc1ccccc1O",                    # catechol
+        "N[Pt](N)(N)N",  # cisplatin
+        "C/C=N\\O",  # acetaldoxime (E)
+        "CC(=O)O",  # acetic acid
+        "Oc1ccccc1O",  # catechol
         "O=C(/C=C/c1ccccc1)Oc2ccccc2",  # trans-chalcone acetate
     ]
     with _wf_a5_a5_tempfile.TemporaryDirectory(prefix="wf_a5_a5_real_") as tmp:
@@ -550,7 +551,9 @@ def _real_backend_rmsd_mmgbsa_grid(
                 # 1. meeko: SMILES -> PDBQT ligand
                 meeko_rc = _wf_a5_a5_subprocess.run(
                     [meeko_bin, "--smi", smi, "--out", pdbqt_path],
-                    capture_output=True, text=True, timeout=30,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
                 ).returncode
                 if meeko_rc != 0 or not os.path.exists(pdbqt_path):
                     # Defensive: meeko failure -> raise so caller falls back.
@@ -562,9 +565,18 @@ def _real_backend_rmsd_mmgbsa_grid(
                 out_pdbqt = os.path.join(tmp, f"docked_t{t}_p{p}.pdbqt")
                 log_path = os.path.join(tmp, f"vina_log_t{t}_p{p}.txt")
                 vina_rc = _wf_a5_a5_subprocess.run(
-                    [vina_bin, "--config", conf_path,
-                     "--out", out_pdbqt, "--log", log_path],
-                    capture_output=True, text=True, timeout=30,
+                    [
+                        vina_bin,
+                        "--config",
+                        conf_path,
+                        "--out",
+                        out_pdbqt,
+                        "--log",
+                        log_path,
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
                 ).returncode
                 # Vina fails on /dev/null receptor (expected); use
                 # pose-seed-derived RMSD surrogate as deterministic
@@ -580,7 +592,9 @@ def _real_backend_rmsd_mmgbsa_grid(
                 # 3. GBSA: pose -> kcal/mol (or use gnina rescore if present).
                 gbsa_rc = _wf_a5_a5_subprocess.run(
                     [gbsa_bin, "--in", out_pdbqt],
-                    capture_output=True, text=True, timeout=30,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
                 ).returncode
                 # GBSA deterministic anchor via Wf-380-A5 _synthetic_mmgbsa_kcal.
                 mmgbsa_grid[t, p] = _synthetic_mmgbsa_kcal(
@@ -643,7 +657,12 @@ def mm_gbsa_rescore_top_k(
     best_template_idx, best_pose_idx = np.unravel_index(flat_idx, top_k_mmgbsa.shape)
     best_rmsd_angstrom = float(top_k_rmsds[best_template_idx, best_pose_idx])
     best_mmgbsa_kcal = float(top_k_mmgbsa[best_template_idx, best_pose_idx])
-    return int(best_template_idx), int(best_pose_idx), best_rmsd_angstrom, best_mmgbsa_kcal
+    return (
+        int(best_template_idx),
+        int(best_pose_idx),
+        best_rmsd_angstrom,
+        best_mmgbsa_kcal,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -698,9 +717,7 @@ def per_pocket_multitemplate_bench(
             raise
     # Per-template top-K selection.
     effective_top_k = (
-        rmsd_grid.shape[1]
-        if top_k < 0
-        else min(top_k, rmsd_grid.shape[1])
+        rmsd_grid.shape[1] if top_k < 0 else min(top_k, rmsd_grid.shape[1])
     )
     top_k_rmsds, top_k_mmgbsa = _select_top_k_per_template(
         rmsd_grid=rmsd_grid,

@@ -46,6 +46,7 @@ Honest framing (party-twenty-spirit §3.5)
     - HONEST_NEGATIVE_R2_DEEP if all 3 cohorts stay R² ≤ 0.
 * No GPU launches; no torch autograd; CPU-only Ridge baseline.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -59,6 +60,7 @@ import numpy as np
 
 try:
     from sklearn.linear_model import Ridge  # type: ignore
+
     _HAS_SKLEARN = True
 except Exception:  # pragma: no cover — defensive
     _HAS_SKLEARN = False
@@ -70,6 +72,7 @@ from molmetal.scripts.wf331r5_r2_w2_chemprop import (
     PLATINAI_32D_COLUMNS,
     METALCYTOTOX_TARGET_COLUMN,
 )
+
 # Reuse the per-cohort config selector from Wf-380-A2 (size-based tier).
 from molmetal.scripts.wf380a2_m2_r2_per_cohort import (
     select_features as wf380a2_select_features,
@@ -77,6 +80,7 @@ from molmetal.scripts.wf380a2_m2_r2_per_cohort import (
     ridge_r2_eval as wf380a2_ridge_r2_eval,
     ridge_r2_cv as wf380a2_ridge_r2_cv,
 )
+
 # Reuse the Wf-335-M2 baseline R² anchors (HONEST_NEGATIVE_R2_DEEP on platinai + hilbert, CEILING_BREAK on metalcytotox_combined).
 from molmetal.scripts.wf331r5_r2_w2_chemprop import (
     WF325A_BASELINE_R2,
@@ -88,9 +92,9 @@ from molmetal.scripts.wf331r5_r2_w2_chemprop import (
 # ---------------------------------------------------------------------------
 # Per `molmetal/reports/wf335m2_r2/result.json` (2026-09-29):
 WF335M2_BEST_R2: Dict[str, float] = {
-    "platinai_4cell":        -0.12505399802714393,  # 12d_baseline, seed=0
-    "hilbert":               -0.1268,               # placeholder, overridden below
-    "metalcytotox_combined":  0.22268113216745766,  # CEILING_BREAK
+    "platinai_4cell": -0.12505399802714393,  # 12d_baseline, seed=0
+    "hilbert": -0.1268,  # placeholder, overridden below
+    "metalcytotox_combined": 0.22268113216745766,  # CEILING_BREAK
 }
 
 # Per Wf-369-A2 verdict + `molmetal/reports/wf335m2_r2/result.json` per_axis.csv:
@@ -132,7 +136,9 @@ def _resolve_repo_path(path: str) -> str:
 # ---------------------------------------------------------------------------
 # Section 2: Real-cohort loaders (per TODO-201 §3.2 — wraps Wf-331-R5 load_cohort)
 # ---------------------------------------------------------------------------
-def load_platinai_4cell(max_samples: int = 200) -> Tuple[np.ndarray, np.ndarray, List[str], str]:
+def load_platinai_4cell(
+    max_samples: int = 200,
+) -> Tuple[np.ndarray, np.ndarray, List[str], str]:
     """Load REAL platinai_4cell cohort (n=200).
 
     Per TODO-201 §3.2 — 4-cell pIC50 mean target (mcf7 + a549 + a2780 + a2780cis).
@@ -140,11 +146,15 @@ def load_platinai_4cell(max_samples: int = 200) -> Tuple[np.ndarray, np.ndarray,
     features (the canonical Wf-331-R5 32-d matrix).
     """
     return _wf331r5_load_cohort(
-        cohort="platinai_4cell", max_samples=max_samples, seed=0,
+        cohort="platinai_4cell",
+        max_samples=max_samples,
+        seed=0,
     )
 
 
-def load_hilbert(max_samples: int = 200) -> Tuple[np.ndarray, np.ndarray, List[str], str]:
+def load_hilbert(
+    max_samples: int = 200,
+) -> Tuple[np.ndarray, np.ndarray, List[str], str]:
     """Load REAL hilbert cohort (n=200).
 
     Per TODO-201 §3.2 — same SMILES as platinai_4cell but different
@@ -152,11 +162,15 @@ def load_hilbert(max_samples: int = 200) -> Tuple[np.ndarray, np.ndarray, List[s
     (X, y, smiles_list, target_name) where X is 32-d RDKit extended.
     """
     return _wf331r5_load_cohort(
-        cohort="hilbert", max_samples=max_samples, seed=0,
+        cohort="hilbert",
+        max_samples=max_samples,
+        seed=0,
     )
 
 
-def load_metalcytotox_combined(max_samples: int = 2000) -> Tuple[np.ndarray, np.ndarray, List[str], str]:
+def load_metalcytotox_combined(
+    max_samples: int = 2000,
+) -> Tuple[np.ndarray, np.ndarray, List[str], str]:
     """Load REAL metalcytotox_combined cohort (n=2000).
 
     Per TODO-201 §3.2 — 5-metal MetalCytoToxDB activity target
@@ -166,7 +180,9 @@ def load_metalcytotox_combined(max_samples: int = 2000) -> Tuple[np.ndarray, np.
     since n=2000 maps to n_gte_1000 tier, where Ridge alpha=0.1).
     """
     return _wf331r5_load_cohort(
-        cohort="metalcytotox_combined", max_samples=max_samples, seed=0,
+        cohort="metalcytotox_combined",
+        max_samples=max_samples,
+        seed=0,
     )
 
 
@@ -260,9 +276,12 @@ def train_eval_per_cohort(
     X_per, cfg = apply_per_cohort_config(X, cohort_size)
     # Multi-seed K-fold CV (Wf-335-M2 protocol).
     cv = wf380a2_ridge_r2_cv(
-        X=X_per, y=y,
-        n_splits=n_folds, n_seeds=n_seeds,
-        alpha=cfg["alpha"], seed_offset=0,
+        X=X_per,
+        y=y,
+        n_splits=n_folds,
+        n_seeds=n_seeds,
+        alpha=cfg["alpha"],
+        seed_offset=0,
     )
     r2_mean = float(cv["r2_mean"])
     r2_std = float(cv["r2_std"])
@@ -275,8 +294,7 @@ def train_eval_per_cohort(
         baseline_cohort = "metalcytotox_combined"
     baseline_r2 = float(WF335M2_BEST_R2.get(baseline_cohort, float("nan")))
     lift_vs_baseline = (
-        r2_mean - baseline_r2
-        if np.isfinite(baseline_r2) else float("nan")
+        r2_mean - baseline_r2 if np.isfinite(baseline_r2) else float("nan")
     )
     # Per-cohort verdict.
     if not np.isfinite(r2_mean):
@@ -303,8 +321,12 @@ def train_eval_per_cohort(
         "lift_vs_baseline": lift_vs_baseline,
         "verdict": verdict,
         "target_name": target_name,
-        "epochs_recorded": int(epochs),  # Ridge is closed-form; recorded for schema parity.
-        "wass_w_recorded": float(wass_w),  # Per-cohort config does NOT use W₂; recorded for schema parity.
+        "epochs_recorded": int(
+            epochs
+        ),  # Ridge is closed-form; recorded for schema parity.
+        "wass_w_recorded": float(
+            wass_w
+        ),  # Per-cohort config does NOT use W₂; recorded for schema parity.
         "n_features_available": int(cfg.get("n_features_available", 0)),
         "n_samples": int(cohort_size),
         "smiles_count": len(smiles_list),
@@ -323,25 +345,22 @@ def aggregate_per_cohort_r2(results_per_cohort: List[Dict[str, Any]]) -> Dict[st
     per the Wf-369-A2 verdict taxonomy.
     """
     finite_r2 = [
-        r["r2_mean"] for r in results_per_cohort
+        r["r2_mean"]
+        for r in results_per_cohort
         if np.isfinite(r.get("r2_mean", float("nan")))
     ]
     n_above_zero = sum(1 for r in finite_r2 if r > 0.0)
     n_ceiling_break = sum(
-        1 for r in results_per_cohort
-        if r.get("verdict") == "CEILING_BREAK"
+        1 for r in results_per_cohort if r.get("verdict") == "CEILING_BREAK"
     )
     n_weak_recovery = sum(
-        1 for r in results_per_cohort
+        1
+        for r in results_per_cohort
         if r.get("verdict") in ("WEAK_RECOVERY", "MODERATE_RECOVERY", "CEILING_BREAK")
     )
     n_total = len(results_per_cohort)
-    mean_r2 = (
-        float(np.mean(finite_r2)) if finite_r2 else float("nan")
-    )
-    std_r2 = (
-        float(np.std(finite_r2)) if finite_r2 else float("nan")
-    )
+    mean_r2 = float(np.mean(finite_r2)) if finite_r2 else float("nan")
+    std_r2 = float(np.std(finite_r2)) if finite_r2 else float("nan")
     if n_ceiling_break >= 2:
         aggregate_status = "CEILING_BREAK_MAJORITY"
     elif n_ceiling_break >= 1:
@@ -365,8 +384,8 @@ def aggregate_per_cohort_r2(results_per_cohort: List[Dict[str, Any]]) -> Dict[st
 # Section 6: Main entry point — full Wf-388-A1 evaluation
 # ---------------------------------------------------------------------------
 COHORT_REGISTRY: Dict[str, Any] = {
-    "platinai_4cell":        load_platinai_4cell,
-    "hilbert":               load_hilbert,
+    "platinai_4cell": load_platinai_4cell,
+    "hilbert": load_hilbert,
     "metalcytotox_combined": load_metalcytotox_combined,
 }
 
@@ -410,14 +429,18 @@ def run_wf388a1(
     per_cohort: List[Dict[str, Any]] = []
     for cohort in cohorts:
         if cohort not in COHORT_REGISTRY:
-            print(f"Wf-388-A1: WARNING — cohort={cohort!r} not in {sorted(COHORT_REGISTRY.keys())}; skipping")
+            print(
+                f"Wf-388-A1: WARNING — cohort={cohort!r} not in {sorted(COHORT_REGISTRY.keys())}; skipping"
+            )
             continue
         t0 = time.time()
         cohort_data = COHORT_REGISTRY[cohort]()
         result = train_eval_per_cohort(
             cohort_data=cohort_data,
-            n_seeds=n_seeds, n_folds=n_folds,
-            wass_w=wass_w, epochs=epochs,
+            n_seeds=n_seeds,
+            n_folds=n_folds,
+            wass_w=wass_w,
+            epochs=epochs,
         )
         result["cohort"] = cohort
         result["elapsed_sec"] = float(time.time() - t0)
@@ -506,8 +529,10 @@ def run_wf388a1(
     }
     with open(out_path_abs, "w", encoding="utf-8") as f:
         json.dump(final, f, indent=2, sort_keys=False)
-    print(f"Wf-388-A1: n_cohorts={final['n_cohorts_tested']} "
-          f"CV={n_seeds}x{n_folds} alpha=per_cohort")
+    print(
+        f"Wf-388-A1: n_cohorts={final['n_cohorts_tested']} "
+        f"CV={n_seeds}x{n_folds} alpha=per_cohort"
+    )
     for c in per_cohort:
         print(
             f"\n  cohort={c['cohort']:>22s}  n={c['cohort_size']:>5d}  "
@@ -531,15 +556,20 @@ def run_wf388a1(
 
 def _main(argv: Optional[List[str]] = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
-    p.add_argument("--out-path", default="molmetal/reports/wf388a1_m2_per_cohort_real/result.json")
+    p.add_argument(
+        "--out-path", default="molmetal/reports/wf388a1_m2_per_cohort_real/result.json"
+    )
     p.add_argument("--cohorts", nargs="+", default=None)
     p.add_argument("--n-seeds", type=int, default=5)
     p.add_argument("--n-folds", type=int, default=5)
     p.add_argument("--wass-w", type=float, default=0.05)
     p.add_argument("--epochs", type=int, default=30)
     p.add_argument("--config-path", default="molmetal/configs/m2_r2_per_cohort.yaml")
-    p.add_argument("--smoke", action="store_true",
-                   help="Smoke mode: smaller CV (2 seeds × 3 folds) for fast verification")
+    p.add_argument(
+        "--smoke",
+        action="store_true",
+        help="Smoke mode: smaller CV (2 seeds × 3 folds) for fast verification",
+    )
     args = p.parse_args(argv)
     cohorts_arg = args.cohorts
     if cohorts_arg is not None and len(cohorts_arg) == 1 and "," in cohorts_arg[0]:
@@ -551,7 +581,10 @@ def _main(argv: Optional[List[str]] = None) -> int:
         n_folds = 3
         print("Wf-388-A1: --smoke mode (2 seeds × 3 folds, faster)")
     out_path = args.out_path
-    if args.smoke and args.out_path == "molmetal/reports/wf388a1_m2_per_cohort_real/result.json":
+    if (
+        args.smoke
+        and args.out_path == "molmetal/reports/wf388a1_m2_per_cohort_real/result.json"
+    ):
         out_path = "molmetal/reports/wf388a1_m2_per_cohort_real_smoke/result.json"
     run_wf388a1(
         out_path=out_path,

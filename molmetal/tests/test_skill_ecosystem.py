@@ -17,6 +17,7 @@ Run via::
     cd /home/hugo/codes/mol-metal
     uv run --no-sync python -m pytest molmetal/tests/test_skill_ecosystem.py -v
 """
+
 from __future__ import annotations
 
 import json
@@ -34,7 +35,9 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SKILLS_ROOT = REPO_ROOT / ".claude" / "skills"
 VERIFY_SCRIPT = REPO_ROOT / "molmetal" / "scripts" / "verify_skill_ecosystem.py"
-REPORT_PATH = REPO_ROOT / "molmetal" / "reports" / "wf_skill_ecosystem" / "verification.json"
+REPORT_PATH = (
+    REPO_ROOT / "molmetal" / "reports" / "wf_skill_ecosystem" / "verification.json"
+)
 
 EXPECTED_SKILL_NAMES = {
     "mol-metal-anticancer",
@@ -107,7 +110,9 @@ def _load_report() -> Dict:
 def test_skill_count_is_exactly_8():
     """The project must ship exactly 8 skills (the R18 ship gate)."""
     skills = _skill_paths()
-    assert len(skills) == 8, f"expected 8 skills, found {len(skills)}: {[p.parent.name for p in skills]}"
+    assert (
+        len(skills) == 8
+    ), f"expected 8 skills, found {len(skills)}: {[p.parent.name for p in skills]}"
 
 
 # ===========================================================================
@@ -122,7 +127,9 @@ def test_skill_frontmatter_complete():
         fm_text, _ = _split_frontmatter(text)
         fm = _parse_frontmatter(fm_text)
         assert fm.get("name"), f"{path.parent.name}: missing frontmatter 'name'"
-        assert fm.get("description"), f"{path.parent.name}: missing frontmatter 'description'"
+        assert fm.get(
+            "description"
+        ), f"{path.parent.name}: missing frontmatter 'description'"
 
 
 # ===========================================================================
@@ -158,7 +165,11 @@ def test_skill_r18_reference_present():
     mech_id = re.compile(r"\bM(?:22|2[3-9]|3[0-9]|4[0-4])\b")
     for name in EXPECTED_SKILL_NAMES:
         body = _skill_body(name)
-        ok = bool(r18_heading.search(body)) or bool(r18_any.search(body)) or bool(mech_id.search(body))
+        ok = (
+            bool(r18_heading.search(body))
+            or bool(r18_any.search(body))
+            or bool(mech_id.search(body))
+        )
         assert ok, f"{name}: missing R18 mechanism cross-reference (Wf-8 ship gate)"
 
 
@@ -183,11 +194,13 @@ def test_skill_mechanism_reference_present():
 def test_skill_worked_example_present():
     """Every skill must include a "Worked example" or "Examples" section."""
     we_pattern = re.compile(r"^##\s+Worked example", re.MULTILINE | re.IGNORECASE)
-    examples_pattern = re.compile(r"^##\s+Examples(\s|$|\.)", re.MULTILINE | re.IGNORECASE)
+    examples_pattern = re.compile(
+        r"^##\s+Examples(\s|$|\.)", re.MULTILINE | re.IGNORECASE
+    )
     for name in EXPECTED_SKILL_NAMES:
         body = _skill_body(name)
-        assert (
-            we_pattern.search(body) or examples_pattern.search(body)
+        assert we_pattern.search(body) or examples_pattern.search(
+            body
         ), f"{name}: missing worked-example section"
 
 
@@ -229,9 +242,9 @@ def test_verification_script_runs_clean():
         f"verification script exit code = {proc.returncode}\n"
         f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
     )
-    assert "8/8 PASS" in proc.stdout, (
-        f"expected '8/8 PASS' in stdout, got:\n{proc.stdout}"
-    )
+    assert (
+        "8/8 PASS" in proc.stdout
+    ), f"expected '8/8 PASS' in stdout, got:\n{proc.stdout}"
 
 
 # ===========================================================================
@@ -291,9 +304,9 @@ def test_verification_report_skill_names_match_canonical_set():
     """No phantom or missing names in the report — must be the canonical 8."""
     report = _load_report()
     actual = set(report["per_skill"].keys())
-    assert actual == EXPECTED_SKILL_NAMES, (
-        f"per_skill keys = {actual}, expected {EXPECTED_SKILL_NAMES}"
-    )
+    assert (
+        actual == EXPECTED_SKILL_NAMES
+    ), f"per_skill keys = {actual}, expected {EXPECTED_SKILL_NAMES}"
 
 
 # ===========================================================================
@@ -342,7 +355,9 @@ def test_skill_has_cross_reference_section():
     for name in EXPECTED_SKILL_NAMES:
         body = _skill_body(name)
         ok = any(p.search(body) for p in patterns)
-        assert ok, f"{name}: missing 'Cross-reference' / 'Related skills' section (mandatory)"
+        assert (
+            ok
+        ), f"{name}: missing 'Cross-reference' / 'Related skills' section (mandatory)"
 
 
 # ===========================================================================
@@ -351,7 +366,11 @@ def test_skill_has_cross_reference_section():
 def test_verification_script_is_substantive():
     """The verification script must be at least 100 LOC (anti-stub guard)."""
     text = VERIFY_SCRIPT.read_text(encoding="utf-8")
-    loc = sum(1 for line in text.splitlines() if line.strip() and not line.strip().startswith("#"))
+    loc = sum(
+        1
+        for line in text.splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    )
     assert loc >= 100, f"verification script too short: {loc} LOC (target ≥ 100)"
 
 

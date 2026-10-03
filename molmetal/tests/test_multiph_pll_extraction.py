@@ -22,6 +22,7 @@ Wf-25 (TODO-83 §L7) — joint R² = -0.443 (numerical instability).
 Wf-37 (TODO-83 §L7) — real pIC50 + bias-column padding + cosine LR
 + gradient clipping + L2 ridge (L7 ship).
 """
+
 from __future__ import annotations
 
 import json
@@ -50,16 +51,19 @@ LOG_PATH = REPORT_DIR / "run.log"
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _import_script():
     """Import the extraction script as a module (catches typos / imports)."""
     sys.path.insert(0, str(_REPO_ROOT / "molmetal/scripts"))
     import extract_multiph_pll_end_to_end as m  # noqa: E402
+
     return m
 
 
 # ---------------------------------------------------------------------------
 # 1. Script + ship sanity
 # ---------------------------------------------------------------------------
+
 
 def test_script_imports_cleanly() -> None:
     """The extraction module imports cleanly (catches typos / syntax errors)."""
@@ -93,6 +97,7 @@ def test_script_constants_present() -> None:
 # ---------------------------------------------------------------------------
 # 2. Normalization (Wf-25 fix #2 — z-score with std floor)
 # ---------------------------------------------------------------------------
+
 
 def test_zscore_fit_transform_basic() -> None:
     """Z-score of a clean 2-D array matches ``sklearn``-style output."""
@@ -130,11 +135,13 @@ def test_zscore_handles_zero_variance_column() -> None:
 def test_zscore_handles_nan_input() -> None:
     """A NaN input is replaced with 0.0 (regression: Wf-25 -9e9 bug)."""
     m = _import_script()
-    X_tr = np.array([
-        [1.0, 2.0, 3.0],
-        [4.0, float("nan"), 6.0],
-        [7.0, 8.0, 9.0],
-    ])
+    X_tr = np.array(
+        [
+            [1.0, 2.0, 3.0],
+            [4.0, float("nan"), 6.0],
+            [7.0, 8.0, 9.0],
+        ]
+    )
     X_te = np.array([[float("inf"), 2.0, 3.0]])
     X_tr_n, X_te_n, _mu, _sigma = m._zscore_fit_transform(X_tr, X_te)
     assert np.isfinite(X_tr_n).all(), "z-score of NaN must be finite"
@@ -155,6 +162,7 @@ def test_zscore_clip_to_finite() -> None:
 # ---------------------------------------------------------------------------
 # 3. Clip + finite check (Wf-25 regression)
 # ---------------------------------------------------------------------------
+
 
 def test_compute_r2_returns_finite_on_extreme_inputs() -> None:
     """R² is finite on extreme inputs (regression: Wf-25 -9e9 bug)."""
@@ -216,6 +224,7 @@ def test_compute_r2_negative_for_poor_predictions() -> None:
 # 4. R² reasonable (Wf-25 fix #1 + #2 + #3 — all three combined)
 # ---------------------------------------------------------------------------
 
+
 def test_hilbert_stable_fits_synthetic_signal() -> None:
     """Hilbert PD with cosine LR + ridge recovers a synthetic signal.
 
@@ -244,7 +253,12 @@ def test_hilbert_stable_fits_synthetic_signal() -> None:
     y_mean = float(np.mean(y_tr))
     y_tr_c = y_tr - y_mean
     best_x, info = m.fit_hilbert_stable(
-        X_tr, y_tr_c, hilbert_dim=d, lr=0.05, epochs=100, seed=0,
+        X_tr,
+        y_tr_c,
+        hilbert_dim=d,
+        lr=0.05,
+        epochs=100,
+        seed=0,
     )
     y_hat = m.predict_hilbert(best_x, X_te, d) + y_mean
     r2 = m._compute_r2(y_te, y_hat)
@@ -273,8 +287,12 @@ def test_hilbert_stable_handles_high_dim_no_divergence() -> None:
     te_idx = list(range(1, n, 2))
     y_mean = float(np.mean(y[tr_idx]))
     best_x, info = m.fit_hilbert_stable(
-        X[tr_idx], y[tr_idx] - y_mean, hilbert_dim=d, lr=0.01,
-        epochs=50, seed=0,
+        X[tr_idx],
+        y[tr_idx] - y_mean,
+        hilbert_dim=d,
+        lr=0.01,
+        epochs=50,
+        seed=0,
     )
     y_hat = m.predict_hilbert(best_x, X[te_idx], d) + y_mean
     r2 = m._compute_r2(y[te_idx], y_hat)
@@ -301,6 +319,7 @@ def test_hilbert_stable_predict_clip_applied() -> None:
 # 5. Feature shapes (multi-PH, 8-d, joined)
 # ---------------------------------------------------------------------------
 
+
 def test_join_to_hilbert_pads_when_aug_smaller() -> None:
     """Join to a Hilbert dim larger than ``aug`` dim pads with zeros."""
     m = _import_script()
@@ -325,9 +344,7 @@ def test_join_to_hilbert_truncates_by_variance() -> None:
     # The kept columns are sorted indices; the column with constant
     # value 1.0 (the bias) should be present in the output (the
     # function force-includes it even though it has zero variance).
-    has_bias = any(
-        np.allclose(X_tr[:, k], 1.0) for k in range(X_tr.shape[1])
-    )
+    has_bias = any(np.allclose(X_tr[:, k], 1.0) for k in range(X_tr.shape[1]))
     assert has_bias, "bias column (constant 1.0) not in kept columns"
 
 
@@ -371,6 +388,7 @@ def test_kfold_indices_total_size() -> None:
 # ---------------------------------------------------------------------------
 # 6. RDKit featurizer
 # ---------------------------------------------------------------------------
+
 
 def test_featurize_8d_returns_eight_floats() -> None:
     """``_featurize_8d`` returns 8 finite floats on a valid SMILES."""
@@ -419,6 +437,7 @@ def test_smiles_to_pocket_cloud_pads_to_max_atoms() -> None:
 # 7. Artefact existence (run.log + extraction_table.md + extraction_bench.json)
 # ---------------------------------------------------------------------------
 
+
 def test_run_log_exists() -> None:
     """``run.log`` exists if the script has been executed."""
     if not LOG_PATH.exists():
@@ -440,18 +459,33 @@ def test_extraction_bench_json_schema() -> None:
     with open(BENCH_PATH) as f:
         bench = json.load(f)
     required = {
-        "schema_version", "tool", "pilot_id",
-        "dataset", "n_samples", "seeds", "n_bins",
-        "hilbert_dim", "lr", "epochs", "n_folds",
-        "per_seed", "aggregate", "wf25_baseline", "wf37_fix",
+        "schema_version",
+        "tool",
+        "pilot_id",
+        "dataset",
+        "n_samples",
+        "seeds",
+        "n_bins",
+        "hilbert_dim",
+        "lr",
+        "epochs",
+        "n_folds",
+        "per_seed",
+        "aggregate",
+        "wf25_baseline",
+        "wf37_fix",
     }
     missing = required - set(bench.keys())
     assert not missing, f"missing keys: {sorted(missing)}"
     # Aggregate has the per-seed roll-up keys.
     agg_required = {
-        "n_seeds", "r2_mean_of_means", "r2_mean_std",
-        "r2_min_of_mins", "wall_s_mean_of_means",
-        "n_target_total", "finite_features_all_seeds",
+        "n_seeds",
+        "r2_mean_of_means",
+        "r2_mean_std",
+        "r2_min_of_mins",
+        "wall_s_mean_of_means",
+        "n_target_total",
+        "finite_features_all_seeds",
     }
     missing_agg = agg_required - set(bench["aggregate"].keys())
     assert not missing_agg, f"missing aggregate keys: {sorted(missing_agg)}"
@@ -479,9 +513,7 @@ def test_extraction_bench_finite_features_all_seeds() -> None:
     with open(BENCH_PATH) as f:
         bench = json.load(f)
     for s in bench["per_seed"]:
-        assert s["finite_features"] is True, (
-            f"seed {s['seed']} has non-finite features"
-        )
+        assert s["finite_features"] is True, f"seed {s['seed']} has non-finite features"
 
 
 def test_extraction_bench_r2_above_wf25_baseline() -> None:

@@ -38,6 +38,7 @@ Usage
 
     .venv/bin/python molmetal/scripts/wf222_sbdd_click_blocks_smoke.py
 """
+
 from __future__ import annotations
 
 import json
@@ -82,6 +83,7 @@ def _run_flowr_smoke() -> dict:
         CLICK_BUILDING_BLOCKS,
         wrap_with_click_blocks,
     )
+
     adapter = FLOWRReferenceAdapter()
     adapter.setup(device="cpu")
     wrapped = wrap_with_click_blocks(adapter)
@@ -91,7 +93,7 @@ def _run_flowr_smoke() -> dict:
     mols = wrapped.generate(_tiny_pocket(), cfg)
     dt = time.time() - t0
 
-    click_mols = [m for m in mols[cfg.n_samples:] if m.smiles]
+    click_mols = [m for m in mols[cfg.n_samples :] if m.smiles]
     click_smiles = {m.smiles for m in click_mols}
     return {
         "adapter": "FLOWRReferenceAdapter",
@@ -113,6 +115,7 @@ def _run_softmol_smoke() -> dict:
         CLICK_BUILDING_BLOCKS,
         wrap_with_click_blocks,
     )
+
     adapter = SoftMolAdapter()
     adapter.setup(device="cpu")  # enters fallback mode without upstream
     wrapped = wrap_with_click_blocks(adapter)
@@ -167,6 +170,7 @@ def _run_passthrough_smoke() -> dict:
     from molmetal.molmetal_lam.sbdd_env.click_building_blocks import (
         wrap_with_click_blocks,
     )
+
     adapter = FLOWRReferenceAdapter()
     adapter.setup(device="cpu")
     raw_output = adapter.generate(_tiny_pocket(), GenerationConfig(n_samples=2))
@@ -175,9 +179,11 @@ def _run_passthrough_smoke() -> dict:
     # Compare heavy-atom skeletons (RDKit canonical, Hs removed) so the
     # check is robust to different RDKit embed conventions.
     from rdkit import Chem as _Chem
+
     def _heavy_smi(m):
         c = _Chem.RemoveHs(_Chem.MolFromSmiles(m.smiles))
         return _Chem.MolToSmiles(c) if c is not None else m.smiles
+
     raw_smiles = [_heavy_smi(m) for m in raw_output]
     wrapped_smiles = [_heavy_smi(m) for m in wrapped_output]
     return {

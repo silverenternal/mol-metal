@@ -52,7 +52,9 @@ def _python_with_pybtex() -> str | None:
             try:
                 r = subprocess.run(
                     [str(c), "-c", "import pybtex; print(pybtex.__version__)"],
-                    capture_output=True, text=True, timeout=10,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
                 )
                 if r.returncode == 0:
                     return str(c)
@@ -80,7 +82,9 @@ def test_pybtex_compile_cli_roundtrip(tmp_path: Path) -> None:
     # 1a. happy path: real bib → real bbl
     result = subprocess.run(
         [python, str(WRAPPER), "--bib", str(BIB_FILE), "--out", str(out_bbl)],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     assert result.returncode == 0, (
         f"wrapper exit {result.returncode}: stdout={result.stdout!r} "
@@ -89,32 +93,36 @@ def test_pybtex_compile_cli_roundtrip(tmp_path: Path) -> None:
     assert out_bbl.exists(), "wrapper did not produce .bbl"
     bbl_text = out_bbl.read_text(encoding="utf-8")
     assert len(bbl_text) > 100, f".bbl too small ({len(bbl_text)} bytes)"
-    assert "@article" in bbl_text or "@misc" in bbl_text, (
-        "expected .bbl to contain at least one BibTeX entry"
-    )
+    assert (
+        "@article" in bbl_text or "@misc" in bbl_text
+    ), "expected .bbl to contain at least one BibTeX entry"
 
     # 1b. --version reports pybtex version
     ver_result = subprocess.run(
         [python, str(WRAPPER), "--version"],
-        capture_output=True, text=True, timeout=10,
+        capture_output=True,
+        text=True,
+        timeout=10,
     )
     assert ver_result.returncode == 0
     assert "pybtex-compile" in ver_result.stdout
-    assert re.search(r"pybtex \d+\.\d+", ver_result.stdout), (
-        f"expected pybtex version in stdout, got: {ver_result.stdout!r}"
-    )
+    assert re.search(
+        r"pybtex \d+\.\d+", ver_result.stdout
+    ), f"expected pybtex version in stdout, got: {ver_result.stdout!r}"
 
     # 1c. missing bib file → exit 1 with stderr error
     err_result = subprocess.run(
         [python, str(WRAPPER), "--bib", "/nonexistent.bib", "--out", str(out_bbl)],
-        capture_output=True, text=True, timeout=10,
+        capture_output=True,
+        text=True,
+        timeout=10,
     )
-    assert err_result.returncode == 1, (
-        f"expected exit 1 for missing bib, got {err_result.returncode}"
-    )
-    assert "not found" in err_result.stderr.lower(), (
-        f"expected 'not found' in stderr, got: {err_result.stderr!r}"
-    )
+    assert (
+        err_result.returncode == 1
+    ), f"expected exit 1 for missing bib, got {err_result.returncode}"
+    assert (
+        "not found" in err_result.stderr.lower()
+    ), f"expected 'not found' in stderr, got: {err_result.stderr!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -122,9 +130,7 @@ def test_pybtex_compile_cli_roundtrip(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-_BIB_ENTRY_RE = re.compile(
-    r"@\w+\s*\{\s*([^,\s]+)\s*,", re.MULTILINE
-)
+_BIB_ENTRY_RE = re.compile(r"@\w+\s*\{\s*([^,\s]+)\s*,", re.MULTILINE)
 
 
 def test_references_bib_format() -> None:
@@ -133,9 +139,9 @@ def test_references_bib_format() -> None:
 
     bib_text = BIB_FILE.read_text(encoding="utf-8")
     entries = _BIB_ENTRY_RE.findall(bib_text)
-    assert len(entries) >= 6, (
-        f"expected ≥6 BibTeX entries, found {len(entries)}: {entries!r}"
-    )
+    assert (
+        len(entries) >= 6
+    ), f"expected ≥6 BibTeX entries, found {len(entries)}: {entries!r}"
 
     # All keys unique (no duplicate citation keys)
     assert len(entries) == len(set(entries)), (
@@ -146,7 +152,9 @@ def test_references_bib_format() -> None:
     # Every entry must have at least one author, title, and year field.
     # Quick heuristic: split into per-entry blocks and check each.
     entry_blocks = re.findall(
-        r"@\w+\s*\{[^@]+?\n\}", bib_text, re.DOTALL,
+        r"@\w+\s*\{[^@]+?\n\}",
+        bib_text,
+        re.DOTALL,
     )
     assert len(entry_blocks) >= 6
     for block in entry_blocks:
@@ -155,19 +163,19 @@ def test_references_bib_format() -> None:
         assert "author" in block.lower(), f"missing author in entry: {block[:80]}"
 
     # Wf-351-B2 SHIP-MARKER entry must be present (used by closeout audit)
-    assert "wf351b2_ship2026" in bib_text, (
-        "expected wf351b2_ship2026 ship-marker entry in references.bib"
-    )
+    assert (
+        "wf351b2_ship2026" in bib_text
+    ), "expected wf351b2_ship2026 ship-marker entry in references.bib"
 
     # Better BibTeX config JSON must be valid + citeFormat=bibtex
     assert BTX_CONFIG.exists(), f"Better BibTeX config not found: {BTX_CONFIG}"
     config = json.loads(BTX_CONFIG.read_text(encoding="utf-8"))
-    assert config["citeFormat"] == "bibtex", (
-        f"expected citeFormat='bibtex', got {config['citeFormat']!r}"
-    )
-    assert config["autoExport"] == "idle", (
-        f"expected autoExport='idle', got {config['autoExport']!r}"
-    )
-    assert len(config["extraExtensions"]) >= 1, (
-        "expected ≥1 extraExtensions entry pointing to references.bib"
-    )
+    assert (
+        config["citeFormat"] == "bibtex"
+    ), f"expected citeFormat='bibtex', got {config['citeFormat']!r}"
+    assert (
+        config["autoExport"] == "idle"
+    ), f"expected autoExport='idle', got {config['autoExport']!r}"
+    assert (
+        len(config["extraExtensions"]) >= 1
+    ), "expected ≥1 extraExtensions entry pointing to references.bib"

@@ -78,6 +78,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -154,8 +155,11 @@ DEFAULT_SUMMARY_PATH = (
 # Coord labels: a deterministic per-metal proxy (square_planar for
 # Pt/Ru/Ir/Rh, tetrahedral for Re/Os) — see train_ru_multitask.py.
 COORD_BY_METAL = {
-    "Ru": 3, "Ir": 3, "Rh": 3,
-    "Re": 2, "Os": 3,
+    "Ru": 3,
+    "Ir": 3,
+    "Rh": 3,
+    "Re": 2,
+    "Os": 3,
 }
 
 
@@ -260,7 +264,7 @@ def build_batches(
         rng.shuffle(idx)
     batches: List[Tuple[List[str], torch.Tensor, torch.Tensor]] = []
     for start in range(0, len(idx), batch_size):
-        chunk = idx[start:start + batch_size]
+        chunk = idx[start : start + batch_size]
         smis = [pool[int(i)][0] for i in chunk]
         ys = torch.tensor([pool[int(i)][1] for i in chunk], dtype=torch.long)
         mids = torch.full((len(chunk),), metal_id, dtype=torch.long)
@@ -309,13 +313,14 @@ def eval_split_auc(
     labels: List[int] = []
     model.eval()
     for start in range(0, len(pool), batch_size):
-        chunk = pool[start:start + batch_size]
+        chunk = pool[start : start + batch_size]
         smis = [s for s, _ in chunk]
         ys = torch.tensor([y for _, y in chunk], dtype=torch.long)
         mids = torch.full((len(chunk),), mid, dtype=torch.long).to(device)
         ys = ys.to(device)
         with torch.amp.autocast(
-            device_type="cuda", dtype=torch.bfloat16,
+            device_type="cuda",
+            dtype=torch.bfloat16,
             enabled=device.type == "cuda",
         ):
             out = model(smis, mids)
@@ -391,7 +396,8 @@ def train_one_seed(
 
     # Build the transport-relaxation penalty term.
     relax_term = RelaxedEndpointTerm(
-        lambda_relax=args.lambda_relax, eps=args.eps,
+        lambda_relax=args.lambda_relax,
+        eps=args.eps,
     )
 
     print(
@@ -405,9 +411,7 @@ def train_one_seed(
         lr=args.lr,
         weight_decay=1e-4,
     )
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=args.epochs
-    )
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
     loss_fn = V4MultiTaskLoss(
         n_coord_classes=RECIPE_N_COORD_CLASSES,
         coord_weight=COORD_LOSS_WEIGHT,
@@ -428,8 +432,7 @@ def train_one_seed(
         n_batches = 0
         per_metal_batches = {
             m: build_batches(
-                cap_pool(gather_train_pool(data, m),
-                         args.train_max_per_metal, rng),
+                cap_pool(gather_train_pool(data, m), args.train_max_per_metal, rng),
                 model.metal_id(m),
                 args.batch,
                 rng,
@@ -452,7 +455,8 @@ def train_one_seed(
                 mids_dev = mids.to(device)
                 ys_dev = ys.to(device)
                 with torch.amp.autocast(
-                    device_type="cuda", dtype=torch.bfloat16,
+                    device_type="cuda",
+                    dtype=torch.bfloat16,
                     enabled=device.type == "cuda",
                 ):
                     out = model(smis, mids_dev)
@@ -473,13 +477,13 @@ def train_one_seed(
             # the energies, not on the encoder forward pass).
             if args.lambda_relax > 0.0:
                 energies = compute_per_trajectory_energies(
-                    logits_per_metal, ys_per_metal,
+                    logits_per_metal,
+                    ys_per_metal,
                 )
                 # Use a (B, 1) trajectory so the endpoint slice has
                 # well-defined length B.
-                trajectory = energies.unsqueeze(-1)            # (B, 1)
-                shaping_base = torch.tensor(0.0, device=device,
-                                            dtype=energies.dtype)
+                trajectory = energies.unsqueeze(-1)  # (B, 1)
+                shaping_base = torch.tensor(0.0, device=device, dtype=energies.dtype)
                 augmented = augment_learned_shaping(
                     base_shaping_output=shaping_base,
                     trajectory=trajectory,
@@ -505,15 +509,16 @@ def train_one_seed(
                 a, _ = eval_split_auc(model, data, m, "val", device, args.batch)
                 val_aucs[m] = a
             valid_aucs = [v for v in val_aucs.values() if not np.isnan(v)]
-            mean_val = (
-                float(np.mean(valid_aucs)) if valid_aucs else float("nan")
+            mean_val = float(np.mean(valid_aucs)) if valid_aucs else float("nan")
+            val_history.append(
+                {"epoch": epoch, "mean_val_auc": mean_val, "per_metal": val_aucs}
             )
-            val_history.append({"epoch": epoch, "mean_val_auc": mean_val,
-                                "per_metal": val_aucs})
-            relax_history.append({
-                "epoch": epoch,
-                "mean_relax_penalty": epoch_relax / max(n_batches, 1),
-            })
+            relax_history.append(
+                {
+                    "epoch": epoch,
+                    "mean_relax_penalty": epoch_relax / max(n_batches, 1),
+                }
+            )
             print(
                 f"[train_transport] seed={seed} epoch={epoch:3d} "
                 f"loss={epoch_loss / max(n_batches, 1):.4f} "
@@ -524,8 +529,9 @@ def train_one_seed(
             if not np.isnan(mean_val) and mean_val > best_val_mean:
                 best_val_mean = mean_val
                 best_epoch = epoch
-                best_state = {k: v.detach().cpu().clone()
-                              for k, v in model.state_dict().items()}
+                best_state = {
+                    k: v.detach().cpu().clone() for k, v in model.state_dict().items()
+                }
 
     model.load_state_dict(best_state)
 
@@ -580,11 +586,15 @@ def parse_args(argv: List[str] | None = None) -> argparse.Namespace:
 
     # W2.2-specific Transport flags.
     p.add_argument(
-        "--lambda-relax", type=float, default=RECIPE_LAMBDA_RELAX,
+        "--lambda-relax",
+        type=float,
+        default=RECIPE_LAMBDA_RELAX,
         help="Weight of the soft endpoint KL penalty (W2.2 spec: 1e-3).",
     )
     p.add_argument(
-        "--eps", type=float, default=RECIPE_EPS,
+        "--eps",
+        type=float,
+        default=RECIPE_EPS,
         help="Temperature for the empirical q_T distribution (W2.2 spec: 0.1).",
     )
     return p.parse_args(argv)
@@ -651,8 +661,10 @@ def main(argv: List[str] | None = None) -> int:
                 "state_dict": result["best_state"],
                 "recipe": {
                     "init": "transportrelax",
-                    "epochs": args.epochs, "batch": args.batch,
-                    "lr": args.lr, "hidden": args.hidden,
+                    "epochs": args.epochs,
+                    "batch": args.batch,
+                    "lr": args.lr,
+                    "hidden": args.hidden,
                     "depth": args.depth,
                     "lambda_relax": args.lambda_relax,
                     "eps": args.eps,
@@ -664,9 +676,7 @@ def main(argv: List[str] | None = None) -> int:
     wall = time.time() - t0
     print(f"[train_transport] total wall={wall:.1f}s")
 
-    ru_per_seed = [
-        r["test_auc_per_metal"].get("Ru") for r in seed_results
-    ]
+    ru_per_seed = [r["test_auc_per_metal"].get("Ru") for r in seed_results]
     ru_mean = float(np.nanmean([a for a in ru_per_seed if a is not None]))
     metrics = {
         "recipe": "r18_w2.2_transport_5metal_multitask",
@@ -696,10 +706,7 @@ def main(argv: List[str] | None = None) -> int:
         if isinstance(r, dict) and "best_state" in r:
             r.pop("best_state")
     args.metrics_path.write_text(json.dumps(_to_jsonable(metrics), indent=2))
-    print(
-        f"[train_transport] wrote {args.metrics_path} "
-        f"(Ru mean={ru_mean:.4f})"
-    )
+    print(f"[train_transport] wrote {args.metrics_path} " f"(Ru mean={ru_mean:.4f})")
 
     final_summary = {
         "recipe": "r18_w2.2_transport_5metal_multitask_final_summary",

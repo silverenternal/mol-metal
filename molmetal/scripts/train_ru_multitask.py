@@ -86,6 +86,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -121,42 +122,48 @@ from molmetal.models.v4_multitask_dmpnn import (
 # default ``--init in {tmqm, random}`` keeps the existing behaviour
 # (no R18 adapter wiring).  We import lazily inside ``train_one_seed``
 # so the R17 cold-start path remains unchanged.
-try:                                            # pragma: no cover
+try:  # pragma: no cover
     from molmetal.adapters.se3_sb_integration import (
         SE3SBVelocityField as _SE3SBVelocityField,
     )
-except Exception:                               # pragma: no cover
-    _SE3SBVelocityField = None                  # type: ignore[assignment]
-try:                                            # pragma: no cover
+except Exception:  # pragma: no cover
+    _SE3SBVelocityField = None  # type: ignore[assignment]
+try:  # pragma: no cover
     from molmetal.adapters.transport_relaxation_integration import (
         RelaxedEndpointTerm as _RelaxedEndpointTerm,
     )
-except Exception:                               # pragma: no cover
-    _RelaxedEndpointTerm = None                 # type: ignore[assignment]
-try:                                            # pragma: no cover
+except Exception:  # pragma: no cover
+    _RelaxedEndpointTerm = None  # type: ignore[assignment]
+try:  # pragma: no cover
     from molmetal.adapters.multi_ph_integration import (
         MultiPHPocketFeatures as _MultiPHPocketFeatures,
     )
-except Exception:                               # pragma: no cover
-    _MultiPHPocketFeatures = None               # type: ignore[assignment]
+except Exception:  # pragma: no cover
+    _MultiPHPocketFeatures = None  # type: ignore[assignment]
 
 # --- Recipe constants (frozen by the Stage 1.4 spec) ---
 RECIPE_EPOCHS: int = 100
 RECIPE_BATCH: int = 128
 RECIPE_LR: float = 1e-3
 RECIPE_SEEDS: Tuple[int, ...] = (0, 1, 2)
-RECIPE_HIDDEN: int = 300            # V4MultiTaskDMPNN default
-RECIPE_DEPTH: int = 3               # V4MultiTaskDMPNN default
-RECIPE_EVAL_EVERY: int = 10         # eval cadence (epochs)
+RECIPE_HIDDEN: int = 300  # V4MultiTaskDMPNN default
+RECIPE_DEPTH: int = 3  # V4MultiTaskDMPNN default
+RECIPE_EVAL_EVERY: int = 10  # eval cadence (epochs)
 RECIPE_N_COORD_CLASSES: int = 5
 RECIPE_METAL_EMBED_DIM: int = 64
 RECIPE_DROPOUT: float = 0.2
 
 # --- Output paths (overridable via CLI) ---
-DEFAULT_DATA = PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
-DEFAULT_ENCODER_CKPT = PROJECT_ROOT / "models" / "tmqm_pretrained" / "tmqm_pretrained_encoder.pt"
+DEFAULT_DATA = (
+    PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
+)
+DEFAULT_ENCODER_CKPT = (
+    PROJECT_ROOT / "models" / "tmqm_pretrained" / "tmqm_pretrained_encoder.pt"
+)
 DEFAULT_OUT_DIR = PROJECT_ROOT / ".ckpt"
-DEFAULT_METRICS_PATH = PROJECT_ROOT / "metrics" / "by_metric" / "ru_5metal_multitask.json"
+DEFAULT_METRICS_PATH = (
+    PROJECT_ROOT / "metrics" / "by_metric" / "ru_5metal_multitask.json"
+)
 
 
 # ---------------------------------------------------------------------------
@@ -258,7 +265,7 @@ def freeze_encoder_layers_1_2(model: V4MultiTaskDMPNN) -> Tuple[int, int]:
     """
     n_frozen = n_trainable = 0
     for p in model.encoder.parameters():
-        p.requires_grad_(True)        # default: trainable
+        p.requires_grad_(True)  # default: trainable
     for i in (0, 1):
         for p in model.encoder.dmpnn.gru_updates[i].parameters():
             p.requires_grad_(False)
@@ -290,7 +297,7 @@ def build_batches(
         rng.shuffle(idx)
     batches: List[Tuple[List[str], torch.Tensor, torch.Tensor]] = []
     for start in range(0, len(idx), batch_size):
-        chunk = idx[start:start + batch_size]
+        chunk = idx[start : start + batch_size]
         smis = [pool[int(i)][0] for i in chunk]
         ys = torch.tensor([pool[int(i)][1] for i in chunk], dtype=torch.long)
         mids = torch.full((len(chunk),), metal_id, dtype=torch.long)
@@ -346,13 +353,14 @@ def eval_split_auc(
     labels: List[int] = []
     model.eval()
     for start in range(0, len(pool), batch_size):
-        chunk = pool[start:start + batch_size]
+        chunk = pool[start : start + batch_size]
         smis = [s for s, _ in chunk]
         ys = torch.tensor([y for _, y in chunk], dtype=torch.long)
         mids = torch.full((len(chunk),), mid, dtype=torch.long).to(device)
         ys = ys.to(device)
-        with torch.amp.autocast(device_type="cuda", dtype=torch.bfloat16,
-                                enabled=device.type == "cuda"):
+        with torch.amp.autocast(
+            device_type="cuda", dtype=torch.bfloat16, enabled=device.type == "cuda"
+        ):
             out = model(smis, mids)
         logits = out[metal].float()
         probs = torch.softmax(logits, dim=-1)[:, 1].cpu().numpy()
@@ -403,15 +411,19 @@ def train_one_seed(
                 return torch.zeros_like(x)
 
         r18_components["se3_field"] = _SE3SBVelocityField(
-            base_velocity_net=_StubEGNN(), manifold="SE3",
+            base_velocity_net=_StubEGNN(),
+            manifold="SE3",
         ).to(device)
     elif args.init == "transportrelax" and _RelaxedEndpointTerm is not None:
         r18_components["relax_term"] = _RelaxedEndpointTerm(
-            lambda_relax=1e-3, eps=0.1,
+            lambda_relax=1e-3,
+            eps=0.1,
         )
     elif args.init == "multiph" and _MultiPHPocketFeatures is not None:
         r18_components["mphp"] = _MultiPHPocketFeatures(
-            max_radius=5.0, max_coord=4.0, n_bins=8,
+            max_radius=5.0,
+            max_coord=4.0,
+            n_bins=8,
         ).to(device)
     n_frozen, n_trainable = freeze_encoder_layers_1_2(model)
     print(
@@ -426,9 +438,7 @@ def train_one_seed(
         lr=args.lr,
         weight_decay=1e-4,
     )
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=args.epochs
-    )
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
     loss_fn = V4MultiTaskLoss(
         n_coord_classes=RECIPE_N_COORD_CLASSES,
         coord_weight=COORD_LOSS_WEIGHT,
@@ -439,8 +449,11 @@ def train_one_seed(
     # derive a deterministic label from the metal id to keep the auxiliary
     # head differentiable without leaking labels.
     COORD_BY_METAL = {
-        "Ru": 3, "Ir": 3, "Rh": 3,       # square_planar / octahedral mixed; default square
-        "Re": 2, "Os": 3,
+        "Ru": 3,
+        "Ir": 3,
+        "Rh": 3,  # square_planar / octahedral mixed; default square
+        "Re": 2,
+        "Os": 3,
     }
 
     best_val_mean = -1.0
@@ -479,7 +492,8 @@ def train_one_seed(
                 mids_dev = mids.to(device)
                 ys_dev = ys.to(device)
                 with torch.amp.autocast(
-                    device_type="cuda", dtype=torch.bfloat16,
+                    device_type="cuda",
+                    dtype=torch.bfloat16,
                     enabled=device.type == "cuda",
                 ):
                     out = model(smis, mids_dev)
@@ -502,8 +516,9 @@ def train_one_seed(
                 val_aucs[m] = a
             valid_aucs = [v for v in val_aucs.values() if not np.isnan(v)]
             mean_val = float(np.mean(valid_aucs)) if valid_aucs else float("nan")
-            val_history.append({"epoch": epoch, "mean_val_auc": mean_val,
-                                "per_metal": val_aucs})
+            val_history.append(
+                {"epoch": epoch, "mean_val_auc": mean_val, "per_metal": val_aucs}
+            )
             print(
                 f"[train_ru_multitask] seed={seed} epoch={epoch:3d} "
                 f"loss={epoch_loss / max(n_batches, 1):.4f} "
@@ -513,8 +528,9 @@ def train_one_seed(
             if not np.isnan(mean_val) and mean_val > best_val_mean:
                 best_val_mean = mean_val
                 best_epoch = epoch
-                best_state = {k: v.detach().cpu().clone()
-                              for k, v in model.state_dict().items()}
+                best_state = {
+                    k: v.detach().cpu().clone() for k, v in model.state_dict().items()
+                }
 
     # Load best
     model.load_state_dict(best_state)
@@ -575,7 +591,9 @@ def parse_args(argv: List[str] | None = None) -> argparse.Namespace:
     p.add_argument("--depth", type=int, default=RECIPE_DEPTH)
     p.add_argument("--eval-every", type=int, default=RECIPE_EVAL_EVERY)
     p.add_argument(
-        "--train-max-per-metal", type=int, default=4000,
+        "--train-max-per-metal",
+        type=int,
+        default=4000,
         help="Subsample cap per metal per epoch (0 = full). Default 4000 for wall-time bound.",
     )
     return p.parse_args(argv)
@@ -617,9 +635,12 @@ def main(argv: List[str] | None = None) -> int:
                 "mean_test_auc": result["mean_test_auc"],
                 "state_dict": result["best_state"],
                 "recipe": {
-                    "epochs": args.epochs, "batch": args.batch,
-                    "lr": args.lr, "hidden": args.hidden,
-                    "depth": args.depth, "init": args.init,
+                    "epochs": args.epochs,
+                    "batch": args.batch,
+                    "lr": args.lr,
+                    "hidden": args.hidden,
+                    "depth": args.depth,
+                    "init": args.init,
                     "eval_every": args.eval_every,
                 },
             },
@@ -643,9 +664,7 @@ def main(argv: List[str] | None = None) -> int:
             return [_to_jsonable(v) for v in o]
         return o
 
-    ru_per_seed = [
-        r["test_auc_per_metal"].get("Ru") for r in seed_results
-    ]
+    ru_per_seed = [r["test_auc_per_metal"].get("Ru") for r in seed_results]
     ru_mean = float(np.nanmean([a for a in ru_per_seed if a is not None]))
     metrics = {
         "recipe": "phase_a_stage_1.4_5metal_multitask",
@@ -677,10 +696,7 @@ def main(argv: List[str] | None = None) -> int:
         if isinstance(r, dict) and "best_state" in r:
             r.pop("best_state")
     args.metrics_path.write_text(json.dumps(_to_jsonable(metrics), indent=2))
-    print(
-        f"[train_ru_multitask] wrote {args.metrics_path} "
-        f"(Ru mean={ru_mean:.4f})"
-    )
+    print(f"[train_ru_multitask] wrote {args.metrics_path} " f"(Ru mean={ru_mean:.4f})")
     return 0
 
 

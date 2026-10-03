@@ -45,6 +45,7 @@ Honest framing (party-twenty-spirit §3.5)
   the SCAFFOLD only simulates the expected lift via a closed-form
   linear surrogate anchored on the MEASURED baseline.
 """
+
 from __future__ import annotations
 
 import math
@@ -94,9 +95,9 @@ def test_multi_template_loader() -> None:
       7. Assert all MM-GBSA values are finite floats (no NaN / Inf).
     """
     pockets = list(TEMPLATE_SOURCES.keys())
-    assert len(pockets) == 5, (
-        f"TEMPLATE_SOURCES should expose 5 canonical pockets; got {len(pockets)}"
-    )
+    assert (
+        len(pockets) == 5
+    ), f"TEMPLATE_SOURCES should expose 5 canonical pockets; got {len(pockets)}"
 
     for pocket_id in pockets:
         record: PerPocketMultitemplate = per_pocket_multitemplate_bench(
@@ -121,11 +122,14 @@ def test_multi_template_loader() -> None:
 
         for t_idx, t_rec in enumerate(record.per_template):
             # Template id is non-empty string.
-            assert isinstance(t_rec.template_id, str) and len(t_rec.template_id) > 0, (
-                f"{pocket_id}: template id at index {t_idx} is invalid: {t_rec.template_id!r}"
-            )
+            assert (
+                isinstance(t_rec.template_id, str) and len(t_rec.template_id) > 0
+            ), f"{pocket_id}: template id at index {t_idx} is invalid: {t_rec.template_id!r}"
             # Structural family is non-empty string.
-            assert isinstance(t_rec.structural_family, str) and len(t_rec.structural_family) > 0, (
+            assert (
+                isinstance(t_rec.structural_family, str)
+                and len(t_rec.structural_family) > 0
+            ), (
                 f"{pocket_id}: structural family at index {t_idx} is invalid: "
                 f"{t_rec.structural_family!r}"
             )
@@ -150,9 +154,9 @@ def test_multi_template_loader() -> None:
                 f"{list(t_rec.top_k_rmsds)}"
             )
             # All MM-GBSA values finite.
-            assert np_all_finite(t_rec.top_k_mmgbsa_kcal), (
-                f"{pocket_id}: template[{t_idx}] has non-finite MM-GBSA values"
-            )
+            assert np_all_finite(
+                t_rec.top_k_mmgbsa_kcal
+            ), f"{pocket_id}: template[{t_idx}] has non-finite MM-GBSA values"
 
         # Best RMSD + MM-GBSA at the per-pocket level are non-negative + finite.
         assert record.best_rmsd_angstrom >= 0.0
@@ -228,9 +232,9 @@ def test_mm_gbsa_rescore() -> None:
     assert math.isclose(best_dg, float(top_k_mmgbsa[best_t, best_p]), rel_tol=1e-9)
 
     # MM-GBSA value at the picked cell is the global minimum (no ties expected with surrogate seed).
-    assert best_dg == float(top_k_mmgbsa.min()), (
-        f"picked MM-GBSA {best_dg:.4f} != grid minimum {top_k_mmgbsa.min():.4f}"
-    )
+    assert best_dg == float(
+        top_k_mmgbsa.min()
+    ), f"picked MM-GBSA {best_dg:.4f} != grid minimum {top_k_mmgbsa.min():.4f}"
 
     # The per-template top-K selection preserves the Vina/MM-GBSA ranking
     # invariant: the first (lowest-MMGBSA) cell in each template's top-K
@@ -344,7 +348,11 @@ def test_best_pose_selection() -> None:
     )
     assert summary.aggregate_success_rate_2_5a == 1.0
     # Synthetic surrogate median best RMSD should be in a sensible band.
-    assert 0.0 <= summary.aggregate_median_best_rmsd_angstrom <= RMSD_SOTA_THRESHOLD_ANGSTROM, (
+    assert (
+        0.0
+        <= summary.aggregate_median_best_rmsd_angstrom
+        <= RMSD_SOTA_THRESHOLD_ANGSTROM
+    ), (
         f"aggregate median {summary.aggregate_median_best_rmsd_angstrom:.4f} "
         f"outside SOTA band"
     )

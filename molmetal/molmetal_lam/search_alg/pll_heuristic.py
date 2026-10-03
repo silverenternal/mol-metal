@@ -565,9 +565,7 @@ class PLLHeuristic:
         self._cache[smi] = float(value)
         return float(value)
 
-    def _pll_distance_cached(
-        self, smi: str, state: Any
-    ) -> Optional[float]:
+    def _pll_distance_cached(self, smi: str, state: Any) -> Optional[float]:
         """Compute the L2 distance between ``PLL(state)`` and the cached target.
 
         Returns ``None`` when PLL cannot be evaluated on the candidate

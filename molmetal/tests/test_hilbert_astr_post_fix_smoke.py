@@ -51,9 +51,12 @@ import pytest
 
 _HERE = Path(__file__).resolve().parent
 _REPO_ROOT = _HERE.parent
-while _REPO_ROOT != _REPO_ROOT.parent and not (
-    _REPO_ROOT / "molmetal" / "scripts" / "bench_hilbert_astr_combined_real.py"
-).exists():
+while (
+    _REPO_ROOT != _REPO_ROOT.parent
+    and not (
+        _REPO_ROOT / "molmetal" / "scripts" / "bench_hilbert_astr_combined_real.py"
+    ).exists()
+):
     _REPO_ROOT = _REPO_ROOT.parent
 for _p in (str(_HERE.parent), str(_REPO_ROOT)):
     if _p not in sys.path:
@@ -78,9 +81,9 @@ def test_wf122_p1_l2_lambda_default() -> None:
         n_iters=5,
         seed=0,
     )
-    assert opt.l2_lambda == 0.01, (
-        f"expected l2_lambda=0.01 (Wf-122 P1 default), got {opt.l2_lambda}"
-    )
+    assert (
+        opt.l2_lambda == 0.01
+    ), f"expected l2_lambda=0.01 (Wf-122 P1 default), got {opt.l2_lambda}"
 
 
 # ---------------------------------------------------------------------------
@@ -93,12 +96,12 @@ def test_wf122_p12_scale_guard_active() -> None:
     src = inspect.getsource(LambdaASTSR._score)
     # The guard must reference both the collapse detector and the
     # ``-inf`` return path.
-    assert "collapse_detected" in src, (
-        "Wf-122 P1.2: scale-mismatch guard must call collapse_detected in _score"
-    )
-    assert '"-inf"' in src or "'-inf'" in src, (
-        "Wf-122 P1.2: scale-mismatch guard must return -inf on collapse"
-    )
+    assert (
+        "collapse_detected" in src
+    ), "Wf-122 P1.2: scale-mismatch guard must call collapse_detected in _score"
+    assert (
+        '"-inf"' in src or "'-inf'" in src
+    ), "Wf-122 P1.2: scale-mismatch guard must return -inf on collapse"
 
 
 # ---------------------------------------------------------------------------
@@ -115,9 +118,9 @@ def test_wf122_p13_best_ast_lisp_accessor() -> None:
         early_stop_on_nan=True,
     )
     # Pre-fit: must return "<no_lisp>" per the Wf-122 P1.3 contract.
-    assert reg.best_ast_lisp() == "<no_lisp>", (
-        f"expected '<no_lisp>' pre-fit, got {reg.best_ast_lisp()!r}"
-    )
+    assert (
+        reg.best_ast_lisp() == "<no_lisp>"
+    ), f"expected '<no_lisp>' pre-fit, got {reg.best_ast_lisp()!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -135,11 +138,21 @@ def test_post_fix_per_seed_metrics_keys(post_fix_dir: Path) -> None:
     if not post_fix_dir.exists():
         pytest.fail(f"post-fix dir missing: {post_fix_dir}")
     required = {
-        "cell_line", "n_samples", "n_seeds", "epochs", "hilbert_dim",
-        "astr_population", "astr_depth", "device", "split",
-        "combined_r2_test_mean", "combined_r2_test_std",
-        "hilbert_r2_test_mean", "astr_r2_test_mean",
-        "alpha_chosen_mean", "per_seed",
+        "cell_line",
+        "n_samples",
+        "n_seeds",
+        "epochs",
+        "hilbert_dim",
+        "astr_population",
+        "astr_depth",
+        "device",
+        "split",
+        "combined_r2_test_mean",
+        "combined_r2_test_std",
+        "hilbert_r2_test_mean",
+        "astr_r2_test_mean",
+        "alpha_chosen_mean",
+        "per_seed",
     }
     for cl in ("mcf7", "a549", "a2780", "a2780cis"):
         path = post_fix_dir / cl / "per_seed_metrics.json"
@@ -274,8 +287,7 @@ def test_post_fix_best_ast_lisp_non_collapse(post_fix_dir: Path) -> None:
     if n_total == 0:
         pytest.fail("no per-seed data")
     assert n_signal_driven > 0, (
-        f"expected ≥1 signal-driven best_ast_lisp, got "
-        f"{n_signal_driven}/{n_total}"
+        f"expected ≥1 signal-driven best_ast_lisp, got " f"{n_signal_driven}/{n_total}"
     )
 
 
@@ -289,10 +301,10 @@ def test_post_fix_synthesis_md_pre_post_comparison(post_fix_dir: Path) -> None:
         pytest.fail(f"missing synthesis.md: {syn_path}")
     text = syn_path.read_text(encoding="utf-8")
     # Pre-fix anchor: −1.50 or −1.5030 (the Wf-85 P3 aggregate).
-    assert "−1.50" in text or "-1.50" in text or "−1.5030" in text, (
-        "synthesis.md must reference the pre-fix Wf-85 P3 anchor (−1.50 / −1.5030)"
-    )
+    assert (
+        "−1.50" in text or "-1.50" in text or "−1.5030" in text
+    ), "synthesis.md must reference the pre-fix Wf-85 P3 anchor (−1.50 / −1.5030)"
     # Post-fix anchor must also be present.
-    assert "−5.66" in text or "-5.66" in text or "−5.6625" in text, (
-        "synthesis.md must reference the post-fix Wf-122 P3 aggregate (−5.66)"
-    )
+    assert (
+        "−5.66" in text or "-5.66" in text or "−5.6625" in text
+    ), "synthesis.md must reference the post-fix Wf-122 P3 aggregate (−5.66)"

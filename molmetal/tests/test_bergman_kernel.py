@@ -65,8 +65,7 @@ from molmetal.math_skills import (
 # ---------------------------------------------------------------------------
 
 
-def _occupancy(batch: int, d: int, scale: float = 0.5,
-               seed: int = 0) -> torch.Tensor:
+def _occupancy(batch: int, d: int, scale: float = 0.5, seed: int = 0) -> torch.Tensor:
     """Sample ``batch`` occupancy vectors of dimension ``d``."""
     g = torch.Generator().manual_seed(seed)
     return scale * torch.randn(batch, d, generator=g)
@@ -285,10 +284,10 @@ def test_bergman_kernel_zero_argument_is_one() -> None:
     kern = BergmanKernel(dimension=4, n_eigenfunctions=4)
     dom = BoundedSymmetricDomain(dimension=4)
     occ = _occupancy(batch=3, d=4)
-    z = dom.point(occ)            # (3, 4, 4)
-    z0 = torch.zeros(1, 4, 4)     # (1, 4, 4)
-    K_0w = kern.forward(z0, z)    # (1, 3) — K(0, w) = 1
-    K_z0 = kern.forward(z, z0)    # (3, 1) — K(z, 0) = 1
+    z = dom.point(occ)  # (3, 4, 4)
+    z0 = torch.zeros(1, 4, 4)  # (1, 4, 4)
+    K_0w = kern.forward(z0, z)  # (1, 3) — K(0, w) = 1
+    K_z0 = kern.forward(z, z0)  # (3, 1) — K(z, 0) = 1
     assert torch.allclose(K_0w, torch.ones_like(K_0w), atol=1e-5)
     assert torch.allclose(K_z0, torch.ones_like(K_z0), atol=1e-5)
 
@@ -310,9 +309,9 @@ def test_bergman_kernel_strictly_positive_in_domain() -> None:
     occ = _occupancy(batch=6, d=5)
     z = dom.point(occ)
     # Cross-kernel matrix K(z_i, z_j) for i, j in [0, 6).
-    z_e = z.unsqueeze(-3)              # (6, 1, 5, 5)
-    z_t = z.unsqueeze(0)               # (1, 6, 5, 5)
-    K = kern.forward(z_e, z_t)         # (6, 6)
+    z_e = z.unsqueeze(-3)  # (6, 1, 5, 5)
+    z_t = z.unsqueeze(0)  # (1, 6, 5, 5)
+    K = kern.forward(z_e, z_t)  # (6, 6)
     assert (K > 0.0).all()
     assert torch.isfinite(K).all()
 
@@ -338,7 +337,7 @@ def test_bergman_kernel_positive_definite_gram_matrix() -> None:
     z = dom.point(occ)
     z_e = z.unsqueeze(-3)
     z_t = z.unsqueeze(0)
-    G = kern.forward(z_e, z_t)        # (6, 6)
+    G = kern.forward(z_e, z_t)  # (6, 6)
     # Add a small jitter so eigvalsh is robust even when the kernel is
     # rank-deficient (Nyström truncation).
     G_jit = G + 1e-6 * torch.eye(6)
@@ -455,7 +454,7 @@ def test_bergman_embedding_gradients_flow() -> None:
     """Gradients flow end-to-end through the Bergman-kernel feature map."""
     emb = BergmanKernelEmbedding(hidden_dim=4, dimension=5)
     occ = _occupancy(batch=3, d=5, scale=0.5).requires_grad_(True)
-    feats = emb(occ)                              # (3, 4)
+    feats = emb(occ)  # (3, 4)
     # A simple scalar loss: sum of features.
     loss = feats.sum()
     loss.backward()
@@ -531,8 +530,7 @@ def test_bergman_kernel_module_is_standalone() -> None:
     """Module source has no ``import molmetal.adapters`` /
     ``import molmetal.molmetal_lam`` statements (standalone skeleton contract)."""
     src_path = (
-        Path(__file__).resolve().parent.parent
-        / "math_skills" / "bergman_kernel.py"
+        Path(__file__).resolve().parent.parent / "math_skills" / "bergman_kernel.py"
     )
     source = src_path.read_text()
     # Check for actual import statements, not docstring mentions.
@@ -543,9 +541,9 @@ def test_bergman_kernel_module_is_standalone() -> None:
         "from molmetal.molmetal_lam",
     ]
     for token in forbidden_imports:
-        assert token not in source, (
-            f"bergman_kernel.py must not {token!r}; found in source."
-        )
+        assert (
+            token not in source
+        ), f"bergman_kernel.py must not {token!r}; found in source."
     # The only allowed third-party dependencies are torch + torch.nn.
     assert "import torch" in source
     assert "from torch import Tensor" in source or "torch.Tensor" in source

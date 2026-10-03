@@ -74,14 +74,14 @@ def _check_cuda_pointers(arg_names: dict[str, object]) -> None:
 @triton.autotune(configs=AUTOTUNE_CONFIGS, key=["n_elements"])
 @triton.jit
 def _fused_dropout_residual_kernel(
-    x_ptr,            # *fp   [N]
-    residual_ptr,     # *fp   [N]
-    out_ptr,          # *fp   [N]
-    mask_ptr,         # *u8   [N]
-    p,                # fp
-    n_elements,       # i32
-    seed,             # i64
-    offset,           # i64
+    x_ptr,  # *fp   [N]
+    residual_ptr,  # *fp   [N]
+    out_ptr,  # *fp   [N]
+    mask_ptr,  # *u8   [N]
+    p,  # fp
+    n_elements,  # i32
+    seed,  # i64
+    offset,  # i64
     BLOCK_SIZE: tl.constexpr,
 ):
     pid = tl.program_id(axis=0)
@@ -112,12 +112,12 @@ def _fused_dropout_residual_kernel(
 @triton.autotune(configs=AUTOTUNE_CONFIGS, key=["n_elements"])
 @triton.jit
 def _fused_dropout_residual_bwd_kernel(
-    grad_out_ptr,     # *fp   [N]
-    mask_ptr,         # *u8   [N]
-    grad_x_ptr,       # *fp   [N]
-    grad_res_ptr,     # *fp   [N]
-    p,                # fp
-    n_elements,       # i32
+    grad_out_ptr,  # *fp   [N]
+    mask_ptr,  # *u8   [N]
+    grad_x_ptr,  # *fp   [N]
+    grad_res_ptr,  # *fp   [N]
+    p,  # fp
+    n_elements,  # i32
     BLOCK_SIZE: tl.constexpr,
 ):
     pid = tl.program_id(axis=0)
@@ -176,9 +176,7 @@ class _FusedDropoutResidualFunction(torch.autograd.Function):
         out = torch.empty_like(x_c)
         mask = torch.empty(n_elements, dtype=torch.uint8, device=x_c.device)
 
-        _check_cuda_pointers(
-            {"x": x_c, "residual": res_c, "out": out, "mask": mask}
-        )
+        _check_cuda_pointers({"x": x_c, "residual": res_c, "out": out, "mask": mask})
 
         BLOCK_SIZE = 1024
         grid = (triton.cdiv(n_elements, BLOCK_SIZE),)
@@ -298,7 +296,9 @@ def fused_dropout_residual(
 
     if seed is None:
         seed = int(torch.randint(0, 2**31 - 1, (1,)).item())
-    out = _FusedDropoutResidualFunction.apply(x, residual, float(p), int(seed), int(offset))
+    out = _FusedDropoutResidualFunction.apply(
+        x, residual, float(p), int(seed), int(offset)
+    )
     # We currently drop the mask from the public return type; the
     # autograd path persists it internally.  A zero placeholder keeps
     # the return contract stable for callers that want to know the

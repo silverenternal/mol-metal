@@ -23,6 +23,7 @@ Coverage
 14. ``--skip-install`` never attempts an install
 15. JSON log schema is stable (status / final_path / attempts / wrapper)
 """
+
 from __future__ import annotations
 
 import json
@@ -64,11 +65,7 @@ def fake_vina_binary(tmp_path: Path) -> Path:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir(exist_ok=True)
     p = bin_dir / "vina"
-    p.write_text(
-        "#!/bin/sh\n"
-        "echo 'AutoDock Vina 1.2.7-test' 1>&2\n"
-        "exit 0\n"
-    )
+    p.write_text("#!/bin/sh\n" "echo 'AutoDock Vina 1.2.7-test' 1>&2\n" "exit 0\n")
     p.chmod(0o755)
     return p
 
@@ -317,8 +314,16 @@ def test_install_log_json_schema_is_stable(
     log = install_vina(bin_dir=tmp_path, log_path=tmp_path / "log.json")
     on_disk = json.loads((tmp_path / "log.json").read_text())
     expected_keys = {
-        "captured_at", "bin_dir", "skip_install", "force_reinstall",
-        "probe", "attempts", "final_path", "wrapper", "status", "reason",
+        "captured_at",
+        "bin_dir",
+        "skip_install",
+        "force_reinstall",
+        "probe",
+        "attempts",
+        "final_path",
+        "wrapper",
+        "status",
+        "reason",
     }
     assert set(on_disk.keys()) >= expected_keys
     assert on_disk["status"] == "OK"

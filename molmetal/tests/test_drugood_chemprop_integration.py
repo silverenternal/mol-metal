@@ -103,8 +103,9 @@ def _load_drugood_subset(
         df = df.sample(n=n_max, random_state=0).reset_index(drop=True)
 
     pairs = []
-    for smi, act in zip(df["smiles"].astype(str).tolist(),
-                         df["active"].astype(int).tolist()):
+    for smi, act in zip(
+        df["smiles"].astype(str).tolist(), df["active"].astype(int).tolist()
+    ):
         c = _canon_smiles(smi)
         if c is not None:
             pairs.append((c, act))
@@ -196,14 +197,16 @@ def _score(
     metal_ids = torch.zeros(n, dtype=torch.long, device=device)
     with torch.no_grad():
         for start in range(0, n, batch_size):
-            chunk_idx = indices[start:start + batch_size]
+            chunk_idx = indices[start : start + batch_size]
             bmg = _make_batch(molgraphs, chunk_idx, atom_fdim, bond_fdim, device)
             H_v = model.encoder.message_passing(bmg)
             H = model.encoder.agg(H_v, bmg.batch)
-            e = model.metal_embed(metal_ids[start:start + len(chunk_idx)])
+            e = model.metal_embed(metal_ids[start : start + len(chunk_idx)])
             z = torch.cat([H, e], dim=-1)
             logit_1 = model.metal_heads["Ru"].train_step(z).squeeze(-1)
-            scores[start:start + len(chunk_idx)] = torch.sigmoid(logit_1).cpu().numpy()
+            scores[start : start + len(chunk_idx)] = (
+                torch.sigmoid(logit_1).cpu().numpy()
+            )
     return float(roc_auc_score(y_eval, scores))
 
 
@@ -228,13 +231,13 @@ def test_prereqs_present_and_usable():
     """All hard prerequisites for the integration test must be present."""
     # chemprop.v2 importable — fail loudly if not.
     from chemprop.featurizers import SimpleMoleculeMolGraphFeaturizer  # noqa: F401
-    from chemprop.featurizers.molgraph.cache import MolGraphCache       # noqa: F401
+    from chemprop.featurizers.molgraph.cache import MolGraphCache  # noqa: F401
 
     # DrugOOD loader importable.
-    from molmetal.data.drugood_loader import load_drugood                # noqa: F401
+    from molmetal.data.drugood_loader import load_drugood  # noqa: F401
 
     # ChempropV2MTModel importable.
-    from molmetal.models.chemprop_v2_mt_model import (                  # noqa: F401
+    from molmetal.models.chemprop_v2_mt_model import (  # noqa: F401
         ChempropV2MTLoss,
         ChempropV2MTModel,
     )
@@ -288,10 +291,14 @@ def test_drugood_chemprop_end_to_end_ood_auc_above_random():
     N_TRAIN = 512
     N_TEST = 256
     train_canon, y_train = _load_drugood_subset(
-        subset="lbap_refined_ic50_assay", split="train", n_max=N_TRAIN,
+        subset="lbap_refined_ic50_assay",
+        split="train",
+        n_max=N_TRAIN,
     )
     test_canon, y_test = _load_drugood_subset(
-        subset="lbap_refined_ic50_assay", split="ood_test", n_max=N_TEST,
+        subset="lbap_refined_ic50_assay",
+        split="ood_test",
+        n_max=N_TEST,
     )
     # Validate that we have enough positive + negative samples to score AUC.
     assert y_train.sum() > 0, "DrugOOD train subset has no positives"
@@ -341,7 +348,7 @@ def test_drugood_chemprop_end_to_end_ood_auc_above_random():
     total_loss = 0.0
     n_batches = 0
     for start in range(0, n_train_mg, batch_size):
-        chunk_idx = perm[start:start + batch_size]
+        chunk_idx = perm[start : start + batch_size]
         if len(chunk_idx) < 2:
             continue
         chunk_y = torch.from_numpy(y_train[chunk_idx].astype(np.float32)).to(device)

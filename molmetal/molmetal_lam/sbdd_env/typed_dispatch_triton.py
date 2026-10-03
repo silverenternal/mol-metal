@@ -151,20 +151,56 @@ def _check_cuda_pointers(arg_names: Dict[str, object]) -> None:
 
 #: Pauling electronegativity lookup (subset covering the 5 click rules).
 _ELECTRONEGATIVITY: Dict[str, float] = {
-    "H": 2.20, "C": 2.55, "N": 3.04, "O": 3.44, "F": 3.98,
-    "P": 2.19, "S": 2.58, "Cl": 3.16, "Br": 2.96, "I": 2.66,
-    "B": 2.04, "Cu": 1.90, "Pt": 2.28, "Ru": 2.20, "Ir": 2.20,
-    "Pd": 2.20, "Ni": 1.91, "Zn": 1.65,
+    "H": 2.20,
+    "C": 2.55,
+    "N": 3.04,
+    "O": 3.44,
+    "F": 3.98,
+    "P": 2.19,
+    "S": 2.58,
+    "Cl": 3.16,
+    "Br": 2.96,
+    "I": 2.66,
+    "B": 2.04,
+    "Cu": 1.90,
+    "Pt": 2.28,
+    "Ru": 2.20,
+    "Ir": 2.20,
+    "Pd": 2.20,
+    "Ni": 1.91,
+    "Zn": 1.65,
 }
 
 #: Atomic numbers that count as transition metals for the click-chem
 #: "is_metal" flag.
-_METAL_NUMBERS = frozenset({
-    22, 24, 25, 26, 27, 28, 29,  # Ti..Cu (subset)
-    40, 42, 44, 45, 46, 47, 48,  # Zr..Cd
-    72, 74, 76, 77, 78, 79, 80,  # Hf..Hg
-    28, 46, 78,                   # Ni, Pd, Pt (click-catalysis relevant)
-})
+_METAL_NUMBERS = frozenset(
+    {
+        22,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,  # Ti..Cu (subset)
+        40,
+        42,
+        44,
+        45,
+        46,
+        47,
+        48,  # Zr..Cd
+        72,
+        74,
+        76,
+        77,
+        78,
+        79,
+        80,  # Hf..Hg
+        28,
+        46,
+        78,  # Ni, Pd, Pt (click-catalysis relevant)
+    }
+)
 
 #: Atomic numbers for halides.
 _HALIDE_NUMBERS = frozenset({9, 17, 35, 53})
@@ -211,7 +247,7 @@ def encode_atom(atom) -> torch.Tensor:
 
     # Chirality
     chi = atom.GetChiralTag()
-    if int(chi) == 1:    # CHI_TETRAHEDRAL_CCW = R
+    if int(chi) == 1:  # CHI_TETRAHEDRAL_CCW = R
         feats[12] = 1.0
     elif int(chi) == 2:  # CHI_TETRAHEDRAL_CW = S
         feats[12] = -1.0
@@ -243,6 +279,7 @@ def encode_molecule(mol) -> torch.Tensor:
 # We do NOT parse the SMARTS (that's RDKit's job); we only need a
 # stable per-rule signature so the same rule produces the same
 # feature vector across runs.
+
 
 def encode_rule_smarts(smarts: str, name: Optional[str] = None) -> torch.Tensor:
     """Encode a SMARTS pattern string into a 16-dim unit-norm vector.
@@ -277,19 +314,20 @@ def encode_rule_smarts(smarts: str, name: Optional[str] = None) -> torch.Tensor:
 # launch is dominated by Python-side overhead and the kernel runs
 # in < 100 µs.
 
+
 @triton.jit
 def triton_match_kernel(
-    atom_ptr,        # *fp  [N, F]   - per-atom feature matrix
-    rule_ptr,        # *fp  [K, F]   - per-rule feature matrix
-    w1_ptr,          # *fp  [H, F]   - first-layer weights (deterministic)
-    b1_ptr,          # *fp  [H]      - first-layer bias (deterministic)
-    w2_ptr,          # *fp  [H]      - second-layer weights
-    b2_ptr,          # *fp           - second-layer bias
-    out_ptr,         # *fp  [N, K]   - per-(atom, rule) match probability
-    n_atoms,         # i32
-    n_rules,         # i32
+    atom_ptr,  # *fp  [N, F]   - per-atom feature matrix
+    rule_ptr,  # *fp  [K, F]   - per-rule feature matrix
+    w1_ptr,  # *fp  [H, F]   - first-layer weights (deterministic)
+    b1_ptr,  # *fp  [H]      - first-layer bias (deterministic)
+    w2_ptr,  # *fp  [H]      - second-layer weights
+    b2_ptr,  # *fp           - second-layer bias
+    out_ptr,  # *fp  [N, K]   - per-(atom, rule) match probability
+    n_atoms,  # i32
+    n_rules,  # i32
     FEAT: tl.constexpr,
-    H:   tl.constexpr,
+    H: tl.constexpr,
 ):
     pid = tl.program_id(axis=0)
     nk = n_atoms * n_rules
@@ -443,9 +481,13 @@ class DispatchResult:
     rule_names: List[str]
 
     def __repr__(self) -> str:  # pragma: no cover - cosmetic
-        lines = [f"DispatchResult(rules={len(self.rule_names)}, atoms={self.scores.shape[0]})"]
+        lines = [
+            f"DispatchResult(rules={len(self.rule_names)}, atoms={self.scores.shape[0]})"
+        ]
         for k, v in self.matches.items():
-            lines.append(f"  {k:>16s}: {len(v)} match(es) → {v[:8]}{'...' if len(v) > 8 else ''}")
+            lines.append(
+                f"  {k:>16s}: {len(v)} match(es) → {v[:8]}{'...' if len(v) > 8 else ''}"
+            )
         return "\n".join(lines)
 
 
@@ -623,6 +665,7 @@ def default_click_rule_set() -> list:
     ]
     try:
         from molmetal_lam.lam_chem.rules import CLICK_REACTIONS  # type: ignore
+
         out = []
         for name in ("CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"):
             rule = CLICK_REACTIONS.get(name)

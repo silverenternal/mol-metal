@@ -69,15 +69,15 @@ def test_02_section_3_2_r22_p1_rescoped_to_computational_only() -> None:
     )
     assert section_3_3_match, "Missing §3.3 R23 section header (cannot bound §3.2)"
 
-    section_3_2_text = text[section_3_2_match.start():section_3_3_match.start()]
+    section_3_2_text = text[section_3_2_match.start() : section_3_3_match.start()]
 
     # The §3.2 header itself must carry the computational-only marker.
-    assert "computational-only" in section_3_2_text, (
-        "§3.2 missing 'computational-only' marker in section header"
-    )
-    assert "no wet-lab" in section_3_2_text, (
-        "§3.2 missing 'no wet-lab' qualifier in section header"
-    )
+    assert (
+        "computational-only" in section_3_2_text
+    ), "§3.2 missing 'computational-only' marker in section header"
+    assert (
+        "no wet-lab" in section_3_2_text
+    ), "§3.2 missing 'no wet-lab' qualifier in section header"
 
     # The R22-P1 wet-lab portion must be explicitly DEPRECATED with re-scope statement.
     # We require either the literal "⛔ DEPRECATED" or "DEPRECATED 2026-09-29" inside §3.2.
@@ -94,15 +94,15 @@ def test_02_section_3_2_r22_p1_rescoped_to_computational_only() -> None:
     assert r22_p1_row_match, "Missing R22-P1 table row in §3.2"
 
     r22_p1_row = r22_p1_row_match.group(0)
-    assert "wet-lab portion" in r22_p1_row or "wet-lab" in r22_p1_row, (
-        "R22-P1 row missing wet-lab qualifier"
-    )
+    assert (
+        "wet-lab portion" in r22_p1_row or "wet-lab" in r22_p1_row
+    ), "R22-P1 row missing wet-lab qualifier"
     assert (
         "DEPRECATED" in r22_p1_row or "⛔" in r22_p1_row
     ), "R22-P1 row missing DEPRECATED marker"
-    assert "computational-only" in r22_p1_row, (
-        "R22-P1 row missing 'computational-only' re-scope"
-    )
+    assert (
+        "computational-only" in r22_p1_row
+    ), "R22-P1 row missing 'computational-only' re-scope"
 
 
 def test_03_section_3_3_r23_deprecated_clinical_trial() -> None:
@@ -130,33 +130,33 @@ def test_03_section_3_3_r23_deprecated_clinical_trial() -> None:
     )
     assert section_3_4_match, "Missing §3.4 R24 section header (cannot bound §3.3)"
 
-    section_3_3_text = text[section_3_3_match.start():section_3_4_match.start()]
+    section_3_3_text = text[section_3_3_match.start() : section_3_4_match.start()]
 
     # The §3.3 header must carry the DEPRECATED marker.
-    assert "⛔ DEPRECATED" in section_3_3_text, (
-        "§3.3 header missing '⛔ DEPRECATED' marker"
-    )
-    assert "Phase I" in section_3_3_text or "clinical trial" in section_3_3_text, (
-        "§3.3 missing Phase I / clinical trial context"
-    )
+    assert (
+        "⛔ DEPRECATED" in section_3_3_text
+    ), "§3.3 header missing '⛔ DEPRECATED' marker"
+    assert (
+        "Phase I" in section_3_3_text or "clinical trial" in section_3_3_text
+    ), "§3.3 missing Phase I / clinical trial context"
 
     # The first body blockquote must re-state the DEPRECATED status.
-    assert "DEPRECATED 2026-09-29" in section_3_3_text, (
-        "§3.3 missing explicit 'DEPRECATED 2026-09-29' marker in body"
-    )
+    assert (
+        "DEPRECATED 2026-09-29" in section_3_3_text
+    ), "§3.3 missing explicit 'DEPRECATED 2026-09-29' marker in body"
 
     # All 6 R23-P1..R23-P6 rows must carry the DEPRECATED marker (strikethrough).
     r23_phase_rows = re.findall(
         r"\|\s*~?~?\*\*R23-P\d\*\*~?~?[^\n]*",
         section_3_3_text,
     )
-    assert len(r23_phase_rows) == 6, (
-        f"Expected 6 R23-P1..P6 rows, got {len(r23_phase_rows)}"
-    )
+    assert (
+        len(r23_phase_rows) == 6
+    ), f"Expected 6 R23-P1..P6 rows, got {len(r23_phase_rows)}"
     for row in r23_phase_rows:
-        assert "DEPRECATED" in row or "⛔" in row, (
-            f"R23 row missing DEPRECATED marker: {row[:80]}..."
-        )
+        assert (
+            "DEPRECATED" in row or "⛔" in row
+        ), f"R23 row missing DEPRECATED marker: {row[:80]}..."
 
 
 def test_04_section_3_1_anchors_r22_r23_r24_r25_deprecation() -> None:
@@ -182,18 +182,16 @@ def test_04_section_3_1_anchors_r22_r23_r24_r25_deprecation() -> None:
     )
     assert section_3_2_match, "Missing §3.2 (cannot bound §3.1)"
 
-    section_3_1_text = text[section_3_1_match.start():section_3_2_match.start()]
+    section_3_1_text = text[section_3_1_match.start() : section_3_2_match.start()]
 
     # The §3.1 SCOPE UPDATE blockquote must reference the 2026-09-29 user directive.
+    assert "2026-09-29" in section_3_1_text, "§3.1 missing 2026-09-29 timestamp marker"
     assert (
-        "2026-09-29" in section_3_1_text
-    ), "§3.1 missing 2026-09-29 timestamp marker"
-    assert "我们发二区就可以了" in section_3_1_text, (
-        "§3.1 missing user directive verbatim quote"
-    )
-    assert "不用规划湿实验" in section_3_1_text, (
-        "§3.1 missing '不用规划湿实验' qualifier from user directive"
-    )
+        "我们发二区就可以了" in section_3_1_text
+    ), "§3.1 missing user directive verbatim quote"
+    assert (
+        "不用规划湿实验" in section_3_1_text
+    ), "§3.1 missing '不用规划湿实验' qualifier from user directive"
 
     # R22 row: re-scoped to computational-only (not full DEPRECATED)
     r22_row = re.search(r"\*\*R22\*\*\s+\([^\n]*", section_3_1_text)
@@ -206,9 +204,7 @@ def test_04_section_3_1_anchors_r22_r23_r24_r25_deprecation() -> None:
         section_3_1_text,
     )
     assert r23_row_match, "Missing R23 strategic row in §3.1"
-    assert (
-        "DEPRECATED" in r23_row_match.group(0)
-    ), "R23 row missing DEPRECATED marker"
+    assert "DEPRECATED" in r23_row_match.group(0), "R23 row missing DEPRECATED marker"
 
     # R24 row: DEPRECATED — Phase II/III
     r24_row_match = re.search(
@@ -216,9 +212,7 @@ def test_04_section_3_1_anchors_r22_r23_r24_r25_deprecation() -> None:
         section_3_1_text,
     )
     assert r24_row_match, "Missing R24 strategic row in §3.1"
-    assert (
-        "DEPRECATED" in r24_row_match.group(0)
-    ), "R24 row missing DEPRECATED marker"
+    assert "DEPRECATED" in r24_row_match.group(0), "R24 row missing DEPRECATED marker"
 
     # R25 row: DEPRECATED — post-trial paper + algorithm convergence
     r25_row_match = re.search(
@@ -226,9 +220,7 @@ def test_04_section_3_1_anchors_r22_r23_r24_r25_deprecation() -> None:
         section_3_1_text,
     )
     assert r25_row_match, "Missing R25 strategic row in §3.1"
-    assert (
-        "DEPRECATED" in r25_row_match.group(0)
-    ), "R25 row missing DEPRECATED marker"
+    assert "DEPRECATED" in r25_row_match.group(0), "R25 row missing DEPRECATED marker"
 
 
 def test_05_section_3_4_and_3_5_also_deprecated() -> None:
@@ -254,13 +246,13 @@ def test_05_section_3_4_and_3_5_also_deprecated() -> None:
     )
     assert section_3_5_match, "Missing §3.5 R25 section header (cannot bound §3.4)"
 
-    section_3_4_text = text[section_3_4_match.start():section_3_5_match.start()]
-    assert "⛔ DEPRECATED" in section_3_4_text, (
-        "§3.4 R24 missing '⛔ DEPRECATED' marker"
-    )
-    assert "Phase II/III" in section_3_4_text or "Phase II" in section_3_4_text, (
-        "§3.4 R24 missing Phase II/III context"
-    )
+    section_3_4_text = text[section_3_4_match.start() : section_3_5_match.start()]
+    assert (
+        "⛔ DEPRECATED" in section_3_4_text
+    ), "§3.4 R24 missing '⛔ DEPRECATED' marker"
+    assert (
+        "Phase II/III" in section_3_4_text or "Phase II" in section_3_4_text
+    ), "§3.4 R24 missing Phase II/III context"
 
     # §3.5 R25 — bound by §3.6
     section_3_6_match = re.search(
@@ -270,10 +262,10 @@ def test_05_section_3_4_and_3_5_also_deprecated() -> None:
     )
     assert section_3_6_match, "Missing §3.6 (cannot bound §3.5)"
 
-    section_3_5_text = text[section_3_5_match.start():section_3_6_match.start()]
-    assert "⛔ DEPRECATED" in section_3_5_text, (
-        "§3.5 R25 missing '⛔ DEPRECATED' marker"
-    )
+    section_3_5_text = text[section_3_5_match.start() : section_3_6_match.start()]
+    assert (
+        "⛔ DEPRECATED" in section_3_5_text
+    ), "§3.5 R25 missing '⛔ DEPRECATED' marker"
     assert "Phase III" in section_3_5_text, "§3.5 R25 missing Phase III context"
 
 
@@ -296,7 +288,7 @@ def test_06_lambda_roadmap_v3_2_cross_refs_agendots_5_4() -> None:
     )
     assert section_3_3_match, "Missing §3.3 (cannot bound §3.2)"
 
-    section_3_2_text = text[section_3_2_match.start():section_3_3_match.start()]
+    section_3_2_text = text[section_3_2_match.start() : section_3_3_match.start()]
 
     # Either explicit AGENTS.md §5.4 cross-ref OR 2026-09-29 user directive quote is acceptable.
     has_agendots_ref = "AGENTS.md §5.4" in section_3_2_text
@@ -304,9 +296,9 @@ def test_06_lambda_roadmap_v3_2_cross_refs_agendots_5_4() -> None:
         "我们发二区就可以了" in section_3_2_text
         or "wet-lab" in section_3_2_text.lower()
     )
-    assert has_agendots_ref or has_directive_ref, (
-        "§3.2 R22 missing cross-ref to AGENTS.md §5.4 or 2026-09-29 user directive"
-    )
+    assert (
+        has_agendots_ref or has_directive_ref
+    ), "§3.2 R22 missing cross-ref to AGENTS.md §5.4 or 2026-09-29 user directive"
 
 
 def test_07_lambda_roadmap_v3_3_cross_refs_agendots_5_4() -> None:
@@ -327,15 +319,13 @@ def test_07_lambda_roadmap_v3_3_cross_refs_agendots_5_4() -> None:
     )
     assert section_3_4_match, "Missing §3.4 (cannot bound §3.3)"
 
-    section_3_3_text = text[section_3_3_match.start():section_3_4_match.start()]
+    section_3_3_text = text[section_3_3_match.start() : section_3_4_match.start()]
 
     has_directive_ref = "2026-09-29" in section_3_3_text and (
         "我们发二区就可以了" in section_3_3_text
         or "wet-lab" in section_3_3_text.lower()
     )
-    assert has_directive_ref, (
-        "§3.3 R23 missing cross-ref to 2026-09-29 user directive"
-    )
+    assert has_directive_ref, "§3.3 R23 missing cross-ref to 2026-09-29 user directive"
 
 
 if __name__ == "__main__":

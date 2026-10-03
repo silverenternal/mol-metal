@@ -42,6 +42,7 @@ EXPECTED_ENV_VAR_NAMES = {
 # BF16 autocast
 # ---------------------------------------------------------------------------
 
+
 def test_bf16_autocast_enabled():
     """BF16 autocast must round-trip a tensor through the wrapped region.
 
@@ -67,6 +68,7 @@ def test_bf16_autocast_enabled():
 # ---------------------------------------------------------------------------
 # FP16 via env var
 # ---------------------------------------------------------------------------
+
 
 def test_fp16_autocast_via_env_var(monkeypatch):
     """``maybe_enable_amp`` reads ``MOLMETAL_CFM_AMP_DTYPE=float16`` -> FP16.
@@ -97,6 +99,7 @@ def test_fp16_autocast_via_env_var(monkeypatch):
 # ---------------------------------------------------------------------------
 # aggregate_loss
 # ---------------------------------------------------------------------------
+
 
 def test_aggregate_loss_forces_float32():
     """All inputs may be BF16; output MUST be FP32 (sum never underflows).
@@ -142,6 +145,7 @@ def test_aggregate_loss_empty_dict_raises():
 # disabled passthrough
 # ---------------------------------------------------------------------------
 
+
 def test_disabled_passthrough():
     """``enabled=False`` must NOT engage autocast.
 
@@ -164,6 +168,7 @@ def test_disabled_passthrough():
 # gfx1101 defaults
 # ---------------------------------------------------------------------------
 
+
 def test_recommended_kwargs_gfx1101_defaults():
     """``recommended_amp_kwargs`` returns gfx1101-safe defaults.
 
@@ -181,6 +186,7 @@ def test_recommended_kwargs_gfx1101_defaults():
 # ---------------------------------------------------------------------------
 # ROCm env vars constant
 # ---------------------------------------------------------------------------
+
 
 def test_rocm_env_vars_set_constant():
     """``ROCM_GFX1101_ENV_VARS`` exposes the canonical env-var map.

@@ -122,8 +122,9 @@ def _hex_to_bit_array(hex_str: str, n_bits: int = 2048) -> np.ndarray:
     return out
 
 
-def _load_ecfp4_csv(csv_path: Path) -> Tuple[np.ndarray, np.ndarray, np.ndarray,
-                                              Dict[str, int]]:
+def _load_ecfp4_csv(
+    csv_path: Path,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, Dict[str, int]]:
     """Load the Wf-275B tidy CSV into (X_fp, y, split_idx, split_counts).
 
     ``split_idx`` maps each row to ``{train:0, val:1, test:2, unset:3}``.
@@ -180,16 +181,21 @@ class _ECFP4FFN(nn.Module):
         return self.head.train_step(self.proj(x))
 
 
-def _train_one_seed(seed: int, X: np.ndarray, y: np.ndarray,
-                    split_idx: np.ndarray, args: argparse.Namespace,
-                    device: torch.device) -> Dict[str, float]:
+def _train_one_seed(
+    seed: int,
+    X: np.ndarray,
+    y: np.ndarray,
+    split_idx: np.ndarray,
+    args: argparse.Namespace,
+    device: torch.device,
+) -> Dict[str, float]:
     torch.manual_seed(seed)
     np.random.seed(seed)
     t0 = time.time()
 
-    train_mask = (split_idx == 0)
-    val_mask = (split_idx == 1)
-    test_mask = (split_idx == 2)
+    train_mask = split_idx == 0
+    val_mask = split_idx == 1
+    test_mask = split_idx == 2
     X_tr = torch.from_numpy(X[train_mask]).to(device)
     y_tr = torch.from_numpy(y[train_mask].astype(np.float32)).to(device)
     X_va = torch.from_numpy(X[val_mask]).to(device)
@@ -212,7 +218,7 @@ def _train_one_seed(seed: int, X: np.ndarray, y: np.ndarray,
         total_loss = 0.0
         n_batches = 0
         for start in range(0, n_train, args.batch):
-            idx = perm[start:start + args.batch]
+            idx = perm[start : start + args.batch]
             xb = X_tr[idx]
             yb = y_tr[idx]
             logit = model(xb).squeeze(-1)
@@ -224,9 +230,11 @@ def _train_one_seed(seed: int, X: np.ndarray, y: np.ndarray,
             total_loss += float(loss.detach().cpu().item()) * len(idx)
             n_batches += len(idx)
         if epoch == 1 or epoch == args.epochs or epoch % 5 == 0:
-            _log(f"[seed={seed}] epoch={epoch:2d}/{args.epochs}  "
-                 f"loss={total_loss / max(n_batches, 1):.4f}  "
-                 f"elapsed={time.time() - t0:.1f}s")
+            _log(
+                f"[seed={seed}] epoch={epoch:2d}/{args.epochs}  "
+                f"loss={total_loss / max(n_batches, 1):.4f}  "
+                f"elapsed={time.time() - t0:.1f}s"
+            )
 
     # Eval (BCE head -> sigmoid -> AUC).
     model.eval()
@@ -238,7 +246,7 @@ def _train_one_seed(seed: int, X: np.ndarray, y: np.ndarray,
         ):
             scores = []
             for start in range(0, X_e.size(0), args.batch):
-                logit = model(X_e[start:start + args.batch]).squeeze(-1)
+                logit = model(X_e[start : start + args.batch]).squeeze(-1)
                 scores.append(torch.sigmoid(logit).cpu().numpy())
             scores = np.concatenate(scores, axis=0)
             if len(np.unique(y_e)) < 2:
@@ -271,8 +279,9 @@ def _train_one_seed(seed: int, X: np.ndarray, y: np.ndarray,
 # ---------------------------------------------------------------------------
 def main(argv: Optional[List[str]] = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    p.add_argument("--csv", default=str(DEFAULT_CSV),
-                   help="Wf-275B ECFP4 scaffold CSV path")
+    p.add_argument(
+        "--csv", default=str(DEFAULT_CSV), help="Wf-275B ECFP4 scaffold CSV path"
+    )
     p.add_argument("--seeds", type=int, nargs="+", default=list(DEFAULT_SEEDS))
     p.add_argument("--epochs", type=int, default=DEFAULT_EPOCHS)
     p.add_argument("--head-hidden", type=int, default=DEFAULT_HEAD_HIDDEN)
@@ -280,8 +289,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     p.add_argument("--lr", type=float, default=DEFAULT_LR)
     p.add_argument("--device", default="cpu")
     p.add_argument("--out", default=str(DEFAULT_OUT))
-    p.add_argument("--seed-time-budget-s", type=float,
-                   default=DEFAULT_SEED_TIME_BUDGET_S)
+    p.add_argument(
+        "--seed-time-budget-s", type=float, default=DEFAULT_SEED_TIME_BUDGET_S
+    )
     args = p.parse_args(argv)
 
     out_dir = Path(args.out)
@@ -295,8 +305,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     X, y, split_idx, split_counts = _load_ecfp4_csv(csv_path)
 
     device = torch.device(args.device)
-    _log(f"device={device}  seeds={args.seeds}  epochs={args.epochs}  "
-         f"head_hidden={args.head_hidden}  batch={args.batch}  lr={args.lr}")
+    _log(
+        f"device={device}  seeds={args.seeds}  epochs={args.epochs}  "
+        f"head_hidden={args.head_hidden}  batch={args.batch}  lr={args.lr}"
+    )
 
     wall_start = time.time()
     results: List[Dict[str, float]] = []
@@ -305,19 +317,28 @@ def main(argv: Optional[List[str]] = None) -> int:
             r = _train_one_seed(seed, X, y, split_idx, args, device)
         except Exception as exc:
             import traceback
+
             traceback.print_exc()
             _log(f"[seed={seed}] FAILED: {exc}")
             r = {
-                "seed": seed, "elapsed_s": 0.0, "n_train": 0, "n_val": 0,
-                "n_test": 0, "train_auc": float("nan"), "val_auc": float("nan"),
-                "test_auc": float("nan"), "error": str(exc),
+                "seed": seed,
+                "elapsed_s": 0.0,
+                "n_train": 0,
+                "n_val": 0,
+                "n_test": 0,
+                "train_auc": float("nan"),
+                "val_auc": float("nan"),
+                "test_auc": float("nan"),
+                "error": str(exc),
             }
         results.append(r)
         per_seed_path = out_dir / f"seed{seed}.json"
         per_seed_path.write_text(json.dumps(r, indent=2))
-        _log(f"[seed={seed}] FINAL  train={r['train_auc']:.4f}  "
-             f"val={r['val_auc']:.4f}  test={r['test_auc']:.4f}  "
-             f"({r['elapsed_s']:.1f}s)")
+        _log(
+            f"[seed={seed}] FINAL  train={r['train_auc']:.4f}  "
+            f"val={r['val_auc']:.4f}  test={r['test_auc']:.4f}  "
+            f"({r['elapsed_s']:.1f}s)"
+        )
 
     total_wall_min = (time.time() - wall_start) / 60.0
 
@@ -359,9 +380,12 @@ def main(argv: Optional[List[str]] = None) -> int:
             "seed_time_budget_s": args.seed_time_budget_s,
         },
         "per_seed": results,
-        "train_auc_mean": train_mean, "train_auc_std": train_std,
-        "val_auc_mean": val_mean, "val_auc_std": val_std,
-        "test_auc_mean": test_mean, "test_auc_std": test_std,
+        "train_auc_mean": train_mean,
+        "train_auc_std": train_std,
+        "val_auc_mean": val_mean,
+        "val_auc_std": val_std,
+        "test_auc_mean": test_mean,
+        "test_auc_std": test_std,
         "wf185_v2_baseline_mean": WF185_BASELINE_MEAN,
         "wf185_v2_baseline_std": WF185_BASELINE_STD,
         "delta_vs_wf185": float(test_mean - WF185_BASELINE_MEAN),
@@ -371,8 +395,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             "ECFP4 axis is NOT the bottleneck -- Wf-185 baseline AUC "
             f"recovered within seed-noise slack ({WF185_BASELINE_SEED_SLACK:.2f}); "
             "the Wf-253-D 0.4544 collapse is a backbone issue."
-            if passes else
-            "ECFP4 axis is a co-bottleneck -- Wf-185 baseline NOT recovered "
+            if passes
+            else "ECFP4 axis is a co-bottleneck -- Wf-185 baseline NOT recovered "
             f"(smoke AUC {test_mean:.4f} < {WF185_BASELINE_MEAN - WF185_BASELINE_SEED_SLACK:.4f}); "
             "ECFP4 + scaffold-split featurization alone cannot rescue the "
             "Wf-253-D 0.4544 collapse."
@@ -380,9 +404,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     }
     (out_dir / "aggregate.json").write_text(json.dumps(aggregate, indent=2))
     _log(f"wrote {out_dir / 'aggregate.json'}")
-    _log(f"TEST AUC = {test_mean:.4f} ± {test_std:.4f}  "
-         f"vs Wf-185 v2 = {WF185_BASELINE_MEAN:.4f} ± {WF185_BASELINE_STD:.4f}  "
-         f"passes={passes}")
+    _log(
+        f"TEST AUC = {test_mean:.4f} ± {test_std:.4f}  "
+        f"vs Wf-185 v2 = {WF185_BASELINE_MEAN:.4f} ± {WF185_BASELINE_STD:.4f}  "
+        f"passes={passes}"
+    )
     return 0
 
 

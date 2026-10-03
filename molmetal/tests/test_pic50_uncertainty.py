@@ -27,6 +27,7 @@ Coverage map (5 tests):
    (``scope``, ``target_domain``, ``cohort``, ``aggregate``,
    ``per_row``) with non-empty values and correct types.
 """
+
 from __future__ import annotations
 
 import json
@@ -166,12 +167,11 @@ def test_target_domain_non_empty_and_mentions_hela48h():
     assert "48" in TARGET_DOMAIN, (
         "TARGET_DOMAIN must name 48 h exposure; got: " + TARGET_DOMAIN
     )
-    assert ("cisplatin" in TARGET_DOMAIN.lower()
-            or "Pt(II)" in TARGET_DOMAIN
-            or "Pt" in TARGET_DOMAIN), (
-        "TARGET_DOMAIN must name the Pt(II) chemistry domain; got: "
-        + TARGET_DOMAIN
-    )
+    assert (
+        "cisplatin" in TARGET_DOMAIN.lower()
+        or "Pt(II)" in TARGET_DOMAIN
+        or "Pt" in TARGET_DOMAIN
+    ), "TARGET_DOMAIN must name the Pt(II) chemistry domain; got: " + TARGET_DOMAIN
 
 
 # ---------------------------------------------------------------------------
@@ -190,7 +190,7 @@ def test_stable_across_seeds():
     rows: List[Dict] = []
     base_truth = rng.normal(loc=4.7, scale=0.7, size=150)
     for i, seed in enumerate(seeds):
-        sub_truth = base_truth[i * n_per_seed: (i + 1) * n_per_seed]
+        sub_truth = base_truth[i * n_per_seed : (i + 1) * n_per_seed]
         # Per-seed noise on the prediction
         pred_noise = rng.normal(loc=0.0, scale=0.15, size=n_per_seed)
         pred = sub_truth + pred_noise
@@ -219,9 +219,7 @@ def test_stable_across_seeds():
     # Point estimates (RMSE, Pearson r) are deterministic functions
     # of the parquet and must be identical
     assert r1.aggregate["rmse_exact"] == r2.aggregate["rmse_exact"]
-    assert r1.aggregate["pearson_r_exact"] == r2.aggregate[
-        "pearson_r_exact"
-    ]
+    assert r1.aggregate["pearson_r_exact"] == r2.aggregate["pearson_r_exact"]
     # CI half-widths must be within 50% of each other (different RNG
     # seeds produce slightly different bootstrap means; with the same
     # residual vector the difference is small).
@@ -257,9 +255,7 @@ def test_json_output_schema():
     with tempfile.TemporaryDirectory() as tmp:
         pq = Path(tmp) / "synth.parquet"
         df.to_parquet(pq)
-        result = run_calibration(
-            pq, checkpoint=None, n_resamples=50, seed=999
-        )
+        result = run_calibration(pq, checkpoint=None, n_resamples=50, seed=999)
         json_path = Path(tmp) / "report.json"
         md_path = Path(tmp) / "final.md"
         write_report(result, json_path=json_path, md_path=md_path)
@@ -279,9 +275,18 @@ def test_json_output_schema():
     # Per-row record schema
     rec = payload["per_row"][0]
     for key in (
-        "formulation_id", "seed", "is_censored", "pic50_truth",
-        "pic50_pred", "pic50_bound", "censor_dir", "residual",
-        "ci_low", "ci_high", "ci_half_width", "censor_compliant",
+        "formulation_id",
+        "seed",
+        "is_censored",
+        "pic50_truth",
+        "pic50_pred",
+        "pic50_bound",
+        "censor_dir",
+        "residual",
+        "ci_low",
+        "ci_high",
+        "ci_half_width",
+        "censor_compliant",
         "compliance_tag",
     ):
         assert key in rec, f"missing per-row key: {key}"
@@ -291,8 +296,10 @@ def test_json_output_schema():
     assert rec["ci_low"] <= rec["ci_high"]
     # Half-width equals (high - low)/2
     assert math.isclose(
-        rec["ci_half_width"], (rec["ci_high"] - rec["ci_low"]) / 2.0,
-        rel_tol=1e-9, abs_tol=1e-12,
+        rec["ci_half_width"],
+        (rec["ci_high"] - rec["ci_low"]) / 2.0,
+        rel_tol=1e-9,
+        abs_tol=1e-12,
     )
 
 

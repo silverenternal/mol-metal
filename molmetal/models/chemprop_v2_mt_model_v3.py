@@ -214,15 +214,15 @@ class EnhancedMetalHead(nn.Module):
                 "use_metal_attention=False — use forward() instead."
             )
         # Project to Q / K / V.
-        Q = self.attn_q(e)                  # (B, attn_dim)
-        K = self.attn_k(h)                  # (B, attn_dim)
-        V = self.attn_v(h)                  # (B, hidden_dim)
+        Q = self.attn_q(e)  # (B, attn_dim)
+        K = self.attn_k(h)  # (B, attn_dim)
+        V = self.attn_v(h)  # (B, hidden_dim)
         # Single-head self-attention: each row attends to itself with
         # the metal-conditioned query.  (B, 1) attention scores per row.
         attn_logits = (Q * K).sum(dim=-1, keepdim=True) * self.attn_scale
         attn_w = torch.sigmoid(attn_logits)  # (B, 1) — gate, not softmax
         # Multiplicative gate on V (B, hidden_dim) + concat with e.
-        h_gated = attn_w * V                 # (B, hidden_dim)
+        h_gated = attn_w * V  # (B, hidden_dim)
         return torch.cat([h_gated, e], dim=-1)  # (B, hidden_dim + metal_embed_dim)
 
     # ------------------------------------------------------------------
@@ -242,12 +242,10 @@ class EnhancedMetalHead(nn.Module):
                 "layer can consume them."
             )
         z = self.drop(self.act(self.fc1(z_in)))
-        return self.fc2(z)                   # (B, 1)
+        return self.fc2(z)  # (B, 1)
 
     # ------------------------------------------------------------------
-    def forward_with_attention(
-        self, h: torch.Tensor, e: torch.Tensor
-    ) -> torch.Tensor:
+    def forward_with_attention(self, h: torch.Tensor, e: torch.Tensor) -> torch.Tensor:
         """Forward pass with metal-aware attention — returns ``(B, 1)`` logit.
 
         Args:
@@ -262,9 +260,9 @@ class EnhancedMetalHead(nn.Module):
                 "EnhancedMetalHead.forward_with_attention called with "
                 "use_metal_attention=False — use forward() instead."
             )
-        z_in = self._attention(h, e)         # (B, hidden_dim + metal_embed_dim)
+        z_in = self._attention(h, e)  # (B, hidden_dim + metal_embed_dim)
         z = self.drop(self.act(self.fc1(z_in)))
-        return self.fc2(z)                   # (B, 1)
+        return self.fc2(z)  # (B, 1)
 
 
 # ---------------------------------------------------------------------------
@@ -416,9 +414,7 @@ class ChempropV2MTModelV3(nn.Module):
     def metal_id(self, metal: str) -> int:
         """Return the integer id for a metal name (raises if unknown)."""
         if metal not in self.metals:
-            raise KeyError(
-                f"Unknown metal {metal!r}. Supported: {self.metals}"
-            )
+            raise KeyError(f"Unknown metal {metal!r}. Supported: {self.metals}")
         return self.metals.index(metal)
 
     # ------------------------------------------------------------------
@@ -427,9 +423,7 @@ class ChempropV2MTModelV3(nn.Module):
         return self.encoder(smiles_list)
 
     # ------------------------------------------------------------------
-    def _chemprop_logits_to_v4_shape(
-        self, logits_1col: torch.Tensor
-    ) -> torch.Tensor:
+    def _chemprop_logits_to_v4_shape(self, logits_1col: torch.Tensor) -> torch.Tensor:
         """Convert (B, 1) pre-sigmoid logits → V4-compatible (B, 2).
 
         Same shim as the legacy ChempropV2MTModel.
@@ -461,9 +455,9 @@ class ChempropV2MTModelV3(nn.Module):
                 f"len(smiles_list)={B} != metal_ids.size(0)={metal_ids.size(0)}"
             )
 
-        h = self.encode(smiles_list)                 # (B, hidden_dim)
-        e = self.metal_embed(metal_ids.long())       # (B, metal_embed_dim)
-        z = torch.cat([h, e], dim=-1)                # (B, head_in_dim)
+        h = self.encode(smiles_list)  # (B, hidden_dim)
+        e = self.metal_embed(metal_ids.long())  # (B, metal_embed_dim)
+        z = torch.cat([h, e], dim=-1)  # (B, head_in_dim)
 
         out: Dict[str, torch.Tensor] = {}
         for metal, head in self.metal_heads.items():
@@ -478,7 +472,7 @@ class ChempropV2MTModelV3(nn.Module):
                 # Legacy chemprop BinaryClassificationFFN path.
                 logits_1col = head.train_step(z)
             out[metal] = self._chemprop_logits_to_v4_shape(logits_1col)
-        out["coord"] = self.coord_head(z)            # (B, n_coord_classes)
+        out["coord"] = self.coord_head(z)  # (B, n_coord_classes)
         return out
 
 
@@ -542,10 +536,7 @@ def quick_smoke_chemprop_v2_mt_v3(
     metal_ids = torch.zeros(B, dtype=torch.long, device=device)
     out = model(smiles, metal_ids)
     torch.manual_seed(0)
-    y_true = {
-        m: torch.randint(0, 2, (B,), device=device).float()
-        for m in model.metals
-    }
+    y_true = {m: torch.randint(0, 2, (B,), device=device).float() for m in model.metals}
     coord_true = torch.randint(0, n_coord_classes, (B,), device=device)
     return model, loss_fn, out, {"y_true": y_true, "coord_true": coord_true}
 

@@ -37,6 +37,7 @@ will trip this meta-test and be forced to choose between FAIL-on-missing
 or a deliberate LEGITIMATE classification with a comment. This is the
 intended feedback loop.
 """
+
 from __future__ import annotations
 
 import ast
@@ -99,8 +100,8 @@ LEGITIMATE_SKIP_TOKENS = (
     # Data file presence for *new* training runs that the test itself
     # may have skipped
     "csv not found",  # tolerated when test is a CLI smoke that needs
-                       # pre-existing data; we still flag the bulk
-                       # skip patterns below as illegitimate.
+    # pre-existing data; we still flag the bulk
+    # skip patterns below as illegitimate.
 )
 
 # Patterns that are *always* illegitimate: the test silently skips
@@ -243,14 +244,13 @@ def test_every_smoke_file_has_at_least_one_test():
             empty.append(f"{p.name}: SyntaxError {exc}")
             continue
         tests = [
-            n for n in ast.walk(tree)
+            n
+            for n in ast.walk(tree)
             if isinstance(n, ast.FunctionDef) and n.name.startswith("test_")
         ]
         if not tests:
             empty.append(f"{p.name}: no test_* functions")
-    assert not empty, (
-        f"{len(empty)} smoke files are empty placeholders: {empty}"
-    )
+    assert not empty, f"{len(empty)} smoke files are empty placeholders: {empty}"
 
 
 # ---------------------------------------------------------------------------
@@ -289,20 +289,29 @@ def test_smoke_skip_audit_collects_inventory(tmp_path: Path):
             elif cls == "ILLEGITIMATE":
                 audit["n_illegitimate"] += 1
                 if len(audit["illegitimate_examples"]) < 10:
-                    audit["illegitimate_examples"].append({
-                        "file": p.name, "line": lineno,
-                        "fn": fn_name, "reason": reason,
-                    })
+                    audit["illegitimate_examples"].append(
+                        {
+                            "file": p.name,
+                            "line": lineno,
+                            "fn": fn_name,
+                            "reason": reason,
+                        }
+                    )
             else:
                 audit["n_indeterminate"] += 1
-            file_rec["skips"].append({
-                "line": lineno, "fn": fn_name, "reason": reason,
-                "class": cls,
-            })
+            file_rec["skips"].append(
+                {
+                    "line": lineno,
+                    "fn": fn_name,
+                    "reason": reason,
+                    "class": cls,
+                }
+            )
         audit["files"][p.name] = file_rec
 
     out = tmp_path / "smoke_skip_audit.json"
     import json
+
     out.write_text(json.dumps(audit, indent=2, sort_keys=True), encoding="utf-8")
     # Inventory test always passes — its job is to produce the sidecar.
     assert out.exists()
@@ -339,12 +348,14 @@ def test_no_smoke_test_silently_skips_on_missing_ship_data():
         for lineno, fn_name, reason in _read_skip_calls(p):
             cls = _classify_skip(reason)
             if cls == "ILLEGITIMATE":
-                illegitimate.append({
-                    "file": p.name,
-                    "line": lineno,
-                    "fn": fn_name,
-                    "reason": reason,
-                })
+                illegitimate.append(
+                    {
+                        "file": p.name,
+                        "line": lineno,
+                        "fn": fn_name,
+                        "reason": reason,
+                    }
+                )
 
     assert not illegitimate, (
         f"{len(illegitimate)} illegitimate pytest.skip(s) found in smoke "
@@ -356,7 +367,11 @@ def test_no_smoke_test_silently_skips_on_missing_ship_data():
             f"  - {x['file']}:{x['line']} ({x['fn']}): {x['reason'][:80]}"
             for x in illegitimate[:10]
         )
-        + (f"\n  ... and {len(illegitimate) - 10} more" if len(illegitimate) > 10 else "")
+        + (
+            f"\n  ... and {len(illegitimate) - 10} more"
+            if len(illegitimate) > 10
+            else ""
+        )
     )
 
 
@@ -375,11 +390,12 @@ def test_metalcytotox_preflight_still_raises_on_missing():
 
     ref_path = TESTS_DIR / "test_wasserstein_closure_integration.py"
     spec = importlib.util.spec_from_file_location(
-        "_ref_wass_closure", ref_path,
+        "_ref_wass_closure",
+        ref_path,
     )
-    assert spec is not None and spec.loader is not None, (
-        f"could not load {ref_path} as a module spec"
-    )
+    assert (
+        spec is not None and spec.loader is not None
+    ), f"could not load {ref_path} as a module spec"
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
 
@@ -407,8 +423,7 @@ def test_metalcytotox_preflight_still_raises_on_missing():
         raised = True
         raised_exc_type = type(exc).__name__
         raise AssertionError(
-            f"_metalcytotox_preflight raised unexpected "
-            f"{type(exc).__name__}: {exc}"
+            f"_metalcytotox_preflight raised unexpected " f"{type(exc).__name__}: {exc}"
         )
     finally:
         mod._metalcytotox_csv_path = original  # type: ignore[assignment]

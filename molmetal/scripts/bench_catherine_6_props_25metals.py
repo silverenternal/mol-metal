@@ -62,6 +62,7 @@ Usage examples
     uv run --no-sync python molmetal/scripts/bench_catherine_6_props_25metals.py \\
         --metals 30 --seeds 0
 """
+
 from __future__ import annotations
 
 import argparse
@@ -97,21 +98,48 @@ log = logging.getLogger("wf57_catherine")
 #: Order follows the periodic-table row layout (3d / 4d / 5d + La),
 #: matching :data:`molmetal.math_skills.catherine_properties.DBLOCK_30_METALS`.
 DEFAULT_30_METALS: Tuple[str, ...] = (
-    "Sc", "Ti", "V",  "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
-    "Y",  "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
-    "La", "Hf", "Ta", "W",  "Re", "Os", "Ir", "Pt", "Au", "Hg",
+    "Sc",
+    "Ti",
+    "V",
+    "Cr",
+    "Mn",
+    "Fe",
+    "Co",
+    "Ni",
+    "Cu",
+    "Zn",
+    "Y",
+    "Zr",
+    "Nb",
+    "Mo",
+    "Tc",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Cd",
+    "La",
+    "Hf",
+    "Ta",
+    "W",
+    "Re",
+    "Os",
+    "Ir",
+    "Pt",
+    "Au",
+    "Hg",
 )
 
 #: Default partner-tile seed set (the 7 partners used in Wf-37 Phase 2 /
 #: Wf-36 P1 closure bench — see ``scripts/verify_closure_theorem.py``).
 DEFAULT_PARTNER_SMILE_LIST: Tuple[str, ...] = (
-    "C#CCN",                 # propargylamine — alkyne + amine
-    "CCN=[N+]=[N-]",         # ethyl azide    — CuAAC
-    "C#CC",                  # propyne        — CuAAC
-    "CS",                    # methanethiol   — ThiolEne
-    "C=CC",                  # propene        — ThiolEne
-    "OC(=O)c1ccccc1",        # benzoic acid   — AmideCoupling
-    "NCC",                   # ethylamine     — AmideCoupling
+    "C#CCN",  # propargylamine — alkyne + amine
+    "CCN=[N+]=[N-]",  # ethyl azide    — CuAAC
+    "C#CC",  # propyne        — CuAAC
+    "CS",  # methanethiol   — ThiolEne
+    "C=CC",  # propene        — ThiolEne
+    "OC(=O)c1ccccc1",  # benzoic acid   — AmideCoupling
+    "NCC",  # ethylamine     — AmideCoupling
 )
 
 
@@ -267,9 +295,7 @@ def _run_closure_for_metal(
     # the ratio of distinct α-classes the BFS reached over the budget.
     n_visited = int(summary.get("n_visited", 0))
     if n_visited > 0:
-        summary["reachability_rate"] = min(
-            1.0, n_visited / float(max(1, max_products))
-        )
+        summary["reachability_rate"] = min(1.0, n_visited / float(max(1, max_products)))
 
     summary["wall_time_s"] = time.perf_counter() - t0
     return summary
@@ -327,9 +353,7 @@ def _summarise_seed_summary(
         return seed_summaries[0]
     n_visited = sum(int(s.get("n_visited", 0)) for s in seed_summaries)
     n_products = sum(int(s.get("n_products", 0)) for s in seed_summaries)
-    max_depth_seen = max(
-        int(s.get("max_depth_seen", 0)) for s in seed_summaries
-    )
+    max_depth_seen = max(int(s.get("max_depth_seen", 0)) for s in seed_summaries)
     ppd_merged: Dict[Any, int] = defaultdict(int)
     for s in seed_summaries:
         for k, v in s.get("products_per_depth", {}).items():
@@ -413,6 +437,7 @@ def _run_metal_sweep(
     from molmetal.math_skills.catherine_properties import (
         verify_all_catherine_properties,
     )
+
     verdict = verify_all_catherine_properties(metal, summary)
     return summary, {
         "metal": verdict.metal,
@@ -542,7 +567,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     # Resolve 30-metal list (CSV override > explicit list > first N from CSV).
     csv_path = (
-        Path(args.metal_csv) if args.metal_csv
+        Path(args.metal_csv)
+        if args.metal_csv
         else _REPO_ROOT / "molmetal" / "data" / "transition_metals_30.csv"
     )
     metals: List[str] = []
@@ -594,7 +620,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             )
 
     out_dir = (
-        Path(args.out_dir) if args.out_dir
+        Path(args.out_dir)
+        if args.out_dir
         else _REPO_ROOT / "molmetal" / "reports" / "wf57_catherine_25metals"
     )
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -606,7 +633,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     log.info(
         "[Wf-57] Catherine sweep: metals=%d, seeds=%d, max_depth=%d, "
         "max_products=%d, use_gpu=%s",
-        len(metals), len(seeds), args.max_depth, args.max_products,
+        len(metals),
+        len(seeds),
+        args.max_depth,
+        args.max_products,
         bool(partner_terms),
     )
 
@@ -644,12 +674,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "timestamp": _utcnow_iso(),
             "wall_time_s_total": wall_total,
         },
-        "metals": {
-            metal: per_metal_records[metal]["verdict"] for metal in metals
-        },
-        "summaries": {
-            metal: per_metal_records[metal]["summary"] for metal in metals
-        },
+        "metals": {metal: per_metal_records[metal]["verdict"] for metal in metals},
+        "summaries": {metal: per_metal_records[metal]["summary"] for metal in metals},
     }
     (out_dir / "per_metal_pass.json").write_text(
         json.dumps(per_metal_payload, indent=2, default=str)
@@ -662,7 +688,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     log.info(
         "[Wf-57] Sweep complete: %d metals, wall=%.2fs — 6/6 PASS on "
         "%d / %d metals (see %s)",
-        len(metals), wall_total,
+        len(metals),
+        wall_total,
         sum(1 for m in metals if per_metal_records[m]["verdict"]["six_of_six_pass"]),
         len(metals),
         out_dir / "per_metal_pass.json",
@@ -681,9 +708,7 @@ def _render_markdown(payload: Dict[str, Any], metals: List[str]) -> str:
     lines.append("# Wf-57 Phase 3 — Catherine 6/6 Properties × 25+ d-block metals")
     lines.append("")
     lines.append("**Date**: {0}".format(metadata["timestamp"]))
-    lines.append(
-        "**Wall-time total**: {0:.2f}s".format(metadata["wall_time_s_total"])
-    )
+    lines.append("**Wall-time total**: {0:.2f}s".format(metadata["wall_time_s_total"]))
     lines.append(
         "**#metals**: {0} / **#seeds**: {1} / **max_depth**: {2} / "
         "**max_products**: {3}".format(
@@ -702,9 +727,7 @@ def _render_markdown(payload: Dict[str, Any], metals: List[str]) -> str:
     )
     lines.append("")
 
-    n_pass_metal = sum(
-        1 for m in metals if payload["metals"][m]["six_of_six_pass"]
-    )
+    n_pass_metal = sum(1 for m in metals if payload["metals"][m]["six_of_six_pass"])
     lines.append("## Headline verdict")
     lines.append("")
     lines.append(
@@ -739,14 +762,16 @@ def _render_markdown(payload: Dict[str, Any], metals: List[str]) -> str:
     lines.append("| Property | #metals PASS / #metals total | Pass-rate |")
     lines.append("|---|---:|---:|")
     for pid in [
-        "P1_reflexivity", "P2_transitivity", "P3_symmetry",
-        "P4_dblock", "P5_reachability", "P6_composability",
+        "P1_reflexivity",
+        "P2_transitivity",
+        "P3_symmetry",
+        "P4_dblock",
+        "P5_reachability",
+        "P6_composability",
     ]:
         n = prop_pass_count[pid]
         rate = n / max(1, len(metals))
-        lines.append(
-            "| {0} | {1} / {2} | {3:.2%} |".format(pid, n, len(metals), rate)
-        )
+        lines.append("| {0} | {1} / {2} | {3:.2%} |".format(pid, n, len(metals), rate))
     lines.append("")
 
     # Per-metal table.

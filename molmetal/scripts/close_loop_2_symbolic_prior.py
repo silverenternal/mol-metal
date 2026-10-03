@@ -188,7 +188,9 @@ class _CollectingMCTS(MCTSProofSearch):
         depth_remaining = max(0, max_depth - (len(path) - 1))
         value = self._rollout(node.state, depth_remaining, reward_fn)
         self._backprop(path, value)
-        self.rollout_depth_hist[len(path) - 1] = self.rollout_depth_hist.get(len(path) - 1, 0) + 1
+        self.rollout_depth_hist[len(path) - 1] = (
+            self.rollout_depth_hist.get(len(path) - 1, 0) + 1
+        )
         return path
 
     def _collect_leaves(  # type: ignore[override]
@@ -304,7 +306,9 @@ class _GuidedCountingMCTS(MCTSProofSearch):
         depth_remaining = max(0, max_depth - (len(path) - 1))
         value = self._rollout(node.state, depth_remaining, reward_fn)
         self._backprop(path, value)
-        self.rollout_depth_hist[len(path) - 1] = self.rollout_depth_hist.get(len(path) - 1, 0) + 1
+        self.rollout_depth_hist[len(path) - 1] = (
+            self.rollout_depth_hist.get(len(path) - 1, 0) + 1
+        )
         return path
 
     def _rollout(  # type: ignore[override]
@@ -361,13 +365,15 @@ class _GuidedCountingMCTS(MCTSProofSearch):
             binds = self._binds_target(current)
         except Exception:
             binds = False
-        value = float(reward_fn(
-            current,
-            target_predicates=self.target_predicates,
-            binding_site=self.binding_site,
-            satisfies_typed=sat,
-            binds_target=binds,
-        ))
+        value = float(
+            reward_fn(
+                current,
+                target_predicates=self.target_predicates,
+                binding_site=self.binding_site,
+                satisfies_typed=sat,
+                binds_target=binds,
+            )
+        )
         # L-A2: track leaf reward values for cumulative LEAF_VALUE_VAR.
         if not hasattr(self, "_leaf_value_history"):
             self._leaf_value_history = []
@@ -421,7 +427,9 @@ def main() -> None:
     t_unfit = time.time() - t0
 
     collected = collecting.collected
-    print(f"[step1] collected {len(collected)} (features, leaf_score) pairs in {t_unfit:.2f}s")
+    print(
+        f"[step1] collected {len(collected)} (features, leaf_score) pairs in {t_unfit:.2f}s"
+    )
 
     if len(collected) < 200:
         print(f"WARNING — only collected {len(collected)} pairs (target: 200+)")
@@ -482,8 +490,8 @@ def main() -> None:
     t0 = time.time()
     guided_candidates = guided_mcts.search(seed, max_depth=8)
     t_guided = time.time() - t0
-    guided_ratio_eps025 = (
-        guided_mcts.n_guided_steps / max(1, guided_mcts.n_total_rollout_steps)
+    guided_ratio_eps025 = guided_mcts.n_guided_steps / max(
+        1, guided_mcts.n_total_rollout_steps
     )
     print(
         f"[step3] guided (eps=0.25): guided={guided_mcts.n_guided_steps} "
@@ -527,8 +535,8 @@ def main() -> None:
     t0 = time.time()
     uniform_candidates = uniform_mcts.search(seed, max_depth=8)
     t_uniform = time.time() - t0
-    guided_ratio_eps00 = (
-        uniform_mcts.n_guided_steps / max(1, uniform_mcts.n_total_rollout_steps)
+    guided_ratio_eps00 = uniform_mcts.n_guided_steps / max(
+        1, uniform_mcts.n_total_rollout_steps
     )
     print(
         f"[step4] uniform (eps=0.0): guided={uniform_mcts.n_guided_steps} "
@@ -574,9 +582,7 @@ def main() -> None:
             "LEAF_VALUE_VAR": float(guided_mcts.leaf_value_var),
             "LEAF_VALUE_STD": float(guided_mcts.leaf_value_std),
             "wall_time_s": float(t_guided),
-            "top_k_smiles": [
-                _safe_smiles(c) for c in guided_candidates
-            ],
+            "top_k_smiles": [_safe_smiles(c) for c in guided_candidates],
         },
         "step4_uniform_crosscheck": {
             "rollout_epsilon": 0.0,
@@ -588,9 +594,7 @@ def main() -> None:
             "LEAF_VALUE_VAR": float(uniform_mcts.leaf_value_var),
             "LEAF_VALUE_STD": float(uniform_mcts.leaf_value_std),
             "wall_time_s": float(t_uniform),
-            "top_k_smiles": [
-                _safe_smiles(c) for c in uniform_candidates
-            ],
+            "top_k_smiles": [_safe_smiles(c) for c in uniform_candidates],
         },
     }
     with open(json_path, "w") as f:

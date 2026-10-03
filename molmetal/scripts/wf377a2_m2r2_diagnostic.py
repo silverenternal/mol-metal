@@ -67,6 +67,7 @@ Public API
 * :func:`ridge_r2_eval`                      Ridge R² (numpy fallback)
 * :func:`run_wf377a2`                        main entry point
 """
+
 from __future__ import annotations
 
 import argparse
@@ -104,13 +105,13 @@ def _resolve_repo_path(path: str) -> str:
 # WF-335-M2 / WF-367-B1 anchor baselines (source-of-truth values)
 # ---------------------------------------------------------------------------
 WF335M2_BEST_R2: Dict[str, float] = {
-    "platinai_4cell":         -0.12505399802714393,  # 12d_baseline
-    "hilbert":                -0.1267927743302506,   # 12d_baseline
-    "metalcytotox_combined":   0.22268113216745766,  # CEILING_BREAK
+    "platinai_4cell": -0.12505399802714393,  # 12d_baseline
+    "hilbert": -0.1267927743302506,  # 12d_baseline
+    "metalcytotox_combined": 0.22268113216745766,  # CEILING_BREAK
 }
 WF367B1_BEST_R2: Dict[str, float] = {
-    "platinai_4cell":         -0.5106,  # multi_stream_recovery_plus_w2
-    "hilbert":                -0.4933,  # multi_stream_recovery_plus_w2
+    "platinai_4cell": -0.5106,  # multi_stream_recovery_plus_w2
+    "hilbert": -0.4933,  # multi_stream_recovery_plus_w2
 }
 
 
@@ -193,12 +194,9 @@ def smiles_bigram_jaccard_matrix(smiles_list: List[str]) -> np.ndarray:
     Returns a symmetric matrix with 1.0 on the diagonal.
     """
     n = len(smiles_list)
-    bigrams = [set(s[i:i + 2] for i in range(len(s) - 1)) for s in smiles_list]
+    bigrams = [set(s[i : i + 2] for i in range(len(s) - 1)) for s in smiles_list]
     # Drop degenerate bigrams that include only whitespace or punctuation
-    bigrams = [
-        {bg for bg in bs if any(c.isalnum() for c in bg)}
-        for bs in bigrams
-    ]
+    bigrams = [{bg for bg in bs if any(c.isalnum() for c in bg)} for bs in bigrams]
     sim = np.zeros((n, n), dtype=np.float64)
     for i in range(n):
         for j in range(i, n):
@@ -261,17 +259,21 @@ def kmeans_cluster_ids(
     centers = np.zeros((n_clusters, X.shape[1]), dtype=np.float64)
     centers[0] = Xs[rng.integers(n)]
     for k in range(1, n_clusters):
-        d2 = np.min(np.sum((Xs[:, None, :] - centers[None, :k, :]) ** 2, axis=2), axis=1)
+        d2 = np.min(
+            np.sum((Xs[:, None, :] - centers[None, :k, :]) ** 2, axis=2), axis=1
+        )
         probs = d2 / (d2.sum() + 1e-12)
         centers[k] = Xs[rng.choice(n, p=probs)]
     # Lloyd iterations
     for _ in range(max_iter):
         dists = np.sum((Xs[:, None, :] - centers[None, :, :]) ** 2, axis=2)
         labels = np.argmin(dists, axis=1)
-        new_centers = np.array([
-            Xs[labels == k].mean(axis=0) if (labels == k).any() else centers[k]
-            for k in range(n_clusters)
-        ])
+        new_centers = np.array(
+            [
+                Xs[labels == k].mean(axis=0) if (labels == k).any() else centers[k]
+                for k in range(n_clusters)
+            ]
+        )
         if np.allclose(new_centers, centers, atol=1e-6):
             break
         centers = new_centers
@@ -281,7 +283,9 @@ def kmeans_cluster_ids(
 # ---------------------------------------------------------------------------
 # Split strategies (return list of (train_idx, test_idx) tuples)
 # ---------------------------------------------------------------------------
-def random_kfold_split(n: int, n_splits: int = 5, seed: int = 0) -> List[Tuple[np.ndarray, np.ndarray]]:
+def random_kfold_split(
+    n: int, n_splits: int = 5, seed: int = 0
+) -> List[Tuple[np.ndarray, np.ndarray]]:
     """Standard K-fold (current Wf-335-M2 protocol)."""
     rng = np.random.default_rng(seed)
     perm = rng.permutation(n)
@@ -291,7 +295,7 @@ def random_kfold_split(n: int, n_splits: int = 5, seed: int = 0) -> List[Tuple[n
     folds = []
     start = 0
     for fs in fold_sizes:
-        folds.append(perm[start:start + fs])
+        folds.append(perm[start : start + fs])
         start += fs
     out = []
     for k in range(n_splits):
@@ -330,15 +334,13 @@ def stratified_kfold_split(
         bf = []
         start = 0
         for fs in fold_sizes:
-            bf.append(idx[start:start + fs])
+            bf.append(idx[start : start + fs])
             start += fs
         bin_folds.append(bf)
     out = []
     for k in range(n_splits):
         test_parts = [bf[k] for bf in bin_folds]
-        train_parts = [
-            bf[i] for bf in bin_folds for i in range(n_splits) if i != k
-        ]
+        train_parts = [bf[i] for bf in bin_folds for i in range(n_splits) if i != k]
         test = np.concatenate(test_parts) if test_parts else np.array([], dtype=int)
         train = np.concatenate(train_parts) if train_parts else np.array([], dtype=int)
         out.append((train, test))
@@ -376,11 +378,21 @@ def scaffold_kfold_split(
     out = []
     for k in range(n_splits):
         test = np.array(
-            [i for sc, f in scaffold_to_fold.items() if f == k for i in scaffold_to_idx[sc]],
+            [
+                i
+                for sc, f in scaffold_to_fold.items()
+                if f == k
+                for i in scaffold_to_idx[sc]
+            ],
             dtype=int,
         )
         train = np.array(
-            [i for sc, f in scaffold_to_fold.items() if f != k for i in scaffold_to_idx[sc]],
+            [
+                i
+                for sc, f in scaffold_to_fold.items()
+                if f != k
+                for i in scaffold_to_idx[sc]
+            ],
             dtype=int,
         )
         out.append((train, test))
@@ -457,13 +469,13 @@ def compute_cohort_stats(
     y_min = float(y.min())
     y_max = float(y.max())
     y_median = float(np.median(y))
-    y_skew = float(((y - y_mean) ** 3).mean() / (y_std ** 3 + 1e-12))
+    y_skew = float(((y - y_mean) ** 3).mean() / (y_std**3 + 1e-12))
     # Quantile balance
     q = np.quantile(y, [0.25, 0.5, 0.75])
     # Heavy atom count proxy (count of uppercase letters in SMILES)
-    heavy_atom_counts = np.array([
-        sum(1 for c in s if c in "CNOSPFClBrI") for s in smiles_list
-    ])
+    heavy_atom_counts = np.array(
+        [sum(1 for c in s if c in "CNOSPFClBrI") for s in smiles_list]
+    )
     heavy_atom_mean = float(heavy_atom_counts.mean())
     heavy_atom_std = float(heavy_atom_counts.std())
     heavy_atom_min = int(heavy_atom_counts.min())
@@ -492,7 +504,7 @@ def compute_cohort_stats(
             "q50": float(q[1]),
             "q75": float(q[2]),
         },
-        "y_variance": float(y_std ** 2),
+        "y_variance": float(y_std**2),
         "scaffold_diversity_at_04": float(diversity04),
         "scaffold_diversity_at_06": float(diversity06),
         "scaffold_diversity_at_08": float(diversity08),
@@ -532,8 +544,13 @@ def run_split_strategies(
     # the Wf-335-M2 / Wf-367-B1 12-d baseline.
     X_12 = X[:, :12]
     results: Dict[str, Dict[str, Any]] = {}
-    for split_name in ("random_kfold", "stratified_kfold", "scaffold_kfold",
-                       "leave_one_cluster_out", "per_cell_holdout"):
+    for split_name in (
+        "random_kfold",
+        "stratified_kfold",
+        "scaffold_kfold",
+        "leave_one_cluster_out",
+        "per_cell_holdout",
+    ):
         r2_per_seed: List[float] = []
         n_degenerate_per_seed: List[int] = []
         for s in seeds:
@@ -612,30 +629,46 @@ def run_wf377a2(
         "per_cohort": [],
         "per_split_strategy": {},
     }
-    print(f"Wf-377-A2: n_cohorts={len(cohorts)} n_splits={n_splits} n_seeds={len(seeds)}")
+    print(
+        f"Wf-377-A2: n_cohorts={len(cohorts)} n_splits={n_splits} n_seeds={len(seeds)}"
+    )
     for cohort in cohorts:
         if cohort == "hilbert":
             X, y, smiles, target = load_cohort(
-                "platinai_4cell", max_samples=max_samples, seed=hilbert_seed_offset,
+                "platinai_4cell",
+                max_samples=max_samples,
+                seed=hilbert_seed_offset,
             )
         else:
             X, y, smiles, target = load_cohort(
-                cohort, max_samples=max_samples, seed=0,
+                cohort,
+                max_samples=max_samples,
+                seed=0,
             )
         print(f"\n--- {cohort} (n={len(smiles)}) ---")
         # Per-cohort structural stats
         stats = compute_cohort_stats(cohort, X, y, smiles)
         out["per_cohort"].append(stats)
-        print(f"  y range=[{stats['y_min']:.4f}, {stats['y_max']:.4f}] mean={stats['y_mean']:.4f} std={stats['y_std']:.4f}")
+        print(
+            f"  y range=[{stats['y_min']:.4f}, {stats['y_max']:.4f}] mean={stats['y_mean']:.4f} std={stats['y_std']:.4f}"
+        )
         print(f"  scaffold_diversity(<0.4)={stats['scaffold_diversity_at_04']:.4f}")
-        print(f"  n_unique_scaffold_proxies={stats['n_unique_scaffold_proxies']} / n={stats['n_samples']}")
-        print(f"  feat/sample={stats['features_per_sample_ratio']:.4f} ({stats['n_features']} features / {stats['n_samples']} samples)")
+        print(
+            f"  n_unique_scaffold_proxies={stats['n_unique_scaffold_proxies']} / n={stats['n_samples']}"
+        )
+        print(
+            f"  feat/sample={stats['features_per_sample_ratio']:.4f} ({stats['n_features']} features / {stats['n_samples']} samples)"
+        )
         # Per-split R² measurement (no cell_lines for platinai_4cell — per-cell
         # requires cell_line annotations not present in the current load_cohort)
         cell_lines: Optional[List[str]] = None
         # hilbert uses seed_offset=10 to give an independent split reading on the
         # same 200 SMILES (per Wf-325A / Wf-331-R5 pattern).
-        cohort_seeds = tuple(s + hilbert_seed_offset for s in seeds) if cohort == "hilbert" else seeds
+        cohort_seeds = (
+            tuple(s + hilbert_seed_offset for s in seeds)
+            if cohort == "hilbert"
+            else seeds
+        )
         splits_results = run_split_strategies(
             cohort=cohort,
             X=X,
@@ -648,7 +681,9 @@ def run_wf377a2(
         )
         out["per_split_strategy"][cohort] = splits_results
         for split_name, sr in splits_results.items():
-            print(f"  {split_name:30s} R²={sr['r2_mean']:+.4f} ± {sr['r2_std']:.4f} (n_seeds={sr['n_seeds']})")
+            print(
+                f"  {split_name:30s} R²={sr['r2_mean']:+.4f} ± {sr['r2_std']:.4f} (n_seeds={sr['n_seeds']})"
+            )
     # Aggregate: best split per cohort
     best_split_per_cohort: Dict[str, str] = {}
     best_r2_per_cohort: Dict[str, float] = {}
@@ -678,7 +713,10 @@ def run_wf377a2(
     out["honest_framing_summary"] = {
         "current_protocol": "random K-fold (Wf-335-M2 / Wf-367-B1 anchor)",
         "random_kfold_R2_anchors": {
-            cohort: out["per_split_strategy"].get(cohort, {}).get("random_kfold", {}).get("r2_mean")
+            cohort: out["per_split_strategy"]
+            .get(cohort, {})
+            .get("random_kfold", {})
+            .get("r2_mean")
             for cohort in cohorts
         },
         "best_alternative_split_per_cohort": best_split_per_cohort,
@@ -686,7 +724,10 @@ def run_wf377a2(
         "lift_vs_current_random_kfold": {
             cohort: (
                 best_r2_per_cohort[cohort]
-                - out["per_split_strategy"].get(cohort, {}).get("random_kfold", {}).get("r2_mean", float("nan"))
+                - out["per_split_strategy"]
+                .get(cohort, {})
+                .get("random_kfold", {})
+                .get("r2_mean", float("nan"))
             )
             for cohort in cohorts
         },
@@ -694,7 +735,8 @@ def run_wf377a2(
     out["timestamp"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     out["status"] = "MEASURED" if n_lifted < n_cohorts else "MEASURED_LIFT_FOUND"
     out["verdict"] = (
-        "HONEST_NEGATIVE_R2_DEEP_PRESERVED" if n_lifted < n_cohorts
+        "HONEST_NEGATIVE_R2_DEEP_PRESERVED"
+        if n_lifted < n_cohorts
         else "MEASURED_PARTIAL_LIFT"
     )
     with open(out_path, "w", encoding="utf-8") as fh:
@@ -707,8 +749,14 @@ def run_wf377a2(
 
 def _main(argv: Optional[List[str]] = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
-    p.add_argument("--out-path", default="molmetal/reports/wf377a2_m2r2_diagnostic/result.json")
-    p.add_argument("--cohorts", nargs="+", default=["platinai_4cell", "hilbert", "metalcytotox_combined"])
+    p.add_argument(
+        "--out-path", default="molmetal/reports/wf377a2_m2r2_diagnostic/result.json"
+    )
+    p.add_argument(
+        "--cohorts",
+        nargs="+",
+        default=["platinai_4cell", "hilbert", "metalcytotox_combined"],
+    )
     p.add_argument("--n-splits", type=int, default=5)
     p.add_argument("--alpha", type=float, default=1.0)
     p.add_argument("--max-samples", type=int, default=2000)

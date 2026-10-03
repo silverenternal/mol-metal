@@ -182,9 +182,7 @@ class CohortRecord:
             "sa_min": _safe_float(self.sa_min),
             "sa_max": _safe_float(self.sa_max),
             "n_valid_sa": int(self.n_valid_sa),
-            "aizynth_synthesizable_rate": _safe_float(
-                self.aizynth_synthesizable_rate
-            ),
+            "aizynth_synthesizable_rate": _safe_float(self.aizynth_synthesizable_rate),
             "aizynth_engine_breakdown": dict(self.aizynth_engine_breakdown),
             "per_compound": list(self.per_compound),
             "wall_time_s": float(self.wall_time_s),
@@ -308,9 +306,7 @@ def _run_one(
     t0 = time.perf_counter()
     if cohort == "closure_bounded":
         if pocket_id is None:
-            raise ValueError(
-                "pocket_id required for cohort='closure_bounded'"
-            )
+            raise ValueError("pocket_id required for cohort='closure_bounded'")
         if pocket_id not in SUPPORTED_POCKETS:
             raise ValueError(
                 f"pocket_id={pocket_id!r} not in SUPPORTED_POCKETS="
@@ -342,9 +338,9 @@ def _run_one(
             closure_bounded_smiles_generation,
             SUPPORTED_POCKETS,
         )
+
         neutral_pocket = (
-            "1h36" if "1h36" in SUPPORTED_POCKETS
-            else next(iter(SUPPORTED_POCKETS))
+            "1h36" if "1h36" in SUPPORTED_POCKETS else next(iter(SUPPORTED_POCKETS))
         )
         c = closure_bounded_smiles_generation(
             pocket_id=neutral_pocket,
@@ -361,8 +357,7 @@ def _run_one(
         cohort_engine = str(c.engine)
     else:
         raise ValueError(
-            f"Unknown cohort {cohort!r}; expected 'closure_bounded' or "
-            "'unbiased'"
+            f"Unknown cohort {cohort!r}; expected 'closure_bounded' or " "'unbiased'"
         )
 
     sa_vals = _score_sa_batch(smiles)
@@ -370,12 +365,14 @@ def _run_one(
 
     per_compound: List[Dict[str, object]] = []
     for i, smi in enumerate(smiles):
-        per_compound.append({
-            "smiles": smi,
-            "sa": _safe_float(sa_vals[i]),
-            "aizynth_synthesizable": bool(aiz_tags[i][0]),
-            "aizynth_engine": str(aiz_tags[i][1]),
-        })
+        per_compound.append(
+            {
+                "smiles": smi,
+                "sa": _safe_float(sa_vals[i]),
+                "aizynth_synthesizable": bool(aiz_tags[i][0]),
+                "aizynth_engine": str(aiz_tags[i][1]),
+            }
+        )
 
     agg = _aggregate_sa(sa_vals)
     n_synth = sum(1 for ok, _ in aiz_tags if ok)
@@ -397,9 +394,7 @@ def _run_one(
         sa_min=agg["min"],
         sa_max=agg["max"],
         n_valid_sa=int(agg["n_valid"]),
-        aizynth_synthesizable_rate=(
-            float(n_synth) / max(len(smiles), 1)
-        ),
+        aizynth_synthesizable_rate=(float(n_synth) / max(len(smiles), 1)),
         aizynth_engine_breakdown=engine_breakdown,
         per_compound=per_compound,
         wall_time_s=float(time.perf_counter() - t0),
@@ -432,7 +427,8 @@ def _aggregate_records(
             "sa_max_aggregated": None,
         }
     means = [
-        r.sa_mean for r in records
+        r.sa_mean
+        for r in records
         if r.sa_mean == r.sa_mean  # filter NaN
     ]
     if not means:
@@ -520,10 +516,7 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument(
         "--out-dir",
         type=Path,
-        default=PROJECT_ROOT
-        / "molmetal"
-        / "reports"
-        / "wf126_p3_sa_closure",
+        default=PROJECT_ROOT / "molmetal" / "reports" / "wf126_p3_sa_closure",
         help="Output directory (default wf126_p3_sa_closure).",
     )
     p.add_argument(
@@ -543,9 +536,7 @@ def main() -> int:
     )
 
     if args.cohort == "closure_bounded" and not args.pocket:
-        LOG.error(
-            "--pocket is required for --cohort closure_bounded"
-        )
+        LOG.error("--pocket is required for --cohort closure_bounded")
         return 2
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
@@ -556,7 +547,9 @@ def main() -> int:
     for seed in args.seeds:
         LOG.info(
             "[sa_closure] cohort=%s seed=%d pocket=%s — generating",
-            args.cohort, seed, args.pocket,
+            args.cohort,
+            seed,
+            args.pocket,
         )
         rec = _run_one(
             cohort=args.cohort,
@@ -569,7 +562,10 @@ def main() -> int:
         records.append(rec)
         LOG.info(
             "[sa_closure] cohort=%s seed=%d: sa_mean=%.3f n_kept=%d",
-            args.cohort, seed, rec.sa_mean, rec.n_kept,
+            args.cohort,
+            seed,
+            rec.sa_mean,
+            rec.n_kept,
         )
 
         # Always run the unbiased baseline (cheap, ~1 minute per seed).
@@ -588,21 +584,17 @@ def main() -> int:
         baseline_records.append(bsl)
         LOG.info(
             "[sa_closure] baseline unbiased seed=%d: sa_mean=%.3f n_kept=%d",
-            seed, bsl.sa_mean, bsl.n_kept,
+            seed,
+            bsl.sa_mean,
+            bsl.n_kept,
         )
 
     agg = _aggregate_records(records)
     bsl_agg = _aggregate_records(baseline_records)
 
     sa_mean_agg = agg["sa_mean_aggregated"]
-    pass_target = (
-        sa_mean_agg is not None
-        and sa_mean_agg <= SA_MEAN_ACCEPT_CLOSURE
-    )
-    pass_stretch = (
-        sa_mean_agg is not None
-        and sa_mean_agg <= TARGET_SA_MEAN_CLOSURE
-    )
+    pass_target = sa_mean_agg is not None and sa_mean_agg <= SA_MEAN_ACCEPT_CLOSURE
+    pass_stretch = sa_mean_agg is not None and sa_mean_agg <= TARGET_SA_MEAN_CLOSURE
 
     sa_metrics = {
         "metadata": {
@@ -625,11 +617,11 @@ def main() -> int:
             "n_seeds": agg["n_seeds"],
             "n_seeds_aggregated": agg["n_seeds_aggregated"],
             "sa_mean_aggregated": (
-                None if sa_mean_agg is None
-                else float(round(sa_mean_agg, 6))
+                None if sa_mean_agg is None else float(round(sa_mean_agg, 6))
             ),
             "sa_std_aggregated": (
-                None if agg["sa_std_aggregated"] is None
+                None
+                if agg["sa_std_aggregated"] is None
                 else float(round(agg["sa_std_aggregated"], 6))
             ),
             "sa_min_aggregated": agg["sa_min_aggregated"],
@@ -637,7 +629,8 @@ def main() -> int:
             "pass_target": bool(pass_target),
             "pass_stretch_target": bool(pass_stretch),
             "delta_vs_baseline_3p099": (
-                None if sa_mean_agg is None
+                None
+                if sa_mean_agg is None
                 else float(round(sa_mean_agg - BASELINE_SA_MEAN_UNCONSTRAINED, 6))
             ),
         },
@@ -656,10 +649,9 @@ def main() -> int:
         },
         "aizynth_summary": {
             "synthesizable_rate_aggregated": (
-                float(statistics.fmean(
-                    [r.aizynth_synthesizable_rate for r in records]
-                ))
-                if records else None
+                float(statistics.fmean([r.aizynth_synthesizable_rate for r in records]))
+                if records
+                else None
             ),
             "engine_breakdown_aggregated": _merge_engine_breakdowns(
                 [r.aizynth_engine_breakdown for r in records]
@@ -696,16 +688,28 @@ def main() -> int:
     csv_path = args.out_dir / "per_compound_sa.csv"
     with csv_path.open("w", newline="") as fh:
         writer = csv.writer(fh)
-        writer.writerow([
-            "seed", "pocket_id", "smiles", "sa",
-            "aizynth_synthesizable", "aizynth_engine",
-        ])
+        writer.writerow(
+            [
+                "seed",
+                "pocket_id",
+                "smiles",
+                "sa",
+                "aizynth_synthesizable",
+                "aizynth_engine",
+            ]
+        )
         for r in records:
             for c in r.per_compound:
-                writer.writerow([
-                    r.seed, r.pocket_id, c["smiles"], c["sa"],
-                    c["aizynth_synthesizable"], c["aizynth_engine"],
-                ])
+                writer.writerow(
+                    [
+                        r.seed,
+                        r.pocket_id,
+                        c["smiles"],
+                        c["sa"],
+                        c["aizynth_synthesizable"],
+                        c["aizynth_engine"],
+                    ]
+                )
     LOG.info("[sa_closure] wrote %s", csv_path)
 
     # Run summary (honest framing + parameter echo).

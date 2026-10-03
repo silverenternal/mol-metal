@@ -62,6 +62,7 @@ Usage
 Wall-budget on GPU: ~30 min (200 steps × 5 toggleable ablations × ~6 min).
 Wall-budget on CPU: ~3 h (10x slower; use --steps 50 for a fast demo).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -326,11 +327,16 @@ def _run_one_ablation(
         cmd = [
             sys.executable,
             str(TRAIN_SCRIPT.relative_to(_REPO_ROOT)),
-            "--steps", str(steps),
-            "--decode-smoke-every", str(steps),
-            "--decode-smoke-samples", str(decode_samples),
-            "--csv", str(csv_path.relative_to(_REPO_ROOT)),
-            "--out-dir", str(abl_out.relative_to(_REPO_ROOT)),
+            "--steps",
+            str(steps),
+            "--decode-smoke-every",
+            str(steps),
+            "--decode-smoke-samples",
+            str(decode_samples),
+            "--csv",
+            str(csv_path.relative_to(_REPO_ROOT)),
+            "--out-dir",
+            str(abl_out.relative_to(_REPO_ROOT)),
         ]
         print(
             f"[ablation_runner] === BASELINE (no ablation) ===",
@@ -376,24 +382,29 @@ def _run_one_ablation(
         cfg = final.get("config") or {}
         cfg_steps = int(cfg.get("steps_planned", steps) or steps)
         end_key = (
-            "decode_ratio_at_1000" if cfg_steps >= 1000
-            else "decode_ratio_at_500" if cfg_steps >= 500
-            else "decode_ratio_at_200" if cfg_steps >= 200
+            "decode_ratio_at_1000"
+            if cfg_steps >= 1000
+            else "decode_ratio_at_500"
+            if cfg_steps >= 500
+            else "decode_ratio_at_200"
+            if cfg_steps >= 200
             else None
         )
         m14_end = decode_summary.get(end_key) if end_key else None
         m14_max = decode_summary.get("max_decode_ratio")
-        summary["metrics"].update({
-            "m14_decode_ratio_at_end": m14_end if m14_end is not None else m14_max,
-            "m14_max_decode_ratio": m14_max,
-            "m14_first_nonzero_step": decode_summary.get(
-                "first_decode_ratio_nonzero_step"
-            ),
-            "cfm_loss_first": (loss_summary.get("cfm") or {}).get("first"),
-            "cfm_loss_last": (loss_summary.get("cfm") or {}).get("last"),
-            "atom_loss_last": (loss_summary.get("atom") or {}).get("last"),
-            "bond_loss_last": (loss_summary.get("bond") or {}).get("last"),
-        })
+        summary["metrics"].update(
+            {
+                "m14_decode_ratio_at_end": m14_end if m14_end is not None else m14_max,
+                "m14_max_decode_ratio": m14_max,
+                "m14_first_nonzero_step": decode_summary.get(
+                    "first_decode_ratio_nonzero_step"
+                ),
+                "cfm_loss_first": (loss_summary.get("cfm") or {}).get("first"),
+                "cfm_loss_last": (loss_summary.get("cfm") or {}).get("last"),
+                "atom_loss_last": (loss_summary.get("atom") or {}).get("last"),
+                "bond_loss_last": (loss_summary.get("bond") or {}).get("last"),
+            }
+        )
         summary["metrics"].update(_post_decode_smoke_metrics(spec, abl_out))
         summary["match"] = "N/A"
         return summary
@@ -401,24 +412,32 @@ def _run_one_ablation(
     cmd = [
         sys.executable,
         str(TRAIN_SCRIPT.relative_to(_REPO_ROOT)),
-        "--steps", str(steps),
-        "--decode-smoke-every", str(steps),
-        "--decode-smoke-samples", str(decode_samples),
-        "--csv", str(csv_path.relative_to(_REPO_ROOT)),
-        "--out-dir", str(abl_out.relative_to(_REPO_ROOT)),
+        "--steps",
+        str(steps),
+        "--decode-smoke-every",
+        str(steps),
+        "--decode-smoke-samples",
+        str(decode_samples),
+        "--csv",
+        str(csv_path.relative_to(_REPO_ROOT)),
+        "--out-dir",
+        str(abl_out.relative_to(_REPO_ROOT)),
     ] + spec.extra_args
 
     print(
         f"[ablation_runner] === {spec.ablation_id} ({spec.label}) ===",
         flush=True,
     )
-    print(f"[ablation_runner]   cmd = {' '.join(shlex.quote(c) for c in cmd)}",
-          flush=True)
+    print(
+        f"[ablation_runner]   cmd = {' '.join(shlex.quote(c) for c in cmd)}", flush=True
+    )
     print(f"[ablation_runner]   env = {spec.env_vars}", flush=True)
 
     t0 = time.time()
     rc, stdout, stderr = _run_subprocess(
-        cmd, env_extra=spec.env_vars, timeout_s=timeout_s,
+        cmd,
+        env_extra=spec.env_vars,
+        timeout_s=timeout_s,
     )
     wall = time.time() - t0
 
@@ -467,24 +486,29 @@ def _run_one_ablation(
     # have a single comparable m14 number.
     cfg_steps = int(cfg.get("steps_planned", steps) or steps)
     end_key = (
-        "decode_ratio_at_1000" if cfg_steps >= 1000
-        else "decode_ratio_at_500" if cfg_steps >= 500
-        else "decode_ratio_at_200" if cfg_steps >= 200
+        "decode_ratio_at_1000"
+        if cfg_steps >= 1000
+        else "decode_ratio_at_500"
+        if cfg_steps >= 500
+        else "decode_ratio_at_200"
+        if cfg_steps >= 200
         else None
     )
     m14_end = decode_summary.get(end_key) if end_key else None
     m14_max = decode_summary.get("max_decode_ratio")
-    summary["metrics"].update({
-        "m14_decode_ratio_at_end": m14_end if m14_end is not None else m14_max,
-        "m14_max_decode_ratio": m14_max,
-        "m14_first_nonzero_step": decode_summary.get(
-            "first_decode_ratio_nonzero_step"
-        ),
-        "cfm_loss_first": (loss_summary.get("cfm") or {}).get("first"),
-        "cfm_loss_last": (loss_summary.get("cfm") or {}).get("last"),
-        "atom_loss_last": (loss_summary.get("atom") or {}).get("last"),
-        "bond_loss_last": (loss_summary.get("bond") or {}).get("last"),
-    })
+    summary["metrics"].update(
+        {
+            "m14_decode_ratio_at_end": m14_end if m14_end is not None else m14_max,
+            "m14_max_decode_ratio": m14_max,
+            "m14_first_nonzero_step": decode_summary.get(
+                "first_decode_ratio_nonzero_step"
+            ),
+            "cfm_loss_first": (loss_summary.get("cfm") or {}).get("first"),
+            "cfm_loss_last": (loss_summary.get("cfm") or {}).get("last"),
+            "atom_loss_last": (loss_summary.get("atom") or {}).get("last"),
+            "bond_loss_last": (loss_summary.get("bond") or {}).get("last"),
+        }
+    )
     # Note: m5/m6/m13 require the SMILES — those come from the
     # post-hoc decode_smoke below.
     summary["metrics"].update(_post_decode_smoke_metrics(spec, abl_out))
@@ -528,11 +552,15 @@ def _post_decode_smoke_metrics(spec: AblationSpec, abl_out: Path) -> dict:
         from molmetal.ports import GenerationConfig
 
         adapter = LipmanFlowMatchingAdapter(
-            hidden_dim=128, n_layers=3,
-            use_bond_head=True, joint_train=True,
-            bond_pattern_mask=True, vocab_mask=True,
+            hidden_dim=128,
+            n_layers=3,
+            use_bond_head=True,
+            joint_train=True,
+            bond_pattern_mask=True,
+            vocab_mask=True,
         )
         import torch
+
         device = "cuda" if torch.cuda.is_available() else "cpu"
         adapter.setup(device=device)
         ckpt = torch.load(ckpt_path, weights_only=False)
@@ -563,9 +591,11 @@ def _post_decode_smoke_metrics(spec: AblationSpec, abl_out: Path) -> dict:
             return out
         from rdkit import Chem, RDLogger
         from rdkit.Chem import QED
+
         RDLogger.DisableLog("rdApp.*")
         from molmetal.molmetal_lam.sbdd_env.sa_score import (
-            sa_score_ertl, sa_score_to_unit,
+            sa_score_ertl,
+            sa_score_to_unit,
         )
 
         sa_raw_list: List[float] = []
@@ -598,18 +628,14 @@ def _post_decode_smoke_metrics(spec: AblationSpec, abl_out: Path) -> dict:
                     pass
 
         n = max(1, len(mols))
-        out["m13_validity_rate"] = (
-            sum(1 for v in validity_flags if v) / n if n else 0.0
-        )
+        out["m13_validity_rate"] = sum(1 for v in validity_flags if v) / n if n else 0.0
         out["m5_sa_raw_mean"] = (
             sum(sa_raw_list) / len(sa_raw_list) if sa_raw_list else None
         )
         out["m5_sa_unit_mean"] = (
             sum(sa_unit_list) / len(sa_unit_list) if sa_unit_list else None
         )
-        out["m6_qed_mean"] = (
-            sum(qed_list) / len(qed_list) if qed_list else None
-        )
+        out["m6_qed_mean"] = sum(qed_list) / len(qed_list) if qed_list else None
         out["_post_decode"] = "ok"
         out["_post_decode_smiles_sample"] = decoded_smiles[:5]
     except Exception as exc:  # noqa: BLE001
@@ -657,22 +683,24 @@ def _write_aggregate_csv(out_dir: Path, summaries: List[dict]) -> Path:
     rows = []
     for s in summaries:
         metrics = s.get("metrics") or {}
-        rows.append({
-            "ablation_id": s["ablation_id"],
-            "label": s["label"],
-            "toggle": s["toggle"],
-            "status": s["status"],
-            "match": s.get("match", ""),
-            "target_metric": s["target_metric"],
-            "m14_decode_ratio": metrics.get("m14_decode_ratio_at_end", ""),
-            "m14_max": metrics.get("m14_max_decode_ratio", ""),
-            "m13_validity": metrics.get("m13_validity_rate", ""),
-            "m5_sa_unit": metrics.get("m5_sa_unit_mean", ""),
-            "m6_qed": metrics.get("m6_qed_mean", ""),
-            "atom_loss_last": metrics.get("atom_loss_last", ""),
-            "bond_loss_last": metrics.get("bond_loss_last", ""),
-            "wall_s": s.get("wall_s", ""),
-        })
+        rows.append(
+            {
+                "ablation_id": s["ablation_id"],
+                "label": s["label"],
+                "toggle": s["toggle"],
+                "status": s["status"],
+                "match": s.get("match", ""),
+                "target_metric": s["target_metric"],
+                "m14_decode_ratio": metrics.get("m14_decode_ratio_at_end", ""),
+                "m14_max": metrics.get("m14_max_decode_ratio", ""),
+                "m13_validity": metrics.get("m13_validity_rate", ""),
+                "m5_sa_unit": metrics.get("m5_sa_unit_mean", ""),
+                "m6_qed": metrics.get("m6_qed_mean", ""),
+                "atom_loss_last": metrics.get("atom_loss_last", ""),
+                "bond_loss_last": metrics.get("bond_loss_last", ""),
+                "wall_s": s.get("wall_s", ""),
+            }
+        )
     with csv_path.open("w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=list(rows[0].keys()))
         w.writeheader()
@@ -692,16 +720,15 @@ def _write_final_md(
     n_toggleable = sum(1 for s in summaries if s["toggle"] == "toggleable")
     n_design = sum(1 for s in summaries if s["toggle"] == "design")
     n_pass = sum(
-        1 for s in summaries
+        1
+        for s in summaries
         if s["toggle"] == "toggleable" and s.get("status") == "PASS"
     )
-    n_mismatch = sum(
-        1 for s in summaries
-        if s.get("match") == "MISMATCH"
-    )
+    n_mismatch = sum(1 for s in summaries if s.get("match") == "MISMATCH")
     # Pull the BASELINE row for the deltas.
     baseline = next(
-        (s for s in summaries if s["ablation_id"] == "BASELINE"), None,
+        (s for s in summaries if s["ablation_id"] == "BASELINE"),
+        None,
     )
     baseline_m = (baseline or {}).get("metrics") or {}
 
@@ -727,9 +754,7 @@ def _write_final_md(
     parts: List[str] = []
     parts.append("# R17 Ablation Runner — final.md")
     parts.append("")
-    parts.append(
-        f"**Date**: {time.strftime('%Y-%m-%d')}  "
-    )
+    parts.append(f"**Date**: {time.strftime('%Y-%m-%d')}  ")
     parts.append(
         "**Source**: `molmetal/scripts/ablation_runner.py`  \n"
         f"**Step budget**: {steps} steps per ablation  \n"
@@ -739,13 +764,13 @@ def _write_final_md(
     parts.append("")
     parts.append("## Summary")
     parts.append("")
-    parts.append(f"* Total ablations: **{len(summaries)} / 11** "
-                 "(includes 1 BASELINE reference)")
+    parts.append(
+        f"* Total ablations: **{len(summaries)} / 11** "
+        "(includes 1 BASELINE reference)"
+    )
     parts.append(f"* Toggleable (CFM retrain + decode smoke): **{n_toggleable}**")
     parts.append(f"* Design-only (dedicated workflow harness): **{n_design}**")
-    parts.append(
-        f"* Toggleable runs completed (rc=0): **{n_pass} / {n_toggleable}**"
-    )
+    parts.append(f"* Toggleable runs completed (rc=0): **{n_pass} / {n_toggleable}**")
     parts.append(
         f"* Predictions vs measurement (toggleable): **{n_mismatch} MISMATCH**"
     )
@@ -756,9 +781,7 @@ def _write_final_md(
         "| ID | Label | Toggle | Status | Match | m14 | Δ m14 | "
         "m13 | m5 | m6 | atom_loss | bond_loss |"
     )
-    parts.append(
-        "|---|---|---|---|---|---|---|---|---|---|---|---|"
-    )
+    parts.append("|---|---|---|---|---|---|---|---|---|---|---|---|")
     for s in summaries:
         m = s.get("metrics") or {}
         m14 = m.get("m14_decode_ratio_at_end")
@@ -848,17 +871,13 @@ def _write_final_md(
     parts.append("## Design-only ablations (documented, not exercised)")
     parts.append("")
     parts.append(
-        "These six ablations require a dedicated harness outside this "
-        "smoke runner:"
+        "These six ablations require a dedicated harness outside this " "smoke runner:"
     )
     parts.append("")
     parts.append(
-        "| ID | Mechanism | Owner workflow | Metric | "
-        "Why not in this smoke |"
+        "| ID | Mechanism | Owner workflow | Metric | " "Why not in this smoke |"
     )
-    parts.append(
-        "|---|---|---|---|---|"
-    )
+    parts.append("|---|---|---|---|---|")
     parts.append(
         "| M3 | KataGo-MCTS → vanilla UCB | "
         "`search_alg/proof_search.py` (workflow H) | m7/m11 | "
@@ -954,23 +973,50 @@ def _write_final_md(
 # ---------------------------------------------------------------------------
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--steps", type=int, default=200,
-                        help="CFM retrain steps per ablation (default 200)")
-    parser.add_argument("--decode-samples", type=int, default=16,
-                        help="Decode-smoke sample count (default 16)")
-    parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT,
-                        help="Output directory (default wf_ablation_runner)")
-    parser.add_argument("--csv", type=Path, default=TRAIN_CSV,
-                        help="Training-pool CSV (default metallo_drugs_500_train.csv)")
-    parser.add_argument("--timeout-s", type=int, default=3600,
-                        help="Per-ablation subprocess timeout (default 3600s)")
-    parser.add_argument("--only", type=str, default="",
-                        help="Comma-separated subset of ablation IDs to run "
-                             "(e.g. 'M13,M14').  Default: all 11.")
-    parser.add_argument("--regen-md-only", action="store_true",
-                        help="Skip training — just reload the existing "
-                             "<ID>.json files and regenerate the "
-                             "aggregate.csv + final.md from them.")
+    parser.add_argument(
+        "--steps",
+        type=int,
+        default=200,
+        help="CFM retrain steps per ablation (default 200)",
+    )
+    parser.add_argument(
+        "--decode-samples",
+        type=int,
+        default=16,
+        help="Decode-smoke sample count (default 16)",
+    )
+    parser.add_argument(
+        "--out-dir",
+        type=Path,
+        default=DEFAULT_OUT,
+        help="Output directory (default wf_ablation_runner)",
+    )
+    parser.add_argument(
+        "--csv",
+        type=Path,
+        default=TRAIN_CSV,
+        help="Training-pool CSV (default metallo_drugs_500_train.csv)",
+    )
+    parser.add_argument(
+        "--timeout-s",
+        type=int,
+        default=3600,
+        help="Per-ablation subprocess timeout (default 3600s)",
+    )
+    parser.add_argument(
+        "--only",
+        type=str,
+        default="",
+        help="Comma-separated subset of ablation IDs to run "
+        "(e.g. 'M13,M14').  Default: all 11.",
+    )
+    parser.add_argument(
+        "--regen-md-only",
+        action="store_true",
+        help="Skip training — just reload the existing "
+        "<ID>.json files and regenerate the "
+        "aggregate.csv + final.md from them.",
+    )
     args = parser.parse_args(argv)
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
@@ -988,20 +1034,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             else:
                 # DESIGN_ONLY spec — synthesise the row so the report
                 # is complete even if the JSON was deleted.
-                summaries.append({
-                    "ablation_id": spec.ablation_id,
-                    "label": spec.label,
-                    "mechanism_module": spec.mechanism_module,
-                    "target_metric": spec.target_metric,
-                    "expected_effect": spec.expected_effect,
-                    "toggle": spec.toggle,
-                    "status": "DESIGN_ONLY",
-                    "note": "Ablation requires dedicated harness; "
-                            "see TODO/MECHANISM_METRIC_MAPPING.md §5.",
-                    "env_vars_requested": {},
-                    "extra_args_requested": [],
-                    "predicted_value": spec.predicted_value,
-                })
+                summaries.append(
+                    {
+                        "ablation_id": spec.ablation_id,
+                        "label": spec.label,
+                        "mechanism_module": spec.mechanism_module,
+                        "target_metric": spec.target_metric,
+                        "expected_effect": spec.expected_effect,
+                        "toggle": spec.toggle,
+                        "status": "DESIGN_ONLY",
+                        "note": "Ablation requires dedicated harness; "
+                        "see TODO/MECHANISM_METRIC_MAPPING.md §5.",
+                        "env_vars_requested": {},
+                        "extra_args_requested": [],
+                        "predicted_value": spec.predicted_value,
+                    }
+                )
     else:
         t_start = time.time()
         for spec in ABLATION_TABLE:
@@ -1020,11 +1068,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     csv_path = _write_aggregate_csv(args.out_dir, summaries)
     md_path = _write_final_md(
-        args.out_dir, summaries, csv_path=csv_path, steps=args.steps,
+        args.out_dir,
+        summaries,
+        csv_path=csv_path,
+        steps=args.steps,
     )
-    wall_total = (
-        time.time() - t_start if not args.regen_md_only else 0.0
-    )
+    wall_total = time.time() - t_start if not args.regen_md_only else 0.0
     print(
         f"[ablation_runner] DONE in {wall_total:.1f}s.  "
         f"CSV={csv_path}  MD={md_path}",

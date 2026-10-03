@@ -26,6 +26,7 @@ What this smoke bench verifies:
 
 Output: a JSON file with the per-regime R² + the grad-flow proof.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -45,6 +46,7 @@ for _p in (str(_HERE.parent), str(_REPO_ROOT)):
 
 def _r2(y_true, y_pred):
     import numpy as np
+
     y_true = np.asarray(y_true, dtype=float).reshape(-1)
     y_pred = np.asarray(y_pred, dtype=float).reshape(-1)
     if y_true.size < 2 or y_true.size != y_pred.size:
@@ -58,15 +60,26 @@ def _r2(y_true, y_pred):
 
 def _wass_loss_torch(pred, ref):
     from molmetal.molmetal_lam.reward.wasserstein_loss import wasserstein_pic50_loss
+
     return wasserstein_pic50_loss(pred.float(), ref.float())
 
 
 def fit_predict(
-    X_tr, y_tr, X_te, y_te, ref_pic,
+    X_tr,
+    y_tr,
+    X_te,
+    y_te,
+    ref_pic,
     *,
-    hilbert_dim, epochs, lr, seed,
-    w_w, detach_pred,
-    grad_clip=1.0, warmup_iters=5, ridge_alpha=0.01,
+    hilbert_dim,
+    epochs,
+    lr,
+    seed,
+    w_w,
+    detach_pred,
+    grad_clip=1.0,
+    warmup_iters=5,
+    ridge_alpha=0.01,
     device="cpu",
 ):
     import numpy as np
@@ -80,7 +93,8 @@ def fit_predict(
     rng = np.random.default_rng(int(seed))
     x = torch.tensor(
         (rng.standard_normal(hilbert_dim).astype("float32") * 0.01),
-        requires_grad=True, device=device,
+        requires_grad=True,
+        device=device,
     )
     y_mean = float(np.mean(y_tr))
     ytr_c = ytr_t - y_mean
@@ -90,11 +104,13 @@ def fit_predict(
         if it < int(warmup_iters):
             lr_it = float(lr) * (it + 1) / max(1, int(warmup_iters))
         else:
-            progress = (it - int(warmup_iters)) / max(1, int(epochs) - int(warmup_iters))
+            progress = (it - int(warmup_iters)) / max(
+                1, int(epochs) - int(warmup_iters)
+            )
             lr_it = float(lr) * (0.1 + 0.9 * 0.5 * (1.0 + math.cos(math.pi * progress)))
 
         pred = Xtr_t @ x
-        mse = ((pred - ytr_c) ** 2).mean() + float(ridge_alpha) * (x ** 2).sum()
+        mse = ((pred - ytr_c) ** 2).mean() + float(ridge_alpha) * (x**2).sum()
 
         if detach_pred:
             w_pen = _wass_loss_torch(pred.detach(), ref_t)
@@ -123,6 +139,7 @@ def fit_predict(
 def load_platinai(csv_path: Path, cell_line: str, n_max: int):
     """Load PlatinAI 4-cell CSV; return (smiles, pic50)."""
     import csv
+
     col = f"ic50_{cell_line.lower()}_nm"
     out_smi = []
     out_pic = []
@@ -185,6 +202,7 @@ def featurize(smiles_list):
 
 def pad_hilbert(X, hilbert_dim):
     import numpy as np
+
     n, F = X.shape
     if F >= hilbert_dim:
         return X[:, :hilbert_dim].astype("float32")
@@ -207,6 +225,7 @@ def pad_hilbert(X, hilbert_dim):
 
 def zscore(X_tr, X_te):
     import numpy as np
+
     mu = X_tr.mean(axis=0)
     sigma = X_tr.std(axis=0)
     sigma = np.where(sigma < 1e-3, 1.0, sigma)
@@ -224,8 +243,10 @@ def run_smoke(args) -> dict:
     cell_line = args.cell_line
     n_max = int(args.n_max)
     smi_list, pic_list = load_platinai(csv_path, cell_line, n_max)
-    print(f"[smoke] loaded {len(smi_list)} rows of PlatinAI 4-cell {cell_line} "
-          f"(mean pIC50 = {float(np.mean(pic_list)):.3f})")
+    print(
+        f"[smoke] loaded {len(smi_list)} rows of PlatinAI 4-cell {cell_line} "
+        f"(mean pIC50 = {float(np.mean(pic_list)):.3f})"
+    )
 
     feats_list, kept = featurize(smi_list)
     if not feats_list:
@@ -252,30 +273,56 @@ def run_smoke(args) -> dict:
     # Constant-mean baseline (signal-floor)
     r2_floor = _r2(y_te, np.full_like(y_te, fill_value=float(np.mean(y_tr))))
 
-    print(f"[smoke] training Hilbert PK (dim={hilbert_dim}, "
-          f"epochs={args.epochs}, lr={args.lr}, w_w={args.w_w})...")
+    print(
+        f"[smoke] training Hilbert PK (dim={hilbert_dim}, "
+        f"epochs={args.epochs}, lr={args.lr}, w_w={args.w_w})..."
+    )
 
     print("[smoke] 1/3: MSE only (no W₂)")
     pred_no_wass, _ = fit_predict(
-        X_tr_n, y_tr, X_te_n, y_te, ref_pic,
-        hilbert_dim=hilbert_dim, epochs=int(args.epochs), lr=float(args.lr),
-        seed=0, w_w=0.0, detach_pred=False,
+        X_tr_n,
+        y_tr,
+        X_te_n,
+        y_te,
+        ref_pic,
+        hilbert_dim=hilbert_dim,
+        epochs=int(args.epochs),
+        lr=float(args.lr),
+        seed=0,
+        w_w=0.0,
+        detach_pred=False,
     )
     r2_no_wass = _r2(y_te, pred_no_wass)
 
     print("[smoke] 2/3: W₂ + BUGGY (detach_pred=True)")
     pred_buggy, _ = fit_predict(
-        X_tr_n, y_tr, X_te_n, y_te, ref_pic,
-        hilbert_dim=hilbert_dim, epochs=int(args.epochs), lr=float(args.lr),
-        seed=0, w_w=float(args.w_w), detach_pred=True,
+        X_tr_n,
+        y_tr,
+        X_te_n,
+        y_te,
+        ref_pic,
+        hilbert_dim=hilbert_dim,
+        epochs=int(args.epochs),
+        lr=float(args.lr),
+        seed=0,
+        w_w=float(args.w_w),
+        detach_pred=True,
     )
     r2_buggy = _r2(y_te, pred_buggy)
 
     print("[smoke] 3/3: W₂ + FIXED (detach_pred=False)")
     pred_fixed, grad_active = fit_predict(
-        X_tr_n, y_tr, X_te_n, y_te, ref_pic,
-        hilbert_dim=hilbert_dim, epochs=int(args.epochs), lr=float(args.lr),
-        seed=0, w_w=float(args.w_w), detach_pred=False,
+        X_tr_n,
+        y_tr,
+        X_te_n,
+        y_te,
+        ref_pic,
+        hilbert_dim=hilbert_dim,
+        epochs=int(args.epochs),
+        lr=float(args.lr),
+        seed=0,
+        w_w=float(args.w_w),
+        detach_pred=False,
     )
     r2_fixed = _r2(y_te, pred_fixed)
 
@@ -319,15 +366,23 @@ def run_smoke(args) -> dict:
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    p.add_argument("--csv", default="/home/hugo/codes/mol-metal/molmetal/data/platinai_4cell.csv")
-    p.add_argument("--cell-line", default="MCF7",
-                   help="Which PlatinAI 4-cell column to use (MCF7/A549/A2780/A2780cis)")
+    p.add_argument(
+        "--csv", default="/home/hugo/codes/mol-metal/molmetal/data/platinai_4cell.csv"
+    )
+    p.add_argument(
+        "--cell-line",
+        default="MCF7",
+        help="Which PlatinAI 4-cell column to use (MCF7/A549/A2780/A2780cis)",
+    )
     p.add_argument("--n-max", type=int, default=4000)
     p.add_argument("--epochs", type=int, default=80)
     p.add_argument("--lr", type=float, default=0.05)
     p.add_argument("--hilbert-dim", type=int, default=64)
     p.add_argument("--w-w", type=float, default=1.0)
-    p.add_argument("--out-dir", default="/home/hugo/codes/mol-metal/molmetal/reports/wf179_w2_pic50_fix")
+    p.add_argument(
+        "--out-dir",
+        default="/home/hugo/codes/mol-metal/molmetal/reports/wf179_w2_pic50_fix",
+    )
     return p.parse_args()
 
 
@@ -353,8 +408,10 @@ def main() -> int:
     print(f"G1 root cause:  {results['g1_root_cause']}")
     print(f"G2 fix applied: {results['g2_fix_applied']}")
     print(f"G3 unit test:   {results['g3_unit_test_pass']}")
-    print(f"G4 smoke R²:    {results['g4_smoke_r2']:+.4f} "
-          f"({'PASS' if results['g4_passed_literal_R2_gt_0p1'] else 'FAIL — see honest framing'})")
+    print(
+        f"G4 smoke R²:    {results['g4_smoke_r2']:+.4f} "
+        f"({'PASS' if results['g4_passed_literal_R2_gt_0p1'] else 'FAIL — see honest framing'})"
+    )
     print()
     print(f"Honest framing: {results['honest_framing']}")
 

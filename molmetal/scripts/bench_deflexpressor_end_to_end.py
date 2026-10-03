@@ -229,7 +229,9 @@ def _featurize_smiles(smiles: str) -> Optional[List[float]]:
 # ---------------------------------------------------------------------------
 # Loaders — PlatinAI 4-cell + NCI-60
 # ---------------------------------------------------------------------------
-def load_platinai_4cell(csv_path: Path, n_max: Optional[int] = None) -> List[Dict[str, Any]]:
+def load_platinai_4cell(
+    csv_path: Path, n_max: Optional[int] = None
+) -> List[Dict[str, Any]]:
     """Load PlatinAI 4-cell-line rows.
 
     Returns a list of dicts ``{"smiles", "pic50", "cell_line"}`` where
@@ -265,17 +267,21 @@ def load_platinai_4cell(csv_path: Path, n_max: Optional[int] = None) -> List[Dic
             pic50 = -math.log10(max(ic50_um * 1e-6, 1e-12))
             if not math.isfinite(pic50):
                 continue
-            out.append({
-                "smiles": smi,
-                "pic50": float(pic50),
-                "cell_line": cell_line or "",
-            })
+            out.append(
+                {
+                    "smiles": smi,
+                    "pic50": float(pic50),
+                    "cell_line": cell_line or "",
+                }
+            )
             if n_max is not None and len(out) >= n_max:
                 break
     return out
 
 
-def load_nci60_precious(csv_path: Path, n_max: Optional[int] = None) -> List[Dict[str, Any]]:
+def load_nci60_precious(
+    csv_path: Path, n_max: Optional[int] = None
+) -> List[Dict[str, Any]]:
     """Load NCI-60 long-form precious-metal rows with real pIC50."""
     out: List[Dict[str, Any]] = []
     with open(csv_path, newline="") as f:
@@ -292,11 +298,13 @@ def load_nci60_precious(csv_path: Path, n_max: Optional[int] = None) -> List[Dic
             smi = (row.get("smiles") or "").strip()
             if not smi:
                 continue
-            out.append({
-                "smiles": smi,
-                "pic50": pic50,
-                "cell_line": row.get("cell_line", ""),
-            })
+            out.append(
+                {
+                    "smiles": smi,
+                    "pic50": pic50,
+                    "cell_line": row.get("cell_line", ""),
+                }
+            )
             if n_max is not None and len(out) >= n_max:
                 break
     return out
@@ -346,11 +354,16 @@ def build_design_matrix(
         n_parsed += 1
     X_arr = np.asarray(X, dtype=float)
     y_arr = np.asarray(y, dtype=float).reshape(-1)
-    return smiles_list, X_arr, y_arr, {
-        "n_parsed": n_parsed,
-        "n_failed": n_failed,
-        "n_target_rows": n_parsed,
-    }
+    return (
+        smiles_list,
+        X_arr,
+        y_arr,
+        {
+            "n_parsed": n_parsed,
+            "n_failed": n_failed,
+            "n_target_rows": n_parsed,
+        },
+    )
 
 
 def pad_to_hilbert_dim(
@@ -370,8 +383,12 @@ def pad_to_hilbert_dim(
     n = X_12d.shape[0]
     F = X_12d.shape[1]
     bias = np.ones((n, 1), dtype=float)
-    interactions_tr = [X_12d[:, i] * X_12d[:, j] for i in range(F) for j in range(i + 1, F)]
-    inter_arr_tr = np.stack(interactions_tr, axis=1) if interactions_tr else np.zeros((n, 0))
+    interactions_tr = [
+        X_12d[:, i] * X_12d[:, j] for i in range(F) for j in range(i + 1, F)
+    ]
+    inter_arr_tr = (
+        np.stack(interactions_tr, axis=1) if interactions_tr else np.zeros((n, 0))
+    )
     base_tr = np.concatenate([X_12d, bias], axis=1)
     aug_tr = np.concatenate([base_tr, inter_arr_tr], axis=1)
     if X_12d_test is not None:
@@ -379,9 +396,14 @@ def pad_to_hilbert_dim(
         bias_te = np.ones((n_te, 1), dtype=float)
         interactions_te = [
             X_12d_test[:, i] * X_12d_test[:, j]
-            for i in range(F) for j in range(i + 1, F)
+            for i in range(F)
+            for j in range(i + 1, F)
         ]
-        inter_arr_te = np.stack(interactions_te, axis=1) if interactions_te else np.zeros((n_te, 0))
+        inter_arr_te = (
+            np.stack(interactions_te, axis=1)
+            if interactions_te
+            else np.zeros((n_te, 0))
+        )
         base_te = np.concatenate([X_12d_test, bias_te], axis=1)
         aug_te = np.concatenate([base_te, inter_arr_te], axis=1)
     else:
@@ -390,7 +412,9 @@ def pad_to_hilbert_dim(
         pad = np.zeros((n, hilbert_dim - aug_tr.shape[1]), dtype=float)
         out_tr = np.concatenate([aug_tr, pad], axis=1)
         if aug_te is not None:
-            pad_te = np.zeros((aug_te.shape[0], hilbert_dim - aug_te.shape[1]), dtype=float)
+            pad_te = np.zeros(
+                (aug_te.shape[0], hilbert_dim - aug_te.shape[1]), dtype=float
+            )
             out_te = np.concatenate([aug_te, pad_te], axis=1)
             return out_tr, out_te
         return out_tr, None
@@ -449,8 +473,13 @@ def _r2(y_true: np.ndarray, y_pred: np.ndarray) -> float:
 
 
 def fit_ast(
-    X_tr: np.ndarray, y_tr: np.ndarray, X_te: np.ndarray, y_te: np.ndarray,
-    *, seed: int, hp: Dict[str, Any],
+    X_tr: np.ndarray,
+    y_tr: np.ndarray,
+    X_te: np.ndarray,
+    y_te: np.ndarray,
+    *,
+    seed: int,
+    hp: Dict[str, Any],
 ) -> Tuple[float, float, str]:
     """Fit :class:`LambdaASTSR`; return ``(r2_test, train_r2, active_branch)``."""
     from molmetal.molmetal_lam.reward.lambda_astsr import LambdaASTSR
@@ -472,8 +501,13 @@ def fit_ast(
 
 
 def fit_hilbert(
-    X_tr_64: np.ndarray, y_tr: np.ndarray, X_te_64: np.ndarray, y_te: np.ndarray,
-    *, seed: int, hp: Dict[str, Any],
+    X_tr_64: np.ndarray,
+    y_tr: np.ndarray,
+    X_te_64: np.ndarray,
+    y_te: np.ndarray,
+    *,
+    seed: int,
+    hp: Dict[str, Any],
 ) -> Tuple[float, float, str]:
     """Fit :class:`LambdaASTSRHilbert`; return ``(r2_test, train_r2, active_branch)``.
 
@@ -487,7 +521,8 @@ def fit_hilbert(
     from molmetal.molmetal_lam.reward.hilbert_primal_dual import LambdaASTSRHilbert
 
     best_x, train_r2 = _stable_pd_fit(
-        X_tr_64, y_tr,
+        X_tr_64,
+        y_tr,
         hilbert_dim=int(hp["population_dim"]),
         lr=float(hp.get("lr_primal", 0.05)),
         n_iters=int(hp["n_iters"]),
@@ -567,7 +602,9 @@ def _stable_pd_fit(
         # Above solves (XᵀX+αI)w = eigh(...)[0]*w, not the linear system;
         # fall back to lstsq instead.
         w, *_ = np.linalg.lstsq(
-            XtX + float(ridge_alpha) * np.eye(hilbert_dim), Xty, rcond=None,
+            XtX + float(ridge_alpha) * np.eye(hilbert_dim),
+            Xty,
+            rcond=None,
         )
     # NaN/Inf guard — should never trigger but cheap to check.
     w = np.nan_to_num(w, nan=0.0, posinf=_PRED_CLIP, neginf=-_PRED_CLIP)
@@ -580,9 +617,15 @@ def _stable_pd_fit(
 
 
 def fit_composite(
-    X_tr: np.ndarray, y_tr: np.ndarray, X_te: np.ndarray, y_te: np.ndarray,
-    X_tr_64: np.ndarray, X_te_64: np.ndarray,
-    *, seed: int, hp: Dict[str, Any],
+    X_tr: np.ndarray,
+    y_tr: np.ndarray,
+    X_te: np.ndarray,
+    y_te: np.ndarray,
+    X_tr_64: np.ndarray,
+    X_te_64: np.ndarray,
+    *,
+    seed: int,
+    hp: Dict[str, Any],
 ) -> Tuple[float, float, str]:
     """Fit :class:`HilbertASTSRComposite`; return ``(r2_test, train_r2, active_branch)``.
 
@@ -591,7 +634,9 @@ def fit_composite(
     instances and reports the better R² on the held-out test slice.
     ``active_branch`` is the branch that produced the better test R².
     """
-    from molmetal.molmetal_lam.reward.hilbert_astsr_integration import HilbertASTSRComposite
+    from molmetal.molmetal_lam.reward.hilbert_astsr_integration import (
+        HilbertASTSRComposite,
+    )
     from molmetal.molmetal_lam.reward.hilbert_primal_dual import LambdaASTSRHilbert
     from molmetal.molmetal_lam.reward.lambda_astsr import LambdaASTSR
 
@@ -614,7 +659,8 @@ def fit_composite(
     # closed-form iterate, not the PD iterate).
     if "ridge_alpha" in hp:
         best_x, _ = _stable_pd_fit(
-            X_tr_64, y_tr,
+            X_tr_64,
+            y_tr,
             hilbert_dim=int(hp["population_dim"]),
             lr=float(hp["lr_primal"]),
             n_iters=int(hp["n_iters"]),
@@ -636,10 +682,20 @@ def fit_composite(
     # is ignored.
     _ = model.fit(X_tr_64, y_tr)
     r2_hilbert, train_h, _ = fit_hilbert(
-        X_tr_64, y_tr, X_te_64, y_te, seed=seed, hp=hp,
+        X_tr_64,
+        y_tr,
+        X_te_64,
+        y_te,
+        seed=seed,
+        hp=hp,
     )
     r2_ast, train_a, _ = fit_ast(
-        X_tr, y_tr, X_te, y_te, seed=seed, hp=hp,
+        X_tr,
+        y_tr,
+        X_te,
+        y_te,
+        seed=seed,
+        hp=hp,
     )
     if math.isfinite(r2_hilbert) and math.isfinite(r2_ast):
         if r2_hilbert >= r2_ast:
@@ -672,9 +728,7 @@ def _run_one(
 
     smiles, X, y, stats = build_design_matrix(rows=rows, seed=seed)
     if X.shape[0] < 10:
-        raise RuntimeError(
-            f"too few parsed rows ({X.shape[0]}); need ≥10 to split"
-        )
+        raise RuntimeError(f"too few parsed rows ({X.shape[0]}); need ≥10 to split")
     rng = np.random.default_rng(seed)
     idx = np.arange(X.shape[0])
     rng.shuffle(idx)
@@ -703,16 +757,32 @@ def _run_one(
     t0 = time.perf_counter()
     if method == "ast":
         r2, train_r2, branch = fit_ast(
-            X_tr_n, y_tr, X_te_n, y_te, seed=seed, hp=local_hp,
+            X_tr_n,
+            y_tr,
+            X_te_n,
+            y_te,
+            seed=seed,
+            hp=local_hp,
         )
     elif method == "hilbert":
         r2, train_r2, branch = fit_hilbert(
-            X_tr_64, y_tr, X_te_64, y_te, seed=seed, hp=local_hp,
+            X_tr_64,
+            y_tr,
+            X_te_64,
+            y_te,
+            seed=seed,
+            hp=local_hp,
         )
     elif method == "composite":
         r2, train_r2, branch = fit_composite(
-            X_tr_n, y_tr, X_te_n, y_te, X_tr_64, X_te_64,
-            seed=seed, hp=local_hp,
+            X_tr_n,
+            y_tr,
+            X_te_n,
+            y_te,
+            X_tr_64,
+            X_te_64,
+            seed=seed,
+            hp=local_hp,
         )
     else:
         raise ValueError(f"unknown method: {method}")
@@ -750,9 +820,7 @@ def run_benchmark(
 
     rows = load_dataset(dataset, n_max=n_samples)
     if len(rows) < 10:
-        raise RuntimeError(
-            f"dataset {dataset!r} returned {len(rows)} rows; need ≥10"
-        )
+        raise RuntimeError(f"dataset {dataset!r} returned {len(rows)} rows; need ≥10")
 
     records: List[FitRecord] = []
     for method in methods:
@@ -777,11 +845,14 @@ def run_benchmark(
         mem_arr = np.asarray([r.peak_mem_mb for r in m_records], dtype=float)
         per_seed: Dict[int, Dict[str, float]] = {}
         for r in m_records:
-            per_seed.setdefault(int(r.seed), {
-                "r2_test": float(r.r2_test),
-                "wall_s": float(r.wall_s),
-                "peak_mem_mb": float(r.peak_mem_mb),
-            })
+            per_seed.setdefault(
+                int(r.seed),
+                {
+                    "r2_test": float(r.r2_test),
+                    "wall_s": float(r.wall_s),
+                    "peak_mem_mb": float(r.peak_mem_mb),
+                },
+            )
         per_method[method] = MethodSummary(
             method=method,
             r2_mean=float(np.nanmean(r2_arr)) if r2_arr.size else 0.0,
@@ -807,9 +878,16 @@ def run_benchmark(
             "hilbert_dim": int(HILBERT_DIM),
             "feature_columns": list(FEATURE_COLUMNS),
             "hyperparams": {
-                m: {k: (int(v) if isinstance(v, (int, np.integer)) else
-                       float(v) if isinstance(v, (float, np.floating)) else v)
-                    for k, v in hyperparams[m].items()}
+                m: {
+                    k: (
+                        int(v)
+                        if isinstance(v, (int, np.integer))
+                        else float(v)
+                        if isinstance(v, (float, np.floating))
+                        else v
+                    )
+                    for k, v in hyperparams[m].items()
+                }
                 for m in methods
             },
             "timestamp_utc": datetime.now(timezone.utc).isoformat(),
@@ -828,7 +906,8 @@ def run_benchmark(
                     str(s): {kk: float(vv) for kk, vv in vals.items()}
                     for s, vals in per_method[m].per_seed.items()
                 },
-            } for m in methods
+            }
+            for m in methods
         },
         "records": [asdict(r) for r in records],
     }
@@ -846,22 +925,42 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         )
     )
     p.add_argument("--n-samples", type=int, default=DEFAULT_N_SAMPLES)
-    p.add_argument("--seeds", type=int, default=len(DEFAULT_SEEDS),
-                   help="Number of seeds; sweep runs seeds {0, 1, ..., N-1}")
-    p.add_argument("--epochs", type=int, default=200,
-                   help="Hilbert PD iterations (--method hilbert/composite)")
-    p.add_argument("--method", type=str, nargs="+", default=list(DEFAULT_METHODS),
-                   choices=["ast", "hilbert", "composite"],
-                   help="One or more of: ast / hilbert / composite")
-    p.add_argument("--dataset", type=str, default="nci60",
-                   choices=["platinai", "nci60"],
-                   help="PlatinAI 4-cell synthetic IC50 or NCI-60 real pIC50 "
-                        "(default nci60 — PlatinAI 4-cell has zero feature "
-                        "correlation with RDKit descriptors)")
+    p.add_argument(
+        "--seeds",
+        type=int,
+        default=len(DEFAULT_SEEDS),
+        help="Number of seeds; sweep runs seeds {0, 1, ..., N-1}",
+    )
+    p.add_argument(
+        "--epochs",
+        type=int,
+        default=200,
+        help="Hilbert PD iterations (--method hilbert/composite)",
+    )
+    p.add_argument(
+        "--method",
+        type=str,
+        nargs="+",
+        default=list(DEFAULT_METHODS),
+        choices=["ast", "hilbert", "composite"],
+        help="One or more of: ast / hilbert / composite",
+    )
+    p.add_argument(
+        "--dataset",
+        type=str,
+        default="nci60",
+        choices=["platinai", "nci60"],
+        help="PlatinAI 4-cell synthetic IC50 or NCI-60 real pIC50 "
+        "(default nci60 — PlatinAI 4-cell has zero feature "
+        "correlation with RDKit descriptors)",
+    )
     p.add_argument("--test-frac", type=float, default=DEFAULT_TEST_FRAC)
     p.add_argument("--output", type=str, default=str(DEFAULT_OUT_DIR))
-    p.add_argument("--smoke", action="store_true",
-                   help="Fast mode: --n-samples 30 --seeds 1 --epochs 30")
+    p.add_argument(
+        "--smoke",
+        action="store_true",
+        help="Fast mode: --n-samples 30 --seeds 1 --epochs 30",
+    )
     return p.parse_args(argv)
 
 
@@ -883,26 +982,31 @@ def render_markdown(payload: Dict[str, Any]) -> str:
     lines: List[str] = []
     lines.append(f"# Wf-39 Phase 2 — Deflexpressor end-to-end training bench\n")
     lines.append(f"**Dataset**: `{cfg['dataset']}`  ")
-    lines.append(f"**n_samples loaded**: {cfg['n_samples_loaded']} "
-                 f"(requested {cfg['n_samples_requested']})  ")
+    lines.append(
+        f"**n_samples loaded**: {cfg['n_samples_loaded']} "
+        f"(requested {cfg['n_samples_requested']})  "
+    )
     lines.append(f"**Seeds**: {cfg['seeds']}  ")
     lines.append(f"**Methods**: {cfg['methods']}  ")
     lines.append(f"**Epochs (PD iters)**: {cfg['epochs']}  ")
-    lines.append(f"**Descriptors**: {cfg['n_descriptors']}-d RDKit → "
-                 f"{cfg['hilbert_dim']}-d Hilbert-augmented\n")
+    lines.append(
+        f"**Descriptors**: {cfg['n_descriptors']}-d RDKit → "
+        f"{cfg['hilbert_dim']}-d Hilbert-augmented\n"
+    )
     lines.append("\n## Aggregate (across seeds)\n")
-    lines.append("| Method | R² mean ± std | Wall (s) mean ± std | "
-                 "Peak mem (MB) mean ± std | Speedup |")
+    lines.append(
+        "| Method | R² mean ± std | Wall (s) mean ± std | "
+        "Peak mem (MB) mean ± std | Speedup |"
+    )
     lines.append("|---|---|---|---|---|")
     for m in methods:
         agg = per_method[m]
         speedup = (
             agg["wall_s_mean"] / per_method[fastest]["wall_s_mean"]
-            if per_method[fastest]["wall_s_mean"] > 0 else float("inf")
+            if per_method[fastest]["wall_s_mean"] > 0
+            else float("inf")
         )
-        speedup_str = (
-            f"{speedup:.2f}x (ref)" if m == fastest else f"{speedup:.2f}x"
-        )
+        speedup_str = f"{speedup:.2f}x (ref)" if m == fastest else f"{speedup:.2f}x"
         lines.append(
             f"| {m} | {agg['r2_mean']:+.4f} ± {agg['r2_std']:.4f} | "
             f"{agg['wall_s_mean']:.3f} ± {agg['wall_s_std']:.3f} | "
@@ -938,17 +1042,19 @@ def render_markdown(payload: Dict[str, Any]) -> str:
                 f"R²={r['r2_test']:+.4f}  train_R²={r['train_r2']:+.4f}"
             )
     lines.append("\n## Honest framing\n")
-    lines.append("* ``ast`` uses 12-d RDKit descriptors; ``hilbert`` / "
-                 "``composite`` use the 64-d pairwise-interaction augmentation.\n"
-                 "* ``epochs`` is forwarded as ``n_iters`` to the Hilbert "
-                 "branch only; the AST branch uses ``generations``.\n"
-                 "* ``composite`` runs both branches and reports the better "
-                 "test R²; it is **not** a weighted ensemble.\n"
-                 "* Wall-time and memory are machine-dependent; the speedup "
-                 "column is the intended *relative* metric.\n"
-                 "* pIC50 is **not log-scaled** beyond the standard "
-                 "``pIC50 = -log10(IC50_M)`` conversion; the regression "
-                 "target is continuous in ``[3.5, 9.5]``.\n")
+    lines.append(
+        "* ``ast`` uses 12-d RDKit descriptors; ``hilbert`` / "
+        "``composite`` use the 64-d pairwise-interaction augmentation.\n"
+        "* ``epochs`` is forwarded as ``n_iters`` to the Hilbert "
+        "branch only; the AST branch uses ``generations``.\n"
+        "* ``composite`` runs both branches and reports the better "
+        "test R²; it is **not** a weighted ensemble.\n"
+        "* Wall-time and memory are machine-dependent; the speedup "
+        "column is the intended *relative* metric.\n"
+        "* pIC50 is **not log-scaled** beyond the standard "
+        "``pIC50 = -log10(IC50_M)`` conversion; the regression "
+        "target is continuous in ``[3.5, 9.5]``.\n"
+    )
     lines.append(f"\n**Run timestamp (UTC):** {cfg['timestamp_utc']}\n")
     return "\n".join(lines) + "\n"
 

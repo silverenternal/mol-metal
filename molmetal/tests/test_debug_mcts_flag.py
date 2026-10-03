@@ -61,6 +61,7 @@ class _IdentityRule(ReactionRule):
                 MoleculeClosedTerm as _MCT,
             )
             from molmetal_lam.bonds.application import FreeSiteLedger
+
             new_atoms = list(state.atoms) + list(tile.atoms)
             return [
                 _MCT(
@@ -79,8 +80,7 @@ class _IdentityRule(ReactionRule):
 
 def _tiles() -> List[MoleculeClosedTerm]:
     return [
-        MoleculeClosedTerm.from_smiles(smi)
-        for smi in ("CCO", "CCN", "CCCl", "CCS")
+        MoleculeClosedTerm.from_smiles(smi) for smi in ("CCO", "CCN", "CCCl", "CCS")
     ]
 
 
@@ -103,8 +103,8 @@ def _build_search(debug: bool = True) -> MCTSProofSearch:
         c_puct=1.4,
         top_k=3,
         rng=random.Random(0),
-        dirichlet_alpha=0.0,        # disable noise for deterministic trace
-        early_stop=False,           # honour the full budget
+        dirichlet_alpha=0.0,  # disable noise for deterministic trace
+        early_stop=False,  # honour the full budget
         debug=bool(debug),
     )
 
@@ -141,7 +141,8 @@ class TestDebugMCTSFlag:
         assert isinstance(mcts.debug_trace, list)
 
     def test_run_with_debug_true_emits_puct_lines(
-        self, capsys: pytest.CaptureFixture[str],
+        self,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Running with ``debug=True`` writes per-step PUCT lines to
         stdout containing ``PUCT``, ``Q=``, and ``P=`` substrings."""
@@ -151,21 +152,16 @@ class TestDebugMCTSFlag:
         captured = capsys.readouterr().out
         # Must contain at least one PUCT line per PUCT selection, plus
         # one LEAF summary line per iteration.
-        assert "PUCT" in captured, (
-            f"expected 'PUCT' in stdout, got:\n{captured[:1000]}"
-        )
-        assert "Q=" in captured, (
-            f"expected 'Q=' in stdout, got:\n{captured[:1000]}"
-        )
-        assert "P=" in captured, (
-            f"expected 'P=' in stdout, got:\n{captured[:1000]}"
-        )
-        assert "LEAF" in captured, (
-            f"expected 'LEAF' summary line, got:\n{captured[:1000]}"
-        )
+        assert "PUCT" in captured, f"expected 'PUCT' in stdout, got:\n{captured[:1000]}"
+        assert "Q=" in captured, f"expected 'Q=' in stdout, got:\n{captured[:1000]}"
+        assert "P=" in captured, f"expected 'P=' in stdout, got:\n{captured[:1000]}"
+        assert (
+            "LEAF" in captured
+        ), f"expected 'LEAF' summary line, got:\n{captured[:1000]}"
 
     def test_run_with_debug_false_emits_no_puct_lines(
-        self, capsys: pytest.CaptureFixture[str],
+        self,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Default (debug=False) is silent — no PUCT trace on stdout."""
         mcts = _build_search(debug=False)
@@ -173,12 +169,12 @@ class TestDebugMCTSFlag:
         mcts.search(initial, max_depth=2)
         captured = capsys.readouterr().out
         # The wrapper prints "[step=...]" only when debug=True.
-        assert "PUCT" not in captured, (
-            "debug=False must not emit PUCT lines; got:\n{captured}"
-        )
-        assert "LEAF" not in captured, (
-            "debug=False must not emit LEAF summary; got:\n{captured}"
-        )
+        assert (
+            "PUCT" not in captured
+        ), "debug=False must not emit PUCT lines; got:\n{captured}"
+        assert (
+            "LEAF" not in captured
+        ), "debug=False must not emit LEAF summary; got:\n{captured}"
 
     def test_debug_trace_populated_after_run(self) -> None:
         """The structured :attr:`debug_trace` list is populated once
@@ -222,7 +218,8 @@ class TestDebugMCTSFlag:
         assert len(mcts.debug_trace) == 10
 
     def test_run_10_iterations_step_lines_have_required_substrings(
-        self, capsys: pytest.CaptureFixture[str],
+        self,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Canonical requirement from B3: 10 iterations, capture
         stdout, assert step lines contain ``PUCT``, ``Q=``, ``P=``
@@ -234,15 +231,16 @@ class TestDebugMCTSFlag:
         captured = capsys.readouterr().out
         # Assert required substrings — explicit per B3 spec.
         for needle in ("PUCT", "Q=", "P="):
-            assert needle in captured, (
-                f"required substring {needle!r} not found in stdout"
-            )
+            assert (
+                needle in captured
+            ), f"required substring {needle!r} not found in stdout"
 
     def test_puct_lines_have_all_components(self) -> None:
         """Each PUCT line contains every component from the formula:
         ``Q=``, ``P=``, ``N_child=``, ``sqrt(N_parent)=``, ``cpuct=``."""
         import io as _io
         import contextlib as _cl
+
         buf = _io.StringIO()
         mcts = _build_search(debug=True)
         initial = MoleculeClosedTerm.from_smiles("CCO")
@@ -251,39 +249,38 @@ class TestDebugMCTSFlag:
         out = buf.getvalue()
         # Pick out the per-depth PUCT lines (not the LEAF summary).
         puct_lines = [
-            line for line in out.splitlines()
-            if "PUCT" in line and "LEAF" not in line
+            line for line in out.splitlines() if "PUCT" in line and "LEAF" not in line
         ]
         assert puct_lines, "no PUCT lines were emitted"
         for line in puct_lines:
             for needle in (
-                "Q=", "P=", "N_child=", "sqrt(N_parent)=",
-                "cpuct=", "U=", "child=",
+                "Q=",
+                "P=",
+                "N_child=",
+                "sqrt(N_parent)=",
+                "cpuct=",
+                "U=",
+                "child=",
             ):
-                assert needle in line, (
-                    f"missing {needle!r} in PUCT line: {line!r}"
-                )
+                assert needle in line, f"missing {needle!r} in PUCT line: {line!r}"
 
     def test_leaf_line_has_smiles_rule_reward(self) -> None:
         """The ``LEAF`` summary line exposes ``smi=``, ``rule=``,
         ``reward=``, ``path_len=`` fields."""
         import io as _io
         import contextlib as _cl
+
         buf = _io.StringIO()
         mcts = _build_search(debug=True)
         initial = MoleculeClosedTerm.from_smiles("CCO")
         with _cl.redirect_stdout(buf):
             mcts.search(initial, max_depth=2)
         out = buf.getvalue()
-        leaf_lines = [
-            line for line in out.splitlines() if "LEAF" in line
-        ]
+        leaf_lines = [line for line in out.splitlines() if "LEAF" in line]
         assert len(leaf_lines) == 10  # one per iteration
         for line in leaf_lines:
             for needle in ("smi=", "rule=", "reward=", "path_len="):
-                assert needle in line, (
-                    f"missing {needle!r} in LEAF line: {line!r}"
-                )
+                assert needle in line, f"missing {needle!r} in LEAF line: {line!r}"
 
 
 class TestDebugMCTSCLI:
@@ -300,19 +297,26 @@ class TestDebugMCTSCLI:
         # .../molmetal/        = dirname(dirname(test_path))
         # .../mol-metal/       = dirname(dirname(dirname(test_path)))
         tests_dir = os.path.dirname(test_path)
-        molmetal_pkg = os.path.dirname(tests_dir)        # molmetal/
-        project_root = os.path.dirname(molmetal_pkg)     # mol-metal/
+        molmetal_pkg = os.path.dirname(tests_dir)  # molmetal/
+        project_root = os.path.dirname(molmetal_pkg)  # mol-metal/
         script_path = os.path.join(
-            molmetal_pkg, "scripts", "debug_mcts.py",
+            molmetal_pkg,
+            "scripts",
+            "debug_mcts.py",
         )
-        assert os.path.exists(script_path), (
-            f"debug_mcts.py not found at {script_path}"
-        )
+        assert os.path.exists(script_path), f"debug_mcts.py not found at {script_path}"
         # Run the script as a module so the relative imports resolve.
         result = subprocess.run(
             [
-                sys.executable, "-m", "molmetal.scripts.debug_mcts",
-                "--seed", "0", "--depth", "2", "--sims", "5",
+                sys.executable,
+                "-m",
+                "molmetal.scripts.debug_mcts",
+                "--seed",
+                "0",
+                "--depth",
+                "2",
+                "--sims",
+                "5",
                 "--debug-mcts",
             ],
             cwd=project_root,
@@ -340,8 +344,15 @@ class TestDebugMCTSCLI:
         project_root = os.path.dirname(molmetal_pkg)
         result = subprocess.run(
             [
-                sys.executable, "-m", "molmetal.scripts.debug_mcts",
-                "--seed", "0", "--depth", "2", "--sims", "5",
+                sys.executable,
+                "-m",
+                "molmetal.scripts.debug_mcts",
+                "--seed",
+                "0",
+                "--depth",
+                "2",
+                "--sims",
+                "5",
             ],
             cwd=project_root,
             capture_output=True,
@@ -349,8 +360,7 @@ class TestDebugMCTSCLI:
             timeout=60,
         )
         assert result.returncode == 0, (
-            f"CLI exited non-zero: rc={result.returncode}\n"
-            f"stderr:\n{result.stderr}"
+            f"CLI exited non-zero: rc={result.returncode}\n" f"stderr:\n{result.stderr}"
         )
         out = result.stdout
         # No PUCT trace on stdout when --debug-mcts is omitted.

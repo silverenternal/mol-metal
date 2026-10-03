@@ -36,6 +36,7 @@ This is INTEGRATION work, NOT a new measurement: no AUC values
 are reported. Tests skip cleanly when the chemprop v2 driver can't
 import cuik_molmaker (matches Wf-315F pattern).
 """
+
 from __future__ import annotations
 
 import sys
@@ -54,9 +55,7 @@ if str(PROJECT_ROOT) not in sys.path:
 # ``test_wf315f_nci60_per_cell_scaffold_fallback`` pattern).
 sys.path.insert(0, str(PROJECT_ROOT / ".cloned" / "chemprop_v2"))
 
-CSV_DEFAULT = (
-    PROJECT_ROOT / "molmetal" / "data" / "nci60_precious_9cell.csv"
-)
+CSV_DEFAULT = PROJECT_ROOT / "molmetal" / "data" / "nci60_precious_9cell.csv"
 
 # Per-cell row counts (MEASURED Sep 28 2026 from nci60_precious_9cell.csv).
 EXPECTED_PER_CELL_ROWS = {
@@ -91,6 +90,7 @@ EXPECTED_MAX_SCAFFOLD_SIZE = {
 def _try_import_helpers_module():
     try:
         from molmetal.scripts import _nci60_scaffold_helpers as helpers  # noqa: E402
+
         return helpers
     except Exception as exc:  # noqa: BLE001
         pytest.skip(f"nci60 scaffold helpers import failed: {exc}")
@@ -100,6 +100,7 @@ def _try_import_driver_module():
     """Fallback for tests that need the full driver (CLI integration)."""
     try:
         from molmetal.scripts import nci60_9cell_chemprop_driver as mod  # noqa: E402
+
         return mod
     except Exception as exc:  # noqa: BLE001
         pytest.skip(f"nci60 driver import failed: {exc}")
@@ -199,8 +200,7 @@ class TestPerCellNTestMinAutoComputation:
         smiles = _per_cell_smiles("PC3")
         n_test_min = helpers.compute_per_cell_n_test_min(smiles_subset=smiles)
         assert n_test_min == 8, (
-            f"PC3 expected n_test_min=8 from max=9 headroom=0.85; "
-            f"got {n_test_min}"
+            f"PC3 expected n_test_min=8 from max=9 headroom=0.85; " f"got {n_test_min}"
         )
 
 
@@ -232,7 +232,9 @@ class TestPerCellSplitDecisionAutoTuned:
         active = sub["active"].astype(int).to_numpy()
         n_test_min = helpers.compute_per_cell_n_test_min(smiles_subset=smiles)
         out = helpers._scaffold_split_indices_nci60(
-            smiles_subset=smiles, active_subset=active, seed=0,
+            smiles_subset=smiles,
+            active_subset=active,
+            seed=0,
             n_test_min=n_test_min,
         )
         assert out is not None, (
@@ -257,7 +259,9 @@ class TestPerCellSplitDecisionAutoTuned:
         active = sub["active"].astype(int).to_numpy()
         n_test_min = helpers.compute_per_cell_n_test_min(smiles_subset=smiles)
         out = helpers._scaffold_split_indices_nci60(
-            smiles_subset=smiles, active_subset=active, seed=0,
+            smiles_subset=smiles,
+            active_subset=active,
+            seed=0,
             n_test_min=n_test_min,
         )
         assert out is not None, (
@@ -282,9 +286,14 @@ class TestPerCellSplitDecisionAutoTuned:
         assert args_on.n_test_min_auto is True
         assert args_on.n_test_min == 50
         # Off via --no-n-test-min-auto
-        args_off = p.parse_args([
-            "--split", "auto", "--dry-run", "--no-n-test-min-auto",
-        ])
+        args_off = p.parse_args(
+            [
+                "--split",
+                "auto",
+                "--dry-run",
+                "--no-n-test-min-auto",
+            ]
+        )
         assert args_off.n_test_min_auto is False
         assert args_off.n_test_min == 50
 
@@ -308,10 +317,18 @@ class TestDriverCLIIntegration:
         assert args1.n_test_min_floor == 5
         assert args1.n_test_min_headroom == 0.85
         # --n-test-min-auto off
-        args2 = p.parse_args([
-            "--split", "auto", "--dry-run", "--no-n-test-min-auto",
-            "--n-test-min-floor", "10", "--n-test-min-headroom", "0.7",
-        ])
+        args2 = p.parse_args(
+            [
+                "--split",
+                "auto",
+                "--dry-run",
+                "--no-n-test-min-auto",
+                "--n-test-min-floor",
+                "10",
+                "--n-test-min-headroom",
+                "0.7",
+            ]
+        )
         assert args2.n_test_min_auto is False
         assert args2.n_test_min_floor == 10
         assert abs(args2.n_test_min_headroom - 0.7) < 1e-9
@@ -322,11 +339,18 @@ class TestDriverCLIIntegration:
         """
         mod = _try_import_driver_module()
         p = mod.build_argparser()
-        args = p.parse_args([
-            "--split", "auto", "--dry-run",
-            "--n-test-min-auto", "--n-test-min-floor", "5",
-            "--n-test-min-headroom", "0.85",
-        ])
+        args = p.parse_args(
+            [
+                "--split",
+                "auto",
+                "--dry-run",
+                "--n-test-min-auto",
+                "--n-test-min-floor",
+                "5",
+                "--n-test-min-headroom",
+                "0.85",
+            ]
+        )
         plan = mod.dry_run_plan(args)
         # Plan must include the split protocol field (WFM-319E
         # per_cell_n_test_min is in the execute path; dry-run just

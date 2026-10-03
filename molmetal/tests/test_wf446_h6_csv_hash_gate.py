@@ -18,6 +18,7 @@ Covered here (CPU-only, no network, no GPU):
   6. legacy blocking behaviour preserved (missing file / short file FAIL);
   7. gate spec list and manifest keys cannot drift apart.
 """
+
 from __future__ import annotations
 
 import hashlib

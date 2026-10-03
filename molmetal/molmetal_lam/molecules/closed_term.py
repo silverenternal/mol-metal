@@ -171,7 +171,7 @@ class MoleculeClosedTerm:
         once all covalent valences are satisfied.
         """
         if not self.atoms:
-            return True   # empty term is trivially closed
+            return True  # empty term is trivially closed
         # If we have explicit valence bookkeeping (from from_rdkit)
         # use it; otherwise derive from bonds.
         used = dict(self.valence_used)
@@ -201,10 +201,7 @@ class MoleculeClosedTerm:
                 # Covalent: both lose `order` slots.
                 used[i_a] = used.get(i_a, 0) + b.order
                 used[i_b] = used.get(i_b, 0) + b.order
-        return all(
-            used.get(i, 0) >= a.valence
-            for i, a in enumerate(self.atoms)
-        )
+        return all(used.get(i, 0) >= a.valence for i, a in enumerate(self.atoms))
 
     @property
     def is_beta_normal_form(self) -> bool:
@@ -355,18 +352,22 @@ class MoleculeClosedTerm:
         old_bonds = list(self.bonds)
         if not self.has_redex():
             # L3 metric: REDEX_REDUCTION_RATE (no-op branch)
-            _METRICS.history.append({
-                "metric": "REDEX_REDUCTION_RATE",
-                "value": 0.0,
-                "had_redex": False,
-                "n_bonds_before": len(old_bonds),
-                "n_bonds_after": len(old_bonds),
-            })
-            _METRICS.history.append({
-                "metric": "NF_TERM",
-                "value": self.is_beta_normal_form,
-                "is_closed": self.is_closed,
-            })
+            _METRICS.history.append(
+                {
+                    "metric": "REDEX_REDUCTION_RATE",
+                    "value": 0.0,
+                    "had_redex": False,
+                    "n_bonds_before": len(old_bonds),
+                    "n_bonds_after": len(old_bonds),
+                }
+            )
+            _METRICS.history.append(
+                {
+                    "metric": "NF_TERM",
+                    "value": self.is_beta_normal_form,
+                    "is_closed": self.is_closed,
+                }
+            )
             return self._copy()
 
         # Find the first unsaturated index that has an acidic neighbour.
@@ -420,19 +421,23 @@ class MoleculeClosedTerm:
         changed = (len(new_bonds) != len(old_bonds)) or (
             len(new_atoms) != len(old_atoms)
         )
-        _METRICS.history.append({
-            "metric": "REDEX_REDUCTION_RATE",
-            "value": float(changed),
-            "had_redex": True,
-            "n_bonds_before": len(old_bonds),
-            "n_bonds_after": len(new_bonds),
-        })
+        _METRICS.history.append(
+            {
+                "metric": "REDEX_REDUCTION_RATE",
+                "value": float(changed),
+                "had_redex": True,
+                "n_bonds_before": len(old_bonds),
+                "n_bonds_after": len(new_bonds),
+            }
+        )
         # L3 metric: NF_TERM — boolean for whether the new term is in β-NF.
-        _METRICS.history.append({
-            "metric": "NF_TERM",
-            "value": new_term.is_beta_normal_form,
-            "is_closed": new_term.is_closed,
-        })
+        _METRICS.history.append(
+            {
+                "metric": "NF_TERM",
+                "value": new_term.is_beta_normal_form,
+                "is_closed": new_term.is_closed,
+            }
+        )
         return new_term
 
     # ------------------------------------------------------------------
@@ -477,18 +482,24 @@ class MoleculeClosedTerm:
     def _value_signature(self) -> Tuple[Any, ...]:
         """Pure-Python fingerprint when RDKit is unavailable."""
         atom_sig = tuple(sorted(a.symbol for a in self.atoms))
-        bond_sig = tuple(sorted(
-            (
-                b.kind,
-                b.order,
-                b.is_dative,
-                min(_safe_index(self.atoms, b.atom_a),
-                    _safe_index(self.atoms, b.atom_b)),
-                max(_safe_index(self.atoms, b.atom_a),
-                    _safe_index(self.atoms, b.atom_b)),
+        bond_sig = tuple(
+            sorted(
+                (
+                    b.kind,
+                    b.order,
+                    b.is_dative,
+                    min(
+                        _safe_index(self.atoms, b.atom_a),
+                        _safe_index(self.atoms, b.atom_b),
+                    ),
+                    max(
+                        _safe_index(self.atoms, b.atom_a),
+                        _safe_index(self.atoms, b.atom_b),
+                    ),
+                )
+                for b in self.bonds
             )
-            for b in self.bonds
-        ))
+        )
         return (atom_sig, bond_sig)
 
     # ------------------------------------------------------------------
@@ -640,22 +651,35 @@ class MoleculeClosedTerm:
             # valence for unusual topologies).
             try:
                 bond = Bond.covalent(
-                    atom_a, atom_b, order=order,
-                    ledger=ledger, strict=False,
+                    atom_a,
+                    atom_b,
+                    order=order,
+                    ledger=ledger,
+                    strict=False,
                 )
                 if kind == AROMATIC:
                     bond = Bond(
-                        atom_a=atom_a, atom_b=atom_b, order=1,
-                        is_dative=False, kind=AROMATIC, donor_is_a=True,
-                        free_a_before=0, free_b_before=0,
+                        atom_a=atom_a,
+                        atom_b=atom_b,
+                        order=1,
+                        is_dative=False,
+                        kind=AROMATIC,
+                        donor_is_a=True,
+                        free_a_before=0,
+                        free_b_before=0,
                         ledger=ledger,
                     )
             except Exception:
                 # Manual fallback if the factory raises (e.g. self-loop).
                 bond = Bond(
-                    atom_a=atom_a, atom_b=atom_b, order=order,
-                    is_dative=is_dative, kind=kind, donor_is_a=True,
-                    free_a_before=0, free_b_before=0,
+                    atom_a=atom_a,
+                    atom_b=atom_b,
+                    order=order,
+                    is_dative=is_dative,
+                    kind=kind,
+                    donor_is_a=True,
+                    free_a_before=0,
+                    free_b_before=0,
                     ledger=ledger,
                 )
             bonds.append(bond)
@@ -741,12 +765,8 @@ class MoleculeClosedTerm:
                 # Even an empty mol is technically parseable, but it
                 # carries no chemistry; surface a clear error rather
                 # than silently building a void term.
-                raise ValueError(
-                    f"RDKit parsed SMILES {smiles!r} but found 0 atoms"
-                )
-            raise ValueError(
-                f"RDKit parsed SMILES {smiles!r} but found 0 atoms"
-            )
+                raise ValueError(f"RDKit parsed SMILES {smiles!r} but found 0 atoms")
+            raise ValueError(f"RDKit parsed SMILES {smiles!r} but found 0 atoms")
 
         if embed_3d:
             try:
@@ -784,28 +804,36 @@ class MoleculeClosedTerm:
         # L3 metrics: IS_CLOSED_RATE + IS_BETA_NORMAL_FORM_RATE +
         #             REDEX_HIT_RATE + ATOM_BOND_RATIO +
         #             ALPHA_EQUIV_COLLISIONS + RING_AROMATICITY_PRESERVED_RATE
-        _METRICS.history.append({
-            "metric": "IS_CLOSED_RATE",
-            "value": float(term.is_closed),
-            "n_atoms": term.n_atoms,
-        })
-        _METRICS.history.append({
-            "metric": "IS_BETA_NORMAL_FORM_RATE",
-            "value": float(term.is_beta_normal_form),
-            "is_closed": term.is_closed,
-            "has_redex": term.has_redex(),
-        })
-        _METRICS.history.append({
-            "metric": "REDEX_HIT_RATE",
-            "value": float(term.has_redex()),
-            "n_free_atoms": len(term.free_sites),
-        })
-        _METRICS.history.append({
-            "metric": "ATOM_BOND_RATIO",
-            "value": float(term.n_atoms) / max(1, term.n_bonds),
-            "n_atoms": term.n_atoms,
-            "n_bonds": term.n_bonds,
-        })
+        _METRICS.history.append(
+            {
+                "metric": "IS_CLOSED_RATE",
+                "value": float(term.is_closed),
+                "n_atoms": term.n_atoms,
+            }
+        )
+        _METRICS.history.append(
+            {
+                "metric": "IS_BETA_NORMAL_FORM_RATE",
+                "value": float(term.is_beta_normal_form),
+                "is_closed": term.is_closed,
+                "has_redex": term.has_redex(),
+            }
+        )
+        _METRICS.history.append(
+            {
+                "metric": "REDEX_HIT_RATE",
+                "value": float(term.has_redex()),
+                "n_free_atoms": len(term.free_sites),
+            }
+        )
+        _METRICS.history.append(
+            {
+                "metric": "ATOM_BOND_RATIO",
+                "value": float(term.n_atoms) / max(1, term.n_bonds),
+                "n_atoms": term.n_atoms,
+                "n_bonds": term.n_bonds,
+            }
+        )
         # α-equivalence collision probe: canonical_smiles round-trip.
         try:
             canon_self = term.canonical_smiles()
@@ -814,37 +842,46 @@ class MoleculeClosedTerm:
             collision = int(canon_self != canon_re)
         except Exception:
             collision = 0
-        _METRICS.history.append({
-            "metric": "ALPHA_EQUIV_COLLISIONS",
-            "value": float(collision),
-        })
+        _METRICS.history.append(
+            {
+                "metric": "ALPHA_EQUIV_COLLISIONS",
+                "value": float(collision),
+            }
+        )
         # RING_AROMATICITY_PRESERVED_RATE: aromatic rings survive
         # the to_rdkit -> from_rdkit round-trip.
         try:
             rings = mol.GetRingInfo().AtomRings()
-            aromatic_rings = [r for r in rings
-                              if all(mol.GetAtomWithIdx(i).GetIsAromatic()
-                                     for i in r)]
+            aromatic_rings = [
+                r
+                for r in rings
+                if all(mol.GetAtomWithIdx(i).GetIsAromatic() for i in r)
+            ]
             rt_smiles = Chem.MolToSmiles(mol)
             mol2 = Chem.MolFromSmiles(rt_smiles)
             rings2 = mol2.GetRingInfo().AtomRings() if mol2 is not None else []
-            aromatic_rings2 = [r for r in rings2
-                               if all(mol2.GetAtomWithIdx(i).GetIsAromatic()
-                                      for i in r)]
+            aromatic_rings2 = [
+                r
+                for r in rings2
+                if all(mol2.GetAtomWithIdx(i).GetIsAromatic() for i in r)
+            ]
             n_arom = len(aromatic_rings)
             preserved = sum(
-                1 for r in aromatic_rings
+                1
+                for r in aromatic_rings
                 if any(set(r) == set(r2) for r2 in aromatic_rings2)
             )
             rate = (float(preserved) / n_arom) if n_arom else 1.0
         except Exception:
             rate = 1.0
             n_arom = 0
-        _METRICS.history.append({
-            "metric": "RING_AROMATICITY_PRESERVED_RATE",
-            "value": float(rate),
-            "n_aromatic_rings": n_arom,
-        })
+        _METRICS.history.append(
+            {
+                "metric": "RING_AROMATICITY_PRESERVED_RATE",
+                "value": float(rate),
+                "n_aromatic_rings": n_arom,
+            }
+        )
 
         return term
 
@@ -915,25 +952,31 @@ class MoleculeClosedTerm:
 
         # Emit the same Layer-3 metrics as ``from_smiles`` so the
         # downstream dashboards see consistent telemetry.
-        _METRICS.history.append({
-            "metric": "IS_CLOSED_RATE",
-            "value": float(term.is_closed),
-            "n_atoms": term.n_atoms,
-            "with_explicit_h": True,
-        })
-        _METRICS.history.append({
-            "metric": "IS_BETA_NORMAL_FORM_RATE",
-            "value": float(term.is_beta_normal_form),
-            "is_closed": term.is_closed,
-            "has_redex": term.has_redex(),
-            "with_explicit_h": True,
-        })
-        _METRICS.history.append({
-            "metric": "REDEX_HIT_RATE",
-            "value": float(term.has_redex()),
-            "n_free_atoms": len(term.free_sites),
-            "with_explicit_h": True,
-        })
+        _METRICS.history.append(
+            {
+                "metric": "IS_CLOSED_RATE",
+                "value": float(term.is_closed),
+                "n_atoms": term.n_atoms,
+                "with_explicit_h": True,
+            }
+        )
+        _METRICS.history.append(
+            {
+                "metric": "IS_BETA_NORMAL_FORM_RATE",
+                "value": float(term.is_beta_normal_form),
+                "is_closed": term.is_closed,
+                "has_redex": term.has_redex(),
+                "with_explicit_h": True,
+            }
+        )
+        _METRICS.history.append(
+            {
+                "metric": "REDEX_HIT_RATE",
+                "value": float(term.has_redex()),
+                "n_free_atoms": len(term.free_sites),
+                "with_explicit_h": True,
+            }
+        )
         return term
 
     # ------------------------------------------------------------------
@@ -985,7 +1028,7 @@ class MoleculeClosedTerm:
             ledger=FreeSiteLedger(),
             valence_used={i: 0 for i in range(5)},
             source_smiles="N.N.Cl.Cl.[Pt]",
-            term="(Pt_II NH3 NH3 Cl Cl)",   # application not yet reduced
+            term="(Pt_II NH3 NH3 Cl Cl)",  # application not yet reduced
         )
 
     # ------------------------------------------------------------------

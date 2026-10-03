@@ -39,6 +39,7 @@ We now generate a **real DrugOOD-based cohort** with median-threshold labels.
 Constraints: CPU-only RDKit + similarity; cohort generation is CPU-only,
 full LOMO v2 sweep on this cohort requires GPU.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -60,10 +61,16 @@ RDLogger.DisableLog("rdApp.*")
 
 
 # Defaults
-DEFAULT_REAL_CSV = "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
-DEFAULT_DRUGOOD_CSV = "/home/hugo/codes/mol-metal/.data/molmetal/drugood/ic50/data/train.csv"
+DEFAULT_REAL_CSV = (
+    "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
+)
+DEFAULT_DRUGOOD_CSV = (
+    "/home/hugo/codes/mol-metal/.data/molmetal/drugood/ic50/data/train.csv"
+)
 DEFAULT_OUTPUT_CSV = "/home/hugo/codes/mol-metal/molmetal/data/balanced_rh_cohort.csv"
-DEFAULT_OUTPUT_META = "/home/hugo/codes/mol-metal/molmetal/data/balanced_rh_cohort_meta.json"
+DEFAULT_OUTPUT_META = (
+    "/home/hugo/codes/mol-metal/molmetal/data/balanced_rh_cohort_meta.json"
+)
 
 DEFAULT_N_ACTIVE = 250
 DEFAULT_N_INACTIVE = 250
@@ -101,8 +108,9 @@ def murcko_scaffold_smiles(mol: Chem.Mol) -> str:
         return ""
 
 
-def morgan_fp(smiles: str, radius: int = DEFAULT_MORGAN_RADIUS,
-               n_bits: int = DEFAULT_MORGAN_BITS) -> Optional[DataStructs.ExplicitBitVect]:
+def morgan_fp(
+    smiles: str, radius: int = DEFAULT_MORGAN_RADIUS, n_bits: int = DEFAULT_MORGAN_BITS
+) -> Optional[DataStructs.ExplicitBitVect]:
     """Compute Morgan fingerprint for the largest fragment of ``smiles``."""
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
@@ -160,8 +168,11 @@ def build_rh_active_scaffold_fps(
             n_skip += 1
             continue
     unique_smis = list(set(smis))
-    print(f"[rh_anchor] {len(fps)} scaffold FPs extracted ({len(unique_smis)} unique), "
-          f"{n_skip} skipped", flush=True)
+    print(
+        f"[rh_anchor] {len(fps)} scaffold FPs extracted ({len(unique_smis)} unique), "
+        f"{n_skip} skipped",
+        flush=True,
+    )
     return fps, smis
 
 
@@ -286,7 +297,13 @@ def write_cohort_csv(
 ) -> int:
     """Write the balanced cohort CSV (actives first, then inactives)."""
     out_csv.parent.mkdir(parents=True, exist_ok=True)
-    fieldnames = ["smiles", "y", "mol_weight", "scaffold_smiles", "max_sim_to_rh_active"]
+    fieldnames = [
+        "smiles",
+        "y",
+        "mol_weight",
+        "scaffold_smiles",
+        "max_sim_to_rh_active",
+    ]
     with out_csv.open("w", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=fieldnames)
         writer.writeheader()
@@ -299,23 +316,43 @@ def write_cohort_csv(
 
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--real-csv", default=DEFAULT_REAL_CSV,
-                        help="MetalCytoToxDB multitask CSV (Rh actives anchor).")
-    parser.add_argument("--drugood-csv", default=DEFAULT_DRUGOOD_CSV,
-                        help="DrugOOD IC50 train.csv (1.58M rows).")
-    parser.add_argument("--out-csv", default=DEFAULT_OUTPUT_CSV,
-                        help="Output balanced Rh cohort CSV.")
-    parser.add_argument("--out-meta", default=DEFAULT_OUTPUT_META,
-                        help="Output cohort metadata JSON.")
+    parser.add_argument(
+        "--real-csv",
+        default=DEFAULT_REAL_CSV,
+        help="MetalCytoToxDB multitask CSV (Rh actives anchor).",
+    )
+    parser.add_argument(
+        "--drugood-csv",
+        default=DEFAULT_DRUGOOD_CSV,
+        help="DrugOOD IC50 train.csv (1.58M rows).",
+    )
+    parser.add_argument(
+        "--out-csv", default=DEFAULT_OUTPUT_CSV, help="Output balanced Rh cohort CSV."
+    )
+    parser.add_argument(
+        "--out-meta", default=DEFAULT_OUTPUT_META, help="Output cohort metadata JSON."
+    )
     parser.add_argument("--n-active", type=int, default=DEFAULT_N_ACTIVE)
     parser.add_argument("--n-inactive", type=int, default=DEFAULT_N_INACTIVE)
-    parser.add_argument("--sim-threshold", type=float, default=DEFAULT_SCAFFOLD_SIM_THRESHOLD,
-                        help="Bemis-Murcko scaffold Tanimoto > threshold to Rh actives.")
+    parser.add_argument(
+        "--sim-threshold",
+        type=float,
+        default=DEFAULT_SCAFFOLD_SIM_THRESHOLD,
+        help="Bemis-Murcko scaffold Tanimoto > threshold to Rh actives.",
+    )
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
-    parser.add_argument("--max-active-pool", type=int, default=20000,
-                        help="Cap active pool to bound memory.")
-    parser.add_argument("--max-inactive-pool", type=int, default=20000,
-                        help="Cap inactive pool to bound memory.")
+    parser.add_argument(
+        "--max-active-pool",
+        type=int,
+        default=20000,
+        help="Cap active pool to bound memory.",
+    )
+    parser.add_argument(
+        "--max-inactive-pool",
+        type=int,
+        default=20000,
+        help="Cap inactive pool to bound memory.",
+    )
     args = parser.parse_args(argv)
 
     t0 = time.time()
@@ -345,8 +382,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 2
 
     # ---- 2. Stream filter DrugOOD ----
-    print("\n[2/3] Streaming DrugOOD filter (scaffold sim > "
-          f"{args.sim_threshold})...", flush=True)
+    print(
+        "\n[2/3] Streaming DrugOOD filter (scaffold sim > " f"{args.sim_threshold})...",
+        flush=True,
+    )
     active_pool, inactive_pool, n_scanned = stream_filter_drugood(
         drugood_csv,
         rh_scaffold_fps=rh_fps,
@@ -358,14 +397,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     # ---- 3. Sample balanced + write ----
     print("\n[3/3] Sampling + writing balanced cohort...", flush=True)
     sampled_active, sampled_inactive = sample_balanced(
-        active_pool, inactive_pool,
+        active_pool,
+        inactive_pool,
         n_active=args.n_active,
         n_inactive=args.n_inactive,
         seed=args.seed,
     )
-    n_written = write_cohort_csv(
-        Path(args.out_csv), sampled_active, sampled_inactive
-    )
+    n_written = write_cohort_csv(Path(args.out_csv), sampled_active, sampled_inactive)
 
     # Metadata
     meta = {
@@ -413,19 +451,28 @@ def main(argv: Optional[List[str]] = None) -> int:
     print(f"  DrugOOD scanned       : {n_scanned:,}", flush=True)
     print(f"  Active pool size      : {len(active_pool):,}", flush=True)
     print(f"  Inactive pool size    : {len(inactive_pool):,}", flush=True)
-    print(f"  Active sampled        : {len(sampled_active)} / {args.n_active}", flush=True)
-    print(f"  Inactive sampled      : {len(sampled_inactive)} / {args.n_inactive}", flush=True)
+    print(
+        f"  Active sampled        : {len(sampled_active)} / {args.n_active}", flush=True
+    )
+    print(
+        f"  Inactive sampled      : {len(sampled_inactive)} / {args.n_inactive}",
+        flush=True,
+    )
     print(f"  Total written         : {n_written}", flush=True)
     print(f"  Output CSV            : {args.out_csv}", flush=True)
     print(f"  Wall time             : {meta['wall_time_s']} s", flush=True)
 
-    if (len(sampled_active) == args.n_active
-            and len(sampled_inactive) == args.n_inactive):
+    if (
+        len(sampled_active) == args.n_active
+        and len(sampled_inactive) == args.n_inactive
+    ):
         print("\n  STATUS: PASS (balanced 250+250)", flush=True)
         return 0
-    elif (len(sampled_active) > 0 and len(sampled_inactive) > 0):
-        print("\n  STATUS: PARTIAL (cohort non-empty but threshold tuning needed)",
-              flush=True)
+    elif len(sampled_active) > 0 and len(sampled_inactive) > 0:
+        print(
+            "\n  STATUS: PARTIAL (cohort non-empty but threshold tuning needed)",
+            flush=True,
+        )
         return 1
     else:
         print("\n  STATUS: HALT (empty cohort)", flush=True)

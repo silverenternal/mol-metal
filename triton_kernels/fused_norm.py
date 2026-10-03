@@ -50,13 +50,13 @@ def _check_cuda_pointers(arg_names: dict[str, object]) -> None:
 @triton.autotune(configs=AUTOTUNE_CONFIGS, key=["n_rows", "feat_dim"])
 @triton.jit
 def _fused_layer_norm_kernel(
-    x_ptr,         # *fp   [..., D]
-    weight_ptr,    # *fp   [D]
-    bias_ptr,      # *fp   [D]
-    out_ptr,       # *fp   [..., D]
-    n_rows,        # i32  product of leading dims
-    feat_dim,      # i32  D
-    eps,           # fp
+    x_ptr,  # *fp   [..., D]
+    weight_ptr,  # *fp   [D]
+    bias_ptr,  # *fp   [D]
+    out_ptr,  # *fp   [..., D]
+    n_rows,  # i32  product of leading dims
+    feat_dim,  # i32  D
+    eps,  # fp
     FEAT_BLOCK: tl.constexpr,
 ):
     """One program instance per row; reduces within a single block."""
@@ -94,12 +94,12 @@ def _fused_layer_norm_kernel(
 @triton.autotune(configs=AUTOTUNE_CONFIGS, key=["n_rows", "feat_dim"])
 @triton.jit
 def _fused_rms_norm_kernel(
-    x_ptr,         # *fp   [..., D]
-    weight_ptr,    # *fp   [D]
-    out_ptr,       # *fp   [..., D]
-    n_rows,        # i32
-    feat_dim,      # i32  D
-    eps,           # fp
+    x_ptr,  # *fp   [..., D]
+    weight_ptr,  # *fp   [D]
+    out_ptr,  # *fp   [..., D]
+    n_rows,  # i32
+    feat_dim,  # i32  D
+    eps,  # fp
     FEAT_BLOCK: tl.constexpr,
 ):
     row = tl.program_id(axis=0)

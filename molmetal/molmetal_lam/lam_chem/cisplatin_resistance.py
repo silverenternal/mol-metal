@@ -20,27 +20,45 @@ from rdkit.Chem import Descriptors
 CISPLATIN_SMILES: str = "N.N.Cl.Cl.[Pt]"
 
 RESISTANCE_FEATURE_KEYS: Tuple[str, ...] = (
-    "logP", "thiol_count", "n_donor_count", "cis_trans_pattern",
-    "reduction_potential_proxy", "mw", "tpsa", "hba", "hbd",
+    "logP",
+    "thiol_count",
+    "n_donor_count",
+    "cis_trans_pattern",
+    "reduction_potential_proxy",
+    "mw",
+    "tpsa",
+    "hba",
+    "hbd",
 )
 
 # Hammett σ_p constants (Hansch, Leo, Taft 1991, Chem Rev 91:165).
 _HAMMETT_SIGMA: Dict[str, float] = {
-    "NH2": -0.66, "N(CH3)2": -0.83, "OH": -0.37, "OCH3": -0.27,
-    "CH3": -0.17, "F": 0.06, "Cl": 0.23, "Br": 0.23, "I": 0.18,
-    "COOH": 0.45, "COCH3": 0.50, "CN": 0.66, "NO2": 0.78,
-    "CF3": 0.54, "SO3H": 0.50,
+    "NH2": -0.66,
+    "N(CH3)2": -0.83,
+    "OH": -0.37,
+    "OCH3": -0.27,
+    "CH3": -0.17,
+    "F": 0.06,
+    "Cl": 0.23,
+    "Br": 0.23,
+    "I": 0.18,
+    "COOH": 0.45,
+    "COCH3": 0.50,
+    "CN": 0.66,
+    "NO2": 0.78,
+    "CF3": 0.54,
+    "SO3H": 0.50,
 }
 
 # Pre-compiled SMARTS — re-built on every call would dominate batch latency.
 # N-donor SMARTS use ``[N;H1,H2,H3]`` to cover NH / NH2 / NH3 (cisplatin's
 # amine nitrogens have H-count 3 in the multi-component SMILES form
 # ``N.N.Cl.Cl.[Pt]`` because RDKit fills implicit valence to 3).
-_SH    = Chem.MolFromSmarts("[SH]")
-_NH    = Chem.MolFromSmarts("[N;H1,H2,H3]")
-_NH2   = Chem.MolFromSmarts("[NH2]")
-_NHET  = Chem.MolFromSmarts("[nH]")
-_PT    = Chem.MolFromSmarts("[Pt]")
+_SH = Chem.MolFromSmarts("[SH]")
+_NH = Chem.MolFromSmarts("[N;H1,H2,H3]")
+_NH2 = Chem.MolFromSmarts("[NH2]")
+_NHET = Chem.MolFromSmarts("[nH]")
+_PT = Chem.MolFromSmarts("[Pt]")
 
 
 def _count_thiols(mol: Chem.Mol) -> int:
@@ -100,10 +118,14 @@ def _hammett_proxy(mol: Chem.Mol) -> float:
                 sym, nh = nbr.GetSymbol(), nbr.GetTotalNumHs()
                 label = ""
                 # Nitro group — cationic N with at least one =O.
-                if sym == "N" and nbr.GetFormalCharge() == 1 and any(
-                    b.GetBondTypeAsDouble() == 2.0
-                    and b.GetOtherAtom(nbr).GetSymbol() == "O"
-                    for b in nbr.GetBonds()
+                if (
+                    sym == "N"
+                    and nbr.GetFormalCharge() == 1
+                    and any(
+                        b.GetBondTypeAsDouble() == 2.0
+                        and b.GetOtherAtom(nbr).GetSymbol() == "O"
+                        for b in nbr.GetBonds()
+                    )
                 ):
                     label = "NO2"
                 elif sym == "N" and nh >= 2:
@@ -144,15 +166,15 @@ def compute_resistance_features(mol: Chem.Mol) -> Dict[str, float]:
         return empty
     try:
         return {
-            "logP":                      float(Descriptors.MolLogP(mol)),
-            "thiol_count":               float(_count_thiols(mol)),
-            "n_donor_count":             float(_count_n_donors(mol)),
-            "cis_trans_pattern":         float(_detect_cis_trans(mol)),
+            "logP": float(Descriptors.MolLogP(mol)),
+            "thiol_count": float(_count_thiols(mol)),
+            "n_donor_count": float(_count_n_donors(mol)),
+            "cis_trans_pattern": float(_detect_cis_trans(mol)),
             "reduction_potential_proxy": _hammett_proxy(mol),
-            "mw":                        float(Descriptors.MolWt(mol)),
-            "tpsa":                      float(Descriptors.TPSA(mol)),
-            "hba":                       float(Descriptors.NumHAcceptors(mol)),
-            "hbd":                       float(Descriptors.NumHDonors(mol)),
+            "mw": float(Descriptors.MolWt(mol)),
+            "tpsa": float(Descriptors.TPSA(mol)),
+            "hba": float(Descriptors.NumHAcceptors(mol)),
+            "hbd": float(Descriptors.NumHDonors(mol)),
         }
     except Exception:
         return empty

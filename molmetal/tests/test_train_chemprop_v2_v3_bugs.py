@@ -60,7 +60,8 @@ def test_wf244_fix1_indices_match_train_idx_for_held_out_metal() -> None:
     """
     # Synthetic corpus laid out [Ru, Ir, Os].
     metals_all = np.array(
-        ["Ru"] * 19135 + ["Ir"] * 4546 + ["Os"] * 1118, dtype=object,
+        ["Ru"] * 19135 + ["Ir"] * 4546 + ["Os"] * 1118,
+        dtype=object,
     )
     n_total = len(metals_all)
     target_metal = "Ru"
@@ -77,17 +78,17 @@ def test_wf244_fix1_indices_match_train_idx_for_held_out_metal() -> None:
     batch_size = 64
     metal_counts = {"Ru": 0, "Ir": 0, "Os": 0}
     for start in range(0, n_train, batch_size):
-        batch_idx = indices[start:start + batch_size]
+        batch_idx = indices[start : start + batch_size]
         batch_metals = metals_all[batch_idx]
         for m in metal_counts:
             metal_counts[m] += int((batch_metals == m).sum())
     # POST-FIX batches should be mostly Ir+Os; Ru count = 0.
-    assert metal_counts["Ru"] == 0, (
-        f"post-fix batch composition leaked Ru rows: {metal_counts}"
-    )
-    assert metal_counts["Ir"] > 0 and metal_counts["Os"] > 0, (
-        f"post-fix batches should have BOTH Ir and Os: {metal_counts}"
-    )
+    assert (
+        metal_counts["Ru"] == 0
+    ), f"post-fix batch composition leaked Ru rows: {metal_counts}"
+    assert (
+        metal_counts["Ir"] > 0 and metal_counts["Os"] > 0
+    ), f"post-fix batches should have BOTH Ir and Os: {metal_counts}"
 
     # ---- PRE-FIX (the bug) — same logic, broken indices ----
     indices_buggy = np.arange(n_train)
@@ -95,7 +96,7 @@ def test_wf244_fix1_indices_match_train_idx_for_held_out_metal() -> None:
     np.random.shuffle(indices_buggy)
     metal_counts_buggy = {"Ru": 0, "Ir": 0, "Os": 0}
     for start in range(0, n_train, batch_size):
-        batch_idx = indices_buggy[start:start + batch_size]
+        batch_idx = indices_buggy[start : start + batch_size]
         batch_metals = metals_all[batch_idx]
         for m in metal_counts_buggy:
             metal_counts_buggy[m] += int((batch_metals == m).sum())
@@ -114,7 +115,8 @@ def test_wf244_fix1_batch_metal_count_ge_2_for_wasserstein() -> None:
     distinct metals in the batch is >= 2.
     """
     metals_all = np.array(
-        ["Ru"] * 19135 + ["Ir"] * 4546 + ["Os"] * 1118, dtype=object,
+        ["Ru"] * 19135 + ["Ir"] * 4546 + ["Os"] * 1118,
+        dtype=object,
     )
     train_idx = np.where(metals_all != "Ru")[0]
     n_train = len(train_idx)
@@ -126,7 +128,7 @@ def test_wf244_fix1_batch_metal_count_ge_2_for_wasserstein() -> None:
         np.random.seed(epoch)
         np.random.shuffle(indices)
         for start in range(0, n_train, batch_size):
-            batch_idx = indices[start:start + batch_size]
+            batch_idx = indices[start : start + batch_size]
             batch_metals = metals_all[batch_idx]
             unique = set(batch_metals.tolist())
             n_total += 1
@@ -176,8 +178,7 @@ def test_wf244_fix1_marker_in_source() -> None:
     """
     src = (_SCRIPT_DIR / "train_chemprop_v2_v3.py").read_text()
     assert "Wf-244 Fix 1" in src, (
-        "Wf-244 Fix 1 marker missing — fix may have been silently "
-        "reverted."
+        "Wf-244 Fix 1 marker missing — fix may have been silently " "reverted."
     )
     # The fix must use ``train_idx.copy()`` (NOT ``np.arange(n_train)``).
     assert "indices = train_idx.copy()" in src, (
@@ -191,9 +192,9 @@ def test_wf244_fix2_marker_in_source() -> None:
     must remain in train_chemprop_v2_v3.py.
     """
     src = (_SCRIPT_DIR / "train_chemprop_v2_v3.py").read_text()
-    assert "Wf-244 Fix 2" in src, (
-        "Wf-244 Fix 2 marker missing — guard may have been removed."
-    )
+    assert (
+        "Wf-244 Fix 2" in src
+    ), "Wf-244 Fix 2 marker missing — guard may have been removed."
     # The guard must use np.ptp(scores) == 0 to detect constant preds.
     assert "np.ptp(scores)" in src, (
         "Fix 2 guard drifted: must use np.ptp(scores) to detect the "
@@ -208,9 +209,7 @@ def test_wf244_driver_imports_cleanly() -> None:
     """The driver must still import cleanly after Wf-244 edits."""
     # If the import side-effects fail (e.g. syntax error), this errors.
     mod = importlib.import_module("train_chemprop_v2_v3")
-    assert hasattr(mod, "_run_one"), (
-        "Wf-244 edits broke driver import: _run_one missing"
-    )
-    assert hasattr(mod, "main"), (
-        "Wf-244 edits broke driver import: main missing"
-    )
+    assert hasattr(
+        mod, "_run_one"
+    ), "Wf-244 edits broke driver import: _run_one missing"
+    assert hasattr(mod, "main"), "Wf-244 edits broke driver import: main missing"

@@ -63,6 +63,7 @@ Usage
     # Smoke (5 steps)
     python molmetal/scripts/wf341c3_shortcut_ema.py --n-steps 5 --smoke
 """
+
 from __future__ import annotations
 
 import argparse
@@ -90,6 +91,7 @@ try:
         safe_overwrite_check,
         detect_truncation,
     )
+
     _WF414_HAS_ATOMIC = True
 except ImportError:  # pragma: no cover — fallback when running as standalone
     _WF414_HAS_ATOMIC = False
@@ -150,7 +152,9 @@ class TinyVelocityField(nn.Module):
         nn.init.normal_(self.head.weight, std=0.02)
         nn.init.zeros_(self.head.bias)
 
-    def forward(self, x_t: torch.Tensor, t: torch.Tensor, **_: Any) -> Dict[str, torch.Tensor]:
+    def forward(
+        self, x_t: torch.Tensor, t: torch.Tensor, **_: Any
+    ) -> Dict[str, torch.Tensor]:
         h = self.proj_x(x_t) + self.proj_t(t.view(-1, 1, 1))
         h = self.act(h)
         v = self.head(h)
@@ -168,7 +172,9 @@ class _PathSample:
     dx_t: torch.Tensor  # (x_1 - x_0) — the CFM target velocity
 
 
-def linear_path_sample(*, x_0: torch.Tensor, x_1: torch.Tensor, t: torch.Tensor) -> _PathSample:
+def linear_path_sample(
+    *, x_0: torch.Tensor, x_1: torch.Tensor, t: torch.Tensor
+) -> _PathSample:
     """Linear interpolation ``x_t = (1 - t) * x_0 + t * x_1``.
 
     ``t`` is shape (B,); the function broadcasts to (B, 1, 1) over the
@@ -188,7 +194,9 @@ def linear_path_sample(*, x_0: torch.Tensor, x_1: torch.Tensor, t: torch.Tensor)
 class ShortcutEMABenchSummary:
     """Aggregated CPU bench summary."""
 
-    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    timestamp: str = field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
     n_steps: int = 0
     batch_size: int = DEFAULT_BATCH_SIZE
     n_atoms: int = DEFAULT_N_ATOMS
@@ -334,7 +342,9 @@ def _run_ema(
     )
 
     ema = ExponentialMovingAverage(
-        model, halflife_kimg=halflife_kimg, batch_size=batch_size,
+        model,
+        halflife_kimg=halflife_kimg,
+        batch_size=batch_size,
     )
     g = torch.Generator().manual_seed(seed)
     model.train()
@@ -381,7 +391,9 @@ def _run_joint(
 
     cfg = ShortcutConfig(p_self=p_self, weight=weight)
     ema = ExponentialMovingAverage(
-        model, halflife_kimg=halflife_kimg, batch_size=batch_size,
+        model,
+        halflife_kimg=halflife_kimg,
+        batch_size=batch_size,
     )
     g = torch.Generator().manual_seed(seed)
     model.train()
@@ -455,8 +467,12 @@ def bench_shortcut_ema(
     model = TinyVelocityField(hidden_dim=hidden_dim)
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
     bl_loss, bl_wall = _run_baseline(
-        model, optimizer,
-        n_steps=n_steps, batch_size=batch_size, n_atoms=n_atoms, seed=seed,
+        model,
+        optimizer,
+        n_steps=n_steps,
+        batch_size=batch_size,
+        n_atoms=n_atoms,
+        seed=seed,
     )
     summary.baseline_total_loss = bl_loss
     summary.baseline_wall_ms = bl_wall
@@ -466,9 +482,14 @@ def bench_shortcut_ema(
         model = TinyVelocityField(hidden_dim=hidden_dim)
         optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
         sl_loss, sl_wall, n_sc, n_tot = _run_shortcut(
-            model, optimizer,
-            n_steps=n_steps, batch_size=batch_size, n_atoms=n_atoms,
-            weight=shortcut_weight, p_self=shortcut_p_self, seed=seed + 1,
+            model,
+            optimizer,
+            n_steps=n_steps,
+            batch_size=batch_size,
+            n_atoms=n_atoms,
+            weight=shortcut_weight,
+            p_self=shortcut_p_self,
+            seed=seed + 1,
         )
         summary.shortcut_total_loss = sl_loss
         summary.shortcut_wall_ms = sl_wall
@@ -478,9 +499,13 @@ def bench_shortcut_ema(
         model = TinyVelocityField(hidden_dim=hidden_dim)
         optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
         el_loss, el_wall, decay = _run_ema(
-            model, optimizer,
-            n_steps=n_steps, batch_size=batch_size, n_atoms=n_atoms,
-            halflife_kimg=ema_halflife_kimg, seed=seed + 2,
+            model,
+            optimizer,
+            n_steps=n_steps,
+            batch_size=batch_size,
+            n_atoms=n_atoms,
+            halflife_kimg=ema_halflife_kimg,
+            seed=seed + 2,
         )
         summary.ema_total_loss = el_loss
         summary.ema_wall_ms = el_wall
@@ -489,10 +514,15 @@ def bench_shortcut_ema(
         model = TinyVelocityField(hidden_dim=hidden_dim)
         optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
         jl_loss, jl_wall = _run_joint(
-            model, optimizer,
-            n_steps=n_steps, batch_size=batch_size, n_atoms=n_atoms,
-            weight=shortcut_weight, p_self=shortcut_p_self,
-            halflife_kimg=ema_halflife_kimg, seed=seed + 3,
+            model,
+            optimizer,
+            n_steps=n_steps,
+            batch_size=batch_size,
+            n_atoms=n_atoms,
+            weight=shortcut_weight,
+            p_self=shortcut_p_self,
+            halflife_kimg=ema_halflife_kimg,
+            seed=seed + 3,
         )
         summary.joint_total_loss = jl_loss
         summary.joint_wall_ms = jl_wall

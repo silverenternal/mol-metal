@@ -177,9 +177,7 @@ class MethodSummary:
 # ---------------------------------------------------------------------------
 # Data loader
 # ---------------------------------------------------------------------------
-def _load_platinai_smiles(
-    csv_path: Path, n_max: Optional[int] = None
-) -> List[str]:
+def _load_platinai_smiles(csv_path: Path, n_max: Optional[int] = None) -> List[str]:
     """Load SMILES from the PlatinAI 5K CSV (R17 ship)."""
     if not csv_path.exists():
         raise Wf39CouplingError(f"PlatinAI CSV not found at {csv_path}")
@@ -197,9 +195,7 @@ def _load_platinai_smiles(
     return out
 
 
-def _load_platinai_random(
-    csv_path: Path, n_samples: int, seed: int
-) -> List[str]:
+def _load_platinai_random(csv_path: Path, n_samples: int, seed: int) -> List[str]:
     """Uniform-random sample of ``n_samples`` SMILES from the PlatinAI CSV.
 
     Mirrors :func:`bench_mcts_real_trajectory._load_platinai`'s
@@ -267,7 +263,8 @@ def _bridge_target(lambda_features: np.ndarray) -> np.ndarray:
     if lambda_features.ndim == 1:
         lambda_features = lambda_features.reshape(1, -1)
     tiled = np.concatenate(
-        [lambda_features.astype(np.float32)] * 2, axis=1,
+        [lambda_features.astype(np.float32)] * 2,
+        axis=1,
     )
     norms = np.linalg.norm(tiled, axis=1, keepdims=True) + 1e-8
     return (tiled / norms).astype(np.float32)
@@ -293,14 +290,10 @@ def _bridge_target_normalised(
 # ---------------------------------------------------------------------------
 # Method runners
 # ---------------------------------------------------------------------------
-def _bridge_rmse(
-    pred: np.ndarray, target: np.ndarray
-) -> float:
+def _bridge_rmse(pred: np.ndarray, target: np.ndarray) -> float:
     """Per-element L2 RMSE between two equal-shape (N, 64) arrays."""
     if pred.shape != target.shape:
-        raise ValueError(
-            f"shape mismatch: pred {pred.shape} vs target {target.shape}"
-        )
+        raise ValueError(f"shape mismatch: pred {pred.shape} vs target {target.shape}")
     diff = pred.astype(np.float64) - target.astype(np.float64)
     return float(np.sqrt(np.mean(diff * diff)))
 
@@ -390,7 +383,9 @@ def _run_bridge(
     # ``train_on_platinai5k`` body) — the RMSE gate is therefore
     # directly comparable to the R17 ship baseline of 0.0046.
     target = _bridge_target_normalised(
-        feats, bridge.input_mean, bridge.input_std,
+        feats,
+        bridge.input_mean,
+        bridge.input_std,
     )
     gc.collect()
     tracemalloc.start()
@@ -438,7 +433,9 @@ def _run_joint(
     # is comparable to the bridge-only branch.
     feats = _lambda_features_batch(smiles_list)
     target = _bridge_target_normalised(
-        feats, pipe.bridge.input_mean, pipe.bridge.input_std,
+        feats,
+        pipe.bridge.input_mean,
+        pipe.bridge.input_std,
     )
     preds = np.zeros((len(smiles_list), EMBED_DIM), dtype=np.float32)
     gc.collect()
@@ -446,9 +443,9 @@ def _run_joint(
     t0 = time.perf_counter()
     for i, smi in enumerate(smiles_list):
         out = pipe.run_full_pipeline(smi, pocket, n_steps=int(n_steps))
-        preds[i] = np.asarray(
-            out["cfm_output"], dtype=np.float32
-        ).reshape(-1)[:EMBED_DIM]
+        preds[i] = np.asarray(out["cfm_output"], dtype=np.float32).reshape(-1)[
+            :EMBED_DIM
+        ]
     elapsed = float(time.perf_counter() - t0)
     _, peak = tracemalloc.get_traced_memory()
     tracemalloc.stop()
@@ -536,15 +533,25 @@ def _run_one(
         )
     if method == "bridge":
         rmse, qual, wall_s, peak_mb = runner(
-            smiles_list, seed, pocket_size, npz_path,
+            smiles_list,
+            seed,
+            pocket_size,
+            npz_path,
         )
     elif method == "joint":
         rmse, qual, wall_s, peak_mb = runner(
-            smiles_list, seed, pocket_size, npz_path, n_steps,
+            smiles_list,
+            seed,
+            pocket_size,
+            npz_path,
+            n_steps,
         )
     else:  # bidirectional
         rmse, qual, wall_s, peak_mb = runner(
-            smiles_list, seed, pocket_size, n_steps,
+            smiles_list,
+            seed,
+            pocket_size,
+            n_steps,
         )
     return MethodRecord(
         method=str(method),
@@ -572,12 +579,12 @@ def run_benchmark(
 ) -> Dict[str, Any]:
     """Run the full benchmark — returns a JSON-serialisable payload."""
     smiles_list = _load_platinai_random(
-        csv_path, int(n_samples), int(seeds[0] if seeds else 0),
+        csv_path,
+        int(n_samples),
+        int(seeds[0] if seeds else 0),
     )
     if not smiles_list:
-        raise Wf39CouplingError(
-            f"PlatinAI CSV returned 0 SMILES from {csv_path}"
-        )
+        raise Wf39CouplingError(f"PlatinAI CSV returned 0 SMILES from {csv_path}")
 
     records: List[MethodRecord] = []
     for method in methods:
@@ -620,7 +627,9 @@ def run_benchmark(
             bridge_rmse_std=float(np.nanstd(rmse_arr)) if rmse_arr.size else 0.0,
             lambda_determinism_mean=float(np.nanmean(det_arr)) if det_arr.size else 0.0,
             lambda_determinism_std=float(np.nanstd(det_arr)) if det_arr.size else 0.0,
-            lambda_separability_mean=float(np.nanmean(sep_arr)) if sep_arr.size else 0.0,
+            lambda_separability_mean=float(np.nanmean(sep_arr))
+            if sep_arr.size
+            else 0.0,
             lambda_separability_std=float(np.nanstd(sep_arr)) if sep_arr.size else 0.0,
             lambda_norm_mean=float(np.nanmean(nm_arr)) if nm_arr.size else 0.0,
             lambda_norm_std=float(np.nanstd(ns_arr)) if ns_arr.size else 0.0,
@@ -657,7 +666,9 @@ def run_benchmark(
                 "bridge_rmse_std": float(per_method[m].bridge_rmse_std),
                 "lambda_determinism_mean": float(per_method[m].lambda_determinism_mean),
                 "lambda_determinism_std": float(per_method[m].lambda_determinism_std),
-                "lambda_separability_mean": float(per_method[m].lambda_separability_mean),
+                "lambda_separability_mean": float(
+                    per_method[m].lambda_separability_mean
+                ),
                 "lambda_separability_std": float(per_method[m].lambda_separability_std),
                 "lambda_norm_mean": float(per_method[m].lambda_norm_mean),
                 "lambda_norm_std": float(per_method[m].lambda_norm_std),
@@ -670,7 +681,8 @@ def run_benchmark(
                     str(s): {k: float(v) for k, v in vals.items()}
                     for s, vals in per_method[m].per_seed.items()
                 },
-            } for m in methods
+            }
+            for m in methods
         },
         "records": [asdict(r) for r in records],
     }
@@ -693,9 +705,14 @@ def render_markdown(payload: Dict[str, Any]) -> str:
     cfg = payload["config"]
     per_method = payload["per_method"]
     methods = list(cfg["methods"])
-    fastest = min(
-        methods, key=lambda m: per_method[m]["wall_s_mean"],
-    ) if methods else None
+    fastest = (
+        min(
+            methods,
+            key=lambda m: per_method[m]["wall_s_mean"],
+        )
+        if methods
+        else None
+    )
     lines: List[str] = []
     lines.append(f"# Wf-39 Phase 3 — Coupling Adapter IC50 bench\n")
     lines.append(
@@ -775,25 +792,38 @@ def render_markdown(payload: Dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
-        description=(
-            "Wf-39 Phase 3 — Coupling Adapter IC50 bench on PlatinAI 5K."
-        )
+        description=("Wf-39 Phase 3 — Coupling Adapter IC50 bench on PlatinAI 5K.")
     )
     p.add_argument("--n-samples", type=int, default=DEFAULT_N_SAMPLES)
-    p.add_argument("--seeds", type=int, default=len(DEFAULT_SEEDS),
-                   help="Number of seeds; sweep runs seeds {0..N-1}")
-    p.add_argument("--method", type=str, nargs="+",
-                   default=list(DEFAULT_METHODS),
-                   choices=list(DEFAULT_METHODS),
-                   help="One or more of: bridge / joint / bidirectional")
-    p.add_argument("--n-steps", type=int, default=DEFAULT_N_STEPS,
-                   help="CFM ODE integration steps (joint + bidirectional)")
+    p.add_argument(
+        "--seeds",
+        type=int,
+        default=len(DEFAULT_SEEDS),
+        help="Number of seeds; sweep runs seeds {0..N-1}",
+    )
+    p.add_argument(
+        "--method",
+        type=str,
+        nargs="+",
+        default=list(DEFAULT_METHODS),
+        choices=list(DEFAULT_METHODS),
+        help="One or more of: bridge / joint / bidirectional",
+    )
+    p.add_argument(
+        "--n-steps",
+        type=int,
+        default=DEFAULT_N_STEPS,
+        help="CFM ODE integration steps (joint + bidirectional)",
+    )
     p.add_argument("--pocket-size", type=int, default=DEFAULT_POCKET_SIZE)
     p.add_argument("--csv-path", type=str, default=str(DEFAULT_CSV))
     p.add_argument("--bridge-npz", type=str, default=str(DEFAULT_BRIDGE_NPZ))
     p.add_argument("--output", type=str, default=str(DEFAULT_OUTPUT))
-    p.add_argument("--smoke", action="store_true",
-                   help="Fast mode: --n-samples 30 --seeds 1 --n-steps 5")
+    p.add_argument(
+        "--smoke",
+        action="store_true",
+        help="Fast mode: --n-samples 30 --seeds 1 --n-steps 5",
+    )
     return p.parse_args(argv)
 
 

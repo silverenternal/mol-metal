@@ -88,6 +88,7 @@ from __future__ import annotations
 # the env var. We force CPU via --device override downstream; this
 # default simply keeps the smoke import-safe on a CUDA host.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -235,7 +236,9 @@ def verify_m18_per_residue(
     y_score = _synth_scores(active, seed=42)
 
     adapter = PerResidueProteinMetalAUC(
-        seed=42, n_pos_residues=4, n_neg_residues=4,
+        seed=42,
+        n_pos_residues=4,
+        n_neg_residues=4,
     )
     try:
         result = adapter.run(df_slice, y_score, max_reconciliation_rows=25)
@@ -372,9 +375,7 @@ def verify_f5_32d_extraction(
     # this surfaces silently-broken updates to the F5 column tuple).
     if f5_dim != EXPECTED_F5_DIM:
         verdict = "FAIL"
-        failure_reason = (
-            f"F5 dim {f5_dim} != expected {EXPECTED_F5_DIM} (RDKIT_2D_DIM={RDKIT_2D_DIM})"
-        )
+        failure_reason = f"F5 dim {f5_dim} != expected {EXPECTED_F5_DIM} (RDKIT_2D_DIM={RDKIT_2D_DIM})"
     elif v12 is None:
         verdict = "FAIL"
         failure_reason = (
@@ -387,6 +388,7 @@ def verify_f5_32d_extraction(
     else:
         # First 12 entries MUST match the canonical 12-d vector exactly.
         import numpy as _np
+
         if not _np.allclose(v32[:12], v12):
             verdict = "FAIL"
             failure_reason = (
@@ -398,7 +400,9 @@ def verify_f5_32d_extraction(
         "verdict": verdict,
         "f5_dim": f5_dim,
         "expected_f5_dim": EXPECTED_F5_DIM,
-        "first_12_match_12d": bool(verdict == "PASS" and v12 is not None and len(v12) == 12),
+        "first_12_match_12d": bool(
+            verdict == "PASS" and v12 is not None and len(v12) == 12
+        ),
         "probe_smiles": probe_smiles,
         "failure_reason": failure_reason,
         "wall_seconds": round(time.time() - t0, 4),
@@ -471,9 +475,8 @@ def verify_click_aug_wire(
     out_passthrough = gen_passthrough.generate(seed_smiles, n_samples=n_samples)
 
     passthrough_n = len(out_passthrough)
-    passthrough_match_seed = (
-        passthrough_n == n_samples
-        and all(sm == seed_smiles for sm in out_passthrough)
+    passthrough_match_seed = passthrough_n == n_samples and all(
+        sm == seed_smiles for sm in out_passthrough
     )
 
     # --- G2: active (use_click_prob=0.5) --------------------------------

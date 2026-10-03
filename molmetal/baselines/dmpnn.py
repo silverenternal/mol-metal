@@ -64,7 +64,21 @@ def _atom_features(atom: Chem.Atom) -> np.ndarray:
     feats = []
     # Atomic number (one-hot for common elements + other)
     Z = atom.GetAtomicNum()
-    z_counts = [6, 7, 8, 9, 15, 16, 17, 26, 29, 45, 46, 77, 78]  # C,N,O,F,P,S,Cl,Fe,Cu,Rh,Pd,Ir,Pt
+    z_counts = [
+        6,
+        7,
+        8,
+        9,
+        15,
+        16,
+        17,
+        26,
+        29,
+        45,
+        46,
+        77,
+        78,
+    ]  # C,N,O,F,P,S,Cl,Fe,Cu,Rh,Pd,Ir,Pt
     z_onehot = [1 if Z == z else 0 for z in z_counts]
     z_other = 1 if Z not in z_counts else 0
     feats.extend(z_onehot + [z_other])
@@ -129,7 +143,9 @@ def _bond_features(bond: Chem.Bond) -> np.ndarray:
     return np.array(feats[:BOND_FEATURE_DIM], dtype=np.float32)
 
 
-def mol_to_graph(mol: Chem.Mol) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def mol_to_graph(
+    mol: Chem.Mol,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Convert RDKit mol to directed-edge graph representation.
 
     Returns:
@@ -235,7 +251,9 @@ class _GRUUpdate(nn.Module):
         z = torch.sigmoid(self.W_z(combined) + self.b_z)  # (E, H)
         r = torch.sigmoid(self.W_r(combined) + self.b_r)  # (E, H)
 
-        h_tilde = torch.tanh(self.W_h(torch.cat([r * neighbor_h_e_sum, h_v_src], dim=-1)) + self.b_h)  # (E, H)
+        h_tilde = torch.tanh(
+            self.W_h(torch.cat([r * neighbor_h_e_sum, h_v_src], dim=-1)) + self.b_h
+        )  # (E, H)
 
         h_new = (1 - z) * h_e + z * h_tilde  # (E, H)
         return h_new
@@ -285,10 +303,10 @@ class DMPNNModel(nn.Module):
 
     def _forward_one_mol(
         self,
-        atom_f: torch.Tensor,   # (V, A)
-        bond_f: torch.Tensor,   # (E, B)
-        e_src: torch.Tensor,    # (E,)
-        e_dst: torch.Tensor,    # (E,)
+        atom_f: torch.Tensor,  # (V, A)
+        bond_f: torch.Tensor,  # (E, B)
+        e_src: torch.Tensor,  # (E,)
+        e_dst: torch.Tensor,  # (E,)
     ) -> torch.Tensor:
         """Forward pass for a single molecule. Returns scalar logit."""
         V = atom_f.size(0)
@@ -318,8 +336,8 @@ class DMPNNModel(nn.Module):
 
         # Concat initial atom hidden + outgoing edge sum, then pool
         h_comb = torch.cat([h_v, outgoing], dim=-1)  # (V, 2H)
-        pooled = h_comb.sum(dim=0)                    # (2H,)
-        return self.readout_mlp(pooled).squeeze(-1)   # ()
+        pooled = h_comb.sum(dim=0)  # (2H,)
+        return self.readout_mlp(pooled).squeeze(-1)  # ()
 
     def forward(
         self,
@@ -339,7 +357,7 @@ class DMPNNModel(nn.Module):
         for b in range(B):
             V = atom_feats.size(1)
             # Count valid (non-zero) edges for molecule b by checking bond features
-            valid_edges = (bond_feats[b].abs().sum(dim=-1) > 0)
+            valid_edges = bond_feats[b].abs().sum(dim=-1) > 0
             E = valid_edges.sum().item()
             if E == 0 or V == 0:
                 # Empty/invalid molecule: default logit 0
@@ -442,12 +460,14 @@ def train_epoch(
     np.random.shuffle(indices)
 
     for start in range(0, len(indices), batch_size):
-        batch_idx = indices[start:start + batch_size]
+        batch_idx = indices[start : start + batch_size]
         batch_graphs = [graphs[i] for i in batch_idx]
         batch_labels = labels[batch_idx]
 
         # Filter out None
-        valid_graphs = [(g, l) for g, l in zip(batch_graphs, batch_labels) if g is not None]
+        valid_graphs = [
+            (g, l) for g, l in zip(batch_graphs, batch_labels) if g is not None
+        ]
         if not valid_graphs:
             continue
 
@@ -491,8 +511,8 @@ def predict(
     all_score = []
 
     for start in range(0, len(graphs), batch_size):
-        batch_graphs = graphs[start:start + batch_size]
-        batch_labels = labels[start:start + batch_size]
+        batch_graphs = graphs[start : start + batch_size]
+        batch_labels = labels[start : start + batch_size]
 
         valid = [(g, l) for g, l in zip(batch_graphs, batch_labels) if g is not None]
         if not valid:
@@ -541,9 +561,7 @@ SPLITTER_FACTORIES: Dict[str, callable] = {
     "ligand_dedup": lambda seed: LigandDeduplicatedSplitter(
         strategy="largest_first", seed=seed
     ),
-    "scaffold": lambda seed: ScaffoldSplitter(
-        strategy="largest_first", seed=seed
-    ),
+    "scaffold": lambda seed: ScaffoldSplitter(strategy="largest_first", seed=seed),
     "temporal": lambda seed: TemporalSplitter(cutoff_year=2024),
     "chemical": lambda seed: ChemicalSplitter(threshold=0.7, seed=seed),
     # DrugOOD paper (Ji 2023 ICLR) group-key splits.  These expect a
@@ -582,7 +600,9 @@ class DMPNNBaseline:
         self.batch_size = batch_size
         self.seed = seed
         self.splitter = splitter
-        self.device = device or torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = device or torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        )
         self.model: Optional[DMPNNModel] = None
         self._train_idx: Optional[np.ndarray] = None
         self._val_idx: Optional[np.ndarray] = None
@@ -609,14 +629,17 @@ class DMPNNBaseline:
             result = self.splitter(dataset)
             return result.train_idx, result.val_idx, result.test_idx
         from sklearn.model_selection import train_test_split
+
         y = np.asarray(dataset.active).astype(int)
         idx = np.arange(len(y))
         idx_train, idx_tmp, _, _ = train_test_split(
             idx, y, test_size=0.2, stratify=y, random_state=self.seed
         )
         idx_val, idx_test, _, _ = train_test_split(
-            idx_tmp, np.asarray(y[idx_tmp]).astype(int),
-            test_size=0.5, stratify=np.asarray(y[idx_tmp]).astype(int),
+            idx_tmp,
+            np.asarray(y[idx_tmp]).astype(int),
+            test_size=0.5,
+            stratify=np.asarray(y[idx_tmp]).astype(int),
             random_state=self.seed,
         )
         return idx_train, idx_val, idx_test
@@ -660,12 +683,19 @@ class DMPNNBaseline:
         for epoch in range(self.epochs):
             t0 = time.time()
             train_loss = train_epoch(
-                self.model, optimizer, graphs_train, y_train,
-                batch_size=self.batch_size, device=self.device,
+                self.model,
+                optimizer,
+                graphs_train,
+                y_train,
+                batch_size=self.batch_size,
+                device=self.device,
             )
             y_val_true, y_val_score = predict(
-                self.model, graphs_val, y_val,
-                batch_size=self.batch_size, device=self.device,
+                self.model,
+                graphs_val,
+                y_val,
+                batch_size=self.batch_size,
+                device=self.device,
             )
             val_metrics = compute_metrics(y_val_true, y_val_score)
             elapsed = time.time() - t0
@@ -682,8 +712,7 @@ class DMPNNBaseline:
             if val_metrics["roc_auc"] > best_val_auc:
                 best_val_auc = val_metrics["roc_auc"]
                 best_state = {
-                    k: v.cpu().clone()
-                    for k, v in self.model.state_dict().items()
+                    k: v.cpu().clone() for k, v in self.model.state_dict().items()
                 }
 
         # Restore best model
@@ -702,8 +731,11 @@ class DMPNNBaseline:
         graphs_test = [graphs_all[i] for i in idx_test]
         y_dummy = np.zeros(len(idx_test))
         _, scores = predict(
-            self.model, graphs_test, y_dummy,
-            batch_size=self.batch_size, device=self.device,
+            self.model,
+            graphs_test,
+            y_dummy,
+            batch_size=self.batch_size,
+            device=self.device,
         )
         return scores
 

@@ -139,9 +139,7 @@ def _resolve_zenodo_dns(timeout: float = 4.0) -> Tuple[bool, str]:
     try:
         # Force a fresh resolver call (don't honour any stale getaddrinfo
         # cache that may have returned 0.0.0.0).
-        infos = socket.getaddrinfo(
-            "zenodo.org", 443, type=socket.SOCK_STREAM
-        )
+        infos = socket.getaddrinfo("zenodo.org", 443, type=socket.SOCK_STREAM)
     except socket.gaierror as exc:
         return False, f"DNS resolution failed: {exc}"
     except Exception as exc:  # pragma: no cover - defensive
@@ -178,9 +176,7 @@ def _http_download_via_ip(
     req.add_header("Host", host)
     req.add_header("User-Agent", "mol-metal-zenodo-fetch/1.0")
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r, open(
-            dst, "wb"
-        ) as fh:
+        with urllib.request.urlopen(req, timeout=timeout) as r, open(dst, "wb") as fh:
             chunk = 1 << 20  # 1 MiB
             total = 0
             while True:
@@ -200,9 +196,7 @@ def _http_download_direct(
     """Stream ``url`` to ``dst`` via the system resolver.  No IP pinning."""
     dst.parent.mkdir(parents=True, exist_ok=True)
     try:
-        with urllib.request.urlopen(url, timeout=timeout) as r, open(
-            dst, "wb"
-        ) as fh:
+        with urllib.request.urlopen(url, timeout=timeout) as r, open(dst, "wb") as fh:
             chunk = 1 << 20
             total = 0
             while True:
@@ -230,7 +224,10 @@ def _head_via_ip(
     req.add_header("User-Agent", "mol-metal-zenodo-fetch/1.0")
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
-            return True, f"HTTP {r.status}, content-length={r.headers.get('Content-Length', '?')}"
+            return (
+                True,
+                f"HTTP {r.status}, content-length={r.headers.get('Content-Length', '?')}",
+            )
     except Exception as exc:
         return False, f"{type(exc).__name__}: {exc}"
 
@@ -282,9 +279,7 @@ def zenodo_fetch(
     if dns_ok:
         url = f"{ZENODO_BASE_URL}{file_path}"
         ok, n, msg = _http_download_direct(url, dst, timeout=timeout)
-        result.attempts.append(
-            {"step": "direct-dns", "ok": str(ok), "info": msg}
-        )
+        result.attempts.append({"step": "direct-dns", "ok": str(ok), "info": msg})
         if ok:
             result.ok = True
             result.method = "direct-dns"
@@ -316,9 +311,7 @@ def zenodo_fetch(
         ok, n, msg = _http_download_via_ip(
             "zenodo.org", file_path, dst, pinned_ip=ip, timeout=timeout
         )
-        result.attempts.append(
-            {"step": f"ip-get-{ip}", "ok": str(ok), "info": msg}
-        )
+        result.attempts.append({"step": f"ip-get-{ip}", "ok": str(ok), "info": msg})
         if ok:
             result.ok = True
             result.method = "ip-pin"
@@ -400,12 +393,8 @@ def _build_argparser() -> argparse.ArgumentParser:
         default=DEFAULT_TIMEOUT,
         help="Per-request timeout in seconds (default: 30)",
     )
-    p.add_argument(
-        "--verbose", action="store_true", help="Print per-step progress"
-    )
-    p.add_argument(
-        "--json", action="store_true", help="Emit result as JSON only"
-    )
+    p.add_argument("--verbose", action="store_true", help="Print per-step progress")
+    p.add_argument("--json", action="store_true", help="Emit result as JSON only")
     return p
 
 
@@ -458,8 +447,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         if not result.ok:
             print(
-                f"  attempts: {len(result.attempts)} — "
-                f"see --json for full trace",
+                f"  attempts: {len(result.attempts)} — " f"see --json for full trace",
                 file=sys.stderr,
             )
 

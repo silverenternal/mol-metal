@@ -48,12 +48,15 @@ HELPER = ROOT / "scripts" / "_dry_run_log_helper.sh"
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _read(path: Path) -> str:
     assert path.exists(), f"file missing: {path}"
     return path.read_text()
 
 
-def _run(cmd: list[str], env_extra: dict | None = None, timeout: int = 30) -> subprocess.CompletedProcess:
+def _run(
+    cmd: list[str], env_extra: dict | None = None, timeout: int = 30
+) -> subprocess.CompletedProcess:
     """Run a subprocess with USER_OK explicitly unset by default.
 
     We always strip USER_OK from the parent env so test isolation is
@@ -63,14 +66,19 @@ def _run(cmd: list[str], env_extra: dict | None = None, timeout: int = 30) -> su
     if env_extra:
         base_env.update(env_extra)
     return subprocess.run(
-        cmd, cwd=str(ROOT), capture_output=True, text=True,
-        env=base_env, timeout=timeout,
+        cmd,
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        env=base_env,
+        timeout=timeout,
     )
 
 
 # ---------------------------------------------------------------------------
 # Test 1: no USER_OK → exit 64 + USER_OK REQUIRED message
 # ---------------------------------------------------------------------------
+
 
 def test_no_user_ok_exits_64():
     """Without USER_OK env var, wrapper must exit 64 BEFORE any GPU work.
@@ -84,12 +92,12 @@ def test_no_user_ok_exits_64():
     """
     # 1. Source-level gate presence
     src = _read(WRAPPER)
-    assert 'USER_OK:-0' in src, "USER_OK env-var check missing from wrapper"
-    assert 'exit 64' in src, "USER_OK gate refusal exit code 64 missing"
+    assert "USER_OK:-0" in src, "USER_OK env-var check missing from wrapper"
+    assert "exit 64" in src, "USER_OK gate refusal exit code 64 missing"
     assert "USER_OK gate refused" in src, "USER_OK gate FATAL message missing"
     assert "kill_then_adapt" in src, "kill_then_adapt directive reference missing"
     # Gate is wired BEFORE the wave-tool guards (pre_flight_check.py call)
-    gate_idx = src.find('USER_OK:-0')
+    gate_idx = src.find("USER_OK:-0")
     preflight_idx = src.find("pre_flight_check.py")
     assert gate_idx > 0, "USER_OK gate marker not found"
     assert preflight_idx > 0, "pre_flight_check.py call not found"
@@ -119,6 +127,7 @@ def test_no_user_ok_exits_64():
 # Test 2: USER_OK=1 → proceeds past gate
 # ---------------------------------------------------------------------------
 
+
 def test_user_ok_proceeds_to_preflight():
     """With USER_OK=1 set, wrapper proceeds past the gate block.
 
@@ -135,9 +144,9 @@ def test_user_ok_proceeds_to_preflight():
     src = _read(WRAPPER)
 
     # Quick source-level check: the gate block is conditioned on USER_OK != 1
-    assert 'if [ "${USER_OK:-0}" != "1" ]' in src, (
-        "USER_OK=1 conditional gate block missing from wrapper"
-    )
+    assert (
+        'if [ "${USER_OK:-0}" != "1" ]' in src
+    ), "USER_OK=1 conditional gate block missing from wrapper"
 
     # Live-run with USER_OK=1 + --dry-run: should exit 0 (gate passes, dry-run
     # exits before pre-flight). DRY_RUN.log + plan.json MUST be emitted.
@@ -156,14 +165,15 @@ def test_user_ok_proceeds_to_preflight():
         f"{combined[-400:]!r}"
     )
     # Verify the dry-run proceeded all the way (enumerated 15 pairs)
-    assert "15 (metal, seed) pairs PLANNED" in combined, (
-        f"dry-run output should enumerate 15 pairs; got: {combined[-400:]!r}"
-    )
+    assert (
+        "15 (metal, seed) pairs PLANNED" in combined
+    ), f"dry-run output should enumerate 15 pairs; got: {combined[-400:]!r}"
 
 
 # ---------------------------------------------------------------------------
 # Test 3: --dry-run with USER_OK=1 → emits DRY_RUN.log + plan.json
 # ---------------------------------------------------------------------------
+
 
 def test_dry_run_with_user_ok_emits_log_and_plan(tmp_path: Path):
     """USER_OK=1 + --dry-run → exits 0 AND emits DRY_RUN.log AND plan.json.
@@ -182,6 +192,7 @@ def test_dry_run_with_user_ok_emits_log_and_plan(tmp_path: Path):
 
     # Clean previous run if present (test idempotency)
     import shutil
+
     if out_base.exists():
         shutil.rmtree(out_base)
 
@@ -209,46 +220,52 @@ def test_dry_run_with_user_ok_emits_log_and_plan(tmp_path: Path):
         f"DRY_RUN.log should declare user_ok: REQUIRED per Wf-363-A1 schema; "
         f"got: {log_text[-600:]!r}"
     )
-    assert "budget:  5 hr" in log_text or "budget: 5 hr" in log_text, (
-        f"DRY_RUN.log should declare 5 hr wall budget; got: {log_text[-600:]!r}"
-    )
+    assert (
+        "budget:  5 hr" in log_text or "budget: 5 hr" in log_text
+    ), f"DRY_RUN.log should declare 5 hr wall budget; got: {log_text[-600:]!r}"
 
     # plan.json emitted to OUT_BASE with "user_ok": true marker
     plan_json = out_base / "plan.json"
     assert plan_json.exists(), f"plan.json missing at {plan_json}"
     plan = json.loads(plan_json.read_text())
-    assert plan.get("user_ok") is True, (
-        f"plan.json must declare user_ok=true; got {plan!r}"
-    )
-    assert plan.get("dry_run") is True, (
-        f"plan.json must declare dry_run=true; got {plan!r}"
-    )
-    assert plan.get("total_runs") == 15, (
-        f"plan.json must declare total_runs=15; got {plan!r}"
-    )
-    assert plan.get("status") == "PLAN_ONLY", (
-        f"plan.json status should be PLAN_ONLY; got {plan!r}"
-    )
+    assert (
+        plan.get("user_ok") is True
+    ), f"plan.json must declare user_ok=true; got {plan!r}"
+    assert (
+        plan.get("dry_run") is True
+    ), f"plan.json must declare dry_run=true; got {plan!r}"
+    assert (
+        plan.get("total_runs") == 15
+    ), f"plan.json must declare total_runs=15; got {plan!r}"
+    assert (
+        plan.get("status") == "PLAN_ONLY"
+    ), f"plan.json status should be PLAN_ONLY; got {plan!r}"
     # metals + seeds sanity
-    assert set(plan.get("metals", [])) == {"Ru", "Ir", "Os", "Rh", "Re"}, (
-        f"plan.json metals mismatch; got {plan.get('metals')!r}"
-    )
-    assert plan.get("seeds") == [0, 1, 2], (
-        f"plan.json seeds mismatch; got {plan.get('seeds')!r}"
-    )
+    assert set(plan.get("metals", [])) == {
+        "Ru",
+        "Ir",
+        "Os",
+        "Rh",
+        "Re",
+    }, f"plan.json metals mismatch; got {plan.get('metals')!r}"
+    assert plan.get("seeds") == [
+        0,
+        1,
+        2,
+    ], f"plan.json seeds mismatch; got {plan.get('seeds')!r}"
 
     # Honest-framing block populated per Wf-355-A3 convention
     assert "honest_framing" in plan, "plan.json missing honest_framing block"
     hf = plan["honest_framing"]
     assert "MEASURED_today" in hf, "honest_framing missing MEASURED_today"
     assert "PROJECTED" in hf, "honest_framing missing PROJECTED"
-    assert "kill_then_adapt_directive" in hf, (
-        "honest_framing missing kill_then_adapt_directive reference"
-    )
+    assert (
+        "kill_then_adapt_directive" in hf
+    ), "honest_framing missing kill_then_adapt_directive reference"
 
     # Wrapper also references the DRY_RUN.log helper (Wf-363-A1 schema source)
     src = _read(WRAPPER)
-    assert "_dry_run_log_helper.sh" in src, (
-        "DRY_RUN.log helper source-line missing from wrapper"
-    )
+    assert (
+        "_dry_run_log_helper.sh" in src
+    ), "DRY_RUN.log helper source-line missing from wrapper"
     assert HELPER.exists(), f"helper file missing at {HELPER}"

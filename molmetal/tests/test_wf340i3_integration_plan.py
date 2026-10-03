@@ -59,9 +59,7 @@ def _phase_section(plan: str, phase: str) -> str:
     # Top-level Phase headers are like `### §2.1 Phase A — ...`
     # Nested subsections like `### §2.1.1 ...` should NOT match.
     # Use ^ anchor with MULTILINE mode to match only line starts.
-    pattern = (
-        rf"^### §2\.[0-9] Phase {phase} — .*?(?=^### §2\.[0-9] |^## §[0-9])"
-    )
+    pattern = rf"^### §2\.[0-9] Phase {phase} — .*?(?=^### §2\.[0-9] |^## §[0-9])"
     m = re.search(pattern, plan, re.DOTALL | re.MULTILINE)
     assert m is not None, f"Could not find Phase {phase} section in plan"
     return m.group(0)
@@ -83,18 +81,18 @@ def test_phase_A_B_C_ordering():
     plan = _read(PLAN_PATH)
 
     # Extract all Phase section headers in order
-    phase_headers = re.findall(
-        r"### §2\.\d+ Phase ([A-Z]) — ([^\n]+)", plan
-    )
-    assert len(phase_headers) >= 3, (
-        f"Plan should have at least 3 Phase sections, got {len(phase_headers)}"
-    )
+    phase_headers = re.findall(r"### §2\.\d+ Phase ([A-Z]) — ([^\n]+)", plan)
+    assert (
+        len(phase_headers) >= 3
+    ), f"Plan should have at least 3 Phase sections, got {len(phase_headers)}"
 
     # The first 3 phase headers must be A, B, C in order
     first_three_letters = [h[0] for h in phase_headers[:3]]
-    assert first_three_letters == ["A", "B", "C"], (
-        f"First 3 phases must be A, B, C in order. Got {first_three_letters}"
-    )
+    assert first_three_letters == [
+        "A",
+        "B",
+        "C",
+    ], f"First 3 phases must be A, B, C in order. Got {first_three_letters}"
 
     # Verify the titles match the expected optimizations
     phase_a_title = phase_headers[0][1]
@@ -102,14 +100,16 @@ def test_phase_A_B_C_ordering():
     phase_c_title = phase_headers[2][1]
 
     # Phase A should mention OT or optimal transport
-    assert "OT" in phase_a_title or "Optimal Transport" in phase_a_title or (
-        "Mini-batch OT" in phase_a_title
+    assert (
+        "OT" in phase_a_title
+        or "Optimal Transport" in phase_a_title
+        or ("Mini-batch OT" in phase_a_title)
     ), f"Phase A title should reference Mini-batch OT, got: {phase_a_title}"
 
     # Phase B should mention EDM
-    assert "EDM" in phase_b_title or "preconditioning" in phase_b_title.lower(), (
-        f"Phase B title should reference EDM preconditioning, got: {phase_b_title}"
-    )
+    assert (
+        "EDM" in phase_b_title or "preconditioning" in phase_b_title.lower()
+    ), f"Phase B title should reference EDM preconditioning, got: {phase_b_title}"
 
     # Phase C should mention Shortcut or EMA
     assert (
@@ -137,28 +137,27 @@ def test_pre_flight_gates():
         section = _phase_section(plan, phase)
         # The §2.X.3 Pre-flight gate subsection MUST exist
         assert "§2." in section, f"Phase {phase} missing §2.X.3 Pre-flight gate"
-        assert "Pre-flight gate" in section or "pre_flight" in section.lower(), (
-            f"Phase {phase} missing pre-flight gate reference"
-        )
+        assert (
+            "Pre-flight gate" in section or "pre_flight" in section.lower()
+        ), f"Phase {phase} missing pre-flight gate reference"
 
         # Each phase must reference the baseline pre-flight v3 gate
-        assert "62/62" in section or "62 / 62" in section or (
-            "pre_flight_v3_baseline" in section
-        ), (
-            f"Phase {phase} must reference baseline pre-flight v3 62/62 PASS "
-            f"gate"
-        )
+        assert (
+            "62/62" in section
+            or "62 / 62" in section
+            or ("pre_flight_v3_baseline" in section)
+        ), f"Phase {phase} must reference baseline pre-flight v3 62/62 PASS " f"gate"
 
     # Phase B specifically must have a license gate (CC-BY-NC-SA 4.0)
     phase_b_section = _phase_section(plan, "B")
-    assert "license" in phase_b_section.lower() or "LICENSE" in phase_b_section, (
-        "Phase B (EDM) must include a license gate (NVlabs/edm CC-BY-NC-SA 4.0)"
-    )
+    assert (
+        "license" in phase_b_section.lower() or "LICENSE" in phase_b_section
+    ), "Phase B (EDM) must include a license gate (NVlabs/edm CC-BY-NC-SA 4.0)"
 
     # Verify pre_flight_check.py exists
-    assert PRE_FLIGHT_SCRIPT.exists(), (
-        f"pre_flight_check.py must exist at {PRE_FLIGHT_SCRIPT}"
-    )
+    assert (
+        PRE_FLIGHT_SCRIPT.exists()
+    ), f"pre_flight_check.py must exist at {PRE_FLIGHT_SCRIPT}"
 
 
 # ---------------------------------------------------------------------------
@@ -180,22 +179,24 @@ def test_rollback_path():
     for phase in ("A", "B", "C"):
         section = _phase_section(plan, phase)
         # Rollback subsection must exist
-        assert "Rollback" in section, (
-            f"Phase {phase} missing §2.X.5 Rollback plan subsection"
-        )
+        assert (
+            "Rollback" in section
+        ), f"Phase {phase} missing §2.X.5 Rollback plan subsection"
         # Must mention `git revert` or default flag `False`
         has_revert = "git revert" in section
-        has_default_false = "False" in section or "default OFF" in section or (
-            "defaulted to `False`" in section
+        has_default_false = (
+            "False" in section
+            or "default OFF" in section
+            or ("defaulted to `False`" in section)
         )
         assert has_revert or has_default_false, (
             f"Phase {phase} rollback must mention `git revert` or default "
             f"`False` flag"
         )
         # Must reference 62/62 baseline preservation at rollback boundary
-        assert "62/62" in section or "62 / 62" in section, (
-            f"Phase {phase} rollback must preserve pre-flight v3 62/62 PASS"
-        )
+        assert (
+            "62/62" in section or "62 / 62" in section
+        ), f"Phase {phase} rollback must preserve pre-flight v3 62/62 PASS"
 
     # Aggregate rollback precedence section must list per-phase rollback
     assert "Phase A regression" in plan, (
@@ -256,7 +257,7 @@ def test_backward_compat():
         # Find at least one occurrence where False appears within 500 chars
         has_false_near_flag = False
         for idx in flag_indices:
-            context_window = plan[idx:idx + 500]
+            context_window = plan[idx : idx + 500]
             if "False" in context_window or "false" in context_window.lower():
                 has_false_near_flag = True
                 break

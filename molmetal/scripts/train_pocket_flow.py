@@ -32,6 +32,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -106,12 +107,20 @@ def _mini_batch(batch_size: int = 4, n_atoms: int = 8):
 # ---------------------------------------------------------------------------
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--steps", type=int, default=100,
-                        help="Number of CFM training steps (default 100)")
+    parser.add_argument(
+        "--steps",
+        type=int,
+        default=100,
+        help="Number of CFM training steps (default 100)",
+    )
     parser.add_argument("--batch-size", type=int, default=4)
-    parser.add_argument("--lr", type=float, default=5e-3,
-                        help="Higher LR (vs default 1e-4) so loss visibly "
-                             "drops in 100 synthetic steps.")
+    parser.add_argument(
+        "--lr",
+        type=float,
+        default=5e-3,
+        help="Higher LR (vs default 1e-4) so loss visibly "
+        "drops in 100 synthetic steps.",
+    )
     parser.add_argument("--hidden-dim", type=int, default=64)
     parser.add_argument("--n-layers", type=int, default=2)
     parser.add_argument("--seed", type=int, default=42)
@@ -147,48 +156,59 @@ def main(argv: list[str] | None = None) -> int:
         cfm_losses.append(adapter.last_losses["cfm"])
         atom_losses.append(adapter.last_losses["atom"])
         if (step + 1) % 10 == 0 or step == 0:
-            print(f"[step {step+1:3d}/{args.steps}] "
-                  f"loss={loss:.4f} cfm={adapter.last_losses['cfm']:.4f} "
-                  f"atom={adapter.last_losses['atom']:.4f} "
-                  f"({wall_times[-1]*1000:.0f}ms)")
+            print(
+                f"[step {step+1:3d}/{args.steps}] "
+                f"loss={loss:.4f} cfm={adapter.last_losses['cfm']:.4f} "
+                f"atom={adapter.last_losses['atom']:.4f} "
+                f"({wall_times[-1]*1000:.0f}ms)"
+            )
 
     total_wall = time.time() - t_start
     init_loss = float(np.mean(losses[:5]))
     final_loss = float(np.mean(losses[-5:]))
     print(f"[train_pocket_flow] initial (mean first 5) = {init_loss:.4f}")
     print(f"[train_pocket_flow] final   (mean last  5) = {final_loss:.4f}")
-    print(f"[train_pocket_flow] loss ratio final/initial = "
-          f"{final_loss / max(init_loss, 1e-9):.4f}")
-    print(f"[train_pocket_flow] total wall = {total_wall:.1f}s, "
-          f"avg = {1000*np.mean(wall_times):.0f}ms/step")
+    print(
+        f"[train_pocket_flow] loss ratio final/initial = "
+        f"{final_loss / max(init_loss, 1e-9):.4f}"
+    )
+    print(
+        f"[train_pocket_flow] total wall = {total_wall:.1f}s, "
+        f"avg = {1000*np.mean(wall_times):.0f}ms/step"
+    )
 
     # ---------------- Save checkpoint ----------------
     ckpt_path = CKPT_DIR / "fm_pocket_conditioned.pt"
-    torch.save({
-        "velocity_field": adapter.velocity_field.state_dict(),
-        "pocket_encoder": adapter.pocket_encoder.state_dict(),
-        "config": {
-            "hidden_dim": args.hidden_dim,
-            "n_layers": args.n_layers,
-            "lr": args.lr,
-            "max_atomic_number": adapter._max_atomic_number,
+    torch.save(
+        {
+            "velocity_field": adapter.velocity_field.state_dict(),
+            "pocket_encoder": adapter.pocket_encoder.state_dict(),
+            "config": {
+                "hidden_dim": args.hidden_dim,
+                "n_layers": args.n_layers,
+                "lr": args.lr,
+                "max_atomic_number": adapter._max_atomic_number,
+            },
+            "losses": losses,
+            "step": args.steps,
         },
-        "losses": losses,
-        "step": args.steps,
-    }, ckpt_path)
+        ckpt_path,
+    )
     print(f"[train_pocket_flow] saved checkpoint → {ckpt_path}")
 
     # ---------------- Plot loss curve ----------------
     try:
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
+
         fig, ax = plt.subplots(figsize=(7, 4))
         ax.plot(losses, label="total", color="#1f77b4", linewidth=1.5)
-        ax.plot(cfm_losses, label="CFM (coord)", color="#2ca02c",
-                linewidth=1.0, alpha=0.7)
-        ax.plot(atom_losses, label="atom-CE", color="#d62728",
-                linewidth=1.0, alpha=0.7)
+        ax.plot(
+            cfm_losses, label="CFM (coord)", color="#2ca02c", linewidth=1.0, alpha=0.7
+        )
+        ax.plot(atom_losses, label="atom-CE", color="#d62728", linewidth=1.0, alpha=0.7)
         ax.set_xlabel("step")
         ax.set_ylabel("loss")
         ax.set_title(

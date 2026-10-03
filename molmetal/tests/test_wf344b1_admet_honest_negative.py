@@ -34,6 +34,7 @@ Standing-rule compliance:
   * AGENTS.md §5.2 honest framing: VERIFICATION-ONLY closeout
   * AGENTS.md §5.4 Tier-2 strategy: pure computational verification
 """
+
 from __future__ import annotations
 
 import json
@@ -53,9 +54,9 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 # THRESHOLD comparison at every read site.
 _ADMET_METRICS = (
     "aqueous_solubility_logS",  # Wf-303C T1; gate p3_admet_aq_sol_honest_negative_tag
-    "hepatotox_index",           # Wf-312C R02; gate p3_admet_hepatotox_honest_negative
-    "logp7_4",                   # Wf-312C R02; gate p3_admet_logp7_4_honest_negative
-    "m6_kappa",                  # Wf-312C R02 + Wf-325D; gate p3_admet_m6_kappa_honest_negative
+    "hepatotox_index",  # Wf-312C R02; gate p3_admet_hepatotox_honest_negative
+    "logp7_4",  # Wf-312C R02; gate p3_admet_logp7_4_honest_negative
+    "m6_kappa",  # Wf-312C R02 + Wf-325D; gate p3_admet_m6_kappa_honest_negative
 )
 
 # Required fields per Wf-308B / Wf-312C R02 contract. ``HONEST_NEGATIVE``

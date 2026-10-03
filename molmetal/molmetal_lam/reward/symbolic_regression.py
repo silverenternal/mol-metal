@@ -87,14 +87,14 @@ FEATURE_COLUMNS: List[str] = [
     "diversity_tanimoto",
     "diversity_homotype",
     "metal_compliance_rate",
-    "sa_mean_norm",       # 1 - (sa-1)/9 ∈ [0,1]
+    "sa_mean_norm",  # 1 - (sa-1)/9 ∈ [0,1]
     "qed_mean",
     "anticancer_index",
-    "logp_norm",          # logp clipped [-5,5] / 5
-    "tpsa_norm",          # tpsa / 140
-    "rotb_norm",          # clip(rotb/10, 0, 1)
+    "logp_norm",  # logp clipped [-5,5] / 5
+    "tpsa_norm",  # tpsa / 140
+    "rotb_norm",  # clip(rotb/10, 0, 1)
     "coordination_norm",  # clip(CN/6, 0, 1)
-    "vina_present",       # binary 0/1: Vina channel available?
+    "vina_present",  # binary 0/1: Vina channel available?
 ]
 
 # Map symbolic short names used in formula strings to the actual column
@@ -117,67 +117,107 @@ FORMULA_FAMILIES: Dict[str, Dict[str, Any]] = {
         "math_prior": "M1 multiplicative independent rewards",
         "complexity": 5,
         "expression": "tau^a * sa_norm^b * q^c * ACI^d * (1 + eta)^e",
-        "features": ["diversity_tanimoto", "sa_mean_norm", "qed_mean",
-                     "anticancer_index", "diversity_homotype"],
+        "features": [
+            "diversity_tanimoto",
+            "sa_mean_norm",
+            "qed_mean",
+            "anticancer_index",
+            "diversity_homotype",
+        ],
     },
     "F2": {
         "lit": "Cranmer 2023 (PySR §2.2 GLM) + Udrescu 2020 log-decomp",
         "math_prior": "M1 log-linear (exponential of weighted log-features)",
         "complexity": 6,
         "expression": "exp(a*tau + b*eta + c*sa_norm + d*q + e*ACI + f*log(metal+1))",
-        "features": ["diversity_tanimoto", "diversity_homotype", "sa_mean_norm",
-                     "qed_mean", "anticancer_index", "metal_compliance_rate"],
+        "features": [
+            "diversity_tanimoto",
+            "diversity_homotype",
+            "sa_mean_norm",
+            "qed_mean",
+            "anticancer_index",
+            "metal_compliance_rate",
+        ],
     },
     "F3": {
         "lit": "Dayan 1997 (potential-based reward shaping) + McAllester 1999",
         "math_prior": "M2 convex combination (bounded weights, Σw_i = 1)",
         "complexity": 4,
         "expression": "w1*tau + w2*eta + w3*q + w4*ACI + (1-sum_w)*(1-sa_norm)",
-        "features": ["diversity_tanimoto", "diversity_homotype", "qed_mean",
-                     "anticancer_index", "sa_mean_norm"],
+        "features": [
+            "diversity_tanimoto",
+            "diversity_homotype",
+            "qed_mean",
+            "anticancer_index",
+            "sa_mean_norm",
+        ],
     },
     "F4": {
         "lit": "Boyd & Vandenberghe 2004 (smooth-max / LogSumExp)",
         "math_prior": "M3 smooth Chebyshev (β → 0 = mean, β → ∞ = max)",
         "complexity": 1,
         "expression": "(1/β) * log( exp(β*tau) + exp(β*eta) + exp(β*q) + "
-                      "exp(β*ACI) + exp(β*sa_norm) )",
-        "features": ["diversity_tanimoto", "diversity_homotype", "qed_mean",
-                     "anticancer_index", "sa_mean_norm"],
+        "exp(β*ACI) + exp(β*sa_norm) )",
+        "features": [
+            "diversity_tanimoto",
+            "diversity_homotype",
+            "qed_mean",
+            "anticancer_index",
+            "sa_mean_norm",
+        ],
     },
     "F5": {
         "lit": "McAllester 1999 PAC-Bayes regularised linear",
         "math_prior": "M2+KL: Σ w_i r_i s.t. KL(w || uniform) ≤ C/n",
         "complexity": 5,
         "expression": "Σ_i w_i * r_i   (PAC-Bayes projected to Δ_K)",
-        "features": ["diversity_tanimoto", "diversity_homotype", "qed_mean",
-                     "anticancer_index", "sa_mean_norm"],
+        "features": [
+            "diversity_tanimoto",
+            "diversity_homotype",
+            "qed_mean",
+            "anticancer_index",
+            "sa_mean_norm",
+        ],
     },
     "F6": {
         "lit": "Schulman 2017 PPO clipped objective",
         "math_prior": "PPO clip on linear reward (prevents over-confidence)",
         "complexity": 5,
         "expression": "clip(w1*tau + w2*eta + w3*q + w4*ACI + (1-Σw)*sa_norm, "
-                      "1-eps, 1+eps)",
-        "features": ["diversity_tanimoto", "diversity_homotype", "qed_mean",
-                     "anticancer_index", "sa_mean_norm"],
+        "1-eps, 1+eps)",
+        "features": [
+            "diversity_tanimoto",
+            "diversity_homotype",
+            "qed_mean",
+            "anticancer_index",
+            "sa_mean_norm",
+        ],
     },
     "F7": {
         "lit": "Auger 2013 (DPW prior) + Dayan 1997 (potential shaping)",
         "math_prior": "M2+DPW: base + weighted diversity + soft metal prior",
         "complexity": 4,
         "expression": "base + w_div*tau + w_metal*metal + w_sa*(1-sa_norm) "
-                      "+ w_qed*q",
-        "features": ["diversity_tanimoto", "metal_compliance_rate",
-                     "sa_mean_norm", "qed_mean"],
+        "+ w_qed*q",
+        "features": [
+            "diversity_tanimoto",
+            "metal_compliance_rate",
+            "sa_mean_norm",
+            "qed_mean",
+        ],
     },
     "F8": {
         "lit": "Tennie 2024 (hierarchical symbolic regression)",
         "math_prior": "Tree-structured (decision split on τ threshold)",
         "complexity": 5,
         "expression": "(tau > thresh) ? (a*q + b*ACI) : (c*sa_norm + d*eta)",
-        "features": ["diversity_tanimoto", "qed_mean", "anticancer_index",
-                     "sa_mean_norm", "diversity_homotype"],
+        "features": [
+            "diversity_tanimoto",
+            "qed_mean",
+            "anticancer_index",
+            "sa_mean_norm",
+            "diversity_homotype",
+        ],
     },
 }
 
@@ -191,6 +231,7 @@ class CellRecord:
 
     cohort ∈ {"r12_patha_10x3", "r13_novel_pocket", "r12_pilot_baseline"}.
     """
+
     cell_id: str
     cohort: str
     metrics: Dict[str, float] = field(default_factory=dict)
@@ -215,24 +256,26 @@ def _expand_r12_patha() -> List[CellRecord]:
     # Emit 30 CellRecords with synthetic IDs (test_000_seed_0 .. test_009_seed_2).
     for pocket_i in range(10):
         for seed_i in range(3):
-            cells.append(CellRecord(
-                cell_id=f"test_{pocket_i:03d}_seed_{seed_i}",
-                cohort="r12_patha_10x3",
-                metrics={
-                    "n_distinct": agg.get("n_distinct_mean", 0),
-                    "diversity_tanimoto": agg.get("diversity_tanimoto_mean", 0),
-                    "diversity_homotype": agg.get("diversity_homotype_mean", 0),
-                    "metal_compliance_rate": agg.get("metal_compliance_rate", 0),
-                    "sa_mean_norm": 1.0 - 5.95 / 9.0,  # PathA SA ≈ 5.95
-                    "qed_mean": np.nan,
-                    "anticancer_index": np.nan,
-                    "logp_norm": np.nan,
-                    "tpsa_norm": np.nan,
-                    "rotb_norm": np.nan,
-                    "coordination_norm": np.nan,
-                    "vina_present": 0.0,
-                },
-            ))
+            cells.append(
+                CellRecord(
+                    cell_id=f"test_{pocket_i:03d}_seed_{seed_i}",
+                    cohort="r12_patha_10x3",
+                    metrics={
+                        "n_distinct": agg.get("n_distinct_mean", 0),
+                        "diversity_tanimoto": agg.get("diversity_tanimoto_mean", 0),
+                        "diversity_homotype": agg.get("diversity_homotype_mean", 0),
+                        "metal_compliance_rate": agg.get("metal_compliance_rate", 0),
+                        "sa_mean_norm": 1.0 - 5.95 / 9.0,  # PathA SA ≈ 5.95
+                        "qed_mean": np.nan,
+                        "anticancer_index": np.nan,
+                        "logp_norm": np.nan,
+                        "tpsa_norm": np.nan,
+                        "rotb_norm": np.nan,
+                        "coordination_norm": np.nan,
+                        "vina_present": 0.0,
+                    },
+                )
+            )
     return cells
 
 
@@ -248,25 +291,28 @@ def _expand_r12_pilot() -> List[CellRecord]:
     sa_norm = 1.0 - (sa_mean - 1.0) / 9.0 if not np.isnan(sa_mean) else np.nan
     for pocket_i in range(10):
         for seed_i in range(3):
-            cells.append(CellRecord(
-                cell_id=f"r12pilot_{pocket_i:03d}_seed_{seed_i}",
-                cohort="r12_pilot_baseline",
-                metrics={
-                    "n_distinct": agg.get("n_distinct_mean", 1),
-                    "diversity_tanimoto": agg.get("diversity_tanimoto_mean", 0),
-                    "diversity_homotype": agg.get("diversity_homotype_mean", 0),
-                    "metal_compliance_rate": agg.get(
-                        "metal_compliance_rate_mean", 1),
-                    "sa_mean_norm": sa_norm,
-                    "qed_mean": agg.get("qed_mean", np.nan),
-                    "anticancer_index": agg.get("anticancer_index_mean", np.nan),
-                    "logp_norm": np.nan,
-                    "tpsa_norm": np.nan,
-                    "rotb_norm": np.nan,
-                    "coordination_norm": np.nan,
-                    "vina_present": 0.0,
-                },
-            ))
+            cells.append(
+                CellRecord(
+                    cell_id=f"r12pilot_{pocket_i:03d}_seed_{seed_i}",
+                    cohort="r12_pilot_baseline",
+                    metrics={
+                        "n_distinct": agg.get("n_distinct_mean", 1),
+                        "diversity_tanimoto": agg.get("diversity_tanimoto_mean", 0),
+                        "diversity_homotype": agg.get("diversity_homotype_mean", 0),
+                        "metal_compliance_rate": agg.get(
+                            "metal_compliance_rate_mean", 1
+                        ),
+                        "sa_mean_norm": sa_norm,
+                        "qed_mean": agg.get("qed_mean", np.nan),
+                        "anticancer_index": agg.get("anticancer_index_mean", np.nan),
+                        "logp_norm": np.nan,
+                        "tpsa_norm": np.nan,
+                        "rotb_norm": np.nan,
+                        "coordination_norm": np.nan,
+                        "vina_present": 0.0,
+                    },
+                )
+            )
     return cells
 
 
@@ -279,25 +325,29 @@ def _expand_r13_novel() -> List[CellRecord]:
     agg = raw.get("aggregate_metrics_novel_pockets_smoke", {})
     cells = []
     for i in range(3):
-        cells.append(CellRecord(
-            cell_id=f"test_{i + 10:03d}_seed_42",
-            cohort="r13_novel_pocket",
-            metrics={
-                "n_distinct": agg.get("n_distinct_mean", 0),
-                "diversity_tanimoto": agg.get("diversity_tanimoto", 0),
-                "diversity_homotype": agg.get("diversity_homotype", 0),
-                "metal_compliance_rate": agg.get("metal_compliance_rate", 0),
-                "sa_mean_norm": 1.0 - (agg.get("sa_mean", 5.0) - 1.0) / 9.0,
-                "qed_mean": agg.get("qed_mean", np.nan),
-                "anticancer_index": agg.get("anticancer_index", np.nan),
-                "logp_norm": float(np.clip(agg.get("logp_mean", 0), -5, 5)) / 5.0,
-                "tpsa_norm": float(agg.get("tpsa_mean", 0)) / 140.0,
-                "rotb_norm": float(np.clip(agg.get("rotb_mean", 0), 0, 10)) / 10.0,
-                "coordination_norm": float(
-                    np.clip(agg.get("coordination_number_mean", 0), 0, 6)) / 6.0,
-                "vina_present": 0.0,
-            },
-        ))
+        cells.append(
+            CellRecord(
+                cell_id=f"test_{i + 10:03d}_seed_42",
+                cohort="r13_novel_pocket",
+                metrics={
+                    "n_distinct": agg.get("n_distinct_mean", 0),
+                    "diversity_tanimoto": agg.get("diversity_tanimoto", 0),
+                    "diversity_homotype": agg.get("diversity_homotype", 0),
+                    "metal_compliance_rate": agg.get("metal_compliance_rate", 0),
+                    "sa_mean_norm": 1.0 - (agg.get("sa_mean", 5.0) - 1.0) / 9.0,
+                    "qed_mean": agg.get("qed_mean", np.nan),
+                    "anticancer_index": agg.get("anticancer_index", np.nan),
+                    "logp_norm": float(np.clip(agg.get("logp_mean", 0), -5, 5)) / 5.0,
+                    "tpsa_norm": float(agg.get("tpsa_mean", 0)) / 140.0,
+                    "rotb_norm": float(np.clip(agg.get("rotb_mean", 0), 0, 10)) / 10.0,
+                    "coordination_norm": float(
+                        np.clip(agg.get("coordination_number_mean", 0), 0, 6)
+                    )
+                    / 6.0,
+                    "vina_present": 0.0,
+                },
+            )
+        )
     return cells
 
 
@@ -411,13 +461,23 @@ def _to_X(df: pd.DataFrame, cols: List[str]) -> np.ndarray:
 
 def fit_family_F1(df: pd.DataFrame, y: np.ndarray) -> Dict[str, Any]:
     """F1: tau^a * sa_norm^b * q^c * ACI^d * (1+eta)^e  (Udrescu 2020 separable)."""
-    cols = ["diversity_tanimoto", "sa_mean_norm", "qed_mean",
-            "anticancer_index", "diversity_homotype"]
+    cols = [
+        "diversity_tanimoto",
+        "sa_mean_norm",
+        "qed_mean",
+        "anticancer_index",
+        "diversity_homotype",
+    ]
     valid = ~np.isnan(df[cols].to_numpy(dtype=float)).any(axis=1) & ~np.isnan(y)
     if valid.sum() < 5:
-        return {"family": "F1", "status": "insufficient_data",
-                "n_fit": int(valid.sum()), "r2": 0.0,
-                "complexity": 5, "params": []}
+        return {
+            "family": "F1",
+            "status": "insufficient_data",
+            "n_fit": int(valid.sum()),
+            "r2": 0.0,
+            "complexity": 5,
+            "params": [],
+        }
 
     X = df.loc[valid, cols].to_numpy(dtype=float)
     # Multiplicative in original scale → linear in log.
@@ -426,100 +486,169 @@ def fit_family_F1(df: pd.DataFrame, y: np.ndarray) -> Dict[str, Any]:
     log_X = _safe_log(X, eps)
     log_y = _safe_log(np.clip(y[valid], eps, None))
     params, r2 = _fit_linear_weights(log_X, log_y, alpha=1e-4)
-    formula = ("exp({:.4f}) * tau^{:.4f} * sa_norm^{:.4f} * q^{:.4f} "
-               "* ACI^{:.4f} * (1+eta)^{:.4f}").format(params[0], *params[1:])
-    return {"family": "F1", "status": "ok", "n_fit": int(valid.sum()),
-            "r2": r2, "complexity": 5, "params": params.tolist(),
-            "formula": formula}
+    formula = (
+        "exp({:.4f}) * tau^{:.4f} * sa_norm^{:.4f} * q^{:.4f} "
+        "* ACI^{:.4f} * (1+eta)^{:.4f}"
+    ).format(params[0], *params[1:])
+    return {
+        "family": "F1",
+        "status": "ok",
+        "n_fit": int(valid.sum()),
+        "r2": r2,
+        "complexity": 5,
+        "params": params.tolist(),
+        "formula": formula,
+    }
 
 
 def fit_family_F2(df: pd.DataFrame, y: np.ndarray) -> Dict[str, Any]:
     """F2: exp(a*tau + b*eta + c*sa_norm + d*q + e*ACI + f*log(metal+1))
     (Cranmer 2023 GLM + Udrescu 2020 log-decomposition)."""
-    cols = ["diversity_tanimoto", "diversity_homotype", "sa_mean_norm",
-            "qed_mean", "anticancer_index", "metal_compliance_rate"]
+    cols = [
+        "diversity_tanimoto",
+        "diversity_homotype",
+        "sa_mean_norm",
+        "qed_mean",
+        "anticancer_index",
+        "metal_compliance_rate",
+    ]
     valid = ~np.isnan(df[cols].to_numpy(dtype=float)).any(axis=1) & ~np.isnan(y)
     if valid.sum() < 5:
-        return {"family": "F2", "status": "insufficient_data",
-                "n_fit": int(valid.sum()), "r2": 0.0,
-                "complexity": 6, "params": []}
+        return {
+            "family": "F2",
+            "status": "insufficient_data",
+            "n_fit": int(valid.sum()),
+            "r2": 0.0,
+            "complexity": 6,
+            "params": [],
+        }
     X = df.loc[valid, cols].to_numpy(dtype=float)
     log_metal = _safe_log(X[:, 5] + 1.0)
     X_full = np.column_stack([X[:, :5], log_metal])
     log_y = _safe_log(np.clip(y[valid], 1e-6, None))
     params, r2 = _fit_linear_weights(X_full, log_y, alpha=1e-4)
-    formula = ("exp({:.4f}) * exp({:.4f}*tau + {:.4f}*eta + {:.4f}*sa_norm "
-               "+ {:.4f}*q + {:.4f}*ACI + {:.4f}*log(1+metal))").format(*params)
-    return {"family": "F2", "status": "ok", "n_fit": int(valid.sum()),
-            "r2": r2, "complexity": 6, "params": params.tolist(),
-            "formula": formula}
+    formula = (
+        "exp({:.4f}) * exp({:.4f}*tau + {:.4f}*eta + {:.4f}*sa_norm "
+        "+ {:.4f}*q + {:.4f}*ACI + {:.4f}*log(1+metal))"
+    ).format(*params)
+    return {
+        "family": "F2",
+        "status": "ok",
+        "n_fit": int(valid.sum()),
+        "r2": r2,
+        "complexity": 6,
+        "params": params.tolist(),
+        "formula": formula,
+    }
 
 
 def fit_family_F3(df: pd.DataFrame, y: np.ndarray) -> Dict[str, Any]:
     """F3: convex combination (Dayan 1997, McAllester 1999)."""
-    cols = ["diversity_tanimoto", "diversity_homotype", "qed_mean",
-            "anticancer_index", "sa_mean_norm"]
+    cols = [
+        "diversity_tanimoto",
+        "diversity_homotype",
+        "qed_mean",
+        "anticancer_index",
+        "sa_mean_norm",
+    ]
     valid = ~np.isnan(df[cols].to_numpy(dtype=float)).any(axis=1) & ~np.isnan(y)
     if valid.sum() < 5:
-        return {"family": "F3", "status": "insufficient_data",
-                "n_fit": int(valid.sum()), "r2": 0.0,
-                "complexity": 4, "params": []}
+        return {
+            "family": "F3",
+            "status": "insufficient_data",
+            "n_fit": int(valid.sum()),
+            "r2": 0.0,
+            "complexity": 4,
+            "params": [],
+        }
     X = df.loc[valid, cols].to_numpy(dtype=float)
     params, r2 = _fit_linear_weights(X, y[valid], alpha=1e-3)
     w = params[1:]
     sum_w = float(np.sum(w))
-    formula = ("{:.4f} + {:.4f}*tau + {:.4f}*eta + {:.4f}*q + {:.4f}*ACI "
-               "+ {:.4f}*sa_norm  [Σ|w|={:.4f}]").format(params[0], *w, sum_w)
-    return {"family": "F3", "status": "ok", "n_fit": int(valid.sum()),
-            "r2": r2, "complexity": 4, "params": params.tolist(),
-            "formula": formula}
+    formula = (
+        "{:.4f} + {:.4f}*tau + {:.4f}*eta + {:.4f}*q + {:.4f}*ACI "
+        "+ {:.4f}*sa_norm  [Σ|w|={:.4f}]"
+    ).format(params[0], *w, sum_w)
+    return {
+        "family": "F3",
+        "status": "ok",
+        "n_fit": int(valid.sum()),
+        "r2": r2,
+        "complexity": 4,
+        "params": params.tolist(),
+        "formula": formula,
+    }
 
 
 def fit_family_F4(df: pd.DataFrame, y: np.ndarray) -> Dict[str, Any]:
     """F4: smooth-max LogSumExp (Boyd-Vandenberghe 2004)."""
-    cols = ["diversity_tanimoto", "diversity_homotype", "qed_mean",
-            "anticancer_index", "sa_mean_norm"]
+    cols = [
+        "diversity_tanimoto",
+        "diversity_homotype",
+        "qed_mean",
+        "anticancer_index",
+        "sa_mean_norm",
+    ]
     valid = ~np.isnan(df[cols].to_numpy(dtype=float)).any(axis=1) & ~np.isnan(y)
     if valid.sum() < 5:
-        return {"family": "F4", "status": "insufficient_data",
-                "n_fit": int(valid.sum()), "r2": 0.0,
-                "complexity": 1, "params": []}
+        return {
+            "family": "F4",
+            "status": "insufficient_data",
+            "n_fit": int(valid.sum()),
+            "r2": 0.0,
+            "complexity": 1,
+            "params": [],
+        }
     X = df.loc[valid, cols].to_numpy(dtype=float)
     y_v = y[valid]
 
     def loss(beta: float) -> float:
-        lse = (1.0 / max(beta, 1e-3)) * np.log(
-            np.sum(np.exp(beta * X), axis=1) + 1e-9)
+        lse = (1.0 / max(beta, 1e-3)) * np.log(np.sum(np.exp(beta * X), axis=1) + 1e-9)
         return float(np.mean((lse - y_v) ** 2))
 
     # 1-D grid search on β ∈ [0.1, 5.0]
     betas = np.linspace(0.1, 5.0, 50)
     losses = [loss(b) for b in betas]
     best_beta = float(betas[int(np.argmin(losses))])
-    y_hat = (1.0 / best_beta) * np.log(
-        np.sum(np.exp(best_beta * X), axis=1) + 1e-9)
+    y_hat = (1.0 / best_beta) * np.log(np.sum(np.exp(best_beta * X), axis=1) + 1e-9)
     ss_res = float(np.sum((y_v - y_hat) ** 2))
     ss_tot = float(np.sum((y_v - np.mean(y_v)) ** 2))
     r2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
-    formula = ("(1/{:.4f}) * log( exp({:.4f}*tau) + exp({:.4f}*eta) + "
-               "exp({:.4f}*q) + exp({:.4f}*ACI) + "
-               "exp({:.4f}*sa_norm) )").format(best_beta, best_beta,
-                                               best_beta, best_beta,
-                                               best_beta, best_beta)
-    return {"family": "F4", "status": "ok", "n_fit": int(valid.sum()),
-            "r2": r2, "complexity": 1, "params": [best_beta],
-            "formula": formula}
+    formula = (
+        "(1/{:.4f}) * log( exp({:.4f}*tau) + exp({:.4f}*eta) + "
+        "exp({:.4f}*q) + exp({:.4f}*ACI) + "
+        "exp({:.4f}*sa_norm) )"
+    ).format(best_beta, best_beta, best_beta, best_beta, best_beta, best_beta)
+    return {
+        "family": "F4",
+        "status": "ok",
+        "n_fit": int(valid.sum()),
+        "r2": r2,
+        "complexity": 1,
+        "params": [best_beta],
+        "formula": formula,
+    }
 
 
 def fit_family_F5(df: pd.DataFrame, y: np.ndarray) -> Dict[str, Any]:
     """F5: PAC-Bayes regularised linear (McAllester 1999)."""
-    cols = ["diversity_tanimoto", "diversity_homotype", "qed_mean",
-            "anticancer_index", "sa_mean_norm"]
+    cols = [
+        "diversity_tanimoto",
+        "diversity_homotype",
+        "qed_mean",
+        "anticancer_index",
+        "sa_mean_norm",
+    ]
     valid = ~np.isnan(df[cols].to_numpy(dtype=float)).any(axis=1) & ~np.isnan(y)
     if valid.sum() < 5:
-        return {"family": "F5", "status": "insufficient_data",
-                "n_fit": int(valid.sum()), "r2": 0.0,
-                "complexity": 5, "params": []}
+        return {
+            "family": "F5",
+            "status": "insufficient_data",
+            "n_fit": int(valid.sum()),
+            "r2": 0.0,
+            "complexity": 5,
+            "params": [],
+        }
     X = df.loc[valid, cols].to_numpy(dtype=float)
     y_v = y[valid]
     # PAC-Bayes: use LassoLarsIC for sparsity + KL projection.
@@ -531,23 +660,40 @@ def fit_family_F5(df: pd.DataFrame, y: np.ndarray) -> Dict[str, Any]:
     ss_tot = float(np.sum((y_v - np.mean(y_v)) ** 2))
     r2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
     w = model.coef_
-    formula = ("{:.4f} + {:.4f}*tau + {:.4f}*eta + {:.4f}*q + {:.4f}*ACI "
-               "+ {:.4f}*sa_norm  [LassoBIC, nz={}]").format(
-        model.intercept_, *w, int(np.sum(np.abs(w) > 1e-6)))
-    return {"family": "F5", "status": "ok", "n_fit": int(valid.sum()),
-            "r2": r2, "complexity": 5, "params": [model.intercept_] +
-                   w.tolist(), "formula": formula}
+    formula = (
+        "{:.4f} + {:.4f}*tau + {:.4f}*eta + {:.4f}*q + {:.4f}*ACI "
+        "+ {:.4f}*sa_norm  [LassoBIC, nz={}]"
+    ).format(model.intercept_, *w, int(np.sum(np.abs(w) > 1e-6)))
+    return {
+        "family": "F5",
+        "status": "ok",
+        "n_fit": int(valid.sum()),
+        "r2": r2,
+        "complexity": 5,
+        "params": [model.intercept_] + w.tolist(),
+        "formula": formula,
+    }
 
 
 def fit_family_F6(df: pd.DataFrame, y: np.ndarray) -> Dict[str, Any]:
     """F6: PPO-clipped linear (Schulman 2017)."""
-    cols = ["diversity_tanimoto", "diversity_homotype", "qed_mean",
-            "anticancer_index", "sa_mean_norm"]
+    cols = [
+        "diversity_tanimoto",
+        "diversity_homotype",
+        "qed_mean",
+        "anticancer_index",
+        "sa_mean_norm",
+    ]
     valid = ~np.isnan(df[cols].to_numpy(dtype=float)).any(axis=1) & ~np.isnan(y)
     if valid.sum() < 5:
-        return {"family": "F6", "status": "insufficient_data",
-                "n_fit": int(valid.sum()), "r2": 0.0,
-                "complexity": 5, "params": []}
+        return {
+            "family": "F6",
+            "status": "insufficient_data",
+            "n_fit": int(valid.sum()),
+            "r2": 0.0,
+            "complexity": 5,
+            "params": [],
+        }
     X = df.loc[valid, cols].to_numpy(dtype=float)
     y_v = y[valid]
     params, r2_unclipped = _fit_linear_weights(X, y_v, alpha=1e-3)
@@ -557,29 +703,48 @@ def fit_family_F6(df: pd.DataFrame, y: np.ndarray) -> Dict[str, Any]:
     ss_res = float(np.sum((y_v - y_hat) ** 2))
     ss_tot = float(np.sum((y_v - np.mean(y_v)) ** 2))
     r2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
-    formula = ("clip({:.4f} + {:.4f}*tau + {:.4f}*eta + {:.4f}*q + {:.4f}*ACI "
-               "+ {:.4f}*sa_norm, 1-eps, 1+eps)  [eps=0.2]").format(*params)
-    return {"family": "F6", "status": "ok", "n_fit": int(valid.sum()),
-            "r2": r2, "complexity": 5, "params": params.tolist(),
-            "formula": formula}
+    formula = (
+        "clip({:.4f} + {:.4f}*tau + {:.4f}*eta + {:.4f}*q + {:.4f}*ACI "
+        "+ {:.4f}*sa_norm, 1-eps, 1+eps)  [eps=0.2]"
+    ).format(*params)
+    return {
+        "family": "F6",
+        "status": "ok",
+        "n_fit": int(valid.sum()),
+        "r2": r2,
+        "complexity": 5,
+        "params": params.tolist(),
+        "formula": formula,
+    }
 
 
 def fit_family_F7(df: pd.DataFrame, y: np.ndarray) -> Dict[str, Any]:
     """F7: tiered metal-prior + diversity (Auger 2013 + Dayan 1997)."""
-    cols = ["diversity_tanimoto", "metal_compliance_rate", "sa_mean_norm",
-            "qed_mean"]
+    cols = ["diversity_tanimoto", "metal_compliance_rate", "sa_mean_norm", "qed_mean"]
     valid = ~np.isnan(df[cols].to_numpy(dtype=float)).any(axis=1) & ~np.isnan(y)
     if valid.sum() < 5:
-        return {"family": "F7", "status": "insufficient_data",
-                "n_fit": int(valid.sum()), "r2": 0.0,
-                "complexity": 4, "params": []}
+        return {
+            "family": "F7",
+            "status": "insufficient_data",
+            "n_fit": int(valid.sum()),
+            "r2": 0.0,
+            "complexity": 4,
+            "params": [],
+        }
     X = df.loc[valid, cols].to_numpy(dtype=float)
     params, r2 = _fit_linear_weights(X, y[valid], alpha=1e-3)
-    formula = ("{:.4f} + {:.4f}*tau + {:.4f}*metal + {:.4f}*sa_norm "
-               "+ {:.4f}*q").format(*params)
-    return {"family": "F7", "status": "ok", "n_fit": int(valid.sum()),
-            "r2": r2, "complexity": 4, "params": params.tolist(),
-            "formula": formula}
+    formula = (
+        "{:.4f} + {:.4f}*tau + {:.4f}*metal + {:.4f}*sa_norm " "+ {:.4f}*q"
+    ).format(*params)
+    return {
+        "family": "F7",
+        "status": "ok",
+        "n_fit": int(valid.sum()),
+        "r2": r2,
+        "complexity": 4,
+        "params": params.tolist(),
+        "formula": formula,
+    }
 
 
 def fit_family_F8(df: pd.DataFrame, y: np.ndarray) -> Dict[str, Any]:
@@ -588,13 +753,23 @@ def fit_family_F8(df: pd.DataFrame, y: np.ndarray) -> Dict[str, Any]:
     Split point: median of diversity_tanimoto. If τ > τ_med, fit linear in
     (q, ACI). Else, fit linear in (sa_norm, eta).
     """
-    cols = ["diversity_tanimoto", "qed_mean", "anticancer_index",
-            "sa_mean_norm", "diversity_homotype"]
+    cols = [
+        "diversity_tanimoto",
+        "qed_mean",
+        "anticancer_index",
+        "sa_mean_norm",
+        "diversity_homotype",
+    ]
     valid = ~np.isnan(df[cols].to_numpy(dtype=float)).any(axis=1) & ~np.isnan(y)
     if valid.sum() < 8:  # need at least 4 in each branch
-        return {"family": "F8", "status": "insufficient_data",
-                "n_fit": int(valid.sum()), "r2": 0.0,
-                "complexity": 5, "params": []}
+        return {
+            "family": "F8",
+            "status": "insufficient_data",
+            "n_fit": int(valid.sum()),
+            "r2": 0.0,
+            "complexity": 5,
+            "params": [],
+        }
     df_v = df.loc[valid].reset_index(drop=True)
     y_v = y[valid]
     tau = df_v["diversity_tanimoto"].to_numpy(dtype=float)
@@ -606,16 +781,14 @@ def fit_family_F8(df: pd.DataFrame, y: np.ndarray) -> Dict[str, Any]:
     y_hat = np.zeros_like(y_v)
     # High-tau branch: linear in (q, ACI)
     if high.sum() >= 2:
-        Xh = df_v.loc[high, ["qed_mean", "anticancer_index"]].to_numpy(
-            dtype=float)
+        Xh = df_v.loc[high, ["qed_mean", "anticancer_index"]].to_numpy(dtype=float)
         params_h, _ = _fit_linear_weights(Xh, y_v[high], alpha=1e-3)
         y_hat[high] = Xh @ params_h[1:] + params_h[0]
     else:
         params_h = np.zeros(3)
     # Low-tau branch: linear in (sa_norm, eta)
     if low.sum() >= 2:
-        Xl = df_v.loc[low, ["sa_mean_norm", "diversity_homotype"]].to_numpy(
-            dtype=float)
+        Xl = df_v.loc[low, ["sa_mean_norm", "diversity_homotype"]].to_numpy(dtype=float)
         params_l, _ = _fit_linear_weights(Xl, y_v[low], alpha=1e-3)
         y_hat[low] = Xl @ params_l[1:] + params_l[0]
     else:
@@ -624,13 +797,19 @@ def fit_family_F8(df: pd.DataFrame, y: np.ndarray) -> Dict[str, Any]:
     ss_res = float(np.sum((y_v - y_hat) ** 2))
     ss_tot = float(np.sum((y_v - np.mean(y_v)) ** 2))
     r2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
-    formula = ("(tau > {:.4f}) ? ({:.4f} + {:.4f}*q + {:.4f}*ACI) : "
-               "({:.4f} + {:.4f}*sa_norm + {:.4f}*eta)").format(
-        threshold, *params_h, *params_l)
-    return {"family": "F8", "status": "ok", "n_fit": int(valid.sum()),
-            "r2": r2, "complexity": 5,
-            "params": [threshold] + params_h.tolist() + params_l.tolist(),
-            "formula": formula}
+    formula = (
+        "(tau > {:.4f}) ? ({:.4f} + {:.4f}*q + {:.4f}*ACI) : "
+        "({:.4f} + {:.4f}*sa_norm + {:.4f}*eta)"
+    ).format(threshold, *params_h, *params_l)
+    return {
+        "family": "F8",
+        "status": "ok",
+        "n_fit": int(valid.sum()),
+        "r2": r2,
+        "complexity": 5,
+        "params": [threshold] + params_h.tolist() + params_l.tolist(),
+        "formula": formula,
+    }
 
 
 FAMILY_FITTERS = {
@@ -651,6 +830,7 @@ FAMILY_FITTERS = {
 @dataclass
 class FitResult:
     """Result of a single-family fit."""
+
     family: str
     status: str
     n_fit: int
@@ -701,8 +881,10 @@ def fit_symbolic_reward(
       forward-compatible placeholder.
     """
     if family == "ALL":
-        results = {fam: fit_symbolic_reward(X_df, y, fam, n_iterations)
-                   for fam in FORMULA_FAMILIES}
+        results = {
+            fam: fit_symbolic_reward(X_df, y, fam, n_iterations)
+            for fam in FORMULA_FAMILIES
+        }
         ok = [r for r in results.values() if r.status == "ok"]
         if not ok:
             return results["F3"]  # fallback
@@ -712,7 +894,8 @@ def fit_symbolic_reward(
 
     if family not in FAMILY_FITTERS:
         raise ValueError(
-            f"Unknown family {family!r}. Choose from {list(FAMILY_FITTERS)}.")
+            f"Unknown family {family!r}. Choose from {list(FAMILY_FITTERS)}."
+        )
 
     raw = FAMILY_FITTERS[family](X_df, y)
     fam_meta = FORMULA_FAMILIES[family]
@@ -795,8 +978,11 @@ def evaluate_formula(formula_str: str, X: pd.DataFrame) -> np.ndarray:
     # Determine which feature columns are referenced in the formula; only
     # those columns need to be lambdified (otherwise sympy chokes on unused
     # column inputs that are not bound by the expression).
-    referenced = [col for col in FEATURE_COLUMNS
-                  if re.search(rf"\b{re.escape(col)}\b", translated)]
+    referenced = [
+        col
+        for col in FEATURE_COLUMNS
+        if re.search(rf"\b{re.escape(col)}\b", translated)
+    ]
     if not referenced:
         # Fallback: treat as constant.
         try:
@@ -869,7 +1055,10 @@ def compute_symbolic_reward(
     # Load formula (default: from disk pickle).
     if formula_str is None:
         pkl_path = (
-            PROJECT_ROOT / "molmetal" / "models" / "symbolic_reward"
+            PROJECT_ROOT
+            / "molmetal"
+            / "models"
+            / "symbolic_reward"
             / "symbolic_reward.pkl"
         )
         if not pkl_path.exists():
@@ -887,12 +1076,12 @@ def compute_symbolic_reward(
         df_one = row.to_frame().T
         df_one = df_one.reindex(columns=feature_columns, fill_value=0.0)
     elif isinstance(row, dict):
-        df_one = pd.DataFrame([{col: row.get(col, 0.0)
-                                for col in feature_columns}])
+        df_one = pd.DataFrame([{col: row.get(col, 0.0) for col in feature_columns}])
     else:
         # Arbitrary object — try attribute access.
-        df_one = pd.DataFrame([{col: getattr(row, col, 0.0)
-                                for col in feature_columns}])
+        df_one = pd.DataFrame(
+            [{col: getattr(row, col, 0.0) for col in feature_columns}]
+        )
 
     # Fill NaN with 0.0 (graceful no-op for cells with missing features).
     df_one = df_one.fillna(0.0)
@@ -1035,9 +1224,11 @@ def held_out_validation(
         "held_out_r2_mean": float(np.mean(held_out_r2s)) if held_out_r2s else 0.0,
         "held_out_r2_std": float(np.std(held_out_r2s)) if held_out_r2s else 0.0,
         "held_out_pearson_mean": float(np.mean(held_out_pearsons))
-            if held_out_pearsons else 0.0,
+        if held_out_pearsons
+        else 0.0,
         "held_out_pearson_std": float(np.std(held_out_pearsons))
-            if held_out_pearsons else 0.0,
+        if held_out_pearsons
+        else 0.0,
         "in_sample_r2": in_sample_r2,
         "n_train_mean": float(np.mean(n_trains)) if n_trains else 0.0,
         "n_test_mean": float(np.mean(n_tests)) if n_tests else 0.0,
@@ -1140,9 +1331,14 @@ def linear_baseline_validation(
         "baseline_pearson_mean": float(np.mean(pearsons)) if pearsons else 0.0,
         "baseline_pearson_std": float(np.std(pearsons)) if pearsons else 0.0,
         "formula_template": " + ".join(
-            [f"{c}*{col}" for c, col in zip(
-                ["a", "b", "c", "d", "e"][:len(feature_cols)], feature_cols)]
-            + ["intercept"]),
+            [
+                f"{c}*{col}"
+                for c, col in zip(
+                    ["a", "b", "c", "d", "e"][: len(feature_cols)], feature_cols
+                )
+            ]
+            + ["intercept"]
+        ),
     }
 
 
@@ -1178,11 +1374,17 @@ def compare_symbolic_vs_linear(
       L1 sparsity as a regulariser on a small sample.
     """
     sym = held_out_validation(
-        df, family=family, holdout_frac=holdout_frac,
-        n_repeats=n_repeats, seed=seed,
+        df,
+        family=family,
+        holdout_frac=holdout_frac,
+        n_repeats=n_repeats,
+        seed=seed,
     )
     base = linear_baseline_validation(
-        df, holdout_frac=holdout_frac, n_repeats=n_repeats, seed=seed,
+        df,
+        holdout_frac=holdout_frac,
+        n_repeats=n_repeats,
+        seed=seed,
     )
     sym_r2 = sym.get("held_out_r2_mean", 0.0)
     base_r2 = base.get("baseline_r2_mean", 0.0)
@@ -1221,26 +1423,45 @@ def _self_test() -> None:
     """
     df = load_measured_cells()
     assert len(df) >= 60, f"Expected ≥60 cells, got {len(df)}"
-    print(f"[self_test] loaded {len(df)} cells, cohorts: "
-          f"{df['cohort'].value_counts().to_dict()}")
+    print(
+        f"[self_test] loaded {len(df)} cells, cohorts: "
+        f"{df['cohort'].value_counts().to_dict()}"
+    )
     # F7 only needs (tau, metal, sa, qed) → 3 cells on novel-pocket cohort.
     df_cc, y = mask_complete_cases(
-        df, feature_cols=["diversity_tanimoto", "metal_compliance_rate",
-                          "sa_mean_norm", "qed_mean"])
+        df,
+        feature_cols=[
+            "diversity_tanimoto",
+            "metal_compliance_rate",
+            "sa_mean_norm",
+            "qed_mean",
+        ],
+    )
     print(f"[self_test] F7 complete cases: {len(df_cc)}")
     if len(df_cc) >= 3:
         res = fit_symbolic_reward(df_cc, y, family="F7")
-        print(f"[self_test] F7 R^2 = {res.r2:.4f}, n = {res.n_fit}, "
-              f"complexity = {res.complexity}, formula = {res.formula[:80]}...")
+        print(
+            f"[self_test] F7 R^2 = {res.r2:.4f}, n = {res.n_fit}, "
+            f"complexity = {res.complexity}, formula = {res.formula[:80]}..."
+        )
     # F1 needs (tau, sa_norm, q, ACI, eta) → 3 cells.
     df_cc1, y1 = mask_complete_cases(
-        df, feature_cols=["diversity_tanimoto", "sa_mean_norm", "qed_mean",
-                          "anticancer_index", "diversity_homotype"])
+        df,
+        feature_cols=[
+            "diversity_tanimoto",
+            "sa_mean_norm",
+            "qed_mean",
+            "anticancer_index",
+            "diversity_homotype",
+        ],
+    )
     print(f"[self_test] F1 complete cases: {len(df_cc1)}")
     if len(df_cc1) >= 3:
         res = fit_symbolic_reward(df_cc1, y1, family="F1")
-        print(f"[self_test] F1 R^2 = {res.r2:.4f}, n = {res.n_fit}, "
-              f"formula = {res.formula[:80]}...")
+        print(
+            f"[self_test] F1 R^2 = {res.r2:.4f}, n = {res.n_fit}, "
+            f"formula = {res.formula[:80]}..."
+        )
 
 
 if __name__ == "__main__":

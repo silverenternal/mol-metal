@@ -29,6 +29,7 @@ Honest framing (party-twenty-spirit §3.5):
     numpy versions but the verdict taxonomy is the load-bearing
     invariant.
 """
+
 from __future__ import annotations
 
 import json
@@ -72,11 +73,15 @@ class TestWf367B1R2RecoveryPlatinai4Cell(unittest.TestCase):
         cohort = "platinai_4cell"
         # Load platinai_4cell cohort (200 SMILES)
         X_32d, y, smiles_list = load_cohort(
-            cohort, max_samples=2000, seed=0,
+            cohort,
+            max_samples=2000,
+            seed=0,
         )[:3]
         # Build recovery feature matrix
         X_recovery, feature_names, stream_dims = build_recovery_feature_matrix(
-            smiles_list, X_32d, cohort,
+            smiles_list,
+            X_32d,
+            cohort,
         )
         # Structural invariants
         self.assertEqual(stream_dims["rdkit_12d"], 12)
@@ -92,8 +97,12 @@ class TestWf367B1R2RecoveryPlatinai4Cell(unittest.TestCase):
         # 12-d baseline R² must match Wf-335-M2 within 1e-3 tolerance
         # (since both use the same Ridge multi-seed CV).
         cv_12d = ridge_r2_cv(
-            X_32d[:, :12], y, n_splits=5, n_seeds=5,
-            alpha=1.0, seed_offset=0,
+            X_32d[:, :12],
+            y,
+            n_splits=5,
+            n_seeds=5,
+            alpha=1.0,
+            seed_offset=0,
         )
         # Wf-335-M2 best for platinai_4cell = -0.1251 (per result.json)
         wf335m2_best = -0.12505399802714393
@@ -101,8 +110,12 @@ class TestWf367B1R2RecoveryPlatinai4Cell(unittest.TestCase):
         self.assertLess(diff, 1e-3)
         # Multi-stream recovery R² vs Wf-335-M2 best: structural verdict
         cv_recovery = ridge_r2_cv(
-            X_recovery, y, n_splits=5, n_seeds=5,
-            alpha=1.0, seed_offset=0,
+            X_recovery,
+            y,
+            n_splits=5,
+            n_seeds=5,
+            alpha=1.0,
+            seed_offset=0,
         )
         v = verdict(cv_recovery["r2_mean"], wf335m2_best)
         # If lift > 0 + R² > 0: CEILING_BREAK / MODERATE / WEAK_RECOVERY
@@ -132,11 +145,15 @@ class TestWf367B1R2RecoveryHilbert(unittest.TestCase):
         cohort = "hilbert"
         # Load hilbert cohort (200 SMILES)
         X_32d, y, smiles_list = load_cohort(
-            cohort, max_samples=2000, seed=0,
+            cohort,
+            max_samples=2000,
+            seed=0,
         )[:3]
         # Build recovery feature matrix
         X_recovery, feature_names, stream_dims = build_recovery_feature_matrix(
-            smiles_list, X_32d, cohort,
+            smiles_list,
+            X_32d,
+            cohort,
         )
         # Structural invariants — hilbert has no per-cell one-hot
         self.assertEqual(stream_dims["rdkit_12d"], 12)
@@ -149,8 +166,12 @@ class TestWf367B1R2RecoveryHilbert(unittest.TestCase):
         self.assertLessEqual(X_recovery.shape[1], 52)
         # 12-d baseline R² must match Wf-335-M2 within 1e-3 tolerance
         cv_12d = ridge_r2_cv(
-            X_32d[:, :12], y, n_splits=5, n_seeds=5,
-            alpha=1.0, seed_offset=10,
+            X_32d[:, :12],
+            y,
+            n_splits=5,
+            n_seeds=5,
+            alpha=1.0,
+            seed_offset=10,
         )
         # Wf-335-M2 best for hilbert = -0.1268 (per result.json)
         wf335m2_best = -0.1267927743302506
@@ -158,8 +179,12 @@ class TestWf367B1R2RecoveryHilbert(unittest.TestCase):
         self.assertLess(diff, 1e-3)
         # Multi-stream recovery R² vs Wf-335-M2 best
         cv_recovery = ridge_r2_cv(
-            X_recovery, y, n_splits=5, n_seeds=5,
-            alpha=1.0, seed_offset=10,
+            X_recovery,
+            y,
+            n_splits=5,
+            n_seeds=5,
+            alpha=1.0,
+            seed_offset=10,
         )
         v = verdict(cv_recovery["r2_mean"], wf335m2_best)
         valid_verdicts = {
@@ -182,11 +207,14 @@ class TestWf367B1BackwardCompat(unittest.TestCase):
     def test_wf367b1_backward_compat(self) -> None:
         # Snapshot Wf-335-M2 result.json mtime before running Wf-367-B1
         wf335m2_path = os.path.join(
-            _REPO_ROOT, "molmetal", "reports", "wf335m2_r2", "result.json",
+            _REPO_ROOT,
+            "molmetal",
+            "reports",
+            "wf335m2_r2",
+            "result.json",
         )
         wf335m2_mtime_before = (
-            os.path.getmtime(wf335m2_path) if os.path.exists(wf335m2_path)
-            else None
+            os.path.getmtime(wf335m2_path) if os.path.exists(wf335m2_path) else None
         )
         # Snapshot Wf-325A baseline (should match WF325A_BASELINE_R2)
         self.assertAlmostEqual(
@@ -221,10 +249,13 @@ class TestWf367B1BackwardCompat(unittest.TestCase):
                 alpha=1.0,
             )
             # Aggregate-status taxonomy (PARTIAL_LIFT or HONEST_NEGATIVE)
-            self.assertIn(result["aggregate_status"], {
-                "MEASURED_PARTIAL_LIFT",
-                "HONEST_NEGATIVE_R2_DEEP",
-            })
+            self.assertIn(
+                result["aggregate_status"],
+                {
+                    "MEASURED_PARTIAL_LIFT",
+                    "HONEST_NEGATIVE_R2_DEEP",
+                },
+            )
             # Per-cohort verdict taxonomy is preserved
             self.assertEqual(result["n_cohorts_tested"], 2)
             self.assertIn("platinai_4cell", result["wf335m2_baselines"])

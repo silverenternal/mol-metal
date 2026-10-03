@@ -18,7 +18,7 @@ from molmetal.adapters.egnn_rocm import EquivariantGraphConv
 
 @dataclass
 class EGNNPredictorConfig:
-    in_node_dim: int = 128   # input atom feature dim (from D-MPNN output)
+    in_node_dim: int = 128  # input atom feature dim (from D-MPNN output)
     hidden_dim: int = 128
     n_layers: int = 3
 
@@ -92,14 +92,14 @@ class EGNNPredictor(nn.Module):
                 h_out_list.append(torch.zeros(N_max, self.hidden_dim, device=device))
                 continue
 
-            h_b = h[b, :n_atoms]           # (n_atoms, D)
-            x_b = x[b, :n_atoms]            # (n_atoms, 3) — coords for real atoms only
-            ei_b = edge_index[b]            # (2, E_max)
+            h_b = h[b, :n_atoms]  # (n_atoms, D)
+            x_b = x[b, :n_atoms]  # (n_atoms, 3) — coords for real atoms only
+            ei_b = edge_index[b]  # (2, E_max)
 
             # Keep only edges within the valid atom range
             if ei_b.size(1) > 0:
                 valid_edge = (ei_b[0] < n_atoms) & (ei_b[1] < n_atoms)
-                ei_local = ei_b[:, valid_edge]   # (2, E_valid)
+                ei_local = ei_b[:, valid_edge]  # (2, E_valid)
             else:
                 ei_local = torch.zeros((2, 0), dtype=torch.long, device=device)
 
@@ -151,6 +151,6 @@ class EGNNPredictor(nn.Module):
         pooled_list = []
         for b in range(B):
             mask = atom_mask[b]  # (N_max,)
-            mol_h = h[b][mask]   # (n_atoms, D)
+            mol_h = h[b][mask]  # (n_atoms, D)
             pooled_list.append(mol_h.sum(dim=0))  # (D,)
         return torch.stack(pooled_list, dim=0)  # (B, D)

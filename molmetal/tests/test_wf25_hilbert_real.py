@@ -20,6 +20,7 @@ Test inventory (12 tests)
    ``build_design_matrix`` + ``cross_validate`` is deterministic and
    matches the artefacts (1 test).
 """
+
 from __future__ import annotations
 
 import json
@@ -77,10 +78,14 @@ def metrics() -> dict:
 def test_metrics_has_required_top_level_keys(metrics: dict) -> None:
     """All expected scalar keys present in metrics.json."""
     expected = {
-        "evo_r2_mean", "evo_r2_std",
-        "hilbert_r2_mean", "hilbert_r2_std",
-        "evo_wall_time", "hilbert_wall_time",
-        "n_samples", "n_folds",
+        "evo_r2_mean",
+        "evo_r2_std",
+        "hilbert_r2_mean",
+        "hilbert_r2_std",
+        "evo_wall_time",
+        "hilbert_wall_time",
+        "n_samples",
+        "n_folds",
     }
     missing = expected - set(metrics.keys())
     assert not missing, f"missing keys: {missing}"
@@ -103,8 +108,14 @@ def test_metrics_types_correct(metrics: dict) -> None:
 def test_metrics_feature_columns_recorded(metrics: dict) -> None:
     """``feature_columns`` is the 8-d RDKit descriptor set."""
     expected = {
-        "mol_wt", "mol_logp", "tpsa", "hba",
-        "hbd", "rot_bonds", "ring_count", "frac_sp3",
+        "mol_wt",
+        "mol_logp",
+        "tpsa",
+        "hba",
+        "hbd",
+        "rot_bonds",
+        "ring_count",
+        "frac_sp3",
     }
     assert set(metrics["feature_columns"]) == expected
 
@@ -158,9 +169,9 @@ def test_per_fold_train_plus_test_equals_n_samples(metrics: dict) -> None:
     n_total = metrics["n_samples"]
     for entry in metrics["per_fold"]:
         s = entry["n_train"] + entry["n_test"]
-        assert s == n_total, (
-            f"fold {entry['fold']}: train+test={s} != n_samples={n_total}"
-        )
+        assert (
+            s == n_total
+        ), f"fold {entry['fold']}: train+test={s} != n_samples={n_total}"
 
 
 # ---------------------------------------------------------------------------
@@ -183,7 +194,9 @@ def test_helpers_deterministic_small_problem() -> None:
     )
 
     platinai_csv = _REPO_ROOT / "molmetal/data/platinai_5k.csv"
-    metalcytotox_csv = _REPO_ROOT / ".data/molmetal/metalcytotox_5metal_multitask_v4.csv"
+    metalcytotox_csv = (
+        _REPO_ROOT / ".data/molmetal/metalcytotox_5metal_multitask_v4.csv"
+    )
     if not platinai_csv.exists() or not metalcytotox_csv.exists():
         pytest.skip("PlatinAI 5K or MetalCytoToxDB CSV missing")
 
@@ -194,16 +207,18 @@ def test_helpers_deterministic_small_problem() -> None:
         seed=42,
     )
     assert stats["n_target_rows"] == 60
-    m1 = cross_validate(X, y, n_folds=3, population_dim=POPULATION_DIM,
-                        feature_columns=FEATURE_COLUMNS)
-    m2 = cross_validate(X, y, n_folds=3, population_dim=POPULATION_DIM,
-                        feature_columns=FEATURE_COLUMNS)
-    assert m1["hilbert_r2_mean"] == m2["hilbert_r2_mean"], (
-        "cross_validate not deterministic across runs"
+    m1 = cross_validate(
+        X, y, n_folds=3, population_dim=POPULATION_DIM, feature_columns=FEATURE_COLUMNS
     )
-    assert m1["evolutionary_r2_mean"] == m2["evolutionary_r2_mean"], (
-        "cross_validate not deterministic across runs"
+    m2 = cross_validate(
+        X, y, n_folds=3, population_dim=POPULATION_DIM, feature_columns=FEATURE_COLUMNS
     )
+    assert (
+        m1["hilbert_r2_mean"] == m2["hilbert_r2_mean"]
+    ), "cross_validate not deterministic across runs"
+    assert (
+        m1["evolutionary_r2_mean"] == m2["evolutionary_r2_mean"]
+    ), "cross_validate not deterministic across runs"
 
 
 # ---------------------------------------------------------------------------
@@ -212,9 +227,13 @@ def test_helpers_deterministic_small_problem() -> None:
 def test_per_fold_metrics_well_formed(metrics: dict) -> None:
     """Each per-fold entry has hilbert_r2 / evolutionary_r2 / wall-time keys."""
     required_fold_keys = {
-        "fold", "n_train", "n_test",
-        "hilbert_r2", "hilbert_wall_s",
-        "evolutionary_r2", "evolutionary_wall_s",
+        "fold",
+        "n_train",
+        "n_test",
+        "hilbert_r2",
+        "hilbert_wall_s",
+        "evolutionary_r2",
+        "evolutionary_wall_s",
     }
     for entry in metrics["per_fold"]:
         missing = required_fold_keys - set(entry.keys())

@@ -106,7 +106,9 @@ def _extract_top_value(metric_id: str, payload: Dict) -> Optional[float]:
     """Extract the canonical top-level MEASURED value per metric."""
     if metric_id == "m3_vina":
         agg = payload.get("aggregate", {})
-        return agg.get("cisplatin_mean_kcal_per_mol") or agg.get("best_measured_cisplatin")
+        return agg.get("cisplatin_mean_kcal_per_mol") or agg.get(
+            "best_measured_cisplatin"
+        )
     if metric_id == "m15_rmsd":
         return payload.get("aggregate_median_across_pockets") or payload.get("value")
     if metric_id == "m14_cfm_real":
@@ -144,7 +146,8 @@ def _count_measurements(metric_id: str, payload: Dict) -> int:
         per_cell = payload.get("per_cell_line", {})
         # Sum across cells (each cell has 3 per_seed values)
         return sum(
-            len(cell.get("per_seed", [])) for cell in per_cell.values()
+            len(cell.get("per_seed", []))
+            for cell in per_cell.values()
             if isinstance(cell, dict)
         )
     return 0
@@ -218,8 +221,8 @@ def probe_metric(metric_id: str, rel_path: str) -> MetricProbe:
 
     honest_negative_note = ""
     if metric_id == "m3_vina":
-        n_pass_cutoff = (
-            payload.get("aggregate", {}).get("n_pockets_pass_cutoff_minus7", 0)
+        n_pass_cutoff = payload.get("aggregate", {}).get(
+            "n_pockets_pass_cutoff_minus7", 0
         )
         honest_negative_note = (
             f"Vina 1.2.7 REJECTS Pt atype; 0/{n_pass_cutoff} pass industry cutoff >=-7; "
@@ -386,22 +389,34 @@ def main() -> int:
     audit_str = json.dumps(audit_payload, indent=2)
     risk = safe_overwrite_check(audit_path, audit_str, min_lines=50)
     if risk is not None:
-        print(f"[Wf-433] WARN: safe_overwrite_check ratio={risk:.3f} at {audit_path}", flush=True)
+        print(
+            f"[Wf-433] WARN: safe_overwrite_check ratio={risk:.3f} at {audit_path}",
+            flush=True,
+        )
     atomic_write_file(audit_path, audit_str)
     trunc = detect_truncation(audit_str, expected_min_length=200)
     if trunc is not None:
-        print(f"[Wf-433] WARN: detect_truncation reason={trunc!r} at {audit_path}", flush=True)
+        print(
+            f"[Wf-433] WARN: detect_truncation reason={trunc!r} at {audit_path}",
+            flush=True,
+        )
 
     # Per-report result.json (canonical for Wf-433 closeout).
     report_path = OUT_DIR / "result.json"
     report_str = json.dumps(asdict(report), indent=2)
     risk2 = safe_overwrite_check(report_path, report_str, min_lines=50)
     if risk2 is not None:
-        print(f"[Wf-433] WARN: safe_overwrite_check ratio={risk2:.3f} at {report_path}", flush=True)
+        print(
+            f"[Wf-433] WARN: safe_overwrite_check ratio={risk2:.3f} at {report_path}",
+            flush=True,
+        )
     atomic_write_file(report_path, report_str)
     trunc2 = detect_truncation(report_str, expected_min_length=200)
     if trunc2 is not None:
-        print(f"[Wf-433] WARN: detect_truncation reason={trunc2!r} at {report_path}", flush=True)
+        print(
+            f"[Wf-433] WARN: detect_truncation reason={trunc2!r} at {report_path}",
+            flush=True,
+        )
 
     # Stdout summary (plain-text; per AGENTS.md §8 no StructuredOutput).
     print(

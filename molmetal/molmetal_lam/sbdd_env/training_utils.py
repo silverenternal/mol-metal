@@ -119,6 +119,7 @@ def ensure_cuda_visible_devices_default() -> str:
     os.environ["CUDA_VISIBLE_DEVICES"] = DEFAULT_CUDA_VISIBLE_DEVICES
     return DEFAULT_CUDA_VISIBLE_DEVICES
 
+
 _LOGGER = logging.getLogger("molmetal.sbdd_env.training_utils")
 if not _LOGGER.handlers:
     h = logging.StreamHandler(sys.stderr)
@@ -133,6 +134,7 @@ if not _LOGGER.handlers:
 # ---------------------------------------------------------------------------
 # Public helpers
 # ---------------------------------------------------------------------------
+
 
 def apply_default_cuda_visible_devices(
     *,
@@ -227,6 +229,7 @@ def detect_training_gpu() -> Dict[str, Any]:
         Human-readable verdict for log lines.
     """
     import torch  # noqa: WPS433 — lazy import; see module docstring
+
     cvd = os.environ.get("CUDA_VISIBLE_DEVICES", "")
     try:
         cuda_visible = bool(torch.cuda.is_available())
@@ -238,9 +241,7 @@ def detect_training_gpu() -> Dict[str, Any]:
         device_count = 0
         cuda_visible = False
     try:
-        device_name = (
-            str(torch.cuda.get_device_name(0)) if cuda_visible else "N/A"
-        )
+        device_name = str(torch.cuda.get_device_name(0)) if cuda_visible else "N/A"
     except Exception:
         device_name = "N/A"
         cuda_visible = False
@@ -321,6 +322,7 @@ def resolve_default_device(
         info["reason"],
     )
     import torch  # noqa: WPS433 — lazy import; see module docstring
+
     return torch.device(info["selected_device"])
 
 
@@ -367,6 +369,7 @@ def setup_training_device_env(
     info = detect_training_gpu()
 
     import torch  # noqa: WPS433 — lazy import; see module docstring
+
     torch.manual_seed(int(seed))
 
     if deterministic:

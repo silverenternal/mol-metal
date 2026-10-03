@@ -313,21 +313,27 @@ def _run_lambda_to_cfm(
     """Forward pass: SMILES → λ-features → CFM → decoded SMILES."""
     t0 = time.perf_counter()
     try:
-        out = pipe.run_full_pipeline(
-            smiles, pocket, n_steps=int(n_steps), top_k=3
-        )
+        out = pipe.run_full_pipeline(smiles, pocket, n_steps=int(n_steps), top_k=3)
     except Exception as exc:
-        return False, {"error": f"run_full_pipeline failed: {exc}"}, float(time.perf_counter() - t0)
+        return (
+            False,
+            {"error": f"run_full_pipeline failed: {exc}"},
+            float(time.perf_counter() - t0),
+        )
     wall = float(time.perf_counter() - t0)
     if not isinstance(out, dict):
         return False, {"error": "non-dict pipeline output"}, wall
     decoded = list(out.get("decoded_smiles", []))
-    return True, {
-        "lambda_features": out.get("lambda_features"),
-        "cfm_output": out.get("cfm_output"),
-        "decoded_smiles": decoded,
-        "n_steps": int(out.get("n_steps", n_steps)),
-    }, wall
+    return (
+        True,
+        {
+            "lambda_features": out.get("lambda_features"),
+            "cfm_output": out.get("cfm_output"),
+            "decoded_smiles": decoded,
+            "n_steps": int(out.get("n_steps", n_steps)),
+        },
+        wall,
+    )
 
 
 def _run_cfm_to_lambda(
@@ -352,7 +358,11 @@ def _run_cfm_to_lambda(
             smiles, pocket, n_steps=int(n_steps), top_k=3
         )
     except Exception as exc:
-        return False, {"error": f"forward failed: {exc}"}, float(time.perf_counter() - t0)
+        return (
+            False,
+            {"error": f"forward failed: {exc}"},
+            float(time.perf_counter() - t0),
+        )
     cfm_output = np.asarray(
         fwd.get("cfm_output", np.zeros(embed_dim, dtype=np.float32)),
         dtype=np.float32,
@@ -364,17 +374,29 @@ def _run_cfm_to_lambda(
     try:
         ast = reverse_obj.forward(cfm_output, lambda_features)
     except Exception as exc:
-        return False, {"error": f"reverse failed: {exc}"}, float(time.perf_counter() - t0)
+        return (
+            False,
+            {"error": f"reverse failed: {exc}"},
+            float(time.perf_counter() - t0),
+        )
     try:
         reconstructed = lamterm_to_features_fn(ast)
     except Exception as exc:
-        return False, {"error": f"lamterm_to_features failed: {exc}"}, float(time.perf_counter() - t0)
+        return (
+            False,
+            {"error": f"lamterm_to_features failed: {exc}"},
+            float(time.perf_counter() - t0),
+        )
     wall = float(time.perf_counter() - t0)
-    return True, {
-        "lambda_features": lambda_features,
-        "cfm_output": cfm_output,
-        "reconstructed_lambda_features": reconstructed,
-    }, wall
+    return (
+        True,
+        {
+            "lambda_features": lambda_features,
+            "cfm_output": cfm_output,
+            "reconstructed_lambda_features": reconstructed,
+        },
+        wall,
+    )
 
 
 def _run_bidirectional(
@@ -385,19 +407,27 @@ def _run_bidirectional(
     try:
         out = bc.round_trip(smiles, pocket, n_steps=int(n_steps), top_k=3)
     except Exception as exc:
-        return False, {"error": f"round_trip failed: {exc}"}, float(time.perf_counter() - t0)
+        return (
+            False,
+            {"error": f"round_trip failed: {exc}"},
+            float(time.perf_counter() - t0),
+        )
     wall = float(time.perf_counter() - t0)
     if not isinstance(out, dict):
         return False, {"error": "non-dict round_trip output"}, wall
     rt_loss = float(out.get("round_trip_loss", float("nan")))
     if not math.isfinite(rt_loss):
         return False, {"error": "non-finite round_trip_loss"}, wall
-    return True, {
-        "cfm_output": out.get("cfm_output"),
-        "lambda_features": out.get("lambda_features"),
-        "decoded_smiles": list(out.get("decoded_smiles", [])),
-        "round_trip_loss": rt_loss,
-    }, wall
+    return (
+        True,
+        {
+            "cfm_output": out.get("cfm_output"),
+            "lambda_features": out.get("lambda_features"),
+            "decoded_smiles": list(out.get("decoded_smiles", [])),
+            "round_trip_loss": rt_loss,
+        },
+        wall,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -459,9 +489,7 @@ def _aggregate_method(
     by construction.
     """
     succ = [bool(s) for s in success_flags]
-    succ_rate = (
-        float(sum(succ) / max(1, len(succ))) if succ else float("nan")
-    )
+    succ_rate = float(sum(succ) / max(1, len(succ))) if succ else float("nan")
     # decode_ratio = fraction of samples with ≥ 1 decoded SMILES.
     decode_hits = sum(1 for c in decode_counts if int(c) >= 1)
     decode_ratio = (
@@ -476,9 +504,7 @@ def _aggregate_method(
         "mean_wall_time_s": _safe_mean(walls),
         "max_wall_time_s": float(max(walls)) if walls else 0.0,
         "mean_decode_count": (
-            _safe_mean([float(c) for c in decode_counts])
-            if decode_counts
-            else 0.0
+            _safe_mean([float(c) for c in decode_counts]) if decode_counts else 0.0
         ),
         "decode_ratio": decode_ratio,
         "mean_bridge_rmse": _safe_mean(bridge_rmses),
@@ -524,14 +550,17 @@ def _bench_method_on_dataset(
     for idx, row in enumerate(samples):
         smi = row.get("smiles") or ""
         if method == "lambda_to_cfm":
-            ok, payload, wall = _run_lambda_to_cfm(
-                pipe_forward, smi, pocket, n_steps
-            )
+            ok, payload, wall = _run_lambda_to_cfm(pipe_forward, smi, pocket, n_steps)
         elif method == "cfm_to_lambda":
             ok, payload, wall = _run_cfm_to_lambda(
-                smi, pocket, n_steps,
-                pipe_forward, reverse_obj, lamterm_to_features_fn,
-                lambda_dim=lambda_dim, embed_dim=embed_dim,
+                smi,
+                pocket,
+                n_steps,
+                pipe_forward,
+                reverse_obj,
+                lamterm_to_features_fn,
+                lambda_dim=lambda_dim,
+                embed_dim=embed_dim,
             )
         elif method == "bidirectional":
             ok, payload, wall = _run_bidirectional(
@@ -546,8 +575,10 @@ def _bench_method_on_dataset(
             cfm_output = payload.get("cfm_output")
             lambda_features = payload.get("lambda_features")
             rmse = _bridge_rmse(
-                lambda_features, cfm_output,
-                lambda_dim=lambda_dim, embed_dim=embed_dim,
+                lambda_features,
+                cfm_output,
+                lambda_dim=lambda_dim,
+                embed_dim=embed_dim,
             )
             bridge_rmses.append(rmse)
             decoded = payload.get("decoded_smiles", [])
@@ -561,9 +592,7 @@ def _bench_method_on_dataset(
                     "smiles": str(smi),
                     "metal": str(row.get("metal", "")),
                     "wall_time_s": float(wall),
-                    "bridge_rmse": float(rmse)
-                    if math.isfinite(rmse)
-                    else None,
+                    "bridge_rmse": float(rmse) if math.isfinite(rmse) else None,
                     "decode_count": int(decode_counts[-1]),
                     "round_trip_loss": float(rt_loss)
                     if (rt_loss is not None and math.isfinite(float(rt_loss)))
@@ -590,8 +619,11 @@ def _bench_method_on_dataset(
         "seed": int(seed),
         "n_samples": int(len(samples)),
         "aggregate": _aggregate_method(
-            walls, success_flags, decode_counts,
-            bridge_rmses, rt_losses,
+            walls,
+            success_flags,
+            decode_counts,
+            bridge_rmses,
+            rt_losses,
         ),
         "sample_records": sample_records,
         "n_errors": int(len(errors)),
@@ -619,13 +651,17 @@ def _bench_dataset(
     for seed in seeds:
         for method in methods:
             block = _bench_method_on_dataset(
-                method, samples, int(seed),
+                method,
+                samples,
+                int(seed),
                 pipe_forward=pipe_forward,
                 reverse_obj=reverse_obj,
                 lamterm_to_features_fn=lamterm_to_features_fn,
                 bidirectional_obj=bidirectional_obj,
-                lambda_dim=lambda_dim, embed_dim=embed_dim,
-                n_steps=n_steps, pocket_size=pocket_size,
+                lambda_dim=lambda_dim,
+                embed_dim=embed_dim,
+                n_steps=n_steps,
+                pocket_size=pocket_size,
             )
             per_method[method].append(block)
 
@@ -663,15 +699,11 @@ def _bench_dataset(
             "n_seeds": int(len(blocks)),
             "mean_wall_time_s": _safe_mean(all_walls),
             "std_wall_time_s": (
-                float(statistics.pstdev(all_walls))
-                if len(all_walls) > 1
-                else 0.0
+                float(statistics.pstdev(all_walls)) if len(all_walls) > 1 else 0.0
             ),
             "mean_bridge_rmse": _safe_mean(all_rmses),
             "std_bridge_rmse": (
-                float(statistics.pstdev(all_rmses))
-                if len(all_rmses) > 1
-                else 0.0
+                float(statistics.pstdev(all_rmses)) if len(all_rmses) > 1 else 0.0
             ),
             "mean_decode_ratio": _safe_mean(all_decode),
             "mean_round_trip_loss": _safe_mean(all_rt),
@@ -706,9 +738,7 @@ def _render_markdown(report: Dict[str, Any]) -> str:
         "| dataset | method | mean_wall_s | mean_bridge_rmse | "
         "decode_ratio | mean_rt_loss | success_rate |"
     )
-    lines.append(
-        "| --- | --- | ---: | ---: | ---: | ---: | ---: |"
-    )
+    lines.append("| --- | --- | ---: | ---: | ---: | ---: | ---: |")
     for ds_block in report["per_dataset"]:
         ds_name = ds_block["dataset"]
         for method_name, agg in ds_block["per_method"].items():
@@ -748,9 +778,7 @@ def _render_markdown(report: Dict[str, Any]) -> str:
 # CLI
 # ---------------------------------------------------------------------------
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description=__doc__.splitlines()[1]
-    )
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[1])
     parser.add_argument(
         "--n-samples",
         type=int,
@@ -933,12 +961,16 @@ def main() -> int:
     if platinai_samples:
         per_dataset.append(
             _bench_dataset(
-                "platinai_5k", platinai_samples, methods, seeds,
+                "platinai_5k",
+                platinai_samples,
+                methods,
+                seeds,
                 pipe_forward=pipe_forward,
                 reverse_obj=reverse_obj,
                 lamterm_to_features_fn=lamterm_to_features,
                 bidirectional_obj=bidirectional_obj,
-                lambda_dim=lambda_dim, embed_dim=embed_dim,
+                lambda_dim=lambda_dim,
+                embed_dim=embed_dim,
                 n_steps=int(args.n_steps),
                 pocket_size=int(args.pocket_size),
             )
@@ -947,12 +979,15 @@ def main() -> int:
         per_dataset.append(
             _bench_dataset(
                 "metalcytotox_5metal_multitask",
-                metalcyto_samples, methods, seeds,
+                metalcyto_samples,
+                methods,
+                seeds,
                 pipe_forward=pipe_forward,
                 reverse_obj=reverse_obj,
                 lamterm_to_features_fn=lamterm_to_features,
                 bidirectional_obj=bidirectional_obj,
-                lambda_dim=lambda_dim, embed_dim=embed_dim,
+                lambda_dim=lambda_dim,
+                embed_dim=embed_dim,
                 n_steps=int(args.n_steps),
                 pocket_size=int(args.pocket_size),
             )
@@ -972,9 +1007,7 @@ def main() -> int:
         "lambda_dim": int(lambda_dim),
         "embed_dim": int(embed_dim),
         "peak_memory_mb": float(peak_mem_mb),
-        "timestamp_utc": datetime.now(timezone.utc).strftime(
-            "%Y-%m-%dT%H:%M:%SZ"
-        ),
+        "timestamp_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "per_dataset": per_dataset,
     }
 

@@ -111,9 +111,9 @@ def test_perceiver_gate_init_005():
     bias = fusion.gate.bias.detach()
     sig = torch.sigmoid(bias)
     # sigmoid(log(0.05/0.95)) = 0.05 by construction
-    assert torch.allclose(sig, torch.full_like(sig, 0.05), atol=1e-6), (
-        f"Expected σ(bias)≈0.05, got mean={sig.mean().item():.4f}"
-    )
+    assert torch.allclose(
+        sig, torch.full_like(sig, 0.05), atol=1e-6
+    ), f"Expected σ(bias)≈0.05, got mean={sig.mean().item():.4f}"
 
 
 # ---------------------------------------------------------------------------
@@ -139,9 +139,9 @@ def test_llrd_param_group_lr_ratio():
         f"cfg.llrd_lr_bottom={cfg.llrd_lr_bottom:.2e}"
     )
     # Head LR == cfg.llrd_lr_top exactly
-    assert math.isclose(by_name["head+metal"], cfg.llrd_lr_top, rel_tol=1e-9), (
-        f"head LR {by_name['head+metal']:.2e} != cfg.llrd_lr_top={cfg.llrd_lr_top:.2e}"
-    )
+    assert math.isclose(
+        by_name["head+metal"], cfg.llrd_lr_top, rel_tol=1e-9
+    ), f"head LR {by_name['head+metal']:.2e} != cfg.llrd_lr_top={cfg.llrd_lr_top:.2e}"
     # Decay monotonicity (top > next > ... > bottom)
     layer_order = [
         "dmpnn.atom_embed",
@@ -167,7 +167,7 @@ def test_llrd_param_group_lr_ratio():
     assert ratio <= 1.0, f"atom_embed LR / head LR should be <= 1, got {ratio:.2e}"
     # Decay factor 0.95^9 ≈ 0.630, so the lowest group should sit between
     # lr_bottom and lr_top * 0.95^9.
-    expected_bottom = cfg.llrd_lr_top * (cfg.llrd_decay ** 9)
+    expected_bottom = cfg.llrd_lr_top * (cfg.llrd_decay**9)
     expected_bottom = max(expected_bottom, cfg.llrd_lr_bottom)
     assert math.isclose(by_name["dmpnn.atom_embed"], expected_bottom, rel_tol=1e-9), (
         f"atom_embed LR {by_name['dmpnn.atom_embed']:.2e} != "
@@ -193,9 +193,9 @@ def test_loss_v4_gamma_annealing():
     assert g0 >= g_mid >= g_end, f"γ not monotone: {g0}, {g_mid}, {g_end}"
     # Mid-point ~average of endpoints in cosine
     expected_mid = 0.5 * (g0 + g_end)
-    assert abs(g_mid - expected_mid) < 0.1, (
-        f"γ(T/2)={g_mid} far from average {expected_mid}"
-    )
+    assert (
+        abs(g_mid - expected_mid) < 0.1
+    ), f"γ(T/2)={g_mid} far from average {expected_mid}"
 
 
 # ---------------------------------------------------------------------------
@@ -242,9 +242,7 @@ def test_kendall_weights_converge():
         loss.log_s_crd.detach().item(),
     )
     # At least one log_sigma must have moved by > 1e-4
-    moved = max(
-        abs(after[i] - initial[i]) for i in range(3)
-    )
+    moved = max(abs(after[i] - initial[i]) for i in range(3))
     assert moved > 1e-4, (
         f"Kendall log-sigmas did not move after 8 optimizer steps: "
         f"initial={initial}, after={after}"
@@ -347,8 +345,12 @@ def test_loss_v4_mb1_kendall_and_commit():
     ``sigma_*_log_change`` diff."""
     _set_seed(0)
     loss_fn = LossV4MB1(
-        alpha=0.3, gamma_start=0.1, gamma_end=0.0, ls=0.05,
-        warmup=4, active_weight=3.0,
+        alpha=0.3,
+        gamma_start=0.1,
+        gamma_end=0.0,
+        ls=0.05,
+        warmup=4,
+        active_weight=3.0,
     )
 
     B = 4
@@ -386,9 +388,9 @@ def test_loss_v4_mb1_kendall_and_commit():
         loss_fn.log_s_reg.detach().item(),
     )
     moved = max(abs(after[i] - initial[i]) for i in range(2))
-    assert moved > 1e-4, (
-        f"Kendall log-sigmas did not move: initial={initial}, after={after}"
-    )
+    assert (
+        moved > 1e-4
+    ), f"Kendall log-sigmas did not move: initial={initial}, after={after}"
 
     # commit_epoch snapshots — next forward diff should be (near) zero
     loss_fn.commit_epoch()

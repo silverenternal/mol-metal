@@ -114,9 +114,7 @@ class TrajectoryRecord:
                 f"config_hash must be non-empty str; got {self.config_hash!r}"
             )
         if not isinstance(self.hp_dict, dict):
-            raise ValueError(
-                f"hp_dict must be dict; got {type(self.hp_dict).__name__}"
-            )
+            raise ValueError(f"hp_dict must be dict; got {type(self.hp_dict).__name__}")
         if not isinstance(self.final_test_score, (int, float)):
             raise ValueError(
                 f"final_test_score must be numeric; "
@@ -139,8 +137,7 @@ class TrajectoryRecord:
             "config_hash": self.config_hash,
             "hp_dict": dict(self.hp_dict),
             "per_epoch_metrics": [
-                {k: float(v) for k, v in ep.items()}
-                for ep in self.per_epoch_metrics
+                {k: float(v) for k, v in ep.items()} for ep in self.per_epoch_metrics
             ],
             "final_test_score": float(self.final_test_score),
             "metal": str(self.metal),
@@ -283,9 +280,7 @@ def _config_hash_from_hp(hp_dict: Mapping[str, Any]) -> str:
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
 
 
-def _hp_distance(
-    a: Mapping[str, Any], b: Mapping[str, Any]
-) -> float:
+def _hp_distance(a: Mapping[str, Any], b: Mapping[str, Any]) -> float:
     """L1 distance over the union of keys, treating missing keys as 0.
 
     Cheap, deterministic, and good-enough for HP ranking when there are
@@ -407,8 +402,7 @@ class ReplayPool:
         """Append a trajectory.  FIFO-evicts the oldest record if full."""
         if not isinstance(record, TrajectoryRecord):
             raise TypeError(
-                f"record must be TrajectoryRecord; "
-                f"got {type(record).__name__}"
+                f"record must be TrajectoryRecord; " f"got {type(record).__name__}"
             )
         if len(self._records) >= self.max_size:
             evicted = self._records.pop(0)
@@ -465,8 +459,7 @@ class ReplayPool:
                 continue
             if hp_subset is not None:
                 if not all(
-                    k in r.hp_dict and r.hp_dict[k] == v
-                    for k, v in hp_subset.items()
+                    k in r.hp_dict and r.hp_dict[k] == v for k, v in hp_subset.items()
                 ):
                     continue
             out.append(r.to_dict())
@@ -678,18 +671,14 @@ class ReplayPool:
             held_hp, held_score = items[held_idx]
             # k nearest neighbours of held_hp among the rest.
             others = [
-                (items[j][0], items[j][1])
-                for j in range(len(items))
-                if j != held_idx
+                (items[j][0], items[j][1]) for j in range(len(items)) if j != held_idx
             ]
             others.sort(key=lambda t: _hp_distance(held_hp, t[0]))
             top = others[: max(1, int(k))]
             if not top:
                 held_out_predictions.append(float(baseline))
                 continue
-            held_out_predictions.append(
-                sum(s for _, s in top) / len(top)
-            )
+            held_out_predictions.append(sum(s for _, s in top) / len(top))
         mean_estimate = sum(held_out_predictions) / len(held_out_predictions)
         n_records = len(bucket)
         shrunk, weight = pessimistic_shrinkage(
@@ -722,8 +711,7 @@ class ReplayPool:
             baseline=float(baseline),
             shrinkage_weight=float(weight),
             supporting_records=[
-                self._records[bucket[i]].config_hash
-                for i in range(min(len(bucket), k))
+                self._records[bucket[i]].config_hash for i in range(min(len(bucket), k))
             ],
         )
 

@@ -4,6 +4,7 @@ Only import this optional extension inside the isolated AiZynth environment.
 RDKit, templates, stock queries, MCTS and route analysis remain official CPU
 implementations. A persistent root-environment worker performs the Dense net.
 """
+
 from __future__ import annotations
 
 import base64
@@ -15,7 +16,9 @@ import subprocess
 import tempfile
 
 import numpy as np
-from aizynthfinder.context.policy.expansion_strategies import TemplateBasedExpansionStrategy
+from aizynthfinder.context.policy.expansion_strategies import (
+    TemplateBasedExpansionStrategy,
+)
 
 
 class RemoteTorchPolicy:
@@ -23,14 +26,31 @@ class RemoteTorchPolicy:
 
     def __init__(self, weights, expected_sha256):
         root = Path(__file__).resolve().parents[3]
-        command = ["uv", "run", "--project", str(root), "--no-sync", "python",
-                   str(root / "molmetal/scripts/aizynth_torch_worker.py"),
-                   "--weights", str(weights), "--sha256", expected_sha256]
+        command = [
+            "uv",
+            "run",
+            "--project",
+            str(root),
+            "--no-sync",
+            "python",
+            str(root / "molmetal/scripts/aizynth_torch_worker.py"),
+            "--weights",
+            str(weights),
+            "--sha256",
+            expected_sha256,
+        ]
         env = dict(os.environ, HIP_VISIBLE_DEVICES="0")
         env.pop("VIRTUAL_ENV", None)
         self._stderr = tempfile.TemporaryFile()
-        self.process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                        stderr=self._stderr, text=True, bufsize=1, env=env)
+        self.process = subprocess.Popen(
+            command,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=self._stderr,
+            text=True,
+            bufsize=1,
+            env=env,
+        )
         try:
             greeting = self._read()
             if not greeting.get("ready"):
@@ -46,7 +66,10 @@ class RemoteTorchPolicy:
         line = self.process.stdout.readline()
         if not line:
             self._stderr.seek(0)
-            raise RuntimeError("ROCm worker exited: " + self._stderr.read().decode(errors="replace")[-1500:])
+            raise RuntimeError(
+                "ROCm worker exited: "
+                + self._stderr.read().decode(errors="replace")[-1500:]
+            )
         return json.loads(line)
 
     def __len__(self):
@@ -56,12 +79,17 @@ class RemoteTorchPolicy:
         if len(args) != 1:
             raise ValueError("Expected a single fingerprint array")
         x = np.asarray(args[0], dtype=np.float32)
-        request = {"shape": list(x.shape), "input": base64.b64encode(x.tobytes()).decode("ascii")}
+        request = {
+            "shape": list(x.shape),
+            "input": base64.b64encode(x.tobytes()).decode("ascii"),
+        }
         self.process.stdin.write(json.dumps(request) + "\n")
         self.process.stdin.flush()
         response = self._read()
         self.runtime_metadata = response["runtime"]
-        output = np.frombuffer(base64.b64decode(response["output"], validate=True), dtype=np.float32).reshape(response["shape"])
+        output = np.frombuffer(
+            base64.b64decode(response["output"], validate=True), dtype=np.float32
+        ).reshape(response["shape"])
         if output.shape != (len(x), self.output_size) or not np.isfinite(output).all():
             raise RuntimeError("Invalid ROCm policy probabilities")
         return output

@@ -355,6 +355,7 @@ class LambdaAST:
         are not user-meaningful because we always work in fully-applied
         form.  See :meth:`to_lambda_string` for the unabridged form.
         """
+
         def _render(idx: int) -> str:
             entry = self.ops[idx]
             kind = entry["kind"]
@@ -363,9 +364,12 @@ class LambdaAST:
             if kind == "const":
                 return f"c_{entry['value']}"
             assert kind == "op"
-            return (f"({entry['op']} "
-                    f"{_render(int(entry['left']))} "
-                    f"{_render(int(entry['right']))})")
+            return (
+                f"({entry['op']} "
+                f"{_render(int(entry['left']))} "
+                f"{_render(int(entry['right']))})"
+            )
+
         return _render(len(self.ops) - 1)
 
     def to_lambda_string(self) -> str:
@@ -463,7 +467,9 @@ class LambdaAST:
             return 0.0
         return out
 
-    def evaluate_matrix(self, X: np.ndarray, feature_names: Sequence[str]) -> np.ndarray:
+    def evaluate_matrix(
+        self, X: np.ndarray, feature_names: Sequence[str]
+    ) -> np.ndarray:
         """Vectorised evaluation on an ``(N, F)`` matrix.
 
         Parameters
@@ -491,9 +497,7 @@ class LambdaAST:
 
     def used_features(self) -> FrozenSet[str]:
         """Set of feature names referenced by the AST."""
-        return frozenset(
-            str(e["name"]) for e in self.ops if e["kind"] == "var"
-        )
+        return frozenset(str(e["name"]) for e in self.ops if e["kind"] == "var")
 
 
 # ---------------------------------------------------------------------------
@@ -720,7 +724,9 @@ def mutate_ast(
         idx = rng.randrange(len(ops))
         # Build a fresh subtree of limited depth.
         sub = random_ast(
-            rng, feature_names, max_depth=max(1, max_depth // 2),
+            rng,
+            feature_names,
+            max_depth=max(1, max_depth // 2),
         )
         # Graft: append sub.ops (shifted by current len), then change
         # all references to ``idx`` so they point at the new sub root.
@@ -733,12 +739,14 @@ def mutate_ast(
             elif kind == "const":
                 ops.append({"kind": "const", "value": e["value"]})
             else:
-                ops.append({
-                    "kind": "op",
-                    "op": e["op"],
-                    "left": int(e["left"]) + shift,
-                    "right": int(e["right"]) + shift,
-                })
+                ops.append(
+                    {
+                        "kind": "op",
+                        "op": e["op"],
+                        "left": int(e["left"]) + shift,
+                        "right": int(e["right"]) + shift,
+                    }
+                )
         # Replace every reference to idx by new_root.  References can
         # only appear in entries that are at indices > idx (since ops
         # are forward-only).  We update all of them.
@@ -767,20 +775,24 @@ def mutate_ast(
             elif kind == "const":
                 ops.append({"kind": "const", "value": e["value"]})
             else:
-                ops.append({
-                    "kind": "op",
-                    "op": e["op"],
-                    "left": int(e["left"]) + shift,
-                    "right": int(e["right"]) + shift,
-                })
+                ops.append(
+                    {
+                        "kind": "op",
+                        "op": e["op"],
+                        "left": int(e["left"]) + shift,
+                        "right": int(e["right"]) + shift,
+                    }
+                )
         new_sub_root = shift + len(sub.ops) - 1
         # Wrap the previous root in an ``add`` with the new sub-root.
-        ops.append({
-            "kind": "op",
-            "op": "add",
-            "left": root,
-            "right": new_sub_root,
-        })
+        ops.append(
+            {
+                "kind": "op",
+                "op": "add",
+                "left": root,
+                "right": new_sub_root,
+            }
+        )
         root = len(ops) - 1
         # Refuse growth if the new depth exceeds the budget.
         if _tree_depth(ops, root) > max_depth:
@@ -818,12 +830,14 @@ def crossover_ast(
         elif kind == "const":
             new_ops.append({"kind": "const", "value": e["value"]})
         else:
-            new_ops.append({
-                "kind": "op",
-                "op": e["op"],
-                "left": int(e["left"]) + shift,
-                "right": int(e["right"]) + shift,
-            })
+            new_ops.append(
+                {
+                    "kind": "op",
+                    "op": e["op"],
+                    "left": int(e["left"]) + shift,
+                    "right": int(e["right"]) + shift,
+                }
+            )
     new_sub_root = shift + idx_b
     # Splice: replace entry idx_a by overwriting references to it.
     # Since forward-only references, only ops at indices > idx_a can
@@ -846,6 +860,7 @@ def crossover_ast(
 
 def _rebuild_lamast(ops: List[Dict[str, object]], root: int) -> LambdaAST:
     """Rebuild a :class:`LambdaAST` from a raw ``ops`` list."""
+
     def _to_node(idx: int) -> LamNode:
         entry = ops[idx]
         kind = entry["kind"]
@@ -1189,7 +1204,9 @@ class LambdaASTSR:
         # both protects the downstream R² from huge outliers and
         # accumulates the violation counter on the ASTSR instance.
         y_hat, n_clip = clip_astr_signature(
-            y_hat, self.scale_clip_min, self.scale_clip_max,
+            y_hat,
+            self.scale_clip_min,
+            self.scale_clip_max,
         )
         if n_clip > 0:
             self.n_clipped_predictions_ += int(n_clip)
@@ -1207,8 +1224,13 @@ class LambdaASTSR:
         penalty = self.parsimony * float(ast.complexity())
         return r2 - penalty
 
-    def _tournament(self, population: List[LambdaAST], scores: List[float],
-                    rng: random.Random, k: int = 3) -> LambdaAST:
+    def _tournament(
+        self,
+        population: List[LambdaAST],
+        scores: List[float],
+        rng: random.Random,
+        k: int = 3,
+    ) -> LambdaAST:
         """Pick the best of ``k`` random individuals."""
         idxs = [rng.randrange(len(population)) for _ in range(k)]
         best_idx = max(idxs, key=lambda i: scores[i])
@@ -1295,13 +1317,16 @@ class LambdaASTSR:
                 best_score = cur_best_score
                 best_idx = cur_best_idx
                 self.best_ast_ = population[best_idx]
-            self.history_.append({
-                "generation": float(gen),
-                "best_score": float(best_score),
-                "mean_score": float(np.mean(scores)) if scores else 0.0,
-                "complexity": float(population[best_idx].complexity())
-                if population else 0.0,
-            })
+            self.history_.append(
+                {
+                    "generation": float(gen),
+                    "best_score": float(best_score),
+                    "mean_score": float(np.mean(scores)) if scores else 0.0,
+                    "complexity": float(population[best_idx].complexity())
+                    if population
+                    else 0.0,
+                }
+            )
 
             # Elitism: keep top 1.
             new_population: List[LambdaAST] = [population[best_idx]]
@@ -1331,9 +1356,7 @@ class LambdaASTSR:
             # Filter to finite scores before taking argmax — a generation
             # may contain a mix of finite + non-finite scores and we want
             # to choose the best finite one.
-            finite_scores = [
-                (i, s) for i, s in enumerate(scores) if np.isfinite(s)
-            ]
+            finite_scores = [(i, s) for i, s in enumerate(scores) if np.isfinite(s)]
             if finite_scores:
                 final_best_idx = max(finite_scores, key=lambda t: t[1])[0]
                 if scores[final_best_idx] > best_score:
@@ -1371,7 +1394,9 @@ class LambdaASTSR:
         # should compare the raw ``evaluate_matrix`` output to the
         # returned array.
         out, _ = clip_astr_signature(
-            out, self.scale_clip_min, self.scale_clip_max,
+            out,
+            self.scale_clip_min,
+            self.scale_clip_max,
         )
         return out
 
@@ -1408,6 +1433,7 @@ def make_lambda_astsr_reward_channel(
     """
     if enabled is None:
         import os
+
         raw = os.environ.get("LAMBDA_ASTSR_ENABLED", "0").strip().lower()
         enabled = raw in ("1", "true", "yes", "on")
 
@@ -1421,7 +1447,8 @@ def make_lambda_astsr_reward_channel(
             generations=0,
             seed=0,
             feature_names=tuple(feature_columns)
-            if feature_columns else default_feature_columns(),
+            if feature_columns
+            else default_feature_columns(),
         )
 
     def _channel(row: Dict[str, float]) -> float:

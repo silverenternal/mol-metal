@@ -4,6 +4,7 @@ Run::
 
     uv run --no-sync python molmetal/scripts/verify_hilbert_astsr.py --smoke
 """
+
 from __future__ import annotations
 
 import argparse
@@ -57,11 +58,15 @@ def main() -> int:
     n_total += 1
     try:
         composite = HilbertASTSRComposite(
-            feature_columns=fc, population_dim=dim, use_hilbert=True,
+            feature_columns=fc,
+            population_dim=dim,
+            use_hilbert=True,
         )
         res_h = composite.fit(X, y)
         assert res_h["backend"] == "hilbert" and math.isfinite(res_h["r2"])
-        print(f"  Hilbert (composite.fit)   wall={res_h['wall_s']:.4f}s  R²={res_h['r2']:.4f}")
+        print(
+            f"  Hilbert (composite.fit)   wall={res_h['wall_s']:.4f}s  R²={res_h['r2']:.4f}"
+        )
     except Exception as exc:
         print(f"  composite Hilbert fit FAIL ({type(exc).__name__}:{exc})")
         n_fail += 1
@@ -72,7 +77,9 @@ def main() -> int:
         composite.switch_to_hilbert(False)
         res_e = composite.fit(X, y)
         assert res_e["backend"] == "evolutionary" and math.isfinite(res_e["r2"])
-        print(f"  Evolutionary (composite)  wall={res_e['wall_s']:.4f}s  R²={res_e['r2']:.4f}")
+        print(
+            f"  Evolutionary (composite)  wall={res_e['wall_s']:.4f}s  R²={res_e['r2']:.4f}"
+        )
     except Exception as exc:
         print(f"  composite Evolutionary fit FAIL ({type(exc).__name__}:{exc})")
         n_fail += 1
@@ -82,7 +89,8 @@ def main() -> int:
     try:
         comparator = HilbertEvolutionaryComparator(
             hilbert_astsr=HilbertASTSRComposite(
-                feature_columns=fc, population_dim=dim,
+                feature_columns=fc,
+                population_dim=dim,
             ),
             evolutionary_astsr=LambdaASTSR(feature_names=fc),
         )
@@ -104,8 +112,11 @@ def main() -> int:
     n_total += 1
     try:
         bench = benchmark_hilbert_vs_evolutionary(
-            X, y, n_runs=int(args.n_runs),
-            feature_columns=fc, population_dim=dim,
+            X,
+            y,
+            n_runs=int(args.n_runs),
+            feature_columns=fc,
+            population_dim=dim,
         )
         print(
             f"  benchmark (n_runs={bench['n_runs']})  "
@@ -122,7 +133,9 @@ def main() -> int:
     n_total += 1
     try:
         composite2 = HilbertASTSRComposite(
-            feature_columns=fc, population_dim=dim, use_hilbert=True,
+            feature_columns=fc,
+            population_dim=dim,
+            use_hilbert=True,
         )
         composite2.fit(X, y)
         closure = make_hilbert_astsr_reward_channel(composite2, enabled=True)
@@ -133,10 +146,7 @@ def main() -> int:
         print(f"  reward-channel FAIL ({type(exc).__name__}:{exc})")
         n_fail += 1
 
-    print(
-        f"Hilbert ↔ ASTSR integration: imports OK, smoke "
-        f"{n_fail}/{n_total} fail"
-    )
+    print(f"Hilbert ↔ ASTSR integration: imports OK, smoke " f"{n_fail}/{n_total} fail")
     return 0 if n_fail == 0 else 1
 
 

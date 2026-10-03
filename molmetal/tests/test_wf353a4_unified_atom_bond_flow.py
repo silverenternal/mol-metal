@@ -62,7 +62,9 @@ def _make_edge_batch(n_edges: int = 4, hidden_dim: int = 128) -> tuple:
 def _one_hot(labels: torch.Tensor, num_classes: int) -> torch.Tensor:
     """Build a (..., num_classes) one-hot tensor from integer labels."""
     out = torch.zeros(
-        (*labels.shape, num_classes), dtype=torch.float32, device=labels.device,
+        (*labels.shape, num_classes),
+        dtype=torch.float32,
+        device=labels.device,
     )
     out.scatter_(-1, labels.unsqueeze(-1), 1.0)
     return out
@@ -101,12 +103,12 @@ def test_unified_forward():
     # Zero-init contract (matches EGNNVelocityField.vel_head): at init
     # the velocity is exactly zero — gives the optimiser a clean
     # starting point.  FlowMol §3.3 makes the same choice.
-    assert torch.allclose(atom_vel, torch.zeros_like(atom_vel), atol=1e-7), (
-        "atom_head should be zero-init; got non-zero velocity at init."
-    )
-    assert torch.allclose(bond_vel, torch.zeros_like(bond_vel), atol=1e-7), (
-        "bond_head should be zero-init; got non-zero velocity at init."
-    )
+    assert torch.allclose(
+        atom_vel, torch.zeros_like(atom_vel), atol=1e-7
+    ), "atom_head should be zero-init; got non-zero velocity at init."
+    assert torch.allclose(
+        bond_vel, torch.zeros_like(bond_vel), atol=1e-7
+    ), "bond_head should be zero-init; got non-zero velocity at init."
 
 
 # ---------------------------------------------------------------------------
@@ -198,7 +200,9 @@ def test_numerical_stability():
     for _ in range(50):
         opt.zero_grad()
         loss = flow.unified_loss(
-            h_src=h_src, h_dst=h_dst, dist=dist,
+            h_src=h_src,
+            h_dst=h_dst,
+            dist=dist,
             atom_target_one_hot=atom_target,
             bond_target_one_hot=bond_target,
             atom_loss_weight=1.0,
@@ -209,29 +213,29 @@ def test_numerical_stability():
         opt.step()
         losses.append(loss.item())
     # All losses finite (no NaN, no Inf) across the loop.
-    assert all(math.isfinite(v) for v in losses), (
-        f"Loss went non-finite: {losses[:5]}...{losses[-3:]}"
-    )
+    assert all(
+        math.isfinite(v) for v in losses
+    ), f"Loss went non-finite: {losses[:5]}...{losses[-3:]}"
     # Parameters remain finite.
     for name, p in head.named_parameters():
         assert torch.isfinite(p).all(), f"Parameter {name!r} went non-finite."
     # SimplexFlow target velocity sanity: v = target - 1/K.
     atom_v_tgt, bond_v_tgt = flow.target_velocity(atom_target, bond_target)
     # atom-side: max possible velocity is 1 - 1/100 = 0.99
-    assert atom_v_tgt.abs().max().item() <= 1.0 + 1e-6, (
-        f"atom_v_tgt abs max should be ≤ 1.0; got {atom_v_tgt.abs().max().item()}"
-    )
+    assert (
+        atom_v_tgt.abs().max().item() <= 1.0 + 1e-6
+    ), f"atom_v_tgt abs max should be ≤ 1.0; got {atom_v_tgt.abs().max().item()}"
     # bond-side: max possible velocity is 1 - 1/5 = 0.80
-    assert bond_v_tgt.abs().max().item() <= 1.0 + 1e-6, (
-        f"bond_v_tgt abs max should be ≤ 1.0; got {bond_v_tgt.abs().max().item()}"
-    )
+    assert (
+        bond_v_tgt.abs().max().item() <= 1.0 + 1e-6
+    ), f"bond_v_tgt abs max should be ≤ 1.0; got {bond_v_tgt.abs().max().item()}"
     # Source and target are valid simplex points (rows sum to 1).
     atom_src = (
         atom_target - atom_v_tgt
     )  # since v_target = target - source => source = target - v_target
-    assert torch.allclose(atom_src.sum(dim=-1), torch.ones(4), atol=1e-5), (
-        f"atom source rows should sum to 1; got {atom_src.sum(dim=-1).tolist()}"
-    )
+    assert torch.allclose(
+        atom_src.sum(dim=-1), torch.ones(4), atol=1e-5
+    ), f"atom source rows should sum to 1; got {atom_src.sum(dim=-1).tolist()}"
 
 
 # ---------------------------------------------------------------------------
@@ -250,19 +254,23 @@ def test_backward_compat():
     flow = UnifiedAtomBondFlow(enabled=False)
     # No head parameters.
     params = list(flow.parameters())
-    assert len(params) == 0, (
-        f"Disabled wrapper must not register any parameters; got {len(params)}."
-    )
+    assert (
+        len(params) == 0
+    ), f"Disabled wrapper must not register any parameters; got {len(params)}."
     # unified_loss is a no-op (zero scalar).
     h_src, h_dst, dist = _make_edge_batch(n_edges=4, hidden_dim=128)
     atom_target = _one_hot(torch.tensor([6, 7, 8, 1]), 100)
     bond_target = _one_hot(torch.tensor([1, 2, 3, 4]), NUM_BOND_CLASSES)
     loss = flow.unified_loss(
-        h_src, h_dst, dist, atom_target, bond_target,
+        h_src,
+        h_dst,
+        dist,
+        atom_target,
+        bond_target,
     )
-    assert loss.item() == 0.0, (
-        f"Disabled wrapper should return 0.0 loss; got {loss.item()}."
-    )
+    assert (
+        loss.item() == 0.0
+    ), f"Disabled wrapper should return 0.0 loss; got {loss.item()}."
     # sample is identity (no SimplexFlow perturbation).
     atom_x_t, bond_x_t, t = flow.sample(atom_target, bond_target)
     assert torch.equal(atom_x_t, atom_target), "sample must not modify atom_target."

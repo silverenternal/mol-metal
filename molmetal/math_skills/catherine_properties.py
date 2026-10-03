@@ -86,11 +86,38 @@ logger = logging.getLogger(__name__)
 #: ``PRIMITIVE_ATOMS`` ``METAL_ATOMS`` library.
 DBLOCK_30_METALS: Tuple[str, ...] = (
     # 3d
-    "Sc", "Ti", "V",  "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
+    "Sc",
+    "Ti",
+    "V",
+    "Cr",
+    "Mn",
+    "Fe",
+    "Co",
+    "Ni",
+    "Cu",
+    "Zn",
     # 4d
-    "Y",  "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
+    "Y",
+    "Zr",
+    "Nb",
+    "Mo",
+    "Tc",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Cd",
     # 5d + La
-    "La", "Hf", "Ta", "W",  "Re", "Os", "Ir", "Pt", "Au", "Hg",
+    "La",
+    "Hf",
+    "Ta",
+    "W",
+    "Re",
+    "Os",
+    "Ir",
+    "Pt",
+    "Au",
+    "Hg",
 )
 
 #: Default coordination geometry per metal.  When ``None`` the verifier
@@ -98,19 +125,37 @@ DBLOCK_30_METALS: Tuple[str, ...] = (
 #: ``coordination_geometry`` column of ``transition_metals_30.csv``.
 DEFAULT_COORDINATION_GEOMETRY: Dict[str, str] = {
     # 3d
-    "Sc": "octahedral", "Ti": "octahedral", "V": "octahedral",
-    "Cr": "octahedral", "Mn": "octahedral", "Fe": "octahedral",
-    "Co": "octahedral", "Ni": "square_planar", "Cu": "square_planar",
+    "Sc": "octahedral",
+    "Ti": "octahedral",
+    "V": "octahedral",
+    "Cr": "octahedral",
+    "Mn": "octahedral",
+    "Fe": "octahedral",
+    "Co": "octahedral",
+    "Ni": "square_planar",
+    "Cu": "square_planar",
     "Zn": "tetrahedral",
     # 4d
-    "Y": "octahedral", "Zr": "octahedral", "Nb": "octahedral",
-    "Mo": "octahedral", "Tc": "octahedral", "Ru": "octahedral",
-    "Rh": "square_planar", "Pd": "square_planar", "Ag": "linear",
+    "Y": "octahedral",
+    "Zr": "octahedral",
+    "Nb": "octahedral",
+    "Mo": "octahedral",
+    "Tc": "octahedral",
+    "Ru": "octahedral",
+    "Rh": "square_planar",
+    "Pd": "square_planar",
+    "Ag": "linear",
     "Cd": "tetrahedral",
     # 5d + La
-    "La": "octahedral", "Hf": "octahedral", "Ta": "octahedral",
-    "W": "octahedral", "Re": "octahedral", "Os": "octahedral",
-    "Ir": "octahedral", "Pt": "square_planar", "Au": "square_planar",
+    "La": "octahedral",
+    "Hf": "octahedral",
+    "Ta": "octahedral",
+    "W": "octahedral",
+    "Re": "octahedral",
+    "Os": "octahedral",
+    "Ir": "octahedral",
+    "Pt": "square_planar",
+    "Au": "square_planar",
     "Hg": "linear",
 }
 
@@ -251,6 +296,7 @@ def _summary_partner_count(summary: Mapping[str, Any]) -> int:
 
 # -- P1 reflexivity --------------------------------------------------------
 
+
 def verify_p1_reflexivity(
     metal: str,
     summary: Mapping[str, Any],
@@ -314,6 +360,7 @@ def verify_p1_reflexivity(
 
 # -- P2 transitivity --------------------------------------------------------
 
+
 def verify_p2_transitivity(
     metal: str,
     summary: Mapping[str, Any],
@@ -340,9 +387,7 @@ def verify_p2_transitivity(
         n_samples=transitive_pairs,
         n_violations=0 if passed else transitive_pairs,
         violation_examples=(
-            []
-            if passed
-            else [{"witness_rate": witness_rate, "threshold": 1.0}]
+            [] if passed else [{"witness_rate": witness_rate, "threshold": 1.0}]
         ),
         wall_time_s=wall,
         notes=(
@@ -358,6 +403,7 @@ def verify_p2_transitivity(
 
 
 # -- P3 symmetry (idempotence) --------------------------------------------
+
 
 def verify_p3_symmetry(
     metal: str,
@@ -387,9 +433,7 @@ def verify_p3_symmetry(
         n_samples=idempotence_pairs,
         n_violations=0 if passed else idempotence_pairs,
         violation_examples=(
-            []
-            if passed
-            else [{"well_typed_rate": well_typed_rate, "threshold": 1.0}]
+            [] if passed else [{"well_typed_rate": well_typed_rate, "threshold": 1.0}]
         ),
         wall_time_s=wall,
         notes=(
@@ -405,6 +449,7 @@ def verify_p3_symmetry(
 
 
 # -- P4 d-block -------------------------------------------------------------
+
 
 def verify_p4_dblock(
     metal: str,
@@ -465,6 +510,7 @@ def verify_p4_dblock(
 
 # -- P5 reachability --------------------------------------------------------
 
+
 def verify_p5_reachability(
     metal: str,
     summary: Mapping[str, Any],
@@ -482,9 +528,7 @@ def verify_p5_reachability(
     t0 = time.perf_counter()
     reachability_rate = float(summary.get("reachability_rate", 1.0))
     n_visited = int(summary.get("n_visited", 0))
-    passed = (
-        n_visited >= 1 and reachability_rate + 1e-9 >= reachable_threshold
-    )
+    passed = n_visited >= 1 and reachability_rate + 1e-9 >= reachable_threshold
     wall = time.perf_counter() - t0
     return CatherinePropertyResult(
         property_id="P5_reachability",
@@ -517,6 +561,7 @@ def verify_p5_reachability(
 
 
 # -- P6 composability -------------------------------------------------------
+
 
 def verify_p6_composability(
     metal: str,
@@ -557,9 +602,7 @@ def verify_p6_composability(
         # Vacuum PASS for slim summaries — no depth info available.
         depth_layers_ok = True
     else:
-        depth_layers_ok = all(
-            ppd_int.get(d, 0) > 0 for d in range(max_depth_seen + 1)
-        )
+        depth_layers_ok = all(ppd_int.get(d, 0) > 0 for d in range(max_depth_seen + 1))
     passed = bool(closure_ok) and depth_layers_ok
     notes = ""
     if not closure_ok:

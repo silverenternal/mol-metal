@@ -82,6 +82,7 @@ Exit codes
 * 1 — Wf-143 per_seed_metrics.json missing for any of the 5 pockets.
 * 2 — argparse rejected the flags.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -105,7 +106,13 @@ LOG = logging.getLogger("wf325b")
 POCKETS_5 = ("1h36", "3eml", "3ny8", "4aaw", "4rlu")
 WF143_P4_DIR = REPO_ROOT / "molmetal" / "reports" / "wf143_p4_chemotype_dock"
 WF323C_RESULT = REPO_ROOT / "molmetal" / "reports" / "wf323c_m8_full" / "result.json"
-DEFAULT_OUT = REPO_ROOT / "molmetal" / "reports" / "wf325b_vina_pt_zn_substitution" / "result.json"
+DEFAULT_OUT = (
+    REPO_ROOT
+    / "molmetal"
+    / "reports"
+    / "wf325b_vina_pt_zn_substitution"
+    / "result.json"
+)
 
 # Industry cutoff per WEAK_TO_STRONG §2.3 (Vina Dock median ≤ −7 kcal/mol).
 INDUSTRY_CUTOFF_KCAL_MOL = -7.0
@@ -208,6 +215,7 @@ def _uff_prerelax_pt_proxy(smiles: str) -> Dict[str, Any]:
     from rdkit import Chem  # type: ignore
     from rdkit.Chem import AllChem  # type: ignore
     from rdkit import RDLogger  # type: ignore
+
     RDLogger.DisableLog("rdApp.*")
 
     from molmetal.molmetal_lam.sbdd_env.metal_pdbqt_overrides import (
@@ -266,7 +274,9 @@ def _uff_prerelax_pt_proxy(smiles: str) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Pt→Zn substitution dry-run (1h36 smoke; uses existing wf143 kcal/mol)
 # ---------------------------------------------------------------------------
-def _pt_zn_substitution_smoke(pocket_id: str, per_pocket: Dict[str, Any]) -> Dict[str, Any]:
+def _pt_zn_substitution_smoke(
+    pocket_id: str, per_pocket: Dict[str, Any]
+) -> Dict[str, Any]:
     """Verify the Pt→Zn substitution is active for the given pocket.
 
     The substitution is confirmed by checking:
@@ -300,7 +310,9 @@ def _pt_zn_substitution_smoke(pocket_id: str, per_pocket: Dict[str, Any]) -> Dic
             "(closest Vina-accepted divalent d-block) via Wf-246-C / "
             "Wf-323C convention. kcal/mol is generic Zn-VDW "
             "approximation for the metal anchor."
-        ) if pt_zn_active else (
+        )
+        if pt_zn_active
+        else (
             "Pt→Zn substitution NOT active (status != MEASURED_GENERIC_ATOM "
             "or no Pt-group metal in SMILES)."
         ),
@@ -335,29 +347,31 @@ def _build_per_pocket_records() -> List[Dict[str, Any]]:
         original_kcal = per_pocket["kcal_mol_median"]
         zn_kcal = per_pocket["kcal_mol_median"]
         lift = _compute_lift(original_kcal, zn_kcal)
-        records.append({
-            "pocket_id": pocket_id,
-            "smiles": per_pocket["smiles"],
-            "original_kcal_mol_median": original_kcal,
-            "zn_substituted_kcal_mol_median": zn_kcal,
-            "lift_kcal_mol": lift,
-            "pt_zn_substituted_active": zn_smoke["pt_zn_substituted"],
-            "vina_status_source": per_pocket["status"],
-            "kcal_mol_per_seed": per_pocket["kcal_mol_per_seed"],
-            "kcal_mol_mean": per_pocket["kcal_mol_mean"],
-            "kcal_mol_stddev": per_pocket["kcal_mol_stddev"],
-            "n_atoms_ligand": per_pocket["n_atoms_ligand"],
-            "engine": per_pocket["engine"],
-            "engine_version": per_pocket["engine_version"],
-            "exhaustiveness": per_pocket["exhaustiveness"],
-            "n_poses": per_pocket["n_poses"],
-            "honest_negative_reason": (
-                "kcal/mol is generic Zn-VDW approximation for the "
-                "Pt anchor (MEASURED_GENERIC_ATOM, per Wf-246-C / "
-                "Wf-323C). NOT a faithful Pt-anchored Vina score."
-            ),
-            "wf143_source": str(WF143_P4_DIR / pocket_id / "per_seed_metrics.json"),
-        })
+        records.append(
+            {
+                "pocket_id": pocket_id,
+                "smiles": per_pocket["smiles"],
+                "original_kcal_mol_median": original_kcal,
+                "zn_substituted_kcal_mol_median": zn_kcal,
+                "lift_kcal_mol": lift,
+                "pt_zn_substituted_active": zn_smoke["pt_zn_substituted"],
+                "vina_status_source": per_pocket["status"],
+                "kcal_mol_per_seed": per_pocket["kcal_mol_per_seed"],
+                "kcal_mol_mean": per_pocket["kcal_mol_mean"],
+                "kcal_mol_stddev": per_pocket["kcal_mol_stddev"],
+                "n_atoms_ligand": per_pocket["n_atoms_ligand"],
+                "engine": per_pocket["engine"],
+                "engine_version": per_pocket["engine_version"],
+                "exhaustiveness": per_pocket["exhaustiveness"],
+                "n_poses": per_pocket["n_poses"],
+                "honest_negative_reason": (
+                    "kcal/mol is generic Zn-VDW approximation for the "
+                    "Pt anchor (MEASURED_GENERIC_ATOM, per Wf-246-C / "
+                    "Wf-323C). NOT a faithful Pt-anchored Vina score."
+                ),
+                "wf143_source": str(WF143_P4_DIR / pocket_id / "per_seed_metrics.json"),
+            }
+        )
     return records
 
 
@@ -366,9 +380,7 @@ def _aggregate_headline(per_pocket_records: List[Dict[str, Any]]) -> Dict[str, A
     medians = [r["zn_substituted_kcal_mol_median"] for r in per_pocket_records]
     cross_median = float(statistics.median(medians))
     cross_mean = float(statistics.mean(medians))
-    n_at_industry = sum(
-        1 for m in medians if m <= INDUSTRY_CUTOFF_KCAL_MOL
-    )
+    n_at_industry = sum(1 for m in medians if m <= INDUSTRY_CUTOFF_KCAL_MOL)
     n_total = len(medians)
     return {
         "cross_pocket_median_kcal_mol": cross_median,
@@ -433,20 +445,25 @@ def _emit_honest_negative() -> Dict[str, Any]:
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[1] if __doc__ else "")
     p.add_argument(
-        "--out", type=Path, default=DEFAULT_OUT,
+        "--out",
+        type=Path,
+        default=DEFAULT_OUT,
         help=f"Output result JSON (default: {DEFAULT_OUT})",
     )
     p.add_argument(
-        "--execute", action="store_true",
+        "--execute",
+        action="store_true",
         help="Actually run the substitution + aggregation; without this "
-             "flag the script prints the plan and exits 0 (dry-run).",
+        "flag the script prints the plan and exits 0 (dry-run).",
     )
     return p
 
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = _build_parser().parse_args(argv)
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s"
+    )
 
     # Pre-flight: verify Wf-143 per_seed_metrics.json present for all 5 pockets.
     for pocket_id in POCKETS_5:
@@ -520,7 +537,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                 f"{wf323c_pt_zn_count}/{uff_smoke.get('present_metals', []) and len(uff_smoke['present_metals'])} "
                 "poses (per wf323c_m8_full/result.json). Wf-325B "
                 "FORMALIZES this convention across all 5 pockets."
-            ) if wf323c_pt_zn_count is not None else (
+            )
+            if wf323c_pt_zn_count is not None
+            else (
                 "Wf-323C result JSON not on disk; Wf-325B "
                 "FORMALIZES the Pt→Zn convention across all 5 pockets "
                 "using the Wf-143 MEASURED_GENERIC_ATOM path."

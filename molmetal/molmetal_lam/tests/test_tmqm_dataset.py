@@ -127,8 +127,7 @@ def test_tmqm_pt_subset(pt_dataset: TmQMDataset) -> None:
     # carboplatin canonical SMILES contains [NH3] and a CBDCA chelate.
     joined = " | ".join(smiles_list)
     has_cisplatin = any(
-        "[Pt" in s and "Cl" in s and "N" in s and len(s) < 60
-        for s in smiles_list
+        "[Pt" in s and "Cl" in s and "N" in s and len(s) < 60 for s in smiles_list
     )
     assert has_cisplatin, "No short Pt-Cl + Pt-N motif in subset (cisplatin-like)"
     # Both Pt-Cl and Pt-N bond patterns should appear.
@@ -200,18 +199,18 @@ def test_tmqm_pt_click_compat_coverage(bond_pattern: TmQMBondPattern) -> None:
     # Coverage fraction should be >= 0.5 (most required patterns present).
     if required:
         cov_frac = len(covered) / len(required)
-        assert cov_frac >= 0.5, (
-            f"Coverage {cov_frac:.2f} below 0.5 — {missing} are missing"
-        )
+        assert (
+            cov_frac >= 0.5
+        ), f"Coverage {cov_frac:.2f} below 0.5 — {missing} are missing"
 
 
 @pytest.mark.skipif(not HAS_TMQM, reason="tmQM CSV not mounted")
 def test_tmqm_no_duplicates(full_dataset: TmQMDataset) -> None:
     """No duplicate canonical SMILES in the loaded dataset."""
     smiles_list = full_dataset.get_smiles_list()
-    assert len(smiles_list) == len(set(smiles_list)), (
-        f"Duplicates: {len(smiles_list) - len(set(smiles_list))}"
-    )
+    assert len(smiles_list) == len(
+        set(smiles_list)
+    ), f"Duplicates: {len(smiles_list) - len(set(smiles_list))}"
 
 
 @pytest.mark.skipif(not HAS_TMQM, reason="tmQM CSV not mounted")
@@ -236,9 +235,7 @@ def test_extract_metal_bond_dict_cisplatin() -> None:
     """cisplatin SMILES: Cl[Pt](Cl)(N)N → {('Pt','Cl'):2, ('Pt','N'):2}."""
     smi = "Cl[Pt](Cl)(N)N"
     mol = Chem.MolFromSmiles(smi)
-    pt_idx = next(
-        atom.GetIdx() for atom in mol.GetAtoms() if atom.GetSymbol() == "Pt"
-    )
+    pt_idx = next(atom.GetIdx() for atom in mol.GetAtoms() if atom.GetSymbol() == "Pt")
     bdict = _extract_metal_bond_dict(mol, pt_idx)
     assert bdict.get(("Pt", "Cl")) == 2, f"Pt-Cl count wrong: {bdict}"
     assert bdict.get(("Pt", "N")) == 2, f"Pt-N count wrong: {bdict}"
@@ -249,9 +246,7 @@ def test_extract_metal_bond_dict_cisplatin() -> None:
 
 def test_extract_metal_bond_dict_carboplatin() -> None:
     """carboplatin: CBDCA chelate → Pt-O = 2, Pt-N = 2."""
-    smi = (
-        "C1CCC(C(=O)O[Pt]2(N)(N)OC(=O)C1C(=O)O2)CC1"  # compact cartoon
-    )
+    smi = "C1CCC(C(=O)O[Pt]2(N)(N)OC(=O)C1C(=O)O2)CC1"  # compact cartoon
     mol = Chem.MolFromSmiles(smi)
     if mol is None:
         pytest.skip("Carboplatin test SMILES unparseable in this rdkit")
@@ -281,9 +276,7 @@ def test_infer_oxidation_state_cisplatin() -> None:
     """[Pt+2] → oxidation state 2."""
     smi = "Cl[Pt+2](Cl)(N)N"
     mol = Chem.MolFromSmiles(smi)
-    pt_idx = next(
-        a.GetIdx() for a in mol.GetAtoms() if a.GetSymbol() == "Pt"
-    )
+    pt_idx = next(a.GetIdx() for a in mol.GetAtoms() if a.GetSymbol() == "Pt")
     ox = _infer_oxidation_state(mol, pt_idx)
     assert ox == 2, f"Expected ox=2 got {ox}"
 

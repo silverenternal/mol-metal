@@ -64,6 +64,7 @@ _PTH_PATH = (
 def _has_main_attr() -> bool:
     """Import the script's module and confirm ``main`` is callable."""
     from molmetal.scripts.r10_cfg_real_crossdocked import main
+
     return callable(main)
 
 
@@ -94,10 +95,7 @@ def test_import_from_molmetal_dir():
     try:
         # Remove any path entries that point at the molmetal/ directory
         # itself (not its parent).
-        sys.path[:] = [
-            p for p in saved
-            if Path(p).resolve() != cwd.resolve()
-        ]
+        sys.path[:] = [p for p in saved if Path(p).resolve() != cwd.resolve()]
         # Also drop any cached import so the re-import goes through
         # the bootstrap path.
         for mod in list(sys.modules):
@@ -124,7 +122,11 @@ def test_import_from_molmetal_tests_dir():
     # Run as a subprocess to truly simulate CWD = tests_dir.
     # We avoid changing os.chdir() because that would perturb pytest.
     result = subprocess.run(
-        [sys.executable, "-c", "import molmetal.scripts.r10_cfg_real_crossdocked as m; assert callable(m.main); print('OK')"],
+        [
+            sys.executable,
+            "-c",
+            "import molmetal.scripts.r10_cfg_real_crossdocked as m; assert callable(m.main); print('OK')",
+        ],
         cwd=str(tests_dir),
         capture_output=True,
         text=True,
@@ -187,9 +189,7 @@ def test_pth_file_present_and_valid():
     target = _PTH_PATH.read_text().strip()
     assert target, f".pth file {_PTH_PATH} is empty"
     target_path = Path(target)
-    assert target_path.is_dir(), (
-        f".pth file points at non-existent directory: {target}"
-    )
+    assert target_path.is_dir(), f".pth file points at non-existent directory: {target}"
     assert (target_path / "molmetal" / "__init__.py").is_file(), (
         f".pth file points at {target_path} but that directory does not "
         f"contain molmetal/__init__.py"

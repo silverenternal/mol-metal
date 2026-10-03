@@ -19,6 +19,7 @@ They run FULLY OFFLINE against a recorded fixture
 key broken, join dropped — these tests fail.  Proof of that failure is
 recorded in TODO/completed/pt_data_route_correction.md.
 """
+
 from __future__ import annotations
 
 import json
@@ -51,8 +52,14 @@ def fake_post(monkeypatch, fixture):
             page = str(body.get("page", 1))
             rows = fixture["biodata"]["pages"].get(page)
             if rows is None:
-                return {"data": [], "meta": {"last_page": fixture["biodata"]["last_page"]}}
-            return {"data": rows, "meta": {"last_page": fixture["biodata"]["last_page"]}}
+                return {
+                    "data": [],
+                    "meta": {"last_page": fixture["biodata"]["last_page"]},
+                }
+            return {
+                "data": rows,
+                "meta": {"last_page": fixture["biodata"]["last_page"]},
+            }
         if endpoint == "get-substances":
             page = str(body.get("page", 1))
             rows = fixture["substances"]["pages"].get(page)
@@ -83,7 +90,9 @@ def test_compound_code_extraction_matches_live_image_url():
 
 def test_biodata_pagination_offline(fake_post):
     records, requests = loader.fetch_cell_line_biodata_pages(
-        "A2780cis", max_pages=2, per_request_delay=0.0,
+        "A2780cis",
+        max_pages=2,
+        per_request_delay=0.0,
     )
     assert requests == 2
     assert len(records) == 10
@@ -104,7 +113,9 @@ def test_biodata_pagination_offline(fake_post):
 
 def test_structure_join_offline(fake_post):
     records, _ = loader.fetch_cell_line_biodata_pages(
-        "A2780cis", max_pages=2, per_request_delay=0.0,
+        "A2780cis",
+        max_pages=2,
+        per_request_delay=0.0,
     )
     index, index_requests = loader.build_structure_index(1545, 3, 0.0)
     assert index_requests == 3
@@ -126,16 +137,22 @@ def test_structure_join_offline(fake_post):
 
 def test_biodata_mode_writes_outputs_offline(fake_post, tmp_path):
     records, bio_requests = loader.fetch_cell_line_biodata_pages(
-        "A2780cis", max_pages=2, per_request_delay=0.0,
+        "A2780cis",
+        max_pages=2,
+        per_request_delay=0.0,
     )
     index, index_requests = loader.build_structure_index(1545, 3, 0.0)
     joined, n_matched, n_unmatched = loader.join_structures(records, index)
     paths = loader.write_biodata_outputs(
-        joined, tmp_path, "smoke_biodata",
-        {"cell_line": "A2780cis",
-         "total_api_requests": bio_requests + index_requests,
-         "n_matched_structures": n_matched,
-         "n_unmatched_structures": n_unmatched},
+        joined,
+        tmp_path,
+        "smoke_biodata",
+        {
+            "cell_line": "A2780cis",
+            "total_api_requests": bio_requests + index_requests,
+            "n_matched_structures": n_matched,
+            "n_unmatched_structures": n_unmatched,
+        },
     )
     assert Path(paths["csv"]).exists()
     meta = json.loads(Path(paths["meta"]).read_text())

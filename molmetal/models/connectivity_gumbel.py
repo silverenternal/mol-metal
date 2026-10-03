@@ -84,9 +84,7 @@ class DropEdge:
 
     def __init__(self, p: float = 0.1) -> None:
         if not (0.0 <= float(p) <= 1.0):
-            raise ValueError(
-                f"DropEdge.p must be in [0, 1], got {p!r}"
-            )
+            raise ValueError(f"DropEdge.p must be in [0, 1], got {p!r}")
         self.p: float = float(p)
 
     def __call__(
@@ -111,7 +109,8 @@ class DropEdge:
             return edge_features, torch.ones((e,), dtype=torch.bool)
         if self.p == 1.0:
             return torch.zeros_like(edge_features), torch.zeros(
-                (e,), dtype=torch.bool,
+                (e,),
+                dtype=torch.bool,
             )
         # Sample a per-edge keep probability from U(0, 1) and threshold.
         keep = torch.rand(e, generator=None) >= self.p
@@ -251,10 +250,14 @@ class GumbelConnectivity(nn.Module):
             )
         e = edge_features.shape[0]
         if e == 0:
-            zeros = torch.zeros((0,), dtype=edge_features.dtype, device=edge_features.device)
+            zeros = torch.zeros(
+                (0,), dtype=edge_features.dtype, device=edge_features.device
+            )
             empty = torch.zeros((0,), dtype=torch.bool, device=edge_features.device)
             return ConnectivityOutput(
-                logits=zeros, soft_weights=zeros, hard_mask=empty,
+                logits=zeros,
+                soft_weights=zeros,
+                hard_mask=empty,
                 temperature=self.current_tau,
             )
         h = F.relu(self.fc1(edge_features))

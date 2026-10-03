@@ -59,6 +59,7 @@ try:
         safe_overwrite_check,
         detect_truncation,
     )
+
     _WF424_HAS_ATOMIC = True
 except ImportError:  # pragma: no cover — fallback when running as standalone
     _WF424_HAS_ATOMIC = False
@@ -78,18 +79,32 @@ PER_CFG_DIR = OUT_DIR / "per_config"
 # bits: (K=kendall, D=dann, F=four-domain)
 # 2^3 = 8 unique non-empty configurations.
 CONFIGS_8 = [
-    {"code": "000", "K": False, "D": False, "F": False, "label": "baseline (no levers)"},
-    {"code": "100", "K": True,  "D": False, "F": False, "label": "K only (Kendall loss)"},
-    {"code": "010", "K": False, "D": True,  "F": False, "label": "D only (DANN)"},
-    {"code": "001", "K": False, "D": False, "F": True,  "label": "F only (four-domain)"},
-    {"code": "110", "K": True,  "D": True,  "F": False, "label": "K + D"},
-    {"code": "101", "K": True,  "D": False, "F": True,  "label": "K + F"},
-    {"code": "011", "K": False, "D": True,  "F": True,  "label": "D + F"},
-    {"code": "111", "K": True,  "D": True,  "F": True,  "label": "full recipe (K+D+F)"},
+    {
+        "code": "000",
+        "K": False,
+        "D": False,
+        "F": False,
+        "label": "baseline (no levers)",
+    },
+    {
+        "code": "100",
+        "K": True,
+        "D": False,
+        "F": False,
+        "label": "K only (Kendall loss)",
+    },
+    {"code": "010", "K": False, "D": True, "F": False, "label": "D only (DANN)"},
+    {"code": "001", "K": False, "D": False, "F": True, "label": "F only (four-domain)"},
+    {"code": "110", "K": True, "D": True, "F": False, "label": "K + D"},
+    {"code": "101", "K": True, "D": False, "F": True, "label": "K + F"},
+    {"code": "011", "K": False, "D": True, "F": True, "label": "D + F"},
+    {"code": "111", "K": True, "D": True, "F": True, "label": "full recipe (K+D+F)"},
 ]
 
 
-def _wf424_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
+def _wf424_atomic_write_text(
+    path, content: str, min_lines: int = 50, expected_min_length: int = 200
+) -> None:
     """Wf-424-A4 atomic-write-protocol wrapper around direct write_text.
 
     Falls back to direct write_text if atomic_write_file is unavailable
@@ -101,32 +116,42 @@ def _wf424_atomic_write_text(path, content: str, min_lines: int = 50, expected_m
             _risk = safe_overwrite_check(path, content, min_lines=min_lines)
             if _risk is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-424-A4] safe_overwrite_check diff_ratio=%.3f at %s",
-                    _risk, path,
+                    _risk,
+                    path,
                 )
         atomic_write_file(path, content, encoding="utf-8")
         if detect_truncation is not None:
             _trunc = detect_truncation(content, expected_min_length=expected_min_length)
             if _trunc is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-424-A4] detect_truncation reason=%r at %s",
-                    _trunc, path,
+                    _trunc,
+                    path,
                 )
     else:  # pragma: no cover — fallback when atomic primitive unavailable
         Path(path).write_text(content, encoding="utf-8")
+
 
 def _run_subprocess(cfg: dict, seed: int, epochs: int) -> dict:
     """Run a single (cfg, seed) pair via wf229_run_one.py subprocess."""
     out = PER_CFG_DIR / f"cfg{cfg['code']}_seed{seed}.json"
     log = LOG_DIR / f"cfg{cfg['code']}_seed{seed}.log"
     cmd = [
-        PY, str(RUN_ONE),
-        "--code", cfg["code"],
-        "--epochs", str(epochs),
-        "--seed", str(seed),
-        "--out", str(out),
+        PY,
+        str(RUN_ONE),
+        "--code",
+        cfg["code"],
+        "--epochs",
+        str(epochs),
+        "--seed",
+        str(seed),
+        "--out",
+        str(out),
     ]
     if cfg["K"]:
         cmd.append("--use-kendall-loss")
@@ -142,7 +167,9 @@ def _run_subprocess(cfg: dict, seed: int, epochs: int) -> dict:
     return {
         "code": cfg["code"],
         "label": cfg["label"],
-        "K": cfg["K"], "D": cfg["D"], "F": cfg["F"],
+        "K": cfg["K"],
+        "D": cfg["D"],
+        "F": cfg["F"],
         "seed": seed,
         "returncode": proc.returncode,
         "wall_seconds": elapsed,
@@ -154,8 +181,12 @@ def _run_subprocess(cfg: dict, seed: int, epochs: int) -> dict:
 def _extract_metrics(out_path: Path) -> dict:
     """Pull test_auc, test_pearson, val_auc from the training JSON."""
     if not out_path.exists():
-        return {"test_auc": None, "test_pearson": None, "val_auc": None,
-                "error": "output JSON missing"}
+        return {
+            "test_auc": None,
+            "test_pearson": None,
+            "val_auc": None,
+            "error": "output JSON missing",
+        }
     try:
         with open(out_path) as f:
             payload = json.load(f)
@@ -197,12 +228,20 @@ def _compute_attribution(results: list[dict]) -> dict:
     full_recipe_lift = auc("111") - base_auc
     three_way = (
         full_recipe_lift
-        - single["K"] - single["D"] - single["F"]
-        - pair_KD - pair_KF - pair_DF
+        - single["K"]
+        - single["D"]
+        - single["F"]
+        - pair_KD
+        - pair_KF
+        - pair_DF
     )
     additivity_gap = full_recipe_lift - (
-        single["K"] + single["D"] + single["F"]
-        + pair_KD + pair_KF + pair_DF
+        single["K"]
+        + single["D"]
+        + single["F"]
+        + pair_KD
+        + pair_KF
+        + pair_DF
         + three_way
     )
     sum_single = sum(single.values())
@@ -220,20 +259,39 @@ def _compute_attribution(results: list[dict]) -> dict:
         "sum_two_way": sum_pairs,
         "three_way": three_way,
         "additivity_gap": additivity_gap,
-        "by_code": {c: {"test_auc": auc(c)} for c in ["000","100","010","001","110","101","011","111"]},
+        "by_code": {
+            c: {"test_auc": auc(c)}
+            for c in ["000", "100", "010", "001", "110", "101", "011", "111"]
+        },
     }
 
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--epochs", type=int, default=50,
-                   help="Training epochs per config (default: 50 for MEASURED signal)")
-    p.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2, 3],
-                   help="Seeds. seed 0 used for all 8 configs; extras for baseline variance.")
-    p.add_argument("--n-parallel", type=int, default=1,
-                   help="Parallel processes (1=sequential to avoid GPU contention)")
-    p.add_argument("--resume", action="store_true",
-                   help="Skip configs that already have a JSON output.")
+    p.add_argument(
+        "--epochs",
+        type=int,
+        default=50,
+        help="Training epochs per config (default: 50 for MEASURED signal)",
+    )
+    p.add_argument(
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=[0, 1, 2, 3],
+        help="Seeds. seed 0 used for all 8 configs; extras for baseline variance.",
+    )
+    p.add_argument(
+        "--n-parallel",
+        type=int,
+        default=1,
+        help="Parallel processes (1=sequential to avoid GPU contention)",
+    )
+    p.add_argument(
+        "--resume",
+        action="store_true",
+        help="Skip configs that already have a JSON output.",
+    )
     args = p.parse_args()
 
     LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -244,7 +302,9 @@ def main():
     all_results = []
 
     # 8 configs at seed 0
-    print(f"[wf240] launching 2^3 = 8 configs at seed=0 epochs={args.epochs}", flush=True)
+    print(
+        f"[wf240] launching 2^3 = 8 configs at seed=0 epochs={args.epochs}", flush=True
+    )
     for cfg in CONFIGS_8:
         out = PER_CFG_DIR / f"cfg{cfg['code']}_seed0.json"
         if args.resume and out.exists():
@@ -252,15 +312,25 @@ def main():
                 with open(out) as f:
                     payload = json.load(f)
                 if payload.get("test_metrics"):
-                    print(f"[wf240] cfg={cfg['code']} seed=0 SKIP (resume, already done)", flush=True)
-                    all_results.append({
-                        "code": cfg["code"], "label": cfg["label"],
-                        "K": cfg["K"], "D": cfg["D"], "F": cfg["F"],
-                        "seed": 0, "returncode": 0, "wall_seconds": 0.0,
-                        "log_path": str(LOG_DIR / f"cfg{cfg['code']}_seed0.log"),
-                        "out_path": str(out),
-                        "_resumed": True,
-                    })
+                    print(
+                        f"[wf240] cfg={cfg['code']} seed=0 SKIP (resume, already done)",
+                        flush=True,
+                    )
+                    all_results.append(
+                        {
+                            "code": cfg["code"],
+                            "label": cfg["label"],
+                            "K": cfg["K"],
+                            "D": cfg["D"],
+                            "F": cfg["F"],
+                            "seed": 0,
+                            "returncode": 0,
+                            "wall_seconds": 0.0,
+                            "log_path": str(LOG_DIR / f"cfg{cfg['code']}_seed0.log"),
+                            "out_path": str(out),
+                            "_resumed": True,
+                        }
+                    )
                     continue
             except Exception:
                 pass  # fall through to run
@@ -282,15 +352,25 @@ def main():
                 with open(out) as f:
                     payload = json.load(f)
                 if payload.get("test_metrics"):
-                    print(f"[wf240] cfg=000 seed={seed} SKIP (resume, already done)", flush=True)
-                    all_results.append({
-                        "code": "000", "label": "baseline (no levers)",
-                        "K": False, "D": False, "F": False,
-                        "seed": seed, "returncode": 0, "wall_seconds": 0.0,
-                        "log_path": str(LOG_DIR / f"cfg000_seed{seed}.log"),
-                        "out_path": str(out),
-                        "_resumed": True,
-                    })
+                    print(
+                        f"[wf240] cfg=000 seed={seed} SKIP (resume, already done)",
+                        flush=True,
+                    )
+                    all_results.append(
+                        {
+                            "code": "000",
+                            "label": "baseline (no levers)",
+                            "K": False,
+                            "D": False,
+                            "F": False,
+                            "seed": seed,
+                            "returncode": 0,
+                            "wall_seconds": 0.0,
+                            "log_path": str(LOG_DIR / f"cfg000_seed{seed}.log"),
+                            "out_path": str(out),
+                            "_resumed": True,
+                        }
+                    )
                     continue
             except Exception:
                 pass
@@ -308,10 +388,13 @@ def main():
         r.update(m)
 
     # Variance over baseline seeds
-    baseline_seeds = [r for r in all_results if r["code"] == "000" and r.get("test_auc") is not None]
+    baseline_seeds = [
+        r for r in all_results if r["code"] == "000" and r.get("test_auc") is not None
+    ]
     baseline_aucs = [r["test_auc"] for r in baseline_seeds]
     if len(baseline_aucs) >= 2:
         import statistics
+
         baseline_mean = statistics.mean(baseline_aucs)
         baseline_std = statistics.stdev(baseline_aucs)
     else:
@@ -366,10 +449,14 @@ def main():
     syn = OUT_DIR / "synthesis.md"
     with open(syn, "w") as f:
         f.write(f"# Wf-240 per-innovation ablation — EXTENSION of Wf-229\n\n")
-        f.write(f"**Purpose**: Wf-229 only completed 2/11 configs at 5 epochs and showed K-only lift=0 within noise. "
-                f"This extension re-runs ALL configs at 50 epochs for a MEASURED signal.\n\n")
+        f.write(
+            f"**Purpose**: Wf-229 only completed 2/11 configs at 5 epochs and showed K-only lift=0 within noise. "
+            f"This extension re-runs ALL configs at 50 epochs for a MEASURED signal.\n\n"
+        )
         f.write(f"3 levers: K (Kendall loss), D (DANN), F (four-domain)\n")
-        f.write(f"Total runs: {len(all_results)} (8 unique configs @ seed=0 + {len(extra_seeds)} baseline seeds)\n")
+        f.write(
+            f"Total runs: {len(all_results)} (8 unique configs @ seed=0 + {len(extra_seeds)} baseline seeds)\n"
+        )
         f.write(f"Total wall: {total_wall:.1f}s ({total_wall/60:.1f} min)\n\n")
         f.write("## Per-config test_auc (seed=0)\n\n")
         f.write("| code | K | D | F | test_auc | wall_s |\n")
@@ -389,16 +476,26 @@ def main():
             for k, v in attribution.get("two_way_interactions", {}).items():
                 f.write(f"- **{k}**: {v:+.4f}\n")
         if "full_recipe_lift" in attribution:
-            f.write(f"\n## Full recipe (111) lift: {attribution.get('full_recipe_lift', 0):+.4f}\n")
+            f.write(
+                f"\n## Full recipe (111) lift: {attribution.get('full_recipe_lift', 0):+.4f}\n"
+            )
         f.write(f"\n## Baseline variance (seed 0..{max(args.seeds)}):\n\n")
         f.write(f"- AUCs: {baseline_aucs}\n")
         f.write(f"- Mean: {baseline_mean}\n")
         f.write(f"- Stdev: {baseline_std}\n")
         f.write(f"\n## Honest framing (party-twenty-spirit §3.5)\n\n")
-        f.write("- **Wf-229 result was 'K-only lift=0 within noise' at 5 epochs.** This extension is the wall-time test of whether that negative is real (no lever effect) or just slow-convergence (levers need more epochs to lift).\n")
-        f.write(f"- 50 epochs (vs Wf-229's 5; vs Wf-124 P3's 30 with h=128 d=3) — within-cohort attribution only; NOT comparable to absolute Wf-124 P3 anchor at +0.049.\n")
-        f.write("- Per-lever attribution uses seed=0 only; baseline seeds 1/2/3 reported as variance bars.\n")
-        f.write("- **Honest-negative rule**: any lever whose lift falls within ±stdev(baseline_seeds) is reported as 'within noise' rather than 'no effect'.\n")
+        f.write(
+            "- **Wf-229 result was 'K-only lift=0 within noise' at 5 epochs.** This extension is the wall-time test of whether that negative is real (no lever effect) or just slow-convergence (levers need more epochs to lift).\n"
+        )
+        f.write(
+            f"- 50 epochs (vs Wf-229's 5; vs Wf-124 P3's 30 with h=128 d=3) — within-cohort attribution only; NOT comparable to absolute Wf-124 P3 anchor at +0.049.\n"
+        )
+        f.write(
+            "- Per-lever attribution uses seed=0 only; baseline seeds 1/2/3 reported as variance bars.\n"
+        )
+        f.write(
+            "- **Honest-negative rule**: any lever whose lift falls within ±stdev(baseline_seeds) is reported as 'within noise' rather than 'no effect'.\n"
+        )
 
     print(f"[wf240] wrote {syn}", flush=True)
     print(f"[wf240] DONE  total_wall={total_wall:.1f}s", flush=True)

@@ -58,10 +58,13 @@ def _has_network() -> bool:
 
     Skips the network-touching tests on offline CI.
     """
-    for host in ("https://deepchemdata.s3-us-west-1.amazonaws.com/datasets/BBB.csv",
-                "https://tdcommons.ai/"):
+    for host in (
+        "https://deepchemdata.s3-us-west-1.amazonaws.com/datasets/BBB.csv",
+        "https://tdcommons.ai/",
+    ):
         try:
             from urllib.request import urlopen
+
             urlopen(host, timeout=5).close()
             return True
         except Exception:
@@ -92,9 +95,9 @@ class TestCanonicalSchema:
             f"expected canonical {_CANONICAL_COLUMNS!r}"
         )
         # And no extras.
-        assert len(df.columns) == 6, (
-            f"{name} loader has {len(df.columns)} columns; expected 6"
-        )
+        assert (
+            len(df.columns) == 6
+        ), f"{name} loader has {len(df.columns)} columns; expected 6"
 
     @pytest.mark.skipif(
         not NETWORK_AVAILABLE,
@@ -102,6 +105,7 @@ class TestCanonicalSchema:
     )
     def test_bbbp_columns_canonical(self) -> None:
         from molmetal.data.tdc_loader import load_tdc_bbbp
+
         df = load_tdc_bbbp()
         self._assert_canonical(df, "BBBP")
 
@@ -111,6 +115,7 @@ class TestCanonicalSchema:
     )
     def test_bace_columns_canonical(self) -> None:
         from molmetal.data.tdc_loader import load_tdc_bace
+
         df = load_tdc_bace()
         self._assert_canonical(df, "BACE")
 
@@ -120,6 +125,7 @@ class TestCanonicalSchema:
     )
     def test_hiv_columns_canonical(self) -> None:
         from molmetal.data.tdc_loader import load_tdc_hiv
+
         df = load_tdc_hiv()
         self._assert_canonical(df, "HIV")
 
@@ -136,6 +142,7 @@ class TestLoaderInvariants:
     )
     def test_bbbp_shape_and_label_balance(self) -> None:
         from molmetal.data.tdc_loader import load_tdc_bbbp
+
         df = load_tdc_bbbp()
         # PyTDC bbb_martins reports 2,030 rows; DeepChem BBB.csv is 2,050.
         # Allow either — accept anything in [1800, 2200].
@@ -148,9 +155,9 @@ class TestLoaderInvariants:
             "BBBP has no pIC50 column in MoleculeNet; loader must leave "
             "pIC50 NaN for every row"
         )
-        assert df["active"].dtype == bool, (
-            f"BBBP active column dtype is {df['active'].dtype}; expected bool"
-        )
+        assert (
+            df["active"].dtype == bool
+        ), f"BBBP active column dtype is {df['active'].dtype}; expected bool"
         # Class balance — Martins 2012 / MoleculeNet BBBP is ~76% positive.
         pos_frac = df["active"].mean()
         assert 0.5 <= pos_frac <= 0.95, (
@@ -164,20 +171,21 @@ class TestLoaderInvariants:
     )
     def test_bace_shape_and_pic50_present(self) -> None:
         from molmetal.data.tdc_loader import load_tdc_bace
+
         df = load_tdc_bace()
         # DeepChem mirror is 1,513 rows; older PyTDC had ~1,513 too.
-        assert 1400 <= len(df) <= 1600, (
-            f"BACE loader produced {len(df)} rows; expected 1400-1600"
-        )
+        assert (
+            1400 <= len(df) <= 1600
+        ), f"BACE loader produced {len(df)} rows; expected 1400-1600"
         # BACE has BOTH a binary Class and a continuous pIC50.
         assert _has_pic50_present(df), (
             "BACE loader must propagate the MoleculeNet pIC50 column "
             "(regression target)"
         )
         assert df["active"].dtype == bool
-        assert (df["protein"] == "BACE").all(), (
-            "BACE rows must all carry protein='BACE'"
-        )
+        assert (
+            df["protein"] == "BACE"
+        ).all(), "BACE rows must all carry protein='BACE'"
 
     @pytest.mark.skipif(
         not NETWORK_AVAILABLE,
@@ -185,11 +193,12 @@ class TestLoaderInvariants:
     )
     def test_hiv_shape_and_active_balance(self) -> None:
         from molmetal.data.tdc_loader import load_tdc_hiv
+
         df = load_tdc_hiv()
         # PyTDC hiv reports 41,127 rows; DeepChem HIV.csv is 41,127 too.
-        assert 38000 <= len(df) <= 44000, (
-            f"HIV loader produced {len(df)} rows; expected 38000-44000"
-        )
+        assert (
+            38000 <= len(df) <= 44000
+        ), f"HIV loader produced {len(df)} rows; expected 38000-44000"
         assert df["pIC50"].isna().all(), (
             "HIV has no pIC50 column in MoleculeNet; loader must leave "
             "pIC50 NaN for every row"
@@ -217,16 +226,16 @@ class TestSmilesValidity:
     def test_bbbp_smiles_valid(self) -> None:
         from rdkit import Chem, RDLogger
         from molmetal.data.tdc_loader import load_tdc_bbbp
+
         RDLogger.DisableLog("rdApp.*")
         df = load_tdc_bbbp()
         valid = sum(
-            1 for s in df["smiles"]
+            1
+            for s in df["smiles"]
             if isinstance(s, str) and Chem.MolFromSmiles(s) is not None
         )
         frac = valid / max(len(df), 1)
-        assert frac >= 0.80, (
-            f"BBBP SMILES validity is {frac:.3f}; expected >= 0.80"
-        )
+        assert frac >= 0.80, f"BBBP SMILES validity is {frac:.3f}; expected >= 0.80"
 
     @pytest.mark.skipif(
         not NETWORK_AVAILABLE,
@@ -235,16 +244,16 @@ class TestSmilesValidity:
     def test_bace_smiles_valid(self) -> None:
         from rdkit import Chem, RDLogger
         from molmetal.data.tdc_loader import load_tdc_bace
+
         RDLogger.DisableLog("rdApp.*")
         df = load_tdc_bace()
         valid = sum(
-            1 for s in df["smiles"]
+            1
+            for s in df["smiles"]
             if isinstance(s, str) and Chem.MolFromSmiles(s) is not None
         )
         frac = valid / max(len(df), 1)
-        assert frac >= 0.80, (
-            f"BACE SMILES validity is {frac:.3f}; expected >= 0.80"
-        )
+        assert frac >= 0.80, f"BACE SMILES validity is {frac:.3f}; expected >= 0.80"
 
     @pytest.mark.skipif(
         not NETWORK_AVAILABLE,
@@ -253,18 +262,19 @@ class TestSmilesValidity:
     def test_hiv_smiles_valid(self) -> None:
         from rdkit import Chem, RDLogger
         from molmetal.data.tdc_loader import load_tdc_hiv
+
         RDLogger.DisableLog("rdApp.*")
         df = load_tdc_hiv()
         # Cap at 500 rows — HIV is 41k and the test would otherwise be slow.
         sample = df.head(500)
         valid = sum(
-            1 for s in sample["smiles"]
+            1
+            for s in sample["smiles"]
             if isinstance(s, str) and Chem.MolFromSmiles(s) is not None
         )
         frac = valid / max(len(sample), 1)
         assert frac >= 0.80, (
-            f"HIV SMILES validity (first 500 rows) is {frac:.3f}; "
-            f"expected >= 0.80"
+            f"HIV SMILES validity (first 500 rows) is {frac:.3f}; " f"expected >= 0.80"
         )
 
 
@@ -287,6 +297,7 @@ class TestCrossLoaderConcatenation:
             load_tdc_bace,
             load_tdc_hiv,
         )
+
         bbbp = load_tdc_bbbp()
         bace = load_tdc_bace()
         hiv = load_tdc_hiv()
@@ -325,6 +336,7 @@ class TestModuleSurface:
 
     def test_module_imports(self) -> None:
         import molmetal.data.tdc_loader as m
+
         assert hasattr(m, "load_tdc_bbbp")
         assert hasattr(m, "load_tdc_bace")
         assert hasattr(m, "load_tdc_hiv")
@@ -337,6 +349,7 @@ class TestModuleSurface:
 
     def test_cache_dir_is_path(self) -> None:
         from molmetal.data.tdc_loader import CACHE_DIR
+
         assert isinstance(CACHE_DIR, Path)
         # Cache dir is created at import time — it must already exist.
         assert CACHE_DIR.exists()

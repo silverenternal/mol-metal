@@ -64,6 +64,7 @@ from scan_lambda_algorithm_vulns import (  # noqa: E402
 @pytest.fixture(scope="module")
 def nci60_rows():
     from bench_deflexpressor_end_to_end import load_nci60_precious
+
     return load_nci60_precious(
         _REPO_ROOT / "molmetal" / "data" / "nci60_precious_9cell.csv",
         n_max=120,
@@ -96,9 +97,9 @@ def test_vuln_v2_hilbert_stability_no_nan(nci60_rows):
 def test_vuln_v3_composite_roundtrip_predicts_all_finite(nci60_rows):
     out = vuln_v3_composite_roundtrip(nci60_rows, seed=0)
     assert "verdict" in out
-    assert out["n_finite_predict"] == out["n_test"], (
-        f"V3 composite produced non-finite predictions: {out}"
-    )
+    assert (
+        out["n_finite_predict"] == out["n_test"]
+    ), f"V3 composite produced non-finite predictions: {out}"
 
 
 # ---------------------------------------------------------------------------
@@ -160,6 +161,6 @@ def test_run_scan_no_critical_failures_on_smoke():
     (Wf-39 P2) eliminated the Wf-25 / Wf-37 numerical pathology."""
     payload = run_scan(n_samples=50, seeds=[0, 1])
     s = payload["summary"]
-    assert s["n_fail"] == 0, (
-        f"Vuln scan found {s['n_fail']} FAILs: {json.dumps(payload, indent=2)[:2000]}"
-    )
+    assert (
+        s["n_fail"] == 0
+    ), f"Vuln scan found {s['n_fail']} FAILs: {json.dumps(payload, indent=2)[:2000]}"

@@ -118,7 +118,7 @@ WRAPPERS = [
         "path": SCRIPTS / "launch_wf124_p3_g6.sh",
         "gate_value": "1",
         "dry_run_policy": "strict",  # Wf-378-A2: gate moved BEFORE --dry-run; fires FIRST
-        "emits_plan_json": True,     # Wf-378-A2: plan.json now emitted in --dry-run block
+        "emits_plan_json": True,  # Wf-378-A2: plan.json now emitted in --dry-run block
         "family": "Wf-294B",
         "wf_origin": "Wf-378-A2 (gap closure post-Wf-363-A2 + Wf-365-B2 + Wf-368-B1 §7.1 audit)",
     },
@@ -209,7 +209,7 @@ def _gate_block_for_value(text: str, value: str) -> bool:
     escaped = re.escape(value)
     patterns = [
         rf'USER_OK.*!=.*"{value}"',
-        rf'USER_OK.*{escaped}',
+        rf"USER_OK.*{escaped}",
         rf'USER_OK.*must.*equal.*"{value}"',
         rf'USER_OK"\s*!=\s*"{value}"',
     ]
@@ -231,6 +231,7 @@ def _gate_uses_die_or_exit(text: str) -> bool:
 # ---------------------------------------------------------------------------
 # Test 1 — per-wrapper USER_OK gate exit codes consistent
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize(
     "wrapper",
@@ -286,9 +287,9 @@ def test_per_wrapper_user_ok_gate_consistent(wrapper):
             "PLAN_JSON / plan.json reference found in source"
         )
         # plan.json content should carry user_ok:true marker
-        assert '"user_ok": true' in text or '"user_ok":true' in text, (
-            f"{path.name}: plan.json emission missing 'user_ok': true"
-        )
+        assert (
+            '"user_ok": true' in text or '"user_ok":true' in text
+        ), f"{path.name}: plan.json emission missing 'user_ok': true"
 
 
 # ---------------------------------------------------------------------------
@@ -299,10 +300,7 @@ def test_per_wrapper_user_ok_gate_consistent(wrapper):
 # `pre_flight_gpu_ready.sh` because it takes ~3 min wall (calls
 # pre_flight_check.py). That gate-emit SKIP behaviour is verified by
 # the existing Wf-347-C1 test suite (test_wf347c1_pre_flight_gpu_ready).
-DRY_RUN_TEST_WRAPPERS = [
-    w for w in WRAPPERS
-    if w["dry_run_policy"] != "skip"
-]
+DRY_RUN_TEST_WRAPPERS = [w for w in WRAPPERS if w["dry_run_policy"] != "skip"]
 
 
 @pytest.mark.parametrize(
@@ -343,7 +341,11 @@ def test_dry_run_respects_gate(wrapper):
     env.pop("USER_OK", None)
 
     proc = subprocess.run(
-        cmd, capture_output=True, text=True, timeout=30, env=env,
+        cmd,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        env=env,
     )
     rc = proc.returncode
     stdout_tail = (proc.stdout or "")[-400:]

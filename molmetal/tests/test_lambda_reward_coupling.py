@@ -66,6 +66,7 @@ def test_lambda_samples_to_reward_targets_returns_n_tuples() -> None:
     list of length ``N``, each item is a 2-tuple ``(smiles, weight)``.
     """
     import torch  # local import keeps the skip path lean
+
     fn, _ = _import_coupling()
     smiles: List[str] = ["CCO", "CCN", "c1ccccc1O", "CC(=O)O"]
     out = fn(smiles, n_samples=4)
@@ -102,6 +103,7 @@ def test_lambda_reward_dataset_protocol() -> None:
     ``torch.Tensor``.
     """
     import torch
+
     fn, LambdaRewardDataset = _import_coupling()
     pairs = fn(["CCO", "CCN", "c1ccccc1O"], n_samples=3)
     ds = LambdaRewardDataset(pairs)
@@ -121,6 +123,7 @@ def test_weight_is_detached_from_graph() -> None:
     require_grad flag — it is a *target*, not a learnable.
     """
     import torch
+
     fn, LambdaRewardDataset = _import_coupling()
     pairs = fn(["CCO", "CCN"], n_samples=2)
     ds = LambdaRewardDataset(pairs)
@@ -145,16 +148,26 @@ def test_lambda_reward_cli_flag_accepted(tmp_path: Path) -> None:
     script = PROJECT_ROOT / "molmetal" / "scripts" / "metallo_drug_smoke_retrain.py"
     help_proc = subprocess.run(
         [sys.executable, str(script), "--help"],
-        capture_output=True, text=True, check=False,
+        capture_output=True,
+        text=True,
+        check=False,
         cwd=str(PROJECT_ROOT),
     )
     if "--lambda-reward" not in (help_proc.stdout + help_proc.stderr):
         pytest.skip("--lambda-reward not yet added to metallo_drug_smoke_retrain.py")
     parse_proc = subprocess.run(
-        [sys.executable, str(script),
-         "--lambda-reward", "--steps", "5",
-         "--out-dir", str(tmp_path)],
-        capture_output=True, text=True, check=False,
+        [
+            sys.executable,
+            str(script),
+            "--lambda-reward",
+            "--steps",
+            "5",
+            "--out-dir",
+            str(tmp_path),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
         cwd=str(PROJECT_ROOT),
     )
     # argparse rejection yields SystemExit(2) with "unrecognized arguments".
@@ -175,13 +188,38 @@ def test_smoke_5_step_train_with_lambda_reward(tmp_path: Path) -> None:
     if not csv_path.exists():
         pytest.skip(f"Training CSV not found: {csv_path}")
     script = PROJECT_ROOT / "molmetal" / "scripts" / "metallo_drug_smoke_retrain.py"
-    cmd = [sys.executable, str(script), "--csv", str(csv_path),
-           "--n-train", "8", "--steps", "5", "--batch-size", "4",
-           "--hidden-dim", "32", "--n-layers", "2",
-           "--lambda-reward", "0.5", "--out-dir", str(tmp_path),
-           "--decode-smoke-every", "1000", "--decode-smoke-samples", "1"]
-    proc = subprocess.run(cmd, capture_output=True, text=True, check=False,
-                          cwd=str(PROJECT_ROOT), timeout=600)
+    cmd = [
+        sys.executable,
+        str(script),
+        "--csv",
+        str(csv_path),
+        "--n-train",
+        "8",
+        "--steps",
+        "5",
+        "--batch-size",
+        "4",
+        "--hidden-dim",
+        "32",
+        "--n-layers",
+        "2",
+        "--lambda-reward",
+        "0.5",
+        "--out-dir",
+        str(tmp_path),
+        "--decode-smoke-every",
+        "1000",
+        "--decode-smoke-samples",
+        "1",
+    ]
+    proc = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=str(PROJECT_ROOT),
+        timeout=600,
+    )
     if proc.returncode != 0:
         pytest.skip(f"smoke rc={proc.returncode}: {proc.stderr[-200:]}")
     final = tmp_path / "final.json"
@@ -191,5 +229,6 @@ def test_smoke_5_step_train_with_lambda_reward(tmp_path: Path) -> None:
     first, last = cfm["first"], cfm["last"]
     assert first is not None and last is not None
     import math
+
     assert math.isfinite(first) and math.isfinite(last)
     assert last <= first * 1.5 + 1e-3, f"loss diverged: first={first} last={last}"

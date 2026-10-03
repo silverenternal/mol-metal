@@ -126,10 +126,13 @@ def test_wf342l1_drugood_ood_test_set_loads() -> None:
     assert isinstance(df, pd.DataFrame)
     assert len(df) > 0, "drugood ood_test split is empty"
     assert df.columns.tolist() == [
-        "smiles", "metal", "cell_line", "protein", "pIC50", "active",
-    ], (
-        f"drugood ood_test schema drifted: {df.columns.tolist()}"
-    )
+        "smiles",
+        "metal",
+        "cell_line",
+        "protein",
+        "pIC50",
+        "active",
+    ], f"drugood ood_test schema drifted: {df.columns.tolist()}"
 
 
 @pytest.mark.skipif(not JSON_AVAILABLE, reason=JSON_SKIP)
@@ -184,9 +187,9 @@ def test_wf342l1_drugood_ood_test_scaffold_split_subsample() -> None:
             test_idx.extend(grp)
 
     all_idx = set(train_idx) | set(val_idx) | set(test_idx)
-    assert len(all_idx) == n, (
-        f"scaffold split on ood_test lost rows: {n - len(all_idx)} missing"
-    )
+    assert (
+        len(all_idx) == n
+    ), f"scaffold split on ood_test lost rows: {n - len(all_idx)} missing"
 
 
 @pytest.mark.skipif(not JSON_AVAILABLE, reason=JSON_SKIP)
@@ -204,19 +207,18 @@ def test_wf342l1_drugood_multitask_labels_intact() -> None:
             split=split,
             prefer_library=False,
         )
-        assert pd.api.types.is_numeric_dtype(df["pIC50"]), (
-            f"drugood {split} pIC50 should be numeric, got {df['pIC50'].dtype}"
-        )
+        assert pd.api.types.is_numeric_dtype(
+            df["pIC50"]
+        ), f"drugood {split} pIC50 should be numeric, got {df['pIC50'].dtype}"
         assert df["pIC50"].notna().all(), (
-            f"drugood {split} has NaN pIC50: "
-            f"{int(df['pIC50'].isna().sum())} rows"
+            f"drugood {split} has NaN pIC50: " f"{int(df['pIC50'].isna().sum())} rows"
         )
-        assert df["pIC50"].apply(lambda v: math.isfinite(float(v))).all(), (
-            f"drugood {split} has non-finite pIC50"
-        )
-        assert df["active"].dtype == bool, (
-            f"drugood {split} active should be bool, got {df['active'].dtype}"
-        )
+        assert (
+            df["pIC50"].apply(lambda v: math.isfinite(float(v))).all()
+        ), f"drugood {split} has non-finite pIC50"
+        assert (
+            df["active"].dtype == bool
+        ), f"drugood {split} active should be bool, got {df['active'].dtype}"
         # Both labels must be present together (multi-task contract).
         assert len(df["pIC50"]) == len(df["active"]), (
             f"drugood {split} label length mismatch: "
@@ -224,9 +226,9 @@ def test_wf342l1_drugood_multitask_labels_intact() -> None:
         )
         # Active distribution must be binary {False, True}.
         unique_active = set(df["active"].unique().tolist())
-        assert unique_active.issubset({False, True}), (
-            f"drugood {split} active should be binary, got {unique_active}"
-        )
+        assert unique_active.issubset(
+            {False, True}
+        ), f"drugood {split} active should be binary, got {unique_active}"
 
 
 if __name__ == "__main__":

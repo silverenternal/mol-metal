@@ -81,6 +81,7 @@ from molmetal.baselines.dmpnn_multitask import (
 from molmetal.molmetal_lam.reward.wasserstein_loss import (
     wasserstein_pic50_gradient,
 )
+
 try:
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import (
         _make_compiled_encoder_forward,
@@ -101,6 +102,7 @@ except ImportError:  # Wf-A16: feature not implemented — SKIP, do not ERROR
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_synthetic_graph_batch(
     B: int = 4,
@@ -127,6 +129,7 @@ def _build_small_encoder(hidden: int = 32, depth: int = 2) -> DMPNNMultiTaskMode
 # 1: Mode default is max-autotune-no-cudagraphs
 # ---------------------------------------------------------------------------
 
+
 def test_default_mode_is_max_autotune_no_cudagraphs() -> None:
     """``--torch-compile-mode`` default is now ``max-autotune-no-cudagraphs``.
 
@@ -141,9 +144,16 @@ def test_default_mode_is_max_autotune_no_cudagraphs() -> None:
     CUDA-Graphs-enabling mode), this test fails loudly with a
     Wf-335-R1 + Wf-330-B4 message.
     """
-    args_default = parse_args([
-        "--metals", "Ru", "--seeds", "0", "--epochs", "1",
-    ])
+    args_default = parse_args(
+        [
+            "--metals",
+            "Ru",
+            "--seeds",
+            "0",
+            "--epochs",
+            "1",
+        ]
+    )
 
     assert args_default.torch_compile_mode == "max-autotune-no-cudagraphs", (
         f"Wf-335-R1 MEASURED FIX: default torch_compile_mode should be "
@@ -156,14 +166,17 @@ def test_default_mode_is_max_autotune_no_cudagraphs() -> None:
 
     # The default is also the post-fix CLI help text — verify the help
     # string surfaces the Wf-335-R1 / Wf-330-B4 framing.
-    parser = parse_args.__globals__.get("__file__") if hasattr(
-        parse_args, "__globals__"
-    ) else None
+    parser = (
+        parse_args.__globals__.get("__file__")
+        if hasattr(parse_args, "__globals__")
+        else None
+    )
 
 
 # ---------------------------------------------------------------------------
 # 2: --torch-compile-mode-v2 flag
 # ---------------------------------------------------------------------------
+
 
 def test_torch_compile_mode_v2_flag() -> None:
     """``--torch-compile-mode-v2`` is wired with the post-fix default.
@@ -175,9 +188,16 @@ def test_torch_compile_mode_v2_flag() -> None:
       * invalid mode is rejected by argparse choices=
     """
     # Default
-    args_default = parse_args([
-        "--metals", "Ru", "--seeds", "0", "--epochs", "1",
-    ])
+    args_default = parse_args(
+        [
+            "--metals",
+            "Ru",
+            "--seeds",
+            "0",
+            "--epochs",
+            "1",
+        ]
+    )
     assert hasattr(args_default, "torch_compile_mode_v2"), (
         "Wf-335-R1: --torch-compile-mode-v2 CLI flag missing from "
         "parse_args() namespace — fix not wired."
@@ -189,12 +209,24 @@ def test_torch_compile_mode_v2_flag() -> None:
     )
 
     # All four Inductor modes accepted
-    for mode in ("default", "reduce-overhead", "max-autotune",
-                 "max-autotune-no-cudagraphs"):
-        args_mode = parse_args([
-            "--metals", "Ru", "--seeds", "0", "--epochs", "1",
-            "--torch-compile-mode-v2", mode,
-        ])
+    for mode in (
+        "default",
+        "reduce-overhead",
+        "max-autotune",
+        "max-autotune-no-cudagraphs",
+    ):
+        args_mode = parse_args(
+            [
+                "--metals",
+                "Ru",
+                "--seeds",
+                "0",
+                "--epochs",
+                "1",
+                "--torch-compile-mode-v2",
+                mode,
+            ]
+        )
         assert args_mode.torch_compile_mode_v2 == mode, (
             f"--torch-compile-mode-v2 {mode!r} did not parse; got "
             f"{args_mode.torch_compile_mode_v2}"
@@ -202,15 +234,24 @@ def test_torch_compile_mode_v2_flag() -> None:
 
     # Invalid mode rejected
     with pytest.raises(SystemExit):
-        parse_args([
-            "--metals", "Ru", "--seeds", "0", "--epochs", "1",
-            "--torch-compile-mode-v2", "not-a-mode",
-        ])
+        parse_args(
+            [
+                "--metals",
+                "Ru",
+                "--seeds",
+                "0",
+                "--epochs",
+                "1",
+                "--torch-compile-mode-v2",
+                "not-a-mode",
+            ]
+        )
 
 
 # ---------------------------------------------------------------------------
 # 3: Backward compat (mode=reduce-overhead still accepted)
 # ---------------------------------------------------------------------------
+
 
 def test_backward_compat_reduce_overhead_accepted() -> None:
     """``--torch-compile-mode reduce-overhead`` is still accepted.
@@ -220,10 +261,18 @@ def test_backward_compat_reduce_overhead_accepted() -> None:
     scripts (and any paper §6 reproducer that explicitly requests
     CUDA Graphs).  This test verifies the legacy path is preserved.
     """
-    args_reduce = parse_args([
-        "--metals", "Ru", "--seeds", "0", "--epochs", "1",
-        "--torch-compile-mode", "reduce-overhead",
-    ])
+    args_reduce = parse_args(
+        [
+            "--metals",
+            "Ru",
+            "--seeds",
+            "0",
+            "--epochs",
+            "1",
+            "--torch-compile-mode",
+            "reduce-overhead",
+        ]
+    )
     assert args_reduce.torch_compile_mode == "reduce-overhead", (
         f"explicit --torch-compile-mode reduce-overhead should be "
         f"preserved (backward compat for Wf-326C / Wf-328-W1 bench "
@@ -231,10 +280,18 @@ def test_backward_compat_reduce_overhead_accepted() -> None:
     )
 
     # Same for v2 alias
-    args_reduce_v2 = parse_args([
-        "--metals", "Ru", "--seeds", "0", "--epochs", "1",
-        "--torch-compile-mode-v2", "reduce-overhead",
-    ])
+    args_reduce_v2 = parse_args(
+        [
+            "--metals",
+            "Ru",
+            "--seeds",
+            "0",
+            "--epochs",
+            "1",
+            "--torch-compile-mode-v2",
+            "reduce-overhead",
+        ]
+    )
     assert args_reduce_v2.torch_compile_mode_v2 == "reduce-overhead", (
         f"explicit --torch-compile-mode-v2 reduce-overhead should be "
         f"preserved, got '{args_reduce_v2.torch_compile_mode_v2}'"
@@ -243,7 +300,8 @@ def test_backward_compat_reduce_overhead_accepted() -> None:
     # Also verify the encoder wrapper still accepts the legacy mode
     encoder = _build_small_encoder(hidden=32, depth=2)
     compiled = _make_compiled_encoder_forward(
-        encoder, mode="reduce-overhead",
+        encoder,
+        mode="reduce-overhead",
     )
     assert compiled is not None, (
         "_make_compiled_encoder_forward(mode='reduce-overhead') "
@@ -252,7 +310,8 @@ def test_backward_compat_reduce_overhead_accepted() -> None:
 
     # And the W₂ wrapper
     compiled_w2 = _make_compiled_w2_penalty(
-        w_weight=1.0, mode="reduce-overhead",
+        w_weight=1.0,
+        mode="reduce-overhead",
     )
     assert compiled_w2 is not None, (
         "_make_compiled_w2_penalty(mode='reduce-overhead') "
@@ -263,6 +322,7 @@ def test_backward_compat_reduce_overhead_accepted() -> None:
 # ---------------------------------------------------------------------------
 # 4: CPU smoke — integration with the trainer under the new mode
 # ---------------------------------------------------------------------------
+
 
 def test_integration_with_trainer_cpu_smoke() -> None:
     """End-to-end smoke: the compiled encoder + W₂ wrap cleanly into
@@ -282,6 +342,7 @@ def test_integration_with_trainer_cpu_smoke() -> None:
     """
     torch.manual_seed(11)
     import numpy as np
+
     np.random.seed(11)
 
     hidden = 32
@@ -290,7 +351,10 @@ def test_integration_with_trainer_cpu_smoke() -> None:
     device = torch.device("cpu")
 
     model = MultiTaskWassersteinModel(
-        n_metals=n_metals, hidden=hidden, depth=depth, dropout=0.0,
+        n_metals=n_metals,
+        hidden=hidden,
+        depth=depth,
+        dropout=0.0,
     ).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     criterion = MultiTaskLoss(alpha=0.5, use_kendall_loss=False)
@@ -299,10 +363,12 @@ def test_integration_with_trainer_cpu_smoke() -> None:
     # ``max-autotune-no-cudagraphs`` here (this is what the trainer
     # would invoke by default with the fix in place).
     compiled_encoder = _make_compiled_encoder_forward(
-        model.encoder, mode="max-autotune-no-cudagraphs",
+        model.encoder,
+        mode="max-autotune-no-cudagraphs",
     )
     compiled_w2 = _make_compiled_w2_penalty(
-        w_weight=1.0, mode="max-autotune-no-cudagraphs",
+        w_weight=1.0,
+        mode="max-autotune-no-cudagraphs",
     )
     original_forward_one_mol = model.encoder._forward_one_mol
     model.encoder._forward_one_mol = compiled_encoder  # type: ignore[assignment]
@@ -310,7 +376,10 @@ def test_integration_with_trainer_cpu_smoke() -> None:
     try:
         # Synthetic batch — (B=4, V=24, E=48)
         atom_f, bond_f, e_src, e_dst = _make_synthetic_graph_batch(
-            B=4, V=24, E=48, seed=12,
+            B=4,
+            V=24,
+            E=48,
+            seed=12,
         )
         mids_t = torch.tensor([0, 1, 2, 3], dtype=torch.long)
         pic50_t = torch.tensor([5.1, 6.2, 4.3, 7.5], dtype=torch.float32)
@@ -334,17 +403,16 @@ def test_integration_with_trainer_cpu_smoke() -> None:
 
         # Verify encoder received gradient (autograd graph intact).
         encoder_param_grads = [
-            p for n, p in model.encoder.named_parameters()
-            if p.grad is not None
+            p for n, p in model.encoder.named_parameters() if p.grad is not None
         ]
         assert len(encoder_param_grads) > 0, (
             "Wf-335-R1: no encoder parameter received a gradient — "
             "compiled forward broke the autograd graph under "
             "max-autotune-no-cudagraphs."
         )
-        encoder_grad_norm = sum(
-            (p.grad.norm().item() ** 2 for p in encoder_param_grads)
-        ) ** 0.5
+        encoder_grad_norm = (
+            sum((p.grad.norm().item() ** 2 for p in encoder_param_grads)) ** 0.5
+        )
         assert encoder_grad_norm > 1e-6, (
             f"Wf-335-R1: encoder gradient norm is zero after "
             f"compiled+predict pipeline: ||grad||={encoder_grad_norm}"

@@ -41,6 +41,7 @@ us whether two molecule sections can be glued consistently on the
 shared atom/fragment cover.  A residual > threshold flags a
 "patch_gluing_obstruction" for the caller to refine.
 """
+
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
@@ -89,9 +90,7 @@ def section_from_payload(payload: Mapping[str, Any]) -> MoleculeSection:
         name=str(payload.get("name", payload.get("section_id", "section"))),
         atoms=frozenset(int(x) for x in payload.get("atoms", [])),
         fragments=frozenset(str(x) for x in payload.get("fragments", [])),
-        bonds=frozenset(
-            (int(b[0]), int(b[1])) for b in raw_bonds if len(b) >= 2
-        ),
+        bonds=frozenset((int(b[0]), int(b[1])) for b in raw_bonds if len(b) >= 2),
         weight=float(payload.get("weight", 1.0)),
     )
 
@@ -175,7 +174,9 @@ def molecule_atlas_payload(
     are no failed pairs (i.e. the finite cover glues consistently).
     """
     normalized = [
-        section if isinstance(section, MoleculeSection) else section_from_payload(section)
+        section
+        if isinstance(section, MoleculeSection)
+        else section_from_payload(section)
         for section in sections
     ]
     overlaps = []
@@ -190,7 +191,9 @@ def molecule_atlas_payload(
         if overlaps
         else 0.0
     )
-    failed = [item for item in overlaps if item["overlap_residual"] > residual_threshold]
+    failed = [
+        item for item in overlaps if item["overlap_residual"] > residual_threshold
+    ]
     bonds: set[tuple[int, int]] = set()
     atoms: set[int] = set()
     fragments: set[str] = set()

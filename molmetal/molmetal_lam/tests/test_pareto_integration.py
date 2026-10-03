@@ -179,10 +179,10 @@ def test_pareto_front_depth_at_least_two_on_ten_candidate_population():
     for _ in range(10):
         pop.append(
             [
-                rng.random(),                      # scalar_reward
-                rng.random(),                      # 1 - sa
-                rng.random(),                      # qed
-                rng.random(),                      # vina_proxy
+                rng.random(),  # scalar_reward
+                rng.random(),  # 1 - sa
+                rng.random(),  # qed
+                rng.random(),  # vina_proxy
             ]
         )
 
@@ -198,9 +198,9 @@ def test_pareto_front_depth_at_least_two_on_ten_candidate_population():
         for j, other in enumerate(pop):
             if j == fi:
                 continue
-            assert not pareto_mod.dominates(other, pop[fi]), (
-                f"front[{fi}] is dominated by population[{j}]"
-            )
+            assert not pareto_mod.dominates(
+                other, pop[fi]
+            ), f"front[{fi}] is dominated by population[{j}]"
 
 
 def test_weights_dict_drives_ranking():
@@ -227,9 +227,7 @@ def test_weights_dict_drives_ranking():
     # the within-rank ordering must shift accordingly.
     order_eq = pareto_mod.rank_population(pop, weights=[1.0, 1.0, 1.0, 1.0])
     order_a0 = pareto_mod.rank_population(pop, weights=[10.0, 1.0, 1.0, 1.0])
-    order_a1 = pareto_mod.rank_population(
-        pop, weights=[1.0, 10.0, 10.0, 10.0]
-    )
+    order_a1 = pareto_mod.rank_population(pop, weights=[1.0, 10.0, 10.0, 10.0])
 
     # All three orderings are permutations of [0, 1, 2].
     for o in (order_eq, order_a0, order_a1):
@@ -271,7 +269,7 @@ def test_postprocess_pareto_default_off_preserves_legacy_ranking(monkeypatch):
     # :class:`RewardAggregator`-like aggregator mock.
     class _Search:
         pareto_rank_top_k = False  # default
-        pareto_weights = None       # default
+        pareto_weights = None  # default
 
     search = _Search()
     cands = [
@@ -286,9 +284,7 @@ def test_postprocess_pareto_default_off_preserves_legacy_ranking(monkeypatch):
     if not search.pareto_rank_top_k:
         sorted_legacy = sorted(cands, key=lambda p: p[0], reverse=True)
     else:
-        sorted_legacy = _pareto_rank_candidates(
-            list(cands), reward_fn=_MockRewardFn()
-        )
+        sorted_legacy = _pareto_rank_candidates(list(cands), reward_fn=_MockRewardFn())
 
     # Legacy order: by score descending.
     assert [s for _, s in sorted_legacy] == [
@@ -339,9 +335,7 @@ def test_postprocess_pareto_on_uses_pareto_ranker():
         r_qed=_MockRewardFn._qed,
         r_vina_proxy=_MockRewardFn._vina_proxy,
     )
-    reordered = _pareto_rank_candidates(
-        list(cands), reward_fn=reward_fn
-    )
+    reordered = _pareto_rank_candidates(list(cands), reward_fn=reward_fn)
     smis = [s._smi for _, s in reordered]
 
     # 'a' and 'd' must both be in the top-2 (they are mutually
@@ -349,16 +343,14 @@ def test_postprocess_pareto_on_uses_pareto_ranker():
     # rank ordering depends on the weighted-sum tie-break (equal
     # weights in this test → rank-0 crowding distance decides).
     assert smis[:2] == ["a", "d"] or smis[:2] == ["d", "a"], (
-        f"'a' and 'd' must occupy the top-2 slots (both rank 0); "
-        f"got {smis}"
+        f"'a' and 'd' must occupy the top-2 slots (both rank 0); " f"got {smis}"
     )
     # 'b' and 'c' are dominated by 'a' on axis 0 and by 'd' on
     # axes 1-3 — they form a lower Pareto front and must therefore
     # come after the rank-0 'a'/'d' pair (any permutation among
     # 'b' and 'c' is acceptable).
     assert set(smis[2:]) == {"b", "c"}, (
-        f"'b' and 'c' must occupy the bottom-2 slots (lower front); "
-        f"got {smis}"
+        f"'b' and 'c' must occupy the bottom-2 slots (lower front); " f"got {smis}"
     )
 
 
@@ -380,10 +372,7 @@ def test_round12_regression_30_cell_diversity_tanimoto_unchanged_when_flag_off()
     """
     # 30 candidates with deterministic scores in [0, 1].
     rng = random.Random(20260914)
-    cands = [
-        (round(rng.random(), 6), _MockState(f"mol_{i:02d}"))
-        for i in range(30)
-    ]
+    cands = [(round(rng.random(), 6), _MockState(f"mol_{i:02d}")) for i in range(30)]
 
     # OFF path = legacy sort.
     legacy_sorted = sorted(cands, key=lambda p: p[0], reverse=True)
@@ -399,9 +388,8 @@ def test_round12_regression_30_cell_diversity_tanimoto_unchanged_when_flag_off()
     if s.pareto_rank_top_k:
         # ON path would have used the ranker — but the OFF path skips.
         from molmetal_lam.search_alg.proof_search import _pareto_rank_candidates
-        off_sorted = _pareto_rank_candidates(
-            list(cands), reward_fn=_MockRewardFn()
-        )
+
+        off_sorted = _pareto_rank_candidates(list(cands), reward_fn=_MockRewardFn())
     else:
         # Exact legacy sort.
         off_sorted = sorted(cands, key=lambda p: p[0], reverse=True)
@@ -425,9 +413,7 @@ def test_parse_pareto_weights_helper():
     from pathlib import Path
 
     script_path = (
-        Path(__file__).resolve().parents[2]
-        / "scripts"
-        / "r4_lambda_only_run.py"
+        Path(__file__).resolve().parents[2] / "scripts" / "r4_lambda_only_run.py"
     )
     spec = importlib.util.spec_from_file_location(
         "_r4_lambda_only_run_for_test", script_path
@@ -441,6 +427,7 @@ def test_parse_pareto_weights_helper():
         # rather than fail.  The helper logic is exercised separately
         # via direct invocation below.
         import pytest
+
         pytest.skip(f"r4_lambda_only_run.py not importable in this env: {exc}")
         return
 

@@ -51,7 +51,9 @@ class _FusedLayerNormFn(torch.autograd.Function):
     """
 
     @staticmethod
-    def forward(ctx, x: torch.Tensor, weight: torch.Tensor, bias: torch.Tensor, eps: float) -> torch.Tensor:
+    def forward(
+        ctx, x: torch.Tensor, weight: torch.Tensor, bias: torch.Tensor, eps: float
+    ) -> torch.Tensor:
         ctx.eps = float(eps)
         # Always save x for the backward path.  We avoid saving the
         # output because the chain rule for LayerNorm only needs x,
@@ -83,10 +85,14 @@ class _FusedLayerNormFn(torch.autograd.Function):
 
         grad_out_f = grad_out.to(torch.float32)
         dx_hat = grad_out_f * weight.to(torch.float32)
-        dx_f = (1.0 / x.shape[-1]) * rstd * (
-            dx_hat * x.shape[-1]
-            - dx_hat.sum(dim=-1, keepdim=True)
-            - x_hat * (dx_hat * x_hat).sum(dim=-1, keepdim=True)
+        dx_f = (
+            (1.0 / x.shape[-1])
+            * rstd
+            * (
+                dx_hat * x.shape[-1]
+                - dx_hat.sum(dim=-1, keepdim=True)
+                - x_hat * (dx_hat * x_hat).sum(dim=-1, keepdim=True)
+            )
         )
         dx = dx_f.to(x.dtype)
 
@@ -295,7 +301,9 @@ class MolEncoder(nn.Module):
         e = edge_index.shape[2]
 
         # 1. Embed atomic numbers.
-        atom_clamped = atomic_numbers.clamp(min=0, max=self.atom_embed.num_embeddings - 1)
+        atom_clamped = atomic_numbers.clamp(
+            min=0, max=self.atom_embed.num_embeddings - 1
+        )
         h_node = self.atom_embed(atom_clamped)  # (B, N, H)
 
         # 2. Per-edge scalar distance feature.
@@ -307,16 +315,14 @@ class MolEncoder(nn.Module):
 
         # 3. Message passing.
         for layer_idx in range(self.n_layers):
-            pair = self._pair_features(h_node, edge_index)        # (B, E, 2H)
-            msg_input = torch.cat([pair, dist], dim=-1)           # (B, E, 2H+1)
-            msg = self.edge_mlp(msg_input)                        # (B, E, H) — scalar msgs
+            pair = self._pair_features(h_node, edge_index)  # (B, E, 2H)
+            msg_input = torch.cat([pair, dist], dim=-1)  # (B, E, 2H+1)
+            msg = self.edge_mlp(msg_input)  # (B, E, H) — scalar msgs
 
             # Flatten batch and edge dims so the Triton scatter-sum can
             # aggregate over all edges at once.
             msg_flat = msg.reshape(b * e, self.hidden_dim)
-            edge_mask_flat = (
-                edge_mask.reshape(b * e) if edge_mask is not None else None
-            )
+            edge_mask_flat = edge_mask.reshape(b * e) if edge_mask is not None else None
 
             agg = scatter_sum(
                 src=src.reshape(b * e),

@@ -76,8 +76,9 @@ def test_fit_returns_none_when_unavailable(monkeypatch):
 
     # Force the unavailable branch regardless of host state.
     monkeypatch.setattr(pysr_adapter, "_PYSR_AVAILABLE", False)
-    monkeypatch.setattr(pysr_adapter, "_PYSR_IMPORT_ERROR",
-                       "ImportError: test-simulated")
+    monkeypatch.setattr(
+        pysr_adapter, "_PYSR_IMPORT_ERROR", "ImportError: test-simulated"
+    )
     X = np.random.default_rng(0).standard_normal((33, 4))
     y = np.random.default_rng(1).standard_normal(33)
 
@@ -122,8 +123,9 @@ def test_fit_input_validation():
 # 5. End-to-end smoke when PySR is available. Skipped otherwise.
 # ---------------------------------------------------------------------------
 @pytest.mark.skipif(
-    not __import__("molmetal.molmetal_lam.reward.pysr_adapter",
-                   fromlist=["is_available"]).is_available(),
+    not __import__(
+        "molmetal.molmetal_lam.reward.pysr_adapter", fromlist=["is_available"]
+    ).is_available(),
     reason="PySR not installed on this host; defer to fit_returns_none test",
 )
 def test_fit_endto_end_when_available():
@@ -136,10 +138,11 @@ def test_fit_endto_end_when_available():
     y = X[:, 0] + 2.0 * X[:, 1] + 0.01 * rng.standard_normal(33)
 
     result = fit(
-        X, y,
+        X,
+        y,
         binary_ops=["+", "-", "*", "/"],
         unary_ops=[],
-        niterations=5,         # tiny budget for CI
+        niterations=5,  # tiny budget for CI
         populations=4,
         niterations_warmup=2,
         random_state=42,
@@ -148,8 +151,10 @@ def test_fit_endto_end_when_available():
     )
 
     if result is None:
-        pytest.skip("PySR search raised inside fit() — likely first-run "
-                    "Julia depot download; rerun the test once it settles.")
+        pytest.skip(
+            "PySR search raised inside fit() — likely first-run "
+            "Julia depot download; rerun the test once it settles."
+        )
     # We got a real result.
     assert isinstance(result.formula_str, str) and result.formula_str != ""
     # Complexity should be non-negative and modest for a 2-feature search.

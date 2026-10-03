@@ -10,6 +10,7 @@ This followup runs the remaining 2 configs on a smaller cohort
 (n=20) for speed, just to confirm the pattern: wasserstein and
 closure-bounded knobs do NOT differentiate decode_ratio from full.
 """
+
 import argparse
 import csv
 import json
@@ -56,8 +57,7 @@ def main():
     p.add_argument("--device", type=str, default="cpu")
     p.add_argument("--pocket-id", type=str, default="1h36")
     p.add_argument("--wasserstein-weight", type=float, default=0.1)
-    p.add_argument("--out-dir", type=str,
-                   default="molmetal/reports/wf269c_cfm_real/")
+    p.add_argument("--out-dir", type=str, default="molmetal/reports/wf269c_cfm_real/")
     args = p.parse_args()
     out_dir = PROJECT_ROOT / args.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -85,26 +85,28 @@ def main():
             val_clouds.append(c)
 
     bias_verdict = pocket_specific_closure_bias(args.pocket_id)
-    closure_bias = (
-        bias_verdict.bias_dict if bias_verdict.is_known_pocket else None
-    )
+    closure_bias = bias_verdict.bias_dict if bias_verdict.is_known_pocket else None
     if closure_bias is None:
         closure_bias = {
-            "CuAAC": 0.30, "SPAAC": 0.10, "ThiolEne": 0.10,
-            "Suzuki": 0.20, "AmideCoupling": 0.30,
+            "CuAAC": 0.30,
+            "SPAAC": 0.10,
+            "ThiolEne": 0.10,
+            "Suzuki": 0.20,
+            "AmideCoupling": 0.30,
         }
     reference_positions = build_reference_positions().to(device)
 
     # Run only no_wasserstein and no_closure_bounded
     results = {}
     for cfg_name, no_w2, no_cb in [
-        ("no_wasserstein",     True,  False),
+        ("no_wasserstein", True, False),
         ("no_closure_bounded", False, True),
     ]:
         torch.manual_seed(args.seed)
         np.random.seed(args.seed)
         model = CFMJointModel(
-            hidden_dim=args.hidden_dim, n_layers=args.n_layers,
+            hidden_dim=args.hidden_dim,
+            n_layers=args.n_layers,
         ).to(device)
         decoder = _build_decoder(args, model, no_yuelbond=False)
         optimiser = torch.optim.Adam(model.parameters(), lr=args.lr)
@@ -117,18 +119,23 @@ def main():
                 AtomCloud(
                     positions=c.positions.to(device),
                     atomic_numbers=c.atomic_numbers.to(device),
-                ) for c in train_clouds
+                )
+                for c in train_clouds
             ]
             val_d = [
                 AtomCloud(
                     positions=c.positions.to(device),
                     atomic_numbers=c.atomic_numbers.to(device),
-                ) for c in val_clouds
+                )
+                for c in val_clouds
             ]
             t0 = time.time()
             train_loss, bond_ce, w2_val, grad_norm, _ = train_one_epoch(
-                model=model, decoder=decoder, optimiser=optimiser,
-                train_clouds=train_d, device=device,
+                model=model,
+                decoder=decoder,
+                optimiser=optimiser,
+                train_clouds=train_d,
+                device=device,
                 batch_size=args.batch_size,
                 wasserstein_weight=wasserstein_weight,
                 closure_bounded=closure_bounded,
@@ -136,8 +143,11 @@ def main():
                 reference_positions=reference_positions,
             )
             n_ok, n_total = _eval_decode_ratio(
-                decoder=decoder, val_clouds=val_d, device=device,
-                closure_bounded=closure_bounded, closure_bias=closure_bias,
+                decoder=decoder,
+                val_clouds=val_d,
+                device=device,
+                closure_bounded=closure_bounded,
+                closure_bias=closure_bias,
             )
             decode_ratio = n_ok / max(n_total, 1)
             last_dr = decode_ratio
@@ -158,10 +168,13 @@ def main():
 
     # Append to existing report
     report_path = out_dir / "wf269c_followup.json"
-    payload = {"wf": "wf269c_followup", "results": results,
-               "n_train_clouds": len(train_clouds),
-               "n_val_clouds": len(val_clouds),
-               "epochs_per_config": args.epochs}
+    payload = {
+        "wf": "wf269c_followup",
+        "results": results,
+        "n_train_clouds": len(train_clouds),
+        "n_val_clouds": len(val_clouds),
+        "epochs_per_config": args.epochs,
+    }
     with report_path.open("w") as f:
         json.dump(payload, f, indent=2)
     print(f"[Wf-269C-FU] wrote {report_path}", flush=True)

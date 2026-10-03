@@ -10,6 +10,7 @@ Mirrors `omegafold/confidence.py:39+96+124` (HeliXon 2022, Apache-2.0):
 Motivation: replace binary `decode_ratio in {0.0, 1.0}` with continuous pLDDT
 in [0, 1]. PaCE-style continuous confidence for Mol-Metal refiner outputs.
 """
+
 import argparse
 from dataclasses import dataclass
 from typing import Optional
@@ -21,7 +22,8 @@ from torch import nn
 @dataclass
 class ConfidenceHeadOutput:
     """Container for per-sample + aggregate confidence."""
-    plddt_per_residue: torch.Tensor    # [num_res]
+
+    plddt_per_residue: torch.Tensor  # [num_res]
     pae_per_pair: Optional[torch.Tensor] = None  # [num_res, num_res]
     ptm_score: Optional[float] = None
     overall_confidence: float = 0.0
@@ -31,7 +33,9 @@ class ConfidenceHeadOutput:
             "plddt_mean": float(self.plddt_per_residue.mean().item()),
             "plddt_min": float(self.plddt_per_residue.min().item()),
             "plddt_max": float(self.plddt_per_residue.max().item()),
-            "plddt_std": float(self.plddt_per_residue.std().item()) if self.plddt_per_residue.numel() > 1 else 0.0,
+            "plddt_std": float(self.plddt_per_residue.std().item())
+            if self.plddt_per_residue.numel() > 1
+            else 0.0,
             "overall_confidence": float(self.overall_confidence),
         }
         if self.ptm_score is not None:
@@ -53,8 +57,11 @@ def _compute_confidence(logits: torch.Tensor) -> torch.Tensor:
     num_bins = logits.shape[-1]
     bin_width = 1.0 / num_bins
     bin_centers = torch.arange(
-        start=0.5 * bin_width, end=1.0, step=bin_width,
-        device=logits.device, dtype=logits.dtype,
+        start=0.5 * bin_width,
+        end=1.0,
+        step=bin_width,
+        device=logits.device,
+        dtype=logits.dtype,
     )
     probs = torch.softmax(logits, dim=-1)
     return (probs * bin_centers).sum(dim=-1)

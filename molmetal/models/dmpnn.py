@@ -51,6 +51,7 @@ from molmetal.models._scatter import (
 from triton_kernels.config import triton_config as _triton_config
 from triton_kernels import fused_silu_mlp as _fused_silu_mlp  # noqa: F401  (kept for future ReLU-swap)
 from triton_kernels import fused_dropout_residual as _fused_dropout_residual
+
 _RELU_MLP_TRT_GATE_OBSERVED = _triton_config  # exposed for test introspection
 
 
@@ -132,8 +133,8 @@ def _maybe_fused_dropout_only(
 # ---------------------------------------------------------------------------
 @dataclass
 class MPNNConfig:
-    atom_feat_dim: int = 39      # from GraphFeaturizer
-    edge_feat_dim: int = 6       # from GraphFeaturizer
+    atom_feat_dim: int = 39  # from GraphFeaturizer
+    edge_feat_dim: int = 6  # from GraphFeaturizer
     hidden_dim: int = 128
     n_layers: int = 3
     dropout: float = 0.0
@@ -237,10 +238,7 @@ class DirectedMPNN(nn.Module):
 
         # ----- per-layer atom-to-edge projection (atom h influences edge msgs) -----
         self.atom_to_edge = nn.ModuleList(
-            [
-                nn.Linear(self.hidden_dim, self.hidden_dim)
-                for _ in range(self.n_layers)
-            ]
+            [nn.Linear(self.hidden_dim, self.hidden_dim) for _ in range(self.n_layers)]
         )
 
         # ----- readout projection -----
@@ -344,10 +342,12 @@ class DirectedMPNN(nn.Module):
             E = ei_mol.size(1)
             mask_edges = (ei_mol[0] < n_atoms) & (ei_mol[1] < n_atoms)
             ei_local = ei_mol[:, mask_edges]  # (2, E_valid)
-            ea_local = ea_mol[:ea_mol.size(0)][mask_edges]  # (E_valid, edge_dim)
+            ea_local = ea_mol[: ea_mol.size(0)][mask_edges]  # (E_valid, edge_dim)
 
             # Forward pass on this molecule
-            h_per_atom = self.forward_per_atom(h_mol, ei_local, ea_local)  # (n_atoms, D)
+            h_per_atom = self.forward_per_atom(
+                h_mol, ei_local, ea_local
+            )  # (n_atoms, D)
 
             # Sum-pool to graph-level
             pooled = h_per_atom.sum(dim=0)  # (D,)

@@ -130,6 +130,7 @@ class _MaybeFusedSiLUMLP(nn.Module):
             return _fused_silu_mlp(x, w1, self.linear1.bias, w2, self.linear2.bias)
         return F.silu(self.linear1(x)) @ self.linear2.weight.t() + self.linear2.bias
 
+
 # T9: optional square-planar Pt(II) geometric prior.  Imported lazily
 # inside ``EGNNVelocityField.metal_geometry_loss`` so the adapter stays
 # importable even when ``molmetal/molmetal_lam/priors/metal_geometry.py``
@@ -140,9 +141,7 @@ class _MaybeFusedSiLUMLP(nn.Module):
 # Wiberg BO MAE 0.18 on a held-out 10 % val split).  See
 # ``molmetal/reports/f2_tmqm_pretrain.md`` for the full report.
 DEFAULT_TMQM_CKPT = (
-    Path(__file__).resolve().parents[2]
-    / "checkpoints"
-    / "dmpnn_tmqm_pretrained.pt"
+    Path(__file__).resolve().parents[2] / "checkpoints" / "dmpnn_tmqm_pretrained.pt"
 )
 
 
@@ -226,9 +225,7 @@ def load_tmQM_pretrained(
     # ------------------------------------------------------------------
     # Step 2.  Resolve the per-parameter state_dict.
     # ------------------------------------------------------------------
-    if "encoder_state_dict" in ckpt and isinstance(
-        ckpt["encoder_state_dict"], dict
-    ):
+    if "encoder_state_dict" in ckpt and isinstance(ckpt["encoder_state_dict"], dict):
         src = ckpt["encoder_state_dict"]
     elif "encoder" in ckpt and isinstance(ckpt["encoder"], dict):
         src = ckpt["encoder"]
@@ -310,7 +307,10 @@ def _ensure_encoder(encoder: Optional[nn.Module]) -> nn.Module:
 
 
 def _shape_bridge_state_dict(
-    src: dict, own: dict, *, strict: bool = False,
+    src: dict,
+    own: dict,
+    *,
+    strict: bool = False,
 ) -> dict:
     """Map a source state_dict onto the consumer's keys by tensor shape.
 
@@ -480,7 +480,8 @@ def _shape_bridge_state_dict(
         # Greedy cover: pick the widest available column source, then
         # the next widest, until col_dim is reached.
         sorted_widths = sorted(
-            candidates_by_row.keys(), key=lambda w: -w,
+            candidates_by_row.keys(),
+            key=lambda w: -w,
         )
         chosen: list = []
         covered = 0
@@ -621,10 +622,10 @@ def _rdkit_bond_int_to_bond_head_label(rd_int: int) -> int:
 
 
 def _build_bond_pair_features(
-    edge_index: torch.Tensor,    # (2, E) long
-    coords: torch.Tensor,        # (B, N, 3)
-    z_i: torch.Tensor,           # (E,) long
-    z_j: torch.Tensor,           # (E,) long
+    edge_index: torch.Tensor,  # (2, E) long
+    coords: torch.Tensor,  # (B, N, 3)
+    z_i: torch.Tensor,  # (E,) long
+    z_j: torch.Tensor,  # (E,) long
     device: torch.device,
 ) -> torch.Tensor:
     """Build the (E, 9) per-pair feature tensor the :class:`BondOrderHead` consumes.
@@ -686,10 +687,14 @@ def _build_bond_pair_features(
     zi_cpu = z_i.cpu().tolist()
     zj_cpu = z_j.cpu().tolist()
     bi = torch.tensor(
-        [_bucket(int(z)) for z in zi_cpu], dtype=torch.float32, device=device,
+        [_bucket(int(z)) for z in zi_cpu],
+        dtype=torch.float32,
+        device=device,
     )
     bj = torch.tensor(
-        [_bucket(int(z)) for z in zj_cpu], dtype=torch.float32, device=device,
+        [_bucket(int(z)) for z in zj_cpu],
+        dtype=torch.float32,
+        device=device,
     )
     angle = torch.zeros(e, dtype=torch.float32, device=device)
     is_dative = torch.tensor(
@@ -722,8 +727,8 @@ def _build_bond_pair_features(
 
 
 def _gather_edge_features(
-    h: torch.Tensor,                    # (B, N, H)
-    edge_index: torch.Tensor,           # (2, E) long
+    h: torch.Tensor,  # (B, N, H)
+    edge_index: torch.Tensor,  # (2, E) long
     max_n: int,
     b: int,
 ) -> torch.Tensor:
@@ -901,7 +906,7 @@ def _pcgrad_apply_to_params(
         # Sum the resolved projections for parameter k across all tasks.
         acc = torch.zeros(n, dtype=torch.float32, device=p.device)
         for r in resolved:
-            acc = acc + r[offset:offset + n]
+            acc = acc + r[offset : offset + n]
         offset += n
         # Move to the parameter's dtype for the final write.
         new_grad = acc.reshape(p.shape).to(p.dtype)
@@ -960,6 +965,7 @@ def _import_fm_lib(reference_path: str | Path):
     from ._reference.path.scheduler import CondOTScheduler
     from ._reference.solver import ODESolver
     from ._reference.utils import ModelWrapper
+
     return AffineProbPath, CondOTScheduler, ODESolver, ModelWrapper
 
 
@@ -1005,20 +1011,24 @@ class PocketEncoder(nn.Module):
 
         self.atom_embed = nn.Embedding(max_atomic_number, hidden_dim)
         self.layers = nn.ModuleList(
-            [EGNNLayer(hidden_dim=hidden_dim, edge_mlp_hidden=hidden_dim)
-             for _ in range(n_layers)]
+            [
+                EGNNLayer(hidden_dim=hidden_dim, edge_mlp_hidden=hidden_dim)
+                for _ in range(n_layers)
+            ]
         )
         self.hidden_dim = hidden_dim
 
     def forward(
         self,
-        pocket_coords: torch.Tensor,    # (B, P, 3)   padded
+        pocket_coords: torch.Tensor,  # (B, P, 3)   padded
         pocket_atom_types: torch.Tensor,  # (B, P)    int64, 0 = padding
-        pocket_mask: torch.Tensor,      # (B, P)     bool, True = real atom
+        pocket_mask: torch.Tensor,  # (B, P)     bool, True = real atom
     ) -> torch.Tensor:
         """Returns a (B, hidden_dim) pocket embedding per sample."""
         b, p = pocket_coords.shape[:2]
-        if (pocket_atom_types < 0).any() or (pocket_atom_types >= self.atom_embed.num_embeddings).any():
+        if (pocket_atom_types < 0).any() or (
+            pocket_atom_types >= self.atom_embed.num_embeddings
+        ).any():
             raise ValueError("Pocket atomic numbers exceed the encoder vocabulary")
         h = self.atom_embed(pocket_atom_types)  # (B, P, H)
         # Build a fully-connected (no self-loop) edge index per sample.
@@ -1046,15 +1056,17 @@ class PocketEncoder(nn.Module):
         # ``cond_per_node`` keeps the parameter count identical to the
         # velocity-field code path while adding no signal (the encoder
         # is invariant by construction).
-        cond_zero = torch.zeros(b, p, self.hidden_dim,
-                                device=pocket_coords.device,
-                                dtype=h.dtype)
+        cond_zero = torch.zeros(
+            b, p, self.hidden_dim, device=pocket_coords.device, dtype=h.dtype
+        )
         for layer in self.layers:
             # Pass a zero ``cond_per_node`` so EGNNLayer.update_mlp
             # (which expects 3H+1) gets the right shape — see
             # models.velocity_net.EGNNLayer.forward.
             h, last_v = layer(
-                h, pocket_coords, edge_index,
+                h,
+                pocket_coords,
+                edge_index,
                 cond_per_node=cond_zero,
                 edge_mask=edge_mask,
             )
@@ -1158,6 +1170,7 @@ class EGNNVelocityField(nn.Module):
         # Lazy import: don't require EGNN at module load time (helps
         # tests that don't use it).
         from models.velocity_net import EGNNLayer
+
         edge_mlp_hidden = edge_mlp_hidden or hidden_dim
 
         # Round-10 axis-C: context dropout for classifier-free guidance.
@@ -1175,8 +1188,10 @@ class EGNNVelocityField(nn.Module):
         )
         self.atom_embed = nn.Embedding(max_atomic_number, hidden_dim)
         self.layers = nn.ModuleList(
-            [EGNNLayer(hidden_dim=hidden_dim, edge_mlp_hidden=edge_mlp_hidden)
-             for _ in range(n_layers)]
+            [
+                EGNNLayer(hidden_dim=hidden_dim, edge_mlp_hidden=edge_mlp_hidden)
+                for _ in range(n_layers)
+            ]
         )
         # Zero-init: start the velocity at zero so initial samples are
         # just noise.  This is the standard FM trick.
@@ -1260,7 +1275,9 @@ class EGNNVelocityField(nn.Module):
         # The Residual + LayerNorm post-processing is the
         # Transformer-XL / Pocket2Mol convention.
         self.pocket_residue_embed = nn.Linear(
-            max_atomic_number, hidden_dim, bias=False,
+            max_atomic_number,
+            hidden_dim,
+            bias=False,
         )
         # Zero-init the projection so an untrained pocket encoder
         # produces zero residue embeddings — at init the cross-
@@ -1317,12 +1334,16 @@ class EGNNVelocityField(nn.Module):
             ckpt = torch.load(path, map_location="cpu")
             # The F2 save format is a dict with an ``"encoder"`` sub-dict;
             # accept both that and a bare state_dict.
-            if isinstance(ckpt, dict) and "encoder" in ckpt and isinstance(
-                ckpt["encoder"], dict
+            if (
+                isinstance(ckpt, dict)
+                and "encoder" in ckpt
+                and isinstance(ckpt["encoder"], dict)
             ):
                 state_dict = ckpt["encoder"]
-            elif isinstance(ckpt, dict) and "state_dict" in ckpt and isinstance(
-                ckpt["state_dict"], dict
+            elif (
+                isinstance(ckpt, dict)
+                and "state_dict" in ckpt
+                and isinstance(ckpt["state_dict"], dict)
             ):
                 state_dict = ckpt["state_dict"]
             elif isinstance(ckpt, dict):
@@ -1368,15 +1389,15 @@ class EGNNVelocityField(nn.Module):
 
     def forward(
         self,
-        x: torch.Tensor,           # (B, N, 3)   per-atom coords at time t
+        x: torch.Tensor,  # (B, N, 3)   per-atom coords at time t
         atom_types: torch.Tensor,  # (B, N)      atomic numbers (int64)
         edge_index: torch.Tensor,  # (B, 2, E)
-        t: torch.Tensor,           # (B,) or (B, 1)  flow time
+        t: torch.Tensor,  # (B,) or (B, 1)  flow time
         edge_mask: Optional[torch.Tensor] = None,  # (B, E)  bool
         pocket_embed: Optional[torch.Tensor] = None,  # (B, H)   pocket conditioning
         dative_bond_edge_attr: Optional[torch.Tensor] = None,  # (B, E)  bool, T9 opt-in
         pocket_atom_embed: Optional[torch.Tensor] = None,  # (B, P, max_atomic_number)
-        pocket_atom_mask: Optional[torch.Tensor] = None,    # (B, P) bool
+        pocket_atom_mask: Optional[torch.Tensor] = None,  # (B, P) bool
     ) -> dict:
         """Predict per-atom velocity (B, N, 3) AND atom-type logits (B, N, max_z).
 
@@ -1443,13 +1464,17 @@ class EGNNVelocityField(nn.Module):
         # mode we never drop — that's what ``v_cfg`` does explicitly by
         # calling forward twice.
         if pocket_embed is None:
-            pocket_bias = torch.zeros(b, n, self.atom_embed.embedding_dim,
-                                      device=x_t.device, dtype=t_per_atom.dtype)
+            pocket_bias = torch.zeros(
+                b,
+                n,
+                self.atom_embed.embedding_dim,
+                device=x_t.device,
+                dtype=t_per_atom.dtype,
+            )
         else:
             if self.training and self.context_dropout > 0.0:
                 keep = (
-                    torch.rand(b, device=x_t.device)
-                    > self.context_dropout
+                    torch.rand(b, device=x_t.device) > self.context_dropout
                 )  # (B,) bool, True = keep the conditioning
                 # Shape (B, 1, 1) so it broadcasts cleanly over (B, N, H).
                 keep = keep.view(b, 1, 1).to(t_per_atom.dtype)
@@ -1464,7 +1489,9 @@ class EGNNVelocityField(nn.Module):
             # right shape.  Without this, update_mlp would receive
             # only 2H+1 and fail on the matmul.
             h, last_v = layer(
-                h, x_t, edge_index,
+                h,
+                x_t,
+                edge_index,
                 cond_per_node=t_per_atom,
                 edge_mask=edge_mask,
             )
@@ -1485,10 +1512,7 @@ class EGNNVelocityField(nn.Module):
         # our settings.  See the constructor docstring for the
         # zero-init rationale (uninformative pocket → identity
         # forward at init).
-        if (
-            pocket_atom_embed is not None
-            and pocket_atom_mask is not None
-        ):
+        if pocket_atom_embed is not None and pocket_atom_mask is not None:
             # Project per-pocket-atom one-hot atomic numbers → (B, P, H).
             pocket_residues = self.pocket_residue_embed(
                 pocket_atom_embed.to(h.dtype),
@@ -1526,11 +1550,11 @@ class EGNNVelocityField(nn.Module):
     # ------------------------------------------------------------------
     def metal_geometry_loss(
         self,
-        positions: torch.Tensor,                    # (B, N, 3) or (N, 3)
-        edge_index: torch.Tensor,                    # (B, 2, E) or (2, E)
-        atom_types: torch.Tensor,                   # (B, N) or (N,)
+        positions: torch.Tensor,  # (B, N, 3) or (N, 3)
+        edge_index: torch.Tensor,  # (B, 2, E) or (2, E)
+        atom_types: torch.Tensor,  # (B, N) or (N,)
         dative_bond_edge_attr: Optional[torch.Tensor] = None,  # (B, E) or (E,)
-        edge_types: Optional[torch.Tensor] = None,                # (B, E) or (E,)
+        edge_types: Optional[torch.Tensor] = None,  # (B, E) or (E,)
         prior_weight: float = 1.0,
     ) -> torch.Tensor:
         """Apply the square-planar Pt(II) geometric prior (T9, opt-in).
@@ -1571,21 +1595,27 @@ class EGNNVelocityField(nn.Module):
                     "Pt(II) prior."
                 )
                 self._warned_prior_unavailable = True
-            return torch.zeros(
-                (), device=positions.device, dtype=positions.dtype
-            )
+            return torch.zeros((), device=positions.device, dtype=positions.dtype)
 
-        effective = (edge_types == 2) if edge_types is not None else dative_bond_edge_attr
+        effective = (
+            (edge_types == 2) if edge_types is not None else dative_bond_edge_attr
+        )
         if effective is None:
             return positions.new_zeros(())
         if positions.dim() == 2:
-            return prior_weight * square_planar_penalty(positions, edge_index, effective, atom_types)
+            return prior_weight * square_planar_penalty(
+                positions, edge_index, effective, atom_types
+            )
         penalties = []
         for i in range(positions.shape[0]):
-            penalties.append(square_planar_penalty(
-                positions[i], edge_index[i] if edge_index.dim() == 3 else edge_index,
-                effective[i] if effective.dim() == 2 else effective,
-                atom_types[i] if atom_types.dim() == 2 else atom_types))
+            penalties.append(
+                square_planar_penalty(
+                    positions[i],
+                    edge_index[i] if edge_index.dim() == 3 else edge_index,
+                    effective[i] if effective.dim() == 2 else effective,
+                    atom_types[i] if atom_types.dim() == 2 else atom_types,
+                )
+            )
         return prior_weight * torch.stack(penalties).mean()
 
     # ------------------------------------------------------------------
@@ -1593,9 +1623,9 @@ class EGNNVelocityField(nn.Module):
     # ------------------------------------------------------------------
     def apply_metal_geometry_step(
         self,
-        positions: torch.Tensor,                  # (B, N, 3) or (N, 3)
-        atom_types: torch.Tensor,                  # (B, N) or (N,)
-        edge_types: torch.Tensor,                  # (B, E) or (E,) long
+        positions: torch.Tensor,  # (B, N, 3) or (N, 3)
+        atom_types: torch.Tensor,  # (B, N) or (N,)
+        edge_types: torch.Tensor,  # (B, E) or (E,) long
         step: int,
         k_every: int = 10,
         weight: float = 0.1,
@@ -1626,38 +1656,44 @@ class EGNNVelocityField(nn.Module):
         """
         # Off-step fast path.
         if k_every <= 0 or (step % max(1, k_every)) != 0:
-            return torch.zeros(
-                (), device=positions.device, dtype=positions.dtype
-            )
+            return torch.zeros((), device=positions.device, dtype=positions.dtype)
         try:
             from molmetal.molmetal_lam.priors.metal_geometry import (
                 MetalGeometryPrior,
             )
         except ImportError:
-            return torch.zeros(
-                (), device=positions.device, dtype=positions.dtype
-            )
+            return torch.zeros((), device=positions.device, dtype=positions.dtype)
         prior = MetalGeometryPrior(weight=weight)
         if positions.dim() == 2:
-            return prior.prior_loss(positions, atom_types, edge_types, edge_index=edge_index)
+            return prior.prior_loss(
+                positions, atom_types, edge_types, edge_index=edge_index
+            )
         penalties = []
         for i in range(positions.shape[0]):
-            penalties.append(prior.prior_loss(
-                positions[i], atom_types[i] if atom_types.dim() == 2 else atom_types,
-                edge_types[i] if edge_types.dim() == 2 else edge_types,
-                edge_index=edge_index[i] if edge_index is not None and edge_index.dim() == 3 else edge_index))
+            penalties.append(
+                prior.prior_loss(
+                    positions[i],
+                    atom_types[i] if atom_types.dim() == 2 else atom_types,
+                    edge_types[i] if edge_types.dim() == 2 else edge_types,
+                    edge_index=edge_index[i]
+                    if edge_index is not None and edge_index.dim() == 3
+                    else edge_index,
+                )
+            )
         return torch.stack(penalties).mean()
 
-    def forward_velocity(self, x, atom_types, edge_index, t, edge_mask=None,
-                          pocket_embed=None):
+    def forward_velocity(
+        self, x, atom_types, edge_index, t, edge_mask=None, pocket_embed=None
+    ):
         """Convenience wrapper returning only the velocity tensor.
 
         Used by the cloned ``flow_matching`` library's ``ModelWrapper``,
         which calls ``self.model(x=x, t=t, **extras)`` and expects a
         tensor-shaped return value.
         """
-        return self.forward(x, atom_types, edge_index, t, edge_mask=edge_mask,
-                            pocket_embed=pocket_embed)["vel"]
+        return self.forward(
+            x, atom_types, edge_index, t, edge_mask=edge_mask, pocket_embed=pocket_embed
+        )["vel"]
 
     # ------------------------------------------------------------------
     # Round-10 axis-C: classifier-free guidance (CFG)
@@ -1709,8 +1745,12 @@ class EGNNVelocityField(nn.Module):
             # Common fast-path: pure conditional sampling — skip the
             # second forward call entirely.
             return self.forward_velocity(
-                x, atom_types, edge_index, t,
-                pocket_embed=pocket_embed, edge_mask=edge_mask,
+                x,
+                atom_types,
+                edge_index,
+                t,
+                pocket_embed=pocket_embed,
+                edge_mask=edge_mask,
             )
         # Compute v_cond and v_uncond on the same graph.
         # We are in eval-mode for inference CFG; switch temporarily so
@@ -1722,14 +1762,23 @@ class EGNNVelocityField(nn.Module):
         try:
             v_cond = (
                 self.forward_velocity(
-                    x, atom_types, edge_index, t,
-                    pocket_embed=pocket_embed, edge_mask=edge_mask,
+                    x,
+                    atom_types,
+                    edge_index,
+                    t,
+                    pocket_embed=pocket_embed,
+                    edge_mask=edge_mask,
                 )
-                if pocket_embed is not None else None
+                if pocket_embed is not None
+                else None
             )
             v_uncond = self.forward_velocity(
-                x, atom_types, edge_index, t,
-                pocket_embed=None, edge_mask=edge_mask,
+                x,
+                atom_types,
+                edge_index,
+                t,
+                pocket_embed=None,
+                edge_mask=edge_mask,
             )
         finally:
             if was_training:
@@ -1829,12 +1878,11 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         # ``v_cfg`` instead of ``forward_velocity`` — which doubles the
         # ODE-step cost when pocket_embed is set.
         if cfg_scale < 0.0:
-            raise ValueError(
-                f"cfg_scale must be >= 0.0, got {cfg_scale!r}"
-            )
+            raise ValueError(f"cfg_scale must be >= 0.0, got {cfg_scale!r}")
         self._context_dropout = float(context_dropout)
         self._cfg_scale = float(cfg_scale)
         import math
+
         if not math.isfinite(pocket_embed_scale) or pocket_embed_scale < 0:
             raise ValueError("pocket_embed_scale must be finite and nonnegative")
         self._pocket_embed_scale = float(pocket_embed_scale)
@@ -1875,9 +1923,7 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         self._use_bond_head = bool(use_bond_head)
         self._joint_train = bool(joint_train)
         if bond_loss_weight < 0.0:
-            raise ValueError(
-                f"bond_loss_weight must be >= 0, got {bond_loss_weight!r}"
-            )
+            raise ValueError(f"bond_loss_weight must be >= 0, got {bond_loss_weight!r}")
         self._bond_loss_weight = float(bond_loss_weight)
         self._bond_pattern_mask = bool(bond_pattern_mask)
         # WF-Vina-Lift-Phase23 (Phase 2.3) — PCGrad multi-task loss flag.
@@ -1987,6 +2033,7 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         # the head's params flow into the AdamW param list.
         if self._use_bond_head:
             from molmetal.models.bond_head import BondOrderHead
+
             mode = "joint" if self._joint_train else "frozen"
             # WF-CFM-P0-F2: in_dim must accept the 9-D pair features
             # PLUS the EGNN-conditioned 2*hidden_dim concatenation at
@@ -2010,9 +2057,8 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         # too — joint end-to-end training of velocity field + atom
         # head + bond head.  In ``frozen`` mode (or when the head is
         # not constructed) the head is left out (legacy behaviour).
-        opt_params = (
-            list(self.velocity_field.parameters())
-            + list(self.pocket_encoder.parameters())
+        opt_params = list(self.velocity_field.parameters()) + list(
+            self.pocket_encoder.parameters()
         )
         if self._use_bond_head and self._joint_train and self.bond_head is not None:
             opt_params = opt_params + list(self.bond_head.parameters())
@@ -2023,7 +2069,7 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
     # ------------------------------------------------------------------
     def train_step(
         self,
-        pocket,                    # Pocket | List[Pocket] | None
+        pocket,  # Pocket | List[Pocket] | None
         mols: List[Molecule],
         atom_loss_weight: Optional[float] = None,
         bond_loss_weight: Optional[float] = None,
@@ -2074,7 +2120,9 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         edge_dst_list: List[int] = []
         edge_z_i_list: List[int] = []
         edge_z_j_list: List[int] = []
-        edge_label_list: List[int] = []  # 0=none, 1=single, 2=double, 3=triple, 4=aromatic
+        edge_label_list: List[
+            int
+        ] = []  # 0=none, 1=single, 2=double, 3=triple, 4=aromatic
         for i, m in enumerate(mols):
             n = m.coords.shape[0]
             x_1[i, :n] = m.coords.to(self.device)
@@ -2110,8 +2158,9 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         # T5: pocket conditioning — encode pocket(s) into a (B, H) bias.
         # Returns None when pocket=None so the velocity field takes its
         # unconditioned path.
-        pocket_embed = self._encode_pocket(pocket, b=b, max_n_atoms=max_n,
-                                            device=self.device)
+        pocket_embed = self._encode_pocket(
+            pocket, b=b, max_n_atoms=max_n, device=self.device
+        )
 
         # Sample noise + time (Lipman 2023 CFM).  ``torch.randn_like(x_1)``
         # inherits x_1's device, so x_0 is also on self.device.
@@ -2129,7 +2178,10 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         # unconstrained sampler. Supplying the target atomic numbers here
         # lets the atom head copy them and leaves the sampling input unseen.
         out = self.velocity_field(
-            path_sample.x_t, torch.zeros_like(atom_types), edge_index, t,
+            path_sample.x_t,
+            torch.zeros_like(atom_types),
+            edge_index,
+            t,
             pocket_embed=pocket_embed,
         )
         v_pred = out["vel"]
@@ -2158,10 +2210,12 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         atom_logits_for_loss = atom_logits
         if self._vocab_mask:
             vocab_mask_tensor = self._build_vocab_mask(
-                atom_logits.shape[-1], atom_logits.device,
+                atom_logits.shape[-1],
+                atom_logits.device,
             )
             atom_logits_for_loss = atom_logits.masked_fill(
-                ~vocab_mask_tensor, float("-inf"),
+                ~vocab_mask_tensor,
+                float("-inf"),
             )
         # Safety: if the masked fill produced a fully -inf row (only
         # possible when a target index falls outside vocab — degenerate
@@ -2170,7 +2224,9 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         row_is_finite = torch.isfinite(per_row_logits).any(dim=-1)
         if not row_is_finite.all():
             per_row_logits = torch.where(
-                row_is_finite.unsqueeze(-1), per_row_logits, atom_logits.reshape(-1, atom_logits.shape[-1]),
+                row_is_finite.unsqueeze(-1),
+                per_row_logits,
+                atom_logits.reshape(-1, atom_logits.shape[-1]),
             )
         atom_loss_per_node = F.cross_entropy(
             per_row_logits,
@@ -2192,12 +2248,16 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
             and len(edge_src_list) > 0
         ):
             edge_index_e = torch.tensor(
-                [edge_src_list, edge_dst_list], dtype=torch.long, device=self.device,
+                [edge_src_list, edge_dst_list],
+                dtype=torch.long,
+                device=self.device,
             )
             edge_z_i = torch.tensor(edge_z_i_list, dtype=torch.long, device=self.device)
             edge_z_j = torch.tensor(edge_z_j_list, dtype=torch.long, device=self.device)
             edge_labels = torch.tensor(
-                edge_label_list, dtype=torch.long, device=self.device,
+                edge_label_list,
+                dtype=torch.long,
+                device=self.device,
             )
             # Build per-pair features (distance + bucket + dative flag)
             # using the existing _PairFeaturiser pattern from
@@ -2221,7 +2281,10 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
                 # expose ``h``.
                 h_per_atom = self.velocity_field.atom_embed(atom_types)
             e_h = _gather_edge_features(
-                h_per_atom, edge_index_e, max_n=max_n, b=b,
+                h_per_atom,
+                edge_index_e,
+                max_n=max_n,
+                b=b,
             )
             # Concatenate the EGNN-conditioned per-edge hidden state
             # onto the 9-D pair features so the bond head has access
@@ -2243,7 +2306,9 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
             # the head cannot predict forbidden patterns.
             if self._bond_pattern_mask:
                 bond_logits_e = self.bond_head.apply_bond_pattern_mask(
-                    bond_logits_e, edge_z_i, edge_z_j,
+                    bond_logits_e,
+                    edge_z_i,
+                    edge_z_j,
                 )
             bond_loss_tensor = F.cross_entropy(bond_logits_e, edge_labels)
             bond_loss_value = float(bond_loss_tensor.item())
@@ -2262,8 +2327,12 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         # component (Yu et al. 2020, arXiv:2001.06782, Thm 1).  When
         # False we keep the legacy weighted-sum backward path — bit-
         # exact with the pre-Phase-2.3 behaviour.
-        if self._use_pcgrad and self._use_bond_head and self._joint_train \
-                and bond_loss_tensor.item() != 0.0:
+        if (
+            self._use_pcgrad
+            and self._use_bond_head
+            and self._joint_train
+            and bond_loss_tensor.item() != 0.0
+        ):
             # 3-task PCGrad: cfm, atom, bond.  We call ``backward``
             # on each scalar task loss separately (with ``retain_graph=True``
             # on the first two so the third can still backprop through
@@ -2271,8 +2340,7 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
             self.optimizer.zero_grad()
             cfm_loss.backward(retain_graph=True)
             grads_cfm = [
-                p.grad.detach().clone() if p.grad is not None
-                else torch.zeros_like(p)
+                p.grad.detach().clone() if p.grad is not None else torch.zeros_like(p)
                 for p in (
                     list(self.velocity_field.parameters())
                     + list(self.pocket_encoder.parameters())
@@ -2282,8 +2350,7 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
             self.optimizer.zero_grad()
             (atom_loss_weight * atom_loss).backward(retain_graph=True)
             grads_atom = [
-                p.grad.detach().clone() if p.grad is not None
-                else torch.zeros_like(p)
+                p.grad.detach().clone() if p.grad is not None else torch.zeros_like(p)
                 for p in (
                     list(self.velocity_field.parameters())
                     + list(self.pocket_encoder.parameters())
@@ -2293,8 +2360,7 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
             self.optimizer.zero_grad()
             (bond_loss_weight * bond_loss_tensor).backward()
             grads_bond = [
-                p.grad.detach().clone() if p.grad is not None
-                else torch.zeros_like(p)
+                p.grad.detach().clone() if p.grad is not None else torch.zeros_like(p)
                 for p in (
                     list(self.velocity_field.parameters())
                     + list(self.pocket_encoder.parameters())
@@ -2335,8 +2401,9 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         # Grad clip (matching MolFlow-Triton defaults).  T5: include the
         # pocket encoder in the clip so a spike in pocket-encoder grads
         # can't blow up the joint optimisation.
-        params = (list(self.velocity_field.parameters())
-                  + list(self.pocket_encoder.parameters()))
+        params = list(self.velocity_field.parameters()) + list(
+            self.pocket_encoder.parameters()
+        )
         if self._use_bond_head and self._joint_train and self.bond_head is not None:
             params = params + list(self.bond_head.parameters())
         torch.nn.utils.clip_grad_norm_(params, 1.0)
@@ -2363,8 +2430,11 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         assert self.path is not None, "call setup() first"
         if config.n_samples < 1 or config.n_steps < 1:
             raise ValueError("n_samples and n_steps must be positive")
-        field_modes = [(module, module.training) for root in (self.velocity_field, self.pocket_encoder)
-                       for module in root.modules()]
+        field_modes = [
+            (module, module.training)
+            for root in (self.velocity_field, self.pocket_encoder)
+            for module in root.modules()
+        ]
         self.velocity_field.eval()
         self.pocket_encoder.eval()
         try:
@@ -2376,7 +2446,7 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
 
     def _generate_impl(
         self,
-        pocket,                    # Pocket | List[Pocket] | None
+        pocket,  # Pocket | List[Pocket] | None
         config: GenerationConfig,
         generator: torch.Generator,
     ) -> List[Molecule]:
@@ -2398,33 +2468,45 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         # Fixed-size point cloud.  Could be replaced by per-sample atom-count
         # sampling in a future version.
         fixed_spec = config.conditioning.get("fixed_atom_types")
-        inferred_n = torch.as_tensor(fixed_spec).shape[-1] if fixed_spec is not None else 8
+        inferred_n = (
+            torch.as_tensor(fixed_spec).shape[-1] if fixed_spec is not None else 8
+        )
         n_atoms = getattr(config, "n_atoms", inferred_n)
         # All sampling tensors live on self.device so the ODE solver runs
         # on GPU end-to-end when ROCm is available.
         # Initial atom_types are placeholders that get REPLACED after the
         # ODE integration (see step 5 below).
-        atom_types = torch.zeros(n_samples, n_atoms, dtype=torch.long, device=self.device)
+        atom_types = torch.zeros(
+            n_samples, n_atoms, dtype=torch.long, device=self.device
+        )
         fixed_atoms = config.conditioning.get("fixed_atom_types")
         if fixed_atoms is not None:
-            fixed_atoms = torch.as_tensor(fixed_atoms, dtype=torch.long, device=self.device)
+            fixed_atoms = torch.as_tensor(
+                fixed_atoms, dtype=torch.long, device=self.device
+            )
             if fixed_atoms.shape == (n_atoms,):
                 fixed_atoms = fixed_atoms.unsqueeze(0).expand(n_samples, -1)
             if fixed_atoms.shape != (n_samples, n_atoms):
                 raise ValueError("fixed_atom_types must have shape (N,) or (B, N)")
-            if (fixed_atoms <= 0).any() or (fixed_atoms >= self._max_atomic_number).any():
-                raise ValueError("fixed_atom_types outside the model atomic-number vocabulary")
+            if (fixed_atoms <= 0).any() or (
+                fixed_atoms >= self._max_atomic_number
+            ).any():
+                raise ValueError(
+                    "fixed_atom_types outside the model atomic-number vocabulary"
+                )
         edge_index = self._make_dummy_edge_index(n_samples, n_atoms, self.device)
 
         # T5: encode pocket once (broadcast to all samples in this batch).
         # Returns None when pocket=None so the velocity field uses the
         # unconditioned (zero-bias) path.
-        pocket_embed = self._encode_pocket(pocket, b=n_samples,
-                                            max_n_atoms=n_atoms,
-                                            device=self.device)
+        pocket_embed = self._encode_pocket(
+            pocket, b=n_samples, max_n_atoms=n_atoms, device=self.device
+        )
 
         # 1. Sample noise
-        x_0 = torch.randn(n_samples, n_atoms, 3, device=self.device, generator=generator)
+        x_0 = torch.randn(
+            n_samples, n_atoms, 3, device=self.device, generator=generator
+        )
         # 2. Time grid (Lipman 2023 default = [0, 1])
         t_grid = torch.linspace(0.0, 1.0, config.n_steps + 1, device=self.device)
         # 3. Wrap velocity field in the library's ModelWrapper.
@@ -2438,6 +2520,7 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         # ``cfg_scale == 1.0`` we keep the legacy ``forward_velocity``
         # path bit-exact.
         from functools import partial
+
         cfg_scale = float(getattr(self, "_cfg_scale", 1.0) or 1.0)
         if cfg_scale != 1.0 and pocket_embed is not None:
             velocity_model = partial(
@@ -2460,30 +2543,45 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         metal_prior_k = int(self._metal_prior_k_every)
         metal_prior_w = float(self._metal_prior_weight)
         donor_edges = config.conditioning.get("dative_edge_index")
-        diagnostics = {"status": "inactive", "reason": "missing_fixed_atom_types_or_dative_edges",
-                       "weight": metal_prior_w, "gradient_evaluations": 0,
-                       "nonzero_gradient_graph_updates": 0,
-                       "fixed_atom_types": fixed_atoms is not None}
+        diagnostics = {
+            "status": "inactive",
+            "reason": "missing_fixed_atom_types_or_dative_edges",
+            "weight": metal_prior_w,
+            "gradient_evaluations": 0,
+            "nonzero_gradient_graph_updates": 0,
+            "fixed_atom_types": fixed_atoms is not None,
+        }
         self.last_metal_prior_diagnostics = diagnostics
         prior = None
         if donor_edges is not None:
             if fixed_atoms is None:
-                raise ValueError("dative_edge_index requires fixed_atom_types; sampled identities cannot define prior donors in advance")
-            donor_edges = torch.as_tensor(donor_edges, dtype=torch.long, device=self.device)
+                raise ValueError(
+                    "dative_edge_index requires fixed_atom_types; sampled identities cannot define prior donors in advance"
+                )
+            donor_edges = torch.as_tensor(
+                donor_edges, dtype=torch.long, device=self.device
+            )
             if donor_edges.dim() == 2 and donor_edges.shape[0] == 2:
                 donor_edges = donor_edges.unsqueeze(0).expand(n_samples, -1, -1)
             if donor_edges.dim() != 3 or donor_edges.shape[:2] != (n_samples, 2):
-                raise ValueError("dative_edge_index must have shape (2, E) or (B, 2, E)")
+                raise ValueError(
+                    "dative_edge_index must have shape (2, E) or (B, 2, E)"
+                )
             if (donor_edges < 0).any() or (donor_edges >= n_atoms).any():
                 raise ValueError("dative_edge_index contains invalid atom endpoints")
             from molmetal.molmetal_lam.priors.metal_geometry import MetalGeometryPrior
-            prior = MetalGeometryPrior(weight=metal_prior_w,
-                metal_geometry_map=config.conditioning.get("metal_geometry_map"))
+
+            prior = MetalGeometryPrior(
+                weight=metal_prior_w,
+                metal_geometry_map=config.conditioning.get("metal_geometry_map"),
+            )
             # Check declared edge destinations actually identify known metals.
             metal_set = fixed_atoms.new_tensor(list(prior.metal_geometry_map))
             destinations = torch.gather(fixed_atoms, 1, donor_edges[:, 1])
             if not (destinations.unsqueeze(-1) == metal_set).any(-1).all():
-                raise ValueError("Every dative edge destination must be a supported metal centre")
+                raise ValueError(
+                    "Every dative edge destination must be a supported metal centre"
+                )
             if donor_edges.shape[-1] == 0:
                 diagnostics["reason"] = "empty_dative_graph"
                 prior = None
@@ -2492,7 +2590,9 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
             prior = None
         step_counter = 0
         if prior is not None:
-            diagnostics.update(status="eligible", reason="explicit_fixed_atoms_and_donor_edges")
+            diagnostics.update(
+                status="eligible", reason="explicit_fixed_atoms_and_donor_edges"
+            )
 
         def _velocity_with_metal_prior(x, t):
             nonlocal step_counter
@@ -2505,23 +2605,38 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
             # gradients, sum per-graph energies to avoid batch-size dilution.
             with torch.enable_grad():
                 x_req = x.detach().requires_grad_(True)
-                energies = [prior.prior_loss(x_req[i], fixed_atoms[i],
-                    torch.full((donor_edges.shape[-1],), 2, dtype=torch.long, device=x.device),
-                    edge_index=donor_edges[i]) for i in range(n_samples)]
+                energies = [
+                    prior.prior_loss(
+                        x_req[i],
+                        fixed_atoms[i],
+                        torch.full(
+                            (donor_edges.shape[-1],),
+                            2,
+                            dtype=torch.long,
+                            device=x.device,
+                        ),
+                        edge_index=donor_edges[i],
+                    )
+                    for i in range(n_samples)
+                ]
                 energy = torch.stack(energies).sum()
                 diagnostics["gradient_evaluations"] += 1
                 if not energy.requires_grad:
                     return base
                 gradient = torch.autograd.grad(energy, x_req)[0]
             if not torch.isfinite(gradient).all():
-                raise FloatingPointError("Metal geometry prior produced nonfinite gradients")
+                raise FloatingPointError(
+                    "Metal geometry prior produced nonfinite gradients"
+                )
             updates = int((gradient.square().sum(dim=(1, 2)) > 0).sum())
             diagnostics["nonzero_gradient_graph_updates"] += updates
             if updates:
                 diagnostics["status"] = "active"
             return base - gradient.detach()
 
-        wrapper = self._ModelWrapper(model=_velocity_with_metal_prior if prior is not None else velocity_model)
+        wrapper = self._ModelWrapper(
+            model=_velocity_with_metal_prior if prior is not None else velocity_model
+        )
         # 4. Solve the ODE
         solver = self._ODESolver(velocity_model=wrapper)
         # WF-CFM-Frontier Phase 2 Fix #2: ODE method default flipped
@@ -2556,23 +2671,28 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
             # legacy pure-conditional forward path bit-exact.
             if cfg_scale != 1.0 and pocket_embed is not None:
                 out_cond = self.velocity_field(
-                    x_final, init_atom_types, edge_index,
+                    x_final,
+                    init_atom_types,
+                    edge_index,
                     torch.ones(n_samples, device=self.device),
                     pocket_embed=pocket_embed,
                 )
                 out_uncond = self.velocity_field(
-                    x_final, init_atom_types, edge_index,
+                    x_final,
+                    init_atom_types,
+                    edge_index,
                     torch.ones(n_samples, device=self.device),
                     pocket_embed=None,
                 )
                 # CFG-style logits interpolation (linear in logit space).
-                atom_logits = (
-                    out_uncond["atom_logits"]
-                    + cfg_scale * (out_cond["atom_logits"] - out_uncond["atom_logits"])
+                atom_logits = out_uncond["atom_logits"] + cfg_scale * (
+                    out_cond["atom_logits"] - out_uncond["atom_logits"]
                 )
             else:
                 out = self.velocity_field(
-                    x_final, init_atom_types, edge_index,
+                    x_final,
+                    init_atom_types,
+                    edge_index,
                     torch.ones(n_samples, device=self.device),
                     pocket_embed=pocket_embed,
                 )
@@ -2590,15 +2710,19 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
             # behaviour bit-exactly for callers that opt out.
             if self._vocab_mask:
                 vocab_mask_tensor = self._build_vocab_mask(
-                    atom_logits.shape[-1], atom_logits.device,
+                    atom_logits.shape[-1],
+                    atom_logits.device,
                 )
                 atom_logits = atom_logits.masked_fill(~vocab_mask_tensor, float("-inf"))
             atom_probs = F.softmax(atom_logits, dim=-1)
             # Categorical sample per atom
             if not torch.isfinite(atom_probs).all():
-                raise FloatingPointError("Atom prediction produced non-finite probabilities")
-            sampled_atoms = torch.multinomial(atom_probs.reshape(-1, atom_probs.shape[-1]), 1,
-                                             generator=generator).reshape(n_samples, n_atoms)
+                raise FloatingPointError(
+                    "Atom prediction produced non-finite probabilities"
+                )
+            sampled_atoms = torch.multinomial(
+                atom_probs.reshape(-1, atom_probs.shape[-1]), 1, generator=generator
+            ).reshape(n_samples, n_atoms)
         if fixed_atoms is not None:
             sampled_atoms = fixed_atoms
         # 6. Build Molecule objects with REAL atom types and (when the
@@ -2618,6 +2742,7 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
                 BondAwareDecoder,
                 build_bond_pattern_mask,
             )
+
             atom_vocab = getattr(self, "_atom_vocab", None)
             if atom_vocab is not None:
                 bond_pattern_mask = build_bond_pattern_mask(tuple(atom_vocab))
@@ -2638,6 +2763,7 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
             from molmetal.adapters.flow_matching_lipman.connectivity_decoder import (
                 ConnectivityAwareDecoder as _ConnAwareDecoder,
             )
+
             connectivity_decoder = _ConnAwareDecoder(
                 bond_decoder=bond_decoder,
                 accept_only_connected=bool(
@@ -2680,10 +2806,12 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
                         edge_dst.append(int(dst))
                         edge_ord.append(int(order))
                     bonds_tensor = torch.tensor(
-                        [edge_src, edge_dst], dtype=torch.long,
+                        [edge_src, edge_dst],
+                        dtype=torch.long,
                     )
                     bond_types_tensor = torch.tensor(
-                        edge_ord, dtype=torch.long,
+                        edge_ord,
+                        dtype=torch.long,
                     )
                 else:
                     bonds_tensor = torch.zeros(2, 0, dtype=torch.long)
@@ -2721,10 +2849,12 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
                         edge_dst.append(int(dst))
                         edge_ord.append(int(order))
                     bonds_tensor = torch.tensor(
-                        [edge_src, edge_dst], dtype=torch.long,
+                        [edge_src, edge_dst],
+                        dtype=torch.long,
                     )
                     bond_types_tensor = torch.tensor(
-                        edge_ord, dtype=torch.long,
+                        edge_ord,
+                        dtype=torch.long,
                     )
                 else:
                     bonds_tensor = torch.zeros(2, 0, dtype=torch.long)
@@ -2734,14 +2864,16 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
                 bonds_tensor = torch.zeros(2, 0, dtype=torch.long)
                 bond_types_tensor = torch.zeros(0, dtype=torch.long)
                 smiles_i = ""
-            mols.append(Molecule(
-                coords=coords_i,
-                atom_types=atoms_i,
-                bonds=bonds_tensor,
-                bond_types=bond_types_tensor,
-                formal_charges=torch.zeros(n_atoms, dtype=torch.long),
-                smiles=smiles_i,
-            ))
+            mols.append(
+                Molecule(
+                    coords=coords_i,
+                    atom_types=atoms_i,
+                    bonds=bonds_tensor,
+                    bond_types=bond_types_tensor,
+                    formal_charges=torch.zeros(n_atoms, dtype=torch.long),
+                    smiles=smiles_i,
+                )
+            )
         return mols
 
     # ------------------------------------------------------------------
@@ -2749,7 +2881,7 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
     # ------------------------------------------------------------------
     def _encode_pocket(
         self,
-        pocket,                         # Pocket | List[Pocket] | None
+        pocket,  # Pocket | List[Pocket] | None
         b: int,
         max_n_atoms: int,
         device: torch.device,
@@ -2848,7 +2980,9 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         return tuple(self._atom_vocab)
 
     def _build_vocab_mask(
-        self, max_atomic_number: int, device: torch.device,
+        self,
+        max_atomic_number: int,
+        device: torch.device,
     ) -> torch.Tensor:
         """Return a bool ``(max_atomic_number,)`` mask — True where Z is allowed.
 
@@ -2870,7 +3004,9 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
     # ------------------------------------------------------------------
     def get_metadata(self) -> dict:
         return {
-            "metal_prior_last_generation": dict(getattr(self, "last_metal_prior_diagnostics", {"status": "not_run"})),
+            "metal_prior_last_generation": dict(
+                getattr(self, "last_metal_prior_diagnostics", {"status": "not_run"})
+            ),
             "metal_prior_contract": "requires conditioning.fixed_atom_types and conditioning.dative_edge_index; unconstrained sampling is inactive",
             "atom_training_contract": "masked Z=0 inputs; true atomic numbers only as cross-entropy targets; old teacher-forced checkpoints require retraining",
             "pocket_embed_scale": self._pocket_embed_scale,
@@ -2923,45 +3059,72 @@ def build_argparser() -> "argparse.ArgumentParser":
     ...                           "--metal-prior-k-every", "5"])
     """
     import argparse
+
     p = argparse.ArgumentParser(
         prog="lipman-fm",
         description="Lipman 2023 FM adapter for Mol-Metal (with TODO-09 metal prior)",
     )
-    p.add_argument("--ref-repo", default="molmetal/references/flow_matching",
-                   help="Path to the cloned facebookresearch/flow_matching repo")
+    p.add_argument(
+        "--ref-repo",
+        default="molmetal/references/flow_matching",
+        help="Path to the cloned facebookresearch/flow_matching repo",
+    )
     p.add_argument("--hidden-dim", type=int, default=128)
     p.add_argument("--n-layers", type=int, default=3)
     p.add_argument("--max-atomic-number", type=int, default=100)
     p.add_argument("--lr", type=float, default=1e-4)
     p.add_argument("--atom-loss-weight", type=float, default=0.1)
     # TODO-09: metal-geometry prior knobs.
-    p.add_argument("--metal-prior-weight", type=float, default=0.1,
-                   help="Weight applied to the metal-geometry soft penalty "
-                        "during sampling.  Set to 0.0 to disable the prior "
-                        "(legacy bit-exact path).")
-    p.add_argument("--metal-prior-k-every", type=int, default=10,
-                   help="Apply the metal-geometry prior every K integration "
-                        "steps during sampling.  Defaults to 10.")
+    p.add_argument(
+        "--metal-prior-weight",
+        type=float,
+        default=0.1,
+        help="Weight applied to the metal-geometry soft penalty "
+        "during sampling.  Set to 0.0 to disable the prior "
+        "(legacy bit-exact path).",
+    )
+    p.add_argument(
+        "--metal-prior-k-every",
+        type=int,
+        default=10,
+        help="Apply the metal-geometry prior every K integration "
+        "steps during sampling.  Defaults to 10.",
+    )
     # TODO-08: tmQM pre-trained encoder initialiser knobs.
-    p.add_argument("--tmqm-init", nargs="?", const="__default__",
-                   default=None,
-                   help="Warm-start the EGNN encoder from the tmQM pre-trained "
-                        "checkpoint (DMPNN; see molmetal/reports/f2_tmqm_pretrain.md). "
-                        "Pass --tmqm-init to use the default checkpoint path, or "
-                        "--tmqm-init=/path/to/ckpt.pt for an explicit file.  Use "
-                        "--random-init to opt out.")
-    p.add_argument("--random-init", action="store_true",
-                   help="Disable the tmQM warm-start even if --tmqm-init is passed "
-                        "(equivalent to not loading any encoder checkpoint).")
+    p.add_argument(
+        "--tmqm-init",
+        nargs="?",
+        const="__default__",
+        default=None,
+        help="Warm-start the EGNN encoder from the tmQM pre-trained "
+        "checkpoint (DMPNN; see molmetal/reports/f2_tmqm_pretrain.md). "
+        "Pass --tmqm-init to use the default checkpoint path, or "
+        "--tmqm-init=/path/to/ckpt.pt for an explicit file.  Use "
+        "--random-init to opt out.",
+    )
+    p.add_argument(
+        "--random-init",
+        action="store_true",
+        help="Disable the tmQM warm-start even if --tmqm-init is passed "
+        "(equivalent to not loading any encoder checkpoint).",
+    )
     # TODO-10 axis-C: classifier-free guidance knobs.
-    p.add_argument("--context-dropout", type=float, default=0.1,
-                   help="Probability of dropping the conditioning pocket "
-                        "embedding during training.  Teaches the model the "
-                        "unconditional marginal v(v | ∅) needed for CFG at "
-                        "inference time.  Default 0.1 (Ho & Salimans 2022).")
-    p.add_argument("--cfg-scale", type=float, default=1.0,
-                   help="Classifier-free guidance scale used at inference.  "
-                        "1.0 = legacy conditional sampler (bit-exact); "
-                        "2.0 = standard CFG strength; >=3.0 = strong guidance.  "
-                        "Set to 1.0 to disable CFG.")
+    p.add_argument(
+        "--context-dropout",
+        type=float,
+        default=0.1,
+        help="Probability of dropping the conditioning pocket "
+        "embedding during training.  Teaches the model the "
+        "unconditional marginal v(v | ∅) needed for CFG at "
+        "inference time.  Default 0.1 (Ho & Salimans 2022).",
+    )
+    p.add_argument(
+        "--cfg-scale",
+        type=float,
+        default=1.0,
+        help="Classifier-free guidance scale used at inference.  "
+        "1.0 = legacy conditional sampler (bit-exact); "
+        "2.0 = standard CFG strength; >=3.0 = strong guidance.  "
+        "Set to 1.0 to disable CFG.",
+    )
     return p

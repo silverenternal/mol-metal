@@ -95,9 +95,10 @@ def test_oracle_in_process_unavailable() -> None:
     # We don't have torch_scatter / MDAnalysis / dgl installed.
     assert mod.biolm_full_oracle_available() is False
     # Bogus repo_root also returns False.
-    assert mod.biolm_full_oracle_available(
-        repo_root=str(PROJECT_ROOT / "no_such_repo")
-    ) is False
+    assert (
+        mod.biolm_full_oracle_available(repo_root=str(PROJECT_ROOT / "no_such_repo"))
+        is False
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -233,9 +234,7 @@ def test_cli_error_falls_through_to_mock() -> None:
     assert col.status == "mock"
     assert col.inference_path == "mock"
     assert col.n_scored == 2
-    assert all(
-        math.isfinite(col.per_smiles[s]) for s in ("CCO", "c1ccccc1")
-    )
+    assert all(math.isfinite(col.per_smiles[s]) for s in ("CCO", "c1ccccc1"))
 
 
 # ---------------------------------------------------------------------------

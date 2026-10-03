@@ -78,8 +78,12 @@ class TestHelpers:
         """``_parse_phases`` handles ``all`` and custom subsets."""
         all_phases = _parse_phases("all")
         assert all_phases == [
-            "closure", "astsr", "hilbert",
-            "coupling", "cfm", "mcts",
+            "closure",
+            "astsr",
+            "hilbert",
+            "coupling",
+            "cfm",
+            "mcts",
         ]
         subset = _parse_phases("closure,hilbert,cfm")
         assert subset == ["closure", "hilbert", "cfm"]
@@ -193,8 +197,12 @@ class TestFullPipeline:
         pipe = LambdaCFMPipeline(seed=1)
         rep = pipe.run_full_pipeline()
         assert rep["phases"] == [
-            "closure", "astsr", "hilbert",
-            "coupling", "cfm", "mcts",
+            "closure",
+            "astsr",
+            "hilbert",
+            "coupling",
+            "cfm",
+            "mcts",
         ]
         assert len(rep["steps"]) == 6
         assert "wall_time_per_step_s" in rep
@@ -284,12 +292,18 @@ class TestCli:
     def test_run_orchestrator_round_trip(self, tmp_path: Path) -> None:
         """CLI persists the same report shape as :class:`LambdaCFMBenchmark`."""
         out_dir = tmp_path / "wf40_cli"
-        rep = run_orchestrator([
-            "--n-samples", "1",
-            "--seeds", "0,1",
-            "--phases", "cfm,mcts",
-            "--out-dir", str(out_dir),
-        ])
+        rep = run_orchestrator(
+            [
+                "--n-samples",
+                "1",
+                "--seeds",
+                "0,1",
+                "--phases",
+                "cfm,mcts",
+                "--out-dir",
+                str(out_dir),
+            ]
+        )
         assert rep["n_samples"] == 1
         assert rep["seeds"] == [0, 1]
         assert rep["phases"] == ["cfm", "mcts"]

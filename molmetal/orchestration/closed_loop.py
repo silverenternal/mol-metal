@@ -188,9 +188,9 @@ SOTA_ALIGNED_CONFIG_PATH = os.path.join(
 # Normalisation ranges used to bring each raw objective onto a comparable
 # 0..1 scale before the weighted sum.  Chosen from the usual medicinal
 # chemistry ranges rather than fit to any dataset.
-_SA_MIN, _SA_MAX = 1.0, 10.0          # Ertl & Schuffenhauer SA score range
-_PIC50_MIN, _PIC50_MAX = 4.0, 11.0    # ~100 µM .. 10 pM
-_VINA_MIN, _VINA_MAX = -14.0, 0.0     # AutoDock Vina kcal/mol
+_SA_MIN, _SA_MAX = 1.0, 10.0  # Ertl & Schuffenhauer SA score range
+_PIC50_MIN, _PIC50_MAX = 4.0, 11.0  # ~100 µM .. 10 pM
+_VINA_MIN, _VINA_MAX = -14.0, 0.0  # AutoDock Vina kcal/mol
 
 
 def _clip01(x: float) -> float:
@@ -243,6 +243,7 @@ def build_default_reward_aggregator(
         if admet_channel is None:
             try:
                 from molmetal_lam.search_alg.proof_search import _r_admet_default
+
                 admet_channel = _r_admet_default
                 log.info("ADMET channel wired via proof_search._r_admet_default")
             except Exception as exc:
@@ -326,6 +327,7 @@ def build_todo01_reward_aggregator(
         if admet_channel is None:
             try:
                 from molmetal_lam.search_alg.proof_search import _r_admet_default
+
                 admet_channel = _r_admet_default
                 log.info("ADMET channel wired via proof_search._r_admet_default")
             except Exception as exc:
@@ -422,6 +424,7 @@ def build_sota_aligned_reward_aggregator(
         if admet_channel is None:
             try:
                 from molmetal_lam.search_alg.proof_search import _r_admet_default
+
                 admet_channel = _r_admet_default
                 log.info("ADMET channel wired via proof_search._r_admet_default")
             except Exception as exc:
@@ -660,11 +663,15 @@ def apply_reward_weights_override(
     keys are logged and ignored — the closed loop never crashes because
     of a malformed weights override.
     """
-    cfg = dict(base_weights if base_weights is not None else TODO01_REWARD_AGGREGATOR_WEIGHTS)
+    cfg = dict(
+        base_weights if base_weights is not None else TODO01_REWARD_AGGREGATOR_WEIGHTS
+    )
     if not override_path:
         return cfg
     if not os.path.exists(override_path):
-        log.warning("reward weights override not found: %s — using defaults", override_path)
+        log.warning(
+            "reward weights override not found: %s — using defaults", override_path
+        )
         return cfg
     try:
         # Lazy import — PyYAML is optional and many test envs don't have it.
@@ -676,7 +683,9 @@ def apply_reward_weights_override(
         log.warning("PyYAML not installed — ignoring %s", override_path)
         return cfg
     except Exception as exc:
-        log.warning("failed to load reward weights override (%s): %s", override_path, exc)
+        log.warning(
+            "failed to load reward weights override (%s): %s", override_path, exc
+        )
         return cfg
     if not isinstance(override, dict):
         log.warning("reward weights override must be a dict, got %s", type(override))
@@ -915,9 +924,7 @@ class RewardAggregatorScorer(ScoringFunction):
         molecule_to_state: Optional[Callable[[Any, Any, Any], Any]] = None,
     ) -> None:
         self._aggregator = (
-            aggregator
-            if aggregator is not None
-            else build_todo01_reward_aggregator()
+            aggregator if aggregator is not None else build_todo01_reward_aggregator()
         )
         self._state_fn = molecule_to_state or (lambda m, c, p: m)
         self.last_breakdown: Dict[str, Dict[str, float]] = {}
@@ -1115,9 +1122,7 @@ class ClosedLoop(DesignLoop):
     # ------------------------------------------------------------------
     # Main loop
     # ------------------------------------------------------------------
-    def run(
-        self, pocket: Pocket, config: DesignLoopConfig
-    ) -> List[ScoredCandidate]:
+    def run(self, pocket: Pocket, config: DesignLoopConfig) -> List[ScoredCandidate]:
         """Run ``config.n_iterations`` design rounds; return the global top-K."""
         self._history = []
         self._best = []
@@ -1157,7 +1162,9 @@ class ClosedLoop(DesignLoop):
                             poses,
                             key=lambda c: (
                                 float(c.pose_confidence or 0.0),
-                                -float(c.vina_score if c.vina_score is not None else 0.0),
+                                -float(
+                                    c.vina_score if c.vina_score is not None else 0.0
+                                ),
                             ),
                         )
                 except Exception:  # noqa: BLE001 — one bad pose must not kill the run
@@ -1285,9 +1292,7 @@ class ClosedLoop(DesignLoop):
             n = len(per_mol)
             if n > 0:
                 for chan in channels:
-                    vals = [
-                        float(v.get(chan, 0.0)) for v in per_mol.values()
-                    ]
+                    vals = [float(v.get(chan, 0.0)) for v in per_mol.values()]
                     aggregate[chan] = float(sum(vals) / n)
             return {
                 "per_molecule": per_mol,

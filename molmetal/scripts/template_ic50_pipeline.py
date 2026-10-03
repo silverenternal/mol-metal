@@ -64,6 +64,7 @@ import numpy as np
 try:
     from scipy.optimize import curve_fit
     from scipy.stats import f_oneway, pearsonr, spearmanr
+
     _HAS_SCIPY = True
 except ImportError:
     _HAS_SCIPY = False
@@ -86,7 +87,13 @@ PEARSON_GATE = 0.7
 N_BOOTSTRAP = 1000
 RNG_SEED = 42
 DEFAULT_OUT = PROJECT_ROOT / "molmetal" / "reports" / "wf74_ic50_pipeline"
-DEFAULT_DMPNN = PROJECT_ROOT / "molmetal" / "reports" / "wf58_dmpnn_predictions" / "per_compound_pic50.json"
+DEFAULT_DMPNN = (
+    PROJECT_ROOT
+    / "molmetal"
+    / "reports"
+    / "wf58_dmpnn_predictions"
+    / "per_compound_pic50.json"
+)
 
 
 # ---------------------------------------------------------------------------
@@ -95,6 +102,7 @@ DEFAULT_DMPNN = PROJECT_ROOT / "molmetal" / "reports" / "wf58_dmpnn_predictions"
 @dataclass
 class PlateWell:
     """Per-well record per §1.1 schema."""
+
     plate_id: str
     well_id: str
     compound_id: str
@@ -141,47 +149,89 @@ def make_synthetic_fixture(
             for conc in DOSE_GRID_UM[:n_doses]:
                 for rep in range(1, n_replicates + 1):
                     viability = 1.0 / (1.0 + (conc / (ic50_true * shift)) ** hill)
-                    viability = float(np.clip(viability + rng.normal(0, 0.05), 0.0, 1.5))
-                    raw = viability * 0.8 + 0.1  # raw readout = viability * gain + offset
-                    wells.append(PlateWell(
-                        plate_id=f"P6-001-{chr(64 + rep)}",
-                        well_id=f"C{(rep * 8) % 12 + 1:02d}",
-                        compound_id=cpd, metal=metal, cell_line=cell,
-                        concentration_uM=float(conc), replicate=rep,
-                        assay="SRB_540nm", time_h=72,
-                        raw_readout=float(raw),
-                        background_well=False,
-                        vehicle_well=False,
-                        positive_ctrl_well=False,
-                    ))
+                    viability = float(
+                        np.clip(viability + rng.normal(0, 0.05), 0.0, 1.5)
+                    )
+                    raw = (
+                        viability * 0.8 + 0.1
+                    )  # raw readout = viability * gain + offset
+                    wells.append(
+                        PlateWell(
+                            plate_id=f"P6-001-{chr(64 + rep)}",
+                            well_id=f"C{(rep * 8) % 12 + 1:02d}",
+                            compound_id=cpd,
+                            metal=metal,
+                            cell_line=cell,
+                            concentration_uM=float(conc),
+                            replicate=rep,
+                            assay="SRB_540nm",
+                            time_h=72,
+                            raw_readout=float(raw),
+                            background_well=False,
+                            vehicle_well=False,
+                            positive_ctrl_well=False,
+                        )
+                    )
     # Add 12 background / 12 vehicle / 12 positive-ctrl wells per plate (3 plates)
     for plate_idx, plate in enumerate(["A", "B", "C"], start=1):
         for k in range(12):
-            wells.append(PlateWell(
-                plate_id=f"P6-001-{plate}", well_id=f"A{k+1:02d}",
-                compound_id="bg", metal="-", cell_line="-",
-                concentration_uM=0.0, replicate=0,
-                assay="SRB_540nm", time_h=72, raw_readout=float(0.1 + 0.01 * k),
-                background_well=True, vehicle_well=False, positive_ctrl_well=False,
-            ))
-            wells.append(PlateWell(
-                plate_id=f"P6-001-{plate}", well_id=f"B{k+1:02d}",
-                compound_id="veh", metal="-", cell_line="MCF7",
-                concentration_uM=0.0, replicate=0,
-                assay="SRB_540nm", time_h=72, raw_readout=float(0.9 + 0.02 * k),
-                background_well=False, vehicle_well=True, positive_ctrl_well=False,
-            ))
-            wells.append(PlateWell(
-                plate_id=f"P6-001-{plate}", well_id=f"D{k+1:02d}",
-                compound_id="cisplatin", metal="Pt", cell_line="MCF7",
-                concentration_uM=10.0, replicate=0,
-                assay="SRB_540nm", time_h=72, raw_readout=float(0.2),
-                background_well=False, vehicle_well=False, positive_ctrl_well=True,
-            ))
+            wells.append(
+                PlateWell(
+                    plate_id=f"P6-001-{plate}",
+                    well_id=f"A{k+1:02d}",
+                    compound_id="bg",
+                    metal="-",
+                    cell_line="-",
+                    concentration_uM=0.0,
+                    replicate=0,
+                    assay="SRB_540nm",
+                    time_h=72,
+                    raw_readout=float(0.1 + 0.01 * k),
+                    background_well=True,
+                    vehicle_well=False,
+                    positive_ctrl_well=False,
+                )
+            )
+            wells.append(
+                PlateWell(
+                    plate_id=f"P6-001-{plate}",
+                    well_id=f"B{k+1:02d}",
+                    compound_id="veh",
+                    metal="-",
+                    cell_line="MCF7",
+                    concentration_uM=0.0,
+                    replicate=0,
+                    assay="SRB_540nm",
+                    time_h=72,
+                    raw_readout=float(0.9 + 0.02 * k),
+                    background_well=False,
+                    vehicle_well=True,
+                    positive_ctrl_well=False,
+                )
+            )
+            wells.append(
+                PlateWell(
+                    plate_id=f"P6-001-{plate}",
+                    well_id=f"D{k+1:02d}",
+                    compound_id="cisplatin",
+                    metal="Pt",
+                    cell_line="MCF7",
+                    concentration_uM=10.0,
+                    replicate=0,
+                    assay="SRB_540nm",
+                    time_h=72,
+                    raw_readout=float(0.2),
+                    background_well=False,
+                    vehicle_well=False,
+                    positive_ctrl_well=True,
+                )
+            )
     return wells
 
 
-def normalize_wells(wells: Sequence[PlateWell]) -> Dict[Tuple[str, str], List[Tuple[float, float]]]:
+def normalize_wells(
+    wells: Sequence[PlateWell],
+) -> Dict[Tuple[str, str], List[Tuple[float, float]]]:
     """Apply §1.2 background subtraction + §1.5 viability conversion.
 
     Returns ``{(compound_id, cell_line): [(concentration_uM, viability), ...]}``.
@@ -189,21 +239,27 @@ def normalize_wells(wells: Sequence[PlateWell]) -> Dict[Tuple[str, str], List[Tu
     # Plate-wise background = mean of background wells
     bg_per_plate: Dict[str, float] = {}
     for plate_id in {w.plate_id for w in wells}:
-        bg_wells = [w.raw_readout for w in wells
-                    if w.plate_id == plate_id and w.background_well]
+        bg_wells = [
+            w.raw_readout for w in wells if w.plate_id == plate_id and w.background_well
+        ]
         bg_per_plate[plate_id] = float(np.mean(bg_wells)) if bg_wells else 0.0
     # Vehicle per plate for viability normalization
     veh_per_plate: Dict[str, float] = {}
     for plate_id in {w.plate_id for w in wells}:
-        veh_wells = [w.raw_readout for w in wells
-                     if w.plate_id == plate_id and w.vehicle_well]
+        veh_wells = [
+            w.raw_readout for w in wells if w.plate_id == plate_id and w.vehicle_well
+        ]
         veh_per_plate[plate_id] = float(np.median(veh_wells)) if veh_wells else 1.0
     # Aggregate viability per (compound, cell_line)
     out: Dict[Tuple[str, str], List[Tuple[float, float]]] = {}
     for w in wells:
         if w.background_well or w.vehicle_well or w.positive_ctrl_well:
             continue
-        if w.compound_id == "bg" or w.compound_id == "veh" or w.compound_id == "cisplatin":
+        if (
+            w.compound_id == "bg"
+            or w.compound_id == "veh"
+            or w.compound_id == "cisplatin"
+        ):
             continue
         corrected = w.raw_readout - bg_per_plate[w.plate_id]
         viability = float(np.clip(corrected / veh_per_plate[w.plate_id], 0.0, 1.5))
@@ -216,7 +272,9 @@ def normalize_wells(wells: Sequence[PlateWell]) -> Dict[Tuple[str, str], List[Tu
 # ---------------------------------------------------------------------------
 # §2 Dose-response curve fitting (4-parameter Hill / log-logistic)
 # ---------------------------------------------------------------------------
-def hill_equation(c: np.ndarray, bottom: float, top: float, ec50: float, n_hill: float) -> np.ndarray:
+def hill_equation(
+    c: np.ndarray, bottom: float, top: float, ec50: float, n_hill: float
+) -> np.ndarray:
     """4-parameter Hill equation per §2.1."""
     return bottom + (top - bottom) / (1.0 + (c / ec50) ** n_hill)
 
@@ -231,7 +289,9 @@ def fit_ic50(conc_viab: Sequence[Tuple[float, float]]) -> Optional[Dict[str, flo
         return None
     try:
         popt, _ = curve_fit(
-            hill_equation, c, v,
+            hill_equation,
+            c,
+            v,
             p0=[0.0, 1.0, 1.0, 1.5],
             bounds=([-0.2, 0.5, 1e-4, 0.1], [0.5, 1.5, 1e3, 5.0]),
             maxfev=2000,
@@ -242,8 +302,12 @@ def fit_ic50(conc_viab: Sequence[Tuple[float, float]]) -> Optional[Dict[str, flo
         ss_tot = float(np.sum((v - np.mean(v)) ** 2))
         r_sq = 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
         return {
-            "bottom": bottom, "top": top, "ec50_uM": ec50,
-            "hill_slope": n_hill, "r_squared": r_sq, "n_points": int(c.size),
+            "bottom": bottom,
+            "top": top,
+            "ec50_uM": ec50,
+            "hill_slope": n_hill,
+            "r_squared": r_sq,
+            "n_points": int(c.size),
         }
     except Exception:
         return None
@@ -272,7 +336,9 @@ def bootstrap_pic50_ci(
     fit = fit_ic50(conc_viab)
     if fit is None:
         return None
-    predicted = hill_equation(c, fit["bottom"], fit["top"], fit["ec50_uM"], fit["hill_slope"])
+    predicted = hill_equation(
+        c, fit["bottom"], fit["top"], fit["ec50_uM"], fit["hill_slope"]
+    )
     residuals = v - predicted
     rng = np.random.default_rng(seed)
     ic50_samples: List[float] = []
@@ -280,7 +346,9 @@ def bootstrap_pic50_ci(
         boot_v = predicted + rng.choice(residuals, size=residuals.size, replace=True)
         try:
             popt, _ = curve_fit(
-                hill_equation, c, boot_v,
+                hill_equation,
+                c,
+                boot_v,
                 p0=[fit["bottom"], fit["top"], fit["ec50_uM"], fit["hill_slope"]],
                 bounds=([-0.2, 0.5, 1e-4, 0.1], [0.5, 1.5, 1e3, 5.0]),
                 maxfev=1000,
@@ -291,7 +359,10 @@ def bootstrap_pic50_ci(
     if not ic50_samples:
         return None
     ic50_arr = np.array(ic50_samples)
-    ic50_low, ic50_high = float(np.quantile(ic50_arr, 0.025)), float(np.quantile(ic50_arr, 0.975))
+    ic50_low, ic50_high = (
+        float(np.quantile(ic50_arr, 0.025)),
+        float(np.quantile(ic50_arr, 0.975)),
+    )
     # §3.2 inversion: lower IC50 → higher pIC50
     pic50_low = pic50_from_ic50(ic50_high)
     pic50_high = pic50_from_ic50(ic50_low)
@@ -316,7 +387,11 @@ def anova_per_metal(
                 cell_pic50[cell].append(rec["pic50"])
         groups = [g for g in cell_pic50.values() if len(g) >= 2]
         if len(groups) < 2:
-            out[metal] = {"F": float("nan"), "p_raw": float("nan"), "n_groups": len(groups)}
+            out[metal] = {
+                "F": float("nan"),
+                "p_raw": float("nan"),
+                "n_groups": len(groups),
+            }
             continue
         F, p = f_oneway(*groups)
         out[metal] = {"F": float(F), "p_raw": float(p), "n_groups": len(groups)}
@@ -348,8 +423,11 @@ def agreement_per_metal_cell(
             n = len(wetlab)
             if n < 4:
                 out[f"{metal}-{cell}"] = {
-                    "pearson_r": None, "spearman_rho": None, "n": n,
-                    "gate_pass": False, "reason": f"n={n} < 4",
+                    "pearson_r": None,
+                    "spearman_rho": None,
+                    "n": n,
+                    "gate_pass": False,
+                    "reason": f"n={n} < 4",
                 }
                 continue
             r_p, _ = pearsonr(wetlab, dmpnn)
@@ -390,15 +468,24 @@ def build_per_compound_records(
     """Run §1-§3 on each (compound, cell_line); emit per-compound record."""
     norm = normalize_wells(wells)
     out: Dict[Tuple[str, str], Dict[str, object]] = {}
-    metal_lookup = {w.compound_id: w.metal for w in wells if w.compound_id not in ("bg", "veh", "cisplatin")}
+    metal_lookup = {
+        w.compound_id: w.metal
+        for w in wells
+        if w.compound_id not in ("bg", "veh", "cisplatin")
+    }
     for (cpd, cell), points in norm.items():
         fit = fit_ic50(points)
         ci = bootstrap_pic50_ci(points, n_boot=n_boot)
         if fit is None:
             out[(cpd, cell)] = {
-                "rank": None, "compound_id": cpd, "metal": metal_lookup.get(cpd, "?"),
-                "cell_line": cell, "ic50_uM": None, "pic50": None,
-                "fit_quality": "fit_fail", "qc_flags": ["fit_fail"],
+                "rank": None,
+                "compound_id": cpd,
+                "metal": metal_lookup.get(cpd, "?"),
+                "cell_line": cell,
+                "ic50_uM": None,
+                "pic50": None,
+                "fit_quality": "fit_fail",
+                "qc_flags": ["fit_fail"],
             }
             continue
         pic50 = pic50_from_ic50(fit["ec50_uM"])
@@ -412,11 +499,14 @@ def build_per_compound_records(
         if fit["n_points"] < 6:
             qc_flags.append("insufficient_doses")
         out[(cpd, cell)] = {
-            "rank": None, "compound_id": cpd, "metal": metal_lookup.get(cpd, "?"),
+            "rank": None,
+            "compound_id": cpd,
+            "metal": metal_lookup.get(cpd, "?"),
             "cell_line": cell,
             "ic50_uM": float(fit["ec50_uM"]),
             "pic50": float(pic50),
-            "pic50_ci_low": ci_low, "pic50_ci_high": ci_high,
+            "pic50_ci_low": ci_low,
+            "pic50_ci_high": ci_high,
             "hill_slope": float(fit["hill_slope"]),
             "r_squared": float(fit["r_squared"]),
             "n_doses": int(fit["n_points"]),
@@ -432,7 +522,9 @@ def build_per_compound_records(
 # ---------------------------------------------------------------------------
 TEMPLATE_SCHEMA: Dict[str, object] = {
     "meta": {
-        "n_compounds": 20, "n_cell_lines": 4, "n_pass_qc": None,
+        "n_compounds": 20,
+        "n_cell_lines": 4,
+        "n_pass_qc": None,
         "wetlab_data_source": "P6.2 wet-lab IC50 CSV (DEFERRED)",
         "dmpnn_data_source": "molmetal/reports/wf58_dmpnn_predictions/per_compound_pic50.json",
         "pipeline_version": "wf74-v1.0",
@@ -441,18 +533,37 @@ TEMPLATE_SCHEMA: Dict[str, object] = {
     },
     "compounds": [
         {
-            "rank": 1, "compound_id": "platinai_0454", "metal": "Ir", "cell_line": "MCF7",
-            "ic50_uM": None, "pic50": None, "pic50_ci_low": None, "pic50_ci_high": None,
-            "n_doses": 8, "n_replicates": 3, "hill_slope": None,
-            "fit_quality": "DEFERRED", "qc_flags": ["PENDING_WETLAB"],
-            "dmpnn_pic50_predicted": 8.6172, "dmpnn_pic50_delta": None,
+            "rank": 1,
+            "compound_id": "platinai_0454",
+            "metal": "Ir",
+            "cell_line": "MCF7",
+            "ic50_uM": None,
+            "pic50": None,
+            "pic50_ci_low": None,
+            "pic50_ci_high": None,
+            "n_doses": 8,
+            "n_replicates": 3,
+            "hill_slope": None,
+            "fit_quality": "DEFERRED",
+            "qc_flags": ["PENDING_WETLAB"],
+            "dmpnn_pic50_predicted": 8.6172,
+            "dmpnn_pic50_delta": None,
         }
     ],
-    "anova_per_metal": {m: {"F": None, "p_raw": None, "p_bh": None} for m in DEFAULT_METALS},
+    "anova_per_metal": {
+        m: {"F": None, "p_raw": None, "p_bh": None} for m in DEFAULT_METALS
+    },
     "agreement_per_metal_cell": {
-        f"{m}-{c}": {"pearson_r": None, "pearson_r_ci_low": None, "pearson_r_ci_high": None,
-                    "spearman_rho": None, "n": 0, "gate_pass": False}
-        for m in DEFAULT_METALS for c in DEFAULT_CELL_LINES
+        f"{m}-{c}": {
+            "pearson_r": None,
+            "pearson_r_ci_low": None,
+            "pearson_r_ci_high": None,
+            "spearman_rho": None,
+            "n": 0,
+            "gate_pass": False,
+        }
+        for m in DEFAULT_METALS
+        for c in DEFAULT_CELL_LINES
     },
 }
 
@@ -464,16 +575,35 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description="Wf-74 Phase 3 — IC50 analysis pipeline TEMPLATE (synthetic smoke).",
     )
-    p.add_argument("--input", type=Path, default=None,
-                   help="Wet-lab long-form CSV per §1.1 (DEFERRED).")
-    p.add_argument("--synthetic", action="store_true",
-                   help="Run on synthetic fixture (no wet-lab CSV required).")
-    p.add_argument("--dmpnn", type=Path, default=DEFAULT_DMPNN,
-                   help=f"Wf-58 D-MPNN per_compound_pic50.json (default: {DEFAULT_DMPNN}).")
-    p.add_argument("--out-dir", type=Path, default=DEFAULT_OUT,
-                   help=f"Output directory (default: {DEFAULT_OUT}).")
-    p.add_argument("--n-bootstrap", type=int, default=N_BOOTSTRAP,
-                   help=f"Bootstrap iterations for §3.2 (default: {N_BOOTSTRAP}).")
+    p.add_argument(
+        "--input",
+        type=Path,
+        default=None,
+        help="Wet-lab long-form CSV per §1.1 (DEFERRED).",
+    )
+    p.add_argument(
+        "--synthetic",
+        action="store_true",
+        help="Run on synthetic fixture (no wet-lab CSV required).",
+    )
+    p.add_argument(
+        "--dmpnn",
+        type=Path,
+        default=DEFAULT_DMPNN,
+        help=f"Wf-58 D-MPNN per_compound_pic50.json (default: {DEFAULT_DMPNN}).",
+    )
+    p.add_argument(
+        "--out-dir",
+        type=Path,
+        default=DEFAULT_OUT,
+        help=f"Output directory (default: {DEFAULT_OUT}).",
+    )
+    p.add_argument(
+        "--n-bootstrap",
+        type=int,
+        default=N_BOOTSTRAP,
+        help=f"Bootstrap iterations for §3.2 (default: {N_BOOTSTRAP}).",
+    )
     return p.parse_args(argv)
 
 
@@ -488,12 +618,19 @@ def main(argv: Optional[List[str]] = None) -> int:
         wells = make_synthetic_fixture()
         framing = "synthetic fixture (smoke test; not wet-lab data)"
     elif args.input is not None and args.input.exists():
-        print(f"[wf74ic50] Loading wet-lab CSV: {args.input}  -- NOT IMPLEMENTED (TODO §6)")
-        print("[wf74ic50] Pipeline scaffold today; CSV reader ships when P6.2 wet-lab lands.")
+        print(
+            f"[wf74ic50] Loading wet-lab CSV: {args.input}  -- NOT IMPLEMENTED (TODO §6)"
+        )
+        print(
+            "[wf74ic50] Pipeline scaffold today; CSV reader ships when P6.2 wet-lab lands."
+        )
         wells = make_synthetic_fixture()  # fall back to fixture
         framing = "wet-lab CSV scaffold (DEFERRED until P6.2)"
     else:
-        print("[wf74ic50] ERROR: pass --synthetic OR --input <wetlab.csv>", file=sys.stderr)
+        print(
+            "[wf74ic50] ERROR: pass --synthetic OR --input <wetlab.csv>",
+            file=sys.stderr,
+        )
         return 2
 
     # 2) Run pipeline
@@ -514,7 +651,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         if rec.get("pic50") is not None:
             dmpnn_val = dmpnn.get(key)
             rec["dmpnn_pic50_predicted"] = dmpnn_val
-            rec["dmpnn_pic50_delta"] = (dmpnn_val - rec["pic50"]) if dmpnn_val is not None else None
+            rec["dmpnn_pic50_delta"] = (
+                (dmpnn_val - rec["pic50"]) if dmpnn_val is not None else None
+            )
 
     # 6) Compute meta counters
     n_pass_qc = sum(1 for r in per_compound.values() if r.get("fit_quality") == "pass")
@@ -526,7 +665,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         "meta": {
             "n_compounds": len({k[0] for k in per_compound.keys()}),
             "n_cell_lines": len({k[1] for k in per_compound.keys()}),
-            "n_pass_qc": n_pass_qc, "n_excluded": n_excluded,
+            "n_pass_qc": n_pass_qc,
+            "n_excluded": n_excluded,
             "wetlab_data_source": framing,
             "dmpnn_data_source": str(args.dmpnn),
             "pipeline_version": "wf74-v1.0",
@@ -545,7 +685,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     template_payload = dict(TEMPLATE_SCHEMA)
     template_payload["meta"] = dict(TEMPLATE_SCHEMA["meta"])
     template_payload["meta"]["timestamp"] = time.strftime("%Y-%m-%dT%H:%M:%S")
-    template_payload["meta"]["framing"] = "honest-negative: schema-only template; wet-lab IC50 NOT MEASURED"
+    template_payload["meta"]["framing"] = (
+        "honest-negative: schema-only template; wet-lab IC50 NOT MEASURED"
+    )
     template_json.write_text(json.dumps(template_payload, indent=2) + "\n")
     print(f"[wf74ic50] Wrote: {template_json}")
 
@@ -554,8 +696,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     synth_md.write_text(_build_synthesis_md(per_compound, anova, agreement, framing))
     print(f"[wf74ic50] Wrote: {synth_md}")
 
-    print(f"\n[wf74ic50] DONE. n_records={len(per_compound)}; n_pass_qc={n_pass_qc}; "
-          f"framing='{framing}'")
+    print(
+        f"\n[wf74ic50] DONE. n_records={len(per_compound)}; n_pass_qc={n_pass_qc}; "
+        f"framing='{framing}'"
+    )
     return 0
 
 

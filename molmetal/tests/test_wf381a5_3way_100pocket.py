@@ -12,6 +12,7 @@ the spec:
 The test is **CPU-only** — no 3-way joint retrain is launched (GPU
 BLOCKED on user OK per AGENTS.md §5.1) and no Vina docking is run.
 """
+
 from __future__ import annotations
 
 import sys
@@ -30,6 +31,7 @@ if str(SCRIPT_DIR) not in sys.path:
 def _import_scaffold():
     try:
         from molmetal.scripts import wf381a5_r20_plan_cpu_close as scaffold
+
         return scaffold
     except Exception as exc:  # pragma: no cover
         pytest.skip(

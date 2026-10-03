@@ -50,6 +50,7 @@ EXPECTED_GATES = [
 # Test 1: dry-run output format (per-gate verdict + evidence paths)
 # ---------------------------------------------------------------------------
 
+
 def test_wf363a3_dry_run_output_format():
     """Wf-363-A3 task contract — dry-run output is polished per the spec:
        - Wf-363-A3 dry-run summary header at the top with per-gate
@@ -79,7 +80,9 @@ def test_wf363a3_dry_run_output_format():
     # bash syntax check
     proc = subprocess.run(
         ["bash", "-n", str(WRAPPER)],
-        capture_output=True, text=True, timeout=10,
+        capture_output=True,
+        text=True,
+        timeout=10,
     )
     assert proc.returncode == 0, (
         f"bash -n syntax check failed; rc={proc.returncode} "
@@ -89,7 +92,9 @@ def test_wf363a3_dry_run_output_format():
     # Run --dry-run and capture output
     proc = subprocess.run(
         ["bash", str(WRAPPER), "--dry-run"],
-        capture_output=True, text=True, timeout=300,
+        capture_output=True,
+        text=True,
+        timeout=300,
         cwd=str(PROJECT_ROOT),
     )
     out = proc.stdout
@@ -99,8 +104,7 @@ def test_wf363a3_dry_run_output_format():
     # dry-run should exit 0 (no blocking fails; wf343c2 cascading is non-blocking
     # per Wf-350-A2 §5)
     assert proc.returncode == 0, (
-        f"dry-run should exit zero; got rc={proc.returncode} "
-        f"stdout={out[-500:]!r}"
+        f"dry-run should exit zero; got rc={proc.returncode} " f"stdout={out[-500:]!r}"
     )
 
     # Summary header at top
@@ -108,9 +112,9 @@ def test_wf363a3_dry_run_output_format():
         "summary header missing in dry-run output; "
         f"first 500 chars={combined[:500]!r}"
     )
-    assert "Per-gate verdicts (PASS/FAIL/SKIP)" in combined, (
-        "per-gate verdict enumeration missing in summary header"
-    )
+    assert (
+        "Per-gate verdicts (PASS/FAIL/SKIP)" in combined
+    ), "per-gate verdict enumeration missing in summary header"
 
     # All 5 expected gate names appear in stdout
     for gate_name in EXPECTED_GATES:
@@ -120,32 +124,30 @@ def test_wf363a3_dry_run_output_format():
         )
 
     # Summary footer at bottom
-    assert "Wf-363-A3 dry-run summary footer" in combined, (
-        "summary footer missing in dry-run output"
-    )
-    assert "per-gate verdict + evidence path" in combined, (
-        "per-gate evidence path block missing in footer"
-    )
-    assert "totals: PASS=" in combined, (
-        "totals summary line missing in footer"
-    )
-    assert "USER_OK gate status:" in combined, (
-        "USER_OK gate status line missing in footer"
-    )
-    assert "log file:" in combined, (
-        "log file path missing in footer"
-    )
+    assert (
+        "Wf-363-A3 dry-run summary footer" in combined
+    ), "summary footer missing in dry-run output"
+    assert (
+        "per-gate verdict + evidence path" in combined
+    ), "per-gate evidence path block missing in footer"
+    assert "totals: PASS=" in combined, "totals summary line missing in footer"
+    assert (
+        "USER_OK gate status:" in combined
+    ), "USER_OK gate status line missing in footer"
+    assert "log file:" in combined, "log file path missing in footer"
 
     # The footer must show USER_OK status as SKIP on --dry-run
-    assert "SKIP (--dry-run" in combined, (
-        "USER_OK gate status must report SKIP for --dry-run"
-    )
+    assert (
+        "SKIP (--dry-run" in combined
+    ), "USER_OK gate status must report SKIP for --dry-run"
 
     # The footer must show 5 per-gate verdicts with bracket formatting [PASS]
     for gate_name in EXPECTED_GATES:
-        assert f"[PASS] {gate_name}" in combined or \
-               f"[FAIL] {gate_name}" in combined or \
-               f"[SKIP] {gate_name}" in combined, (
+        assert (
+            f"[PASS] {gate_name}" in combined
+            or f"[FAIL] {gate_name}" in combined
+            or f"[SKIP] {gate_name}" in combined
+        ), (
             f"footer verdict line for {gate_name!r} missing; "
             f"footer={combined[-1500:]!r}"
         )
@@ -154,6 +156,7 @@ def test_wf363a3_dry_run_output_format():
 # ---------------------------------------------------------------------------
 # Test 2: USER_OK gate UX consistency with Wf-355 wrappers
 # ---------------------------------------------------------------------------
+
 
 def test_wf363a3_user_ok_gate_consistency_wf355():
     """Wf-363-A3 task contract — USER_OK gate UX is consistent with Wf-355
@@ -177,36 +180,38 @@ def test_wf363a3_user_ok_gate_consistency_wf355():
 
     text = WRAPPER.read_text()
     # Wf-355 convention: USER_OK=1 (not USER_OK=YES)
-    assert "USER_OK=1" in text, (
-        "USER_OK=1 env var convention (Wf-355) missing in wrapper"
-    )
+    assert (
+        "USER_OK=1" in text
+    ), "USER_OK=1 env var convention (Wf-355) missing in wrapper"
     # USER_OK gate verdict strings
-    assert "USER_OK_gate" in text, (
-        "USER_OK_gate name missing in wrapper"
-    )
-    assert "kill_then_adapt standing directive" in text, (
-        "kill_then_adapt reference missing in USER_OK gate comment"
-    )
-    assert "Wf-355 wrapper convention" in text or "Wf-355" in text, (
-        "Wf-355 cross-reference missing in wrapper"
-    )
+    assert "USER_OK_gate" in text, "USER_OK_gate name missing in wrapper"
+    assert (
+        "kill_then_adapt standing directive" in text
+    ), "kill_then_adapt reference missing in USER_OK gate comment"
+    assert (
+        "Wf-355 wrapper convention" in text or "Wf-355" in text
+    ), "Wf-355 cross-reference missing in wrapper"
 
     # (a) --dry-run SKIP gate
     proc = subprocess.run(
         ["bash", str(WRAPPER), "--dry-run"],
-        capture_output=True, text=True, timeout=300,
+        capture_output=True,
+        text=True,
+        timeout=300,
         cwd=str(PROJECT_ROOT),
     )
     combined = proc.stdout + "\n" + proc.stderr
-    assert "[SKIP] USER_OK_gate" in combined, (
-        f"dry-run must show [SKIP] USER_OK_gate; got={combined[-500:]!r}"
-    )
+    assert (
+        "[SKIP] USER_OK_gate" in combined
+    ), f"dry-run must show [SKIP] USER_OK_gate; got={combined[-500:]!r}"
 
     # (b) Real launch without USER_OK → exit non-zero + USER_OK FAIL
     env_no_user_ok = {k: v for k, v in os.environ.items() if k != "USER_OK"}
     proc = subprocess.run(
         ["bash", str(WRAPPER)],
-        capture_output=True, text=True, timeout=300,
+        capture_output=True,
+        text=True,
+        timeout=300,
         cwd=str(PROJECT_ROOT),
         env=env_no_user_ok,
     )
@@ -219,21 +224,22 @@ def test_wf363a3_user_ok_gate_consistency_wf355():
         f"real launch without USER_OK must show [FAIL] USER_OK_gate; "
         f"got={combined_no[-500:]!r}"
     )
-    assert "USER_OK=1" in combined_no, (
-        "failure message should reference USER_OK=1 convention"
-    )
+    assert (
+        "USER_OK=1" in combined_no
+    ), "failure message should reference USER_OK=1 convention"
 
     # (c) Real launch with USER_OK=0 → exit non-zero + USER_OK FAIL
     env_user_ok_zero = {**os.environ, "USER_OK": "0"}
     proc = subprocess.run(
         ["bash", str(WRAPPER)],
-        capture_output=True, text=True, timeout=300,
+        capture_output=True,
+        text=True,
+        timeout=300,
         cwd=str(PROJECT_ROOT),
         env=env_user_ok_zero,
     )
     assert proc.returncode != 0, (
-        "real launch with USER_OK=0 should exit non-zero; "
-        f"got rc={proc.returncode}"
+        "real launch with USER_OK=0 should exit non-zero; " f"got rc={proc.returncode}"
     )
     combined_zero = proc.stdout + "\n" + proc.stderr
     assert "[FAIL] USER_OK_gate" in combined_zero, (
@@ -248,7 +254,9 @@ def test_wf363a3_user_ok_gate_consistency_wf355():
     env_user_ok_one = {**os.environ, "USER_OK": "1"}
     proc = subprocess.run(
         ["bash", str(WRAPPER)],
-        capture_output=True, text=True, timeout=300,
+        capture_output=True,
+        text=True,
+        timeout=300,
         cwd=str(PROJECT_ROOT),
         env=env_user_ok_one,
     )
@@ -257,6 +265,6 @@ def test_wf363a3_user_ok_gate_consistency_wf355():
         f"real launch with USER_OK=1 must show [PASS] USER_OK_gate; "
         f"got={combined_one[-500:]!r}"
     )
-    assert "USER_OK=1 confirmed" in combined_one, (
-        "USER_OK=1 confirmation message missing"
-    )
+    assert (
+        "USER_OK=1 confirmed" in combined_one
+    ), "USER_OK=1 confirmation message missing"

@@ -34,6 +34,7 @@ Cross-references
 * Wf-307D CPU close-out: ``TODO/completed/234_wf234_frontier_math_cpu_portion.md``
 * Wf-310F plan: ``TODO/completed/234_wf234_frontier_math_cpu_plan.md``
 """
+
 from __future__ import annotations
 
 import pytest
@@ -47,6 +48,7 @@ import torch
 def fmi():
     """Return a :class:`FrontierMathIntegration` with default config."""
     from molmetal.adapters.frontier_math_integration import FrontierMathIntegration
+
     return FrontierMathIntegration()
 
 
@@ -64,6 +66,7 @@ def test_multi_ph_forward(fmi):
     from molmetal.adapters.frontier_math_integration import (
         FrontierMathIntegration,
     )
+
     assert isinstance(fmi, FrontierMathIntegration)
     features_mod = fmi.get_multi_ph_features(
         override={"n_bins": 4, "max_radius": 3.0, "max_coord": 2.0},
@@ -73,9 +76,7 @@ def test_multi_ph_forward(fmi):
     pocket = torch.randn(2, 8, 3)
     out = features_mod.compute(pocket)
     # Output shape = (B, n_bins, n_bins) = (2, 4, 4).
-    assert out.shape == (2, 4, 4), (
-        f"unexpected feature map shape: {tuple(out.shape)}"
-    )
+    assert out.shape == (2, 4, 4), f"unexpected feature map shape: {tuple(out.shape)}"
     # The feature map is a count of (r, d) pairs per pocket — must
     # be non-negative integers (cast to long for the assertion).
     assert (out >= 0).all(), "multi-PH feature map must be non-negative"
@@ -93,15 +94,13 @@ def test_se3_lipman_solver_init(fmi):
     """
     solver = fmi.get_se3_lipman_solver()
     # Canonical W2.1 / Integration 1 defaults.
-    assert solver.n_steps == 50, (
-        f"n_steps should default to 50, got {solver.n_steps}"
-    )
-    assert solver.method == "midpoint", (
-        f"method should default to 'midpoint', got {solver.method!r}"
-    )
-    assert solver.ortho_tol == pytest.approx(1e-3), (
-        f"ortho_tol should default to 1e-3, got {solver.ortho_tol}"
-    )
+    assert solver.n_steps == 50, f"n_steps should default to 50, got {solver.n_steps}"
+    assert (
+        solver.method == "midpoint"
+    ), f"method should default to 'midpoint', got {solver.method!r}"
+    assert solver.ortho_tol == pytest.approx(
+        1e-3
+    ), f"ortho_tol should default to 1e-3, got {solver.ortho_tol}"
     # ``se3_adapter`` is the wrapper, must be present (the default
     # fallback is a zero-velocity wrapper around a dummy EGNN).
     assert solver.se3_adapter is not None
@@ -118,15 +117,13 @@ def test_se3_sb_decoder_init(fmi):
     """
     decoder = fmi.get_se3_sb_decoder()
     # Canonical W2.1 defaults.
-    assert decoder.eps == pytest.approx(0.1), (
-        f"eps should default to 0.1, got {decoder.eps}"
-    )
-    assert decoder.n_iters == 50, (
-        f"n_iters should default to 50, got {decoder.n_iters}"
-    )
-    assert decoder.use_sinkhorn is True, (
-        f"use_sinkhorn should default to True, got {decoder.use_sinkhorn}"
-    )
+    assert decoder.eps == pytest.approx(
+        0.1
+    ), f"eps should default to 0.1, got {decoder.eps}"
+    assert decoder.n_iters == 50, f"n_iters should default to 50, got {decoder.n_iters}"
+    assert (
+        decoder.use_sinkhorn is True
+    ), f"use_sinkhorn should default to True, got {decoder.use_sinkhorn}"
 
 
 # ---------------------------------------------------------------------------
@@ -142,21 +139,18 @@ def test_transport_relaxation_init(fmi):
     """
     term = fmi.get_transport_relaxation()
     # Canonical W2.2 defaults.
-    assert term.lambda_relax == pytest.approx(1e-3), (
-        f"lambda_relax should default to 1e-3, got {term.lambda_relax}"
-    )
-    assert term.eps == pytest.approx(0.1), (
-        f"eps should default to 0.1, got {term.eps}"
-    )
+    assert term.lambda_relax == pytest.approx(
+        1e-3
+    ), f"lambda_relax should default to 1e-3, got {term.lambda_relax}"
+    assert term.eps == pytest.approx(0.1), f"eps should default to 0.1, got {term.eps}"
     # Forward on a synthetic (B=4, D=3) endpoint + equal energies
     # should produce exactly zero KL (Gibbs-minimum case).
     trajectory = torch.randn(4, 3)
-    energies = torch.zeros(4)            # all-equal → q_T is uniform
+    energies = torch.zeros(4)  # all-equal → q_T is uniform
     penalty = term.forward(trajectory, energies)
-    assert penalty.dim() == 0, (
-        f"penalty must be scalar, got shape {tuple(penalty.shape)}"
-    )
+    assert (
+        penalty.dim() == 0
+    ), f"penalty must be scalar, got shape {tuple(penalty.shape)}"
     assert float(penalty.item()) == pytest.approx(0.0, abs=1e-6), (
-        f"penalty on uniform q_T should be 0, "
-        f"got {float(penalty.item())}"
+        f"penalty on uniform q_T should be 0, " f"got {float(penalty.item())}"
     )

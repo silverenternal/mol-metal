@@ -160,12 +160,12 @@ def square_planar_penalty(
     src = src[is_pt]
     dst = dst[is_pt]
 
-    pt_positions = positions[dst]      # (E_d, 3)
-    donor_positions = positions[src]   # (E_d, 3)
+    pt_positions = positions[dst]  # (E_d, 3)
+    donor_positions = positions[src]  # (E_d, 3)
     # Direction from metal -> donor.
-    rel = donor_positions - pt_positions                              # (E_d, 3)
-    dist = rel.norm(dim=-1, keepdim=True).clamp(min=1e-6)             # (E_d, 1)
-    unit = rel / dist                                                  # (E_d, 3)
+    rel = donor_positions - pt_positions  # (E_d, 3)
+    dist = rel.norm(dim=-1, keepdim=True).clamp(min=1e-6)  # (E_d, 1)
+    unit = rel / dist  # (E_d, 3)
 
     # Group donors by Pt centre so we form the Pt-L-X angle only between
     # donors attached to the *same* Pt.  We do this by iterating per-Pt.
@@ -178,7 +178,7 @@ def square_planar_penalty(
         if sel.sum() < 2:
             # Need at least 2 donors to form an angle.
             continue
-        u = unit[sel]                                # (k, 3)  unit vectors Pt -> donor_l
+        u = unit[sel]  # (k, 3)  unit vectors Pt -> donor_l
         # Pairwise cosine similarity (k, k).
         cos = u @ u.t()
         cos = cos.clamp(-1.0 + eps, 1.0 - eps)
@@ -186,7 +186,7 @@ def square_planar_penalty(
         iu = torch.triu_indices(cos.size(0), cos.size(1), offset=1, device=device)
         if iu.numel() == 0:
             continue
-        angles = torch.arccos(cos[iu[0], iu[1]])     # (n_pairs,)
+        angles = torch.arccos(cos[iu[0], iu[1]])  # (n_pairs,)
         targets = angles.new_tensor([ideal_angle, math.pi])
         deviation = (angles.unsqueeze(-1) - targets).abs().min(dim=-1).values
         penalty = penalty + deviation.mean()
@@ -219,7 +219,10 @@ def square_planar_penalty_batched(
         positions_list, dative_edge_index_list, dative_edge_attr_list, atom_types_list
     ):
         total = total + square_planar_penalty(
-            pos, ei, ea, at,
+            pos,
+            ei,
+            ea,
+            at,
             pt_atomic_number=pt_atomic_number,
             ideal_angle=ideal_angle,
         )
@@ -280,15 +283,11 @@ class SquarePlanarPtII(nn.Module):
         # edge tensors are empty / on a different device.
         with torch.no_grad():
             try:
-                n_dative = int(
-                    (dative_bond_edge_attr.to(torch.bool)).sum().item()
-                )
+                n_dative = int((dative_bond_edge_attr.to(torch.bool)).sum().item())
             except Exception:  # noqa: BLE001 — diagnostics never break training
                 n_dative = -1
             try:
-                n_pt = int(
-                    (atom_types == self.pt_atomic_number).sum().item()
-                )
+                n_pt = int((atom_types == self.pt_atomic_number).sum().item())
             except Exception:  # noqa: BLE001
                 n_pt = -1
             self.last_diagnostics = _PriorDiagnostics(
@@ -367,14 +366,14 @@ GEOMETRY_IDEAL_ANGLES_DEG: dict = {
 # trigonal-bipyramidal.  These are the four archetypal SBDD geometries
 # the prior covers; the mapping can be overridden by the caller.
 DEFAULT_METAL_GEOMETRY: dict = {
-    78: Geometry.SQUARE_PLANAR,      # Pt(II)
-    46: Geometry.SQUARE_PLANAR,      # Pd(II)  (analogous d8)
-    29: Geometry.TETRAHEDRAL,        # Cu(I) / Zn(II) common coordination
-    30: Geometry.TETRAHEDRAL,        # Zn(II)
-    26: Geometry.OCTAHEDRAL,         # Fe(II)
-    44: Geometry.OCTAHEDRAL,         # Ru(II) — common cis / trans Ru(CO)4L2 etc.
-    77: Geometry.OCTAHEDRAL,         # Ir(III)
-    45: Geometry.OCTAHEDRAL,         # Rh(III)
+    78: Geometry.SQUARE_PLANAR,  # Pt(II)
+    46: Geometry.SQUARE_PLANAR,  # Pd(II)  (analogous d8)
+    29: Geometry.TETRAHEDRAL,  # Cu(I) / Zn(II) common coordination
+    30: Geometry.TETRAHEDRAL,  # Zn(II)
+    26: Geometry.OCTAHEDRAL,  # Fe(II)
+    44: Geometry.OCTAHEDRAL,  # Ru(II) — common cis / trans Ru(CO)4L2 etc.
+    77: Geometry.OCTAHEDRAL,  # Ir(III)
+    45: Geometry.OCTAHEDRAL,  # Rh(III)
     25: Geometry.TRIGONAL_BIPYRAMIDAL,  # Mn(0) — Mn(CO)5Br etc.
 }
 
@@ -390,26 +389,26 @@ DEFAULT_METAL_GEOMETRY: dict = {
 # :func:`bondi_van_der_waals_radius`.
 BONDI_VAN_DER_WAALS_RADII: dict = {
     # Metals (Å)
-    25: 2.05,   # Mn
-    26: 2.00,   # Fe (low-spin ~1.94; high-spin ~2.05)
-    29: 1.40,   # Cu
-    30: 1.39,   # Zn
-    44: 2.10,   # Ru
-    45: 2.00,   # Rh
-    46: 1.63,   # Pd
-    77: 2.00,   # Ir
-    78: 1.75,   # Pt — note Bondi's value is 1.75 Å (small, d8 contraction)
+    25: 2.05,  # Mn
+    26: 2.00,  # Fe (low-spin ~1.94; high-spin ~2.05)
+    29: 1.40,  # Cu
+    30: 1.39,  # Zn
+    44: 2.10,  # Ru
+    45: 2.00,  # Rh
+    46: 1.63,  # Pd
+    77: 2.00,  # Ir
+    78: 1.75,  # Pt — note Bondi's value is 1.75 Å (small, d8 contraction)
     # Donor atoms (Å)
-    1:  1.20,   # H
-    6:  1.70,   # C
-    7:  1.55,   # N
-    8:  1.52,   # O
-    9:  1.47,   # F
-    15: 1.80,   # P
-    16: 1.80,   # S
-    17: 1.75,   # Cl
-    35: 1.85,   # Br
-    53: 1.98,   # I
+    1: 1.20,  # H
+    6: 1.70,  # C
+    7: 1.55,  # N
+    8: 1.52,  # O
+    9: 1.47,  # F
+    15: 1.80,  # P
+    16: 1.80,  # S
+    17: 1.75,  # Cl
+    35: 1.85,  # Br
+    53: 1.98,  # I
 }
 
 _BONDI_FALLBACK_RADIUS: float = 1.70
@@ -423,7 +422,9 @@ def bondi_van_der_waals_radius(atomic_number: int) -> float:
     element is not in the table — the standard heuristic used by
     cheminformatics toolkits for unknowns.
     """
-    return float(BONDI_VAN_DER_WAALS_RADII.get(int(atomic_number), _BONDI_FALLBACK_RADIUS))
+    return float(
+        BONDI_VAN_DER_WAALS_RADII.get(int(atomic_number), _BONDI_FALLBACK_RADIUS)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -589,7 +590,10 @@ def GeometryPenaltyBatched(
         positions_list, dative_edge_index_list, dative_edge_attr_list, atom_types_list
     ):
         total = total + GeometryPenalty(
-            pos, ei, ea, at,
+            pos,
+            ei,
+            ea,
+            at,
             geometry=geometry,
             metal_atomic_number=metal_atomic_number,
             ideal_angles=ideal_angles,
@@ -714,17 +718,24 @@ class MetalGeometryPrior(nn.Module):
         if not dative_mask.any():
             return torch.zeros((), device=device, dtype=dtype)
         if edge_index is None:
-            raise ValueError("Explicit edge_index is required for dative metal geometry; distance-inferred donors are unsupported")
+            raise ValueError(
+                "Explicit edge_index is required for dative metal geometry; distance-inferred donors are unsupported"
+            )
         if edge_index.shape != (2, edge_types.numel()):
             raise ValueError("edge_index must have shape (2, E) matching edge_types")
-        if edge_index.dtype != torch.long or (edge_index < 0).any() or (edge_index >= coords.shape[0]).any():
+        if (
+            edge_index.dtype != torch.long
+            or (edge_index < 0).any()
+            or (edge_index >= coords.shape[0]).any()
+        ):
             raise ValueError("edge_index must contain valid integer atom endpoints")
         edge_index = edge_index.to(device)
         src, dst = edge_index[:, dative_mask]
         if metal_idx is None:
             # Detect every metal centre by walking atom_types.
             metal_indices = [
-                i for i, z in enumerate(atom_types.tolist())
+                i
+                for i, z in enumerate(atom_types.tolist())
                 if int(z) in self.metal_geometry_map
             ]
         else:
@@ -740,13 +751,19 @@ class MetalGeometryPrior(nn.Module):
         total_penalty = coords.new_zeros(())
         for mi in metal_indices:
             z = int(atom_types[mi].item())
-            geo = geometry if geometry is not None else self.metal_geometry_map.get(z, Geometry.SQUARE_PLANAR)
+            geo = (
+                geometry
+                if geometry is not None
+                else self.metal_geometry_map.get(z, Geometry.SQUARE_PLANAR)
+            )
             # Only declared donor -> metal edges contribute. Duplicate edges
             # do not create extra donors; nearby non-donor atoms are irrelevant.
             donor_idx = torch.unique(src[(dst == mi) & (src != mi)])
             metal_pos = coords[mi]
             dist = (coords[donor_idx] - metal_pos).norm(dim=-1)
-            donor_idx = donor_idx[(dist > self.eps_distance_min) & (dist < self.eps_distance_max)]
+            donor_idx = donor_idx[
+                (dist > self.eps_distance_min) & (dist < self.eps_distance_max)
+            ]
             if donor_idx.numel() < 2:
                 continue
 
@@ -797,25 +814,42 @@ class MetalGeometryPrior(nn.Module):
         with torch.no_grad():
             try:
                 n_metal = (
-                    int(((atom_types.unsqueeze(-1) == torch.tensor(
-                        list(self.metal_geometry_map.keys()),
-                        device=atom_types.device,
-                        dtype=atom_types.dtype,
-                    )).any(dim=-1)).sum().item())
-                    if self.metal_geometry_map else 0
+                    int(
+                        (
+                            (
+                                atom_types.unsqueeze(-1)
+                                == torch.tensor(
+                                    list(self.metal_geometry_map.keys()),
+                                    device=atom_types.device,
+                                    dtype=atom_types.dtype,
+                                )
+                            ).any(dim=-1)
+                        )
+                        .sum()
+                        .item()
+                    )
+                    if self.metal_geometry_map
+                    else 0
                 )
             except Exception:  # noqa: BLE001
                 n_metal = -1
             try:
-                n_donors = int((edge_types == 2).sum().item()) if edge_types is not None else 0
+                n_donors = (
+                    int((edge_types == 2).sum().item()) if edge_types is not None else 0
+                )
             except Exception:  # noqa: BLE001
                 n_donors = -1
             try:
                 geo_label = (
-                    geometry if geometry is not None
-                    else (self.metal_geometry_map.get(
-                        int(atom_types[metal_idx].item()), Geometry.SQUARE_PLANAR
-                    ) if metal_idx is not None else Geometry.SQUARE_PLANAR)
+                    geometry
+                    if geometry is not None
+                    else (
+                        self.metal_geometry_map.get(
+                            int(atom_types[metal_idx].item()), Geometry.SQUARE_PLANAR
+                        )
+                        if metal_idx is not None
+                        else Geometry.SQUARE_PLANAR
+                    )
                 )
             except Exception:  # noqa: BLE001
                 geo_label = "unknown"
@@ -847,8 +881,12 @@ def apply_metal_prior(
     """
     prior = MetalGeometryPrior(weight=weight, metal_geometry_map=metal_geometry_map)
     return prior.prior_loss(
-        coords=coords, atom_types=atom_types, edge_types=edge_types,
-        metal_idx=metal_idx, geometry=geometry, edge_index=edge_index,
+        coords=coords,
+        atom_types=atom_types,
+        edge_types=edge_types,
+        metal_idx=metal_idx,
+        geometry=geometry,
+        edge_index=edge_index,
     )
 
 
@@ -866,8 +904,12 @@ def prior_loss(
     """
     prior = MetalGeometryPrior(weight=1.0)
     return prior.apply_prior(
-        coords=coords, atom_types=atom_types, edge_types=edge_types,
-        metal_idx=metal_idx, geometry=geometry, edge_index=edge_index,
+        coords=coords,
+        atom_types=atom_types,
+        edge_types=edge_types,
+        metal_idx=metal_idx,
+        geometry=geometry,
+        edge_index=edge_index,
     )
 
 
@@ -922,30 +964,41 @@ def prior_loss(
 # Ru(II)/Ir(III)/Rh(III)/Fe(II) -> CN=6 octahedral).  Callers may
 # override via ``cn_targets``.
 DEFAULT_SOFT_SCORE_TARGETS: dict = {
-    78: 4,   # Pt(II)
-    46: 4,   # Pd(II)
-    29: 4,   # Cu(II)  (d9, square-planar also common)
-    30: 4,   # Zn(II)  (tetrahedral)
-    79: 4,   # Au(III) (square-planar d8)
-    44: 6,   # Ru(II)  (octahedral)
-    77: 6,   # Ir(III) (octahedral)
-    45: 6,   # Rh(III) (octahedral)
-    26: 6,   # Fe(II)  (octahedral)
+    78: 4,  # Pt(II)
+    46: 4,  # Pd(II)
+    29: 4,  # Cu(II)  (d9, square-planar also common)
+    30: 4,  # Zn(II)  (tetrahedral)
+    79: 4,  # Au(III) (square-planar d8)
+    44: 6,  # Ru(II)  (octahedral)
+    77: 6,  # Ir(III) (octahedral)
+    45: 6,  # Rh(III) (octahedral)
+    26: 6,  # Fe(II)  (octahedral)
 }
 
 # Symbols recognised as metals by the soft score.  Matches the
 # METAL_ATOMS dict in :mod:`molmetal_lam.atoms.combinators`.
-_SOFT_SCORE_METAL_SYMBOLS: frozenset = frozenset({
-    "Pt", "Pt_II",
-    "Pd", "Pd_II",
-    "Cu", "Cu_II",
-    "Zn", "Zn_II",
-    "Au", "Au_III",
-    "Ru", "Ru_II",
-    "Ir", "Ir_III",
-    "Rh", "Rh_III",
-    "Fe", "Fe_II",
-})
+_SOFT_SCORE_METAL_SYMBOLS: frozenset = frozenset(
+    {
+        "Pt",
+        "Pt_II",
+        "Pd",
+        "Pd_II",
+        "Cu",
+        "Cu_II",
+        "Zn",
+        "Zn_II",
+        "Au",
+        "Au_III",
+        "Ru",
+        "Ru_II",
+        "Ir",
+        "Ir_III",
+        "Rh",
+        "Rh_III",
+        "Fe",
+        "Fe_II",
+    }
+)
 
 
 @dataclass
@@ -1026,7 +1079,10 @@ def _coordination_count(atom, bonds) -> int:
         if kind == "hydrogen":
             continue
         try:
-            if id(getattr(b, "atom_a", None)) == atom_id or id(getattr(b, "atom_b", None)) == atom_id:
+            if (
+                id(getattr(b, "atom_a", None)) == atom_id
+                or id(getattr(b, "atom_b", None)) == atom_id
+            ):
                 coord += 1
         except Exception:
             continue
@@ -1242,7 +1298,10 @@ def soft_score_metal_geometry(
         d_charge = min(1.0, abs(charge - ideal_charge) / 2.0)
         score = max(
             0.0,
-            1.0 - weight_coord * d_coord - weight_angle * d_angle - weight_charge * d_charge,
+            1.0
+            - weight_coord * d_coord
+            - weight_angle * d_angle
+            - weight_charge * d_charge,
         )
         if score > best:
             best = score

@@ -78,14 +78,50 @@ VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
 CANONICAL_DEFERRED_WAVES: list = [
     # (wave_name, estimated_hr, source, expected_class, expected_status)
     ("Wave-cfm:cfm_full_retrain", 16.0, "TODO-119 P1.3", "DEFERRED_TEMP", "RUNNING"),
-    ("Wave-cfm:cfm_real_decode_lift_p1.3", 16.0, "TODO-119 P1.3", "DEFERRED_TEMP", "DEFERRED"),
-    ("Wave-cfm:cfm_per_innovation_ablation_p1.4", 7.5, "TODO-119 P1.4", "DEFERRED_TEMP", "DEFERRED"),
-    ("Wave-6:cfm_TODO119_P1.3_real_decode_lift", 16.0, "TODO-119 P1.3", "DEFERRED_TEMP", "DEFERRED"),
-    ("Wave-7:cfm_TODO119_P1.4_per_innovation_ablation", 7.5, "TODO-119 P1.4", "DEFERRED_TEMP", "DEFERRED"),
-    ("Wave-wf176_phase2_m19_lomo_gpu", 5.0, "Wf-176 Phase 2", "DEFERRED_TEMP", "DEFERRED"),
+    (
+        "Wave-cfm:cfm_real_decode_lift_p1.3",
+        16.0,
+        "TODO-119 P1.3",
+        "DEFERRED_TEMP",
+        "DEFERRED",
+    ),
+    (
+        "Wave-cfm:cfm_per_innovation_ablation_p1.4",
+        7.5,
+        "TODO-119 P1.4",
+        "DEFERRED_TEMP",
+        "DEFERRED",
+    ),
+    (
+        "Wave-6:cfm_TODO119_P1.3_real_decode_lift",
+        16.0,
+        "TODO-119 P1.3",
+        "DEFERRED_TEMP",
+        "DEFERRED",
+    ),
+    (
+        "Wave-7:cfm_TODO119_P1.4_per_innovation_ablation",
+        7.5,
+        "TODO-119 P1.4",
+        "DEFERRED_TEMP",
+        "DEFERRED",
+    ),
+    (
+        "Wave-wf176_phase2_m19_lomo_gpu",
+        5.0,
+        "Wf-176 Phase 2",
+        "DEFERRED_TEMP",
+        "DEFERRED",
+    ),
     ("Wave-wf131_p3_7_deferred", 3.0, "Wf-131 P3", "DEFERRED_TEMP", "DEFERRED"),
     ("Wave-wf146_re_fold_os_seed4", 3.0, "Wf-146", "DEFERRED_TEMP", "DEFERRED"),
-    ("Wave-wf316a_status_hold_f5_rdkit_2d", 5.0, "Wf-316A STATUS_HOLD", "DEFERRED_PERMANENT", "DEFERRED"),
+    (
+        "Wave-wf316a_status_hold_f5_rdkit_2d",
+        5.0,
+        "Wf-316A STATUS_HOLD",
+        "DEFERRED_PERMANENT",
+        "DEFERRED",
+    ),
 ]
 
 
@@ -113,8 +149,13 @@ def test_classify_deferred_class_per_wave_correct():
     # Default for unrecognised waves must be DEFERRED_TEMP (honest
     # default per AGENTS.md §1.5: never silently mis-classify a
     # USER_OK-resumable wave as permanent).
-    assert wave_budget_tracker.classify_deferred_class("Wave-X:unknown") == "DEFERRED_TEMP"
-    assert wave_budget_tracker.classify_deferred_class("Wave-1:chemprop_v2_smoke") == "DEFERRED_TEMP"
+    assert (
+        wave_budget_tracker.classify_deferred_class("Wave-X:unknown") == "DEFERRED_TEMP"
+    )
+    assert (
+        wave_budget_tracker.classify_deferred_class("Wave-1:chemprop_v2_smoke")
+        == "DEFERRED_TEMP"
+    )
 
     # Substring-match fallback for non-canonical wave names.
     assert (
@@ -128,12 +169,14 @@ def test_classify_deferred_class_per_wave_correct():
 
     # Table size + class value sanity.
     table = wave_budget_tracker.DEFERRED_CLASSIFICATIONS
-    assert len(table) == 14, f"DEFERRED_CLASSIFICATIONS table has {len(table)} entries != 14"
+    assert (
+        len(table) == 14
+    ), f"DEFERRED_CLASSIFICATIONS table has {len(table)} entries != 14"
     # Every value must be one of the two valid class strings.
     for k, v in table.items():
-        assert v in wave_budget_tracker._VALID_DEFERRED_CLASSES, (
-            f"DEFERRED_CLASSIFICATIONS[{k!r}] = {v!r} is not a valid class"
-        )
+        assert (
+            v in wave_budget_tracker._VALID_DEFERRED_CLASSES
+        ), f"DEFERRED_CLASSIFICATIONS[{k!r}] = {v!r} is not a valid class"
 
 
 # ---------------------------------------------------------------------------
@@ -148,14 +191,20 @@ def test_deferred_class_filter_filters_wave_list(tmp_path: Path):
     (``deferred_temp_waves`` / ``deferred_permanent_waves``) always
     carry the full per-class partition regardless of the filter."""
 
-    waves = [(name, est, src) for name, est, src, _cls, _status in CANONICAL_DEFERRED_WAVES]
+    waves = [
+        (name, est, src) for name, est, src, _cls, _status in CANONICAL_DEFERRED_WAVES
+    ]
     wave_dicts = wave_budget_tracker.compute_wave_status(
-        budget_hr=10.0, waves=waves, actual_hr_by_name={},
+        budget_hr=10.0,
+        waves=waves,
+        actual_hr_by_name={},
     )
 
     # Filter "all" (default): both classes appear in deferred_waves.
     summary_all = wave_budget_tracker.summarise(
-        10.0, wave_dicts, deferred_class_filter="all",
+        10.0,
+        wave_dicts,
+        deferred_class_filter="all",
     )
     assert len(summary_all["deferred_waves"]) == 8  # all 8 DEFERRED
     assert len(summary_all["deferred_temp_waves"]) == 7
@@ -164,7 +213,9 @@ def test_deferred_class_filter_filters_wave_list(tmp_path: Path):
     # Filter "DEFERRED_TEMP": only DEFERRED_TEMP waves appear in
     # deferred_waves; the per-class partitions are unchanged.
     summary_temp = wave_budget_tracker.summarise(
-        10.0, wave_dicts, deferred_class_filter="DEFERRED_TEMP",
+        10.0,
+        wave_dicts,
+        deferred_class_filter="DEFERRED_TEMP",
     )
     assert all(
         "Wave-wf316a_status_hold_f5_rdkit_2d" not in n
@@ -177,7 +228,9 @@ def test_deferred_class_filter_filters_wave_list(tmp_path: Path):
 
     # Filter "DEFERRED_PERMANENT": only DEFERRED_PERMANENT waves appear.
     summary_perm = wave_budget_tracker.summarise(
-        10.0, wave_dicts, deferred_class_filter="DEFERRED_PERMANENT",
+        10.0,
+        wave_dicts,
+        deferred_class_filter="DEFERRED_PERMANENT",
     )
     assert summary_perm["deferred_waves"] == ["Wave-wf316a_status_hold_f5_rdkit_2d"]
     assert len(summary_perm["deferred_waves"]) == 1
@@ -190,10 +243,14 @@ def test_deferred_class_filter_filters_wave_list(tmp_path: Path):
     report_path = tmp_path / "filter_cli.json"
     rc = wave_budget_tracker.main(
         [
-            "--budget-hr", "10.0",
-            "--waves", "wf360a1_temp:1.0,wf360a1_perm:1.0",
-            "--report-json", str(report_path),
-            "--deferred-class-filter", "DEFERRED_PERMANENT",
+            "--budget-hr",
+            "10.0",
+            "--waves",
+            "wf360a1_temp:1.0,wf360a1_perm:1.0",
+            "--report-json",
+            str(report_path),
+            "--deferred-class-filter",
+            "DEFERRED_PERMANENT",
         ]
     )
     assert rc == 0
@@ -218,12 +275,18 @@ def test_total_deferred_permanent_budget_reserved(tmp_path: Path):
     flags as "architectural-blocker" and reserves separately from the
     DEFERRED_TEMP (resumable-with-USER_OK) budget."""
 
-    waves = [(name, est, src) for name, est, src, _cls, _status in CANONICAL_DEFERRED_WAVES]
+    waves = [
+        (name, est, src) for name, est, src, _cls, _status in CANONICAL_DEFERRED_WAVES
+    ]
     wave_dicts = wave_budget_tracker.compute_wave_status(
-        budget_hr=10.0, waves=waves, actual_hr_by_name={},
+        budget_hr=10.0,
+        waves=waves,
+        actual_hr_by_name={},
     )
     summary = wave_budget_tracker.summarise(
-        10.0, wave_dicts, deferred_class_filter="all",
+        10.0,
+        wave_dicts,
+        deferred_class_filter="all",
     )
 
     # DEFERRED_PERMANENT budget = sum of Wf-316A STATUS_HOLD = 5.0 hr.
@@ -231,9 +294,7 @@ def test_total_deferred_permanent_budget_reserved(tmp_path: Path):
     # reclaimed by adding GPU budget because Wf-316A is blocked on
     # upstream feature expansion (R20 §5 tmQM).
     expected_perm_hr = 5.0
-    assert summary["deferred_permanent_hr"] == pytest.approx(
-        expected_perm_hr, abs=1e-6
-    )
+    assert summary["deferred_permanent_hr"] == pytest.approx(expected_perm_hr, abs=1e-6)
 
     # DEFERRED_TEMP budget = sum of all 7 DEFERRED_TEMP waves
     # (excluding the RUNNING boundary wave) =
@@ -241,9 +302,7 @@ def test_total_deferred_permanent_budget_reserved(tmp_path: Path):
     # resumable-with-USER_OK budget: adding GPU budget could clear
     # these (subject to per-launch user OK per AGENTS.md §5.1).
     expected_temp_hr = 16.0 + 7.5 + 16.0 + 7.5 + 5.0 + 3.0 + 3.0
-    assert summary["deferred_temp_hr"] == pytest.approx(
-        expected_temp_hr, abs=1e-6
-    )
+    assert summary["deferred_temp_hr"] == pytest.approx(expected_temp_hr, abs=1e-6)
 
     # Honest framing MUST surface both classes distinctly so
     # downstream wrappers can tell them apart at a glance.
@@ -260,9 +319,12 @@ def test_total_deferred_permanent_budget_reserved(tmp_path: Path):
     report_path = tmp_path / "perm_budget.json"
     rc = wave_budget_tracker.main(
         [
-            "--budget-hr", "10.0",
-            "--waves", "wf_temp_1:1.0,wf_temp_2:1.0,wf_perm_1:1.0",
-            "--report-json", str(report_path),
+            "--budget-hr",
+            "10.0",
+            "--waves",
+            "wf_temp_1:1.0,wf_temp_2:1.0,wf_perm_1:1.0",
+            "--report-json",
+            str(report_path),
         ]
     )
     assert rc == 0

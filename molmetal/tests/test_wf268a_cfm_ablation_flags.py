@@ -43,10 +43,7 @@ import torch
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 SCRIPT_PATH = (
-    PROJECT_ROOT
-    / "molmetal"
-    / "scripts"
-    / "train_cfm_yuelbond_wasserstein.py"
+    PROJECT_ROOT / "molmetal" / "scripts" / "train_cfm_yuelbond_wasserstein.py"
 )
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -58,7 +55,8 @@ if str(PROJECT_ROOT) not in sys.path:
 def _import_module_safe() -> Any:
     """Import the training script as a module without running main()."""
     spec = importlib.util.spec_from_file_location(
-        "train_cfm_yuelbond_wasserstein", str(SCRIPT_PATH),
+        "train_cfm_yuelbond_wasserstein",
+        str(SCRIPT_PATH),
     )
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod
@@ -95,7 +93,8 @@ def _flag_recognised(flag: str) -> bool:
     try:
         sys.argv = [
             "train_cfm_yuelbond_wasserstein.py",
-            "--target-decode-ratio", "0.5",  # sentinel
+            "--target-decode-ratio",
+            "0.5",  # sentinel
             flag,
         ]
         try:
@@ -208,23 +207,33 @@ def test_ablation_runs_smoke(tmp_path) -> None:
     # ablation flags applied.
     train_clouds = mod.build_training_cohort(n_train=8, seed=0, jitter=0.10)
     val_clouds = mod.build_synthetic_pt_click_clouds(
-        n_clouds=4, jitter=0.20, seed=1,
+        n_clouds=4,
+        jitter=0.20,
+        seed=1,
     )
     from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (
         YuelBondBondDecoder,
     )
     import torch.optim as optim
+
     device = torch.device("cpu")
     model = mod.CFMJointModel(hidden_dim=16, n_layers=2).to(device)
     decoder = YuelBondBondDecoder(
-        head=model.head, hidden_dim=16, n_layers=2,
+        head=model.head,
+        hidden_dim=16,
+        n_layers=2,
     )
     optimiser = optim.Adam(model.parameters(), lr=1e-4)
     # Wf-268A ablation: all three components disabled.  This mirrors
     # what the post-processing in main() does after parsing
     # ``--no-yuelbond --no-wasserstein --no-closure-bounded``.
-    closure_bias = {"CuAAC": 0.30, "SPAAC": 0.10, "Suzuki": 0.20,
-                    "AmideCoupling": 0.30, "ThiolEne": 0.10}
+    closure_bias = {
+        "CuAAC": 0.30,
+        "SPAAC": 0.10,
+        "Suzuki": 0.20,
+        "AmideCoupling": 0.30,
+        "ThiolEne": 0.10,
+    }
     epoch_losses = []
     for epoch in range(5):
         train_loss, bond_ce, w2_val, grad_norm, catherine_rate = mod.train_one_epoch(
@@ -234,23 +243,21 @@ def test_ablation_runs_smoke(tmp_path) -> None:
             train_clouds=train_clouds,
             device=device,
             batch_size=8,
-            wasserstein_weight=0.0,        # --no-wasserstein
-            closure_bounded=False,         # --no-closure-bounded
-            closure_bias=closure_bias,     # passed but disabled by flag
+            wasserstein_weight=0.0,  # --no-wasserstein
+            closure_bounded=False,  # --no-closure-bounded
+            closure_bias=closure_bias,  # passed but disabled by flag
             reference_positions=mod.build_reference_positions(),
         )
         epoch_losses.append(train_loss)
     # Each epoch's train_loss must be a finite float.
     for i, v in enumerate(epoch_losses):
-        assert isinstance(v, float), (
-            f"epoch {i} train_loss must be a float, got {type(v).__name__}"
-        )
-        assert math.isfinite(v), (
-            f"epoch {i} train_loss must be finite, got {v}"
-        )
+        assert isinstance(
+            v, float
+        ), f"epoch {i} train_loss must be a float, got {type(v).__name__}"
+        assert math.isfinite(v), f"epoch {i} train_loss must be finite, got {v}"
     # With wasserstein_weight=0.0 and closure_bounded=False, the
     # ablated train_loss should equal the bond_ce (no extra penalty).
     # Verify the last epoch is consistent with ablated behaviour.
-    assert epoch_losses[-1] >= 0.0, (
-        f"ablation epoch loss should be non-negative, got {epoch_losses[-1]}"
-    )
+    assert (
+        epoch_losses[-1] >= 0.0
+    ), f"ablation epoch loss should be non-negative, got {epoch_losses[-1]}"

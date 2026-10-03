@@ -24,6 +24,7 @@ The caller must opt in (or out) explicitly.
 
 CPU-only; no paper work touched (TODO-84 gate honored).
 """
+
 from __future__ import annotations
 
 import os
@@ -162,9 +163,7 @@ def test_safe_external_score_raises_on_empty_smiles():
     with pytest.raises(AdapterUnavailable):
         _safe_external_score("coord_geometry_proxy", "coord_geometry_proxy", "")
     with pytest.raises(AdapterUnavailable):
-        _safe_external_score(
-            "coord_geometry_proxy", "coord_geometry_proxy", "   "
-        )
+        _safe_external_score("coord_geometry_proxy", "coord_geometry_proxy", "   ")
     with pytest.raises(AdapterUnavailable):
         _safe_external_score("coord_geometry_proxy", "coord_geometry_proxy", None)  # type: ignore[arg-type]
 
@@ -180,9 +179,7 @@ def test_safe_external_score_happy_path_for_coord_geometry_proxy(monkeypatch):
         )
 
     monkeypatch.setattr(sbdd_env, "external_scorers", _Mod(), raising=False)
-    val = _safe_external_score(
-        "coord_geometry_proxy", "coord_geometry_proxy", "CCO"
-    )
+    val = _safe_external_score("coord_geometry_proxy", "coord_geometry_proxy", "CCO")
     assert val == 0.85
     assert isinstance(val, float)
 
@@ -241,10 +238,16 @@ def test_all_metrics_one_disabled_returns_none_for_external_scorers():
     assert panel["phototherapy_activity"] is None
     # The other 9 metric keys must still be populated
     for k in (
-        "logp7_4", "gi50_proxy", "cell_permeability_logPapp",
-        "herg_cardio_risk", "ames_mutagen", "hepatotox_index",
-        "aqueous_solubility_logS", "plasma_protein_binding",
-        "ring_size_distribution", "md_relax_energy",
+        "logp7_4",
+        "gi50_proxy",
+        "cell_permeability_logPapp",
+        "herg_cardio_risk",
+        "ames_mutagen",
+        "hepatotox_index",
+        "aqueous_solubility_logS",
+        "plasma_protein_binding",
+        "ring_size_distribution",
+        "md_relax_energy",
     ):
         assert k in panel
 
@@ -265,9 +268,14 @@ def test_all_metrics_mean_disabled_returns_none_for_external_scorers():
     assert panel["phototherapy_activity"] is None
     # Sanity: the 9 organic-only keys are still populated
     for k in (
-        "logp7_4", "gi50_proxy", "cell_permeability_logPapp",
-        "herg_cardio_risk", "ames_mutagen", "hepatotox_index",
-        "aqueous_solubility_logS", "plasma_protein_binding",
+        "logp7_4",
+        "gi50_proxy",
+        "cell_permeability_logPapp",
+        "herg_cardio_risk",
+        "ames_mutagen",
+        "hepatotox_index",
+        "aqueous_solubility_logS",
+        "plasma_protein_binding",
         "ring_size_distribution",
     ):
         assert k in panel
@@ -293,7 +301,9 @@ def test_safe_external_score_no_silent_none_on_missing_module(monkeypatch):
     # Path 1: missing module
     monkeypatch.delattr(sbdd_env, "external_scorers", raising=False)
     with pytest.raises(AdapterUnavailable):
-        result = _safe_external_score("coord_geometry_proxy", "coord_geometry_proxy", "CCO")
+        result = _safe_external_score(
+            "coord_geometry_proxy", "coord_geometry_proxy", "CCO"
+        )
         # The assertion above guarantees we never reach the next line,
         # but defensively also check the docstring return type:
         assert not (result is None), "silent None path eliminated"

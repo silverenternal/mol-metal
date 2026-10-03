@@ -42,6 +42,7 @@ Honest framing (party-twenty-spirit §3.5)
     - PARTIAL_LIFT if ≥ 1 cohort WEAK_RECOVERY / CEILING_BREAK.
     - HONEST_NEGATIVE_R2_DEEP if both cohorts stay R² ≤ 0.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -56,6 +57,7 @@ import numpy as np
 try:
     from sklearn.linear_model import Ridge
     from sklearn.preprocessing import StandardScaler
+
     _HAS_SKLEARN = True
 except Exception:  # pragma: no cover — defensive
     _HAS_SKLEARN = False
@@ -80,9 +82,9 @@ from molmetal.scripts.wf331r5_r2_w2_chemprop import (
 # 2026-09-29) — this is the Wf-367-B1 baseline that the recovery scaffold
 # is measured against.
 WF335M2_DEFAULT_BEST_R2: Dict[str, float] = {
-    "platinai_4cell":       -0.12505399802714393,  # 12d_baseline, seed=0
-    "hilbert":              -0.1267927743302506,   # 12d_baseline, seed=10
-    "metalcytotox_combined":  0.22268113216745766,  # CEILING_BREAK (already)
+    "platinai_4cell": -0.12505399802714393,  # 12d_baseline, seed=0
+    "hilbert": -0.1267927743302506,  # 12d_baseline, seed=10
+    "metalcytotox_combined": 0.22268113216745766,  # CEILING_BREAK (already)
 }
 
 
@@ -130,6 +132,7 @@ def hilbert_astsr_spectral_features(smiles_list: List[str]) -> np.ndarray:
     try:
         from rdkit import Chem, RDLogger
         from rdkit.Chem import AllChem, Descriptors
+
         RDLogger.DisableLog("rdApp.*")
         feats: List[List[float]] = []
         for smi in smiles_list:
@@ -177,6 +180,7 @@ def chemprop_v3_enhanced_features(smiles_list: List[str]) -> np.ndarray:
     out = np.zeros((n, 32), dtype=np.float64)
     try:
         from rdkit import Chem, RDLogger
+
         RDLogger.DisableLog("rdApp.*")
         feats: List[List[float]] = []
         for smi in smiles_list:
@@ -219,7 +223,7 @@ def chemprop_v3_enhanced_features(smiles_list: List[str]) -> np.ndarray:
                     row[15 + (size - 2)] = min(row[15 + (size - 2)] + 1, 31)
             # Functional groups via SMARTS (8 buckets)
             smarts_list = [
-                "[OX2H]",   # 24: alcohol
+                "[OX2H]",  # 24: alcohol
                 "[NX3;H2,H1;!$(NC=O)]",  # 25: amine
                 "[CX3](=O)[NX3]",  # 26: amide
                 "[CX3](=O)[OX2H]",  # 27: carboxylate
@@ -370,109 +374,129 @@ def run_wf367b1(
         t0 = time.time()
         cohort_seed_offset = 10 if cohort == "hilbert" else 0
         X_32d, y, smiles_list = load_cohort(
-            cohort, max_samples=2000, seed=0,
+            cohort,
+            max_samples=2000,
+            seed=0,
         )[:3]
         n_samples = int(X_32d.shape[0])
         baseline_r2 = float(WF325A_BASELINE_R2[cohort])
         wf335m2_r2 = float(wf335m2_best[cohort])
         # Build multi-stream recovery feature matrix
         X_recovery, feature_names, stream_dims = build_recovery_feature_matrix(
-            smiles_list, X_32d, cohort,
+            smiles_list,
+            X_32d,
+            cohort,
         )
         # 12-d baseline for honest framing comparison
         cv_12d = ridge_r2_cv(
-            X_32d[:, :12], y,
-            n_splits=n_splits, n_seeds=n_seeds,
-            alpha=alpha, seed_offset=cohort_seed_offset,
+            X_32d[:, :12],
+            y,
+            n_splits=n_splits,
+            n_seeds=n_seeds,
+            alpha=alpha,
+            seed_offset=cohort_seed_offset,
         )
         # Multi-stream recovery (no W₂ — pure feature engineering)
         cv_recovery = ridge_r2_cv(
-            X_recovery, y,
-            n_splits=n_splits, n_seeds=n_seeds,
-            alpha=alpha, seed_offset=cohort_seed_offset,
+            X_recovery,
+            y,
+            n_splits=n_splits,
+            n_seeds=n_seeds,
+            alpha=alpha,
+            seed_offset=cohort_seed_offset,
         )
         # Multi-stream recovery + W₂ (best axis)
         axis_sel = select_best_w2_axis(
-            X_recovery, y,
-            n_splits=n_splits, n_seeds=3,
-            alpha=alpha, seed_offset=cohort_seed_offset,
+            X_recovery,
+            y,
+            n_splits=n_splits,
+            n_seeds=3,
+            alpha=alpha,
+            seed_offset=cohort_seed_offset,
         )
         best_axis = axis_sel["best_axis"]
         if best_axis >= 0 and X_recovery.shape[1] > 0:
             from molmetal.scripts.wf335m2_r2_w2_chemprop import (
                 ridge_r2_eval_with_w2,
             )
+
             cv_recovery_plus_w2 = ridge_r2_eval_with_w2(
-                X_recovery, y, projection_axis=best_axis,
-                n_splits=n_splits, n_seeds=n_seeds,
-                alpha=alpha, seed_offset=cohort_seed_offset,
+                X_recovery,
+                y,
+                projection_axis=best_axis,
+                n_splits=n_splits,
+                n_seeds=n_seeds,
+                alpha=alpha,
+                seed_offset=cohort_seed_offset,
             )
         else:
             cv_recovery_plus_w2 = {
-                "r2_mean": float("nan"), "r2_std": float("nan"),
+                "r2_mean": float("nan"),
+                "r2_std": float("nan"),
             }
         # Verdict (against Wf-335-M2 best as the Wf-367-B1 baseline)
         v_recovery = verdict(cv_recovery["r2_mean"], wf335m2_r2)
         v_recovery_w2 = verdict(
-            cv_recovery_plus_w2["r2_mean"], wf335m2_r2,
+            cv_recovery_plus_w2["r2_mean"],
+            wf335m2_r2,
         )
-        per_cohort.append({
-            "cohort": cohort,
-            "n_samples": n_samples,
-            "wf325a_baseline_r2": baseline_r2,
-            "wf335m2_best_r2": wf335m2_r2,
-            "stream_dims": stream_dims,
-            "n_features_recovery": int(X_recovery.shape[1]),
-            "per_config": [
-                {
-                    "label": "12d_baseline",
-                    "r2_mean": cv_12d["r2_mean"],
-                    "r2_std": cv_12d["r2_std"],
-                    "lift_vs_wf335m2": float(
-                        cv_12d["r2_mean"] - wf335m2_r2,
-                    ),
-                    "verdict": verdict(cv_12d["r2_mean"], wf335m2_r2),
-                    "n_features": 12,
-                },
-                {
-                    "label": "multi_stream_recovery",
-                    "r2_mean": cv_recovery["r2_mean"],
-                    "r2_std": cv_recovery["r2_std"],
-                    "lift_vs_wf335m2": float(
-                        cv_recovery["r2_mean"] - wf335m2_r2,
-                    ),
-                    "verdict": v_recovery,
-                    "n_features": int(X_recovery.shape[1]),
-                },
-                {
-                    "label": "multi_stream_recovery_plus_w2_best_axis",
-                    "r2_mean": cv_recovery_plus_w2["r2_mean"],
-                    "r2_std": cv_recovery_plus_w2["r2_std"],
-                    "lift_vs_wf335m2": float(
-                        cv_recovery_plus_w2["r2_mean"] - wf335m2_r2,
-                    ),
-                    "verdict": v_recovery_w2,
-                    "n_features": int(X_recovery.shape[1] + 1),
-                    "best_w2_axis": int(best_axis),
-                },
-            ],
-            "elapsed_sec": float(time.time() - t0),
-        })
+        per_cohort.append(
+            {
+                "cohort": cohort,
+                "n_samples": n_samples,
+                "wf325a_baseline_r2": baseline_r2,
+                "wf335m2_best_r2": wf335m2_r2,
+                "stream_dims": stream_dims,
+                "n_features_recovery": int(X_recovery.shape[1]),
+                "per_config": [
+                    {
+                        "label": "12d_baseline",
+                        "r2_mean": cv_12d["r2_mean"],
+                        "r2_std": cv_12d["r2_std"],
+                        "lift_vs_wf335m2": float(
+                            cv_12d["r2_mean"] - wf335m2_r2,
+                        ),
+                        "verdict": verdict(cv_12d["r2_mean"], wf335m2_r2),
+                        "n_features": 12,
+                    },
+                    {
+                        "label": "multi_stream_recovery",
+                        "r2_mean": cv_recovery["r2_mean"],
+                        "r2_std": cv_recovery["r2_std"],
+                        "lift_vs_wf335m2": float(
+                            cv_recovery["r2_mean"] - wf335m2_r2,
+                        ),
+                        "verdict": v_recovery,
+                        "n_features": int(X_recovery.shape[1]),
+                    },
+                    {
+                        "label": "multi_stream_recovery_plus_w2_best_axis",
+                        "r2_mean": cv_recovery_plus_w2["r2_mean"],
+                        "r2_std": cv_recovery_plus_w2["r2_std"],
+                        "lift_vs_wf335m2": float(
+                            cv_recovery_plus_w2["r2_mean"] - wf335m2_r2,
+                        ),
+                        "verdict": v_recovery_w2,
+                        "n_features": int(X_recovery.shape[1] + 1),
+                        "best_w2_axis": int(best_axis),
+                    },
+                ],
+                "elapsed_sec": float(time.time() - t0),
+            }
+        )
     # Aggregate honest framing
     n_above_zero = sum(
-        1 for c in per_cohort
+        1
+        for c in per_cohort
         if any(
-            np.isfinite(cfg.get("r2_mean", float("nan")))
-            and cfg["r2_mean"] > 0.0
+            np.isfinite(cfg.get("r2_mean", float("nan"))) and cfg["r2_mean"] > 0.0
             for cfg in c["per_config"]
         )
     )
     n_ceiling_break = sum(
-        1 for c in per_cohort
-        if any(
-            cfg.get("verdict") == "CEILING_BREAK"
-            for cfg in c["per_config"]
-        )
+        1
+        for c in per_cohort
+        if any(cfg.get("verdict") == "CEILING_BREAK" for cfg in c["per_config"])
     )
     if n_ceiling_break >= 2:
         aggregate_status = "MEASURED_PARTIAL_LIFT"
@@ -511,16 +535,19 @@ def run_wf367b1(
                 "best_config_label": max(
                     c["per_config"],
                     key=lambda cfg: cfg["r2_mean"]
-                    if np.isfinite(cfg["r2_mean"]) else float("-inf"),
+                    if np.isfinite(cfg["r2_mean"])
+                    else float("-inf"),
                 )["label"],
                 "best_r2_mean": max(
-                    cfg["r2_mean"] for cfg in c["per_config"]
+                    cfg["r2_mean"]
+                    for cfg in c["per_config"]
                     if np.isfinite(cfg["r2_mean"])
                 ),
                 "best_verdict": max(
                     c["per_config"],
                     key=lambda cfg: cfg["r2_mean"]
-                    if np.isfinite(cfg["r2_mean"]) else float("-inf"),
+                    if np.isfinite(cfg["r2_mean"])
+                    else float("-inf"),
                 )["verdict"],
             }
             for c in per_cohort
@@ -581,7 +608,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         alpha=args.alpha,
     )
     print(f"Wf-367-B1: n_cohorts = {result['n_cohorts_tested']}")
-    print(f"  CV config = n_splits={args.n_splits} n_seeds={args.n_seeds} alpha={args.alpha}")
+    print(
+        f"  CV config = n_splits={args.n_splits} n_seeds={args.n_seeds} alpha={args.alpha}"
+    )
     for c in result["per_cohort"]:
         cohort = c["cohort"]
         n = c["n_samples"]

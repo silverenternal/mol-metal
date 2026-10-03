@@ -45,11 +45,13 @@ from molmetal.scripts.zenodo_fetch import (
 class TestDnsProbe:
     def test_blocked_when_all_addrs_are_zero(self, monkeypatch):
         """If every resolved address is ``0.0.0.0``, return blocked."""
+
         def fake_getaddrinfo(*_args, **_kwargs):
             return [
                 (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("0.0.0.0", 443)),
                 (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("0.0.0.0", 443)),
             ]
+
         monkeypatch.setattr(socket, "getaddrinfo", fake_getaddrinfo)
         ok, info = _resolve_zenodo_dns()
         assert ok is False
@@ -57,13 +59,18 @@ class TestDnsProbe:
 
     def test_ok_when_real_addr_returned(self, monkeypatch):
         """If the resolver returns a routable address, return ok=True."""
+
         def fake_getaddrinfo(*_args, **_kwargs):
             return [
                 (
-                    socket.AF_INET, socket.SOCK_STREAM, 0, "",
+                    socket.AF_INET,
+                    socket.SOCK_STREAM,
+                    0,
+                    "",
                     ("159.100.250.205", 443),
                 ),
             ]
+
         monkeypatch.setattr(socket, "getaddrinfo", fake_getaddrinfo)
         ok, info = _resolve_zenodo_dns()
         assert ok is True
@@ -71,8 +78,10 @@ class TestDnsProbe:
 
     def test_gaierror_returns_blocked(self, monkeypatch):
         """DNS failure surfaces as blocked, not exception."""
+
         def fake_getaddrinfo(*_args, **_kwargs):
             raise socket.gaierror("Name or service not known")
+
         monkeypatch.setattr(socket, "getaddrinfo", fake_getaddrinfo)
         ok, info = _resolve_zenodo_dns()
         assert ok is False
@@ -91,27 +100,30 @@ class TestHttpHelpers:
         class _FakeResp:
             def __init__(self, body):
                 self._body = body
+
             def read(self, n):
                 if not self._body:
                     return b""
                 chunk, self._body = self._body[:n], self._body[n:]
                 return chunk
+
             def __enter__(self):
                 return self
+
             def __exit__(self, *_):
                 return False
 
         def fake_urlopen(url, **kwargs):
             captured["url"] = url
             return _FakeResp(fake_content)
-        monkeypatch.setattr(
-            "urllib.request.urlopen", fake_urlopen
-        )
+
+        monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
 
         dst = tmp_path / "out.bin"
         ok, n, msg = _http_download_direct(
             "https://zenodo.org/records/123/files/foo.bin/content",
-            dst, timeout=10,
+            dst,
+            timeout=10,
         )
         assert ok is True
         assert n == len(fake_content)
@@ -126,10 +138,13 @@ class TestHttpHelpers:
         class _FakeResp:
             def __init__(self):
                 pass
+
             def read(self, n):
                 return b""
+
             def __enter__(self):
                 return self
+
             def __exit__(self, *_):
                 return False
 
@@ -137,32 +152,43 @@ class TestHttpHelpers:
             captured["url"] = req.full_url
             captured["host_header"] = req.get_header("Host")
             return _FakeResp()
-        monkeypatch.setattr(
-            "urllib.request.urlopen", fake_urlopen
-        )
+
+        monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
 
         dst = tmp_path / "out.bin"
         ok, n, msg = _http_download_via_ip(
-            "zenodo.org", "/records/123/files/foo.bin/content",
-            dst, pinned_ip="159.100.250.205", timeout=10,
+            "zenodo.org",
+            "/records/123/files/foo.bin/content",
+            dst,
+            pinned_ip="159.100.250.205",
+            timeout=10,
         )
         assert ok is True
         assert captured["url"].startswith("https://159.100.250.205")
         assert captured["host_header"] == "zenodo.org"
 
-    def test_http_download_via_ip_returns_zero_bytes_on_empty(self, tmp_path, monkeypatch):
+    def test_http_download_via_ip_returns_zero_bytes_on_empty(
+        self, tmp_path, monkeypatch
+    ):
         """An empty body returns ok=True with 0 bytes written."""
+
         class _FakeResp:
             def read(self, n):
                 return b""
+
             def __enter__(self):
                 return self
+
             def __exit__(self, *_):
                 return False
+
         monkeypatch.setattr("urllib.request.urlopen", lambda *_a, **_k: _FakeResp())
         dst = tmp_path / "out.bin"
         ok, n, msg = _http_download_via_ip(
-            "zenodo.org", "/foo", dst, pinned_ip="159.100.250.205",
+            "zenodo.org",
+            "/foo",
+            dst,
+            pinned_ip="159.100.250.205",
         )
         assert ok is True
         assert n == 0
@@ -190,7 +216,8 @@ class TestZenodoFetchOrchestration:
         ip_pin_calls = []
         monkeypatch.setattr(
             "molmetal.scripts.zenodo_fetch._http_download_via_ip",
-            lambda *a, **k: ip_pin_calls.append(a) or (False, 0, "should-not-be-called"),
+            lambda *a, **k: ip_pin_calls.append(a)
+            or (False, 0, "should-not-be-called"),
         )
         monkeypatch.setattr(
             "molmetal.scripts.zenodo_fetch._head_via_ip",
@@ -226,7 +253,9 @@ class TestZenodoFetchOrchestration:
         )
 
         result = zenodo_fetch(
-            "8183747", "foo.ckpt", tmp_path,
+            "8183747",
+            "foo.ckpt",
+            tmp_path,
             fallback_ips=("159.100.250.205", "159.100.250.206"),
         )
         assert result.ok is True
@@ -249,7 +278,8 @@ class TestZenodoFetchOrchestration:
         ip_get_called = []
         monkeypatch.setattr(
             "molmetal.scripts.zenodo_fetch._http_download_via_ip",
-            lambda *a, **k: ip_get_called.append(a) or (False, 0, "should-not-be-called"),
+            lambda *a, **k: ip_get_called.append(a)
+            or (False, 0, "should-not-be-called"),
         )
         monkeypatch.setattr(
             "molmetal.scripts.zenodo_fetch.urllib.request.urlopen",
@@ -257,7 +287,9 @@ class TestZenodoFetchOrchestration:
         )
 
         result = zenodo_fetch(
-            "8183747", "foo.ckpt", tmp_path,
+            "8183747",
+            "foo.ckpt",
+            tmp_path,
             fallback_ips=("159.100.250.205", "159.100.250.206"),
         )
         assert result.ok is False
@@ -299,9 +331,14 @@ class TestZenodoFetchOrchestration:
 class TestZenodoFetchResult:
     def test_to_dict_has_all_fields(self):
         r = ZenodoFetchResult(
-            ok=True, record_id="1", filename="x",
-            dst_path="/tmp/x", method="direct-dns",
-            bytes_written=42, elapsed_s=0.5, message="ok",
+            ok=True,
+            record_id="1",
+            filename="x",
+            dst_path="/tmp/x",
+            method="direct-dns",
+            bytes_written=42,
+            elapsed_s=0.5,
+            message="ok",
         )
         d = r.to_dict()
         assert d["ok"] is True
@@ -314,9 +351,14 @@ class TestZenodoFetchResult:
 
     def test_json_round_trip(self):
         r = ZenodoFetchResult(
-            ok=False, record_id="2", filename="y",
-            dst_path=None, method="manual", bytes_written=0,
-            elapsed_s=1.0, message="manual",
+            ok=False,
+            record_id="2",
+            filename="y",
+            dst_path=None,
+            method="manual",
+            bytes_written=0,
+            elapsed_s=1.0,
+            message="manual",
             attempts=[{"step": "dns-probe", "info": "blocked"}],
         )
         js = json.dumps(r.to_dict())
@@ -344,6 +386,7 @@ class TestConfig:
     def test_main_help_exits_zero(self):
         """--help should exit 0 (not raise SystemExit)."""
         from molmetal.scripts.zenodo_fetch import main
+
         with pytest.raises(SystemExit) as exc:
             main(["--help"])
         assert exc.value.code == 0
@@ -355,6 +398,7 @@ class TestConfig:
             lambda **_k: (True, "159.100.250.205"),
         )
         from molmetal.scripts.zenodo_fetch import main
+
         rc = main(["--probe-only"])
         assert rc == 0
         out = capsys.readouterr().out
@@ -368,12 +412,14 @@ class TestConfig:
             lambda **_k: (False, "DNS blocked"),
         )
         from molmetal.scripts.zenodo_fetch import main
+
         rc = main(["--probe-only"])
         assert rc == 1
 
     def test_main_requires_record_and_file(self, monkeypatch, capsys):
         """Without --record/--file and without --probe-only, exit 2."""
         from molmetal.scripts.zenodo_fetch import main
+
         rc = main([])
         assert rc == 2
         err = capsys.readouterr().err

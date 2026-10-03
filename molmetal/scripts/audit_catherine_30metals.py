@@ -73,6 +73,7 @@ Usage examples
     uv run --no-sync python molmetal/scripts/audit_catherine_30metals.py \\
         --synthetic-only
 """
+
 from __future__ import annotations
 
 import argparse
@@ -107,9 +108,36 @@ log = logging.getLogger("wf130_catherine_audit")
 #: 30 d-block transition metals — full set shipped in
 #: ``molmetal/data/transition_metals_30.csv``.
 DEFAULT_30_METALS: Tuple[str, ...] = (
-    "Sc", "Ti", "V",  "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
-    "Y",  "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
-    "La", "Hf", "Ta", "W",  "Re", "Os", "Ir", "Pt", "Au", "Hg",
+    "Sc",
+    "Ti",
+    "V",
+    "Cr",
+    "Mn",
+    "Fe",
+    "Co",
+    "Ni",
+    "Cu",
+    "Zn",
+    "Y",
+    "Zr",
+    "Nb",
+    "Mo",
+    "Tc",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Cd",
+    "La",
+    "Hf",
+    "Ta",
+    "W",
+    "Re",
+    "Os",
+    "Ir",
+    "Pt",
+    "Au",
+    "Hg",
 )
 
 #: 6 Catherine properties — the theorem-level claim this audit tests.
@@ -151,19 +179,13 @@ def _load_catherine_properties():
     """
     import importlib.util
 
-    cp_path = (
-        _REPO_ROOT
-        / "molmetal"
-        / "math_skills"
-        / "catherine_properties.py"
-    )
+    cp_path = _REPO_ROOT / "molmetal" / "math_skills" / "catherine_properties.py"
     spec = importlib.util.spec_from_file_location(
         "_catherine_properties_audit", str(cp_path)
     )
     if spec is None or spec.loader is None:
         raise ImportError(
-            f"[wf130] could not load catherine_properties spec from "
-            f"{cp_path}"
+            f"[wf130] could not load catherine_properties spec from " f"{cp_path}"
         )
     cp_mod = importlib.util.module_from_spec(spec)
     sys.modules.setdefault(spec.name, cp_mod)
@@ -214,16 +236,12 @@ def _aggregate_seed_summaries(
     coord_violations).  Mirrors Wf-57 ``_summarise_seed_summary``.
     """
     if not seed_summaries:
-        return _synthetic_summary(
-            metal, seed=0, max_depth=1, partner_terms_n=7
-        )
+        return _synthetic_summary(metal, seed=0, max_depth=1, partner_terms_n=7)
     if len(seed_summaries) == 1:
         return seed_summaries[0]
     n_visited = sum(int(s.get("n_visited", 0)) for s in seed_summaries)
     n_products = sum(int(s.get("n_products", 0)) for s in seed_summaries)
-    max_depth_seen = max(
-        int(s.get("max_depth_seen", 0)) for s in seed_summaries
-    )
+    max_depth_seen = max(int(s.get("max_depth_seen", 0)) for s in seed_summaries)
     ppd_merged: Dict[Any, int] = defaultdict(int)
     for s in seed_summaries:
         for k, v in s.get("products_per_depth", {}).items():
@@ -237,15 +255,11 @@ def _aggregate_seed_summaries(
     well_typed_rate = statistics.fmean(
         float(s.get("well_typed_rate", 0.0)) for s in seed_summaries
     )
-    coord_violations = sum(
-        int(s.get("coord_violations", 0)) for s in seed_summaries
-    )
+    coord_violations = sum(int(s.get("coord_violations", 0)) for s in seed_summaries)
     reachability_rate = statistics.fmean(
         float(s.get("reachability_rate", 0.0)) for s in seed_summaries
     )
-    wall_time_s = sum(
-        float(s.get("wall_time_s", 0.0)) for s in seed_summaries
-    )
+    wall_time_s = sum(float(s.get("wall_time_s", 0.0)) for s in seed_summaries)
     return {
         "metal": metal,
         "seed": -1,
@@ -259,14 +273,10 @@ def _aggregate_seed_summaries(
         "well_typed_rate": well_typed_rate,
         "coord_violations": coord_violations,
         "reachability_rate": reachability_rate,
-        "partner_terms_n": int(
-            seed_summaries[0].get("partner_terms_n", 7)
-        ),
+        "partner_terms_n": int(seed_summaries[0].get("partner_terms_n", 7)),
         "wall_time_s": wall_time_s,
         "n_seeds": len(seed_summaries),
-        "synthetic": bool(
-            any(s.get("synthetic", False) for s in seed_summaries)
-        ),
+        "synthetic": bool(any(s.get("synthetic", False) for s in seed_summaries)),
     }
 
 
@@ -283,6 +293,7 @@ def _load_wf57_helpers() -> Dict[str, Any]:
             _run_closure_for_metal,
             _synthetic_summary as wf57_synthetic,
         )
+
         return {
             "available": True,
             "load_partner_terms": _load_partner_terms,
@@ -319,11 +330,7 @@ def _run_audit_for_metal(
 
     Returns (summary, verdict_dict, synthetic_only_flag).
     """
-    use_real = (
-        helpers.get("available")
-        and not synthetic_only
-        and bool(partner_terms)
-    )
+    use_real = helpers.get("available") and not synthetic_only and bool(partner_terms)
     seed_summaries: List[Dict[str, Any]] = []
     if use_real:
         run_closure = helpers["run_closure"]
@@ -359,9 +366,10 @@ def _run_audit_for_metal(
             seed_summaries.append(s)
     else:
         synth = helpers.get("synthetic") or (
-            lambda m, seed, max_depth, partner_terms_n:
-            _synthetic_summary(
-                m, seed=seed, max_depth=max_depth,
+            lambda m, seed, max_depth, partner_terms_n: _synthetic_summary(
+                m,
+                seed=seed,
+                max_depth=max_depth,
                 partner_terms_n=partner_terms_n,
             )
         )
@@ -433,12 +441,8 @@ def _write_per_metal(
             "witness_rate": float(summary.get("witness_rate", 0.0)),
             "well_typed_rate": float(summary.get("well_typed_rate", 0.0)),
             "coord_violations": int(summary.get("coord_violations", 0)),
-            "reachability_rate": float(
-                summary.get("reachability_rate", 0.0)
-            ),
-            "products_per_depth": dict(
-                summary.get("products_per_depth", {})
-            ),
+            "reachability_rate": float(summary.get("reachability_rate", 0.0)),
+            "products_per_depth": dict(summary.get("products_per_depth", {})),
             "synthetic": bool(summary.get("synthetic", False)),
         },
         "metadata": {
@@ -525,9 +529,7 @@ def _render_synthesis(
         )
     )
     lines.append(
-        "- **{0} / {1} metals** ran on real closure BFS".format(
-            n_real, n_total
-        )
+        "- **{0} / {1} metals** ran on real closure BFS".format(n_real, n_total)
     )
     lines.append(
         "- **{0} / {1} metals** ran on synthetic fallback "
@@ -538,9 +540,7 @@ def _render_synthesis(
     # Per-property pass-rate table.
     lines.append("## Per-property pass-rate")
     lines.append("")
-    lines.append(
-        "| Property | #metals PASS / #metals total | Pass-rate |"
-    )
+    lines.append("| Property | #metals PASS / #metals total | Pass-rate |")
     lines.append("|---|---:|---:|")
     prop_pass_count: Dict[str, int] = {pid: 0 for pid in CATHERINE_PROPERTIES}
     for r in per_metal_rows:
@@ -564,9 +564,7 @@ def _render_synthesis(
     # Per-metal 6/6 verdict table.
     lines.append("## Per-metal 6/6 verdict")
     lines.append("")
-    lines.append(
-        "| Metal | 6/6 | P1 | P2 | P3 | P4 | P5 | P6 | synth |"
-    )
+    lines.append("| Metal | 6/6 | P1 | P2 | P3 | P4 | P5 | P6 | synth |")
     lines.append("|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|")
     for r in per_metal_rows:
         catherine_path = out_dir / r["metal"] / "catherine_audit.json"
@@ -596,9 +594,7 @@ def _render_synthesis(
         "- `catherine_audit_30metals.json` — combined sweep verdict "
         "(30 metals × 6 properties)"
     )
-    lines.append(
-        "- `synthesis.md` — this file (Wf-130 P1 ship surface)"
-    )
+    lines.append("- `synthesis.md` — this file (Wf-130 P1 ship surface)")
     lines.append(
         "- `{metal}/catherine_audit.json` — per-metal 6/6 verdict "
         "(one file per metal; 30 dirs)"
@@ -739,7 +735,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     # Resolve 30-metal list (CSV override > explicit list > first N from CSV).
     csv_path = (
-        Path(args.metal_csv) if args.metal_csv
+        Path(args.metal_csv)
+        if args.metal_csv
         else _REPO_ROOT / "molmetal" / "data" / "transition_metals_30.csv"
     )
     metals: List[str] = []
@@ -759,7 +756,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         elif n > len(metals):
             log.warning(
                 "--metals=%d exceeds available list length %d; using all",
-                n, len(metals),
+                n,
+                len(metals),
             )
 
     # Lazy-load catherine_properties (bypassing math_skills.__init__).
@@ -792,7 +790,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
 
     out_dir = (
-        Path(args.out_dir) if args.out_dir
+        Path(args.out_dir)
+        if args.out_dir
         else _REPO_ROOT / "molmetal" / "reports" / "wf130_p1_catherine_30"
     )
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -802,7 +801,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     log.info(
         "[Wf-130] Catherine audit: metals=%d, seeds=%d, max_depth=%d, "
         "max_products=%d, real_bfs=%s",
-        len(metals), len(seeds), args.max_depth, args.max_products,
+        len(metals),
+        len(seeds),
+        args.max_depth,
+        args.max_products,
         real_bfs_available,
     )
 
@@ -868,7 +870,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     log.info(
         "[Wf-130] Audit complete: %d metals, wall=%.2fs — 6/6 PASS on "
         "%d / %d metals (see %s)",
-        len(metals), wall_total, n_pass_6of6, len(metals),
+        len(metals),
+        wall_total,
+        n_pass_6of6,
+        len(metals),
         out_dir / "catherine_audit_30metals.json",
     )
     return 0

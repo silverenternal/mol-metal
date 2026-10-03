@@ -153,7 +153,7 @@ class PocketMetrics:
     rmsd_target_A: float = RMSD_TARGET_A
     n_receptor_atoms: int = 0
     receptor_center: Tuple[float, float, float] = (0.0, 0.0, 0.0)
-    pocket_status: str = "unknown"     # "ready" | "missing" | "incomplete"
+    pocket_status: str = "unknown"  # "ready" | "missing" | "incomplete"
     extra: Dict[str, object] = field(default_factory=dict)
 
     # ------------------------------------------------------------------
@@ -330,10 +330,9 @@ def _build_reference_pose(
     """
     g = torch.Generator().manual_seed(int(seed) + 7919)
     cx, cy, cz = pocket.center
-    ref = (
-        torch.tensor([cx, cy, cz], dtype=torch.float32)
-        + torch.randn((n_atoms, 3), generator=g) * float(spread)
-    )
+    ref = torch.tensor([cx, cy, cz], dtype=torch.float32) + torch.randn(
+        (n_atoms, 3), generator=g
+    ) * float(spread)
     return ref, n_atoms
 
 
@@ -353,10 +352,9 @@ def _build_initial_pose(
     """
     g = torch.Generator().manual_seed(int(seed) + 104729)
     cx, cy, cz = pocket.center
-    init = (
-        torch.tensor([cx, cy, cz], dtype=torch.float32)
-        + torch.randn((n_atoms, 3), generator=g) * float(spread)
-    )
+    init = torch.tensor([cx, cy, cz], dtype=torch.float32) + torch.randn(
+        (n_atoms, 3), generator=g
+    ) * float(spread)
     return init
 
 
@@ -426,11 +424,18 @@ def run_pocket_benchmark(
         t0 = time.perf_counter()
         # Reference pose = pocket centroid + deterministic jitter.
         ref_atoms, n_ref = _build_reference_pose(
-            pocket, seed=int(seed), n_atoms=16, spread=1.0,
+            pocket,
+            seed=int(seed),
+            n_atoms=16,
+            spread=1.0,
         )
         # Initial pose = same N + larger jitter (the SB bridge source).
         init_atoms = _build_initial_pose(
-            candidate.smiles, pocket, seed=int(seed), n_atoms=n_ref, spread=4.0,
+            candidate.smiles,
+            pocket,
+            seed=int(seed),
+            n_atoms=n_ref,
+            spread=4.0,
         )
         try:
             pred = predictor.predict_best(
@@ -450,7 +455,9 @@ def run_pocket_benchmark(
         except Exception as exc:
             log.warning(
                 "pocket=%s seed=%s bridge sample failed: %s",
-                pocket.pocket_id, seed, exc,
+                pocket.pocket_id,
+                seed,
+                exc,
             )
             rmsd = float("nan")
             wass = float("nan")
@@ -500,24 +507,28 @@ def write_summary(
         "rmsd_target_A": float(RMSD_TARGET_A),
         "per_pocket": [m.as_dict() for m in per_pocket],
         "aggregate": {
-            "n_pockets_ready": sum(
-                1 for m in per_pocket if m.pocket_status == "ready"
-            ),
+            "n_pockets_ready": sum(1 for m in per_pocket if m.pocket_status == "ready"),
             "n_pockets_passed": sum(1 for m in per_pocket if m.passes_target()),
             "mean_rmsd_A": (
-                float(statistics.mean(
-                    m.mean_rmsd_A() for m in per_pocket
-                    if math.isfinite(m.mean_rmsd_A())
-                )) if any(math.isfinite(m.mean_rmsd_A()) for m in per_pocket)
+                float(
+                    statistics.mean(
+                        m.mean_rmsd_A()
+                        for m in per_pocket
+                        if math.isfinite(m.mean_rmsd_A())
+                    )
+                )
+                if any(math.isfinite(m.mean_rmsd_A()) for m in per_pocket)
                 else float("nan")
             ),
             "max_rmsd_A": (
                 float(max(m.mean_rmsd_A() for m in per_pocket))
-                if per_pocket else float("nan")
+                if per_pocket
+                else float("nan")
             ),
             "min_rmsd_A": (
                 float(min(m.mean_rmsd_A() for m in per_pocket))
-                if per_pocket else float("nan")
+                if per_pocket
+                else float("nan")
             ),
         },
     }
@@ -537,8 +548,7 @@ def write_synthesis(
     n_pass = sum(1 for m in per_pocket if m.passes_target())
     overall_mean = (
         statistics.mean(
-            m.mean_rmsd_A() for m in per_pocket
-            if math.isfinite(m.mean_rmsd_A())
+            m.mean_rmsd_A() for m in per_pocket if math.isfinite(m.mean_rmsd_A())
         )
         if any(math.isfinite(m.mean_rmsd_A()) for m in per_pocket)
         else float("nan")
@@ -547,9 +557,7 @@ def write_synthesis(
     lines: List[str] = []
     lines.append("# Wf-126 Phase 2 — SE(3) Schrödinger Bridge RMSD rerun")
     lines.append("")
-    lines.append(
-        f"**Generated**: {datetime.now(timezone.utc).isoformat()}"
-    )
+    lines.append(f"**Generated**: {datetime.now(timezone.utc).isoformat()}")
     lines.append(
         f"**Pockets**: {n_pockets} | **Target RMSD**: ≤ "
         f"{RMSD_TARGET_A:.3f} Å | **Pass**: {n_pass}/{n_pockets}"
@@ -584,9 +592,7 @@ def write_synthesis(
     lines.append(
         "| pocket | mean RMSD (Å) | std (Å) | passes target | mean Wasserstein | seeds |"
     )
-    lines.append(
-        "|---|---|---|---|---|---|"
-    )
+    lines.append("|---|---|---|---|---|---|")
     for m in per_pocket:
         rmsd = m.mean_rmsd_A()
         std = m.std_rmsd_A()
@@ -639,16 +645,10 @@ def write_synthesis(
     lines.append("- `summary.json` — aggregate cross-pocket JSON record.")
     lines.append("- `<pocket>/per_seed_metrics.json` — per-pocket detail.")
     lines.append(
-        "- `molmetal/molmetal_lam/sbdd_env/se3_bridge_adapter.py` — "
-        "adapter module."
+        "- `molmetal/molmetal_lam/sbdd_env/se3_bridge_adapter.py` — " "adapter module."
     )
-    lines.append(
-        "- `molmetal/scripts/bench_rmsd_se3_bridge.py` — this benchmark."
-    )
-    lines.append(
-        "- `molmetal/tests/test_rmsd_se3_bridge.py` — adapter test "
-        "suite."
-    )
+    lines.append("- `molmetal/scripts/bench_rmsd_se3_bridge.py` — this benchmark.")
+    lines.append("- `molmetal/tests/test_rmsd_se3_bridge.py` — adapter test " "suite.")
     lines.append("")
     path = out_dir / "synthesis.md"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -733,9 +733,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         "--out-dir",
         type=Path,
         default=DEFAULT_OUT_DIR,
-        help=(
-            "Output directory for per-pocket + summary JSON + synthesis.md."
-        ),
+        help=("Output directory for per-pocket + summary JSON + synthesis.md."),
     )
     parser.add_argument(
         "--write-synthesis",
@@ -771,7 +769,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 2
     log.info(
         "Loaded %d candidate(s); running %d pockets × %d seeds",
-        len(candidates), len(args.pockets), len(args.seeds),
+        len(candidates),
+        len(args.pockets),
+        len(args.seeds),
     )
 
     per_pocket: List[PocketMetrics] = []
@@ -803,8 +803,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         log.info(
             "pocket=%s mean_rmsd=%.4f std=%.4f mean_wass=%.4f "
             "(target ≤ %.3f Å, passes=%s)",
-            m.pocket_id, m.mean_rmsd_A(), m.std_rmsd_A(), m.mean_wass(),
-            RMSD_TARGET_A, m.passes_target(),
+            m.pocket_id,
+            m.mean_rmsd_A(),
+            m.std_rmsd_A(),
+            m.mean_wass(),
+            RMSD_TARGET_A,
+            m.passes_target(),
         )
 
     config = {

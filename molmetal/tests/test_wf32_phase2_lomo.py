@@ -34,14 +34,9 @@ from pathlib import Path
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-METRICS_PATH = (
-    PROJECT_ROOT / "metrics" / "by_metric" / "multimetal_lomo_auc.json"
-)
+METRICS_PATH = PROJECT_ROOT / "metrics" / "by_metric" / "multimetal_lomo_auc.json"
 SUMMARY_PATH = (
-    PROJECT_ROOT
-    / "metrics"
-    / "by_metric"
-    / "multimetal_lomo_auc_summary.json"
+    PROJECT_ROOT / "metrics" / "by_metric" / "multimetal_lomo_auc_summary.json"
 )
 
 LOMO_FOLDS = ("Ru", "Ir", "Rh", "Re", "Os")
@@ -71,9 +66,9 @@ def test_wf32_lomo_metrics_well_formed() -> None:
     payload = _load(METRICS_PATH)
     assert isinstance(payload, dict)
     recipe = payload.get("recipe", "")
-    assert recipe.startswith("r19_wf32_m19_multimetal_lomo"), (
-        f"unexpected recipe tag {recipe!r}"
-    )
+    assert recipe.startswith(
+        "r19_wf32_m19_multimetal_lomo"
+    ), f"unexpected recipe tag {recipe!r}"
 
 
 def test_wf32_lomo_metrics_25_runs() -> None:
@@ -85,22 +80,18 @@ def test_wf32_lomo_metrics_25_runs() -> None:
     if isinstance(per_run, list):
         if per_run and isinstance(per_run[0], list):
             flat = [v for sub in per_run for v in sub]
-            assert len(flat) == N_RUNS, (
-                f"expected {N_RUNS} runs, got {len(flat)}"
-            )
+            assert len(flat) == N_RUNS, f"expected {N_RUNS} runs, got {len(flat)}"
         else:
-            assert len(per_run) == N_RUNS, (
-                f"expected {N_RUNS} runs, got {len(per_run)}"
-            )
+            assert len(per_run) == N_RUNS, f"expected {N_RUNS} runs, got {len(per_run)}"
     elif isinstance(per_run, dict):
         # Per-fold dict of seeds
-        assert set(per_run.keys()) == set(LOMO_FOLDS), (
-            f"per-fold dict keys = {sorted(per_run.keys())}"
-        )
+        assert set(per_run.keys()) == set(
+            LOMO_FOLDS
+        ), f"per-fold dict keys = {sorted(per_run.keys())}"
         for fold, seeds in per_run.items():
-            assert len(seeds) == N_SEEDS, (
-                f"fold {fold} has {len(seeds)} seeds (expected {N_SEEDS})"
-            )
+            assert (
+                len(seeds) == N_SEEDS
+            ), f"fold {fold} has {len(seeds)} seeds (expected {N_SEEDS})"
     else:
         pytest.fail(f"unexpected per_run_auc shape: {type(per_run).__name__}")
 
@@ -111,16 +102,16 @@ def test_wf32_lomo_metrics_per_fold_mean_finite() -> None:
     payload = _load(METRICS_PATH)
     per_fold_mean = payload.get("per_fold_mean_auc", {})
     per_fold_std = payload.get("per_fold_std_auc", {})
-    assert set(per_fold_mean.keys()) == set(LOMO_FOLDS), (
-        f"per_fold_mean keys = {sorted(per_fold_mean.keys())}"
-    )
+    assert set(per_fold_mean.keys()) == set(
+        LOMO_FOLDS
+    ), f"per_fold_mean keys = {sorted(per_fold_mean.keys())}"
     for fold, mean in per_fold_mean.items():
         assert math.isfinite(mean), f"{fold} mean not finite"
         assert 0.0 <= mean <= 1.0, f"{fold} mean outside [0, 1]: {mean}"
         std = per_fold_std.get(fold)
-        assert std is not None and math.isfinite(std), (
-            f"{fold} std missing or not finite: {std}"
-        )
+        assert std is not None and math.isfinite(
+            std
+        ), f"{fold} std missing or not finite: {std}"
         assert std >= 0, f"{fold} std negative: {std}"
 
 
@@ -128,15 +119,10 @@ def test_wf32_lomo_metrics_headline_finite() -> None:
     """Headline mean_test_auc must be finite and inside [0, 1]."""
     _skip_if_missing(METRICS_PATH)
     payload = _load(METRICS_PATH)
-    headline = (
-        payload.get("mean_test_auc")
-        or payload.get("wf32_headline_value")
-    )
+    headline = payload.get("mean_test_auc") or payload.get("wf32_headline_value")
     assert headline is not None, "mean_test_auc headline missing"
     assert math.isfinite(headline), f"headline not finite: {headline!r}"
-    assert 0.0 <= headline <= 1.0, (
-        f"headline outside [0, 1]: {headline!r}"
-    )
+    assert 0.0 <= headline <= 1.0, f"headline outside [0, 1]: {headline!r}"
 
 
 def test_wf32_lomo_metrics_init_choice_valid() -> None:
@@ -146,9 +132,9 @@ def test_wf32_lomo_metrics_init_choice_valid() -> None:
     init = payload.get("init") or payload.get("wf32_init")
     if init is None:
         pytest.skip("init field not recorded in this metrics file")
-    assert init in INIT_CHOICES, (
-        f"unexpected init choice {init!r} (must be one of {INIT_CHOICES})"
-    )
+    assert (
+        init in INIT_CHOICES
+    ), f"unexpected init choice {init!r} (must be one of {INIT_CHOICES})"
 
 
 def test_wf32_lomo_summary_well_formed() -> None:
@@ -157,12 +143,12 @@ def test_wf32_lomo_summary_well_formed() -> None:
     summary = _load(SUMMARY_PATH)
     assert isinstance(summary, dict)
     recipe = summary.get("recipe", "")
-    assert recipe.startswith("r19_wf32_m19_multimetal_lomo"), (
-        f"unexpected summary recipe tag {recipe!r}"
-    )
+    assert recipe.startswith(
+        "r19_wf32_m19_multimetal_lomo"
+    ), f"unexpected summary recipe tag {recipe!r}"
     metrics = _load(METRICS_PATH)
     if metrics is not None:
         for key in ("per_fold_mean_auc",):
-            assert summary.get(key) == metrics.get(key), (
-                f"summary[{key}] does not match metrics[{key}]"
-            )
+            assert summary.get(key) == metrics.get(
+                key
+            ), f"summary[{key}] does not match metrics[{key}]"

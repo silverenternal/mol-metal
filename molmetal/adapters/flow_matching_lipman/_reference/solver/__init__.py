@@ -31,6 +31,7 @@ production retrain we recommend cloning the upstream Facebook repo at
 ``references/flow_matching``; this shim's fallback path then becomes a
 no-op and the upstream takes over.
 """
+
 from __future__ import annotations
 
 import math
@@ -58,7 +59,9 @@ try:
             return torch.zeros_like(x)
 
     try:
-        _probe = _UpstreamSampler(model=_ProbeModel(), default_method="euler", default_n_steps=10)
+        _probe = _UpstreamSampler(
+            model=_ProbeModel(), default_method="euler", default_n_steps=10
+        )
         _UPSTREAM_AVAILABLE = True
     except TypeError:
         _UPSTREAM_AVAILABLE = False
@@ -156,8 +159,12 @@ class ODESolver:
         # ``decode_ratio = 0`` (the predicted regression).  Default
         # behaviour is unchanged.
         import os as _os_m15
+
         _ablate_m15 = _os_m15.environ.get("MOLMETAL_ABLATE_M15", "").lower() in (
-            "1", "true", "yes", "on",
+            "1",
+            "true",
+            "yes",
+            "on",
         )
         if self._sampler is not None and not (
             step_size is not None or time_grid is not None

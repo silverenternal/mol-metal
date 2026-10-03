@@ -23,6 +23,7 @@ Usage:
 
 Cross-ref: scripts/_WRAPPER_TEMPLATE.sh is the canonical surface.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -47,12 +48,17 @@ AUDIT_JSON = REPORTS_DIR / "wrapper_audit.json"
 # `export PYTHONPATH=...` once at the top instead of inline).
 CANONICAL_MARKERS = {
     "USER_OK gate": re.compile(r'USER_OK:-0}.*\s*!=\s*"1"', re.IGNORECASE),
-    "DRY_RUN emission": re.compile(r'DRY_RUN\.log', re.IGNORECASE),
-    "plan_json emission": re.compile(r'plan\.json', re.IGNORECASE),
-    "pre_flight_check gate": re.compile(r'pre_flight_check\.py', re.IGNORECASE),
-    "PYTHONPATH export": re.compile(r'PYTHONPATH\s*=\s*[/"\']?/home/hugo/codes/mol-metal(?:\s|\$|\")', re.IGNORECASE),
-    "PY hardcoded-via-bin/python": re.compile(r'(?:PY|py|python)[: =].{0,40}/home/hugo/codes/mol-metal/\.venv/bin/python', re.IGNORECASE),
-    "USER_OK env propagation to trainer": re.compile(r'--user-ok', re.IGNORECASE),
+    "DRY_RUN emission": re.compile(r"DRY_RUN\.log", re.IGNORECASE),
+    "plan_json emission": re.compile(r"plan\.json", re.IGNORECASE),
+    "pre_flight_check gate": re.compile(r"pre_flight_check\.py", re.IGNORECASE),
+    "PYTHONPATH export": re.compile(
+        r'PYTHONPATH\s*=\s*[/"\']?/home/hugo/codes/mol-metal(?:\s|\$|\")', re.IGNORECASE
+    ),
+    "PY hardcoded-via-bin/python": re.compile(
+        r"(?:PY|py|python)[: =].{0,40}/home/hugo/codes/mol-metal/\.venv/bin/python",
+        re.IGNORECASE,
+    ),
+    "USER_OK env propagation to trainer": re.compile(r"--user-ok", re.IGNORECASE),
 }
 
 # DUPLICATE detector — DOCK_PANEL references the same trainer
@@ -70,7 +76,10 @@ def surface_check(path: Path) -> dict[str, bool]:
         content = path.read_text(encoding="utf-8")
     except Exception as exc:
         return {name: False for name in CANONICAL_MARKERS} | {"_read_error": str(exc)}
-    result = {name: bool(pattern.search(content)) for name, pattern in CANONICAL_MARKERS.items()}
+    result = {
+        name: bool(pattern.search(content))
+        for name, pattern in CANONICAL_MARKERS.items()
+    }
     # exclude the template from classification noise (it's the reference itself)
     result["_template"] = path.name.startswith("_")
     return result
@@ -118,7 +127,10 @@ def classify(surface: dict[str, bool], wrapper_path: Path) -> tuple[str, str]:
     matched = [k for k, v in surface.items() if v and k != "_template"]
     missing = [k for k, v in surface.items() if not v and k != "_template"]
     if has_multiple_device_flags(wrapper_path):
-        return "DUPLICATE", "multiple --device flag invocations (>1) — CANONICAL flag pattern violated"
+        return (
+            "DUPLICATE",
+            "multiple --device flag invocations (>1) — CANONICAL flag pattern violated",
+        )
     if len(matched) == len(CANONICAL_MARKERS):
         return "REAL", "all 7 canonical markers present"
     if surface.get("_template"):
@@ -150,16 +162,22 @@ def audit(strict: bool = False) -> dict:
     for w in wrappers:
         surface = surface_check(w)
         cls, evidence = classify(surface, w)
-        records.append({
-            "wrapper": w.name,
-            "path": str(w),
-            "size_bytes": w.stat().st_size,
-            "mode_octal": oct(w.stat().st_mode & 0o777),
-            "classification": cls,
-            "evidence": evidence,
-            "matched_markers": [k for k, v in surface.items() if v and k != "_template"],
-            "missing_markers": [k for k, v in surface.items() if not v and k != "_template"],
-        })
+        records.append(
+            {
+                "wrapper": w.name,
+                "path": str(w),
+                "size_bytes": w.stat().st_size,
+                "mode_octal": oct(w.stat().st_mode & 0o777),
+                "classification": cls,
+                "evidence": evidence,
+                "matched_markers": [
+                    k for k, v in surface.items() if v and k != "_template"
+                ],
+                "missing_markers": [
+                    k for k, v in surface.items() if not v and k != "_template"
+                ],
+            }
+        )
         if w.name.startswith("_"):
             summary["TEMPLATE"] += 1
         elif cls.startswith("DUAL"):
@@ -170,8 +188,10 @@ def audit(strict: bool = False) -> dict:
     duplicates = collect_duplicates(wrappers)
     for record in records:
         record["duplicates_panel_with"] = [
-            p for p, who in duplicates.items()
-            if record["wrapper"] in who and record["wrapper"] not in who.replace(record["wrapper"], "")
+            p
+            for p, who in duplicates.items()
+            if record["wrapper"] in who
+            and record["wrapper"] not in who.replace(record["wrapper"], "")
         ]
 
     return {
@@ -182,7 +202,11 @@ def audit(strict: bool = False) -> dict:
         "canonical_markers": list(CANONICAL_MARKERS.keys()),
         "template": "scripts/_WRAPPER_TEMPLATE.sh",
         "wrappers": records,
-        "violations": [r["wrapper"] for r in records if r["classification"] in ("SCAFFOLD", "DUPLICATE")],
+        "violations": [
+            r["wrapper"]
+            for r in records
+            if r["classification"] in ("SCAFFOLD", "DUPLICATE")
+        ],
     }
 
 
@@ -191,18 +215,27 @@ def write_audit_json(audit_obj: dict) -> None:
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     try:
         from molmetal.scripts.wf386a3_atomic_write import atomic_write_file
+
         atomic_write_file(AUDIT_JSON, json.dumps(audit_obj, indent=2, sort_keys=True))
     except ImportError:
         # Fallback: direct write_text (NOT atomic — only as a last resort if the
         # atomic primitive fails to import). Audit script is CI-safe.
-        AUDIT_JSON.write_text(json.dumps(audit_obj, indent=2, sort_keys=True), encoding="utf-8")
+        AUDIT_JSON.write_text(
+            json.dumps(audit_obj, indent=2, sort_keys=True), encoding="utf-8"
+        )
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Wrapper audit per Wf-431-A2 FIX 2")
-    parser.add_argument("--strict", action="store_true", help="exit 1 on any SCAFFOLD/DUPLICATE")
-    parser.add_argument("--json-only", action="store_true", help="console.log the JSON and exit 0")
-    parser.add_argument("--summary-only", action="store_true", help="console.log the summary only")
+    parser.add_argument(
+        "--strict", action="store_true", help="exit 1 on any SCAFFOLD/DUPLICATE"
+    )
+    parser.add_argument(
+        "--json-only", action="store_true", help="console.log the JSON and exit 0"
+    )
+    parser.add_argument(
+        "--summary-only", action="store_true", help="console.log the summary only"
+    )
     args = parser.parse_args()
 
     audit_obj = audit(strict=args.strict)
@@ -211,7 +244,12 @@ def main() -> int:
     if args.summary_only:
         s = audit_obj["summary"]
         total = audit_obj["wrapper_count"]
-        print(json.dumps({"summary": s, "total": total, "violations": audit_obj["violations"]}, indent=2))
+        print(
+            json.dumps(
+                {"summary": s, "total": total, "violations": audit_obj["violations"]},
+                indent=2,
+            )
+        )
     elif args.json_only:
         print(json.dumps(audit_obj, indent=2, sort_keys=True))
     else:

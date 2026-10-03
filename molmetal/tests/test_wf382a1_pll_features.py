@@ -104,32 +104,32 @@ class TestPLLFeatureAdapterSanity:
         except Exception as exc:  # canonical module may raise on small n
             pytest.skip(f"Canonical PLL module refused benzene: {exc!r}")
 
-        assert isinstance(benzene_pll, PLLFeatureAdapter), (
-            f"benzene_pll must be PLLFeatureAdapter; got {type(benzene_pll)}"
-        )
+        assert isinstance(
+            benzene_pll, PLLFeatureAdapter
+        ), f"benzene_pll must be PLLFeatureAdapter; got {type(benzene_pll)}"
         # After AddHs, benzene has 6 heavy atoms + 6 H atoms = 12 total.
         assert benzene_pll.n_atoms == 12, (
             f"benzene n_atoms must be 12 (6 heavy + 6 H after AddHs); "
             f"got {benzene_pll.n_atoms}"
         )
-        assert benzene_pll.k_used >= 1, (
-            f"benzene k_used must be >= 1; got {benzene_pll.k_used}"
-        )
+        assert (
+            benzene_pll.k_used >= 1
+        ), f"benzene k_used must be >= 1; got {benzene_pll.k_used}"
         benzene_eigs = pll_eigenvalues(benzene_pll)
         assert isinstance(benzene_eigs, np.ndarray)
         assert benzene_eigs.ndim == 1
         assert benzene_eigs.shape[0] == benzene_pll.k_used
         # Descending order
-        assert np.all(benzene_eigs[:-1] >= benzene_eigs[1:]), (
-            "benzene eigenvalues must be in descending order"
-        )
+        assert np.all(
+            benzene_eigs[:-1] >= benzene_eigs[1:]
+        ), "benzene eigenvalues must be in descending order"
         # Bounded in [0, 2]
-        assert np.all(benzene_eigs >= -1e-9), (
-            f"benzene eigenvalues must be >= 0; got min {benzene_eigs.min()}"
-        )
-        assert np.all(benzene_eigs <= 2.0 + 1e-9), (
-            f"benzene eigenvalues must be <= 2; got max {benzene_eigs.max()}"
-        )
+        assert np.all(
+            benzene_eigs >= -1e-9
+        ), f"benzene eigenvalues must be >= 0; got min {benzene_eigs.min()}"
+        assert np.all(
+            benzene_eigs <= 2.0 + 1e-9
+        ), f"benzene eigenvalues must be <= 2; got max {benzene_eigs.max()}"
 
         # Methane: 1 heavy atom + 4 H atoms = 5 total after AddHs.
         # Feature vector still zero-padded to top_k=10.
@@ -150,16 +150,14 @@ class TestPLLFeatureAdapterSanity:
 
         # Zero-padded feature vector for top_k=10
         methane_vec = pll_to_feature_vector(methane_eigs, top_k=10)
-        assert methane_vec.shape == (10,), (
-            f"methane feature vector must have shape (10,); got {methane_vec.shape}"
-        )
+        assert methane_vec.shape == (
+            10,
+        ), f"methane feature vector must have shape (10,); got {methane_vec.shape}"
         assert methane_vec.dtype == np.float64
         # The leading entries match the eigenvalues; the tail is zero.
         n_eigs = methane_eigs.shape[0]
         if n_eigs <= 10:
-            np.testing.assert_allclose(
-                methane_vec[:n_eigs], methane_eigs, atol=1e-12
-            )
+            np.testing.assert_allclose(methane_vec[:n_eigs], methane_eigs, atol=1e-12)
             np.testing.assert_allclose(
                 methane_vec[n_eigs:], np.zeros(10 - n_eigs), atol=1e-12
             )
@@ -167,6 +165,6 @@ class TestPLLFeatureAdapterSanity:
         # Benzene feature vector (top_k=10): should not be all-zero
         benzene_vec = pll_to_feature_vector(benzene_eigs, top_k=10)
         assert benzene_vec.shape == (10,)
-        assert not np.allclose(benzene_vec, 0.0), (
-            "benzene feature vector must not be all-zero"
-        )
+        assert not np.allclose(
+            benzene_vec, 0.0
+        ), "benzene feature vector must not be all-zero"

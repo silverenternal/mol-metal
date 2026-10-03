@@ -15,6 +15,7 @@ Acceptance gates
 * G3 — Backward compat preserved (upstream OT API re-exported)
 * G4 — Existing tests still pass
 """
+
 from __future__ import annotations
 
 import argparse
@@ -35,7 +36,9 @@ def main() -> int:
         description="Wf-236 — Monge-Ampère regularity + Multi-PH smoke check.",
     )
     parser.add_argument(
-        "--smoke", action="store_true", help="CPU smoke check.",
+        "--smoke",
+        action="store_true",
+        help="CPU smoke check.",
     )
     args = parser.parse_args()
 
@@ -62,7 +65,10 @@ def main() -> int:
         x0 = torch.randn(16, 4)
         x1 = torch.randn(16, 4)
         idx, diag = ma_regularized_ot_plan(
-            x0, x1, lambda_ma=0.01, mode="hungarian",
+            x0,
+            x1,
+            lambda_ma=0.01,
+            mode="hungarian",
             return_diagnostics=True,
         )
         assert diag["is_regular"] is True
@@ -73,7 +79,10 @@ def main() -> int:
         x0_deg = torch.zeros(8, 3)
         x1_deg = torch.randn(8, 3)
         idx_d, diag_d = ma_regularized_ot_plan(
-            x0_deg, x1_deg, lambda_ma=0.01, mode="hungarian",
+            x0_deg,
+            x1_deg,
+            lambda_ma=0.01,
+            mode="hungarian",
             return_diagnostics=True,
         )
         assert diag_d["activated"] is True
@@ -116,7 +125,8 @@ def main() -> int:
         # 2a. Single-pocket compute.
         extractor = StableMultiPHExtractor(n_bins=8)
         feat_single = extractor.compute(
-            coords[0], atoms[0],
+            coords[0],
+            atoms[0],
         )
         assert feat_single.shape == (extractor.feature_dim,)
 
@@ -131,7 +141,9 @@ def main() -> int:
         assert combined.shape == (B, d_a + extractor.feature_dim)
 
         joint = JointHilbertOptimizer(
-            hilbert_dim=combined.shape[1], n_iters=50, lr=0.05,
+            hilbert_dim=combined.shape[1],
+            n_iters=50,
+            lr=0.05,
         )
         fit_result = joint.fit(astr, combined[:, d_a:], y)
         assert fit_result["r2"] > -1.0  # sanity: not catastrophically bad
@@ -174,6 +186,7 @@ def main() -> int:
             mean_field_score_smoothed_ot_plan,
             mean_field_step_size,
         )
+
         assert callable(ma_regularized_ot_plan)
         assert callable(mean_field_score_smoothed_ot_plan)
         assert callable(mean_field_step_size)
@@ -186,6 +199,7 @@ def main() -> int:
             JointHilbertOptimizer,
             JointVsSeparateComparator,
         )
+
         assert callable(JointFeatureConcatenator)
         assert callable(JointHilbertOptimizer)
         assert callable(JointVsSeparateComparator)
@@ -201,6 +215,7 @@ def main() -> int:
     # ------------------------------------------------------------------
     try:
         import subprocess
+
         test_paths = [
             "molmetal/tests/test_optimal_transport_v2.py",
             "molmetal/tests/test_monge_ampere_regularity.py",
@@ -213,7 +228,9 @@ def main() -> int:
         for tp in test_paths:
             r = subprocess.run(
                 [sys.executable, "-m", "pytest", tp, "-q", "--no-header"],
-                capture_output=True, text=True, cwd=str(_REPO_ROOT),
+                capture_output=True,
+                text=True,
+                cwd=str(_REPO_ROOT),
             )
             if r.returncode != 0:
                 all_pass = False

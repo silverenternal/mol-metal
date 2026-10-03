@@ -258,9 +258,9 @@ def regenerate(
     # 2) Load v1 CSV
     rows, fields = read_csv_rows(v1_path)
     n_total = len(rows)
-    assert fields == CANONICAL_COLS, (
-        f"Unexpected CSV columns: got {fields}, expected {CANONICAL_COLS}"
-    )
+    assert (
+        fields == CANONICAL_COLS
+    ), f"Unexpected CSV columns: got {fields}, expected {CANONICAL_COLS}"
 
     # 3) Validate + compute Bemis-Murcko scaffolds
     smiles = [r.get("smiles", "") or "" for r in rows]
@@ -319,7 +319,11 @@ def regenerate(
     pct = {k: 100.0 * v / max(1, n_v2) for k, v in split_counts.items()}
     g4_row_distribution_ok = all(
         abs(pct.get(k, 0) - 100 * f) <= 2.0
-        for k, f in [("train", fractions[0]), ("val", fractions[1]), ("test", fractions[2])]
+        for k, f in [
+            ("train", fractions[0]),
+            ("val", fractions[1]),
+            ("test", fractions[2]),
+        ]
     )
 
     # 11) split_manifest.json
@@ -430,7 +434,9 @@ def render_report_md(summary: Dict[str, object]) -> str:
     lines.append(f"| G2_v2_csv_written | `{summary['g2_v2_csv_written']}` |")
     lines.append(f"| G3_zero_scaffold_leak | `{summary['g3_zero_scaffold_leak']}` |")
     lines.append(f"| G4_row_distribution_ok | `{summary['g4_row_distribution_ok']}` |")
-    lines.append(f"| G5_split_manifest_written | `{summary['g5_split_manifest_written']}` |")
+    lines.append(
+        f"| G5_split_manifest_written | `{summary['g5_split_manifest_written']}` |"
+    )
     lines.append("")
     lines.append("## §3 Honest framing")
     lines.append("")

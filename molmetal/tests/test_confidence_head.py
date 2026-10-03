@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Tests for ConfidenceHead (mirror OmegaFold omegafold/confidence.py)."""
+
 import torch
 import pytest
 
@@ -23,7 +24,9 @@ class TestConfidenceHead:
         assert plddt.min().item() >= 0.0
         assert plddt.max().item() <= 1.0
         assert torch.all(plddt == plddt)  # finite check
-        print(f"test_compute_confidence_output_shape_and_range PASS: plddt in [{plddt.min():.4f}, {plddt.max():.4f}]")
+        print(
+            f"test_compute_confidence_output_shape_and_range PASS: plddt in [{plddt.min():.4f}, {plddt.max():.4f}]"
+        )
 
     def test_confidence_head_forward_shape(self):
         """ConfidenceHead.forward([num_res, node_dim]) → [num_res]."""
@@ -45,11 +48,14 @@ class TestConfidenceHead:
         assert 0.0 <= out.overall_confidence <= 1.0
         d = out.to_dict()
         assert "plddt_mean" in d and "overall_confidence" in d
-        print(f"test_confidence_head_get_all_confidence_aggregation PASS: overall={out.overall_confidence:.3f}")
+        print(
+            f"test_confidence_head_get_all_confidence_aggregation PASS: overall={out.overall_confidence:.3f}"
+        )
 
     def test_make_confidence_head_factory(self):
         """make_confidence_head from argparse cfg returns ConfidenceHead."""
         import argparse
+
         cfg = argparse.Namespace(node_dim=64, hidden_dim=32, num_bins=20)
         head = make_confidence_head(cfg)
         assert isinstance(head, ConfidenceHead)

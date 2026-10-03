@@ -67,6 +67,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -104,24 +105,24 @@ from molmetal.baselines.dmpnn_multitask import (
 from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset
 
 # R18 init lazy-imports (same contract as train_ru_multitask.py).
-try:                                            # pragma: no cover
+try:  # pragma: no cover
     from molmetal.adapters.se3_sb_integration import (
         SE3SBVelocityField as _SE3SBVelocityField,
     )
-except Exception:                               # pragma: no cover
-    _SE3SBVelocityField = None                  # type: ignore[assignment]
-try:                                            # pragma: no cover
+except Exception:  # pragma: no cover
+    _SE3SBVelocityField = None  # type: ignore[assignment]
+try:  # pragma: no cover
     from molmetal.adapters.transport_relaxation_integration import (
         RelaxedEndpointTerm as _RelaxedEndpointTerm,
     )
-except Exception:                               # pragma: no cover
-    _RelaxedEndpointTerm = None                 # type: ignore[assignment]
-try:                                            # pragma: no cover
+except Exception:  # pragma: no cover
+    _RelaxedEndpointTerm = None  # type: ignore[assignment]
+try:  # pragma: no cover
     from molmetal.adapters.multi_ph_integration import (
         MultiPHPocketFeatures as _MultiPHPocketFeatures,
     )
-except Exception:                               # pragma: no cover
-    _MultiPHPocketFeatures = None               # type: ignore[assignment]
+except Exception:  # pragma: no cover
+    _MultiPHPocketFeatures = None  # type: ignore[assignment]
 
 # Wf-35 Phase 2 — shared argparse / GPU env / MEASURED-vs-PROJECTED tag.
 from molmetal.scripts._common_train_args import (
@@ -141,7 +142,7 @@ RECIPE_SEEDS: Tuple[int, ...] = (0, 1, 2, 3, 4)
 RECIPE_HIDDEN: int = 128
 RECIPE_DEPTH: int = 3
 RECIPE_DROPOUT: float = 0.1
-RECIPE_ALPHA: float = 0.0      # MSE-only (regression head)
+RECIPE_ALPHA: float = 0.0  # MSE-only (regression head)
 RECIPE_EVAL_EVERY: int = 5
 
 # PlatinAI 4-cell-line column contract (matches build_platinai_4cell.py)
@@ -156,7 +157,9 @@ HELA48H_CELL_LINE: str = "HeLa"
 HELA48H_TIME_H: float = 48.0
 
 # tmQM pretrained encoder (same default as train_se3sb.py / train_ru_multitask.py)
-TMQM_ENCODER_CKPT = PROJECT_ROOT / "models" / "tmqm_pretrained" / "tmqm_pretrained_encoder.pt"
+TMQM_ENCODER_CKPT = (
+    PROJECT_ROOT / "models" / "tmqm_pretrained" / "tmqm_pretrained_encoder.pt"
+)
 
 # Output paths (overridable via CLI)
 DEFAULT_OUT_DIR = PROJECT_ROOT / ".ckpt"
@@ -169,7 +172,11 @@ DEFAULT_SUMMARY_PATH = (
 
 # Init choice contract (must match train_ru_multitask.py's choices).
 INIT_CHOICES: Tuple[str, ...] = (
-    "tmqm", "random", "se3sb", "transport", "multiph",
+    "tmqm",
+    "random",
+    "se3sb",
+    "transport",
+    "multiph",
 )
 DATASET_CHOICES: Tuple[str, ...] = ("platinai", "hela48h")
 
@@ -189,8 +196,8 @@ class PlatinAIRegressionDataset:
     def __init__(
         self,
         smiles: np.ndarray,
-        pic50: np.ndarray,            # (N, 4) — NaN where missing
-        valid: np.ndarray,            # (N, 4) bool — True where pIC50 is finite
+        pic50: np.ndarray,  # (N, 4) — NaN where missing
+        valid: np.ndarray,  # (N, 4) bool — True where pIC50 is finite
     ) -> None:
         if pic50.shape != (len(smiles), len(PLATINAI_CELL_LINES)):
             raise ValueError(
@@ -209,9 +216,7 @@ class PlatinAIRegressionDataset:
             for row in reader:
                 rows.append(row)
         n = len(rows)
-        smiles = np.array(
-            [str(r.get("smiles", "")) for r in rows], dtype=object
-        )
+        smiles = np.array([str(r.get("smiles", "")) for r in rows], dtype=object)
         ic50 = np.full((n, len(PLATINAI_CELL_LINES)), np.nan, dtype=np.float32)
         for j, col in enumerate(PLATINAI_IC50_COLS):
             for i, r in enumerate(rows):
@@ -319,8 +324,8 @@ def _train_epoch_platinai(
     optimizer: torch.optim.Optimizer,
     criterion: MultiTaskLoss,
     graphs: List,
-    pic50_labels: np.ndarray,    # (N, 4) — NaN where missing
-    valid_labels: np.ndarray,    # (N, 4) bool
+    pic50_labels: np.ndarray,  # (N, 4) — NaN where missing
+    valid_labels: np.ndarray,  # (N, 4) bool
     batch_size: int,
     device: torch.device,
     *,
@@ -350,7 +355,7 @@ def _train_epoch_platinai(
     indices = np.arange(len(graphs))
     np.random.shuffle(indices)
     for start in range(0, len(indices), batch_size):
-        batch_idx = indices[start:start + batch_size]
+        batch_idx = indices[start : start + batch_size]
         # Keep rows whose graphs are valid AND at least one cell line is valid.
         keep_rows: List[int] = []
         g_list = []
@@ -391,13 +396,21 @@ def _train_epoch_platinai(
         optimizer.zero_grad()
         # ----- Wf-44 Phase 4: torch.autocast + grad_scaler -----------
         use_autocast = bool(use_amp) and device.type == "cuda"
-        ctx = torch.amp.autocast(
-            device_type="cuda", enabled=use_autocast,
-        ) if use_autocast else _NullContext()
+        ctx = (
+            torch.amp.autocast(
+                device_type="cuda",
+                enabled=use_autocast,
+            )
+            if use_autocast
+            else _NullContext()
+        )
         with ctx:
             pic50_pred, active_logits = model(atom_f, bond_f, e_src, e_dst)
             loss, _, _ = criterion(
-                pic50_pred, active_logits, y_target_t, active_dummy_t,
+                pic50_pred,
+                active_logits,
+                y_target_t,
+                active_dummy_t,
             )
         if grad_scaler is not None and use_autocast:
             grad_scaler.scale(loss).backward()
@@ -438,7 +451,7 @@ def _predict_platinai_per_cell(
     n = len(graphs)
     preds = np.full(n, np.nan, dtype=np.float32)
     for start in range(0, n, batch_size):
-        batch_graphs = graphs[start:start + batch_size]
+        batch_graphs = graphs[start : start + batch_size]
         g_list = []
         keep_rows: List[int] = []
         for k, g in enumerate(batch_graphs):
@@ -464,9 +477,9 @@ def _predict_platinai_per_cell(
 
 
 def _eval_platinai_per_cell(
-    preds: np.ndarray,            # (N,) single pIC50 prediction per molecule
-    pic50: np.ndarray,            # (N, 4) ground truth
-    valid: np.ndarray,            # (N, 4) bool — True where gt is finite
+    preds: np.ndarray,  # (N,) single pIC50 prediction per molecule
+    pic50: np.ndarray,  # (N, 4) ground truth
+    valid: np.ndarray,  # (N, 4) bool — True where gt is finite
 ) -> Dict[str, Dict[str, float]]:
     """Compute Pearson r per cell line + mean across cell lines."""
     out: Dict[str, Dict[str, float]] = {}
@@ -484,8 +497,11 @@ def _eval_platinai_per_cell(
             continue
         r = float(pearsonr(yt[finite], yp[finite]).statistic)
         out[line] = {"pearson": r, "n": int(finite.sum())}
-    pearsons = [out[line]["pearson"] for line in PLATINAI_CELL_LINES
-                if not np.isnan(out[line]["pearson"])]
+    pearsons = [
+        out[line]["pearson"]
+        for line in PLATINAI_CELL_LINES
+        if not np.isnan(out[line]["pearson"])
+    ]
     out["__mean__"] = {
         "pearson": float(np.mean(pearsons)) if pearsons else float("nan"),
         "n": int(min(out[line]["n"] for line in PLATINAI_CELL_LINES)),
@@ -516,10 +532,14 @@ def train_one_seed_platinai(
     # Random 80/10/10 split — same seed each time → deterministic split.
     idx = np.arange(len(ds))
     idx_train, idx_tmp = train_test_split(
-        idx, test_size=0.2, random_state=seed,
+        idx,
+        test_size=0.2,
+        random_state=seed,
     )
     idx_val, idx_test = train_test_split(
-        idx_tmp, test_size=0.5, random_state=seed,
+        idx_tmp,
+        test_size=0.5,
+        random_state=seed,
     )
     print(
         f"[train_affinity] seed={seed} split "
@@ -545,19 +565,23 @@ def train_one_seed_platinai(
     criterion = MultiTaskLoss(alpha=RECIPE_ALPHA)
     # ----- Wf-44 Phase 4: AMP + grad scaler (CUDA only) -----------
     use_amp = bool(getattr(args, "amp", False)) and device.type == "cuda"
-    grad_scaler = (
-        torch.amp.GradScaler("cuda", enabled=use_amp) if use_amp else None
-    )
+    grad_scaler = torch.amp.GradScaler("cuda", enabled=use_amp) if use_amp else None
 
     best_val_mean = -1.0
     best_state: Optional[Dict[str, torch.Tensor]] = None
     history: List[Dict[str, float]] = []
     for epoch in range(1, args.epochs + 1):
         train_loss, n_train_seen = _train_epoch_platinai(
-            model, optimizer, criterion,
-            graphs_train, pic50_train, valid_train,
-            batch_size=args.batch, device=device,
-            use_amp=use_amp, grad_scaler=grad_scaler,
+            model,
+            optimizer,
+            criterion,
+            graphs_train,
+            pic50_train,
+            valid_train,
+            batch_size=args.batch,
+            device=device,
+            use_amp=use_amp,
+            grad_scaler=grad_scaler,
         )
         if epoch % args.eval_every == 0 or epoch == args.epochs:
             # Val: per-cell Pearson on val split.
@@ -565,46 +589,58 @@ def train_one_seed_platinai(
             pic50_val = ds.pic50[idx_val]
             valid_val = ds.valid[idx_val]
             preds_val = _predict_platinai_per_cell(
-                model, graphs_val, args.batch, device,
+                model,
+                graphs_val,
+                args.batch,
+                device,
             )
             val_per_cell = _eval_platinai_per_cell(
-                preds_val, pic50_val, valid_val,
+                preds_val,
+                pic50_val,
+                valid_val,
             )
             val_mean = val_per_cell["__mean__"]["pearson"]
-            history.append({
-                "epoch": epoch,
-                "train_loss": float(train_loss),
-                "val_mean_pearson": val_mean,
-                "per_cell": {l: val_per_cell[l]["pearson"]
-                             for l in PLATINAI_CELL_LINES},
-            })
+            history.append(
+                {
+                    "epoch": epoch,
+                    "train_loss": float(train_loss),
+                    "val_mean_pearson": val_mean,
+                    "per_cell": {
+                        l: val_per_cell[l]["pearson"] for l in PLATINAI_CELL_LINES
+                    },
+                }
+            )
             print(
                 f"[train_affinity] seed={seed} epoch={epoch:3d} "
                 f"loss={train_loss:.4f} val_mean_pearson={val_mean:.4f} "
                 + " ".join(
-                    f"{l}={val_per_cell[l]['pearson']:.3f}"
-                    for l in PLATINAI_CELL_LINES
+                    f"{l}={val_per_cell[l]['pearson']:.3f}" for l in PLATINAI_CELL_LINES
                 )
             )
             if not np.isnan(val_mean) and val_mean > best_val_mean:
                 best_val_mean = val_mean
-                best_state = {k: v.detach().cpu().clone()
-                              for k, v in model.state_dict().items()}
+                best_state = {
+                    k: v.detach().cpu().clone() for k, v in model.state_dict().items()
+                }
 
     if best_state is not None:
         model.load_state_dict(best_state)
     preds_test = _predict_platinai_per_cell(
-        model, graphs_test, args.batch, device,
+        model,
+        graphs_test,
+        args.batch,
+        device,
     )
     test_per_cell = _eval_platinai_per_cell(
-        preds_test, pic50_test, valid_test,
+        preds_test,
+        pic50_test,
+        valid_test,
     )
     test_mean = test_per_cell["__mean__"]["pearson"]
     print(
         f"[train_affinity] seed={seed} TEST mean_pearson={test_mean:.4f} "
         + " ".join(
-            f"{l}={test_per_cell[l]['pearson']:.3f}"
-            for l in PLATINAI_CELL_LINES
+            f"{l}={test_per_cell[l]['pearson']:.3f}" for l in PLATINAI_CELL_LINES
         )
     )
     return {
@@ -616,9 +652,7 @@ def train_one_seed_platinai(
         "test_per_cell_pearson": {
             l: test_per_cell[l]["pearson"] for l in PLATINAI_CELL_LINES
         },
-        "test_per_cell_n": {
-            l: test_per_cell[l]["n"] for l in PLATINAI_CELL_LINES
-        },
+        "test_per_cell_n": {l: test_per_cell[l]["n"] for l in PLATINAI_CELL_LINES},
         "test_mean_pearson": float(test_mean),
         "val_history": history,
         "best_state": best_state if best_state is not None else {},
@@ -638,7 +672,9 @@ def train_one_seed_hela48h(
     np.random.seed(seed)
     csv_path = Path(args.hela_csv) if args.hela_csv else None
     ds = _load_hela48h_cohort(
-        csv_path, cell_line=args.cell_line, time_h=args.time_h,
+        csv_path,
+        cell_line=args.cell_line,
+        time_h=args.time_h,
     )
     print(
         f"[train_affinity] seed={seed} hela48h rows={len(ds)} "
@@ -654,10 +690,15 @@ def train_one_seed_hela48h(
     # 80/10/10 stratified random split.
     idx = np.arange(len(smiles))
     idx_train, idx_tmp = train_test_split(
-        idx, test_size=0.2, random_state=seed, stratify=active_all,
+        idx,
+        test_size=0.2,
+        random_state=seed,
+        stratify=active_all,
     )
     idx_val, idx_test = train_test_split(
-        idx_tmp, test_size=0.5, random_state=seed,
+        idx_tmp,
+        test_size=0.5,
+        random_state=seed,
         stratify=active_all[idx_tmp],
     )
     print(
@@ -684,9 +725,7 @@ def train_one_seed_hela48h(
     criterion = MultiTaskLoss(alpha=RECIPE_ALPHA)
     # ----- Wf-44 Phase 4: AMP + grad scaler (CUDA only) -----------
     use_amp = bool(getattr(args, "amp", False)) and device.type == "cuda"
-    grad_scaler = (
-        torch.amp.GradScaler("cuda", enabled=use_amp) if use_amp else None
-    )
+    grad_scaler = torch.amp.GradScaler("cuda", enabled=use_amp) if use_amp else None
 
     best_val_pearson = -1.0
     best_state: Optional[Dict[str, torch.Tensor]] = None
@@ -701,7 +740,7 @@ def train_one_seed_hela48h(
         if train:
             np.random.shuffle(idx_local)
         for start in range(0, len(idx_local), args.batch):
-            batch_idx = idx_local[start:start + args.batch]
+            batch_idx = idx_local[start : start + args.batch]
             g_list = []
             y_list = []
             for k in batch_idx:
@@ -725,13 +764,21 @@ def train_one_seed_hela48h(
                 optimizer.zero_grad()
             # ----- Wf-44 Phase 4: AMP forward inside autocast ---------
             use_autocast = use_amp
-            ctx = torch.amp.autocast(
-                device_type="cuda", enabled=use_autocast,
-            ) if use_autocast else _NullContext()
+            ctx = (
+                torch.amp.autocast(
+                    device_type="cuda",
+                    enabled=use_autocast,
+                )
+                if use_autocast
+                else _NullContext()
+            )
             with ctx:
                 pic50_pred, active_logits = model(atom_f, bond_f, e_src, e_dst)
                 loss, _, _ = criterion(
-                    pic50_pred, active_logits, y_t, active_dummy,
+                    pic50_pred,
+                    active_logits,
+                    y_t,
+                    active_dummy,
                 )
             if train:
                 if grad_scaler is not None and use_autocast:
@@ -756,7 +803,7 @@ def train_one_seed_hela48h(
         truth: List[float] = []
         idx_local = np.arange(len(graphs))
         for start in range(0, len(idx_local), args.batch):
-            batch_idx = idx_local[start:start + args.batch]
+            batch_idx = idx_local[start : start + args.batch]
             g_list = []
             for k in batch_idx:
                 if graphs[int(k)] is None:
@@ -775,8 +822,7 @@ def train_one_seed_hela48h(
             pic50_pred, _ = model(atom_f, bond_f, e_src, e_dst)
             preds.extend(pic50_pred.detach().cpu().numpy().tolist())
             truth.extend(
-                float(labels[int(k)]) for k in batch_idx
-                if graphs[int(k)] is not None
+                float(labels[int(k)]) for k in batch_idx if graphs[int(k)] is not None
             )
         m = regression_metrics(np.asarray(truth), np.asarray(preds))
         return m
@@ -793,12 +839,14 @@ def train_one_seed_hela48h(
         if epoch % args.eval_every == 0 or epoch == args.epochs:
             val_metrics = _eval_split(graphs_val, labels_val)
             val_p = val_metrics.get("pearson", float("nan"))
-            history.append({
-                "epoch": epoch,
-                "train_loss": float(train_loss),
-                "val_pearson": float(val_p),
-                "val_rmse": float(val_metrics.get("rmse", float("nan"))),
-            })
+            history.append(
+                {
+                    "epoch": epoch,
+                    "train_loss": float(train_loss),
+                    "val_pearson": float(val_p),
+                    "val_rmse": float(val_metrics.get("rmse", float("nan"))),
+                }
+            )
             print(
                 f"[train_affinity] seed={seed} epoch={epoch:3d} "
                 f"loss={train_loss:.4f} val_pearson={val_p:.4f} "
@@ -806,8 +854,9 @@ def train_one_seed_hela48h(
             )
             if not np.isnan(val_p) and val_p > best_val_pearson:
                 best_val_pearson = float(val_p)
-                best_state = {k: v.detach().cpu().clone()
-                              for k, v in model.state_dict().items()}
+                best_state = {
+                    k: v.detach().cpu().clone() for k, v in model.state_dict().items()
+                }
     if best_state is not None:
         model.load_state_dict(best_state)
     test_metrics = _eval_split(graphs_test, labels_test)
@@ -837,9 +886,7 @@ def train_one_seed_hela48h(
 # ---------------------------------------------------------------------------
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
-        description=(
-            "Wf-32 Phase 1 — R19 m16 Affinity Pearson r regression trainer."
-        ),
+        description=("Wf-32 Phase 1 — R19 m16 Affinity Pearson r regression trainer."),
     )
     # Wf-35 Phase 2 — shared recipe / GPU / benchmark args.
     p = add_common_args(
@@ -855,18 +902,35 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
 
     # Wf-32-specific dataset + HeLa48h flags.
     p.add_argument(
-        "--dataset", choices=list(DATASET_CHOICES), default="platinai",
+        "--dataset",
+        choices=list(DATASET_CHOICES),
+        default="platinai",
         help="Which dataset to train on (default: platinai)",
     )
-    p.add_argument("--hela-csv", type=Path, default=None,
-                   help="Path to MetalCytoToxDB.csv (default: env MOLMETAL_DATA_DIR)")
-    p.add_argument("--cell-line", default=HELA48H_CELL_LINE,
-                   help=f"Cell line filter for hela48h (default: {HELA48H_CELL_LINE})")
-    p.add_argument("--time-h", type=float, default=HELA48H_TIME_H,
-                   help=f"Time(h) <= N for hela48h (default: {HELA48H_TIME_H})")
+    p.add_argument(
+        "--hela-csv",
+        type=Path,
+        default=None,
+        help="Path to MetalCytoToxDB.csv (default: env MOLMETAL_DATA_DIR)",
+    )
+    p.add_argument(
+        "--cell-line",
+        default=HELA48H_CELL_LINE,
+        help=f"Cell line filter for hela48h (default: {HELA48H_CELL_LINE})",
+    )
+    p.add_argument(
+        "--time-h",
+        type=float,
+        default=HELA48H_TIME_H,
+        help=f"Time(h) <= N for hela48h (default: {HELA48H_TIME_H})",
+    )
     # Wf-44 Phase 4 — AMP / grad scaler opt-in (CUDA only).
-    p.add_argument("--amp", action="store_true", default=False,
-                   help="Enable torch.autocast(fp16) + GradScaler (CUDA only)")
+    p.add_argument(
+        "--amp",
+        action="store_true",
+        default=False,
+        help="Enable torch.autocast(fp16) + GradScaler (CUDA only)",
+    )
     return p.parse_args(argv)
 
 
@@ -903,9 +967,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         f"epochs={args.epochs} batch={args.batch} lr={args.lr} "
         f"seeds={args.seeds} hidden={args.hidden} depth={args.depth}"
     )
-    print(
-        f"[train_affinity] data={args.data} encoder_ckpt={args.encoder_ckpt}"
-    )
+    print(f"[train_affinity] data={args.data} encoder_ckpt={args.encoder_ckpt}")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"[train_affinity] device={device}")
@@ -928,12 +990,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         for seed in args.seeds:
             try:
                 result = train_one_seed_platinai(seed, args, device)
-            except Exception as exc:                    # pragma: no cover
+            except Exception as exc:  # pragma: no cover
                 print(
                     f"[train_affinity] seed={seed} FAILED: {exc!r}",
                     flush=True,
                 )
                 import traceback
+
                 traceback.print_exc()
                 result = {"seed": seed, "error": repr(exc)}
             seed_results.append(result)
@@ -945,13 +1008,17 @@ def main(argv: Optional[List[str]] = None) -> int:
                     "seed": seed,
                     "test_mean_pearson": result.get("test_mean_pearson"),
                     "test_per_cell_pearson": result.get(
-                        "test_per_cell_pearson", {},
+                        "test_per_cell_pearson",
+                        {},
                     ),
                     "state_dict": best_state,
                     "recipe": {
-                        "init": args.init, "epochs": args.epochs,
-                        "batch": args.batch, "lr": args.lr,
-                        "hidden": args.hidden, "depth": args.depth,
+                        "init": args.init,
+                        "epochs": args.epochs,
+                        "batch": args.batch,
+                        "lr": args.lr,
+                        "hidden": args.hidden,
+                        "depth": args.depth,
                         "alpha": RECIPE_ALPHA,
                     },
                 },
@@ -962,12 +1029,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         for seed in args.seeds:
             try:
                 result = train_one_seed_hela48h(seed, args, device)
-            except Exception as exc:                    # pragma: no cover
+            except Exception as exc:  # pragma: no cover
                 print(
                     f"[train_affinity] seed={seed} FAILED: {exc!r}",
                     flush=True,
                 )
                 import traceback
+
                 traceback.print_exc()
                 result = {"seed": seed, "error": repr(exc)}
             seed_results.append(result)
@@ -981,9 +1049,12 @@ def main(argv: Optional[List[str]] = None) -> int:
                     "test_rmse": result.get("test_rmse"),
                     "state_dict": best_state,
                     "recipe": {
-                        "init": args.init, "epochs": args.epochs,
-                        "batch": args.batch, "lr": args.lr,
-                        "hidden": args.hidden, "depth": args.depth,
+                        "init": args.init,
+                        "epochs": args.epochs,
+                        "batch": args.batch,
+                        "lr": args.lr,
+                        "hidden": args.hidden,
+                        "depth": args.depth,
                         "alpha": RECIPE_ALPHA,
                     },
                 },
@@ -1002,12 +1073,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.dataset == "platinai":
         head_per_seed = [
             float(r.get("test_mean_pearson", float("nan")))
-            for r in seed_results if "error" not in r
+            for r in seed_results
+            if "error" not in r
         ]
         per_cell_per_seed: Dict[str, List[float]] = {
             l: [
                 float(r.get("test_per_cell_pearson", {}).get(l, float("nan")))
-                for r in seed_results if "error" not in r
+                for r in seed_results
+                if "error" not in r
             ]
             for l in PLATINAI_CELL_LINES
         }
@@ -1028,23 +1101,23 @@ def main(argv: Optional[List[str]] = None) -> int:
             "per_seed": _to_jsonable(seed_results),
             "headline_pearson_r_per_seed": head_per_seed,
             "headline_pearson_r_mean": (
-                float(np.nanmean(head_per_seed)) if head_per_seed
-                else float("nan")
+                float(np.nanmean(head_per_seed)) if head_per_seed else float("nan")
             ),
             "headline_pearson_r_std": (
-                float(np.nanstd(head_per_seed)) if head_per_seed
-                else float("nan")
+                float(np.nanstd(head_per_seed)) if head_per_seed else float("nan")
             ),
             "per_cell_line_pearson_r": {
                 l: {
                     "per_seed": per_cell_per_seed[l],
                     "mean": (
                         float(np.nanmean(per_cell_per_seed[l]))
-                        if per_cell_per_seed[l] else float("nan")
+                        if per_cell_per_seed[l]
+                        else float("nan")
                     ),
                     "std": (
                         float(np.nanstd(per_cell_per_seed[l]))
-                        if per_cell_per_seed[l] else float("nan")
+                        if per_cell_per_seed[l]
+                        else float("nan")
                     ),
                 }
                 for l in PLATINAI_CELL_LINES
@@ -1088,11 +1161,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     else:
         head_per_seed = [
             float(r.get("test_pearson", float("nan")))
-            for r in seed_results if "error" not in r
+            for r in seed_results
+            if "error" not in r
         ]
         rmse_per_seed = [
             float(r.get("test_rmse", float("nan")))
-            for r in seed_results if "error" not in r
+            for r in seed_results
+            if "error" not in r
         ]
         metrics = {
             "recipe": "r19_wf32_m16_affinity_pearson_r_hela48h",
@@ -1112,17 +1187,14 @@ def main(argv: Optional[List[str]] = None) -> int:
             "per_seed": _to_jsonable(seed_results),
             "headline_pearson_r_per_seed": head_per_seed,
             "headline_pearson_r_mean": (
-                float(np.nanmean(head_per_seed)) if head_per_seed
-                else float("nan")
+                float(np.nanmean(head_per_seed)) if head_per_seed else float("nan")
             ),
             "headline_pearson_r_std": (
-                float(np.nanstd(head_per_seed)) if head_per_seed
-                else float("nan")
+                float(np.nanstd(head_per_seed)) if head_per_seed else float("nan")
             ),
             "headline_rmse_per_seed": rmse_per_seed,
             "headline_rmse_mean": (
-                float(np.nanmean(rmse_per_seed)) if rmse_per_seed
-                else float("nan")
+                float(np.nanmean(rmse_per_seed)) if rmse_per_seed else float("nan")
             ),
             "r18_components": r18_components,
             "r17_baseline_pearson_r": 0.207,

@@ -63,6 +63,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -106,10 +107,26 @@ from molmetal_lam.search_alg.warm_start import PocketResidue as WSPocketResidue
 
 # Map: anchor chemotype (e.g. "His") → one-letter code.
 _AA_3TO1: Dict[str, str] = {
-    "ALA": "A", "ARG": "R", "ASN": "N", "ASP": "D", "CYS": "C",
-    "GLN": "Q", "GLU": "E", "GLY": "G", "HIS": "H", "ILE": "I",
-    "LEU": "L", "LYS": "K", "MET": "M", "PHE": "F", "PRO": "P",
-    "SER": "S", "THR": "T", "TRP": "W", "TYR": "Y", "VAL": "V",
+    "ALA": "A",
+    "ARG": "R",
+    "ASN": "N",
+    "ASP": "D",
+    "CYS": "C",
+    "GLN": "Q",
+    "GLU": "E",
+    "GLY": "G",
+    "HIS": "H",
+    "ILE": "I",
+    "LEU": "L",
+    "LYS": "K",
+    "MET": "M",
+    "PHE": "F",
+    "PRO": "P",
+    "SER": "S",
+    "THR": "T",
+    "TRP": "W",
+    "TYR": "Y",
+    "VAL": "V",
 }
 
 
@@ -235,9 +252,7 @@ def _build_dataset() -> List[Tuple[List[WSPocketResidue], int]]:
             # per-residue chain letter so identical residue lists
             # (e.g. CA2 1CA2..3CA2 share the same residue numbers)
             # get distinguishable chain_id_hash signals.  v2 fix.
-            residues = _build_pocket_residues_for_target(
-                target, pdb_index=pdb_idx
-            )
+            residues = _build_pocket_residues_for_target(target, pdb_index=pdb_idx)
             dataset.append((residues, int(label)))
     return dataset
 
@@ -314,9 +329,7 @@ def main() -> None:
         f"across {n_classes_in_dataset} distinct scaffold classes."
     )
     if n_total == 0:
-        print(
-            "[train_pocket_macro_skeleton] No labelled pockets — aborting."
-        )
+        print("[train_pocket_macro_skeleton] No labelled pockets — aborting.")
         sys.exit(1)
 
     # 2. Build model.
@@ -419,8 +432,7 @@ def main() -> None:
                 str(ScaffoldClass(k).name): {
                     "correct": class_correct.get(k, 0),
                     "total": class_total.get(k, 0),
-                    "accuracy": class_correct.get(k, 0)
-                    / max(1, class_total.get(k, 0)),
+                    "accuracy": class_correct.get(k, 0) / max(1, class_total.get(k, 0)),
                 }
                 for k in sorted(class_total.keys())
             },

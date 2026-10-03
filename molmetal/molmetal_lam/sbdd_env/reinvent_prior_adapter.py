@@ -3,6 +3,7 @@
 This is independent of the four-component multiproperty/proxy adapter. It
 does not normalize NLL, combine rewards, or import REINVENT/PyTorch here.
 """
+
 from __future__ import annotations
 
 import json
@@ -39,20 +40,36 @@ class REINVENT4PriorAdapter:
     Worker logs go to a file, avoiding unconsumed stderr pipe deadlocks.
     """
 
-    def __init__(self, *, worker_python: str, prior_path: str, prior_sha256: str,
-                 device: str = "cuda:0", timeout: float = 60.0,
-                 expected_architecture: str = "gfx1101", worker_script: str | None = None,
-                 log_path: str | None = None):
+    def __init__(
+        self,
+        *,
+        worker_python: str,
+        prior_path: str,
+        prior_sha256: str,
+        device: str = "cuda:0",
+        timeout: float = 60.0,
+        expected_architecture: str = "gfx1101",
+        worker_script: str | None = None,
+        log_path: str | None = None,
+    ):
         if device not in ("cpu", "cuda:0"):
             raise ValueError("device must be explicitly cpu or cuda:0")
         if not math.isfinite(timeout) or timeout <= 0:
             raise ValueError("timeout must be finite and positive")
-        if len(prior_sha256) != 64 or any(c not in "0123456789abcdef" for c in prior_sha256):
+        if len(prior_sha256) != 64 or any(
+            c not in "0123456789abcdef" for c in prior_sha256
+        ):
             raise ValueError("prior_sha256 must be a lowercase SHA256")
         self.worker_python = str(worker_python)
-        self.worker_script = worker_script or str(Path(__file__).with_name("reinvent_prior_jsonl_worker.py"))
+        self.worker_script = worker_script or str(
+            Path(__file__).with_name("reinvent_prior_jsonl_worker.py")
+        )
         self.prior_path, self.prior_sha256 = str(prior_path), prior_sha256
-        self.device, self.timeout, self.expected_architecture = device, timeout, expected_architecture
+        self.device, self.timeout, self.expected_architecture = (
+            device,
+            timeout,
+            expected_architecture,
+        )
         self.log_path = log_path
         self.last_metadata: dict = {}
         self.last_error: str | None = None
@@ -120,7 +137,12 @@ class REINVENT4PriorAdapter:
             raise RuntimeError("worker_unavailable")
         self._request_id += 1
         request_id = self._request_id
-        data = json.dumps({"id": request_id, "op": op, **payload}, allow_nan=False).encode() + b"\n"
+        data = (
+            json.dumps(
+                {"id": request_id, "op": op, **payload}, allow_nan=False
+            ).encode()
+            + b"\n"
+        )
         with selectors.DefaultSelector() as selector:
             selector.register(proc.stdin, selectors.EVENT_WRITE)
             while data:
@@ -156,14 +178,17 @@ class REINVENT4PriorAdapter:
         return response
 
     def _validate_metadata(self, metadata: dict) -> None:
-        if (metadata.get("backend") != "reinvent-prior"
-                or metadata.get("protocol") != "reinvent-prior-jsonl-v1"
-                or metadata.get("model_sha256") != self.prior_sha256
-                or metadata.get("device") != self.device):
+        if (
+            metadata.get("backend") != "reinvent-prior"
+            or metadata.get("protocol") != "reinvent-prior-jsonl-v1"
+            or metadata.get("model_sha256") != self.prior_sha256
+            or metadata.get("device") != self.device
+        ):
             raise ValueError("worker_backend_model_or_device_mismatch")
         if self.device.startswith("cuda") and (
-                not metadata.get("torch_hip")
-                or metadata.get("architecture") != self.expected_architecture):
+            not metadata.get("torch_hip")
+            or metadata.get("architecture") != self.expected_architecture
+        ):
             raise ValueError("worker_rocm_architecture_mismatch")
 
     def _start(self, deadline: float) -> None:
@@ -177,10 +202,25 @@ class REINVENT4PriorAdapter:
             self._log = path.open("ab", buffering=0)
         else:
             self._log = tempfile.TemporaryFile()
-        command = [self.worker_python, self.worker_script, "--prior", self.prior_path,
-                   "--prior-sha256", self.prior_sha256, "--device", self.device]
-        self._proc = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                      stderr=self._log, start_new_session=True, bufsize=0, env=env)
+        command = [
+            self.worker_python,
+            self.worker_script,
+            "--prior",
+            self.prior_path,
+            "--prior-sha256",
+            self.prior_sha256,
+            "--device",
+            self.device,
+        ]
+        self._proc = subprocess.Popen(
+            command,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=self._log,
+            start_new_session=True,
+            bufsize=0,
+            env=env,
+        )
         os.set_blocking(self._proc.stdin.fileno(), False)
         os.set_blocking(self._proc.stdout.fileno(), False)
         response = self._rpc("capabilities", deadline)
@@ -195,9 +235,17 @@ class REINVENT4PriorAdapter:
         deadline = time.monotonic() + self.timeout
 
         def failure(error):
-            return [PriorLikelihoodResult(i, s, "error", error=error,
-                                          model_sha256=self.prior_sha256, device=self.device)
-                    for i, s in enumerate(smiles_batch)]
+            return [
+                PriorLikelihoodResult(
+                    i,
+                    s,
+                    "error",
+                    error=error,
+                    model_sha256=self.prior_sha256,
+                    device=self.device,
+                )
+                for i, s in enumerate(smiles_batch)
+            ]
 
         if not self._lock.acquire(timeout=self.timeout):
             self.last_error = "total_request_timeout:lock"
@@ -217,25 +265,52 @@ class REINVENT4PriorAdapter:
                 if row.get("index") != index or row.get("smiles") != smiles:
                     raise ValueError("worker_result_identity_mismatch")
                 if row.get("status") == "ok":
-                    value, count = row.get("prior_nll"), row.get("predicted_token_count")
-                    if (isinstance(value, bool) or not isinstance(value, (int, float))
-                            or not math.isfinite(value) or value < 0
-                            or isinstance(count, bool) or not isinstance(count, int) or count < 1):
+                    value, count = (
+                        row.get("prior_nll"),
+                        row.get("predicted_token_count"),
+                    )
+                    if (
+                        isinstance(value, bool)
+                        or not isinstance(value, (int, float))
+                        or not math.isfinite(value)
+                        or value < 0
+                        or isinstance(count, bool)
+                        or not isinstance(count, int)
+                        or count < 1
+                    ):
                         raise ValueError("worker_invalid_nll_or_token_count")
                 elif row.get("status") != "error" or not row.get("error"):
                     raise ValueError("worker_invalid_error_result")
-                results.append(PriorLikelihoodResult(index, smiles, row["status"],
-                    prior_nll=row.get("prior_nll") if row["status"] == "ok" else None,
-                    predicted_token_count=row.get("predicted_token_count") if row["status"] == "ok" else None,
-                    error=row.get("error"), model_sha256=metadata["model_sha256"], device=metadata["device"]))
+                results.append(
+                    PriorLikelihoodResult(
+                        index,
+                        smiles,
+                        row["status"],
+                        prior_nll=row.get("prior_nll")
+                        if row["status"] == "ok"
+                        else None,
+                        predicted_token_count=row.get("predicted_token_count")
+                        if row["status"] == "ok"
+                        else None,
+                        error=row.get("error"),
+                        model_sha256=metadata["model_sha256"],
+                        device=metadata["device"],
+                    )
+                )
             scored = sum(row.status == "ok" for row in results)
             forwards = metadata.get("neural_forwards", [])
-            if (metadata.get("n_requested") != len(smiles_batch) or metadata.get("n_scored") != scored
-                    or (scored and not forwards)
-                    or any(entry.get("parameter_device") != self.device
-                           or entry.get("input_device") != self.device
-                           or not isinstance(entry.get("count"), int) or entry["count"] <= 0
-                           for entry in forwards)):
+            if (
+                metadata.get("n_requested") != len(smiles_batch)
+                or metadata.get("n_scored") != scored
+                or (scored and not forwards)
+                or any(
+                    entry.get("parameter_device") != self.device
+                    or entry.get("input_device") != self.device
+                    or not isinstance(entry.get("count"), int)
+                    or entry["count"] <= 0
+                    for entry in forwards
+                )
+            ):
                 raise ValueError("worker_neural_execution_or_count_mismatch")
             self._remaining(deadline)
             self.last_metadata, self.last_error = metadata, None

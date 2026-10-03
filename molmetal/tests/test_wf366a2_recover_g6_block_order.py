@@ -111,22 +111,25 @@ def test_block_order_user_ok_before_dry_run():
 
     # Find line numbers of key blocks (1-indexed).
     user_ok_gate_match = re.search(
-        r"if\s*\[\[\s*\"\$\{USER_OK:-0\}\"\s*!=\s*\"1\"\s*\]", text,
+        r"if\s*\[\[\s*\"\$\{USER_OK:-0\}\"\s*!=\s*\"1\"\s*\]",
+        text,
     )
     dry_run_exit_match = re.search(
-        r"if\s*\[\[\s*\"\$\{DRY_RUN\}\"\s*==\s*\"1\"\s*\]\]", text,
+        r"if\s*\[\[\s*\"\$\{DRY_RUN\}\"\s*==\s*\"1\"\s*\]\]",
+        text,
     )
     manifest_match = re.search(
-        r"#\s*Python helper:.*scan training_summary\.json", text,
+        r"#\s*Python helper:.*scan training_summary\.json",
+        text,
     )
 
     assert user_ok_gate_match, (
         f"{WRAPPER.name}: USER_OK gate not found in source (expected pattern "
-        "'if [[ \"${{USER_OK:-0}}\" != \"1\" ]]'). Gate is REQUIRED FIRST."
+        '\'if [[ "${{USER_OK:-0}}" != "1" ]]\'). Gate is REQUIRED FIRST.'
     )
     assert dry_run_exit_match, (
         f"{WRAPPER.name}: --dry-run exit block not found in source "
-        "(expected pattern 'if [[ \"${{DRY_RUN}}\" == \"1\" ]]')."
+        '(expected pattern \'if [[ "${{DRY_RUN}}" == "1" ]]\').'
     )
     assert manifest_match, (
         f"{WRAPPER.name}: manifest enumeration comment not found; cannot "
@@ -156,7 +159,7 @@ def test_block_order_user_ok_before_dry_run():
 
     # INVARIANT: gate uses exit-code 64 (matches Wf-294B family + reference).
     # Find the closest `exit N` after the gate match.
-    post_gate_text = text[user_ok_gate_match.start():]
+    post_gate_text = text[user_ok_gate_match.start() :]
     exit_match = re.search(r"exit\s+(\d+)", post_gate_text)
     assert exit_match, (
         f"{WRAPPER.name}: USER_OK gate has no exit-code after it; gate may "
@@ -184,11 +187,9 @@ def test_block_order_user_ok_before_dry_run():
     )
 
     # INVARIANT: --dry-run exit uses exit-code 0 (matches reference).
-    post_dry_run_text = text[dry_run_exit_match.start():]
+    post_dry_run_text = text[dry_run_exit_match.start() :]
     dry_exit_match = re.search(r"exit\s+(\d+)", post_dry_run_text)
-    assert dry_exit_match, (
-        f"{WRAPPER.name}: --dry-run exit has no exit-code after it."
-    )
+    assert dry_exit_match, f"{WRAPPER.name}: --dry-run exit has no exit-code after it."
     dry_exit_code = int(dry_exit_match.group(1))
     assert dry_exit_code == 0, (
         f"{WRAPPER.name}: --dry-run exit code is {dry_exit_code}, expected 0 "
@@ -224,7 +225,10 @@ def test_block_order_user_ok_before_dry_run():
     ],
 )
 def test_dry_run_without_user_ok_exits_64(
-    args, expected_rc, expected_user_ok_msg, label,
+    args,
+    expected_rc,
+    expected_user_ok_msg,
+    label,
 ):
     """Wf-366-A2 GAP-2 fix live-run guard.
 
@@ -247,7 +251,12 @@ def test_dry_run_without_user_ok_exits_64(
         env["USER_OK"] = "1"
 
     proc = subprocess.run(
-        cmd, capture_output=True, text=True, timeout=120, env=env, cwd=str(PROJECT_ROOT),
+        cmd,
+        capture_output=True,
+        text=True,
+        timeout=120,
+        env=env,
+        cwd=str(PROJECT_ROOT),
     )
 
     stdout_tail = (proc.stdout or "")[-600:]
@@ -284,8 +293,16 @@ def test_dry_run_without_user_ok_exits_64(
         )
         # Verify canonical Wf-363-A1 schema fields are present.
         log_content = dry_run_log.read_text()
-        for field in ("wrapper:", "mode:", "trainer:", "flags:", "gpu:",
-                      "budget:", "user_ok:", "ts:"):
+        for field in (
+            "wrapper:",
+            "mode:",
+            "trainer:",
+            "flags:",
+            "gpu:",
+            "budget:",
+            "user_ok:",
+            "ts:",
+        ):
             assert field in log_content, (
                 f"[{label}] DRY_RUN.log missing canonical schema field "
                 f"'{field}'; Wf-363-A1 schema requires all 8 fields. "

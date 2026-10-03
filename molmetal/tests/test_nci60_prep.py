@@ -215,9 +215,7 @@ def test_build_cross_link_counts_overlap(prep_module):
         ("c1ccncc1", "MCF7", 5.0, 0),
     ]
     plat_smiles = {"Cc1ccccc1": 1, "other_smiles": 1}
-    link = prep_module.build_cross_link(
-        rows, plat_smiles, {}, ["MCF7"]
-    )
+    link = prep_module.build_cross_link(rows, plat_smiles, {}, ["MCF7"])
     by_smi = {r["smiles"]: r for r in link}
     assert by_smi["Cc1ccccc1"]["in_platinai"] is True
     assert by_smi["Cc1ccccc1"]["n_platinai_rows"] == 1

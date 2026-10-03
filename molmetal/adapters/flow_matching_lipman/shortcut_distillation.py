@@ -37,6 +37,7 @@ Honest framing (party-twenty-spirit §3.5):
 References: Frans et al. 2024 (arXiv 2410.12557); Karras 2022 EMA
 halflife convention; Wf-340-I1 / Wf-341-C3 (prior self-consistency).
 """
+
 from __future__ import annotations
 
 import copy
@@ -129,8 +130,7 @@ class ShortcutDistiller(nn.Module):
         if not mask.any():
             return torch.zeros((), device=device, dtype=x_0.dtype)
         t = (
-            torch.rand(b, device=device)
-            * (self.cfg.t_max - self.cfg.t_min)
+            torch.rand(b, device=device) * (self.cfg.t_max - self.cfg.t_min)
             + self.cfg.t_min
         )
         ps = path_sampler(x_0=x_0[mask], x_1=x_1[mask], t=t[mask])

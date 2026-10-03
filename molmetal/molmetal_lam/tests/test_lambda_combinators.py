@@ -10,6 +10,7 @@ finite inputs.  These are the "promotion" and "fusion" contract tests
 The tests do NOT touch any READ-ONLY module; they only exercise the
 HCombinator layer.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List
@@ -57,16 +58,12 @@ def test_fold_combinator_sum() -> None:
 
 def test_fold_right_combinator() -> None:
     """``fold_right(⊕, [], [1,2,3]) = [1,2,3]`` — preserves order on cons."""
-    result = fold_right_combinator(
-        lambda x, acc: [x] + acc, [], [1, 2, 3]
-    )
+    result = fold_right_combinator(lambda x, acc: [x] + acc, [], [1, 2, 3])
     assert result == [1, 2, 3]
 
     # Right-associativity witness — string concat with non-associative
     # operator (subtraction): (1 - (2 - 3)) = 1 - 2 + 3 = 2.
-    result_sub = fold_right_combinator(
-        lambda x, acc: x - acc, 0, [1, 2, 3]
-    )
+    result_sub = fold_right_combinator(lambda x, acc: x - acc, 0, [1, 2, 3])
     assert result_sub == 2
 
     # Empty collection → init.
@@ -87,22 +84,18 @@ def test_filter_combinator() -> None:
 
 def test_zip_with_combinator() -> None:
     """``zip_with(+, [1,2,3], [10,20,30]) = [11,22,33]`` (Meijer 1991 lens)."""
-    result = list(
-        zip_with_combinator(lambda a, b: a + b, [1, 2, 3], [10, 20, 30])
-    )
+    result = list(zip_with_combinator(lambda a, b: a + b, [1, 2, 3], [10, 20, 30]))
     assert result == [11, 22, 33]
 
     # Stops at the shorter collection — same as Python zip.
-    result_short = list(
-        zip_with_combinator(lambda a, b: (a, b), [1, 2], [10, 20, 30])
-    )
+    result_short = list(zip_with_combinator(lambda a, b: (a, b), [1, 2], [10, 20, 30]))
     assert result_short == [(1, 10), (2, 20)]
 
 
 def test_compose() -> None:
     """``compose(f, g)(x) = f(g(x))`` (Reynolds 1972)."""
-    f = lambda y: y + 10   # noqa: E731 — small lambda for clarity
-    g = lambda x: x * 2   # noqa: E731
+    f = lambda y: y + 10  # noqa: E731 — small lambda for clarity
+    g = lambda x: x * 2  # noqa: E731
     h = compose(f, g)
     # compose(f, g)(3) = f(g(3)) = f(6) = 16
     assert h(3) == 16
@@ -115,7 +108,7 @@ def test_compose() -> None:
 def test_nest() -> None:
     """``nest(outer, inner)(coll) = outer(inner, coll)`` — HOF nesting."""
     # Per-element function: turn an int into a list [x, x+1].
-    inner_fn = lambda x: [x, x + 1]   # noqa: E731
+    inner_fn = lambda x: [x, x + 1]  # noqa: E731
     # Outer: map_combinator-style — apply inner to each element.
     outer_fn = lambda fn, coll: [fn(x) for x in coll]
     f = nest(outer_fn, inner_fn)
@@ -200,6 +193,7 @@ def test_select_rules_for_pocket_orders_by_score_desc() -> None:
 
 def test_generate_molecule() -> None:
     """``MoleculeGenerationCombinator.generate_molecule`` smoke test."""
+
     # Two rules, two tiles → 4 (rule, tile) pairs.  Each pair yields
     # the tile as a SMILES via the default identity fallback.
     class _Rule:
@@ -214,9 +208,7 @@ def test_generate_molecule() -> None:
     tiles = ["T1", "T2"]
 
     combinator = MoleculeGenerationCombinator()
-    smiles_list = combinator.generate_molecule(
-        scaffold=None, rules=rules, tiles=tiles
-    )
+    smiles_list = combinator.generate_molecule(scaffold=None, rules=rules, tiles=tiles)
 
     # All 4 pairs produce 1 SMILES each → 4 SMILES total.
     assert len(smiles_list) == 4

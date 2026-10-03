@@ -37,8 +37,15 @@ from molmetal.utils.device import (
 )
 
 
-def _info(igpu=False, dgpu=False, cuda_visible=True, alloc_ok=True,
-          name="Radeon 780M", gfx="gfx1100", count=1):
+def _info(
+    igpu=False,
+    dgpu=False,
+    cuda_visible=True,
+    alloc_ok=True,
+    name="Radeon 780M",
+    gfx="gfx1100",
+    count=1,
+):
     """Build a fake detect_active_gpu() return dict."""
     return {
         "torch_version": "test-torch",
@@ -58,7 +65,8 @@ def _info(igpu=False, dgpu=False, cuda_visible=True, alloc_ok=True,
 def test_default_prefers_igpu_when_available(monkeypatch):
     """When the iGPU is reachable and allocatable, DEFAULT_DEVICE picks it."""
     monkeypatch.setattr(
-        device_mod, "detect_active_gpu",
+        device_mod,
+        "detect_active_gpu",
         lambda: _info(igpu=True, dgpu=False, name="Radeon 780M", gfx="gfx1100"),
     )
     # Reset lazy cache so the new probe is honoured.
@@ -69,7 +77,8 @@ def test_default_prefers_igpu_when_available(monkeypatch):
 def test_default_falls_back_to_discrete_gpu(monkeypatch):
     """When only the dGPU is reachable, DEFAULT_DEVICE picks it."""
     monkeypatch.setattr(
-        device_mod, "detect_active_gpu",
+        device_mod,
+        "detect_active_gpu",
         lambda: _info(igpu=False, dgpu=True, name="Radeon RX 7800 XT", gfx="gfx1101"),
     )
     device_mod.DEFAULT_DEVICE._value = None
@@ -79,7 +88,8 @@ def test_default_falls_back_to_discrete_gpu(monkeypatch):
 def test_default_falls_back_to_cpu_with_warning(monkeypatch):
     """When no GPU is reachable, DEFAULT_DEVICE picks cpu and get_device warns."""
     monkeypatch.setattr(
-        device_mod, "detect_active_gpu",
+        device_mod,
+        "detect_active_gpu",
         lambda: _info(igpu=False, dgpu=False, cuda_visible=False, alloc_ok=False),
     )
     device_mod.DEFAULT_DEVICE._value = None
@@ -92,19 +102,24 @@ def test_default_falls_back_to_cpu_with_warning(monkeypatch):
         d = get_device()
     assert isinstance(d, type(__import__("torch").device("cpu")))
     assert str(d) == "cpu"
-    cpu_warnings = [w for w in caught if "falling" in str(w.message).lower()
-                    or "cpu" in str(w.message).lower()]
+    cpu_warnings = [
+        w
+        for w in caught
+        if "falling" in str(w.message).lower() or "cpu" in str(w.message).lower()
+    ]
     assert cpu_warnings, "expected a CPU-fallback warning from get_device()"
 
 
 def test_get_device_returns_cuda_when_igpu(monkeypatch):
     """get_device() returns torch.device('cuda:0') when the iGPU is usable."""
     monkeypatch.setattr(
-        device_mod, "detect_active_gpu",
+        device_mod,
+        "detect_active_gpu",
         lambda: _info(igpu=True, dgpu=False, gfx="gfx1100"),
     )
     d = get_device()
     import torch
+
     assert str(d) == "cuda:0"
     assert isinstance(d, torch.device)
 
@@ -112,18 +127,21 @@ def test_get_device_returns_cuda_when_igpu(monkeypatch):
 def test_get_device_returns_cuda_when_only_dgpu(monkeypatch):
     """get_device() returns torch.device('cuda:0') when only dGPU is usable."""
     monkeypatch.setattr(
-        device_mod, "detect_active_gpu",
+        device_mod,
+        "detect_active_gpu",
         lambda: _info(igpu=False, dgpu=True, gfx="gfx1101"),
     )
     d = get_device()
     import torch
+
     assert str(d) == "cuda:0"
 
 
 def test_get_device_warns_only_once(monkeypatch):
     """The CPU-fallback warning is one-shot across calls."""
     monkeypatch.setattr(
-        device_mod, "detect_active_gpu",
+        device_mod,
+        "detect_active_gpu",
         lambda: _info(igpu=False, dgpu=False, cuda_visible=False, alloc_ok=False),
     )
     monkeypatch.setattr(device_mod, "_WARNED_CPU_FALLBACK", False)
@@ -133,12 +151,13 @@ def test_get_device_warns_only_once(monkeypatch):
         get_device()
         get_device()
     cpu_warnings = [
-        w for w in caught
+        w
+        for w in caught
         if "falling" in str(w.message).lower() or "cpu" in str(w.message).lower()
     ]
-    assert len(cpu_warnings) == 1, (
-        f"expected exactly one CPU-fallback warning, got {len(cpu_warnings)}"
-    )
+    assert (
+        len(cpu_warnings) == 1
+    ), f"expected exactly one CPU-fallback warning, got {len(cpu_warnings)}"
 
 
 def test_detect_active_gpu_never_raises(monkeypatch):
@@ -160,13 +179,22 @@ def test_detect_active_gpu_never_raises(monkeypatch):
 def test_verify_rocm_active_backward_compatible(monkeypatch):
     """verify_rocm_active() keeps the legacy keys smoke tests rely on."""
     monkeypatch.setattr(
-        device_mod, "detect_active_gpu",
+        device_mod,
+        "detect_active_gpu",
         lambda: _info(igpu=True, dgpu=False, gfx="gfx1100"),
     )
     info = device_mod.verify_rocm_active()
     # Legacy keys must remain present for downstream smoke tests.
-    for k in ("torch_version", "hip_version", "device_count", "device_0_name",
-              "device_0_index", "roc_active", "selected_device", "env_visible"):
+    for k in (
+        "torch_version",
+        "hip_version",
+        "device_count",
+        "device_0_name",
+        "device_0_index",
+        "roc_active",
+        "selected_device",
+        "env_visible",
+    ):
         assert k in info, f"legacy key {k!r} missing from verify_rocm_active()"
     # New keys added by WF-iGPU-Switch.
     assert "alloc_ok" in info
@@ -185,6 +213,7 @@ def test_rocm_available_constant_reflects_torch(monkeypatch):
     """ROCM_AVAILABLE stays a module-level mirror of torch.cuda.is_available()."""
     monkeypatch.setattr("torch.cuda.is_available", lambda: True)
     import importlib
+
     # Note: ROCM_AVAILABLE is captured at import time, so we just verify
     # the contract: it is a bool and the detect probe re-checks live.
     assert isinstance(ROCM_AVAILABLE, bool)

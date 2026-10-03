@@ -69,13 +69,13 @@ def test_amide_coupling() -> None:
     assert rule.can_apply(["CCN", "CC(=O)O"]) is True
 
     products = rule.fire(["CCN", "CC(=O)O"])
-    assert len(products) == 1, (
-        f"expected exactly 1 amide product, got {len(products)}: {products}"
-    )
+    assert (
+        len(products) == 1
+    ), f"expected exactly 1 amide product, got {len(products)}: {products}"
     # Canonical comparison tolerates atom-map stripping.
-    assert _canonical(products[0]) == _canonical("CCNC(C)=O"), (
-        f"expected CCNC(C)=O, got {products[0]!r}"
-    )
+    assert _canonical(products[0]) == _canonical(
+        "CCNC(C)=O"
+    ), f"expected CCNC(C)=O, got {products[0]!r}"
 
     # Negative control: feeding two amines should not fire the rule.
     assert rule.can_apply(["CCN", "CCN"]) is False
@@ -102,13 +102,13 @@ def test_ester_hydrolysis() -> None:
     assert isinstance(rule, SyntheMolReactionRule)
 
     products = rule.fire(["CC(=O)O", "BrCC"])
-    assert len(products) >= 1, (
-        f"expected >=1 ester product from acetic acid + ethyl bromide, got {products}"
-    )
+    assert (
+        len(products) >= 1
+    ), f"expected >=1 ester product from acetic acid + ethyl bromide, got {products}"
     canonical = {_canonical(p) for p in products}
-    assert "CCOC(C)=O" in canonical, (
-        f"expected CCOC(C)=O among products, got {canonical}"
-    )
+    assert (
+        "CCOC(C)=O" in canonical
+    ), f"expected CCOC(C)=O among products, got {canonical}"
 
     # Negative control: an amine + an acid cannot fire the ester rule.
     assert rule.can_apply(["CCN", "CC(=O)O"]) is False
@@ -138,13 +138,13 @@ def test_boc_cleavage() -> None:
     assert rule.can_apply([boc_amine]) is True
 
     products = rule.fire([boc_amine])
-    assert len(products) >= 1, (
-        f"expected >=1 product from BOC cleavage of {boc_amine!r}, got {products}"
-    )
+    assert (
+        len(products) >= 1
+    ), f"expected >=1 product from BOC cleavage of {boc_amine!r}, got {products}"
     canonical = {_canonical(p) for p in products}
-    assert "CCN" in canonical, (
-        f"expected free amine CCN among products, got {canonical}"
-    )
+    assert (
+        "CCN" in canonical
+    ), f"expected free amine CCN among products, got {canonical}"
 
     # Negative control: a bare amine should not match the BOC query.
     assert rule.can_apply(["CCN"]) is False
@@ -163,9 +163,7 @@ def test_boc_cleavage() -> None:
         ("urea_formation", ["CCN", "CCN"]),
     ],
 )
-def test_syntemol_vs_lambda_equivalence(
-    rule_name: str, reactants: list[str]
-) -> None:
+def test_syntemol_vs_lambda_equivalence(rule_name: str, reactants: list[str]) -> None:
     """Wrapper ``fire()`` and ``REACTION_RULES[name].fire()`` agree.
 
     The wrapper and the registry entry are the same object (the
@@ -194,9 +192,7 @@ def test_syntemol_vs_lambda_equivalence(
         f"registry={registry_products}, fresh={fresh_products}"
     )
     # And the wrapper must fire at all on the spec'd reactants.
-    assert registry_products, (
-        f"{rule_name} produced no products on {reactants}"
-    )
+    assert registry_products, f"{rule_name} produced no products on {reactants}"
 
 
 # ---------------------------------------------------------------------------
@@ -208,15 +204,15 @@ def test_reaction_count() -> None:
     """``REACTION_RULES`` holds 18 rules: 5 click + 13 SyntheMol."""
     # The 5 click rules always present.
     click_names = {"CuAAC", "SPAAC", "SPC", "DielsAlder", "ThiolEne"}
-    assert click_names <= set(REACTION_RULES), (
-        f"missing click rules; have {sorted(REACTION_RULES)[:10]}"
-    )
+    assert click_names <= set(
+        REACTION_RULES
+    ), f"missing click rules; have {sorted(REACTION_RULES)[:10]}"
 
     # The 13 SyntheMol rule names exactly match ``REAL_TO_LAMBDA``.
     expected_syntemol = {name for name, _rid, _sub in REAL_TO_LAMBDA}
-    assert len(expected_syntemol) == 13, (
-        f"REAL_TO_LAMBDA should hold 13 entries, got {len(expected_syntemol)}"
-    )
+    assert (
+        len(expected_syntemol) == 13
+    ), f"REAL_TO_LAMBDA should hold 13 entries, got {len(expected_syntemol)}"
     actual_syntemol = {
         name
         for name, rule in REACTION_RULES.items()

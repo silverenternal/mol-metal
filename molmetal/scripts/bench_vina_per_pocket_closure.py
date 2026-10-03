@@ -132,38 +132,38 @@ DEFAULT_COHORT_SIZE: int = 50
 _POCKET_REFERENCE_LIGANDS: Dict[str, Tuple[str, ...]] = {
     "1h36": (
         # MMP13 Zn-coordination inhibitors (sulfonamide warheads)
-        "NS(=O)(=O)c1ccc(NC(=O)C)cc1",        # sulfanilamide derivative
-        "O=C(NO)Cc1ccccc1",                     # hydroxamic acid analog
-        "OC(=O)Cc1ccc(N)cc1",                   # aminophenyl-acetic acid
-        "NS(=O)(=O)c1ccc(C(=O)NO)cc1",         # MMP13 inhibitor
+        "NS(=O)(=O)c1ccc(NC(=O)C)cc1",  # sulfanilamide derivative
+        "O=C(NO)Cc1ccccc1",  # hydroxamic acid analog
+        "OC(=O)Cc1ccc(N)cc1",  # aminophenyl-acetic acid
+        "NS(=O)(=O)c1ccc(C(=O)NO)cc1",  # MMP13 inhibitor
     ),
     "3eml": (
         # DHFR folate-pocket binders (diaminopyrimidine + pteridine)
         "Nc1nc(N)c2nc(CNc3ccc(C(=O)NC(CCC(=O)O)C(=O)O)cc3)cnc2n1",  # methotrexate
-        "Nc1nc2[nH]cnc2c(=O)[nH]1",            # guanine (natural ligand)
-        "Nc1cc(N)nc(N)n1",                     # 2,4,6-triaminopyrimidine
-        "O=C(O)c1cnc(N)nc1N",                  # pteroic acid precursor
+        "Nc1nc2[nH]cnc2c(=O)[nH]1",  # guanine (natural ligand)
+        "Nc1cc(N)nc(N)n1",  # 2,4,6-triaminopyrimidine
+        "O=C(O)c1cnc(N)nc1N",  # pteroic acid precursor
     ),
     "3ny8": (
         # β2 adrenergic receptor ligands (amine + aromatic)
-        "CC(C)NCC(O)c1ccc(O)c(CO)c1",          # isoproterenol
-        "OC(C(O)C1CCC(N)C(=O)O)CC(=O)O",       # carboxylic acid analog
-        "c1ccc(CN)cc1",                         # benzylamine
-        "CC(C)c1ccc(C(O)CNC(C)C)cc1",          # albuterol-like
+        "CC(C)NCC(O)c1ccc(O)c(CO)c1",  # isoproterenol
+        "OC(C(O)C1CCC(N)C(=O)O)CC(=O)O",  # carboxylic acid analog
+        "c1ccc(CN)cc1",  # benzylamine
+        "CC(C)c1ccc(C(O)CNC(C)C)cc1",  # albuterol-like
     ),
     "4aaw": (
         # Carbonic anhydrase II inhibitors (sulfonamide warheads)
-        "NS(=O)(=O)c1ccccc1",                   # benzenesulfonamide
-        "NS(=O)(=O)c1ccc(N)cc1",               # sulfanilamide
-        "NS(=O)(=O)c1ccc(Cl)cc1",              # chlorothiazide analog
-        "NS(=O)(=O)c1ccc(C(=O)O)cc1",          # 4-carboxybenzenesulfonamide
+        "NS(=O)(=O)c1ccccc1",  # benzenesulfonamide
+        "NS(=O)(=O)c1ccc(N)cc1",  # sulfanilamide
+        "NS(=O)(=O)c1ccc(Cl)cc1",  # chlorothiazide analog
+        "NS(=O)(=O)c1ccc(C(=O)O)cc1",  # 4-carboxybenzenesulfonamide
     ),
     "4rlu": (
         # GST electrophilic pocket binders (thiol-reactive)
-        "O=C1NC(=O)c2ccccc21",                  # phthalimide
-        "O=C1c2ccccc2C(=O)c2ccccc21",          # anthraquinone
-        "Cc1cc(=O)[nH]c(=S)[nH]1",             # thio-pyrimidinone
-        "O=C1c2ccccc2-c2ccccc21",              # fluorenone
+        "O=C1NC(=O)c2ccccc21",  # phthalimide
+        "O=C1c2ccccc2C(=O)c2ccccc21",  # anthraquinone
+        "Cc1cc(=O)[nH]c(=S)[nH]1",  # thio-pyrimidinone
+        "O=C1c2ccccc2-c2ccccc21",  # fluorenone
     ),
 }
 
@@ -221,11 +221,11 @@ def _detect_vina_binary() -> Dict[str, object]:
             try:
                 cp = subprocess.run(
                     [str(p), "--version"],
-                    capture_output=True, text=True, timeout=5,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
                 )
-                version = (cp.stdout or cp.stderr or "").strip().splitlines()[
-                    0
-                ]
+                version = (cp.stdout or cp.stderr or "").strip().splitlines()[0]
             except Exception:  # pragma: no cover
                 version = "<version-call-failed>"
             return {
@@ -268,9 +268,7 @@ def _build_pocket(pocket_id: str):
     n_atoms = 200
     coords = __import__("torch").zeros(n_atoms, 3, dtype=__import__("torch").float32)
     coords[:, 0] = __import__("torch").linspace(-15.0, 15.0, n_atoms)
-    atom_types = __import__("torch").full(
-        (n_atoms,), 6, dtype=__import__("torch").long
-    )
+    atom_types = __import__("torch").full((n_atoms,), 6, dtype=__import__("torch").long)
     return Pocket(
         pdb_id=pocket_id,
         coords=coords,
@@ -299,7 +297,14 @@ def _find_staged_receptor(pocket_id: str) -> Optional[Path]:
         "wf126_p1_staging",
         "wf30_pocket_prep",
     ):
-        cand = project_root / "molmetal" / "reports" / staging_dir / pocket_id / "receptor.pdbqt"
+        cand = (
+            project_root
+            / "molmetal"
+            / "reports"
+            / staging_dir
+            / pocket_id
+            / "receptor.pdbqt"
+        )
         if cand.is_file():
             return cand
     return None
@@ -317,11 +322,13 @@ def _receptor_center(pdbqt_path: Path) -> Tuple[float, float, float]:
                 if not line.startswith("ATOM"):
                     continue
                 try:
-                    coords.append([
-                        float(line[30:38]),
-                        float(line[38:46]),
-                        float(line[46:54]),
-                    ])
+                    coords.append(
+                        [
+                            float(line[30:38]),
+                            float(line[38:46]),
+                            float(line[46:54]),
+                        ]
+                    )
                 except (ValueError, IndexError):
                     continue
         if not coords:
@@ -457,7 +464,9 @@ def _dock_one(
     except Exception as exc:  # noqa: BLE001
         LOG.debug(
             "[vina_per_pocket] dock failed pocket=%s smi=%r: %s",
-            pocket_id, cand_smiles[:24], exc,
+            pocket_id,
+            cand_smiles[:24],
+            exc,
         )
         return VinaCellRecord(
             pocket=pocket_id,
@@ -541,8 +550,8 @@ def _wasserstein_pocket_alignment(
         # Generic fallback (aspirin / adenine / indole).
         ref_ligs = (
             "CC(=O)Oc1ccccc1C(=O)O",  # aspirin
-            "Nc1ncnc2[nH]cnc12",       # adenine
-            "c1ccc2[nH]ccc2c1",        # indole
+            "Nc1ncnc2[nH]cnc12",  # adenine
+            "c1ccc2[nH]ccc2c1",  # indole
         )
     ref_vecs = [v for v in (_fp_dense(s) for s in ref_ligs) if v is not None]
 
@@ -559,7 +568,11 @@ def _wasserstein_pocket_alignment(
     ref = torch.stack(ref_vecs)
     try:
         w2 = wasserstein_pocket_loss(
-            cand, ref, pocket_id=pocket_id, n_mc=128, seed=0,
+            cand,
+            ref,
+            pocket_id=pocket_id,
+            n_mc=128,
+            seed=0,
         )
         return {
             "wasserstein_loss": float(w2.detach().cpu().item()),
@@ -618,7 +631,8 @@ def _run_pocket(
     for seed in seeds:
         LOG.info(
             "[vina_per_pocket] pocket=%s seed=%d — generating cohort",
-            pocket_id, seed,
+            pocket_id,
+            seed,
         )
         cohort = closure_bounded_smiles_generation(
             pocket_id=pocket_id,
@@ -627,64 +641,68 @@ def _run_pocket(
             max_products=cohort_size * 4,
             include_metal_coord_bias=True,
         )
-        cohort_summary.append({
-            "seed": int(seed),
-            "n_requested": int(cohort_size),
-            "n_emitted_raw": int(cohort.n_candidates_raw),
-            "n_kept": int(cohort.n_candidates_kept),
-            "catherine_pass_rate": float(cohort.catherine_pass_rate),
-            "wall_time_s": float(cohort.wall_time_s),
-            "engine": str(cohort.engine),
-            "n_seeds": int(cohort.n_seeds),
-        })
+        cohort_summary.append(
+            {
+                "seed": int(seed),
+                "n_requested": int(cohort_size),
+                "n_emitted_raw": int(cohort.n_candidates_raw),
+                "n_kept": int(cohort.n_candidates_kept),
+                "catherine_pass_rate": float(cohort.catherine_pass_rate),
+                "wall_time_s": float(cohort.wall_time_s),
+                "engine": str(cohort.engine),
+                "n_seeds": int(cohort.n_seeds),
+            }
+        )
 
         smiles = _smiles_from_bounded(cohort)
         LOG.info(
             "[vina_per_pocket] pocket=%s seed=%d — docking %d cands",
-            pocket_id, seed, len(smiles),
+            pocket_id,
+            seed,
+            len(smiles),
         )
         seed_cells: List[VinaCellRecord] = []
         for smi in smiles:
             cell = _dock_one(
-                pocket_id, smi, seed, vina_status,
+                pocket_id,
+                smi,
+                seed,
+                vina_status,
                 exhaustiveness=4,
             )
             seed_cells.append(cell)
             all_cells.append(cell)
 
         # Per-seed high_affinity rate.
-        real_cells = [
-            c for c in seed_cells if c.high_affinity is not None
-        ]
+        real_cells = [c for c in seed_cells if c.high_affinity is not None]
         if real_cells:
             n_high = sum(1 for c in real_cells if c.high_affinity)
             rate = n_high / len(real_cells)
         else:
             rate = None  # all stub — honest framing
-        per_seed_summary.append({
-            "seed": int(seed),
-            "n_docked": len(real_cells),
-            "n_high_affinity": (
-                sum(1 for c in real_cells if c.high_affinity)
-                if real_cells else 0
-            ),
-            "high_affinity_rate": (
-                None if rate is None else float(round(rate, 6))
-            ),
-            "score_min": (
-                None if not real_cells else float(
-                    min(c.score_kcal_mol for c in real_cells)
-                )
-            ),
-            "score_mean": (
-                None if not real_cells else float(
-                    statistics.fmean(c.score_kcal_mol for c in real_cells)
-                )
-            ),
-            "n_stub_fallback": sum(
-                1 for c in seed_cells if c.vina_status == "STUB_FALLBACK"
-            ),
-        })
+        per_seed_summary.append(
+            {
+                "seed": int(seed),
+                "n_docked": len(real_cells),
+                "n_high_affinity": (
+                    sum(1 for c in real_cells if c.high_affinity) if real_cells else 0
+                ),
+                "high_affinity_rate": (None if rate is None else float(round(rate, 6))),
+                "score_min": (
+                    None
+                    if not real_cells
+                    else float(min(c.score_kcal_mol for c in real_cells))
+                ),
+                "score_mean": (
+                    None
+                    if not real_cells
+                    else float(statistics.fmean(c.score_kcal_mol for c in real_cells))
+                ),
+                "n_stub_fallback": sum(
+                    1 for c in seed_cells if c.vina_status == "STUB_FALLBACK"
+                ),
+            }
+        )
 
         # Wasserstein alignment per seed.
         w = _wasserstein_pocket_alignment(smiles, pocket_id)
@@ -693,15 +711,12 @@ def _run_pocket(
 
     # Per-pocket aggregate across seeds.
     real_rates = [
-        s["high_affinity_rate"] for s in per_seed_summary
+        s["high_affinity_rate"]
+        for s in per_seed_summary
         if s["high_affinity_rate"] is not None
     ]
-    agg_rate = (
-        float(statistics.fmean(real_rates)) if real_rates else None
-    )
-    agg_real_cells = [
-        c for c in all_cells if c.high_affinity is not None
-    ]
+    agg_rate = float(statistics.fmean(real_rates)) if real_rates else None
+    agg_real_cells = [c for c in all_cells if c.high_affinity is not None]
 
     return {
         "pocket_id": pocket_id,
@@ -713,33 +728,29 @@ def _run_pocket(
             "high_affinity_rate_aggregated": (
                 None if agg_rate is None else float(round(agg_rate, 6))
             ),
-            "high_affinity_rate_aggregated_target": (
-                UNIFORM_FLOOR_HIGH_AFFINITY_RATE
-            ),
+            "high_affinity_rate_aggregated_target": (UNIFORM_FLOOR_HIGH_AFFINITY_RATE),
             "pass_uniform_floor": (
-                agg_rate is not None
-                and agg_rate >= UNIFORM_FLOOR_HIGH_AFFINITY_RATE
+                agg_rate is not None and agg_rate >= UNIFORM_FLOOR_HIGH_AFFINITY_RATE
             ),
             "historical_baseline": HISTORICAL_BASELINE.get(pocket_id),
             "delta_vs_historical": (
-                None if agg_rate is None or HISTORICAL_BASELINE.get(pocket_id) is None
-                else float(round(
-                    agg_rate - HISTORICAL_BASELINE[pocket_id], 6
-                ))
+                None
+                if agg_rate is None or HISTORICAL_BASELINE.get(pocket_id) is None
+                else float(round(agg_rate - HISTORICAL_BASELINE[pocket_id], 6))
             ),
             "n_docked_total": len(agg_real_cells),
             "n_high_affinity_total": (
                 sum(1 for c in agg_real_cells if c.high_affinity)
             ),
             "score_min_overall": (
-                None if not agg_real_cells else float(
-                    min(c.score_kcal_mol for c in agg_real_cells)
-                )
+                None
+                if not agg_real_cells
+                else float(min(c.score_kcal_mol for c in agg_real_cells))
             ),
             "score_mean_overall": (
-                None if not agg_real_cells else float(
-                    statistics.fmean(c.score_kcal_mol for c in agg_real_cells)
-                )
+                None
+                if not agg_real_cells
+                else float(statistics.fmean(c.score_kcal_mol for c in agg_real_cells))
             ),
             "n_stub_fallback_total": sum(
                 1 for c in all_cells if c.vina_status == "STUB_FALLBACK"
@@ -751,7 +762,8 @@ def _run_pocket(
                 "cand_smiles": c.cand_smiles,
                 "seed": int(c.seed),
                 "score_kcal_mol": (
-                    None if c.score_kcal_mol is None
+                    None
+                    if c.score_kcal_mol is None
                     else float(round(c.score_kcal_mol, 4))
                 ),
                 "vina_status": c.vina_status,
@@ -818,10 +830,7 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument(
         "--out-dir",
         type=Path,
-        default=PROJECT_ROOT
-        / "molmetal"
-        / "reports"
-        / "wf126_p3_vina_per_pocket",
+        default=PROJECT_ROOT / "molmetal" / "reports" / "wf126_p3_vina_per_pocket",
         help="Output directory.",
     )
     p.add_argument(
@@ -844,7 +853,8 @@ def main() -> int:
     vina_status = _detect_vina_binary()
     LOG.info(
         "[vina_per_pocket] vina_binary_status=%s bin=%s",
-        vina_status["status"], vina_status.get("bin"),
+        vina_status["status"],
+        vina_status.get("bin"),
     )
 
     per_pocket_records: Dict[str, Dict[str, object]] = {}
@@ -871,7 +881,8 @@ def main() -> int:
         pocket_json.write_text(json.dumps(rec, indent=2, default=str))
         LOG.info(
             "[vina_per_pocket] pocket=%s wrote %s",
-            pocket_id, pocket_json,
+            pocket_id,
+            pocket_json,
         )
 
         agg = rec["aggregate"]
@@ -920,9 +931,7 @@ def main() -> int:
             "high_affinity_kcal_cutoff": HIGH_AFFINITY_KCAL_CUTOFF,
         },
         "vina_binary_status": vina_status,
-        "per_pocket": {
-            p: r["aggregate"] for p, r in per_pocket_records.items()
-        },
+        "per_pocket": {p: r["aggregate"] for p, r in per_pocket_records.items()},
         "per_pocket_wasserstein": {
             p: [
                 {
@@ -950,16 +959,14 @@ def main() -> int:
             ),
             "n_pockets_total": len(rates_by_pocket),
             "min_high_affinity_rate": (
-                None if any(r is None for r in rates_by_pocket.values())
-                else float(round(
-                    min(rates_by_pocket.values()), 6
-                ))
+                None
+                if any(r is None for r in rates_by_pocket.values())
+                else float(round(min(rates_by_pocket.values()), 6))
             ),
             "max_high_affinity_rate": (
-                None if any(r is None for r in rates_by_pocket.values())
-                else float(round(
-                    max(rates_by_pocket.values()), 6
-                ))
+                None
+                if any(r is None for r in rates_by_pocket.values())
+                else float(round(max(rates_by_pocket.values()), 6))
             ),
         },
         "honest_framing": {
@@ -995,32 +1002,45 @@ def main() -> int:
         "args": vars(args),
         "primary": summary["primary"],
         "vina_binary_status": vina_status["status"],
-        "wall_time_s_total": float(sum(
-            sum(c["wall_time_s"] for c in r["per_cell"])
-            for r in per_pocket_records.values()
-        )),
+        "wall_time_s_total": float(
+            sum(
+                sum(c["wall_time_s"] for c in r["per_cell"])
+                for r in per_pocket_records.values()
+            )
+        ),
     }
     run_summary_path = args.out_dir / "vina_run_summary.json"
-    run_summary_path.write_text(
-        json.dumps(run_summary, indent=2, default=str)
-    )
+    run_summary_path.write_text(json.dumps(run_summary, indent=2, default=str))
     LOG.info("[vina_per_pocket] wrote %s", run_summary_path)
 
     # Per-pocket CSV (smiles, pocket, seed, score, high_affinity).
     csv_path = args.out_dir / "per_pocket_vina.csv"
     with csv_path.open("w", newline="") as fh:
         writer = csv.writer(fh)
-        writer.writerow([
-            "pocket", "seed", "smiles", "score_kcal_mol",
-            "high_affinity", "vina_status", "wall_time_s",
-        ])
+        writer.writerow(
+            [
+                "pocket",
+                "seed",
+                "smiles",
+                "score_kcal_mol",
+                "high_affinity",
+                "vina_status",
+                "wall_time_s",
+            ]
+        )
         for pocket_id, r in per_pocket_records.items():
             for c in r["per_cell"]:
-                writer.writerow([
-                    pocket_id, c["seed"], c["cand_smiles"],
-                    c["score_kcal_mol"], c["high_affinity"],
-                    c["vina_status"], c["wall_time_s"],
-                ])
+                writer.writerow(
+                    [
+                        pocket_id,
+                        c["seed"],
+                        c["cand_smiles"],
+                        c["score_kcal_mol"],
+                        c["high_affinity"],
+                        c["vina_status"],
+                        c["wall_time_s"],
+                    ]
+                )
     LOG.info("[vina_per_pocket] wrote %s", csv_path)
 
     print(

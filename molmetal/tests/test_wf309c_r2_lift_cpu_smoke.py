@@ -40,6 +40,7 @@ Run via::
     /home/hugo/.venv-flowmol311/bin/python -m pytest \\
         molmetal/tests/test_wf309c_r2_lift_cpu_smoke.py -v
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -56,6 +57,7 @@ import pytest
 def _have_rdkit() -> bool:
     try:
         from rdkit import Chem  # type: ignore  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -76,11 +78,11 @@ requires_rdkit = pytest.mark.skipif(
 #: Small SMILES cohort with known heavy-atom counts so we can sanity-
 #: check the RDKit 2D descriptors (no random / external data).
 _F5_RDKIT_2D_SMILES: tuple = (
-    "C",                             # methane — 1 heavy atom
-    "CCO",                           # ethanol — 2 heavy atoms (non-H)
-    "c1ccccc1",                      # benzene — 6 heavy atoms, aromatic
-    "CC(=O)O",                       # acetic acid — 4 heavy atoms
-    "CCN(CC)CC",                     # triethylamine — 7 heavy atoms
+    "C",  # methane — 1 heavy atom
+    "CCO",  # ethanol — 2 heavy atoms (non-H)
+    "c1ccccc1",  # benzene — 6 heavy atoms, aromatic
+    "CC(=O)O",  # acetic acid — 4 heavy atoms
+    "CCN(CC)CC",  # triethylamine — 7 heavy atoms
 )
 
 
@@ -136,7 +138,11 @@ def test_f5_rdkit_2d_extract():
     # RDKIT_2D_DIM and RDKIT_2D_BASE_DIM may be either top-level
     # exports or class attributes — handle both.
     dim_32 = int(RDKIT_2D_DIM) if isinstance(RDKIT_2D_DIM, int) else int(RDKIT_2D_DIM())
-    dim_12 = int(RDKIT_2D_BASE_DIM) if isinstance(RDKIT_2D_BASE_DIM, int) else int(RDKIT_2D_BASE_DIM())
+    dim_12 = (
+        int(RDKIT_2D_BASE_DIM)
+        if isinstance(RDKIT_2D_BASE_DIM, int)
+        else int(RDKIT_2D_BASE_DIM())
+    )
 
     for smi in _F5_RDKIT_2D_SMILES:
         v_12d = compute_rdkit_2d_12d(smi)
@@ -173,6 +179,7 @@ def test_f5_rdkit_2d_extract_returns_none_for_invalid_smiles():
         compute_rdkit_2d_12d,
         compute_rdkit_2d_extended,
     )
+
     # Empty string → RDKit returns None.
     assert compute_rdkit_2d_12d("") is None
     assert compute_rdkit_2d_extended("") is None
@@ -235,7 +242,9 @@ def test_hilbert_primal_dual_init():
     assert np.isfinite(rate) and rate >= 0.0
 
     # 2.3 LambdaASTSRHilbert (CPU-only smoke init)
-    ast = LambdaASTSRHilbert(population_dim=64, lr_primal=0.01, lr_dual=0.01, n_iters=10)
+    ast = LambdaASTSRHilbert(
+        population_dim=64, lr_primal=0.01, lr_dual=0.01, n_iters=10
+    )
     assert ast.population_dim == 64
     assert ast.n_iters == 10
 
@@ -277,18 +286,16 @@ def test_r2_lift_forward():
     # Forward pass must produce well-formed outputs.
     assert out is not None
     assert hasattr(ast, "best_params_")
-    assert ast.best_params_ is not None, (
-        "LambdaASTSRHilbert.optimize must populate best_params_"
-    )
-    assert np.all(np.isfinite(ast.best_params_)), (
-        f"best_params_ must be finite; got non-finite entries in {ast.best_params_}"
-    )
+    assert (
+        ast.best_params_ is not None
+    ), "LambdaASTSRHilbert.optimize must populate best_params_"
+    assert np.all(
+        np.isfinite(ast.best_params_)
+    ), f"best_params_ must be finite; got non-finite entries in {ast.best_params_}"
     # Training R² must be in [0, 1] (the synthetic target is generated
     # with SNR=1 so R² can hit ~0.5 in 20 PD iterations).
     r2_train = float(getattr(ast, "best_r2_train_", 0.0))
-    assert 0.0 <= r2_train <= 1.0, (
-        f"best_r2_train_ must be in [0, 1]; got {r2_train}"
-    )
+    assert 0.0 <= r2_train <= 1.0, f"best_r2_train_ must be in [0, 1]; got {r2_train}"
     # History log must be populated with at least one entry.
     hist = getattr(ast, "history_", [])
     assert len(hist) >= 1, "LambdaASTSRHilbert must record at least 1 history entry"
@@ -344,17 +351,19 @@ def test_r2_score_shape():
     ss_res = float(np.sum((y - y_pred) ** 2))
     ss_tot = float(np.sum((y - np.mean(y)) ** 2))
     r2_evolutionary = 1.0 - ss_res / max(ss_tot, 1.0e-12)
-    assert np.isfinite(r2_evolutionary), (
-        f"evolutionary R² must be finite; got {r2_evolutionary}"
-    )
+    assert np.isfinite(
+        r2_evolutionary
+    ), f"evolutionary R² must be finite; got {r2_evolutionary}"
 
     # Variance reduction — the per-iteration step-size shrinkage
     # detected by the Wf-44 numerical-stability guard.  ≥ 0 (negative
     # would indicate step collapse, which the guard prevents via the
     # ``min_step_size`` floor).
-    var_red = float(getattr(ast, "_variance_reduction", 0.0)) if hasattr(
-        ast, "_variance_reduction"
-    ) else 0.0
+    var_red = (
+        float(getattr(ast, "_variance_reduction", 0.0))
+        if hasattr(ast, "_variance_reduction")
+        else 0.0
+    )
     # Most LambdaASTSRHilbert builds do not expose _variance_reduction
     # directly — fall back to 0.0 (the Wf-127 P1 stable-weight floor
     # is the canonical reference).

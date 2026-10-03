@@ -82,6 +82,7 @@ from torch import Tensor
 # ---------------------------------------------------------------------------
 try:  # pragma: no cover - import-only check
     from rdkit import Chem  # type: ignore
+
     _RDKIT_AVAILABLE: bool = True
 except Exception as _exc:  # pragma: no cover
     Chem = None  # type: ignore
@@ -223,9 +224,7 @@ class RingTopologyComputer:
 
     def __init__(self, n_bins: int = DEFAULT_N_BINS) -> None:
         if n_bins < 1:
-            raise MacroGuidePHError(
-                f"n_bins must be >= 1; got {n_bins}"
-            )
+            raise MacroGuidePHError(f"n_bins must be >= 1; got {n_bins}")
         self.n_bins: int = int(n_bins)
         # Pre-compute the bin centre ring sizes — uniform grid on
         # ``[MIN_RING_SIZE, MIN_RING_SIZE + n_bins)``.  Stored as
@@ -357,11 +356,13 @@ class RingTopologyComputer:
                 continue
             # Aromaticity is computed per-ring via the public helper.
             arom = self.is_aromatic(list(ring_tuple))
-            out.append(_Ring(
-                atom_indices=ring_tuple,
-                size=len(ring_tuple),
-                aromatic=arom,
-            ))
+            out.append(
+                _Ring(
+                    atom_indices=ring_tuple,
+                    size=len(ring_tuple),
+                    aromatic=arom,
+                )
+            )
         return out
 
     def _bin_index(self, ring_size: int) -> int:
@@ -453,13 +454,9 @@ class MacroGuidePH:
         n_bins: int = DEFAULT_N_BINS,
     ) -> None:
         if n_windows < 1:
-            raise MacroGuidePHError(
-                f"n_windows must be >= 1; got {n_windows}"
-            )
+            raise MacroGuidePHError(f"n_windows must be >= 1; got {n_windows}")
         if n_bins < 1:
-            raise MacroGuidePHError(
-                f"n_bins must be >= 1; got {n_bins}"
-            )
+            raise MacroGuidePHError(f"n_bins must be >= 1; got {n_bins}")
         self.n_windows: int = int(n_windows)
         self.n_bins: int = int(n_bins)
         # Delegate the ring-topology extraction.  Keep the
@@ -514,9 +511,7 @@ class MacroGuidePH:
         # safe behaviour).
         idx_grid = torch.arange(self.n_windows, dtype=torch.float32)
         diff = idx_grid - float(target_idx)
-        prior = torch.exp(
-            -(diff ** 2) / (2.0 * self._WINDOW_SOFTMAX_TAU ** 2)
-        )
+        prior = torch.exp(-(diff**2) / (2.0 * self._WINDOW_SOFTMAX_TAU**2))
         prior = prior / prior.sum().clamp(min=self._ENERGY_FLOOR)
         # Band energy: L1 norm of each window's filtered histogram.
         energy = windows.sum(dim=-1)  # (n_windows,)
@@ -538,7 +533,7 @@ class MacroGuidePH:
         centres = self.window_centres().unsqueeze(-1)
         grid = self._ring_topology.ring_size_grid.unsqueeze(0)
         sigma = self._window_bandwidth()
-        weight = torch.exp(-((grid - centres) ** 2) / (2.0 * sigma ** 2))
+        weight = torch.exp(-((grid - centres) ** 2) / (2.0 * sigma**2))
         # Element-wise multiply and sum over bins.  We do NOT
         # re-normalise the per-window sum — that would defeat the
         # "energy concentration" interpretation.  The caller
@@ -641,8 +636,7 @@ def augment_pll_with_macroguide(
         )
     if pll_features.dim() == 0 or macroguide_features.dim() == 0:
         raise MacroGuidePHError(
-            "pll_features and macroguide_features must have "
-            "at least one dimension"
+            "pll_features and macroguide_features must have " "at least one dimension"
         )
     last_pll = pll_features.shape[-1]
     last_mg = macroguide_features.shape[-1]

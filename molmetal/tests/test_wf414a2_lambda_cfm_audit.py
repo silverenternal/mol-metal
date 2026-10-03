@@ -47,9 +47,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-TRAINER_PATH = (
-    REPO_ROOT / "molmetal/scripts/train_cfm_yuelbond_wasserstein.py"
-)
+TRAINER_PATH = REPO_ROOT / "molmetal/scripts/train_cfm_yuelbond_wasserstein.py"
 sys.path.insert(0, str(REPO_ROOT))
 
 from molmetal.scripts.wf394a1_lambda_cfm_wire import (  # noqa: E402
@@ -497,6 +495,4 @@ def test_heuristic_catches_ast_rewritten_trainer() -> None:
 
 
 if __name__ == "__main__":
-    raise SystemExit(
-        pytest.main([__file__, "-v", "--tb=short"])
-    )
+    raise SystemExit(pytest.main([__file__, "-v", "--tb=short"]))

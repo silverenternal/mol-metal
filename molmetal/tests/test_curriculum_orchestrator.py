@@ -53,9 +53,18 @@ except Exception:
 def _make_samples(n: int, metal: str = "Ru"):
     """Build a stable, varied set of samples."""
     arom = [
-        "c1ccccc1", "c1ccccc1C", "c1ccccc1O", "c1ccccc1N",
-        "c1ccccc1Cl", "c1ccccc1F", "c1ccccc1Br", "c1ccncc1",
-        "c1cnccc1", "c1ncccc1", "c1ccc2ccccc12", "c1ccc2[nH]ccc2c1",
+        "c1ccccc1",
+        "c1ccccc1C",
+        "c1ccccc1O",
+        "c1ccccc1N",
+        "c1ccccc1Cl",
+        "c1ccccc1F",
+        "c1ccccc1Br",
+        "c1ccncc1",
+        "c1cnccc1",
+        "c1ncccc1",
+        "c1ccc2ccccc12",
+        "c1ccc2[nH]ccc2c1",
     ]
     out = []
     for i in range(n):

@@ -113,7 +113,9 @@ CONFIGS = (
 SPLITS = ("train", "iid_val", "iid_test", "ood_val", "ood_test")
 
 # Cache from Wf-174 for lbap_refined_ic50_assay — reuse to save featurize + mem-load.
-WF174_CACHE = PROJECT_ROOT / "molmetal" / "reports" / "wf174_chemprop_v2_drugood_real" / "cache"
+WF174_CACHE = (
+    PROJECT_ROOT / "molmetal" / "reports" / "wf174_chemprop_v2_drugood_real" / "cache"
+)
 
 HASH_FN = lambda s: hashlib.md5(s.encode("utf-8")).hexdigest()
 
@@ -158,10 +160,13 @@ def _molgraph_to_arrays(mg: MolGraph):
     return V, E, edge_index, rev
 
 
-def featurize_and_cache(canon_list: List[str], cache_dir: Path,
-                        featurizer: SimpleMoleculeMolGraphFeaturizer,
-                        n_workers: int = 4,
-                        chunk_size: int = 30000) -> Tuple[Dict[str, dict], int, int]:
+def featurize_and_cache(
+    canon_list: List[str],
+    cache_dir: Path,
+    featurizer: SimpleMoleculeMolGraphFeaturizer,
+    n_workers: int = 4,
+    chunk_size: int = 30000,
+) -> Tuple[Dict[str, dict], int, int]:
     """Persistent MolGraphCache + npz on disk. See wf174 docstring."""
     cache_dir.mkdir(parents=True, exist_ok=True)
     cached_paths: Dict[str, dict] = {}
@@ -186,12 +191,16 @@ def featurize_and_cache(canon_list: List[str], cache_dir: Path,
     n_new_total = len(todo)
     if n_corrupted:
         _log(f"  recovered {n_corrupted} corrupted cache entries")
-    _log(f"  featurize: cache_hits={n_skip}  todo={n_new_total}  "
-         f"chunk_size={chunk_size}")
+    _log(
+        f"  featurize: cache_hits={n_skip}  todo={n_new_total}  "
+        f"chunk_size={chunk_size}"
+    )
     for chunk_start in range(0, n_new_total, chunk_size):
-        chunk = todo[chunk_start:chunk_start + chunk_size]
-        _log(f"  featurize chunk [{chunk_start}..{chunk_start + len(chunk)})  "
-             f"({len(chunk)} SMILES)")
+        chunk = todo[chunk_start : chunk_start + chunk_size]
+        _log(
+            f"  featurize chunk [{chunk_start}..{chunk_start + len(chunk)})  "
+            f"({len(chunk)} SMILES)"
+        )
         mols = [Chem.MolFromSmiles(s) for s in chunk]
         valid = [(s, m) for s, m in zip(chunk, mols) if m is not None]
         if not valid:
@@ -237,9 +246,13 @@ def copy_wf174_cache(cache_dir: Path, target_canon: set) -> int:
     return n_copied
 
 
-def build_batch_molgraph(canon_list: List[str], featurized: Dict[str, dict],
-                         atom_fdim: int, bond_fdim: int,
-                         device: torch.device) -> BatchMolGraph:
+def build_batch_molgraph(
+    canon_list: List[str],
+    featurized: Dict[str, dict],
+    atom_fdim: int,
+    bond_fdim: int,
+    device: torch.device,
+) -> BatchMolGraph:
     """Build a chemprop :class:`BatchMolGraph` from canonical SMILES."""
     mgs: List[MolGraph] = []
     for smi in canon_list:
@@ -264,8 +277,9 @@ def build_batch_molgraph(canon_list: List[str], featurized: Dict[str, dict],
     return bmg
 
 
-def load_cached_features_in_memory(cached_paths: Dict[str, dict],
-                                   target_canon: set) -> Dict[str, dict]:
+def load_cached_features_in_memory(
+    cached_paths: Dict[str, dict], target_canon: set
+) -> Dict[str, dict]:
     """Load the npz arrays for every SMILES in ``target_canon`` into memory."""
     out: Dict[str, dict] = {}
     for smi in target_canon:
@@ -304,16 +318,24 @@ class SplitData:
         )
 
 
-def load_all_splits(subset: str, n_per_split: Optional[Dict[str, int]] = None,
-                    ) -> Dict[str, SplitData]:
+def load_all_splits(
+    subset: str,
+    n_per_split: Optional[Dict[str, int]] = None,
+) -> Dict[str, SplitData]:
     out: Dict[str, SplitData] = {}
     for sp in SPLITS:
         t0 = time.time()
         df = load_drugood(
-            subset=subset, split=sp, prefer_library=False,
+            subset=subset,
+            split=sp,
+            prefer_library=False,
         )
         canon = [_canon_smiles(s) for s in df["smiles"].astype(str).tolist()]
-        valid = [(c, y) for c, y in zip(canon, df["active"].astype(int).tolist()) if c is not None]
+        valid = [
+            (c, y)
+            for c, y in zip(canon, df["active"].astype(int).tolist())
+            if c is not None
+        ]
         if n_per_split is not None and sp in n_per_split:
             valid = valid[: n_per_split[sp]]
         canon_list = [c for c, _ in valid]
@@ -381,15 +403,18 @@ def _eval_split_auc(
     metal_ids = torch.zeros(len(canon_eval), dtype=torch.long, device=device)
     with torch.no_grad():
         for start in range(0, len(canon_eval), batch_size):
-            chunk_canon = canon_eval[start:start + batch_size]
-            bmg = build_batch_molgraph(chunk_canon, featurized, atom_fdim,
-                                       bond_fdim, device)
+            chunk_canon = canon_eval[start : start + batch_size]
+            bmg = build_batch_molgraph(
+                chunk_canon, featurized, atom_fdim, bond_fdim, device
+            )
             H_v = model.encoder.message_passing(bmg)
             H = model.encoder.agg(H_v, bmg.batch)
-            e = model.metal_embed(metal_ids[start:start + len(chunk_canon)])
+            e = model.metal_embed(metal_ids[start : start + len(chunk_canon)])
             z = torch.cat([H, e], dim=-1)
             logit_1 = model.metal_heads["Ru"].train_step(z).squeeze(-1)
-            scores[start:start + len(chunk_canon)] = torch.sigmoid(logit_1).cpu().numpy()
+            scores[start : start + len(chunk_canon)] = (
+                torch.sigmoid(logit_1).cpu().numpy()
+            )
     return float(roc_auc_score(y_eval, scores)), int(len(y_eval))
 
 
@@ -448,11 +473,12 @@ def run_one_seed(
         # CUDA. Blackwell sm_120 BF16 matmul ~3x faster than FP32; CPU no-op.
         use_amp = args.bf16 and device.type == "cuda"
         for start in range(0, n_train, args.batch):
-            chunk_idx = perm[start:start + args.batch]
+            chunk_idx = perm[start : start + args.batch]
             chunk_canon = [canon_train[i] for i in chunk_idx]
             chunk_y = torch.from_numpy(y_train[chunk_idx]).to(device)
-            bmg = build_batch_molgraph(chunk_canon, featurized, atom_fdim,
-                                       bond_fdim, device)
+            bmg = build_batch_molgraph(
+                chunk_canon, featurized, atom_fdim, bond_fdim, device
+            )
             metal_ids = torch.zeros(len(chunk_canon), dtype=torch.long, device=device)
             if use_amp:
                 with torch.amp.autocast("cuda", dtype=torch.bfloat16):
@@ -491,7 +517,9 @@ def run_one_seed(
     n_eval: Dict[str, int] = {}
     for sp in SPLITS:
         sd = splits[sp]
-        max_eval = args.eval_max_samples if sp != "train" else args.eval_train_max_samples
+        max_eval = (
+            args.eval_max_samples if sp != "train" else args.eval_train_max_samples
+        )
         auc, n = _eval_split_auc(
             model=model,
             canon_list=sd.canon,
@@ -559,8 +587,10 @@ def run_one_config(
     if args.reset_cache and cache_dir.exists():
         shutil.rmtree(cache_dir)
 
-    _log(f"=== [{subset}] start  cache_dir={cache_dir}  "
-         f"t_elapsed={(time.time() - cfg_start_time):.1f}s")
+    _log(
+        f"=== [{subset}] start  cache_dir={cache_dir}  "
+        f"t_elapsed={(time.time() - cfg_start_time):.1f}s"
+    )
 
     # Load all 5 splits for this config.
     splits = load_all_splits(subset=subset, n_per_split=None)
@@ -580,16 +610,23 @@ def run_one_config(
     if subset == "lbap_refined_ic50_assay" and WF174_CACHE.exists():
         target_canon_for_link = set(canon_unique_all)
         n_copied = copy_wf174_cache(cache_dir, target_canon_for_link)
-        _log(f"[{subset}] reused {n_copied}/{len(canon_unique_all)} npz files from Wf-174 cache")
+        _log(
+            f"[{subset}] reused {n_copied}/{len(canon_unique_all)} npz files from Wf-174 cache"
+        )
 
     t_fe = time.time()
     cached_paths, n_skip, n_new = featurize_and_cache(
-        canon_unique_all, cache_dir, featurizer, n_workers=4,
+        canon_unique_all,
+        cache_dir,
+        featurizer,
+        n_workers=4,
     )
     fe_wall = time.time() - t_fe
     hit_rate = float(n_skip) / max(len(canon_unique_all), 1)
-    _log(f"[{subset}] featurize done  n_skip={n_skip}  n_new={n_new}  "
-         f"hit={hit_rate*100:.1f}%  in {fe_wall:.2f}s")
+    _log(
+        f"[{subset}] featurize done  n_skip={n_skip}  n_new={n_new}  "
+        f"hit={hit_rate*100:.1f}%  in {fe_wall:.2f}s"
+    )
 
     # Probe fdim.
     sample_path = next(iter(cached_paths.values()))
@@ -601,8 +638,10 @@ def run_one_config(
     target_canon = {c for sp in SPLITS for c in splits[sp].canon}
     t_lm = time.time()
     featurized = load_cached_features_in_memory(cached_paths, target_canon)
-    _log(f"[{subset}] loaded {len(featurized)}/{len(target_canon)} npz into memory "
-         f"in {time.time() - t_lm:.2f}s")
+    _log(
+        f"[{subset}] loaded {len(featurized)}/{len(target_canon)} npz into memory "
+        f"in {time.time() - t_lm:.2f}s"
+    )
 
     # Per-seed training loop.
     cfg_wall_start = time.time()
@@ -623,36 +662,51 @@ def run_one_config(
             )
         except Exception as exc:
             import traceback
+
             traceback.print_exc()
             _log(f"[{subset}][seed={seed}] FAILED: {exc}")
             r = SeedResult(
-                seed=seed, epochs_done=0, elapsed_s=0.0,
-                train_auc=float("nan"), iid_val_auc=float("nan"),
-                iid_test_auc=float("nan"), ood_val_auc=float("nan"),
-                ood_test_auc=float("nan"), n_train=0, n_eval={},
-                status="error", error=str(exc),
+                seed=seed,
+                epochs_done=0,
+                elapsed_s=0.0,
+                train_auc=float("nan"),
+                iid_val_auc=float("nan"),
+                iid_test_auc=float("nan"),
+                ood_val_auc=float("nan"),
+                ood_test_auc=float("nan"),
+                n_train=0,
+                n_eval={},
+                status="error",
+                error=str(exc),
             )
         results.append(r)
         # Persist per-seed JSON.
         per_seed_path = out_dir / "per_seed" / f"seed{seed}.json"
-        per_seed_path.write_text(json.dumps({
-            "seed": r.seed,
-            "epochs_done": r.epochs_done,
-            "elapsed_s": r.elapsed_s,
-            "train_auc": r.train_auc,
-            "iid_val_auc": r.iid_val_auc,
-            "iid_test_auc": r.iid_test_auc,
-            "ood_val_auc": r.ood_val_auc,
-            "ood_test_auc": r.ood_test_auc,
-            "n_train": r.n_train,
-            "n_eval": r.n_eval,
-            "status": r.status,
-            "error": r.error,
-        }, indent=2))
-        _log(f"[{subset}][seed={seed}] FINAL  train={r.train_auc:.4f}  "
-             f"iid_val={r.iid_val_auc:.4f}  iid_test={r.iid_test_auc:.4f}  "
-             f"ood_val={r.ood_val_auc:.4f}  ood_test={r.ood_test_auc:.4f}  "
-             f"({r.elapsed_s:.1f}s status={r.status})")
+        per_seed_path.write_text(
+            json.dumps(
+                {
+                    "seed": r.seed,
+                    "epochs_done": r.epochs_done,
+                    "elapsed_s": r.elapsed_s,
+                    "train_auc": r.train_auc,
+                    "iid_val_auc": r.iid_val_auc,
+                    "iid_test_auc": r.iid_test_auc,
+                    "ood_val_auc": r.ood_val_auc,
+                    "ood_test_auc": r.ood_test_auc,
+                    "n_train": r.n_train,
+                    "n_eval": r.n_eval,
+                    "status": r.status,
+                    "error": r.error,
+                },
+                indent=2,
+            )
+        )
+        _log(
+            f"[{subset}][seed={seed}] FINAL  train={r.train_auc:.4f}  "
+            f"iid_val={r.iid_val_auc:.4f}  iid_test={r.iid_test_auc:.4f}  "
+            f"ood_val={r.ood_val_auc:.4f}  ood_test={r.ood_test_auc:.4f}  "
+            f"({r.elapsed_s:.1f}s status={r.status})"
+        )
 
     cfg_total_wall_min = (time.time() - cfg_wall_start) / 60.0
 
@@ -699,13 +753,16 @@ def run_one_config(
         "wf": "wf185",
         "subset": subset,
         "data_source": f"drugood_{subset}",
-        "splits": {sp: {
-            "n_total": int(splits[sp].n_total),
-            "n_valid": int(splits[sp].n_valid),
-            "n_pos": int(splits[sp].n_pos),
-            "pos_rate": float(splits[sp].n_pos / max(splits[sp].n_valid, 1)),
-            "load_wall_s": float(splits[sp].load_wall_s),
-        } for sp in SPLITS},
+        "splits": {
+            sp: {
+                "n_total": int(splits[sp].n_total),
+                "n_valid": int(splits[sp].n_valid),
+                "n_pos": int(splits[sp].n_pos),
+                "pos_rate": float(splits[sp].n_pos / max(splits[sp].n_valid, 1)),
+                "load_wall_s": float(splits[sp].load_wall_s),
+            }
+            for sp in SPLITS
+        },
         "config": {
             "seeds": list(args.seeds),
             "epochs": int(args.epochs),
@@ -738,15 +795,18 @@ def run_one_config(
         "total_wall_min": float(cfg_res.total_wall_min),
         "results": [
             {
-                "seed": r.seed, "epochs_done": r.epochs_done,
+                "seed": r.seed,
+                "epochs_done": r.epochs_done,
                 "elapsed_s": r.elapsed_s,
                 "train_auc": r.train_auc,
                 "iid_val_auc": r.iid_val_auc,
                 "iid_test_auc": r.iid_test_auc,
                 "ood_val_auc": r.ood_val_auc,
                 "ood_test_auc": r.ood_test_auc,
-                "n_train": r.n_train, "n_eval": r.n_eval,
-                "status": r.status, "error": r.error,
+                "n_train": r.n_train,
+                "n_eval": r.n_eval,
+                "status": r.status,
+                "error": r.error,
             }
             for r in results
         ],
@@ -812,8 +872,12 @@ def run_one_config(
 # ---------------------------------------------------------------------------
 def main(argv: Optional[List[str]] = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    p.add_argument("--configs", nargs="+", default=list(CONFIGS),
-                   help="DrugOOD subsets to run (default: all 3 refined)")
+    p.add_argument(
+        "--configs",
+        nargs="+",
+        default=list(CONFIGS),
+        help="DrugOOD subsets to run (default: all 3 refined)",
+    )
     p.add_argument("--seeds", type=int, nargs="+", default=list(DEFAULT_SEEDS))
     p.add_argument("--epochs", type=int, default=DEFAULT_EPOCHS)
     p.add_argument("--hidden", type=int, default=DEFAULT_HIDDEN)
@@ -829,16 +893,31 @@ def main(argv: Optional[List[str]] = None) -> int:
     p.add_argument("--device", default="cuda")
     p.add_argument("--out", default=str(DEFAULT_OUT))
     p.add_argument("--cache-dir", default=str(DEFAULT_OUT / "cache"))
-    p.add_argument("--reset-cache", action="store_true",
-                   help="Delete the cache dir before featurizing.")
-    p.add_argument("--time-budget-s", type=float, default=DEFAULT_WALL_BUDGET_S,
-                   help="Total wall budget across all configs (default 21600s / 6 hr).")
-    p.add_argument("--seed-time-budget-s", type=float, default=1200.0,
-                   help="Per-seed time budget in seconds (default 1200 = 20 min).")
+    p.add_argument(
+        "--reset-cache",
+        action="store_true",
+        help="Delete the cache dir before featurizing.",
+    )
+    p.add_argument(
+        "--time-budget-s",
+        type=float,
+        default=DEFAULT_WALL_BUDGET_S,
+        help="Total wall budget across all configs (default 21600s / 6 hr).",
+    )
+    p.add_argument(
+        "--seed-time-budget-s",
+        type=float,
+        default=1200.0,
+        help="Per-seed time budget in seconds (default 1200 = 20 min).",
+    )
     p.add_argument("--eval-max-samples", type=int, default=4000)
     p.add_argument("--eval-train-max-samples", type=int, default=8000)
-    p.add_argument("--n-per-split", type=str, default=None,
-                   help="Comma-separated split=cap dict (smoke only).")
+    p.add_argument(
+        "--n-per-split",
+        type=str,
+        default=None,
+        help="Comma-separated split=cap dict (smoke only).",
+    )
     # P1 FIX (Wf-187): BF16 + DataLoader-style flags mirroring wf174.
     p.add_argument(
         "--bf16",
@@ -856,7 +935,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         type=int,
         default=4,
         help="DataLoader num_workers (default: 4). Currently logged; manual "
-             "range-based loop is the next-migration target.",
+        "range-based loop is the next-migration target.",
     )
     p.add_argument(
         "--pin-memory",
@@ -895,13 +974,15 @@ def main(argv: Optional[List[str]] = None) -> int:
             f"for fail-fast behaviour.",
         )
         device = torch.device("cpu")
-    _log(f"device={device}  bf16={args.bf16}  num_workers={args.num_workers}  "
-         f"pin_memory={args.pin_memory}  configs={args.configs}  seeds={args.seeds}  "
-         f"epochs={args.epochs}  hidden={args.hidden} depth={args.depth} "
-         f"head_hidden={args.head_hidden}  batch={args.batch} lr={args.lr}  "
-         f"time_budget_s={args.time_budget_s}  "
-         f"seed_time_budget_s={args.seed_time_budget_s}  "
-         f"n_per_split={n_per_split}")
+    _log(
+        f"device={device}  bf16={args.bf16}  num_workers={args.num_workers}  "
+        f"pin_memory={args.pin_memory}  configs={args.configs}  seeds={args.seeds}  "
+        f"epochs={args.epochs}  hidden={args.hidden} depth={args.depth} "
+        f"head_hidden={args.head_hidden}  batch={args.batch} lr={args.lr}  "
+        f"time_budget_s={args.time_budget_s}  "
+        f"seed_time_budget_s={args.seed_time_budget_s}  "
+        f"n_per_split={n_per_split}"
+    )
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -920,10 +1001,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         remaining = args.time_budget_s - elapsed
         cfg_budget = min(per_cfg_budget, max(remaining - 60.0, 60.0))
         if cfg_budget < 300.0:
-            _log(f"insufficient remaining wall budget ({cfg_budget:.0f}s) for {subset}; stopping")
+            _log(
+                f"insufficient remaining wall budget ({cfg_budget:.0f}s) for {subset}; stopping"
+            )
             break
-        _log(f"=== config {cfg_idx+1}/{n_cfg}: {subset}  "
-             f"cfg_budget={cfg_budget:.0f}s  elapsed={elapsed:.0f}s")
+        _log(
+            f"=== config {cfg_idx+1}/{n_cfg}: {subset}  "
+            f"cfg_budget={cfg_budget:.0f}s  elapsed={elapsed:.0f}s"
+        )
         try:
             cfg_res = run_one_config(
                 subset=subset,
@@ -935,6 +1020,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             cfg_results[subset] = cfg_res
         except Exception as exc:
             import traceback
+
             traceback.print_exc()
             _log(f"[{subset}] CONFIG FAILED: {exc}")
 
@@ -946,8 +1032,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     gate_1_all_ran = all(c in cfg_results for c in args.configs)
     gate_2_total_runs = sum(c.n_total for c in cfg_results.values())
     gate_3_per_config = {
-        sub: [r.ood_test_auc for r in cfg_results[sub].results]
-        for sub in cfg_results
+        sub: [r.ood_test_auc for r in cfg_results[sub].results] for sub in cfg_results
     }
     gate_4_summary = {
         sub: {
@@ -988,10 +1073,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         f"(budget {args.time_budget_s/3600:.1f} hr). "
         f"{sum(c.n_ok for c in cfg_results.values())}/{sum(c.n_total for c in cfg_results.values())} "
         f"seeds ok across all configs. "
-        f"Per-config ood_test AUC: " + "; ".join(
+        f"Per-config ood_test AUC: "
+        + "; ".join(
             f"{sub}={cfg_results[sub].ood_test_mean:.4f}±{cfg_results[sub].ood_test_std:.4f}"
             for sub in cfg_results
-        ) + ". Wf-185 vs Wf-174: " + improvements_str + "."
+        )
+        + ". Wf-185 vs Wf-174: "
+        + improvements_str
+        + "."
     )
 
     aggregate = {

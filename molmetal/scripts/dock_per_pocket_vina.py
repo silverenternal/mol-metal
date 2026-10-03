@@ -35,6 +35,7 @@ Usage
         --seeds 0 1 2 \\
         --out-dir molmetal/reports/wf248c_per_pocket_vina
 """
+
 from __future__ import annotations
 
 import argparse
@@ -63,11 +64,11 @@ LOG = logging.getLogger("wf248c_dock_per_pocket")
 # double as a smoke-test ligand for the per-pocket adapter.
 # ---------------------------------------------------------------------------
 _DEFAULT_SMILES: Tuple[str, ...] = (
-    "CCO",                                  # ethanol — tiny, always parseable
-    "c1ccccc1",                             # benzene
-    "CC(=O)Oc1ccccc1C(=O)O",                # aspirin
-    "Nc1ncnc2[nH]cnc12",                    # adenine
-    "O=C(O)c1ccccc1",                       # benzoic acid
+    "CCO",  # ethanol — tiny, always parseable
+    "c1ccccc1",  # benzene
+    "CC(=O)Oc1ccccc1C(=O)O",  # aspirin
+    "Nc1ncnc2[nH]cnc12",  # adenine
+    "O=C(O)c1ccccc1",  # benzoic acid
 )
 
 
@@ -131,6 +132,7 @@ def _detect_vina_binary() -> Dict[str, object]:
     """Return whether a real Vina-compatible binary is on PATH."""
     import shutil
     import subprocess
+
     for name in ("vina", "qvina02", "qvina2", "smina"):
         path = shutil.which(name)
         if not path:
@@ -138,7 +140,9 @@ def _detect_vina_binary() -> Dict[str, object]:
         try:
             cp = subprocess.run(
                 [path, "--version"],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             version = (cp.stdout or cp.stderr or "").strip().splitlines()[0]
         except Exception:
@@ -341,10 +345,7 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument(
         "--out-dir",
         type=Path,
-        default=PROJECT_ROOT
-        / "molmetal"
-        / "reports"
-        / "wf248c_per_pocket_vina",
+        default=PROJECT_ROOT / "molmetal" / "reports" / "wf248c_per_pocket_vina",
         help="Output directory.",
     )
     p.add_argument(
@@ -369,6 +370,7 @@ def main() -> int:
         PerPocketVinaConfig,
         default_per_pocket_config,
     )
+
     pp_cfg: PerPocketVinaConfig = default_per_pocket_config()
 
     # Detect Vina binary.
@@ -376,7 +378,8 @@ def main() -> int:
     adapter_available = vina_status["status"] == "REAL_VINA_AVAILABLE"
     LOG.info(
         "[wf248c] vina_binary_status=%s bin=%s",
-        vina_status["status"], vina_status.get("bin"),
+        vina_status["status"],
+        vina_status.get("bin"),
     )
 
     all_records: List[DockCellRecord] = []
@@ -387,7 +390,9 @@ def main() -> int:
         n_poses = pp_cfg.n_poses_for(pocket_id)
         LOG.info(
             "[wf248c] ===== pocket=%s ex=%d n_poses=%d =====",
-            pocket_id, exhaustiveness, n_poses,
+            pocket_id,
+            exhaustiveness,
+            n_poses,
         )
         pocket_cells: List[DockCellRecord] = []
         for smi in args.smiles:
@@ -418,9 +423,7 @@ def main() -> int:
                 "label": pp_cfg.get(pocket_id).label,
             },
             "n_cells": len(cells),
-            "n_real_vina": sum(
-                1 for c in cells if c.vina_status == "REAL_VINA"
-            ),
+            "n_real_vina": sum(1 for c in cells if c.vina_status == "REAL_VINA"),
             "n_stub_fallback": sum(
                 1 for c in cells if c.vina_status == "STUB_FALLBACK"
             ),
@@ -436,30 +439,43 @@ def main() -> int:
     csv_path = args.out_dir / "per_pocket_vina.csv"
     with csv_path.open("w", newline="") as fh:
         writer = csv.writer(fh)
-        writer.writerow([
-            "pocket", "seed", "smiles", "exhaustiveness", "n_poses",
-            "vina_score_kcal_mol", "n_poses_returned", "vina_status",
-            "wall_time_s", "note",
-        ])
+        writer.writerow(
+            [
+                "pocket",
+                "seed",
+                "smiles",
+                "exhaustiveness",
+                "n_poses",
+                "vina_score_kcal_mol",
+                "n_poses_returned",
+                "vina_status",
+                "wall_time_s",
+                "note",
+            ]
+        )
         for r in all_records:
-            writer.writerow([
-                r.pocket, r.seed, r.smiles,
-                r.exhaustiveness, r.n_poses,
-                r.vina_score_kcal_mol, r.n_poses_returned,
-                r.vina_status, round(r.wall_time_s, 4), r.note,
-            ])
+            writer.writerow(
+                [
+                    r.pocket,
+                    r.seed,
+                    r.smiles,
+                    r.exhaustiveness,
+                    r.n_poses,
+                    r.vina_score_kcal_mol,
+                    r.n_poses_returned,
+                    r.vina_status,
+                    round(r.wall_time_s, 4),
+                    r.note,
+                ]
+            )
 
     # -------------------------------------------------------------------
     # Per-pocket exhaustiveness map (G7 evidence).
     # -------------------------------------------------------------------
     exhaustiveness_map: Dict[str, int] = {
-        p: pp_cfg.exhaustiveness_for(p)
-        for p in args.pockets
+        p: pp_cfg.exhaustiveness_for(p) for p in args.pockets
     }
-    n_poses_map: Dict[str, int] = {
-        p: pp_cfg.n_poses_for(p)
-        for p in args.pockets
-    }
+    n_poses_map: Dict[str, int] = {p: pp_cfg.n_poses_for(p) for p in args.pockets}
 
     # -------------------------------------------------------------------
     # Smoke summary.
@@ -468,8 +484,7 @@ def main() -> int:
     n_real = sum(1 for r in all_records if r.vina_status == "REAL_VINA")
     n_stub = sum(1 for r in all_records if r.vina_status == "STUB_FALLBACK")
     real_scores = [
-        r.vina_score_kcal_mol for r in all_records
-        if r.vina_score_kcal_mol is not None
+        r.vina_score_kcal_mol for r in all_records if r.vina_score_kcal_mol is not None
     ]
     summary = {
         "metadata": {
@@ -488,16 +503,11 @@ def main() -> int:
         "n_stub_fallback_total": int(n_stub),
         "n_other_total": int(n_total - n_real - n_stub),
         "score_summary": {
-            "min": (
-                None if not real_scores
-                else float(round(min(real_scores), 4))
-            ),
-            "max": (
-                None if not real_scores
-                else float(round(max(real_scores), 4))
-            ),
+            "min": (None if not real_scores else float(round(min(real_scores), 4))),
+            "max": (None if not real_scores else float(round(max(real_scores), 4))),
             "mean": (
-                None if not real_scores
+                None
+                if not real_scores
                 else float(round(statistics.fmean(real_scores), 4))
             ),
             "n_real_scores": int(len(real_scores)),
@@ -505,17 +515,19 @@ def main() -> int:
         "per_pocket_aggregate": {
             p: {
                 "n_cells": int(len(per_pocket_records[p])),
-                "n_real_vina": int(sum(
-                    1 for c in per_pocket_records[p]
-                    if c.vina_status == "REAL_VINA"
-                )),
-                "n_stub_fallback": int(sum(
-                    1 for c in per_pocket_records[p]
-                    if c.vina_status == "STUB_FALLBACK"
-                )),
-                "exhaustiveness_used": int(
-                    pp_cfg.exhaustiveness_for(p)
+                "n_real_vina": int(
+                    sum(
+                        1 for c in per_pocket_records[p] if c.vina_status == "REAL_VINA"
+                    )
                 ),
+                "n_stub_fallback": int(
+                    sum(
+                        1
+                        for c in per_pocket_records[p]
+                        if c.vina_status == "STUB_FALLBACK"
+                    )
+                ),
+                "exhaustiveness_used": int(pp_cfg.exhaustiveness_for(p)),
                 "n_poses_used": int(pp_cfg.n_poses_for(p)),
                 "label": str(pp_cfg.get(p).label),
             }

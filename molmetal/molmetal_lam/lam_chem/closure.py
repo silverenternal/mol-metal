@@ -82,7 +82,9 @@ from molmetal_lam.lam_chem.well_formedness import (
 # A click rule is anything that exposes the standard MLC reduction
 # interface: ``rule.name`` and ``rule.reduce((a, b))`` returning a list
 # of :class:`MoleculeClosedTerm` products.
-ReactionRule = object  # opaque; see :class:`molmetal_lam.reactions.beta_reductions.ReactionRule`
+ReactionRule = (
+    object  # opaque; see :class:`molmetal_lam.reactions.beta_reductions.ReactionRule`
+)
 
 #: Type alias for the witness path through the BFS tree.
 #: Each entry is ``(rule_id, [parent_smiles, ..., product_smiles])``
@@ -134,6 +136,7 @@ def _term_is_well_formed(term: MoleculeClosedTerm) -> bool:
         return False
     try:
         from rdkit import Chem  # type: ignore[import-not-found]
+
         Chem.SanitizeMol(mol)
     except Exception:
         return False
@@ -213,9 +216,7 @@ class ProductiveSpace:
 
     def _initialise_state(self) -> None:
         """Seed the BFS with the start term at depth 0."""
-        self._frontier: Deque[
-            Tuple[int, MoleculeClosedTerm, WitnessPath]
-        ] = deque()
+        self._frontier: Deque[Tuple[int, MoleculeClosedTerm, WitnessPath]] = deque()
         # visited: canonical_key -> (term, witness_path)
         self._visited: Dict[str, Tuple[MoleculeClosedTerm, WitnessPath]] = {}
         start_key = _canonical_key(self.start_term)
@@ -280,9 +281,7 @@ class ProductiveSpace:
                 # Pair the current term with every other visited term at
                 # depth ≤ (max_depth - 1).  Bi-molecular rules fire on
                 # (a, b) AND (b, a) — we try both orderings.
-                for other_term, _other_witness in self._partner_candidates(
-                    term
-                ):
+                for other_term, _other_witness in self._partner_candidates(term):
                     products = self._safe_reduce(rule, (term, other_term))
                     for product in products:
                         key = _canonical_key(product)
@@ -302,16 +301,12 @@ class ProductiveSpace:
                         witness = parent_witness + [
                             (
                                 rule_id,
-                                [_canonical_key(term),
-                                 _canonical_key(other_term),
-                                 key],
+                                [_canonical_key(term), _canonical_key(other_term), key],
                             )
                         ]
                         self._visited[key] = (product, witness)
                         product._closure_witness = witness  # type: ignore[attr-defined]
-                        self._frontier.append(
-                            (depth + 1, product, witness)
-                        )
+                        self._frontier.append((depth + 1, product, witness))
                         yield product
 
     def _partner_candidates(

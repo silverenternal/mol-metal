@@ -33,7 +33,14 @@ DASHBOARD_JSON = (
     / "dashboard.json"
 )
 
-EXPECTED_TODO_IDS = {"TODO-119", "TODO-120", "TODO-121", "TODO-122", "TODO-123", "TODO-125"}
+EXPECTED_TODO_IDS = {
+    "TODO-119",
+    "TODO-120",
+    "TODO-121",
+    "TODO-122",
+    "TODO-123",
+    "TODO-125",
+}
 EXPECTED_BADGES = {"MEASURED", "HONEST_NEGATIVE"}
 EXPECTED_STATUSES = {"MEASURED", "PARTIAL", "PROJECTED", "HONEST_NEGATIVE"}
 
@@ -64,7 +71,10 @@ def test_todo119_m14_decode_ratio_consumer_schema(dashboard: dict) -> None:
     assert isinstance(row["baseline_value"], (int, float))
     assert isinstance(row["m1m2_enabled_value"], (int, float))
     assert row["honest_framing_note"], "HONEST_NEGATIVE requires honest_framing_note"
-    assert "Wf-274A" in row["honest_framing_note"] or "regression_disclosure" in row["honest_framing_note"]
+    assert (
+        "Wf-274A" in row["honest_framing_note"]
+        or "regression_disclosure" in row["honest_framing_note"]
+    )
 
 
 def test_todo120_m1_ru_auc_consumer_schema(dashboard: dict) -> None:
@@ -75,9 +85,9 @@ def test_todo120_m1_ru_auc_consumer_schema(dashboard: dict) -> None:
     assert row["status"] == "MEASURED"
     assert isinstance(row["baseline_value"], (int, float))
     assert isinstance(row["m1m2_enabled_value"], (int, float))
-    assert row["baseline_value"] < row["m1m2_enabled_value"], (
-        "MEASURED positive lift requires m1m2 > baseline"
-    )
+    assert (
+        row["baseline_value"] < row["m1m2_enabled_value"]
+    ), "MEASURED positive lift requires m1m2 > baseline"
     assert row["gate_hit"] is True, "MEASURED lift should hit internal 0.7 gate"
     assert row["krasnov_gate_hit"] is False, "Krasnov 0.81 gate NOT yet hit (honest)"
 
@@ -90,9 +100,9 @@ def test_todo121_m19_lomo_rh_consumer_schema(dashboard: dict) -> None:
     assert row["status"] in EXPECTED_STATUSES
     assert isinstance(row["baseline_value"], (int, float))
     assert isinstance(row["m1m2_enabled_value"], (int, float))
-    assert row["m1m2_enabled_value"] < row["baseline_value"], (
-        "HONEST_NEGATIVE: BELOW_RANDOM test_auc < 0.5 baseline"
-    )
+    assert (
+        row["m1m2_enabled_value"] < row["baseline_value"]
+    ), "HONEST_NEGATIVE: BELOW_RANDOM test_auc < 0.5 baseline"
     assert row["gate_hit"] is False
     assert "BELOW_RANDOM" in row["honest_framing_note"]
 
@@ -105,9 +115,9 @@ def test_todo122_l5_hilbert_r2_consumer_schema(dashboard: dict) -> None:
     assert row["status"] in EXPECTED_STATUSES
     assert row["baseline_value"] == 0.0, "signal-floor baseline is 0.0 by construction"
     assert isinstance(row["m1m2_enabled_value"], (int, float))
-    assert row["m1m2_enabled_value"] <= 0, (
-        "R² on signal-floor regime cannot exceed 0 by 12-d RDKit |ρ| ≤ 0.019 audit"
-    )
+    assert (
+        row["m1m2_enabled_value"] <= 0
+    ), "R² on signal-floor regime cannot exceed 0 by 12-d RDKit |ρ| ≤ 0.019 audit"
     assert "ARCHITECTURAL_CEILING" in row["honest_framing_note"]
     assert row["gate_hit"] is False
 
@@ -136,13 +146,13 @@ def test_todo125_l12_per_pocket_vina_consumer_schema(dashboard: dict) -> None:
     assert row["status"] in EXPECTED_STATUSES
     assert isinstance(row["baseline_value"], (int, float))
     assert isinstance(row["m1m2_enabled_value"], (int, float))
-    assert row["n_pockets_passed_uniform_floor"] == 1, (
-        "only 1h36 PASSES the 0.30 uniform floor; 4/5 pockets honest-negative"
-    )
+    assert (
+        row["n_pockets_passed_uniform_floor"] == 1
+    ), "only 1h36 PASSES the 0.30 uniform floor; 4/5 pockets honest-negative"
     assert row["n_pockets_total"] == 5
-    assert "STUB_FALLBACK" in str(row.get("engine_tags", [])).upper(), (
-        "Wf-248C per-pocket_vina.csv STUB_FALLBACK must be in engine_tags"
-    )
+    assert (
+        "STUB_FALLBACK" in str(row.get("engine_tags", [])).upper()
+    ), "Wf-248C per-pocket_vina.csv STUB_FALLBACK must be in engine_tags"
     assert "stub_fallback_unrun_for_5pocket_wf248c" in row["engine_tags"]
 
 
@@ -171,16 +181,20 @@ def test_lift_pct_calculation_matches_formula(dashboard: dict) -> None:
         baseline = row["baseline_value"]
         m1m2 = row["m1m2_enabled_value"]
         if baseline == 0.0:
-            assert row["lift_pct"] is None, (
-                f"{row['todo_id']}: signal-floor baseline → lift_pct must be None"
-            )
+            assert (
+                row["lift_pct"] is None
+            ), f"{row['todo_id']}: signal-floor baseline → lift_pct must be None"
             continue
         expected_lift_pct = (m1m2 - baseline) / baseline * 100.0
         if math.isinf(expected_lift_pct):
-            assert math.isinf(row["lift_pct"]), f"{row['todo_id']}: lift_pct should be inf"
+            assert math.isinf(
+                row["lift_pct"]
+            ), f"{row['todo_id']}: lift_pct should be inf"
         else:
             # Use 1e-2 tolerance to accept rounded JSON values (e.g. 3.473 ≈ 3.473302)
-            assert math.isclose(row["lift_pct"], expected_lift_pct, abs_tol=1e-2, rel_tol=1e-3), (
+            assert math.isclose(
+                row["lift_pct"], expected_lift_pct, abs_tol=1e-2, rel_tol=1e-3
+            ), (
                 f"{row['todo_id']}: lift_pct {row['lift_pct']} != "
                 f"computed {expected_lift_pct}"
             )
@@ -196,12 +210,12 @@ def test_lift_sign_convention_for_lower_is_better_metrics(dashboard: dict) -> No
     with different scale) verify the convention.
     """
     rmse_row = next(c for c in dashboard["per_consumer"] if c["todo_id"] == "TODO-123")
-    assert rmse_row["lift_pct"] < 0, (
-        "TODO-123 RMSD: lower is better → NEGATIVE lift_pct expected"
-    )
-    assert rmse_row["badge"] == "MEASURED", (
-        "NEGATIVE RMSD lift is the IMPROVEMENT direction → MEASURED badge"
-    )
+    assert (
+        rmse_row["lift_pct"] < 0
+    ), "TODO-123 RMSD: lower is better → NEGATIVE lift_pct expected"
+    assert (
+        rmse_row["badge"] == "MEASURED"
+    ), "NEGATIVE RMSD lift is the IMPROVEMENT direction → MEASURED badge"
 
     # Verify the lift_calculation_notes block documents the sign convention
     notes = dashboard.get("lift_calculation_notes", {})
@@ -222,9 +236,9 @@ def test_status_classification_rules_are_explicit(dashboard: dict) -> None:
         assert expected in rules, f"missing status rule: {expected}"
     # Each rule must be a non-empty string
     for status, rule in rules.items():
-        assert isinstance(rule, str) and rule.strip(), (
-            f"status rule {status!r} must be non-empty string"
-        )
+        assert (
+            isinstance(rule, str) and rule.strip()
+        ), f"status rule {status!r} must be non-empty string"
 
 
 def test_status_counts_match_n_consumers_tracked(dashboard: dict) -> None:
@@ -291,14 +305,14 @@ def test_dashboard_schema_validation(dashboard: dict) -> None:
 
     # per_consumer must have all 6 expected TODO ids
     todo_ids = {row["todo_id"] for row in dashboard["per_consumer"]}
-    assert todo_ids == EXPECTED_TODO_IDS, (
-        f"per_consumer TODO ids {todo_ids} != expected {EXPECTED_TODO_IDS}"
-    )
+    assert (
+        todo_ids == EXPECTED_TODO_IDS
+    ), f"per_consumer TODO ids {todo_ids} != expected {EXPECTED_TODO_IDS}"
 
     # summary_status_table must have a row per consumer (6 + header = 7 rows)
-    assert len(dashboard["summary_status_table"]) == 7, (
-        "summary_status_table must have header + 6 consumer rows"
-    )
+    assert (
+        len(dashboard["summary_status_table"]) == 7
+    ), "summary_status_table must have header + 6 consumer rows"
 
     # honest_framing_disclaimer must mention party-twenty-spirit §3.5
     assert "party-twenty-spirit" in dashboard["honest_framing_disclaimer"]

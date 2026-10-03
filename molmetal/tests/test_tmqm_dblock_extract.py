@@ -42,6 +42,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from molmetal.data.tmqm import TRANSITION_METALS, tmqm_dir  # noqa: E402
+
 try:
     from molmetal.molmetal_lam.atoms.combinators import (  # noqa: E402
         METAL_SYMBOLS,
@@ -61,10 +62,18 @@ except ImportError:  # Wf-A16: feature not implemented — SKIP, do not ERROR
 # ---------------------------------------------------------------------------
 CSV_PATH = PROJECT_ROOT / "molmetal" / "data" / "tmqm_dblock_subset.csv"
 SUMMARY_MD = (
-    PROJECT_ROOT / "molmetal" / "reports" / "wf28_wetlab_data" / "tmqm_dblock_summary.md"
+    PROJECT_ROOT
+    / "molmetal"
+    / "reports"
+    / "wf28_wetlab_data"
+    / "tmqm_dblock_summary.md"
 )
 STATS_JSON = (
-    PROJECT_ROOT / "molmetal" / "reports" / "wf28_wetlab_data" / "tmqm_dblock_stats.json"
+    PROJECT_ROOT
+    / "molmetal"
+    / "reports"
+    / "wf28_wetlab_data"
+    / "tmqm_dblock_stats.json"
 )
 
 pytestmark = pytest.mark.skipif(
@@ -143,7 +152,9 @@ def test_metal_center_matches_primitive_atoms(csv_df: pd.DataFrame) -> None:
 def test_heavy_atom_window(csv_df: pd.DataFrame) -> None:
     n = csv_df["n_atoms"].astype(int)
     assert (n >= 8).all(), f"rows below heavy-atom floor: {n[n < 8].head().tolist()}"
-    assert (n <= 60).all(), f"rows above heavy-atom ceiling: {n[n > 60].head().tolist()}"
+    assert (
+        n <= 60
+    ).all(), f"rows above heavy-atom ceiling: {n[n > 60].head().tolist()}"
 
 
 # ---------------------------------------------------------------------------
@@ -173,9 +184,9 @@ def test_smiles_parseable_and_descriptors_finite(csv_df: pd.DataFrame) -> None:
             continue
         # Must contain a metal atom matching metal_center.
         syms = {a.GetSymbol() for a in mol.GetAtoms()}
-        assert str(row["metal_center"]) in syms, (
-            f"metal {row['metal_center']} not present in {row['csd_code']}: {syms}"
-        )
+        assert (
+            str(row["metal_center"]) in syms
+        ), f"metal {row['metal_center']} not present in {row['csd_code']}: {syms}"
     assert n_fail == 0, f"RDKit failed on {n_fail} SMILES; first: {parse_failures[:3]}"
 
 
@@ -184,7 +195,9 @@ def test_descriptor_columns_finite(csv_df: pd.DataFrame) -> None:
     mapped via ``sa_score_to_unit`` so values in [0.0, 1.0] are valid; MW
     / n_atoms must be positive; QED / LogP are RDKit-native ranges."""
     assert csv_df["n_atoms"].astype(float).between(8, 60).all()
-    assert csv_df["mw"].astype(float).gt(50).all()  # MW > 50 Da (organic fragment floor)
+    assert (
+        csv_df["mw"].astype(float).gt(50).all()
+    )  # MW > 50 Da (organic fragment floor)
     assert csv_df["qed_score"].astype(float).between(0.0, 1.0).all()
     assert csv_df["sa_score"].astype(float).between(1.0, 10.0).all()
     assert csv_df["sa_score_unit"].astype(float).between(0.0, 1.0).all()
@@ -291,9 +304,9 @@ def test_stats_json_present_and_consistent(stats: dict, csv_df: pd.DataFrame) ->
     # The stats JSON must report the same per-metal totals as the CSV.
     csv_counts = csv_df["metal_center"].value_counts().to_dict()
     json_counts = stats["per_metal"]
-    assert csv_counts == json_counts, (
-        f"CSV vs stats JSON mismatch: diff={set(csv_counts.items()) ^ set(json_counts.items())}"
-    )
+    assert (
+        csv_counts == json_counts
+    ), f"CSV vs stats JSON mismatch: diff={set(csv_counts.items()) ^ set(json_counts.items())}"
     # The window and seed fields must be populated.
     assert stats["heavy_atom_window"] == [8, 60]
     assert stats["coord_window"] == [2, 9]

@@ -34,6 +34,7 @@ Test coverage
 install (no torch / RDKit / cuda requirements).  This is the Wf-130
 P1 CPU-only ship target.
 """
+
 from __future__ import annotations
 
 import json
@@ -171,9 +172,7 @@ def test_write_per_metal_creates_dir_and_files(tmp_path):
     assert row["synthetic_only"] is True
     assert (tmp_path / "Pt" / "catherine_audit.json").exists()
 
-    payload = json.loads(
-        (tmp_path / "Pt" / "catherine_audit.json").read_text()
-    )
+    payload = json.loads((tmp_path / "Pt" / "catherine_audit.json").read_text())
     assert payload["metal"] == "Pt"
     assert payload["six_of_six_pass"] is True
     assert payload["n_pass"] == 6
@@ -181,9 +180,7 @@ def test_write_per_metal_creates_dir_and_files(tmp_path):
     assert payload["metadata"]["wf"] == "Wf-130"
     assert payload["metadata"]["r20_plan"] == "R20-P5"
     assert payload["metadata"]["synthetic_only_run"] is True
-    assert set(payload["per_property"].keys()) == set(
-        w130.CATHERINE_PROPERTIES
-    )
+    assert set(payload["per_property"].keys()) == set(w130.CATHERINE_PROPERTIES)
 
 
 def test_write_per_metal_records_bench_summary(tmp_path):
@@ -218,9 +215,7 @@ def test_write_per_metal_records_bench_summary(tmp_path):
         metadata={"n_seeds": 1, "max_depth": 1, "max_products": 32},
         helpers_available=False,
     )
-    payload = json.loads(
-        (tmp_path / "Ir" / "catherine_audit.json").read_text()
-    )
+    payload = json.loads((tmp_path / "Ir" / "catherine_audit.json").read_text())
     bench = payload["bench_summary"]
     assert bench["metal"] == "Ir"
     assert bench["synthetic"] is True
@@ -261,9 +256,7 @@ def test_write_per_metal_propagates_fail_verdict(tmp_path):
         metadata={"n_seeds": 1, "max_depth": 1, "max_products": 32},
         helpers_available=False,
     )
-    payload = json.loads(
-        (tmp_path / "Hg" / "catherine_audit.json").read_text()
-    )
+    payload = json.loads((tmp_path / "Hg" / "catherine_audit.json").read_text())
     assert payload["six_of_six_pass"] is False
     assert payload["n_pass"] == 5
     assert payload["n_fail"] == 1
@@ -305,9 +298,7 @@ def test_sweep_lifts_to_30_metals_including_la_ir_pt_au_hg():
     verdicts = sweep_metals(summaries, metals)
     assert set(verdicts.keys()) == set(metals)
     for m in metals:
-        assert verdicts[m].six_of_six_pass, (
-            f"{m} should PASS 6/6 on synthetic path"
-        )
+        assert verdicts[m].six_of_six_pass, f"{m} should PASS 6/6 on synthetic path"
 
 
 def test_verify_all_catherine_properties_propagates_violation():
@@ -337,44 +328,52 @@ def test_parse_args_defaults():
 def test_audit_sweep_30_metals_synthetic_runs(tmp_path):
     """End-to-end audit: 30 metals × 5 seeds, synthetic CPU-only."""
     out_dir = tmp_path / "wf130_smoke"
-    rc = w130.main([
-        "--metals", "30",
-        "--seeds", "0", "1", "2", "3", "4",
-        "--synthetic-only",
-        "--out-dir", str(out_dir),
-    ])
+    rc = w130.main(
+        [
+            "--metals",
+            "30",
+            "--seeds",
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "--synthetic-only",
+            "--out-dir",
+            str(out_dir),
+        ]
+    )
     assert rc == 0
     # Combined sweep JSON + synthesis.md exist.
     assert (out_dir / "catherine_audit_30metals.json").exists()
     assert (out_dir / "synthesis.md").exists()
-    payload = json.loads(
-        (out_dir / "catherine_audit_30metals.json").read_text()
-    )
+    payload = json.loads((out_dir / "catherine_audit_30metals.json").read_text())
     assert payload["metadata"]["n_metals"] == 30
     assert payload["metadata"]["n_seeds"] == 5
     assert payload["metadata"]["synthetic_only"] is True
     # All 30 metals present.
     assert set(payload["metals"].keys()) == set(w130.DEFAULT_30_METALS)
     # All 30 metals 6/6 PASS on the synthetic path.
-    n_pass = sum(
-        1 for m in payload["metals"].values()
-        if m["six_of_six_pass"]
-    )
+    n_pass = sum(1 for m in payload["metals"].values() if m["six_of_six_pass"])
     assert n_pass == 30, (
-        f"Wf-130 P1 ship target requires 30/30 metals × 6/6 PASS; "
-        f"got {n_pass}/30"
+        f"Wf-130 P1 ship target requires 30/30 metals × 6/6 PASS; " f"got {n_pass}/30"
     )
 
 
 def test_audit_sweep_writes_30_metal_dirs(tmp_path):
     """End-to-end: 30 per-metal directories with catherine_audit.json."""
     out_dir = tmp_path / "wf130_30dirs"
-    rc = w130.main([
-        "--metals", "30",
-        "--seeds", "0",
-        "--synthetic-only",
-        "--out-dir", str(out_dir),
-    ])
+    rc = w130.main(
+        [
+            "--metals",
+            "30",
+            "--seeds",
+            "0",
+            "--synthetic-only",
+            "--out-dir",
+            str(out_dir),
+        ]
+    )
     assert rc == 0
     metal_dirs = sorted(d.name for d in out_dir.iterdir() if d.is_dir())
     assert len(metal_dirs) == 30
@@ -385,9 +384,7 @@ def test_audit_sweep_writes_30_metal_dirs(tmp_path):
         d = json.loads(p.read_text())
         assert d["six_of_six_pass"] is True
         assert d["n_pass"] == 6
-        assert set(d["per_property"].keys()) == set(
-            w130.CATHERINE_PROPERTIES
-        )
+        assert set(d["per_property"].keys()) == set(w130.CATHERINE_PROPERTIES)
 
 
 # ---------------------------------------------------------------------------
@@ -398,30 +395,46 @@ def test_audit_sweep_writes_30_metal_dirs(tmp_path):
 def test_synthesis_md_renders_headline_verdict(tmp_path):
     """``_render_synthesis`` produces a Markdown with the 30/30 headline."""
     per_metal_rows = [
-        {"metal": m, "six_of_six_pass": True, "n_pass": 6, "n_fail": 0,
-         "synthetic_only": True}
+        {
+            "metal": m,
+            "six_of_six_pass": True,
+            "n_pass": 6,
+            "n_fail": 0,
+            "synthetic_only": True,
+        }
         for m in w130.DEFAULT_30_METALS
     ]
     for r in per_metal_rows:
         d = tmp_path / r["metal"]
         d.mkdir()
-        (d / "catherine_audit.json").write_text(json.dumps({
-            "metal": r["metal"],
-            "six_of_six_pass": True,
-            "n_pass": 6,
-            "n_fail": 0,
-            "passed_properties": list(w130.CATHERINE_PROPERTIES),
-            "failed_properties": [],
-            "per_property": {
-                pid: {"passed": True, "n_samples": 1, "n_violations": 0,
-                      "wall_time_s": 0.0, "notes": ""}
-                for pid in w130.CATHERINE_PROPERTIES
-            },
-            "wall_time_s": 0.0,
-        }))
+        (d / "catherine_audit.json").write_text(
+            json.dumps(
+                {
+                    "metal": r["metal"],
+                    "six_of_six_pass": True,
+                    "n_pass": 6,
+                    "n_fail": 0,
+                    "passed_properties": list(w130.CATHERINE_PROPERTIES),
+                    "failed_properties": [],
+                    "per_property": {
+                        pid: {
+                            "passed": True,
+                            "n_samples": 1,
+                            "n_violations": 0,
+                            "wall_time_s": 0.0,
+                            "notes": "",
+                        }
+                        for pid in w130.CATHERINE_PROPERTIES
+                    },
+                    "wall_time_s": 0.0,
+                }
+            )
+        )
     md = w130._render_synthesis(
         metadata={
-            "n_metals": 30, "n_seeds": 5, "max_depth": 1,
+            "n_metals": 30,
+            "n_seeds": 5,
+            "max_depth": 1,
             "real_bfs_available": False,
             "timestamp": "2026-09-27T00:00:00Z",
         },
@@ -440,12 +453,19 @@ def test_synthesis_md_renders_headline_verdict(tmp_path):
 def test_synthesis_md_records_back_link_to_wf68():
     """``_render_synthesis`` records the Wf-68 back-link in the prose."""
     per_metal_rows = [
-        {"metal": "Pt", "six_of_six_pass": True, "n_pass": 6, "n_fail": 0,
-         "synthetic_only": True},
+        {
+            "metal": "Pt",
+            "six_of_six_pass": True,
+            "n_pass": 6,
+            "n_fail": 0,
+            "synthetic_only": True,
+        },
     ]
     md = w130._render_synthesis(
         metadata={
-            "n_metals": 1, "n_seeds": 1, "max_depth": 1,
+            "n_metals": 1,
+            "n_seeds": 1,
+            "max_depth": 1,
             "real_bfs_available": False,
             "timestamp": "2026-09-27T00:00:00Z",
         },
@@ -460,14 +480,26 @@ def test_synthesis_md_records_back_link_to_wf68():
 def test_synthesis_md_honest_framing_when_synthetic(tmp_path):
     """``_render_synthesis`` notes the synthetic fallback in honest framing."""
     per_metal_rows = [
-        {"metal": "Pt", "six_of_six_pass": True, "n_pass": 6, "n_fail": 0,
-         "synthetic_only": True},
-        {"metal": "Au", "six_of_six_pass": True, "n_pass": 6, "n_fail": 0,
-         "synthetic_only": True},
+        {
+            "metal": "Pt",
+            "six_of_six_pass": True,
+            "n_pass": 6,
+            "n_fail": 0,
+            "synthetic_only": True,
+        },
+        {
+            "metal": "Au",
+            "six_of_six_pass": True,
+            "n_pass": 6,
+            "n_fail": 0,
+            "synthetic_only": True,
+        },
     ]
     md = w130._render_synthesis(
         metadata={
-            "n_metals": 2, "n_seeds": 1, "max_depth": 1,
+            "n_metals": 2,
+            "n_seeds": 1,
+            "max_depth": 1,
             "real_bfs_available": False,
             "timestamp": "2026-09-27T00:00:00Z",
         },

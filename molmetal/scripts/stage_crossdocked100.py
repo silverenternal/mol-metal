@@ -36,7 +36,9 @@ def download_primary() -> Path | None:
     for url in urls:
         try:
             LOG.info("Trying CrossDocked mirror: %s", url)
-            with urllib.request.urlopen(url, timeout=60) as response, destination.open("wb") as out:
+            with urllib.request.urlopen(url, timeout=60) as response, destination.open(
+                "wb"
+            ) as out:
                 out.write(response.read())
             if destination.stat().st_size > 0:
                 return destination
@@ -50,7 +52,8 @@ def find_cached() -> Path | None:
     """Search project and user cache locations for a CrossDocked dataset."""
     candidates = [
         Path("/mnt/storage/data/molmetal"),
-        ROOT / "molmetal" / "data", ROOT / "data",
+        ROOT / "molmetal" / "data",
+        ROOT / "data",
         Path.home() / ".cache" / "crossdocked",
     ]
     patterns = ("*crossdock*", "*CrossDocked*", "*.tar.gz", "*.zip")
@@ -76,15 +79,26 @@ def cached_test_pairs(dataset_root: Path) -> list[dict] | None:
         pairs = split.get("test", []) if isinstance(split, dict) else []
         if len(pairs) < 100:
             return None
-        roots = [dataset_root / "crossdocked" / "extracted" / "crossdocked_pocket10",
-                 dataset_root / "crossdocked" / "crossdocked_pocket10",
-                 dataset_root / "crossdocked"]
-        extracted = next((root for root in roots if all(
-            (root / rec).is_file() and (root / lig).is_file()
-            for rec, lig in pairs[:100]
-        )), None)
+        roots = [
+            dataset_root / "crossdocked" / "extracted" / "crossdocked_pocket10",
+            dataset_root / "crossdocked" / "crossdocked_pocket10",
+            dataset_root / "crossdocked",
+        ]
+        extracted = next(
+            (
+                root
+                for root in roots
+                if all(
+                    (root / rec).is_file() and (root / lig).is_file()
+                    for rec, lig in pairs[:100]
+                )
+            ),
+            None,
+        )
         if extracted is None:
-            raise FileNotFoundError("No extraction root contains all 100 test receptor/ligand pairs")
+            raise FileNotFoundError(
+                "No extraction root contains all 100 test receptor/ligand pairs"
+            )
         if len(set(map(tuple, pairs[:100]))) != 100:
             raise ValueError("Test split contains duplicate receptor/ligand pairs")
         return [
@@ -104,10 +118,29 @@ def cached_test_pairs(dataset_root: Path) -> list[dict] | None:
 
 def fallback_pockets() -> list[dict]:
     """Return ten reproducible pocket records used when data is unavailable."""
-    ids = ("1h36", "830c", "MMP2", "MMP13", "CA2", "1hbv", "1ca2", "4ptb", "1m17", "1di8")
+    ids = (
+        "1h36",
+        "830c",
+        "MMP2",
+        "MMP13",
+        "CA2",
+        "1hbv",
+        "1ca2",
+        "4ptb",
+        "1m17",
+        "1di8",
+    )
     return [
-        {"pocket_id": pid, "receptor_path": "", "ligand_path": "", "ref_path": "",
-         "metal_atoms": "", "n_atoms": "", "n_residues": "", "source": "fallback"}
+        {
+            "pocket_id": pid,
+            "receptor_path": "",
+            "ligand_path": "",
+            "ref_path": "",
+            "metal_atoms": "",
+            "n_atoms": "",
+            "n_residues": "",
+            "source": "fallback",
+        }
         for pid in ids
     ]
 
@@ -117,41 +150,84 @@ def parse_pocket(path: Path) -> dict:
     try:
         from rdkit import Chem
     except ImportError:
-        LOG.warning("RDKit is unavailable; returning empty structural counts for %s", path)
+        LOG.warning(
+            "RDKit is unavailable; returning empty structural counts for %s", path
+        )
         return {"metal_atoms": "", "n_atoms": "", "n_residues": ""}
     suffix = path.suffix.lower()
-    mol = Chem.MolFromPDBFile(str(path), removeHs=False, sanitize=False) if suffix == ".pdb" else Chem.MolFromMolFile(str(path), removeHs=False, sanitize=False)
+    mol = (
+        Chem.MolFromPDBFile(str(path), removeHs=False, sanitize=False)
+        if suffix == ".pdb"
+        else Chem.MolFromMolFile(str(path), removeHs=False, sanitize=False)
+    )
     if mol is None:
         raise ValueError(f"RDKit could not parse {path}")
-    metals = [a.GetSymbol() for a in mol.GetAtoms() if a.GetSymbol().upper() in {"ZN", "FE", "MG", "MN", "CA", "CU", "CO", "NI", "NA", "K"}]
-    residues = {(a.GetPDBResidueInfo().GetChainId(), a.GetPDBResidueInfo().GetResidueNumber()) for a in mol.GetAtoms() if a.GetPDBResidueInfo()}
-    return {"metal_atoms": ";".join(metals), "n_atoms": mol.GetNumAtoms(), "n_residues": len(residues)}
+    metals = [
+        a.GetSymbol()
+        for a in mol.GetAtoms()
+        if a.GetSymbol().upper()
+        in {"ZN", "FE", "MG", "MN", "CA", "CU", "CO", "NI", "NA", "K"}
+    ]
+    residues = {
+        (a.GetPDBResidueInfo().GetChainId(), a.GetPDBResidueInfo().GetResidueNumber())
+        for a in mol.GetAtoms()
+        if a.GetPDBResidueInfo()
+    }
+    return {
+        "metal_atoms": ";".join(metals),
+        "n_atoms": mol.GetNumAtoms(),
+        "n_residues": len(residues),
+    }
 
 
 def write_manifest(pockets: list[dict], out: Path) -> None:
     """Write pocket records as a CSV manifest and echo it to stdout."""
-    fields = ["pocket_id", "receptor_path", "ligand_path", "ref_path", "metal_atoms", "n_atoms", "n_residues", "source"]
+    fields = [
+        "pocket_id",
+        "receptor_path",
+        "ligand_path",
+        "ref_path",
+        "metal_atoms",
+        "n_atoms",
+        "n_residues",
+        "source",
+    ]
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields)
         writer.writeheader()
-        writer.writerows({key: pocket.get(key, "") for key in fields} for pocket in pockets)
+        writer.writerows(
+            {key: pocket.get(key, "") for key in fields} for pocket in pockets
+        )
     with out.open(newline="") as handle:
         print(handle.read(), end="")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--dry-run", action="store_true", help="validate local pairs without writing output")
-    parser.add_argument("--data-root", type=Path, default=Path("/mnt/storage/data/molmetal"))
-    parser.add_argument("--out", type=Path, default=ROOT / "molmetal/data/crossdocked100_manifest.csv")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="validate local pairs without writing output",
+    )
+    parser.add_argument(
+        "--data-root", type=Path, default=Path("/mnt/storage/data/molmetal")
+    )
+    parser.add_argument(
+        "--out", type=Path, default=ROOT / "molmetal/data/crossdocked100_manifest.csv"
+    )
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     pockets = cached_test_pairs(args.data_root)
     if pockets is None:
         LOG.error("No complete local 100-pair test split; existing manifest preserved")
         return 1
-    LOG.info("Validated %d test pairs / %d files under %s", len(pockets), 2 * len(pockets), args.data_root)
+    LOG.info(
+        "Validated %d test pairs / %d files under %s",
+        len(pockets),
+        2 * len(pockets),
+        args.data_root,
+    )
     if args.dry_run:
         return 0
     write_manifest(pockets, args.out)

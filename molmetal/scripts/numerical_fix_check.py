@@ -24,6 +24,7 @@ Usage
     python molmetal/scripts/numerical_fix_check.py
     pytest molmetal/tests/test_numerical_fix_results.py -v
 """
+
 from __future__ import annotations
 
 import json
@@ -47,9 +48,7 @@ from molmetal.molmetal_lam.reward.hilbert_primal_dual import LambdaASTSRHilbert
 from molmetal.molmetal_lam.reward.lambda_astsr import LambdaASTSR
 
 
-DEFAULT_OUT_DIR: Path = (
-    _REPO_ROOT / "molmetal" / "reports" / "wf44_r2_debug"
-)
+DEFAULT_OUT_DIR: Path = _REPO_ROOT / "molmetal" / "reports" / "wf44_r2_debug"
 DEFAULT_OUT_PATH: Path = DEFAULT_OUT_DIR / "numerical_fix_results.json"
 
 
@@ -118,8 +117,9 @@ class FixResult:
         return asdict(self)
 
 
-def _verdict(R2: float, std_ratio: float,
-             collapse_thr: float = 0.1, weak_thr: float = 0.4) -> str:
+def _verdict(
+    R2: float, std_ratio: float, collapse_thr: float = 0.1, weak_thr: float = 0.4
+) -> str:
     if R2 <= 0.0 and std_ratio < collapse_thr:
         return "mean_collapse"
     if R2 <= 0.0 and std_ratio < weak_thr:
@@ -134,7 +134,7 @@ def run_wf25_hilbert(seed: int = 0) -> FixResult:
     rng = _make_rng(seed)
     n = 80
     y = rng.normal(loc=5.0, scale=0.05, size=n).astype(float)  # near-constant
-    y_train, y_test = y[: n // 2], y[n // 2:]
+    y_train, y_test = y[: n // 2], y[n // 2 :]
     X_train = _build_features(y_train, seed)
     X_test = _build_features(y_test, seed + 1)
     fc = tuple(f"f{i}" for i in range(X_train.shape[1]))
@@ -142,13 +142,15 @@ def run_wf25_hilbert(seed: int = 0) -> FixResult:
     # Before — no clipping, no decay, no loss_scale, no fp64 fallback.
     before = LambdaASTSRHilbert(
         population_dim=int(X_train.shape[1]),
-        grad_clip_max_norm=0.0, step_size_decay=1.0,
+        grad_clip_max_norm=0.0,
+        step_size_decay=1.0,
     )
     before_composite = HilbertASTSRComposite(
         hilbert_optimizer=before,
         feature_columns=fc,
         population_dim=int(X_train.shape[1]),
-        loss_scale=1.0, fp64_fallback=False,
+        loss_scale=1.0,
+        fp64_fallback=False,
     )
     before_res = before_composite.fit(X_train, y_train)
     y_pred_before = before.predict(X_test).reshape(-1)
@@ -158,13 +160,15 @@ def run_wf25_hilbert(seed: int = 0) -> FixResult:
     # After — full Wf-44 Phase 4 fix enabled.
     after = LambdaASTSRHilbert(
         population_dim=int(X_train.shape[1]),
-        grad_clip_max_norm=1.0, step_size_decay=0.5,
+        grad_clip_max_norm=1.0,
+        step_size_decay=0.5,
     )
     after_composite = HilbertASTSRComposite(
         hilbert_optimizer=after,
         feature_columns=fc,
         population_dim=int(X_train.shape[1]),
-        loss_scale=128.0, fp64_fallback=True,
+        loss_scale=128.0,
+        fp64_fallback=True,
     )
     after_res = after_composite.fit(X_train, y_train)
     r2_after = float(after_res["r2"])
@@ -174,7 +178,8 @@ def run_wf25_hilbert(seed: int = 0) -> FixResult:
     y_test_std = float(np.std(y_test))
     res = FixResult(
         model_name="Wf-25 Hilbert composite",
-        n_train=int(len(y_train)), n_test=int(len(y_test)),
+        n_train=int(len(y_train)),
+        n_test=int(len(y_test)),
         before_R2=r2_before,
         before_pred_std=std_before,
         before_y_test_std=y_test_std,
@@ -220,13 +225,15 @@ def run_wf32_m16(seed: int = 0) -> FixResult:
     # decays on overflow and the fp64 fallback handles underflow.
     after = LambdaASTSRHilbert(
         population_dim=int(X_train.shape[1]),
-        grad_clip_max_norm=1.0, step_size_decay=0.5,
+        grad_clip_max_norm=1.0,
+        step_size_decay=0.5,
     )
     after_composite = HilbertASTSRComposite(
         hilbert_optimizer=after,
         feature_columns=fc,
         population_dim=int(X_train.shape[1]),
-        loss_scale=128.0, fp64_fallback=True,
+        loss_scale=128.0,
+        fp64_fallback=True,
     )
     after_res = after_composite.fit(X_train, y_train)
     r2_after = float(after_res["r2"])
@@ -236,7 +243,8 @@ def run_wf32_m16(seed: int = 0) -> FixResult:
     y_test_std = float(np.std(y_test))
     res = FixResult(
         model_name="Wf-32 m16 affinity",
-        n_train=int(len(y_train)), n_test=int(len(y_test)),
+        n_train=int(len(y_train)),
+        n_test=int(len(y_test)),
         before_R2=r2_before,
         before_pred_std=std_before,
         before_y_test_std=y_test_std,
@@ -262,15 +270,19 @@ def run_wf37_evol(seed: int = 0) -> FixResult:
     rng = _make_rng(seed)
     n = 120
     y_all = rng.normal(loc=5.0, scale=1.0, size=n).astype(float)
-    y_train, y_test = y_all[: n // 2], y_all[n // 2:]
+    y_train, y_test = y_all[: n // 2], y_all[n // 2 :]
     X_train = _build_features(y_train, seed)
     X_test = _build_features(y_test, seed + 1)
     fc = tuple(f"f{i}" for i in range(X_train.shape[1]))
 
     # Before — evolutionary ASTSR without early_stop_on_nan.
     before = LambdaASTSR(
-        depth=2, population=8, generations=3, seed=int(seed),
-        feature_names=fc, early_stop_on_nan=False,
+        depth=2,
+        population=8,
+        generations=3,
+        seed=int(seed),
+        feature_names=fc,
+        early_stop_on_nan=False,
     )
     before.fit(X_train, y_train)
     y_pred_before = before.predict(X_test).reshape(-1)
@@ -280,21 +292,27 @@ def run_wf37_evol(seed: int = 0) -> FixResult:
     # After — evolutionary ASTSR with early_stop_on_nan=True + Hilbert
     # composite with the full Phase 4 fix.
     after_evol = LambdaASTSR(
-        depth=2, population=8, generations=3, seed=int(seed),
-        feature_names=fc, early_stop_on_nan=True,
+        depth=2,
+        population=8,
+        generations=3,
+        seed=int(seed),
+        feature_names=fc,
+        early_stop_on_nan=True,
     )
     after_evol.fit(X_train, y_train)
     y_pred_after_evol = after_evol.predict(X_test).reshape(-1)
     # The Hilbert composite (after) is the primary Wf-44 fix path.
     after = LambdaASTSRHilbert(
         population_dim=int(X_train.shape[1]),
-        grad_clip_max_norm=1.0, step_size_decay=0.5,
+        grad_clip_max_norm=1.0,
+        step_size_decay=0.5,
     )
     after_composite = HilbertASTSRComposite(
         hilbert_optimizer=after,
         feature_columns=fc,
         population_dim=int(X_train.shape[1]),
-        loss_scale=128.0, fp64_fallback=True,
+        loss_scale=128.0,
+        fp64_fallback=True,
     )
     after_res = after_composite.fit(X_train, y_train)
     r2_after = float(after_res["r2"])
@@ -304,7 +322,8 @@ def run_wf37_evol(seed: int = 0) -> FixResult:
     y_test_std = float(np.std(y_test))
     res = FixResult(
         model_name="Wf-37 L5 evolutionary",
-        n_train=int(len(y_train)), n_test=int(len(y_test)),
+        n_train=int(len(y_train)),
+        n_test=int(len(y_test)),
         before_R2=r2_before,
         before_pred_std=std_before,
         before_y_test_std=y_test_std,
@@ -330,15 +349,19 @@ def run_wf39_ast(seed: int = 0) -> FixResult:
     rng = _make_rng(seed)
     n = 80
     y_all = rng.normal(loc=5.0, scale=0.5, size=n).astype(float)
-    y_train, y_test = y_all[: n // 2], y_all[n // 2:]
+    y_train, y_test = y_all[: n // 2], y_all[n // 2 :]
     X_train = _build_features(y_train, seed)
     X_test = _build_features(y_test, seed + 1)
     fc = tuple(f"f{i}" for i in range(X_train.shape[1]))
 
     # Before — ASTSR (early_stop_on_nan=False, tiny population).
     before = LambdaASTSR(
-        depth=2, population=4, generations=2, seed=int(seed),
-        feature_names=fc, early_stop_on_nan=False,
+        depth=2,
+        population=4,
+        generations=2,
+        seed=int(seed),
+        feature_names=fc,
+        early_stop_on_nan=False,
     )
     before.fit(X_train, y_train)
     y_pred_before = before.predict(X_test).reshape(-1)
@@ -348,13 +371,15 @@ def run_wf39_ast(seed: int = 0) -> FixResult:
     # After — Hilbert composite with the full Phase 4 fix.
     after = LambdaASTSRHilbert(
         population_dim=int(X_train.shape[1]),
-        grad_clip_max_norm=1.0, step_size_decay=0.5,
+        grad_clip_max_norm=1.0,
+        step_size_decay=0.5,
     )
     after_composite = HilbertASTSRComposite(
         hilbert_optimizer=after,
         feature_columns=fc,
         population_dim=int(X_train.shape[1]),
-        loss_scale=128.0, fp64_fallback=True,
+        loss_scale=128.0,
+        fp64_fallback=True,
     )
     after_res = after_composite.fit(X_train, y_train)
     r2_after = float(after_res["r2"])
@@ -364,7 +389,8 @@ def run_wf39_ast(seed: int = 0) -> FixResult:
     y_test_std = float(np.std(y_test))
     res = FixResult(
         model_name="Wf-39 AST composite",
-        n_train=int(len(y_train)), n_test=int(len(y_test)),
+        n_train=int(len(y_train)),
+        n_test=int(len(y_test)),
         before_R2=r2_before,
         before_pred_std=std_before,
         before_y_test_std=y_test_std,
@@ -452,6 +478,7 @@ def write_report(report: NumericalFixReport, out_path: Path) -> Path:
 
 def main(argv: Optional[List[str]] = None) -> int:
     import argparse
+
     parser = argparse.ArgumentParser(
         description=(
             "Wf-44 Phase 4 numerical-stability fix — write the "

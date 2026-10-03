@@ -48,6 +48,7 @@ from typing import Any, Dict, List, Optional, Sequence
 # import lazy so the script is usable in minimal envs).
 try:
     import numpy as np  # type: ignore
+
     _HAS_NUMPY = True
 except ImportError:  # pragma: no cover
     _HAS_NUMPY = False
@@ -56,6 +57,7 @@ except ImportError:  # pragma: no cover
 # ---------------------------------------------------------------------------
 # Lazy imports of the SA penalty adapter module
 # ---------------------------------------------------------------------------
+
 
 def _load_sa_penalty_module():
     """Import :mod:`molmetal.adapters.flow_matching_lipman.sa_penalty`.
@@ -68,8 +70,11 @@ def _load_sa_penalty_module():
     ``molmetal/scripts/``) before re-attempting the import.
     """
     import importlib
+
     try:
-        return importlib.import_module("molmetal.adapters.flow_matching_lipman.sa_penalty")
+        return importlib.import_module(
+            "molmetal.adapters.flow_matching_lipman.sa_penalty"
+        )
     except Exception:
         pass
     try:
@@ -79,7 +84,9 @@ def _load_sa_penalty_module():
         repo_root = os.path.abspath(os.path.join(here, "..", ".."))
         if repo_root not in sys.path:
             sys.path.insert(0, repo_root)
-        return importlib.import_module("molmetal.adapters.flow_matching_lipman.sa_penalty")
+        return importlib.import_module(
+            "molmetal.adapters.flow_matching_lipman.sa_penalty"
+        )
     except Exception as exc:  # pragma: no cover
         sys.stderr.write(f"[cfm_sa_aware_panel] WARN cannot import sa_penalty: {exc}\n")
         return None
@@ -88,6 +95,7 @@ def _load_sa_penalty_module():
 # ---------------------------------------------------------------------------
 # Per-molecule evaluation
 # ---------------------------------------------------------------------------
+
 
 def per_molecule_sa_evaluation(
     mols: Sequence,
@@ -118,23 +126,38 @@ def per_molecule_sa_evaluation(
     for mol in mols:
         if mol is None:
             results.append(
-                {"smiles": None, "sa": float("nan"), "penalty": float("nan"),
-                 "status": "NO_MOL"}
+                {
+                    "smiles": None,
+                    "sa": float("nan"),
+                    "penalty": float("nan"),
+                    "status": "NO_MOL",
+                }
             )
             continue
         sa = float(mod.compute_sa_score(mol)) if mod is not None else float("nan")
         if math.isnan(sa):
             results.append(
-                {"smiles": None, "sa": float("nan"), "penalty": float("nan"),
-                 "status": "SA_FAIL"}
+                {
+                    "smiles": None,
+                    "sa": float("nan"),
+                    "penalty": float("nan"),
+                    "status": "SA_FAIL",
+                }
             )
             continue
-        penalty = float(
-            mod.sa_aware_sampling_penalty([sa], target_sa=target_sa, sa_weight=sa_weight)[0]
-        ) if mod is not None else 0.0
+        penalty = (
+            float(
+                mod.sa_aware_sampling_penalty(
+                    [sa], target_sa=target_sa, sa_weight=sa_weight
+                )[0]
+            )
+            if mod is not None
+            else 0.0
+        )
         # Best-effort SMILES round-trip for downstream trace.
         try:
             from rdkit import Chem
+
             smi = Chem.MolToSmiles(mol)
         except Exception:
             smi = None
@@ -145,6 +168,7 @@ def per_molecule_sa_evaluation(
 # ---------------------------------------------------------------------------
 # Aggregation
 # ---------------------------------------------------------------------------
+
 
 def aggregate_sa_distribution(
     cohort_results: Sequence[Dict[str, Any]],
@@ -221,9 +245,7 @@ def aggregate_sa_distribution(
         mean_sa = median_sa = std_sa = float("nan")
         min_sa = max_sa = frac_le_28 = frac_le_40 = frac_above_target = float("nan")
 
-    mean_penalty = (
-        sum(ok_pen) / len(ok_pen) if ok_pen else float("nan")
-    )
+    mean_penalty = sum(ok_pen) / len(ok_pen) if ok_pen else float("nan")
 
     return {
         "n_total": int(n_total),
@@ -244,6 +266,7 @@ def aggregate_sa_distribution(
 # ---------------------------------------------------------------------------
 # CSV / CLI helpers
 # ---------------------------------------------------------------------------
+
 
 def read_smiles_csv(path: Path) -> List[str]:
     """Read SMILES from a CSV with a ``smiles`` column.
@@ -336,11 +359,19 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Comma-separated SMILES list (smoke mode).",
     )
     p.add_argument("--out-json", type=str, required=True, help="Output JSON path.")
-    p.add_argument("--target-sa", type=float, default=2.8,
-                   help="Synthesizable threshold (default 2.8, Wf-139 P6).")
-    p.add_argument("--sa-weight", type=float, default=0.3,
-                   help="Linear SA penalty weight (default 0.3, "
-                        "matches metrics/by_metric/sa_mean.json 2026-09-14).")
+    p.add_argument(
+        "--target-sa",
+        type=float,
+        default=2.8,
+        help="Synthesizable threshold (default 2.8, Wf-139 P6).",
+    )
+    p.add_argument(
+        "--sa-weight",
+        type=float,
+        default=0.3,
+        help="Linear SA penalty weight (default 0.3, "
+        "matches metrics/by_metric/sa_mean.json 2026-09-14).",
+    )
     return p
 
 
@@ -359,7 +390,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     out_path = Path(args.out_json)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as fh:
-        json.dump(panel, fh, indent=2, default=lambda o: float(o) if isinstance(o, float) else str(o))
+        json.dump(
+            panel,
+            fh,
+            indent=2,
+            default=lambda o: float(o) if isinstance(o, float) else str(o),
+        )
     sys.stdout.write(
         f"[cfm_sa_aware_panel] wrote {out_path} (n_input={panel['n_input']} "
         f"n_parsed={panel['n_parsed']} n_failed={panel['n_failed']} "

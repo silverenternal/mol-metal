@@ -122,22 +122,22 @@ import numpy as np
 # Defaults — exported so tests can introspect
 # ---------------------------------------------------------------------------
 DEFAULT_METHOD: str = "UFF"
-DEFAULT_BOND_K: float = 300.0          # kcal/mol/A^2 — bond stretch k
-DEFAULT_ANGLE_K: float = 100.0         # kcal/mol/rad^2 — angle bend k
-DEFAULT_NB_EPSILON: float = 0.1        # kcal/mol — LJ well depth
-DEFAULT_BOND_TOL: float = 1.30         # cov-rad sum multiplier for bonding
+DEFAULT_BOND_K: float = 300.0  # kcal/mol/A^2 — bond stretch k
+DEFAULT_ANGLE_K: float = 100.0  # kcal/mol/rad^2 — angle bend k
+DEFAULT_NB_EPSILON: float = 0.1  # kcal/mol — LJ well depth
+DEFAULT_BOND_TOL: float = 1.30  # cov-rad sum multiplier for bonding
 DEFAULT_GRADIENT_STEP: float = 1.0e-3  # A — central-difference h
 DEFAULT_RELAX_STEPS: int = 100
 DEFAULT_RELAX_STEP_SIZE: float = 0.01  # A — steepest-descent step
-DEFAULT_MC_STEP_SIZE: float = 0.05     # A — MC perturbation scale
+DEFAULT_MC_STEP_SIZE: float = 0.05  # A — MC perturbation scale
 DEFAULT_TEMPERATURE_K: float = 300.0
-KBOLTZMANN: float = 0.0019872041        # kcal/mol/K
+KBOLTZMANN: float = 0.0019872041  # kcal/mol/K
 # Geometry validator defaults
-DEFAULT_BOND_THRESHOLD: float = 2.0    # A — max distance for "bonded" pair
-DEFAULT_BOND_LOWER: float = 0.70       # bond length ratio lower bound
-DEFAULT_BOND_UPPER: float = 1.60       # bond length ratio upper bound
-DEFAULT_CLOSE_CONTACT: float = 1.20    # A — non-bonded close-contact distance
-DEFAULT_ABSOLUTE_MIN: float = 0.80     # A — any pair below this is suspicious
+DEFAULT_BOND_THRESHOLD: float = 2.0  # A — max distance for "bonded" pair
+DEFAULT_BOND_LOWER: float = 0.70  # bond length ratio lower bound
+DEFAULT_BOND_UPPER: float = 1.60  # bond length ratio upper bound
+DEFAULT_CLOSE_CONTACT: float = 1.20  # A — non-bonded close-contact distance
+DEFAULT_ABSOLUTE_MIN: float = 0.80  # A — any pair below this is suspicious
 
 
 # Covalent radii (Å) — Cordero et al. 2008 Dalton Trans. values
@@ -145,15 +145,39 @@ DEFAULT_ABSOLUTE_MIN: float = 0.80     # A — any pair below this is suspicious
 # :class:`GeometryValidator` and the implicit bond list in
 # :class:`SimpleForceField`.
 _COVALENT_RADII: Dict[str, float] = {
-    "H": 0.31, "He": 0.28,
-    "Li": 1.28, "Be": 0.96, "B": 0.84, "C": 0.76, "N": 0.71,
-    "O": 0.66, "F": 0.57, "Ne": 0.58,
-    "Na": 1.66, "Mg": 1.41, "Al": 1.21, "Si": 1.11, "P": 1.07,
-    "S": 1.05, "Cl": 1.02, "Ar": 1.06,
-    "K": 2.03, "Ca": 1.76, "Ni": 1.24, "Cu": 1.32, "Zn": 1.22,
-    "Br": 1.20, "I": 1.39,
-    "Pt": 1.36, "Ru": 1.26, "Pd": 1.39, "Au": 1.36, "Ir": 1.26,
-    "Os": 1.26, "Rh": 1.25, "Re": 1.28,
+    "H": 0.31,
+    "He": 0.28,
+    "Li": 1.28,
+    "Be": 0.96,
+    "B": 0.84,
+    "C": 0.76,
+    "N": 0.71,
+    "O": 0.66,
+    "F": 0.57,
+    "Ne": 0.58,
+    "Na": 1.66,
+    "Mg": 1.41,
+    "Al": 1.21,
+    "Si": 1.11,
+    "P": 1.07,
+    "S": 1.05,
+    "Cl": 1.02,
+    "Ar": 1.06,
+    "K": 2.03,
+    "Ca": 1.76,
+    "Ni": 1.24,
+    "Cu": 1.32,
+    "Zn": 1.22,
+    "Br": 1.20,
+    "I": 1.39,
+    "Pt": 1.36,
+    "Ru": 1.26,
+    "Pd": 1.39,
+    "Au": 1.36,
+    "Ir": 1.26,
+    "Os": 1.26,
+    "Rh": 1.25,
+    "Re": 1.28,
 }
 
 
@@ -211,7 +235,7 @@ def _angle_triplets(
     for j in range(n_atoms):
         nbrs = neighbours[j]
         for ii, i in enumerate(nbrs):
-            for k in nbrs[ii + 1:]:
+            for k in nbrs[ii + 1 :]:
                 out.append((i, j, k))
     return out
 
@@ -259,9 +283,7 @@ class SimpleForceField:
         """
         method_norm = str(method).strip().upper()
         if method_norm not in {"UFF", "MMFF"}:
-            raise ValueError(
-                f"Unsupported method {method!r}; expected 'UFF' or 'MMFF'"
-            )
+            raise ValueError(f"Unsupported method {method!r}; expected 'UFF' or 'MMFF'")
         self.method: str = method_norm
         self.bond_k: float = float(bond_k)
         self.angle_k: float = float(angle_k)
@@ -300,9 +322,7 @@ class SimpleForceField:
         """
         c = np.asarray(coords, dtype=np.float64)
         if c.ndim != 2 or c.shape[1] != 3:
-            raise ValueError(
-                f"coords must have shape (N, 3); got {coords.shape!r}"
-            )
+            raise ValueError(f"coords must have shape (N, 3); got {coords.shape!r}")
         n = int(c.shape[0])
         if n <= 1:
             return 0.0
@@ -384,9 +404,7 @@ class SimpleForceField:
         """
         c = np.asarray(coords, dtype=np.float64)
         if c.ndim != 2 or c.shape[1] != 3:
-            raise ValueError(
-                f"coords must have shape (N, 3); got {coords.shape!r}"
-            )
+            raise ValueError(f"coords must have shape (N, 3); got {coords.shape!r}")
         n = int(c.shape[0])
         if n == 0:
             return np.zeros((0, 3), dtype=np.float64)
@@ -508,9 +526,7 @@ class MDRelaxation:
         """
         x = np.asarray(coords, dtype=np.float64).copy()
         if x.ndim != 2 or x.shape[1] != 3:
-            raise ValueError(
-                f"coords must have shape (N, 3); got {coords.shape!r}"
-            )
+            raise ValueError(f"coords must have shape (N, 3); got {coords.shape!r}")
         for _ in range(self.n_steps):
             grad = self.force_field.gradient(x, atom_types)
             x = x - self.step_size * grad
@@ -543,9 +559,7 @@ class MDRelaxation:
         """
         x = np.asarray(coords, dtype=np.float64)
         if x.ndim != 2 or x.shape[1] != 3:
-            raise ValueError(
-                f"coords must have shape (N, 3); got {coords.shape!r}"
-            )
+            raise ValueError(f"coords must have shape (N, 3); got {coords.shape!r}")
         if x.shape[0] != len(atom_types):
             raise ValueError(
                 f"coords has {x.shape[0]} rows but atom_types has "
@@ -715,9 +729,7 @@ class GeometryValidator:
         """
         c = np.asarray(coords, dtype=np.float64)
         if c.ndim != 2 or c.shape[1] != 3:
-            raise ValueError(
-                f"coords must have shape (N, 3); got {coords.shape!r}"
-            )
+            raise ValueError(f"coords must have shape (N, 3); got {coords.shape!r}")
         n = int(c.shape[0])
         if n == 0:
             return []
@@ -726,7 +738,9 @@ class GeometryValidator:
                 f"coords has {n} rows but atom_types has {len(atom_types)} entries"
             )
 
-        thresh = float(self.bond_threshold if bond_threshold is None else bond_threshold)
+        thresh = float(
+            self.bond_threshold if bond_threshold is None else bond_threshold
+        )
         radii = np.asarray([_cov_radius(t) for t in atom_types], dtype=np.float64)
         dmat = _pair_distance_matrix(c)
 

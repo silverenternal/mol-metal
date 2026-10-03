@@ -31,6 +31,7 @@ This script:
 
 CPU-only; no paper work touched (TODO-84 gate honored).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -58,9 +59,9 @@ MOCK_DELETED_BASES = (
     "metalloprotein_affinity",
 )
 MOCK_DELETED_ALIASES = (
-    "",                      # bare base name
-    "lambda_mcts_",          # lambda_mcts_<base>
-    "known_pt_drug_",        # known_pt_drug_<base>
+    "",  # bare base name
+    "lambda_mcts_",  # lambda_mcts_<base>
+    "known_pt_drug_",  # known_pt_drug_<base>
 )
 
 
@@ -137,8 +138,8 @@ def run(dry_run: bool = False) -> Dict[str, Any]:
     log: Dict[str, Any] = {
         "workflow": "Wf-119 Phase 3",
         "task": "Delete 12 stale metric JSON files for the 4 MOCK_DELETED "
-                "external scorers (coord_geometry_proxy, phototherapy_activity, "
-                "ptiv_reduction_potential, metalloprotein_affinity × 3 aliases)",
+        "external scorers (coord_geometry_proxy, phototherapy_activity, "
+        "ptiv_reduction_potential, metalloprotein_affinity × 3 aliases)",
         "parent_plan": "TODO/pending/114_mock_deleted_external_scorers_cleanup.md",
         "timestamp": timestamp,
         "dry_run": dry_run,
@@ -150,12 +151,10 @@ def run(dry_run: bool = False) -> Dict[str, Any]:
         "files": actions,
         "post_verification": {
             "files_remaining": sorted(
-                fname for fname in filenames
-                if (BY_METRIC_DIR / fname).exists()
+                fname for fname in filenames if (BY_METRIC_DIR / fname).exists()
             ),
             "remaining_count": sum(
-                1 for fname in filenames
-                if (BY_METRIC_DIR / fname).exists()
+                1 for fname in filenames if (BY_METRIC_DIR / fname).exists()
             ),
         },
         "consumers_updated": {

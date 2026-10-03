@@ -60,6 +60,7 @@ Twelve named tests pin the Wf-320B contract:
 
 All tests are CPU-only, deterministic, and complete in < 5 seconds.
 """
+
 from __future__ import annotations
 
 import json
@@ -217,8 +218,8 @@ def test_detect_extra_keys_only() -> None:
         "G4_n_pre_flight_items": 25,
         "G5_n_open_violations": 0,
         "honest_framing_note": "with noise",
-        "_wave": "Wf-320B",          # extra: sibling-artefact field
-        "_ts": "2026-09-29",         # extra: timestamp pollution
+        "_wave": "Wf-320B",  # extra: sibling-artefact field
+        "_ts": "2026-09-29",  # extra: timestamp pollution
     }
     report = detect_schema_mismatch(noisy, _SCHEMA_PAYLOAD)
 
@@ -257,9 +258,9 @@ def test_detect_type_mismatch() -> None:
         "G1_cuda_fix_verified": True,
         "G2_config_yaml_exists": True,
         "G3_yaml_md_valid": True,
-        "G4_n_pre_flight_items": "25",      # WRONG: should be integer
-        "G5_n_open_violations": "0",        # WRONG: should be integer
-        "honest_framing_note": 42,           # WRONG: should be string
+        "G4_n_pre_flight_items": "25",  # WRONG: should be integer
+        "G5_n_open_violations": "0",  # WRONG: should be integer
+        "honest_framing_note": 42,  # WRONG: should be string
     }
     report = detect_schema_mismatch(wrong_types, _SCHEMA_PAYLOAD)
 
@@ -304,21 +305,23 @@ def test_retry_with_correction_schema_coerce_hint() -> None:
         calls.append(correction_prompt)
         if correction_prompt is None:
             # Initial attempt: partial payload (missing G3 + G5).
-            return json.dumps({
-                "G1_cuda_fix_verified": True,
-                "G2_config_yaml_exists": True,
-                "G4_n_pre_flight_items": 25,
-                "honest_framing_note": "partial",
-            })
+            return json.dumps(
+                {
+                    "G1_cuda_fix_verified": True,
+                    "G2_config_yaml_exists": True,
+                    "G4_n_pre_flight_items": 25,
+                    "honest_framing_note": "partial",
+                }
+            )
         # Retry attempt: full values.
         return json.dumps(_REAL_VALUES)
 
     helper = HarnessAutoFallback(schema_dict=_SCHEMA_PAYLOAD, max_retries=3)
     result, report = helper.retry_with_correction(fake_agent)
 
-    assert result is not None, (
-        "Helper returned None even though the corrected retry returned values."
-    )
+    assert (
+        result is not None
+    ), "Helper returned None even though the corrected retry returned values."
     parsed = json.loads(result)
     assert parsed == _REAL_VALUES, (
         "Helper returned %r instead of the corrected real values." % parsed
@@ -329,21 +332,17 @@ def test_retry_with_correction_schema_coerce_hint() -> None:
     assert coerce_prompts, "No correction prompt was used at all."
     last_prompt = coerce_prompts[-1]
     assert "MISSING KEYS" in last_prompt or "SCHEMA_MISMATCH" in last_prompt, (
-        "Schema_coerce hint did not enumerate the missing keys.  Got: %r"
-        % last_prompt
+        "Schema_coerce hint did not enumerate the missing keys.  Got: %r" % last_prompt
     )
     assert "G3_yaml_md_valid" in last_prompt or "G5_n_open_violations" in last_prompt, (
-        "Schema_coerce hint did not name the missing field.  Got: %r"
-        % last_prompt
+        "Schema_coerce hint did not name the missing field.  Got: %r" % last_prompt
     )
 
     # Report records the coerce hint used.
-    assert report.coerce_hints_used, (
-        "Report did not record the schema_coerce hint."
-    )
-    assert report.recovered is True, (
-        "Report.recovered should be True after successful correction."
-    )
+    assert report.coerce_hints_used, "Report did not record the schema_coerce hint."
+    assert (
+        report.recovered is True
+    ), "Report.recovered should be True after successful correction."
 
 
 # ---------------------------------------------------------------------------
@@ -365,13 +364,15 @@ def test_retry_succeeds_after_schema_coerce() -> None:
         calls.append(correction_prompt)
         if correction_prompt is None:
             # Partial: missing one required field.
-            return json.dumps({
-                "G1_cuda_fix_verified": True,
-                "G2_config_yaml_exists": True,
-                "G3_yaml_md_valid": True,
-                # G4 + G5 missing
-                "honest_framing_note": "needs coerce",
-            })
+            return json.dumps(
+                {
+                    "G1_cuda_fix_verified": True,
+                    "G2_config_yaml_exists": True,
+                    "G3_yaml_md_valid": True,
+                    # G4 + G5 missing
+                    "honest_framing_note": "needs coerce",
+                }
+            )
         # After coerce -> corrected values.
         return json.dumps(_REAL_VALUES)
 
@@ -385,8 +386,7 @@ def test_retry_succeeds_after_schema_coerce() -> None:
     # The helper must have invoked the agent at least twice
     # (initial + at least one retry carrying the coerce hint).
     assert len(calls) >= 2, (
-        "Helper invoked the agent %d times; expected at least 2."
-        % len(calls)
+        "Helper invoked the agent %d times; expected at least 2." % len(calls)
     )
     assert report.recovered is True
     assert report.n_attempts >= 2
@@ -432,8 +432,7 @@ def test_retry_uses_wf302d_path_first_for_schema_shape() -> None:
     first_correction = correction_prompts[0]
     assert "SCHEMA definition" in first_correction or "SCHEMA" in first_correction, (
         "First correction prompt for schema-shape should be the Wf-302D "
-        "generic prompt mentioning 'SCHEMA definition'.  Got: %r"
-        % first_correction
+        "generic prompt mentioning 'SCHEMA definition'.  Got: %r" % first_correction
     )
     assert "MISSING KEYS" not in first_correction, (
         "First correction prompt should NOT be a schema_coerce hint; got: %r"
@@ -472,8 +471,7 @@ def test_first_attempt_ok_no_retry() -> None:
         % len(calls)
     )
     assert calls[0] is None, (
-        "First attempt should NOT receive a correction prompt; got %r."
-        % calls[0]
+        "First attempt should NOT receive a correction prompt; got %r." % calls[0]
     )
     assert report.recovered is True
     assert report.n_attempts == 1
@@ -554,8 +552,7 @@ def test_wrapped_helper_uses_existing_wf302d_prompt_for_schema_shape() -> None:
     assert correction_prompts
     first = correction_prompts[0]
     assert "JSON SCHEMA definition" in first or "SCHEMA" in first, (
-        "First correction prompt should be the Wf-302D generic prompt; got: %r"
-        % first
+        "First correction prompt should be the Wf-302D generic prompt; got: %r" % first
     )
     assert report.recovered is True
 
@@ -593,9 +590,9 @@ def test_max_retries_exhausted_applies_fallback_strategy() -> None:
     assert result == {}, (
         "EMPTY_DEFAULT fallback should return {} on exhaustion; got %r." % result
     )
-    assert report.budget_exhausted is True, (
-        "Report.budget_exhausted should be True when retries are exhausted."
-    )
+    assert (
+        report.budget_exhausted is True
+    ), "Report.budget_exhausted should be True when retries are exhausted."
     assert report.fallback_strategy == FallbackStrategy.EMPTY_DEFAULT
     assert report.recovered is False
     assert report.n_attempts >= 1
@@ -630,10 +627,12 @@ def test_max_retries_zero_still_applies_fallback() -> None:
 
     def always_returns_partial(*, correction_prompt=None):
         # Always return a partial dict -- never matches the schema.
-        return json.dumps({
-            "G1_cuda_fix_verified": True,
-            # everything else missing
-        })
+        return json.dumps(
+            {
+                "G1_cuda_fix_verified": True,
+                # everything else missing
+            }
+        )
 
     helper = HarnessAutoFallback(
         schema_dict=_SCHEMA_PAYLOAD,
@@ -674,13 +673,11 @@ def test_coerce_drops_extras_and_wrong_types() -> None:
         "G4_n_pre_flight_items": "25",  # wrong type -> dropped
         "G5_n_open_violations": 0,
         "honest_framing_note": "kept",
-        "_wave": "Wf-320B",              # extra -> dropped
+        "_wave": "Wf-320B",  # extra -> dropped
     }
     coerced = helper.coerce(noisy)
 
-    assert "_wave" not in coerced, (
-        "Extras should be dropped; got %r." % coerced
-    )
+    assert "_wave" not in coerced, "Extras should be dropped; got %r." % coerced
     assert "G4_n_pre_flight_items" not in coerced, (
         "Wrong-type values should be dropped; got %r." % coerced
     )

@@ -26,7 +26,9 @@ def test_public_kernel_exports_are_callable() -> None:
 
 
 @pytest.mark.gpu
-def test_fused_silu_mlp_matches_manual(small_shape: tuple[int, int], device: torch.device) -> None:
+def test_fused_silu_mlp_matches_manual(
+    small_shape: tuple[int, int], device: torch.device
+) -> None:
     b, d = small_shape
     h = 64
     x = torch.randn(b, d, device=device)
@@ -35,21 +37,28 @@ def test_fused_silu_mlp_matches_manual(small_shape: tuple[int, int], device: tor
     w1, w2 = torch.randn(d, h, device=device), torch.randn(h, d, device=device)
     b1, b2 = torch.randn(h, device=device), torch.randn(d, device=device)
     got = tk.fused_silu_mlp(x, w1, b1, w2, b2)
-    ref = torch.nn.Sequential(torch.nn.Linear(d, h), torch.nn.SiLU(), torch.nn.Linear(h, d)).to(device)
+    ref = torch.nn.Sequential(
+        torch.nn.Linear(d, h), torch.nn.SiLU(), torch.nn.Linear(h, d)
+    ).to(device)
     with torch.no_grad():
-        ref[0].weight.copy_(w1.T); ref[0].bias.copy_(b1)
-        ref[2].weight.copy_(w2.T); ref[2].bias.copy_(b2)
+        ref[0].weight.copy_(w1.T)
+        ref[0].bias.copy_(b1)
+        ref[2].weight.copy_(w2.T)
+        ref[2].bias.copy_(b2)
     # The fused operator applies SiLU after both projections.
     assert torch.allclose(got, ref(x), atol=1e-5, rtol=1e-5)
 
 
 @pytest.mark.gpu
-def test_fused_rms_norm_matches_torch(small_shape: tuple[int, int], device: torch.device) -> None:
+def test_fused_rms_norm_matches_torch(
+    small_shape: tuple[int, int], device: torch.device
+) -> None:
     b, d = small_shape
     x, weight = torch.randn(b, d, device=device), torch.randn(d, device=device)
     got = tk.fused_rms_norm(x, weight, eps=1e-5)
     ref = torch.nn.RMSNorm(d, eps=1e-5, device=device)
-    with torch.no_grad(): ref.weight.copy_(weight)
+    with torch.no_grad():
+        ref.weight.copy_(weight)
     assert torch.allclose(got, ref(x), atol=1e-4, rtol=1e-4)
 
 

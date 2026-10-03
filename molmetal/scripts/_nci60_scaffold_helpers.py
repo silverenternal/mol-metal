@@ -11,6 +11,7 @@ v2 / torch). The driver imports these helpers as
 ``from molmetal.scripts._nci60_scaffold_helpers import (...)`` so
 the public API is unchanged.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -122,8 +123,7 @@ def _scaffold_split_indices_nci60(
             continue
         test_idx = np.asarray(idx_list, dtype=np.int64)
         # 90/10 train/val on the rest, seeded.
-        rest = [i for sc_other, idxs in groups if sc_other != sc
-                for i in idxs]
+        rest = [i for sc_other, idxs in groups if sc_other != sc for i in idxs]
         rest_arr = np.asarray(rest, dtype=np.int64)
         rng.shuffle(rest_arr)
         n_val = max(int(round(0.10 * len(rest_arr))), 1)

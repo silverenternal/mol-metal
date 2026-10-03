@@ -56,6 +56,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -127,8 +128,12 @@ EVAL_EVERY: int = 10
 N_RESIST_FEAT: int = 10
 
 DEFAULT_DATA = PROJECT_ROOT / "molmetal" / "data" / "platinai_4cell.csv"
-DEFAULT_ENCODER_CKPT = PROJECT_ROOT / "models" / "tmqm_pretrained" / "tmqm_pretrained_encoder.pt"
-DEFAULT_OUT_PATH = PROJECT_ROOT / "metrics" / "by_metric" / "platinai_3cell_resistance.json"
+DEFAULT_ENCODER_CKPT = (
+    PROJECT_ROOT / "models" / "tmqm_pretrained" / "tmqm_pretrained_encoder.pt"
+)
+DEFAULT_OUT_PATH = (
+    PROJECT_ROOT / "metrics" / "by_metric" / "platinai_3cell_resistance.json"
+)
 
 
 # ---------------------------------------------------------------------------
@@ -137,30 +142,37 @@ DEFAULT_OUT_PATH = PROJECT_ROOT / "metrics" / "by_metric" / "platinai_3cell_resi
 class _ThreeCellReadout(nn.Module):
     """3 shared per-cell heads: z = [h_pool (2H); res_proj (64)] → 2 logits."""
 
-    def __init__(self, hidden: int, n_resist_feat: int, n_cells: int,
-                 head_hidden: int, head_dropout: float):
+    def __init__(
+        self,
+        hidden: int,
+        n_resist_feat: int,
+        n_cells: int,
+        head_hidden: int,
+        head_dropout: float,
+    ):
         super().__init__()
         # Side-feature projection (chemoinformatic fingerprint → 64).
         self.resist_proj = nn.Linear(n_resist_feat, 64)
         # Backbone outputs concatenated [h_v, outgoing] = 2H.
         # Per-cell head: z = [h_pool (2H), res_proj (64)] → head_hidden → 2.
         head_in = hidden * 2 + 64
-        self.heads = nn.ModuleList([
-            nn.Sequential(
-                nn.Linear(head_in, head_hidden),
-                nn.ReLU(),
-                nn.Dropout(head_dropout),
-                nn.Linear(head_hidden, 2),
-            )
-            for _ in range(n_cells)
-        ])
+        self.heads = nn.ModuleList(
+            [
+                nn.Sequential(
+                    nn.Linear(head_in, head_hidden),
+                    nn.ReLU(),
+                    nn.Dropout(head_dropout),
+                    nn.Linear(head_hidden, 2),
+                )
+                for _ in range(n_cells)
+            ]
+        )
         self.n_cells = n_cells
 
-    def forward(self, h_pool: torch.Tensor,
-                res_feat: torch.Tensor) -> torch.Tensor:
+    def forward(self, h_pool: torch.Tensor, res_feat: torch.Tensor) -> torch.Tensor:
         """Returns (B, n_cells, 2) logits."""
-        r = F.relu(self.resist_proj(res_feat))             # (B, 64)
-        z = torch.cat([h_pool, r], dim=-1)                 # (B, 2H+64)
+        r = F.relu(self.resist_proj(res_feat))  # (B, 64)
+        z = torch.cat([h_pool, r], dim=-1)  # (B, 2H+64)
         return torch.stack([head(z) for head in self.heads], dim=1)
 
 
@@ -172,14 +184,18 @@ class ThreeCellDMPNN(nn.Module):
         logits = model(graph_tensors, res_feat)   # (B, n_cells, 2)
     """
 
-    def __init__(self, atom_dim: int = ATOM_FEATURE_DIM,
-                 bond_dim: int = BOND_FEATURE_DIM,
-                 hidden: int = HIDDEN, depth: int = DEPTH,
-                 dropout: float = DROPOUT,
-                 n_cells: int = N_CELLS,
-                 n_resist_feat: int = N_RESIST_FEAT,
-                 head_hidden: int = HEAD_HIDDEN,
-                 head_dropout: float = HEAD_DROPOUT):
+    def __init__(
+        self,
+        atom_dim: int = ATOM_FEATURE_DIM,
+        bond_dim: int = BOND_FEATURE_DIM,
+        hidden: int = HIDDEN,
+        depth: int = DEPTH,
+        dropout: float = DROPOUT,
+        n_cells: int = N_CELLS,
+        n_resist_feat: int = N_RESIST_FEAT,
+        head_hidden: int = HEAD_HIDDEN,
+        head_dropout: float = HEAD_DROPOUT,
+    ):
         super().__init__()
         self.hidden = hidden
         self.depth = depth
@@ -189,15 +205,24 @@ class ThreeCellDMPNN(nn.Module):
         self.bond_emb = nn.Linear(bond_dim, hidden)
         self.gru_update = _GRUUpdate(hidden, hidden)
         self.edge_init = nn.Sequential(
-            nn.Linear(hidden * 2, hidden), nn.ReLU(),
+            nn.Linear(hidden * 2, hidden),
+            nn.ReLU(),
         )
         self.readout = _ThreeCellReadout(
-            hidden=hidden, n_resist_feat=n_resist_feat, n_cells=n_cells,
-            head_hidden=head_hidden, head_dropout=head_dropout,
+            hidden=hidden,
+            n_resist_feat=n_resist_feat,
+            n_cells=n_cells,
+            head_hidden=head_hidden,
+            head_dropout=head_dropout,
         )
 
-    def _pool_one(self, atom_f: torch.Tensor, bond_f: torch.Tensor,
-                  e_src: torch.Tensor, e_dst: torch.Tensor) -> torch.Tensor:
+    def _pool_one(
+        self,
+        atom_f: torch.Tensor,
+        bond_f: torch.Tensor,
+        e_src: torch.Tensor,
+        e_dst: torch.Tensor,
+    ) -> torch.Tensor:
         V = int(atom_f.shape[0])
         E = int(bond_f.shape[0])
         device = atom_f.device
@@ -206,8 +231,8 @@ class ThreeCellDMPNN(nn.Module):
         atom_f32 = atom_f.float()
         bond_f32 = bond_f.float()
         with torch.autocast(device_type="cuda", enabled=False):
-            h_v = self.dropout_layer(F.relu(self.atom_emb(atom_f32)))    # (V, H)
-            h_e = self.dropout_layer(F.relu(self.bond_emb(bond_f32)))    # (E, H)
+            h_v = self.dropout_layer(F.relu(self.atom_emb(atom_f32)))  # (V, H)
+            h_e = self.dropout_layer(F.relu(self.bond_emb(bond_f32)))  # (E, H)
             for _ in range(self.depth):
                 atom_incoming = torch.zeros(V, self.hidden, device=device)
                 atom_incoming.index_add_(0, e_dst, h_e)
@@ -215,10 +240,9 @@ class ThreeCellDMPNN(nn.Module):
                 h_e = self.gru_update(h_e, h_v[e_src], neighbor_sum)
             outgoing = torch.zeros(V, self.hidden, device=device)
             outgoing.index_add_(0, e_src, h_e)
-        return torch.cat([h_v, outgoing], dim=-1).sum(dim=0)         # (2H,)
+        return torch.cat([h_v, outgoing], dim=-1).sum(dim=0)  # (2H,)
 
-    def forward(self, graphs: List[Tuple],
-                res_feat: torch.Tensor) -> torch.Tensor:
+    def forward(self, graphs: List[Tuple], res_feat: torch.Tensor) -> torch.Tensor:
         """graphs: list of (atom_f, bond_f, e_src, e_dst) — None for invalid.
         Each entry is a tuple of numpy arrays; we cast to torch here."""
         device = res_feat.device
@@ -238,9 +262,9 @@ class ThreeCellDMPNN(nn.Module):
             h_pools.append(self._pool_one(atom_f, bond_f, e_src, e_dst))
             valid_indices.append(i)
         if h_pools:
-            hp = torch.stack(h_pools, dim=0)                     # (B', 2H)
-            rf = res_feat[valid_indices]                          # (B', R)
-            logits = self.readout(hp, rf)                         # (B', C, 2)
+            hp = torch.stack(h_pools, dim=0)  # (B', 2H)
+            rf = res_feat[valid_indices]  # (B', R)
+            logits = self.readout(hp, rf)  # (B', C, 2)
             out[valid_indices] = logits
         return out
 
@@ -248,8 +272,9 @@ class ThreeCellDMPNN(nn.Module):
 # ---------------------------------------------------------------------------
 # Focal loss
 # ---------------------------------------------------------------------------
-def focal_loss(logits: torch.Tensor, targets: torch.Tensor,
-               gamma: float = FOCAL_GAMMA) -> torch.Tensor:
+def focal_loss(
+    logits: torch.Tensor, targets: torch.Tensor, gamma: float = FOCAL_GAMMA
+) -> torch.Tensor:
     """Multi-class focal loss over rows.  Auto-balance alpha per Lin 2017."""
     logp = F.log_softmax(logits, dim=-1)
     p = logp.exp()
@@ -259,7 +284,7 @@ def focal_loss(logits: torch.Tensor, targets: torch.Tensor,
     prior = torch.bincount(tgt, minlength=n_classes).float()
     prior = prior / max(prior.sum().item(), 1.0)
     alpha = (1.0 - prior).clamp(min=1e-3)
-    logp_t = logp.gather(1, tgt.unsqueeze(1)).squeeze(1)         # (B,)
+    logp_t = logp.gather(1, tgt.unsqueeze(1)).squeeze(1)  # (B,)
     p_t = p.gather(1, tgt.unsqueeze(1)).squeeze(1)
     a_t = alpha[tgt]
     loss = -a_t * (1.0 - p_t).pow(gamma) * logp_t
@@ -296,8 +321,10 @@ def load_tmqm_encoder(model: ThreeCellDMPNN, ckpt_path: Path) -> int:
             own[k].copy_(v)
             n_loaded += 1
         elif k in own:
-            print(f"  [load] shape mismatch {k}: "
-                  f"model {tuple(own[k].shape)} vs ckpt {tuple(v.shape)}")
+            print(
+                f"  [load] shape mismatch {k}: "
+                f"model {tuple(own[k].shape)} vs ckpt {tuple(v.shape)}"
+            )
     return n_loaded
 
 
@@ -314,6 +341,7 @@ def _pad_to(value: np.ndarray, n_cols: int, fill: float = 0.0) -> np.ndarray:
 def load_dataset(csv_path: Path) -> Tuple[List[str], np.ndarray, np.ndarray]:
     """Read platinai_4cell.csv → (smiles, active[3], res_feat[N_RESIST_FEAT])."""
     import csv as _csv
+
     rows: List[Dict[str, str]] = []
     with csv_path.open() as f:
         for row in _csv.DictReader(f):
@@ -333,6 +361,7 @@ def load_dataset(csv_path: Path) -> Tuple[List[str], np.ndarray, np.ndarray]:
                 continue
     # Resistance side-features.
     from rdkit import Chem, RDLogger
+
     RDLogger.DisableLog("rdApp.*")
     res_mat = np.zeros((n, len(RESISTANCE_FEATURE_KEYS)), dtype=np.float32)
     for i, smi in enumerate(smiles):
@@ -357,9 +386,15 @@ def load_dataset(csv_path: Path) -> Tuple[List[str], np.ndarray, np.ndarray]:
 # Training / eval
 # ---------------------------------------------------------------------------
 def _train_one_epoch(
-    model: ThreeCellDMPNN, optimizer, scheduler,
-    graphs: List, active: np.ndarray, res_feat: np.ndarray,
-    train_idx: np.ndarray, device, autocast_dtype,
+    model: ThreeCellDMPNN,
+    optimizer,
+    scheduler,
+    graphs: List,
+    active: np.ndarray,
+    res_feat: np.ndarray,
+    train_idx: np.ndarray,
+    device,
+    autocast_dtype,
 ) -> float:
     model.train()
     rng = np.random.default_rng()
@@ -367,10 +402,9 @@ def _train_one_epoch(
     rng.shuffle(perm)
     total_loss, n_batches = 0.0, 0
     for start in range(0, len(perm), BATCH):
-        idx = perm[start:start + BATCH]
+        idx = perm[start : start + BATCH]
         # Keep rows with at least one valid cell-line label.
-        keep = [i for i in idx if (active[i] >= 0).any()
-                and graphs[i] is not None]
+        keep = [i for i in idx if (active[i] >= 0).any() and graphs[i] is not None]
         if not keep:
             continue
         feats = [graphs[i] for i in keep]
@@ -394,27 +428,35 @@ def _train_one_epoch(
 
 
 @torch.no_grad()
-def _predict(model: ThreeCellDMPNN, graphs: List, res_feat: np.ndarray,
-             indices: np.ndarray, device, autocast_dtype) -> np.ndarray:
+def _predict(
+    model: ThreeCellDMPNN,
+    graphs: List,
+    res_feat: np.ndarray,
+    indices: np.ndarray,
+    device,
+    autocast_dtype,
+) -> np.ndarray:
     model.eval()
     n = len(indices)
     out = np.zeros((n, N_CELLS), dtype=np.float32)
     for start in range(0, n, BATCH):
-        idx = indices[start:start + BATCH]
+        idx = indices[start : start + BATCH]
         feats = [graphs[i] for i in idx if graphs[i] is not None]
         if not feats:
             continue
         rf = torch.from_numpy(res_feat[idx]).to(device)
         logits = model(feats, rf)
         probs = F.softmax(logits.float(), dim=-1)[..., 1].cpu().numpy()
-        out[start:start + len(probs)] = probs
+        out[start : start + len(probs)] = probs
     return out
 
 
-def _per_cell_auc(active: np.ndarray, probs: np.ndarray,
-                  cell_lines: Tuple[str, ...] = CELL_LINES) -> Dict[str, float]:
+def _per_cell_auc(
+    active: np.ndarray, probs: np.ndarray, cell_lines: Tuple[str, ...] = CELL_LINES
+) -> Dict[str, float]:
     out: Dict[str, float] = {}
     from sklearn.metrics import roc_auc_score
+
     for c, cl in enumerate(cell_lines):
         m = active[:, c] >= 0
         if m.sum() < 30:
@@ -440,24 +482,31 @@ def main() -> int:
     p.add_argument("--batch", type=int, default=BATCH)
     p.add_argument("--lr", type=float, default=LR)
     p.add_argument("--eval-every", type=int, default=EVAL_EVERY)
-    p.add_argument("--limit", type=int, default=None,
-                   help="Debug: cap n rows (post-split)")
+    p.add_argument(
+        "--limit", type=int, default=None, help="Debug: cap n rows (post-split)"
+    )
     args = p.parse_args()
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     amp_dtype = torch.bfloat16 if device.type == "cuda" else torch.float32
 
-    print(f"[train] device={device}  amp={amp_dtype}  "
-          f"seeds={args.seeds}  epochs={args.epochs}  batch={args.batch}  "
-          f"lr={args.lr}")
+    print(
+        f"[train] device={device}  amp={amp_dtype}  "
+        f"seeds={args.seeds}  epochs={args.epochs}  batch={args.batch}  "
+        f"lr={args.lr}"
+    )
     print(f"[train] data={args.data}  encoder={args.encoder}")
 
     # ----- load data -----
     print(f"[train] loading {args.data}")
     smiles, active, res_feat = load_dataset(args.data)
-    print(f"[train] n_rows={len(smiles)}  active_rates=" +
-          ", ".join(f"{cl}={(active[:, c] >= 0).mean() and (active[active[:, c] >= 0, c] == 1).mean():.3f}"
-                    for c, cl in enumerate(CELL_LINES)))
+    print(
+        f"[train] n_rows={len(smiles)}  active_rates="
+        + ", ".join(
+            f"{cl}={(active[:, c] >= 0).mean() and (active[active[:, c] >= 0, c] == 1).mean():.3f}"
+            for c, cl in enumerate(CELL_LINES)
+        )
+    )
 
     # Featurise SMILES once (reuse across seeds/splits).
     print("[train] featurising SMILES ...")
@@ -471,7 +520,10 @@ def main() -> int:
     class _SmilesAdapter:
         def __init__(self, smi):
             self.smiles = np.asarray(smi, dtype=object)
-        def __len__(self): return len(self.smiles)
+
+        def __len__(self):
+            return len(self.smiles)
+
     splitter = ScaffoldSplitter(fractions=(0.7, 0.1, 0.2))
     ds = _SmilesAdapter(smiles)
 
@@ -487,72 +539,98 @@ def main() -> int:
         va_idx = np.asarray(split.val_idx, dtype=np.int64)
         te_idx = np.asarray(split.test_idx, dtype=np.int64)
         # Filter rows with valid graphs.
-        tr_idx = np.array([i for i in tr_idx if graphs[i] is not None
-                           and (active[i] >= 0).any()])
-        va_idx = np.array([i for i in va_idx if graphs[i] is not None
-                           and (active[i] >= 0).any()])
-        te_idx = np.array([i for i in te_idx if graphs[i] is not None
-                           and (active[i] >= 0).any()])
+        tr_idx = np.array(
+            [i for i in tr_idx if graphs[i] is not None and (active[i] >= 0).any()]
+        )
+        va_idx = np.array(
+            [i for i in va_idx if graphs[i] is not None and (active[i] >= 0).any()]
+        )
+        te_idx = np.array(
+            [i for i in te_idx if graphs[i] is not None and (active[i] >= 0).any()]
+        )
         if args.limit:
             tr_idx = tr_idx[: args.limit]
 
         # Build model + load tmQM pretrained backbone.
         model = ThreeCellDMPNN().to(device)
         n_loaded = load_tmqm_encoder(model, args.encoder)
-        print(f"[train] seed={seed} loaded {n_loaded}/12 backbone tensors "
-              f"from tmQM  n_train={len(tr_idx)}  n_val={len(va_idx)}  "
-              f"n_test={len(te_idx)}")
+        print(
+            f"[train] seed={seed} loaded {n_loaded}/12 backbone tensors "
+            f"from tmQM  n_train={len(tr_idx)}  n_val={len(va_idx)}  "
+            f"n_test={len(te_idx)}"
+        )
 
-        optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr,
-                                      weight_decay=WEIGHT_DECAY)
+        optimizer = torch.optim.AdamW(
+            model.parameters(), lr=args.lr, weight_decay=WEIGHT_DECAY
+        )
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=args.epochs * max(len(tr_idx) // args.batch, 1))
+            optimizer, T_max=args.epochs * max(len(tr_idx) // args.batch, 1)
+        )
 
         best_mean_val_auc = -1.0
         best_state = None
         for epoch in range(1, args.epochs + 1):
             tr_loss = _train_one_epoch(
-                model, optimizer, scheduler,
-                graphs, active, res_feat, tr_idx, device, amp_dtype)
+                model,
+                optimizer,
+                scheduler,
+                graphs,
+                active,
+                res_feat,
+                tr_idx,
+                device,
+                amp_dtype,
+            )
             if epoch == 1 or epoch == args.epochs or epoch % args.eval_every == 0:
-                val_probs = _predict(model, graphs, res_feat, va_idx,
-                                     device, amp_dtype)
+                val_probs = _predict(model, graphs, res_feat, va_idx, device, amp_dtype)
                 val_aucs = _per_cell_auc(active[va_idx], val_probs)
                 mean_val = float(np.mean(list(val_aucs.values()))) if val_aucs else 0.0
                 if mean_val > best_mean_val_auc:
                     best_mean_val_auc = mean_val
-                    best_state = {k: v.detach().cpu().clone()
-                                  for k, v in model.state_dict().items()}
-                print(f"[train] seed={seed} epoch={epoch:3d} "
-                      f"loss={tr_loss:.4f}  "
-                      + "  ".join(f"val_{cl}={val_aucs.get(cl, 0):.3f}"
-                                  for cl in CELL_LINES)
-                      + f"  mean_val={mean_val:.3f}  best={best_mean_val_auc:.3f}")
+                    best_state = {
+                        k: v.detach().cpu().clone()
+                        for k, v in model.state_dict().items()
+                    }
+                print(
+                    f"[train] seed={seed} epoch={epoch:3d} "
+                    f"loss={tr_loss:.4f}  "
+                    + "  ".join(
+                        f"val_{cl}={val_aucs.get(cl, 0):.3f}" for cl in CELL_LINES
+                    )
+                    + f"  mean_val={mean_val:.3f}  best={best_mean_val_auc:.3f}"
+                )
         # Restore best.
         if best_state is not None:
             model.load_state_dict(best_state)
         test_probs = _predict(model, graphs, res_feat, te_idx, device, amp_dtype)
         test_aucs = _per_cell_auc(active[te_idx], test_probs)
-        seed_results.append({
-            "seed": seed,
-            "test_auc_per_cell": test_aucs,
-            "test_auc_mean": float(np.mean(list(test_aucs.values()))) if test_aucs else 0.0,
-            "best_mean_val_auc": best_mean_val_auc,
-            "n_loaded_backbone": n_loaded,
-            "n_train": int(len(tr_idx)),
-            "n_val": int(len(va_idx)),
-            "n_test": int(len(te_idx)),
-        })
-        print(f"[train] seed={seed} TEST AUCs="
-              + "  ".join(f"{cl}={test_aucs.get(cl, 0):.3f}"
-                          for cl in CELL_LINES)
-              + f"  mean={seed_results[-1]['test_auc_mean']:.4f}")
+        seed_results.append(
+            {
+                "seed": seed,
+                "test_auc_per_cell": test_aucs,
+                "test_auc_mean": float(np.mean(list(test_aucs.values())))
+                if test_aucs
+                else 0.0,
+                "best_mean_val_auc": best_mean_val_auc,
+                "n_loaded_backbone": n_loaded,
+                "n_train": int(len(tr_idx)),
+                "n_val": int(len(va_idx)),
+                "n_test": int(len(te_idx)),
+            }
+        )
+        print(
+            f"[train] seed={seed} TEST AUCs="
+            + "  ".join(f"{cl}={test_aucs.get(cl, 0):.3f}" for cl in CELL_LINES)
+            + f"  mean={seed_results[-1]['test_auc_mean']:.4f}"
+        )
 
     elapsed = time.time() - t_start
     print(f"[train] all seeds done in {elapsed/60:.1f} min")
 
     # ----- aggregate JSON -----
-    per_cell: Dict[str, Dict[str, List[float]]] = {cl: {"per_seed": []} for cl in CELL_LINES}
+    per_cell: Dict[str, Dict[str, List[float]]] = {
+        cl: {"per_seed": []} for cl in CELL_LINES
+    }
     means: List[float] = []
     for r in seed_results:
         means.append(r["test_auc_mean"])
@@ -565,20 +643,26 @@ def main() -> int:
 
     out = {
         "metric": "platinai_3cell_resistance",
-        "description": ("Test ROC-AUC per cell line on PlatinAI 4,078 Pt dataset "
-                        "after dropping the A2780 column (label-noise, r=0.003 vs "
-                        "A2780cis). 3-cell-line D-MPNN with chemoinformatic "
-                        "resistance side-features and tmQM-pretrained init."),
+        "description": (
+            "Test ROC-AUC per cell line on PlatinAI 4,078 Pt dataset "
+            "after dropping the A2780 column (label-noise, r=0.003 vs "
+            "A2780cis). 3-cell-line D-MPNN with chemoinformatic "
+            "resistance side-features and tmQM-pretrained init."
+        ),
         "unit": "ROC-AUC (0-1, higher better) per cell line",
         "scope": "tier1_precious_metal_anticancer",
-        "source": ("molmetal/scripts/train_cisplatin_resistance.py "
-                   f"(seeds={args.seeds}, epochs={args.epochs}, "
-                   f"batch={args.batch}, lr={args.lr})"),
+        "source": (
+            "molmetal/scripts/train_cisplatin_resistance.py "
+            f"(seeds={args.seeds}, epochs={args.epochs}, "
+            f"batch={args.batch}, lr={args.lr})"
+        ),
         "diagnosis": {
             "a2780_dropped": True,
-            "reason": ("A2780 4-cell AUC was 0.350 (worse than random); "
-                       "log(IC50) Pearson r vs A2780cis = 0.003. Treated as "
-                       "a labelling artefact and excluded from this 3-cell run."),
+            "reason": (
+                "A2780 4-cell AUC was 0.350 (worse than random); "
+                "log(IC50) Pearson r vs A2780cis = 0.003. Treated as "
+                "a labelling artefact and excluded from this 3-cell run."
+            ),
             "reference": "metrics/by_metric/platinai_4cell_auc.json",
         },
         "value_overall_mean_auc": float(np.mean(means)),

@@ -74,21 +74,20 @@ class TestNCI60Schema:
         """GATE-6 contract: column list is exactly ``CANONICAL_COLUMNS``."""
         df = load_nci60()
         assert tuple(df.columns) == CANONICAL_COLUMNS, (
-            f"nci60 columns {df.columns.tolist()} != canonical "
-            f"{CANONICAL_COLUMNS}"
+            f"nci60 columns {df.columns.tolist()} != canonical " f"{CANONICAL_COLUMNS}"
         )
 
     def test_pIC50_numeric_and_finite(self) -> None:
         df = load_nci60()
-        assert pd.api.types.is_numeric_dtype(df["pIC50"]), (
-            f"pIC50 should be numeric, got {df['pIC50'].dtype}"
-        )
-        assert int(df["pIC50"].isna().sum()) == 0, (
-            f"nci60 has {int(df['pIC50'].isna().sum())} NaN pIC50"
-        )
-        assert df["pIC50"].apply(lambda v: math.isfinite(float(v))).all(), (
-            "nci60 has non-finite pIC50"
-        )
+        assert pd.api.types.is_numeric_dtype(
+            df["pIC50"]
+        ), f"pIC50 should be numeric, got {df['pIC50'].dtype}"
+        assert (
+            int(df["pIC50"].isna().sum()) == 0
+        ), f"nci60 has {int(df['pIC50'].isna().sum())} NaN pIC50"
+        assert (
+            df["pIC50"].apply(lambda v: math.isfinite(float(v))).all()
+        ), "nci60 has non-finite pIC50"
 
     def test_metal_and_protein_NA_filled(self) -> None:
         """NCI-60 link CSV carries no per-row metal / protein identifier.
@@ -117,24 +116,23 @@ class TestNCI60RowAndSplit:
         """Project-shipped CSV carries exactly 7,823 rows (MEASURED Sep 28)."""
         df = load_nci60()
         assert len(df) == EXPECTED_ROW_COUNT, (
-            f"nci60 row count drifted: expected {EXPECTED_ROW_COUNT}, "
-            f"got {len(df)}"
+            f"nci60 row count drifted: expected {EXPECTED_ROW_COUNT}, " f"got {len(df)}"
         )
 
     def test_cell_line_diversity(self) -> None:
         """≥3 unique NCI-60 cell-line identifiers (non-trivial panel)."""
         df = load_nci60()
         unique_cells = df["cell_line"].unique().tolist()
-        assert len(unique_cells) >= 3, (
-            f"nci60 cell_line should have ≥3 unique lines, got {unique_cells}"
-        )
+        assert (
+            len(unique_cells) >= 3
+        ), f"nci60 cell_line should have ≥3 unique lines, got {unique_cells}"
         # And each cell line has ≥10 rows (real cell-line panel, not a
         # single-cell artefact).
         per_cell = df["cell_line"].value_counts()
         for cl in unique_cells:
-            assert int(per_cell.get(cl, 0)) >= 10, (
-                f"cell_line {cl} has only {int(per_cell.get(cl, 0))} rows"
-            )
+            assert (
+                int(per_cell.get(cl, 0)) >= 10
+            ), f"cell_line {cl} has only {int(per_cell.get(cl, 0))} rows"
 
     def test_scaffold_split_returns_three_index_arrays(self) -> None:
         """Bemis-Murcko scaffold split partitions indices 3-way."""
@@ -155,9 +153,9 @@ class TestNCI60RowAndSplit:
             scaffolds.setdefault(sc, []).append(i)
 
         # ≥95 % SMILES parseable
-        assert parseable / len(df) >= 0.95, (
-            f"only {parseable}/{len(df)} SMILES are RDKit-parseable"
-        )
+        assert (
+            parseable / len(df) >= 0.95
+        ), f"only {parseable}/{len(df)} SMILES are RDKit-parseable"
 
         # Partition 80/10/10 in deterministic order
         sorted_groups = sorted(scaffolds.values(), key=len, reverse=True)
@@ -176,12 +174,10 @@ class TestNCI60RowAndSplit:
 
         # 3-way partition covers the full row range, no overlap.
         all_idx = set(train_idx) | set(val_idx) | set(test_idx)
-        assert len(all_idx) == n, (
-            f"scaffold split lost rows: {n - len(all_idx)} missing"
-        )
         assert (
-            len(train_idx) > 0 and len(val_idx) > 0 and len(test_idx) > 0
-        ), (
+            len(all_idx) == n
+        ), f"scaffold split lost rows: {n - len(all_idx)} missing"
+        assert len(train_idx) > 0 and len(val_idx) > 0 and len(test_idx) > 0, (
             f"empty partition: train={len(train_idx)} val={len(val_idx)} "
             f"test={len(test_idx)}"
         )
@@ -218,9 +214,9 @@ class TestNCI60EdgeCases:
             load_nci60(path=bad)
         msg = str(excinfo.value)
         # The error should list the missing canonical columns.
-        assert any(c in msg for c in CANONICAL_COLUMNS), (
-            f"error should list missing canonical columns: {msg}"
-        )
+        assert any(
+            c in msg for c in CANONICAL_COLUMNS
+        ), f"error should list missing canonical columns: {msg}"
 
 
 # ---------------------------------------------------------------------------
@@ -232,6 +228,7 @@ class TestNCI60Integration:
     def test_smiles_rdkit_round_trip(self) -> None:
         """At least 95 % of nci60 SMILES round-trip through RDKit."""
         from rdkit import Chem, RDLogger
+
         RDLogger.DisableLog("rdApp.*")
 
         df = load_nci60()
@@ -255,14 +252,14 @@ class TestNCI60Integration:
         numeric pIC50 + boolean active.
         """
         df = load_nci60()
-        assert pd.api.types.is_string_dtype(df["smiles"]), (
-            f"smiles should be string-like, got {df['smiles'].dtype}"
-        )
+        assert pd.api.types.is_string_dtype(
+            df["smiles"]
+        ), f"smiles should be string-like, got {df['smiles'].dtype}"
         assert pd.api.types.is_numeric_dtype(df["pIC50"])
         assert df["active"].dtype == bool
-        assert pd.api.types.is_string_dtype(df["cell_line"]), (
-            f"cell_line should be string-like, got {df['cell_line'].dtype}"
-        )
+        assert pd.api.types.is_string_dtype(
+            df["cell_line"]
+        ), f"cell_line should be string-like, got {df['cell_line'].dtype}"
         # And no NaN in string columns (cell_line carries real NCI-60
         # identifiers; metal / protein are 'NA'-filled).
         for c in ("smiles", "metal", "cell_line", "protein"):
@@ -280,11 +277,7 @@ class TestNCI60CrossLoaderPairing:
 
     def test_default_csv_path_exists_on_disk(self) -> None:
         """``DEFAULT_CSV`` points at the project-shipped CSV."""
-        assert DEFAULT_CSV.exists(), (
-            f"DEFAULT_CSV {DEFAULT_CSV} does not exist on disk"
-        )
+        assert DEFAULT_CSV.exists(), f"DEFAULT_CSV {DEFAULT_CSV} does not exist on disk"
         # ≥7000 rows minimum (the 7823-row project-shipped subset).
         n_lines = sum(1 for _ in open(DEFAULT_CSV, "r", encoding="utf-8"))
-        assert n_lines >= 7000, (
-            f"DEFAULT_CSV has only {n_lines} lines; expected ≥7000"
-        )
+        assert n_lines >= 7000, f"DEFAULT_CSV has only {n_lines} lines; expected ≥7000"

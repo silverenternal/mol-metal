@@ -43,7 +43,9 @@ from molmetal.adapters.flow_matching_lipman import EGNNVelocityField
 def vfield():
     """A tiny EGNN velocity field on CPU (test runs in <1s)."""
     return EGNNVelocityField(
-        hidden_dim=32, n_layers=2, max_atomic_number=20,
+        hidden_dim=32,
+        n_layers=2,
+        max_atomic_number=20,
     )
 
 
@@ -75,10 +77,19 @@ def test_v_cfg_shapes_match_forward_velocity(vfield, batch_inputs):
     x, atom_types, edge_index, t, pocket_embed = batch_inputs
     vfield.eval()
     v_ref = vfield.forward_velocity(
-        x, atom_types, edge_index, t, pocket_embed=pocket_embed,
+        x,
+        atom_types,
+        edge_index,
+        t,
+        pocket_embed=pocket_embed,
     )
     v_cfg = vfield.v_cfg(
-        x, atom_types, edge_index, t, pocket_embed=pocket_embed, cfg_scale=2.0,
+        x,
+        atom_types,
+        edge_index,
+        t,
+        pocket_embed=pocket_embed,
+        cfg_scale=2.0,
     )
     assert v_cfg.shape == v_ref.shape == (4, 6, 3)
     assert v_cfg.dtype == v_ref.dtype
@@ -95,15 +106,23 @@ def test_cfg_scale_one_equals_conditional_fast_path(vfield, batch_inputs):
     x, atom_types, edge_index, t, pocket_embed = batch_inputs
     vfield.eval()
     v_ref = vfield.forward_velocity(
-        x, atom_types, edge_index, t, pocket_embed=pocket_embed,
+        x,
+        atom_types,
+        edge_index,
+        t,
+        pocket_embed=pocket_embed,
     )
     v_cfg = vfield.v_cfg(
-        x, atom_types, edge_index, t,
-        pocket_embed=pocket_embed, cfg_scale=1.0,
+        x,
+        atom_types,
+        edge_index,
+        t,
+        pocket_embed=pocket_embed,
+        cfg_scale=1.0,
     )
-    assert torch.allclose(v_cfg, v_ref, atol=0.0), (
-        "cfg_scale=1.0 fast-path drifted from forward_velocity"
-    )
+    assert torch.allclose(
+        v_cfg, v_ref, atol=0.0
+    ), "cfg_scale=1.0 fast-path drifted from forward_velocity"
 
 
 # ---------------------------------------------------------------------------
@@ -115,15 +134,27 @@ def test_cfg_combination_is_correct(vfield, batch_inputs, cfg_scale):
     x, atom_types, edge_index, t, pocket_embed = batch_inputs
     vfield.eval()
     v_cond = vfield.forward_velocity(
-        x, atom_types, edge_index, t, pocket_embed=pocket_embed,
+        x,
+        atom_types,
+        edge_index,
+        t,
+        pocket_embed=pocket_embed,
     )
     v_uncond = vfield.forward_velocity(
-        x, atom_types, edge_index, t, pocket_embed=None,
+        x,
+        atom_types,
+        edge_index,
+        t,
+        pocket_embed=None,
     )
     expected = v_uncond + cfg_scale * (v_cond - v_uncond)
     v_cfg = vfield.v_cfg(
-        x, atom_types, edge_index, t,
-        pocket_embed=pocket_embed, cfg_scale=cfg_scale,
+        x,
+        atom_types,
+        edge_index,
+        t,
+        pocket_embed=pocket_embed,
+        cfg_scale=cfg_scale,
     )
     # Floating-point tolerance: the CFG path runs two forwards then a
     # linear combination; numerical noise from matmul order may differ
@@ -152,7 +183,11 @@ def test_context_dropout_fires_in_training(vfield, batch_inputs):
     # zero everywhere, which is what happens on a fully-dropped batch).
     vfield.eval()
     v_uncond_ref = vfield.forward_velocity(
-        x, atom_types, edge_index, t, pocket_embed=None,
+        x,
+        atom_types,
+        edge_index,
+        t,
+        pocket_embed=None,
     )
 
     # Now sample many forward passes in training mode and look for at
@@ -179,14 +214,18 @@ def test_context_dropout_zero_is_bit_exact(vfield, batch_inputs):
 
     vfield.eval()
     v_eval = vfield.forward_velocity(
-        x, atom_types, edge_index, t, pocket_embed=pocket_embed,
+        x,
+        atom_types,
+        edge_index,
+        t,
+        pocket_embed=pocket_embed,
     )
     vfield.train()
     out = vfield(x, atom_types, edge_index, t, pocket_embed=pocket_embed)
     v_train = out["vel"]
-    assert torch.allclose(v_train, v_eval, atol=0.0), (
-        "context_dropout=0 broke bit-exact equivalence between train/eval"
-    )
+    assert torch.allclose(
+        v_train, v_eval, atol=0.0
+    ), "context_dropout=0 broke bit-exact equivalence between train/eval"
 
 
 # ---------------------------------------------------------------------------
@@ -199,12 +238,20 @@ def test_cfg_unconditional_passthrough(vfield, batch_inputs, cfg_scale):
     x, atom_types, edge_index, t, _pocket_embed = batch_inputs
     vfield.eval()
     v_uncond = vfield.forward_velocity(
-        x, atom_types, edge_index, t, pocket_embed=None,
+        x,
+        atom_types,
+        edge_index,
+        t,
+        pocket_embed=None,
     )
     v_cfg = vfield.v_cfg(
-        x, atom_types, edge_index, t,
-        pocket_embed=None, cfg_scale=cfg_scale,
+        x,
+        atom_types,
+        edge_index,
+        t,
+        pocket_embed=None,
+        cfg_scale=cfg_scale,
     )
-    assert torch.allclose(v_cfg, v_uncond, atol=0.0), (
-        f"unconditional v_cfg drifted at cfg_scale={cfg_scale}"
-    )
+    assert torch.allclose(
+        v_cfg, v_uncond, atol=0.0
+    ), f"unconditional v_cfg drifted at cfg_scale={cfg_scale}"

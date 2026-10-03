@@ -101,9 +101,9 @@ def test_compat_matrix_full_grid():
     # ------------------------------------------------------------------
     s = COMPAT_MATRIX["Pt_IV"]
     for rule in click_rules_5:
-        assert s[rule] == "compatible", (
-            f"Pt_IV must allow all 5 click rules; got {s[rule]} for {rule}"
-        )
+        assert (
+            s[rule] == "compatible"
+        ), f"Pt_IV must allow all 5 click rules; got {s[rule]} for {rule}"
 
     # ------------------------------------------------------------------
     # labile_metal row (Cu / Zn / Fe / Mn; fast ligand exchange):
@@ -111,9 +111,9 @@ def test_compat_matrix_full_grid():
     # ------------------------------------------------------------------
     s = COMPAT_MATRIX["labile_metal"]
     for rule in click_rules_5:
-        assert s[rule] == "compatible", (
-            f"labile_metal must allow all 5 click rules; got {s[rule]} for {rule}"
-        )
+        assert (
+            s[rule] == "compatible"
+        ), f"labile_metal must allow all 5 click rules; got {s[rule]} for {rule}"
 
     # ------------------------------------------------------------------
     # unknown row (fallback):
@@ -146,9 +146,7 @@ def test_compat_matrix_full_grid():
 def test_strict_pt_ii_cuacc_allowed():
     """CuAAC on strict_Pt_II must be in the default-compatible set."""
     rules = default_compatible_rules("strict_Pt_II")
-    assert "CuAAC" in rules, (
-        f"CuAAC must be compatible on strict_Pt_II; got {rules}"
-    )
+    assert "CuAAC" in rules, f"CuAAC must be compatible on strict_Pt_II; got {rules}"
     # SPAAC is the other safe cycloaddition on strict Pt_II.
     assert "SPAAC" in rules
     # And the F2(a) metal-coordination rules are explicitly compatible
@@ -172,12 +170,10 @@ def test_strict_pt_ii_thiol_ene_disallowed():
         f"got {rules_default}"
     )
     # Opt-in via allow_incompatible: now ThiolEne is included.
-    rules_opt = default_compatible_rules(
-        "strict_Pt_II", allow_incompatible=True
-    )
-    assert "ThiolEne" in rules_opt, (
-        "ThiolEne must be included when allow_incompatible=True"
-    )
+    rules_opt = default_compatible_rules("strict_Pt_II", allow_incompatible=True)
+    assert (
+        "ThiolEne" in rules_opt
+    ), "ThiolEne must be included when allow_incompatible=True"
     # AmideCoupling: same story — incompatible on strict_Pt_II by
     # default, opt-in only.
     assert "AmideCoupling" not in rules_default
@@ -191,24 +187,34 @@ def test_labile_pt_promiscuous():
     """labile_metal allows all 5 click rules + the 2 metal-coord rules."""
     rules = default_compatible_rules("labile_metal")
     expected = {
-        "CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling",
-        "metal_ligand_exchange", "aqua_exchange",
+        "CuAAC",
+        "SPAAC",
+        "ThiolEne",
+        "Suzuki",
+        "AmideCoupling",
+        "metal_ligand_exchange",
+        "aqua_exchange",
     }
-    assert set(rules) == expected, (
-        f"labile_metal must allow all 7 rules; got {set(rules)}"
-    )
+    assert (
+        set(rules) == expected
+    ), f"labile_metal must allow all 7 rules; got {set(rules)}"
 
 
 def test_unknown_scaffold_promiscuous():
     """Unknown scaffold -> conservative default = all 7 rules allowed."""
     rules = default_compatible_rules("unknown")
     expected = {
-        "CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling",
-        "metal_ligand_exchange", "aqua_exchange",
+        "CuAAC",
+        "SPAAC",
+        "ThiolEne",
+        "Suzuki",
+        "AmideCoupling",
+        "metal_ligand_exchange",
+        "aqua_exchange",
     }
-    assert set(rules) == expected, (
-        f"unknown scaffold must default to all 7 rules; got {set(rules)}"
-    )
+    assert (
+        set(rules) == expected
+    ), f"unknown scaffold must default to all 7 rules; got {set(rules)}"
 
 
 # ---------------------------------------------------------------------------
@@ -227,9 +233,9 @@ def test_auto_pt_strict_picks_cuacc_only():
     cisplatin_smiles = "N.N.[Cl][Pt][Cl]"
     # Auto-detect scaffold.
     scaffold = detect_scaffold(cisplatin_smiles)
-    assert scaffold == "strict_Pt_II", (
-        f"cisplatin SMILES must detect as strict_Pt_II; got {scaffold}"
-    )
+    assert (
+        scaffold == "strict_Pt_II"
+    ), f"cisplatin SMILES must detect as strict_Pt_II; got {scaffold}"
     # Derive default-compatible subset.
     rules = default_compatible_rules(scaffold)
     # CuAAC + SPAAC + the 2 metal-coord rules must be present.
@@ -242,9 +248,7 @@ def test_auto_pt_strict_picks_cuacc_only():
     assert "AmideCoupling" not in rules
     # Suzuki is MARGINAL -> included by default
     # (the helper always includes marginal rules).
-    assert "Suzuki" in rules, (
-        "Suzuki is MARGINAL on strict_Pt_II -> always included"
-    )
+    assert "Suzuki" in rules, "Suzuki is MARGINAL on strict_Pt_II -> always included"
 
 
 # ---------------------------------------------------------------------------
@@ -262,8 +266,7 @@ def test_friendly_name_carboplatin_chelating():
 def test_friendly_name_satraplatin_pt_iv():
     """``detect_scaffold(smiles, name_hint='satraplatin')`` -> Pt_IV."""
     scaffold = detect_scaffold(
-        "CC1=C(C(=O)O[Pt]([NH3])([NH3])(OC(=O)c2ccccc2)"
-        "C(C)(C)C)C(C)(C)C=C1",
+        "CC1=C(C(=O)O[Pt]([NH3])([NH3])(OC(=O)c2ccccc2)" "C(C)(C)C)C(C)(C)C=C1",
         name_hint="satraplatin",
     )
     assert scaffold == "Pt_IV"
@@ -287,9 +290,9 @@ def test_friendly_name_unknown_defaults_unknown():
     # MolFromSmiles parse -> the helper falls back to the name hint.
     # With an unknown hint, the result must be "unknown".
     scaffold = detect_scaffold("not_a_valid_smiles_!!", name_hint="nonexistent_hint")
-    assert scaffold == "unknown", (
-        f"unknown SMILES + unknown hint must return 'unknown'; got {scaffold}"
-    )
+    assert (
+        scaffold == "unknown"
+    ), f"unknown SMILES + unknown hint must return 'unknown'; got {scaffold}"
 
     # And: empty SMILES + None hint -> unknown.
     scaffold_empty = detect_scaffold("", name_hint=None)
@@ -324,9 +327,9 @@ def test_marginal_rules_per_scaffold():
     """Pin the ``marginal_rules`` helper per scaffold."""
     # strict_Pt_II: Suzuki is the only MARGINAL rule.
     marg = marginal_rules("strict_Pt_II")
-    assert marg == ["Suzuki"], (
-        f"strict_Pt_II should have exactly Suzuki as marginal; got {marg}"
-    )
+    assert marg == [
+        "Suzuki"
+    ], f"strict_Pt_II should have exactly Suzuki as marginal; got {marg}"
     # Pt_II_chelating: Suzuki is MARGINAL.
     assert "Suzuki" in marginal_rules("Pt_II_chelating")
     # Pt_IV / labile_metal / unknown: no marginal rules.

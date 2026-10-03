@@ -65,12 +65,15 @@ def toy_mols():
         g_i = torch.Generator().manual_seed(100 + i)
         coords = torch.randn(6, 3, generator=g_i)
         atom_types = torch.randint(1, 10, (6,), generator=g_i)
-        out.append(Molecule(
-            coords=coords, atom_types=atom_types,
-            bonds=torch.zeros(2, 0, dtype=torch.long),
-            bond_types=torch.zeros(0, dtype=torch.long),
-            formal_charges=torch.zeros(6, dtype=torch.long),
-        ))
+        out.append(
+            Molecule(
+                coords=coords,
+                atom_types=atom_types,
+                bonds=torch.zeros(2, 0, dtype=torch.long),
+                bond_types=torch.zeros(0, dtype=torch.long),
+                formal_charges=torch.zeros(6, dtype=torch.long),
+            )
+        )
     return out
 
 
@@ -160,7 +163,7 @@ def test_pocket_conditioning_loss_decreases(small_adapter, toy_pocket, toy_mols)
     atoms = torch.stack([m.atom_types for m in toy_mols]).to(device).repeat(16, 1)
     generator = torch.Generator(device=device).manual_seed(2026)
     x0 = torch.randn(x1.shape, device=device, generator=generator)
-    t = torch.linspace(.05, .95, 16, device=device).repeat_interleave(len(toy_mols))
+    t = torch.linspace(0.05, 0.95, 16, device=device).repeat_interleave(len(toy_mols))
     edges = adapter._make_dummy_edge_index(len(x1), x1.shape[1], device)
 
     def common_loss():
@@ -170,22 +173,32 @@ def test_pocket_conditioning_loss_decreases(small_adapter, toy_pocket, toy_mols)
             with torch.no_grad():
                 embed = adapter._encode_pocket(toy_pocket, len(x1), x1.shape[1], device)
                 sample = adapter.path.sample(x_0=x0, x_1=x1, t=t)
-                output = adapter.velocity_field(sample.x_t, torch.zeros_like(atoms), edges, t, pocket_embed=embed)
-                cfm = (output['vel'] - sample.dx_t).square().sum(-1).mean()
-                atom = torch.nn.functional.cross_entropy(output['atom_logits'].flatten(0, 1), atoms.flatten())
+                output = adapter.velocity_field(
+                    sample.x_t, torch.zeros_like(atoms), edges, t, pocket_embed=embed
+                )
+                cfm = (output["vel"] - sample.dx_t).square().sum(-1).mean()
+                atom = torch.nn.functional.cross_entropy(
+                    output["atom_logits"].flatten(0, 1), atoms.flatten()
+                )
                 return float(cfm + adapter._atom_loss_weight * atom)
         finally:
             adapter.velocity_field.train()
             adapter.pocket_encoder.train()
 
     before = common_loss()
-    pocket_before = [param.detach().clone() for param in adapter.pocket_encoder.parameters()]
+    pocket_before = [
+        param.detach().clone() for param in adapter.pocket_encoder.parameters()
+    ]
     # Identity prediction now receives masked inputs instead of copying its
     # labels from the embedding; retain the 5% criterion with 100 updates.
     for step in range(100):
         torch.manual_seed(1000 + step)
         assert math.isfinite(adapter.train_step(pocket=toy_pocket, mols=toy_mols))
     after = common_loss()
-    assert after < .95 * before, f"common evaluation loss: {before:.4f} -> {after:.4f}"
-    assert any(not torch.equal(before_param, after_param)
-               for before_param, after_param in zip(pocket_before, adapter.pocket_encoder.parameters()))
+    assert after < 0.95 * before, f"common evaluation loss: {before:.4f} -> {after:.4f}"
+    assert any(
+        not torch.equal(before_param, after_param)
+        for before_param, after_param in zip(
+            pocket_before, adapter.pocket_encoder.parameters()
+        )
+    )

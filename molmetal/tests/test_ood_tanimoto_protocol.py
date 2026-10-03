@@ -34,6 +34,7 @@ Run with::
     uv run --no-sync pytest -q \\
         molmetal/tests/test_ood_tanimoto_protocol.py --tb=short
 """
+
 from __future__ import annotations
 
 import json
@@ -135,9 +136,7 @@ def test_default_output_dir() -> None:
 # ---------------------------------------------------------------------------
 def test_default_tmqm_csv_exists() -> None:
     """The default tmQM CSV (Wf-28 ship) is present on disk."""
-    assert Path(DEFAULT_TMQM_CSV).is_file(), (
-        f"tmQM CSV missing at {DEFAULT_TMQM_CSV}"
-    )
+    assert Path(DEFAULT_TMQM_CSV).is_file(), f"tmQM CSV missing at {DEFAULT_TMQM_CSV}"
 
 
 # ---------------------------------------------------------------------------
@@ -174,18 +173,17 @@ def test_load_tmqm_pool_loads() -> None:
     pool = load_tmqm_pool(Path(DEFAULT_TMQM_CSV), max_per_cluster=10)
     assert isinstance(pool, dict)
     assert len(pool) >= 5, (
-        f"tmQM pool must have >= 5 clusters (d-block 30 metals); "
-        f"got {len(pool)}"
+        f"tmQM pool must have >= 5 clusters (d-block 30 metals); " f"got {len(pool)}"
     )
     # All values are lists of rows.
     for cluster, rows in pool.items():
         assert isinstance(rows, list)
-        assert all("smiles" in r and "metal_center" in r for r in rows), (
-            f"cluster {cluster} rows must have smiles + metal_center"
-        )
-        assert all(r["metal_center"] == cluster for r in rows), (
-            f"cluster {cluster} contains foreign rows"
-        )
+        assert all(
+            "smiles" in r and "metal_center" in r for r in rows
+        ), f"cluster {cluster} rows must have smiles + metal_center"
+        assert all(
+            r["metal_center"] == cluster for r in rows
+        ), f"cluster {cluster} contains foreign rows"
 
 
 # ---------------------------------------------------------------------------
@@ -240,6 +238,7 @@ def test_benchmark_cluster_computes_matrices() -> None:
     ]
     # Lazy-load the protocol to avoid pulling RDKit at import time.
     from molmetal_lam.lam_chem.ood_protocol import TanimotoOODProtocol
+
     protocol = TanimotoOODProtocol(threshold=0.4, radius=2, n_bits=2048)
 
     result = benchmark_cluster(
@@ -259,12 +258,17 @@ def test_benchmark_cluster_computes_matrices() -> None:
     # Each matrix summary has the expected keys.
     for side, summary in result["matrices"].items():
         for key in (
-            "n_pairs", "min", "max", "mean", "median", "std",
-            "fraction_below_threshold", "threshold", "matrix",
+            "n_pairs",
+            "min",
+            "max",
+            "mean",
+            "median",
+            "std",
+            "fraction_below_threshold",
+            "threshold",
+            "matrix",
         ):
-            assert key in summary, (
-                f"matrix {side} missing key {key!r}"
-            )
+            assert key in summary, f"matrix {side} missing key {key!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -308,9 +312,7 @@ def test_run_protocol_verification_passes(tmp_path: Path) -> None:
     # On a per-cluster 80/20 split the cross-side pairs are
     # predominantly different SMILES (different CSD codes), so
     # Tanimoto<0.4 should hold for nearly every cross-pair.
-    assert agg["fraction_below_threshold"] >= float(
-        OOD_VERIFICATION_TARGET
-    ), (
+    assert agg["fraction_below_threshold"] >= float(OOD_VERIFICATION_TARGET), (
         f"verification failed: fraction_below_threshold="
         f"{agg['fraction_below_threshold']:.4f} < target "
         f"{OOD_VERIFICATION_TARGET:.2f}"

@@ -45,9 +45,14 @@ def _mol_to_molecule(mol, conformer_id: int = 0) -> Molecule:
     conf = mol.GetConformer(conformer_id)
     n_atoms = mol.GetNumAtoms()
     coords = torch.tensor(
-        [[conf.GetAtomPosition(i).x,
-          conf.GetAtomPosition(i).y,
-          conf.GetAtomPosition(i).z] for i in range(n_atoms)],
+        [
+            [
+                conf.GetAtomPosition(i).x,
+                conf.GetAtomPosition(i).y,
+                conf.GetAtomPosition(i).z,
+            ]
+            for i in range(n_atoms)
+        ],
         dtype=torch.float32,
     )
     atom_types = torch.tensor(
@@ -193,5 +198,6 @@ def _rdkit_bond_type_to_int(bt) -> int:
 
 def _int_to_rdkit_bond_type(b: int):
     from rdkit import Chem
+
     name = _INT_TO_RD_BOND_TYPE.get(int(b), "SINGLE")
     return getattr(Chem.rdchem.BondType, name)

@@ -9,6 +9,7 @@ Two contract tests:
    (not NaN, not None) for a SMILES the model is expected to handle.
    SMILES that fail to parse must return ``float("nan")``.
 """
+
 from __future__ import annotations
 
 import math
@@ -43,6 +44,7 @@ def _import_predictor():
         AttentiveDMPNNPredictor,
         predict_pic50,
     )
+
     return AttentiveDMPNNPredictor, predict_pic50
 
 

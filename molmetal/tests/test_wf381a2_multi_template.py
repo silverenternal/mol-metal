@@ -27,6 +27,7 @@ Honest framing (party-twenty-spirit §3.5)
   ``metrics/by_metric/docked_pose_rmsd.json`` (MEASURED by Wf-179
   BD-9 + Wf-341-T1 + Wf-362-A3); skipif if missing.
 """
+
 from __future__ import annotations
 
 import json
@@ -96,14 +97,14 @@ def test_multi_template_dock() -> None:
     assert grid.status == STATUS_SURROGATE
 
     # Non-negative RMSD
-    assert np.all(grid.rmsd_grid >= 0.0), (
-        f"RMSD grid must be non-negative, got min={grid.rmsd_grid.min():.4f}"
-    )
+    assert np.all(
+        grid.rmsd_grid >= 0.0
+    ), f"RMSD grid must be non-negative, got min={grid.rmsd_grid.min():.4f}"
 
     # Finite MM-GBSA energies (no NaN/Inf)
-    assert np.all(np.isfinite(grid.mmgbsa_grid)), (
-        "MM-GBSA grid must be finite (no NaN/Inf)"
-    )
+    assert np.all(
+        np.isfinite(grid.mmgbsa_grid)
+    ), "MM-GBSA grid must be finite (no NaN/Inf)"
 
     # Deterministic with fixed seed
     grid_again = multi_template_dock(
@@ -168,12 +169,12 @@ def test_mm_gbsa_rescore() -> None:
     assert rescore.status == STATUS_SURROGATE
 
     # Best RMSD is non-negative and within grid bounds
-    assert rescore.best_rmsd_angstrom >= 0.0, (
-        f"best_rmsd_angstrom must be non-negative, got {rescore.best_rmsd_angstrom}"
-    )
-    assert rescore.best_rmsd_angstrom <= float(grid.rmsd_grid.max()), (
-        "best RMSD must be within grid range"
-    )
+    assert (
+        rescore.best_rmsd_angstrom >= 0.0
+    ), f"best_rmsd_angstrom must be non-negative, got {rescore.best_rmsd_angstrom}"
+    assert rescore.best_rmsd_angstrom <= float(
+        grid.rmsd_grid.max()
+    ), "best RMSD must be within grid range"
 
     # Best MM-GBSA is negative kcal/mol (typical binding energy)
     assert rescore.best_mmgbsa_kcal < 0.0, (

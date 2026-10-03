@@ -56,6 +56,7 @@ DEFAULT_SA_WEIGHT: float = 0.3
 # Lazy SA score helper
 # ---------------------------------------------------------------------------
 
+
 def compute_sa_score(mol) -> float:
     """Compute the Ertl 2009 SA score for a single RDKit ``Mol``.
 
@@ -83,10 +84,12 @@ def compute_sa_score(mol) -> float:
         from rdkit.Chem import RDConfig  # type: ignore
         import os as _os
         import sys as _sys
+
         sa_dir = _os.path.join(RDConfig.RDContribDir, "SA_Score")
         if sa_dir not in _sys.path:
             _sys.path.append(sa_dir)
         import sascorer as _rdkit_sa  # type: ignore
+
         return float(_rdkit_sa.calculateScore(mol))
     except Exception:
         pass
@@ -104,6 +107,7 @@ def compute_sa_score(mol) -> float:
 # ---------------------------------------------------------------------------
 # Penalty primitives
 # ---------------------------------------------------------------------------
+
 
 def sa_aware_sampling_penalty(
     samples: Union[Sequence[float], "numpy.ndarray"],
@@ -196,7 +200,9 @@ def sa_aware_loss_step(
         log_p1 = z1 - log_sum
         bce = -float(np.mean(log_p1))
 
-    penalty = sa_aware_sampling_penalty(sa_arr, target_sa=target_sa, sa_weight=sa_weight)
+    penalty = sa_aware_sampling_penalty(
+        sa_arr, target_sa=target_sa, sa_weight=sa_weight
+    )
     sa_term = float(np.mean(penalty))
     # sa_weight_loss defaults to 1.0 so the sa_aware_sampling_penalty
     # magnitude (typically 0-2.0 for sa_weight=0.3) is comparable to
@@ -208,6 +214,7 @@ def sa_aware_loss_step(
 # ---------------------------------------------------------------------------
 # Aggregator helper (used by the panel script)
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SAPenaltyAggregate:
@@ -272,7 +279,9 @@ def aggregate_sa_penalty(
             fraction_above_target=float("nan"),
             target_sa=float(target_sa),
         )
-    penalty = sa_aware_sampling_penalty(sa_clean, target_sa=target_sa, sa_weight=sa_weight)
+    penalty = sa_aware_sampling_penalty(
+        sa_clean, target_sa=target_sa, sa_weight=sa_weight
+    )
     return SAPenaltyAggregate(
         n=int(sa_clean.size),
         mean_sa=float(np.mean(sa_clean)),

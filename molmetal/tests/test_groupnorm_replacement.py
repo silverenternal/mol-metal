@@ -245,7 +245,11 @@ def test_honest_inventory_our_dmpnn_has_no_batchnorm():
         # instantiated Module class.
         for name in dir(mod):
             obj = getattr(mod, name)
-            if isinstance(obj, type) and issubclass(obj, nn.Module) and obj is not nn.Module:
+            if (
+                isinstance(obj, type)
+                and issubclass(obj, nn.Module)
+                and obj is not nn.Module
+            ):
                 try:
                     inst = obj()
                 except Exception:

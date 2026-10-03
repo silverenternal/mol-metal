@@ -185,8 +185,7 @@ def _format_table(results: Dict[str, str]) -> str:
 
     lines: List[str] = []
     header = (
-        f"{'Pitfall':<{name_w}}  {'Description':<{label_w}}  "
-        f"{'Status':<{status_w}}"
+        f"{'Pitfall':<{name_w}}  {'Description':<{label_w}}  " f"{'Status':<{status_w}}"
     )
     lines.append(header)
     lines.append("-" * len(header))
@@ -202,9 +201,7 @@ def _format_table(results: Dict[str, str]) -> str:
             n_skip += 1
         else:
             n_miss += 1
-        lines.append(
-            f"{pid:<{name_w}}  {label:<{label_w}}  {status_short:<{status_w}}"
-        )
+        lines.append(f"{pid:<{name_w}}  {label:<{label_w}}  {status_short:<{status_w}}")
     lines.append("-" * len(header))
     summary = f"PASS={n_pass} FAIL={n_fail} SKIP={n_skip} MISS={n_miss}"
     lines.append(summary)

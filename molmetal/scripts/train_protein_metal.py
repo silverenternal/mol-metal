@@ -35,6 +35,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -70,7 +71,9 @@ from molmetal.molmetal_lam.sbdd_env.protein_metal_binding import (
 try:
     from sklearn.metrics import average_precision_score, roc_auc_score
 except ImportError as exc:  # pragma: no cover
-    raise SystemExit("train_protein_metal.py needs scikit-learn: uv pip install scikit-learn") from exc
+    raise SystemExit(
+        "train_protein_metal.py needs scikit-learn: uv pip install scikit-learn"
+    ) from exc
 
 
 METRICS_DIR = PROJECT_ROOT / "metrics" / "by_metric"
@@ -82,32 +85,58 @@ DEFAULT_DATA = PROJECT_ROOT / "molmetal" / "data" / "protein_metal_binding.csv"
 # CLI
 # ---------------------------------------------------------------------------
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Train protein-metal binding head (Metric 18).")
-    p.add_argument("--data", default=str(DEFAULT_DATA), help="CSV with smiles/metal/cell_line/active columns.")
-    p.add_argument("--out-dir", default="logs/metric18_protein_metal",
-                   help="Directory for per-seed checkpoints & metrics.")
-    p.add_argument("--out-metric", default=None,
-                   help="Path to write aggregate metric JSON. Default: metrics/by_metric/metric18_protein_metal.json")
-    p.add_argument("--out-report", default=None,
-                   help="Path to write markdown report. Default: molmetal/reports/wf_protein_metal_binding/final.md")
+    p = argparse.ArgumentParser(
+        description="Train protein-metal binding head (Metric 18)."
+    )
+    p.add_argument(
+        "--data",
+        default=str(DEFAULT_DATA),
+        help="CSV with smiles/metal/cell_line/active columns.",
+    )
+    p.add_argument(
+        "--out-dir",
+        default="logs/metric18_protein_metal",
+        help="Directory for per-seed checkpoints & metrics.",
+    )
+    p.add_argument(
+        "--out-metric",
+        default=None,
+        help="Path to write aggregate metric JSON. Default: metrics/by_metric/metric18_protein_metal.json",
+    )
+    p.add_argument(
+        "--out-report",
+        default=None,
+        help="Path to write markdown report. Default: molmetal/reports/wf_protein_metal_binding/final.md",
+    )
     p.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
     p.add_argument("--epochs", type=int, default=50)
     p.add_argument("--batch-size", type=int, default=32)
     p.add_argument("--lr", type=float, default=1e-3)
     p.add_argument("--focal-gamma", type=float, default=2.0)
     p.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
-    p.add_argument("--build-data", action="store_true",
-                   help="Force-rebuild the data CSV from MetalCytoToxDB before training.")
+    p.add_argument(
+        "--build-data",
+        action="store_true",
+        help="Force-rebuild the data CSV from MetalCytoToxDB before training.",
+    )
     p.add_argument("--quick", action="store_true", help="Use 1000 rows for smoke run.")
-    p.add_argument("--patience", type=int, default=10,
-                   help="Early-stopping patience on val AUC (0 disables).")
+    p.add_argument(
+        "--patience",
+        type=int,
+        default=10,
+        help="Early-stopping patience on val AUC (0 disables).",
+    )
     return p.parse_args(argv)
 
 
 # ---------------------------------------------------------------------------
 # Scaffold split (Bemis-Murcko) on the *ligand* SMILES
 # ---------------------------------------------------------------------------
-def scaffold_split_indices(smiles: np.ndarray, seed: int, fractions: Tuple[float, float, float] = (0.7, 0.1, 0.2)):
+def scaffold_split_indices(
+    smiles: np.ndarray,
+    seed: int,
+    fractions: Tuple[float, float, float] = (0.7, 0.1, 0.2),
+):
     """Return (train, val, test) row indices via scaffold split.
 
     We leverage :mod:`molmetal.data.splits.ScaffoldSplitter` when it's
@@ -134,7 +163,11 @@ def scaffold_split_indices(smiles: np.ndarray, seed: int, fractions: Tuple[float
             n = len(smiles)
             n_train = int(fractions[0] * n)
             n_val = int(fractions[1] * n)
-            return perm[:n_train], perm[n_train:n_train + n_val], perm[n_train + n_val:]
+            return (
+                perm[:n_train],
+                perm[n_train : n_train + n_val],
+                perm[n_train + n_val :],
+            )
         scaffolds = []
         for smi in smiles:
             try:
@@ -144,6 +177,7 @@ def scaffold_split_indices(smiles: np.ndarray, seed: int, fractions: Tuple[float
                 scaffolds.append(smi)
         # Largest-first: bucket by scaffold, shuffle buckets by seed.
         from collections import defaultdict
+
         buckets = defaultdict(list)
         for i, sc in enumerate(scaffolds):
             buckets[sc].append(i)
@@ -197,16 +231,25 @@ def train_one(
     val_ds = PMBDataset(df_val, vocab)
     test_ds = PMBDataset(df_test, vocab)
     train_loader = DataLoader(
-        train_ds, batch_size=args.batch_size, shuffle=True,
-        collate_fn=collate_pmb, num_workers=0,
+        train_ds,
+        batch_size=args.batch_size,
+        shuffle=True,
+        collate_fn=collate_pmb,
+        num_workers=0,
     )
     val_loader = DataLoader(
-        val_ds, batch_size=args.batch_size, shuffle=False,
-        collate_fn=collate_pmb, num_workers=0,
+        val_ds,
+        batch_size=args.batch_size,
+        shuffle=False,
+        collate_fn=collate_pmb,
+        num_workers=0,
     )
     test_loader = DataLoader(
-        test_ds, batch_size=args.batch_size, shuffle=False,
-        collate_fn=collate_pmb, num_workers=0,
+        test_ds,
+        batch_size=args.batch_size,
+        shuffle=False,
+        collate_fn=collate_pmb,
+        num_workers=0,
     )
 
     def _run_eval(loader) -> Tuple[float, float]:
@@ -225,7 +268,9 @@ def train_one(
         y = np.concatenate(all_y)
         logits = np.concatenate(all_logits, axis=0)
         scores = 1.0 / (1.0 + np.exp(-(logits[:, 1] - logits[:, 0])))
-        return roc_auc_safe(y, scores), float(average_precision_score(y, scores)) if len(set(y.tolist())) > 1 else 0.5
+        return roc_auc_safe(y, scores), float(
+            average_precision_score(y, scores)
+        ) if len(set(y.tolist())) > 1 else 0.5
 
     best_val_auc = -1.0
     best_test = (0.5, 0.5)
@@ -243,7 +288,8 @@ def train_one(
             )
             labels = batch["y"].to(args.device)
             loss = focal_loss(
-                logits, labels,
+                logits,
+                labels,
                 gamma=args.focal_gamma,
                 alpha=cfg.focal_alpha,
             )
@@ -267,7 +313,9 @@ def train_one(
                 f"test_auc={test_auc:.4f} test_pr={test_pr:.4f}"
             )
         if args.patience > 0 and no_improve >= args.patience:
-            print(f"[seed {seed}] early stop at ep {ep}; best val AUC {best_val_auc:.4f}")
+            print(
+                f"[seed {seed}] early stop at ep {ep}; best val AUC {best_val_auc:.4f}"
+            )
             break
 
     test_auc, test_pr = best_test

@@ -141,9 +141,11 @@ def _maybe_batched_silu_mlp(
     # fused_silu_mlp call).  We keep K==1 on the sequential path too
     # because the batched kernel adds cuBLAS / bmm overhead that does
     # not amortise for a single MLP.
-    if K == 1 or (not x.is_cuda) or (not _triton_config.should_use_fused(
-        x, op="batched_silu_mlp"
-    )):
+    if (
+        K == 1
+        or (not x.is_cuda)
+        or (not _triton_config.should_use_fused(x, op="batched_silu_mlp"))
+    ):
         # Sequential fallback: explicit ``F.silu`` + linear chain.
         h = x
         for k in range(K):
@@ -161,15 +163,11 @@ def _maybe_batched_silu_mlp(
     w1s = torch.stack(
         [la.weight.t().contiguous() for la in (linear_layers[0::2])], dim=0
     )  # (K, D_in, H)
-    b1s = torch.stack(
-        [la.bias for la in (linear_layers[0::2])], dim=0
-    )  # (K, H)
+    b1s = torch.stack([la.bias for la in (linear_layers[0::2])], dim=0)  # (K, H)
     w2s = torch.stack(
         [lb.weight.t().contiguous() for lb in (linear_layers[1::2])], dim=0
     )  # (K, H, D_out)
-    b2s = torch.stack(
-        [lb.bias for lb in (linear_layers[1::2])], dim=0
-    )  # (K, D_out)
+    b2s = torch.stack([lb.bias for lb in (linear_layers[1::2])], dim=0)  # (K, D_out)
     out = _batched_fused_silu_mlp(x, w1s, b1s, w2s, b2s)  # (M, D_out)
     return out
 
@@ -220,15 +218,15 @@ class _SatorrasEGNNLayer(nn.Module):
 
     def forward(
         self,
-        h: torch.Tensor,         # (N, D)
-        x: torch.Tensor,         # (N, 3)
+        h: torch.Tensor,  # (N, D)
+        x: torch.Tensor,  # (N, 3)
         edge_index: torch.Tensor,  # (2, E)
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         if edge_index.size(1) == 0 or h.size(0) == 0:
             return h, x
 
         src, dst = edge_index[0], edge_index[1]
-        diff = x[src] - x[dst]                # (E, 3)
+        diff = x[src] - x[dst]  # (E, 3)
         r2 = (diff * diff).sum(dim=-1, keepdim=True)  # (E, 1) — invariant
 
         msg_in = torch.cat([h[src], h[dst], r2], dim=-1)  # (E, 2D+1)
@@ -241,15 +239,15 @@ class _SatorrasEGNNLayer(nn.Module):
         # helper is wired so that future per-edge-type / per-atom-type
         # head stacks (K distinct MLPs with shared input shape) can
         # opt in by calling ``_maybe_batched_silu_mlp`` directly.
-        m = self.msg_mlp(msg_in)                              # (E, D)
+        m = self.msg_mlp(msg_in)  # (E, D)
 
         # Aggregate scalar messages at dst
         h_new = torch.zeros_like(h)
         h_new.index_add_(0, dst, m)
 
         # Coord update — equivariant (RHS invariant, LHS equivariant)
-        coord_scale = self.coord_mlp(m)             # (E, 1) bounded by tanh
-        coord_msg = -diff * coord_scale             # -(x_i - x_j) = (x_j - x_i)
+        coord_scale = self.coord_mlp(m)  # (E, 1) bounded by tanh
+        coord_msg = -diff * coord_scale  # -(x_i - x_j) = (x_j - x_i)
         x_new = x.clone()
         x_new.index_add_(0, dst, coord_msg)
         return h + h_new, x_new
@@ -271,7 +269,9 @@ class EGNNStack(nn.Module):
         )
         self.out_norm = nn.LayerNorm(hidden_dim)
 
-    def forward(self, h: torch.Tensor, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self, h: torch.Tensor, x: torch.Tensor, edge_index: torch.Tensor
+    ) -> torch.Tensor:
         h = self.in_proj(h)
         for layer in self.layers:
             h, x = layer(h, x, edge_index)
@@ -296,7 +296,7 @@ class _PerceiverLatentFusion(nn.Module):
     N_LATENT = 16
     N_HEADS = 8
     HEAD_DIM = 16
-    LATENT_DIM = 128            # N_HEADS * HEAD_DIM
+    LATENT_DIM = 128  # N_HEADS * HEAD_DIM
     INPUT_DROPOUT = 0.1
     ATTN_DROPOUT = 0.2
     FFN_DROPOUT = 0.1
@@ -340,8 +340,8 @@ class _PerceiverLatentFusion(nn.Module):
         # Gated residual against the D-MPNN mean-pool (gate init ≈ 0.05)
         self.gate = nn.Linear(2 * latent_dim, latent_dim)
         with torch.no_grad():
-            self.gate.bias.fill_(math.log(0.05 / 0.95))   # σ(-2.944) ≈ 0.05
-            self.gate.weight.mul_(0.1)                     # grow slowly
+            self.gate.bias.fill_(math.log(0.05 / 0.95))  # σ(-2.944) ≈ 0.05
+            self.gate.weight.mul_(0.1)  # grow slowly
 
         # Input dropout (independent on each stream)
         self.in_drop_dmpnn = nn.Dropout(self.INPUT_DROPOUT)
@@ -354,47 +354,47 @@ class _PerceiverLatentFusion(nn.Module):
 
     def forward(
         self,
-        h_dmpnn: torch.Tensor,    # (B, N_max, d)
-        h_egnn: torch.Tensor,     # (B, N_max, e)
-        mask: torch.Tensor,       # (B, N_max) True for real atoms
+        h_dmpnn: torch.Tensor,  # (B, N_max, d)
+        h_egnn: torch.Tensor,  # (B, N_max, e)
+        mask: torch.Tensor,  # (B, N_max) True for real atoms
     ) -> torch.Tensor:
         B = h_dmpnn.size(0)
         h_d = self.in_drop_dmpnn(h_dmpnn)
         h_e = self.in_drop_egnn(h_egnn)
-        kv = torch.cat([h_d, h_e], dim=-1)              # (B, N_max, d+e)
-        kv = self.in_proj(kv)                           # project to LATENT_DIM if needed
+        kv = torch.cat([h_d, h_e], dim=-1)  # (B, N_max, d+e)
+        kv = self.in_proj(kv)  # project to LATENT_DIM if needed
         z = self.latents.unsqueeze(0).expand(B, -1, -1)  # (B, N_LATENT, D)
 
         # MHCA — multi-head CONCAT (Vaswani 2017) not additive
-        q = self._heads(self.q(z))       # (B, h, L, head_dim)
-        k = self._heads(self.k(kv))      # (B, h, N_max, head_dim)
-        v = self._heads(self.v(kv))      # (B, h, N_max, head_dim)
+        q = self._heads(self.q(z))  # (B, h, L, head_dim)
+        k = self._heads(self.k(kv))  # (B, h, N_max, head_dim)
+        v = self._heads(self.v(kv))  # (B, h, N_max, head_dim)
         scores = (q @ k.transpose(-2, -1)) / math.sqrt(self.HEAD_DIM)
         if mask is not None:
-            scores = scores.masked_fill(
-                (~mask.bool())[:, None, None, :], float("-inf")
-            )
+            scores = scores.masked_fill((~mask.bool())[:, None, None, :], float("-inf"))
         attn = self.attn_drop(F.softmax(scores, dim=-1))
-        ctx = attn @ v                       # (B, h, L, head_dim)
-        ctx = (
-            ctx.transpose(1, 2)
-            .contiguous()
-            .view(B, self.N_LATENT, self.latent_dim)
-        )
+        ctx = attn @ v  # (B, h, L, head_dim)
+        ctx = ctx.transpose(1, 2).contiguous().view(B, self.N_LATENT, self.latent_dim)
         # Round-5 fused-residual-add: route the
         # ``z + RESIDUAL_SCALE * out_proj(ctx)`` via the fused kernel
         # when the gate is open (default ON for training); else keep the
         # trivial PyTorch sum.
         attn_residual = self.RESIDUAL_SCALE * self.out_proj(ctx)
-        z = self.norm1(_maybe_fused_residual_add(
-            z, attn_residual, alpha=1.0, beta=1.0, training=self.training
-        ))
+        z = self.norm1(
+            _maybe_fused_residual_add(
+                z, attn_residual, alpha=1.0, beta=1.0, training=self.training
+            )
+        )
 
         # FFN block (pre-norm transformer)
         # Round-5 fused-residual-add: route ``z + ffn(z)`` via the fused
         # kernel when the gate is open; else keep the trivial PyTorch sum.
         z = _maybe_fused_residual_add(
-            self.ffn(z), z, alpha=1.0, beta=1.0, training=self.training,
+            self.ffn(z),
+            z,
+            alpha=1.0,
+            beta=1.0,
+            training=self.training,
         )
 
         # Mean-pool D-MPNN stream (baseline) — project to latent dim if needed
@@ -488,7 +488,7 @@ class LossV4(nn.Module):
         y_a = batch["active"].long()
         y_p = batch["pic50"]
         target_delta = batch["target_delta"]
-        atom_mask = batch["atom_mask"]   # (B, N_max)
+        atom_mask = batch["atom_mask"]  # (B, N_max)
 
         # Classification + regression loss
         lc = self.bce(active_lg, y_a)
@@ -497,7 +497,9 @@ class LossV4(nn.Module):
         # Coord refinement MSE (masked)
         if delta_p.shape == target_delta.shape and atom_mask.any():
             mask3 = atom_mask.unsqueeze(-1).float()
-            lcrd = (((delta_p - target_delta) ** 2) * mask3).sum() / mask3.sum().clamp(min=1.0)
+            lcrd = (((delta_p - target_delta) ** 2) * mask3).sum() / mask3.sum().clamp(
+                min=1.0
+            )
         else:
             lcrd = torch.tensor(0.0, device=lc.device)
 
@@ -529,7 +531,9 @@ class LossV4(nn.Module):
             self.alpha * w_cls * lc_n
             + (1.0 - self.alpha) * w_reg * lr_n
             + gamma * w_crd * lcrd
-            + self.log_s_cls + self.log_s_reg + self.log_s_crd
+            + self.log_s_cls
+            + self.log_s_reg
+            + self.log_s_crd
         )
 
         info = {
@@ -584,9 +588,9 @@ class LossV4MB1(nn.Module):
     keeps growing" (the M-B1 signature failure).
     """
 
-    ACTIVE_PIC50_THRESHOLD = 5.0     # pIC50 >= 5.0 → "active" for weighting
-    ACTIVE_WEIGHT_MULT = 3.0        # active samples weighted 3x inactive
-    LOG_OFFSET = 1.0                # log(pIC50 + LOG_OFFSET) target
+    ACTIVE_PIC50_THRESHOLD = 5.0  # pIC50 >= 5.0 → "active" for weighting
+    ACTIVE_WEIGHT_MULT = 3.0  # active samples weighted 3x inactive
+    LOG_OFFSET = 1.0  # log(pIC50 + LOG_OFFSET) target
 
     # Scheduled clamp (M-2 round-3 fix)
     # Epochs 0-9  → pic50_min = 4.0 (warmup, current behaviour)
@@ -721,7 +725,9 @@ class LossV4MB1(nn.Module):
         # --- Log-residual regression target.
         # y_log = log(pIC50 + 1) - log(5 + 1).  Active pIC50 ≈ 5 maps to
         # ~0 so the residual head can be naturally ReLU-shaped.
-        y_log_target = torch.log(y_p + self.LOG_OFFSET) - math.log(5.0 + self.LOG_OFFSET)
+        y_log_target = torch.log(y_p + self.LOG_OFFSET) - math.log(
+            5.0 + self.LOG_OFFSET
+        )
         is_active = (y_p >= self.ACTIVE_PIC50_THRESHOLD).float()
         active_mask = is_active * mask
         inactive_mask = (1.0 - is_active) * mask
@@ -736,13 +742,19 @@ class LossV4MB1(nn.Module):
         lr_active = (se * sample_w).sum() / denom
         # Tiny "stay near 0" regulariser for inactive samples so the
         # reg head doesn't drift to large positives on negatives.
-        lr_inactive = (pic50_raw ** 2 * inactive_mask).sum() / inactive_mask.sum().clamp(min=1.0) * 0.1
+        lr_inactive = (
+            (pic50_raw**2 * inactive_mask).sum()
+            / inactive_mask.sum().clamp(min=1.0)
+            * 0.1
+        )
         lr = lr_active + lr_inactive
 
         # --- Coord refinement MSE (masked) — same as LossV4
         if delta_p.shape == target_delta.shape and atom_mask.any():
             mask3 = atom_mask.unsqueeze(-1).float()
-            lcrd = (((delta_p - target_delta) ** 2) * mask3).sum() / mask3.sum().clamp(min=1.0)
+            lcrd = (((delta_p - target_delta) ** 2) * mask3).sum() / mask3.sum().clamp(
+                min=1.0
+            )
         else:
             lcrd = torch.tensor(0.0, device=lc.device)
 
@@ -774,7 +786,9 @@ class LossV4MB1(nn.Module):
             self.alpha * w_cls * lc_n
             + (1.0 - self.alpha) * w_reg * lr_n
             + gamma * w_crd * lcrd
-            + self.log_s_cls + self.log_s_reg + self.log_s_crd
+            + self.log_s_cls
+            + self.log_s_reg
+            + self.log_s_crd
         )
 
         # --- Per-epoch log-sigma tracking
@@ -797,7 +811,9 @@ class LossV4MB1(nn.Module):
             "w_crd": w_crd.detach(),
             "sigma_cls_log_change": sigma_cls_log_change,
             "sigma_reg_log_change": sigma_reg_log_change,
-            "active_frac": float(active_mask.sum().item() / max(active_mask.numel(), 1)),
+            "active_frac": float(
+                active_mask.sum().item() / max(active_mask.numel(), 1)
+            ),
         }
         return total, info
 
@@ -819,16 +835,16 @@ class MetalHybridV4Config:
 
     base: MetalHybridConfig = None
     # LLRD
-    llrd_lr_top: float = 1e-3            # head LR
-    llrd_lr_bottom: float = 1e-5         # encoder bottom LR
-    llrd_decay: float = 0.95             # per-layer multiplier
+    llrd_lr_top: float = 1e-3  # head LR
+    llrd_lr_bottom: float = 1e-5  # encoder bottom LR
+    llrd_decay: float = 0.95  # per-layer multiplier
     # Real EGNN
     egnn_in_node_dim: int = 128
     egnn_hidden_dim: int = 128
     n_egnn_layers: int = 3
     # Coord refinement (no detach, no clip)
-    coord_loss_start: float = 0.1        # gamma_start
-    coord_loss_end: float = 0.0          # gamma_end
+    coord_loss_start: float = 0.1  # gamma_start
+    coord_loss_end: float = 0.0  # gamma_end
     # Pretrained D-MPNN
     load_pretrained_encoder: bool = True
     pretrained_ckpt: str = str(DEFAULT_PRETRAINED_CKPT)
@@ -885,7 +901,9 @@ class MetalHybridV4Model(nn.Module):
         # Latent dim is fixed at 128 in the canonical config; in small/test
         # configs (hidden_dim < 16) we shrink it to hidden_dim to keep shapes
         # compatible.  Real configs use hidden_dim=128 → latent_dim=128.
-        fusion_latent = max(128, self.hidden_dim) if self.hidden_dim >= 16 else self.hidden_dim
+        fusion_latent = (
+            max(128, self.hidden_dim) if self.hidden_dim >= 16 else self.hidden_dim
+        )
         self.fusion = _PerceiverLatentFusion(
             dmpnn_dim=self.hidden_dim,
             egnn_dim=self.hidden_dim,
@@ -971,10 +989,7 @@ class MetalHybridV4Model(nn.Module):
         snapshot is stored on the same device as the model parameters.
         """
         self._ema_decay = float(decay)
-        self._ema_state = {
-            k: v.detach().clone()
-            for k, v in self.state_dict().items()
-        }
+        self._ema_state = {k: v.detach().clone() for k, v in self.state_dict().items()}
 
     def update_ema(self, decay: Optional[float] = None) -> None:
         """Update EMA snapshot: ``ema = decay * ema + (1 − decay) * model``.
@@ -1006,7 +1021,11 @@ class MetalHybridV4Model(nn.Module):
 
     def ema_state_dict(self) -> Optional[dict]:
         """Return the current EMA snapshot (or ``None`` if not initialised)."""
-        return None if self._ema_state is None else {k: v.clone() for k, v in self._ema_state.items()}
+        return (
+            None
+            if self._ema_state is None
+            else {k: v.clone() for k, v in self._ema_state.items()}
+        )
 
     def load_ema_state_dict(self, ema_sd: dict) -> None:
         """Restore an EMA snapshot from a checkpoint."""
@@ -1045,8 +1064,9 @@ class MetalHybridV4Model(nn.Module):
     # ------------------------------------------------------------------
     # LLRD parameter groups (top → bottom decay 0.95/layer)
     # ------------------------------------------------------------------
-    def llrd_param_groups(self, lr_top: float = None, lr_bottom: float = None,
-                          decay: float = None) -> List[dict]:
+    def llrd_param_groups(
+        self, lr_top: float = None, lr_bottom: float = None, decay: float = None
+    ) -> List[dict]:
         """Build parameter groups with layer-wise LR decay.
 
         Top of the model (heads + fusion) gets ``lr_top``; each prior
@@ -1136,9 +1156,13 @@ class MetalHybridV4Model(nn.Module):
                 edge_attrs.append(feat["edge_attr"])
                 n_atoms_list.append(feat["n_atoms"])
             except Exception:
-                atom_feats.append(np.zeros((1, self.base_cfg.atom_feat_dim), dtype=np.float32))
+                atom_feats.append(
+                    np.zeros((1, self.base_cfg.atom_feat_dim), dtype=np.float32)
+                )
                 edge_indices.append(np.zeros((2, 0), dtype=np.int64))
-                edge_attrs.append(np.zeros((0, self.base_cfg.edge_feat_dim), dtype=np.float32))
+                edge_attrs.append(
+                    np.zeros((0, self.base_cfg.edge_feat_dim), dtype=np.float32)
+                )
                 n_atoms_list.append(1)
 
         N_max = max(max(n_atoms_list), 1)
@@ -1299,7 +1323,7 @@ class MetalHybridV4Model(nn.Module):
 
         return {
             "pic50": pic50_pred,
-            "pic50_pred": pic50_pred,   # alias kept for backward compatibility
+            "pic50_pred": pic50_pred,  # alias kept for backward compatibility
             "pic50_raw": pic50_raw,
             "active_logits": active_logits,
             "delta_pred": delta_pred,
@@ -1330,9 +1354,7 @@ class MetalHybridV4Model(nn.Module):
             smiles_list, coords, metal_types, mol_objects=mol_objects
         )
         # Stage 2a: cls on detached trunk
-        active_logits_det, _ = self._apply_heads(
-            fused, metal_emb, detach_fused=True
-        )
+        active_logits_det, _ = self._apply_heads(fused, metal_emb, detach_fused=True)
         # Stage 2b: reg on live trunk
         active_logits, pic50_raw = self._apply_heads(
             fused, metal_emb, detach_fused=False

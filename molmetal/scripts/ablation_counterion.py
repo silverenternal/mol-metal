@@ -88,9 +88,7 @@ def _load_dataset(metal: str) -> MetalCytotoxDataset:
     mask_nonempty = df["Counterion"].astype(str).str.len() > 0
     df = df.loc[mask_nonempty].reset_index(drop=True).copy()
     if len(df) == 0:
-        raise RuntimeError(
-            f"No rows with valid Counterion + IC50 for metal={metal!r}."
-        )
+        raise RuntimeError(f"No rows with valid Counterion + IC50 for metal={metal!r}.")
     return MetalCytotoxDataset(df=df)
 
 
@@ -124,7 +122,9 @@ def _evaluate_config(
     n_features = int(X.shape[1])
 
     # ---- Random split ----
-    rnd_split = RandomSplitter(seed=RANDOM_SEED)(ds.__class__(df=ds.df.iloc[np.where(keep)[0]].reset_index(drop=True)))
+    rnd_split = RandomSplitter(seed=RANDOM_SEED)(
+        ds.__class__(df=ds.df.iloc[np.where(keep)[0]].reset_index(drop=True))
+    )
     # Re-fetch ds view restricted to `keep` mask
     ds_kept = ds.__class__(df=ds.df.iloc[np.where(keep)[0]].reset_index(drop=True))
     rnd_split = RandomSplitter(seed=RANDOM_SEED)(ds_kept)
@@ -189,9 +189,7 @@ def _format_table(rows: List[Dict[str, object]]) -> str:
         "| config | n_features | random AUC | temporal AUC | "
         "n_train (R / T) | n_test (R / T) |"
     )
-    lines.append(
-        "| --- | ---: | ---: | ---: | ---: | ---: |"
-    )
+    lines.append("| --- | ---: | ---: | ---: | ---: | ---: |")
     for r in rows:
         lines.append(
             "| {config} | {nf} | {rauc:.4f} | {tauc:.4f} | "

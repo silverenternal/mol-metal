@@ -29,14 +29,14 @@ SCRIPT = REPO_ROOT / "molmetal" / "scripts" / "train_chemprop_v2_v3.py"
 
 def _pf():
     from molmetal.scripts import pre_flight_check
+
     return pre_flight_check
 
 
 def _write_metrics(path: Path, initial, final, status="ok") -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        json.dumps({"status": status, "initial_loss": initial,
-                    "final_loss": final}),
+        json.dumps({"status": status, "initial_loss": initial, "final_loss": final}),
         encoding="utf-8",
     )
     return path
@@ -48,14 +48,16 @@ class TestLossDecreaseHelper:
     def test_decreasing_loss_ok(self, tmp_path):
         pf = _pf()
         ok, detail = pf._check_chemprop_loss_decrease(
-            _write_metrics(tmp_path / "m.json", -0.2134, -1.2563))
+            _write_metrics(tmp_path / "m.json", -0.2134, -1.2563)
+        )
         assert ok is True, detail
         assert "loss decreased" in detail
 
     def test_non_decreasing_fails(self, tmp_path):
         pf = _pf()
         ok, detail = pf._check_chemprop_loss_decrease(
-            _write_metrics(tmp_path / "m.json", -1.0, 0.5))
+            _write_metrics(tmp_path / "m.json", -1.0, 0.5)
+        )
         assert ok is False
         assert "did NOT decrease" in detail
 
@@ -63,40 +65,46 @@ class TestLossDecreaseHelper:
         """Loss got worse (final > initial, both negative)."""
         pf = _pf()
         ok, _ = pf._check_chemprop_loss_decrease(
-            _write_metrics(tmp_path / "m.json", -1.0, -0.5))
+            _write_metrics(tmp_path / "m.json", -1.0, -0.5)
+        )
         assert ok is False
 
     def test_flat_loss_fails(self, tmp_path):
         pf = _pf()
         ok, _ = pf._check_chemprop_loss_decrease(
-            _write_metrics(tmp_path / "m.json", -1.0, -1.0))
+            _write_metrics(tmp_path / "m.json", -1.0, -1.0)
+        )
         assert ok is False
 
     def test_tiny_drop_below_floor_fails(self, tmp_path):
         """0.01% drop < 0.3% floor must FAIL (2-epoch noise guard)."""
         pf = _pf()
         ok, detail = pf._check_chemprop_loss_decrease(
-            _write_metrics(tmp_path / "m.json", -1.0, -1.0001))
+            _write_metrics(tmp_path / "m.json", -1.0, -1.0001)
+        )
         assert ok is False
         assert "did NOT decrease" in detail
 
     def test_drop_above_floor_passes(self, tmp_path):
         pf = _pf()
         ok, _ = pf._check_chemprop_loss_decrease(
-            _write_metrics(tmp_path / "m.json", -1.0, -1.0031))
+            _write_metrics(tmp_path / "m.json", -1.0, -1.0031)
+        )
         assert ok is True
 
     def test_nan_final_fails(self, tmp_path):
         pf = _pf()
         ok, detail = pf._check_chemprop_loss_decrease(
-            _write_metrics(tmp_path / "m.json", -1.0, float("nan")))
+            _write_metrics(tmp_path / "m.json", -1.0, float("nan"))
+        )
         assert ok is False
         assert "non-finite" in detail
 
     def test_nan_initial_fails(self, tmp_path):
         pf = _pf()
         ok, detail = pf._check_chemprop_loss_decrease(
-            _write_metrics(tmp_path / "m.json", float("nan"), -1.0))
+            _write_metrics(tmp_path / "m.json", float("nan"), -1.0)
+        )
         assert ok is False
         assert "non-finite" in detail
 
@@ -133,15 +141,16 @@ class TestGateWiring:
             if payload is not None:
                 _write_metrics(
                     out_dir / "ru" / "per_seed_metrics_seed0.json",
-                    payload[0], payload[1],
+                    payload[0],
+                    payload[1],
                 )
             return rc, "epoch=0/2 loss=0.0", ""
+
         return fake_run
 
     def test_gate_fails_on_diverged_smoke(self, tmp_path, monkeypatch):
         pf = _pf()
-        monkeypatch.setattr(
-            pf, "_run", self._fake_run_factory(payload=(-1.0, 0.5)))
+        monkeypatch.setattr(pf, "_run", self._fake_run_factory(payload=(-1.0, 0.5)))
         res = pf._gate_chemprop_quick_smoke(SCRIPT)
         assert res.status == "FAIL", res.evidence
         assert "loss invariant FAILED" in res.evidence
@@ -157,8 +166,7 @@ class TestGateWiring:
 
     def test_gate_fails_on_rc_nonzero(self, monkeypatch):
         pf = _pf()
-        monkeypatch.setattr(
-            pf, "_run", self._fake_run_factory(payload=None, rc=1))
+        monkeypatch.setattr(pf, "_run", self._fake_run_factory(payload=None, rc=1))
         res = pf._gate_chemprop_quick_smoke(SCRIPT)
         assert res.status == "FAIL", res.evidence
         assert "exit=1" in res.evidence
@@ -166,7 +174,8 @@ class TestGateWiring:
     def test_gate_passes_on_healthy_smoke(self, monkeypatch):
         pf = _pf()
         monkeypatch.setattr(
-            pf, "_run", self._fake_run_factory(payload=(-0.2134, -1.2563)))
+            pf, "_run", self._fake_run_factory(payload=(-0.2134, -1.2563))
+        )
         res = pf._gate_chemprop_quick_smoke(SCRIPT)
         assert res.status == "PASS", res.evidence
         assert "loss decreased" in res.evidence

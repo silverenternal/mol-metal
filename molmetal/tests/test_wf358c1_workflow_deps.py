@@ -36,9 +36,9 @@ DEPS_PATH = _REPO_ROOT / "docs" / "WORKFLOW_DEPENDENCY_GRAPH.md"
 @pytest.fixture(scope="module")
 def deps_text() -> str:
     """Read the workflow dependency graph markdown file once per module."""
-    assert DEPS_PATH.exists(), (
-        f"docs/WORKFLOW_DEPENDENCY_GRAPH.md must exist at {DEPS_PATH}"
-    )
+    assert (
+        DEPS_PATH.exists()
+    ), f"docs/WORKFLOW_DEPENDENCY_GRAPH.md must exist at {DEPS_PATH}"
     return DEPS_PATH.read_text(encoding="utf-8")
 
 
@@ -59,9 +59,9 @@ def test_01_workflow_deps_structure(deps_text: str) -> None:
     launch; no external network.
     """
     # 1) File exists at the canonical location.
-    assert DEPS_PATH.exists(), (
-        f"docs/WORKFLOW_DEPENDENCY_GRAPH.md must exist at {DEPS_PATH}"
-    )
+    assert (
+        DEPS_PATH.exists()
+    ), f"docs/WORKFLOW_DEPENDENCY_GRAPH.md must exist at {DEPS_PATH}"
     file_size = DEPS_PATH.stat().st_size
     assert file_size > 5_000, (
         f"workflow dependency graph must be substantial (>5KB); "
@@ -72,9 +72,9 @@ def test_01_workflow_deps_structure(deps_text: str) -> None:
     main_section_pattern = re.compile(r"^## §(\d+)\s+", re.MULTILINE)
     main_sections = main_section_pattern.findall(deps_text)
     for required_section in ["1", "2", "3", "4", "5"]:
-        assert required_section in main_sections, (
-            f"§{required_section} must be present (Wf-358-C1 task brief)"
-        )
+        assert (
+            required_section in main_sections
+        ), f"§{required_section} must be present (Wf-358-C1 task brief)"
 
     # 3) Cross-workflow dependency entries: count explicit
     # `Wf-XXX → Wf-YYY` patterns in §2.
@@ -89,21 +89,21 @@ def test_01_workflow_deps_structure(deps_text: str) -> None:
 
     # 4) Honest framing discipline preserved (per `party-twenty-spirit`
     # §3.5).  Document must contain both MEASURED and PROJECTED tags.
-    assert "MEASURED" in deps_text, (
-        "document must use MEASURED tag discipline (party-twenty-spirit §3.5)"
-    )
-    assert "PROJECTED" in deps_text, (
-        "document must use PROJECTED tag discipline for non-measured claims"
-    )
+    assert (
+        "MEASURED" in deps_text
+    ), "document must use MEASURED tag discipline (party-twenty-spirit §3.5)"
+    assert (
+        "PROJECTED" in deps_text
+    ), "document must use PROJECTED tag discipline for non-measured claims"
 
     # 5) Standing directives preserved (per AGENTS.md §5):
     # §5.1 GPU grant, §5.2 honest framing, §5.3 no paper, §5.4 Tier-2.
-    assert "§5.1" in deps_text or "5.1" in deps_text, (
-        "AGENTS.md §5.1 GPU grant reference must be preserved"
-    )
-    assert "§5.2" in deps_text or "5.2" in deps_text, (
-        "AGENTS.md §5.2 honest framing reference must be preserved"
-    )
+    assert (
+        "§5.1" in deps_text or "5.1" in deps_text
+    ), "AGENTS.md §5.1 GPU grant reference must be preserved"
+    assert (
+        "§5.2" in deps_text or "5.2" in deps_text
+    ), "AGENTS.md §5.2 honest framing reference must be preserved"
 
     # 6) Source citations: document must cite ≥5 source paths on disk.
     source_citation_count = len(
@@ -115,8 +115,7 @@ def test_01_workflow_deps_structure(deps_text: str) -> None:
         )
     )
     assert source_citation_count >= 5, (
-        f"document must cite ≥5 source paths; "
-        f"got {source_citation_count} citations"
+        f"document must cite ≥5 source paths; " f"got {source_citation_count} citations"
     )
 
     # 7) Workflow attribution: document must cite at least 10 distinct
@@ -131,17 +130,11 @@ def test_01_workflow_deps_structure(deps_text: str) -> None:
     # Wf-356 → Wf-357 critical path explicitly.
     assert "critical path" in deps_text.lower() or (
         "Wf-340" in deps_text and "Wf-356" in deps_text and "Wf-357" in deps_text
-    ), (
-        "document must reference the Wf-340 → Wf-356 → Wf-357 critical path"
-    )
+    ), "document must reference the Wf-340 → Wf-356 → Wf-357 critical path"
 
     # 9) Pre-condition + post-condition sections both present.
-    assert "pre-condition" in deps_text.lower(), (
-        "§3 must reference pre-conditions"
-    )
-    assert "post-condition" in deps_text.lower(), (
-        "§4 must reference post-conditions"
-    )
+    assert "pre-condition" in deps_text.lower(), "§3 must reference pre-conditions"
+    assert "post-condition" in deps_text.lower(), "§4 must reference post-conditions"
 
     print(
         f"  [test_01] deps OK: path={DEPS_PATH.name} "

@@ -6,6 +6,7 @@ whose import function redirects that one package name. No public module is
 replaced, no search path changes, and calls made after initialization use the
 same redirect. Ordinary import locks/caches preserve class and pickle identity.
 """
+
 from __future__ import annotations
 
 import builtins
@@ -25,7 +26,7 @@ _lock = RLock()
 
 def _reference_import(name, globals=None, locals=None, fromlist=(), level=0):
     if level == 0 and (name == "flow_matching" or name.startswith("flow_matching.")):
-        relocated = NAMESPACE + name[len("flow_matching"):]
+        relocated = NAMESPACE + name[len("flow_matching") :]
         result = builtins.__import__(relocated, globals, locals, fromlist, 0)
         # `import flow_matching.foo` binds the upstream package, whereas a
         # from-import must return the requested submodule. The builtin would
@@ -36,7 +37,10 @@ def _reference_import(name, globals=None, locals=None, fromlist=(), level=0):
 
 class _ReferenceLoader(importlib.machinery.SourceFileLoader):
     def exec_module(self, module):
-        module.__dict__["__builtins__"] = {**vars(builtins), "__import__": _reference_import}
+        module.__dict__["__builtins__"] = {
+            **vars(builtins),
+            "__import__": _reference_import,
+        }
         super().exec_module(module)
 
 
@@ -44,15 +48,19 @@ class _ReferenceFinder(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
         if not fullname.startswith(NAMESPACE + ".") or _reference_root is None:
             return None
-        relative = fullname[len(NAMESPACE) + 1:].split(".")
+        relative = fullname[len(NAMESPACE) + 1 :].split(".")
         source = _reference_root.joinpath(*relative)
         package = source / "__init__.py"
         source = package if package.is_file() else source.with_suffix(".py")
         if not source.is_file():
             return None
         return importlib.util.spec_from_file_location(
-            fullname, source, loader=_ReferenceLoader(fullname, str(source)),
-            submodule_search_locations=[str(source.parent)] if source == package else None,
+            fullname,
+            source,
+            loader=_ReferenceLoader(fullname, str(source)),
+            submodule_search_locations=[str(source.parent)]
+            if source == package
+            else None,
         )
 
 
@@ -69,13 +77,24 @@ def configure_reference(reference_path: str | Path | None = None) -> Path:
     """
     global _reference_root
     with _lock:
-        ref = Path(reference_path).resolve() if reference_path is not None else (
-            _reference_root.parent if _reference_root is not None else DEFAULT_REFERENCE)
+        ref = (
+            Path(reference_path).resolve()
+            if reference_path is not None
+            else (
+                _reference_root.parent
+                if _reference_root is not None
+                else DEFAULT_REFERENCE
+            )
+        )
         root = ref / "flow_matching"
         if not (root / "__init__.py").is_file():
-            raise FileNotFoundError(f"Could not find cloned flow_matching at {ref}; clone https://github.com/facebookresearch/flow_matching.git there")
+            raise FileNotFoundError(
+                f"Could not find cloned flow_matching at {ref}; clone https://github.com/facebookresearch/flow_matching.git there"
+            )
         if _reference_root is not None and _reference_root != root:
-            raise RuntimeError(f"Upstream flow_matching already loaded from {_reference_root.parent}; cannot switch to {ref} in the same process")
+            raise RuntimeError(
+                f"Upstream flow_matching already loaded from {_reference_root.parent}; cannot switch to {ref} in the same process"
+            )
         _reference_root = root
         if _finder not in sys.meta_path:
             sys.meta_path.insert(0, _finder)

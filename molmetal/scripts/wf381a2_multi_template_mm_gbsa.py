@@ -73,6 +73,7 @@ Usage
     python molmetal/scripts/wf381a2_multi_template_mm_gbsa.py \\
         --backend real --meeko --vina-binary vina
 """
+
 from __future__ import annotations
 
 import argparse
@@ -99,7 +100,11 @@ PER_POCKET_SUCCESS_RATE: float = 1.0
 # Constants — multi-template defaults
 # ---------------------------------------------------------------------------
 DEFAULT_POCKETS: Tuple[str, ...] = (
-    "1h36", "3eml", "3ny8", "4aaw", "4rlu",
+    "1h36",
+    "3eml",
+    "3ny8",
+    "4aaw",
+    "4rlu",
 )
 DEFAULT_N_TEMPLATES: int = 5
 DEFAULT_N_POSES: int = 9
@@ -119,8 +124,8 @@ MMGBSA_SA_NONPOLAR_KCAL_PER_A2: float = 0.005  # Still 1990 SA term
 # Constants — surrogate model coefficients
 # ---------------------------------------------------------------------------
 ALPHA_TEMPLATE_LIFT: float = 0.10  # max template similarity lift (Å)
-BETA_POSE_RANK_LIFT: float = 0.05   # max pose rank lift (Å)
-NOISE_STD: float = 0.01             # Gaussian noise on RMSD grid
+BETA_POSE_RANK_LIFT: float = 0.05  # max pose rank lift (Å)
+NOISE_STD: float = 0.01  # Gaussian noise on RMSD grid
 
 # ---------------------------------------------------------------------------
 # Status strings
@@ -381,9 +386,8 @@ def _load_baseline_per_pocket_rmsd() -> Dict[str, float]:
 
     # Fallback: aggregate median (Wf-179 BD-9 + Wf-341-T1 redesign)
     if not per_pocket_baseline:
-        agg = (
-            data.get("aggregate_median_best_rmsd_angstrom")
-            or data.get("aggregate_median_across_pockets")
+        agg = data.get("aggregate_median_best_rmsd_angstrom") or data.get(
+            "aggregate_median_across_pockets"
         )
         if isinstance(agg, (int, float)):
             for p in DEFAULT_POCKETS:
@@ -604,7 +608,8 @@ def aggregate_median_rmsd(
     best_rmsds = [r.best_rmsd_angstrom for r in cohort_results]
     n_pass_2_0a = sum(1 for r in cohort_results if r.passes_2_0a_sota)
     n_pass_2_5a = sum(
-        1 for r in cohort_results
+        1
+        for r in cohort_results
         if r.best_rmsd_angstrom <= RMSD_PRACTICAL_THRESHOLD_ANGSTROM
     )
     agg_median = float(statistics.median(best_rmsds))

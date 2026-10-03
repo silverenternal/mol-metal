@@ -43,34 +43,37 @@ sys.path[:0] = [str(ROOT), str(ROOT / "molmetal")]
 # admits them; the "not" entries are pure aliphatic chains
 # that no SMARTS click motif matches.
 SMOKE_BUYABLE: List[str] = [
-    "c1ccccc1",                  # benzene
-    "c1ccncc1",                  # pyridine
-    "c1ccc2ccccc2c1",            # naphthalene
-    "N.N.Cl.Cl.[Pt]",            # cisplatin multi-component
-    "Cc1cn(C)nn1",               # CuAAC triazole
-    "c1ccc(O)cc1",               # phenol
-    "c1ccc(N)cc1",               # aniline
-    "c1ccoc1",                   # furan
-    "c1ccsc1",                   # thiophene
-    "c1cnc2ccccc2c1",            # quinoline
+    "c1ccccc1",  # benzene
+    "c1ccncc1",  # pyridine
+    "c1ccc2ccccc2c1",  # naphthalene
+    "N.N.Cl.Cl.[Pt]",  # cisplatin multi-component
+    "Cc1cn(C)nn1",  # CuAAC triazole
+    "c1ccc(O)cc1",  # phenol
+    "c1ccc(N)cc1",  # aniline
+    "c1ccoc1",  # furan
+    "c1ccsc1",  # thiophene
+    "c1cnc2ccccc2c1",  # quinoline
 ]
 
 SMOKE_NOT_BUYABLE: List[str] = [
-    "CCCCCCC",                   # heptane
-    "CCCCCCCC",                  # octane
-    "CCN(CC)CC",                 # triethylamine (no aromatic / click)
-    "CCSCC",                     # diethyl sulfide
-    "CC(C)(C)C(C)(C)C",          # hexamethyl ethane — purely branched
-    "CCC#N",                     # propionitrile (not aromatic)
-    "CCCC(=O)O",                 # butyric acid (not aromatic)
-    "CCOCC",                     # diethyl ether
+    "CCCCCCC",  # heptane
+    "CCCCCCCC",  # octane
+    "CCN(CC)CC",  # triethylamine (no aromatic / click)
+    "CCSCC",  # diethyl sulfide
+    "CC(C)(C)C(C)(C)C",  # hexamethyl ethane — purely branched
+    "CCC#N",  # propionitrile (not aromatic)
+    "CCCC(=O)O",  # butyric acid (not aromatic)
+    "CCOCC",  # diethyl ether
 ]
 
 
 def _smiles_input(args) -> List[str]:
     if args.smiles_path is not None:
-        return [s.strip() for s in Path(args.smiles_path).read_text().splitlines()
-                if s.strip()]
+        return [
+            s.strip()
+            for s in Path(args.smiles_path).read_text().splitlines()
+            if s.strip()
+        ]
     rng = random.Random(args.seed)
     pool = SMOKE_BUYABLE + SMOKE_NOT_BUYABLE
     return [rng.choice(pool) for _ in range(int(args.n_test))]
@@ -78,24 +81,45 @@ def _smiles_input(args) -> List[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--smoke", action="store_true",
-                        help="Run the smoke test (default if no --smiles-path).")
-    parser.add_argument("--n-test", type=int, default=100,
-                        help="Number of random SMILES to test when --smoke is set.")
-    parser.add_argument("--smiles-path", type=str, default=None,
-                        help="Path to a newline-delimited SMILES file.")
-    parser.add_argument("--n-threads", type=int, default=4,
-                        help="Number of threads for the gate (default 4).")
-    parser.add_argument("--seed", type=int, default=20260926,
-                        help="RNG seed for the smoke draw (default 20260926).")
+    parser.add_argument(
+        "--smoke",
+        action="store_true",
+        help="Run the smoke test (default if no --smiles-path).",
+    )
+    parser.add_argument(
+        "--n-test",
+        type=int,
+        default=100,
+        help="Number of random SMILES to test when --smoke is set.",
+    )
+    parser.add_argument(
+        "--smiles-path",
+        type=str,
+        default=None,
+        help="Path to a newline-delimited SMILES file.",
+    )
+    parser.add_argument(
+        "--n-threads",
+        type=int,
+        default=4,
+        help="Number of threads for the gate (default 4).",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=20260926,
+        help="RNG seed for the smoke draw (default 20260926).",
+    )
     args = parser.parse_args()
 
     # Lazy import to bypass lam_chem/__init__.py which depends on
     # numpy via pysr_wrapper.  We load the module directly from
     # its source file.
     import importlib.util
-    buyable_gate_path = (ROOT / "molmetal" / "molmetal_lam" / "lam_chem"
-                         / "buyable_gate.py")
+
+    buyable_gate_path = (
+        ROOT / "molmetal" / "molmetal_lam" / "lam_chem" / "buyable_gate.py"
+    )
     spec = importlib.util.spec_from_file_location(
         "molmetal_lam.lam_chem.buyable_gate", buyable_gate_path
     )

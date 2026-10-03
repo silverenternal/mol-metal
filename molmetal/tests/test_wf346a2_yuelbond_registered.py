@@ -58,6 +58,7 @@ Honest framing (party-twenty-spirit §3.5)
   (``molmetal/tests/test_wf343c4_integration.py::test_gate_wf343c4_yuelbond_decoder_env_on_canonical``);
   this file is the registration-only slice.
 """
+
 from __future__ import annotations
 
 import pytest

@@ -52,12 +52,12 @@ from molmetal.molmetal_lam.lam_chem.skeleton_jump import (
 # ---------------------------------------------------------------------------
 # (smiles, name) — diverse fragments: aromatic / aliphatic / ring / chain.
 _FRAGMENTS: Tuple[Tuple[str, str], ...] = (
-    ("c1ccccc1",         "benzene"),
-    ("c1ccncc1",         "pyridine"),
-    ("C1CCCCC1",         "cyclohexane"),
-    ("CCCC",             "butane"),
-    ("CCO",              "ethanol"),
-    ("c1ccc(O)cc1",      "phenol"),
+    ("c1ccccc1", "benzene"),
+    ("c1ccncc1", "pyridine"),
+    ("C1CCCCC1", "cyclohexane"),
+    ("CCCC", "butane"),
+    ("CCO", "ethanol"),
+    ("c1ccc(O)cc1", "phenol"),
 )
 
 # Scaffolds to seed the swap — start with a chain (CCCCCC) because
@@ -67,9 +67,9 @@ _FRAGMENTS: Tuple[Tuple[str, str], ...] = (
 # that RDKit rejects.  TODO-31 will wire a learned swap that
 # handles rings properly.
 _SCAFFOLDS: Tuple[str, ...] = (
-    "CCCCCC",         # hexane (chain) — start here for swap-ability
-    "c1ccccc1",       # benzene (aromatic)
-    "c1ccncc1",       # pyridine (heteroaromatic)
+    "CCCCCC",  # hexane (chain) — start here for swap-ability
+    "c1ccccc1",  # benzene (aromatic)
+    "c1ccncc1",  # pyridine (heteroaromatic)
 )
 
 

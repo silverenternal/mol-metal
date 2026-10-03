@@ -88,10 +88,10 @@ def build_cisplatin() -> MoleculeClosedTerm:
     # The order is fixed: NH3, NH3, Cl, Cl — giving the canonical
     # lambda expression ((((Pt_II NH3) NH3) Cl) Cl).
     bonds: List[Bond] = [
-        Bond.dative(pt, nh3_a, ledger=ledger),   # (Pt_II NH3)
-        Bond.dative(pt, nh3_b, ledger=ledger),   # ((Pt_II NH3) NH3)
-        Bond.dative(pt, cl_a, ledger=ledger),    # (((Pt_II NH3) NH3) Cl)
-        Bond.dative(pt, cl_b, ledger=ledger),    # ((((Pt_II NH3) NH3) Cl) Cl)
+        Bond.dative(pt, nh3_a, ledger=ledger),  # (Pt_II NH3)
+        Bond.dative(pt, nh3_b, ledger=ledger),  # ((Pt_II NH3) NH3)
+        Bond.dative(pt, cl_a, ledger=ledger),  # (((Pt_II NH3) NH3) Cl)
+        Bond.dative(pt, cl_b, ledger=ledger),  # ((((Pt_II NH3) NH3) Cl) Cl)
     ]
 
     # Lift the assembled bond list into a MoleculeClosedTerm so the
@@ -115,9 +115,9 @@ def build_cisplatin() -> MoleculeClosedTerm:
     # calculus" thesis made operational in code.
     assert_well_formed(term)
     # Double-belt: explicit β-NF check.
-    assert check_beta_normal_form(term), (
-        "build_cisplatin produced a term that is not in β-normal form"
-    )
+    assert check_beta_normal_form(
+        term
+    ), "build_cisplatin produced a term that is not in β-normal form"
     return term
 
 

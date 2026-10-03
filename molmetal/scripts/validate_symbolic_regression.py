@@ -79,15 +79,19 @@ def run_smoke(n_cells: int = 5) -> Dict[str, Any]:
     for i in sample_indices:
         row = df.iloc[i]
         r = compute_symbolic_reward(row)
-        rows.append({
-            "cell_id": row["cell_id"],
-            "cohort": row["cohort"],
-            "diversity_tanimoto": float(row["diversity_tanimoto"])
-                if not np.isnan(row["diversity_tanimoto"]) else None,
-            "sa_mean_norm": float(row["sa_mean_norm"])
-                if not np.isnan(row["sa_mean_norm"]) else None,
-            "symbolic_reward": r,
-        })
+        rows.append(
+            {
+                "cell_id": row["cell_id"],
+                "cohort": row["cohort"],
+                "diversity_tanimoto": float(row["diversity_tanimoto"])
+                if not np.isnan(row["diversity_tanimoto"])
+                else None,
+                "sa_mean_norm": float(row["sa_mean_norm"])
+                if not np.isnan(row["sa_mean_norm"])
+                else None,
+                "symbolic_reward": r,
+            }
+        )
         rewards.append(r)
 
     rewards_arr = np.array(rewards, dtype=float)
@@ -107,19 +111,34 @@ def run_smoke(n_cells: int = 5) -> Dict[str, Any]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Phase 3 held-out validation for symbolic-reward regression.")
-    parser.add_argument("--output-dir",
-                        default="molmetal/reports/wf_deflex_symbolic_regression",
-                        help="Where to write phase3_validate.md + JSON verdict.")
-    parser.add_argument("--n-repeats", type=int, default=10,
-                        help="Number of held-out repeats (default 10).")
-    parser.add_argument("--holdout-frac", type=float, default=0.10,
-                        help="Held-out fraction (default 0.10).")
-    parser.add_argument("--seed", type=int, default=42,
-                        help="Random seed for the held-out splits.")
-    parser.add_argument("--family", default="F5",
-                        choices=list(FORMULA_FAMILIES),
-                        help="Family to validate (default F5 = Phase 2 pick).")
+        description="Phase 3 held-out validation for symbolic-reward regression."
+    )
+    parser.add_argument(
+        "--output-dir",
+        default="molmetal/reports/wf_deflex_symbolic_regression",
+        help="Where to write phase3_validate.md + JSON verdict.",
+    )
+    parser.add_argument(
+        "--n-repeats",
+        type=int,
+        default=10,
+        help="Number of held-out repeats (default 10).",
+    )
+    parser.add_argument(
+        "--holdout-frac",
+        type=float,
+        default=0.10,
+        help="Held-out fraction (default 0.10).",
+    )
+    parser.add_argument(
+        "--seed", type=int, default=42, help="Random seed for the held-out splits."
+    )
+    parser.add_argument(
+        "--family",
+        default="F5",
+        choices=list(FORMULA_FAMILIES),
+        help="Family to validate (default F5 = Phase 2 pick).",
+    )
     args = parser.parse_args()
 
     output_dir = PROJECT_ROOT / args.output_dir
@@ -127,65 +146,100 @@ def main() -> int:
 
     df = load_measured_cells()
     print(f"[validate_symbolic_regression] loaded {len(df)} cells")
-    print(f"[validate_symbolic_regression] cohorts: "
-          f"{df['cohort'].value_counts().to_dict()}")
+    print(
+        f"[validate_symbolic_regression] cohorts: "
+        f"{df['cohort'].value_counts().to_dict()}"
+    )
 
     # 1) Held-out validation for F5.
-    print(f"\n[validate_symbolic_regression] held-out validation "
-          f"(family={args.family}, holdout={args.holdout_frac}, "
-          f"n_repeats={args.n_repeats}, seed={args.seed})")
-    sym = held_out_validation(
-        df, family=args.family, holdout_frac=args.holdout_frac,
-        n_repeats=args.n_repeats, seed=args.seed,
+    print(
+        f"\n[validate_symbolic_regression] held-out validation "
+        f"(family={args.family}, holdout={args.holdout_frac}, "
+        f"n_repeats={args.n_repeats}, seed={args.seed})"
     )
-    print(f"  F5 held-out R^2 = {sym['held_out_r2_mean']:.4f} "
-          f"± {sym['held_out_r2_std']:.4f}")
-    print(f"  F5 held-out Pearson r = {sym['held_out_pearson_mean']:.4f} "
-          f"± {sym['held_out_pearson_std']:.4f}")
-    print(f"  F5 in-sample R^2 = {sym['in_sample_r2']:.4f}  "
-          f"(n_complete_case = {sym['n_complete_case']}, "
-          f"n_repeats = {sym['n_repeats']}, "
-          f"n_skipped = {sym.get('n_skipped', 0)})")
+    sym = held_out_validation(
+        df,
+        family=args.family,
+        holdout_frac=args.holdout_frac,
+        n_repeats=args.n_repeats,
+        seed=args.seed,
+    )
+    print(
+        f"  F5 held-out R^2 = {sym['held_out_r2_mean']:.4f} "
+        f"± {sym['held_out_r2_std']:.4f}"
+    )
+    print(
+        f"  F5 held-out Pearson r = {sym['held_out_pearson_mean']:.4f} "
+        f"± {sym['held_out_pearson_std']:.4f}"
+    )
+    print(
+        f"  F5 in-sample R^2 = {sym['in_sample_r2']:.4f}  "
+        f"(n_complete_case = {sym['n_complete_case']}, "
+        f"n_repeats = {sym['n_repeats']}, "
+        f"n_skipped = {sym.get('n_skipped', 0)})"
+    )
 
     # 2) Linear baseline (same splits, same seed).
     base = linear_baseline_validation(
-        df, holdout_frac=args.holdout_frac, n_repeats=args.n_repeats,
+        df,
+        holdout_frac=args.holdout_frac,
+        n_repeats=args.n_repeats,
         seed=args.seed,
     )
-    print(f"\n[validate_symbolic_regression] linear baseline "
-          f"(5 features, full LS)")
-    print(f"  linear held-out R^2 = {base['baseline_r2_mean']:.4f} "
-          f"± {base['baseline_r2_std']:.4f}")
-    print(f"  linear held-out Pearson r = {base['baseline_pearson_mean']:.4f} "
-          f"± {base['baseline_pearson_std']:.4f}")
+    print(f"\n[validate_symbolic_regression] linear baseline " f"(5 features, full LS)")
+    print(
+        f"  linear held-out R^2 = {base['baseline_r2_mean']:.4f} "
+        f"± {base['baseline_r2_std']:.4f}"
+    )
+    print(
+        f"  linear held-out Pearson r = {base['baseline_pearson_mean']:.4f} "
+        f"± {base['baseline_pearson_std']:.4f}"
+    )
 
     # 3) Head-to-head.
     cmp = compare_symbolic_vs_linear(
-        df, family=args.family, holdout_frac=args.holdout_frac,
-        n_repeats=args.n_repeats, seed=args.seed, lift_threshold=0.05,
+        df,
+        family=args.family,
+        holdout_frac=args.holdout_frac,
+        n_repeats=args.n_repeats,
+        seed=args.seed,
+        lift_threshold=0.05,
     )
     print(f"\n[validate_symbolic_regression] verdict = {cmp['verdict']}")
-    print(f"  symbolic R^2 = {cmp['symbolic_r2_mean']:.4f} ± "
-          f"{cmp['symbolic_r2_std']:.4f}")
-    print(f"  linear R^2 = {cmp['linear_r2_mean']:.4f} ± "
-          f"{cmp['linear_r2_std']:.4f}")
-    print(f"  lift (sym - linear) = {cmp['lift']:.4f} "
-          f"(threshold ±{cmp['lift_threshold']:.2f})")
+    print(
+        f"  symbolic R^2 = {cmp['symbolic_r2_mean']:.4f} ± "
+        f"{cmp['symbolic_r2_std']:.4f}"
+    )
+    print(
+        f"  linear R^2 = {cmp['linear_r2_mean']:.4f} ± " f"{cmp['linear_r2_std']:.4f}"
+    )
+    print(
+        f"  lift (sym - linear) = {cmp['lift']:.4f} "
+        f"(threshold ±{cmp['lift_threshold']:.2f})"
+    )
 
     # 4) Integration smoke: 5 cells.
     smoke = run_smoke(n_cells=5)
-    print(f"\n[validate_symbolic_regression] integration smoke "
-          f"(n_cells = {smoke['n_cells']})")
+    print(
+        f"\n[validate_symbolic_regression] integration smoke "
+        f"(n_cells = {smoke['n_cells']})"
+    )
     for row in smoke["rows"]:
-        print(f"  {row['cell_id']:>22} ({row['cohort']:>22})  "
-              f"tau={row['diversity_tanimoto']}, "
-              f"sa_norm={row['sa_mean_norm']}, "
-              f"symbolic_R = {row['symbolic_reward']:.4f}")
-    print(f"  rewards range: [{smoke['rewards_min']:.4f}, "
-          f"{smoke['rewards_max']:.4f}], "
-          f"mean={smoke['rewards_mean']:.4f}")
-    print(f"  all_finite = {smoke['all_finite']}, "
-          f"in_reasonable_range = {smoke['in_reasonable_range']}")
+        print(
+            f"  {row['cell_id']:>22} ({row['cohort']:>22})  "
+            f"tau={row['diversity_tanimoto']}, "
+            f"sa_norm={row['sa_mean_norm']}, "
+            f"symbolic_R = {row['symbolic_reward']:.4f}"
+        )
+    print(
+        f"  rewards range: [{smoke['rewards_min']:.4f}, "
+        f"{smoke['rewards_max']:.4f}], "
+        f"mean={smoke['rewards_mean']:.4f}"
+    )
+    print(
+        f"  all_finite = {smoke['all_finite']}, "
+        f"in_reasonable_range = {smoke['in_reasonable_range']}"
+    )
 
     # 5) Build verdict JSON.
     verdict = {

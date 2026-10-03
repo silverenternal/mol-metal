@@ -112,9 +112,18 @@ DEFAULT_TEST_SIZE: float = 0.2
 
 # RDKit 2D descriptor columns (12-d F5_RDKIT_2D feature set)
 RDKIT_2D_COLS: Tuple[str, ...] = (
-    "MolWt", "MolLogP", "TPSA", "HBA", "HBD", "NRotB",
-    "HeavyAtoms", "RingCount", "NumAromaticRings", "FractionCSP3",
-    "MolMR", "BalabanJ",
+    "MolWt",
+    "MolLogP",
+    "TPSA",
+    "HBA",
+    "HBD",
+    "NRotB",
+    "HeavyAtoms",
+    "RingCount",
+    "NumAromaticRings",
+    "FractionCSP3",
+    "MolMR",
+    "BalabanJ",
 )
 
 # PlatinAI 4-cell target columns (one per cell-line)
@@ -132,14 +141,38 @@ METALCYTOTOX_METALS: Tuple[str, ...] = ("Ru", "Ir", "Rh", "Os", "Re")
 # outliers not relevant to HL_Gap analysis).  We use the canonical
 # IUPAC d-block assignment: groups 3-12, period 4-6 (no La = f-block).
 TMQM_DBLOCK_METALS: Tuple[str, ...] = (
-    "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
-    "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
-    "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg",
+    "Sc",
+    "Ti",
+    "V",
+    "Cr",
+    "Mn",
+    "Fe",
+    "Co",
+    "Ni",
+    "Cu",
+    "Zn",
+    "Y",
+    "Zr",
+    "Nb",
+    "Mo",
+    "Tc",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Cd",
+    "Hf",
+    "Ta",
+    "W",
+    "Re",
+    "Os",
+    "Ir",
+    "Pt",
+    "Au",
+    "Hg",
 )
 
-DEFAULT_OUT_DIR = (
-    _REPO_ROOT / "molmetal" / "reports" / "wf71_p3_wf49_cross_round2"
-)
+DEFAULT_OUT_DIR = _REPO_ROOT / "molmetal" / "reports" / "wf71_p3_wf49_cross_round2"
 
 log = logging.getLogger("bench_wf49_cross_dataset_round2")
 
@@ -150,10 +183,11 @@ log = logging.getLogger("bench_wf49_cross_dataset_round2")
 @dataclass(frozen=True)
 class CohortRow:
     """One cohort (cell-line / metal) with its trained Ridge R^2."""
-    dataset: str           # "platinai_4cell" | "metalcytotox_5metal" | "tmqm_dblock"
-    cohort: str            # "MCF7" | "Ru" | "Sc" | ...
-    target: str            # "pIC50_mcf7" | "activity" | "HL_Gap"
-    n_rows: int            # n_train + n_test
+
+    dataset: str  # "platinai_4cell" | "metalcytotox_5metal" | "tmqm_dblock"
+    cohort: str  # "MCF7" | "Ru" | "Sc" | ...
+    target: str  # "pIC50_mcf7" | "activity" | "HL_Gap"
+    n_rows: int  # n_train + n_test
     n_train: int
     n_test: int
     r2_per_seed: Tuple[float, ...]
@@ -168,12 +202,13 @@ class CohortRow:
 @dataclass(frozen=True)
 class DatasetSummary:
     """One dataset's macro-aggregated result."""
+
     dataset: str
     n_cohorts: int
     cohort_names: Tuple[str, ...]
     macro_r2_mean: float
     macro_r2_std: float
-    overall_r2_mean: float       # mean over all rows pooled
+    overall_r2_mean: float  # mean over all rows pooled
     overall_pearson_r_mean: float
     n_total_rows: int
     per_cohort: Tuple[CohortRow, ...] = field(default_factory=tuple)
@@ -192,10 +227,16 @@ def load_platinai_4cell() -> pd.DataFrame:
         The pIC50_* columns (per cell-line) are the per-cohort targets.
     """
     if not PLATINAI_FEATURES_CSV.exists():
-        raise FileNotFoundError(f"platinai 4-cell features missing: {PLATINAI_FEATURES_CSV}")
+        raise FileNotFoundError(
+            f"platinai 4-cell features missing: {PLATINAI_FEATURES_CSV}"
+        )
     df = pd.read_csv(PLATINAI_FEATURES_CSV)
     # Validate 12-d RDKit 2D descriptors + 4 pIC50 columns exist
-    missing = [c for c in RDKIT_2D_COLS + tuple(PLATINAI_TARGET_COLS.values()) if c not in df.columns]
+    missing = [
+        c
+        for c in RDKIT_2D_COLS + tuple(PLATINAI_TARGET_COLS.values())
+        if c not in df.columns
+    ]
     if missing:
         raise ValueError(f"platinai 4-cell features missing cols: {missing}")
     return df
@@ -257,20 +298,22 @@ def load_tmqm_dblock(target: str = "HL_Gap") -> pd.DataFrame:
             n_dropped += 1
             continue
         try:
-            desc_lists.append([
-                Descriptors.MolWt(mol),
-                Descriptors.MolLogP(mol),
-                Descriptors.TPSA(mol),
-                Descriptors.NumHAcceptors(mol),
-                Descriptors.NumHDonors(mol),
-                Descriptors.NumRotatableBonds(mol),
-                mol.GetNumHeavyAtoms(),
-                rdMolDescriptors.CalcNumRings(mol),
-                rdMolDescriptors.CalcNumAromaticRings(mol),
-                rdMolDescriptors.CalcFractionCSP3(mol),
-                Descriptors.MolMR(mol),
-                Descriptors.BalabanJ(mol),
-            ])
+            desc_lists.append(
+                [
+                    Descriptors.MolWt(mol),
+                    Descriptors.MolLogP(mol),
+                    Descriptors.TPSA(mol),
+                    Descriptors.NumHAcceptors(mol),
+                    Descriptors.NumHDonors(mol),
+                    Descriptors.NumRotatableBonds(mol),
+                    mol.GetNumHeavyAtoms(),
+                    rdMolDescriptors.CalcNumRings(mol),
+                    rdMolDescriptors.CalcNumAromaticRings(mol),
+                    rdMolDescriptors.CalcFractionCSP3(mol),
+                    Descriptors.MolMR(mol),
+                    Descriptors.BalabanJ(mol),
+                ]
+            )
         except Exception:
             desc_lists.append([float("nan")] * len(RDKIT_2D_COLS))
             n_dropped += 1
@@ -298,11 +341,19 @@ def fit_per_cohort(
     sub = sub.dropna(subset=list(RDKIT_2D_COLS) + [target_col])
     if len(sub) < 10:
         return CohortRow(
-            dataset="unknown", cohort=cohort_name, target=target_col,
-            n_rows=len(sub), n_train=0, n_test=0,
-            r2_per_seed=tuple(), rmse_per_seed=tuple(), pearson_r_per_seed=tuple(),
-            r2_mean=float("nan"), r2_std=float("nan"),
-            rmse_mean=float("nan"), pearson_r_mean=float("nan"),
+            dataset="unknown",
+            cohort=cohort_name,
+            target=target_col,
+            n_rows=len(sub),
+            n_train=0,
+            n_test=0,
+            r2_per_seed=tuple(),
+            rmse_per_seed=tuple(),
+            pearson_r_per_seed=tuple(),
+            r2_mean=float("nan"),
+            r2_std=float("nan"),
+            rmse_mean=float("nan"),
+            pearson_r_mean=float("nan"),
         )
     X = sub[list(RDKIT_2D_COLS)].to_numpy(dtype=np.float64)
     y = sub[target_col].to_numpy(dtype=np.float64)
@@ -361,7 +412,9 @@ def bench_platinai_4cell(
     cohorts: List[CohortRow] = []
     for cohort_name, target_col in PLATINAI_TARGET_COLS.items():
         row = fit_per_cohort(
-            df, cohort_col=None, target_col=target_col,
+            df,
+            cohort_col=None,
+            target_col=target_col,
             cohort_name=cohort_name,  # cohort filter happens inside fit via subset
             seeds=seeds,
         )
@@ -387,7 +440,11 @@ def bench_platinai_4cell(
         macro_r2_mean=macro_r2,
         macro_r2_std=macro_std,
         overall_r2_mean=macro_r2,
-        overall_pearson_r_mean=float(np.mean([c.pearson_r_mean for c in cohorts if not math.isnan(c.pearson_r_mean)])),
+        overall_pearson_r_mean=float(
+            np.mean(
+                [c.pearson_r_mean for c in cohorts if not math.isnan(c.pearson_r_mean)]
+            )
+        ),
         n_total_rows=len(df),
         per_cohort=tuple(cohorts),
     )
@@ -417,7 +474,11 @@ def bench_metalcytotox_5metal(
         macro_r2_mean=macro_r2,
         macro_r2_std=macro_std,
         overall_r2_mean=macro_r2,
-        overall_pearson_r_mean=float(np.mean([c.pearson_r_mean for c in cohorts if not math.isnan(c.pearson_r_mean)])),
+        overall_pearson_r_mean=float(
+            np.mean(
+                [c.pearson_r_mean for c in cohorts if not math.isnan(c.pearson_r_mean)]
+            )
+        ),
         n_total_rows=len(df),
         per_cohort=tuple(cohorts),
     )
@@ -443,7 +504,9 @@ def bench_tmqm_dblock(
         if len(m_idx) <= max_per_metal:
             keep_idx.extend(m_idx)
         else:
-            keep_idx.extend(rng.choice(m_idx, size=max_per_metal, replace=False).tolist())
+            keep_idx.extend(
+                rng.choice(m_idx, size=max_per_metal, replace=False).tolist()
+            )
     df = df.loc[keep_idx].reset_index(drop=True)
 
     cohorts: List[CohortRow] = []
@@ -464,8 +527,12 @@ def bench_tmqm_dblock(
         macro_r2 = float("nan")
         macro_std = float("nan")
     else:
-        macro_r2 = float(np.mean([c.r2_mean for c in cohorts if not math.isnan(c.r2_mean)]))
-        macro_std = float(np.std([c.r2_mean for c in cohorts if not math.isnan(c.r2_mean)]))
+        macro_r2 = float(
+            np.mean([c.r2_mean for c in cohorts if not math.isnan(c.r2_mean)])
+        )
+        macro_std = float(
+            np.std([c.r2_mean for c in cohorts if not math.isnan(c.r2_mean)])
+        )
     return DatasetSummary(
         dataset="tmqm_dblock",
         n_cohorts=len(cohorts),
@@ -473,7 +540,11 @@ def bench_tmqm_dblock(
         macro_r2_mean=macro_r2,
         macro_r2_std=macro_std,
         overall_r2_mean=macro_r2,
-        overall_pearson_r_mean=float(np.mean([c.pearson_r_mean for c in cohorts if not math.isnan(c.pearson_r_mean)])),
+        overall_pearson_r_mean=float(
+            np.mean(
+                [c.pearson_r_mean for c in cohorts if not math.isnan(c.pearson_r_mean)]
+            )
+        ),
         n_total_rows=len(df),
         per_cohort=tuple(cohorts),
     )
@@ -554,30 +625,45 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         log.info("Running platinai_4cell per-cell-line ridge")
         s = bench_platinai_4cell(seeds=args.seeds)
         write_summary(args.out_dir, s)
-        log.info("  macro R^2 = %.4f +/- %.4f (%d cohorts)",
-                 s.macro_r2_mean, s.macro_r2_std, s.n_cohorts)
+        log.info(
+            "  macro R^2 = %.4f +/- %.4f (%d cohorts)",
+            s.macro_r2_mean,
+            s.macro_r2_std,
+            s.n_cohorts,
+        )
         summaries.append(s)
 
     if "metalcytotox_5metal" in args.datasets:
         log.info("Running metalcytotox_5metal per-metal ridge")
         s = bench_metalcytotox_5metal(seeds=args.seeds)
         write_summary(args.out_dir, s)
-        log.info("  macro R^2 = %.4f +/- %.4f (%d cohorts)",
-                 s.macro_r2_mean, s.macro_r2_std, s.n_cohorts)
+        log.info(
+            "  macro R^2 = %.4f +/- %.4f (%d cohorts)",
+            s.macro_r2_mean,
+            s.macro_r2_std,
+            s.n_cohorts,
+        )
         summaries.append(s)
 
     if "tmqm_dblock" in args.datasets:
-        log.info("Running tmqm_dblock per-metal ridge (max_per_metal=%d)",
-                 args.max_per_metal_tmqm)
-        s = bench_tmqm_dblock(seeds=args.seeds,
-                              max_per_metal=args.max_per_metal_tmqm)
+        log.info(
+            "Running tmqm_dblock per-metal ridge (max_per_metal=%d)",
+            args.max_per_metal_tmqm,
+        )
+        s = bench_tmqm_dblock(seeds=args.seeds, max_per_metal=args.max_per_metal_tmqm)
         write_summary(args.out_dir, s)
-        log.info("  macro R^2 = %.4f +/- %.4f (%d cohorts)",
-                 s.macro_r2_mean, s.macro_r2_std, s.n_cohorts)
+        log.info(
+            "  macro R^2 = %.4f +/- %.4f (%d cohorts)",
+            s.macro_r2_mean,
+            s.macro_r2_std,
+            s.n_cohorts,
+        )
         summaries.append(s)
 
     # Cross-dataset macro
-    macro_r2_means = [s.macro_r2_mean for s in summaries if not math.isnan(s.macro_r2_mean)]
+    macro_r2_means = [
+        s.macro_r2_mean for s in summaries if not math.isnan(s.macro_r2_mean)
+    ]
     if macro_r2_means:
         cross_macro = float(np.mean(macro_r2_means))
         cross_macro_std = float(np.std(macro_r2_means))
@@ -598,10 +684,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "per_dataset_macro_r2_std": {
                     s.dataset: s.macro_r2_std for s in summaries
                 },
-                "per_dataset_n_cohorts": {
-                    s.dataset: s.n_cohorts for s in summaries
-                },
-                "target_met": bool(cross_macro >= 0.0) if not math.isnan(cross_macro) else False,
+                "per_dataset_n_cohorts": {s.dataset: s.n_cohorts for s in summaries},
+                "target_met": bool(cross_macro >= 0.0)
+                if not math.isnan(cross_macro)
+                else False,
             },
             fh,
             indent=2,
@@ -609,10 +695,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     log.info("Wrote %s (cross-dataset macro R^2 = %.4f)", cross_path, cross_macro)
     log.info("=" * 70)
     log.info("Cross-dataset headline:")
-    log.info("  cross-dataset macro R^2 (mean +/- std across 3 datasets): %.4f +/- %.4f",
-             cross_macro, cross_macro_std)
-    log.info("  target_met (R^2 >= 0): %s",
-             "YES" if (not math.isnan(cross_macro) and cross_macro >= 0.0) else "NO (honest)")
+    log.info(
+        "  cross-dataset macro R^2 (mean +/- std across 3 datasets): %.4f +/- %.4f",
+        cross_macro,
+        cross_macro_std,
+    )
+    log.info(
+        "  target_met (R^2 >= 0): %s",
+        "YES"
+        if (not math.isnan(cross_macro) and cross_macro >= 0.0)
+        else "NO (honest)",
+    )
     return 0
 
 

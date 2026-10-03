@@ -85,6 +85,7 @@ References
   of Protein–Ligand Binding Affinities".  *J. Chem. Inf. Model.*
   66 (3), 1024-1037.
 """
+
 from __future__ import annotations
 
 import math
@@ -258,13 +259,9 @@ class ScoreRepellentSampler:
 
     def __post_init__(self) -> None:
         if self.n_iters < 1:
-            raise ScoreRepellentError(
-                f"n_iters must be >= 1; got {self.n_iters}"
-            )
+            raise ScoreRepellentError(f"n_iters must be >= 1; got {self.n_iters}")
         if self.step_size < 0.0:
-            raise ScoreRepellentError(
-                f"step_size must be >= 0; got {self.step_size}"
-            )
+            raise ScoreRepellentError(f"step_size must be >= 0; got {self.step_size}")
         if self.score_lipschitz <= 0.0:
             raise ScoreRepellentError(
                 f"score_lipschitz must be > 0; got {self.score_lipschitz}"
@@ -345,13 +342,9 @@ class ScoreRepellentSampler:
             x0_np = np.asarray(x0, dtype=np.float64).copy()
             return_torch = True  # always return torch per spec
         if x0_np.ndim != 1:
-            raise ScoreRepellentError(
-                f"x0 must be 1-D; got shape {x0_np.shape}"
-            )
+            raise ScoreRepellentError(f"x0 must be 1-D; got shape {x0_np.shape}")
         if n_samples < 1:
-            raise ScoreRepellentError(
-                f"n_samples must be >= 1; got {n_samples}"
-            )
+            raise ScoreRepellentError(f"n_samples must be >= 1; got {n_samples}")
         if n_samples > self.n_iters:
             raise ScoreRepellentError(
                 f"n_samples ({n_samples}) > n_iters ({self.n_iters}); "
@@ -467,14 +460,13 @@ class DirichletReplacement:
     seed: int = 0
     # Cached sampler (lazy).
     _sampler: Optional[ScoreRepellentSampler] = field(
-        default=None, repr=False,
+        default=None,
+        repr=False,
     )
 
     def __post_init__(self) -> None:
         if self.alpha <= 0.0:
-            raise ScoreRepellentError(
-                f"alpha must be > 0; got {self.alpha}"
-            )
+            raise ScoreRepellentError(f"alpha must be > 0; got {self.alpha}")
 
     # ------------------------------------------------------------------
     # RNG helper
@@ -521,13 +513,9 @@ class DirichletReplacement:
             is non-negative (a valid probability vector).
         """
         if dim < 1:
-            raise ScoreRepellentError(
-                f"dim must be >= 1; got {dim}"
-            )
+            raise ScoreRepellentError(f"dim must be >= 1; got {dim}")
         if n_samples < 1:
-            raise ScoreRepellentError(
-                f"n_samples must be >= 1; got {n_samples}"
-            )
+            raise ScoreRepellentError(f"n_samples must be >= 1; got {n_samples}")
         rng = self._ensure_rng()
         if not self.score_repellent:
             # Plain Dirichlet fallback for A/B comparison.
@@ -636,18 +624,15 @@ class VarianceControlledPUCT:
     _stats: dict = field(default_factory=dict, repr=False)
     _priors: dict = field(default_factory=dict, repr=False)
     noise_source_: Optional[DirichletReplacement] = field(
-        default=None, repr=False,
+        default=None,
+        repr=False,
     )
 
     def __post_init__(self) -> None:
         if self.c_puct < 0.0:
-            raise ScoreRepellentError(
-                f"c_puct must be >= 0; got {self.c_puct}"
-            )
+            raise ScoreRepellentError(f"c_puct must be >= 0; got {self.c_puct}")
         if not 0.0 <= self.epsilon <= 1.0:
-            raise ScoreRepellentError(
-                f"epsilon must be in [0, 1]; got {self.epsilon}"
-            )
+            raise ScoreRepellentError(f"epsilon must be in [0, 1]; got {self.epsilon}")
 
     # ------------------------------------------------------------------
     # RNG helper
@@ -681,8 +666,7 @@ class VarianceControlledPUCT:
         actions = list(actions)
         if len(actions) != len(priors):
             raise ScoreRepellentError(
-                f"actions/priors length mismatch: {len(actions)} vs "
-                f"{len(priors)}"
+                f"actions/priors length mismatch: {len(actions)} vs " f"{len(priors)}"
             )
         for a, p in zip(actions, priors):
             self.set_prior(state, a, p)
@@ -698,7 +682,8 @@ class VarianceControlledPUCT:
         st = self._stats.get(key)
         if st is None:
             self._stats[key] = {
-                "N": 0, "W": 0.0,
+                "N": 0,
+                "W": 0.0,
                 "Q": 0.0,
             }
             st = self._stats[key]
@@ -772,9 +757,7 @@ class VarianceControlledPUCT:
         """Mix the prior vector with score-repellent noise."""
         p = np.asarray(priors, dtype=np.float64)
         if p.ndim != 1 or len(p) != dim:
-            raise ScoreRepellentError(
-                f"priors shape mismatch: {p.shape} vs dim={dim}"
-            )
+            raise ScoreRepellentError(f"priors shape mismatch: {p.shape} vs dim={dim}")
         p = np.clip(p, 0.0, None)
         total = p.sum()
         if total <= 0.0:
@@ -820,9 +803,7 @@ class VarianceControlledPUCT:
         if not legal_actions:
             raise ScoreRepellentError("legal_actions must be non-empty")
         # Unvisited first.
-        unvisited = [
-            a for a in legal_actions if self.n_value(state, a) == 0
-        ]
+        unvisited = [a for a in legal_actions if self.n_value(state, a) == 0]
         if unvisited:
             return unvisited[0]
         dim = len(legal_actions)
@@ -831,8 +812,7 @@ class VarianceControlledPUCT:
             base = np.asarray(default_prior, dtype=np.float64)
         else:
             base = np.array(
-                [float(self._priors.get((state, a), 0.0))
-                 for a in legal_actions],
+                [float(self._priors.get((state, a), 0.0)) for a in legal_actions],
                 dtype=np.float64,
             )
         noisy = self._mix_priors(base, dim)

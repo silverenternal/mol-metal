@@ -120,10 +120,10 @@ _METAL_TO_IDX: Dict[str, int] = {m: i for i, m in enumerate(CANONICAL_METALS)}
 # canonical mapping. Until the .pt files are regenerated, four-domain
 # training will mix labels across domains.
 DOMAIN_ID = {
-    "metal_cytotox": 0,   # MetalCytoToxDB
-    "drugood":       1,   # DrugOOD
-    "nci60":         2,   # NCI-60
-    "binding_db":    3,   # BindingDB
+    "metal_cytotox": 0,  # MetalCytoToxDB
+    "drugood": 1,  # DrugOOD
+    "nci60": 2,  # NCI-60
+    "binding_db": 3,  # BindingDB
 }
 
 
@@ -167,9 +167,7 @@ def featurize_corpus(
     featurizer: GraphFeaturizer,
     N_max_global: int | None = None,
     E_max_global: int | None = None,
-) -> Tuple[
-    np.ndarray, np.ndarray, np.ndarray, np.ndarray
-]:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Return padded arrays:
 
         atom_features (N, N_max, atom_feat_dim) float32
@@ -257,7 +255,11 @@ def pack_domain(
         flush=True,
     )
 
-    y = df[y_col].astype(np.float32).to_numpy() if y_col in df.columns else np.full(n, np.nan, dtype=np.float32)
+    y = (
+        df[y_col].astype(np.float32).to_numpy()
+        if y_col in df.columns
+        else np.full(n, np.nan, dtype=np.float32)
+    )
     if active_col is not None and active_col in df.columns:
         active = df[active_col].astype(np.float32).to_numpy()
     else:
@@ -290,8 +292,11 @@ def main() -> int:
     out_dir = Path("molmetal/data/pre_featurized")
     out_dir.mkdir(parents=True, exist_ok=True)
     featurizer = GraphFeaturizer()
-    print(f"atom_feat_dim={featurizer.atom_feature_dim}, "
-          f"edge_feat_dim={featurizer.edge_feature_dim}", flush=True)
+    print(
+        f"atom_feat_dim={featurizer.atom_feature_dim}, "
+        f"edge_feat_dim={featurizer.edge_feature_dim}",
+        flush=True,
+    )
 
     # ----- Load raw frames ------------------------------------------------
     print("Loading raw dataframes ...", flush=True)
@@ -375,7 +380,7 @@ def main() -> int:
         smiles_col="smiles",
         y_col="pIC50",
         active_col="active",
-        metal_col=None,            # NCI-60 has no metal id
+        metal_col=None,  # NCI-60 has no metal id
         featurizer=featurizer,
         domain_name="nci60",
         N_max_global=N_max_global,
@@ -403,8 +408,8 @@ def main() -> int:
     pack_do = pack_domain(
         df_do,
         smiles_col="smiles",
-        y_col="pIC50",             # all-NaN (DrugOOD is classification only)
-        active_col="active",       # binary label
+        y_col="pIC50",  # all-NaN (DrugOOD is classification only)
+        active_col="active",  # binary label
         metal_col=None,
         featurizer=featurizer,
         domain_name="drugood",
@@ -428,12 +433,20 @@ def main() -> int:
     # ----- Save aggregate file -------------------------------------------
     print("Concatenating aggregate ...", flush=True)
     keys_tensors = [
-        "atom_features", "edge_index", "edge_attr", "atom_mask",
-        "metal_idx", "y", "active", "domain",
+        "atom_features",
+        "edge_index",
+        "edge_attr",
+        "atom_mask",
+        "metal_idx",
+        "y",
+        "active",
+        "domain",
     ]
     agg: Dict[str, object] = {}
     for k in keys_tensors:
-        agg[k] = torch.cat([pack[k] for pack in (pack_mc, pack_nci, pack_bd, pack_do)], dim=0)
+        agg[k] = torch.cat(
+            [pack[k] for pack in (pack_mc, pack_nci, pack_bd, pack_do)], dim=0
+        )
     # Concatenate smiles lists
     agg["smiles"] = (
         pack_mc["smiles"] + pack_nci["smiles"] + pack_bd["smiles"] + pack_do["smiles"]
@@ -446,11 +459,26 @@ def main() -> int:
     total = agg["atom_features"].shape[0]
     total_wall = t_mc + t_nci + t_bd + t_do
     print("Done.", flush=True)
-    print(f"  metal_cytotox: {pack_mc['atom_features'].shape[0]}  ({t_mc:.1f}s, {pack_mc['atom_features'].shape[0] / max(t_mc, 1e-6):.0f}/s)", flush=True)
-    print(f"  nci60:         {pack_nci['atom_features'].shape[0]}  ({t_nci:.1f}s, {pack_nci['atom_features'].shape[0] / max(t_nci, 1e-6):.0f}/s)", flush=True)
-    print(f"  binding_db:    {pack_bd['atom_features'].shape[0]}  ({t_bd:.1f}s, {pack_bd['atom_features'].shape[0] / max(t_bd, 1e-6):.0f}/s)", flush=True)
-    print(f"  drugood:       {pack_do['atom_features'].shape[0]}  ({t_do:.1f}s, {pack_do['atom_features'].shape[0] / max(t_do, 1e-6):.0f}/s)", flush=True)
-    print(f"  total:         {total} rows  ({total_wall:.1f}s, {total / max(total_wall, 1e-6):.0f}/s)", flush=True)
+    print(
+        f"  metal_cytotox: {pack_mc['atom_features'].shape[0]}  ({t_mc:.1f}s, {pack_mc['atom_features'].shape[0] / max(t_mc, 1e-6):.0f}/s)",
+        flush=True,
+    )
+    print(
+        f"  nci60:         {pack_nci['atom_features'].shape[0]}  ({t_nci:.1f}s, {pack_nci['atom_features'].shape[0] / max(t_nci, 1e-6):.0f}/s)",
+        flush=True,
+    )
+    print(
+        f"  binding_db:    {pack_bd['atom_features'].shape[0]}  ({t_bd:.1f}s, {pack_bd['atom_features'].shape[0] / max(t_bd, 1e-6):.0f}/s)",
+        flush=True,
+    )
+    print(
+        f"  drugood:       {pack_do['atom_features'].shape[0]}  ({t_do:.1f}s, {pack_do['atom_features'].shape[0] / max(t_do, 1e-6):.0f}/s)",
+        flush=True,
+    )
+    print(
+        f"  total:         {total} rows  ({total_wall:.1f}s, {total / max(total_wall, 1e-6):.0f}/s)",
+        flush=True,
+    )
     return 0
 
 

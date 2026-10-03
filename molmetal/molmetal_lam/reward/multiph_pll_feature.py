@@ -50,6 +50,7 @@ Honest framing
 * Recovery is **PROJECTED** until a downstream R² lift or m7 lift is
   measured against the Wf-325 series baseline.
 """
+
 from __future__ import annotations
 
 import math
@@ -118,6 +119,7 @@ DEFAULT_SEED: int = 20260929
 try:  # pragma: no cover - import-only check
     from rdkit import Chem  # type: ignore
     from rdkit.Chem import AllChem  # type: ignore
+
     _RDKIT_AVAILABLE: bool = True
 except Exception:  # pragma: no cover
     Chem = None  # type: ignore
@@ -182,8 +184,7 @@ def fourier_32bin_features(
     """
     if feature_map.ndim != 2:
         raise MultiPHPLLFeatureError(
-            f"feature_map must be (n_bins, n_bins); got "
-            f"{tuple(feature_map.shape)}"
+            f"feature_map must be (n_bins, n_bins); got " f"{tuple(feature_map.shape)}"
         )
     fm = np.asarray(feature_map, dtype=np.float64)
     if fm.shape[0] != fm.shape[1]:
@@ -191,9 +192,7 @@ def fourier_32bin_features(
             f"feature_map must be square; got {tuple(fm.shape)}"
         )
     if n_bins < 2:
-        raise MultiPHPLLFeatureError(
-            f"n_bins must be >= 2; got {n_bins}"
-        )
+        raise MultiPHPLLFeatureError(f"n_bins must be >= 2; got {n_bins}")
     side = fm.shape[0]
     # 2-D FFT + shift so DC is at the centre.
     fft = np.fft.fft2(fm)
@@ -202,7 +201,9 @@ def fourier_32bin_features(
     # Build the radial-coordinate grid (centre = (side//2, side//2)).
     cy, cx = side // 2, side // 2
     y_grid, x_grid = np.meshgrid(
-        np.arange(side) - cy, np.arange(side) - cx, indexing="ij",
+        np.arange(side) - cy,
+        np.arange(side) - cx,
+        indexing="ij",
     )
     r_grid = np.sqrt(y_grid * y_grid + x_grid * x_grid)
     # Radial bin edges — cover [0, side * sqrt(2) / 2] (the max
@@ -295,17 +296,11 @@ class MultiPHPLLFeatureExtractor:
 
     def __post_init__(self) -> None:
         if int(self.n_bins) < 2:
-            raise MultiPHPLLFeatureError(
-                f"n_bins must be >= 2; got {self.n_bins}"
-            )
+            raise MultiPHPLLFeatureError(f"n_bins must be >= 2; got {self.n_bins}")
         if int(self.k) < 1:
-            raise MultiPHPLLFeatureError(
-                f"k must be >= 1; got {self.k}"
-            )
+            raise MultiPHPLLFeatureError(f"k must be >= 1; got {self.k}")
         if int(self.knn) < 1:
-            raise MultiPHPLLFeatureError(
-                f"knn must be >= 1; got {self.knn}"
-            )
+            raise MultiPHPLLFeatureError(f"knn must be >= 1; got {self.knn}")
         self._filtration = TwoParameterFiltration(
             max_radius=float(self.max_radius),
             max_coord=float(self.max_coord),
@@ -349,13 +344,9 @@ class MultiPHPLLFeatureExtractor:
             )
         mol = Chem.MolFromSmiles(smiles)
         if mol is None:
-            raise MultiPHPLLFeatureError(
-                f"RDKit could not parse SMILES {smiles!r}"
-            )
+            raise MultiPHPLLFeatureError(f"RDKit could not parse SMILES {smiles!r}")
         mol_h = Chem.AddHs(mol)
-        embed_status = int(
-            AllChem.EmbedMolecule(mol_h, randomSeed=0xC0FFEE)
-        )
+        embed_status = int(AllChem.EmbedMolecule(mol_h, randomSeed=0xC0FFEE))
         if embed_status != 0:
             raise MultiPHPLLFeatureError(
                 f"AllChem.EmbedMolecule failed for {smiles!r} "
@@ -376,7 +367,8 @@ class MultiPHPLLFeatureExtractor:
         return mol_h, coords, atom_types
 
     def compute(
-        self, smiles: str,
+        self,
+        smiles: str,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Compute (Fourier, Multi-PH, PLL) features for one SMILES.
 
@@ -407,6 +399,7 @@ class MultiPHPLLFeatureExtractor:
         fourier = fourier_32bin_features(feat_np, n_bins=int(self.n_bins))
         # PLL signature via the existing base callable.
         from molmetal.molmetal_lam.lam_chem.pll_signature import compute_pll
+
         pll_sig = compute_pll(mol, k=int(self.k), k_nn=int(self.knn))
         eigvals = np.asarray(pll_sig.eigenvalues, dtype=np.float64)
         if eigvals.size < int(self.k):
@@ -433,7 +426,8 @@ class MultiPHPLLFeatureExtractor:
     # -- batch ----------------------------------------------------------
 
     def compute_batch(
-        self, smiles_list: Sequence[str],
+        self,
+        smiles_list: Sequence[str],
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Compute (F, M, L) for a batch of SMILES, stacking per-row.
 
@@ -459,8 +453,7 @@ class MultiPHPLLFeatureExtractor:
                 f, m, p = self.compute(smi)
             except Exception:
                 f = np.zeros(int(self.n_bins), dtype=np.float64)
-                m = np.zeros((int(self.n_bins), int(self.n_bins)),
-                             dtype=np.float64)
+                m = np.zeros((int(self.n_bins), int(self.n_bins)), dtype=np.float64)
                 p = np.zeros(int(self.k), dtype=np.float64)
             fourier_rows.append(f)
             multi_ph_rows.append(m)
@@ -528,48 +521,50 @@ class MultiPHPLLRecoveryReport:
             "no_retrain": True,
             "wall_seconds": round(float(self.wall_seconds), 4),
             "m6_kappa_augmented": (
-                None if self.m6_kappa_augmented is None
+                None
+                if self.m6_kappa_augmented is None
                 else round(float(self.m6_kappa_augmented), 6)
             ),
             "m6_kappa_baseline": (
-                None if self.m6_kappa_baseline is None
+                None
+                if self.m6_kappa_baseline is None
                 else round(float(self.m6_kappa_baseline), 6)
             ),
             "m6_kappa_delta": (
-                None if (self.m6_kappa_augmented is None
-                         or self.m6_kappa_baseline is None)
+                None
+                if (self.m6_kappa_augmented is None or self.m6_kappa_baseline is None)
                 else round(
                     float(self.m6_kappa_augmented) - float(self.m6_kappa_baseline),
                     6,
                 )
             ),
             "m7_diversity_pll": (
-                None if self.m7_diversity_pll is None
+                None
+                if self.m7_diversity_pll is None
                 else round(float(self.m7_diversity_pll), 6)
             ),
             "m7_diversity_baseline": (
-                None if self.m7_diversity_baseline is None
+                None
+                if self.m7_diversity_baseline is None
                 else round(float(self.m7_diversity_baseline), 6)
             ),
             "m7_diversity_delta": (
-                None if (self.m7_diversity_pll is None
-                         or self.m7_diversity_baseline is None)
+                None
+                if (self.m7_diversity_pll is None or self.m7_diversity_baseline is None)
                 else round(
                     float(self.m7_diversity_pll) - float(self.m7_diversity_baseline),
                     6,
                 )
             ),
             "r2_joint": (
-                None if self.r2_joint is None
-                else round(float(self.r2_joint), 6)
+                None if self.r2_joint is None else round(float(self.r2_joint), 6)
             ),
             "r2_baseline": (
-                None if self.r2_baseline is None
-                else round(float(self.r2_baseline), 6)
+                None if self.r2_baseline is None else round(float(self.r2_baseline), 6)
             ),
             "r2_delta": (
-                None if (self.r2_joint is None
-                         or self.r2_baseline is None)
+                None
+                if (self.r2_joint is None or self.r2_baseline is None)
                 else round(
                     float(self.r2_joint) - float(self.r2_baseline),
                     6,
@@ -581,12 +576,10 @@ class MultiPHPLLRecoveryReport:
                 "is_no_retrain": True,
                 "r2_lift_status": "PROJECTED" if self.r2_joint is None else "MEASURED",
                 "m6_kappa_lift_status": (
-                    "PROJECTED" if self.m6_kappa_augmented is None
-                    else "MEASURED"
+                    "PROJECTED" if self.m6_kappa_augmented is None else "MEASURED"
                 ),
                 "m7_lift_status": (
-                    "PROJECTED" if self.m7_diversity_pll is None
-                    else "MEASURED"
+                    "PROJECTED" if self.m7_diversity_pll is None else "MEASURED"
                 ),
             },
         }
@@ -596,10 +589,14 @@ def _ridge_r2(X: np.ndarray, y: np.ndarray, alpha: float = 1.0) -> float:
     """Tiny CPU-only Ridge R² helper for the wire-in tests."""
     from sklearn.linear_model import Ridge
     from sklearn.model_selection import train_test_split
+
     if X.shape[0] < 4:
         return float("nan")
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=0,
+        X,
+        y,
+        test_size=0.2,
+        random_state=0,
     )
     model = Ridge(alpha=float(alpha))
     model.fit(X_train, y_train)
@@ -640,6 +637,7 @@ def wire_m6_kappa_recovery(
             from molmetal.molmetal_lam.sbdd_env.metrics_v2 import (
                 m6_kappa_from_smiles,
             )
+
             for smi in smiles_list:
                 try:
                     v = m6_kappa_from_smiles(smi)
@@ -670,6 +668,7 @@ def wire_m6_kappa_recovery(
         # R² > 0 implies the topological signal is at least as
         # informative as the baseline kappa.
         from sklearn.linear_model import Ridge
+
         model = Ridge(alpha=1.0)
         model.fit(X, y)
         y_hat = model.predict(X)
@@ -746,6 +745,7 @@ def wire_m7_diversity_recovery(
                 morgan_fp_batch,
                 mean_pairwise_tanimoto_distance,
             )
+
             fps = morgan_fp_batch(sub)
             m7_baseline = mean_pairwise_tanimoto_distance(fps)
         except Exception:
@@ -810,7 +810,8 @@ def wire_r2_recovery(
     n = fourier_b.shape[0]
     if y is None:
         y = np.linalg.norm(
-            multi_ph_b.reshape(n, -1), axis=-1,
+            multi_ph_b.reshape(n, -1),
+            axis=-1,
         )
     y = np.asarray(y, dtype=np.float64).reshape(-1)
     if y.shape[0] != n:
@@ -818,7 +819,8 @@ def wire_r2_recovery(
 
     # Joint design matrix.
     X_joint = np.concatenate(
-        [fourier_b, multi_ph_b.reshape(n, -1), pll_b], axis=-1,
+        [fourier_b, multi_ph_b.reshape(n, -1), pll_b],
+        axis=-1,
     )
     # Baseline design matrix — Fourier + PLL only (skip multi-PH).
     X_baseline = np.concatenate([fourier_b, pll_b], axis=-1)
@@ -861,12 +863,14 @@ def smoke(
     """
     if smiles_list is None:
         from pathlib import Path
+
         repo_root = Path(__file__).resolve().parents[3]
         csv_path = repo_root / "molmetal" / "data" / "metallo_drugs_500_train.csv"
         if not csv_path.exists():
             csv_path = Path("molmetal/data/metallo_drugs_500_train.csv")
         if csv_path.exists():
             import csv as _csv
+
             smiles_list = []
             with open(csv_path, "r", encoding="utf-8") as fh:
                 reader = _csv.DictReader(fh)
@@ -926,6 +930,7 @@ def smoke(
 
     if output_dir is not None:
         from pathlib import Path
+
         out_path = Path(output_dir) / "result.json"
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(

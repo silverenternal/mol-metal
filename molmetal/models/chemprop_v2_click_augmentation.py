@@ -350,9 +350,7 @@ def _smiles_to_tile(smiles: str, tags: Optional[List[str]] = None) -> Any:
         from molmetal_lam.tile_lib.click_tiles import build_click_tile
         from molmetal_lam.tile_lib.tile import Tile  # noqa: F401
     except Exception as exc:  # pragma: no cover - defensive
-        logger.warning(
-            "[click_aug] could not import Tile/build_click_tile: %s", exc
-        )
+        logger.warning("[click_aug] could not import Tile/build_click_tile: %s", exc)
         return None
     canonical = _canonical(smiles)
     if not canonical:
@@ -381,29 +379,29 @@ def _get_partner_pool(rule_name: str) -> List[str]:
         # Partners: terminal alkynes (CuAAC needs azide + terminal alkyne;
         # the chemprop v2 SMILES carries the azide — partners are alkynes).
         return [
-            "C#CC",                  # propyne (terminal alkyne)
-            "C#CCc1ccccc1",          # propargyl benzene
-            "C#CCN",                 # propargylamine
+            "C#CC",  # propyne (terminal alkyne)
+            "C#CCc1ccccc1",  # propargyl benzene
+            "C#CCN",  # propargylamine
         ]
     if rule_name == "SPAAC":
         # Partners: cyclooctyne (SPAAC needs azide + strained alkyne).
         return [
-            "C1CCCC#CCC1",           # cyclooctyne
-            "C1CCCC#CC1",            # smaller strained ring
+            "C1CCCC#CCC1",  # cyclooctyne
+            "C1CCCC#CC1",  # smaller strained ring
         ]
     if rule_name == "SPC":
         # Partners: phosphine (SPC needs azide + P(III)).
         return [
-            "CP",                    # methylphosphine
-            "c1ccccc1P",             # phenylphosphine
+            "CP",  # methylphosphine
+            "c1ccccc1P",  # phenylphosphine
         ]
     if rule_name == "DielsAlder":
         # Partners: dienophile (DielsAlder needs diene + alkene; the
         # chemprop v2 SMILES could carry either — we try both ways
         # via ``symmetric_click`` in :mod:`click_reactions`).
         return [
-            "C=CC(=O)C",             # methyl vinyl ketone
-            "C=CC",                  # propene
+            "C=CC(=O)C",  # methyl vinyl ketone
+            "C=CC",  # propene
         ]
     return []
 
@@ -610,9 +608,7 @@ def augment_candidates_via_click_reactions(
             continue
         if rng.random() < use_prob:
             # Pick a random rule + partner.
-            eligible = [
-                r for r in rule_names if partner_pool_resolved.get(r)
-            ]
+            eligible = [r for r in rule_names if partner_pool_resolved.get(r)]
             if not eligible:
                 out.append(raw_smi)
                 n_passthrough += 1
@@ -624,9 +620,7 @@ def augment_candidates_via_click_reactions(
                 canonical_aug = _canonical(aug)
                 if canonical_aug and canonical_aug != canon_smi:
                     out.append(canonical_aug)
-                    per_rule_fire_count[rname] = (
-                        per_rule_fire_count.get(rname, 0) + 1
-                    )
+                    per_rule_fire_count[rname] = per_rule_fire_count.get(rname, 0) + 1
                     n_fired += 1
                     continue
             # Rule did not fire — fall back to original (input verbatim).

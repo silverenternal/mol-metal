@@ -32,6 +32,7 @@ from typing import Any, Dict, List, Optional, Sequence
 
 try:
     from rdkit import Chem  # noqa: F401  (imported for side-effect only)
+
     _RDKIT_OK = True
 except Exception:
     _RDKIT_OK = False
@@ -70,7 +71,9 @@ class ValidityGate:
     DEFAULT_OK_FAIL_CLASSES = ("ok",)
 
     def __init__(self, ok_fail_classes: Optional[Sequence[str]] = None) -> None:
-        self.ok_fail_classes = tuple(ok_fail_classes) if ok_fail_classes else self.DEFAULT_OK_FAIL_CLASSES
+        self.ok_fail_classes = (
+            tuple(ok_fail_classes) if ok_fail_classes else self.DEFAULT_OK_FAIL_CLASSES
+        )
         self._chem_ok = bool(_RDKIT_OK)
 
     # ------------------------------------------------------------------
@@ -163,9 +166,7 @@ class ValidityGate:
     # ------------------------------------------------------------------
     # Batch + filtering
     # ------------------------------------------------------------------
-    def filter_valid(
-        self, smiles_list: Sequence[str]
-    ) -> List[ValidityResult]:
+    def filter_valid(self, smiles_list: Sequence[str]) -> List[ValidityResult]:
         """Apply the gate to a batch.  Preserves order."""
         return [self.check(s) for s in smiles_list]
 
@@ -181,11 +182,14 @@ class ValidityGate:
             if r.valid and r.fail_class in self.ok_fail_classes
         ]
 
-    def rejection_report(
-        self, smiles_list: Sequence[str]
-    ) -> Dict[str, int]:
+    def rejection_report(self, smiles_list: Sequence[str]) -> Dict[str, int]:
         """Histogram of fail classes for a batch — useful for §6 stats."""
-        out: Dict[str, int] = {"ok": 0, "smiles_parse": 0, "round_trip": 0, "sanitize": 0}
+        out: Dict[str, int] = {
+            "ok": 0,
+            "smiles_parse": 0,
+            "round_trip": 0,
+            "sanitize": 0,
+        }
         for r in self.filter_valid(smiles_list):
             if r.fail_class in out:
                 out[r.fail_class] += 1

@@ -8,6 +8,7 @@ to scaffold-OOD split so the per-seed AUC is non-degenerate.
 These tests exercise the fallback + the scaffold group size invariant
 on a tiny synthetic cohort so the suite stays fast on CI.
 """
+
 from __future__ import annotations
 
 import sys
@@ -32,6 +33,7 @@ def test_re_cohort_size_invariants() -> None:
     threshold needed for honest split evaluation.
     """
     import pandas as pd
+
     csv = PROJECT_ROOT / ".data/molmetal/metalcytotox_5metal_multitask_v4.csv"
     if not csv.exists():
         pytest.skip(f"missing {csv}; CSV path is project-local")
@@ -41,9 +43,9 @@ def test_re_cohort_size_invariants() -> None:
         f"Re cohort shrunk to {len(re_df)} rows; was 868 in Wf-312A. "
         f"Investigate data drift before re-running scaffold fallback."
     )
-    assert re_df["smiles"].nunique() >= 100, (
-        f"Re unique SMILES = {re_df['smiles'].nunique()}; need >= 100."
-    )
+    assert (
+        re_df["smiles"].nunique() >= 100
+    ), f"Re unique SMILES = {re_df['smiles'].nunique()}; need >= 100."
     assert "scaffold_id" in re_df.columns, (
         "Re cohort is missing scaffold_id column; scaffold fallback "
         "needs scaffold_id (Wf-312A)."
@@ -61,6 +63,7 @@ def test_re_temporal_split_is_degenerate() -> None:
     """Under strict Krasnov cutoffs (train<2024, test>=2025), Re test
     window has only 1 row. This is the bug Wf-312A fixes."""
     import pandas as pd
+
     csv = PROJECT_ROOT / ".data/molmetal/metalcytotox_5metal_multitask_v4.csv"
     raw_csv = PROJECT_ROOT / ".data/molmetal/MetalCytoToxDB.csv"
     if not csv.exists() or not raw_csv.exists():
@@ -71,7 +74,8 @@ def test_re_temporal_split_is_degenerate() -> None:
     yr_lookup = (
         df_raw[["SMILES_Ligands", "Metal", "Year"]]
         .rename(columns={"SMILES_Ligands": "smiles", "Metal": "metal"})
-        .groupby(["smiles", "metal"], as_index=False)["Year"].min()
+        .groupby(["smiles", "metal"], as_index=False)["Year"]
+        .min()
     )
     df = df.merge(yr_lookup, on=["smiles", "metal"], how="left")
     n_test_2025 = int((df["Year"] >= 2025).sum())
@@ -88,6 +92,7 @@ def test_re_temporal_split_is_degenerate() -> None:
 def test_re_scaffold_split_non_degenerate() -> None:
     """_scaffold_split_indices must yield n_test >= 50 for every seed."""
     import pandas as pd
+
     csv = PROJECT_ROOT / ".data/molmetal/metalcytotox_5metal_multitask_v4.csv"
     if not csv.exists():
         pytest.skip("CSV not present")
@@ -105,7 +110,9 @@ def test_re_scaffold_split_non_degenerate() -> None:
     active = re_df["activity"].astype(int).to_numpy()
     for seed in (0, 1, 2, 3, 4):
         out = _scaffold_split_indices(
-            smiles_subset=smiles, active_subset=active, seed=seed,
+            smiles_subset=smiles,
+            active_subset=active,
+            seed=seed,
         )
         assert out is not None, (
             f"seed={seed}: no scaffold group >= 50 rows; Re cohort "
@@ -121,10 +128,12 @@ def test_re_scaffold_split_non_degenerate() -> None:
             f"rows; need >= 50 to train."
         )
         # Sanity: train/val/test disjoint.
-        all_idx = set(train_idx.tolist()) | set(val_idx.tolist()) | set(test_idx.tolist())
-        assert len(all_idx) == len(train_idx) + len(val_idx) + len(test_idx), (
-            f"seed={seed}: train/val/test overlap detected."
+        all_idx = (
+            set(train_idx.tolist()) | set(val_idx.tolist()) | set(test_idx.tolist())
         )
+        assert len(all_idx) == len(train_idx) + len(val_idx) + len(
+            test_idx
+        ), f"seed={seed}: train/val/test overlap detected."
 
 
 # ---------------------------------------------------------------------------
@@ -164,6 +173,7 @@ def test_wf312a_run_one_per_metal_auto_uses_scaffold_for_re() -> None:
         pytest.skip(f"driver / torch import failed: {exc}")
 
     import pandas as pd
+
     csv = PROJECT_ROOT / ".data/molmetal/metalcytotox_5metal_multitask_v4.csv"
     if not csv.exists():
         pytest.skip("CSV not present")
@@ -186,17 +196,19 @@ def test_wf312a_run_one_per_metal_auto_uses_scaffold_for_re() -> None:
         lr=1e-3,
         device=torch.device("cpu"),
         seed=0,
-        atom_fdim=72, bond_fdim=14,
-        hidden_dim=32, depth=2,
+        atom_fdim=72,
+        bond_fdim=14,
+        hidden_dim=32,
+        depth=2,
         num_workers=0,
         split_mode="auto",
     )
     # With n_test(>=2025)=0 in the synthetic all-2020 year vector the
     # driver must fall back to scaffold. Otherwise the n_test would be 0
     # and AUC would be NaN.
-    assert "scaffold" in run.split or "fallback" in run.split or run.n_test >= 50, (
-        f"auto mode did not fall back: split={run.split} n_test={run.n_test}"
-    )
+    assert (
+        "scaffold" in run.split or "fallback" in run.split or run.n_test >= 50
+    ), f"auto mode did not fall back: split={run.split} n_test={run.n_test}"
     assert run.n_test >= 50, (
         f"non-degenerate scaffold fallback still gave n_test="
         f"{run.n_test}; expected >= 50."

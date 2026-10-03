@@ -102,7 +102,7 @@ def test_metal_id_lookup():
     """``metal_id`` returns a stable index for known metals."""
     m = _make_model()
     assert m.metal_id("Ru") == 0
-    assert m.metal_id("Os") == 2   # canonical order is Ru, Ir, Os
+    assert m.metal_id("Os") == 2  # canonical order is Ru, Ir, Os
     with pytest.raises(KeyError):
         m.metal_id("Fe")
 
@@ -198,9 +198,9 @@ def test_backward_works():
 
     # Metal embedding received gradient.
     g_embed = m.metal_embed.weight.grad
-    assert g_embed is not None and g_embed.abs().sum().item() > 0.0, (
-        "metal embedding received no gradient"
-    )
+    assert (
+        g_embed is not None and g_embed.abs().sum().item() > 0.0
+    ), "metal embedding received no gradient"
 
 
 def test_loss_decreases_over_steps():
@@ -241,28 +241,30 @@ def test_per_metal_output_shape():
     out = m(SMILES_3, metal_ids)
     B = len(SMILES_3)
     for metal in SUPPORTED_METALS:
-        assert out[metal].shape == (B, 2), (
-            f"{metal} logits expected ({B}, 2), got {tuple(out[metal].shape)}"
-        )
-    assert out["coord"].shape == (B, 5), (
-        f"coord logits expected ({B}, 5), got {tuple(out['coord'].shape)}"
-    )
+        assert out[metal].shape == (
+            B,
+            2,
+        ), f"{metal} logits expected ({B}, 2), got {tuple(out[metal].shape)}"
+    assert out["coord"].shape == (
+        B,
+        5,
+    ), f"coord logits expected ({B}, 5), got {tuple(out['coord'].shape)}"
 
 
 def test_per_metal_routing_differs_by_metal_id():
     """Different metal_ids → different per-metal head outputs (routing works)."""
     m = _make_model()
     m.eval()  # disable dropout so the difference comes from routing alone
-    metal_ids_a = torch.tensor([0, 0, 0], dtype=torch.long)   # all "Ru"
-    metal_ids_b = torch.tensor([4, 4, 4], dtype=torch.long)   # all "Re"
+    metal_ids_a = torch.tensor([0, 0, 0], dtype=torch.long)  # all "Ru"
+    metal_ids_b = torch.tensor([4, 4, 4], dtype=torch.long)  # all "Re"
     out_a = m(SMILES_3, metal_ids_a)
     out_b = m(SMILES_3, metal_ids_b)
     # The per-metal heads consume z = [h; metal_embed], so different
     # metal ids → different z → different logits for every head.
     for met in SUPPORTED_METALS:
-        assert not torch.allclose(out_a[met], out_b[met]), (
-            f"{met} head gave identical output for Ru vs Re ids — routing broken"
-        )
+        assert not torch.allclose(
+            out_a[met], out_b[met]
+        ), f"{met} head gave identical output for Ru vs Re ids — routing broken"
     # Coord also routes through z, so coord logits differ too.
     assert not torch.allclose(out_a["coord"], out_b["coord"])
 
@@ -287,6 +289,7 @@ def test_v4_backward_compat_still_works():
         V4MultiTaskDMPNN,
         V4MultiTaskLoss,
     )
+
     m = V4MultiTaskDMPNN(hidden_dim=32, n_layers=1, n_metals=5, n_coord_classes=5)
     loss_fn = V4MultiTaskLoss()
     metal_ids = torch.tensor([0, 1, 2], dtype=torch.long)

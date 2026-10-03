@@ -67,24 +67,24 @@ def tmqm_samples() -> List[bm8.SampleSMILES]:
 # ---------------------------------------------------------------------------
 def test_platinai_4cell_loader_returns_pt_only(platinai_samples):
     """PlatinAI 4-cell is monometallic Pt."""
-    assert len(platinai_samples) > 1000, (
-        f"PlatinAI 4-cell should have >1000 rows, got {len(platinai_samples)}"
-    )
+    assert (
+        len(platinai_samples) > 1000
+    ), f"PlatinAI 4-cell should have >1000 rows, got {len(platinai_samples)}"
     metals = {s.metal for s in platinai_samples}
     assert metals == {"Pt"}, f"PlatinAI should only contain Pt, got {metals}"
     for s in platinai_samples[:10]:
         assert s.smiles, "SMILES should not be empty"
-        assert "Pt" in s.smiles or "[Pt" in s.smiles, (
-            f"PlatinAI SMILES should contain Pt: {s.smiles}"
-        )
+        assert (
+            "Pt" in s.smiles or "[Pt" in s.smiles
+        ), f"PlatinAI SMILES should contain Pt: {s.smiles}"
 
 
 def test_metalcytotox_loader_returns_5_metals(metalcytotox_samples):
     """MetalCytoToxDB 5-metal subset should only contain Ru/Ir/Rh/Os/Re."""
     metals = {s.metal for s in metalcytotox_samples}
-    assert metals.issubset(set(bm8.METALCYTOTOX_METALS)), (
-        f"metalcytotox should only contain 5 metals, got {metals}"
-    )
+    assert metals.issubset(
+        set(bm8.METALCYTOTOX_METALS)
+    ), f"metalcytotox should only contain 5 metals, got {metals}"
     assert len(metalcytotox_samples) > 100, (
         f"MetalCytoToxDB should have >100 rows in 5-metal subset, got "
         f"{len(metalcytotox_samples)}"
@@ -100,12 +100,10 @@ def test_tmqm_loader_filters_dblock(tmqm_samples):
     assert "La" not in metals, f"tmQM d-block should exclude La, got {metals}"
     # Group-3 (Sc, Y) is acceptable per IUPAC group 3 convention
     for m in metals:
-        assert m in bm8.TMQM_DBLOCK_METALS, (
-            f"unexpected metal {m!r} in d-block set"
-        )
-    assert len(tmqm_samples) > 10000, (
-        f"tmQM d-block should have >10000 rows, got {len(tmqm_samples)}"
-    )
+        assert m in bm8.TMQM_DBLOCK_METALS, f"unexpected metal {m!r} in d-block set"
+    assert (
+        len(tmqm_samples) > 10000
+    ), f"tmQM d-block should have >10000 rows, got {len(tmqm_samples)}"
 
 
 def test_select_dataset_dispatch():
@@ -156,11 +154,18 @@ def test_subsample_caps_to_n():
 # ---------------------------------------------------------------------------
 def _make_outcome(status, pb_valid, bucket="Pt", metal="Pt") -> bm8.PBOutcome:
     return bm8.PBOutcome(
-        sample_id="x", smiles="CCO", metal=metal, bucket=bucket,
-        status=status, pb_valid=pb_valid,
-        n_checks=14, n_passed=14 if pb_valid else 7,
-        n_failed=0 if pb_valid else 7, n_skipped=0,
-        failed_checks=(), elapsed_s=0.1,
+        sample_id="x",
+        smiles="CCO",
+        metal=metal,
+        bucket=bucket,
+        status=status,
+        pb_valid=pb_valid,
+        n_checks=14,
+        n_passed=14 if pb_valid else 7,
+        n_failed=0 if pb_valid else 7,
+        n_skipped=0,
+        failed_checks=(),
+        elapsed_s=0.1,
     )
 
 
@@ -180,9 +185,7 @@ def test_aggregate_buckets():
     assert by_bucket["Pt"]["pb_pass_rate"] == pytest.approx(2 / 3)
     assert by_bucket["Ru"]["n_total"] == 2
     assert by_bucket["Ru"]["n_passed"] == 1
-    assert agg["headline_pb_pass_rate"] == pytest.approx(
-        (2 / 3 + 1 / 2) / 2
-    )
+    assert agg["headline_pb_pass_rate"] == pytest.approx((2 / 3 + 1 / 2) / 2)
 
 
 def test_aggregate_empty_outcomes():
@@ -243,7 +246,11 @@ def test_write_synthesis_md(tmp_path):
     }
     per_ds = {"platinai_4cell": [0.85]}
     bm8.write_synthesis_md(
-        tmp_path, cross_agg, per_ds, n_samples=50, n_seeds=1,
+        tmp_path,
+        cross_agg,
+        per_ds,
+        n_samples=50,
+        n_seeds=1,
         pb_installed=True,
     )
     md_path = tmp_path / "synthesis.md"
@@ -261,12 +268,18 @@ def test_main_smoke_runs():
     """main() runs end-to-end with --n-samples 2 to keep wall cheap."""
     with tempfile.TemporaryDirectory() as tmp:
         out_dir = Path(tmp) / "wf64_test"
-        rc = bm8.main([
-            "--datasets", "metalcytotox_5metal",
-            "--seeds", "0",
-            "--n-samples", "2",
-            "--out-dir", str(out_dir),
-        ])
+        rc = bm8.main(
+            [
+                "--datasets",
+                "metalcytotox_5metal",
+                "--seeds",
+                "0",
+                "--n-samples",
+                "2",
+                "--out-dir",
+                str(out_dir),
+            ]
+        )
         assert rc in (0, 2), f"unexpected return code {rc}"
         # Outputs must exist
         seed_json = out_dir / "metalcytotox_5metal" / "seed_0_metrics.json"

@@ -24,6 +24,7 @@ def test_f5_shape_reward_basic():
         F5_SA_COEFFICIENT,
         LearnedShaping,
     )
+
     sh = LearnedShaping()
     sh.enable()
     expected = F5_INTERCEPT + F5_SA_COEFFICIENT * 3.32
@@ -51,7 +52,9 @@ def test_f5_shape_reward_in_range():
     prev = sh.shape_reward(1.0)
     for sa in [2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]:
         cur = sh.shape_reward(sa)
-        assert cur < prev, f"Expected monotone decrease, but R({sa})={cur} >= R(prev)={prev}"
+        assert (
+            cur < prev
+        ), f"Expected monotone decrease, but R({sa})={cur} >= R(prev)={prev}"
         prev = cur
 
 
@@ -160,8 +163,10 @@ def test_fit_from_metrics_self_consistent():
     )
 
     # Synthesize 10 cells with varied sa_norm; F5 itself is the target.
-    cells = [{"sa_mean_norm": sa} for sa in [0.0, 0.1, 0.2, 0.5, 1.0,
-                                            1.5, 2.0, 3.0, 4.0, 5.0]]
+    cells = [
+        {"sa_mean_norm": sa}
+        for sa in [0.0, 0.1, 0.2, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0]
+    ]
     # Add reward via F5 closed-form (so fit_from_metrics's self-consistency
     # branch is exercised).
     for c in cells:
@@ -186,8 +191,10 @@ def test_shape_reward_on_real_smiles():
         from rdkit.Chem import RDConfig
         import os as _os
         import sys as _sys
+
         sys.path.append(_os.path.join(RDConfig.RDContribDir, "SA_Score"))
         import sascorer as _sascorer  # noqa: F401
+
         sa_func = _sascorer.calculateScore
     except Exception:
         sa_func = None
@@ -203,7 +210,7 @@ def test_shape_reward_on_real_smiles():
     sh.enable()
 
     smiles_list = [
-        "CCO",                       # ethanol (trivial)
+        "CCO",  # ethanol (trivial)
         "CC(=O)OC1=CC=CC=C1C(=O)O",  # aspirin
         "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",  # caffeine
         "CC(C)CC1=CC=C(C=C1)C(C)C(=O)O",  # ibuprofen
@@ -228,9 +235,9 @@ def test_shape_reward_on_real_smiles():
         actual_outputs.append(reward)
 
     for e, a in zip(expected_outputs, actual_outputs):
-        assert math.isclose(e, a, rel_tol=1e-9, abs_tol=1e-9), (
-            f"F5 closed-form mismatch: expected={e} got={a}"
-        )
+        assert math.isclose(
+            e, a, rel_tol=1e-9, abs_tol=1e-9
+        ), f"F5 closed-form mismatch: expected={e} got={a}"
 
     # Honest framing: rewards are negative for any non-zero SA, by design.
     # (F5 closed-form has negative sa_norm coefficient.)

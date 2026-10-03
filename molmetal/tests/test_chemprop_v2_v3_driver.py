@@ -153,13 +153,17 @@ def test_kendall_loss_produces_finite_weighted_total():
     total = k(losses)
     # Sigmas should be all 1.0 initially (log_sigmas = 0).
     sigmas = k.get_sigmas().detach().cpu().tolist()
-    assert all(abs(s - 1.0) < 1e-6 for s in sigmas), f"unexpected initial sigmas: {sigmas}"
+    assert all(
+        abs(s - 1.0) < 1e-6 for s in sigmas
+    ), f"unexpected initial sigmas: {sigmas}"
     # Total is finite + non-negative.
     assert torch.isfinite(total)
     # Backward → grad on log_sigmas is non-zero (else the gate fails).
     total.backward()
     assert k.log_sigmas.grad is not None
-    assert not torch.allclose(k.log_sigmas.grad.detach(), torch.zeros_like(k.log_sigmas.grad))
+    assert not torch.allclose(
+        k.log_sigmas.grad.detach(), torch.zeros_like(k.log_sigmas.grad)
+    )
 
 
 def test_gradient_reversal_flips_sign():
@@ -223,9 +227,7 @@ def test_end_to_end_one_step_smoke():
     losses = []
     for m, head in model.inner.metal_heads.items():
         logit_1 = head.train_step(
-            torch.cat([
-                z[i].unsqueeze(0) for i in range(len(smiles))
-            ], dim=0)
+            torch.cat([z[i].unsqueeze(0) for i in range(len(smiles))], dim=0)
         )
         # Use a per-metal all-ones target so the gradient flow test is uniform.
         target = torch.ones_like(logit_1)
@@ -236,7 +238,7 @@ def test_end_to_end_one_step_smoke():
     # --- Wasserstein transfer ---
     w2_per_metal = {}
     for i_m, m in enumerate(model.metals):
-        mask = (metal_ids == i_m)
+        mask = metal_ids == i_m
         if mask.sum() == 0:
             continue
         sub = z[mask].float()
@@ -277,9 +279,9 @@ def test_end_to_end_one_step_smoke():
     assert kendall.log_sigmas.grad is not None
     assert torch.isfinite(kendall.log_sigmas.grad).all()
     # All model params with grads are finite.
-    assert n_with_grad == n_params, (
-        f"{n_params - n_with_grad}/{n_params} params have non-finite grads"
-    )
+    assert (
+        n_with_grad == n_params
+    ), f"{n_params - n_with_grad}/{n_params} params have non-finite grads"
 
 
 # ---------------------------------------------------------------------------
@@ -295,7 +297,10 @@ def test_default_cli_matches_task_spec():
     # Mirror the main() block's defaults verbatim.
     p.add_argument("--metals", nargs="+", default=list(mod.METALS_5))
     p.add_argument(
-        "--seeds", nargs="+", type=int, default=list(mod.DEFAULT_SEEDS),
+        "--seeds",
+        nargs="+",
+        type=int,
+        default=list(mod.DEFAULT_SEEDS),
     )
     p.add_argument("--epochs", type=int, default=mod.DEFAULT_EPOCHS)
     p.add_argument("--hidden", type=int, default=mod.DEFAULT_HIDDEN)
@@ -303,21 +308,34 @@ def test_default_cli_matches_task_spec():
     p.add_argument("--batch-size", type=int, default=mod.DEFAULT_BATCH)
     p.add_argument("--lr", type=float, default=mod.DEFAULT_LR)
     p.add_argument(
-        "--wass-weight", type=float, default=mod.DEFAULT_WASS_WEIGHT,
+        "--wass-weight",
+        type=float,
+        default=mod.DEFAULT_WASS_WEIGHT,
     )
     p.add_argument(
-        "--lambda-grl", type=float, default=mod.DEFAULT_LAMBDA_GRL,
+        "--lambda-grl",
+        type=float,
+        default=mod.DEFAULT_LAMBDA_GRL,
     )
     p.add_argument("--device", default="cuda")
     p.add_argument("--num-workers", type=int, default=4)
     p.add_argument(
-        "--no-kendall", dest="use_kendall", action="store_false", default=True,
+        "--no-kendall",
+        dest="use_kendall",
+        action="store_false",
+        default=True,
     )
     p.add_argument(
-        "--no-dann", dest="use_dann", action="store_false", default=True,
+        "--no-dann",
+        dest="use_dann",
+        action="store_false",
+        default=True,
     )
     p.add_argument(
-        "--no-bf16", dest="bf16", action="store_false", default=True,
+        "--no-bf16",
+        dest="bf16",
+        action="store_false",
+        default=True,
     )
     args = p.parse_args([])
     # Task-spec contract:
@@ -405,9 +423,7 @@ def test_lomo_eligible_flag_multi_metal_vs_single_metal():
     args_metals_single = ["Ru"]
 
     def eligible(args_metals, unique_corpus):
-        return len(args_metals) >= 2 and any(
-            m != args_metals[0] for m in unique_corpus
-        )
+        return len(args_metals) >= 2 and any(m != args_metals[0] for m in unique_corpus)
 
     assert eligible(args_metals_multi, {"Ru", "Ir"}) is True
     assert eligible(args_metals_single, {"Ru", "Ir", "Os"}) is False

@@ -62,12 +62,12 @@ def test_zotero_on_path() -> None:
         "zotero not found on PATH after Wf-372-A1 install — verify "
         "~/apps/zotero/ exists and ~/.local/bin/zotero symlink is valid"
     )
-    assert Path(zotero_path).exists(), (
-        f"which zotero returned {zotero_path!r} but the file does not exist"
-    )
-    assert Path(zotero_path).is_file() or Path(zotero_path).is_symlink(), (
-        f"zotero at {zotero_path} is neither a file nor a symlink"
-    )
+    assert Path(
+        zotero_path
+    ).exists(), f"which zotero returned {zotero_path!r} but the file does not exist"
+    assert (
+        Path(zotero_path).is_file() or Path(zotero_path).is_symlink()
+    ), f"zotero at {zotero_path} is neither a file nor a symlink"
 
 
 # ---------------------------------------------------------------------------
@@ -90,7 +90,9 @@ def test_zotero_version_reports_10() -> None:
 
     result = subprocess.run(
         [zotero_path, "--version"],
-        capture_output=True, text=True, timeout=15,
+        capture_output=True,
+        text=True,
+        timeout=15,
     )
     # zotero prints "Zotero Zotero <esr-version>" on stdout; may also
     # emit a non-fatal "Sandbox: CanCreateUserNamespace() clone()
@@ -126,9 +128,9 @@ def test_zotero_install_tree_present() -> None:
             f"rerun Wf-372-A1 install steps"
         )
 
-    assert EXPECTED_ZOTERO_DIR.is_dir(), (
-        f"{EXPECTED_ZOTERO_DIR} exists but is not a directory"
-    )
+    assert (
+        EXPECTED_ZOTERO_DIR.is_dir()
+    ), f"{EXPECTED_ZOTERO_DIR} exists but is not a directory"
 
     launcher = EXPECTED_ZOTERO_DIR / "zotero"
     bin_actual = EXPECTED_ZOTERO_DIR / "zotero-bin"
@@ -141,12 +143,12 @@ def test_zotero_install_tree_present() -> None:
     # Sanity: the launcher is a bash script (Zotero's launcher wraps
     # `zotero-bin -app app/application.ini`).
     launcher_text = launcher.read_text(encoding="utf-8", errors="replace")
-    assert launcher_text.startswith("#!/bin/bash"), (
-        f"zotero launcher is not a bash script: {launcher_text[:40]!r}"
-    )
-    assert "zotero-bin" in launcher_text, (
-        "expected zotero-bin invocation in launcher script"
-    )
+    assert launcher_text.startswith(
+        "#!/bin/bash"
+    ), f"zotero launcher is not a bash script: {launcher_text[:40]!r}"
+    assert (
+        "zotero-bin" in launcher_text
+    ), "expected zotero-bin invocation in launcher script"
 
 
 # ---------------------------------------------------------------------------
@@ -172,36 +174,39 @@ def test_setup_doc_reflects_install() -> None:
     # §1.1 must include the generic-tarball row that was used on this
     # host (no sudo, user-space install at ~/apps/zotero/).
     sec1_match = re.search(
-        r"###\s+§1\.1[\s\S]+?(?=\n###\s+§|\n##\s+§|\Z)", text,
+        r"###\s+§1\.1[\s\S]+?(?=\n###\s+§|\n##\s+§|\Z)",
+        text,
     )
     assert sec1_match is not None, "could not locate §1.1 section"
     sec1_1 = sec1_match.group(0)
 
-    assert "Zotero 10.0.3" in sec1_1, (
-        "§1.1 must document Zotero 10.0.3 (MEASURED on 2026-09-30)"
-    )
-    assert "tar.xz" in sec1_1, (
-        "§1.1 must document the generic tarball install row used on this host"
-    )
-    assert "~/apps/zotero" in sec1_1, (
-        "§1.1 must document the user-space install path used on this host"
-    )
+    assert (
+        "Zotero 10.0.3" in sec1_1
+    ), "§1.1 must document Zotero 10.0.3 (MEASURED on 2026-09-30)"
+    assert (
+        "tar.xz" in sec1_1
+    ), "§1.1 must document the generic tarball install row used on this host"
+    assert (
+        "~/apps/zotero" in sec1_1
+    ), "§1.1 must document the user-space install path used on this host"
 
     # §1.2 (Better BibTeX) must be updated to flag the manual GUI install.
     sec1_2_match = re.search(
-        r"###\s+§1\.2[\s\S]+?(?=\n###\s+§|\n##\s+§|\Z)", text,
+        r"###\s+§1\.2[\s\S]+?(?=\n###\s+§|\n##\s+§|\Z)",
+        text,
     )
     assert sec1_2_match is not None, "could not locate §1.2 section"
     sec1_2 = sec1_2_match.group(0)
-    assert "MANUAL" in sec1_2 or "manual" in sec1_2, (
-        "§1.2 must flag Better BibTeX as a manual GUI install"
-    )
+    assert (
+        "MANUAL" in sec1_2 or "manual" in sec1_2
+    ), "§1.2 must flag Better BibTeX as a manual GUI install"
     assert "Better BibTeX" in sec1_2, "§1.2 must mention Better BibTeX"
 
     # The TL;DR §0 table must now declare Zotero as INSTALLED (not
     # INSTALL-REQUIRED).
     sec0_match = re.search(
-        r"##\s+§0[\s\S]+?(?=\n##\s+§|\Z)", text,
+        r"##\s+§0[\s\S]+?(?=\n##\s+§|\Z)",
+        text,
     )
     assert sec0_match is not None, "could not locate §0 TL;DR section"
     sec0 = sec0_match.group(0)
@@ -213,9 +218,9 @@ def test_setup_doc_reflects_install() -> None:
     )
     assert zotero_row is not None, "could not find Zotero row in §0 table"
     row_text = zotero_row.group(0)
-    assert "INSTALLED" in row_text, (
-        f"Zotero row should be INSTALLED now (per Wf-372-A1), got: {row_text!r}"
-    )
-    assert "INSTALL-REQUIRED" not in row_text, (
-        f"Zotero row should NOT still say INSTALL-REQUIRED, got: {row_text!r}"
-    )
+    assert (
+        "INSTALLED" in row_text
+    ), f"Zotero row should be INSTALLED now (per Wf-372-A1), got: {row_text!r}"
+    assert (
+        "INSTALL-REQUIRED" not in row_text
+    ), f"Zotero row should NOT still say INSTALL-REQUIRED, got: {row_text!r}"

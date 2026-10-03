@@ -33,16 +33,21 @@ from molmetal.ports import DockingConfig
 from molmetal_lam.sbdd_env.vina_adapter import VinaDockingAdapter
 
 
-MOL_LIST = (
-    REPO / "molmetal" / "reports" / "round11_engine_parity"
-    / "n50_smiles.csv"
-)
+MOL_LIST = REPO / "molmetal" / "reports" / "round11_engine_parity" / "n50_smiles.csv"
 EXAMPLE_PDB = (
-    REPO / "molmetal" / "references" / "targetdiff" / "examples"
+    REPO
+    / "molmetal"
+    / "references"
+    / "targetdiff"
+    / "examples"
     / "1h36_A_rec_1h36_r88_lig_tt_docked_0_pocket10.pdb"
 )
 EXAMPLE_LIG = (
-    REPO / "molmetal" / "references" / "targetdiff" / "examples"
+    REPO
+    / "molmetal"
+    / "references"
+    / "targetdiff"
+    / "examples"
     / "1h36_A_rec_1h36_r88_lig_tt_docked_0.sdf"
 )
 REPORT_DIR = REPO / "molmetal" / "reports" / "round11_engine_parity"
@@ -84,10 +89,18 @@ def load_smiles(n: int) -> list[str]:
     return [s for _, s in rows[:n]]
 
 
-def dock_one(engine: str, smiles: str, pocket: PocketBundle,
-             exhaustiveness: int, n_poses: int, seed: int) -> tuple[float | None, str]:
+def dock_one(
+    engine: str,
+    smiles: str,
+    pocket: PocketBundle,
+    exhaustiveness: int,
+    n_poses: int,
+    seed: int,
+) -> tuple[float | None, str]:
     adapter = VinaDockingAdapter(
-        engine=engine, cpu_count=1, default_box_padding=0,
+        engine=engine,
+        cpu_count=1,
+        default_box_padding=0,
     )
     pdbqt = adapter._prepare_receptor(pocket.pocket)
     adapter._receptor_pdbqt[pocket.pocket.pdb_id] = pdbqt
@@ -129,19 +142,31 @@ def main(argv: list[str] | None = None) -> int:
     t0 = time.time()
     for i, smi in enumerate(smiles_list):
         v_kcal, v_status = dock_one(
-            "vina", smi, pocket, args.exhaustiveness, args.n_poses, args.seed,
+            "vina",
+            smi,
+            pocket,
+            args.exhaustiveness,
+            args.n_poses,
+            args.seed,
         )
         q_kcal, q_status = dock_one(
-            "quickvina2", smi, pocket, args.exhaustiveness, args.n_poses, args.seed,
+            "quickvina2",
+            smi,
+            pocket,
+            args.exhaustiveness,
+            args.n_poses,
+            args.seed,
         )
-        rows.append({
-            "idx": i + 1,
-            "smi": smi,
-            "vina_kcal": "" if v_kcal is None else f"{v_kcal:.4f}",
-            "vina_status": v_status,
-            "quickvina_kcal": "" if q_kcal is None else f"{q_kcal:.4f}",
-            "quickvina_status": q_status,
-        })
+        rows.append(
+            {
+                "idx": i + 1,
+                "smi": smi,
+                "vina_kcal": "" if v_kcal is None else f"{v_kcal:.4f}",
+                "vina_status": v_status,
+                "quickvina_kcal": "" if q_kcal is None else f"{q_kcal:.4f}",
+                "quickvina_status": q_status,
+            }
+        )
         print(
             f"[{i+1:02d}/{len(smiles_list)}] V={v_status:>20s}/{v_kcal!s:>8s} "
             f"Q={q_status:>20s}/{q_kcal!s:>8s}  smi={smi[:40]!s}",
@@ -151,8 +176,14 @@ def main(argv: list[str] | None = None) -> int:
     with raw_path.open("w", newline="") as fh:
         writer = csv.DictWriter(
             fh,
-            fieldnames=["idx", "smi", "vina_kcal", "vina_status",
-                        "quickvina_kcal", "quickvina_status"],
+            fieldnames=[
+                "idx",
+                "smi",
+                "vina_kcal",
+                "vina_status",
+                "quickvina_kcal",
+                "quickvina_status",
+            ],
         )
         writer.writeheader()
         writer.writerows(rows)
@@ -163,9 +194,14 @@ def main(argv: list[str] | None = None) -> int:
     for r in rows:
         v_raw, q_raw = r["vina_kcal"], r["quickvina_kcal"]
         if v_raw == "" or q_raw == "":
-            failures.append({"idx": r["idx"], "smi": r["smi"],
-                             "vina_status": r["vina_status"],
-                             "quickvina_status": r["quickvina_status"]})
+            failures.append(
+                {
+                    "idx": r["idx"],
+                    "smi": r["smi"],
+                    "vina_status": r["vina_status"],
+                    "quickvina_status": r["quickvina_status"],
+                }
+            )
             continue
         pairs.append((float(v_raw), float(q_raw)))
 
@@ -199,6 +235,7 @@ def main(argv: list[str] | None = None) -> int:
             pearson_r = float(np.corrcoef(v, q)[0, 1])
         else:
             pearson_r = float("nan")
+
         # Spearman rho via rank correlation (no scipy dep assumed)
         def _rank(x: np.ndarray) -> np.ndarray:
             order = np.argsort(x, kind="mergesort")
@@ -213,33 +250,45 @@ def main(argv: list[str] | None = None) -> int:
                     j += 1
                 if j > i:
                     avg = (i + j + 2) / 2.0  # mean of (i+1..j+1)
-                    ranks[order[i:j + 1]] = avg
+                    ranks[order[i : j + 1]] = avg
                 i = j + 1
             return ranks
+
         rv, rq = _rank(v), _rank(q)
         if rv.std() > 0 and rq.std() > 0:
             spearman_rho = float(np.corrcoef(rv, rq)[0, 1])
         else:
             spearman_rho = float("nan")
         # Within-engine summary stats (only molecules that succeeded in that engine)
-        v_all = np.array([float(r["vina_kcal"]) for r in rows if r["vina_kcal"] != ""], dtype=float)
-        q_all = np.array([float(r["quickvina_kcal"]) for r in rows if r["quickvina_kcal"] != ""], dtype=float)
+        v_all = np.array(
+            [float(r["vina_kcal"]) for r in rows if r["vina_kcal"] != ""], dtype=float
+        )
+        q_all = np.array(
+            [float(r["quickvina_kcal"]) for r in rows if r["quickvina_kcal"] != ""],
+            dtype=float,
+        )
         # Paired SE of the mean difference
         if diff.size > 1:
             paired_se = float(diff.std(ddof=1) / math.sqrt(diff.size))
         else:
             paired_se = float("nan")
-        metrics.update({
-            "pearson_r": pearson_r,
-            "spearman_rho": spearman_rho,
-            "vina_mean_kcal_mol": float(v_all.mean()),
-            "vina_std_kcal_mol": float(v_all.std(ddof=1)) if v_all.size > 1 else float("nan"),
-            "quickvina_mean_kcal_mol": float(q_all.mean()),
-            "quickvina_std_kcal_mol": float(q_all.std(ddof=1)) if q_all.size > 1 else float("nan"),
-            "mean_diff_vina_minus_quickvina": float(diff.mean()),
-            "paired_se_diff": paired_se,
-            "mean_abs_diff": float(np.mean(np.abs(diff))),
-        })
+        metrics.update(
+            {
+                "pearson_r": pearson_r,
+                "spearman_rho": spearman_rho,
+                "vina_mean_kcal_mol": float(v_all.mean()),
+                "vina_std_kcal_mol": float(v_all.std(ddof=1))
+                if v_all.size > 1
+                else float("nan"),
+                "quickvina_mean_kcal_mol": float(q_all.mean()),
+                "quickvina_std_kcal_mol": float(q_all.std(ddof=1))
+                if q_all.size > 1
+                else float("nan"),
+                "mean_diff_vina_minus_quickvina": float(diff.mean()),
+                "paired_se_diff": paired_se,
+                "mean_abs_diff": float(np.mean(np.abs(diff))),
+            }
+        )
 
     metrics_path.write_text(json.dumps(metrics, indent=2))
     print(f"\nWrote {raw_path} ({n_total} rows) and {metrics_path}", file=sys.stderr)

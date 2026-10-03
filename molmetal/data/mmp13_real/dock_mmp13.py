@@ -37,6 +37,7 @@ ROOT = Path("/home/hugo/codes/try_triton_on_rocm")
 sys.path.insert(0, str(ROOT))
 
 from rdkit import Chem, RDLogger
+
 RDLogger.DisableLog("rdApp.*")
 
 from molmetal.domain import Molecule, Pocket
@@ -104,60 +105,60 @@ RS1_SMILES = (
 
 # Pool of azide-bearing SMILES (R-N3) — drug-like fragments from ChEMBL/ZINC15
 AZIDE_TILES = [
-    "NNN",                               # hydrazoic acid
-    "CCC[N-]=[N+]=[N-]",                 # propyl azide
-    "[N-]=[N+]=NCCO",                    # 2-azidoethanol
-    "N(CCO)[N-]=[N+]=N",                # azidoethanol-amine
-    "O=[N+]([O-])c1ccc([N-]=[N+]=N)cc1", # 4-nitrophenyl azide
-    "[N-]=[N+]=Nc1ccccc1",               # phenyl azide
-    "[N-]=[N+]=Nc1ccc(F)cc1",            # 4-F-phenyl azide
-    "[N-]=[N+]=Nc1ccc(Cl)cc1",           # 4-Cl-phenyl azide
-    "[N-]=[N+]=Nc1ccc(O)cc1",            # 4-OH-phenyl azide
-    "[N-]=[N+]=Nc1ccc(N)cc1",            # 4-NH2-phenyl azide
-    "[N-]=[N+]=Nc1ccc(C(=O)O)cc1",       # 4-COOH-phenyl azide
-    "[N-]=[N+]=Nc1ccc(C(=O)N)cc1",       # 4-CONH2-phenyl azide
-    "[N-]=[N+]=NCc1ccccc1",              # benzyl azide
-    "[N-]=[N+]=NC(=O)c1ccccc1",          # benzoyl azide
-    "[N-]=[N+]=NC(=O)C",                 # acetyl azide
-    "[N-]=[N+]=NC(=O)N",                 # carbamoyl azide
-    "C(=O)([N-]=[N+]=N)c1ccccc1",        # benzoic azide
-    "[N-]=[N+]=NCCNC(=O)O",              # azidoethyl carbamate
-    "[N-]=[N+]=NCCCCO",                  # 4-azidobutanol
-    "[N-]=[N+]=NCCCC(=O)O",              # 4-azidobutanoic acid
-    "[N-]=[N+]=Nc1ccncc1",               # 4-azidopyridine
-    "[N-]=[N+]=Nc1ccoc1",                # 4-azido-furan? 5-azidofuran
-    "[N-]=[N+]=Nc1ccsc1",                # 4-azido-thiophene
-    "[N-]=[N+]=NCc1ccc(F)cc1",           # 4-F-benzyl azide
-    "[N-]=[N+]=NCc1ccc(OC)cc1",          # 4-OMe-benzyl azide
+    "NNN",  # hydrazoic acid
+    "CCC[N-]=[N+]=[N-]",  # propyl azide
+    "[N-]=[N+]=NCCO",  # 2-azidoethanol
+    "N(CCO)[N-]=[N+]=N",  # azidoethanol-amine
+    "O=[N+]([O-])c1ccc([N-]=[N+]=N)cc1",  # 4-nitrophenyl azide
+    "[N-]=[N+]=Nc1ccccc1",  # phenyl azide
+    "[N-]=[N+]=Nc1ccc(F)cc1",  # 4-F-phenyl azide
+    "[N-]=[N+]=Nc1ccc(Cl)cc1",  # 4-Cl-phenyl azide
+    "[N-]=[N+]=Nc1ccc(O)cc1",  # 4-OH-phenyl azide
+    "[N-]=[N+]=Nc1ccc(N)cc1",  # 4-NH2-phenyl azide
+    "[N-]=[N+]=Nc1ccc(C(=O)O)cc1",  # 4-COOH-phenyl azide
+    "[N-]=[N+]=Nc1ccc(C(=O)N)cc1",  # 4-CONH2-phenyl azide
+    "[N-]=[N+]=NCc1ccccc1",  # benzyl azide
+    "[N-]=[N+]=NC(=O)c1ccccc1",  # benzoyl azide
+    "[N-]=[N+]=NC(=O)C",  # acetyl azide
+    "[N-]=[N+]=NC(=O)N",  # carbamoyl azide
+    "C(=O)([N-]=[N+]=N)c1ccccc1",  # benzoic azide
+    "[N-]=[N+]=NCCNC(=O)O",  # azidoethyl carbamate
+    "[N-]=[N+]=NCCCCO",  # 4-azidobutanol
+    "[N-]=[N+]=NCCCC(=O)O",  # 4-azidobutanoic acid
+    "[N-]=[N+]=Nc1ccncc1",  # 4-azidopyridine
+    "[N-]=[N+]=Nc1ccoc1",  # 4-azido-furan? 5-azidofuran
+    "[N-]=[N+]=Nc1ccsc1",  # 4-azido-thiophene
+    "[N-]=[N+]=NCc1ccc(F)cc1",  # 4-F-benzyl azide
+    "[N-]=[N+]=NCc1ccc(OC)cc1",  # 4-OMe-benzyl azide
 ]
 
 # Alkyne tiles (HC#C-R) — terminal alkynes for CuAAC
 ALKYNE_TILES = [
-    "C#C",                               # acetylene
-    "CC#C",                              # propyne
-    "C#CC",                              # same
-    "C#CO",                              # propargyl alcohol
-    "C#CCN",                             # propargylamine
-    "C#CCO",                             # but-3-yn-1-ol
-    "C#CCC",                             # but-3-yne
-    "C#CCCO",                            # pent-4-yn-1-ol
-    "C#CCCC",                            # pent-4-yne
-    "C#Cc1ccccc1",                       # phenylacetylene
-    "C#Cc1ccc(F)cc1",                    # 4-F-phenylacetylene
-    "C#Cc1ccc(O)cc1",                    # 4-OH-phenylacetylene
-    "C#Cc1ccc(N)cc1",                    # 4-NH2-phenylacetylene
-    "C#Cc1ccc(OC)cc1",                   # 4-OMe-phenylacetylene
-    "C#Cc1ccc(C(=O)O)cc1",               # 4-COOH-phenylacetylene
-    "C#Cc1ccncc1",                       # 4-pyridyl-acetylene
-    "C#Cc1ccoc1",                        # 4-furyl-acetylene
-    "C#Cc1ccsc1",                        # 4-thienyl-acetylene
-    "C#CC(=O)O",                         # propiolic acid
-    "C#CC(=O)N",                         # propiolamide
-    "C#CC(=O)OC",                        # methyl propiolate
-    "C#CCN(C)C",                         # propargyl-dimethylamine
-    "C#CCN(C)C=O",                       # N-propargyl-N-methylformamide
-    "C#CC1CCN1",                         # N-propargyl-azetidine
-    "C#CCn1ccn1",                        # propargyl-imidazole
+    "C#C",  # acetylene
+    "CC#C",  # propyne
+    "C#CC",  # same
+    "C#CO",  # propargyl alcohol
+    "C#CCN",  # propargylamine
+    "C#CCO",  # but-3-yn-1-ol
+    "C#CCC",  # but-3-yne
+    "C#CCCO",  # pent-4-yn-1-ol
+    "C#CCCC",  # pent-4-yne
+    "C#Cc1ccccc1",  # phenylacetylene
+    "C#Cc1ccc(F)cc1",  # 4-F-phenylacetylene
+    "C#Cc1ccc(O)cc1",  # 4-OH-phenylacetylene
+    "C#Cc1ccc(N)cc1",  # 4-NH2-phenylacetylene
+    "C#Cc1ccc(OC)cc1",  # 4-OMe-phenylacetylene
+    "C#Cc1ccc(C(=O)O)cc1",  # 4-COOH-phenylacetylene
+    "C#Cc1ccncc1",  # 4-pyridyl-acetylene
+    "C#Cc1ccoc1",  # 4-furyl-acetylene
+    "C#Cc1ccsc1",  # 4-thienyl-acetylene
+    "C#CC(=O)O",  # propiolic acid
+    "C#CC(=O)N",  # propiolamide
+    "C#CC(=O)OC",  # methyl propiolate
+    "C#CCN(C)C",  # propargyl-dimethylamine
+    "C#CCN(C)C=O",  # N-propargyl-N-methylformamide
+    "C#CC1CCN1",  # N-propargyl-azetidine
+    "C#CCn1ccn1",  # propargyl-imidazole
 ]
 
 
@@ -194,7 +195,9 @@ def spaac_product(azide_smiles: str, cyclooctyne_smiles: str) -> str | None:
     """
     # Build a cyclooctyne in SMILES: cyclooctyne = C1CCCCCCC#1 isn't valid in RDKit
     # because the ring needs the triple bond — use a relaxed pattern
-    cyclooctyne = Chem.MolFromSmiles("C1CC#CCCCCC1")  # not aromatic-safe; use single-ring alkene? Skip SPAAC entirely.
+    cyclooctyne = Chem.MolFromSmiles(
+        "C1CC#CCCCCC1"
+    )  # not aromatic-safe; use single-ring alkene? Skip SPAAC entirely.
     return None  # SPAAC is mechanistically complex; we skip and rely on CuAAC for the 100 products
 
 
@@ -202,7 +205,7 @@ def generate_100_click_products() -> List[str]:
     """Generate exactly 100 click products by pairing azide × alkyne tiles."""
     products: List[str] = []
     # Cycle through the Cartesian product to get exactly 100
-    azides = AZIDE_TILES * 4   # 25 × 4 = 100 entries
+    azides = AZIDE_TILES * 4  # 25 × 4 = 100 entries
     alkynes = ALKYNE_TILES * 4  # 25 × 4
     for i in range(100):
         smi = cuaac_product(azides[i], alkynes[i])
@@ -225,7 +228,9 @@ def main() -> None:
     # Pocket
     print("[1/4] Loading MMP13 pocket from 830c.pdb ...")
     pocket = load_mmp13_pocket()
-    print(f"      pocket.n_atoms = {pocket.n_atoms}, center = {pocket.center.tolist()}, radius = {pocket.radius}")
+    print(
+        f"      pocket.n_atoms = {pocket.n_atoms}, center = {pocket.center.tolist()}, radius = {pocket.radius}"
+    )
 
     # Adapter
     print("[2/4] Initialising VinaDockingAdapter ...")
@@ -235,29 +240,39 @@ def main() -> None:
     # Co-crystal reference (RS1)
     print("[3/4] Docking RS1 co-crystal reference ...")
     ref_score, ref_pose = dock_smiles_once(adapter, RS1_SMILES, pocket)
-    print(f"      RS1 score = {ref_score:+.3f} kcal/mol   pose_smiles = {ref_pose[:60]}")
+    print(
+        f"      RS1 score = {ref_score:+.3f} kcal/mol   pose_smiles = {ref_pose[:60]}"
+    )
 
     # 100 Lambda click products
     print("[4/4] Generating + docking 100 Lambda click products ...")
     products = generate_100_click_products()
-    print(f"      Generated {len(products)} products; unique SMILES = {len(set(products))}")
+    print(
+        f"      Generated {len(products)} products; unique SMILES = {len(set(products))}"
+    )
 
     results: List[dict] = []
     success_cutoff = ref_score + 1.0  # within 1 kcal/mol of reference
     for i, smi in enumerate(products):
         with contextlib.redirect_stderr(io.StringIO()):
             score, pose_smi = dock_smiles_once(adapter, smi, pocket)
-        results.append({
-            "product_smiles": smi,
-            "pose_smiles": pose_smi,
-            "vina_score_kcal_mol": score,
-            "success_vs_ref": score <= success_cutoff and not np.isnan(score),
-        })
+        results.append(
+            {
+                "product_smiles": smi,
+                "pose_smiles": pose_smi,
+                "vina_score_kcal_mol": score,
+                "success_vs_ref": score <= success_cutoff and not np.isnan(score),
+            }
+        )
         if (i + 1) % 10 == 0:
             print(f"        {i+1:3d}/100  last score = {score:+.3f} kcal/mol")
 
     # Stats
-    valid = [r["vina_score_kcal_mol"] for r in results if not np.isnan(r["vina_score_kcal_mol"])]
+    valid = [
+        r["vina_score_kcal_mol"]
+        for r in results
+        if not np.isnan(r["vina_score_kcal_mol"])
+    ]
     failed = len(results) - len(valid)
     if valid:
         mean_score = float(np.mean(valid))
@@ -338,7 +353,9 @@ def main() -> None:
 |---|---|---:|:-:|
 """)
         for i, r in enumerate(results[:30]):
-            fh.write(f"| {i+1} | `{r['product_smiles']}` | {r['vina_score_kcal_mol']:+.3f} | {int(r['success_vs_ref'])} |\n")
+            fh.write(
+                f"| {i+1} | `{r['product_smiles']}` | {r['vina_score_kcal_mol']:+.3f} | {int(r['success_vs_ref'])} |\n"
+            )
         fh.write(f"""
 ## Notes
 
@@ -364,13 +381,17 @@ def main() -> None:
     print("FINAL SUMMARY")
     print("=" * 72)
     print(f"reference RS1: {ref_score:+.3f} kcal/mol")
-    print(f"100 products: mean={mean_score:+.3f} median={median_score:+.3f} success={success_rate:.1%}")
+    print(
+        f"100 products: mean={mean_score:+.3f} median={median_score:+.3f} success={success_rate:.1%}"
+    )
     print(f"failed={failed}  wall={elapsed:.1f}s")
     print()
     print("Sample table (first 10):")
     print(f"{'#':>3}  {'product_smiles':<55} {'kcal/mol':>9}  success")
     for i, r in enumerate(results[:10]):
-        print(f"{i+1:>3}  {r['product_smiles'][:55]:<55} {r['vina_score_kcal_mol']:>+9.3f}  {int(r['success_vs_ref'])}")
+        print(
+            f"{i+1:>3}  {r['product_smiles'][:55]:<55} {r['vina_score_kcal_mol']:>+9.3f}  {int(r['success_vs_ref'])}"
+        )
 
 
 if __name__ == "__main__":

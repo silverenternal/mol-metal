@@ -51,6 +51,7 @@ Cross-references:
 * Wf-301B Pt-strip:  ``molmetal/scripts/cfm_vina_dock_panel.py::_strip_pt_and_largest_fragment``
 * Wf-325B Zn substitution: ``molmetal/reports/wf325b_vina_pt_zn_substitution/result.json``
 """
+
 from __future__ import annotations
 
 import json
@@ -69,14 +70,16 @@ LOG = logging.getLogger("wf337a2_recovery")
 #: Atomic numbers whose coordination centres hit the meeko UFF limit.
 #: Per Wf-301B §2 + Wf-325B §honest-framing: these are the d-block
 #: metals RDKit UFF cannot parameterise; meeko returns ``is_ok=False``.
-UFF_METAL_LIMIT_ATOMIC_NUMS: frozenset[int] = frozenset({
-    44,  # Ru
-    45,  # Rh
-    46,  # Pd
-    77,  # Ir
-    78,  # Pt
-    79,  # Au
-})
+UFF_METAL_LIMIT_ATOMIC_NUMS: frozenset[int] = frozenset(
+    {
+        44,  # Ru
+        45,  # Rh
+        46,  # Pd
+        77,  # Ir
+        78,  # Pt
+        79,  # Au
+    }
+)
 
 #: Zn atomic number (Wf-325B Pt→Zn UFF substitution target).
 ZN_ATOMIC_NUM: int = 30
@@ -89,7 +92,11 @@ VERDICT_PERSISTENT = "HONEST_NEGATIVE_WF264_SUBPANEL_PERSISTENT"
 
 #: 5 Wf-325B canonical pockets (per Wf-179 m15 + Wf-30 staging).
 WF325B_POCKETS: Tuple[str, ...] = (
-    "1h36", "3eml", "3ny8", "4aaw", "4rlu",
+    "1h36",
+    "3eml",
+    "3ny8",
+    "4aaw",
+    "4rlu",
 )
 
 
@@ -132,7 +139,10 @@ def probe_smina_availability(force_refresh: bool = False) -> Dict[str, Any]:
     try:
         cp = subprocess.run(
             [str(smina_path), "--version"],
-            check=False, capture_output=True, text=True, timeout=10,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         ver_text = (cp.stdout or cp.stderr or "").strip()
         if ver_text:
@@ -183,9 +193,7 @@ def probe_quickvina_availability(force_refresh: bool = False) -> Dict[str, Any]:
     # `quickvina` for newer distro packages.
     qvina_path = shutil.which("q.vina") or shutil.which("quickvina")
     if not qvina_path:
-        out["probe_error"] = (
-            "Neither q.vina nor quickvina found on PATH"
-        )
+        out["probe_error"] = "Neither q.vina nor quickvina found on PATH"
         out["honest_negative_reason"] = (
             "QuickVina Vina fork not installed. Install via "
             "'conda install -c conda-forge quickvina' or build from "
@@ -197,7 +205,10 @@ def probe_quickvina_availability(force_refresh: bool = False) -> Dict[str, Any]:
     try:
         cp = subprocess.run(
             [str(qvina_path), "--version"],
-            check=False, capture_output=True, text=True, timeout=10,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         ver_text = (cp.stdout or cp.stderr or "").strip()
         if ver_text:
@@ -246,6 +257,7 @@ class MetalLoopReport:
         Populated when the SMILES has metal centres that hit the
         meeko UFF limit; explains the recovery choice.
     """
+
     smiles: str
     has_metal_loop: bool = False
     metal_atomic_nums: List[int] = field(default_factory=list)
@@ -319,9 +331,7 @@ def detect_metal_loop(smiles: str) -> MetalLoopReport:
     # has ≤ 2 non-H neighbours (the metal is a dangling centre).
     pt_idx = report.metal_indices[0]
     pt_atom = mol.GetAtomWithIdx(pt_idx)
-    non_h_neighbours = sum(
-        1 for n in pt_atom.GetNeighbors() if n.GetAtomicNum() != 1
-    )
+    non_h_neighbours = sum(1 for n in pt_atom.GetNeighbors() if n.GetAtomicNum() != 1)
 
     if non_h_neighbours >= 3:
         # Coordination complex (e.g. cisplatin has 4 non-H neighbours).
@@ -372,6 +382,7 @@ class RecoveryVerdict:
         The branch that succeeded: ``smina``, ``quickvina``,
         ``metal_loop``, or ``none``.
     """
+
     smiles: str
     metal_loop: MetalLoopReport
     smina_probe: Dict[str, Any]
@@ -489,9 +500,9 @@ def pocket_sweep_diagnostic(
     if pocket_pdb_dir is not None:
         for p in pockets:
             pdir = Path(pocket_pdb_dir) / p
-            rec = (pdir / "receptor.pdbqt")
+            rec = pdir / "receptor.pdbqt"
             if not rec.is_file():
-                rec = (pdir / f"{p}.pdbqt")
+                rec = pdir / f"{p}.pdbqt"
             receptor_available_per_pocket[p] = rec.is_file()
 
     for p in pockets:
@@ -538,8 +549,9 @@ def pocket_sweep_diagnostic(
     elif rv.verdict == VERDICT_METAL_LOOP_OK:
         out["honest_negative_reason"] = (
             "Wf-264 sub-panel RECOVERY via metal-loop detector — "
-            "pre-processing strategy (" + rv.metal_loop.recovery_strategy +
-            ") is wired but the panel does not yet dispatch to it. "
+            "pre-processing strategy ("
+            + rv.metal_loop.recovery_strategy
+            + ") is wired but the panel does not yet dispatch to it. "
             "Cf. Wf-337-A2 next-step: wire --use-metal-loop-recovery CLI "
             "flag in cfm_vina_dock_panel.py."
         )
@@ -551,6 +563,7 @@ def pocket_sweep_diagnostic(
 # ---------------------------------------------------------------------------
 def _build_parser():
     import argparse
+
     p = argparse.ArgumentParser(
         prog="wf337a2_vina_recovery.py",
         description=(
@@ -560,14 +573,17 @@ def _build_parser():
         ),
     )
     p.add_argument(
-        "--smiles", default="[Pt](N)(N)(Cl)Cl",
+        "--smiles",
+        default="[Pt](N)(N)(Cl)Cl",
         help=(
             "SMILES to diagnose. Default: cisplatin [Pt](N)(N)(Cl)Cl. "
             "Per Wf-325B canonical test case."
         ),
     )
     p.add_argument(
-        "--pocket-pdb-dir", type=Path, default=None,
+        "--pocket-pdb-dir",
+        type=Path,
+        default=None,
         help=(
             "Optional path to the Wf-30 receptor.pdbqt staging dir. "
             "When provided, the diagnostic also reports per-pocket "
@@ -575,9 +591,11 @@ def _build_parser():
         ),
     )
     p.add_argument(
-        "--out-json", type=Path, default=None,
+        "--out-json",
+        type=Path,
+        default=None,
         help="Optional JSON output path. When omitted, the diagnostic "
-             "JSON is printed to stdout.",
+        "JSON is printed to stdout.",
     )
     return p
 

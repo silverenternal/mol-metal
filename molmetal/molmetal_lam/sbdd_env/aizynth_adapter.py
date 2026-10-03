@@ -35,6 +35,7 @@ via simple SMARTS rules (CuAAC/SPAAC/SPC/Diels-Alder/etc.) when
 AiZynthFinder is unavailable, so the Lambda click-tile products can
 still be validated.
 """
+
 from __future__ import annotations
 
 import logging
@@ -51,6 +52,7 @@ logger = logging.getLogger(__name__)
 def _have_aizynthfinder() -> bool:
     try:
         import aizynthfinder  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -61,10 +63,10 @@ class RetrosynthesisReport:
     """Result of a single retrosynthesis check."""
 
     smiles: str
-    synthesizable: bool           # True iff a route to purchasable precursors was found
-    depth: int                    # number of steps in the best route (0 = starting material)
+    synthesizable: bool  # True iff a route to purchasable precursors was found
+    depth: int  # number of steps in the best route (0 = starting material)
     route_smiles: tuple = field(default_factory=tuple)
-    engine: str = ""              # "aizynthfinder" or "smarts_fallback"
+    engine: str = ""  # "aizynthfinder" or "smarts_fallback"
 
     def to_dict(self) -> dict:
         return {
@@ -118,7 +120,9 @@ class AiZynthAdapter:
         self._last_search_error = None
         if not smiles or not isinstance(smiles, str):
             return RetrosynthesisReport(
-                smiles=smiles or "", synthesizable=False, depth=0,
+                smiles=smiles or "",
+                synthesizable=False,
+                depth=0,
                 engine="invalid",
             )
         if self._finder is not None:
@@ -126,7 +130,9 @@ class AiZynthAdapter:
                 return self._aizynth_check(smiles)
             except Exception as exc:  # pragma: no cover
                 self._last_search_error = f"{type(exc).__name__}: {exc}"
-                logger.info("AiZynthFinder.check failed: %s — falling back to SMARTS", exc)
+                logger.info(
+                    "AiZynthFinder.check failed: %s — falling back to SMARTS", exc
+                )
         # SMARTS-based fallback
         return _smarts_fallback(smiles)
 
@@ -142,21 +148,35 @@ class AiZynthAdapter:
     def get_metadata(self) -> dict:
         return {
             "name": self.name,
-            "engine": "AiZynthFinder" if self._finder is not None else "SMARTS fallback",
+            "engine": "AiZynthFinder"
+            if self._finder is not None
+            else "SMARTS fallback",
             "max_iterations": self._max_iter,
             "time_limit_s": self._time_limit,
-            "effective_search_iteration_limit": self._finder.config.search.iteration_limit if self._finder else None,
-            "effective_search_time_limit_s": self._finder.config.search.time_limit if self._finder else None,
+            "effective_search_iteration_limit": self._finder.config.search.iteration_limit
+            if self._finder
+            else None,
+            "effective_search_time_limit_s": self._finder.config.search.time_limit
+            if self._finder
+            else None,
             "config_path": self._config_path,
             "load_error": self._load_error,
             "last_search_error": self._last_search_error,
-            "expansion_policy": list(self._finder.expansion_policy.selection) if self._finder else [],
+            "expansion_policy": list(self._finder.expansion_policy.selection)
+            if self._finder
+            else [],
             "stock": list(self._finder.stock.selection) if self._finder else [],
-            "filter_policy": list(self._finder.filter_policy.selection) if self._finder else [],
+            "filter_policy": list(self._finder.filter_policy.selection)
+            if self._finder
+            else [],
             "policy_runtime": {
-                key: getattr(self._finder.expansion_policy[key].model, "runtime_metadata", {})
+                key: getattr(
+                    self._finder.expansion_policy[key].model, "runtime_metadata", {}
+                )
                 for key in self._finder.expansion_policy.selection
-            } if self._finder else {},
+            }
+            if self._finder
+            else {},
         }
 
     # ---------------------------------------------------------- Internals
@@ -175,9 +195,12 @@ class AiZynthAdapter:
             return
         try:
             from aizynthfinder.aizynthfinder import AiZynthFinder  # type: ignore
+
             finder = AiZynthFinder(configfile=self._config_path)
             if not finder.expansion_policy.items or not finder.stock.items:
-                raise ValueError("AiZynth config requires a trained expansion policy and stock")
+                raise ValueError(
+                    "AiZynth config requires a trained expansion policy and stock"
+                )
             # The first configured expansion is the default protocol; all declared
             # stocks contribute purchasable precursors. Filtering is opt-in by
             # inclusion in the config. Selections are recorded in metadata.
@@ -199,7 +222,9 @@ class AiZynthAdapter:
         self._finder.build_routes()
         if not self._finder.routes:
             return RetrosynthesisReport(
-                smiles=smiles, synthesizable=False, depth=0,
+                smiles=smiles,
+                synthesizable=False,
+                depth=0,
                 engine="aizynthfinder",
             )
         # 4.x RouteCollection indexing yields dictionaries; reaction_trees is
@@ -245,19 +270,25 @@ def _smarts_fallback(smiles: str) -> RetrosynthesisReport:
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
         return RetrosynthesisReport(
-            smiles=smiles, synthesizable=False, depth=0,
+            smiles=smiles,
+            synthesizable=False,
+            depth=0,
             engine="smarts_fallback",
         )
     for name, smarts in KNOWN_CLICK_REACTIONS.items():
         patt = Chem.MolFromSmarts(smarts)
         if patt is not None and mol.HasSubstructMatch(patt):
             return RetrosynthesisReport(
-                smiles=smiles, synthesizable=True, depth=1,
+                smiles=smiles,
+                synthesizable=True,
+                depth=1,
                 route_smiles=("click_chemistry_precursors",),
                 engine="smarts_fallback",
             )
     return RetrosynthesisReport(
-        smiles=smiles, synthesizable=False, depth=0,
+        smiles=smiles,
+        synthesizable=False,
+        depth=0,
         engine="smarts_fallback",
     )
 

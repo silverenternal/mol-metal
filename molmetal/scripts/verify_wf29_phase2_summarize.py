@@ -131,10 +131,14 @@ def _check_cli_end_to_end(tmpdir: Path) -> None:
     md_path = tmpdir / "comparison.md"
     rc = sm.main(
         [
-            "--smoke-dir", str(smoke_dir),
-            "--recipes", "se3sb",
-            "--summary-path", str(summary_path),
-            "--comparison-md", str(md_path),
+            "--smoke-dir",
+            str(smoke_dir),
+            "--recipes",
+            "se3sb",
+            "--summary-path",
+            str(summary_path),
+            "--comparison-md",
+            str(md_path),
         ]
     )
     assert rc == 0, f"main() returned {rc}"
@@ -159,8 +163,12 @@ def _check_honest_negative_in_md(tmpdir: Path) -> None:
 
 
 def parse_args(argv: List[str] | None = None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--keep-tmp", action="store_true", help="Keep the temp dir for inspection.")
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    p.add_argument(
+        "--keep-tmp", action="store_true", help="Keep the temp dir for inspection."
+    )
     return p.parse_args(argv)
 
 

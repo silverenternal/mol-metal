@@ -69,6 +69,7 @@ Usage::
 
     source env.sh && uv run --no-sync python molmetal/scripts/benchmark_r18_platinai.py --n-samples 500
 """
+
 from __future__ import annotations
 
 import argparse
@@ -139,6 +140,7 @@ def _runner_math_skills() -> Dict[str, Callable[[List[str], int], List[float]]]:
             _ = geo.interpolate(R0, R1, t=0.5)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["math_skills/se3_schrodinger_bridge"] = _run_t1
 
     # T2 — Transport Relaxation: RelaxedOT.coupling on a small OT problem.
@@ -152,6 +154,7 @@ def _runner_math_skills() -> Dict[str, Callable[[List[str], int], List[float]]]:
             _ = rot.coupling(p0, p1)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["math_skills/transport_relaxation"] = _run_t2
 
     # T3 — Monge-Ampère regularity: KantorovichPotential.__call__.
@@ -165,6 +168,7 @@ def _runner_math_skills() -> Dict[str, Callable[[List[str], int], List[float]]]:
             _ = kp(x)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["math_skills/monge_ampere_regularity"] = _run_t3
 
     # T4 — Wasserstein gradient flow: W2GradientFlow.drift.
@@ -179,6 +183,7 @@ def _runner_math_skills() -> Dict[str, Callable[[List[str], int], List[float]]]:
             _ = flow.drift(x, score, ref)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["math_skills/wasserstein_gradient_flow"] = _run_t4
 
     # T5 — Multi-parameter PH: two_param_filtration on a synthetic pocket.
@@ -191,6 +196,7 @@ def _runner_math_skills() -> Dict[str, Callable[[List[str], int], List[float]]]:
             _ = two_param_filtration(coords, types, n_bins=8)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["math_skills/multi_parameter_ph"] = _run_t5
 
     # T6 — PH hardness guardrail: BottleneckGuardrail.should_use_approx.
@@ -202,6 +208,7 @@ def _runner_math_skills() -> Dict[str, Callable[[List[str], int], List[float]]]:
             _ = guard.should_use_approx(n_persistence_pairs=64, time_budget_s=0.01)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["math_skills/ph_hardness_guardrail"] = _run_t6
 
     # T7 — SB-Bass martingale: BassMartingale.couple.
@@ -215,6 +222,7 @@ def _runner_math_skills() -> Dict[str, Callable[[List[str], int], List[float]]]:
             _ = bm.couple(x0, x1)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["math_skills/sb_bass_martingale"] = _run_t7
 
     # T8 — Bass existence: theorem statement + regularity check.
@@ -229,6 +237,7 @@ def _runner_math_skills() -> Dict[str, Callable[[List[str], int], List[float]]]:
             _ = reg.check(x)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["math_skills/bass_existence"] = _run_t8
 
     # T9 — Bergman kernel: kernel evaluation on two points in R_II(3).
@@ -242,6 +251,7 @@ def _runner_math_skills() -> Dict[str, Callable[[List[str], int], List[float]]]:
             _ = kernel(z, w)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["math_skills/bergman_kernel"] = _run_t9
 
     return runners
@@ -265,7 +275,9 @@ def _runner_adapters() -> Dict[str, Callable[[List[str], int], List[float]]]:
         # coordination has shape (n_nodes, n_coordination_classes) one-hot.
         layer = CoordinationAwareGNNLayer(hidden_dim=8, n_coordination_classes=4)
         x = torch.randn(8, 8)
-        ei = torch.tensor([[0, 1, 2, 3, 4, 5, 6, 7], [1, 2, 3, 4, 5, 6, 7, 0]], dtype=torch.long)
+        ei = torch.tensor(
+            [[0, 1, 2, 3, 4, 5, 6, 7], [1, 2, 3, 4, 5, 6, 7, 0]], dtype=torch.long
+        )
         coord_oh = torch.zeros(8, 4)
         coord_oh[torch.arange(8), torch.tensor([0, 1, 2, 3, 2, 1, 0, 3])] = 1.0
         wall: List[float] = []
@@ -274,6 +286,7 @@ def _runner_adapters() -> Dict[str, Callable[[List[str], int], List[float]]]:
             _ = layer(x, ei, coord_oh)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["adapters/coordination_gnn"] = _run_coord
 
     def _run_qsd(smiles: List[str], n_runs: int) -> List[float]:
@@ -286,6 +299,7 @@ def _runner_adapters() -> Dict[str, Callable[[List[str], int], List[float]]]:
             _ = qsd.project(x)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["adapters/quotient_space_diffusion"] = _run_qsd
 
     def _run_mph(smiles: List[str], n_runs: int) -> List[float]:
@@ -299,6 +313,7 @@ def _runner_adapters() -> Dict[str, Callable[[List[str], int], List[float]]]:
             _ = mphp(clouds)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["adapters/multi_ph_integration"] = _run_mph
 
     def _run_se3sb(smiles: List[str], n_runs: int) -> List[float]:
@@ -328,6 +343,7 @@ def _runner_adapters() -> Dict[str, Callable[[List[str], int], List[float]]]:
             _ = vf(x_T=x, t=t)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["adapters/se3_sb_integration"] = _run_se3sb
 
     def _run_trel(smiles: List[str], n_runs: int) -> List[float]:
@@ -341,6 +357,7 @@ def _runner_adapters() -> Dict[str, Callable[[List[str], int], List[float]]]:
             _ = ret.forward(traj, e)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["adapters/transport_relaxation_integration"] = _run_trel
 
     # DiffDock + EquiBind — import-only; both require network and pocket files
@@ -387,7 +404,9 @@ def _runner_lam_chem() -> Dict[str, Callable[[List[str], int], List[float]]]:
     runners: Dict[str, Callable[[List[str], int], List[float]]] = {}
 
     def _run_dec_m3(smiles: List[str], n_runs: int) -> List[float]:
-        head = SequenceDecoderHead(hidden_dim=8, max_seq_len=8, vocab_size=42, n_layers=1)
+        head = SequenceDecoderHead(
+            hidden_dim=8, max_seq_len=8, vocab_size=42, n_layers=1
+        )
         # atom_features: (B, n_atoms, hidden_dim); bond_features: (B, n_atoms, n_atoms)
         # (the 3-D bond tensor is collapsed via mean over the partner dim).
         atom = torch.randn(2, 8, 8)
@@ -399,6 +418,7 @@ def _runner_lam_chem() -> Dict[str, Callable[[List[str], int], List[float]]]:
             _ = head(atom, bond, mask)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["lam_chem/decoder_m3_sequence"] = _run_dec_m3
 
     def _run_xa_m4(smiles: List[str], n_runs: int) -> List[float]:
@@ -411,6 +431,7 @@ def _runner_lam_chem() -> Dict[str, Callable[[List[str], int], List[float]]]:
             _ = ca(atom, pocket)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["lam_chem/cross_attention_m4"] = _run_xa_m4
 
     def _run_layered(smiles: List[str], n_runs: int) -> List[float]:
@@ -422,6 +443,7 @@ def _runner_lam_chem() -> Dict[str, Callable[[List[str], int], List[float]]]:
             _ = pipe.run(seed_smiles=sample)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["lam_chem/layered_generation"] = _run_layered
 
     def _run_buyable(smiles: List[str], n_runs: int) -> List[float]:
@@ -434,6 +456,7 @@ def _runner_lam_chem() -> Dict[str, Callable[[List[str], int], List[float]]]:
             _ = gate.is_buyable(sample)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["lam_chem/buyable_gate"] = _run_buyable
 
     def _run_ood(smiles: List[str], n_runs: int) -> List[float]:
@@ -447,6 +470,7 @@ def _runner_lam_chem() -> Dict[str, Callable[[List[str], int], List[float]]]:
                 _ = proto.compute_tanimoto(sample, s)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["lam_chem/ood_protocol"] = _run_ood
 
     def _run_macro(smiles: List[str], n_runs: int) -> List[float]:
@@ -458,18 +482,20 @@ def _runner_lam_chem() -> Dict[str, Callable[[List[str], int], List[float]]]:
             _ = mg.guide(mol_smiles=sample, target_ring_size=12)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["lam_chem/macroguide_ph"] = _run_macro
 
     def _run_medchem(smiles: List[str], n_runs: int) -> List[float]:
         rule = PeptideBondRule()
         a = "CC(=O)O"  # acetic acid
-        b = "CCN"      # ethylamine
+        b = "CCN"  # ethylamine
         wall: List[float] = []
         for _ in range(n_runs):
             t0 = time.perf_counter()
             _ = rule.apply(a, b)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["lam_chem/non_click_medchem_rules"] = _run_medchem
 
     def _run_skel(smiles: List[str], n_runs: int) -> List[float]:
@@ -482,12 +508,14 @@ def _runner_lam_chem() -> Dict[str, Callable[[List[str], int], List[float]]]:
             _ = sj.apply(mol=sample, position=0)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["lam_chem/skeleton_jump"] = _run_skel
 
     def _run_md(smiles: List[str], n_runs: int) -> List[float]:
         ff = SimpleForceField()
         md = MDRelaxation(force_field=ff, n_steps=5, seed=0)
         import numpy as np
+
         coords = np.random.randn(8, 3).astype(np.float32)
         atom_types = ["C", "C", "N", "O", "C", "C", "H", "H"]
         wall: List[float] = []
@@ -496,10 +524,12 @@ def _runner_lam_chem() -> Dict[str, Callable[[List[str], int], List[float]]]:
             _ = md.relax(coords, atom_types)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["lam_chem/md_relaxation_stub"] = _run_md
 
     def _run_coupling(smiles: List[str], n_runs: int) -> List[float]:
         import numpy as np
+
         pipe = LambdaCFMPipeline(seed=0)
         wall: List[float] = []
         z0 = np.zeros(8, dtype=np.float32)
@@ -510,6 +540,7 @@ def _runner_lam_chem() -> Dict[str, Callable[[List[str], int], List[float]]]:
             _ = pipe.cfm_inference(z0=z0, lambda_features=lam, pocket=pocket, n_steps=5)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["lam_chem/coupling_joint_inference"] = _run_coupling
 
     def _run_fg(smiles: List[str], n_runs: int) -> List[float]:
@@ -521,6 +552,7 @@ def _runner_lam_chem() -> Dict[str, Callable[[List[str], int], List[float]]]:
             _ = check_fg_compatibility(sample, reaction_name="AmideCoupling")
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["lam_chem/fg_compat_veto"] = _run_fg
 
     return runners
@@ -554,11 +586,13 @@ def _runner_reward_search_flow() -> Dict[str, Callable[[List[str], int], List[fl
     def _run_hilbert(smiles: List[str], n_runs: int) -> List[float]:
         hil = HilbertSpace(dim=8)
         pd = PrimalDualOptimizer(lr_primal=0.01, lr_dual=0.01, n_iters=5)
+
         # Simple convex objective: f(x) = 0.5 * ||x||^2, grad = x
         def obj(x):
-            val = float(0.5 * np.sum(x ** 2))
+            val = float(0.5 * np.sum(x**2))
             grad = x.copy()
             return val, grad
+
         wall: List[float] = []
         primal = np.zeros(8)
         dual = np.zeros(8)
@@ -567,6 +601,7 @@ def _runner_reward_search_flow() -> Dict[str, Callable[[List[str], int], List[fl
             primal, dual = pd.step(primal, dual, obj)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["reward/hilbert_primal_dual"] = _run_hilbert
 
     def _run_sr(smiles: List[str], n_runs: int) -> List[float]:
@@ -580,6 +615,7 @@ def _runner_reward_search_flow() -> Dict[str, Callable[[List[str], int], List[fl
             _ = sr.sample(x0, n_samples=2)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["search_alg/score_repellent_mc"] = _run_sr
 
     def _run_vpuct(smiles: List[str], n_runs: int) -> List[float]:
@@ -589,6 +625,7 @@ def _runner_reward_search_flow() -> Dict[str, Callable[[List[str], int], List[fl
         from molmetal.molmetal_lam.search_alg.variance_puct_integration import (
             VarianceControlledPUCT,
         )
+
         vcp = VarianceControlledPUCT()
         node = IntegrationNode(node_id="root", prior=1.0)
         wall: List[float] = []
@@ -597,13 +634,18 @@ def _runner_reward_search_flow() -> Dict[str, Callable[[List[str], int], List[fl
             _ = vcp.select(node)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["search_alg/variance_puct_integration"] = _run_vpuct
 
     def _run_wflow(smiles: List[str], n_runs: int) -> List[float]:
-        ws = WaveformRelaxationSolver(n_windows=2, n_iters_per_window=2, n_substeps_per_window=2)
+        ws = WaveformRelaxationSolver(
+            n_windows=2, n_iters_per_window=2, n_substeps_per_window=2
+        )
+
         # Linear velocity field dx/dt = 1
         def v(x, t):
             return torch.ones_like(x)
+
         x0 = torch.zeros(1, 4)
         wall: List[float] = []
         for _ in range(n_runs):
@@ -611,6 +653,7 @@ def _runner_reward_search_flow() -> Dict[str, Callable[[List[str], int], List[fl
             _ = ws.solve(v, x0, t_span=(0.0, 1.0))
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["flow_matching_lipman/w_flow"] = _run_wflow
 
     def _run_m5(smiles: List[str], n_runs: int) -> List[float]:
@@ -628,6 +671,7 @@ def _runner_reward_search_flow() -> Dict[str, Callable[[List[str], int], List[fl
             _ = est.forward(advantages=adv)
             wall.append(time.perf_counter() - t0)
         return wall
+
     runners["flow_matching_lipman/m5_schedulers"] = _run_m5
 
     return runners
@@ -642,10 +686,10 @@ def _runner_reward_search_flow() -> Dict[str, Callable[[List[str], int], List[fl
 def _build_module_registry() -> Dict[str, Callable[[List[str], int], List[float]]]:
     """Compose all R18 module runners into a single ordered mapping."""
     registry: Dict[str, Callable[[List[str], int], List[float]]] = {}
-    registry.update(_runner_math_skills())          # 10 modules (T1–T10)
-    registry.update(_runner_adapters())             # 7 modules
-    registry.update(_runner_lam_chem())             # 13 modules (incl. import-only)
-    registry.update(_runner_reward_search_flow())   # 5 modules
+    registry.update(_runner_math_skills())  # 10 modules (T1–T10)
+    registry.update(_runner_adapters())  # 7 modules
+    registry.update(_runner_lam_chem())  # 13 modules (incl. import-only)
+    registry.update(_runner_reward_search_flow())  # 5 modules
     return registry
 
 

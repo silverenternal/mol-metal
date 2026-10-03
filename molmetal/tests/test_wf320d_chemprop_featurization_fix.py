@@ -33,6 +33,7 @@ from rdkit import Chem
 
 # Path bootstrap — match mol-metal test convention.
 import sys as _sys
+
 _HERE = Path(__file__).resolve().parent
 _PROJECT_ROOT = _HERE.parent.parent
 if str(_PROJECT_ROOT) not in _sys.path:
@@ -209,6 +210,7 @@ class TestIntegrationWithPerMetalSingletask:
             ATOM_FDIM_DEFAULT,
             BOND_FDIM_DEFAULT,
         )
+
         assert PerEpochFeatureCache is not None
         assert ATOM_FDIM_DEFAULT == 72
         assert BOND_FDIM_DEFAULT == 14
@@ -223,6 +225,7 @@ class TestIntegrationWithPerMetalSingletask:
         assert abs(d["hit_rate"] - 5 / 8) < 1e-9
         # All values are JSON-serializable
         import json
+
         json.dumps(d)
 
     def test_default_driver_unchanged(self):
@@ -235,9 +238,12 @@ class TestIntegrationWithPerMetalSingletask:
         from molmetal.scripts import train_chemprop_v2_permetal_singletask as drv
 
         # The module must NOT have the fast-featurize attribute (it's opt-in).
-        assert not hasattr(drv, "use_fast_featurizer") or drv.use_fast_featurizer is False
+        assert (
+            not hasattr(drv, "use_fast_featurizer") or drv.use_fast_featurizer is False
+        )
         # And the canonical run_one() signature is unchanged.
         import inspect
+
         sig = inspect.signature(drv.run_one)
         assert "use_bf16" in sig.parameters
 
@@ -333,4 +339,5 @@ def cache_basic() -> PerEpochFeatureCache:
 
 if __name__ == "__main__":
     import sys
+
     sys.exit(pytest.main([__file__, "-v"]))

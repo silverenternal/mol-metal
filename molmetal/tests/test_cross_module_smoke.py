@@ -30,6 +30,7 @@ Run via::
     uv run --no-sync python -m pytest \\
         molmetal/tests/test_cross_module_smoke.py -v
 """
+
 from __future__ import annotations
 
 import csv
@@ -73,9 +74,9 @@ except Exception:
 # aromatic chemistry.  Each sample is exercised through every stage.
 # ---------------------------------------------------------------------------
 _SAMPLES = (
-    "CCO",                       # ethanol (organic)
-    "c1ccccc1",                  # benzene (aromatic)
-    "CC(=O)O",                   # acetic acid (carboxylic)
+    "CCO",  # ethanol (organic)
+    "c1ccccc1",  # benzene (aromatic)
+    "CC(=O)O",  # acetic acid (carboxylic)
 )
 
 
@@ -85,9 +86,9 @@ _SAMPLES = (
 def test_001_benchmark_script_path_exists():
     """The benchmark script is on disk and is a non-empty Python file."""
     assert _SCRIPT.exists(), f"benchmark script not found: {_SCRIPT}"
-    assert _SCRIPT.stat().st_size > 1024, (
-        f"benchmark script is suspiciously small: {_SCRIPT.stat().st_size}B"
-    )
+    assert (
+        _SCRIPT.stat().st_size > 1024
+    ), f"benchmark script is suspiciously small: {_SCRIPT.stat().st_size}B"
 
 
 # ---------------------------------------------------------------------------
@@ -96,9 +97,9 @@ def test_001_benchmark_script_path_exists():
 def test_002_pipeline_registered_has_32_modules():
     """``PIPELINE_FULL`` exposes exactly 32 distinct stage IDs."""
     stages = bench_mod.PIPELINE_FULL
-    assert len(stages) == 32, (
-        f"expected 32 stages, got {len(stages)}: {[sid for sid, _ in stages]}"
-    )
+    assert (
+        len(stages) == 32
+    ), f"expected 32 stages, got {len(stages)}: {[sid for sid, _ in stages]}"
     # Distinct stage IDs.
     ids = [sid for sid, _ in stages]
     assert len(set(ids)) == len(ids), f"duplicate stage IDs in pipeline: {ids}"
@@ -112,9 +113,9 @@ def test_003_pipeline_stages_run_clean():
     for sid, fn in bench_mod.PIPELINE_FULL:
         for sample in _SAMPLES:
             wall, status = bench_mod._safe_run(sid, fn, sample, None)
-            assert status == "ok", (
-                f"stage {sid!r} failed on SMILES {sample!r}: status={status}"
-            )
+            assert (
+                status == "ok"
+            ), f"stage {sid!r} failed on SMILES {sample!r}: status={status}"
             assert wall >= 0.0, f"negative wall time on stage {sid!r}: {wall}"
 
 
@@ -127,9 +128,7 @@ def test_004_chained_end_to_end_single_sample():
     prev: dict | None = None
     for sid, fn in bench_mod.PIPELINE_FULL:
         wall, status = bench_mod._safe_run(sid, fn, sample, prev)
-        assert status == "ok", (
-            f"chain broke at stage {sid!r}: status={status}"
-        )
+        assert status == "ok", f"chain broke at stage {sid!r}: status={status}"
         prev = {"stage": sid, "ok": True, "wall": wall}
 
 
@@ -142,9 +141,9 @@ def test_005_se3_lipman_pipeline_runs():
     assert "traj_len" in out
     assert out["traj_len"] >= 1, f"SE(3) trajectory has zero length: {out}"
     assert "R_mid_shape" in out
-    assert len(out["R_mid_shape"]) == 3, (
-        f"SE(3) midpoint must be 3-dim, got shape {out['R_mid_shape']}"
-    )
+    assert (
+        len(out["R_mid_shape"]) == 3
+    ), f"SE(3) midpoint must be 3-dim, got shape {out['R_mid_shape']}"
 
 
 # ---------------------------------------------------------------------------
@@ -231,9 +230,9 @@ def test_013_p2_ml_coord_gnn_smoke():
 def test_014_p2_ml_quotient_diff_smoke():
     """P2-4 Quotient-Space Diffusion stage returns a 3-D shape."""
     out = bench_mod._stage_p2_ml_quotient_diff("CCO", None)
-    assert len(out["qsd_shape"]) == 3, (
-        f"expected 3-D projected shape, got {out['qsd_shape']}"
-    )
+    assert (
+        len(out["qsd_shape"]) == 3
+    ), f"expected 3-D projected shape, got {out['qsd_shape']}"
 
 
 # ---------------------------------------------------------------------------
@@ -275,9 +274,9 @@ def test_018_platinai_csv_loader():
         pytest.fail(f"PlatinAI CSV not found: {_DATA}")
     smiles = bench_mod._load_platinai_smiles(_DATA, n=10)
     assert len(smiles) == 10, f"expected 10 SMILES, got {len(smiles)}"
-    assert all(isinstance(s, str) and s for s in smiles), (
-        f"non-string or empty SMILES in {smiles}"
-    )
+    assert all(
+        isinstance(s, str) and s for s in smiles
+    ), f"non-string or empty SMILES in {smiles}"
 
 
 # ---------------------------------------------------------------------------
@@ -296,9 +295,7 @@ def test_019_safe_run_no_op_runner():
 def test_020_median_ms_helper():
     """``_median_ms`` returns 0.0 on empty list and the finite median otherwise."""
     assert bench_mod._median_ms([]) == 0.0
-    assert bench_mod._median_ms([0.001, 0.002, 0.003]) == pytest.approx(
-        2.0, abs=0.001
-    )
+    assert bench_mod._median_ms([0.001, 0.002, 0.003]) == pytest.approx(2.0, abs=0.001)
 
 
 # ---------------------------------------------------------------------------
@@ -315,12 +312,16 @@ def test_021_end_to_end_writes_json_report(tmp_path, monkeypatch):
     if not _DATA.exists():
         pytest.fail(f"PlatinAI CSV not found: {_DATA}")
     monkeypatch.setattr(
-        sys, "argv",
+        sys,
+        "argv",
         [
             "benchmark_r18_end_to_end.py",
-            "--n-samples", "5",
-            "--out-dir", str(tmp_path),
-            "--csv-path", str(_DATA),
+            "--n-samples",
+            "5",
+            "--out-dir",
+            str(tmp_path),
+            "--csv-path",
+            str(_DATA),
         ],
     )
     rc = bench_mod.main()
@@ -339,9 +340,9 @@ def test_021_end_to_end_writes_json_report(tmp_path, monkeypatch):
         assert key in payload, f"missing key {key!r} in report"
     assert payload["n_samples"] == 5
     assert payload["n_modules"] == 32
-    assert payload["total_wall_time_s"] <= 60.0, (
-        f"5-sample wall-time {payload['total_wall_time_s']:.2f}s exceeded 60s"
-    )
+    assert (
+        payload["total_wall_time_s"] <= 60.0
+    ), f"5-sample wall-time {payload['total_wall_time_s']:.2f}s exceeded 60s"
 
 
 # ---------------------------------------------------------------------------
@@ -353,27 +354,29 @@ def test_022_end_to_end_wall_time_50_samples(monkeypatch):
         pytest.fail(f"PlatinAI CSV not found: { _DATA}")
     _REPORT_DIR.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(
-        sys, "argv",
+        sys,
+        "argv",
         [
             "benchmark_r18_end_to_end.py",
-            "--n-samples", "50",
-            "--out-dir", str(_REPORT_DIR),
-            "--csv-path", str(_DATA),
+            "--n-samples",
+            "50",
+            "--out-dir",
+            str(_REPORT_DIR),
+            "--csv-path",
+            str(_DATA),
         ],
     )
     t0 = time.perf_counter()
     rc = bench_mod.main()
     wall = time.perf_counter() - t0
     assert rc == 0, f"benchmark main returned {rc}"
-    assert wall <= 60.0, (
-        f"50-sample wall-time {wall:.2f}s exceeded 60s budget"
-    )
+    assert wall <= 60.0, f"50-sample wall-time {wall:.2f}s exceeded 60s budget"
     assert _REPORT_FILE.exists(), f"canonical report missing: {_REPORT_FILE}"
     payload = json.loads(_REPORT_FILE.read_text())
     n_ok = sum(1 for s in payload["per_module_status"].values() if s == "ok")
-    assert n_ok == 32, (
-        f"expected 32 modules ok, got {n_ok}: {payload['per_module_status']}"
-    )
+    assert (
+        n_ok == 32
+    ), f"expected 32 modules ok, got {n_ok}: {payload['per_module_status']}"
 
 
 # ---------------------------------------------------------------------------
@@ -386,9 +389,7 @@ def test_023_per_module_wall_time_finite():
     payload = json.loads(_REPORT_FILE.read_text())
     wall_ms = payload["per_module_wall_time_ms"]
     for sid, w in wall_ms.items():
-        assert isinstance(w, (int, float)), (
-            f"non-numeric wall-time for {sid!r}: {w}"
-        )
+        assert isinstance(w, (int, float)), f"non-numeric wall-time for {sid!r}: {w}"
         assert w >= 0.0, f"negative wall-time for {sid!r}: {w}"
 
 

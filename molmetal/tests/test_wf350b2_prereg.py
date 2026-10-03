@@ -82,9 +82,9 @@ def test_prereg_template_schema_validity() -> None:
         r"^## §7 Anti-patterns: NO post-hoc cherry-picking",
     ]
     for section_pattern in required_sections:
-        assert re.search(section_pattern, text, re.MULTILINE), (
-            f"FAIL: prereg template missing required section matching {section_pattern!r}"
-        )
+        assert re.search(
+            section_pattern, text, re.MULTILINE
+        ), f"FAIL: prereg template missing required section matching {section_pattern!r}"
 
     # Canonical schema fields per DeepMind §3.1 (Wf-343a-R1 finding #2)
     canonical_fields = [
@@ -95,18 +95,18 @@ def test_prereg_template_schema_validity() -> None:
         "falsification_criterion",
     ]
     for field in canonical_fields:
-        assert field in text, (
-            f"FAIL: prereg template missing canonical schema field {field!r}"
-        )
+        assert (
+            field in text
+        ), f"FAIL: prereg template missing canonical schema field {field!r}"
 
     # The template must reference both AGENTS.md §5.2 (honest framing)
     # and the Wf-350-B2 ship doc (self-reference).
-    assert "AGENTS.md §5.2" in text, (
-        "FAIL: prereg template must reference AGENTS.md §5.2 honest framing"
-    )
-    assert "Wf-350-B2" in text, (
-        "FAIL: prereg template must reference Wf-350-B2 (this task)"
-    )
+    assert (
+        "AGENTS.md §5.2" in text
+    ), "FAIL: prereg template must reference AGENTS.md §5.2 honest framing"
+    assert (
+        "Wf-350-B2" in text
+    ), "FAIL: prereg template must reference Wf-350-B2 (this task)"
 
 
 @pytest.mark.parametrize(
@@ -134,13 +134,13 @@ def test_launch_scripts_accept_prereg_arg(launch_script: str) -> None:
 
     text = script_path.read_text(encoding="utf-8")
     # Source must reference --prereg parsing
-    assert "--prereg" in text, (
-        f"FAIL: launch script {launch_script} does not parse --prereg argument"
-    )
+    assert (
+        "--prereg" in text
+    ), f"FAIL: launch script {launch_script} does not parse --prereg argument"
     # Source must mention PREREG verification
-    assert "PREREG verification" in text or "PREREG_TEMPLATE" in text, (
-        f"FAIL: launch script {launch_script} missing PREREG verification block"
-    )
+    assert (
+        "PREREG verification" in text or "PREREG_TEMPLATE" in text
+    ), f"FAIL: launch script {launch_script} missing PREREG verification block"
 
     # Subprocess check: --prereg <template> --dry-run should emit OK line.
     # Use timeout=60s since the dry-run path also probes CSV sanity + may
@@ -166,9 +166,9 @@ def test_launch_scripts_accept_prereg_arg(launch_script: str) -> None:
         f"stdout={result_with.stdout!r}; stderr={result_with.stderr!r}"
     )
     combined_with = result_with.stdout + "\n" + result_with.stderr
-    assert "OK: prereg.md schema valid" in combined_with, (
-        f"FAIL: {launch_script} {' '.join(argv_with)} did not emit OK line; got:\n{combined_with[:1000]}"
-    )
+    assert (
+        "OK: prereg.md schema valid" in combined_with
+    ), f"FAIL: {launch_script} {' '.join(argv_with)} did not emit OK line; got:\n{combined_with[:1000]}"
 
     # Subprocess check: --dry-run only should emit WARNING.
     result_without = subprocess.run(
@@ -178,10 +178,10 @@ def test_launch_scripts_accept_prereg_arg(launch_script: str) -> None:
         text=True,
         timeout=120,
     )
-    assert result_without.returncode == 0, (
-        f"FAIL: {launch_script} --dry-run exited rc={result_without.returncode}"
-    )
+    assert (
+        result_without.returncode == 0
+    ), f"FAIL: {launch_script} --dry-run exited rc={result_without.returncode}"
     combined_without = result_without.stdout + "\n" + result_without.stderr
-    assert "WARNING: --prereg <path> not supplied" in combined_without, (
-        f"FAIL: {launch_script} --dry-run did not emit WARNING line; got:\n{combined_without[:1000]}"
-    )
+    assert (
+        "WARNING: --prereg <path> not supplied" in combined_without
+    ), f"FAIL: {launch_script} --dry-run did not emit WARNING line; got:\n{combined_without[:1000]}"

@@ -29,6 +29,7 @@
 
 Constraints: CPU-only RDKit + similarity; similarity-based label is proxy, not wet-lab.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -59,9 +60,13 @@ DEFAULT_N_ACTIVE = 250
 DEFAULT_N_INACTIVE = 250
 
 # Paths (override via CLI)
-DEFAULT_REAL_CSV = "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
+DEFAULT_REAL_CSV = (
+    "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
+)
 DEFAULT_SYNTH_JSON = "/home/hugo/codes/mol-metal/molmetal/reports/wf131_p2_rh_oversample/synthetic_rh_cohort.json"
-DEFAULT_OUTPUT_DIR = "/home/hugo/codes/mol-metal/molmetal/reports/wf139_p7_rh_active_cohort"
+DEFAULT_OUTPUT_DIR = (
+    "/home/hugo/codes/mol-metal/molmetal/reports/wf139_p7_rh_active_cohort"
+)
 
 # Random seed for reproducibility
 DEFAULT_SEED = 42
@@ -71,9 +76,11 @@ DEFAULT_SEED = 42
 # Data classes
 # -----------------------------------------------------------------------------
 
+
 @dataclass
 class LabelAssignment:
     """Per-compound label assignment record."""
+
     compound_id: str
     smiles: str
     label: int  # 1=active, 0=inactive, -1=unclear
@@ -93,6 +100,7 @@ class LabelAssignment:
 @dataclass
 class CohortStats:
     """Aggregate stats for the relabeled cohort."""
+
     n_total: int
     n_active: int
     n_inactive: int
@@ -112,7 +120,10 @@ class CohortStats:
 # Helpers
 # -----------------------------------------------------------------------------
 
-def get_morgan_fp(smiles: str, radius: int = 2, n_bits: int = 2048) -> Optional[DataStructs.ExplicitBitVect]:
+
+def get_morgan_fp(
+    smiles: str, radius: int = 2, n_bits: int = 2048
+) -> Optional[DataStructs.ExplicitBitVect]:
     """Compute Morgan fingerprint; return None on parse failure."""
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
@@ -134,6 +145,7 @@ def get_scaffold_key(smiles: str) -> str:
         return f"INVALID_{hash(smiles) & 0xffff:04x}"
     try:
         from rdkit.Chem.Scaffolds import MurckoScaffold
+
         scaffold = MurckoScaffold.GetScaffoldForMol(mol)
         if scaffold is None or scaffold.GetNumAtoms() == 0:
             return f"NOSCAF_{Chem.MolToSmiles(mol)[:20]}"
@@ -142,7 +154,9 @@ def get_scaffold_key(smiles: str) -> str:
         return f"FALLBACK_{Chem.MolToSmiles(mol)[:20]}"
 
 
-def tanimoto(fp1: DataStructs.ExplicitBitVect, fp2: DataStructs.ExplicitBitVect) -> float:
+def tanimoto(
+    fp1: DataStructs.ExplicitBitVect, fp2: DataStructs.ExplicitBitVect
+) -> float:
     """Tanimoto similarity between two bit vectors."""
     return DataStructs.TanimotoSimilarity(fp1, fp2)
 
@@ -150,6 +164,7 @@ def tanimoto(fp1: DataStructs.ExplicitBitVect, fp2: DataStructs.ExplicitBitVect)
 # -----------------------------------------------------------------------------
 # Core: similarity-based label assignment
 # -----------------------------------------------------------------------------
+
 
 def assign_labels(
     synthetic_records: list[dict],
@@ -162,7 +177,12 @@ def assign_labels(
     n_active: int,
     n_inactive: int,
     seed: int,
-) -> tuple[list[LabelAssignment], list[LabelAssignment], list[LabelAssignment], list[LabelAssignment]]:
+) -> tuple[
+    list[LabelAssignment],
+    list[LabelAssignment],
+    list[LabelAssignment],
+    list[LabelAssignment],
+]:
     """Assign labels to the 500 synthetic compounds.
 
     Returns: (actives, inactives, unclear, all_records_sorted)
@@ -173,28 +193,32 @@ def assign_labels(
 
     n_actives_avail = len(real_actives_fps)
     n_inactives_avail = len(real_inactives_fps)
-    print(f"[label_gen] Real cohort: {n_actives_avail} actives, {n_inactives_avail} inactives")
+    print(
+        f"[label_gen] Real cohort: {n_actives_avail} actives, {n_inactives_avail} inactives"
+    )
 
     for i, syn in enumerate(synthetic_records):
         syn_smiles = syn["smiles"]
         syn_fp = get_morgan_fp(syn_smiles)
         if syn_fp is None:
-            all_records.append(LabelAssignment(
-                compound_id=syn.get("compound_id", f"rh_syn_{i:04d}"),
-                smiles=syn_smiles,
-                label=-1,
-                max_sim_active=0.0,
-                max_sim_inactive=0.0,
-                nearest_active_smiles="",
-                nearest_active_sim=0.0,
-                nearest_inactive_smiles="",
-                nearest_inactive_sim=0.0,
-                seed_scaffold=syn.get("seed_scaffold", ""),
-                depth=syn.get("depth", 0),
-                derivation_path=syn.get("derivation_path", []),
-                catherine_6of6_pass=syn.get("catherine_6of6_pass", False),
-                scaffold_key="INVALID",
-            ))
+            all_records.append(
+                LabelAssignment(
+                    compound_id=syn.get("compound_id", f"rh_syn_{i:04d}"),
+                    smiles=syn_smiles,
+                    label=-1,
+                    max_sim_active=0.0,
+                    max_sim_inactive=0.0,
+                    nearest_active_smiles="",
+                    nearest_active_sim=0.0,
+                    nearest_inactive_smiles="",
+                    nearest_inactive_sim=0.0,
+                    seed_scaffold=syn.get("seed_scaffold", ""),
+                    depth=syn.get("depth", 0),
+                    derivation_path=syn.get("derivation_path", []),
+                    catherine_6of6_pass=syn.get("catherine_6of6_pass", False),
+                    scaffold_key="INVALID",
+                )
+            )
             continue
 
         # Bulk Tanimoto: max similarity to actives / inactives
@@ -214,33 +238,44 @@ def assign_labels(
         # and top-N_INACTIVE by max_sim_inactive (for inactives).
         if max_sim_active >= threshold_active:
             label = 1
-        elif max_sim_active < threshold_inactive and max_sim_inactive >= threshold_inactive:
+        elif (
+            max_sim_active < threshold_inactive
+            and max_sim_inactive >= threshold_inactive
+        ):
             label = 0
         else:
             label = -1  # unclear
 
-        all_records.append(LabelAssignment(
-            compound_id=syn.get("compound_id", f"rh_syn_{i:04d}"),
-            smiles=syn_smiles,
-            label=label,
-            max_sim_active=max_sim_active,
-            max_sim_inactive=max_sim_inactive,
-            nearest_active_smiles=real_actives_smiles[idx_active],
-            nearest_active_sim=float(sims_active[idx_active]) if sims_active else 0.0,
-            nearest_inactive_smiles=real_inactives_smiles[idx_inactive],
-            nearest_inactive_sim=float(sims_inactive[idx_inactive]) if sims_inactive else 0.0,
-            seed_scaffold=syn.get("seed_scaffold", ""),
-            depth=syn.get("depth", 0),
-            derivation_path=syn.get("derivation_path", []),
-            catherine_6of6_pass=syn.get("catherine_6of6_pass", False),
-            scaffold_key=get_scaffold_key(syn_smiles),
-        ))
+        all_records.append(
+            LabelAssignment(
+                compound_id=syn.get("compound_id", f"rh_syn_{i:04d}"),
+                smiles=syn_smiles,
+                label=label,
+                max_sim_active=max_sim_active,
+                max_sim_inactive=max_sim_inactive,
+                nearest_active_smiles=real_actives_smiles[idx_active],
+                nearest_active_sim=float(sims_active[idx_active])
+                if sims_active
+                else 0.0,
+                nearest_inactive_smiles=real_inactives_smiles[idx_inactive],
+                nearest_inactive_sim=float(sims_inactive[idx_inactive])
+                if sims_inactive
+                else 0.0,
+                seed_scaffold=syn.get("seed_scaffold", ""),
+                depth=syn.get("depth", 0),
+                derivation_path=syn.get("derivation_path", []),
+                catherine_6of6_pass=syn.get("catherine_6of6_pass", False),
+                scaffold_key=get_scaffold_key(syn_smiles),
+            )
+        )
 
         if (i + 1) % 100 == 0:
             n_pos = sum(1 for r in all_records if r.label == 1)
             n_neg = sum(1 for r in all_records if r.label == 0)
             n_unc = sum(1 for r in all_records if r.label == -1)
-            print(f"  [{i+1}/{len(synthetic_records)}] pos={n_pos} neg={n_neg} unclear={n_unc}")
+            print(
+                f"  [{i+1}/{len(synthetic_records)}] pos={n_pos} neg={n_neg} unclear={n_unc}"
+            )
 
     # Sort and select top-N for each label
     # Diff-based ranking: discriminative signal between active and inactive
@@ -256,8 +291,8 @@ def assign_labels(
 
     all_sorted = sorted(all_records, key=lambda r: -_diff(r))
 
-    actives_pool = all_sorted[:n_active]              # top N_ACTIVE by diff
-    inactives_pool = all_sorted[-n_inactive:]          # bottom N_INACTIVE by diff
+    actives_pool = all_sorted[:n_active]  # top N_ACTIVE by diff
+    inactives_pool = all_sorted[-n_inactive:]  # bottom N_INACTIVE by diff
 
     # Tag the label for clarity (overrides threshold-based label)
     for r in actives_pool:
@@ -265,13 +300,17 @@ def assign_labels(
     for r in inactives_pool:
         r.label = 0
 
-    unclear_pool = [r for r in all_records if r not in actives_pool and r not in inactives_pool]
+    unclear_pool = [
+        r for r in all_records if r not in actives_pool and r not in inactives_pool
+    ]
     # Mark unclear as -1
     for r in unclear_pool:
         r.label = -1
 
-    print(f"  [rank] diff-based split: top {n_active} by diff → active, "
-          f"bottom {n_inactive} by diff → inactive")
+    print(
+        f"  [rank] diff-based split: top {n_active} by diff → active, "
+        f"bottom {n_inactive} by diff → inactive"
+    )
 
     return actives_pool, inactives_pool, unclear_pool, all_records
 
@@ -279,6 +318,7 @@ def assign_labels(
 # -----------------------------------------------------------------------------
 # Scaffold-split leak verification
 # -----------------------------------------------------------------------------
+
 
 def verify_no_scaffold_leak(
     actives: list[LabelAssignment],
@@ -305,23 +345,55 @@ def verify_no_scaffold_leak(
 # Main driver
 # -----------------------------------------------------------------------------
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Wf-139 P7: Rh positive-label cohort generation")
-    parser.add_argument("--real-csv", default=DEFAULT_REAL_CSV, help="MetalCytoToxDB CSV path")
-    parser.add_argument("--synth-json", default=DEFAULT_SYNTH_JSON, help="Wf-131 P2 synthetic cohort JSON")
-    parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR, help="Output directory")
-    parser.add_argument("--threshold-active", type=float, default=DEFAULT_ACTIVE_THRESHOLD,
-                        help="max Tanimoto to real actives for active label (default 0.30)")
-    parser.add_argument("--threshold-inactive", type=float, default=DEFAULT_INACTIVE_THRESHOLD,
-                        help="max Tanimoto to real inactives for inactive label (default 0.20)")
-    parser.add_argument("--n-active", type=int, default=DEFAULT_N_ACTIVE, help="Target active count")
-    parser.add_argument("--n-inactive", type=int, default=DEFAULT_N_INACTIVE, help="Target inactive count")
+    parser = argparse.ArgumentParser(
+        description="Wf-139 P7: Rh positive-label cohort generation"
+    )
+    parser.add_argument(
+        "--real-csv", default=DEFAULT_REAL_CSV, help="MetalCytoToxDB CSV path"
+    )
+    parser.add_argument(
+        "--synth-json",
+        default=DEFAULT_SYNTH_JSON,
+        help="Wf-131 P2 synthetic cohort JSON",
+    )
+    parser.add_argument(
+        "--output-dir", default=DEFAULT_OUTPUT_DIR, help="Output directory"
+    )
+    parser.add_argument(
+        "--threshold-active",
+        type=float,
+        default=DEFAULT_ACTIVE_THRESHOLD,
+        help="max Tanimoto to real actives for active label (default 0.30)",
+    )
+    parser.add_argument(
+        "--threshold-inactive",
+        type=float,
+        default=DEFAULT_INACTIVE_THRESHOLD,
+        help="max Tanimoto to real inactives for inactive label (default 0.20)",
+    )
+    parser.add_argument(
+        "--n-active", type=int, default=DEFAULT_N_ACTIVE, help="Target active count"
+    )
+    parser.add_argument(
+        "--n-inactive",
+        type=int,
+        default=DEFAULT_N_INACTIVE,
+        help="Target inactive count",
+    )
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED, help="Random seed")
     parser.add_argument("--metal", default="Rh", help="Target metal (default Rh)")
-    parser.add_argument("--workflow-tag", default="wf139_p7_rh_active_cohort",
-                        help="Workflow tag for output JSON metadata")
-    parser.add_argument("--phase-tag", default="Wf-139 P7 (TODO-135 Phase 1)",
-                        help="Phase tag for output JSON metadata")
+    parser.add_argument(
+        "--workflow-tag",
+        default="wf139_p7_rh_active_cohort",
+        help="Workflow tag for output JSON metadata",
+    )
+    parser.add_argument(
+        "--phase-tag",
+        default="Wf-139 P7 (TODO-135 Phase 1)",
+        help="Phase tag for output JSON metadata",
+    )
     args = parser.parse_args()
 
     t0 = time.time()
@@ -338,10 +410,14 @@ def main():
     rh_real = df[(df.metal == args.metal) & (df.split == "train")].copy()
     real_actives_df = rh_real[rh_real.activity == 1]
     real_inactives_df = rh_real[rh_real.activity == 0]
-    print(f"  Real Rh train: {len(rh_real)} ({len(real_actives_df)} active, {len(real_inactives_df)} inactive)")
+    print(
+        f"  Real Rh train: {len(rh_real)} ({len(real_actives_df)} active, {len(real_inactives_df)} inactive)"
+    )
 
     # ---- 2. Compute real fingerprints ----
-    print("\n[2/5] Computing Morgan fingerprints for real cohort (radius=2, 2048 bits)...")
+    print(
+        "\n[2/5] Computing Morgan fingerprints for real cohort (radius=2, 2048 bits)..."
+    )
     real_actives_smiles = real_actives_df["smiles"].tolist()
     real_actives_fps = []
     real_actives_smiles_valid = []
@@ -359,7 +435,9 @@ def main():
             real_inactives_fps.append(fp)
             real_inactives_smiles_valid.append(smi)
     print(f"  Real actives FPs:   {len(real_actives_fps)}/{len(real_actives_smiles)}")
-    print(f"  Real inactives FPs: {len(real_inactives_fps)}/{len(real_inactives_smiles)}")
+    print(
+        f"  Real inactives FPs: {len(real_inactives_fps)}/{len(real_inactives_smiles)}"
+    )
 
     # ---- 3. Load synthetic cohort ----
     print("\n[3/5] Loading Wf-131 P2 synthetic cohort...")
@@ -367,7 +445,9 @@ def main():
         synth_data = json.load(f)
     synthetic_records = synth_data["per_compound"]
     print(f"  Synthetic compounds: {len(synthetic_records)}")
-    print(f"  All Catherine 6/6 PASS (inherited): {synth_data.get('all_catherine_6of6_pass', False)}")
+    print(
+        f"  All Catherine 6/6 PASS (inherited): {synth_data.get('all_catherine_6of6_pass', False)}"
+    )
 
     # ---- 4. Assign labels ----
     print("\n[4/5] Assigning labels via similarity-based active learning...")
@@ -387,8 +467,10 @@ def main():
     # ---- 5. Verify & emit ----
     print("\n[5/5] Verifying and emitting cohort...")
     overlap = verify_no_scaffold_leak(
-        actives, inactives,
-        real_actives_smiles_valid, real_inactives_smiles_valid,
+        actives,
+        inactives,
+        real_actives_smiles_valid,
+        real_inactives_smiles_valid,
     )
 
     # Catherine check (must be all PASS inherited from Wf-131 P2)
@@ -397,7 +479,8 @@ def main():
     total_kept = len(actives) + len(inactives)
     catherine_pass_rate = (
         (n_catherine_pass_active + n_catherine_pass_inactive) / total_kept
-        if total_kept > 0 else 0.0
+        if total_kept > 0
+        else 0.0
     )
 
     # Similarity distributions (quartiles)
@@ -411,11 +494,11 @@ def main():
         xs = sorted(xs)
         return {
             "min": round(xs[0], 4),
-            "q25": round(xs[len(xs)//4], 4),
-            "median": round(xs[len(xs)//2], 4),
-            "q75": round(xs[3*len(xs)//4], 4),
+            "q25": round(xs[len(xs) // 4], 4),
+            "median": round(xs[len(xs) // 2], 4),
+            "q75": round(xs[3 * len(xs) // 4], 4),
             "max": round(xs[-1], 4),
-            "mean": round(sum(xs)/len(xs), 4),
+            "mean": round(sum(xs) / len(xs), 4),
         }
 
     sim_active_dist = {
@@ -424,7 +507,9 @@ def main():
         "max_sim_to_inactive_for_inactives": quartiles(inactive_sims_inactive_side),
     }
     sim_inactive_dist = {
-        "max_sim_to_inactive_for_actives": quartiles([r.max_sim_inactive for r in actives]),
+        "max_sim_to_inactive_for_actives": quartiles(
+            [r.max_sim_inactive for r in actives]
+        ),
         "max_sim_to_inactive_for_inactives": quartiles(inactive_sims_inactive_side),
     }
 
@@ -642,11 +727,17 @@ Real cohort anchor: MetalCytoToxDB Rh train (n=794: 413 active + 381 inactive).
     print(f"  Scaffold overlap        = {overlap}")
     print(f"  Wall-time               = {stats.wall_time_s} s")
 
-    if stats.n_active == args.n_active and stats.n_inactive == args.n_inactive and overlap == 0:
+    if (
+        stats.n_active == args.n_active
+        and stats.n_inactive == args.n_inactive
+        and overlap == 0
+    ):
         print(f"\n  STATUS: PASS")
         return 0
     elif stats.n_active > 0 and stats.n_inactive > 0:
-        print(f"\n  STATUS: PARTIAL (cohort non-empty but threshold tuning may be needed)")
+        print(
+            f"\n  STATUS: PARTIAL (cohort non-empty but threshold tuning may be needed)"
+        )
         return 1
     else:
         print(f"\n  STATUS: HALT")

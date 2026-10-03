@@ -75,6 +75,7 @@ Usage
     /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/m6_wf320h_vina_phase2.py --pockets 1h36 830c
 """
+
 from __future__ import annotations
 
 import argparse
@@ -98,7 +99,9 @@ from scipy.optimize import linear_sum_assignment
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 REF_DATA = PROJECT_ROOT / "molmetal" / "data" / "m15_redesign_ref"
 DEFAULT_OUT = PROJECT_ROOT / "molmetal" / "reports" / "wf320h_vina_phase2"
-WF313A_REPORT_DIR = "molmetal/reports/wf313a_m15_redesign_phase1/extraction_summary.json"
+WF313A_REPORT_DIR = (
+    "molmetal/reports/wf313a_m15_redesign_phase1/extraction_summary.json"
+)
 WF84_P2_INSTALL_LOG = "molmetal/reports/wf84_p2_vina_install/install_log.json"
 TODO_134 = PROJECT_ROOT / "TODO" / "completed" / "134_m15_docking_rmsd_redesign.md"
 DOCKED_POSE_METRIC = PROJECT_ROOT / "metrics" / "by_metric" / "docked_pose_rmsd.json"
@@ -117,7 +120,9 @@ DEFAULT_N_POSES = 1
 DEFAULT_EXHAUSTIVENESS = 4
 
 
-def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
+def _wf416_atomic_write_text(
+    path, content: str, min_lines: int = 50, expected_min_length: int = 200
+) -> None:
     """Wf-416-A1 atomic-write-protocol wrapper around direct write_text.
 
     Falls back to direct write_text if atomic_write_file is unavailable
@@ -129,21 +134,26 @@ def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_m
             _risk = safe_overwrite_check(path, content, min_lines=min_lines)
             if _risk is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-416-A1] safe_overwrite_check diff_ratio=%.3f at %s",
-                    _risk, path,
+                    _risk,
+                    path,
                 )
         atomic_write_file(path, content, encoding="utf-8")
         if detect_truncation is not None:
             _trunc = detect_truncation(content, expected_min_length=expected_min_length)
             if _trunc is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-416-A1] detect_truncation reason=%r at %s",
-                    _trunc, path,
+                    _trunc,
+                    path,
                 )
     else:  # pragma: no cover — fallback when atomic primitive unavailable
         _wf416_atomic_write_text(Path(path), content, encoding="utf-8")
+
 
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -153,8 +163,15 @@ def _utc_now_iso() -> str:
 # PDBQT heavy-atom parsing (mirrors m15_rmsd_phase2.py::parse_pdbqt_heavy_atoms)
 # ---------------------------------------------------------------------------
 _PDBQT_ATYPE_TO_ELEMENT = {
-    "A": "C", "C": "C", "CA": "C", "N": "N", "NA": "N",
-    "O": "O", "OA": "O", "S": "S", "SA": "S",
+    "A": "C",
+    "C": "C",
+    "CA": "C",
+    "N": "N",
+    "NA": "N",
+    "O": "O",
+    "OA": "O",
+    "S": "S",
+    "SA": "S",
 }
 
 
@@ -321,6 +338,7 @@ def smiles_to_pdbqt_in_process(smiles: str) -> Tuple[str, List[str], List[List[f
     from rdkit import Chem  # type: ignore
     from rdkit.Chem import AllChem  # type: ignore
     from meeko import MoleculePreparation, PDBQTWriterLegacy  # type: ignore
+
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
         raise ValueError(f"RDKit MolFromSmiles failed for: {smiles}")
@@ -421,6 +439,7 @@ try:
         safe_overwrite_check,
         detect_truncation,
     )
+
     _WF416_HAS_ATOMIC = True
 except ImportError:  # pragma: no cover — fallback when running as standalone
     _WF416_HAS_ATOMIC = False
@@ -539,8 +558,9 @@ def write_per_pocket_json(out_dir: Path, pocket_id: str, result: PocketResult) -
         "error": result.error,
         "generated_utc": _utc_now_iso(),
         "source_inchi_json": str(
-            (REF_DATA / f"pocket_{pocket_id}" / "ref_ligand_inchi.json")
-            .relative_to(PROJECT_ROOT)
+            (REF_DATA / f"pocket_{pocket_id}" / "ref_ligand_inchi.json").relative_to(
+                PROJECT_ROOT
+            )
         ),
         "engine": "AutoDock Vina 1.2.7 (Python binding) via project .venv",
     }
@@ -549,8 +569,13 @@ def write_per_pocket_json(out_dir: Path, pocket_id: str, result: PocketResult) -
     return out_path
 
 
-def write_summary(out_dir: Path, results: Dict[str, PocketResult],
-                  seed: int, exhaustiveness: int, n_poses: int) -> dict:
+def write_summary(
+    out_dir: Path,
+    results: Dict[str, PocketResult],
+    seed: int,
+    exhaustiveness: int,
+    n_poses: int,
+) -> dict:
     """Write summary.json + synthesis.md."""
     out_dir.mkdir(parents=True, exist_ok=True)
     summary: Dict[str, dict] = {}
@@ -559,7 +584,9 @@ def write_summary(out_dir: Path, results: Dict[str, PocketResult],
 
     measured = [r for r in results.values() if r.status == "MEASURED"]
     rmsds = [r.rmsd_angstrom for r in measured if r.rmsd_angstrom is not None]
-    energies = [r.vina_energy_kcal_mol for r in measured if r.vina_energy_kcal_mol is not None]
+    energies = [
+        r.vina_energy_kcal_mol for r in measured if r.vina_energy_kcal_mol is not None
+    ]
     walls = [r.wall_time_s for r in measured if r.wall_time_s > 0]
 
     aggregate = {
@@ -656,14 +683,22 @@ def write_summary(out_dir: Path, results: Dict[str, PocketResult],
     md_lines.append(f"_Engine_: AutoDock Vina 1.2.7 (Python binding)  ")
     md_lines.append(f"_Interpreter_: `{PROJECT_VENV_PY}`  ")
     md_lines.append(f"_Scope_: {payload['scope']}  ")
-    md_lines.append(f"_Receptor_: Wf-30 staged real receptor.pdbqt (5/6 READY) — SYNTHETIC 200 ALA scaffold only if Wf-30 missing.  ")
+    md_lines.append(
+        f"_Receptor_: Wf-30 staged real receptor.pdbqt (5/6 READY) — SYNTHETIC 200 ALA scaffold only if Wf-30 missing.  "
+    )
     md_lines.append("")
     md_lines.append("## Per-pocket Vina pose results")
     md_lines.append("")
-    md_lines.append("| Pocket | n_ref_heavy | energy kcal/mol | RMSD vs start (Å) | docked n | wall s | status |")
+    md_lines.append(
+        "| Pocket | n_ref_heavy | energy kcal/mol | RMSD vs start (Å) | docked n | wall s | status |"
+    )
     md_lines.append("|---|---|---|---|---|---|---|")
     for p, r in sorted(results.items()):
-        e = f"{r.vina_energy_kcal_mol:.3f}" if r.vina_energy_kcal_mol is not None else "—"
+        e = (
+            f"{r.vina_energy_kcal_mol:.3f}"
+            if r.vina_energy_kcal_mol is not None
+            else "—"
+        )
         rmsd = f"{r.rmsd_angstrom:.4f}" if r.rmsd_angstrom is not None else "—"
         wall = f"{r.wall_time_s:.2f}" if r.wall_time_s > 0 else "—"
         md_lines.append(
@@ -674,11 +709,19 @@ def write_summary(out_dir: Path, results: Dict[str, PocketResult],
     if rmsds:
         md_lines.append("## Aggregate")
         md_lines.append("")
-        md_lines.append(f"* Pockets measured: **{aggregate['n_measured']}/{aggregate['n_pockets']}**")
-        md_lines.append(f"* RMSD range (self-redocking): {aggregate['rmsd_summary_angstrom']['min']:.4f} – "
-                        f"{aggregate['rmsd_summary_angstrom']['max']:.4f} Å")
-        md_lines.append(f"* Mean energy: {aggregate['energy_summary_kcal_mol']['mean']:.3f} kcal/mol")
-        md_lines.append(f"* Total wall: {aggregate['wall_time_summary_s']['sum']:.2f} s")
+        md_lines.append(
+            f"* Pockets measured: **{aggregate['n_measured']}/{aggregate['n_pockets']}**"
+        )
+        md_lines.append(
+            f"* RMSD range (self-redocking): {aggregate['rmsd_summary_angstrom']['min']:.4f} – "
+            f"{aggregate['rmsd_summary_angstrom']['max']:.4f} Å"
+        )
+        md_lines.append(
+            f"* Mean energy: {aggregate['energy_summary_kcal_mol']['mean']:.3f} kcal/mol"
+        )
+        md_lines.append(
+            f"* Total wall: {aggregate['wall_time_summary_s']['sum']:.2f} s"
+        )
         md_lines.append("")
     md_lines.append("## Honest framing (party-twenty-spirit §3.5)")
     md_lines.append("")
@@ -725,7 +768,10 @@ def update_pipeline_readiness(results: Dict[str, PocketResult]) -> None:
     """
     n_measured = sum(1 for r in results.values() if r.status == "MEASURED")
     readiness_path = (
-        PROJECT_ROOT / "molmetal" / "reports" / "wf313a_m15_redesign_phase1"
+        PROJECT_ROOT
+        / "molmetal"
+        / "reports"
+        / "wf313a_m15_redesign_phase1"
         / "phase2_readiness_wf320h.json"
     )
     payload = {
@@ -771,27 +817,39 @@ def _parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
-        "--pockets", nargs="+", default=list(DEFAULT_POCKETS),
+        "--pockets",
+        nargs="+",
+        default=list(DEFAULT_POCKETS),
         help=f"Pocket IDs (default: {' '.join(DEFAULT_POCKETS)}).",
     )
     p.add_argument(
-        "--seed", type=int, default=DEFAULT_SEED,
+        "--seed",
+        type=int,
+        default=DEFAULT_SEED,
         help=f"Random seed (default {DEFAULT_SEED}).",
     )
     p.add_argument(
-        "--n-poses", type=int, default=DEFAULT_N_POSES,
+        "--n-poses",
+        type=int,
+        default=DEFAULT_N_POSES,
         help=f"Vina n_poses (default {DEFAULT_N_POSES}).",
     )
     p.add_argument(
-        "--exhaustiveness", type=int, default=DEFAULT_EXHAUSTIVENESS,
+        "--exhaustiveness",
+        type=int,
+        default=DEFAULT_EXHAUSTIVENESS,
         help=f"Vina exhaustiveness (default {DEFAULT_EXHAUSTIVENESS}).",
     )
     p.add_argument(
-        "--out-dir", type=Path, default=DEFAULT_OUT,
+        "--out-dir",
+        type=Path,
+        default=DEFAULT_OUT,
         help=f"Output root (default: {DEFAULT_OUT.relative_to(PROJECT_ROOT)}).",
     )
     p.add_argument(
-        "--dry-run", action="store_true", default=False,
+        "--dry-run",
+        action="store_true",
+        default=False,
         help="Print scope + readiness only (no Vina call).",
     )
     return p.parse_args()
@@ -803,14 +861,18 @@ def main() -> int:
 
     # Interpreter probe
     if not PROJECT_VENV_PY.exists():
-        print(f"FAIL: project-venv interpreter missing: {PROJECT_VENV_PY}",
-              file=sys.stderr)
+        print(
+            f"FAIL: project-venv interpreter missing: {PROJECT_VENV_PY}",
+            file=sys.stderr,
+        )
         return 1
 
     print("Wf-320H — TODO-134 Phase 2 Vina attempt")
     print(f"  interpreter: {PROJECT_VENV_PY}")
-    print(f"  scope: {len(args.pockets)} pockets × 1 seed × "
-          f"{args.n_poses} poses × exhaustiveness={args.exhaustiveness}")
+    print(
+        f"  scope: {len(args.pockets)} pockets × 1 seed × "
+        f"{args.n_poses} poses × exhaustiveness={args.exhaustiveness}"
+    )
     print(f"  receptor: SYNTHETIC 200 ALA atoms (PIPELINE PROOF only)")
     print(f"  out dir: {out_dir.relative_to(PROJECT_ROOT)}")
     print()
@@ -828,7 +890,9 @@ def main() -> int:
         if not inchi_path.exists() or not smi_path.exists():
             print(f"SKIP {pocket_id}: missing REF data")
             results[pocket_id] = PocketResult(
-                pocket_id=pocket_id, ref_smiles="", n_ref_heavy=0,
+                pocket_id=pocket_id,
+                ref_smiles="",
+                n_ref_heavy=0,
                 status="SKIP_MISSING_REF_DATA",
             )
             continue
@@ -843,14 +907,20 @@ def main() -> int:
         write_per_pocket_json(out_dir, pocket_id, result)
         results[pocket_id] = result
         if result.status == "MEASURED":
-            print(f"  energy={result.vina_energy_kcal_mol:.3f} kcal/mol "
-                  f"rmsd={result.rmsd_angstrom:.4f} Å "
-                  f"wall={result.wall_time_s:.2f} s -> {result.status}")
+            print(
+                f"  energy={result.vina_energy_kcal_mol:.3f} kcal/mol "
+                f"rmsd={result.rmsd_angstrom:.4f} Å "
+                f"wall={result.wall_time_s:.2f} s -> {result.status}"
+            )
         else:
             print(f"  status={result.status} error={result.error[:120]}")
 
     payload = write_summary(
-        out_dir, results, args.seed, args.exhaustiveness, args.n_poses,
+        out_dir,
+        results,
+        args.seed,
+        args.exhaustiveness,
+        args.n_poses,
     )
     update_pipeline_readiness(results)
 
@@ -859,7 +929,7 @@ def main() -> int:
     print(f"Wrote summary: {out_dir / 'summary.json'}")
     print(f"Wrote synthesis: {out_dir / 'synthesis.md'}")
     print(f"Pockets measured: {agg['n_measured']}/{agg['n_pockets']}")
-    if agg['n_measured'] >= 4:
+    if agg["n_measured"] >= 4:
         print("Pipeline proof PASS (≥4/6 pockets green)")
         print(f"Stdout invariant: PASS")
         return 0

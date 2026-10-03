@@ -40,6 +40,7 @@ HONEST_NEG_METAL_LOOP_OK (the metal-loop detector IS the recovery;
 the Wf-264 panel does not yet dispatch to it but the detector is
 the documented next-step wire-up).
 """
+
 from __future__ import annotations
 
 import json
@@ -75,15 +76,14 @@ def recovery_mod():
     missing in the test venv).
     """
     if not RECOVERY_SCRIPT.exists():
-        pytest.skip(
-            f"Recovery script not found at {RECOVERY_SCRIPT}"
-        )
+        pytest.skip(f"Recovery script not found at {RECOVERY_SCRIPT}")
     # The module uses @dataclass, which requires the module to be
     # registered in ``sys.modules`` BEFORE exec_module runs (Python
     # 3.12 dataclasses look up cls.__module__ in sys.modules).  The
     # standard ``importlib.util.module_from_spec`` + exec_module
     # pattern fails on dataclasses — register explicitly.
     import importlib.util  # noqa: WPS433
+
     spec = importlib.util.spec_from_file_location(
         "wf337a2_vina_recovery", str(RECOVERY_SCRIPT)
     )
@@ -116,8 +116,11 @@ def test_smina_availability(recovery_mod):
     # Dict shape contract.
     assert isinstance(probe, dict)
     for k in (
-        "available", "binary_path", "version",
-        "probe_error", "honest_negative_reason",
+        "available",
+        "binary_path",
+        "version",
+        "probe_error",
+        "honest_negative_reason",
     ):
         assert k in probe, f"probe missing key: {k}"
     assert isinstance(probe["available"], bool)
@@ -162,8 +165,11 @@ def test_quickvina_availability(recovery_mod):
     # Dict shape contract.
     assert isinstance(probe, dict)
     for k in (
-        "available", "binary_path", "version",
-        "probe_error", "honest_negative_reason",
+        "available",
+        "binary_path",
+        "version",
+        "probe_error",
+        "honest_negative_reason",
     ):
         assert k in probe, f"probe missing key: {k}"
     assert isinstance(probe["available"], bool)
@@ -214,7 +220,10 @@ def test_custom_metal_loop_detector(recovery_mod):
     assert 78 in rep_a.metal_atomic_nums  # Pt atomic number.
     assert rep_a.recovery_strategy == "pt_strip_largest_fragment"
     assert rep_a.honest_negative_reason != ""
-    assert "pt-strip" in rep_a.honest_negative_reason.lower() or "largest" in rep_a.honest_negative_reason.lower()
+    assert (
+        "pt-strip" in rep_a.honest_negative_reason.lower()
+        or "largest" in rep_a.honest_negative_reason.lower()
+    )
 
     # (b) Dangling Pt — substitute.
     rep_b = recovery_mod.detect_metal_loop("[Pt](Cl)(Cl)")

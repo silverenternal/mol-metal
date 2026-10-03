@@ -117,6 +117,7 @@ PLL_KNN = 8
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _safe_sa(smi: str) -> float:
     """SA score (Ertl 2009) — ``rdkit.Chem.Descriptors.NumRotatableBonds``-style.
 
@@ -129,11 +130,13 @@ def _safe_sa(smi: str) -> float:
         return float("nan")
     try:
         from rdkit import Chem  # type: ignore
+
         try:
             from rdkit.Chem import RDConfig  # type: ignore  # noqa: F401
             import os as _os
             from rdkit.Chem import Descriptors as _Desc  # type: ignore
             from rdkit.Contrib.SA_Score import sascorer  # type: ignore
+
             mol = Chem.MolFromSmiles(smi)
             if mol is None:
                 return float("nan")
@@ -144,6 +147,7 @@ def _safe_sa(smi: str) -> float:
             if mol is None:
                 return float("nan")
             from rdkit.Chem import Descriptors  # type: ignore
+
             return float(Descriptors.NumRotatableBonds(mol))
     except Exception:
         return float("nan")
@@ -156,6 +160,7 @@ def _safe_qed(smi: str) -> float:
     try:
         from rdkit import Chem  # type: ignore
         from rdkit.Chem import QED  # type: ignore
+
         mol = Chem.MolFromSmiles(smi)
         if mol is None:
             return float("nan")
@@ -170,6 +175,7 @@ def _safe_rdkit_parse(smi: str) -> bool:
         return False
     try:
         from rdkit import Chem  # type: ignore
+
         return Chem.MolFromSmiles(smi) is not None
     except Exception:
         return False
@@ -258,14 +264,15 @@ def _resolve_pocket_smiles(pocket_id: str) -> Optional[str]:
                             pocket_subdir = "/".join(parts[idx + 1 : -1])
                         else:
                             pocket_subdir = (
-                                "/".join(parts[-2:-1]) if len(parts) >= 2
-                                else None
+                                "/".join(parts[-2:-1]) if len(parts) >= 2 else None
                             )
                         if lig_path and Path(lig_path).exists():
                             try:
                                 from rdkit import Chem  # type: ignore
+
                                 suppl = Chem.SDMolSupplier(
-                                    lig_path, sanitize=True,
+                                    lig_path,
+                                    sanitize=True,
                                 )
                                 mol = next(iter(suppl), None)
                                 if mol is not None:
@@ -273,7 +280,8 @@ def _resolve_pocket_smiles(pocket_id: str) -> Optional[str]:
                             except Exception as exc:
                                 log.debug(
                                     "failed to read ligand %s: %s",
-                                    lig_path, exc,
+                                    lig_path,
+                                    exc,
                                 )
                         break
         except Exception as exc:
@@ -290,12 +298,14 @@ def _resolve_pocket_smiles(pocket_id: str) -> Optional[str]:
         if local_sdf.exists():
             try:
                 from rdkit import Chem  # type: ignore
+
                 suppl = Chem.SDMolSupplier(str(local_sdf), sanitize=True)
                 mol = next(iter(suppl), None)
                 if mol is not None:
                     log.info(
                         "[pocket=%s] resolved pocket SMILES from %s",
-                        pocket_id, local_sdf,
+                        pocket_id,
+                        local_sdf,
                     )
                     return Chem.MolToSmiles(mol)
             except Exception as exc:
@@ -313,7 +323,8 @@ def _build_tile_library() -> List[MoleculeClosedTerm]:
         for t in raw:
             try:
                 term = MoleculeClosedTerm.from_smiles(
-                    getattr(t, "smiles", "") or "", embed_3d=False,
+                    getattr(t, "smiles", "") or "",
+                    embed_3d=False,
                 )
                 if term is not None and term.n_atoms > 0:
                     tiles.append(term)
@@ -325,7 +336,8 @@ def _build_tile_library() -> List[MoleculeClosedTerm]:
         for t in STANDARD_12_TILES():
             try:
                 term = MoleculeClosedTerm.from_smiles(
-                    t.smiles, embed_3d=False,
+                    t.smiles,
+                    embed_3d=False,
                 )
                 if term is not None and term.n_atoms > 0:
                     tiles.append(term)
@@ -359,9 +371,11 @@ def _build_rules() -> Dict[str, Any]:
 # Pipeline
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Candidate:
     """A single end-to-end candidate annotated with its λ-term."""
+
     smiles: str
     derivation: str
     sa: float
@@ -389,27 +403,30 @@ def run_pipeline(
     rng = random.Random(int(seed))
 
     # ---- [1] PLL signature for the pocket -----------------------
-    log.info("[1/5] resolving pocket + computing PLL signature (pocket=%s)",
-             pocket_id)
+    log.info("[1/5] resolving pocket + computing PLL signature (pocket=%s)", pocket_id)
     pocket_smi = _resolve_pocket_smiles(pocket_id)
     pll_signature = None
     if pocket_smi:
         try:
             from rdkit import Chem as _Chem  # type: ignore
             from rdkit.Chem import AllChem as _AllChem  # type: ignore
+
             m = _Chem.MolFromSmiles(pocket_smi)
             if m is not None:
                 m_h = _Chem.AddHs(m)
                 if _AllChem.EmbedMolecule(m_h) == 0:
                     pll_signature = compute_pll(
-                        _Chem.RemoveHs(m_h), k=PLL_K, k_nn=PLL_KNN,
+                        _Chem.RemoveHs(m_h),
+                        k=PLL_K,
+                        k_nn=PLL_KNN,
                     )
         except Exception as exc:
             log.warning("PLL signature failed: %s", exc)
     if pll_signature is not None:
         log.info(
             "[1/5] pocket PLL signature: k=%d/%d top5=%s",
-            pll_signature.k_used, pll_signature.k_requested,
+            pll_signature.k_used,
+            pll_signature.k_requested,
             [round(float(v), 4) for v in pll_signature.eigenvalues[:5]],
         )
 
@@ -417,11 +434,12 @@ def run_pipeline(
     log.info("[2/5] building PLL heuristic (target=pocket %s)", pocket_id)
     pll_h = PLLHeuristic(
         target=pocket_smi or "CCO",  # safe default
-        k=PLL_K, k_nn=PLL_KNN, fallback=0.5,
+        k=PLL_K,
+        k_nn=PLL_KNN,
+        fallback=0.5,
     )
     if pll_h.is_available:
-        log.info("[2/5] PLL heuristic available; target PLL=PLL(%s)",
-                 pocket_smi)
+        log.info("[2/5] PLL heuristic available; target PLL=PLL(%s)", pocket_smi)
     else:
         log.warning("[2/5] PLL heuristic unavailable — falling back to 0.5")
 
@@ -431,7 +449,8 @@ def run_pipeline(
     rules = _build_rules()
     log.info(
         "[3/5] tiles=%d rules=%s",
-        len(tiles), sorted(rules.keys()),
+        len(tiles),
+        sorted(rules.keys()),
     )
     binding_site = BindingSite(name=f"lambda_only::{pocket_id}")
 
@@ -444,8 +463,12 @@ def run_pipeline(
     log.info(
         "[4/5] MCTSProofSearch: %d seeds × %d simulations each "
         "(top_k=%d max_depth=%d use_pll=%s fpu=%.2f)",
-        n_seeds, sims_per_seed, top_k, max_depth,
-        pll_h.is_available, FPU_REDUCTION,
+        n_seeds,
+        sims_per_seed,
+        top_k,
+        max_depth,
+        pll_h.is_available,
+        FPU_REDUCTION,
     )
     # Pre-pick the seed tiles deterministically so two runs with the
     # same ``seed`` argument see the same search trajectories.
@@ -493,18 +516,21 @@ def run_pipeline(
             total_nfe_red += int(getattr(search, "nfe_reductions", 0))
             total_history += len(search.history)
         except Exception as exc:
-            log.warning("[4/5] seed %d (tile_idx=%d) failed: %s",
-                        s_i, tile_idx, exc)
+            log.warning("[4/5] seed %d (tile_idx=%d) failed: %s", s_i, tile_idx, exc)
     log.info(
         "[4/5] MCTS returned %d candidates across %d seeds "
         "(history=%d, NFE=%d, nfe_reductions=%d)",
-        len(all_candidates), n_seeds, total_history,
-        total_nfe, total_nfe_red,
+        len(all_candidates),
+        n_seeds,
+        total_history,
+        total_nfe,
+        total_nfe_red,
     )
 
     # ---- [5] Pad to N_CANDIDATES (deduplicate + cycle) -----------
-    log.info("[5/5] annotating %d candidates with closed β-NF derivations",
-             n_candidates)
+    log.info(
+        "[5/5] annotating %d candidates with closed β-NF derivations", n_candidates
+    )
     seen_smi: set = set()
     deduped: List[MoleculeClosedTerm] = []
     for term in all_candidates:
@@ -560,20 +586,23 @@ def run_pipeline(
         sa = _safe_sa(smi)
         qed = _safe_qed(smi)
         derivation = _derive_closed_beta_nf(smi) or _molecule_to_lambda_expr(term)
-        annotated.append(Candidate(
-            smiles=str(smi), derivation=str(derivation),
-            sa=float(sa) if np.isfinite(sa) else float("nan"),
-            qed=float(qed) if np.isfinite(qed) else float("nan"),
-        ))
+        annotated.append(
+            Candidate(
+                smiles=str(smi),
+                derivation=str(derivation),
+                sa=float(sa) if np.isfinite(sa) else float("nan"),
+                qed=float(qed) if np.isfinite(qed) else float("nan"),
+            )
+        )
 
     # ---- Compute summary stats.
     n_total = len(annotated)
     n_valid = sum(1 for c in annotated if _safe_rdkit_parse(c.smiles))
     sa_vals = [c.sa for c in annotated if np.isfinite(c.sa)]
     qed_vals = [c.qed for c in annotated if np.isfinite(c.qed)]
-    unique_smis = sorted({
-        str(c.smiles) for c in annotated if _safe_rdkit_parse(c.smiles)
-    })
+    unique_smis = sorted(
+        {str(c.smiles) for c in annotated if _safe_rdkit_parse(c.smiles)}
+    )
     stats: Dict[str, Any] = {
         "pocket_id": pocket_id,
         "pocket_smiles_resolved": str(pocket_smi),
@@ -581,10 +610,9 @@ def run_pipeline(
         "n_returned_mcts_total": int(len(all_candidates)),
         "n_seeds": int(n_seeds),
         "sims_per_seed": int(sims_per_seed),
-        "n_unique_smi_in_pool": int(len(set(
-            str(t.canonical_smiles()) for t in all_candidates
-            if t is not None
-        ))),
+        "n_unique_smi_in_pool": int(
+            len(set(str(t.canonical_smiles()) for t in all_candidates if t is not None))
+        ),
         "n_emitted": int(n_total),
         "n_valid_rdkit": int(n_valid),
         "n_unique_valid_smi": int(len(unique_smis)),
@@ -639,22 +667,30 @@ def write_report_md(stats: Dict[str, Any], report_path: Path) -> None:
     add(f"- pocket_id: `{stats['pocket_id']}`")
     add(f"- pocket_smiles: `{stats.get('pocket_smiles_resolved', '?')}`")
     add(f"- n_requested: {stats['n_requested']}")
-    add(f"- n_returned_mcts_total: {stats['n_returned_mcts_total']} "
-        f"(n_seeds={stats['n_seeds']} sims/seed={stats['sims_per_seed']})")
+    add(
+        f"- n_returned_mcts_total: {stats['n_returned_mcts_total']} "
+        f"(n_seeds={stats['n_seeds']} sims/seed={stats['sims_per_seed']})"
+    )
     add(f"- n_unique_smi_in_pool: {stats['n_unique_smi_in_pool']}")
-    add(f"- n_emitted: {stats['n_emitted']}  "
+    add(
+        f"- n_emitted: {stats['n_emitted']}  "
         f"n_valid_rdkit: {stats['n_valid_rdkit']}  "
-        f"n_unique_valid_smi: {stats['n_unique_valid_smi']}")
+        f"n_unique_valid_smi: {stats['n_unique_valid_smi']}"
+    )
     add(f"- sa_mean: {stats['sa_mean']} (n={stats['sa_n']})")
     add(f"- qed_mean: {stats['qed_mean']} (n={stats['qed_n']})")
     add(f"- n_tiles: {stats['n_tiles']}")
     add(f"- rules_used: {stats['rules_used']}")
     add(f"- n_reactions_total: {stats['n_reactions_total']}")
     add(f"- fpu_reduction: {stats['fpu_reduction']}")
-    add(f"- pll_k: {stats['pll_k']} pll_knn: {stats['pll_knn']} "
-        f"pll_available: {stats['pll_available']}")
-    add(f"- n_simulations_total: {stats['n_simulations_total']} "
-        f"max_depth: {stats['max_depth']} top_k: {stats['top_k']}")
+    add(
+        f"- pll_k: {stats['pll_k']} pll_knn: {stats['pll_knn']} "
+        f"pll_available: {stats['pll_available']}"
+    )
+    add(
+        f"- n_simulations_total: {stats['n_simulations_total']} "
+        f"max_depth: {stats['max_depth']} top_k: {stats['top_k']}"
+    )
     add(f"- nfe: {stats['nfe']} nfe_reductions: {stats['nfe_reductions']}")
     add(f"- wallclock_s: {stats['wallclock_s']:.1f}")
     add("")
@@ -669,12 +705,9 @@ def write_report_md(stats: Dict[str, Any], report_path: Path) -> None:
 
 def main() -> int:
     out_root = _REPO_ROOT / "logs"
-    out_dir = out_root / (
-        "lambda_pipeline_smoke_" + time.strftime("%Y%m%d_%H%M%S")
-    )
+    out_dir = out_root / ("lambda_pipeline_smoke_" + time.strftime("%Y%m%d_%H%M%S"))
     report_path = (
-        _REPO_ROOT / "molmetal" / "reports" / "wf_lambda_pipeline_smoke"
-        / "final.md"
+        _REPO_ROOT / "molmetal" / "reports" / "wf_lambda_pipeline_smoke" / "final.md"
     )
 
     log.info("=== TODO/32 B5 — end-to-end click-chem pipeline smoke ===")

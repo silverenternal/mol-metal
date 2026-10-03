@@ -84,9 +84,7 @@ def compute_ot_plan(
     if x0.shape[0] < 1:
         raise ValueError("Batch size must be >= 1.")
     if mode not in ("random", "hungarian"):
-        raise ValueError(
-            f"`mode` must be 'random' or 'hungarian'; got {mode!r}."
-        )
+        raise ValueError(f"`mode` must be 'random' or 'hungarian'; got {mode!r}.")
 
     b = x0.shape[0]
 
@@ -218,9 +216,7 @@ def mini_batch_ot_coupling(
             f"{tuple(batch_idx.shape)} vs {tuple(x0.shape)}."
         )
     if method not in ("sinkhorn", "hungarian"):
-        raise ValueError(
-            f"`method` must be 'sinkhorn' or 'hungarian'; got {method!r}."
-        )
+        raise ValueError(f"`method` must be 'sinkhorn' or 'hungarian'; got {method!r}.")
     if method == "sinkhorn" and (reg <= 0 or max_iter < 1):
         raise ValueError("Sinkhorn requires reg > 0 and max_iter >= 1")
 
@@ -241,11 +237,13 @@ def mini_batch_ot_coupling(
     # fallback for either method when POT is missing.
     try:
         import ot as _pot  # noqa: F401
+
         has_pot = True
     except Exception:  # pragma: no cover - POT absent
         has_pot = False
     try:
         from scipy.optimize import linear_sum_assignment  # noqa: F401
+
         has_scipy = True
     except Exception:  # pragma: no cover - scipy absent
         has_scipy = False
@@ -254,9 +252,15 @@ def mini_batch_ot_coupling(
         if len(rows) <= 1:
             # Singleton group: identity coupling; nothing to do.
             if diagnostics is not None:
-                diagnostics.append({"effective_backend": "singleton_identity",
-                                    "group_size": len(rows), "device": str(device),
-                                    "cpu_boundary": "group bookkeeping", "fallback_reason": None})
+                diagnostics.append(
+                    {
+                        "effective_backend": "singleton_identity",
+                        "group_size": len(rows),
+                        "device": str(device),
+                        "cpu_boundary": "group bookkeeping",
+                        "fallback_reason": None,
+                    }
+                )
             continue
         sub_idx = torch.as_tensor(rows, dtype=torch.long, device=device)
         x0_sub = x0.index_select(0, sub_idx).detach()
@@ -305,8 +309,10 @@ def _solve_minibatch_ot(
     x1_flat = x1_sub.to(dtype=torch.float32).reshape(n, -1)
     cost = torch.cdist(x0_flat, x1_flat, p=2.0).pow(2)
     record = {
-        "requested_method": method, "group_size": n,
-        "device": str(device), "cost_device": str(cost.device),
+        "requested_method": method,
+        "group_size": n,
+        "device": str(device),
+        "cost_device": str(cost.device),
         "fallback_reason": None,
     }
 
@@ -320,14 +326,20 @@ def _solve_minibatch_ot(
         # use the uniform marginals that the paper recommends.
         try:
             import ot as _pot
+
             a = torch.full((n,), 1.0 / n, dtype=cost.dtype, device=cost.device)
             b = torch.full_like(a, 1.0 / n)
             # At molecular coordinate scale, exp(-cost / 0.05) underflows
             # float32. Log-domain Sinkhorn solves the same entropic problem
             # without changing the cost or regularization strength.
             plan = _pot.sinkhorn(
-                a, b, cost, reg=float(reg), numItermax=int(max_iter),
-                method="sinkhorn_log", warn=False,
+                a,
+                b,
+                cost,
+                reg=float(reg),
+                numItermax=int(max_iter),
+                method="sinkhorn_log",
+                warn=False,
             )
             if not isinstance(plan, torch.Tensor) or plan.device != cost.device:
                 raise RuntimeError("POT did not return a tensor on the input device")
@@ -335,13 +347,20 @@ def _solve_minibatch_ot(
                 raise FloatingPointError("POT returned a non-finite transport plan")
             # Preserve the established greedy hard-permutation projection.
             # Only this small plan crosses to CPU, not the Sinkhorn solve.
-            local = _sinkhorn_plan_to_permutation(plan.detach().cpu().numpy(), seed=seed)
+            local = _sinkhorn_plan_to_permutation(
+                plan.detach().cpu().numpy(), seed=seed
+            )
             if diagnostics is not None:
-                error = torch.maximum((plan.sum(0) - b).abs().max(),
-                                      (plan.sum(1) - a).abs().max()).item()
-                report(effective_backend="pot_sinkhorn_log", plan_device=str(plan.device),
-                       cpu_boundary="group bookkeeping and greedy hard-permutation rounding",
-                       rounding="greedy_plan_permutation", marginal_max_abs_error=error)
+                error = torch.maximum(
+                    (plan.sum(0) - b).abs().max(), (plan.sum(1) - a).abs().max()
+                ).item()
+                report(
+                    effective_backend="pot_sinkhorn_log",
+                    plan_device=str(plan.device),
+                    cpu_boundary="group bookkeeping and greedy hard-permutation rounding",
+                    rounding="greedy_plan_permutation",
+                    marginal_max_abs_error=error,
+                )
             return local.to(device=device)
         except Exception as exc:
             # POT raised (e.g. unstable Sinkhorn on degenerate cost);
@@ -354,17 +373,23 @@ def _solve_minibatch_ot(
         warnings.warn(
             f"Sinkhorn unavailable ({record['fallback_reason']}); using "
             f"{'SciPy Hungarian on CPU' if has_scipy else 'random pairing'}.",
-            RuntimeWarning, stacklevel=2,
+            RuntimeWarning,
+            stacklevel=2,
         )
 
     # Hungarian fallback (exact discrete OT on the same cost matrix).
     if has_scipy:
         from scipy.optimize import linear_sum_assignment
+
         row, col = linear_sum_assignment(cost.detach().cpu().numpy())
         order = torch.argsort(torch.as_tensor(row, dtype=torch.long))
         local = torch.as_tensor(col, dtype=torch.long)[order]
-        report(effective_backend="scipy_hungarian", plan_device="cpu",
-               cpu_boundary="group bookkeeping and SciPy hard assignment", rounding=None)
+        report(
+            effective_backend="scipy_hungarian",
+            plan_device="cpu",
+            cpu_boundary="group bookkeeping and SciPy hard assignment",
+            rounding=None,
+        )
         return local.to(device=device)
 
     # Final fallback: random permutation (seeded when requested).
@@ -378,9 +403,15 @@ def _solve_minibatch_ot(
         perm = torch.randperm(n)
     if record["fallback_reason"] is None:
         record["fallback_reason"] = "SciPy unavailable"
-        warnings.warn("SciPy unavailable; using random OT pairing.", RuntimeWarning, stacklevel=2)
-    report(effective_backend="random_pairing", plan_device="cpu",
-           cpu_boundary="group bookkeeping and random permutation", rounding=None)
+        warnings.warn(
+            "SciPy unavailable; using random OT pairing.", RuntimeWarning, stacklevel=2
+        )
+    report(
+        effective_backend="random_pairing",
+        plan_device="cpu",
+        cpu_boundary="group bookkeeping and random permutation",
+        rounding=None,
+    )
     return perm.to(device=device, dtype=torch.long)
 
 
@@ -399,6 +430,7 @@ def _sinkhorn_plan_to_permutation(
     not fully converged.
     """
     import numpy as _np
+
     n = plan.shape[0]
     # Primary assignment: argmax per row.
     primary = plan.argmax(axis=1)

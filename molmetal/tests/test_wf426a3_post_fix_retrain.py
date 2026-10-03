@@ -26,6 +26,7 @@ Tests:
   TestLauncherHonorsUserOkGuard — verifies the launcher exits with
       code 64 if USER_OK is unset (mock shell exec).
 """
+
 from __future__ import annotations
 
 import json
@@ -37,7 +38,9 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-AGGREGATOR = REPO_ROOT / "molmetal" / "scripts" / "wf426a3_post_fix_results_aggregator.py"
+AGGREGATOR = (
+    REPO_ROOT / "molmetal" / "scripts" / "wf426a3_post_fix_results_aggregator.py"
+)
 LAUNCHER = REPO_ROOT / "molmetal" / "scripts" / "wf426a3_post_fix_retrain_launcher.sh"
 ATOMIC_WRITE = REPO_ROOT / "molmetal" / "scripts" / "wf386a3_atomic_write.py"
 
@@ -91,9 +94,12 @@ def _write_candidate(
 def _run_aggregator(candidates_dir: Path, output_path: Path, **kwargs) -> dict:
     """Run the aggregator as a subprocess and return parsed JSON."""
     cmd = [
-        sys.executable, str(AGGREGATOR),
-        "--candidates-dir", str(candidates_dir),
-        "--output", str(output_path),
+        sys.executable,
+        str(AGGREGATOR),
+        "--candidates-dir",
+        str(candidates_dir),
+        "--output",
+        str(output_path),
     ]
     for k, v in kwargs.items():
         cmd.extend([f"--{k.replace('_', '-')}", str(v)])
@@ -112,7 +118,8 @@ class TestAggregatorSmoke:
         # additionally check that the module can be loaded as a
         # Python module (catches syntax + import errors at module level).
         spec = __import__("importlib.util").util.spec_from_file_location(
-            "agg_mod", str(AGGREGATOR),
+            "agg_mod",
+            str(AGGREGATOR),
         )
         mod = __import__("importlib.util").util.module_from_spec(spec)
         spec.loader.exec_module(mod)
@@ -127,7 +134,8 @@ class TestAggregatorBlockOnMissingWrapper:
     def test_missing_wrapper_blocked(self, candidates_dir, tmp_path):
         out = tmp_path / "readiness.json"
         _write_candidate(
-            candidates_dir, "wf299_cfm_3wave",
+            candidates_dir,
+            "wf299_cfm_3wave",
             script_path="/nonexistent/wrapper.sh",
             script_exists=False,
             notes="Wf-299 wrapper MISSING per filesystem-truth",
@@ -147,10 +155,13 @@ class TestAggregatorBlockOnSyntaxFail:
         out = tmp_path / "readiness.json"
         # Write a syntactically broken shell script.
         bad_script = tmp_path / "bad_wrapper.sh"
-        bad_script.write_text("#!/usr/bin/env bash\nthis is broken syntax (\n", encoding="utf-8")
+        bad_script.write_text(
+            "#!/usr/bin/env bash\nthis is broken syntax (\n", encoding="utf-8"
+        )
         bad_script.chmod(0o755)
         _write_candidate(
-            candidates_dir, "wf_syn_fail",
+            candidates_dir,
+            "wf_syn_fail",
             script_path=str(bad_script),
             script_exists=True,
         )
@@ -172,7 +183,8 @@ class TestAggregatorBlockOnBadPlanJson:
         good_script.chmod(0o755)
         report_dir = str(tmp_path / "report")
         _write_candidate(
-            candidates_dir, "wf_bad_plan",
+            candidates_dir,
+            "wf_bad_plan",
             script_path=str(good_script),
             script_exists=True,
             report_dir=report_dir,
@@ -202,7 +214,8 @@ class TestAggregatorWarnOnMissingDryRun:
         report_dir.mkdir()
         # Note: dry_run_log_exists=False (default).
         _write_candidate(
-            candidates_dir, "wf_no_dry",
+            candidates_dir,
+            "wf_no_dry",
             script_path=str(good_script),
             script_exists=True,
             report_dir=str(report_dir),
@@ -226,12 +239,18 @@ class TestAggregatorReadyAllGreen:
         report_dir = tmp_path / "report_perfect"
         report_dir.mkdir()
         (report_dir / "DRY_RUN.log").write_text("# ok\n", encoding="utf-8")
-        (report_dir / "plan.json").write_text(json.dumps({
-            "meta": {"wrapper_name": "perfect", "user_ok_required": True},
-            "plan": {"steps": 7},
-        }), encoding="utf-8")
+        (report_dir / "plan.json").write_text(
+            json.dumps(
+                {
+                    "meta": {"wrapper_name": "perfect", "user_ok_required": True},
+                    "plan": {"steps": 7},
+                }
+            ),
+            encoding="utf-8",
+        )
         _write_candidate(
-            candidates_dir, "wf_perfect",
+            candidates_dir,
+            "wf_perfect",
             script_path=str(good_script),
             script_exists=True,
             report_dir=str(report_dir),
@@ -278,11 +297,12 @@ class TestLauncherImportsValidBash:
         assert LAUNCHER.exists(), f"launcher MISSING: {LAUNCHER}"
         proc = subprocess.run(
             ["bash", "-n", str(LAUNCHER)],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         assert proc.returncode == 0, (
-            f"launcher bash -n syntax FAIL rc={proc.returncode}: "
-            f"{proc.stderr}"
+            f"launcher bash -n syntax FAIL rc={proc.returncode}: " f"{proc.stderr}"
         )
 
 
@@ -294,7 +314,10 @@ class TestLauncherHonorsUserOkGuard:
         env.pop("USER_OK", None)
         proc = subprocess.run(
             ["bash", str(LAUNCHER)],
-            capture_output=True, text=True, timeout=10, env=env,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            env=env,
         )
         assert proc.returncode == 64, (
             f"launcher should exit 64 with USER_OK unset, got "
@@ -321,7 +344,10 @@ class TestLauncherAcceptsUserOk:
         # failure rc 1).
         proc = subprocess.run(
             ["bash", str(LAUNCHER), "--no-such-arg"],
-            capture_output=True, text=True, timeout=15, env=env,
+            capture_output=True,
+            text=True,
+            timeout=15,
+            env=env,
         )
         # With USER_OK=1 the guard passes; if pre-flight fails the
         # launcher exits with code 1 (or 2 if --strict). Either way,

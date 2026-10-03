@@ -95,9 +95,9 @@ DEFAULT_DEPTH: int = 2
 DEFAULT_HEAD_HIDDEN: int = 128
 DEFAULT_BATCH: int = 128
 DEFAULT_LR: float = 1e-3
-DEFAULT_WALL_BUDGET_S: float = 75.0 * 60.0   # 75 min
-DEFAULT_SEED_TIME_BUDGET_S: float = 280.0   # ~4.7 min per seed (15 seeds ≈ 70 min)
-DEFAULT_EVAL_MAX_SAMPLES: int = 1000        # reduced from Wf-185 4000
+DEFAULT_WALL_BUDGET_S: float = 75.0 * 60.0  # 75 min
+DEFAULT_SEED_TIME_BUDGET_S: float = 280.0  # ~4.7 min per seed (15 seeds ≈ 70 min)
+DEFAULT_EVAL_MAX_SAMPLES: int = 1000  # reduced from Wf-185 4000
 DEFAULT_EVAL_TRAIN_MAX_SAMPLES: int = 4000
 
 CONFIGS: Tuple[str, ...] = (
@@ -113,9 +113,9 @@ WF185_CACHE = (
 )
 
 V2_BASELINE = {  # Wf-185 chemprop v2 retrain (5-seed × 20-ep × h=128/d=2).
-    "lbap_refined_ic50_assay":   (0.7137, 0.0079),
+    "lbap_refined_ic50_assay": (0.7137, 0.0079),
     "lbap_refined_ic50_scaffold": (0.6707, 0.0042),
-    "lbap_refined_ic50_size":    (0.6757, 0.0142),
+    "lbap_refined_ic50_size": (0.6757, 0.0142),
 }
 
 
@@ -139,9 +139,12 @@ def _canon_smiles(smi: str) -> Optional[str]:
 HASH_FN = lambda s: hashlib.md5(s.encode("utf-8")).hexdigest()
 
 
-def featurize_and_cache(canon_unique: List[str], cache_dir: Path,
-                        featurizer: SimpleMoleculeMolGraphFeaturizer,
-                        chunk_size: int = 30000) -> Tuple[Dict[str, Path], int, int]:
+def featurize_and_cache(
+    canon_unique: List[str],
+    cache_dir: Path,
+    featurizer: SimpleMoleculeMolGraphFeaturizer,
+    chunk_size: int = 30000,
+) -> Tuple[Dict[str, Path], int, int]:
     cache_dir.mkdir(parents=True, exist_ok=True)
     cached_paths: Dict[str, Path] = {}
     todo: List[str] = []
@@ -151,10 +154,12 @@ def featurize_and_cache(canon_unique: List[str], cache_dir: Path,
         cached_paths[s] = path
         if not (path.exists() and path.stat().st_size > 0):
             todo.append(s)
-    _log(f"featurize: cache_hits={len(canon_unique) - len(todo)}  "
-         f"todo={len(todo)}  chunk_size={chunk_size}")
+    _log(
+        f"featurize: cache_hits={len(canon_unique) - len(todo)}  "
+        f"todo={len(todo)}  chunk_size={chunk_size}"
+    )
     for chunk_start in range(0, len(todo), chunk_size):
-        chunk = todo[chunk_start:chunk_start + chunk_size]
+        chunk = todo[chunk_start : chunk_start + chunk_size]
         for s in chunk:
             try:
                 mg = featurizer(MolGraph.from_mol(Chem.MolFromSmiles(s)))
@@ -164,7 +169,9 @@ def featurize_and_cache(canon_unique: List[str], cache_dir: Path,
             np.savez_compressed(
                 cache_dir / f"{h}.npz",
                 V=mg.V.astype(np.float32),
-                E=mg.E.astype(np.float32) if mg.E.shape[0] > 0 else np.zeros((0, 14), dtype=np.float32),
+                E=mg.E.astype(np.float32)
+                if mg.E.shape[0] > 0
+                else np.zeros((0, 14), dtype=np.float32),
                 edge_index=mg.edge_index.astype(np.int64),
                 rev_edge_index=mg.rev_edge_index.astype(np.int64),
             )
@@ -197,9 +204,13 @@ def copy_wf185_cache(cache_dir: Path, target_canon: set, subset: str) -> int:
     return n_copied
 
 
-def build_batch_molgraph(canon_list: List[str], featurized: Dict[str, dict],
-                         atom_fdim: int, bond_fdim: int,
-                         device: torch.device) -> BatchMolGraph:
+def build_batch_molgraph(
+    canon_list: List[str],
+    featurized: Dict[str, dict],
+    atom_fdim: int,
+    bond_fdim: int,
+    device: torch.device,
+) -> BatchMolGraph:
     mgs: List[MolGraph] = []
     for smi in canon_list:
         d = featurized.get(smi)
@@ -210,7 +221,11 @@ def build_batch_molgraph(canon_list: List[str], featurized: Dict[str, dict],
             d_rev = np.zeros((0,), dtype=np.int64)
         else:
             d_V = d["V"]
-            d_E = d["E"] if d["E"] is not None else np.zeros((0, bond_fdim), dtype=np.float32)
+            d_E = (
+                d["E"]
+                if d["E"] is not None
+                else np.zeros((0, bond_fdim), dtype=np.float32)
+            )
             d_ei = d["edge_index"]
             d_rev = d["rev_edge_index"]
         mgs.append(MolGraph(d_V, d_E, d_ei, d_rev))
@@ -223,8 +238,9 @@ def build_batch_molgraph(canon_list: List[str], featurized: Dict[str, dict],
     return bmg
 
 
-def load_cached_features_in_memory(cached_paths: Dict[str, Path],
-                                   target_canon: set) -> Dict[str, dict]:
+def load_cached_features_in_memory(
+    cached_paths: Dict[str, Path], target_canon: set
+) -> Dict[str, dict]:
     out: Dict[str, dict] = {}
     for smi in target_canon:
         path = cached_paths.get(smi)
@@ -260,14 +276,19 @@ class SplitData:
         )
 
 
-def load_all_splits(subset: str,
-                    n_per_split: Optional[Dict[str, int]] = None) -> Dict[str, SplitData]:
+def load_all_splits(
+    subset: str, n_per_split: Optional[Dict[str, int]] = None
+) -> Dict[str, SplitData]:
     out: Dict[str, SplitData] = {}
     for sp in SPLITS:
         t0 = time.time()
         df = load_drugood(subset=subset, split=sp, prefer_library=False)
         canon = [_canon_smiles(s) for s in df["smiles"].astype(str).tolist()]
-        valid = [(c, y) for c, y in zip(canon, df["active"].astype(int).tolist()) if c is not None]
+        valid = [
+            (c, y)
+            for c, y in zip(canon, df["active"].astype(int).tolist())
+            if c is not None
+        ]
         if n_per_split is not None and sp in n_per_split:
             valid = valid[: n_per_split[sp]]
         canon_list = [c for c, _ in valid]
@@ -303,12 +324,18 @@ class SeedResult:
     error: Optional[str] = None
 
 
-def _eval_split_auc(model: ChempropV2MTModel, canon_list: List[str],
-                    y_true: np.ndarray, featurized: Dict[str, dict],
-                    atom_fdim: int, bond_fdim: int,
-                    device: torch.device, batch_size: int,
-                    max_eval: Optional[int] = None,
-                    seed: int = 0) -> Tuple[float, int]:
+def _eval_split_auc(
+    model: ChempropV2MTModel,
+    canon_list: List[str],
+    y_true: np.ndarray,
+    featurized: Dict[str, dict],
+    atom_fdim: int,
+    bond_fdim: int,
+    device: torch.device,
+    batch_size: int,
+    max_eval: Optional[int] = None,
+    seed: int = 0,
+) -> Tuple[float, int]:
     model.eval()
     n = len(canon_list)
     if n == 0:
@@ -327,22 +354,30 @@ def _eval_split_auc(model: ChempropV2MTModel, canon_list: List[str],
     metal_ids = torch.zeros(len(canon_eval), dtype=torch.long, device=device)
     with torch.no_grad():
         for start in range(0, len(canon_eval), batch_size):
-            chunk_canon = canon_eval[start:start + batch_size]
-            bmg = build_batch_molgraph(chunk_canon, featurized, atom_fdim,
-                                       bond_fdim, device)
+            chunk_canon = canon_eval[start : start + batch_size]
+            bmg = build_batch_molgraph(
+                chunk_canon, featurized, atom_fdim, bond_fdim, device
+            )
             H_v = model.encoder.message_passing(bmg)
             H = model.encoder.agg(H_v, bmg.batch)
-            e = model.metal_embed(metal_ids[start:start + len(chunk_canon)])
+            e = model.metal_embed(metal_ids[start : start + len(chunk_canon)])
             z = torch.cat([H, e], dim=-1)
             logit_1 = model.metal_heads["Ru"].train_step(z).squeeze(-1)
-            scores[start:start + len(chunk_canon)] = torch.sigmoid(logit_1).cpu().numpy()
+            scores[start : start + len(chunk_canon)] = (
+                torch.sigmoid(logit_1).cpu().numpy()
+            )
     return float(roc_auc_score(y_eval, scores)), int(len(y_eval))
 
 
-def run_one_seed(seed: int, splits: Dict[str, SplitData],
-                 featurized: Dict[str, dict], atom_fdim: int, bond_fdim: int,
-                 args: argparse.Namespace,
-                 device: torch.device) -> SeedResult:
+def run_one_seed(
+    seed: int,
+    splits: Dict[str, SplitData],
+    featurized: Dict[str, dict],
+    atom_fdim: int,
+    bond_fdim: int,
+    args: argparse.Namespace,
+    device: torch.device,
+) -> SeedResult:
     """Train one seed; v3-fallback mode forces chemprop v2 BinaryClassificationFFN
     (already the default head in ChempropV2MTModel.metal_heads['Ru']).
 
@@ -357,9 +392,13 @@ def run_one_seed(seed: int, splits: Dict[str, SplitData],
     y_train = train_sp.y.astype(np.float32)
 
     model = ChempropV2MTModel(
-        hidden_dim=args.hidden, depth=args.depth, n_metals=5,
-        n_coord_classes=5, head_hidden_dim=args.head_hidden,
-        head_n_layers=2, head_dropout=0.0,
+        hidden_dim=args.hidden,
+        depth=args.depth,
+        n_metals=5,
+        n_coord_classes=5,
+        head_hidden_dim=args.head_hidden,
+        head_n_layers=2,
+        head_dropout=0.0,
     )
     model.encoder._ensure_backbone(atom_fdim, bond_fdim)
     model = model.to(device)
@@ -367,7 +406,9 @@ def run_one_seed(seed: int, splits: Dict[str, SplitData],
 
     metal_weights = {m: (1.0 if m == "Ru" else 0.0) for m in SUPPORTED_METALS}
     loss_fn = ChempropV2MTLoss(
-        n_coord_classes=5, coord_weight=0.0, metal_weights=metal_weights,
+        n_coord_classes=5,
+        coord_weight=0.0,
+        metal_weights=metal_weights,
     ).to(device)
 
     n_train = len(canon_train)
@@ -385,11 +426,12 @@ def run_one_seed(seed: int, splits: Dict[str, SplitData],
         total_loss = 0.0
         n_batches = 0
         for start in range(0, n_train, args.batch):
-            chunk_idx = perm[start:start + args.batch]
+            chunk_idx = perm[start : start + args.batch]
             chunk_canon = [canon_train[i] for i in chunk_idx]
             chunk_y = torch.from_numpy(y_train[chunk_idx]).to(device)
-            bmg = build_batch_molgraph(chunk_canon, featurized, atom_fdim,
-                                       bond_fdim, device)
+            bmg = build_batch_molgraph(
+                chunk_canon, featurized, atom_fdim, bond_fdim, device
+            )
             metal_ids = torch.zeros(len(chunk_canon), dtype=torch.long, device=device)
             H_v = model.encoder.message_passing(bmg)
             H = model.encoder.agg(H_v, bmg.batch)
@@ -411,19 +453,30 @@ def run_one_seed(seed: int, splits: Dict[str, SplitData],
             total_loss += float(loss.detach().cpu().item()) * len(chunk_canon)
             n_batches += len(chunk_canon)
         if epoch == 1 or epoch == args.epochs or epoch % 5 == 0:
-            _log(f"[seed={seed}] epoch={epoch:3d}/{args.epochs}  "
-                 f"loss={total_loss / max(n_batches, 1):.4f}  "
-                 f"elapsed={time.time() - t0:.1f}s")
+            _log(
+                f"[seed={seed}] epoch={epoch:3d}/{args.epochs}  "
+                f"loss={total_loss / max(n_batches, 1):.4f}  "
+                f"elapsed={time.time() - t0:.1f}s"
+            )
 
     eval_results: Dict[str, Tuple[float, int]] = {}
     n_eval: Dict[str, int] = {}
     for sp in SPLITS:
         sd = splits[sp]
-        max_eval = args.eval_max_samples if sp != "train" else args.eval_train_max_samples
+        max_eval = (
+            args.eval_max_samples if sp != "train" else args.eval_train_max_samples
+        )
         auc, n = _eval_split_auc(
-            model=model, canon_list=sd.canon, y_true=sd.y.astype(np.int8),
-            featurized=featurized, atom_fdim=atom_fdim, bond_fdim=bond_fdim,
-            device=device, batch_size=args.batch, max_eval=max_eval, seed=seed,
+            model=model,
+            canon_list=sd.canon,
+            y_true=sd.y.astype(np.int8),
+            featurized=featurized,
+            atom_fdim=atom_fdim,
+            bond_fdim=bond_fdim,
+            device=device,
+            batch_size=args.batch,
+            max_eval=max_eval,
+            seed=seed,
         )
         eval_results[sp] = (auc, n)
         n_eval[sp] = n
@@ -432,13 +485,17 @@ def run_one_seed(seed: int, splits: Dict[str, SplitData],
     elapsed = time.time() - t0
     status = "ok" if not timed_out else "timeout"
     return SeedResult(
-        seed=seed, epochs_done=epoch_done, elapsed_s=elapsed,
+        seed=seed,
+        epochs_done=epoch_done,
+        elapsed_s=elapsed,
         train_auc=float(eval_results["train"][0]),
         iid_val_auc=float(eval_results["iid_val"][0]),
         iid_test_auc=float(eval_results["iid_test"][0]),
         ood_val_auc=float(eval_results["ood_val"][0]),
         ood_test_auc=float(eval_results["ood_test"][0]),
-        n_train=n_train, n_eval=n_eval, status=status,
+        n_train=n_train,
+        n_eval=n_eval,
+        status=status,
         chemprop_mode="v3-fallback",
     )
 
@@ -462,9 +519,13 @@ class ConfigResult:
     n_total: int = 0
 
 
-def run_one_config(subset: str, args: argparse.Namespace,
-                   device: torch.device, cfg_start_time: float,
-                   wall_budget_s: float) -> ConfigResult:
+def run_one_config(
+    subset: str,
+    args: argparse.Namespace,
+    device: torch.device,
+    cfg_start_time: float,
+    wall_budget_s: float,
+) -> ConfigResult:
     out_dir = Path(args.out) / subset
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "per_seed").mkdir(parents=True, exist_ok=True)
@@ -472,8 +533,10 @@ def run_one_config(subset: str, args: argparse.Namespace,
     if args.reset_cache and cache_dir.exists():
         shutil.rmtree(cache_dir)
 
-    _log(f"=== [{subset}] start  cache_dir={cache_dir}  "
-         f"t_elapsed={(time.time() - cfg_start_time):.1f}s")
+    _log(
+        f"=== [{subset}] start  cache_dir={cache_dir}  "
+        f"t_elapsed={(time.time() - cfg_start_time):.1f}s"
+    )
 
     splits = load_all_splits(subset=subset, n_per_split=None)
     for sp in SPLITS:
@@ -487,15 +550,21 @@ def run_one_config(subset: str, args: argparse.Namespace,
     target_canon_for_link = set(canon_unique_all)
     n_copied = copy_wf185_cache(cache_dir, target_canon_for_link, subset)
     if n_copied > 0:
-        _log(f"[{subset}] reused {n_copied}/{len(canon_unique_all)} npz files from Wf-185 cache")
+        _log(
+            f"[{subset}] reused {n_copied}/{len(canon_unique_all)} npz files from Wf-185 cache"
+        )
 
     t_fe = time.time()
     cached_paths, n_skip, n_new = featurize_and_cache(
-        canon_unique_all, cache_dir, featurizer,
+        canon_unique_all,
+        cache_dir,
+        featurizer,
     )
     fe_wall = time.time() - t_fe
-    _log(f"[{subset}] featurize done  n_skip={n_skip}  n_new={n_new}  "
-         f"in {fe_wall:.2f}s")
+    _log(
+        f"[{subset}] featurize done  n_skip={n_skip}  n_new={n_new}  "
+        f"in {fe_wall:.2f}s"
+    )
 
     sample_path = next(iter(cached_paths.values()))
     sample_npz = np.load(sample_path)
@@ -505,8 +574,10 @@ def run_one_config(subset: str, args: argparse.Namespace,
     target_canon = {c for sp in SPLITS for c in splits[sp].canon}
     t_lm = time.time()
     featurized = load_cached_features_in_memory(cached_paths, target_canon)
-    _log(f"[{subset}] loaded {len(featurized)}/{len(target_canon)} npz into memory "
-         f"in {time.time() - t_lm:.2f}s")
+    _log(
+        f"[{subset}] loaded {len(featurized)}/{len(target_canon)} npz into memory "
+        f"in {time.time() - t_lm:.2f}s"
+    )
 
     cfg_wall_start = time.time()
     results: List[SeedResult] = []
@@ -516,35 +587,62 @@ def run_one_config(subset: str, args: argparse.Namespace,
             break
         try:
             r = run_one_seed(
-                seed=seed, splits=splits, featurized=featurized,
-                atom_fdim=atom_fdim, bond_fdim=bond_fdim, args=args,
+                seed=seed,
+                splits=splits,
+                featurized=featurized,
+                atom_fdim=atom_fdim,
+                bond_fdim=bond_fdim,
+                args=args,
                 device=device,
             )
         except Exception as exc:
             import traceback
+
             traceback.print_exc()
             _log(f"[{subset}][seed={seed}] FAILED: {exc}")
             r = SeedResult(
-                seed=seed, epochs_done=0, elapsed_s=0.0,
-                train_auc=float("nan"), iid_val_auc=float("nan"),
-                iid_test_auc=float("nan"), ood_val_auc=float("nan"),
-                ood_test_auc=float("nan"), n_train=0, n_eval={},
-                status="error", chemprop_mode="v3-fallback", error=str(exc),
+                seed=seed,
+                epochs_done=0,
+                elapsed_s=0.0,
+                train_auc=float("nan"),
+                iid_val_auc=float("nan"),
+                iid_test_auc=float("nan"),
+                ood_val_auc=float("nan"),
+                ood_test_auc=float("nan"),
+                n_train=0,
+                n_eval={},
+                status="error",
+                chemprop_mode="v3-fallback",
+                error=str(exc),
             )
         results.append(r)
         per_seed_path = out_dir / "per_seed" / f"seed{seed}.json"
-        per_seed_path.write_text(json.dumps({
-            "seed": r.seed, "epochs_done": r.epochs_done,
-            "elapsed_s": r.elapsed_s, "train_auc": r.train_auc,
-            "iid_val_auc": r.iid_val_auc, "iid_test_auc": r.iid_test_auc,
-            "ood_val_auc": r.ood_val_auc, "ood_test_auc": r.ood_test_auc,
-            "n_train": r.n_train, "n_eval": r.n_eval, "status": r.status,
-            "chemprop_mode": r.chemprop_mode, "error": r.error,
-        }, indent=2))
-        _log(f"[{subset}][seed={seed}] FINAL  train={r.train_auc:.4f}  "
-             f"iid_val={r.iid_val_auc:.4f}  iid_test={r.iid_test_auc:.4f}  "
-             f"ood_val={r.ood_val_auc:.4f}  ood_test={r.ood_test_auc:.4f}  "
-             f"({r.elapsed_s:.1f}s status={r.status} mode={r.chemprop_mode})")
+        per_seed_path.write_text(
+            json.dumps(
+                {
+                    "seed": r.seed,
+                    "epochs_done": r.epochs_done,
+                    "elapsed_s": r.elapsed_s,
+                    "train_auc": r.train_auc,
+                    "iid_val_auc": r.iid_val_auc,
+                    "iid_test_auc": r.iid_test_auc,
+                    "ood_val_auc": r.ood_val_auc,
+                    "ood_test_auc": r.ood_test_auc,
+                    "n_train": r.n_train,
+                    "n_eval": r.n_eval,
+                    "status": r.status,
+                    "chemprop_mode": r.chemprop_mode,
+                    "error": r.error,
+                },
+                indent=2,
+            )
+        )
+        _log(
+            f"[{subset}][seed={seed}] FINAL  train={r.train_auc:.4f}  "
+            f"iid_val={r.iid_val_auc:.4f}  iid_test={r.iid_test_auc:.4f}  "
+            f"ood_val={r.ood_val_auc:.4f}  ood_test={r.ood_test_auc:.4f}  "
+            f"({r.elapsed_s:.1f}s status={r.status} mode={r.chemprop_mode})"
+        )
 
     cfg_total_wall_min = (time.time() - cfg_wall_start) / 60.0
 
@@ -567,11 +665,18 @@ def run_one_config(subset: str, args: argparse.Namespace,
     per_split_std = {k: _std(v) for k, v in per_split_aucs.items()}
 
     cfg_res = ConfigResult(
-        subset=subset, results=results, total_wall_min=cfg_total_wall_min,
-        featurize_wall_s=fe_wall, n_skip=n_skip, n_new=n_new,
-        per_split_mean=per_split_mean, per_split_std=per_split_std,
-        ood_test_mean=per_split_mean["ood_test"], ood_test_std=per_split_std["ood_test"],
-        n_ok=sum(1 for r in results if r.status == "ok"), n_total=len(results),
+        subset=subset,
+        results=results,
+        total_wall_min=cfg_total_wall_min,
+        featurize_wall_s=fe_wall,
+        n_skip=n_skip,
+        n_new=n_new,
+        per_split_mean=per_split_mean,
+        per_split_std=per_split_std,
+        ood_test_mean=per_split_mean["ood_test"],
+        ood_test_std=per_split_std["ood_test"],
+        n_ok=sum(1 for r in results if r.status == "ok"),
+        n_total=len(results),
     )
 
     summary = {
@@ -580,9 +685,14 @@ def run_one_config(subset: str, args: argparse.Namespace,
         "subset": subset,
         "chemprop_mode": "v3-fallback",
         "config": {
-            "epochs": args.epochs, "hidden": args.hidden, "depth": args.depth,
-            "head_hidden": args.head_hidden, "batch": args.batch, "lr": args.lr,
-            "device": str(device), "eval_max_samples": args.eval_max_samples,
+            "epochs": args.epochs,
+            "hidden": args.hidden,
+            "depth": args.depth,
+            "head_hidden": args.head_hidden,
+            "batch": args.batch,
+            "lr": args.lr,
+            "device": str(device),
+            "eval_max_samples": args.eval_max_samples,
             "seed_time_budget_s": args.seed_time_budget_s,
         },
         "ood_test_per_seed": [r.ood_test_auc for r in results],
@@ -593,7 +703,8 @@ def run_one_config(subset: str, args: argparse.Namespace,
         "per_split_std": cfg_res.per_split_std,
         "total_wall_min": cfg_res.total_wall_min,
         "featurize_wall_s": cfg_res.featurize_wall_s,
-        "n_skip": cfg_res.n_skip, "n_new": cfg_res.n_new,
+        "n_skip": cfg_res.n_skip,
+        "n_new": cfg_res.n_new,
     }
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2))
     return cfg_res
@@ -617,19 +728,25 @@ def main(argv: Optional[List[str]] = None) -> int:
     p.add_argument("--cache-dir", default=str(DEFAULT_OUT / "cache"))
     p.add_argument("--reset-cache", action="store_true")
     p.add_argument("--time-budget-s", type=float, default=DEFAULT_WALL_BUDGET_S)
-    p.add_argument("--seed-time-budget-s", type=float, default=DEFAULT_SEED_TIME_BUDGET_S)
+    p.add_argument(
+        "--seed-time-budget-s", type=float, default=DEFAULT_SEED_TIME_BUDGET_S
+    )
     p.add_argument("--eval-max-samples", type=int, default=DEFAULT_EVAL_MAX_SAMPLES)
-    p.add_argument("--eval-train-max-samples", type=int, default=DEFAULT_EVAL_TRAIN_MAX_SAMPLES)
+    p.add_argument(
+        "--eval-train-max-samples", type=int, default=DEFAULT_EVAL_TRAIN_MAX_SAMPLES
+    )
     args = p.parse_args(argv)
 
     device = torch.device(args.device)
-    _log(f"device={device}  configs={args.configs}  seeds={args.seeds}  "
-         f"epochs={args.epochs}  hidden={args.hidden} depth={args.depth}  "
-         f"head_hidden={args.head_hidden}  batch={args.batch} lr={args.lr}  "
-         f"time_budget_s={args.time_budget_s}  "
-         f"seed_time_budget_s={args.seed_time_budget_s}  "
-         f"eval_max_samples={args.eval_max_samples}  "
-         f"chemprop_mode=v3-fallback")
+    _log(
+        f"device={device}  configs={args.configs}  seeds={args.seeds}  "
+        f"epochs={args.epochs}  hidden={args.hidden} depth={args.depth}  "
+        f"head_hidden={args.head_hidden}  batch={args.batch} lr={args.lr}  "
+        f"time_budget_s={args.time_budget_s}  "
+        f"seed_time_budget_s={args.seed_time_budget_s}  "
+        f"eval_max_samples={args.eval_max_samples}  "
+        f"chemprop_mode=v3-fallback"
+    )
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -647,18 +764,26 @@ def main(argv: Optional[List[str]] = None) -> int:
         remaining = args.time_budget_s - elapsed
         cfg_budget = min(per_cfg_budget, max(remaining - 60.0, 60.0))
         if cfg_budget < 300.0:
-            _log(f"insufficient remaining wall budget ({cfg_budget:.0f}s) for {subset}; stopping")
+            _log(
+                f"insufficient remaining wall budget ({cfg_budget:.0f}s) for {subset}; stopping"
+            )
             break
-        _log(f"=== config {cfg_idx+1}/{n_cfg}: {subset}  "
-             f"cfg_budget={cfg_budget:.0f}s  elapsed={elapsed:.0f}s")
+        _log(
+            f"=== config {cfg_idx+1}/{n_cfg}: {subset}  "
+            f"cfg_budget={cfg_budget:.0f}s  elapsed={elapsed:.0f}s"
+        )
         try:
             cfg_res = run_one_config(
-                subset=subset, args=args, device=device,
-                cfg_start_time=wall_start, wall_budget_s=cfg_budget,
+                subset=subset,
+                args=args,
+                device=device,
+                cfg_start_time=wall_start,
+                wall_budget_s=cfg_budget,
             )
             cfg_results[subset] = cfg_res
         except Exception as exc:
             import traceback
+
             traceback.print_exc()
             _log(f"[{subset}] CONFIG FAILED: {exc}")
 
@@ -668,8 +793,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     gate_1_all_ran = all(c in cfg_results for c in args.configs)
     gate_2_total_runs = sum(c.n_total for c in cfg_results.values())
     gate_3_per_config = {
-        sub: [r.ood_test_auc for r in cfg_results[sub].results]
-        for sub in cfg_results
+        sub: [r.ood_test_auc for r in cfg_results[sub].results] for sub in cfg_results
     }
     gate_4_summary = {
         sub: {
@@ -707,9 +831,11 @@ def main(argv: Optional[List[str]] = None) -> int:
             "configs": list(args.configs),
             "seeds": list(args.seeds),
             "epochs": args.epochs,
-            "hidden": args.hidden, "depth": args.depth,
+            "hidden": args.hidden,
+            "depth": args.depth,
             "head_hidden": args.head_hidden,
-            "batch": args.batch, "lr": args.lr,
+            "batch": args.batch,
+            "lr": args.lr,
             "device": str(device),
             "seed_time_budget_s": args.seed_time_budget_s,
             "eval_max_samples": args.eval_max_samples,

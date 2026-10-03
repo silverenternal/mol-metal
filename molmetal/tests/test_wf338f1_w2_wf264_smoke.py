@@ -76,21 +76,25 @@ def _run_wrapper(wrapper_path: Path, *args, env_extra=None, timeout=30):
 # Test 1: W₂ sliced GPU smoke wrapper — bash syntax + USER_OK gate + VRAM probe
 # ===========================================================================
 
+
 class TestW2SlicedSmokeWrapper(unittest.TestCase):
     """Wf-338-F1: W₂ sliced GPU smoke wrapper structural tests."""
 
     def test_wrapper_exists_and_parses(self):
         """Wrapper must exist + parse via bash -n (no syntax errors)."""
-        assert W2_SLICED_WRAPPER.exists(), (
-            f"wrapper script missing at {W2_SLICED_WRAPPER}"
-        )
+        assert (
+            W2_SLICED_WRAPPER.exists()
+        ), f"wrapper script missing at {W2_SLICED_WRAPPER}"
         proc_syntax = subprocess.run(
             ["bash", "-n", str(W2_SLICED_WRAPPER)],
-            cwd=str(PROJECT_ROOT), capture_output=True, text=True, timeout=10,
+            cwd=str(PROJECT_ROOT),
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
-        assert proc_syntax.returncode == 0, (
-            f"wrapper bash syntax error: stderr={proc_syntax.stderr!r}"
-        )
+        assert (
+            proc_syntax.returncode == 0
+        ), f"wrapper bash syntax error: stderr={proc_syntax.stderr!r}"
 
     def test_wrapper_declares_user_ok_and_vram_probe(self):
         """Wrapper must enforce USER_OK gate + parse VRAM from nvidia-smi CSV."""
@@ -111,16 +115,16 @@ class TestW2SlicedSmokeWrapper(unittest.TestCase):
         --tf32)."""
         src = _wrapper_text(W2_SLICED_WRAPPER)
         # sliced mode under test
-        assert "--w2-gradient-mode sliced" in src, (
-            "--w2-gradient-mode sliced missing from wrapper"
-        )
+        assert (
+            "--w2-gradient-mode sliced" in src
+        ), "--w2-gradient-mode sliced missing from wrapper"
         # Wf-335-R1 + R3 fixes
-        assert "--torch-compile-mode-v2 max-autotune-no-cudagraphs" in src, (
-            "Wf-335-R1 torch-compile-mode-v2 missing"
-        )
-        assert "--no-cuda-graphs" in src, (
-            "Wf-335-R3 no-cuda-graphs safety lever missing"
-        )
+        assert (
+            "--torch-compile-mode-v2 max-autotune-no-cudagraphs" in src
+        ), "Wf-335-R1 torch-compile-mode-v2 missing"
+        assert (
+            "--no-cuda-graphs" in src
+        ), "Wf-335-R3 no-cuda-graphs safety lever missing"
         # Wf-328 num-workers propagation
         assert "--num-workers 8" in src, "Wf-328-W6 num-workers 8 missing"
         assert "--cpu-num-workers 8" in src, "Wf-328-W2 cpu-num-workers 8 missing"
@@ -137,9 +141,9 @@ class TestW2SlicedSmokeWrapper(unittest.TestCase):
             f"wrapper exited {proc.returncode}; expected rc=3 "
             f"(USER_OK_GATE_DENIED). stdout={proc.stdout[-200:]!r}"
         )
-        assert "USER_OK_GATE_DENIED" in proc.stdout or "USER_OK" in proc.stdout, (
-            f"gate-deny message missing from stdout; got {proc.stdout[-200:]!r}"
-        )
+        assert (
+            "USER_OK_GATE_DENIED" in proc.stdout or "USER_OK" in proc.stdout
+        ), f"gate-deny message missing from stdout; got {proc.stdout[-200:]!r}"
 
     def test_wrapper_dry_run_exits_zero(self):
         """Wrapper --dry-run must exit 0 (CPU-only verification)."""
@@ -150,30 +154,32 @@ class TestW2SlicedSmokeWrapper(unittest.TestCase):
         )
         # DRY-RUN echo must show the trainer invocation
         assert "DRY-RUN" in proc.stdout, "DRY-RUN marker missing from stdout"
-        assert "train_dmpnn_multitask_wasserstein.py" in proc.stdout, (
-            "trainer script reference missing from DRY-RUN echo"
-        )
+        assert (
+            "train_dmpnn_multitask_wasserstein.py" in proc.stdout
+        ), "trainer script reference missing from DRY-RUN echo"
 
 
 # ===========================================================================
 # Test 2: Wf-264 CFM property panel run-once launcher — bash + USER_OK + refuses --dry-run
 # ===========================================================================
 
+
 class TestWf264RunOnceLauncher(unittest.TestCase):
     """Wf-338-F1: Wf-264 run-once launcher structural tests."""
 
     def test_launcher_exists_and_parses(self):
         """Launcher must exist + parse via bash -n (no syntax errors)."""
-        assert WF264_RUN_WRAPPER.exists(), (
-            f"launcher missing at {WF264_RUN_WRAPPER}"
-        )
+        assert WF264_RUN_WRAPPER.exists(), f"launcher missing at {WF264_RUN_WRAPPER}"
         proc_syntax = subprocess.run(
             ["bash", "-n", str(WF264_RUN_WRAPPER)],
-            cwd=str(PROJECT_ROOT), capture_output=True, text=True, timeout=10,
+            cwd=str(PROJECT_ROOT),
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
-        assert proc_syntax.returncode == 0, (
-            f"launcher bash syntax error: stderr={proc_syntax.stderr!r}"
-        )
+        assert (
+            proc_syntax.returncode == 0
+        ), f"launcher bash syntax error: stderr={proc_syntax.stderr!r}"
 
     def test_launcher_refuses_dry_run(self):
         """Run-once launcher must REFUSE --dry-run (run-once is real-only)."""
@@ -196,24 +202,24 @@ class TestWf264RunOnceLauncher(unittest.TestCase):
             f"launcher exited {proc.returncode}; expected rc=3 "
             f"(USER_OK_GATE_DENIED). stdout={proc.stdout[-200:]!r}"
         )
-        assert "USER_OK_GATE_DENIED" in proc.stdout, (
-            f"gate-deny message missing; got {proc.stdout[-200:]!r}"
-        )
+        assert (
+            "USER_OK_GATE_DENIED" in proc.stdout
+        ), f"gate-deny message missing; got {proc.stdout[-200:]!r}"
 
     def test_launcher_invokes_full_launcher_and_pre_flight(self):
         """Run-once launcher must invoke the full Wf-264 launcher +
         pre_flight_check.py (TODO-207 §1 gate)."""
         src = _wrapper_text(WF264_RUN_WRAPPER)
-        assert "launch_wf264_cfm_property_panel.sh" in src, (
-            "full Wf-264 launcher reference missing from run-once"
-        )
-        assert "pre_flight_check.py --pipeline all" in src, (
-            "pre_flight_check.py --pipeline all invocation missing"
-        )
+        assert (
+            "launch_wf264_cfm_property_panel.sh" in src
+        ), "full Wf-264 launcher reference missing from run-once"
+        assert (
+            "pre_flight_check.py --pipeline all" in src
+        ), "pre_flight_check.py --pipeline all invocation missing"
         # USER_OK re-enforcement at invocation site (orchestration determinism)
-        assert "USER_OK=1 bash" in src, (
-            "USER_OK=1 bash re-enforcement missing at full-launcher invocation"
-        )
+        assert (
+            "USER_OK=1 bash" in src
+        ), "USER_OK=1 bash re-enforcement missing at full-launcher invocation"
 
     def test_launcher_status_query_exits_zero(self):
         """--status query is USER_OK-exempt + read-only + exits 0."""
@@ -233,53 +239,55 @@ class TestWf264RunOnceLauncher(unittest.TestCase):
 # Test 3: Pipeline master integration — both new wrappers wired in
 # ===========================================================================
 
+
 class TestPipelineMasterIntegration(unittest.TestCase):
     """Wf-338-F1: pipeline master must invoke both new wrappers."""
 
     def test_pipeline_master_exists_and_parses(self):
         """Pipeline master must exist + parse via bash -n."""
-        assert PIPELINE_MASTER.exists(), (
-            f"pipeline master missing at {PIPELINE_MASTER}"
-        )
+        assert PIPELINE_MASTER.exists(), f"pipeline master missing at {PIPELINE_MASTER}"
         proc_syntax = subprocess.run(
             ["bash", "-n", str(PIPELINE_MASTER)],
-            cwd=str(PROJECT_ROOT), capture_output=True, text=True, timeout=10,
+            cwd=str(PROJECT_ROOT),
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
-        assert proc_syntax.returncode == 0, (
-            f"pipeline master bash syntax error: stderr={proc_syntax.stderr!r}"
-        )
+        assert (
+            proc_syntax.returncode == 0
+        ), f"pipeline master bash syntax error: stderr={proc_syntax.stderr!r}"
 
     def test_pipeline_master_invokes_wf264_run_once(self):
         """Pipeline master must invoke scripts/run_wf264_cfm_property_panel.sh
         in Phase 3 (Job 10)."""
         src = _wrapper_text(PIPELINE_MASTER)
-        assert "scripts/run_wf264_cfm_property_panel.sh" in src, (
-            "Wf-264 run-once launcher reference missing from pipeline master"
-        )
+        assert (
+            "scripts/run_wf264_cfm_property_panel.sh" in src
+        ), "Wf-264 run-once launcher reference missing from pipeline master"
         # Wf-338-F1 provenance marker
-        assert "Wf-338-F1" in src, (
-            "Wf-338-F1 provenance marker missing from pipeline master"
-        )
+        assert (
+            "Wf-338-F1" in src
+        ), "Wf-338-F1 provenance marker missing from pipeline master"
         # Log line present (banner for orchestration monitoring)
-        assert "Wf-264 CFM property panel RUN-ONCE" in src, (
-            "Wf-264 RUN-ONCE log banner missing from pipeline master"
-        )
+        assert (
+            "Wf-264 CFM property panel RUN-ONCE" in src
+        ), "Wf-264 RUN-ONCE log banner missing from pipeline master"
 
     def test_pipeline_master_invokes_w2_sliced_smoke(self):
         """Pipeline master must invoke scripts/gpu_smoke_w2_sliced.sh
         in Phase 3 (Job 11)."""
         src = _wrapper_text(PIPELINE_MASTER)
-        assert "scripts/gpu_smoke_w2_sliced.sh" in src, (
-            "W₂ sliced smoke wrapper reference missing from pipeline master"
-        )
+        assert (
+            "scripts/gpu_smoke_w2_sliced.sh" in src
+        ), "W₂ sliced smoke wrapper reference missing from pipeline master"
         # Log line present (banner for orchestration monitoring)
-        assert "W₂ sliced GPU smoke" in src, (
-            "W₂ sliced GPU smoke log banner missing from pipeline master"
-        )
+        assert (
+            "W₂ sliced GPU smoke" in src
+        ), "W₂ sliced GPU smoke log banner missing from pipeline master"
         # VRAM-budgeted invocation pattern (USER_OK=1 + nohup)
-        assert "USER_OK=1 nohup bash scripts/gpu_smoke_w2_sliced.sh" in src, (
-            "USER_OK-gated invocation of W₂ sliced smoke missing"
-        )
+        assert (
+            "USER_OK=1 nohup bash scripts/gpu_smoke_w2_sliced.sh" in src
+        ), "USER_OK-gated invocation of W₂ sliced smoke missing"
 
     def test_pipeline_master_phase3_log_count(self):
         """Pipeline master Phase 3 must have at least 11 jobs (9 prior +
@@ -304,6 +312,7 @@ class TestPipelineMasterIntegration(unittest.TestCase):
 # ===========================================================================
 # Test 4: USER_OK gate ordering (kill_then_adapt invariant) — both wrappers
 # ===========================================================================
+
 
 class TestUserOkGates(unittest.TestCase):
     """Wf-338-F1: USER_OK gates fire BEFORE pre-flight (kill_then_adapt
@@ -342,9 +351,13 @@ class TestUserOkGates(unittest.TestCase):
             # We use the FOO() { ... } pattern; search for the LAST `\n}`
             # followed by executable code.
             exec_idx = 0
-            for marker in ("run_pre_flight()", "check_user_ok()",
-                           "launch_w2_sliced_smoke()", "wait_for_vram()",
-                           "print_status()"):
+            for marker in (
+                "run_pre_flight()",
+                "check_user_ok()",
+                "launch_w2_sliced_smoke()",
+                "wait_for_vram()",
+                "print_status()",
+            ):
                 m = src.find(marker)
                 if m > exec_idx:
                     exec_idx = m + len(marker)
@@ -381,12 +394,10 @@ class TestUserOkGates(unittest.TestCase):
         directive (per AGENTS.md §5.1)."""
         for path in (W2_SLICED_WRAPPER, WF264_RUN_WRAPPER):
             src = _wrapper_text(path)
-            assert "kill_then_adapt" in src, (
-                f"kill_then_adapt reference missing from {path.name}"
-            )
-            assert "AGENTS.md" in src, (
-                f"AGENTS.md reference missing from {path.name}"
-            )
+            assert (
+                "kill_then_adapt" in src
+            ), f"kill_then_adapt reference missing from {path.name}"
+            assert "AGENTS.md" in src, f"AGENTS.md reference missing from {path.name}"
 
 
 if __name__ == "__main__":

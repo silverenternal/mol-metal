@@ -70,7 +70,9 @@ def _toy_smiles() -> List[str]:
 
 
 def _toy_synthetic_data(
-    n_bins: int = 8, k: int = 8, b: int = 3,
+    n_bins: int = 8,
+    k: int = 8,
+    b: int = 3,
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Deterministic test data for :class:`MultiPHPLLAugment` tests.
 
@@ -151,9 +153,7 @@ def test_multi_ph_pll_signature_shape():
     """``compute`` returns a tuple ``((n_bins, n_bins), (k,))``."""
     sig = MultiPHPLLSignature(n_bins=16, k=8)
     feat, eig = sig.compute("CCO")
-    assert feat.shape == (16, 16), (
-        f"expected (16, 16), got {tuple(feat.shape)}"
-    )
+    assert feat.shape == (16, 16), f"expected (16, 16), got {tuple(feat.shape)}"
     assert eig.shape == (8,), f"expected (8,), got {tuple(eig.shape)}"
 
 
@@ -177,9 +177,7 @@ def test_multi_ph_pll_signature_eigenvalues_in_band():
     sig = MultiPHPLLSignature(n_bins=12, k=6)
     _feat, eig = sig.compute("CCO")
     assert (eig >= -1e-6).all(), f"eigenvalues below 0; min={eig.min().item()}"
-    assert (eig <= 2.0 + 1e-6).all(), (
-        f"eigenvalues above 2; max={eig.max().item()}"
-    )
+    assert (eig <= 2.0 + 1e-6).all(), f"eigenvalues above 2; max={eig.max().item()}"
 
 
 def test_multi_ph_pll_signature_eigenvalues_descending():
@@ -187,9 +185,7 @@ def test_multi_ph_pll_signature_eigenvalues_descending():
     sig = MultiPHPLLSignature(n_bins=8, k=8)
     _feat, eig = sig.compute("c1ccccc1")
     diff = eig[:-1] - eig[1:]
-    assert (diff >= -1e-6).all(), (
-        f"eigenvalues must be descending; got {eig.tolist()}"
-    )
+    assert (diff >= -1e-6).all(), f"eigenvalues must be descending; got {eig.tolist()}"
 
 
 def test_multi_ph_pll_signature_repeatable_smiles():
@@ -233,9 +229,7 @@ def test_multi_ph_pll_distance_symmetric():
     f2, e2 = sig.compute("c1ccccc1")
     d_ab = sig.distance((f1, e1), (f2, e2))
     d_ba = sig.distance((f2, e2), (f1, e1))
-    assert abs(d_ab - d_ba) <= 1e-6, (
-        f"distance not symmetric: d_ab={d_ab} d_ba={d_ba}"
-    )
+    assert abs(d_ab - d_ba) <= 1e-6, f"distance not symmetric: d_ab={d_ab} d_ba={d_ba}"
 
 
 def test_multi_ph_pll_distance_zero_for_self():
@@ -274,8 +268,7 @@ def test_multi_ph_pll_distance_distinguishes_different_mols():
     d_same = sig.distance((f1, e1), (f1, e1))
     d_diff = sig.distance((f1, e1), (f2, e2))
     assert d_diff > d_same, (
-        f"distance must separate distinct mols: d_same={d_same} "
-        f"d_diff={d_diff}"
+        f"distance must separate distinct mols: d_same={d_same} " f"d_diff={d_diff}"
     )
 
 
@@ -289,9 +282,7 @@ def test_multi_ph_pll_augment_shape():
     pll, mph, _exp, _flat = _toy_synthetic_data(n_bins=6, k=4, b=3)
     aug = MultiPHPLLAugment(base_pll_features=pll, multi_ph_features=mph)
     out = aug.augment(pll, mph)
-    assert out.shape == (3, 4 + 36), (
-        f"expected (3, 40), got {tuple(out.shape)}"
-    )
+    assert out.shape == (3, 4 + 36), f"expected (3, 40), got {tuple(out.shape)}"
 
 
 def test_multi_ph_pll_augment_value_concat():
@@ -349,7 +340,9 @@ def test_compare_multi_ph_vs_single_returns_dict():
     """Returns a JSON-friendly dict with the documented keys."""
     sig = MultiPHPLLSignature(n_bins=8, k=4)
     res = compare_multi_ph_vs_single_pll(
-        _toy_smiles()[:3], n_runs=2, signature=sig,
+        _toy_smiles()[:3],
+        n_runs=2,
+        signature=sig,
     )
     for key in (
         "n_mols",
@@ -367,7 +360,9 @@ def test_compare_multi_ph_vs_single_strictly_more_expressive():
     """``compare_multi_ph_vs_single_pll`` reports strict containment."""
     sig = MultiPHPLLSignature(n_bins=8, k=4)
     res = compare_multi_ph_vs_single_pll(
-        _toy_smiles(), n_runs=2, signature=sig,
+        _toy_smiles(),
+        n_runs=2,
+        signature=sig,
     )
     # Multi-PH feature maps are (n_bins, n_bins) counts that depend
     # on the *atomic-number-difference* second filter — they are
@@ -401,7 +396,9 @@ def test_compare_multi_ph_vs_single_wall_time_bounded():
     """Per-call wall-time is finite and well-bounded (< 5 s)."""
     sig = MultiPHPLLSignature(n_bins=8, k=4)
     res = compare_multi_ph_vs_single_pll(
-        _toy_smiles()[:3], n_runs=1, signature=sig,
+        _toy_smiles()[:3],
+        n_runs=1,
+        signature=sig,
     )
     assert res["wall_time_multi_ph_pll_ms"] >= 0.0
     assert res["wall_time_bare_pll_ms"] >= 0.0
@@ -439,12 +436,12 @@ def test_multi_ph_pll_integration_module_does_not_mutate_pll_signature():
     pll_id_after = id(pll_mod_after)
     pll_compute_after = pll_mod_after.compute_pll
 
-    assert pll_id_before == pll_id_after, (
-        "import must not re-create the pll_signature module"
-    )
-    assert pll_compute_before is pll_compute_after, (
-        "compute_pll must remain the same callable"
-    )
+    assert (
+        pll_id_before == pll_id_after
+    ), "import must not re-create the pll_signature module"
+    assert (
+        pll_compute_before is pll_compute_after
+    ), "compute_pll must remain the same callable"
 
 
 def test_multi_ph_pll_integration_uses_existing_TwoParameterFiltration():

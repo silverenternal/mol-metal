@@ -51,9 +51,9 @@ from molmetal.models.bond_head import (
 def head() -> BondOrderHead:
     """Default synthetic-trained head shared across all tests."""
     h, metrics = train_synthetic(n_epochs=200, seed=0)
-    assert metrics["train_acc"] > 0.85, (
-        f"synthetic training degraded — train_acc={metrics['train_acc']:.3f}"
-    )
+    assert (
+        metrics["train_acc"] > 0.85
+    ), f"synthetic training degraded — train_acc={metrics['train_acc']:.3f}"
     return h
 
 
@@ -127,13 +127,14 @@ def test_recovers_cuaac_triazole_pattern(decoder) -> None:
 
     # The alkyne end must yield a triple bond between the two atoms.
     triple_bonds = [b for b in result.bond_orders if b[2] == BOND_TRIPLE]
-    assert len(triple_bonds) == 1, (
-        f"expected exactly 1 triple bond for C#C, got orders={result.bond_orders}"
-    )
+    assert (
+        len(triple_bonds) == 1
+    ), f"expected exactly 1 triple bond for C#C, got orders={result.bond_orders}"
     # The triple bond must involve atoms {0, 1}.
-    assert {triple_bonds[0][0], triple_bonds[0][1]} == {0, 1}, (
-        f"expected triple bond between atoms 0 and 1, got {triple_bonds}"
-    )
+    assert {triple_bonds[0][0], triple_bonds[0][1]} == {
+        0,
+        1,
+    }, f"expected triple bond between atoms 0 and 1, got {triple_bonds}"
 
 
 # ---------------------------------------------------------------------------
@@ -149,9 +150,9 @@ def test_recovers_amide_pattern(decoder) -> None:
        O ... N        > 2.4 Å  (no bond)
     """
     coords = [
-        (0.00, 0.00, 0.00),   # 0 C (CH3)
-        (1.52, 0.00, 0.00),   # 1 C (carbonyl C)
-        (2.73, 0.00, 0.00),   # 2 O (=O, at 1.21 Å from C)
+        (0.00, 0.00, 0.00),  # 0 C (CH3)
+        (1.52, 0.00, 0.00),  # 1 C (carbonyl C)
+        (2.73, 0.00, 0.00),  # 2 O (=O, at 1.21 Å from C)
         (1.52, -1.47, 0.00),  # 3 N (amide N, at 1.47 Å from C, far from O)
     ]
     zs = [6, 6, 8, 7]
@@ -160,19 +161,16 @@ def test_recovers_amide_pattern(decoder) -> None:
     assert result.sanitized, f"amide should sanitise, got error={result.error}"
 
     # The C-O bond must be at least single; expect double (amide-like).
-    co_bonds = [
-        b for b in result.bond_orders
-        if {b[0], b[1]} == {1, 2}
-    ]
+    co_bonds = [b for b in result.bond_orders if {b[0], b[1]} == {1, 2}]
     assert len(co_bonds) == 1, f"expected 1 C-O bond, got {co_bonds}"
-    assert co_bonds[0][2] == BOND_DOUBLE, (
-        f"expected C=O double bond for amide, got order={co_bonds[0][2]}"
-    )
+    assert (
+        co_bonds[0][2] == BOND_DOUBLE
+    ), f"expected C=O double bond for amide, got order={co_bonds[0][2]}"
 
     # The canonical SMILES must contain C(=O)N or its canonical rotation C(N)=O.
-    assert ("C(=O)N" in result.smiles) or ("C(N)=O" in result.smiles), (
-        f"expected C(=O)N or C(N)=O in SMILES, got {result.smiles!r}"
-    )
+    assert ("C(=O)N" in result.smiles) or (
+        "C(N)=O" in result.smiles
+    ), f"expected C(=O)N or C(N)=O in SMILES, got {result.smiles!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -213,9 +211,7 @@ def test_single_pair_single_bond(decoder) -> None:
     ]
     zs = [6, 6]
     result = _decode_smiles_from_atoms(decoder, coords, zs)
-    assert len(result.bond_orders) == 1, (
-        f"expected 1 bond, got {result.bond_orders}"
-    )
+    assert len(result.bond_orders) == 1, f"expected 1 bond, got {result.bond_orders}"
     i, j, order = result.bond_orders[0]
     assert {i, j} == {0, 1}
     assert order == BOND_SINGLE, f"expected single, got order={order}"
@@ -238,9 +234,7 @@ def test_multi_candidate_best_ranked(decoder) -> None:
     zs = [6, 6, 6]
     result = _decode_smiles_from_atoms(decoder, coords, zs)
     pairs = [tuple(sorted((b[0], b[1]))) for b in result.bond_orders]
-    assert len(pairs) == len(set(pairs)), (
-        f"duplicate bonds in output: {pairs}"
-    )
+    assert len(pairs) == len(set(pairs)), f"duplicate bonds in output: {pairs}"
     # All bonds in the chain.
     assert any(p == (0, 1) for p in pairs), f"missing 0-1 bond: {pairs}"
     assert any(p == (1, 2) for p in pairs), f"missing 1-2 bond: {pairs}"
@@ -279,21 +273,19 @@ def test_dative_bond_to_metal(decoder) -> None:
     decoder's sidecar list and recorded with a single bond order to
     RDKit (which has no separate dative bond type)."""
     coords = [
-        (0.0, 0.0, 0.0),   # 0 N
-        (2.0, 0.0, 0.0),   # 1 Pt
+        (0.0, 0.0, 0.0),  # 0 N
+        (2.0, 0.0, 0.0),  # 1 Pt
     ]
     zs = [7, 78]
     cloud = AtomCloud(positions=torch.tensor(coords), atomic_numbers=torch.tensor(zs))
     result = decoder.decode(cloud)
     # Must produce a single bond (dative = single to RDKit).
-    assert len(result.bond_orders) == 1, (
-        f"expected 1 bond, got {result.bond_orders}"
-    )
+    assert len(result.bond_orders) == 1, f"expected 1 bond, got {result.bond_orders}"
     assert result.bond_orders[0][2] == BOND_SINGLE
     # Must record the dative sidecar.
-    assert len(result.dative_bonds) == 1, (
-        f"expected 1 dative bond, got {result.dative_bonds}"
-    )
+    assert (
+        len(result.dative_bonds) == 1
+    ), f"expected 1 dative bond, got {result.dative_bonds}"
     donor, metal = result.dative_bonds[0]
     # Donor must be the N (Z=7), metal the Pt (Z=78).
     assert zs[donor] == 7, f"donor Z != N: donor={donor}, zs={zs}"
@@ -391,6 +383,6 @@ def test_decoder_accepts_explicit_pair_features(decoder) -> None:
     )
     result = decoder.decode(cloud, pf)
     pairs = [tuple(sorted((b[0], b[1]))) for b in result.bond_orders]
-    assert all(p == (0, 1) for p in pairs), (
-        f"decoder produced unexpected bonds when only 0-1 listed: {pairs}"
-    )
+    assert all(
+        p == (0, 1) for p in pairs
+    ), f"decoder produced unexpected bonds when only 0-1 listed: {pairs}"

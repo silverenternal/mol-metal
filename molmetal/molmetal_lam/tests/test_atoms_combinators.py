@@ -1,4 +1,5 @@
 """Smoke tests for the MLC Atom layer (atoms/combinators.py)."""
+
 from __future__ import annotations
 
 import pytest
@@ -26,9 +27,9 @@ def test_assert_well_formed_does_not_raise() -> None:
 def test_primitive_atoms_have_expected_arity() -> None:
     assert PRIMITIVE_ATOMS["H"].arity == 1
     assert PRIMITIVE_ATOMS["C"].arity == 4
-    assert PRIMITIVE_ATOMS["N"].arity == 4   # valence 3 + 1 lone pair
-    assert PRIMITIVE_ATOMS["O"].arity == 4   # valence 2 + 2 lone pairs
-    assert PRIMITIVE_ATOMS["F"].arity == 4   # valence 1 + 3 lone pairs
+    assert PRIMITIVE_ATOMS["N"].arity == 4  # valence 3 + 1 lone pair
+    assert PRIMITIVE_ATOMS["O"].arity == 4  # valence 2 + 2 lone pairs
+    assert PRIMITIVE_ATOMS["F"].arity == 4  # valence 1 + 3 lone pairs
     assert PRIMITIVE_ATOMS["Cl"].arity == 4
 
 
@@ -38,7 +39,7 @@ def test_metal_atoms_have_expected_arity() -> None:
     assert METAL_ATOMS["Zn_II"].arity == 4
     assert METAL_ATOMS["Ir_III"].arity == 6
     assert METAL_ATOMS["Cu_II"].arity == 4
-    assert METAL_ATOMS["Au_III"].arity == 4   # valence 2 + 2 lone pairs; square-planar
+    assert METAL_ATOMS["Au_III"].arity == 4  # valence 2 + 2 lone pairs; square-planar
 
 
 def test_metal_geometries() -> None:
@@ -98,4 +99,5 @@ def test_make_ligand_nh3_is_saturated() -> None:
 
 if __name__ == "__main__":
     import sys
+
     sys.exit(pytest.main([__file__, "-v"]))

@@ -270,9 +270,12 @@ def test_multi_task_loss_weights_classification_and_loss():
     assert loss.classify_t_half(86400.0) == 2  # slow (> 7200 s)
     # Loss sum non-negative
     l = loss.loss(
-        static_pic50_pred=0.5, static_pic50_true=-0.02,
-        rate_constant_pred=1.0e-4, rate_constant_lit=1.0e-4,
-        t_half_class_pred=1, t_half_class_true=1,
+        static_pic50_pred=0.5,
+        static_pic50_true=-0.02,
+        rate_constant_pred=1.0e-4,
+        rate_constant_lit=1.0e-4,
+        t_half_class_pred=1,
+        t_half_class_true=1,
     )
     assert l >= 0.0
 
@@ -284,7 +287,11 @@ def test_synthetic_mock_kinetics_returns_kinetics_trajectory():
     """Verify synthetic_mock_kinetics returns a KineticsTrajectory with
     all 12 expected fields populated for Pt."""
     traj = synthetic_mock_kinetics(
-        metal="Pt", target_id="target_0", seed=42, t_end_s=10.0, dt_s=0.5,
+        metal="Pt",
+        target_id="target_0",
+        seed=42,
+        t_end_s=10.0,
+        dt_s=0.5,
     )
     assert isinstance(traj, KineticsTrajectory)
     assert traj.metal == "Pt"

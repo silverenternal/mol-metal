@@ -50,6 +50,7 @@ if str(ROOT) not in sys.path:
 def _have_rdkit() -> bool:
     try:
         from rdkit import Chem  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -76,9 +77,7 @@ def _load_buyable_gate():
     module_name = "molmetal.molmetal_lam.lam_chem.buyable_gate"
     if module_name in sys.modules:
         return sys.modules[module_name]
-    pkg_init = (
-        ROOT / "molmetal" / "molmetal_lam" / "lam_chem" / "__init__.py"
-    )
+    pkg_init = ROOT / "molmetal" / "molmetal_lam" / "lam_chem" / "__init__.py"
     if pkg_init.is_file():
         try:
             spec = importlib.util.spec_from_file_location(
@@ -289,8 +288,14 @@ class TestBuyableReactantGateConcurrency:
     @requires_rdkit
     def test_parallel_filter_matches_serial(self, bg):
         """Parallel and serial filtering must agree on the admitted subset."""
-        inputs = ["c1ccccc1", "CCCCCCC", "c1ccncc1", "CCN(CC)CC",
-                  "c1ccc2ccccc2c1", "CCCCCCCC"]
+        inputs = [
+            "c1ccccc1",
+            "CCCCCCC",
+            "c1ccncc1",
+            "CCN(CC)CC",
+            "c1ccc2ccccc2c1",
+            "CCCCCCCC",
+        ]
         serial_gate = bg.BuyableReactantGate(n_threads=1)
         parallel_gate = bg.BuyableReactantGate(n_threads=4)
         try:
@@ -411,11 +416,17 @@ class TestIntegration:
         """``aizynth_worker_path=None`` (or missing file) → SMARTS fallback."""
         gate = bg.BuyableReactantGate(aizynth_worker_path=None)
         assert gate.engine == "smarts_fallback"
-        gate = bg.BuyableReactantGate(aizynth_worker_path="/nonexistent/path/config.yml")
+        gate = bg.BuyableReactantGate(
+            aizynth_worker_path="/nonexistent/path/config.yml"
+        )
         assert gate.engine == "smarts_fallback"
 
     def test_module_public_api(self, bg):
         """The module must expose the documented public API."""
         assert "__all__" in dir(bg)
-        assert set(bg.__all__) >= {"BuyableReactantGate", "GenerateWithGate",
-                                    "GateMetrics", "build_buyable_gate"}
+        assert set(bg.__all__) >= {
+            "BuyableReactantGate",
+            "GenerateWithGate",
+            "GateMetrics",
+            "build_buyable_gate",
+        }

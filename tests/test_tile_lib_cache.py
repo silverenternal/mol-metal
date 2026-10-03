@@ -101,9 +101,9 @@ def test_tile_count_is_deterministic(isolated_cache_dir: Path) -> None:
     """Two calls return the same number of tiles (deterministic build)."""
     tiles_a = FRAGMENT_LIBRARY_200_TILES()
     tiles_b = FRAGMENT_LIBRARY_200_TILES()
-    assert len(tiles_a) == len(tiles_b), (
-        f"non-deterministic tile count: {len(tiles_a)} vs {len(tiles_b)}"
-    )
+    assert len(tiles_a) == len(
+        tiles_b
+    ), f"non-deterministic tile count: {len(tiles_a)} vs {len(tiles_b)}"
 
 
 def test_tile_identities_are_stable(isolated_cache_dir: Path) -> None:

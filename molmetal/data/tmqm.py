@@ -68,9 +68,36 @@ _FALLBACK_CACHE_DIR = PROJECT_ROOT / "molmetal" / "data" / ".cache"
 
 #: The 30 d-block metals covered by tmQM (mononuclear complexes only).
 TRANSITION_METALS: tuple[str, ...] = (
-    "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
-    "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
-    "La", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg",
+    "Sc",
+    "Ti",
+    "V",
+    "Cr",
+    "Mn",
+    "Fe",
+    "Co",
+    "Ni",
+    "Cu",
+    "Zn",
+    "Y",
+    "Zr",
+    "Nb",
+    "Mo",
+    "Tc",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Cd",
+    "La",
+    "Hf",
+    "Ta",
+    "W",
+    "Re",
+    "Os",
+    "Ir",
+    "Pt",
+    "Au",
+    "Hg",
 )
 _TM_SET = frozenset(TRANSITION_METALS)
 
@@ -338,10 +365,13 @@ def summarize(df: pd.DataFrame) -> TmqmStats:
     bo_mean: Dict[str, float] = {}
     for metal, sub in df.groupby("metal"):
         coord_dist[str(metal)] = {
-            int(k): int(v) for k, v in sub["coord_number"].value_counts().sort_index().items()
+            int(k): int(v)
+            for k, v in sub["coord_number"].value_counts().sort_index().items()
         }
         coord_mean[str(metal)] = float(sub["coord_number"].mean())
-        bo_mean[str(metal)] = float(np.nanmean(sub["metal_bo_total"].to_numpy(dtype=float)))
+        bo_mean[str(metal)] = float(
+            np.nanmean(sub["metal_bo_total"].to_numpy(dtype=float))
+        )
     return TmqmStats(
         n_total=int(len(df)),
         per_metal={str(k): int(v) for k, v in per_metal.items()},

@@ -219,8 +219,10 @@ def evaluate_fold(
     cell_line: str,
     seed: int,
     fold: int,
-    tr: np.ndarray, te: np.ndarray,
-    X: np.ndarray, y: np.ndarray,
+    tr: np.ndarray,
+    te: np.ndarray,
+    X: np.ndarray,
+    y: np.ndarray,
     epochs: int,
     hilbert_dim: int,
 ) -> FitRecord:
@@ -246,7 +248,10 @@ def evaluate_fold(
 
     try:
         w_h, _trh, aug_te_h = fit_hilbert_stream(
-            X_tr_z, y_tr, X_te_z, hilbert_dim=hilbert_dim,
+            X_tr_z,
+            y_tr,
+            X_te_z,
+            hilbert_dim=hilbert_dim,
         )
         y_h_te = predict_hilbert(w_h, aug_te_h)
     except Exception:
@@ -260,7 +265,9 @@ def evaluate_fold(
 
     try:
         reg_a, _tra = fit_astr_stream(
-            X_tr, y_tr, use_astr_scale_guard=True,
+            X_tr,
+            y_tr,
+            use_astr_scale_guard=True,
         )
         y_a_te = predict_astr(reg_a, X_te, use_astr_scale_guard=True)
     except Exception:
@@ -276,13 +283,17 @@ def evaluate_fold(
     collapse_c = _collapse_detected(y_combined_te, y_te)
 
     return FitRecord(
-        cell_line=cell_line, seed=int(seed), fold=int(fold),
-        n_train=int(len(tr)), n_test=int(len(te)),
+        cell_line=cell_line,
+        seed=int(seed),
+        fold=int(fold),
+        n_train=int(len(tr)),
+        n_test=int(len(te)),
         combined_r2=float(r2_c) if math.isfinite(r2_c) else float("nan"),
         hilbert_r2=float(r2_h) if math.isfinite(r2_h) else float("nan"),
         mph_r2=float(r2_m) if math.isfinite(r2_m) else float("nan"),
         astr_r2=float(r2_a) if math.isfinite(r2_a) else float("nan"),
-        wall_s=float(wall), collapse_detected=bool(collapse_c),
+        wall_s=float(wall),
+        collapse_detected=bool(collapse_c),
     )
 
 
@@ -310,9 +321,15 @@ def evaluate_cell_line(
             if len(te) == 0:
                 continue
             rec = evaluate_fold(
-                cell_line=cell_line, seed=int(seed), fold=int(fold),
-                tr=tr, te=te, X=X, y=y,
-                epochs=int(epochs), hilbert_dim=int(hilbert_dim),
+                cell_line=cell_line,
+                seed=int(seed),
+                fold=int(fold),
+                tr=tr,
+                te=te,
+                X=X,
+                y=y,
+                epochs=int(epochs),
+                hilbert_dim=int(hilbert_dim),
             )
             records.append(rec)
             print(
@@ -337,17 +354,22 @@ def aggregate_cell_line(records: List[FitRecord]) -> List[CellLineSeedSummary]:
         mph = np.asarray([r.mph_r2 for r in recs], dtype=float)
         astr = np.asarray([r.astr_r2 for r in recs], dtype=float)
         wall = np.asarray([r.wall_s for r in recs], dtype=float)
-        out.append(CellLineSeedSummary(
-            cell_line=cell_line, seed=int(seed),
-            n_folds=int(len(recs)),
-            combined_r2_mean=float(np.nanmean(combined)) if combined.size else 0.0,
-            combined_r2_std=float(np.nanstd(combined)) if combined.size > 1 else 0.0,
-            hilbert_r2_mean=float(np.nanmean(hilbert)) if hilbert.size else 0.0,
-            mph_r2_mean=float(np.nanmean(mph)) if mph.size else 0.0,
-            astr_r2_mean=float(np.nanmean(astr)) if astr.size else 0.0,
-            wall_s_mean=float(np.nanmean(wall)) if wall.size else 0.0,
-            collapse_detected_any=bool(any(r.collapse_detected for r in recs)),
-        ))
+        out.append(
+            CellLineSeedSummary(
+                cell_line=cell_line,
+                seed=int(seed),
+                n_folds=int(len(recs)),
+                combined_r2_mean=float(np.nanmean(combined)) if combined.size else 0.0,
+                combined_r2_std=float(np.nanstd(combined))
+                if combined.size > 1
+                else 0.0,
+                hilbert_r2_mean=float(np.nanmean(hilbert)) if hilbert.size else 0.0,
+                mph_r2_mean=float(np.nanmean(mph)) if mph.size else 0.0,
+                astr_r2_mean=float(np.nanmean(astr)) if astr.size else 0.0,
+                wall_s_mean=float(np.nanmean(wall)) if wall.size else 0.0,
+                collapse_detected_any=bool(any(r.collapse_detected for r in recs)),
+            )
+        )
     return out
 
 
@@ -454,15 +476,21 @@ def write_synthesis(out_dir: Path, all_records: List[FitRecord]) -> None:
 
     lines.append("## Honest framing")
     lines.append("")
-    lines.append("- **REAL data**: PlatinAI 4-cell synthetic pIC50 (per "
-                 "``platinai_4cell.meta.json``).")
-    lines.append("- **Feature stack**: 172-d zero-padded (12-d RDKit + "
-                 "32-d Multi-PH zeros + 128-d PLL zeros); the 3-way "
-                 "Multi-PH stream is effectively a constant-zero ridge.")
+    lines.append(
+        "- **REAL data**: PlatinAI 4-cell synthetic pIC50 (per "
+        "``platinai_4cell.meta.json``)."
+    )
+    lines.append(
+        "- **Feature stack**: 172-d zero-padded (12-d RDKit + "
+        "32-d Multi-PH zeros + 128-d PLL zeros); the 3-way "
+        "Multi-PH stream is effectively a constant-zero ridge."
+    )
     lines.append("- **ASTSR scale guard**: predictions clipped to `[0, 1]`.")
     lines.append("- **CPU + GPU-1**: CPU default; GPU-1 optional.")
-    lines.append("- **Collapse detector**: ``pred_std / y_test_std < 0.10`` "
-                 "per fold → flag in ``per_seed_metrics.json``.")
+    lines.append(
+        "- **Collapse detector**: ``pred_std / y_test_std < 0.10`` "
+        "per fold → flag in ``per_seed_metrics.json``."
+    )
     lines.append("")
     lines.append(
         f"Per `party-twenty-spirit §3.5`: 4-cell combined R² = "
@@ -494,18 +522,26 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "per cell-line."
         )
     )
-    parser.add_argument("--cell-lines", type=_parse_cell_lines, nargs="+",
-                        default=list(DEFAULT_CELL_LINES))
-    parser.add_argument("--seeds", type=_parse_seeds, nargs="+",
-                        default=list(DEFAULT_SEEDS))
+    parser.add_argument(
+        "--cell-lines",
+        type=_parse_cell_lines,
+        nargs="+",
+        default=list(DEFAULT_CELL_LINES),
+    )
+    parser.add_argument(
+        "--seeds", type=_parse_seeds, nargs="+", default=list(DEFAULT_SEEDS)
+    )
     parser.add_argument("--n-folds", type=int, default=DEFAULT_N_FOLDS)
     parser.add_argument("--epochs", type=int, default=DEFAULT_EPOCHS)
     parser.add_argument("--hilbert-dim", type=int, default=DEFAULT_HILBERT_DIM)
     parser.add_argument("--csv-path", type=Path, default=DEFAULT_PLATINAI_CSV)
     parser.add_argument("--n-max", type=int, default=DEFAULT_N_MAX)
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR)
-    parser.add_argument("--smoke", action="store_true",
-                        help="Smoke mode: 1 cell-line (mcf7), 1 seed, 2 folds, 10 epochs.")
+    parser.add_argument(
+        "--smoke",
+        action="store_true",
+        help="Smoke mode: 1 cell-line (mcf7), 1 seed, 2 folds, 10 epochs.",
+    )
     args = parser.parse_args(argv)
 
     if args.smoke:
@@ -543,9 +579,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print(f"[wf128-p3-plat] === cell_line={cl} ===")
         try:
             recs = evaluate_cell_line(
-                cell_line=cl, seeds=flat_seeds, n_folds=n_folds,
-                epochs=epochs, hilbert_dim=int(args.hilbert_dim),
-                csv_path=args.csv_path, n_max=n_max,
+                cell_line=cl,
+                seeds=flat_seeds,
+                n_folds=n_folds,
+                epochs=epochs,
+                hilbert_dim=int(args.hilbert_dim),
+                csv_path=args.csv_path,
+                n_max=n_max,
             )
         except Exception as exc:
             print(f"[wf128-p3-plat] cell_line={cl}: FAILED ({exc!r})")
@@ -577,8 +617,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print(f"[wf128-p3-plat] wrote {per_seed_path}")
 
     write_synthesis(args.out_dir, all_records)
-    print(f"[wf128-p3-plat] synthesis.md written to "
-          f"{args.out_dir / 'synthesis.md'}")
+    print(
+        f"[wf128-p3-plat] synthesis.md written to " f"{args.out_dir / 'synthesis.md'}"
+    )
     return 0
 
 

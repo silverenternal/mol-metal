@@ -37,6 +37,7 @@ This script is intentionally side-effect-light.  It writes exactly one
 output file and emits a single summary line at the end with row counts
 per gate.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -200,7 +201,7 @@ def _iter_tsv(tsv_path: Path) -> Iterator[List[str]]:
                 if nl < 0:
                     break
                 line = buf[:nl]
-                buf = buf[nl + 1:]
+                buf = buf[nl + 1 :]
                 line = line.decode("utf-8", errors="replace").rstrip("\r")
                 if not line:
                     continue
@@ -315,7 +316,11 @@ def main() -> int:
                 continue
             n_with_affinity += 1
 
-            protein = _pick_uniprot(fields) or fields[COL_TARGET_NAME].strip() or "BindingDB_unknown_target"
+            protein = (
+                _pick_uniprot(fields)
+                or fields[COL_TARGET_NAME].strip()
+                or "BindingDB_unknown_target"
+            )
             # cell_line: BindingDB is target-based (mostly enzymes),
             # not cell-based.  Set a fixed sentinel so the 6-col schema
             # is uniformly populated (no NaN).
@@ -341,9 +346,7 @@ def main() -> int:
         r = csv.reader(fh)
         header = next(r)
         n_nan = sum(
-            1
-            for row in r
-            if len(row) >= 5 and (row[4] in ("", "nan", "NaN", "NA"))
+            1 for row in r if len(row) >= 5 and (row[4] in ("", "nan", "NaN", "NA"))
         )
     print(f"[wf175] gate_G5_nan_pic50={n_nan}")
 

@@ -67,9 +67,9 @@ def test_fused_dropout_residual_parity(shape):
     candidate_b = scale * x
     is_a = torch.isclose(diff, candidate_a, atol=1e-5)
     is_b = torch.isclose(diff, candidate_b, atol=1e-5)
-    assert torch.all(is_a | is_b), (
-        "fused_dropout_residual produced an out-of-grammar element."
-    )
+    assert torch.all(
+        is_a | is_b
+    ), "fused_dropout_residual produced an out-of-grammar element."
     # Keep probability check.
     kept = (~is_a).float().mean().item()
     assert abs(kept - (1.0 - p)) < 0.1, f"keep prob {kept} vs {1.0 - p}"
@@ -200,8 +200,13 @@ def test_batched_fused_silu_mlp_parity(K, with_bias):
     out_fused = batched_fused_silu_mlp(x, w1s, b1s, w2s, b2s)
     # Reference: sum the K per-MLP outputs.
     out_ref = sum(
-        _ref_silu_mlp(x, w1s[k], b1s[k] if b1s is not None else None,
-                      w2s[k], b2s[k] if b2s is not None else None)
+        _ref_silu_mlp(
+            x,
+            w1s[k],
+            b1s[k] if b1s is not None else None,
+            w2s[k],
+            b2s[k] if b2s is not None else None,
+        )
         for k in range(K)
     )
 
@@ -221,9 +226,7 @@ def test_batched_fused_gelu_mlp_parity(K):
     w2s = torch.randn(K, H1, H2, device=DEVICE, dtype=torch.float32) * 0.1
 
     out_fused = batched_fused_gelu_mlp(x, w1s, None, w2s, None)
-    out_ref = sum(
-        _ref_gelu_mlp(x, w1s[k], None, w2s[k], None) for k in range(K)
-    )
+    out_ref = sum(_ref_gelu_mlp(x, w1s[k], None, w2s[k], None) for k in range(K))
 
     assert torch.allclose(out_fused, out_ref, atol=1e-4, rtol=1e-4), (
         f"batched_fused_gelu_mlp mismatch (K={K}): "
@@ -238,8 +241,12 @@ def test_batched_fused_silu_mlp_smoke():
     M, D, H1, H2 = 4, 8, 16, 6
     x = torch.randn(M, D, device=DEVICE, dtype=torch.float32, requires_grad=True)
     # Use leaf tensors (no in-place ops) so .grad is populated.
-    w1s = (torch.randn(K, D, H1, device=DEVICE, dtype=torch.float32) * 0.1).requires_grad_(True)
-    w2s = (torch.randn(K, H1, H2, device=DEVICE, dtype=torch.float32) * 0.1).requires_grad_(True)
+    w1s = (
+        torch.randn(K, D, H1, device=DEVICE, dtype=torch.float32) * 0.1
+    ).requires_grad_(True)
+    w2s = (
+        torch.randn(K, H1, H2, device=DEVICE, dtype=torch.float32) * 0.1
+    ).requires_grad_(True)
 
     out = batched_fused_silu_mlp(x, w1s, None, w2s, None)
     assert out.shape == (M, H2)
@@ -268,9 +275,11 @@ def test_batched_fused_silu_mlp_per_k(K, with_bias):
     b2s = torch.randn(K, H2, device=DEVICE, dtype=torch.float32) if with_bias else None
 
     out = batched_fused_silu_mlp_per_k(x, w1s, b1s, w2s, b2s)
-    assert out.shape == (K, M, H2), (
-        f"batched_fused_silu_mlp_per_k must return (K, M, H2); got {tuple(out.shape)}"
-    )
+    assert out.shape == (
+        K,
+        M,
+        H2,
+    ), f"batched_fused_silu_mlp_per_k must return (K, M, H2); got {tuple(out.shape)}"
 
     for k in range(K):
         ref_k = _ref_silu_mlp(
@@ -294,8 +303,12 @@ def test_batched_fused_silu_mlp_per_k_grad():
     K = 2
     M, D, H1, H2 = 4, 8, 16, 6
     x = torch.randn(M, D, device=DEVICE, dtype=torch.float32, requires_grad=True)
-    w1s = (torch.randn(K, D, H1, device=DEVICE, dtype=torch.float32) * 0.1).requires_grad_(True)
-    w2s = (torch.randn(K, H1, H2, device=DEVICE, dtype=torch.float32) * 0.1).requires_grad_(True)
+    w1s = (
+        torch.randn(K, D, H1, device=DEVICE, dtype=torch.float32) * 0.1
+    ).requires_grad_(True)
+    w2s = (
+        torch.randn(K, H1, H2, device=DEVICE, dtype=torch.float32) * 0.1
+    ).requires_grad_(True)
 
     out = batched_fused_silu_mlp_per_k(x, w1s, None, w2s, None)
     assert out.shape == (K, M, H2)

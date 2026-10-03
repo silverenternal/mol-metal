@@ -83,6 +83,7 @@ from molmetal.molmetal_lam.reward.wasserstein_loss import (
 # Test fixtures + helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_synthetic_graph_batch(
     B: int = 8,
     V: int = 32,
@@ -118,6 +119,7 @@ def _full_module_batched_forward(
 # 1-3: Per-component compile correctness (3 tests)
 # ---------------------------------------------------------------------------
 
+
 def test_dmpnn_message_passing_compile_correctness() -> None:
     """torch.compile on DMPNNModel.forward preserves outputs in eager + MC tolerances.
 
@@ -144,13 +146,15 @@ def test_dmpnn_message_passing_compile_correctness() -> None:
     atom_f, bond_f, e_src, e_dst = _make_synthetic_graph_batch(B=4, V=24, E=48)
 
     with torch.no_grad():
-        out_eager = _full_module_batched_forward(model_eager, atom_f, bond_f, e_src, e_dst)
+        out_eager = _full_module_batched_forward(
+            model_eager, atom_f, bond_f, e_src, e_dst
+        )
         # 2nd call triggers the Inductor compile cache
         out_compiled = model_compiled(model_eager, atom_f, bond_f, e_src, e_dst)
 
-    assert out_eager.shape == out_compiled.shape, (
-        f"shape mismatch: eager {out_eager.shape} vs compiled {out_compiled.shape}"
-    )
+    assert (
+        out_eager.shape == out_compiled.shape
+    ), f"shape mismatch: eager {out_eager.shape} vs compiled {out_compiled.shape}"
     diff = (out_eager - out_compiled).abs().max().item()
     assert diff < 1e-3, f"D-MPNN compile correctness broken: max diff = {diff}"
 
@@ -225,6 +229,7 @@ def test_bond_head_compile_correctness() -> None:
 # 4-5: CUDA Graphs capture (2 tests)
 # ---------------------------------------------------------------------------
 
+
 def _static_shape_dmpnn_forward(
     h_atom: nn.Linear,
     h_bond: nn.Linear,
@@ -267,15 +272,15 @@ def _static_shape_dmpnn_forward(
         h_e_flat = h_e.reshape(B * edge_src.size(1), hidden)
         h_v_src_flat = h_v[b_idx, edge_src].reshape(-1, hidden)
         nbr_flat = neighbor_sum.reshape(-1, hidden)
-        h_e_new = gru(h_e_flat, h_v_src_flat, nbr_flat).reshape(B, edge_src.size(1), hidden)
+        h_e_new = gru(h_e_flat, h_v_src_flat, nbr_flat).reshape(
+            B, edge_src.size(1), hidden
+        )
         h_e = h_e_new
     # Outgoing edge sum per atom.
     outgoing = torch.zeros(B, V, hidden, device=device)
-    outgoing.scatter_add_(
-        1, edge_src.unsqueeze(-1).expand(-1, -1, hidden), h_e
-    )
+    outgoing.scatter_add_(1, edge_src.unsqueeze(-1).expand(-1, -1, hidden), h_e)
     h_comb = torch.cat([h_v, outgoing], dim=-1)  # (B, V, 2H)
-    pooled = h_comb.sum(dim=1)                    # (B, 2H)
+    pooled = h_comb.sum(dim=1)  # (B, 2H)
     return pooled
 
 
@@ -309,7 +314,9 @@ def test_cuda_graph_capture_static_shape() -> None:
     h_atom = nn.Linear(ATOM_FEATURE_DIM, hidden).to(device).eval()
     h_bond = nn.Linear(BOND_FEATURE_DIM, hidden).to(device).eval()
     gru = _GRUUpdate(hidden, hidden).to(device).eval()
-    edge_init = nn.Sequential(nn.Linear(hidden * 2, hidden), nn.ReLU()).to(device).eval()
+    edge_init = (
+        nn.Sequential(nn.Linear(hidden * 2, hidden), nn.ReLU()).to(device).eval()
+    )
 
     atom_f, bond_f, e_src, e_dst = _make_synthetic_graph_batch(B=4, V=16, E=24)
     atom_f = atom_f.to(device)
@@ -321,16 +328,32 @@ def test_cuda_graph_capture_static_shape() -> None:
     with torch.no_grad():
         for _ in range(3):
             _ = _static_shape_dmpnn_forward(
-                h_atom, h_bond, gru, edge_init,
-                atom_f, bond_f, e_src, e_dst, hidden, depth,
+                h_atom,
+                h_bond,
+                gru,
+                edge_init,
+                atom_f,
+                bond_f,
+                e_src,
+                e_dst,
+                hidden,
+                depth,
             )
     torch.cuda.synchronize()
 
     # Eager reference
     with torch.no_grad():
         out_eager = _static_shape_dmpnn_forward(
-            h_atom, h_bond, gru, edge_init,
-            atom_f, bond_f, e_src, e_dst, hidden, depth,
+            h_atom,
+            h_bond,
+            gru,
+            edge_init,
+            atom_f,
+            bond_f,
+            e_src,
+            e_dst,
+            hidden,
+            depth,
         )
     torch.cuda.synchronize()
 
@@ -338,8 +361,16 @@ def test_cuda_graph_capture_static_shape() -> None:
     g = torch.cuda.CUDAGraph()
     with torch.cuda.graph(g):
         out_g = _static_shape_dmpnn_forward(
-            h_atom, h_bond, gru, edge_init,
-            atom_f, bond_f, e_src, e_dst, hidden, depth,
+            h_atom,
+            h_bond,
+            gru,
+            edge_init,
+            atom_f,
+            bond_f,
+            e_src,
+            e_dst,
+            hidden,
+            depth,
         )
     g.replay()
     torch.cuda.synchronize()
@@ -372,7 +403,9 @@ def test_cuda_graph_replay_speedup() -> None:
     h_atom = nn.Linear(ATOM_FEATURE_DIM, hidden).to(device).eval()
     h_bond = nn.Linear(BOND_FEATURE_DIM, hidden).to(device).eval()
     gru = _GRUUpdate(hidden, hidden).to(device).eval()
-    edge_init = nn.Sequential(nn.Linear(hidden * 2, hidden), nn.ReLU()).to(device).eval()
+    edge_init = (
+        nn.Sequential(nn.Linear(hidden * 2, hidden), nn.ReLU()).to(device).eval()
+    )
 
     atom_f, bond_f, e_src, e_dst = _make_synthetic_graph_batch(B=2, V=16, E=24)
     atom_f = atom_f.to(device)
@@ -384,8 +417,16 @@ def test_cuda_graph_replay_speedup() -> None:
     with torch.no_grad():
         for _ in range(3):
             _ = _static_shape_dmpnn_forward(
-                h_atom, h_bond, gru, edge_init,
-                atom_f, bond_f, e_src, e_dst, hidden, depth,
+                h_atom,
+                h_bond,
+                gru,
+                edge_init,
+                atom_f,
+                bond_f,
+                e_src,
+                e_dst,
+                hidden,
+                depth,
             )
     torch.cuda.synchronize()
 
@@ -394,8 +435,16 @@ def test_cuda_graph_replay_speedup() -> None:
     with torch.no_grad():
         for _ in range(n):
             _ = _static_shape_dmpnn_forward(
-                h_atom, h_bond, gru, edge_init,
-                atom_f, bond_f, e_src, e_dst, hidden, depth,
+                h_atom,
+                h_bond,
+                gru,
+                edge_init,
+                atom_f,
+                bond_f,
+                e_src,
+                e_dst,
+                hidden,
+                depth,
             )
     torch.cuda.synchronize()
     eager_ms = (time.perf_counter() - t0) * 1000.0 / n
@@ -403,8 +452,16 @@ def test_cuda_graph_replay_speedup() -> None:
     g = torch.cuda.CUDAGraph()
     with torch.cuda.graph(g):
         out_g = _static_shape_dmpnn_forward(
-            h_atom, h_bond, gru, edge_init,
-            atom_f, bond_f, e_src, e_dst, hidden, depth,
+            h_atom,
+            h_bond,
+            gru,
+            edge_init,
+            atom_f,
+            bond_f,
+            e_src,
+            e_dst,
+            hidden,
+            depth,
         )
     torch.cuda.synchronize()
     t0 = time.perf_counter()
@@ -414,9 +471,9 @@ def test_cuda_graph_replay_speedup() -> None:
     graph_ms = (time.perf_counter() - t0) * 1000.0 / n
 
     # Honest: assert graph path runs and is at least within 2x of eager.
-    assert math.isfinite(graph_ms) and graph_ms > 0, (
-        f"non-finite graph wall time: {graph_ms}"
-    )
+    assert (
+        math.isfinite(graph_ms) and graph_ms > 0
+    ), f"non-finite graph wall time: {graph_ms}"
     assert graph_ms <= eager_ms * 2.0 + 0.5, (
         f"CUDA Graphs much slower than eager: graph={graph_ms:.3f}ms vs "
         f"eager={eager_ms:.3f}ms"
@@ -426,6 +483,7 @@ def test_cuda_graph_replay_speedup() -> None:
 # ---------------------------------------------------------------------------
 # 6-7: Speedup measurement (baseline vs compiled; CPU-only)
 # ---------------------------------------------------------------------------
+
 
 def test_dmpnn_compile_speedup_vs_baseline() -> None:
     """D-MPNN encoder forward: baseline (eager) vs torch.compile (CPU).
@@ -475,9 +533,9 @@ def test_dmpnn_compile_speedup_vs_baseline() -> None:
     # the production recipe is to take mode="max-autotune" + warmup).
     # We assert the path runs and produces finite wall time; the
     # absolute speedup is benchmark-dependent.
-    assert math.isfinite(compiled_ms) and compiled_ms > 0, (
-        f"D-MPNN compile path produced non-finite wall time: {compiled_ms}"
-    )
+    assert (
+        math.isfinite(compiled_ms) and compiled_ms > 0
+    ), f"D-MPNN compile path produced non-finite wall time: {compiled_ms}"
     assert compiled_ms <= eager_ms * 2.0 + 5.0, (
         f"D-MPNN compile path too slow: eager={eager_ms:.2f}ms vs "
         f"compiled={compiled_ms:.2f}ms"
@@ -522,14 +580,15 @@ def test_wasserstein_compile_speedup_vs_baseline() -> None:
     # Honest: allow compile to be slower than eager by up to 2× (W₂ is
     # a tiny op, Inductor overhead can dominate).  We just assert the
     # path runs and produces finite outputs.
-    assert math.isfinite(compiled_ms) and compiled_ms > 0, (
-        f"W₂ compile path produced non-finite wall time: {compiled_ms}"
-    )
+    assert (
+        math.isfinite(compiled_ms) and compiled_ms > 0
+    ), f"W₂ compile path produced non-finite wall time: {compiled_ms}"
 
 
 # ---------------------------------------------------------------------------
 # 8: Integration with downstream consumer
 # ---------------------------------------------------------------------------
+
 
 def test_compiled_pipeline_integration_with_predict_mt() -> None:
     """Compiled DMPNNMultiTaskModel + W₂ penalty integration smoke.
@@ -563,9 +622,16 @@ def test_compiled_pipeline_integration_with_predict_mt() -> None:
     total.backward()
 
     # Check that gradients flow back into the encoder weights
-    grad_norm = sum(
-        (p.grad.norm().item() ** 2 for p in model.parameters() if p.grad is not None)
-    ) ** 0.5
+    grad_norm = (
+        sum(
+            (
+                p.grad.norm().item() ** 2
+                for p in model.parameters()
+                if p.grad is not None
+            )
+        )
+        ** 0.5
+    )
     assert grad_norm > 1e-6, (
         f"no gradient on encoder after compiled+predict_mt pipeline: "
         f"||grad||={grad_norm}"

@@ -33,6 +33,7 @@ def _read(path: Path) -> str:
 # Test 1: TODO-138 Tier-2 marker
 # ---------------------------------------------------------------------------
 
+
 def test_todo138_tier2_marker_present():
     """TODO-138 paper v2 close-out must carry a Tier-2 re-scope marker.
 
@@ -54,14 +55,15 @@ def test_todo138_tier2_marker_present():
         f"First 30 lines:\n{head}"
     )
     # Additionally require §5.4 cross-reference
-    assert "§5.4" in text or "5.4" in text, (
-        "TODO-138 must cross-reference AGENTS.md §5.4 (Tier-2 directive)."
-    )
+    assert (
+        "§5.4" in text or "5.4" in text
+    ), "TODO-138 must cross-reference AGENTS.md §5.4 (Tier-2 directive)."
 
 
 # ---------------------------------------------------------------------------
 # Test 2: R20-P6 DEPRECATED marker
 # ---------------------------------------------------------------------------
+
 
 def test_r20p6_deprecated_marker_present():
     """R20-P6 (TODO-97) wet-lab IC50 must carry a DEPRECATED marker.
@@ -77,14 +79,15 @@ def test_r20p6_deprecated_marker_present():
         f"First 30 lines:\n{head}"
     )
     # Additionally require §5.4 cross-reference
-    assert "§5.4" in text or "5.4" in text, (
-        "TODO-97 must cross-reference AGENTS.md §5.4 (Tier-2 directive)."
-    )
+    assert (
+        "§5.4" in text or "5.4" in text
+    ), "TODO-97 must cross-reference AGENTS.md §5.4 (Tier-2 directive)."
 
 
 # ---------------------------------------------------------------------------
 # Test 3: Wf-74 v2 DEPRECATED marker
 # ---------------------------------------------------------------------------
+
 
 def test_wf74v2_deprecated_marker_present():
     """Wf-74 v2 (Wf-336-X3 close-out) must carry DEPRECATED markers.
@@ -101,14 +104,15 @@ def test_wf74v2_deprecated_marker_present():
         f"DEPRECATED markers; expected >=3."
     )
     # Must cross-reference §5.4
-    assert "§5.4" in text or "5.4" in text, (
-        "Wf-74 v2 close-out must cross-reference AGENTS.md §5.4."
-    )
+    assert (
+        "§5.4" in text or "5.4" in text
+    ), "Wf-74 v2 close-out must cross-reference AGENTS.md §5.4."
 
 
 # ---------------------------------------------------------------------------
 # Test 4: in-silico re-scope signal across all 3 items
 # ---------------------------------------------------------------------------
+
 
 def test_insilico_rescope_signal():
     """All 3 re-scoped items must signal in-silico / computational-only path.
@@ -140,4 +144,5 @@ def test_insilico_rescope_signal():
 if __name__ == "__main__":
     # Allow `python -m molmetal.tests.test_wf337w3_wetlab_rescope` smoke run
     import sys
+
     sys.exit(pytest.main([__file__, "-v"]))

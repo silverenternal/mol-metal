@@ -167,12 +167,10 @@ def test_quotient_space_project_shape_dtype():
     q = QuotientSpace(manifold="SE3")
     x = torch.randn(3, 5, 3, dtype=torch.float64)
     y = q.project(x)
-    assert y.shape == x.shape, (
-        f"project must preserve shape; got {tuple(y.shape)}"
-    )
-    assert y.dtype == x.dtype, (
-        f"project must preserve dtype; got {y.dtype} vs {x.dtype}"
-    )
+    assert y.shape == x.shape, f"project must preserve shape; got {tuple(y.shape)}"
+    assert (
+        y.dtype == x.dtype
+    ), f"project must preserve dtype; got {y.dtype} vs {x.dtype}"
 
 
 def test_quotient_space_project_translation_shape():
@@ -180,14 +178,14 @@ def test_quotient_space_project_translation_shape():
     from molmetal.adapters.quotient_space_diffusion import QuotientSpace
 
     q = QuotientSpace(manifold="translation")
-    x = torch.randn(2, 4, 3) + 7.0   # far from origin
+    x = torch.randn(2, 4, 3) + 7.0  # far from origin
     y = q.project(x)
     assert y.shape == x.shape
     # Centred: per-batch mean must be zero.
     mean = y.mean(dim=1)
-    assert torch.allclose(mean, torch.zeros_like(mean), atol=1e-5), (
-        f"translation-quotient must centre coordinates; got mean={mean}"
-    )
+    assert torch.allclose(
+        mean, torch.zeros_like(mean), atol=1e-5
+    ), f"translation-quotient must centre coordinates; got mean={mean}"
 
 
 def test_quotient_space_project_rotation_shape():
@@ -236,8 +234,7 @@ def test_quotient_space_project_equivariant_se3():
     y1 = q.project(x)
     y2 = q.project(x_trans)
     assert torch.allclose(y1, y2, atol=1e-4), (
-        f"SE(3)-equivariance broken: max diff "
-        f"{(y1 - y2).abs().max().item()}"
+        f"SE(3)-equivariance broken: max diff " f"{(y1 - y2).abs().max().item()}"
     )
 
 
@@ -253,8 +250,7 @@ def test_quotient_space_project_equivariant_translation():
     y1 = q.project(x)
     y2 = q.project(x_trans)
     assert torch.allclose(y1, y2, atol=1e-5), (
-        f"translation-equivariance broken: max diff "
-        f"{(y1 - y2).abs().max().item()}"
+        f"translation-equivariance broken: max diff " f"{(y1 - y2).abs().max().item()}"
     )
 
 
@@ -270,8 +266,7 @@ def test_quotient_space_project_equivariant_rotation():
     y1 = q.project(x)
     y2 = q.project(x_trans)
     assert torch.allclose(y1, y2, atol=1e-4), (
-        f"rotation-equivariance broken: max diff "
-        f"{(y1 - y2).abs().max().item()}"
+        f"rotation-equivariance broken: max diff " f"{(y1 - y2).abs().max().item()}"
     )
 
 
@@ -300,8 +295,7 @@ def test_quotient_space_lift_preserves_se3_quotient():
     # Centred: per-batch mean is zero.
     mean = lifted.mean(dim=1)
     assert torch.allclose(mean, torch.zeros_like(mean), atol=1e-4), (
-        f"lift(project(x)) for SE(3) quotient must be centred; got "
-        f"mean={mean}"
+        f"lift(project(x)) for SE(3) quotient must be centred; got " f"mean={mean}"
     )
 
 
@@ -328,9 +322,9 @@ def test_quotient_space_shape_distance_se3_invariant():
     x_t = torch.einsum("bij,bnj->bni", R, x) + t_b.unsqueeze(1)
     y_t = torch.einsum("bij,bnj->bni", R, y) + t_b.unsqueeze(1)
     d1 = q.shape_distance(x_t, y_t)
-    assert torch.allclose(d0, d1, atol=1e-4), (
-        f"SE(3)-invariant distance broken: {d0.tolist()} vs {d1.tolist()}"
-    )
+    assert torch.allclose(
+        d0, d1, atol=1e-4
+    ), f"SE(3)-invariant distance broken: {d0.tolist()} vs {d1.tolist()}"
 
 
 # ---------------------------------------------------------------------------
@@ -398,9 +392,9 @@ def test_quotient_diffusion_scheduler_sigma_monotonic():
     s = QuotientDiffusionScheduler(n_steps=20, sigma_min=0.1, sigma_max=5.0)
     sigmas = [s.sigma(t) for t in range(21)]
     for i in range(len(sigmas) - 1):
-        assert sigmas[i + 1] >= sigmas[i] - 1e-9, (
-            f"sigma not monotonic: sigma({i})={sigmas[i]} > sigma({i+1})={sigmas[i+1]}"
-        )
+        assert (
+            sigmas[i + 1] >= sigmas[i] - 1e-9
+        ), f"sigma not monotonic: sigma({i})={sigmas[i]} > sigma({i+1})={sigmas[i+1]}"
 
 
 def test_quotient_diffusion_scheduler_alpha_beta_unit_norm():
@@ -413,8 +407,7 @@ def test_quotient_diffusion_scheduler_alpha_beta_unit_norm():
     for t in range(0, 11):
         alpha, beta = s.alpha_beta(t)
         assert abs(alpha * alpha + beta * beta - 1.0) < 1e-5, (
-            f"VP normalisation broken at t={t}: "
-            f"alpha={alpha}, beta={beta}"
+            f"VP normalisation broken at t={t}: " f"alpha={alpha}, beta={beta}"
         )
 
 
@@ -444,9 +437,11 @@ def test_quotient_diffusion_step_shape():
     x = torch.randn(3, 5, 3)
     for t in range(20):
         x = s.step(x, t)
-        assert x.shape == (3, 5, 3), (
-            f"step must preserve shape at t={t}; got {tuple(x.shape)}"
-        )
+        assert x.shape == (
+            3,
+            5,
+            3,
+        ), f"step must preserve shape at t={t}; got {tuple(x.shape)}"
 
 
 def test_quotient_diffusion_step_finite():
@@ -459,9 +454,7 @@ def test_quotient_diffusion_step_finite():
     x = torch.randn(2, 4, 3)
     for t in range(10):
         x = s.step(x, t)
-    assert torch.isfinite(x).all(), (
-        f"step output must be finite; got NaN/Inf"
-    )
+    assert torch.isfinite(x).all(), f"step output must be finite; got NaN/Inf"
 
 
 def test_quotient_diffusion_step_invalid_t():
@@ -579,9 +572,9 @@ def test_quotient_space_cfm_forward_invalid_z0():
 
     wrapper = QuotientSpaceCFM(base_cfm=_DummyCFM())
     with pytest.raises(ValueError):
-        wrapper.forward(torch.randn(5, 3), torch.tensor(0.5))     # no batch dim
+        wrapper.forward(torch.randn(5, 3), torch.tensor(0.5))  # no batch dim
     with pytest.raises(ValueError):
-        wrapper.forward(torch.randn(2, 5, 4), torch.tensor(0.5))   # last dim != 3
+        wrapper.forward(torch.randn(2, 5, 4), torch.tensor(0.5))  # last dim != 3
 
 
 # ---------------------------------------------------------------------------
@@ -594,9 +587,7 @@ def test_quotient_cfm_equivariance_error_small():
 
     wrapper = QuotientSpaceCFM(base_cfm=_DummyCFM())
     err = wrapper.equivariance_error(n_runs=5)
-    assert err < 1e-3, (
-        f"Equivariant base CFM must have small error; got {err}"
-    )
+    assert err < 1e-3, f"Equivariant base CFM must have small error; got {err}"
 
 
 def test_quotient_cfm_equivariance_error_seed_invariant():
@@ -606,9 +597,9 @@ def test_quotient_cfm_equivariance_error_seed_invariant():
     wrapper = QuotientSpaceCFM(base_cfm=_DummyCFM())
     err1 = wrapper.equivariance_error(n_runs=5, seed=42)
     err2 = wrapper.equivariance_error(n_runs=5, seed=42)
-    assert err1 == err2, (
-        f"equivariance_error must be deterministic; got {err1} vs {err2}"
-    )
+    assert (
+        err1 == err2
+    ), f"equivariance_error must be deterministic; got {err1} vs {err2}"
 
 
 def test_quotient_cfm_equivariance_error_zero_for_identity_cfm():
@@ -629,9 +620,7 @@ def test_quotient_cfm_equivariance_error_zero_for_identity_cfm():
 
     wrapper = QuotientSpaceCFM(base_cfm=_IdentityCFM())
     err = wrapper.equivariance_error(n_runs=3)
-    assert err < 1e-5, (
-        f"Identity CFM must have ~zero equivariance error; got {err}"
-    )
+    assert err < 1e-5, f"Identity CFM must have ~zero equivariance error; got {err}"
 
 
 def test_quotient_cfm_equivariance_error_invalid_n_runs():
@@ -677,11 +666,8 @@ def test_quotient_cfm_translation_quotient_equivariance():
         t,
     )
     # SE(3) equivariance: forward(R x + t) = R forward(x) + t.
-    out_x_rot = (
-        torch.einsum("bij,bnj->bni", R, out_x) + t_b.unsqueeze(1)
-    )
+    out_x_rot = torch.einsum("bij,bnj->bni", R, out_x) + t_b.unsqueeze(1)
     diff = (out_x_trans - out_x_rot).flatten(start_dim=1).norm(dim=-1)
     assert diff.max().item() < 1e-3, (
-        f"Translation quotient must be SE(3)-equivariant; "
-        f"got diff={diff.tolist()}"
+        f"Translation quotient must be SE(3)-equivariant; " f"got diff={diff.tolist()}"
     )

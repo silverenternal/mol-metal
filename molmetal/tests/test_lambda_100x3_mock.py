@@ -86,7 +86,7 @@ def test_pocket_subset_size(tmp_path: Path) -> None:
     mock = LambdaSweep100x3Mock(output_dir=tmp_path / "out")
     subset = mock.generate_pocket_subset(n=10)
     assert len(subset) == 10
-    assert len(set(subset)) == 10   # no duplicates
+    assert len(set(subset)) == 10  # no duplicates
 
 
 # ---------------------------------------------------------------------------
@@ -126,9 +126,7 @@ def test_gpu_extension_plan(tmp_path: Path) -> None:
     plan = GPUExtensionPlan()
     hours = plan.estimated_wall_time_hours()
     assert hours > 0
-    assert hours == pytest.approx(
-        GPU_TARGET_CELLS * plan.reference_cell_s / 3600.0
-    )
+    assert hours == pytest.approx(GPU_TARGET_CELLS * plan.reference_cell_s / 3600.0)
     s = plan.estimated_wall_time_str()
     assert "h" in s and str(GPU_TARGET_CELLS) in s
 
@@ -184,7 +182,9 @@ def test_seed_independence(tmp_path: Path) -> None:
 def test_pocket_independence(tmp_path: Path) -> None:
     """Different pockets produce at least one differing metric per seed."""
     mock = LambdaSweep100x3Mock(output_dir=tmp_path / "out")
-    cells = [mock.run_seed(pocket=p, seed=0) for p in ("test_001", "test_002", "test_003")]
+    cells = [
+        mock.run_seed(pocket=p, seed=0) for p in ("test_001", "test_002", "test_003")
+    ]
     assert any(
         cells[0]["metrics"][k] != cells[1]["metrics"][k]
         or cells[1]["metrics"][k] != cells[2]["metrics"][k]
@@ -232,11 +232,20 @@ def test_summary_schema(tmp_path: Path) -> None:
     mock = LambdaSweep100x3Mock(output_dir=tmp_path / "out")
     summary = mock.run_full_sweep()
     required = {
-        "schema_version", "tool", "pilot_id", "date_utc",
-        "n_pockets", "n_seeds", "total_evaluations",
-        "total_wall_time_s", "per_cell", "aggregate_metrics",
-        "aggregate_metrics_std", "projected_to_100x3",
-        "gpu_extension_plan", "compare_mock_vs_full",
+        "schema_version",
+        "tool",
+        "pilot_id",
+        "date_utc",
+        "n_pockets",
+        "n_seeds",
+        "total_evaluations",
+        "total_wall_time_s",
+        "per_cell",
+        "aggregate_metrics",
+        "aggregate_metrics_std",
+        "projected_to_100x3",
+        "gpu_extension_plan",
+        "compare_mock_vs_full",
     }
     assert required.issubset(set(_asdict(summary).keys()))
 
@@ -254,8 +263,10 @@ def test_aggregate_mean_in_band(tmp_path: Path) -> None:
     easily clears ±0.5 on SA and ±0.05 on QED.
     """
     from molmetal.scripts.lambda_100x3_cpu_mock import (
-        MOCK_ANCHOR_MEAN, MOCK_ANCHOR_SPREAD,
+        MOCK_ANCHOR_MEAN,
+        MOCK_ANCHOR_SPREAD,
     )
+
     mock = LambdaSweep100x3Mock(output_dir=tmp_path / "out")
     summary = mock.run_full_sweep()
     for key in METRIC_KEYS:
@@ -326,7 +337,9 @@ def test_compare_pass_when_within_ci(tmp_path: Path) -> None:
 def test_run_smoke_3x2(tmp_path: Path) -> None:
     """``--n-pockets 3 --n-seeds 2`` returns exactly 6 cells."""
     mock = LambdaSweep100x3Mock(
-        n_pockets=3, n_seeds=2, output_dir=tmp_path / "out",
+        n_pockets=3,
+        n_seeds=2,
+        output_dir=tmp_path / "out",
     )
     summary = mock.run_full_sweep()
     assert summary.total_evaluations == 6
@@ -426,15 +439,31 @@ def test_load_manifest_falls_back_when_missing(tmp_path: Path) -> None:
 def test_aggregate_metrics_matches_python_statistics(tmp_path: Path) -> None:
     """``_aggregate_metrics`` matches a hand-rolled statistics reference."""
     cells = [
-        {"pocket_id": "p", "seed": 0, "n_atoms": 10, "elapsed_s": 1.0,
-         "metrics": {k: (0.5 if k == "qed_mean" else 3.0) for k in METRIC_KEYS}},
-        {"pocket_id": "p", "seed": 1, "n_atoms": 12, "elapsed_s": 1.5,
-         "metrics": {k: (0.7 if k == "qed_mean" else 4.0) for k in METRIC_KEYS}},
-        {"pocket_id": "p", "seed": 2, "n_atoms": 14, "elapsed_s": 2.0,
-         "metrics": {k: (0.9 if k == "qed_mean" else 5.0) for k in METRIC_KEYS}},
+        {
+            "pocket_id": "p",
+            "seed": 0,
+            "n_atoms": 10,
+            "elapsed_s": 1.0,
+            "metrics": {k: (0.5 if k == "qed_mean" else 3.0) for k in METRIC_KEYS},
+        },
+        {
+            "pocket_id": "p",
+            "seed": 1,
+            "n_atoms": 12,
+            "elapsed_s": 1.5,
+            "metrics": {k: (0.7 if k == "qed_mean" else 4.0) for k in METRIC_KEYS},
+        },
+        {
+            "pocket_id": "p",
+            "seed": 2,
+            "n_atoms": 14,
+            "elapsed_s": 2.0,
+            "metrics": {k: (0.9 if k == "qed_mean" else 5.0) for k in METRIC_KEYS},
+        },
     ]
     mean, std = _aggregate_metrics(cells)
     import statistics as _st
+
     assert mean["qed_mean"] == pytest.approx(_st.fmean([0.5, 0.7, 0.9]))
     assert std["qed_mean"] == pytest.approx(_st.stdev([0.5, 0.7, 0.9]))
     assert mean["sa_mean"] == pytest.approx(_st.fmean([3.0, 4.0, 5.0]))
@@ -443,8 +472,10 @@ def test_aggregate_metrics_matches_python_statistics(tmp_path: Path) -> None:
 def test_projection_handles_zero_input() -> None:
     """``_project_to_full_sweep`` returns an empty dict for n_target = 0."""
     proj = _project_to_full_sweep(
-        mock_mean={"qed_mean": 0.5}, mock_std={"qed_mean": 0.1},
-        n_mock=10, n_target=0,
+        mock_mean={"qed_mean": 0.5},
+        mock_std={"qed_mean": 0.1},
+        n_mock=10,
+        n_target=0,
     )
     assert proj == {}
 
@@ -452,15 +483,22 @@ def test_projection_handles_zero_input() -> None:
 def test_compare_mock_vs_full_explicit_dict() -> None:
     """``compare_mock_vs_full`` returns the expected verdict for synthetic input."""
     mock_agg = {
-        "n_distinct": 20.0, "validity_rate": 1.0, "uniqueness_rate": 1.0,
-        "synthesizability_rate": 1.0, "metal_compliance_rate": 0.0,
-        "decoder_pass_rate": 1.0, "sa_mean": 3.5, "qed_mean": 0.7,
-        "logp_mean": -0.5, "tpsa_mean": 50.0, "rotb_mean": 2.0,
-        "n_atoms": 24.0, "elapsed_s": 100.0,
+        "n_distinct": 20.0,
+        "validity_rate": 1.0,
+        "uniqueness_rate": 1.0,
+        "synthesizability_rate": 1.0,
+        "metal_compliance_rate": 0.0,
+        "decoder_pass_rate": 1.0,
+        "sa_mean": 3.5,
+        "qed_mean": 0.7,
+        "logp_mean": -0.5,
+        "tpsa_mean": 50.0,
+        "rotb_mean": 2.0,
+        "n_atoms": 24.0,
+        "elapsed_s": 100.0,
     }
     # Mock mean == projected mean ⇒ verdict PASS everywhere.
-    proj = {k: {"projected_value": mock_agg[k], "uncertainty": 0.1}
-            for k in mock_agg}
+    proj = {k: {"projected_value": mock_agg[k], "uncertainty": 0.1} for k in mock_agg}
     cmp = compare_mock_vs_full(mock_agg, proj, n_mock=30, n_target=300)
     assert cmp["verdict"] == "PASS"
     assert cmp["n_pass"] == len(METRIC_KEYS)

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Wf-424-A14: Append §6 row to AGENTS.md via atomic_write_file."""
+
 from __future__ import annotations
 
 import sys
@@ -18,7 +19,7 @@ content = AGENTS_PATH.read_text(encoding="utf-8")
 NEW_ROW = (
     "\n| 2026-10-01 | **Wf-424-A14 paper §3 v4 FINAL metric table update (Main Results)** "
     "(2 SHIPPED on disk per AGENTS.md §5.5 filesystem-truth rule — this row; user "
-    "directive 2026-09-30 verbatim *\"我都给你授权，你启动ultracode做起来，都要做\"* via "
+    'directive 2026-09-30 verbatim *"我都给你授权，你启动ultracode做起来，都要做"* via '
     "harness relay + Wf-423-B1 + Wf-422-B1 prior syncs; same ultracode family as "
     "Wf-330/Wf-335/Wf-336/Wf-341/Wf-347/Wf-348/Wf-349/Wf-354/Wf-357/Wf-359/Wf-360/Wf-362/"
     "Wf-363/Wf-364/Wf-365/Wf-366/Wf-367/Wf-368/Wf-369/Wf-370/Wf-371/Wf-372/Wf-373/Wf-374/"
@@ -59,7 +60,7 @@ NEW_ROW = (
     "only and require USER_OK-gated conversion to `paper/sections/03_main_results_v4.tex` per "
     "TODO-84; **0 wet-lab planning** per AGENTS.md §5.4 + §10; pre-flight v3 fresh-run "
     "preserved at Wf-422-A2 baseline **112/2/3/117 wall 191.19 s** (NOT re-run by Wf-424-A14 "
-    "— CPU-only docs wave per AGENTS.md §5.1 + `kill_then_adapt §0`); EXPECTED_GATE_COUNTS[\"all\"] "
+    '— CPU-only docs wave per AGENTS.md §5.1 + `kill_then_adapt §0`); EXPECTED_GATE_COUNTS["all"] '
     "**117** PRESERVED at Wf-419-A2 baseline (no new pre-flight gates added by Wf-424-A14 — "
     "1 NEW docs file + 1 closeout only); combined wall PROJECTED 5 min CPU-only per task brief "
     "(MEASURED ~5 min CPU-only across build script + atomic_write_file invocation + patch "
@@ -75,8 +76,8 @@ NEW_ROW = (
     "scripts preserved at REPO_ROOT for re-invocation) + §5.7 NEW (Wf-399-A2 trainer flag "
     "wire-in smoke-required rule — N/A for Wf-424-A14 docs-only wave, no trainer flag "
     "wire-in to smoke-test) + §10 (wetlab deprecation); **User voice answer (per "
-    "Wf-424-A14 closeout §7 + this entry — addressing user 2026-09-30 verbatim *\"我都给你授权，"
-    "你启动ultracode做起来，都要做\"* via harness relay + Wf-423-B1 + Wf-422-B1 prior syncs)**: "
+    'Wf-424-A14 closeout §7 + this entry — addressing user 2026-09-30 verbatim *"我都给你授权，'
+    '你启动ultracode做起来，都要做"* via harness relay + Wf-423-B1 + Wf-422-B1 prior syncs)**: '
     "**Wf-424-A14 ultracode wave together DID 彻底解决 the paper §3 v4 FINAL metric table update** "
     "(per Wf-389-A1 + Wf-376-A4 + Wf-362-A3 + Wf-388-A1 + Wf-387-A1 + Wf-413-A1 + Wf-398-A3 + "
     "Wf-411-A4) via 2 SHIPPED deliverables (1 NEW docs file at `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md` "
@@ -119,8 +120,8 @@ NEW_ROW = (
     "(Wf-424-A14 closeout timestamp 2026-10-01 01:34 CST; Wf-424-A14 is an A14 sub-flow "
     "within Wf-424 docs+plan wave; the file now reads §6 entries chronologically with Wf-424 "
     "sub-flows A4 then A14; per AGENTS.md §5.5 filesystem-truth rule the disk is the source "
-    "of truth); matches user directive 2026-09-30 verbatim *\"我都给你授权，你启动ultracode做起来，"
-    "都要做\"* — Wf-424-A14 wave commits the paper §3 v4 FINAL metric table update with 5 "
+    'of truth); matches user directive 2026-09-30 verbatim *"我都给你授权，你启动ultracode做起来，'
+    '都要做"* — Wf-424-A14 wave commits the paper §3 v4 FINAL metric table update with 5 '
     "structural updates from v4.1 + Tier-1 LEAD supplementary sub-table NEW; 0 GPU launches; 0 "
     "paper/* touches; 0 wet-lab planning; 2 SHIPPED on disk files (1 docs + 1 closeout) "
     "verified post-write via §5.5 ls -la evidence. |\n"
@@ -138,7 +139,7 @@ def main() -> None:
     # We need to insert the row BEFORE the closing `---` of the §6 table.
 
     # Find the index of the Wf-424-A4 row's terminating " |" + newline
-    marker = "matches user directive 2026-09-29 verbatim *\"我都给你授权，你启动ultracode做起来，都要做\"* — Wf-424-A4 wave surfaces the atomic write protocol adoption gap and ships 3 SHIPPED deliverables + 2 NEW source artifacts + 10 migrated scripts + 64 NEW tests PASS in ~6 min wall CPU-only total. |\n"
+    marker = 'matches user directive 2026-09-29 verbatim *"我都给你授权，你启动ultracode做起来，都要做"* — Wf-424-A4 wave surfaces the atomic write protocol adoption gap and ships 3 SHIPPED deliverables + 2 NEW source artifacts + 10 migrated scripts + 64 NEW tests PASS in ~6 min wall CPU-only total. |\n'
     idx = content.find(marker)
     if idx < 0:
         raise RuntimeError(

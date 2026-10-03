@@ -40,18 +40,24 @@ for p in (str(REPO_ROOT), str(SCRIPT_DIR)):
 # Pre-configure the upstream flow_matching reference shim so the conftest
 # preload (which depends on the path) succeeds before our test imports run.
 import importlib.util as _iu_loader
+
 _loader_name = "molmetal.adapters.flow_matching_lipman._reference_loader"
-_loader_path = (REPO_ROOT / "molmetal" / "adapters" / "flow_matching_lipman"
-                / "_reference_loader.py")
+_loader_path = (
+    REPO_ROOT
+    / "molmetal"
+    / "adapters"
+    / "flow_matching_lipman"
+    / "_reference_loader.py"
+)
 if _loader_name not in sys.modules:
     _spec = _iu_loader.spec_from_file_location(_loader_name, str(_loader_path))
     _mod = _iu_loader.module_from_spec(_spec)
     sys.modules[_loader_name] = _mod
     _spec.loader.exec_module(_mod)
     from pathlib import Path as _P
+
     _mod._reference_root = (
-        REPO_ROOT / "molmetal" / "references" / "flow_matching"
-        / "flow_matching"
+        REPO_ROOT / "molmetal" / "references" / "flow_matching" / "flow_matching"
     )
 
 
@@ -62,6 +68,7 @@ def _import_runner():
     ``SaCfg`` see a properly-registered module name in ``sys.modules``.
     """
     import importlib.util
+
     runner_path = SCRIPT_DIR / "wf394a2_property_panel_runner.py"
     mod_name = "wf394a2_property_panel_runner"
     spec = importlib.util.spec_from_file_location(mod_name, str(runner_path))
@@ -85,16 +92,16 @@ def test_panel_runner_smoke():
     # Synthetic 4-molecule cohort — drug-like SMILES (aspirin, caffeine,
     # paracetamol, ibuprofen).
     cohort = [
-        "CC(=O)Oc1ccccc1C(=O)O",   # aspirin
+        "CC(=O)Oc1ccccc1C(=O)O",  # aspirin
         "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",  # caffeine
-        "CC(=O)NC1=CC=C(O)C=C1",   # paracetamol
-        "CC(C)Cc1ccc(C(C)C(=O)O)cc1",   # ibuprofen
+        "CC(=O)NC1=CC=C(O)C=C1",  # paracetamol
+        "CC(C)Cc1ccc(C(C)C(=O)O)cc1",  # ibuprofen
     ]
 
     diversity_cfg = runner.DiversityCfg(
         enabled=True,
         sample_size=10,  # tiny — for smoke
-        seed = 42,
+        seed=42,
     )
     sa_cfg = runner.SaCfg(target_sa=2.8, sa_weight=0.3)
 
@@ -144,7 +151,9 @@ def test_panel_runner_smoke():
     assert 0.0 <= tanimoto_mean <= 1.0
 
     # JSON round-trip — sanity check
-    panel_str = json.dumps(panel, default=lambda o: float(o) if isinstance(o, float) else str(o))
+    panel_str = json.dumps(
+        panel, default=lambda o: float(o) if isinstance(o, float) else str(o)
+    )
     parsed_back = json.loads(panel_str)
     assert parsed_back["n_input"] == 4
     assert parsed_back["panel_version"] == "wf394a2/v1"
@@ -173,8 +182,8 @@ def test_aggregate_panel_metrics_basic():
     assert runner is not None
 
     per_mol = [
-        {"smiles": "CCO",  "sa": 2.5, "qed": 0.6},
-        {"smiles": "CCN",  "sa": 2.8, "qed": 0.5},
+        {"smiles": "CCO", "sa": 2.5, "qed": 0.6},
+        {"smiles": "CCN", "sa": 2.8, "qed": 0.5},
         {"smiles": "CCCl", "sa": None, "qed": None},
         {"smiles": "CCBr", "sa": 4.0, "qed": 0.4, "penalty": 0.4},
     ]
@@ -197,16 +206,22 @@ def test_cli_smoke():
     assert runner is not None
 
     import tempfile
+
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as fh:
         out_path = fh.name
     try:
-        rc = runner.main([
-            "--smiles-literal", "CCO,CCN,CCO",
-            "--sa-aware",
-            "--diversity-aware-eval",
-            "--diversity-sample-size", "5",
-            "--out-json", out_path,
-        ])
+        rc = runner.main(
+            [
+                "--smiles-literal",
+                "CCO,CCN,CCO",
+                "--sa-aware",
+                "--diversity-aware-eval",
+                "--diversity-sample-size",
+                "5",
+                "--out-json",
+                out_path,
+            ]
+        )
         assert rc == 0
         with open(out_path) as fh:
             data = json.load(fh)

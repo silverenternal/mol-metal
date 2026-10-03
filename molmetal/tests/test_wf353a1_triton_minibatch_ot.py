@@ -114,44 +114,49 @@ class TestTritonMinibatchOT:
             "pytorch_sinkhorn_minibatch_ot_coupling reference"
         )
         assert hasattr(tmo, "TritonMinibatchOTConfig"), (
-            "triton_minibatch_ot module missing "
-            "TritonMinibatchOTConfig dataclass"
+            "triton_minibatch_ot module missing " "TritonMinibatchOTConfig dataclass"
         )
 
         # 1b. The dispatch state report returns a JSON-serializable dict.
         report = tmo.triton_minibatch_ot_dispatch_state_report()
-        assert isinstance(report, dict), (
-            f"dispatch state report must be dict; got {type(report).__name__}"
-        )
+        assert isinstance(
+            report, dict
+        ), f"dispatch state report must be dict; got {type(report).__name__}"
         for key in (
-            "kernel", "triton_available", "use_fused",
-            "use_minibatch_ot", "gate_open_default",
-            "eps_default", "n_iters_default", "block_b_max", "raw_env",
+            "kernel",
+            "triton_available",
+            "use_fused",
+            "use_minibatch_ot",
+            "gate_open_default",
+            "eps_default",
+            "n_iters_default",
+            "block_b_max",
+            "raw_env",
         ):
-            assert key in report, (
-                f"dispatch state report missing key {key!r}; got {list(report.keys())}"
-            )
-        assert report["kernel"] == "triton_minibatch_ot", (
-            f"kernel name must be 'triton_minibatch_ot'; got {report['kernel']!r}"
-        )
-        assert report["gate_open_default"] is False, (
-            "default dispatch gate must be CLOSED (env vars not set)"
-        )
+            assert (
+                key in report
+            ), f"dispatch state report missing key {key!r}; got {list(report.keys())}"
+        assert (
+            report["kernel"] == "triton_minibatch_ot"
+        ), f"kernel name must be 'triton_minibatch_ot'; got {report['kernel']!r}"
+        assert (
+            report["gate_open_default"] is False
+        ), "default dispatch gate must be CLOSED (env vars not set)"
 
         # 1c. The public re-export through optimal_transport_v2 works.
         assert hasattr(ot2, "triton_minibatch_ot_coupling"), (
             "optimal_transport_v2 missing triton_minibatch_ot_coupling "
             "re-export (Wf-353-A1 integration)"
         )
-        assert hasattr(ot2, "pytorch_sinkhorn_minibatch_ot_coupling"), (
-            "optimal_transport_v2 missing pytorch_sinkhorn_minibatch_ot_coupling"
-        )
-        assert hasattr(ot2, "TritonMinibatchOTConfig"), (
-            "optimal_transport_v2 missing TritonMinibatchOTConfig re-export"
-        )
-        assert hasattr(ot2, "triton_minibatch_ot_dispatch_state_report"), (
-            "optimal_transport_v2 missing dispatch_state_report re-export"
-        )
+        assert hasattr(
+            ot2, "pytorch_sinkhorn_minibatch_ot_coupling"
+        ), "optimal_transport_v2 missing pytorch_sinkhorn_minibatch_ot_coupling"
+        assert hasattr(
+            ot2, "TritonMinibatchOTConfig"
+        ), "optimal_transport_v2 missing TritonMinibatchOTConfig re-export"
+        assert hasattr(
+            ot2, "triton_minibatch_ot_dispatch_state_report"
+        ), "optimal_transport_v2 missing dispatch_state_report re-export"
 
     def test_02_sinkhorn_matches_greedy_baseline_on_synthetic_data(self):
         """Verify the log-domain Sinkhorn coupling produces a valid OT
@@ -182,7 +187,9 @@ class TestTritonMinibatchOT:
         # Sinkhorn OT coupling (the SUT) — must produce a valid
         # permutation of 0..b-1.
         idx_sinkhorn = tmo.triton_minibatch_ot_coupling(
-            x0, x1, force_pytorch=True,
+            x0,
+            x1,
+            force_pytorch=True,
         )
         assert idx_sinkhorn.shape == (b,), (
             f"Sinkhorn coupling shape mismatch: got {tuple(idx_sinkhorn.shape)}, "
@@ -215,9 +222,9 @@ class TestTritonMinibatchOT:
         cost_sinkhorn = cost_matrix.gather(1, idx_sinkhorn.unsqueeze(1)).sum().item()
         # Per-row minimum cost (tightest lower bound for any assignment).
         per_row_min = cost_matrix.min(dim=1).values.sum().item()
-        assert cost_sinkhorn > 0.0, (
-            f"Sinkhorn OT cost must be positive; got {cost_sinkhorn}"
-        )
+        assert (
+            cost_sinkhorn > 0.0
+        ), f"Sinkhorn OT cost must be positive; got {cost_sinkhorn}"
         assert cost_sinkhorn < 10.0 * per_row_min, (
             f"Sinkhorn OT cost {cost_sinkhorn:.4f} should be within an "
             f"order of magnitude of the per-row min cost {per_row_min:.4f}; "
@@ -243,20 +250,24 @@ class TestTritonMinibatchOT:
         x0 = torch.randn(1, 4, dtype=torch.float32)
         x1 = torch.randn(1, 4, dtype=torch.float32)
         idx = tmo.triton_minibatch_ot_coupling(
-            x0, x1, force_pytorch=True,
+            x0,
+            x1,
+            force_pytorch=True,
         )
         assert idx.shape == (1,)
         assert idx.dtype == torch.long
-        assert idx.item() == 0, (
-            f"singleton batch must yield identity (idx=0); got {idx.item()}"
-        )
+        assert (
+            idx.item() == 0
+        ), f"singleton batch must yield identity (idx=0); got {idx.item()}"
 
         # Empty batch → clean ValueError.
         x0_empty = torch.randn(0, 4, dtype=torch.float32)
         x1_empty = torch.randn(0, 4, dtype=torch.float32)
         with pytest.raises(ValueError, match="Batch size"):
             tmo.triton_minibatch_ot_coupling(
-                x0_empty, x1_empty, force_pytorch=True,
+                x0_empty,
+                x1_empty,
+                force_pytorch=True,
             )
 
         # Shape mismatch → clean ValueError.
@@ -264,7 +275,9 @@ class TestTritonMinibatchOT:
         x1_bad = torch.randn(8, 5, dtype=torch.float32)
         with pytest.raises(ValueError, match="must share shape"):
             tmo.triton_minibatch_ot_coupling(
-                x0_bad, x1_bad, force_pytorch=True,
+                x0_bad,
+                x1_bad,
+                force_pytorch=True,
             )
 
         # Wrong dim (3-D) → clean ValueError.
@@ -272,7 +285,9 @@ class TestTritonMinibatchOT:
         x1_3d = torch.randn(8, 4, 4, dtype=torch.float32)
         with pytest.raises(ValueError, match="2-D"):
             tmo.triton_minibatch_ot_coupling(
-                x0_3d, x1_3d, force_pytorch=True,
+                x0_3d,
+                x1_3d,
+                force_pytorch=True,
             )
 
     def test_04_backward_compat_default_off_behavior_unchanged(self):
@@ -287,8 +302,10 @@ class TestTritonMinibatchOT:
         """
         # Strip any leftover env vars from previous tests.
         for key in (
-            "TRITON_USE_FUSED", "TRITON_MINIBATCH_OT",
-            "TRITON_MINIBATCH_OT_EPS", "TRITON_MINIBATCH_OT_ITERS",
+            "TRITON_USE_FUSED",
+            "TRITON_MINIBATCH_OT",
+            "TRITON_MINIBATCH_OT_EPS",
+            "TRITON_MINIBATCH_OT_ITERS",
         ):
             os.environ.pop(key, None)
 
@@ -300,7 +317,9 @@ class TestTritonMinibatchOT:
         # Default dispatch (env vars unset) → must equal force_pytorch.
         out_default = tmo.triton_minibatch_ot_coupling(x0, x1)
         out_pytorch = tmo.triton_minibatch_ot_coupling(
-            x0, x1, force_pytorch=True,
+            x0,
+            x1,
+            force_pytorch=True,
         )
 
         assert torch.equal(out_default, out_pytorch), (
@@ -310,16 +329,18 @@ class TestTritonMinibatchOT:
 
         # The dispatch gate must report closed.
         report = tmo.triton_minibatch_ot_dispatch_state_report()
-        assert report["gate_open_default"] is False, (
-            f"default gate must be closed; got {report}"
-        )
+        assert (
+            report["gate_open_default"] is False
+        ), f"default gate must be closed; got {report}"
         assert report["use_fused"] is False
         assert report["use_minibatch_ot"] is False
 
         # Verify the OT-coupling via the public re-export from
         # optimal_transport_v2 is bit-exact with the direct call.
         idx_via_ot2 = ot2.triton_minibatch_ot_coupling(
-            x0, x1, force_pytorch=True,
+            x0,
+            x1,
+            force_pytorch=True,
         )
         assert torch.equal(idx_via_ot2, out_pytorch), (
             f"optimal_transport_v2 re-export must equal direct call; "
@@ -333,9 +354,9 @@ class TestTritonMinibatchOT:
         os.environ["TRITON_USE_FUSED"] = "1"
         os.environ["TRITON_MINIBATCH_OT"] = "1"
         report_open = tmo.triton_minibatch_ot_dispatch_state_report()
-        assert report_open["gate_open_default"] is True, (
-            f"gate must be open with env vars set; got {report_open}"
-        )
+        assert (
+            report_open["gate_open_default"] is True
+        ), f"gate must be open with env vars set; got {report_open}"
 
         # CPU tensors + gate open → still PyTorch (no CUDA).
         out_cpu_gate_open = tmo.triton_minibatch_ot_coupling(x0, x1)
@@ -347,7 +368,9 @@ class TestTritonMinibatchOT:
 
         # Cleanup env vars.
         for key in (
-            "TRITON_USE_FUSED", "TRITON_MINIBATCH_OT",
-            "TRITON_MINIBATCH_OT_EPS", "TRITON_MINIBATCH_OT_ITERS",
+            "TRITON_USE_FUSED",
+            "TRITON_MINIBATCH_OT",
+            "TRITON_MINIBATCH_OT_EPS",
+            "TRITON_MINIBATCH_OT_ITERS",
         ):
             os.environ.pop(key, None)

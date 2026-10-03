@@ -53,6 +53,7 @@ def _load_pocket(
     Pocket
     """
     from Bio.PDB import PDBParser, PPBuilder, is_aa
+
     # Three-letter to one-letter (API change in BioPython >= 1.83:
     # ``three_to_one`` was removed in favour of ``protein_letters_3to1``).
     try:
@@ -67,8 +68,11 @@ def _load_pocket(
     # Use first model only (NMR structures often have many)
     model = next(structure.get_models())
 
-    centre = ligand_center.float() if isinstance(ligand_center, torch.Tensor) \
+    centre = (
+        ligand_center.float()
+        if isinstance(ligand_center, torch.Tensor)
         else torch.as_tensor(ligand_center, dtype=torch.float32)
+    )
     if centre.dim() > 1:
         centre = centre.flatten()
     assert centre.shape == (3,), f"ligand_center must be (3,), got {centre.shape}"
@@ -84,7 +88,10 @@ def _load_pocket(
             # HETATM (waters, ligands, ions)
             if not include_heteroatoms:
                 continue
-        if chain_whitelist is not None and residue.get_parent().id not in chain_whitelist:
+        if (
+            chain_whitelist is not None
+            and residue.get_parent().id not in chain_whitelist
+        ):
             continue
 
         pos = atom.get_vector().get_array()  # (3,) numpy
@@ -122,11 +129,29 @@ def _load_pocket(
 # Helpers
 # ---------------------------------------------------------------------------
 _PERIODIC_NUMBER = {
-    "H": 1, "C": 6, "N": 7, "O": 8, "F": 9,
-    "P": 15, "S": 16, "CL": 17, "BR": 35, "I": 53,
+    "H": 1,
+    "C": 6,
+    "N": 7,
+    "O": 8,
+    "F": 9,
+    "P": 15,
+    "S": 16,
+    "CL": 17,
+    "BR": 35,
+    "I": 53,
     # Common d-block in metalloproteins:
-    "ZN": 30, "FE": 26, "MG": 12, "MN": 25, "CU": 29, "CA": 20,
-    "NI": 28, "CO": 27, "MO": 42, "PT": 78, "PD": 46, "AU": 79,
+    "ZN": 30,
+    "FE": 26,
+    "MG": 12,
+    "MN": 25,
+    "CU": 29,
+    "CA": 20,
+    "NI": 28,
+    "CO": 27,
+    "MO": 42,
+    "PT": 78,
+    "PD": 46,
+    "AU": 79,
 }
 
 

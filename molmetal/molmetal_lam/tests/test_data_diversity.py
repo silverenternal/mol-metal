@@ -8,6 +8,7 @@ Covers
 * Combined-pool builder (size, source coverage)
 * CSV cache writer
 """
+
 from __future__ import annotations
 
 import csv
@@ -27,56 +28,56 @@ from molmetal.molmetal_lam.lam_chem import data_diversity as dd  # noqa: E402
 # diverse (aliphatic + aromatic + heterocycle + halide) so MaxMin has real
 # work to do.
 SMILES_POOL = [
-    "CCO",                 # ethanol
-    "CCN",                 # ethylamine
-    "c1ccccc1",            # benzene
-    "c1ccncc1",            # pyridine
-    "c1ccoc1",             # furan
-    "c1ccsc1",             # thiophene
-    "CC(=O)O",             # acetic acid
-    "CC(=O)N",             # acetamide
-    "C(F)(F)F",            # trifluoromethyl
-    "C(Cl)(Cl)Cl",         # chloroform
-    "CCS",                 # ethanethiol
-    "CC(C)C",              # isobutane
-    "CCCCCCCC",            # octane
-    "c1ccc2ccccc2c1",      # naphthalene
-    "C1CCCCC1",            # cyclohexane
-    "OC(=O)c1ccccc1",      # benzoic acid
-    "c1ccc(O)cc1",         # phenol
-    "NCCN",                # ethylenediamine
-    "OCCO",                # ethylene glycol
-    "OCC(O)CO",            # glycerol
+    "CCO",  # ethanol
+    "CCN",  # ethylamine
+    "c1ccccc1",  # benzene
+    "c1ccncc1",  # pyridine
+    "c1ccoc1",  # furan
+    "c1ccsc1",  # thiophene
+    "CC(=O)O",  # acetic acid
+    "CC(=O)N",  # acetamide
+    "C(F)(F)F",  # trifluoromethyl
+    "C(Cl)(Cl)Cl",  # chloroform
+    "CCS",  # ethanethiol
+    "CC(C)C",  # isobutane
+    "CCCCCCCC",  # octane
+    "c1ccc2ccccc2c1",  # naphthalene
+    "C1CCCCC1",  # cyclohexane
+    "OC(=O)c1ccccc1",  # benzoic acid
+    "c1ccc(O)cc1",  # phenol
+    "NCCN",  # ethylenediamine
+    "OCCO",  # ethylene glycol
+    "OCC(O)CO",  # glycerol
     "C(F)(F)(F)C(F)(F)F",  # hexafluoroethane
-    "CCBr",                # bromoethane
-    "CCI",                 # iodoethane
-    "[Pt](Cl)(Cl)(N)N",    # cisplatin-like Pt complex
-    "[Pd]Cl2",             # Pd dichloride
-    "c1ccc(N)cc1",         # aniline
-    "C1=CC=NC=C1",         # pyridine (alt)
-    "CC(=O)c1ccccc1",      # acetophenone
-    "COC",                 # dimethyl ether
-    "CCOCC",               # diethyl ether
-    "N#N",                 # dinitrogen
-    "OO",                  # peroxide
-    "CC#C",                # propyne
-    "C=CC=C",              # butadiene
-    "c1cnc2ccccc2c1",      # quinoline
-    "c1ncc2ncn(C)c2n1",    # purine-like
-    "[Au](Cl)Cl",          # Au dichloride
-    "CCOP(=O)(OCC)OCC",    # phosphate triester
-    "CS",                  # methanethiol
+    "CCBr",  # bromoethane
+    "CCI",  # iodoethane
+    "[Pt](Cl)(Cl)(N)N",  # cisplatin-like Pt complex
+    "[Pd]Cl2",  # Pd dichloride
+    "c1ccc(N)cc1",  # aniline
+    "C1=CC=NC=C1",  # pyridine (alt)
+    "CC(=O)c1ccccc1",  # acetophenone
+    "COC",  # dimethyl ether
+    "CCOCC",  # diethyl ether
+    "N#N",  # dinitrogen
+    "OO",  # peroxide
+    "CC#C",  # propyne
+    "C=CC=C",  # butadiene
+    "c1cnc2ccccc2c1",  # quinoline
+    "c1ncc2ncn(C)c2n1",  # purine-like
+    "[Au](Cl)Cl",  # Au dichloride
+    "CCOP(=O)(OCC)OCC",  # phosphate triester
+    "CS",  # methanethiol
     "CC(=O)Oc1ccccc1C(=O)O",  # aspirin
-    "Cl",                  # HCl
-    "BrCBr",               # dibromomethane
-    "ICCI",                # 1,2-diiodoethane
+    "Cl",  # HCl
+    "BrCBr",  # dibromomethane
+    "ICCI",  # 1,2-diiodoethane
     "C(F)(F)(F)c1ccccc1",  # trifluoromethylbenzene
-    "c1ccc(S)cc1",         # thiophenol
-    "c1ccc(P)cc1",         # phenylphosphine
-    "CCCCC",               # pentane
-    "CCCC",                # butane
-    "CCC",                 # propane
-    "C",                   # methane
+    "c1ccc(S)cc1",  # thiophenol
+    "c1ccc(P)cc1",  # phenylphosphine
+    "CCCCC",  # pentane
+    "CCCC",  # butane
+    "CCC",  # propane
+    "C",  # methane
 ]
 
 
@@ -130,6 +131,7 @@ def test_greedy_maxmin_maximises_min_distance():
     # the MaxMin set should have a strictly larger minimum pairwise
     # distance (the criterion it optimises).
     import random
+
     selected_idx, _ = dd.greedy_maxmin_diversity(SMILES_POOL, n=10, seed=7)
     fps, parsed = dd.morgan_fps(SMILES_POOL, n_bits=1024)
     # Map selected_idx (indexes into SMILES_POOL) -> index into parsed/fps.
@@ -218,9 +220,11 @@ def test_cache_csv_writes_expected_columns(tmp_path):
 # ---------------------------------------------------------------------------
 def np_fill(x):
     import numpy as np
+
     return np.array(x)
 
 
 def np_max(a, b):
     import numpy as np
+
     return np.maximum(a, b)

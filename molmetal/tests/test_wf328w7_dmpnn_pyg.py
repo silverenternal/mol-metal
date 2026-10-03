@@ -107,7 +107,9 @@ def _build_mini_batch(
     edge_attr = torch.zeros(B, E_max, edge_dim, dtype=torch.float32)
     batch_idx = torch.full((B, N_max), -1, dtype=torch.int64)
     for b in range(B):
-        n_b = int(torch.randint(n_atoms_min, n_atoms_max + 1, (1,), generator=rng).item())
+        n_b = int(
+            torch.randint(n_atoms_min, n_atoms_max + 1, (1,), generator=rng).item()
+        )
         # Atom features: random
         h_atom[b, :n_b] = torch.randn(n_b, atom_dim, generator=rng)
         batch_idx[b, :n_b] = b
@@ -146,8 +148,12 @@ def test_pyg_matches_loop_forward(seed: int) -> None:
     pyg.eval()
     cfg = MPNNConfig()
     mb = _build_mini_batch(
-        B=8, n_atoms_min=4, n_atoms_max=12, E_max=20,
-        atom_dim=cfg.atom_feat_dim, edge_dim=cfg.edge_feat_dim,
+        B=8,
+        n_atoms_min=4,
+        n_atoms_max=12,
+        E_max=20,
+        atom_dim=cfg.atom_feat_dim,
+        edge_dim=cfg.edge_feat_dim,
         seed=seed,
     )
     with torch.no_grad():
@@ -176,29 +182,33 @@ def test_batched_edge_index_coalescing() -> None:
     """
     cfg = MPNNConfig()
     mb = _build_mini_batch(
-        B=6, n_atoms_min=3, n_atoms_max=10, E_max=16,
-        atom_dim=cfg.atom_feat_dim, edge_dim=cfg.edge_feat_dim,
+        B=6,
+        n_atoms_min=3,
+        n_atoms_max=10,
+        E_max=16,
+        atom_dim=cfg.atom_feat_dim,
+        edge_dim=cfg.edge_feat_dim,
         seed=3,
     )
-    batch = coalesce_padded_batch(
-        mb.h_atom, mb.edge_index, mb.edge_attr, mb.batch_idx
-    )
+    batch = coalesce_padded_batch(mb.h_atom, mb.edge_index, mb.edge_attr, mb.batch_idx)
     n_atoms_expected = int((mb.batch_idx >= 0).sum().item())
     # Per-mol edges: count edges with src/dst both in [0, n_atoms_b)
     n_edges_expected = 0
     for b in range(mb.B):
         n_b = int((mb.batch_idx[b] == b).sum().item())
         valid = (
-            (mb.edge_index[b, 0] < n_b) & (mb.edge_index[b, 1] < n_b) &
-            (mb.edge_index[b, 0] >= 0) & (mb.edge_index[b, 1] >= 0)
+            (mb.edge_index[b, 0] < n_b)
+            & (mb.edge_index[b, 1] < n_b)
+            & (mb.edge_index[b, 0] >= 0)
+            & (mb.edge_index[b, 1] >= 0)
         )
         n_edges_expected += int(valid.sum().item())
-    assert batch.n_atoms == n_atoms_expected, (
-        f"n_atoms mismatch: got {batch.n_atoms}, expected {n_atoms_expected}"
-    )
-    assert batch.n_edges == n_edges_expected, (
-        f"n_edges mismatch: got {batch.n_edges}, expected {n_edges_expected}"
-    )
+    assert (
+        batch.n_atoms == n_atoms_expected
+    ), f"n_atoms mismatch: got {batch.n_atoms}, expected {n_atoms_expected}"
+    assert (
+        batch.n_edges == n_edges_expected
+    ), f"n_edges mismatch: got {batch.n_edges}, expected {n_edges_expected}"
     assert batch.batch_size == mb.B
     # batch_idx spans [0, B) with right multiplicity
     counts = torch.bincount(batch.batch_idx, minlength=mb.B)
@@ -231,8 +241,12 @@ def test_pyg_backward_matches_loop(seed: int) -> None:
     pyg.train()
     cfg = MPNNConfig()
     mb = _build_mini_batch(
-        B=6, n_atoms_min=4, n_atoms_max=10, E_max=18,
-        atom_dim=cfg.atom_feat_dim, edge_dim=cfg.edge_feat_dim,
+        B=6,
+        n_atoms_min=4,
+        n_atoms_max=10,
+        E_max=18,
+        atom_dim=cfg.atom_feat_dim,
+        edge_dim=cfg.edge_feat_dim,
         seed=seed,
     )
     target = torch.randn(mb.B, cfg.hidden_dim)
@@ -256,14 +270,16 @@ def test_pyg_backward_matches_loop(seed: int) -> None:
     (out_loop - target).pow(2).sum().backward()
     (out_pyg - target).pow(2).sum().backward()
 
-    diff_ea_loop_vs_pyg = (edge_attr_legacy.grad - edge_attr_pyg.grad).abs().max().item()
-    assert diff_ea_loop_vs_pyg < 1e-3, (
-        f"seed={seed}: edge_attr grad diverges by {diff_ea_loop_vs_pyg:.3e}"
+    diff_ea_loop_vs_pyg = (
+        (edge_attr_legacy.grad - edge_attr_pyg.grad).abs().max().item()
     )
+    assert (
+        diff_ea_loop_vs_pyg < 1e-3
+    ), f"seed={seed}: edge_attr grad diverges by {diff_ea_loop_vs_pyg:.3e}"
     diff_h_loop_vs_pyg = (h_atom_legacy.grad - h_atom_pyg.grad).abs().max().item()
-    assert diff_h_loop_vs_pyg < 1e-3, (
-        f"seed={seed}: h_atom grad diverges by {diff_h_loop_vs_pyg:.3e}"
-    )
+    assert (
+        diff_h_loop_vs_pyg < 1e-3
+    ), f"seed={seed}: h_atom grad diverges by {diff_h_loop_vs_pyg:.3e}"
 
     # Parameter gradients
     diff_p = max(
@@ -271,9 +287,7 @@ def test_pyg_backward_matches_loop(seed: int) -> None:
         for p_legacy, p_pyg in zip(legacy.parameters(), pyg.parameters())
         if p_legacy.grad is not None and p_pyg.grad is not None
     )
-    assert diff_p < 1e-3, (
-        f"seed={seed}: param grad diverges by {diff_p:.3e}"
-    )
+    assert diff_p < 1e-3, f"seed={seed}: param grad diverges by {diff_p:.3e}"
 
 
 # ---------------------------------------------------------------------------
@@ -293,15 +307,13 @@ def test_pyg_integration_with_trainer() -> None:
     pyg = DirectedMPNNPyG(MPNNConfig())
     missing, unexpected = load_state_dict_into_pyg(pyg, legacy, strict=True)
     assert missing == [], f"missing keys when loading legacy → pyg: {missing}"
-    assert unexpected == [], (
-        f"unexpected keys when loading legacy → pyg: {unexpected}"
-    )
+    assert unexpected == [], f"unexpected keys when loading legacy → pyg: {unexpected}"
 
     # Parameter values are bit-identical after the copy
     for p_legacy, p_pyg in zip(legacy.parameters(), pyg.parameters()):
-        assert torch.equal(p_legacy.data, p_pyg.data), (
-            "state_dict copy must be bit-identical"
-        )
+        assert torch.equal(
+            p_legacy.data, p_pyg.data
+        ), "state_dict copy must be bit-identical"
 
     # Submodule naming must match the legacy convention so checkpoints
     # written by either model load into the other.
@@ -342,8 +354,12 @@ def test_pyg_speedup_vs_loop_cpu() -> None:
     B, N_max, E_max = 8, 12, 24
     n_iters = 5
     mb = _build_mini_batch(
-        B=B, n_atoms_min=6, n_atoms_max=N_max, E_max=E_max,
-        atom_dim=cfg.atom_feat_dim, edge_dim=cfg.edge_feat_dim,
+        B=B,
+        n_atoms_min=6,
+        n_atoms_max=N_max,
+        E_max=E_max,
+        atom_dim=cfg.atom_feat_dim,
+        edge_dim=cfg.edge_feat_dim,
         seed=99,
     )
 
@@ -360,9 +376,7 @@ def test_pyg_speedup_vs_loop_cpu() -> None:
         torch.cuda.synchronize() if torch.cuda.is_available() else None
         return (time.perf_counter() - t0) / n_iters
 
-    loop_fn = lambda: legacy(
-        mb.h_atom, mb.edge_index, mb.edge_attr, mb.batch_idx
-    )
+    loop_fn = lambda: legacy(mb.h_atom, mb.edge_index, mb.edge_attr, mb.batch_idx)
     pyg_fn = lambda: pyg.forward_from_padded(
         mb.h_atom, mb.edge_index, mb.edge_attr, mb.batch_idx
     )
@@ -405,8 +419,12 @@ def test_fallback_to_loop_works() -> None:
     pyg.eval()
     cfg = MPNNConfig()
     mb = _build_mini_batch(
-        B=4, n_atoms_min=4, n_atoms_max=10, E_max=14,
-        atom_dim=cfg.atom_feat_dim, edge_dim=cfg.edge_feat_dim,
+        B=4,
+        n_atoms_min=4,
+        n_atoms_max=10,
+        E_max=14,
+        atom_dim=cfg.atom_feat_dim,
+        edge_dim=cfg.edge_feat_dim,
         seed=0,
     )
 
@@ -427,9 +445,9 @@ def test_fallback_to_loop_works() -> None:
     # 3. Legacy is deterministic across calls
     with torch.no_grad():
         out_loop_2 = legacy(mb.h_atom, mb.edge_index, mb.edge_attr, mb.batch_idx)
-    assert torch.equal(out_loop_1, out_loop_2), (
-        "Legacy path must be deterministic (no dropout / no random ops in eval)."
-    )
+    assert torch.equal(
+        out_loop_1, out_loop_2
+    ), "Legacy path must be deterministic (no dropout / no random ops in eval)."
 
 
 # ---------------------------------------------------------------------------
@@ -439,12 +457,18 @@ def test_pyg_public_api() -> None:
     """Public API smoke check — guards against accidental renames."""
     # ``MolGraphBatch`` is a dataclass; field names live on the class
     # via ``__dataclass_fields__`` rather than as plain attributes.
-    expected_fields = {"atom_feats", "edge_index", "edge_attr", "batch_idx",
-                       "n_atoms_per_mol", "n_edges_per_mol"}
+    expected_fields = {
+        "atom_feats",
+        "edge_index",
+        "edge_attr",
+        "batch_idx",
+        "n_atoms_per_mol",
+        "n_edges_per_mol",
+    }
     actual_fields = set(MolGraphBatch.__dataclass_fields__.keys())
-    assert expected_fields.issubset(actual_fields), (
-        f"MolGraphBatch missing fields: {expected_fields - actual_fields}"
-    )
+    assert expected_fields.issubset(
+        actual_fields
+    ), f"MolGraphBatch missing fields: {expected_fields - actual_fields}"
     assert hasattr(DirectedMPNNPyG, "forward_batched")
     assert hasattr(DirectedMPNNPyG, "forward_from_padded")
     assert callable(coalesce_padded_batch)

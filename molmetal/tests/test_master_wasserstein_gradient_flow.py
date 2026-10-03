@@ -72,6 +72,7 @@ def test_canonical_primitives_unchanged():
         WassersteinTransferResult,
         pairwise_w2_matrix,
     )
+
     assert callable(wasserstein_loss)
     assert callable(wasserstein_transfer_loss)
     assert callable(wasserstein_pic50_loss)
@@ -128,7 +129,8 @@ class TestMasterWassersteinConfig:
 class TestMasterWassersteinResult:
     def test_construct(self):
         r = MasterWassersteinResult(
-            loss_value=1.5, loss_type="transfer",
+            loss_value=1.5,
+            loss_type="transfer",
         )
         assert r.loss_value == 1.5
         assert r.loss_type == "transfer"
@@ -177,6 +179,7 @@ class TestTransferSelector:
         from molmetal.molmetal_lam.reward.wasserstein_loss import (
             wasserstein_transfer_loss,
         )
+
         master = MasterWassersteinGradientFlow(
             config=MasterWassersteinConfig(n_mc=128, seed=42),
         )
@@ -184,10 +187,13 @@ class TestTransferSelector:
         per_metal = {"Ru": a, "Ir": b, "Os": b + 0.2, "Rh": b - 0.1}
         master_res = master.compute(per_metal, loss_type="transfer")
         primitive_res = wasserstein_transfer_loss(
-            per_metal, n_mc=128, seed=42,
+            per_metal,
+            n_mc=128,
+            seed=42,
         )
         assert master_res.loss_value == pytest.approx(
-            float(primitive_res.item()), rel=1e-5,
+            float(primitive_res.item()),
+            rel=1e-5,
         )
 
 
@@ -216,6 +222,7 @@ class TestPic50Selector:
         from molmetal.molmetal_lam.reward.wasserstein_loss import (
             wasserstein_pic50_loss,
         )
+
         master = MasterWassersteinGradientFlow(
             config=MasterWassersteinConfig(n_mc=128, seed=7),
         )
@@ -225,7 +232,8 @@ class TestPic50Selector:
         master_res = master.compute(pred, ref, loss_type="pic50")
         primitive_res = wasserstein_pic50_loss(pred, ref, n_mc=128, seed=7)
         assert master_res.loss_value == pytest.approx(
-            float(primitive_res.item()), rel=1e-5,
+            float(primitive_res.item()),
+            rel=1e-5,
         )
 
 
@@ -250,11 +258,13 @@ class TestGradientFlowSelector:
     def test_raises_when_pred_wrong_type(self):
         master = MasterWassersteinGradientFlow()
         with pytest.raises(TypeError, match="metal_logits"):
-            master.compute({"Ru": torch.randn(4, 4)}, torch.randn(4, 4),
-                           loss_type="gradient_flow")
+            master.compute(
+                {"Ru": torch.randn(4, 4)}, torch.randn(4, 4), loss_type="gradient_flow"
+            )
 
     def test_matches_canonical_primitive(self):
         from molmetal.molmetal_lam.reward.wasserstein_loss import wasserstein_loss
+
         master = MasterWassersteinGradientFlow(
             config=MasterWassersteinConfig(n_mc=128, seed=11),
         )
@@ -262,7 +272,8 @@ class TestGradientFlowSelector:
         master_res = master.compute(a, b, loss_type="gradient_flow")
         primitive_res = wasserstein_loss(a, b, n_mc=128, seed=11)
         assert master_res.loss_value == pytest.approx(
-            float(primitive_res.item()), rel=1e-5,
+            float(primitive_res.item()),
+            rel=1e-5,
         )
 
     def test_zero_on_identical_clouds(self):
@@ -294,8 +305,10 @@ class TestSelectorValidation:
             config=MasterWassersteinConfig(n_mc=64, seed=0),
         )
         g = torch.Generator().manual_seed(0)
-        per_metal = {"Ru": torch.randn(8, 4, generator=g),
-                     "Ir": torch.randn(8, 4, generator=g)}
+        per_metal = {
+            "Ru": torch.randn(8, 4, generator=g),
+            "Ir": torch.randn(8, 4, generator=g),
+        }
         res_default = master.compute(per_metal)
         res_explicit = master.compute(per_metal, loss_type="transfer")
         assert res_default.loss_type == res_explicit.loss_type == "transfer"

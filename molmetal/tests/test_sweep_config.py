@@ -134,7 +134,13 @@ def test_sweep_config_has_exactly_five_fields():
     force the author to think about whether the change is intentional.
     """
     field_names = {f.name for f in dataclasses.fields(SweepConfig)}
-    assert field_names == {"top_k", "max_depth", "n_simulations", "patience", "early_stop"}
+    assert field_names == {
+        "top_k",
+        "max_depth",
+        "n_simulations",
+        "patience",
+        "early_stop",
+    }
 
 
 def test_sweep_config_field_types():

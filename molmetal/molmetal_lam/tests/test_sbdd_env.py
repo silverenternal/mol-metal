@@ -1,4 +1,5 @@
 """Smoke tests for the SBDD environment (REINVENT4 wrapper + voxelization)."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -32,16 +33,16 @@ def test_reinvent_scorer_score() -> None:
 def test_reinvent_batch_score() -> None:
     """batch_score returns 10 scores, all in [0, 3]."""
     smiles_list = [
-        "CC(=O)OC1=CC=CC=C1C(=O)O",       # aspirin
-        "CCO",                            # ethanol
-        "c1ccccc1",                       # benzene
-        "CC(C)Cc1ccc(C(C)C(=O)O)cc1",    # ibuprofen
-        "CN1CCC[C@H]1c2cccnc2",          # nicotine
-        "CC(=O)Nc1ccc(O)cc1",            # paracetamol
-        "C1=CC=C2C=CC=CC2=C1",            # naphthalene
-        "CCOCC",                          # diethyl ether
-        "CC(=O)C",                        # acetone
-        "C1CCCCC1",                       # cyclohexane
+        "CC(=O)OC1=CC=CC=C1C(=O)O",  # aspirin
+        "CCO",  # ethanol
+        "c1ccccc1",  # benzene
+        "CC(C)Cc1ccc(C(C)C(=O)O)cc1",  # ibuprofen
+        "CN1CCC[C@H]1c2cccnc2",  # nicotine
+        "CC(=O)Nc1ccc(O)cc1",  # paracetamol
+        "C1=CC=C2C=CC=CC2=C1",  # naphthalene
+        "CCOCC",  # diethyl ether
+        "CC(=O)C",  # acetone
+        "C1CCCCC1",  # cyclohexane
     ]
     scores = batch_score(smiles_list)
     assert isinstance(scores, np.ndarray)
@@ -61,6 +62,7 @@ def _make_synthetic_pocket():
     """Build a small Pocket object with mixed atom types (C/N/O)."""
     import torch
     from molmetal.domain import Pocket
+
     centre = torch.tensor([0.0, 0.0, 0.0], dtype=torch.float32)
     # 4 atoms inside the box: C, N, O, C  (so we exercise all channels).
     coords = torch.tensor(
@@ -90,7 +92,7 @@ def test_voxelization_shape() -> None:
     pocket = _make_synthetic_pocket()
     tiles = pocket_to_spatial_tiles(pocket, grid_size=32, resolution=0.5)
     assert isinstance(tiles, list)
-    assert len(tiles) == 32 ** 3, f"expected 32768, got {len(tiles)}"
+    assert len(tiles) == 32**3, f"expected 32768, got {len(tiles)}"
     assert all(isinstance(t, SpatialTile) for t in tiles)
     shape = voxel_grid_shape(32)
     assert shape == (32, 32, 32)

@@ -106,10 +106,10 @@ else:
 # Real PB + AiZynth adapter reachability probes
 # ---------------------------------------------------------------------------
 FIXTURE_SMILES: Tuple[str, ...] = (
-    "CCO",                                  # ethanol — small organic
-    "CC(=O)Oc1ccccc1C(=O)O",                # aspirin — drug-like
-    "c1ccccc1",                             # benzene — aromatic
-    "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",         # caffeine — drug-like
+    "CCO",  # ethanol — small organic
+    "CC(=O)Oc1ccccc1C(=O)O",  # aspirin — drug-like
+    "c1ccccc1",  # benzene — aromatic
+    "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",  # caffeine — drug-like
     "Cc1cc(C)c(N2C=CN(c3ccc(-n4nc(C)cc4C)nn3)[C]2->[Au+]<-[Cl-])c(C)c1",  # auranofin-like
 )
 
@@ -133,9 +133,7 @@ def _probe_real_posebusters_adapter() -> Dict[str, Any]:
         ``notes``.
     """
     info: Dict[str, Any] = {
-        "adapter_module": (
-            "molmetal.molmetal_lam.sbdd_env.posebusters_adapter"
-        ),
+        "adapter_module": ("molmetal.molmetal_lam.sbdd_env.posebusters_adapter"),
         "adapter_class": "PoseBustersAdapter",
         "is_available": False,
         "adapter_class_loaded": False,
@@ -149,10 +147,9 @@ def _probe_real_posebusters_adapter() -> Dict[str, Any]:
     }
     try:
         from molmetal.molmetal_lam.sbdd_env import posebusters_adapter
+
         info["adapter_class_loaded"] = True
-        info["posebusters_installed"] = bool(
-            posebusters_adapter._have_posebusters()
-        )
+        info["posebusters_installed"] = bool(posebusters_adapter._have_posebusters())
         if not info["posebusters_installed"]:
             info["first_validate_status"] = "AdapterUnavailable"
             info["notes"].append(
@@ -171,35 +168,35 @@ def _probe_real_posebusters_adapter() -> Dict[str, Any]:
             t0 = time.monotonic()
             try:
                 rep = adapter.validate_mol(smi)
-                per_fixture.append({
-                    "smiles": smi,
-                    "passed": bool(rep.passed),
-                    "pass_rate": float(rep.pass_rate),
-                    "n_passed": int(rep.n_passed),
-                    "n_checks": int(rep.n_checks),
-                    "elapsed_s": round(time.monotonic() - t0, 3),
-                })
+                per_fixture.append(
+                    {
+                        "smiles": smi,
+                        "passed": bool(rep.passed),
+                        "pass_rate": float(rep.pass_rate),
+                        "n_passed": int(rep.n_passed),
+                        "n_checks": int(rep.n_checks),
+                        "elapsed_s": round(time.monotonic() - t0, 3),
+                    }
+                )
                 n_evaluated += 1
                 if rep.passed:
                     n_passed += 1
             except Exception as exc:
-                per_fixture.append({
-                    "smiles": smi,
-                    "passed": False,
-                    "pass_rate": None,
-                    "elapsed_s": round(time.monotonic() - t0, 3),
-                    "error": f"{type(exc).__name__}: {str(exc)[:120]}",
-                })
-        info["first_validate_status"] = (
-            "MEASURED" if n_evaluated > 0 else "ERROR"
-        )
+                per_fixture.append(
+                    {
+                        "smiles": smi,
+                        "passed": False,
+                        "pass_rate": None,
+                        "elapsed_s": round(time.monotonic() - t0, 3),
+                        "error": f"{type(exc).__name__}: {str(exc)[:120]}",
+                    }
+                )
+        info["first_validate_status"] = "MEASURED" if n_evaluated > 0 else "ERROR"
         info["values"] = [r.get("pass_rate") for r in per_fixture]
         info["n_passed"] = int(n_passed)
         info["n_evaluated"] = int(n_evaluated)
         valid = [r["pass_rate"] for r in per_fixture if r.get("pass_rate") is not None]
-        info["aggregate_pass_rate"] = (
-            float(statistics.mean(valid)) if valid else None
-        )
+        info["aggregate_pass_rate"] = float(statistics.mean(valid)) if valid else None
         info["per_fixture"] = per_fixture
     except ImportError as exc:
         info["adapter_class_loaded"] = False
@@ -231,9 +228,7 @@ def _probe_real_aizynth_adapter() -> Dict[str, Any]:
         ``aggregate_synthesizable_rate``, ``notes``.
     """
     info: Dict[str, Any] = {
-        "adapter_module": (
-            "molmetal.molmetal_lam.sbdd_env.aizynth_adapter"
-        ),
+        "adapter_module": ("molmetal.molmetal_lam.sbdd_env.aizynth_adapter"),
         "adapter_class": "AiZynthAdapter",
         "is_available": False,
         "adapter_class_loaded": False,
@@ -248,15 +243,15 @@ def _probe_real_aizynth_adapter() -> Dict[str, Any]:
     }
     try:
         from molmetal.molmetal_lam.sbdd_env import aizynth_adapter
+
         info["adapter_class_loaded"] = True
-        info["aizynthfinder_installed"] = bool(
-            aizynth_adapter._have_aizynthfinder()
-        )
+        info["aizynthfinder_installed"] = bool(aizynth_adapter._have_aizynthfinder())
         adapter = aizynth_adapter.AiZynthAdapter()
-        info["is_available"] = True  # adapter module is loadable; engine may still be SMARTS fallback
+        info["is_available"] = (
+            True  # adapter module is loadable; engine may still be SMARTS fallback
+        )
         info["engine"] = (
-            "aizynthfinder" if info["aizynthfinder_installed"]
-            else "smarts_fallback"
+            "aizynthfinder" if info["aizynthfinder_installed"] else "smarts_fallback"
         )
         # Per-fixture check() — adapter calls AiZynthFinder MCTS (or
         # SMARTS fallback if no AiZynthFinder).  We time each call so
@@ -268,26 +263,28 @@ def _probe_real_aizynth_adapter() -> Dict[str, Any]:
             t0 = time.monotonic()
             try:
                 rep = adapter.check(smi)
-                per_fixture.append({
-                    "smiles": smi,
-                    "synthesizable": bool(rep.synthesizable),
-                    "depth": int(rep.depth),
-                    "engine": str(rep.engine),
-                    "elapsed_s": round(time.monotonic() - t0, 4),
-                })
+                per_fixture.append(
+                    {
+                        "smiles": smi,
+                        "synthesizable": bool(rep.synthesizable),
+                        "depth": int(rep.depth),
+                        "engine": str(rep.engine),
+                        "elapsed_s": round(time.monotonic() - t0, 4),
+                    }
+                )
                 n_evaluated += 1
                 if rep.synthesizable:
                     n_synth += 1
             except Exception as exc:
-                per_fixture.append({
-                    "smiles": smi,
-                    "synthesizable": False,
-                    "elapsed_s": round(time.monotonic() - t0, 4),
-                    "error": f"{type(exc).__name__}: {str(exc)[:120]}",
-                })
-        info["first_check_status"] = (
-            "MEASURED" if n_evaluated > 0 else "ERROR"
-        )
+                per_fixture.append(
+                    {
+                        "smiles": smi,
+                        "synthesizable": False,
+                        "elapsed_s": round(time.monotonic() - t0, 4),
+                        "error": f"{type(exc).__name__}: {str(exc)[:120]}",
+                    }
+                )
+        info["first_check_status"] = "MEASURED" if n_evaluated > 0 else "ERROR"
         info["values"] = [r.get("synthesizable") for r in per_fixture]
         info["n_synthesizable"] = int(n_synth)
         info["n_evaluated"] = int(n_evaluated)
@@ -326,8 +323,8 @@ class ScriptRecord:
     command: List[str]
     exit_code: int = -1
     elapsed_s: float = 0.0
-    pb_status: str = "UNKNOWN"        # MEASURED | AdapterUnavailable | error
-    aizynth_status: str = "UNKNOWN"   # MEASURED | AdapterUnavailable | error
+    pb_status: str = "UNKNOWN"  # MEASURED | AdapterUnavailable | error
+    aizynth_status: str = "UNKNOWN"  # MEASURED | AdapterUnavailable | error
     mock_to_real_diff: str = ""
     pb_values_summary: Dict[str, Any] = field(default_factory=dict)
     aizynth_values_summary: Dict[str, Any] = field(default_factory=dict)
@@ -411,10 +408,17 @@ def run_bench_pb_valid(
     # PoseBusters mode selector.  Pocket subset keeps the run fast
     # on this host (3 pockets × 3 candidates × 2 modes = 18 cells).
     args_list = [
-        "--pb-modes", "mol", "dock",
-        "--pockets", "830c", "1h36", "3eml",
-        "--n-candidates", "3",
-        "--out-dir", str(sub_out),
+        "--pb-modes",
+        "mol",
+        "dock",
+        "--pockets",
+        "830c",
+        "1h36",
+        "3eml",
+        "--n-candidates",
+        "3",
+        "--out-dir",
+        str(sub_out),
     ]
     rec = ScriptRecord(
         script=script,
@@ -423,7 +427,10 @@ def run_bench_pb_valid(
         command=[str(script_path)] + args_list,
     )
     rc, elapsed, out_tail, err_tail = _run_script_subprocess(
-        script_path, args_list, cwd=_REPO_ROOT, timeout_sec=timeout_sec,
+        script_path,
+        args_list,
+        cwd=_REPO_ROOT,
+        timeout_sec=timeout_sec,
     )
     rec.exit_code = rc
     rec.elapsed_s = elapsed
@@ -505,16 +512,26 @@ def run_pb_production(
             _REPO_ROOT / "molmetal" / "data" / "crossdocked100_manifest.csv"
         )
     args_list = [
-        "--manifest", str(staged_manifest),
-        "--n-pockets", "1",
-        "--pocket-offset", "0",
-        "--seeds", "0",
-        "--n-simulations", "3",
-        "--pb-mode", "mol",
-        "--output-dir", str(sub_out),
+        "--manifest",
+        str(staged_manifest),
+        "--n-pockets",
+        "1",
+        "--pocket-offset",
+        "0",
+        "--seeds",
+        "0",
+        "--n-simulations",
+        "3",
+        "--pb-mode",
+        "mol",
+        "--output-dir",
+        str(sub_out),
     ]
     rc, elapsed, out_tail, err_tail = _run_script_subprocess(
-        script_path, args_list, cwd=_REPO_ROOT, timeout_sec=timeout_sec,
+        script_path,
+        args_list,
+        cwd=_REPO_ROOT,
+        timeout_sec=timeout_sec,
     )
     upstream_exit = rc
 
@@ -525,6 +542,7 @@ def run_pb_production(
     inprocess_t0 = time.monotonic()
     try:
         from molmetal.molmetal_lam.sbdd_env import posebusters_adapter
+
         if not posebusters_adapter._have_posebusters():
             inprocess_status = "AdapterUnavailable"
             inprocess_err = "posebusters package not installed"
@@ -543,54 +561,64 @@ def run_pb_production(
                 t0 = time.monotonic()
                 try:
                     rep = adapter_mol.validate_mol(smi)
-                    inprocess_pb_values.append({
-                        "smiles": smi,
-                        "mode": "mol",
-                        "passed": bool(rep.passed),
-                        "pass_rate": float(rep.pass_rate),
-                        "n_passed": int(rep.n_passed),
-                        "n_checks": int(rep.n_checks),
-                        "elapsed_s": round(time.monotonic() - t0, 3),
-                    })
+                    inprocess_pb_values.append(
+                        {
+                            "smiles": smi,
+                            "mode": "mol",
+                            "passed": bool(rep.passed),
+                            "pass_rate": float(rep.pass_rate),
+                            "n_passed": int(rep.n_passed),
+                            "n_checks": int(rep.n_checks),
+                            "elapsed_s": round(time.monotonic() - t0, 3),
+                        }
+                    )
                 except Exception as exc:
-                    inprocess_pb_values.append({
-                        "smiles": smi,
-                        "mode": "mol",
-                        "passed": False,
-                        "elapsed_s": round(time.monotonic() - t0, 3),
-                        "error": f"{type(exc).__name__}: {str(exc)[:120]}",
-                    })
+                    inprocess_pb_values.append(
+                        {
+                            "smiles": smi,
+                            "mode": "mol",
+                            "passed": False,
+                            "elapsed_s": round(time.monotonic() - t0, 3),
+                            "error": f"{type(exc).__name__}: {str(exc)[:120]}",
+                        }
+                    )
 
             # dock-mode: only on a single representative fixture
             if adapter_dock is not None:
                 t0 = time.monotonic()
                 try:
                     pb_result = adapter_dock.validate_docked("CCO", receptor_path)
-                    inprocess_pb_values.append({
-                        "smiles": "CCO",
-                        "mode": "dock",
-                        "receptor_pdb": receptor_path,
-                        "passed": bool(pb_result.report.passed),
-                        "pass_rate": float(pb_result.report.pass_rate),
-                        "n_passed": int(pb_result.report.n_passed),
-                        "n_checks": int(pb_result.report.n_checks),
-                        "extra_checks": list(pb_result.extra_checks),
-                        "elapsed_s": round(time.monotonic() - t0, 3),
-                    })
+                    inprocess_pb_values.append(
+                        {
+                            "smiles": "CCO",
+                            "mode": "dock",
+                            "receptor_pdb": receptor_path,
+                            "passed": bool(pb_result.report.passed),
+                            "pass_rate": float(pb_result.report.pass_rate),
+                            "n_passed": int(pb_result.report.n_passed),
+                            "n_checks": int(pb_result.report.n_checks),
+                            "extra_checks": list(pb_result.extra_checks),
+                            "elapsed_s": round(time.monotonic() - t0, 3),
+                        }
+                    )
                 except Exception as exc:
-                    inprocess_pb_values.append({
-                        "smiles": "CCO",
-                        "mode": "dock",
-                        "receptor_pdb": receptor_path,
-                        "elapsed_s": round(time.monotonic() - t0, 3),
-                        "error": f"{type(exc).__name__}: {str(exc)[:120]}",
-                    })
+                    inprocess_pb_values.append(
+                        {
+                            "smiles": "CCO",
+                            "mode": "dock",
+                            "receptor_pdb": receptor_path,
+                            "elapsed_s": round(time.monotonic() - t0, 3),
+                            "error": f"{type(exc).__name__}: {str(exc)[:120]}",
+                        }
+                    )
 
             n_passed = sum(1 for v in inprocess_pb_values if v.get("passed"))
-            n_total = sum(1 for v in inprocess_pb_values if v.get("passed") is True or v.get("passed") is False)
-            inprocess_status = (
-                "MEASURED" if n_total > 0 else "MEASURED-BUT-NAN"
+            n_total = sum(
+                1
+                for v in inprocess_pb_values
+                if v.get("passed") is True or v.get("passed") is False
             )
+            inprocess_status = "MEASURED" if n_total > 0 else "MEASURED-BUT-NAN"
     except Exception as exc:  # pragma: no cover
         inprocess_err = f"{type(exc).__name__}: {exc}"
         inprocess_status = "ERROR"
@@ -613,9 +641,8 @@ def run_pb_production(
         + f"\n[in-process] status={inprocess_status} wall={inprocess_wall_s:.2f}s "
         f"n_values={len(inprocess_pb_values)}"
     )
-    rec.stderr_tail = (
-        err_tail
-        + (f"\n[in-process err] {inprocess_err}" if inprocess_err else "")
+    rec.stderr_tail = err_tail + (
+        f"\n[in-process err] {inprocess_err}" if inprocess_err else ""
     )
     if pb_probe.get("is_available"):
         rec.pb_status = "MEASURED"
@@ -639,9 +666,7 @@ def run_pb_production(
         "inprocess_wall_s": inprocess_wall_s,
         "inprocess_n_fixture": len(FIXTURE_SMILES),
         "inprocess_n_evaluated": len(inprocess_pb_values),
-        "inprocess_n_passed": sum(
-            1 for v in inprocess_pb_values if v.get("passed")
-        ),
+        "inprocess_n_passed": sum(1 for v in inprocess_pb_values if v.get("passed")),
         "inprocess_values": inprocess_pb_values,
         "inprocess_err": inprocess_err,
         "upstream_exit_code": upstream_exit,
@@ -689,24 +714,34 @@ def run_r4_c_full_sweep(
             _REPO_ROOT / "molmetal" / "data" / "crossdocked100_manifest.csv"
         )
     args_list = [
-        "--output-prefix", str(sub_out / "r4c_pb_aizynth"),
-        "--manifest", str(staged_manifest),
-        "--n-pockets", "1",
-        "--pocket-offset", "0",
-        "--n-simulations", "3",
-        "--seeds", "0",
+        "--output-prefix",
+        str(sub_out / "r4c_pb_aizynth"),
+        "--manifest",
+        str(staged_manifest),
+        "--n-pockets",
+        "1",
+        "--pocket-offset",
+        "0",
+        "--n-simulations",
+        "3",
+        "--seeds",
+        "0",
         "--sota-aizynth",
-        "--sota-aizynth-mode", "smarts",
-        "--sota-aizynth-timeout", "10.0",
+        "--sota-aizynth-mode",
+        "smarts",
+        "--sota-aizynth-timeout",
+        "10.0",
         # --pb-check requires --physical-docking (PB runs after Vina
         # docking per the r4_c_full_sweep preflight check).  We do
         # NOT add --physical-docking by default because Vina is
         # MISSING_DEP on this host (per Wf-48 Phase 2) and the
         # preflight will fail.  When Vina is installed the harness
         # caller can extend args_list.
-        "--pb-mode", "mol",
+        "--pb-mode",
+        "mol",
         # Synthesis oracle: SMARTS fallback on this host.
-        "--synthesis-oracle", "smarts",
+        "--synthesis-oracle",
+        "smarts",
     ]
     rec = ScriptRecord(
         script=script,
@@ -715,7 +750,10 @@ def run_r4_c_full_sweep(
         command=[str(script_path)] + args_list,
     )
     rc, elapsed, out_tail, err_tail = _run_script_subprocess(
-        script_path, args_list, cwd=_REPO_ROOT, timeout_sec=timeout_sec,
+        script_path,
+        args_list,
+        cwd=_REPO_ROOT,
+        timeout_sec=timeout_sec,
     )
     rec.exit_code = rc
     rec.elapsed_s = elapsed
@@ -771,11 +809,17 @@ def run_bench_per_tool_accuracy(
     )
     sub_out = out_dir / "script_pb_bench_per_tool_accuracy"
     args_list = [
-        "--tools", "6",
-        "--datasets", "platinai_5k", "metalcytotox",
-        "--n-samples", "8",
-        "--seeds", "0",
-        "--out-dir", str(sub_out),
+        "--tools",
+        "6",
+        "--datasets",
+        "platinai_5k",
+        "metalcytotox",
+        "--n-samples",
+        "8",
+        "--seeds",
+        "0",
+        "--out-dir",
+        str(sub_out),
     ]
     rec = ScriptRecord(
         script=script,
@@ -786,7 +830,10 @@ def run_bench_per_tool_accuracy(
 
     # === Step 1: run the upstream script ===
     rc, elapsed, out_tail, err_tail = _run_script_subprocess(
-        script_path, args_list, cwd=_REPO_ROOT, timeout_sec=timeout_sec,
+        script_path,
+        args_list,
+        cwd=_REPO_ROOT,
+        timeout_sec=timeout_sec,
     )
 
     # === Step 2: in-process PB + AiZynth probes via score_any ===
@@ -800,22 +847,24 @@ def run_bench_per_tool_accuracy(
             AdapterUnavailable,
             score_any,
         )
+
         result = score_any(
             "pb_pass_rate",
             molecules=list(FIXTURE_SMILES),
         )
         inprocess_pb_values = [
-            float(v) for v in result.get("values", [])
+            float(v)
+            for v in result.get("values", [])
             if v is not None and not (isinstance(v, float) and math.isnan(v))
         ]
         inprocess_pb_n_nan = sum(
-            1 for v in result.get("values", [])
+            1
+            for v in result.get("values", [])
             if isinstance(v, float) and math.isnan(v)
         )
         if pb_probe.get("is_available"):
             inprocess_pb_status = (
-                "MEASURED" if len(inprocess_pb_values) > 0
-                else "MEASURED-BUT-NAN"
+                "MEASURED" if len(inprocess_pb_values) > 0 else "MEASURED-BUT-NAN"
             )
         else:
             inprocess_pb_status = "AdapterUnavailable"
@@ -834,14 +883,11 @@ def run_bench_per_tool_accuracy(
             "aizynth_synthesis",
             molecules=list(FIXTURE_SMILES),
         )
-        inprocess_aiz_values = [
-            bool(v) for v in result.get("values", [])
-        ]
+        inprocess_aiz_values = [bool(v) for v in result.get("values", [])]
         inprocess_aiz_n_synth = sum(1 for v in inprocess_aiz_values if v)
         if aizynth_probe.get("aizynthfinder_installed"):
             inprocess_aiz_status = (
-                "MEASURED" if len(inprocess_aiz_values) > 0
-                else "MEASURED-BUT-NAN"
+                "MEASURED" if len(inprocess_aiz_values) > 0 else "MEASURED-BUT-NAN"
             )
         elif aizynth_probe.get("adapter_class_loaded"):
             inprocess_aiz_status = "MEASURED-via-SMARTS-fallback"
@@ -934,10 +980,16 @@ def _render_summary_md(
     lines.append("")
     lines.append(f"* Adapter module: `{pb_probe.get('adapter_module', '?')}`")
     lines.append(f"* Adapter class:  `{pb_probe.get('adapter_class', '?')}`")
-    lines.append(f"* Adapter class loaded: **{pb_probe.get('adapter_class_loaded', False)}**")
-    lines.append(f"* `posebusters` package installed: **{pb_probe.get('posebusters_installed', False)}**")
+    lines.append(
+        f"* Adapter class loaded: **{pb_probe.get('adapter_class_loaded', False)}**"
+    )
+    lines.append(
+        f"* `posebusters` package installed: **{pb_probe.get('posebusters_installed', False)}**"
+    )
     lines.append(f"* `is_available()`: **{pb_probe.get('is_available', False)}**")
-    lines.append(f"* First `validate_mol()` status: **{pb_probe.get('first_validate_status', '?')}**")
+    lines.append(
+        f"* First `validate_mol()` status: **{pb_probe.get('first_validate_status', '?')}**"
+    )
     if pb_probe.get("values"):
         n_pass = int(pb_probe.get("n_passed", 0))
         n_eval = int(pb_probe.get("n_evaluated", 0))
@@ -945,8 +997,8 @@ def _render_summary_md(
         lines.append(
             f"* Fixture pass-rate aggregate: **{agg:.3f}** "
             f"({n_pass}/{n_eval} passed)"
-            if agg is not None else
-            "* Fixture pass-rate aggregate: **N/A**"
+            if agg is not None
+            else "* Fixture pass-rate aggregate: **N/A**"
         )
     if pb_probe.get("notes"):
         lines.append("* Notes:")
@@ -957,11 +1009,17 @@ def _render_summary_md(
     lines.append("")
     lines.append(f"* Adapter module: `{aizynth_probe.get('adapter_module', '?')}`")
     lines.append(f"* Adapter class:  `{aizynth_probe.get('adapter_class', '?')}`")
-    lines.append(f"* Adapter class loaded: **{aizynth_probe.get('adapter_class_loaded', False)}**")
-    lines.append(f"* `aizynthfinder` package installed: **{aizynth_probe.get('aizynthfinder_installed', False)}**")
+    lines.append(
+        f"* Adapter class loaded: **{aizynth_probe.get('adapter_class_loaded', False)}**"
+    )
+    lines.append(
+        f"* `aizynthfinder` package installed: **{aizynth_probe.get('aizynthfinder_installed', False)}**"
+    )
     lines.append(f"* `is_available()`: **{aizynth_probe.get('is_available', False)}**")
     lines.append(f"* Engine in use: **{aizynth_probe.get('engine', '?')}**")
-    lines.append(f"* First `check()` status: **{aizynth_probe.get('first_check_status', '?')}**")
+    lines.append(
+        f"* First `check()` status: **{aizynth_probe.get('first_check_status', '?')}**"
+    )
     if aizynth_probe.get("values"):
         n_synth = int(aizynth_probe.get("n_synthesizable", 0))
         n_eval = int(aizynth_probe.get("n_evaluated", 0))
@@ -969,8 +1027,8 @@ def _render_summary_md(
         lines.append(
             f"* Fixture synthesizable rate: **{agg:.3f}** "
             f"({n_synth}/{n_eval} synthesizable)"
-            if agg is not None else
-            "* Fixture synthesizable rate: **N/A**"
+            if agg is not None
+            else "* Fixture synthesizable rate: **N/A**"
         )
     if aizynth_probe.get("notes"):
         lines.append("* Notes:")
@@ -989,7 +1047,9 @@ def _render_summary_md(
     lines.append("")
     lines.append("## Per-script roll-up")
     lines.append("")
-    lines.append("| # | Script | Exit | Elapsed (s) | PB status | AiZynth status | Mock→Real diff |")
+    lines.append(
+        "| # | Script | Exit | Elapsed (s) | PB status | AiZynth status | Mock→Real diff |"
+    )
     lines.append("|---|---|---:|---:|---|---|---|")
     for i, rec in enumerate(records, 1):
         lines.append(
@@ -1129,9 +1189,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         "--strict-exit-0",
         action="store_true",
         help="Treat exit code 1 (seed_only / no_candidates) as PASS only "
-             "when both PB + AiZynth adapters were exercised honestly.  "
-             "Default: any exit code <= 1 + both adapters exercised is "
-             "recorded as PASS_HONEST_NEGATIVE.",
+        "when both PB + AiZynth adapters were exercised honestly.  "
+        "Default: any exit code <= 1 + both adapters exercised is "
+        "recorded as PASS_HONEST_NEGATIVE.",
     )
     parser.add_argument("--verbose", "-v", action="store_true")
     args = parser.parse_args(argv)
@@ -1195,7 +1255,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         records.append(rec)
         log.info(
             "  exit=%d elapsed=%.1fs pb=%s aizynth=%s",
-            rec.exit_code, rec.elapsed_s, rec.pb_status, rec.aizynth_status,
+            rec.exit_code,
+            rec.elapsed_s,
+            rec.pb_status,
+            rec.aizynth_status,
         )
     total_elapsed = time.monotonic() - t0
 
@@ -1261,17 +1324,32 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     json_path = out_dir / "pb_aizynth_real_run.json"
     md_path = out_dir / "pb_aizynth_summary.md"
-    json_path.write_text(json.dumps(record_payload, indent=2, ensure_ascii=False) + "\n")
-    md_path.write_text(_render_summary_md(
-        pb_probe, aizynth_probe, records, n_exit_0, n_total, total_elapsed, gate_verdict,
-    ))
+    json_path.write_text(
+        json.dumps(record_payload, indent=2, ensure_ascii=False) + "\n"
+    )
+    md_path.write_text(
+        _render_summary_md(
+            pb_probe,
+            aizynth_probe,
+            records,
+            n_exit_0,
+            n_total,
+            total_elapsed,
+            gate_verdict,
+        )
+    )
 
     log.info("Outputs written:")
     log.info("  %s", json_path)
     log.info("  %s", md_path)
     log.info(
         "Gate verdict: %s  (n_exit_0=%d/%d, n_exit_le_1=%d/%d, total %.1fs)",
-        gate_verdict, n_exit_0, n_total, n_exit_le_1, n_total, total_elapsed,
+        gate_verdict,
+        n_exit_0,
+        n_total,
+        n_exit_le_1,
+        n_total,
+        total_elapsed,
     )
 
     # The harness exits 0 when every script ran to completion (exit

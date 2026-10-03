@@ -21,6 +21,7 @@ Skipped automatically when ``metallo_drug_smoke_retrain.py`` is not
 present (e.g. an empty branch checkout) so the rest of the suite
 still runs.
 """
+
 from __future__ import annotations
 
 import shutil
@@ -70,9 +71,9 @@ def test_smoke_flag_appears_in_help():
     """``--smoke`` must be a recognised CLI flag (visible in --help)."""
     proc = _run(["--help"], timeout=20.0)
     assert proc.returncode == 0, f"--help failed: {proc.stderr}"
-    assert "--smoke" in proc.stdout, (
-        f"--smoke flag missing from --help output:\n{proc.stdout}"
-    )
+    assert (
+        "--smoke" in proc.stdout
+    ), f"--smoke flag missing from --help output:\n{proc.stdout}"
 
 
 # ---------------------------------------------------------------------------
@@ -90,9 +91,14 @@ def test_smoke_flag_resolves_smoke_defaults(monkeypatch, tmp_path):
     existence check, so we still see the resolved values.
     """
     proc = subprocess.run(
-        [str(_DEFAULT_PY), "-u", str(SCRIPT),
-         "--smoke",
-         "--csv", str(tmp_path / "nonexistent.csv")],
+        [
+            str(_DEFAULT_PY),
+            "-u",
+            str(SCRIPT),
+            "--smoke",
+            "--csv",
+            str(tmp_path / "nonexistent.csv"),
+        ],
         cwd=str(PROJECT_ROOT),
         capture_output=True,
         text=True,
@@ -102,21 +108,21 @@ def test_smoke_flag_resolves_smoke_defaults(monkeypatch, tmp_path):
     # expected exit code; we just want the preset banner printed
     # *before* the early return.
     combined = proc.stdout + proc.stderr
-    assert "preset=smoke" in combined, (
-        f"expected 'preset=smoke' banner in output, got:\n{combined}"
-    )
-    assert "steps=200" in combined, (
-        f"smoke preset should announce steps=200, got:\n{combined}"
-    )
-    assert "batch=4" in combined, (
-        f"smoke preset should announce batch=4, got:\n{combined}"
-    )
-    assert "decode_smoke_every=50" in combined, (
-        f"smoke preset should announce decode_smoke_every=50, got:\n{combined}"
-    )
-    assert "/tmp/smoke_out" in combined, (
-        f"smoke preset should announce out_dir=/tmp/smoke_out, got:\n{combined}"
-    )
+    assert (
+        "preset=smoke" in combined
+    ), f"expected 'preset=smoke' banner in output, got:\n{combined}"
+    assert (
+        "steps=200" in combined
+    ), f"smoke preset should announce steps=200, got:\n{combined}"
+    assert (
+        "batch=4" in combined
+    ), f"smoke preset should announce batch=4, got:\n{combined}"
+    assert (
+        "decode_smoke_every=50" in combined
+    ), f"smoke preset should announce decode_smoke_every=50, got:\n{combined}"
+    assert (
+        "/tmp/smoke_out" in combined
+    ), f"smoke preset should announce out_dir=/tmp/smoke_out, got:\n{combined}"
 
 
 def test_explicit_step_wins_over_smoke_default(monkeypatch, tmp_path):
@@ -124,18 +130,25 @@ def test_explicit_step_wins_over_smoke_default(monkeypatch, tmp_path):
     value wins over preset).  Same early-exit via missing CSV trick.
     """
     proc = subprocess.run(
-        [str(_DEFAULT_PY), "-u", str(SCRIPT),
-         "--smoke", "--steps", "50",
-         "--csv", str(tmp_path / "nonexistent.csv")],
+        [
+            str(_DEFAULT_PY),
+            "-u",
+            str(SCRIPT),
+            "--smoke",
+            "--steps",
+            "50",
+            "--csv",
+            str(tmp_path / "nonexistent.csv"),
+        ],
         cwd=str(PROJECT_ROOT),
         capture_output=True,
         text=True,
         timeout=30.0,
     )
     combined = proc.stdout + proc.stderr
-    assert "steps=50" in combined, (
-        f"explicit --steps 50 should win over smoke preset 200, got:\n{combined}"
-    )
+    assert (
+        "steps=50" in combined
+    ), f"explicit --steps 50 should win over smoke preset 200, got:\n{combined}"
 
 
 # ---------------------------------------------------------------------------
@@ -158,9 +171,7 @@ def test_smoke_run_completes_under_2_minutes_on_cpu(tmp_path):
 
     t0 = time.time()
     proc = subprocess.run(
-        [str(_DEFAULT_PY), "-u", str(SCRIPT),
-         "--smoke",
-         "--out-dir", str(out_dir)],
+        [str(_DEFAULT_PY), "-u", str(SCRIPT), "--smoke", "--out-dir", str(out_dir)],
         cwd=str(PROJECT_ROOT),
         capture_output=True,
         text=True,
@@ -176,19 +187,19 @@ def test_smoke_run_completes_under_2_minutes_on_cpu(tmp_path):
     assert wall < 120.0, f"smoke run took {wall:.1f}s — must finish <2 min on CPU"
 
     # Output-dir population — the smoke spec requires these 3 artifacts.
-    assert (out_dir / "ckpt.pt").is_file(), \
-        f"ckpt.pt missing from {out_dir}; got: {sorted(p.name for p in out_dir.iterdir())}"
-    assert (out_dir / "final.json").is_file(), \
-        "final.json missing from out_dir"
-    assert (out_dir / "final.md").is_file(), \
-        "final.md missing from out_dir"
+    assert (
+        out_dir / "ckpt.pt"
+    ).is_file(), f"ckpt.pt missing from {out_dir}; got: {sorted(p.name for p in out_dir.iterdir())}"
+    assert (out_dir / "final.json").is_file(), "final.json missing from out_dir"
+    assert (out_dir / "final.md").is_file(), "final.md missing from out_dir"
 
     # final.json sanity
     import json as _json
+
     metrics = _json.loads((out_dir / "final.json").read_text())
     assert metrics["config"]["steps_planned"] == 200, metrics["config"]
-    assert metrics["config"]["steps_executed"] >= 1, (
-        f"smoke run executed 0 steps; metrics={metrics.get('config')}"
-    )
+    assert (
+        metrics["config"]["steps_executed"] >= 1
+    ), f"smoke run executed 0 steps; metrics={metrics.get('config')}"
     assert metrics["config"]["batch_size"] == 4, metrics["config"]
     assert metrics["config"]["decode_smoke_every"] == 50, metrics["config"]

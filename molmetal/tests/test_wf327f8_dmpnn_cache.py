@@ -45,11 +45,11 @@ FIXTURE_SMILES = [
     "c1ccccc1",
     "CC(=O)O",
     "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",  # caffeine
-    "CC(C)CC(N)C(=O)O",              # leucine
-    "C1CCCCC1",                       # cyclohexane
+    "CC(C)CC(N)C(=O)O",  # leucine
+    "C1CCCCC1",  # cyclohexane
     "CCN",
-    "CC(=O)N",                        # acetamide
-    "OC(=O)C(=O)O",                   # oxalic acid
+    "CC(=O)N",  # acetamide
+    "OC(=O)C(=O)O",  # oxalic acid
     "C(C(C(C(C(C(C=O)O)O)O)O)O)O)O",  # glucose
 ]
 
@@ -107,14 +107,10 @@ def test_wf327f8_integration_dmpnn_trainer():
     cache.begin_epoch(0)
     cache.precompute_smiles(smiles)
     h_atom_B1, edge_index_B1, edge_attr_B1, batch_idx_B1, atom_mask_B1 = (
-        encoder._featurize_batch(
-            smiles, DEVICE, cache=cache, batch_idx_key=0
-        )
+        encoder._featurize_batch(smiles, DEVICE, cache=cache, batch_idx_key=0)
     )
     h_atom_B2, edge_index_B2, edge_attr_B2, batch_idx_B2, atom_mask_B2 = (
-        encoder._featurize_batch(
-            smiles, DEVICE, cache=cache, batch_idx_key=0
-        )
+        encoder._featurize_batch(smiles, DEVICE, cache=cache, batch_idx_key=0)
     )
 
     assert torch.equal(h_atom_A, h_atom_B1)
@@ -209,9 +205,9 @@ def test_wf327f8_speedup_megabench():
     )
 
     # Tier-2 hit rate very high (only first epoch of each cohort is miss).
-    assert cache.stats.batch_hit_rate >= 0.85, (
-        f"batch_hit_rate too low: {cache.stats.batch_hit_rate:.2%}"
-    )
+    assert (
+        cache.stats.batch_hit_rate >= 0.85
+    ), f"batch_hit_rate too low: {cache.stats.batch_hit_rate:.2%}"
 
     # Save report.
     report = {

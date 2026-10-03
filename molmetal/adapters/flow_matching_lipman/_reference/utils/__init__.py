@@ -9,6 +9,7 @@ directly, but the molmetal adapter still uses ``ModelWrapper``.
 This shim provides a minimal ``ModelWrapper`` that handles both legacy
 positional signatures.
 """
+
 from __future__ import annotations
 
 from typing import Callable, Optional

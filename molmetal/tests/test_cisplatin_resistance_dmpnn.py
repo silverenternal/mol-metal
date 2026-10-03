@@ -52,9 +52,16 @@ def _make_model(
 
 
 _TOY_SMILES = [
-    "CCO", "CCN", "c1ccccc1", "CC(=O)O",
-    "CC(C)O", "CCC", "c1ccncc1", "CCS",
-    "CC(=O)N", "C1CCCCC1",
+    "CCO",
+    "CCN",
+    "c1ccccc1",
+    "CC(=O)O",
+    "CC(C)O",
+    "CCC",
+    "c1ccncc1",
+    "CCS",
+    "CC(=O)N",
+    "C1CCCCC1",
 ]
 _TOY_CELL_IDS = [0, 1, 2, 0, 1, 2, 0, 1, 2, 0]
 
@@ -71,7 +78,11 @@ def _toy_batch(B: int = 4):
     else:
         smi = _TOY_SMILES[:B]
         cid = _TOY_CELL_IDS[:B]
-    return smi, torch.tensor(cid, dtype=torch.long), torch.randn(B, DEFAULT_N_RESIST_FEAT)
+    return (
+        smi,
+        torch.tensor(cid, dtype=torch.long),
+        torch.randn(B, DEFAULT_N_RESIST_FEAT),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -86,9 +97,9 @@ def test_forward_shape():
         out = model(smiles, cell_ids, resist)
 
     # Key set exactly matches the default cell-line roster.
-    assert set(out.keys()) == set(DEFAULT_CELL_LINES), (
-        f"got keys {set(out.keys())}, expected {set(DEFAULT_CELL_LINES)}"
-    )
+    assert set(out.keys()) == set(
+        DEFAULT_CELL_LINES
+    ), f"got keys {set(out.keys())}, expected {set(DEFAULT_CELL_LINES)}"
     # Each value is (B, 2) float32 logits.
     for cl, lg in out.items():
         assert lg.shape == (4, 2), f"{cl}: got {tuple(lg.shape)}"
@@ -115,8 +126,8 @@ def test_focal_loss_balance():
 
     # High class imbalance: 8 negatives, 2 positives per cell line.
     targets = {
-        "MCF-7":    torch.tensor([0, 0, 0, 0, 0, 0, 0, 0, 1, 1], dtype=torch.long),
-        "A549":     torch.tensor([0, 0, 0, 0, 0, 0, 0, 0, 1, 1], dtype=torch.long),
+        "MCF-7": torch.tensor([0, 0, 0, 0, 0, 0, 0, 0, 1, 1], dtype=torch.long),
+        "A549": torch.tensor([0, 0, 0, 0, 0, 0, 0, 0, 1, 1], dtype=torch.long),
         "A2780cis": torch.tensor([0, 0, 0, 0, 0, 0, 0, 0, 1, 1], dtype=torch.long),
     }
     loss = cisplatin_resistance_loss(out, targets)
@@ -153,10 +164,10 @@ def test_cell_routing():
     #     the cell-embedding path (32 dims) feeds every head.
     for sm_i in range(2):
         mcf7 = out_mcf7["MCF-7"][sm_i]
-        a549 = out_a549["MCF-7"][sm_i]    # same head, different cell embed
-        assert not torch.allclose(mcf7, a549, atol=1e-6), (
-            "cell embedding did not influence the MCF-7 head"
-        )
+        a549 = out_a549["MCF-7"][sm_i]  # same head, different cell embed
+        assert not torch.allclose(
+            mcf7, a549, atol=1e-6
+        ), "cell embedding did not influence the MCF-7 head"
 
     # (b) Zero one head's final Linear; the other heads must be unaffected.
     cell_ids = torch.tensor([0, 1], dtype=torch.long)
@@ -170,10 +181,10 @@ def test_cell_routing():
 
     # MCF-7 + A2780cis unchanged.
     for cl in ("MCF-7", "A2780cis"):
-        assert torch.allclose(out_before[cl], out_after[cl], atol=1e-6), (
-            f"{cl} head was perturbed by zeroing A549's head"
-        )
+        assert torch.allclose(
+            out_before[cl], out_after[cl], atol=1e-6
+        ), f"{cl} head was perturbed by zeroing A549's head"
     # A549 changed.
-    assert not torch.allclose(out_before["A549"], out_after["A549"], atol=1e-6), (
-        "zeroing A549's head did not change A549's logits"
-    )
+    assert not torch.allclose(
+        out_before["A549"], out_after["A549"], atol=1e-6
+    ), "zeroing A549's head did not change A549's logits"

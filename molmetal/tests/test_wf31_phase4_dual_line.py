@@ -69,9 +69,7 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 SCRIPTS_DIR = PROJECT_ROOT / "molmetal" / "scripts"
 REPORTS_DIR = PROJECT_ROOT / "molmetal" / "reports"
-VENV_PY = (
-    PROJECT_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
-)
+VENV_PY = PROJECT_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
 
 # Three benchmark out-dirs (Wf-31 Phase 4 spec).
 M1_SE3SB_DIR = REPORTS_DIR / "wf31_m1" / "se3sb"
@@ -182,14 +180,12 @@ def test_m1_se3sb_train_script_exposes_metals_seeds_init() -> None:
     """m1 CLI must expose --metals, --seeds, --init (Wf-31 spec)."""
     help_text = _parse_args_help(TRAIN_RU_5METAL)
     for flag in ("--metals", "--seeds", "--init"):
-        assert flag in help_text, (
-            f"train_ru_5metal_se3sb.py --help missing {flag}"
-        )
+        assert flag in help_text, f"train_ru_5metal_se3sb.py --help missing {flag}"
     # Init choices must include both R17 baseline and R18 attach points.
     for choice in ("tmqm", "se3sb", "transport", "multiph"):
-        assert choice in help_text, (
-            f"train_ru_5metal_se3sb.py --help missing init choice {choice}"
-        )
+        assert (
+            choice in help_text
+        ), f"train_ru_5metal_se3sb.py --help missing init choice {choice}"
 
 
 # ---------------------------------------------------------------------------
@@ -205,13 +201,13 @@ def test_m2_cisplatin_train_script_exposes_cell_line_seeds_init() -> None:
     """m2 CLI must expose --cell-line, --seeds, --init (Wf-31 spec)."""
     help_text = _parse_args_help(TRAIN_CISPLATIN)
     for flag in ("--cell-line", "--seeds", "--init"):
-        assert flag in help_text, (
-            f"train_cisplatin_resistance_v2.py --help missing {flag}"
-        )
+        assert (
+            flag in help_text
+        ), f"train_cisplatin_resistance_v2.py --help missing {flag}"
     # Cell-line choices include A2780cis (the Wf-31 spec target).
-    assert "A2780cis" in help_text, (
-        "train_cisplatin_resistance_v2.py --help missing A2780cis cell-line"
-    )
+    assert (
+        "A2780cis" in help_text
+    ), "train_cisplatin_resistance_v2.py --help missing A2780cis cell-line"
 
 
 # ---------------------------------------------------------------------------
@@ -227,9 +223,7 @@ def test_m7_bench_script_exposes_data_n_samples_output() -> None:
     """m7 CLI must expose --data, --n-samples, --output (Wf-31 spec)."""
     help_text = _parse_args_help(BENCH_MULTI_PH)
     for flag in ("--data", "--n-samples", "--output"):
-        assert flag in help_text, (
-            f"bench_multi_ph_diversity.py --help missing {flag}"
-        )
+        assert flag in help_text, f"bench_multi_ph_diversity.py --help missing {flag}"
 
 
 # ---------------------------------------------------------------------------

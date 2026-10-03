@@ -18,6 +18,7 @@ Outputs (under --output-dir, default
     * ``report.json`` — per-SMILES score + latency + aggregate stats
     * ``summary.md``  — human-readable summary
 """
+
 from __future__ import annotations
 
 import argparse
@@ -119,22 +120,47 @@ def _score_smiles(adapter, smiles: str) -> Dict[str, Any]:
     out = adapter.score(smiles)
     dt = time.monotonic() - t0
     if not out:
-        return {"smiles": smiles, "score": None, "elapsed_seconds": dt, "ok": False,
-                "reason": "empty_result"}
+        return {
+            "smiles": smiles,
+            "score": None,
+            "elapsed_seconds": dt,
+            "ok": False,
+            "reason": "empty_result",
+        }
     v = out[0]
     if v is None:
-        return {"smiles": smiles, "score": None, "elapsed_seconds": dt, "ok": False,
-                "reason": adapter.last_error or "null_score"}
+        return {
+            "smiles": smiles,
+            "score": None,
+            "elapsed_seconds": dt,
+            "ok": False,
+            "reason": adapter.last_error or "null_score",
+        }
     try:
         fv = float(v)
     except (TypeError, ValueError):
-        return {"smiles": smiles, "score": None, "elapsed_seconds": dt, "ok": False,
-                "reason": "non_numeric"}
+        return {
+            "smiles": smiles,
+            "score": None,
+            "elapsed_seconds": dt,
+            "ok": False,
+            "reason": "non_numeric",
+        }
     if fv != fv:  # NaN
-        return {"smiles": smiles, "score": None, "elapsed_seconds": dt, "ok": False,
-                "reason": "nan"}
-    return {"smiles": smiles, "score": fv, "elapsed_seconds": round(dt, 4), "ok": True,
-            "reason": None}
+        return {
+            "smiles": smiles,
+            "score": None,
+            "elapsed_seconds": dt,
+            "ok": False,
+            "reason": "nan",
+        }
+    return {
+        "smiles": smiles,
+        "score": fv,
+        "elapsed_seconds": round(dt, 4),
+        "ok": True,
+        "reason": None,
+    }
 
 
 def _score_batch(adapter, batch: List[str], label: str) -> Dict[str, Any]:
@@ -236,7 +262,7 @@ def main() -> int:
             "created_utc": datetime.now(timezone.utc).isoformat(),
             "method": "REINVENT4APIAdapter direct-API smoke (TODO-05 verify)",
             "scope": "FAILURE — adapter.unavailable; direct-API path cannot "
-                     "construct Scorer in this environment",
+            "construct Scorer in this environment",
             "honest_framing": {
                 "importable_pre_add": importable,
                 "importable_post_add": _api.is_reinvent_importable(invent_root),
@@ -264,13 +290,17 @@ def main() -> int:
     # Aggregate everything.
     all_scores: List[float] = []
     for r in results:
-        all_scores.extend(s for s in (row["score"] for row in r["rows"]) if s is not None)
+        all_scores.extend(
+            s for s in (row["score"] for row in r["rows"]) if s is not None
+        )
     overall_metrics = {
         "n_smiles_total": sum(r["metrics"]["n_smiles"] for r in results),
         "n_succeeded_total": sum(r["metrics"]["n_succeeded"] for r in results),
         "n_failed_total": sum(r["metrics"]["n_failed"] for r in results),
         "mean_score_overall": statistics.mean(all_scores) if all_scores else None,
-        "std_score_overall": statistics.stdev(all_scores) if len(all_scores) > 1 else None,
+        "std_score_overall": statistics.stdev(all_scores)
+        if len(all_scores) > 1
+        else None,
         "all_in_unit_interval_overall": all(0.0 <= v <= 1.0 for v in all_scores),
     }
 
@@ -278,7 +308,7 @@ def main() -> int:
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "method": "REINVENT4APIAdapter direct-API smoke (TODO-05 verify)",
         "scope": "MEASURED — direct in-process Scorer() invocation, "
-                 "no subprocess, no JSONL worker",
+        "no subprocess, no JSONL worker",
         "honest_framing": {
             "importable_pre_add": importable,
             "importable_post_add": _api.is_reinvent_importable(invent_root),
@@ -306,11 +336,16 @@ def main() -> int:
     }
     (out_dir / "report.json").write_text(json.dumps(report, indent=2) + "\n")
     print("\n" + "=" * 60)
-    print(json.dumps({
-        "passed": report["passed"],
-        "overall": overall_metrics,
-        "batch_metrics": [r["metrics"] for r in results],
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "passed": report["passed"],
+                "overall": overall_metrics,
+                "batch_metrics": [r["metrics"] for r in results],
+            },
+            indent=2,
+        )
+    )
     return 0 if report["passed"] else 1
 
 

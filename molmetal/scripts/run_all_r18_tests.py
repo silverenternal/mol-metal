@@ -57,6 +57,7 @@ Exit codes:
 The script is CPU-only, AST-light, idempotent, and never mutates
 anything outside its own output directories.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -106,81 +107,81 @@ WF46_MD_OUT = WF46_REPORT_DIR / "test_summary.md"
 # ---------------------------------------------------------------------------
 R18_CATEGORY_STEMS: List[Tuple[str, str, str]] = [
     # --- math_skills (T1..T9) — file stem contains one of these substrings.
-    ("bass_existence",                "math_skills", "T8 Bass martingale existence"),
-    ("bergman_kernel",                "math_skills", "T9 Bergman kernel BSD"),
-    ("monge_ampere_regularity",       "math_skills", "T3 Monge-Ampere regularity"),
-    ("multi_parameter_ph",            "math_skills", "T5 multi-parameter PH"),
-    ("ph_hardness_guardrail",         "math_skills", "T6 PH hardness guardrail"),
-    ("sb_bass_martingale",            "math_skills", "T7 SB-Bass martingale"),
-    ("se3_schrodinger_bridge",        "math_skills", "T1 SE(3) Schrodinger bridge"),
-    ("transport_relaxation",          "math_skills", "T2 transport relaxation"),
-    ("wasserstein_gradient_flow",     "math_skills", "T4 Wasserstein gradient flow"),
-    ("hochschild_cohomology",         "math_skills", "Hochschild cohom. bonus"),
-    ("quantum_semantics",             "math_skills", "Quantum semantics bonus"),
-    ("fractional_ode",                "math_skills", "Fractional ODE bonus"),
-    ("hilbert_primal_dual",           "math_skills", "Hilbert primal-dual reward"),
-
+    ("bass_existence", "math_skills", "T8 Bass martingale existence"),
+    ("bergman_kernel", "math_skills", "T9 Bergman kernel BSD"),
+    ("monge_ampere_regularity", "math_skills", "T3 Monge-Ampere regularity"),
+    ("multi_parameter_ph", "math_skills", "T5 multi-parameter PH"),
+    ("ph_hardness_guardrail", "math_skills", "T6 PH hardness guardrail"),
+    ("sb_bass_martingale", "math_skills", "T7 SB-Bass martingale"),
+    ("se3_schrodinger_bridge", "math_skills", "T1 SE(3) Schrodinger bridge"),
+    ("transport_relaxation", "math_skills", "T2 transport relaxation"),
+    ("wasserstein_gradient_flow", "math_skills", "T4 Wasserstein gradient flow"),
+    ("hochschild_cohomology", "math_skills", "Hochschild cohom. bonus"),
+    ("quantum_semantics", "math_skills", "Quantum semantics bonus"),
+    ("fractional_ode", "math_skills", "Fractional ODE bonus"),
+    ("hilbert_primal_dual", "math_skills", "Hilbert primal-dual reward"),
     # --- integration — any *_integration.py
-    ("hilbert_astsr_integration",     "integration", "Hilbert-ASTSR integration"),
-    ("hilbert_score_repellent_integration", "integration", "Hilbert + score-repellent integ"),
-    ("multi_ph_integration",          "integration", "Multi-PH integration"),
-    ("multi_ph_pll_integration",      "integration", "Multi-PH + PLL integration"),
-    ("se3_lipman_integration",        "integration", "SE(3) Lipman integration"),
-    ("se3_sb_integration",            "integration", "SE(3) SB integration"),
+    ("hilbert_astsr_integration", "integration", "Hilbert-ASTSR integration"),
+    (
+        "hilbert_score_repellent_integration",
+        "integration",
+        "Hilbert + score-repellent integ",
+    ),
+    ("multi_ph_integration", "integration", "Multi-PH integration"),
+    ("multi_ph_pll_integration", "integration", "Multi-PH + PLL integration"),
+    ("se3_lipman_integration", "integration", "SE(3) Lipman integration"),
+    ("se3_sb_integration", "integration", "SE(3) SB integration"),
     ("transport_relaxation_integration", "integration", "Transport-relax integration"),
-    ("variance_mcts_integration",     "integration", "Variance-controlled MCTS integ"),
-    ("variance_puct_integration",     "integration", "Variance-aware PUCT integ"),
-    ("w_flow_cfm_integration",        "integration", "W-flow + CFM integration"),
-    ("lambda_cfm_integration",        "integration", "Lambda-CFM integration"),
-    ("lambda_cfm_joint_inference",    "integration", "Lambda-CFM joint inference"),
-    ("medchem_gen_integration",       "integration", "Medchem-gen integration"),
-    ("clone_integration_adapters",    "integration", "Clone integration adapters"),
+    ("variance_mcts_integration", "integration", "Variance-controlled MCTS integ"),
+    ("variance_puct_integration", "integration", "Variance-aware PUCT integ"),
+    ("w_flow_cfm_integration", "integration", "W-flow + CFM integration"),
+    ("lambda_cfm_integration", "integration", "Lambda-CFM integration"),
+    ("lambda_cfm_joint_inference", "integration", "Lambda-CFM joint inference"),
+    ("medchem_gen_integration", "integration", "Medchem-gen integration"),
+    ("clone_integration_adapters", "integration", "Clone integration adapters"),
     ("deflex_wireup_phase5_integration", "integration", "Deflex wireup phase 5"),
-    ("integration",                   "integration", "Integration smoke"),
-
+    ("integration", "integration", "Integration smoke"),
     # --- adapter — adapter unit tests
-    ("vina_adapter",                  "adapter", "Vina CPU adapter"),
-    ("vina_gpu_adapter",              "adapter", "Vina GPU adapter"),
-    ("vina_3engine_parity",           "adapter", "Vina 3-engine parity"),
-    ("docking_adapters",              "adapter", "Docking adapters harness"),
-    ("docking_pose_chemistry",        "adapter", "Docking pose chemistry"),
-    ("posebusters_adapter",           "adapter", "PoseBusters adapter"),
-    ("posebusters_doc",               "adapter", "PoseBusters doc"),
-    ("posebusters_mmff94s_relax",     "adapter", "PoseBusters MMFF94s relax"),
+    ("vina_adapter", "adapter", "Vina CPU adapter"),
+    ("vina_gpu_adapter", "adapter", "Vina GPU adapter"),
+    ("vina_3engine_parity", "adapter", "Vina 3-engine parity"),
+    ("docking_adapters", "adapter", "Docking adapters harness"),
+    ("docking_pose_chemistry", "adapter", "Docking pose chemistry"),
+    ("posebusters_adapter", "adapter", "PoseBusters adapter"),
+    ("posebusters_doc", "adapter", "PoseBusters doc"),
+    ("posebusters_mmff94s_relax", "adapter", "PoseBusters MMFF94s relax"),
     ("receptor_preparation_for_evaluation", "adapter", "Receptor preparation"),
-    ("prepare_crossdocked_receptor",  "adapter", "CrossDocked receptor prep"),
-    ("biolm_score_adapter",           "adapter", "BioLM score adapter"),
-    ("coupling_adapter",              "adapter", "Coupling adapter"),
-    ("coupling_adapter_platinai5k",   "adapter", "PlatinAI-5k coupling adapter"),
-    ("aizynth_adapter",               "adapter", "AiZynth adapter"),
-    ("aizynth_isolated",              "adapter", "AiZynth isolated"),
-    ("aizynth_real_backend",          "adapter", "AiZynth real backend"),
-    ("aizynth_v4_api",                "adapter", "AiZynth v4 API"),
-    ("reinvent_prior_adapter",        "adapter", "REINVENT prior adapter"),
-    ("metal_generator_adapter",       "adapter", "Metal generator adapter"),
-    ("adapters",                      "adapter", "Generic adapter rollup"),
-
+    ("prepare_crossdocked_receptor", "adapter", "CrossDocked receptor prep"),
+    ("biolm_score_adapter", "adapter", "BioLM score adapter"),
+    ("coupling_adapter", "adapter", "Coupling adapter"),
+    ("coupling_adapter_platinai5k", "adapter", "PlatinAI-5k coupling adapter"),
+    ("aizynth_adapter", "adapter", "AiZynth adapter"),
+    ("aizynth_isolated", "adapter", "AiZynth isolated"),
+    ("aizynth_real_backend", "adapter", "AiZynth real backend"),
+    ("aizynth_v4_api", "adapter", "AiZynth v4 API"),
+    ("reinvent_prior_adapter", "adapter", "REINVENT prior adapter"),
+    ("metal_generator_adapter", "adapter", "Metal generator adapter"),
+    ("adapters", "adapter", "Generic adapter rollup"),
     # --- pitfall — pitfall-guard registry + JSON
-    ("pitfall_guards",                "pitfall", "Pitfall guard rules"),
-    ("pitfall_guard_json",            "pitfall", "Pitfall guard JSON"),
-
+    ("pitfall_guards", "pitfall", "Pitfall guard rules"),
+    ("pitfall_guard_json", "pitfall", "Pitfall guard JSON"),
     # --- ml_methods — P2 ML baselines + hybrid + pretrain
-    ("dmpnn",                         "ml_methods", "D-MPNN baseline family"),
-    ("attentive_dmpnn_padding",       "ml_methods", "Attentive D-MPNN padding"),
-    ("v4_multitask_dmpnn",            "ml_methods", "V4 multi-task D-MPNN"),
-    ("baselines",                     "ml_methods", "Baselines harness"),
+    ("dmpnn", "ml_methods", "D-MPNN baseline family"),
+    ("attentive_dmpnn_padding", "ml_methods", "Attentive D-MPNN padding"),
+    ("v4_multitask_dmpnn", "ml_methods", "V4 multi-task D-MPNN"),
+    ("baselines", "ml_methods", "Baselines harness"),
     ("baselines_lightgbm_lomo_temporal", "ml_methods", "LightGBM LOMO temporal"),
-    ("metal_hybrid",                  "ml_methods", "Metal hybrid V0/V3/V4"),
-    ("metal_smiles",                  "ml_methods", "Metal SMILES parser"),
-    ("metal_ligand_exchange_matrix",  "ml_methods", "Metal-ligand exchange matrix"),
-    ("metal_geometry_known_pt",       "ml_methods", "Metal geometry known-Pt"),
-    ("f2a_metal_ligand_exchange",     "ml_methods", "F2A metal-ligand exchange"),
+    ("metal_hybrid", "ml_methods", "Metal hybrid V0/V3/V4"),
+    ("metal_smiles", "ml_methods", "Metal SMILES parser"),
+    ("metal_ligand_exchange_matrix", "ml_methods", "Metal-ligand exchange matrix"),
+    ("metal_geometry_known_pt", "ml_methods", "Metal geometry known-Pt"),
+    ("f2a_metal_ligand_exchange", "ml_methods", "F2A metal-ligand exchange"),
     ("explicit_metal_prior_sampling", "ml_methods", "Explicit metal prior sampling"),
-    ("tmqm_loading",                  "ml_methods", "TMQM loading"),
-    ("tmqm_pretrain",                 "ml_methods", "TMQM pretraining"),
-    ("tmqm_shape_bridge",             "ml_methods", "TMQM shape bridge"),
-    ("tmqm_wireup",                   "ml_methods", "TMQM wireup"),
-    ("retrosynthesis",                "ml_methods", "Retrosynthesis smoke"),
+    ("tmqm_loading", "ml_methods", "TMQM loading"),
+    ("tmqm_pretrain", "ml_methods", "TMQM pretraining"),
+    ("tmqm_shape_bridge", "ml_methods", "TMQM shape bridge"),
+    ("tmqm_wireup", "ml_methods", "TMQM wireup"),
+    ("retrosynthesis", "ml_methods", "Retrosynthesis smoke"),
 ]
 
 
@@ -214,7 +215,7 @@ def discover_r18_files(tests_dir: Path) -> List[Path]:
     for path in sorted(tests_dir.glob("test_*.py")):
         if not path.is_file():
             continue
-        stem = path.stem[len("test_"):]  # strip leading "test_"
+        stem = path.stem[len("test_") :]  # strip leading "test_"
         category, _ = classify_stem(stem)
         if category or stem.startswith("r18_"):
             out.append(path)
@@ -235,7 +236,9 @@ def run_pytest_collect(
     if not files:
         return 0, "", "", 0.0
     cmd: List[str] = [
-        sys.executable, "-m", "pytest",
+        sys.executable,
+        "-m",
+        "pytest",
         "--collect-only",
         "--co",
         "-q",
@@ -281,12 +284,16 @@ def run_pytest_full(
     if not files:
         return 0, "", "", 0.0
     cmd: List[str] = [
-        sys.executable, "-m", "pytest",
+        sys.executable,
+        "-m",
+        "pytest",
         "-q",
         "--no-header",
         "--tb=line",
-        "-p", "no:cacheprovider",
-        "--junit-xml", str(junit_xml),
+        "-p",
+        "no:cacheprovider",
+        "--junit-xml",
+        str(junit_xml),
         *[str(p) for p in files],
     ]
     t0 = time.monotonic()
@@ -354,9 +361,13 @@ def parse_junit_xml(
         }
 
     totals = {
-        "tests": 0, "passed": 0, "failed": 0,
-        "skipped": 0, "errors": 0,
-        "xfailed": 0, "xpassed": 0,
+        "tests": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0,
+        "xfailed": 0,
+        "xpassed": 0,
         "wall_time_seconds": 0.0,
     }
     if not xml_path.exists():
@@ -409,11 +420,13 @@ def parse_junit_xml(
                 bucket["tests"] += 1
                 bucket["wall_time_seconds"] += t
                 bucket[status] = bucket.get(status, 0) + 1
-                bucket["testcases"].append({
-                    "name": name,
-                    "status": status,
-                    "time": round(t, 4),
-                })
+                bucket["testcases"].append(
+                    {
+                        "name": name,
+                        "status": status,
+                        "time": round(t, 4),
+                    }
+                )
 
     # Round float noise.
     for v in per_file.values():
@@ -452,7 +465,8 @@ def _render_wf46_summary(report: Dict[str, Any]) -> str:
     L.append(f"| total wall-time (s) | {report['elapsed_total_seconds']:.2f} |")
     pass_rate = (
         100.0 * report["n_passed"] / report["n_tests_run"]
-        if report["n_tests_run"] else 0.0
+        if report["n_tests_run"]
+        else 0.0
     )
     L.append(f"| pass rate (passed / run) | {pass_rate:.2f}% |")
     L.append("")
@@ -460,7 +474,9 @@ def _render_wf46_summary(report: Dict[str, Any]) -> str:
     # Per-category roll-up.
     L.append("## By category")
     L.append("")
-    L.append("| Category | Files | Tests | Passed | Failed | Errors | Skipped | Wall-time (s) |")
+    L.append(
+        "| Category | Files | Tests | Passed | Failed | Errors | Skipped | Wall-time (s) |"
+    )
     L.append("|---|---:|---:|---:|---:|---:|---:|---:|")
     cats = report.get("per_category", {})
     for cat in sorted(cats.keys(), key=lambda k: -cats[k]["tests"]):
@@ -495,8 +511,7 @@ def _render_wf46_summary(report: Dict[str, Any]) -> str:
     slow_files = sorted(by_file, key=lambda r: -r["wall_time_seconds"])[:10]
     for row in slow_files:
         L.append(
-            f"| `{row['path']}` | {row['tests']} | "
-            f"{row['wall_time_seconds']:.2f} |"
+            f"| `{row['path']}` | {row['tests']} | " f"{row['wall_time_seconds']:.2f} |"
         )
     L.append("")
 
@@ -513,9 +528,7 @@ def _render_wf46_summary(report: Dict[str, Any]) -> str:
                 if tc["status"] == "failed":
                     first_msg = tc["name"]
                     break
-            L.append(
-                f"| `{row['path']}` | {row['failed']} | `{first_msg}` |"
-            )
+            L.append(f"| `{row['path']}` | {row['failed']} | `{first_msg}` |")
         L.append("")
 
     L.append("## Methodology")
@@ -555,11 +568,14 @@ def _render_text_full(report: Dict[str, Any]) -> str:
     L.append(f"passed        : {report['n_passed']}")
     L.append(f"failed        : {report['n_failed']}")
     L.append(f"errors        : {report['n_errors']}")
-    L.append(f"skipped       : {report['n_skipped']} (incl {report['n_xfailed']} xfail)")
+    L.append(
+        f"skipped       : {report['n_skipped']} (incl {report['n_xfailed']} xfail)"
+    )
     L.append("")
     L.append("by category (tests / passed / failed / time):")
-    for cat in sorted(report["per_category"].keys(),
-                      key=lambda k: -report["per_category"][k]["tests"]):
+    for cat in sorted(
+        report["per_category"].keys(), key=lambda k: -report["per_category"][k]["tests"]
+    ):
         c = report["per_category"][cat]
         L.append(
             f"  {cat:<22s}  tests={c['tests']:>4d}  pass={c['passed']:>4d}  "
@@ -574,9 +590,7 @@ def _render_text_full(report: Dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 # Output parsers — pytest --collect-only line shapes.
 # ---------------------------------------------------------------------------
-_TEST_LINE_RE = re.compile(
-    r"^(?P<path>[^\s]+)::(?P<nodeid>.+?)(?:\s+|$)"
-)
+_TEST_LINE_RE = re.compile(r"^(?P<path>[^\s]+)::(?P<nodeid>.+?)(?:\s+|$)")
 _SUMMARY_RE = re.compile(
     r"(?P<n>\d+)\s+test[s]?\s+collected",
     re.IGNORECASE,
@@ -721,7 +735,7 @@ def run(
     by_cat_files: Dict[str, int] = defaultdict(int)
     per_file_count: Dict[str, int] = {}
     for p in files:
-        stem = p.stem[len("test_"):]
+        stem = p.stem[len("test_") :]
         category, description = classify_stem(stem)
         if not category and stem.startswith("r18_"):
             category, description = "r18_orchestrator", "R18 orchestrator/cv/imports"
@@ -752,7 +766,7 @@ def run(
         "n_test_files": len(files),
         "n_test_files_with_tests": n_files_with_tests,
         "n_tests": n_tests,
-        "n_passed": 0,           # collect-only: nothing passes/fails
+        "n_passed": 0,  # collect-only: nothing passes/fails
         "n_failed": 0,
         "n_skipped": 0,
         "n_collection_errors": len(parsed["errors"]),
@@ -772,7 +786,7 @@ def run(
         "files": [
             {
                 "path": str(p.relative_to(REPO_ROOT)),
-                "stem": p.stem[len("test_"):],
+                "stem": p.stem[len("test_") :],
                 "n_tests": per_file_count.get(str(p.relative_to(REPO_ROOT)), 0),
             }
             for p in files
@@ -807,7 +821,8 @@ def run_full(
 
     # --collect-only pre-flight -------------------------------------------------
     c_rc, c_stdout, c_stderr, c_elapsed = run_pytest_collect(
-        files, timeout=collect_timeout,
+        files,
+        timeout=collect_timeout,
     )
     c_parsed = parse_pytest_collect_output(files, c_stdout, c_stderr)
     n_tests_collected = len(c_parsed["tests"])
@@ -816,7 +831,9 @@ def run_full(
     with tempfile.TemporaryDirectory(prefix="wf46_r18_") as tmp:
         junit_xml = Path(tmp) / "junit.xml"
         rc, stdout, stderr, r_elapsed = run_pytest_full(
-            files, junit_xml=junit_xml, timeout=run_timeout,
+            files,
+            junit_xml=junit_xml,
+            timeout=run_timeout,
         )
         juni = parse_junit_xml(junit_xml, files)
 
@@ -827,32 +844,40 @@ def run_full(
     per_file_rows: List[Dict[str, Any]] = []
     for p in files:
         rel = str(p.relative_to(REPO_ROOT))
-        stem = p.stem[len("test_"):]
+        stem = p.stem[len("test_") :]
         category, description = classify_stem(stem)
         if not category and stem.startswith("r18_"):
             category = "r18_orchestrator"
             description = "R18 orchestrator/cv/imports"
         b = per_file.get(rel, {})
-        per_file_rows.append({
-            "path": rel,
-            "stem": stem,
-            "category": category or "uncategorized",
-            "tests": b.get("tests", 0),
-            "passed": b.get("passed", 0),
-            "failed": b.get("failed", 0),
-            "errors": b.get("errors", 0),
-            "skipped": b.get("skipped", 0),
-            "xfailed": b.get("xfailed", 0),
-            "xpassed": b.get("xpassed", 0),
-            "wall_time_seconds": b.get("wall_time_seconds", 0.0),
-            "testcases": b.get("testcases", []),
-        })
+        per_file_rows.append(
+            {
+                "path": rel,
+                "stem": stem,
+                "category": category or "uncategorized",
+                "tests": b.get("tests", 0),
+                "passed": b.get("passed", 0),
+                "failed": b.get("failed", 0),
+                "errors": b.get("errors", 0),
+                "skipped": b.get("skipped", 0),
+                "xfailed": b.get("xfailed", 0),
+                "xpassed": b.get("xpassed", 0),
+                "wall_time_seconds": b.get("wall_time_seconds", 0.0),
+                "testcases": b.get("testcases", []),
+            }
+        )
 
     # Aggregate by category (tests/passed/failed/skipped/time).
     by_cat: Dict[str, Dict[str, Any]] = defaultdict(
         lambda: {
-            "files": 0, "tests": 0, "passed": 0, "failed": 0,
-            "errors": 0, "skipped": 0, "xfailed": 0, "xpassed": 0,
+            "files": 0,
+            "tests": 0,
+            "passed": 0,
+            "failed": 0,
+            "errors": 0,
+            "skipped": 0,
+            "xfailed": 0,
+            "xpassed": 0,
             "wall_time_seconds": 0.0,
         }
     )
@@ -887,25 +912,21 @@ def run_full(
         "mode": "collect-only + full pytest run (--junit-xml)",
         "json_out": str(wf46_json_out),
         "md_out": str(wf46_md_out),
-
         "pytest_returncode": rc,
         "collect_pytest_returncode": c_rc,
         "elapsed_collect_seconds": round(c_elapsed, 3),
         "elapsed_run_seconds": round(r_elapsed, 3),
         "elapsed_total_seconds": round(elapsed_total, 3),
-
         "n_test_files": len(files),
         "n_test_files_with_tests": n_files_with_tests,
         "n_tests_collected": n_tests_collected,
         "n_tests_run": totals["tests"],
-
         "n_passed": totals["passed"],
         "n_failed": totals["failed"],
         "n_errors": totals["errors"],
         "n_skipped": totals["skipped"],
         "n_xfailed": totals["xfailed"],
         "n_xpassed": totals["xpassed"],
-
         "n_collection_errors": len(c_parsed["errors"]),
         "collection_errors": c_parsed["errors"][:25],
         "summary_line_collect": c_parsed["summary_line"],
@@ -914,10 +935,8 @@ def run_full(
             f"{totals['errors']} errored, {totals['skipped']} skipped "
             f"in {r_elapsed:.2f}s"
         ),
-
         "per_category": dict(sorted(by_cat.items())),
         "per_file": sorted(per_file_rows, key=lambda r: (-r["tests"], r["path"])),
-
         "stdout_tail_collect": c_stdout[-1024:],
         "stderr_tail_collect": c_stderr[-1024:],
         "stdout_tail_run": stdout[-1024:],
@@ -933,6 +952,7 @@ def _utcnow_iso() -> str:
 def _pytest_version() -> str:
     try:
         import pytest as _pytest  # type: ignore
+
         return getattr(_pytest, "__version__", "unknown")
     except Exception:  # noqa: BLE001
         return "unavailable"
@@ -957,8 +977,10 @@ def _render_text(report: Dict[str, Any]) -> str:
     L.append(f"test files (discovered) : {report['n_test_files']}")
     L.append(f"test files (w/ tests)   : {report['n_test_files_with_tests']}")
     L.append(f"tests (collected)       : {report['n_tests']}")
-    L.append(f"passed / failed / skip  : {report['n_passed']} / "
-             f"{report['n_failed']} / {report['n_skipped']}  (collect-only)")
+    L.append(
+        f"passed / failed / skip  : {report['n_passed']} / "
+        f"{report['n_failed']} / {report['n_skipped']}  (collect-only)"
+    )
     L.append(f"collection errors       : {report['n_collection_errors']}")
     L.append(f"duplicate nodeids       : {report['n_duplicate_nodeids']}")
     L.append("")
@@ -984,9 +1006,11 @@ def _render_text(report: Dict[str, Any]) -> str:
         L.append("")
 
     if report.get("duplicate_nodeids_sample"):
-        L.append(f"duplicate nodeids (showing up to "
-                 f"{len(report['duplicate_nodeids_sample'])} of "
-                 f"{report['n_duplicate_nodeids']}):")
+        L.append(
+            f"duplicate nodeids (showing up to "
+            f"{len(report['duplicate_nodeids_sample'])} of "
+            f"{report['n_duplicate_nodeids']}):"
+        )
         for nid in report["duplicate_nodeids_sample"]:
             L.append(f"  {nid}")
         L.append("")
@@ -1007,23 +1031,31 @@ def main(argv: Optional[List[str]] = None) -> int:
         ),
     )
     parser.add_argument(
-        "--mode", choices=("collect", "full"), default="collect",
+        "--mode",
+        choices=("collect", "full"),
+        default="collect",
         help="collect-only (default) or full (collect + execute + Wf-46 outputs)",
     )
     parser.add_argument(
-        "--json", action="store_true",
+        "--json",
+        action="store_true",
         help="emit the JSON roll-up to stdout; do not write to disk",
     )
     parser.add_argument(
-        "--timeout", type=int, default=600,
+        "--timeout",
+        type=int,
+        default=600,
         help="pytest --collect-only timeout in seconds (default 600)",
     )
     parser.add_argument(
-        "--run-timeout", type=int, default=1800,
+        "--run-timeout",
+        type=int,
+        default=1800,
         help="pytest full-run timeout in seconds (default 1800)",
     )
     parser.add_argument(
-        "--check", action="store_true",
+        "--check",
+        action="store_true",
         help="exit 0/1 based on collection errors; no JSON file written",
     )
     args = parser.parse_args(argv)
@@ -1032,9 +1064,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         try:
             report = run(timeout=args.timeout)
         except Exception as exc:  # noqa: BLE001
-            sys.stderr.write(
-                f"runner itself failed: {type(exc).__name__}: {exc}\n"
-            )
+            sys.stderr.write(f"runner itself failed: {type(exc).__name__}: {exc}\n")
             return 2
 
         if args.json:
@@ -1067,9 +1097,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             run_timeout=args.run_timeout,
         )
     except Exception as exc:  # noqa: BLE001
-        sys.stderr.write(
-            f"runner itself failed: {type(exc).__name__}: {exc}\n"
-        )
+        sys.stderr.write(f"runner itself failed: {type(exc).__name__}: {exc}\n")
         return 2
 
     if args.json:

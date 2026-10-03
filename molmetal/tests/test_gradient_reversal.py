@@ -115,13 +115,16 @@ class TestBackward:
 # Multi-call alpha sensitivity
 # ---------------------------------------------------------------------------
 class TestAlphaSensitivity:
-    @pytest.mark.parametrize("alpha,expected_scale", [
-        (0.0, 0.0),
-        (0.1, -0.1),
-        (1.0, -1.0),
-        (2.5, -2.5),
-        (10.0, -10.0),
-    ])
+    @pytest.mark.parametrize(
+        "alpha,expected_scale",
+        [
+            (0.0, 0.0),
+            (0.1, -0.1),
+            (1.0, -1.0),
+            (2.5, -2.5),
+            (10.0, -10.0),
+        ],
+    )
     def test_alpha_scales_backward_grad(self, seeded_tensor, alpha, expected_scale):
         x = seeded_tensor.detach().clone().requires_grad_(True)
         out = ReverseLayerF.apply(x, alpha)
@@ -165,14 +168,14 @@ class TestModelIntegration:
         x = torch.randn(5, 3, requires_grad=True)
         h = layer(x)
         rev = ReverseLayerF.apply(h, alpha)
-        loss = (rev ** 2).sum()
+        loss = (rev**2).sum()
         loss.backward()
         assert torch.isfinite(x.grad).all()
         assert torch.isfinite(layer.weight.grad).all()
 
         x_ref = x.detach().clone().requires_grad_(True)
         h_ref = ref_layer(x_ref)
-        loss_ref = (h_ref ** 2).sum()
+        loss_ref = (h_ref**2).sum()
         loss_ref.backward()
         # GRL flips the sign of dL/dh, so dL/dW = -alpha * (no-GRL dL/dW)
         assert torch.allclose(
@@ -225,7 +228,9 @@ class TestNumericalGuards:
             out = ReverseLayerF.apply(x, alpha)
             upstream = torch.randn_like(out)
             out.backward(upstream)
-            assert torch.isfinite(x.grad).all(), f"alpha={alpha} produced non-finite grad"
+            assert torch.isfinite(
+                x.grad
+            ).all(), f"alpha={alpha} produced non-finite grad"
 
     def test_large_alpha_does_not_overflow(self):
         """alpha=1e6 should still produce finite gradients (no overflow)."""

@@ -42,7 +42,7 @@ def _per_scale_weights(
     for ``k = 1, ..., n_scales``.  The weights are L1-normalised so the
     overall loss magnitude matches the single-scale MSE.
     """
-    ws = [base * (growth ** k) for k in range(n_scales)]
+    ws = [base * (growth**k) for k in range(n_scales)]
     s = sum(ws)
     return [w / s for w in ws]
 

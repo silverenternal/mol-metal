@@ -50,6 +50,7 @@ Output JSON shape
       "honest_framing_note": "..."
     }
 """
+
 from __future__ import annotations
 
 import argparse
@@ -107,10 +108,10 @@ __all__ = [
 # Defaults
 # ---------------------------------------------------------------------------
 DEFAULT_METALS: tuple = ("Ru", "Ir", "Os", "Rh", "Re")
-DEFAULT_NUM_WORKERS: int = 0      # CPU smoke default
+DEFAULT_NUM_WORKERS: int = 0  # CPU smoke default
 DEFAULT_BATCH: int = 64
 DEFAULT_LR: float = 1e-3
-DEFAULT_TIME_BUDGET_S: float = 4 * 3600.0   # 4 hr wall budget for full GPU
+DEFAULT_TIME_BUDGET_S: float = 4 * 3600.0  # 4 hr wall budget for full GPU
 
 # Raw MetalCytoToxDB.csv location for the temporal Year lookup.
 _METALCYTO_RAW_CSV_CANDIDATES: tuple = (
@@ -194,14 +195,16 @@ def _merge_year_column(df: pd.DataFrame) -> pd.DataFrame:
     year_lookup = (
         df_raw[["SMILES_Ligands", "Metal", "Year"]]
         .rename(columns={"SMILES_Ligands": "smiles", "Metal": "metal"})
-        .groupby(["smiles", "metal"], as_index=False)["Year"].min()
+        .groupby(["smiles", "metal"], as_index=False)["Year"]
+        .min()
     )
     df = df.merge(year_lookup, on=["smiles", "metal"], how="left")
     if df["Year"].isna().any():
         n_missing = int(df["Year"].isna().sum())
         logger.warning(
             "%d rows lack Year after raw-CSV merge; temporal split will "
-            "drop them from both train and test.", n_missing,
+            "drop them from both train and test.",
+            n_missing,
         )
     df = df[df["Year"].notna()].reset_index(drop=True)
     df["Year"] = df["Year"].astype(int)
@@ -249,8 +252,7 @@ def _scaffold_split_indices(
             continue
         test_idx = np.asarray(idx_list, dtype=np.int64)
         # 90/10 train/val on the rest, seeded.
-        rest = [i for sc_other, idxs in groups if sc_other != sc
-                for i in idxs]
+        rest = [i for sc_other, idxs in groups if sc_other != sc for i in idxs]
         rest_arr = np.asarray(rest, dtype=np.int64)
         rng.shuffle(rest_arr)
         n_val = max(int(round(0.10 * len(rest_arr))), 1)
@@ -341,13 +343,18 @@ def run_one_per_metal(
         if out is None:
             # Fall back to random 80/10/20.
             from sklearn.model_selection import train_test_split
+
             idx = np.arange(len(smiles_subset))
             idx_train_full, idx_test_split = train_test_split(
-                idx, test_size=0.20, random_state=seed,
+                idx,
+                test_size=0.20,
+                random_state=seed,
                 stratify=active_subset.astype(int),
             )
             idx_train, idx_val = train_test_split(
-                idx_train_full, test_size=0.125, random_state=seed,
+                idx_train_full,
+                test_size=0.125,
+                random_state=seed,
                 stratify=active_subset[idx_train_full].astype(int),
             )
             train_idx = np.asarray(idx_train, dtype=np.int64)
@@ -369,7 +376,9 @@ def run_one_per_metal(
             )
         else:
             # Try scaffold split (Re: 868 rows / 123 scaffolds).
-            if scaffold_subset is not None and len(scaffold_subset) == len(smiles_subset):
+            if scaffold_subset is not None and len(scaffold_subset) == len(
+                smiles_subset
+            ):
                 smiles_for_scaffold = [smiles_subset[int(i)] for i in scaffold_subset]
                 active_for_scaffold = active_subset[scaffold_subset]
                 out = _scaffold_split_indices(
@@ -419,30 +428,47 @@ def run_one_per_metal(
     val_labels = active_subset[val_idx].astype(np.float32)
 
     train_dps = [
-        MoleculeDatapoint(mol=Chem.MolFromSmiles(smi), y=np.array([lbl], dtype=np.float32))
+        MoleculeDatapoint(
+            mol=Chem.MolFromSmiles(smi), y=np.array([lbl], dtype=np.float32)
+        )
         for smi, lbl in zip(train_smiles, train_labels)
     ]
     val_dps = [
-        MoleculeDatapoint(mol=Chem.MolFromSmiles(smi), y=np.array([lbl], dtype=np.float32))
+        MoleculeDatapoint(
+            mol=Chem.MolFromSmiles(smi), y=np.array([lbl], dtype=np.float32)
+        )
         for smi, lbl in zip(val_smiles, val_labels)
     ]
     train_ds = MoleculeDataset(train_dps, n_workers=num_workers)
     val_ds = MoleculeDataset(val_dps, n_workers=num_workers)
     train_dl = build_dataloader(
-        train_ds, batch_size=batch_size, num_workers=num_workers,
-        shuffle=True, seed=seed,
+        train_ds,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        shuffle=True,
+        seed=seed,
     )
     val_dl = build_dataloader(
-        val_ds, batch_size=batch_size, num_workers=num_workers, shuffle=False,
+        val_ds,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        shuffle=False,
     )
 
     mp = AtomMessagePassing(
-        d_v=atom_fdim, d_e=bond_fdim, d_h=hidden_dim, depth=depth, dropout=0.0,
+        d_v=atom_fdim,
+        d_e=bond_fdim,
+        d_h=hidden_dim,
+        depth=depth,
+        dropout=0.0,
     ).to(device)
     agg = SumAggregation().to(device)
     head = BinaryClassificationFFN(
-        n_tasks=1, input_dim=mp.output_dim, hidden_dim=hidden_dim,
-        n_layers=2, dropout=0.0,
+        n_tasks=1,
+        input_dim=mp.output_dim,
+        hidden_dim=hidden_dim,
+        n_layers=2,
+        dropout=0.0,
     ).to(device)
     optim = torch.optim.Adam(
         list(mp.parameters()) + list(agg.parameters()) + list(head.parameters()),
@@ -459,14 +485,18 @@ def run_one_per_metal(
             timed_out = True
             break
         epoch_done = epoch + 1
-        mp.train(); agg.train(); head.train()
+        mp.train()
+        agg.train()
+        head.train()
         total_loss = 0.0
         nb = 0
         for batch in train_dl:
             bmg = bmg_to_device(batch.bmg, device)
             Y = batch.Y.to(device).float()
             optim.zero_grad()
-            with torch.amp.autocast("cuda", dtype=torch.bfloat16, enabled=autocast_enabled):
+            with torch.amp.autocast(
+                "cuda", dtype=torch.bfloat16, enabled=autocast_enabled
+            ):
                 H_v = mp(bmg)
                 H = agg(H_v, bmg.batch)
                 logit = head.train_step(H)
@@ -478,19 +508,26 @@ def run_one_per_metal(
         if epoch % 10 == 0 or epoch == epochs - 1:
             logger.info(
                 "[seed=%d] epoch=%d/%d train_loss=%.4f elapsed=%.1fs",
-                seed, epoch, epochs - 1, total_loss / max(nb, 1),
+                seed,
+                epoch,
+                epochs - 1,
+                total_loss / max(nb, 1),
                 time.time() - t_start,
             )
 
     # Score on val fold (used as held-out for honest reporting).
-    mp.eval(); agg.eval(); head.eval()
+    mp.eval()
+    agg.eval()
+    head.eval()
     scores: List[float] = []
     labels: List[int] = []
     with torch.no_grad():
         for batch in val_dl:
             bmg = bmg_to_device(batch.bmg, device)
             Y_cpu = batch.Y.float()
-            with torch.amp.autocast("cuda", dtype=torch.bfloat16, enabled=autocast_enabled):
+            with torch.amp.autocast(
+                "cuda", dtype=torch.bfloat16, enabled=autocast_enabled
+            ):
                 H_v = mp(bmg)
                 H = agg(H_v, bmg.batch)
                 logit = head.train_step(H)
@@ -508,8 +545,11 @@ def run_one_per_metal(
     return TemporalRun(
         metal="?",
         seed=int(seed),
-        n_train=n_train, n_val=n_val, n_test=n_test,
-        pos_rate_train=pos_rate_train, pos_rate_test=pos_rate_test,
+        n_train=n_train,
+        n_val=n_val,
+        n_test=n_test,
+        pos_rate_train=pos_rate_train,
+        pos_rate_test=pos_rate_test,
         in_domain_test_auc=test_auc,
         elapsed_s=float(elapsed),
         epoch_count=int(epoch_done),
@@ -561,8 +601,14 @@ def execute_sweep(args: argparse.Namespace) -> Dict[str, Any]:
     logger.info(
         "device=%s metals=%s seeds=%s epochs=%d hidden=%d depth=%d "
         "train_cutoff=%s test_cutoff=%s",
-        device, metals, args.seeds, args.epochs, args.hidden, args.depth,
-        args.train_cutoff, args.test_cutoff,
+        device,
+        metals,
+        args.seeds,
+        args.epochs,
+        args.hidden,
+        args.depth,
+        args.train_cutoff,
+        args.test_cutoff,
     )
 
     # Load + temporal-split-aware prep.
@@ -583,9 +629,7 @@ def execute_sweep(args: argparse.Namespace) -> Dict[str, Any]:
     if "activity" in df.columns:
         df["active"] = df["activity"].astype(int)
     elif "active" not in df.columns:
-        raise ValueError(
-            f"{csv_path} has neither 'activity' nor 'active' column."
-        )
+        raise ValueError(f"{csv_path} has neither 'activity' nor 'active' column.")
 
     df = df[df["metal"].isin(metals)]
     df = df.reset_index(drop=True)
@@ -601,23 +645,28 @@ def execute_sweep(args: argparse.Namespace) -> Dict[str, Any]:
     df = _merge_year_column(df)
     df = df.reset_index(drop=True)
     logger.info(
-        "loaded %d rows across metals=%s; temporal window "
-        "train<%s test>=%s",
-        len(df), sorted(set(df["metal"].tolist())),
-        args.train_cutoff, args.test_cutoff,
+        "loaded %d rows across metals=%s; temporal window " "train<%s test>=%s",
+        len(df),
+        sorted(set(df["metal"].tolist())),
+        args.train_cutoff,
+        args.test_cutoff,
     )
 
     # Probe atom/bond fdim with a tiny sample.
     sample_smi = df["smiles"].astype(str).tolist()[:8]
     sample_dps = [
-        MoleculeDatapoint(mol=Chem.MolFromSmiles(s), y=np.array([0.5], dtype=np.float32))
+        MoleculeDatapoint(
+            mol=Chem.MolFromSmiles(s), y=np.array([0.5], dtype=np.float32)
+        )
         for s in sample_smi
     ]
     sample_ds = MoleculeDataset(sample_dps, n_workers=0)
     sample_dl = build_dataloader(sample_ds, batch_size=8, num_workers=0, shuffle=False)
     sample_batch = next(iter(sample_dl))
     atom_fdim = int(sample_batch.bmg.V.shape[1])
-    bond_fdim = int(sample_batch.bmg.E.shape[1]) if sample_batch.bmg.E.numel() > 0 else 14
+    bond_fdim = (
+        int(sample_batch.bmg.E.shape[1]) if sample_batch.bmg.E.numel() > 0 else 14
+    )
     logger.info("atom_fdim=%d bond_fdim=%d", atom_fdim, bond_fdim)
 
     per_metal_smiles: Dict[str, List[str]] = {}
@@ -631,29 +680,30 @@ def execute_sweep(args: argparse.Namespace) -> Dict[str, Any]:
         per_metal_year[m] = sub["Year"].astype(int).to_numpy()
         train_year_threshold = int(pd.Timestamp(args.train_cutoff).year)
         test_year_threshold = int(pd.Timestamp(args.test_cutoff).year)
-        n_train_window = int(
-            (per_metal_year[m] < train_year_threshold).sum()
-        )
-        n_test_window = int(
-            (per_metal_year[m] >= test_year_threshold).sum()
-        )
+        n_train_window = int((per_metal_year[m] < train_year_threshold).sum())
+        n_test_window = int((per_metal_year[m] >= test_year_threshold).sum())
         # Wf-312A: scaffold-ID pre-resolve so we can probe per-metal split
         # viability before the training loop.
         scaffold_ids = (
             sub["scaffold_id"].astype(str).to_numpy()
-            if "scaffold_id" in sub.columns else None
+            if "scaffold_id" in sub.columns
+            else None
         )
         per_metal_split_choice[m] = (
-            "scaffold_fallback" if (
-                args.split == "auto" and n_test_window < 50
-            ) else "temporal"
+            "scaffold_fallback"
+            if (args.split == "auto" and n_test_window < 50)
+            else "temporal"
         )
         logger.info(
             "metal=%s n_rows=%d pos_rate=%.4f train_window(<%d)=%d "
             "test_window(>=%d)=%d scaffold_distinct=%s split_choice=%s",
-            m, len(sub), float(per_metal_active[m].mean()),
-            train_year_threshold, n_train_window,
-            test_year_threshold, n_test_window,
+            m,
+            len(sub),
+            float(per_metal_active[m].mean()),
+            train_year_threshold,
+            n_train_window,
+            test_year_threshold,
+            n_test_window,
             int(len(set(scaffold_ids))) if scaffold_ids is not None else "n/a",
             per_metal_split_choice[m],
         )
@@ -698,8 +748,12 @@ def execute_sweep(args: argparse.Namespace) -> Dict[str, Any]:
                 logger.info(
                     "metal=%s seed=%d in_domain_test_auc=%.4f epochs=%d "
                     "elapsed=%.1fs status=%s",
-                    metal, seed, run.in_domain_test_auc, run.epoch_count,
-                    run.elapsed_s, run.status,
+                    metal,
+                    seed,
+                    run.in_domain_test_auc,
+                    run.epoch_count,
+                    run.elapsed_s,
+                    run.status,
                 )
                 summary_records.append(run)
                 sweep_results[metal][str(int(seed))] = {
@@ -713,12 +767,19 @@ def execute_sweep(args: argparse.Namespace) -> Dict[str, Any]:
             except Exception as exc:
                 logger.error(
                     "metal=%s seed=%d FAILED: %s\n%s",
-                    metal, seed, exc, traceback.format_exc(),
+                    metal,
+                    seed,
+                    exc,
+                    traceback.format_exc(),
                 )
                 run = TemporalRun(
-                    metal=metal, seed=int(seed),
-                    n_train=0, n_val=0, n_test=0,
-                    pos_rate_train=float("nan"), pos_rate_test=float("nan"),
+                    metal=metal,
+                    seed=int(seed),
+                    n_train=0,
+                    n_val=0,
+                    n_test=0,
+                    pos_rate_train=float("nan"),
+                    pos_rate_test=float("nan"),
                     in_domain_test_auc=float("nan"),
                     elapsed_s=float(time.time() - t_run),
                     epoch_count=0,
@@ -757,7 +818,8 @@ def execute_sweep(args: argparse.Namespace) -> Dict[str, Any]:
     for metal in metals:
         per_seed = sweep_results.get(metal, {})
         vals = [
-            v["auc"] for v in per_seed.values()
+            v["auc"]
+            for v in per_seed.values()
             if v["status"] == "ok" and v["auc"] == v["auc"]
         ]
         rec_for_metal = next((r for r in summary_records if r.metal == metal), None)
@@ -789,7 +851,9 @@ def execute_sweep(args: argparse.Namespace) -> Dict[str, Any]:
             }
 
     mean_auc_overall = (
-        float(statistics.mean(aucs_across_metals)) if aucs_across_metals else float("nan")
+        float(statistics.mean(aucs_across_metals))
+        if aucs_across_metals
+        else float("nan")
     )
 
     honest_framing_note = (
@@ -892,7 +956,7 @@ def dry_run_plan(args: argparse.Namespace) -> Dict[str, Any]:
             "in Wf-308C; needs CSV + chemprop v2 + USER_OK for full GPU)"
             if csv_exists
             else "CSV_MISSING — per Wf-306B honest-negative do not run "
-                 "--execute until the CSV exists."
+            "--execute until the CSV exists."
         ),
     }
 

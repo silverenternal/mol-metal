@@ -28,6 +28,7 @@ Run via::
     uv run --no-sync python -m pytest \\
         molmetal/tests/test_variance_puct_default.py -v
 """
+
 from __future__ import annotations
 
 import random
@@ -73,8 +74,7 @@ def _mk_root(n_children: int = 4, prior: float = 0.5) -> IntegrationNode:
         node_id="root",
         prior=float(prior),
         children=[
-            IntegrationNode(node_id=f"a{i}", prior=1.0)
-            for i in range(int(n_children))
+            IntegrationNode(node_id=f"a{i}", prior=1.0) for i in range(int(n_children))
         ],
     )
 
@@ -185,8 +185,8 @@ def test_variance_punct_prefers_low_variance_arm_when_q_equal():
     """VariancePUCT prefers low-sigma arms when Q is equal (the variance bonus)."""
     sel = make_default_selector(
         use_variance_puct=True,
-        c_var=1.0,        # strong variance penalty
-        n_min_visits=1,   # activate variance term immediately
+        c_var=1.0,  # strong variance penalty
+        n_min_visits=1,  # activate variance term immediately
     )
     root = _mk_root(n_children=2)
     # Equal Q, but arm 0 has higher sigma -> selector should prefer arm 1.
@@ -239,6 +239,7 @@ def test_cli_smoke_default_on():
     """The CLI smoke path returns exit code 0 (acceptance gate G1+G5)."""
     import subprocess
     import sys as _sys
+
     repo_root = "/home/hugo/codes/mol-metal"
     out = subprocess.run(
         [
@@ -263,6 +264,7 @@ def test_cli_smoke_legacy_dirichlet():
     """The CLI smoke path with --disable-variance-puct returns exit code 0."""
     import subprocess
     import sys as _sys
+
     repo_root = "/home/hugo/codes/mol-metal"
     out = subprocess.run(
         [

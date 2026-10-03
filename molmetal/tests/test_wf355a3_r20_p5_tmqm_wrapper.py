@@ -13,6 +13,7 @@ Per party-twenty-spirit §3.5 honest framing: this wrapper is BLOCKED on
 verification post Wf-348-B1 architectural fix (32-bin Fourier + 128-d PLL).
 Tests are CPU-only documentation + structural checks — no GPU launches.
 """
+
 from __future__ import annotations
 
 import os
@@ -29,7 +30,9 @@ WRAPPER = REPO_ROOT / "scripts" / "launch_wf310e_r20_p5_tmqm_plat_joint_retrain.
 PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
 
 
-def _run_wrapper(env_overrides: dict[str, str], *args: str, timeout: int = 30) -> subprocess.CompletedProcess:
+def _run_wrapper(
+    env_overrides: dict[str, str], *args: str, timeout: int = 30
+) -> subprocess.CompletedProcess:
     env = os.environ.copy()
     env.pop("USER_OK", None)  # default refuse
     env.update(env_overrides)
@@ -55,9 +58,15 @@ def test_user_ok_gate_enforced() -> None:
         f"USER_OK gate must refuse with exit 64; got {result.returncode}.\n"
         f"stderr: {result.stderr[-500:]}"
     )
-    assert "USER_OK" in result.stderr, f"stderr must mention USER_OK: {result.stderr[-300:]}"
-    assert "FATAL" in result.stderr, f"stderr must contain FATAL marker: {result.stderr[-300:]}"
-    assert "USER_OK=1" in result.stderr, f"stderr must show usage: {result.stderr[-300:]}"
+    assert (
+        "USER_OK" in result.stderr
+    ), f"stderr must mention USER_OK: {result.stderr[-300:]}"
+    assert (
+        "FATAL" in result.stderr
+    ), f"stderr must contain FATAL marker: {result.stderr[-300:]}"
+    assert (
+        "USER_OK=1" in result.stderr
+    ), f"stderr must show usage: {result.stderr[-300:]}"
 
 
 def test_bash_syntax_check() -> None:
@@ -92,46 +101,48 @@ def test_preflight_perwave_data_quality_wired() -> None:
     wrapper_text = WRAPPER.read_text()
 
     # Pre-flight v3 62/62 PASS gate (TODO-207)
-    assert "pre_flight_check.py" in wrapper_text, (
-        "wrapper must call pre_flight_check.py (TODO-207 v2 62/62 PASS gate)"
-    )
+    assert (
+        "pre_flight_check.py" in wrapper_text
+    ), "wrapper must call pre_flight_check.py (TODO-207 v2 62/62 PASS gate)"
     # Per-wave sub-checklist (Wf-262 §10.1)
-    assert "per_wave_checklist.py" in wrapper_text, (
-        "wrapper must call per_wave_checklist.py (Wf-262 §10.1)"
-    )
+    assert (
+        "per_wave_checklist.py" in wrapper_text
+    ), "wrapper must call per_wave_checklist.py (Wf-262 §10.1)"
     # Wave budget tracker (Wf-262/291D)
-    assert "wave_budget_tracker.py" in wrapper_text, (
-        "wrapper must call wave_budget_tracker.py (Wf-262/291D)"
-    )
+    assert (
+        "wave_budget_tracker.py" in wrapper_text
+    ), "wrapper must call wave_budget_tracker.py (Wf-262/291D)"
     # tmQM d-block data on disk check
     assert "TMQM_CSV" in wrapper_text, "wrapper must check tmQM CSV on disk"
-    assert "tmqm_parsed.csv" in wrapper_text, (
-        "wrapper must reference tmqm_parsed.csv per Wf-295B Phase 4 spec"
-    )
+    assert (
+        "tmqm_parsed.csv" in wrapper_text
+    ), "wrapper must reference tmqm_parsed.csv per Wf-295B Phase 4 spec"
     # PlatinAI 4-cell data on disk check
-    assert "PLAT_4CELL_CSV" in wrapper_text, "wrapper must check PlatinAI 4-cell CSV on disk"
-    assert "platinai_4cell" in wrapper_text, (
-        "wrapper must reference platinai_4cell.csv per Wf-295B + R20 §5.2"
-    )
-    assert "platinai_4cell.meta.json" in wrapper_text, (
-        "wrapper must reference platinai_4cell.meta.json for 4-cell schema verification"
-    )
+    assert (
+        "PLAT_4CELL_CSV" in wrapper_text
+    ), "wrapper must check PlatinAI 4-cell CSV on disk"
+    assert (
+        "platinai_4cell" in wrapper_text
+    ), "wrapper must reference platinai_4cell.csv per Wf-295B + R20 §5.2"
+    assert (
+        "platinai_4cell.meta.json" in wrapper_text
+    ), "wrapper must reference platinai_4cell.meta.json for 4-cell schema verification"
     # 4 cell lines (MCF7 / A549 / A2780 / A2780cis)
     for cell in ("MCF7", "A549", "A2780", "A2780cis"):
         assert cell in wrapper_text, f"wrapper must reference cell line {cell}"
     # Multi-PH + PLL Wf-348-B1 augmentation
-    assert "multiph_pll_feature" in wrapper_text, (
-        "wrapper must import Multi-PH + PLL augmentation (Wf-348-B1 architectural-fix)"
-    )
-    assert "MultiPHPLLSignature" in wrapper_text, (
-        "wrapper must reference MultiPHPLLSignature class"
-    )
-    assert "MultiPHPLLAugment" in wrapper_text, (
-        "wrapper must reference MultiPHPLLAugment class"
-    )
-    assert "32" in wrapper_text and "128" in wrapper_text, (
-        "wrapper must specify 32-bin Fourier + 128-d PLL signature (Wf-348-B1)"
-    )
+    assert (
+        "multiph_pll_feature" in wrapper_text
+    ), "wrapper must import Multi-PH + PLL augmentation (Wf-348-B1 architectural-fix)"
+    assert (
+        "MultiPHPLLSignature" in wrapper_text
+    ), "wrapper must reference MultiPHPLLSignature class"
+    assert (
+        "MultiPHPLLAugment" in wrapper_text
+    ), "wrapper must reference MultiPHPLLAugment class"
+    assert (
+        "32" in wrapper_text and "128" in wrapper_text
+    ), "wrapper must specify 32-bin Fourier + 128-d PLL signature (Wf-348-B1)"
 
 
 def test_status_hold_warning_emitted_in_dryrun() -> None:
@@ -152,29 +163,29 @@ def test_status_hold_warning_emitted_in_dryrun() -> None:
         combined_output = result.stdout + result.stderr
 
         # STATUS_HOLD must be in output (warning emitted before GPU launch)
-        assert "STATUS_HOLD" in combined_output, (
-            "STATUS_HOLD warning must appear in dry-run output (Wf-316A honest framing)"
-        )
+        assert (
+            "STATUS_HOLD" in combined_output
+        ), "STATUS_HOLD warning must appear in dry-run output (Wf-316A honest framing)"
         # 12-d RDKit 2D signal floor must be cited
-        assert "12-d" in combined_output or "12 d" in combined_output, (
-            "STATUS_HOLD warning must cite 12-d RDKit 2D signal floor"
-        )
+        assert (
+            "12-d" in combined_output or "12 d" in combined_output
+        ), "STATUS_HOLD warning must cite 12-d RDKit 2D signal floor"
         # Wf-316A + Wf-122 P3 must be referenced
-        assert "Wf-316A" in combined_output or "Wf-122" in combined_output, (
-            "STATUS_HOLD warning must cite Wf-316A / Wf-122 P3 precedent"
-        )
+        assert (
+            "Wf-316A" in combined_output or "Wf-122" in combined_output
+        ), "STATUS_HOLD warning must cite Wf-316A / Wf-122 P3 precedent"
         # Wf-348-B1 architectural fix path must be cited
-        assert "Wf-348-B1" in combined_output or "32-bin Fourier" in combined_output, (
-            "STATUS_HOLD warning must cite Wf-348-B1 32-bin Fourier architectural fix"
-        )
+        assert (
+            "Wf-348-B1" in combined_output or "32-bin Fourier" in combined_output
+        ), "STATUS_HOLD warning must cite Wf-348-B1 32-bin Fourier architectural fix"
         # plan.json must be emitted with status_hold field
         plan_json = REPO_ROOT / "molmetal/reports/wf355a3_r20_p5_tmqm_plat/plan.json"
         if plan_json.is_file():
             plan_text = plan_json.read_text()
             assert "STATUS_HOLD" in plan_text, "plan.json must encode STATUS_HOLD field"
-            assert "kill_then_adapt" in plan_text or "USER_OK" in plan_text, (
-                "plan.json must reference USER_OK gate"
-            )
+            assert (
+                "kill_then_adapt" in plan_text or "USER_OK" in plan_text
+            ), "plan.json must reference USER_OK gate"
 
 
 if __name__ == "__main__":

@@ -56,6 +56,7 @@ Usage
         --seeds 0 1 2 --exhaustiveness 8 \\
         --out-dir molmetal/reports/wf121_cisplatin_real_vina
 """
+
 from __future__ import annotations
 
 import argparse
@@ -88,14 +89,23 @@ CISPLATIN_NAME = "cisplatin"
 # Wf-30, Wf-67, Wf-71 sweeps. Per the wf121 brief: 830c, 1h36, 3eml,
 # 3ny8, 4aaw, 4rlu, 4rn0, 1fmc, 1g9v, 2hnx.
 DEFAULT_POCKETS: Tuple[str, ...] = (
-    "830c", "1h36", "3eml", "3ny8", "4aaw",
-    "4rlu", "4rn0", "1fmc", "1g9v", "2hnx",
+    "830c",
+    "1h36",
+    "3eml",
+    "3ny8",
+    "4aaw",
+    "4rlu",
+    "4rn0",
+    "1fmc",
+    "1g9v",
+    "2hnx",
 )
 DEFAULT_SEEDS: Tuple[int, ...] = (0, 1, 2)
 DEFAULT_EXHAUSTIVENESS = 8
 DEFAULT_N_POSES = 5
 DEFAULT_OUT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf121_cisplatin_real_vina"
 DEFAULT_PREP_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf30_pocket_prep"
+
 
 # ---------------------------------------------------------------------------
 # Dataclasses
@@ -239,7 +249,16 @@ def _rewrite_metal_atype_for_vina(
                 # the element in meeko output. We fall back to the
                 # atype when we cannot disambiguate.
                 elem_symbol = _extract_element_from_pdbqt_line(line)
-                if chemotype_vdw and elem_symbol in {"Pt", "Ru", "Ir", "Os", "Rh", "Pd", "Au", "Re"}:
+                if chemotype_vdw and elem_symbol in {
+                    "Pt",
+                    "Ru",
+                    "Ir",
+                    "Os",
+                    "Rh",
+                    "Pd",
+                    "Au",
+                    "Re",
+                }:
                     new_atype = elem_symbol
                     n_chemotype += 1
                 else:
@@ -255,13 +274,17 @@ def _rewrite_metal_atype_for_vina(
         if n_chemotype:
             LOG.info(
                 "_rewrite_metal_atype_for_vina: rewrote %d 'M' → chemotype "
-                "atype(s) in %s (Wf-143 P3)", n_chemotype, lig_pdbqt.name,
+                "atype(s) in %s (Wf-143 P3)",
+                n_chemotype,
+                lig_pdbqt.name,
             )
         if n_fallback:
             LOG.info(
                 "_rewrite_metal_atype_for_vina: rewrote %d 'M' → '%s' "
                 "fallback atype(s) in %s",
-                n_fallback, fallback_atype, lig_pdbqt.name,
+                n_fallback,
+                fallback_atype,
+                lig_pdbqt.name,
             )
     return lig_pdbqt
 
@@ -329,10 +352,14 @@ def _probe_vina_accepts_chemotype_atype(
     except Exception as exc:  # pragma: no cover — defensive
         LOG.debug(
             "_probe_vina_accepts_chemotype_atype: vina import failed "
-            "(%s); falling back to %s", exc, fallback_atype,
+            "(%s); falling back to %s",
+            exc,
+            fallback_atype,
         )
         _rewrite_metal_atype_for_vina(
-            lig_pdbqt, chemotype_vdw=False, fallback_atype=fallback_atype,
+            lig_pdbqt,
+            chemotype_vdw=False,
+            fallback_atype=fallback_atype,
         )
         return f"{fallback_atype}-fallback"
 
@@ -344,6 +371,7 @@ def _probe_vina_accepts_chemotype_atype(
     from molmetal.molmetal_lam.sbdd_env.metal_pdbqt_overrides import (
         PT_GROUP_ELEMENTS,
     )
+
     chemotype_atype = ""
     for line in lig_pdbqt.read_text().splitlines():
         if line.startswith(("ATOM", "HETATM")) and len(line) >= 79:
@@ -370,10 +398,14 @@ def _probe_vina_accepts_chemotype_atype(
         LOG.warning(
             "_probe_vina_accepts_chemotype_atype: Vina rejected %s "
             "(%s); rewriting to %s fallback",
-            chemotype_atype, exc, fallback_atype,
+            chemotype_atype,
+            exc,
+            fallback_atype,
         )
         _replace_chemotype_atype_with_fallback(
-            lig_pdbqt, chemotype_atype, fallback_atype,
+            lig_pdbqt,
+            chemotype_atype,
+            fallback_atype,
         )
         return f"{fallback_atype}-fallback"
 
@@ -406,9 +438,11 @@ def _replace_chemotype_atype_with_fallback(
     if n_replaced:
         lig_pdbqt.write_text("".join(rewritten))
         LOG.info(
-            "_replace_chemotype_atype_with_fallback: rewrote %d '%s' → "
-            "'%s' in %s",
-            n_replaced, chemotype_atype, fallback_atype, lig_pdbqt.name,
+            "_replace_chemotype_atype_with_fallback: rewrote %d '%s' → " "'%s' in %s",
+            n_replaced,
+            chemotype_atype,
+            fallback_atype,
+            lig_pdbqt.name,
         )
 
 
@@ -436,6 +470,7 @@ def _median(xs: List[float]) -> float:
 def _strip_ansi(s: str) -> str:
     """Strip ANSI escape codes from Vina stdout (libboost builds emit them)."""
     import re
+
     return re.sub(r"\x1b\[[0-9;]*m", "", s)
 
 
@@ -446,6 +481,7 @@ def _probe_vina_version() -> str:
     """Return the ``vina`` Python binding version string, or ``"uninstalled"``."""
     try:
         import vina  # noqa: F401
+
         return getattr(vina, "__version__", "unknown")
     except Exception:
         return "uninstalled"
@@ -454,6 +490,7 @@ def _probe_vina_version() -> str:
 def _probe_meeko_version() -> str:
     try:
         import meeko  # noqa: F401
+
         return getattr(meeko, "__version__", "unknown")
     except Exception:
         return "uninstalled"
@@ -508,11 +545,16 @@ def _boltz_pic50(smiles: str) -> Optional[float]:
     try:
         import torch
         from molmetal.baselines.dmpnn import (
-            ATOM_FEATURE_DIM, BOND_FEATURE_DIM, featurize_smiles_list,
+            ATOM_FEATURE_DIM,
+            BOND_FEATURE_DIM,
+            featurize_smiles_list,
         )
         from molmetal.baselines.dmpnn_multitask import DMPNNMultiTaskModel
+
         bundle = torch.load(
-            str(ckpt_path), map_location="cpu", weights_only=False,
+            str(ckpt_path),
+            map_location="cpu",
+            weights_only=False,
         )
         if isinstance(bundle, dict) and "model_state_dict" in bundle:
             # Wf-120 multi-task ckpt format
@@ -528,8 +570,11 @@ def _boltz_pic50(smiles: str) -> Optional[float]:
             )
             return None
         model = DMPNNMultiTaskModel(
-            atom_dim=ATOM_FEATURE_DIM, bond_dim=BOND_FEATURE_DIM,
-            hidden=hidden, depth=depth, dropout=0.0,
+            atom_dim=ATOM_FEATURE_DIM,
+            bond_dim=BOND_FEATURE_DIM,
+            hidden=hidden,
+            depth=depth,
+            dropout=0.0,
         )
         model.load_state_dict(state_dict)
         model.eval()
@@ -538,6 +583,7 @@ def _boltz_pic50(smiles: str) -> Optional[float]:
             LOG.warning("boltz_affinity: failed to featurize %s", smiles)
             return None
         from molmetal.baselines.dmpnn_multitask import collate_graphs
+
         batch = collate_graphs(graphs)
         if batch is None:
             return None
@@ -551,7 +597,9 @@ def _boltz_pic50(smiles: str) -> Optional[float]:
     except Exception as exc:  # noqa: BLE001 — honest fallback
         LOG.warning(
             "boltz_affinity fallback failed for %s (ckpt=%s): %s",
-            smiles, ckpt_path.name, exc,
+            smiles,
+            ckpt_path.name,
+            exc,
         )
         return None
 
@@ -569,7 +617,7 @@ def _load_receptor_geometry(receptor_pdbqt: Path) -> Tuple[Optional[List[float]]
     """
     try:
         from rdkit import Chem  # noqa: F401 — RDKit parses PDBQT poorly;
-                                # we hand-parse instead.
+    # we hand-parse instead.
     except Exception:
         pass
 
@@ -650,22 +698,38 @@ def _dock_one_subprocess_vina(
     out_pdbqt = lig_pdbqt.parent / f"docked_seed{seed}.pdbqt"
     cmd = [
         str(vina_bin),
-        "--receptor", str(receptor_pdbqt),
-        "--ligand",   str(lig_pdbqt),
-        "--center_x", f"{center_xyz[0]:.3f}",
-        "--center_y", f"{center_xyz[1]:.3f}",
-        "--center_z", f"{center_xyz[2]:.3f}",
-        "--size_x",   "25.000",
-        "--size_y",   "25.000",
-        "--size_z",   "25.000",
-        "--out",      str(out_pdbqt),
-        "--exhaustiveness", str(int(exhaustiveness)),
-        "--num_modes",      str(int(n_poses)),
-        "--seed",           str(int(seed)),
+        "--receptor",
+        str(receptor_pdbqt),
+        "--ligand",
+        str(lig_pdbqt),
+        "--center_x",
+        f"{center_xyz[0]:.3f}",
+        "--center_y",
+        f"{center_xyz[1]:.3f}",
+        "--center_z",
+        f"{center_xyz[2]:.3f}",
+        "--size_x",
+        "25.000",
+        "--size_y",
+        "25.000",
+        "--size_z",
+        "25.000",
+        "--out",
+        str(out_pdbqt),
+        "--exhaustiveness",
+        str(int(exhaustiveness)),
+        "--num_modes",
+        str(int(n_poses)),
+        "--seed",
+        str(int(seed)),
         "--quiet",
     ]
     proc = subprocess.run(
-        cmd, check=False, capture_output=True, text=True, timeout=600,
+        cmd,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=600,
     )
     elapsed = time.time() - t0
     if proc.returncode != 0:
@@ -729,6 +793,7 @@ def _parse_vina_table_stdout(stdout: str) -> Tuple[float, float, float]:
 def _vina_binary_present() -> Optional[Path]:
     """Locate a working ``vina`` CLI binary (libboost-resolved)."""
     import shutil
+
     candidates = [
         Path("/home/hugo/.mamba/bin/vina"),
         Path("/home/hugo/micromamba/bin/vina"),
@@ -740,8 +805,11 @@ def _vina_binary_present() -> Optional[Path]:
             # Probe with --version so a broken libboost binary is rejected.
             try:
                 proc = subprocess.run(
-                    [str(c), "--version"], check=False,
-                    capture_output=True, text=True, timeout=5,
+                    [str(c), "--version"],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
                 )
                 if proc.returncode == 0:
                     return c
@@ -751,8 +819,11 @@ def _vina_binary_present() -> Optional[Path]:
     if which:
         try:
             proc = subprocess.run(
-                [which, "--version"], check=False,
-                capture_output=True, text=True, timeout=5,
+                [which, "--version"],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             if proc.returncode == 0:
                 return Path(which)
@@ -815,8 +886,9 @@ def run_pocket_sweep(
     center_xyz, n_heavy = _load_receptor_geometry(receptor_pdbqt)
     if center_xyz is None:
         # Last-ditch — centre on origin and hope for the best.
-        LOG.warning("%s: receptor heavy-atom centroid unavailable; "
-                    "using origin", pocket_id)
+        LOG.warning(
+            "%s: receptor heavy-atom centroid unavailable; " "using origin", pocket_id
+        )
         center_xyz = [0.0, 0.0, 0.0]
 
     # Resolve engine. Default: prefer Python binding (programmatic
@@ -837,13 +909,16 @@ def run_pocket_sweep(
 
     # ---- ligand PDBQT (one canonical cisplatin.pdbqt; same for all seeds) ----
     from molmetal.molmetal_lam.sbdd_env.vina_adapter import (
-        _have_meeko, _ligand_to_pdbqt,
+        _have_meeko,
+        _ligand_to_pdbqt,
     )
+
     if not _have_meeko():
         raise RuntimeError("meeko not installed — required for ligand PDBQT")
     from molmetal.molmetal_lam.sbdd_env.metal_pdbqt_overrides import (
         MetalPDBQTUnavailable,
     )
+
     try:
         lig_pdbqt = _ligand_to_pdbqt(smiles, pocket_out, name=CISPLATIN_NAME)
         # Wf-121 P1 emits Pt with atype 'M' which Vina's strict parser
@@ -859,7 +934,8 @@ def run_pocket_sweep(
         #   - MEASURED_GENERIC_ATOM   when chemotype atype rejected (fallback to Mg)
         status = "MEASURED_GENERIC_ATOM"
         lig_pdbqt = _rewrite_metal_atype_for_vina(
-            lig_pdbqt, chemotype_vdw=chemotype_vdw,
+            lig_pdbqt,
+            chemotype_vdw=chemotype_vdw,
         )
         if chemotype_vdw:
             accepted = _probe_vina_accepts_chemotype_atype(lig_pdbqt)
@@ -890,8 +966,7 @@ def run_pocket_sweep(
             notes=f"MetalPDBQTUnavailable: {exc}",
         )
     n_atoms_ligand = sum(
-        1 for line in lig_pdbqt.read_text().splitlines()
-        if line.startswith("ATOM")
+        1 for line in lig_pdbqt.read_text().splitlines() if line.startswith("ATOM")
     )
 
     # ---- per-seed dock ----
@@ -903,39 +978,64 @@ def run_pocket_sweep(
                 vbin = _vina_binary_present()
                 assert vbin is not None  # already checked above
                 kcal, elapsed, rmsd_lb, rmsd_ub = _dock_one_subprocess_vina(
-                    vbin, receptor_pdbqt, lig_pdbqt, center_xyz,
-                    seed, exhaustiveness, n_poses,
+                    vbin,
+                    receptor_pdbqt,
+                    lig_pdbqt,
+                    center_xyz,
+                    seed,
+                    exhaustiveness,
+                    n_poses,
                 )
             else:
                 kcal, elapsed, rmsd_lb, rmsd_ub = _dock_one_python_binding(
-                    receptor_pdbqt, lig_pdbqt, center_xyz,
-                    seed, exhaustiveness, n_poses,
+                    receptor_pdbqt,
+                    lig_pdbqt,
+                    center_xyz,
+                    seed,
+                    exhaustiveness,
+                    n_poses,
                 )
         except Exception as exc:  # noqa: BLE001
             LOG.error(
                 "%s seed=%s dock failed: %s\n%s",
-                pocket_id, seed, exc, traceback.format_exc(),
+                pocket_id,
+                seed,
+                exc,
+                traceback.format_exc(),
             )
-            results.append(DockResult(
-                pocket_id=pocket_id, seed=seed, smiles=smiles,
-                method=f"vina_{engine_used}",
-                kcal_mol=float("nan"), elapsed_s=float("nan"),
-                n_poses=int(n_poses), n_atoms_ligand=n_atoms_ligand,
-                best_pose_rmsd_lb=float("nan"),
-                best_pose_rmsd_ub=float("nan"),
-                status="DOCK_FAILED",
-                extras={"error": str(exc)[:200]},
-            ))
+            results.append(
+                DockResult(
+                    pocket_id=pocket_id,
+                    seed=seed,
+                    smiles=smiles,
+                    method=f"vina_{engine_used}",
+                    kcal_mol=float("nan"),
+                    elapsed_s=float("nan"),
+                    n_poses=int(n_poses),
+                    n_atoms_ligand=n_atoms_ligand,
+                    best_pose_rmsd_lb=float("nan"),
+                    best_pose_rmsd_ub=float("nan"),
+                    status="DOCK_FAILED",
+                    extras={"error": str(exc)[:200]},
+                )
+            )
             continue
         kcal_mols.append(kcal)
-        results.append(DockResult(
-            pocket_id=pocket_id, seed=seed, smiles=smiles,
-            method=f"vina_{engine_used}",
-            kcal_mol=kcal, elapsed_s=elapsed,
-            n_poses=int(n_poses), n_atoms_ligand=n_atoms_ligand,
-            best_pose_rmsd_lb=rmsd_lb, best_pose_rmsd_ub=rmsd_ub,
-            status=status,  # Wf-143 P3: chemotype vs generic-atom disposition
-        ))
+        results.append(
+            DockResult(
+                pocket_id=pocket_id,
+                seed=seed,
+                smiles=smiles,
+                method=f"vina_{engine_used}",
+                kcal_mol=kcal,
+                elapsed_s=elapsed,
+                n_poses=int(n_poses),
+                n_atoms_ligand=n_atoms_ligand,
+                best_pose_rmsd_lb=rmsd_lb,
+                best_pose_rmsd_ub=rmsd_ub,
+                status=status,  # Wf-143 P3: chemotype vs generic-atom disposition
+            )
+        )
 
     # ---- boltz_affinity fallback (parallel evidence, not docking) ----
     boltz = _boltz_pic50(smiles)
@@ -1043,12 +1143,15 @@ def run_full_sweep(
         if not receptor.exists():
             LOG.error(
                 "%s: receptor.pdbqt missing at %s — skipping",
-                pocket_id, receptor,
+                pocket_id,
+                receptor,
             )
             continue
         LOG.info(
             "Docking cisplatin into %s (seeds=%s, exhaustiveness=%d)...",
-            pocket_id, list(seeds), int(exhaustiveness),
+            pocket_id,
+            list(seeds),
+            int(exhaustiveness),
         )
         sweep = run_pocket_sweep(
             pocket_id=pocket_id,
@@ -1064,8 +1167,12 @@ def run_full_sweep(
         sweeps.append(sweep)
         LOG.info(
             "  %s: min=%.3f median=%.3f stddev=%.3f kcal/mol (n=%d/%d seeds)",
-            pocket_id, sweep.kcal_mol_min, sweep.kcal_mol_median,
-            sweep.kcal_mol_stddev, len(sweep.kcal_mol_per_seed), len(seeds),
+            pocket_id,
+            sweep.kcal_mol_min,
+            sweep.kcal_mol_median,
+            sweep.kcal_mol_stddev,
+            len(sweep.kcal_mol_per_seed),
+            len(seeds),
         )
 
     # ---- summary JSON ----
@@ -1091,9 +1198,7 @@ def run_full_sweep(
     md_lines.append(f"_Generated: {_utc_now_iso()}_  ")
     md_lines.append(f"_Hardware: CPU (Vina Python binding) + GPU-0 Blackwell_  ")
     md_lines.append(f"_Ligand SMILES_: `{smiles}` (= cisplatin).  ")
-    md_lines.append(
-        f"_Engine_: Vina 1.2.7 (Python binding preferred, CLI fallback).  "
-    )
+    md_lines.append(f"_Engine_: Vina 1.2.7 (Python binding preferred, CLI fallback).  ")
     md_lines.append(
         f"_Exhaustiveness_: {exhaustiveness}; _n_poses_: {n_poses}; "
         f"_seeds_: {list(seeds)}."
@@ -1105,13 +1210,9 @@ def run_full_sweep(
         "| Pocket | kcal/mol min | median | mean | stddev | n_seeds | "
         "status | boltz_affinity pIC50 |"
     )
-    md_lines.append(
-        "|---|---|---|---|---|---|---|---|"
-    )
+    md_lines.append("|---|---|---|---|---|---|---|---|")
     for s in sweeps:
-        boltz_str = (
-            f"{s.boltz_pic50:.3f}" if s.boltz_pic50 is not None else "—"
-        )
+        boltz_str = f"{s.boltz_pic50:.3f}" if s.boltz_pic50 is not None else "—"
         md_lines.append(
             f"| {s.pocket_id} | {s.kcal_mol_min:.3f} | "
             f"{s.kcal_mol_median:.3f} | {s.kcal_mol_mean:.3f} | "
@@ -1147,12 +1248,8 @@ def run_full_sweep(
     md_lines.append("")
     md_lines.append("## Files")
     md_lines.append("")
-    md_lines.append(
-        "* `sweep_summary.json` — machine-readable per-pocket aggregate."
-    )
-    md_lines.append(
-        "* `<pocket>/per_seed_metrics.json` — per-seed raw Vina record."
-    )
+    md_lines.append("* `sweep_summary.json` — machine-readable per-pocket aggregate.")
+    md_lines.append("* `<pocket>/per_seed_metrics.json` — per-seed raw Vina record.")
     md_lines.append(
         "* `<pocket>/cisplatin.pdbqt` — meeko-emitted cisplatin PDBQT "
         "(generic `M` atype for Pt)."
@@ -1173,39 +1270,57 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--pockets", nargs="+", default=list(DEFAULT_POCKETS),
+        "--pockets",
+        nargs="+",
+        default=list(DEFAULT_POCKETS),
         help="Pocket IDs (default: the 10 Wf-30 pockets).",
     )
     p.add_argument(
-        "--seeds", nargs="+", type=int, default=list(DEFAULT_SEEDS),
+        "--seeds",
+        nargs="+",
+        type=int,
+        default=list(DEFAULT_SEEDS),
         help="Experiment seeds (default: 0 1 2).",
     )
     p.add_argument(
-        "--exhaustiveness", type=int, default=DEFAULT_EXHAUSTIVENESS,
+        "--exhaustiveness",
+        type=int,
+        default=DEFAULT_EXHAUSTIVENESS,
         help="Vina --exhaustiveness (default 8).",
     )
     p.add_argument(
-        "--n-poses", type=int, default=DEFAULT_N_POSES,
+        "--n-poses",
+        type=int,
+        default=DEFAULT_N_POSES,
         help="Vina --num_modes (default 5).",
     )
     p.add_argument(
-        "--smiles", default=CISPLATIN_SMILES,
+        "--smiles",
+        default=CISPLATIN_SMILES,
         help="Ligand SMILES (default: cisplatin [Pt](N)(N)(Cl)Cl).",
     )
     p.add_argument(
-        "--prep-dir", type=Path, default=DEFAULT_PREP_DIR,
+        "--prep-dir",
+        type=Path,
+        default=DEFAULT_PREP_DIR,
         help="Wf-30 pocket-prep root (default: molmetal/reports/wf30_pocket_prep).",
     )
     p.add_argument(
-        "--out-dir", type=Path, default=DEFAULT_OUT_DIR,
+        "--out-dir",
+        type=Path,
+        default=DEFAULT_OUT_DIR,
         help="Output root (default: molmetal/reports/wf121_cisplatin_real_vina).",
     )
     p.add_argument(
-        "--engine", choices=("vina", "vina-cli", "auto"), default="auto",
+        "--engine",
+        choices=("vina", "vina-cli", "auto"),
+        default="auto",
         help="Engine selection (default: auto — Python binding first).",
     )
     p.add_argument(
-        "--chemotype-vdw", dest="chemotype_vdw", action="store_true",
+        "--chemotype-vdw",
+        dest="chemotype_vdw",
+        action="store_true",
         default=True,
         help=(
             "Wf-143 P3 — rewrite the meeko-emitted ligand atype to the "
@@ -1215,14 +1330,17 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--no-chemotype-vdw", dest="chemotype_vdw", action="store_false",
+        "--no-chemotype-vdw",
+        dest="chemotype_vdw",
+        action="store_false",
         help=(
             "Disable Wf-143 P3 chemotype-tuned VDW. Always rewrite "
             "'M' → 'Mg' (Wf-121 P1 behaviour)."
         ),
     )
     p.add_argument(
-        "--log-level", default="INFO",
+        "--log-level",
+        default="INFO",
         choices=("DEBUG", "INFO", "WARNING", "ERROR"),
     )
     return p
@@ -1283,4 +1401,5 @@ def main(argv: Optional[List[str]] = None) -> int:
 
 if __name__ == "__main__":  # pragma: no cover
     import os  # noqa: E402 — needed for os.access fallback above
+
     sys.exit(main(sys.argv[1:]))

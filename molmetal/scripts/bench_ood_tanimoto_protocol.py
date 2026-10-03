@@ -103,12 +103,8 @@ log = logging.getLogger("wf57_ood_tanimoto")
 # ---------------------------------------------------------------------------
 # Defaults — tmQM d-block + per-cluster split parameters
 # ---------------------------------------------------------------------------
-DEFAULT_TMQM_CSV: Path = (
-    _REPO_ROOT / "molmetal" / "data" / "tmqm_dblock_subset.csv"
-)
-DEFAULT_OUTPUT_DIR: Path = (
-    _REPO_ROOT / "molmetal" / "reports" / "wf57_tanimoto"
-)
+DEFAULT_TMQM_CSV: Path = _REPO_ROOT / "molmetal" / "data" / "tmqm_dblock_subset.csv"
+DEFAULT_OUTPUT_DIR: Path = _REPO_ROOT / "molmetal" / "reports" / "wf57_tanimoto"
 
 #: Tanimoto OOD threshold (Pocket2Mol / TargetDiff convention).
 DEFAULT_TANIMOTO_THRESHOLD: float = 0.4
@@ -149,6 +145,7 @@ def _have_rdkit() -> bool:
     """Return ``True`` iff RDKit can be imported."""
     try:
         from rdkit import Chem  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -210,7 +207,9 @@ def load_tmqm_pool(
             if col not in fields:
                 log.error(
                     "Required column %r missing from %s; fields=%r",
-                    col, csv_path, fields,
+                    col,
+                    csv_path,
+                    fields,
                 )
                 return {}
         for row in reader:
@@ -219,13 +218,15 @@ def load_tmqm_pool(
             code = (row.get(code_col, "") or "").strip()
             if not smi or not cluster:
                 continue
-            out[cluster].append({
-                "csd_code": code,
-                "smiles": smi,
-                "metal_center": cluster,
-                "coord_number": (row.get("coord_number", "") or "").strip(),
-                "n_atoms": (row.get("n_atoms", "") or "").strip(),
-            })
+            out[cluster].append(
+                {
+                    "csd_code": code,
+                    "smiles": smi,
+                    "metal_center": cluster,
+                    "coord_number": (row.get("coord_number", "") or "").strip(),
+                    "n_atoms": (row.get("n_atoms", "") or "").strip(),
+                }
+            )
 
     # Deterministic per-cluster order: sort by CSD code.
     for cluster in list(out.keys()):
@@ -364,7 +365,9 @@ def summarize_tanimoto_matrix(
         "fraction_below_threshold": _safe_div(
             sum(1 for p in pairs if p < 0.0),  # filled by caller
             len(pairs),
-        ) if False else float(
+        )
+        if False
+        else float(
             sum(1 for p in pairs)  # placeholder; replaced below
         ),
     }
@@ -437,7 +440,9 @@ def benchmark_cluster(
     log.info(
         "[wf57_ood_tanimoto] cluster=%s n_total=%d n_train=%d n_test=%d",
         rows[0]["metal_center"] if rows else "?",
-        n_total, n_train, n_test,
+        n_total,
+        n_train,
+        n_test,
     )
 
     # Three Tanimoto matrices.  We only compute cross-side pairs when
@@ -459,8 +464,11 @@ def benchmark_cluster(
         if not smiles_a or not smiles_b:
             return {
                 "n_pairs": 0,
-                "min": 0.0, "max": 0.0, "mean": 0.0,
-                "median": 0.0, "std": 0.0,
+                "min": 0.0,
+                "max": 0.0,
+                "mean": 0.0,
+                "median": 0.0,
+                "std": 0.0,
                 "fraction_below_threshold": 1.0,
                 "threshold": float(tanimoto_threshold),
                 "matrix": [],
@@ -486,24 +494,28 @@ def benchmark_cluster(
             "mean": float(statistics.fmean(pairs)) if pairs else 0.0,
             "median": float(statistics.median(pairs)) if pairs else 0.0,
             "std": float(statistics.stdev(pairs)) if len(pairs) >= 2 else 0.0,
-            "fraction_below_threshold": _frac_below(
-                pairs, tanimoto_threshold
-            ),
+            "fraction_below_threshold": _frac_below(pairs, tanimoto_threshold),
             "threshold": float(tanimoto_threshold),
             "matrix": matrix,
-            "smiles_index": list(smiles_a) if same_side else (
-                list(smiles_a) + list(smiles_b)
-            ),
+            "smiles_index": list(smiles_a)
+            if same_side
+            else (list(smiles_a) + list(smiles_b)),
         }
 
     out["matrices"]["train_train"] = _matrix_summary(
-        train_smi, train_smi, same_side=True,
+        train_smi,
+        train_smi,
+        same_side=True,
     )
     out["matrices"]["train_test"] = _matrix_summary(
-        train_smi, test_smi, same_side=False,
+        train_smi,
+        test_smi,
+        same_side=False,
     )
     out["matrices"]["test_test"] = _matrix_summary(
-        test_smi, test_smi, same_side=True,
+        test_smi,
+        test_smi,
+        same_side=True,
     )
 
     # OOD audit (cluster-level): fraction of test SMILES whose
@@ -580,9 +592,7 @@ def run_ood_tanimoto_protocol(
         :func:`save_ood_tanimoto_protocol`.
     """
     if not (0.0 < float(train_ratio) < 1.0):
-        raise ValueError(
-            f"train_ratio must be in (0.0, 1.0); got {train_ratio}"
-        )
+        raise ValueError(f"train_ratio must be in (0.0, 1.0); got {train_ratio}")
     if not (0.0 <= float(tanimoto_threshold) <= 1.0):
         raise ValueError(
             f"tanimoto_threshold must be in [0.0, 1.0]; got {tanimoto_threshold}"
@@ -590,15 +600,15 @@ def run_ood_tanimoto_protocol(
 
     if not _have_rdkit():
         log.error("RDKit not available; Tanimoto OOD protocol cannot run")
-        raise RuntimeError(
-            "RDKit is required for the Tanimoto<0.4 OOD protocol"
-        )
+        raise RuntimeError("RDKit is required for the Tanimoto<0.4 OOD protocol")
 
     log.info(
         "[wf57_ood_tanimoto] start: train_ratio=%.3f threshold=%.3f "
         "max_per_cluster=%s csv=%s",
-        float(train_ratio), float(tanimoto_threshold),
-        max_samples_per_cluster, tmqm_csv,
+        float(train_ratio),
+        float(tanimoto_threshold),
+        max_samples_per_cluster,
+        tmqm_csv,
     )
 
     # Lazy heavy imports.
@@ -606,7 +616,8 @@ def run_ood_tanimoto_protocol(
 
     protocol = TanimotoOODProtocol(
         threshold=float(tanimoto_threshold),
-        radius=FP_RADIUS, n_bits=FP_NBITS,
+        radius=FP_RADIUS,
+        n_bits=FP_NBITS,
     )
 
     pool = load_tmqm_pool(
@@ -616,23 +627,21 @@ def run_ood_tanimoto_protocol(
     if not pool:
         log.error(
             "tmQM pool is empty (%s); aborting — see honest-framing "
-            "in :func:`load_tmqm_pool`", Path(tmqm_csv),
+            "in :func:`load_tmqm_pool`",
+            Path(tmqm_csv),
         )
-        raise RuntimeError(
-            f"tmQM pool is empty (csv={tmqm_csv}); cannot run protocol"
-        )
+        raise RuntimeError(f"tmQM pool is empty (csv={tmqm_csv}); cannot run protocol")
 
     if clusters is not None:
         cluster_set = set(clusters)
         pool = {k: v for k, v in pool.items() if k in cluster_set}
         if not pool:
-            raise ValueError(
-                f"cluster whitelist {list(clusters)} matched no clusters"
-            )
+            raise ValueError(f"cluster whitelist {list(clusters)} matched no clusters")
 
     log.info(
         "[wf57_ood_tanimoto] loaded %d clusters; total samples=%d",
-        len(pool), sum(len(v) for v in pool.values()),
+        len(pool),
+        sum(len(v) for v in pool.values()),
     )
 
     t_total_0 = time.perf_counter()
@@ -646,7 +655,9 @@ def run_ood_tanimoto_protocol(
         if len(rows) < 2:
             log.warning(
                 "[wf57_ood_tanimoto] cluster %s has only %d samples; "
-                "skipping (cannot split)", cluster, len(rows),
+                "skipping (cannot split)",
+                cluster,
+                len(rows),
             )
             per_cluster[cluster] = {
                 "n_total": int(len(rows)),
@@ -678,58 +689,34 @@ def run_ood_tanimoto_protocol(
             "n_total": int(result.get("n_total", 0)),
             "n_train": int(result.get("n_train", 0)),
             "n_test": int(result.get("n_test", 0)),
-            "train_ratio_actual": float(
-                result.get("train_ratio_actual", 0.0)
-            ),
-            "ood_rate": float(
-                result.get("ood_audit", {}).get("ood_rate", 0.0)
-            ),
-            "ood_n": int(
-                result.get("ood_audit", {}).get("n_ood", 0)
-            ),
+            "train_ratio_actual": float(result.get("train_ratio_actual", 0.0)),
+            "ood_rate": float(result.get("ood_audit", {}).get("ood_rate", 0.0)),
+            "ood_n": int(result.get("ood_audit", {}).get("n_ood", 0)),
             "train_test_fraction_below_threshold": float(
                 m_cross.get("fraction_below_threshold", 0.0)
             ),
-            "train_test_max_tanimoto": float(
-                m_cross.get("max", 0.0)
-            ),
-            "train_test_mean_tanimoto": float(
-                m_cross.get("mean", 0.0)
-            ),
+            "train_test_max_tanimoto": float(m_cross.get("max", 0.0)),
+            "train_test_mean_tanimoto": float(m_cross.get("mean", 0.0)),
             "test_test_fraction_below_threshold": float(
-                result.get("matrices", {}).get(
-                    "test_test", {}
-                ).get("fraction_below_threshold", 0.0)
+                result.get("matrices", {})
+                .get("test_test", {})
+                .get("fraction_below_threshold", 0.0)
             ),
             "test_test_max_tanimoto": float(
-                result.get("matrices", {}).get("test_test", {}).get(
-                    "max", 0.0
-                )
+                result.get("matrices", {}).get("test_test", {}).get("max", 0.0)
             ),
         }
 
     # Aggregate OOD claim: fraction of (train, test) cross-pairs with
     # Tanimoto < threshold across all clusters.
     agg_n_pairs = len(aggregate_pairs)
-    agg_n_below = sum(
-        1 for p in aggregate_pairs if p < float(tanimoto_threshold)
-    )
+    agg_n_below = sum(1 for p in aggregate_pairs if p < float(tanimoto_threshold))
     agg_fraction_below = _safe_div(agg_n_below, agg_n_pairs)
-    agg_mean = (
-        float(statistics.fmean(aggregate_pairs))
-        if aggregate_pairs else 0.0
-    )
-    agg_median = (
-        float(statistics.median(aggregate_pairs))
-        if aggregate_pairs else 0.0
-    )
-    agg_max = (
-        float(max(aggregate_pairs)) if aggregate_pairs else 0.0
-    )
+    agg_mean = float(statistics.fmean(aggregate_pairs)) if aggregate_pairs else 0.0
+    agg_median = float(statistics.median(aggregate_pairs)) if aggregate_pairs else 0.0
+    agg_max = float(max(aggregate_pairs)) if aggregate_pairs else 0.0
 
-    verification_passed = bool(
-        agg_fraction_below >= float(OOD_VERIFICATION_TARGET)
-    )
+    verification_passed = bool(agg_fraction_below >= float(OOD_VERIFICATION_TARGET))
 
     total_wall_s = float(time.perf_counter() - t_total_0)
 
@@ -748,7 +735,8 @@ def run_ood_tanimoto_protocol(
         "fp_n_bits": int(FP_NBITS),
         "max_samples_per_cluster": (
             int(max_samples_per_cluster)
-            if max_samples_per_cluster is not None else None
+            if max_samples_per_cluster is not None
+            else None
         ),
         "n_clusters": int(len(pool)),
         "clusters": list(pool.keys()),
@@ -808,6 +796,7 @@ def save_ood_tanimoto_protocol(
     def _coerce(o: Any) -> Any:
         try:
             import numpy as _np
+
             if isinstance(o, (_np.floating, _np.integer)):
                 return o.item()
             if isinstance(o, _np.ndarray):
@@ -823,10 +812,16 @@ def save_ood_tanimoto_protocol(
 
     csv_path = output_dir / "per_cluster.csv"
     fields = [
-        "cluster", "n_total", "n_train", "n_test",
-        "train_ratio_actual", "ood_rate", "ood_n",
+        "cluster",
+        "n_total",
+        "n_train",
+        "n_test",
+        "train_ratio_actual",
+        "ood_rate",
+        "ood_n",
         "train_test_fraction_below_threshold",
-        "train_test_max_tanimoto", "train_test_mean_tanimoto",
+        "train_test_max_tanimoto",
+        "train_test_mean_tanimoto",
         "test_test_fraction_below_threshold",
         "test_test_max_tanimoto",
     ]
@@ -848,9 +843,7 @@ def save_ood_tanimoto_protocol(
     }
 
 
-def _write_markdown(
-    payload: Dict[str, Any], output_dir: Path
-) -> None:
+def _write_markdown(payload: Dict[str, Any], output_dir: Path) -> None:
     """Write the human-readable ``protocol_summary.md`` summary."""
     md_path = output_dir / "protocol_summary.md"
     threshold = float(payload.get("tanimoto_threshold", 0.4))
@@ -887,12 +880,16 @@ def _write_markdown(
     lines.append(f"**Train ratio**: {train_ratio:.3f}  ")
     lines.append(f"**Tanimoto threshold**: {threshold:.3f}  ")
     lines.append(f"**Verification target**: {target:.3f}  ")
-    lines.append(f"**FP radius / n_bits**: "
-                 f"{int(payload.get('fp_radius', 2))} / "
-                 f"{int(payload.get('fp_n_bits', 2048))}  ")
+    lines.append(
+        f"**FP radius / n_bits**: "
+        f"{int(payload.get('fp_radius', 2))} / "
+        f"{int(payload.get('fp_n_bits', 2048))}  "
+    )
     lines.append(f"**tmQM CSV**: `{payload.get('tmqm_csv', '?')}`  ")
-    lines.append(f"**Max samples / cluster**: "
-                 f"{payload.get('max_samples_per_cluster', None)}  ")
+    lines.append(
+        f"**Max samples / cluster**: "
+        f"{payload.get('max_samples_per_cluster', None)}  "
+    )
     lines.append(f"**Total wall**: {total_wall:.2f} s  ")
     lines.append("")
     lines.append("## Aggregate OOD claim")
@@ -904,12 +901,17 @@ def _write_markdown(
     lines.append(f"| N (train, test) cross-pairs | {n_pairs} |")
     lines.append(f"| N pairs below threshold | {n_below} |")
     lines.append(f"| fraction_below_threshold | {fraction:.4f} |")
-    lines.append(f"| mean Tanimoto (cross-side) | "
-                 f"{float(agg.get('mean_tanimoto', 0.0)):.4f} |")
-    lines.append(f"| median Tanimoto (cross-side) | "
-                 f"{float(agg.get('median_tanimoto', 0.0)):.4f} |")
-    lines.append(f"| max Tanimoto (cross-side) | "
-                 f"{float(agg.get('max_tanimoto', 0.0)):.4f} |")
+    lines.append(
+        f"| mean Tanimoto (cross-side) | "
+        f"{float(agg.get('mean_tanimoto', 0.0)):.4f} |"
+    )
+    lines.append(
+        f"| median Tanimoto (cross-side) | "
+        f"{float(agg.get('median_tanimoto', 0.0)):.4f} |"
+    )
+    lines.append(
+        f"| max Tanimoto (cross-side) | " f"{float(agg.get('max_tanimoto', 0.0)):.4f} |"
+    )
     lines.append(f"| Verification ({target:.2f}) | **{verify_str}** |")
     lines.append("")
     lines.append("## Per-cluster summary")
@@ -984,33 +986,45 @@ def _build_argparser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--tmqm-csv", type=Path, default=DEFAULT_TMQM_CSV,
+        "--tmqm-csv",
+        type=Path,
+        default=DEFAULT_TMQM_CSV,
         help="Path to tmQM d-block subset CSV (default: Wf-28 ship).",
     )
     p.add_argument(
-        "--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR,
+        "--output-dir",
+        type=Path,
+        default=DEFAULT_OUTPUT_DIR,
         help="Where to write the JSON/CSV/MD artefacts.",
     )
     p.add_argument(
-        "--train-ratio", type=float, default=DEFAULT_TRAIN_RATIO,
+        "--train-ratio",
+        type=float,
+        default=DEFAULT_TRAIN_RATIO,
         help="Train fraction per cluster (default 0.8).",
     )
     p.add_argument(
-        "--tanimoto-threshold", type=float,
+        "--tanimoto-threshold",
+        type=float,
         default=DEFAULT_TANIMOTO_THRESHOLD,
         help="OOD threshold (default 0.4 — Pocket2Mol / TargetDiff).",
     )
     p.add_argument(
-        "--max-samples-per-cluster", type=int,
+        "--max-samples-per-cluster",
+        type=int,
         default=DEFAULT_MAX_SAMPLES_PER_CLUSTER,
         help="Optional cap on samples per cluster (smoke tests).",
     )
     p.add_argument(
-        "--clusters", type=str, default=None,
+        "--clusters",
+        type=str,
+        default=None,
         help="Comma-separated cluster whitelist (default: all).",
     )
     p.add_argument(
-        "--verbose", "-v", action="store_true",
+        "--verbose",
+        "-v",
+        action="store_true",
         help="Verbose logging.",
     )
     return p
@@ -1028,8 +1042,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     clusters: Optional[List[str]] = None
     if args.clusters:
-        clusters = [c.strip() for c in str(args.clusters).split(",")
-                    if c.strip()]
+        clusters = [c.strip() for c in str(args.clusters).split(",") if c.strip()]
     max_per_cluster: Optional[int] = args.max_samples_per_cluster
     if max_per_cluster is not None and int(max_per_cluster) <= 0:
         max_per_cluster = None

@@ -33,6 +33,7 @@ These tests are the regression surface for that split:
 Honest framing: fixtures are synthetic YAMLs in tmp_path plus the
 live ``configs/`` tree; no network, no GPU, no torch import.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -54,11 +55,12 @@ STRICT_ENV = "PREFLIGHT_HYPERPARAMS_RESOLUTION_STRICT"
 
 def _load_preflight_module():
     spec = importlib.util.spec_from_file_location(
-        "pre_flight_check_wfa13_under_test", PREFLIGHT_SCRIPT,
+        "pre_flight_check_wfa13_under_test",
+        PREFLIGHT_SCRIPT,
     )
-    assert spec is not None and spec.loader is not None, (
-        f"pre_flight_check.py has no import spec ({PREFLIGHT_SCRIPT})"
-    )
+    assert (
+        spec is not None and spec.loader is not None
+    ), f"pre_flight_check.py has no import spec ({PREFLIGHT_SCRIPT})"
     mod = importlib.util.module_from_spec(spec)
     sys.modules["pre_flight_check_wfa13_under_test"] = mod
     spec.loader.exec_module(mod)
@@ -72,6 +74,7 @@ def preflight():
 
 def _write_yaml(path: Path, body: dict) -> Path:
     import yaml as _yaml
+
     path.write_text(_yaml.safe_dump(body, sort_keys=False), encoding="utf-8")
     return path
 
@@ -139,19 +142,24 @@ def test_classify_buckets_unit(preflight) -> None:
 
 
 def test_gate_strict_passes_on_documented_exempt_only(
-    preflight, tmp_path, monkeypatch,
+    preflight,
+    tmp_path,
+    monkeypatch,
 ) -> None:
     """Strict mode PASSes when every unresolved key is documented-exempt."""
     yaml_path = _write_yaml(
         tmp_path / "exempt_only.yaml",
         _base_body(
             protocol={"scheduler": {"type": "cosine"}},  # reader-exempt
-            eval={"target_test_auc": 0.82},              # spec-exempt
+            eval={"target_test_auc": 0.82},  # spec-exempt
         ),
     )
     monkeypatch.setenv(STRICT_ENV, "1")
     result = preflight.gate_wf343c4_hyperparams_config_complete(
-        "wfa13_strict_exempt", "P3", "wf343c4", (yaml_path,),
+        "wfa13_strict_exempt",
+        "P3",
+        "wf343c4",
+        (yaml_path,),
     )
     assert result.status == "PASS", result.evidence
     assert "0 RESIDUAL" in result.evidence
@@ -175,7 +183,10 @@ def test_gate_strict_fails_on_residual(preflight, tmp_path, monkeypatch) -> None
     )
     monkeypatch.setenv(STRICT_ENV, "1")
     result = preflight.gate_wf343c4_hyperparams_config_complete(
-        "wfa13_strict_residual", "P3", "wf343c4", (yaml_path,),
+        "wfa13_strict_residual",
+        "P3",
+        "wf343c4",
+        (yaml_path,),
     )
     assert result.status == "FAIL", result.evidence
     assert "RESIDUAL" in result.evidence
@@ -186,7 +197,10 @@ def test_gate_strict_fails_on_residual(preflight, tmp_path, monkeypatch) -> None
     # Same fixture WITHOUT strict => PASS (non-blocking default preserved).
     monkeypatch.delenv(STRICT_ENV, raising=False)
     relaxed = preflight.gate_wf343c4_hyperparams_config_complete(
-        "wfa13_relaxed_residual", "P3", "wf343c4", (yaml_path,),
+        "wfa13_relaxed_residual",
+        "P3",
+        "wf343c4",
+        (yaml_path,),
     )
     assert relaxed.status == "PASS", relaxed.evidence
     assert "1 RESIDUAL" in relaxed.evidence
@@ -198,12 +212,14 @@ def test_gate_strict_fails_on_residual(preflight, tmp_path, monkeypatch) -> None
 
 
 def test_gate_default_mode_reports_buckets_on_live_configs(
-    preflight, monkeypatch,
+    preflight,
+    monkeypatch,
 ) -> None:
     """9 active configs: PASS (default mode) with the Wf-A13 bucket report."""
     monkeypatch.delenv(STRICT_ENV, raising=False)
     yaml_paths = tuple(
-        p for p in (
+        p
+        for p in (
             CONFIGS_DIR / "cfm_full_retrain.yaml",
             CONFIGS_DIR / "cfm_per_innovation_ablation_p1.4.yaml",
             CONFIGS_DIR / "cfm_real_decode_lift_p1.3.yaml",
@@ -213,13 +229,16 @@ def test_gate_default_mode_reports_buckets_on_live_configs(
             CONFIGS_DIR / "wf124_p3_remaining_metals_g4.yaml",
             CONFIGS_DIR / "training" / "nci60_9cell_5seed_50ep_v1.yaml",
             CONFIGS_DIR / "training" / "platinai_pt_4cell_5seed_50ep_v1.yaml",
-    )
+        )
     )
     missing = [str(p) for p in yaml_paths if not p.is_file()]
     assert not missing, f"config fixtures missing on disk: {missing}"
 
     result = preflight.gate_wf343c4_hyperparams_config_complete(
-        "wfa13_live", "P3", "wf343c4", yaml_paths,
+        "wfa13_live",
+        "P3",
+        "wf343c4",
+        yaml_paths,
     )
     assert result.status == "PASS", result.evidence
     assert "Wf-A13 RESOLUTION REPORT" in result.evidence

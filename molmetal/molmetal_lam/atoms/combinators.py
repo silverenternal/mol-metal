@@ -44,6 +44,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
+
 # Module-level metrics history — populated by layer entry points.
 # We use a dataclass-like holder so we can still use `field(default_factory=list)`.
 @dataclass
@@ -52,8 +53,12 @@ class _MetricsHolder:
 
 
 _METRICS = _MetricsHolder()
+
+
 def get_history() -> List[dict]:
     return _METRICS.history
+
+
 def reset_history() -> None:
     _METRICS.history.clear()
 
@@ -61,6 +66,7 @@ def reset_history() -> None:
 # ---------------------------------------------------------------------------
 # The Atom combinator
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class Atom:
@@ -162,16 +168,16 @@ class Atom:
 # practice; for the combinator abstraction we treat them as free sites
 # that can receive H-bond donors).
 PRIMITIVE_ATOMS: Dict[str, Atom] = {
-    "H":   Atom(symbol="H",   atomic_num=1,  valence=1, lone_pairs=0, geometry="s"),
-    "C":   Atom(symbol="C",   atomic_num=6,  valence=4, lone_pairs=0, geometry="sp3"),
-    "N":   Atom(symbol="N",   atomic_num=7,  valence=3, lone_pairs=1, geometry="sp3"),
-    "O":   Atom(symbol="O",   atomic_num=8,  valence=2, lone_pairs=2, geometry="sp3"),
-    "F":   Atom(symbol="F",   atomic_num=9,  valence=1, lone_pairs=3, geometry="sp3"),
-    "P":   Atom(symbol="P",   atomic_num=15, valence=3, lone_pairs=1, geometry="sp3"),
-    "S":   Atom(symbol="S",   atomic_num=16, valence=2, lone_pairs=2, geometry="sp3"),
-    "Cl":  Atom(symbol="Cl",  atomic_num=17, valence=1, lone_pairs=3, geometry="sp3"),
-    "Br":  Atom(symbol="Br",  atomic_num=35, valence=1, lone_pairs=3, geometry="sp3"),
-    "I":   Atom(symbol="I",   atomic_num=53, valence=1, lone_pairs=3, geometry="sp3"),
+    "H": Atom(symbol="H", atomic_num=1, valence=1, lone_pairs=0, geometry="s"),
+    "C": Atom(symbol="C", atomic_num=6, valence=4, lone_pairs=0, geometry="sp3"),
+    "N": Atom(symbol="N", atomic_num=7, valence=3, lone_pairs=1, geometry="sp3"),
+    "O": Atom(symbol="O", atomic_num=8, valence=2, lone_pairs=2, geometry="sp3"),
+    "F": Atom(symbol="F", atomic_num=9, valence=1, lone_pairs=3, geometry="sp3"),
+    "P": Atom(symbol="P", atomic_num=15, valence=3, lone_pairs=1, geometry="sp3"),
+    "S": Atom(symbol="S", atomic_num=16, valence=2, lone_pairs=2, geometry="sp3"),
+    "Cl": Atom(symbol="Cl", atomic_num=17, valence=1, lone_pairs=3, geometry="sp3"),
+    "Br": Atom(symbol="Br", atomic_num=35, valence=1, lone_pairs=3, geometry="sp3"),
+    "I": Atom(symbol="I", atomic_num=53, valence=1, lone_pairs=3, geometry="sp3"),
 }
 
 
@@ -192,33 +198,51 @@ PRIMITIVE_ATOMS: Dict[str, Atom] = {
 # matches the metal's coordination number.
 METAL_ATOMS: Dict[str, Atom] = {
     "Pt_II": Atom(
-        symbol="Pt_II", atomic_num=78,
-        valence=2, lone_pairs=2, geometry="square_planar",
+        symbol="Pt_II",
+        atomic_num=78,
+        valence=2,
+        lone_pairs=2,
+        geometry="square_planar",
         is_metal=True,
     ),
     "Ru_II": Atom(
-        symbol="Ru_II", atomic_num=44,
-        valence=0, lone_pairs=6, geometry="octahedral",
+        symbol="Ru_II",
+        atomic_num=44,
+        valence=0,
+        lone_pairs=6,
+        geometry="octahedral",
         is_metal=True,
     ),
     "Zn_II": Atom(
-        symbol="Zn_II", atomic_num=30,
-        valence=2, lone_pairs=2, geometry="tetrahedral",
+        symbol="Zn_II",
+        atomic_num=30,
+        valence=2,
+        lone_pairs=2,
+        geometry="tetrahedral",
         is_metal=True,
     ),
     "Ir_III": Atom(
-        symbol="Ir_III", atomic_num=77,
-        valence=3, lone_pairs=3, geometry="octahedral",
+        symbol="Ir_III",
+        atomic_num=77,
+        valence=3,
+        lone_pairs=3,
+        geometry="octahedral",
         is_metal=True,
     ),
     "Cu_II": Atom(
-        symbol="Cu_II", atomic_num=29,
-        valence=2, lone_pairs=2, geometry="square_planar",
+        symbol="Cu_II",
+        atomic_num=29,
+        valence=2,
+        lone_pairs=2,
+        geometry="square_planar",
         is_metal=True,
     ),
     "Au_III": Atom(
-        symbol="Au_III", atomic_num=79,
-        valence=2, lone_pairs=2, geometry="square_planar",
+        symbol="Au_III",
+        atomic_num=79,
+        valence=2,
+        lone_pairs=2,
+        geometry="square_planar",
         is_metal=True,
     ),
 }
@@ -226,14 +250,19 @@ METAL_ATOMS: Dict[str, Atom] = {
 # Expected metal coordination numbers — lookup table for METAL_GEOMETRY_OK.
 # Healthy: 1.0 (these are intrinsic, any drift is a regression).
 _EXPECTED_METAL_CN: Dict[str, int] = {
-    "Pt_II": 4, "Ru_II": 6, "Zn_II": 4,
-    "Ir_III": 6, "Cu_II": 4, "Au_III": 4,
+    "Pt_II": 4,
+    "Ru_II": 6,
+    "Zn_II": 4,
+    "Ir_III": 6,
+    "Cu_II": 4,
+    "Au_III": 4,
 }
 
 
 # ---------------------------------------------------------------------------
 # Sanity checks
 # ---------------------------------------------------------------------------
+
 
 def _check_pt_ii_arity() -> bool:
     """Pt_II must have arity == 4 (square-planar fits 4 ligands)."""
@@ -275,31 +304,40 @@ def sanity_check() -> Dict[str, bool]:
     """
     rep = {
         "Pt_II.arity == 4 (square-planar)": _check_pt_ii_arity(),
-        "Ru_II.arity == 6 (octahedral)":    _check_ru_ii_arity(),
-        "cisplatin well-formed":            _check_cisplatin_well_formed(),
+        "Ru_II.arity == 6 (octahedral)": _check_ru_ii_arity(),
+        "cisplatin well-formed": _check_cisplatin_well_formed(),
     }
     # L1 metrics: SANITY_PASS_RATE + METAL_GEOMETRY_OK + PRIMITIVE_GEOMETRY_TAG_OK
-    _METRICS.history.append({
-        "metric": "SANITY_PASS_RATE",
-        "value": float(sum(1 for v in rep.values() if v)) / max(1, len(rep)),
-        "n_checks": len(rep),
-        "n_passed": sum(1 for v in rep.values() if v),
-    })
-    metal_ok = sum(1 for m, cn in _EXPECTED_METAL_CN.items()
-                   if m in METAL_ATOMS and METAL_ATOMS[m].arity == cn)
-    _METRICS.history.append({
-        "metric": "METAL_GEOMETRY_OK",
-        "value": float(metal_ok) / max(1, len(_EXPECTED_METAL_CN)),
-        "n_metal": len(_EXPECTED_METAL_CN),
-        "n_ok": metal_ok,
-    })
+    _METRICS.history.append(
+        {
+            "metric": "SANITY_PASS_RATE",
+            "value": float(sum(1 for v in rep.values() if v)) / max(1, len(rep)),
+            "n_checks": len(rep),
+            "n_passed": sum(1 for v in rep.values() if v),
+        }
+    )
+    metal_ok = sum(
+        1
+        for m, cn in _EXPECTED_METAL_CN.items()
+        if m in METAL_ATOMS and METAL_ATOMS[m].arity == cn
+    )
+    _METRICS.history.append(
+        {
+            "metric": "METAL_GEOMETRY_OK",
+            "value": float(metal_ok) / max(1, len(_EXPECTED_METAL_CN)),
+            "n_metal": len(_EXPECTED_METAL_CN),
+            "n_ok": metal_ok,
+        }
+    )
     prim_tagged = sum(1 for a in PRIMITIVE_ATOMS.values() if a.geometry)
-    _METRICS.history.append({
-        "metric": "PRIMITIVE_GEOMETRY_TAG_OK",
-        "value": float(prim_tagged) / max(1, len(PRIMITIVE_ATOMS)),
-        "n_primitive": len(PRIMITIVE_ATOMS),
-        "n_tagged": prim_tagged,
-    })
+    _METRICS.history.append(
+        {
+            "metric": "PRIMITIVE_GEOMETRY_TAG_OK",
+            "value": float(prim_tagged) / max(1, len(PRIMITIVE_ATOMS)),
+            "n_primitive": len(PRIMITIVE_ATOMS),
+            "n_tagged": prim_tagged,
+        }
+    )
     return rep
 
 
@@ -317,6 +355,7 @@ def assert_well_formed() -> None:
 # ---------------------------------------------------------------------------
 # SMILES parser (lazy RDKit import)
 # ---------------------------------------------------------------------------
+
 
 def from_smiles(smiles: str) -> List[Atom]:
     """Parse a SMILES string into a list of :class:`Atom` instances.
@@ -381,35 +420,42 @@ def from_smiles(smiles: str) -> List[Atom]:
         # Use RDKit's default valence as our `valence`, with 0 lone
         # pairs (we don't have data on them).
         default_valence = rd_atom.GetTotalValence()
-        atoms.append(Atom(
-            symbol=sym,
-            atomic_num=rd_atom.GetAtomicNum(),
-            valence=int(default_valence),
-            lone_pairs=0,
-            geometry="",
-            is_metal=False,
-        ))
+        atoms.append(
+            Atom(
+                symbol=sym,
+                atomic_num=rd_atom.GetAtomicNum(),
+                valence=int(default_valence),
+                lone_pairs=0,
+                geometry="",
+                is_metal=False,
+            )
+        )
         n_fallback += 1
     # L1 metrics: ARITY_HIT_RATE + FALLBACK_ATOM_RATIO
     total = max(1, n_hit + n_fallback)
-    _METRICS.history.append({
-        "metric": "ARITY_HIT_RATE",
-        "value": float(n_hit) / total,
-        "n_atoms": total,
-        "n_hit": n_hit,
-    })
-    _METRICS.history.append({
-        "metric": "FALLBACK_ATOM_RATIO",
-        "value": float(n_fallback) / total,
-        "n_atoms": total,
-        "n_fallback": n_fallback,
-    })
+    _METRICS.history.append(
+        {
+            "metric": "ARITY_HIT_RATE",
+            "value": float(n_hit) / total,
+            "n_atoms": total,
+            "n_hit": n_hit,
+        }
+    )
+    _METRICS.history.append(
+        {
+            "metric": "FALLBACK_ATOM_RATIO",
+            "value": float(n_fallback) / total,
+            "n_atoms": total,
+            "n_fallback": n_fallback,
+        }
+    )
     return atoms
 
 
 # ---------------------------------------------------------------------------
 # Convenience: build a small ligand combinator on the fly
 # ---------------------------------------------------------------------------
+
 
 def make_ligand(symbol: str, occupancy: int = 1) -> Atom:
     """Build a single-bond ligand combinator (e.g. ``Cl``, ``NH3``).
@@ -423,8 +469,7 @@ def make_ligand(symbol: str, occupancy: int = 1) -> Atom:
         # Saturated amine: nitrogen with 3 H bonds already formed.
         # Acts as a value (closed term) for the purposes of dative
         # bonding to a metal centre.
-        return Atom(symbol="NH3", atomic_num=7, valence=0, lone_pairs=1,
-                    geometry="sp3")
+        return Atom(symbol="NH3", atomic_num=7, valence=0, lone_pairs=1, geometry="sp3")
     if symbol in PRIMITIVE_ATOMS:
         return PRIMITIVE_ATOMS[symbol]
     raise ValueError(f"Unknown ligand symbol: {symbol!r}")
@@ -445,6 +490,7 @@ def make_ligand(symbol: str, occupancy: int = 1) -> Atom:
 # future code that prefers an instance-style API.  The canonical
 # bookkeeping for the bonds/application layer continues to live in
 # :class:`FreeSiteLedger`.
+
 
 @dataclass
 class AtomInstance:
@@ -484,7 +530,8 @@ class AtomInstance:
         return self.current_bonds >= self.atom.arity
 
     def with_dative_bond_to(
-        self, other: "AtomInstance",
+        self,
+        other: "AtomInstance",
     ) -> Tuple["AtomInstance", "AtomInstance"]:
         """Form a curried dative bond between two occurrences.
 

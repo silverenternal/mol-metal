@@ -35,6 +35,7 @@ Output contract (3)
 All tests are CPU-only, deterministic, and complete in < 180 s
 combined.  Smoke runs use ``--n-samples 2 --seeds 1`` for sub-30 s CI.
 """
+
 from __future__ import annotations
 
 import json
@@ -89,6 +90,7 @@ from molmetal.scripts.bench_ood_per_metal import (  # noqa: E402
 def _have_rdkit() -> bool:
     try:
         from rdkit import Chem  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -188,7 +190,9 @@ def test_smoke_subset_metal(tmp_path: Path) -> None:
 def _ensure_rdkit_and_data() -> bool:
     if not _have_rdkit():
         return False
-    csv_path = Path("/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv")
+    csv_path = Path(
+        "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
+    )
     return csv_path.is_file()
 
 

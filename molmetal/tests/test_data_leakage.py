@@ -54,12 +54,12 @@ def _run_cli_once() -> None:
     script = _REPO_ROOT / "molmetal" / "scripts" / "check_data_leakage.py"
     out = __import__("subprocess").run(
         [sys.executable, str(script)],
-        capture_output=True, text=True, timeout=180,
+        capture_output=True,
+        text=True,
+        timeout=180,
     )
     if out.returncode != 0:
-        raise RuntimeError(
-            f"check_data_leakage CLI failed: {out.stderr or out.stdout}"
-        )
+        raise RuntimeError(f"check_data_leakage CLI failed: {out.stderr or out.stdout}")
 
 
 # ---------------------------------------------------------------------------
@@ -90,10 +90,13 @@ def test_leakage_check_json_exists() -> None:
 def test_cli_exits_zero() -> None:
     """``check_data_leakage.py --help`` exits 0; the script parses cleanly."""
     import subprocess
+
     script = _REPO_ROOT / "molmetal" / "scripts" / "check_data_leakage.py"
     out = subprocess.run(
         [sys.executable, str(script), "--help"],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     assert out.returncode == 0
 
@@ -127,15 +130,24 @@ def test_leakage_top_level_keys(leakage: dict) -> None:
 def test_leakage_dataset_keys(leakage: dict) -> None:
     """Each dataset entry carries the Wf-44 contract keys."""
     expected_dataset = {
-        "dataset_name", "csv_path", "n_total",
-        "n_unique_smiles", "n_unique_scaffolds",
-        "n_parse_failures", "splits", "overlaps",
-        "strict_pass", "summary",
+        "dataset_name",
+        "csv_path",
+        "n_total",
+        "n_unique_smiles",
+        "n_unique_scaffolds",
+        "n_parse_failures",
+        "splits",
+        "overlaps",
+        "strict_pass",
+        "summary",
     }
     expected_overlap_pair = {
-        "n_intersect_smiles", "n_intersect_scaffolds",
-        "n_unique_train_smiles", "n_unique_test_smiles",
-        "n_unique_train_scaffolds", "n_unique_test_scaffolds",
+        "n_intersect_smiles",
+        "n_intersect_scaffolds",
+        "n_unique_train_smiles",
+        "n_unique_test_smiles",
+        "n_unique_train_scaffolds",
+        "n_unique_test_scaffolds",
         "frac_test_smiles_seen_in_train",
         "frac_test_scaffolds_seen_in_train",
     }
@@ -229,8 +241,12 @@ def test_compute_overlap_zero_for_disjoint_indices() -> None:
     canon = ["CCO", "c1ccccc1", "CCCO", "CCCCO"]
     scafs = ["scafA", "scafB", "scafC", "scafD"]
     split = mod.SplitStats(
-        train_idx=[0, 1], val_idx=[], test_idx=[2, 3],
-        n_train=2, n_val=0, n_test=2,
+        train_idx=[0, 1],
+        val_idx=[],
+        test_idx=[2, 3],
+        n_train=2,
+        n_val=0,
+        n_test=2,
     )
     overlaps = mod.compute_overlap(canon, scafs, split)
     assert overlaps["train_vs_test"].n_intersect_smiles == 0
@@ -340,11 +356,14 @@ def test_metalcytotox_random_split_shows_heavy_overlap() -> None:
 def test_cli_exits_zero_with_real_data(tmp_path: Path) -> None:
     """CLI exits 0 when both default CSVs are available."""
     import subprocess
+
     script = _REPO_ROOT / "molmetal" / "scripts" / "check_data_leakage.py"
     out = subprocess.run(
         [sys.executable, str(script), "--seed", "1"],
-        capture_output=True, text=True, timeout=180,
+        capture_output=True,
+        text=True,
+        timeout=180,
     )
-    assert out.returncode == 0, (
-        f"CLI exited with {out.returncode}: {out.stderr or out.stdout}"
-    )
+    assert (
+        out.returncode == 0
+    ), f"CLI exited with {out.returncode}: {out.stderr or out.stdout}"

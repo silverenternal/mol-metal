@@ -60,10 +60,9 @@ def _read_text(p: Path) -> str:
 # 1. Directory layout
 # ---------------------------------------------------------------------------
 
+
 def test_reports_root_exists():
-    assert REPORTS_ROOT.exists(), (
-        f"Wf-29 Phase 2 reports root missing: {REPORTS_ROOT}"
-    )
+    assert REPORTS_ROOT.exists(), f"Wf-29 Phase 2 reports root missing: {REPORTS_ROOT}"
 
 
 @pytest.mark.parametrize("subdir", REQUIRED_SUB_DIRS)
@@ -93,6 +92,7 @@ def test_per_script_log_exists_at_root(subdir: str):
 # ---------------------------------------------------------------------------
 # 2. Aggregate files
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize("filename", REQUIRED_AGGREGATE_FILES)
 def test_aggregate_file_exists(filename: str):
@@ -135,20 +135,21 @@ def test_ablation_lift_valid_json_with_ru_apples_to_apples():
 # 3. R18 metrics — 5-metal coverage
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize("subdir", ("se3sb", "transport", "multiph"))
 def test_r18_metrics_5_metal_coverage(subdir: str):
     """Each R18 script's metrics.json has 5-metal per-seed AUC."""
     metrics = _read_json(REPORTS_ROOT / subdir / "metrics.json")
     assert "per_seed" in metrics
-    assert len(metrics["per_seed"]) >= 3, (
-        f"expected ≥3 seeds for {subdir}, got {len(metrics['per_seed'])}"
-    )
+    assert (
+        len(metrics["per_seed"]) >= 3
+    ), f"expected ≥3 seeds for {subdir}, got {len(metrics['per_seed'])}"
     for seed_record in metrics["per_seed"]:
         assert "test_auc_per_metal" in seed_record
         for metal in R18_METALS:
-            assert metal in seed_record["test_auc_per_metal"], (
-                f"{subdir} seed={seed_record.get('seed')} missing {metal}"
-            )
+            assert (
+                metal in seed_record["test_auc_per_metal"]
+            ), f"{subdir} seed={seed_record.get('seed')} missing {metal}"
             v = seed_record["test_auc_per_metal"][metal]
             assert 0.0 <= v <= 1.0, f"{subdir} {metal} AUC {v} out of [0,1]"
 
@@ -156,6 +157,7 @@ def test_r18_metrics_5_metal_coverage(subdir: str):
 # ---------------------------------------------------------------------------
 # 4. R18 final_summary — wall + recipe name
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize("subdir", ("se3sb", "transport", "multiph"))
 def test_r18_final_summary_wall_and_recipe(subdir: str):
@@ -166,14 +168,15 @@ def test_r18_final_summary_wall_and_recipe(subdir: str):
     assert wall > 0, f"{subdir} wall=0"
     assert wall < 1800, f"{subdir} wall={wall:.1f}s exceeds 30-min budget"
     # Each R18 recipe name contains its W2.x identifier
-    assert re.search(r"w2\.\d", summary["recipe"]), (
-        f"{subdir} recipe '{summary['recipe']}' missing w2.x id"
-    )
+    assert re.search(
+        r"w2\.\d", summary["recipe"]
+    ), f"{subdir} recipe '{summary['recipe']}' missing w2.x id"
 
 
 # ---------------------------------------------------------------------------
 # 5. R17 baseline — 3-seed × Ru outputs
 # ---------------------------------------------------------------------------
+
 
 def test_r17_baseline_3_seed_outputs():
     for seed in (0, 1, 2):
@@ -198,6 +201,7 @@ def test_r17_baseline_aggregate_metrics():
 # ---------------------------------------------------------------------------
 # 6. GPU memory log + sanity bounds
 # ---------------------------------------------------------------------------
+
 
 def test_gpu_memory_log_format():
     text = _read_text(REPORTS_ROOT / "gpu_memory_log.json.baseline")
@@ -224,6 +228,7 @@ def test_gpu_peak_memory_under_4gb():
 # 7. Exit-code honesty (decorator bug — recorded, not hidden)
 # ---------------------------------------------------------------------------
 
+
 def test_se3sb_decorator_bug_recorded_honestly():
     """train_se3sb.py exits 2 due to decorator re-parsing argv with simplified parser.
     The training data + ckpts are written correctly. This test pins that we recorded
@@ -231,18 +236,20 @@ def test_se3sb_decorator_bug_recorded_honestly():
     """
     md = _read_text(REPORTS_ROOT / "comparison.md")
     # Honest note in §7 honest caveats or §6 status
-    has_honest_note = (
-        "exit" in md.lower()
-        and ("decorator" in md.lower() or "exit_code" in md.lower() or "exit code" in md.lower())
+    has_honest_note = "exit" in md.lower() and (
+        "decorator" in md.lower()
+        or "exit_code" in md.lower()
+        or "exit code" in md.lower()
     )
-    assert has_honest_note, (
-        "comparison.md must honestly record the decorator exit-code-2 bug"
-    )
+    assert (
+        has_honest_note
+    ), "comparison.md must honestly record the decorator exit-code-2 bug"
 
 
 # ---------------------------------------------------------------------------
 # 8. No fabricated MEASURED numbers
 # ---------------------------------------------------------------------------
+
 
 def test_provenance_tag_in_bench_summary():
     """The bench_summary must record provenance so future readers cannot
@@ -251,6 +258,7 @@ def test_provenance_tag_in_bench_summary():
     bench = _read_json(REPORTS_ROOT / "bench_summary.json")
     # encoder_init_status is the main honesty anchor for R18 runs
     assert "encoder_init_status" in bench
-    assert "random" in bench["encoder_init_status"].lower() or "fallback" in bench["encoder_init_status"].lower(), (
-        f"R18 runs trained from random init — bench_summary must record this honestly"
-    )
+    assert (
+        "random" in bench["encoder_init_status"].lower()
+        or "fallback" in bench["encoder_init_status"].lower()
+    ), f"R18 runs trained from random init — bench_summary must record this honestly"

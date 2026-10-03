@@ -74,12 +74,18 @@ if str(PROJECT_ROOT) not in sys.path:
 # invoked in the pipeline master, or referenced via PHASE 1 in-flight
 # comments, or exist as standalone wrappers on disk (G4/G5/G6 standalone
 # per Wf-337-G2 design).
-LAUNCHER_G4 = "launch_wf124_p3_g4.sh"            # TODO-180 (Wf-124 P3 G4) — 14 pairs
-LAUNCHER_G5 = "launch_wf124_p3_g5.sh"            # TODO-181 (Wf-124 P3 G5) — 15 pairs
-LAUNCHER_G6 = "launch_wf124_p3_g6.sh"            # TODO-182 (Wf-124 P3 G6) — 60 tuples
+LAUNCHER_G4 = "launch_wf124_p3_g4.sh"  # TODO-180 (Wf-124 P3 G4) — 14 pairs
+LAUNCHER_G5 = "launch_wf124_p3_g5.sh"  # TODO-181 (Wf-124 P3 G5) — 15 pairs
+LAUNCHER_G6 = "launch_wf124_p3_g6.sh"  # TODO-182 (Wf-124 P3 G6) — 60 tuples
 LAUNCHER_WF264 = "launch_wf264_cfm_property_panel.sh"  # Wf-264 CFM property panel (CPU)
 LAUNCHER_WF333 = "launch_wf333_vina_4step_gpu_bench.sh"  # Wf-333 Vina 4-step (BLOCKED)
-ALL_5_LAUNCHERS = [LAUNCHER_G4, LAUNCHER_G5, LAUNCHER_G6, LAUNCHER_WF264, LAUNCHER_WF333]
+ALL_5_LAUNCHERS = [
+    LAUNCHER_G4,
+    LAUNCHER_G5,
+    LAUNCHER_G6,
+    LAUNCHER_WF264,
+    LAUNCHER_WF333,
+]
 
 
 # ---------------------------------------------------------------------------
@@ -88,9 +94,7 @@ ALL_5_LAUNCHERS = [LAUNCHER_G4, LAUNCHER_G5, LAUNCHER_G6, LAUNCHER_WF264, LAUNCH
 
 
 def _read_pipeline_master() -> str:
-    assert PIPELINE_MASTER.exists(), (
-        f"pipeline master missing: {PIPELINE_MASTER}"
-    )
+    assert PIPELINE_MASTER.exists(), f"pipeline master missing: {PIPELINE_MASTER}"
     return PIPELINE_MASTER.read_text()
 
 
@@ -136,9 +140,7 @@ class TestPipelineMasterHasAll5Launchers:
         )
         # And it must be executable
         for f in found:
-            assert os.access(f, os.X_OK), (
-                f"launcher not executable: {f}"
-            )
+            assert os.access(f, os.X_OK), f"launcher not executable: {f}"
 
     @pytest.mark.parametrize("wrapper_name", ALL_5_LAUNCHERS)
     def test_each_launcher_parses_cleanly(self, wrapper_name: str) -> None:
@@ -150,9 +152,7 @@ class TestPipelineMasterHasAll5Launchers:
         found = _wrapper_exists(wrapper_name)
         assert found, f"launcher missing: {wrapper_name}"
         for f in found:
-            assert _parse_cleanly(f), (
-                f"launcher has bash syntax errors: {f}"
-            )
+            assert _parse_cleanly(f), f"launcher has bash syntax errors: {f}"
 
     def test_pipeline_master_references_g5_and_g6_in_phase1(self) -> None:
         """Pipeline master PHASE 1 comment block must reference G5 + G6
@@ -161,13 +161,13 @@ class TestPipelineMasterHasAll5Launchers:
         """
         text = _read_pipeline_master()
         # G5 retrain retry is PHASE 1 in-flight on GPU 0
-        assert "G5 retrain retry" in text or "TODO-181" in text, (
-            "pipeline master PHASE 1 must reference G5 / TODO-181"
-        )
+        assert (
+            "G5 retrain retry" in text or "TODO-181" in text
+        ), "pipeline master PHASE 1 must reference G5 / TODO-181"
         # Wf-124 G6 60-tuple sweep is PHASE 1 in-flight on GPU 1
-        assert "Wf-124 G6" in text or "TODO-182" in text, (
-            "pipeline master PHASE 1 must reference Wf-124 G6 / TODO-182"
-        )
+        assert (
+            "Wf-124 G6" in text or "TODO-182" in text
+        ), "pipeline master PHASE 1 must reference Wf-124 G6 / TODO-182"
 
     def test_pipeline_master_directly_invokes_wf333_and_wf264(self) -> None:
         """Pipeline master must DIRECTLY invoke Wf-333 + Wf-264 in Phase 3.
@@ -178,19 +178,19 @@ class TestPipelineMasterHasAll5Launchers:
         """
         text = _read_pipeline_master()
         # Wf-333 direct invocation (in phase3_gpu1)
-        assert "launch_wf333_vina_4step_gpu_bench.sh" in text, (
-            "pipeline master must directly invoke Wf-333 Vina 4-step"
-        )
-        assert "molmetal/scripts/launch_wf333_vina_4step_gpu_bench.sh" in text, (
-            "Wf-333 invocation must use molmetal/scripts/ path"
-        )
+        assert (
+            "launch_wf333_vina_4step_gpu_bench.sh" in text
+        ), "pipeline master must directly invoke Wf-333 Vina 4-step"
+        assert (
+            "molmetal/scripts/launch_wf333_vina_4step_gpu_bench.sh" in text
+        ), "Wf-333 invocation must use molmetal/scripts/ path"
         # Wf-264 direct invocation (in phase3_gpu1)
-        assert "launch_wf264_cfm_property_panel.sh" in text, (
-            "pipeline master must directly invoke Wf-264 panel"
-        )
-        assert "scripts/launch_wf264_cfm_property_panel.sh" in text, (
-            "Wf-264 invocation must use scripts/ path"
-        )
+        assert (
+            "launch_wf264_cfm_property_panel.sh" in text
+        ), "pipeline master must directly invoke Wf-264 panel"
+        assert (
+            "scripts/launch_wf264_cfm_property_panel.sh" in text
+        ), "Wf-264 invocation must use scripts/ path"
 
     def test_pipeline_master_g4_not_invoked_but_standalone(self) -> None:
         """Wf-124 P3 G4 launcher must NOT be directly invoked by the master
@@ -248,24 +248,24 @@ class TestSequentialLaunchOrder:
             idx = text.find(needle)
             assert idx >= 0, f"pipeline master missing line: {needle!r}"
             positions.append(idx)
-        assert positions == sorted(positions), (
-            f"phase2 launch order is WRONG; got positions {positions}"
-        )
+        assert positions == sorted(
+            positions
+        ), f"phase2 launch order is WRONG; got positions {positions}"
 
     def test_phase3_gpu1_launches_11_jobs_in_priority_order(self) -> None:
         """Phase 3 (GPU 1) launches 11 jobs in priority order:
 
-            1. Wf-310F frontier Wave B
-            2. Wf-219 §4.1 Ru
-            3. Wf-333 Vina 4-step        (NEW per Wf-334-U2, BLOCKED)
-            4. Wf-310C TODO-220
-            5. Wf-310C TODO-179
-            6. Wf-310D DrugOOD DANN Phase A
-            7. DrugOOD Wf-74 v2 DANN     (NEW per Wf-336-X3)
-            8. Wf-135 Phase 2 LOMO
-            9. Wf-264 CFM property panel (NEW per Wf-334-U3, CPU)
-           10. Wf-264 CFM panel RUN-ONCE (NEW per Wf-338-F1)
-           11. W₂ sliced GPU smoke       (NEW per Wf-338-F1)
+         1. Wf-310F frontier Wave B
+         2. Wf-219 §4.1 Ru
+         3. Wf-333 Vina 4-step        (NEW per Wf-334-U2, BLOCKED)
+         4. Wf-310C TODO-220
+         5. Wf-310C TODO-179
+         6. Wf-310D DrugOOD DANN Phase A
+         7. DrugOOD Wf-74 v2 DANN     (NEW per Wf-336-X3)
+         8. Wf-135 Phase 2 LOMO
+         9. Wf-264 CFM property panel (NEW per Wf-334-U3, CPU)
+        10. Wf-264 CFM panel RUN-ONCE (NEW per Wf-338-F1)
+        11. W₂ sliced GPU smoke       (NEW per Wf-338-F1)
         """
         text = _read_pipeline_master()
         expected_lines = [
@@ -286,9 +286,9 @@ class TestSequentialLaunchOrder:
             idx = text.find(needle)
             assert idx >= 0, f"pipeline master missing line: {needle!r}"
             positions.append(idx)
-        assert positions == sorted(positions), (
-            f"phase3 launch order is WRONG; got positions {positions}"
-        )
+        assert positions == sorted(
+            positions
+        ), f"phase3 launch order is WRONG; got positions {positions}"
 
     def test_phase2_runs_before_phase3(self) -> None:
         """All Phase 2 'Launching X' lines must appear before all Phase 3
@@ -298,9 +298,9 @@ class TestSequentialLaunchOrder:
         phase3_start = text.find("phase3_gpu1()")
         assert phase2_start >= 0, "phase2_gpu0() not found"
         assert phase3_start >= 0, "phase3_gpu1() not found"
-        assert phase2_start < phase3_start, (
-            "phase2_gpu0() must be declared before phase3_gpu1()"
-        )
+        assert (
+            phase2_start < phase3_start
+        ), "phase2_gpu0() must be declared before phase3_gpu1()"
 
     def test_wf264_panel_runs_after_wf135_phase2(self) -> None:
         """Wf-264 panel must run AFTER Wf-135 Phase 2 LOMO (per Wf-334-U3
@@ -326,9 +326,7 @@ class TestSequentialLaunchOrder:
         wf333_idx = text.find("Launching Wf-333 Vina 4-step")
         assert wf219_idx >= 0
         assert wf333_idx >= 0
-        assert wf333_idx > wf219_idx, (
-            "Wf-333 Vina must run AFTER Wf-219 §4.1 Ru"
-        )
+        assert wf333_idx > wf219_idx, "Wf-333 Vina must run AFTER Wf-219 §4.1 Ru"
 
 
 # ===========================================================================
@@ -358,22 +356,27 @@ class TestUserOkGates:
             re.search(r"\bUSER_OK=1\b", launch_line)
             or re.search(r"\bUSER_OK=YES\b", launch_line)
             or re.search(r"\bWF306A_USER_OK=YES\b", launch_line)
-            or re.search(r"\bWF310F_NEXT_WAVE=", launch_line)  # wave flag is its own gate
+            or re.search(
+                r"\bWF310F_NEXT_WAVE=", launch_line
+            )  # wave flag is its own gate
             or re.search(r"\btouch /tmp/USER_OK_WF310C_TODO220\b", text)
             or re.search(r"\btouch /tmp/USER_OK_WF310C_T179\b", text)
         )
-        assert has_gate, (
-            f"launch invocation missing USER_OK gate prefix: {launch_line!r}"
-        )
+        assert (
+            has_gate
+        ), f"launch invocation missing USER_OK gate prefix: {launch_line!r}"
 
-    @pytest.mark.parametrize("launch_line_substr", [
-        "Launching Wf-119 P1.4 chemprop v3 LOMO",
-        "Launching Wf-219 §4.1 Ru",
-        "Launching Wf-333 Vina 4-step",
-        "Launching DrugOOD Wf-74 v2 DANN",
-        "Launching Wf-135 Phase 2 LOMO",
-        "Launching Wf-264 CFM property panel",
-    ])
+    @pytest.mark.parametrize(
+        "launch_line_substr",
+        [
+            "Launching Wf-119 P1.4 chemprop v3 LOMO",
+            "Launching Wf-219 §4.1 Ru",
+            "Launching Wf-333 Vina 4-step",
+            "Launching DrugOOD Wf-74 v2 DANN",
+            "Launching Wf-135 Phase 2 LOMO",
+            "Launching Wf-264 CFM property panel",
+        ],
+    )
     def test_user_ok_gate_present(self, launch_line_substr: str) -> None:
         """Every wall-time wrapper invocation in Phase 2 + Phase 3 must
         carry the USER_OK gate prefix."""
@@ -386,12 +389,12 @@ class TestUserOkGates:
         invoking the wrapper).
         """
         text = _read_pipeline_master()
-        assert "touch /tmp/USER_OK_WF310C_TODO220" in text, (
-            "TODO-220 must use touch-file USER_OK gate"
-        )
-        assert "touch /tmp/USER_OK_WF310C_T179" in text, (
-            "TODO-179 must use touch-file USER_OK gate"
-        )
+        assert (
+            "touch /tmp/USER_OK_WF310C_TODO220" in text
+        ), "TODO-220 must use touch-file USER_OK gate"
+        assert (
+            "touch /tmp/USER_OK_WF310C_T179" in text
+        ), "TODO-179 must use touch-file USER_OK gate"
 
     def test_wf333_user_ok_required_per_wrapper(self) -> None:
         """Wf-333 Vina 4-step wrapper must REFUSE without USER_OK=1
@@ -436,9 +439,9 @@ class TestUserOkGates:
         )
         # Stderr/stdout must contain USER_OK gate message
         combined = proc.stdout + proc.stderr
-        assert "USER_OK" in combined, (
-            f"Wf-264 wrapper missing USER_OK gate message: {combined[:500]}"
-        )
+        assert (
+            "USER_OK" in combined
+        ), f"Wf-264 wrapper missing USER_OK gate message: {combined[:500]}"
 
     def test_g6_user_ok_required_per_wrapper(self) -> None:
         """Wf-124 P3 G6 wrapper must REFUSE without USER_OK=1 on the
@@ -461,9 +464,9 @@ class TestUserOkGates:
             f"got exit {proc.returncode}"
         )
         combined = proc.stdout + proc.stderr
-        assert "USER_OK" in combined, (
-            f"G6 wrapper missing USER_OK gate message: {combined[:500]}"
-        )
+        assert (
+            "USER_OK" in combined
+        ), f"G6 wrapper missing USER_OK gate message: {combined[:500]}"
 
 
 # ===========================================================================
@@ -495,14 +498,17 @@ class TestBackwardCompat:
                 f"wrapper paths)"
             )
 
-    @pytest.mark.parametrize("wrapper_name", [
-        "launch_wf310f_frontier_math_gpu.sh",
-        "launch_wf306b_wf219_ru_gpu.sh",
-        "launch_wf310c_todo220_gpu.sh",
-        "launch_wf310c_t179_w2_gpu.sh",
-        "launch_wf306a_drugood_vina_gpu.sh",
-        "launch_wf310e_wf135_phase2_gpu.sh",
-    ])
+    @pytest.mark.parametrize(
+        "wrapper_name",
+        [
+            "launch_wf310f_frontier_math_gpu.sh",
+            "launch_wf306b_wf219_ru_gpu.sh",
+            "launch_wf310c_todo220_gpu.sh",
+            "launch_wf310c_t179_w2_gpu.sh",
+            "launch_wf306a_drugood_vina_gpu.sh",
+            "launch_wf310e_wf135_phase2_gpu.sh",
+        ],
+    )
     def test_pre_existing_wrappers_parse_cleanly(self, wrapper_name: str) -> None:
         """Every pre-existing wrapper must still parse cleanly under `bash -n`
         (regression guard against accidental breakage).
@@ -510,15 +516,13 @@ class TestBackwardCompat:
         found = _wrapper_exists(wrapper_name)
         assert found, f"pre-existing wrapper missing: {wrapper_name}"
         for f in found:
-            assert _parse_cleanly(f), (
-                f"pre-existing wrapper has syntax errors: {f}"
-            )
+            assert _parse_cleanly(f), f"pre-existing wrapper has syntax errors: {f}"
 
     def test_pipeline_master_parses_cleanly(self) -> None:
         """Pipeline master itself must parse cleanly under `bash -n`."""
-        assert _parse_cleanly(PIPELINE_MASTER), (
-            f"pipeline master has syntax errors: {PIPELINE_MASTER}"
-        )
+        assert _parse_cleanly(
+            PIPELINE_MASTER
+        ), f"pipeline master has syntax errors: {PIPELINE_MASTER}"
 
     def test_pipeline_master_cli_supports_phase_modes(self) -> None:
         """Pipeline master CLI must support phase2|phase3|all modes."""
@@ -526,9 +530,9 @@ class TestBackwardCompat:
         for mode in ("phase2", "phase3", "all"):
             assert mode in text, f"usage missing mode: {mode}"
         # And must use strict mode
-        assert "set -uo pipefail" in text or "set -euo pipefail" in text, (
-            "pipeline master must use strict mode"
-        )
+        assert (
+            "set -uo pipefail" in text or "set -euo pipefail" in text
+        ), "pipeline master must use strict mode"
 
     def test_wf337_g2_fixes_wired_into_g4_g5_g6(self) -> None:
         """Per Wf-337-G2, G4 + G5 + G6 launchers must all carry the
@@ -546,18 +550,18 @@ class TestBackwardCompat:
             assert paths, f"launcher missing: {wrapper_name}"
             for p in paths:
                 text = p.read_text()
-                assert "--cpu-num-workers 8" in text, (
-                    f"{wrapper_name} missing --cpu-num-workers 8 (Wf-328-W2)"
-                )
-                assert "--num-workers 8" in text, (
-                    f"{wrapper_name} missing --num-workers 8 (Wf-328-W6)"
-                )
-                assert "--w2-gradient-mode sort" in text, (
-                    f"{wrapper_name} missing --w2-gradient-mode sort (Wf-328-W5)"
-                )
-                assert "--no-cuda-graphs" in text, (
-                    f"{wrapper_name} missing --no-cuda-graphs safety lever (Wf-335-R3)"
-                )
+                assert (
+                    "--cpu-num-workers 8" in text
+                ), f"{wrapper_name} missing --cpu-num-workers 8 (Wf-328-W2)"
+                assert (
+                    "--num-workers 8" in text
+                ), f"{wrapper_name} missing --num-workers 8 (Wf-328-W6)"
+                assert (
+                    "--w2-gradient-mode sort" in text
+                ), f"{wrapper_name} missing --w2-gradient-mode sort (Wf-328-W5)"
+                assert (
+                    "--no-cuda-graphs" in text
+                ), f"{wrapper_name} missing --no-cuda-graphs safety lever (Wf-335-R3)"
 
     def test_run_wf264_panel_wrapper_exists(self) -> None:
         """Per Wf-338-F1, the run-once wrapper for Wf-264 panel
@@ -566,14 +570,14 @@ class TestBackwardCompat:
         """
         run_once = SCRIPTS_DIR / "run_wf264_cfm_property_panel.sh"
         assert run_once.exists(), f"run-once wrapper missing: {run_once}"
-        assert os.access(run_once, os.X_OK), (
-            f"run-once wrapper not executable: {run_once}"
-        )
+        assert os.access(
+            run_once, os.X_OK
+        ), f"run-once wrapper not executable: {run_once}"
 
         text = _read_pipeline_master()
-        assert "run_wf264_cfm_property_panel.sh" in text, (
-            "pipeline master must reference run-once Wf-264 wrapper"
-        )
+        assert (
+            "run_wf264_cfm_property_panel.sh" in text
+        ), "pipeline master must reference run-once Wf-264 wrapper"
 
     def test_gpu_smoke_w2_sliced_wrapper_exists(self) -> None:
         """Per Wf-338-F1, the W₂ sliced GPU smoke wrapper
@@ -582,14 +586,14 @@ class TestBackwardCompat:
         """
         w2_smoke = SCRIPTS_DIR / "gpu_smoke_w2_sliced.sh"
         assert w2_smoke.exists(), f"W₂ sliced smoke wrapper missing: {w2_smoke}"
-        assert os.access(w2_smoke, os.X_OK), (
-            f"W₂ sliced smoke wrapper not executable: {w2_smoke}"
-        )
+        assert os.access(
+            w2_smoke, os.X_OK
+        ), f"W₂ sliced smoke wrapper not executable: {w2_smoke}"
 
         text = _read_pipeline_master()
-        assert "gpu_smoke_w2_sliced.sh" in text, (
-            "pipeline master must reference W₂ sliced smoke wrapper"
-        )
+        assert (
+            "gpu_smoke_w2_sliced.sh" in text
+        ), "pipeline master must reference W₂ sliced smoke wrapper"
 
 
 # ===========================================================================
@@ -616,7 +620,8 @@ class TestIntegrationVerdict:
             has_gate = (
                 re.search(rf"USER_OK[= ]+1?\s+.*?{re.escape(wrapper_name)}", text)
                 is not None
-                or "WF310F_NEXT_WAVE=" in text and wrapper_name in {"launch_wf310f_frontier_math_gpu.sh"}
+                or "WF310F_NEXT_WAVE=" in text
+                and wrapper_name in {"launch_wf310f_frontier_math_gpu.sh"}
                 or wrapper_name == LAUNCHER_WF264  # directly invoked
                 or wrapper_name == LAUNCHER_WF333  # directly invoked
             )
@@ -632,12 +637,12 @@ class TestIntegrationVerdict:
         # G5 / G6 are referenced via PHASE 1 in-flight comments (NOT
         # directly invoked — they are pre-existing in-flight launches)
         # PHASE 1 comment says "G5 retrain retry" + "Wf-124 G6 60-tuple sweep"
-        assert "G5 retrain" in text, (
-            "G5 retrain retry must be referenced in master (PHASE 1 comment)"
-        )
-        assert "Wf-124 G6" in text, (
-            "Wf-124 G6 60-tuple sweep must be referenced in master (PHASE 1 comment)"
-        )
+        assert (
+            "G5 retrain" in text
+        ), "G5 retrain retry must be referenced in master (PHASE 1 comment)"
+        assert (
+            "Wf-124 G6" in text
+        ), "Wf-124 G6 60-tuple sweep must be referenced in master (PHASE 1 comment)"
         # G4 is standalone (intentional)
         assert LAUNCHER_G4 not in text, "G4 is standalone (must NOT be in master)"
 

@@ -27,6 +27,7 @@ SCRIPT = REPO_ROOT / "molmetal" / "scripts" / "train_dmpnn_multitask_wasserstein
 
 def _pf():
     from molmetal.scripts import pre_flight_check
+
     return pre_flight_check
 
 
@@ -34,10 +35,18 @@ def _write_events(path: Path, losses) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as fh:
         for i, loss in enumerate(losses, start=1):
-            fh.write(json.dumps(
-                {"event": "train_epoch", "epoch": i, "train_loss": loss,
-                 "metal": "Re", "seed": 0},
-            ) + "\n")
+            fh.write(
+                json.dumps(
+                    {
+                        "event": "train_epoch",
+                        "epoch": i,
+                        "train_loss": loss,
+                        "metal": "Re",
+                        "seed": 0,
+                    },
+                )
+                + "\n"
+            )
     return path
 
 
@@ -108,7 +117,8 @@ class TestLossDecreaseHelper:
             "  [Re seed=0] epoch  2/2 loss=0.9772 cls=0.4605 reg=1.4940\n"
         )
         ok, detail = pf._check_dmpnn_loss_decrease(
-            tmp_path / "missing.jsonl", stdout,
+            tmp_path / "missing.jsonl",
+            stdout,
         )
         assert ok is True, detail
         assert "stdout regex fallback" in detail
@@ -116,7 +126,8 @@ class TestLossDecreaseHelper:
     def test_missing_events_and_empty_stdout_fails(self, tmp_path):
         pf = _pf()
         ok, detail = pf._check_dmpnn_loss_decrease(
-            tmp_path / "missing.jsonl", "",
+            tmp_path / "missing.jsonl",
+            "",
         )
         assert ok is False
         assert "only 0 train_loss point" in detail
@@ -125,11 +136,13 @@ class TestLossDecreaseHelper:
         pf = _pf()
         p = tmp_path / "events.jsonl"
         p.write_text(
-            "{not json\n" + json.dumps(
-                {"event": "train_epoch", "epoch": 1, "train_loss": 3.0}) + "\n"
-            + json.dumps({"event": "eval_epoch", "loss": 99.0}) + "\n"
-            + json.dumps(
-                {"event": "train_epoch", "epoch": 2, "train_loss": 0.9}) + "\n",
+            "{not json\n"
+            + json.dumps({"event": "train_epoch", "epoch": 1, "train_loss": 3.0})
+            + "\n"
+            + json.dumps({"event": "eval_epoch", "loss": 99.0})
+            + "\n"
+            + json.dumps({"event": "train_epoch", "epoch": 2, "train_loss": 0.9})
+            + "\n",
             encoding="utf-8",
         )
         ok, detail = pf._check_dmpnn_loss_decrease(p, "")
@@ -149,9 +162,11 @@ class TestGateWiring:
                 "  [Re seed=0] epoch  1/2 loss=3.0017\n"
                 "  [Re seed=0] epoch  2/2 loss=0.9772\n"
                 "  Re: n_train=148 n_val=5 n_test=13 test_auc=0.2619\n"
-                if emit_stdout else ""
+                if emit_stdout
+                else ""
             )
             return rc, out, ""
+
         return fake_run
 
     def _csv(self, tmp_path):
@@ -162,9 +177,11 @@ class TestGateWiring:
     def test_gate_passes_on_healthy_smoke(self, tmp_path, monkeypatch):
         pf = _pf()
         monkeypatch.setattr(
-            pf, "_run", self._fake_run_factory(payload=[3.0017, 0.9772]))
+            pf, "_run", self._fake_run_factory(payload=[3.0017, 0.9772])
+        )
         monkeypatch.setattr(
-            pf, "_DMPNN_SMOKE_DATA_CSV_CANDIDATES", (self._csv(tmp_path),))
+            pf, "_DMPNN_SMOKE_DATA_CSV_CANDIDATES", (self._csv(tmp_path),)
+        )
         res = pf._gate_dmpnn_quick_smoke(SCRIPT, csv_path=self._csv(tmp_path))
         assert res.status == "PASS", res.evidence
         assert "loss decreased" in res.evidence
@@ -174,10 +191,10 @@ class TestGateWiring:
 
     def test_gate_fails_on_diverged_smoke(self, tmp_path, monkeypatch):
         pf = _pf()
+        monkeypatch.setattr(pf, "_run", self._fake_run_factory(payload=[1.0, 1.1]))
         monkeypatch.setattr(
-            pf, "_run", self._fake_run_factory(payload=[1.0, 1.1]))
-        monkeypatch.setattr(
-            pf, "_DMPNN_SMOKE_DATA_CSV_CANDIDATES", (self._csv(tmp_path),))
+            pf, "_DMPNN_SMOKE_DATA_CSV_CANDIDATES", (self._csv(tmp_path),)
+        )
         res = pf._gate_dmpnn_quick_smoke(SCRIPT, csv_path=self._csv(tmp_path))
         assert res.status == "FAIL", res.evidence
         assert "loss invariant FAILED" in res.evidence
@@ -185,9 +202,11 @@ class TestGateWiring:
     def test_gate_fails_on_no_events(self, tmp_path, monkeypatch):
         pf = _pf()
         monkeypatch.setattr(
-            pf, "_run", self._fake_run_factory(payload=None, emit_stdout=False))
+            pf, "_run", self._fake_run_factory(payload=None, emit_stdout=False)
+        )
         monkeypatch.setattr(
-            pf, "_DMPNN_SMOKE_DATA_CSV_CANDIDATES", (self._csv(tmp_path),))
+            pf, "_DMPNN_SMOKE_DATA_CSV_CANDIDATES", (self._csv(tmp_path),)
+        )
         res = pf._gate_dmpnn_quick_smoke(SCRIPT, csv_path=self._csv(tmp_path))
         assert res.status == "FAIL", res.evidence
         assert "loss invariant FAILED" in res.evidence
@@ -195,10 +214,11 @@ class TestGateWiring:
     def test_gate_fails_on_rc_nonzero(self, tmp_path, monkeypatch):
         pf = _pf()
         monkeypatch.setattr(
-            pf, "_run",
-            self._fake_run_factory(payload=None, rc=1, emit_stdout=False))
+            pf, "_run", self._fake_run_factory(payload=None, rc=1, emit_stdout=False)
+        )
         monkeypatch.setattr(
-            pf, "_DMPNN_SMOKE_DATA_CSV_CANDIDATES", (self._csv(tmp_path),))
+            pf, "_DMPNN_SMOKE_DATA_CSV_CANDIDATES", (self._csv(tmp_path),)
+        )
         res = pf._gate_dmpnn_quick_smoke(SCRIPT, csv_path=self._csv(tmp_path))
         assert res.status == "FAIL", res.evidence
         assert "exit=1" in res.evidence
@@ -206,25 +226,26 @@ class TestGateWiring:
     def test_gate_fails_on_timeout(self, tmp_path, monkeypatch):
         pf = _pf()
         monkeypatch.setattr(
-            pf, "_run",
-            self._fake_run_factory(payload=None, rc=124, emit_stdout=False))
+            pf, "_run", self._fake_run_factory(payload=None, rc=124, emit_stdout=False)
+        )
         monkeypatch.setattr(
-            pf, "_DMPNN_SMOKE_DATA_CSV_CANDIDATES", (self._csv(tmp_path),))
+            pf, "_DMPNN_SMOKE_DATA_CSV_CANDIDATES", (self._csv(tmp_path),)
+        )
         res = pf._gate_dmpnn_quick_smoke(SCRIPT, csv_path=self._csv(tmp_path))
         assert res.status == "FAIL", res.evidence
         assert "TIMED OUT" in res.evidence
 
     def test_gate_skips_when_joint_csv_absent(self, tmp_path, monkeypatch):
         pf = _pf()
-        monkeypatch.setattr(
-            pf, "_run", self._fake_run_factory(payload=[1.0, 0.5]))
-        res = pf._gate_dmpnn_quick_smoke(
-            SCRIPT, csv_path=tmp_path / "nope.csv")
+        monkeypatch.setattr(pf, "_run", self._fake_run_factory(payload=[1.0, 0.5]))
+        res = pf._gate_dmpnn_quick_smoke(SCRIPT, csv_path=tmp_path / "nope.csv")
         assert res.status == "SKIP", res.evidence
         assert "gitignored" in res.evidence
 
     def test_gate_uses_private_out_dir_and_no_flag_only_max_joint_rows(
-        self, tmp_path, monkeypatch,
+        self,
+        tmp_path,
+        monkeypatch,
     ):
         """Explicit --out-dir/--ckpt-dir (no repo side effects) and the
         FLAG_ONLY ``--max-joint-rows`` must NOT be relied on."""
@@ -239,7 +260,8 @@ class TestGateWiring:
 
         monkeypatch.setattr(pf, "_run", fake_run)
         monkeypatch.setattr(
-            pf, "_DMPNN_SMOKE_DATA_CSV_CANDIDATES", (self._csv(tmp_path),))
+            pf, "_DMPNN_SMOKE_DATA_CSV_CANDIDATES", (self._csv(tmp_path),)
+        )
         pf._gate_dmpnn_quick_smoke(SCRIPT, csv_path=self._csv(tmp_path))
         assert "wf446_h4_dmpnn_smoke_" in seen["out_dir"]
         assert seen["out_dir"].startswith("/tmp/")

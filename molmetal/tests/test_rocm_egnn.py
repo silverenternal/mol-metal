@@ -24,6 +24,7 @@ from molmetal.adapters.egnn_rocm import EGNN
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def get_device():
     """Return 'cuda' if ROCm/CUDA is available, else 'cpu'."""
     if torch.cuda.is_available():
@@ -59,6 +60,7 @@ def build_8node_graph(device):
 # Test (a): Forward pass on GPU
 # ---------------------------------------------------------------------------
 
+
 def test_egnn_forward_on_gpu():
     """Build small EGNN (4 layers, 64 hidden), 16-node graph, move to GPU,
     run forward pass, assert output on cuda and matches expected shape."""
@@ -76,7 +78,13 @@ def test_egnn_forward_on_gpu():
     if edge_index.shape[0] == 0:
         # Fallback for small n
         src = torch.arange(n_nodes, device=device).repeat(n_nodes)
-        dst = torch.arange(n_nodes, device=device).view(-1, 1).expand(n_nodes, n_nodes).contiguous().view(-1)
+        dst = (
+            torch.arange(n_nodes, device=device)
+            .view(-1, 1)
+            .expand(n_nodes, n_nodes)
+            .contiguous()
+            .view(-1)
+        )
         edge_index = torch.stack([src, dst])
 
     h_out, x_out = model(h, x, edge_index)
@@ -85,7 +93,7 @@ def test_egnn_forward_on_gpu():
     assert h_out.device.type == "cuda", f"h_out should be on cuda, got {h_out.device}"
     assert x_out.device.type == "cuda", f"x_out should be on cuda, got {x_out.device}"
     assert h_out.shape == (n_nodes, 64), f"h_out shape mismatch: {h_out.shape}"
-    assert x_out.shape == (n_nodes, 3),  f"x_out shape mismatch: {x_out.shape}"
+    assert x_out.shape == (n_nodes, 3), f"x_out shape mismatch: {x_out.shape}"
 
     # Sanity: output should differ from input (not a no-op)
     assert not torch.allclose(h, h_out), "h_out should differ from input (not a no-op)"
@@ -94,6 +102,7 @@ def test_egnn_forward_on_gpu():
 # ---------------------------------------------------------------------------
 # Test (b): Backward pass on GPU
 # ---------------------------------------------------------------------------
+
 
 def test_egnn_backward_on_gpu():
     """Same setup as forward, compute loss = output.sum(), backward(),
@@ -109,7 +118,13 @@ def test_egnn_backward_on_gpu():
 
     # Fully connected graph
     src = torch.arange(n_nodes, device=device).repeat(n_nodes)
-    dst = torch.arange(n_nodes, device=device).view(-1, 1).expand(n_nodes, n_nodes).contiguous().view(-1)
+    dst = (
+        torch.arange(n_nodes, device=device)
+        .view(-1, 1)
+        .expand(n_nodes, n_nodes)
+        .contiguous()
+        .view(-1)
+    )
     edge_index = torch.stack([src, dst])
 
     h_out, x_out = model(h, x, edge_index)
@@ -118,14 +133,19 @@ def test_egnn_backward_on_gpu():
 
     assert h.grad is not None, "h should have gradient"
     assert x.grad is not None, "x should have gradient"
-    assert h.grad.device.type == "cuda", f"h.grad should be on cuda, got {h.grad.device}"
-    assert x.grad.device.type == "cuda", f"x.grad should be on cuda, got {x.grad.device}"
+    assert (
+        h.grad.device.type == "cuda"
+    ), f"h.grad should be on cuda, got {h.grad.device}"
+    assert (
+        x.grad.device.type == "cuda"
+    ), f"x.grad should be on cuda, got {x.grad.device}"
     assert not torch.all(h.grad == 0), "gradients should be non-zero"
 
 
 # ---------------------------------------------------------------------------
 # Test (c): SE(3) invariance check
 # ---------------------------------------------------------------------------
+
 
 def test_egnn_se3_invariance_check():
     """Build EGNN, freeze params. Take 8-node molecule, get feature output h1.
@@ -182,7 +202,9 @@ def test_egnn_se3_invariance_check():
     print(f"SE(3) invariance error (per-node h): {node_inv_error:.6e}")
 
     # For strict invariance, pooled features should be very close
-    assert inv_error < 1e-3, f"Pooled scalar features should be invariant under SE(3), error={inv_error}"
+    assert (
+        inv_error < 1e-3
+    ), f"Pooled scalar features should be invariant under SE(3), error={inv_error}"
 
     # Check 2: Equivariant coordinate features — x2 should equal (Q @ x1.T).T + t
     # (up to numerical tolerance)
@@ -195,14 +217,19 @@ def test_egnn_se3_invariance_check():
     # Because h is the same (invariant) and dist is invariant, the coordinate
     # messages are the same, so x_out = x + f(h, dist) should satisfy:
     # x2 = Q @ x1 + t  (approximately)
-    assert equiv_error < 1e-2, f"Coordinates should be equivariant under SE(3), error={equiv_error}"
+    assert (
+        equiv_error < 1e-2
+    ), f"Coordinates should be equivariant under SE(3), error={equiv_error}"
 
-    print(f"\nMax absolute errors — invariance: {inv_error:.6e}, equivariance: {equiv_error:.6e}")
+    print(
+        f"\nMax absolute errors — invariance: {inv_error:.6e}, equivariance: {equiv_error:.6e}"
+    )
 
 
 # ---------------------------------------------------------------------------
 # Test (d): Speed comparison GPU vs CPU
 # ---------------------------------------------------------------------------
+
 
 def test_egnn_speed_gpu_vs_cpu():
     """50 forward+backward on cuda:0 with batch=8, time it.
@@ -220,7 +247,13 @@ def test_egnn_speed_gpu_vs_cpu():
 
     # Build fully-connected edge_index
     src = torch.arange(n_nodes, device="cuda").repeat(n_nodes)
-    dst = torch.arange(n_nodes, device="cuda").view(-1, 1).expand(n_nodes, n_nodes).contiguous().view(-1)
+    dst = (
+        torch.arange(n_nodes, device="cuda")
+        .view(-1, 1)
+        .expand(n_nodes, n_nodes)
+        .contiguous()
+        .view(-1)
+    )
     edge_index_gpu = torch.stack([src, dst])
 
     # Warm-up
@@ -251,7 +284,9 @@ def test_egnn_speed_gpu_vs_cpu():
     optimizer_cpu = torch.optim.Adam(model_cpu.parameters(), lr=1e-3)
 
     src_cpu = torch.arange(n_nodes).repeat(n_nodes)
-    dst_cpu = torch.arange(n_nodes).view(-1, 1).expand(n_nodes, n_nodes).contiguous().view(-1)
+    dst_cpu = (
+        torch.arange(n_nodes).view(-1, 1).expand(n_nodes, n_nodes).contiguous().view(-1)
+    )
     edge_index_cpu = torch.stack([src_cpu, dst_cpu])
 
     # Warm-up

@@ -5,6 +5,7 @@ reaction therefore limits the overall route score.  An optional, lightweight
 Ridge model interpolates rates from known SMILES pairs when PySR/Julia is not
 available in the execution environment.
 """
+
 from __future__ import annotations
 
 import logging
@@ -47,7 +48,9 @@ def _pair_similarity(pair: tuple[str, str]) -> float:
         molecules = [Chem.MolFromSmiles(s) for s in pair]
         if any(m is None for m in molecules):
             return 0.0
-        fps = [AllChem.GetMorganFingerprintAsBitVect(m, 2, nBits=1024) for m in molecules]
+        fps = [
+            AllChem.GetMorganFingerprintAsBitVect(m, 2, nBits=1024) for m in molecules
+        ]
         return float(DataStructs.TanimotoSimilarity(fps[0], fps[1]))
     except Exception as exc:  # pragma: no cover - optional dependency path
         LOGGER.warning("Fingerprint similarity unavailable: %s", exc)
@@ -60,8 +63,11 @@ class KineticAggregator:
     def __init__(self, weights: dict | None = None, known_rate_pairs=None):
         # Supplying weights defines the reaction set explicitly; this makes
         # small route-specific aggregators possible without implicit zeros.
-        merged = (dict(DEFAULT_WEIGHTS) if weights is None else
-                  {str(k): float(v) for k, v in weights.items()})
+        merged = (
+            dict(DEFAULT_WEIGHTS)
+            if weights is None
+            else {str(k): float(v) for k, v in weights.items()}
+        )
         self._weights = merged
         self._known_rate_pairs = known_rate_pairs
         self._model = None
@@ -90,7 +96,9 @@ class KineticAggregator:
 
     def fit_rate_interpolator(self, known_rate_pairs=None) -> "KineticAggregator":
         """Fit Ridge on pairwise fingerprint similarities and known rates."""
-        pairs = known_rate_pairs if known_rate_pairs is not None else self._known_rate_pairs
+        pairs = (
+            known_rate_pairs if known_rate_pairs is not None else self._known_rate_pairs
+        )
         rows = self._normalise_pairs(pairs)
         if len(rows) < 2:
             raise ValueError("at least two known SMILES/rate pairs are required")
@@ -101,11 +109,15 @@ class KineticAggregator:
         self._model = Ridge(alpha=1.0).fit(x, y)
         return self
 
-    def interpolate_rate(self, smiles_a: str, smiles_b: str, known_rate_pairs=None) -> float:
+    def interpolate_rate(
+        self, smiles_a: str, smiles_b: str, known_rate_pairs=None
+    ) -> float:
         """Predict a rate for a SMILES pair using the sklearn fallback."""
         if known_rate_pairs is not None or self._model is None:
             self.fit_rate_interpolator(known_rate_pairs)
-        value = float(self._model.predict([[_pair_similarity((smiles_a, smiles_b))]])[0])
+        value = float(
+            self._model.predict([[_pair_similarity((smiles_a, smiles_b))]])[0]
+        )
         return float(np.clip(value, 0.0, 1.0))
 
     @staticmethod

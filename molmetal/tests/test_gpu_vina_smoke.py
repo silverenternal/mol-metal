@@ -88,6 +88,5 @@ def test_gpu_vina_skip_if_no_binary() -> None:
         adapter = VinaDockingAdapter(engine=engine)
         dispatched = adapter._engine_dispatched()
         assert dispatched == expected_dispatch[engine], (
-            f"{engine}: expected {expected_dispatch[engine]!r}, "
-            f"got {dispatched!r}"
+            f"{engine}: expected {expected_dispatch[engine]!r}, " f"got {dispatched!r}"
         )

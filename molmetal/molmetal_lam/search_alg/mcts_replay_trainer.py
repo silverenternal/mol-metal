@@ -80,6 +80,7 @@ Verify
     uv run --no-sync python -m pytest \\
         molmetal/tests/test_mcts_replay_trainer.py -v
 """
+
 from __future__ import annotations
 
 import math
@@ -225,9 +226,7 @@ def featurise_state_action(
     key = f"{state}|{action}"
     h = np.zeros(HASH_DIM, dtype=float)
     for i, ch in enumerate(key[: HASH_DIM * 4]):
-        h[i % HASH_DIM] = (
-            31.0 * h[i % HASH_DIM] + float(ord(ch) % 256)
-        ) / 32.0
+        h[i % HASH_DIM] = (31.0 * h[i % HASH_DIM] + float(ord(ch) % 256)) / 32.0
     feat[:HASH_DIM] = np.tanh(h / 4.0)
     # 2. Replay-buffer columns.
     feat[HASH_DIM + 0] = float(np.clip(value, -1.0, 1.0))
@@ -355,7 +354,9 @@ class LinearPolicyValueNet:
         # Xavier-style scale for softmax.
         scale_p = math.sqrt(1.0 / max(1, self.feature_dim))
         self.W_policy = rng.normal(
-            0.0, scale_p, size=(self.n_actions, self.feature_dim),
+            0.0,
+            scale_p,
+            size=(self.n_actions, self.feature_dim),
         ).astype(float)
         self.b_policy = np.zeros(self.n_actions, dtype=float)
         scale_v = math.sqrt(1.0 / max(1, self.feature_dim))
@@ -421,7 +422,11 @@ class LinearPolicyValueNet:
         n = x.shape[0]
         if n == 0:
             return 0.0, 0.0
-        if target_value.shape[0] != n or advantage.shape[0] != n or action_idx.shape[0] != n:
+        if (
+            target_value.shape[0] != n
+            or advantage.shape[0] != n
+            or action_idx.shape[0] != n
+        ):
             raise MCTSReplayTrainerError(
                 "x / target_value / advantage / action_idx size mismatch "
                 f"({n} vs {target_value.shape[0]} vs {advantage.shape[0]} "
@@ -540,7 +545,9 @@ class MCTSReplayLearner:
 
     net: LinearPolicyValueNet = field(init=False, repr=False)
     history_: List[Dict[str, Any]] = field(
-        default_factory=list, init=False, repr=False,
+        default_factory=list,
+        init=False,
+        repr=False,
     )
 
     def __post_init__(self) -> None:
@@ -563,7 +570,8 @@ class MCTSReplayLearner:
 
     # ------------------------------------------------------------------
     def _action_indices(
-        self, batch: Sequence[MCTSReplayEntry],
+        self,
+        batch: Sequence[MCTSReplayEntry],
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Map each entry's ``action`` field to an int index in
         ``[0, n_actions)``.
@@ -589,7 +597,8 @@ class MCTSReplayLearner:
 
     # ------------------------------------------------------------------
     def featurise_batch(
-        self, batch: Sequence[MCTSReplayEntry],
+        self,
+        batch: Sequence[MCTSReplayEntry],
     ) -> np.ndarray:
         """Stack the per-entry features into a ``(N, feature_dim)`` matrix."""
         if not batch:
@@ -655,22 +664,23 @@ class MCTSReplayLearner:
             # Empty batch — log zero loss and bail.  Still log to
             # ``history_`` so the caller can detect the under-filled
             # regime.
-            self.history_.append({
-                "step": int(len(self.history_)),
-                "policy_loss": 0.0,
-                "value_loss": 0.0,
-                "wall_time_s": 0.0,
-                "n_samples": 0,
-                "baseline": str(self.baseline),
-                "mean_advantage": 0.0,
-                "mean_target_value": 0.0,
-            })
+            self.history_.append(
+                {
+                    "step": int(len(self.history_)),
+                    "policy_loss": 0.0,
+                    "value_loss": 0.0,
+                    "wall_time_s": 0.0,
+                    "n_samples": 0,
+                    "baseline": str(self.baseline),
+                    "mean_advantage": 0.0,
+                    "mean_target_value": 0.0,
+                }
+            )
             return 0.0, 0.0
 
         x = self.featurise_batch(batch)
         target_value = np.asarray(
-            [float(np.clip(e.value, -self.value_clip, self.value_clip))
-             for e in batch],
+            [float(np.clip(e.value, -self.value_clip, self.value_clip)) for e in batch],
             dtype=float,
         )
         action_idx, valid = self._action_indices(batch)
@@ -685,16 +695,18 @@ class MCTSReplayLearner:
             if x.shape[0] == 0:
                 # All rows had unparseable actions → no signal.  Log
                 # zero loss and return.
-                self.history_.append({
-                    "step": int(len(self.history_)),
-                    "policy_loss": 0.0,
-                    "value_loss": 0.0,
-                    "wall_time_s": 0.0,
-                    "n_samples": 0,
-                    "baseline": str(self.baseline),
-                    "mean_advantage": 0.0,
-                    "mean_target_value": 0.0,
-                })
+                self.history_.append(
+                    {
+                        "step": int(len(self.history_)),
+                        "policy_loss": 0.0,
+                        "value_loss": 0.0,
+                        "wall_time_s": 0.0,
+                        "n_samples": 0,
+                        "baseline": str(self.baseline),
+                        "mean_advantage": 0.0,
+                        "mean_target_value": 0.0,
+                    }
+                )
                 return 0.0, 0.0
 
         advantage = self.compute_advantage(x, target_value)
@@ -707,16 +719,18 @@ class MCTSReplayLearner:
             value_loss_weight=self.value_loss_weight,
         )
         wall = time.time() - t0
-        self.history_.append({
-            "step": int(len(self.history_)),
-            "policy_loss": float(policy_loss),
-            "value_loss": float(value_loss),
-            "wall_time_s": float(wall),
-            "n_samples": int(x.shape[0]),
-            "baseline": str(self.baseline),
-            "mean_advantage": float(advantage.mean()),
-            "mean_target_value": float(target_value.mean()),
-        })
+        self.history_.append(
+            {
+                "step": int(len(self.history_)),
+                "policy_loss": float(policy_loss),
+                "value_loss": float(value_loss),
+                "wall_time_s": float(wall),
+                "n_samples": int(x.shape[0]),
+                "baseline": str(self.baseline),
+                "mean_advantage": float(advantage.mean()),
+                "mean_target_value": float(target_value.mean()),
+            }
+        )
         return float(policy_loss), float(value_loss)
 
     # ------------------------------------------------------------------
@@ -781,8 +795,8 @@ class MCTSReplayLearner:
                 sum(h["wall_time_s"] for h in self.history_),
             ),
             "mean_advantage": float(
-                sum(h["mean_advantage"] for h in self.history_) /
-                float(len(self.history_)),
+                sum(h["mean_advantage"] for h in self.history_)
+                / float(len(self.history_)),
             ),
         }
 

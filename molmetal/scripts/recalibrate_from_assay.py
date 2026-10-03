@@ -98,7 +98,9 @@ def _rank(xs: Sequence[float]) -> List[float]:
     i = 0
     while i < len(sorted_pairs):
         j = i
-        while j + 1 < len(sorted_pairs) and sorted_pairs[j + 1][1] == sorted_pairs[i][1]:
+        while (
+            j + 1 < len(sorted_pairs) and sorted_pairs[j + 1][1] == sorted_pairs[i][1]
+        ):
             j += 1
         avg_rank = (i + j) / 2.0 + 1.0  # 1-based average rank
         for k in range(i, j + 1):
@@ -108,7 +110,8 @@ def _rank(xs: Sequence[float]) -> List[float]:
 
 
 def _linear_regression(
-    xs: Sequence[float], ys: Sequence[float],
+    xs: Sequence[float],
+    ys: Sequence[float],
 ) -> Tuple[Optional[float], Optional[float]]:
     """Return (intercept, slope) of an OLS fit; ``None`` if degenerate."""
     n = len(xs)
@@ -143,7 +146,12 @@ def _load_pair_tsv(
     path: str,
     *,
     smiles_col: str = "smiles",
-    value_col_candidates: Sequence[str] = ("pIC50", "pIC50_pred", "prediction", "pIC50_predicted"),
+    value_col_candidates: Sequence[str] = (
+        "pIC50",
+        "pIC50_pred",
+        "prediction",
+        "pIC50_predicted",
+    ),
     sep: str = "\t",
     comment: str = "#",
 ) -> Dict[str, float]:
@@ -157,15 +165,20 @@ def _load_pair_tsv(
     out: Dict[str, float] = {}
     try:
         with open(path, "r", encoding="utf-8") as fh:
-            lines = [ln for ln in fh.readlines()
-                     if ln.strip() and not ln.lstrip().startswith(comment)]
+            lines = [
+                ln
+                for ln in fh.readlines()
+                if ln.strip() and not ln.lstrip().startswith(comment)
+            ]
     except OSError:
         return out
     if not lines:
         return out
     first = lines[0].rstrip("\n").rstrip("\r").split(sep)
-    has_header = any(tok.strip().lower() in {smiles_col.lower(), *value_col_candidates}
-                     for tok in first)
+    has_header = any(
+        tok.strip().lower() in {smiles_col.lower(), *value_col_candidates}
+        for tok in first
+    )
     if has_header:
         header = [tok.strip().lower() for tok in first]
         try:
@@ -220,36 +233,48 @@ def _recommend(
     ``r4_lambda_only_run.py`` invocation.
     """
     if n_overlap < 5:
-        return ("INSUFFICIENT_DATA — n_overlap<5; collect more wet-lab "
-                "measurements before drawing conclusions")
+        return (
+            "INSUFFICIENT_DATA — n_overlap<5; collect more wet-lab "
+            "measurements before drawing conclusions"
+        )
     if pearson is None:
         return "DEGENERATE_PREDICTIONS — dry-lab predictions are constant; cannot calibrate"
     if rmse is None:
         return "DEGENERATE_MEASUREMENTS — wet-lab measurements are constant; cannot calibrate"
     # Tier 1: OK
     if pearson >= 0.7 and rmse <= 0.5:
-        return ("OK — Pearson r >= 0.7 and RMSE <= 0.5 log-units; "
-                "the dry-lab predictor is well-calibrated")
+        return (
+            "OK — Pearson r >= 0.7 and RMSE <= 0.5 log-units; "
+            "the dry-lab predictor is well-calibrated"
+        )
     # Tier 2: RE-TRAIN with margin
     if 0.4 <= pearson < 0.7:
-        return ("RE-TRAIN with censor-aware margin >= 1.0 — Pearson r in [0.4, 0.7); "
-                "the predictor discriminates but the residuals are large. "
-                "Use ``--reward-wetlab-weight 0.5`` to let wet-lab evidence "
-                "shape the MCTS reward without dominating Vina / SA / QED")
+        return (
+            "RE-TRAIN with censor-aware margin >= 1.0 — Pearson r in [0.4, 0.7); "
+            "the predictor discriminates but the residuals are large. "
+            "Use ``--reward-wetlab-weight 0.5`` to let wet-lab evidence "
+            "shape the MCTS reward without dominating Vina / SA / QED"
+        )
     # Tier 3: RE-TRAIN with weight
     if intercept is not None and abs(intercept) > 1.0:
-        return (f"RE-TRAIN with bias-correction — intercept={intercept:+.3f}; "
-                "dry-lab predictions have a systematic offset. "
-                "Add ``--reward-wetlab-weight 1.0`` to compensate")
+        return (
+            f"RE-TRAIN with bias-correction — intercept={intercept:+.3f}; "
+            "dry-lab predictions have a systematic offset. "
+            "Add ``--reward-wetlab-weight 1.0`` to compensate"
+        )
     if slope is not None and (slope <= 0.0 or slope >= 1.5):
-        return (f"RE-TRAIN with re-weight — slope={slope:+.3f}; "
-                "dry-lab predictions are not monotonically proportional to "
-                "wet-lab outcomes. ``--reward-wetlab-weight 1.0`` recommended")
+        return (
+            f"RE-TRAIN with re-weight — slope={slope:+.3f}; "
+            "dry-lab predictions are not monotonically proportional to "
+            "wet-lab outcomes. ``--reward-wetlab-weight 1.0`` recommended"
+        )
     # Default: marginal
-    return (f"MARGINAL — Pearson r={pearson:+.3f}, RMSE={rmse:.3f}; "
-            "the predictor is informative but not production-grade. "
-            "Increase n_assays and re-run before promoting the wet-lab "
-            "channel to unit weight")
+    return (
+        f"MARGINAL — Pearson r={pearson:+.3f}, RMSE={rmse:.3f}; "
+        "the predictor is informative but not production-grade. "
+        "Increase n_assays and re-run before promoting the wet-lab "
+        "channel to unit weight"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -291,7 +316,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         type=float,
         default=0.5,
         help="|err| threshold in log-units for the within_X metric "
-             "(default 0.5 per Settles 2012).",
+        "(default 0.5 per Settles 2012).",
     )
     args = parser.parse_args(argv)
 

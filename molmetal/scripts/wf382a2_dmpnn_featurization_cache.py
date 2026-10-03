@@ -108,6 +108,7 @@ def featurize_single_smiles(args: tuple) -> Optional[Dict[str, object]]:
         return None
     # Lazy import inside the worker — GraphFeaturizer is heavy.
     from molmetal.data.featurize import GraphFeaturizer
+
     ftr = GraphFeaturizer()
     feat = ftr(mol)
     # Match the shape contract of GraphFeaturizer.__call__:
@@ -192,8 +193,7 @@ class Wf382A2DMPNNCacheAdapter:
 
         # Worker args — must be picklable.
         worker_args = [
-            (smi, self.cache.atom_fdim, self.cache.edge_fdim)
-            for smi in smiles_list
+            (smi, self.cache.atom_fdim, self.cache.edge_fdim) for smi in smiles_list
         ]
 
         n_added = 0
@@ -250,9 +250,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "--smiles",
         nargs="+",
         default=[
-            "CCO", "c1ccccc1", "CC(=O)O", "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
-            "CC(C)CC(N)C(=O)O", "OC(=O)C(=O)O", "C1CCCCC1", "CCN",
-            "CC(=O)N", "C(C(C(C(C(C(C=O)O)O)O)O)O)O",
+            "CCO",
+            "c1ccccc1",
+            "CC(=O)O",
+            "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
+            "CC(C)CC(N)C(=O)O",
+            "OC(=O)C(=O)O",
+            "C1CCCCC1",
+            "CCN",
+            "CC(=O)N",
+            "C(C(C(C(C(C(C=O)O)O)O)O)O)O",
         ],
         help="List of SMILES to featurise (default: 10 canonical).",
     )

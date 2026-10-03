@@ -53,6 +53,7 @@ Usage::
     source env.sh && uv run --no-sync python \\
         molmetal/scripts/benchmark_metalcytotox_e2e.py --n-samples-per-metal 500
 """
+
 from __future__ import annotations
 
 import argparse
@@ -182,18 +183,16 @@ def _benchmark_metal(
         "n_success": int(n_success),
         "success_rate": float(n_success) / n,
         "wall_time_s": float(wall_s),
-        "per_step_wall_time_s": {step: float(per_step_wall_s[step]) for step in STEP_IDS},
+        "per_step_wall_time_s": {
+            step: float(per_step_wall_s[step]) for step in STEP_IDS
+        },
         "per_step_memory_mb": {step: float(per_step_mem_mb[step]) for step in STEP_IDS},
         "per_step_status_counts": per_step_status,
         "per_step_mean_wall_time_s": {
             step: float(per_step_wall_s[step]) / n for step in STEP_IDS
         },
-        "per_sample_total_wall_s_mean": (
-            float(sum(per_sample_total_wall_s)) / n
-        ),
-        "per_sample_total_wall_s_median": (
-            _median(per_sample_total_wall_s)
-        ),
+        "per_sample_total_wall_s_mean": (float(sum(per_sample_total_wall_s)) / n),
+        "per_sample_total_wall_s_median": (_median(per_sample_total_wall_s)),
     }
 
 
@@ -217,6 +216,7 @@ def _write_json(payload: Dict[str, Any], dest: Path) -> None:
     def _coerce(o: Any) -> Any:
         try:
             import numpy as _np  # local import; cheap
+
             if isinstance(o, (_np.floating, _np.integer)):
                 return o.item()
             if isinstance(o, _np.ndarray):
@@ -255,8 +255,12 @@ def _write_markdown(
 
     lines.append("## Per-metal summary")
     lines.append("")
-    lines.append("| Metal | N samples | Wall-time (s) | Success rate | Mean sample wall (s) |")
-    lines.append("|-------|-----------|---------------|---------------|---------------------|")
+    lines.append(
+        "| Metal | N samples | Wall-time (s) | Success rate | Mean sample wall (s) |"
+    )
+    lines.append(
+        "|-------|-----------|---------------|---------------|---------------------|"
+    )
     for m in metals:
         d = per_metal[m]
         lines.append(
@@ -270,9 +274,7 @@ def _write_markdown(
         f"({sum(n_actual.values())} samples)."
     )
     lines.append("")
-    lines.append(
-        f"**Peak memory delta**: {payload['peak_memory_mb_total']:.2f} MB"
-    )
+    lines.append(f"**Peak memory delta**: {payload['peak_memory_mb_total']:.2f} MB")
     lines.append("")
 
     lines.append("## Per-step × per-metal total wall-time (seconds)")
@@ -288,7 +290,11 @@ def _write_markdown(
             v = float(payload["per_step_per_metal_wall_time_s"][step].get(m, 0.0))
             cells.append(f"{v:.4f}")
             s += v
-        lines.append(f"| {step} ({STEP_LABELS[step]}) | " + " | ".join(cells) + f" | **{s:.4f}** |")
+        lines.append(
+            f"| {step} ({STEP_LABELS[step]}) | "
+            + " | ".join(cells)
+            + f" | **{s:.4f}** |"
+        )
     lines.append("")
 
     lines.append("## Per-step × per-metal mean wall-time per sample (seconds)")
@@ -430,9 +436,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         smiles = _load_metal_samples(csv_path, metal, n_per_metal)
         per_metal_n_samples[metal] = len(smiles)
         if not smiles:
-            sys.stderr.write(
-                f"[bench] no SMILES for metal={metal} in {csv_path}\n"
-            )
+            sys.stderr.write(f"[bench] no SMILES for metal={metal} in {csv_path}\n")
             continue
         print(
             f"[bench]   loaded {len(smiles)} samples, "
@@ -468,6 +472,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     # Build the report payload.
     try:
         import torch  # local; cheap
+
         torch_ver = torch.__version__
     except Exception:
         torch_ver = "n/a"
@@ -489,15 +494,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             m: float(v) for m, v in per_metal_success_rate.items()
         },
         "per_metal_per_sample_wall_time_mean_s": {
-            m: float(per_metal_results.get(m, {}).get(
-                "per_sample_total_wall_s_mean", 0.0
-            ))
+            m: float(
+                per_metal_results.get(m, {}).get("per_sample_total_wall_s_mean", 0.0)
+            )
             for m in metals
         },
         "per_metal_per_sample_wall_time_median_s": {
-            m: float(per_metal_results.get(m, {}).get(
-                "per_sample_total_wall_s_median", 0.0
-            ))
+            m: float(
+                per_metal_results.get(m, {}).get("per_sample_total_wall_s_median", 0.0)
+            )
             for m in metals
         },
         "per_step_per_metal_wall_time_s": {
@@ -510,9 +515,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         },
         "per_step_per_metal_status_counts": {
             step: {
-                m: {
-                    k: int(v) for k, v in per_step_per_metal_status[step][m].items()
-                }
+                m: {k: int(v) for k, v in per_step_per_metal_status[step][m].items()}
                 for m in metals
             }
             for step in STEP_IDS

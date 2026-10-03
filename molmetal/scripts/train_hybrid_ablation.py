@@ -21,6 +21,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -55,7 +56,9 @@ CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
 REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def safe_train_epoch(model, train_loader, loss_fn, optimizer, device, variant_name: str):
+def safe_train_epoch(
+    model, train_loader, loss_fn, optimizer, device, variant_name: str
+):
     """Fault-tolerant training epoch that skips batches hitting ROCm hardware faults.
 
     ROCm + PyTorch ``scatter_add`` autograd occasionally raises a hardware
@@ -69,7 +72,15 @@ def safe_train_epoch(model, train_loader, loss_fn, optimizer, device, variant_na
     skipped = 0
 
     for batch in train_loader:
-        smiles_list, coords, metal_types, pic50_true, active_label, mask, mol_objects = batch
+        (
+            smiles_list,
+            coords,
+            metal_types,
+            pic50_true,
+            active_label,
+            mask,
+            mol_objects,
+        ) = batch
         mask = mask.to(device)
 
         try:
@@ -226,11 +237,15 @@ def write_markdown_report(results, report_path: Path):
         "Comparison of D-MPNN + EGNN hybrid fusion strategies on the Ru temporal "
         "split (cutoff_year=2024).\n"
     )
-    lines.append("- Backbone: D-MPNN (3 layers, hidden=128) + EGNN (3 layers, hidden=128)")
+    lines.append(
+        "- Backbone: D-MPNN (3 layers, hidden=128) + EGNN (3 layers, hidden=128)"
+    )
     lines.append("- Dual head: pIC50 regression + active classification (alpha=0.5)")
     lines.append("- Optimiser: Adam, lr=1e-3, cosine schedule over --epochs\n")
     lines.append("## Results\n")
-    lines.append("| variant | params | Ru val AUC | Ru val PR | Ru test AUC | Ru test PR | test pIC50 MAE | avg epoch time | wall-clock |")
+    lines.append(
+        "| variant | params | Ru val AUC | Ru val PR | Ru test AUC | Ru test PR | test pIC50 MAE | avg epoch time | wall-clock |"
+    )
     lines.append("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
     for r in results:
         lines.append(
@@ -247,7 +262,9 @@ def write_markdown_report(results, report_path: Path):
         lines.append(f"\n### {r['variant']} (params={r['n_params']:,})\n")
         lines.append("| epoch | train_loss | val_AUC | val_PR |")
         lines.append("| ---: | ---: | ---: | ---: |")
-        for i, (tl, va, vp) in enumerate(zip(r["train_losses"], r["val_aucs"], r["val_prs"])):
+        for i, (tl, va, vp) in enumerate(
+            zip(r["train_losses"], r["val_aucs"], r["val_prs"])
+        ):
             lines.append(f"| {i+1} | {tl:.4f} | {va:.4f} | {vp:.4f} |")
 
     # Winner
@@ -278,7 +295,9 @@ def write_markdown_report(results, report_path: Path):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="D-MPNN + EGNN fusion ablation (V1 vs V2)")
+    parser = argparse.ArgumentParser(
+        description="D-MPNN + EGNN fusion ablation (V1 vs V2)"
+    )
     parser.add_argument("--metal", type=str, default="Ru")
     parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--batch", type=int, default=16)

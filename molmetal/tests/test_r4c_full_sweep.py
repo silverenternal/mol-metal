@@ -71,8 +71,10 @@ def test_dry_run_loads_config_and_exits_zero_without_sweeping(tmp_path: Path) ->
     output_prefix = tmp_path / "r4_c_dryrun"
     proc = _run(
         [
-            "--pockets", str(POCKETS_DIR),
-            "--output-prefix", str(output_prefix),
+            "--pockets",
+            str(POCKETS_DIR),
+            "--output-prefix",
+            str(output_prefix),
             "--dry-run",
         ]
     )
@@ -112,9 +114,12 @@ def test_dry_run_respects_n_pockets_override(tmp_path: Path) -> None:
     output_prefix = tmp_path / "r4_c_dryrun_override"
     proc = _run(
         [
-            "--pockets", str(POCKETS_DIR),
-            "--output-prefix", str(output_prefix),
-            "--n-pockets", "3",
+            "--pockets",
+            str(POCKETS_DIR),
+            "--output-prefix",
+            str(output_prefix),
+            "--n-pockets",
+            "3",
             "--dry-run",
         ]
     )
@@ -133,9 +138,12 @@ def test_dry_run_caps_n_pockets_at_yaml_n_test_pockets(tmp_path: Path) -> None:
     output_prefix = tmp_path / "r4_c_dryrun_cap"
     proc = _run(
         [
-            "--pockets", str(POCKETS_DIR),
-            "--output-prefix", str(output_prefix),
-            "--n-pockets", "500",
+            "--pockets",
+            str(POCKETS_DIR),
+            "--output-prefix",
+            str(output_prefix),
+            "--n-pockets",
+            "500",
             "--dry-run",
         ]
     )
@@ -159,9 +167,12 @@ def test_dry_run_respects_n_pockets_override(tmp_path: Path) -> None:
     output_prefix = tmp_path / "r4_c_dryrun_override"
     proc = _run(
         [
-            "--pockets", str(POCKETS_DIR),
-            "--output-prefix", str(output_prefix),
-            "--n-pockets", "3",
+            "--pockets",
+            str(POCKETS_DIR),
+            "--output-prefix",
+            str(output_prefix),
+            "--n-pockets",
+            "3",
             "--dry-run",
         ]
     )
@@ -180,9 +191,12 @@ def test_dry_run_caps_n_pockets_at_yaml_n_test_pockets(tmp_path: Path) -> None:
     output_prefix = tmp_path / "r4_c_dryrun_cap"
     proc = _run(
         [
-            "--pockets", str(POCKETS_DIR),
-            "--output-prefix", str(output_prefix),
-            "--n-pockets", "500",
+            "--pockets",
+            str(POCKETS_DIR),
+            "--output-prefix",
+            str(output_prefix),
+            "--n-pockets",
+            "500",
             "--dry-run",
         ]
     )

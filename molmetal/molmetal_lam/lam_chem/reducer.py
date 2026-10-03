@@ -286,7 +286,9 @@ def _ensure_conformer(mol, Chem_mod, AllChem_mod):  # pragma: no cover - helper
         return None
 
 
-def _to_mol_with_conformer(state: Any, Chem_mod, AllChem_mod):  # pragma: no cover - helper
+def _to_mol_with_conformer(
+    state: Any, Chem_mod, AllChem_mod
+):  # pragma: no cover - helper
     """Best-effort conversion of ``state`` to an RDKit Mol + 3D conformer.
 
     Accepted shapes:

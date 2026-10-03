@@ -52,15 +52,9 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-TRAINER_PATH = (
-    REPO_ROOT / "molmetal" / "scripts" / "train_cfm_yuelbond_wasserstein.py"
-)
+TRAINER_PATH = REPO_ROOT / "molmetal" / "scripts" / "train_cfm_yuelbond_wasserstein.py"
 SA_PENALTY_MODULE_PATH = (
-    REPO_ROOT
-    / "molmetal"
-    / "adapters"
-    / "flow_matching_lipman"
-    / "sa_penalty.py"
+    REPO_ROOT / "molmetal" / "adapters" / "flow_matching_lipman" / "sa_penalty.py"
 )
 
 
@@ -82,9 +76,7 @@ def _import_trainer_parse_args():
     import sys as _sys
 
     mod_name = "molmetal.scripts._wf388a3_trainer_mod"
-    spec = importlib.util.spec_from_file_location(
-        mod_name, str(TRAINER_PATH)
-    )
+    spec = importlib.util.spec_from_file_location(mod_name, str(TRAINER_PATH))
     mod = importlib.util.module_from_spec(spec)
     _sys.modules[mod_name] = mod
     # Loading the trainer will import torch + RDKit + domain modules
@@ -111,20 +103,23 @@ def test_sa_penalty_flag() -> None:
     Wf-380-B1 / Wf-299 (the penalty term is exactly zero when 0.0).
     """
     trainer = _import_trainer_parse_args()
-    parser = trainer.parse_args.__wrapped__ if hasattr(
-        trainer.parse_args, "__wrapped__"
-    ) else None
+    parser = (
+        trainer.parse_args.__wrapped__
+        if hasattr(trainer.parse_args, "__wrapped__")
+        else None
+    )
     # Default invocation (no CLI flags).
     import sys as _sys
+
     _sys.argv = ["train_cfm_yuelbond_wasserstein.py"]
     args = trainer.parse_args()
     # Defaults per Wf-388-A3 brief: --sa-penalty 0.0 (OFF), --sa-target 2.8.
-    assert hasattr(args, "sa_penalty"), (
-        "Wf-388-A3: --sa-penalty must be exposed on the argparse namespace"
-    )
-    assert hasattr(args, "sa_target"), (
-        "Wf-388-A3: --sa-target must be exposed on the argparse namespace"
-    )
+    assert hasattr(
+        args, "sa_penalty"
+    ), "Wf-388-A3: --sa-penalty must be exposed on the argparse namespace"
+    assert hasattr(
+        args, "sa_target"
+    ), "Wf-388-A3: --sa-target must be exposed on the argparse namespace"
     assert args.sa_penalty == 0.0, (
         f"Wf-388-A3 default --sa-penalty must be 0.0 (OFF; backward-compat); "
         f"got {args.sa_penalty}"
@@ -137,8 +132,10 @@ def test_sa_penalty_flag() -> None:
     # Override: --sa-penalty 0.1 --sa-target 3.0.
     _sys.argv = [
         "train_cfm_yuelbond_wasserstein.py",
-        "--sa-penalty", "0.1",
-        "--sa-target", "3.0",
+        "--sa-penalty",
+        "0.1",
+        "--sa-target",
+        "3.0",
     ]
     args_override = trainer.parse_args()
     assert args_override.sa_penalty == pytest.approx(0.1)
@@ -163,9 +160,7 @@ def test_sa_aware_loss_in_c() -> None:
     """
     # Direct module import — no torch / GPU needed.
     if not SA_PENALTY_MODULE_PATH.exists():
-        pytest.skip(
-            f"Wf-388-A3 requires sa_penalty module at {SA_PENALTY_MODULE_PATH}"
-        )
+        pytest.skip(f"Wf-388-A3 requires sa_penalty module at {SA_PENALTY_MODULE_PATH}")
     try:
         from molmetal.adapters.flow_matching_lipman.sa_penalty import (
             sa_aware_sampling_penalty,
@@ -173,9 +168,7 @@ def test_sa_aware_loss_in_c() -> None:
             DEFAULT_SA_WEIGHT,
         )
     except ModuleNotFoundError as exc:
-        pytest.skip(
-            f"Wf-388-A3 requires sa_penalty importable; missing {exc.name}"
-        )
+        pytest.skip(f"Wf-388-A3 requires sa_penalty importable; missing {exc.name}")
 
     # Per Wf-380-A6 SCAFFOLD + Wf-388-A3 wire-in: when --sa-penalty > 0,
     # the trainer calls sa_aware_sampling_penalty(sa_scores, target_sa, sa_weight).
@@ -184,29 +177,26 @@ def test_sa_aware_loss_in_c() -> None:
     penalty = sa_aware_sampling_penalty(
         sa_scores,
         target_sa=DEFAULT_TARGET_SA,  # 2.8
-        sa_weight=DEFAULT_SA_WEIGHT,   # 0.3
+        sa_weight=DEFAULT_SA_WEIGHT,  # 0.3
     )
     # Canonical formula: max(0, sa - target) * sa_weight.
     # For sa=2.8 (==target) -> 0; sa=3.5 -> 0.21; sa=4.5 -> 0.51; sa=6.0 -> 0.96.
     # Penalty is non-negative; sample at index 2 (sa=2.8) must be 0.0.
     assert float(penalty[2]) == pytest.approx(0.0, abs=1e-9), (
-        f"sa_aware_sampling_penalty at target SA must be 0; "
-        f"got {float(penalty[2])}"
+        f"sa_aware_sampling_penalty at target SA must be 0; " f"got {float(penalty[2])}"
     )
     # Penalty at sa=3.5 = (3.5 - 2.8) * 0.3 = 0.21.
     assert float(penalty[3]) == pytest.approx(0.21, abs=1e-9), (
-        f"sa_aware_sampling_penalty at sa=3.5 must be 0.21; "
-        f"got {float(penalty[3])}"
+        f"sa_aware_sampling_penalty at sa=3.5 must be 0.21; " f"got {float(penalty[3])}"
     )
     # Penalty at sa=6.0 = (6.0 - 2.8) * 0.3 = 0.96.
     assert float(penalty[5]) == pytest.approx(0.96, abs=1e-9), (
-        f"sa_aware_sampling_penalty at sa=6.0 must be 0.96; "
-        f"got {float(penalty[5])}"
+        f"sa_aware_sampling_penalty at sa=6.0 must be 0.96; " f"got {float(penalty[5])}"
     )
     # All penalties must be non-negative (Ertl 2009 §3 monotone property).
-    assert (penalty >= 0.0).all(), (
-        "sa_aware_sampling_penalty must be non-negative for all samples"
-    )
+    assert (
+        penalty >= 0.0
+    ).all(), "sa_aware_sampling_penalty must be non-negative for all samples"
 
 
 # ---------------------------------------------------------------------------
@@ -222,17 +212,13 @@ def test_sa_target_threshold() -> None:
     """
     # Verify the SA penalty module exposes the same constant.
     if not SA_PENALTY_MODULE_PATH.exists():
-        pytest.skip(
-            f"Wf-388-A3 requires sa_penalty module at {SA_PENALTY_MODULE_PATH}"
-        )
+        pytest.skip(f"Wf-388-A3 requires sa_penalty module at {SA_PENALTY_MODULE_PATH}")
     try:
         from molmetal.adapters.flow_matching_lipman.sa_penalty import (
             DEFAULT_TARGET_SA,
         )
     except ModuleNotFoundError as exc:
-        pytest.skip(
-            f"Wf-388-A3 requires sa_penalty importable; missing {exc.name}"
-        )
+        pytest.skip(f"Wf-388-A3 requires sa_penalty importable; missing {exc.name}")
 
     # Module-level constant must be 2.8 (Ertl 2009 §3).
     assert DEFAULT_TARGET_SA == pytest.approx(2.8), (
@@ -243,6 +229,7 @@ def test_sa_target_threshold() -> None:
     # Trainer CLI default must match.
     trainer = _import_trainer_parse_args()
     import sys as _sys
+
     _sys.argv = ["train_cfm_yuelbond_wasserstein.py"]
     args = trainer.parse_args()
     assert args.sa_target == pytest.approx(DEFAULT_TARGET_SA), (
@@ -253,21 +240,17 @@ def test_sa_target_threshold() -> None:
 
     # Cross-check: trainer file source must contain both flag declarations.
     src = TRAINER_PATH.read_text(encoding="utf-8")
-    assert '--sa-penalty' in src, (
-        "Wf-388-A3: trainer must declare --sa-penalty CLI flag"
-    )
-    assert '--sa-target' in src, (
-        "Wf-388-A3: trainer must declare --sa-target CLI flag"
-    )
+    assert (
+        "--sa-penalty" in src
+    ), "Wf-388-A3: trainer must declare --sa-penalty CLI flag"
+    assert "--sa-target" in src, "Wf-388-A3: trainer must declare --sa-target CLI flag"
     # sa_loss must appear in the loss formula block (default 0 preserved).
-    assert 'sa_loss' in src, (
-        "Wf-388-A3: trainer loss block must reference sa_loss"
-    )
+    assert "sa_loss" in src, "Wf-388-A3: trainer loss block must reference sa_loss"
     # sa_penalty_weight must appear in the loss formula.
-    assert 'sa_penalty_weight' in src, (
-        "Wf-388-A3: trainer loss block must reference sa_penalty_weight"
-    )
+    assert (
+        "sa_penalty_weight" in src
+    ), "Wf-388-A3: trainer loss block must reference sa_penalty_weight"
     # Defensive: default 0.0 must be present in the help/CLI registration.
-    assert 'default=0.0' in src, (
-        "Wf-388-A3: --sa-penalty default must be 0.0 (OFF; backward compat)"
-    )
+    assert (
+        "default=0.0" in src
+    ), "Wf-388-A3: --sa-penalty default must be 0.0 (OFF; backward compat)"

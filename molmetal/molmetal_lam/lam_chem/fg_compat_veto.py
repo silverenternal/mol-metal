@@ -126,12 +126,18 @@ FUNCTIONAL_GROUPS: Tuple[str, ...] = (
 #: R17 ship 84-rule MLE matrix).  Same set as
 #: :data:`molmetal_lam.lam_chem.pt_metal_ligand_exchange._METAL_LIGAND_EXCHANGE_METALS`.
 METAL_LABELS: Tuple[str, ...] = (
-    "Pt_II", "Pt_IV",
-    "Ru_II", "Ru_III",
-    "Ir_III", "Ir_IV",
-    "Os_II", "Os_III",
-    "Rh_I", "Rh_III",
-    "Au_I", "Au_III",
+    "Pt_II",
+    "Pt_IV",
+    "Ru_II",
+    "Ru_III",
+    "Ir_III",
+    "Ir_IV",
+    "Os_II",
+    "Os_III",
+    "Rh_I",
+    "Rh_III",
+    "Au_I",
+    "Au_III",
 )
 
 
@@ -556,9 +562,7 @@ class LeaveGroupVeto:
         if not isinstance(leaving_group, str):
             return []
         detected_fgs = self._detect_fg(reactant)
-        fgs_to_check = (
-            detected_fgs if detected_fgs else list(FUNCTIONAL_GROUPS)
-        )
+        fgs_to_check = detected_fgs if detected_fgs else list(FUNCTIONAL_GROUPS)
         reasons: List[str] = []
         for fg in fgs_to_check:
             if (fg, leaving_group) in self._veto_set:
@@ -612,13 +616,13 @@ class LeaveGroupVeto:
         out: List[str] = []
         # Broad SMARTS — one per canonical FG.
         patterns: Dict[str, str] = {
-            "aldehyde":          "[CX3H1](=O)[#6]",
-            "carboxylic_acid":   "[CX3](=O)[OX2H1]",
-            "primary_amine":     "[NX3H2;!$(NC=O);!$(N=*);!$([N+])]",
-            "azide":             "[NX2]=[NX2]=[NX1]",
-            "alkyne":            "[CX2]#[CX2]",
-            "boronic_acid":      "[BX3]([OX2])[OX2]",
-            "aryl_halide":       "[cX3][F,Cl,Br,I]",
+            "aldehyde": "[CX3H1](=O)[#6]",
+            "carboxylic_acid": "[CX3](=O)[OX2H1]",
+            "primary_amine": "[NX3H2;!$(NC=O);!$(N=*);!$([N+])]",
+            "azide": "[NX2]=[NX2]=[NX1]",
+            "alkyne": "[CX2]#[CX2]",
+            "boronic_acid": "[BX3]([OX2])[OX2]",
+            "aryl_halide": "[cX3][F,Cl,Br,I]",
         }
         for fg, smarts_str in patterns.items():
             try:
@@ -838,7 +842,5 @@ if __name__ == "__main__":  # pragma: no cover
     print(f"# fg_compat_veto — FG matrix ({fg.n_vetoed}/{fg.n_cells} vetoed)")
     print(fg.render_table())
     print()
-    print(
-        f"# fg_compat_veto — LG matrix ({lg.n_vetoed}/{lg.n_cells} vetoed)"
-    )
+    print(f"# fg_compat_veto — LG matrix ({lg.n_vetoed}/{lg.n_cells} vetoed)")
     print(lg.render_table())

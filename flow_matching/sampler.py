@@ -115,17 +115,27 @@ class FlowMatchingSampler(nn.Module):
                     "supplied so that the velocity net can be evaluated."
                 )
             h_node_eff, _ = self.encoder(
-                atomic_numbers, x, edge_index,
-                edge_mask=edge_mask, node_mask=node_mask,
+                atomic_numbers,
+                x,
+                edge_index,
+                edge_mask=edge_mask,
+                node_mask=node_mask,
             )
         else:
             h_node_eff = h_node
 
         b = x.shape[0]
-        t_batch = t_scalar.expand(b).to(dtype=x.dtype if x.is_floating_point() else torch.float32)
+        t_batch = t_scalar.expand(b).to(
+            dtype=x.dtype if x.is_floating_point() else torch.float32
+        )
         v = self.model(
-            h_node_eff, x, t_batch, edge_index, cond=cond,
-            edge_mask=edge_mask, node_mask=node_mask,
+            h_node_eff,
+            x,
+            t_batch,
+            edge_index,
+            cond=cond,
+            edge_mask=edge_mask,
+            node_mask=node_mask,
         )
         if v.shape != x.shape:
             raise ValueError(
@@ -192,9 +202,7 @@ class FlowMatchingSampler(nn.Module):
             The integrated state at ``t_end``.
         """
         if x0.dim() != 3 or x0.shape[-1] != 3:
-            raise ValueError(
-                f"`x0` must be (B, N, 3); got {tuple(x0.shape)}."
-            )
+            raise ValueError(f"`x0` must be (B, N, 3); got {tuple(x0.shape)}.")
         if edge_index is None:
             raise ValueError("`edge_index` is required for the velocity net.")
 
@@ -224,8 +232,14 @@ class FlowMatchingSampler(nn.Module):
 
             if cfg.method == "euler":
                 v = self._velocity(
-                    x, t_tensor, cond, h_node, atomic_numbers, edge_index,
-                    edge_mask=edge_mask, node_mask=node_mask,
+                    x,
+                    t_tensor,
+                    cond,
+                    h_node,
+                    atomic_numbers,
+                    edge_index,
+                    edge_mask=edge_mask,
+                    node_mask=node_mask,
                 )
                 # Euler kernel expects `velocity` already scaled by dt.
                 x = euler_step(x, v * dt, dt, out=None)
@@ -236,28 +250,52 @@ class FlowMatchingSampler(nn.Module):
                 # into the update itself.  Multiplying by dt here as well
                 # would yield dt^2 * v, which is wrong.
                 v1 = self._velocity(
-                    x, t_tensor, cond, h_node, atomic_numbers, edge_index,
-                    edge_mask=edge_mask, node_mask=node_mask,
+                    x,
+                    t_tensor,
+                    cond,
+                    h_node,
+                    atomic_numbers,
+                    edge_index,
+                    edge_mask=edge_mask,
+                    node_mask=node_mask,
                 )
                 x2 = x + 0.5 * dt * v1
 
                 t_mid = t_tensor + 0.5 * dt
                 v2 = self._velocity(
-                    x2, t_mid, cond, h_node, atomic_numbers, edge_index,
-                    edge_mask=edge_mask, node_mask=node_mask,
+                    x2,
+                    t_mid,
+                    cond,
+                    h_node,
+                    atomic_numbers,
+                    edge_index,
+                    edge_mask=edge_mask,
+                    node_mask=node_mask,
                 )
                 x3 = x + 0.5 * dt * v2
 
                 v3 = self._velocity(
-                    x3, t_mid, cond, h_node, atomic_numbers, edge_index,
-                    edge_mask=edge_mask, node_mask=node_mask,
+                    x3,
+                    t_mid,
+                    cond,
+                    h_node,
+                    atomic_numbers,
+                    edge_index,
+                    edge_mask=edge_mask,
+                    node_mask=node_mask,
                 )
                 x4 = x + dt * v3
 
                 t_end = t_tensor + dt
                 v4 = self._velocity(
-                    x4, t_end, cond, h_node, atomic_numbers, edge_index,
-                    edge_mask=edge_mask, node_mask=node_mask,
+                    x4,
+                    t_end,
+                    cond,
+                    h_node,
+                    atomic_numbers,
+                    edge_index,
+                    edge_mask=edge_mask,
+                    node_mask=node_mask,
                 )
                 x = rk4_step(x, v1, v2, v3, v4, dt, out=None)
 

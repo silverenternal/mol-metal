@@ -36,6 +36,7 @@ Run with::
     /home/hugo/codes/mol-metal/.venv/bin/python -m pytest \
         molmetal/tests/test_wf339c4_per_metal_reachability.py -v
 """
+
 from __future__ import annotations
 
 import csv
@@ -60,32 +61,16 @@ PER_METAL_BENCH_JSON = (
     / "per_metal_bench.json"
 )
 PER_METAL_CSV = (
-    PROJECT_ROOT
-    / "molmetal"
-    / "reports"
-    / "wf37_closure_dblock"
-    / "per_metal.csv"
+    PROJECT_ROOT / "molmetal" / "reports" / "wf37_closure_dblock" / "per_metal.csv"
 )
 PER_METAL_MD = (
-    PROJECT_ROOT
-    / "molmetal"
-    / "reports"
-    / "wf37_closure_dblock"
-    / "per_metal_bench.md"
+    PROJECT_ROOT / "molmetal" / "reports" / "wf37_closure_dblock" / "per_metal_bench.md"
 )
 OOD_CLOSURE_JSON = (
-    PROJECT_ROOT
-    / "molmetal"
-    / "reports"
-    / "wf41_closure_ood"
-    / "ood_closure.json"
+    PROJECT_ROOT / "molmetal" / "reports" / "wf41_closure_ood" / "ood_closure.json"
 )
 OOD_CLOSURE_MD = (
-    PROJECT_ROOT
-    / "molmetal"
-    / "reports"
-    / "wf41_closure_ood"
-    / "ood_closure.md"
+    PROJECT_ROOT / "molmetal" / "reports" / "wf41_closure_ood" / "ood_closure.md"
 )
 
 
@@ -169,25 +154,21 @@ M25_HILBERT_ATTRIBUTION_NOTE = (
 # ---------------------------------------------------------------------------
 def _load_per_metal_bench() -> Dict[str, Any]:
     """Load per_metal_bench.json (Wf-37 P2 L6 d-block bench)."""
-    assert PER_METAL_BENCH_JSON.is_file(), (
-        f"per_metal_bench.json missing at {PER_METAL_BENCH_JSON}"
-    )
+    assert (
+        PER_METAL_BENCH_JSON.is_file()
+    ), f"per_metal_bench.json missing at {PER_METAL_BENCH_JSON}"
     return json.loads(PER_METAL_BENCH_JSON.read_text())
 
 
 def _load_ood_closure() -> Dict[str, Any]:
     """Load ood_closure.json (Wf-41 P2 L12 cross-domain OOD bench)."""
-    assert OOD_CLOSURE_JSON.is_file(), (
-        f"ood_closure.json missing at {OOD_CLOSURE_JSON}"
-    )
+    assert OOD_CLOSURE_JSON.is_file(), f"ood_closure.json missing at {OOD_CLOSURE_JSON}"
     return json.loads(OOD_CLOSURE_JSON.read_text())
 
 
 def _load_per_metal_csv() -> Dict[str, Dict[str, Any]]:
     """Load per_metal.csv as a metal → row dict (Wf-37 P2 L6 d-block bench)."""
-    assert PER_METAL_CSV.is_file(), (
-        f"per_metal.csv missing at {PER_METAL_CSV}"
-    )
+    assert PER_METAL_CSV.is_file(), f"per_metal.csv missing at {PER_METAL_CSV}"
     out: Dict[str, Dict[str, Any]] = {}
     with PER_METAL_CSV.open("r", newline="") as fh:
         reader = csv.DictReader(fh)
@@ -237,9 +218,9 @@ def test_per_metal_l6_baseline() -> None:
             f"from per_metal.csv"
         )
         # Bounded in [0, 1]
-        assert 0.0 <= actual_rate_json <= 1.0, (
-            f"L6 {metal}: rate {actual_rate_json} out of [0,1]"
-        )
+        assert (
+            0.0 <= actual_rate_json <= 1.0
+        ), f"L6 {metal}: rate {actual_rate_json} out of [0,1]"
 
 
 # ---------------------------------------------------------------------------
@@ -270,24 +251,20 @@ def test_per_metal_ood_baseline() -> None:
     per_domain = bench["per_domain"]
 
     for domain, metal_rates in L12_BASELINE.items():
-        assert domain in per_domain, (
-            f"ood_closure.json missing domain {domain!r}"
-        )
+        assert domain in per_domain, f"ood_closure.json missing domain {domain!r}"
         per_metal = per_domain[domain].get("per_metal", {})
         for metal, expected_rate in metal_rates.items():
             agg = per_metal.get(metal, {}).get("aggregate", {})
             assert agg, (
-                f"ood_closure.json missing aggregate for "
-                f"{domain!r}/{metal!r}"
+                f"ood_closure.json missing aggregate for " f"{domain!r}/{metal!r}"
             )
             actual_rate = float(agg["closure_reachability_rate"])
             assert abs(actual_rate - expected_rate) < 1e-3, (
-                f"L12 {domain}/{metal}: expected {expected_rate}, "
-                f"got {actual_rate}"
+                f"L12 {domain}/{metal}: expected {expected_rate}, " f"got {actual_rate}"
             )
-            assert 0.0 <= actual_rate <= 1.0, (
-                f"L12 {domain}/{metal}: rate {actual_rate} out of [0,1]"
-            )
+            assert (
+                0.0 <= actual_rate <= 1.0
+            ), f"L12 {domain}/{metal}: rate {actual_rate} out of [0,1]"
 
 
 # ---------------------------------------------------------------------------
@@ -365,36 +342,27 @@ def test_per_periodic_block_split() -> None:
     per_block = bench["per_block"]
 
     for block, expected_rate in PER_BLOCK_BASELINE.items():
-        assert block in per_block, (
-            f"per_metal_bench.json missing block {block!r}"
-        )
+        assert block in per_block, f"per_metal_bench.json missing block {block!r}"
         agg = per_block[block]
         actual_rate = float(agg["closure_reachability_rate"])
         assert abs(actual_rate - expected_rate) < 1e-3, (
-            f"per-block {block}: expected {expected_rate}, got "
-            f"{actual_rate}"
+            f"per-block {block}: expected {expected_rate}, got " f"{actual_rate}"
         )
-        assert 0.0 <= actual_rate <= 1.0, (
-            f"per-block {block}: rate {actual_rate} out of [0,1]"
-        )
+        assert (
+            0.0 <= actual_rate <= 1.0
+        ), f"per-block {block}: rate {actual_rate} out of [0,1]"
 
     # Partition sanity: 3d + 4d + 5d_La = 2244 total samples
-    n_total = sum(
-        int(per_block[b]["n_samples"]) for b in PER_BLOCK_BASELINE
-    )
+    n_total = sum(int(per_block[b]["n_samples"]) for b in PER_BLOCK_BASELINE)
     assert n_total == 2244, (
-        f"per-block n_samples must partition into 2244 total; got "
-        f"{n_total}"
+        f"per-block n_samples must partition into 2244 total; got " f"{n_total}"
     )
     # Trend sanity: 3d > 4d > 5d_La (reachability decreases with period)
     assert (
         PER_BLOCK_BASELINE["3d"]
         > PER_BLOCK_BASELINE["4d"]
         > PER_BLOCK_BASELINE["5d_La"]
-    ), (
-        f"per-block trend must be 3d > 4d > 5d_La; got "
-        f"{PER_BLOCK_BASELINE}"
-    )
+    ), f"per-block trend must be 3d > 4d > 5d_La; got " f"{PER_BLOCK_BASELINE}"
 
 
 # ---------------------------------------------------------------------------
@@ -417,19 +385,15 @@ def test_per_metal_csv_consistent_with_json() -> None:
             bench_per_metal[metal]["aggregate"]["closure_reachability_rate"]
         )
         csv_rate = float(csv_rows[metal]["closure_reachability_rate"])
-        assert abs(json_rate - csv_rate) < 1e-3, (
-            f"{metal}: json={json_rate} != csv={csv_rate}"
-        )
+        assert (
+            abs(json_rate - csv_rate) < 1e-3
+        ), f"{metal}: json={json_rate} != csv={csv_rate}"
 
 
 def test_md_artefacts_present() -> None:
     """The Markdown summaries for Wf-37 P2 + Wf-41 P2 ship on disk."""
-    assert PER_METAL_MD.is_file(), (
-        f"per_metal_bench.md missing at {PER_METAL_MD}"
-    )
-    assert OOD_CLOSURE_MD.is_file(), (
-        f"ood_closure.md missing at {OOD_CLOSURE_MD}"
-    )
+    assert PER_METAL_MD.is_file(), f"per_metal_bench.md missing at {PER_METAL_MD}"
+    assert OOD_CLOSURE_MD.is_file(), f"ood_closure.md missing at {OOD_CLOSURE_MD}"
     # Quick text sniff
     pmd = PER_METAL_MD.read_text()
     assert "Per-metal reachability rate" in pmd
@@ -448,9 +412,7 @@ def test_l6_l12_metal_coverage_disjoint() -> None:
     for domain_rates in L12_BASELINE.values():
         l12_metals.update(domain_rates.keys())
     missing = l12_metals - l6_metals
-    assert not missing, (
-        f"L12 metals missing from L6 30-metal set: {sorted(missing)}"
-    )
+    assert not missing, f"L12 metals missing from L6 30-metal set: {sorted(missing)}"
 
 
 def test_ood_metalcyto_zero_rates_documented() -> None:
@@ -459,13 +421,9 @@ def test_ood_metalcyto_zero_rates_documented() -> None:
     rejection — NOT closure theorem bug).
     """
     bench = _load_ood_closure()
-    per_metal = (
-        bench["per_domain"]["metalcytotox_5metal"]["per_metal"]
-    )
+    per_metal = bench["per_domain"]["metalcytotox_5metal"]["per_metal"]
     for metal in ("Ir", "Rh", "Os", "Re"):
-        rate = float(
-            per_metal[metal]["aggregate"]["closure_reachability_rate"]
-        )
+        rate = float(per_metal[metal]["aggregate"]["closure_reachability_rate"])
         assert rate == 0.0, (
             f"metalcytotox_5metal/{metal} expected 0.0 (valence-BNF "
             f"rejection per ood_closure.md §Honest framing); got {rate}"

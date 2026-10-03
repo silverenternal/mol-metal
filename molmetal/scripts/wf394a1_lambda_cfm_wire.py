@@ -82,9 +82,7 @@ from molmetal.scripts.wf386a3_atomic_write import (
 log = logging.getLogger(__name__)
 
 # Path constants — match the Wf-329-W6 / Wf-333-G1 anchor.
-DEFAULT_TRAINER_PATH = Path(
-    "molmetal/scripts/train_cfm_yuelbond_wasserstein.py"
-)
+DEFAULT_TRAINER_PATH = Path("molmetal/scripts/train_cfm_yuelbond_wasserstein.py")
 DEFAULT_LAMBDA_REWARD_PATH = Path(
     "molmetal/molmetal_lam/reward/lambda_reward_dataset.py"
 )
@@ -130,7 +128,7 @@ CLI_FLAGS_PATCH: List[Dict[str, str]] = [
     },
 ]
 
-LOSS_MULTIPLIER_BLOCK = '''\
+LOSS_MULTIPLIER_BLOCK = """\
         # Wf-394-A1 — TODO-21 Lambda × CFM reward-weighting wiring
         # (re-wire of Wf-329-W6 + Wf-333-G1; CPU-safe scaffolding;
         # GPU retrain remains BLOCKED on upstream decode_ratio > 0
@@ -146,9 +144,9 @@ LOSS_MULTIPLIER_BLOCK = '''\
             loss = loss * (1.0 + float(
                 getattr(args, "lambda_cfm_coupling_weight", 0.0)
             ) * _rw_mean)
-'''
+"""
 
-DATASET_BUILD_BLOCK = '''\
+DATASET_BUILD_BLOCK = """\
     # Wf-394-A1 — TODO-21 Lambda × CFM coupling scaffolding (CPU-only).
     lambda_reward_dataset = None
     if getattr(args, "lambda_cfm_coupling", False):
@@ -177,7 +175,7 @@ DATASET_BUILD_BLOCK = '''\
                 flush=True,
             )
             lambda_reward_dataset = None
-'''
+"""
 
 
 # ---------------------------------------------------------------------------
@@ -313,8 +311,7 @@ def _eval_exec_detected(trainer_src: str) -> bool:
         source.
     """
     return bool(
-        re.search(r"\beval\s*\(", trainer_src)
-        or re.search(r"\bexec\s*\(", trainer_src)
+        re.search(r"\beval\s*\(", trainer_src) or re.search(r"\bexec\s*\(", trainer_src)
     )
 
 
@@ -387,17 +384,18 @@ def _flags_present(trainer_src: str) -> Dict[str, bool]:
             _weight_pat = re.compile(r"--lambda-cfm-coupling-weight")
             _samples_pat = re.compile(r"--lambda-cfm-coupling-samples")
             for node in ast.walk(tree):
-                if not (
-                    isinstance(node, ast.Constant)
-                    and isinstance(node.value, str)
-                ):
+                if not (isinstance(node, ast.Constant) and isinstance(node.value, str)):
                     continue
                 val = node.value
                 if not found["--lambda-cfm-coupling"] and _bare_pat.search(val):
                     found["--lambda-cfm-coupling"] = True
-                if not found["--lambda-cfm-coupling-weight"] and _weight_pat.search(val):
+                if not found["--lambda-cfm-coupling-weight"] and _weight_pat.search(
+                    val
+                ):
                     found["--lambda-cfm-coupling-weight"] = True
-                if not found["--lambda-cfm-coupling-samples"] and _samples_pat.search(val):
+                if not found["--lambda-cfm-coupling-samples"] and _samples_pat.search(
+                    val
+                ):
                     found["--lambda-cfm-coupling-samples"] = True
                 if all(found.values()):
                     break
@@ -468,7 +466,7 @@ def _loss_multiplier_present(trainer_src: str) -> bool:
     if (
         "lambda_cfm_coupling_weight: float = 0.0" in trainer_src
         and "lambda_cfm_mean_weight: float = 0.0" in trainer_src
-        and "1.0 + float(\n            getattr(args, \"lambda_cfm_coupling_weight\""
+        and '1.0 + float(\n            getattr(args, "lambda_cfm_coupling_weight"'
         in trainer_src
     ):
         return True
@@ -478,9 +476,7 @@ def _loss_multiplier_present(trainer_src: str) -> bool:
     # kwarg in train_one_epoch, instead of the float-weight + mean-
     # weight pair. Both forms accepted (with or without leading
     # underscore) because Python convention varies.
-    if re.search(
-        r"(?:_)?lambda_cfm_coupling_flag\s*:\s*bool", trainer_src
-    ):
+    if re.search(r"(?:_)?lambda_cfm_coupling_flag\s*:\s*bool", trainer_src):
         return True
     # Wf-414-A2 NEW shape (variable in loss block): a future-proofing
     # rewire that introduces a ``lambda_cfm_multiplier`` variable
@@ -517,16 +513,10 @@ def _dataset_build_present(trainer_src: str) -> bool:
     if "build_lambda_reward_dataset" not in trainer_src:
         return False
     # Wf-394-A1 OLD shape
-    if (
-        "Wf-394-A1" in trainer_src
-        and "lambda_reward_dataset = None" in trainer_src
-    ):
+    if "Wf-394-A1" in trainer_src and "lambda_reward_dataset = None" in trainer_src:
         return True
     # Wf-406-A2 NEW shape
-    if (
-        "Wf-406-A2" in trainer_src
-        and "lambda_cfm_mean_weight = 0.0" in trainer_src
-    ):
+    if "Wf-406-A2" in trainer_src and "lambda_cfm_mean_weight = 0.0" in trainer_src:
         return True
     # Fallback: the factory symbol is referenced AND any Wf-406+
     # marker exists (covers future re-wires that keep the canonical
@@ -602,34 +592,22 @@ def audit_lambda_cfm_state(
             "add_argument(--lambda-cfm-coupling-samples, int, default=200)"
         )
     if not loss_present:
-        patch_actions.append(
-            "inject loss multiplier block in train_one_epoch"
-        )
+        patch_actions.append("inject loss multiplier block in train_one_epoch")
     if not ds_present:
-        patch_actions.append(
-            "inject dataset build block in main"
-        )
+        patch_actions.append("inject dataset build block in main")
     if not factory_ok:
         notes.append(
             "LambdaRewardDataset factory chain import FAILED — "
             "cannot wire CLI flags safely until factory is restored"
         )
-    notes.append(
-        "GPU launch BLOCKED on upstream decode_ratio > 0 per Wf-291D + Wf-299"
-    )
+    notes.append("GPU launch BLOCKED on upstream decode_ratio > 0 per Wf-291D + Wf-299")
     notes.append(
         "Wf-329-W6 / Wf-333-G1 / Wf-331-R6 wiring shape preserved "
         "verbatim — only the source location in HEAD has moved due "
         "to Wf-388-A2/A3 diversity + SA-penalty flag additions"
     )
 
-    ok = (
-        ast_ok
-        and all(flags.values())
-        and loss_present
-        and ds_present
-        and factory_ok
-    )
+    ok = ast_ok and all(flags.values()) and loss_present and ds_present and factory_ok
 
     return LambdaCFMWireReport(
         ok=ok,
@@ -668,15 +646,14 @@ def apply_lambda_cfm_patch(
     scaffold does not perform file writes at any default.
     """
     repo_root = repo_root or Path(__file__).resolve().parent.parent.parent
-    audit = audit_lambda_cfm_state(
-        trainer_path=trainer_path, repo_root=repo_root
-    )
+    audit = audit_lambda_cfm_state(trainer_path=trainer_path, repo_root=repo_root)
 
     if write and audit.patch_actions:
         log.info(
             "[wf394a1] USER_OK-gated write requested; "
             "would apply %d patch actions to %s",
-            len(audit.patch_actions), audit.trainer_path,
+            len(audit.patch_actions),
+            audit.trainer_path,
         )
         # NOTE: actual file writes are NOT performed in this scaffold
         # — the function is reserved for a future USER_OK-gated wave.
@@ -721,14 +698,11 @@ def smoke_lambda_cfm(coupling_strength: float = 0.1) -> Dict[str, object]:
     try:
         import_chain.append("molmetal")
         from molmetal.molmetal_lam.reward import lambda_reward_dataset as _lrd
-        import_chain.append(
-            "molmetal.molmetal_lam.reward.lambda_reward_dataset"
-        )
+
+        import_chain.append("molmetal.molmetal_lam.reward.lambda_reward_dataset")
         factory = getattr(_lrd, "build_lambda_reward_dataset", None)
         factory_callable = callable(factory)
-        import_chain.append(
-            f"build_lambda_reward_dataset.callable={factory_callable}"
-        )
+        import_chain.append(f"build_lambda_reward_dataset.callable={factory_callable}")
     except Exception as exc:  # noqa: BLE001
         import_chain.append(f"IMPORT_ERROR: {exc}")
 
@@ -807,18 +781,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         flush=True,
     )
     print(
-        f"[Wf-394-A1] loss_multiplier_present="
-        f"{audit.loss_multiplier_present}",
+        f"[Wf-394-A1] loss_multiplier_present=" f"{audit.loss_multiplier_present}",
         flush=True,
     )
     print(
-        f"[Wf-394-A1] dataset_build_present="
-        f"{audit.dataset_build_present}",
+        f"[Wf-394-A1] dataset_build_present=" f"{audit.dataset_build_present}",
         flush=True,
     )
     print(
-        f"[Wf-394-A1] lambda_reward_factory_ok="
-        f"{audit.lambda_reward_factory_ok}",
+        f"[Wf-394-A1] lambda_reward_factory_ok=" f"{audit.lambda_reward_factory_ok}",
         flush=True,
     )
     print(

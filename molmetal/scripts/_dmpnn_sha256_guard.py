@@ -269,7 +269,9 @@ def post_save_sha256_overwrite_guard(
 # ---------------------------------------------------------------------------
 # Per-seed audit helper — used by dmpnn_sha256_audit.py extension
 # ---------------------------------------------------------------------------
-def find_duplicate_shas(ckpt_paths: Iterable[Path]) -> List[Tuple[str, Tuple[str, ...]]]:
+def find_duplicate_shas(
+    ckpt_paths: Iterable[Path],
+) -> List[Tuple[str, Tuple[str, ...]]]:
     """Return ``[(sha, (filename1, filename2, ...)), ...]`` for every duplicate.
 
     A duplicate is any SHA256 mapped to more than one filename. The
@@ -285,7 +287,9 @@ def find_duplicate_shas(ckpt_paths: Iterable[Path]) -> List[Tuple[str, Tuple[str
         if not p.exists():
             continue
         # Only consider dmpnn_pic50_*.pt files (defensive against mixed dirs).
-        if not (p.is_file() and p.name.startswith("dmpnn_pic50_") and p.suffix == ".pt"):
+        if not (
+            p.is_file() and p.name.startswith("dmpnn_pic50_") and p.suffix == ".pt"
+        ):
             continue
         sha = sha256_of_file(p)
         sha_to_files.setdefault(sha, []).append(p.name)

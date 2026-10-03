@@ -11,6 +11,7 @@ via a right-censored margin / Huber-on-bound loss. Rows whose SMILES do
 not parse under RDKit are dropped with a logged warning rather than
 raised — this keeps a single corrupt ligand from killing the sweep.
 """
+
 from __future__ import annotations
 
 import logging
@@ -33,7 +34,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 SMILES_COL = "SMILES_Ligands"
 RAW_IC50_COL = "IC50_Dark(M*10^-6)"  # contains "<", ">", "≤", "≥" for censored
-VALUE_IC50_COL = "IC50_Dark_value"   # already numeric (uM)
+VALUE_IC50_COL = "IC50_Dark_value"  # already numeric (uM)
 
 # Formulation meta columns (preserve verbatim into the dataset row)
 FORMULATION_META_COLS: Tuple[str, ...] = (
@@ -93,10 +94,10 @@ class CensoredPIC50Row:
     """One formulation row. Mirrors the loader's __getitem__ contract."""
 
     smiles: str
-    target: float             # numeric IC50 in uM (for uncensored) or the bound (best-effort)
-    is_censored: bool         # True iff raw cell carries <, >, ≤, ≥
-    bound_value: float        # the numeric bound (upper for ">X", lower for "<X")
-    formulation_id: str       # stable hash for traceability
+    target: float  # numeric IC50 in uM (for uncensored) or the bound (best-effort)
+    is_censored: bool  # True iff raw cell carries <, >, ≤, ≥
+    bound_value: float  # the numeric bound (upper for ">X", lower for "<X")
+    formulation_id: str  # stable hash for traceability
     formulation_meta: dict = field(default_factory=dict)
 
 

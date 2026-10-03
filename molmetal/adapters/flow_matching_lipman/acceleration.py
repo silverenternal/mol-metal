@@ -64,6 +64,7 @@ import torch.nn as nn
 # 1) EDM σ-preconditioning — `EDMPreconditioner`
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class EDMPreconditionerConfig:
     """Karras 2022 σ-preconditioning configuration for CFM velocity fields.
@@ -128,9 +129,9 @@ def edm_precondition_factors(
     noise prediction.
     """
     sigma_data = cfg.sigma_data
-    c_skip = sigma_data ** 2 / (sigma ** 2 + sigma_data ** 2)
-    c_out = sigma * sigma_data / (sigma ** 2 + sigma_data ** 2).sqrt()
-    c_in = 1.0 / (sigma ** 2 + sigma_data ** 2).sqrt()
+    c_skip = sigma_data**2 / (sigma**2 + sigma_data**2)
+    c_out = sigma * sigma_data / (sigma**2 + sigma_data**2).sqrt()
+    c_in = 1.0 / (sigma**2 + sigma_data**2).sqrt()
     c_noise = 0.5 * sigma.log()
     return c_skip, c_out, c_in, c_noise
 
@@ -145,7 +146,7 @@ def edm_loss_weight(
     weighting but for CFM.
     """
     c_skip, c_out, _, _ = edm_precondition_factors(sigma, cfg)
-    return (c_skip ** 2 + cfg.sigma_data ** 2) / (c_out ** 2 * sigma ** 2 + 1e-12)
+    return (c_skip**2 + cfg.sigma_data**2) / (c_out**2 * sigma**2 + 1e-12)
 
 
 def sigma_preconditioned_loss(
@@ -214,6 +215,7 @@ def sigma_preconditioned_loss(
 # 2) Log-normal t-sampling — `sample_log_normal_t`
 # ---------------------------------------------------------------------------
 
+
 def sample_log_normal_t(
     batch_size: int,
     *,
@@ -242,6 +244,7 @@ def sample_log_normal_t(
 # ---------------------------------------------------------------------------
 # 2b) Karras 2022 sigma reparameterization — bridge CFM t ↔ EDM σ
 # ---------------------------------------------------------------------------
+
 
 def sigma_from_cfm_t(
     t: torch.Tensor,
@@ -288,6 +291,7 @@ def cfm_t_from_sigma(sigma: torch.Tensor) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # 3) Shortcut consistency regulariser — Frans 2024
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ShortcutConfig:
@@ -369,6 +373,7 @@ def shortcut_consistency_loss(
 # 4) Exponential moving average (EMA) — `ExponentialMovingAverage`
 # ---------------------------------------------------------------------------
 
+
 class ExponentialMovingAverage:
     """Standard EMA with halflife-based decay (NVlabs/edm convention).
 
@@ -391,12 +396,10 @@ class ExponentialMovingAverage:
         # Backup copy of params (not full .state_dict() — we want
         # in-place to save memory).
         self.shadow_params = {
-            name: param.detach().clone()
-            for name, param in model.named_parameters()
+            name: param.detach().clone() for name, param in model.named_parameters()
         }
         self.shadow_buffers = {
-            name: buf.detach().clone()
-            for name, buf in model.named_buffers()
+            name: buf.detach().clone() for name, buf in model.named_buffers()
         }
 
     @torch.no_grad()
@@ -407,7 +410,8 @@ class ExponentialMovingAverage:
                 self.shadow_params[name] = param.detach().clone()
                 continue
             self.shadow_params[name].mul_(self.decay).add_(
-                param.detach(), alpha=1.0 - self.decay,
+                param.detach(),
+                alpha=1.0 - self.decay,
             )
         for name, buf in model.named_buffers():
             if name not in self.shadow_buffers:
@@ -429,6 +433,7 @@ class ExponentialMovingAverage:
 # ---------------------------------------------------------------------------
 # 5) Linear lr-warmup — `LinearWarmupLRScheduler`
 # ---------------------------------------------------------------------------
+
 
 class LinearWarmupLRScheduler:
     """Linear lr-warmup from 0 → base_lr over ``warmup_steps``.
@@ -474,6 +479,7 @@ class LinearWarmupLRScheduler:
 # ---------------------------------------------------------------------------
 # Top-level wire-up helpers
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class CFMAccelerationBundle:
@@ -522,17 +528,21 @@ def build_acceleration_bundle(
         if model is None:
             raise ValueError("use_ema=True requires passing the model.")
         bundle.ema = ExponentialMovingAverage(
-            model, halflife_kimg=ema_halflife_kimg, batch_size=batch_size,
+            model,
+            halflife_kimg=ema_halflife_kimg,
+            batch_size=batch_size,
         )
     if use_shortcut_consistency:
         bundle.shortcut_cfg = ShortcutConfig(
-            p_self=shortcut_p_self, weight=shortcut_weight,
+            p_self=shortcut_p_self,
+            weight=shortcut_weight,
         )
     if use_lr_warmup:
         if optimizer is None:
             raise ValueError("use_lr_warmup=True requires passing the optimizer.")
         bundle.lr_scheduler = LinearWarmupLRScheduler(
-            optimizer, warmup_steps=lr_warmup_steps,
+            optimizer,
+            warmup_steps=lr_warmup_steps,
             base_scheduler=base_lr_scheduler,
         )
     return bundle

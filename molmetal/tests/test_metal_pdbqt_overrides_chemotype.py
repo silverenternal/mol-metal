@@ -109,12 +109,10 @@ class TestGetMetalVdwTable:
         table = get_metal_vdw_table()
         for elem, (r_expected, eps_expected) in EXPECTED_VDW_VALUES.items():
             r, eps = table[elem]
-            assert r == pytest.approx(r_expected), (
-                f"{elem} r={r} expected {r_expected}"
-            )
-            assert eps == pytest.approx(eps_expected), (
-                f"{elem} ε={eps} expected {eps_expected}"
-            )
+            assert r == pytest.approx(r_expected), f"{elem} r={r} expected {r_expected}"
+            assert eps == pytest.approx(
+                eps_expected
+            ), f"{elem} ε={eps} expected {eps_expected}"
 
     def test_unknown_element_raises(self):
         with pytest.raises(ValueError, match="unsupported metals"):
@@ -232,11 +230,13 @@ class TestRewriteMetalAtypeForVina:
         # Lazy import so missing ``vina`` / ``meeko`` envs don't crash
         # the test collection.
         from molmetal.scripts import bench_cisplatin_real_vina
+
         return bench_cisplatin_real_vina._rewrite_metal_atype_for_vina
 
     @pytest.fixture
     def probe_helper(self):
         from molmetal.scripts import bench_cisplatin_real_vina
+
         return bench_cisplatin_real_vina._probe_vina_accepts_chemotype_atype
 
     @pytest.fixture
@@ -256,38 +256,54 @@ class TestRewriteMetalAtypeForVina:
         )
 
     def test_chemotype_vdw_true_writes_Pt_not_Mg(
-        self, rewrite_helper, cisplatin_pdbqt_text, tmp_path,
+        self,
+        rewrite_helper,
+        cisplatin_pdbqt_text,
+        tmp_path,
     ):
         lig = tmp_path / "cisplatin.pdbqt"
         lig.write_text(cisplatin_pdbqt_text)
         out = rewrite_helper(lig, chemotype_vdw=True)
         assert out == lig
         text = out.read_text()
-        pt_line = [l for l in text.splitlines() if l.startswith("ATOM") and "Pt" in l[12:16]][0]
+        pt_line = [
+            l for l in text.splitlines() if l.startswith("ATOM") and "Pt" in l[12:16]
+        ][0]
         atype = pt_line[77:79].strip()
         assert atype == "Pt", (
             f"chemotype_vdw=True must rewrite 'M' → 'Pt' for cisplatin; "
             f"got atype={atype!r}"
         )
         # The Cl and N atom-types must NOT be touched.
-        cl_line = [l for l in text.splitlines() if l.startswith("ATOM") and "Cl" in l[12:16]][0]
+        cl_line = [
+            l for l in text.splitlines() if l.startswith("ATOM") and "Cl" in l[12:16]
+        ][0]
         assert cl_line[77:79].strip() == "Cl"
-        n_line = [l for l in text.splitlines() if l.startswith("ATOM") and "N " in l[12:16]][0]
+        n_line = [
+            l for l in text.splitlines() if l.startswith("ATOM") and "N " in l[12:16]
+        ][0]
         assert n_line[77:79].strip() == "NA"
 
     def test_chemotype_vdw_false_writes_Mg_fallback(
-        self, rewrite_helper, cisplatin_pdbqt_text, tmp_path,
+        self,
+        rewrite_helper,
+        cisplatin_pdbqt_text,
+        tmp_path,
     ):
         """Backward compat: chemotype_vdw=False keeps Wf-121 P1 Mg behaviour."""
         lig = tmp_path / "cisplatin.pdbqt"
         lig.write_text(cisplatin_pdbqt_text)
         out = rewrite_helper(lig, chemotype_vdw=False)
         text = out.read_text()
-        pt_line = [l for l in text.splitlines() if l.startswith("ATOM") and "Pt" in l[12:16]][0]
+        pt_line = [
+            l for l in text.splitlines() if l.startswith("ATOM") and "Pt" in l[12:16]
+        ][0]
         assert pt_line[77:79].strip() == "Mg"
 
     def test_non_metal_atype_pass_through_unchanged(
-        self, rewrite_helper, tmp_path,
+        self,
+        rewrite_helper,
+        tmp_path,
     ):
         """Atoms NOT typed 'M' must pass through untouched in both modes."""
         # No 'M' atype anywhere in the file.
@@ -306,7 +322,11 @@ class TestRewriteMetalAtypeForVina:
         assert out.read_text() == original
 
     def test_probe_returns_chemotype_when_vina_accepts_pdbqt(
-        self, probe_helper, rewrite_helper, cisplatin_pdbqt_text, tmp_path,
+        self,
+        probe_helper,
+        rewrite_helper,
+        cisplatin_pdbqt_text,
+        tmp_path,
     ):
         """When Vina accepts the chemotype PDBQT (no parse error),
         the probe must return the chemotype atype and NOT rewrite."""
@@ -330,7 +350,11 @@ class TestRewriteMetalAtypeForVina:
         assert pt_line[77:79].strip() == "Pt"
 
     def test_probe_falls_back_to_Mg_when_vina_rejects_pdbqt(
-        self, probe_helper, rewrite_helper, cisplatin_pdbqt_text, tmp_path,
+        self,
+        probe_helper,
+        rewrite_helper,
+        cisplatin_pdbqt_text,
+        tmp_path,
     ):
         """When Vina rejects the chemotype PDBQT (raises parse error),
         the probe must rewrite to ``Mg`` and return ``"Mg-fallback"``."""
@@ -361,6 +385,7 @@ class TestRewriteMetalAtypeForVina:
     def test_chemotype_vdw_cli_flag_default_is_true(self):
         """The ``--chemotype-vdw`` CLI flag must default to ``True``."""
         from molmetal.scripts import bench_cisplatin_real_vina
+
         parser = bench_cisplatin_real_vina._build_parser()
         args = parser.parse_args([])  # no flags
         assert args.chemotype_vdw is True
@@ -370,6 +395,7 @@ class TestRewriteMetalAtypeForVina:
 
     def test_chemotype_vdw_cli_flag_can_be_disabled(self):
         from molmetal.scripts import bench_cisplatin_real_vina
+
         parser = bench_cisplatin_real_vina._build_parser()
         args = parser.parse_args(["--no-chemotype-vdw"])
         assert args.chemotype_vdw is False

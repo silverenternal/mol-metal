@@ -355,9 +355,9 @@ class HomotypeSignature:
             return cls(
                 typed_variable_counts={},
                 beta_reduction_depth=0,
-                click_rule_fires=dict(prior) if prior else {
-                    k: 0 for k in DEFAULT_CLICK_RULE_KEYS
-                },
+                click_rule_fires=dict(prior)
+                if prior
+                else {k: 0 for k in DEFAULT_CLICK_RULE_KEYS},
             )
 
         counts: Dict[str, int] = {}
@@ -413,9 +413,7 @@ def homotype_distance(sig_a: HomotypeSignature, sig_b: HomotypeSignature) -> flo
     disagree on every component.
     """
     # 1. Cosine on typed variables.
-    cos_d = _cosine_distance(
-        sig_a.typed_variable_counts, sig_b.typed_variable_counts
-    )
+    cos_d = _cosine_distance(sig_a.typed_variable_counts, sig_b.typed_variable_counts)
 
     # 2. Normalised depth difference.
     da = int(sig_a.beta_reduction_depth)

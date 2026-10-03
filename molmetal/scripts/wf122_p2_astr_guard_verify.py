@@ -44,9 +44,18 @@ from molmetal.molmetal_lam.reward.lambda_astsr import (
 # Wf-83 P1 schema verbatim so the verification probe is comparable.
 # ---------------------------------------------------------------------------
 FEATURE_COLUMNS: Tuple[str, ...] = (
-    "MolWt", "MolLogP", "TPSA", "HBA", "HBD", "NRotB",
-    "HeavyAtoms", "RingCount", "NumAromaticRings", "FractionCSP3",
-    "MolMR", "BalabanJ",
+    "MolWt",
+    "MolLogP",
+    "TPSA",
+    "HBA",
+    "HBD",
+    "NRotB",
+    "HeavyAtoms",
+    "RingCount",
+    "NumAromaticRings",
+    "FractionCSP3",
+    "MolMR",
+    "BalabanJ",
 )
 
 
@@ -81,7 +90,9 @@ def _featurize_smiles(smiles: str) -> Optional[List[float]]:
 
 
 def _load_platinai_mcf7(
-    csv_path: Path, target_col: str, smiles_col: str,
+    csv_path: Path,
+    target_col: str,
+    smiles_col: str,
     n_max: int = 4000,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Load PlatinAI 4-cell (mcf7) — 12-d RDKit features + pIC50 target."""
@@ -134,7 +145,9 @@ def run_probe(n_seeds: int = 5, generations: int = 30) -> dict:
     fallback = False
     try:
         X, y = _load_platinai_mcf7(
-            csv_path, target_col="ic50_mcf7_nm", smiles_col="smiles",
+            csv_path,
+            target_col="ic50_mcf7_nm",
+            smiles_col="smiles",
         )
         dataset_label = "PlatinAI 4-cell (mcf7, ic50_mcf7_nm)"
     except Exception as exc:
@@ -145,9 +158,7 @@ def run_probe(n_seeds: int = 5, generations: int = 30) -> dict:
         n_samples = 4000
         X = rng.uniform(0.0, 100.0, (n_samples, 12)).astype(np.float32)
         y = rng.normal(0.0, 0.45, n_samples).astype(np.float32)
-        dataset_label = (
-            f"synthetic 12-d fallback (rdkit missing — original exc: {exc})"
-        )
+        dataset_label = f"synthetic 12-d fallback (rdkit missing — original exc: {exc})"
 
     seed_results = []
     r2_values = []
@@ -187,18 +198,20 @@ def run_probe(n_seeds: int = 5, generations: int = 30) -> dict:
         r2_values.append(float(r2))
 
         lisp = astsr.best_ast_lisp()
-        seed_results.append({
-            "seed": int(seed),
-            "n_train": int(len(y_tr)),
-            "n_test": int(len(y_te)),
-            "y_train_std": float(y_tr.std()),
-            "y_test_std": float(y_te.std()),
-            "r2_test": float(r2),
-            "best_ast_lisp_first_60_chars": lisp[:60],
-            "best_ast_lisp_len": len(lisp),
-            "train_guard_fired": bool(train_guard_fired),
-            "test_guard_fired": bool(test_guard_fired),
-        })
+        seed_results.append(
+            {
+                "seed": int(seed),
+                "n_train": int(len(y_tr)),
+                "n_test": int(len(y_te)),
+                "y_train_std": float(y_tr.std()),
+                "y_test_std": float(y_te.std()),
+                "r2_test": float(r2),
+                "best_ast_lisp_first_60_chars": lisp[:60],
+                "best_ast_lisp_len": len(lisp),
+                "train_guard_fired": bool(train_guard_fired),
+                "test_guard_fired": bool(test_guard_fired),
+            }
+        )
     wall = time.perf_counter() - t0
     r2_arr = np.array(r2_values, dtype=float)
     summary = {
@@ -239,12 +252,8 @@ def run_probe(n_seeds: int = 5, generations: int = 30) -> dict:
                 all(s["best_ast_lisp_len"] > 0 for s in seed_results)
             ),
             "guard_in_place": True,
-            "train_guard_fire_rate_above_zero": bool(
-                guard_fired_train_seeds > 0
-            ),
-            "test_guard_fire_rate_above_zero": bool(
-                guard_fired_test_seeds > 0
-            ),
+            "train_guard_fire_rate_above_zero": bool(guard_fired_train_seeds > 0),
+            "test_guard_fire_rate_above_zero": bool(guard_fired_test_seeds > 0),
             "r2_std_below_0_3": bool(float(r2_arr.std()) < 0.3),
             "note": (
                 "The guard fires correctly on the no-signal probe "
@@ -301,7 +310,10 @@ def controlled_experiment() -> dict:
         # Without guard — bypass the scale-mismatch check.
         la_module.collapse_detected = lambda y_pred, y_true: False
         astsr_off = LambdaASTSR(
-            depth=3, population=32, generations=15, seed=seed,
+            depth=3,
+            population=32,
+            generations=15,
+            seed=seed,
             feature_names=tuple(f"f{i}" for i in range(F)),
         )
         astsr_off.fit(X, y)
@@ -312,7 +324,10 @@ def controlled_experiment() -> dict:
         # With guard — restore the real implementation.
         la_module.collapse_detected = original_collapse
         astsr_on = LambdaASTSR(
-            depth=3, population=32, generations=15, seed=seed,
+            depth=3,
+            population=32,
+            generations=15,
+            seed=seed,
             feature_names=tuple(f"f{i}" for i in range(F)),
         )
         astsr_on.fit(X, y)
@@ -357,7 +372,9 @@ def main() -> None:
 
     out_path = (
         Path(__file__).resolve().parents[1]
-        / "reports" / "wf122_p2_astr_guard" / "guard_verification.json"
+        / "reports"
+        / "wf122_p2_astr_guard"
+        / "guard_verification.json"
     )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(summary, indent=2))
@@ -380,9 +397,7 @@ def main() -> None:
         f"std={controlled['r2_with_guard_std']:.4f}"
     )
     print(f"verify_pass={summary['verify_pass']}")
-    print(
-        f"controlled verify_pass={controlled['verify_pass']}"
-    )
+    print(f"controlled verify_pass={controlled['verify_pass']}")
 
 
 if __name__ == "__main__":

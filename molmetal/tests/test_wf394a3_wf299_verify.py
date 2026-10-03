@@ -16,6 +16,7 @@ structural correctness + emits a JSON dump for downstream consumers
 
 CPU-only by design. 0 GPU launches. ~3-5 s wall on a 4-core host.
 """
+
 from __future__ import annotations
 
 import json
@@ -31,7 +32,9 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 
 import wf394a3_wf299_pre_launch_verify as gate  # noqa: E402
 
-LAUNCHER_PATH = Path("/home/hugo/codes/mol-metal/molmetal/scripts/launch_wf299_cfm_main.sh")
+LAUNCHER_PATH = Path(
+    "/home/hugo/codes/mol-metal/molmetal/scripts/launch_wf299_cfm_main.sh"
+)
 
 
 # --- Test 1: USER_OK gate ----------------------------------------------------
@@ -61,7 +64,9 @@ def test_user_ok_gate():
     )
 
     # Persist for downstream consumers.
-    out_dir = Path("/home/hugo/codes/mol-metal/molmetal/reports/wf394a3_wf299_pre_launch")
+    out_dir = Path(
+        "/home/hugo/codes/mol-metal/molmetal/reports/wf394a3_wf299_pre_launch"
+    )
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "test_user_ok_gate.json").write_text(
         json.dumps(result, indent=2), encoding="utf-8"
@@ -78,9 +83,11 @@ def test_3_wave_split():
     result = gate.verify_wf299_3_wave_separation(LAUNCHER_PATH)
 
     # All 3 wave functions must be defined.
-    assert sorted(result["waves_present"]) == ["A", "B", "C"], (
-        f"Expected all 3 waves present (A, B, C), got: {result['waves_present']}"
-    )
+    assert sorted(result["waves_present"]) == [
+        "A",
+        "B",
+        "C",
+    ], f"Expected all 3 waves present (A, B, C), got: {result['waves_present']}"
 
     # Wave A must include CFM_NEW_FLAGS expansion (smoke path coverage).
     assert result["wave_a_has_cfm_flags"], (
@@ -108,7 +115,9 @@ def test_3_wave_split():
     )
 
     # Persist for downstream consumers.
-    out_dir = Path("/home/hugo/codes/mol-metal/molmetal/reports/wf394a3_wf299_pre_launch")
+    out_dir = Path(
+        "/home/hugo/codes/mol-metal/molmetal/reports/wf394a3_wf299_pre_launch"
+    )
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "test_3_wave_split.json").write_text(
         json.dumps(result, indent=2), encoding="utf-8"
@@ -140,8 +149,7 @@ def test_w388_flags():
 
     # Wave A invocations must expand ${CFM_NEW_FLAGS[@]}.
     assert result["wave_a_expansion_present"], (
-        f"Wave A must expand ${{CFM_NEW_FLAGS[@]}}; "
-        f"evidence: {result['evidence']}"
+        f"Wave A must expand ${{CFM_NEW_FLAGS[@]}}; " f"evidence: {result['evidence']}"
     )
 
     # Verify the 3 NEW Wf-388 flags are explicitly in the array.
@@ -151,7 +159,9 @@ def test_w388_flags():
         assert flag in src, f"Wf-388 flag {flag} missing from launcher source"
 
     # Persist for downstream consumers.
-    out_dir = Path("/home/hugo/codes/mol-metal/molmetal/reports/wf394a3_wf299_pre_launch")
+    out_dir = Path(
+        "/home/hugo/codes/mol-metal/molmetal/reports/wf394a3_wf299_pre_launch"
+    )
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "test_w388_flags.json").write_text(
         json.dumps(result, indent=2), encoding="utf-8"
@@ -173,7 +183,9 @@ def test_main_entrypoint_runs():
         f"main() returned unexpected exit code {proc.returncode}: "
         f"stdout={proc.stdout!r}, stderr={proc.stderr!r}"
     )
-    result_json = Path("/home/hugo/codes/mol-metal/molmetal/reports/wf394a3_wf299_pre_launch/result.json")
+    result_json = Path(
+        "/home/hugo/codes/mol-metal/molmetal/reports/wf394a3_wf299_pre_launch/result.json"
+    )
     assert result_json.exists(), "result.json not emitted by main()"
     payload = json.loads(result_json.read_text(encoding="utf-8"))
     assert "verdict" in payload

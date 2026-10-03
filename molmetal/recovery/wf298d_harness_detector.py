@@ -37,6 +37,7 @@ canonical import.
 Wf-291C parent root-cause investigation:
 ``molmetal/reports/wf291c_pipeline_root_cause/root_cause.md``
 """
+
 from __future__ import annotations
 
 # Re-export from the canonical Wf-298D ship surface.

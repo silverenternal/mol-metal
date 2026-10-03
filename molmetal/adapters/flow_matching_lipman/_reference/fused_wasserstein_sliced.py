@@ -43,6 +43,7 @@ import torch
 try:  # pragma: no cover
     import triton
     import triton.language as tl
+
     _TRITON_AVAILABLE = True
 except ImportError:  # pragma: no cover
     _TRITON_AVAILABLE = False
@@ -129,8 +130,11 @@ if _TRITON_AVAILABLE:
     @triton.autotune(configs=_SLICED_W2_CONFIGS, key=["N", "M"])
     @triton.jit
     def _sliced_w2_one_d_kernel(  # pragma: no cover — GPU-only
-        x_ptr, y_ptr, out_ptr,
-        N, M,
+        x_ptr,
+        y_ptr,
+        out_ptr,
+        N,
+        M,
         BLOCK_N: tl.constexpr,
     ):
         """Fused 1-D W₂ contribution: sort(x), sort(y), |.| mean.
@@ -158,6 +162,7 @@ if _TRITON_AVAILABLE:
         s = tl.sum(diff, axis=0) / n_total
         tl.store(out_ptr, s)
 else:
+
     def _sliced_w2_one_d_kernel(*args, **kwargs):  # type: ignore
         raise RuntimeError(
             "Triton unavailable — _sliced_w2_one_d_kernel cannot run. "
@@ -217,8 +222,7 @@ def pytorch_reference(
     x_proj = x @ proj.t()  # (N, n_mc)
     y_proj = y @ proj.t()  # (M, n_mc)
     contribs = [
-        _pytorch_sliced_w2_one_d(x_proj[:, i], y_proj[:, i])
-        for i in range(n_mc)
+        _pytorch_sliced_w2_one_d(x_proj[:, i], y_proj[:, i]) for i in range(n_mc)
     ]
     return torch.stack(contribs).mean()
 
@@ -282,21 +286,30 @@ def fused_wasserstein_sliced(
         # is n_total not BLOCK_N so they don't bias the mean).
         if N < n_total:
             x_proj = torch.cat(
-                [x_proj, torch.zeros(n_total - N, n_mc, dtype=x.dtype, device=x.device)],
+                [
+                    x_proj,
+                    torch.zeros(n_total - N, n_mc, dtype=x.dtype, device=x.device),
+                ],
                 dim=0,
             )
             N = n_total
         if M < n_total:
             y_proj = torch.cat(
-                [y_proj, torch.zeros(n_total - M, n_mc, dtype=x.dtype, device=y.device)],
+                [
+                    y_proj,
+                    torch.zeros(n_total - M, n_mc, dtype=x.dtype, device=y.device),
+                ],
                 dim=0,
             )
             M = n_total
         out = torch.empty(n_mc, dtype=x.dtype, device=x.device)
         for i in range(n_mc):
             _sliced_w2_one_d_kernel[(1,)](
-                x_proj[:, i], y_proj[:, i], out[i:i + 1],
-                N, M,
+                x_proj[:, i],
+                y_proj[:, i],
+                out[i : i + 1],
+                N,
+                M,
             )
         return out.mean()
     # Default dispatch: gate closed by default → PyTorch.

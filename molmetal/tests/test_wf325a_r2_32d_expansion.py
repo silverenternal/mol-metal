@@ -25,6 +25,7 @@ Honest framing (party-twenty-spirit §3.5):
     with sklearn version + numpy version; the comparison shape
     is the load-bearing invariant).
 """
+
 from __future__ import annotations
 
 import json

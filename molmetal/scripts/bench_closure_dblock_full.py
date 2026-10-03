@@ -68,6 +68,7 @@ Usage examples
     uv run --no-sync python molmetal/scripts/bench_closure_dblock_full.py \\
         --n-samples 100
 """
+
 from __future__ import annotations
 
 import argparse
@@ -106,11 +107,38 @@ log = logging.getLogger("wf130_p2_closure_30_5000")
 #: the periodic-table row layout (3d / 4d / 5d + La).
 DBLOCK_METALS: Tuple[str, ...] = (
     # 3d
-    "Sc", "Ti", "V",  "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
+    "Sc",
+    "Ti",
+    "V",
+    "Cr",
+    "Mn",
+    "Fe",
+    "Co",
+    "Ni",
+    "Cu",
+    "Zn",
     # 4d
-    "Y",  "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
+    "Y",
+    "Zr",
+    "Nb",
+    "Mo",
+    "Tc",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Cd",
     # 5d + La
-    "La", "Hf", "Ta", "W",  "Re", "Os", "Ir", "Pt", "Au", "Hg",
+    "La",
+    "Hf",
+    "Ta",
+    "W",
+    "Re",
+    "Os",
+    "Ir",
+    "Pt",
+    "Au",
+    "Hg",
 )
 
 #: Wf-130 P2 success criterion: macro reachability ≥ 0.85.
@@ -138,19 +166,17 @@ DEFAULT_OUTPUT_DIR: Path = (
 DEFAULT_TMQM_CSV: Path = Path(
     "/home/hugo/codes/mol-metal/.data/molmetal/tmQM/tmqm_parsed.csv"
 )
-FALLBACK_TMQM_CSV: Path = (
-    _REPO_ROOT / "molmetal" / "data" / "tmqm_dblock_subset.csv"
-)
+FALLBACK_TMQM_CSV: Path = _REPO_ROOT / "molmetal" / "data" / "tmqm_dblock_subset.csv"
 
 #: 7 partner terms (same as Wf-37 P2 / Wf-67 P2 / Wf-68 P2).
 PARTNER_SMILE_LIST: List[str] = [
-    "C#CCN",                  # propargylamine  — alkyne + amine
-    "CCN=[N+]=[N-]",          # ethyl azide     — CuAAC
-    "C#CC",                   # propyne         — CuAAC
-    "CS",                     # methanethiol    — ThiolEne
-    "C=CC",                   # propene         — ThiolEne
-    "OC(=O)c1ccccc1",         # benzoic acid    — AmideCoupling
-    "NCC",                    # ethylamine      — AmideCoupling
+    "C#CCN",  # propargylamine  — alkyne + amine
+    "CCN=[N+]=[N-]",  # ethyl azide     — CuAAC
+    "C#CC",  # propyne         — CuAAC
+    "CS",  # methanethiol    — ThiolEne
+    "C=CC",  # propene         — ThiolEne
+    "OC(=O)c1ccccc1",  # benzoic acid    — AmideCoupling
+    "NCC",  # ethylamine      — AmideCoupling
 ]
 
 
@@ -179,12 +205,14 @@ def _load_click_rules() -> List[Any]:
         Suzuki,
         ThiolEne,
     )
+
     return [CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling]
 
 
 def _load_partner_terms() -> List[Any]:
     """Build partner terms from :data:`PARTNER_SMILE_LIST`."""
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
     out: List[Any] = []
     for smi in PARTNER_SMILE_LIST:
         try:
@@ -257,13 +285,17 @@ def _load_unique_metal_smis(
         if metal_column not in fields:
             log.error(
                 "Column %r missing from %s; fields=%r",
-                metal_column, csv_path, fields,
+                metal_column,
+                csv_path,
+                fields,
             )
             return out
         if smiles_column not in fields:
             log.error(
                 "Column %r missing from %s; fields=%r",
-                smiles_column, csv_path, fields,
+                smiles_column,
+                csv_path,
+                fields,
             )
             return out
         for row in reader:
@@ -350,7 +382,8 @@ def _benchmark_one(
     t_parse_0 = time.perf_counter()
     try:
         start_term = MoleculeClosedTerm.from_smiles(
-            raw_smiles, embed_3d=False,
+            raw_smiles,
+            embed_3d=False,
         )
         record["n_atoms_start"] = int(len(start_term.atoms))
     except Exception as exc:
@@ -378,9 +411,7 @@ def _benchmark_one(
         record["n_visited"] = int(last_result.get("n_visited", 0))
         record["n_products"] = int(last_result.get("n_products", 0))
         record["max_depth_seen"] = int(last_result.get("max_depth_seen", 0))
-        record["well_typed_rate"] = float(
-            last_result.get("well_typed_rate", 1.0)
-        )
+        record["well_typed_rate"] = float(last_result.get("well_typed_rate", 1.0))
     except Exception as exc:
         record["status"] = "error"
         record["parse_error"] = f"{type(exc).__name__}: {exc}"[:240]
@@ -448,9 +479,7 @@ def _aggregate_per_metal(records: List[Dict[str, Any]]) -> Dict[str, Any]:
         walls = [float(r["wall_time_s"]) for r in ok_records]
         mems = [float(r["memory_mb"]) for r in ok_records]
         mean_wall = float(statistics.fmean(walls))
-        std_wall = (
-            float(statistics.stdev(walls)) if len(walls) >= 2 else 0.0
-        )
+        std_wall = float(statistics.stdev(walls)) if len(walls) >= 2 else 0.0
         median_wall = float(statistics.median(walls))
         peak_mem = float(max(mems)) if mems else 0.0
         total_wall = float(sum(walls))
@@ -464,9 +493,7 @@ def _aggregate_per_metal(records: List[Dict[str, Any]]) -> Dict[str, Any]:
         "n_closure_ok": int(n_ok),
         "closure_reachability_rate": float(rate),
         "n_parse_error": int(n_err),
-        "n_cache_hits": int(sum(
-            1 for r in records if r.get("from_cache", False)
-        )),
+        "n_cache_hits": int(sum(1 for r in records if r.get("from_cache", False))),
         "mean_wall_time_s": mean_wall,
         "median_wall_time_s": median_wall,
         "std_wall_time_s": std_wall,
@@ -508,12 +535,16 @@ def _benchmark_metal_worker(
     partner_terms = _load_partner_terms()
 
     unique_smis = _load_unique_metal_smis(
-        csv_path, str(metal),
-        metal_column=metal_column, smiles_column=smiles_column,
+        csv_path,
+        str(metal),
+        metal_column=metal_column,
+        smiles_column=smiles_column,
     )
     n_unique = len(unique_smis)
     sampled_smis, n_repeats = _sample_to_target(
-        unique_smis, int(n_samples), seed=int(sample_seed),
+        unique_smis,
+        int(n_samples),
+        seed=int(sample_seed),
     )
     n_target = len(sampled_smis)
     sampled_wr = bool(n_repeats > 0)
@@ -527,12 +558,11 @@ def _benchmark_metal_worker(
     logging.getLogger("wf130_p2_closure_30_5000").setLevel(logging.WARNING)
     # Also silence molmetal_lam's beta_reductions registration warnings.
     import warnings as _w
+
     _w.filterwarnings("ignore", category=UserWarning, module=r"molmetal_lam.*")
 
     for i, smi in enumerate(sampled_smis):
-        origin_idx = (
-            i if not sampled_wr else i % max(1, n_unique)
-        )
+        origin_idx = i if not sampled_wr else i % max(1, n_unique)
         cache_key = (str(metal), str(smi))
         cached = closure_cache.get(cache_key)
         if cached is not None:
@@ -544,7 +574,9 @@ def _benchmark_metal_worker(
             rec["from_cache"] = True
         else:
             rec = _benchmark_one(
-                smi, i, str(metal),
+                smi,
+                i,
+                str(metal),
                 click_rules=click_rules,
                 partner_terms=partner_terms,
                 max_depth=int(max_depth),
@@ -615,15 +647,19 @@ def run_benchmark(
     log.info(
         "[wf130_p2] start: n_metals=%d n_samples=%d max_depth=%d "
         "seeds=%d sample_seed=%d",
-        int(n_metals), int(n_samples), int(max_depth),
-        int(seeds), int(sample_seed),
+        int(n_metals),
+        int(n_samples),
+        int(max_depth),
+        int(seeds),
+        int(sample_seed),
     )
 
     csv_path = Path(tmqm_csv)
     if not csv_path.is_file():
         log.warning(
             "Primary CSV missing at %s; falling back to %s",
-            csv_path, fallback_csv,
+            csv_path,
+            fallback_csv,
         )
         csv_path = Path(fallback_csv)
     if not csv_path.is_file():
@@ -644,7 +680,8 @@ def run_benchmark(
     layout = _detect_csv_layout(csv_path)
     if not layout["ok"]:
         log.error(
-            "Could not detect CSV layout at %s; aborting.", csv_path,
+            "Could not detect CSV layout at %s; aborting.",
+            csv_path,
         )
         return {
             "schema_version": 1,
@@ -662,7 +699,9 @@ def run_benchmark(
     smiles_column = layout["smiles_column"]
     log.info(
         "[wf130_p2] CSV=%s metal_column=%s smiles_column=%s",
-        csv_path, metal_column, smiles_column,
+        csv_path,
+        metal_column,
+        smiles_column,
     )
 
     click_rules = _load_click_rules()
@@ -680,6 +719,7 @@ def run_benchmark(
     if use_parallel:
         try:
             import multiprocessing as _mp
+
             cpu_count = _mp.cpu_count()
         except Exception:
             cpu_count = 1
@@ -689,13 +729,15 @@ def run_benchmark(
         else:
             max_workers = min(int(max_workers), cpu_count, len(metals))
         log.info(
-            "[wf130_p2] parallelism: max_workers=%d (cpu_count=%d, "
-            "n_metals=%d)",
-            int(max_workers), int(cpu_count), int(len(metals)),
+            "[wf130_p2] parallelism: max_workers=%d (cpu_count=%d, " "n_metals=%d)",
+            int(max_workers),
+            int(cpu_count),
+            int(len(metals)),
         )
 
     if use_parallel and int(max_workers) > 1:
         from concurrent.futures import ProcessPoolExecutor, as_completed
+
         worker_args = [
             (
                 str(metal),
@@ -721,20 +763,22 @@ def run_benchmark(
                 except Exception as exc:
                     log.error(
                         "[wf130_p2] metal %s worker failed: %r",
-                        metal_submitted, exc,
+                        metal_submitted,
+                        exc,
                     )
                     continue
                 per_metal_records[metal_name] = records
                 per_metal_summary[metal_name] = summary
                 agg = summary
-                n_cache_hits = sum(
-                    1 for r in records if r.get("from_cache", False)
-                )
+                n_cache_hits = sum(1 for r in records if r.get("from_cache", False))
                 log.info(
                     "[wf130_p2] %s: n=%d closure_ok=%d rate=%.4f "
                     "gate_pass=%s cache_hits=%d",
-                    metal_name, agg["n_samples"], agg["n_closure_ok"],
-                    agg["closure_reachability_rate"], agg["gate_pass"],
+                    metal_name,
+                    agg["n_samples"],
+                    agg["n_closure_ok"],
+                    agg["closure_reachability_rate"],
+                    agg["gate_pass"],
                     n_cache_hits,
                 )
     else:
@@ -742,21 +786,27 @@ def run_benchmark(
         # when only 1 metal is requested, or in tests).
         for metal in metals:
             metal_name, records, summary = _benchmark_metal_worker(
-                metal, str(csv_path), metal_column, smiles_column,
-                int(n_samples), int(sample_seed), int(max_depth),
+                metal,
+                str(csv_path),
+                metal_column,
+                smiles_column,
+                int(n_samples),
+                int(sample_seed),
+                int(max_depth),
                 int(max_products),
             )
             per_metal_records[metal_name] = records
             per_metal_summary[metal_name] = summary
             agg = summary
-            n_cache_hits = sum(
-                1 for r in records if r.get("from_cache", False)
-            )
+            n_cache_hits = sum(1 for r in records if r.get("from_cache", False))
             log.info(
                 "[wf130_p2] %s: n=%d closure_ok=%d rate=%.4f "
                 "gate_pass=%s cache_hits=%d",
-                metal_name, agg["n_samples"], agg["n_closure_ok"],
-                agg["closure_reachability_rate"], agg["gate_pass"],
+                metal_name,
+                agg["n_samples"],
+                agg["n_closure_ok"],
+                agg["closure_reachability_rate"],
+                agg["gate_pass"],
                 n_cache_hits,
             )
 
@@ -779,7 +829,8 @@ def run_benchmark(
         macro_reachability = float(statistics.fmean(per_metal_rates))
         macro_std = (
             float(statistics.stdev(per_metal_rates))
-            if len(per_metal_rates) >= 2 else 0.0
+            if len(per_metal_rates) >= 2
+            else 0.0
         )
     else:
         macro_reachability = 0.0
@@ -789,26 +840,25 @@ def run_benchmark(
     # Reported alongside macro for transparency.
     total_n = sum(s["n_samples"] for s in per_metal_summary.values())
     total_ok = sum(s["n_closure_ok"] for s in per_metal_summary.values())
-    micro_reachability = (
-        float(total_ok / total_n) if total_n else 0.0
-    )
+    micro_reachability = float(total_ok / total_n) if total_n else 0.0
 
-    n_metals_pass = sum(
-        1 for s in per_metal_summary.values() if s["gate_pass"]
-    )
+    n_metals_pass = sum(1 for s in per_metal_summary.values() if s["gate_pass"])
     n_metals_actually_run = int(len(metals))
     n_metals_below_negative = sum(
-        1 for s in per_metal_summary.values()
+        1
+        for s in per_metal_summary.values()
         if s["n_samples"] > 0
         and s["closure_reachability_rate"] < HONEST_NEGATIVE_THRESHOLD
     )
     n_metals_sampled_wr = sum(
-        1 for s in per_metal_summary.values()
+        1
+        for s in per_metal_summary.values()
         if s.get("sampled_with_replacement", False)
     )
 
     try:
         import torch  # local; cheap
+
         torch_ver = torch.__version__
     except Exception:
         torch_ver = "n/a"
@@ -828,12 +878,12 @@ def run_benchmark(
         "n_metals": int(n_metals),
         "n_samples": int(n_samples),
         "n_samples_total": int(total_n),
-        "n_samples_unique_total": int(sum(
-            s["n_unique"] for s in per_metal_summary.values()
-        )),
-        "n_samples_repeats_total": int(sum(
-            s["n_repeats"] for s in per_metal_summary.values()
-        )),
+        "n_samples_unique_total": int(
+            sum(s["n_unique"] for s in per_metal_summary.values())
+        ),
+        "n_samples_repeats_total": int(
+            sum(s["n_repeats"] for s in per_metal_summary.values())
+        ),
         "max_depth": int(max_depth),
         "max_products": int(max_products),
         "seeds": int(seeds),
@@ -853,13 +903,9 @@ def run_benchmark(
             "macro_std_of_means": float(macro_std),
         },
         "n_metals_pass": int(n_metals_pass),
-        "n_metals_below_honest_negative_threshold": int(
-            n_metals_below_negative
-        ),
+        "n_metals_below_honest_negative_threshold": int(n_metals_below_negative),
         "n_metals_sampled_with_replacement": int(n_metals_sampled_wr),
-        "overall_gate_pass": bool(
-            macro_reachability >= GATE_TARGET_REACHABILITY
-        ),
+        "overall_gate_pass": bool(macro_reachability >= GATE_TARGET_REACHABILITY),
         "total_wall_time_s": float(total_wall_s),
         "timestamp_utc": _utcnow_iso(),
         "python": py_ver,
@@ -895,35 +941,46 @@ def save_per_metal(
         rec_path = metal_dir / "reachability.json"
         per_metal = payload["per_metal"][metal]
         per_metal_records = payload.get("per_metal_records", {}).get(
-            metal, [],
+            metal,
+            [],
         )
         sample_records = [
-            {k: r[k] for k in (
-                "idx", "status", "closure_ok",
-                "sampled_with_replacement", "sample_origin_idx",
-                "wall_time_s", "parse_error", "from_cache",
-            ) if k in r}
+            {
+                k: r[k]
+                for k in (
+                    "idx",
+                    "status",
+                    "closure_ok",
+                    "sampled_with_replacement",
+                    "sample_origin_idx",
+                    "wall_time_s",
+                    "parse_error",
+                    "from_cache",
+                )
+                if k in r
+            }
             for r in per_metal_records
         ]
-        rec_path.write_text(json.dumps(
-            {
-                "metal": metal,
-                "summary": per_metal,
-                "n_samples_in_run": per_metal["n_samples"],
-                "n_unique_smiles": per_metal["n_unique"],
-                "n_repeats": per_metal["n_repeats"],
-                "samples": sample_records,
-            },
-            indent=2,
-            default=str,
-        ))
+        rec_path.write_text(
+            json.dumps(
+                {
+                    "metal": metal,
+                    "summary": per_metal,
+                    "n_samples_in_run": per_metal["n_samples"],
+                    "n_unique_smiles": per_metal["n_unique"],
+                    "n_repeats": per_metal["n_repeats"],
+                    "samples": sample_records,
+                },
+                indent=2,
+                default=str,
+            )
+        )
         paths[metal] = rec_path
 
     overall_path = output_dir / "reachability_overall.json"
     # Strip per_metal_records (huge) from the overall file.
     overall_only = {
-        k: v for k, v in payload.items()
-        if k not in ("per_metal_records", "per_sample")
+        k: v for k, v in payload.items() if k not in ("per_metal_records", "per_sample")
     }
     overall_path.write_text(json.dumps(overall_only, indent=2, default=str))
     paths["overall"] = overall_path
@@ -982,27 +1039,18 @@ def write_synthesis(
         f"- **Overall gate pass (≥ {GATE_TARGET_REACHABILITY:.2f})**: "
         f"{overall_pass}  "
     )
-    lines.append(
-        f"- **Metals at gate**: {n_metals_pass}/{n_metals_actually_run}  "
-    )
+    lines.append(f"- **Metals at gate**: {n_metals_pass}/{n_metals_actually_run}  ")
     lines.append(
         f"- **Metals below honest-negative threshold "
         f"({HONEST_NEGATIVE_THRESHOLD:.2f})**: "
         f"{n_below}/{n_metals_actually_run}  "
     )
     lines.append(
-        f"- **Metals sampled with replacement**: "
-        f"{n_wr}/{n_metals_actually_run}  "
+        f"- **Metals sampled with replacement**: " f"{n_wr}/{n_metals_actually_run}  "
     )
-    lines.append(
-        f"- **N samples (overall)**: {n_total}  "
-    )
-    lines.append(
-        f"- **N unique SMILES (overall)**: {n_total_unique}  "
-    )
-    lines.append(
-        f"- **N repeats (overall)**: {n_total_repeats}  "
-    )
+    lines.append(f"- **N samples (overall)**: {n_total}  ")
+    lines.append(f"- **N unique SMILES (overall)**: {n_total_unique}  ")
+    lines.append(f"- **N repeats (overall)**: {n_total_repeats}  ")
     lines.append(f"- **Total wall**: {total_wall:.2f} s  ")
     lines.append("")
     lines.append("## Baselines")
@@ -1021,12 +1069,8 @@ def write_synthesis(
     lines.append("")
     lines.append("## Per-metal breakdown")
     lines.append("")
-    lines.append(
-        "| Metal | N | unique | repeats | closure_ok | reachability | gate |"
-    )
-    lines.append(
-        "|-------|---|--------|---------|------------|--------------|------|"
-    )
+    lines.append("| Metal | N | unique | repeats | closure_ok | reachability | gate |")
+    lines.append("|-------|---|--------|---------|------------|--------------|------|")
     for metal in payload["metals"]:
         m = payload["per_metal"][metal]
         lines.append(
@@ -1082,7 +1126,8 @@ def write_synthesis(
     lines.append("## Honest-negative metals")
     lines.append("")
     honest_neg = [
-        m for m in payload["metals"]
+        m
+        for m in payload["metals"]
         if payload["per_metal"][m]["n_samples"] > 0
         and payload["per_metal"][m]["closure_reachability_rate"]
         < HONEST_NEGATIVE_THRESHOLD
@@ -1129,10 +1174,18 @@ def _build_argparser() -> argparse.ArgumentParser:
             "(150 000 total), CPU-only, deterministic."
         ),
     )
-    p.add_argument("--n-metals", type=int, default=DEFAULT_N_METALS,
-                   help="Number of d-block metals (default 30).")
-    p.add_argument("--n-samples", type=int, default=DEFAULT_N_SAMPLES,
-                   help="Samples per metal (default 5000).")
+    p.add_argument(
+        "--n-metals",
+        type=int,
+        default=DEFAULT_N_METALS,
+        help="Number of d-block metals (default 30).",
+    )
+    p.add_argument(
+        "--n-samples",
+        type=int,
+        default=DEFAULT_N_SAMPLES,
+        help="Samples per metal (default 5000).",
+    )
     p.add_argument("--metals", nargs="+", default=list(DBLOCK_METALS))
     p.add_argument("--tmqm-csv", type=Path, default=DEFAULT_TMQM_CSV)
     p.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
@@ -1140,18 +1193,29 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--max-products", type=int, default=DEFAULT_MAX_PRODUCTS)
     p.add_argument("--seeds", type=int, default=DEFAULT_SEEDS)
     p.add_argument("--sample-seed", type=int, default=DEFAULT_SAMPLE_SEED)
-    p.add_argument("--smoke", action="store_true",
-                   help="Smoke mode (caller controls --n-samples, --n-metals).")
-    p.add_argument("--max-workers", type=int, default=0,
-                   help=(
-                       "ProcessPoolExecutor max_workers for per-metal "
-                       "parallelism (default 0 = auto = min(8, cpu_count, "
-                       "n_metals)). Pass 1 to disable parallelism."
-                   ))
-    p.add_argument("--no-parallel", action="store_true",
-                   help="Disable multiprocessing (single-threaded fallback).")
-    p.add_argument("--log-level", default="INFO",
-                   choices=("DEBUG", "INFO", "WARNING", "ERROR"))
+    p.add_argument(
+        "--smoke",
+        action="store_true",
+        help="Smoke mode (caller controls --n-samples, --n-metals).",
+    )
+    p.add_argument(
+        "--max-workers",
+        type=int,
+        default=0,
+        help=(
+            "ProcessPoolExecutor max_workers for per-metal "
+            "parallelism (default 0 = auto = min(8, cpu_count, "
+            "n_metals)). Pass 1 to disable parallelism."
+        ),
+    )
+    p.add_argument(
+        "--no-parallel",
+        action="store_true",
+        help="Disable multiprocessing (single-threaded fallback).",
+    )
+    p.add_argument(
+        "--log-level", default="INFO", choices=("DEBUG", "INFO", "WARNING", "ERROR")
+    )
     return p
 
 
@@ -1164,7 +1228,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     metals_arg = list(args.metals)
     if len(metals_arg) == 1 and metals_arg[0].lower() in (
-        "all", "all_dblock", "30",
+        "all",
+        "all_dblock",
+        "30",
     ):
         metals_arg = list(DBLOCK_METALS)
     known = set(DBLOCK_METALS)
@@ -1199,8 +1265,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     log.info(
         "[wf130_p2] DONE: n_metals=%d n_total=%d closure_ok=%d "
         "macro=%.4f micro=%.4f gate_pass=%s",
-        len(metals), agg["n_samples"], agg["n_closure_ok"],
-        macro, micro, payload["overall_gate_pass"],
+        len(metals),
+        agg["n_samples"],
+        agg["n_closure_ok"],
+        macro,
+        micro,
+        payload["overall_gate_pass"],
     )
     print(
         f"[wf130_p2] n_metals={len(metals)} "

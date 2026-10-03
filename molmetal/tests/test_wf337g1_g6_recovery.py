@@ -74,9 +74,7 @@ TEST_SCRIPTS_DIR = ROOT / "molmetal" / "scripts"
 
 RECOVERY_SCRIPT = SCRIPTS / "recover_g6_failed_tuples.sh"
 G6_LAUNCH_SCRIPT = SCRIPTS / "launch_wf124_p3_g6.sh"
-TRAINER_PATH = (
-    TEST_SCRIPTS_DIR / "train_dmpnn_multitask_wasserstein.py"
-)
+TRAINER_PATH = TEST_SCRIPTS_DIR / "train_dmpnn_multitask_wasserstein.py"
 G6_RESULTS_DIR = ROOT / "results" / "wf124_p3_per_innovation_ablation_g6"
 MANIFEST_PATH = G6_RESULTS_DIR / "recovery_manifest.tsv"
 DEFAULT_VENV = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
@@ -113,8 +111,7 @@ def _parse_manifest_counts() -> Dict[str, int]:
     Skips header line. Each data row is: cfg<TAB>metal<TAB>seed<TAB>status<TAB>reason
     """
     assert MANIFEST_PATH.exists(), (
-        f"Manifest not found at {MANIFEST_PATH}. Run --dry-run first to "
-        f"create it."
+        f"Manifest not found at {MANIFEST_PATH}. Run --dry-run first to " f"create it."
     )
     counts: Dict[str, int] = {"OK": 0, "FAILED": 0, "RUNNING": 0, "PENDING": 0}
     with MANIFEST_PATH.open() as fh:
@@ -153,15 +150,15 @@ def test_recovery_script_identifies_failed_and_pending():
     )
 
     # Manifest should exist after dry-run.
-    assert MANIFEST_PATH.exists(), (
-        f"recovery_manifest.tsv not created at {MANIFEST_PATH}"
-    )
+    assert (
+        MANIFEST_PATH.exists()
+    ), f"recovery_manifest.tsv not created at {MANIFEST_PATH}"
 
     counts = _parse_manifest_counts()
     total = sum(counts.values())
-    assert total == 60, (
-        f"Total tuples should be 60 (4 cfgs × 5 metals × 3 seeds), got {total}: {counts}"
-    )
+    assert (
+        total == 60
+    ), f"Total tuples should be 60 (4 cfgs × 5 metals × 3 seeds), got {total}: {counts}"
 
     # MEASURED per master.log mtime 15:03:52 + Wf-330-B4.
     # We accept a window of [0, 5] OK because the actual count depends on
@@ -171,9 +168,9 @@ def test_recovery_script_identifies_failed_and_pending():
 
     # FAILED + PENDING is what gets re-launched. PROJECTED ≥ 50 per Wf-330-B4 §2.
     to_recover = counts["FAILED"] + counts["PENDING"]
-    assert to_recover >= 50, (
-        f"TO_RECOVER (FAILED + PENDING) should be ≥ 50 per Wf-330-B4, got {to_recover}"
-    )
+    assert (
+        to_recover >= 50
+    ), f"TO_RECOVER (FAILED + PENDING) should be ≥ 50 per Wf-330-B4, got {to_recover}"
 
     # Dry-run output should report all 4 status buckets in the summary.
     out = result.stdout
@@ -202,9 +199,9 @@ def test_recovery_launch_includes_all_wf328_wf335_fixes():
 
     # Wf-328-W2: --cpu-num-workers 8
     assert "--cpu-num-workers" in src, "Wf-328-W2 fix missing: --cpu-num-workers"
-    assert re.search(r"--cpu-num-workers\s+8\b", src), (
-        "Wf-328-W2 fix missing: --cpu-num-workers 8 (got something else)"
-    )
+    assert re.search(
+        r"--cpu-num-workers\s+8\b", src
+    ), "Wf-328-W2 fix missing: --cpu-num-workers 8 (got something else)"
     # Wf-328-W2 banner comment must be present (gates Wf-326B revert regression).
     assert "Wf-328-W2" in src, "Wf-328-W2 banner comment missing"
 
@@ -223,7 +220,7 @@ def test_recovery_launch_includes_all_wf328_wf335_fixes():
     )
     # Function default line (Wf-335-R1 §2 row 1).
     fn_default_match = re.search(
-        r'torch_compile_mode:\s*str\s*=\s*[\"\']max-autotune-no-cudagraphs[\"\']',
+        r"torch_compile_mode:\s*str\s*=\s*[\"\']max-autotune-no-cudagraphs[\"\']",
         trainer_src,
     )
     assert fn_default_match is not None, (
@@ -232,12 +229,12 @@ def test_recovery_launch_includes_all_wf328_wf335_fixes():
     )
 
     # Wf-296C: --no-kendall / --no-dann per-config levers.
-    assert '["no_kendall"]="--no-kendall"' in src, (
-        "Wf-296C fix missing: no_kendall -> --no-kendall flag not wired"
-    )
-    assert '["no_dann"]="--no-dann"' in src, (
-        "Wf-296C fix missing: no_dann -> --no-dann flag not wired"
-    )
+    assert (
+        '["no_kendall"]="--no-kendall"' in src
+    ), "Wf-296C fix missing: no_kendall -> --no-kendall flag not wired"
+    assert (
+        '["no_dann"]="--no-dann"' in src
+    ), "Wf-296C fix missing: no_dann -> --no-dann flag not wired"
     assert "Wf-296C" in src, "Wf-296C banner comment missing"
 
     # Sanity: no stale --cpu-num-workers 0 override (Wf-326B regression).
@@ -287,18 +284,18 @@ def test_no_cudagraphs_flag_present():
         r"--no-cuda-graphs",
         trainer_src,
     )
-    assert no_cg_pattern is not None, (
-        "Wf-335-R3 missing: --no-cuda-graphs flag not defined in trainer argparse"
-    )
+    assert (
+        no_cg_pattern is not None
+    ), "Wf-335-R3 missing: --no-cuda-graphs flag not defined in trainer argparse"
 
     # --cudagraphs opt-in flag (mirror for backward compat with Wf-326C).
     cg_pattern = re.search(
         r"--cudagraphs\b",
         trainer_src,
     )
-    assert cg_pattern is not None, (
-        "Wf-335-R3 missing: --cudagraphs opt-in flag not defined in trainer argparse"
-    )
+    assert (
+        cg_pattern is not None
+    ), "Wf-335-R3 missing: --cudagraphs opt-in flag not defined in trainer argparse"
 
     # Verify the trainer main() applies the safety lever: when
     # cudagraphs_disabled=True (the default), torch_compile_mode is
@@ -313,9 +310,9 @@ def test_no_cudagraphs_flag_present():
     # Sanity: --no-cuda-graphs / --cudagraphs flag must appear in the
     # recovery script (not just trainer).
     recovery_src = _load_recovery_script()
-    assert "--no-cuda-graphs" in recovery_src, (
-        "Recovery script does not pass --no-cuda-graphs to the trainer"
-    )
+    assert (
+        "--no-cuda-graphs" in recovery_src
+    ), "Recovery script does not pass --no-cuda-graphs to the trainer"
 
 
 # ---------------------------------------------------------------------------
@@ -351,28 +348,26 @@ def test_backward_compat_with_dry_run():
 
     out = result.stdout
     # 2. RECOVERY MANIFEST header.
-    assert "RECOVERY MANIFEST:" in out, (
-        "backward compat broken: missing 'RECOVERY MANIFEST:' header"
-    )
+    assert (
+        "RECOVERY MANIFEST:" in out
+    ), "backward compat broken: missing 'RECOVERY MANIFEST:' header"
     # 3. DRY-RUN OK footer.
-    assert "DRY-RUN OK:" in out, (
-        "backward compat broken: missing 'DRY-RUN OK:' footer"
-    )
+    assert "DRY-RUN OK:" in out, "backward compat broken: missing 'DRY-RUN OK:' footer"
     # 4. USER_OK NOT required (no 'USER_OK REQUIRED' line in --dry-run path).
-    assert "USER_OK REQUIRED" not in out, (
-        "backward compat broken: --dry-run path triggered USER_OK gate"
-    )
+    assert (
+        "USER_OK REQUIRED" not in out
+    ), "backward compat broken: --dry-run path triggered USER_OK gate"
     # 5. The recovery launch command hint should be present.
-    assert "USER_OK=1 bash scripts/recover_g6_failed_tuples.sh" in out, (
-        "backward compat broken: missing USER_OK=1 hint for real-launch path"
-    )
+    assert (
+        "USER_OK=1 bash scripts/recover_g6_failed_tuples.sh" in out
+    ), "backward compat broken: missing USER_OK=1 hint for real-launch path"
 
     # Verify the recovery script's bash PART 2 (the run_tuple function) is also
     # present (we want dry-run to enumerate but not call run_tuple).
     src = _load_recovery_script()
-    assert "run_tuple()" in src or "run_tuple ()" in src or "function run_tuple" in src, (
-        "Recovery script missing run_tuple() function"
-    )
+    assert (
+        "run_tuple()" in src or "run_tuple ()" in src or "function run_tuple" in src
+    ), "Recovery script missing run_tuple() function"
     # Sanity: the dry-run early-exit must be before the USER_OK gate.
     # Pattern: --dry-run check appears before USER_OK check.
     dry_run_pos = src.find("--dry-run")
@@ -394,7 +389,7 @@ def test_trainer_torch_compile_mode_default_is_max_autotune_no_cudagraphs():
     trainer_src = _load_trainer_source()
     # Function default (L1121) — explicit assignment form.
     fn_match = re.search(
-        r'torch_compile_mode:\s*str\s*=\s*[\"\']max-autotune-no-cudagraphs[\"\']',
+        r"torch_compile_mode:\s*str\s*=\s*[\"\']max-autotune-no-cudagraphs[\"\']",
         trainer_src,
     )
     assert fn_match is not None, (
@@ -405,7 +400,7 @@ def test_trainer_torch_compile_mode_default_is_max_autotune_no_cudagraphs():
     # assignment is on a SEPARATE indented line from "--torch-compile-mode",
     # so use a permissive multi-line match.
     cli_match = re.search(
-        r'--torch-compile-mode[\s\S]{0,200}?default\s*=\s*[\"\']max-autotune-no-cudagraphs[\"\']',
+        r"--torch-compile-mode[\s\S]{0,200}?default\s*=\s*[\"\']max-autotune-no-cudagraphs[\"\']",
         trainer_src,
     )
     assert cli_match is not None, (

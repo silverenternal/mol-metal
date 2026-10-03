@@ -148,7 +148,9 @@ class CisplatinResistanceDMPNN(nn.Module):
 
         # ----- cell-line label set -----
         self.cell_lines: Tuple[str, ...] = (
-            tuple(cell_lines) if cell_lines is not None else DEFAULT_CELL_LINES[:n_cells]
+            tuple(cell_lines)
+            if cell_lines is not None
+            else DEFAULT_CELL_LINES[:n_cells]
         )
         if len(self.cell_lines) != self.n_cells:
             raise ValueError(
@@ -208,9 +210,7 @@ class CisplatinResistanceDMPNN(nn.Module):
             :attr:`cell_lines`.
         """
         if cell_ids.dim() != 1:
-            raise ValueError(
-                f"cell_ids must be 1-D, got shape {tuple(cell_ids.shape)}"
-            )
+            raise ValueError(f"cell_ids must be 1-D, got shape {tuple(cell_ids.shape)}")
         if cell_ids.size(0) != len(smiles_list):
             raise ValueError(
                 f"cell_ids.size(0)={cell_ids.size(0)} must equal "
@@ -227,10 +227,10 @@ class CisplatinResistanceDMPNN(nn.Module):
                 f"n_resist_feat={self.n_resist_feat}"
             )
 
-        h = self.encoder(smiles_list)            # (B, hidden_dim)
-        r = self.resist_proj(resist_feat)        # (B, 64)
-        c = self.cell_embed(cell_ids)            # (B, 32)
-        z = torch.cat([h, r, c], dim=-1)         # (B, hidden+64+32)
+        h = self.encoder(smiles_list)  # (B, hidden_dim)
+        r = self.resist_proj(resist_feat)  # (B, 64)
+        c = self.cell_embed(cell_ids)  # (B, 32)
+        z = torch.cat([h, r, c], dim=-1)  # (B, hidden+64+32)
         return {cl: head(z) for cl, head in self.cell_heads.items()}
 
 

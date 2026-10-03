@@ -91,9 +91,7 @@ class TestSmokeAltEncoderCpuOnly:
 
     def test_smoke_cpu_returns_scaffold_pass(self):
         """Verify CPU-mode smoke returns SCAFFOLD_PASS without GPU launch."""
-        result = _smoke_alt_encoder(
-            n_samples=32, n_epochs=5, device="cpu"
-        )
+        result = _smoke_alt_encoder(n_samples=32, n_epochs=5, device="cpu")
         assert result["status"] == "SCAFFOLD_PASS"
         assert result["device"] == "cpu"
         assert result["user_ok_required"] == 0
@@ -108,18 +106,14 @@ class TestSmokeAltEncoderCpuOnly:
     def test_smoke_cuda_refused_without_user_ok(self, monkeypatch):
         """Verify CUDA-mode smoke REFUSED when USER_OK != 1."""
         monkeypatch.delenv("USER_OK", raising=False)
-        result = _smoke_alt_encoder(
-            n_samples=32, n_epochs=5, device="cuda"
-        )
+        result = _smoke_alt_encoder(n_samples=32, n_epochs=5, device="cuda")
         assert result["status"] == "REFUSED"
         assert "USER_OK" in result["reason"]
 
     def test_smoke_cuda_allowed_with_user_ok(self, monkeypatch):
         """Verify CUDA-mode smoke SCAFFOLD_PASS when USER_OK=1."""
         monkeypatch.setenv("USER_OK", "1")
-        result = _smoke_alt_encoder(
-            n_samples=32, n_epochs=5, device="cuda"
-        )
+        result = _smoke_alt_encoder(n_samples=32, n_epochs=5, device="cuda")
         assert result["status"] == "SCAFFOLD_PASS"
         assert result["device"] == "cuda"
         assert result["user_ok_required"] == 1
@@ -130,9 +124,7 @@ class TestAlternativeEncoderModuleAvailability:
 
     def test_chemprop_v3_mt_model_v3_importable(self):
         """Verify ChempropV2MTModelV3 + quick_smoke import successfully."""
-        mod = importlib.import_module(
-            "molmetal.models.chemprop_v2_mt_model_v3"
-        )
+        mod = importlib.import_module("molmetal.models.chemprop_v2_mt_model_v3")
         assert hasattr(mod, "ChempropV2MTModelV3")
         assert hasattr(mod, "quick_smoke_chemprop_v2_mt_v3")
 
@@ -155,9 +147,7 @@ class TestAlternativeEncoderModuleAvailability:
 
     def test_wasserstein_pic50_loss_importable(self):
         """Verify wasserstein_pic50_loss + wasserstein_1d_torchsort import."""
-        mod = importlib.import_module(
-            "molmetal.molmetal_lam.reward.wasserstein_loss"
-        )
+        mod = importlib.import_module("molmetal.molmetal_lam.reward.wasserstein_loss")
         assert hasattr(mod, "wasserstein_pic50_loss")
         assert hasattr(mod, "wasserstein_1d_torchsort")
 

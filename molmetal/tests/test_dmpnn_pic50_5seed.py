@@ -69,6 +69,7 @@ def test_5seed_driver_importable():
         write_per_seed_metrics,
         update_ckpt_status_json,
     )
+
     assert callable(parse_args)
     assert callable(main)
     assert callable(sha256_of_file)
@@ -83,6 +84,7 @@ def test_5seed_driver_importable():
 def test_5seed_parse_args_defaults():
     """Default flags = all 5 metals × all 5 seeds."""
     from molmetal.scripts.train_dmpnn_pic5_5seed import parse_args
+
     ns = parse_args([])
     assert ns.metals == ["Ru", "Ir", "Rh", "Os", "Re"]
     assert ns.seeds == [0, 1, 2, 3, 4]
@@ -97,6 +99,7 @@ def test_5seed_parse_args_defaults():
 def test_5seed_parse_args_single_ckpt_mode():
     """``--metal X --seed Y`` accepts single-ckpt args."""
     from molmetal.scripts.train_dmpnn_pic5_5seed import parse_args
+
     ns = parse_args(["--metal", "Rh", "--seed", "2"])
     assert ns.metal == "Rh"
     assert ns.seed == 2
@@ -105,6 +108,7 @@ def test_5seed_parse_args_single_ckpt_mode():
 def test_5seed_parse_args_rejects_unknown_metal():
     """Unknown metal choices raise SystemExit."""
     from molmetal.scripts.train_dmpnn_pic5_5seed import parse_args
+
     with pytest.raises(SystemExit):
         parse_args(["--metal", "Xx"])
 
@@ -115,6 +119,7 @@ def test_5seed_parse_args_rejects_unknown_metal():
 def test_sha256_of_file_matches_hashlib(tmp_path: Path):
     from molmetal.scripts.train_dmpnn_pic5_5seed import sha256_of_file
     import hashlib
+
     target = tmp_path / "x.pt"
     payload = b"DMPNN ckpt fixture \x00\x01\x02" * 1024
     target.write_bytes(payload)
@@ -125,6 +130,7 @@ def test_sha256_of_file_matches_hashlib(tmp_path: Path):
 def test_sha256_of_file_distinguishes_payloads(tmp_path: Path):
     """Different payloads → different SHAs (no silent copy bug)."""
     from molmetal.scripts.train_dmpnn_pic5_5seed import sha256_of_file
+
     a = tmp_path / "a.pt"
     b = tmp_path / "b.pt"
     a.write_bytes(b"PAYLOAD_A" * 1000)
@@ -138,6 +144,7 @@ def test_sha256_of_file_distinguishes_payloads(tmp_path: Path):
 def test_verify_unique_shas_returns_empty_for_unique(tmp_path: Path):
     """All distinct payloads → no duplicates reported."""
     from molmetal.scripts.train_dmpnn_pic5_5seed import verify_unique_shas
+
     paths = []
     for metal in ("ru", "ir", "rh", "os", "re"):
         for seed in (0, 1, 2, 3, 4):
@@ -155,6 +162,7 @@ def test_verify_unique_shas_flags_silent_copy_bug(tmp_path: Path):
     dmpnn_pic50_rh_seed1.pt was a byte-identical copy of seed0.
     """
     from molmetal.scripts.train_dmpnn_pic5_5seed import verify_unique_shas
+
     shared = b"DUPLICATE_PAYLOAD" * 50
     seed0 = tmp_path / "dmpnn_pic50_rh_seed0.pt"
     seed1 = tmp_path / "dmpnn_pic50_rh_seed1.pt"
@@ -168,6 +176,7 @@ def test_verify_unique_shas_flags_silent_copy_bug(tmp_path: Path):
 def test_verify_unique_shas_ignores_missing(tmp_path: Path):
     """Missing ckpts are silently skipped (no FileNotFoundError)."""
     from molmetal.scripts.train_dmpnn_pic5_5seed import verify_unique_shas
+
     existing = tmp_path / "dmpnn_pic50_ru_seed0.pt"
     existing.write_bytes(b"PAYLOAD")
     missing = tmp_path / "dmpnn_pic50_ru_seed1.pt"  # does not exist
@@ -202,9 +211,7 @@ def test_write_per_seed_metrics_produces_all_5_seeds(tmp_path: Path):
     out_dir = tmp_path / "out"
     _make_fixture_ckpts(ckpt_dir)
 
-    ckpts = [
-        ckpt_dir / f"dmpnn_pic50_ru_seed{s}.pt" for s in range(5)
-    ]
+    ckpts = [ckpt_dir / f"dmpnn_pic50_ru_seed{s}.pt" for s in range(5)]
     write_per_seed_metrics(
         metal_dir=out_dir / "ru",
         metal="Ru",
@@ -231,8 +238,17 @@ def test_write_per_seed_metrics_marks_new_vs_reused(tmp_path: Path):
 
     # Synthesise a MetalSeedResult-like dict (we only read 3 attributes)
     class _StubRes:
-        def __init__(self, metal, seed, n_train=100, n_val=20, n_test=30,
-                     elapsed=1.0, pearson=0.3, rmse=4.0):
+        def __init__(
+            self,
+            metal,
+            seed,
+            n_train=100,
+            n_val=20,
+            n_test=30,
+            elapsed=1.0,
+            pearson=0.3,
+            rmse=4.0,
+        ):
             self.metal = metal
             self.seed = seed
             self.n_train = n_train
@@ -240,11 +256,13 @@ def test_write_per_seed_metrics_marks_new_vs_reused(tmp_path: Path):
             self.n_test = n_test
             self.elapsed_seconds = elapsed
             self.val_pic50_metrics = {"pearson": 0.2, "rmse": 4.5, "mae": 3.0}
-            self.test_pic50_metrics = {"pearson": pearson, "rmse": rmse, "mae": rmse - 1.0}
+            self.test_pic50_metrics = {
+                "pearson": pearson,
+                "rmse": rmse,
+                "mae": rmse - 1.0,
+            }
 
-    ckpts = [
-        ckpt_dir / f"dmpnn_pic50_ru_seed{s}.pt" for s in range(5)
-    ]
+    ckpts = [ckpt_dir / f"dmpnn_pic50_ru_seed{s}.pt" for s in range(5)]
     # Seeds 0, 1 are "existing" (from Wf-120 P1); 2, 3, 4 are NEW
     seed_results = {
         2: _StubRes("Ru", 2, pearson=0.25, rmse=4.1),
@@ -289,12 +307,8 @@ def test_write_per_seed_metrics_aggregate_std(tmp_path: Path):
             self.test_pic50_metrics = {"pearson": pearson, "rmse": 4.0}
 
     pearsons = [0.20, 0.30, 0.40, 0.25, 0.35]
-    seed_results = {
-        s: _StubRes(s, p) for s, p in zip(range(5), pearsons)
-    }
-    ckpts = [
-        ckpt_dir / f"dmpnn_pic50_ru_seed{s}.pt" for s in range(5)
-    ]
+    seed_results = {s: _StubRes(s, p) for s, p in zip(range(5), pearsons)}
+    ckpts = [ckpt_dir / f"dmpnn_pic50_ru_seed{s}.pt" for s in range(5)]
     write_per_seed_metrics(
         metal_dir=out_dir / "ru",
         metal="Ru",
@@ -305,6 +319,7 @@ def test_write_per_seed_metrics_aggregate_std(tmp_path: Path):
     payload = json.loads((out_dir / "ru" / "per_seed_metrics.json").read_text())
     agg = payload["aggregate"]
     import numpy as np
+
     expected_mean = float(np.mean(pearsons))
     # np.nanstd uses ddof=0 (population std); match it
     expected_std = float(np.std(pearsons, ddof=0))
@@ -316,7 +331,8 @@ def test_write_per_seed_metrics_aggregate_std(tmp_path: Path):
 def test_write_per_seed_metrics_flags_high_std(tmp_path: Path):
     """Std > 0.15 across seeds → status = STABLE_BUT_HIGH_STD."""
     from molmetal.scripts.train_dmpnn_pic5_5seed import (
-        write_per_seed_metrics, PEARSON_STD_TARGET,
+        write_per_seed_metrics,
+        PEARSON_STD_TARGET,
     )
 
     ckpt_dir = tmp_path / "ckpts"
@@ -337,9 +353,7 @@ def test_write_per_seed_metrics_flags_high_std(tmp_path: Path):
     # Wide spread: std > PEARSON_STD_TARGET
     pearsons = [-0.1, 0.5, 0.0, 0.6, -0.3]
     seed_results = {s: _StubRes(s, p) for s, p in zip(range(5), pearsons)}
-    ckpts = [
-        ckpt_dir / f"dmpnn_pic50_rh_seed{s}.pt" for s in range(5)
-    ]
+    ckpts = [ckpt_dir / f"dmpnn_pic50_rh_seed{s}.pt" for s in range(5)]
     write_per_seed_metrics(
         metal_dir=out_dir / "rh",
         metal="Rh",
@@ -391,8 +405,7 @@ def test_update_ckpt_status_json_produces_25_entries(tmp_path: Path):
     _make_fixture_ckpts(ckpt_dir)
 
     ckpts_by_metal = {
-        metal: [ckpt_dir / f"dmpnn_pic50_{metal.lower()}_seed{s}.pt"
-                for s in range(5)]
+        metal: [ckpt_dir / f"dmpnn_pic50_{metal.lower()}_seed{s}.pt" for s in range(5)]
         for metal in ("Ru", "Ir", "Rh", "Os", "Re")
     }
     update_ckpt_status_json(
@@ -406,9 +419,7 @@ def test_update_ckpt_status_json_produces_25_entries(tmp_path: Path):
     assert len(payload["checkpoints"]) == 25
     # Every (metal, seed) pair present exactly once
     pairs = {(r["metal"], r["seed"]) for r in payload["checkpoints"]}
-    expected_pairs = {
-        (m, s) for m in ("Ru", "Ir", "Rh", "Os", "Re") for s in range(5)
-    }
+    expected_pairs = {(m, s) for m in ("Ru", "Ir", "Rh", "Os", "Re") for s in range(5)}
     assert pairs == expected_pairs
 
 
@@ -422,8 +433,7 @@ def test_update_ckpt_status_json_per_metal_summary(tmp_path: Path):
     _make_fixture_ckpts(ckpt_dir)
 
     ckpts_by_metal = {
-        metal: [ckpt_dir / f"dmpnn_pic50_{metal.lower()}_seed{s}.pt"
-                for s in range(5)]
+        metal: [ckpt_dir / f"dmpnn_pic50_{metal.lower()}_seed{s}.pt" for s in range(5)]
         for metal in ("Ru", "Ir", "Rh", "Os", "Re")
     }
     update_ckpt_status_json(
@@ -449,17 +459,20 @@ def test_update_ckpt_status_json_preserves_prior_metadata(tmp_path: Path):
     _make_fixture_ckpts(ckpt_dir)
 
     # Pre-populate with custom (but realistic) description
-    status_json.write_text(json.dumps({
-        "metric": "dmpnn_ckpt_status",
-        "description": "Custom prior description",
-        "unit": "n_files + per-file metadata",
-        "scope": "model_checkpoint_inventory",
-        "source": "prior_source",
-    }))
+    status_json.write_text(
+        json.dumps(
+            {
+                "metric": "dmpnn_ckpt_status",
+                "description": "Custom prior description",
+                "unit": "n_files + per-file metadata",
+                "scope": "model_checkpoint_inventory",
+                "source": "prior_source",
+            }
+        )
+    )
 
     ckpts_by_metal = {
-        metal: [ckpt_dir / f"dmpnn_pic50_{metal.lower()}_seed{s}.pt"
-                for s in range(5)]
+        metal: [ckpt_dir / f"dmpnn_pic50_{metal.lower()}_seed{s}.pt" for s in range(5)]
         for metal in ("Ru", "Ir", "Rh", "Os", "Re")
     }
     update_ckpt_status_json(
@@ -483,12 +496,14 @@ def test_update_ckpt_status_json_preserves_prior_metadata(tmp_path: Path):
 def test_five_metals_contains_all_5_with_correct_order():
     """FIVE_METALS is exactly (Ru, Ir, Rh, Os, Re) — matches Wf-84 order."""
     from molmetal.scripts.train_dmpnn_pic5_5seed import FIVE_METALS
+
     assert FIVE_METALS == ("Ru", "Ir", "Rh", "Os", "Re")
 
 
 def test_default_5seeds_contains_seeds_0_through_4():
     """DEFAULT_5SEEDS = (0, 1, 2, 3, 4) — exactly 5 seeds."""
     from molmetal.scripts.train_dmpnn_pic5_5seed import DEFAULT_5SEEDS
+
     assert DEFAULT_5SEEDS == (0, 1, 2, 3, 4)
     assert len(DEFAULT_5SEEDS) == 5
 
@@ -496,4 +511,5 @@ def test_default_5seeds_contains_seeds_0_through_4():
 def test_pearson_std_target_matches_brief():
     """PEARSON_STD_TARGET = 0.15 per Wf-120 P2 brief."""
     from molmetal.scripts.train_dmpnn_pic5_5seed import PEARSON_STD_TARGET
+
     assert PEARSON_STD_TARGET == 0.15

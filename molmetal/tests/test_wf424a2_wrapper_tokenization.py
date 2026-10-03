@@ -52,6 +52,7 @@ Cross-references
 * AGENTS.md §5.6 atomic write protocol (used to write this test file)
 * AGENTS.md §5.7 trainer flag wire-in smoke-required rule (Wf-399-A1 NEW)
 """
+
 from __future__ import annotations
 
 import re
@@ -64,7 +65,10 @@ _TEST_FILE = Path(__file__).resolve()
 REPO_ROOT = _TEST_FILE.parent.parent.parent
 WRAPPER = REPO_ROOT / "scripts" / "launch_wf409a3_metal_coord_retrain.sh"
 # SCAFFOLD argparse contract for --metals + --seeds (nargs="+")
-SCAFFOLD = REPO_ROOT / "molmetal" / "scripts" / "wf409a3_metal_coord_retrain_scaffold.py"
+SCAFFOLD = (
+    REPO_ROOT / "molmetal" / "scripts" / "wf409a3_metal_coord_retrain_scaffold.py"
+)
+
 
 # -----------------------------------------------------------------------------
 # Helper: extract the CLI parsing block from the wrapper source via regex.
@@ -115,18 +119,31 @@ def _run_parser_block(args: list[str]) -> dict[str, str]:
     """
     parser_block = _extract_parser_block()
     # Append the echo of parsed values for inspection.
-    test_block = parser_block + "\necho METALS=$METALS\necho SEEDS=$SEEDS\necho EPOCHS=$EPOCHS\necho OUT_DIR=$OUT_DIR\necho DRY_RUN=$DRY_RUN\necho SMOKE=$SMOKE\necho ACTUAL=$ACTUAL\n"
+    test_block = (
+        parser_block
+        + "\necho METALS=$METALS\necho SEEDS=$SEEDS\necho EPOCHS=$EPOCHS\necho OUT_DIR=$OUT_DIR\necho DRY_RUN=$DRY_RUN\necho SMOKE=$SMOKE\necho ACTUAL=$ACTUAL\n"
+    )
     argv_str = " ".join(repr(a) for a in args)
     full_cmd = f"{test_block}"
     proc = subprocess.run(
         ["bash", "-c", full_cmd, "bash"] + args,
-        capture_output=True, text=True, timeout=10,
+        capture_output=True,
+        text=True,
+        timeout=10,
     )
     parsed: dict[str, str] = {}
     for line in proc.stdout.splitlines():
         if "=" in line:
             k, _, v = line.partition("=")
-            if k in {"METALS", "SEEDS", "EPOCHS", "OUT_DIR", "DRY_RUN", "SMOKE", "ACTUAL"}:
+            if k in {
+                "METALS",
+                "SEEDS",
+                "EPOCHS",
+                "OUT_DIR",
+                "DRY_RUN",
+                "SMOKE",
+                "ACTUAL",
+            }:
                 parsed[k] = v
     return parsed
 
@@ -139,12 +156,12 @@ def _run_parser_block(args: list[str]) -> dict[str, str]:
 def test_metals_unquoted_multi_token() -> None:
     """Verify --metals accepts unquoted multi-token form (THE BUG SCENARIO)."""
     parsed = _run_parser_block(["--metals", "Ru", "Ir", "Rh", "--seeds", "0", "1", "2"])
-    assert parsed["METALS"] == "Ru Ir Rh", (
-        f"Expected METALS='Ru Ir Rh', got METALS='{parsed.get('METALS', '<missing>')}'"
-    )
-    assert parsed["SEEDS"] == "0 1 2", (
-        f"Expected SEEDS='0 1 2', got SEEDS='{parsed.get('SEEDS', '<missing>')}'"
-    )
+    assert (
+        parsed["METALS"] == "Ru Ir Rh"
+    ), f"Expected METALS='Ru Ir Rh', got METALS='{parsed.get('METALS', '<missing>')}'"
+    assert (
+        parsed["SEEDS"] == "0 1 2"
+    ), f"Expected SEEDS='0 1 2', got SEEDS='{parsed.get('SEEDS', '<missing>')}'"
 
 
 # -----------------------------------------------------------------------------
@@ -153,9 +170,9 @@ def test_metals_unquoted_multi_token() -> None:
 def test_metals_quoted_string_form() -> None:
     """Verify --metals accepts quoted-string form (backward compat)."""
     parsed = _run_parser_block(["--metals", "Ru Ir Rh", "--seeds", "0 1 2"])
-    assert parsed["METALS"] == "Ru Ir Rh", (
-        f"Expected METALS='Ru Ir Rh', got METALS='{parsed.get('METALS', '<missing>')}'"
-    )
+    assert (
+        parsed["METALS"] == "Ru Ir Rh"
+    ), f"Expected METALS='Ru Ir Rh', got METALS='{parsed.get('METALS', '<missing>')}'"
     assert parsed["SEEDS"] == "0 1 2"
 
 
@@ -167,12 +184,12 @@ def test_metals_full_path_a_5_metals_5_seeds() -> None:
     parsed = _run_parser_block(
         ["--metals", "Ru", "Ir", "Rh", "Os", "Re", "--seeds", "0", "1", "2", "3", "4"]
     )
-    assert parsed["METALS"] == "Ru Ir Rh Os Re", (
-        f"Expected METALS='Ru Ir Rh Os Re', got METALS='{parsed.get('METALS', '<missing>')}'"
-    )
-    assert parsed["SEEDS"] == "0 1 2 3 4", (
-        f"Expected SEEDS='0 1 2 3 4', got SEEDS='{parsed.get('SEEDS', '<missing>')}'"
-    )
+    assert (
+        parsed["METALS"] == "Ru Ir Rh Os Re"
+    ), f"Expected METALS='Ru Ir Rh Os Re', got METALS='{parsed.get('METALS', '<missing>')}'"
+    assert (
+        parsed["SEEDS"] == "0 1 2 3 4"
+    ), f"Expected SEEDS='0 1 2 3 4', got SEEDS='{parsed.get('SEEDS', '<missing>')}'"
 
 
 # -----------------------------------------------------------------------------
@@ -182,9 +199,9 @@ def test_metals_stops_at_next_flag() -> None:
     """Verify --metals stops capturing when next --* flag is seen."""
     parsed = _run_parser_block(["--metals", "Ru", "Ir", "Rh", "--epochs", "50"])
     assert parsed["METALS"] == "Ru Ir Rh"
-    assert parsed["EPOCHS"] == "50", (
-        f"Expected EPOCHS='50', got EPOCHS='{parsed.get('EPOCHS', '<missing>')}'"
-    )
+    assert (
+        parsed["EPOCHS"] == "50"
+    ), f"Expected EPOCHS='50', got EPOCHS='{parsed.get('EPOCHS', '<missing>')}'"
 
 
 # -----------------------------------------------------------------------------
@@ -194,11 +211,13 @@ def test_wrapper_bash_syntax_ok() -> None:
     """Verify the wrapper passes bash -n syntax check."""
     proc = subprocess.run(
         ["bash", "-n", str(WRAPPER)],
-        capture_output=True, text=True, timeout=10,
+        capture_output=True,
+        text=True,
+        timeout=10,
     )
-    assert proc.returncode == 0, (
-        f"bash -n failed: rc={proc.returncode} stderr={proc.stderr}"
-    )
+    assert (
+        proc.returncode == 0
+    ), f"bash -n failed: rc={proc.returncode} stderr={proc.stderr}"
 
 
 # -----------------------------------------------------------------------------
@@ -212,7 +231,7 @@ def test_wrapper_file_present() -> None:
     assert SCAFFOLD.exists(), f"SCAFFOLD missing on disk: {SCAFFOLD}"
     scaffold_src = SCAFFOLD.read_text(encoding="utf-8")
     assert 'nargs="+"' in scaffold_src, (
-        "SCAFFOLD argparse no longer uses nargs=\"+\" for --metals/--seeds — "
+        'SCAFFOLD argparse no longer uses nargs="+" for --metals/--seeds — '
         "the wrapper fix contract may be stale; verify SCAFFOLD."
     )
-    assert '--metals' in scaffold_src and '--seeds' in scaffold_src
+    assert "--metals" in scaffold_src and "--seeds" in scaffold_src

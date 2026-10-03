@@ -27,6 +27,7 @@ Honest framing
   pseudo-scores come from a deterministic hash so reproducibility is
   trivial across hosts.
 """
+
 from __future__ import annotations
 
 import json
@@ -53,12 +54,54 @@ from molmetal.adapters.per_residue_protein_metal_auc import (
 def toy_df() -> pd.DataFrame:
     """6-row toy frame: 3 active + 3 inactive, 3 proteins, 2 metals."""
     rows = [
-        {"smiles": "C",      "metal": "Ru", "cell_line": "MCF-7",   "protein": "MCF-7",   "pIC50": 5.0, "active": 1},
-        {"smiles": "CC",     "metal": "Ru", "cell_line": "MCF-7",   "protein": "MCF-7",   "pIC50": 5.5, "active": 1},
-        {"smiles": "CO",     "metal": "Ir", "cell_line": "A2780",   "protein": "A2780",   "pIC50": 4.0, "active": 0},
-        {"smiles": "CN",     "metal": "Ru", "cell_line": "HeLa",    "protein": "HeLa",    "pIC50": 4.5, "active": 0},
-        {"smiles": "CCO",    "metal": "Ir", "cell_line": "MCF-7",   "protein": "MCF-7",   "pIC50": 6.0, "active": 1},
-        {"smiles": "CCN",    "metal": "Ru", "cell_line": "A2780",   "protein": "A2780",   "pIC50": 4.0, "active": 0},
+        {
+            "smiles": "C",
+            "metal": "Ru",
+            "cell_line": "MCF-7",
+            "protein": "MCF-7",
+            "pIC50": 5.0,
+            "active": 1,
+        },
+        {
+            "smiles": "CC",
+            "metal": "Ru",
+            "cell_line": "MCF-7",
+            "protein": "MCF-7",
+            "pIC50": 5.5,
+            "active": 1,
+        },
+        {
+            "smiles": "CO",
+            "metal": "Ir",
+            "cell_line": "A2780",
+            "protein": "A2780",
+            "pIC50": 4.0,
+            "active": 0,
+        },
+        {
+            "smiles": "CN",
+            "metal": "Ru",
+            "cell_line": "HeLa",
+            "protein": "HeLa",
+            "pIC50": 4.5,
+            "active": 0,
+        },
+        {
+            "smiles": "CCO",
+            "metal": "Ir",
+            "cell_line": "MCF-7",
+            "protein": "MCF-7",
+            "pIC50": 6.0,
+            "active": 1,
+        },
+        {
+            "smiles": "CCN",
+            "metal": "Ru",
+            "cell_line": "A2780",
+            "protein": "A2780",
+            "pIC50": 4.0,
+            "active": 0,
+        },
     ]
     return pd.DataFrame(rows)
 
@@ -109,7 +152,9 @@ def test_expand_complex_to_residues_schema(
     # Every residue has 0/1 label.
     assert set(long["label"].unique()) <= {0, 1}
     # Positive residues only come from active complexes.
-    active_set = set(toy_df.index[toy_df["active"].astype(int).to_numpy() == 1].tolist())
+    active_set = set(
+        toy_df.index[toy_df["active"].astype(int).to_numpy() == 1].tolist()
+    )
     pos_residues = long[long["label"] == 1]
     assert set(pos_residues["complex_idx"].unique()) <= active_set
 
@@ -157,9 +202,7 @@ def test_run_returns_both_aucs(toy_df: pd.DataFrame, toy_scores: np.ndarray):
     assert out["per_complex_auc"] >= 0.95
 
 
-def test_reconciliation_table_balanced(
-    toy_df: pd.DataFrame, toy_scores: np.ndarray
-):
+def test_reconciliation_table_balanced(toy_df: pd.DataFrame, toy_scores: np.ndarray):
     adapter = PerResidueProteinMetalAUC(seed=DEFAULT_SEED)
     out = adapter.run(toy_df, toy_scores, max_reconciliation_rows=6)
     labels = [r["true_label"] for r in out["reconciliation"]]

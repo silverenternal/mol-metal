@@ -21,6 +21,7 @@ Run with::
         molmetal/scripts/wf329w4_multiph_pll_smoke.py \\
         --output-dir molmetal/reports/wf329w4_multiph_pll
 """
+
 from __future__ import annotations
 
 import argparse
@@ -41,6 +42,7 @@ except Exception:
 # errors for.
 try:
     from rdkit import RDLogger
+
     RDLogger.DisableLog("rdApp.*")
 except Exception:
     pass
@@ -52,6 +54,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 def _load_cohort(csv_path: Path, max_samples: int) -> list:
     """Load SMILES from the metallo cohort CSV."""
     import csv
+
     smiles: list = []
     if not csv_path.exists():
         return smiles
@@ -70,9 +73,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--csv",
-        default=str(
-            REPO_ROOT / "molmetal" / "data" / "metallo_drugs_500_train.csv"
-        ),
+        default=str(REPO_ROOT / "molmetal" / "data" / "metallo_drugs_500_train.csv"),
         help="Path to metallo_drugs_500_train.csv",
     )
     parser.add_argument(
@@ -120,44 +121,55 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
 
     extractor = MultiPHPLLFeatureExtractor()
-    print(f"[Wf-329-W4] Extractor: n_bins={extractor.n_bins} "
-          f"(Fourier={extractor.fourier_dim}, "
-          f"multi-PH={extractor.multi_ph_dim}, "
-          f"PLL={extractor.pll_dim}, joint={extractor.joint_dim})")
+    print(
+        f"[Wf-329-W4] Extractor: n_bins={extractor.n_bins} "
+        f"(Fourier={extractor.fourier_dim}, "
+        f"multi-PH={extractor.multi_ph_dim}, "
+        f"PLL={extractor.pll_dim}, joint={extractor.joint_dim})"
+    )
 
     # ----- m6_kappa recovery -----
     print("[Wf-329-W4] Running m6_kappa recovery wire-in ...")
     t0 = time.time()
     m6 = wire_m6_kappa_recovery(smiles, extractor)
     t_m6 = time.time() - t0
-    print(f"[Wf-329-W4] m6_kappa: baseline={m6['m6_kappa_baseline']:.4f} "
-          f"-> augmented={m6['m6_kappa_augmented']:.4f} "
-          f"(delta={m6['m6_kappa_delta']:+.4f}, "
-          f"r2={m6.get('augmented_r2', float('nan')):.4f}, "
-          f"n={m6['n_samples']}, {t_m6:.2f}s)")
+    print(
+        f"[Wf-329-W4] m6_kappa: baseline={m6['m6_kappa_baseline']:.4f} "
+        f"-> augmented={m6['m6_kappa_augmented']:.4f} "
+        f"(delta={m6['m6_kappa_delta']:+.4f}, "
+        f"r2={m6.get('augmented_r2', float('nan')):.4f}, "
+        f"n={m6['n_samples']}, {t_m6:.2f}s)"
+    )
 
     # ----- m7 diversity recovery -----
     print("[Wf-329-W4] Running m7 diversity recovery wire-in (PLL distance) ...")
     t0 = time.time()
     m7 = wire_m7_diversity_recovery(
-        smiles, extractor, sample_size=min(30, len(smiles)), seed=args.seed,
+        smiles,
+        extractor,
+        sample_size=min(30, len(smiles)),
+        seed=args.seed,
     )
     t_m7 = time.time() - t0
-    print(f"[Wf-329-W4] m7: Tanimoto={m7['m7_diversity_baseline']:.4f} "
-          f"-> PLL={m7['m7_diversity_pll']:.4f} "
-          f"(delta={m7['m7_diversity_delta']:+.4f}, "
-          f"n={m7['n_samples']}, {t_m7:.2f}s)")
+    print(
+        f"[Wf-329-W4] m7: Tanimoto={m7['m7_diversity_baseline']:.4f} "
+        f"-> PLL={m7['m7_diversity_pll']:.4f} "
+        f"(delta={m7['m7_diversity_delta']:+.4f}, "
+        f"n={m7['n_samples']}, {t_m7:.2f}s)"
+    )
 
     # ----- R² recovery -----
     print("[Wf-329-W4] Running R² recovery wire-in (joint design matrix + Ridge) ...")
     t0 = time.time()
     r2 = wire_r2_recovery(smiles, extractor)
     t_r2 = time.time() - t0
-    print(f"[Wf-329-W4] R²: baseline={r2['r2_baseline']:.4f} "
-          f"-> joint={r2['r2_joint']:.4f} "
-          f"(delta={r2['r2_delta']:+.4f}, "
-          f"joint_dim={r2['joint_dim']}, "
-          f"n={r2['n_samples']}, {t_r2:.2f}s)")
+    print(
+        f"[Wf-329-W4] R²: baseline={r2['r2_baseline']:.4f} "
+        f"-> joint={r2['r2_joint']:.4f} "
+        f"(delta={r2['r2_delta']:+.4f}, "
+        f"joint_dim={r2['joint_dim']}, "
+        f"n={r2['n_samples']}, {t_r2:.2f}s)"
+    )
 
     # ----- Aggregated report -----
     report = MultiPHPLLRecoveryReport(
@@ -192,9 +204,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 f"TwoParameterFiltration n_bins={extractor.n_bins} "
                 f"(W2.3 R18 P3 surface)"
             ),
-            "pll_features": (
-                f"PLL top-{extractor.k} eigenvalues (Liu-Feng 2026)"
-            ),
+            "pll_features": (f"PLL top-{extractor.k} eigenvalues (Liu-Feng 2026)"),
         },
     )
 
@@ -224,43 +234,55 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     # Also dump per-axis csv for downstream consumers.
     import csv as _csv
+
     csv_path_out = output_dir / "per_axis.csv"
     with open(csv_path_out, "w", newline="", encoding="utf-8") as fh:
         writer = _csv.DictWriter(
             fh,
             fieldnames=[
-                "axis", "baseline", "recovered", "delta", "n_samples",
-                "wall_seconds", "tag",
+                "axis",
+                "baseline",
+                "recovered",
+                "delta",
+                "n_samples",
+                "wall_seconds",
+                "tag",
             ],
         )
         writer.writeheader()
-        writer.writerow({
-            "axis": "m6_kappa",
-            "baseline": round(m6["m6_kappa_baseline"], 6),
-            "recovered": round(m6["m6_kappa_augmented"], 6),
-            "delta": round(m6["m6_kappa_delta"], 6),
-            "n_samples": m6["n_samples"],
-            "wall_seconds": round(t_m6, 4),
-            "tag": "MEASURED",
-        })
-        writer.writerow({
-            "axis": "m7_diversity",
-            "baseline": round(m7["m7_diversity_baseline"], 6),
-            "recovered": round(m7["m7_diversity_pll"], 6),
-            "delta": round(m7["m7_diversity_delta"], 6),
-            "n_samples": m7["n_samples"],
-            "wall_seconds": round(t_m7, 4),
-            "tag": "MEASURED",
-        })
-        writer.writerow({
-            "axis": "r2",
-            "baseline": round(r2["r2_baseline"], 6),
-            "recovered": round(r2["r2_joint"], 6),
-            "delta": round(r2["r2_delta"], 6),
-            "n_samples": r2["n_samples"],
-            "wall_seconds": round(t_r2, 4),
-            "tag": "MEASURED",
-        })
+        writer.writerow(
+            {
+                "axis": "m6_kappa",
+                "baseline": round(m6["m6_kappa_baseline"], 6),
+                "recovered": round(m6["m6_kappa_augmented"], 6),
+                "delta": round(m6["m6_kappa_delta"], 6),
+                "n_samples": m6["n_samples"],
+                "wall_seconds": round(t_m6, 4),
+                "tag": "MEASURED",
+            }
+        )
+        writer.writerow(
+            {
+                "axis": "m7_diversity",
+                "baseline": round(m7["m7_diversity_baseline"], 6),
+                "recovered": round(m7["m7_diversity_pll"], 6),
+                "delta": round(m7["m7_diversity_delta"], 6),
+                "n_samples": m7["n_samples"],
+                "wall_seconds": round(t_m7, 4),
+                "tag": "MEASURED",
+            }
+        )
+        writer.writerow(
+            {
+                "axis": "r2",
+                "baseline": round(r2["r2_baseline"], 6),
+                "recovered": round(r2["r2_joint"], 6),
+                "delta": round(r2["r2_delta"], 6),
+                "n_samples": r2["n_samples"],
+                "wall_seconds": round(t_r2, 4),
+                "tag": "MEASURED",
+            }
+        )
     print(f"[Wf-329-W4] Wrote {csv_path_out}")
 
     return 0

@@ -55,22 +55,22 @@ def test_per_cohort_r2_computed() -> None:
     cohorts = result["cohorts_tested"]
     assert len(cohorts) >= 1, "no cohorts tested"
     per_cohort = result["per_cohort"]
-    assert len(per_cohort) == len(cohorts), (
-        f"per_cohort count {len(per_cohort)} != cohorts_tested {len(cohorts)}"
-    )
+    assert len(per_cohort) == len(
+        cohorts
+    ), f"per_cohort count {len(per_cohort)} != cohorts_tested {len(cohorts)}"
     for entry in per_cohort:
         # R² may be negative — that's the honest-negative finding.
-        assert isinstance(entry["r2_mean"], (int, float)), (
-            f"r2_mean not numeric for {entry['cohort']}"
-        )
-        assert entry["r2_mean"] != 0.0, (
-            f"r2_mean exactly 0.0 (suspicious — verify upstream)"
-        )
+        assert isinstance(
+            entry["r2_mean"], (int, float)
+        ), f"r2_mean not numeric for {entry['cohort']}"
+        assert (
+            entry["r2_mean"] != 0.0
+        ), f"r2_mean exactly 0.0 (suspicious — verify upstream)"
         # Lift vs Wf-335-M2 baseline is computed (numerical field).
         assert "lift_vs_wf335_m2" in entry, "lift_vs_wf335_m2 missing"
-        assert isinstance(entry["lift_vs_wf335_m2"], (int, float)), (
-            f"lift_vs_wf335_m2 not numeric for {entry['cohort']}"
-        )
+        assert isinstance(
+            entry["lift_vs_wf335_m2"], (int, float)
+        ), f"lift_vs_wf335_m2 not numeric for {entry['cohort']}"
         # Verdict must be a known classification.
         valid_verdicts = {
             "HONEST_NEGATIVE_R2_DEEP",
@@ -78,9 +78,9 @@ def test_per_cohort_r2_computed() -> None:
             "WEAK_RECOVERY",
             "CEILING_BREAK",
         }
-        assert entry["verdict"] in valid_verdicts, (
-            f"unknown verdict {entry['verdict']!r} for {entry['cohort']}"
-        )
+        assert (
+            entry["verdict"] in valid_verdicts
+        ), f"unknown verdict {entry['verdict']!r} for {entry['cohort']}"
 
 
 def test_lift_vs_baseline() -> None:
@@ -100,15 +100,15 @@ def test_lift_vs_baseline() -> None:
         r2 = entry["r2_mean"]
         expected_lift = r2 - baseline
         actual_lift = entry["lift_vs_wf335_m2"]
-        assert abs(actual_lift - expected_lift) < 1e-6, (
-            f"lift arithmetic mismatch: {actual_lift} != {expected_lift}"
-        )
+        assert (
+            abs(actual_lift - expected_lift) < 1e-6
+        ), f"lift arithmetic mismatch: {actual_lift} != {expected_lift}"
 
         # Honest-negative test: if r2 is negative, lift is negative (or zero).
         # If r2 is positive, test that lift is consistent with above_zero flag.
-        assert entry["above_zero"] == (r2 > 0.0), (
-            f"above_zero flag inconsistent: r2={r2}, above_zero={entry['above_zero']}"
-        )
+        assert entry["above_zero"] == (
+            r2 > 0.0
+        ), f"above_zero flag inconsistent: r2={r2}, above_zero={entry['above_zero']}"
     else:
         # platinai_4cell missing — accept this as HONEST_NEGATIVE_MISSING_UPSTREAM.
         assert result["aggregate_status"] in {
@@ -134,9 +134,9 @@ def test_hilbert_lift() -> None:
         r2 = entry["r2_mean"]
         expected_lift = r2 - baseline
         actual_lift = entry["lift_vs_wf335_m2"]
-        assert abs(actual_lift - expected_lift) < 1e-6, (
-            f"hilbert lift arithmetic mismatch: {actual_lift} != {expected_lift}"
-        )
+        assert (
+            abs(actual_lift - expected_lift) < 1e-6
+        ), f"hilbert lift arithmetic mismatch: {actual_lift} != {expected_lift}"
         # Verdict must be recorded.
         assert entry["verdict"], "hilbert verdict empty"
         assert entry["honest_framing"], "hilbert honest_framing empty"

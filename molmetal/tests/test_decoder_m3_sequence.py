@@ -102,9 +102,11 @@ def test_sequence_decoder_shape():
     bond = _make_bond_features(batch=2, n_atoms=6)
     mask = _make_mask(batch=2, max_seq_len=64, valid_lens=[6, 6])
     logits = seq(z, bond, mask)
-    assert logits.shape == (2, 64, 42), (
-        f"expected (2, 64, 42), got {tuple(logits.shape)}"
-    )
+    assert logits.shape == (
+        2,
+        64,
+        42,
+    ), f"expected (2, 64, 42), got {tuple(logits.shape)}"
 
 
 # ---------------------------------------------------------------------------
@@ -113,6 +115,7 @@ def test_sequence_decoder_shape():
 def test_sequence_decoder_vocab_size():
     """vocab_size default = 42 = len(PRIMITIVE_ATOMS)."""
     from molmetal_lam.atoms.combinators import PRIMITIVE_ATOMS
+
     seq = SequenceDecoderHead()
     assert seq.vocab_size == len(PRIMITIVE_ATOMS), (
         f"vocab_size {seq.vocab_size} must equal len(PRIMITIVE_ATOMS) "
@@ -127,9 +130,9 @@ def test_sequence_decoder_vocab_size():
 def test_sequence_decoder_default_hidden_dim():
     """Default hidden_dim is 128 per the Alcaide 2024 §3.1 anchor."""
     seq = SequenceDecoderHead()
-    assert seq.hidden_dim == 128, (
-        f"hidden_dim default must be 128 (Alcaide 2024), got {seq.hidden_dim}"
-    )
+    assert (
+        seq.hidden_dim == 128
+    ), f"hidden_dim default must be 128 (Alcaide 2024), got {seq.hidden_dim}"
 
 
 # ---------------------------------------------------------------------------
@@ -138,9 +141,9 @@ def test_sequence_decoder_default_hidden_dim():
 def test_sequence_decoder_default_max_seq_len():
     """Default max_seq_len is 64 (covers typical SBDD ligands with 2x headroom)."""
     seq = SequenceDecoderHead()
-    assert seq.max_seq_len == 64, (
-        f"max_seq_len default must be 64, got {seq.max_seq_len}"
-    )
+    assert (
+        seq.max_seq_len == 64
+    ), f"max_seq_len default must be 64, got {seq.max_seq_len}"
 
 
 # ---------------------------------------------------------------------------
@@ -177,7 +180,9 @@ def test_sequence_decoder_mask_zeros_padded_positions():
     # Positions 4..15 must all be exactly zero (we mask-fill them).
     for pos in range(4, 16):
         assert torch.allclose(
-            logits[0, pos], torch.zeros(42), atol=1e-6,
+            logits[0, pos],
+            torch.zeros(42),
+            atol=1e-6,
         ), f"position {pos} should be all-zero, got {logits[0, pos]}"
 
 
@@ -188,7 +193,11 @@ def test_sequence_decoder_gradient_flows():
     """Backward pass produces non-zero gradients w.r.t. atom_features."""
     torch.manual_seed(0)
     seq = SequenceDecoderHead(hidden_dim=64, max_seq_len=16, vocab_size=42)
-    z = _make_atom_features(batch=1, n_atoms=4, hidden_dim=64).clone().requires_grad_(True)
+    z = (
+        _make_atom_features(batch=1, n_atoms=4, hidden_dim=64)
+        .clone()
+        .requires_grad_(True)
+    )
     bond = _make_bond_features(batch=1, n_atoms=4)
     mask = _make_mask(batch=1, max_seq_len=16, valid_lens=[4])
     logits = seq(z, bond, mask)
@@ -196,9 +205,9 @@ def test_sequence_decoder_gradient_flows():
     loss.backward()
     assert z.grad is not None, "no gradient on atom features"
     assert torch.isfinite(z.grad).all(), "non-finite gradients"
-    assert float(z.grad.abs().sum().item()) > 0.0, (
-        "gradients should be non-zero for a fresh-init Transformer"
-    )
+    assert (
+        float(z.grad.abs().sum().item()) > 0.0
+    ), "gradients should be non-zero for a fresh-init Transformer"
 
 
 # ---------------------------------------------------------------------------
@@ -213,9 +222,9 @@ def test_gumbel_top_k_sparse():
     assert adj.shape == (2, 6, 6)
     unique_vals = torch.unique(adj)
     # All entries must be 0 or 1 in hard mode.
-    assert all(float(v.item()) in (0.0, 1.0) for v in unique_vals), (
-        f"hard mode output should be binary, got unique values {unique_vals}"
-    )
+    assert all(
+        float(v.item()) in (0.0, 1.0) for v in unique_vals
+    ), f"hard mode output should be binary, got unique values {unique_vals}"
 
 
 # ---------------------------------------------------------------------------
@@ -246,9 +255,9 @@ def test_gumbel_top_k_no_self_loops():
     bond = torch.randn(1, 6, 6)
     adj = gumbel(bond)
     diag = torch.diagonal(adj, dim1=1, dim2=2)
-    assert torch.allclose(diag, torch.zeros_like(diag)), (
-        f"diagonal must be zero (no self-loops), got {diag.tolist()}"
-    )
+    assert torch.allclose(
+        diag, torch.zeros_like(diag)
+    ), f"diagonal must be zero (no self-loops), got {diag.tolist()}"
 
 
 # ---------------------------------------------------------------------------
@@ -273,9 +282,9 @@ def test_gumbel_top_k_soft_mode():
     bond = torch.randn(1, 5, 5)
     adj = gumbel(bond)
     assert adj.shape == (1, 5, 5)
-    assert (adj >= 0.0).all() and (adj <= 1.0).all(), (
-        f"soft mode entries must be in [0, 1], got min={adj.min()}, max={adj.max()}"
-    )
+    assert (
+        (adj >= 0.0).all() and (adj <= 1.0).all()
+    ), f"soft mode entries must be in [0, 1], got min={adj.min()}, max={adj.max()}"
     # Diagonal still zero.
     diag = torch.diagonal(adj, dim1=1, dim2=2)
     assert torch.allclose(diag, torch.zeros_like(diag))
@@ -290,14 +299,16 @@ def test_m3_composite_decodes():
     seq = SequenceDecoderHead(hidden_dim=64, max_seq_len=16, vocab_size=42)
     gumbel = GumbelTopKBondDecoder(top_k=3)
     composite = M3CompositeDecoder(
-        seq_decoder=seq, gumbel_decoder=gumbel, pocket_dim=32,
+        seq_decoder=seq,
+        gumbel_decoder=gumbel,
+        pocket_dim=32,
     )
     z = _make_atom_features(batch=2, n_atoms=6, hidden_dim=64)
     pocket = torch.randn(2, 32)
     out = composite(z, pocket)
-    assert isinstance(out, M3CompositeOutput), (
-        f"composite must return M3CompositeOutput, got {type(out).__name__}"
-    )
+    assert isinstance(
+        out, M3CompositeOutput
+    ), f"composite must return M3CompositeOutput, got {type(out).__name__}"
     # Without an existing decoder, rework_bond_logits should be None.
     assert out.rework_bond_logits is None
     # Sequence logits and bond adjacency should be present.
@@ -330,9 +341,11 @@ def test_m3_composite_with_existing_decoder():
     Uses a stub decoder that exposes ``forward(z, pocket)`` so we don't
     pull in the heavy decoder_rework + RDKit dependency chain.
     """
+
     class _StubExistingDecoder:
         def __init__(self):
             self.calls = 0
+
         def forward(self, z, pocket):
             self.calls += 1
             # Return a 1-D tensor of "bond logits" so the composite
@@ -342,18 +355,19 @@ def test_m3_composite_with_existing_decoder():
     stub = _StubExistingDecoder()
     seq = SequenceDecoderHead(hidden_dim=64, max_seq_len=16, vocab_size=42)
     composite = M3CompositeDecoder(
-        existing_decoder=stub, seq_decoder=seq, pocket_dim=32,
+        existing_decoder=stub,
+        seq_decoder=seq,
+        pocket_dim=32,
     )
     z = _make_atom_features(batch=2, n_atoms=6, hidden_dim=64)
     pocket = torch.randn(2, 32)
     out = composite(z, pocket)
     assert stub.calls == 1, (
-        f"existing_decoder.forward should be called exactly once, "
-        f"got {stub.calls}"
+        f"existing_decoder.forward should be called exactly once, " f"got {stub.calls}"
     )
-    assert out.rework_bond_logits is not None, (
-        "rework_bond_logits must be populated when existing_decoder is given"
-    )
+    assert (
+        out.rework_bond_logits is not None
+    ), "rework_bond_logits must be populated when existing_decoder is given"
     assert out.rework_bond_logits.dim() == 1
 
 
@@ -364,7 +378,9 @@ def test_m3_composite_without_existing_decoder():
     """When existing_decoder is None, the composite runs in head-only mode."""
     seq = SequenceDecoderHead(hidden_dim=64, max_seq_len=16, vocab_size=42)
     composite = M3CompositeDecoder(
-        existing_decoder=None, seq_decoder=seq, pocket_dim=32,
+        existing_decoder=None,
+        seq_decoder=seq,
+        pocket_dim=32,
     )
     z = _make_atom_features(batch=1, n_atoms=5, hidden_dim=64)
     pocket = torch.randn(1, 32)
@@ -401,7 +417,11 @@ def test_m3_composite_gradient_flows():
     torch.manual_seed(0)
     seq = SequenceDecoderHead(hidden_dim=64, max_seq_len=16, vocab_size=42)
     composite = M3CompositeDecoder(seq_decoder=seq, pocket_dim=32)
-    z = _make_atom_features(batch=1, n_atoms=4, hidden_dim=64).clone().requires_grad_(True)
+    z = (
+        _make_atom_features(batch=1, n_atoms=4, hidden_dim=64)
+        .clone()
+        .requires_grad_(True)
+    )
     pocket = torch.randn(1, 32).clone().requires_grad_(True)
     out = composite(z, pocket)
     loss = out.sequence_logits.sum() + out.bond_adjacency.sum()

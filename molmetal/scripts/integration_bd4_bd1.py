@@ -52,7 +52,9 @@ DEFAULT_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
 # ---------------------------------------------------------------------------
 # Cache directory layout (mirrors precache_chemprop_features.py for back-compat).
 # ---------------------------------------------------------------------------
-DEFAULT_CACHE_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf_bd4_bd1_integration" / "cache"
+DEFAULT_CACHE_DIR = (
+    PROJECT_ROOT / "molmetal" / "reports" / "wf_bd4_bd1_integration" / "cache"
+)
 HASH_FN = lambda s: __import__("hashlib").md5(s.encode("utf-8")).hexdigest()  # noqa: E731
 
 D_H = 300
@@ -155,8 +157,17 @@ def build_batch_molgraph(canon_list, featurized, atom_fdim, bond_fdim, device):
 # ---------------------------------------------------------------------------
 # Training helper — chemprop v2 1 epoch (MPNN backbone + MLP head + Adam).
 # ---------------------------------------------------------------------------
-def train_one_epoch(canon_list, y_pic50, featurized, atom_fdim, bond_fdim, device,
-                    batch_size=128, hidden_dim=128, lr=1e-3):
+def train_one_epoch(
+    canon_list,
+    y_pic50,
+    featurized,
+    atom_fdim,
+    bond_fdim,
+    device,
+    batch_size=128,
+    hidden_dim=128,
+    lr=1e-3,
+):
     """Train a minimal chemprop v2 backbone (AtomMessagePassing + SumAgg + MLP)
     for 1 epoch on (canonical_smiles, pIC50) regression."""
     torch.manual_seed(0)
@@ -181,9 +192,11 @@ def train_one_epoch(canon_list, y_pic50, featurized, atom_fdim, bond_fdim, devic
     losses = []
     t0 = time.time()
     for i in range(0, n, batch_size):
-        idx = perm[i:i + batch_size]
+        idx = perm[i : i + batch_size]
         sub_canon = [canon_list[j] for j in idx]
-        sub_y = torch.tensor([y_pic50[j] for j in idx], dtype=torch.float32, device=device)
+        sub_y = torch.tensor(
+            [y_pic50[j] for j in idx], dtype=torch.float32, device=device
+        )
         bmg = build_batch_molgraph(sub_canon, featurized, atom_fdim, bond_fdim, device)
         H_v = mp(bmg)
         H = agg(H_v, bmg.batch)
@@ -204,26 +217,32 @@ def gate1_pipeline_runs(df_size: int, cache_dir: Path) -> dict:
     """End-to-end: load DrugOOD → cache features → train 1 epoch."""
     t_wall_start = time.time()
     print(f"[G1] loading DrugOOD ({df_size} subset)…", flush=True)
-    df = load_drugood(
-        subset="lbap_refined_ic50_assay",
-        split="train",
-        prefer_library=False,
-    ).head(df_size).reset_index(drop=True)
-    print(f"[G1]   loaded {len(df)} rows in {time.time() - t_wall_start:.2f}s",
-          flush=True)
+    df = (
+        load_drugood(
+            subset="lbap_refined_ic50_assay",
+            split="train",
+            prefer_library=False,
+        )
+        .head(df_size)
+        .reset_index(drop=True)
+    )
+    print(
+        f"[G1]   loaded {len(df)} rows in {time.time() - t_wall_start:.2f}s", flush=True
+    )
 
     t0 = time.time()
     print(f"[G1] canonicalizing {len(df)} SMILES…", flush=True)
     canon = [_canon_smiles(s) for s in df["smiles"].tolist()]
     df["canon"] = canon
     df = df[df["canon"].notna()].reset_index(drop=True)
-    print(f"[G1]   canonicalized {len(df)} rows in {time.time() - t0:.2f}s",
-          flush=True)
+    print(f"[G1]   canonicalized {len(df)} rows in {time.time() - t0:.2f}s", flush=True)
 
     t0 = time.time()
     canon_unique = sorted(df["canon"].unique().tolist())
-    print(f"[G1] BD-4 featurizing {len(canon_unique)} unique canonical SMILES…",
-          flush=True)
+    print(
+        f"[G1] BD-4 featurizing {len(canon_unique)} unique canonical SMILES…",
+        flush=True,
+    )
     featurizer = SimpleMoleculeMolGraphFeaturizer()
     featurized, n_skip, n_new = featurize_and_cache(
         canon_unique,
@@ -232,8 +251,10 @@ def gate1_pipeline_runs(df_size: int, cache_dir: Path) -> dict:
         n_workers=4,
     )
     featurize_wall = time.time() - t0
-    print(f"[G1]   featurized {n_new} new, {n_skip} cached in {featurize_wall:.2f}s",
-          flush=True)
+    print(
+        f"[G1]   featurized {n_new} new, {n_skip} cached in {featurize_wall:.2f}s",
+        flush=True,
+    )
 
     sample = next(iter(featurized.values()))
     atom_fdim = int(sample["V"].shape[1])
@@ -243,8 +264,11 @@ def gate1_pipeline_runs(df_size: int, cache_dir: Path) -> dict:
     t0 = time.time()
     canon_list = df["canon"].tolist()
     y_pic50 = df["pIC50"].astype(float).tolist()
-    print(f"[G1] training chemprop v2 1 epoch on {len(canon_list)} rows "
-          f"(device={device}, batch_size=128)…", flush=True)
+    print(
+        f"[G1] training chemprop v2 1 epoch on {len(canon_list)} rows "
+        f"(device={device}, batch_size=128)…",
+        flush=True,
+    )
     train_wall, mean_loss = train_one_epoch(
         canon_list,
         y_pic50,
@@ -254,8 +278,9 @@ def gate1_pipeline_runs(df_size: int, cache_dir: Path) -> dict:
         device,
         batch_size=128,
     )
-    print(f"[G1]   1 epoch wall={train_wall:.2f}s mean_loss={mean_loss:.4f}",
-          flush=True)
+    print(
+        f"[G1]   1 epoch wall={train_wall:.2f}s mean_loss={mean_loss:.4f}", flush=True
+    )
     total_wall = time.time() - t_wall_start
 
     return {
@@ -272,8 +297,7 @@ def gate1_pipeline_runs(df_size: int, cache_dir: Path) -> dict:
     }
 
 
-def gate2_cache_hit_rate(canon_list: list[str], cache_dir: Path,
-                         featurizer) -> float:
+def gate2_cache_hit_rate(canon_list: list[str], cache_dir: Path, featurizer) -> float:
     """Re-run featurize_and_cache on the same canon_list — expect ≥90% hit rate."""
     n_total = len(canon_list)
     n_skip = 0
@@ -326,8 +350,7 @@ def gate5_bd11_dryrun(py: str = DEFAULT_PY) -> float:
     representative of cache hit rate but not the full 296K load cost.
     Returns wall in minutes.
     """
-    print("[G5] BD-11 dry-run: load DrugOOD partial 5K → cache → 1 epoch …",
-          flush=True)
+    print("[G5] BD-11 dry-run: load DrugOOD partial 5K → cache → 1 epoch …", flush=True)
     cache_dir = DEFAULT_CACHE_DIR.parent / "cache_g5"
     if cache_dir.exists():
         shutil.rmtree(cache_dir)
@@ -341,14 +364,20 @@ def gate5_bd11_dryrun(py: str = DEFAULT_PY) -> float:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--py", default=DEFAULT_PY)
-    parser.add_argument("--df_size", type=int, default=5000,
-                        help="Number of DrugOOD rows for the main pipeline "
-                             "(default 5000; gate 3 budget)")
+    parser.add_argument(
+        "--df_size",
+        type=int,
+        default=5000,
+        help="Number of DrugOOD rows for the main pipeline "
+        "(default 5000; gate 3 budget)",
+    )
     parser.add_argument("--cache_dir", type=Path, default=DEFAULT_CACHE_DIR)
-    parser.add_argument("--skip_g4", action="store_true",
-                        help="Skip gate 4 (existing tests) — slow")
-    parser.add_argument("--skip_g5", action="store_true",
-                        help="Skip gate 5 (BD-11 dryrun) — slow")
+    parser.add_argument(
+        "--skip_g4", action="store_true", help="Skip gate 4 (existing tests) — slow"
+    )
+    parser.add_argument(
+        "--skip_g5", action="store_true", help="Skip gate 5 (BD-11 dryrun) — slow"
+    )
     args = parser.parse_args()
 
     report = {
@@ -387,11 +416,15 @@ def main():
 
     # G2 — re-run on same canon (should be ~100% hit)
     try:
-        df = load_drugood(
-            subset="lbap_refined_ic50_assay",
-            split="train",
-            prefer_library=False,
-        ).head(args.df_size).reset_index(drop=True)
+        df = (
+            load_drugood(
+                subset="lbap_refined_ic50_assay",
+                split="train",
+                prefer_library=False,
+            )
+            .head(args.df_size)
+            .reset_index(drop=True)
+        )
         canon_list = [_canon_smiles(s) for s in df["smiles"].tolist()]
         canon_list = [c for c in canon_list if c is not None]
         featurizer = SimpleMoleculeMolGraphFeaturizer()
@@ -430,8 +463,9 @@ def main():
             report["details"]["g5_error"] = repr(e)
             report["remaining_blockers"].append(f"G5 fail: {e}")
 
-    report["all_gates_passed"] = len(report["remaining_blockers"]) == 0 and \
-        report["gate_1_pipeline_runs"]
+    report["all_gates_passed"] = (
+        len(report["remaining_blockers"]) == 0 and report["gate_1_pipeline_runs"]
+    )
     report["honest_framing_note"] = (
         "BD-1 (drugood_loader) + BD-4 (chemprop_v2.MolGraphCache) end-to-end "
         "integration. Measured on CPU (.venv) at the explicit "

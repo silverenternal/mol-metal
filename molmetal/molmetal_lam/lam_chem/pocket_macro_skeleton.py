@@ -182,9 +182,7 @@ def scaffold_class_from_target_name(target_name: str) -> ScaffoldClass:
     The mapping is **deterministic** and matches the families declared
     in :mod:`molmetal.data.metalloprotein_targets` (lines 134-715).
     """
-    return _TARGET_NAME_TO_SCAFFOLD.get(
-        str(target_name).upper(), ScaffoldClass.UNKNOWN
-    )
+    return _TARGET_NAME_TO_SCAFFOLD.get(str(target_name).upper(), ScaffoldClass.UNKNOWN)
 
 
 # ---------------------------------------------------------------------------
@@ -222,9 +220,26 @@ N_SCAFFOLD_CLASSES: int = 12
 
 # 20 canonical amino acids (one-letter codes), sorted for determinism.
 _AA_VOCAB: Tuple[str, ...] = (
-    "A", "C", "D", "E", "F", "G", "H", "I",
-    "K", "L", "M", "N", "P", "Q", "R", "S",
-    "T", "V", "W", "Y",
+    "A",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G",
+    "H",
+    "I",
+    "K",
+    "L",
+    "M",
+    "N",
+    "P",
+    "Q",
+    "R",
+    "S",
+    "T",
+    "V",
+    "W",
+    "Y",
 )
 _AA_INDEX: Dict[str, int] = {aa: i for i, aa in enumerate(_AA_VOCAB)}
 
@@ -442,9 +457,7 @@ class PocketMacroSkeleton(nn.Module):
         )
         self.residue_embedder = ResidueEmbedder()
 
-    def encode_residues(
-        self, pocket_residues: Sequence[Any]
-    ) -> torch.Tensor:
+    def encode_residues(self, pocket_residues: Sequence[Any]) -> torch.Tensor:
         """Encode a sequence of residues into ``(n, hidden_dim)``.
 
         Accepts either :class:`warm_start.PocketResidue` instances or
@@ -563,9 +576,7 @@ def train_step(
     optimiser.zero_grad()
     _, logits = model(pocket_residues)  # (n_scaffold_classes,)
     target = torch.tensor([int(label)], dtype=torch.long)
-    loss = F.cross_entropy(
-        logits.unsqueeze(0), target, label_smoothing=label_smoothing
-    )
+    loss = F.cross_entropy(logits.unsqueeze(0), target, label_smoothing=label_smoothing)
     loss.backward()
     optimiser.step()
     return float(loss.item())

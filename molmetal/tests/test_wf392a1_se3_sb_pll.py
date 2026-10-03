@@ -50,15 +50,11 @@ def _import_wire_module():
     (mirrors the Wf-390-A3 audit-script pattern).
     """
     repo_root = _audit_repo_root()
-    script_path = (
-        repo_root / "molmetal/scripts/wf392a1_se3_sb_pll_wire.py"
-    )
+    script_path = repo_root / "molmetal/scripts/wf392a1_se3_sb_pll_wire.py"
     try:
         import importlib.util as _ilu
 
-        spec = _ilu.spec_from_file_location(
-            "wf392a1_se3_sb_pll_wire", str(script_path)
-        )
+        spec = _ilu.spec_from_file_location("wf392a1_se3_sb_pll_wire", str(script_path))
         if spec is None or spec.loader is None:
             raise ImportError("spec_from_file_location failed")
         mod = _ilu.module_from_spec(spec)
@@ -77,10 +73,14 @@ def _import_wire_module():
         env["MOLMETAL_ROOT"] = str(repo_root)
         proc = subprocess.run(
             [
-                sys.executable, str(script_path),
-                "--smoke", "--audit",
-                "--cohort-size", "4",
-                "--top-k", "10",
+                sys.executable,
+                str(script_path),
+                "--smoke",
+                "--audit",
+                "--cohort-size",
+                "4",
+                "--top-k",
+                "10",
             ],
             capture_output=True,
             text=True,
@@ -139,22 +139,17 @@ def test_pll_flag(wire_module: Dict[str, Any]) -> None:
         # The simpler check: parse the stdout summary line
         # "[wf392a1] wire-in audit: ... new_added=3 wire_in_ok=True".
         assert "new_added=3" in stdout, (
-            f"wire-in audit must report 3 NEW flags added; "
-            f"stdout={stdout!r}"
+            f"wire-in audit must report 3 NEW flags added; " f"stdout={stdout!r}"
         )
         assert "wire_in_ok=True" in stdout, (
-            f"wire-in audit must report wire_in_ok=True; "
-            f"stdout={stdout!r}"
+            f"wire-in audit must report wire_in_ok=True; " f"stdout={stdout!r}"
         )
         # Verify the JSON wire_in_result.json contains the expected fields
         # by reading the file directly.
         wire_path = (
-            _audit_repo_root()
-            / "molmetal/reports/wf392a1_pll_wire/wire_in_result.json"
+            _audit_repo_root() / "molmetal/reports/wf392a1_pll_wire/wire_in_result.json"
         )
-        assert wire_path.exists(), (
-            f"wire-in JSON not written to {wire_path}"
-        )
+        assert wire_path.exists(), f"wire-in JSON not written to {wire_path}"
         wire_payload = json.loads(wire_path.read_text())
         assert wire_payload["n_new_flags_added"] == 3
         assert wire_payload["wire_in_ok"] is True
@@ -212,8 +207,7 @@ def test_pll_feature_computation(wire_module: Dict[str, Any]) -> None:
             f"stderr={wire_module['_stderr']!r}"
         )
         smoke_path = (
-            _audit_repo_root()
-            / "molmetal/reports/wf392a1_pll_wire/smoke_result.json"
+            _audit_repo_root() / "molmetal/reports/wf392a1_pll_wire/smoke_result.json"
         )
         if not smoke_path.exists():
             pytest.skip(
@@ -247,9 +241,7 @@ def test_pll_feature_computation(wire_module: Dict[str, Any]) -> None:
 
     # Adapter / RDKit unavailable — self-skip.
     if not result.adapter_available:
-        pytest.skip(
-            f"PLL adapter unavailable: {result.error!r}"
-        )
+        pytest.skip(f"PLL adapter unavailable: {result.error!r}")
     if result.n_succeeded == 0:
         pytest.skip(
             f"PLL extraction produced 0 successful features "
@@ -257,12 +249,10 @@ def test_pll_feature_computation(wire_module: Dict[str, Any]) -> None:
             f"n_failed={result.n_failed}, error={result.error!r})"
         )
 
-    assert result.cohort_size == 4, (
-        f"cohort_size must be 4; got {result.cohort_size}"
-    )
-    assert result.top_k == default_top_k, (
-        f"top_k must equal DEFAULT_TOP_K={default_top_k}; got {result.top_k}"
-    )
+    assert result.cohort_size == 4, f"cohort_size must be 4; got {result.cohort_size}"
+    assert (
+        result.top_k == default_top_k
+    ), f"top_k must equal DEFAULT_TOP_K={default_top_k}; got {result.top_k}"
     assert result.feature_shape_ok is True, (
         f"all feature vectors must have shape ({default_top_k},); "
         f"got shapes {result.feature_shapes}"
@@ -272,15 +262,14 @@ def test_pll_feature_computation(wire_module: Dict[str, Any]) -> None:
         f"got shapes {result.feature_shapes}"
     )
     assert result.feature_not_all_zero_ok is True, (
-        "at least one molecule must produce a non-zero feature vector "
-        "(smoke sanity)"
+        "at least one molecule must produce a non-zero feature vector " "(smoke sanity)"
     )
 
     # Per-shape sanity — every succeeded feature must be exactly (top_k,).
     for shape in result.feature_shapes:
-        assert shape == (default_top_k,), (
-            f"feature shape must be ({default_top_k},); got {shape}"
-        )
+        assert shape == (
+            default_top_k,
+        ), f"feature shape must be ({default_top_k},); got {shape}"
 
     # n_atoms_per_mol populated — at least one molecule has > 1 heavy atom
     # (sanity: benzene is in the cohort).
@@ -318,12 +307,9 @@ def test_se3_sb_integration_point(wire_module: Dict[str, Any]) -> None:
             f"stderr={wire_module['_stderr']!r}"
         )
         wire_path = (
-            _audit_repo_root()
-            / "molmetal/reports/wf392a1_pll_wire/wire_in_result.json"
+            _audit_repo_root() / "molmetal/reports/wf392a1_pll_wire/wire_in_result.json"
         )
-        assert wire_path.exists(), (
-            f"wire_in_result.json not written: {wire_path}"
-        )
+        assert wire_path.exists(), f"wire_in_result.json not written: {wire_path}"
         wire_payload = json.loads(wire_path.read_text())
 
         # Trainer existence + parse_args loc + wire-in OK
@@ -348,11 +334,11 @@ def test_se3_sb_integration_point(wire_module: Dict[str, Any]) -> None:
         trainer_source = trainer_path.read_text()
         try:
             import ast as _ast
+
             _ast.parse(trainer_source)
         except SyntaxError as exc:
             pytest.fail(
-                f"SE(3) SB trainer does not AST-parse after wire-in: "
-                f"{exc!r}"
+                f"SE(3) SB trainer does not AST-parse after wire-in: " f"{exc!r}"
             )
 
         # Verify the 3 NEW flags are in the trainer only when write=True
@@ -371,15 +357,13 @@ def test_se3_sb_integration_point(wire_module: Dict[str, Any]) -> None:
 
     repo_root = _audit_repo_root()
     trainer_path = repo_root / "molmetal/scripts/train_se3sb.py"
-    assert trainer_path.exists(), (
-        f"SE(3) SB trainer not found at {trainer_path}"
-    )
+    assert trainer_path.exists(), f"SE(3) SB trainer not found at {trainer_path}"
 
     # First run — audit only, no write.
     result_1 = wire_pll_to_se3_sb_trainer(trainer_path, write=False)
-    assert result_1.trainer_found is True, (
-        f"trainer not found at {result_1.trainer_path}"
-    )
+    assert (
+        result_1.trainer_found is True
+    ), f"trainer not found at {result_1.trainer_path}"
     assert result_1.parse_args_loc > 0, (
         f"could not locate parse_args in {result_1.trainer_path}; "
         f"parse_args_loc={result_1.parse_args_loc}"
@@ -408,9 +392,9 @@ def test_se3_sb_integration_point(wire_module: Dict[str, Any]) -> None:
 
     # Second run — idempotency: must still report wire_in_ok=True.
     result_2 = wire_pll_to_se3_sb_trainer(trainer_path, write=False)
-    assert result_2.wire_in_ok is True, (
-        "second wire-in audit must also report wire_in_ok=True (idempotent)"
-    )
+    assert (
+        result_2.wire_in_ok is True
+    ), "second wire-in audit must also report wire_in_ok=True (idempotent)"
     assert result_2.n_new_flags_added == 0, (
         f"second wire-in audit must add 0 NEW flags (idempotent); "
         f"got {result_2.n_new_flags_added}"

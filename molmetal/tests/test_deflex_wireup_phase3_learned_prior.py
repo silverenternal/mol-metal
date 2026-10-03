@@ -120,10 +120,16 @@ def test_no_lift_when_flag_off(searcher_cls):
             self.rule_name = rule_name
             self.P = p
 
-    root = type("R", (), {"children": [
-        _FakeNode("cuacc", 0.10),
-        _FakeNode("spaac", 0.10),
-    ]})()
+    root = type(
+        "R",
+        (),
+        {
+            "children": [
+                _FakeNode("cuacc", 0.10),
+                _FakeNode("spaac", 0.10),
+            ]
+        },
+    )()
     if use_flag:
         # Skipped entirely
         pass

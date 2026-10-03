@@ -67,6 +67,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -85,6 +86,7 @@ from typing import Dict, List, Optional, Tuple
 # Wf-50 pre-condition: ensure MOLMETAL_DATA_DIR defaults to project-local data dir
 from pathlib import Path as _wf50_Path
 import os as _wf50_os
+
 _wf50_proj_root = _wf50_Path(__file__).resolve().parent.parent.parent
 _wf50_default_data = _wf50_proj_root / ".data" / "molmetal"
 if not _wf50_os.environ.get("MOLMETAL_DATA_DIR") and _wf50_default_data.exists():
@@ -208,15 +210,15 @@ def load_rh_synthetic_smiles(cohort_json: Path) -> List[str]:
         payload = json.load(fh)
     smis: List[str] = []
     for entry in payload.get("per_compound", []):
-        if not (entry.get("catherine_6of6_pass", False) or entry.get("is_active", False)):
+        if not (
+            entry.get("catherine_6of6_pass", False) or entry.get("is_active", False)
+        ):
             continue
         s = str(entry.get("smiles", "")).strip()
         if s:
             smis.append(s)
     if not smis:
-        raise RuntimeError(
-            f"No Catherine-6/6 PASS Rh compounds found in {cohort_json}"
-        )
+        raise RuntimeError(f"No Catherine-6/6 PASS Rh compounds found in {cohort_json}")
     return smis
 
 
@@ -328,8 +330,11 @@ def extract_per_metal_embeddings(
 
     out_embeds: Dict[str, List[torch.Tensor]] = {}
     for start in range(0, len(sampled_idx), batch_size):
-        batch_idx = sampled_idx[start:start + batch_size]
-        batch_metas = [sampled_metals[k] for k in range(start, min(start + batch_size, len(sampled_idx)))]
+        batch_idx = sampled_idx[start : start + batch_size]
+        batch_metas = [
+            sampled_metals[k]
+            for k in range(start, min(start + batch_size, len(sampled_idx)))
+        ]
         g_list = [graphs[i] for i in batch_idx]
         bd = collate_graphs(g_list)
         if bd is None:
@@ -342,7 +347,7 @@ def extract_per_metal_embeddings(
         B_ = atom_f.size(0)
         for b in range(B_):
             V = atom_f.size(1)
-            valid_edges = (bond_f[b].abs().sum(dim=-1) > 0)
+            valid_edges = bond_f[b].abs().sum(dim=-1) > 0
             E = valid_edges.sum().item()
             if E == 0 or V == 0:
                 continue
@@ -420,11 +425,15 @@ class WassersteinLOMORunner:
         self.alpha = float(alpha)
         self.seed = int(seed)
         self.device = device or torch.device(
-            "cuda:1" if torch.cuda.is_available() and torch.cuda.device_count() > 1
-            else "cuda:0" if torch.cuda.is_available()
+            "cuda:1"
+            if torch.cuda.is_available() and torch.cuda.device_count() > 1
+            else "cuda:0"
+            if torch.cuda.is_available()
             else "cpu"
         )
-        self.splitter = WassersteinLOMOSplitter(held_out_metal=held_out_metal, seed=self.seed)
+        self.splitter = WassersteinLOMOSplitter(
+            held_out_metal=held_out_metal, seed=self.seed
+        )
         self.synthetic_rh_count = int(synthetic_rh_count)
         # Wf-127 P2 — grad-norm clip (mirrors D-MPNN multitask trainer).
         self.use_l2_guard = bool(use_l2_guard)
@@ -455,7 +464,9 @@ class WassersteinLOMORunner:
         graphs_val = [graphs_all[i] for i in val_idx] if len(val_idx) else []
         graphs_test = [graphs_all[i] for i in test_idx]
         pic50_train = pic50_all[train_idx]
-        pic50_val = pic50_all[val_idx] if len(val_idx) else np.array([], dtype=np.float32)
+        pic50_val = (
+            pic50_all[val_idx] if len(val_idx) else np.array([], dtype=np.float32)
+        )
         active_train = active_all[train_idx]
         active_val = active_all[val_idx] if len(val_idx) else np.array([], dtype=int)
         pic50_test = pic50_all[test_idx]
@@ -468,6 +479,7 @@ class WassersteinLOMORunner:
         ).to(self.device)
         optimizer = torch.optim.Adam(model.parameters(), lr=self.lr)
         from molmetal.baselines.dmpnn_multitask import MultiTaskLoss
+
         criterion = MultiTaskLoss(alpha=self.alpha)
 
         best_val_auc = 0.0
@@ -504,12 +516,13 @@ class WassersteinLOMORunner:
             total_reg = 0.0
             n_batches = 0
             for start in range(0, len(indices), self.batch_size):
-                batch_idx = indices[start:start + self.batch_size]
+                batch_idx = indices[start : start + self.batch_size]
                 batch_graphs = [graphs_train[i] for i in batch_idx]
                 batch_pic50 = pic50_train[batch_idx]
                 batch_active = active_train[batch_idx]
                 valid = [
-                    (g, p, a) for g, p, a in zip(batch_graphs, batch_pic50, batch_active)
+                    (g, p, a)
+                    for g, p, a in zip(batch_graphs, batch_pic50, batch_active)
                     if g is not None and not (isinstance(p, float) and np.isnan(p))
                 ]
                 if not valid:
@@ -530,7 +543,9 @@ class WassersteinLOMORunner:
 
                 optimizer.zero_grad()
                 pic50_pred, active_logits = model(atom_f, bond_f, e_src, e_dst)
-                loss, lc, lr_ = criterion(pic50_pred, active_logits, y_pic50_t, y_active_t)
+                loss, lc, lr_ = criterion(
+                    pic50_pred, active_logits, y_pic50_t, y_active_t
+                )
                 if w2_loss_t is not None:
                     # Add the epoch-level W₂ penalty (computed once per
                     # epoch above) to every batch — equivalent to a
@@ -558,8 +573,12 @@ class WassersteinLOMORunner:
             # ---- validation ----
             if len(graphs_val) >= 2:
                 _, val_score, val_pic50_pred = predict_mt(
-                    model, graphs_val, pic50_val, active_val,
-                    batch_size=self.batch_size, device=self.device,
+                    model,
+                    graphs_val,
+                    pic50_val,
+                    active_val,
+                    batch_size=self.batch_size,
+                    device=self.device,
                 )
                 vm = compute_metrics(active_val, val_score)
                 val_auc = float(vm["roc_auc"])
@@ -570,12 +589,17 @@ class WassersteinLOMORunner:
             # Use the embeddings extracted at epoch start (when W₂ was
             # injected) to record the W₂ history — this avoids the
             # double cost of extracting again at epoch end.
-            if self.wasserstein_weight > 0 and (epoch % 5 == 0 or epoch == self.epochs - 1):
+            if self.wasserstein_weight > 0 and (
+                epoch % 5 == 0 or epoch == self.epochs - 1
+            ):
                 # Cheap re-extraction on a smaller subset keeps the
                 # cost bounded while still capturing the decay trend.
                 train_embeds = extract_per_metal_embeddings(
-                    model, smiles_all[train_idx], metals_all[train_idx],
-                    self.device, max_per_metal=80,
+                    model,
+                    smiles_all[train_idx],
+                    metals_all[train_idx],
+                    self.device,
+                    max_per_metal=80,
                 )
                 if len(train_embeds) >= 2:
                     with torch.no_grad():
@@ -592,7 +616,12 @@ class WassersteinLOMORunner:
                 logger.info(
                     "fold=%s seed=%d epoch=%d loss=%.4f val_auc=%.4f w2=%.4f "
                     "elapsed=%.1fs",
-                    self.held_out_metal, self.seed, epoch, avg_loss, val_auc, w2_val,
+                    self.held_out_metal,
+                    self.seed,
+                    epoch,
+                    avg_loss,
+                    val_auc,
+                    w2_val,
                     time.time() - t0,
                 )
 
@@ -605,8 +634,12 @@ class WassersteinLOMORunner:
 
         # ---- final test eval ----
         _, test_score, test_pic50_pred = predict_mt(
-            model, graphs_test, pic50_test, active_test,
-            batch_size=self.batch_size, device=self.device,
+            model,
+            graphs_test,
+            pic50_test,
+            active_test,
+            batch_size=self.batch_size,
+            device=self.device,
         )
         # Wf-127 P3 — value-space clip on the predicted pIC50 distribution.
         # The classification score (``test_score``) is a sigmoid over the
@@ -626,21 +659,23 @@ class WassersteinLOMORunner:
 
         # ---- final per-metal W₂ snapshot ----
         train_embeds = extract_per_metal_embeddings(
-            model, smiles_all[train_idx], metals_all[train_idx],
-            self.device, max_per_metal=80,
+            model,
+            smiles_all[train_idx],
+            metals_all[train_idx],
+            self.device,
+            max_per_metal=80,
         )
         per_metal_w2: Dict[str, float] = {}
         if len(train_embeds) >= 2:
             metals_present = sorted(train_embeds.keys())
             for i, m_a in enumerate(metals_present):
-                for m_b in metals_present[i + 1:]:
+                for m_b in metals_present[i + 1 :]:
                     with torch.no_grad():
-                        w2 = (
-                            wasserstein_transfer_loss(
-                                {m_a: train_embeds[m_a], m_b: train_embeds[m_b]},
-                                n_mc=self.n_mc, seed=self.seed,
-                            ).item()
-                        )
+                        w2 = wasserstein_transfer_loss(
+                            {m_a: train_embeds[m_a], m_b: train_embeds[m_b]},
+                            n_mc=self.n_mc,
+                            seed=self.seed,
+                        ).item()
                     per_metal_w2[f"{m_a}-{m_b}"] = float(w2)
 
         return WassersteinLOMOResult(
@@ -682,12 +717,14 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     # choices=MANDATORY per FIX 2 (Wf-436 task brief); wrapper at
     # `scripts/launch_wf131_p3_pt_4cells.sh` uses this flag for per-cell
     # output path markers. Default=None preserves Wf-125 P2 backward-compat.
-    p.add_argument("--cell-line",
-                   choices=["MCF-7", "A549", "A2780", "A2780cis"],
-                   default=None,
-                   help="Wf-131 P3: restrict to a single Rusanov 2025 §1.2 "
-                        "PlatinAI 4-cell-line (MCF-7 / A549 / A2780 / A2780cis). "
-                        "Default=None = no per-cell restriction.")
+    p.add_argument(
+        "--cell-line",
+        choices=["MCF-7", "A549", "A2780", "A2780cis"],
+        default=None,
+        help="Wf-131 P3: restrict to a single Rusanov 2025 §1.2 "
+        "PlatinAI 4-cell-line (MCF-7 / A549 / A2780 / A2780cis). "
+        "Default=None = no per-cell restriction.",
+    )
     p.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2])
     p.add_argument("--epochs", type=int, default=30)
     p.add_argument("--batch-size", type=int, default=MT_BATCH_SIZE)
@@ -695,49 +732,103 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p.add_argument("--hidden", type=int, default=MT_HIDDEN)
     p.add_argument("--depth", type=int, default=MT_DEPTH)
     p.add_argument("--alpha", type=float, default=MT_ALPHA)
-    p.add_argument("--wasserstein-weight", type=float, default=0.05,
-                   help="W₂ regularisation strength (default 0.05).")
-    p.add_argument("--rh-oversample", type=int, default=500,
-                   help="Number of synthetic Rh compounds to append when Rh is held-out.")
-    p.add_argument("--rh-cohort-json", type=str, default=str(DEFAULT_RH_COHORT_JSON),
-                   help="Path to Wf-125 P1 synthetic_rh_cohort.json.")
-    p.add_argument("--csv", type=str, default=str(DEFAULT_LOMO_CSV),
-                   help="Path to the 5-metal LOMO CSV.")
-    p.add_argument("--out-dir", type=str,
-                   default="molmetal/reports/wf131_p3_lomo_full",
-                   help="Output directory for per-seed JSON + synthesis.md.")
-    p.add_argument("--out-metric", type=str,
-                   default=str(METRICS_DIR / "metal_lomo_auc_wasserstein.json"),
-                   help="Aggregate metrics JSON path.")
-    p.add_argument("--quick", action="store_true",
-                   help="Smoke mode: subsample to 1000 rows for a fast CPU run.")
-    p.add_argument("--device", type=str, default=None,
-                   help="Explicit device (e.g. cuda:1). Default: auto.")
-    p.add_argument("--n-mc", type=int, default=32,
-                   help="Number of random projections for sliced-W₂ (default 32 — cheap).")
+    p.add_argument(
+        "--wasserstein-weight",
+        type=float,
+        default=0.05,
+        help="W₂ regularisation strength (default 0.05).",
+    )
+    p.add_argument(
+        "--rh-oversample",
+        type=int,
+        default=500,
+        help="Number of synthetic Rh compounds to append when Rh is held-out.",
+    )
+    p.add_argument(
+        "--rh-cohort-json",
+        type=str,
+        default=str(DEFAULT_RH_COHORT_JSON),
+        help="Path to Wf-125 P1 synthetic_rh_cohort.json.",
+    )
+    p.add_argument(
+        "--csv",
+        type=str,
+        default=str(DEFAULT_LOMO_CSV),
+        help="Path to the 5-metal LOMO CSV.",
+    )
+    p.add_argument(
+        "--out-dir",
+        type=str,
+        default="molmetal/reports/wf131_p3_lomo_full",
+        help="Output directory for per-seed JSON + synthesis.md.",
+    )
+    p.add_argument(
+        "--out-metric",
+        type=str,
+        default=str(METRICS_DIR / "metal_lomo_auc_wasserstein.json"),
+        help="Aggregate metrics JSON path.",
+    )
+    p.add_argument(
+        "--quick",
+        action="store_true",
+        help="Smoke mode: subsample to 1000 rows for a fast CPU run.",
+    )
+    p.add_argument(
+        "--device",
+        type=str,
+        default=None,
+        help="Explicit device (e.g. cuda:1). Default: auto.",
+    )
+    p.add_argument(
+        "--n-mc",
+        type=int,
+        default=32,
+        help="Number of random projections for sliced-W₂ (default 32 — cheap).",
+    )
     # Wf-127 P2 grad-norm guard (D-MPNN analogue of the Hilbert dual
     # shrinkage guard).  Off by default; engages when ``--use-l2-guard``.
-    p.add_argument("--use-l2-guard", dest="use_l2_guard", action="store_true",
-                   help="Wf-127 P2: clip grad-norm to L2_GUARD_MAX_NORM each step "
-                        "(default 5.0). Off by default — backward-compat with Wf-125 P2.")
-    p.add_argument("--l2-guard-max-norm", type=float, default=L2_GUARD_MAX_NORM,
-                   help=f"Grad-norm clip value when --use-l2-guard is set "
-                        f"(default {L2_GUARD_MAX_NORM}).")
+    p.add_argument(
+        "--use-l2-guard",
+        dest="use_l2_guard",
+        action="store_true",
+        help="Wf-127 P2: clip grad-norm to L2_GUARD_MAX_NORM each step "
+        "(default 5.0). Off by default — backward-compat with Wf-125 P2.",
+    )
+    p.add_argument(
+        "--l2-guard-max-norm",
+        type=float,
+        default=L2_GUARD_MAX_NORM,
+        help=f"Grad-norm clip value when --use-l2-guard is set "
+        f"(default {L2_GUARD_MAX_NORM}).",
+    )
     # Wf-127 P3 value-space clip on predicted pIC50 at test time.
-    p.add_argument("--use-astr-scale-guard", dest="use_astr_scale_guard",
-                   action="store_true",
-                   help="Wf-127 P3: clip predicted pIC50 to DEFAULT_ASTSR_SCALE_CLIP "
-                        f"({DEFAULT_ASTSR_SCALE_CLIP}) at test time. Off by default.")
-    p.add_argument("--astr-scale-clip-min", type=float, default=_ASTR_SCALE_CLIP_MIN,
-                   help=f"Lower bound of ASTSR scale clip "
-                        f"(default {_ASTR_SCALE_CLIP_MIN} = DEFAULT_ASTSR_SCALE_CLIP[0]).")
-    p.add_argument("--astr-scale-clip-max", type=float, default=_ASTR_SCALE_CLIP_MAX,
-                   help=f"Upper bound of ASTSR scale clip "
-                        f"(default {_ASTR_SCALE_CLIP_MAX} = DEFAULT_ASTSR_SCALE_CLIP[1]).")
+    p.add_argument(
+        "--use-astr-scale-guard",
+        dest="use_astr_scale_guard",
+        action="store_true",
+        help="Wf-127 P3: clip predicted pIC50 to DEFAULT_ASTSR_SCALE_CLIP "
+        f"({DEFAULT_ASTSR_SCALE_CLIP}) at test time. Off by default.",
+    )
+    p.add_argument(
+        "--astr-scale-clip-min",
+        type=float,
+        default=_ASTR_SCALE_CLIP_MIN,
+        help=f"Lower bound of ASTSR scale clip "
+        f"(default {_ASTR_SCALE_CLIP_MIN} = DEFAULT_ASTSR_SCALE_CLIP[0]).",
+    )
+    p.add_argument(
+        "--astr-scale-clip-max",
+        type=float,
+        default=_ASTR_SCALE_CLIP_MAX,
+        help=f"Upper bound of ASTSR scale clip "
+        f"(default {_ASTR_SCALE_CLIP_MAX} = DEFAULT_ASTSR_SCALE_CLIP[1]).",
+    )
     return p.parse_args(argv)
 
 
-def _build_dataset(args: argparse.Namespace, rh_over: int) -> Tuple[MetalCytotoxDataset, int]:
+def _build_dataset(
+    args: argparse.Namespace, rh_over: int
+) -> Tuple[MetalCytotoxDataset, int]:
     csv_path = Path(args.csv)
     if not csv_path.exists():
         raise FileNotFoundError(f"5-metal LOMO CSV not found at {csv_path}")
@@ -798,7 +889,11 @@ def _run_one(
         device = torch.device(args.device)
     logger.info(
         "=== fold held_out=%s seed=%d  epochs=%d  wass_w=%.4f  synth_rh=%d  device=%s ===",
-        metal, seed, args.epochs, args.wasserstein_weight, n_synthetic_rh,
+        metal,
+        seed,
+        args.epochs,
+        args.wasserstein_weight,
+        n_synthetic_rh,
         str(device) if device else "auto",
     )
     runner = WassersteinLOMORunner(
@@ -819,8 +914,12 @@ def _run_one(
         use_l2_guard=bool(getattr(args, "use_l2_guard", False)),
         use_astr_scale_guard=bool(getattr(args, "use_astr_scale_guard", False)),
         l2_guard_max_norm=float(getattr(args, "l2_guard_max_norm", L2_GUARD_MAX_NORM)),
-        astr_scale_clip_min=float(getattr(args, "astr_scale_clip_min", _ASTR_SCALE_CLIP_MIN)),
-        astr_scale_clip_max=float(getattr(args, "astr_scale_clip_max", _ASTR_SCALE_CLIP_MAX)),
+        astr_scale_clip_min=float(
+            getattr(args, "astr_scale_clip_min", _ASTR_SCALE_CLIP_MIN)
+        ),
+        astr_scale_clip_max=float(
+            getattr(args, "astr_scale_clip_max", _ASTR_SCALE_CLIP_MAX)
+        ),
     )
     t0 = time.time()
     res = runner.run(verbose=True)
@@ -922,7 +1021,9 @@ def _write_synthesis(
         "4. **Wf-127 P2 L2 grad-norm guard** (engaged by ``--use-l2-guard``) —",
         "   clips grad-norm to ``≤ {l2_max:.1f}`` each step. Belt-and-braces",
         "   against the W₂ penalty blowing up the optimisation; off by",
-        "   default to preserve Wf-125 P2 ship behaviour.".format(l2_max=args.l2_guard_max_norm),
+        "   default to preserve Wf-125 P2 ship behaviour.".format(
+            l2_max=args.l2_guard_max_norm
+        ),
         "5. **Wf-127 P3 ASTSR scale clip** (engaged by ``--use-astr-scale-guard``)",
         "   — value-space clip on predicted pIC50 at test time to",
         f"   ``[{args.astr_scale_clip_min}, {args.astr_scale_clip_max}]``.",
@@ -959,7 +1060,9 @@ def _write_synthesis(
     ]
     for d in per_run:
         if "test_auc" not in d:
-            lines.append(f"| {d['fold']} | {d['seed']} | ERROR {d.get('error','?')} | — | — | — | — | — |")
+            lines.append(
+                f"| {d['fold']} | {d['seed']} | ERROR {d.get('error','?')} | — | — | — | — | — |"
+            )
             continue
         lines.append(
             f"| {d['fold']} | {d['seed']} | {d['n_train']} | {d['n_test']} | "
@@ -1064,9 +1167,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             ],
         }
         # Mean over the seeds that actually ran.
-        _aucs = [
-            float(d["test_auc"]) for d in per_metal_runs[metal] if "test_auc" in d
-        ]
+        _aucs = [float(d["test_auc"]) for d in per_metal_runs[metal] if "test_auc" in d]
         if _aucs:
             per_metal_payload["test_auc_mean"] = float(statistics.mean(_aucs))
             per_metal_payload["test_auc_std"] = (
@@ -1118,7 +1219,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         "verdict": "PASS" if gate_pass else "BELOW_GATE",
         "target_rh_auc": TARGET_RH_AUC,
         "target_overall_auc": TARGET_OVERALL_AUC,
-        "rh_target_hit": bool(agg["per_fold_auc_mean"].get("Rh", float("nan")) >= TARGET_RH_AUC),
+        "rh_target_hit": bool(
+            agg["per_fold_auc_mean"].get("Rh", float("nan")) >= TARGET_RH_AUC
+        ),
         "overall_target_hit": bool(auc_mean >= TARGET_OVERALL_AUC),
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
@@ -1128,10 +1231,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     logger.info("wrote %s", metric_path)
 
     full_payload = {**payload, "per_run": per_run, "aggregate": agg}
-    (out_dir / "aggregate.json").write_text(json.dumps(full_payload, indent=2, default=str))
+    (out_dir / "aggregate.json").write_text(
+        json.dumps(full_payload, indent=2, default=str)
+    )
     logger.info(
         "AGGREGATE: mean LOMO AUC = %.4f ± %.4f  (n=%d, gate ≥ %.2f)  verdict=%s",
-        auc_mean, auc_std, agg["n_runs"], GATE_AUC,
+        auc_mean,
+        auc_std,
+        agg["n_runs"],
+        GATE_AUC,
         "PASS" if gate_pass else "BELOW_GATE",
     )
 

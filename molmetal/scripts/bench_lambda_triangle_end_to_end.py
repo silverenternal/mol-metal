@@ -82,6 +82,7 @@ Lit anchors
 * Wf-37 L8 (TODO-83 §4.4) — base triangle closure.
 * TODO-83 §4.4 + §6 — R20 Lambda algorithm enhancement plan.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -192,8 +193,7 @@ def _load_platinai_5k(csv_path: Path) -> List[Dict[str, str]]:
     """
     if not csv_path.exists():
         raise FileNotFoundError(
-            f"PlatinAI CSV not found: {csv_path} "
-            f"(repo root = {_REPO_ROOT})"
+            f"PlatinAI CSV not found: {csv_path} " f"(repo root = {_REPO_ROOT})"
         )
     rows: List[Dict[str, str]] = []
     with open(csv_path, "r", encoding="utf-8") as fh:
@@ -381,8 +381,7 @@ def _run_one_seed(
                     "astsr": {
                         "name": "astsr",
                         "wall_s": float(astsr_v.wall_s),
-                        "r2": float(astsr_v.r2)
-                        if math.isfinite(astsr_v.r2) else 0.0,
+                        "r2": float(astsr_v.r2) if math.isfinite(astsr_v.r2) else 0.0,
                         "success": astsr_ok,
                         "metadata": dict(astsr_v.metadata),
                     },
@@ -390,7 +389,8 @@ def _run_one_seed(
                         "name": "hilbert",
                         "wall_s": float(hilbert_v.wall_s),
                         "r2": float(hilbert_v.r2)
-                        if math.isfinite(hilbert_v.r2) else 0.0,
+                        if math.isfinite(hilbert_v.r2)
+                        else 0.0,
                         "success": hilbert_ok,
                         "metadata": dict(hilbert_v.metadata),
                     },
@@ -398,9 +398,7 @@ def _run_one_seed(
                         "name": "mcts",
                         "wall_s": float(mcts_v.wall_s),
                         "n_actions": int(mcts_v.n_actions),
-                        "variance_reduction": float(
-                            mcts_v.variance_reduction
-                        ),
+                        "variance_reduction": float(mcts_v.variance_reduction),
                         "success": mcts_ok,
                         "metadata": dict(mcts_v.metadata),
                     },
@@ -426,28 +424,29 @@ def _run_one_seed(
         "n_rounds": int(n_rounds),
         "total_wall_s": float(total_wall),
         "per_round": per_round,
-        "mean_astsr_wall_s": float(np.mean(astsr_walls))
-        if astsr_walls else 0.0,
-        "mean_hilbert_wall_s": float(np.mean(hilbert_walls))
-        if hilbert_walls else 0.0,
-        "mean_mcts_wall_s": float(np.mean(mcts_walls))
-        if mcts_walls else 0.0,
-        "astsr_success_rate": float(np.mean(astsr_success))
-        if astsr_success else 0.0,
+        "mean_astsr_wall_s": float(np.mean(astsr_walls)) if astsr_walls else 0.0,
+        "mean_hilbert_wall_s": float(np.mean(hilbert_walls)) if hilbert_walls else 0.0,
+        "mean_mcts_wall_s": float(np.mean(mcts_walls)) if mcts_walls else 0.0,
+        "astsr_success_rate": float(np.mean(astsr_success)) if astsr_success else 0.0,
         "hilbert_success_rate": float(np.mean(hilbert_success))
-        if hilbert_success else 0.0,
-        "mcts_success_rate": float(np.mean(mcts_success))
-        if mcts_success else 0.0,
-        "mean_hilbert_r2": float(np.mean(
-            [r["vertices"]["hilbert"]["r2"] for r in per_round]
-        )) if per_round else 0.0,
-        "mean_evolutionary_r2": float(np.mean(
-            [r["vertices"]["astsr"]["r2"] for r in per_round]
-        )) if per_round else 0.0,
-        "mean_variance_reduction": float(np.mean(
-            [r["vertices"]["mcts"]["variance_reduction"]
-             for r in per_round]
-        )) if per_round else 0.0,
+        if hilbert_success
+        else 0.0,
+        "mcts_success_rate": float(np.mean(mcts_success)) if mcts_success else 0.0,
+        "mean_hilbert_r2": float(
+            np.mean([r["vertices"]["hilbert"]["r2"] for r in per_round])
+        )
+        if per_round
+        else 0.0,
+        "mean_evolutionary_r2": float(
+            np.mean([r["vertices"]["astsr"]["r2"] for r in per_round])
+        )
+        if per_round
+        else 0.0,
+        "mean_variance_reduction": float(
+            np.mean([r["vertices"]["mcts"]["variance_reduction"] for r in per_round])
+        )
+        if per_round
+        else 0.0,
     }
 
 
@@ -556,41 +555,48 @@ def write_report(
         csv_path = out / "per_seed.csv"
         with open(csv_path, "w", encoding="utf-8", newline="") as fh:
             w = csv.writer(fh)
-            w.writerow([
-                "seed", "n_trajectories", "n_rounds",
-                "total_wall_s",
-                "mean_astsr_wall_s", "mean_hilbert_wall_s",
-                "mean_mcts_wall_s",
-                "astsr_success_rate", "hilbert_success_rate",
-                "mcts_success_rate",
-                "mean_hilbert_r2", "mean_evolutionary_r2",
-                "mean_variance_reduction",
-            ])
+            w.writerow(
+                [
+                    "seed",
+                    "n_trajectories",
+                    "n_rounds",
+                    "total_wall_s",
+                    "mean_astsr_wall_s",
+                    "mean_hilbert_wall_s",
+                    "mean_mcts_wall_s",
+                    "astsr_success_rate",
+                    "hilbert_success_rate",
+                    "mcts_success_rate",
+                    "mean_hilbert_r2",
+                    "mean_evolutionary_r2",
+                    "mean_variance_reduction",
+                ]
+            )
             for r in report.get("per_seed", []):
-                w.writerow([
-                    r.get("seed", -1),
-                    r.get("n_trajectories", -1),
-                    r.get("n_rounds", -1),
-                    f"{r.get('total_wall_s', 0.0):.4f}",
-                    f"{r.get('mean_astsr_wall_s', 0.0):.4f}",
-                    f"{r.get('mean_hilbert_wall_s', 0.0):.4f}",
-                    f"{r.get('mean_mcts_wall_s', 0.0):.4f}",
-                    f"{r.get('astsr_success_rate', 0.0):.4f}",
-                    f"{r.get('hilbert_success_rate', 0.0):.4f}",
-                    f"{r.get('mcts_success_rate', 0.0):.4f}",
-                    f"{r.get('mean_hilbert_r2', 0.0):.4f}",
-                    f"{r.get('mean_evolutionary_r2', 0.0):.4f}",
-                    f"{r.get('mean_variance_reduction', 0.0):.4f}",
-                ])
+                w.writerow(
+                    [
+                        r.get("seed", -1),
+                        r.get("n_trajectories", -1),
+                        r.get("n_rounds", -1),
+                        f"{r.get('total_wall_s', 0.0):.4f}",
+                        f"{r.get('mean_astsr_wall_s', 0.0):.4f}",
+                        f"{r.get('mean_hilbert_wall_s', 0.0):.4f}",
+                        f"{r.get('mean_mcts_wall_s', 0.0):.4f}",
+                        f"{r.get('astsr_success_rate', 0.0):.4f}",
+                        f"{r.get('hilbert_success_rate', 0.0):.4f}",
+                        f"{r.get('mcts_success_rate', 0.0):.4f}",
+                        f"{r.get('mean_hilbert_r2', 0.0):.4f}",
+                        f"{r.get('mean_evolutionary_r2', 0.0):.4f}",
+                        f"{r.get('mean_variance_reduction', 0.0):.4f}",
+                    ]
+                )
 
     md_path: Optional[Path] = None
     if also_markdown:
         md_path = out / "triangle_bench.md"
         summary = report.get("summary", {}) or {}
         with open(md_path, "w", encoding="utf-8") as fh:
-            fh.write(
-                "# Wf-39 L4 triangle closure end-to-end benchmark\n\n"
-            )
+            fh.write("# Wf-39 L4 triangle closure end-to-end benchmark\n\n")
             fh.write(
                 f"n_seeds = {summary.get('n_seeds', '?')}, "
                 f"n_trajectories = {summary.get('n_trajectories', '?')}, "
@@ -698,50 +704,63 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         ),
     )
     parser.add_argument(
-        "--platinai-csv", type=str, default=DEFAULT_PLATINAI_CSV,
+        "--platinai-csv",
+        type=str,
+        default=DEFAULT_PLATINAI_CSV,
         help="PlatinAI CSV path (default: " + DEFAULT_PLATINAI_CSV + ").",
     )
     parser.add_argument(
-        "--n-trajectories", type=int, default=DEFAULT_N_TRAJECTORIES,
+        "--n-trajectories",
+        type=int,
+        default=DEFAULT_N_TRAJECTORIES,
         help=f"Rows per seed (default {DEFAULT_N_TRAJECTORIES}).",
     )
     parser.add_argument(
-        "--n-rounds", type=int, default=DEFAULT_N_ROUNDS,
+        "--n-rounds",
+        type=int,
+        default=DEFAULT_N_ROUNDS,
         help=f"Closure rounds per seed (default {DEFAULT_N_ROUNDS}).",
     )
     parser.add_argument(
-        "--seeds", type=int, nargs="+", default=list(DEFAULT_SEEDS),
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=list(DEFAULT_SEEDS),
         help=f"RNG seeds (default {list(DEFAULT_SEEDS)}).",
     )
     parser.add_argument(
-        "--n-arms", type=int, default=DEFAULT_N_ARMS,
+        "--n-arms",
+        type=int,
+        default=DEFAULT_N_ARMS,
         help=f"MCTS arm count (default {DEFAULT_N_ARMS}).",
     )
     parser.add_argument(
-        "--hilbert-iters", type=int, default=DEFAULT_HILBERT_ITERS,
-        help=f"Hilbert iterations per round "
-             f"(default {DEFAULT_HILBERT_ITERS}).",
+        "--hilbert-iters",
+        type=int,
+        default=DEFAULT_HILBERT_ITERS,
+        help=f"Hilbert iterations per round " f"(default {DEFAULT_HILBERT_ITERS}).",
     )
     parser.add_argument(
-        "--out-dir", type=str, default=DEFAULT_OUT_DIR,
+        "--out-dir",
+        type=str,
+        default=DEFAULT_OUT_DIR,
         help=f"Output dir (default {DEFAULT_OUT_DIR}).",
     )
     parser.add_argument(
-        "--smoke", action="store_true",
+        "--smoke",
+        action="store_true",
         help="Run the canonical small smoke and exit with 0/1.",
     )
     parser.add_argument(
-        "--quiet", action="store_true",
+        "--quiet",
+        action="store_true",
         help="Suppress per-seed progress output.",
     )
     args = parser.parse_args(argv)
 
     if args.smoke:
         ok = smoke_run(platinai_csv=args.platinai_csv)
-        print(
-            "Wf-39 L4 triangle e2e: smoke "
-            f"{'PASS' if ok else 'FAIL'}"
-        )
+        print("Wf-39 L4 triangle e2e: smoke " f"{'PASS' if ok else 'FAIL'}")
         return 0 if ok else 1
 
     report = build_report(

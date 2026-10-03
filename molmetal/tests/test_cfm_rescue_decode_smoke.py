@@ -33,6 +33,7 @@ if str(PROJECT_ROOT) not in sys.path:
 def test_run_decode_smoke_is_importable():
     """``run_decode_smoke`` is importable from r10_cfg_real_crossdocked."""
     from molmetal.scripts.r10_cfg_real_crossdocked import run_decode_smoke
+
     assert callable(run_decode_smoke), "run_decode_smoke must be callable"
 
 
@@ -58,12 +59,14 @@ def test_run_decode_smoke_returns_correct_types():
     g = torch.Generator().manual_seed(1)
     pcoords = torch.randn(8, 3, generator=g) * 2.0
     pocket = Pocket(
-        pdb_id="smoke_pocket", coords=pcoords,
+        pdb_id="smoke_pocket",
+        coords=pcoords,
         atom_types=torch.randint(1, 18, (8,), generator=g),
         residue_ids=torch.zeros(8, dtype=torch.long),
         chain_ids=torch.zeros(8, dtype=torch.long),
         mask=torch.ones(8, dtype=torch.bool),
-        center=pcoords.mean(0), radius=6.0,
+        center=pcoords.mean(0),
+        radius=6.0,
     )
 
     # Patch adapter.generate to return a controllable list of Molecules
@@ -73,16 +76,20 @@ def test_run_decode_smoke_returns_correct_types():
         # Return n_samples mols; first half have bonds, second half don't
         mols = []
         for i in range(cfg.n_samples):
-            has_bonds = (i < cfg.n_samples // 2)
-            bonds = torch.tensor([[0, 0], [1, 2]], dtype=torch.long) if has_bonds else None
+            has_bonds = i < cfg.n_samples // 2
+            bonds = (
+                torch.tensor([[0, 0], [1, 2]], dtype=torch.long) if has_bonds else None
+            )
             bond_types = torch.tensor([1, 1], dtype=torch.long) if has_bonds else None
-            mols.append(Molecule(
-                coords=torch.randn(8, 3) * 0.5,
-                atom_types=torch.randint(1, 10, (8,)),
-                bonds=bonds,
-                bond_types=bond_types,
-                formal_charges=torch.zeros(8, dtype=torch.long),
-            ))
+            mols.append(
+                Molecule(
+                    coords=torch.randn(8, 3) * 0.5,
+                    atom_types=torch.randint(1, 10, (8,)),
+                    bonds=bonds,
+                    bond_types=bond_types,
+                    formal_charges=torch.zeros(8, dtype=torch.long),
+                )
+            )
         return mols
 
     adapter.generate = fake_generate
@@ -137,7 +144,9 @@ def test_decode_smoke_every_default_disabled():
                     if isinstance(kw.value, ast.Constant):
                         default = kw.value.value
             break
-    assert default == 0, f"--decode-smoke-every default must be 0 (disabled), got {default}"
+    assert (
+        default == 0
+    ), f"--decode-smoke-every default must be 0 (disabled), got {default}"
 
 
 # ---------------------------------------------------------------------------
@@ -161,12 +170,14 @@ def test_200_step_decode_smoke_produces_finite_count():
     g = torch.Generator().manual_seed(2)
     pcoords = torch.randn(8, 3, generator=g) * 2.0
     pocket = Pocket(
-        pdb_id="smoke2", coords=pcoords,
+        pdb_id="smoke2",
+        coords=pcoords,
         atom_types=torch.randint(1, 18, (8,), generator=g),
         residue_ids=torch.zeros(8, dtype=torch.long),
         chain_ids=torch.zeros(8, dtype=torch.long),
         mask=torch.ones(8, dtype=torch.bool),
-        center=pcoords.mean(0), radius=6.0,
+        center=pcoords.mean(0),
+        radius=6.0,
     )
     n_decoded, mols = run_decode_smoke(adapter, pocket, n_samples=8, n_steps=200)
     assert isinstance(n_decoded, int)

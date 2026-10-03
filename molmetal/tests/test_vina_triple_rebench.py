@@ -49,6 +49,7 @@ def bench_mod():
     if scripts_dir not in sys.path:
         sys.path.insert(0, scripts_dir)
     import bench_vina_triple_rebench as mod  # type: ignore[import-not-found]
+
     return mod
 
 
@@ -75,9 +76,12 @@ def test_cli_overrides(bench_mod):
 
 def test_dry_run_prints_plan(bench_mod, tmp_path: Path, capsys):
     ns_overrides = [
-        "--pockets", "830c",
-        "--seeds", "0",
-        "--out-dir", str(tmp_path),
+        "--pockets",
+        "830c",
+        "--seeds",
+        "0",
+        "--out-dir",
+        str(tmp_path),
         "--dry-run",
     ]
     rc = bench_mod.main(ns_overrides)
@@ -103,15 +107,19 @@ def test_binary_detection_no_env(monkeypatch, bench_mod, tmp_path: Path):
     # assert MISSING_DEP semantics we must hide that path. The cleanest way
     # without rewriting production code is to override ``Path.is_file`` for
     # the exact project-wrapper path only.
-    project_root = bench_mod.PROJECT_ROOT if hasattr(bench_mod, "PROJECT_ROOT") else (
-        Path(bench_mod.__file__).resolve().parents[2]
+    project_root = (
+        bench_mod.PROJECT_ROOT
+        if hasattr(bench_mod, "PROJECT_ROOT")
+        else (Path(bench_mod.__file__).resolve().parents[2])
     )
     wrapper_path = project_root / "molmetal" / "bin" / "vina"
     orig_is_file = Path.is_file
+
     def patched_is_file(self):
         if str(self) == str(wrapper_path):
             return False
         return orig_is_file(self)
+
     monkeypatch.setattr("pathlib.Path.is_file", patched_is_file)
 
     status = bench_mod._detect_vina_binary()
@@ -140,15 +148,19 @@ def test_binary_detection_with_env(monkeypatch, tmp_path: Path, bench_mod):
 def test_binary_detection_env_missing_file(monkeypatch, tmp_path: Path, bench_mod):
     monkeypatch.setenv("MOLMETAL_VINA_BIN", str(tmp_path / "nope"))
     # Wf-84 P2 added project-wrapper auto-detect — hide it for this test too
-    project_root = bench_mod.PROJECT_ROOT if hasattr(bench_mod, "PROJECT_ROOT") else (
-        Path(bench_mod.__file__).resolve().parents[2]
+    project_root = (
+        bench_mod.PROJECT_ROOT
+        if hasattr(bench_mod, "PROJECT_ROOT")
+        else (Path(bench_mod.__file__).resolve().parents[2])
     )
     wrapper_path = project_root / "molmetal" / "bin" / "vina"
     orig_is_file = Path.is_file
+
     def patched_is_file(self):
         if str(self) == str(wrapper_path):
             return False
         return orig_is_file(self)
+
     monkeypatch.setattr("pathlib.Path.is_file", patched_is_file)
     status = bench_mod._detect_vina_binary()
     assert status["status"] == "MISSING_DEP"
@@ -164,9 +176,9 @@ def test_binary_detection_project_wrapper_auto(monkeypatch, bench_mod):
     # If the test is run on a host without the wrapper, it should fall back
     # to MISSING_DEP — that's an environmental signal, not a test failure.
     if status["status"] == "REAL_VINA_AVAILABLE":
-        assert status["bin"].endswith("molmetal/bin/vina"), (
-            f"Auto-detected binary should be the project wrapper: {status}"
-        )
+        assert status["bin"].endswith(
+            "molmetal/bin/vina"
+        ), f"Auto-detected binary should be the project wrapper: {status}"
         assert "AutoDock Vina" in status["version"]
     else:
         # Acceptable: the test environment does not have the project wrapper.
@@ -204,20 +216,30 @@ def test_summarise_pocket_with_all_stubs(bench_mod):
 
 def test_summarise_pocket_with_real_scores(bench_mod):
     from dataclasses import replace
+
     cells = [
         replace(
             bench_mod._stub_score("830c", "C", 0, ""),
-            score_kcal_mol=-8.0, pb_pass=True, qed=0.7, triple_success=True,
+            score_kcal_mol=-8.0,
+            pb_pass=True,
+            qed=0.7,
+            triple_success=True,
             status="OK",
         ),
         replace(
             bench_mod._stub_score("830c", "C", 1, ""),
-            score_kcal_mol=-6.0, pb_pass=False, qed=0.4, triple_success=False,
+            score_kcal_mol=-6.0,
+            pb_pass=False,
+            qed=0.4,
+            triple_success=False,
             status="OK",
         ),
         replace(
             bench_mod._stub_score("830c", "C", 2, ""),
-            score_kcal_mol=-9.0, pb_pass=True, qed=0.8, triple_success=True,
+            score_kcal_mol=-9.0,
+            pb_pass=True,
+            qed=0.8,
+            triple_success=True,
             status="OK",
         ),
     ]
@@ -232,10 +254,16 @@ def test_summarise_pocket_with_real_scores(bench_mod):
 
 def test_summarise_pocket_partial(bench_mod):
     from dataclasses import replace
+
     cells = [
-        replace(bench_mod._stub_score("830c", "C", 0, ""),
-                score_kcal_mol=-8.0, pb_pass=True, qed=0.7, triple_success=True,
-                status="OK"),
+        replace(
+            bench_mod._stub_score("830c", "C", 0, ""),
+            score_kcal_mol=-8.0,
+            pb_pass=True,
+            qed=0.7,
+            triple_success=True,
+            status="OK",
+        ),
         bench_mod._stub_score("830c", "C", 1, "no-binary"),
     ]
     out = bench_mod._summarise_pocket("830c", cells)
@@ -247,10 +275,16 @@ def test_summarise_pocket_partial(bench_mod):
 
 def test_summarise_pocket_failing_gate(bench_mod):
     from dataclasses import replace
+
     cells = [
-        replace(bench_mod._stub_score("830c", "C", 0, ""),
-                score_kcal_mol=-3.0, pb_pass=True, qed=0.7, triple_success=False,
-                status="OK"),
+        replace(
+            bench_mod._stub_score("830c", "C", 0, ""),
+            score_kcal_mol=-3.0,
+            pb_pass=True,
+            qed=0.7,
+            triple_success=False,
+            status="OK",
+        ),
     ]
     out = bench_mod._summarise_pocket("830c", cells)
     assert out["m10_pass"] is False  # -3.0 > -4.0 (gate)
@@ -261,33 +295,47 @@ def test_summarise_pocket_failing_gate(bench_mod):
 # ---------------------------------------------------------------------------
 def test_end_to_end_stub_path(bench_mod, tmp_path: Path, capsys, monkeypatch):
     # Wf-84 P2 added project-wrapper auto-detect — hide it for this test
-    project_root = bench_mod.PROJECT_ROOT if hasattr(bench_mod, "PROJECT_ROOT") else (
-        Path(bench_mod.__file__).resolve().parents[2]
+    project_root = (
+        bench_mod.PROJECT_ROOT
+        if hasattr(bench_mod, "PROJECT_ROOT")
+        else (Path(bench_mod.__file__).resolve().parents[2])
     )
     wrapper_path = project_root / "molmetal" / "bin" / "vina"
     orig_is_file = Path.is_file
+
     def patched_is_file(self):
         if str(self) == str(wrapper_path):
             return False
         return orig_is_file(self)
+
     monkeypatch.setattr("pathlib.Path.is_file", patched_is_file)
 
     # Build a fake pocket_status.json with one pocket pointing at a non-existent
     # receptor — exercises both failure paths.
     ps = tmp_path / "pocket_status.json"
-    ps.write_text(json.dumps({
-        "pockets": [{
-            "pocket_id": "830c",
-            "pdbqt_path": str(tmp_path / "ghost.pdbqt"),
-            "status": "READY",
-        }],
-    }))
+    ps.write_text(
+        json.dumps(
+            {
+                "pockets": [
+                    {
+                        "pocket_id": "830c",
+                        "pdbqt_path": str(tmp_path / "ghost.pdbqt"),
+                        "status": "READY",
+                    }
+                ],
+            }
+        )
+    )
     out_dir = tmp_path / "wf60"
     args = [
-        "--pockets", "830c",
-        "--seeds", "0",
-        "--pocket-status-json", str(ps),
-        "--out-dir", str(out_dir),
+        "--pockets",
+        "830c",
+        "--seeds",
+        "0",
+        "--pocket-status-json",
+        str(ps),
+        "--out-dir",
+        str(out_dir),
     ]
     rc = bench_mod.main(args)
     assert rc == 0
@@ -312,21 +360,35 @@ def test_end_to_end_real_receptor_stub(bench_mod, tmp_path: Path, capsys):
     receptor = tmp_path / "receptor.pdbqt"
     receptor.write_text("ROOT\nEND\n")
     ps = tmp_path / "pocket_status.json"
-    ps.write_text(json.dumps({
-        "pockets": [{
-            "pocket_id": "830c",
-            "pdbqt_path": str(receptor),
-            "status": "READY",
-        }],
-    }))
+    ps.write_text(
+        json.dumps(
+            {
+                "pockets": [
+                    {
+                        "pocket_id": "830c",
+                        "pdbqt_path": str(receptor),
+                        "status": "READY",
+                    }
+                ],
+            }
+        )
+    )
     out_dir = tmp_path / "wf60"
-    rc = bench_mod.main([
-        "--pockets", "830c",
-        "--cands", "C",
-        "--seeds", "0", "1",
-        "--pocket-status-json", str(ps),
-        "--out-dir", str(out_dir),
-    ])
+    rc = bench_mod.main(
+        [
+            "--pockets",
+            "830c",
+            "--cands",
+            "C",
+            "--seeds",
+            "0",
+            "1",
+            "--pocket-status-json",
+            str(ps),
+            "--out-dir",
+            str(out_dir),
+        ]
+    )
     assert rc == 0
     metrics = json.loads((out_dir / "830c" / "metrics.json").read_text())
     assert metrics["status"] == "STUB_FALLBACK"
@@ -341,7 +403,9 @@ def test_end_to_end_real_receptor_stub(bench_mod, tmp_path: Path, capsys):
 def test_subprocess_help():
     cp = subprocess.run(
         [sys.executable, str(SCRIPT_PATH), "--help"],
-        capture_output=True, text=True, timeout=10,
+        capture_output=True,
+        text=True,
+        timeout=10,
     )
     assert cp.returncode == 0
     assert "Wf-60" in cp.stdout or "vina" in cp.stdout.lower()
@@ -350,11 +414,19 @@ def test_subprocess_help():
 def test_subprocess_dry_run(tmp_path: Path):
     cp = subprocess.run(
         [
-            sys.executable, str(SCRIPT_PATH),
-            "--pockets", "830c", "--seeds", "0",
-            "--out-dir", str(tmp_path), "--dry-run",
+            sys.executable,
+            str(SCRIPT_PATH),
+            "--pockets",
+            "830c",
+            "--seeds",
+            "0",
+            "--out-dir",
+            str(tmp_path),
+            "--dry-run",
         ],
-        capture_output=True, text=True, timeout=10,
+        capture_output=True,
+        text=True,
+        timeout=10,
     )
     assert cp.returncode == 0
     plan = json.loads(cp.stdout)

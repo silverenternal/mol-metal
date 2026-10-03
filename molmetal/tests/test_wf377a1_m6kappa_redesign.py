@@ -33,11 +33,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PROPOSAL_DOC = REPO_ROOT / "docs" / "M6_KAPPA_REDESIGN_PROPOSAL.md"
 RESULT_JSON = (
-    REPO_ROOT
-    / "molmetal"
-    / "reports"
-    / "wf377a1_m6_kappa_redesign"
-    / "result.json"
+    REPO_ROOT / "molmetal" / "reports" / "wf377a1_m6_kappa_redesign" / "result.json"
 )
 
 # Wf-325D canonical anchor (metrics/by_metric/m6_kappa.json::metalcytotox_validation.global_pearson_r)
@@ -186,7 +182,9 @@ class TestWf377A1M6KappaRedesign(unittest.TestCase):
             ),
         )
 
-    def test_top3_alternatives_have_stronger_correlation_than_shape_kappa_index(self) -> None:
+    def test_top3_alternatives_have_stronger_correlation_than_shape_kappa_index(
+        self,
+    ) -> None:
         """Verification 3: top-3 alternatives (MolLogP + MorganDensity_r2 + Chi3v)
         have stronger |Pearson r| than m6_kappa_composite.
         """

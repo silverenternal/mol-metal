@@ -34,6 +34,7 @@ Honest framing (party-twenty-spirit §3.5):
 
 All tests are CPU-only and run in < 30 seconds.
 """
+
 from __future__ import annotations
 
 import json
@@ -61,18 +62,10 @@ POCKET_PB311_VENV_PYTHON = (
 
 METRIC_JSON = PROJECT_ROOT / "metrics" / "by_metric" / "steric_clash_pb_dock_1h36.json"
 SMOKE_OUTPUT = (
-    PROJECT_ROOT
-    / "molmetal"
-    / "reports"
-    / "wf315d_pb_smoke"
-    / "m8_prod_1h36.json"
+    PROJECT_ROOT / "molmetal" / "reports" / "wf315d_pb_smoke" / "m8_prod_1h36.json"
 )
 RECEPTOR_PDB = (
-    PROJECT_ROOT
-    / "molmetal"
-    / "reports"
-    / "wf246d_m8_pb_dock"
-    / "1h36_receptor.pdb"
+    PROJECT_ROOT / "molmetal" / "reports" / "wf246d_m8_pb_dock" / "1h36_receptor.pdb"
 )
 WF179_POSE_DIR = (
     PROJECT_ROOT / "molmetal" / "reports" / "wf179_bd9_m15_rmsd_p2" / "1h36"
@@ -84,7 +77,9 @@ WF179_POSE_DIR = (
 # ---------------------------------------------------------------------------
 
 
-def _probe_packages(python_path: str, timeout: float = 10.0) -> Tuple[bool, Optional[str], Optional[str]]:
+def _probe_packages(
+    python_path: str, timeout: float = 10.0
+) -> Tuple[bool, Optional[str], Optional[str]]:
     """Return ``(both_available, rdkit_version, posebusters_version)``.
 
     Probes ``import rdkit, posebusters`` in the given venv.  Returns
@@ -154,9 +149,7 @@ def test_alt_molmetal_venv_has_rdkit_only() -> None:
     becomes ambiguous and we should update wf319c_pb_venv_python.
     """
     # Use a probe that requires rdkit only — independent of posebusters.
-    probe_rdkit = (
-        "import rdkit; print('rdkit=' + rdkit.__version__)"
-    )
+    probe_rdkit = "import rdkit; print('rdkit=' + rdkit.__version__)"
     if not Path(ALT_MOLMETAL_VENV_PYTHON).exists():
         pytest.skip(f"alt venv not present: {ALT_MOLMETAL_VENV_PYTHON}")
     out = subprocess.run(
@@ -216,21 +209,21 @@ def test_smoke_output_exists_with_canonical_schema() -> None:
     assert SMOKE_OUTPUT.exists(), f"smoke output missing: {SMOKE_OUTPUT}"
     data = json.loads(SMOKE_OUTPUT.read_text(encoding="utf-8"))
     assert isinstance(data, dict)
-    assert "n_poses" in data and data["n_poses"] == 15, (
-        f"expected n_poses=15, got {data.get('n_poses')!r}"
-    )
-    assert "n_protein_aware_pass" in data, (
-        f"missing canonical key: n_protein_aware_pass in {SMOKE_OUTPUT}"
-    )
-    assert "m8_protein_aware_pass_rate" in data, (
-        f"missing canonical key: m8_protein_aware_pass_rate in {SMOKE_OUTPUT}"
-    )
+    assert (
+        "n_poses" in data and data["n_poses"] == 15
+    ), f"expected n_poses=15, got {data.get('n_poses')!r}"
+    assert (
+        "n_protein_aware_pass" in data
+    ), f"missing canonical key: n_protein_aware_pass in {SMOKE_OUTPUT}"
+    assert (
+        "m8_protein_aware_pass_rate" in data
+    ), f"missing canonical key: m8_protein_aware_pass_rate in {SMOKE_OUTPUT}"
     rate = data["m8_protein_aware_pass_rate"]
     assert 0.0 <= rate <= 1.0, f"rate out of [0,1]: {rate}"
     assert isinstance(data.get("results"), list)
-    assert len(data["results"]) == 15, (
-        f"results list length {len(data['results'])} != 15"
-    )
+    assert (
+        len(data["results"]) == 15
+    ), f"results list length {len(data['results'])} != 15"
 
 
 def test_m8_protein_aware_pass_rate_is_one() -> None:
@@ -249,12 +242,12 @@ def test_m8_protein_aware_pass_rate_is_one() -> None:
     rate = data.get("m8_protein_aware_pass_rate")
     n_pass = data.get("n_protein_aware_pass")
     n_total = data.get("n_poses")
-    assert rate == pytest.approx(1.0), (
-        f"m8_protein_aware_pass_rate={rate!r} (expected 1.0)"
-    )
-    assert n_pass == n_total == 15, (
-        f"n_protein_aware_pass={n_pass!r} n_poses={n_total!r} (expected 15/15)"
-    )
+    assert rate == pytest.approx(
+        1.0
+    ), f"m8_protein_aware_pass_rate={rate!r} (expected 1.0)"
+    assert (
+        n_pass == n_total == 15
+    ), f"n_protein_aware_pass={n_pass!r} n_poses={n_total!r} (expected 15/15)"
 
 
 def test_metric_json_status_is_measured_smoke() -> None:
@@ -311,9 +304,9 @@ def test_gate_wf319c_pb_packages_status_present_exists_and_passes() -> None:
         METRIC_JSON,
         SMOKE_OUTPUT,
     )
-    assert result.status == "PASS", (
-        f"gate returned {result.status!r}: {result.evidence}"
-    )
+    assert (
+        result.status == "PASS"
+    ), f"gate returned {result.status!r}: {result.evidence}"
     assert "rdkit=" in result.evidence
     assert "posebusters=" in result.evidence
 
@@ -343,7 +336,7 @@ def test_gate_wf319c_pb_packages_status_present_fails_on_missing_metric() -> Non
         nonexistent,
         SMOKE_OUTPUT,
     )
-    assert result.status == "FAIL", (
-        f"expected FAIL on missing metric, got {result.status!r}: {result.evidence}"
-    )
+    assert (
+        result.status == "FAIL"
+    ), f"expected FAIL on missing metric, got {result.status!r}: {result.evidence}"
     assert "metric_json" in result.evidence or "missing" in result.evidence.lower()

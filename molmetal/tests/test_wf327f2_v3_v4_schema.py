@@ -83,15 +83,17 @@ EXPECTED_METALS = {"Ru", "Ir", "Os", "Rh", "Re"}
 # legacy lowercase variants + Krasnov canonical raw IC50.  Adding a new
 # alias outside this set requires updating the test below to keep the
 # contract pinned.
-_KNOWN_NON_CANONICAL_ALIASES = frozenset({
-    "SMILES_Ligands",   # v3 uppercase column
-    "smiles_ligands",   # v3-style lowercase variant
-    "Metal",            # v3 uppercase column
-    "pic50",            # lowercase pIC50 (canonical for multi-task CSVs)
-    "pIC50",            # mixed-case pIC50 alias (matches dict key)
-    "IC50_Dark_value",  # Krasnov canonical raw IC50 column
-    "activity",         # v1 lowercase but not the canonical "active"
-})
+_KNOWN_NON_CANONICAL_ALIASES = frozenset(
+    {
+        "SMILES_Ligands",  # v3 uppercase column
+        "smiles_ligands",  # v3-style lowercase variant
+        "Metal",  # v3 uppercase column
+        "pic50",  # lowercase pIC50 (canonical for multi-task CSVs)
+        "pIC50",  # mixed-case pIC50 alias (matches dict key)
+        "IC50_Dark_value",  # Krasnov canonical raw IC50 column
+        "activity",  # v1 lowercase but not the canonical "active"
+    }
+)
 
 
 def _has_all(path: Path) -> bool:
@@ -125,15 +127,15 @@ class TestCrossVersionInvariants:
         df_v4 = load_metal_cytotox(V4_CSV)
 
         # Same column names + order
-        assert list(df_v1.columns) == CANONICAL_COLUMNS, (
-            f"v1 columns drift: {list(df_v1.columns)}"
-        )
-        assert list(df_v3.columns) == CANONICAL_COLUMNS, (
-            f"v3 columns drift: {list(df_v3.columns)}"
-        )
-        assert list(df_v4.columns) == CANONICAL_COLUMNS, (
-            f"v4 columns drift: {list(df_v4.columns)}"
-        )
+        assert (
+            list(df_v1.columns) == CANONICAL_COLUMNS
+        ), f"v1 columns drift: {list(df_v1.columns)}"
+        assert (
+            list(df_v3.columns) == CANONICAL_COLUMNS
+        ), f"v3 columns drift: {list(df_v3.columns)}"
+        assert (
+            list(df_v4.columns) == CANONICAL_COLUMNS
+        ), f"v4 columns drift: {list(df_v4.columns)}"
 
         # Same dtypes
         for col in CANONICAL_COLUMNS:
@@ -178,9 +180,9 @@ class TestIdempotentReload:
         df_second = load_metal_cytotox(V4_CSV)
 
         # Same shape
-        assert df_first.shape == df_second.shape, (
-            f"reload shape drift: {df_first.shape} vs {df_second.shape}"
-        )
+        assert (
+            df_first.shape == df_second.shape
+        ), f"reload shape drift: {df_first.shape} vs {df_second.shape}"
 
         # Same columns + dtypes
         assert list(df_first.columns) == list(df_second.columns)
@@ -211,12 +213,12 @@ class TestHasColumnPrecedence:
         """
         df_v4 = pd.read_csv(V4_CSV)
         # Sanity-check: v4 must indeed have both columns on disk
-        assert "smiles" in df_v4.columns, (
-            f"v4 missing lowercase smiles (columns: {list(df_v4.columns)})"
-        )
-        assert "SMILES_Ligands" in df_v4.columns, (
-            f"v4 missing uppercase SMILES_Ligands (columns: {list(df_v4.columns)})"
-        )
+        assert (
+            "smiles" in df_v4.columns
+        ), f"v4 missing lowercase smiles (columns: {list(df_v4.columns)})"
+        assert (
+            "SMILES_Ligands" in df_v4.columns
+        ), f"v4 missing uppercase SMILES_Ligands (columns: {list(df_v4.columns)})"
 
         # _has_column must prefer lowercase
         smiles_match = _has_column(df_v4, "smiles")
@@ -259,12 +261,10 @@ class TestSynonymMapCompleteness:
 
         # Each canonical maps to a non-empty tuple
         for canonical, aliases in _COLUMN_SYNONYMS.items():
-            assert isinstance(aliases, tuple), (
-                f"{canonical}: aliases must be tuple, got {type(aliases)}"
-            )
-            assert len(aliases) >= 1, (
-                f"{canonical}: aliases tuple must be non-empty"
-            )
+            assert isinstance(
+                aliases, tuple
+            ), f"{canonical}: aliases must be tuple, got {type(aliases)}"
+            assert len(aliases) >= 1, f"{canonical}: aliases tuple must be non-empty"
 
             # First alias must be the lowercase/canonical form (the
             # _has_column iteration order resolves to first match wins;

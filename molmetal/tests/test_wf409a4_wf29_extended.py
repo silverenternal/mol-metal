@@ -93,9 +93,10 @@ def _build_smoke() -> dict:
     assert report["expected_f5_dim"] == EXPECTED_F5_DIM
     # Aggregate verdict must be PASS or SKIP (never FAIL — the host may
     # be RDKit/torch-missing per the Wf-404-A5 SKIP pattern).
-    assert report["aggregate_verdict"] in {"PASS", "SKIP"}, (
-        f"aggregate_verdict FAIL: {report.get('honest_framing', '?')}"
-    )
+    assert report["aggregate_verdict"] in {
+        "PASS",
+        "SKIP",
+    }, f"aggregate_verdict FAIL: {report.get('honest_framing', '?')}"
     # Smoke report must be on disk per AGENTS.md §5.5.
     assert SMOKE_REPORT_PATH.exists()
     on_disk = json.loads(SMOKE_REPORT_PATH.read_text())
@@ -111,9 +112,9 @@ def test_m18_per_residue() -> None:
     """
     report = _build_smoke()
     inv4 = report["invariants"]["inv4_m18_per_residue"]
-    assert inv4["verdict"] == "PASS", (
-        f"inv4 m18 per-residue FAIL: {inv4.get('failure_reason', '?')}"
-    )
+    assert (
+        inv4["verdict"] == "PASS"
+    ), f"inv4 m18 per-residue FAIL: {inv4.get('failure_reason', '?')}"
     # All three AUCs must be in [0.0, 1.0].
     for key in ("per_complex_auc", "per_residue_auc", "per_residue_pr_auc"):
         v = float(inv4[key])
@@ -135,9 +136,10 @@ def test_f5_32d_extraction() -> None:
     """
     report = _build_smoke()
     inv5 = report["invariants"]["inv5_f5_32d_extraction"]
-    assert inv5["verdict"] in {"PASS", "SKIP"}, (
-        f"inv5 F5 32-d FAIL: {inv5.get('failure_reason', '?')}"
-    )
+    assert inv5["verdict"] in {
+        "PASS",
+        "SKIP",
+    }, f"inv5 F5 32-d FAIL: {inv5.get('failure_reason', '?')}"
     # Probe SMILES must be the canonical Wf-248 toluene SMILES.
     assert inv5["probe_smiles"] == "Cc1ccccc1"
     if inv5["verdict"] == "PASS":
@@ -149,7 +151,10 @@ def test_f5_32d_extraction() -> None:
     # SKIP case: failure_reason must be present and explanatory.
     else:
         assert inv5.get("failure_reason"), "SKIP requires failure_reason"
-        assert "rdkit" in inv5["failure_reason"].lower() or "import" in inv5["failure_reason"].lower()
+        assert (
+            "rdkit" in inv5["failure_reason"].lower()
+            or "import" in inv5["failure_reason"].lower()
+        )
 
 
 def test_click_aug_wire() -> None:
@@ -162,9 +167,10 @@ def test_click_aug_wire() -> None:
     """
     report = _build_smoke()
     inv6 = report["invariants"]["inv6_click_aug_wire"]
-    assert inv6["verdict"] in {"PASS", "SKIP"}, (
-        f"inv6 click-aug FAIL: {inv6.get('failure_reason', '?')}"
-    )
+    assert inv6["verdict"] in {
+        "PASS",
+        "SKIP",
+    }, f"inv6 click-aug FAIL: {inv6.get('failure_reason', '?')}"
     if inv6["verdict"] == "PASS":
         # G4 backward-compat: passthrough MUST return n_samples entries
         # with the seed SMILES preserved exactly.

@@ -32,15 +32,15 @@ def test_template_has_latex_snippet():
     """Template contains LaTeX snippet ready for paper/sections/06_limitations.tex."""
     content = TEMPLATE_PATH.read_text(encoding="utf-8")
     # Required LaTeX markers
-    assert "\\section{Limitations}" in content, (
-        "Missing \\section{Limitations} in template LaTeX snippet."
-    )
-    assert "\\label{sec:limitations:v4}" in content, (
-        "Missing \\label{sec:limitations:v4} for v4 anchor."
-    )
-    assert "\\MEASURED{}" in content and "\\PROJECTED{}" in content, (
-        "Missing \\MEASURED{} / \\PROJECTED{} label discipline."
-    )
+    assert (
+        "\\section{Limitations}" in content
+    ), "Missing \\section{Limitations} in template LaTeX snippet."
+    assert (
+        "\\label{sec:limitations:v4}" in content
+    ), "Missing \\label{sec:limitations:v4} for v4 anchor."
+    assert (
+        "\\MEASURED{}" in content and "\\PROJECTED{}" in content
+    ), "Missing \\MEASURED{} / \\PROJECTED{} label discipline."
     # Begin/end code fences for the LaTeX block
     assert "```latex" in content, "Missing ```latex code fence."
     assert "```" in content, "Missing closing code fence."
@@ -49,9 +49,9 @@ def test_template_has_latex_snippet():
 def test_template_cross_references_metrics():
     """Template cross-references metrics/by_metric/*.json source paths."""
     content = TEMPLATE_PATH.read_text(encoding="utf-8")
-    assert "metrics/by_metric/" in content, (
-        "Missing cross-reference to metrics/by_metric/*.json source paths."
-    )
+    assert (
+        "metrics/by_metric/" in content
+    ), "Missing cross-reference to metrics/by_metric/*.json source paths."
     # Required source paths from docs/PAPER_SECTION_6_LIMITATIONS_DRAFT.md
     assert "metalcytotox_ru_auc.json" in content
     assert "wf335m2_r2/result.json" in content or "wf335m1_chemprop_pll" in content

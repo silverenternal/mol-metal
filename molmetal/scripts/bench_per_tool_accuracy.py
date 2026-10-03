@@ -61,6 +61,7 @@ Usage
         --tools 11 --datasets platinai_5k metalcytotox \\
         --n-samples 16 --seeds 0
 """
+
 from __future__ import annotations
 
 import argparse
@@ -309,6 +310,7 @@ def _invoke_tool(
     # Resolve backend from the score_any registry.
     try:
         from molmetal.scoring import tool_for_metric
+
         ref = tool_for_metric(metric)
         rec.backend = ref.backend
     except Exception as exc:  # pragma: no cover - registry invariant
@@ -341,6 +343,7 @@ def _invoke_tool(
         rec.n_calls += 1  # count every invocation attempt
         try:
             from molmetal.scoring import score_any
+
             result = score_any(metric, molecules=smiles, pocket=pocket)
             dt = time.time() - t0
             speeds.append(dt)
@@ -369,6 +372,7 @@ def _invoke_tool(
             # AdapterUnavailable is the documented "no mock" failure
             # mode — distinguish it from generic exceptions.
             from molmetal.scoring.score_any import AdapterUnavailable
+
             if isinstance(exc, AdapterUnavailable):
                 rec.n_adapter_unavailable += 1
                 err_msg = str(exc).splitlines()[0]
@@ -418,7 +422,9 @@ def _invoke_tool(
     if rec.status == "OK":
         # Distinguish partial accuracy (any adapter-unavailable call).
         if rec.n_adapter_unavailable > 0 and rec.n_measured == 0:
-            rec.status = "NOT_SHIPPED" if "NOT SHIPPED" in tool.upper() else "MISSING_DEP"
+            rec.status = (
+                "NOT_SHIPPED" if "NOT SHIPPED" in tool.upper() else "MISSING_DEP"
+            )
         elif rec.n_adapter_unavailable > 0:
             rec.status = "PARTIAL"
         elif rec.n_error > 0:
@@ -619,23 +625,35 @@ def _build_argparser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--tools", type=int, default=11,
+        "--tools",
+        type=int,
+        default=11,
         help="Number of tools to bench (default 11 — the Wf-43 ship set).",
     )
     p.add_argument(
-        "--datasets", type=str, nargs="*", default=["platinai_5k", "metalcytotox"],
+        "--datasets",
+        type=str,
+        nargs="*",
+        default=["platinai_5k", "metalcytotox"],
         help="Datasets to sample from (default: platinai_5k metalcytotox).",
     )
     p.add_argument(
-        "--n-samples", type=int, default=16,
+        "--n-samples",
+        type=int,
+        default=16,
         help="Number of SMILES per dataset (default 16).",
     )
     p.add_argument(
-        "--seeds", type=int, nargs="*", default=[0],
+        "--seeds",
+        type=int,
+        nargs="*",
+        default=[0],
         help="Seed(s) for the bench (default [0]).",
     )
     p.add_argument(
-        "--out-dir", type=str, default="molmetal/reports/wf48_per_tool",
+        "--out-dir",
+        type=str,
+        default="molmetal/reports/wf48_per_tool",
         help="Output directory for the bench report.",
     )
     return p
@@ -646,7 +664,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parser.parse_args(argv)
     cfg = BenchConfig(
         n_tools=int(args.tools),
-        datasets=tuple(str(d) for d in (args.datasets or ["platinai_5k", "metalcytotox"])),
+        datasets=tuple(
+            str(d) for d in (args.datasets or ["platinai_5k", "metalcytotox"])
+        ),
         n_samples=int(args.n_samples),
         seeds=tuple(int(s) for s in (args.seeds or [0])),
         out_dir=str(args.out_dir),

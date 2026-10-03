@@ -45,6 +45,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 def _tanimoto(fp_a, fp_b) -> float:
     try:
         from rdkit.DataStructs import TanimotoSimilarity  # type: ignore
+
         return float(TanimotoSimilarity(fp_a, fp_b))
     except Exception:
         return 0.0
@@ -211,6 +212,7 @@ def diversity_homotype(states: Sequence[Any]) -> float:
             continue
         try:
             from rdkit import Chem  # type: ignore
+
             mol = Chem.MolFromSmiles(smi)
             if mol is None:
                 continue
@@ -246,6 +248,7 @@ def diversity_homotype(states: Sequence[Any]) -> float:
 #  8. dna_kb_proxy              — mean DNA binding proxy in [0, 1]
 #  9. anticancer_index          — mean composite anticancer index [0, 1]
 # ---------------------------------------------------------------------------
+
 
 def _safe_mol(smi: str):
     """RDKit mol-from-smiles helper; returns None on parse failure."""
@@ -506,6 +509,7 @@ def _import_metallodrug_proxies():
         from molmetal_lam.priors.metallodrug_property_proxies import (  # type: ignore
             compute_metallodrug_proxies,
         )
+
         return compute_metallodrug_proxies
     except Exception:
         return None
@@ -668,6 +672,7 @@ def _import_metrics_v2():
     """
     try:
         from molmetal_lam.sbdd_env import metrics_v2  # type: ignore
+
         return metrics_v2
     except Exception:
         return None
@@ -954,7 +959,7 @@ def _embed_3d_for_rmsd(mol) -> bool:
         mol_h = Chem.AddHs(mol)
         params = AllChem.ETKDGv3()
         params.randomSeed = 0xF00D  # deterministic
-        params.numZeroFail = 1      # ETKDGv3 equivalent of "maxAttempts=1"
+        params.numZeroFail = 1  # ETKDGv3 equivalent of "maxAttempts=1"
         # Belt-and-braces: pass maxAttempts positionally too so older
         # RDKit builds that DO accept it still work — but only when
         # an ``EmbedParameters`` object isn't already providing the
@@ -1098,9 +1103,7 @@ def _mol_center_of_mass(mol):
             [list(conf.GetAtomPosition(i)) for i in range(n_atoms)],
             dtype=float,
         )
-        masses = _np.array(
-            [a.GetMass() for a in mol.GetAtoms()], dtype=float
-        )
+        masses = _np.array([a.GetMass() for a in mol.GetAtoms()], dtype=float)
         if masses.sum() <= 0.0:
             return 0.0
         com = (coords * masses[:, None]).sum(axis=0) / masses.sum()
@@ -1145,10 +1148,7 @@ def metric_com_shift_mean(
         return 0.0
     com_g = _mol_center_of_mass(gen_mol)
     com_r = _mol_center_of_mass(ref_ligand_mol)
-    if (
-        not isinstance(com_g, _np.ndarray)
-        or not isinstance(com_r, _np.ndarray)
-    ):
+    if not isinstance(com_g, _np.ndarray) or not isinstance(com_r, _np.ndarray):
         return 0.0
     try:
         diff = com_g - com_r

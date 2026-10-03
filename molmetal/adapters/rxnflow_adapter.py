@@ -52,9 +52,14 @@ def _try_import_upstream():
     if src.is_dir() and str(src) not in sys.path:
         sys.path.insert(0, str(src))
     try:
-        from rxnflow.base import RxnFlowSampler        # noqa: F401
+        from rxnflow.base import RxnFlowSampler  # noqa: F401
         from rxnflow.config import Config, init_empty  # noqa: F401
-        return {"RxnFlowSampler": RxnFlowSampler, "Config": Config, "init_empty": init_empty}
+
+        return {
+            "RxnFlowSampler": RxnFlowSampler,
+            "Config": Config,
+            "init_empty": init_empty,
+        }
     except Exception as exc:
         logger.warning("RxnFlow import failed: %s", exc)
         return None
@@ -65,10 +70,18 @@ class RxnFlowAdapter:
 
     name = "RxnFlow_v1"
 
-    def __init__(self, ref_repo_path="molmetal/references/RxnFlow",
-                 model_path=None, env_dir=None, pocket_conditional=False,
-                 hidden_dim=128, n_layers=3,   # mirror Lipman kwargs
-                 max_atomic_number=100, lr=1e-4, **kwargs):
+    def __init__(
+        self,
+        ref_repo_path="molmetal/references/RxnFlow",
+        model_path=None,
+        env_dir=None,
+        pocket_conditional=False,
+        hidden_dim=128,
+        n_layers=3,  # mirror Lipman kwargs
+        max_atomic_number=100,
+        lr=1e-4,
+        **kwargs,
+    ):
         self._model_path = model_path
         self._env_dir = env_dir
         self._pocket_conditional = pocket_conditional
@@ -83,20 +96,26 @@ class RxnFlowAdapter:
         self._device = device or "cpu"
         self._upstream = _try_import_upstream()
         if self._upstream is None or not self._env_dir:
-            self._using_fallback = True; return
+            self._using_fallback = True
+            return
         try:
             cfg = self._upstream["init_empty"](self._upstream["Config"]())
-            cfg.seed = 0; cfg.env_dir = self._env_dir; cfg.algo.num_from_policy = 100
+            cfg.seed = 0
+            cfg.env_dir = self._env_dir
+            cfg.algo.num_from_policy = 100
             if self._model_path and Path(self._model_path).is_file():
                 self._sampler = self._upstream["RxnFlowSampler"](
-                    cfg, self._model_path, self._device)
+                    cfg, self._model_path, self._device
+                )
             else:
                 self._using_fallback = True
         except Exception as exc:
             logger.warning("RxnFlow sampler construction failed: %s", exc)
             self._using_fallback = True
 
-    def generate(self, pocket: Optional[Pocket], config: GenerationConfig) -> List[Molecule]:
+    def generate(
+        self, pocket: Optional[Pocket], config: GenerationConfig
+    ) -> List[Molecule]:
         if self._using_fallback or self._sampler is None:
             return []
         try:
@@ -108,8 +127,14 @@ class RxnFlowAdapter:
         for s in samples:
             smi = s.get("smiles", "")
             if smi:
-                out.append(Molecule(smiles=smi, coords=None, atom_types=None,
-                                    metadata={"source": "rxnflow"}))
+                out.append(
+                    Molecule(
+                        smiles=smi,
+                        coords=None,
+                        atom_types=None,
+                        metadata={"source": "rxnflow"},
+                    )
+                )
         return out[: int(config.n_samples)]
 
     def train_step(self, pocket: Optional[Pocket], mols: List[Molecule]) -> float:
@@ -155,6 +180,7 @@ from typing import Dict, Iterable, List, Optional, Tuple
 
 try:
     from rdkit import Chem  # type: ignore
+
     _HAS_RDKIT = True
 except Exception:  # pragma: no cover
     Chem = None  # type: ignore
@@ -162,8 +188,16 @@ except Exception:  # pragma: no cover
 
 # Template-registry cache: load real.txt (109 templates) lazily and memoize.
 _TEMPLATE_REGISTRY: Optional[Dict[str, str]] = None  # name -> product SMARTS
-_TEMPLATE_PATTERNS: Optional[Dict[str, Tuple[str, object]]] = None  # name -> (raw, compiled)
-_RXNFLOW_TEMPLATES_DIR = _Path(__file__).resolve().parents[1] / "references" / "RxnFlow" / "data" / "templates"
+_TEMPLATE_PATTERNS: Optional[Dict[str, Tuple[str, object]]] = (
+    None  # name -> (raw, compiled)
+)
+_RXNFLOW_TEMPLATES_DIR = (
+    _Path(__file__).resolve().parents[1]
+    / "references"
+    / "RxnFlow"
+    / "data"
+    / "templates"
+)
 
 
 def _classify_real_template(smarts: str) -> str:
@@ -199,12 +233,16 @@ def _classify_real_template(smarts: str) -> str:
     # N=N=N) and a product with a triazole-like N-N-N ring (c1n[n]1
     # or [n][nH0+0]1).
     has_azide_reactant = (
-        "[nh2:" in s_lower or "[nh2]" in s_lower
-        or "n=n=n" in s_lower or "[n:1]=[n:2]=[n:3]" in s_lower
+        "[nh2:" in s_lower
+        or "[nh2]" in s_lower
+        or "n=n=n" in s_lower
+        or "[n:1]=[n:2]=[n:3]" in s_lower
     )
     has_triazole_product = (
-        "[n:1]1" in s_lower and "=[n:" in s_lower
-        or "nh0+0:" in s_lower and "[n:" in s_lower
+        "[n:1]1" in s_lower
+        and "=[n:" in s_lower
+        or "nh0+0:" in s_lower
+        and "[n:" in s_lower
     )
     if has_azide_reactant and has_triazole_product:
         return "CuAAC"
@@ -229,7 +267,7 @@ def _classify_real_template(smarts: str) -> str:
     #   [NX3;...].[#6:1][C:2](=[O:3])[NH:4][NX3;...]>>... [NH:1][C:3](=[O:4])[N:2]
     # Real template line 21:
     #   [NX3;!$(N[C]=[N,O,S]);...].[#6:4][C:5](=[O:6])[OH]>>[N:1][C:5](=[O:6])[#6:4]
-    if ("[oh]" in s_lower and "[nh" in s_lower and "[c:1](=[o:2])[nh:" in s_lower):
+    if "[oh]" in s_lower and "[nh" in s_lower and "[c:1](=[o:2])[nh:" in s_lower:
         return "AmideCoupling"
     # Heuristic fallthrough: S_NAr (aromatic nucleophilic substitution),
     # S_N2 (aliphatic SN2), Buchwald amination.

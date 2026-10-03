@@ -19,6 +19,7 @@ Run via::
     uv run --no-sync python -m pytest \\
         molmetal/tests/test_variance_mcts_proof_search.py -v
 """
+
 from __future__ import annotations
 
 import random
@@ -46,6 +47,7 @@ except Exception:  # pragma: no cover - import path fallback
     from molmetal.molmetal_lam.reactions.beta_reductions import (  # type: ignore
         ReactionRule,
     )
+
     # Wf-A16: the FALLBACK path fails too. EXPLORATION_STRATEGIES does not
     # exist in proof_search under either import root, so the first `try` raises,
     # this `except` runs, and this import then raises UNCAUGHT — which is what
@@ -204,7 +206,9 @@ class TestProofSearchStrategyImport:
         """``EXPLORATION_STRATEGIES`` lists the 3 supported strategies."""
         assert isinstance(EXPLORATION_STRATEGIES, tuple)
         assert set(EXPLORATION_STRATEGIES) >= {
-            "dirichlet", "score_repellent", "variance",
+            "dirichlet",
+            "score_repellent",
+            "variance",
         }
 
     def test_default_strategy_is_dirichlet(self) -> None:
@@ -260,10 +264,18 @@ class TestProofSearchArgparseStrategy:
         from molmetal_lam.search_alg.proof_search import _build_argparser
 
         parser = _build_argparser()
-        args = parser.parse_args([
-            "--seed", "7", "--sims", "8", "--depth", "2",
-            "--n-trajectories", "3",
-        ])
+        args = parser.parse_args(
+            [
+                "--seed",
+                "7",
+                "--sims",
+                "8",
+                "--depth",
+                "2",
+                "--n-trajectories",
+                "3",
+            ]
+        )
         assert int(args.seed) == 7
         assert int(args.sims) == 8
         assert int(args.depth) == 2
@@ -340,7 +352,9 @@ class TestProofSearchVariancePuctRun:
         ``leaf_value_var`` computation at end of search).
         """
         search = _make_mcts(
-            strategy="variance", n_simulations=10, seed=42,
+            strategy="variance",
+            n_simulations=10,
+            seed=42,
         )
         start = MoleculeClosedTerm.from_smiles("CCO", embed_3d=False)
         search.search(start, max_depth=3)
@@ -353,7 +367,9 @@ class TestProofSearchVariancePuctRun:
     def test_variance_c_var_override(self) -> None:
         """``c_var`` can be overridden via the constructor."""
         search = _make_mcts(
-            strategy="variance", n_simulations=3, c_var=0.25,
+            strategy="variance",
+            n_simulations=3,
+            c_var=0.25,
         )
         assert abs(float(search.c_var) - 0.25) < 1.0e-9
 
@@ -410,6 +426,4 @@ class TestProofSearchDirichletBaseline:
         """All three strategies complete a 5-simulation trajectory."""
         for strat in EXPLORATION_STRATEGIES:
             out = _run_search(strategy=strat, n_simulations=5, depth=2)
-            assert out["history_len"] >= 1, (
-                f"strategy={strat} produced empty history"
-            )
+            assert out["history_len"] >= 1, f"strategy={strat} produced empty history"

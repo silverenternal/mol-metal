@@ -60,6 +60,7 @@ Usage
         molmetal/scripts/bench_vina_high_affinity_ex32.py \\
         --pocket 4aaw
 """
+
 from __future__ import annotations
 
 import argparse
@@ -112,15 +113,10 @@ def _load_wf126_baseline(pocket_id: str) -> Dict[str, object]:
     Raises ``FileNotFoundError`` if the JSON is missing.
     """
     path = (
-        PROJECT_ROOT
-        / "metrics"
-        / "by_metric"
-        / f"vina_high_affinity_{pocket_id}.json"
+        PROJECT_ROOT / "metrics" / "by_metric" / f"vina_high_affinity_{pocket_id}.json"
     )
     if not path.exists():
-        raise FileNotFoundError(
-            f"Wf-126 baseline JSON missing: {path}"
-        )
+        raise FileNotFoundError(f"Wf-126 baseline JSON missing: {path}")
     return json.loads(path.read_text())
 
 
@@ -179,9 +175,7 @@ def _load_cohort(pocket_id: str) -> List[Dict[str, object]]:
     """
     cohort_path = WF140_DIR / pocket_id / "cohort_smiles.jsonl"
     if not cohort_path.exists():
-        raise FileNotFoundError(
-            f"Wf-140 cohort missing: {cohort_path}"
-        )
+        raise FileNotFoundError(f"Wf-140 cohort missing: {cohort_path}")
     cohort: List[Dict[str, object]] = []
     for line in cohort_path.read_text().splitlines():
         line = line.strip()
@@ -251,7 +245,9 @@ def _dock_one(
         v = vina.Vina(sf_name="vina", seed=seed_eff, verbosity=0)
         v.set_receptor(str(receptor_pdbqt))
         v.set_ligand_from_string(pdbqt_string)
-        v.compute_vina_maps(center=[float(c) for c in center_xyz], box_size=list(box_size))
+        v.compute_vina_maps(
+            center=[float(c) for c in center_xyz], box_size=list(box_size)
+        )
         v.dock(exhaustiveness=int(exhaustiveness), n_poses=int(n_poses))
         energies = v.energies(n_poses=int(n_poses))
         kcal_min = float(energies[0, 0])
@@ -300,7 +296,9 @@ def run_pocket(pocket_id: str, out_dir: Path) -> Dict[str, object]:
     box_center_xyz = _receptor_centroid(receptor)
     LOG.info(
         "Box center: JSON=%s centroid=%s box_side=%.1f(json=%.1f) reference=%.3f",
-        json_box_center, box_center_xyz, box_side,
+        json_box_center,
+        box_center_xyz,
+        box_side,
         float(json_box_side) if json_box_side is not None else float("nan"),
         ref_kcal,
     )
@@ -312,15 +310,11 @@ def run_pocket(pocket_id: str, out_dir: Path) -> Dict[str, object]:
     wf126_p3_path = WF126_P3_DIR / pocket_id / "vina_high_affinity.json"
     wf126_p3_aggregate = {}
     if wf126_p3_path.exists():
-        wf126_p3_aggregate = json.loads(wf126_p3_path.read_text()).get(
-            "aggregate", {}
-        )
+        wf126_p3_aggregate = json.loads(wf126_p3_path.read_text()).get("aggregate", {})
     baseline_rate_ex4 = float(
         wf126_p3_aggregate.get("high_affinity_rate_aggregated", 0.0) or 0.0
     )
-    baseline_n_docked = int(
-        wf126_p3_aggregate.get("n_docked_total", 0) or 0
-    )
+    baseline_n_docked = int(wf126_p3_aggregate.get("n_docked_total", 0) or 0)
 
     per_smiles: List[Dict[str, object]] = []
     n_docked = 0
@@ -336,14 +330,16 @@ def run_pocket(pocket_id: str, out_dir: Path) -> Dict[str, object]:
         LOG.info("[%d/%d] %s ...", i + 1, len(cohort), smiles)
         pdbqt_string = _smiles_to_pdbqt_string(smiles, seed=SEED)
         if pdbqt_string is None:
-            per_smiles.append({
-                "smiles": smiles,
-                "kcal_min": None,
-                "kcal_mean_top5": None,
-                "high_affinity": None,
-                "error": "pdbqt_generation_failed",
-                "wall_time_s": 0.0,
-            })
+            per_smiles.append(
+                {
+                    "smiles": smiles,
+                    "kcal_min": None,
+                    "kcal_mean_top5": None,
+                    "high_affinity": None,
+                    "error": "pdbqt_generation_failed",
+                    "wall_time_s": 0.0,
+                }
+            )
             continue
 
         kcal_min, kcal_mean, elapsed = _dock_one(
@@ -357,14 +353,16 @@ def run_pocket(pocket_id: str, out_dir: Path) -> Dict[str, object]:
         )
         elapsed_total += elapsed
         if kcal_min is None:
-            per_smiles.append({
-                "smiles": smiles,
-                "kcal_min": None,
-                "kcal_mean_top5": None,
-                "high_affinity": None,
-                "error": "vina_dock_failed",
-                "wall_time_s": elapsed,
-            })
+            per_smiles.append(
+                {
+                    "smiles": smiles,
+                    "kcal_min": None,
+                    "kcal_mean_top5": None,
+                    "high_affinity": None,
+                    "error": "vina_dock_failed",
+                    "wall_time_s": elapsed,
+                }
+            )
             continue
 
         n_docked += 1
@@ -373,16 +371,21 @@ def run_pocket(pocket_id: str, out_dir: Path) -> Dict[str, object]:
         high_aff = kcal_min < ref_kcal
         if high_aff:
             n_high_affinity += 1
-        per_smiles.append({
-            "smiles": smiles,
-            "kcal_min": kcal_min,
-            "kcal_mean_top5": kcal_mean,
-            "high_affinity": high_aff,
-            "wall_time_s": elapsed,
-        })
+        per_smiles.append(
+            {
+                "smiles": smiles,
+                "kcal_min": kcal_min,
+                "kcal_mean_top5": kcal_mean,
+                "high_affinity": high_aff,
+                "wall_time_s": elapsed,
+            }
+        )
         LOG.info(
             "  kcal_min=%.3f kcal_mean_top5=%.3f high_aff=%s (%.2fs)",
-            kcal_min, kcal_mean or kcal_min, high_aff, elapsed,
+            kcal_min,
+            kcal_mean or kcal_min,
+            high_aff,
+            elapsed,
         )
 
     rate = n_high_affinity / n_docked if n_docked > 0 else 0.0
@@ -409,9 +412,7 @@ def run_pocket(pocket_id: str, out_dir: Path) -> Dict[str, object]:
             "n_docked": baseline_n_docked,
             "source": str(wf126_p3_path) if wf126_p3_path.exists() else None,
         },
-        "_historical_baseline_unconstrained": float(
-            value_block.get("rate", 0.0)
-        ),
+        "_historical_baseline_unconstrained": float(value_block.get("rate", 0.0)),
         "_n_cohort_total": len(cohort),
         "_n_docked": n_docked,
         "_n_high_affinity": n_high_affinity,
@@ -429,7 +430,11 @@ def run_pocket(pocket_id: str, out_dir: Path) -> Dict[str, object]:
     LOG.info(
         "%s: n_docked=%d, n_high_affinity=%d, rate=%.4f, "
         "delta_vs_baseline_ex4=%+.4f, kcal_min=%.3f (%.1fs total)",
-        pocket_id, n_docked, n_high_affinity, rate, delta,
+        pocket_id,
+        n_docked,
+        n_high_affinity,
+        rate,
+        delta,
         summary["_kcal_min_overall"] if kcal_mins else float("nan"),
         elapsed_total,
     )
@@ -449,15 +454,20 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--pocket", default="4aaw", choices=POCKETS,
+        "--pocket",
+        default="4aaw",
+        choices=POCKETS,
         help="Pocket to dock (default 4aaw).",
     )
     p.add_argument(
-        "--out-dir", type=Path, default=DEFAULT_OUT_DIR,
+        "--out-dir",
+        type=Path,
+        default=DEFAULT_OUT_DIR,
         help="Output root (default: molmetal/reports/wf142_ex32_high_affinity).",
     )
     p.add_argument(
-        "--log-level", default="INFO",
+        "--log-level",
+        default="INFO",
         choices=("DEBUG", "INFO", "WARNING", "ERROR"),
     )
     return p
@@ -474,7 +484,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     try:
         run_pocket(pocket_id=args.pocket, out_dir=out_dir)
     except Exception as exc:  # noqa: BLE001
-        LOG.error("Wf-142 failed for %s: %s\n%s", args.pocket, exc, traceback.format_exc())
+        LOG.error(
+            "Wf-142 failed for %s: %s\n%s", args.pocket, exc, traceback.format_exc()
+        )
         return 1
     return 0
 

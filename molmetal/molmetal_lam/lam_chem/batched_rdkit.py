@@ -45,6 +45,7 @@ try:  # pragma: no cover - exercised in CI with RDKit installed
     from rdkit import Chem as _Chem  # type: ignore
     from rdkit.Chem import Descriptors as _Descriptors  # type: ignore
     from rdkit.Chem import rdMolDescriptors as _rdMolDescriptors  # type: ignore
+
     _RDKIT_AVAILABLE: bool = True
 except Exception:  # pragma: no cover
     _Chem = None  # type: ignore
@@ -95,12 +96,13 @@ def _chunks(seq: Sequence, n_workers: int) -> List:
     if n == 0:
         return [[] for _ in range(max(1, n_workers))]
     chunk_size = max(1, (n + n_workers - 1) // n_workers)
-    return [seq[i:i + chunk_size] for i in range(0, n, chunk_size)]
+    return [seq[i : i + chunk_size] for i in range(0, n, chunk_size)]
 
 
 # ---------------------------------------------------------------------------
 # Worker-side helpers — must be module-level so they pickle cleanly
 # ---------------------------------------------------------------------------
+
 
 def _mol_from_smiles_chunk(smiles_chunk: Sequence[str]) -> List[Optional[object]]:
     """Worker entry: parse a chunk of SMILES -> list[Chem.Mol | None]."""
@@ -178,10 +180,7 @@ def _sa_chunk(smiles_chunk: Sequence[str]) -> List[float]:
     :mod:`rdkit.Contrib.SA_Score` because that contribution ships as
     *optional* (not bundled with `rdkit-pypi` wheels).
     """
-    return [
-        _sa_proxy_one(s)
-        for s in smiles_chunk
-    ]
+    return [_sa_proxy_one(s) for s in smiles_chunk]
 
 
 def _sa_proxy_one(smi: str) -> float:
@@ -236,13 +235,17 @@ def _lipinski_one(smi: str) -> bool:
 # Sequential fallback (used when multiprocessing.Pool is unsafe)
 # ---------------------------------------------------------------------------
 
+
 def _sequential_mol(smiles_list: Sequence[str]) -> List[Optional[object]]:
-    return [_Chem.MolFromSmiles(s) if (_RDKIT_AVAILABLE and s) else None
-            for s in smiles_list]
+    return [
+        _Chem.MolFromSmiles(s) if (_RDKIT_AVAILABLE and s) else None
+        for s in smiles_list
+    ]
 
 
 def _sequential_descriptors(
-    smiles_list: Sequence[str], name: str,
+    smiles_list: Sequence[str],
+    name: str,
 ) -> List[float]:
     return [_scalar_descriptor(s, name) for s in smiles_list]
 
@@ -262,6 +265,7 @@ def _sequential_lipinski(smiles_list: Sequence[str]) -> List[bool]:
 # ---------------------------------------------------------------------------
 # Pool helpers — try / except with a clear log + serial fallback
 # ---------------------------------------------------------------------------
+
 
 def _run_pool(
     fn,
@@ -283,7 +287,8 @@ def _run_pool(
     except Exception as exc:
         log.debug(
             "batched_rdkit.%s pool failed (%s); using serial fallback",
-            pool_label, exc,
+            pool_label,
+            exc,
         )
         return None
 
@@ -291,6 +296,7 @@ def _run_pool(
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def batch_mol_from_smiles(
     smiles_list: Sequence[str],
@@ -314,7 +320,9 @@ def batch_mol_from_smiles(
     if not is_parallel_safe() or n < 2 * n_workers:
         return _sequential_mol(smiles_list)
     chunks = _chunks(smiles_list, n_workers)
-    results = _run_pool(_mol_from_smiles_chunk, chunks, n_workers, "batch_mol_from_smiles")
+    results = _run_pool(
+        _mol_from_smiles_chunk, chunks, n_workers, "batch_mol_from_smiles"
+    )
     if results is None:
         return _sequential_mol(smiles_list)
     out: List[Optional[object]] = []
@@ -354,7 +362,9 @@ def batch_descriptors(
                 smiles_list.append(_Chem.MolToSmiles(m))
             except Exception:
                 smiles_list.append("")
-    return batch_descriptors_from_smiles(smiles_list, descriptor_name, n_workers=n_workers)
+    return batch_descriptors_from_smiles(
+        smiles_list, descriptor_name, n_workers=n_workers
+    )
 
 
 def batch_descriptors_from_smiles(
@@ -371,12 +381,16 @@ def batch_descriptors_from_smiles(
         return np.full(n, float("nan"), dtype=float)
     n_workers = int(n_workers) if int(n_workers) > 0 else (os.cpu_count() or 2)
     if not is_parallel_safe() or n < 2 * n_workers:
-        return np.asarray(_sequential_descriptors(smiles_list, descriptor_name), dtype=float)
+        return np.asarray(
+            _sequential_descriptors(smiles_list, descriptor_name), dtype=float
+        )
     payload = [(s, descriptor_name) for s in smiles_list]
     chunks = _chunks(payload, n_workers)
     results = _run_pool(_descriptors_chunk, chunks, n_workers, "batch_descriptors")
     if results is None:
-        return np.asarray(_sequential_descriptors(smiles_list, descriptor_name), dtype=float)
+        return np.asarray(
+            _sequential_descriptors(smiles_list, descriptor_name), dtype=float
+        )
     flat: List[float] = []
     for chunk_result in results:
         flat.extend(chunk_result)

@@ -100,14 +100,14 @@ def _load_pocket_ids_from_manifest() -> List[str]:
     """
     fallback = [f"test_{i:03d}" for i in range(10, 20)]
     if not MANIFEST_CSV.exists():
-        log.warning("manifest %s missing — using fallback IDs %s",
-                    MANIFEST_CSV, fallback)
+        log.warning(
+            "manifest %s missing — using fallback IDs %s", MANIFEST_CSV, fallback
+        )
         return fallback
     try:
         with MANIFEST_CSV.open() as f:
             reader = csv.DictReader(f)
-            ids = [str(r["pocket_id"]).strip() for r in reader
-                   if r.get("pocket_id")]
+            ids = [str(r["pocket_id"]).strip() for r in reader if r.get("pocket_id")]
         if not ids:
             log.warning("manifest %s empty — using fallback", MANIFEST_CSV)
             return fallback
@@ -122,6 +122,7 @@ def _load_pocket_ids_from_manifest() -> List[str]:
 # Aggregation
 # ---------------------------------------------------------------------------
 
+
 def _aggregate(per_pocket: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Roll up the 10 per-pocket stats dicts into a single summary."""
     n_total = len(per_pocket)
@@ -129,77 +130,103 @@ def _aggregate(per_pocket: List[Dict[str, Any]]) -> Dict[str, Any]:
         return {"n_pockets": 0, "aggregate": {}}
 
     def _mean(key: str) -> Optional[float]:
-        vals = [float(p[key]) for p in per_pocket
-                if p.get(key) is not None
-                and isinstance(p.get(key), (int, float))]
+        vals = [
+            float(p[key])
+            for p in per_pocket
+            if p.get(key) is not None and isinstance(p.get(key), (int, float))
+        ]
         if not vals:
             return None
         return float(np.mean(vals))
 
     def _sum(key: str) -> int:
-        return int(sum(int(p.get(k) or 0) for p in per_pocket
-                       for k in (key,) if isinstance(p.get(key), (int, float))
-                       ))
+        return int(
+            sum(
+                int(p.get(k) or 0)
+                for p in per_pocket
+                for k in (key,)
+                if isinstance(p.get(key), (int, float))
+            )
+        )
 
     # Per-pocket rate fields (use scalar mean across pockets).
     rate_keys = [
-        "n_emitted", "n_valid_rdkit", "n_unique_valid_smi",
-        "sa_n", "qed_n", "n_simulations_total", "nfe",
-        "nfe_reductions", "history_entries", "n_tiles",
+        "n_emitted",
+        "n_valid_rdkit",
+        "n_unique_valid_smi",
+        "sa_n",
+        "qed_n",
+        "n_simulations_total",
+        "nfe",
+        "nfe_reductions",
+        "history_entries",
+        "n_tiles",
     ]
     aggregate: Dict[str, Any] = {
         "n_pockets": int(n_total),
-        "wallclock_s_sum": float(sum(
-            float(p.get("wallclock_s", 0.0) or 0.0) for p in per_pocket
-        )),
-        "wallclock_s_mean": float(np.mean([
-            float(p.get("wallclock_s", 0.0) or 0.0) for p in per_pocket
-        ])),
+        "wallclock_s_sum": float(
+            sum(float(p.get("wallclock_s", 0.0) or 0.0) for p in per_pocket)
+        ),
+        "wallclock_s_mean": float(
+            np.mean([float(p.get("wallclock_s", 0.0) or 0.0) for p in per_pocket])
+        ),
         "n_unique_valid_smi_mean": _mean("n_unique_valid_smi"),
         "validity_rate_mean": (
-            float(np.mean([
-                (float(p.get("n_valid_rdkit", 0)) /
-                 max(1.0, float(p.get("n_emitted", 1))))
-                for p in per_pocket
-            ]))
+            float(
+                np.mean(
+                    [
+                        (
+                            float(p.get("n_valid_rdkit", 0))
+                            / max(1.0, float(p.get("n_emitted", 1)))
+                        )
+                        for p in per_pocket
+                    ]
+                )
+            )
         ),
         "uniqueness_rate_mean": (
-            float(np.mean([
-                (float(p.get("n_unique_valid_smi", 0)) /
-                 max(1.0, float(p.get("n_valid_rdkit", 1))))
-                for p in per_pocket
-            ]))
+            float(
+                np.mean(
+                    [
+                        (
+                            float(p.get("n_unique_valid_smi", 0))
+                            / max(1.0, float(p.get("n_valid_rdkit", 1)))
+                        )
+                        for p in per_pocket
+                    ]
+                )
+            )
         ),
         "sa_mean": _mean("sa_mean"),
         "qed_mean": _mean("qed_mean"),
-        "n_emitted_total": int(sum(
-            int(p.get("n_emitted", 0) or 0) for p in per_pocket
-        )),
-        "n_valid_total": int(sum(
-            int(p.get("n_valid_rdkit", 0) or 0) for p in per_pocket
-        )),
-        "n_unique_total": int(sum(
-            int(p.get("n_unique_valid_smi", 0) or 0) for p in per_pocket
-        )),
-        "nfe_total": int(sum(
-            int(p.get("nfe", 0) or 0) for p in per_pocket
-        )),
-        "nfe_reductions_total": int(sum(
-            int(p.get("nfe_reductions", 0) or 0) for p in per_pocket
-        )),
-        "rules_used_union": sorted({
-            str(r) for p in per_pocket
-            for r in (p.get("rules_used") or [])
-        }),
+        "n_emitted_total": int(
+            sum(int(p.get("n_emitted", 0) or 0) for p in per_pocket)
+        ),
+        "n_valid_total": int(
+            sum(int(p.get("n_valid_rdkit", 0) or 0) for p in per_pocket)
+        ),
+        "n_unique_total": int(
+            sum(int(p.get("n_unique_valid_smi", 0) or 0) for p in per_pocket)
+        ),
+        "nfe_total": int(sum(int(p.get("nfe", 0) or 0) for p in per_pocket)),
+        "nfe_reductions_total": int(
+            sum(int(p.get("nfe_reductions", 0) or 0) for p in per_pocket)
+        ),
+        "rules_used_union": sorted(
+            {str(r) for p in per_pocket for r in (p.get("rules_used") or [])}
+        ),
         "fpu_reduction": float(per_pocket[0].get("fpu_reduction", 0.25)),
         "pll_k": int(per_pocket[0].get("pll_k", 16)),
         "pll_knn": int(per_pocket[0].get("pll_knn", 8)),
-        "pll_available_all": bool(all(
-            bool(p.get("pll_available", False)) for p in per_pocket
-        )),
-        "n_simulations_per_pocket": int(per_pocket[0].get(
-            "n_simulations_total", N_SIMULATIONS,
-        )),
+        "pll_available_all": bool(
+            all(bool(p.get("pll_available", False)) for p in per_pocket)
+        ),
+        "n_simulations_per_pocket": int(
+            per_pocket[0].get(
+                "n_simulations_total",
+                N_SIMULATIONS,
+            )
+        ),
         "max_depth": int(per_pocket[0].get("max_depth", MAX_DEPTH)),
         "top_k": int(per_pocket[0].get("top_k", TOP_K)),
     }
@@ -227,36 +254,58 @@ def _write_final_md(per_pocket: List[Dict[str, Any]], md_path: Path) -> None:
     add = lines.append
     add("# TODO/32 B5 — Lambda pipeline smoke, 10-pocket expansion")
     add("")
-    add(f"- n_pockets: {agg['n_pockets']} ({per_pocket[0].get('pocket_id','?')}..{per_pocket[-1].get('pocket_id','?')})")
-    add(f"- pipeline: PLL signature → PLL heuristic → LamMCTS "
+    add(
+        f"- n_pockets: {agg['n_pockets']} ({per_pocket[0].get('pocket_id','?')}..{per_pocket[-1].get('pocket_id','?')})"
+    )
+    add(
+        f"- pipeline: PLL signature → PLL heuristic → LamMCTS "
         f"(KataGo FPU={agg['fpu_reduction']}) → top-{agg['top_k']} candidates "
-        f"→ closed β-NF annotation")
-    add(f"- n_simulations_per_pocket: {agg['n_simulations_per_pocket']} "
-        f"max_depth: {agg['max_depth']}")
+        f"→ closed β-NF annotation"
+    )
+    add(
+        f"- n_simulations_per_pocket: {agg['n_simulations_per_pocket']} "
+        f"max_depth: {agg['max_depth']}"
+    )
     add("")
     add("## Aggregate metrics")
     add("")
     add(f"- n_unique_valid_smi_mean: {agg['n_unique_valid_smi_mean']:.2f}")
     add(f"- validity_rate_mean: {agg['validity_rate_mean']:.4f}")
     add(f"- uniqueness_rate_mean: {agg['uniqueness_rate_mean']:.4f}")
-    add(f"- sa_mean: {agg['sa_mean']:.4f}" if agg['sa_mean'] is not None
-        else "- sa_mean: N/A")
-    add(f"- qed_mean: {agg['qed_mean']:.4f}" if agg['qed_mean'] is not None
-        else "- qed_mean: N/A")
-    add(f"- n_emitted_total: {agg['n_emitted_total']} "
+    add(
+        f"- sa_mean: {agg['sa_mean']:.4f}"
+        if agg["sa_mean"] is not None
+        else "- sa_mean: N/A"
+    )
+    add(
+        f"- qed_mean: {agg['qed_mean']:.4f}"
+        if agg["qed_mean"] is not None
+        else "- qed_mean: N/A"
+    )
+    add(
+        f"- n_emitted_total: {agg['n_emitted_total']} "
         f"n_valid_total: {agg['n_valid_total']} "
-        f"n_unique_total: {agg['n_unique_total']}")
-    add(f"- nfe_total: {agg['nfe_total']} "
-        f"nfe_reductions_total: {agg['nfe_reductions_total']}")
-    add(f"- wallclock_s_sum: {agg['wallclock_s_sum']:.1f} "
-        f"(mean per pocket: {agg['wallclock_s_mean']:.1f})")
+        f"n_unique_total: {agg['n_unique_total']}"
+    )
+    add(
+        f"- nfe_total: {agg['nfe_total']} "
+        f"nfe_reductions_total: {agg['nfe_reductions_total']}"
+    )
+    add(
+        f"- wallclock_s_sum: {agg['wallclock_s_sum']:.1f} "
+        f"(mean per pocket: {agg['wallclock_s_mean']:.1f})"
+    )
     add(f"- rules_used (union): {agg['rules_used_union']}")
-    add(f"- pll_k: {agg['pll_k']} pll_knn: {agg['pll_knn']} "
-        f"pll_available_all: {agg['pll_available_all']}")
+    add(
+        f"- pll_k: {agg['pll_k']} pll_knn: {agg['pll_knn']} "
+        f"pll_available_all: {agg['pll_available_all']}"
+    )
     add("")
     add("## Per-pocket highlights")
     add("")
-    add("| pocket | pocket_smiles | n_unique_valid | sa_mean | qed_mean | wallclock_s |")
+    add(
+        "| pocket | pocket_smiles | n_unique_valid | sa_mean | qed_mean | wallclock_s |"
+    )
     add("|---|---|---:|---:|---:|---:|")
     for p in per_pocket:
         smi = p.get("pocket_smiles_resolved") or "?"
@@ -265,14 +314,18 @@ def _write_final_md(per_pocket: List[Dict[str, Any]], md_path: Path) -> None:
         qed_v = p.get("qed_mean")
         sa_str = f"{sa_v:.3f}" if isinstance(sa_v, (int, float)) else "N/A"
         qed_str = f"{qed_v:.3f}" if isinstance(qed_v, (int, float)) else "N/A"
-        add(f"| `{p.get('pocket_id')}` | `{smi_short}` | "
+        add(
+            f"| `{p.get('pocket_id')}` | `{smi_short}` | "
             f"{p.get('n_unique_valid_smi','?')} | "
             f"{sa_str} | {qed_str} | "
-            f"{float(p.get('wallclock_s',0.0)):.1f} |")
+            f"{float(p.get('wallclock_s',0.0)):.1f} |"
+        )
     add("")
-    add("PLL + KataGo-style FPU (Liu & Feng 2026, "
+    add(
+        "PLL + KataGo-style FPU (Liu & Feng 2026, "
         "DOI: 10.1021/acs.jcim.6c02460).  Closed β-NF term via "
-        "`_molecule_to_lambda_expr` (atoms=left-associated app).")
+        "`_molecule_to_lambda_expr` (atoms=left-associated app)."
+    )
     md_path.parent.mkdir(parents=True, exist_ok=True)
     with md_path.open("w") as f:
         f.write("\n".join(lines) + "\n")
@@ -282,6 +335,7 @@ def _write_final_md(per_pocket: List[Dict[str, Any]], md_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # Main loop
 # ---------------------------------------------------------------------------
+
 
 def main() -> int:
     OUT_ROOT.mkdir(parents=True, exist_ok=True)
@@ -311,25 +365,37 @@ def main() -> int:
             save_artifacts(candidates, stats, out_dir)
             stats["wallclock_s"] = float(time.time() - t_pocket)
             per_pocket_stats.append(stats)
-            log.info("--- [%d/%d] pocket=%s done in %.1fs (n_unique_valid=%d) ---",
-                     i + 1, len(pocket_ids), pocket_id,
-                     stats["wallclock_s"],
-                     stats.get("n_unique_valid_smi", 0))
+            log.info(
+                "--- [%d/%d] pocket=%s done in %.1fs (n_unique_valid=%d) ---",
+                i + 1,
+                len(pocket_ids),
+                pocket_id,
+                stats["wallclock_s"],
+                stats.get("n_unique_valid_smi", 0),
+            )
         except Exception as exc:
-            log.error("--- [%d/%d] pocket=%s FAILED: %s ---",
-                      i + 1, len(pocket_ids), pocket_id, exc)
-            per_pocket_stats.append({
-                "pocket_id": pocket_id,
-                "error": str(exc),
-                "wallclock_s": float(time.time() - t_pocket),
-            })
+            log.error(
+                "--- [%d/%d] pocket=%s FAILED: %s ---",
+                i + 1,
+                len(pocket_ids),
+                pocket_id,
+                exc,
+            )
+            per_pocket_stats.append(
+                {
+                    "pocket_id": pocket_id,
+                    "error": str(exc),
+                    "wallclock_s": float(time.time() - t_pocket),
+                }
+            )
 
     # ---- aggregate + final report
     _write_aggregate_json(per_pocket_stats, OUT_ROOT / "aggregate.json")
     _write_final_md(per_pocket_stats, REPORT_DIR / "final.md")
 
-    log.info("=== DONE; %d pockets, %.1fs wall ===",
-             len(pocket_ids), time.time() - t_global)
+    log.info(
+        "=== DONE; %d pockets, %.1fs wall ===", len(pocket_ids), time.time() - t_global
+    )
     return 0
 
 

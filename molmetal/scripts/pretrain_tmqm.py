@@ -53,6 +53,7 @@ Usage
         --out-dir models/tmqm_pretrained \\
         --epochs 30 --batch 128 --lr 1e-3 --seed 42
 """
+
 from __future__ import annotations
 
 import argparse
@@ -86,6 +87,7 @@ from molmetal.baselines.dmpnn import (
 RDLogger = None
 try:
     from rdkit import RDLogger as _RD
+
     RDLogger = _RD
     _RD.DisableLog("rdApp.*")
 except Exception:
@@ -126,9 +128,10 @@ def charge_to_bin(c: int) -> int:
 @dataclass
 class TmQMDataset:
     """Filtered tmQM rows ready for featurisation."""
+
     smiles: List[str]
-    reg_targets: np.ndarray        # (N, 5)  HOMO/LUMO/gap/bo_total/coord_num
-    cls_targets: np.ndarray        # (N,)    oxidation-state bin
+    reg_targets: np.ndarray  # (N, 5)  HOMO/LUMO/gap/bo_total/coord_num
+    cls_targets: np.ndarray  # (N,)    oxidation-state bin
 
     @property
     def n(self) -> int:
@@ -187,8 +190,10 @@ def load_tmqm(csv_path, require_smiles: bool = True) -> TmQMDataset:
             except (ValueError, IndexError):
                 continue
             # Drop rows with NaN/Inf targets
-            if any(math.isnan(v) or math.isinf(v)
-                   for v in (coord, bo_total, homo, lumo, gap)):
+            if any(
+                math.isnan(v) or math.isinf(v)
+                for v in (coord, bo_total, homo, lumo, gap)
+            ):
                 continue
             smiles.append(smi)
             reg.append([homo, lumo, gap, bo_total, coord])
@@ -216,8 +221,8 @@ def stratified_split(
         n_test = max(1, int(round(cls_idx.shape[0] * test_frac)))
         n_val = max(1, int(round(cls_idx.shape[0] * val_frac)))
         test_idx.extend(cls_idx[:n_test].tolist())
-        val_idx.extend(cls_idx[n_test:n_test + n_val].tolist())
-        train_idx.extend(cls_idx[n_test + n_val:].tolist())
+        val_idx.extend(cls_idx[n_test : n_test + n_val].tolist())
+        train_idx.extend(cls_idx[n_test + n_val :].tolist())
     return (
         np.asarray(train_idx, dtype=np.int64),
         np.asarray(val_idx, dtype=np.int64),
@@ -258,15 +263,17 @@ class TmqmPretrainModel(nn.Module):
         )
 
         # ---- heads ----------------------------------------------------
-        self.reg_heads = nn.ModuleList([
-            nn.Sequential(
-                nn.Linear(hidden * 2, hidden),
-                nn.ReLU(),
-                nn.Dropout(dropout),
-                nn.Linear(hidden, 1),
-            )
-            for _ in range(n_reg)
-        ])
+        self.reg_heads = nn.ModuleList(
+            [
+                nn.Sequential(
+                    nn.Linear(hidden * 2, hidden),
+                    nn.ReLU(),
+                    nn.Dropout(dropout),
+                    nn.Linear(hidden, 1),
+                )
+                for _ in range(n_reg)
+            ]
+        )
         self.cls_head = nn.Sequential(
             nn.Linear(hidden * 2, hidden),
             nn.ReLU(),
@@ -310,7 +317,7 @@ class TmqmPretrainModel(nn.Module):
         pooled_list: List[torch.Tensor] = []
         for b in range(B):
             V = atom_feats.size(1)
-            valid_edges = (bond_feats[b].abs().sum(dim=-1) > 0)
+            valid_edges = bond_feats[b].abs().sum(dim=-1) > 0
             E = int(valid_edges.sum().item())
             if E == 0 or V == 0:
                 pooled_list.append(torch.zeros(2 * self.hidden, device=device))
@@ -329,7 +336,7 @@ class TmqmPretrainModel(nn.Module):
             [head(h_pool).squeeze(-1) for head in self.reg_heads],
             dim=1,
         )  # (B, n_reg)
-        cls_logits = self.cls_head(h_pool)        # (B, n_cls)
+        cls_logits = self.cls_head(h_pool)  # (B, n_cls)
         return reg_outs, cls_logits
 
 
@@ -403,10 +410,14 @@ def batch_iter(
     else:
         order = indices
     for start in range(0, order.shape[0], batch_size):
-        batch_idx = order[start:start + batch_size]
+        batch_idx = order[start : start + batch_size]
         batch_graphs = [graphs[int(i)] for i in batch_idx]
         batched = collate_graphs(
-            batch_graphs, max_atoms, max_edges, atom_dim, bond_dim,
+            batch_graphs,
+            max_atoms,
+            max_edges,
+            atom_dim,
+            bond_dim,
         )
         if batched is None:
             continue
@@ -422,6 +433,7 @@ def batch_iter(
 @dataclass
 class RegScaler:
     """Per-target mean/std scaler (z-score)."""
+
     mean: np.ndarray
     std: np.ndarray
 
@@ -466,10 +478,17 @@ def _train_one_epoch(
     n = 0
     n_batches = 0
     for _, atom_f, bond_f, e_src, e_dst, reg_t, cls_t in batch_iter(
-        graphs, reg_targets, cls_targets, train_idx,
-        batch_size, max_atoms, max_edges,
-        ATOM_FEATURE_DIM, BOND_FEATURE_DIM,
-        shuffle=True, rng=rng,
+        graphs,
+        reg_targets,
+        cls_targets,
+        train_idx,
+        batch_size,
+        max_atoms,
+        max_edges,
+        ATOM_FEATURE_DIM,
+        BOND_FEATURE_DIM,
+        shuffle=True,
+        rng=rng,
     ):
         atom_f = atom_f.to(device)
         bond_f = bond_f.to(device)
@@ -518,10 +537,17 @@ def _evaluate(
     reg_true_all: List[np.ndarray] = []
     cls_true_all: List[np.ndarray] = []
     for _, atom_f, bond_f, e_src, e_dst, reg_t, cls_t in batch_iter(
-        graphs, reg_targets, cls_targets, idx,
-        batch_size, max_atoms, max_edges,
-        ATOM_FEATURE_DIM, BOND_FEATURE_DIM,
-        shuffle=False, rng=np.random.default_rng(0),
+        graphs,
+        reg_targets,
+        cls_targets,
+        idx,
+        batch_size,
+        max_atoms,
+        max_edges,
+        ATOM_FEATURE_DIM,
+        BOND_FEATURE_DIM,
+        shuffle=False,
+        rng=np.random.default_rng(0),
     ):
         atom_f = atom_f.to(device)
         bond_f = bond_f.to(device)
@@ -534,8 +560,7 @@ def _evaluate(
         cls_true_all.append(cls_t.numpy())
 
     if not reg_pred_all:
-        return {"rmse": float("nan"), "mae": float("nan"),
-                "cls_acc": float("nan")}
+        return {"rmse": float("nan"), "mae": float("nan"), "cls_acc": float("nan")}
 
     reg_pred_np = np.concatenate(reg_pred_all, axis=0)
     cls_pred_np = np.concatenate(cls_pred_all, axis=0)
@@ -545,7 +570,7 @@ def _evaluate(
     # RMSE / MAE in original units
     reg_pred_orig = scaler.inverse_transform(reg_pred_np)
     err = reg_pred_orig - reg_true_np
-    rmse = float(np.sqrt((err ** 2).mean()))
+    rmse = float(np.sqrt((err**2).mean()))
     mae = float(np.abs(err).mean())
     cls_acc = float((cls_pred_np == cls_true_np).mean())
 
@@ -575,17 +600,17 @@ def save_encoder(
     encoder_path = out_dir / "tmqm_pretrained_encoder.pt"
     backbone = {
         "atom_emb.weight": model.atom_emb.weight.detach().cpu(),
-        "atom_emb.bias":   model.atom_emb.bias.detach().cpu(),
+        "atom_emb.bias": model.atom_emb.bias.detach().cpu(),
         "bond_emb.weight": model.bond_emb.weight.detach().cpu(),
-        "bond_emb.bias":   model.bond_emb.bias.detach().cpu(),
+        "bond_emb.bias": model.bond_emb.bias.detach().cpu(),
         "edge_init.0.weight": model.edge_init[0].weight.detach().cpu(),
-        "edge_init.0.bias":   model.edge_init[0].bias.detach().cpu(),
+        "edge_init.0.bias": model.edge_init[0].bias.detach().cpu(),
         "gru_update.W_z.weight": model.gru_update.W_z.weight.detach().cpu(),
         "gru_update.W_r.weight": model.gru_update.W_r.weight.detach().cpu(),
         "gru_update.W_h.weight": model.gru_update.W_h.weight.detach().cpu(),
-        "gru_update.b_z":       model.gru_update.b_z.detach().cpu(),
-        "gru_update.b_r":       model.gru_update.b_r.detach().cpu(),
-        "gru_update.b_h":       model.gru_update.b_h.detach().cpu(),
+        "gru_update.b_z": model.gru_update.b_z.detach().cpu(),
+        "gru_update.b_r": model.gru_update.b_r.detach().cpu(),
+        "gru_update.b_h": model.gru_update.b_h.detach().cpu(),
     }
     payload = {
         "state_dict": backbone,
@@ -593,7 +618,7 @@ def save_encoder(
         "train_meta": train_meta,
         "reg_scaler": {
             "mean": scaler.mean.tolist(),
-            "std":  scaler.std.tolist(),
+            "std": scaler.std.tolist(),
         },
     }
     torch.save(payload, encoder_path)
@@ -666,7 +691,10 @@ def main() -> int:
 
     # Standardise regression targets on training set only
     train_idx, val_idx, test_idx = stratified_split(
-        ds.cls_targets, val_frac=0.05, test_frac=0.05, seed=args.seed,
+        ds.cls_targets,
+        val_frac=0.05,
+        test_frac=0.05,
+        seed=args.seed,
     )
     print(
         f"[pretrain_tmqm] split: train={len(train_idx)} "
@@ -738,23 +766,43 @@ def main() -> int:
     for epoch in range(1, args.epochs + 1):
         t_epoch = time.time()
         train_metrics = _train_one_epoch(
-            model, optimizer, reg_criterion, cls_criterion,
-            graphs, reg_targets_scaled, ds.cls_targets, train_idx,
+            model,
+            optimizer,
+            reg_criterion,
+            cls_criterion,
+            graphs,
+            reg_targets_scaled,
+            ds.cls_targets,
+            train_idx,
             batch_size=args.batch,
-            max_atoms=args.max_atoms, max_edges=args.max_edges,
-            device=device, rng=rng,
+            max_atoms=args.max_atoms,
+            max_edges=args.max_edges,
+            device=device,
+            rng=rng,
         )
         val_metrics = _evaluate(
-            model, graphs, ds.reg_targets, ds.cls_targets, val_idx,
+            model,
+            graphs,
+            ds.reg_targets,
+            ds.cls_targets,
+            val_idx,
             batch_size=args.batch,
-            max_atoms=args.max_atoms, max_edges=args.max_edges,
-            device=device, scaler=scaler,
+            max_atoms=args.max_atoms,
+            max_edges=args.max_edges,
+            device=device,
+            scaler=scaler,
         )
         test_metrics = _evaluate(
-            model, graphs, ds.reg_targets, ds.cls_targets, test_idx,
+            model,
+            graphs,
+            ds.reg_targets,
+            ds.cls_targets,
+            test_idx,
             batch_size=args.batch,
-            max_atoms=args.max_atoms, max_edges=args.max_edges,
-            device=device, scaler=scaler,
+            max_atoms=args.max_atoms,
+            max_edges=args.max_edges,
+            device=device,
+            scaler=scaler,
         )
         cur = {
             "epoch": epoch,
@@ -806,10 +854,16 @@ def main() -> int:
 
     # ----------------- final test eval + encoder save -----------------
     final_test = _evaluate(
-        model, graphs, ds.reg_targets, ds.cls_targets, test_idx,
+        model,
+        graphs,
+        ds.reg_targets,
+        ds.cls_targets,
+        test_idx,
         batch_size=args.batch,
-        max_atoms=args.max_atoms, max_edges=args.max_edges,
-        device=device, scaler=scaler,
+        max_atoms=args.max_atoms,
+        max_edges=args.max_edges,
+        device=device,
+        scaler=scaler,
     )
     train_meta = {
         "best_epoch": best_epoch,
@@ -847,9 +901,11 @@ def main() -> int:
     )
     print(f"[pretrain_tmqm] wrote encoder to {encoder_path}")
     print(f"[pretrain_tmqm] wrote metrics to {metrics_path}")
-    print(f"[pretrain_tmqm] final test RMSE={final_test['rmse']:.4f} "
-          f"cls_acc={final_test['cls_acc']:.3f} "
-          f"wall={total_wall:.1f}s")
+    print(
+        f"[pretrain_tmqm] final test RMSE={final_test['rmse']:.4f} "
+        f"cls_acc={final_test['cls_acc']:.3f} "
+        f"wall={total_wall:.1f}s"
+    )
 
     return 0
 

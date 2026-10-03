@@ -77,7 +77,7 @@ def _count_test_files(lo: int, hi: int) -> int:
             continue
         stem = p.stem  # 'test_wf313a'
         prefix = "test_wf"
-        rest = stem[len(prefix):]
+        rest = stem[len(prefix) :]
         # extract leading digits
         digits = ""
         for ch in rest:

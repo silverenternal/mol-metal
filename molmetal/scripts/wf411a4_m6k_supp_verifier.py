@@ -47,7 +47,12 @@ SMILES_COL = "SMILES_Ligands"
 PIC50_COL = "pIC50"
 CELL_LINE_COL = "Cell_line"
 
-OUT_DIR = Path(__file__).resolve().parents[2] / "molmetal" / "reports" / "wf411a4_m6k_supp_verifier"
+OUT_DIR = (
+    Path(__file__).resolve().parents[2]
+    / "molmetal"
+    / "reports"
+    / "wf411a4_m6k_supp_verifier"
+)
 
 # Top-3 supplementary sub-table candidates per Wf-389-A1 §3
 TOP3_INVARIANTS = [
@@ -171,14 +176,23 @@ def per_cohort_r2(df: pd.DataFrame, invariant_name: str) -> dict:
         n = int(mask.sum())
         rec = {"n": n}
         if n < 10:
-            rec.update({"pearson_r": None, "spearman_rho": None, "band": "INSUFFICIENT_DATA"})
+            rec.update(
+                {"pearson_r": None, "spearman_rho": None, "band": "INSUFFICIENT_DATA"}
+            )
             out[cohort] = rec
             continue
         try:
             pr, pp = pearsonr(x[mask].astype(float), y[mask].astype(float))
             sr, sp = spearmanr(x[mask].astype(float), y[mask].astype(float))
         except Exception as e:
-            rec.update({"pearson_r": None, "spearman_rho": None, "band": "CORRELATION_FAILED", "error": str(e)})
+            rec.update(
+                {
+                    "pearson_r": None,
+                    "spearman_rho": None,
+                    "band": "CORRELATION_FAILED",
+                    "error": str(e),
+                }
+            )
             out[cohort] = rec
             continue
         abs_r = abs(float(pr))
@@ -202,7 +216,13 @@ def per_invariant_summary(per_cohort: dict, invariant_name: str) -> dict:
     Per-cohort array preserves the 5-cohort fixed order: NSCLC, breast, melanoma,
     Krebs, other. Aggregate verdict = the weakest band (WEAK < MODERATE < STRONG).
     """
-    band_rank = {"WEAK": 0, "MODERATE": 1, "STRONG": 2, "INSUFFICIENT_DATA": -1, "CORRELATION_FAILED": -1}
+    band_rank = {
+        "WEAK": 0,
+        "MODERATE": 1,
+        "STRONG": 2,
+        "INSUFFICIENT_DATA": -1,
+        "CORRELATION_FAILED": -1,
+    }
     cohorts_order = ["NSCLC", "breast", "melanoma", "Krebs", "other"]
     per_cohort_arr = []
     band_counter: dict[str, int] = {}
@@ -232,7 +252,9 @@ def per_invariant_summary(per_cohort: dict, invariant_name: str) -> dict:
             weakest_rank = r
             weakest_band = b
     # Aggregate verdict: all 3 supplementary entries should fall in WEAK band
-    all_three_wf411a4_verdict = "ALL_WEAK" if band_counter.get("WEAK", 0) == len(per_cohort_arr) else "MIXED"
+    all_three_wf411a4_verdict = (
+        "ALL_WEAK" if band_counter.get("WEAK", 0) == len(per_cohort_arr) else "MIXED"
+    )
     return {
         "invariant": invariant_name,
         "per_cohort": per_cohort_arr,
@@ -245,8 +267,12 @@ def per_invariant_summary(per_cohort: dict, invariant_name: str) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--max-samples", type=int, default=None,
-                        help="Cap cohort size for speed (None = use all rows)")
+    parser.add_argument(
+        "--max-samples",
+        type=int,
+        default=None,
+        help="Cap cohort size for speed (None = use all rows)",
+    )
     parser.add_argument("--out-dir", type=Path, default=OUT_DIR)
     parser.add_argument("--data-csv", type=Path, default=DATA_FILE)
     args = parser.parse_args()
@@ -256,16 +282,28 @@ def main() -> int:
     print(f"[wf411a4] Loading cohort from {args.data_csv}", file=sys.stderr)
     df = load_cohort(args.data_csv, max_samples=args.max_samples)
     n0 = len(df)
-    print(f"[wf411a4] Loaded {n0} rows with non-empty SMILES + numeric pIC50", file=sys.stderr)
+    print(
+        f"[wf411a4] Loaded {n0} rows with non-empty SMILES + numeric pIC50",
+        file=sys.stderr,
+    )
 
-    print(f"[wf411a4] Cohort distribution: {df['cohort'].value_counts().to_dict()}", file=sys.stderr)
+    print(
+        f"[wf411a4] Cohort distribution: {df['cohort'].value_counts().to_dict()}",
+        file=sys.stderr,
+    )
 
     df = parse_mols(df)
     n1 = len(df)
-    print(f"[wf411a4] Parsed {n1} valid RDKit mols ({n0 - n1} RDKit parse failures)", file=sys.stderr)
+    print(
+        f"[wf411a4] Parsed {n1} valid RDKit mols ({n0 - n1} RDKit parse failures)",
+        file=sys.stderr,
+    )
 
     df = compute_top3_invariants(df)
-    print(f"[wf411a4] Computed MolLogP + MorganDensity_r2 + Chi3v invariants", file=sys.stderr)
+    print(
+        f"[wf411a4] Computed MolLogP + MorganDensity_r2 + Chi3v invariants",
+        file=sys.stderr,
+    )
 
     # Per-cohort × per-invariant table
     per_invariant_table: dict[str, dict] = {}
@@ -303,7 +341,9 @@ def main() -> int:
         for c in inv_data["per_cohort"]
         if c["band"] == "WEAK"
     )
-    aggregate_verdict = "ALL_WEAK" if (n_cohort_strong == 0 and n_cohort_moderate == 0) else "MIXED"
+    aggregate_verdict = (
+        "ALL_WEAK" if (n_cohort_strong == 0 and n_cohort_moderate == 0) else "MIXED"
+    )
 
     result = {
         "wf": "Wf-411-A4",
@@ -332,7 +372,9 @@ def main() -> int:
                 "for MolLogP + MorganDensity_r2 + Chi3v confirms the Wf-389-A1 §3 supplementary "
                 "sub-table recommendation: these are exploratory correlates, NOT headline fit "
                 "metrics. m6_kappa remains in §6 honest-limitations per Wf-365-A3 verdict."
-            ) if aggregate_verdict == "ALL_WEAK" else (
+            )
+            if aggregate_verdict == "ALL_WEAK"
+            else (
                 f"At least one cohort×invariant reaches MODERATE or STRONG band; "
                 f"strong={n_cohort_strong} moderate={n_cohort_moderate} weak={n_cohort_weak}. "
                 f"This is a STRUCTURAL finding — the supplementary sub-table recommendation "

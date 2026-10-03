@@ -139,14 +139,14 @@ CA2_TARGET = MetalloproteinTarget(
     metal="Zn",
     coordination="tetrahedral",
     pdb_ids=(
-        "1CA2",   # apo CA2, 2.0 Å
-        "1CAM",   # CA2 + acetazolamide
-        "1CAY",   # CA2 + methazolamide
-        "1CIM",   # CA2 + ethoxzolamide
-        "1CNW",   # CA2 + dorzolamide (clinical)
-        "1IF7",   # CA2 + sulfonamide clinical lead
-        "2AW1",   # CA2 + clinical thienothiazine
-        "3CA2",   # CA2 + benzenesulfonamide (high-res)
+        "1CA2",  # apo CA2, 2.0 Å
+        "1CAM",  # CA2 + acetazolamide
+        "1CAY",  # CA2 + methazolamide
+        "1CIM",  # CA2 + ethoxzolamide
+        "1CNW",  # CA2 + dorzolamide (clinical)
+        "1IF7",  # CA2 + sulfonamide clinical lead
+        "2AW1",  # CA2 + clinical thienothiazine
+        "3CA2",  # CA2 + benzenesulfonamide (high-res)
     ),
     binding_site_residues={
         "1CA2": (94, 96, 119, 198, 199, 202, 204, 209),
@@ -215,14 +215,14 @@ ACE_TARGET = MetalloproteinTarget(
     metal="Zn",
     coordination="tetrahedral",
     pdb_ids=(
-        "1O86",   # ACE + lisinopril
-        "1UZE",   # ACE + captopril
-        "2C6F",   # ACE + enalaprilat
-        "2OC2",   # ACE + RXPA380 (clinical)
-        "3BKK",   # ACE + phosphonate inhibitor
-        "4APH",   # ACE + fosinoprilat
-        "4BZR",   # ACE + keto-ACE inhibitor
-        "6H5W",   # ACE + clinical candidate
+        "1O86",  # ACE + lisinopril
+        "1UZE",  # ACE + captopril
+        "2C6F",  # ACE + enalaprilat
+        "2OC2",  # ACE + RXPA380 (clinical)
+        "3BKK",  # ACE + phosphonate inhibitor
+        "4APH",  # ACE + fosinoprilat
+        "4BZR",  # ACE + keto-ACE inhibitor
+        "6H5W",  # ACE + clinical candidate
     ),
     binding_site_residues={
         "1O86": (368, 371, 383, 387, 411, 522, 523, 526),
@@ -291,12 +291,12 @@ HDAC2_TARGET = MetalloproteinTarget(
     metal="Zn",
     coordination="tetrahedral",
     pdb_ids=(
-        "3MAX",   # HDAC2 + SAHA (vorinostat)
-        "4LXZ",   # HDAC2 + trifluoromethyl ketone inhibitor
-        "4LY1",   # HDAC2 + clinical hydroxamate
-        "5IWG",   # HDAC2 + macrocyclic inhibitor
-        "6XDM",   # HDAC2 + clinical candidate
-        "7KBG",   # HDAC2 + next-gen hydroxamate
+        "3MAX",  # HDAC2 + SAHA (vorinostat)
+        "4LXZ",  # HDAC2 + trifluoromethyl ketone inhibitor
+        "4LY1",  # HDAC2 + clinical hydroxamate
+        "5IWG",  # HDAC2 + macrocyclic inhibitor
+        "6XDM",  # HDAC2 + clinical candidate
+        "7KBG",  # HDAC2 + next-gen hydroxamate
     ),
     binding_site_residues={
         "3MAX": (104, 145, 146, 154, 155, 176, 179, 258),
@@ -354,14 +354,14 @@ PKA_TARGET = MetalloproteinTarget(
     metal="Mg",
     coordination="octahedral",
     pdb_ids=(
-        "1ATP",   # PKA + ATP, Mg²⁺ × 2
-        "1CDK",   # PKA + ATP, Mg²⁺ × 2 (early kinase reference)
-        "1JBP",   # PKA + H89 inhibitor
-        "1STC",   # PKA + staurosporine
-        "2ERZ",   # PKA + clinical candidate
-        "3FHI",   # PKA + high-affinity inhibitor
-        "4WB5",   # PKA + clinical lead
-        "5L1R",   # PKA + macrocyclic inhibitor
+        "1ATP",  # PKA + ATP, Mg²⁺ × 2
+        "1CDK",  # PKA + ATP, Mg²⁺ × 2 (early kinase reference)
+        "1JBP",  # PKA + H89 inhibitor
+        "1STC",  # PKA + staurosporine
+        "2ERZ",  # PKA + clinical candidate
+        "3FHI",  # PKA + high-affinity inhibitor
+        "4WB5",  # PKA + clinical lead
+        "5L1R",  # PKA + macrocyclic inhibitor
     ),
     binding_site_residues={
         "1ATP": (53, 72, 91, 168, 170, 184),
@@ -426,14 +426,14 @@ CDK2_TARGET = MetalloproteinTarget(
     metal="Mg",
     coordination="octahedral",
     pdb_ids=(
-        "1AQ1",   # CDK2 + ATP, Mg²⁺ × 2
-        "1H00",   # CDK2 + staurosporine
-        "1PF8",   # CDK2 + clinical candidate
-        "2A4L",   # CDK2 + aminopurine clinical
-        "2R3J",   # CDK2 + macrocyclic inhibitor
-        "3DDQ",   # CDK2 + clinical lead
-        "4GCJ",   # CDK2 + pyrazole inhibitor
-        "5L2W",   # CDK2 + next-gen clinical
+        "1AQ1",  # CDK2 + ATP, Mg²⁺ × 2
+        "1H00",  # CDK2 + staurosporine
+        "1PF8",  # CDK2 + clinical candidate
+        "2A4L",  # CDK2 + aminopurine clinical
+        "2R3J",  # CDK2 + macrocyclic inhibitor
+        "3DDQ",  # CDK2 + clinical lead
+        "4GCJ",  # CDK2 + pyrazole inhibitor
+        "5L2W",  # CDK2 + next-gen clinical
     ),
     binding_site_residues={
         "1AQ1": (33, 51, 81, 86, 127, 145),
@@ -496,14 +496,14 @@ CYP3A4_TARGET = MetalloproteinTarget(
     metal="Fe",
     coordination="octahedral",
     pdb_ids=(
-        "1TQN",   # CYP3A4 + ketoconazole
-        "2J0D",   # CYP3A4 + erythromycin
-        "2V0M",   # CYP3A4 + metyrapone
-        "3NXU",   # CYP3A4 + ritonavir
-        "4K9T",   # CYP3A4 + itraconazole
-        "4D75",   # CYP3A4 + posaconazole
-        "5VCG",   # CYP3A4 + clinical candidate
-        "6MA1",   # CYP3A4 + next-gen inhibitor
+        "1TQN",  # CYP3A4 + ketoconazole
+        "2J0D",  # CYP3A4 + erythromycin
+        "2V0M",  # CYP3A4 + metyrapone
+        "3NXU",  # CYP3A4 + ritonavir
+        "4K9T",  # CYP3A4 + itraconazole
+        "4D75",  # CYP3A4 + posaconazole
+        "5VCG",  # CYP3A4 + clinical candidate
+        "6MA1",  # CYP3A4 + next-gen inhibitor
     ),
     binding_site_residues={
         "1TQN": (105, 114, 301, 305, 309, 370, 374, 442),
@@ -568,12 +568,12 @@ ADH_TARGET = MetalloproteinTarget(
     metal="Zn",
     coordination="tetrahedral",
     pdb_ids=(
-        "1HSO",   # ADH1B + NAD+ + Zn²⁺
-        "1HTO",   # ADH1B + NAD+ + DMSO
-        "1U3U",   # ADH1B + 4-methylpyrazole
-        "1U3V",   # ADH1B + clinical inhibitor
-        "3HUD",   # ADH1B + formamidine
-        "3HUH",   # ADH1B + clinical candidate
+        "1HSO",  # ADH1B + NAD+ + Zn²⁺
+        "1HTO",  # ADH1B + NAD+ + DMSO
+        "1U3U",  # ADH1B + 4-methylpyrazole
+        "1U3V",  # ADH1B + clinical inhibitor
+        "3HUD",  # ADH1B + formamidine
+        "3HUH",  # ADH1B + clinical candidate
     ),
     binding_site_residues={
         "1HSO": (46, 67, 174, 175, 318, 319, 322, 369),
@@ -623,14 +623,14 @@ SOD1_TARGET = MetalloproteinTarget(
     metal="Cu",
     coordination="trigonal bipyramidal",
     pdb_ids=(
-        "1PU7",   # SOD1 + Cu/Zn + chloride
-        "1PU9",   # SOD1 + Cu/Zn + azide
-        "1PUA",   # SOD1 + Cu/Zn + cyanide
-        "1PUC",   # SOD1 + Cu/Zn + formate
-        "2C9V",   # SOD1 + clinical candidate
-        "2C9S",   # SOD1 + next-gen inhibitor
-        "4FFI",   # SOD1 + ALS-linked mutant
-        "5YTO",   # SOD1 + clinical candidate
+        "1PU7",  # SOD1 + Cu/Zn + chloride
+        "1PU9",  # SOD1 + Cu/Zn + azide
+        "1PUA",  # SOD1 + Cu/Zn + cyanide
+        "1PUC",  # SOD1 + Cu/Zn + formate
+        "2C9V",  # SOD1 + clinical candidate
+        "2C9S",  # SOD1 + next-gen inhibitor
+        "4FFI",  # SOD1 + ALS-linked mutant
+        "5YTO",  # SOD1 + clinical candidate
     ),
     binding_site_residues={
         "1PU7": (46, 48, 63, 71, 80, 83, 120, 124),
@@ -702,16 +702,16 @@ def _as_mmp(mmp: MMPTarget, metal: str = "Zn") -> MetalloproteinTarget:
 
 
 METALLOPROTEIN_TARGETS: Dict[str, MetalloproteinTarget] = {
-    "MMP2":   _as_mmp(MMP2_TARGET,  "Zn"),
-    "MMP9":   _as_mmp(MMP9_TARGET,  "Zn"),
-    "CA2":    CA2_TARGET,
-    "ACE":    ACE_TARGET,
-    "HDAC2":  HDAC2_TARGET,
-    "PKA":    PKA_TARGET,
-    "CDK2":   CDK2_TARGET,
+    "MMP2": _as_mmp(MMP2_TARGET, "Zn"),
+    "MMP9": _as_mmp(MMP9_TARGET, "Zn"),
+    "CA2": CA2_TARGET,
+    "ACE": ACE_TARGET,
+    "HDAC2": HDAC2_TARGET,
+    "PKA": PKA_TARGET,
+    "CDK2": CDK2_TARGET,
     "CYP3A4": CYP3A4_TARGET,
-    "ADH1B":  ADH_TARGET,
-    "SOD1":   SOD1_TARGET,
+    "ADH1B": ADH_TARGET,
+    "SOD1": SOD1_TARGET,
 }
 
 
@@ -749,7 +749,9 @@ def combined_pdb_ids(names: Optional[List[str]] = None) -> List[str]:
 
 def families_by_metal(metal: str) -> List[MetalloproteinTarget]:
     """Return the list of families whose catalytic metal equals ``metal``."""
-    out = [t for t in METALLOPROTEIN_TARGETS.values() if t.metal.upper() == metal.upper()]
+    out = [
+        t for t in METALLOPROTEIN_TARGETS.values() if t.metal.upper() == metal.upper()
+    ]
     return out
 
 

@@ -68,7 +68,7 @@ SPLIT_FILES = {
 # chemprop v2 defaults — apples-to-apples with chemprop v2 reference impl
 RECIPE_HIDDEN = 300
 RECIPE_DEPTH = 3
-RECIPE_BATCH = 64          # chemprop default 50; bump to 64 for GPU efficiency
+RECIPE_BATCH = 64  # chemprop default 50; bump to 64 for GPU efficiency
 RECIPE_LR = 1e-3
 RECIPE_EPOCHS = 30
 RECIPE_TRAIN_MAX_PER_EPOCH = 1500
@@ -83,7 +83,11 @@ RECIPE_EVAL_MAX_SAMPLES = 4000
 def load_split_csv(path: Path) -> Dict[str, List[Dict[str, str]]]:
     """Load DrugOOD CSV into a per-split dict."""
     out: Dict[str, List[Dict[str, str]]] = {
-        "train": [], "ood_val": [], "ood_test": [], "iid_val": [], "iid_test": [],
+        "train": [],
+        "ood_val": [],
+        "ood_test": [],
+        "iid_val": [],
+        "iid_test": [],
     }
     with path.open("r", encoding="utf-8") as fh:
         reader = csv.DictReader(fh)
@@ -163,8 +167,10 @@ def pre_featurize_split(
 def _build_model(atom_fdim: int, bond_fdim: int, device: torch.device):
     """Build chemprop v2 backbone + binary classification head."""
     mp = AtomMessagePassing(
-        d_v=atom_fdim, d_e=bond_fdim,
-        d_h=RECIPE_HIDDEN, depth=RECIPE_DEPTH,
+        d_v=atom_fdim,
+        d_e=bond_fdim,
+        d_h=RECIPE_HIDDEN,
+        depth=RECIPE_DEPTH,
     )
     agg = SumAggregation()
     head = BinaryClassificationFFN(
@@ -197,12 +203,20 @@ def _to_jsonable(o):
 
 
 def _evaluate(
-    mp, agg, head, mols: List[MolGraph], y: np.ndarray,
-    valid_mask: np.ndarray, batch: int, device: torch.device,
+    mp,
+    agg,
+    head,
+    mols: List[MolGraph],
+    y: np.ndarray,
+    valid_mask: np.ndarray,
+    batch: int,
+    device: torch.device,
     max_samples: int = RECIPE_EVAL_MAX_SAMPLES,
     seed: int = 0,
 ) -> Tuple[float, int]:
-    mp.eval(); agg.eval(); head.eval()
+    mp.eval()
+    agg.eval()
+    head.eval()
     valid_idx = np.where(valid_mask)[0]
     if len(valid_idx) == 0:
         return float("nan"), 0
@@ -217,14 +231,14 @@ def _evaluate(
     scores = np.zeros(len(valid_idx), dtype=np.float32)
     with torch.no_grad():
         for start in range(0, len(valid_idx), batch):
-            chunk = valid_idx[start:start + batch]
+            chunk = valid_idx[start : start + batch]
             bmols = [mols[int(i)] for i in chunk]
             bmg = BatchMolGraph(bmols)
             bmg.to(device)
             H_v = mp(bmg)
             H = agg(H_v, bmg.batch)
             logit = head.train_step(H).squeeze(-1)
-            scores[start:start + len(chunk)] = torch.sigmoid(logit).cpu().numpy()
+            scores[start : start + len(chunk)] = torch.sigmoid(logit).cpu().numpy()
     return float(roc_auc_score(labels, scores)), int(len(labels))
 
 
@@ -260,7 +274,8 @@ def _train_one_seed(
         weight_decay=1e-4,
     )
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optim, T_max=args.epochs,
+        optim,
+        T_max=args.epochs,
     )
     bce = nn.BCEWithLogitsLoss()
 
@@ -279,12 +294,16 @@ def _train_one_seed(
 
     t0_train = time.time()
     for epoch in range(1, args.epochs + 1):
-        mp.train(); agg.train(); head.train()
+        mp.train()
+        agg.train()
+        head.train()
 
         # Subsample per epoch
         if len(train_indices) > args.train_max_per_epoch:
             epoch_idx = rng.choice(
-                train_indices, size=args.train_max_per_epoch, replace=False,
+                train_indices,
+                size=args.train_max_per_epoch,
+                replace=False,
             )
         else:
             epoch_idx = train_indices
@@ -294,7 +313,7 @@ def _train_one_seed(
         n_batches = 0
         n_steps = max(1, (len(epoch_idx) + args.batch - 1) // args.batch)
         for step in range(n_steps):
-            chunk = epoch_idx[step * args.batch:(step + 1) * args.batch]
+            chunk = epoch_idx[step * args.batch : (step + 1) * args.batch]
             bmols = [mols_train[int(i)] for i in chunk]
             bmg = BatchMolGraph(bmols)
             bmg.to(device)
@@ -306,7 +325,9 @@ def _train_one_seed(
             optim.zero_grad(set_to_none=True)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(
-                list(mp.parameters()) + list(agg.parameters()) + list(head.parameters()),
+                list(mp.parameters())
+                + list(agg.parameters())
+                + list(head.parameters()),
                 max_norm=5.0,
             )
             optim.step()
@@ -316,18 +337,34 @@ def _train_one_seed(
 
         if epoch % args.eval_every == 0 or epoch == args.epochs:
             val_auc, n_val = _evaluate(
-                mp, agg, head, mols_val, y_val, val_mask,
-                args.batch, device, seed=seed,
+                mp,
+                agg,
+                head,
+                mols_val,
+                y_val,
+                val_mask,
+                args.batch,
+                device,
+                seed=seed,
             )
             iid_auc, n_iid = _evaluate(
-                mp, agg, head, mols_iid_test, y_iid_test, iid_test_mask,
-                args.batch, device, seed=seed,
+                mp,
+                agg,
+                head,
+                mols_iid_test,
+                y_iid_test,
+                iid_test_mask,
+                args.batch,
+                device,
+                seed=seed,
             )
-            val_history.append({
-                "epoch": epoch,
-                "val_auc": val_auc,
-                "iid_test_auc": iid_auc,
-            })
+            val_history.append(
+                {
+                    "epoch": epoch,
+                    "val_auc": val_auc,
+                    "iid_test_auc": iid_auc,
+                }
+            )
             print(
                 f"[wf170c:{split_name} seed={seed}] epoch={epoch:3d} "
                 f"loss={epoch_loss / max(n_batches, 1):.4f} "
@@ -339,9 +376,16 @@ def _train_one_seed(
                 best_val_auc = val_auc
                 best_epoch = epoch
                 best_state = {
-                    "mp": {k: v.detach().cpu().clone() for k, v in mp.state_dict().items()},
-                    "agg": {k: v.detach().cpu().clone() for k, v in agg.state_dict().items()},
-                    "head": {k: v.detach().cpu().clone() for k, v in head.state_dict().items()},
+                    "mp": {
+                        k: v.detach().cpu().clone() for k, v in mp.state_dict().items()
+                    },
+                    "agg": {
+                        k: v.detach().cpu().clone() for k, v in agg.state_dict().items()
+                    },
+                    "head": {
+                        k: v.detach().cpu().clone()
+                        for k, v in head.state_dict().items()
+                    },
                 }
 
     train_time = time.time() - t0_train
@@ -354,16 +398,37 @@ def _train_one_seed(
 
     # Final eval
     ood_test_auc, n_ood_test = _evaluate(
-        mp, agg, head, mols_test, y_test, test_mask,
-        args.batch, device, seed=seed,
+        mp,
+        agg,
+        head,
+        mols_test,
+        y_test,
+        test_mask,
+        args.batch,
+        device,
+        seed=seed,
     )
     iid_test_auc, n_iid_test = _evaluate(
-        mp, agg, head, mols_iid_test, y_iid_test, iid_test_mask,
-        args.batch, device, seed=seed,
+        mp,
+        agg,
+        head,
+        mols_iid_test,
+        y_iid_test,
+        iid_test_mask,
+        args.batch,
+        device,
+        seed=seed,
     )
     val_auc_final, n_val = _evaluate(
-        mp, agg, head, mols_val, y_val, val_mask,
-        args.batch, device, seed=seed,
+        mp,
+        agg,
+        head,
+        mols_val,
+        y_val,
+        val_mask,
+        args.batch,
+        device,
+        seed=seed,
     )
 
     print(
@@ -393,7 +458,9 @@ def _train_one_seed(
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     p.add_argument(
-        "--split", dest="splits", nargs="+",
+        "--split",
+        dest="splits",
+        nargs="+",
         default=["assay", "scaffold", "size"],
         choices=["assay", "scaffold", "size"],
     )
@@ -404,7 +471,8 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p.add_argument("--hidden", type=int, default=RECIPE_HIDDEN)
     p.add_argument("--depth", type=int, default=RECIPE_DEPTH)
     p.add_argument(
-        "--train-max-per-epoch", type=int,
+        "--train-max-per-epoch",
+        type=int,
         default=RECIPE_TRAIN_MAX_PER_EPOCH,
     )
     p.add_argument("--eval-every", type=int, default=RECIPE_EVAL_EVERY)
@@ -454,7 +522,10 @@ def main(argv: Optional[List[str]] = None) -> int:
                 flush=True,
             )
             splits_data[split][sp_name] = {
-                "mols": mols, "y": y, "pIC50": pIC50, "valid_mask": valid_mask,
+                "mols": mols,
+                "y": y,
+                "pIC50": pIC50,
+                "valid_mask": valid_mask,
             }
 
     # Probe atom/bond dims from first mol
@@ -520,9 +591,12 @@ def main(argv: Optional[List[str]] = None) -> int:
                             "agg_state": r["best_state"]["agg"],
                             "head_state": r["best_state"]["head"],
                             "recipe": {
-                                "epochs": args.epochs, "batch": args.batch,
-                                "lr": args.lr, "hidden": args.hidden,
-                                "depth": args.depth, "split": split,
+                                "epochs": args.epochs,
+                                "batch": args.batch,
+                                "lr": args.lr,
+                                "hidden": args.hidden,
+                                "depth": args.depth,
+                                "split": split,
                             },
                             "atom_fdim": atom_fdim,
                             "bond_fdim": bond_fdim,
@@ -538,30 +612,44 @@ def main(argv: Optional[List[str]] = None) -> int:
                 per_seed_results.append(r)
             except Exception as e:
                 import traceback
+
                 traceback.print_exc()
                 print(f"[wf170c:{split} seed={seed}] FAILED: {e}", flush=True)
-                per_seed_results.append({
-                    "seed": seed, "error": str(e),
-                    "ood_test_auc": float("nan"),
-                    "iid_test_auc": float("nan"),
-                    "val_auc_final": float("nan"),
-                })
+                per_seed_results.append(
+                    {
+                        "seed": seed,
+                        "error": str(e),
+                        "ood_test_auc": float("nan"),
+                        "iid_test_auc": float("nan"),
+                        "val_auc_final": float("nan"),
+                    }
+                )
 
         if per_seed_results:
             ood_aucs = [
-                r["ood_test_auc"] for r in per_seed_results
+                r["ood_test_auc"]
+                for r in per_seed_results
                 if not np.isnan(r.get("ood_test_auc", float("nan")))
             ]
             iid_aucs = [
-                r["iid_test_auc"] for r in per_seed_results
+                r["iid_test_auc"]
+                for r in per_seed_results
                 if not np.isnan(r.get("iid_test_auc", float("nan")))
             ]
             summary[split] = {
                 "n_seeds": len(per_seed_results),
-                "ood_test_auc_mean": float(np.mean(ood_aucs)) if ood_aucs else float("nan"),
-                "ood_test_auc_std": float(np.std(ood_aucs)) if len(ood_aucs) > 1 else 0.0,
-                "iid_test_auc_mean": float(np.mean(iid_aucs)) if iid_aucs else float("nan"),
-                "iid_test_auc_std": float(np.std(iid_aucs)) if len(iid_aucs) > 1 else 0.0,
+                "ood_test_auc_mean": float(np.mean(ood_aucs))
+                if ood_aucs
+                else float("nan"),
+                "ood_test_auc_std": float(np.std(ood_aucs))
+                if len(ood_aucs) > 1
+                else 0.0,
+                "iid_test_auc_mean": float(np.mean(iid_aucs))
+                if iid_aucs
+                else float("nan"),
+                "iid_test_auc_std": float(np.std(iid_aucs))
+                if len(iid_aucs) > 1
+                else 0.0,
                 "per_seed_ood": ood_aucs,
                 "per_seed_iid": iid_aucs,
                 "per_seed": per_seed_results,
@@ -675,8 +763,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         row = [s]
         per_seed = summary.get(s, {}).get("per_seed", [])
         for seed in args.seeds:
-            found = [ps.get("ood_test_auc", float("nan"))
-                     for ps in per_seed if ps.get("seed") == seed]
+            found = [
+                ps.get("ood_test_auc", float("nan"))
+                for ps in per_seed
+                if ps.get("seed") == seed
+            ]
             v = found[0] if found else float("nan")
             row.append(f"{v:.4f}" if not np.isnan(v) else "n/a")
         md_lines.append("| " + " | ".join(row) + " |")

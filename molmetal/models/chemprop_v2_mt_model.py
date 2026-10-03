@@ -98,11 +98,11 @@ SUPPORTED_METALS: Tuple[str, ...] = ("Ru", "Ir", "Os", "Rh", "Re")
 #: Coordination-geometry class names (5 classes — matches the
 #: ``n_coord_classes=5`` default).
 COORD_GEOMETRY_NAMES: Tuple[str, ...] = (
-    "linear",            # 0
-    "trigonal_planar",   # 1
-    "tetrahedral",       # 2
-    "square_planar",     # 3
-    "octahedral",        # 4
+    "linear",  # 0
+    "trigonal_planar",  # 1
+    "tetrahedral",  # 2
+    "square_planar",  # 3
+    "octahedral",  # 4
 )
 
 #: Loss weight on the coordination-geometry auxiliary task (matches V4).
@@ -172,9 +172,7 @@ class ChempropV2Encoder(nn.Module):
         self.agg = SumAggregation()
 
     # ------------------------------------------------------------------
-    def _featurize_smiles(
-        self, smiles_list: List[str]
-    ) -> Tuple[List, int, int]:
+    def _featurize_smiles(self, smiles_list: List[str]) -> Tuple[List, int, int]:
         """Featurize SMILES → list of MolGraph, returning fdim too.
 
         Invalid SMILES are routed through a single-atom dummy graph so
@@ -211,9 +209,8 @@ class ChempropV2Encoder(nn.Module):
                 dummy_edge_index = np.zeros((2, 0), dtype=int)
                 dummy_rev = np.zeros((0,), dtype=int)
                 from chemprop.data.molgraph import MolGraph
-                mgs.append(
-                    MolGraph(dummy_V, dummy_E, dummy_edge_index, dummy_rev)
-                )
+
+                mgs.append(MolGraph(dummy_V, dummy_E, dummy_edge_index, dummy_rev))
         return mgs, atom_fdim, bond_fdim
 
     # ------------------------------------------------------------------
@@ -242,8 +239,8 @@ class ChempropV2Encoder(nn.Module):
         bmg.rev_edge_index = bmg.rev_edge_index.to(device)
         bmg.batch = bmg.batch.to(device)
 
-        H_v = self.message_passing(bmg)             # (sum_N, hidden_dim)
-        H = self.agg(H_v, bmg.batch)                # (B, hidden_dim)
+        H_v = self.message_passing(bmg)  # (sum_N, hidden_dim)
+        H = self.agg(H_v, bmg.batch)  # (B, hidden_dim)
         return H
 
 
@@ -385,9 +382,7 @@ class ChempropV2MTModel(nn.Module):
     def metal_id(self, metal: str) -> int:
         """Return the integer id for a metal name (raises if unknown)."""
         if metal not in self.metals:
-            raise KeyError(
-                f"Unknown metal {metal!r}. Supported: {self.metals}"
-            )
+            raise KeyError(f"Unknown metal {metal!r}. Supported: {self.metals}")
         return self.metals.index(metal)
 
     # ------------------------------------------------------------------
@@ -396,9 +391,7 @@ class ChempropV2MTModel(nn.Module):
         return self.encoder(smiles_list)
 
     # ------------------------------------------------------------------
-    def _chemprop_logits_to_v4_shape(
-        self, logits_1col: torch.Tensor
-    ) -> torch.Tensor:
+    def _chemprop_logits_to_v4_shape(self, logits_1col: torch.Tensor) -> torch.Tensor:
         """Convert chemprop (B, 1) pre-sigmoid logits → V4-compatible (B, 2).
 
         The V4 contract (see V4MultiTaskLoss) expects ``nn.CrossEntropyLoss``
@@ -443,15 +436,15 @@ class ChempropV2MTModel(nn.Module):
                 f"len(smiles_list)={B} != metal_ids.size(0)={metal_ids.size(0)}"
             )
 
-        h = self.encode(smiles_list)                 # (B, hidden_dim)
-        e = self.metal_embed(metal_ids.long())       # (B, metal_embed_dim)
-        z = torch.cat([h, e], dim=-1)                # (B, hidden_dim + metal_embed_dim)
+        h = self.encode(smiles_list)  # (B, hidden_dim)
+        e = self.metal_embed(metal_ids.long())  # (B, metal_embed_dim)
+        z = torch.cat([h, e], dim=-1)  # (B, hidden_dim + metal_embed_dim)
 
         out: Dict[str, torch.Tensor] = {}
         for metal, head in self.metal_heads.items():
-            logits_1col = head.train_step(z)         # (B, 1) pre-sigmoid
+            logits_1col = head.train_step(z)  # (B, 1) pre-sigmoid
             out[metal] = self._chemprop_logits_to_v4_shape(logits_1col)
-        out["coord"] = self.coord_head(z)            # (B, n_coord_classes)
+        out["coord"] = self.coord_head(z)  # (B, n_coord_classes)
         return out
 
 
@@ -546,7 +539,7 @@ def quick_smoke_chemprop_v2_mt(
     smiles: Optional[List[str]] = None,
     n_metals: int = 5,
     n_coord_classes: int = 5,
-    hidden_dim: int = 64,         # smaller for tests / smoke runs
+    hidden_dim: int = 64,  # smaller for tests / smoke runs
     depth: int = 2,
     device: Optional[torch.device] = None,
 ) -> Tuple[
@@ -575,8 +568,7 @@ def quick_smoke_chemprop_v2_mt(
     metal_ids = torch.zeros(B, dtype=torch.long, device=device)
     out = model(smiles, metal_ids)
     torch.manual_seed(0)
-    y_true = {m: torch.randint(0, 2, (B,), device=device).float()
-              for m in model.metals}
+    y_true = {m: torch.randint(0, 2, (B,), device=device).float() for m in model.metals}
     coord_true = torch.randint(0, n_coord_classes, (B,), device=device)
     return model, loss_fn, out, {"y_true": y_true, "coord_true": coord_true}
 

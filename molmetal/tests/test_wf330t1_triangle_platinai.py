@@ -89,9 +89,9 @@ def test_astsr_hilbert_mcts_3vertex_loop() -> None:
     for r in report["per_round"]:
         vertices = r.get("vertices", {})
         for vname in ("astsr", "hilbert", "mcts"):
-            assert vname in vertices, (
-                f"vertex {vname} missing in round {r.get('round')}"
-            )
+            assert (
+                vname in vertices
+            ), f"vertex {vname} missing in round {r.get('round')}"
             assert math.isfinite(vertices[vname]["wall_s"])
 
 
@@ -122,9 +122,18 @@ def test_f5_rdkit_2d_12d_integration() -> None:
     # Feature schema is 12-d.
     assert len(FEATURE_NAMES) == 12
     expected = (
-        "MolWt", "MolLogP", "TPSA", "HBA", "HBD", "NRotB",
-        "HeavyAtoms", "RingCount", "NumAromaticRings", "FractionCSP3",
-        "MolMR", "BalabanJ",
+        "MolWt",
+        "MolLogP",
+        "TPSA",
+        "HBA",
+        "HBD",
+        "NRotB",
+        "HeavyAtoms",
+        "RingCount",
+        "NumAromaticRings",
+        "FractionCSP3",
+        "MolMR",
+        "BalabanJ",
     )
     assert FEATURE_NAMES == expected
 
@@ -210,9 +219,9 @@ def test_per_cell_breakdown_on_platinai_4cell() -> None:
         # n_seeds must match the seeds list.
         assert agg["n_seeds"] == 2
         # Finite per-cell metrics.
-        assert math.isfinite(agg["mean_hilbert_r2"]), (
-            f"non-finite hilbert R² for cell {cell}"
-        )
+        assert math.isfinite(
+            agg["mean_hilbert_r2"]
+        ), f"non-finite hilbert R² for cell {cell}"
         assert math.isfinite(agg["std_hilbert_r2"])
         assert math.isfinite(agg["mean_evolutionary_r2"])
         assert math.isfinite(agg["std_evolutionary_r2"])
@@ -235,7 +244,10 @@ def test_per_cell_breakdown_on_platinai_4cell() -> None:
 
     with tempfile.TemporaryDirectory() as tmp:
         json_path, csv_path, md_path = write_report(
-            out_dir=tmp, report=report, also_csv=True, also_markdown=True,
+            out_dir=tmp,
+            report=report,
+            also_csv=True,
+            also_markdown=True,
         )
         assert json_path.exists()
         assert csv_path is not None and csv_path.exists()
@@ -315,6 +327,4 @@ def test_convergence_lift_honest_negative() -> None:
 
 
 if __name__ == "__main__":  # pragma: no cover
-    raise SystemExit(
-        pytest.main([__file__, "-v"])
-    )
+    raise SystemExit(pytest.main([__file__, "-v"]))

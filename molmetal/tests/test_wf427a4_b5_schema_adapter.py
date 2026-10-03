@@ -17,6 +17,7 @@ Tests:
   4. Mixed schema: catherine_6of6_pass=True OR is_active=1 both pass
   5. Active cohort loads without RuntimeError on real Wf-387-A2 cohort
 """
+
 import ast
 import json
 import tempfile
@@ -27,9 +28,7 @@ from pathlib import Path
 
 def _load_load_rh_synthetic_smiles():
     """Extract the load_rh_synthetic_smiles function from trainer file."""
-    src = open(
-        "molmetal/scripts/train_metal_lomo_wasserstein.py"
-    ).read()
+    src = open("molmetal/scripts/train_metal_lomo_wasserstein.py").read()
     tree = ast.parse(src)
     for node in tree.body:
         if (
@@ -123,9 +122,7 @@ def test_wf125_p1_legacy_schema_still_works():
 def test_empty_fields_raises_runtime_error():
     """Empty / no field raises RuntimeError per load_rh_synthetic_smiles contract."""
     fn = _load_load_rh_synthetic_smiles()
-    p = _write_temp_cohort(
-        {"per_compound": [{"compound_id": "q", "smiles": "CCO"}]}
-    )
+    p = _write_temp_cohort({"per_compound": [{"compound_id": "q", "smiles": "CCO"}]})
     try:
         try:
             fn(Path(p))
@@ -183,15 +180,11 @@ def test_mixed_schema_or_logic():
 def test_real_wf387a2_cohort_loads_without_runtime_error():
     """Real Wf-387-A2 balanced 500 cohort: load_rh_synthetic_smiles
     must return 250 active SMILES (no RuntimeError)."""
-    cohort = Path(
-        "molmetal/reports/wf387a2_balanced_rh_cohort/balanced_rh_cohort.json"
-    )
+    cohort = Path("molmetal/reports/wf387a2_balanced_rh_cohort/balanced_rh_cohort.json")
     assert cohort.exists(), f"missing cohort {cohort}"
     fn = _load_load_rh_synthetic_smiles()
     smis = fn(cohort)
-    assert len(smis) == 250, (
-        f"Wf-387-A2 expected 250 active SMILES, got {len(smis)}"
-    )
+    assert len(smis) == 250, f"Wf-387-A2 expected 250 active SMILES, got {len(smis)}"
     assert all(isinstance(s, str) and s.strip() for s in smis)
 
 
@@ -209,9 +202,9 @@ def test_real_cohort_includes_only_active():
         for e in payload["per_compound"]
         if e.get("is_active", False)
     }
-    assert set(smis) == active_smis, (
-        "Returned SMILES do not match is_active=True entries"
-    )
+    assert (
+        set(smis) == active_smis
+    ), "Returned SMILES do not match is_active=True entries"
 
 
 if __name__ == "__main__":

@@ -67,9 +67,7 @@ def scatter_sum_legacy(
     if dim != 0:
         raise NotImplementedError("Only dim=0 scatter is supported here")
     if values.dim() != 2:
-        raise ValueError(
-            f"`values` must have shape (E, F); got {tuple(values.shape)}"
-        )
+        raise ValueError(f"`values` must have shape (E, F); got {tuple(values.shape)}")
     n = int(dim_size) if dim_size is not None else (int(index.max()) + 1)
     # ``src`` is unused in the math; we still need to pass a tensor of
     # the right shape so :func:`scatter_sum` can build the internal
@@ -122,9 +120,7 @@ class _ScatterSumDirect(torch.autograd.Function):
             dtype=values.dtype,
             device=values.device,
         )
-        out.scatter_add_(
-            0, index.unsqueeze(-1).expand(-1, values.shape[1]), values
-        )
+        out.scatter_add_(0, index.unsqueeze(-1).expand(-1, values.shape[1]), values)
         return out
 
     @staticmethod

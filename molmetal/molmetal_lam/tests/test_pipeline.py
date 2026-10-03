@@ -1,4 +1,5 @@
 """Tests for the MLC closed-loop pipeline (pipeline/)."""
+
 from __future__ import annotations
 
 import random
@@ -34,17 +35,21 @@ class MockMCTS:
         (the loop's job is to *rank* them, not invent new ones).
     """
 
-    smiles_pool: List[str] = field(default_factory=lambda: [
-        "CCO",
-        "CC(=O)Oc1ccccc1C(=O)O",
-        "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
-        "c1ccccc1",
-        "OCC(O)CO",
-    ])
+    smiles_pool: List[str] = field(
+        default_factory=lambda: [
+            "CCO",
+            "CC(=O)Oc1ccccc1C(=O)O",
+            "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
+            "c1ccccc1",
+            "OCC(O)CO",
+        ]
+    )
     call_count: int = 0
     last_max_depth: int = 0
 
-    def search(self, initial_state: Any = None, max_depth: int = 3) -> List[MoleculeClosedTerm]:
+    def search(
+        self, initial_state: Any = None, max_depth: int = 3
+    ) -> List[MoleculeClosedTerm]:
         self.call_count += 1
         self.last_max_depth = int(max_depth)
         out: List[MoleculeClosedTerm] = []
@@ -72,7 +77,8 @@ class MockScorer:
         self.calls += 1
         # Deterministic: longer SMILES wins (so we can verify ranking).
         return np.asarray(
-            [float(len(s)) for s in smiles_list], dtype=np.float32,
+            [float(len(s)) for s in smiles_list],
+            dtype=np.float32,
         )
 
 
@@ -144,7 +150,12 @@ def test_extract_paper_equation_returns_string() -> None:
     X = rng.standard_normal((5, 4))
     # Score is a linear combo so the sklearn-Ridge fallback should
     # recover a clean closed-form expression.
-    y = 0.1 * X[:, 0] - 0.4 * X[:, 1] + 0.7 * X[:, 2] + 0.05 * np.random.RandomState(0).randn(5)
+    y = (
+        0.1 * X[:, 0]
+        - 0.4 * X[:, 1]
+        + 0.7 * X[:, 2]
+        + 0.05 * np.random.RandomState(0).randn(5)
+    )
 
     hr = HeuristicRegressor(niterations=2, random_state=0)
     hr.fit(X, y)

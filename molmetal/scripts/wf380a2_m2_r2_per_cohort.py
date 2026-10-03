@@ -50,6 +50,7 @@ Public API
 * :func:`per_cohort_R2`           per-cohort R² evaluation
 * :func:`run_wf380a2`             main entry point
 """
+
 from __future__ import annotations
 
 import argparse
@@ -113,7 +114,7 @@ def select_features(cohort_size: int) -> Dict[str, Any]:
             ),
             "expected_r2_per_cohort": {
                 "platinai_4cell": {"baseline": -0.1251, "target": 0.10},
-                "hilbert":        {"baseline": -0.1268, "target": 0.10},
+                "hilbert": {"baseline": -0.1268, "target": 0.10},
             },
         }
     elif cohort_size < 1000:
@@ -183,10 +184,10 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
         },
         "cohort_size_thresholds": [300, 1000],
         "per_cohort_targets": {
-            "platinai_4cell":        {"baseline_r2": -0.1251, "target_r2": 0.10},
-            "hilbert":               {"baseline_r2": -0.1268, "target_r2": 0.10},
-            "metalcytotox_combined": {"baseline_r2":  0.2227, "target_r2": 0.30},
-            "intermediate_n500":      {"baseline_r2":  0.05,   "target_r2": 0.20},
+            "platinai_4cell": {"baseline_r2": -0.1251, "target_r2": 0.10},
+            "hilbert": {"baseline_r2": -0.1268, "target_r2": 0.10},
+            "metalcytotox_combined": {"baseline_r2": 0.2227, "target_r2": 0.30},
+            "intermediate_n500": {"baseline_r2": 0.05, "target_r2": 0.20},
         },
     }
     if not config_path:
@@ -196,6 +197,7 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
         return fallback
     try:
         import yaml  # type: ignore
+
         with open(resolved, "r", encoding="utf-8") as fh:
             return yaml.safe_load(fh)
     except Exception:
@@ -253,11 +255,13 @@ def ridge_r2_eval(
     """Ridge R² on (Xtr,ytr) -> (Xte,yte); closed-form numpy solver WITH INTERCEPT."""
     n_tr = Xtr.shape[0]
     Xtr_aug = np.concatenate(
-        [np.ones((n_tr, 1), dtype=np.float64), Xtr], axis=1,
+        [np.ones((n_tr, 1), dtype=np.float64), Xtr],
+        axis=1,
     )
     n_te = Xte.shape[0]
     Xte_aug = np.concatenate(
-        [np.ones((n_te, 1), dtype=np.float64), Xte], axis=1,
+        [np.ones((n_te, 1), dtype=np.float64), Xte],
+        axis=1,
     )
     mu = Xtr_aug.mean(axis=0)
     sd = Xtr_aug.std(axis=0) + 1e-9
@@ -295,7 +299,7 @@ def ridge_r2_cv(
         folds: List[np.ndarray] = []
         start = 0
         for fs in fold_sizes:
-            folds.append(perm[start:start + fs])
+            folds.append(perm[start : start + fs])
             start += fs
         r2_per_fold: List[float] = []
         for k in range(n_splits):
@@ -311,10 +315,14 @@ def ridge_r2_cv(
         if r2_per_fold:
             r2_per_seed.append(float(np.mean(r2_per_fold)))
     if not r2_per_seed:
-        return {"r2_mean": float("nan"), "r2_std": float("nan"), "n_splits_effective": 0}
+        return {
+            "r2_mean": float("nan"),
+            "r2_std": float("nan"),
+            "n_splits_effective": 0,
+        }
     return {
         "r2_mean": float(np.mean(r2_per_seed)),
-        "r2_std":  float(np.std(r2_per_seed)),
+        "r2_std": float(np.std(r2_per_seed)),
         "n_splits_effective": int(len(r2_per_seed) * n_splits),
     }
 
@@ -352,8 +360,10 @@ def per_cohort_pipeline(
         seed=seed,
     )
     cv = ridge_r2_cv(
-        X=X, y=y,
-        n_splits=n_splits, n_seeds=n_seeds,
+        X=X,
+        y=y,
+        n_splits=n_splits,
+        n_seeds=n_seeds,
         alpha=cfg["alpha"],
         seed_offset=0,
     )
@@ -361,9 +371,9 @@ def per_cohort_pipeline(
         "cohort_size": int(cohort_size),
         "config": cfg,
         "n_features_built": int(X.shape[1]),
-        "n_samples_built":  int(X.shape[0]),
+        "n_samples_built": int(X.shape[0]),
         "measured_synthetic_r2_mean": float(cv["r2_mean"]),
-        "measured_synthetic_r2_std":  float(cv["r2_std"]),
+        "measured_synthetic_r2_std": float(cv["r2_std"]),
         "alpha_used": float(cfg["alpha"]),
     }
 
@@ -375,8 +385,9 @@ def per_cohort_R2(
     n_seeds: int = 5,
 ) -> float:
     """Per-cohort R² evaluation (single-cohort wrapper around per_cohort_pipeline)."""
-    out = per_cohort_pipeline(cohort_size=cohort_size, seed=seed,
-                              n_splits=n_splits, n_seeds=n_seeds)
+    out = per_cohort_pipeline(
+        cohort_size=cohort_size, seed=seed, n_splits=n_splits, n_seeds=n_seeds
+    )
     return float(out["measured_synthetic_r2_mean"])
 
 
@@ -427,7 +438,9 @@ def run_wf380a2(
         "per_cohort": [],
         "n_cohorts_tested": 0,
     }
-    print(f"Wf-380-A2: n_cohorts={len(COHORT_SIZES)} n_splits={n_splits} n_seeds={n_seeds}")
+    print(
+        f"Wf-380-A2: n_cohorts={len(COHORT_SIZES)} n_splits={n_splits} n_seeds={n_seeds}"
+    )
     n_above_zero = 0
     n_total = 0
     for cohort_name, cohort_size in COHORT_SIZES:
@@ -452,9 +465,11 @@ def run_wf380a2(
         if measured > 0:
             n_above_zero += 1
         # PROJECTED real-cohort lift: baseline -> target (from YAML targets).
-        projected_lift = target_r2 - baseline_r2 if (
-            np.isfinite(baseline_r2) and np.isfinite(target_r2)
-        ) else float("nan")
+        projected_lift = (
+            target_r2 - baseline_r2
+            if (np.isfinite(baseline_r2) and np.isfinite(target_r2))
+            else float("nan")
+        )
         entry = {
             "cohort": cohort_name,
             "cohort_size": int(cohort_size),
@@ -473,18 +488,27 @@ def run_wf380a2(
             "projected_real_cohort_lift": projected_lift,
         }
         out["per_cohort"].append(entry)
-        print(f"  tier={entry['tier']} features={entry['features']} alpha={entry['alpha']}")
-        print(f"  synthetic R²={measured:+.4f} ± {pipe['measured_synthetic_r2_std']:.4f}")
-        print(f"  baseline (mechanical)={baseline_r2:+.4f} target={target_r2:+.4f} lift={projected_lift:+.4f}")
+        print(
+            f"  tier={entry['tier']} features={entry['features']} alpha={entry['alpha']}"
+        )
+        print(
+            f"  synthetic R²={measured:+.4f} ± {pipe['measured_synthetic_r2_std']:.4f}"
+        )
+        print(
+            f"  baseline (mechanical)={baseline_r2:+.4f} target={target_r2:+.4f} lift={projected_lift:+.4f}"
+        )
     out["n_cohorts_tested"] = n_total
     out["n_cohorts_above_zero"] = n_above_zero
     out["aggregate_status"] = (
         "HONEST_NEGATIVE_PARTIAL_VALIDATED"
-        if n_above_zero >= max(1, n_total - 1) else "HONEST_NEGATIVE_VALIDATION_FAILED"
+        if n_above_zero >= max(1, n_total - 1)
+        else "HONEST_NEGATIVE_VALIDATION_FAILED"
     )
     out["verdict"] = (
-        "MEASURED_SYNTHETIC_VALIDATED" if n_above_zero == n_total
-        else "HONEST_NEGATIVE_PARTIAL_VALIDATED" if n_above_zero >= max(1, n_total - 1)
+        "MEASURED_SYNTHETIC_VALIDATED"
+        if n_above_zero == n_total
+        else "HONEST_NEGATIVE_PARTIAL_VALIDATED"
+        if n_above_zero >= max(1, n_total - 1)
         else "HONEST_NEGATIVE_VALIDATION_FAILED"
     )
     out["honest_framing"] = {
@@ -511,7 +535,9 @@ def run_wf380a2(
         ),
     }
     out["timestamp"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    out["status"] = "MEASURED_SYNTHETIC" if n_above_zero == n_total else "PARTIAL_VALIDATED"
+    out["status"] = (
+        "MEASURED_SYNTHETIC" if n_above_zero == n_total else "PARTIAL_VALIDATED"
+    )
     with open(out_path, "w", encoding="utf-8") as fh:
         json.dump(out, fh, indent=2, sort_keys=True)
     print(f"\nWrote {out_path}")
@@ -521,7 +547,9 @@ def run_wf380a2(
 
 def _main(argv: Optional[List[str]] = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
-    p.add_argument("--out-path", default="molmetal/reports/wf380a2_per_cohort_eval/result.json")
+    p.add_argument(
+        "--out-path", default="molmetal/reports/wf380a2_per_cohort_eval/result.json"
+    )
     p.add_argument("--config-path", default="molmetal/configs/m2_r2_per_cohort.yaml")
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--n-splits", type=int, default=5)

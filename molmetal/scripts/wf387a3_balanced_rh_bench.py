@@ -71,6 +71,7 @@ Cross-references
   scaffold extends from R² to AUC.
 * AGENTS.md §5.1 + §5.2: standing GPU grant + honest framing mandate.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -164,6 +165,7 @@ def rdkit_features(smiles_list: List[str], n_dims: int = 12) -> np.ndarray:
     try:
         from rdkit import Chem, RDLogger  # type: ignore
         from rdkit.Chem import AllChem, Descriptors  # type: ignore
+
         RDLogger.DisableLog("rdApp.*")
     except Exception:
         return out
@@ -233,7 +235,7 @@ def _ridge_fit_predict(
     normal equations are singular.
     """
     n_train = X_train.shape[0]
-    n_feat  = X_train.shape[1]
+    n_feat = X_train.shape[1]
     X1 = np.hstack([X_train, np.ones((n_train, 1), dtype=np.float64)])
     Xt = np.hstack([X_test, np.ones((X_test.shape[0], 1), dtype=np.float64)])
     A = X1.T @ X1 + alpha * np.eye(n_feat + 1, dtype=np.float64)
@@ -269,7 +271,7 @@ def _auc_ranksum(y_true: np.ndarray, y_score: np.ndarray) -> float:
             j += 1
         if i != j:
             avg = (i + 1 + j + 1) / 2.0
-            ranks[order[i:j + 1]] = avg
+            ranks[order[i : j + 1]] = avg
         i = j + 1
     sum_ranks_pos = float(ranks[y_true == 1].sum())
     auc = (sum_ranks_pos - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg)
@@ -355,10 +357,14 @@ def train_eval_balanced(
             blob = json.load(fh)
         # Wf-139 schema: {"per_compound": [{"smiles": ..., "is_active": ...}, ...]}
         # Wf-387-A2 schema (design): {"cohort": {"smiles": [...], "active": [...]}}
-        per_compound = blob.get("per_compound") or blob.get("cohort", {}).get("compounds")
+        per_compound = blob.get("per_compound") or blob.get("cohort", {}).get(
+            "compounds"
+        )
         if per_compound is None and "smiles" in blob:
-            per_compound = [{"smiles": s, "is_active": int(a)}
-                            for s, a in zip(blob["smiles"], blob["active"])]
+            per_compound = [
+                {"smiles": s, "is_active": int(a)}
+                for s, a in zip(blob["smiles"], blob["active"])
+            ]
         smiles_list = [str(p.get("smiles", "")) for p in per_compound]
         labels = np.asarray(
             [int(p.get("is_active", p.get("active", 0))) for p in per_compound],
@@ -367,6 +373,7 @@ def train_eval_balanced(
     else:
         # CSV fallback (smiles,active header)
         import csv
+
         smiles_list = []
         labels_list: List[int] = []
         with open(train_path, "r", encoding="utf-8") as fh:
@@ -415,12 +422,15 @@ def train_eval_balanced(
             if len(np.unique(y_train)) < 2:
                 continue
             preds = _ridge_fit_predict(
-                X_train, y_train, X_val, alpha=float(cfg["alpha"]),
+                X_train,
+                y_train,
+                X_val,
+                alpha=float(cfg["alpha"]),
             )
             fold_auc = _auc_ranksum(y_val, preds)
             per_fold_auc.append(fold_auc)
         if per_fold_auc and len(per_fold_auc) >= n_folds * seed + n_folds:
-            seed_aucs = per_fold_auc[seed * n_folds:(seed + 1) * n_folds]
+            seed_aucs = per_fold_auc[seed * n_folds : (seed + 1) * n_folds]
         elif per_fold_auc:
             seed_aucs = per_fold_auc[-n_folds:]
         else:
@@ -498,8 +508,9 @@ def balanced_rh_aggregate(per_seed_results: List[float]) -> Dict[str, float]:
 # ---------------------------------------------------------------------------
 # Section 5: smoke_run_balanced_rh — small synthetic balanced cohort (PUBLIC API)
 # ---------------------------------------------------------------------------
-def _synthetic_balanced_smiles(n_active: int = 30, n_inactive: int = 30,
-                                seed: int = 42) -> Tuple[List[str], np.ndarray]:
+def _synthetic_balanced_smiles(
+    n_active: int = 30, n_inactive: int = 30, seed: int = 42
+) -> Tuple[List[str], np.ndarray]:
     """Build a small synthetic balanced SMILES cohort (CPU-only, no RDKit).
 
     Returns ``(smiles, labels)``.  Active SMILES use a closed-ring template
@@ -523,15 +534,16 @@ def _synthetic_balanced_smiles(n_active: int = 30, n_inactive: int = 30,
         inactives.append(smi)
     smiles_list = actives + inactives
     labels = np.asarray(
-        [1] * n_active + [0] * n_inactive, dtype=np.int64,
+        [1] * n_active + [0] * n_inactive,
+        dtype=np.int64,
     )
     return smiles_list, labels
 
 
-def _smoke_cohort_to_csv(smiles_list: List[str], labels: np.ndarray,
-                          path: str) -> str:
+def _smoke_cohort_to_csv(smiles_list: List[str], labels: np.ndarray, path: str) -> str:
     """Write a tiny balanced cohort CSV (smiles,active) to disk for the smoke."""
     import csv
+
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8", newline="") as fh:
         writer = csv.writer(fh)
@@ -571,7 +583,9 @@ def smoke_run_balanced_rh(
     if not cohort_path or not os.path.exists(_resolve_repo_path(cohort_path)):
         # Build inline synthetic smoke cohort (60 SMILES)
         smoke_smiles, smoke_labels = _synthetic_balanced_smiles(
-            n_active=30, n_inactive=30, seed=42,
+            n_active=30,
+            n_inactive=30,
+            seed=42,
         )
         cohort_path = os.path.join(out_dir, "smoke_balanced_cohort.csv")
         _smoke_cohort_to_csv(smoke_smiles, smoke_labels, cohort_path)
@@ -602,9 +616,9 @@ def smoke_run_balanced_rh(
         "wf": "Wf-387-A3",
         "task": "balanced Rh benchmark scaffold smoke test",
         "scope": "CPU-only; per-cohort Ridge pipeline per Wf-380-A2; "
-                 "no torch autograd, no D-MPNN, no GPU launch.",
+        "no torch autograd, no D-MPNN, no GPU launch.",
         "upstream": "Wf-387-A1 (synthetic Rh AUC 0.8879 / 0.8717) + "
-                    "Wf-380-A2 (per-cohort config) + Wf-377-A2 (verdict protocol).",
+        "Wf-380-A2 (per-cohort config) + Wf-377-A2 (verdict protocol).",
         "result": result,
         "aggregate": agg,
         "smoke_cohort": cohort_path,
@@ -620,17 +634,17 @@ def smoke_run_balanced_rh(
         "wall_seconds": float(time.time() - t0),
         "honest_framing": {
             "scope": "CPU-only smoke scaffold; AUC is MEASURED on the "
-                     "synthetic balanced cohort (60 SMILES) — NOT on a "
-                     "real balanced Rh cohort. The verdict "
-                     "(REAL_LIFT / ARTIFACT_LIFT / CEILING_BREAK) is a "
-                     "smoke-test verdict that demonstrates the pipeline "
-                     "produces valid output, NOT a real-cohort gate verdict.",
+            "synthetic balanced cohort (60 SMILES) — NOT on a "
+            "real balanced Rh cohort. The verdict "
+            "(REAL_LIFT / ARTIFACT_LIFT / CEILING_BREAK) is a "
+            "smoke-test verdict that demonstrates the pipeline "
+            "produces valid output, NOT a real-cohort gate verdict.",
             "real_cohort_lift": "PROJECTED pending balanced Rh cohort "
-                                "(Wf-387-A2 deliverable) + USER_OK-gated "
-                                "GPU launch per AGENTS.md §5.1 + kill_then_adapt §0.",
+            "(Wf-387-A2 deliverable) + USER_OK-gated "
+            "GPU launch per AGENTS.md §5.1 + kill_then_adapt §0.",
             "epoch_reduction": "30 epochs (vs Wf-379-A1 50) per task brief — "
-                               "faster CPU smoke; per-cohort Ridge surrogate "
-                               "is not epoch-bound (closed-form).",
+            "faster CPU smoke; per-cohort Ridge surrogate "
+            "is not epoch-bound (closed-form).",
         },
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
@@ -645,11 +659,17 @@ def smoke_run_balanced_rh(
 # ---------------------------------------------------------------------------
 def _main(argv: Optional[List[str]] = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
-    p.add_argument("--smoke", action="store_true",
-                   help="Run the synthetic smoke test (default if no flag).")
-    p.add_argument("--balanced-cohort", default=None,
-                   help="Path to balanced Rh cohort JSON or CSV. "
-                        "Falls back to Wf-139 500-synthetic if missing.")
+    p.add_argument(
+        "--smoke",
+        action="store_true",
+        help="Run the synthetic smoke test (default if no flag).",
+    )
+    p.add_argument(
+        "--balanced-cohort",
+        default=None,
+        help="Path to balanced Rh cohort JSON or CSV. "
+        "Falls back to Wf-139 500-synthetic if missing.",
+    )
     p.add_argument("--out-dir", default="molmetal/reports/wf387a3_balanced_rh_smoke/")
     p.add_argument("--n-seeds", type=int, default=2)
     p.add_argument("--n-folds", type=int, default=3)
@@ -662,11 +682,13 @@ def _main(argv: Optional[List[str]] = None) -> int:
         n_folds=args.n_folds,
         epochs=args.epochs,
     )
-    print(f"Wf-387-A3 smoke verdict_compare={out['verdict_compare']} "
-          f"auc_mean={out['aggregate']['mean']:+.4f} "
-          f"std={out['aggregate']['std']:.4f} "
-          f"verdict={out['aggregate']['verdict']} "
-          f"wall={out['wall_seconds']:.2f}s")
+    print(
+        f"Wf-387-A3 smoke verdict_compare={out['verdict_compare']} "
+        f"auc_mean={out['aggregate']['mean']:+.4f} "
+        f"std={out['aggregate']['std']:.4f} "
+        f"verdict={out['aggregate']['verdict']} "
+        f"wall={out['wall_seconds']:.2f}s"
+    )
     print(f"Written {args.out_dir}/smoke_result.json")
     return 0
 

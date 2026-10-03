@@ -194,7 +194,9 @@ class SMILESInjectingGenerator:
         return float(ts(pocket, mols))
 
     def get_metadata(self) -> dict:
-        meta = self._inner.get_metadata() if hasattr(self._inner, "get_metadata") else {}
+        meta = (
+            self._inner.get_metadata() if hasattr(self._inner, "get_metadata") else {}
+        )
         meta = dict(meta)
         meta["wrapper"] = "SMILESInjectingGenerator_v1"
         meta["smiles_source"] = "heuristic atom-type chain reconstruction"
@@ -248,13 +250,23 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         description="Run the Phase-0 DesignLoop pipeline (mock + DiffDock STUB + RDKit)."
     )
     p.add_argument("--metal", default="Ru", help="Target metal (recorded in metadata).")
-    p.add_argument("--pdb-id", default="SYNTH", help="Pocket PDB ID (synthetic by default).")
-    p.add_argument("--n-generate", type=int, default=100, help="Number of molecules to generate.")
-    p.add_argument("--n-dock", type=int, default=20, help="Top-K to dock after pre-filter.")
+    p.add_argument(
+        "--pdb-id", default="SYNTH", help="Pocket PDB ID (synthetic by default)."
+    )
+    p.add_argument(
+        "--n-generate", type=int, default=100, help="Number of molecules to generate."
+    )
+    p.add_argument(
+        "--n-dock", type=int, default=20, help="Top-K to dock after pre-filter."
+    )
     p.add_argument("--n-top", type=int, default=5, help="Top-N to return.")
-    p.add_argument("--refinement-iters", type=int, default=0, help="Extra refinement rounds.")
+    p.add_argument(
+        "--refinement-iters", type=int, default=0, help="Extra refinement rounds."
+    )
     p.add_argument("--seed", type=int, default=42)
-    p.add_argument("--json-out", default=None, help="Optional path to dump the LoopResult as JSON.")
+    p.add_argument(
+        "--json-out", default=None, help="Optional path to dump the LoopResult as JSON."
+    )
     return p.parse_args(argv)
 
 
@@ -262,7 +274,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = _parse_args(argv)
     torch.manual_seed(args.seed)
 
-    print(f"[design_loop] Starting Phase-0 run (metal={args.metal}, pocket={args.pdb_id})")
+    print(
+        f"[design_loop] Starting Phase-0 run (metal={args.metal}, pocket={args.pdb_id})"
+    )
     t0 = time.time()
 
     # --- 1. Build adapters ---------------------------------------------------

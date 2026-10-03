@@ -115,9 +115,9 @@ def test_encode_rule_cuaac_alkyne_azide():
     encode different chemistries).
     """
     alkyne_smarts = "[C:1]#[CH]"
-    azide_smarts  = "[N:2]=[N:3]=[N:4]"
+    azide_smarts = "[N:2]=[N:3]=[N:4]"
     vec_alk = encode_rule_smarts(alkyne_smarts, name="CuAAC-alkyne")
-    vec_azi = encode_rule_smarts(azide_smarts,  name="CuAAC-azide")
+    vec_azi = encode_rule_smarts(azide_smarts, name="CuAAC-azide")
 
     assert vec_alk.shape == (FEAT_DIM,)
     assert vec_azi.shape == (FEAT_DIM,)
@@ -129,9 +129,9 @@ def test_encode_rule_cuaac_alkyne_azide():
     assert abs(vec_azi.norm().item() - 1.0) < 1e-5
 
     # The two patterns are chemically distinct → different vectors.
-    assert not torch.allclose(vec_alk, vec_azi, atol=1e-6), (
-        "CuAAC alkyne and azide SMARTS should encode to distinct vectors"
-    )
+    assert not torch.allclose(
+        vec_alk, vec_azi, atol=1e-6
+    ), "CuAAC alkyne and azide SMARTS should encode to distinct vectors"
     # Deterministic: re-encoding gives the same vector.
     vec_alk2 = encode_rule_smarts(alkyne_smarts, name="CuAAC-alkyne")
     assert torch.equal(vec_alk, vec_alk2)
@@ -163,7 +163,11 @@ def test_dispatch_smoke_cisplatin(cisplatin, click_rule_set):
     assert isinstance(result, DispatchResult)
     assert result.scores.shape == (n_heavy, 5)
     assert result.rule_names == [
-        "CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling",
+        "CuAAC",
+        "SPAAC",
+        "ThiolEne",
+        "Suzuki",
+        "AmideCoupling",
     ]
     # Per-rule list keys are exactly the 5 rule names.
     assert set(result.matches.keys()) == set(result.rule_names)
@@ -185,9 +189,11 @@ def test_dispatch_smoke_cisplatin(cisplatin, click_rule_set):
         "pairs — the math prior requires genuine atom-feature discrimination."
     )
     # Reports total match count for human inspection (not asserted).
-    print(f"cisplatin dispatch: {total_matches} total matches across "
-          f"{len(click_rule_set)} rules, "
-          f"score std={result.scores.std().item():.4f}")
+    print(
+        f"cisplatin dispatch: {total_matches} total matches across "
+        f"{len(click_rule_set)} rules, "
+        f"score std={result.scores.std().item():.4f}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -279,9 +285,9 @@ def test_dispatch_empty_molecule_is_safe(rdkit_mol, click_rule_set):
 
 def test_dispatch_threshold_monotone(cisplatin, click_rule_set):
     """Raising the threshold cannot increase the number of matches."""
-    low  = dispatch(cisplatin, click_rule_set, threshold=0.1)
+    low = dispatch(cisplatin, click_rule_set, threshold=0.1)
     high = dispatch(cisplatin, click_rule_set, threshold=0.9)
-    low_total  = sum(len(v) for v in low.matches.values())
+    low_total = sum(len(v) for v in low.matches.values())
     high_total = sum(len(v) for v in high.matches.values())
     assert high_total <= low_total, (
         f"Higher threshold must produce fewer matches: "

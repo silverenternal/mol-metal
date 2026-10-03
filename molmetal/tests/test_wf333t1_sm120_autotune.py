@@ -40,6 +40,7 @@ Run::
     PYTHONPATH=/home/hugo/codes/mol-metal \\
         python -m pytest molmetal/tests/test_wf333t1_sm120_autotune.py -v
 """
+
 from __future__ import annotations
 
 import importlib
@@ -54,8 +55,12 @@ import pytest
 # Path bootstrap (mirrors the pattern in other molmetal tests)
 # ---------------------------------------------------------------------------
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-_AUDIT_PATH = _PROJECT_ROOT / "molmetal" / "reports" / "wf326e_triton_audit" / "audit.json"
-_SCRIPT_PATH = _PROJECT_ROOT / "molmetal" / "scripts" / "wf333t1_sm120_autotune_extended.py"
+_AUDIT_PATH = (
+    _PROJECT_ROOT / "molmetal" / "reports" / "wf326e_triton_audit" / "audit.json"
+)
+_SCRIPT_PATH = (
+    _PROJECT_ROOT / "molmetal" / "scripts" / "wf333t1_sm120_autotune_extended.py"
+)
 _X3_SCRIPT_PATH = _PROJECT_ROOT / "molmetal" / "scripts" / "wf331x3_sm120_retune.py"
 _DEFAULT_REPORT_DIR = _PROJECT_ROOT / "molmetal" / "reports" / "wf333t1_sm120_autotune"
 
@@ -94,9 +99,9 @@ def _load_extended_module():
 # ---------------------------------------------------------------------------
 def _load_audit() -> dict:
     """Load the Wf-326E audit JSON from disk (source of truth)."""
-    assert _AUDIT_PATH.is_file(), (
-        f"Wf-326E audit missing at {_AUDIT_PATH}. Run the audit first."
-    )
+    assert (
+        _AUDIT_PATH.is_file()
+    ), f"Wf-326E audit missing at {_AUDIT_PATH}. Run the audit first."
     with _AUDIT_PATH.open() as fh:
         return json.load(fh)
 
@@ -153,15 +158,15 @@ class TestPerKernelAutotunePresets:
 
         # (a) Audit has 24 kernels.
         audit_names = _audit_kernel_names()
-        assert len(audit_names) == 24, (
-            f"Wf-326E audit should list 24 kernels; got {len(audit_names)}."
-        )
+        assert (
+            len(audit_names) == 24
+        ), f"Wf-326E audit should list 24 kernels; got {len(audit_names)}."
 
         # (b) Every audit kernel has a per-kernel config entry.
         for name in audit_names:
-            assert name in ext.PER_KERNEL_CONFIGS, (
-                f"Audit kernel {name!r} missing from PER_KERNEL_CONFIGS."
-            )
+            assert (
+                name in ext.PER_KERNEL_CONFIGS
+            ), f"Audit kernel {name!r} missing from PER_KERNEL_CONFIGS."
 
         # (c) Category sums to 24.
         n_mem = len(ext.MEMORY_BOUND_KERNELS)
@@ -228,8 +233,7 @@ class TestPerKernelAutotunePresets:
             )
             for cfg in cfg_list:
                 assert _has_num_warps(cfg) == 4, (
-                    f"ODE config must have num_warps=4; "
-                    f"got {_has_num_warps(cfg)}."
+                    f"ODE config must have num_warps=4; " f"got {_has_num_warps(cfg)}."
                 )
 
 
@@ -277,12 +281,9 @@ class TestSm120FallbackToGeneric:
         )
 
         # (c) Pair-set equality with the Wf-331-X3 generic grid.
-        result_pairs = {
-            (_has_num_warps(c), _has_num_stages(c)) for c in result
-        }
+        result_pairs = {(_has_num_warps(c), _has_num_stages(c)) for c in result}
         x3_pairs = {
-            (_has_num_warps(c), _has_num_stages(c))
-            for c in x3.SM120_AUTOTUNE_CONFIGS
+            (_has_num_warps(c), _has_num_stages(c)) for c in x3.SM120_AUTOTUNE_CONFIGS
         }
         assert result_pairs == x3_pairs, (
             f"Fallback grid pair-set differs from Wf-331-X3 generic grid. "
@@ -298,9 +299,9 @@ class TestSm120FallbackToGeneric:
 
         # (e) Every fallback config is sm_120-safe.
         for cfg in result:
-            assert x3.is_sm120_config_safe(cfg), (
-                f"Fallback config {cfg} failed is_sm120_config_safe."
-            )
+            assert x3.is_sm120_config_safe(
+                cfg
+            ), f"Fallback config {cfg} failed is_sm120_config_safe."
 
 
 # ===========================================================================
@@ -331,8 +332,7 @@ class TestPerKernelConfigsSubset:
 
         # (a) Set containment.
         x3_pairs = {
-            (_has_num_warps(c), _has_num_stages(c))
-            for c in x3.SM120_AUTOTUNE_CONFIGS
+            (_has_num_warps(c), _has_num_stages(c)) for c in x3.SM120_AUTOTUNE_CONFIGS
         }
         for name, cfg_list in ext.PER_KERNEL_CONFIGS.items():
             for cfg in cfg_list:
@@ -344,9 +344,7 @@ class TestPerKernelConfigsSubset:
                 )
 
         # (b) Per-kernel total is strictly less than 24 * 12 = 288.
-        n_total_per_kernel = sum(
-            len(v) for v in ext.PER_KERNEL_CONFIGS.values()
-        )
+        n_total_per_kernel = sum(len(v) for v in ext.PER_KERNEL_CONFIGS.values())
         worst_case_full = 24 * len(x3.SM120_AUTOTUNE_CONFIGS)  # 288
         assert n_total_per_kernel < worst_case_full, (
             f"Per-kernel total {n_total_per_kernel} should be less "
@@ -364,9 +362,7 @@ class TestPerKernelConfigsSubset:
         union_pairs = set()
         for cfg_list in ext.PER_KERNEL_CONFIGS.values():
             for cfg in cfg_list:
-                union_pairs.add(
-                    (_has_num_warps(cfg), _has_num_stages(cfg))
-                )
+                union_pairs.add((_has_num_warps(cfg), _has_num_stages(cfg)))
         # The union should cover all (num_warps, num_stages) pairs in
         # the Wf-331-X3 grid that fall in the {2,4,8,16} x {2,3,4}
         # cell.  The Wf-331-X3 grid itself has 12 such cells (4 warps
@@ -408,14 +404,15 @@ class TestCpuCorrectnessExtended:
 
         # (a)+(b)+(c)+(d)+(e) run the smoke into a temp dir.
         import tempfile
+
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             result = ext.cpu_smoke_extended(tmp_path)
 
         # (a) Smoke passed.
-        assert result.get("smoke_passed") is True, (
-            f"cpu_smoke_extended did not pass: {result}."
-        )
+        assert (
+            result.get("smoke_passed") is True
+        ), f"cpu_smoke_extended did not pass: {result}."
 
         # (b) Category sizes.
         assert result["n_memory_bound"] == 5
@@ -424,8 +421,10 @@ class TestCpuCorrectnessExtended:
         assert result["n_ode"] == 3
         assert result["n_kernels"] == 24
         assert (
-            result["n_memory_bound"] + result["n_compute_bound"]
-            + result["n_mid_bound"] + result["n_ode"]
+            result["n_memory_bound"]
+            + result["n_compute_bound"]
+            + result["n_mid_bound"]
+            + result["n_ode"]
             == result["n_kernels"]
         )
         assert result["n_total_per_kernel_configs"] == 117
@@ -444,9 +443,7 @@ class TestCpuCorrectnessExtended:
             _DEFAULT_REPORT_DIR / "per_kernel_configs.json"
         )
         json_path = _DEFAULT_REPORT_DIR / "per_kernel_configs.json"
-        assert json_path.is_file(), (
-            f"Per-kernel configs JSON missing at {json_path}."
-        )
+        assert json_path.is_file(), f"Per-kernel configs JSON missing at {json_path}."
         with json_path.open() as fh:
             body = json.load(fh)
         assert body["metadata"]["gpu_retune_deferred"] is True

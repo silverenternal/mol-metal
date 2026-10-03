@@ -50,6 +50,7 @@ if str(PROJECT_ROOT) not in sys.path:
 def _toy_graphs(n: int = 4) -> List:
     """Build n tiny synthetic graphs (single atom, no bonds)."""
     from molmetal.baselines.dmpnn import ATOM_FEATURE_DIM, BOND_FEATURE_DIM
+
     out = []
     for _ in range(n):
         atom_f = np.random.RandomState(0).randn(1, ATOM_FEATURE_DIM).astype(np.float32)
@@ -100,6 +101,7 @@ def test_mtw_model_forward_shapes():
     model.eval()
     graphs, mids, pic50, active = _toy_batch(n=4, n_metals=n_metals)
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import collate_multimetal
+
     batch = collate_multimetal(graphs, mids, pic50, active)
     assert batch is not None
     atom_f, bond_f, e_src, e_dst, mids_t, pic50_t, active_t = batch
@@ -122,6 +124,7 @@ def test_mtw_encode_pool_shape():
     model.eval()
     graphs, mids, pic50, active = _toy_batch(n=4, n_metals=n_metals)
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import collate_multimetal
+
     batch = collate_multimetal(graphs, mids, pic50, active)
     atom_f, bond_f, e_src, e_dst, _, _, _ = batch
     with torch.no_grad():
@@ -307,9 +310,7 @@ def test_train_one_epoch_joint_w_w_positive():
 
     graphs, mids, pic50, active = _toy_batch(n=8, n_metals=n_metals)
     # Reference distribution is shifted → W2 > 0
-    ref_pic50 = torch.from_numpy(
-        (pic50 + 3.0).astype(np.float32)
-    )
+    ref_pic50 = torch.from_numpy((pic50 + 3.0).astype(np.float32))
 
     loss, cls_loss, reg_loss, w_pen = train_one_epoch_joint(
         model=model,
@@ -347,17 +348,21 @@ def test_l2_guard_keeps_gradients_bounded():
     # Force a huge gradient
     for p in model.parameters():
         p.grad = torch.full_like(p, 1e6)
-    pre_norm = float(torch.norm(
-        torch.stack([
-            p.grad.norm() for p in model.parameters() if p.grad is not None
-        ])
-    ))
+    pre_norm = float(
+        torch.norm(
+            torch.stack(
+                [p.grad.norm() for p in model.parameters() if p.grad is not None]
+            )
+        )
+    )
     torch.nn.utils.clip_grad_norm_(model.parameters(), L2_GUARD_MAX_NORM)
-    post_norm = float(torch.norm(
-        torch.stack([
-            p.grad.norm() for p in model.parameters() if p.grad is not None
-        ])
-    ))
+    post_norm = float(
+        torch.norm(
+            torch.stack(
+                [p.grad.norm() for p in model.parameters() if p.grad is not None]
+            )
+        )
+    )
     # post_norm is the L2 norm of the *concatenated* gradient vector — clip
     # ensures its scalar norm is ≤ max_norm; the per-tensor norms may differ.
     assert pre_norm > L2_GUARD_MAX_NORM  # Sanity: pre-clip norm was huge
@@ -376,6 +381,7 @@ def test_parse_args_defaults():
         DEFAULT_SEEDS,
         DEFAULT_EPOCHS,
     )
+
     args = parse_args([])
     assert args.metals == list(FIVE_METALS)
     assert args.seeds == list(DEFAULT_SEEDS)
@@ -419,9 +425,27 @@ def test_load_5metal_split_table_roundtrip(tmp_path: Path):
     )
 
     rows = [
-        {"smiles": "CCO", "metal": "Ru", "scaffold_id": "scA", "split": "train", "activity": "0"},
-        {"smiles": "CCN", "metal": "Ir", "scaffold_id": "scB", "split": "val", "activity": "1"},
-        {"smiles": "CCCl", "metal": "Os", "scaffold_id": "scC", "split": "test", "activity": "0"},
+        {
+            "smiles": "CCO",
+            "metal": "Ru",
+            "scaffold_id": "scA",
+            "split": "train",
+            "activity": "0",
+        },
+        {
+            "smiles": "CCN",
+            "metal": "Ir",
+            "scaffold_id": "scB",
+            "split": "val",
+            "activity": "1",
+        },
+        {
+            "smiles": "CCCl",
+            "metal": "Os",
+            "scaffold_id": "scC",
+            "split": "test",
+            "activity": "0",
+        },
     ]
     csv_path = tmp_path / "tiny.csv"
     with csv_path.open("w", newline="") as fh:
@@ -433,7 +457,12 @@ def test_load_5metal_split_table_roundtrip(tmp_path: Path):
     df = load_5metal_split_table(csv_path)
     assert len(df) == 3
     assert set(df.columns) >= {
-        "smiles", "metal", "scaffold_id", "split", "activity", "row_id"
+        "smiles",
+        "metal",
+        "scaffold_id",
+        "split",
+        "activity",
+        "row_id",
     }
     assert df["metal"].tolist() == ["Ru", "Ir", "Os"]
     assert df["row_id"].tolist() == [0, 1, 2]
@@ -456,9 +485,7 @@ def test_multitask_loss_alpha_half_weights():
     expected_cls = float(
         torch.nn.functional.cross_entropy(active_logits, active_t).item()
     )
-    expected_reg = float(
-        torch.nn.functional.mse_loss(pic50_pred, pic50_t).item()
-    )
+    expected_reg = float(torch.nn.functional.mse_loss(pic50_pred, pic50_t).item())
     expected_total = 0.5 * expected_cls + 0.5 * expected_reg
 
     assert abs(loss.item() - expected_total) < 1e-5

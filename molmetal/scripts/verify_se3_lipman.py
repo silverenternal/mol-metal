@@ -85,15 +85,11 @@ def _check_solver(smoke: bool) -> SE3LipmanSolver:
         x0=x0,
         t_span=(0.0, 1.0),
     )
-    assert out.shape == x0.shape, (
-        f"expected {tuple(x0.shape)}, got {tuple(out.shape)}"
-    )
+    assert out.shape == x0.shape, f"expected {tuple(x0.shape)}, got {tuple(out.shape)}"
     assert torch.isfinite(out).all(), "solver output contains NaN/Inf"
     n_audit = 3 if smoke else 5
     err = solver.verify_se3_orthogonality(n_runs=n_audit)
-    assert err < 1e-3, (
-        f"orthogonality error must be < 1e-3; got {err}"
-    )
+    assert err < 1e-3, f"orthogonality error must be < 1e-3; got {err}"
     print(f"        -> CPU smoke OK (max orth error = {err:.3e})")
     return solver
 
@@ -105,6 +101,7 @@ def _check_compare(solver: SE3LipmanSolver, smoke: bool) -> dict:
         from molmetal.adapters.flow_matching_lipman._reference.solver import (  # noqa: E501
             ODESolver,
         )
+
         # ODESolver requires a velocity_model at construction so the
         # baseline can integrate without re-binding on every call.
         # The dummy closure ``v(x, t) = x`` matches the SE(3) solver's
@@ -134,12 +131,10 @@ def _check_compare(solver: SE3LipmanSolver, smoke: bool) -> dict:
         se3_solver=solver,
         n_runs=n_runs,
     )
-    assert report["shape_preserved"], (
-        f"shape_preserved must be True; got {report}"
-    )
-    assert report["se3_wall_time_s"] > 0.0, (
-        f"se3_wall_time_s must be > 0; got {report['se3_wall_time_s']}"
-    )
+    assert report["shape_preserved"], f"shape_preserved must be True; got {report}"
+    assert (
+        report["se3_wall_time_s"] > 0.0
+    ), f"se3_wall_time_s must be > 0; got {report['se3_wall_time_s']}"
     assert report["max_orthogonality_err"] < 1e-3, (
         f"max_orthogonality_err must be < 1e-3; got "
         f"{report['max_orthogonality_err']}"
@@ -171,9 +166,9 @@ def _check_composite(smoke: bool) -> None:
     torch.manual_seed(0)
     z0 = torch.randn(2, 5, 3)
     out = composite.forward(z0, t=1.0)
-    assert out.shape == z0.shape, (
-        f"composite output shape {tuple(out.shape)} != input {tuple(z0.shape)}"
-    )
+    assert (
+        out.shape == z0.shape
+    ), f"composite output shape {tuple(out.shape)} != input {tuple(z0.shape)}"
     assert torch.isfinite(out).all(), "composite output contains NaN/Inf"
     print("        -> CPU smoke OK (forward + __call__ alias)")
 
@@ -190,7 +185,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         action="store_true",
         default=False,
         help="Use a smaller n_runs for the comparison harness (faster, "
-             "noisier). Default: n_runs=10.",
+        "noisier). Default: n_runs=10.",
     )
     parser.add_argument(
         "--json",

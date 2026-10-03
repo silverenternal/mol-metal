@@ -152,7 +152,9 @@ def test_to_mcts_kwargs_lambda_section(canonical_config: SOTAAlignedConfig) -> N
     assert lam["symbolic_prior_refit_every"] == 5
 
 
-def test_to_mcts_kwargs_protocol_fingerprint(canonical_config: SOTAAlignedConfig) -> None:
+def test_to_mcts_kwargs_protocol_fingerprint(
+    canonical_config: SOTAAlignedConfig,
+) -> None:
     """``__protocol_fingerprint__`` is the cite-only citation line."""
     mcts = to_mcts_kwargs(canonical_config)
     fp = mcts["__protocol_fingerprint__"]

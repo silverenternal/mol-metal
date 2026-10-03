@@ -32,6 +32,7 @@ Reference
 Peng, X.; Ran, T.; Guan, J.; et al. *Pocket2Mol: Efficient Molecular
 Sampling Based on 3D Protein Pockets.*  ICML 2022.
 """
+
 from __future__ import annotations
 
 import logging
@@ -55,15 +56,11 @@ logger = logging.getLogger(__name__)
 # Locate the cloned Pocket2Mol repo + the (missing) checkpoint
 # ---------------------------------------------------------------------------
 POCKET2MOL_REPO = (
-    Path(__file__).resolve().parent.parent.parent
-    / "references"
-    / "Pocket2Mol"
+    Path(__file__).resolve().parent.parent.parent / "references" / "Pocket2Mol"
 )
 POCKET2MOL_CKPT = POCKET2MOL_REPO / "ckpt" / "pretrained_Pocket2Mol.pt"
 POCKET2MOL_CKPT_ALT = POCKET2MOL_REPO / "ckpt" / "pretrained.pt"
-POCKET2MOL_CONFIG = (
-    POCKET2MOL_REPO / "configs" / "sample_for_pdb.yml"
-)
+POCKET2MOL_CONFIG = POCKET2MOL_REPO / "configs" / "sample_for_pdb.yml"
 
 
 def _checkpoint_available() -> bool:
@@ -82,6 +79,7 @@ def _checkpoint_path() -> Optional[Path]:
 def _pyg_available() -> bool:
     try:
         import torch_geometric  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -97,11 +95,11 @@ def _pyg_available() -> bool:
 # ---------------------------------------------------------------------------
 _FALLBACK_SMILES_POOL: Tuple[str, ...] = (
     # carboxylic acids / NSAIDs
-    "CC(=O)Oc1ccccc1C(=O)O",          # aspirin
-    "CC(C)Cc1ccc(cc1)C(C)C(=O)O",    # ibuprofen
-    "OC(=O)c1ccccc1O",                # salicylic acid
-    "OC(=O)c1ccc(N)cc1",              # 4-aminobenzoic acid
-    "OC(=O)c1ccc(O)cc1",              # 4-hydroxybenzoic acid
+    "CC(=O)Oc1ccccc1C(=O)O",  # aspirin
+    "CC(C)Cc1ccc(cc1)C(C)C(=O)O",  # ibuprofen
+    "OC(=O)c1ccccc1O",  # salicylic acid
+    "OC(=O)c1ccc(N)cc1",  # 4-aminobenzoic acid
+    "OC(=O)c1ccc(O)cc1",  # 4-hydroxybenzoic acid
     # hydroxamic acids (MMP-ish)
     "ONC(=O)CCC(=O)O",
     "ONC(=O)CCCC(=O)O",
@@ -133,8 +131,8 @@ _FALLBACK_SMILES_POOL: Tuple[str, ...] = (
     "Oc1ncncn1",
     "Clc1ncncn1",
     # amides
-    "CC(=O)Nc1ccccc1",                # acetanilide
-    "CC(=O)Nc1ccc(O)cc1",             # paracetamol
+    "CC(=O)Nc1ccccc1",  # acetanilide
+    "CC(=O)Nc1ccc(O)cc1",  # paracetamol
     "CC(=O)Nc1ccc(N)cc1",
     "CCNC(=O)c1ccccc1",
     "CCN(C)C(=O)c1ccccc1",
@@ -376,9 +374,8 @@ class _Pocket2MolLiveAdapter:
         # Pocket must carry an original PDB path so we can re-extract
         # residues with proper atom names.  VinaDockingAdapter sets
         # ``pocket._pdb_path``; we honour that here too.
-        pdb_path = (
-            getattr(pocket, "_pdb_path", None)
-            or getattr(pocket, "pdb_path", None)
+        pdb_path = getattr(pocket, "_pdb_path", None) or getattr(
+            pocket, "pdb_path", None
         )
         if pdb_path is None or not Path(str(pdb_path)).is_file():
             raise ValueError(
@@ -395,7 +392,10 @@ class _Pocket2MolLiveAdapter:
 
         model_struct = PDBParser().get_structure(None, str(pdb_path))[0]
         protein_dict = {
-            "element": [], "pos": [], "is_backbone": [], "atom_to_aa_type": [],
+            "element": [],
+            "pos": [],
+            "is_backbone": [],
+            "atom_to_aa_type": [],
         }
         for atom in unfold_entities(model_struct, "A"):
             res = atom.get_parent()
@@ -413,17 +413,11 @@ class _Pocket2MolLiveAdapter:
                 continue
             protein_dict["element"].append(ptable.GetAtomicNumber(element_symb))
             protein_dict["pos"].append(pos)
-            protein_dict["is_backbone"].append(
-                atom.get_name() in ("N", "CA", "C", "O")
-            )
-            protein_dict["atom_to_aa_type"].append(
-                PDBProtein.AA_NAME_NUMBER[resname]
-            )
+            protein_dict["is_backbone"].append(atom.get_name() in ("N", "CA", "C", "O"))
+            protein_dict["atom_to_aa_type"].append(PDBProtein.AA_NAME_NUMBER[resname])
         protein_dict["element"] = torch.LongTensor(protein_dict["element"])
         protein_dict["pos"] = torch.stack(protein_dict["pos"], dim=0)
-        protein_dict["is_backbone"] = torch.BoolTensor(
-            protein_dict["is_backbone"]
-        )
+        protein_dict["is_backbone"] = torch.BoolTensor(protein_dict["is_backbone"])
         protein_dict["atom_to_aa_type"] = torch.LongTensor(
             protein_dict["atom_to_aa_type"]
         )
@@ -449,13 +443,15 @@ class _Pocket2MolLiveAdapter:
                 "bond_type": torch.empty([0], dtype=torch.long),
             },
         )
-        data = Compose([
-            RefineData(),
-            LigandCountNeighbors(),
-            FeaturizeProteinAtom(),
-            FeaturizeLigandAtom(),
-            LigandMaskAll(),
-        ])(data)
+        data = Compose(
+            [
+                RefineData(),
+                LigandCountNeighbors(),
+                FeaturizeProteinAtom(),
+                FeaturizeLigandAtom(),
+                LigandMaskAll(),
+            ]
+        )(data)
 
         # 2) Sample loop (mirrors sample_for_pdb.py)
         threshold = self._cfg["sample"]["threshold"]
@@ -669,7 +665,9 @@ class Pocket2MolAdapter:
             self.setup()
         if self.mode == "live_Pocket2Mol":
             return self._backend.sample(
-                pocket, n_samples=int(n_samples), bbox_size=bbox_size,
+                pocket,
+                n_samples=int(n_samples),
+                bbox_size=bbox_size,
             )
         return self._backend.sample(pocket, n_samples=int(n_samples))
 

@@ -63,9 +63,9 @@ def test_attention_weights_sum_to_one():
 
     # Sum over keys should be 1.0 for every query
     sums = attn.sum(dim=-1)  # (B, N)
-    assert torch.allclose(sums, torch.ones_like(sums), atol=1e-5), (
-        f"Attention weights should sum to 1 over keys, got {sums}"
-    )
+    assert torch.allclose(
+        sums, torch.ones_like(sums), atol=1e-5
+    ), f"Attention weights should sum to 1 over keys, got {sums}"
 
     # Each weight should be non-negative (softmax)
     assert (attn >= 0).all(), "Attention weights must be non-negative"
@@ -110,9 +110,9 @@ def test_residual_connection():
     #    not zero.
     with torch.no_grad():
         out_no_dmpnn = fusion(torch.zeros_like(h_dmpnn), h_egnn)
-    assert out_no_dmpnn.abs().sum() > 0, (
-        "With zero D-MPNN input the cross-attention still produces non-zero output"
-    )
+    assert (
+        out_no_dmpnn.abs().sum() > 0
+    ), "With zero D-MPNN input the cross-attention still produces non-zero output"
 
     # 3. Output differs from a fully-detached "no-residual" computation:
     #    if we directly probe the un-normed attention residual it should

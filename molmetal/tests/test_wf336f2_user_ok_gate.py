@@ -90,12 +90,8 @@ def _user_ok_refusal_marker(src: str) -> bool:
         return False
     # Either explicit "REFUSES" or refusal-with-exit pattern.
     has_refuse_keyword = "REFUSES" in src or "refused" in src
-    has_exit_on_fail = bool(
-        re.search(r"exit\s+(1|2|64)\b", src)
-    )
-    has_user_ok_check = bool(
-        re.search(r"\$\{?USER_OK(?:-1)?\}?", src)
-    )
+    has_exit_on_fail = bool(re.search(r"exit\s+(1|2|64)\b", src))
+    has_user_ok_check = bool(re.search(r"\$\{?USER_OK(?:-1)?\}?", src))
     return has_refuse_keyword and has_exit_on_fail and has_user_ok_check
 
 
@@ -135,12 +131,10 @@ class TestWf135UserOKGate:
             f"got {result.returncode}. stderr={result.stderr!r}"
         )
         # Stderr should mention the gate.
-        assert "USER_OK" in result.stderr, (
-            "stderr must mention USER_OK gate on refusal"
-        )
-        assert "refused" in result.stderr.lower() or "REFUSES" in result.stderr, (
-            "stderr must include 'refused' marker on USER_OK gate refusal"
-        )
+        assert "USER_OK" in result.stderr, "stderr must mention USER_OK gate on refusal"
+        assert (
+            "refused" in result.stderr.lower() or "REFUSES" in result.stderr
+        ), "stderr must include 'refused' marker on USER_OK gate refusal"
 
 
 # =====================================================================
@@ -203,9 +197,9 @@ class TestUserOK1Accepted:
         is a true gate (passes when given OK).
         """
         # Wf-135 — wrapper exists, verify USER_OK=1 + --dry-run exits 0.
-        assert WF135_LAUNCH_WRAPPER.exists(), (
-            f"Wf-135 wrapper missing at {WF135_LAUNCH_WRAPPER}"
-        )
+        assert (
+            WF135_LAUNCH_WRAPPER.exists()
+        ), f"Wf-135 wrapper missing at {WF135_LAUNCH_WRAPPER}"
         env = os.environ.copy()
         env["USER_OK"] = "1"
         result = subprocess.run(
@@ -221,9 +215,9 @@ class TestUserOK1Accepted:
             f"stderr={result.stderr!r}"
         )
         # Wf-135 dry-run should mention DRY-RUN plan in stderr (log() emits to stderr).
-        assert "DRY-RUN" in result.stderr or "dry-run" in result.stderr.lower(), (
-            "Wf-135 dry-run must mention DRY-RUN mode"
-        )
+        assert (
+            "DRY-RUN" in result.stderr or "dry-run" in result.stderr.lower()
+        ), "Wf-135 dry-run must mention DRY-RUN mode"
 
         # Wf-126 — only check if wrapper exists (honest-negative SKIP otherwise).
         wrapper = _wf126_wrapper_path()
@@ -263,9 +257,9 @@ class TestUserOKGateContract:
 
         Wf-126 wrapper is HONEST-NEGATIVE-SKIP if missing.
         """
-        assert WF135_LAUNCH_WRAPPER.exists(), (
-            f"Wf-135 wrapper missing at {WF135_LAUNCH_WRAPPER}"
-        )
+        assert (
+            WF135_LAUNCH_WRAPPER.exists()
+        ), f"Wf-135 wrapper missing at {WF135_LAUNCH_WRAPPER}"
         with WF135_LAUNCH_WRAPPER.open() as fh:
             wf135_src = fh.read()
 
@@ -298,6 +292,4 @@ class TestUserOKGateContract:
             "include USER_OK env check + explicit REFUSES + exit-on-fail."
         )
         m126 = re.search(r"exit\s+64\b", wf126_src)
-        assert m126 is not None, (
-            "Wf-126 wrapper must exit 64 on USER_OK refusal."
-        )
+        assert m126 is not None, "Wf-126 wrapper must exit 64 on USER_OK refusal."

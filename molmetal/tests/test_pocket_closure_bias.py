@@ -85,6 +85,7 @@ def _require_closure_importable():
     try:
         from molmetal_lam.lam_chem.closure import ProductiveSpace  # noqa: F401
         from molmetal_lam.molecules.closed_term import MoleculeClosedTerm  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -111,9 +112,9 @@ class TestPocketSpecificClosureBias:
         for pocket_id in SUPPORTED_POCKETS:
             verdict = pocket_specific_closure_bias(pocket_id)
             assert verdict.is_known_pocket, pocket_id
-            assert _bias_sums_to_one(verdict), (
-                f"pocket={pocket_id} bias_sum={verdict.bias_sum}"
-            )
+            assert _bias_sums_to_one(
+                verdict
+            ), f"pocket={pocket_id} bias_sum={verdict.bias_sum}"
 
     def test_click_rule_weights_are_non_negative(self):
         for pocket_id in SUPPORTED_POCKETS:
@@ -159,9 +160,7 @@ class TestPocketSpecificClosureBias:
         assert "unknown" in verdict.notes.lower()
 
     def test_include_metal_coord_false_zeros_metal_coord(self):
-        verdict = pocket_specific_closure_bias(
-            "1h36", include_metal_coord=False
-        )
+        verdict = pocket_specific_closure_bias("1h36", include_metal_coord=False)
         assert verdict.is_known_pocket is True
         for rule in METAL_COORD_RULES:
             assert verdict.bias_dict[rule] == 0.0
@@ -173,9 +172,7 @@ class TestPocketSpecificClosureBias:
     def test_metal_coord_weight_param_clamped(self):
         """metal_coord_weight=0.0 makes metal-coord weights 0.0 (and
         preserves click-rule sum-of-1)."""
-        verdict_zero = pocket_specific_closure_bias(
-            "1h36", metal_coord_weight=0.0
-        )
+        verdict_zero = pocket_specific_closure_bias("1h36", metal_coord_weight=0.0)
         for rule in METAL_COORD_RULES:
             assert verdict_zero.bias_dict[rule] == 0.0
         assert _bias_sums_to_one(verdict_zero)
@@ -200,8 +197,7 @@ class TestClosureBoundedSmilesGeneration:
         # All kept candidates must have catherine_pass=True.
         for cand in result.candidates:
             assert cand["catherine_pass"] is True, (
-                f"pocket={pocket_id} candidate failed Catherine: "
-                f"{cand}"
+                f"pocket={pocket_id} candidate failed Catherine: " f"{cand}"
             )
 
     @pytest.mark.parametrize("pocket_id", list(SUPPORTED_POCKETS))
@@ -225,7 +221,10 @@ class TestClosureBoundedSmilesGeneration:
         assert result.n_candidates_kept == 0
         assert result.candidates == []
         assert result.catherine_pass_rate == 1.0  # vacuous
-        assert "unknown" in result.notes.lower() or "no closure seed" in result.notes.lower()
+        assert (
+            "unknown" in result.notes.lower()
+            or "no closure seed" in result.notes.lower()
+        )
 
     def test_pass_rate_one_for_kept_candidates(self):
         """Catherine 6/6 PASS rate among kept candidates is exactly 1.0
@@ -268,6 +267,7 @@ class TestClosureOversample:
         # We don't run a 500-cohort BFS in the smoke test (too slow for
         # the unit suite); we verify the public symbol only.
         import inspect
+
         sig = inspect.signature(closure_oversample)
         assert sig.parameters["n"].default == 500
         assert DEFAULT_OVERSAMPLE_SIZE == 500
@@ -275,9 +275,8 @@ class TestClosureOversample:
     def test_alias_pass_rate_matches_primary(self):
         result = closure_oversample("Rh", n=10, per_scaffold_cap=3)
         # catherine_6of6_pass_rate should mirror catherine_pass_rate.
-        assert (
-            result.get("catherine_6of6_pass_rate")
-            == result.get("catherine_pass_rate")
+        assert result.get("catherine_6of6_pass_rate") == result.get(
+            "catherine_pass_rate"
         )
 
 
@@ -291,9 +290,7 @@ class TestPerPocketPharmacophoreLookup:
     def test_returns_non_empty_dict_for_known_pocket(self, pocket_id):
         descriptor = per_pocket_pharmacophore_lookup(pocket_id)
         assert isinstance(descriptor, dict)
-        assert len(descriptor) > 0, (
-            f"empty descriptor dict for pocket={pocket_id}"
-        )
+        assert len(descriptor) > 0, f"empty descriptor dict for pocket={pocket_id}"
 
     @pytest.mark.parametrize("pocket_id", list(SUPPORTED_POCKETS))
     def test_descriptor_has_required_keys(self, pocket_id):
@@ -314,9 +311,7 @@ class TestPerPocketPharmacophoreLookup:
             "preferred_scaffolds",
             "literature_refs",
         ):
-            assert key in descriptor, (
-                f"pocket={pocket_id} missing key {key!r}"
-            )
+            assert key in descriptor, f"pocket={pocket_id} missing key {key!r}"
 
     def test_metal_coord_required_matches_default_metal(self):
         for pocket_id in SUPPORTED_POCKETS:
@@ -386,9 +381,7 @@ class TestBuildPerFunctionVerification:
 
     def test_pocket_bias_per_pocket_subresult(self):
         bundle = build_per_function_verification()
-        bias_section = bundle["per_function"][
-            "pocket_specific_closure_bias"
-        ]
+        bias_section = bundle["per_function"]["pocket_specific_closure_bias"]
         assert bias_section["n_known_pockets"] == len(SUPPORTED_POCKETS)
         per_pocket = bias_section["per_pocket"]
         for pocket_id in SUPPORTED_POCKETS:
@@ -399,9 +392,7 @@ class TestBuildPerFunctionVerification:
 
     def test_pharmacophore_per_pocket_subresult(self):
         bundle = build_per_function_verification()
-        pharma_section = bundle["per_function"][
-            "per_pocket_pharmacophore_lookup"
-        ]
+        pharma_section = bundle["per_function"]["per_pocket_pharmacophore_lookup"]
         assert pharma_section["n_known_pockets"] == len(SUPPORTED_POCKETS)
         per_pocket = pharma_section["per_pocket"]
         for pocket_id in SUPPORTED_POCKETS:
@@ -443,9 +434,7 @@ class TestPublicSurface:
         }
 
     def test_all_bias_rules_is_union_of_click_and_metal_coord(self):
-        assert set(ALL_BIAS_RULES) == (
-            set(FIVE_CLICK_RULES) | set(METAL_COORD_RULES)
-        )
+        assert set(ALL_BIAS_RULES) == (set(FIVE_CLICK_RULES) | set(METAL_COORD_RULES))
 
     def test_default_n_is_100(self):
         assert DEFAULT_GENERATION_N == 100

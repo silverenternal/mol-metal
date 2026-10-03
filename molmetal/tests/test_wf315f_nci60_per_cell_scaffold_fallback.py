@@ -17,6 +17,7 @@ These tests cover (per the Wf-315F acceptance contract):
   * 3 tests for scaffold fallback correctness
   * 2 tests for integration with downstream per-cell metrics
 """
+
 from __future__ import annotations
 
 import json
@@ -36,9 +37,7 @@ if str(PROJECT_ROOT) not in sys.path:
 # ``test_wf312a_re_non_degenerate`` pattern).
 sys.path.insert(0, str(PROJECT_ROOT / ".cloned" / "chemprop_v2"))
 
-CSV_DEFAULT = (
-    PROJECT_ROOT / "molmetal" / "data" / "nci60_precious_9cell.csv"
-)
+CSV_DEFAULT = PROJECT_ROOT / "molmetal" / "data" / "nci60_precious_9cell.csv"
 
 # Per-cell row counts (MEASURED Sep 28 2026 from nci60_precious_9cell.csv).
 EXPECTED_PER_CELL_ROWS = {
@@ -60,6 +59,7 @@ EXPECTED_PER_CELL_ROWS = {
 def _try_import_driver_module():
     try:
         from molmetal.scripts import nci60_9cell_chemprop_driver as mod  # noqa: E402
+
         return mod
     except Exception as exc:  # noqa: BLE001
         pytest.skip(f"nci60 driver import failed: {exc}")
@@ -104,9 +104,7 @@ class TestPerCellSplitDecision:
         n_rows = EXPECTED_PER_CELL_ROWS["A549"]
         n_test_random_est = int(round(0.20 * n_rows))
         assert n_test_random_est >= 50
-        decision = (
-            "scaffold_fallback" if n_test_random_est < 50 else "temporal"
-        )
+        decision = "scaffold_fallback" if n_test_random_est < 50 else "temporal"
         assert decision == "temporal", (
             f"A549 (n={n_rows}, n_test_est={n_test_random_est}) should "
             f"choose temporal in auto mode."
@@ -117,9 +115,7 @@ class TestPerCellSplitDecision:
         n_rows = EXPECTED_PER_CELL_ROWS["MCF7"]
         n_test_random_est = int(round(0.20 * n_rows))
         assert n_test_random_est >= 50
-        decision = (
-            "scaffold_fallback" if n_test_random_est < 50 else "temporal"
-        )
+        decision = "scaffold_fallback" if n_test_random_est < 50 else "temporal"
         assert decision == "temporal"
 
     def test_a2780_split_choice_temporal(self) -> None:
@@ -127,9 +123,7 @@ class TestPerCellSplitDecision:
         n_rows = EXPECTED_PER_CELL_ROWS["A2780"]
         n_test_random_est = int(round(0.20 * n_rows))
         assert n_test_random_est >= 50
-        decision = (
-            "scaffold_fallback" if n_test_random_est < 50 else "temporal"
-        )
+        decision = "scaffold_fallback" if n_test_random_est < 50 else "temporal"
         assert decision == "temporal"
 
     def test_hct116_split_choice_temporal(self) -> None:
@@ -137,9 +131,7 @@ class TestPerCellSplitDecision:
         n_rows = EXPECTED_PER_CELL_ROWS["HCT116"]
         n_test_random_est = int(round(0.20 * n_rows))
         assert n_test_random_est >= 50
-        decision = (
-            "scaffold_fallback" if n_test_random_est < 50 else "temporal"
-        )
+        decision = "scaffold_fallback" if n_test_random_est < 50 else "temporal"
         assert decision == "temporal"
 
     def test_hl60_split_choice_scaffold_fallback(self) -> None:
@@ -153,12 +145,10 @@ class TestPerCellSplitDecision:
         """
         n_rows = EXPECTED_PER_CELL_ROWS["HL60"]
         n_test_random_est = int(round(0.20 * n_rows))
-        assert n_test_random_est < 50, (
-            f"HL60 n_test_random_est={n_test_random_est} expected < 50."
-        )
-        decision = (
-            "scaffold_fallback" if n_test_random_est < 50 else "temporal"
-        )
+        assert (
+            n_test_random_est < 50
+        ), f"HL60 n_test_random_est={n_test_random_est} expected < 50."
+        decision = "scaffold_fallback" if n_test_random_est < 50 else "temporal"
         assert decision == "scaffold_fallback", (
             f"HL60 (n={n_rows}, n_test_est={n_test_random_est}) should "
             f"flip to scaffold_fallback in auto mode (default "
@@ -194,7 +184,9 @@ class TestScaffoldFallbackCorrectness:
         active = sub["active"].astype(int).to_numpy()
         for seed in (0, 1, 2):
             out = mod._scaffold_split_indices_nci60(
-                smiles_subset=smiles, active_subset=active, seed=seed,
+                smiles_subset=smiles,
+                active_subset=active,
+                seed=seed,
                 n_test_min=10,
             )
             assert out is not None, (
@@ -216,7 +208,9 @@ class TestScaffoldFallbackCorrectness:
         smiles = sub["smiles"].astype(str).tolist()
         active = sub["active"].astype(int).to_numpy()
         out = mod._scaffold_split_indices_nci60(
-            smiles_subset=smiles, active_subset=active, seed=0,
+            smiles_subset=smiles,
+            active_subset=active,
+            seed=0,
             n_test_min=10,
         )
         assert out is not None, (
@@ -239,11 +233,15 @@ class TestScaffoldFallbackCorrectness:
         smiles = sub["smiles"].astype(str).tolist()
         active = sub["active"].astype(int).to_numpy()
         out_a = mod._scaffold_split_indices_nci60(
-            smiles_subset=smiles, active_subset=active, seed=42,
+            smiles_subset=smiles,
+            active_subset=active,
+            seed=42,
             n_test_min=10,
         )
         out_b = mod._scaffold_split_indices_nci60(
-            smiles_subset=smiles, active_subset=active, seed=42,
+            smiles_subset=smiles,
+            active_subset=active,
+            seed=42,
             n_test_min=10,
         )
         assert out_a is not None and out_b is not None, (
@@ -288,10 +286,25 @@ class TestNCI60PerCellIntegration:
         # Synthetic cohort: 60 diverse SMILES with 50/50 active label.
         rng = np.random.default_rng(7)
         base_smiles = [
-            "CCO", "CCN", "CCC", "c1ccccc1", "c1ccncc1",
-            "c1ccc2ccccc2c1", "CC(=O)O", "CC(=O)N", "CCS", "CCO",
-            "CCBr", "CCI", "CCF", "CCCl", "CCN",
-            "C1CCCCC1", "C1CCNCC1", "C1CCOCC1", "C1CCSCC1",
+            "CCO",
+            "CCN",
+            "CCC",
+            "c1ccccc1",
+            "c1ccncc1",
+            "c1ccc2ccccc2c1",
+            "CC(=O)O",
+            "CC(=O)N",
+            "CCS",
+            "CCO",
+            "CCBr",
+            "CCI",
+            "CCF",
+            "CCCl",
+            "CCN",
+            "C1CCCCC1",
+            "C1CCNCC1",
+            "C1CCOCC1",
+            "C1CCSCC1",
             "C1CC2CCCCC2C1",
         ]
         # Repeat with different salts to get 60 unique scaffold-having
@@ -318,10 +331,10 @@ class TestNCI60PerCellIntegration:
             split_mode="temporal",
         )
         # split field must be set and one of the documented labels.
-        assert run.split in (
-            "temporal_random_80_10_20",
-        ) or run.split.startswith("scaffold_") or run.split.startswith(
-            "random_80_10_20_fallback"
+        assert (
+            run.split in ("temporal_random_80_10_20",)
+            or run.split.startswith("scaffold_")
+            or run.split.startswith("random_80_10_20_fallback")
         ), f"unexpected split label: {run.split!r}"
 
         # scaffold mode on the same cohort:

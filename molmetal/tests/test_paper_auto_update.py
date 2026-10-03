@@ -220,12 +220,12 @@ def test_render_diff_md_contains_old_and_new():
     for c in claims:
         assert c.claim_id in md, f"{c.claim_id} missing from diff md"
         if c.has_old:
-            assert f"{c.old_value:.4f}" in md, (
-                f"old_value {c.old_value} missing for {c.claim_id}"
-            )
-        assert f"{c.new_value:.4f}" in md, (
-            f"new_value {c.new_value} missing for {c.claim_id}"
-        )
+            assert (
+                f"{c.old_value:.4f}" in md
+            ), f"old_value {c.old_value} missing for {c.claim_id}"
+        assert (
+            f"{c.new_value:.4f}" in md
+        ), f"new_value {c.new_value} missing for {c.claim_id}"
         assert c.json_path in md, f"json_path missing for {c.claim_id}"
     # Header metadata also present.
     assert "Wf-265 paper §4 diff_report" in md
@@ -249,9 +249,9 @@ def test_render_updated_doc_substitutes_values():
             # old value substring.  Allow it only inside the banner
             # metadata by stripping the banner first.
             body, _, banner = updated.partition("<!-- Wf-265 auto-update banner -->")
-            assert old_str not in body or old_str == f"{c.new_value:.4f}", (
-                f"old {old_str} still in body for {c.claim_id}"
-            )
+            assert (
+                old_str not in body or old_str == f"{c.new_value:.4f}"
+            ), f"old {old_str} still in body for {c.claim_id}"
 
 
 # ---------------------------------------------------------------------------

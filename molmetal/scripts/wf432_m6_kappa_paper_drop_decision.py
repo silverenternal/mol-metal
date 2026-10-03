@@ -13,6 +13,7 @@ Per AGENTS.md §5.1 + §5.2 + §5.3 + §5.5 + §5.6 + party-twenty-spirit §3.5.
 
 Wf-432-A3 does NOT modify paper/main.tex or paper/sections/*.tex (per TODO-84 + AGENTS.md §5.3).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -75,29 +76,42 @@ def cmd_validate(args: argparse.Namespace) -> int:
             return 1
 
     # Check decision text OR pillars
-    decision_ok = (
-        ("DROP" in decision_text and "PROMOTE" in decision_text)
-        or any("DROP" in str(p) and "PROMOTE" in str(p) for p in decision_pillars)
+    decision_ok = ("DROP" in decision_text and "PROMOTE" in decision_text) or any(
+        "DROP" in str(p) and "PROMOTE" in str(p) for p in decision_pillars
     )
     if not decision_ok:
-        print(f"ERROR: decision text + pillars missing DROP / PROMOTE: {decision_text!r}")
+        print(
+            f"ERROR: decision text + pillars missing DROP / PROMOTE: {decision_text!r}"
+        )
         return 1
 
-    print(json.dumps({
-        "wf": "Wf-432-A3",
-        "validation": "PASS",
-        "decision_block_found": True,
-        "decision_text": decision_text[:200],
-        "decision_pillars_count": len(decision_pillars),
-        "verdict_pillars_count": len(verdict_pillars),
-        "top3_alternatives": [
-            {"rank": a.get("rank"), "name": a.get("name"), "pearson_r": a.get("pearson_r")}
-            for a in top3
-        ],
-        "paths_exhausted_breakdown_total": drop_block.get("paths_exhausted", 0) if isinstance(drop_block.get("paths_exhausted"), int) else len(drop_block.get("paths_exhausted", [])),
-        "verdict_field_set": drop_block.get("verdict_field_set"),
-        "timestamp": "2026-10-02",
-    }, indent=2, ensure_ascii=False))
+    print(
+        json.dumps(
+            {
+                "wf": "Wf-432-A3",
+                "validation": "PASS",
+                "decision_block_found": True,
+                "decision_text": decision_text[:200],
+                "decision_pillars_count": len(decision_pillars),
+                "verdict_pillars_count": len(verdict_pillars),
+                "top3_alternatives": [
+                    {
+                        "rank": a.get("rank"),
+                        "name": a.get("name"),
+                        "pearson_r": a.get("pearson_r"),
+                    }
+                    for a in top3
+                ],
+                "paths_exhausted_breakdown_total": drop_block.get("paths_exhausted", 0)
+                if isinstance(drop_block.get("paths_exhausted"), int)
+                else len(drop_block.get("paths_exhausted", [])),
+                "verdict_field_set": drop_block.get("verdict_field_set"),
+                "timestamp": "2026-10-02",
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
     return 0
 
 
@@ -106,7 +120,9 @@ def cmd_emit_latex(args: argparse.Namespace) -> int:
     json_path = REPO_ROOT / "metrics/by_metric/m6_kappa.json"
     data = _read_metric_json(json_path)
     drop_block = data.get("wf424a15_drop_decision", {})
-    decision = drop_block.get("decision", "DROP from main-result + PROMOTE top-3 WEAK to supplementary")
+    decision = drop_block.get(
+        "decision", "DROP from main-result + PROMOTE top-3 WEAK to supplementary"
+    )
     top3 = drop_block.get("top3_alternatives", [])
 
     # §3 main-result table: m6_kappa is DROPPED, no row
@@ -114,10 +130,14 @@ def cmd_emit_latex(args: argparse.Namespace) -> int:
     # §6 honest-limitations: 4 NEW paragraphs (per Wf-410-A1 §3.1.6 + Wf-375-A4 §3 + Wf-377-A1 §4.4 + Wf-424-A15 §4)
 
     latex = []
-    latex.append("% --- Paper §3 Supplementary Sub-Table: Top-3 WEAK-Band Correlates (from Wf-377-A1 + Wf-389-A1) ---")
+    latex.append(
+        "% --- Paper §3 Supplementary Sub-Table: Top-3 WEAK-Band Correlates (from Wf-377-A1 + Wf-389-A1) ---"
+    )
     latex.append(r"\begin{table}[h]")
     latex.append(r"  \centering")
-    latex.append(r"  \caption{Top-3 WEAK-band per-molecule topological correlates promoted from §6 (per Wf-389-A1 §3 supplementary reframe + Wf-411-A4 per-cohort Cohen 1988 3-band refinement).}")
+    latex.append(
+        r"  \caption{Top-3 WEAK-band per-molecule topological correlates promoted from §6 (per Wf-389-A1 §3 supplementary reframe + Wf-411-A4 per-cohort Cohen 1988 3-band refinement).}"
+    )
     latex.append(r"  \label{tab:sup_subtable_m6k_replacement}")
     latex.append(r"  \begin{tabular}{lccc}")
     latex.append(r"    \toprule")
@@ -133,7 +153,9 @@ def cmd_emit_latex(args: argparse.Namespace) -> int:
     latex.append(r"  \end{tabular}")
     latex.append(r"\end{table}")
     latex.append("")
-    latex.append("% --- Paper §6 Honest-Limitations (per Wf-410-A1 §3.1.6 + Wf-375-A4 §3 + Wf-377-A1 §4.4 + Wf-424-A15 §4) ---")
+    latex.append(
+        "% --- Paper §6 Honest-Limitations (per Wf-410-A1 §3.1.6 + Wf-375-A4 §3 + Wf-377-A1 §4.4 + Wf-424-A15 §4) ---"
+    )
     latex.append(r"\subsection{m6\_kappa dropped from §3 main-result}")
     latex.append(
         r"The m6 \emph{Shape Kappa Index} metric was originally included in §3 main-result, "
@@ -169,9 +191,19 @@ def cmd_rebuild_decision(args: argparse.Namespace) -> int:
         "verdict_field_set": True,
         "drop_from_main_result": True,
         "promote_to_supplementary_subtable": True,
-        "top3_alternatives": data.get("wf424a15_drop_decision", {}).get("top3_alternatives", []),
+        "top3_alternatives": data.get("wf424a15_drop_decision", {}).get(
+            "top3_alternatives", []
+        ),
         "paths_exhausted_breakdown": {
-            "7_arch": ["Wf-335-M1 chemprop+PLL", "Wf-359-A1 R20-P3 W₂", "Wf-361-B1 MAML", "Wf-361-B2 Neural ODE", "Wf-364-A2 combined MAML+ODE", "Wf-365-A3 verdict doc", "Wf-371-A1 degenerate chain"],
+            "7_arch": [
+                "Wf-335-M1 chemprop+PLL",
+                "Wf-359-A1 R20-P3 W₂",
+                "Wf-361-B1 MAML",
+                "Wf-361-B2 Neural ODE",
+                "Wf-364-A2 combined MAML+ODE",
+                "Wf-365-A3 verdict doc",
+                "Wf-371-A1 degenerate chain",
+            ],
             "1_introspection": "Wf-377-A1 metric-redesign literature + empirical 16 invariants × n=5460",
             "1_supplementary": "Wf-389-A1 §3 supplementary sub-table",
             "1_per_cohort": "Wf-411-A4 per-cohort × Cohen 1988 3-band refinement",
@@ -190,7 +222,9 @@ def cmd_rebuild_decision(args: argparse.Namespace) -> int:
     _write_metric_json(json_path, data)
     print(f"Rebuilt wf424a15_drop_decision block in {json_path}")
     print(f"verdict: {data.get('verdict')}")
-    print(f"paths_exhausted_breakdown total: {decision_block['paths_exhausted_breakdown']['total']}")
+    print(
+        f"paths_exhausted_breakdown total: {decision_block['paths_exhausted_breakdown']['total']}"
+    )
     return 0
 
 
@@ -200,14 +234,21 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    p_val = sub.add_parser("validate", help="validate wf424a15_drop_decision block is present + well-formed")
+    p_val = sub.add_parser(
+        "validate",
+        help="validate wf424a15_drop_decision block is present + well-formed",
+    )
     p_val.set_defaults(func=cmd_validate)
 
-    p_emit = sub.add_parser("emit-latex", help="emit ready-to-paste LaTeX snippet for §3 + §6")
+    p_emit = sub.add_parser(
+        "emit-latex", help="emit ready-to-paste LaTeX snippet for §3 + §6"
+    )
     p_emit.add_argument("--out", help="Output .tex file path")
     p_emit.set_defaults(func=cmd_emit_latex)
 
-    p_rebuild = sub.add_parser("rebuild-decision", help="rebuild wf424a15_drop_decision block in m6_kappa.json")
+    p_rebuild = sub.add_parser(
+        "rebuild-decision", help="rebuild wf424a15_drop_decision block in m6_kappa.json"
+    )
     p_rebuild.set_defaults(func=cmd_rebuild_decision)
 
     return p

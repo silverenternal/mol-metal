@@ -83,7 +83,8 @@ def _train_branch(
     torch.manual_seed(seed)
     velocity_net = VelocityNet(hidden_dim=hidden_dim, n_layers=2, cond_dim=0).to(device)
     loss_module = ConditionalFlowMatchingLoss(
-        model=velocity_net, use_minibatch_ot=use_minibatch_ot,
+        model=velocity_net,
+        use_minibatch_ot=use_minibatch_ot,
     ).to(device)
     optimizer = torch.optim.AdamW(velocity_net.parameters(), lr=lr)
 
@@ -114,8 +115,13 @@ def _train_branch(
         x1 = torch.randn(b, n, 3, dtype=torch.float32, device=device)
 
         out = loss_module(
-            x0, x1, cond=None, h_node=h_node,
-            edge_index=edge_index, edge_mask=edge_mask, node_mask=node_mask,
+            x0,
+            x1,
+            cond=None,
+            h_node=h_node,
+            edge_index=edge_index,
+            edge_mask=edge_mask,
+            node_mask=node_mask,
             batch_idx=batch_idx,
             ot_diagnostics=ot_records if diagnostics is not None else None,
         )
@@ -128,29 +134,47 @@ def _train_branch(
         if diagnostics is not None:
             # The loss exposes the actual coupled target velocity, so this
             # measures the pairing used for training without solving OT twice.
-            changed_rows.append(int(((out.target_velocity_ - (x1 - x0))
-                                     .abs().flatten(1).amax(1) > 1e-5).sum().item()))
+            changed_rows.append(
+                int(
+                    ((out.target_velocity_ - (x1 - x0)).abs().flatten(1).amax(1) > 1e-5)
+                    .sum()
+                    .item()
+                )
+            )
             target_costs.append(float(out.target_velocity_.square().mean().item()))
     if device.type == "cuda":
         torch.cuda.synchronize(device)
     wall = time.perf_counter() - t0
     if diagnostics is not None:
-        diagnostics.update({
-            "repaired_rows_per_step": changed_rows,
-            "repaired_row_fraction": sum(changed_rows) / (b * epochs),
-            "target_velocity_mse_per_step": target_costs,
-            "target_velocity_mse_mean": statistics.mean(target_costs),
-            "loss_mean": statistics.mean(losses),
-            "loss_std_over_steps": statistics.pstdev(losses),
-            "last_10_loss_mean": statistics.mean(losses[-10:]),
-            "effective_backend_counts": dict(Counter(r["effective_backend"] for r in ot_records)),
-            "fallback_reason_counts": dict(Counter(r["fallback_reason"] for r in ot_records
-                                                    if r.get("fallback_reason"))),
-            "cpu_boundaries": sorted({r["cpu_boundary"] for r in ot_records}),
-            "solver_devices": sorted({r.get("plan_device", r["device"]) for r in ot_records}),
-            "max_marginal_abs_error": max((r.get("marginal_max_abs_error", 0.0)
-                                           for r in ot_records), default=None),
-        })
+        diagnostics.update(
+            {
+                "repaired_rows_per_step": changed_rows,
+                "repaired_row_fraction": sum(changed_rows) / (b * epochs),
+                "target_velocity_mse_per_step": target_costs,
+                "target_velocity_mse_mean": statistics.mean(target_costs),
+                "loss_mean": statistics.mean(losses),
+                "loss_std_over_steps": statistics.pstdev(losses),
+                "last_10_loss_mean": statistics.mean(losses[-10:]),
+                "effective_backend_counts": dict(
+                    Counter(r["effective_backend"] for r in ot_records)
+                ),
+                "fallback_reason_counts": dict(
+                    Counter(
+                        r["fallback_reason"]
+                        for r in ot_records
+                        if r.get("fallback_reason")
+                    )
+                ),
+                "cpu_boundaries": sorted({r["cpu_boundary"] for r in ot_records}),
+                "solver_devices": sorted(
+                    {r.get("plan_device", r["device"]) for r in ot_records}
+                ),
+                "max_marginal_abs_error": max(
+                    (r.get("marginal_max_abs_error", 0.0) for r in ot_records),
+                    default=None,
+                ),
+            }
+        )
     return losses, wall
 
 
@@ -165,16 +189,21 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--b", type=int, default=8, help="batch size (default 8)")
-    parser.add_argument("--n", type=int, default=32, help="atoms per ligand (default 32 — 1h36-shape)")
+    parser.add_argument(
+        "--n", type=int, default=32, help="atoms per ligand (default 32 — 1h36-shape)"
+    )
     parser.add_argument("--hidden-dim", type=int, default=16)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
-        "--device", type=str, default=None,
+        "--device",
+        type=str,
+        default=None,
         help="torch device (default: cuda when ROCm/CUDA is available, else cpu)",
     )
-    parser.add_argument("--output-prefix", type=str,
-                        default=str(REPORTS / "r10_ot_ablation_1h36"))
+    parser.add_argument(
+        "--output-prefix", type=str, default=str(REPORTS / "r10_ot_ablation_1h36")
+    )
     args = parser.parse_args(argv)
     if args.epochs < 1 or args.b < 2 or args.b % 2 or args.n < 2:
         parser.error("epochs >=1, even b >=2, and n >=2 are required")
@@ -182,30 +211,48 @@ def main(argv: list[str] | None = None) -> int:
     requested_device = args.device or ("cuda" if torch.cuda.is_available() else "cpu")
     device = torch.device(requested_device)
     if device.type == "cuda" and not torch.cuda.is_available():
-        raise RuntimeError("--device cuda requested but torch.cuda.is_available() is false")
-    print(f"[r10-ot-ablation] device={device} epochs={args.epochs} "
-          f"b={args.b} n={args.n} hidden_dim={args.hidden_dim}")
+        raise RuntimeError(
+            "--device cuda requested but torch.cuda.is_available() is false"
+        )
+    print(
+        f"[r10-ot-ablation] device={device} epochs={args.epochs} "
+        f"b={args.b} n={args.n} hidden_dim={args.hidden_dim}"
+    )
 
     vanilla_diagnostics, mb_diagnostics = {}, {}
     print("[r10-ot-ablation] running vanilla_OT branch...")
     vanilla_losses, vanilla_wall = _train_branch(
         use_minibatch_ot=False,
-        b=args.b, n=args.n, epochs=args.epochs,
-        seed=args.seed, hidden_dim=args.hidden_dim, lr=args.lr, device=device,
+        b=args.b,
+        n=args.n,
+        epochs=args.epochs,
+        seed=args.seed,
+        hidden_dim=args.hidden_dim,
+        lr=args.lr,
+        device=device,
         diagnostics=vanilla_diagnostics,
     )
-    print(f"[r10-ot-ablation] vanilla_OT done in {vanilla_wall:.2f}s, "
-          f"first loss={vanilla_losses[0]:.4f}, last loss={vanilla_losses[-1]:.4f}")
+    print(
+        f"[r10-ot-ablation] vanilla_OT done in {vanilla_wall:.2f}s, "
+        f"first loss={vanilla_losses[0]:.4f}, last loss={vanilla_losses[-1]:.4f}"
+    )
 
     print("[r10-ot-ablation] running minibatch_OT branch...")
     mb_losses, mb_wall = _train_branch(
         use_minibatch_ot=True,
-        b=args.b, n=args.n, epochs=args.epochs,
-        seed=args.seed, hidden_dim=args.hidden_dim, lr=args.lr, device=device,
+        b=args.b,
+        n=args.n,
+        epochs=args.epochs,
+        seed=args.seed,
+        hidden_dim=args.hidden_dim,
+        lr=args.lr,
+        device=device,
         diagnostics=mb_diagnostics,
     )
-    print(f"[r10-ot-ablation] minibatch_OT done in {mb_wall:.2f}s, "
-          f"first loss={mb_losses[0]:.4f}, last loss={mb_losses[-1]:.4f}")
+    print(
+        f"[r10-ot-ablation] minibatch_OT done in {mb_wall:.2f}s, "
+        f"first loss={mb_losses[0]:.4f}, last loss={mb_losses[-1]:.4f}"
+    )
 
     # Sanity: both branches must show loss decrease (the spec's
     # success criterion "log shows loss decrease").
@@ -235,18 +282,32 @@ def main(argv: list[str] | None = None) -> int:
         "lr": args.lr,
         "device": str(device),
         "seed": args.seed,
-        "command": shlex.join(["uv", "run", "python", "molmetal/scripts/r10_ot_ablation_1h36.py",
-                               *(sys.argv[1:] if argv is None else argv)]),
+        "command": shlex.join(
+            [
+                "uv",
+                "run",
+                "python",
+                "molmetal/scripts/r10_ot_ablation_1h36.py",
+                *(sys.argv[1:] if argv is None else argv),
+            ]
+        ),
         "dataset": "synthetic Gaussian coordinates; no real 1h36 ligand or receptor loaded",
         "pairing": "groups of 2 samples; baseline preserves independent input ordering",
         "environment": {
-            "python": platform.python_version(), "torch": str(torch.__version__),
+            "python": platform.python_version(),
+            "torch": str(torch.__version__),
             "hip": torch.version.hip,
             "triton_rocm": _package_version("triton-rocm"),
-            "pot": _package_version("POT"), "scipy": _package_version("scipy"),
-            "gpu": torch.cuda.get_device_name(device) if device.type == "cuda" else None,
-            "gpu_arch": getattr(torch.cuda.get_device_properties(device), "gcnArchName", None)
-            if device.type == "cuda" else None,
+            "pot": _package_version("POT"),
+            "scipy": _package_version("scipy"),
+            "gpu": torch.cuda.get_device_name(device)
+            if device.type == "cuda"
+            else None,
+            "gpu_arch": getattr(
+                torch.cuda.get_device_properties(device), "gcnArchName", None
+            )
+            if device.type == "cuda"
+            else None,
         },
         "vanilla_ot": {
             "wall_seconds": vanilla_wall,
@@ -281,44 +342,65 @@ def main(argv: list[str] | None = None) -> int:
         f.write("# Round-10 axis B micro-ablation — synthetic coordinates\n\n")
         f.write(f"Reproduce: `{summary['command']}`\n\n")
         f.write(f"- Epochs: **{args.epochs}**\n")
-        f.write(f"- Batch size: **{args.b}**, atoms/ligand: **{args.n}**, hidden_dim: **{args.hidden_dim}**\n")
+        f.write(
+            f"- Batch size: **{args.b}**, atoms/ligand: **{args.n}**, hidden_dim: **{args.hidden_dim}**\n"
+        )
         f.write(f"- Device: **{device}**, lr: {args.lr}\n")
         f.write(f"- Seed: **{args.seed}**, environment: {summary['environment']}\n")
         f.write("- Data: synthetic Gaussian coordinates; no real 1h36 data loaded.\n")
-        f.write("- The legacy `vanilla_OT` label means independent ordering (OT disabled), "
-                "not full-batch optimal transport.\n")
+        f.write(
+            "- The legacy `vanilla_OT` label means independent ordering (OT disabled), "
+            "not full-batch optimal transport.\n"
+        )
         f.write("- OT groups: **pairs of samples** (batch_idx = arange(B) // 2)\n\n")
         f.write("## Results\n\n")
-        f.write(f"- vanilla_OT wall: {vanilla_wall:.2f}s, "
-                f"first={vanilla_losses[0]:.4f}, last={vanilla_losses[-1]:.4f}, "
-                f"delta={v_decrease:+.4f}\n")
-        f.write(f"- minibatch_OT wall: {mb_wall:.2f}s, "
-                f"first={mb_losses[0]:.4f}, last={mb_losses[-1]:.4f}, "
-                f"delta={m_decrease:+.4f}\n\n")
-        for name, metrics in (("independent", vanilla_diagnostics), ("minibatch", mb_diagnostics)):
-            f.write(f"- {name}: loss mean={metrics['loss_mean']:.6f}, "
-                    f"std across steps={metrics['loss_std_over_steps']:.6f}, "
-                    f"last-10 mean={metrics['last_10_loss_mean']:.6f}, "
-                    f"re-paired fraction={metrics['repaired_row_fraction']:.3f}, "
-                    f"target velocity MSE={metrics['target_velocity_mse_mean']:.6f}\n")
-            f.write(f"  Effective backends: {metrics['effective_backend_counts']}; "
-                    f"fallbacks: {metrics['fallback_reason_counts']}; "
-                    f"solver devices: {metrics['solver_devices']}; "
-                    f"CPU boundaries: {metrics['cpu_boundaries']}; "
-                    f"maximum marginal error: {metrics['max_marginal_abs_error']}\n")
-        f.write("\nSingle-seed training smoke only. Step-to-step std is not uncertainty "
-                "across seeds. Loss/transport-cost changes do not establish a molecular "
-                "quality or Vina improvement, nor the full-batch OT parity criterion.\n\n")
+        f.write(
+            f"- vanilla_OT wall: {vanilla_wall:.2f}s, "
+            f"first={vanilla_losses[0]:.4f}, last={vanilla_losses[-1]:.4f}, "
+            f"delta={v_decrease:+.4f}\n"
+        )
+        f.write(
+            f"- minibatch_OT wall: {mb_wall:.2f}s, "
+            f"first={mb_losses[0]:.4f}, last={mb_losses[-1]:.4f}, "
+            f"delta={m_decrease:+.4f}\n\n"
+        )
+        for name, metrics in (
+            ("independent", vanilla_diagnostics),
+            ("minibatch", mb_diagnostics),
+        ):
+            f.write(
+                f"- {name}: loss mean={metrics['loss_mean']:.6f}, "
+                f"std across steps={metrics['loss_std_over_steps']:.6f}, "
+                f"last-10 mean={metrics['last_10_loss_mean']:.6f}, "
+                f"re-paired fraction={metrics['repaired_row_fraction']:.3f}, "
+                f"target velocity MSE={metrics['target_velocity_mse_mean']:.6f}\n"
+            )
+            f.write(
+                f"  Effective backends: {metrics['effective_backend_counts']}; "
+                f"fallbacks: {metrics['fallback_reason_counts']}; "
+                f"solver devices: {metrics['solver_devices']}; "
+                f"CPU boundaries: {metrics['cpu_boundaries']}; "
+                f"maximum marginal error: {metrics['max_marginal_abs_error']}\n"
+            )
+        f.write(
+            "\nSingle-seed training smoke only. Step-to-step std is not uncertainty "
+            "across seeds. Loss/transport-cost changes do not establish a molecular "
+            "quality or Vina improvement, nor the full-batch OT parity criterion.\n\n"
+        )
         f.write("## Success criteria\n\n")
         f.write(f"- vanilla loss decreased: **{bool(v_decrease > 0)}**\n")
         f.write(f"- minibatch loss decreased: **{bool(m_decrease > 0)}**\n")
-        f.write(f"- total wall under 5 min: **{bool((vanilla_wall + mb_wall) < 300.0)}** "
-                f"(total {(vanilla_wall + mb_wall):.2f}s)\n")
+        f.write(
+            f"- total wall under 5 min: **{bool((vanilla_wall + mb_wall) < 300.0)}** "
+            f"(total {(vanilla_wall + mb_wall):.2f}s)\n"
+        )
     print(f"[r10-ot-ablation] wrote {md_path}")
 
     if not (v_decrease > 0 and m_decrease > 0):
-        print(f"[r10-ot-ablation] WARNING: one branch did not show loss decrease "
-              f"(vanilla_delta={v_decrease:+.4f}, mb_delta={m_decrease:+.4f})")
+        print(
+            f"[r10-ot-ablation] WARNING: one branch did not show loss decrease "
+            f"(vanilla_delta={v_decrease:+.4f}, mb_delta={m_decrease:+.4f})"
+        )
         return 1
     return 0
 

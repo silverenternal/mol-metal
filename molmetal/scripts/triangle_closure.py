@@ -86,6 +86,7 @@ Lit anchors
 * Sun & Zheng 2026 — Hilbert primal-dual (arXiv:2510.08423).
 * Silver 2016 + Burch & Bardsley 2022 — variance-controlled PUCT.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -214,15 +215,16 @@ class TriangleClosure:
         # Default the feature names up-front so individual vertex
         # tests can run without first calling ``run``.
         if not self.feature_names_:
-            self.feature_names_ = tuple(
-                f"f{i}" for i in range(int(self.n_features))
-            )
+            self.feature_names_ = tuple(f"f{i}" for i in range(int(self.n_features)))
 
     # ------------------------------------------------------------------
     # Data generation
     # ------------------------------------------------------------------
     def _make_design(
-        self, n: int, dim: int, seed: int,
+        self,
+        n: int,
+        dim: int,
+        seed: int,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Generate a deterministic synthetic ``(X, y)`` with known structure.
 
@@ -264,6 +266,7 @@ class TriangleClosure:
             LambdaASTSR,
             compute_r2,
         )
+
         astsr = LambdaASTSR(
             depth=int(depth),
             population=int(population),
@@ -310,6 +313,7 @@ class TriangleClosure:
             LambdaASTSRHilbert,
             primal_dual_convergence_rate,
         )
+
         # ``features`` is ``(N, n_features)``; the Hilbert regressor
         # expects ``(N, population_dim)``.  We pad / project so the
         # two contracts match.
@@ -381,7 +385,8 @@ class TriangleClosure:
         # bit-for-bit reproducible given the seed.
         col_mean = (
             np.mean(features, axis=0)
-            if features.size > 0 else np.zeros(n_arms, dtype=float)
+            if features.size > 0
+            else np.zeros(n_arms, dtype=float)
         )
         # Scatter the n_features means into n_arms buckets (round-robin).
         priors = np.zeros(n_arms, dtype=float)
@@ -412,10 +417,7 @@ class TriangleClosure:
                 # towards ``base_value``).  This is the ASTSR/Hilbert
                 # signal propagating into the MCTS.
                 arm_bias = float(priors[a] * 2.0 - 0.5)
-                v = float(
-                    base_value + arm_bias
-                    + 0.05 * rng.standard_normal()
-                )
+                v = float(base_value + arm_bias + 0.05 * rng.standard_normal())
                 var = float(max(0.0, 0.05 + 0.05 * rng.standard_normal()))
                 node.update(value=v, variance=var, action=a)
         # Pick the argmax action.
@@ -428,8 +430,7 @@ class TriangleClosure:
         # a uniform-prior baseline gives ``Var(uniform) = 0`` which
         # is uninformative.
         per_arm_q = [
-            float(stats["per_arm"].get(str(a), {}).get("Q", 0.0))
-            for a in range(n_arms)
+            float(stats["per_arm"].get(str(a), {}).get("Q", 0.0)) for a in range(n_arms)
         ]
         var_q = float(np.var(per_arm_q)) if per_arm_q else 0.0
         # Baseline: variance of the per-prior reward signal.  A
@@ -487,10 +488,7 @@ class TriangleClosure:
         # Anchor the new targets near the existing target mean so
         # the next round's R² is comparable.
         target_mean = float(np.mean(target)) if target.size > 0 else 0.0
-        new_y = (
-            np.full(k, target_mean, dtype=float)
-            + 0.05 * rng.standard_normal(k)
-        )
+        new_y = np.full(k, target_mean, dtype=float) + 0.05 * rng.standard_normal(k)
         X2 = np.concatenate([features, new_X], axis=0)
         y2 = np.concatenate([target, new_y], axis=0)
         return X2, y2
@@ -510,9 +508,7 @@ class TriangleClosure:
         """
         t_total_0 = time.perf_counter()
         # Feature names default to F5 contract.
-        self.feature_names_ = tuple(
-            f"f{i}" for i in range(int(self.n_features))
-        )
+        self.feature_names_ = tuple(f"f{i}" for i in range(int(self.n_features)))
         # Round 0 base dataset.
         X, y = self._make_design(
             n=int(self.n_trajectories),
@@ -555,22 +551,15 @@ class TriangleClosure:
                     "mcts": _vertex_to_dict(mcts_v),
                 },
                 "edge_astsr_to_hilbert": {
-                    "r2_lift": float(
-                        hilbert_v.r2 - astsr_v.r2
-                    ),
+                    "r2_lift": float(hilbert_v.r2 - astsr_v.r2),
                 },
                 "edge_hilbert_to_mcts": {
                     "hilbert_r2": float(hilbert_v.r2),
-                    "mcts_variance_reduction": float(
-                        mcts_v.variance_reduction
-                    ),
+                    "mcts_variance_reduction": float(mcts_v.variance_reduction),
                 },
                 "edge_mcts_to_astsr": {
                     "feedback_rows": int(
-                        math.ceil(
-                            self.n_trajectories
-                            / max(1, mcts_v.n_actions)
-                        )
+                        math.ceil(self.n_trajectories / max(1, mcts_v.n_actions))
                     ),
                     "next_round_seed": int(self.seed + 1000 + r),
                 },
@@ -586,19 +575,17 @@ class TriangleClosure:
             # tidy.
             if r + 1 < int(self.n_rounds):
                 X, y = self._feedback_dataset(
-                    X, y, mcts_v, round_idx=int(r),
+                    X,
+                    y,
+                    mcts_v,
+                    round_idx=int(r),
                 )
 
         # ---- Summary metrics -------------------------------------------
-        hilbert_r2s = [
-            float(r["vertices"]["hilbert"]["r2"]) for r in per_round
-        ]
-        evol_r2s = [
-            float(r["vertices"]["astsr"]["r2"]) for r in per_round
-        ]
+        hilbert_r2s = [float(r["vertices"]["hilbert"]["r2"]) for r in per_round]
+        evol_r2s = [float(r["vertices"]["astsr"]["r2"]) for r in per_round]
         var_red = [
-            float(r["vertices"]["mcts"]["variance_reduction"])
-            for r in per_round
+            float(r["vertices"]["mcts"]["variance_reduction"]) for r in per_round
         ]
         conv = (
             float(hilbert_r2s[-1] / hilbert_r2s[0])
@@ -607,18 +594,12 @@ class TriangleClosure:
         )
         self.rounds_ = per_round
         self.final_metrics_ = {
-            "mean_hilbert_r2": float(np.mean(hilbert_r2s))
-            if hilbert_r2s else 0.0,
-            "std_hilbert_r2": float(np.std(hilbert_r2s))
-            if hilbert_r2s else 0.0,
-            "mean_evolutionary_r2": float(np.mean(evol_r2s))
-            if evol_r2s else 0.0,
-            "std_evolutionary_r2": float(np.std(evol_r2s))
-            if evol_r2s else 0.0,
-            "mean_variance_reduction": float(np.mean(var_red))
-            if var_red else 0.0,
-            "std_variance_reduction": float(np.std(var_red))
-            if var_red else 0.0,
+            "mean_hilbert_r2": float(np.mean(hilbert_r2s)) if hilbert_r2s else 0.0,
+            "std_hilbert_r2": float(np.std(hilbert_r2s)) if hilbert_r2s else 0.0,
+            "mean_evolutionary_r2": float(np.mean(evol_r2s)) if evol_r2s else 0.0,
+            "std_evolutionary_r2": float(np.std(evol_r2s)) if evol_r2s else 0.0,
+            "mean_variance_reduction": float(np.mean(var_red)) if var_red else 0.0,
+            "std_variance_reduction": float(np.std(var_red)) if var_red else 0.0,
             "triangle_convergence_rate": float(conv),
             "n_rounds": int(self.n_rounds),
             "n_trajectories": int(self.n_trajectories),
@@ -724,7 +705,8 @@ def write_report(
             )
             fh.write("## Summary\n\n")
             for key in (
-                "mean_hilbert_r2", "mean_evolutionary_r2",
+                "mean_hilbert_r2",
+                "mean_evolutionary_r2",
                 "mean_variance_reduction",
                 "triangle_convergence_rate",
             ):
@@ -738,8 +720,7 @@ def write_report(
                 e = v.get("astsr", {}).get("r2", 0.0)
                 m = v.get("mcts", {}).get("variance_reduction", 0.0)
                 fh.write(
-                    f"| {r.get('round', '?')} "
-                    f"| {h:.4f} | {e:.4f} | {m:.4f} |\n"
+                    f"| {r.get('round', '?')} " f"| {h:.4f} | {e:.4f} | {m:.4f} |\n"
                 )
     return json_path, md_path
 
@@ -797,70 +778,70 @@ def main() -> int:
         ),
     )
     parser.add_argument(
-        "--n-trajectories", type=int, default=DEFAULT_N_TRAJECTORIES,
+        "--n-trajectories",
+        type=int,
+        default=DEFAULT_N_TRAJECTORIES,
         help=(
-            f"Number of synthetic training rows (default "
-            f"{DEFAULT_N_TRAJECTORIES})."
+            f"Number of synthetic training rows (default " f"{DEFAULT_N_TRAJECTORIES})."
         ),
     )
     parser.add_argument(
-        "--n-rounds", type=int, default=DEFAULT_N_ROUNDS,
-        help=(
-            f"Number of closure rounds "
-            f"(default {DEFAULT_N_ROUNDS})."
-        ),
+        "--n-rounds",
+        type=int,
+        default=DEFAULT_N_ROUNDS,
+        help=(f"Number of closure rounds " f"(default {DEFAULT_N_ROUNDS})."),
     )
     parser.add_argument(
-        "--n-features", type=int, default=DEFAULT_N_FEATURES,
-        help=(
-            f"Feature dimension (default {DEFAULT_N_FEATURES})."
-        ),
+        "--n-features",
+        type=int,
+        default=DEFAULT_N_FEATURES,
+        help=(f"Feature dimension (default {DEFAULT_N_FEATURES})."),
     )
     parser.add_argument(
-        "--n-arms", type=int, default=DEFAULT_N_ARMS,
-        help=(
-            f"Number of MCTS arms (default {DEFAULT_N_ARMS})."
-        ),
+        "--n-arms",
+        type=int,
+        default=DEFAULT_N_ARMS,
+        help=(f"Number of MCTS arms (default {DEFAULT_N_ARMS})."),
     )
     parser.add_argument(
-        "--seed", type=int, default=DEFAULT_SEED,
-        help=(
-            f"RNG seed for full determinism (default {DEFAULT_SEED})."
-        ),
+        "--seed",
+        type=int,
+        default=DEFAULT_SEED,
+        help=(f"RNG seed for full determinism (default {DEFAULT_SEED})."),
     )
     parser.add_argument(
-        "--hilbert-iters", type=int, default=DEFAULT_HILBERT_ITERS,
+        "--hilbert-iters",
+        type=int,
+        default=DEFAULT_HILBERT_ITERS,
         help=(
             "Hilbert primal-dual iterations per round "
             f"(default {DEFAULT_HILBERT_ITERS})."
         ),
     )
     parser.add_argument(
-        "--out-dir", type=str, default=DEFAULT_OUT_DIR,
-        help=(
-            "Output directory (default: "
-            f"{DEFAULT_OUT_DIR})."
-        ),
+        "--out-dir",
+        type=str,
+        default=DEFAULT_OUT_DIR,
+        help=("Output directory (default: " f"{DEFAULT_OUT_DIR})."),
     )
     parser.add_argument(
-        "--smoke", action="store_true",
+        "--smoke",
+        action="store_true",
         help=(
             "Run the canonical 8-trajectory × 3-round smoke harness "
             "and exit with 0/1."
         ),
     )
     parser.add_argument(
-        "--quiet", action="store_true",
+        "--quiet",
+        action="store_true",
         help="Suppress per-round progress output.",
     )
     args = parser.parse_args()
 
     if args.smoke:
         ok = smoke_run()
-        print(
-            "Wf-37 L8 triangle closure: smoke "
-            f"{'PASS' if ok else 'FAIL'}"
-        )
+        print("Wf-37 L8 triangle closure: smoke " f"{'PASS' if ok else 'FAIL'}")
         return 0 if ok else 1
 
     report = build_report(
@@ -896,10 +877,7 @@ def main() -> int:
         report=report,
         also_markdown=True,
     )
-    print(
-        f"Wrote {json_path}"
-        + (f" + {md_path}" if md_path is not None else "")
-    )
+    print(f"Wrote {json_path}" + (f" + {md_path}" if md_path is not None else ""))
     return 0
 
 

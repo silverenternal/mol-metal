@@ -70,12 +70,12 @@ def _make_library(seed: int = 0) -> FragmentLibrary:
     lib = FragmentLibrary(min_atoms=3, max_atoms=10)
     # Mix of rings + chains, with and without heteroatoms, sized 3-8.
     seeds: List[tuple] = [
-        ("c1ccccc1",            "benzene"),         # 6, ring, no hetero
-        ("c1ccncc1",            "pyridine"),        # 6, ring, hetero
-        ("C1CCCCC1",            "cyclohexane"),     # 6, ring, no hetero
-        ("CCCC",                "butane"),          # 4, chain, no hetero
-        ("CCO",                 "ethanol"),         # 3, chain, hetero
-        ("CC(=O)O",             "acetic"),          # 4, chain, hetero
+        ("c1ccccc1", "benzene"),  # 6, ring, no hetero
+        ("c1ccncc1", "pyridine"),  # 6, ring, hetero
+        ("C1CCCCC1", "cyclohexane"),  # 6, ring, no hetero
+        ("CCCC", "butane"),  # 4, chain, no hetero
+        ("CCO", "ethanol"),  # 3, chain, hetero
+        ("CC(=O)O", "acetic"),  # 4, chain, hetero
     ]
     rng.shuffle(seeds)
     for smi, name in seeds:
@@ -85,10 +85,10 @@ def _make_library(seed: int = 0) -> FragmentLibrary:
 
 # A handful of scaffold SMILES that span the test surface.
 _SCAFFOLDS = (
-    "c1ccccc1",                # benzene — 6, ring, no hetero
-    "c1ccncc1",                # pyridine — 6, ring, hetero
-    "CCCCCC",                  # hexane — 6, chain, no hetero
-    "CCN",                     # ethylamine — 3, chain, hetero
+    "c1ccccc1",  # benzene — 6, ring, no hetero
+    "c1ccncc1",  # pyridine — 6, ring, hetero
+    "CCCCCC",  # hexane — 6, chain, no hetero
+    "CCN",  # ethylamine — 3, chain, hetero
 )
 
 
@@ -104,6 +104,7 @@ def test_fragment_library_add_get_roundtrip():
     assert out, "get_fragment_by_name returned empty"
     # Canonical benzene is the same regardless of input casing.
     from rdkit import Chem
+
     canon = Chem.MolToSmiles(Chem.MolFromSmiles("c1ccccc1"))
     assert out == canon, f"expected {canon!r}, got {out!r}"
 
@@ -241,12 +242,12 @@ def test_skeleton_jump_swap_prob_one():
     # Use a chain scaffold + a chain position so the swap-cut
     # produces a valid RDKit-sanitisable result.
     report = rule.apply_with_report("CCCCCC", position=4)
-    assert report.swap_performed, (
-        f"swap_prob=1 should always swap on a swap-able scaffold, got {report!r}"
-    )
-    assert report.chosen_fragment is not None, (
-        f"swap_performed=True but chosen_fragment is None: {report!r}"
-    )
+    assert (
+        report.swap_performed
+    ), f"swap_prob=1 should always swap on a swap-able scaffold, got {report!r}"
+    assert (
+        report.chosen_fragment is not None
+    ), f"swap_performed=True but chosen_fragment is None: {report!r}"
     assert 0.0 <= report.compatibility <= 1.0
 
 
@@ -284,6 +285,7 @@ def test_skeleton_jump_apply_valid_smiles():
     assert isinstance(out, str)
     assert out, "apply returned empty on valid input"
     from rdkit import Chem
+
     mol = Chem.MolFromSmiles(out)
     assert mol is not None, f"apply output {out!r} is not parseable"
 
@@ -297,13 +299,11 @@ def test_skeleton_jump_compute_compatibility_range():
     rule = SkeletonJumpRule(lib, swap_prob=0.0, rng=random.Random(0))
     for scaf in _SCAFFOLDS:
         for name in lib.names():
-            score = rule.compute_compatibility(
-                scaf, lib.get_fragment_by_name(name)
-            )
+            score = rule.compute_compatibility(scaf, lib.get_fragment_by_name(name))
             assert isinstance(score, float), f"score must be float, got {type(score)}"
-            assert 0.0 <= score <= 1.0, (
-                f"score for ({scaf!r}, {name!r}) = {score} is outside [0, 1]"
-            )
+            assert (
+                0.0 <= score <= 1.0
+            ), f"score for ({scaf!r}, {name!r}) = {score} is outside [0, 1]"
 
 
 # ---------------------------------------------------------------------------
@@ -324,9 +324,9 @@ def test_skeleton_jump_compute_compatibility_equal_size():
     assert smaller_size_score >= 0.0
     # Same-size benzene is closer to pyridine in size AND in topology
     # (both aromatic rings), so the score must be at least as large.
-    assert same_size_score >= smaller_size_score, (
-        f"size-matched score {same_size_score} < size-mismatched {smaller_size_score}"
-    )
+    assert (
+        same_size_score >= smaller_size_score
+    ), f"size-matched score {same_size_score} < size-mismatched {smaller_size_score}"
 
 
 # ---------------------------------------------------------------------------
@@ -371,9 +371,9 @@ def test_skeleton_jump_swap_performed_when_forced():
     lib = FragmentLibrary()
     rule = SkeletonJumpRule(lib, swap_prob=1.0, rng=random.Random(0))
     report = rule.apply_with_report("c1ccccc1", position=2)
-    assert not report.swap_performed, (
-        f"empty library must yield swap_performed=False, got {report!r}"
-    )
+    assert (
+        not report.swap_performed
+    ), f"empty library must yield swap_performed=False, got {report!r}"
     # smiles is the original scaffold.
     assert report.smiles == "c1ccccc1"
 
@@ -386,13 +386,16 @@ def test_diversity_aware_no_history_always_passes():
     lib = _make_library(seed=0)
     base = SkeletonJumpRule(lib, swap_prob=0.0, rng=random.Random(0))
     wrap = DiversityAwareSkeletonJump(
-        base, target_diversity=0.7, history_capacity=10, rng=random.Random(0),
+        base,
+        target_diversity=0.7,
+        history_capacity=10,
+        rng=random.Random(0),
     )
     # swap_prob=0 → no swap → return mol unchanged.
     out = wrap.apply_with_diversity("c1ccccc1", history=[])
-    assert out == "c1ccccc1", (
-        f"empty history + swap_prob=0 should return mol unchanged, got {out!r}"
-    )
+    assert (
+        out == "c1ccccc1"
+    ), f"empty history + swap_prob=0 should return mol unchanged, got {out!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -409,7 +412,10 @@ def test_diversity_aware_target_zero_blocks_identical():
     lib = _make_library(seed=0)
     base = SkeletonJumpRule(lib, swap_prob=0.0, rng=random.Random(0))
     wrap = DiversityAwareSkeletonJump(
-        base, target_diversity=0.0, history_capacity=10, rng=random.Random(0),
+        base,
+        target_diversity=0.0,
+        history_capacity=10,
+        rng=random.Random(0),
     )
     # First call — empty history, swap_prob=0 → unchanged.
     out1 = wrap.apply_with_diversity("c1ccccc1", history=[])
@@ -430,12 +436,15 @@ def test_diversity_aware_target_one_always_passes():
     lib = _make_library(seed=0)
     base = SkeletonJumpRule(lib, swap_prob=0.0, rng=random.Random(0))
     wrap = DiversityAwareSkeletonJump(
-        base, target_diversity=1.0, history_capacity=10, rng=random.Random(0),
+        base,
+        target_diversity=1.0,
+        history_capacity=10,
+        rng=random.Random(0),
     )
     out = wrap.apply_with_diversity("c1ccccc1", history=["c1ccccc1", "c1ccncc1"])
-    assert out == "c1ccccc1", (
-        f"target_diversity=1.0 must always pass the gate, got {out!r}"
-    )
+    assert (
+        out == "c1ccccc1"
+    ), f"target_diversity=1.0 must always pass the gate, got {out!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -447,20 +456,25 @@ def test_diversity_aware_history_capacity():
     base = SkeletonJumpRule(lib, swap_prob=0.0, rng=random.Random(0))
     cap = 3
     wrap = DiversityAwareSkeletonJump(
-        base, target_diversity=1.0, history_capacity=cap, rng=random.Random(0),
+        base,
+        target_diversity=1.0,
+        history_capacity=cap,
+        rng=random.Random(0),
     )
     # Push 5 entries; only the last 3 should remain.
     for smi in ("A", "B", "C", "D", "E"):
         wrap.apply_with_diversity("c1ccccc1", history=[smi])
     hist = wrap.history()
-    assert len(hist) == cap, (
-        f"history length must be capped at {cap}, got {len(hist)}: {hist!r}"
-    )
+    assert (
+        len(hist) == cap
+    ), f"history length must be capped at {cap}, got {len(hist)}: {hist!r}"
     # The oldest entries ("A", "B") should be evicted; the newest
     # entries ("C", "D", "E") should survive.
-    assert hist[-3:] == ["C", "D", "E"], (
-        f"FIFO eviction broken, expected last 3 = ['C', 'D', 'E'], got {hist[-3:]!r}"
-    )
+    assert hist[-3:] == [
+        "C",
+        "D",
+        "E",
+    ], f"FIFO eviction broken, expected last 3 = ['C', 'D', 'E'], got {hist[-3:]!r}"
 
 
 # ---------------------------------------------------------------------------

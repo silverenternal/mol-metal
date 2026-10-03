@@ -92,7 +92,9 @@ def _load_adapter():
     # via reinvent_wrapper).
     root = _Path(__file__).resolve()
     for ancestor in root.parents:
-        candidate = ancestor / "molmetal" / "molmetal_lam" / "sbdd_env" / "aizynth_adapter.py"
+        candidate = (
+            ancestor / "molmetal" / "molmetal_lam" / "sbdd_env" / "aizynth_adapter.py"
+        )
         if candidate.is_file():
             adapter_path = candidate
             break
@@ -105,7 +107,8 @@ def _load_adapter():
     sbdd_pkg = "molmetal_lam.sbdd_env"
     if sbdd_pkg not in sys.modules:
         spec_pkg = importlib.util.spec_from_file_location(
-            sbdd_pkg, adapter_path.parent / "__init__.py",
+            sbdd_pkg,
+            adapter_path.parent / "__init__.py",
             submodule_search_locations=[str(adapter_path.parent)],
         )
         if spec_pkg is not None and spec_pkg.loader is not None:
@@ -127,6 +130,7 @@ def _load_adapter():
 
 def _load_smarts_fallback():
     import sys
+
     cls = _load_adapter()
     mod = sys.modules.get(_ADAPTER_MODULE)
     if mod is not None and hasattr(mod, "_smarts_fallback"):
@@ -169,7 +173,9 @@ class GateMetrics:
     n_errors: int = 0
     _per_engine: dict = field(default_factory=dict)
 
-    def update(self, passed: int, total: int, *, errors: int = 0, engine: Optional[str] = None) -> None:
+    def update(
+        self, passed: int, total: int, *, errors: int = 0, engine: Optional[str] = None
+    ) -> None:
         """Record one batch outcome.
 
         Parameters
@@ -342,9 +348,7 @@ class BuyableReactantGate:
         try:
             report = self._invoke_one(smiles)
         except Exception as exc:  # pragma: no cover - safety net
-            warnings_filter_logger.info(
-                "buyable check failed for %r: %s", smiles, exc
-            )
+            warnings_filter_logger.info("buyable check failed for %r: %s", smiles, exc)
             self.metrics.update(passed=0, total=1, errors=1, engine=self._engine)
             return False
         passed = bool(report.synthesizable)
@@ -388,8 +392,12 @@ class BuyableReactantGate:
         # Serialise empty / invalid inputs first.
         cleaned: List[str] = [s for s in smiles_list if isinstance(s, str) and s]
         if not cleaned:
-            self.metrics.update(passed=0, total=len(smiles_list), errors=len(smiles_list),
-                                engine=self._engine)
+            self.metrics.update(
+                passed=0,
+                total=len(smiles_list),
+                errors=len(smiles_list),
+                engine=self._engine,
+            )
             return []
 
         if self.n_threads <= 1 or len(cleaned) <= 1:
@@ -587,7 +595,9 @@ class GenerateWithGate:
                 )
                 continue
             raw = [s for s in raw if isinstance(s, str) and s]
-            self.metrics.update(passed=0, total=len(raw), errors=0, engine="raw_candidates")
+            self.metrics.update(
+                passed=0, total=len(raw), errors=0, engine="raw_candidates"
+            )
             kept = self.gate.filter_buyable(raw)
             admitted.extend(kept)
             if len(admitted) >= n_samples:

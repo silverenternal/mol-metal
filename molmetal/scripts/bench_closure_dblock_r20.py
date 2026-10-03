@@ -54,6 +54,7 @@ Usage
     uv run --no-sync python molmetal/scripts/bench_closure_dblock_r20.py \\
         --dative-preprocess --n-samples 100
 """
+
 from __future__ import annotations
 
 import argparse
@@ -89,11 +90,38 @@ log = logging.getLogger("wf67_p4_2_closure_r20")
 # ---------------------------------------------------------------------------
 DBLOCK_METALS: Tuple[str, ...] = (
     # 3d
-    "Sc", "Ti", "V",  "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
+    "Sc",
+    "Ti",
+    "V",
+    "Cr",
+    "Mn",
+    "Fe",
+    "Co",
+    "Ni",
+    "Cu",
+    "Zn",
     # 4d
-    "Y",  "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
+    "Y",
+    "Zr",
+    "Nb",
+    "Mo",
+    "Tc",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Cd",
     # 5d + La
-    "La", "Hf", "Ta", "W",  "Re", "Os", "Ir", "Pt", "Au", "Hg",
+    "La",
+    "Hf",
+    "Ta",
+    "W",
+    "Re",
+    "Os",
+    "Ir",
+    "Pt",
+    "Au",
+    "Hg",
 )
 
 DEFAULT_DATASET: str = "tmqm"
@@ -102,12 +130,8 @@ DEFAULT_N_SAMPLES: int = 1000
 DEFAULT_MAX_DEPTH: int = 1
 DEFAULT_MAX_PRODUCTS: int = 64
 DEFAULT_SEEDS: int = 1
-DEFAULT_OUTPUT_DIR: Path = (
-    _REPO_ROOT / "molmetal" / "reports" / "wf67_p4_2_closure_r20"
-)
-DEFAULT_TMQM_CSV: Path = (
-    _REPO_ROOT / "molmetal" / "data" / "tmqm_dblock_subset.csv"
-)
+DEFAULT_OUTPUT_DIR: Path = _REPO_ROOT / "molmetal" / "reports" / "wf67_p4_2_closure_r20"
+DEFAULT_TMQM_CSV: Path = _REPO_ROOT / "molmetal" / "data" / "tmqm_dblock_subset.csv"
 
 GATE_TARGET_REACHABILITY: float = 0.95  # Wf-67 P2 success criterion
 
@@ -158,6 +182,7 @@ def _load_click_rules() -> List[Any]:
         Suzuki,
         ThiolEne,
     )
+
     return [CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling]
 
 
@@ -175,6 +200,7 @@ PARTNER_SMILE_LIST: List[str] = [
 def _load_partner_terms() -> List[Any]:
     """Build partner terms from :data:`PARTNER_SMILE_LIST`."""
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
     out: List[Any] = []
     for smi in PARTNER_SMILE_LIST:
         try:
@@ -236,11 +262,36 @@ def _memory_mb(snapshot_diff: int) -> float:
 
 
 METAL_Z: Dict[str, int] = {
-    "Sc": 21, "Ti": 22, "V":  23, "Cr": 24, "Mn": 25, "Fe": 26,
-    "Co": 27, "Ni": 28, "Cu": 29, "Zn": 30, "Y":  39, "Zr": 40,
-    "Nb": 41, "Mo": 42, "Tc": 43, "Ru": 44, "Rh": 45, "Pd": 46,
-    "Ag": 47, "Cd": 48, "La": 57, "Hf": 72, "Ta": 73, "W":  74,
-    "Re": 75, "Os": 76, "Ir": 77, "Pt": 78, "Au": 79, "Hg": 80,
+    "Sc": 21,
+    "Ti": 22,
+    "V": 23,
+    "Cr": 24,
+    "Mn": 25,
+    "Fe": 26,
+    "Co": 27,
+    "Ni": 28,
+    "Cu": 29,
+    "Zn": 30,
+    "Y": 39,
+    "Zr": 40,
+    "Nb": 41,
+    "Mo": 42,
+    "Tc": 43,
+    "Ru": 44,
+    "Rh": 45,
+    "Pd": 46,
+    "Ag": 47,
+    "Cd": 48,
+    "La": 57,
+    "Hf": 72,
+    "Ta": 73,
+    "W": 74,
+    "Re": 75,
+    "Os": 76,
+    "Ir": 77,
+    "Pt": 78,
+    "Au": 79,
+    "Hg": 80,
 }
 
 
@@ -318,9 +369,7 @@ def _benchmark_one(
         record["n_visited"] = int(last_result.get("n_visited", 0))
         record["n_products"] = int(last_result.get("n_products", 0))
         record["max_depth_seen"] = int(last_result.get("max_depth_seen", 0))
-        record["well_typed_rate"] = float(
-            last_result.get("well_typed_rate", 1.0)
-        )
+        record["well_typed_rate"] = float(last_result.get("well_typed_rate", 1.0))
     except Exception as exc:
         record["status"] = "error"
         record["parse_error"] = f"{type(exc).__name__}: {exc}"[:240]
@@ -363,9 +412,7 @@ def _aggregate_per_metal(records: List[Dict[str, Any]]) -> Dict[str, Any]:
         walls = [float(r["wall_time_s"]) for r in ok_records]
         mems = [float(r["memory_mb"]) for r in ok_records]
         mean_wall = float(statistics.fmean(walls))
-        std_wall = (
-            float(statistics.stdev(walls)) if len(walls) >= 2 else 0.0
-        )
+        std_wall = float(statistics.stdev(walls)) if len(walls) >= 2 else 0.0
         median_wall = float(statistics.median(walls))
         peak_mem = float(max(mems)) if mems else 0.0
         total_wall = float(sum(walls))
@@ -407,7 +454,11 @@ def run_benchmark(
     log.info(
         "[wf67_p4_2_closure_r20] start: dataset=%s, n_metals=%d, "
         "n_samples=%d, max_depth=%d, seeds=%d dative_preprocess=%s",
-        dataset, n_metals, n_samples, max_depth, seeds,
+        dataset,
+        n_metals,
+        n_samples,
+        max_depth,
+        seeds,
         apply_dative_preprocess,
     )
 
@@ -439,12 +490,17 @@ def run_benchmark(
 
     for metal in metals:
         smis = _load_metal_samples(
-            csv_path, str(metal), int(n_samples), dataset=dataset,
+            csv_path,
+            str(metal),
+            int(n_samples),
+            dataset=dataset,
         )
         records: List[Dict[str, Any]] = []
         for i, smi in enumerate(smis):
             rec = _benchmark_one(
-                smi, i, str(metal),
+                smi,
+                i,
+                str(metal),
                 click_rules=click_rules,
                 partner_terms=partner_terms,
                 max_depth=max_depth,
@@ -457,18 +513,18 @@ def run_benchmark(
         per_metal_summary[metal] = _aggregate_per_metal(records)
         agg = per_metal_summary[metal]
         log.info(
-            "[wf67_p4_2_closure_r20] %s: n=%d closure_ok=%d rate=%.4f "
-            "gate_pass=%s",
-            metal, agg["n_samples"], agg["n_closure_ok"],
-            agg["closure_reachability_rate"], agg["gate_pass"],
+            "[wf67_p4_2_closure_r20] %s: n=%d closure_ok=%d rate=%.4f " "gate_pass=%s",
+            metal,
+            agg["n_samples"],
+            agg["n_closure_ok"],
+            agg["closure_reachability_rate"],
+            agg["gate_pass"],
         )
 
     overall = _aggregate_per_metal(all_records)
     total_wall_s = time.perf_counter() - t_total_0
 
-    n_metals_pass = sum(
-        1 for s in per_metal_summary.values() if s["gate_pass"]
-    )
+    n_metals_pass = sum(1 for s in per_metal_summary.values() if s["gate_pass"])
 
     payload: Dict[str, Any] = {
         "schema_version": 1,
@@ -480,9 +536,7 @@ def run_benchmark(
         "metals": list(metals),
         "n_samples": int(n_samples),
         "n_metals": int(n_metals),
-        "n_samples_total": int(sum(
-            per_metal_summary[m]["n_samples"] for m in metals
-        )),
+        "n_samples_total": int(sum(per_metal_summary[m]["n_samples"] for m in metals)),
         "max_depth": int(max_depth),
         "max_products": int(max_products),
         "seeds": int(seeds),
@@ -525,22 +579,32 @@ def save_per_metal(
         per_metal = payload["per_metal"][metal]
         # Sample-level records (optional, smaller subset for size)
         sample_records = [
-            {k: r[k] for k in (
-                "idx", "status", "closure_ok", "dative_converted",
-                "wall_time_s", "parse_error",
-            ) if k in r}
+            {
+                k: r[k]
+                for k in (
+                    "idx",
+                    "status",
+                    "closure_ok",
+                    "dative_converted",
+                    "wall_time_s",
+                    "parse_error",
+                )
+                if k in r
+            }
             for r in payload.get("per_sample", [])
             if r["metal"] == metal
         ]
-        rec_path.write_text(json.dumps(
-            {
-                "metal": metal,
-                "summary": per_metal,
-                "n_samples_in_run": per_metal["n_samples"],
-                "samples": sample_records,
-            },
-            indent=2,
-        ))
+        rec_path.write_text(
+            json.dumps(
+                {
+                    "metal": metal,
+                    "summary": per_metal,
+                    "n_samples_in_run": per_metal["n_samples"],
+                    "samples": sample_records,
+                },
+                indent=2,
+            )
+        )
         paths[metal] = rec_path
 
     overall_path = output_dir / "reachability_overall.json"
@@ -584,8 +648,10 @@ def write_synthesis(
     lines.append(f"- **Wf-37 P2 baseline**: 0.5891 (2244 samples)  ")
     lines.append(f"- **Gate target**: ≥ {GATE_TARGET_REACHABILITY:.2f}  ")
     lines.append(f"- **Overall gate pass**: {overall_pass}  ")
-    lines.append(f"- **Metals at gate (≥ {GATE_TARGET_REACHABILITY:.2f})**: "
-                 f"{n_metals_pass}/{len(payload['metals'])}  ")
+    lines.append(
+        f"- **Metals at gate (≥ {GATE_TARGET_REACHABILITY:.2f})**: "
+        f"{n_metals_pass}/{len(payload['metals'])}  "
+    )
     lines.append(f"- **N samples (overall)**: {overall_n}  ")
     lines.append(f"- **N closure_ok (overall)**: {overall_ok}  ")
     lines.append(f"- **Total wall**: {total_wall:.2f} s  ")
@@ -681,10 +747,18 @@ def _build_argparser() -> argparse.ArgumentParser:
             "with a dative-bond SMILES preprocessor."
         ),
     )
-    p.add_argument("--n-metals", type=int, default=DEFAULT_N_METALS,
-                   help="Number of d-block metals (default 30).")
-    p.add_argument("--n-samples", type=int, default=DEFAULT_N_SAMPLES,
-                   help="Samples per metal (default 1000).")
+    p.add_argument(
+        "--n-metals",
+        type=int,
+        default=DEFAULT_N_METALS,
+        help="Number of d-block metals (default 30).",
+    )
+    p.add_argument(
+        "--n-samples",
+        type=int,
+        default=DEFAULT_N_SAMPLES,
+        help="Samples per metal (default 1000).",
+    )
     p.add_argument("--metals", nargs="+", default=list(DBLOCK_METALS))
     p.add_argument("--tmqm-csv", type=Path, default=DEFAULT_TMQM_CSV)
     p.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
@@ -693,7 +767,8 @@ def _build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--seeds", type=int, default=DEFAULT_SEEDS)
     p.add_argument("--dataset", choices=("tmqm",), default=DEFAULT_DATASET)
     p.add_argument(
-        "--dative-preprocess", action="store_true",
+        "--dative-preprocess",
+        action="store_true",
         help=(
             "EXPERIMENTAL: apply SMILES dative-bond preprocessor "
             "(convert '<-' to '-'). Default off — empirical testing "
@@ -702,8 +777,9 @@ def _build_argparser() -> argparse.ArgumentParser:
             "valence)."
         ),
     )
-    p.add_argument("--log-level", default="INFO",
-                   choices=("DEBUG", "INFO", "WARNING", "ERROR"))
+    p.add_argument(
+        "--log-level", default="INFO", choices=("DEBUG", "INFO", "WARNING", "ERROR")
+    )
     return p
 
 
@@ -716,7 +792,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     metals_arg = list(args.metals)
     if len(metals_arg) == 1 and metals_arg[0].lower() in (
-        "all", "all_dblock", "30",
+        "all",
+        "all_dblock",
+        "30",
     ):
         metals_arg = list(DBLOCK_METALS)
     known = set(DBLOCK_METALS)
@@ -749,8 +827,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     log.info(
         "[wf67_p4_2_closure_r20] DONE: n_metals=%d n=%d closure_ok=%d "
         "rate=%.4f gate_pass=%s",
-        len(metals), agg["n_samples"], agg["n_closure_ok"],
-        agg["closure_reachability_rate"], payload["overall_gate_pass"],
+        len(metals),
+        agg["n_samples"],
+        agg["n_closure_ok"],
+        agg["closure_reachability_rate"],
+        payload["overall_gate_pass"],
     )
     print(
         f"[wf67_p4_2_closure_r20] n_metals={len(metals)} "

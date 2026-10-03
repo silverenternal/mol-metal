@@ -35,6 +35,7 @@ Honest framing (party-twenty-spirit §3.5)
 * USER_OK gate behavior is the SAFEST test surface (exit 64 on
   refusal = kill_then_adapt safety contract preserved bit-for-bit)
 """
+
 from __future__ import annotations
 
 import json
@@ -125,12 +126,12 @@ def test_user_ok_gate_REFUSED_default(wrapper_exists):
         f"stdout: {result.stdout}\nstderr: {result.stderr}"
     )
     # Verify the FATAL message is in stderr
-    assert "USER_OK gate refused" in result.stderr, (
-        f"USER_OK refusal message not in stderr:\n{result.stderr}"
-    )
-    assert "USER_OK=1" in result.stderr, (
-        f"USER_OK=1 hint not in stderr:\n{result.stderr}"
-    )
+    assert (
+        "USER_OK gate refused" in result.stderr
+    ), f"USER_OK refusal message not in stderr:\n{result.stderr}"
+    assert (
+        "USER_OK=1" in result.stderr
+    ), f"USER_OK=1 hint not in stderr:\n{result.stderr}"
 
 
 # -----------------------------------------------------------------------------
@@ -199,14 +200,17 @@ def test_user_ok_gate_PASSED_one_dry_run(wrapper_exists):
     assert plan_json.exists(), f"plan.json MISSING: {plan_json}"
 
     # Verify 15-pair enumeration in stdout
-    assert "${#PAIR_OVERRIDE[@]} pairs" not in result.stdout  # bash syntax marker should be expanded
+    assert (
+        "${#PAIR_OVERRIDE[@]} pairs" not in result.stdout
+    )  # bash syntax marker should be expanded
     pair_lines = [
-        line for line in result.stdout.splitlines()
+        line
+        for line in result.stdout.splitlines()
         if re.match(r"\s+[A-Z][a-z]\s+seed=\d+\s+->", line)
     ]
-    assert len(pair_lines) == 15, (
-        f"Expected 15 (metal, seed) pairs enumerated, got {len(pair_lines)}"
-    )
+    assert (
+        len(pair_lines) == 15
+    ), f"Expected 15 (metal, seed) pairs enumerated, got {len(pair_lines)}"
 
 
 # -----------------------------------------------------------------------------
@@ -217,7 +221,9 @@ def test_dry_run_emission_schema(wrapper_exists):
     assert wrapper_exists
     dry_run_log = REPORTS_DIR / "DRY_RUN.log"
     if not dry_run_log.exists():
-        pytest.skip("DRY_RUN.log not yet emitted (run test_user_ok_gate_PASSED_one_dry_run first)")
+        pytest.skip(
+            "DRY_RUN.log not yet emitted (run test_user_ok_gate_PASSED_one_dry_run first)"
+        )
     text = dry_run_log.read_text()
     # Required schema fields (per Wf-363-A1)
     assert "DRY-RUN launcher for" in text
@@ -234,11 +240,27 @@ def test_dry_run_emission_schema(wrapper_exists):
     pair_label_count = text.count("pair:    ")
     # The `pair:` lines (one per metal seed; Wf-363-A1 schema) + the per_pair
     # block below. Each pair appears in BOTH blocks (lines 1 + lines 2).
-    assert pair_label_count >= 15, (
-        f"Expected ≥15 `pair:    <name>` rows, got {pair_label_count}"
-    )
+    assert (
+        pair_label_count >= 15
+    ), f"Expected ≥15 `pair:    <name>` rows, got {pair_label_count}"
     # Count actual (metal, seed) tuples
-    expected_pairs = ["Ru 0", "Ru 1", "Ru 2", "Ir 0", "Ir 1", "Ir 2", "Rh 0", "Rh 1", "Rh 2", "Os 0", "Os 1", "Os 2", "Re 0", "Re 1", "Re 2"]
+    expected_pairs = [
+        "Ru 0",
+        "Ru 1",
+        "Ru 2",
+        "Ir 0",
+        "Ir 1",
+        "Ir 2",
+        "Rh 0",
+        "Rh 1",
+        "Rh 2",
+        "Os 0",
+        "Os 1",
+        "Os 2",
+        "Re 0",
+        "Re 1",
+        "Re 2",
+    ]
     for pair in expected_pairs:
         assert pair in text, f"Missing pair '{pair}' in DRY_RUN.log"
 
@@ -251,7 +273,9 @@ def test_plan_json_emission(wrapper_exists):
     assert wrapper_exists
     plan_json = REPORTS_DIR / "plan.json"
     if not plan_json.exists():
-        pytest.skip("plan.json not yet emitted (run test_user_ok_gate_PASSED_one_dry_run first)")
+        pytest.skip(
+            "plan.json not yet emitted (run test_user_ok_gate_PASSED_one_dry_run first)"
+        )
     data = json.loads(plan_json.read_text())
     # Required fields (per Wf-414-A1 + Wf-355 pattern)
     assert data["wrapper"] == "launch_wf390a1_m2_r2_path_a.sh"
@@ -291,14 +315,17 @@ def test_scaffold_smoke_invocation(wrapper_exists):
     assert wrapper_exists
     text = WRAPPER.read_text()
     assert "wf390a1_path_a_smoke.py" in text
-    assert "--out-dir \"${OUT_BASE}/scaffold_smoke\"" in text or '--out-dir "${OUT_BASE}/scaffold_smoke"' in text
+    assert (
+        '--out-dir "${OUT_BASE}/scaffold_smoke"' in text
+        or '--out-dir "${OUT_BASE}/scaffold_smoke"' in text
+    )
     # The smoke invocation must appear BEFORE the DRY_RUN branch
     smoke_pos = text.find("wf390a1_path_a_smoke.py")
     dry_run_pos = text.find("DRY-RUN mode:")
     assert smoke_pos != -1 and dry_run_pos != -1
-    assert smoke_pos < dry_run_pos, (
-        f"SCAFFOLD smoke (pos {smoke_pos}) must precede DRY-RUN branch (pos {dry_run_pos})"
-    )
+    assert (
+        smoke_pos < dry_run_pos
+    ), f"SCAFFOLD smoke (pos {smoke_pos}) must precede DRY-RUN branch (pos {dry_run_pos})"
 
 
 # -----------------------------------------------------------------------------
@@ -316,7 +343,7 @@ def test_chemprop_v3_cache_conditional(wrapper_exists):
     assert wrapper_exists
     text = WRAPPER.read_text()
     # The guard block must exist
-    assert 'TRAINER}' in text
+    assert "TRAINER}" in text
     assert "*chemprop_v2_v3*" in text
     assert "--chemprop-v3-cache" in text
 

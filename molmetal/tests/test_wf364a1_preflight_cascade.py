@@ -101,12 +101,16 @@ def test_preflight_no_fail_gates_cascade_status(tmp_path: Path) -> None:
 
     # ---- Case A: 0 FAILs → PASS ----
     pf_clean = tmp_path / "preflight_clean.json"
-    pf_clean.write_text(json.dumps({
-        "schema_version": "207.v1",
-        "pipeline": "all",
-        "summary": {"pass": 90, "fail": 0, "skip": 2, "total": 92},
-        "gates": [],
-    }))
+    pf_clean.write_text(
+        json.dumps(
+            {
+                "schema_version": "207.v1",
+                "pipeline": "all",
+                "summary": {"pass": 90, "fail": 0, "skip": 2, "total": 92},
+                "gates": [],
+            }
+        )
+    )
     status_a, evidence_a = wf343c2.check_preflight_no_fail_gates(
         preflight_path=pf_clean,
     )
@@ -121,12 +125,16 @@ def test_preflight_no_fail_gates_cascade_status(tmp_path: Path) -> None:
 
     # ---- Case B: ≥ 1 upstream FAIL (e.g. p2_tests_pass) → FAIL (cascade-tripped)
     pf_fail = tmp_path / "preflight_fail.json"
-    pf_fail.write_text(json.dumps({
-        "schema_version": "207.v1",
-        "pipeline": "all",
-        "summary": {"pass": 90, "fail": 1, "skip": 2, "total": 93},
-        "gates": [{"name": "p2_tests_pass", "status": "FAIL"}],
-    }))
+    pf_fail.write_text(
+        json.dumps(
+            {
+                "schema_version": "207.v1",
+                "pipeline": "all",
+                "summary": {"pass": 90, "fail": 1, "skip": 2, "total": 93},
+                "gates": [{"name": "p2_tests_pass", "status": "FAIL"}],
+            }
+        )
+    )
     status_b, evidence_b = wf343c2.check_preflight_no_fail_gates(
         preflight_path=pf_fail,
     )
@@ -145,14 +153,18 @@ def test_preflight_no_fail_gates_cascade_status(tmp_path: Path) -> None:
     # self-exclude and PASS — breaking the cycle.  Without this fix,
     # the gate would FAIL forever once it ever FAILed.
     pf_self = tmp_path / "preflight_self_fail.json"
-    pf_self.write_text(json.dumps({
-        "schema_version": "207.v1",
-        "pipeline": "all",
-        "summary": {"pass": 90, "fail": 1, "skip": 2, "total": 93},
-        "gates": [
-            {"name": "p3_wf343c2_per_wave_runtime_check", "status": "FAIL"},
-        ],
-    }))
+    pf_self.write_text(
+        json.dumps(
+            {
+                "schema_version": "207.v1",
+                "pipeline": "all",
+                "summary": {"pass": 90, "fail": 1, "skip": 2, "total": 93},
+                "gates": [
+                    {"name": "p3_wf343c2_per_wave_runtime_check", "status": "FAIL"},
+                ],
+            }
+        )
+    )
     status_c, evidence_c = wf343c2.check_preflight_no_fail_gates(
         preflight_path=pf_self,
     )
@@ -191,13 +203,20 @@ def _run_wf343c2(
     out_dir = preflight.parent
     result = subprocess.run(
         [
-            str(VENV_PY), str(script),
-            "--wave", "Wf-364-A1 cascade regression test",
-            "--pairs-metals", "Ru,Ir,Os,Rh,Re",
-            "--pairs-seeds", "0,1,2",
-            "--budget-hr", "10.0",
-            "--preflight", str(preflight),
-            "--out", str(out_dir / "wf343c2_cascade.json"),
+            str(VENV_PY),
+            str(script),
+            "--wave",
+            "Wf-364-A1 cascade regression test",
+            "--pairs-metals",
+            "Ru,Ir,Os,Rh,Re",
+            "--pairs-seeds",
+            "0,1,2",
+            "--budget-hr",
+            "10.0",
+            "--preflight",
+            str(preflight),
+            "--out",
+            str(out_dir / "wf343c2_cascade.json"),
             "--skip-live",
             "--strict",
         ],

@@ -109,8 +109,16 @@ def smiles_overlap(
     inter = canon_a & canon_b
     canon_b_rows = np.array([canonicalize_smiles(str(smiles_arr[i])) for i in b_idx])
     canon_a_rows = np.array([canonicalize_smiles(str(smiles_arr[i])) for i in a_idx])
-    frac_b_seen = float(np.mean(np.isin(canon_b_rows, list(canon_a)))) if canon_b_rows.size else 0.0
-    frac_a_seen = float(np.mean(np.isin(canon_a_rows, list(canon_b)))) if canon_a_rows.size else 0.0
+    frac_b_seen = (
+        float(np.mean(np.isin(canon_b_rows, list(canon_a))))
+        if canon_b_rows.size
+        else 0.0
+    )
+    frac_a_seen = (
+        float(np.mean(np.isin(canon_a_rows, list(canon_b))))
+        if canon_a_rows.size
+        else 0.0
+    )
     return {
         "n_a": int(a_idx.size),
         "n_b": int(b_idx.size),

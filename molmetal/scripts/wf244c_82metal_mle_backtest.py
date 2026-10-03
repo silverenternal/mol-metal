@@ -22,6 +22,7 @@ improvement.  This is the Wf-244-C honest-framing gate.
 Run from project root:
     python molmetal/scripts/wf244c_82metal_mle_backtest.py
 """
+
 from __future__ import annotations
 
 import csv
@@ -93,9 +94,7 @@ def leave_one_out_backtest(
 
     # Snapshot the in-memory dictionary so we can restore it post-run
     # (the script must NOT leave side-effects on a re-import).
-    snapshot_doi = {
-        rxn: list(pool) for rxn, pool in _lit_doi_dict.items()
-    }
+    snapshot_doi = {rxn: list(pool) for rxn, pool in _lit_doi_dict.items()}
 
     n = len(rows)
     # Build per-reaction train-pool (everything except the held-out row).
@@ -114,7 +113,7 @@ def leave_one_out_backtest(
     per_reaction_correct: Dict[str, List[int]] = defaultdict(list)
     # Per-reaction accuracy is the K observed mean.
     yield_scores: List[float] = []  # for AUC: predicted yield of true rxn
-    yield_labels: List[int] = []    # 1 if the true rxn was argmax, 0 otherwise
+    yield_labels: List[int] = []  # 1 if the true rxn was argmax, 0 otherwise
     per_entry: List[Dict[str, object]] = []
 
     try:
@@ -128,7 +127,8 @@ def leave_one_out_backtest(
             models: Dict[str, object] = {}
             for rxn in reactions:
                 pool = [
-                    r for r in by_reaction[rxn]
+                    r
+                    for r in by_reaction[rxn]
                     if not (
                         r["reaction"] == rxn_true
                         and r["smiles_a"] == smi_a
@@ -151,7 +151,10 @@ def leave_one_out_backtest(
             for rxn in reactions:
                 try:
                     scores[rxn] = predict_yield(
-                        rxn, smi_a, smi_b, models=models,
+                        rxn,
+                        smi_a,
+                        smi_b,
+                        models=models,
                     )
                 except Exception:
                     scores[rxn] = 0.0
@@ -163,13 +166,15 @@ def leave_one_out_backtest(
             # AUC bookkeeping: top-1 match is a positive label.
             yield_scores.append(scores[rxn_true])
             yield_labels.append(correct)
-            per_entry.append({
-                "rxn_true": rxn_true,
-                "rxn_pred": rxn_pred,
-                "y_true": y_true,
-                "scores": scores,
-                "correct": bool(correct),
-            })
+            per_entry.append(
+                {
+                    "rxn_true": rxn_true,
+                    "rxn_pred": rxn_pred,
+                    "y_true": y_true,
+                    "scores": scores,
+                    "correct": bool(correct),
+                }
+            )
     finally:
         # ALWAYS restore _LIT_DOI to its snapshot to avoid side-effects.
         for rxn, pool in snapshot_doi.items():
@@ -178,18 +183,20 @@ def leave_one_out_backtest(
     # Compute overall accuracy + per-reaction accuracy.
     overall_accuracy = n_correct / n if n else 0.0
     per_reaction_accuracy = {
-        rxn: (sum(c) / len(c) if c else 0.0)
-        for rxn, c in per_reaction_correct.items()
+        rxn: (sum(c) / len(c) if c else 0.0) for rxn, c in per_reaction_correct.items()
     }
 
     # Best-reaction accuracy: argmax over per-reaction means (informative).
-    best_reaction_acc = max(per_reaction_accuracy.values()) if per_reaction_accuracy else 0.0
+    best_reaction_acc = (
+        max(per_reaction_accuracy.values()) if per_reaction_accuracy else 0.0
+    )
 
     # AUC: simple point-based AUC using the predicted yield of the true
     # rxn as the score and ``correct`` as the binary label.
     # When accuracy = 1.0 (all argmax), AUC is undefined; report NaN.
     try:
         from sklearn.metrics import roc_auc_score
+
         if len(set(yield_labels)) < 2:
             auc = float("nan")
         else:
@@ -198,9 +205,7 @@ def leave_one_out_backtest(
         auc = float("nan")
 
     # Per-reaction distribution (just the number of entries)
-    per_reaction_counts = {
-        rxn: len(by_reaction[rxn]) for rxn in reactions
-    }
+    per_reaction_counts = {rxn: len(by_reaction[rxn]) for rxn in reactions}
 
     # Per-reaction mean observed yield (informative diagnostic).
     per_reaction_mean_yield: Dict[str, float] = {}
@@ -209,9 +214,7 @@ def leave_one_out_backtest(
         per_reaction_mean_yield[rxn] = sum(ys) / len(ys) if ys else 0.0
 
     # Diagnostic: which reaction does the MLE rule ALWAYS pick?
-    pred_distribution = Counter(
-        e["rxn_pred"] for e in per_entry
-    )
+    pred_distribution = Counter(e["rxn_pred"] for e in per_entry)
 
     return {
         "n_entries": n,

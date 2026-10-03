@@ -25,6 +25,7 @@ Public API
 - :func:`available_methods` returns the list of methods whose metric deps are
   installed on the current Python env.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
@@ -55,7 +56,9 @@ def available_methods() -> List[str]:
     QVina are NOT required for the wrapper to count as available — they only
     gate individual metrics within the wrapper).
     """
-    return [name for name, mod in _REGISTERED.items() if getattr(mod, "AVAILABLE", False)]
+    return [
+        name for name, mod in _REGISTERED.items() if getattr(mod, "AVAILABLE", False)
+    ]
 
 
 def score_with(

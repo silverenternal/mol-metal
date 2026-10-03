@@ -44,4 +44,6 @@ def test_retrospective_doc_exists_with_six_sections():
 
 if __name__ == "__main__":
     test_retrospective_doc_exists_with_six_sections()
-    print("PASS: Wf-360-B1 retrospective has all 6 required sections (§1..§6) + §0 TL;DR.")
+    print(
+        "PASS: Wf-360-B1 retrospective has all 6 required sections (§1..§6) + §0 TL;DR."
+    )

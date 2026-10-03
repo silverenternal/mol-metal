@@ -228,13 +228,9 @@ class WFlowCFMSolver:
         method_base: str = "midpoint",
     ) -> None:
         if int(n_windows) < 1:
-            raise ValueError(
-                f"n_windows must be >= 1; got {n_windows!r}"
-            )
+            raise ValueError(f"n_windows must be >= 1; got {n_windows!r}")
         if int(n_steps_base) < 1:
-            raise ValueError(
-                f"n_steps_base must be >= 1; got {n_steps_base!r}"
-            )
+            raise ValueError(f"n_steps_base must be >= 1; got {n_steps_base!r}")
         self.n_windows = int(n_windows)
         self.n_steps_base = int(n_steps_base)
         self.method_base = str(method_base)
@@ -392,8 +388,11 @@ class WFlowCFMSolver:
             )
         if strategy == SolverStrategy.BASE:
             return self.solve_base(
-                velocity_fn, x0,
-                n_steps=n_steps, method=method, t_span=t_span,
+                velocity_fn,
+                x0,
+                n_steps=n_steps,
+                method=method,
+                t_span=t_span,
             )
         return self.solve(velocity_fn, x0, t_span=t_span)
 
@@ -546,9 +545,7 @@ class WFlowCFMSelector:
         high_max_atoms: int = COMPLEXITY_THRESHOLDS["HIGH_MAX_ATOMS"],
     ) -> None:
         if int(low_max_atoms) < 1:
-            raise ValueError(
-                f"low_max_atoms must be >= 1; got {low_max_atoms!r}"
-            )
+            raise ValueError(f"low_max_atoms must be >= 1; got {low_max_atoms!r}")
         if int(high_max_atoms) <= int(low_max_atoms):
             raise ValueError(
                 f"high_max_atoms must be > low_max_atoms; "
@@ -617,9 +614,7 @@ class WFlowCFMSelector:
             # Conservative default — base solver on CPU skeleton.
             return SolverStrategy.BASE
         if eff == "auto":
-            raise ValueError(
-                "select_strategy(complexity='auto') requires n_atoms."
-            )
+            raise ValueError("select_strategy(complexity='auto') requires n_atoms.")
         raise ValueError(
             f"Unknown complexity {complexity!r}; expected 'low', 'medium', 'high', or 'auto'."
         )
@@ -686,9 +681,7 @@ def benchmark_w_flow_cfm(
     *,
     z0: Optional[torch.Tensor] = None,
     t: float = 1.0,
-    velocity_fn: Optional[
-        Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
-    ] = None,
+    velocity_fn: Optional[Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = None,
     n_steps_base: int = 40,
     method_base: str = "midpoint",
     tol_accuracy: float = 1e-2,

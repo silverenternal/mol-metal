@@ -24,6 +24,7 @@ Run via::
     uv run --no-sync python -m pytest \\
         molmetal/tests/test_mcts_replay_learner_regularized.py -v
 """
+
 from __future__ import annotations
 
 import json
@@ -136,8 +137,12 @@ class TestRegularisedValueNetwork:
     def test_update_with_regularisation_returns_loss_dict(self) -> None:
         """``update_with_regularisation`` returns ``{mse, l2, w2, total}``."""
         net = RegularisedValueNetwork(
-            feature_dim=DEFAULT_FEATURE_DIM, hidden_dim=16,
-            lr=1.0e-2, weight_decay=1.0e-4, gamma_w2=0.01, n_mc=64,
+            feature_dim=DEFAULT_FEATURE_DIM,
+            hidden_dim=16,
+            lr=1.0e-2,
+            weight_decay=1.0e-4,
+            gamma_w2=0.01,
+            n_mc=64,
             seed=0,
         )
         rng = np.random.default_rng(0)
@@ -150,15 +155,20 @@ class TestRegularisedValueNetwork:
             assert out[key] >= 0.0
         # Total == mse + l2 + gamma_w2 * w2.
         assert out["total"] == pytest.approx(
-            out["mse"] + out["l2"] + 0.01 * out["w2"], abs=1.0e-9,
+            out["mse"] + out["l2"] + 0.01 * out["w2"],
+            abs=1.0e-9,
         )
         assert net.n_updates_ == 1
 
     def test_zero_weight_decay_zero_w2_disables_hooks(self) -> None:
         """When both hooks are 0, total == mse."""
         net = RegularisedValueNetwork(
-            feature_dim=DEFAULT_FEATURE_DIM, hidden_dim=16,
-            lr=1.0e-2, weight_decay=0.0, gamma_w2=0.0, n_mc=32,
+            feature_dim=DEFAULT_FEATURE_DIM,
+            hidden_dim=16,
+            lr=1.0e-2,
+            weight_decay=0.0,
+            gamma_w2=0.0,
+            n_mc=32,
             seed=0,
         )
         rng = np.random.default_rng(0)
@@ -199,8 +209,12 @@ class TestRegularisedPolicyNetwork:
     def test_update_with_regularisation_returns_loss_dict(self) -> None:
         """``update_with_regularisation`` returns ``{ce, l2, w2, total}``."""
         net = RegularisedPolicyNetwork(
-            feature_dim=DEFAULT_FEATURE_DIM, n_actions=4,
-            lr=1.0e-2, weight_decay=1.0e-4, beta_w2=0.05, n_mc=64,
+            feature_dim=DEFAULT_FEATURE_DIM,
+            n_actions=4,
+            lr=1.0e-2,
+            weight_decay=1.0e-4,
+            beta_w2=0.05,
+            n_mc=64,
             seed=0,
         )
         rng = np.random.default_rng(0)
@@ -214,15 +228,20 @@ class TestRegularisedPolicyNetwork:
             assert out[key] >= 0.0
         # Total == ce + l2 + beta_w2 * w2.
         assert out["total"] == pytest.approx(
-            out["ce"] + out["l2"] + 0.05 * out["w2"], abs=1.0e-9,
+            out["ce"] + out["l2"] + 0.05 * out["w2"],
+            abs=1.0e-9,
         )
         assert net.n_updates_ == 1
 
     def test_zero_hooks_disabled(self) -> None:
         """When both hooks are 0, total == ce."""
         net = RegularisedPolicyNetwork(
-            feature_dim=DEFAULT_FEATURE_DIM, n_actions=4,
-            lr=1.0e-2, weight_decay=0.0, beta_w2=0.0, n_mc=32,
+            feature_dim=DEFAULT_FEATURE_DIM,
+            n_actions=4,
+            lr=1.0e-2,
+            weight_decay=0.0,
+            beta_w2=0.0,
+            n_mc=32,
             seed=0,
         )
         rng = np.random.default_rng(0)
@@ -246,14 +265,20 @@ class TestRegularisedLearner:
     def test_vanilla_strategy_uses_bare_heads(self) -> None:
         """``vanilla`` strategy wires bare ``ValueNetwork`` / ``PolicyNetwork``."""
         learner = RegularisedMCTSReplayLearner(
-            strategy="vanilla", n_epochs=1, batch_size=4,
-            feature_dim=DEFAULT_FEATURE_DIM, hidden_dim=16,
-            n_actions=4, seed=0,
+            strategy="vanilla",
+            n_epochs=1,
+            batch_size=4,
+            feature_dim=DEFAULT_FEATURE_DIM,
+            hidden_dim=16,
+            n_actions=4,
+            seed=0,
         )
         # Bare heads are NOT regularised wrappers.
         from molmetal.scripts.mcts_replay_learner import (  # type: ignore
-            PolicyNetwork, ValueNetwork,
+            PolicyNetwork,
+            ValueNetwork,
         )
+
         assert isinstance(learner.value_net, ValueNetwork)
         assert isinstance(learner.policy_net, PolicyNetwork)
 
@@ -261,9 +286,13 @@ class TestRegularisedLearner:
         """``l2_w2`` strategy wires ``RegularisedValueNetwork`` /
         ``RegularisedPolicyNetwork``."""
         learner = RegularisedMCTSReplayLearner(
-            strategy="l2_w2", n_epochs=1, batch_size=4,
-            feature_dim=DEFAULT_FEATURE_DIM, hidden_dim=16,
-            n_actions=4, seed=0,
+            strategy="l2_w2",
+            n_epochs=1,
+            batch_size=4,
+            feature_dim=DEFAULT_FEATURE_DIM,
+            hidden_dim=16,
+            n_actions=4,
+            seed=0,
         )
         assert isinstance(learner.value_net, RegularisedValueNetwork)
         assert isinstance(learner.policy_net, RegularisedPolicyNetwork)
@@ -277,22 +306,34 @@ class TestRegularisedLearner:
         """``fit`` returns a non-empty history for each strategy."""
         # Build a small synthetic buffer inline (no real chemistry).
         from molmetal_lam.search_alg.mcts_replay_buffer import (  # type: ignore
-            MCTSReplayBuffer, MCTSReplayEntry,
+            MCTSReplayBuffer,
+            MCTSReplayEntry,
         )
         from molmetal.scripts.mcts_replay_learner import (  # type: ignore
             synth_populate_buffer,
         )
+
         buf = MCTSReplayBuffer(max_size=64, seed=0)
         synth_populate_buffer(
-            buf, n_entries=32, n_states=4, n_actions=4, seed=0,
+            buf,
+            n_entries=32,
+            n_states=4,
+            n_actions=4,
+            seed=0,
         )
         for strat in ("vanilla", "l2_only", "l2_w2"):
             learner = RegularisedMCTSReplayLearner(
-                strategy=strat, n_epochs=2, batch_size=8,
-                feature_dim=DEFAULT_FEATURE_DIM, hidden_dim=16,
-                n_actions=4, seed=0,
+                strategy=strat,
+                n_epochs=2,
+                batch_size=8,
+                feature_dim=DEFAULT_FEATURE_DIM,
+                hidden_dim=16,
+                n_actions=4,
+                seed=0,
                 weight_decay=1.0e-4,
-                beta_w2=0.05, gamma_w2=0.01, n_mc=32,
+                beta_w2=0.05,
+                gamma_w2=0.01,
+                n_mc=32,
             )
             history = learner.fit(buf)
             assert len(history) == 2
@@ -316,21 +357,36 @@ class TestRegularisedLearner:
         from molmetal.scripts.mcts_replay_learner import (  # type: ignore
             synth_populate_buffer,
         )
+
         buf = MCTSReplayBuffer(max_size=64, seed=0)
         synth_populate_buffer(
-            buf, n_entries=32, n_states=4, n_actions=4, seed=0,
+            buf,
+            n_entries=32,
+            n_states=4,
+            n_actions=4,
+            seed=0,
         )
         learner = RegularisedMCTSReplayLearner(
-            strategy="l2_w2", n_epochs=2, batch_size=8,
-            feature_dim=DEFAULT_FEATURE_DIM, hidden_dim=16,
-            n_actions=4, seed=0,
+            strategy="l2_w2",
+            n_epochs=2,
+            batch_size=8,
+            feature_dim=DEFAULT_FEATURE_DIM,
+            hidden_dim=16,
+            n_actions=4,
+            seed=0,
         )
         learner.fit(buf)
         summary = learner.summary()
         for key in (
-            "n_epochs_run", "final_value_loss", "final_policy_loss",
-            "value_loss_drop", "policy_loss_drop", "converged",
-            "total_wall_time_s", "mean_w2_policy", "mean_w2_value",
+            "n_epochs_run",
+            "final_value_loss",
+            "final_policy_loss",
+            "value_loss_drop",
+            "policy_loss_drop",
+            "converged",
+            "total_wall_time_s",
+            "mean_w2_policy",
+            "mean_w2_value",
         ):
             assert key in summary
 
@@ -346,21 +402,37 @@ class TestStrategyResultSchema:
     def test_to_dict_contains_expected_keys(self) -> None:
         """The schema carries all the headline + W_2 channels."""
         res = LearnerStrategyResult(
-            strategy="l2_w2", seed=0,
-            n_epochs=5, batch_size=32, n_samples=128,
-            final_value_loss=0.05, final_policy_loss=0.40,
-            value_loss_drop=0.10, policy_loss_drop=-0.05,
-            converged=True, total_wall_time_s=0.5,
-            mean_w2_policy=0.01, mean_w2_value=0.005,
+            strategy="l2_w2",
+            seed=0,
+            n_epochs=5,
+            batch_size=32,
+            n_samples=128,
+            final_value_loss=0.05,
+            final_policy_loss=0.40,
+            value_loss_drop=0.10,
+            policy_loss_drop=-0.05,
+            converged=True,
+            total_wall_time_s=0.5,
+            mean_w2_policy=0.01,
+            mean_w2_value=0.005,
             history=[],
         )
         d = res.to_dict()
         for key in (
-            "strategy", "seed", "n_epochs", "batch_size", "n_samples",
-            "final_value_loss", "final_policy_loss",
-            "value_loss_drop", "policy_loss_drop",
-            "converged", "total_wall_time_s",
-            "mean_w2_policy", "mean_w2_value", "history",
+            "strategy",
+            "seed",
+            "n_epochs",
+            "batch_size",
+            "n_samples",
+            "final_value_loss",
+            "final_policy_loss",
+            "value_loss_drop",
+            "policy_loss_drop",
+            "converged",
+            "total_wall_time_s",
+            "mean_w2_policy",
+            "mean_w2_value",
+            "history",
         ):
             assert key in d
         assert d["strategy"] == "l2_w2"
@@ -380,11 +452,18 @@ class TestAggregatePerSeed:
     def test_aggregate_single_seed(self, tmp_path: Path) -> None:
         """A 1-seed × 3-strategy aggregate is non-empty."""
         report = _aggregate_per_seed(
-            seeds=[0], n_epochs=2, batch_size=8,
-            n_entries=32, n_states=4, n_actions=4,
-            feature_dim=DEFAULT_FEATURE_DIM, hidden_dim=16,
-            lr=DEFAULT_LR, weight_decay=DEFAULT_WEIGHT_DECAY,
-            beta_w2=DEFAULT_BETA_W2_POLICY, gamma_w2=DEFAULT_GAMMA_W2_VALUE,
+            seeds=[0],
+            n_epochs=2,
+            batch_size=8,
+            n_entries=32,
+            n_states=4,
+            n_actions=4,
+            feature_dim=DEFAULT_FEATURE_DIM,
+            hidden_dim=16,
+            lr=DEFAULT_LR,
+            weight_decay=DEFAULT_WEIGHT_DECAY,
+            beta_w2=DEFAULT_BETA_W2_POLICY,
+            gamma_w2=DEFAULT_GAMMA_W2_VALUE,
             n_mc=32,
         )
         assert "per_strategy_per_seed" in report
@@ -416,11 +495,18 @@ class TestSynthesisVerdict:
     def test_synthesis_writes_file(self, tmp_path: Path) -> None:
         """The synthesis file is created at ``output_dir/synthesis.md``."""
         report = _aggregate_per_seed(
-            seeds=[0], n_epochs=2, batch_size=8,
-            n_entries=32, n_states=4, n_actions=4,
-            feature_dim=DEFAULT_FEATURE_DIM, hidden_dim=16,
-            lr=DEFAULT_LR, weight_decay=DEFAULT_WEIGHT_DECAY,
-            beta_w2=DEFAULT_BETA_W2_POLICY, gamma_w2=DEFAULT_GAMMA_W2_VALUE,
+            seeds=[0],
+            n_epochs=2,
+            batch_size=8,
+            n_entries=32,
+            n_states=4,
+            n_actions=4,
+            feature_dim=DEFAULT_FEATURE_DIM,
+            hidden_dim=16,
+            lr=DEFAULT_LR,
+            weight_decay=DEFAULT_WEIGHT_DECAY,
+            beta_w2=DEFAULT_BETA_W2_POLICY,
+            gamma_w2=DEFAULT_GAMMA_W2_VALUE,
             n_mc=32,
         )
         _write_synthesis(report, tmp_path)
@@ -454,7 +540,8 @@ class TestCliSmoke:
             [
                 "bench_mcts_replay_learner_regularized.py",
                 "--smoke",
-                "--report-path", str(report_path),
+                "--report-path",
+                str(report_path),
             ],
         )
         rc = main()

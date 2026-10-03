@@ -147,13 +147,13 @@ COMPAT_MATRIX: Dict[str, Dict[str, str]] = {
     #   Pt(II) ligand spheres.  This is what unlocks diversity while
     #   keeping metal_compliance = 1.0.
     "strict_Pt_II": {
-        "CuAAC":                "compatible",
-        "SPAAC":                "compatible",
-        "ThiolEne":             "incompatible",
-        "Suzuki":               "marginal",
-        "AmideCoupling":        "incompatible",
+        "CuAAC": "compatible",
+        "SPAAC": "compatible",
+        "ThiolEne": "incompatible",
+        "Suzuki": "marginal",
+        "AmideCoupling": "incompatible",
         "metal_ligand_exchange": "compatible",
-        "aqua_exchange":        "compatible",
+        "aqua_exchange": "compatible",
     },
     # Pt(II) with chelating carboxylate (carboplatin: cyclobutane-
     # dicarboxylate; oxaliplatin: oxalate + DACH).  The chelate's
@@ -165,51 +165,51 @@ COMPAT_MATRIX: Dict[str, Dict[str, str]] = {
     #   Suzuki        -> marginal (transmetalation to Pt still possible).
     #   CuAAC + SPAAC -> compatible (cycloaddition on remote handle).
     "Pt_II_chelating": {
-        "CuAAC":                "compatible",
-        "SPAAC":                "compatible",
-        "ThiolEne":             "compatible",
-        "Suzuki":               "marginal",
-        "AmideCoupling":        "compatible",
+        "CuAAC": "compatible",
+        "SPAAC": "compatible",
+        "ThiolEne": "compatible",
+        "Suzuki": "marginal",
+        "AmideCoupling": "compatible",
         "metal_ligand_exchange": "compatible",
-        "aqua_exchange":        "compatible",
+        "aqua_exchange": "compatible",
     },
     # Pt(IV) d6 octahedral prodrug (satraplatin, tetraplatin).  Axial
     # ligands (Cl, OH, OAc) are kinetically inert until intracellular
     # reduction to Pt(II), so all 5 click rules are safe on the
     # equatorial coordination plane.  FULL COMPAT.
     "Pt_IV": {
-        "CuAAC":                "compatible",
-        "SPAAC":                "compatible",
-        "ThiolEne":             "compatible",
-        "Suzuki":               "compatible",
-        "AmideCoupling":        "compatible",
+        "CuAAC": "compatible",
+        "SPAAC": "compatible",
+        "ThiolEne": "compatible",
+        "Suzuki": "compatible",
+        "AmideCoupling": "compatible",
         "metal_ligand_exchange": "compatible",
-        "aqua_exchange":        "compatible",
+        "aqua_exchange": "compatible",
     },
     # Labile coordination metals (Cu, Zn, Fe, Mn).  Fast ligand exchange
     # means the click rules can fire without disturbing the metal
     # coordination sphere.  FULL COMPAT.
     "labile_metal": {
-        "CuAAC":                "compatible",
-        "SPAAC":                "compatible",
-        "ThiolEne":             "compatible",
-        "Suzuki":               "compatible",
-        "AmideCoupling":        "compatible",
+        "CuAAC": "compatible",
+        "SPAAC": "compatible",
+        "ThiolEne": "compatible",
+        "Suzuki": "compatible",
+        "AmideCoupling": "compatible",
         "metal_ligand_exchange": "compatible",
-        "aqua_exchange":        "compatible",
+        "aqua_exchange": "compatible",
     },
     # Unknown scaffold (no metal detected, or metal we have no verdict
     # for).  Conservative default = all 5 (the original
     # ``all-5`` behaviour).  The user can always narrow via
     # ``--click-rules``.
     "unknown": {
-        "CuAAC":                "compatible",
-        "SPAAC":                "compatible",
-        "ThiolEne":             "compatible",
-        "Suzuki":               "compatible",
-        "AmideCoupling":        "compatible",
+        "CuAAC": "compatible",
+        "SPAAC": "compatible",
+        "ThiolEne": "compatible",
+        "Suzuki": "compatible",
+        "AmideCoupling": "compatible",
         "metal_ligand_exchange": "compatible",
-        "aqua_exchange":        "compatible",
+        "aqua_exchange": "compatible",
     },
 }
 
@@ -219,11 +219,20 @@ COMPAT_MATRIX: Dict[str, Dict[str, str]] = {
 # plus 2 metal-coordination rules (Pt_II specific reductions).  The
 # last two columns are the F2(a) additions.
 CLICK_RULE_NAMES: Tuple[str, ...] = (
-    "CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling",
-    "metal_ligand_exchange", "aqua_exchange",
+    "CuAAC",
+    "SPAAC",
+    "ThiolEne",
+    "Suzuki",
+    "AmideCoupling",
+    "metal_ligand_exchange",
+    "aqua_exchange",
 )
 SCAFFOLD_NAMES: Tuple[str, ...] = (
-    "strict_Pt_II", "Pt_II_chelating", "Pt_IV", "labile_metal", "unknown",
+    "strict_Pt_II",
+    "Pt_II_chelating",
+    "Pt_IV",
+    "labile_metal",
+    "unknown",
 )
 
 
@@ -337,8 +346,7 @@ def detect_scaffold(
         if atom.GetSymbol() == "C":
             # Look for the -C(=O)O- / -C(=O)[O-] / -C(O)=O motif:
             # a carbon bonded to 2+ oxygens (a carboxylate).
-            oxy_neighbours = [n for n in atom.GetNeighbors()
-                              if n.GetSymbol() == "O"]
+            oxy_neighbours = [n for n in atom.GetNeighbors() if n.GetSymbol() == "O"]
             if len(oxy_neighbours) >= 2:
                 pt_has_carboxylate_in_molecule = True
         if atom.GetSymbol() in {"Pt", "Pd", "Au"}:
@@ -467,8 +475,7 @@ def incompatible_rules(scaffold: str) -> List[str]:
     if scaffold not in COMPAT_MATRIX:
         return []
     row = COMPAT_MATRIX[scaffold]
-    return [rule for rule in CLICK_RULE_NAMES
-            if row.get(rule) == "incompatible"]
+    return [rule for rule in CLICK_RULE_NAMES if row.get(rule) == "incompatible"]
 
 
 def marginal_rules(scaffold: str) -> List[str]:
@@ -476,8 +483,7 @@ def marginal_rules(scaffold: str) -> List[str]:
     if scaffold not in COMPAT_MATRIX:
         return []
     row = COMPAT_MATRIX[scaffold]
-    return [rule for rule in CLICK_RULE_NAMES
-            if row.get(rule) == "marginal"]
+    return [rule for rule in CLICK_RULE_NAMES if row.get(rule) == "marginal"]
 
 
 # ---------------------------------------------------------------------------
@@ -485,9 +491,7 @@ def marginal_rules(scaffold: str) -> List[str]:
 # ---------------------------------------------------------------------------
 def render_compat_table() -> str:
     """Render the 5x5 compatibility matrix as a markdown table."""
-    head = (
-        "| scaffold \\ click | " + " | ".join(CLICK_RULE_NAMES) + " |"
-    )
+    head = "| scaffold \\ click | " + " | ".join(CLICK_RULE_NAMES) + " |"
     sep = "|" + "|".join(["---"] * (len(CLICK_RULE_NAMES) + 1)) + "|"
     rows = [head, sep]
     for scaffold in SCAFFOLD_NAMES:
@@ -495,8 +499,9 @@ def render_compat_table() -> str:
         cells = [scaffold]
         for rule in CLICK_RULE_NAMES:
             v = row.get(rule, "compatible")
-            tag = {"compatible": "OK", "marginal": "MARG",
-                   "incompatible": "X"}.get(v, v)
+            tag = {"compatible": "OK", "marginal": "MARG", "incompatible": "X"}.get(
+                v, v
+            )
             cells.append(tag)
         rows.append("| " + " | ".join(cells) + " |")
     return "\n".join(rows)
@@ -560,28 +565,99 @@ def strict_pt_ii_allows_metal_coordination() -> bool:
 # ---------------------------------------------------------------------------
 METAL_LIGAND_EXCHANGE_82_METAL_SYMBOLS: Tuple[str, ...] = (
     # Alkali metals (group 1, periods 2-6) — 5 entries.
-    "Li", "Na", "K", "Rb", "Cs",
+    "Li",
+    "Na",
+    "K",
+    "Rb",
+    "Cs",
     # Alkaline earth metals (group 2, periods 2-6) — 5 entries.
-    "Be", "Mg", "Ca", "Sr", "Ba",
+    "Be",
+    "Mg",
+    "Ca",
+    "Sr",
+    "Ba",
     # d-block transition metals period 4 (Sc-Zn) — 10 entries.
-    "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
+    "Sc",
+    "Ti",
+    "V",
+    "Cr",
+    "Mn",
+    "Fe",
+    "Co",
+    "Ni",
+    "Cu",
+    "Zn",
     # d-block transition metals period 5 (Y-Cd) — 10 entries.
-    "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
+    "Y",
+    "Zr",
+    "Nb",
+    "Mo",
+    "Tc",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Cd",
     # d-block transition metals period 6 (Lu-Hg, including Lu as
     # the canonical d-block-like lanthanide) — 10 entries.
-    "Lu", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg",
+    "Lu",
+    "Hf",
+    "Ta",
+    "W",
+    "Re",
+    "Os",
+    "Ir",
+    "Pt",
+    "Au",
+    "Hg",
     # d-block transition metals period 7 (Rf-Hs; synthetic but
     # registered for completeness) — 5 entries.
-    "Rf", "Db", "Sg", "Bh", "Hs",
+    "Rf",
+    "Db",
+    "Sg",
+    "Bh",
+    "Hs",
     # p-block metals (groups 13-16, periods 2-6) — 8 entries.
-    "Al", "Ga", "In", "Sn", "Tl", "Pb", "Bi", "Po",
+    "Al",
+    "Ga",
+    "In",
+    "Sn",
+    "Tl",
+    "Pb",
+    "Bi",
+    "Po",
     # Lanthanides (period 6 f-block, La-Yb; Lu moved to d-block p6
     # above per Cotton-Wilkinson 1980 §18.3) — 14 entries.
-    "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd",
-    "Tb", "Dy", "Ho", "Er", "Tm", "Yb",
+    "La",
+    "Ce",
+    "Pr",
+    "Nd",
+    "Pm",
+    "Sm",
+    "Eu",
+    "Gd",
+    "Tb",
+    "Dy",
+    "Ho",
+    "Er",
+    "Tm",
+    "Yb",
     # Actinides (period 7 f-block, Ac-Lr) — 15 entries.
-    "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm",
-    "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr",
+    "Ac",
+    "Th",
+    "Pa",
+    "U",
+    "Np",
+    "Pu",
+    "Am",
+    "Cm",
+    "Bk",
+    "Cf",
+    "Es",
+    "Fm",
+    "Md",
+    "No",
+    "Lr",
 )
 # Sanity check at module load — the constant must sum to 82.
 assert len(METAL_LIGAND_EXCHANGE_82_METAL_SYMBOLS) == 82, (
@@ -620,7 +696,7 @@ def _build_metal_ligand_exchange_82_smarts() -> List[Tuple[str, str, str]]:
         # never fire them on real alkali-metal substrates.
         "Li": "Li-Cl ionic (Cotton-Wilkinson 1980 §3.1); registered for completeness",
         "Na": "Na-Cl ionic (Cotton-Wilkinson 1980 §3.1); registered for completeness",
-        "K":  "K-Cl ionic (Cotton-Wilkinson 1980 §3.1); registered for completeness",
+        "K": "K-Cl ionic (Cotton-Wilkinson 1980 §3.1); registered for completeness",
         "Rb": "Rb-Cl ionic; registered for completeness",
         "Cs": "Cs-Cl ionic; registered for completeness",
         # Group 2 alkaline earth — borderline covalent M-Cl2.
@@ -632,7 +708,7 @@ def _build_metal_ligand_exchange_82_smarts() -> List[Tuple[str, str, str]]:
         # d-block period 4.
         "Sc": "Sc-Cl3 6-coordinate (Cotton-Wilkinson 1980 §21.1)",
         "Ti": "Ti-Cl4 tetrahedral; Ti-Cl6 octahedral (Housecroft 2018 §22.4)",
-        "V":  "V-Cl coordination (Cotton-Wilkinson 1980 §21.2)",
+        "V": "V-Cl coordination (Cotton-Wilkinson 1980 §21.2)",
         "Cr": "Cr-Cl coordination (Housecroft 2018 §22.6)",
         "Mn": "Mn-Cl coordination (Cotton-Wilkinson 1980 §21.3)",
         "Fe": "Fe-Cl2/Fe-Cl3 coordination (Housecroft 2018 §22.8)",
@@ -641,7 +717,7 @@ def _build_metal_ligand_exchange_82_smarts() -> List[Tuple[str, str, str]]:
         "Cu": "Cu-Cl coordination (Cotton-Wilkinson 1980 §21.5)",
         "Zn": "Zn-Cl2 tetrahedral (Cotton-Wilkinson 1980 §21.6)",
         # d-block period 5.
-        "Y":  "Y-Cl3 coordination (Cotton-Wilkinson 1980 §22.1)",
+        "Y": "Y-Cl3 coordination (Cotton-Wilkinson 1980 §22.1)",
         "Zr": "Zr-Cl4 coordination (Housecroft 2018 §23.4)",
         "Nb": "Nb-Cl5 coordination (Cotton-Wilkinson 1980 §22.2)",
         "Mo": "Mo-Cl coordination (Housecroft 2018 §23.5)",
@@ -655,7 +731,7 @@ def _build_metal_ligand_exchange_82_smarts() -> List[Tuple[str, str, str]]:
         "Lu": "Lu-Cl3 coordination (Cotton-Wilkinson 1980 §22.7)",
         "Hf": "Hf-Cl4 coordination (Housecroft 2018 §24.4)",
         "Ta": "Ta-Cl5 coordination (Cotton-Wilkinson 1980 §22.8)",
-        "W":  "W-Cl coordination (Housecroft 2018 §24.5)",
+        "W": "W-Cl coordination (Housecroft 2018 §24.5)",
         "Re": "Re-Cl coordination (Cotton-Wilkinson 1980 §22.9)",
         "Os": "Os-Cl coordination (Housecroft 2018 §24.6)",
         "Ir": "Ir-Cl3 octahedral (Cotton-Wilkinson 1980 §22.10)",
@@ -696,7 +772,7 @@ def _build_metal_ligand_exchange_82_smarts() -> List[Tuple[str, str, str]]:
         "Ac": "Ac-Cl3 coordination (Cotton-Wilkinson 1980 §24.1)",
         "Th": "Th-Cl4 coordination (Cotton-Wilkinson 1980 §24.2)",
         "Pa": "Pa-Cl5 coordination (Cotton-Wilkinson 1980 §24.3)",
-        "U":  "U-Cl coordination (Cotton-Wilkinson 1980 §24.4)",
+        "U": "U-Cl coordination (Cotton-Wilkinson 1980 §24.4)",
         "Np": "Np-Cl coordination (Cotton-Wilkinson 1980 §24.5)",
         "Pu": "Pu-Cl coordination (Cotton-Wilkinson 1980 §24.6)",
         "Am": "Am-Cl coordination (Cotton-Wilkinson 1980 §24.7)",
@@ -718,8 +794,7 @@ def _build_metal_ligand_exchange_82_smarts() -> List[Tuple[str, str, str]]:
     for metal in METAL_LIGAND_EXCHANGE_82_METAL_SYMBOLS:
         # Build the canonical SMARTS shape with the metal token.
         smarts = (
-            f"[{metal}:1]([Cl:2])[*:3].[NH3:4]"
-            f">>[{metal}:1]([NH3:4])[*:3].[Cl:2]"
+            f"[{metal}:1]([Cl:2])[*:3].[NH3:4]" f">>[{metal}:1]([NH3:4])[*:3].[Cl:2]"
         )
         desc = LIT_ANCHORS.get(metal, DEFAULT_ANCHOR)
         out_list.append((metal, smarts, desc))
@@ -806,6 +881,7 @@ def register_metal_ligand_exchange_rules(
             from molmetal_lam.reactions.beta_reductions import (  # type: ignore
                 ReactionRule,
             )
+
             for name, smarts, desc in rules:
                 rec = ReactionRule(
                     name=f"MLE_82_{name}",

@@ -37,6 +37,7 @@ Test inventory
     ``per_seed_metrics.json`` is well-formed JSON with all required
     keys.
 """
+
 from __future__ import annotations
 
 import csv
@@ -55,9 +56,15 @@ import pytest
 _HERE = Path(__file__).resolve().parent
 # Tests live in molmetal/tests/; the repo root is one level above molmetal.
 _REPO_ROOT = _HERE.parent  # molmetal/
-while _REPO_ROOT != _REPO_ROOT.parent and not (
-    _REPO_ROOT / "molmetal" / "scripts" / "bench_hilbert_astr_phase2_platinai_4cell.py"
-).exists():
+while (
+    _REPO_ROOT != _REPO_ROOT.parent
+    and not (
+        _REPO_ROOT
+        / "molmetal"
+        / "scripts"
+        / "bench_hilbert_astr_phase2_platinai_4cell.py"
+    ).exists()
+):
     _REPO_ROOT = _REPO_ROOT.parent
 for _p in (str(_HERE.parent), str(_REPO_ROOT)):
     if _p not in sys.path:
@@ -175,6 +182,7 @@ def test_load_platinai_cell_mcf7() -> None:
         _REPO_ROOT,
         load_platinai_cell,
     )
+
     X, y, smiles = load_platinai_cell(_REPO_ROOT, "mcf7", n_max=50)
     assert X.shape[0] == y.shape[0] == len(smiles)
     assert X.shape[0] >= 1
@@ -188,6 +196,7 @@ def test_load_platinai_cell_unknown_raises() -> None:
         _REPO_ROOT,
         load_platinai_cell,
     )
+
     with pytest.raises(ValueError):
         load_platinai_cell(_REPO_ROOT, "hela_unknown")
 
@@ -258,7 +267,12 @@ def test_combined_baseline_smoke() -> None:
     To keep wall time bounded in CI, we override the dataset via a temp
     directory containing a 50-row PlatinAI subset by writing a fake CSV.
     """
-    script = _REPO_ROOT / "molmetal" / "scripts" / "bench_hilbert_astr_phase2_platinai_4cell.py"
+    script = (
+        _REPO_ROOT
+        / "molmetal"
+        / "scripts"
+        / "bench_hilbert_astr_phase2_platinai_4cell.py"
+    )
     assert script.exists()
     # Build a 50-row PlatinAI-like subset in a temp dir.
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -266,7 +280,10 @@ def test_combined_baseline_smoke() -> None:
         subset_csv = tmp / "platinai_subset.csv"
         real_csv = _REPO_ROOT / "molmetal" / "data" / "platinai_4cell.csv"
         with open(real_csv, "r", encoding="utf-8") as fin, open(
-            subset_csv, "w", encoding="utf-8", newline="",
+            subset_csv,
+            "w",
+            encoding="utf-8",
+            newline="",
         ) as fout:
             fout.write(fin.readline())  # header
             for i, line in enumerate(fin):
@@ -283,15 +300,24 @@ def test_combined_baseline_smoke() -> None:
                 sys.executable,
                 "-u",
                 str(script),
-                "--cell-lines", "mcf7",
-                "--seeds", "0",
-                "--n-folds", "2",
-                "--epochs", "20",
-                "--population", "8",
-                "--generations", "4",
-                "--depth", "2",
-                "--hilbert-dim", "16",
-                "--output", str(out_dir),
+                "--cell-lines",
+                "mcf7",
+                "--seeds",
+                "0",
+                "--n-folds",
+                "2",
+                "--epochs",
+                "20",
+                "--population",
+                "8",
+                "--generations",
+                "4",
+                "--depth",
+                "2",
+                "--hilbert-dim",
+                "16",
+                "--output",
+                str(out_dir),
             ],
             cwd=str(_REPO_ROOT),
             env=env,

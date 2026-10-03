@@ -63,16 +63,16 @@ _LOG = logging.getLogger(__name__)
 # (aryl-boronic acids R-B(OH)2) pass the well-formedness check.
 ALLOWED_ATOMS: frozenset[str] = frozenset(
     {
-        "C",   # carbon
-        "N",   # nitrogen
-        "O",   # oxygen
-        "F",   # fluorine
-        "S",   # sulfur
+        "C",  # carbon
+        "N",  # nitrogen
+        "O",  # oxygen
+        "F",  # fluorine
+        "S",  # sulfur
         "Cl",  # chlorine
         "Br",  # bromine
-        "I",   # iodine
-        "P",   # phosphorus
-        "B",   # boron (R10 axis A — Suzuki coupling handles)
+        "I",  # iodine
+        "P",  # phosphorus
+        "B",  # boron (R10 axis A — Suzuki coupling handles)
     }
 )
 

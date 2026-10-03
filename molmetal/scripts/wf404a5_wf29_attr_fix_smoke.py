@@ -96,6 +96,7 @@ from __future__ import annotations
 # the env var. We force CPU via --device override downstream; this
 # default simply keeps the smoke import-safe on a CUDA host.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -118,9 +119,7 @@ if str(PROJECT_ROOT) not in sys.path:
 # ---------------------------------------------------------------------------
 # Constants — keep in sync with Wf-29 + Wf-31 + Wf-339
 # ---------------------------------------------------------------------------
-TRAIN_SCRIPT: Path = (
-    PROJECT_ROOT / "molmetal" / "scripts" / "train_se3sb.py"
-)
+TRAIN_SCRIPT: Path = PROJECT_ROOT / "molmetal" / "scripts" / "train_se3sb.py"
 VENV_PY: Path = (
     PROJECT_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
 )
@@ -132,7 +131,12 @@ SUPPORTED_METALS: Tuple[str, ...] = ("Ru", "Ir", "Rh", "Re", "Os")
 #: Canonical 5-metal + 1-coord output dict keys. ``train_se3sb.py``
 #: consumes this exact shape via :class:`V4MultiTaskLoss.forward`.
 EXPECTED_FORWARD_KEYS: Tuple[str, ...] = (
-    "Ru", "Ir", "Rh", "Re", "Os", "coord",
+    "Ru",
+    "Ir",
+    "Rh",
+    "Re",
+    "Os",
+    "coord",
 )
 
 #: Subprocess smoke timeout. 50-step forward+backward on a 5-metal
@@ -194,16 +198,26 @@ def _smoke_command(
     cmd: List[str] = [
         _resolve_python(),
         str(TRAIN_SCRIPT),
-        "--seeds", "0",
-        "--epochs", "1",
-        "--batch", "8",
-        "--hidden", "32",
-        "--depth", "2",
-        "--train-max-per-metal", "8",
-        "--se3-n-steps", "2",
-        "--out-dir", str(out_dir),
-        "--metrics-path", str(metrics_path),
-        "--summary-path", str(summary_path),
+        "--seeds",
+        "0",
+        "--epochs",
+        "1",
+        "--batch",
+        "8",
+        "--hidden",
+        "32",
+        "--depth",
+        "2",
+        "--train-max-per-metal",
+        "8",
+        "--se3-n-steps",
+        "2",
+        "--out-dir",
+        str(out_dir),
+        "--metrics-path",
+        str(metrics_path),
+        "--summary-path",
+        str(summary_path),
     ]
     if data_path is not None and data_path.exists():
         cmd.extend(["--data", str(data_path)])
@@ -225,8 +239,7 @@ def verify_attr_dict_compatibility() -> Dict[str, Any]:
 
     args = train_se3sb.parse_args([])
     attrs_present = sorted(
-        a for a in dir(args)
-        if a.startswith("se3_") and not a.startswith("__")
+        a for a in dir(args) if a.startswith("se3_") and not a.startswith("__")
     )
     # Wf-29 fix surface: ``se3_use_sinkhorn`` MUST be present;
     # ``se3_sinkhorn`` (bare) MUST NOT exist.
@@ -267,6 +280,7 @@ def verify_forward_dict_shape() -> Dict[str, Any]:
         SUPPORTED_METALS as _V4_SUPPORTED_METALS,
         V4MultiTaskDMPNN,
     )
+
     # 5-way canonical (matches the v4_multitask_dmpnn.py default).
     model = V4MultiTaskDMPNN(
         hidden_dim=32,
@@ -277,6 +291,7 @@ def verify_forward_dict_shape() -> Dict[str, Any]:
     # metal_ids must be a 1-D long tensor — the V4 contract raises on
     # ``metal_ids.dim() != 1`` (see :meth:`forward`).
     import torch as _torch
+
     smis = ["CCO", "c1ccccc1"]
     metal_ids_t = _torch.tensor([0, 1], dtype=_torch.long)
     out = model(smis, metal_ids_t)
@@ -345,18 +360,16 @@ def verify_attr_fix_subprocess_smoke(
                 "attribute_error_found": True,
                 "stdout_tail": (
                     (exc.stdout or "")[-600:]
-                    if isinstance(exc.stdout, str) else
-                    "<bytes-stdout>"
+                    if isinstance(exc.stdout, str)
+                    else "<bytes-stdout>"
                 ),
                 "stderr_tail": (
                     (exc.stderr or "")[-600:]
-                    if isinstance(exc.stderr, str) else
-                    "<bytes-stderr>"
+                    if isinstance(exc.stderr, str)
+                    else "<bytes-stderr>"
                 ),
                 "wall_seconds": round(time.time() - t0, 4),
-                "failure_reason": (
-                    f"subprocess timeout after {timeout_sec}s"
-                ),
+                "failure_reason": (f"subprocess timeout after {timeout_sec}s"),
             }
         combined = (proc.stdout or "") + "\n" + (proc.stderr or "")
         attribute_error_found = any(
@@ -533,18 +546,21 @@ def run_wf404a5_smoke(
 # ---------------------------------------------------------------------------
 def _build_argparse() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description=(
-            "Wf-404-A5 — Wf-29 train_se3sb.py AttributeError fix smoke."
-        ),
+        description=("Wf-404-A5 — Wf-29 train_se3sb.py AttributeError fix smoke."),
     )
     p.add_argument(
-        "--out-dir", type=Path,
+        "--out-dir",
+        type=Path,
         default=PROJECT_ROOT / "molmetal" / "reports" / "wf404a5_wf29_attr_fix",
         help="Output directory for smoke_result.json (default: %(default)s).",
     )
     p.add_argument(
-        "--data", type=Path,
-        default=PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv",
+        "--data",
+        type=Path,
+        default=PROJECT_ROOT
+        / ".data"
+        / "molmetal"
+        / "metalcytotox_5metal_multitask_v4.csv",
         help=(
             "Optional 5-metal CSV; if missing the subprocess smoke "
             "is SKIPPED (argparse + forward invariants still run). "

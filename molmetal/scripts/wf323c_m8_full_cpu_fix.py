@@ -97,6 +97,7 @@ Exit codes
   PDB+PDBQT missing.
 * 2 — argparse rejected the flags.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -114,7 +115,9 @@ sys.path.insert(0, str(REPO_ROOT))
 
 LOG = logging.getLogger("wf323c")
 
-WF319B_POOL = REPO_ROOT / "molmetal" / "reports" / "wf319b_uff_min_pt_pool" / "pool.json"
+WF319B_POOL = (
+    REPO_ROOT / "molmetal" / "reports" / "wf319b_uff_min_pt_pool" / "pool.json"
+)
 WF246D_RECEPTORS = REPO_ROOT / "molmetal" / "reports" / "wf246d_m8_pb_dock"
 DEFAULT_OUT = REPO_ROOT / "molmetal" / "reports" / "wf323c_m8_full" / "result.json"
 
@@ -159,6 +162,7 @@ def _uff_prerelax_one(smiles: str) -> Optional[Tuple[Any, str]]:
     from rdkit import Chem
     from rdkit.Chem import AllChem
     from rdkit import RDLogger
+
     RDLogger.DisableLog("rdApp.*")
 
     mol = Chem.MolFromSmiles(smiles)
@@ -171,22 +175,30 @@ def _uff_prerelax_one(smiles: str) -> Optional[Tuple[Any, str]]:
     embed_method: Optional[str] = None
     embed_ok = False
     for method_name, params_factory in (
-        ("ETKDGv3+randomCoords",
-         lambda: (
-             (lambda p: (
-                 setattr(p, "randomSeed", 0xC0FFEE),
-                 setattr(p, "useRandomCoords", True),
-                 p
-             )[-1])(AllChem.ETKDGv3())
-         )),
-        ("ETKDGv2+randomCoords",
-         lambda: (
-             (lambda p: (
-                 setattr(p, "randomSeed", 0xC0FFEE),
-                 setattr(p, "useRandomCoords", True),
-                 p
-             )[-1])(AllChem.ETKDGv2())
-         )),
+        (
+            "ETKDGv3+randomCoords",
+            lambda: (
+                (
+                    lambda p: (
+                        setattr(p, "randomSeed", 0xC0FFEE),
+                        setattr(p, "useRandomCoords", True),
+                        p,
+                    )[-1]
+                )(AllChem.ETKDGv3())
+            ),
+        ),
+        (
+            "ETKDGv2+randomCoords",
+            lambda: (
+                (
+                    lambda p: (
+                        setattr(p, "randomSeed", 0xC0FFEE),
+                        setattr(p, "useRandomCoords", True),
+                        p,
+                    )[-1]
+                )(AllChem.ETKDGv2())
+            ),
+        ),
     ):
         try:
             status = AllChem.EmbedMolecule(mol_h, params_factory())
@@ -369,9 +381,9 @@ def _vina_redock(
     meta["prerelax_method"] = embed_method
 
     from rdkit import Chem  # type: ignore
+
     present_metals = sorted(
-        {a.GetSymbol() for a in mol_h.GetAtoms()}
-        & set(PT_GROUP_ELEMENTS_FOR_STRIP)
+        {a.GetSymbol() for a in mol_h.GetAtoms()} & set(PT_GROUP_ELEMENTS_FOR_STRIP)
     )
     meta["present_metals"] = present_metals
     if present_metals:
@@ -418,9 +430,11 @@ def _vina_redock(
         try:
             from meeko import PDBQTMolecule, RDKitMolCreate  # type: ignore
             from rdkit import Chem  # type: ignore
+
             pdbqt_mol = PDBQTMolecule(poses_pdbqt, is_dlg=False)
             rdkit_mols = RDKitMolCreate.from_pdbqt_mol(
-                pdbqt_mol, only_cluster_leads=False,
+                pdbqt_mol,
+                only_cluster_leads=False,
             )
             if len(rdkit_mols) != 1 or rdkit_mols[0] is None:
                 return None, None, "VINA_NO_POSES", meta
@@ -443,17 +457,17 @@ def _vina_redock(
 def _pdb_to_pdbqt(pdb_path: Path, pdbqt_path: Path) -> None:
     """Minimal PDB → PDBQT converter (Vina 1.2.7 strict format)."""
     elem_to_type = {
-        "C":  "C ",
-        "N":  "N ",
-        "O":  "OA",
-        "S":  "SA",
-        "H":  "HD",
-        "P":  "P ",
-        "F":  "F ",
+        "C": "C ",
+        "N": "N ",
+        "O": "OA",
+        "S": "SA",
+        "H": "HD",
+        "P": "P ",
+        "F": "F ",
         "CL": "Cl",
         "BR": "Br",
-        "I":  "I ",
-        "B":  "B ",
+        "I": "I ",
+        "B": "B ",
         "FE": "Fe",
         "ZN": "Zn",
         "MG": "Mg",
@@ -521,6 +535,7 @@ PROTEIN_AWARE_KEYS: Tuple[str, ...] = (
 def _pb_check_pose(mol: Any, receptor_pdb: Path) -> Dict[str, Any]:
     """Run PoseBusters dock mode on one docked pose (RDKit Mol + receptor PDB)."""
     from molmetal.validation.posebusters_runner import check_docked_pose
+
     return check_docked_pose(mol, str(receptor_pdb))
 
 
@@ -545,48 +560,67 @@ def _summarise_pb(
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[1] if __doc__ else "")
     p.add_argument(
-        "--input-pool", type=Path, default=WF319B_POOL,
+        "--input-pool",
+        type=Path,
+        default=WF319B_POOL,
         help=f"Wf-319B Pt-pool JSON (default: {WF319B_POOL})",
     )
     p.add_argument(
-        "--pocket-id", type=str, default="1h36",
+        "--pocket-id",
+        type=str,
+        default="1h36",
         help="Pocket to dock into (default: 1h36)",
     )
     p.add_argument(
-        "--n-conformers", type=int, default=24,
+        "--n-conformers",
+        type=int,
+        default=24,
         help="Max number of conformers to dock (default 24 smoke; full pool = 96)",
     )
     p.add_argument(
-        "--exhaustiveness", type=int, default=DEFAULT_EXHAUSTIVENESS,
+        "--exhaustiveness",
+        type=int,
+        default=DEFAULT_EXHAUSTIVENESS,
         help=f"Vina exhaustiveness (default {DEFAULT_EXHAUSTIVENESS})",
     )
     p.add_argument(
-        "--n-poses", type=int, default=DEFAULT_N_POSES,
+        "--n-poses",
+        type=int,
+        default=DEFAULT_N_POSES,
         help=f"Vina poses per dock (default {DEFAULT_N_POSES})",
     )
     p.add_argument(
-        "--seed", type=int, default=42,
+        "--seed",
+        type=int,
+        default=42,
         help="Vina RNG seed (default 42)",
     )
     p.add_argument(
-        "--box-padding-A", type=float, default=15.0,
+        "--box-padding-A",
+        type=float,
+        default=15.0,
         help="Box padding around pocket centroid (default 15 Å; Wf-323C smoke)",
     )
     p.add_argument(
-        "--out", type=Path, default=DEFAULT_OUT,
+        "--out",
+        type=Path,
+        default=DEFAULT_OUT,
         help=f"Output result JSON (default: {DEFAULT_OUT})",
     )
     p.add_argument(
-        "--execute", action="store_true",
+        "--execute",
+        action="store_true",
         help="Actually run the docking; without this flag the script "
-             "prints the plan and exits 0 (dry-run).",
+        "prints the plan and exits 0 (dry-run).",
     )
     return p
 
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = _build_parser().parse_args(argv)
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s"
+    )
 
     if not args.input_pool.exists():
         LOG.error("FAIL: input pool missing: %s", args.input_pool)
@@ -602,10 +636,16 @@ def main(argv: Optional[List[str]] = None) -> int:
         LOG.error("FAIL: receptor PDB missing: %s", receptor_pdb)
         return 1
     if not receptor_pdbqt.exists():
-        LOG.info("PDBQT absent — auto-converting %s → %s", receptor_pdb.name, receptor_pdbqt.name)
+        LOG.info(
+            "PDBQT absent — auto-converting %s → %s",
+            receptor_pdb.name,
+            receptor_pdbqt.name,
+        )
         _pdb_to_pdbqt(receptor_pdb, receptor_pdbqt)
     if not receptor_pdbqt.exists():
-        LOG.error("FAIL: receptor PDBQT still missing after conversion: %s", receptor_pdbqt)
+        LOG.error(
+            "FAIL: receptor PDBQT still missing after conversion: %s", receptor_pdbqt
+        )
         return 1
 
     pocket_center = _pocket_center_from_receptor(receptor_pdb)
@@ -635,8 +675,12 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     n_to_dock = min(args.n_conformers, n_pool)
     conformers_to_dock = pool_records[:n_to_dock]
-    LOG.info("docking %d conformers (exhaustiveness=%d, n_poses=%d)",
-             n_to_dock, args.exhaustiveness, args.n_poses)
+    LOG.info(
+        "docking %d conformers (exhaustiveness=%d, n_poses=%d)",
+        n_to_dock,
+        args.exhaustiveness,
+        args.n_poses,
+    )
 
     per_conformer: List[Dict[str, Any]] = []
     n_poses_pre_relaxed = 0
@@ -675,7 +719,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                 record["pb_status"] = "skipped"
                 record["failures"] = [f"vina:{vstatus}"]
                 per_conformer.append(record)
-                LOG.info("[%d/%d] pool_idx=%d SKIP (%s)", i, n_to_dock, pool_idx, vstatus)
+                LOG.info(
+                    "[%d/%d] pool_idx=%d SKIP (%s)", i, n_to_dock, pool_idx, vstatus
+                )
                 continue
 
             n_poses_pre_relaxed += 1
@@ -691,38 +737,46 @@ def main(argv: Optional[List[str]] = None) -> int:
             n_total_checks = len(all_checks)
             full_pass = (n_pass == n_total_checks) and n_total_checks > 0
 
-            record.update({
-                "pb_valid": bool(pb.get("pb_valid", False)),
-                "pb_status": pb.get("status"),
-                "checks": {k: bool(v) for k, v in checks.items()},
-                "protein_aware_pass": bool(all_pa),
-                "n_protein_aware_pass": int(n_pa),
-                "n_protein_aware_total": int(len(PROTEIN_AWARE_KEYS)),
-                "full_pass": bool(full_pass),
-                "n_checks_pass": int(n_pass),
-                "n_checks_total": int(n_total_checks),
-                "failures": pb.get("failures", []),
-                "version": pb.get("version"),
-            })
+            record.update(
+                {
+                    "pb_valid": bool(pb.get("pb_valid", False)),
+                    "pb_status": pb.get("status"),
+                    "checks": {k: bool(v) for k, v in checks.items()},
+                    "protein_aware_pass": bool(all_pa),
+                    "n_protein_aware_pass": int(n_pa),
+                    "n_protein_aware_total": int(len(PROTEIN_AWARE_KEYS)),
+                    "full_pass": bool(full_pass),
+                    "n_checks_pass": int(n_pass),
+                    "n_checks_total": int(n_total_checks),
+                    "failures": pb.get("failures", []),
+                    "version": pb.get("version"),
+                }
+            )
             per_conformer.append(record)
             LOG.info(
                 "[%d/%d] pool_idx=%d vina=%.2f kcal/mol pb_full=%s n_pass=%d/%d (%.1fs)",
-                i, n_to_dock, pool_idx,
+                i,
+                n_to_dock,
+                pool_idx,
                 kcal_mol if kcal_mol is not None else float("nan"),
                 "PASS" if full_pass else "FAIL",
-                n_pass, n_total_checks, wall,
+                n_pass,
+                n_total_checks,
+                wall,
             )
         except Exception as exc:  # noqa: BLE001
             wall = time.perf_counter() - t0
             LOG.warning("[%d/%d] pool_idx=%d EXC: %s", i, n_to_dock, pool_idx, exc)
-            per_conformer.append({
-                "pool_index": pool_idx,
-                "smiles": smiles,
-                "n_atoms_pool": n_atoms_pool,
-                "wall_seconds": round(wall, 4),
-                "vina_status": "EXCEPTION",
-                "error": f"{type(exc).__name__}: {exc}",
-            })
+            per_conformer.append(
+                {
+                    "pool_index": pool_idx,
+                    "smiles": smiles,
+                    "n_atoms_pool": n_atoms_pool,
+                    "wall_seconds": round(wall, 4),
+                    "vina_status": "EXCEPTION",
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
+            )
 
     wall_total = time.perf_counter() - t_start
     summary = _summarise_pb(per_conformer)
@@ -832,10 +886,17 @@ def main(argv: Optional[List[str]] = None) -> int:
         json.dump(output, fh, indent=2)
 
     LOG.info("=== Wf-323C summary ===")
-    LOG.info("n_poses_total=%d n_poses_pre_relaxed=%d n_pt_zn_substituted=%d",
-             summary["n_poses"], n_poses_pre_relaxed, n_pt_zn_substituted)
-    LOG.info("m8_full_pass_rate=%s m8_protein_aware_pass_rate=%s",
-             summary["m8_full_pass_rate"], summary["m8_protein_aware_pass_rate"])
+    LOG.info(
+        "n_poses_total=%d n_poses_pre_relaxed=%d n_pt_zn_substituted=%d",
+        summary["n_poses"],
+        n_poses_pre_relaxed,
+        n_pt_zn_substituted,
+    )
+    LOG.info(
+        "m8_full_pass_rate=%s m8_protein_aware_pass_rate=%s",
+        summary["m8_full_pass_rate"],
+        summary["m8_protein_aware_pass_rate"],
+    )
     LOG.info("delta_m8_full=%s (vs Wf-315D 0/15 baseline)", delta_full)
     LOG.info("wrote %s", args.out)
     return 0

@@ -1,4 +1,5 @@
 """Budget/cache/failure behavior against a mock docking port, not fake benchmarks."""
+
 from pathlib import Path
 from types import SimpleNamespace
 import json
@@ -6,7 +7,10 @@ import json
 import pytest
 from rdkit import Chem
 
-from molmetal.molmetal_lam.sbdd_env.pocket_docking_reward import PocketDockingReward, PocketDockingRewardError
+from molmetal.molmetal_lam.sbdd_env.pocket_docking_reward import (
+    PocketDockingReward,
+    PocketDockingRewardError,
+)
 
 
 class FakeDocking:
@@ -19,10 +23,14 @@ class FakeDocking:
 
     def dock(self, molecule, pocket, config):
         self.calls.append(molecule.smiles)
-        self.last_run_metadata = {"gpu_verified": True,
-                                  "gpu_evidence": "kernel_trace" if self.trace else "engine_device_log"}
+        self.last_run_metadata = {
+            "gpu_verified": True,
+            "gpu_evidence": "kernel_trace" if self.trace else "engine_device_log",
+        }
         if self.failure:
-            self.last_run_metadata.update(status="failed", error="synthetic port failure")
+            self.last_run_metadata.update(
+                status="failed", error="synthetic port failure"
+            )
             raise RuntimeError("synthetic port failure")
         mol = Chem.MolFromSmiles("CC" if self.wrong_pose else molecule.smiles)
         conformer = Chem.Conformer(mol.GetNumAtoms())
@@ -38,8 +46,14 @@ def provider(tmp_path, **fake_options):
     receptor, ligand = tmp_path / "source.pdb", tmp_path / "geometry.sdf"
     receptor.write_text("test source")
     ligand.write_text("test geometry")
-    reward = PocketDockingReward(receptor, ligand, tmp_path / "output", seed=42,
-                                  gpu_config={"mock": True}, max_evaluations=1)
+    reward = PocketDockingReward(
+        receptor,
+        ligand,
+        tmp_path / "output",
+        seed=42,
+        gpu_config={"mock": True},
+        max_evaluations=1,
+    )
     engine = FakeDocking(**fake_options)
     # Isolate the cache/budget/pose contract from optional preparation tools.
     reward._ensure_ready = lambda: None
@@ -55,7 +69,11 @@ def test_canonical_smiles_cache_and_state_callback_keep_raw_energy(tmp_path):
     assert len(engine.calls) == 1
     assert Chem.MolToSmiles(Chem.RemoveHs(Chem.MolFromSmiles(engine.calls[0]))) == "CCO"
     report = reward.report()
-    assert (report["n_attempted"], report["n_docked"], report["n_cache_hits"]) == (1, 1, 1)
+    assert (report["n_attempted"], report["n_docked"], report["n_cache_hits"]) == (
+        1,
+        1,
+        1,
+    )
     candidate = report["candidates"][0]
     assert Path(candidate["pose_sdf"]).is_file()
     assert candidate["poses"][0]["score_kcal_mol"] == -3.25
@@ -82,7 +100,11 @@ def test_failed_docking_consumes_budget_and_caches_failure_without_energy(tmp_pa
     with pytest.raises(PocketDockingRewardError, match="cached_failure"):
         reward("OCC")
     report = reward.report()
-    assert (report["n_attempted"], report["n_docked"], report["n_cache_hits"]) == (1, 0, 1)
+    assert (report["n_attempted"], report["n_docked"], report["n_cache_hits"]) == (
+        1,
+        0,
+        1,
+    )
     assert report["candidates"][0]["score_kcal_mol"] is None
     assert report["candidates"][0]["gpu_execution"]["status"] == "failed"
     assert len(engine.calls) == 1
@@ -101,7 +123,9 @@ def test_invalid_smiles_retained_without_consuming_docking_budget(tmp_path):
 
 @pytest.mark.parametrize("option", ["trace", "wrong_pose"])
 def test_finite_score_without_trace_or_matching_pose_is_rejected(tmp_path, option):
-    reward, _ = provider(tmp_path, **({"trace": False} if option == "trace" else {"wrong_pose": True}))
+    reward, _ = provider(
+        tmp_path, **({"trace": False} if option == "trace" else {"wrong_pose": True})
+    )
     with pytest.raises(PocketDockingRewardError):
         reward("CCO")
     report = reward.report()

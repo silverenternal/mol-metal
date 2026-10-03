@@ -75,6 +75,7 @@ def _safe_pb_check(smiles: str) -> "dict[str, Any] | None":
     """
     try:
         from molmetal.validation.posebusters_runner import check_posebusters
+
         return check_posebusters(smiles)
     except Exception:
         pass
@@ -83,11 +84,20 @@ def _safe_pb_check(smiles: str) -> "dict[str, Any] | None":
             PoseBustersAdapter,
             _have_posebusters,
         )
+
         if _have_posebusters():
             return PoseBustersAdapter().validate_mol(smiles).to_dict()
-        return {"pb_valid": None, "skipped": True, "reason": "posebusters not installed"}
+        return {
+            "pb_valid": None,
+            "skipped": True,
+            "reason": "posebusters not installed",
+        }
     except Exception:
-        return {"pb_valid": None, "skipped": True, "reason": "posebusters not installed"}
+        return {
+            "pb_valid": None,
+            "skipped": True,
+            "reason": "posebusters not installed",
+        }
 
 
 def _compute_pb_pass_rate(smiles_list: List[str]) -> float:
@@ -132,6 +142,7 @@ def _vina_proxy_score(smiles: str) -> Optional[float]:
     try:
         from rdkit import Chem  # type: ignore
         from rdkit.Chem import rdMolDescriptors  # type: ignore
+
         mol = Chem.MolFromSmiles(smiles)
         if mol is None:
             return None
@@ -174,14 +185,14 @@ def _compute_vina_top1(
             from molmetal.ports import DockingConfig  # local import
             from molmetal.domain import Molecule  # local import
             import torch as _torch  # local import — same env as the loop
+
             # Build a minimal Molecule stub from SMILES — the docker
             # only needs ``smiles`` populated (Vina re-embeds anyway).
             try:
                 from rdkit import Chem as _Chem  # type: ignore
+
                 _mol = _Chem.MolFromSmiles(best_smiles)
-                _atoms = (
-                    _mol.GetNumAtoms() if _mol is not None else 1
-                )
+                _atoms = _mol.GetNumAtoms() if _mol is not None else 1
             except Exception:
                 _atoms = 1
             dummy = Molecule(
@@ -340,7 +351,9 @@ class LamClickDesignLoop:
         self.mcts = mcts
         self.scorer = scorer
         self.pocket_loader = pocket_loader
-        self.symbolic_reg = symbolic_reg if symbolic_reg is not None else HeuristicRegressor()
+        self.symbolic_reg = (
+            symbolic_reg if symbolic_reg is not None else HeuristicRegressor()
+        )
         self.seed_tiles = list(seed_tiles) if seed_tiles is not None else []
         self.rng = rng if rng is not None else random.Random(0)
         # (L-2) Persistent-tree support.  When ``checkpoint_dir`` is set
@@ -460,7 +473,9 @@ class LamClickDesignLoop:
             try:
                 pocket = self.pocket_loader(pdb_id)
             except Exception as exc:
-                log.debug("pocket_loader(%s) failed: %s — running with stub", pdb_id, exc)
+                log.debug(
+                    "pocket_loader(%s) failed: %s — running with stub", pdb_id, exc
+                )
 
         # (L-2) Persistent-tree bookkeeping — counts how many pairs
         # were in the SymbolicPrior fit per iter so we can verify the
@@ -488,7 +503,9 @@ class LamClickDesignLoop:
                         n_pairs = self._refit_symbolic_prior_on_accumulated()
                         pairs_fit_size_history.append(int(n_pairs))
                     except Exception as exc:
-                        log.debug("SymbolicPrior refit on accumulated pairs failed: %s", exc)
+                        log.debug(
+                            "SymbolicPrior refit on accumulated pairs failed: %s", exc
+                        )
                     # (L-2) Dirichlet re-injection at the boundary so
                     # the persistent tree does not collapse to early
                     # high-reward regions.  fraction=0.25 matches
@@ -506,10 +523,13 @@ class LamClickDesignLoop:
             try:
                 # Honour configurable per-iteration MCTS budget — the
                 # upstream ``search`` method accepts ``max_depth``.
-                candidates = self.mcts.search(
-                    initial_state=seed,
-                    max_depth=int(max_depth),
-                ) or []
+                candidates = (
+                    self.mcts.search(
+                        initial_state=seed,
+                        max_depth=int(max_depth),
+                    )
+                    or []
+                )
                 # Some MCTS implementations cap their own n_simulations
                 # at construction time; we accept either signature.
                 if not candidates and hasattr(self.mcts, "n_simulations"):
@@ -517,7 +537,12 @@ class LamClickDesignLoop:
                     prev = getattr(self.mcts, "n_simulations", n_simulations)
                     try:
                         self.mcts.n_simulations = max(prev, int(n_simulations))
-                        candidates = self.mcts.search(initial_state=seed, max_depth=int(max_depth)) or []
+                        candidates = (
+                            self.mcts.search(
+                                initial_state=seed, max_depth=int(max_depth)
+                            )
+                            or []
+                        )
                         self.mcts.n_simulations = prev
                     except Exception:
                         pass
@@ -563,15 +588,14 @@ class LamClickDesignLoop:
                 accum_pairs = list(
                     getattr(self.mcts, "accumulated_leaf_pairs", []) or [],
                 )
-                if (
-                    self.checkpoint_dir is not None
-                    and len(accum_pairs) >= 4
-                ):
+                if self.checkpoint_dir is not None and len(accum_pairs) >= 4:
                     X_acc = np.asarray(
-                        [p[0] for p in accum_pairs], dtype=float,
+                        [p[0] for p in accum_pairs],
+                        dtype=float,
                     )
                     y_acc = np.asarray(
-                        [p[1] for p in accum_pairs], dtype=float,
+                        [p[1] for p in accum_pairs],
+                        dtype=float,
                     )
                     if (
                         X_acc.ndim == 2
@@ -585,13 +609,13 @@ class LamClickDesignLoop:
                         extracted_formula = "<degenerate global buffer — skip fit>"
                 else:
                     feats = np.stack(
-                        [molecule_to_features(m) for m in top_mols], axis=0,
+                        [molecule_to_features(m) for m in top_mols],
+                        axis=0,
                     ).astype(float)
-                    if (
-                        feats.shape[0] >= 2
-                        and not np.allclose(feats, feats[0])
-                    ):
-                        self.symbolic_reg.fit(feats, np.asarray(top_scores, dtype=float))
+                    if feats.shape[0] >= 2 and not np.allclose(feats, feats[0]):
+                        self.symbolic_reg.fit(
+                            feats, np.asarray(top_scores, dtype=float)
+                        )
                         extracted_formula = self.symbolic_reg.equation()
                     else:
                         extracted_formula = "<degenerate data — skip fit>"
@@ -628,10 +652,14 @@ class LamClickDesignLoop:
             _raw_metrics: Dict[str, Any] = {
                 "cumulative_nfe": getattr(self.mcts, "nfe", 0),
                 "cumulative_nfe_reductions": getattr(
-                    self.mcts, "nfe_reductions", 0,
+                    self.mcts,
+                    "nfe_reductions",
+                    0,
                 ),
                 "cumulative_nfe_oracle": getattr(
-                    self.mcts, "nfe_oracle", 0,
+                    self.mcts,
+                    "nfe_oracle",
+                    0,
                 ),
                 "early_stopped": False,
                 "early_stopped_at_iter": -1,
@@ -647,10 +675,12 @@ class LamClickDesignLoop:
                     else {}
                 )
                 _raw_metrics["early_stopped"] = last_hist.get(
-                    "EARLY_STOPPED", False,
+                    "EARLY_STOPPED",
+                    False,
                 )
                 _raw_metrics["early_stopped_at_iter"] = last_hist.get(
-                    "EARLY_STOPPED_AT_ITER", -1,
+                    "EARLY_STOPPED_AT_ITER",
+                    -1,
                 )
             except Exception:
                 pass
@@ -704,9 +734,9 @@ class LamClickDesignLoop:
                     _raw_metrics["tree_node_count"],
                 )
             if _raw_metrics["synthesis_equations"] is not None:
-                _final_metrics["synthesis_equations"] = (
-                    _raw_metrics["synthesis_equations"]
-                )
+                _final_metrics["synthesis_equations"] = _raw_metrics[
+                    "synthesis_equations"
+                ]
 
             # Single dict-construction step — no incremental mutation,
             # no per-key CPU transfer.
@@ -736,41 +766,39 @@ class LamClickDesignLoop:
                 best_score=best_score,
                 docker=getattr(self, "docker", None),
             )
-            results.append({
-                **base_dict,
-                "synthesis_equations": _final_metrics.get(
-                    "synthesis_equations",
-                ),
-                "closed_loop_iteration_latency_s": float(
-                    time.time() - t0_iter,
-                ),
-                "n_pairs_seen_by_prior": int(pairs_fit_size_history[-1]),
-                "dirichlet_reinjected": bool(
-                    it > 0 and self.checkpoint_dir is not None,
-                ),
-                "cumulative_nfe": _final_metrics["cumulative_nfe"],
-                "cumulative_nfe_reductions": _final_metrics[
-                    "cumulative_nfe_reductions"
-                ],
-                "cumulative_nfe_oracle": _final_metrics[
-                    "cumulative_nfe_oracle"
-                ],
-                "early_stopped": _final_metrics["early_stopped"],
-                "early_stopped_at_iter": _final_metrics[
-                    "early_stopped_at_iter"
-                ],
-                # R3/F4 — PoseBusters outer-gate pass rates.
-                "pb_pass_rate_top1": float(pb_top1),
-                "pb_pass_rate_topk": float(pb_topk),
-                # Phase 2 — Vina binding affinity (real or proxy).
-                "vina_real_score_top1": vina_real_top1,
-                "vina_proxy_score_top1": vina_proxy_top1,
-                **(
-                    {"tree_node_count": _final_metrics["tree_node_count"]}
-                    if "tree_node_count" in _final_metrics
-                    else {}
-                ),
-            })
+            results.append(
+                {
+                    **base_dict,
+                    "synthesis_equations": _final_metrics.get(
+                        "synthesis_equations",
+                    ),
+                    "closed_loop_iteration_latency_s": float(
+                        time.time() - t0_iter,
+                    ),
+                    "n_pairs_seen_by_prior": int(pairs_fit_size_history[-1]),
+                    "dirichlet_reinjected": bool(
+                        it > 0 and self.checkpoint_dir is not None,
+                    ),
+                    "cumulative_nfe": _final_metrics["cumulative_nfe"],
+                    "cumulative_nfe_reductions": _final_metrics[
+                        "cumulative_nfe_reductions"
+                    ],
+                    "cumulative_nfe_oracle": _final_metrics["cumulative_nfe_oracle"],
+                    "early_stopped": _final_metrics["early_stopped"],
+                    "early_stopped_at_iter": _final_metrics["early_stopped_at_iter"],
+                    # R3/F4 — PoseBusters outer-gate pass rates.
+                    "pb_pass_rate_top1": float(pb_top1),
+                    "pb_pass_rate_topk": float(pb_topk),
+                    # Phase 2 — Vina binding affinity (real or proxy).
+                    "vina_real_score_top1": vina_real_top1,
+                    "vina_proxy_score_top1": vina_proxy_top1,
+                    **(
+                        {"tree_node_count": _final_metrics["tree_node_count"]}
+                        if "tree_node_count" in _final_metrics
+                        else {}
+                    ),
+                }
+            )
 
             # (L-2) PERSISTENT-TREE CHECKPOINT — save _root +
             # accumulated buffer + SymbolicPrior coefs at end of iter.
@@ -791,6 +819,7 @@ class LamClickDesignLoop:
     def _checkpoint_path(self, iteration: int) -> str:
         """Compute the on-disk checkpoint path for iteration ``i``."""
         import os as _os
+
         return _os.path.join(
             str(self.checkpoint_dir),
             f"mcts_checkpoint_iter_{int(iteration):04d}.npz",
@@ -813,6 +842,7 @@ class LamClickDesignLoop:
         """Restore the MCTS state from the previous-iteration checkpoint."""
         path = self._checkpoint_path(iteration)
         import os as _os
+
         if not _os.path.exists(path):
             log.debug("checkpoint %s missing — falling back to current mcts", path)
             return self.mcts
@@ -892,6 +922,7 @@ class LamClickDesignLoop:
                 from molmetal_lam.lam_chem.pysr_wrapper import (
                     HeuristicRegressor,
                 )
+
                 hr = HeuristicRegressor(
                     niterations=int(getattr(prior_obj, "niterations", 1)),
                     random_state=int(getattr(prior_obj, "random_state", 0)),

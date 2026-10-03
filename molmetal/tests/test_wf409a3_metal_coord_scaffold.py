@@ -42,7 +42,9 @@ from typing import Any, Dict
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCAFFOLD = REPO_ROOT / "molmetal" / "scripts" / "wf409a3_metal_coord_retrain_scaffold.py"
+SCAFFOLD = (
+    REPO_ROOT / "molmetal" / "scripts" / "wf409a3_metal_coord_retrain_scaffold.py"
+)
 LAUNCH_WRAPPER = REPO_ROOT / "scripts" / "launch_wf409a3_metal_coord_retrain.sh"
 
 
@@ -67,10 +69,16 @@ def test_scaffold_smoke_passes() -> None:
             str(SCAFFOLD),
             "--metal-coord-term",
             "--smoke",
-            "--metals", "Ru", "Ir",
-            "--seeds", "0", "1",
-            "--epochs", "5",
-            "--out-dir", str(out_dir),
+            "--metals",
+            "Ru",
+            "Ir",
+            "--seeds",
+            "0",
+            "1",
+            "--epochs",
+            "5",
+            "--out-dir",
+            str(out_dir),
         ]
         env = os.environ.copy()
         env["PYTHONPATH"] = str(REPO_ROOT) + os.pathsep + env.get("PYTHONPATH", "")
@@ -107,13 +115,11 @@ def test_scaffold_smoke_passes() -> None:
         # Per-epoch kcal audit must also pass: all epochs with
         # composite > 0.5 must have negative post_fix_kcal_mol
         per_epoch_audit = result["per_epoch_kcal_audit"]
-        assert per_epoch_audit["n_epochs"] == 5, (
-            f"expected 5 per-epoch entries, got {per_epoch_audit['n_epochs']}"
-        )
+        assert (
+            per_epoch_audit["n_epochs"] == 5
+        ), f"expected 5 per-epoch entries, got {per_epoch_audit['n_epochs']}"
         assert per_epoch_audit["epoch_sign_audit_pass"], (
-            "per-epoch kcal sign audit FAILED: " + json.dumps(
-                per_epoch_audit, indent=2
-            )
+            "per-epoch kcal sign audit FAILED: " + json.dumps(per_epoch_audit, indent=2)
         )
         # Honest framing must reflect SCAFFOLD-only + USER_OK gating
         hf = result["honest_framing"]
@@ -169,8 +175,7 @@ def test_launch_wrapper_syntax() -> None:
         f"stderr={proc.stderr!r}"
     )
     assert "USER_OK gate refused" in proc.stderr, (
-        f"USER_OK gate refusal message missing from stderr; "
-        f"stderr={proc.stderr!r}"
+        f"USER_OK gate refusal message missing from stderr; " f"stderr={proc.stderr!r}"
     )
     # (c) USER_OK=1 with --smoke runs SCAFFOLD end-to-end
     with tempfile.TemporaryDirectory() as tmp:
@@ -184,10 +189,14 @@ def test_launch_wrapper_syntax() -> None:
             [
                 str(LAUNCH_WRAPPER),
                 "--smoke",
-                "--metals", "Ru Ir Rh",
-                "--seeds", "0",
-                "--epochs", "5",
-                "--out-dir", str(out_dir),
+                "--metals",
+                "Ru Ir Rh",
+                "--seeds",
+                "0",
+                "--epochs",
+                "5",
+                "--out-dir",
+                str(out_dir),
             ],
             cwd=str(REPO_ROOT),
             env=env_yes_user,

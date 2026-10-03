@@ -61,6 +61,7 @@ Usage::
         --use-l2-guard --use-astr-scale-guard --wasserstein-weight 0.05 \\
         --out-dir molmetal/reports/wf129_p3_multiph_pll
 """
+
 from __future__ import annotations
 
 import argparse
@@ -108,6 +109,7 @@ PLATINAI_4CELL_IC50_COLS: Dict[str, str] = {
     "A2780cis": "ic50_a2780cis_nm",
 }
 
+
 # Hilbert L2 weight-decay guard proximal operator (Wf-127 P2 contract).
 def _proximal_l2(x: np.ndarray, lr: float, l2_weight: float) -> np.ndarray:
     """Apply closed-form proximal L2 shrinkage ``x *= max(0, 1 - lr * l2)``.
@@ -125,6 +127,7 @@ def _proximal_l2(x: np.ndarray, lr: float, l2_weight: float) -> np.ndarray:
 # ---------------------------------------------------------------------------
 # Data loaders
 # ---------------------------------------------------------------------------
+
 
 def _load_platinai_4cell_one_cell(
     csv_path: Path,
@@ -163,6 +166,7 @@ def _load_platinai_4cell_one_cell(
             try:
                 from rdkit import Chem
                 from rdkit.Chem import Descriptors, Lipinski, rdMolDescriptors
+
                 m = Chem.MolFromSmiles(smi)
                 if m is None:
                     continue
@@ -227,6 +231,7 @@ def _load_metalcytotox_5metal(
             try:
                 from rdkit import Chem
                 from rdkit.Chem import Descriptors, Lipinski, rdMolDescriptors
+
                 m = Chem.MolFromSmiles(smi)
                 if m is None:
                     continue
@@ -262,6 +267,7 @@ def _load_metalcytotox_5metal(
 # Multi-PH feature extraction (zeros fallback when RDKit embed fails)
 # ---------------------------------------------------------------------------
 
+
 def compute_multiph_features(
     smiles_list: Sequence[str],
     *,
@@ -280,8 +286,11 @@ def compute_multiph_features(
     try:
         from molmetal.adapters.multi_ph_integration import MultiPHPocketFeatures
         import torch
+
         extractor = MultiPHPocketFeatures(
-            max_radius=5.0, max_coord=4.0, n_bins=int(n_bins),
+            max_radius=5.0,
+            max_coord=4.0,
+            n_bins=int(n_bins),
         )
     except Exception:
         # Adapter unavailable — fall back to zeros so the bench still produces
@@ -295,6 +304,7 @@ def compute_multiph_features(
         try:
             from rdkit import Chem, RDLogger
             from rdkit.Chem import AllChem
+
             RDLogger.DisableLog("rdApp.*")
             m = Chem.MolFromSmiles(str(smi))
             if m is None:
@@ -313,8 +323,13 @@ def compute_multiph_features(
                 p = conf.GetAtomPosition(i)
                 coords.append([float(p.x), float(p.y), float(p.z)])
                 types.append(int(mh.GetAtomWithIdx(i).GetAtomicNum()))
-            coords_t = torch.tensor([coords[:60] + [[0.0, 0.0, 0.0]] * (60 - min(len(coords), 60))], dtype=torch.float32)
-            types_t = torch.tensor([types[:60] + [0] * (60 - min(len(types), 60))], dtype=torch.long)
+            coords_t = torch.tensor(
+                [coords[:60] + [[0.0, 0.0, 0.0]] * (60 - min(len(coords), 60))],
+                dtype=torch.float32,
+            )
+            types_t = torch.tensor(
+                [types[:60] + [0] * (60 - min(len(types), 60))], dtype=torch.long
+            )
             raw = extractor.compute_with_atom_types(coords_t, types_t)
             flat = np.asarray(raw.reshape(-1).tolist(), dtype=float)
             flat = np.nan_to_num(flat, nan=0.0, posinf=0.0, neginf=0.0)
@@ -331,6 +346,7 @@ def compute_multiph_features(
 # ---------------------------------------------------------------------------
 # Hilbert PD with cosine LR + warmup + grad-clip + L2 ridge + L2 guard
 # ---------------------------------------------------------------------------
+
 
 def fit_hilbert_guarded(
     X_tr: np.ndarray,
@@ -385,7 +401,7 @@ def fit_hilbert_guarded(
         x = _proximal_l2(x, lr_it, l2_weight)
 
         # Penalty logging (Wf-127 P2 invariant #1).
-        l2_pen = 0.5 * float(l2_weight) * float(np.sum(x ** 2))
+        l2_pen = 0.5 * float(l2_weight) * float(np.sum(x**2))
         penalties.append(l2_pen)
 
         y_hat = feats @ x
@@ -413,19 +429,29 @@ def fit_hilbert_guarded(
 
 
 def predict_hilbert_guarded(
-    best_params: np.ndarray, X: np.ndarray, hilbert_dim: int,
+    best_params: np.ndarray,
+    X: np.ndarray,
+    hilbert_dim: int,
     pred_clip: float = 1.0e6,
 ) -> np.ndarray:
     feats = np.asarray(X, dtype=float).reshape(-1, hilbert_dim)
-    return np.clip(feats @ np.asarray(best_params, dtype=float).reshape(-1), -pred_clip, pred_clip)
+    return np.clip(
+        feats @ np.asarray(best_params, dtype=float).reshape(-1), -pred_clip, pred_clip
+    )
 
 
 # ---------------------------------------------------------------------------
 # Wf-122 ASTSR scale-mismatch guard
 # ---------------------------------------------------------------------------
 
-def astr_scale_ok(y_pred: np.ndarray, y_true: np.ndarray, *,
-                  ratio_floor: float = 0.05, ratio_ceil: float = 20.0) -> bool:
+
+def astr_scale_ok(
+    y_pred: np.ndarray,
+    y_true: np.ndarray,
+    *,
+    ratio_floor: float = 0.05,
+    ratio_ceil: float = 20.0,
+) -> bool:
     """Return True iff the std ratio is within ``[ratio_floor, ratio_ceil]``.
 
     Per Wf-122 P1.2 + test_astr_scale_guard.py — when the ratio is outside this
@@ -480,8 +506,13 @@ def compute_r2_safe(y_true: np.ndarray, y_pred: np.ndarray) -> float:
 # Wasserstein-2 distribution regulariser (Wf-126 / Wf-131 recipe)
 # ---------------------------------------------------------------------------
 
+
 def sliced_wasserstein_2(
-    pred: np.ndarray, ref: np.ndarray, *, n_proj: int = 32, seed: int = 0,
+    pred: np.ndarray,
+    ref: np.ndarray,
+    *,
+    n_proj: int = 32,
+    seed: int = 0,
 ) -> float:
     """Sliced-W2 on 1-D pIC50 histograms — small-n RNG based.
 
@@ -502,12 +533,16 @@ def sliced_wasserstein_2(
         proj_r = np.sort(ref * v)
         # 1-D W2 ≈ E[(F_p - F_r)^2]^{1/2} via the sorted sample coupling.
         diff = proj_p - proj_r[: proj_p.size]
-        dists.append(float(np.mean(diff ** 2)))
+        dists.append(float(np.mean(diff**2)))
     return float(np.sqrt(np.mean(dists)))
 
 
 def add_w2_to_loss(
-    pred_y: np.ndarray, ref_y: np.ndarray, *, n_proj: int, seed: int,
+    pred_y: np.ndarray,
+    ref_y: np.ndarray,
+    *,
+    n_proj: int,
+    seed: int,
 ) -> float:
     """Return sliced-W2 between predicted pIC50 cloud and reference pIC50."""
     return sliced_wasserstein_2(pred_y, ref_y, n_proj=n_proj, seed=seed)
@@ -517,7 +552,10 @@ def add_w2_to_loss(
 # K-fold + per-seed + per-cohort driver
 # ---------------------------------------------------------------------------
 
-def kfold_indices(n: int, n_folds: int, seed: int) -> List[Tuple[np.ndarray, np.ndarray]]:
+
+def kfold_indices(
+    n: int, n_folds: int, seed: int
+) -> List[Tuple[np.ndarray, np.ndarray]]:
     """Standard K-fold split: shuffle once, slice out test, take the rest as train.
 
     Returns ``[(tr, te)]`` of length ``n_folds``.  Train and test are disjoint
@@ -533,13 +571,18 @@ def kfold_indices(n: int, n_folds: int, seed: int) -> List[Tuple[np.ndarray, np.
         lo = f * fold_size
         hi = min((f + 1) * fold_size, int(n))
         te = idx[lo:hi]
-        tr = np.concatenate([idx[:lo], idx[hi:]]) if lo > 0 or hi < int(n) else idx.copy()
+        tr = (
+            np.concatenate([idx[:lo], idx[hi:]])
+            if lo > 0 or hi < int(n)
+            else idx.copy()
+        )
         out.append((tr, te))
     return out
 
 
 def _zscore_fit_transform(
-    X_tr: np.ndarray, X_te: np.ndarray,
+    X_tr: np.ndarray,
+    X_te: np.ndarray,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     mu = X_tr.mean(axis=0)
     sd = X_tr.std(axis=0)
@@ -610,17 +653,21 @@ def run_one_seed_one_cell(
 
         # Join + bias-column padding (Wf-37 P3 fix #2 — *no* tiling).
         X_tr = np.concatenate(
-            [X8_tr, np.ones((X8_tr.shape[0], 1), dtype=float), Xm_tr_flat], axis=1,
+            [X8_tr, np.ones((X8_tr.shape[0], 1), dtype=float), Xm_tr_flat],
+            axis=1,
         )
         X_te = np.concatenate(
-            [X8_te, np.ones((X8_te.shape[0], 1), dtype=float), Xm_te_flat], axis=1,
+            [X8_te, np.ones((X8_te.shape[0], 1), dtype=float), Xm_te_flat],
+            axis=1,
         )
         bias_idx = X8_tr.shape[1]  # Force-include this column.
 
         # Cap to hilbert_dim via training-set variance ranking (Wf-37 P3 style).
         if X_tr.shape[1] > hilbert_dim:
             ranks = np.argsort(-np.var(X_tr, axis=0))
-            keep = [bias_idx] + [int(i) for i in ranks if int(i) != bias_idx][: hilbert_dim - 1]
+            keep = [bias_idx] + [int(i) for i in ranks if int(i) != bias_idx][
+                : hilbert_dim - 1
+            ]
             keep_arr = np.asarray(sorted(set(keep))[:hilbert_dim], dtype=int)
             X_tr = X_tr[:, keep_arr]
             X_te = X_te[:, keep_arr]
@@ -639,7 +686,8 @@ def run_one_seed_one_cell(
         y_te_c = y[te] - y_mean
 
         best_x, info = fit_hilbert_guarded(
-            X_tr_n, y_tr_c,
+            X_tr_n,
+            y_tr_c,
             hilbert_dim=hilbert_dim,
             lr=float(lr),
             epochs=int(epochs),
@@ -655,7 +703,9 @@ def run_one_seed_one_cell(
         # Wasserstein-2 distribution term on the *full* pIC50 prediction.
         w2_pred_term = 0.0
         if w2_weight > 0.0:
-            w2_pred_term = add_w2_to_loss(y_hat_full, ref_y, n_proj=32, seed=int(seed) * 11 + fold_idx)
+            w2_pred_term = add_w2_to_loss(
+                y_hat_full, ref_y, n_proj=32, seed=int(seed) * 11 + fold_idx
+            )
             # Scale by w2_weight (Wf-131 P1 set-point).
             w2_pred_term = float(w2_weight) * w2_pred_term
 
@@ -671,18 +721,20 @@ def run_one_seed_one_cell(
         if not math.isfinite(r2):
             r2 = -math.inf
 
-        per_fold.append({
-            "fold": int(fold_idx),
-            "n_train": int(tr.shape[0]),
-            "n_test": int(te.shape[0]),
-            "r2": float(r2),
-            "train_r2": float(info["train_r2"]),
-            "wall_s": float(info["wall_s"]),
-            "l2_penalty_last": float(info["l2_penalty_last"]),
-            "l2_penalty_mean": float(info["l2_penalty_mean"]),
-            "w2_pred_term": float(w2_pred_term),
-            "astr_scale_ok": bool(astr_ok),
-        })
+        per_fold.append(
+            {
+                "fold": int(fold_idx),
+                "n_train": int(tr.shape[0]),
+                "n_test": int(te.shape[0]),
+                "r2": float(r2),
+                "train_r2": float(info["train_r2"]),
+                "wall_s": float(info["wall_s"]),
+                "l2_penalty_last": float(info["l2_penalty_last"]),
+                "l2_penalty_mean": float(info["l2_penalty_mean"]),
+                "w2_pred_term": float(w2_pred_term),
+                "astr_scale_ok": bool(astr_ok),
+            }
+        )
         # Only aggregate finite folds (collapses don't poison the mean).
         if math.isfinite(r2):
             r2s.append(float(r2))
@@ -736,14 +788,21 @@ def run_cell_line(
     out_dir: Path,
 ) -> Dict[str, Any]:
     """Run all seeds for one cell-line; write per-seed JSON artifacts."""
-    X, y, smiles = _load_platinai_4cell_one_cell(platinai_csv, cell_line, int(n_samples))
+    X, y, smiles = _load_platinai_4cell_one_cell(
+        platinai_csv, cell_line, int(n_samples)
+    )
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # Compute Multi-PH once for the cell-line (independent of seed; only the
     # K-fold splits change between seeds).
     mph_feats, mph_stats = compute_multiph_features(list(smiles), n_bins=n_bins)
     if mph_feats.shape[0] < X.shape[0]:
-        pad = np.zeros((X.shape[0] - mph_feats.shape[0], mph_feats.shape[1] if mph_feats.ndim > 1 else n_bins ** 2))
+        pad = np.zeros(
+            (
+                X.shape[0] - mph_feats.shape[0],
+                mph_feats.shape[1] if mph_feats.ndim > 1 else n_bins**2,
+            )
+        )
         mph_feats = np.vstack([mph_feats, pad])
     mph_feats = mph_feats[: X.shape[0]]
 
@@ -751,12 +810,20 @@ def run_cell_line(
     r2s: List[float] = []
     for seed in seeds:
         seed_record = run_one_seed_one_cell(
-            seed=int(seed), cell_line=cell_line,
-            X_8d=X, y=y, mph_feats=mph_feats, mph_stats=mph_stats,
-            n_folds=int(n_folds), epochs=int(epochs),
-            hilbert_dim=hilbert_dim, lr=lr,
-            ridge_alpha=ridge_alpha, l2_weight=l2_weight,
-            use_astr_guard=use_astr_guard, w2_weight=w2_weight,
+            seed=int(seed),
+            cell_line=cell_line,
+            X_8d=X,
+            y=y,
+            mph_feats=mph_feats,
+            mph_stats=mph_stats,
+            n_folds=int(n_folds),
+            epochs=int(epochs),
+            hilbert_dim=hilbert_dim,
+            lr=lr,
+            ridge_alpha=ridge_alpha,
+            l2_weight=l2_weight,
+            use_astr_guard=use_astr_guard,
+            w2_weight=w2_weight,
         )
         per_seed.append(seed_record)
         # Write per-seed artifact under seeds/<seed>/
@@ -784,7 +851,9 @@ def run_cell_line(
         "r2_std": float(np.std(r2s)) if len(r2s) > 1 else 0.0,
         "r2_min": float(np.min(r2s)) if r2s else -math.inf,
         "r2_max": float(np.max(r2s)) if r2s else -math.inf,
-        "n_collapse_seeds": int(sum(1 for s in per_seed if s.get("collapse_count", 0) > 0)),
+        "n_collapse_seeds": int(
+            sum(1 for s in per_seed if s.get("collapse_count", 0) > 0)
+        ),
         "per_seed": per_seed,
         "status": "OK" if r2s else "ALL_SEEDS_FAILED",
     }
@@ -804,8 +873,24 @@ def render_synthesis(
     seeds: Sequence[int],
     target_r2: float,
 ) -> str:
-    head_r2 = float(np.mean([s["r2_mean"] for s in cohort_summaries if math.isfinite(s["r2_mean"])])) if cohort_summaries else -math.inf
-    head_std = float(np.std([s["r2_mean"] for s in cohort_summaries if math.isfinite(s["r2_mean"])])) if len(cohort_summaries) > 1 else 0.0
+    head_r2 = (
+        float(
+            np.mean(
+                [s["r2_mean"] for s in cohort_summaries if math.isfinite(s["r2_mean"])]
+            )
+        )
+        if cohort_summaries
+        else -math.inf
+    )
+    head_std = (
+        float(
+            np.std(
+                [s["r2_mean"] for s in cohort_summaries if math.isfinite(s["r2_mean"])]
+            )
+        )
+        if len(cohort_summaries) > 1
+        else 0.0
+    )
     lines = [
         "# Wf-129 Phase 3 — Multi-PH + PLL end-to-end retrain with Hilbert L2 guard + ASTSR scale guard",
         "",
@@ -834,13 +919,15 @@ def render_synthesis(
             f"{s['n_collapse_seeds']} | {s['status']} |"
         )
 
-    lines.extend([
-        "",
-        "## §3 Per-seed × cell-line R^2 detail",
-        "",
-        "| cell_line | seed | R^2 (mean) | collapse_count | wall_s |",
-        "|---|---|---|---|---|",
-    ])
+    lines.extend(
+        [
+            "",
+            "## §3 Per-seed × cell-line R^2 detail",
+            "",
+            "| cell_line | seed | R^2 (mean) | collapse_count | wall_s |",
+            "|---|---|---|---|---|",
+        ]
+    )
     for s in cohort_summaries:
         for sd in s["per_seed"]:
             lines.append(
@@ -849,75 +936,86 @@ def render_synthesis(
                 f"{sd['wall_s_mean']:.4f} |"
             )
 
-    lines.extend([
-        "",
-        "## §4 Honest framing (party-twenty-spirit §3.5)",
-        "",
-        "* The HILBERT L2 weight-decay guard (Wf-127 P2 proximal shrinkage) "
-        "is wired into ``fit_hilbert_guarded`` as ``x *= max(0, 1 - lr * l2_weight)``. "
-        "When ``l2_weight = 0`` (default for Wf-37 P3 backward-compat) the "
-        "iterate trajectory is bit-exact to the Wf-37 P3 path. Penalty surface is logged "
-        "per-iter in ``per_fold[*].l2_penalty_last`` + ``l2_penalty_mean``.",
-        "* The ASTSR scale-mismatch guard (Wf-122 P1.2 + test_astr_scale_guard) "
-        "is applied per-fold: when the std ratio is outside ``[0.5, 1.5]`` the "
-        "fold contributes ``r2 = -inf`` and is excluded from the mean. The "
-        "guard fires count is recorded in ``per_fold[*].astr_scale_ok`` + "
-        "``summary.n_collapse_seeds``.",
-        "* The Wasserstein pIC50 distribution regulariser (Wf-131 P1 / "
-        "Wf-123 P1 sliced-W2 recipe) is added at the per-fold prediction level "
-        "as a small W_2 prior; the predicted cloud is kept on-distribution.",
-        "* **No fabricated lift**: when the guard fires on every fold the per-cell-line "
-        "R^2 is reported as ``-inf`` with status ``ALL_FOLDS_COLLAPSED`` rather than 0.0.",
-        "",
-        "## §5 Wf-37 P3 vs Wf-129 P3 trajectory",
-        "",
-        "| Source | R^2 mean | Notes |",
-        "|---|---|---|",
-        "| Wf-37 P3 (R17 ship) | +0.087 ± 0.081 | n=200, 3 seeds, no L2/ASTR guards |",
-        f"| Wf-129 P3 (this run) | {head_r2:+.4f} ± {head_std:.4f} | n={cohort_summaries[0]['n_target_rows'] if cohort_summaries else 0}, {len(seeds)} seeds, guards ON |",
-        f"| Target gate | ≥ +0.30 | LAMBDA_ROADMAP §4.2 L7 R20-P3 |",
-        "",
-        f"## §6 Verdict — {'PASS' if head_r2 >= target_r2 else 'HONEST-NEGATIVE'}",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            "## §4 Honest framing (party-twenty-spirit §3.5)",
+            "",
+            "* The HILBERT L2 weight-decay guard (Wf-127 P2 proximal shrinkage) "
+            "is wired into ``fit_hilbert_guarded`` as ``x *= max(0, 1 - lr * l2_weight)``. "
+            "When ``l2_weight = 0`` (default for Wf-37 P3 backward-compat) the "
+            "iterate trajectory is bit-exact to the Wf-37 P3 path. Penalty surface is logged "
+            "per-iter in ``per_fold[*].l2_penalty_last`` + ``l2_penalty_mean``.",
+            "* The ASTSR scale-mismatch guard (Wf-122 P1.2 + test_astr_scale_guard) "
+            "is applied per-fold: when the std ratio is outside ``[0.5, 1.5]`` the "
+            "fold contributes ``r2 = -inf`` and is excluded from the mean. The "
+            "guard fires count is recorded in ``per_fold[*].astr_scale_ok`` + "
+            "``summary.n_collapse_seeds``.",
+            "* The Wasserstein pIC50 distribution regulariser (Wf-131 P1 / "
+            "Wf-123 P1 sliced-W2 recipe) is added at the per-fold prediction level "
+            "as a small W_2 prior; the predicted cloud is kept on-distribution.",
+            "* **No fabricated lift**: when the guard fires on every fold the per-cell-line "
+            "R^2 is reported as ``-inf`` with status ``ALL_FOLDS_COLLAPSED`` rather than 0.0.",
+            "",
+            "## §5 Wf-37 P3 vs Wf-129 P3 trajectory",
+            "",
+            "| Source | R^2 mean | Notes |",
+            "|---|---|---|",
+            "| Wf-37 P3 (R17 ship) | +0.087 ± 0.081 | n=200, 3 seeds, no L2/ASTR guards |",
+            f"| Wf-129 P3 (this run) | {head_r2:+.4f} ± {head_std:.4f} | n={cohort_summaries[0]['n_target_rows'] if cohort_summaries else 0}, {len(seeds)} seeds, guards ON |",
+            f"| Target gate | ≥ +0.30 | LAMBDA_ROADMAP §4.2 L7 R20-P3 |",
+            "",
+            f"## §6 Verdict — {'PASS' if head_r2 >= target_r2 else 'HONEST-NEGATIVE'}",
+            "",
+        ]
+    )
     if head_r2 >= target_r2:
         lines.append(
             "* The Wf-129 P3 L7 head-claim R^2 >= +0.30 has been MEASURED on the "
             "PlatinAI 4-cell real pIC50 with the Wf-127 + Wf-122 guards active. "
-            "Lift over the Wf-37 P3 honest-negative +0.087 is documented.")
+            "Lift over the Wf-37 P3 honest-negative +0.087 is documented."
+        )
     else:
-        lines.extend([
-            "* The Wf-129 P3 L7 head-claim R^2 >= +0.30 was NOT reached. The "
-            "Wf-127 + Wf-122 guards prevent the Wf-83 P1 ``mcf7 R^2 = -21`` "
-            "divergence regime but the architecture-level signal floor remains.",
-            "* The paper §6 honest-negative framing MUST cite the gap "
-            f"({head_r2:+.4f} vs target +0.30) and the Wf-37 P3 baseline (+0.087).",
-            "* Wf-129 P4 follow-on: a larger seed sweep (n_samples=1000) + Wf-128 "
-            "3-way joint ASTSR regression to break the 12-d RDKit signal floor.",
-        ])
-    lines.extend([
-        "",
-        "## §7 Files",
-        "",
-        "* `molmetal/scripts/bench_multiph_pll_end_to_end_guarded.py` (this script, ~600 LOC)",
-        "* `molmetal/tests/test_multiph_pll_guarded.py` (12+ unit tests)",
-        "* `molmetal/reports/wf129_p3_multiph_pll/synthesis.md` (this report)",
-        "* `molmetal/reports/wf129_p3_multiph_pll/{cell_line}/per_seed_metrics.json`",
-        "* `molmetal/reports/wf129_p3_multiph_pll/{cell_line}/seeds/<seed>/per_seed_metrics.json`",
-        "",
-        f"**Honest framing** ({cohort_summaries[0]['status'] if cohort_summaries else 'N/A'}): "
-        "the reported R^2 numbers are MEASURED on the PlatinAI 4-cell "
-        "synthetic pIC50 cohort (KULGUU/HILLUL). Wf-129 P3 GPU retrain wall-clock "
-        "ran on ``CUDA_VISIBLE_DEVICES=0`` (RTX PRO 6000 Blackwell) + CPU fallback.",
-    ])
+        lines.extend(
+            [
+                "* The Wf-129 P3 L7 head-claim R^2 >= +0.30 was NOT reached. The "
+                "Wf-127 + Wf-122 guards prevent the Wf-83 P1 ``mcf7 R^2 = -21`` "
+                "divergence regime but the architecture-level signal floor remains.",
+                "* The paper §6 honest-negative framing MUST cite the gap "
+                f"({head_r2:+.4f} vs target +0.30) and the Wf-37 P3 baseline (+0.087).",
+                "* Wf-129 P4 follow-on: a larger seed sweep (n_samples=1000) + Wf-128 "
+                "3-way joint ASTSR regression to break the 12-d RDKit signal floor.",
+            ]
+        )
+    lines.extend(
+        [
+            "",
+            "## §7 Files",
+            "",
+            "* `molmetal/scripts/bench_multiph_pll_end_to_end_guarded.py` (this script, ~600 LOC)",
+            "* `molmetal/tests/test_multiph_pll_guarded.py` (12+ unit tests)",
+            "* `molmetal/reports/wf129_p3_multiph_pll/synthesis.md` (this report)",
+            "* `molmetal/reports/wf129_p3_multiph_pll/{cell_line}/per_seed_metrics.json`",
+            "* `molmetal/reports/wf129_p3_multiph_pll/{cell_line}/seeds/<seed>/per_seed_metrics.json`",
+            "",
+            f"**Honest framing** ({cohort_summaries[0]['status'] if cohort_summaries else 'N/A'}): "
+            "the reported R^2 numbers are MEASURED on the PlatinAI 4-cell "
+            "synthetic pIC50 cohort (KULGUU/HILLUL). Wf-129 P3 GPU retrain wall-clock "
+            "ran on ``CUDA_VISIBLE_DEVICES=0`` (RTX PRO 6000 Blackwell) + CPU fallback.",
+        ]
+    )
     return "\n".join(lines) + "\n"
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--dataset", type=str, default="platinai_4cell",
-                        choices=("platinai_4cell", "metalcytotox"),
-                        help="Which dataset to retrain on.")
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="platinai_4cell",
+        choices=("platinai_4cell", "metalcytotox"),
+        help="Which dataset to retrain on.",
+    )
     parser.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2, 3, 4])
     parser.add_argument("--n-samples", type=int, default=DEFAULT_N_SAMPLES)
     parser.add_argument("--n-folds", type=int, default=DEFAULT_N_FOLDS)
@@ -927,19 +1025,37 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--lr", type=float, default=DEFAULT_LR)
     parser.add_argument("--ridge-alpha", type=float, default=DEFAULT_RIDGE_ALPHA)
     parser.add_argument("--l2-weight", type=float, default=DEFAULT_L2_WEIGHT)
-    parser.add_argument("--no-l2-guard", action="store_true",
-                        help="Disable Hilbert L2 weight-decay guard (Wf-37 P3 baseline).")
-    parser.add_argument("--use-astr-scale-guard", action="store_true",
-                        help="Enable Wf-122 P1.2 ASTSR scale-mismatch guard.")
+    parser.add_argument(
+        "--no-l2-guard",
+        action="store_true",
+        help="Disable Hilbert L2 weight-decay guard (Wf-37 P3 baseline).",
+    )
+    parser.add_argument(
+        "--use-astr-scale-guard",
+        action="store_true",
+        help="Enable Wf-122 P1.2 ASTSR scale-mismatch guard.",
+    )
     parser.add_argument("--wasserstein-weight", type=float, default=DEFAULT_W2_WEIGHT)
     parser.add_argument("--target-r2", type=float, default=0.30)
-    parser.add_argument("--device", type=str, default="cuda" if os.environ.get("CUDA_VISIBLE_DEVICES") else "cpu",
-                        choices=("cpu", "cuda"))
+    parser.add_argument(
+        "--device",
+        type=str,
+        default="cuda" if os.environ.get("CUDA_VISIBLE_DEVICES") else "cpu",
+        choices=("cpu", "cuda"),
+    )
     parser.add_argument("--out-dir", type=str, required=True)
-    parser.add_argument("--platinai-csv", type=str,
-                        default=str(_REPO_ROOT / "molmetal" / "data" / "platinai_4cell.csv"))
-    parser.add_argument("--metalcytotox-csv", type=str,
-                        default=str(_REPO_ROOT / "molmetal" / "data" / "metalcytotox_5metal_multitask_v4.csv"))
+    parser.add_argument(
+        "--platinai-csv",
+        type=str,
+        default=str(_REPO_ROOT / "molmetal" / "data" / "platinai_4cell.csv"),
+    )
+    parser.add_argument(
+        "--metalcytotox-csv",
+        type=str,
+        default=str(
+            _REPO_ROOT / "molmetal" / "data" / "metalcytotox_5metal_multitask_v4.csv"
+        ),
+    )
     args = parser.parse_args(argv)
 
     use_l2_guard = not args.no_l2_guard
@@ -958,15 +1074,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             cl_dir = out_dir / cl
             print(f"[wf129_p3] running cell line {cl}...", flush=True)
             summary = run_cell_line(
-                cell_line=cl, seeds=args.seeds,
+                cell_line=cl,
+                seeds=args.seeds,
                 platinai_csv=Path(args.platinai_csv),
-                n_samples=args.n_samples, n_folds=args.n_folds,
-                epochs=args.epochs, hilbert_dim=args.hilbert_dim,
-                lr=args.lr, ridge_alpha=args.ridge_alpha,
+                n_samples=args.n_samples,
+                n_folds=args.n_folds,
+                epochs=args.epochs,
+                hilbert_dim=args.hilbert_dim,
+                lr=args.lr,
+                ridge_alpha=args.ridge_alpha,
                 l2_weight=l2_weight,
                 use_astr_guard=bool(args.use_astr_scale_guard),
                 w2_weight=w2_weight,
-                n_bins=int(args.n_bins), device=args.device,
+                n_bins=int(args.n_bins),
+                device=args.device,
                 out_dir=cl_dir,
             )
             cohort_summaries.append(summary)
@@ -977,39 +1098,59 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         # the SMILES co-occurrence pre-processing record.
         for cl in PLATINAI_4CELL_LINES:
             cl_dir = out_dir / cl
-            print(f"[wf129_p3] running cell line {cl} (with metalcytotox_smiles_pool)...", flush=True)
+            print(
+                f"[wf129_p3] running cell line {cl} (with metalcytotox_smiles_pool)...",
+                flush=True,
+            )
             summary = run_cell_line(
-                cell_line=cl, seeds=args.seeds,
+                cell_line=cl,
+                seeds=args.seeds,
                 platinai_csv=Path(args.platinai_csv),
-                n_samples=args.n_samples, n_folds=args.n_folds,
-                epochs=args.epochs, hilbert_dim=args.hilbert_dim,
-                lr=args.lr, ridge_alpha=args.ridge_alpha,
+                n_samples=args.n_samples,
+                n_folds=args.n_folds,
+                epochs=args.epochs,
+                hilbert_dim=args.hilbert_dim,
+                lr=args.lr,
+                ridge_alpha=args.ridge_alpha,
                 l2_weight=l2_weight,
                 use_astr_guard=bool(args.use_astr_scale_guard),
                 w2_weight=w2_weight,
-                n_bins=int(args.n_bins), device=args.device,
+                n_bins=int(args.n_bins),
+                device=args.device,
                 out_dir=cl_dir,
             )
             cohort_summaries.append(summary)
             cohort_keys.append(cl)
 
-    (out_dir / "per_dataset_summary.json").write_text(json.dumps(
-        {
-            "dataset": args.dataset,
-            "seeds": list(args.seeds),
-            "epochs": int(args.epochs),
-            "n_folds": int(args.n_folds),
-            "hilbert_dim": int(args.hilbert_dim),
-            "l2_weight": float(l2_weight),
-            "use_l2_guard": bool(use_l2_guard),
-            "use_astr_scale_guard": bool(args.use_astr_scale_guard),
-            "wasserstein_weight": float(w2_weight),
-            "device": args.device,
-            "cell_lines": cohort_keys,
-            "r2_overall_mean": float(np.mean([s["r2_mean"] for s in cohort_summaries if math.isfinite(s["r2_mean"])])) if cohort_summaries else -math.inf,
-        },
-        indent=2,
-    ))
+    (out_dir / "per_dataset_summary.json").write_text(
+        json.dumps(
+            {
+                "dataset": args.dataset,
+                "seeds": list(args.seeds),
+                "epochs": int(args.epochs),
+                "n_folds": int(args.n_folds),
+                "hilbert_dim": int(args.hilbert_dim),
+                "l2_weight": float(l2_weight),
+                "use_l2_guard": bool(use_l2_guard),
+                "use_astr_scale_guard": bool(args.use_astr_scale_guard),
+                "wasserstein_weight": float(w2_weight),
+                "device": args.device,
+                "cell_lines": cohort_keys,
+                "r2_overall_mean": float(
+                    np.mean(
+                        [
+                            s["r2_mean"]
+                            for s in cohort_summaries
+                            if math.isfinite(s["r2_mean"])
+                        ]
+                    )
+                )
+                if cohort_summaries
+                else -math.inf,
+            },
+            indent=2,
+        )
+    )
 
     synthesis = render_synthesis(
         cohort_summaries=cohort_summaries,

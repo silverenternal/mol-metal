@@ -25,15 +25,11 @@ import pytest
 
 import molmetal_lam.sbdd_env.syntemol_reactions as _stm  # noqa: E402
 
-_SYNTHEMOL_TREE = (
-    Path("/home/hugo/codes/mol-metal/references/SyntheMol/synthemol")
-)
+_SYNTHEMOL_TREE = Path("/home/hugo/codes/mol-metal/references/SyntheMol/synthemol")
 if not _SYNTHEMOL_TREE.is_dir():
-    pytest.skip(
-        f"SyntheMol tree missing at {_SYNTHEMOL_TREE}", allow_module_level=True
-    )
+    pytest.skip(f"SyntheMol tree missing at {_SYNTHEMOL_TREE}", allow_module_level=True)
 _stm._SYNTHEMOL_PATH = _SYNTHEMOL_TREE  # type: ignore[attr-defined]
-_stm._SYNTHEMOL_BOOTSTRAPPED = False    # type: ignore[attr-defined]
+_stm._SYNTHEMOL_BOOTSTRAPPED = False  # type: ignore[attr-defined]
 
 from molmetal_lam.reactions import beta_reductions as _br  # noqa: E402
 
@@ -52,24 +48,27 @@ CLICK_RULE_NAMES = {"CuAAC", "SPAAC", "SPC", "DielsAlder", "ThiolEne"}
 # in references/SyntheMol/synthemol/reactions/real.py match. Comments cite
 # the SyntheMol reaction_id so the mapping stays traceable.
 CANONICAL_REACTANTS = {
-    "amide_coupling":              (["CCN", "CC(=O)O"],            "RID 22"),
-    "ester_hydrolysis":            (["CC(=O)O", "BrCC"],          "RID 1458"),
-    "boc_cleavage":                (["CC(C)(C)OC(=O)NCC"],        "BOC sentinel"),
-    "sulfonamide_formation":       (["CCN", "ClS(=O)(=O)C"],      "RID 40"),
-    "reductive_amination":         (["OC(=O)CNC(C)=O", "O=CC"],   "RID 10"),
-    "sn2_alkylation":              (["CCN", "BrCC"],              "RID 7 sub 1"),
-    "urea_formation":              (["CCN", "CCN"],               "RID 2430"),
-    "bromination":                 (["CCN", "BrCC"],              "RID 2230"),
-    "hydroxylation":               (["CO", "BrCC"],               "RID 7 sub 2"),
-    "thioether_formation":         (["CS", "BrCC"],               "RID 34 sub 2"),
-    "amide_bond_formation_aromatic": (["CNc1ccccc1N", "O=CC"],   "RID 60"),
-    "phenol_esterification":       (["c1ccccc1O", "BrCC"],        "RID 272692 sub 2"),
-    "nucleophilic_substitution":   (["CCN", "BrCC"],              "RID 44"),
-    "tetrazole_formation":         (["CC#N", "CC(=O)O"],          "RID 270196"),
-    "benzimidazole_formation":     (["Nc1ccccc1C(=O)C", "BrCC=O"], "RID 42"),
-    "thiazole_formation":          (["NC(=S)NN", "BrCC=O"],       "RID 41"),
-    "oxadiazole_formation":        (["CC(=O)/C(N)=N/O"],          "RID 270690"),
-    "hantzsch_pyridine_synthesis": (["O=Cc1ccccc1", "CC(=O)C", "O=C(N)NN"], "RID 274052"),
+    "amide_coupling": (["CCN", "CC(=O)O"], "RID 22"),
+    "ester_hydrolysis": (["CC(=O)O", "BrCC"], "RID 1458"),
+    "boc_cleavage": (["CC(C)(C)OC(=O)NCC"], "BOC sentinel"),
+    "sulfonamide_formation": (["CCN", "ClS(=O)(=O)C"], "RID 40"),
+    "reductive_amination": (["OC(=O)CNC(C)=O", "O=CC"], "RID 10"),
+    "sn2_alkylation": (["CCN", "BrCC"], "RID 7 sub 1"),
+    "urea_formation": (["CCN", "CCN"], "RID 2430"),
+    "bromination": (["CCN", "BrCC"], "RID 2230"),
+    "hydroxylation": (["CO", "BrCC"], "RID 7 sub 2"),
+    "thioether_formation": (["CS", "BrCC"], "RID 34 sub 2"),
+    "amide_bond_formation_aromatic": (["CNc1ccccc1N", "O=CC"], "RID 60"),
+    "phenol_esterification": (["c1ccccc1O", "BrCC"], "RID 272692 sub 2"),
+    "nucleophilic_substitution": (["CCN", "BrCC"], "RID 44"),
+    "tetrazole_formation": (["CC#N", "CC(=O)O"], "RID 270196"),
+    "benzimidazole_formation": (["Nc1ccccc1C(=O)C", "BrCC=O"], "RID 42"),
+    "thiazole_formation": (["NC(=S)NN", "BrCC=O"], "RID 41"),
+    "oxadiazole_formation": (["CC(=O)/C(N)=N/O"], "RID 270690"),
+    "hantzsch_pyridine_synthesis": (
+        ["O=Cc1ccccc1", "CC(=O)C", "O=C(N)NN"],
+        "RID 274052",
+    ),
 }
 
 SYNTHEMOL_NAMES = sorted(CANONICAL_REACTANTS)
@@ -82,9 +81,9 @@ SYNTHEMOL_NAMES = sorted(CANONICAL_REACTANTS)
 
 def test_all_reactions_register_and_instantiate() -> None:
     """Every name in REAL_TO_LAMBDA maps to a SyntheMolReactionRule."""
-    assert len(REAL_TO_LAMBDA) == 18, (
-        f"REAL_TO_LAMBDA should hold 18 entries, got {len(REAL_TO_LAMBDA)}"
-    )
+    assert (
+        len(REAL_TO_LAMBDA) == 18
+    ), f"REAL_TO_LAMBDA should hold 18 entries, got {len(REAL_TO_LAMBDA)}"
     wraps = from_syntemol_to_lambda()
     assert set(wraps) == {n for n, _, _ in REAL_TO_LAMBDA}
     for name in wraps:
@@ -96,9 +95,9 @@ def test_all_reactions_register_and_instantiate() -> None:
         for n, rule in REACTION_RULES.items()
         if isinstance(rule, SyntheMolReactionRule)
     }
-    assert registered_synthemol == set(wraps), (
-        f"REACTION_RULES missing {set(wraps) - registered_synthemol}"
-    )
+    assert registered_synthemol == set(
+        wraps
+    ), f"REACTION_RULES missing {set(wraps) - registered_synthemol}"
 
 
 # ---------------------------------------------------------------------------
@@ -146,9 +145,9 @@ def test_can_apply_canonical_reactants(name: str) -> None:
         pytest.skip(f"{name} multi-reactant canonical inputs not curated")
     reactants, _rid = CANONICAL_REACTANTS[name]
     rule = REACTION_RULES[name]
-    assert rule.can_apply(list(reactants)) is True, (
-        f"{name} can_apply failed on {reactants}"
-    )
+    assert (
+        rule.can_apply(list(reactants)) is True
+    ), f"{name} can_apply failed on {reactants}"
 
 
 # ---------------------------------------------------------------------------
@@ -164,6 +163,7 @@ def test_apply_produces_valid_product(name: str) -> None:
     if not rule.can_apply(list(reactants)):
         pytest.skip(f"{name} canonical reactants did not match")
     from rdkit import Chem
+
     prods = rule.fire(list(reactants))
     assert prods, f"{name} produced no products on {reactants}"
     for smi in prods:

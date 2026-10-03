@@ -89,10 +89,10 @@ def _check_cuda_pointers(arg_names: dict[str, object]) -> None:
 @triton.autotune(configs=AUTOTUNE_CONFIGS, key=["N_CLASSES"])
 @triton.jit
 def _cross_entropy_kernel(
-    logits_ptr,        # *fp    [n_rows, N_CLASSES]
-    targets_ptr,       # *i32   [n_rows]
-    out_ptr,           # *fp    [n_rows]
-    n_rows,            # i32
+    logits_ptr,  # *fp    [n_rows, N_CLASSES]
+    targets_ptr,  # *i32   [n_rows]
+    out_ptr,  # *fp    [n_rows]
+    n_rows,  # i32
     N_CLASSES: tl.constexpr,
     IGNORE_INDEX: tl.constexpr,
     BLOCK_NC: tl.constexpr,
@@ -106,9 +106,9 @@ def _cross_entropy_kernel(
     mask = col_off < N_CLASSES
 
     # Load the row of logits in FP32 for stable reductions.
-    logits = tl.load(
-        logits_ptr + row_off + col_off, mask=mask, other=-float("inf")
-    ).to(tl.float32)
+    logits = tl.load(logits_ptr + row_off + col_off, mask=mask, other=-float("inf")).to(
+        tl.float32
+    )
 
     # Pass 1: running max (numerical stability).
     row_max = tl.max(logits, axis=0)
@@ -157,7 +157,13 @@ def _next_pow2(n: int) -> int:
 # outer reduction factor (1.0 for sum / 1/N for mean).
 class _FusedCrossEntropy(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, logits: torch.Tensor, targets: torch.Tensor, ignore_index: int, reduction: str) -> torch.Tensor:
+    def forward(
+        ctx,
+        logits: torch.Tensor,
+        targets: torch.Tensor,
+        ignore_index: int,
+        reduction: str,
+    ) -> torch.Tensor:
         # The kernel works on 2-D (n_rows, n_classes) views.  Flatten
         # leading dims if needed.
         if logits.dim() < 2:
@@ -189,7 +195,9 @@ class _FusedCrossEntropy(torch.autograd.Function):
         # Per-row losses.
         losses = torch.empty(n_rows, dtype=logits.dtype, device=logits.device)
         # Defensive check before the autotune probe.
-        _check_cuda_pointers({"logits": logits_2d, "targets": targets_flat, "out": losses})
+        _check_cuda_pointers(
+            {"logits": logits_2d, "targets": targets_flat, "out": losses}
+        )
         grid = (n_rows,)
         _cross_entropy_kernel[grid](
             logits_2d,
@@ -266,15 +274,23 @@ class _FusedCrossEntropy(torch.autograd.Function):
         # One-hot targets, respecting ignore_index.
         targets_flat = targets.reshape(-1)
         valid = (targets_flat != ignore_index).unsqueeze(-1)
-        targets_safe = torch.where(valid.squeeze(-1), targets_flat, torch.zeros_like(targets_flat))
-        one_hot = torch.nn.functional.one_hot(targets_safe, num_classes=n_classes).to(softmax.dtype)
+        targets_safe = torch.where(
+            valid.squeeze(-1), targets_flat, torch.zeros_like(targets_flat)
+        )
+        one_hot = torch.nn.functional.one_hot(targets_safe, num_classes=n_classes).to(
+            softmax.dtype
+        )
         one_hot = one_hot.reshape(*original_shape[:-1], n_classes)
 
         grad_logits = (softmax - one_hot) * valid.to(softmax.dtype)
 
         # Apply reduction scaling.
         if ctx.reduction == "mean":
-            scale = ctx.scale if ctx.scale is not None else torch.tensor(1.0, device=logits.device, dtype=grad_logits.dtype)
+            scale = (
+                ctx.scale
+                if ctx.scale is not None
+                else torch.tensor(1.0, device=logits.device, dtype=grad_logits.dtype)
+            )
             grad_logits = grad_logits * scale * grad_out
         elif ctx.reduction == "sum":
             grad_logits = grad_logits * grad_out
@@ -328,7 +344,9 @@ def fused_cross_entropy(
     with the same dtype as ``logits``.
     """
     if reduction not in ("mean", "sum", "none"):
-        raise ValueError(f"reduction must be 'mean', 'sum' or 'none'; got {reduction!r}")
+        raise ValueError(
+            f"reduction must be 'mean', 'sum' or 'none'; got {reduction!r}"
+        )
     if not logits.is_cuda:
         return torch.nn.functional.cross_entropy(
             logits, targets, ignore_index=ignore_index, reduction=reduction

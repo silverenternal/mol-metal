@@ -165,8 +165,7 @@ def _normalize_energies(energies: Tensor) -> Tensor:
         e = energies.mean(dim=-1)
     else:
         raise ValueError(
-            f"energies must be (B,) or (B, T); got "
-            f"shape {tuple(energies.shape)}"
+            f"energies must be (B,) or (B, T); got " f"shape {tuple(energies.shape)}"
         )
     if not torch.isfinite(e).all():
         # Replace non-finite entries with the finite-batch mean.
@@ -219,13 +218,9 @@ class RelaxedEndpointTerm:
 
     def __post_init__(self) -> None:
         if self.lambda_relax < _EPS_LAMBDA_FLOOR:
-            raise ValueError(
-                f"lambda_relax must be >= 0, got {self.lambda_relax}"
-            )
+            raise ValueError(f"lambda_relax must be >= 0, got {self.lambda_relax}")
         if self.eps < _EPS_EPS_FLOOR:
-            raise ValueError(
-                f"eps must be >= {_EPS_EPS_FLOOR}, got {self.eps}"
-            )
+            raise ValueError(f"eps must be >= {_EPS_EPS_FLOOR}, got {self.eps}")
 
     # ------------------------------------------------------------------
     # Core forward
@@ -252,7 +247,7 @@ class RelaxedEndpointTerm:
             equal (the Gibbs-minimum case).
         """
         b = trajectory.shape[0]
-        e = _normalize_energies(energies)             # (B,)
+        e = _normalize_energies(energies)  # (B,)
         if e.shape[0] != b:
             raise ValueError(
                 f"energies batch size {e.shape[0]} does not match "
@@ -263,7 +258,7 @@ class RelaxedEndpointTerm:
         # trajectories have higher q mass.
         logits = -e / eps
         # log_softmax is fp32-stable.
-        log_q = torch.log_softmax(logits, dim=0)      # (B,)
+        log_q = torch.log_softmax(logits, dim=0)  # (B,)
         # KL(p ‖ q) = sum_i (1/B) (log(1/B) - log q_i)
         #            = -log(B) - (1/B) sum_i log q_i
         kl = -math.log(float(b)) - log_q.mean()
@@ -283,8 +278,7 @@ class RelaxedEndpointTerm:
         :func:`test_relaxed_endpoint_zero_lambda`).
         """
         if self.lambda_relax == 0.0:
-            return torch.zeros((), dtype=trajectory.dtype,
-                               device=trajectory.device)
+            return torch.zeros((), dtype=trajectory.dtype, device=trajectory.device)
         return self.lambda_relax * self.kl(trajectory, energies)
 
     # ------------------------------------------------------------------
@@ -357,7 +351,7 @@ def augment_learned_shaping(
     formulas are untouched.
     """
     term = RelaxedEndpointTerm(lambda_relax=lambda_relax, eps=eps)
-    penalty = term.forward(trajectory, energies)        # scalar tensor
+    penalty = term.forward(trajectory, energies)  # scalar tensor
     return base_shaping_output + penalty.to(dtype=base_shaping_output.dtype)
 
 
@@ -428,7 +422,7 @@ class LambdaRelaxSweep:
         if features is None or self.base_shaping is None:
             return torch.zeros(())
         try:
-            v = float(self.base_shaping(features))       # type: ignore[arg-type]
+            v = float(self.base_shaping(features))  # type: ignore[arg-type]
         except Exception:
             v = 0.0
         return torch.tensor(v, dtype=torch.float32)
@@ -487,9 +481,7 @@ class LambdaRelaxSweep:
 
         # Compute the base value once (it does not depend on λ).
         if val_features is not None:
-            base_vals = [
-                self._base_value(val_features[i]) for i in range(b)
-            ]
+            base_vals = [self._base_value(val_features[i]) for i in range(b)]
             base_mean = torch.stack(base_vals).mean()
         else:
             base_mean = torch.zeros(())
@@ -535,9 +527,7 @@ class LambdaRelaxSweep:
             )
         b = val_trajectories.shape[0]
         if val_features is not None:
-            base_vals = [
-                self._base_value(val_features[i]) for i in range(b)
-            ]
+            base_vals = [self._base_value(val_features[i]) for i in range(b)]
             base_mean = torch.stack(base_vals).mean()
         else:
             base_mean = torch.zeros(())
@@ -547,11 +537,13 @@ class LambdaRelaxSweep:
             kl = float(term.kl(val_trajectories, val_energies).item())
             penalty = float(term.forward(val_trajectories, val_energies).item())
             augmented = float((base_mean + penalty).item())
-            rows.append({
-                "lambda_relax": float(lam),
-                "kl": kl,
-                "penalty": penalty,
-                "base_mean": float(base_mean.item()),
-                "augmented_mean": augmented,
-            })
+            rows.append(
+                {
+                    "lambda_relax": float(lam),
+                    "kl": kl,
+                    "penalty": penalty,
+                    "base_mean": float(base_mean.item()),
+                    "augmented_mean": augmented,
+                }
+            )
         return rows

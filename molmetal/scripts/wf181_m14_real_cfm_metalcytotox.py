@@ -80,6 +80,7 @@ try:
         DEFAULT_HIDDEN_DIM,
         DEFAULT_N_LAYERS,
     )
+
     TRAIN_IMPORT_OK = True
     TRAIN_IMPORT_ERR: Optional[str] = None
 except Exception as _e:  # pragma: no cover — defensive guard
@@ -91,6 +92,7 @@ from molmetal.models.bond_head import AtomCloud  # noqa: E402
 try:
     from rdkit import Chem  # noqa: E402
     from rdkit.Chem import AllChem  # noqa: E402
+
     RDKIT_AVAILABLE = True
 except Exception:  # pragma: no cover
     RDKIT_AVAILABLE = False
@@ -109,7 +111,10 @@ DEFAULT_OUT_DIR = (
     PROJECT_ROOT / "molmetal" / "reports" / "wf181_m14_real_cfm_metalcytotox"
 )
 DEFAULT_OUT_JSON = (
-    PROJECT_ROOT / "molmetal" / "reports" / "wf181_m14_real_cfm_metalcytotox"
+    PROJECT_ROOT
+    / "molmetal"
+    / "reports"
+    / "wf181_m14_real_cfm_metalcytotox"
     / "result.json"
 )
 DEFAULT_CLOSURE_BIAS = {
@@ -167,9 +172,9 @@ def load_metalcytotox_csv(path: Path) -> List[Dict[str, str]]:
     return rows
 
 
-def smiles_to_atomcloud(smiles: str, jitter: float = 0.05,
-                        seed: int = 0,
-                        embed_timeout_s: float = 5.0) -> Optional[AtomCloud]:
+def smiles_to_atomcloud(
+    smiles: str, jitter: float = 0.05, seed: int = 0, embed_timeout_s: float = 5.0
+) -> Optional[AtomCloud]:
     """SMILES → 3D-embedded atom cloud with bounded wall-clock."""
     if not RDKIT_AVAILABLE:
         return None
@@ -181,8 +186,10 @@ def smiles_to_atomcloud(smiles: str, jitter: float = 0.05,
     mol = Chem.AddHs(mol)
     embed_kwargs = dict(randomSeed=seed, maxAttempts=10)
     if platform.system() != "Windows":
+
         def _timeout_handler(signum, frame):
             raise TimeoutError("embedding timeout")
+
         old_handler = signal.signal(signal.SIGALRM, _timeout_handler)
         signal.setitimer(signal.ITIMER_REAL, embed_timeout_s)
         try:
@@ -190,7 +197,9 @@ def smiles_to_atomcloud(smiles: str, jitter: float = 0.05,
                 res = AllChem.EmbedMolecule(mol, **embed_kwargs)
                 if res != 0:
                     res = AllChem.EmbedMolecule(
-                        mol, useRandomCoords=True, **embed_kwargs,
+                        mol,
+                        useRandomCoords=True,
+                        **embed_kwargs,
                     )
                     if res != 0:
                         return None
@@ -204,7 +213,9 @@ def smiles_to_atomcloud(smiles: str, jitter: float = 0.05,
             res = AllChem.EmbedMolecule(mol, **embed_kwargs)
             if res != 0:
                 res = AllChem.EmbedMolecule(
-                    mol, useRandomCoords=True, **embed_kwargs,
+                    mol,
+                    useRandomCoords=True,
+                    **embed_kwargs,
                 )
                 if res != 0:
                     return None
@@ -262,9 +273,7 @@ def load_checkpoint(
 ) -> Tuple[CFMJointModel, YuelBondBondDecoder, Dict]:
     """Load Wf-124 P2 ship checkpoint and instantiate model + decoder."""
     if not TRAIN_IMPORT_OK:
-        raise RuntimeError(
-            f"train import failed: {TRAIN_IMPORT_ERR}"
-        )
+        raise RuntimeError(f"train import failed: {TRAIN_IMPORT_ERR}")
     payload = torch.load(ckpt_path, map_location=device, weights_only=False)
     state = payload["model_state_dict"]
     hidden_dim = DEFAULT_HIDDEN_DIM
@@ -274,7 +283,8 @@ def load_checkpoint(
         hidden_dim = int(args_dict.get("hidden_dim", hidden_dim))
         n_layers = int(args_dict.get("n_layers", n_layers))
     model = CFMJointModel(
-        hidden_dim=hidden_dim, n_layers=n_layers,
+        hidden_dim=hidden_dim,
+        n_layers=n_layers,
     ).to(device)
     missing, unexpected = model.load_state_dict(state, strict=False)
     if missing or unexpected:
@@ -284,7 +294,9 @@ def load_checkpoint(
             flush=True,
         )
     decoder = YuelBondBondDecoder(
-        head=model.head, hidden_dim=hidden_dim, n_layers=n_layers,
+        head=model.head,
+        hidden_dim=hidden_dim,
+        n_layers=n_layers,
     )
     model.eval()
     return model, decoder, payload
@@ -306,12 +318,19 @@ def evaluate_seed(
 ) -> SeedMetrics:
     """Run a single seed of the benchmark on the pre-filtered cohort."""
     clouds = build_real_clouds(
-        rows, n_samples=n_samples, seed=seed, jitter=jitter,
+        rows,
+        n_samples=n_samples,
+        seed=seed,
+        jitter=jitter,
     )
     if len(clouds) == 0:
         return SeedMetrics(
-            seed=seed, n_samples=0, n_ok=0, decode_ratio=0.0,
-            wall_time_s=0.0, device=str(device),
+            seed=seed,
+            n_samples=0,
+            n_ok=0,
+            decode_ratio=0.0,
+            wall_time_s=0.0,
+            device=str(device),
             pocket_id=pocket_id,
         )
     clouds_d = [
@@ -350,32 +369,58 @@ def evaluate_seed(
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description=(
-            "Wf-181 — Real CFM decode_ratio benchmark on "
-            "MetalCytoToxDB subset."
+            "Wf-181 — Real CFM decode_ratio benchmark on " "MetalCytoToxDB subset."
         ),
     )
-    p.add_argument("--ckpt-path", type=str,
-                   default=str(DEFAULT_CKPT_PATH),
-                   help="Path to trained CFM checkpoint.")
-    p.add_argument("--data-path", type=str,
-                   default=str(DEFAULT_DATA_PATH),
-                   help="Path to MetalCytoToxDB CSV.")
-    p.add_argument("--out-dir", type=str,
-                   default=str(DEFAULT_OUT_DIR),
-                   help="Output directory.")
-    p.add_argument("--out-json", type=str,
-                   default=str(DEFAULT_OUT_JSON),
-                   help="Final gate-by-gate JSON path.")
-    p.add_argument("--n-samples", type=int, default=100,
-                   help="Total samples across seeds (default 100).")
-    p.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2],
-                   help="Random seeds (default 0 1 2).")
-    p.add_argument("--device", type=str, default="auto",
-                   help="Device: auto / cuda / cuda:0 / cpu.")
-    p.add_argument("--pocket-id", type=str, default="1h36",
-                   help="Pocket ID for closure bias (default 1h36).")
-    p.add_argument("--jitter", type=float, default=0.05,
-                   help="Position jitter in Å (default 0.05).")
+    p.add_argument(
+        "--ckpt-path",
+        type=str,
+        default=str(DEFAULT_CKPT_PATH),
+        help="Path to trained CFM checkpoint.",
+    )
+    p.add_argument(
+        "--data-path",
+        type=str,
+        default=str(DEFAULT_DATA_PATH),
+        help="Path to MetalCytoToxDB CSV.",
+    )
+    p.add_argument(
+        "--out-dir", type=str, default=str(DEFAULT_OUT_DIR), help="Output directory."
+    )
+    p.add_argument(
+        "--out-json",
+        type=str,
+        default=str(DEFAULT_OUT_JSON),
+        help="Final gate-by-gate JSON path.",
+    )
+    p.add_argument(
+        "--n-samples",
+        type=int,
+        default=100,
+        help="Total samples across seeds (default 100).",
+    )
+    p.add_argument(
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=[0, 1, 2],
+        help="Random seeds (default 0 1 2).",
+    )
+    p.add_argument(
+        "--device", type=str, default="auto", help="Device: auto / cuda / cuda:0 / cpu."
+    )
+    p.add_argument(
+        "--pocket-id",
+        type=str,
+        default="1h36",
+        help="Pocket ID for closure bias (default 1h36).",
+    )
+    p.add_argument(
+        "--jitter",
+        type=float,
+        default=0.05,
+        help="Position jitter in Å (default 0.05).",
+    )
     return p.parse_args()
 
 
@@ -386,17 +431,14 @@ def main() -> int:
     args.n_samples = per_seed_n
 
     if args.device == "auto":
-        device = torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu"
-        )
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     elif args.device.startswith("cuda"):
         device = torch.device(args.device)
     else:
         device = torch.device("cpu")
 
     if not TRAIN_IMPORT_OK:
-        print(f"[Wf-181] FATAL: train import failed: {TRAIN_IMPORT_ERR}",
-              flush=True)
+        print(f"[Wf-181] FATAL: train import failed: {TRAIN_IMPORT_ERR}", flush=True)
         return 2
     if not RDKIT_AVAILABLE:
         print("[Wf-181] FATAL: rdkit not available", flush=True)
@@ -431,8 +473,7 @@ def main() -> int:
     out_json.parent.mkdir(parents=True, exist_ok=True)
 
     if not ckpt_path.exists():
-        print(f"[Wf-181] FATAL: checkpoint missing: {ckpt_path}",
-              flush=True)
+        print(f"[Wf-181] FATAL: checkpoint missing: {ckpt_path}", flush=True)
         return 2
     if not data_path.exists():
         print(f"[Wf-181] FATAL: data missing: {data_path}", flush=True)

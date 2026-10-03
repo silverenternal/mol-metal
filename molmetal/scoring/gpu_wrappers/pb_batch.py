@@ -22,6 +22,7 @@ Public API
 * :func:`pb_pass_rate_batch`    — float (fraction passing all checks).
 * :func:`pb_validate_list_batch` — list[:class:`ValidityReport`].
 """
+
 from __future__ import annotations
 
 import logging
@@ -94,14 +95,26 @@ class _EmptyReportShim:
     so we never import pandas on a box that doesn't have it.
     """
 
-    __slots__ = ("smiles", "passed", "n_checks", "n_passed", "pass_rate",
-                 "failed_checks", "details")
+    __slots__ = (
+        "smiles",
+        "passed",
+        "n_checks",
+        "n_passed",
+        "pass_rate",
+        "failed_checks",
+        "details",
+    )
 
-    def __init__(self, smiles: str, passed: bool = False,
-                 n_checks: int = 0, n_passed: int = 0,
-                 pass_rate: float = 0.0,
-                 failed_checks: tuple = (),
-                 details: Optional[dict] = None):
+    def __init__(
+        self,
+        smiles: str,
+        passed: bool = False,
+        n_checks: int = 0,
+        n_passed: int = 0,
+        pass_rate: float = 0.0,
+        failed_checks: tuple = (),
+        details: Optional[dict] = None,
+    ):
         self.smiles = smiles
         self.passed = passed
         self.n_checks = n_checks
@@ -166,9 +179,7 @@ def pb_pass_rate_batch(
     if use_torch_staging:
         try:
             torch = _import_torch()
-            _ = torch.tensor(
-                [hash(s) & 0x7FFFFFFF for s in encoded], dtype=torch.int32
-            )
+            _ = torch.tensor([hash(s) & 0x7FFFFFFF for s in encoded], dtype=torch.int32)
         except Exception:
             # torch unavailable on a bare RDKit-only env: ignore.
             pass
@@ -225,9 +236,7 @@ def pb_validate_list_batch(
     if use_torch_staging:
         try:
             torch = _import_torch()
-            _ = torch.tensor(
-                [hash(s) & 0x7FFFFFFF for s in encoded], dtype=torch.int32
-            )
+            _ = torch.tensor([hash(s) & 0x7FFFFFFF for s in encoded], dtype=torch.int32)
         except Exception:
             pass
 
@@ -246,9 +255,7 @@ def pb_validate_list_batch(
             try:
                 reports[i] = fut.result()
             except Exception as exc:
-                logger.warning(
-                    "pb_validate_list_batch: SMILES[%d] failed: %s", i, exc
-                )
+                logger.warning("pb_validate_list_batch: SMILES[%d] failed: %s", i, exc)
                 reports[i] = _empty_report(encoded[i])
     return reports  # type: ignore[return-value]
 

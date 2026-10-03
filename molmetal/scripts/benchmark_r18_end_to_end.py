@@ -66,6 +66,7 @@ Usage::
     source env.sh && \
         uv run --no-sync python molmetal/scripts/benchmark_r18_end_to_end.py --n-samples 50
 """
+
 from __future__ import annotations
 
 import argparse
@@ -140,7 +141,7 @@ def _stage_hilbert_astsr(smiles: str, prev: Optional[dict]) -> dict:
     hil = HilbertSpace(dim=dim)
 
     def obj(x: np.ndarray):
-        val = float(0.5 * np.sum(x ** 2))
+        val = float(0.5 * np.sum(x**2))
         grad = x.copy()
         return val, grad
 
@@ -261,7 +262,9 @@ def _stage_pitfall_ood(smiles: str, prev: Optional[dict]) -> dict:
     proto = TanimotoOODProtocol(threshold=0.4, n_bits=512)
     try:
         sim = float(proto.compute_tanimoto(smiles if smiles else "CCO", "CCO"))
-        is_ood = bool(proto.is_ood(smiles if smiles else "CCO", train=["CCO", "c1ccccc1"]))
+        is_ood = bool(
+            proto.is_ood(smiles if smiles else "CCO", train=["CCO", "c1ccccc1"])
+        )
     except Exception:
         sim = 0.0
         is_ood = False
@@ -276,9 +279,11 @@ def _stage_p2_ml_coord_gnn(smiles: str, prev: Optional[dict]) -> dict:
     layer = CoordinationAwareGNNLayer(hidden_dim=8, n_coordination_classes=4)
     n = max(4, min(len(smiles), 12))
     x = torch.randn(n, 8)
-    ei = torch.tensor(
-        [[i, (i + 1) % n] for i in range(n)], dtype=torch.long
-    ).t().contiguous()
+    ei = (
+        torch.tensor([[i, (i + 1) % n] for i in range(n)], dtype=torch.long)
+        .t()
+        .contiguous()
+    )
     coord_oh = torch.zeros(n, 4)
     coord_oh[torch.arange(n), torch.arange(n) % 4] = 1.0
     out = layer(x, ei, coord_oh)
@@ -404,7 +409,9 @@ PIPELINE_STAGES: List[Tuple[str, Callable[[str, Optional[dict]], dict]]] = [
 ]
 
 
-def _expand_to_32(stages: List[Tuple[str, Callable[[str, Optional[dict]], dict]]]) -> List[Tuple[str, Callable[[str, Optional[dict]], dict]]]:
+def _expand_to_32(
+    stages: List[Tuple[str, Callable[[str, Optional[dict]], dict]]],
+) -> List[Tuple[str, Callable[[str, Optional[dict]], dict]]]:
     """Expand the stage list to 32 distinct entries.
 
     The pipeline has 14 distinct stage slots above.  We pad to 32 by
@@ -471,7 +478,9 @@ def _expand_to_32(stages: List[Tuple[str, Callable[[str, Optional[dict]], dict]]
 
     def _t6(smiles: str, _) -> dict:
         guard = BottleneckGuardrail(approx_ratio=1.5)
-        use_approx = bool(guard.should_use_approx(n_persistence_pairs=64, time_budget_s=0.01))
+        use_approx = bool(
+            guard.should_use_approx(n_persistence_pairs=64, time_budget_s=0.01)
+        )
         return {"ph_hardness_use_approx": use_approx}
 
     def _t7(smiles: str, _) -> dict:
@@ -479,7 +488,11 @@ def _expand_to_32(stages: List[Tuple[str, Callable[[str, Optional[dict]], dict]]
         x0 = torch.randn(4, 3)
         x1 = x0 + 0.05 * torch.randn(4, 3)
         coupled = bm.couple(x0, x1)
-        return {"bass_martingale_shape": list(coupled.shape) if hasattr(coupled, "shape") else []}
+        return {
+            "bass_martingale_shape": list(coupled.shape)
+            if hasattr(coupled, "shape")
+            else []
+        }
 
     def _t8(smiles: str, _) -> dict:
         th = BassExistenceTheorem(dimension=4)
@@ -511,7 +524,11 @@ def _expand_to_32(stages: List[Tuple[str, Callable[[str, Optional[dict]], dict]]
         qsd = QuotientSpace(manifold="rotation")
         n = max(4, min(len(smiles), 12))
         projected = qsd.project(torch.randn(1, n, 3))
-        return {"qsd_rot_shape": list(projected.shape) if hasattr(projected, "shape") else []}
+        return {
+            "qsd_rot_shape": list(projected.shape)
+            if hasattr(projected, "shape")
+            else []
+        }
 
     def _p2_mphp(smiles: str, _) -> dict:
         mphp = MultiPHPocketFeatures(n_bins=4)
@@ -627,8 +644,8 @@ def _expand_to_32(stages: List[Tuple[str, Callable[[str, Optional[dict]], dict]]
 
 # Full pipeline is built lazily so we can fail fast on missing imports
 # but still pre-flight all stages inside the ``main`` guard.
-PIPELINE_FULL: List[Tuple[str, Callable[[str, Optional[dict]], dict]]] = (
-    _expand_to_32(PIPELINE_STAGES)
+PIPELINE_FULL: List[Tuple[str, Callable[[str, Optional[dict]], dict]]] = _expand_to_32(
+    PIPELINE_STAGES
 )
 
 
@@ -654,7 +671,12 @@ def _median_ms(wall_times: List[float]) -> float:
     return float(statistics.median(wall_times)) * 1000.0
 
 
-def _safe_run(stage_id: str, fn: Callable[[str, Optional[dict]], dict], smiles: str, prev: Optional[dict]) -> Tuple[float, str]:
+def _safe_run(
+    stage_id: str,
+    fn: Callable[[str, Optional[dict]], dict],
+    smiles: str,
+    prev: Optional[dict],
+) -> Tuple[float, str]:
     """Run a single stage with timing + tracemalloc snapshot.
 
     Returns (wall_time_seconds, status) where status is ``"ok"``,
@@ -745,7 +767,8 @@ def main() -> int:
         "total_wall_time_s": float(total_wall_s),
         "per_module_wall_time_ms": wall_ms,
         "per_module_memory_mb": {
-            sid: float(peak_mem_total - base_mem) / (1024 * 1024) for sid in stage_wall_s
+            sid: float(peak_mem_total - base_mem) / (1024 * 1024)
+            for sid in stage_wall_s
         },
         "per_module_status": stage_status,
         "stage_id_order": [sid for sid, _ in PIPELINE_FULL],

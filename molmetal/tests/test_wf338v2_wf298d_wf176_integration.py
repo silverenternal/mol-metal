@@ -128,6 +128,7 @@ class TestWf298DRecoveryIntegration:
             FallbackExtraction,
             fast_filter_says_schema,
         )
+
         assert HarnessOutputExtractor is not None
         assert FallbackExtraction is not None
         assert callable(fast_filter_says_schema)
@@ -135,6 +136,7 @@ class TestWf298DRecoveryIntegration:
         from molmetal.reports.wf298d_harness_detector.wrapper import (  # noqa: WPS433
             HarnessOutputExtractor as Canonical,
         )
+
         assert HarnessOutputExtractor is Canonical, (
             "Wf-338-V2 alias must re-export the canonical "
             "HarnessOutputExtractor (NOT a re-implementation)."
@@ -157,42 +159,46 @@ class TestWf298DRecoveryIntegration:
 
         extractor = HarnessOutputExtractor()
         # Wf-270A regression payload (per Wf-298D §3 table)
-        wf270a = json.dumps({
-            "type": "object",
-            "properties": {
-                "G1_cuda_fix_verified": {"type": "boolean"},
-                "G2_config_yaml_exists": {"type": "boolean"},
-            },
-            "required": ["G1_cuda_fix_verified", "G2_config_yaml_exists"],
-        })
+        wf270a = json.dumps(
+            {
+                "type": "object",
+                "properties": {
+                    "G1_cuda_fix_verified": {"type": "boolean"},
+                    "G2_config_yaml_exists": {"type": "boolean"},
+                },
+                "required": ["G1_cuda_fix_verified", "G2_config_yaml_exists"],
+            }
+        )
         # Wf-272B known-good data payload
-        wf272b = json.dumps({
-            "G1_n_new_entries": 4,
-            "G2_existing_entries_preserved": True,
-        })
+        wf272b = json.dumps(
+            {
+                "G1_n_new_entries": 4,
+                "G2_existing_entries_preserved": True,
+            }
+        )
         # Plain-text fallback case
         wf274a_plain = "Wf-274A complete. Added regression_disclosure top-level field"
 
         # Regression class — schema-shape detection.
-        assert extractor.detect_schema_shape(wf270a) is True, (
-            "Wf-270A schema-shape payload must be detected"
-        )
+        assert (
+            extractor.detect_schema_shape(wf270a) is True
+        ), "Wf-270A schema-shape payload must be detected"
         # Plain-text payload — must NOT be detected as schema.
-        assert extractor.detect_schema_shape(wf274a_plain) is False, (
-            "Wf-274A plain-text payload must NOT be flagged as schema"
-        )
+        assert (
+            extractor.detect_schema_shape(wf274a_plain) is False
+        ), "Wf-274A plain-text payload must NOT be flagged as schema"
         # Known-good data — must NOT be detected as schema.
-        assert extractor.detect_schema_shape(wf272b) is False, (
-            "Wf-272B known-good data payload must NOT be flagged as schema"
-        )
+        assert (
+            extractor.detect_schema_shape(wf272b) is False
+        ), "Wf-272B known-good data payload must NOT be flagged as schema"
 
         # Auto-fallback: schema-shape returns FallbackExtraction
         # wrapping sibling_text.
         sibling = "fallback text: Wf-270A recovered from sibling comment"
         result = extractor.extract(wf270a, sibling_text=sibling)
-        assert isinstance(result, FallbackExtraction), (
-            "schema-shape payload must yield FallbackExtraction"
-        )
+        assert isinstance(
+            result, FallbackExtraction
+        ), "schema-shape payload must yield FallbackExtraction"
         assert result.schema_shape_detected is True
         assert result.recovered_text == sibling
         assert result.fallback_reason in {
@@ -204,9 +210,9 @@ class TestWf298DRecoveryIntegration:
 
         # Auto-fallback: known-good data returns parsed dict verbatim.
         result_data = extractor.extract(wf272b)
-        assert isinstance(result_data, dict), (
-            "known-good data payload must yield a dict"
-        )
+        assert isinstance(
+            result_data, dict
+        ), "known-good data payload must yield a dict"
         assert result_data.get("G1_n_new_entries") == 4
         assert result_data.get("G2_existing_entries_preserved") is True
 
@@ -231,17 +237,19 @@ class TestWf176USEROKGateAndWf338MCPUPortion:
         USER_OK=1 is set. End-to-end invocation without USER_OK must
         exit non-zero (exit code 64) BEFORE any pre-flight check.
         """
-        assert WF176_GPU_WRAPPER.exists(), (
-            f"Wf-310E GPU wrapper missing: {WF176_GPU_WRAPPER}"
-        )
+        assert (
+            WF176_GPU_WRAPPER.exists()
+        ), f"Wf-310E GPU wrapper missing: {WF176_GPU_WRAPPER}"
         # bash -n syntax check first
         proc_syntax = subprocess.run(
             ["bash", "-n", str(WF176_GPU_WRAPPER)],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
-        assert proc_syntax.returncode == 0, (
-            f"Wf-310E wrapper bash syntax error: {proc_syntax.stderr!r}"
-        )
+        assert (
+            proc_syntax.returncode == 0
+        ), f"Wf-310E wrapper bash syntax error: {proc_syntax.stderr!r}"
         # End-to-end invocation without USER_OK must exit non-zero
         proc = subprocess.run(
             ["bash", str(WF176_GPU_WRAPPER), "--dry-run"],
@@ -257,39 +265,41 @@ class TestWf176USEROKGateAndWf338MCPUPortion:
             f"got rc={proc.returncode} stdout={proc.stdout[-200:]!r}"
         )
         # The gate message must reference the USER_OK gate text.
-        assert "USER_OK" in proc.stderr or "USER_OK" in proc.stdout, (
-            "USER_OK gate refusal text missing from Wf-310E wrapper stdout/stderr"
-        )
+        assert (
+            "USER_OK" in proc.stderr or "USER_OK" in proc.stdout
+        ), "USER_OK gate refusal text missing from Wf-310E wrapper stdout/stderr"
 
     def test_wf338v2_cpu_wrapper_enforces_user_ok_gate_and_validates_cohort(self):
         """Wf-338-M3 CPU wrapper must:
-          (a) parse via bash -n (no syntax errors)
-          (b) enforce USER_OK gate (kill_then_adapt standing directive)
-          (c) verify Phase 1 cohort on disk + balanced (250 + 250)
-          (d) reference Wf-310E GPU wrapper for cross-validation
-          (e) emit a plan.json with MEASURED-vs-PROJECTED tags per
-              party-twenty-spirit §3.5
+        (a) parse via bash -n (no syntax errors)
+        (b) enforce USER_OK gate (kill_then_adapt standing directive)
+        (c) verify Phase 1 cohort on disk + balanced (250 + 250)
+        (d) reference Wf-310E GPU wrapper for cross-validation
+        (e) emit a plan.json with MEASURED-vs-PROJECTED tags per
+            party-twenty-spirit §3.5
         """
-        assert WF176_CPU_WRAPPER_WF338V2.exists(), (
-            f"Wf-338-M3 CPU wrapper missing: {WF176_CPU_WRAPPER_WF338V2}"
-        )
+        assert (
+            WF176_CPU_WRAPPER_WF338V2.exists()
+        ), f"Wf-338-M3 CPU wrapper missing: {WF176_CPU_WRAPPER_WF338V2}"
         # bash -n syntax check
         proc_syntax = subprocess.run(
             ["bash", "-n", str(WF176_CPU_WRAPPER_WF338V2)],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
-        assert proc_syntax.returncode == 0, (
-            f"Wf-338-M3 wrapper bash syntax error: {proc_syntax.stderr!r}"
-        )
+        assert (
+            proc_syntax.returncode == 0
+        ), f"Wf-338-M3 wrapper bash syntax error: {proc_syntax.stderr!r}"
         # Source grep for USER_OK + Phase 1 cohort + Wf-310E reference.
         src = WF176_CPU_WRAPPER_WF338V2.read_text()
         assert "USER_OK" in src, "USER_OK gate text missing from Wf-338-M3 CPU wrapper"
-        assert "synthetic_rh_pos_neg.json" in src, (
-            "Wf-338-M3 CPU wrapper must reference the Phase 1 cohort JSON"
-        )
-        assert "launch_wf310e_wf135_phase2_gpu.sh" in src, (
-            "Wf-338-M3 CPU wrapper must reference Wf-310E GPU wrapper"
-        )
+        assert (
+            "synthetic_rh_pos_neg.json" in src
+        ), "Wf-338-M3 CPU wrapper must reference the Phase 1 cohort JSON"
+        assert (
+            "launch_wf310e_wf135_phase2_gpu.sh" in src
+        ), "Wf-338-M3 CPU wrapper must reference Wf-310E GPU wrapper"
         assert "MEASURED" in src and "PROJECTED" in src, (
             "Wf-338-M3 CPU wrapper must emit MEASURED/PROJECTED tags "
             "per party-twenty-spirit §3.5"
@@ -316,9 +326,7 @@ class TestWf176USEROKGateAndWf338MCPUPortion:
         # Phase 1 cohort must exist on disk for the wrapper to reach the
         # USER_OK gate path (the gate fires before cohort check, but
         # if neither cohort path exists we can't end-to-end verify).
-        cohort_present = (
-            PHASE1_COHORT_WF139.exists() or PHASE1_COHORT_WF145.exists()
-        )
+        cohort_present = PHASE1_COHORT_WF139.exists() or PHASE1_COHORT_WF145.exists()
         assert cohort_present, (
             "Wf-176 / Wf-338-M3 prerequisite: Phase 1 cohort must be on disk "
             f"(Wf-309A ship). Missing: {PHASE1_COHORT_WF139} "
@@ -344,12 +352,12 @@ class TestWf176USEROKGateAndWf338MCPUPortion:
         with cohort_path.open() as fh:
             data = json.load(fh)
         stats = data.get("stats", {})
-        assert int(stats.get("n_active", 0)) == 250, (
-            f"n_active={stats.get('n_active')} (expected 250)"
-        )
-        assert int(stats.get("n_inactive", 0)) == 250, (
-            f"n_inactive={stats.get('n_inactive')} (expected 250)"
-        )
+        assert (
+            int(stats.get("n_active", 0)) == 250
+        ), f"n_active={stats.get('n_active')} (expected 250)"
+        assert (
+            int(stats.get("n_inactive", 0)) == 250
+        ), f"n_inactive={stats.get('n_inactive')} (expected 250)"
         assert int(stats.get("scaffold_overlap_count", -1)) == 0, (
             f"scaffold_overlap_count={stats.get('scaffold_overlap_count')} "
             "(expected 0 — clean active/inactive split per Wf-139 P7 / Wf-309A)"
@@ -369,16 +377,16 @@ class TestWf264SubPanelSminaQuickVina2Recovery:
 
     def test_cfm_vina_dock_panel_exposes_engine_cli_and_probe_functions(self):
         """The Wf-264 sub-panel + recovery wiring must:
-          (a) import OK
-          (b) expose _probe_smina_binary + _probe_quickvina2_binary +
-              _select_engine functions
-          (c) define DEFAULT_ENGINE + SUPPORTED_ENGINES constants
-          (d) parse --engine {vina,smina,quickvina2,auto} CLI choice
-          (e) wire --smina-bin + --qvina2-bin overrides
+        (a) import OK
+        (b) expose _probe_smina_binary + _probe_quickvina2_binary +
+            _select_engine functions
+        (c) define DEFAULT_ENGINE + SUPPORTED_ENGINES constants
+        (d) parse --engine {vina,smina,quickvina2,auto} CLI choice
+        (e) wire --smina-bin + --qvina2-bin overrides
         """
-        assert WF264_VINA_PANEL.exists(), (
-            f"Wf-264 Vina panel script missing: {WF264_VINA_PANEL}"
-        )
+        assert (
+            WF264_VINA_PANEL.exists()
+        ), f"Wf-264 Vina panel script missing: {WF264_VINA_PANEL}"
         # Import + probe + select functions all importable.
         from molmetal.scripts.cfm_vina_dock_panel import (  # noqa: WPS433
             _probe_smina_binary,
@@ -389,6 +397,7 @@ class TestWf264SubPanelSminaQuickVina2Recovery:
             DEFAULT_SMINA_BIN,
             DEFAULT_QUICKVINA2_BIN,
         )
+
         assert callable(_probe_smina_binary)
         assert callable(_probe_quickvina2_binary)
         assert callable(_select_engine)
@@ -399,41 +408,66 @@ class TestWf264SubPanelSminaQuickVina2Recovery:
 
         # CLI parses --engine + --smina-bin + --qvina2-bin.
         from molmetal.scripts.cfm_vina_dock_panel import _build_parser  # noqa: WPS433
+
         parser = _build_parser()
         # --engine defaults to vina
-        args_default = parser.parse_args([
-            "--smiles-csv", "/tmp/dummy.csv",
-            "--pocket-pdb-dir", "/tmp/dummy",
-            "--out-json", "/tmp/out.json",
-        ])
-        assert args_default.engine == "vina", (
-            f"--engine default must be 'vina', got {args_default.engine!r}"
+        args_default = parser.parse_args(
+            [
+                "--smiles-csv",
+                "/tmp/dummy.csv",
+                "--pocket-pdb-dir",
+                "/tmp/dummy",
+                "--out-json",
+                "/tmp/out.json",
+            ]
         )
+        assert (
+            args_default.engine == "vina"
+        ), f"--engine default must be 'vina', got {args_default.engine!r}"
         # --engine smina parses
-        args_smina = parser.parse_args([
-            "--smiles-csv", "/tmp/dummy.csv",
-            "--pocket-pdb-dir", "/tmp/dummy",
-            "--out-json", "/tmp/out.json",
-            "--engine", "smina",
-            "--smina-bin", "/custom/path/to/smina",
-        ])
+        args_smina = parser.parse_args(
+            [
+                "--smiles-csv",
+                "/tmp/dummy.csv",
+                "--pocket-pdb-dir",
+                "/tmp/dummy",
+                "--out-json",
+                "/tmp/out.json",
+                "--engine",
+                "smina",
+                "--smina-bin",
+                "/custom/path/to/smina",
+            ]
+        )
         assert args_smina.engine == "smina"
         assert args_smina.smina_bin == "/custom/path/to/smina"
         # --engine quickvina2 parses
-        args_qvina2 = parser.parse_args([
-            "--smiles-csv", "/tmp/dummy.csv",
-            "--pocket-pdb-dir", "/tmp/dummy",
-            "--out-json", "/tmp/out.json",
-            "--engine", "quickvina2",
-        ])
+        args_qvina2 = parser.parse_args(
+            [
+                "--smiles-csv",
+                "/tmp/dummy.csv",
+                "--pocket-pdb-dir",
+                "/tmp/dummy",
+                "--out-json",
+                "/tmp/out.json",
+                "--engine",
+                "quickvina2",
+            ]
+        )
         assert args_qvina2.engine == "quickvina2"
         # --engine auto parses (transparent fallback)
-        args_auto = parser.parse_args([
-            "--smiles-csv", "/tmp/dummy.csv",
-            "--pocket-pdb-dir", "/tmp/dummy",
-            "--out-json", "/tmp/out.json",
-            "--engine", "auto",
-        ])
+        args_auto = parser.parse_args(
+            [
+                "--smiles-csv",
+                "/tmp/dummy.csv",
+                "--pocket-pdb-dir",
+                "/tmp/dummy",
+                "--out-json",
+                "/tmp/out.json",
+                "--engine",
+                "auto",
+            ]
+        )
         assert args_auto.engine == "auto"
 
     def test_smina_quickvina2_probe_honest_negative_on_host(self):
@@ -480,9 +514,9 @@ class TestWf264SubPanelSminaQuickVina2Recovery:
         )
         assert v_engine == "vina"
         assert "molmetal_vina" in v_bin
-        assert v_ok is True, (
-            "Wf-329-W7 MEASURED: Vina CLI is installed at the canonical path"
-        )
+        assert (
+            v_ok is True
+        ), "Wf-329-W7 MEASURED: Vina CLI is installed at the canonical path"
 
         # (3) _select_engine('smina') returns ok=False honestly.
         s_engine, s_bin, s_ok = _select_engine(engine="smina")
@@ -530,27 +564,27 @@ class TestPipelineMasterAndBackwardCompat:
 
     def test_pipeline_master_integrates_wf176_cpu_wrapper_path(self):
         """The pipeline master + Wf-338-M3 CPU wrapper must coexist:
-          (a) pipeline master parses via bash -n (no syntax errors)
-          (b) pipeline master references the Wf-176 Phase 2 GPU wrapper
-              (Wf-310E, USER_OK-gated)
-          (c) Wf-338-M3 CPU wrapper is NOT in the master (CPU-only,
-              runs after the 14-day LOMO job per Wf-310E spec) but
-              is on disk for downstream consumers
+        (a) pipeline master parses via bash -n (no syntax errors)
+        (b) pipeline master references the Wf-176 Phase 2 GPU wrapper
+            (Wf-310E, USER_OK-gated)
+        (c) Wf-338-M3 CPU wrapper is NOT in the master (CPU-only,
+            runs after the 14-day LOMO job per Wf-310E spec) but
+            is on disk for downstream consumers
         """
-        assert PIPELINE_MASTER.exists(), (
-            f"Pipeline master missing: {PIPELINE_MASTER}"
-        )
-        assert WF176_CPU_WRAPPER_WF338V2.exists(), (
-            f"Wf-338-M3 CPU wrapper missing: {WF176_CPU_WRAPPER_WF338V2}"
-        )
+        assert PIPELINE_MASTER.exists(), f"Pipeline master missing: {PIPELINE_MASTER}"
+        assert (
+            WF176_CPU_WRAPPER_WF338V2.exists()
+        ), f"Wf-338-M3 CPU wrapper missing: {WF176_CPU_WRAPPER_WF338V2}"
         # bash -n syntax check on pipeline master
         proc_syntax = subprocess.run(
             ["bash", "-n", str(PIPELINE_MASTER)],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
-        assert proc_syntax.returncode == 0, (
-            f"pipeline master bash syntax error: {proc_syntax.stderr!r}"
-        )
+        assert (
+            proc_syntax.returncode == 0
+        ), f"pipeline master bash syntax error: {proc_syntax.stderr!r}"
         master_src = PIPELINE_MASTER.read_text()
         # Pipeline master must reference the Wf-310E Wf-135 Phase 2 wrapper
         # (Wf-176 Phase 2 GPU launch path).
@@ -572,51 +606,63 @@ class TestPipelineMasterAndBackwardCompat:
         from molmetal.recovery.wf298d_harness_detector import (  # noqa: WPS433
             HarnessOutputExtractor,
         )
+
         extractor = HarnessOutputExtractor()
         assert extractor is not None
 
         # Wf-264 CFM property panel launcher must parse.
         wf264_launcher = REPO_ROOT / "scripts" / "launch_wf264_cfm_property_panel.sh"
-        assert wf264_launcher.exists(), (
-            f"Wf-264 launcher missing: {wf264_launcher}"
-        )
+        assert wf264_launcher.exists(), f"Wf-264 launcher missing: {wf264_launcher}"
         proc = subprocess.run(
             ["bash", "-n", str(wf264_launcher)],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
-        assert proc.returncode == 0, (
-            f"Wf-264 launcher bash syntax error: {proc.stderr!r}"
-        )
+        assert (
+            proc.returncode == 0
+        ), f"Wf-264 launcher bash syntax error: {proc.stderr!r}"
 
         # Wf-264 Vina dock panel + recovery must parse (CLI --engine).
         from molmetal.scripts.cfm_vina_dock_panel import _build_parser  # noqa: WPS433
+
         parser = _build_parser()
-        args = parser.parse_args([
-            "--smiles-csv", "/tmp/x.csv",
-            "--pocket-pdb-dir", "/tmp/pdb",
-            "--out-json", "/tmp/out.json",
-            "--engine", "auto",
-        ])
+        args = parser.parse_args(
+            [
+                "--smiles-csv",
+                "/tmp/x.csv",
+                "--pocket-pdb-dir",
+                "/tmp/pdb",
+                "--out-json",
+                "/tmp/out.json",
+                "--engine",
+                "auto",
+            ]
+        )
         assert args.engine == "auto"
 
         # Wf-310E Wf-135 Phase 2 GPU wrapper must parse.
-        assert WF176_GPU_WRAPPER.exists(), (
-            f"Wf-310E wrapper missing: {WF176_GPU_WRAPPER}"
-        )
+        assert (
+            WF176_GPU_WRAPPER.exists()
+        ), f"Wf-310E wrapper missing: {WF176_GPU_WRAPPER}"
         proc = subprocess.run(
             ["bash", "-n", str(WF176_GPU_WRAPPER)],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
-        assert proc.returncode == 0, (
-            f"Wf-310E wrapper bash syntax error: {proc.stderr!r}"
-        )
+        assert (
+            proc.returncode == 0
+        ), f"Wf-310E wrapper bash syntax error: {proc.stderr!r}"
 
         # Wf-338-M3 CPU wrapper must parse (already verified in test 2
         # but we re-verify here for backward-compat lock-in).
         proc = subprocess.run(
             ["bash", "-n", str(WF176_CPU_WRAPPER_WF338V2)],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
-        assert proc.returncode == 0, (
-            f"Wf-338-M3 wrapper bash syntax error: {proc.stderr!r}"
-        )
+        assert (
+            proc.returncode == 0
+        ), f"Wf-338-M3 wrapper bash syntax error: {proc.stderr!r}"

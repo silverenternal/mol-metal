@@ -27,13 +27,24 @@ def test_empty_has_nan_statistics_and_no_passes():
     for name in ("qed", "mw", "logp", "tpsa", "rotb"):
         assert math.isnan(metrics[f"{name}_mean"])
         assert math.isnan(metrics[f"{name}_std"])
-    assert all(value == 0.0 for key, value in metrics.items() if "frac" in key and key != "fraction_denominator")
+    assert all(
+        value == 0.0
+        for key, value in metrics.items()
+        if "frac" in key and key != "fraction_denominator"
+    )
 
 
-@pytest.mark.parametrize("molecule", [
-    candidate("invalid smiles"), candidate("C(C)(C)(C)(C)C"),
-    candidate("*"), candidate(" "), candidate(), candidate(atoms=()),
-])
+@pytest.mark.parametrize(
+    "molecule",
+    [
+        candidate("invalid smiles"),
+        candidate("C(C)(C)(C)(C)C"),
+        candidate("*"),
+        candidate(" "),
+        candidate(),
+        candidate(atoms=()),
+    ],
+)
 def test_invalid_or_undecoded_candidates_do_not_get_fabricated_descriptors(molecule):
     assert mol_to_rdkit(molecule) is None
     metrics = evaluate_set([molecule])
@@ -46,11 +57,13 @@ def test_invalid_or_undecoded_candidates_do_not_get_fabricated_descriptors(molec
 
 
 def test_known_molecules_have_population_std_and_all_candidate_denominators():
-    metrics = evaluate_set([
-        candidate("CC(=O)Oc1ccccc1C(=O)O"),  # aspirin
-        candidate("CCCCCCCCCC"),  # decane
-        candidate("invalid smiles"),
-    ])
+    metrics = evaluate_set(
+        [
+            candidate("CC(=O)Oc1ccccc1C(=O)O"),  # aspirin
+            candidate("CCCCCCCCCC"),  # decane
+            candidate("invalid smiles"),
+        ]
+    )
     assert metrics["n_valid"] == 2
     assert metrics["n_total"] == 3
     assert metrics["std_ddof"] == 0
@@ -76,9 +89,13 @@ def test_rotatable_bond_cutoff_is_strictly_less_than_ten():
 
 
 def test_molecular_weight_flags_never_filter_out_high_weight_molecules():
-    metrics = evaluate_set([
-        candidate("C" * 22), candidate("C" * 51), candidate("invalid smiles"),
-    ])
+    metrics = evaluate_set(
+        [
+            candidate("C" * 22),
+            candidate("C" * 51),
+            candidate("invalid smiles"),
+        ]
+    )
     assert metrics["n_valid"] == 2
     assert metrics["mw_range_300_700_flags"] == [True, False, None]
     assert metrics["mw_frac_300_700"] == pytest.approx(1 / 3)
@@ -89,8 +106,10 @@ def test_molecular_weight_flags_never_filter_out_high_weight_molecules():
 def test_decoded_bonds_are_used_when_smiles_is_missing():
     # Methanol graph, with the symmetric edge convention used by the model.
     molecule = Molecule(
-        coords=torch.zeros(2, 3), atom_types=torch.tensor([6, 8]),
-        bonds=torch.tensor([[0, 1], [1, 0]]), bond_types=torch.tensor([1, 1]),
+        coords=torch.zeros(2, 3),
+        atom_types=torch.tensor([6, 8]),
+        bonds=torch.tensor([[0, 1], [1, 0]]),
+        bond_types=torch.tensor([1, 1]),
         formal_charges=torch.zeros(2, dtype=torch.long),
     )
     metrics = evaluate_set([molecule])

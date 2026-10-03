@@ -51,6 +51,7 @@ from molmetal_lam.reward.platinai_oracle import (
 # search_alg.import is unavailable (e.g. CI without torch).
 try:
     from molmetal_lam.search_alg.proof_search import RewardAggregator
+
     _HAS_REWARD_AGGREGATOR = True
 except Exception:  # pragma: no cover
     RewardAggregator = None
@@ -164,9 +165,9 @@ def test_platinai_oracle_far_molecule_returns_zero(oracle_loaded: PlatinAIOracle
     # the strict threshold should reject it.
     cisplatin = "N.N.N.N.[Pt+2]"
     score = strict_oracle.score(cisplatin)
-    assert score == 0.0, (
-        f"Expected 0.0 when tanimoto_min=0.999 rejects all neighbours, got {score}"
-    )
+    assert (
+        score == 0.0
+    ), f"Expected 0.0 when tanimoto_min=0.999 rejects all neighbours, got {score}"
 
 
 # -----------------------------------------------------------------------------
@@ -303,6 +304,7 @@ try:
         rxnflow_template_match,
         make_rxnflow_template_channel,
     )
+
     _HAS_RXNFLOW_ADAPTER = True
 except Exception:  # pragma: no cover
     is_rxnflow_available = None
@@ -330,9 +332,9 @@ def test_rxnflow_template_inventory_nonempty():
     # We don't strictly require 109 (the registry may exclude commented
     # lines) but the count must be in [100, 130] given the file ships
     # 109 lines per the Enamine REAL corpus.
-    assert 100 <= len(names) <= 130, (
-        f"Expected ~109 REAL templates in registry, got {len(names)}"
-    )
+    assert (
+        100 <= len(names) <= 130
+    ), f"Expected ~109 REAL templates in registry, got {len(names)}"
     # All names follow the REAL_<idx>_<class> pattern.
     for n in names[:10]:
         assert n.startswith("REAL_"), f"Unexpected template id: {n}"
@@ -388,9 +390,7 @@ def test_rxnflow_template_match_negative():
         pytest.skip("No CuAAC templates in registry")
     template_name = names[0]
     score = rxnflow_template_match("CCO", template_name)
-    assert score == 0.0, (
-        f"Expected 0.0 for non-matching candidate, got {score}"
-    )
+    assert score == 0.0, f"Expected 0.0 for non-matching candidate, got {score}"
 
 
 # -----------------------------------------------------------------------------
@@ -426,9 +426,7 @@ def test_rxnflow_channel_disabled_returns_zero():
         w_qed=1.0,
     )
     if _HAS_RXNFLOW_ADAPTER:
-        agg_wired.register_rxnflow_template_channel(
-            template_name="REAL_001_CuAAC"
-        )
+        agg_wired.register_rxnflow_template_channel(template_name="REAL_001_CuAAC")
         # w_rxnflow stays at 0.0 → no contribution.
         assert agg_wired.w_rxnflow == 0.0
         v_wired = agg_wired(state)

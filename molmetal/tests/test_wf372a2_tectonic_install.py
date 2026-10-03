@@ -64,14 +64,14 @@ def test_tectonic_on_path() -> None:
         "tectonic not found on PATH after Wf-372-A2 install — verify "
         "~/.local/bin/tectonic exists and is executable"
     )
-    assert Path(tectonic_path).exists(), (
-        f"which tectonic returned {tectonic_path!r} but the file does not exist"
-    )
+    assert Path(
+        tectonic_path
+    ).exists(), f"which tectonic returned {tectonic_path!r} but the file does not exist"
     # Tectonic binary is a static musl executable — must be a regular
     # file, not a directory or symlink-to-nothing.
-    assert Path(tectonic_path).is_file(), (
-        f"tectonic at {tectonic_path} is not a regular file"
-    )
+    assert Path(
+        tectonic_path
+    ).is_file(), f"tectonic at {tectonic_path} is not a regular file"
 
 
 # ---------------------------------------------------------------------------
@@ -92,7 +92,9 @@ def test_tectonic_version_reports_017() -> None:
 
     result = subprocess.run(
         [tectonic_path, "--version"],
-        capture_output=True, text=True, timeout=15,
+        capture_output=True,
+        text=True,
+        timeout=15,
     )
     assert result.returncode == 0, (
         f"tectonic --version failed: stdout={result.stdout!r} "
@@ -105,9 +107,9 @@ def test_tectonic_version_reports_017() -> None:
     )
     # Also assert the "Tectonic" branding to disambiguate from any
     # other tool that happens to print "0.17.0".
-    assert "Tectonic" in result.stdout, (
-        f"expected 'Tectonic' branding in stdout, got: {result.stdout!r}"
-    )
+    assert (
+        "Tectonic" in result.stdout
+    ), f"expected 'Tectonic' branding in stdout, got: {result.stdout!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -130,14 +132,15 @@ def test_setup_doc_reflects_tectonic_install() -> None:
     text = SETUP_MD.read_text(encoding="utf-8")
 
     # §2 must still exist (per Wf-351-A3 §2 of the original audit).
-    assert re.search(r"##\s+§2\s+tectonic", text), (
-        "§2 tectonic section missing from SCI_PAPER_SETUP.md"
-    )
+    assert re.search(
+        r"##\s+§2\s+tectonic", text
+    ), "§2 tectonic section missing from SCI_PAPER_SETUP.md"
 
     # §2.1 must include the GitHub-releases-tarball fallback row used
     # on this host (drop-sh.fullyjustified.net was unreachable).
     sec2_match = re.search(
-        r"##\s+§2\s+tectonic[\s\S]+?(?=\n##\s+§|\Z)", text,
+        r"##\s+§2\s+tectonic[\s\S]+?(?=\n##\s+§|\Z)",
+        text,
     )
     assert sec2_match is not None, "could not locate §2 section"
     sec2 = sec2_match.group(0)
@@ -148,30 +151,29 @@ def test_setup_doc_reflects_tectonic_install() -> None:
     )
     assert "github.com/tectonic-typesetting" in sec2 or (
         "GitHub releases" in sec2 or "releases/download" in sec2
-    ), (
-        "§2 must document the GitHub-releases-tarball fallback row "
-        "used on this host"
-    )
-    assert "~/.local/bin/tectonic" in sec2 or "local/bin/tectonic" in sec2, (
-        "§2 must document the user-space install path used on this host"
-    )
+    ), "§2 must document the GitHub-releases-tarball fallback row " "used on this host"
+    assert (
+        "~/.local/bin/tectonic" in sec2 or "local/bin/tectonic" in sec2
+    ), "§2 must document the user-space install path used on this host"
 
     # §2.4 (verify) must include the MEASURED `tectonic --version` line.
     sec2_4_match = re.search(
-        r"###\s+§2\.4[\s\S]+?(?=\n###\s+§|\n##\s+§|\Z)", text,
+        r"###\s+§2\.4[\s\S]+?(?=\n###\s+§|\n##\s+§|\Z)",
+        text,
     )
     assert sec2_4_match is not None, "could not locate §2.4 verify section"
     sec2_4 = sec2_4_match.group(0)
-    assert "Tectonic 0.17.0" in sec2_4 or "tectonic 0.17.0" in sec2_4 or (
-        "MEASURED" in sec2_4
-    ), (
-        "§2.4 must include the MEASURED `tectonic --version` line"
-    )
+    assert (
+        "Tectonic 0.17.0" in sec2_4
+        or "tectonic 0.17.0" in sec2_4
+        or ("MEASURED" in sec2_4)
+    ), "§2.4 must include the MEASURED `tectonic --version` line"
 
     # The TL;DR §0 table must now declare tectonic as INSTALLED (not
     # INSTALL-REQUIRED).
     sec0_match = re.search(
-        r"##\s+§0[\s\S]+?(?=\n##\s+§|\Z)", text,
+        r"##\s+§0[\s\S]+?(?=\n##\s+§|\Z)",
+        text,
     )
     assert sec0_match is not None, "could not locate §0 TL;DR section"
     sec0 = sec0_match.group(0)
@@ -182,17 +184,14 @@ def test_setup_doc_reflects_tectonic_install() -> None:
     # Fallback regex if the parenthetical is missing
     if tectonic_row is None:
         tectonic_row = re.search(
-            r"\|\s*tectonic\s*\|[^|]+\|[^|]+\|", sec0,
+            r"\|\s*tectonic\s*\|[^|]+\|[^|]+\|",
+            sec0,
         )
-    assert tectonic_row is not None, (
-        "could not find tectonic row in §0 table"
-    )
+    assert tectonic_row is not None, "could not find tectonic row in §0 table"
     row_text = tectonic_row.group(0)
     assert "INSTALLED" in row_text, (
-        f"tectonic row should be INSTALLED now (per Wf-372-A2), "
-        f"got: {row_text!r}"
+        f"tectonic row should be INSTALLED now (per Wf-372-A2), " f"got: {row_text!r}"
     )
     assert "INSTALL-REQUIRED" not in row_text, (
-        f"tectonic row should NOT still say INSTALL-REQUIRED, "
-        f"got: {row_text!r}"
+        f"tectonic row should NOT still say INSTALL-REQUIRED, " f"got: {row_text!r}"
     )

@@ -39,6 +39,7 @@ suite is intentionally torch-light so it can run on any host Python.
 
 CPU-only by design. Wall budget: ~5 s on the host Python.
 """
+
 from __future__ import annotations
 
 import importlib.util as _ilu
@@ -71,14 +72,16 @@ class TestModuleExportVerification(unittest.TestCase):
 
     def test_module_table_has_11_entries(self) -> None:
         self.assertEqual(
-            len(gate_module.SCAFFOLD_MODULES), 11,
+            len(gate_module.SCAFFOLD_MODULES),
+            11,
             "expected 11 SCAFFOLD modules per Wf-380-B1 ship surface",
         )
 
     def test_module_table_unique_filenames(self) -> None:
         filenames = [m[0] for m in gate_module.SCAFFOLD_MODULES]
         self.assertEqual(
-            len(filenames), len(set(filenames)),
+            len(filenames),
+            len(set(filenames)),
             "SCAFFOLD_MODULES must have unique filenames",
         )
 
@@ -118,13 +121,15 @@ class TestModuleExportVerification(unittest.TestCase):
         # torch all present=True should be False.
         on_disk_count = sum(1 for r in results if r["on_disk"])
         self.assertGreater(
-            on_disk_count, 0,
+            on_disk_count,
+            0,
             "at least one SCAFFOLD module should be on disk",
         )
         if not self._has_torch():
             export_ok_count = sum(1 for r in results if r["export_ok"])
             self.assertEqual(
-                export_ok_count, 0,
+                export_ok_count,
+                0,
                 "without torch, all SCAFFOLD modules must report "
                 "export_ok=False (env-aware SKIP)",
             )
@@ -155,11 +160,14 @@ class TestSmokeMetricsParsing(unittest.TestCase):
     def test_decrease_invariant(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "per_epoch_metrics.json"
-            self._write_metrics(path, [
-                {"train_loss": 1.92, "decode_ratio_rdkit_strict": 1.0},
-                {"train_loss": 1.91, "decode_ratio_rdkit_strict": 1.0},
-                {"train_loss": 1.90, "decode_ratio_rdkit_strict": 1.0},
-            ])
+            self._write_metrics(
+                path,
+                [
+                    {"train_loss": 1.92, "decode_ratio_rdkit_strict": 1.0},
+                    {"train_loss": 1.91, "decode_ratio_rdkit_strict": 1.0},
+                    {"train_loss": 1.90, "decode_ratio_rdkit_strict": 1.0},
+                ],
+            )
             result = gate_module.parse_smoke_metrics(path)
             self.assertTrue(result["passed_decrease"])
             self.assertTrue(result["passed_decode"])
@@ -170,10 +178,13 @@ class TestSmokeMetricsParsing(unittest.TestCase):
         """loss_last > 10x loss_first is catastrophic collapse → FAIL."""
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "per_epoch_metrics.json"
-            self._write_metrics(path, [
-                {"train_loss": 1.0, "decode_ratio_rdkit_strict": 1.0},
-                {"train_loss": 50.0, "decode_ratio_rdkit_strict": 1.0},
-            ])
+            self._write_metrics(
+                path,
+                [
+                    {"train_loss": 1.0, "decode_ratio_rdkit_strict": 1.0},
+                    {"train_loss": 50.0, "decode_ratio_rdkit_strict": 1.0},
+                ],
+            )
             result = gate_module.parse_smoke_metrics(path)
             self.assertFalse(result["passed_decrease"])
 
@@ -183,20 +194,26 @@ class TestSmokeMetricsParsing(unittest.TestCase):
         """
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "per_epoch_metrics.json"
-            self._write_metrics(path, [
-                {"train_loss": 1.92, "decode_ratio_rdkit_strict": 1.0},
-                {"train_loss": 1.92, "decode_ratio_rdkit_strict": 1.0},
-            ])
+            self._write_metrics(
+                path,
+                [
+                    {"train_loss": 1.92, "decode_ratio_rdkit_strict": 1.0},
+                    {"train_loss": 1.92, "decode_ratio_rdkit_strict": 1.0},
+                ],
+            )
             result = gate_module.parse_smoke_metrics(path)
             self.assertFalse(result["passed_decrease"])
 
     def test_nan_invariant(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "per_epoch_metrics.json"
-            self._write_metrics(path, [
-                {"train_loss": float("nan"), "decode_ratio_rdkit_strict": 1.0},
-                {"train_loss": float("nan"), "decode_ratio_rdkit_strict": 1.0},
-            ])
+            self._write_metrics(
+                path,
+                [
+                    {"train_loss": float("nan"), "decode_ratio_rdkit_strict": 1.0},
+                    {"train_loss": float("nan"), "decode_ratio_rdkit_strict": 1.0},
+                ],
+            )
             result = gate_module.parse_smoke_metrics(path)
             self.assertFalse(result["passed_decrease"])
             # JSON deserializes NaN as float('nan'), not None.
@@ -217,10 +234,13 @@ class TestSmokeMetricsParsing(unittest.TestCase):
         """
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "per_epoch_metrics.json"
-            self._write_metrics(path, [
-                {"train_loss": 1.92, "decode_ratio_rdkit_strict": 1.0},
-                {"train_loss": 1.90, "decode_ratio_rdkit_strict": 0.0},
-            ])
+            self._write_metrics(
+                path,
+                [
+                    {"train_loss": 1.92, "decode_ratio_rdkit_strict": 1.0},
+                    {"train_loss": 1.90, "decode_ratio_rdkit_strict": 0.0},
+                ],
+            )
             result = gate_module.parse_smoke_metrics(path)
             self.assertTrue(result["passed_decrease"])
             self.assertFalse(result["passed_decode"])
@@ -246,14 +266,21 @@ class TestSubprocessExitCodePropagation(unittest.TestCase):
                 gate_module,
                 "verify_module_exports",
                 return_value=[
-                    {"filename": "fake.py", "module_attr": "fake",
-                     "expected": "fake_fn", "on_disk": True,
-                     "export_ok": True, "present": True, "error": None}
+                    {
+                        "filename": "fake.py",
+                        "module_attr": "fake",
+                        "expected": "fake_fn",
+                        "on_disk": True,
+                        "export_ok": True,
+                        "present": True,
+                        "error": None,
+                    }
                     for _ in range(11)
                 ],
             ):
                 result = gate_module.gate_main(
-                    out_dir=out_dir, skip_smoke=True,
+                    out_dir=out_dir,
+                    skip_smoke=True,
                 )
                 self.assertEqual(result["verdict"], "PASS")
                 self.assertTrue(Path(out_dir / "gate_result.json").is_file())
@@ -266,19 +293,32 @@ class TestSubprocessExitCodePropagation(unittest.TestCase):
                 gate_module,
                 "verify_module_exports",
                 return_value=[
-                    {"filename": "fake.py", "module_attr": "fake",
-                     "expected": "fake_fn", "on_disk": True,
-                     "export_ok": True, "present": True, "error": None}
+                    {
+                        "filename": "fake.py",
+                        "module_attr": "fake",
+                        "expected": "fake_fn",
+                        "on_disk": True,
+                        "export_ok": True,
+                        "present": True,
+                        "error": None,
+                    }
                     for _ in range(10)
-                ] + [
-                    {"filename": "broken.py", "module_attr": "broken",
-                     "expected": "broken_fn", "on_disk": True,
-                     "export_ok": False, "present": False,
-                     "error": "ModuleNotFoundError: No module named 'torch'"}
+                ]
+                + [
+                    {
+                        "filename": "broken.py",
+                        "module_attr": "broken",
+                        "expected": "broken_fn",
+                        "on_disk": True,
+                        "export_ok": False,
+                        "present": False,
+                        "error": "ModuleNotFoundError: No module named 'torch'",
+                    }
                 ],
             ):
                 result = gate_module.gate_main(
-                    out_dir=out_dir, skip_smoke=True,
+                    out_dir=out_dir,
+                    skip_smoke=True,
                 )
                 self.assertEqual(result["verdict"], "FAIL")
                 self.assertIn("broken.py", result["reason"])
@@ -290,9 +330,15 @@ class TestSubprocessExitCodePropagation(unittest.TestCase):
                 gate_module,
                 "verify_module_exports",
                 return_value=[
-                    {"filename": f"f{i}.py", "module_attr": f"a{i}",
-                     "expected": f"fn{i}", "on_disk": True,
-                     "export_ok": True, "present": True, "error": None}
+                    {
+                        "filename": f"f{i}.py",
+                        "module_attr": f"a{i}",
+                        "expected": f"fn{i}",
+                        "on_disk": True,
+                        "export_ok": True,
+                        "present": True,
+                        "error": None,
+                    }
                     for i in range(11)
                 ],
             ):
@@ -320,6 +366,7 @@ class TestPreFlightIntegration(unittest.TestCase):
 
     def test_gate_function_is_importable(self) -> None:
         from molmetal.scripts import pre_flight_check
+
         self.assertTrue(
             hasattr(pre_flight_check, "gate_wf385_scaffold_loss_wire_in_verified"),
             "gate_wf385_scaffold_loss_wire_in_verified must be a "
@@ -328,15 +375,18 @@ class TestPreFlightIntegration(unittest.TestCase):
 
     def test_gate_is_in_build_gates_all(self) -> None:
         from molmetal.scripts import pre_flight_check
+
         gates = pre_flight_check.build_gates("all")
         gate_names = [name for name, _ in gates]
         self.assertIn(
-            "p3_wf385_scaffold_loss_wire_in_verified", gate_names,
+            "p3_wf385_scaffold_loss_wire_in_verified",
+            gate_names,
             "Wf-385-A3 gate must be wired into build_gates('all')",
         )
 
     def test_gate_priority_and_pipeline_labels(self) -> None:
         from molmetal.scripts import pre_flight_check
+
         gates = pre_flight_check.build_gates("all")
         wf385 = [
             (name, runner)
@@ -348,19 +398,22 @@ class TestPreFlightIntegration(unittest.TestCase):
         # pipeline; verify the call signature compiles by inspecting
         # the lambda source (Python 3.11+).
         import inspect
+
         src = inspect.getsource(wf385[0][1])
         self.assertIn("P3", src)
         self.assertIn("wf385a3", src)
 
     def test_expected_gate_counts_includes_wf385(self) -> None:
         from molmetal.scripts import pre_flight_check
+
         # Per Wf-345-B3 auto-recompute, the audit gate uses
         # ``len(build_gates(pipeline))`` at runtime; the hardcoded
         # EXPECTED_GATE_COUNTS constant is kept for backward-compat.
         # The auto-recompute ensures the count is consistent.
         gates = pre_flight_check.build_gates("all")
         self.assertGreaterEqual(
-            len(gates), 95,
+            len(gates),
+            95,
             f"actual gate count {len(gates)} must be ≥ 95 "
             f"(94 pre-Wf-385 + 1 NEW Wf-385-A3)",
         )
@@ -381,16 +434,25 @@ class TestEndToEndHappyPath(unittest.TestCase):
                 gate_module,
                 "verify_module_exports",
                 return_value=[
-                    {"filename": f"f{i}.py", "module_attr": f"a{i}",
-                     "expected": f"fn{i}", "on_disk": True,
-                     "export_ok": True, "present": True, "error": None}
+                    {
+                        "filename": f"f{i}.py",
+                        "module_attr": f"a{i}",
+                        "expected": f"fn{i}",
+                        "on_disk": True,
+                        "export_ok": True,
+                        "present": True,
+                        "error": None,
+                    }
                     for i in range(11)
                 ],
             ):
-                rc = gate_module.main([
-                    "--out-dir", str(out_dir),
-                    "--skip-smoke",
-                ])
+                rc = gate_module.main(
+                    [
+                        "--out-dir",
+                        str(out_dir),
+                        "--skip-smoke",
+                    ]
+                )
                 self.assertEqual(rc, 0)
                 # gate_result.json must exist + have verdict=PASS.
                 json_path = out_dir / "gate_result.json"
@@ -405,21 +467,36 @@ class TestEndToEndHappyPath(unittest.TestCase):
                 gate_module,
                 "verify_module_exports",
                 return_value=[
-                    {"filename": "ok.py", "module_attr": "ok",
-                     "expected": "ok", "on_disk": True,
-                     "export_ok": True, "present": True, "error": None}
+                    {
+                        "filename": "ok.py",
+                        "module_attr": "ok",
+                        "expected": "ok",
+                        "on_disk": True,
+                        "export_ok": True,
+                        "present": True,
+                        "error": None,
+                    }
                     for _ in range(11)
-                ][:10] + [
-                    {"filename": "broken.py", "module_attr": "broken",
-                     "expected": "broken", "on_disk": True,
-                     "export_ok": False, "present": False,
-                     "error": "missing export"}
+                ][:10]
+                + [
+                    {
+                        "filename": "broken.py",
+                        "module_attr": "broken",
+                        "expected": "broken",
+                        "on_disk": True,
+                        "export_ok": False,
+                        "present": False,
+                        "error": "missing export",
+                    }
                 ],
             ):
-                rc = gate_module.main([
-                    "--out-dir", str(out_dir),
-                    "--skip-smoke",
-                ])
+                rc = gate_module.main(
+                    [
+                        "--out-dir",
+                        str(out_dir),
+                        "--skip-smoke",
+                    ]
+                )
                 self.assertEqual(rc, 1)
 
 

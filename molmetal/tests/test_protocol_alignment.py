@@ -33,6 +33,7 @@ many candidates as it can within ``--n-simulations``); ``--n-samples``
 is recorded on the cell.warnings audit and consumed by downstream
 metrics that want to enforce a per-cell cap.
 """
+
 import pytest
 
 from molmetal.scripts import r4_lambda_only_run as lambda_run
@@ -48,9 +49,9 @@ def test_lambda_run_n_samples_default_is_targetdiff_aligned():
     """Phase 3 bumped --n-samples default 8 -> 100 (TargetDiff per-cell)."""
     parser = lambda_run._build_argparser()
     args = parser.parse_args(["--output-dir", "/tmp/_test_p3"])
-    assert args.n_samples == 100, (
-        f"--n-samples default should be 100 (TargetDiff per-cell), got {args.n_samples}"
-    )
+    assert (
+        args.n_samples == 100
+    ), f"--n-samples default should be 100 (TargetDiff per-cell), got {args.n_samples}"
 
 
 def test_lambda_run_n_samples_backward_compatible_via_explicit_8():
@@ -70,7 +71,9 @@ def test_lambda_run_pocket10_radius_default_is_crossdocked2020():
 def test_lambda_run_pocket10_radius_legacy_8A_recoverable():
     """Setting --pocket10-radius 8.0 recovers the legacy 8 Å crop."""
     parser = lambda_run._build_argparser()
-    args = parser.parse_args(["--output-dir", "/tmp/_test_p3", "--pocket10-radius", "8.0"])
+    args = parser.parse_args(
+        ["--output-dir", "/tmp/_test_p3", "--pocket10-radius", "8.0"]
+    )
     assert args.pocket10_radius == 8.0
 
 
@@ -104,6 +107,7 @@ def _read_sweep_source():
     string for each flag.
     """
     import os
+
     src_path = os.path.abspath(sweep.__file__)
     with open(src_path) as fh:
         return fh.read()
@@ -118,6 +122,7 @@ def _extract_add_argument_block(source: str, flag_name: str) -> str:
     present.
     """
     import re
+
     start_pat = re.compile(
         r"parser\.add_argument\(\s*['\"](--" + re.escape(flag_name) + r")['\"]"
     )
@@ -137,13 +142,14 @@ def _extract_add_argument_block(source: str, flag_name: str) -> str:
         i += 1
     if depth != 0:
         # Unbalanced — give up; return the substring up to EOF.
-        return source[m.start():]
-    return source[m.start():i]
+        return source[m.start() :]
+    return source[m.start() : i]
 
 
 def _extract_default_value(add_argument_call: str):
     """Pull the ``default=...`` kwarg value out of an add_argument call."""
     import re
+
     m = re.search(r"default\s*=\s*([^,\n]+)", add_argument_call)
     if m is None:
         return None
@@ -155,9 +161,9 @@ def test_sweep_physical_exhaustiveness_default_is_targetdiff_aligned():
     source = _read_sweep_source()
     call = _extract_add_argument_block(source, "physical-exhaustiveness")
     assert call, "--physical-exhaustiveness must be wired into r4_c_full_sweep.main()"
-    assert "default=8" in call, (
-        f"--physical-exhaustiveness default should be 8 (TargetDiff).  Got: {call[:200]}"
-    )
+    assert (
+        "default=8" in call
+    ), f"--physical-exhaustiveness default should be 8 (TargetDiff).  Got: {call[:200]}"
 
 
 def test_sweep_physical_exhaustiveness_backward_compatible_via_explicit_1():
@@ -174,9 +180,9 @@ def test_sweep_pocket10_radius_default_is_crossdocked2020():
     source = _read_sweep_source()
     call = _extract_add_argument_block(source, "pocket10-radius")
     assert call, "--pocket10-radius must be wired into r4_c_full_sweep.main()"
-    assert "default=10.0" in call, (
-        f"--pocket10-radius default should be 10.0.  Got: {call[:200]}"
-    )
+    assert (
+        "default=10.0" in call
+    ), f"--pocket10-radius default should be 10.0.  Got: {call[:200]}"
 
 
 def test_sweep_pocket10_radius_legacy_8A_recoverable():
@@ -209,9 +215,9 @@ def test_sweep_default_engine_still_both():
     source = _read_sweep_source()
     call = _extract_add_argument_block(source, "engine")
     assert call, "--engine must be wired into r4_c_full_sweep.main()"
-    assert "default=\"both\"" in call or "default='both'" in call, (
-        f"--engine default should be 'both' (D7).  Got: {call[:200]}"
-    )
+    assert (
+        'default="both"' in call or "default='both'" in call
+    ), f"--engine default should be 'both' (D7).  Got: {call[:200]}"
 
 
 # -------------------------------------------------------------------
@@ -226,21 +232,23 @@ def test_lambda_run_run_sweep_signature_accepts_protocol_align_kwargs():
     in the Lambda 5x1 pilots (see ``molmetal/reports/wf_round12_lambda_pilot/``).
     """
     import inspect
+
     sig = inspect.signature(lambda_run.run_sweep)
     for name in ("n_samples", "pocket10_radius", "reference_ligand"):
-        assert name in sig.parameters, (
-            f"run_sweep() must accept Phase-3 kwarg '{name}' (got {list(sig.parameters)})"
-        )
+        assert (
+            name in sig.parameters
+        ), f"run_sweep() must accept Phase-3 kwarg '{name}' (got {list(sig.parameters)})"
 
 
 def test_lambda_run_run_one_cell_signature_accepts_protocol_align_kwargs():
     """run_one_cell() must accept the three Phase-3 kwargs."""
     import inspect
+
     sig = inspect.signature(lambda_run.run_one_cell)
     for name in ("n_samples", "pocket10_radius", "reference_ligand"):
-        assert name in sig.parameters, (
-            f"run_one_cell() must accept Phase-3 kwarg '{name}' (got {list(sig.parameters)})"
-        )
+        assert (
+            name in sig.parameters
+        ), f"run_one_cell() must accept Phase-3 kwarg '{name}' (got {list(sig.parameters)})"
 
 
 # -------------------------------------------------------------------
@@ -256,18 +264,18 @@ def test_sweep_engine_default_still_both():
     source = _read_sweep_source()
     call = _extract_add_argument_block(source, "engine")
     assert call, "--engine must be wired into r4_c_full_sweep.main()"
-    assert "default=\"both\"" in call or "default='both'" in call, (
-        f"--engine default should be 'both' (D7).  Got: {call[:200]}"
-    )
+    assert (
+        'default="both"' in call or "default='both'" in call
+    ), f"--engine default should be 'both' (D7).  Got: {call[:200]}"
 
 
 def test_sweep_phase3_flags_all_present_in_source():
     """Phase 3 flags must all be wired into r4_c_full_sweep.main()."""
     source = _read_sweep_source()
     for flag in ("physical-exhaustiveness", "pocket10-radius", "reference-ligand"):
-        assert _extract_add_argument_block(source, flag), (
-            f"--{flag} must be wired into r4_c_full_sweep.main()"
-        )
+        assert _extract_add_argument_block(
+            source, flag
+        ), f"--{flag} must be wired into r4_c_full_sweep.main()"
 
 
 def test_r10_cfg_phase3_flags_all_present_in_source():
@@ -279,6 +287,7 @@ def test_r10_cfg_phase3_flags_all_present_in_source():
     """
     import os
     import re
+
     r10_path = os.path.abspath(
         os.path.join(os.path.dirname(sweep.__file__), "r10_cfg_real_crossdocked.py")
     )
@@ -301,6 +310,7 @@ def test_r10_cfg_engine_dock_call_uses_physical_exhaustiveness():
     takes effect.
     """
     import os
+
     r10_path = os.path.abspath(
         os.path.join(os.path.dirname(sweep.__file__), "r10_cfg_real_crossdocked.py")
     )

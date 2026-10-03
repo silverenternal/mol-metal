@@ -37,7 +37,9 @@ def test_empty_inventory_has_higher_cost_than_known_inventory():
 
 def test_custom_weights_are_normalized_and_used():
     smiles = MOLECULES["aspirin"]
-    estimator = SynthesisCostEstimator([smiles], sa_weight=2, bb_weight=1, complexity_weight=1)
+    estimator = SynthesisCostEstimator(
+        [smiles], sa_weight=2, bb_weight=1, complexity_weight=1
+    )
     value = estimator.cost(smiles)
     assert 0.0 <= value <= 1.0
     assert estimator.sa_weight == pytest.approx(0.5)

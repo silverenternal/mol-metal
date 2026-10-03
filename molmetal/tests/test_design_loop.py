@@ -44,9 +44,9 @@ from molmetal.orchestration.design_loop import (
 # ---------------------------------------------------------------------------
 def _tiny_pocket(n_atoms: int = 10) -> Pocket:
     coords = torch.zeros(n_atoms, 3, dtype=torch.float32)
-    atom_types = torch.tensor(
-        [6, 7, 8, 16, 6, 7, 8, 16, 6, 7], dtype=torch.long
-    )[:n_atoms]
+    atom_types = torch.tensor([6, 7, 8, 16, 6, 7, 8, 16, 6, 7], dtype=torch.long)[
+        :n_atoms
+    ]
     residue_ids = torch.arange(n_atoms, dtype=torch.long)
     chain_ids = torch.zeros(n_atoms, dtype=torch.long)
     mask = torch.ones(n_atoms, dtype=torch.bool)
@@ -139,9 +139,9 @@ class TestDesignLoopTopKOrdering:
 
         # All scores are finite
         for c in result.candidates:
-            assert math.isfinite(c.combined_score), (
-                f"non-finite combined_score at rank {c.rank}: {c.combined_score}"
-            )
+            assert math.isfinite(
+                c.combined_score
+            ), f"non-finite combined_score at rank {c.rank}: {c.combined_score}"
 
     def test_loop_topk_respects_smaller_n_top(self):
         """When ``n_top < n_dock`` the returned list is exactly ``n_top``."""

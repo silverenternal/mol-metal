@@ -54,25 +54,35 @@ class QM9Dataset(BaseMoleculeDataset):
     # Canonical QM9 regression targets (atomic units), in case the
     # caller wants to know which index maps to which property.
     TARGETS: tuple[str, ...] = (
-        "mu",            # dipole moment
-        "alpha",         # isotropic polarizability
-        "homo",          # HOMO energy
-        "lumo",          # LUMO energy
-        "gap",           # HOMO-LUMO gap
-        "r2",            # electronic spatial extent
-        "zpve",          # zero-point vibrational energy
-        "U0",            # internal energy at 0K
-        "U",             # internal energy at 298K
-        "H",             # enthalpy at 298K
-        "G",             # free energy at 298K
-        "Cv",            # heat capacity at 298K
+        "mu",  # dipole moment
+        "alpha",  # isotropic polarizability
+        "homo",  # HOMO energy
+        "lumo",  # LUMO energy
+        "gap",  # HOMO-LUMO gap
+        "r2",  # electronic spatial extent
+        "zpve",  # zero-point vibrational energy
+        "U0",  # internal energy at 0K
+        "U",  # internal energy at 298K
+        "H",  # enthalpy at 298K
+        "G",  # free energy at 298K
+        "Cv",  # heat capacity at 298K
     )
 
     # CSV column names in DeepChem's gdb9.sdf.csv, in the order we want
     # to materialize them into ``label``.  Lower-cased to match.
     _CSV_COLUMNS: tuple[str, ...] = (
-        "mu", "alpha", "homo", "lumo", "gap", "r2", "zpve",
-        "u0", "u298", "h298", "g298", "cv",
+        "mu",
+        "alpha",
+        "homo",
+        "lumo",
+        "gap",
+        "r2",
+        "zpve",
+        "u0",
+        "u298",
+        "h298",
+        "g298",
+        "cv",
     )
 
     # Source flag set during _load_raw; values: "real" / "synthetic".
@@ -119,8 +129,10 @@ class QM9Dataset(BaseMoleculeDataset):
             samples = self._build_real_samples()
             self.source = "real"
         except Exception as exc:  # pragma: no cover - network/env fallback
-            print(f"[QM9Dataset] real-data path failed ({exc!r}); "
-                  f"falling back to synthetic RDKit molecules.")
+            print(
+                f"[QM9Dataset] real-data path failed ({exc!r}); "
+                f"falling back to synthetic RDKit molecules."
+            )
             samples = self._build_synthetic_samples()
             self.source = "synthetic"
 
@@ -159,13 +171,12 @@ class QM9Dataset(BaseMoleculeDataset):
 
         from rdkit import Chem
         from rdkit import RDLogger
+
         # Silence the "Explicit valence" warnings we know about - they're
         # rare (~few hundred of 134k molecules) and we just skip them.
         RDLogger.DisableLog("rdApp.*")
 
-        suppl = Chem.SDMolSupplier(
-            str(sdf_path), removeHs=False, sanitize=True
-        )
+        suppl = Chem.SDMolSupplier(str(sdf_path), removeHs=False, sanitize=True)
 
         samples: list[dict] = []
         for mol in suppl:
@@ -189,11 +200,13 @@ class QM9Dataset(BaseMoleculeDataset):
                 dtype=np.int64,
             )
             label = labels_arr[label_index[mol_id]]
-            samples.append({
-                "coords": coords,
-                "atom_types": atom_types,
-                "label": label,
-            })
+            samples.append(
+                {
+                    "coords": coords,
+                    "atom_types": atom_types,
+                    "label": label,
+                }
+            )
 
         if not samples:
             raise RuntimeError("Parsed zero molecules from QM9 SDF.")
@@ -217,36 +230,113 @@ class QM9Dataset(BaseMoleculeDataset):
         # Small library of small-molecule SMILES that ETKDG can embed
         # and MMFF can optimize without complaint.
         seed_smiles: list[str] = [
-            "C", "CC", "CCC", "CCCC", "CCCCC",
-            "CO", "CCO", "CCCO", "CCCCO",
-            "CN", "CCN", "CCCN",
-            "C=O", "CC=O", "CCC=O", "CC(=O)C",
-            "COC", "CCOC", "C1CC1", "C1CCC1", "C1CCCC1",
-            "c1ccccc1", "Cc1ccccc1", "Oc1ccccc1", "Nc1ccccc1",
-            "FC", "ClC", "FCF",
-            "CC(=O)O", "CC(=O)N", "CC#C", "C=CC",
-            "CN(C)C", "C1CCN1", "C1CCOC1", "C1CCNC1",
-            "C1=CC=CC=C1", "OCC(O)C", "NCC(=O)O",
-            "CC(C)C", "CC(C)O", "CC(C)N", "C1CCCCN1",
-            "C1OCC1", "C1CC1C", "c1ccc2ccccc2c1",
-            "CCCN", "CCC(=O)O", "CCCCCC", "CCCCCCO",
-            "C(F)(F)F", "C(N)(N)=O", "CC#N", "CC#C",
-            "CCC#N", "CNO", "CC(=O)OC",
-            "OCCO", "OCCCO", "OCCN", "c1ccncc1",
-            "c1ccoc1", "c1ccsc1", "C1CCCC1=O", "CC1CCCCC1",
-            "CCCCC=O", "CCCCC(=O)O", "C1CCNCC1", "C1CCOCC1",
-            "C1CCCC1C", "c1cnc2ccccc2c1", "c1ccc(F)cc1",
-            "c1ccc(Cl)cc1", "c1ccc(O)cc1", "c1ccc(N)cc1",
-            "CC1CCCCC1=O", "CC(=O)CC", "O=CC=O",
-            "CC(=O)NCC", "OCC=O", "OC(=O)CC",
-            "CCC(=O)C", "NCCN", "NCCCN", "NCCCCN",
-            "OC1CCCCC1", "NC1CCCCC1", "OC(=O)C",
-            "CCC1CCCCC1", "CCC1CCNCC1", "CCCCC1CCCCC1",
-            "CCOCC", "CCNCC", "COCOC", "COCCO",
-            "C1CC2CCCCC2C1", "c1ccc2[nH]ccc2c1",
-            "C1CC1.O", "C1CC1.N", "C1CC1C(=O)O",
-            "CCC1=CC=CC=C1", "CC(C)C(=O)O",
-            "CCO", "CCN", "CCC", "CCCC", "CCCCC",
+            "C",
+            "CC",
+            "CCC",
+            "CCCC",
+            "CCCCC",
+            "CO",
+            "CCO",
+            "CCCO",
+            "CCCCO",
+            "CN",
+            "CCN",
+            "CCCN",
+            "C=O",
+            "CC=O",
+            "CCC=O",
+            "CC(=O)C",
+            "COC",
+            "CCOC",
+            "C1CC1",
+            "C1CCC1",
+            "C1CCCC1",
+            "c1ccccc1",
+            "Cc1ccccc1",
+            "Oc1ccccc1",
+            "Nc1ccccc1",
+            "FC",
+            "ClC",
+            "FCF",
+            "CC(=O)O",
+            "CC(=O)N",
+            "CC#C",
+            "C=CC",
+            "CN(C)C",
+            "C1CCN1",
+            "C1CCOC1",
+            "C1CCNC1",
+            "C1=CC=CC=C1",
+            "OCC(O)C",
+            "NCC(=O)O",
+            "CC(C)C",
+            "CC(C)O",
+            "CC(C)N",
+            "C1CCCCN1",
+            "C1OCC1",
+            "C1CC1C",
+            "c1ccc2ccccc2c1",
+            "CCCN",
+            "CCC(=O)O",
+            "CCCCCC",
+            "CCCCCCO",
+            "C(F)(F)F",
+            "C(N)(N)=O",
+            "CC#N",
+            "CC#C",
+            "CCC#N",
+            "CNO",
+            "CC(=O)OC",
+            "OCCO",
+            "OCCCO",
+            "OCCN",
+            "c1ccncc1",
+            "c1ccoc1",
+            "c1ccsc1",
+            "C1CCCC1=O",
+            "CC1CCCCC1",
+            "CCCCC=O",
+            "CCCCC(=O)O",
+            "C1CCNCC1",
+            "C1CCOCC1",
+            "C1CCCC1C",
+            "c1cnc2ccccc2c1",
+            "c1ccc(F)cc1",
+            "c1ccc(Cl)cc1",
+            "c1ccc(O)cc1",
+            "c1ccc(N)cc1",
+            "CC1CCCCC1=O",
+            "CC(=O)CC",
+            "O=CC=O",
+            "CC(=O)NCC",
+            "OCC=O",
+            "OC(=O)CC",
+            "CCC(=O)C",
+            "NCCN",
+            "NCCCN",
+            "NCCCCN",
+            "OC1CCCCC1",
+            "NC1CCCCC1",
+            "OC(=O)C",
+            "CCC1CCCCC1",
+            "CCC1CCNCC1",
+            "CCCCC1CCCCC1",
+            "CCOCC",
+            "CCNCC",
+            "COCOC",
+            "COCCO",
+            "C1CC2CCCCC2C1",
+            "c1ccc2[nH]ccc2c1",
+            "C1CC1.O",
+            "C1CC1.N",
+            "C1CC1C(=O)O",
+            "CCC1=CC=CC=C1",
+            "CC(C)C(=O)O",
+            "CCO",
+            "CCN",
+            "CCC",
+            "CCCC",
+            "CCCCC",
         ]
 
         rng = np.random.default_rng(42)
@@ -326,16 +416,16 @@ class QM9Dataset(BaseMoleculeDataset):
                 [mu, alpha, homo, lumo, gap, r2, zpve, u0, u, h, g, cv],
                 dtype=np.float32,
             )
-            samples.append({
-                "coords": coords,
-                "atom_types": atom_types,
-                "label": label,
-            })
+            samples.append(
+                {
+                    "coords": coords,
+                    "atom_types": atom_types,
+                    "label": label,
+                }
+            )
 
         if not samples:
-            raise RuntimeError(
-                "Synthetic QM9 fallback generated zero molecules."
-            )
+            raise RuntimeError("Synthetic QM9 fallback generated zero molecules.")
         return samples
 
     # ------------------------------------------------------------------
@@ -372,6 +462,7 @@ class QM9Dataset(BaseMoleculeDataset):
         # doesn't reject them.
         try:
             import numpy as _np  # noqa: F401  (registers numpy reconstruct)
+
             return torch.load(str(path), map_location="cpu", weights_only=False)
         except TypeError:
             # Older PyTorch that doesn't accept weights_only kwarg.
@@ -391,8 +482,8 @@ class QM9Dataset(BaseMoleculeDataset):
         n_val = int(round(0.1 * n))
         # Ensure all samples end up in exactly one split.
         train_idx = perm[:n_train]
-        val_idx = perm[n_train:n_train + n_val]
-        test_idx = perm[n_train + n_val:]
+        val_idx = perm[n_train : n_train + n_val]
+        test_idx = perm[n_train + n_val :]
 
         if self.split == "train":
             chosen = train_idx

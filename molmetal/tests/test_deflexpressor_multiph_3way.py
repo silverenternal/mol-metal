@@ -152,9 +152,9 @@ def test_mph_features_shape_n_by_nbins_sq(platinai_rows):
     assert valid.shape == (n_test,)
     # At least 30 % should succeed — RDKit embedding can fail on
     # d-block heavy atoms.
-    assert int(valid.sum()) >= max(1, n_test // 3), (
-        f"too few valid MPH rows: {int(valid.sum())}/{n_test}"
-    )
+    assert int(valid.sum()) >= max(
+        1, n_test // 3
+    ), f"too few valid MPH rows: {int(valid.sum())}/{n_test}"
 
 
 # ---------------------------------------------------------------------------
@@ -167,9 +167,9 @@ def test_pll_features_shape_n_by_k(platinai_rows):
     assert feats.shape == (n_test, PLL_K)
     assert valid.shape == (n_test,)
     # Numpy fallback should succeed on >=30 % (scipy optional).
-    assert int(valid.sum()) >= max(1, n_test // 3), (
-        f"too few valid PLL rows: {int(valid.sum())}/{n_test}"
-    )
+    assert int(valid.sum()) >= max(
+        1, n_test // 3
+    ), f"too few valid PLL rows: {int(valid.sum())}/{n_test}"
 
 
 # ---------------------------------------------------------------------------
@@ -177,7 +177,10 @@ def test_pll_features_shape_n_by_k(platinai_rows):
 # ---------------------------------------------------------------------------
 def test_build_design_matrices_shape_contract(cached_features):
     dm = build_design_matrices(
-        rows=[], seed=0, test_frac=0.2, cached_features=cached_features,
+        rows=[],
+        seed=0,
+        test_frac=0.2,
+        cached_features=cached_features,
     )
     assert isinstance(dm, DesignMatrices)
     assert dm.y_tr.shape[0] == dm.astr_X_tr.shape[0]
@@ -227,12 +230,20 @@ def test_stable_ridge_fit_finite():
 # ---------------------------------------------------------------------------
 def test_fit_ast_returns_finite_r2(cached_features):
     dm = build_design_matrices(
-        rows=[], seed=0, test_frac=0.2, cached_features=cached_features,
+        rows=[],
+        seed=0,
+        test_frac=0.2,
+        cached_features=cached_features,
     )
     hp = dict(DEFAULT_HYPERPARAMS["ast"])
     hp.update({"depth": 2, "population": 8, "generations": 4})
     r2, train_r2 = fit_ast(
-        dm.astr_X_tr, dm.y_tr, dm.astr_X_te, dm.y_te, seed=0, hp=hp,
+        dm.astr_X_tr,
+        dm.y_tr,
+        dm.astr_X_te,
+        dm.y_te,
+        seed=0,
+        hp=hp,
     )
     assert math.isfinite(r2), f"ast R^2 not finite: {r2}"
     assert math.isfinite(train_r2)
@@ -243,12 +254,20 @@ def test_fit_ast_returns_finite_r2(cached_features):
 # ---------------------------------------------------------------------------
 def test_fit_hilbert_returns_finite_r2(cached_features):
     dm = build_design_matrices(
-        rows=[], seed=0, test_frac=0.2, cached_features=cached_features,
+        rows=[],
+        seed=0,
+        test_frac=0.2,
+        cached_features=cached_features,
     )
     hp = dict(DEFAULT_HYPERPARAMS["hilbert"])
     hp.update({"n_iters": 50, "ridge_alpha": 0.1})
     r2, train_r2 = fit_hilbert(
-        dm.hil_X_tr, dm.y_tr, dm.hil_X_te, dm.y_te, seed=0, hp=hp,
+        dm.hil_X_tr,
+        dm.y_tr,
+        dm.hil_X_te,
+        dm.y_te,
+        seed=0,
+        hp=hp,
     )
     assert math.isfinite(r2), f"hilbert R^2 not finite: {r2}"
     assert -1e6 < r2 < 1e6, f"hilbert R^2 out of bounds: {r2}"
@@ -259,11 +278,19 @@ def test_fit_hilbert_returns_finite_r2(cached_features):
 # ---------------------------------------------------------------------------
 def test_fit_multiph_returns_finite_r2(cached_features):
     dm = build_design_matrices(
-        rows=[], seed=0, test_frac=0.2, cached_features=cached_features,
+        rows=[],
+        seed=0,
+        test_frac=0.2,
+        cached_features=cached_features,
     )
     hp = dict(DEFAULT_HYPERPARAMS["multiph"])
     r2, train_r2 = fit_multiph(
-        dm.mph_X_tr, dm.y_tr, dm.mph_X_te, dm.y_te, seed=0, hp=hp,
+        dm.mph_X_tr,
+        dm.y_tr,
+        dm.mph_X_te,
+        dm.y_te,
+        seed=0,
+        hp=hp,
     )
     assert math.isfinite(r2), f"multiph R^2 not finite: {r2}"
     assert math.isfinite(train_r2)
@@ -274,13 +301,22 @@ def test_fit_multiph_returns_finite_r2(cached_features):
 # ---------------------------------------------------------------------------
 def test_fit_joint_returns_finite_r2(cached_features):
     dm = build_design_matrices(
-        rows=[], seed=0, test_frac=0.2, cached_features=cached_features,
+        rows=[],
+        seed=0,
+        test_frac=0.2,
+        cached_features=cached_features,
     )
     hp = dict(DEFAULT_HYPERPARAMS["joint"])
     hp.update({"n_iters": 30})
     r2, train_r2 = fit_joint(
-        dm.astr_X_tr, dm.mph_X_tr, dm.astr_X_te, dm.mph_X_te,
-        dm.y_tr, dm.y_te, seed=0, hp=hp,
+        dm.astr_X_tr,
+        dm.mph_X_tr,
+        dm.astr_X_te,
+        dm.mph_X_te,
+        dm.y_tr,
+        dm.y_te,
+        seed=0,
+        hp=hp,
     )
     assert math.isfinite(r2), f"joint R^2 not finite: {r2}"
     assert math.isfinite(train_r2)
@@ -291,13 +327,23 @@ def test_fit_joint_returns_finite_r2(cached_features):
 # ---------------------------------------------------------------------------
 def test_fit_3way_returns_finite_r2(cached_features):
     dm = build_design_matrices(
-        rows=[], seed=0, test_frac=0.2, cached_features=cached_features,
+        rows=[],
+        seed=0,
+        test_frac=0.2,
+        cached_features=cached_features,
     )
     hp = dict(DEFAULT_HYPERPARAMS["3way"])
     r2, train_r2 = fit_3way(
-        dm.astr_X_tr, dm.mph_X_tr, dm.pll_X_tr,
-        dm.astr_X_te, dm.mph_X_te, dm.pll_X_te,
-        dm.y_tr, dm.y_te, seed=0, hp=hp,
+        dm.astr_X_tr,
+        dm.mph_X_tr,
+        dm.pll_X_tr,
+        dm.astr_X_te,
+        dm.mph_X_te,
+        dm.pll_X_te,
+        dm.y_tr,
+        dm.y_te,
+        seed=0,
+        hp=hp,
     )
     assert math.isfinite(r2), f"3way R^2 not finite: {r2}"
     assert math.isfinite(train_r2)
@@ -308,7 +354,8 @@ def test_fit_3way_returns_finite_r2(cached_features):
 # ---------------------------------------------------------------------------
 def test_3way_lift_over_ast_mean_is_finite(cached_features, tmp_path):
     payload = run_benchmark_with_cache(
-        cached_features=cached_features, seeds=(0, 1),
+        cached_features=cached_features,
+        seeds=(0, 1),
         methods=("ast", "hilbert", "multiph", "joint", "3way"),
         tmp_path=tmp_path,
     )
@@ -317,7 +364,8 @@ def test_3way_lift_over_ast_mean_is_finite(cached_features, tmp_path):
     assert "3way" in lifts
     # At least one non-AST method must have a finite lift.
     finite_lifts = [
-        v["lift_r2_mean"] for k, v in lifts.items()
+        v["lift_r2_mean"]
+        for k, v in lifts.items()
         if k != "ast" and math.isfinite(v["lift_r2_mean"])
     ]
     assert len(finite_lifts) >= 1, f"no finite lift values: {lifts}"
@@ -330,7 +378,8 @@ def test_3way_lift_over_ast_mean_is_finite(cached_features, tmp_path):
 # ---------------------------------------------------------------------------
 def test_run_benchmark_produces_payload(cached_features, tmp_path):
     payload = run_benchmark_with_cache(
-        cached_features=cached_features, seeds=(0, 1),
+        cached_features=cached_features,
+        seeds=(0, 1),
         methods=("ast", "hilbert"),
         tmp_path=tmp_path,
     )
@@ -351,7 +400,8 @@ def test_run_benchmark_produces_payload(cached_features, tmp_path):
 # ---------------------------------------------------------------------------
 def test_payload_is_json_serialisable(cached_features, tmp_path):
     payload = run_benchmark_with_cache(
-        cached_features=cached_features, seeds=(0,),
+        cached_features=cached_features,
+        seeds=(0,),
         methods=("hilbert", "3way"),
         tmp_path=tmp_path,
     )
@@ -365,7 +415,8 @@ def test_payload_is_json_serialisable(cached_features, tmp_path):
 # ---------------------------------------------------------------------------
 def test_render_markdown_contains_method_table(cached_features, tmp_path):
     payload = run_benchmark_with_cache(
-        cached_features=cached_features, seeds=(0,),
+        cached_features=cached_features,
+        seeds=(0,),
         methods=("ast", "hilbert", "3way"),
         tmp_path=tmp_path,
     )
@@ -381,7 +432,11 @@ def test_render_markdown_contains_method_table(cached_features, tmp_path):
 # Helper — run a mini benchmark with the cached features
 # ---------------------------------------------------------------------------
 def run_benchmark_with_cache(
-    *, cached_features, seeds, methods, tmp_path,
+    *,
+    cached_features,
+    seeds,
+    methods,
+    tmp_path,
 ) -> Dict[str, Any]:
     """Run a tiny benchmark without re-featurising PlatinAI 5K.
 
@@ -393,6 +448,7 @@ def run_benchmark_with_cache(
     from bench_deflexpressor_multiph_3way import (
         DEFAULT_TEST_FRAC,
     )
+
     # Reduce epochs for speed.
     test_frac = DEFAULT_TEST_FRAC
     epochs = 20
@@ -409,9 +465,12 @@ def run_benchmark_with_cache(
         for seed in seeds:
             # _run_one takes cached_features directly.
             rec = _run_one(
-                method=str(method), seed=int(seed),
+                method=str(method),
+                seed=int(seed),
                 cached_features=cached_features,
-                hp=hp, test_frac=float(test_frac), epochs=int(epochs),
+                hp=hp,
+                test_frac=float(test_frac),
+                epochs=int(epochs),
             )
             records.append(rec)
 
@@ -429,7 +488,8 @@ def run_benchmark_with_cache(
                 "peak_mem_mb": float(r.peak_mem_mb),
                 "n_features": int(r.n_features),
                 "n_mph_failed": int(r.n_mph_failed),
-            } for r in m_records
+            }
+            for r in m_records
         }
         per_method[method] = MethodSummary(
             method=method,
@@ -444,7 +504,8 @@ def run_benchmark_with_cache(
         )
 
     ast_r2_arr = np.asarray(
-        [r.r2_test for r in records if r.method == "ast"], dtype=float,
+        [r.r2_test for r in records if r.method == "ast"],
+        dtype=float,
     )
     ast_mean = float(np.nanmean(ast_r2_arr)) if ast_r2_arr.size else 0.0
     lift: Dict[str, Dict[str, Any]] = {}
@@ -457,15 +518,16 @@ def run_benchmark_with_cache(
             }
             continue
         m_r2_arr = np.asarray(
-            [r.r2_test for r in records if r.method == method], dtype=float,
+            [r.r2_test for r in records if r.method == method],
+            dtype=float,
         )
         per_seed_lifts: list = []
         for r in records:
             if r.method != method:
                 continue
             ast_rec = next(
-                (x for x in records if x.method == "ast"
-                 and x.seed == r.seed), None,
+                (x for x in records if x.method == "ast" and x.seed == r.seed),
+                None,
             )
             if ast_rec is None:
                 continue
@@ -516,14 +578,18 @@ def run_benchmark_with_cache(
                 "peak_mem_mb_std": float(per_method[m].peak_mem_mb_std),
                 "n_records": int(per_method[m].n_records),
                 "per_seed": {
-                    str(s): {kk: float(vv)
-                             if isinstance(vv, (int, float, np.floating))
-                             else int(vv) if isinstance(vv, (np.integer,))
-                             else vv
-                             for kk, vv in vals.items()}
+                    str(s): {
+                        kk: float(vv)
+                        if isinstance(vv, (int, float, np.floating))
+                        else int(vv)
+                        if isinstance(vv, (np.integer,))
+                        else vv
+                        for kk, vv in vals.items()
+                    }
                     for s, vals in per_method[m].per_seed.items()
                 },
-            } for m in methods
+            }
+            for m in methods
         },
         "lift_over_ast": lift,
         "records": [r.__dict__ for r in records],

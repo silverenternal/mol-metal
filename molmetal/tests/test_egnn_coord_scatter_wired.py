@@ -182,9 +182,9 @@ def test_egnn_coord_update_parity(device):
     )
     # Expected under the legacy gate: ``coord_msg = dir_vec * coord_scale``.
     expected_legacy_msg = _expected_legacy_coord_msg(layer, h, x, edge_index)
-    assert torch.allclose(msg_legacy, expected_legacy_msg, atol=1e-5), (
-        "Legacy gate path did not reproduce dir_vec * coord_scale."
-    )
+    assert torch.allclose(
+        msg_legacy, expected_legacy_msg, atol=1e-5
+    ), "Legacy gate path did not reproduce dir_vec * coord_scale."
 
     # Reference math for the fused path: rebuild the same axis-angle
     # vector the layer uses and verify the rotation matrix matches
@@ -193,9 +193,7 @@ def test_egnn_coord_update_parity(device):
     diff = x[src] - x[dst]
     dist = diff.norm(dim=-1, keepdim=True).clamp(min=1e-6)
     dir_vec = diff / dist
-    coord_scale = layer.coord_mlp(
-        torch.cat([h[src], h[dst], dist], dim=-1)
-    )
+    coord_scale = layer.coord_mlp(torch.cat([h[src], h[dst], dist], dim=-1))
     # Pre-forward so coord_scale stays at the random init; we just
     # exercise the rotation itself.
     torch.manual_seed(0)
@@ -207,6 +205,7 @@ def test_egnn_coord_update_parity(device):
     axis_angle = (dir_vec * angle).contiguous()
     if device == "cuda":
         from triton_kernels import rotation_from_axis_angle
+
         rot_triton = rotation_from_axis_angle(axis_angle)
         rot_ref = _reference_rotation_from_axis_angle(axis_angle)
         assert torch.allclose(rot_triton, rot_ref, atol=1e-5), (
@@ -291,6 +290,7 @@ def test_egnn_scatter_routes_correctly(device):
     # Compare the T1-gated scatter path (used by the layer) against
     # the plain ``scatter_add_`` baseline.
     from molmetal.models._scatter import scatter_sum_legacy
+
     agg_layer = scatter_sum_legacy(coord_msg, dst, dim=0, dim_size=n_nodes)
     agg_ref = _torch_scatter_add(coord_msg, dst, n_nodes)
 
@@ -337,9 +337,9 @@ def test_egnn_gated_to_torch_on_rdna3(device):
     assert use_fused_coord_update() is False
     msg_off = layer._compute_coord_msg(dir_vec, coord_scale, dist)
     expected_off = dir_vec * coord_scale
-    assert torch.allclose(msg_off, expected_off, atol=1e-6), (
-        "Gate-off path should be bit-equivalent to dir_vec * coord_scale."
-    )
+    assert torch.allclose(
+        msg_off, expected_off, atol=1e-6
+    ), "Gate-off path should be bit-equivalent to dir_vec * coord_scale."
 
     # --- Gate forced ON -> fused path (or legacy fallback on CPU)
     set_use_fused_coord_update(True)
@@ -351,9 +351,9 @@ def test_egnn_gated_to_torch_on_rdna3(device):
     # the right shape; the parity check is covered by
     # ``test_egnn_coord_update_parity``.
     assert msg_on.shape == (edge_index.shape[1], 3)
-    assert torch.isfinite(msg_on).all(), (
-        "Fused-coord-update path produced non-finite values."
-    )
+    assert torch.isfinite(
+        msg_on
+    ).all(), "Fused-coord-update path produced non-finite values."
     if device == "cpu":
         # On CPU the inner try/except falls back to the legacy path,
         # so the gate-on output must equal the gate-off output.

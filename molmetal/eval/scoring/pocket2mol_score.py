@@ -18,6 +18,7 @@ cache is on disk (the original requires Pocket2Mol-specific paths).
 
 Heavy imports are guarded; missing deps return ``None`` for that metric.
 """
+
 from __future__ import annotations
 
 from copy import deepcopy
@@ -29,12 +30,14 @@ try:
     from rdkit import Chem, DataStructs
     from rdkit.Chem import AllChem, Crippen, Descriptors, Lipinski
     from rdkit.Chem.QED import qed
+
     _RDKIT_OK = True
 except ImportError:  # pragma: no cover
     _RDKIT_OK = False
 
 try:
     from molmetal.eval.scoring.sascorer import compute_sa_score
+
     _SA_OK = True
 except Exception:  # pragma: no cover
     _SA_OK = False
@@ -77,7 +80,9 @@ def get_rdkit_rmsd(mol, n_conf: int = 20, random_seed: int = 42) -> List[float]:
     for confId in confIds:
         try:
             AllChem.UFFOptimizeMolecule(mol3d, confId=confId)
-            rmsd_list.append(float(Chem.rdMolAlign.GetBestRMS(mol, mol3d, refId=confId)))
+            rmsd_list.append(
+                float(Chem.rdMolAlign.GetBestRMS(mol, mol3d, refId=confId))
+            )
         except Exception:
             rmsd_list.append(float("nan"))
     if not rmsd_list:
@@ -144,7 +149,9 @@ def _mol_from_smiles(smi: str) -> Optional[Chem.Mol]:
     return Chem.MolFromSmiles(str(smi))
 
 
-def score(smiles_list: List[str], pocket: Optional[Any] = None, **_: Any) -> Optional[Dict[str, Any]]:
+def score(
+    smiles_list: List[str], pocket: Optional[Any] = None, **_: Any
+) -> Optional[Dict[str, Any]]:
     """Score a list of SMILES with the Pocket2Mol metric suite.
 
     Parameters

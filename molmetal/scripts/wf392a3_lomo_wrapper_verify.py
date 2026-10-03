@@ -159,9 +159,9 @@ def extract_wrapper_invocation_block(wrapper_text: str) -> List[str]:
         while chunk.rstrip().endswith("\\"):
             next_nl = wrapper_text.find("\n", i + 1)
             if next_nl < 0:
-                chunk += wrapper_text[i + 1:]
+                chunk += wrapper_text[i + 1 :]
                 break
-            chunk = chunk.rstrip().rstrip("\\") + " " + wrapper_text[i + 1:next_nl]
+            chunk = chunk.rstrip().rstrip("\\") + " " + wrapper_text[i + 1 : next_nl]
             i = next_nl
         # Strip shell continuation backslashes + newlines + extra whitespace
         clean = chunk.replace("\\\n", " ").replace("\\\r\n", " ")
@@ -244,8 +244,8 @@ def extract_wrapper_flags(wrapper_path: Path) -> List[str]:
 @dataclass
 class FlagVerdict:
     flag: str
-    status: str        # PASSED | GAP-TRAINER-MISSING | GAP-WRAPPER-MISSING | INFO
-    evidence: str      # 1-line explanation
+    status: str  # PASSED | GAP-TRAINER-MISSING | GAP-WRAPPER-MISSING | INFO
+    evidence: str  # 1-line explanation
 
 
 @dataclass
@@ -273,13 +273,17 @@ def verify_wrapper_passes_flags(
     if not wrapper_path.exists():
         for f in expected_flags:
             rep.verdicts.append(
-                FlagVerdict(f, "GAP-WRAPPER-MISSING", f"wrapper missing: {wrapper_path}")
+                FlagVerdict(
+                    f, "GAP-WRAPPER-MISSING", f"wrapper missing: {wrapper_path}"
+                )
             )
         return rep
     if not trainer_path.exists():
         for f in expected_flags:
             rep.verdicts.append(
-                FlagVerdict(f, "GAP-TRAINER-MISSING", f"trainer missing: {trainer_path}")
+                FlagVerdict(
+                    f, "GAP-TRAINER-MISSING", f"trainer missing: {trainer_path}"
+                )
             )
         return rep
     rep.wrapper_flag_set = sorted(set(extract_wrapper_flags(wrapper_path)))
@@ -338,6 +342,7 @@ def smoke_bash_syntax(wrapper_path: Path) -> Tuple[bool, str]:
     if not wrapper_path.exists():
         return (False, f"wrapper missing: {wrapper_path}")
     import subprocess
+
     try:
         r = subprocess.run(
             ["bash", "-n", str(wrapper_path)],
@@ -376,7 +381,7 @@ def main() -> int:
         default="",
         help=(
             "JSON list of expected CLI flags (e.g. "
-            "'[\"--chemprop-mode\",\"--chemprop-min-epochs\"]'). "
+            '\'["--chemprop-mode","--chemprop-min-epochs"]\'). '
             "Useful when flag names start with '--' (argparse optional-"
             "arg greediness would otherwise consume them)."
         ),

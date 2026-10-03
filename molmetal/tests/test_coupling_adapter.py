@@ -60,9 +60,7 @@ def test_tmqm_pretraining_dry_run_writes_checkpoint(tmp_path: Path) -> None:
     assert metadata["n_steps"] == 1
     assert metadata["dry_run"] is True
     assert metadata["embed_dim"] == pretrain.EMBED_DIM
-    assert metadata["final_loss"] == pytest.approx(
-        out["metadata"].final_loss, rel=1e-5
-    )
+    assert metadata["final_loss"] == pytest.approx(out["metadata"].final_loss, rel=1e-5)
 
 
 def test_tmqm_pretraining_dry_run_cli(tmp_path: Path) -> None:
@@ -262,9 +260,7 @@ def test_warm_start_adapter_active_when_env_on(tmp_path: Path) -> None:
         )
         assert not np.array_equal(v_default.values, v_with_adapter.values)
         assert np.isfinite(v_with_adapter.values).all()
-        assert v_with_adapter.feature_names == [
-            "coupling_adapter_embedding_64d"
-        ]
+        assert v_with_adapter.feature_names == ["coupling_adapter_embedding_64d"]
     finally:
         os.environ.pop("COUPLING_ENABLED", None)
 
@@ -293,12 +289,8 @@ def test_warm_start_adapter_pocket_specificity(tmp_path: Path) -> None:
             PocketResidue(one_letter="D", resid=94, distance_to_ligand=3.0),
             PocketResidue(one_letter="E", resid=96, distance_to_ligand=4.0),
         ]
-        v_a = pocket_features(
-            res_a, pocket_name="MMP2", coupling_adapter=adapter
-        )
-        v_b = pocket_features(
-            res_b, pocket_name="CA2", coupling_adapter=adapter
-        )
+        v_a = pocket_features(res_a, pocket_name="MMP2", coupling_adapter=adapter)
+        v_b = pocket_features(res_b, pocket_name="CA2", coupling_adapter=adapter)
         assert not np.array_equal(v_a.values, v_b.values)
     finally:
         os.environ.pop("COUPLING_ENABLED", None)

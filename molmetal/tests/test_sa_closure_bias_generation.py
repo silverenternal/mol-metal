@@ -181,11 +181,11 @@ def test_aggregate_synthetic_pass_case():
 
 def test_default_out_dir_points_to_wf139_p6():
     """The default output directory should be wf139_p6_sa_closure_bias."""
-    args = bench_mod._cli.__wrapped__ if hasattr(bench_mod._cli, "__wrapped__") else None
-    # Use direct path construction
-    expected = (
-        PROJECT_ROOT / "molmetal" / "reports" / "wf139_p6_sa_closure_bias"
+    args = (
+        bench_mod._cli.__wrapped__ if hasattr(bench_mod._cli, "__wrapped__") else None
     )
+    # Use direct path construction
+    expected = PROJECT_ROOT / "molmetal" / "reports" / "wf139_p6_sa_closure_bias"
     assert expected.exists() or expected.parent.exists()
 
 

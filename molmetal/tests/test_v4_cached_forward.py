@@ -124,14 +124,15 @@ def test_forward_cached_skips_rdkit():
     m = _make_model()
     metal_ids = torch.tensor([0, 1, 2], dtype=torch.long)
 
-    h_atom, edge_index, edge_attr, atom_mask = _featurize_smiles_to_tensors(
-        SMILES_3
-    )
+    h_atom, edge_index, edge_attr, atom_mask = _featurize_smiles_to_tensors(SMILES_3)
 
     with patch("rdkit.Chem.MolFromSmiles") as mock_mol:
         out = m.forward_cached(
-            h_atom, edge_index, metal_ids,
-            atom_mask=atom_mask, edge_attr=edge_attr,
+            h_atom,
+            edge_index,
+            metal_ids,
+            atom_mask=atom_mask,
+            edge_attr=edge_attr,
         )
         # RDKit was NOT called by forward_cached
         assert mock_mol.call_count == 0, (
@@ -164,7 +165,7 @@ def test_forward_cached_matches_forward():
 
     with torch.no_grad():
         # SMILES path — invokes _featurize_batch (RDKit) internally
-        h_smiles = m.encode(SMILES_3)              # (3, hidden_dim)
+        h_smiles = m.encode(SMILES_3)  # (3, hidden_dim)
 
         # Cached path — feed pre-featurized tensors
         h_atom, edge_index, edge_attr, atom_mask = _featurize_smiles_to_tensors(
@@ -186,8 +187,11 @@ def test_forward_cached_matches_forward():
     with torch.no_grad():
         out_smiles = m(SMILES_3, metal_ids)
         out_cached = m.forward_cached(
-            h_atom, edge_index, metal_ids,
-            atom_mask=atom_mask, edge_attr=edge_attr,
+            h_atom,
+            edge_index,
+            metal_ids,
+            atom_mask=atom_mask,
+            edge_attr=edge_attr,
         )
     for met in SUPPORTED_METALS:
         assert torch.allclose(out_smiles[met], out_cached[met], atol=1e-5)
@@ -213,28 +217,31 @@ def test_use_cached_toggle():
 
     # ----- Default: use_cached_encoding=False -----
     m_default = _make_model()
-    assert m_default.use_cached_encoding is False, (
-        "Default use_cached_encoding should be False (backward compat)"
-    )
+    assert (
+        m_default.use_cached_encoding is False
+    ), "Default use_cached_encoding should be False (backward compat)"
     metal_ids = torch.tensor([0, 1, 2], dtype=torch.long)
     # SMILES path works
     out_smiles = m_default(SMILES_3, metal_ids)
     assert out_smiles["coord"].shape == (3, 5)
     # Tensor path is rejected — must use forward_cached explicitly
-    h_atom, edge_index, edge_attr, atom_mask = _featurize_smiles_to_tensors(
-        SMILES_3
-    )
+    h_atom, edge_index, edge_attr, atom_mask = _featurize_smiles_to_tensors(SMILES_3)
     with pytest.raises(RuntimeError, match="use_cached_encoding"):
         m_default(h_atom, metal_ids, edge_index=edge_index)
 
     # ----- Opt-in: use_cached_encoding=True -----
     m_cached = _make_model(use_cached_encoding=True)
-    assert m_cached.use_cached_encoding is True, (
-        "Opt-in use_cached_encoding should be True"
-    )
+    assert (
+        m_cached.use_cached_encoding is True
+    ), "Opt-in use_cached_encoding should be True"
     # Cached path is now reachable through forward()
-    out_cached = m_cached(h_atom, metal_ids, edge_index=edge_index,
-                          atom_mask=atom_mask, edge_attr=edge_attr)
+    out_cached = m_cached(
+        h_atom,
+        metal_ids,
+        edge_index=edge_index,
+        atom_mask=atom_mask,
+        edge_attr=edge_attr,
+    )
     assert set(out_cached.keys()) == set(SUPPORTED_METALS) | {"coord"}
     assert out_cached["coord"].shape == (3, 5)
     # SMILES path still works (backward compat)
@@ -254,8 +261,11 @@ def test_forward_cached_handles_missing_edge_attr():
 
     with patch("rdkit.Chem.MolFromSmiles") as mock_mol:
         out = m.forward_cached(
-            h_atom, edge_index, metal_ids,
-            atom_mask=atom_mask, edge_attr=None,
+            h_atom,
+            edge_index,
+            metal_ids,
+            atom_mask=atom_mask,
+            edge_attr=None,
         )
         assert mock_mol.call_count == 0
 
@@ -274,15 +284,16 @@ def test_forward_cached_backward_flows():
     the shared encoder AND every metal head."""
     m = _make_model()
     metal_ids = torch.tensor([0, 1, 2], dtype=torch.long)
-    h_atom, edge_index, edge_attr, atom_mask = _featurize_smiles_to_tensors(
-        SMILES_3
-    )
+    h_atom, edge_index, edge_attr, atom_mask = _featurize_smiles_to_tensors(SMILES_3)
 
     from molmetal.models.v4_multitask_dmpnn import V4MultiTaskLoss
 
     out = m.forward_cached(
-        h_atom, edge_index, metal_ids,
-        atom_mask=atom_mask, edge_attr=edge_attr,
+        h_atom,
+        edge_index,
+        metal_ids,
+        atom_mask=atom_mask,
+        edge_attr=edge_attr,
     )
     torch.manual_seed(0)
     y_true = {met: torch.randint(0, 2, (3,)) for met in SUPPORTED_METALS}

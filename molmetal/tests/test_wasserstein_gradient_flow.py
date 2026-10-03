@@ -352,9 +352,7 @@ def test_reaction_step_w2_drift_is_product_minus_reactant() -> None:
     """``drift = product - reactant`` (the optimal transport direction)."""
     step = ReactionStepW2(n_bond_types=4, dt=2.0)
     reactant = torch.zeros(3, 4)
-    product = torch.tensor(
-        [[1.0, 0.0, 0.0, 0.0]] * 3
-    )
+    product = torch.tensor([[1.0, 0.0, 0.0, 0.0]] * 3)
     drift = step.drift(reactant, product)
     expected = product - reactant
     assert torch.allclose(drift, expected, atol=1e-6)
@@ -482,6 +480,4 @@ def test_w2_gradient_flow_uses_only_torch() -> None:
         "import molmetal.molmetal_lam",
     )
     for needle in forbidden:
-        assert needle not in src, (
-            f"unexpected molmetal internal import: {needle!r}"
-        )
+        assert needle not in src, f"unexpected molmetal internal import: {needle!r}"

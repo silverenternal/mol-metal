@@ -19,6 +19,7 @@ three recovery axes:
 All tests are CPU-only.  No GPU launch.  No retrain.  Honest framing
 per AGENTS.md §5.2.
 """
+
 from __future__ import annotations
 
 import json
@@ -47,6 +48,7 @@ except Exception:
 # Quiet RDKit warnings — same rationale as the main script.
 try:  # pragma: no cover
     from rdkit import RDLogger
+
     RDLogger.DisableLog("rdApp.*")
 except Exception:
     pass
@@ -71,16 +73,16 @@ from molmetal.scripts.wf331r4_m7_diversity_multiph import (  # noqa: E402
 # Synthetic cohort fixtures
 # ---------------------------------------------------------------------------
 SYNTHETIC_SMILES: list[str] = [
-    "CCO",                                       # ethanol
-    "c1ccccc1",                                  # benzene
-    "[Pt](N)(N)(Cl)Cl",                          # cisplatin-like
-    "CC(C)O",                                    # isopropanol
-    "c1ccc(O)cc1",                               # phenol
-    "[Ru](N)(N)(N)(N)(N)N",                      # Ru-hexammine
-    "CCCC",                                      # butane
-    "c1ccncc1",                                  # pyridine
-    "[Ir](C)(C)(C)(C)(C)C",                      # Ir-hexamethyl
-    "OCCO",                                      # ethylene glycol
+    "CCO",  # ethanol
+    "c1ccccc1",  # benzene
+    "[Pt](N)(N)(Cl)Cl",  # cisplatin-like
+    "CC(C)O",  # isopropanol
+    "c1ccc(O)cc1",  # phenol
+    "[Ru](N)(N)(N)(N)(N)N",  # Ru-hexammine
+    "CCCC",  # butane
+    "c1ccncc1",  # pyridine
+    "[Ir](C)(C)(C)(C)(C)C",  # Ir-hexamethyl
+    "OCCO",  # ethylene glycol
 ]
 
 
@@ -174,7 +176,9 @@ class TestThreeSeedExpansion:
     def test_pool_size_is_respected(self, synthetic_smiles):
         """Each pool has the requested size."""
         n_pools, pool_size = 5, 4
-        pools = generate_pools(synthetic_smiles, n_pools=n_pools, pool_size=pool_size, seed=0)
+        pools = generate_pools(
+            synthetic_smiles, n_pools=n_pools, pool_size=pool_size, seed=0
+        )
         assert len(pools) == n_pools
         for p in pools:
             assert len(p) == pool_size
@@ -256,12 +260,14 @@ class TestM7DiversityLift:
 
     def test_tanimoto_high_for_diverse(self):
         """Tanimoto distance is high for chemically diverse SMILES."""
-        fps = morgan_fp_batch([
-            "CCO",                  # ethanol
-            "c1ccc(N)cc1",          # aniline
-            "[Pt](N)(N)(Cl)Cl",     # cisplatin
-            "CCCCCCCC",            # octane
-        ])
+        fps = morgan_fp_batch(
+            [
+                "CCO",  # ethanol
+                "c1ccc(N)cc1",  # aniline
+                "[Pt](N)(N)(Cl)Cl",  # cisplatin
+                "CCCCCCCC",  # octane
+            ]
+        )
         d = mean_pairwise_tanimoto_distance(fps)
         assert d > 0.5
 
@@ -273,10 +279,15 @@ class TestM7DiversityLift:
         # Use a tiny cap so the test runs quickly.
         cmd = [
             sys.executable,
-            str(_REPO_ROOT / "molmetal" / "scripts" / "wf331r4_m7_diversity_multiph.py"),
-            "--output-dir", str(out),
-            "--max-samples", "30",
-            "--n-pools", "3",
+            str(
+                _REPO_ROOT / "molmetal" / "scripts" / "wf331r4_m7_diversity_multiph.py"
+            ),
+            "--output-dir",
+            str(out),
+            "--max-samples",
+            "30",
+            "--n-pools",
+            "3",
         ]
         proc = subprocess.run(cmd, capture_output=True, env=env, timeout=300)
         # Stdout should end with "Wrote ..." lines.
@@ -315,10 +326,15 @@ class TestM7DiversityLift:
         env["PYTHONPATH"] = str(_REPO_ROOT)
         cmd = [
             sys.executable,
-            str(_REPO_ROOT / "molmetal" / "scripts" / "wf331r4_m7_diversity_multiph.py"),
-            "--output-dir", str(out),
-            "--max-samples", "30",
-            "--n-pools", "3",
+            str(
+                _REPO_ROOT / "molmetal" / "scripts" / "wf331r4_m7_diversity_multiph.py"
+            ),
+            "--output-dir",
+            str(out),
+            "--max-samples",
+            "30",
+            "--n-pools",
+            "3",
         ]
         proc = subprocess.run(cmd, capture_output=True, env=env, timeout=300)
         assert proc.returncode == 0
@@ -327,9 +343,9 @@ class TestM7DiversityLift:
         after = result["m7_after_lift_geometric"]["value"]
         # The geometric-mean lift on a 30-SMILES cohort should
         # comfortably exceed the R12 Path A anchor of 0.1065.
-        assert after > 0.1065, (
-            f"m7 after-lift {after:.4f} did not exceed R12 anchor 0.1065"
-        )
+        assert (
+            after > 0.1065
+        ), f"m7 after-lift {after:.4f} did not exceed R12 anchor 0.1065"
 
 
 if __name__ == "__main__":  # pragma: no cover

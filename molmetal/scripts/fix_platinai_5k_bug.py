@@ -67,6 +67,7 @@ Verify
   jq '.datasets.platinai_5k.n_samples_warning != null' \\
       molmetal/reports/wf69_p3_1_bug_fix/per_dataset_summary.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -84,25 +85,43 @@ if str(PROJECT_ROOT) not in sys.path:
 REPORT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf69_p3_1_bug_fix"
 EXTRACTOR = PROJECT_ROOT / "molmetal" / "scripts" / "extract_rdkit_2d_descriptors.py"
 PLATINAI_5K_SUMMARY = (
-    PROJECT_ROOT / "molmetal" / "reports" / "wf49_rdkit_extraction"
+    PROJECT_ROOT
+    / "molmetal"
+    / "reports"
+    / "wf49_rdkit_extraction"
     / "platinai_5k_feature_summary.json"
 )
 PLATINAI_4CELL_SUMMARY = (
-    PROJECT_ROOT / "molmetal" / "reports" / "wf49_rdkit_extraction"
+    PROJECT_ROOT
+    / "molmetal"
+    / "reports"
+    / "wf49_rdkit_extraction"
     / "platinai_4cell_feature_summary.json"
 )
 PER_DATASET_SUMMARY = REPORT_DIR / "per_dataset_summary.json"
 
 EXPECTED_PLATINAI_4CELL_CELLS = (
-    "pIC50_mcf7", "pIC50_a549", "pIC50_a2780", "pIC50_a2780cis",
+    "pIC50_mcf7",
+    "pIC50_a549",
+    "pIC50_a2780",
+    "pIC50_a2780cis",
 )
 EXPECTED_RDKIT_2D_DESCRIPTORS = (
-    "MolWt", "MolLogP", "TPSA", "HBA", "HBD", "NRotB",
-    "HeavyAtoms", "RingCount", "NumAromaticRings",
-    "FractionCSP3", "MolMR", "BalabanJ",
+    "MolWt",
+    "MolLogP",
+    "TPSA",
+    "HBA",
+    "HBD",
+    "NRotB",
+    "HeavyAtoms",
+    "RingCount",
+    "NumAromaticRings",
+    "FractionCSP3",
+    "MolMR",
+    "BalabanJ",
 )
-EXPECTED_PLATINAI_4CELL_ENTRY_COUNT = (
-    len(EXPECTED_PLATINAI_4CELL_CELLS) * len(EXPECTED_RDKIT_2D_DESCRIPTORS)
+EXPECTED_PLATINAI_4CELL_ENTRY_COUNT = len(EXPECTED_PLATINAI_4CELL_CELLS) * len(
+    EXPECTED_RDKIT_2D_DESCRIPTORS
 )  # 4 × 12 = 48
 
 
@@ -138,7 +157,8 @@ def run_extractor_subprocess(
     cmd: List[str] = [
         sys.executable,
         str(EXTRACTOR.relative_to(PROJECT_ROOT)),
-        "--dataset", dataset,
+        "--dataset",
+        dataset,
     ]
     if require_labels:
         cmd.append("--require-labels")
@@ -246,8 +266,7 @@ def build_per_dataset_summary(
     else:
         corr = platinai_5k.get("correlations_vs_target") or []
         n_descriptors_with_samples = sum(
-            1 for c in corr
-            if int(c.get("n_samples", 0) or 0) > 0
+            1 for c in corr if int(c.get("n_samples", 0) or 0) > 0
         )
         # Determine warning: either the field is explicitly present
         # (Wf-49 Phase 1+ re-runs include it), or it can be inferred
@@ -283,16 +302,13 @@ def build_per_dataset_summary(
             pc.get("n_entries_total", 0) == EXPECTED_PLATINAI_4CELL_ENTRY_COUNT
         ),
         "platinai_4cell_all_cells_have_samples": (
-            pc.get("n_entries_with_samples", 0)
-            == EXPECTED_PLATINAI_4CELL_ENTRY_COUNT
+            pc.get("n_entries_with_samples", 0) == EXPECTED_PLATINAI_4CELL_ENTRY_COUNT
         ),
         "platinai_5k_warning_emitted": bool(p5.get("warning_emitted")),
         "require_labels_guard_present": True,  # added by Wf-49 patch
-        "wf49_phase1_backward_compat": True,   # legacy F5 path unaffected
+        "wf49_phase1_backward_compat": True,  # legacy F5 path unaffected
     }
-    payload["expected_platinai_4cell_entry_count"] = (
-        EXPECTED_PLATINAI_4CELL_ENTRY_COUNT
-    )
+    payload["expected_platinai_4cell_entry_count"] = EXPECTED_PLATINAI_4CELL_ENTRY_COUNT
     payload["expected_cells"] = list(EXPECTED_PLATINAI_4CELL_CELLS)
     payload["expected_descriptors"] = list(EXPECTED_RDKIT_2D_DESCRIPTORS)
     return payload
@@ -360,8 +376,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     log(f"[Wf-69 P3.1] starting (run_extraction={args.run_extraction})")
 
     if args.require_labels and args.run_extraction:
-        log("[Wf-69 P3.1] smoke test: --require-labels on platinai_5k "
-            "should raise SystemExit(1)")
+        log(
+            "[Wf-69 P3.1] smoke test: --require-labels on platinai_5k "
+            "should raise SystemExit(1)"
+        )
         rc, stdout, stderr = run_extractor_subprocess(
             dataset="platinai",
             require_labels=True,
@@ -373,10 +391,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 file=sys.stderr,
             )
             return 1
-        log(
-            f"[Wf-69 P3.1] --require-labels guard fired as expected "
-            f"(rc={rc})"
-        )
+        log(f"[Wf-69 P3.1] --require-labels guard fired as expected " f"(rc={rc})")
         # Don't re-run for the labelled cohort; the 5K extraction
         # failed by design. Re-run only platinai_4cell.
         rc, stdout, stderr = run_extractor_subprocess(
@@ -385,8 +400,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         if rc != 0:
             print(
-                f"ERROR: platinai_4cell extractor failed: rc={rc} "
-                f"stderr={stderr}",
+                f"ERROR: platinai_4cell extractor failed: rc={rc} " f"stderr={stderr}",
                 file=sys.stderr,
             )
             return 1
@@ -398,8 +412,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         if rc != 0:
             print(
-                f"ERROR: platinai_5k extractor failed: rc={rc} "
-                f"stderr={stderr}",
+                f"ERROR: platinai_5k extractor failed: rc={rc} " f"stderr={stderr}",
                 file=sys.stderr,
             )
             return 1
@@ -409,8 +422,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         if rc != 0:
             print(
-                f"ERROR: platinai_4cell extractor failed: rc={rc} "
-                f"stderr={stderr}",
+                f"ERROR: platinai_4cell extractor failed: rc={rc} " f"stderr={stderr}",
                 file=sys.stderr,
             )
             return 1

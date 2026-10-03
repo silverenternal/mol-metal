@@ -87,14 +87,23 @@ from typing import Dict, List, Optional, Tuple
 #   Os(II/III/IV) octahedral
 #   Re(I/III/V)   octahedral
 _COORDINATION: Dict[Tuple[str, int], int] = {
-    ("Pt", 2): 4, ("Pt", 4): 6,
+    ("Pt", 2): 4,
+    ("Pt", 4): 6,
     ("Pd", 2): 4,
-    ("Au", 1): 2, ("Au", 3): 4,
-    ("Ru", 2): 6, ("Ru", 3): 6,
-    ("Ir", 1): 4, ("Ir", 3): 6,
-    ("Rh", 1): 4, ("Rh", 3): 6,
-    ("Os", 2): 6, ("Os", 3): 6, ("Os", 4): 6,
-    ("Re", 1): 6, ("Re", 3): 6, ("Re", 5): 6,
+    ("Au", 1): 2,
+    ("Au", 3): 4,
+    ("Ru", 2): 6,
+    ("Ru", 3): 6,
+    ("Ir", 1): 4,
+    ("Ir", 3): 6,
+    ("Rh", 1): 4,
+    ("Rh", 3): 6,
+    ("Os", 2): 6,
+    ("Os", 3): 6,
+    ("Os", 4): 6,
+    ("Re", 1): 6,
+    ("Re", 3): 6,
+    ("Re", 5): 6,
 }
 
 # Generic default if (metal, oxidation_state) not in the table.
@@ -109,7 +118,14 @@ _DONOR_ATOMS = {"N", "O", "S", "P", "Cl", "Br", "I", "F"}
 # Halides are typically "softer" donors than N for the d8 metals we target,
 # but they are still legitimate ligands (cisplatin, transplatin).
 _DONOR_STRENGTH: Dict[str, int] = {
-    "N": 5, "P": 4, "S": 3, "O": 2, "Cl": 1, "Br": 1, "I": 1, "F": 1,
+    "N": 5,
+    "P": 4,
+    "S": 3,
+    "O": 2,
+    "Cl": 1,
+    "Br": 1,
+    "I": 1,
+    "F": 1,
 }
 
 # Regex for the leading atom in a SMILES token.
@@ -183,9 +199,18 @@ def count_donors(fragment: str) -> int:
         # Strip leading H-count, charge, isotope; keep first element.
         atom = inside[0] if inside and inside[0].isalpha() else ""
         # Handle two-letter symbols (Cl, Br, …) — those are NOT donors.
-        if len(inside) >= 2 and inside[1].islower() and inside[:2] in {
-            "Cl", "Br", "Si", "Se", "As",
-        }:
+        if (
+            len(inside) >= 2
+            and inside[1].islower()
+            and inside[:2]
+            in {
+                "Cl",
+                "Br",
+                "Si",
+                "Se",
+                "As",
+            }
+        ):
             continue
         if atom in _DONOR_ATOMS:
             count += 1
@@ -194,7 +219,7 @@ def count_donors(fragment: str) -> int:
     pos = 0
     text = fragment
     for match in _BRACKET_RE.finditer(text):
-        bare_chunk = text[pos:match.start()]
+        bare_chunk = text[pos : match.start()]
         for tok in _BARE_ATOM_RE.finditer(bare_chunk):
             sym = tok.group(1)
             if sym in _DONOR_ATOMS:
@@ -274,10 +299,7 @@ def _select_ligands(
 
     # Step 1: split & drop counter-ions / solvents.
     fragments = _split_fragments(smiles_ligands)
-    fragments = [
-        f for f in fragments
-        if not _is_counterion(f) and not _is_solvent(f)
-    ]
+    fragments = [f for f in fragments if not _is_counterion(f) and not _is_solvent(f)]
     # Step 2: drop fragments with zero donors (those can't coordinate).
     fragments = [f for f in fragments if count_donors(f) > 0]
     # Step 3: trim to capacity (keep strongest donors).
@@ -325,7 +347,9 @@ def reconstruct_multi_component(
         invalid input.
     """
     ligands, metal_sym, _capacity = _select_ligands(
-        smiles_ligands, metal, oxidation_state,
+        smiles_ligands,
+        metal,
+        oxidation_state,
     )
     if not metal_sym:
         return ""
@@ -368,7 +392,10 @@ def reconstruct_metal_complex(
         invalid input.
     """
     return reconstruct_multi_component(
-        smiles_ligands, metal, oxidation_state, charge_complex,
+        smiles_ligands,
+        metal,
+        oxidation_state,
+        charge_complex,
     )
 
 

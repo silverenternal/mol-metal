@@ -74,21 +74,13 @@ def _metal_bond_distances(mol, metal_sym: str, donor_sym: str):
             pa = conf.GetAtomPosition(a.GetIdx())
             pb = conf.GetAtomPosition(b.GetIdx())
             out.append(
-                math.sqrt(
-                    (pa.x - pb.x) ** 2
-                    + (pa.y - pb.y) ** 2
-                    + (pa.z - pb.z) ** 2
-                )
+                math.sqrt((pa.x - pb.x) ** 2 + (pa.y - pb.y) ** 2 + (pa.z - pb.z) ** 2)
             )
         elif sb == metal_sym and sa == donor_sym:
             pa = conf.GetAtomPosition(a.GetIdx())
             pb = conf.GetAtomPosition(b.GetIdx())
             out.append(
-                math.sqrt(
-                    (pa.x - pb.x) ** 2
-                    + (pa.y - pb.y) ** 2
-                    + (pa.z - pb.z) ** 2
-                )
+                math.sqrt((pa.x - pb.x) ** 2 + (pa.y - pb.y) ** 2 + (pa.z - pb.z) ** 2)
             )
     return out
 
@@ -106,7 +98,7 @@ def _planarity_score(coords: np.ndarray, ring_indices) -> float:
     normal = vh[-1]
     # Distance of each atom to the plane = |(p - c) . n|
     distances = np.abs(centred @ normal)
-    return float(np.sqrt(np.mean(distances ** 2)))
+    return float(np.sqrt(np.mean(distances**2)))
 
 
 def _ring_atoms(mol, size: int = 6):
@@ -156,8 +148,7 @@ def test_generate_conformer_cisplatin():
     # Pt-N mean within 0.40 Å of 2.05 Å (CSD typical).
     mean_pt_n = sum(pt_n) / len(pt_n)
     assert abs(mean_pt_n - 2.05) <= 0.40, (
-        f"Pt-N mean {mean_pt_n:.3f} Å not within 0.40 Å of 2.05 Å "
-        f"(Pt-N={pt_n})"
+        f"Pt-N mean {mean_pt_n:.3f} Å not within 0.40 Å of 2.05 Å " f"(Pt-N={pt_n})"
     )
 
 
@@ -196,9 +187,9 @@ def test_generate_conformer_organic_no_metal():
     assert mol.GetNumConformers() >= 1
     assert _all_distances_finite(coords)
     # Ethanol = C-C-O = 3 heavy + 6 H = 9 atoms total after AddHs.
-    assert mol.GetNumAtoms() == 9, (
-        f"Expected 9 atoms (3 heavy + 6 H), got {mol.GetNumAtoms()}"
-    )
+    assert (
+        mol.GetNumAtoms() == 9
+    ), f"Expected 9 atoms (3 heavy + 6 H), got {mol.GetNumAtoms()}"
     # Returned coords shape matches atom count.
     assert coords.shape == (mol.GetNumAtoms(), 3)
 
@@ -264,9 +255,7 @@ def test_multiple_conformers():
         for j in range(i + 1, n_confs):
             rmsd = float(
                 np.sqrt(
-                    np.mean(
-                        (coords_list[i][:n_heavy] - coords_list[j][:n_heavy]) ** 2
-                    )
+                    np.mean((coords_list[i][:n_heavy] - coords_list[j][:n_heavy]) ** 2)
                 )
             )
             if rmsd > pairwise_max:
@@ -290,14 +279,14 @@ def test_deterministic_seed():
     """
     _, coords_a = generate_conformer(smiles=ETHANOL_SMILES, seed=42)
     _, coords_b = generate_conformer(smiles=ETHANOL_SMILES, seed=42)
-    assert np.array_equal(coords_a, coords_b), (
-        "Same seed (42) produced different coords — RDKit regression?"
-    )
+    assert np.array_equal(
+        coords_a, coords_b
+    ), "Same seed (42) produced different coords — RDKit regression?"
     # And a different seed -> at least one coord differs.
     _, coords_c = generate_conformer(smiles=ETHANOL_SMILES, seed=43)
-    assert not np.array_equal(coords_a, coords_c), (
-        "Different seeds (42 vs 43) produced identical coords — RNG bug?"
-    )
+    assert not np.array_equal(
+        coords_a, coords_c
+    ), "Different seeds (42 vs 43) produced identical coords — RNG bug?"
 
 
 # ---------------------------------------------------------------------------
@@ -309,9 +298,9 @@ def test_pdb_block_export():
     assert has_finite_3d(mol), "mol should have finite 3D"
     block = to_pdb_block(mol)
     assert isinstance(block, str)
-    assert "ATOM" in block or "HETATM" in block, (
-        f"PDB block missing ATOM/HETATM records: {block[:200]!r}"
-    )
+    assert (
+        "ATOM" in block or "HETATM" in block
+    ), f"PDB block missing ATOM/HETATM records: {block[:200]!r}"
     assert len(block) > 100, f"PDB block suspiciously short: {len(block)} bytes"
 
 

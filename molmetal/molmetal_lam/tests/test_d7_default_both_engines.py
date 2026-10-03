@@ -32,6 +32,7 @@ sweep script + the per-pager evaluator thread through. The actual
 binary installation is a separate concern, gated by the round-7
 wire-vina install report.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -90,7 +91,9 @@ def r4_c_path() -> Path:
 
 @pytest.fixture(scope="module")
 def evaluate_path() -> Path:
-    return Path(__file__).resolve().parents[2] / "scripts" / "evaluate_generated_poses.py"
+    return (
+        Path(__file__).resolve().parents[2] / "scripts" / "evaluate_generated_poses.py"
+    )
 
 
 @pytest.fixture(scope="module")
@@ -123,7 +126,7 @@ def _parse_engine_block(src: str) -> dict:
     # followed by a quote (i.e. an actual top-level element separator).
     block_pattern = re.compile(
         r'parser\.add_argument\(\s*"--engine"\s*,\s*'
-        r'choices=\((?P<choices>[^)]*?)\)\s*,\s*'
+        r"choices=\((?P<choices>[^)]*?)\)\s*,\s*"
         r'default="(?P<default>[^"]+)"',
         re.DOTALL,
     )
@@ -146,9 +149,9 @@ def test_default_engine_is_both(r4_c_source: str) -> None:
     parity experiment (r=0.9983). The sweep script must reflect this.
     """
     block = _parse_engine_block(r4_c_source)
-    assert block["default"] == "both", (
-        f"--engine default should be 'both' (D7-(c)), got {block['default']!r}"
-    )
+    assert (
+        block["default"] == "both"
+    ), f"--engine default should be 'both' (D7-(c)), got {block['default']!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -169,7 +172,9 @@ def test_both_engine_emits_vina_and_qvina_columns(
     this ROCm stack.
     """
     # Load the evaluator module dynamically.
-    spec = importlib.util.spec_from_file_location("_evaluate_under_test", str(evaluate_path))
+    spec = importlib.util.spec_from_file_location(
+        "_evaluate_under_test", str(evaluate_path)
+    )
     assert spec and spec.loader
     eval_mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(eval_mod)
@@ -185,35 +190,49 @@ def test_both_engine_emits_vina_and_qvina_columns(
         def __init__(self, engine: str):
             self.engine = engine
             self._receptor_pdbqt = {}
+
         def get_metadata(self):
             return {"name": f"FakeAdapter[{self.engine}]", "engine": self.engine}
+
         def dock(self, molecule, pocket, config):
             from molmetal.domain import Complex  # real type, real fields
+
             score = {"vina": -7.5, "qvina": -7.4, "quickvina2": -7.6}[self.engine]
-            return [Complex(
-                pocket=pocket, molecule=molecule,
-                pose_confidence=0.5, vina_score=score,
-            )]
+            return [
+                Complex(
+                    pocket=pocket,
+                    molecule=molecule,
+                    pose_confidence=0.5,
+                    vina_score=score,
+                )
+            ]
+
         last_pose_mols = []
 
     def fake_adapter_factory(engine: str, **kwargs):
         return _FakeAdapter(engine)
 
     # Stub receptor preparation so we don't need a real PDBQT on disk.
-    prep_result = {"passed": True, "effective_pdb": str(_fake_receptor_path),
-                   "pdbqt": str(tmp_path / "fake.pdbqt")}
+    prep_result = {
+        "passed": True,
+        "effective_pdb": str(_fake_receptor_path),
+        "pdbqt": str(tmp_path / "fake.pdbqt"),
+    }
     candidates = [
         {"smiles": fake_smiles, "is_generated": True, "sa": 1.0, "qed": 0.7},
     ]
 
     # Patch the heavy modules / paths used by evaluate_candidates.
-    with mock.patch("molmetal.scripts.receptor_preparation_for_evaluation.prepare_receptor_for_evaluation",
-                    return_value=prep_result), \
-         mock.patch("molmetal_lam.sbdd_env.vina_adapter.VinaDockingAdapter",
-                    side_effect=fake_adapter_factory), \
-         mock.patch("molmetal.validation.posebusters_runner.check_docked_pose",
-                    return_value={"status": "passed", "pb_valid": True}):
-
+    with mock.patch(
+        "molmetal.scripts.receptor_preparation_for_evaluation.prepare_receptor_for_evaluation",
+        return_value=prep_result,
+    ), mock.patch(
+        "molmetal_lam.sbdd_env.vina_adapter.VinaDockingAdapter",
+        side_effect=fake_adapter_factory,
+    ), mock.patch(
+        "molmetal.validation.posebusters_runner.check_docked_pose",
+        return_value={"status": "passed", "pb_valid": True},
+    ):
         report = eval_mod.evaluate_candidates(
             candidates=candidates,
             receptor_path=str(_fake_receptor_path),
@@ -228,16 +247,24 @@ def test_both_engine_emits_vina_and_qvina_columns(
 
     # Reference row + candidate row each get both columns populated.
     ref_row = report["reference"]
-    assert "vina_score" in ref_row, f"reference row missing vina_score: keys={list(ref_row)}"
-    assert "qvina_score" in ref_row, f"reference row missing qvina_score: keys={list(ref_row)}"
+    assert (
+        "vina_score" in ref_row
+    ), f"reference row missing vina_score: keys={list(ref_row)}"
+    assert (
+        "qvina_score" in ref_row
+    ), f"reference row missing qvina_score: keys={list(ref_row)}"
     assert ref_row["vina_score"] == -7.5
     assert ref_row["qvina_score"] == -7.4
 
     cand_rows = report["candidates"]
     assert len(cand_rows) == 1
     cand_row = cand_rows[0]
-    assert "vina_score" in cand_row, f"candidate row missing vina_score: keys={list(cand_row)}"
-    assert "qvina_score" in cand_row, f"candidate row missing qvina_score: keys={list(cand_row)}"
+    assert (
+        "vina_score" in cand_row
+    ), f"candidate row missing vina_score: keys={list(cand_row)}"
+    assert (
+        "qvina_score" in cand_row
+    ), f"candidate row missing qvina_score: keys={list(cand_row)}"
     assert cand_row["vina_score"] == -7.5
     assert cand_row["qvina_score"] == -7.4
 
@@ -258,27 +285,44 @@ def test_backward_compat_vina_only(
 
     class _VinaOnlyAdapter:
         engine = "vina"
+
         def __init__(self, **kwargs):
             self._receptor_pdbqt = {}
+
         def get_metadata(self):
             return {"name": "VinaOnly", "engine": "vina"}
+
         def dock(self, molecule, pocket, config):
             from molmetal.domain import Complex
-            return [Complex(pocket=pocket, molecule=molecule,
-                            pose_confidence=0.5, vina_score=-7.5)]
+
+            return [
+                Complex(
+                    pocket=pocket,
+                    molecule=molecule,
+                    pose_confidence=0.5,
+                    vina_score=-7.5,
+                )
+            ]
+
         last_pose_mols = []
 
-    prep_result = {"passed": True, "effective_pdb": str(_fake_receptor_path),
-                   "pdbqt": str(tmp_path / "fake.pdbqt")}
+    prep_result = {
+        "passed": True,
+        "effective_pdb": str(_fake_receptor_path),
+        "pdbqt": str(tmp_path / "fake.pdbqt"),
+    }
     candidates = [{"smiles": "CCO", "is_generated": True}]
 
-    with mock.patch("molmetal.scripts.receptor_preparation_for_evaluation.prepare_receptor_for_evaluation",
-                    return_value=prep_result), \
-         mock.patch("molmetal_lam.sbdd_env.vina_adapter.VinaDockingAdapter",
-                    return_value=_VinaOnlyAdapter()), \
-         mock.patch("molmetal.validation.posebusters_runner.check_docked_pose",
-                    return_value={"status": "passed", "pb_valid": True}):
-
+    with mock.patch(
+        "molmetal.scripts.receptor_preparation_for_evaluation.prepare_receptor_for_evaluation",
+        return_value=prep_result,
+    ), mock.patch(
+        "molmetal_lam.sbdd_env.vina_adapter.VinaDockingAdapter",
+        return_value=_VinaOnlyAdapter(),
+    ), mock.patch(
+        "molmetal.validation.posebusters_runner.check_docked_pose",
+        return_value={"status": "passed", "pb_valid": True},
+    ):
         report = eval_mod.evaluate_candidates(
             candidates=candidates,
             receptor_path=str(_fake_receptor_path),
@@ -295,9 +339,9 @@ def test_backward_compat_vina_only(
     cand_row = report["candidates"][0]
     # Single-engine mode keeps only the legacy column populated.
     assert "vina_score" in ref_row
-    assert "qvina_score" not in ref_row, (
-        f"vina-only run should NOT emit qvina_score; got keys={list(ref_row)}"
-    )
+    assert (
+        "qvina_score" not in ref_row
+    ), f"vina-only run should NOT emit qvina_score; got keys={list(ref_row)}"
     assert "vina_score" in cand_row
     assert "qvina_score" not in cand_row
 
@@ -312,33 +356,52 @@ def test_backward_compat_qvina_only(
     _fake_ligand_sdf: Path,
 ) -> None:
     """``engine='qvina'`` is unchanged: only ``qvina_score`` is emitted."""
-    spec = importlib.util.spec_from_file_location("_eval_qvina_only", str(evaluate_path))
+    spec = importlib.util.spec_from_file_location(
+        "_eval_qvina_only", str(evaluate_path)
+    )
     eval_mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(eval_mod)
 
     class _QvinaOnlyAdapter:
         engine = "qvina"
+
         def __init__(self, **kwargs):
             self._receptor_pdbqt = {}
+
         def get_metadata(self):
             return {"name": "QvinaOnly", "engine": "qvina"}
+
         def dock(self, molecule, pocket, config):
             from molmetal.domain import Complex
-            return [Complex(pocket=pocket, molecule=molecule,
-                            pose_confidence=0.5, vina_score=-7.4)]
+
+            return [
+                Complex(
+                    pocket=pocket,
+                    molecule=molecule,
+                    pose_confidence=0.5,
+                    vina_score=-7.4,
+                )
+            ]
+
         last_pose_mols = []
 
-    prep_result = {"passed": True, "effective_pdb": str(_fake_receptor_path),
-                   "pdbqt": str(tmp_path / "fake.pdbqt")}
+    prep_result = {
+        "passed": True,
+        "effective_pdb": str(_fake_receptor_path),
+        "pdbqt": str(tmp_path / "fake.pdbqt"),
+    }
     candidates = [{"smiles": "CCO", "is_generated": True}]
 
-    with mock.patch("molmetal.scripts.receptor_preparation_for_evaluation.prepare_receptor_for_evaluation",
-                    return_value=prep_result), \
-         mock.patch("molmetal_lam.sbdd_env.vina_adapter.VinaDockingAdapter",
-                    return_value=_QvinaOnlyAdapter()), \
-         mock.patch("molmetal.validation.posebusters_runner.check_docked_pose",
-                    return_value={"status": "passed", "pb_valid": True}):
-
+    with mock.patch(
+        "molmetal.scripts.receptor_preparation_for_evaluation.prepare_receptor_for_evaluation",
+        return_value=prep_result,
+    ), mock.patch(
+        "molmetal_lam.sbdd_env.vina_adapter.VinaDockingAdapter",
+        return_value=_QvinaOnlyAdapter(),
+    ), mock.patch(
+        "molmetal.validation.posebusters_runner.check_docked_pose",
+        return_value={"status": "passed", "pb_valid": True},
+    ):
         report = eval_mod.evaluate_candidates(
             candidates=candidates,
             receptor_path=str(_fake_receptor_path),
@@ -355,9 +418,9 @@ def test_backward_compat_qvina_only(
     cand_row = report["candidates"][0]
     # qvina-only: qvina_score present, vina_score absent.
     assert "qvina_score" in ref_row
-    assert "vina_score" not in ref_row, (
-        f"qvina-only run should NOT emit vina_score; got keys={list(ref_row)}"
-    )
+    assert (
+        "vina_score" not in ref_row
+    ), f"qvina-only run should NOT emit vina_score; got keys={list(ref_row)}"
     assert "qvina_score" in cand_row
     assert "vina_score" not in cand_row
 
@@ -376,6 +439,5 @@ def test_engine_choices_include_all_valid_names(r4_c_source: str) -> None:
     expected = {"vina", "qvina", "quickvina2", "both", "all"}
     actual = set(block["choices"])
     assert expected.issubset(actual), (
-        f"missing --engine choices: {expected - actual}; "
-        f"got {actual}"
+        f"missing --engine choices: {expected - actual}; " f"got {actual}"
     )

@@ -116,14 +116,23 @@ def _gelu_tanh_grad_fp32(x):
 @triton.autotune(configs=AUTOTUNE_CONFIGS, key=["K", "M", "H1", "H2"])
 @triton.jit
 def _batched_mlp_act_proj_kernel(
-    pre_ptr,      # (K, M, H1)   stacked pre-activations
-    w2_ptr,       # (K, H1, H2)  stacked second weights
-    b2_ptr,       # (K, H2)      stacked second biases (may be None)
-    y_ptr,        # (K, M, H2)   stacked outputs
-    K, M, H1, H2,
-    stride_pk, stride_pm, stride_pn,
-    stride_w2k, stride_w2n, stride_w2kk,
-    stride_yk, stride_ym, stride_yn,
+    pre_ptr,  # (K, M, H1)   stacked pre-activations
+    w2_ptr,  # (K, H1, H2)  stacked second weights
+    b2_ptr,  # (K, H2)      stacked second biases (may be None)
+    y_ptr,  # (K, M, H2)   stacked outputs
+    K,
+    M,
+    H1,
+    H2,
+    stride_pk,
+    stride_pm,
+    stride_pn,
+    stride_w2k,
+    stride_w2n,
+    stride_w2kk,
+    stride_yk,
+    stride_ym,
+    stride_yn,
     ACT: tl.constexpr,
     HAS_B2: tl.constexpr,
     BLOCK_M: tl.constexpr,
@@ -205,15 +214,27 @@ def _batched_mlp_act_proj_kernel(
 @triton.autotune(configs=AUTOTUNE_CONFIGS, key=["K", "M", "H1", "H2"])
 @triton.jit
 def _batched_mlp_bwd_dx_kernel(
-    pre_ptr,        # (K, M, H1)
-    dy_ptr,         # (K, M, H2)
-    w1_ptr,         # (K, D, H1)
-    dx_ptr,         # (K, M, D)
-    K, M, D, H1, H2,
-    stride_pk, stride_pm, stride_pn,
-    stride_dyk, stride_dym, stride_dyn,
-    stride_w1k, stride_w1m, stride_w1n,
-    stride_dxk, stride_dxm, stride_dxn,
+    pre_ptr,  # (K, M, H1)
+    dy_ptr,  # (K, M, H2)
+    w1_ptr,  # (K, D, H1)
+    dx_ptr,  # (K, M, D)
+    K,
+    M,
+    D,
+    H1,
+    H2,
+    stride_pk,
+    stride_pm,
+    stride_pn,
+    stride_dyk,
+    stride_dym,
+    stride_dyn,
+    stride_w1k,
+    stride_w1m,
+    stride_w1n,
+    stride_dxk,
+    stride_dxm,
+    stride_dxn,
     ACT: tl.constexpr,
     BLOCK_M: tl.constexpr,
     BLOCK_N: tl.constexpr,
@@ -453,11 +474,15 @@ class _BatchedMLPFunction(torch.autograd.Function):
         x_b = x.unsqueeze(0).expand(K, M, D)
         dW1 = torch.bmm(x_b.transpose(-2, -1), d_pre)  # (K, D, H1)
         # dW2 = post.T @ go  (post is (K, M, H1), go is (K, M, H2))
-        post = torch.nn.functional.silu(pre) if act == 0 else torch.nn.functional.gelu(pre, approximate="tanh")
+        post = (
+            torch.nn.functional.silu(pre)
+            if act == 0
+            else torch.nn.functional.gelu(pre, approximate="tanh")
+        )
         dW2 = torch.bmm(post.transpose(-2, -1), go)  # (K, H1, H2)
         # Bias grads.
         db1 = d_pre.sum(dim=1) if b1_provided else None  # (K, H1)
-        db2 = go.sum(dim=1) if b2_provided else None      # (K, H2)
+        db2 = go.sum(dim=1) if b2_provided else None  # (K, H2)
 
         return (
             dx.reshape(*ctx.x_shape),
@@ -673,7 +698,7 @@ class _BatchedMLPFunctionPerK(torch.autograd.Function):
         dW2 = torch.bmm(post.transpose(-2, -1), go)  # (K, H1, H2)
         # Bias grads (per-K).
         db1 = d_pre.sum(dim=1) if b1_provided else None  # (K, H1)
-        db2 = go.sum(dim=1) if b2_provided else None      # (K, H2)
+        db2 = go.sum(dim=1) if b2_provided else None  # (K, H2)
 
         return (
             dx_reduced.reshape(*ctx.x_shape),

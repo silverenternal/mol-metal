@@ -196,9 +196,7 @@ def test_relaxed_ot_custom_marginals() -> None:
 
     # ``lambda_relax = 0`` -> marginals enforced exactly.  Check the
     # row / column sums of the coupling match ``a`` and ``b``.
-    P = RelaxedOT(eps=0.1, lambda_relax=0.0, n_iters=300).coupling(
-        p0, p1, a=a, b=b
-    )
+    P = RelaxedOT(eps=0.1, lambda_relax=0.0, n_iters=300).coupling(p0, p1, a=a, b=b)
     row_sums = P.sum(dim=1)
     col_sums = P.sum(dim=0)
     assert torch.allclose(row_sums, a, atol=1e-3)
@@ -234,9 +232,7 @@ def test_relaxed_ot_loss_monotonic_in_lambda() -> None:
     n_iters = 200
     losses = []
     for lam in [0.0, 1e-4, 1e-3, 1e-2, 1e-1, 1.0, 10.0]:
-        loss = RelaxedOT(eps=eps, lambda_relax=lam, n_iters=n_iters).forward(
-            p0, p1
-        )
+        loss = RelaxedOT(eps=eps, lambda_relax=lam, n_iters=n_iters).forward(p0, p1)
         losses.append(loss.item())
     for prev, curr in zip(losses, losses[1:]):
         assert curr >= prev - 1e-3, (
@@ -412,9 +408,9 @@ def test_sweep_lambda_monotonic_non_decreasing() -> None:
     )
     losses = [out[lam].item() for lam in sorted(out.keys())]
     for prev, curr in zip(losses, losses[1:]):
-        assert curr >= prev - 1e-3, (
-            f"Sweep should be non-decreasing, got {prev} -> {curr}"
-        )
+        assert (
+            curr >= prev - 1e-3
+        ), f"Sweep should be non-decreasing, got {prev} -> {curr}"
 
 
 # ---------------------------------------------------------------------------

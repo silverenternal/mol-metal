@@ -164,9 +164,9 @@ def test_m6_kappa_failure_mode_diagnostic():
     # Failure mode (a) — structural ceiling
     structural_ceiling = M6_KAPPA_MEASURED_COHORT_MEAN < M6_KAPPA_CHEMAXON_THRESHOLD
     assert structural_ceiling, "m6_kappa must be BELOW ChemAxon threshold"
-    assert abs(M6_KAPPA_CEILING_GAP - (-0.128)) < 1e-3, (
-        f"ceiling gap must be -0.128, got {M6_KAPPA_CEILING_GAP:+.4f}"
-    )
+    assert (
+        abs(M6_KAPPA_CEILING_GAP - (-0.128)) < 1e-3
+    ), f"ceiling gap must be -0.128, got {M6_KAPPA_CEILING_GAP:+.4f}"
 
     # Failure mode (b) — augmented mean constrained by unbiased-CV identity
     # The CV-R² +0.6814 lift (per Wf-333-V4) measures the
@@ -177,9 +177,9 @@ def test_m6_kappa_failure_mode_diagnostic():
     cv_r2_lift_measures_correlation_only = (
         CHEMPROP_PLL_PLG_CV_R2_LIFT > 0
     )  # = 0.6814 > 0 ⇒ correlation lifted, NOT mean.
-    assert cv_r2_lift_measures_correlation_only, (
-        "Wf-333-V4 CV-R² +0.6814 measures correlation, not mean lift"
-    )
+    assert (
+        cv_r2_lift_measures_correlation_only
+    ), "Wf-333-V4 CV-R² +0.6814 measures correlation, not mean lift"
 
     # Both failure modes must be reported by the diagnostic.
     failure_modes = ["structural_ceiling", "augmented_mean_constrained_by_unbiased_CV"]
@@ -258,9 +258,9 @@ def test_drop_m25_falls_to_baseline():
 
     # The lift is entirely from M25.
     lift_from_m25 = full_cv_r2 - baseline_cv_r2
-    assert abs(lift_from_m25 - 0.6814) < 1e-3, (
-        f"M25 lift must be +0.6814, got {lift_from_m25:+.4f}"
-    )
+    assert (
+        abs(lift_from_m25 - 0.6814) < 1e-3
+    ), f"M25 lift must be +0.6814, got {lift_from_m25:+.4f}"
 
     # Drop M25 → CV-R² falls to baseline (0).
     dropped_cv_r2 = baseline_cv_r2

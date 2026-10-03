@@ -82,8 +82,8 @@ if str(_REPO) not in sys.path:
 # chemprop v3 by default uses the same 72-d atom / 14-d bond featurizer as
 # chemprop v2 (per chemprop 2.x + chemprop 3.0+ release notes).
 # ---------------------------------------------------------------------------
-ATOM_FDIM_DEFAULT: int = 72   # chemprop v3 default atom feature dim
-BOND_FDIM_DEFAULT: int = 14   # chemprop v3 default bond feature dim
+ATOM_FDIM_DEFAULT: int = 72  # chemprop v3 default atom feature dim
+BOND_FDIM_DEFAULT: int = 14  # chemprop v3 default bond feature dim
 
 
 # ---------------------------------------------------------------------------
@@ -172,11 +172,13 @@ class ChempropV3FeaturizationCache:
                 FastAtomFeaturizer,
                 FastBondFeaturizer,
             )
+
             self._atom_featurizer = atom_featurizer or FastAtomFeaturizer()
             self._bond_featurizer = bond_featurizer or FastBondFeaturizer()
         else:
             # Lazy import — chemprop v3 is heavy (rdkit + numpy + torch).
             from chemprop.featurizers import SimpleMoleculeMolGraphFeaturizer
+
             self._atom_featurizer = SimpleMoleculeMolGraphFeaturizer()
             self._bond_featurizer = None  # not used in default path
 
@@ -396,9 +398,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "--smiles",
         nargs="+",
         default=[
-            "CCO", "c1ccccc1", "CC(=O)O", "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
-            "CC(C)CC(N)C(=O)O", "OC(=O)C(=O)O", "C1CCCCC1", "CCN",
-            "CC(=O)N", "C(C(C(C(C(C(C=O)O)O)O)O)O)O",
+            "CCO",
+            "c1ccccc1",
+            "CC(=O)O",
+            "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
+            "CC(C)CC(N)C(=O)O",
+            "OC(=O)C(=O)O",
+            "C1CCCCC1",
+            "CCN",
+            "CC(=O)N",
+            "C(C(C(C(C(C(C=O)O)O)O)O)O)O",
         ],
         help="List of SMILES to featurise (default: 10 canonical).",
     )
@@ -438,12 +447,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     # 2. Tier 1: featurise SMILES list.
     n_added = cache.precompute_smiles(args.smiles)
-    print(f"Tier 1: featurised {n_added} NEW SMILES (use_fast={args.use_fast_featurizer})")
+    print(
+        f"Tier 1: featurised {n_added} NEW SMILES (use_fast={args.use_fast_featurizer})"
+    )
 
     # 3. Tier 2: synthetic per-batch exercise (best-effort).
     if args.exercise_batch_tier:
         try:
             from chemprop.data.molgraph import BatchMolGraph  # type: ignore
+
             for ep in range(args.epochs):
                 cache.begin_epoch(ep)
                 for bi in range(args.batches_per_epoch):

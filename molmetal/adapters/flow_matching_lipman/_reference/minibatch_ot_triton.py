@@ -102,6 +102,7 @@ import torch
 try:  # pragma: no cover — exercised indirectly via mini_batch_ot tests
     import triton
     import triton.language as tl
+
     _TRITON_AVAILABLE = True
 except ImportError:  # pragma: no cover — CPU-only minimal CI
     _TRITON_AVAILABLE = False
@@ -183,10 +184,15 @@ if _TRITON_AVAILABLE:
     @triton.autotune(configs=_MINIBATCH_OT_CONFIGS, key=["N", "D"])
     @triton.jit
     def _minibatch_ot_argmin_kernel(  # pragma: no cover — GPU-only
-        x0_ptr, x1_ptr, out_ptr,
-        N, D,
-        stride_x0n, stride_x0d,
-        stride_x1n, stride_x1d,
+        x0_ptr,
+        x1_ptr,
+        out_ptr,
+        N,
+        D,
+        stride_x0n,
+        stride_x0d,
+        stride_x1n,
+        stride_x1d,
         BLOCK_N: tl.constexpr,
         BLOCK_D: tl.constexpr,
     ):
@@ -255,6 +261,7 @@ if _TRITON_AVAILABLE:
 
         tl.store(out_ptr + i, best_idx)
 else:
+
     def _minibatch_ot_argmin_kernel(*args, **kwargs):  # type: ignore
         raise RuntimeError(
             "Triton unavailable — _minibatch_ot_argmin_kernel cannot run. "
@@ -304,13 +311,9 @@ def pytorch_minibatch_ot_coupling(
             f"x0 and x1 must be 2-D (N, D); got {tuple(x0.shape)} and {tuple(x1.shape)}"
         )
     if x0.shape[0] != x1.shape[0]:
-        raise ValueError(
-            f"x0 and x1 must share N; got {x0.shape[0]} vs {x1.shape[0]}"
-        )
+        raise ValueError(f"x0 and x1 must share N; got {x0.shape[0]} vs {x1.shape[0]}")
     if x0.shape[1] != x1.shape[1]:
-        raise ValueError(
-            f"x0 and x1 must share D; got {x0.shape[1]} vs {x1.shape[1]}"
-        )
+        raise ValueError(f"x0 and x1 must share D; got {x0.shape[1]} vs {x1.shape[1]}")
     if x0.shape[0] == 0:
         return torch.zeros((0,), dtype=torch.long, device=x0.device)
     # Match _solve_minibatch_ot's cost = cdist(x0, x1, p=2.0).pow(2).
@@ -399,10 +402,15 @@ def fused_minibatch_ot_coupling(
         x1_c = x1.contiguous()
         out = torch.empty(n, dtype=torch.int64, device=x0.device)
         _minibatch_ot_argmin_kernel[(n,)](
-            x0_c, x1_c, out,
-            n, x0.shape[1],
-            x0_c.stride(0), x0_c.stride(1),
-            x1_c.stride(0), x1_c.stride(1),
+            x0_c,
+            x1_c,
+            out,
+            n,
+            x0.shape[1],
+            x0_c.stride(0),
+            x0_c.stride(1),
+            x1_c.stride(0),
+            x1_c.stride(1),
         )
         return out
     # Default dispatch: gate closed by default → PyTorch.

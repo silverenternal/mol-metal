@@ -34,6 +34,7 @@ caps at ``--epochs 5`` so the smoke is sub-hour on CPU.  Per the
 fix_design §F3 the full 60-cell × 50-epoch sweep is 30 hours CPU and
 must be scheduled on RTX 5090 GPU-1 (5 hours) for paper §6.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -67,39 +68,52 @@ DEFAULT_SEEDS: Tuple[int, ...] = (0, 1, 2)
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[2])
     p.add_argument(
-        "--configs", nargs="+", default=list(DEFAULT_CONFIGS),
+        "--configs",
+        nargs="+",
+        default=list(DEFAULT_CONFIGS),
         choices=DEFAULT_CONFIGS,
         help="Ablation configs (default: all 4).",
     )
     p.add_argument(
-        "--metals", nargs="+", default=list(DEFAULT_METALS),
+        "--metals",
+        nargs="+",
+        default=list(DEFAULT_METALS),
         help="Metals to run (default: Ru Ir Rh Os Re).",
     )
     p.add_argument(
-        "--seeds", nargs="+", type=int, default=list(DEFAULT_SEEDS),
+        "--seeds",
+        nargs="+",
+        type=int,
+        default=list(DEFAULT_SEEDS),
         help="Random seeds (default: 0 1 2).",
     )
     p.add_argument(
-        "--epochs", type=int, default=5,
+        "--epochs",
+        type=int,
+        default=5,
         help="Epochs per cell (default 5 for smoke; full sweep = 50).",
     )
     p.add_argument(
-        "--out-dir", type=Path,
+        "--out-dir",
+        type=Path,
         default=_REPO_ROOT / "molmetal" / "reports" / "wf251_mtl_ablation_grid",
         help="Output directory.",
     )
     p.add_argument(
-        "--train-script", type=Path,
+        "--train-script",
+        type=Path,
         default=_HERE / "train_dmpnn_multitask_wasserstein.py",
         help="Path to the train script (default next to this driver).",
     )
     p.add_argument(
-        "--python", type=str,
+        "--python",
+        type=str,
         default=sys.executable,
         help="Python interpreter (default sys.executable).",
     )
     p.add_argument(
-        "--dry-run", action="store_true",
+        "--dry-run",
+        action="store_true",
         help="Print the per-cell commands without executing them.",
     )
     return p.parse_args(argv)
@@ -122,12 +136,18 @@ def run_cell(
     per-seed JSON is emitted by the train script under ``cell_dir``.
     """
     cmd: List[str] = [
-        python, str(train_script),
-        "--ablation-config", config,
-        "--metals", metal,
-        "--seeds", str(seed),
-        "--epochs", str(epochs),
-        "--out-dir", str(cell_dir),
+        python,
+        str(train_script),
+        "--ablation-config",
+        config,
+        "--metals",
+        metal,
+        "--seeds",
+        str(seed),
+        "--epochs",
+        str(epochs),
+        "--out-dir",
+        str(cell_dir),
     ]
     cell_dir.mkdir(parents=True, exist_ok=True)
     t0 = time.time()
@@ -158,7 +178,9 @@ def run_cell(
             "elapsed_s": float(elapsed),
             "status": "ok" if ok else "fail",
             "returncode": int(proc.returncode),
-            "stdout_tail": (proc.stdout or b"")[-512:].decode("utf-8", errors="replace"),
+            "stdout_tail": (proc.stdout or b"")[-512:].decode(
+                "utf-8", errors="replace"
+            ),
         }
     except Exception as exc:
         return {
@@ -171,7 +193,9 @@ def run_cell(
         }
 
 
-def aggregate_cell(out_dir: Path, config: str, metal: str, seed: int) -> Optional[float]:
+def aggregate_cell(
+    out_dir: Path, config: str, metal: str, seed: int
+) -> Optional[float]:
     """Read the per-cell per-seed JSON written by the train script."""
     path = out_dir / config / metal.lower() / f"per_seed_metrics_seed{seed}.json"
     if not path.exists():
@@ -188,6 +212,7 @@ def aggregate_cell(out_dir: Path, config: str, metal: str, seed: int) -> Optiona
 def render_table(rows: List[Dict[str, object]]) -> str:
     """Render the per-config × per-metal mean ± std table."""
     import math
+
     # Group by (config, metal)
     groups: Dict[Tuple[str, str], List[float]] = {}
     for row in rows:
@@ -214,24 +239,28 @@ def render_table(rows: List[Dict[str, object]]) -> str:
                 row_strs.append("—")
             else:
                 mean = sum(vals) / len(vals)
-                std = (sum((v - mean) ** 2 for v in vals) / max(1, len(vals) - 1)) ** 0.5
+                std = (
+                    sum((v - mean) ** 2 for v in vals) / max(1, len(vals) - 1)
+                ) ** 0.5
                 row_strs.append(f"{mean:.4f} ± {std:.4f}")
         lines.append(f"| {cfg} | " + " | ".join(row_strs) + " |")
-    lines.extend([
-        "",
-        "## Honest framing",
-        "",
-        "* Each cell is N epochs (default 5 for smoke; full sweep = 50).",
-        "* `mtl_baseline` mirrors the Wf-131 P1 shipped behaviour "
-        "  (h=128/d=3, sliced-W₂ gradient, 5-metal joint pool).",
-        "* `single_task` enforces per-metal cohort only (Wf-197 lever 1).",
-        "* `mtl_structured` lifts h to 300 (chemprop v2 production backbone "
-        "  — Wf-251-F2).",
-        "* `mtl_gradproj` is reserved for the future PCGrad hook; today "
-        "  it aliases `mtl_baseline`.",
-        "* Δ vs `mtl_baseline` per cell = honest-negative if negative.",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            "## Honest framing",
+            "",
+            "* Each cell is N epochs (default 5 for smoke; full sweep = 50).",
+            "* `mtl_baseline` mirrors the Wf-131 P1 shipped behaviour "
+            "  (h=128/d=3, sliced-W₂ gradient, 5-metal joint pool).",
+            "* `single_task` enforces per-metal cohort only (Wf-197 lever 1).",
+            "* `mtl_structured` lifts h to 300 (chemprop v2 production backbone "
+            "  — Wf-251-F2).",
+            "* `mtl_gradproj` is reserved for the future PCGrad hook; today "
+            "  it aliases `mtl_baseline`.",
+            "* Δ vs `mtl_baseline` per cell = honest-negative if negative.",
+            "",
+        ]
+    )
     return "\n".join(lines)
 
 
@@ -282,14 +311,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         writer = csv.writer(fh)
         writer.writerow(["config", "metal", "seed", "status", "auc", "elapsed_s"])
         for r in cells:
-            writer.writerow([
-                r.get("config", ""),
-                r.get("metal", ""),
-                r.get("seed", ""),
-                r.get("status", ""),
-                r.get("auc", ""),
-                r.get("elapsed_s", ""),
-            ])
+            writer.writerow(
+                [
+                    r.get("config", ""),
+                    r.get("metal", ""),
+                    r.get("seed", ""),
+                    r.get("status", ""),
+                    r.get("auc", ""),
+                    r.get("elapsed_s", ""),
+                ]
+            )
     print(f"[wf251-F3] wrote {csv_path}", flush=True)
 
     # Emit ablation_table.md

@@ -149,20 +149,18 @@ def test_w_flow_cfm_solver_shape(z0, integration_solver, linear_velocity_fn):
     with torch.no_grad():
         out = integration_solver.solve(linear_velocity_fn, z0.clone(), (0.0, 1.0))
 
-    assert out.shape == z0.shape, (
-        f"WFlowCFMSolver.solve shape {tuple(out.shape)} != z0 shape {tuple(z0.shape)}"
-    )
-    assert out.dtype == z0.dtype, (
-        f"WFlowCFMSolver.solve dtype {out.dtype} != z0 dtype {z0.dtype}"
-    )
+    assert (
+        out.shape == z0.shape
+    ), f"WFlowCFMSolver.solve shape {tuple(out.shape)} != z0 shape {tuple(z0.shape)}"
+    assert (
+        out.dtype == z0.dtype
+    ), f"WFlowCFMSolver.solve dtype {out.dtype} != z0 dtype {z0.dtype}"
 
 
 # ---------------------------------------------------------------------------
 # Test 2: WFlowCFMSolver trajectory matches the base solver within tol
 # ---------------------------------------------------------------------------
-def test_w_flow_cfm_trajectory_matches_base(
-    z0, integration_solver, linear_velocity_fn
-):
+def test_w_flow_cfm_trajectory_matches_base(z0, integration_solver, linear_velocity_fn):
     """W-Flow's trajectory (via :class:`WFlowCFMSolver`) matches the base solver.
 
     We compare the integrated state at ``t=1.0`` against the
@@ -199,12 +197,8 @@ def test_w_flow_speedup(integration_solver):
     only assert the measurement succeeds and is finite/positive.
     """
     speedup = integration_solver.wall_time_speedup(n_runs=2)
-    assert math.isfinite(speedup), (
-        f"wall_time_speedup must be finite; got {speedup!r}"
-    )
-    assert speedup > 0.0, (
-        f"wall_time_speedup must be > 0; got {speedup!r}"
-    )
+    assert math.isfinite(speedup), f"wall_time_speedup must be finite; got {speedup!r}"
+    assert speedup > 0.0, f"wall_time_speedup must be > 0; got {speedup!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -214,7 +208,12 @@ def test_w_flow_selector_picks_base(selector):
     """``complexity='low'`` -> :data:`SolverStrategy.BASE`."""
     assert selector.select_strategy("low") == SolverStrategy.BASE
     assert selector.select_strategy("low", n_atoms=4) == SolverStrategy.BASE
-    assert selector.select_strategy("low", n_atoms=COMPLEXITY_THRESHOLDS["LOW_MAX_ATOMS"] - 1) == SolverStrategy.BASE
+    assert (
+        selector.select_strategy(
+            "low", n_atoms=COMPLEXITY_THRESHOLDS["LOW_MAX_ATOMS"] - 1
+        )
+        == SolverStrategy.BASE
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -225,7 +224,9 @@ def test_w_flow_selector_picks_w_flow(selector):
     assert selector.select_strategy("high") == SolverStrategy.W_FLOW
     assert selector.select_strategy("high", n_atoms=200) == SolverStrategy.W_FLOW
     assert (
-        selector.select_strategy("high", n_atoms=COMPLEXITY_THRESHOLDS["HIGH_MAX_ATOMS"])
+        selector.select_strategy(
+            "high", n_atoms=COMPLEXITY_THRESHOLDS["HIGH_MAX_ATOMS"]
+        )
         == SolverStrategy.W_FLOW
     )
 
@@ -239,9 +240,9 @@ def test_w_flow_cfm_solver_default_strategy_is_w_flow(
     """``WFlowCFMSolver.solve`` records ``last_strategy == W_FLOW``."""
     with torch.no_grad():
         integration_solver.solve(linear_velocity_fn, z0.clone(), (0.0, 1.0))
-    assert integration_solver.last_strategy == SolverStrategy.W_FLOW, (
-        f"Default strategy must be W_FLOW; got {integration_solver.last_strategy!r}"
-    )
+    assert (
+        integration_solver.last_strategy == SolverStrategy.W_FLOW
+    ), f"Default strategy must be W_FLOW; got {integration_solver.last_strategy!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -256,8 +257,11 @@ def test_w_flow_cfm_solver_solve_with_strategy_base(
     """
     with torch.no_grad():
         out = integration_solver.solve_with(
-            linear_velocity_fn, z0.clone(), SolverStrategy.BASE,
-            n_steps=40, method="midpoint",
+            linear_velocity_fn,
+            z0.clone(),
+            SolverStrategy.BASE,
+            n_steps=40,
+            method="midpoint",
         )
 
     assert out.shape == z0.shape
@@ -276,7 +280,9 @@ def test_w_flow_cfm_solver_solve_with_strategy_w_flow(
     """``solve_with(strategy='w_flow')`` returns the W-Flow trajectory."""
     with torch.no_grad():
         out = integration_solver.solve_with(
-            linear_velocity_fn, z0.clone(), SolverStrategy.W_FLOW,
+            linear_velocity_fn,
+            z0.clone(),
+            SolverStrategy.W_FLOW,
         )
 
     assert out.shape == z0.shape
@@ -292,7 +298,9 @@ def test_w_flow_cfm_solver_invalid_strategy_raises(
     """``solve_with(strategy='garbage')`` raises ``ValueError``."""
     with pytest.raises(ValueError, match="Unknown strategy"):
         integration_solver.solve_with(
-            linear_velocity_fn, z0.clone(), "garbage",
+            linear_velocity_fn,
+            z0.clone(),
+            "garbage",
         )
 
 
@@ -324,9 +332,9 @@ def test_w_flow_cfm_solver_diag_reset_on_solve(
 def test_w_flow_cfm_solver_set_base_solver_chaining(z0, integration_solver):
     """``set_base_cfm_solver`` returns ``self`` for chaining."""
     out = integration_solver.set_base_cfm_solver(None)
-    assert out is integration_solver, (
-        "set_base_cfm_solver must return self for chaining"
-    )
+    assert (
+        out is integration_solver
+    ), "set_base_cfm_solver must return self for chaining"
 
 
 # ---------------------------------------------------------------------------
@@ -391,8 +399,11 @@ def test_w_flow_cfm_solver_solve_base_uses_default_method(
     solver = WFlowCFMSolver(
         base_cfm_solver=custom_base,
         w_flow_solver=WaveformRelaxationSolver(
-            n_windows=2, n_iters_per_window=2, tol=1e-6,
-            method="euler", n_substeps_per_window=10,
+            n_windows=2,
+            n_iters_per_window=2,
+            tol=1e-6,
+            method="euler",
+            n_substeps_per_window=10,
         ),
         n_windows=2,
         n_steps_base=20,
@@ -447,9 +458,9 @@ def test_w_flow_cfm_selector_unknown_complexity_raises(selector):
 def test_w_flow_cfm_selector_build_base_solver_chaining(selector, linear_velocity_fn):
     """``build_base_solver`` returns an :class:`ODESolver` and binds it to ``self``."""
     out = selector.build_base_solver(linear_velocity_fn, n_steps=40, method="midpoint")
-    assert isinstance(out, ODESolver), (
-        f"build_base_solver must return ODESolver; got {type(out).__name__}"
-    )
+    assert isinstance(
+        out, ODESolver
+    ), f"build_base_solver must return ODESolver; got {type(out).__name__}"
     # And it's bound to self for subsequent select_solver calls.
     assert selector.base_solver is out
 
@@ -464,29 +475,28 @@ def test_w_flow_cfm_selector_select_strategy_medium_returns_base(selector):
     # default to base (W-Flow overhead on CPU is not worth it for
     # medium-sized molecules).
     mid_atoms = (
-        COMPLEXITY_THRESHOLDS["LOW_MAX_ATOMS"]
-        + COMPLEXITY_THRESHOLDS["HIGH_MAX_ATOMS"]
+        COMPLEXITY_THRESHOLDS["LOW_MAX_ATOMS"] + COMPLEXITY_THRESHOLDS["HIGH_MAX_ATOMS"]
     ) // 2
-    assert (
-        selector.select_strategy("auto", n_atoms=mid_atoms) == SolverStrategy.BASE
-    )
+    assert selector.select_strategy("auto", n_atoms=mid_atoms) == SolverStrategy.BASE
 
 
 # ---------------------------------------------------------------------------
 # Test 23: select_solver returns the actual solver object
 # ---------------------------------------------------------------------------
-def test_w_flow_cfm_selector_select_solver_returns_object(selector, base_solver, w_flow_solver):
+def test_w_flow_cfm_selector_select_solver_returns_object(
+    selector, base_solver, w_flow_solver
+):
     """``select_solver`` returns the bound solver object for the chosen strategy."""
     base_obj = selector.select_solver("low")
     wflow_obj = selector.select_solver("high")
     # The base object is the same instance we supplied.
-    assert base_obj is base_solver, (
-        "select_solver('low') must return the bound base_solver instance"
-    )
+    assert (
+        base_obj is base_solver
+    ), "select_solver('low') must return the bound base_solver instance"
     # The W-Flow object is the W-Flow solver we supplied.
-    assert wflow_obj is w_flow_solver, (
-        "select_solver('high') must return the bound w_flow_solver instance"
-    )
+    assert (
+        wflow_obj is w_flow_solver
+    ), "select_solver('high') must return the bound w_flow_solver instance"
 
 
 # ---------------------------------------------------------------------------
@@ -515,9 +525,9 @@ def test_benchmark_w_flow_cfm_report_keys(z0, base_solver, w_flow_solver):
         "z0_shape",
         "n_windows",
     }
-    assert set(report.keys()) == expected_keys, (
-        f"benchmark_w_flow_cfm keys {set(report.keys())} != expected {expected_keys}"
-    )
+    assert (
+        set(report.keys()) == expected_keys
+    ), f"benchmark_w_flow_cfm keys {set(report.keys())} != expected {expected_keys}"
     assert report["strategy"] == SolverStrategy.W_FLOW
     assert report["n_runs"] == 1
     assert tuple(report["z0_shape"]) == tuple(z0.shape)

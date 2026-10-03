@@ -38,6 +38,7 @@ are guarded; if any are missing the adapter degrades gracefully:
 The upstream repo (``molmetal/references/SoftMol/``) is NOT modified —
 this adapter is additive.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -123,12 +124,14 @@ def _try_import_upstream():
     out: dict = {}
     try:
         import dataloader as _dataloader  # noqa: F401
+
         out["dataloader"] = _dataloader
     except Exception as exc:
         logger.debug("SoftMol dataloader import failed: %s", exc)
         return None
     try:
         import diffusion as _diffusion  # noqa: F401
+
         out["diffusion"] = _diffusion
     except Exception as exc:
         logger.debug("SoftMol diffusion import failed: %s", exc)
@@ -154,6 +157,7 @@ def _resolve_ckpt(ckpt: Optional[str]) -> Optional[str]:
     # Auto-download fallback (mirrors SoftMol sample.generate)
     try:
         from huggingface_hub import hf_hub_download  # type: ignore
+
         target = ckpt or _SOFTMOL_DEFAULT_CKPT
         return hf_hub_download(repo_id=_SOFTMOL_HF_REPO, filename=target)
     except Exception as exc:
@@ -196,7 +200,11 @@ class SoftMolAdapter:
         device: Optional[str] = None,
         **kwargs,
     ):
-        self._repo_path = Path(ref_repo_path) if Path(ref_repo_path).is_absolute() else _HERE.parents[1] / ref_repo_path
+        self._repo_path = (
+            Path(ref_repo_path)
+            if Path(ref_repo_path).is_absolute()
+            else _HERE.parents[1] / ref_repo_path
+        )
         self._ckpt_arg = ckpt
         self._ckpt_resolved: Optional[str] = None
         self._vocab = vocab
@@ -227,7 +235,9 @@ class SoftMolAdapter:
         self._upstream = _try_import_upstream()
         if self._upstream is None:
             self._using_fallback = True
-            logger.info("SoftMolAdapter running in fallback mode (upstream unavailable)")
+            logger.info(
+                "SoftMolAdapter running in fallback mode (upstream unavailable)"
+            )
             return
 
         # Build the Hydra-style config (mirror of sample._build_config)
@@ -258,13 +268,17 @@ class SoftMolAdapter:
 
         # Load the LightningModule
         try:
-            self._model = self._upstream["diffusion"].Diffusion.load_from_checkpoint(
-                self._ckpt_resolved,
-                tokenizer=self._tokenizer,
-                config=self._config,
-                strict=False,
-                weights_only=False,
-            ).to(self._device)
+            self._model = (
+                self._upstream["diffusion"]
+                .Diffusion.load_from_checkpoint(
+                    self._ckpt_resolved,
+                    tokenizer=self._tokenizer,
+                    config=self._config,
+                    strict=False,
+                    weights_only=False,
+                )
+                .to(self._device)
+            )
         except Exception as exc:
             logger.warning("SoftMol model load failed: %s", exc)
             self._using_fallback = True
@@ -299,16 +313,20 @@ class SoftMolAdapter:
             "next_block_only": False,
             "temperature": self._temperature,
         }
-        overrides = omegaconf.OmegaConf.create({
-            "seed": 42,
-            "block_size": self._block_size,
-            "algo": {"T": self._steps},
-            "model": {"length": self._length, "attn_backend": "sdpa"},
-            "loader": {"eval_batch_size": 1},
-            "sampling": sampling_cfg,
-            "eval": {"checkpoint_path": str(self._ckpt_resolved or _SOFTMOL_DEFAULT_CKPT)},
-            "data": {"tokenizer_name_or_path": str((repo / self._vocab).resolve())},
-        })
+        overrides = omegaconf.OmegaConf.create(
+            {
+                "seed": 42,
+                "block_size": self._block_size,
+                "algo": {"T": self._steps},
+                "model": {"length": self._length, "attn_backend": "sdpa"},
+                "loader": {"eval_batch_size": 1},
+                "sampling": sampling_cfg,
+                "eval": {
+                    "checkpoint_path": str(self._ckpt_resolved or _SOFTMOL_DEFAULT_CKPT)
+                },
+                "data": {"tokenizer_name_or_path": str((repo / self._vocab).resolve())},
+            }
+        )
         merged = omegaconf.OmegaConf.merge(base_cfg, {"model": model_cfg}, overrides)
         return merged
 
@@ -374,12 +392,15 @@ class SoftMolAdapter:
         RDKit ETKDGv3.
         """
         import torch  # local import — heavy
+
         empty3 = torch.zeros((0, 3), dtype=torch.float32)
         empty1 = torch.zeros((0,), dtype=torch.long)
         return Molecule(
             coords=empty3,
             atom_types=empty1,
-            bonds=empty1.reshape(2, 0) if empty1.numel() else torch.zeros((2, 0), dtype=torch.long),
+            bonds=empty1.reshape(2, 0)
+            if empty1.numel()
+            else torch.zeros((2, 0), dtype=torch.long),
             bond_types=empty1,
             formal_charges=empty1,
             smiles=str(smi),
@@ -401,7 +422,7 @@ class SoftMolAdapter:
             "paper": "Yang et al. 2026, arXiv:2601.21964",
             "code": "molmetal/references/SoftMol/",
             "weight_repo": _SOFTMOL_HF_REPO,
-            "uses_3d": False,             # SMILES-only output
+            "uses_3d": False,  # SMILES-only output
             "uses_pocket_conditioning": False,  # gated-MCTS not wired
             "vocab": self._vocab,
             "length": self._length,
@@ -423,6 +444,7 @@ class SoftMolAdapter:
 def _torch_cuda_available() -> bool:
     try:
         import torch  # type: ignore
+
         return bool(torch.cuda.is_available())
     except Exception:
         return False

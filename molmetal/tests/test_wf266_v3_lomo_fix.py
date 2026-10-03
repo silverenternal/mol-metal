@@ -70,6 +70,7 @@ def _ensure_chemprop_stubs():
     """
     try:
         import chemprop  # noqa: F401
+
         return  # chemprop is installed; nothing to do.
     except Exception:
         pass
@@ -96,7 +97,10 @@ def _ensure_chemprop_stubs():
             # Skip nn.Module's internal __getattr__ machinery (which
             # would recurse on _parameters / _buffers / _modules).
             if name.startswith("_") or name in {
-                "training", "forward", "extra_repr", "_call_impl",
+                "training",
+                "forward",
+                "extra_repr",
+                "_call_impl",
             }:
                 raise AttributeError(name)
             return _AnyArgsStub()
@@ -154,7 +158,9 @@ def _build_args(argv=None):
     )
     p.add_argument("--chemprop-min-epochs", type=int, default=10)
     p.add_argument(
-        "--chemprop-lomo-init-scale", type=float, default=1e-3,
+        "--chemprop-lomo-init-scale",
+        type=float,
+        default=1e-3,
     )
     return p.parse_args(argv if argv is not None else [])
 
@@ -171,8 +177,7 @@ def test_min_epochs_default_10():
     """
     args = _build_args([])
     assert args.chemprop_min_epochs == 10, (
-        f"expected --chemprop-min-epochs default 10, "
-        f"got {args.chemprop_min_epochs}"
+        f"expected --chemprop-min-epochs default 10, " f"got {args.chemprop_min_epochs}"
     )
 
     # CLI override is honoured.
@@ -227,6 +232,7 @@ def test_v3_fix_mode_combines_all():
     # Mirror the parser to extract the choices tuple without invoking
     # the full driver argparse (which has 50+ flags).
     import argparse as _ap
+
     p = _ap.ArgumentParser()
     p.add_argument(
         "--chemprop-mode",
@@ -236,9 +242,9 @@ def test_v3_fix_mode_combines_all():
     choices = next(
         a.choices for a in p._actions if "--chemprop-mode" in a.option_strings
     )
-    assert "v3-fix" in choices, (
-        f"v3-fix should be in --chemprop-mode choices; got {choices}"
-    )
+    assert (
+        "v3-fix" in choices
+    ), f"v3-fix should be in --chemprop-mode choices; got {choices}"
 
     # The two companion flags remain valid regardless of mode — the
     # dispatch logic in main() reads them via ``args.chemprop_min_epochs``
@@ -319,20 +325,21 @@ def test_min_epochs_blocks_premature_collapse():
     )
 
     # The error branch fires:
-    assert result.status == "error", (
-        f"expected status='error' (min_epochs floor), got {result.status!r}"
-    )
+    assert (
+        result.status == "error"
+    ), f"expected status='error' (min_epochs floor), got {result.status!r}"
     assert result.epoch_count == 0
     assert result.elapsed_s == 0.0
     # Honest error message identifies the Wf-266 root cause.
     assert result.error is not None
     assert "epochs=5" in result.error
     assert "min_epochs=10" in result.error
-    assert "Wf-266" in result.error, (
-        f"error message should cite the Wf-266 LOMO fix; got: {result.error}"
-    )
+    assert (
+        "Wf-266" in result.error
+    ), f"error message should cite the Wf-266 LOMO fix; got: {result.error}"
     # test_auc is NaN because training was refused.
     import math
+
     assert math.isnan(result.test_auc)
 
     # Sanity: when epochs >= min_epochs the floor does NOT fire — we

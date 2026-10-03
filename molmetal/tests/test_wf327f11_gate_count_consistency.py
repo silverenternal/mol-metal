@@ -64,9 +64,7 @@ import pytest
 # fixed target.
 # ---------------------------------------------------------------------------
 REPO_ROOT = Path(__file__).resolve().parents[2]
-AUDIT_DOC = (
-    REPO_ROOT / "TODO" / "completed" / "321d_preflight_gate_audit.md"
-)
+AUDIT_DOC = REPO_ROOT / "TODO" / "completed" / "321d_preflight_gate_audit.md"
 
 
 # ---------------------------------------------------------------------------
@@ -97,6 +95,7 @@ class TestExpectedGateCountsSync:
             EXPECTED_GATE_COUNTS,
             build_gates,
         )
+
         for pipeline in ("all", "frontier", "chemprop_v2_v3", "cfm"):
             runners = build_gates(pipeline)
             expected = EXPECTED_GATE_COUNTS[pipeline]
@@ -142,9 +141,7 @@ class TestAuditDocSync:
 
         # Section header for the `all` pipeline: "### §2.1 `all` pipeline — N gates"
         # The N must match EXPECTED_GATE_COUNTS["all"].
-        all_section_re = re.compile(
-            r"### §2\.1\s+`all`\s+pipeline\s+—\s+(\d+)\s+gates"
-        )
+        all_section_re = re.compile(r"### §2\.1\s+`all`\s+pipeline\s+—\s+(\d+)\s+gates")
         all_section_match = all_section_re.search(text)
         assert all_section_match is not None, (
             f"audit doc §2.1 `all` pipeline section header not found in "
@@ -180,8 +177,11 @@ class TestAuditDocSync:
         for doc_val, code_val, pipeline in (
             (all_summary, EXPECTED_GATE_COUNTS["all"], "all"),
             (frontier_summary, EXPECTED_GATE_COUNTS["frontier"], "frontier"),
-            (chemprop_summary, EXPECTED_GATE_COUNTS["chemprop_v2_v3"],
-             "chemprop_v2_v3"),
+            (
+                chemprop_summary,
+                EXPECTED_GATE_COUNTS["chemprop_v2_v3"],
+                "chemprop_v2_v3",
+            ),
             (cfm_summary, EXPECTED_GATE_COUNTS["cfm"], "cfm"),
         ):
             assert doc_val == code_val, (
@@ -219,6 +219,7 @@ class TestAuditGateFlip:
             EXPECTED_GATE_COUNTS,
             gate_gate_count_consistency_audit,
         )
+
         result = gate_gate_count_consistency_audit(
             "p3_gate_count_consistency_audit",
             "P3",

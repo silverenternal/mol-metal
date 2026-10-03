@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Wf-418-A1 closeout author script — uses atomic_write_file per AGENTS.md §5.6."""
+
 import sys
-sys.path.insert(0, '/home/hugo/codes/mol-metal')
+
+sys.path.insert(0, "/home/hugo/codes/mol-metal")
 from molmetal.scripts.wf386a3_atomic_write import atomic_write_file
 
 CONTENT = r"""# Wf-418-A1 — Wf-380 SCAFFOLD-loss wire-in verification
@@ -197,7 +199,7 @@ over-claim is HONEST-FRAME per `party-twenty-spirit` §3.5.
 
 import os
 
-target_path = '/home/hugo/codes/mol-metal/TODO/completed/418a1_wf380_wire_verify.md'
+target_path = "/home/hugo/codes/mol-metal/TODO/completed/418a1_wf380_wire_verify.md"
 atomic_write_file(target_path, CONTENT)
 print(f"WROTE: {target_path}")
 print(f"SIZE: {os.path.getsize(target_path)} bytes")

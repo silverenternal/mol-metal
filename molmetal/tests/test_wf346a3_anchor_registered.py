@@ -66,6 +66,7 @@ def _import_preflight():
     """Import :mod:`molmetal.scripts.pre_flight_check` as a module."""
     sys.path.insert(0, str(REPO_ROOT))
     import molmetal.scripts.pre_flight_check as preflight
+
     return preflight
 
 

@@ -30,6 +30,7 @@ Public API
 * :func:`hilbert_astsr_optimize_batch` — torch.Tensor
   (n_seeds, dim) for a batch of (features, target) pairs.
 """
+
 from __future__ import annotations
 
 import logging
@@ -65,6 +66,7 @@ def _loss_grad_eager(x, feats, tgt, _torch=None):
     torch = _torch
     if torch is None:
         import torch as _torch  # type: ignore
+
         torch = _torch
     residual = torch.matmul(feats, x) - tgt
     loss = 0.5 * torch.mean(residual * residual)
@@ -211,8 +213,7 @@ def hilbert_astsr_optimize_single(
         )
     if tgt.shape[0] != feats.shape[0]:
         raise ValueError(
-            f"features / target length mismatch: {feats.shape[0]} vs "
-            f"{tgt.shape[0]}"
+            f"features / target length mismatch: {feats.shape[0]} vs " f"{tgt.shape[0]}"
         )
 
     projected = _projected_vram_mb(int(feats.shape[0]), int(p.population_dim))
@@ -225,14 +226,8 @@ def hilbert_astsr_optimize_single(
     # Initial primal / dual on the chosen device.
     g = torch.Generator(device="cpu")
     g.manual_seed(int(p.seed))
-    x = (
-        torch.randn(int(p.population_dim), generator=g, dtype=torch.float32)
-        * 0.01
-    )
-    y = (
-        torch.randn(int(p.population_dim), generator=g, dtype=torch.float32)
-        * 0.01
-    )
+    x = torch.randn(int(p.population_dim), generator=g, dtype=torch.float32) * 0.01
+    y = torch.randn(int(p.population_dim), generator=g, dtype=torch.float32) * 0.01
     x = x.to(device)
     y = y.to(device)
 
@@ -333,7 +328,10 @@ def hilbert_astsr_optimize_batch(
         )
         rows.append(
             hilbert_astsr_optimize_single(
-                feats, tgt, params=params_i, device=device,
+                feats,
+                tgt,
+                params=params_i,
+                device=device,
                 expected_vram_mb=int(expected_vram_mb),
             )
         )

@@ -46,6 +46,7 @@ Usage
     uv run --no-sync python molmetal/scripts/test_score_any_fallback.py
     pytest molmetal/tests/test_score_any_fallback.py -v
 """
+
 from __future__ import annotations
 
 import argparse
@@ -235,6 +236,7 @@ def _patch_primary_unavailable(
     """Monkey-patch the wrapper for ``metric`` so it always raises
     ``AdapterUnavailable`` (simulating a missing primary tool)."""
     import importlib
+
     _sa_mod = importlib.import_module("molmetal.scoring.score_any")
     from molmetal.scoring.score_any import (
         AdapterUnavailable,
@@ -272,6 +274,7 @@ def _capture_fallback_calls(
     a counter, while leaving real wrappers untouched. Used to detect
     whether the router auto-tries fallbacks when primary fails."""
     import importlib
+
     _sa_mod = importlib.import_module("molmetal.scoring.score_any")
     from molmetal.scoring.score_any import (
         AdapterUnavailable,
@@ -292,6 +295,7 @@ def _capture_fallback_calls(
             def _recorder(ctx: Dict[str, Any]) -> Any:
                 counts[name] = counts.get(name, 0) + 1
                 return original(ctx)
+
             return _recorder
 
         reg[m] = ToolRef(
@@ -317,6 +321,7 @@ def _run_primary_unavailable_scenario(
 ) -> FallbackStepResult:
     """Simulate primary tool unavailable and observe the router's response."""
     import importlib
+
     _sa_mod = importlib.import_module("molmetal.scoring.score_any")
     from molmetal.scoring import score_any as _score_any_public
     from molmetal.scoring.score_any import AdapterUnavailable
@@ -326,9 +331,7 @@ def _run_primary_unavailable_scenario(
     with _patch_primary_unavailable(metric):
         with _capture_fallback_calls(fb_metrics) as counts:
             try:
-                result = _score_any_public(
-                    metric, molecules=["CCO"], pocket=None
-                )
+                result = _score_any_public(metric, molecules=["CCO"], pocket=None)
                 # Router returned a result — must NOT happen when
                 # primary raises AdapterUnavailable and no auto-fallback.
                 actual_status = "MEASURED"
@@ -352,9 +355,7 @@ def _run_primary_unavailable_scenario(
                 actual_status = "ADAPTER_UNAVAILABLE"
                 # Note: if router auto-fell-back, ``counts`` would have
                 # > 0 entries; for the current implementation it does not.
-                fb_used = next(
-                    (m for m, c in counts.items() if int(c) > 0), None
-                )
+                fb_used = next((m for m, c in counts.items() if int(c) > 0), None)
                 return FallbackStepResult(
                     metric=metric,
                     primary_tool=primary_tool,
@@ -395,6 +396,7 @@ def _run_env_routing_scenario(
     this host.
     """
     import importlib
+
     _sa_mod = importlib.import_module("molmetal.scoring.score_any")
     from molmetal.scoring.score_any import (
         AdapterUnavailable,
@@ -406,9 +408,7 @@ def _run_env_routing_scenario(
     prior = os.environ.get("MOLMETAL_VINA_ENGINE")
     os.environ["MOLMETAL_VINA_ENGINE"] = env_value
 
-    expected_metric = (
-        "vina_qvina2" if env_value == "qvina2" else "vina_gpu"
-    )
+    expected_metric = "vina_qvina2" if env_value == "qvina2" else "vina_gpu"
     if expected_metric not in _sa_mod.REGISTRY:
         # No fallback wrapper to patch — restore env and report.
         if prior is None:
@@ -443,9 +443,7 @@ def _run_env_routing_scenario(
 
     try:
         try:
-            result = _score_any_public(
-                metric, molecules=["CCO"], pocket=None
-            )
+            result = _score_any_public(metric, molecules=["CCO"], pocket=None)
             selected = str(result.get("tool", ""))
             ok = selected == expected_tool
             return FallbackStepResult(
@@ -456,13 +454,12 @@ def _run_env_routing_scenario(
                 expected_status="ENV_ROUTED",
                 actual_status="ENV_ROUTED" if ok else "FAIL",
                 selected_tool=selected,
-                fallback_used=(
-                    expected_metric if ok else None
-                ),
+                fallback_used=(expected_metric if ok else None),
                 error=(
-                    None if ok
+                    None
+                    if ok
                     else f"expected tool {expected_tool!r}, "
-                         f"router picked {selected!r}"
+                    f"router picked {selected!r}"
                 ),
                 wall_s=time.time() - t0,
             )
@@ -538,6 +535,7 @@ def _run_chain_metadata_scenario(
             errors.append(f"refers to MOCK_DELETED metric {fb!r}")
     if metric in fallback_chain:
         errors.append(f"self-reference in chain")
+
     # Cycle detection: only flag length-3+ cycles; length-2 cycles
     # are intentional bidirectional soft chains.
     def _walk(start: str, current: str, path: List[str]) -> List[str]:
@@ -547,9 +545,7 @@ def _run_chain_metadata_scenario(
         bad: List[str] = []
         for nxt in chain:
             if nxt == start and len(path) >= 3:
-                bad.append(
-                    f"cycle {'->'.join(path + [nxt])}"
-                )
+                bad.append(f"cycle {'->'.join(path + [nxt])}")
                 continue
             if nxt in path:
                 continue
@@ -619,7 +615,9 @@ def _run_metric_scenarios(
     # ignored (the router keeps the primary ref), so we skip the
     # env-routing scenario for those metrics.
     if metric in {
-        "vina_score", "vina_high_affinity", "vina_min_score",
+        "vina_score",
+        "vina_high_affinity",
+        "vina_min_score",
     }:
         for env_value in ("qvina2", "gpu"):
             env = _run_env_routing_scenario(metric, primary, chain, env_value)
@@ -629,8 +627,7 @@ def _run_metric_scenarios(
     statuses = [r["actual_status"] for r in rep.results]
     if any(s == "FAIL" for s in statuses):
         rep.overall_status = "FAIL"
-    elif all(s in ("MEASURED", "ADAPTER_UNAVAILABLE", "ENV_ROUTED")
-             for s in statuses):
+    elif all(s in ("MEASURED", "ADAPTER_UNAVAILABLE", "ENV_ROUTED") for s in statuses):
         rep.overall_status = "PASS"
     else:
         rep.overall_status = "FAIL"
@@ -661,24 +658,19 @@ def _aggregate(reports: List[FallbackReport]) -> Dict[str, Any]:
                 if sr["actual_status"] == "ENV_ROUTED":
                     n_env_routed += 1
     return {
-        "n_metrics_with_fallback_chain": sum(
-            1 for r in reports if r.fallback_chain
-        ),
+        "n_metrics_with_fallback_chain": sum(1 for r in reports if r.fallback_chain),
         "n_total_metrics_tested": int(n),
         "n_pass": int(by_status.get("PASS", 0)),
         "n_fail": int(by_status.get("FAIL", 0)),
         "n_na": int(by_status.get("N/A", 0)),
         "n_chain_metadata_pass": int(n_chain_metadata_pass),
         "n_chain_metadata_total": sum(
-            1 for r in reports
-            for sr in r.results
-            if sr["scenario"] == "chain_metadata"
+            1 for r in reports for sr in r.results if sr["scenario"] == "chain_metadata"
         ),
-        "n_primary_unavailable_propagate": int(
-            n_primary_unavailable_propagate
-        ),
+        "n_primary_unavailable_propagate": int(n_primary_unavailable_propagate),
         "n_primary_unavailable_total": sum(
-            1 for r in reports
+            1
+            for r in reports
             for sr in r.results
             if sr["scenario"] == "primary_unavailable"
         ),
@@ -686,15 +678,17 @@ def _aggregate(reports: List[FallbackReport]) -> Dict[str, Any]:
         "n_env_routed_total": int(n_env_routed_total),
         "fallback_chain_success_rate": (
             n_primary_unavailable_propagate
-            / max(1, sum(
-                1 for r in reports
-                for sr in r.results
-                if sr["scenario"] == "primary_unavailable"
-            ))
+            / max(
+                1,
+                sum(
+                    1
+                    for r in reports
+                    for sr in r.results
+                    if sr["scenario"] == "primary_unavailable"
+                ),
+            )
         ),
-        "env_routing_success_rate": (
-            n_env_routed / max(1, n_env_routed_total)
-        ),
+        "env_routing_success_rate": (n_env_routed / max(1, n_env_routed_total)),
     }
 
 
@@ -712,9 +706,7 @@ def _run_metadata_audit(ROUTING_POLICY: Dict[str, Any]) -> Dict[str, Any]:
         "broken_refs": _check_chain_refs(ROUTING_POLICY),
         "mock_deleted_refs": _check_chain_no_mock_deleted(ROUTING_POLICY),
         "cycles": [list(c) for c in _check_chain_no_cycles(ROUTING_POLICY)],
-        "soft_chain_pairs": [
-            list(p) for p in _check_soft_chain_pairs(ROUTING_POLICY)
-        ],
+        "soft_chain_pairs": [list(p) for p in _check_soft_chain_pairs(ROUTING_POLICY)],
         "self_refs": _check_chain_no_self_refs(ROUTING_POLICY),
         "n_metrics_with_chain": sum(
             1 for e in ROUTING_POLICY.values() if e.fallback_chain
@@ -788,14 +780,25 @@ def _build_argparser() -> argparse.ArgumentParser:
             "response + metadata integrity."
         ),
     )
-    p.add_argument("--out-dir", type=str,
-                   default="molmetal/reports/wf48_fallback",
-                   help="Output directory for the report.")
-    p.add_argument("--no-mock-unavailable", action="store_true",
-                   help="Skip the simulated-primary-unavailable "
-                        "scenario (metadata audit only).")
-    p.add_argument("--seeds", type=int, nargs="*", default=[0],
-                   help="Seed(s) for deterministic scenarios.")
+    p.add_argument(
+        "--out-dir",
+        type=str,
+        default="molmetal/reports/wf48_fallback",
+        help="Output directory for the report.",
+    )
+    p.add_argument(
+        "--no-mock-unavailable",
+        action="store_true",
+        help="Skip the simulated-primary-unavailable "
+        "scenario (metadata audit only).",
+    )
+    p.add_argument(
+        "--seeds",
+        type=int,
+        nargs="*",
+        default=[0],
+        help="Seed(s) for deterministic scenarios.",
+    )
     return p
 
 

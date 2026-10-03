@@ -22,6 +22,7 @@ pretrained ``.pt`` checkpoint is not in this environment (policy
 forbids pulling external pretrained weights). The Lambda side runs
 the full MCTS with all 1000 simulations.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -71,8 +72,16 @@ def _build_1h36_pocket() -> Pocket:
     residue_ids: List[int] = []
     chain_ids: List[int] = []
     element_to_z = {
-        "H": 1, "C": 6, "N": 7, "O": 8, "F": 9, "P": 15, "S": 16, "CL": 17,
-        "BR": 35, "I": 53,
+        "H": 1,
+        "C": 6,
+        "N": 7,
+        "O": 8,
+        "F": 9,
+        "P": 15,
+        "S": 16,
+        "CL": 17,
+        "BR": 35,
+        "I": 53,
     }
     with open(pdb_path) as fh:
         for line in fh:
@@ -151,6 +160,7 @@ def _run_lambda(n_samples: int, n_sims: int, pocket: Pocket) -> List[Complex]:
         5. Dedup by SMILES, keep up to ``n_samples``.
     """
     from rdkit import RDLogger  # noqa: E402
+
     RDLogger.DisableLog("rdApp.*")
 
     from molmetal_lam.binding.types import (  # noqa: E402
@@ -202,12 +212,10 @@ def _run_lambda(n_samples: int, n_sims: int, pocket: Pocket) -> List[Complex]:
         raise RuntimeError("Empty tile library")
 
     azide_terms = [
-        MoleculeClosedTerm.from_smiles(a.smiles, embed_3d=False)
-        for a in AZIDES
+        MoleculeClosedTerm.from_smiles(a.smiles, embed_3d=False) for a in AZIDES
     ]
     alkyne_terms = [
-        MoleculeClosedTerm.from_smiles(k.smiles, embed_3d=False)
-        for k in ALKYNES
+        MoleculeClosedTerm.from_smiles(k.smiles, embed_3d=False) for k in ALKYNES
     ]
     azide_terms = [t for t in azide_terms if t is not None]
     alkyne_terms = [t for t in alkyne_terms if t is not None]
@@ -307,6 +315,7 @@ def _run_lambda(n_samples: int, n_sims: int, pocket: Pocket) -> List[Complex]:
         from molmetal_lam.sbdd_env.pocket2mol_adapter import (  # noqa: E402
             _FALLBACK_SMILES_POOL,
         )
+
         for smi in _FALLBACK_SMILES_POOL:
             if len(candidates) >= n_samples:
                 break
@@ -319,9 +328,7 @@ def _run_lambda(n_samples: int, n_sims: int, pocket: Pocket) -> List[Complex]:
             try:
                 smi = st.canonical_smiles()
             except Exception:
-                smi = (
-                    getattr(st, "source_smiles", "") or ""
-                )
+                smi = getattr(st, "source_smiles", "") or ""
             atom_types = np.asarray(
                 [getattr(a, "Z", 6) for a in st.atoms], dtype=np.int64
             )
@@ -352,18 +359,22 @@ def _safe(fn, default: float = 0.0):
             return v if v == v else default  # NaN guard
         except Exception:
             return default
+
     return _wrapped
 
 
 def _qed_metric() -> Any:
     try:
         from rdkit.Chem import QED  # type: ignore
+
         def _f(smi: str) -> float:
             from rdkit import Chem  # type: ignore
+
             m = Chem.MolFromSmiles(smi)
             if m is None:
                 return float("nan")
             return float(QED.qed(m))
+
         return _f
     except Exception:
         return lambda s: float("nan")
@@ -372,12 +383,15 @@ def _qed_metric() -> Any:
 def _sa_metric() -> Any:
     try:
         from molmetal_lam.sbdd_env.sa_score import (  # type: ignore
-            sa_score_ertl, sa_score_to_unit,
+            sa_score_ertl,
+            sa_score_to_unit,
         )
+
         def _f(smi: str) -> float:
             # SA in [1,10]; report mean of raw (matches the Pocket2Mol
             # paper convention "lower = easier").
             return float(sa_score_ertl(smi))
+
         return _f
     except Exception:
         return lambda s: float("nan")
@@ -427,15 +441,22 @@ def _aggregate_metrics(complexes: List[Complex]) -> Dict[str, float]:
         "anticancer_composite_mean": mean(anti_vals),
         "anticancer_composite_n_valid": len(finite_values(anti_vals)),
     }
-    for raw, key in (("MW", "mw"), ("logP", "logp"), ("TPSA", "tpsa"), ("RotB", "rotb")):
+    for raw, key in (
+        ("MW", "mw"),
+        ("logP", "logp"),
+        ("TPSA", "tpsa"),
+        ("RotB", "rotb"),
+    ):
         values = [row[raw] for row in reports]
         metrics[key + "_mean"] = mean(values)
         metrics[key + "_n_valid"] = len(finite_values(values))
-    for flag, key in (("MW_lipinski", "mw_lipinski_rate"),
-                      ("MW_metal_adjusted", "mw_metal_adjusted_rate"),
-                      ("logP_in_range", "logp_in_range_rate"),
-                      ("TPSA_in_range", "tpsa_in_range_rate"),
-                      ("RotB_in_range", "rotb_in_range_rate")):
+    for flag, key in (
+        ("MW_lipinski", "mw_lipinski_rate"),
+        ("MW_metal_adjusted", "mw_metal_adjusted_rate"),
+        ("logP_in_range", "logp_in_range_rate"),
+        ("TPSA_in_range", "tpsa_in_range_rate"),
+        ("RotB_in_range", "rotb_in_range_rate"),
+    ):
         metrics[key] = rate(sum(row[flag] for row in reports))
     return metrics
 
@@ -467,7 +488,8 @@ def main() -> int:
         ),
     )
     parser.add_argument(
-        "--skip-dock", action="store_true",
+        "--skip-dock",
+        action="store_true",
         help="Skip Vina docking (for fast dry-runs).",
     )
     args = parser.parse_args()
@@ -478,8 +500,12 @@ def main() -> int:
     # 1) Pocket
     log.info("Building 1h36 Pocket from reference PDB...")
     pocket = _build_1h36_pocket()
-    log.info("Pocket built: %d atoms, centre=%s, radius=%.1f Å",
-             pocket.n_atoms, pocket.center.tolist(), pocket.radius)
+    log.info(
+        "Pocket built: %d atoms, centre=%s, radius=%.1f Å",
+        pocket.n_atoms,
+        pocket.center.tolist(),
+        pocket.radius,
+    )
 
     out_md = Path(args.out)
     out_md.parent.mkdir(parents=True, exist_ok=True)
@@ -502,6 +528,7 @@ def main() -> int:
     from molmetal_lam.sbdd_env.pocket2mol_adapter import (  # noqa: E402
         Pocket2MolAdapter,
     )
+
     p2m = Pocket2MolAdapter(seed=42)
     p2m.setup()
     log.info("Pocket2Mol mode: %s", p2m.mode)
@@ -509,30 +536,37 @@ def main() -> int:
     t0 = time.time()
     p2m_complexes = p2m.sample(pocket, n_samples=args.n_ligands)
     t_p2m = time.time() - t0
-    log.info("Pocket2Mol sample() returned %d complexes in %.1fs",
-             len(p2m_complexes), t_p2m)
+    log.info(
+        "Pocket2Mol sample() returned %d complexes in %.1fs", len(p2m_complexes), t_p2m
+    )
 
     # ----------------------------------------------------------------
     # 3) Lambda MCTS — 1000 sims
     # ----------------------------------------------------------------
     log.info("=" * 60)
-    log.info("Lambda MCTS proof search (n_sims=%d, target=%d)",
-             args.n_sims, args.n_ligands)
+    log.info(
+        "Lambda MCTS proof search (n_sims=%d, target=%d)", args.n_sims, args.n_ligands
+    )
     log.info("=" * 60)
     t0 = time.time()
     lam_complexes = _run_lambda(
-        n_samples=args.n_ligands, n_sims=args.n_sims, pocket=pocket,
+        n_samples=args.n_ligands,
+        n_sims=args.n_sims,
+        pocket=pocket,
     )
     t_lam = time.time() - t0
-    log.info("Lambda returned %d complexes in %.1fs",
-             len(lam_complexes), t_lam)
+    log.info("Lambda returned %d complexes in %.1fs", len(lam_complexes), t_lam)
 
     # ----------------------------------------------------------------
     # 4) Dock both with VinaDockingAdapter (exhaustiveness=8)
     # ----------------------------------------------------------------
     # Keep one metric row per generated input, including skipped/failed docking.
-    evaluated_p2m = [Complex(pocket=c.pocket, molecule=c.molecule) for c in p2m_complexes]
-    evaluated_lam = [Complex(pocket=c.pocket, molecule=c.molecule) for c in lam_complexes]
+    evaluated_p2m = [
+        Complex(pocket=c.pocket, molecule=c.molecule) for c in p2m_complexes
+    ]
+    evaluated_lam = [
+        Complex(pocket=c.pocket, molecule=c.molecule) for c in lam_complexes
+    ]
     if args.skip_dock:
         log.info("--skip-dock: skipping Vina")
         docked_p2m: List[Complex] = []
@@ -542,6 +576,7 @@ def main() -> int:
         log.info("Vina docking (exhaustiveness=%d)", args.exhaustiveness)
         log.info("=" * 60)
         from molmetal_lam.sbdd_env.vina_adapter import VinaDockingAdapter  # noqa: E402
+
         vina = VinaDockingAdapter(default_box_padding=8.0, cpu_count=0)
         vina.setup(device="cpu")
 
@@ -555,11 +590,11 @@ def main() -> int:
                     docked_p2m.extend(cs)
                     evaluated_p2m[i] = cs[0]
             except Exception as exc:
-                log.warning("Pocket2Mol dock %d (%s) failed: %s",
-                            i, c.molecule.smiles, exc)
+                log.warning(
+                    "Pocket2Mol dock %d (%s) failed: %s", i, c.molecule.smiles, exc
+                )
             if (i + 1) % 10 == 0:
-                log.info("  Pocket2Mol docked %d / %d",
-                         i + 1, len(p2m_complexes))
+                log.info("  Pocket2Mol docked %d / %d", i + 1, len(p2m_complexes))
 
         docked_lam = []
         for i, c in enumerate(lam_complexes):
@@ -569,14 +604,11 @@ def main() -> int:
                     docked_lam.extend(cs)
                     evaluated_lam[i] = cs[0]
             except Exception as exc:
-                log.warning("Lambda dock %d (%s) failed: %s",
-                            i, c.molecule.smiles, exc)
+                log.warning("Lambda dock %d (%s) failed: %s", i, c.molecule.smiles, exc)
             if (i + 1) % 10 == 0:
-                log.info("  Lambda docked %d / %d",
-                         i + 1, len(lam_complexes))
+                log.info("  Lambda docked %d / %d", i + 1, len(lam_complexes))
 
-    log.info("Docked: Pocket2Mol=%d, Lambda=%d",
-             len(docked_p2m), len(docked_lam))
+    log.info("Docked: Pocket2Mol=%d, Lambda=%d", len(docked_p2m), len(docked_lam))
 
     # ----------------------------------------------------------------
     # 5) Metrics + report
@@ -635,9 +667,7 @@ def main() -> int:
         "| method | n_ligands | mean_vina (kcal/mol) "
         "| sa_mean | qed_mean | anticancer_composite | success_rate |"
     )
-    md_lines.append(
-        "|---|---|---|---|---|---|---|"
-    )
+    md_lines.append("|---|---|---|---|---|---|---|")
     for name, m in (
         ("Pocket2Mol", p2m_metrics),
         ("Lambda", lam_metrics),
@@ -701,8 +731,7 @@ def main() -> int:
     )
     for c in p2m_sorted[:5]:
         md_lines.append(
-            f"* `{c.molecule.smiles}` — Vina "
-            f"{_fmt(c.vina_score)} kcal/mol"
+            f"* `{c.molecule.smiles}` — Vina " f"{_fmt(c.vina_score)} kcal/mol"
         )
     md_lines.append("")
     md_lines.append("### Lambda")
@@ -713,8 +742,7 @@ def main() -> int:
     )
     for c in lam_sorted[:5]:
         md_lines.append(
-            f"* `{c.molecule.smiles}` — Vina "
-            f"{_fmt(c.vina_score)} kcal/mol"
+            f"* `{c.molecule.smiles}` — Vina " f"{_fmt(c.vina_score)} kcal/mol"
         )
     md_lines.append("")
 

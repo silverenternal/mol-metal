@@ -22,6 +22,7 @@ References
 * TODO/pending/122_platinai_4cell_r2_strengthen.md
 * TODO/completed/91_wf41_3way_integration.md
 """
+
 from __future__ import annotations
 
 import json
@@ -116,7 +117,10 @@ def test_backbone_forward_returns_per_metal_dict() -> None:
     assert isinstance(out, dict)
     assert set(out.keys()) == set(cfg.metals)
     for metal in cfg.metals:
-        assert out[metal].shape == (b, 1), f"{metal} bad shape {tuple(out[metal].shape)}"
+        assert out[metal].shape == (
+            b,
+            1,
+        ), f"{metal} bad shape {tuple(out[metal].shape)}"
 
 
 def test_backbone_forward_outputs_are_finite() -> None:

@@ -130,9 +130,23 @@ MAX_ATOMIC_NUMBER: int = 90
 # triple ≈ 0.78, aromatic ≈ 0.92 — values from Pyykkö 2009 averaged
 # across C/N/O).
 _SINGLE_RADII: dict = {
-    1: 0.31, 6: 0.76, 7: 0.71, 8: 0.66, 9: 0.57, 15: 1.07,
-    16: 1.05, 17: 1.00, 26: 1.32, 28: 1.24, 29: 1.32, 30: 1.22,
-    44: 1.46, 45: 1.42, 46: 1.39, 77: 1.41, 78: 1.36,
+    1: 0.31,
+    6: 0.76,
+    7: 0.71,
+    8: 0.66,
+    9: 0.57,
+    15: 1.07,
+    16: 1.05,
+    17: 1.00,
+    26: 1.32,
+    28: 1.24,
+    29: 1.32,
+    30: 1.22,
+    44: 1.46,
+    45: 1.42,
+    46: 1.39,
+    77: 1.41,
+    78: 1.36,
 }
 
 # Hard-coded single-bond distances for N-N, N-O, C-N where the
@@ -228,20 +242,22 @@ def make_synthetic_training_set(seed: int = 0) -> Tuple[torch.Tensor, torch.Tens
             anchor_double = _bond_distance(z_i, z_j, BOND_DOUBLE)
             anchor_triple = _bond_distance(z_i, z_j, BOND_TRIPLE)
             anchor_aromatic = _bond_distance(z_i, z_j, BOND_AROMATIC)
-            X_rows.append([
-                d,
-                float(_bucket(z_i)),
-                float(_bucket(z_j)),
-                float(angle_dev),
-                1.0 if dative else 0.0,
-                float(min(z_i, MAX_ATOMIC_NUMBER)) / MAX_ATOMIC_NUMBER,
-                float(min(z_j, MAX_ATOMIC_NUMBER)) / MAX_ATOMIC_NUMBER,
-                float(_bucket(z_i) * 6 + _bucket(z_j)),
-                # Distance gap to single-bond anchor (the head should
-                # learn: gap~0 -> single; gap<0 -> double/triple/aromatic;
-                # gap>0.4 -> no bond).
-                float(d - anchor_single),
-            ])
+            X_rows.append(
+                [
+                    d,
+                    float(_bucket(z_i)),
+                    float(_bucket(z_j)),
+                    float(angle_dev),
+                    1.0 if dative else 0.0,
+                    float(min(z_i, MAX_ATOMIC_NUMBER)) / MAX_ATOMIC_NUMBER,
+                    float(min(z_j, MAX_ATOMIC_NUMBER)) / MAX_ATOMIC_NUMBER,
+                    float(_bucket(z_i) * 6 + _bucket(z_j)),
+                    # Distance gap to single-bond anchor (the head should
+                    # learn: gap~0 -> single; gap<0 -> double/triple/aromatic;
+                    # gap>0.4 -> no bond).
+                    float(d - anchor_single),
+                ]
+            )
             y_rows.append(order)
 
     # ---- Covalent patterns (tmQM-flavoured) ----
@@ -258,23 +274,26 @@ def make_synthetic_training_set(seed: int = 0) -> Tuple[torch.Tensor, torch.Tens
     _add(7, 7, BOND_DOUBLE, 40)
     _add(6, 7, BOND_TRIPLE, 30)
     _add(7, 6, BOND_TRIPLE, 30)
+
     # ---- No-bond "rejection" patterns (long distances) ----
     # Real non-bonded pairs are at >2.5 Å; the head must learn that.
     def _add_far(z_i: int, z_j: int, n: int) -> None:
         for _ in range(n):
             d = 2.8 + abs(torch.randn((), generator=rng).item()) * 0.5
             anchor_single = _bond_distance(z_i, z_j, BOND_SINGLE)
-            X_rows.append([
-                d,
-                float(_bucket(z_i)),
-                float(_bucket(z_j)),
-                0.0,
-                0.0,
-                float(min(z_i, MAX_ATOMIC_NUMBER)) / MAX_ATOMIC_NUMBER,
-                float(min(z_j, MAX_ATOMIC_NUMBER)) / MAX_ATOMIC_NUMBER,
-                float(_bucket(z_i) * 6 + _bucket(z_j)),
-                float(d - anchor_single),
-            ])
+            X_rows.append(
+                [
+                    d,
+                    float(_bucket(z_i)),
+                    float(_bucket(z_j)),
+                    0.0,
+                    0.0,
+                    float(min(z_i, MAX_ATOMIC_NUMBER)) / MAX_ATOMIC_NUMBER,
+                    float(min(z_j, MAX_ATOMIC_NUMBER)) / MAX_ATOMIC_NUMBER,
+                    float(_bucket(z_i) * 6 + _bucket(z_j)),
+                    float(d - anchor_single),
+                ]
+            )
             y_rows.append(BOND_NO_BOND)
 
     _add_far(6, 6, 80)
@@ -285,10 +304,10 @@ def make_synthetic_training_set(seed: int = 0) -> Tuple[torch.Tensor, torch.Tens
     # ---- Dative patterns (ligand donor -> metal) ----
     # These are physically single-bond (the head predicts single) but
     # tagged with is_dative_candidate=1 so the decoder can flag them.
-    _add(7, 78, BOND_SINGLE, 60, dative=True)   # N -> Pt(II)
-    _add(7, 29, BOND_SINGLE, 50, dative=True)   # N -> Cu(I)
-    _add(8, 78, BOND_SINGLE, 40, dative=True)   # O -> Pt(II)
-    _add(8, 29, BOND_SINGLE, 40, dative=True)   # O -> Cu(I)
+    _add(7, 78, BOND_SINGLE, 60, dative=True)  # N -> Pt(II)
+    _add(7, 29, BOND_SINGLE, 50, dative=True)  # N -> Cu(I)
+    _add(8, 78, BOND_SINGLE, 40, dative=True)  # O -> Pt(II)
+    _add(8, 29, BOND_SINGLE, 40, dative=True)  # O -> Cu(I)
 
     X = torch.tensor(X_rows, dtype=torch.float32)
     y = torch.tensor(y_rows, dtype=torch.long)
@@ -328,11 +347,11 @@ class PairFeature:
     other arrays are length ``E``.
     """
 
-    edge_index: torch.Tensor        # (2, E) int64 — (src, dst) per row
-    distance: torch.Tensor          # (E,) float32
-    z_i: torch.Tensor               # (E,) long
-    z_j: torch.Tensor               # (E,) long
-    angle_to_metal: torch.Tensor    # (E,) float32 — deviation from ideal angle (rad)
+    edge_index: torch.Tensor  # (2, E) int64 — (src, dst) per row
+    distance: torch.Tensor  # (E,) float32
+    z_i: torch.Tensor  # (E,) long
+    z_j: torch.Tensor  # (E,) long
+    angle_to_metal: torch.Tensor  # (E,) float32 — deviation from ideal angle (rad)
     is_dative_candidate: torch.Tensor  # (E,) bool — see module docstring
 
 
@@ -433,7 +452,9 @@ class BondOrderHead(nn.Module):
             num_classes=num_classes,
         )
         self.register_buffer(
-            "bond_pattern_mask", mask_tensor, persistent=False,
+            "bond_pattern_mask",
+            mask_tensor,
+            persistent=False,
         )
 
     def forward(self, pair_features: torch.Tensor) -> torch.Tensor:
@@ -464,13 +485,14 @@ class BondOrderHead(nn.Module):
         string and is a no-op when the value is unchanged.
         """
         if mode not in ("frozen", "joint"):
-            raise ValueError(
-                f"training_mode must be 'frozen' or 'joint', got {mode!r}"
-            )
+            raise ValueError(f"training_mode must be 'frozen' or 'joint', got {mode!r}")
         self.training_mode = mode
 
     def apply_bond_pattern_mask(
-        self, logits: torch.Tensor, z_i: torch.Tensor, z_j: torch.Tensor,
+        self,
+        logits: torch.Tensor,
+        z_i: torch.Tensor,
+        z_j: torch.Tensor,
     ) -> torch.Tensor:
         """Set logits for forbidden ``(Z_i, Z_j, order)`` patterns to ``-inf``.
 
@@ -511,7 +533,8 @@ class BondOrderHead(nn.Module):
         # Apply mask: True = keep, False = -inf.  Use masked_fill to
         # produce a fresh tensor (callers should NOT rely on in-place).
         out = logits.masked_fill(
-            ~mask_e.to(logits.device), float("-inf"),
+            ~mask_e.to(logits.device),
+            float("-inf"),
         )
         return out
 
@@ -543,16 +566,16 @@ _ALLOWED_PATTERNS: Tuple[Tuple[frozenset, frozenset], ...] = (
     # All single + aromatic bonds are valid; double / triple patterns
     # restricted per atom valence rules.
     (frozenset({6, 7}), frozenset({1, 2, 3, 4})),  # C-N single/double/triple/aromatic
-    (frozenset({6, 8}), frozenset({1, 2, 4})),     # C-O single/double/aromatic (no C≡O)
-    (frozenset({7, 7}), frozenset({1, 2, 4})),     # N-N single/double/aromatic
-    (frozenset({7, 8}), frozenset({1, 2})),        # N-O single/double (NO nitro-like)
-    (frozenset({8, 8}), frozenset({1, 2})),        # O-O single/double (peroxide)
+    (frozenset({6, 8}), frozenset({1, 2, 4})),  # C-O single/double/aromatic (no C≡O)
+    (frozenset({7, 7}), frozenset({1, 2, 4})),  # N-N single/double/aromatic
+    (frozenset({7, 8}), frozenset({1, 2})),  # N-O single/double (NO nitro-like)
+    (frozenset({8, 8}), frozenset({1, 2})),  # O-O single/double (peroxide)
     (frozenset({6, 6}), frozenset({1, 2, 3, 4})),  # C-C all orders
-    (frozenset({6, 1}), frozenset({1})),           # C-H single only
-    (frozenset({7, 1}), frozenset({1})),           # N-H single only
-    (frozenset({8, 1}), frozenset({1})),           # O-H single only
-    (frozenset({16, 1}), frozenset({1})),          # S-H single only
-    (frozenset({34, 1}), frozenset({1})),          # Se-H single only
+    (frozenset({6, 1}), frozenset({1})),  # C-H single only
+    (frozenset({7, 1}), frozenset({1})),  # N-H single only
+    (frozenset({8, 1}), frozenset({1})),  # O-H single only
+    (frozenset({16, 1}), frozenset({1})),  # S-H single only
+    (frozenset({34, 1}), frozenset({1})),  # Se-H single only
     # Halogens — only single bonds (no double/triple halogen chemistry
     # at this vocab scale).
     (frozenset({6, 9}), frozenset({1})),
@@ -632,8 +655,8 @@ def build_bond_pattern_mask(
 class DecodedMol:
     """Result container — never raises on invalid chemistry, just records it."""
 
-    mol: object = None                 # rdkit.Chem.rdchem.Mol or None
-    smiles: str = ""                   # canonical SMILES ("" if mol is None)
+    mol: object = None  # rdkit.Chem.rdchem.Mol or None
+    smiles: str = ""  # canonical SMILES ("" if mol is None)
     bond_orders: List[Tuple[int, int, int]] = field(default_factory=list)
     """``[(src_idx, dst_idx, bond_class)]`` in input atom order."""
     dative_bonds: List[Tuple[int, int]] = field(default_factory=list)
@@ -758,7 +781,9 @@ class BondAwareDecoder:
                 self.bond_head, "apply_bond_pattern_mask"
             ):
                 logits = self.bond_head.apply_bond_pattern_mask(
-                    logits, pair_features.z_i, pair_features.z_j,
+                    logits,
+                    pair_features.z_i,
+                    pair_features.z_j,
                 )
             predicted = torch.argmax(logits, dim=-1).tolist()
 
@@ -839,9 +864,7 @@ class BondAwareDecoder:
             is_dative_candidate=torch.tensor(dative_flags, dtype=torch.bool),
         )
 
-    def _featurise(
-        self, pf: PairFeature, cloud: AtomCloud
-    ) -> torch.Tensor:
+    def _featurise(self, pf: PairFeature, cloud: AtomCloud) -> torch.Tensor:
         """Project :class:`PairFeature` into the ``in_dim``-D vector the head expects."""
 
         def _bucket(z: int) -> int:
@@ -876,7 +899,9 @@ class BondAwareDecoder:
         # from double/triple/aromatic (gap < 0).
         anchor_single = torch.tensor(
             [
-                _bond_distance(int(pf.z_i[k].item()), int(pf.z_j[k].item()), BOND_SINGLE)
+                _bond_distance(
+                    int(pf.z_i[k].item()), int(pf.z_j[k].item()), BOND_SINGLE
+                )
                 for k in range(pf.z_i.shape[0])
             ],
             dtype=torch.float32,
@@ -1095,7 +1120,8 @@ class ConnectivityAwareDecoder:
             # Caller-supplied edge_index — compute distances + features
             # inline (smaller surface area than PairFeature constructor).
             pair_features = self._build_pair_features_from_edges(
-                cloud, edge_index,
+                cloud,
+                edge_index,
             )
 
         if pair_features.edge_index.shape[1] == 0:
@@ -1143,7 +1169,8 @@ class ConnectivityAwareDecoder:
         else:
             # Inference — hard top-k.
             mask, out = self.connectivity.inference_topk(
-                dropped_feats, n_atoms=n_atoms,
+                dropped_feats,
+                n_atoms=n_atoms,
             )
             idx = torch.nonzero(mask, as_tuple=False).flatten()
             inner_pf = PairFeature(
@@ -1168,7 +1195,9 @@ class ConnectivityAwareDecoder:
     # Helpers
     # ------------------------------------------------------------------
     def _build_pair_features_from_edges(
-        self, cloud: AtomCloud, edge_index: torch.Tensor,
+        self,
+        cloud: AtomCloud,
+        edge_index: torch.Tensor,
     ) -> PairFeature:
         """Compute per-edge features from a caller-supplied edge_index.
 

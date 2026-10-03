@@ -135,7 +135,7 @@ def test_fractional_ode_step_shape():
     assert y1.shape == y0.shape
     # One FAB step on a constant vector field yields ``y + dt^α · v``.
     # For dt = 0.01 and α = 0.5 → dt^α = 0.1 → expected value is 0.01.
-    assert np.allclose(y1, 0.1 * (0.01 ** 0.5))
+    assert np.allclose(y1, 0.1 * (0.01**0.5))
 
 
 def test_fractional_ode_step_invalid_dt():
@@ -304,8 +304,10 @@ def test_convergence_rate_alpha_1_integer():
 def test_convergence_rate_monotonic_decreasing():
     """For fixed α < 1, the rate is strictly decreasing in k."""
     alpha = 0.7
-    rates = [fractional_convergence_rate(alpha=alpha, n_iters=k)
-             for k in (1, 2, 5, 10, 20, 50, 100)]
+    rates = [
+        fractional_convergence_rate(alpha=alpha, n_iters=k)
+        for k in (1, 2, 5, 10, 20, 50, 100)
+    ]
     assert all(rates[i] > rates[i + 1] for i in range(len(rates) - 1))
 
 

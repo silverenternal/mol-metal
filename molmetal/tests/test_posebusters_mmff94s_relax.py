@@ -28,6 +28,7 @@ Spec contracts tested here
   flag is True and we round-trip via :func:`evaluate_candidates`,
   the ``mmff94s_relax`` field lands in the per-candidate row dict.
 """
+
 from __future__ import annotations
 
 import json
@@ -53,6 +54,7 @@ def _have_rdkit() -> bool:
     try:
         from rdkit import Chem  # noqa: F401
         from rdkit.Chem import AllChem  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -61,14 +63,13 @@ def _have_rdkit() -> bool:
 def _have_posebusters() -> bool:
     try:
         import posebusters  # noqa: F401
+
         return True
     except Exception:
         return False
 
 
-pytestmark = pytest.mark.skipif(
-    not _have_rdkit(), reason="rdkit not installed"
-)
+pytestmark = pytest.mark.skipif(not _have_rdkit(), reason="rdkit not installed")
 
 
 # ----------------------------------------------------------------
@@ -96,7 +97,9 @@ _SMILES_PANEL = [
 # ----------------------------------------------------------------
 class TestMMFF94sRelaxUnit:
     def test_relax_returns_status_dict(self):
-        from molmetal.molmetal_lam.sbdd_env.posebusters_adapter import mmff94s_relax_pose
+        from molmetal.molmetal_lam.sbdd_env.posebusters_adapter import (
+            mmff94s_relax_pose,
+        )
         from rdkit import Chem
         from rdkit.Chem import AllChem
 
@@ -112,7 +115,10 @@ class TestMMFF94sRelaxUnit:
         assert report["status"] == 0
 
     def test_relax_bad_molecule_returns_error(self):
-        from molmetal.molmetal_lam.sbdd_env.posebusters_adapter import mmff94s_relax_pose
+        from molmetal.molmetal_lam.sbdd_env.posebusters_adapter import (
+            mmff94s_relax_pose,
+        )
+
         report = mmff94s_relax_pose(None, max_iters=10)
         assert report["ok"] is False
         assert "not_a_molecule" in report["error"]
@@ -121,9 +127,12 @@ class TestMMFF94sRelaxUnit:
         """Critical invariant: relaxation MUST NOT change the molecular
         graph.  Only coordinates may change.
         """
-        from molmetal.molmetal_lam.sbdd_env.posebusters_adapter import mmff94s_relax_pose
+        from molmetal.molmetal_lam.sbdd_env.posebusters_adapter import (
+            mmff94s_relax_pose,
+        )
         from rdkit import Chem
         from rdkit.Chem import AllChem
+
         s = "CC(=O)Oc1ccccc1C(=O)O"  # aspirin
         mol = Chem.AddHs(Chem.MolFromSmiles(s))
         AllChem.EmbedMolecule(mol, AllChem.ETKDGv3())
@@ -150,19 +159,31 @@ class TestMMFF94sRelaxUnit:
 #    uses Vina's already-minimised geometry as input.
 # ----------------------------------------------------------------
 _RIGID_SMILES_PANEL = [
-    (name, smi) for name, smi in _SMILES_PANEL
-    if name in {"aspirin", "phenol", "benzene", "naphthalene",
-                "caffeine", "triazole_1_4", "biphenyl",
-                "p_aminobenzoic_acid"}
+    (name, smi)
+    for name, smi in _SMILES_PANEL
+    if name
+    in {
+        "aspirin",
+        "phenol",
+        "benzene",
+        "naphthalene",
+        "caffeine",
+        "triazole_1_4",
+        "biphenyl",
+        "p_aminobenzoic_acid",
+    }
 ]
 
 
 class TestMMFF94sPreservesDockGeometry:
     @pytest.mark.parametrize("name,smi", _RIGID_SMILES_PANEL)
     def test_rmsd_after_relax_within_half_angstrom(self, name, smi):
-        from molmetal.molmetal_lam.sbdd_env.posebusters_adapter import mmff94s_relax_pose
+        from molmetal.molmetal_lam.sbdd_env.posebusters_adapter import (
+            mmff94s_relax_pose,
+        )
         from rdkit import Chem
         from rdkit.Chem import AllChem, rdMolAlign
+
         mol = Chem.AddHs(Chem.MolFromSmiles(smi))
         if AllChem.EmbedMolecule(mol, AllChem.ETKDGv3()) != 0:
             pytest.skip(f"Embed failed for {name}")
@@ -188,9 +209,12 @@ class TestMMFF94sPreservesDockGeometry:
         """Aggregate: the mean RMSD across the rigid sub-panel should
         be well under 0.5 A.  Reports the actual number for the spec.
         """
-        from molmetal.molmetal_lam.sbdd_env.posebusters_adapter import mmff94s_relax_pose
+        from molmetal.molmetal_lam.sbdd_env.posebusters_adapter import (
+            mmff94s_relax_pose,
+        )
         from rdkit import Chem
         from rdkit.Chem import AllChem
+
         rmsds = []
         for name, smi in _RIGID_SMILES_PANEL:
             mol = Chem.AddHs(Chem.MolFromSmiles(smi))
@@ -215,9 +239,12 @@ class TestMMFF94sPreservesDockGeometry:
         more than 0.5 A from an ETKDGv3 starting geometry, but the
         docked-pose pipeline never sees ETKDGv3 geometries anyway.
         """
-        from molmetal.molmetal_lam.sbdd_env.posebusters_adapter import mmff94s_relax_pose
+        from molmetal.molmetal_lam.sbdd_env.posebusters_adapter import (
+            mmff94s_relax_pose,
+        )
         from rdkit import Chem
         from rdkit.Chem import AllChem
+
         results = {}
         for name, smi in _SMILES_PANEL:
             mol = Chem.AddHs(Chem.MolFromSmiles(smi))
@@ -258,7 +285,9 @@ class TestMMFF94sImprovesPBScore:
         relaxation must be ≥ the pre-relax pass count.  Paired
         statistic.
         """
-        from molmetal.molmetal_lam.sbdd_env.posebusters_adapter import mmff94s_relax_pose
+        from molmetal.molmetal_lam.sbdd_env.posebusters_adapter import (
+            mmff94s_relax_pose,
+        )
         from molmetal.validation.posebusters_runner import check_posebusters
         from rdkit import Chem
         from rdkit.Chem import AllChem
@@ -279,8 +308,7 @@ class TestMMFF94sImprovesPBScore:
         # checks if v is not None).  check_posebusters returns the
         # filtered ValidityReport dict.
         pre_checks = sum(
-            1 for v in (pre_report.get("checks") or {}).values()
-            if v is True
+            1 for v in (pre_report.get("checks") or {}).values() if v is True
         )
 
         # Post-relax: re-embed, then apply MMFF94s (which the default
@@ -306,8 +334,7 @@ class TestMMFF94sImprovesPBScore:
         # standard PB-evaluate path).
         post_report = check_posebusters(smi, optimize_method="MMFF94")
         post_checks = sum(
-            1 for v in (post_report.get("checks") or {}).values()
-            if v is True
+            1 for v in (post_report.get("checks") or {}).values() if v is True
         )
         # Paired statistic: post ≥ pre (with a 1-check tolerance for
         # stochasticity in PB's check set).
@@ -326,14 +353,15 @@ class TestMMFF94sImprovesPBScore:
 def _build_tiny_reference_sdf() -> str:
     import tempfile
     from rdkit import Chem
+
     # Aspirin as the reference ligand.
     m = Chem.MolFromSmiles("CC(=O)Oc1ccccc1C(=O)O")
     m = Chem.AddHs(m)
     from rdkit.Chem import AllChem
+
     AllChem.EmbedMolecule(m, AllChem.ETKDGv3())
     AllChem.MMFFOptimizeMolecule(m, maxIters=200)
-    tmp = tempfile.NamedTemporaryFile(
-        mode="wb", suffix=".sdf", delete=False)
+    tmp = tempfile.NamedTemporaryFile(mode="wb", suffix=".sdf", delete=False)
     with Chem.SDWriter(tmp.name) as w:
         w.write(m)
     return tmp.name
@@ -353,8 +381,9 @@ def _reference_receptor_path():
 
 
 class TestCLIDefaults:
-    def test_default_pb_relax_mmff94_is_false(self, _reference_sdf_path,
-                                              _reference_receptor_path):
+    def test_default_pb_relax_mmff94_is_false(
+        self, _reference_sdf_path, _reference_receptor_path
+    ):
         """When evaluate_candidates is invoked WITHOUT the flag, the
         ``mmff94s_relax`` field on each candidate row is
         ``{"enabled": False}`` — i.e. the pre-relax bit-exact path.
@@ -377,8 +406,9 @@ class TestCLIDefaults:
         assert "dock -> PoseBusters" in report["protocol"]["dock_pipeline"]
         assert report["status"] == "no_generated_candidates"
 
-    def test_enabled_when_flag_passed(self, _reference_sdf_path,
-                                       _reference_receptor_path):
+    def test_enabled_when_flag_passed(
+        self, _reference_sdf_path, _reference_receptor_path
+    ):
         from molmetal.scripts.evaluate_generated_poses import evaluate_candidates
 
         report = evaluate_candidates(

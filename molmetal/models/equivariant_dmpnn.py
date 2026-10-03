@@ -194,13 +194,17 @@ class EquivariantDMPNN(nn.Module):
         self.hidden_dim = cfg.hidden_dim
 
         # ----- base D-MPNN (parameter-name-compatible with DirectedMPNN) -----
-        self.base = base if base is not None else DirectedMPNN(
-            MPNNConfig(
-                atom_feat_dim=cfg.atom_feat_dim,
-                edge_feat_dim=cfg.edge_feat_dim,
-                hidden_dim=cfg.hidden_dim,
-                n_layers=cfg.n_layers,
-                dropout=cfg.dropout,
+        self.base = (
+            base
+            if base is not None
+            else DirectedMPNN(
+                MPNNConfig(
+                    atom_feat_dim=cfg.atom_feat_dim,
+                    edge_feat_dim=cfg.edge_feat_dim,
+                    hidden_dim=cfg.hidden_dim,
+                    n_layers=cfg.n_layers,
+                    dropout=cfg.dropout,
+                )
             )
         )
 
@@ -218,9 +222,7 @@ class EquivariantDMPNN(nn.Module):
         # edge_embed step.  This way the downstream GRU + atom_to_edge
         # receive the RBF-augmented signal without changing the legacy
         # edge_mlp / gru_updates / readout_mlp parameter shapes.
-        self.edge_rbf_proj = nn.Linear(
-            cfg.edge_feat_dim + cfg.n_rbf, cfg.edge_feat_dim
-        )
+        self.edge_rbf_proj = nn.Linear(cfg.edge_feat_dim + cfg.n_rbf, cfg.edge_feat_dim)
 
     # ----------------------------------------------------------------
     # Distance helper
@@ -248,10 +250,10 @@ class EquivariantDMPNN(nn.Module):
     # ----------------------------------------------------------------
     def forward(
         self,
-        h_atom: torch.Tensor,        # (N, atom_feat_dim)
-        edge_index: torch.Tensor,    # (2, E)
-        edge_attr: torch.Tensor,     # (E, edge_feat_dim)
-        coords: torch.Tensor,        # (N, 3) 3D coords
+        h_atom: torch.Tensor,  # (N, atom_feat_dim)
+        edge_index: torch.Tensor,  # (2, E)
+        edge_attr: torch.Tensor,  # (E, edge_feat_dim)
+        coords: torch.Tensor,  # (N, 3) 3D coords
     ) -> torch.Tensor:
         """Forward pass — returns per-atom invariant features (N, D).
 

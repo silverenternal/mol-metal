@@ -51,9 +51,16 @@ from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def rh_cohort_path() -> Path:
-    p = PROJECT_ROOT / "molmetal" / "reports" / "wf125_p1_rh_oversample" / "synthetic_rh_cohort.json"
+    p = (
+        PROJECT_ROOT
+        / "molmetal"
+        / "reports"
+        / "wf125_p1_rh_oversample"
+        / "synthetic_rh_cohort.json"
+    )
     if not p.exists():
         pytest.skip(f"Wf-125 P1 Rh cohort not found at {p}; cannot test.")
     return p
@@ -111,6 +118,7 @@ def tiny_dataset(tiny_lomo_csv, tmp_path_factory):
 # CLI
 # ---------------------------------------------------------------------------
 
+
 class TestParseArgs:
     def test_defaults(self):
         ns = _parse_args([])
@@ -145,12 +153,18 @@ class TestParseArgs:
         assert ns.use_astr_scale_guard is True
 
     def test_guard_clip_values_overridable(self):
-        ns = _parse_args([
-            "--use-l2-guard", "--l2-guard-max-norm", "2.0",
-            "--use-astr-scale-guard",
-            "--astr-scale-clip-min", "-3.0",
-            "--astr-scale-clip-max", "12.0",
-        ])
+        ns = _parse_args(
+            [
+                "--use-l2-guard",
+                "--l2-guard-max-norm",
+                "2.0",
+                "--use-astr-scale-guard",
+                "--astr-scale-clip-min",
+                "-3.0",
+                "--astr-scale-clip-max",
+                "12.0",
+            ]
+        )
         assert ns.use_l2_guard is True
         assert ns.l2_guard_max_norm == 2.0
         assert ns.use_astr_scale_guard is True
@@ -161,6 +175,7 @@ class TestParseArgs:
 # ---------------------------------------------------------------------------
 # Rh synthetic loader
 # ---------------------------------------------------------------------------
+
 
 class TestRHSyntheticLoader:
     def test_filters_to_pass_compounds(self, rh_cohort_path):
@@ -176,6 +191,7 @@ class TestRHSyntheticLoader:
 # ---------------------------------------------------------------------------
 # Dataset appender
 # ---------------------------------------------------------------------------
+
 
 class TestAppendSyntheticRh:
     def test_appends_to_dataset(self, tiny_dataset, rh_cohort_path):
@@ -201,6 +217,7 @@ class TestAppendSyntheticRh:
 # Per-metal embedding extraction
 # ---------------------------------------------------------------------------
 
+
 class TestExtractPerMetalEmbeddings:
     def test_returns_dict_with_per_metal_tensors(self, tiny_dataset):
         from molmetal.baselines.dmpnn_multitask import DMPNNMultiTaskModel
@@ -225,10 +242,13 @@ class TestExtractPerMetalEmbeddings:
 # End-to-end smoke run
 # ---------------------------------------------------------------------------
 
+
 class TestWassersteinLOMORunnerSmoke:
     def test_smoke_completes_with_default_weight(self, tiny_dataset, rh_cohort_path):
         # Append a few synthetic Rh rows so the oversample path runs.
-        ds, _ = append_synthetic_rh_to_dataset(tiny_dataset, rh_cohort_path, n_target=30)
+        ds, _ = append_synthetic_rh_to_dataset(
+            tiny_dataset, rh_cohort_path, n_target=30
+        )
         runner = WassersteinLOMORunner(
             ds=ds,
             held_out_metal="Rh",
@@ -313,6 +333,7 @@ class TestWassersteinLOMORunnerSmoke:
 # Aggregate
 # ---------------------------------------------------------------------------
 
+
 class TestAggregate:
     def test_aggregates_per_fold(self):
         per_run = [
@@ -341,25 +362,41 @@ class TestAggregate:
 # End-to-end CLI smoke (1 metal × 1 seed)
 # ---------------------------------------------------------------------------
 
+
 class TestMainSmoke:
     def test_end_to_end_smoke(self, tmp_path, tiny_lomo_csv, rh_cohort_path):
         out_dir = tmp_path / "wf125_p2_smoke"
         metric_path = tmp_path / "metal_lomo_auc_wasserstein_smoke.json"
-        rc = trainer_main([
-            "--metals", "Ru", "Rh",
-            "--seeds", "0",
-            "--epochs", "1",
-            "--wasserstein-weight", "0.05",
-            "--rh-oversample", "20",
-            "--csv", str(tiny_lomo_csv),
-            "--rh-cohort-json", str(rh_cohort_path),
-            "--out-dir", str(out_dir),
-            "--out-metric", str(metric_path),
-            "--quick",
-            "--hidden", "32",
-            "--depth", "1",
-            "--batch-size", "8",
-        ])
+        rc = trainer_main(
+            [
+                "--metals",
+                "Ru",
+                "Rh",
+                "--seeds",
+                "0",
+                "--epochs",
+                "1",
+                "--wasserstein-weight",
+                "0.05",
+                "--rh-oversample",
+                "20",
+                "--csv",
+                str(tiny_lomo_csv),
+                "--rh-cohort-json",
+                str(rh_cohort_path),
+                "--out-dir",
+                str(out_dir),
+                "--out-metric",
+                str(metric_path),
+                "--quick",
+                "--hidden",
+                "32",
+                "--depth",
+                "1",
+                "--batch-size",
+                "8",
+            ]
+        )
         # The script returns 0 (PASS) or 2 (BELOW_GATE) — both are valid
         # smoke outcomes. What we care about is that the artefacts exist.
         assert rc in (0, 2)

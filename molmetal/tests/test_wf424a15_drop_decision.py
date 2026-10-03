@@ -9,6 +9,7 @@ Tests per AGENTS.md §5.5 filesystem-truth rule:
 6. §6 LaTeX snippet for §6.1.6 is verbatim in the paper-conversion doc
 7. §6 LaTeX snippet for §6.1.7 is verbatim in the paper-conversion doc
 """
+
 import json
 import os
 import re
@@ -55,9 +56,9 @@ def test_m6_kappa_json_has_wf424a15_block():
 def test_json_verdict_field_set():
     """The verdict field must be MEASURED_HONEST_NEGATIVE_PARTIAL_STRUCTURAL_FINAL."""
     data = test_m6_kappa_json_has_wf424a15_block()
-    assert data["verdict"] == "MEASURED_HONEST_NEGATIVE_PARTIAL_STRUCTURAL_FINAL", (
-        f"verdict mismatch: {data['verdict']}"
-    )
+    assert (
+        data["verdict"] == "MEASURED_HONEST_NEGATIVE_PARTIAL_STRUCTURAL_FINAL"
+    ), f"verdict mismatch: {data['verdict']}"
     # Verdict field set per Wf-424-A15 §0 TL;DR row
     assert data["wf424a15_drop_decision"]["verdict_field_set"] is True
     assert data["wf424a15_drop_decision"]["verdict_field"] == data["verdict"]
@@ -70,18 +71,18 @@ def test_json_paths_exhausted_counter():
     paths = data["wf424a15_drop_decision"]["paths_exhausted"]
     assert paths == 10, f"paths_exhausted mismatch: {paths}"
     breakdown = data["wf424a15_drop_decision"]["paths_exhausted_breakdown"]
-    assert breakdown["architectural"] == 7, (
-        f"architectural count mismatch: {breakdown['architectural']}"
-    )
-    assert breakdown["introspection"] == 1, (
-        f"introspection count mismatch: {breakdown['introspection']}"
-    )
-    assert breakdown["supplementary"] == 1, (
-        f"supplementary count mismatch: {breakdown['supplementary']}"
-    )
-    assert breakdown["per_cohort"] == 1, (
-        f"per_cohort count mismatch: {breakdown['per_cohort']}"
-    )
+    assert (
+        breakdown["architectural"] == 7
+    ), f"architectural count mismatch: {breakdown['architectural']}"
+    assert (
+        breakdown["introspection"] == 1
+    ), f"introspection count mismatch: {breakdown['introspection']}"
+    assert (
+        breakdown["supplementary"] == 1
+    ), f"supplementary count mismatch: {breakdown['supplementary']}"
+    assert (
+        breakdown["per_cohort"] == 1
+    ), f"per_cohort count mismatch: {breakdown['per_cohort']}"
 
 
 def test_json_decision_pillars():
@@ -124,9 +125,9 @@ def test_json_per_cohort_evidence_13_15():
     per_cohort_evidence = data["wf424a15_drop_decision"]["decision_pillars"][
         "promote_top3_to_supplementary_subtable"
     ]["per_cohort_evidence"]
-    assert "13/15" in per_cohort_evidence, (
-        f"per_cohort 13/15 MODERATE evidence missing: {per_cohort_evidence}"
-    )
+    assert (
+        "13/15" in per_cohort_evidence
+    ), f"per_cohort 13/15 MODERATE evidence missing: {per_cohort_evidence}"
     assert "0 STRONG" in per_cohort_evidence, "STRONG 0 evidence missing"
 
 
@@ -136,40 +137,40 @@ def test_json_sanity_check_anchor_15_significant_digits():
     sanity_evidence = data["wf424a15_drop_decision"]["decision_pillars"][
         "retain_as_section6_complementary_heuristic"
     ]["sanity_check_anchor_evidence"]
-    assert "15 significant digits" in sanity_evidence, (
-        f"15-sig-digit anchor missing: {sanity_evidence}"
-    )
-    assert "0.08126287494327505" in sanity_evidence, (
-        f"MEASURED m6_kappa Pearson r missing: {sanity_evidence}"
-    )
+    assert (
+        "15 significant digits" in sanity_evidence
+    ), f"15-sig-digit anchor missing: {sanity_evidence}"
+    assert (
+        "0.08126287494327505" in sanity_evidence
+    ), f"MEASURED m6_kappa Pearson r missing: {sanity_evidence}"
 
 
 def test_doc_section_6_1_6_latex_snippet():
     """§6.1.6 LaTeX snippet must be in §4.2 verbatim (per Wf-410-A1 §3.1.6)."""
     with open(DOC_PATH, "r", encoding="utf-8") as f:
         content = f.read()
-    assert "label{sec:limitations:m6_kappa:v4}" in content, (
-        "missing \\label{sec:limitations:m6_kappa:v4}"
-    )
-    assert "ten-path honest-negative inventory" in content, (
-        "missing §6.1.6 phrase 'ten-path honest-negative inventory'"
-    )
+    assert (
+        "label{sec:limitations:m6_kappa:v4}" in content
+    ), "missing \\label{sec:limitations:m6_kappa:v4}"
+    assert (
+        "ten-path honest-negative inventory" in content
+    ), "missing §6.1.6 phrase 'ten-path honest-negative inventory'"
     # Verbatim signature from Wf-422-A1 §4.2
-    assert "6.1.6 -- m6_kappa 10-path inventory" in content, (
-        "missing §6.1.6 LaTeX section header"
-    )
+    assert (
+        "6.1.6 -- m6_kappa 10-path inventory" in content
+    ), "missing §6.1.6 LaTeX section header"
 
 
 def test_doc_section_6_1_7_latex_snippet():
     """§6.1.7 LaTeX snippet must be in §4.3 verbatim (per Wf-377-A1 §4.4)."""
     with open(DOC_PATH, "r", encoding="utf-8") as f:
         content = f.read()
-    assert "label{sec:limitations:m6_kappa_redesign}" in content, (
-        "missing §6.1.7 LaTeX label"
-    )
-    assert "literature + empirical review" in content, (
-        "missing §6.1.7 phrase 'literature + empirical review'"
-    )
+    assert (
+        "label{sec:limitations:m6_kappa_redesign}" in content
+    ), "missing §6.1.7 LaTeX label"
+    assert (
+        "literature + empirical review" in content
+    ), "missing §6.1.7 phrase 'literature + empirical review'"
 
 
 def test_json_no_paper_touch_and_no_gpu_launch():

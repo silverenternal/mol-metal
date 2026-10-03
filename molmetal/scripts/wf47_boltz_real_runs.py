@@ -106,9 +106,7 @@ def _probe_real_pic50_predictor() -> Dict[str, Any]:
         ``checkpoint_exists``, ``first_predict_status``, ``values``.
     """
     info: Dict[str, Any] = {
-        "adapter_module": (
-            "molmetal.molmetal_lam.sbdd_env.pic50_predictor"
-        ),
+        "adapter_module": ("molmetal.molmetal_lam.sbdd_env.pic50_predictor"),
         "adapter_class": "AttentiveDMPNNPredictor / predict_pic50",
         "checkpoint_path": None,
         "checkpoint_exists": False,
@@ -119,20 +117,17 @@ def _probe_real_pic50_predictor() -> Dict[str, Any]:
     }
     try:
         from molmetal.molmetal_lam.sbdd_env import pic50_predictor
+
         info["adapter_class_loaded"] = True
         info["checkpoint_path"] = str(pic50_predictor.DEFAULT_CKPT)
-        info["checkpoint_exists"] = bool(
-            os.path.exists(pic50_predictor.DEFAULT_CKPT)
-        )
+        info["checkpoint_exists"] = bool(os.path.exists(pic50_predictor.DEFAULT_CKPT))
         fixtures: Tuple[str, ...] = (
-            "CCO",                                          # ethanol
-            "CC(=O)Oc1ccccc1C(=O)O",                        # aspirin
-            "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",                 # caffeine
+            "CCO",  # ethanol
+            "CC(=O)Oc1ccccc1C(=O)O",  # aspirin
+            "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",  # caffeine
         )
         try:
-            vals = [
-                float(pic50_predictor.predict_pic50(s)) for s in fixtures
-            ]
+            vals = [float(pic50_predictor.predict_pic50(s)) for s in fixtures]
             info["values"] = vals
             n_nan = sum(1 for v in vals if math.isnan(v))
             info["n_nan"] = int(n_nan)
@@ -183,7 +178,9 @@ class ScriptRecord:
     command: List[str]
     exit_code: int = -1
     elapsed_s: float = 0.0
-    boltz_status: str = "UNKNOWN"  # MEASURED | MEASURED-BUT-NAN | AdapterUnavailable | error
+    boltz_status: str = (
+        "UNKNOWN"  # MEASURED | MEASURED-BUT-NAN | AdapterUnavailable | error
+    )
     pic50_values_summary: Dict[str, Any] = field(default_factory=dict)
     mock_to_real_diff: str = ""
     notes: List[str] = field(default_factory=list)
@@ -278,10 +275,11 @@ def run_benchmark_astsr_extended(
         script_path=str(script_path),
         description=desc,
         command=[
-            "in-process:", "evaluate_dmpnn_baseline_on_fold("
+            "in-process:",
+            "evaluate_dmpnn_baseline_on_fold("
             "smiles_train=[CCO, c1ccc(N)cc1, CCCC=O], "
             "y_train=[5.0, 4.5, 5.5], "
-            "smiles_test=[CC(=O)Oc1ccccc1C(=O)O], y_test=[4.8])"
+            "smiles_test=[CC(=O)Oc1ccccc1C(=O)O], y_test=[4.8])",
         ],
     )
     inprocess_status = "ERROR"
@@ -298,6 +296,7 @@ def run_benchmark_astsr_extended(
         from benchmark_astsr_extended import (  # type: ignore
             evaluate_dmpnn_baseline_on_fold,
         )
+
         result = evaluate_dmpnn_baseline_on_fold(
             smiles_train=("CCO", "c1ccc(N)cc1", "CCCC=O"),
             y_train=(5.0, 4.5, 5.5),
@@ -403,11 +402,17 @@ def run_bench_per_tool_accuracy(
     # want at least boltz_affinity in the run so the per-tool JSON
     # records a real adapter probe verdict for it.
     args_list = [
-        "--tools", "3",
-        "--datasets", "platinai_5k", "metalcytotox",
-        "--n-samples", "8",
-        "--seeds", "0",
-        "--out-dir", str(sub_out),
+        "--tools",
+        "3",
+        "--datasets",
+        "platinai_5k",
+        "metalcytotox",
+        "--n-samples",
+        "8",
+        "--seeds",
+        "0",
+        "--out-dir",
+        str(sub_out),
     ]
     rec = ScriptRecord(
         script=script,
@@ -435,13 +440,12 @@ def run_bench_per_tool_accuracy(
             AdapterUnavailable,
             score_any,
         )
+
         result = score_any(
             "boltz_affinity",
             molecules=["CCO", "CC(=O)Oc1ccccc1C(=O)O"],
         )
-        inprocess_values = [
-            float(v) for v in result.get("values", [])
-        ]
+        inprocess_values = [float(v) for v in result.get("values", [])]
         inprocess_n_nan = sum(1 for v in inprocess_values if math.isnan(v))
         if pic50_probe.get("checkpoint_exists"):
             inprocess_boltz_status = (
@@ -519,8 +523,13 @@ def run_wf42_phase4_boltz_path(
     )
     sub_out = out_dir / "script3_wf42_phase4_boltz"
     args_list = [
-        "--out-dir", str(sub_out),
-        "--skip", "1", "2", "3", "4",
+        "--out-dir",
+        str(sub_out),
+        "--skip",
+        "1",
+        "2",
+        "3",
+        "4",
     ]
     rec = ScriptRecord(
         script=script,
@@ -583,9 +592,7 @@ def _render_summary_md(
     lines.append("")
     lines.append(f"* Adapter module: `{pic50_probe.get('adapter_module', '?')}`")
     lines.append(f"* Adapter class:  `{pic50_probe.get('adapter_class', '?')}`")
-    lines.append(
-        f"* Checkpoint path: `{pic50_probe.get('checkpoint_path', '?')}`"
-    )
+    lines.append(f"* Checkpoint path: `{pic50_probe.get('checkpoint_path', '?')}`")
     lines.append(
         f"* Checkpoint exists: **{pic50_probe.get('checkpoint_exists', False)}**"
     )
@@ -606,18 +613,14 @@ def _render_summary_md(
     lines.append(f"* Scripts run: **{n_total}**")
     lines.append(f"* Exited 0:    **{n_exit_0}** / {n_total}")
     n_exit_le_1 = sum(1 for r in records if r.exit_code in (0, 1))
-    lines.append(
-        f"* Exited 0 or 1 (run-to-completion): **{n_exit_le_1}** / {n_total}"
-    )
+    lines.append(f"* Exited 0 or 1 (run-to-completion): **{n_exit_le_1}** / {n_total}")
     lines.append(f"* Total elapsed (wall): **{total_elapsed:.1f}s**")
     lines.append("")
     lines.append(f"**Gate verdict**: `{gate_verdict}`")
     lines.append("")
     lines.append("## Per-script roll-up")
     lines.append("")
-    lines.append(
-        "| # | Script | Exit | Elapsed (s) | Boltz status | Mock→Real diff |"
-    )
+    lines.append("| # | Script | Exit | Elapsed (s) | Boltz status | Mock→Real diff |")
     lines.append("|---|---|---:|---:|---|---|")
     for i, rec in enumerate(records, 1):
         lines.append(
@@ -731,9 +734,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         "--strict-exit-0",
         action="store_true",
         help="Treat exit code 1 (no candidates measured) as PASS only "
-             "when the real D-MPNN checkpoint is present.  Default: "
-             "any exit code <= 1 + boltz adapter exercised is recorded "
-             "as PASS_HONEST_NEGATIVE.",
+        "when the real D-MPNN checkpoint is present.  Default: "
+        "any exit code <= 1 + boltz adapter exercised is recorded "
+        "as PASS_HONEST_NEGATIVE.",
     )
     parser.add_argument("--verbose", "-v", action="store_true")
     args = parser.parse_args(argv)
@@ -785,7 +788,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         records.append(rec)
         log.info(
             "  exit=%d elapsed=%.1fs boltz=%s",
-            rec.exit_code, rec.elapsed_s, rec.boltz_status,
+            rec.exit_code,
+            rec.elapsed_s,
+            rec.boltz_status,
         )
     total_elapsed = time.monotonic() - t0
 
@@ -853,16 +858,28 @@ def main(argv: Optional[List[str]] = None) -> int:
     json_path.write_text(
         json.dumps(record_payload, indent=2, ensure_ascii=False) + "\n"
     )
-    md_path.write_text(_render_summary_md(
-        pic50_probe, records, n_exit_0, n_total, total_elapsed, gate_verdict,
-    ))
+    md_path.write_text(
+        _render_summary_md(
+            pic50_probe,
+            records,
+            n_exit_0,
+            n_total,
+            total_elapsed,
+            gate_verdict,
+        )
+    )
 
     log.info("Outputs written:")
     log.info("  %s", json_path)
     log.info("  %s", md_path)
     log.info(
         "Gate verdict: %s  (n_exit_0=%d/%d, n_exit_le_1=%d/%d, total %.1fs)",
-        gate_verdict, n_exit_0, n_total, n_exit_le_1, n_total, total_elapsed,
+        gate_verdict,
+        n_exit_0,
+        n_total,
+        n_exit_le_1,
+        n_total,
+        total_elapsed,
     )
 
     # The harness exits 0 when every script ran to completion

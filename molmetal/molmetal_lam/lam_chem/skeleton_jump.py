@@ -149,15 +149,13 @@ class FragmentRecord:
         mol = Chem.MolFromSmiles(smiles)
         if mol is None:
             raise ValueError(
-                f"RDKit failed to parse fragment SMILES for {name!r}: "
-                f"{smiles!r}"
+                f"RDKit failed to parse fragment SMILES for {name!r}: " f"{smiles!r}"
             )
         try:
             Chem.SanitizeMol(mol)
         except Exception as exc:
             raise ValueError(
-                f"RDKit sanitisation failed for {name!r} ({smiles!r}): "
-                f"{exc}"
+                f"RDKit sanitisation failed for {name!r} ({smiles!r}): " f"{exc}"
             ) from exc
         canon = Chem.MolToSmiles(mol)
         n_heavy = mol.GetNumHeavyAtoms()
@@ -198,9 +196,7 @@ class FragmentLibrary:
         max_atoms: int = DEFAULT_MAX_ATOMS,
     ) -> None:
         if int(min_atoms) < 1:
-            raise ValueError(
-                f"min_atoms must be >= 1, got {min_atoms!r}"
-            )
+            raise ValueError(f"min_atoms must be >= 1, got {min_atoms!r}")
         if int(max_atoms) < int(min_atoms):
             raise ValueError(
                 f"max_atoms ({max_atoms}) must be >= min_atoms ({min_atoms})"
@@ -226,13 +222,9 @@ class FragmentLibrary:
             or if ``name`` is already registered.
         """
         if not isinstance(name, str) or not name.strip():
-            raise ValueError(
-                f"fragment name must be non-empty string, got {name!r}"
-            )
+            raise ValueError(f"fragment name must be non-empty string, got {name!r}")
         if name in self._records:
-            raise ValueError(
-                f"fragment {name!r} already registered; choose a new name"
-            )
+            raise ValueError(f"fragment {name!r} already registered; choose a new name")
         rec = FragmentRecord.from_smiles(name, smi)
         if rec.n_heavy < self.min_atoms:
             raise ValueError(
@@ -257,8 +249,7 @@ class FragmentLibrary:
         """
         if name not in self._records:
             raise KeyError(
-                f"fragment {name!r} not in library "
-                f"(have {sorted(self._records)!r})"
+                f"fragment {name!r} not in library " f"(have {sorted(self._records)!r})"
             )
         return self._records[name].smiles
 
@@ -280,9 +271,7 @@ class FragmentLibrary:
             return []
         scaffold_n = mol.GetNumHeavyAtoms()
         scaffold_has_ring = mol.GetRingInfo().NumRings() > 0
-        scaffold_has_het = any(
-            a.GetAtomicNum() not in (6, 1) for a in mol.GetAtoms()
-        )
+        scaffold_has_het = any(a.GetAtomicNum() not in (6, 1) for a in mol.GetAtoms())
         compatible: List[str] = []
         for name, rec in self._records.items():
             if rec.n_heavy > scaffold_n:
@@ -382,9 +371,7 @@ class SkeletonJumpRule:
         rng: Optional[random.Random] = None,
     ) -> None:
         if not (0.0 <= float(swap_prob) <= 1.0):
-            raise ValueError(
-                f"swap_prob must be in [0, 1], got {swap_prob!r}"
-            )
+            raise ValueError(f"swap_prob must be in [0, 1], got {swap_prob!r}")
         self.fragment_library = fragment_library
         self.swap_prob = float(swap_prob)
         self._rng = rng if rng is not None else random.Random()
@@ -581,9 +568,7 @@ class DiversityAwareSkeletonJump:
                 f"target_diversity must be in [0, 1], got {target_diversity!r}"
             )
         if int(history_capacity) < 1:
-            raise ValueError(
-                f"history_capacity must be >= 1, got {history_capacity!r}"
-            )
+            raise ValueError(f"history_capacity must be >= 1, got {history_capacity!r}")
         self.base_rule = base_rule
         self.target_diversity = float(target_diversity)
         self.history_capacity = int(history_capacity)
@@ -882,7 +867,8 @@ def _slice_mol_by_heavy(mol: Chem.Mol, start: int, stop: int) -> Optional[Chem.M
     if start < 0 or stop < start or stop > mol.GetNumAtoms():
         return None
     heavy_indices = [
-        atom.GetIdx() for atom in mol.GetAtoms()
+        atom.GetIdx()
+        for atom in mol.GetAtoms()
         if atom.GetAtomicNum() != 1 and start <= atom.GetIdx() < stop
     ]
     if not heavy_indices and start == stop:

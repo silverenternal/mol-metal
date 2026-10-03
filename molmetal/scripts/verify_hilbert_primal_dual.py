@@ -9,6 +9,7 @@ Run::
 
     uv run --no-sync python molmetal/scripts/verify_hilbert_primal_dual.py --smoke
 """
+
 from __future__ import annotations
 
 import argparse
@@ -49,9 +50,7 @@ def main() -> int:
             primal_dual_convergence_rate,
         )
     except Exception as exc:
-        print(
-            f"Hilbert primal-dual: imports FAIL ({type(exc).__name__}:{exc})"
-        )
+        print(f"Hilbert primal-dual: imports FAIL ({type(exc).__name__}:{exc})")
         return 1
 
     n_fail = 0
@@ -78,7 +77,7 @@ def main() -> int:
         y = np.zeros(4)
 
         def _obj(xk):
-            return float(np.sum(xk ** 2)), 2.0 * xk
+            return float(np.sum(xk**2)), 2.0 * xk
 
         x_new, y_new = opt.step(x, y, _obj)
         assert x_new.shape == (4,) and y_new.shape == (4,)
@@ -96,11 +95,16 @@ def main() -> int:
         y = X @ w_true + 0.01 * rng.standard_normal(30)
 
         hilbert = LambdaASTSRHilbert(
-            population_dim=dim, lr_primal=0.01, lr_dual=0.01,
-            n_iters=20, seed=0,
+            population_dim=dim,
+            lr_primal=0.01,
+            lr_dual=0.01,
+            n_iters=20,
+            seed=0,
         )
         result = hilbert.compare_with_evolutionary(
-            X, y, n_seeds=int(args.n_seeds),
+            X,
+            y,
+            n_seeds=int(args.n_seeds),
         )
         # Print the comparison table.
         print(
@@ -132,9 +136,7 @@ def main() -> int:
         n_fail += 1
 
     # ---- Summary --------------------------------------------------------
-    print(
-        f"Hilbert primal-dual: imports OK, smoke {n_fail}/{n_total} fail"
-    )
+    print(f"Hilbert primal-dual: imports OK, smoke {n_fail}/{n_total} fail")
     return 0 if n_fail == 0 else 1
 
 

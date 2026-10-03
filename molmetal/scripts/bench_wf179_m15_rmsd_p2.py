@@ -11,6 +11,7 @@ Per TODO-134 m15 redesign:
 
 Returns per-pocket median RMSD JSON + per-seed per-pose data.
 """
+
 from __future__ import annotations
 
 import json
@@ -48,7 +49,10 @@ EXHAUSTIVENESS = 32
 # Heavy atom mapping: We match docked-pose heavy atoms to crystal-ligand heavy atoms
 # by element-type + Hungarian on distance after centroid alignment.
 
-def _wf424_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
+
+def _wf424_atomic_write_text(
+    path, content: str, min_lines: int = 50, expected_min_length: int = 200
+) -> None:
     """Wf-424-A4 atomic-write-protocol wrapper around direct write_text.
 
     Falls back to direct write_text if atomic_write_file is unavailable
@@ -60,21 +64,26 @@ def _wf424_atomic_write_text(path, content: str, min_lines: int = 50, expected_m
             _risk = safe_overwrite_check(path, content, min_lines=min_lines)
             if _risk is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-424-A4] safe_overwrite_check diff_ratio=%.3f at %s",
-                    _risk, path,
+                    _risk,
+                    path,
                 )
         atomic_write_file(path, content, encoding="utf-8")
         if detect_truncation is not None:
             _trunc = detect_truncation(content, expected_min_length=expected_min_length)
             if _trunc is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-424-A4] detect_truncation reason=%r at %s",
-                    _trunc, path,
+                    _trunc,
+                    path,
                 )
     else:  # pragma: no cover — fallback when atomic primitive unavailable
         Path(path).write_text(content, encoding="utf-8")
+
 
 def kabsch_rmsd(P, Q):
     """Compute Kabsch-aligned RMSD between two Nx3 point sets."""
@@ -95,8 +104,9 @@ def kabsch_rmsd(P, Q):
     return float(np.sqrt((diff * diff).sum(axis=1).mean()))
 
 
-def heavy_atom_rmsd_hungarian(docked_elements, docked_coords,
-                              crystal_elements, crystal_coords):
+def heavy_atom_rmsd_hungarian(
+    docked_elements, docked_coords, crystal_elements, crystal_coords
+):
     """Compute heavy-atom RMSD between docked and crystal poses via
     element-typed Hungarian matching + Kabsch alignment.
 
@@ -150,7 +160,7 @@ def smiles_to_pdbqt_3d(smiles, out_pdbqt_path):
     """
     sdf_intermediate = out_pdbqt_path.replace(".pdbqt", "_pre.sdf")
     # Run RDKit in mol-metal venv
-    script = f'''
+    script = f"""
 from rdkit import Chem
 from rdkit.Chem import AllChem
 import sys
@@ -190,20 +200,35 @@ writer = Chem.SDWriter("{sdf_intermediate}")
 writer.write(mol)
 writer.close()
 print("OK")
-'''
+"""
     result = subprocess.run(
         [MOL_VENV_PY, "-c", script],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     if result.returncode != 0:
         raise RuntimeError(f"RDKit embed fail: {result.stderr[:300]}")
     # Convert SDF -> PDBQT via mk_prepare_ligand.py in project venv
     result2 = subprocess.run(
-        [CADVENV_PY, MKPREP_LIG, "-i", sdf_intermediate, "-o", out_pdbqt_path, "--charge_model", "gasteiger"],
-        capture_output=True, text=True, timeout=60,
+        [
+            CADVENV_PY,
+            MKPREP_LIG,
+            "-i",
+            sdf_intermediate,
+            "-o",
+            out_pdbqt_path,
+            "--charge_model",
+            "gasteiger",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     if result2.returncode != 0 or not os.path.exists(out_pdbqt_path):
-        raise RuntimeError(f"mk_prepare_ligand fail: rc={result2.returncode} stderr={result2.stderr[:300]}")
+        raise RuntimeError(
+            f"mk_prepare_ligand fail: rc={result2.returncode} stderr={result2.stderr[:300]}"
+        )
     return out_pdbqt_path
 
 
@@ -222,7 +247,9 @@ def parse_pdbqt_heavy_atoms(pdbqt_path):
                 break  # stop at first ENDMDL (first MODEL only)
             if line.startswith(("ATOM", "HETATM")):
                 # PDBQT: cols 13-16 = element (right-justified, may have charge in column 17)
-                elem_field = line[76:78].strip() if len(line) >= 78 else line[12:16].strip()
+                elem_field = (
+                    line[76:78].strip() if len(line) >= 78 else line[12:16].strip()
+                )
                 elem = elem_field.split()[0] if elem_field else ""
                 if elem.startswith("H"):
                     continue
@@ -265,38 +292,57 @@ def split_pdbqt_by_model(pdbqt_path):
     return models
 
 
-def dock_one(receptor_pdbqt, ligand_pdbqt, center, size, out_dir, seed, exhaustiveness, n_poses):
+def dock_one(
+    receptor_pdbqt, ligand_pdbqt, center, size, out_dir, seed, exhaustiveness, n_poses
+):
     """Run Vina CLI once. Returns path to output PDBQT."""
     out_pdbqt = Path(out_dir) / f"out_seed{seed}.pdbqt"
     out_pdbqt.parent.mkdir(parents=True, exist_ok=True)
     cmd = [
         VINA_BIN,
-        "--receptor", str(receptor_pdbqt),
-        "--ligand", str(ligand_pdbqt),
-        "--center_x", str(center[0]),
-        "--center_y", str(center[1]),
-        "--center_z", str(center[2]),
-        "--size_x", str(size[0]),
-        "--size_y", str(size[1]),
-        "--size_z", str(size[2]),
-        "--out", str(out_pdbqt),
-        "--exhaustiveness", str(exhaustiveness),
-        "--num_modes", str(n_poses),
-        "--seed", str(seed),
-        "--cpu", "1",
+        "--receptor",
+        str(receptor_pdbqt),
+        "--ligand",
+        str(ligand_pdbqt),
+        "--center_x",
+        str(center[0]),
+        "--center_y",
+        str(center[1]),
+        "--center_z",
+        str(center[2]),
+        "--size_x",
+        str(size[0]),
+        "--size_y",
+        str(size[1]),
+        "--size_z",
+        str(size[2]),
+        "--out",
+        str(out_pdbqt),
+        "--exhaustiveness",
+        str(exhaustiveness),
+        "--num_modes",
+        str(n_poses),
+        "--seed",
+        str(seed),
+        "--cpu",
+        "1",
     ]
     t0 = time.time()
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     elapsed = time.time() - t0
     if result.returncode != 0:
-        raise RuntimeError(f"Vina CLI fail: rc={result.returncode} stderr={result.stderr[:300]}")
+        raise RuntimeError(
+            f"Vina CLI fail: rc={result.returncode} stderr={result.stderr[:300]}"
+        )
     return out_pdbqt, elapsed
 
 
 def main():
     print(f"Vina binary: {VINA_BIN}", flush=True)
     # Verify
-    r = subprocess.run([VINA_BIN, "--version"], capture_output=True, text=True, timeout=10)
+    r = subprocess.run(
+        [VINA_BIN, "--version"], capture_output=True, text=True, timeout=10
+    )
     print(f"Vina version: {r.stdout.strip()}", flush=True)
 
     # Load ref ligand metadata
@@ -365,12 +411,20 @@ def main():
             for seed in SEEDS:
                 try:
                     out_pdbqt, elapsed = dock_one(
-                        rec_path, lig_pdbqt, center, box_size,
-                        pocket_dir, seed, EXHAUSTIVENESS, N_POSES,
+                        rec_path,
+                        lig_pdbqt,
+                        center,
+                        box_size,
+                        pocket_dir,
+                        seed,
+                        EXHAUSTIVENESS,
+                        N_POSES,
                     )
                 except Exception as e:
                     print(f"  seed={seed} DOCK FAIL: {e}")
-                    per_seed_data.append({"seed": seed, "status": "DOCK_FAIL", "error": str(e)[:200]})
+                    per_seed_data.append(
+                        {"seed": seed, "status": "DOCK_FAIL", "error": str(e)[:200]}
+                    )
                     continue
 
                 # Parse docked poses (multi-MODEL PDBQT)
@@ -381,16 +435,22 @@ def main():
                     pose_pdbqt = pocket_dir / f"pose_seed{seed}_p{pose_idx+1}.pdbqt"
                     _wf424_atomic_write_text(pose_pdbqt, model_text)
                     elems, coords = parse_pdbqt_heavy_atoms(pose_pdbqt)
-                    rmsd = heavy_atom_rmsd_hungarian(elems, coords, ref_elements, ref_coords)
+                    rmsd = heavy_atom_rmsd_hungarian(
+                        elems, coords, ref_elements, ref_coords
+                    )
                     if rmsd is None:
                         continue
                     seed_rmsds.append(rmsd)
-                    per_pocket_pose_data.append({
-                        "pocket": p, "seed": seed, "pose": pose_idx + 1,
-                        "rmsd_angstrom": round(rmsd, 4),
-                        "n_docked_heavy": len(elems),
-                        "n_ref_heavy": len(ref_elements),
-                    })
+                    per_pocket_pose_data.append(
+                        {
+                            "pocket": p,
+                            "seed": seed,
+                            "pose": pose_idx + 1,
+                            "rmsd_angstrom": round(rmsd, 4),
+                            "n_docked_heavy": len(elems),
+                            "n_ref_heavy": len(ref_elements),
+                        }
+                    )
 
                 if not seed_rmsds:
                     per_seed_data.append({"seed": seed, "status": "NO_VALID_POSES"})
@@ -398,14 +458,16 @@ def main():
 
                 best_rmsd = float(min(seed_rmsds))
                 per_seed_best_rmsd.append(best_rmsd)
-                per_seed_data.append({
-                    "seed": seed,
-                    "status": "OK",
-                    "n_poses_valid": len(seed_rmsds),
-                    "rmsd_per_pose": [round(r, 4) for r in seed_rmsds],
-                    "best_rmsd_angstrom": round(best_rmsd, 4),
-                    "elapsed_s": round(elapsed, 3),
-                })
+                per_seed_data.append(
+                    {
+                        "seed": seed,
+                        "status": "OK",
+                        "n_poses_valid": len(seed_rmsds),
+                        "rmsd_per_pose": [round(r, 4) for r in seed_rmsds],
+                        "best_rmsd_angstrom": round(best_rmsd, 4),
+                        "elapsed_s": round(elapsed, 3),
+                    }
+                )
 
             # Per-pocket median
             if per_seed_best_rmsd:
@@ -418,7 +480,9 @@ def main():
                     "n_ref_heavy": len(ref_elements),
                     "box_center": center,
                     "box_size": box_size,
-                    "per_seed_best_rmsd_angstrom": [round(r, 4) for r in per_seed_best_rmsd],
+                    "per_seed_best_rmsd_angstrom": [
+                        round(r, 4) for r in per_seed_best_rmsd
+                    ],
                     "median_best_rmsd_angstrom": round(median, 4),
                     "mean_best_rmsd_angstrom": round(mean, 4),
                     "std_best_rmsd_angstrom": round(std, 4),
@@ -434,7 +498,9 @@ def main():
                 pocket_poses = [x for x in per_pocket_pose_data if x["pocket"] == p]
                 with open(pocket_dir / "per_pose_metrics.json", "w") as f:
                     json.dump(pocket_poses, f, indent=2)
-                print(f"  median={median:.3f}Å mean={mean:.3f}Å std={std:.3f}Å passes_2.5={median <= 2.5}")
+                print(
+                    f"  median={median:.3f}Å mean={mean:.3f}Å std={std:.3f}Å passes_2.5={median <= 2.5}"
+                )
                 aggregate[p] = median
             else:
                 results[p] = {"pocket": p, "status": "ALL_SEEDS_FAIL"}

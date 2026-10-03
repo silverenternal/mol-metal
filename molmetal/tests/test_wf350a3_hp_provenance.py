@@ -140,9 +140,9 @@ def test_gate_p1_hp_provenance_log_schema_validity(
         CANONICAL_7_CONFIGS,
         jsonl_path,
     )
-    assert res.status == "PASS", (
-        f"gate must PASS on live host (got {res.status}): {res.evidence}"
-    )
+    assert (
+        res.status == "PASS"
+    ), f"gate must PASS on live host (got {res.status}): {res.evidence}"
     assert jsonl_path.is_file(), f"JSONL artefact missing: {jsonl_path}"
 
     # Re-parse the JSONL line-by-line and verify schema.
@@ -202,9 +202,9 @@ def test_gate_p1_hp_provenance_log_schema_validity(
                                 f"line {idx}: recent_commits[{j}] missing {k!r}"
                             )
 
-    assert line_count == len(CANONICAL_7_CONFIGS), (
-        f"expected {len(CANONICAL_7_CONFIGS)} JSONL records, got {line_count}"
-    )
+    assert line_count == len(
+        CANONICAL_7_CONFIGS
+    ), f"expected {len(CANONICAL_7_CONFIGS)} JSONL records, got {line_count}"
     assert not schema_problems, (
         f"JSONL schema validation FAILED ({len(schema_problems)}): "
         f"{'; '.join(schema_problems[:5])}"
@@ -228,9 +228,9 @@ def test_gate_p1_hp_provenance_log_per_config_records(
         CANONICAL_7_CONFIGS,
         jsonl_path,
     )
-    assert res.status == "PASS", (
-        f"gate must PASS on live host (got {res.status}): {res.evidence}"
-    )
+    assert (
+        res.status == "PASS"
+    ), f"gate must PASS on live host (got {res.status}): {res.evidence}"
 
     canonical_paths: set = {
         p.relative_to(REPO_ROOT).as_posix() for p in CANONICAL_7_CONFIGS
@@ -245,15 +245,15 @@ def test_gate_p1_hp_provenance_log_per_config_records(
                 continue
             records.append(json.loads(raw))
 
-    assert len(records) == len(CANONICAL_7_CONFIGS), (
-        f"expected {len(CANONICAL_7_CONFIGS)} records, got {len(records)}"
-    )
+    assert len(records) == len(
+        CANONICAL_7_CONFIGS
+    ), f"expected {len(CANONICAL_7_CONFIGS)} records, got {len(records)}"
     seen_paths: set = set()
     for rec in records:
         cp = rec["config_path"]
-        assert cp in canonical_paths, (
-            f"unexpected config_path in JSONL: {cp} (not in canonical 7)"
-        )
+        assert (
+            cp in canonical_paths
+        ), f"unexpected config_path in JSONL: {cp} (not in canonical 7)"
         seen_paths.add(cp)
         assert rec["current_sha"] == live_sha, (
             f"current_sha mismatch for {cp}: "
@@ -274,14 +274,14 @@ def test_gate_p1_hp_provenance_log_per_config_records(
             assert isinstance(entry, dict)
             for k in ("sha", "message", "date"):
                 assert k in entry, f"recent_commits entry missing {k!r}"
-            assert re.match(r"^[0-9a-f]{40}$", entry["sha"]), (
-                f"recent_commits sha not 40-hex: {entry['sha']!r}"
-            )
+            assert re.match(
+                r"^[0-9a-f]{40}$", entry["sha"]
+            ), f"recent_commits sha not 40-hex: {entry['sha']!r}"
         assert isinstance(rec["uncommitted_changes"], bool)
 
-    assert seen_paths == canonical_paths, (
-        f"missing config_paths: {canonical_paths - seen_paths}"
-    )
+    assert (
+        seen_paths == canonical_paths
+    ), f"missing config_paths: {canonical_paths - seen_paths}"
 
 
 def test_gate_p1_hp_provenance_log_registered_in_build_gates(
@@ -325,13 +325,13 @@ def test_gate_p1_hp_provenance_log_registered_in_build_gates(
 
     # Verify the gate function is callable (smoke test).
     runner_for_gate = next(
-        runner for name, runner in runners
-        if name == "p1_hp_provenance_log"
+        runner for name, runner in runners if name == "p1_hp_provenance_log"
     )
     res = runner_for_gate()
-    assert res.status in ("PASS", "FAIL"), (
-        f"gate runner returned unexpected status: {res.status!r}"
-    )
+    assert res.status in (
+        "PASS",
+        "FAIL",
+    ), f"gate runner returned unexpected status: {res.status!r}"
     # On a healthy git repo (live host), the gate should PASS — but
     # we accept FAIL too because some CI sandboxes may have no git
     # history or unusual repo layout.  The contract here is "registered

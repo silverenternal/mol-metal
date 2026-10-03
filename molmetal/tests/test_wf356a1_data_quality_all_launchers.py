@@ -54,6 +54,7 @@ EXPECTED_OUT_DIRS = {
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _read_launcher(path: Path) -> str:
     assert path.exists(), f"launcher missing: {path}"
     return path.read_text()
@@ -74,8 +75,7 @@ def _find_wf343c3_invocation(src: str) -> str:
     """
     # Walk all lines, find the one that calls the script (not echoes it).
     invocation_line_re = re.compile(
-        r"^(?:[ \t].*|.*\$\{PY\}.*|.*\bpython\b.*)"
-        r"wf343c3_data_quality_check\.py",
+        r"^(?:[ \t].*|.*\$\{PY\}.*|.*\bpython\b.*)" r"wf343c3_data_quality_check\.py",
         re.MULTILINE,
     )
     match = invocation_line_re.search(src)
@@ -102,6 +102,7 @@ def _find_wf343c3_invocation(src: str) -> str:
 # Test 1: per-launcher bash syntax check (bash -n)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize(
     "script_path",
     LAUNCHER_PATHS,
@@ -126,6 +127,7 @@ def test_launcher_bash_syntax(script_path: Path) -> None:
 # Test 2: wf343c3 invocation pattern matches expected
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize(
     "script_path",
     LAUNCHER_PATHS,
@@ -133,14 +135,14 @@ def test_launcher_bash_syntax(script_path: Path) -> None:
 )
 def test_wf343c3_invocation_pattern(script_path: Path) -> None:
     """Each launcher must:
-      - invoke `wf343c3_data_quality_check.py` exactly once (or have it
-        in the wave-tool guards block).
-      - use `--out-dir <EXPECTED_OUT_DIRS[script]>` with the
-        launcher-specific out-dir.
-      - NOT pass `--data-csv` (the script is loader-agnostic and does
-        not accept that flag — closing the Wf-347-B3 retry bug).
-      - NOT reference an undefined `$DATA_CSV` inside the wf343c3 call
-        (the script has its own DATA_CSV constants internally).
+    - invoke `wf343c3_data_quality_check.py` exactly once (or have it
+      in the wave-tool guards block).
+    - use `--out-dir <EXPECTED_OUT_DIRS[script]>` with the
+      launcher-specific out-dir.
+    - NOT pass `--data-csv` (the script is loader-agnostic and does
+      not accept that flag — closing the Wf-347-B3 retry bug).
+    - NOT reference an undefined `$DATA_CSV` inside the wf343c3 call
+      (the script has its own DATA_CSV constants internally).
     """
     src = _read_launcher(script_path)
     invocation = _find_wf343c3_invocation(src)

@@ -38,7 +38,9 @@ REPO_ROOT = Path("/home/hugo/codes/mol-metal")
 def test_cli_help_lists_r17_presets():
     proc = subprocess.run(
         [sys.executable, str(SCRIPT), "--help"],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     assert proc.returncode == 0
     out = (proc.stdout or "") + (proc.stderr or "")
@@ -68,9 +70,7 @@ def test_resolve_smoke_preset():
 # ---------------------------------------------------------------------------
 def test_resolve_paper_grade_preset():
     parser = r4._build_argparser()
-    args = parser.parse_args(
-        ["--r17-paper-grade", "--output-dir", "paper_grade_test"]
-    )
+    args = parser.parse_args(["--r17-paper-grade", "--output-dir", "paper_grade_test"])
     assert args.r17_paper_grade is True
     assert args.smoke is False
 
@@ -92,11 +92,18 @@ def test_explicit_overrides_win_over_preset():
     args = parser.parse_args(
         [
             "--smoke",
-            "--pockets", "5",
-            "--seeds", "7", "8", "9",
-            "--n-simulations", "50",
-            "--manifest", "/tmp/explicit_manifest.csv",
-            "--output-dir", "explicit_test",
+            "--pockets",
+            "5",
+            "--seeds",
+            "7",
+            "8",
+            "9",
+            "--n-simulations",
+            "50",
+            "--manifest",
+            "/tmp/explicit_manifest.csv",
+            "--output-dir",
+            "explicit_test",
         ]
     )
     resolved = r4._resolve_paper_sweep_preset(args)
@@ -116,7 +123,8 @@ def test_paper_grade_overrides_smoke_when_both_set(caplog):
         [
             "--smoke",
             "--r17-paper-grade",
-            "--output-dir", "both_set_test",
+            "--output-dir",
+            "both_set_test",
         ]
     )
     with caplog.at_level("WARNING"):
@@ -129,8 +137,7 @@ def test_paper_grade_overrides_smoke_when_both_set(caplog):
     # Confirm a warning was emitted (the resolution order must surface
     # the conflict to the operator).
     assert any(
-        "Both --smoke and --r17-paper-grade" in rec.message
-        for rec in caplog.records
+        "Both --smoke and --r17-paper-grade" in rec.message for rec in caplog.records
     )
 
 
@@ -178,7 +185,10 @@ def test_preset_dicts_well_formed():
     assert "manifest" in r4._R17_SMOKE_PRESET
     assert "test_010_019_subset_manifest" in r4._R17_SMOKE_PRESET["manifest"]
     # Paper-grade is the larger config.
-    assert r4._R17_PAPER_GRADE_PRESET["n_simulations"] > r4._R17_SMOKE_PRESET["n_simulations"]
+    assert (
+        r4._R17_PAPER_GRADE_PRESET["n_simulations"]
+        > r4._R17_SMOKE_PRESET["n_simulations"]
+    )
     assert r4._R17_PAPER_GRADE_PRESET["pockets"] > r4._R17_SMOKE_PRESET["pockets"]
 
 

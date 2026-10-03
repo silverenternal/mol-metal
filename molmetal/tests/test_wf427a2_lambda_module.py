@@ -8,6 +8,7 @@ for the ``--lambda-cfm-coupling`` trainer wire-in.
 Each test runs in <1 s on CPU; combined wall for the file is ≈ 0.4 s
 on a single thread.
 """
+
 from __future__ import annotations
 
 from typing import List, Tuple, Dict
@@ -23,7 +24,9 @@ from molmetal_lam.lam_chem.coupling_adapter import (
 def test_lambda_samples_to_reward_targets_returns_tuples():
     """Return type is ``List[Tuple[str, Dict[str, float]]]`` per task brief."""
     out = lambda_samples_to_reward_targets(
-        n_samples=4, pocket_id="test_pocket", seed=42,
+        n_samples=4,
+        pocket_id="test_pocket",
+        seed=42,
         reward_channels=("qed", "sa", "pb"),
     )
     assert isinstance(out, list), f"expected list, got {type(out).__name__}"
@@ -50,10 +53,14 @@ def test_lambda_samples_to_reward_targets_returns_tuples():
 def test_lambda_samples_to_reward_targets_deterministic_seed():
     """Same seed produces bit-for-bit identical output."""
     out_a = lambda_samples_to_reward_targets(
-        n_samples=5, pocket_id="pocket_a", seed=42,
+        n_samples=5,
+        pocket_id="pocket_a",
+        seed=42,
     )
     out_b = lambda_samples_to_reward_targets(
-        n_samples=5, pocket_id="pocket_a", seed=42,
+        n_samples=5,
+        pocket_id="pocket_a",
+        seed=42,
     )
     assert len(out_a) == len(out_b) == 5
     for (smi_a, r_a), (smi_b, r_b) in zip(out_a, out_b):
@@ -62,7 +69,9 @@ def test_lambda_samples_to_reward_targets_deterministic_seed():
             assert abs(r_a[k] - r_b[k]) < 1e-7, f"reward mismatch on {k}"
     # Different seed → different order (probabilistic)
     out_c = lambda_samples_to_reward_targets(
-        n_samples=5, pocket_id="pocket_a", seed=999,
+        n_samples=5,
+        pocket_id="pocket_a",
+        seed=999,
     )
     smiles_a = [s for s, _ in out_a]
     smiles_c = [s for s, _ in out_c]
@@ -77,12 +86,14 @@ def test_lambda_samples_to_reward_targets_reward_channels():
     """Each requested channel is evaluated and clamped to pool size."""
     # Clamp test: n=100 against pool size 15 → 15 returned
     out_big = lambda_samples_to_reward_targets(
-        n_samples=100, pocket_id="p", seed=0,
+        n_samples=100,
+        pocket_id="p",
+        seed=0,
         reward_channels=("qed", "sa", "pb"),
     )
-    assert len(out_big) == len(_FIXED_SMILES_POOL), (
-        f"expected pool clamp, got {len(out_big)}"
-    )
+    assert len(out_big) == len(
+        _FIXED_SMILES_POOL
+    ), f"expected pool clamp, got {len(out_big)}"
     # All SMILES drawn from the fixed pool
     pool_set = set(_FIXED_SMILES_POOL)
     for smi, _ in out_big:
@@ -99,7 +110,9 @@ def test_lambda_samples_to_reward_targets_reward_channels():
         assert emb_norm > 0.0, f"_pocket_emb_norm <= 0: {emb_norm}"
     # Custom channel: known + unknown → both 0.0 fallback works
     out_custom = lambda_samples_to_reward_targets(
-        n_samples=1, pocket_id="p", seed=0,
+        n_samples=1,
+        pocket_id="p",
+        seed=0,
         reward_channels=("qed", "unknown_custom"),
     )
     smi_c, r_c = out_custom[0]

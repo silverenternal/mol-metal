@@ -4,6 +4,7 @@ Mirrors the OmegaFold pattern where the legacy ``main.py`` keeps a
 3-line shim that re-exports the package entry point.  Both
 ``python main.py`` and ``molmetal demo`` run the same code path.
 """
+
 from __future__ import annotations
 
 from molmetal.__main__ import _demo_main
@@ -33,12 +34,12 @@ def main() -> None:
     # ------------------------------------------------------------------
     banner("1. synthetic batch")
     B, N, E = 4, 6, 8  # batch, atoms per molecule, edges per molecule
-    H = 64             # hidden width
+    H = 64  # hidden width
 
     torch.manual_seed(0)
     atomic_numbers = torch.randint(1, 10, (B, N), device=device, dtype=torch.long)
-    positions      = torch.randn(B, N, 3, device=device)
-    edge_index     = torch.randint(0, N, (B, 2, E), device=device, dtype=torch.long)
+    positions = torch.randn(B, N, 3, device=device)
+    edge_index = torch.randint(0, N, (B, 2, E), device=device, dtype=torch.long)
 
     # ------------------------------------------------------------------
     # 2. Encode + velocity prediction
@@ -55,7 +56,9 @@ def main() -> None:
 
     t = torch.rand(B, device=device)
     v_pred = net(h_node, positions, t, edge_index, cond=None)
-    print(f"  v_pred {tuple(v_pred.shape)}    |v|_mean = {v_pred.norm(dim=-1).mean().item():.4f}")
+    print(
+        f"  v_pred {tuple(v_pred.shape)}    |v|_mean = {v_pred.norm(dim=-1).mean().item():.4f}"
+    )
 
     # ------------------------------------------------------------------
     # 3. Conditional flow-matching loss
@@ -66,8 +69,11 @@ def main() -> None:
     cfn = ConditionalFlowMatchingLoss(model=net, encoder=None).to(device)
     x0 = torch.randn_like(positions)
     out = cfn(
-        x0=x0, x1=positions, cond=None,
-        h_node=h_node, edge_index=edge_index,
+        x0=x0,
+        x1=positions,
+        cond=None,
+        h_node=h_node,
+        edge_index=edge_index,
     )
     print(f"  loss        = {out.loss.item():.6f}")
     print(f"  x_t shape   = {tuple(out.x_t.shape)}")
@@ -131,7 +137,9 @@ def main() -> None:
     d_in = torch.cdist(positions[0], positions[0])
     d_out = torch.cdist(rotated, rotated)
     assert torch.allclose(d_in, d_out, atol=1e-5)
-    print(f"  transform roundtrip: distance error = {(d_in - d_out).abs().max().item():.2e}")
+    print(
+        f"  transform roundtrip: distance error = {(d_in - d_out).abs().max().item():.2e}"
+    )
 
     print()
     print("ALL OK — MolFlow-Triton stack is wired up correctly on this GPU.")

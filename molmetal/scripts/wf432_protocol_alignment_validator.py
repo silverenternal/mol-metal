@@ -10,6 +10,7 @@ Output: alignment report (DATASET_ALIGN / DATASET+METRIC / FULL / NOT_ALIGN) wit
 Standalone CLI; no GPU; no paper/*; no wet-lab; no sudo.
 Per AGENTS.md §5.1 + §5.2 + §5.5 + §5.6 + party-twenty-spirit §3.5.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -88,7 +89,13 @@ def _resolve_metric_definition(json_data: Dict[str, Any]) -> str:
 
 def _resolve_dataset(json_data: Dict[str, Any]) -> str:
     """Resolve dataset path/pattern from JSON metadata."""
-    for field in ("data_source", "data_source_path", "data_csv", "cohort_csv", "dataset"):
+    for field in (
+        "data_source",
+        "data_source_path",
+        "data_csv",
+        "cohort_csv",
+        "dataset",
+    ):
         if field in json_data:
             return str(json_data[field])
     return "unknown"
@@ -111,24 +118,26 @@ def cmd_validate(args: argparse.Namespace) -> int:
     trainer_dataset = _resolve_dataset(trainer)
     baseline_dataset = baseline.get("dataset", "unknown")
     baseline_pattern = baseline.get("dataset_pattern", "")
-    dataset_aligned = bool(_match_pattern(trainer_dataset, baseline_pattern)) if baseline_pattern else False
+    dataset_aligned = (
+        bool(_match_pattern(trainer_dataset, baseline_pattern))
+        if baseline_pattern
+        else False
+    )
 
     trainer_split = _resolve_split_protocol(trainer)
     baseline_split = baseline.get("split_protocol", "unknown")
-    split_aligned = (trainer_split == baseline_split)
+    split_aligned = trainer_split == baseline_split
 
     trainer_metric = _resolve_metric_definition(trainer)
     baseline_metric = baseline.get("metric_definition", "unknown")
-    metric_aligned = (trainer_metric == baseline_metric)
+    metric_aligned = trainer_metric == baseline_metric
 
     if dataset_aligned and split_aligned and metric_aligned:
         alignment = "FULL"
         section_6_recommendation = "no §6 limitation needed for this metric"
     elif dataset_aligned and metric_aligned:
         alignment = "DATASET + METRIC ALIGN"
-        section_6_recommendation = (
-            f"Split protocol differs: ours={trainer_split} vs baseline={baseline_split}; document in §6"
-        )
+        section_6_recommendation = f"Split protocol differs: ours={trainer_split} vs baseline={baseline_split}; document in §6"
     elif dataset_aligned:
         alignment = "DATASET ALIGN"
         section_6_recommendation = (
@@ -137,7 +146,9 @@ def cmd_validate(args: argparse.Namespace) -> int:
         )
     else:
         alignment = "NOT_ALIGN"
-        section_6_recommendation = "do NOT include in §4 comparison tables; document in §6 as out-of-scope"
+        section_6_recommendation = (
+            "do NOT include in §4 comparison tables; document in §6 as out-of-scope"
+        )
 
     report = {
         "wf": "Wf-432-A4",
@@ -185,13 +196,16 @@ def cmd_emit_protocol(args: argparse.Namespace) -> int:
     """Emit a baseline-protocol JSON file from a template."""
     template = PROTOCOL_TEMPLATES.get(args.protocol)
     if template is None:
-        raise SystemExit(f"unknown protocol {args.protocol!r}; valid options: {sorted(PROTOCOL_TEMPLATES)}")
+        raise SystemExit(
+            f"unknown protocol {args.protocol!r}; valid options: {sorted(PROTOCOL_TEMPLATES)}"
+        )
 
     out = dict(template)
     out["protocol"] = args.protocol
 
     out_path = args.out or os.path.join(
-        REPO_ROOT, f"molmetal/reports/wf432_a4_protocol_alignment/{args.protocol}_protocol.json"
+        REPO_ROOT,
+        f"molmetal/reports/wf432_a4_protocol_alignment/{args.protocol}_protocol.json",
     )
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, "w") as f:
@@ -201,24 +215,32 @@ def cmd_emit_protocol(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(
-        description="Wf-432-A4 protocol alignment validator"
-    )
+    p = argparse.ArgumentParser(description="Wf-432-A4 protocol alignment validator")
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    p_val = sub.add_parser("validate", help="validate trainer results align with a baseline protocol")
-    p_val.add_argument("--trainer-results", required=True,
-                       help="Path to trainer results JSON (e.g. metrics/by_metric/<metric>.json)")
-    p_val.add_argument("--baseline-protocol", required=True,
-                       help="Path to baseline protocol JSON")
+    p_val = sub.add_parser(
+        "validate", help="validate trainer results align with a baseline protocol"
+    )
+    p_val.add_argument(
+        "--trainer-results",
+        required=True,
+        help="Path to trainer results JSON (e.g. metrics/by_metric/<metric>.json)",
+    )
+    p_val.add_argument(
+        "--baseline-protocol", required=True, help="Path to baseline protocol JSON"
+    )
     p_val.add_argument("--out", help="Output report path")
-    p_val.add_argument("--json", action="store_true", help="Print JSON output to stdout")
+    p_val.add_argument(
+        "--json", action="store_true", help="Print JSON output to stdout"
+    )
     p_val.set_defaults(func=cmd_validate)
 
     p_list = sub.add_parser("list-protocols", help="list available protocol templates")
     p_list.set_defaults(func=cmd_list_protocols)
 
-    p_emit = sub.add_parser("emit-protocol", help="emit a baseline-protocol JSON from template")
+    p_emit = sub.add_parser(
+        "emit-protocol", help="emit a baseline-protocol JSON from template"
+    )
     p_emit.add_argument("--protocol", required=True, choices=sorted(PROTOCOL_TEMPLATES))
     p_emit.add_argument("--out", help="Output JSON path")
     p_emit.set_defaults(func=cmd_emit_protocol)

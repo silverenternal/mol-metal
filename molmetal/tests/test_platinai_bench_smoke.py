@@ -25,6 +25,7 @@ pytest's CI budget past the allowed 5-minute wall-clock cap.  These
 tests instead call the same module registry directly, with a
 smaller ``--n-samples 16`` and ``--n-runs 2`` budget per test.
 """
+
 from __future__ import annotations
 
 import json
@@ -70,7 +71,9 @@ def registry() -> Dict[str, object]:
 # ---------------------------------------------------------------------------
 # Smoke tests — module count, registry shape, and CLI invocation.
 # ---------------------------------------------------------------------------
-def test_benchmark_runs(platinai_smiles: List[str], registry: Dict[str, object]) -> None:
+def test_benchmark_runs(
+    platinai_smiles: List[str], registry: Dict[str, object]
+) -> None:
     """All 32 R18 modules execute at least once on PlatinAI 5K.
 
     The "runs" assertion is the smoke gate: every module with a
@@ -86,15 +89,17 @@ def test_benchmark_runs(platinai_smiles: List[str], registry: Dict[str, object])
         if st == "ok" and wt:
             n_ok += 1
     elapsed = time.perf_counter() - t0
-    assert elapsed < 300.0, (
-        f"R18 bench smoke exceeded 5-min wall-clock cap: {elapsed:.1f}s"
-    )
-    assert n_ok >= 20, (
-        f"only {n_ok} modules returned 'ok' status — expected >= 20 of 32"
-    )
+    assert (
+        elapsed < 300.0
+    ), f"R18 bench smoke exceeded 5-min wall-clock cap: {elapsed:.1f}s"
+    assert (
+        n_ok >= 20
+    ), f"only {n_ok} modules returned 'ok' status — expected >= 20 of 32"
 
 
-def test_per_module_shape(platinai_smiles: List[str], registry: Dict[str, object]) -> None:
+def test_per_module_shape(
+    platinai_smiles: List[str], registry: Dict[str, object]
+) -> None:
     """Each module returns ``n_runs`` well-typed wall-time entries.
 
     We pin ``len(wt) == n_runs`` for every non-None runner; this
@@ -106,14 +111,16 @@ def test_per_module_shape(platinai_smiles: List[str], registry: Dict[str, object
             continue
         wt, st = _run_module(runner, platinai_smiles, N_RUNS_SMOKE)
         if st == "ok":
-            assert len(wt) == N_RUNS_SMOKE, (
-                f"{mod_id} returned {len(wt)} wall-times; expected {N_RUNS_SMOKE}"
-            )
+            assert (
+                len(wt) == N_RUNS_SMOKE
+            ), f"{mod_id} returned {len(wt)} wall-times; expected {N_RUNS_SMOKE}"
             for w in wt:
                 assert w >= 0.0, f"{mod_id} reported negative wall-time {w}"
 
 
-def test_total_wall_time(platinai_smiles: List[str], registry: Dict[str, object]) -> None:
+def test_total_wall_time(
+    platinai_smiles: List[str], registry: Dict[str, object]
+) -> None:
     """The full CPU module sweep completes in <= 5 minutes (smoke budget).
 
     Note: this is the smoke cap.  The production ``--n-samples 500``
@@ -147,9 +154,7 @@ def test_memory_peak(platinai_smiles: List[str], registry: Dict[str, object]) ->
     peak = tracemalloc.get_traced_memory()[1]
     tracemalloc.stop()
     delta_mb = (peak - base) / (1024 * 1024)
-    assert delta_mb <= 4096.0, (
-        f"peak tracemalloc {delta_mb:.1f} MB exceeds 4 GB cap"
-    )
+    assert delta_mb <= 4096.0, f"peak tracemalloc {delta_mb:.1f} MB exceeds 4 GB cap"
 
 
 # ---------------------------------------------------------------------------
@@ -213,6 +218,7 @@ def test_payload_schema(tmp_path: Path) -> None:
     and assert the JSON keys / dtypes match the documented schema.
     """
     import csv
+
     smiles = _load_platinai_smiles(CSV_PATH, 1)
     registry = _build_module_registry()
 
@@ -302,22 +308,26 @@ def test_total_module_count_is_32(registry: Dict[str, object]) -> None:
     ``test_r18_imports.py:test_total_modules_is_32``.  Catches
     accidental additions/removals in the registry.
     """
-    assert len(registry) == 32, (
-        f"R18 benchmark manifest changed: got {len(registry)}, expected 32"
-    )
+    assert (
+        len(registry) == 32
+    ), f"R18 benchmark manifest changed: got {len(registry)}, expected 32"
 
 
-def test_status_field_values(platinai_smiles: List[str], registry: Dict[str, object]) -> None:
+def test_status_field_values(
+    platinai_smiles: List[str], registry: Dict[str, object]
+) -> None:
     """Status values are constrained to {ok, skipped, error}."""
     allowed = {"ok", "skipped", "error"}
     for mid, runner in registry.items():
         wt, st = _run_module(runner, platinai_smiles, N_RUNS_SMOKE)
-        assert st in allowed, (
-            f"{mid} returned unknown status {st!r}; allowed = {allowed}"
-        )
+        assert (
+            st in allowed
+        ), f"{mid} returned unknown status {st!r}; allowed = {allowed}"
 
 
-def test_wall_time_non_negative(platinai_smiles: List[str], registry: Dict[str, object]) -> None:
+def test_wall_time_non_negative(
+    platinai_smiles: List[str], registry: Dict[str, object]
+) -> None:
     """Every successful module reports a non-negative wall-time."""
     for mid, runner in registry.items():
         if runner is None:

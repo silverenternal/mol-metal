@@ -209,9 +209,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     for target in targets:
         for split in args.splits:
             t0 = time.time()
-            print(
-                f"\n[mmp_case] === {target.name} / split={split} ==="
-            )
+            print(f"\n[mmp_case] === {target.name} / split={split} ===")
             print(
                 f"[mmp_case]   querying {len(target.pdb_ids)} PDB ids: "
                 f"{', '.join(target.pdb_ids)}"
@@ -250,8 +248,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     overall_elapsed = time.time() - overall_t0
     print(
-        f"\n[mmp_case] DONE total={overall_elapsed:.1f}s "
-        f"n_summary={len(summary)}"
+        f"\n[mmp_case] DONE total={overall_elapsed:.1f}s " f"n_summary={len(summary)}"
     )
     # Also drop a combined summary file alongside the records
     if summary:

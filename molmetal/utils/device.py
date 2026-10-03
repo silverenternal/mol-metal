@@ -122,6 +122,7 @@ DEFAULT_DEVICE: Any = _LazyDefaultDevice()
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def detect_active_gpu() -> Dict[str, Any]:
     """Honest probe: which GPU is actually usable to PyTorch right now?
 
@@ -162,9 +163,7 @@ def detect_active_gpu() -> Dict[str, Any]:
         device_count = 0
         cuda_visible = False
     try:
-        device_name: str = (
-            torch.cuda.get_device_name(0) if cuda_visible else "N/A"
-        )
+        device_name: str = torch.cuda.get_device_name(0) if cuda_visible else "N/A"
     except Exception:
         device_name = "N/A"
         cuda_visible = False

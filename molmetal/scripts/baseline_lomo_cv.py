@@ -114,7 +114,9 @@ def _per_metal_metrics(
         clf.fit(x_train, y_train, eval_set=[(x_val, y_val)], verbose=False)
     elif model == "lightgbm":
         if not lightgbm_available():
-            raise RuntimeError("lightgbm not installed; install via `uv pip install lightgbm`.")
+            raise RuntimeError(
+                "lightgbm not installed; install via `uv pip install lightgbm`."
+            )
         from lightgbm import LGBMClassifier
 
         params = {

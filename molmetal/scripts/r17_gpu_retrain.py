@@ -62,6 +62,7 @@ and the wrapper handles everything: 3 sequential seeds, full 30K
 total updates, decode-ratio stream, GPU-hang resume, and a final
 metrics/by_metric/cfm_decode_ratio_r17.json deliverable.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -82,6 +83,7 @@ try:
         safe_overwrite_check,
         detect_truncation,
     )
+
     _WF416_HAS_ATOMIC = True
 except ImportError:  # pragma: no cover — fallback when running as standalone
     _WF416_HAS_ATOMIC = False
@@ -94,9 +96,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-SMOKE_SCRIPT = (
-    PROJECT_ROOT / "molmetal" / "scripts" / "metallo_drug_smoke_retrain.py"
-)
+SMOKE_SCRIPT = PROJECT_ROOT / "molmetal" / "scripts" / "metallo_drug_smoke_retrain.py"
 DEFAULT_LOG_ROOT = PROJECT_ROOT / "logs" / "r17_retrain"
 DEFAULT_METRIC_PATH = (
     PROJECT_ROOT / "molmetal" / "metrics" / "by_metric" / "cfm_decode_ratio_r17.json"
@@ -133,7 +133,9 @@ RE_SAVED_CKPT = re.compile(r"saved checkpoint:\s+(?P<path>\S+)")
 # ---------------------------------------------------------------------------
 # GPU detection
 # ---------------------------------------------------------------------------
-def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
+def _wf416_atomic_write_text(
+    path, content: str, min_lines: int = 50, expected_min_length: int = 200
+) -> None:
     """Wf-416-A1 atomic-write-protocol wrapper around direct write_text.
 
     Falls back to direct write_text if atomic_write_file is unavailable
@@ -145,21 +147,26 @@ def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_m
             _risk = safe_overwrite_check(path, content, min_lines=min_lines)
             if _risk is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-416-A1] safe_overwrite_check diff_ratio=%.3f at %s",
-                    _risk, path,
+                    _risk,
+                    path,
                 )
         atomic_write_file(path, content, encoding="utf-8")
         if detect_truncation is not None:
             _trunc = detect_truncation(content, expected_min_length=expected_min_length)
             if _trunc is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-416-A1] detect_truncation reason=%r at %s",
-                    _trunc, path,
+                    _trunc,
+                    path,
                 )
     else:  # pragma: no cover — fallback when atomic primitive unavailable
         Path(path).write_text(content, encoding="utf-8")
+
 
 def _run_cli(cmd: List[str], timeout: float = 5.0) -> Tuple[int, str, str]:
     """Run a CLI command; return (returncode, stdout, stderr).  Never raises."""
@@ -188,9 +195,7 @@ def detect_gpu() -> Dict[str, Any]:
     probed_at = time.strftime("%Y-%m-%dT%H:%M:%S%z")
 
     # --- nvidia-smi ---------------------------------------------------------
-    nv_rc, nv_stdout, nv_stderr = _run_cli(
-        ["nvidia-smi", "-L"], timeout=4.0
-    )
+    nv_rc, nv_stdout, nv_stderr = _run_cli(["nvidia-smi", "-L"], timeout=4.0)
     nvidia_present = nv_rc == 0 and "GPU" in nv_stdout
     nvidia_gpus: List[str] = []
     if nvidia_present:
@@ -211,10 +216,12 @@ def detect_gpu() -> Dict[str, Any]:
     torch_error: Optional[str] = None
     try:
         import torch  # type: ignore
+
         cuda_ok = bool(torch.cuda.is_available())
         dev_count = int(torch.cuda.device_count()) if cuda_ok else 0
         torch_record = {
-            "probed": True, "cuda_available": cuda_ok,
+            "probed": True,
+            "cuda_available": cuda_ok,
             "device_count": dev_count,
             "torch_version": torch.__version__,
         }
@@ -241,11 +248,15 @@ def detect_gpu() -> Dict[str, Any]:
     return {
         "probed_at": probed_at,
         "nvidia_smi": {
-            "present": nvidia_present, "rc": nv_rc,
-            "gpus": nvidia_gpus, "stderr": (nv_stderr or "")[:300],
+            "present": nvidia_present,
+            "rc": nv_rc,
+            "gpus": nvidia_gpus,
+            "stderr": (nv_stderr or "")[:300],
         },
         "rocm_smi": {
-            "present": rocm_present, "rc": rcm_rc, "stderr": (rcm_stderr or "")[:300],
+            "present": rocm_present,
+            "rc": rcm_rc,
+            "stderr": (rcm_stderr or "")[:300],
         },
         "torch_cuda": torch_record,
         "vendor": vendor,
@@ -334,32 +345,36 @@ class TrainSupervisor:
             self.last_step = max(self.last_step, int(m.group("step")))
             self.last_total = int(m.group("total"))
             self.heartbeat = time.time()
-            self.events.append({
-                "kind": "step",
-                "step": int(m.group("step")),
-                "total": int(m.group("total")),
-                "loss": float(m.group("loss")),
-                "cfm": float(m.group("cfm")),
-                "atom": float(m.group("atom")),
-                "bond": float(m.group("bond")),
-                "wall_s": self.heartbeat,
-            })
+            self.events.append(
+                {
+                    "kind": "step",
+                    "step": int(m.group("step")),
+                    "total": int(m.group("total")),
+                    "loss": float(m.group("loss")),
+                    "cfm": float(m.group("cfm")),
+                    "atom": float(m.group("atom")),
+                    "bond": float(m.group("bond")),
+                    "wall_s": self.heartbeat,
+                }
+            )
             return
         m = RE_DECODE_LINE.search(line)
         if m:
             step = int(m.group("step"))
             self.heartbeat = time.time()
-            self.events.append({
-                "kind": "decode",
-                "step": step,
-                "decode_ratio": float(m.group("decode_ratio")),
-                "n_decoded": int(m.group("n_decoded")),
-                "n_total": int(m.group("n_total")),
-                "mean_atoms": float(m.group("mean_atoms")),
-                "disconnected": int(m.group("disconnected")),
-                "probe_wall_s": float(m.group("wall")),
-                "wall_s": self.heartbeat,
-            })
+            self.events.append(
+                {
+                    "kind": "decode",
+                    "step": step,
+                    "decode_ratio": float(m.group("decode_ratio")),
+                    "n_decoded": int(m.group("n_decoded")),
+                    "n_total": int(m.group("n_total")),
+                    "mean_atoms": float(m.group("mean_atoms")),
+                    "disconnected": int(m.group("disconnected")),
+                    "probe_wall_s": float(m.group("wall")),
+                    "wall_s": self.heartbeat,
+                }
+            )
             return
         if RE_RESOLVED_DEVICE.search(line):
             self.heartbeat = time.time()
@@ -491,6 +506,7 @@ def compute_resume_plan(
     # Confirm the GPU is still alive
     try:
         import torch  # type: ignore
+
         if not torch.cuda.is_available():
             return {
                 "reason": "GONE",
@@ -541,19 +557,32 @@ def build_subprocess_cmd(
         py,
         "-u",
         str(SMOKE_SCRIPT.relative_to(PROJECT_ROOT)),
-        "--csv", str(PROJECT_ROOT / "molmetal" / "data" / "metallo_drugs_500_train.csv"),
-        "--steps", str(int(steps)),
-        "--batch-size", str(int(args.batch_size)),
-        "--hidden-dim", str(int(args.hidden_dim)),
-        "--n-layers", str(int(args.n_layers)),
-        "--lr", str(float(args.lr)),
-        "--lr-warmup-steps", str(int(args.lr_warmup_steps)),
-        "--decode-smoke-every", str(int(args.decode_smoke_every)),
-        "--decode-smoke-samples", str(int(args.decode_smoke_samples)),
-        "--atom-vocab", "20",  # metallodrug = 20 post-TODO-33
-        "--bond-head", "learned",
-        "--seed", str(int(seed)),
-        "--out-dir", str(out_dir),
+        "--csv",
+        str(PROJECT_ROOT / "molmetal" / "data" / "metallo_drugs_500_train.csv"),
+        "--steps",
+        str(int(steps)),
+        "--batch-size",
+        str(int(args.batch_size)),
+        "--hidden-dim",
+        str(int(args.hidden_dim)),
+        "--n-layers",
+        str(int(args.n_layers)),
+        "--lr",
+        str(float(args.lr)),
+        "--lr-warmup-steps",
+        str(int(args.lr_warmup_steps)),
+        "--decode-smoke-every",
+        str(int(args.decode_smoke_every)),
+        "--decode-smoke-samples",
+        str(int(args.decode_smoke_samples)),
+        "--atom-vocab",
+        "20",  # metallodrug = 20 post-TODO-33
+        "--bond-head",
+        "learned",
+        "--seed",
+        str(int(seed)),
+        "--out-dir",
+        str(out_dir),
     ]
     if resume_from is not None:
         cmd += ["--resume-from", str(resume_from)]
@@ -564,10 +593,19 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         description="R17 GPU retrain wrapper (monitoring + checkpointing + resume)"
     )
-    parser.add_argument("--steps", type=int, default=10000,
-                        help="Total retrain steps per seed (default 10000)")
-    parser.add_argument("--seeds", type=int, nargs="+", default=[42],
-                        help="Seeds to run sequentially (default [42])")
+    parser.add_argument(
+        "--steps",
+        type=int,
+        default=10000,
+        help="Total retrain steps per seed (default 10000)",
+    )
+    parser.add_argument(
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=[42],
+        help="Seeds to run sequentially (default [42])",
+    )
     parser.add_argument("--hidden-dim", type=int, default=128)
     parser.add_argument("--n-layers", type=int, default=3)
     parser.add_argument("--batch-size", type=int, default=4)
@@ -575,20 +613,41 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--lr-warmup-steps", type=int, default=200)
     parser.add_argument("--decode-smoke-every", type=int, default=1000)
     parser.add_argument("--decode-smoke-samples", type=int, default=16)
-    parser.add_argument("--hang-timeout", type=float, default=60.0,
-                        help="No-progress-in-N-seconds -> hang (default 60)")
-    parser.add_argument("--heartbeat-poll-s", type=float, default=2.0,
-                        help="Child stdout drain period (default 2)")
-    parser.add_argument("--no-resume", action="store_true",
-                        help="Disable resume-on-hang (just kill and exit)")
-    parser.add_argument("--max-resume-attempts", type=int, default=3,
-                        help="Max resume attempts per seed before giving up (default 3)")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Probe GPU + validate scaffold without launching training")
+    parser.add_argument(
+        "--hang-timeout",
+        type=float,
+        default=60.0,
+        help="No-progress-in-N-seconds -> hang (default 60)",
+    )
+    parser.add_argument(
+        "--heartbeat-poll-s",
+        type=float,
+        default=2.0,
+        help="Child stdout drain period (default 2)",
+    )
+    parser.add_argument(
+        "--no-resume",
+        action="store_true",
+        help="Disable resume-on-hang (just kill and exit)",
+    )
+    parser.add_argument(
+        "--max-resume-attempts",
+        type=int,
+        default=3,
+        help="Max resume attempts per seed before giving up (default 3)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Probe GPU + validate scaffold without launching training",
+    )
     parser.add_argument("--log-root", type=Path, default=DEFAULT_LOG_ROOT)
     parser.add_argument("--metric-path", type=Path, default=DEFAULT_METRIC_PATH)
-    parser.add_argument("--skip-gpu-probe", action="store_true",
-                        help="Skip nvidia-smi / rocm-smi probe (faster)")
+    parser.add_argument(
+        "--skip-gpu-probe",
+        action="store_true",
+        help="Skip nvidia-smi / rocm-smi probe (faster)",
+    )
     args = parser.parse_args(argv)
 
     print("[r17_gpu] === R17 GPU RETRAIN CLI WRAPPER ===")
@@ -599,14 +658,20 @@ def main(argv: Optional[List[str]] = None) -> int:
     # of the dry-run flow (GPU probe + scaffold + cmd-record write)
     # runs unchanged below.
     if args.dry_run:
-        print(f"DRY RUN: would launch {args.steps}-step retrain"
-              f" (seeds={args.seeds}, hidden_dim={args.hidden_dim},"
-              f" n_layers={args.n_layers}, batch={args.batch_size})")
+        print(
+            f"DRY RUN: would launch {args.steps}-step retrain"
+            f" (seeds={args.seeds}, hidden_dim={args.hidden_dim},"
+            f" n_layers={args.n_layers}, batch={args.batch_size})"
+        )
     print(f"[r17_gpu] steps={args.steps} seeds={args.seeds}")
-    print(f"[r17_gpu] hidden_dim={args.hidden_dim} n_layers={args.n_layers}"
-          f" batch_size={args.batch_size} lr={args.lr} warmup={args.lr_warmup_steps}")
-    print(f"[r17_gpu] decode_smoke_every={args.decode_smoke_every}"
-          f" decode_smoke_samples={args.decode_smoke_samples}")
+    print(
+        f"[r17_gpu] hidden_dim={args.hidden_dim} n_layers={args.n_layers}"
+        f" batch_size={args.batch_size} lr={args.lr} warmup={args.lr_warmup_steps}"
+    )
+    print(
+        f"[r17_gpu] decode_smoke_every={args.decode_smoke_every}"
+        f" decode_smoke_samples={args.decode_smoke_samples}"
+    )
     print(f"[r17_gpu] log_root={args.log_root}")
     print(f"[r17_gpu] metric_path={args.metric_path}")
     print(f"[r17_gpu] dry_run={args.dry_run}")
@@ -615,13 +680,22 @@ def main(argv: Optional[List[str]] = None) -> int:
     args.log_root.mkdir(parents=True, exist_ok=True)
     if args.skip_gpu_probe and not args.dry_run:
         # Use a minimal stub when skipping (still want a JSON on disk)
-        gpu_probe = {"vendor": "unknown", "usable": True,
-                     "decision": "SKIPPED", "probed_at": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
+        gpu_probe = {
+            "vendor": "unknown",
+            "usable": True,
+            "decision": "SKIPPED",
+            "probed_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        }
     else:
         gpu_probe = detect_gpu()
-    (_wf416_atomic_write_text(args.log_root / "gpu_probe.json"), json.dumps(gpu_probe, indent=2))
-    print(f"[r17_gpu] GPU probe: vendor={gpu_probe['vendor']}"
-          f" usable={gpu_probe['usable']} decision={gpu_probe['decision']}")
+    (
+        _wf416_atomic_write_text(args.log_root / "gpu_probe.json"),
+        json.dumps(gpu_probe, indent=2),
+    )
+    print(
+        f"[r17_gpu] GPU probe: vendor={gpu_probe['vendor']}"
+        f" usable={gpu_probe['usable']} decision={gpu_probe['decision']}"
+    )
     if not gpu_probe["usable"]:
         if args.dry_run:
             print("[r17_gpu] dry-run mode: launching scaffold anyway")
@@ -676,14 +750,16 @@ def main(argv: Optional[List[str]] = None) -> int:
                     "cmd": cmd,
                 }
                 aggregate_decode.append(synthetic_event)
-                seed_summaries.append({
-                    "seed": seed,
-                    "dry_run": True,
-                    "cmd_path": str(cmd_record),
-                    "attempts": attempts,
-                    "decode_events": 0,
-                    "max_step": 0,
-                })
+                seed_summaries.append(
+                    {
+                        "seed": seed,
+                        "dry_run": True,
+                        "cmd_path": str(cmd_record),
+                        "attempts": attempts,
+                        "decode_events": 0,
+                        "max_step": 0,
+                    }
+                )
                 break
 
             sup = TrainSupervisor(
@@ -710,27 +786,35 @@ def main(argv: Optional[List[str]] = None) -> int:
                     if rc is not None:
                         break
                     plan = compute_resume_plan(sup, args, gpu_probe)
-                    if plan and not args.no_resume \
-                            and attempts <= args.max_resume_attempts:
+                    if (
+                        plan
+                        and not args.no_resume
+                        and attempts <= args.max_resume_attempts
+                    ):
                         print(f"[r17_gpu] HANG DETECTED: {plan}")
                         sup.kill(reason=plan.get("action", "hang detected"))
                         if plan["reason"] in ("HANG",) and plan.get("resume_from"):
                             resume_path = Path(plan["resume_from"])
                             steps_remaining = int(plan["remaining_steps"])
-                            print(f"[r17_gpu] RESUMING attempt {attempts + 1}"
-                                  f" from {resume_path} steps_remaining={steps_remaining}")
+                            print(
+                                f"[r17_gpu] RESUMING attempt {attempts + 1}"
+                                f" from {resume_path} steps_remaining={steps_remaining}"
+                            )
                             break  # leave inner while, restart with resume
                         else:
                             # No GPU at all or no checkpoint - cannot recover
-                            seed_summaries.append({
-                                "seed": seed,
-                                "attempts": attempts,
-                                "hang_plan": plan,
-                                "decode_events": len([e for e in sup.events
-                                                       if e["kind"] == "decode"]),
-                                "max_step": sup.last_step,
-                                "verdict": "FAILED",
-                            })
+                            seed_summaries.append(
+                                {
+                                    "seed": seed,
+                                    "attempts": attempts,
+                                    "hang_plan": plan,
+                                    "decode_events": len(
+                                        [e for e in sup.events if e["kind"] == "decode"]
+                                    ),
+                                    "max_step": sup.last_step,
+                                    "verdict": "FAILED",
+                                }
+                            )
                             sup.close()
                             break  # bail out of inner while
                     if drained == 0 and rc is None:
@@ -749,13 +833,15 @@ def main(argv: Optional[List[str]] = None) -> int:
                     "attempts": attempts,
                     "returncode": rc,
                     "wall_s": time.time() - seed_start,
-                    "decode_events": [e for e in sup.events
-                                       if e["kind"] == "decode"],
+                    "decode_events": [e for e in sup.events if e["kind"] == "decode"],
                     "max_step": sup.last_step,
                     "verdict": (
-                        "PASS" if any(e["decode_ratio"] > 0.0
-                                       for e in sup.events
-                                       if e["kind"] == "decode")
+                        "PASS"
+                        if any(
+                            e["decode_ratio"] > 0.0
+                            for e in sup.events
+                            if e["kind"] == "decode"
+                        )
                         else "DECODE_ZERO"
                     ),
                     "resume_used": resume_path is not None,
@@ -765,8 +851,10 @@ def main(argv: Optional[List[str]] = None) -> int:
                     [e for e in sup.events if e["kind"] == "decode"]
                 )
                 if rc != 0 and attempts > args.max_resume_attempts:
-                    print(f"[r17_gpu] seed {seed} FAILED rc={rc} after"
-                          f" {attempts} attempts")
+                    print(
+                        f"[r17_gpu] seed {seed} FAILED rc={rc} after"
+                        f" {attempts} attempts"
+                    )
                     break
                 break  # done with this seed
         # end while attempts
@@ -774,8 +862,11 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # -- Step 3: Write final metrics ---------------------------------------
     final_metrics = build_final_metrics(
-        gpu_probe, seed_summaries, aggregate_decode,
-        args, global_start,
+        gpu_probe,
+        seed_summaries,
+        aggregate_decode,
+        args,
+        global_start,
     )
     args.metric_path.parent.mkdir(parents=True, exist_ok=True)
     _wf416_atomic_write_text(args.metric_path, json.dumps(final_metrics, indent=2))
@@ -784,10 +875,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     # -- Step 4: Final summary ---------------------------------------------
     print("\n[r17_gpu] === FINAL SUMMARY ===")
     for ss in seed_summaries:
-        print(f"  seed={ss.get('seed')} verdict={ss.get('verdict')}"
-              f" max_step={ss.get('max_step')}"
-              f" attempts={ss.get('attempts')}"
-              f" wall={ss.get('wall_s', 0):.0f}s")
+        print(
+            f"  seed={ss.get('seed')} verdict={ss.get('verdict')}"
+            f" max_step={ss.get('max_step')}"
+            f" attempts={ss.get('attempts')}"
+            f" wall={ss.get('wall_s', 0):.0f}s"
+        )
     return 0
 
 
@@ -805,8 +898,9 @@ def build_final_metrics(
             (e["step"] for e in decode_events if e["decode_ratio"] > 0.0),
             None,
         ),
-        "max_decode_ratio": float(max((e["decode_ratio"] for e in decode_events),
-                                       default=0.0)),
+        "max_decode_ratio": float(
+            max((e["decode_ratio"] for e in decode_events), default=0.0)
+        ),
         "all_probes": decode_events,
     }
     return {
@@ -830,15 +924,18 @@ def build_final_metrics(
         "seed_summaries": seed_summaries,
         "decode_summary": decode_summary,
         "verdict": (
-            "PASS" if decode_summary["max_decode_ratio"] > 0.0
-            else "DRY_RUN_OK" if args.dry_run
+            "PASS"
+            if decode_summary["max_decode_ratio"] > 0.0
+            else "DRY_RUN_OK"
+            if args.dry_run
             else "DECODE_ZERO"
         ),
     }
 
 
-def _dump_state(args: argparse.Namespace, sup: TrainSupervisor,
-                seed: int, attempt: int) -> None:
+def _dump_state(
+    args: argparse.Namespace, sup: TrainSupervisor, seed: int, attempt: int
+) -> None:
     """Write a periodic state snapshot for post-mortem."""
     state = {
         "wall_s": time.time(),

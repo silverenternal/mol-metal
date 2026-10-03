@@ -52,12 +52,13 @@ except ImportError:  # Wf-A16: feature not implemented — SKIP, do not ERROR
 #         + rejects bogus values
 # ---------------------------------------------------------------------------
 
+
 def test_dmpnn_backend_parse_args_accepts_default_and_both_choices():
     """``--dmpnn-backend {pyg,loop}`` must:
-      - default to ``pyg`` (matches legacy trainer convention)
-      - accept ``loop`` explicitly
-      - accept ``pyg`` explicitly
-      - reject any other value with argparse exit code 2
+    - default to ``pyg`` (matches legacy trainer convention)
+    - accept ``loop`` explicitly
+    - accept ``pyg`` explicitly
+    - reject any other value with argparse exit code 2
     """
     # Default (no flag passed)
     ns_default = parse_args([])
@@ -106,6 +107,7 @@ def test_dmpnn_backend_parse_args_accepts_default_and_both_choices():
 # Test 2: banner + training_summary JSON record dmpnn_backend for paper §6
 # ---------------------------------------------------------------------------
 
+
 def test_dmpnn_backend_appears_in_help_and_source():
     """The ``--dmpnn-backend`` flag must be present in:
       - argparse --help output (option list)
@@ -115,19 +117,20 @@ def test_dmpnn_backend_appears_in_help_and_source():
     """
     # 1) Source-level: the flag must be present in parse_args and the
     #    banner print() statement.
-    trainer_src = (PROJECT_ROOT / "molmetal" / "scripts" /
-                   "train_dmpnn_multitask_wasserstein.py").read_text()
-    assert "--dmpnn-backend" in trainer_src, (
-        "--dmpnn-backend flag missing from Wasserstein trainer source"
-    )
+    trainer_src = (
+        PROJECT_ROOT / "molmetal" / "scripts" / "train_dmpnn_multitask_wasserstein.py"
+    ).read_text()
+    assert (
+        "--dmpnn-backend" in trainer_src
+    ), "--dmpnn-backend flag missing from Wasserstein trainer source"
     assert "DEFAULT_DMPNN_BACKEND" in trainer_src, (
         "DEFAULT_DMPNN_BACKEND module constant missing from Wasserstein "
         "trainer source"
     )
     # Banner emits the value: f-string interpolation pattern
-    assert "dmpnn_backend={args.dmpnn_backend}" in trainer_src, (
-        "banner line missing dmpnn_backend={args.dmpnn_backend} interpolation"
-    )
+    assert (
+        "dmpnn_backend={args.dmpnn_backend}" in trainer_src
+    ), "banner line missing dmpnn_backend={args.dmpnn_backend} interpolation"
     # training_summary JSON records the chosen backend
     assert "dmpnn_backend_requested" in trainer_src, (
         "training_summary JSON missing dmpnn_backend_requested field "
@@ -145,6 +148,7 @@ def test_dmpnn_backend_appears_in_help_and_source():
 # ---------------------------------------------------------------------------
 # Test 3 (bonus): both backends parse identically except for the field
 # ---------------------------------------------------------------------------
+
 
 def test_dmpnn_backend_does_not_clobber_other_wf328_flags():
     """Setting --dmpnn-backend must NOT change the namespace values of
@@ -167,10 +171,17 @@ def test_dmpnn_backend_does_not_clobber_other_wf328_flags():
     )
 
     # The other Wf-328 optimization flags must be unchanged.
-    for flag in ("bf16", "tf32", "torch_compile", "torch_compile_mode",
-                 "w2_gradient_mode"):
-        assert getattr(ns_baseline, flag) == getattr(ns_loop, flag) == getattr(
-            ns_pyg, flag
+    for flag in (
+        "bf16",
+        "tf32",
+        "torch_compile",
+        "torch_compile_mode",
+        "w2_gradient_mode",
+    ):
+        assert (
+            getattr(ns_baseline, flag)
+            == getattr(ns_loop, flag)
+            == getattr(ns_pyg, flag)
         ), (
             f"Wf-328 flag {flag} must be invariant under --dmpnn-backend "
             f"choice: baseline={getattr(ns_baseline, flag)!r}, "
@@ -183,6 +194,7 @@ def test_dmpnn_backend_does_not_clobber_other_wf328_flags():
 # Test 4 (bonus): backward-compat — no --dmpnn-backend arg path still works
 # ---------------------------------------------------------------------------
 
+
 def test_no_dmpnn_backend_flag_still_parses():
     """Verifies that removing the --dmpnn-backend flag (hypothetical
     rollback) does not break parse_args — this guards against the new
@@ -194,6 +206,7 @@ def test_no_dmpnn_backend_flag_still_parses():
         "dmpnn_backend attribute must exist on parse_args Namespace "
         "(even when --dmpnn-backend is not passed)"
     )
-    assert ns.dmpnn_backend in ("pyg", "loop"), (
-        f"dmpnn_backend must be one of the allowed choices; got {ns.dmpnn_backend!r}"
-    )
+    assert ns.dmpnn_backend in (
+        "pyg",
+        "loop",
+    ), f"dmpnn_backend must be one of the allowed choices; got {ns.dmpnn_backend!r}"

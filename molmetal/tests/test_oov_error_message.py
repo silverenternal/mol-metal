@@ -41,7 +41,7 @@ def _make_adapter() -> LipmanFlowMatchingAdapter:
     check that does not need a velocity field.
     """
     return LipmanFlowMatchingAdapter(
-        hidden_dim=32,        # toy scale — setup()-time warning only
+        hidden_dim=32,  # toy scale — setup()-time warning only
         n_layers=2,
         vocab_mask=True,
     )
@@ -65,15 +65,15 @@ def test_oov_einsteinium_raises_with_improved_message() -> None:
 
     # 1. The message must mention the SMILES (repr-quoted, so [Es] is
     #    shown verbatim rather than as 'Es' without brackets).
-    assert "'[Es]'" in msg, (
-        f"Error message must contain the repr-quoted SMILES; got:\n{msg}"
-    )
+    assert (
+        "'[Es]'" in msg
+    ), f"Error message must contain the repr-quoted SMILES; got:\n{msg}"
 
     # 2. The message must name the OOV element (Z=99) so the user
     #    knows exactly which atom to add to the vocab.
-    assert "99" in msg, (
-        f"Error message must mention the OOV atomic number 99; got:\n{msg}"
-    )
+    assert (
+        "99" in msg
+    ), f"Error message must mention the OOV atomic number 99; got:\n{msg}"
 
     # 3. The message must show the current vocab — every element of
     #    the 20-element default vocab should appear in the message.
@@ -84,12 +84,11 @@ def test_oov_einsteinium_raises_with_improved_message() -> None:
         )
 
     # 4. The message should hint at the source file/line of the vocab.
-    assert "molmetal/adapters/flow_matching_lipman/__init__.py" in msg, (
-        f"Error message must point at the vocab source file; got:\n{msg}"
-    )
+    assert (
+        "molmetal/adapters/flow_matching_lipman/__init__.py" in msg
+    ), f"Error message must point at the vocab source file; got:\n{msg}"
     assert ":1825" in msg, (
-        f"Error message must point at line 1825 of the vocab source; "
-        f"got:\n{msg}"
+        f"Error message must point at line 1825 of the vocab source; " f"got:\n{msg}"
     )
 
 
@@ -108,16 +107,14 @@ def test_oov_error_message_contract() -> None:
     #   (b) a Hint line pointing at _atom_vocab:1825
     #   (c) "Current vocab: [...]"
     assert re.search(r"OOV atoms not in vocab", msg), (
-        f"Message must contain the 'OOV atoms not in vocab' phrase; "
-        f"got:\n{msg}"
+        f"Message must contain the 'OOV atoms not in vocab' phrase; " f"got:\n{msg}"
     )
     assert re.search(r"Current vocab:", msg), (
-        f"Message must contain the 'Current vocab:' phrase; "
-        f"got:\n{msg}"
+        f"Message must contain the 'Current vocab:' phrase; " f"got:\n{msg}"
     )
-    assert re.search(r"Hint:", msg, re.IGNORECASE), (
-        f"Message must contain a 'Hint:' line; got:\n{msg}"
-    )
+    assert re.search(
+        r"Hint:", msg, re.IGNORECASE
+    ), f"Message must contain a 'Hint:' line; got:\n{msg}"
 
 
 # ---------------------------------------------------------------------------
@@ -134,17 +131,17 @@ def test_oov_multiple_atoms_lists_all_sorted() -> None:
         adapter._validate_smiles_against_vocab(smiles_multi)
 
     msg = str(excinfo.value)
-    assert "99" in msg and "100" in msg, (
-        f"Both OOV atomic numbers must appear in the message; got:\n{msg}"
-    )
+    assert (
+        "99" in msg and "100" in msg
+    ), f"Both OOV atomic numbers must appear in the message; got:\n{msg}"
     # The list must be sorted ascending — 99 must come before 100.
-    assert msg.index("99") < msg.index("100"), (
-        f"OOV atomic numbers must be sorted ascending; got:\n{msg}"
-    )
+    assert msg.index("99") < msg.index(
+        "100"
+    ), f"OOV atomic numbers must be sorted ascending; got:\n{msg}"
     # Count line: "has 2 OOV atoms" (not "has 1").
-    assert "has 2 OOV atoms" in msg, (
-        f"Message must report 'has 2 OOV atoms'; got:\n{msg}"
-    )
+    assert (
+        "has 2 OOV atoms" in msg
+    ), f"Message must report 'has 2 OOV atoms'; got:\n{msg}"
 
 
 # ---------------------------------------------------------------------------
@@ -168,6 +165,6 @@ def test_malformed_smiles_raises_value_error() -> None:
     with pytest.raises(ValueError) as excinfo:
         adapter._validate_smiles_against_vocab("not_a_smiles@@@")
     msg = str(excinfo.value)
-    assert "could not be parsed by RDKit" in msg, (
-        f"Malformed-SMILES error must be a clear ValueError; got:\n{msg}"
-    )
+    assert (
+        "could not be parsed by RDKit" in msg
+    ), f"Malformed-SMILES error must be a clear ValueError; got:\n{msg}"

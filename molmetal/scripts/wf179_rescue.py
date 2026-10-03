@@ -9,6 +9,7 @@ Strategy:
 
 Wall budget: ~10-15 min
 """
+
 from __future__ import annotations
 
 import json
@@ -38,7 +39,9 @@ N_POSES = 5
 EXHAUSTIVENESS = 16  # Reduced from 32 to fit budget
 
 
-def _wf424_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
+def _wf424_atomic_write_text(
+    path, content: str, min_lines: int = 50, expected_min_length: int = 200
+) -> None:
     """Wf-424-A4 atomic-write-protocol wrapper around direct write_text.
 
     Falls back to direct write_text if atomic_write_file is unavailable
@@ -50,21 +53,26 @@ def _wf424_atomic_write_text(path, content: str, min_lines: int = 50, expected_m
             _risk = safe_overwrite_check(path, content, min_lines=min_lines)
             if _risk is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-424-A4] safe_overwrite_check diff_ratio=%.3f at %s",
-                    _risk, path,
+                    _risk,
+                    path,
                 )
         atomic_write_file(path, content, encoding="utf-8")
         if detect_truncation is not None:
             _trunc = detect_truncation(content, expected_min_length=expected_min_length)
             if _trunc is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-424-A4] detect_truncation reason=%r at %s",
-                    _trunc, path,
+                    _trunc,
+                    path,
                 )
     else:  # pragma: no cover — fallback when atomic primitive unavailable
         Path(path).write_text(content, encoding="utf-8")
+
 
 def kabsch_rmsd(P, Q):
     P = np.asarray(P, dtype=float)
@@ -83,8 +91,9 @@ def kabsch_rmsd(P, Q):
     return float(np.sqrt((diff * diff).sum(axis=1).mean()))
 
 
-def heavy_atom_rmsd_hungarian(docked_elements, docked_coords,
-                              crystal_elements, crystal_coords):
+def heavy_atom_rmsd_hungarian(
+    docked_elements, docked_coords, crystal_elements, crystal_coords
+):
     elem_groups = {}
     for i, e in enumerate(crystal_elements):
         elem_groups.setdefault(e, []).append(i)
@@ -120,7 +129,9 @@ def parse_pdbqt_heavy_atoms(pdbqt_path):
             if line.startswith("ENDMDL"):
                 break
             if line.startswith(("ATOM", "HETATM")):
-                elem_field = line[76:78].strip() if len(line) >= 78 else line[12:16].strip()
+                elem_field = (
+                    line[76:78].strip() if len(line) >= 78 else line[12:16].strip()
+                )
                 elem = elem_field.split()[0] if elem_field else ""
                 if elem.startswith("H"):
                     continue
@@ -177,14 +188,21 @@ def compute_rmsd_for_pocket(pocket_dir, ref_elements, ref_coords, seeds):
             if rmsd is None:
                 continue
             rmsds.append(rmsd)
-            per_pocket_pose_data.append({
-                "pocket": pocket_dir.name, "seed": seed, "pose": pose_idx,
-                "rmsd_angstrom": round(rmsd, 4),
-                "n_docked_heavy": len(elems), "n_ref_heavy": len(ref_elements),
-            })
+            per_pocket_pose_data.append(
+                {
+                    "pocket": pocket_dir.name,
+                    "seed": seed,
+                    "pose": pose_idx,
+                    "rmsd_angstrom": round(rmsd, 4),
+                    "n_docked_heavy": len(elems),
+                    "n_ref_heavy": len(ref_elements),
+                }
+            )
         if rmsds:
             results[seed] = {
-                "seed": seed, "status": "OK", "n_poses_valid": len(rmsds),
+                "seed": seed,
+                "status": "OK",
+                "n_poses_valid": len(rmsds),
                 "rmsd_per_pose": [round(r, 4) for r in rmsds],
                 "best_rmsd_angstrom": round(float(min(rmsds)), 4),
             }
@@ -195,7 +213,7 @@ def compute_rmsd_for_pocket(pocket_dir, ref_elements, ref_coords, seeds):
 
 def smiles_to_pdbqt_3d(smiles, out_pdbqt_path):
     sdf_intermediate = out_pdbqt_path.replace(".pdbqt", "_pre.sdf")
-    script = f'''
+    script = f"""
 from rdkit import Chem
 from rdkit.Chem import AllChem
 import sys
@@ -234,25 +252,68 @@ writer = Chem.SDWriter("{sdf_intermediate}")
 writer.write(mol)
 writer.close()
 print("OK")
-'''
-    result = subprocess.run([MOL_VENV_PY, "-c", script], capture_output=True, text=True, timeout=60)
+"""
+    result = subprocess.run(
+        [MOL_VENV_PY, "-c", script], capture_output=True, text=True, timeout=60
+    )
     if result.returncode != 0:
         raise RuntimeError(f"RDKit fail: {result.stderr[:200]}")
-    result2 = subprocess.run([CADVENV_PY, MKPREP_LIG, "-i", sdf_intermediate, "-o", out_pdbqt_path,
-                              "--charge_model", "gasteiger"], capture_output=True, text=True, timeout=60)
+    result2 = subprocess.run(
+        [
+            CADVENV_PY,
+            MKPREP_LIG,
+            "-i",
+            sdf_intermediate,
+            "-o",
+            out_pdbqt_path,
+            "--charge_model",
+            "gasteiger",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
     if result2.returncode != 0 or not os.path.exists(out_pdbqt_path):
-        raise RuntimeError(f"mk_prepare fail: rc={result2.returncode} stderr={result2.stderr[:200]}")
+        raise RuntimeError(
+            f"mk_prepare fail: rc={result2.returncode} stderr={result2.stderr[:200]}"
+        )
     return out_pdbqt_path
 
 
-def dock_one(receptor_pdbqt, ligand_pdbqt, center, size, out_dir, seed, exhaustiveness, n_poses):
+def dock_one(
+    receptor_pdbqt, ligand_pdbqt, center, size, out_dir, seed, exhaustiveness, n_poses
+):
     out_pdbqt = Path(out_dir) / f"out_seed{seed}.pdbqt"
     out_pdbqt.parent.mkdir(parents=True, exist_ok=True)
-    cmd = [VINA_BIN, "--receptor", str(receptor_pdbqt), "--ligand", str(ligand_pdbqt),
-           "--center_x", str(center[0]), "--center_y", str(center[1]), "--center_z", str(center[2]),
-           "--size_x", str(size[0]), "--size_y", str(size[1]), "--size_z", str(size[2]),
-           "--out", str(out_pdbqt), "--exhaustiveness", str(exhaustiveness),
-           "--num_modes", str(n_poses), "--seed", str(seed), "--cpu", "1"]
+    cmd = [
+        VINA_BIN,
+        "--receptor",
+        str(receptor_pdbqt),
+        "--ligand",
+        str(ligand_pdbqt),
+        "--center_x",
+        str(center[0]),
+        "--center_y",
+        str(center[1]),
+        "--center_z",
+        str(center[2]),
+        "--size_x",
+        str(size[0]),
+        "--size_y",
+        str(size[1]),
+        "--size_z",
+        str(size[2]),
+        "--out",
+        str(out_pdbqt),
+        "--exhaustiveness",
+        str(exhaustiveness),
+        "--num_modes",
+        str(n_poses),
+        "--seed",
+        str(seed),
+        "--cpu",
+        "1",
+    ]
     t0 = time.time()
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     elapsed = time.time() - t0
@@ -262,9 +323,13 @@ def dock_one(receptor_pdbqt, ligand_pdbqt, center, size, out_dir, seed, exhausti
 
 
 def main():
-    print(f"=== Wf-179 BD-9 m15 RMSD Phase 2 RESCUE (ex={EXHAUSTIVENESS}) ===", flush=True)
+    print(
+        f"=== Wf-179 BD-9 m15 RMSD Phase 2 RESCUE (ex={EXHAUSTIVENESS}) ===", flush=True
+    )
     print(f"Vina: {VINA_BIN}")
-    r = subprocess.run([VINA_BIN, "--version"], capture_output=True, text=True, timeout=10)
+    r = subprocess.run(
+        [VINA_BIN, "--version"], capture_output=True, text=True, timeout=10
+    )
     print(f"Vina version: {r.stdout.strip()}")
 
     meta = json.load(open(LIGAND_META))
@@ -286,9 +351,11 @@ def main():
         ys = [c[1] for c in coords]
         zs = [c[2] for c in coords]
         m = 8.0
-        box_sizes[p] = [max(20.0, max(xs) - min(xs) + m * 2),
-                        max(20.0, max(ys) - min(ys) + m * 2),
-                        max(20.0, max(zs) - min(zs) + m * 2)]
+        box_sizes[p] = [
+            max(20.0, max(xs) - min(xs) + m * 2),
+            max(20.0, max(ys) - min(ys) + m * 2),
+            max(20.0, max(zs) - min(zs) + m * 2),
+        ]
 
     # Step 1: rescue from existing files
     print("\n=== Step 1: Rescue from existing pose files ===", flush=True)
@@ -299,16 +366,26 @@ def main():
         # Detect which seeds already have files
         existing_seeds = []
         for s in SEEDS:
-            if (pocket_dir / f"out_seed{s}.pdbqt").exists() and (pocket_dir / f"pose_seed{s}_p1.pdbqt").exists():
+            if (pocket_dir / f"out_seed{s}.pdbqt").exists() and (
+                pocket_dir / f"pose_seed{s}_p1.pdbqt"
+            ).exists():
                 existing_seeds.append(s)
         if not existing_seeds:
             continue
         print(f"  {p}: existing seeds {existing_seeds}", flush=True)
         per_seed_data, per_pose = compute_rmsd_for_pocket(
-            pocket_dir, meta_p["element_types"], meta_p["coordinates_3d"], existing_seeds
+            pocket_dir,
+            meta_p["element_types"],
+            meta_p["coordinates_3d"],
+            existing_seeds,
         )
-        rescued[p] = {"per_seed_data": per_seed_data, "per_pose": per_pose,
-                      "meta": meta_p, "box_center": box_centers[p], "box_size": box_sizes[p]}
+        rescued[p] = {
+            "per_seed_data": per_seed_data,
+            "per_pose": per_pose,
+            "meta": meta_p,
+            "box_center": box_centers[p],
+            "box_size": box_sizes[p],
+        }
 
     # Step 2: dock missing (pocket, seed) combos
     print("\n=== Step 2: Dock missing (pocket, seed) combos ===", flush=True)
@@ -334,19 +411,38 @@ def main():
             size = box_sizes[p]
             meta_p = pocket_meta[p]
             # Get existing seeds
-            existing_seeds = [s for s in SEEDS
-                              if (pocket_dir / f"out_seed{s}.pdbqt").exists()
-                              and (pocket_dir / f"pose_seed{s}_p1.pdbqt").exists()]
+            existing_seeds = [
+                s
+                for s in SEEDS
+                if (pocket_dir / f"out_seed{s}.pdbqt").exists()
+                and (pocket_dir / f"pose_seed{s}_p1.pdbqt").exists()
+            ]
             if p not in rescued:
-                rescued[p] = {"per_seed_data": {}, "per_pose": [],
-                              "meta": meta_p, "box_center": center, "box_size": size}
-            print(f"  {p}: docking missing seeds {set(SEEDS) - set(existing_seeds)}", flush=True)
+                rescued[p] = {
+                    "per_seed_data": {},
+                    "per_pose": [],
+                    "meta": meta_p,
+                    "box_center": center,
+                    "box_size": size,
+                }
+            print(
+                f"  {p}: docking missing seeds {set(SEEDS) - set(existing_seeds)}",
+                flush=True,
+            )
             for seed in SEEDS:
                 if seed in existing_seeds:
                     continue
                 try:
-                    out_pdbqt, elapsed = dock_one(rec_path, lig_pdbqts[p], center, size,
-                                                  pocket_dir, seed, EXHAUSTIVENESS, N_POSES)
+                    out_pdbqt, elapsed = dock_one(
+                        rec_path,
+                        lig_pdbqts[p],
+                        center,
+                        size,
+                        pocket_dir,
+                        seed,
+                        EXHAUSTIVENESS,
+                        N_POSES,
+                    )
                 except Exception as e:
                     print(f"    seed={seed} FAIL: {e}")
                     continue
@@ -356,25 +452,36 @@ def main():
                     pose_pdbqt = pocket_dir / f"pose_seed{seed}_p{pose_idx+1}.pdbqt"
                     _wf424_atomic_write_text(pose_pdbqt, model_text)
                     elems, coords = parse_pdbqt_heavy_atoms(pose_pdbqt)
-                    rmsd = heavy_atom_rmsd_hungarian(elems, coords, meta_p["element_types"],
-                                                     meta_p["coordinates_3d"])
+                    rmsd = heavy_atom_rmsd_hungarian(
+                        elems, coords, meta_p["element_types"], meta_p["coordinates_3d"]
+                    )
                     if rmsd is None:
                         continue
                     seed_rmsds.append(rmsd)
-                    rescued[p]["per_pose"].append({
-                        "pocket": p, "seed": seed, "pose": pose_idx + 1,
-                        "rmsd_angstrom": round(rmsd, 4),
-                        "n_docked_heavy": len(elems), "n_ref_heavy": len(meta_p["element_types"]),
-                    })
+                    rescued[p]["per_pose"].append(
+                        {
+                            "pocket": p,
+                            "seed": seed,
+                            "pose": pose_idx + 1,
+                            "rmsd_angstrom": round(rmsd, 4),
+                            "n_docked_heavy": len(elems),
+                            "n_ref_heavy": len(meta_p["element_types"]),
+                        }
+                    )
                 if seed_rmsds:
                     rescued[p]["per_seed_data"][seed] = {
-                        "seed": seed, "status": "OK", "n_poses_valid": len(seed_rmsds),
+                        "seed": seed,
+                        "status": "OK",
+                        "n_poses_valid": len(seed_rmsds),
                         "rmsd_per_pose": [round(r, 4) for r in seed_rmsds],
                         "best_rmsd_angstrom": round(float(min(seed_rmsds)), 4),
                         "elapsed_s": round(elapsed, 3),
                     }
                 else:
-                    rescued[p]["per_seed_data"][seed] = {"seed": seed, "status": "NO_VALID_POSES"}
+                    rescued[p]["per_seed_data"][seed] = {
+                        "seed": seed,
+                        "status": "NO_VALID_POSES",
+                    }
 
     # Step 3: aggregate per-pocket
     print("\n=== Step 3: Aggregate ===", flush=True)
@@ -419,12 +526,17 @@ def main():
                 json.dump(results[p], f, indent=2)
             with open(WORKDIR / p / "per_pose_metrics.json", "w") as f:
                 json.dump(r_data["per_pose"], f, indent=2)
-            print(f"  {p}: median={median:.4f}A mean={mean:.4f}A std={std:.4f}A pass={median <= 2.5}",
-                  flush=True)
+            print(
+                f"  {p}: median={median:.4f}A mean={mean:.4f}A std={std:.4f}A pass={median <= 2.5}",
+                flush=True,
+            )
             aggregate[p] = median
         else:
-            results[p] = {"pocket": p, "status": "ALL_SEEDS_FAIL",
-                          "per_seed_data": list(r_data["per_seed_data"].values())}
+            results[p] = {
+                "pocket": p,
+                "status": "ALL_SEEDS_FAIL",
+                "per_seed_data": list(r_data["per_seed_data"].values()),
+            }
             with open(WORKDIR / p / "per_seed_metrics.json", "w") as f:
                 json.dump(results[p], f, indent=2)
             print(f"  {p}: ALL_SEEDS_FAIL")
@@ -449,7 +561,10 @@ def main():
         with open(WORKDIR / "summary.json", "w") as f:
             json.dump(summary, f, indent=2)
         print(f"\n=== FINAL ===", flush=True)
-        print(f"aggregate median: {overall:.4f}A across {len(aggregate)} pockets", flush=True)
+        print(
+            f"aggregate median: {overall:.4f}A across {len(aggregate)} pockets",
+            flush=True,
+        )
         print(f"n_pass_2.5A: {n_pass}/{len(aggregate)}", flush=True)
         print(f"per-pocket medians: {aggregate}", flush=True)
 

@@ -8,6 +8,7 @@ Exercises the joint Hilbert regression layer end-to-end on a tiny
 synthetic design matrix and prints the head-to-head wall-time + R²
 comparison.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -29,7 +30,9 @@ def main() -> int:
         description="Smoke-check ASTSR + Multi-PH joint Hilbert integration.",
     )
     parser.add_argument(
-        "--smoke", action="store_true", help="CPU smoke check.",
+        "--smoke",
+        action="store_true",
+        help="CPU smoke check.",
     )
     parser.add_argument("--n-seeds", type=int, default=2)
     args = parser.parse_args()
@@ -91,7 +94,7 @@ def main() -> int:
     try:
         cat = JointFeatureConcatenator()
         joined = cat.concatenate(astr_X, mph_X)
-        assert joined.shape == (n, d_astr + n_bins ** 2)
+        assert joined.shape == (n, d_astr + n_bins**2)
         normed = cat.fit_normalize(joined)
         assert np.all(np.isfinite(normed))
         print(
@@ -105,11 +108,14 @@ def main() -> int:
     # 4. Joint vs separate comparator
     n_total += 1
     try:
+
         def _factory(population_dim: int = 4, seed: int = 0) -> LambdaASTSRHilbert:
             return LambdaASTSRHilbert(
                 population_dim=int(population_dim),
-                lr_primal=0.05, lr_dual=0.05,
-                n_iters=80, seed=int(seed),
+                lr_primal=0.05,
+                lr_dual=0.05,
+                n_iters=80,
+                seed=int(seed),
             )
 
         comp = JointVsSeparateComparator(
@@ -125,16 +131,13 @@ def main() -> int:
             f"  Separate (comparator)  wall={out['separate_wall_s']:.4f}s  "
             f"R²={out['separate_r2']:.4f}"
         )
-        print(
-            f"  speedup={out['speedup']:.2f}x  (n_seeds={out['n_seeds']})"
-        )
+        print(f"  speedup={out['speedup']:.2f}x  (n_seeds={out['n_seeds']})")
     except Exception as exc:
         print(f"  JointVsSeparate FAIL ({type(exc).__name__}:{exc})")
         n_fail += 1
 
     print(
-        f"ASTSR + Multi-PH joint Hilbert: imports OK, smoke "
-        f"{n_fail}/{n_total} fail"
+        f"ASTSR + Multi-PH joint Hilbert: imports OK, smoke " f"{n_fail}/{n_total} fail"
     )
     return 0 if n_fail == 0 else 1
 

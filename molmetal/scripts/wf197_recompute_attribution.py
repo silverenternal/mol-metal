@@ -15,7 +15,12 @@ import json
 import sys
 from pathlib import Path
 
-OUT_DIR = Path(__file__).resolve().parent.parent.parent / "molmetal" / "reports" / "wf197_ablation"
+OUT_DIR = (
+    Path(__file__).resolve().parent.parent.parent
+    / "molmetal"
+    / "reports"
+    / "wf197_ablation"
+)
 
 
 def main() -> int:

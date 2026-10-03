@@ -60,6 +60,7 @@ Run via::
     uv run --no-sync python molmetal/scripts/audit_variance_puct_sign.py \\
         molmetal/reports/wf65_p1_sign_audit/sign_flip_audit.json
 """
+
 from __future__ import annotations
 
 import json
@@ -283,13 +284,15 @@ def _replay_one(
     for arm in instance["arms"]:
         sc = scorer(arm, cfg)
         scores.append(float(sc))
-        per_arm.append({
-            "action": int(arm["action"]),
-            "Q": float(arm["Q"]),
-            "N": float(arm["N"]),
-            "sigma": float(arm["sigma"]),
-            "score": float(sc),
-        })
+        per_arm.append(
+            {
+                "action": int(arm["action"]),
+                "Q": float(arm["Q"]),
+                "N": float(arm["N"]),
+                "sigma": float(arm["sigma"]),
+                "score": float(sc),
+            }
+        )
     selected = _argmax(scores)
     # Variance reduction proxy: relative score *uplift* of the
     # low-sigma arm (action 1) over the high-sigma arm (action 0).
@@ -299,11 +302,9 @@ def _replay_one(
     #             low-variance arm (correct behaviour).  Zero when
     #             c_var = 0 (canonical PUCT is variance-blind).
     s_high_sigma = scores[0]  # arm 0: sigma=0.4
-    s_low_sigma = scores[1]   # arm 1: sigma=0.0
+    s_low_sigma = scores[1]  # arm 1: sigma=0.0
     denom = max(abs(s_low_sigma), 1.0e-12)
-    var_reduction = float(
-        (s_low_sigma - s_high_sigma) / denom
-    )
+    var_reduction = float((s_low_sigma - s_high_sigma) / denom)
     return {
         "config_name": cfg_name,
         "scores": [float(s) for s in scores],
@@ -329,12 +330,8 @@ def run_audit() -> Dict[str, Any]:
     post = per_config["post_fix"]
     pre_score_high_sigma = pre["scores"][0]
     post_score_high_sigma = post["scores"][0]
-    high_sigma_diff = float(
-        abs(pre_score_high_sigma - post_score_high_sigma)
-    )
-    selection_changed = (
-        pre["selected_action"] != post["selected_action"]
-    )
+    high_sigma_diff = float(abs(pre_score_high_sigma - post_score_high_sigma))
+    selection_changed = pre["selected_action"] != post["selected_action"]
     # The audit verdict:
     # - pre_fix score on the high-sigma arm = Q - c_var*sigma/(1+N)
     #                                 = 0.5 - 0.5*0.4/21 ≈ 0.4905
@@ -348,10 +345,7 @@ def run_audit() -> Dict[str, Any]:
     # reduction is *substantially larger* than the pre-fix one
     # (the pre-fix penalty decays to ~zero at large N, so the
     # post-fix penalty should produce a much bigger gap).
-    post_corrects = bool(
-        post["variance_reduction"]
-        > pre["variance_reduction"] + 0.05
-    )
+    post_corrects = bool(post["variance_reduction"] > pre["variance_reduction"] + 0.05)
     return {
         "schema_version": 1,
         "tool": "audit_variance_puct_sign.py",
@@ -364,9 +358,7 @@ def run_audit() -> Dict[str, Any]:
             "module_path": probe.module_path,
             "has_divisor_on_penalty": probe.has_divisor,
             "divisor_line": probe.divisor_line,
-            "docstring_references_audit_report": (
-                probe.docstring_references_audit
-            ),
+            "docstring_references_audit_report": (probe.docstring_references_audit),
         },
         "divergence": {
             "pre_fix_vs_post_fix_high_sigma_score_diff": high_sigma_diff,
@@ -415,7 +407,9 @@ def _parse_args(argv: Optional[Sequence[str]]) -> Tuple[str, bool]:
     if not argv:
         output_path = os.path.join(
             _REPO_ROOT,
-            "molmetal", "reports", "wf65_p1_sign_audit",
+            "molmetal",
+            "reports",
+            "wf65_p1_sign_audit",
             "sign_flip_audit.json",
         )
         return output_path, True
@@ -437,15 +431,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     v = audit["verdict"]
     div = audit["divergence"]
     print(f"[wf65_p1_sign_audit] wrote {output_path}")
-    print(
-        f"  sign_flip_detected_pre_fix = {v['sign_flip_detected_pre_fix']}"
-    )
-    print(
-        f"  post_fix_corrects_regime   = {v['post_fix_corrects_regime']}"
-    )
-    print(
-        f"  live_code_matches_post_fix = {v['live_code_matches_post_fix']}"
-    )
+    print(f"  sign_flip_detected_pre_fix = {v['sign_flip_detected_pre_fix']}")
+    print(f"  post_fix_corrects_regime   = {v['post_fix_corrects_regime']}")
+    print(f"  live_code_matches_post_fix = {v['live_code_matches_post_fix']}")
     print(
         f"  high_sigma_score_diff      = "
         f"{div['pre_fix_vs_post_fix_high_sigma_score_diff']:.6f}"

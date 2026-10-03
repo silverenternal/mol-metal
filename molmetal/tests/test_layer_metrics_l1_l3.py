@@ -29,6 +29,7 @@ from molmetal_lam.molecules import closed_term as l3
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(autouse=True)
 def _reset_all_histories() -> None:
     """Clear every layer's history before each test."""
@@ -47,6 +48,7 @@ def _has_metric(history, name: str) -> dict | None:
 # ---------------------------------------------------------------------------
 # Layer 1 — atoms/combinators.py  (5 tests)
 # ---------------------------------------------------------------------------
+
 
 def test_l1_arity_hit_rate_recorded() -> None:
     """ARITY_HIT_RATE is appended when from_smiles parses a SMILES."""
@@ -95,6 +97,7 @@ def test_l1_primitive_geometry_tag_ok_recorded() -> None:
 # Layer 2 — bonds/application.py  (6 tests)
 # ---------------------------------------------------------------------------
 
+
 def test_l2_bond_kind_distribution_recorded() -> None:
     """BOND_KIND_DISTRIBUTION is appended by assemble()."""
     l2.assemble([])
@@ -134,6 +137,7 @@ def test_l2_builder_exception_rate_recorded() -> None:
     """BUILDER_EXCEPTION_RATE is appended via builder_exception_snapshot()."""
     # Trigger a few factory calls — none should raise.
     from molmetal_lam.atoms.combinators import METAL_ATOMS, make_ligand
+
     pt = l2.distinct(METAL_ATOMS["Pt_II"])
     nh3 = l2.distinct(make_ligand("NH3"))
     l2.safe_factory(l2.Bond.dative, pt, nh3)
@@ -155,6 +159,7 @@ def test_l2_aromatic_ring_size_ok_recorded() -> None:
 # ---------------------------------------------------------------------------
 # Layer 3 — molecules/closed_term.py  (6 tests)
 # ---------------------------------------------------------------------------
+
 
 def test_l3_is_closed_rate_recorded() -> None:
     """IS_CLOSED_RATE: water (O + 2 implicit H) is closed."""

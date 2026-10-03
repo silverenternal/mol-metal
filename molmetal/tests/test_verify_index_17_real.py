@@ -19,6 +19,7 @@ Verifies that the verify_index_17_real.py script:
 
 All tests run on CPU in <5s — no GPU, no RDKit.
 """
+
 from __future__ import annotations
 
 import json
@@ -116,9 +117,9 @@ def test_verify_strong_real_cross_check_pass() -> None:
     """The load-bearing invariant: STRONG_REAL rows must have measured evidence."""
     verify = _load_verify()
     audit = verify["strong_audit"]
-    assert audit["verdict"] == "PASS", (
-        f"STRONG_REAL cross-check failed: missing_measured_value={audit['missing_measured_value']}"
-    )
+    assert (
+        audit["verdict"] == "PASS"
+    ), f"STRONG_REAL cross-check failed: missing_measured_value={audit['missing_measured_value']}"
     # Specifically check the 10 STRONG_REAL rows from §17.1
     assert len(audit["actually_measured_on_disk"]) >= 10
 
@@ -129,9 +130,9 @@ def test_verify_strong_real_cross_check_pass() -> None:
 def test_verify_cross_refs_all_exist() -> None:
     verify = _load_verify()
     n_missing = verify["n_cross_refs_missing"]
-    assert n_missing == 0, (
-        f"{n_missing} cross-ref file(s) missing — §17.4 ledger is not honest"
-    )
+    assert (
+        n_missing == 0
+    ), f"{n_missing} cross-ref file(s) missing — §17.4 ledger is not honest"
 
 
 # ---------------------------------------------------------------------------
@@ -166,7 +167,9 @@ def test_verify_baseline_and_new_metrics_audited() -> None:
     verify = _load_verify()
     audited = {r["metric_id"] for r in verify["per_metric_audit"]}
     new_metrics = {"m22", "m23", "m24"}
-    assert new_metrics.issubset(audited), f"missing NEW m22/m23/m24 audit: {new_metrics - audited}"
+    assert new_metrics.issubset(
+        audited
+    ), f"missing NEW m22/m23/m24 audit: {new_metrics - audited}"
 
 
 # ---------------------------------------------------------------------------
@@ -178,6 +181,7 @@ def test_index_17_1_strong_real_literal_list() -> None:
     text = index_path.read_text(encoding="utf-8")
     # Extract the STRONG_REAL row
     import re
+
     match = re.search(
         r"\*\*🟢 STRONG_REAL_PAPER_READY\*\*\s*\|\s*(\d+)\s*\|\s*([^|]+)\|",
         text,
@@ -189,7 +193,9 @@ def test_index_17_1_strong_real_literal_list() -> None:
     # Check at least 5 of the 10 expected metrics are mentioned
     expected = ["m11", "m13", "m14", "m17", "m21", "m22", "m23", "m24"]
     found = [m for m in expected if m in examples]
-    assert len(found) >= 5, f"only {len(found)} of 8 expected STRONG_REAL metric IDs mentioned"
+    assert (
+        len(found) >= 5
+    ), f"only {len(found)} of 8 expected STRONG_REAL metric IDs mentioned"
 
 
 if __name__ == "__main__":

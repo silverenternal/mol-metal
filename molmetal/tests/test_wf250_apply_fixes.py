@@ -46,6 +46,7 @@ class TestResolvePerPocketConfig:
         from molmetal.molmetal_lam.sbdd_env.vina_adapter import (
             resolve_per_pocket_config,
         )
+
         cfg = resolve_per_pocket_config("1h36")
         # Eberhardt 2021 — AD4Zn.dat for Zn coordination.
         assert cfg["scoring"] == "ad4"
@@ -57,6 +58,7 @@ class TestResolvePerPocketConfig:
         from molmetal.molmetal_lam.sbdd_env.vina_adapter import (
             resolve_per_pocket_config,
         )
+
         cfg = resolve_per_pocket_config("3eml")
         assert cfg["scoring"] == "vina"
         assert cfg["exhaustiveness"] == 8
@@ -66,6 +68,7 @@ class TestResolvePerPocketConfig:
         from molmetal.molmetal_lam.sbdd_env.vina_adapter import (
             resolve_per_pocket_config,
         )
+
         for pid in ("3ny8", "4rlu"):
             cfg = resolve_per_pocket_config(pid)
             assert cfg["scoring"] == "vina"
@@ -76,6 +79,7 @@ class TestResolvePerPocketConfig:
         from molmetal.molmetal_lam.sbdd_env.vina_adapter import (
             resolve_per_pocket_config,
         )
+
         cfg = resolve_per_pocket_config("4aaw")
         assert cfg["scoring"] == "ad4"
         assert cfg["scoring_file"] == "AD4Zn.dat"
@@ -84,6 +88,7 @@ class TestResolvePerPocketConfig:
         from molmetal.molmetal_lam.sbdd_env.vina_adapter import (
             resolve_per_pocket_config,
         )
+
         cfg = resolve_per_pocket_config("unknown_pocket_xyz")
         # Default fallback — exhaustiveness=8, n_poses=9, scoring=vina.
         assert cfg["exhaustiveness"] == 8
@@ -94,6 +99,7 @@ class TestResolvePerPocketConfig:
         from molmetal.molmetal_lam.sbdd_env.vina_adapter import (
             resolve_per_pocket_config,
         )
+
         # ``synthetic:CHRM1`` is a synthetic id used by metric_hooks —
         # not in the table, should fall back to default.
         cfg = resolve_per_pocket_config("synthetic:CHRM1")
@@ -115,6 +121,7 @@ class TestResolvePerPocketConfig:
         from molmetal.molmetal_lam.sbdd_env.vina_adapter import (
             DEFAULT_VINA_PER_POCKET,
         )
+
         # Every key in the table must have the full dict.
         for k, v in DEFAULT_VINA_PER_POCKET.items():
             assert "exhaustiveness" in v
@@ -168,7 +175,8 @@ class TestComputeVinaMinPerPocketWiring:
             return_value=mock.MagicMock(),
         ):
             out = compute_vina_min(
-                ["CCO"], pocket_id="1h36",
+                ["CCO"],
+                pocket_id="1h36",
                 exhaustiveness=4,
                 use_per_pocket_config=False,
                 save=False,
@@ -207,7 +215,8 @@ class TestComputeVinaMinPerPocketWiring:
             return_value=mock.MagicMock(),
         ):
             out = compute_vina_min(
-                ["CCO"], pocket_id="1h36",
+                ["CCO"],
+                pocket_id="1h36",
                 exhaustiveness=4,
                 use_per_pocket_config=True,
                 save=False,
@@ -245,7 +254,8 @@ class TestComputeVinaMinPerPocketWiring:
             return_value=mock.MagicMock(),
         ):
             out = compute_vina_min(
-                ["CCO"], pocket_id="totally_unknown_pocket",
+                ["CCO"],
+                pocket_id="totally_unknown_pocket",
                 exhaustiveness=4,
                 use_per_pocket_config=True,
                 save=False,
@@ -270,6 +280,7 @@ class TestMasterWassersteinIntegration:
             SUPPORTED_LOSS_TYPES,
             ENGINE_TAG,
         )
+
         assert "transfer" in SUPPORTED_LOSS_TYPES
         assert "pic50" in SUPPORTED_LOSS_TYPES
         assert "gradient_flow" in SUPPORTED_LOSS_TYPES
@@ -283,6 +294,7 @@ class TestMasterWassersteinIntegration:
             MasterWassersteinGradientFlow,
             MasterWassersteinConfig,
         )
+
         m = MasterWassersteinGradientFlow(
             config=MasterWassersteinConfig(n_mc=32, seed=0),
         )
@@ -299,6 +311,7 @@ class TestMasterWassersteinIntegration:
     def test_v3_driver_module_has_master_wass_globals(self):
         """v3 driver exposes ``_HAVE_MASTER_WASS`` and master classes."""
         from molmetal.scripts import train_chemprop_v2_v3 as v3mod
+
         assert hasattr(v3mod, "_HAVE_MASTER_WASS")
         assert hasattr(v3mod, "_MasterWass")
         assert hasattr(v3mod, "_MasterWassConfig")
@@ -314,7 +327,10 @@ class TestMasterWassersteinIntegration:
         training pipeline which is too expensive for a unit test.
         """
         from pathlib import Path
-        src = Path("/home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py").read_text()
+
+        src = Path(
+            "/home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py"
+        ).read_text()
         assert '"--use-master-wass"' in src
         assert '"--master-wass-n-mc"' in src
         # The flag handler must read the value into args.use_master_wass.
@@ -336,6 +352,7 @@ class TestMasterCatherineIntegration:
             SUPPORTED_BIAS_TYPES,
             ENGINE_FEATURE_FLAG,
         )
+
         assert "feature_flag" in SUPPORTED_BIAS_TYPES
         assert "oversample" in SUPPORTED_BIAS_TYPES
         assert "generation_bias" in SUPPORTED_BIAS_TYPES
@@ -346,6 +363,7 @@ class TestMasterCatherineIntegration:
         from molmetal.molmetal_lam.reward.master_catherine_closure_bias import (
             MasterCatherineClosureBias,
         )
+
         m = MasterCatherineClosureBias()
         payload = {
             "term_id": "test-001",
@@ -373,6 +391,7 @@ class TestMasterCatherineIntegration:
     def test_v3_driver_module_has_master_cath_globals(self):
         """v3 driver exposes ``_HAVE_MASTER_CATH`` and master class."""
         from molmetal.scripts import train_chemprop_v2_v3 as v3mod
+
         assert hasattr(v3mod, "_HAVE_MASTER_CATH")
         assert hasattr(v3mod, "_MasterCath")
         assert hasattr(v3mod, "_CATH_BIAS_TYPES")
@@ -388,7 +407,10 @@ class TestMasterCatherineIntegration:
         a unit test).
         """
         from pathlib import Path
-        src = Path("/home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py").read_text()
+
+        src = Path(
+            "/home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py"
+        ).read_text()
         assert '"--use-master-cath"' in src
         assert '"--master-cath-bias-type"' in src
         assert "args.use_master_cath" in src
@@ -405,7 +427,10 @@ class TestEnhancedMetalHeadWiring:
     def test_v3_driver_has_enhanced_head_flag(self):
         """Verify the source contains the enhanced-head flag plumbing."""
         from pathlib import Path
-        src = Path("/home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py").read_text()
+
+        src = Path(
+            "/home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py"
+        ).read_text()
         assert '"--enhanced-head"' in src
         assert '"--metal-attention"' in src
         # The flag handler must read the value into args.enhanced_head.
@@ -419,7 +444,10 @@ class TestEnhancedMetalHeadWiring:
         full training pipeline (too expensive for a unit test).
         """
         from pathlib import Path
-        src = Path("/home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py").read_text()
+
+        src = Path(
+            "/home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py"
+        ).read_text()
         assert "args.metal_attention and not args.enhanced_head" in src
 
     def test_chemprop_v2_mt_model_v3_has_enhanced_head(self):
@@ -429,8 +457,11 @@ class TestEnhancedMetalHeadWiring:
             ChempropV2MTModelV3,
             EnhancedMetalHead,
         )
+
         # Smoke: class exposes the constructor signature.
-        sig_params = list(inspect.signature(ChempropV2MTModelV3.__init__).parameters.keys())
+        sig_params = list(
+            inspect.signature(ChempropV2MTModelV3.__init__).parameters.keys()
+        )
         assert "enhanced_head" in sig_params
         assert "use_metal_attention" in sig_params
         # EnhancedMetalHead is a separate class.
@@ -440,6 +471,7 @@ class TestEnhancedMetalHeadWiring:
 def inspect_signature_safe(cls_or_func):
     """Return parameter names for ``cls_or_func.__init__`` or the callable."""
     import inspect
+
     try:
         sig = inspect.signature(cls_or_func.__init__)
     except (TypeError, ValueError):
@@ -488,7 +520,10 @@ class TestIntegrationSmoke:
     def test_all_flags_together_in_v3_driver(self):
         """All Wf-250 flags are present in the v3 driver source."""
         from pathlib import Path
-        src = Path("/home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py").read_text()
+
+        src = Path(
+            "/home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py"
+        ).read_text()
         for needle in (
             "--use-master-wass",
             "--master-wass-n-mc",
@@ -513,6 +548,7 @@ class TestIntegrationSmoke:
         from molmetal.molmetal_lam.reward.master_catherine_closure_bias import (
             ENGINE_FEATURE_FLAG as C_TAG,
         )
+
         assert W_TAG != C_TAG
         assert W_TAG == "wasserstein_reg"
         assert C_TAG == "closure_catherine_feature_flag"

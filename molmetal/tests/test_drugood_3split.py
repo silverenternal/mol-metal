@@ -106,13 +106,15 @@ class TestAssaySplit:
         rows: List[Dict[str, object]] = []
         for assay in range(5):
             for k in range(6):
-                rows.append({
-                    "smiles": f"c1ccccc{k}",
-                    "y": 1,
-                    "assay_id": assay,
-                    "scaffold_split_id": 100 + assay,
-                    "size_split_id": 10 + assay,
-                })
+                rows.append(
+                    {
+                        "smiles": f"c1ccccc{k}",
+                        "y": 1,
+                        "assay_id": assay,
+                        "scaffold_split_id": 100 + assay,
+                        "size_split_id": 10 + assay,
+                    }
+                )
         ds = _make_dict_dataset(rows)
         sp = AssayGroupSplitter(strategy="largest_first", seed=42)
         result = sp(ds)
@@ -134,7 +136,13 @@ class TestAssaySplit:
 
     def test_assay_split_seed_reproducible(self) -> None:
         rows = [
-            {"smiles": f"c{k}", "y": 0, "assay_id": k // 2, "scaffold_split_id": k, "size_split_id": k % 3}
+            {
+                "smiles": f"c{k}",
+                "y": 0,
+                "assay_id": k // 2,
+                "scaffold_split_id": k,
+                "size_split_id": k % 3,
+            }
             for k in range(20)
         ]
         ds = _make_dict_dataset(rows)
@@ -156,13 +164,15 @@ class TestSizeSplit:
         # assay test, exercises the largest-first assignment.
         for size_bin in range(4):
             for k in range(7):
-                rows.append({
-                    "smiles": f"c{k}",
-                    "y": 1,
-                    "assay_id": size_bin + 100,  # different from size_bin
-                    "scaffold_split_id": size_bin + 200,
-                    "size_split_id": size_bin,
-                })
+                rows.append(
+                    {
+                        "smiles": f"c{k}",
+                        "y": 1,
+                        "assay_id": size_bin + 100,  # different from size_bin
+                        "scaffold_split_id": size_bin + 200,
+                        "size_split_id": size_bin,
+                    }
+                )
         ds = _make_dict_dataset(rows)
         sp = SizeGroupSplitter(strategy="largest_first", seed=42)
         result = sp(ds)
@@ -293,7 +303,9 @@ class TestCLIIntegration:
 
     def test_splitter_factory_dispatch(self) -> None:
         """``SPLITTER_FACTORIES`` maps the new keys to the right classes."""
-        assert SPLITTER_FACTORIES["assay"](42).__class__.__name__ == "AssayGroupSplitter"
+        assert (
+            SPLITTER_FACTORIES["assay"](42).__class__.__name__ == "AssayGroupSplitter"
+        )
         assert SPLITTER_FACTORIES["size"](42).__class__.__name__ == "SizeGroupSplitter"
 
     def test_existing_split_choices_unchanged(self) -> None:
@@ -308,9 +320,9 @@ class TestCLIIntegration:
             ("chemical", "ChemicalSplitter"),
         ]
         for key, cls_name in legacy:
-            assert SPLITTER_FACTORIES[key](42).__class__.__name__ == cls_name, (
-                f"--split {key} now resolves to a different class"
-            )
+            assert (
+                SPLITTER_FACTORIES[key](42).__class__.__name__ == cls_name
+            ), f"--split {key} now resolves to a different class"
 
     def test_cli_rejects_unknown_split(self) -> None:
         """argparse rejects ``--split bogus`` (no new choices leak through)."""
@@ -323,7 +335,9 @@ class TestCLIIntegration:
 # ---------------------------------------------------------------------------
 # (6) End-to-end on real DrugOOD CSV (if available)
 # ---------------------------------------------------------------------------
-DRUGOOD_TRAIN_CSV = "/home/hugo/codes/mol-metal/.data/molmetal/drugood/ic50/data/train.csv"
+DRUGOOD_TRAIN_CSV = (
+    "/home/hugo/codes/mol-metal/.data/molmetal/drugood/ic50/data/train.csv"
+)
 
 
 @pytest.mark.skipif(
@@ -354,11 +368,13 @@ class TestDrugOODRealCSV:
         with open(DRUGOOD_TRAIN_CSV, "r", encoding="utf-8") as fh:
             reader = csv.DictReader(fh)
             for row in reader:
-                rows.append({
-                    "assay_id": int(row["assay_id"]),
-                    "size_split_id": int(row["size_split_id"]),
-                    "scaffold_split_id": int(row["scaffold_split_id"]),
-                })
+                rows.append(
+                    {
+                        "assay_id": int(row["assay_id"]),
+                        "size_split_id": int(row["size_split_id"]),
+                        "scaffold_split_id": int(row["scaffold_split_id"]),
+                    }
+                )
                 # Cap at 30k rows to keep the test fast.
                 if len(rows) >= 30000:
                     break
@@ -408,16 +424,18 @@ class TestErrorPaths:
         import pandas as pd
 
         # MetalCytoToxDB-shaped dataset (no assay_id column).
-        df = pd.DataFrame({
-            "SMILES_Ligands": ["c1ccccc1"] * 5,
-            "Metal": ["Ru"] * 5,
-            "Cell_line": ["HeLa"] * 5,
-            "IC50_Dark_value": [5.0] * 5,
-            "Time(h)": [24] * 5,
-            "Year": [2023] * 5,
-            "Charge_complex": [0] * 5,
-            "Oxidation_state": [2] * 5,
-        })
+        df = pd.DataFrame(
+            {
+                "SMILES_Ligands": ["c1ccccc1"] * 5,
+                "Metal": ["Ru"] * 5,
+                "Cell_line": ["HeLa"] * 5,
+                "IC50_Dark_value": [5.0] * 5,
+                "Time(h)": [24] * 5,
+                "Year": [2023] * 5,
+                "Charge_complex": [0] * 5,
+                "Oxidation_state": [2] * 5,
+            }
+        )
         # Use a tmp_path cache_dir because the default
         # ``/mnt/storage/data/molmetal/3d_cache`` is unwritable on most
         # dev boxes.
@@ -430,16 +448,18 @@ class TestErrorPaths:
         from molmetal.data.cytotox import MetalCytotoxDataset
         import pandas as pd
 
-        df = pd.DataFrame({
-            "SMILES_Ligands": ["c1ccccc1"] * 5,
-            "Metal": ["Ru"] * 5,
-            "Cell_line": ["HeLa"] * 5,
-            "IC50_Dark_value": [5.0] * 5,
-            "Time(h)": [24] * 5,
-            "Year": [2023] * 5,
-            "Charge_complex": [0] * 5,
-            "Oxidation_state": [2] * 5,
-        })
+        df = pd.DataFrame(
+            {
+                "SMILES_Ligands": ["c1ccccc1"] * 5,
+                "Metal": ["Ru"] * 5,
+                "Cell_line": ["HeLa"] * 5,
+                "IC50_Dark_value": [5.0] * 5,
+                "Time(h)": [24] * 5,
+                "Year": [2023] * 5,
+                "Charge_complex": [0] * 5,
+                "Oxidation_state": [2] * 5,
+            }
+        )
         ds = MetalCytotoxDataset(df=df, cache_dir=tmp_path / "cache")
         sp = SizeGroupSplitter()
         with pytest.raises(ValueError, match="size_id"):

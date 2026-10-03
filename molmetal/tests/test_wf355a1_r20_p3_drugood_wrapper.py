@@ -38,13 +38,18 @@ PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
 WRAPPER = PROJECT_ROOT / "scripts" / "launch_wf310e_r20_p3_drugood_1.58M_chemprop_v2.sh"
 PRE_FLIGHT = PROJECT_ROOT / "molmetal" / "scripts" / "pre_flight_check.py"
 PER_WAVE_CHECK = PROJECT_ROOT / "molmetal" / "scripts" / "wf343c2_per_wave_check.py"
-DATA_QUALITY_CHECK = PROJECT_ROOT / "molmetal" / "scripts" / "wf343c3_data_quality_check.py"
-CHEMPROP_TRAINER = PROJECT_ROOT / "molmetal" / "scripts" / "wf185_chemprop_v2_drugood_full.py"
+DATA_QUALITY_CHECK = (
+    PROJECT_ROOT / "molmetal" / "scripts" / "wf343c3_data_quality_check.py"
+)
+CHEMPROP_TRAINER = (
+    PROJECT_ROOT / "molmetal" / "scripts" / "wf185_chemprop_v2_drugood_full.py"
+)
 
 
 # ---------------------------------------------------------------------------
 # Test 1: USER_OK gate enforced (R3 mode requires USER_OK=YES)
 # ---------------------------------------------------------------------------
+
 
 def test_wf355a1_user_ok_gate_enforced_r3():
     """Wf-355-A1 task contract — USER_OK gate enforces R3 mode per Wf-294B /
@@ -67,21 +72,26 @@ def test_wf355a1_user_ok_gate_enforced_r3():
     # R3 without USER_OK must die (FATAL exit non-zero)
     proc = subprocess.run(
         ["bash", str(WRAPPER), "--dry-run", "--mode", "R3"],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     assert proc.returncode != 0, (
         "R3 mode without USER_OK should exit non-zero (gate enforced); "
         f"got rc={proc.returncode} stdout={proc.stdout[-300:]!r}"
     )
-    assert "USER_OK" in proc.stderr, (
-        f"FATAL message should reference USER_OK; got stderr={proc.stderr[-300:]!r}"
-    )
+    assert (
+        "USER_OK" in proc.stderr
+    ), f"FATAL message should reference USER_OK; got stderr={proc.stderr[-300:]!r}"
 
     # R3 with USER_OK=YES must pass (exit zero)
     env = {**os.environ, "USER_OK": "YES"}
     proc = subprocess.run(
         ["bash", str(WRAPPER), "--dry-run", "--mode", "R3"],
-        capture_output=True, text=True, timeout=30, env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        env=env,
     )
     assert proc.returncode == 0, (
         f"R3 mode with USER_OK=YES should exit zero; got rc={proc.returncode} "
@@ -91,20 +101,23 @@ def test_wf355a1_user_ok_gate_enforced_r3():
     # R1 mode without USER_OK must warn but still exit zero (smoke mode)
     proc = subprocess.run(
         ["bash", str(WRAPPER), "--dry-run", "--mode", "R1"],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     assert proc.returncode == 0, (
         f"R1 mode without USER_OK should still pass (smoke); got rc={proc.returncode} "
         f"stderr={proc.stderr[-300:]!r}"
     )
-    assert "USER_OK not set" in proc.stderr or "USER_OK not set" in proc.stdout, (
-        "R1 mode without USER_OK should emit USER_OK-not-set warning"
-    )
+    assert (
+        "USER_OK not set" in proc.stderr or "USER_OK not set" in proc.stdout
+    ), "R1 mode without USER_OK should emit USER_OK-not-set warning"
 
 
 # ---------------------------------------------------------------------------
 # Test 2: Pre-flight + per-wave + data quality wired (3 pre-launch gates)
 # ---------------------------------------------------------------------------
+
 
 def test_wf355a1_preflight_per_wave_data_quality_wired():
     """Wf-355-A1 task contract — 3 pre-launch gates must be wired per
@@ -123,40 +136,46 @@ def test_wf355a1_preflight_per_wave_data_quality_wired():
     text = WRAPPER.read_text()
 
     # Pre-flight (TODO-207 v3 gate)
-    assert "pre_flight_check.py" in text, \
-        "pre_flight_check.py reference missing in wrapper"
-    assert "pre_flight_gate" in text, \
-        "pre_flight_gate function missing in wrapper"
+    assert (
+        "pre_flight_check.py" in text
+    ), "pre_flight_check.py reference missing in wrapper"
+    assert "pre_flight_gate" in text, "pre_flight_gate function missing in wrapper"
     assert PRE_FLIGHT.exists(), f"pre_flight_check.py missing on disk: {PRE_FLIGHT}"
 
     # Per-wave check (Wf-343c2 post-Wf-347 retro-fit)
-    assert "wf343c2_per_wave_check.py" in text, \
-        "wf343c2_per_wave_check.py reference missing in wrapper"
-    assert "per_wave_check_gate" in text, \
-        "per_wave_check_gate function missing in wrapper"
-    assert PER_WAVE_CHECK.exists(), \
-        f"wf343c2_per_wave_check.py missing on disk: {PER_WAVE_CHECK}"
+    assert (
+        "wf343c2_per_wave_check.py" in text
+    ), "wf343c2_per_wave_check.py reference missing in wrapper"
+    assert (
+        "per_wave_check_gate" in text
+    ), "per_wave_check_gate function missing in wrapper"
+    assert (
+        PER_WAVE_CHECK.exists()
+    ), f"wf343c2_per_wave_check.py missing on disk: {PER_WAVE_CHECK}"
 
     # Data quality check (Wf-343c3 post-Wf-347 retro-fit)
-    assert "wf343c3_data_quality_check.py" in text, \
-        "wf343c3_data_quality_check.py reference missing in wrapper"
-    assert "data_quality_gate" in text, \
-        "data_quality_gate function missing in wrapper"
-    assert DATA_QUALITY_CHECK.exists(), \
-        f"wf343c3_data_quality_check.py missing on disk: {DATA_QUALITY_CHECK}"
+    assert (
+        "wf343c3_data_quality_check.py" in text
+    ), "wf343c3_data_quality_check.py reference missing in wrapper"
+    assert "data_quality_gate" in text, "data_quality_gate function missing in wrapper"
+    assert (
+        DATA_QUALITY_CHECK.exists()
+    ), f"wf343c3_data_quality_check.py missing on disk: {DATA_QUALITY_CHECK}"
 
     # Each gate invocation should be visible in the source
-    assert "--pipeline all" in text, \
-        "pre_flight_check.py invocation missing --pipeline all flag"
-    assert "--wave" in text, \
-        "wf343c2_per_wave_check.py invocation missing --wave flag"
-    assert "--strict" in text, \
-        "wf343c3_data_quality_check.py invocation missing --strict flag"
+    assert (
+        "--pipeline all" in text
+    ), "pre_flight_check.py invocation missing --pipeline all flag"
+    assert "--wave" in text, "wf343c2_per_wave_check.py invocation missing --wave flag"
+    assert (
+        "--strict" in text
+    ), "wf343c3_data_quality_check.py invocation missing --strict flag"
 
 
 # ---------------------------------------------------------------------------
 # Test 3: Dry-run mode (--dry-run works for R1 + R3 with USER_OK=YES)
 # ---------------------------------------------------------------------------
+
 
 def test_wf355a1_dry_run_mode_emits_dr_run_log():
     """Wf-355-A1 task contract — --dry-run flag works for both R1 (CPU
@@ -179,7 +198,9 @@ def test_wf355a1_dry_run_mode_emits_dr_run_log():
     # R1 dry-run produces DRY_RUN.log
     proc = subprocess.run(
         ["bash", str(WRAPPER), "--dry-run", "--mode", "R1"],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     assert proc.returncode == 0, (
         f"R1 dry-run should exit zero; got rc={proc.returncode} "
@@ -187,13 +208,18 @@ def test_wf355a1_dry_run_mode_emits_dr_run_log():
     )
 
     r1_dry_log = (
-        PROJECT_ROOT / "molmetal" / "reports" / "wf310e_r20_p3_drugood_full_launch"
-        / "r1" / "DRY_RUN.log"
+        PROJECT_ROOT
+        / "molmetal"
+        / "reports"
+        / "wf310e_r20_p3_drugood_full_launch"
+        / "r1"
+        / "DRY_RUN.log"
     )
     assert r1_dry_log.exists(), f"R1 DRY_RUN.log missing: {r1_dry_log}"
     r1_text = r1_dry_log.read_text()
-    assert "DRY-RUN launcher for Phase R1" in r1_text, \
-        f"R1 DRY_RUN.log missing phase header; got={r1_text[:200]!r}"
+    assert (
+        "DRY-RUN launcher for Phase R1" in r1_text
+    ), f"R1 DRY_RUN.log missing phase header; got={r1_text[:200]!r}"
     assert "trainer:" in r1_text, "R1 DRY_RUN.log missing trainer field"
     assert "flags:" in r1_text, "R1 DRY_RUN.log missing flags field"
     assert "gpu:" in r1_text, "R1 DRY_RUN.log missing gpu field"
@@ -204,7 +230,10 @@ def test_wf355a1_dry_run_mode_emits_dr_run_log():
     env = {**os.environ, "USER_OK": "YES"}
     proc = subprocess.run(
         ["bash", str(WRAPPER), "--dry-run", "--mode", "R3"],
-        capture_output=True, text=True, timeout=30, env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        env=env,
     )
     assert proc.returncode == 0, (
         f"R3 dry-run with USER_OK=YES should exit zero; got rc={proc.returncode} "
@@ -212,19 +241,25 @@ def test_wf355a1_dry_run_mode_emits_dr_run_log():
     )
 
     r3_dry_log = (
-        PROJECT_ROOT / "molmetal" / "reports" / "wf310e_r20_p3_drugood_full_launch"
-        / "r3" / "DRY_RUN.log"
+        PROJECT_ROOT
+        / "molmetal"
+        / "reports"
+        / "wf310e_r20_p3_drugood_full_launch"
+        / "r3"
+        / "DRY_RUN.log"
     )
     assert r3_dry_log.exists(), f"R3 DRY_RUN.log missing: {r3_dry_log}"
     r3_text = r3_dry_log.read_text()
-    assert "DRY-RUN launcher for Phase R3" in r3_text, \
-        f"R3 DRY_RUN.log missing phase header; got={r3_text[:200]!r}"
+    assert (
+        "DRY-RUN launcher for Phase R3" in r3_text
+    ), f"R3 DRY_RUN.log missing phase header; got={r3_text[:200]!r}"
     assert "cuda:1" in r3_text, "R3 DRY_RUN.log should reference cuda:1 GPU"
 
 
 # ---------------------------------------------------------------------------
 # Test 4: Bash syntax check (`bash -n` parses cleanly)
 # ---------------------------------------------------------------------------
+
 
 def test_wf355a1_bash_syntax_check():
     """Wf-355-A1 task contract — `bash -n` parses cleanly (no syntax errors).
@@ -241,7 +276,9 @@ def test_wf355a1_bash_syntax_check():
 
     proc = subprocess.run(
         ["bash", "-n", str(WRAPPER)],
-        capture_output=True, text=True, timeout=10,
+        capture_output=True,
+        text=True,
+        timeout=10,
     )
     assert proc.returncode == 0, (
         f"bash -n syntax check failed; rc={proc.returncode} "
@@ -251,28 +288,33 @@ def test_wf355a1_bash_syntax_check():
     text = WRAPPER.read_text()
 
     # Shebang present
-    assert text.startswith("#!/usr/bin/env bash"), \
-        f"wrapper missing proper shebang; first line={text.splitlines()[0]!r}"
+    assert text.startswith(
+        "#!/usr/bin/env bash"
+    ), f"wrapper missing proper shebang; first line={text.splitlines()[0]!r}"
 
     # Size check — task brief says ~250 LOC; header adds ~100 LOC; total
     # should be in [200, 500] line range.
     n_lines = len(text.splitlines())
-    assert 200 <= n_lines <= 600, (
-        f"wrapper size {n_lines} LOC outside expected [200, 600] range"
-    )
+    assert (
+        200 <= n_lines <= 600
+    ), f"wrapper size {n_lines} LOC outside expected [200, 600] range"
 
     # Wf-185 trainer reference (R20 §3 spec)
-    assert "wf185_chemprop_v2_drugood_full.py" in text, \
-        "wrapper missing reference to Wf-185 chemprop v2 DrugOOD trainer"
+    assert (
+        "wf185_chemprop_v2_drugood_full.py" in text
+    ), "wrapper missing reference to Wf-185 chemprop v2 DrugOOD trainer"
 
     # DrugOOD loader reference
-    assert "drugood" in text.lower(), \
-        "wrapper missing reference to DrugOOD loader / corpus"
+    assert (
+        "drugood" in text.lower()
+    ), "wrapper missing reference to DrugOOD loader / corpus"
 
     # ChempropV2MTModel marker check (matches Wf-185 grep marker)
-    assert CHEMPROP_TRAINER.exists(), \
-        f"Wf-185 trainer missing on disk: {CHEMPROP_TRAINER}"
+    assert (
+        CHEMPROP_TRAINER.exists()
+    ), f"Wf-185 trainer missing on disk: {CHEMPROP_TRAINER}"
 
     # The wrapper should reference the R20 §3 spec verbatim
-    assert "R20" in text or "r20" in text, \
-        "wrapper missing R20 §3 reference (R20 §3 DrugOOD 1.58M chemprop v2 retrain)"
+    assert (
+        "R20" in text or "r20" in text
+    ), "wrapper missing R20 §3 reference (R20 §3 DrugOOD 1.58M chemprop v2 retrain)"

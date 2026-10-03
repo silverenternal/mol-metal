@@ -115,22 +115,22 @@ NEW_SMARTS: Tuple[str, ...] = (
 # use SMILES that exercise the donor + the metal centre.
 CANONICAL_MLE_REACTANTS: dict = {
     # Pt_Cl_NH3: cis-Pt(NH3)2Cl2 + NH3 -> mono-ammine Pt-Cl + Cl-.
-    "Pt_Cl_NH3":  ("N.N.[Cl][Pt][Cl]", "N"),
+    "Pt_Cl_NH3": ("N.N.[Cl][Pt][Cl]", "N"),
     # Pt_Cl_RNH2: Pt-Cl + primary amine R-NH2 -> Pt-NHR + Cl.
     "Pt_Cl_RNH2": ("N.N.[Cl][Pt][Cl]", "CCN"),
     # Pt_Br_NH3: Pt-Br + NH3 -> Pt-NH3 + Br (trans-Pt pharmacology).
-    "Pt_Br_NH3":  ("N.N.[Br][Pt][Br]", "N"),
+    "Pt_Br_NH3": ("N.N.[Br][Pt][Br]", "N"),
     # Pd_Cl_NH3: Pd-Cl + NH3 (d8 analogue).
-    "Pd_Cl_NH3":  ("N.N.[Cl][Pd][Cl]", "N"),
+    "Pd_Cl_NH3": ("N.N.[Cl][Pd][Cl]", "N"),
     # Au_Cl_NH3: Au_III-Cl + NH3 (5d8 analogue).
-    "Au_Cl_NH3":  ("N.N.[Cl][Au][Cl]", "N"),
+    "Au_Cl_NH3": ("N.N.[Cl][Au][Cl]", "N"),
 }
 
 CANONICAL_AE_REACTANTS: dict = {
     # First aquation: cis-Pt(NH3)2Cl2 + H2O -> mono-aqua Pt-Cl + Cl-.
-    "Pt_Cl_H2O_first":     ("N.N.[Cl][Pt][Cl]", "O"),
+    "Pt_Cl_H2O_first": ("N.N.[Cl][Pt][Cl]", "O"),
     # Second aquation: Pt-OH(Cl) + H2O -> diaqua Pt-(OH)2 + Cl-.
-    "Pt_OHCl_H2O_second":  ("N.N.[Cl][Pt][Cl]", "O"),
+    "Pt_OHCl_H2O_second": ("N.N.[Cl][Pt][Cl]", "O"),
 }
 
 # Per-rule reactant SMILES tuples for the click + SyntheMol set.
@@ -138,34 +138,34 @@ CANONICAL_AE_REACTANTS: dict = {
 # Order matters for SMARTS-defined rules — the first SMILES must
 # carry the canonical atom-map (e.g. CuAAC wants azide first).
 CANONICAL_CLICK_REACTANTS: dict = {
-    "CuAAC":          ("CCN=[N+]=[N-]", "C#CC"),
-    "SPAAC":          ("CCN=[N+]=[N-]", "C1CCCCC#CC1"),
-    "SPC":            ("CCN=[N+]=[N-]", "CP(C)C"),
-    "DielsAlder":     ("C1C=CC=C1", "O=C1OC(=O)C=C1"),
-    "ThiolEne":       ("Sc1ccccc1", "C=CCO"),
-    "Suzuki":         ("OB(O)c1ccccc1", "Brc1ccccc1"),
-    "AmideCoupling":  ("CC(=O)O", "CCN"),
+    "CuAAC": ("CCN=[N+]=[N-]", "C#CC"),
+    "SPAAC": ("CCN=[N+]=[N-]", "C1CCCCC#CC1"),
+    "SPC": ("CCN=[N+]=[N-]", "CP(C)C"),
+    "DielsAlder": ("C1C=CC=C1", "O=C1OC(=O)C=C1"),
+    "ThiolEne": ("Sc1ccccc1", "C=CCO"),
+    "Suzuki": ("OB(O)c1ccccc1", "Brc1ccccc1"),
+    "AmideCoupling": ("CC(=O)O", "CCN"),
 }
 
 CANONICAL_SYNTHEMOL_REACTANTS: dict = {
-    "amide_coupling":                ("CCN", "CC(=O)O"),
-    "ester_hydrolysis":              ("CC(=O)O", "BrCC"),
-    "boc_cleavage":                  ("CC(C)(C)OC(=O)NCC",),
-    "sulfonamide_formation":         ("CCN", "ClS(=O)(=O)c1ccccc1"),
-    "reductive_amination":           ("NCC(=O)O", "CC=O"),
-    "sn2_alkylation":                ("CCN", "BrCC"),
-    "urea_formation":                ("CCN", "CCN"),
-    "bromination":                   ("CCN", "BrCCl"),
-    "hydroxylation":                 ("OCC", "BrCC"),
-    "thioether_formation":           ("SCC", "BrCC"),
+    "amide_coupling": ("CCN", "CC(=O)O"),
+    "ester_hydrolysis": ("CC(=O)O", "BrCC"),
+    "boc_cleavage": ("CC(C)(C)OC(=O)NCC",),
+    "sulfonamide_formation": ("CCN", "ClS(=O)(=O)c1ccccc1"),
+    "reductive_amination": ("NCC(=O)O", "CC=O"),
+    "sn2_alkylation": ("CCN", "BrCC"),
+    "urea_formation": ("CCN", "CCN"),
+    "bromination": ("CCN", "BrCCl"),
+    "hydroxylation": ("OCC", "BrCC"),
+    "thioether_formation": ("SCC", "BrCC"),
     "amide_bond_formation_aromatic": ("Nc1ccccc1N", "O=CC"),
-    "phenol_esterification":         ("Oc1ccccc1", "BrCC"),
-    "nucleophilic_substitution":     ("CCN", "Brc1ccccc1"),
-    "tetrazole_formation":           ("CC#N", "OC(=O)C"),
-    "benzimidazole_formation":       ("Nc1ccccc1N", "O=CCBr"),
-    "thiazole_formation":            ("NC(=S)NN", "O=CCBr"),
-    "oxadiazole_formation":          ("ON=C(CC(=O)O)N",),
-    "hantzsch_pyridine_synthesis":   ("NN=CC", "CCOC(=O)CC(=O)OCC", "CC=O"),
+    "phenol_esterification": ("Oc1ccccc1", "BrCC"),
+    "nucleophilic_substitution": ("CCN", "Brc1ccccc1"),
+    "tetrazole_formation": ("CC#N", "OC(=O)C"),
+    "benzimidazole_formation": ("Nc1ccccc1N", "O=CCBr"),
+    "thiazole_formation": ("NC(=S)NN", "O=CCBr"),
+    "oxadiazole_formation": ("ON=C(CC(=O)O)N",),
+    "hantzsch_pyridine_synthesis": ("NN=CC", "CCOC(=O)CC(=O)OCC", "CC=O"),
 }
 
 # The 10-pocket WF-AlgoTune / R13 partial-sweep subset.
@@ -176,9 +176,11 @@ POCKETS_010_019: Tuple[str, ...] = tuple(f"test_{n:03d}" for n in range(10, 20))
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _canon(smi: str) -> str:
     """Return RDKit canonical SMILES; raise on parse failure."""
     from rdkit import Chem
+
     m = Chem.MolFromSmiles(smi)
     if m is None:
         raise ValueError(f"RDKit failed to parse SMILES: {smi!r}")
@@ -199,12 +201,14 @@ def _smarts_library_lookup(pattern_name: str) -> str:
 def _heavy_atoms(smi: str) -> dict:
     """Return ``{symbol: count}`` for a SMILES, via the lambda_combinator."""
     from molmetal_lam.lam_chem.lambda_combinators import count_heavy_atoms
+
     return dict(count_heavy_atoms(smi))
 
 
 def _add_counts(*smis: str) -> dict:
     """Sum heavy-atom counts across multiple SMILES (no key overwrites)."""
     from collections import Counter
+
     out: Counter = Counter()
     for smi in smis:
         out.update(_heavy_atoms(smi))
@@ -220,46 +224,47 @@ def _pt_term_parsing_smiles() -> Tuple[str, str]:
 # 1. Pattern library cardinality + name invariants
 # ---------------------------------------------------------------------------
 
+
 def test_metal_ligand_exchange_library_has_5_patterns() -> None:
     """The F2(a) MLE library must hold exactly 5 patterns."""
-    assert len(METAL_LIGAND_EXCHANGE_SMARTS) == 5, (
-        f"expected 5 MLE patterns, got {len(METAL_LIGAND_EXCHANGE_SMARTS)}"
-    )
-    assert "Pt_Cl_NH3" in METAL_LIGAND_PATTERNS, (
-        f"canonical Pt_Cl_NH3 missing from {METAL_LIGAND_PATTERNS}"
-    )
+    assert (
+        len(METAL_LIGAND_EXCHANGE_SMARTS) == 5
+    ), f"expected 5 MLE patterns, got {len(METAL_LIGAND_EXCHANGE_SMARTS)}"
+    assert (
+        "Pt_Cl_NH3" in METAL_LIGAND_PATTERNS
+    ), f"canonical Pt_Cl_NH3 missing from {METAL_LIGAND_PATTERNS}"
 
 
 def test_aqua_exchange_library_has_2_patterns() -> None:
     """The F2(a) AE library must hold exactly 2 patterns."""
-    assert len(AQUA_EXCHANGE_SMARTS) == 2, (
-        f"expected 2 AE patterns, got {len(AQUA_EXCHANGE_SMARTS)}"
-    )
+    assert (
+        len(AQUA_EXCHANGE_SMARTS) == 2
+    ), f"expected 2 AE patterns, got {len(AQUA_EXCHANGE_SMARTS)}"
 
 
 def test_new_smarts_count_is_4() -> None:
     """The 4 NEW SMARTS = 4 patterns beyond the canonical Pt_Cl_NH3."""
     assert len(NEW_SMARTS) == 4, f"expected 4 NEW SMARTS, got {NEW_SMARTS}"
     for n in NEW_SMARTS:
-        assert n in METAL_LIGAND_PATTERNS, (
-            f"NEW SMARTS {n!r} missing from MLE library"
-        )
+        assert n in METAL_LIGAND_PATTERNS, f"NEW SMARTS {n!r} missing from MLE library"
 
 
 # ---------------------------------------------------------------------------
 # 2. MLE — per-pattern SMARTS parse + can_apply + apply (5 patterns)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize("pattern_name", METAL_LIGAND_PATTERNS)
 def test_mle_pattern_smarts_parses(pattern_name: str) -> None:
     """Each MLE SMARTS must parse via RDKit ``ReactionFromSmarts``."""
     from rdkit.Chem import rdChemReactions
+
     smarts = _smarts_library_lookup(pattern_name)
     rxn = rdChemReactions.ReactionFromSmarts(smarts)
     assert rxn is not None, f"RDKit failed to parse MLE SMARTS: {smarts}"
-    assert rxn.GetNumReactantTemplates() >= 1, (
-        f"{pattern_name}: MLE SMARTS has no reactant template"
-    )
+    assert (
+        rxn.GetNumReactantTemplates() >= 1
+    ), f"{pattern_name}: MLE SMARTS has no reactant template"
 
 
 @pytest.mark.parametrize("pattern_name", METAL_LIGAND_PATTERNS)
@@ -268,6 +273,7 @@ def test_mle_pattern_has_at_least_one_reactant_set(
 ) -> None:
     """Each MLE pattern's reactants must be parseable via RDKit."""
     from rdkit import Chem
+
     educts = CANONICAL_MLE_REACTANTS[pattern_name]
     for smi in educts:
         m = Chem.MolFromSmiles(smi)
@@ -284,15 +290,16 @@ def test_mle_rule_can_apply(pattern_name: str) -> None:
     accepts a non-metal educt on its own.
     """
     rule = REACTION_RULES["MetalLigandExchange"]
-    assert rule.name == "MetalLigandExchange", (
-        "MLE rule lookup failed in REACTION_RULES"
-    )
+    assert (
+        rule.name == "MetalLigandExchange"
+    ), "MLE rule lookup failed in REACTION_RULES"
     # The donor (NH3 / RNH2) alone must parse + be accepted by the
     # SMARTS.  This is the partial-invariant test that survives the
     # Pt_II valence-table gap.
     educts = CANONICAL_MLE_REACTANTS[pattern_name]
     donor = educts[-1]
     from rdkit import Chem
+
     m = Chem.MolFromSmiles(donor)
     assert m is not None, f"donor {donor!r} unparseable"
 
@@ -307,6 +314,7 @@ def test_mle_rule_reduce_runs(pattern_name: str) -> None:
     raising a hard ``ReactionError``.
     """
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
     rule = REACTION_RULES["MetalLigandExchange"]
     educt_smiles = CANONICAL_MLE_REACTANTS[pattern_name]
     reactants = tuple(
@@ -327,10 +335,12 @@ def test_mle_rule_reduce_runs(pattern_name: str) -> None:
 # 3. AE — per-pattern SMARTS parse + can_apply + apply (2 patterns)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize("pattern_name", AQUA_PATTERNS)
 def test_ae_pattern_smarts_parses(pattern_name: str) -> None:
     """Each AE SMARTS must parse via RDKit ``ReactionFromSmarts``."""
     from rdkit.Chem import rdChemReactions
+
     smarts = _smarts_library_lookup(pattern_name)
     rxn = rdChemReactions.ReactionFromSmarts(smarts)
     assert rxn is not None, f"RDKit failed to parse AE SMARTS: {smarts}"
@@ -340,6 +350,7 @@ def test_ae_pattern_smarts_parses(pattern_name: str) -> None:
 def test_ae_rule_reduce_runs(pattern_name: str) -> None:
     """Each AE rule's ``reduce()`` runs without crashing on canonical educts."""
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
     rule = REACTION_RULES["AquaExchange"]
     educt_smiles = CANONICAL_AE_REACTANTS[pattern_name]
     reactants = tuple(
@@ -358,10 +369,12 @@ def test_ae_rule_reduce_runs(pattern_name: str) -> None:
 # 4. NEW SMARTS — the 4 added-beyond-canonical patterns (4 cases)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize("pattern_name", NEW_SMARTS)
 def test_new_smarts_smarts_parses(pattern_name: str) -> None:
     """The 4 NEW SMARTS must parse + have a valid reactant template."""
     from rdkit.Chem import rdChemReactions
+
     smarts = _smarts_library_lookup(pattern_name)
     rxn = rdChemReactions.ReactionFromSmarts(smarts)
     assert rxn is not None, f"NEW SMARTS {pattern_name!r} unparseable: {smarts}"
@@ -373,9 +386,9 @@ def test_new_smarts_distinct_from_canonical(pattern_name: str) -> None:
     """Each NEW SMARTS must differ from the canonical Pt_Cl_NH3 baseline."""
     canonical = _smarts_library_lookup("Pt_Cl_NH3")
     new_smarts = _smarts_library_lookup(pattern_name)
-    assert new_smarts != canonical, (
-        f"{pattern_name} SMARTS duplicates the canonical Pt_Cl_NH3"
-    )
+    assert (
+        new_smarts != canonical
+    ), f"{pattern_name} SMARTS duplicates the canonical Pt_Cl_NH3"
 
 
 @pytest.mark.parametrize("pattern_name", NEW_SMARTS)
@@ -384,23 +397,24 @@ def test_new_smarts_targets_donor_atom(pattern_name: str) -> None:
     smarts = _smarts_library_lookup(pattern_name)
     # All four NEW patterns substitute a Pt/Pd/Au-X bond by an
     # NH3/NH2 donor — the donor atom-map :4 must be present.
-    assert ":4" in smarts, (
-        f"{pattern_name}: donor atom-map :4 missing from SMARTS {smarts!r}"
-    )
+    assert (
+        ":4" in smarts
+    ), f"{pattern_name}: donor atom-map :4 missing from SMARTS {smarts!r}"
 
 
 @pytest.mark.parametrize("pattern_name", NEW_SMARTS)
 def test_new_smarts_has_leaving_group_atom_map(pattern_name: str) -> None:
     """Each NEW SMARTS must carry a leaving-group atom-map (:2)."""
     smarts = _smarts_library_lookup(pattern_name)
-    assert "[Cl:2]" in smarts or "[Br:2]" in smarts, (
-        f"{pattern_name}: leaving-group atom-map :2 missing from SMARTS"
-    )
+    assert (
+        "[Cl:2]" in smarts or "[Br:2]" in smarts
+    ), f"{pattern_name}: leaving-group atom-map :2 missing from SMARTS"
 
 
 # ---------------------------------------------------------------------------
 # 5. Click rules — can_apply + apply returns >= 1 canonical product (7 rules)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize("rule_name", sorted(CANONICAL_CLICK_REACTANTS))
 def test_click_rule_can_apply(rule_name: str) -> None:
@@ -424,11 +438,10 @@ def test_click_rule_can_apply(rule_name: str) -> None:
 def test_click_rule_reduce_returns_product(rule_name: str) -> None:
     """Each click rule's ``reduce()`` returns >= 1 canonical product SMILES."""
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
     rule = REACTION_RULES[rule_name]
     educts = CANONICAL_CLICK_REACTANTS[rule_name]
-    reactants = tuple(
-        MoleculeClosedTerm.from_smiles(s, embed_3d=False) for s in educts
-    )
+    reactants = tuple(MoleculeClosedTerm.from_smiles(s, embed_3d=False) for s in educts)
     try:
         out = rule.reduce(reactants)
     except Exception as exc:
@@ -436,24 +449,21 @@ def test_click_rule_reduce_returns_product(rule_name: str) -> None:
             pytest.skip(f"{rule_name}: RDKit failed ({exc})")
         raise
     products = [t.canonical_smiles() for t in out]
-    assert products, (
-        f"{rule_name}: reduce() returned no canonical products on {educts}"
-    )
+    assert products, f"{rule_name}: reduce() returned no canonical products on {educts}"
 
 
 # ---------------------------------------------------------------------------
 # 6. SyntheMol rules — can_apply + apply returns >= 1 product (18 rules)
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("rule_name", [
-    n for (n, _rid, _sub) in REAL_TO_LAMBDA
-])
+
+@pytest.mark.parametrize("rule_name", [n for (n, _rid, _sub) in REAL_TO_LAMBDA])
 def test_syntemol_rule_is_wrapped(rule_name: str) -> None:
     """Each curated SyntheMol rule must be a SyntheMolReactionRule instance."""
     rule = REACTION_RULES[rule_name]
-    assert isinstance(rule, SyntheMolReactionRule), (
-        f"{rule_name}: expected SyntheMolReactionRule, got {type(rule).__name__}"
-    )
+    assert isinstance(
+        rule, SyntheMolReactionRule
+    ), f"{rule_name}: expected SyntheMolReactionRule, got {type(rule).__name__}"
 
 
 @pytest.mark.parametrize("rule_name", sorted(CANONICAL_SYNTHEMOL_REACTANTS))
@@ -500,10 +510,7 @@ def test_syntemol_rule_querymol_matches(rule_name: str) -> None:
         except Exception:
             matches.append(False)
     if not all(matches):
-        pytest.skip(
-            f"{rule_name}: partial QueryMol match "
-            f"{matches} on {educts}"
-        )
+        pytest.skip(f"{rule_name}: partial QueryMol match " f"{matches} on {educts}")
 
 
 @pytest.mark.parametrize("rule_name", sorted(CANONICAL_SYNTHEMOL_REACTANTS))
@@ -518,18 +525,15 @@ def test_syntemol_rule_apply_returns_product(rule_name: str) -> None:
     if not rule.can_apply(educts):
         pytest.skip(f"{rule_name}: can_apply False on {educts}")
     products = rule.apply(educts)
-    assert products, (
-        f"{rule_name}: apply() returned no products on {educts}"
-    )
+    assert products, f"{rule_name}: apply() returned no products on {educts}"
     for p in products:
-        assert isinstance(p, str), (
-            f"{rule_name}: product {p!r} is not a SMILES string"
-        )
+        assert isinstance(p, str), f"{rule_name}: product {p!r} is not a SMILES string"
 
 
 # ---------------------------------------------------------------------------
 # 7. Heavy-atom delta — sensible mass balance on canonical reactions
 # ---------------------------------------------------------------------------
+
 
 def test_pt_cl2_ammine_first_substitution_mass_balance() -> None:
     """Pt(NH3)2Cl2 + NH3 -> Pt(NH3)3Cl+ + Cl-: mass balance conserved.
@@ -547,9 +551,7 @@ def test_pt_cl2_ammine_first_substitution_mass_balance() -> None:
         for sym in set(in_counts) | set(out_counts)
         if sym != "Pt" and out_counts.get(sym, 0) != in_counts.get(sym, 0)
     }
-    assert delta == {}, (
-        f"MLE substitution must conserve heavy atoms; got delta={delta}"
-    )
+    assert delta == {}, f"MLE substitution must conserve heavy atoms; got delta={delta}"
 
 
 def test_pt_cl2_water_first_aquation_mass_balance() -> None:
@@ -565,9 +567,7 @@ def test_pt_cl2_water_first_aquation_mass_balance() -> None:
         for sym in set(in_counts) | set(out_counts)
         if sym != "Pt" and out_counts.get(sym, 0) != in_counts.get(sym, 0)
     }
-    assert delta == {}, (
-        f"AE aquation must conserve heavy atoms; got delta={delta}"
-    )
+    assert delta == {}, f"AE aquation must conserve heavy atoms; got delta={delta}"
 
 
 def test_copper_palladium_displacement_heavy_atom_delta() -> None:
@@ -577,22 +577,27 @@ def test_copper_palladium_displacement_heavy_atom_delta() -> None:
     leaving-group atoms are independent of which d8 metal is the
     centre).  Net delta excluding both metals must be the empty dict.
     """
+
     def _delta(educt, donor, prod, leaving):
         c = _add_counts(educt, donor)
         p = _add_counts(prod, leaving)
-        return {s: p.get(s, 0) - c.get(s, 0)
-                for s in set(c) | set(p)
-                if s not in ("Pt", "Pd") and p.get(s, 0) != c.get(s, 0)}
+        return {
+            s: p.get(s, 0) - c.get(s, 0)
+            for s in set(c) | set(p)
+            if s not in ("Pt", "Pd") and p.get(s, 0) != c.get(s, 0)
+        }
+
     d_pt = _delta("N.N.[Cl][Pt][Cl]", "N", "N.N.N.[Cl][Pt]", "[Cl-]")
     d_pd = _delta("N.N.[Cl][Pd][Cl]", "N", "N.N.N.[Cl][Pd]", "[Cl-]")
-    assert d_pt == d_pd == {}, (
-        f"metal swap must preserve zero-delta; got pt={d_pt} pd={d_pd}"
-    )
+    assert (
+        d_pt == d_pd == {}
+    ), f"metal swap must preserve zero-delta; got pt={d_pt} pd={d_pd}"
 
 
 # ---------------------------------------------------------------------------
 # 8. Pockets test_010..test_019 — 10-pocket metal-ligand pair coverage
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize("pocket_id", POCKETS_010_019)
 def test_pocket_subset_manifest_id_well_formed(pocket_id: str) -> None:
@@ -615,10 +620,9 @@ def test_pocket_subset_rule_fires(pocket_id: str) -> None:
     rule = REACTION_RULES["MetalLigandExchange"]
     assert rule.pattern_smiles is not None
     from rdkit.Chem import rdChemReactions
+
     rxn = rdChemReactions.ReactionFromSmarts(rule.pattern_smiles)
-    assert rxn is not None, (
-        f"{pocket_id}: MetalLigandExchange SMARTS not parseable"
-    )
+    assert rxn is not None, f"{pocket_id}: MetalLigandExchange SMARTS not parseable"
 
 
 def test_pockets_subset_yield_three_distinct_metal_ligand_pairs() -> None:
@@ -630,9 +634,7 @@ def test_pockets_subset_yield_three_distinct_metal_ligand_pairs() -> None:
         # symbol; together they form the (metal, leaving) signature.
         metal_token = smarts.split("[", 1)[1].split(":")[0]
         leaving_token = (
-            "[Cl:2]" if "[Cl:2]" in smarts
-            else "[Br:2]" if "[Br:2]" in smarts
-            else "?"
+            "[Cl:2]" if "[Cl:2]" in smarts else "[Br:2]" if "[Br:2]" in smarts else "?"
         )
         signatures.add((metal_token, leaving_token))
     assert len(signatures) >= 3, (
@@ -645,15 +647,16 @@ def test_pockets_subset_yield_three_distinct_metal_ligand_pairs() -> None:
 # 9. Click-compat matrix — every rule has an entry on every scaffold
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize("scaffold", SCAFFOLD_NAMES)
 @pytest.mark.parametrize("rule_name", CLICK_RULE_NAMES)
 def test_click_compat_entry_exists(scaffold: str, rule_name: str) -> None:
     """Every (scaffold, rule) cell in the compat matrix must exist."""
     row = COMPAT_MATRIX.get(scaffold)
     assert row is not None, f"scaffold {scaffold!r} missing from COMPAT_MATRIX"
-    assert rule_name in row, (
-        f"rule {rule_name!r} missing from COMPAT_MATRIX[{scaffold!r}]"
-    )
+    assert (
+        rule_name in row
+    ), f"rule {rule_name!r} missing from COMPAT_MATRIX[{scaffold!r}]"
 
 
 @pytest.mark.parametrize("scaffold", SCAFFOLD_NAMES)
@@ -663,8 +666,7 @@ def test_click_compat_verdict_is_valid(scaffold: str, rule_name: str) -> None:
     valid = {"compatible", "marginal", "incompatible"}
     verdict = COMPAT_MATRIX[scaffold][rule_name]
     assert verdict in valid, (
-        f"COMPAT_MATRIX[{scaffold!r}][{rule_name!r}] = {verdict!r} "
-        f"not in {valid}"
+        f"COMPAT_MATRIX[{scaffold!r}][{rule_name!r}] = {verdict!r} " f"not in {valid}"
     )
 
 
@@ -680,11 +682,15 @@ def test_click_compat_strict_pt_ii_allows_metal_coordination() -> None:
 def test_metal_coordination_rules_aliases_resolve() -> None:
     """The METAL_COORDINATION_RULES aliases must resolve to the same rule."""
     canonical_mle = METAL_COORDINATION_RULES["MetalLigandExchange"]
-    for alias in ("metal-ligand-exchange", "metal_ligand_exchange",
-                  "ammonia-substitution", "ammine-substitution"):
-        assert METAL_COORDINATION_RULES[alias] is canonical_mle, (
-            f"alias {alias!r} resolves to wrong rule"
-        )
+    for alias in (
+        "metal-ligand-exchange",
+        "metal_ligand_exchange",
+        "ammonia-substitution",
+        "ammine-substitution",
+    ):
+        assert (
+            METAL_COORDINATION_RULES[alias] is canonical_mle
+        ), f"alias {alias!r} resolves to wrong rule"
     canonical_ae = METAL_COORDINATION_RULES["AquaExchange"]
     for alias in ("aqua-exchange", "aqua_exchange", "aquation"):
         assert METAL_COORDINATION_RULES[alias] is canonical_ae
@@ -693,6 +699,7 @@ def test_metal_coordination_rules_aliases_resolve() -> None:
 # ---------------------------------------------------------------------------
 # 10. Registry cardinality — total rule count across all families
 # ---------------------------------------------------------------------------
+
 
 def test_registry_includes_all_rule_families() -> None:
     """REACTION_RULES must include the 5 click + 2 metal-coord + 18 SyntheMol
@@ -704,20 +711,16 @@ def test_registry_includes_all_rule_families() -> None:
     }
     for family, expected in families.items():
         missing = expected - set(REACTION_RULES)
-        assert not missing, (
-            f"{family} family missing {missing} from REACTION_RULES"
-        )
-    assert len(REACTION_RULES) >= 25, (
-        f"expected >= 25 rules across 3 families, got {len(REACTION_RULES)}"
-    )
+        assert not missing, f"{family} family missing {missing} from REACTION_RULES"
+    assert (
+        len(REACTION_RULES) >= 25
+    ), f"expected >= 25 rules across 3 families, got {len(REACTION_RULES)}"
 
 
 def test_from_syntemol_to_lambda_returns_canonical_18() -> None:
     """The canonical ``from_syntemol_to_lambda()`` must return >= 18 rules."""
     rules = from_syntemol_to_lambda()
-    assert len(rules) >= 18, (
-        f"expected >= 18 SyntheMol rules, got {len(rules)}"
-    )
+    assert len(rules) >= 18, f"expected >= 18 SyntheMol rules, got {len(rules)}"
 
 
 # ---------------------------------------------------------------------------
@@ -755,29 +758,29 @@ def test_from_syntemol_to_lambda_returns_canonical_18() -> None:
 #: parses via RDKit and exposes the redex shape the SMARTS wants.
 CANONICAL_TRANSMET_SUBSTRATES: dict = {
     # Pt_II(NH3)2Cl2 — d8 square-planar, 4 ligands.
-    "transmet_Pt_II_to_Pd_II":      "[Pt](N)(N)([Cl])([Cl])",
-    "transmet_Pt_II_to_Au_III":     "[Pt](N)(N)([Cl])([Cl])",
-    "transmet_Pt_II_to_Ru_II":      "[Pt](N)(N)([Cl])([Cl])",
-    "transmet_Pd_II_to_Au_III":     "[Pd](N)(N)([Cl])([Cl])",
-    "transmet_Pt_II_to_Os_II":      "[Pt](N)(N)([Cl])([Cl])",
-    "transmet_Ru_II_to_Pt_II":      "[Ru](N)(N)([Cl])([Cl])",
+    "transmet_Pt_II_to_Pd_II": "[Pt](N)(N)([Cl])([Cl])",
+    "transmet_Pt_II_to_Au_III": "[Pt](N)(N)([Cl])([Cl])",
+    "transmet_Pt_II_to_Ru_II": "[Pt](N)(N)([Cl])([Cl])",
+    "transmet_Pd_II_to_Au_III": "[Pd](N)(N)([Cl])([Cl])",
+    "transmet_Pt_II_to_Os_II": "[Pt](N)(N)([Cl])([Cl])",
+    "transmet_Ru_II_to_Pt_II": "[Ru](N)(N)([Cl])([Cl])",
 }
 
 CANONICAL_CL_OH_SUBSTRATES: dict = {
     # Pt(NH3)2Cl2 + OH- -> Pt(NH3)2(OH-)Cl + Cl-.
-    "cl_oh_swap_Pt_II":     ("[Pt](N)(N)([Cl])([Cl])", "[OH-]"),
-    "cl_oh_swap_Pt_IV":     ("[Pt](N)(N)([Cl])([Cl])([Cl])([Cl])", "[OH-]"),
-    "cl_oh_swap_Ru_II":     ("[Ru](N)(N)([Cl])([Cl])", "[OH-]"),
-    "cl_oh_swap_Ru_III":    ("[Ru](N)(N)([Cl])([Cl])([Cl])([Cl])", "[OH-]"),
-    "cl_oh_swap_Au_III":    ("[Au](N)(N)([Cl])([Cl])", "[OH-]"),
+    "cl_oh_swap_Pt_II": ("[Pt](N)(N)([Cl])([Cl])", "[OH-]"),
+    "cl_oh_swap_Pt_IV": ("[Pt](N)(N)([Cl])([Cl])([Cl])([Cl])", "[OH-]"),
+    "cl_oh_swap_Ru_II": ("[Ru](N)(N)([Cl])([Cl])", "[OH-]"),
+    "cl_oh_swap_Ru_III": ("[Ru](N)(N)([Cl])([Cl])([Cl])([Cl])", "[OH-]"),
+    "cl_oh_swap_Au_III": ("[Au](N)(N)([Cl])([Cl])", "[OH-]"),
 }
 
 CANONICAL_SHELL_MMA_SUBSTRATES: dict = {
     # Pt(CN)(NH3)2Cl — CN- explicitly preserved.
-    "shell_mma_Pt_II_to_Pd_II":     "[Pt]([C-]#N)(N)(N)([Cl])",
-    "shell_mma_Pt_II_to_Au_III":    "[Pt]([C-]#N)(N)(N)([Cl])",
-    "shell_mma_Pt_II_to_Ru_II":     "[Pt]([C-]#N)(N)(N)([Cl])",
-    "shell_mma_Pd_II_to_Au_III":    "[Pd]([C-]#N)(N)(N)([Cl])",
+    "shell_mma_Pt_II_to_Pd_II": "[Pt]([C-]#N)(N)(N)([Cl])",
+    "shell_mma_Pt_II_to_Au_III": "[Pt]([C-]#N)(N)(N)([Cl])",
+    "shell_mma_Pt_II_to_Ru_II": "[Pt]([C-]#N)(N)(N)([Cl])",
+    "shell_mma_Pd_II_to_Au_III": "[Pd]([C-]#N)(N)(N)([Cl])",
 }
 
 
@@ -785,27 +788,27 @@ CANONICAL_SHELL_MMA_SUBSTRATES: dict = {
 # A. Cardinality — each library has the expected count
 # ---------------------------------------------------------------------------
 
+
 def test_transmetalation_library_has_6_patterns() -> None:
     """The transmetalation NEW SMARTS library must hold 6 patterns."""
-    assert len(TRANSMETALATION_SMARTS) == 6, (
-        f"expected 6 transmetalation patterns, got {len(TRANSMETALATION_SMARTS)}"
-    )
+    assert (
+        len(TRANSMETALATION_SMARTS) == 6
+    ), f"expected 6 transmetalation patterns, got {len(TRANSMETALATION_SMARTS)}"
     assert len(get_transmetalation_patterns()) == 6
 
 
 def test_cl_oh_swap_library_has_5_patterns() -> None:
     """The Cl-OH swap NEW SMARTS library must hold 5 patterns."""
-    assert len(CL_OH_SWAP_SMARTS) == 5, (
-        f"expected 5 Cl-OH swap patterns, got {len(CL_OH_SWAP_SMARTS)}"
-    )
+    assert (
+        len(CL_OH_SWAP_SMARTS) == 5
+    ), f"expected 5 Cl-OH swap patterns, got {len(CL_OH_SWAP_SMARTS)}"
     assert len(get_cl_oh_swap_patterns()) == 5
 
 
 def test_ligand_shell_mma_library_has_4_patterns() -> None:
     """The ligand-shell-MMA NEW SMARTS library must hold 4 patterns."""
     assert len(LIGAND_SHELL_MMA_SMARTS) == 4, (
-        f"expected 4 ligand-shell-MMA patterns, got "
-        f"{len(LIGAND_SHELL_MMA_SMARTS)}"
+        f"expected 4 ligand-shell-MMA patterns, got " f"{len(LIGAND_SHELL_MMA_SMARTS)}"
     )
     assert len(get_ligand_shell_mma_patterns()) == 4
 
@@ -822,9 +825,7 @@ def test_pt_pd_transmetalation_library_has_2_patterns() -> None:
 def test_new_smarts_total_is_17() -> None:
     """The combined NEW SMARTS library must hold 6 + 5 + 4 + 2 = 17 patterns."""
     total = len(get_new_smarts_patterns())
-    assert total == 17, (
-        f"expected 17 NEW SMARTS, got {total}"
-    )
+    assert total == 17, f"expected 17 NEW SMARTS, got {total}"
     # Spot-check: each sub-library contributes the expected count.
     assert len(TRANSMETALATION_SMARTS) == 6
     assert len(CL_OH_SWAP_SMARTS) == 5
@@ -847,12 +848,12 @@ def test_new_smarts_dont_collide_with_matrix_or_f2a() -> None:
     new_names = {n for (n, _s, _d) in get_new_smarts_patterns()}
     matrix_names = {n for (n, _s, _d) in METAL_LIGAND_EXCHANGE_MATRIX}
     f2a_names = {n for (n, _s, _d) in METAL_LIGAND_EXCHANGE_SMARTS}
-    assert not (new_names & matrix_names), (
-        f"NEW SMARTS / matrix collision: {new_names & matrix_names}"
-    )
-    assert not (new_names & f2a_names), (
-        f"NEW SMARTS / F2(a) collision: {new_names & f2a_names}"
-    )
+    assert not (
+        new_names & matrix_names
+    ), f"NEW SMARTS / matrix collision: {new_names & matrix_names}"
+    assert not (
+        new_names & f2a_names
+    ), f"NEW SMARTS / F2(a) collision: {new_names & f2a_names}"
 
 
 # ---------------------------------------------------------------------------
@@ -875,6 +876,7 @@ def test_new_smarts_smarts_parses(pattern_name: str) -> None:
     in the per-template tests below.
     """
     from rdkit.Chem import rdChemReactions
+
     smarts = None
     for n, s, _d in get_new_smarts_patterns():
         if n == pattern_name:
@@ -882,15 +884,11 @@ def test_new_smarts_smarts_parses(pattern_name: str) -> None:
             break
     assert smarts is not None, f"NEW SMARTS {pattern_name!r} not found"
     rxn = rdChemReactions.ReactionFromSmarts(smarts)
-    assert rxn is not None, (
-        f"RDKit failed to parse NEW SMARTS {pattern_name!r}: {smarts}"
-    )
-    assert rxn.GetNumReactantTemplates() >= 1, (
-        f"{pattern_name}: no reactant templates"
-    )
-    assert rxn.GetNumProductTemplates() >= 1, (
-        f"{pattern_name}: no product templates"
-    )
+    assert (
+        rxn is not None
+    ), f"RDKit failed to parse NEW SMARTS {pattern_name!r}: {smarts}"
+    assert rxn.GetNumReactantTemplates() >= 1, f"{pattern_name}: no reactant templates"
+    assert rxn.GetNumProductTemplates() >= 1, f"{pattern_name}: no product templates"
 
 
 @pytest.mark.parametrize(
@@ -900,20 +898,20 @@ def test_transmetalation_smarts_shape_1r_1p(pattern_name: str) -> None:
     """Each transmetalation SMARTS is a 1-reactant -> 1-product reaction
     (the substrate is a single metal complex; the metal centre swaps)."""
     from rdkit.Chem import rdChemReactions
+
     smarts = dict((n, s) for (n, s, _d) in TRANSMETALATION_SMARTS)[pattern_name]
     rxn = rdChemReactions.ReactionFromSmarts(smarts)
     assert rxn.GetNumReactantTemplates() == 1
     assert rxn.GetNumProductTemplates() == 1
 
 
-@pytest.mark.parametrize(
-    "pattern_name", tuple(n for (n, _s, _d) in CL_OH_SWAP_SMARTS)
-)
+@pytest.mark.parametrize("pattern_name", tuple(n for (n, _s, _d) in CL_OH_SWAP_SMARTS))
 def test_cl_oh_swap_smarts_shape_2r_2p(pattern_name: str) -> None:
     """Each Cl-OH swap SMARTS is a 2-reactant -> 2-product reaction
     (the metal complex + the free OH- donor -> the new metal complex
     + the released Cl- leaving group)."""
     from rdkit.Chem import rdChemReactions
+
     smarts = dict((n, s) for (n, s, _d) in CL_OH_SWAP_SMARTS)[pattern_name]
     rxn = rdChemReactions.ReactionFromSmarts(smarts)
     assert rxn.GetNumReactantTemplates() == 2
@@ -926,6 +924,7 @@ def test_cl_oh_swap_smarts_shape_2r_2p(pattern_name: str) -> None:
 def test_ligand_shell_mma_smarts_shape_1r_1p(pattern_name: str) -> None:
     """Each ligand-shell-MMA SMARTS is a 1-reactant -> 1-product reaction."""
     from rdkit.Chem import rdChemReactions
+
     smarts = dict((n, s) for (n, s, _d) in LIGAND_SHELL_MMA_SMARTS)[pattern_name]
     rxn = rdChemReactions.ReactionFromSmarts(smarts)
     assert rxn.GetNumReactantTemplates() == 1
@@ -939,6 +938,7 @@ def test_pt_pd_transmetalation_smarts_shape_1r_1p(pattern_name: str) -> None:
     """Each Pt/Pd transmetalation SMARTS is a 1-reactant -> 1-product
     reaction."""
     from rdkit.Chem import rdChemReactions
+
     smarts = dict((n, s) for (n, s, _d) in PT_PD_TRANSMETALATION_SMARTS)[pattern_name]
     rxn = rdChemReactions.ReactionFromSmarts(smarts)
     assert rxn.GetNumReactantTemplates() == 1
@@ -949,6 +949,7 @@ def test_pt_pd_transmetalation_smarts_shape_1r_1p(pattern_name: str) -> None:
 # C. Structural invariants — each NEW SMARTS carries the expected atom-maps
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize(
     "pattern_name", tuple(n for (n, _s, _d) in TRANSMETALATION_SMARTS)
 )
@@ -958,7 +959,12 @@ def test_transmetalation_atom_map_1_on_metal(pattern_name: str) -> None:
     # The metal atom (atom-map :1) appears on BOTH the reactant and
     # product side with the same map number — RDKit will use this to
     # match the metal centre across the swap.
-    assert ":1]" in smarts or "[*:1]" in smarts or "[M:1]" in smarts or smarts.count(":1") >= 2, (
+    assert (
+        ":1]" in smarts
+        or "[*:1]" in smarts
+        or "[M:1]" in smarts
+        or smarts.count(":1") >= 2
+    ), (
         f"{pattern_name}: expected metal :1 atom-map on both sides; "
         f"got SMARTS {smarts!r}"
     )
@@ -985,26 +991,22 @@ def test_transmetalation_preserves_ligand_shell_atom_maps(pattern_name: str) -> 
         )
 
 
-@pytest.mark.parametrize(
-    "pattern_name", tuple(n for (n, _s, _d) in CL_OH_SWAP_SMARTS)
-)
+@pytest.mark.parametrize("pattern_name", tuple(n for (n, _s, _d) in CL_OH_SWAP_SMARTS))
 def test_cl_oh_swap_atom_map_2_is_cl(pattern_name: str) -> None:
     """Each Cl-OH swap SMARTS carries the [Cl:2] leaving-group atom-map."""
     smarts = dict((n, s) for (n, s, _d) in CL_OH_SWAP_SMARTS)[pattern_name]
-    assert "[Cl:2]" in smarts, (
-        f"{pattern_name}: [Cl:2] leaving-group atom-map missing; {smarts!r}"
-    )
+    assert (
+        "[Cl:2]" in smarts
+    ), f"{pattern_name}: [Cl:2] leaving-group atom-map missing; {smarts!r}"
 
 
-@pytest.mark.parametrize(
-    "pattern_name", tuple(n for (n, _s, _d) in CL_OH_SWAP_SMARTS)
-)
+@pytest.mark.parametrize("pattern_name", tuple(n for (n, _s, _d) in CL_OH_SWAP_SMARTS))
 def test_cl_oh_swap_atom_map_6_is_oh(pattern_name: str) -> None:
     """Each Cl-OH swap SMARTS carries the [OH-:6] entering-donor atom-map."""
     smarts = dict((n, s) for (n, s, _d) in CL_OH_SWAP_SMARTS)[pattern_name]
-    assert "[OH-:6]" in smarts, (
-        f"{pattern_name}: [OH-:6] entering-donor atom-map missing; {smarts!r}"
-    )
+    assert (
+        "[OH-:6]" in smarts
+    ), f"{pattern_name}: [OH-:6] entering-donor atom-map missing; {smarts!r}"
 
 
 @pytest.mark.parametrize(
@@ -1013,14 +1015,15 @@ def test_cl_oh_swap_atom_map_6_is_oh(pattern_name: str) -> None:
 def test_ligand_shell_mma_atom_map_2_is_cn(pattern_name: str) -> None:
     """Each ligand-shell-MMA SMARTS carries the [C-:2]#N cyanide atom-map."""
     smarts = dict((n, s) for (n, s, _d) in LIGAND_SHELL_MMA_SMARTS)[pattern_name]
-    assert "[C-:2]#N" in smarts, (
-        f"{pattern_name}: [C-:2]#N CN- atom-map missing; {smarts!r}"
-    )
+    assert (
+        "[C-:2]#N" in smarts
+    ), f"{pattern_name}: [C-:2]#N CN- atom-map missing; {smarts!r}"
 
 
 # ---------------------------------------------------------------------------
 # D. RunReactants — each NEW SMARTS fires on a canonical substrate
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize(
     "pattern_name", tuple(n for (n, _s, _d) in TRANSMETALATION_SMARTS)
@@ -1036,18 +1039,20 @@ def test_transmetalation_runreactants(pattern_name: str) -> None:
     """
     from rdkit import Chem
     from rdkit.Chem import rdChemReactions
+
     smarts = dict((n, s) for (n, s, _d) in TRANSMETALATION_SMARTS)[pattern_name]
     substrate_smiles = CANONICAL_TRANSMET_SUBSTRATES[pattern_name]
     rxn = rdChemReactions.ReactionFromSmarts(smarts)
     substrate_mol = Chem.MolFromSmiles(substrate_smiles)
-    assert substrate_mol is not None, (
-        f"{pattern_name}: substrate {substrate_smiles!r} unparseable"
-    )
+    assert (
+        substrate_mol is not None
+    ), f"{pattern_name}: substrate {substrate_smiles!r} unparseable"
     try:
         product_sets = rxn.RunReactants((substrate_mol,))
     except Exception as exc:
         if any(
-            marker in str(exc) for marker in (
+            marker in str(exc)
+            for marker in (
                 "RunReactants failed",
                 "Explicit valence",
                 "Can't kekulize",
@@ -1065,29 +1070,27 @@ def test_transmetalation_runreactants(pattern_name: str) -> None:
     )
 
 
-@pytest.mark.parametrize(
-    "pattern_name", tuple(n for (n, _s, _d) in CL_OH_SWAP_SMARTS)
-)
+@pytest.mark.parametrize("pattern_name", tuple(n for (n, _s, _d) in CL_OH_SWAP_SMARTS))
 def test_cl_oh_swap_runreactants(pattern_name: str) -> None:
     """Each Cl-OH swap SMARTS fires on a canonical substrate + OH- donor."""
     from rdkit import Chem
     from rdkit.Chem import rdChemReactions
+
     smarts = dict((n, s) for (n, s, _d) in CL_OH_SWAP_SMARTS)[pattern_name]
     substrate_smiles, donor_smiles = CANONICAL_CL_OH_SUBSTRATES[pattern_name]
     rxn = rdChemReactions.ReactionFromSmarts(smarts)
     substrate_mol = Chem.MolFromSmiles(substrate_smiles)
     donor_mol = Chem.MolFromSmiles(donor_smiles)
-    assert substrate_mol is not None, (
-        f"{pattern_name}: substrate {substrate_smiles!r} unparseable"
-    )
-    assert donor_mol is not None, (
-        f"{pattern_name}: donor {donor_smiles!r} unparseable"
-    )
+    assert (
+        substrate_mol is not None
+    ), f"{pattern_name}: substrate {substrate_smiles!r} unparseable"
+    assert donor_mol is not None, f"{pattern_name}: donor {donor_smiles!r} unparseable"
     try:
         product_sets = rxn.RunReactants((substrate_mol, donor_mol))
     except Exception as exc:
         if any(
-            marker in str(exc) for marker in (
+            marker in str(exc)
+            for marker in (
                 "RunReactants failed",
                 "Explicit valence",
                 "Can't kekulize",
@@ -1122,6 +1125,7 @@ def test_ligand_shell_mma_runreactants(pattern_name: str) -> None:
     """
     from rdkit import Chem
     from rdkit.Chem import rdChemReactions
+
     smarts = dict((n, s) for (n, s, _d) in LIGAND_SHELL_MMA_SMARTS)[pattern_name]
     substrate_smiles = CANONICAL_SHELL_MMA_SUBSTRATES[pattern_name]
     rxn = rdChemReactions.ReactionFromSmarts(smarts)
@@ -1129,14 +1133,15 @@ def test_ligand_shell_mma_runreactants(pattern_name: str) -> None:
     # RDKit's default sanitisation rewrites it as a dative bond which
     # the SMARTS template cannot match.
     substrate_mol = Chem.MolFromSmiles(substrate_smiles, sanitize=False)
-    assert substrate_mol is not None, (
-        f"{pattern_name}: substrate {substrate_smiles!r} unparseable"
-    )
+    assert (
+        substrate_mol is not None
+    ), f"{pattern_name}: substrate {substrate_smiles!r} unparseable"
     try:
         product_sets = rxn.RunReactants((substrate_mol,))
     except Exception as exc:
         if any(
-            marker in str(exc) for marker in (
+            marker in str(exc)
+            for marker in (
                 "RunReactants failed",
                 "Explicit valence",
                 "Can't kekulize",
@@ -1161,6 +1166,7 @@ def test_pt_pd_transmetalation_runreactants(pattern_name: str) -> None:
     """Each Pt/Pd transmetalation SMARTS fires on a canonical Pt/Pd substrate."""
     from rdkit import Chem
     from rdkit.Chem import rdChemReactions
+
     smarts = dict((n, s) for (n, s, _d) in PT_PD_TRANSMETALATION_SMARTS)[pattern_name]
     rxn = rdChemReactions.ReactionFromSmarts(smarts)
     if "Pt_II_to_Pd_II" in pattern_name:
@@ -1173,7 +1179,8 @@ def test_pt_pd_transmetalation_runreactants(pattern_name: str) -> None:
         product_sets = rxn.RunReactants((substrate_mol,))
     except Exception as exc:
         if any(
-            marker in str(exc) for marker in (
+            marker in str(exc)
+            for marker in (
                 "RunReactants failed",
                 "Explicit valence",
                 "Can't kekulize",
@@ -1185,14 +1192,13 @@ def test_pt_pd_transmetalation_runreactants(pattern_name: str) -> None:
                 f"SMARTS + substrate parse correctly."
             )
         raise
-    assert product_sets, (
-        f"{pattern_name}: RunReactants returned no products"
-    )
+    assert product_sets, f"{pattern_name}: RunReactants returned no products"
 
 
 # ---------------------------------------------------------------------------
 # E. Registration — register_metal_ligand_exchange_rules() returns 101
 # ---------------------------------------------------------------------------
+
 
 def test_register_metal_ligand_exchange_rules_returns_101() -> None:
     """``register_metal_ligand_exchange_rules()`` returns 84 + 17 = 101
@@ -1224,6 +1230,7 @@ def test_register_metal_ligand_exchange_rules_pushes_new_to_registry() -> None:
     explicit acknowledgment).
     """
     from molmetal_lam.reactions.rule_registry import list_rules
+
     register_metal_ligand_exchange_rules(register_into_rule_registry=True)
     after_count = len(list_rules(scope="metal-coord-new-smarts"))
     assert after_count >= 17, (
@@ -1237,6 +1244,7 @@ def test_register_metal_ligand_exchange_rules_total_count() -> None:
     has at least 84 + 17 = 101 metal-coord-related rules across both
     scopes (``metal-coord-matrix`` + ``metal-coord-new-smarts``)."""
     from molmetal_lam.reactions.rule_registry import list_rules
+
     register_metal_ligand_exchange_rules(register_into_rule_registry=True)
     matrix_count = len(list_rules(scope="metal-coord-matrix"))
     new_count = len(list_rules(scope="metal-coord-new-smarts"))
@@ -1256,9 +1264,9 @@ def test_registered_new_smarts_carry_smarts_metadata() -> None:
         register_rule,
         unregister_rule,
     )
+
     expected_smarts = (
-        "[Pt:1]([*:2])([*:3])([*:4])([*:5])>>"
-        "[Pd:1]([*:2])([*:3])([*:4])([*:5])"
+        "[Pt:1]([*:2])([*:3])([*:4])([*:5])>>" "[Pd:1]([*:2])([*:3])([*:4])([*:5])"
     )
     register_rule(
         name="MLE_new_test_roundtrip",
@@ -1281,19 +1289,19 @@ def test_registered_new_smarts_carry_smarts_metadata() -> None:
 # F. Per-template spot checks — distinct chemical intent per template
 # ---------------------------------------------------------------------------
 
+
 def test_transmetalation_changing_metal_symbols() -> None:
     """The 6 transmetalation SMARTS swap at least 3 distinct element
     pairs (Pt/Pd, Pt/Au, Pt/Ru, ...) — i.e. they are NOT just
     relabellings of the same template."""
     import re
+
     pair_sigs: set = set()
     for _n, smarts, _d in TRANSMETALATION_SMARTS:
         # Extract the two metal symbols from ``[M1:1]>>[M2:1]``.
         m1_match = re.search(r"\[([A-Z][a-z]?):1\]", smarts.split(">>")[0])
         m2_match = re.search(r"\[([A-Z][a-z]?):1\]", smarts.split(">>")[1])
-        assert m1_match and m2_match, (
-            f"could not extract metal symbols from {smarts!r}"
-        )
+        assert m1_match and m2_match, f"could not extract metal symbols from {smarts!r}"
         pair_sigs.add((m1_match.group(1), m2_match.group(1)))
     assert len(pair_sigs) >= 3, (
         f"transmetalation should span >= 3 distinct (M1, M2) pairs; "
@@ -1323,8 +1331,7 @@ def test_cl_oh_swap_covers_5_required_metals() -> None:
     }
     missing = required - covered_metals
     assert missing == set(), (
-        f"Cl-OH swap missing required metals {missing}; "
-        f"covered: {covered_metals}"
+        f"Cl-OH swap missing required metals {missing}; " f"covered: {covered_metals}"
     )
 
 
@@ -1369,9 +1376,9 @@ def test_pt_pd_transmetalation_names_use_pt_pd_prefix() -> None:
     with the generic transmetalation library which also includes a
     Pt_II->Pd_II pair."""
     for n, _s, _d in PT_PD_TRANSMETALATION_SMARTS:
-        assert n.startswith("pt_pd_transmet_"), (
-            f"Pt/Pd pattern name {n!r} should use 'pt_pd_transmet_' prefix"
-        )
+        assert n.startswith(
+            "pt_pd_transmet_"
+        ), f"Pt/Pd pattern name {n!r} should use 'pt_pd_transmet_' prefix"
         assert not n.startswith("transmet_"), (
             f"Pt/Pd pattern name {n!r} should NOT use generic 'transmet_' "
             f"prefix to avoid collision with TRANSMETALATION_SMARTS"

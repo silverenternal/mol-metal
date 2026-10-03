@@ -127,8 +127,13 @@ def batch_sa_score(smiles_list) -> dict:
     vals = [sa_score_ertl(s) for s in smiles_list]
     valid = [v for v in vals if v == v]  # filter NaN
     if not valid:
-        return {"mean": float("nan"), "min": float("nan"),
-                "max": float("nan"), "n_valid": 0, "n_total": len(vals)}
+        return {
+            "mean": float("nan"),
+            "min": float("nan"),
+            "max": float("nan"),
+            "n_valid": 0,
+            "n_total": len(vals),
+        }
     return {
         "mean": sum(valid) / len(valid),
         "min": min(valid),

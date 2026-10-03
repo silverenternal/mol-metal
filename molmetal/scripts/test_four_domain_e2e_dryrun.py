@@ -189,9 +189,7 @@ def main() -> int:
         item = ds[offset]
         # 1. Domain id
         if item.domain_id != d:
-            print(
-                f"  [FAIL] domain {d}: item.domain_id={item.domain_id}, expected {d}"
-            )
+            print(f"  [FAIL] domain {d}: item.domain_id={item.domain_id}, expected {d}")
             shape_ok = False
             continue
         # 2. Smiles must be a non-empty string.
@@ -308,8 +306,12 @@ def main() -> int:
     )
     print(f"  length_check        = {'PASS' if length_ok else 'FAIL'}")
     print(f"  shape_check         = {'PASS' if shape_ok else 'FAIL'}")
-    print(f"  bindingdb_range     = {'PASS' if bd_ok else 'FAIL'} ({bd_pct:.1f}% in [4, 10])")
-    print(f"  leakage_check       = INFO  ({n_dup} cross-domain exact-SMILES duplicates)")
+    print(
+        f"  bindingdb_range     = {'PASS' if bd_ok else 'FAIL'} ({bd_pct:.1f}% in [4, 10])"
+    )
+    print(
+        f"  leakage_check       = INFO  ({n_dup} cross-domain exact-SMILES duplicates)"
+    )
     print(f"  overall_wallclock   = {overall_elapsed:.2f}s")
 
     all_ok = length_ok and shape_ok and bd_ok

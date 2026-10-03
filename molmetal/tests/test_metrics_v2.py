@@ -137,8 +137,7 @@ def test_herg_safe_aspirin_low_risk():
 def test_herg_high_risk_terfenadine():
     """Terfenadine: large + lipophilic + low PSA + basic N → ≥0.80."""
     val = herg_cardio_risk(
-        "CCC(C)(C)C(c1ccc(cc1)CCO)C(c1ccc(cc1)C(F)(F)F)c1ccc(cc1)C"
-        "(F)(F)F"
+        "CCC(C)(C)C(c1ccc(cc1)CCO)C(c1ccc(cc1)C(F)(F)F)c1ccc(cc1)C" "(F)(F)F"
     )
     assert math.isfinite(val)
     assert val >= 0.80  # all four rules trip
@@ -283,7 +282,16 @@ def test_all_metrics_mean_returns_full_panel():
     assert set(panel.keys()) == expected_keys
     # ring_size_distribution value should itself be a dict (mean histogram)
     assert isinstance(panel["ring_size_distribution"], dict)
-    assert set(panel["ring_size_distribution"].keys()) == {"3", "4", "5", "6", "7", "8", "9", "other"}
+    assert set(panel["ring_size_distribution"].keys()) == {
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "other",
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -352,8 +360,11 @@ def test_ring_size_distribution_matches_existing_json_value():
     (see metrics/by_metric/ring_size_distribution.json).
     """
     import csv as _csv
+
     smiles_list = []
-    with open("/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/metallo_drugs_500_train.csv") as f:
+    with open(
+        "/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/metallo_drugs_500_train.csv"
+    ) as f:
         for row in _csv.DictReader(f):
             smi = row.get("smiles")
             if smi:

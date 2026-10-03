@@ -51,6 +51,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -85,6 +86,7 @@ from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset
 
 try:
     from rdkit import RDLogger
+
     RDLogger.DisableLog("rdApp.*")
 except Exception:
     pass
@@ -172,8 +174,7 @@ def run_one_metal_five_seeds(
         ckpt_path = ckpt_dir / f"dmpnn_pic50_{metal.lower()}_seed{seed}.pt"
         if ckpt_path.exists() and skip_existing and not force_retrain:
             print(
-                f"  [{metal} seed={seed}] SKIP (existing ckpt: "
-                f"{ckpt_path.name})",
+                f"  [{metal} seed={seed}] SKIP (existing ckpt: " f"{ckpt_path.name})",
                 flush=True,
             )
             # Synthesise a minimal result from the ckpt so the summary
@@ -262,9 +263,15 @@ def write_per_seed_metrics(
     n_existing = 0
 
     for seed in seeds:
-        ckpt_path = ckpts[seed] if seed < len(ckpts) else (
-            PROJECT_ROOT / "molmetal" / "checkpoints"
-            / f"dmpnn_pic50_{metal.lower()}_seed{seed}.pt"
+        ckpt_path = (
+            ckpts[seed]
+            if seed < len(ckpts)
+            else (
+                PROJECT_ROOT
+                / "molmetal"
+                / "checkpoints"
+                / f"dmpnn_pic50_{metal.lower()}_seed{seed}.pt"
+            )
         )
         if not ckpt_path.exists():
             per_seed_rows.append(
@@ -294,10 +301,14 @@ def write_per_seed_metrics(
                 "n_val": res.n_val,
                 "n_test": res.n_test,
                 "elapsed_seconds": res.elapsed_seconds,
-                "test_pearson": float(res.test_pic50_metrics.get("pearson", float("nan"))),
+                "test_pearson": float(
+                    res.test_pic50_metrics.get("pearson", float("nan"))
+                ),
                 "test_rmse": float(res.test_pic50_metrics.get("rmse", float("nan"))),
                 "test_mae": float(res.test_pic50_metrics.get("mae", float("nan"))),
-                "val_pearson": float(res.val_pic50_metrics.get("pearson", float("nan"))),
+                "val_pearson": float(
+                    res.val_pic50_metrics.get("pearson", float("nan"))
+                ),
                 "val_rmse": float(res.val_pic50_metrics.get("rmse", float("nan"))),
                 "status": "OK",
             }
@@ -355,7 +366,7 @@ def write_per_seed_metrics(
     r2_std = float("nan")
     r2_mean = float("nan")
     if len(finite_pearsons) > 0:
-        r2_arr = finite_pearsons ** 2
+        r2_arr = finite_pearsons**2
         r2_mean = float(np.mean(r2_arr))
         r2_std = float(np.std(r2_arr))
 
@@ -366,10 +377,16 @@ def write_per_seed_metrics(
         status = "INCOMPLETE_SEEDS"
 
     aggregate = {
-        "test_pearson_mean": float(np.nanmean(pearsons)) if len(pearsons) else float("nan"),
+        "test_pearson_mean": float(np.nanmean(pearsons))
+        if len(pearsons)
+        else float("nan"),
         "test_pearson_std": pearson_std,
-        "test_pearson_min": float(np.nanmin(pearsons)) if len(pearsons) else float("nan"),
-        "test_pearson_max": float(np.nanmax(pearsons)) if len(pearsons) else float("nan"),
+        "test_pearson_min": float(np.nanmin(pearsons))
+        if len(pearsons)
+        else float("nan"),
+        "test_pearson_max": float(np.nanmax(pearsons))
+        if len(pearsons)
+        else float("nan"),
         "test_rmse_mean": float(np.nanmean(rmses)) if len(rmses) else float("nan"),
         "test_rmse_std": rmse_std,
         "test_r2_mean": r2_mean,
@@ -438,7 +455,9 @@ def update_ckpt_status_json(
             epochs = 30
             if metal in seed_results_by_metal and seed in seed_results_by_metal[metal]:
                 res = seed_results_by_metal[metal][seed]
-                test_pearson = float(res.test_pic50_metrics.get("pearson", float("nan")))
+                test_pearson = float(
+                    res.test_pic50_metrics.get("pearson", float("nan"))
+                )
                 test_rmse = float(res.test_pic50_metrics.get("rmse", float("nan")))
 
             new_checkpoints.append(
@@ -461,12 +480,8 @@ def update_ckpt_status_json(
         rows = [r for r in new_checkpoints if r["metal"] == metal]
         if not rows:
             continue
-        pearsons = np.array(
-            [r["test_pearson"] for r in rows], dtype=float
-        )
-        rmses = np.array(
-            [r["test_rmse"] for r in rows], dtype=float
-        )
+        pearsons = np.array([r["test_pearson"] for r in rows], dtype=float)
+        rmses = np.array([r["test_rmse"] for r in rows], dtype=float)
         finite_p = pearsons[np.isfinite(pearsons)]
         n_train = n_val = n_test = -1
         # n_train from seed_results if available; otherwise from ckpt blob
@@ -478,12 +493,20 @@ def update_ckpt_status_json(
 
         per_metal[metal] = {
             "n_ckpts": len(rows),
-            "test_pearson_mean": float(np.nanmean(pearsons)) if len(pearsons) else float("nan"),
-            "test_pearson_std": float(np.nanstd(pearsons)) if len(pearsons) else float("nan"),
+            "test_pearson_mean": float(np.nanmean(pearsons))
+            if len(pearsons)
+            else float("nan"),
+            "test_pearson_std": float(np.nanstd(pearsons))
+            if len(pearsons)
+            else float("nan"),
             "test_rmse_mean": float(np.nanmean(rmses)) if len(rmses) else float("nan"),
             "test_rmse_std": float(np.nanstd(rmses)) if len(rmses) else float("nan"),
-            "test_r2_mean": float(np.nanmean(finite_p ** 2)) if len(finite_p) else float("nan"),
-            "test_r2_std": float(np.nanstd(finite_p ** 2)) if len(finite_p) else float("nan"),
+            "test_r2_mean": float(np.nanmean(finite_p**2))
+            if len(finite_p)
+            else float("nan"),
+            "test_r2_std": float(np.nanstd(finite_p**2))
+            if len(finite_p)
+            else float("nan"),
             "n_train": n_train,
             "n_val": n_val,
             "n_test": n_test,
@@ -554,21 +577,42 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         choices=FIVE_METALS,
         help="Subset of {Ru,Ir,Rh,Os,Re} to train (default: all 5).",
     )
-    p.add_argument("--epochs", type=int, default=30, help="Epochs per seed (default 30).")
-    p.add_argument("--alpha", type=float, default=1.0, help="BCE weight (default 1.0=pure pIC50).")
+    p.add_argument(
+        "--epochs", type=int, default=30, help="Epochs per seed (default 30)."
+    )
+    p.add_argument(
+        "--alpha", type=float, default=1.0, help="BCE weight (default 1.0=pure pIC50)."
+    )
     p.add_argument("--lr", type=float, default=1e-3, help="Adam lr (default 1e-3).")
-    p.add_argument("--batch-size", type=int, default=64, help="Batch size (default 64).")
-    p.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR,
-                   help="Per-metal metrics output directory.")
-    p.add_argument("--ckpt-dir", type=Path, default=DEFAULT_CKPT_DIR,
-                   help="Checkpoint directory.")
-    p.add_argument("--csv", type=Path, default=DEFAULT_5METAL_CSV,
-                   help="5-metal multitask CSV (split defs).")
-    p.add_argument("--status-json", type=Path,
-                   default=PROJECT_ROOT / "metrics" / "by_metric" / "dmpnn_ckpt_status.json",
-                   help="Status JSON to update.")
-    p.add_argument("--device", default=None,
-                   help="Force device (cuda:0 or cpu). Default auto-detect.")
+    p.add_argument(
+        "--batch-size", type=int, default=64, help="Batch size (default 64)."
+    )
+    p.add_argument(
+        "--out-dir",
+        type=Path,
+        default=DEFAULT_OUT_DIR,
+        help="Per-metal metrics output directory.",
+    )
+    p.add_argument(
+        "--ckpt-dir", type=Path, default=DEFAULT_CKPT_DIR, help="Checkpoint directory."
+    )
+    p.add_argument(
+        "--csv",
+        type=Path,
+        default=DEFAULT_5METAL_CSV,
+        help="5-metal multitask CSV (split defs).",
+    )
+    p.add_argument(
+        "--status-json",
+        type=Path,
+        default=PROJECT_ROOT / "metrics" / "by_metric" / "dmpnn_ckpt_status.json",
+        help="Status JSON to update.",
+    )
+    p.add_argument(
+        "--device",
+        default=None,
+        help="Force device (cuda:0 or cpu). Default auto-detect.",
+    )
     p.add_argument(
         "--no-skip-existing",
         action="store_true",
@@ -619,8 +663,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Load dataset + split table (shared across all (metal, seed))
     split_df = load_5metal_split_table(args.csv)
     print(
-        f"[wf120-dmpnn-p2-5seed] loaded 5-metal split table: "
-        f"{len(split_df)} rows",
+        f"[wf120-dmpnn-p2-5seed] loaded 5-metal split table: " f"{len(split_df)} rows",
         flush=True,
     )
 
@@ -690,7 +733,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         )
         # Per-metal sweep summary
         n_existing = sum(
-            1 for s in seeds_to_run
+            1
+            for s in seeds_to_run
             if (args.ckpt_dir / f"dmpnn_pic50_{metal.lower()}_seed{s}.pt").exists()
             and s not in sweep.seed_results
         )
@@ -702,7 +746,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             "n_seeds_existing": n_existing,
             "elapsed_seconds": sweep.elapsed_seconds,
             "ckpts": [str(p) for p in ckpts_for_metal if p.exists()],
-            "status": "OK" if n_trained + n_existing == len(seeds_to_run) else "PARTIAL",
+            "status": "OK"
+            if n_trained + n_existing == len(seeds_to_run)
+            else "PARTIAL",
         }
 
     overall_elapsed = time.time() - overall_start

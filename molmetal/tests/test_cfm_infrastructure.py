@@ -28,6 +28,7 @@ does not depend on GPU, real training data, or the Facebook upstream
 network.  All three tests pass on CPU with the smoke-test configuration
 of the adapter (hidden_dim=8, n_layers=1).
 """
+
 from __future__ import annotations
 
 import importlib
@@ -41,6 +42,7 @@ import torch
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _reset_flow_matching_modules() -> None:
     """Drop every cached ``molmetal.adapters.flow_matching_lipman.*`` entry.
@@ -62,6 +64,7 @@ def _reset_flow_matching_modules() -> None:
 # Blocker 1 — flow_matching source discoverable
 # ---------------------------------------------------------------------------
 
+
 def test_blocker_1_configure_reference_resolves_default_clone(tmp_path):
     """``configure_reference()`` finds the upstream ``flow_matching/__init__.py``.
 
@@ -81,17 +84,18 @@ def test_blocker_1_configure_reference_resolves_default_clone(tmp_path):
         f"missing or in the wrong place"
     )
     # Sanity: the root should contain the standard Facebook upstream modules.
-    assert (root / "interpolation.py").is_file(), (
-        "expected flow_matching/interpolation.py — clone is incomplete"
-    )
-    assert (root / "sampler.py").is_file(), (
-        "expected flow_matching/sampler.py — clone is incomplete"
-    )
+    assert (
+        root / "interpolation.py"
+    ).is_file(), "expected flow_matching/interpolation.py — clone is incomplete"
+    assert (
+        root / "sampler.py"
+    ).is_file(), "expected flow_matching/sampler.py — clone is incomplete"
 
 
 # ---------------------------------------------------------------------------
 # Blocker 2 — _reference NAMESPACE confusion (local shim resolution)
 # ---------------------------------------------------------------------------
+
 
 def test_blocker_2_reference_path_module_importable_without_upstream_clone():
     """``_reference.path`` is importable via the LOCAL shim, not the upstream.
@@ -135,6 +139,7 @@ def test_blocker_2_adapter_setup_resolves_through_local_shims():
     adapter = LipmanFlowMatchingAdapter(hidden_dim=8, n_layers=1)
     # suppress the production-scale warning for the 8-d toy size
     import warnings
+
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         adapter.setup("cpu")
@@ -148,6 +153,7 @@ def test_blocker_2_adapter_setup_resolves_through_local_shims():
 # ---------------------------------------------------------------------------
 # Blocker 3 — ref_repo_path CLI flag on the smoke retrain script
 # ---------------------------------------------------------------------------
+
 
 def test_blocker_3_ref_repo_path_cli_flag_passed_to_adapter():
     """``--ref-repo-path`` reaches ``LipmanFlowMatchingAdapter`` as ``ref_repo_path``.
@@ -163,6 +169,7 @@ def test_blocker_3_ref_repo_path_cli_flag_passed_to_adapter():
     # is forwarded.  We use a tiny config (steps=1, n-train=8,
     # hidden_dim=8) to keep wall time under the smoke-test budget.
     import subprocess
+
     PROJECT_ROOT = Path(__file__).resolve().parents[2]
     script = PROJECT_ROOT / "molmetal" / "scripts" / "metallo_drug_smoke_retrain.py"
     if not script.is_file():
@@ -171,14 +178,22 @@ def test_blocker_3_ref_repo_path_cli_flag_passed_to_adapter():
         [
             "/home/hugo/codes/mol-metal/.venv/bin/python",
             str(script),
-            "--steps", "1",
-            "--n-train", "8",
-            "--batch-size", "4",
-            "--hidden-dim", "8",
-            "--n-layers", "1",
-            "--decode-smoke-every", "1000",
-            "--out-dir", "/tmp/wf257_infra_blocker3_smoke",
-            "--ref-repo-path", str(PROJECT_ROOT / "molmetal" / "references" / "flow_matching"),
+            "--steps",
+            "1",
+            "--n-train",
+            "8",
+            "--batch-size",
+            "4",
+            "--hidden-dim",
+            "8",
+            "--n-layers",
+            "1",
+            "--decode-smoke-every",
+            "1000",
+            "--out-dir",
+            "/tmp/wf257_infra_blocker3_smoke",
+            "--ref-repo-path",
+            str(PROJECT_ROOT / "molmetal" / "references" / "flow_matching"),
         ],
         capture_output=True,
         text=True,
@@ -192,8 +207,7 @@ def test_blocker_3_ref_repo_path_cli_flag_passed_to_adapter():
     )
     # And the script must have completed without crashing.
     assert proc.returncode == 0, (
-        f"retrain script exited {proc.returncode}; "
-        f"stderr:\n{proc.stderr}"
+        f"retrain script exited {proc.returncode}; " f"stderr:\n{proc.stderr}"
     )
 
 
@@ -206,6 +220,7 @@ def test_blocker_3_ref_repo_path_default_resolves_to_canonical():
     # the upstream clone via the loader's DEFAULT_REFERENCE.
     adapter = LipmanFlowMatchingAdapter(hidden_dim=8, n_layers=1)
     import warnings
+
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         adapter.setup("cpu")
@@ -216,6 +231,7 @@ def test_blocker_3_ref_repo_path_default_resolves_to_canonical():
 # ---------------------------------------------------------------------------
 # Backward-compat gate
 # ---------------------------------------------------------------------------
+
 
 def test_backward_compat_existing_caller_default_construction():
     """``LipmanFlowMatchingAdapter()`` with no kwargs constructs successfully.
@@ -230,6 +246,7 @@ def test_backward_compat_existing_caller_default_construction():
 
     adapter = LipmanFlowMatchingAdapter()  # no kwargs — legacy call style
     import warnings
+
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         adapter.setup("cpu")
@@ -242,6 +259,9 @@ def test_backward_compat_existing_caller_default_construction():
     # the first positional arg (back-compat with ``LipmanFlowMatchingAdapter(
     # ref_repo_path=...)`` calls).
     import inspect
+
     sig = inspect.signature(LipmanFlowMatchingAdapter.__init__)
     assert "ref_repo_path" in sig.parameters
-    assert sig.parameters["ref_repo_path"].default == "molmetal/references/flow_matching"
+    assert (
+        sig.parameters["ref_repo_path"].default == "molmetal/references/flow_matching"
+    )

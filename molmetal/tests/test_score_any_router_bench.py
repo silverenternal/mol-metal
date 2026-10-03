@@ -25,6 +25,7 @@ These tests verify the integrity of
 
 Test count target: 15 distinct checks.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -122,9 +123,9 @@ def test_metric_layer_scripts_have_expected_metrics() -> None:
     mod = importlib.import_module("bench_score_any_router")
     for entry in mod.DEFAULT_SCRIPT_REGISTRY:
         if entry.get("metric_layer"):
-            assert tuple(entry.get("expected_metrics", ())), (
-                f"metric-layer script {entry['script']!r} has no expected_metrics"
-            )
+            assert tuple(
+                entry.get("expected_metrics", ())
+            ), f"metric-layer script {entry['script']!r} has no expected_metrics"
 
 
 def test_non_metric_layer_scripts_have_no_expected_metrics() -> None:
@@ -158,6 +159,7 @@ def test_score_any_recorder_runs_and_restores_registry() -> None:
             assert REGISTRY[metric_name].notes == "[wf48-router-bench]"
         # Calling score_any("sa_score") records the call.
         from molmetal.scoring import score_any
+
         try:
             score_any("sa_score", molecules=["CCO"])
             assert "sa_score" in records
@@ -227,9 +229,12 @@ def test_cli_writes_router_bench_json() -> None:
     cmd = [
         sys.executable,
         str(SCRIPTS / "bench_score_any_router.py"),
-        "--n-scripts", "2",
-        "--seeds", "0",
-        "--out-dir", str(out_dir),
+        "--n-scripts",
+        "2",
+        "--seeds",
+        "0",
+        "--out-dir",
+        str(out_dir),
     ]
     res = subprocess.run(
         cmd,
@@ -248,13 +253,14 @@ def test_cli_writes_router_bench_json() -> None:
         text=True,
         timeout=120,
     )
-    assert res.returncode in (0, 2), (
-        f"bench crashed: rc={res.returncode} stderr={res.stderr[-500:]}"
-    )
+    assert res.returncode in (
+        0,
+        2,
+    ), f"bench crashed: rc={res.returncode} stderr={res.stderr[-500:]}"
     json_path = out_dir / "router_bench.json"
-    assert json_path.exists(), (
-        f"router_bench.json not written: stderr={res.stderr[-500:]}"
-    )
+    assert (
+        json_path.exists()
+    ), f"router_bench.json not written: stderr={res.stderr[-500:]}"
     payload = json.loads(json_path.read_text())
     assert payload["recipe"] == "wf48_score_any_router"
     assert payload["tool"] == "bench_score_any_router.py"
@@ -299,14 +305,13 @@ def test_router_tools_match_policy() -> None:
     )
     payload = mod.run_bench(cfg)
     policy_tools = {
-        metric: entry.primary_tool
-        for metric, entry in ROUTING_POLICY.items()
+        metric: entry.primary_tool for metric, entry in ROUTING_POLICY.items()
     }
     for r in payload["per_script"]:
         for metric_name in r["actual_metrics"]:
-            assert metric_name in policy_tools, (
-                f"router called unknown metric {metric_name!r}"
-            )
+            assert (
+                metric_name in policy_tools
+            ), f"router called unknown metric {metric_name!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -372,13 +377,13 @@ def test_registry_rejects_mock_metric_names() -> None:
     mod = importlib.import_module("bench_score_any_router")
     for entry in mod.DEFAULT_SCRIPT_REGISTRY:
         for m in entry.get("expected_metrics", ()):
-            assert "mock" not in str(m).lower(), (
-                f"script {entry['script']!r} routes to mock metric {m!r}"
-            )
+            assert (
+                "mock" not in str(m).lower()
+            ), f"script {entry['script']!r} routes to mock metric {m!r}"
         for t in entry.get("expected_tools", ()):
-            assert "mock" not in str(t).lower(), (
-                f"script {entry['script']!r} names mock tool {t!r}"
-            )
+            assert (
+                "mock" not in str(t).lower()
+            ), f"script {entry['script']!r} names mock tool {t!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -415,9 +420,9 @@ def test_invoke_script_accuracy_pass_when_expected_metrics_recorded() -> None:
     payload = mod.run_bench(cfg)
     for r in payload["per_script"]:
         if r["status"] == "OK" and r["accuracy"] != "N/A":
-            assert r["accuracy"] in ("PASS", "FAIL"), (
-                f"script {r['script']!r} accuracy must be PASS/FAIL, got {r['accuracy']!r}"
-            )
+            assert (
+                r["accuracy"] in ("PASS", "FAIL")
+            ), f"script {r['script']!r} accuracy must be PASS/FAIL, got {r['accuracy']!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -473,8 +478,7 @@ def test_bench_module_has_no_mock_fallback_definitions() -> None:
     """The bench script's source code must not define a mock
     fallback — Wf-43 forbids it."""
     src_path = (
-        Path(__file__).resolve().parents[1] / "scripts"
-        / "bench_score_any_router.py"
+        Path(__file__).resolve().parents[1] / "scripts" / "bench_score_any_router.py"
     )
     text = src_path.read_text()
     # Allow the word "mock" in docstrings / comments — we forbid it
@@ -485,6 +489,4 @@ def test_bench_module_has_no_mock_fallback_definitions() -> None:
             continue
         # Strip strings / comments at end of line (very rough).
         if "MockScorer" in stripped or "MockDocker" in stripped:
-            raise AssertionError(
-                f"bench defines a mock fallback: {stripped[:120]}"
-            )
+            raise AssertionError(f"bench defines a mock fallback: {stripped[:120]}")

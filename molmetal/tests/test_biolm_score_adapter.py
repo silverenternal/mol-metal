@@ -75,6 +75,7 @@ def _import_reward_aggregator():
     """
     try:
         from molmetal_lam.search_alg.proof_search import RewardAggregator
+
         return RewardAggregator
     except Exception as exc:  # pragma: no cover - defensive
         pytest.skip(f"RewardAggregator not importable: {exc}")
@@ -140,7 +141,8 @@ def test_score_with_none_pocket_returns_zero(tmp_path: Path) -> None:
 # Test 3 — score() with mock pocket returns finite float in [0, 1]
 # ---------------------------------------------------------------------------
 def test_score_with_mock_pocket_returns_finite_float_in_unit_interval(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """``adapter.score(smiles, pocket=mock)`` returns a finite float in
     ``[0, 1]``.  We monkeypatch the upstream score function so the
@@ -150,8 +152,7 @@ def test_score_with_mock_pocket_returns_finite_float_in_unit_interval(
     adapter = BioLMScoreAdapter(repo_root=str(tmp_path / "synthetic_biolm"))
 
     # Stub the upstream loader: return a deterministic score from [0, 1].
-    monkeypatch.setattr(adapter, "_score_via_upstream",
-                        lambda smiles, pocket: 0.42)
+    monkeypatch.setattr(adapter, "_score_via_upstream", lambda smiles, pocket: 0.42)
     v = adapter.score("c1ccccc1NC(=O)C", pocket=_MockPocket(pdb_id="1abc"))
     assert isinstance(v, float)
     assert v == v, "score returned NaN"
@@ -206,9 +207,7 @@ def test_score_channel_with_name_routes_to_adapter(tmp_path: Path) -> None:
     # Routing: the only accepted channel name is the canonical one.
     assert channel_name == "r_biolm_score"
     v = adapter.score_channel(name="r_biolm_score", smiles="CCO")
-    assert v == 0.0, (
-        f"Expected 0.0 (no upstream available, no pocket) — got {v!r}"
-    )
+    assert v == 0.0, f"Expected 0.0 (no upstream available, no pocket) — got {v!r}"
     # Routing to an unknown channel name must be a no-op (returns 0.0).
     v_unknown = adapter.score_channel(name="r_unknown_channel", smiles="CCO")
     assert v_unknown == 0.0

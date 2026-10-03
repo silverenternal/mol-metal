@@ -50,6 +50,7 @@ Usage
         --config molmetal/configs/vina_docking_params.yaml \\
         --out molmetal/reports/wf381a1_vina_tuning_smoke/result.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -78,6 +79,7 @@ try:
         safe_overwrite_check,
         detect_truncation,
     )
+
     _WF414_HAS_ATOMIC = True
 except ImportError:  # pragma: no cover — fallback when running as standalone
     _WF414_HAS_ATOMIC = False
@@ -162,7 +164,9 @@ def _minimal_yaml(path: Path) -> Dict[str, Any]:
             parent[key] = new_dict
             stack.append((indent, new_dict))
         elif value_str.startswith("[") and value_str.endswith("]"):
-            items = [x.strip().strip("'\"") for x in value_str[1:-1].split(",") if x.strip()]
+            items = [
+                x.strip().strip("'\"") for x in value_str[1:-1].split(",") if x.strip()
+            ]
             parent[key] = items
         else:
             try:
@@ -181,6 +185,7 @@ def _minimal_yaml(path: Path) -> Dict[str, Any]:
 def _seed_jitter(pocket: str, seed: int) -> float:
     """Deterministic +/- SEED_JITTER_KCAL jitter per (pocket, seed)."""
     import hashlib
+
     h_bytes = hashlib.blake2b(
         f"{pocket}|{seed}".encode("utf-8"), digest_size=4
     ).digest()
@@ -224,14 +229,10 @@ def tune_docking(
     per_pocket_median_kcal: Dict[str, float] = {}
     for pocket in pockets:
         offset = PER_POCKET_OFFSET_KCAL.get(pocket, 0.0)
-        vals = [
-            round(base + offset + _seed_jitter(pocket, seed), 4) for seed in seeds
-        ]
+        vals = [round(base + offset + _seed_jitter(pocket, seed), 4) for seed in seeds]
         per_pocket_seed_kcal[pocket] = vals
         per_pocket_median_kcal[pocket] = round(statistics.median(vals), 4)
-    cohort_median = round(
-        statistics.median(per_pocket_median_kcal.values()), 4
-    )
+    cohort_median = round(statistics.median(per_pocket_median_kcal.values()), 4)
     return {
         "level": level,
         "pockets": pockets,
@@ -245,9 +246,7 @@ def tune_docking(
     }
 
 
-def per_pocket_median_kcal(
-    cohort: Dict[str, Any], level: str
-) -> Dict[str, float]:
+def per_pocket_median_kcal(cohort: Dict[str, Any], level: str) -> Dict[str, float]:
     """Return per-pocket median kcal/mol at `level` (thin wrapper)."""
     return tune_docking(cohort, level)["per_pocket_median_kcal"]
 
@@ -342,14 +341,16 @@ def write_smoke_report(
         if _risk is not None:
             LOG.warning(
                 "[Wf-381-A1] safe_overwrite_check ratio=%.3f at %s",
-                _risk, out_path,
+                _risk,
+                out_path,
             )
         atomic_write_file(out_path, _payload, encoding="utf-8")
         _trunc = detect_truncation(_payload, expected_min_length=200)
         if _trunc is not None:
             LOG.warning(
                 "[Wf-381-A1] detect_truncation reason=%r at %s",
-                _trunc, out_path,
+                _trunc,
+                out_path,
             )
     else:  # pragma: no cover
         out_path.write_text(_payload, encoding="utf-8")
@@ -379,9 +380,7 @@ def _cli() -> int:
         default=None,
         help="Optional single-level mode (default: all 3 levels)",
     )
-    parser.add_argument(
-        "--verbose", action="store_true", help="Verbose logging"
-    )
+    parser.add_argument("--verbose", action="store_true", help="Verbose logging")
     args = parser.parse_args()
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
@@ -389,7 +388,9 @@ def _cli() -> int:
     )
     config = load_vina_config(args.config)
     cohort = {
-        "pockets": config.get("cohort", {}).get("pockets", list(COHORT_POCKETS_DEFAULT)),
+        "pockets": config.get("cohort", {}).get(
+            "pockets", list(COHORT_POCKETS_DEFAULT)
+        ),
         "seeds": config.get("cohort", {}).get("seeds", list(COHORT_SEEDS_DEFAULT)),
     }
     levels = (args.level,) if args.level else ("low", "medium", "high")

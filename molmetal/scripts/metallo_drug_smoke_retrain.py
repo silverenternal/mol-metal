@@ -85,6 +85,7 @@ Usage
 
 Wall-budget: 30 minutes GPU.  Decode smoke adds <2 s per checkpoint.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -138,6 +139,7 @@ def _smiles_to_molecule(smiles: str):
     we return ``None`` and the caller drops the mol from the batch.
     """
     from molmetal.domain import Molecule
+
     try:
         # NOTE: use positional `True` (not embed_3d=True) because some
         # RDKit-derived from_smiles overloads collide with the keyword name.
@@ -259,27 +261,48 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=None,
         help="Wf-A5 N3 — explicit checkpoint path (requires --resume-from path)",
     )
-    parser.add_argument("--csv", type=Path,
-                        default=PROJECT_ROOT / "molmetal" / "data" / "metallo_drugs_500_train.csv",
-                        help="Training-pool CSV (default metallo_drugs_500_train.csv)")
-    parser.add_argument("--n-train", type=int, default=500,
-                        help="Cap on SMILES loaded from CSV (default 500)")
+    parser.add_argument(
+        "--csv",
+        type=Path,
+        default=PROJECT_ROOT / "molmetal" / "data" / "metallo_drugs_500_train.csv",
+        help="Training-pool CSV (default metallo_drugs_500_train.csv)",
+    )
+    parser.add_argument(
+        "--n-train",
+        type=int,
+        default=500,
+        help="Cap on SMILES loaded from CSV (default 500)",
+    )
     parser.add_argument("--steps", type=int, default=1000)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--hidden-dim", type=int, default=128)
     parser.add_argument("--n-layers", type=int, default=3)
-    parser.add_argument("--atom-vocab", type=int, default=14,
-                        help="Metallodrug vocab size (default 14 = "
-                             "{C,N,O,F,S,P,Cl,Br,I,Pt,Pd,Au,Ir,Ru})")
-    parser.add_argument("--joint-train", action="store_true", default=True,
-                        help="Joint-train the bond head end-to-end (default True)")
-    parser.add_argument("--no-joint-train", dest="joint_train",
-                        action="store_false",
-                        help="Disable joint bond-head training (legacy A1)")
-    parser.add_argument("--bond-head", choices=["distance", "learned"],
-                        default="learned",
-                        help="Bond decoder mode (default learned — P0+A5)")
+    parser.add_argument(
+        "--atom-vocab",
+        type=int,
+        default=14,
+        help="Metallodrug vocab size (default 14 = "
+        "{C,N,O,F,S,P,Cl,Br,I,Pt,Pd,Au,Ir,Ru})",
+    )
+    parser.add_argument(
+        "--joint-train",
+        action="store_true",
+        default=True,
+        help="Joint-train the bond head end-to-end (default True)",
+    )
+    parser.add_argument(
+        "--no-joint-train",
+        dest="joint_train",
+        action="store_false",
+        help="Disable joint bond-head training (legacy A1)",
+    )
+    parser.add_argument(
+        "--bond-head",
+        choices=["distance", "learned"],
+        default="learned",
+        help="Bond decoder mode (default learned — P0+A5)",
+    )
     # Wf-415-A3 fix: add --lr-warmup-steps CLI flag (was missing; the
     # Wf-319A ablation runner test passes `--lr-warmup-steps 0` and
     # metallo_drug_smoke_retrain.py --help must expose the flag).
@@ -289,14 +312,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     # doesn't apply a warmup factor when 0; future M14 spec values
     # like 100 will activate linear warmup — closed via Wf-323A
     # §2.1 per Wf-323A contract).
-    parser.add_argument("--lr-warmup-steps", type=int, default=0,
-                        help=(
-                            "Linear LR warmup steps before main scheduler "
-                            "(Wf-319A M14 spec; default: 0 = OFF = "
-                            "no warmup). Cf. Wf-323A §2.1 M14 contract."
-                        ))
-    parser.add_argument("--decode-smoke-every", type=int, default=200,
-                        help="Run a 16-sample decode smoke every N steps")
+    parser.add_argument(
+        "--lr-warmup-steps",
+        type=int,
+        default=0,
+        help=(
+            "Linear LR warmup steps before main scheduler "
+            "(Wf-319A M14 spec; default: 0 = OFF = "
+            "no warmup). Cf. Wf-323A §2.1 M14 contract."
+        ),
+    )
+    parser.add_argument(
+        "--decode-smoke-every",
+        type=int,
+        default=200,
+        help="Run a 16-sample decode smoke every N steps",
+    )
     parser.add_argument("--decode-smoke-samples", type=int, default=16)
     parser.add_argument("--seed", type=int, default=42)
     # NOTE: NOT argparse-required because wfA2_config_loader re-parses with
@@ -304,13 +335,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     # args. The required contract is enforced manually right after the YAML
     # overrides are applied (CLI value, else YAML 'out_dir', else the same
     # argparse error users saw before).
-    parser.add_argument("--out-dir", type=Path, default=None,
-                        help="Where to dump ckpt + final.json + final.md")
-    parser.add_argument("--embed-cache", type=Path, default=None,
-                        help="Optional path to a torch.save cache of the "
-                             "Molecule list.  If the file exists we load it; "
-                             "otherwise we build the cache fresh from the "
-                             "CSV and save it for reuse on subsequent runs.")
+    parser.add_argument(
+        "--out-dir",
+        type=Path,
+        default=None,
+        help="Where to dump ckpt + final.json + final.md",
+    )
+    parser.add_argument(
+        "--embed-cache",
+        type=Path,
+        default=None,
+        help="Optional path to a torch.save cache of the "
+        "Molecule list.  If the file exists we load it; "
+        "otherwise we build the cache fresh from the "
+        "CSV and save it for reuse on subsequent runs.",
+    )
     args = parser.parse_args(argv)
 
     # FLAG-WIRE FIX (2026-10-03): actually apply --config via the shared
@@ -318,11 +357,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     # bit-for-bit unchanged). Mirrors the call in
     # train_dmpnn_multitask_wasserstein.py::parse_args.
     from molmetal.scripts.wfA2_config_loader import apply_yaml_overrides
+
     args = apply_yaml_overrides(parser, args, args.config)
     if args.config is not None:
-        print(f"[metallo_smoke] config: {args.config} "
-              f"(YAML overrides applied via wfA2_config_loader; "
-              f"{len(getattr(args, 'yaml_unresolved_keys', []))} key(s) skipped)")
+        print(
+            f"[metallo_smoke] config: {args.config} "
+            f"(YAML overrides applied via wfA2_config_loader; "
+            f"{len(getattr(args, 'yaml_unresolved_keys', []))} key(s) skipped)"
+        )
     # --out-dir required contract (CLI or YAML), enforced after YAML
     # application so the loader's internal parse_args([]) cannot SystemExit.
     if args.out_dir is None:
@@ -337,8 +379,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"[metallo_smoke] hidden_dim={args.hidden_dim} n_layers={args.n_layers}")
     print(f"[metallo_smoke] joint_train={args.joint_train} bond_head={args.bond_head}")
     print(f"[metallo_smoke] vocab_size={args.atom_vocab} (metallodrug = 14)")
-    print(f"[metallo_smoke] torch.cuda.is_available()={torch.cuda.is_available()}"
-          f" device_count={torch.cuda.device_count()}")
+    print(
+        f"[metallo_smoke] torch.cuda.is_available()={torch.cuda.is_available()}"
+        f" device_count={torch.cuda.device_count()}"
+    )
 
     _set_seed(args.seed)
 
@@ -370,8 +414,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 n_skipped += 1
                 continue
             mols.append(m)
-        print(f"[metallo_smoke] embedded {len(mols)} mols in {time.time() - t_embed:.1f}s"
-              f" (skipped {n_skipped})")
+        print(
+            f"[metallo_smoke] embedded {len(mols)} mols in {time.time() - t_embed:.1f}s"
+            f" (skipped {n_skipped})"
+        )
         try:
             cache.parent.mkdir(parents=True, exist_ok=True)
             torch.save({"mols": mols, "n_skipped": n_skipped}, cache)
@@ -379,8 +425,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         except Exception as exc:  # noqa: BLE001
             print(f"[metallo_smoke] WARN: embed cache save failed: {exc}")
     if len(mols) < args.batch_size:
-        print(f"[metallo_smoke] ERROR: only {len(mols)} valid mols < batch_size"
-              f"={args.batch_size}; abort")
+        print(
+            f"[metallo_smoke] ERROR: only {len(mols)} valid mols < batch_size"
+            f"={args.batch_size}; abort"
+        )
         return 2
 
     # -- 3. Build adapter with P0+P1 fixes stacked ----------------------
@@ -412,12 +460,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"[metallo_smoke] resolved device: {adapter.device}")
 
     # Quick sanity: confirm P0/P1 stack
-    print(f"[metallo_smoke] use_bond_head={adapter.use_bond_head}"
-          f" joint_train={adapter.joint_train}"
-          f" bond_loss_weight={adapter.bond_loss_weight}"
-          f" vocab_size={len(adapter.atom_vocab)}")
-    print(f"[metallo_smoke] bond_head.in_dim={adapter.bond_head.in_dim}"
-          f" (should be 9 + 2*hidden_dim = {9 + 2 * args.hidden_dim})")
+    print(
+        f"[metallo_smoke] use_bond_head={adapter.use_bond_head}"
+        f" joint_train={adapter.joint_train}"
+        f" bond_loss_weight={adapter.bond_loss_weight}"
+        f" vocab_size={len(adapter.atom_vocab)}"
+    )
+    print(
+        f"[metallo_smoke] bond_head.in_dim={adapter.bond_head.in_dim}"
+        f" (should be 9 + 2*hidden_dim = {9 + 2 * args.hidden_dim})"
+    )
 
     # -- 4. Train + log -------------------------------------------------
     log: List[dict] = []
@@ -449,27 +501,34 @@ def main(argv: Sequence[str] | None = None) -> int:
             bond = loss_curves["bond"][-1] if loss_curves["bond"] else 0.0
             cfm = loss_curves["cfm"][-1] if loss_curves["cfm"] else 0.0
             atom = loss_curves["atom"][-1] if loss_curves["atom"] else 0.0
-            print(f"[metallo_smoke] step {step:4d}/{args.steps}  "
-                  f"loss={loss:.4f}  cfm={cfm:.4f}  atom={atom:.4f}  "
-                  f"bond={bond:.4f}  elapsed={elapsed:.1f}s  eta={eta:.1f}s")
+            print(
+                f"[metallo_smoke] step {step:4d}/{args.steps}  "
+                f"loss={loss:.4f}  cfm={cfm:.4f}  atom={atom:.4f}  "
+                f"bond={bond:.4f}  elapsed={elapsed:.1f}s  eta={eta:.1f}s"
+            )
         if step % args.decode_smoke_every == 0 or step == args.steps:
             t_probe = time.time()
-            probe = _decode_smoke(adapter, n_samples=args.decode_smoke_samples,
-                                  seed=args.seed + step)
+            probe = _decode_smoke(
+                adapter, n_samples=args.decode_smoke_samples, seed=args.seed + step
+            )
             probe["step"] = step
             probe["wall_s"] = time.time() - t_probe
             decode_probes.append(probe)
-            print(f"[metallo_smoke]  >> decode_smoke step={step}: "
-                  f"decode_ratio={probe['decode_ratio']:.3f}  "
-                  f"n_decoded={probe['n_decoded']}/{args.decode_smoke_samples}  "
-                  f"mean_atoms={probe['mean_atoms']:.1f}  "
-                  f"disconnected={probe['disconnected_count']}  "
-                  f"wall={probe['wall_s']:.1f}s")
+            print(
+                f"[metallo_smoke]  >> decode_smoke step={step}: "
+                f"decode_ratio={probe['decode_ratio']:.3f}  "
+                f"n_decoded={probe['n_decoded']}/{args.decode_smoke_samples}  "
+                f"mean_atoms={probe['mean_atoms']:.1f}  "
+                f"disconnected={probe['disconnected_count']}  "
+                f"wall={probe['wall_s']:.1f}s"
+            )
         log.append({"step": step, "loss": float(loss)})
 
     wall = time.time() - t0
-    print(f"[metallo_smoke] done in {wall:.1f}s ({n_param_steps} param steps,"
-          f" {wall / max(1, n_param_steps):.2f}s/step)")
+    print(
+        f"[metallo_smoke] done in {wall:.1f}s ({n_param_steps} param steps,"
+        f" {wall / max(1, n_param_steps):.2f}s/step)"
+    )
 
     # -- 5. Aggregate + write final.json ---------------------------------
     # Compute summary stats
@@ -479,8 +538,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             # writer indexes ``delta_first_to_last`` unconditionally, so a
             # missing key turned a 0-step run (e.g. a step-1 training error)
             # into a KeyError that masked the real failure.
-            return {"n": 0, "first": None, "last": None, "min": None,
-                    "max": None, "delta_first_to_last": None}
+            return {
+                "n": 0,
+                "first": None,
+                "last": None,
+                "min": None,
+                "max": None,
+                "delta_first_to_last": None,
+            }
         return {
             "n": len(xs),
             "first": float(xs[0]),
@@ -491,14 +556,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         }
 
     decode_summary = {
-        "decode_ratio_at_200": next((p["decode_ratio"] for p in decode_probes
-                                      if p["step"] == 200), None),
-        "decode_ratio_at_500": next((p["decode_ratio"] for p in decode_probes
-                                      if p["step"] == 500), None),
-        "decode_ratio_at_1000": next((p["decode_ratio"] for p in decode_probes
-                                       if p["step"] == 1000), None),
-        "max_decode_ratio": float(max((p["decode_ratio"] for p in decode_probes),
-                                       default=0.0)),
+        "decode_ratio_at_200": next(
+            (p["decode_ratio"] for p in decode_probes if p["step"] == 200), None
+        ),
+        "decode_ratio_at_500": next(
+            (p["decode_ratio"] for p in decode_probes if p["step"] == 500), None
+        ),
+        "decode_ratio_at_1000": next(
+            (p["decode_ratio"] for p in decode_probes if p["step"] == 1000), None
+        ),
+        "max_decode_ratio": float(
+            max((p["decode_ratio"] for p in decode_probes), default=0.0)
+        ),
         "first_decode_ratio_nonzero_step": next(
             (p["step"] for p in decode_probes if p["decode_ratio"] > 0.0),
             None,
@@ -528,9 +597,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "seed": args.seed,
         },
         "wall_clock_s": wall,
-        "loss_curves_summary": {
-            k: _summary(v) for k, v in loss_curves.items()
-        },
+        "loss_curves_summary": {k: _summary(v) for k, v in loss_curves.items()},
         "decode_summary": decode_summary,
         "p0_fixes_active": {
             "F1_bond_aware_decoder_wired": True,
@@ -556,8 +623,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             {
                 "velocity_field": adapter.velocity_field.state_dict(),
                 "pocket_encoder": adapter.pocket_encoder.state_dict(),
-                "bond_head": (adapter.bond_head.state_dict()
-                               if adapter.bond_head is not None else None),
+                "bond_head": (
+                    adapter.bond_head.state_dict()
+                    if adapter.bond_head is not None
+                    else None
+                ),
                 "config": final_metrics["config"],
                 "step": n_param_steps,
             },
@@ -589,10 +659,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     verdict_lift = (last_dr or 0.0) > 0.0
     verdict_text = (
-        "MEASURED decode lift from 0/192 floor" if verdict_lift
+        "MEASURED decode lift from 0/192 floor"
+        if verdict_lift
         else "STILL 0 — coordinate-quality wall persists (bond head trains but decoder fails)"
     )
-    md = f"""# Phase 3 Smoke Retrain — Stacked P0+P1 Fixes on 500-mol Metallodrug Pool
+    md = (
+        f"""# Phase 3 Smoke Retrain — Stacked P0+P1 Fixes on 500-mol Metallodrug Pool
 
 **Date**: 2026-09-16
 **Script**: `molmetal/scripts/metallo_drug_smoke_retrain.py`
@@ -647,11 +719,13 @@ def main(argv: Sequence[str] | None = None) -> int:
 ## Decode smoke (n_samples={args.decode_smoke_samples} per checkpoint)
 | step | decode_ratio | n_decoded | mean_atoms | disconnected | wall_s |
 |---|---|---|---|---|---|
-""" + "\n".join(
-        f"| {p['step']} | {p['decode_ratio']:.3f} | {p['n_decoded']} | "
-        f"{p['mean_atoms']:.1f} | {p['disconnected_count']} | {p['wall_s']:.1f} |"
-        for p in decode_probes
-    ) + f"""
+"""
+        + "\n".join(
+            f"| {p['step']} | {p['decode_ratio']:.3f} | {p['n_decoded']} | "
+            f"{p['mean_atoms']:.1f} | {p['disconnected_count']} | {p['wall_s']:.1f} |"
+            for p in decode_probes
+        )
+        + f"""
 
 **decode_ratio at step 200**: {decode_summary["decode_ratio_at_200"]}
 **decode_ratio at step 500**: {decode_summary["decode_ratio_at_500"]}
@@ -671,6 +745,7 @@ References:
 JSON: `final.json`
 Checkpoint: `{final_metrics.get("checkpoint_path", "NOT SAVED")}`
 """
+    )
     md_path.write_text(md)
     print(f"[metallo_smoke] wrote {md_path}")
     print(f"[metallo_smoke] VERDICT: {verdict_text}")

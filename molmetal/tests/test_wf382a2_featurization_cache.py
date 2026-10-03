@@ -77,8 +77,9 @@ def _stub_batch_molgraph_ctor(mgs: list) -> object:
         [torch.full(m.V.shape, i, dtype=torch.int64) for i, m in enumerate(mgs)],
         dim=0,
     )
-    return _StubBatchMolGraph(V=V, E=E, edge_index=edge_index,
-                              rev_edge_index=rev_edge_index, batch=batch)
+    return _StubBatchMolGraph(
+        V=V, E=E, edge_index=edge_index, rev_edge_index=rev_edge_index, batch=batch
+    )
 
 
 class _StubBatchMolGraph:
@@ -143,9 +144,9 @@ def test_dmpnn_cache_hit_rate(canonical_smiles_pool):
     )
     assert cache.stats.n_batch_hit + cache.stats.n_batch_miss == n_epochs * n_batches
     expected_hit_rate = (n_epochs - 1) / n_epochs  # 0.6667
-    assert cache.stats.batch_hit_rate >= expected_hit_rate - 1e-9, (
-        f"batch_hit_rate={cache.stats.batch_hit_rate:.4f} < {expected_hit_rate:.4f}"
-    )
+    assert (
+        cache.stats.batch_hit_rate >= expected_hit_rate - 1e-9
+    ), f"batch_hit_rate={cache.stats.batch_hit_rate:.4f} < {expected_hit_rate:.4f}"
     # cache_info() must round-trip.
     info = cache.cache_info()
     assert info["n_canonical_smiles"] == len(canonical_smiles_pool)
@@ -203,14 +204,14 @@ def test_chemprop_v3_cache_hit_rate(canonical_smiles_pool):
             cache.get_or_build_batch(ep, bi, batch, "cpu", _stub_batch_molgraph_ctor)
 
     # Verify hit accounting.
-    assert cache.stats.n_hit == (n_epochs - 1) * n_batches, (
-        f"Expected {(n_epochs - 1) * n_batches} hits, got {cache.stats.n_hit}"
-    )
+    assert (
+        cache.stats.n_hit == (n_epochs - 1) * n_batches
+    ), f"Expected {(n_epochs - 1) * n_batches} hits, got {cache.stats.n_hit}"
     assert cache.stats.n_hit + cache.stats.n_miss == n_epochs * n_batches
     expected_hit_rate = (n_epochs - 1) / n_epochs  # 0.6667
-    assert cache.stats.hit_rate >= expected_hit_rate - 1e-9, (
-        f"hit_rate={cache.stats.hit_rate:.4f} < {expected_hit_rate:.4f}"
-    )
+    assert (
+        cache.stats.hit_rate >= expected_hit_rate - 1e-9
+    ), f"hit_rate={cache.stats.hit_rate:.4f} < {expected_hit_rate:.4f}"
 
     # Verify per-molecule featurisation contract.
     for smi in canonical_smiles_pool[:3]:

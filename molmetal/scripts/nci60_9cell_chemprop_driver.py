@@ -35,6 +35,7 @@ Output JSON shape
       "honest_framing_note": "..."
     }
 """
+
 from __future__ import annotations
 
 import argparse
@@ -92,20 +93,20 @@ __all__ = [
 # Defaults — 9 canonical NCI-60 cells
 # ---------------------------------------------------------------------------
 DEFAULT_9_CELLS = [
-    "MCF7",        # breast
-    "A2780",       # ovarian
-    "A549",        # lung
-    "HCT116",      # colon
-    "PC3",         # prostate
-    "HL60",        # leukaemia
-    "HCT-116",     # colon (alt)
-    "A2780cis",    # cisplatin-resistant ovarian
-    "DU145",       # prostate (alt)
+    "MCF7",  # breast
+    "A2780",  # ovarian
+    "A549",  # lung
+    "HCT116",  # colon
+    "PC3",  # prostate
+    "HL60",  # leukaemia
+    "HCT-116",  # colon (alt)
+    "A2780cis",  # cisplatin-resistant ovarian
+    "DU145",  # prostate (alt)
 ]
-DEFAULT_NUM_WORKERS: int = 0      # CPU smoke default
+DEFAULT_NUM_WORKERS: int = 0  # CPU smoke default
 DEFAULT_BATCH: int = 64
 DEFAULT_LR: float = 1e-3
-DEFAULT_TIME_BUDGET_S: float = 1 * 3600.0   # 1 hr wall budget for full 9-cell
+DEFAULT_TIME_BUDGET_S: float = 1 * 3600.0  # 1 hr wall budget for full 9-cell
 
 
 # ---------------------------------------------------------------------------
@@ -251,11 +252,15 @@ def run_one_per_cell(
     # probe n_test for the auto mode.
     idx = np.arange(len(smiles_subset))
     idx_train_full, idx_test_random = train_test_split(
-        idx, test_size=0.20, random_state=seed,
+        idx,
+        test_size=0.20,
+        random_state=seed,
         stratify=active_subset.astype(int) if len(set(active_subset)) > 1 else None,
     )
     idx_train, idx_val = train_test_split(
-        idx_train_full, test_size=0.125, random_state=seed,
+        idx_train_full,
+        test_size=0.125,
+        random_state=seed,
         stratify=(
             active_subset[idx_train_full].astype(int)
             if len(set(active_subset[idx_train_full])) > 1
@@ -296,7 +301,8 @@ def run_one_per_cell(
                 "SPLIT FALLBACK (seed=%d): scaffold split requested but no "
                 "Bemis-Murcko group has >= n_test_min=%d rows; using random "
                 "80/10/20 — this run's test AUC is NOT scaffold-OOD.",
-                seed, n_test_min,
+                seed,
+                n_test_min,
             )
         else:
             train_idx, val_idx, test_idx_final, _lbl = out
@@ -339,7 +345,9 @@ def run_one_per_cell(
                     "(n_test=%d) nor any scaffold group reaches "
                     "n_test_min=%d; using random 80/10/20 — this run's "
                     "test AUC is NOT scaffold-OOD.",
-                    seed, len(test_idx_random), n_test_min,
+                    seed,
+                    len(test_idx_random),
+                    n_test_min,
                 )
     else:
         raise ValueError(
@@ -358,30 +366,47 @@ def run_one_per_cell(
     val_labels = active_subset[val_idx].astype(np.float32)
 
     train_dps = [
-        MoleculeDatapoint(mol=Chem.MolFromSmiles(smi), y=np.array([lbl], dtype=np.float32))
+        MoleculeDatapoint(
+            mol=Chem.MolFromSmiles(smi), y=np.array([lbl], dtype=np.float32)
+        )
         for smi, lbl in zip(train_smiles, train_labels)
     ]
     val_dps = [
-        MoleculeDatapoint(mol=Chem.MolFromSmiles(smi), y=np.array([lbl], dtype=np.float32))
+        MoleculeDatapoint(
+            mol=Chem.MolFromSmiles(smi), y=np.array([lbl], dtype=np.float32)
+        )
         for smi, lbl in zip(val_smiles, val_labels)
     ]
     train_ds = MoleculeDataset(train_dps, n_workers=num_workers)
     val_ds = MoleculeDataset(val_dps, n_workers=num_workers)
     train_dl = build_dataloader(
-        train_ds, batch_size=batch_size, num_workers=num_workers,
-        shuffle=True, seed=seed,
+        train_ds,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        shuffle=True,
+        seed=seed,
     )
     val_dl = build_dataloader(
-        val_ds, batch_size=batch_size, num_workers=num_workers, shuffle=False,
+        val_ds,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        shuffle=False,
     )
 
     mp = AtomMessagePassing(
-        d_v=atom_fdim, d_e=bond_fdim, d_h=hidden_dim, depth=depth, dropout=0.0,
+        d_v=atom_fdim,
+        d_e=bond_fdim,
+        d_h=hidden_dim,
+        depth=depth,
+        dropout=0.0,
     ).to(device)
     agg = SumAggregation().to(device)
     head = BinaryClassificationFFN(
-        n_tasks=1, input_dim=mp.output_dim, hidden_dim=hidden_dim,
-        n_layers=2, dropout=0.0,
+        n_tasks=1,
+        input_dim=mp.output_dim,
+        hidden_dim=hidden_dim,
+        n_layers=2,
+        dropout=0.0,
     ).to(device)
     optim = torch.optim.Adam(
         list(mp.parameters()) + list(agg.parameters()) + list(head.parameters()),
@@ -398,14 +423,18 @@ def run_one_per_cell(
             timed_out = True
             break
         epoch_done = epoch + 1
-        mp.train(); agg.train(); head.train()
+        mp.train()
+        agg.train()
+        head.train()
         total_loss = 0.0
         nb = 0
         for batch in train_dl:
             bmg = bmg_to_device(batch.bmg, device)
             Y = batch.Y.to(device).float()
             optim.zero_grad()
-            with torch.amp.autocast("cuda", dtype=torch.bfloat16, enabled=autocast_enabled):
+            with torch.amp.autocast(
+                "cuda", dtype=torch.bfloat16, enabled=autocast_enabled
+            ):
                 H_v = mp(bmg)
                 H = agg(H_v, bmg.batch)
                 logit = head.train_step(H)
@@ -417,19 +446,26 @@ def run_one_per_cell(
         if epoch % 10 == 0 or epoch == epochs - 1:
             logger.info(
                 "[seed=%d] epoch=%d/%d train_loss=%.4f elapsed=%.1fs",
-                seed, epoch, epochs - 1, total_loss / max(nb, 1),
+                seed,
+                epoch,
+                epochs - 1,
+                total_loss / max(nb, 1),
                 time.time() - t_start,
             )
 
     # Score on val fold (held-out for honest reporting).
-    mp.eval(); agg.eval(); head.eval()
+    mp.eval()
+    agg.eval()
+    head.eval()
     scores: List[float] = []
     labels: List[int] = []
     with torch.no_grad():
         for batch in val_dl:
             bmg = bmg_to_device(batch.bmg, device)
             Y_cpu = batch.Y.float()
-            with torch.amp.autocast("cuda", dtype=torch.bfloat16, enabled=autocast_enabled):
+            with torch.amp.autocast(
+                "cuda", dtype=torch.bfloat16, enabled=autocast_enabled
+            ):
                 H_v = mp(bmg)
                 H = agg(H_v, bmg.batch)
                 logit = head.train_step(H)
@@ -447,8 +483,11 @@ def run_one_per_cell(
     return Nci60CellRun(
         cell="?",
         seed=int(seed),
-        n_train=n_train, n_val=n_val, n_test=n_test,
-        pos_rate_train=pos_rate_train, pos_rate_test=pos_rate_test,
+        n_train=n_train,
+        n_val=n_val,
+        n_test=n_test,
+        pos_rate_train=pos_rate_train,
+        pos_rate_test=pos_rate_test,
         in_domain_test_auc=test_auc,
         elapsed_s=float(elapsed),
         epoch_count=int(epoch_done),
@@ -488,7 +527,12 @@ def execute_sweep(args: argparse.Namespace) -> Dict[str, Any]:
         device = torch.device("cpu")
     logger.info(
         "device=%s cells=%s seeds=%s epochs=%d hidden=%d depth=%d",
-        device, cells, args.seeds, args.epochs, args.hidden, args.depth,
+        device,
+        cells,
+        args.seeds,
+        args.epochs,
+        args.hidden,
+        args.depth,
     )
 
     df = pd.read_csv(csv_path, low_memory=False)
@@ -507,8 +551,9 @@ def execute_sweep(args: argparse.Namespace) -> Dict[str, Any]:
         if m is not None:
             matched[c] = m
         else:
-            logger.warning("requested cell %r not found in CSV (available: %s)",
-                           c, available_cells)
+            logger.warning(
+                "requested cell %r not found in CSV (available: %s)", c, available_cells
+            )
     if not matched:
         return {
             "ran": False,
@@ -519,21 +564,26 @@ def execute_sweep(args: argparse.Namespace) -> Dict[str, Any]:
         }
     logger.info(
         "matched %d/%d requested cells: %s",
-        len(matched), len(cells),
+        len(matched),
+        len(cells),
         {c: matched[c] for c in matched},
     )
 
     # Probe atom/bond fdim with a tiny sample.
     sample_smi = df["smiles"].astype(str).tolist()[:8]
     sample_dps = [
-        MoleculeDatapoint(mol=Chem.MolFromSmiles(s), y=np.array([0.5], dtype=np.float32))
+        MoleculeDatapoint(
+            mol=Chem.MolFromSmiles(s), y=np.array([0.5], dtype=np.float32)
+        )
         for s in sample_smi
     ]
     sample_ds = MoleculeDataset(sample_dps, n_workers=0)
     sample_dl = build_dataloader(sample_ds, batch_size=8, num_workers=0, shuffle=False)
     sample_batch = next(iter(sample_dl))
     atom_fdim = int(sample_batch.bmg.V.shape[1])
-    bond_fdim = int(sample_batch.bmg.E.shape[1]) if sample_batch.bmg.E.numel() > 0 else 14
+    bond_fdim = (
+        int(sample_batch.bmg.E.shape[1]) if sample_batch.bmg.E.numel() > 0 else 14
+    )
     logger.info("atom_fdim=%d bond_fdim=%d", atom_fdim, bond_fdim)
 
     # Per-cell subsets.
@@ -585,10 +635,12 @@ def execute_sweep(args: argparse.Namespace) -> Dict[str, Any]:
                 effective_n_test_min = int(args.n_test_min)
             per_cell_n_test_min[c] = effective_n_test_min
             per_cell_split_choice[c] = (
-                "scaffold_fallback" if (
+                "scaffold_fallback"
+                if (
                     n_test_random_est < effective_n_test_min
                     or n_train_random_est < effective_n_test_min
-                ) else "temporal"
+                )
+                else "temporal"
             )
         else:
             effective_n_test_min = int(args.n_test_min)
@@ -598,8 +650,12 @@ def execute_sweep(args: argparse.Namespace) -> Dict[str, Any]:
             "cell=%s (csv=%s) n_rows=%d pos_rate=%.4f "
             "n_test_random_est=%d n_test_min_per_cell=%d "
             "split_choice=%s",
-            c, c_avail, n_rows_c, float(per_cell_active[c].mean()),
-            n_test_random_est, per_cell_n_test_min[c],
+            c,
+            c_avail,
+            n_rows_c,
+            float(per_cell_active[c].mean()),
+            n_test_random_est,
+            per_cell_n_test_min[c],
             per_cell_split_choice[c],
         )
 
@@ -641,8 +697,12 @@ def execute_sweep(args: argparse.Namespace) -> Dict[str, Any]:
                 logger.info(
                     "cell=%s seed=%d in_domain_test_auc=%.4f epochs=%d "
                     "elapsed=%.1fs status=%s",
-                    cell, seed, run.in_domain_test_auc, run.epoch_count,
-                    run.elapsed_s, run.status,
+                    cell,
+                    seed,
+                    run.in_domain_test_auc,
+                    run.epoch_count,
+                    run.elapsed_s,
+                    run.status,
                 )
                 summary_records.append(run)
                 sweep_results[cell][str(int(seed))] = {
@@ -656,12 +716,19 @@ def execute_sweep(args: argparse.Namespace) -> Dict[str, Any]:
             except Exception as exc:
                 logger.error(
                     "cell=%s seed=%d FAILED: %s\n%s",
-                    cell, seed, exc, traceback.format_exc(),
+                    cell,
+                    seed,
+                    exc,
+                    traceback.format_exc(),
                 )
                 run = Nci60CellRun(
-                    cell=cell, seed=int(seed),
-                    n_train=0, n_val=0, n_test=0,
-                    pos_rate_train=float("nan"), pos_rate_test=float("nan"),
+                    cell=cell,
+                    seed=int(seed),
+                    n_train=0,
+                    n_val=0,
+                    n_test=0,
+                    pos_rate_train=float("nan"),
+                    pos_rate_test=float("nan"),
                     in_domain_test_auc=float("nan"),
                     elapsed_s=float(time.time() - t_run),
                     epoch_count=0,
@@ -701,8 +768,7 @@ def execute_sweep(args: argparse.Namespace) -> Dict[str, Any]:
     per_cell_split_actual: Dict[str, str] = {}
     for cell in matched:
         paths = {
-            r.path_taken for r in summary_records
-            if r.cell == cell and r.status == "ok"
+            r.path_taken for r in summary_records if r.cell == cell and r.status == "ok"
         }
         if len(paths) == 1:
             per_cell_split_actual[cell] = next(iter(paths))
@@ -715,7 +781,8 @@ def execute_sweep(args: argparse.Namespace) -> Dict[str, Any]:
                 "cell=%s ACTUAL split path=random_fallback (planned=%s): "
                 "all ok seeds use random 80/10/20 — NOT scaffold-OOD. "
                 "AUCs for this cell must not be reported as scaffold-OOD.",
-                cell, per_cell_split_choice.get(cell),
+                cell,
+                per_cell_split_choice.get(cell),
             )
 
     per_cell_summary: Dict[str, dict] = {}
@@ -723,7 +790,8 @@ def execute_sweep(args: argparse.Namespace) -> Dict[str, Any]:
     for cell in matched:
         per_seed = sweep_results.get(cell, {})
         vals = [
-            v["auc"] for v in per_seed.values()
+            v["auc"]
+            for v in per_seed.values()
             if v["status"] == "ok" and v["auc"] == v["auc"]
         ]
         rec_for_cell = next((r for r in summary_records if r.cell == cell), None)
@@ -925,7 +993,7 @@ def dry_run_plan(args: argparse.Namespace) -> Dict[str, Any]:
             "in Wf-308C; needs CSV + chemprop v2 + USER_OK for full GPU)"
             if csv_exists
             else "CSV_MISSING — per Wf-306B honest-negative do not run "
-                 "--execute until the CSV exists."
+            "--execute until the CSV exists."
         ),
     }
 

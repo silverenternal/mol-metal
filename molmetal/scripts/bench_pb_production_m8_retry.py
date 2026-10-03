@@ -103,8 +103,16 @@ logging.basicConfig(
 log = logging.getLogger("bench_pb_production_m8_retry")
 
 DEFAULT_POCKETS: Tuple[str, ...] = (
-    "830c", "1h36", "3eml", "3ny8", "4aaw",
-    "4rlu", "1g9v", "2hnx", "4rn0", "1fmc",
+    "830c",
+    "1h36",
+    "3eml",
+    "3ny8",
+    "4aaw",
+    "4rlu",
+    "1g9v",
+    "2hnx",
+    "4rn0",
+    "1fmc",
 )
 DEFAULT_CANDIDATES_FILE = str(_HERE / "_demo_5_metaldrugs.txt")
 # Built-in organic-only fallback (drug-like fragments that all pass PB
@@ -113,10 +121,10 @@ DEFAULT_CANDIDATES_FILE = str(_HERE / "_demo_5_metaldrugs.txt")
 # candidates — the headline is the metal-drug list — but they give the
 # caller a way to verify the adapter is wired correctly.
 BUILTIN_ORGANIC_FALLBACK: Tuple[Tuple[str, str], ...] = (
-    ("aspirin",  "CC(=O)Oc1ccccc1C(=O)O"),
+    ("aspirin", "CC(=O)Oc1ccccc1C(=O)O"),
     ("caffeine", "CN1C=NC2=C1C(=O)N(C(=O)N2C)C"),
     ("ibuprofen", "CC(C)Cc1ccc(C(C)C(=O)O)cc1"),
-    ("benzene",   "c1ccccc1"),
+    ("benzene", "c1ccccc1"),
     ("paracetamol", "CC(=O)Nc1ccc(O)cc1"),
 )
 DEFAULT_OUTPUT_DIR = "molmetal/reports/wf63_script4_retry"
@@ -139,7 +147,7 @@ class PBCandResult:
     n_passed: int
     pass_rate: float
     failed_checks: List[str] = field(default_factory=list)
-    pb_status: str = ""              # passed | failed | error | skipped
+    pb_status: str = ""  # passed | failed | error | skipped
     wall_seconds: float = 0.0
     notes: str = ""
 
@@ -153,9 +161,9 @@ class PocketMetrics:
     n_candidates: int
     n_pb_eligible: int
     n_pb_pass: int
-    pb_pass_rate: Optional[float]      # n_pb_pass / n_pb_eligible
+    pb_pass_rate: Optional[float]  # n_pb_pass / n_pb_eligible
     pb_pass_rate_mol: Optional[float]  # alias for clarity
-    n_checks_total: int                # sum across cands × 14
+    n_checks_total: int  # sum across cands × 14
     per_check_pass: Dict[str, int] = field(default_factory=dict)
     per_check_total: Dict[str, int] = field(default_factory=dict)
     per_check_pass_rate: Dict[str, float] = field(default_factory=dict)
@@ -179,6 +187,7 @@ def _have_real_pb() -> bool:
         from molmetal_lam.sbdd_env.posebusters_adapter import (
             _have_posebusters,
         )
+
         return bool(_have_posebusters())
     except Exception as exc:
         log.warning("PB availability probe failed: %s", exc)
@@ -192,15 +201,21 @@ def _validate_mol(smiles: str, adapter) -> PBCandResult:
         report = adapter.validate_mol(smiles)
     except Exception as exc:
         return PBCandResult(
-            smiles=smiles, name=smiles[:24],
-            n_atoms=0, passed=False,
-            n_checks=0, n_passed=0, pass_rate=0.0,
+            smiles=smiles,
+            name=smiles[:24],
+            n_atoms=0,
+            passed=False,
+            n_checks=0,
+            n_passed=0,
+            pass_rate=0.0,
             failed_checks=[f"adapter_error:{type(exc).__name__}"],
-            pb_status="error", wall_seconds=time.monotonic() - t0,
+            pb_status="error",
+            wall_seconds=time.monotonic() - t0,
             notes=str(exc)[:80],
         )
     return PBCandResult(
-        smiles=smiles, name=smiles[:24],
+        smiles=smiles,
+        name=smiles[:24],
         n_atoms=_count_atoms(smiles),
         passed=bool(report.passed),
         n_checks=int(report.n_checks),
@@ -216,6 +231,7 @@ def _validate_mol(smiles: str, adapter) -> PBCandResult:
 def _count_atoms(smiles: str) -> int:
     try:
         from rdkit import Chem  # type: ignore
+
         mol = Chem.MolFromSmiles(smiles)
         return mol.GetNumAtoms() if mol else 0
     except Exception:
@@ -259,8 +275,9 @@ def _load_fixture_candidates(path: str) -> List[Tuple[str, str]]:
     return candidates
 
 
-def _try_real_mcts(pocket_id: str, ligand_path: Optional[Path],
-                   seed: int, n_top_k: int) -> Optional[List[Tuple[str, str]]]:
+def _try_real_mcts(
+    pocket_id: str, ligand_path: Optional[Path], seed: int, n_top_k: int
+) -> Optional[List[Tuple[str, str]]]:
     """Attempt a real Lambda MCTS candidate generation.
 
     Returns ``None`` if MCTS is not importable / errors out (we
@@ -268,7 +285,8 @@ def _try_real_mcts(pocket_id: str, ligand_path: Optional[Path],
     completes)."""
     try:
         from molmetal.scripts.r4_lambda_only_run import (  # type: ignore
-            load_reference_smiles, run_one_cell,
+            load_reference_smiles,
+            run_one_cell,
         )
     except Exception as exc:
         log.info("MCTS import not available (%s); using fixture", exc)
@@ -285,8 +303,7 @@ def _try_real_mcts(pocket_id: str, ligand_path: Optional[Path],
             n_top_k=n_top_k,
         )
     except Exception as exc:
-        log.info("MCTS run failed for %s (seed=%d): %s",
-                 pocket_id, seed, exc)
+        log.info("MCTS run failed for %s (seed=%d): %s", pocket_id, seed, exc)
         return None
     cands: List[Tuple[str, str]] = []
     for smi in (cell.candidates or [])[:n_top_k]:
@@ -329,19 +346,21 @@ def _per_pocket_cell(
     n_eligible = 0
     for name, smi in candidates:
         res = _validate_mol(smi, adapter)
-        cand_results.append({
-            "name": res.name,
-            "smiles": res.smiles,
-            "passed": res.passed,
-            "pb_status": res.pb_status,
-            "n_atoms": res.n_atoms,
-            "n_checks": res.n_checks,
-            "n_passed": res.n_passed,
-            "pass_rate": res.pass_rate,
-            "failed_checks": res.failed_checks,
-            "wall_seconds": res.wall_seconds,
-            "notes": res.notes,
-        })
+        cand_results.append(
+            {
+                "name": res.name,
+                "smiles": res.smiles,
+                "passed": res.passed,
+                "pb_status": res.pb_status,
+                "n_atoms": res.n_atoms,
+                "n_checks": res.n_checks,
+                "n_passed": res.n_passed,
+                "pass_rate": res.pass_rate,
+                "failed_checks": res.failed_checks,
+                "wall_seconds": res.wall_seconds,
+                "notes": res.notes,
+            }
+        )
         # Aggregate only when PB actually ran (n_checks > 0).
         if res.n_checks > 0:
             n_eligible += 1
@@ -363,8 +382,7 @@ def _per_pocket_cell(
     cell.per_check_pass = dict(per_check_pass)
     cell.per_check_total = dict(per_check_total)
     cell.per_check_pass_rate = {
-        k: (per_check_pass[k] / per_check_total[k])
-        if per_check_total.get(k) else None
+        k: (per_check_pass[k] / per_check_total[k]) if per_check_total.get(k) else None
         for k in sorted(per_check_total.keys())
     }
     cell.candidates = cand_results
@@ -385,7 +403,7 @@ def _load_pocket_status(path: str) -> Dict[str, Dict]:
     with open(path) as f:
         d = json.load(f)
     out: Dict[str, Dict] = {}
-    for p in (d.get("pockets") or []):
+    for p in d.get("pockets") or []:
         if p.get("status") != "READY":
             continue
         out[p["pocket_id"]] = {
@@ -405,8 +423,9 @@ def aggregate(cells: List[PocketMetrics]) -> Dict:
     n_eligible = len(eligible)
     n_pass = sum(c.n_pb_pass for c in cells)
     n_attempted = sum(c.n_pb_eligible for c in cells)
-    rates = [c.pb_pass_rate for c in eligible
-             if isinstance(c.pb_pass_rate, (int, float))]
+    rates = [
+        c.pb_pass_rate for c in eligible if isinstance(c.pb_pass_rate, (int, float))
+    ]
     status_counts = Counter(c.status for c in cells)
     per_check_pass: Dict[str, int] = defaultdict(int)
     per_check_total: Dict[str, int] = defaultdict(int)
@@ -429,7 +448,8 @@ def aggregate(cells: List[PocketMetrics]) -> Dict:
         "per_check_total": dict(per_check_total),
         "per_check_pass_rate": {
             k: (per_check_pass[k] / per_check_total[k])
-            if per_check_total.get(k) else None
+            if per_check_total.get(k)
+            else None
             for k in sorted(per_check_total.keys())
         },
     }
@@ -438,18 +458,31 @@ def aggregate(cells: List[PocketMetrics]) -> Dict:
 # ---------------------------------------------------------------------------
 # Markdown writer
 # ---------------------------------------------------------------------------
-def write_summary_md(cells: List[PocketMetrics], agg: Dict,
-                     path: Path, pb_installed: bool,
-                     n_pockets: int, n_cands: int, n_seeds: int,
-                     use_real_mcts: bool, target_met: bool) -> None:
+def write_summary_md(
+    cells: List[PocketMetrics],
+    agg: Dict,
+    path: Path,
+    pb_installed: bool,
+    n_pockets: int,
+    n_cands: int,
+    n_seeds: int,
+    use_real_mcts: bool,
+    target_met: bool,
+) -> None:
     def fmt(v):
         if isinstance(v, float) and math.isfinite(v):
             return f"{v:.3f}"
         if v is None:
             return "—"
         return str(v)
-    verdict = ("PASS" if target_met else
-               "HONEST_NEGATIVE" if not pb_installed else "BELOW_TARGET")
+
+    verdict = (
+        "PASS"
+        if target_met
+        else "HONEST_NEGATIVE"
+        if not pb_installed
+        else "BELOW_TARGET"
+    )
     lines = [
         "# Wf-63 Phase 3 — m8 PoseBusters production re-run (script4 retry)",
         "",
@@ -496,20 +529,24 @@ def write_summary_md(cells: List[PocketMetrics], agg: Dict,
         "## Honest framing",
         "",
         f"* **Real PB binary**: {pb_installed}. "
-        + ("Every cell ran the real PoseBusters ``mol``-mode adapter (14 chemistry checks)."
-           if pb_installed else
-           "Real PB binary is NOT installed on this host — pass rates are "
-           "honest 0.0 + HONEST_NEGATIVE warning. "
-           "Install via `uv pip install posebusters`.")
+        + (
+            "Every cell ran the real PoseBusters ``mol``-mode adapter (14 chemistry checks)."
+            if pb_installed
+            else "Real PB binary is NOT installed on this host — pass rates are "
+            "honest 0.0 + HONEST_NEGATIVE warning. "
+            "Install via `uv pip install posebusters`."
+        )
         + "",
         f"* **Vina availability**: not required for this phase (PB ``mol`` mode "
         "needs only RDKit + 3D embedding).  Wf-63 Phase 1 SHIP the Vina install "
         "status; Phase 3 re-runs only the m8 portion of script4.",
         f"* **Candidate source**: "
-        + ("real Lambda MCTS via ``r4_lambda_only_run.run_one_cell``."
-           if use_real_mcts else
-           "fixture list from ``molmetal/scripts/_demo_5_metaldrugs.txt`` "
-           "(8 known Pt/Ru/Ir/Au/Pd drugs)."),
+        + (
+            "real Lambda MCTS via ``r4_lambda_only_run.run_one_cell``."
+            if use_real_mcts
+            else "fixture list from ``molmetal/scripts/_demo_5_metaldrugs.txt`` "
+            "(8 known Pt/Ru/Ir/Au/Pd drugs)."
+        ),
         f"* **Target gate**: m8 ≥ {TARGET_PASS_RATE:.2f}.  "
         f"Macro per-pocket = {fmt(agg['pb_pass_rate_macro'])}; "
         f"micro per-molecule = {fmt(agg['pb_pass_rate_micro'])}.",
@@ -534,39 +571,68 @@ def write_summary_md(cells: List[PocketMetrics], agg: Dict,
 # ---------------------------------------------------------------------------
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--pockets", nargs="+", default=list(DEFAULT_POCKETS),
-                        help="Pocket IDs to bench (default: wf30 10/10 READY)")
-    parser.add_argument("--cands", type=int, default=5,
-                        help="Number of candidates per pocket "
-                             "(capped at fixture length; default 5)")
-    parser.add_argument("--organic-fallback", dest="organic_fallback",
-                        action=argparse.BooleanOptionalAction, default=False,
-                        help="Append the built-in 5-organic-fallback "
-                             "(aspirin/caffeine/ibuprofen/benzene/"
-                             "paracetamol) to the candidate pool when "
-                             "the metal-drug fixture returns 0/0; "
-                             "default off (we keep the honest "
-                             "metal-drug m8 = 0.0 finding).")
-    parser.add_argument("--seeds", type=int, nargs="+", default=list(DEFAULT_SEEDS),
-                        help="Seed list (default: [0])")
-    parser.add_argument("--use-real-pb", dest="use_real_pb",
-                        action=argparse.BooleanOptionalAction, default=True,
-                        help="Use the real PoseBusters adapter (default on)")
-    parser.add_argument("--use-real-mcts", dest="use_real_mcts",
-                        action=argparse.BooleanOptionalAction, default=False,
-                        help="Try real Lambda MCTS candidates (falls back "
-                             "to fixture if MCTS fails)")
+    parser.add_argument(
+        "--pockets",
+        nargs="+",
+        default=list(DEFAULT_POCKETS),
+        help="Pocket IDs to bench (default: wf30 10/10 READY)",
+    )
+    parser.add_argument(
+        "--cands",
+        type=int,
+        default=5,
+        help="Number of candidates per pocket " "(capped at fixture length; default 5)",
+    )
+    parser.add_argument(
+        "--organic-fallback",
+        dest="organic_fallback",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Append the built-in 5-organic-fallback "
+        "(aspirin/caffeine/ibuprofen/benzene/"
+        "paracetamol) to the candidate pool when "
+        "the metal-drug fixture returns 0/0; "
+        "default off (we keep the honest "
+        "metal-drug m8 = 0.0 finding).",
+    )
+    parser.add_argument(
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=list(DEFAULT_SEEDS),
+        help="Seed list (default: [0])",
+    )
+    parser.add_argument(
+        "--use-real-pb",
+        dest="use_real_pb",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Use the real PoseBusters adapter (default on)",
+    )
+    parser.add_argument(
+        "--use-real-mcts",
+        dest="use_real_mcts",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Try real Lambda MCTS candidates (falls back " "to fixture if MCTS fails)",
+    )
     parser.add_argument("--candidates-file", default=DEFAULT_CANDIDATES_FILE)
     parser.add_argument("--pocket-status", default=DEFAULT_POCKET_STATUS)
     parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR)
-    parser.add_argument("--pb-mode", choices=("mol",), default="mol",
-                        help="PoseBusters mode (only mol supported in this phase)")
+    parser.add_argument(
+        "--pb-mode",
+        choices=("mol",),
+        default="mol",
+        help="PoseBusters mode (only mol supported in this phase)",
+    )
     args = parser.parse_args()
 
     pb_installed = _have_real_pb()
     if args.use_real_pb and not pb_installed:
-        log.warning("WARN: --use-real-pb requested but posebusters is not "
-                    "installed; will record HONEST_NEGATIVE.")
+        log.warning(
+            "WARN: --use-real-pb requested but posebusters is not "
+            "installed; will record HONEST_NEGATIVE."
+        )
     if not args.use_real_pb:
         log.warning("WARN: --use-real-pb=False; recording HONEST_NEGATIVE")
 
@@ -576,8 +642,9 @@ def main() -> int:
         return 2
     if args.organic_fallback:
         fixture = list(fixture) + list(BUILTIN_ORGANIC_FALLBACK)
-        log.info("Appended %d organic-fallback candidates",
-                 len(BUILTIN_ORGANIC_FALLBACK))
+        log.info(
+            "Appended %d organic-fallback candidates", len(BUILTIN_ORGANIC_FALLBACK)
+        )
     fixture = fixture[: max(1, int(args.cands))]
     log.info("Loaded %d fixture candidates from %s", len(fixture), args.candidates_file)
 
@@ -591,9 +658,14 @@ def main() -> int:
             from molmetal_lam.sbdd_env.posebusters_adapter import (
                 PoseBustersAdapter,
             )
+
             adapter = PoseBustersAdapter(mode=args.pb_mode)
-            log.info("PoseBusters adapter: %s (mode=%s, is_available=%s)",
-                     adapter.name, adapter._mode, pb_installed)
+            log.info(
+                "PoseBusters adapter: %s (mode=%s, is_available=%s)",
+                adapter.name,
+                adapter._mode,
+                pb_installed,
+            )
         except Exception as exc:
             log.warning("PoseBusters adapter init failed: %s", exc)
             pb_installed = False
@@ -608,32 +680,46 @@ def main() -> int:
         # Try real MCTS if requested
         cands = fixture
         if args.use_real_mcts:
-            ligand_path = Path(ps.get("source_pdb", "")) if ps.get("source_pdb") else None
-            mcts_cands = _try_real_mcts(pid, ligand_path,
-                                        int(args.seeds[0]),
-                                        max(1, int(args.cands)))
+            ligand_path = (
+                Path(ps.get("source_pdb", "")) if ps.get("source_pdb") else None
+            )
+            mcts_cands = _try_real_mcts(
+                pid, ligand_path, int(args.seeds[0]), max(1, int(args.cands))
+            )
             if mcts_cands:
                 cands = mcts_cands[: max(1, int(args.cands))]
         if not cands:
             log.warning("pocket %s: no candidates available", pid)
-            cells.append(PocketMetrics(
-                pocket_id=pid, n_candidates=0, n_pb_eligible=0, n_pb_pass=0,
-                pb_pass_rate=None, pb_pass_rate_mol=None, n_checks_total=0,
-                pb_binary_installed=pb_installed, pb_mode=args.pb_mode,
-                status="no_candidates",
-                notes="fixture_empty_and_mcts_failed",
-            ))
+            cells.append(
+                PocketMetrics(
+                    pocket_id=pid,
+                    n_candidates=0,
+                    n_pb_eligible=0,
+                    n_pb_pass=0,
+                    pb_pass_rate=None,
+                    pb_pass_rate_mol=None,
+                    n_checks_total=0,
+                    pb_binary_installed=pb_installed,
+                    pb_mode=args.pb_mode,
+                    status="no_candidates",
+                    notes="fixture_empty_and_mcts_failed",
+                )
+            )
             continue
         if pb_installed and adapter is not None:
             cell = _per_pocket_cell(pid, cands, adapter, args.pb_mode)
         else:
             # Honest stub: every cell returns 0/0
             cell = PocketMetrics(
-                pocket_id=pid, n_candidates=len(cands),
-                n_pb_eligible=0, n_pb_pass=0,
-                pb_pass_rate=0.0, pb_pass_rate_mol=0.0,
+                pocket_id=pid,
+                n_candidates=len(cands),
+                n_pb_eligible=0,
+                n_pb_pass=0,
+                pb_pass_rate=0.0,
+                pb_pass_rate_mol=0.0,
                 n_checks_total=0,
-                pb_binary_installed=False, pb_mode=args.pb_mode,
+                pb_binary_installed=False,
+                pb_mode=args.pb_mode,
                 status="honest_stub_no_real_pb",
                 notes="real_posebusters_not_installed",
                 candidates=[{"smiles": s, "name": n} for n, s in cands],
@@ -644,14 +730,19 @@ def main() -> int:
         (pocket_dir / "metrics.json").write_text(
             json.dumps(cell.to_dict(), indent=2, allow_nan=False) + "\n"
         )
-        log.info("pocket %s: %d cands, n_eligible=%d n_pass=%d rate=%s",
-                 pid, cell.n_candidates, cell.n_pb_eligible, cell.n_pb_pass,
-                 cell.pb_pass_rate)
+        log.info(
+            "pocket %s: %d cands, n_eligible=%d n_pass=%d rate=%s",
+            pid,
+            cell.n_candidates,
+            cell.n_pb_eligible,
+            cell.n_pb_pass,
+            cell.pb_pass_rate,
+        )
         cells.append(cell)
 
     agg = aggregate(cells)
     macro = agg.get("pb_pass_rate_macro")
-    target_met = (macro is not None and macro >= TARGET_PASS_RATE)
+    target_met = macro is not None and macro >= TARGET_PASS_RATE
     # Aggregate summary
     summary_payload = {
         "schema_version": 1,
@@ -676,15 +767,26 @@ def main() -> int:
         json.dumps(_clean(summary_payload), indent=2, allow_nan=False) + "\n"
     )
     write_summary_md(
-        cells, agg, output_dir / "m8_summary.md",
-        pb_installed, len(args.pockets), args.cands, len(args.seeds),
-        args.use_real_mcts, target_met,
+        cells,
+        agg,
+        output_dir / "m8_summary.md",
+        pb_installed,
+        len(args.pockets),
+        args.cands,
+        len(args.seeds),
+        args.use_real_mcts,
+        target_met,
     )
     elapsed = time.monotonic() - started
-    log.info("Wf-63 Phase 3 complete: %d pockets, macro=%s micro=%s "
-             "(target=%s) wall=%.1fs",
-             len(cells), agg["pb_pass_rate_macro"],
-             agg["pb_pass_rate_micro"], TARGET_PASS_RATE, elapsed)
+    log.info(
+        "Wf-63 Phase 3 complete: %d pockets, macro=%s micro=%s "
+        "(target=%s) wall=%.1fs",
+        len(cells),
+        agg["pb_pass_rate_macro"],
+        agg["pb_pass_rate_micro"],
+        TARGET_PASS_RATE,
+        elapsed,
+    )
     # Exit codes:
     #   0  = real PB exercised, all pockets completed (target met or not)
     #   2  = real PB unavailable (HONEST_NEGATIVE)

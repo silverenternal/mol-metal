@@ -27,6 +27,7 @@ Test design
   is exercising the ``compute_multiph_features`` path which we mock).
 * Fast budget: every test should complete in < 0.5 s on a typical CPU.
 """
+
 from __future__ import annotations
 
 import math
@@ -63,6 +64,7 @@ from molmetal.scripts.bench_multiph_pll_end_to_end_guarded import (  # type: ign
 # Wf-127 P2 closed-form proximal L2 operator
 # ---------------------------------------------------------------------------
 
+
 def test_proximal_l2_weight_zero_is_identity():
     """l2_weight=0 reproduces the Wf-37 P3 path exactly (no shrinkage)."""
     x = np.asarray([1.0, -2.0, 0.5, 0.0], dtype=float)
@@ -90,6 +92,7 @@ def test_proximal_l2_weight_can_clip_to_zero():
 # Wf-127 P2 invariants surfacing inside fit_hilbert_guarded
 # ---------------------------------------------------------------------------
 
+
 def test_fit_hilbert_guarded_l2_weight_zero_matches_no_guard_path():
     """l2_weight=0 produces the same train_r2 as a hand-rolled no-guard fit."""
     rng = np.random.default_rng(0)
@@ -99,8 +102,15 @@ def test_fit_hilbert_guarded_l2_weight_zero_matches_no_guard_path():
     y = X @ beta + rng.standard_normal(64) * 0.01
 
     best_x, info = fit_hilbert_guarded(
-        X, y, hilbert_dim=16, lr=0.01, epochs=50, seed=0,
-        grad_clip=1.0, warmup_iters=5, ridge_alpha=0.0,
+        X,
+        y,
+        hilbert_dim=16,
+        lr=0.01,
+        epochs=50,
+        seed=0,
+        grad_clip=1.0,
+        warmup_iters=5,
+        ridge_alpha=0.0,
         l2_weight=0.0,
     )
     assert math.isfinite(info["train_r2"])
@@ -117,8 +127,15 @@ def test_fit_hilbert_guarded_l2_weight_positive_records_penalty():
     y = X @ beta + rng.standard_normal(64) * 0.01
 
     best_x, info = fit_hilbert_guarded(
-        X, y, hilbert_dim=16, lr=0.01, epochs=50, seed=1,
-        grad_clip=1.0, warmup_iters=5, ridge_alpha=0.0,
+        X,
+        y,
+        hilbert_dim=16,
+        lr=0.01,
+        epochs=50,
+        seed=1,
+        grad_clip=1.0,
+        warmup_iters=5,
+        ridge_alpha=0.0,
         l2_weight=0.01,
     )
     assert info["l2_penalty_last"] >= 0.0
@@ -130,6 +147,7 @@ def test_fit_hilbert_guarded_l2_weight_positive_records_penalty():
 # ---------------------------------------------------------------------------
 # Wf-122 P1.2 ASTSR scale-mismatch guard
 # ---------------------------------------------------------------------------
+
 
 def test_astr_scale_guard_passes_good_match():
     """Default [0.05, 20.0] band passes weakly-predicting Hilbert; strict pass on real fit."""
@@ -145,7 +163,10 @@ def test_astr_scale_guard_passes_good_match():
     # Strict canonical band [0.5, 1.5] flag — same scenarios.
     assert astr_scale_ok(y_pred_good, y_true, ratio_floor=0.5, ratio_ceil=1.5) is True
     # y_pred_collapse_high has ratio 100x — fails the canonical [0.5, 1.5] band too.
-    assert astr_scale_ok(y_pred_collapse_high, y_true, ratio_floor=0.5, ratio_ceil=1.5) is False
+    assert (
+        astr_scale_ok(y_pred_collapse_high, y_true, ratio_floor=0.5, ratio_ceil=1.5)
+        is False
+    )
 
 
 def test_astr_scale_guard_handles_degenerate_inputs():
@@ -163,6 +184,7 @@ def test_astr_scale_guard_handles_degenerate_inputs():
 # ---------------------------------------------------------------------------
 # compute_r2_safe overflow guard
 # ---------------------------------------------------------------------------
+
 
 def test_compute_r2_safe_returns_inf_on_degenerate_input():
     """Constant y_true returns -inf rather than NaN."""
@@ -187,6 +209,7 @@ def test_compute_r2_safe_close_to_one_on_clean_fit():
 # ---------------------------------------------------------------------------
 # Wf-131 P1 / Wf-126 sliced-W2 helper
 # ---------------------------------------------------------------------------
+
 
 def test_sliced_wasserstein_zero_when_samples_match():
     """Same input on both sides → W2 ≈ 0."""
@@ -219,6 +242,7 @@ def test_add_w2_to_loss_returns_zero_for_constant_input():
 # K-fold helper
 # ---------------------------------------------------------------------------
 
+
 def test_kfold_indices_partition_no_overlap():
     """Train/test indices are disjoint per-fold; every index appears exactly once as test."""
     n = 100
@@ -247,22 +271,30 @@ def test_kfold_indices_reproducible_on_same_seed():
 # Synthesis renderer
 # ---------------------------------------------------------------------------
 
+
 def test_render_synthesis_includes_target_and_verdict():
     """synthesis.md strings the head-claim target and the PASS / HONEST-NEG verdict."""
-    fake_summary = [{
-        "cell_line": "MCF7",
-        "n_target_rows": 200,
-        "r2_mean": 0.34,
-        "r2_std": 0.02,
-        "r2_min": 0.30,
-        "r2_max": 0.38,
-        "n_collapse_seeds": 0,
-        "status": "OK",
-        "wall_s_mean": 1.0,
-        "per_seed": [{
-            "seed": 0, "r2_mean": 0.34, "collapse_count": 0, "wall_s_mean": 1.0,
-        }],
-    }]
+    fake_summary = [
+        {
+            "cell_line": "MCF7",
+            "n_target_rows": 200,
+            "r2_mean": 0.34,
+            "r2_std": 0.02,
+            "r2_min": 0.30,
+            "r2_max": 0.38,
+            "n_collapse_seeds": 0,
+            "status": "OK",
+            "wall_s_mean": 1.0,
+            "per_seed": [
+                {
+                    "seed": 0,
+                    "r2_mean": 0.34,
+                    "collapse_count": 0,
+                    "wall_s_mean": 1.0,
+                }
+            ],
+        }
+    ]
     md = render_synthesis(
         cohort_summaries=fake_summary,
         dataset_name="platinai_4cell",
@@ -281,20 +313,27 @@ def test_render_synthesis_includes_target_and_verdict():
 
 def test_render_synthesis_honest_negative_when_below_target():
     """All-collapse cohort surfaces the honest-negative framing."""
-    fake_summary = [{
-        "cell_line": "A549",
-        "n_target_rows": 200,
-        "r2_mean": -math.inf,
-        "r2_std": 0.0,
-        "r2_min": -math.inf,
-        "r2_max": -math.inf,
-        "n_collapse_seeds": 1,
-        "status": "ALL_FOLDS_COLLAPSED",
-        "wall_s_mean": 1.0,
-        "per_seed": [{
-            "seed": 0, "r2_mean": -math.inf, "collapse_count": 1, "wall_s_mean": 1.0,
-        }],
-    }]
+    fake_summary = [
+        {
+            "cell_line": "A549",
+            "n_target_rows": 200,
+            "r2_mean": -math.inf,
+            "r2_std": 0.0,
+            "r2_min": -math.inf,
+            "r2_max": -math.inf,
+            "n_collapse_seeds": 1,
+            "status": "ALL_FOLDS_COLLAPSED",
+            "wall_s_mean": 1.0,
+            "per_seed": [
+                {
+                    "seed": 0,
+                    "r2_mean": -math.inf,
+                    "collapse_count": 1,
+                    "wall_s_mean": 1.0,
+                }
+            ],
+        }
+    ]
     md = render_synthesis(
         cohort_summaries=fake_summary,
         dataset_name="platinai_4cell",
@@ -313,6 +352,7 @@ def test_render_synthesis_honest_negative_when_below_target():
 # ---------------------------------------------------------------------------
 # Defaults + module-level invariants
 # ---------------------------------------------------------------------------
+
 
 def test_default_l2_weight_is_phase1_stable():
     """The default l2_weight matches Wf-127 P1 stable weight."""

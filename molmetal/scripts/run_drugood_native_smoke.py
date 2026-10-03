@@ -17,6 +17,7 @@ Usage:
     --splits assay scaffold size \\
     --out-json metrics/by_metric/drugood_ood_auc_native_smoke.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -31,6 +32,7 @@ from sklearn.metrics import roc_auc_score
 from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit import RDLogger
+
 RDLogger.DisableLog("rdApp.*")
 
 # iMoLD reference numbers from paper (NeurIPS 2022) on DrugOOD IC50 splits.
@@ -55,16 +57,20 @@ def featurize(smiles: list[str], n_bits: int = 2048, radius: int = 2) -> np.ndar
         fp = AllChem.GetMorganFingerprintAsBitVect(mol, radius, nBits=n_bits)
         arr = np.zeros((n_bits,), dtype=np.uint8)
         from rdkit import DataStructs
+
         DataStructs.ConvertToNumpyArray(fp, arr)
         fps[i] = arr
     return fps
 
 
-def load_native(path: Path) -> tuple[list[str], np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def load_native(
+    path: Path,
+) -> tuple[list[str], np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Load DrugOOD native format CSV."""
     smiles, y, aid, sid, szid = [], [], [], [], []
     with path.open("r") as fh:
         import csv
+
         reader = csv.DictReader(fh)
         for row in reader:
             smiles.append(row["smiles"])
@@ -72,11 +78,13 @@ def load_native(path: Path) -> tuple[list[str], np.ndarray, np.ndarray, np.ndarr
             aid.append(int(row.get("assay_id", 0) or 0))
             sid.append(int(row.get("scaffold_split_id", 0) or 0))
             szid.append(int(row.get("size_split_id", 0) or 0))
-    return (smiles,
-            np.asarray(y, dtype=np.int64),
-            np.asarray(aid, dtype=np.int64),
-            np.asarray(sid, dtype=np.int64),
-            np.asarray(szid, dtype=np.int64))
+    return (
+        smiles,
+        np.asarray(y, dtype=np.int64),
+        np.asarray(aid, dtype=np.int64),
+        np.asarray(sid, dtype=np.int64),
+        np.asarray(szid, dtype=np.int64),
+    )
 
 
 def build_assay_split(y, aid, seed):
@@ -90,7 +98,7 @@ def build_assay_split(y, aid, seed):
     train_idx_full = np.where(train_mask)[0]
     perm = rng.permutation(len(train_idx_full))
     val_idx = train_idx_full[perm[: max(1, len(perm) // 10)]]
-    train_idx = train_idx_full[perm[max(1, len(perm) // 10):]]
+    train_idx = train_idx_full[perm[max(1, len(perm) // 10) :]]
     return train_idx, val_idx, test_idx
 
 
@@ -130,9 +138,11 @@ def build_scaffold_split(y, sid, seed):
             val_mask = mask
         else:
             test_mask = mask
-    return (np.where(train_mask)[0].astype(np.int64),
-            np.where(val_mask)[0].astype(np.int64),
-            np.where(test_mask)[0].astype(np.int64))
+    return (
+        np.where(train_mask)[0].astype(np.int64),
+        np.where(val_mask)[0].astype(np.int64),
+        np.where(test_mask)[0].astype(np.int64),
+    )
 
 
 def build_size_split(y, szid, seed):
@@ -169,9 +179,11 @@ def build_size_split(y, szid, seed):
         else:
             test_mask[inverse_idx == s_idx] = True
         counts[k] += group_sizes[s_idx]
-    return (np.where(train_mask)[0].astype(np.int64),
-            np.where(val_mask)[0].astype(np.int64),
-            np.where(test_mask)[0].astype(np.int64))
+    return (
+        np.where(train_mask)[0].astype(np.int64),
+        np.where(val_mask)[0].astype(np.int64),
+        np.where(test_mask)[0].astype(np.int64),
+    )
 
 
 BUILDERS = {
@@ -183,27 +195,39 @@ BUILDERS = {
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--data", type=Path, default=NATIVE_DATA,
-                        help="DrugOOD native train.csv")
-    parser.add_argument("--n-subsample", type=int, default=50000,
-                        help="Subsample to N rows for fast verification")
-    parser.add_argument("--epochs", type=int, default=5,
-                        help="Training epochs per seed")
+    parser.add_argument(
+        "--data", type=Path, default=NATIVE_DATA, help="DrugOOD native train.csv"
+    )
+    parser.add_argument(
+        "--n-subsample",
+        type=int,
+        default=50000,
+        help="Subsample to N rows for fast verification",
+    )
+    parser.add_argument(
+        "--epochs", type=int, default=5, help="Training epochs per seed"
+    )
     parser.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
-    parser.add_argument("--splits", nargs="+",
-                        default=["assay", "scaffold", "size"])
-    parser.add_argument("--out-json", type=Path,
-                        default=Path("metrics/by_metric/drugood_ood_auc_native_smoke.json"))
+    parser.add_argument("--splits", nargs="+", default=["assay", "scaffold", "size"])
+    parser.add_argument(
+        "--out-json",
+        type=Path,
+        default=Path("metrics/by_metric/drugood_ood_auc_native_smoke.json"),
+    )
     args = parser.parse_args()
 
     print(f"[smoke] loading {args.data}", flush=True)
     t0 = time.time()
     smiles, y, aid, sid, szid = load_native(args.data)
     print(f"[smoke] loaded {len(smiles):,} rows in {time.time()-t0:.1f}s", flush=True)
-    print(f"[smoke] y dist: 0={int((y==0).sum()):,} 1={int((y==1).sum()):,}", flush=True)
-    print(f"[smoke] distinct assays={len(set(aid.tolist())):,} "
-          f"scaffolds={len(set(sid.tolist())):,} sizes={len(set(szid.tolist())):,}",
-          flush=True)
+    print(
+        f"[smoke] y dist: 0={int((y==0).sum()):,} 1={int((y==1).sum()):,}", flush=True
+    )
+    print(
+        f"[smoke] distinct assays={len(set(aid.tolist())):,} "
+        f"scaffolds={len(set(sid.tolist())):,} sizes={len(set(szid.tolist())):,}",
+        flush=True,
+    )
 
     if args.n_subsample and len(smiles) > args.n_subsample:
         rng = np.random.default_rng(42)
@@ -215,27 +239,33 @@ def main() -> int:
         szid = szid[idx]
         print(f"[smoke] subsampled to {len(smiles):,}", flush=True)
 
-    print(f"[smoke] featurizing {len(smiles):,} SMILES -> Morgan FP(2048, r=2)",
-          flush=True)
+    print(
+        f"[smoke] featurizing {len(smiles):,} SMILES -> Morgan FP(2048, r=2)",
+        flush=True,
+    )
     t0 = time.time()
     X = featurize(smiles, n_bits=2048, radius=2)
-    print(f"[smoke] featurize time: {time.time()-t0:.1f}s, X.shape={X.shape}",
-          flush=True)
+    print(
+        f"[smoke] featurize time: {time.time()-t0:.1f}s, X.shape={X.shape}", flush=True
+    )
 
     results = {}
     for split in args.splits:
         per_seed = []
         for seed in args.seeds:
             t0 = time.time()
-            tr, va, te = BUILDERS[split](y, {
-                "assay": aid, "scaffold": sid, "size": szid}[split], seed)
-            print(f"[smoke] split={split} seed={seed}: train={len(tr):,} "
-                  f"val={len(va):,} test={len(te):,} ({time.time()-t0:.1f}s)",
-                  flush=True)
+            tr, va, te = BUILDERS[split](
+                y, {"assay": aid, "scaffold": sid, "size": szid}[split], seed
+            )
+            print(
+                f"[smoke] split={split} seed={seed}: train={len(tr):,} "
+                f"val={len(va):,} test={len(te):,} ({time.time()-t0:.1f}s)",
+                flush=True,
+            )
 
             from sklearn.linear_model import LogisticRegression
-            model = LogisticRegression(max_iter=500,
-                                       random_state=seed, n_jobs=1)
+
+            model = LogisticRegression(max_iter=500, random_state=seed, n_jobs=1)
             t0 = time.time()
             model.fit(X[tr], y[tr])
             train_time = time.time() - t0
@@ -243,14 +273,20 @@ def main() -> int:
             ood_auc = roc_auc_score(y[te], ood_proba)
             id_proba = model.predict_proba(X[va])[:, 1]
             id_auc = roc_auc_score(y[va], id_proba)
-            per_seed.append({
-                "split": split, "seed": seed,
-                "ood_test_auc": float(ood_auc),
-                "id_test_auc": float(id_auc),
-                "train_time_s": train_time,
-            })
-            print(f"[smoke]   {split} seed={seed}: OOD={ood_auc:.4f} ID={id_auc:.4f} "
-                  f"({train_time:.1f}s)", flush=True)
+            per_seed.append(
+                {
+                    "split": split,
+                    "seed": seed,
+                    "ood_test_auc": float(ood_auc),
+                    "id_test_auc": float(id_auc),
+                    "train_time_s": train_time,
+                }
+            )
+            print(
+                f"[smoke]   {split} seed={seed}: OOD={ood_auc:.4f} ID={id_auc:.4f} "
+                f"({train_time:.1f}s)",
+                flush=True,
+            )
         ood_arr = np.array([s["ood_test_auc"] for s in per_seed])
         results[split] = {
             "ood_auc_mean": float(ood_arr.mean()),
@@ -259,11 +295,13 @@ def main() -> int:
             "imold_reference": IMOLD_REFERENCE[split],
             "delta_vs_imold": float(ood_arr.mean() - IMOLD_REFERENCE[split]),
         }
-        print(f"[smoke] === {split} OOD AUC = {ood_arr.mean():.4f} "
-              f"+/- {ood_arr.std():.4f}  "
-              f"iMoLD ref = {IMOLD_REFERENCE[split]:.4f}  "
-              f"delta = +{results[split]['delta_vs_imold']:.4f}",
-              flush=True)
+        print(
+            f"[smoke] === {split} OOD AUC = {ood_arr.mean():.4f} "
+            f"+/- {ood_arr.std():.4f}  "
+            f"iMoLD ref = {IMOLD_REFERENCE[split]:.4f}  "
+            f"delta = +{results[split]['delta_vs_imold']:.4f}",
+            flush=True,
+        )
 
     payload = {
         "data_source": "drugood_native",

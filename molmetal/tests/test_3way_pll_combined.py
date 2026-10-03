@@ -32,11 +32,10 @@ def _import_bench_module():
     """Import the bench script as a module (PEP 328 path injection)."""
     import importlib.util
 
-    bench_path = (
-        PROJ_ROOT / "molmetal" / "scripts" / "bench_3way_pll_combined.py"
-    )
+    bench_path = PROJ_ROOT / "molmetal" / "scripts" / "bench_3way_pll_combined.py"
     spec = importlib.util.spec_from_file_location(
-        "bench_3way_pll_combined", str(bench_path),
+        "bench_3way_pll_combined",
+        str(bench_path),
     )
     if spec is None or spec.loader is None:
         raise ImportError(f"Cannot load spec for {bench_path}")
@@ -50,10 +49,15 @@ def _run_smoke(tmp_path: Path, n_samples: int = 10) -> dict:
     bench = _import_bench_module()
     out_dir = tmp_path / "wf79_p2_smoke"
     argv = [
-        "--dataset", "platinai_4cell",
-        "--seeds", "0", "1",
-        "--n-samples", str(n_samples),
-        "--output", str(out_dir),
+        "--dataset",
+        "platinai_4cell",
+        "--seeds",
+        "0",
+        "1",
+        "--n-samples",
+        str(n_samples),
+        "--output",
+        str(out_dir),
     ]
     rc = bench.main(argv)
     assert rc == 0, f"bench main returned {rc}"
@@ -173,8 +177,11 @@ def test_summary_contains_all_methods(tmp_path: Path) -> None:
     payload = _run_smoke(tmp_path, n_samples=10)
     summary = payload["summary"]
     expected_methods = {
-        "pll_only", "ast_only", "3way",
-        "3way_pll_aug", "joint",
+        "pll_only",
+        "ast_only",
+        "3way",
+        "3way_pll_aug",
+        "joint",
     }
     assert expected_methods.issubset(set(summary.keys()))
     assert "delta_3way_pll_aug_vs_3way" in summary
@@ -196,10 +203,7 @@ def test_lift_is_arithmetic_difference(tmp_path: Path) -> None:
     """aug_lift = 3way_pll_aug.r2_mean - 3way.r2_mean (sanity)."""
     payload = _run_smoke(tmp_path, n_samples=10)
     summary = payload["summary"]
-    expected = (
-        summary["3way_pll_aug"]["r2_mean"]
-        - summary["3way"]["r2_mean"]
-    )
+    expected = summary["3way_pll_aug"]["r2_mean"] - summary["3way"]["r2_mean"]
     actual = summary["delta_3way_pll_aug_vs_3way"]["r2_lift"]
     assert actual == pytest_approx(expected)  # type: ignore[name-defined]
 
@@ -215,11 +219,7 @@ def test_lift_pct_zero_when_3way_r2_zero(tmp_path: Path) -> None:
     summary["3way"]["r2_mean"] = 0.0
     summary["3way_pll_aug"]["r2_mean"] = 0.05
     # Recompute pct the same way bench does.
-    pct = float(
-        100.0
-        * (0.05 - 0.0)
-        / max(1e-6, abs(0.0))
-    )
+    pct = float(100.0 * (0.05 - 0.0) / max(1e-6, abs(0.0)))
     assert pct == pytest_approx(5e6, rel=1e-3)  # type: ignore[name-defined]
 
 
@@ -250,8 +250,11 @@ def test_per_method_records_have_seed(tmp_path: Path) -> None:
             assert "r2_test" in rec
             assert "n_features" in rec
         assert method_name in {
-            "pll_only", "ast_only", "3way",
-            "3way_pll_aug", "joint",
+            "pll_only",
+            "ast_only",
+            "3way",
+            "3way_pll_aug",
+            "joint",
         }
 
 
@@ -284,9 +287,7 @@ def test_summary_persisted_too(tmp_path: Path) -> None:
     payload = _run_smoke(tmp_path, n_samples=10)
     out_root = payload["config"]["dataset"]
     # _run_smoke writes into tmp_path / "wf79_p2_smoke".
-    summary_path = (
-        tmp_path / "wf79_p2_smoke" / out_root / "summary.json"
-    )
+    summary_path = tmp_path / "wf79_p2_smoke" / out_root / "summary.json"
     assert summary_path.exists()
     with open(summary_path) as fh:
         summary = json.load(fh)
@@ -299,6 +300,7 @@ def test_summary_persisted_too(tmp_path: Path) -> None:
 try:
     from pytest import approx as pytest_approx  # type: ignore
 except ImportError:
+
     def pytest_approx(value, rel=None):  # type: ignore
         return value
 

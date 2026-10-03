@@ -61,11 +61,11 @@ SUPPORTED_METALS: Tuple[str, ...] = ("Ru", "Ir", "Rh", "Re", "Os")
 #: Coordination-geometry class names (5 classes — matches the
 #: ``n_coord_classes=5`` default).
 COORD_GEOMETRY_NAMES: Tuple[str, ...] = (
-    "linear",            # 0
-    "trigonal_planar",   # 1
-    "tetrahedral",       # 2
-    "square_planar",     # 3
-    "octahedral",        # 4
+    "linear",  # 0
+    "trigonal_planar",  # 1
+    "tetrahedral",  # 2
+    "square_planar",  # 3
+    "octahedral",  # 4
 )
 
 #: Loss weight on the coordination-geometry auxiliary task (per spec).
@@ -95,8 +95,8 @@ class DMPNNEncoder(nn.Module):
         self,
         hidden_dim: int = 300,
         n_layers: int = 3,
-        atom_feat_dim: int = 39,        # GraphFeaturizer default
-        edge_feat_dim: int = 6,         # GraphFeaturizer default
+        atom_feat_dim: int = 39,  # GraphFeaturizer default
+        edge_feat_dim: int = 6,  # GraphFeaturizer default
         dropout: float = 0.0,
     ):
         super().__init__()
@@ -124,11 +124,11 @@ class DMPNNEncoder(nn.Module):
         device: torch.device,
         mol_objects: Optional[List] = None,
     ) -> Tuple[
-        torch.Tensor,    # h_atom (B, N_max, atom_feat_dim)
-        torch.Tensor,    # edge_index (B, 2, E_max)
-        torch.Tensor,    # edge_attr (B, E_max, edge_feat_dim)
-        torch.Tensor,    # batch_idx (B, N_max)
-        torch.Tensor,    # atom_mask (B, N_max) bool
+        torch.Tensor,  # h_atom (B, N_max, atom_feat_dim)
+        torch.Tensor,  # edge_index (B, 2, E_max)
+        torch.Tensor,  # edge_attr (B, E_max, edge_feat_dim)
+        torch.Tensor,  # batch_idx (B, N_max)
+        torch.Tensor,  # atom_mask (B, N_max) bool
     ]:
         from rdkit import Chem, RDLogger
 
@@ -149,13 +149,9 @@ class DMPNNEncoder(nn.Module):
                 edge_attrs.append(feat["edge_attr"])
                 n_atoms_list.append(int(feat["n_atoms"]))
             except Exception:
-                atom_feats.append(
-                    np.zeros((1, self.atom_feat_dim), dtype=np.float32)
-                )
+                atom_feats.append(np.zeros((1, self.atom_feat_dim), dtype=np.float32))
                 edge_indices.append(np.zeros((2, 0), dtype=np.int64))
-                edge_attrs.append(
-                    np.zeros((0, self.edge_feat_dim), dtype=np.float32)
-                )
+                edge_attrs.append(np.zeros((0, self.edge_feat_dim), dtype=np.float32))
                 n_atoms_list.append(1)
 
         N_max = max(max(n_atoms_list), 1)
@@ -163,9 +159,7 @@ class DMPNNEncoder(nn.Module):
 
         h_atom = torch.zeros(B, N_max, self.atom_feat_dim, device=device)
         edge_index = torch.zeros(B, 2, E_max, dtype=torch.long, device=device)
-        edge_attr = torch.zeros(
-            B, E_max, self.edge_feat_dim, device=device
-        )
+        edge_attr = torch.zeros(B, E_max, self.edge_feat_dim, device=device)
         batch_idx = torch.full((B, N_max), -1, dtype=torch.long, device=device)
         atom_mask = torch.zeros(B, N_max, dtype=torch.bool, device=device)
 
@@ -205,18 +199,16 @@ class DMPNNEncoder(nn.Module):
         # Using arange is cheaper than a python loop on CPU and a single
         # broadcast on GPU.
         row_idx = torch.arange(B, device=atom_mask.device).unsqueeze(1)
-        batch_idx = torch.where(
-            atom_mask, row_idx.expand(B, N_max), batch_idx
-        )
+        batch_idx = torch.where(atom_mask, row_idx.expand(B, N_max), batch_idx)
         return batch_idx
 
     # ------------------------------------------------------------------
     def forward_cached(
         self,
-        atom_features: torch.Tensor,                 # (B, N_max, atom_feat_dim)
-        edge_index: torch.Tensor,                    # (B, 2, E_max)
-        atom_mask: Optional[torch.Tensor] = None,    # (B, N_max) bool
-        edge_attr: Optional[torch.Tensor] = None,    # (B, E_max, edge_feat_dim)
+        atom_features: torch.Tensor,  # (B, N_max, atom_feat_dim)
+        edge_index: torch.Tensor,  # (B, 2, E_max)
+        atom_mask: Optional[torch.Tensor] = None,  # (B, N_max) bool
+        edge_attr: Optional[torch.Tensor] = None,  # (B, E_max, edge_feat_dim)
     ) -> torch.Tensor:
         """Encode pre-featurized graph tensors → (B, hidden_dim) embedding.
 
@@ -247,7 +239,10 @@ class DMPNNEncoder(nn.Module):
         else:
             B, _, E_max = edge_index.shape
             edge_attr = torch.zeros(
-                B, E_max, self.edge_feat_dim, device=device,
+                B,
+                E_max,
+                self.edge_feat_dim,
+                device=device,
                 dtype=atom_features.dtype,
             )
 
@@ -255,9 +250,7 @@ class DMPNNEncoder(nn.Module):
             # No padding → every atom slot is valid; build the (B, N_max)
             # batch_idx by tiling arange(B) across N_max slots.
             B, N_max, _ = atom_features.shape
-            atom_mask = torch.ones(
-                B, N_max, dtype=torch.bool, device=device
-            )
+            atom_mask = torch.ones(B, N_max, dtype=torch.bool, device=device)
         else:
             atom_mask = atom_mask.to(device)
 
@@ -265,7 +258,7 @@ class DMPNNEncoder(nn.Module):
         h = self.dmpnn(atom_features, edge_index, edge_attr, batch_idx)
         # Zero-out embeddings of fully-padded (invalid) molecules so
         # they can't accidentally dominate downstream heads.
-        valid_mol = atom_mask.any(dim=1)            # (B,) any real atom
+        valid_mol = atom_mask.any(dim=1)  # (B,) any real atom
         h = h * valid_mol.unsqueeze(-1).float()
         return h
 
@@ -284,14 +277,14 @@ class DMPNNEncoder(nn.Module):
         if not smiles_list:
             raise ValueError("smiles_list must be non-empty")
         device = next(self.parameters()).device
-        h_atom, edge_index, edge_attr, batch_idx, atom_mask = (
-            self._featurize_batch(smiles_list, device, mol_objects=mol_objects)
+        h_atom, edge_index, edge_attr, batch_idx, atom_mask = self._featurize_batch(
+            smiles_list, device, mol_objects=mol_objects
         )
         # DirectedMPNN.forward returns (B, hidden_dim) — sum-pooled.
         h = self.dmpnn(h_atom, edge_index, edge_attr, batch_idx)
         # Zero-out embeddings of fully-padded (invalid) molecules so
         # they can't accidentally dominate downstream heads.
-        valid_mol = atom_mask.any(dim=1)            # (B,) any real atom
+        valid_mol = atom_mask.any(dim=1)  # (B,) any real atom
         h = h * valid_mol.unsqueeze(-1).float()
         return h
 
@@ -402,9 +395,7 @@ class V4MultiTaskDMPNN(nn.Module):
     def metal_id(self, metal: str) -> int:
         """Return the integer id for a metal name (raises if unknown)."""
         if metal not in self.metals:
-            raise KeyError(
-                f"Unknown metal {metal!r}. Supported: {self.metals}"
-            )
+            raise KeyError(f"Unknown metal {metal!r}. Supported: {self.metals}")
         return self.metals.index(metal)
 
     # ------------------------------------------------------------------
@@ -468,11 +459,13 @@ class V4MultiTaskDMPNN(nn.Module):
             )
 
         h = self.encode_cached(
-            atom_features, edge_index,
-            atom_mask=atom_mask, edge_attr=edge_attr,
-        )                                          # (B, hidden_dim)
-        e = self.metal_embed(metal_ids.long())     # (B, metal_embed_dim)
-        z = torch.cat([h, e], dim=-1)              # (B, hidden_dim + metal_embed_dim)
+            atom_features,
+            edge_index,
+            atom_mask=atom_mask,
+            edge_attr=edge_attr,
+        )  # (B, hidden_dim)
+        e = self.metal_embed(metal_ids.long())  # (B, metal_embed_dim)
+        z = torch.cat([h, e], dim=-1)  # (B, hidden_dim + metal_embed_dim)
 
         out: Dict[str, torch.Tensor] = {
             m: head(z) for m, head in self.metal_heads.items()
@@ -542,8 +535,11 @@ class V4MultiTaskDMPNN(nn.Module):
                     "pre-featurized tensors."
                 )
             return self.forward_cached(
-                smiles_or_atoms, edge_index, metal_ids,
-                atom_mask=atom_mask, edge_attr=edge_attr,
+                smiles_or_atoms,
+                edge_index,
+                metal_ids,
+                atom_mask=atom_mask,
+                edge_attr=edge_attr,
             )
 
         # ----- SMILES path (original V4 behaviour) -----
@@ -558,9 +554,9 @@ class V4MultiTaskDMPNN(nn.Module):
                 f"len(smiles_list)={B} != metal_ids.size(0)={metal_ids.size(0)}"
             )
 
-        h = self.encode(smiles_list)               # (B, hidden_dim)
-        e = self.metal_embed(metal_ids.long())      # (B, metal_embed_dim)
-        z = torch.cat([h, e], dim=-1)               # (B, hidden_dim + metal_embed_dim)
+        h = self.encode(smiles_list)  # (B, hidden_dim)
+        e = self.metal_embed(metal_ids.long())  # (B, metal_embed_dim)
+        z = torch.cat([h, e], dim=-1)  # (B, hidden_dim + metal_embed_dim)
 
         out: Dict[str, torch.Tensor] = {
             m: head(z) for m, head in self.metal_heads.items()
@@ -693,9 +689,7 @@ class V4MultiTaskDMPNNPretrain(V4MultiTaskDMPNN):
             raise ValueError("smiles_list must be non-empty")
         device = next(self.parameters()).device
         h_atom_in, edge_index, edge_attr, batch_idx, atom_mask = (
-            self.encoder._featurize_batch(
-                smiles_list, device, mol_objects=mol_objects
-            )
+            self.encoder._featurize_batch(smiles_list, device, mol_objects=mol_objects)
         )
         B, N_max, _ = h_atom_in.shape
         per_atom_list = []
@@ -709,9 +703,7 @@ class V4MultiTaskDMPNNPretrain(V4MultiTaskDMPNN):
             mask_edges = (ei_mol[0] < n_atoms) & (ei_mol[1] < n_atoms)
             ei_local = ei_mol[:, mask_edges]
             ea_local = ea_mol[mask_edges]
-            h_per_atom = self.encoder.dmpnn.forward_per_atom(
-                h_mol, ei_local, ea_local
-            )
+            h_per_atom = self.encoder.dmpnn.forward_per_atom(h_mol, ei_local, ea_local)
             per_atom_list.append(h_per_atom)
         if not per_atom_list:
             return (
@@ -815,10 +807,7 @@ class V4MultiTaskLoss(nn.Module):
         Re-using the same module across forward passes ensures the
         ``log_sigmas`` parameter is the one the optimizer is updating.
         """
-        if (
-            self._kendall is None
-            or self._kendall.num_tasks != num_tasks
-        ):
+        if self._kendall is None or self._kendall.num_tasks != num_tasks:
             self._kendall = UncertaintyWeightedMultiTaskLoss(num_tasks=num_tasks)
             # Move to the same device as the head logits if known.
             self._kendall = self._kendall.to(
@@ -908,10 +897,12 @@ def quick_smoke_v4mt(
     smiles: Optional[List[str]] = None,
     n_metals: int = 5,
     n_coord_classes: int = 5,
-    hidden_dim: int = 64,        # smaller for tests / smoke runs
+    hidden_dim: int = 64,  # smaller for tests / smoke runs
     n_layers: int = 2,
     device: Optional[torch.device] = None,
-) -> Tuple[V4MultiTaskDMPNN, V4MultiTaskLoss, Dict[str, torch.Tensor], Dict[str, torch.Tensor]]:
+) -> Tuple[
+    V4MultiTaskDMPNN, V4MultiTaskLoss, Dict[str, torch.Tensor], Dict[str, torch.Tensor]
+]:
     """Build a model + loss + fake batch for a quick smoke test.
 
     Returns ``(model, loss_fn, out, y_true_dict)`` so callers can run

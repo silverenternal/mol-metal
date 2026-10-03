@@ -56,7 +56,11 @@ if str(PROJECT_ROOT) not in sys.path:
 
 REPORTS = PROJECT_ROOT / "molmetal" / "reports"
 EXAMPLE_PDB = (
-    PROJECT_ROOT / "molmetal" / "references" / "targetdiff" / "examples"
+    PROJECT_ROOT
+    / "molmetal"
+    / "references"
+    / "targetdiff"
+    / "examples"
     / "1h36_A_rec_1h36_r88_lig_tt_docked_0_pocket10.pdb"
 )
 
@@ -81,9 +85,23 @@ def _load_1h36_pocket():
     coords_arr = np.asarray(coords, dtype=np.float32)
     atomic_nums = np.asarray(
         [
-            {"C": 6, "N": 7, "O": 8, "S": 16, "P": 15, "H": 1,
-             "Fe": 26, "Zn": 30, "Mg": 12, "Mn": 25, "Ca": 20,
-             "Cl": 17, "Br": 35, "I": 53, "F": 9}.get(s, 6)
+            {
+                "C": 6,
+                "N": 7,
+                "O": 8,
+                "S": 16,
+                "P": 15,
+                "H": 1,
+                "Fe": 26,
+                "Zn": 30,
+                "Mg": 12,
+                "Mn": 25,
+                "Ca": 20,
+                "Cl": 17,
+                "Br": 35,
+                "I": 53,
+                "F": 9,
+            }.get(s, 6)
             for s in types
         ],
         dtype=np.int64,
@@ -136,9 +154,25 @@ def _brief_train(adapter, pocket, *, steps: int, batch_size: int, seed: int) -> 
 # self-contained — see that file for the full rationale.
 # ---------------------------------------------------------------------------
 _ELEM_TO_ATOMIC = {
-    "H": 1, "C": 6, "N": 7, "O": 8, "F": 9, "P": 15, "S": 16, "Cl": 17,
-    "Br": 35, "I": 53, "Na": 11, "Mg": 12, "Ca": 20, "Mn": 25, "Fe": 26,
-    "Co": 27, "Ni": 28, "Cu": 29, "Zn": 30,
+    "H": 1,
+    "C": 6,
+    "N": 7,
+    "O": 8,
+    "F": 9,
+    "P": 15,
+    "S": 16,
+    "Cl": 17,
+    "Br": 35,
+    "I": 53,
+    "Na": 11,
+    "Mg": 12,
+    "Ca": 20,
+    "Mn": 25,
+    "Fe": 26,
+    "Co": 27,
+    "Ni": 28,
+    "Cu": 29,
+    "Zn": 30,
 }
 # AutoDock-Vina / meeko accepts only these elements for organic ligands;
 # exotic metals (Pt, Ir, ...) need special parameter files.  When the model
@@ -146,9 +180,25 @@ _ELEM_TO_ATOMIC = {
 _MEKKO_OK = {1, 6, 7, 8, 9, 15, 16, 17, 35, 53, 12, 26, 30}
 _ATOMIC_TO_ELEM = {v: k for k, v in _ELEM_TO_ATOMIC.items()}
 _COVALENT_RADIUS = {
-    1: 0.31, 6: 0.76, 7: 0.71, 8: 0.66, 9: 0.57, 15: 1.07, 16: 1.05,
-    17: 1.02, 35: 1.20, 53: 1.39, 11: 1.66, 12: 1.41, 20: 1.76,
-    25: 1.39, 26: 1.32, 27: 1.26, 28: 1.24, 29: 1.32, 30: 1.22,
+    1: 0.31,
+    6: 0.76,
+    7: 0.71,
+    8: 0.66,
+    9: 0.57,
+    15: 1.07,
+    16: 1.05,
+    17: 1.02,
+    35: 1.20,
+    53: 1.39,
+    11: 1.66,
+    12: 1.41,
+    20: 1.76,
+    25: 1.39,
+    26: 1.32,
+    27: 1.26,
+    28: 1.24,
+    29: 1.32,
+    30: 1.22,
 }
 # Round-10 axis D — also accept Pt (Z=78) + Pd (Z=46) so Pt-sampled
 # mols are kept and we can measure whether the prior improves their
@@ -162,9 +212,12 @@ def _atomic_to_elem(z: int) -> str:
     return _ATOMIC_TO_ELEM.get(int(z), "C")
 
 
-def _mol_to_smiles(coords: torch.Tensor, atom_types: torch.Tensor,
-                    bond_factor: float = 1.3,
-                    allow_pt: bool = True) -> str | None:
+def _mol_to_smiles(
+    coords: torch.Tensor,
+    atom_types: torch.Tensor,
+    bond_factor: float = 1.3,
+    allow_pt: bool = True,
+) -> str | None:
     """Build a SMILES from coords + atom-types.  When ``allow_pt`` is True,
     Pt/Pd atoms are kept (so we can later score their geometry); for Vina
     docking we set ``allow_pt=False`` to drop non-meeko elements.
@@ -177,14 +230,12 @@ def _mol_to_smiles(coords: torch.Tensor, atom_types: torch.Tensor,
     if n < 2:
         return None
     keep_set = _PT_OK if allow_pt else _MEKKO_OK
-    keep_idx = [i for i, z in enumerate(atom_types.tolist())
-                if int(z) in keep_set]
+    keep_idx = [i for i, z in enumerate(atom_types.tolist()) if int(z) in keep_set]
     if len(keep_idx) < 2:
         return None
     rw = Chem.RWMol()
     coords_np = coords.detach().cpu().numpy()
-    radii = [_COVALALENT_RADIUS_FALLBACK(int(atom_types[i]))
-             for i in keep_idx]
+    radii = [_COVALALENT_RADIUS_FALLBACK(int(atom_types[i])) for i in keep_idx]
     for i in keep_idx:
         elem = _atomic_to_elem(int(atom_types[i]))
         rw.AddAtom(Chem.Atom(elem))
@@ -222,16 +273,20 @@ def _dock_one(mol, pocket, *, exhaustiveness: int, seed: int):
     # parameter file because the test is whether the *prior ON* path
     # improves *dockable* mols — Pt-sampled mols are a noisy side-
     # channel tracked via PB only.
-    smiles = getattr(mol, "smiles", "") or _mol_to_smiles(
-        mol.coords, mol.atom_types, allow_pt=False
-    ) or ""
+    smiles = (
+        getattr(mol, "smiles", "")
+        or _mol_to_smiles(mol.coords, mol.atom_types, allow_pt=False)
+        or ""
+    )
     if not smiles:
         return None, 0.0
     t0 = time.perf_counter()
     try:
         complexes = dock_smiles(
-            smiles, pocket,
-            n_poses=1, exhaustiveness=int(exhaustiveness),
+            smiles,
+            pocket,
+            n_poses=1,
+            exhaustiveness=int(exhaustiveness),
         )
     except Exception as exc:  # noqa: BLE001
         if not getattr(_dock_one, "_logged_first_fail", False):
@@ -302,8 +357,11 @@ def _run_one_setting(
 
     print(f"[r10-pt] === metal_prior_weight={metal_prior_weight:.3f} ===")
     adapter = LipmanFlowMatchingAdapter(
-        hidden_dim=hidden_dim, n_layers=n_layers, lr=lr,
-        context_dropout=context_dropout, cfg_scale=1.0,
+        hidden_dim=hidden_dim,
+        n_layers=n_layers,
+        lr=lr,
+        context_dropout=context_dropout,
+        cfg_scale=1.0,
         metal_prior_weight=metal_prior_weight,
         metal_prior_k_every=1,  # apply every step (only 8 ODE steps total)
     )
@@ -311,8 +369,10 @@ def _run_one_setting(
 
     # Sanity-check the prior-on/off flag is honored by MetalGeometryPrior.
     from molmetal.molmetal_lam.priors.metal_geometry import (
-        MetalGeometryPrior, Geometry,
+        MetalGeometryPrior,
+        Geometry,
     )
+
     _probe = MetalGeometryPrior(weight=1.0)
     if metal_prior_weight <= 0:
         _probe.disable()
@@ -335,24 +395,35 @@ def _run_one_setting(
     adapter._encode_pocket = _scaled_encode_pocket  # type: ignore[assignment]
 
     # Brief CFM training so the prior nudge has real signal to work on.
-    t_train = _brief_train(adapter, pocket, steps=train_steps, batch_size=4,
-                            seed=seed + int(metal_prior_weight * 100))
-    print(f"[r10-pt] train: {t_train:.2f}s ({train_steps} steps, "
-          f"last loss={adapter.last_losses['total']:.4f})")
+    t_train = _brief_train(
+        adapter,
+        pocket,
+        steps=train_steps,
+        batch_size=4,
+        seed=seed + int(metal_prior_weight * 100),
+    )
+    print(
+        f"[r10-pt] train: {t_train:.2f}s ({train_steps} steps, "
+        f"last loss={adapter.last_losses['total']:.4f})"
+    )
 
     # Build the velocity model the same way generate() does, with coord
     # clamping as a numerical safety net.
     from functools import partial as _partial
+
     n_samples = n_mols
     n_atoms = 8
-    atom_types_init = torch.zeros(n_samples, n_atoms, dtype=torch.long, device=adapter.device)
+    atom_types_init = torch.zeros(
+        n_samples, n_atoms, dtype=torch.long, device=adapter.device
+    )
     edge_index = adapter._make_dummy_edge_index(n_samples, n_atoms, adapter.device)
-    pocket_embed = adapter._encode_pocket(pocket, b=n_samples,
-                                            max_n_atoms=n_atoms,
-                                            device=adapter.device)
+    pocket_embed = adapter._encode_pocket(
+        pocket, b=n_samples, max_n_atoms=n_atoms, device=adapter.device
+    )
     velocity_model_unwrapped = _partial(
         adapter.velocity_field.forward_velocity,
-        atom_types=atom_types_init, edge_index=edge_index,
+        atom_types=atom_types_init,
+        edge_index=edge_index,
         pocket_embed=pocket_embed,
     )
 
@@ -371,8 +442,10 @@ def _run_one_setting(
     t_grid = torch.linspace(0.0, 1.0, n_integration_steps + 1, device=adapter.device)
     t_gen0 = time.perf_counter()
     x_final = solver.sample(
-        x_init=x_0, step_size=1.0 / n_integration_steps,
-        method="euler", time_grid=t_grid,
+        x_init=x_0,
+        step_size=1.0 / n_integration_steps,
+        method="euler",
+        time_grid=t_grid,
     )
     if x_final.dim() == 4:
         x_final = x_final[-1]
@@ -383,30 +456,38 @@ def _run_one_setting(
     from molmetal.adapters.flow_matching_lipman import (
         EGNNVelocityField as _EGNN,
     )
+
     adapter.velocity_field.eval()
     init_atom_types = torch.ones_like(atom_types_init)
     t_one = torch.ones(n_samples, device=adapter.device)
     out = adapter.velocity_field(
-        x_final, init_atom_types, edge_index, t_one,
+        x_final,
+        init_atom_types,
+        edge_index,
+        t_one,
         pocket_embed=pocket_embed,
     )
     atom_logits = out["atom_logits"]
     adapter.velocity_field.train()
     import torch.nn.functional as _F
+
     atom_logits[..., 0] = float("-inf")
     atom_probs = _F.softmax(atom_logits, dim=-1)
     sampled_atoms = torch.distributions.Categorical(probs=atom_probs).sample()
 
     from molmetal.domain import Molecule as _Mol
+
     mols = []
     for i in range(n_samples):
-        mols.append(_Mol(
-            coords=x_final[i].detach().cpu(),
-            atom_types=sampled_atoms[i].detach().cpu(),
-            bonds=torch.zeros(2, 0, dtype=torch.long),
-            bond_types=torch.zeros(0, dtype=torch.long),
-            formal_charges=torch.zeros(n_atoms, dtype=torch.long),
-        ))
+        mols.append(
+            _Mol(
+                coords=x_final[i].detach().cpu(),
+                atom_types=sampled_atoms[i].detach().cpu(),
+                bonds=torch.zeros(2, 0, dtype=torch.long),
+                bond_types=torch.zeros(0, dtype=torch.long),
+                formal_charges=torch.zeros(n_atoms, dtype=torch.long),
+            )
+        )
     t_gen = time.perf_counter() - t_gen0
     print(f"[r10-pt] generate: {t_gen:.2f}s ({n_mols} mols)")
 
@@ -422,8 +503,9 @@ def _run_one_setting(
             pb_results.append(None)
     else:
         for i, mol in enumerate(mols):
-            score, _ = _dock_one(mol, pocket, exhaustiveness=exhaustiveness,
-                                 seed=seed + i)
+            score, _ = _dock_one(
+                mol, pocket, exhaustiveness=exhaustiveness, seed=seed + i
+            )
             if score is not None and math.isfinite(score):
                 scores.append(score)
             # PB check uses a Pt-tolerant SMILES (allow_pt=True) so we can
@@ -438,8 +520,10 @@ def _run_one_setting(
     n_pb_skipped = sum(1 for x in pb_results if x is None)
     n_pb_total = n_pb_passed + n_pb_failed
     pb_pass_rate = (n_pb_passed / n_pb_total) if n_pb_total > 0 else None
-    print(f"[r10-pt] dock+pb: {t_dock:.2f}s ({len(scores)}/{n_mols} ok, "
-          f"PB pass={n_pb_passed}/{n_pb_total} skip={n_pb_skipped})")
+    print(
+        f"[r10-pt] dock+pb: {t_dock:.2f}s ({len(scores)}/{n_mols} ok, "
+        f"PB pass={n_pb_passed}/{n_pb_total} skip={n_pb_skipped})"
+    )
 
     summary = {
         "metal_prior_weight": metal_prior_weight,
@@ -474,7 +558,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
-        "--prior-weights", type=float, nargs="+",
+        "--prior-weights",
+        type=float,
+        nargs="+",
         default=[0.0, 0.1],
         help="Prior weights to evaluate (default 0.0 0.1 — 0.0 = OFF).",
     )
@@ -487,26 +573,33 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--lr", type=float, default=2e-4)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
-        "--device", type=str,
+        "--device",
+        type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
         help="Velocity-field device (auto-selects ROCm/CUDA when visible; CPU fallback).",
     )
     parser.add_argument("--context-dropout", type=float, default=0.1)
     parser.add_argument(
-        "--coord-clip", type=float, default=10.0,
+        "--coord-clip",
+        type=float,
+        default=10.0,
         help="Clamp generated coords to [-clip, +clip] as a numerical "
-             "safety net (default 10.0 Å).",
+        "safety net (default 10.0 Å).",
     )
     parser.add_argument(
-        "--pocket-embed-norm-target", type=float, default=1.0,
+        "--pocket-embed-norm-target",
+        type=float,
+        default=1.0,
         help="Scale each batch slice of the pocket_embed to this L2 norm.",
     )
     parser.add_argument(
-        "--output-prefix", type=str,
+        "--output-prefix",
+        type=str,
         default=str(REPORTS / "r10_pt_prior_ablation_1h36"),
     )
     parser.add_argument(
-        "--skip-dock", action="store_true",
+        "--skip-dock",
+        action="store_true",
         help="Skip Vina + PB (generation-only smoke run).",
     )
     args = parser.parse_args(argv)
@@ -516,20 +609,29 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"[r10-pt-ablation] ERROR: {EXAMPLE_PDB} not found.")
         return 2
     pocket = _load_1h36_pocket()
-    print(f"[r10-pt-ablation] pocket={pocket.pdb_id} n_atoms={pocket.n_atoms} "
-          f"radius={pocket.radius:.1f}A")
+    print(
+        f"[r10-pt-ablation] pocket={pocket.pdb_id} n_atoms={pocket.n_atoms} "
+        f"radius={pocket.radius:.1f}A"
+    )
 
     summaries: list[dict] = []
     all_rows: list[tuple[float, int, float, str]] = []  # (w, mol_id, score, pb)
     wall_total0 = time.perf_counter()
     for w in args.prior_weights:
         scores, pb_results, summary = _run_one_setting(
-            metal_prior_weight=w, n_mols=args.n_mols,
-            train_steps=args.train_steps, n_integration_steps=args.n_steps,
-            exhaustiveness=args.exhaustiveness, seed=args.seed,
-            hidden_dim=args.hidden_dim, n_layers=args.n_layers, lr=args.lr,
-            device_str=args.device, context_dropout=args.context_dropout,
-            pocket=pocket, coord_clip=args.coord_clip,
+            metal_prior_weight=w,
+            n_mols=args.n_mols,
+            train_steps=args.train_steps,
+            n_integration_steps=args.n_steps,
+            exhaustiveness=args.exhaustiveness,
+            seed=args.seed,
+            hidden_dim=args.hidden_dim,
+            n_layers=args.n_layers,
+            lr=args.lr,
+            device_str=args.device,
+            context_dropout=args.context_dropout,
+            pocket=pocket,
+            coord_clip=args.coord_clip,
             pocket_embed_norm_target=args.pocket_embed_norm_target,
             skip_dock=args.skip_dock,
         )
@@ -584,31 +686,35 @@ def main(argv: Sequence[str] | None = None) -> int:
     # JSON
     json_path = out_prefix.with_suffix(".json")
     with open(json_path, "w") as f:
-        json.dump({
-            "pocket": pocket.pdb_id,
-            "pdb_path": str(EXAMPLE_PDB),
-            "n_mols_per_setting": args.n_mols,
-            "prior_weights": list(args.prior_weights),
-            "train_steps": args.train_steps,
-            "exhaustiveness": args.exhaustiveness,
-            "hidden_dim": args.hidden_dim,
-            "n_layers": args.n_layers,
-            "device": args.device,
-            "wall_total_seconds": wall_total,
-            "summaries": summaries,
-            "best_prior_weight": (best["metal_prior_weight"] if best else None),
-            "best_vina_mean": (best["vina_mean"] if best else None),
-            "best_delta_vina_vs_off": (
-                best["delta_vina_vs_off"] if best else None
-            ),
-        }, f, indent=2)
+        json.dump(
+            {
+                "pocket": pocket.pdb_id,
+                "pdb_path": str(EXAMPLE_PDB),
+                "n_mols_per_setting": args.n_mols,
+                "prior_weights": list(args.prior_weights),
+                "train_steps": args.train_steps,
+                "exhaustiveness": args.exhaustiveness,
+                "hidden_dim": args.hidden_dim,
+                "n_layers": args.n_layers,
+                "device": args.device,
+                "wall_total_seconds": wall_total,
+                "summaries": summaries,
+                "best_prior_weight": (best["metal_prior_weight"] if best else None),
+                "best_vina_mean": (best["vina_mean"] if best else None),
+                "best_delta_vina_vs_off": (best["delta_vina_vs_off"] if best else None),
+            },
+            f,
+            indent=2,
+        )
     print(f"[r10-pt-ablation] wrote {json_path}")
 
     # Markdown
     md_path = out_prefix.with_suffix(".md")
     with open(md_path, "w") as f:
-        f.write("# Round-10 axis D micro-ablation — 1h36 pocket "
-                "(MetalGeometryPrior on/off)\n\n")
+        f.write(
+            "# Round-10 axis D micro-ablation — 1h36 pocket "
+            "(MetalGeometryPrior on/off)\n\n"
+        )
         f.write("## Goal\n\n")
         f.write(
             "Quantify the Vina-score + PoseBusters-pass-rate effect of "
@@ -621,24 +727,32 @@ def main(argv: Sequence[str] | None = None) -> int:
             "angles.  Prior OFF skips the gradient nudge entirely.\n\n"
         )
         f.write("## Setup\n\n")
-        f.write(f"- Pocket: **{pocket.pdb_id}** "
-                f"({pocket.n_atoms} atoms, radius={pocket.radius:.1f}A)\n")
+        f.write(
+            f"- Pocket: **{pocket.pdb_id}** "
+            f"({pocket.n_atoms} atoms, radius={pocket.radius:.1f}A)\n"
+        )
         f.write(f"- PDB: `{EXAMPLE_PDB}`\n")
         f.write(f"- N molecules requested per setting: **{args.n_mols}**\n")
-        f.write(f"- Prior weights swept: **{args.prior_weights}** "
-                f"(0.0 = prior OFF)\n")
-        f.write(f"- CFM train steps per setting: **{args.train_steps}** "
-                f"(hidden_dim={args.hidden_dim}, n_layers={args.n_layers}, "
-                f"lr={args.lr}, context_dropout={args.context_dropout})\n")
+        f.write(
+            f"- Prior weights swept: **{args.prior_weights}** " f"(0.0 = prior OFF)\n"
+        )
+        f.write(
+            f"- CFM train steps per setting: **{args.train_steps}** "
+            f"(hidden_dim={args.hidden_dim}, n_layers={args.n_layers}, "
+            f"lr={args.lr}, context_dropout={args.context_dropout})\n"
+        )
         f.write(f"- ODE integration steps: **{args.n_steps}**\n")
-        f.write(f"- Vina exhaustiveness: **{args.exhaustiveness}** "
-                f"(n_poses=1)\n")
-        f.write(f"- Coordinate safety clamp: **[-{args.coord_clip}, "
-                f"+{args.coord_clip}] A**\n")
-        f.write(f"- Pocket-embed L2 norm target: "
-                f"**{args.pocket_embed_norm_target}**\n")
-        f.write(f"- Total wall: **{wall_total:.2f}s** "
-                f"({wall_total/60:.2f} min)\n\n")
+        f.write(f"- Vina exhaustiveness: **{args.exhaustiveness}** " f"(n_poses=1)\n")
+        f.write(
+            f"- Coordinate safety clamp: **[-{args.coord_clip}, "
+            f"+{args.coord_clip}] A**\n"
+        )
+        f.write(
+            f"- Pocket-embed L2 norm target: " f"**{args.pocket_embed_norm_target}**\n"
+        )
+        f.write(
+            f"- Total wall: **{wall_total:.2f}s** " f"({wall_total/60:.2f} min)\n\n"
+        )
 
         f.write("## Prior wiring\n\n")
         f.write(
@@ -665,8 +779,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
 
         f.write("## Results\n\n")
-        f.write("| prior_weight | n_docked | mean | median | min | max | "
-                "delta_vina_vs_OFF | PB_pass_rate | delta_pb_vs_OFF |\n")
+        f.write(
+            "| prior_weight | n_docked | mean | median | min | max | "
+            "delta_vina_vs_OFF | PB_pass_rate | delta_pb_vs_OFF |\n"
+        )
         f.write("| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n")
         for s in summaries:
             mean = s["vina_mean"]
@@ -681,14 +797,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             mn_s = f"{mn:.3f}" if mn is not None else "n/a"
             mx_s = f"{mx:.3f}" if mx is not None else "n/a"
             delta_s = (
-                f"{delta:+.3f}" if delta is not None and base_mean is not None
+                f"{delta:+.3f}"
+                if delta is not None and base_mean is not None
                 else "n/a"
             )
             pb_s = f"{pb:.3f}" if pb is not None else "n/a"
-            dpb_s = (
-                f"{dpb:+.3f}" if dpb is not None and base_pb is not None
-                else "n/a"
-            )
+            dpb_s = f"{dpb:+.3f}" if dpb is not None and base_pb is not None else "n/a"
             f.write(
                 f"| {s['metal_prior_weight']:.3f} | {s['n_mols_docked_ok']} | "
                 f"{mean_s} | {med_s} | {mn_s} | {mx_s} | {delta_s} | "
@@ -713,7 +827,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                 (s for s in summaries if s["metal_prior_weight"] > 0),
                 None,
             )
-            if on_summary and base_mean is not None and on_summary["vina_mean"] is not None:
+            if (
+                on_summary
+                and base_mean is not None
+                and on_summary["vina_mean"] is not None
+            ):
                 vina_delta = on_summary["vina_mean"] - base_mean
                 vina_pass = vina_delta <= -0.2
                 f.write(

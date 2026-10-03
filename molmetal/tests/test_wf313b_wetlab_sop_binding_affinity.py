@@ -15,6 +15,7 @@ DLS polydispersity) and the integration with the Wf-74 IC50 analysis pipeline
 edge-case thresholds are **validated as logical checks**, not against real
 binding measurements.
 """
+
 from __future__ import annotations
 
 import sys
@@ -32,6 +33,7 @@ import pytest
 # Lazy import
 try:
     from molmetal.scripts import template_ic50_pipeline as ic50p  # noqa: E402
+
     _HAS_IC50P = True
 except Exception as exc:
     ic50p = None
@@ -101,8 +103,14 @@ def test_itc_two_site_fallback():
     n_multisite = 2.0  # > 1.5
     assert n_multisite > STOICH_N_TWO_SITE_THRESHOLD
     # Two-site fit schema (per §6a.2 of the SOP)
-    two_site_schema = {"KD1_M": None, "KD2_M": None, "dH1_kcal_mol": None,
-                        "dH2_kcal_mol": None, "n1": None, "n2": None}
+    two_site_schema = {
+        "KD1_M": None,
+        "KD2_M": None,
+        "dH1_kcal_mol": None,
+        "dH2_kcal_mol": None,
+        "n1": None,
+        "n2": None,
+    }
     assert all(k in two_site_schema for k in ("KD1_M", "KD2_M", "dH1_kcal_mol"))
 
 
@@ -132,6 +140,7 @@ def test_kd_crosscheck_rank_concordance_fallback():
     # ITC ranks highly concordant
     itc_concordant = np.array([2, 1, 3, 4, 5, 6, 7, 8, 9, 10])
     from scipy.stats import spearmanr
+
     rho, _ = spearmanr(spr_ranks, itc_concordant)
     assert abs(rho) >= SPEARMAN_RHO_FALLBACK_MIN
 

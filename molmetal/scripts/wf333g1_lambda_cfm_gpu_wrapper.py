@@ -72,6 +72,7 @@ Standing directives honored
   by ``tests/test_wf333g1_lambda_cfm_gpu_wrapper.py`` (no GPU launch).
 * AGENTS.md §1 #5 — honest-negative framing above.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -318,8 +319,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "--pocket-id",
         type=str,
         default="1h36",
-        help="Pocket identifier forwarded to the Lambda reward "
-        "dataset factory.",
+        help="Pocket identifier forwarded to the Lambda reward " "dataset factory.",
     )
     p.add_argument(
         "--seed",
@@ -342,17 +342,15 @@ def build_wrapper(args: argparse.Namespace) -> LambdaCFMGPUWrapper:
     Translates the ``--cfm-checkpoint ''`` convention (empty string ⇒
     disable) to ``None`` for the dataclass field.
     """
-    cfm_ckpt = (
-        Path(args.cfm_checkpoint)
-        if str(args.cfm_checkpoint).strip()
-        else None
-    )
+    cfm_ckpt = Path(args.cfm_checkpoint) if str(args.cfm_checkpoint).strip() else None
     lr_ckpt = (
-        Path(args.lambda_reward_ckpt)
-        if str(args.lambda_reward_ckpt).strip()
-        else None
+        Path(args.lambda_reward_ckpt) if str(args.lambda_reward_ckpt).strip() else None
     )
-    bridge = Path(args.bridge_npz) if str(args.bridge_npz).strip() else DEFAULT_PRETRAIN_BRIDGE_NPZ
+    bridge = (
+        Path(args.bridge_npz)
+        if str(args.bridge_npz).strip()
+        else DEFAULT_PRETRAIN_BRIDGE_NPZ
+    )
     return LambdaCFMGPUWrapper(
         dry_run=bool(args.dry_run),
         device=str(args.device),
@@ -380,8 +378,10 @@ def run_joint_inference_smoke(wrapper: LambdaCFMGPUWrapper) -> Dict[str, Any]:
            "first_decoded": str | None, "bridge_present": bool}``
     """
     pipe = wrapper.build_cpu_joint_pipeline()
-    if not isinstance(pipe, object) or pipe is None or (
-        isinstance(pipe, dict) and "error" in pipe
+    if (
+        not isinstance(pipe, object)
+        or pipe is None
+        or (isinstance(pipe, dict) and "error" in pipe)
     ):
         return {
             "ok": False,
@@ -402,7 +402,9 @@ def run_joint_inference_smoke(wrapper: LambdaCFMGPUWrapper) -> Dict[str, Any]:
     first_decoded: Optional[str] = None
     try:
         for s in smiles:
-            out = pipe.run_full_pipeline(s, np.asarray(pocket, dtype=np.float32), n_steps=10)
+            out = pipe.run_full_pipeline(
+                s, np.asarray(pocket, dtype=np.float32), n_steps=10
+            )
             decoded_counts.append(len(out.get("decoded_smiles", [])))
             if first_decoded is None and out.get("decoded_smiles"):
                 first_decoded = str(out["decoded_smiles"][0])
@@ -467,9 +469,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "gpu_status": gpu_status,
         "gpu_pass_intent": gpu_pass,
         "honest_framing": {
-            "wrapper_status": (
-                "CPU scaffold ready; GPU joint retrain deferred to R18"
-            ),
+            "wrapper_status": ("CPU scaffold ready; GPU joint retrain deferred to R18"),
             "binding_constraint": (
                 "Upstream mol-metal-cfm-training skill reports "
                 "decode_ratio=0 on h=128 Path B checkpoint "
@@ -529,6 +529,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 # the script can still report path resolution when numpy is missing.
 def _import_numpy():
     import numpy as np
+
     return np
 
 

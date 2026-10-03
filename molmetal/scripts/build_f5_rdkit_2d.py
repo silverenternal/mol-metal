@@ -51,6 +51,7 @@ Backward-compat notes
   exposed for callers that want to keep using 12-d features without
   recomputing the full 32-d vector.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -132,7 +133,8 @@ def load_smiles_from_csv(
 
 
 def load_smiles_from_list(
-    path: Path, max_rows: Optional[int] = None,
+    path: Path,
+    max_rows: Optional[int] = None,
 ) -> Tuple[List[Dict[str, object]], Dict[str, int]]:
     """Stream a one-SMILES-per-line text file into rows."""
     rows: List[Dict[str, object]] = []
@@ -202,36 +204,44 @@ def extract_descriptors_for_rows(
 # extract_rdkit_2d_descriptors.py so Wf-49 / Wf-248 summaries stay
 # schema-compatible downstream).
 # ---------------------------------------------------------------------------
-def _desc_stats_block(X: np.ndarray, desc_names: Sequence[str]) -> List[Dict[str, object]]:
+def _desc_stats_block(
+    X: np.ndarray, desc_names: Sequence[str]
+) -> List[Dict[str, object]]:
     out: List[Dict[str, object]] = []
     for j, name in enumerate(desc_names):
         col = X[:, j]
         finite = col[np.isfinite(col)]
         if len(finite) == 0:
-            out.append({
-                "name": name,
-                "n_missing": int(len(col)),
-                "mean": None,
-                "std": None,
-                "min": None,
-                "max": None,
-                "median": None,
-            })
+            out.append(
+                {
+                    "name": name,
+                    "n_missing": int(len(col)),
+                    "mean": None,
+                    "std": None,
+                    "min": None,
+                    "max": None,
+                    "median": None,
+                }
+            )
             continue
-        out.append({
-            "name": name,
-            "n_missing": int(np.sum(~np.isfinite(col))),
-            "mean": float(np.mean(finite)),
-            "std": float(np.std(finite)),
-            "min": float(np.min(finite)),
-            "max": float(np.max(finite)),
-            "median": float(np.median(finite)),
-        })
+        out.append(
+            {
+                "name": name,
+                "n_missing": int(np.sum(~np.isfinite(col))),
+                "mean": float(np.mean(finite)),
+                "std": float(np.std(finite)),
+                "min": float(np.min(finite)),
+                "max": float(np.max(finite)),
+                "median": float(np.median(finite)),
+            }
+        )
     return out
 
 
 def _pearson_block(
-    X: np.ndarray, y: np.ndarray, desc_names: Sequence[str],
+    X: np.ndarray,
+    y: np.ndarray,
+    desc_names: Sequence[str],
 ) -> List[Dict[str, object]]:
     out: List[Dict[str, object]] = []
     finite = np.isfinite(y)
@@ -366,7 +376,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         type=Path,
         default=None,
         help="Optional JSON summary path "
-             "(default: <out-csv-stem>.summary.json next to --out-csv).",
+        "(default: <out-csv-stem>.summary.json next to --out-csv).",
     )
     p.add_argument(
         "--dataset-name",
@@ -434,7 +444,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         source_csv = str(args.in_csv)
     else:
         rows, load_stats = load_smiles_from_list(
-            args.smiles_list, max_rows=args.max_rows,
+            args.smiles_list,
+            max_rows=args.max_rows,
         )
         source_csv = str(args.smiles_list)
 
@@ -447,7 +458,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     # Compute 32-d descriptors with median imputation.
     X, valid, parse_failures = extract_descriptors_for_rows(
-        rows, compute_rdkit_2d_extended,
+        rows,
+        compute_rdkit_2d_extended,
     )
     n_total = len(rows)
     n_parsed = int(np.sum(valid))
@@ -506,7 +518,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.target_col is not None:
         y = np.asarray(
             [
-                float(r[args.target_col]) if isinstance(r[args.target_col], (int, float))
+                float(r[args.target_col])
+                if isinstance(r[args.target_col], (int, float))
                 and math.isfinite(float(r[args.target_col]))
                 else float("nan")
                 for r in rows

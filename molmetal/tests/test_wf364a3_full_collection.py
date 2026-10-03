@@ -65,7 +65,11 @@ def _collect_all_wf_tests() -> List[Path]:
     """
     if not TESTS_DIR.is_dir():
         return []
-    return sorted(p for p in TESTS_DIR.iterdir() if p.name.startswith("test_wf") and p.suffix == ".py")
+    return sorted(
+        p
+        for p in TESTS_DIR.iterdir()
+        if p.name.startswith("test_wf") and p.suffix == ".py"
+    )
 
 
 ALL_WF_TEST_FILES: List[Path] = _collect_all_wf_tests()
@@ -89,7 +93,11 @@ def _import_one(test_path: Path) -> Tuple[bool, float, str]:
     mod_name = "_wf364a3_probe_" + test_path.stem
     spec = importlib.util.spec_from_file_location(mod_name, str(test_path))
     if spec is None or spec.loader is None:
-        return (False, time.perf_counter() - t0, "spec_from_file_location returned None")
+        return (
+            False,
+            time.perf_counter() - t0,
+            "spec_from_file_location returned None",
+        )
     mod = importlib.util.module_from_spec(spec)
     sys.modules[mod_name] = mod
     try:
@@ -136,7 +144,9 @@ class TestWf364A3FullCollection(unittest.TestCase):
         REPORT_PATH.write_text(
             json.dumps(
                 {
-                    "generated_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    "generated_at_utc": time.strftime(
+                        "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
+                    ),
                     "n_test_files": len(ALL_WF_TEST_FILES),
                     "n_import_ok": sum(1 for r in rows if r["import_ok"]),
                     "n_import_failed": len(failed),
@@ -198,7 +208,9 @@ class TestWf364A3FullCollection(unittest.TestCase):
         )
 
 
-@pytest.mark.parametrize("test_file", [p.name for p in ALL_WF_TEST_FILES], ids=lambda n: n)
+@pytest.mark.parametrize(
+    "test_file", [p.name for p in ALL_WF_TEST_FILES], ids=lambda n: n
+)
 def test_wf364a3_each_test_file_imports(test_file: str) -> None:
     """Per-file parametrized smoke: every ``test_wf*.py`` imports cleanly.
 

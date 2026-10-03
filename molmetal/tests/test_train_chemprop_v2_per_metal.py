@@ -53,10 +53,19 @@ def test_train_chemprop_v2_per_metal_imports_cleanly() -> None:
     mod = importlib.import_module("train_chemprop_v2_per_metal")
     # Re-exports must all be present.
     for name in (
-        "main", "METALS_5", "DEFAULT_SEEDS", "DEFAULT_EPOCHS",
-        "DEFAULT_HIDDEN", "DEFAULT_DEPTH", "DEFAULT_BATCH", "DEFAULT_LR",
-        "DEFAULT_OUT_DIR", "PerMetalRun", "build_backbone",
-        "prefeaturize_all_smiles", "run_one",
+        "main",
+        "METALS_5",
+        "DEFAULT_SEEDS",
+        "DEFAULT_EPOCHS",
+        "DEFAULT_HIDDEN",
+        "DEFAULT_DEPTH",
+        "DEFAULT_BATCH",
+        "DEFAULT_LR",
+        "DEFAULT_OUT_DIR",
+        "PerMetalRun",
+        "build_backbone",
+        "prefeaturize_all_smiles",
+        "run_one",
     ):
         assert hasattr(mod, name), f"re-export missing: {name}"
 
@@ -67,16 +76,16 @@ def test_train_chemprop_v2_per_metal_cli_help_exits_cleanly() -> None:
 
     result = subprocess.run(
         [sys.executable, str(_SCRIPT_DIR / "train_chemprop_v2_per_metal.py"), "--help"],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
-    assert result.returncode == 0, (
-        f"--help failed: stderr={result.stderr}"
-    )
+    assert result.returncode == 0, f"--help failed: stderr={result.stderr}"
     # Defaults advertised per acceptance gate 2 (device=cuda, bf16, num-workers=4).
     for needle in ("--bf16", "--num-workers", "--device", "--epochs"):
-        assert needle in result.stdout, (
-            f"{needle} missing from --help output:\n{result.stdout}"
-        )
+        assert (
+            needle in result.stdout
+        ), f"{needle} missing from --help output:\n{result.stdout}"
 
 
 # ---------------------------------------------------------------------------
@@ -85,24 +94,28 @@ def test_train_chemprop_v2_per_metal_cli_help_exits_cleanly() -> None:
 def test_default_metals_are_the_5_target_metals() -> None:
     """The default metals are exactly {Ru, Ir, Os, Rh, Re}."""
     from train_chemprop_v2_per_metal import METALS_5
+
     assert tuple(METALS_5) == ("Ru", "Ir", "Os", "Rh", "Re")
 
 
 def test_default_seeds_count_is_5() -> None:
     """The default seeds tuple is exactly 5 entries (0..4)."""
     from train_chemprop_v2_per_metal import DEFAULT_SEEDS
+
     assert tuple(DEFAULT_SEEDS) == (0, 1, 2, 3, 4)
 
 
 def test_default_epochs_is_50() -> None:
     """Default epochs=50 (matches the Wf-199 §2 acceptance gate)."""
     from train_chemprop_v2_per_metal import DEFAULT_EPOCHS
+
     assert DEFAULT_EPOCHS == 50
 
 
 def test_default_hidden_is_300_and_depth_is_3() -> None:
     """Default chemprop v2 backbone: hidden=300, depth=3."""
     from train_chemprop_v2_per_metal import DEFAULT_HIDDEN, DEFAULT_DEPTH
+
     assert DEFAULT_HIDDEN == 300
     assert DEFAULT_DEPTH == 3
 
@@ -117,10 +130,15 @@ def test_main_default_args_use_cuda_bf16_and_num_workers_4() -> None:
     # Inspect the argparse defaults that the main() function builds.
     # The signature is stable across Wf-170 + Wf-199 (it's a thin wrapper).
     import argparse
+
     # Re-build a parser using the same ArgumentParser as main().
     from train_chemprop_v2_permetal_singletask import (
-        DEFAULT_BATCH, DEFAULT_LR, METALS_5, DEFAULT_SEEDS,
+        DEFAULT_BATCH,
+        DEFAULT_LR,
+        METALS_5,
+        DEFAULT_SEEDS,
     )
+
     # Mirror main()'s argparse construction so we can inspect defaults
     # without invoking the full training loop.
     p = argparse.ArgumentParser()
@@ -130,8 +148,9 @@ def test_main_default_args_use_cuda_bf16_and_num_workers_4() -> None:
     p.add_argument("--batch-size", type=int, default=DEFAULT_BATCH)
     p.add_argument("--lr", type=float, default=DEFAULT_LR)
     p.add_argument("--device", default="cuda")
-    p.add_argument("--bf16", dest="bf16",
-                   action=argparse.BooleanOptionalAction, default=True)
+    p.add_argument(
+        "--bf16", dest="bf16", action=argparse.BooleanOptionalAction, default=True
+    )
     p.add_argument("--num-workers", type=int, default=4)
     args = p.parse_args([])
     assert args.device == "cuda"
@@ -148,7 +167,10 @@ def test_main_default_args_use_cuda_bf16_and_num_workers_4() -> None:
 #  when the 25-run sweep actually completes.)
 # ---------------------------------------------------------------------------
 _WF170_SUMMARY = (
-    _REPO_ROOT / "molmetal" / "reports" / "wf170_permetal_singletask"
+    _REPO_ROOT
+    / "molmetal"
+    / "reports"
+    / "wf170_permetal_singletask"
     / "sweep_summary.json"
 )
 _WF146_BROKEN = _REPO_ROOT / "molmetal" / "reports" / "wf146_lomo_v1_broken_design.json"
@@ -165,9 +187,9 @@ def test_gate_2_25_runs_completed() -> None:
     total = 0
     for metal in ("Ru", "Ir", "Os", "Rh", "Re"):
         assert metal in per_metal, f"metal missing from sweep: {metal}"
-        assert len(per_metal[metal]) == 5, (
-            f"metal={metal} should have 5 seeds, got {len(per_metal[metal])}"
-        )
+        assert (
+            len(per_metal[metal]) == 5
+        ), f"metal={metal} should have 5 seeds, got {len(per_metal[metal])}"
         total += len(per_metal[metal])
     assert total == 25, f"expected 25 runs, got {total}"
 
@@ -250,9 +272,9 @@ def test_gate_4_wall_time_under_4_hr() -> None:
     """G4 — total wall-time ≤ 4 hr (MEASURED: ~6 min on RTX 5090)."""
     summary = json.loads(_WF170_SUMMARY.read_text())
     wall_min = summary.get("total_wall_min", float("inf"))
-    assert wall_min <= 4.0 * 60.0, (
-        f"wall-time {wall_min:.1f} min exceeded the 4 hr acceptance gate"
-    )
+    assert (
+        wall_min <= 4.0 * 60.0
+    ), f"wall-time {wall_min:.1f} min exceeded the 4 hr acceptance gate"
 
 
 # ---------------------------------------------------------------------------
@@ -270,17 +292,17 @@ def test_v2_driver_does_not_use_lomo() -> None:
     # The wrapper re-exports main() from the singletask module.
     inner_src = (_SCRIPT_DIR / "train_chemprop_v2_permetal_singletask.py").read_text()
     # Neither module should perform a per-metal leave-one-out split.
-    assert "leave_one_out" not in src.lower(), (
-        "v2 driver introduced a LOMO split — this regresses the BD-6 fix."
-    )
+    assert (
+        "leave_one_out" not in src.lower()
+    ), "v2 driver introduced a LOMO split — this regresses the BD-6 fix."
     assert "leave_one_out" not in inner_src.lower(), (
         "train_chemprop_v2_permetal_singletask.py introduced a LOMO split — "
         "this regresses the BD-6 fix."
     )
     # The wrapper module docstring must explicitly state "NOT LOMO".
-    assert "NOT LOMO" in src, (
-        "v2 driver docstring lost the explicit 'NOT LOMO' BD-6 fix marker."
-    )
+    assert (
+        "NOT LOMO" in src
+    ), "v2 driver docstring lost the explicit 'NOT LOMO' BD-6 fix marker."
 
 
 # ---------------------------------------------------------------------------
@@ -293,9 +315,9 @@ def test_v2_driver_documents_bd4_precache() -> None:
     src = (_SCRIPT_DIR / "train_chemprop_v2_per_metal.py").read_text()
     # The wrapper docstring must reference BD-4 so future readers know
     # the per-canonical-SMILES MolGraph cache is the recommended speed-up.
-    assert "BD-4" in src or "BD‑4" in src, (
-        "v2 driver docstring lost the BD-4 pre-cache contract reference."
-    )
+    assert (
+        "BD-4" in src or "BD‑4" in src
+    ), "v2 driver docstring lost the BD-4 pre-cache contract reference."
 
 
 # ---------------------------------------------------------------------------

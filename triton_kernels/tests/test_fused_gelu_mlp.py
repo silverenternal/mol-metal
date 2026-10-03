@@ -16,7 +16,11 @@ def test_cpu_fallback_parity():
     torch.manual_seed(0)
     m = FusedGeluMLP(64, 128, device="cpu")
     x = torch.randn(4, 64, dtype=torch.float16)
-    expected = torch.nn.functional.gelu(torch.nn.functional.linear(x, m.w1, m.b1)).matmul(m.w2.t()).add(m.b2)
+    expected = (
+        torch.nn.functional.gelu(torch.nn.functional.linear(x, m.w1, m.b1))
+        .matmul(m.w2.t())
+        .add(m.b2)
+    )
     torch.testing.assert_close(m(x), expected, atol=1.5e-3, rtol=1.5e-3)
 
 
@@ -25,7 +29,15 @@ def test_gpu_parity():
     torch.manual_seed(0)
     m = FusedGeluMLP(64, 128, device="cuda")
     x = torch.randn(64, 128, 64, device="cuda", dtype=torch.float16)
-    ref = torch.nn.Sequential(torch.nn.Linear(64, 128), torch.nn.GELU(), torch.nn.Linear(128, 64)).cuda().to(torch.float16)
-    ref[0].weight.data.copy_(m.w1); ref[0].bias.data.copy_(m.b1)
-    ref[2].weight.data.copy_(m.w2); ref[2].bias.data.copy_(m.b2)
+    ref = (
+        torch.nn.Sequential(
+            torch.nn.Linear(64, 128), torch.nn.GELU(), torch.nn.Linear(128, 64)
+        )
+        .cuda()
+        .to(torch.float16)
+    )
+    ref[0].weight.data.copy_(m.w1)
+    ref[0].bias.data.copy_(m.b1)
+    ref[2].weight.data.copy_(m.w2)
+    ref[2].bias.data.copy_(m.b2)
     torch.testing.assert_close(m(x), ref(x), atol=1.5e-3, rtol=1.5e-3)

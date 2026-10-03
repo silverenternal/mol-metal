@@ -18,6 +18,7 @@ This is a *read-only* audit; it does not modify paper §4 or any of the
 metric files. Use it to verify the audit numbers before committing a
 new round of measurements.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -83,11 +84,7 @@ def compound_verdict_metrics(metrics: list[dict]) -> list[str]:
     These are honest-negative cases like m8 (acceptable smoke / weak
     production) where a single label is misleading.
     """
-    return [
-        m.get("id", "?")
-        for m in metrics
-        if "/" in str(m.get("verdict", ""))
-    ]
+    return [m.get("id", "?") for m in metrics if "/" in str(m.get("verdict", ""))]
 
 
 def check_no_overclaim(buckets: dict[str, list[str]]) -> tuple[bool, str]:
@@ -130,11 +127,7 @@ def build_credibility_audit(audit: dict) -> dict:
     #   - no weak metric is also in strong
     #   - the audit has MEASURED vs PROJECTED labels
     n_total = n_strong + n_acceptable + n_weak + n_unmeasured + n_design_only
-    ready_for_paper = (
-        n_total >= 20
-        and no_overclaim
-        and n_strong >= 5
-    )
+    ready_for_paper = n_total >= 20 and no_overclaim and n_strong >= 5
 
     return {
         "audit_date": str(date.today()),
@@ -156,9 +149,9 @@ def build_credibility_audit(audit: dict) -> dict:
         "data_source": str(AUDIT_JSON.relative_to(PROJECT_ROOT)),
         "r_state": audit.get("r_state", "unknown"),
         "scoring_rule": audit.get("scoring_rule", {}),
-        "r18_short_term_repair_budget": audit.get(
-            "paper_framing", {}
-        ).get("r18_short_term_repair_budget", "unknown"),
+        "r18_short_term_repair_budget": audit.get("paper_framing", {}).get(
+            "r18_short_term_repair_budget", "unknown"
+        ),
     }
 
 

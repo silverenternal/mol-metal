@@ -111,8 +111,10 @@ def main() -> int:
     t0 = time.time()
     cache.precompute_smiles(smiles_list)
     precompute_s = time.time() - t0
-    print(f"[tier-1] precompute_smiles: {precompute_s:.2f}s "
-          f"({cache.cache_info()['n_canonical_smiles']} unique SMILES)")
+    print(
+        f"[tier-1] precompute_smiles: {precompute_s:.2f}s "
+        f"({cache.cache_info()['n_canonical_smiles']} unique SMILES)"
+    )
 
     # Build backbone.
     sample_smi = smiles_list[0]
@@ -120,7 +122,9 @@ def main() -> int:
     atom_fdim = sample["V"].shape[1]
     bond_fdim = sample["E"].shape[1] if sample["E"].ndim > 1 else 14
 
-    mp = AtomMessagePassing(d_v=atom_fdim, d_e=bond_fdim, d_h=args.hidden, depth=args.depth)
+    mp = AtomMessagePassing(
+        d_v=atom_fdim, d_e=bond_fdim, d_h=args.hidden, depth=args.depth
+    )
     agg = SumAggregation()
     head = BinaryClassificationFFN(
         n_tasks=1,
@@ -142,18 +146,20 @@ def main() -> int:
     # Train/val split.
     idx = np.arange(len(smiles_list))
     idx_train, idx_val = train_test_split(
-        idx, test_size=0.20, random_state=args.seeds[0],
+        idx,
+        test_size=0.20,
+        random_state=args.seeds[0],
         stratify=active_arr.astype(int),
     )
 
     # Pre-compute batches for the train set (deterministic).
     train_batches = []
     for s in range(0, len(idx_train), args.batch_size):
-        bi = idx_train[s:s + args.batch_size]
+        bi = idx_train[s : s + args.batch_size]
         train_batches.append([smiles_list[int(i)] for i in bi])
     val_batches = []
     for s in range(0, len(idx_val), args.batch_size):
-        bi = idx_val[s:s + args.batch_size]
+        bi = idx_val[s : s + args.batch_size]
         val_batches.append([smiles_list[int(i)] for i in bi])
 
     train_active_t = torch.from_numpy(active_arr[idx_train]).float().to(device)
@@ -190,14 +196,18 @@ def main() -> int:
             nb += len(smiles_batch)
         avg_loss = total_loss / max(nb, 1)
         elapsed = time.time() - train_t0
-        print(f"  epoch {epoch + 1}/{args.epochs} loss={avg_loss:.4f} "
-              f"cache: hit={cache.stats.n_hit} miss={cache.stats.n_miss} "
-              f"hit_rate={cache.stats.hit_rate:.2%} elapsed={elapsed:.1f}s")
+        print(
+            f"  epoch {epoch + 1}/{args.epochs} loss={avg_loss:.4f} "
+            f"cache: hit={cache.stats.n_hit} miss={cache.stats.n_miss} "
+            f"hit_rate={cache.stats.hit_rate:.2%} elapsed={elapsed:.1f}s"
+        )
 
     train_wall = time.time() - train_t0
 
     # Eval.
-    mp.eval(); agg.eval(); head.eval()
+    mp.eval()
+    agg.eval()
+    head.eval()
     scores = []
     labels = []
     eval_epoch_idx = args.epochs + 1
@@ -206,7 +216,7 @@ def main() -> int:
         for batch_pos, smiles_batch in enumerate(val_batches):
             bmg = cache.get_or_build_batch(
                 epoch_idx=eval_epoch_idx,
-                batch_idx=batch_pos + 10 ** 6,  # offset to avoid training cache hits
+                batch_idx=batch_pos + 10**6,  # offset to avoid training cache hits
                 smiles_batch=smiles_batch,
                 device=device,
                 batch_molgraph_ctor=BatchMolGraph,
@@ -238,8 +248,10 @@ def main() -> int:
     out_path = out_dir / f"{args.metals[0]}_seed{args.seeds[0]}.json"
     out_path.write_text(json.dumps(out_json, indent=2))
     print(f"== Wrote {out_path}")
-    print(f"== cache hit_rate={cache.stats.hit_rate:.2%} "
-          f"({cache.stats.n_hit} hits / {cache.stats.n_miss} misses)")
+    print(
+        f"== cache hit_rate={cache.stats.hit_rate:.2%} "
+        f"({cache.stats.n_hit} hits / {cache.stats.n_miss} misses)"
+    )
     return 0
 
 

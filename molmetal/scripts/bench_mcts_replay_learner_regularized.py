@@ -75,6 +75,7 @@ Run via::
     uv run --no-sync python molmetal/scripts/bench_mcts_replay_learner_regularized.py \\
         --gpu-0 --n-epochs 100
 """
+
 from __future__ import annotations
 
 import argparse
@@ -274,7 +275,9 @@ def _np_sliced_w2(
     float
         Scalar W_2 estimate.
     """
-    p = np.asarray(pred, dtype=float).reshape(-1, pred.shape[-1] if pred.ndim > 1 else 1)
+    p = np.asarray(pred, dtype=float).reshape(
+        -1, pred.shape[-1] if pred.ndim > 1 else 1
+    )
     r = np.asarray(ref, dtype=float).reshape(-1, ref.shape[-1] if ref.ndim > 1 else 1)
     if p.shape[-1] != r.shape[-1]:
         # Last-dim mismatch — degrade to L1 distance on the means.
@@ -320,6 +323,7 @@ def _compute_w2(
     if wasserstein_loss is not None:
         try:
             import torch  # local import — bench runs without torch
+
             p_t = torch.tensor(np.asarray(pred, dtype=float), dtype=torch.float32)
             r_t = torch.tensor(np.asarray(ref, dtype=float), dtype=torch.float32)
             return float(
@@ -415,10 +419,7 @@ class RegularisedValueNetwork:
         l2 = float(
             self.weight_decay
             * 0.5
-            * (
-                float(np.sum(self.base.w1 ** 2))
-                + float(np.sum(self.base.w2 ** 2))
-            ),
+            * (float(np.sum(self.base.w1**2)) + float(np.sum(self.base.w2**2))),
         )
         self.base.w1 -= self.lr * self.weight_decay * self.base.w1
         self.base.w2 -= self.lr * self.weight_decay * self.base.w2
@@ -526,7 +527,9 @@ class RegularisedPolicyNetwork:
             per-batch loss into cross-entropy, L2, W_2 and the total.
         """
         x = np.asarray(x, dtype=float).reshape(-1, self.feature_dim)
-        target_policy = np.asarray(target_policy, dtype=float).reshape(-1, self.n_actions)
+        target_policy = np.asarray(target_policy, dtype=float).reshape(
+            -1, self.n_actions
+        )
         if x.shape[0] == 0:
             return {"ce": 0.0, "l2": 0.0, "w2": 0.0, "total": 0.0}
         if x.shape[0] != target_policy.shape[0]:
@@ -536,7 +539,7 @@ class RegularisedPolicyNetwork:
         # ----- CE step (calls base PolicyNetwork.update) -----
         ce = float(self.base.update(x, target_policy))
         # ----- L2 weight decay (applied AFTER the CE step) -----
-        l2 = float(self.weight_decay * 0.5 * float(np.sum(self.base.w ** 2)))
+        l2 = float(self.weight_decay * 0.5 * float(np.sum(self.base.w**2)))
         self.base.w -= self.lr * self.weight_decay * self.base.w
         # ----- W_2 prior penalty (between predicted and target policy) -----
         # When ``beta_w2 == 0`` we skip the W_2 computation entirely
@@ -690,7 +693,9 @@ class RegularisedMCTSReplayLearner:
         if buffer is None:
             raise Wf129P2Error("fit() requires a non-None buffer")
         n_epochs_eff = int(n_epochs) if n_epochs is not None else int(self.n_epochs)
-        batch_size_eff = int(batch_size) if batch_size is not None else int(self.batch_size)
+        batch_size_eff = (
+            int(batch_size) if batch_size is not None else int(self.batch_size)
+        )
         if n_epochs_eff < 1:
             raise Wf129P2Error(f"n_epochs must be >= 1; got {n_epochs_eff}")
         self.history_.clear()
@@ -722,50 +727,61 @@ class RegularisedMCTSReplayLearner:
             )
             # ----- value target -----
             v_targets = np.asarray(
-                [float(np.clip(e.value, -1.0, 1.0)) for e in batch], dtype=float,
+                [float(np.clip(e.value, -1.0, 1.0)) for e in batch],
+                dtype=float,
             )
             if self.strategy == "vanilla":
                 value_loss = float(self.value_net.update(feats, v_targets))
                 w2_diag: List[Dict[str, Any]] = []
             else:
                 v_out = self.value_net.update_with_regularisation(
-                    feats, v_targets, seed=int(self.seed + epoch_idx),
+                    feats,
+                    v_targets,
+                    seed=int(self.seed + epoch_idx),
                 )
                 value_loss = float(v_out["total"])
-                w2_diag = [{
-                    "w2_value": float(v_out["w2"]),
-                    "l2_value": float(v_out["l2"]),
-                    "engine_tag": "w2_replay_reg",
-                }]
+                w2_diag = [
+                    {
+                        "w2_value": float(v_out["w2"]),
+                        "l2_value": float(v_out["l2"]),
+                        "engine_tag": "w2_replay_reg",
+                    }
+                ]
             # ----- policy target -----
             p_targets = self._build_policy_targets(batch)
             if self.strategy == "vanilla":
                 policy_loss = float(self.policy_net.update(feats, p_targets))
             else:
                 p_out = self.policy_net.update_with_regularisation(
-                    feats, p_targets, seed=int(self.seed + epoch_idx + 17),
+                    feats,
+                    p_targets,
+                    seed=int(self.seed + epoch_idx + 17),
                 )
                 policy_loss = float(p_out["total"])
-                w2_diag.append({
-                    "w2_policy": float(p_out["w2"]),
-                    "l2_policy": float(p_out["l2"]),
-                    "engine_tag": "w2_replay_reg",
-                })
+                w2_diag.append(
+                    {
+                        "w2_policy": float(p_out["w2"]),
+                        "l2_policy": float(p_out["l2"]),
+                        "engine_tag": "w2_replay_reg",
+                    }
+                )
             wall = time.time() - t0
             running_v.append(value_loss)
             running_p.append(policy_loss)
             window_v = float(np.mean(running_v[-CONVERGENCE_WINDOW_P2:]))
             window_p = float(np.mean(running_p[-CONVERGENCE_WINDOW_P2:]))
-            self.history_.append({
-                "epoch": int(epoch_idx),
-                "value_loss": float(value_loss),
-                "policy_loss": float(policy_loss),
-                "wall_time_s": float(wall),
-                "n_samples": int(n),
-                "value_loss_running_mean": float(window_v),
-                "policy_loss_running_mean": float(window_p),
-                "w2_diagnostics": list(w2_diag),
-            })
+            self.history_.append(
+                {
+                    "epoch": int(epoch_idx),
+                    "value_loss": float(value_loss),
+                    "policy_loss": float(policy_loss),
+                    "wall_time_s": float(wall),
+                    "n_samples": int(n),
+                    "value_loss_running_mean": float(window_v),
+                    "policy_loss_running_mean": float(window_p),
+                    "w2_diagnostics": list(w2_diag),
+                }
+            )
             # Convergence check — running mean of *both* losses falls
             # below ``CONVERGENCE_EPS_P2``.
             if (
@@ -924,12 +940,20 @@ def _run_strategy(
         # Heavy modules failed — return a no-op result so the
         # aggregate pipeline still records zero entries.
         return LearnerStrategyResult(
-            strategy=strategy, seed=int(seed),
-            n_epochs=int(n_epochs), batch_size=int(batch_size),
-            n_samples=0, final_value_loss=0.0, final_policy_loss=0.0,
-            value_loss_drop=0.0, policy_loss_drop=0.0,
-            converged=False, total_wall_time_s=0.0,
-            mean_w2_policy=0.0, mean_w2_value=0.0, history=[],
+            strategy=strategy,
+            seed=int(seed),
+            n_epochs=int(n_epochs),
+            batch_size=int(batch_size),
+            n_samples=0,
+            final_value_loss=0.0,
+            final_policy_loss=0.0,
+            value_loss_drop=0.0,
+            policy_loss_drop=0.0,
+            converged=False,
+            total_wall_time_s=0.0,
+            mean_w2_policy=0.0,
+            mean_w2_value=0.0,
+            history=[],
         )
     rng = np.random.default_rng(int(seed))
     buffer = MCTSReplayBuffer(max_size=max(2 * n_entries, 256), seed=int(seed))
@@ -957,8 +981,10 @@ def _run_strategy(
     history = learner.fit(buffer)
     summary = learner.summary()
     return LearnerStrategyResult(
-        strategy=str(strategy), seed=int(seed),
-        n_epochs=int(n_epochs), batch_size=int(batch_size),
+        strategy=str(strategy),
+        seed=int(seed),
+        n_epochs=int(n_epochs),
+        batch_size=int(batch_size),
         n_samples=int(n_added),
         final_value_loss=float(summary["final_value_loss"]),
         final_policy_loss=float(summary["final_policy_loss"]),
@@ -994,31 +1020,39 @@ def _aggregate_per_seed(
 ) -> Dict[str, Any]:
     """Run all 3 strategies across all seeds and aggregate."""
     strategies = ("vanilla", "l2_only", "l2_w2")
-    per_strategy: Dict[str, List[LearnerStrategyResult]] = {
-        s: [] for s in strategies
-    }
+    per_strategy: Dict[str, List[LearnerStrategyResult]] = {s: [] for s in strategies}
     for seed in seeds:
         for strat in strategies:
             res = _run_strategy(
-                strategy=strat, seed=int(seed),
-                n_epochs=int(n_epochs), batch_size=int(batch_size),
-                n_entries=int(n_entries), n_states=int(n_states),
+                strategy=strat,
+                seed=int(seed),
+                n_epochs=int(n_epochs),
+                batch_size=int(batch_size),
+                n_entries=int(n_entries),
+                n_states=int(n_states),
                 n_actions=int(n_actions),
                 feature_dim=int(feature_dim),
-                hidden_dim=int(hidden_dim), lr=float(lr),
+                hidden_dim=int(hidden_dim),
+                lr=float(lr),
                 weight_decay=float(weight_decay),
-                beta_w2=float(beta_w2), gamma_w2=float(gamma_w2),
+                beta_w2=float(beta_w2),
+                gamma_w2=float(gamma_w2),
                 n_mc=int(n_mc),
             )
             per_strategy[strat].append(res)
+
     # Cross-seed aggregate.
     def _agg(results: List[LearnerStrategyResult]) -> Dict[str, float]:
         if not results:
             return {
-                "final_value_loss": 0.0, "final_policy_loss": 0.0,
-                "policy_loss_drop": 0.0, "value_loss_drop": 0.0,
-                "converged_rate": 0.0, "wall_time_s": 0.0,
-                "mean_w2_policy": 0.0, "mean_w2_value": 0.0,
+                "final_value_loss": 0.0,
+                "final_policy_loss": 0.0,
+                "policy_loss_drop": 0.0,
+                "value_loss_drop": 0.0,
+                "converged_rate": 0.0,
+                "wall_time_s": 0.0,
+                "mean_w2_policy": 0.0,
+                "mean_w2_value": 0.0,
             }
         return {
             "final_value_loss": float(
@@ -1046,6 +1080,7 @@ def _aggregate_per_seed(
                 sum(r.mean_w2_value for r in results) / len(results),
             ),
         }
+
     agg = {k: _agg(v) for k, v in per_strategy.items()}
     return {
         "per_strategy_per_seed": {
@@ -1073,7 +1108,8 @@ def _aggregate_per_seed(
 
 
 def _write_per_seed_json(
-    report: Dict[str, Any], output_dir: Path,
+    report: Dict[str, Any],
+    output_dir: Path,
 ) -> None:
     """Write per-seed per-strategy metrics to ``output_dir/seeds/<s>``."""
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -1092,7 +1128,8 @@ def _write_per_seed_json(
             "source": (
                 "molmetal/scripts/bench_mcts_replay_learner_regularized.py "
                 "(Wf-129 P2, seed=%d)"
-            ) % int(seed),
+            )
+            % int(seed),
             "unit": "loss (CE / MSE, lower = better)",
             "scope": "wf129_p2_replay_learner",
             "value": 0.0,
@@ -1145,14 +1182,17 @@ def _write_per_seed_json(
     for s_idx, seed in enumerate(seeds):
         if s_idx < len(per_strat["vanilla"]):
             base = per_strat["vanilla"][s_idx]
-            agg_doc["per_seed_values"].append({
-                "seed": int(seed),
-                "vanilla_final_policy_loss": float(base["final_policy_loss"]),
-                "l2_w2_final_policy_loss": float(
-                    per_strat["l2_w2"][s_idx]["final_policy_loss"]
-                    if s_idx < len(per_strat["l2_w2"]) else 0.0,
-                ),
-            })
+            agg_doc["per_seed_values"].append(
+                {
+                    "seed": int(seed),
+                    "vanilla_final_policy_loss": float(base["final_policy_loss"]),
+                    "l2_w2_final_policy_loss": float(
+                        per_strat["l2_w2"][s_idx]["final_policy_loss"]
+                        if s_idx < len(per_strat["l2_w2"])
+                        else 0.0,
+                    ),
+                }
+            )
     root_path = output_dir / "per_seed_metrics.json"
     # Wf-410-A3 migration: atomic write + safe_overwrite_check so the
     # root aggregate JSON survives concurrent writes and surfaces any
@@ -1163,7 +1203,8 @@ def _write_per_seed_json(
 
 
 def _write_synthesis(
-    report: Dict[str, Any], output_dir: Path,
+    report: Dict[str, Any],
+    output_dir: Path,
     target_policy_loss: float = TARGET_POLICY_LOSS,
     target_value_loss: float = TARGET_VALUE_LOSS,
 ) -> None:
@@ -1182,12 +1223,8 @@ def _write_synthesis(
     # vanilla_pl == 0.0 we treat the bench as a no-op (e.g. heavy
     # modules failed) and report NOT-MET.
     bench_executed = vanilla_pl > 0.0 and vanilla_vl > 0.0
-    target_met_policy = bench_executed and (
-        l2_w2_pl <= float(target_policy_loss)
-    )
-    target_met_value = bench_executed and (
-        l2_w2_vl <= float(target_value_loss)
-    )
+    target_met_policy = bench_executed and (l2_w2_pl <= float(target_policy_loss))
+    target_met_value = bench_executed and (l2_w2_vl <= float(target_value_loss))
     target_met = bench_executed and target_met_policy and target_met_value
     cfg = report["config"]
     out_path = output_dir / "synthesis.md"
@@ -1265,8 +1302,10 @@ def _write_synthesis(
     lines.append("")
     lines.append("### §3.1 Aggregate (cross-seed)")
     lines.append("")
-    lines.append("| Strategy | final_policy_loss | final_value_loss | "
-                 "policy_loss_drop | value_loss_drop | converged_rate |")
+    lines.append(
+        "| Strategy | final_policy_loss | final_value_loss | "
+        "policy_loss_drop | value_loss_drop | converged_rate |"
+    )
     lines.append("| --- | --- | --- | --- | --- | --- |")
     for strat in ("vanilla", "l2_only", "l2_w2"):
         a = agg[strat]
@@ -1284,8 +1323,7 @@ def _write_synthesis(
     lines.append("| --- | --- | --- |")
     a = agg["l2_w2"]
     lines.append(
-        f"| `l2_w2` | {a['mean_w2_policy']:.6f} | "
-        f"{a['mean_w2_value']:.6f} |",
+        f"| `l2_w2` | {a['mean_w2_policy']:.6f} | " f"{a['mean_w2_value']:.6f} |",
     )
     lines.append("")
     lines.append("## §4 Verdict")
@@ -1347,7 +1385,7 @@ def _write_synthesis(
         "* The W_2 regulariser is a NEW scoring component (per TODO-126 "
         "§7); every per-batch diagnostic in "
         "`per_strategy_per_seed[*].history[*].w2_diagnostics[*]` "
-        "carries `engine_tag = \"w2_replay_reg\"` so downstream "
+        'carries `engine_tag = "w2_replay_reg"` so downstream '
         "reporting can attribute W_2 contributions honestly.",
     )
     lines.append(
@@ -1358,12 +1396,10 @@ def _write_synthesis(
     lines.append("## §6 Cross-references")
     lines.append("")
     lines.append(
-        "* `molmetal/scripts/bench_mcts_replay_learner_regularized.py` "
-        "(this run)",
+        "* `molmetal/scripts/bench_mcts_replay_learner_regularized.py` " "(this run)",
     )
     lines.append(
-        "* `molmetal/tests/test_mcts_replay_learner_regularized.py` "
-        "(26 unit tests)",
+        "* `molmetal/tests/test_mcts_replay_learner_regularized.py` " "(26 unit tests)",
     )
     lines.append(
         "* `molmetal/reports/wf129_p2_replay_learner/per_seed_metrics.json` "
@@ -1381,8 +1417,7 @@ def _write_synthesis(
         "* `molmetal/scripts/mcts_replay_learner.py` (Wf-36 P4 ship)",
     )
     lines.append(
-        "* `TODO/completed/85_wf39_mcts_real_trajectory.md` "
-        "(Wf-39 P1 L2 baseline)",
+        "* `TODO/completed/85_wf39_mcts_real_trajectory.md` " "(Wf-39 P1 L2 baseline)",
     )
     # Wf-410-A3 migration: atomic write + safe_overwrite_check + truncation
     # check on the synthesis MD so closeout-drafting runs surface any
@@ -1405,7 +1440,8 @@ def _parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
-        "--smoke", action="store_true",
+        "--smoke",
+        action="store_true",
         help="Quick run (3 epochs × 1 seed × 32 entries).",
     )
     p.add_argument("--n-epochs", type=int, default=DEFAULT_N_EPOCHS_P2)
@@ -1421,22 +1457,30 @@ def _parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     p.add_argument("--gamma-w2", type=float, default=DEFAULT_GAMMA_W2_VALUE)
     p.add_argument("--n-mc", type=int, default=DEFAULT_N_MC_W2)
     p.add_argument(
-        "--seeds", type=str, default="0,1,2,3,4",
+        "--seeds",
+        type=str,
+        default="0,1,2,3,4",
         help="Comma-separated seeds (default 0..4).",
     )
     p.add_argument(
-        "--report-path", type=str,
+        "--report-path",
+        type=str,
         default=DEFAULT_OUTPUT_DIR_P2,
     )
     p.add_argument(
-        "--gpu-0", action="store_true",
+        "--gpu-0",
+        action="store_true",
         help="(no-op placeholder) — bench runs on CPU + (opt) GPU-0.",
     )
     p.add_argument(
-        "--target-policy-loss", type=float, default=TARGET_POLICY_LOSS,
+        "--target-policy-loss",
+        type=float,
+        default=TARGET_POLICY_LOSS,
     )
     p.add_argument(
-        "--target-value-loss", type=float, default=TARGET_VALUE_LOSS,
+        "--target-value-loss",
+        type=float,
+        default=TARGET_VALUE_LOSS,
     )
     return p.parse_args(argv)
 
@@ -1463,19 +1507,25 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         f"n_mc={args.n_mc}"
     )
     report = _aggregate_per_seed(
-        seeds=seeds, n_epochs=n_epochs, batch_size=batch_size,
-        n_entries=n_entries, n_states=n_states,
+        seeds=seeds,
+        n_epochs=n_epochs,
+        batch_size=batch_size,
+        n_entries=n_entries,
+        n_states=n_states,
         n_actions=int(args.n_actions),
         feature_dim=int(args.feature_dim),
-        hidden_dim=int(args.hidden_dim), lr=float(args.lr),
+        hidden_dim=int(args.hidden_dim),
+        lr=float(args.lr),
         weight_decay=float(args.weight_decay),
-        beta_w2=float(args.beta_w2), gamma_w2=float(args.gamma_w2),
+        beta_w2=float(args.beta_w2),
+        gamma_w2=float(args.gamma_w2),
         n_mc=int(args.n_mc),
     )
     output_dir = Path(args.report_path)
     _write_per_seed_json(report, output_dir)
     _write_synthesis(
-        report, output_dir,
+        report,
+        output_dir,
         target_policy_loss=float(args.target_policy_loss),
         target_value_loss=float(args.target_value_loss),
     )

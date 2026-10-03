@@ -53,7 +53,9 @@ class RevealedNode:
 # A probe returns revealed-node records for one batch.  The function is
 # async-mirroring — the reference implementation awaits ``probeFn`` even
 # in replay, so the host accepts either an async or a sync callable.
-ProbeFn = Callable[[List[CellId], int], "Awaitable[List[RevealedNode]] | List[RevealedNode]"]
+ProbeFn = Callable[
+    [List[CellId], int], "Awaitable[List[RevealedNode]] | List[RevealedNode]"
+]
 
 
 @dataclass
@@ -105,7 +107,9 @@ class PolicyHost:
         )
         self.slot_branches: List[int] = list(opts.slots or [])
         self.refine_count_hint: int = int(opts.refine_count)
-        self.max_rounds: int = max(1, int(opts.max_rounds) if opts.max_rounds is not None else 2**31 - 1)
+        self.max_rounds: int = max(
+            1, int(opts.max_rounds) if opts.max_rounds is not None else 2**31 - 1
+        )
         self.observed_tree = DiscoveryTree(
             baseline_score=self.baseline_score,
         )
@@ -343,7 +347,9 @@ class PolicyHost:
                 raise ValueError(f"duplicate cell id in batch: {cid}")
             seen.add(cid)
             if cid == ROOT_ID:
-                raise ValueError("the root cell is not itself an action; select a root slot instead")
+                raise ValueError(
+                    "the root cell is not itself an action; select a root slot instead"
+                )
             if cid not in legal:
                 raise ValueError(f"illegal cell id for the current prefix: {cid}")
         # A parent and its child must never travel in the same batch.
@@ -356,7 +362,9 @@ class PolicyHost:
         return list(seen)
 
 
-async def _call_probe(probe_fn: ProbeFn, batch: List[CellId], round_no: int) -> List[RevealedNode]:
+async def _call_probe(
+    probe_fn: ProbeFn, batch: List[CellId], round_no: int
+) -> List[RevealedNode]:
     """Call ``probe_fn`` accepting either an async or sync callable."""
     result = probe_fn(batch, round_no)
     if hasattr(result, "__await__"):

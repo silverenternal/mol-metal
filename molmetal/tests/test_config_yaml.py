@@ -21,6 +21,7 @@ implicitly (latent bug in the trainer; p.parse_args() with no argv param default
 to sys.argv[1:]). pytest's argv pollutes that path. The DMPNN trainer integration
 test exercises the same --config wire-in contract and is the canonical smoke.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -46,6 +47,7 @@ from molmetal.scripts.wfA2_config_loader import (
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_yaml(content: str) -> str:
     """Write YAML to a tempfile and return path. Caller must delete."""
@@ -76,6 +78,7 @@ def _make_parser() -> argparse.ArgumentParser:
 # TestLoadConfigBasic
 # ---------------------------------------------------------------------------
 
+
 class TestLoadConfigBasic:
     def test_load_flat_yaml(self):
         path = _make_yaml("lr: 0.0007\nepochs: 17\n")
@@ -91,11 +94,11 @@ class TestLoadConfigBasic:
 # TestLoadConfigNested
 # ---------------------------------------------------------------------------
 
+
 class TestLoadConfigNested:
     def test_nested_dict_flattens_to_underscore_keys(self):
         path = _make_yaml(
-            "model:\n  hidden_dim: 256\n  depth: 4\n"
-            "data:\n  csv: /tmp/x.csv\n"
+            "model:\n  hidden_dim: 256\n  depth: 4\n" "data:\n  csv: /tmp/x.csv\n"
         )
         try:
             cfg = load_config(path)
@@ -142,6 +145,7 @@ class TestLoadConfigNested:
 # TestLoadConfigErrors
 # ---------------------------------------------------------------------------
 
+
 class TestLoadConfigErrors:
     def test_missing_file_returns_empty_dict(self):
         # Per design: missing file = no-op (caller decides whether to error).
@@ -151,6 +155,7 @@ class TestLoadConfigErrors:
         path = _make_yaml("- a\n- b\n")
         try:
             import yaml as _yaml
+
             with pytest.raises(_yaml.YAMLError):
                 load_config(path)
         finally:
@@ -160,6 +165,7 @@ class TestLoadConfigErrors:
 # ---------------------------------------------------------------------------
 # TestApplyYamlOverridesBackwardCompat
 # ---------------------------------------------------------------------------
+
 
 class TestApplyYamlOverridesBackwardCompat:
     def test_no_config_means_no_change(self):
@@ -180,6 +186,7 @@ class TestApplyYamlOverridesBackwardCompat:
 # ---------------------------------------------------------------------------
 # TestApplyYamlOverridesDefaults
 # ---------------------------------------------------------------------------
+
 
 class TestApplyYamlOverridesDefaults:
     def test_yaml_overrides_defaults_when_no_cli(self):
@@ -202,6 +209,7 @@ class TestApplyYamlOverridesDefaults:
 # ---------------------------------------------------------------------------
 # TestApplyYamlOverridesCliWins
 # ---------------------------------------------------------------------------
+
 
 class TestApplyYamlOverridesCliWins:
     def test_cli_explicit_scalar_beats_yaml(self):
@@ -231,14 +239,14 @@ class TestApplyYamlOverridesCliWins:
 # TestApplyYamlOverridesIgnoresUnknown
 # ---------------------------------------------------------------------------
 
+
 class TestApplyYamlOverridesIgnoresUnknown:
     def test_forward_compat_key_reported_not_fatal(self):
         """Wf-A11 (2026-10-03): unknown keys remain NON-FATAL by default, but
         are no longer silent — every skip is reported via last_skipped_keys()
         and args.yaml_unresolved_keys (WFA2_CONFIG_STRICT=1 raises instead)."""
         path = _make_yaml(
-            "lr: 0.0007\nfuture_some_new_flag: 42\n"
-            "another_unknown_key: [a, b]\n"
+            "lr: 0.0007\nfuture_some_new_flag: 42\n" "another_unknown_key: [a, b]\n"
         )
         try:
             p = _make_parser()
@@ -259,6 +267,7 @@ class TestApplyYamlOverridesIgnoresUnknown:
 # TestWfA11AliasResolution (dead-key durable fix, 2026-10-03)
 # ---------------------------------------------------------------------------
 
+
 def _make_alias_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser()
     p.add_argument("--hidden", type=int, default=128)
@@ -275,7 +284,9 @@ class TestWfA11AliasResolution:
             args = p.parse_args(["--config", path])
             out = apply_yaml_overrides(p, args, args.config)
             assert out.hidden == 300  # declared value now REACHES the trainer
-            assert not [e for e in out.yaml_unresolved_keys if e["key"] == "model.hidden_dim"]
+            assert not [
+                e for e in out.yaml_unresolved_keys if e["key"] == "model.hidden_dim"
+            ]
         finally:
             os.unlink(path)
 
@@ -306,6 +317,7 @@ class TestWfA11AliasResolution:
 # ---------------------------------------------------------------------------
 # TestApplyYamlOverridesListAlwaysWins
 # ---------------------------------------------------------------------------
+
 
 class TestApplyYamlOverridesListAlwaysWins:
     def test_yaml_list_overrides_argparse_default_list(self):
@@ -338,15 +350,18 @@ class TestApplyYamlOverridesListAlwaysWins:
 # TestDmpnnTrainerAcceptsConfig (smoke)
 # ---------------------------------------------------------------------------
 
+
 class TestDmpnnTrainerAcceptsConfig:
     def test_dmpnn_trainer_help_works_no_config(self):
         from molmetal.scripts import train_dmpnn_multitask_wasserstein as trainer
+
         args = trainer.parse_args([])
         assert hasattr(args, "config")
         assert args.config is None
 
     def test_dmpnn_trainer_parses_config_path(self):
         from molmetal.scripts import train_dmpnn_multitask_wasserstein as trainer
+
         path = _make_yaml("epochs: 17\n")
         try:
             args = trainer.parse_args(["--config", path])
@@ -359,11 +374,17 @@ class TestDmpnnTrainerAcceptsConfig:
 # TestM17CanonicalConfigLoads
 # ---------------------------------------------------------------------------
 
+
 class TestM17CanonicalConfigLoads:
     def test_m17_yaml_path_loads(self):
         """Canonical config from configs/training/m17_*.yaml must load
         without error and expose the expected keys."""
-        path = REPO_ROOT / "configs" / "training" / "m17_pt_platinai_4cell_5seed_50ep_v1.yaml"
+        path = (
+            REPO_ROOT
+            / "configs"
+            / "training"
+            / "m17_pt_platinai_4cell_5seed_50ep_v1.yaml"
+        )
         if not path.is_file():
             pytest.skip(f"M17 canonical config not on disk: {path}")
         cfg = load_config(path)
@@ -374,5 +395,8 @@ class TestM17CanonicalConfigLoads:
         assert cfg.get("model_backbone") == "chemprop_v2_v3"
         assert cfg.get("compute_gpu") == "cuda:0"
         assert cfg.get("data_cohort_filter_cells") == [
-            "A2780", "MCF7", "A549", "A2780cis",
+            "A2780",
+            "MCF7",
+            "A549",
+            "A2780cis",
         ]

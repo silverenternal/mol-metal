@@ -8,9 +8,16 @@ import torch
 from flow_matching.optimal_transport import mini_batch_ot_coupling
 
 
-DEVICES = ["cpu", pytest.param("cuda:0", marks=pytest.mark.skipif(
-    not torch.cuda.is_available(), reason="requires ROCm/CUDA",
-))]
+DEVICES = [
+    "cpu",
+    pytest.param(
+        "cuda:0",
+        marks=pytest.mark.skipif(
+            not torch.cuda.is_available(),
+            reason="requires ROCm/CUDA",
+        ),
+    ),
+]
 
 
 @pytest.mark.parametrize("device", DEVICES)
@@ -29,11 +36,20 @@ def test_real_sinkhorn_uses_torch_backend_and_retains_soft_plan(monkeypatch, dev
     x0 = torch.tensor([[0.0], [1.0], [2.0]], device=device)
     x1 = x0.flip(0)
     records = []
-    idx = mini_batch_ot_coupling(x1, x0, torch.zeros(3, device=device),
-                                reg=1.0, max_iter=200, seed=42, diagnostics=records)
+    idx = mini_batch_ot_coupling(
+        x1,
+        x0,
+        torch.zeros(3, device=device),
+        reg=1.0,
+        max_iter=200,
+        seed=42,
+        diagnostics=records,
+    )
     assert len(observations) == len(records) == 1
     a, b, cost, plan = observations[0]
-    assert all(value.device == torch.device(device) for value in (a, b, cost, plan, idx))
+    assert all(
+        value.device == torch.device(device) for value in (a, b, cost, plan, idx)
+    )
     assert records[0]["effective_backend"] == "pot_sinkhorn_log"
     assert records[0]["fallback_reason"] is None
     assert records[0]["rounding"] == "greedy_plan_permutation"
@@ -52,8 +68,9 @@ def test_log_domain_handles_large_cost_without_hungarian_fallback(device):
     x0 = torch.tensor([[0.0, 0.0], [100.0, 100.0]], device=device)
     x1 = torch.tensor([[90.0, 90.0], [10.0, 10.0]], device=device)
     records = []
-    idx = mini_batch_ot_coupling(x1, x0, torch.zeros(2, device=device),
-                                reg=0.05, diagnostics=records)
+    idx = mini_batch_ot_coupling(
+        x1, x0, torch.zeros(2, device=device), reg=0.05, diagnostics=records
+    )
     assert idx.tolist() == [1, 0]
     assert records[0]["effective_backend"] == "pot_sinkhorn_log"
     assert records[0]["fallback_reason"] is None
@@ -66,7 +83,9 @@ def test_missing_pot_fallback_is_reported_and_warns(monkeypatch):
     x0 = torch.tensor([[0.0], [1.0]])
     records = []
     with pytest.warns(RuntimeWarning, match="SciPy Hungarian on CPU"):
-        idx = mini_batch_ot_coupling(x0.flip(0), x0, torch.zeros(2), diagnostics=records)
+        idx = mini_batch_ot_coupling(
+            x0.flip(0), x0, torch.zeros(2), diagnostics=records
+        )
     assert idx.tolist() == [1, 0]
     assert records[0]["effective_backend"] == "scipy_hungarian"
     assert records[0]["fallback_reason"] == "POT unavailable"
@@ -77,8 +96,9 @@ def test_requested_hungarian_is_distinct_from_sinkhorn():
     pytest.importorskip("scipy")
     x0 = torch.tensor([[0.0], [1.0]])
     records = []
-    idx = mini_batch_ot_coupling(x0.flip(0), x0, torch.zeros(2),
-                                method="hungarian", diagnostics=records)
+    idx = mini_batch_ot_coupling(
+        x0.flip(0), x0, torch.zeros(2), method="hungarian", diagnostics=records
+    )
     assert idx.tolist() == [1, 0]
     assert records[0]["effective_backend"] == "scipy_hungarian"
     assert records[0]["fallback_reason"] is None
@@ -94,8 +114,11 @@ def test_optional_loss_diagnostics_preserve_pairing_and_loss():
     objective = ConditionalFlowMatchingLoss(model, use_minibatch_ot=True)
     x0, x1 = torch.randn(2, 3, 3), torch.randn(2, 3, 3)
     inputs = dict(
-        h_node=torch.randn(2, 3, 8), batch_idx=torch.zeros(2, dtype=torch.long),
-        edge_index=torch.tensor([[[0, 1, 2], [1, 2, 0]]]).expand(2, -1, -1).contiguous(),
+        h_node=torch.randn(2, 3, 8),
+        batch_idx=torch.zeros(2, dtype=torch.long),
+        edge_index=torch.tensor([[[0, 1, 2], [1, 2, 0]]])
+        .expand(2, -1, -1)
+        .contiguous(),
     )
     torch.manual_seed(7)
     baseline = objective(x0, x1, **inputs)
@@ -103,6 +126,8 @@ def test_optional_loss_diagnostics_preserve_pairing_and_loss():
     torch.manual_seed(7)
     observed = objective(x0, x1, ot_diagnostics=diagnostics, **inputs)
     torch.testing.assert_close(observed.loss, baseline.loss, atol=0, rtol=0)
-    torch.testing.assert_close(observed.target_velocity_, baseline.target_velocity_, atol=0, rtol=0)
+    torch.testing.assert_close(
+        observed.target_velocity_, baseline.target_velocity_, atol=0, rtol=0
+    )
     assert len(diagnostics) == 1
     assert diagnostics[0]["effective_backend"] == "pot_sinkhorn_log"

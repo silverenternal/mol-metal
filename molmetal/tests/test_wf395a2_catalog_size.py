@@ -58,9 +58,9 @@ EXPECTED_NEW_ENTRIES: list[tuple[str, str]] = [
 @pytest.fixture(scope="module")
 def catalog_text() -> str:
     """Read the catalog markdown file once per module."""
-    assert CATALOG_PATH.exists(), (
-        f"docs/HONEST_NEGATIVE_CATALOG.md must exist at {CATALOG_PATH}"
-    )
+    assert (
+        CATALOG_PATH.exists()
+    ), f"docs/HONEST_NEGATIVE_CATALOG.md must exist at {CATALOG_PATH}"
     return CATALOG_PATH.read_text(encoding="utf-8")
 
 
@@ -81,9 +81,9 @@ def main_sections(catalog_text: str) -> list[str]:
 # ---------------------------------------------------------------------------
 # Group A — Catalog size + Wf-395-A2 NEW entry coverage (1 test)
 # ---------------------------------------------------------------------------
-def test_catalog_size(catalog_text: str,
-                      catalog_entries: list[str],
-                      main_sections: list[str]) -> None:
+def test_catalog_size(
+    catalog_text: str, catalog_entries: list[str], main_sections: list[str]
+) -> None:
     """Wf-395-A2 test: catalog must have ≥ 80 entries (post Wf-395-A2 expansion).
 
     Per Wf-395-A2 task brief §3: add 8 NEW §6 entries (§6.18-§6.25)
@@ -102,9 +102,9 @@ def test_catalog_size(catalog_text: str,
     launch; no external network.
     """
     # 1) File exists at the canonical location.
-    assert CATALOG_PATH.exists(), (
-        f"docs/HONEST_NEGATIVE_CATALOG.md must exist at {CATALOG_PATH}"
-    )
+    assert (
+        CATALOG_PATH.exists()
+    ), f"docs/HONEST_NEGATIVE_CATALOG.md must exist at {CATALOG_PATH}"
     file_size = CATALOG_PATH.stat().st_size
     assert file_size > 10_000, (
         f"catalog must be substantial (>10KB after §6.18-§6.25 expansion); "
@@ -140,19 +140,21 @@ def test_catalog_size(catalog_text: str,
     section_6_blocks = section_6_pattern.findall(catalog_text)
     section_6_full_text = "\n".join(section_6_blocks)
     for entry_id, _ in EXPECTED_NEW_ENTRIES:
-        assert entry_id in section_6_full_text, (
-            f"Wf-395-A2 NEW entry ID `{entry_id}` must appear in §6.18-§6.25"
-        )
+        assert (
+            entry_id in section_6_full_text
+        ), f"Wf-395-A2 NEW entry ID `{entry_id}` must appear in §6.18-§6.25"
 
     # 6) Each NEW entry must be attributed to its source workflow
     # (Wf-388, Wf-390, Wf-392). Build a per-§6.NN block dictionary by
     # splitting on `### §6.NN` headers, then verify the entry_id appears
     # in the SAME block as the expected workflow attribution.
-    block_starts = list(re.finditer(
-        r"^### §6\.\d+\s+",
-        catalog_text,
-        re.MULTILINE,
-    ))
+    block_starts = list(
+        re.finditer(
+            r"^### §6\.\d+\s+",
+            catalog_text,
+            re.MULTILINE,
+        )
+    )
     for entry_id, expected_wf in EXPECTED_NEW_ENTRIES:
         matched_block = None
         for i, bm in enumerate(block_starts):
@@ -166,9 +168,9 @@ def test_catalog_size(catalog_text: str,
             if entry_id in block:
                 matched_block = block
                 break
-        assert matched_block is not None, (
-            f"could not extract block for entry `{entry_id}`"
-        )
+        assert (
+            matched_block is not None
+        ), f"could not extract block for entry `{entry_id}`"
         assert expected_wf in matched_block, (
             f"NEW entry `{entry_id}` must cite workflow `{expected_wf}` "
             f"in its §6 block (found block lacks attribution)"
@@ -176,12 +178,12 @@ def test_catalog_size(catalog_text: str,
 
     # 7) Honest framing discipline preserved (per `party-twenty-spirit`
     # §3.5). Catalog must contain both MEASURED and PROJECTED tags.
-    assert "MEASURED" in catalog_text, (
-        "catalog must use MEASURED tag discipline (party-twenty-spirit §3.5)"
-    )
-    assert "PROJECTED" in catalog_text, (
-        "catalog must use PROJECTED tag discipline for non-measured claims"
-    )
+    assert (
+        "MEASURED" in catalog_text
+    ), "catalog must use MEASURED tag discipline (party-twenty-spirit §3.5)"
+    assert (
+        "PROJECTED" in catalog_text
+    ), "catalog must use PROJECTED tag discipline for non-measured claims"
 
     # 8) Source citations: every NEW entry must cite at least one
     # `TODO/completed/...md` or `molmetal/reports/...json` source path.
@@ -198,17 +200,17 @@ def test_catalog_size(catalog_text: str,
             if entry_id in block:
                 matched_block = block
                 break
-        assert matched_block is not None, (
-            f"could not extract block for entry `{entry_id}`"
-        )
+        assert (
+            matched_block is not None
+        ), f"could not extract block for entry `{entry_id}`"
         source_citation = re.search(
             r"(TODO/completed/[^\s\)]+|molmetal/reports/[^\s\)]+\.json"
             r"|molmetal/reports/[^\s\)]+/)",
             matched_block,
         )
-        assert source_citation, (
-            f"NEW entry `{entry_id}` must cite a MEASURED source path on disk"
-        )
+        assert (
+            source_citation
+        ), f"NEW entry `{entry_id}` must cite a MEASURED source path on disk"
 
     # 9) WETLAB_DEPRECATED section (§7) preserved (per AGENTS.md §5.4).
     section_7_entries = [e for e in catalog_entries if e.startswith("7.")]
@@ -220,9 +222,9 @@ def test_catalog_size(catalog_text: str,
     # 10) Standing directives preserved (per AGENTS.md §5):
     # §5.1 GPU grant, §5.2 honest framing, §5.3 no paper, §5.4 Tier-2.
     for sd in ("§5.1", "§5.2", "§5.3", "§5.4"):
-        assert sd in catalog_text, (
-            f"AGENTS.md {sd} standing directive reference must be preserved"
-        )
+        assert (
+            sd in catalog_text
+        ), f"AGENTS.md {sd} standing directive reference must be preserved"
 
     print(
         f"  [test_catalog_size] catalog OK: path={CATALOG_PATH.name} "

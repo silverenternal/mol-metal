@@ -59,9 +59,9 @@ class TestWf336X1FinalConfirmation:
         so the audit trail is durable.
         """
         text = WF336X1_FINAL_DOC.read_text()
-        assert "Wf-331-X1" in text, (
-            "Wf-336-X1 final doc must reference Wf-331-X1 as the gap closer."
-        )
+        assert (
+            "Wf-331-X1" in text
+        ), "Wf-336-X1 final doc must reference Wf-331-X1 as the gap closer."
         assert "Wf-333-T4" in text, (
             "Wf-336-X1 final doc must reference Wf-333-T4 as the first "
             "confirmation pass."
@@ -90,11 +90,7 @@ class TestWf336X1UpstreamChainIntact:
         )
 
     def test_326f_closeout_doc_still_exists(self) -> None:
-        assert CLOSE_326F.exists(), (
-            f"Wf-326F closeout doc missing at {CLOSE_326F}."
-        )
+        assert CLOSE_326F.exists(), f"Wf-326F closeout doc missing at {CLOSE_326F}."
 
     def test_326h_closeout_doc_still_exists(self) -> None:
-        assert CLOSE_326H.exists(), (
-            f"Wf-326H closeout doc missing at {CLOSE_326H}."
-        )
+        assert CLOSE_326H.exists(), f"Wf-326H closeout doc missing at {CLOSE_326H}."

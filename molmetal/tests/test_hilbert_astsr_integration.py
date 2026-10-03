@@ -218,9 +218,12 @@ def test_comparator_compare_returns_full_dict() -> None:
     comparator = HilbertEvolutionaryComparator(hilbert_astsr=composite)
     out = comparator.compare(X, y, n_seeds=2)
     for key in (
-        "hilbert_wall_s", "evolutionary_wall_s",
-        "hilbert_r2", "evolutionary_r2",
-        "speedup", "n_seeds",
+        "hilbert_wall_s",
+        "evolutionary_wall_s",
+        "hilbert_r2",
+        "evolutionary_r2",
+        "speedup",
+        "n_seeds",
     ):
         assert key in out, f"missing key: {key}"
     assert out["n_seeds"] == 2
@@ -260,15 +263,25 @@ def test_benchmark_returns_full_dict() -> None:
     X, y, _ = _toy_design(n=12, dim=4, seed=9)
     fc = tuple(f"f{i}" for i in range(4))
     out = benchmark_hilbert_vs_evolutionary(
-        X, y, n_runs=3, feature_columns=fc, population_dim=4,
+        X,
+        y,
+        n_runs=3,
+        feature_columns=fc,
+        population_dim=4,
     )
     for key in (
-        "hilbert_wall_s_mean", "hilbert_wall_s_std",
-        "evolutionary_wall_s_mean", "evolutionary_wall_s_std",
-        "hilbert_r2_mean", "hilbert_r2_std",
-        "evolutionary_r2_mean", "evolutionary_r2_std",
-        "speedup_mean", "speedup_std",
-        "n_runs", "n_samples",
+        "hilbert_wall_s_mean",
+        "hilbert_wall_s_std",
+        "evolutionary_wall_s_mean",
+        "evolutionary_wall_s_std",
+        "hilbert_r2_mean",
+        "hilbert_r2_std",
+        "evolutionary_r2_mean",
+        "evolutionary_r2_std",
+        "speedup_mean",
+        "speedup_std",
+        "n_runs",
+        "n_samples",
     ):
         assert key in out, f"missing key: {key}"
     assert out["n_runs"] == 3
@@ -280,11 +293,18 @@ def test_benchmark_std_nonneg() -> None:
     X, y, _ = _toy_design(n=12, dim=4, seed=10)
     fc = tuple(f"f{i}" for i in range(4))
     out = benchmark_hilbert_vs_evolutionary(
-        X, y, n_runs=3, feature_columns=fc, population_dim=4,
+        X,
+        y,
+        n_runs=3,
+        feature_columns=fc,
+        population_dim=4,
     )
     for k in (
-        "hilbert_wall_s_std", "evolutionary_wall_s_std",
-        "hilbert_r2_std", "evolutionary_r2_std", "speedup_std",
+        "hilbert_wall_s_std",
+        "evolutionary_wall_s_std",
+        "hilbert_r2_std",
+        "evolutionary_r2_std",
+        "speedup_std",
     ):
         assert out[k] >= 0.0, f"{k} negative: {out[k]}"
 
@@ -304,9 +324,14 @@ def test_benchmark_hilbert_r2_close_to_optimal_on_linear_problem() -> None:
     from molmetal.molmetal_lam.reward.hilbert_primal_dual import (
         LambdaASTSRHilbert,
     )
+
     composite = HilbertASTSRComposite(
         hilbert_optimizer=LambdaASTSRHilbert(
-            population_dim=dim, lr_primal=0.1, lr_dual=0.1, n_iters=200, seed=0,
+            population_dim=dim,
+            lr_primal=0.1,
+            lr_dual=0.1,
+            n_iters=200,
+            seed=0,
         ),
         feature_columns=fc,
         use_hilbert=True,
@@ -341,7 +366,9 @@ def test_reward_channel_returns_finite_after_fit() -> None:
     X, y, _ = _toy_design(n=16, dim=4, seed=12)
     fc = tuple(f"f{i}" for i in range(4))
     composite = HilbertASTSRComposite(
-        feature_columns=fc, population_dim=4, use_hilbert=True,
+        feature_columns=fc,
+        population_dim=4,
+        use_hilbert=True,
     )
     composite.fit(X, y)
     closure = make_hilbert_astsr_reward_channel(composite, enabled=True)
@@ -358,6 +385,7 @@ def test_composite_does_not_mutate_underlying_regressors() -> None:
     # Snapshot the LambdaASTSR module's identity (its class object is
     # accessed elsewhere; the composite must not re-bind it).
     from molmetal.molmetal_lam.reward import lambda_astsr
+
     lam_id_before = id(lambda_astsr.LambdaASTSR)
     _ = HilbertASTSRComposite()
     assert id(lambda_astsr.LambdaASTSR) == lam_id_before
@@ -381,7 +409,8 @@ def test_composite_is_fitted_reflects_state() -> None:
     X, y, _ = _toy_design(n=12, dim=4, seed=13)
     fc = tuple(f"f{i}" for i in range(4))
     composite = HilbertASTSRComposite(
-        feature_columns=fc, population_dim=4,
+        feature_columns=fc,
+        population_dim=4,
     )
     assert composite.is_fitted is False
     composite.fit(X, y)
@@ -396,7 +425,8 @@ def test_composite_fit_records_history_per_call() -> None:
     X, y, _ = _toy_design(n=12, dim=4, seed=14)
     fc = tuple(f"f{i}" for i in range(4))
     composite = HilbertASTSRComposite(
-        feature_columns=fc, population_dim=4,
+        feature_columns=fc,
+        population_dim=4,
     )
     assert composite.fit_history_ == []
     composite.fit(X, y)
@@ -409,7 +439,8 @@ def test_composite_fit_rejects_1d_features() -> None:
     """fit with 1-d features raises ValueError."""
     fc = tuple(f"f{i}" for i in range(4))
     composite = HilbertASTSRComposite(
-        feature_columns=fc, population_dim=4,
+        feature_columns=fc,
+        population_dim=4,
     )
     with pytest.raises(ValueError):
         composite.fit(np.zeros(10), np.zeros(10))
@@ -419,7 +450,8 @@ def test_composite_fit_rejects_length_mismatch() -> None:
     """fit with mismatched ``N`` between features and target raises."""
     fc = tuple(f"f{i}" for i in range(4))
     composite = HilbertASTSRComposite(
-        feature_columns=fc, population_dim=4,
+        feature_columns=fc,
+        population_dim=4,
     )
     X = np.zeros((10, 4))
     y = np.zeros(8)  # mismatch
@@ -431,5 +463,7 @@ def test_benchmark_rejects_bad_shapes() -> None:
     """benchmark with 1-d features raises ValueError."""
     with pytest.raises(ValueError):
         benchmark_hilbert_vs_evolutionary(
-            np.zeros(10), np.zeros(10), n_runs=2,
+            np.zeros(10),
+            np.zeros(10),
+            n_runs=2,
         )

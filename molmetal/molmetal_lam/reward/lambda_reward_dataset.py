@@ -96,6 +96,7 @@ def _try_import_rdkit() -> bool:
         from rdkit import Chem  # type: ignore
         from rdkit.Chem import AllChem  # type: ignore
         from rdkit import RDLogger  # type: ignore
+
         RDLogger.DisableLog("rdApp.*")
         _RDKIT = (Chem, AllChem, RDLogger)
         _RDKIT_OK = True
@@ -137,28 +138,29 @@ def _smiles_to_atom_types_and_coords(smiles: str):
                 pass
         conf = mol.GetConformer()
         coords_np = np.asarray(
-            [[conf.GetAtomPosition(i).x,
-              conf.GetAtomPosition(i).y,
-              conf.GetAtomPosition(i).z]
-             for i in range(mol.GetNumAtoms())],
+            [
+                [
+                    conf.GetAtomPosition(i).x,
+                    conf.GetAtomPosition(i).y,
+                    conf.GetAtomPosition(i).z,
+                ]
+                for i in range(mol.GetNumAtoms())
+            ],
             dtype=np.float32,
         )
         # Strip explicit hydrogens — the CFM velocity field operates
         # on heavy atoms only (matching the metallodrug pool
         # convention).
-        heavy_idx = [
-            a.GetIdx() for a in mol.GetAtoms()
-            if a.GetAtomicNum() > 1
-        ]
+        heavy_idx = [a.GetIdx() for a in mol.GetAtoms() if a.GetAtomicNum() > 1]
         coords_heavy = coords_np[heavy_idx] if heavy_idx else coords_np
         atom_types = np.asarray(
             [mol.GetAtomWithIdx(i).GetAtomicNum() for i in heavy_idx]
-            if heavy_idx else [a.GetAtomicNum() for a in mol.GetAtoms()],
+            if heavy_idx
+            else [a.GetAtomicNum() for a in mol.GetAtoms()],
             dtype=np.int64,
         )
         # NaN / Inf guard.
-        if (not np.isfinite(coords_heavy).all()
-                or atom_types.size == 0):
+        if not np.isfinite(coords_heavy).all() or atom_types.size == 0:
             return None, None
         return (
             torch.from_numpy(atom_types.astype(np.int64)),
@@ -177,6 +179,7 @@ class _DatasetItem:
     * ``coords``     — ``FloatTensor`` of shape ``(N, 3)``.
     * ``reward_weight`` — ``FloatTensor`` scalar in ``[0, 1]``.
     """
+
     atom_types: torch.Tensor
     coords: torch.Tensor
     reward_weight: torch.Tensor
@@ -257,6 +260,7 @@ class LambdaRewardDataset(torch.utils.data.Dataset):
                     from molmetal_lam.lam_chem.coupling_adapter import (
                         lambda_samples_to_reward_targets,
                     )
+
                     pairs = lambda_samples_to_reward_targets(
                         n_samples=int(n_samples),
                         pocket_id=str(pocket_id),
@@ -266,7 +270,8 @@ class LambdaRewardDataset(torch.utils.data.Dataset):
                 except Exception as exc:  # noqa: BLE001
                     log.warning(
                         "[LambdaRewardDataset] lambda_samples_to_reward_targets "
-                        "failed: %s; falling back to empty dataset", exc,
+                        "failed: %s; falling back to empty dataset",
+                        exc,
                     )
                     pairs = []
         if not isinstance(pairs, (list, tuple)):
@@ -303,11 +308,13 @@ class LambdaRewardDataset(torch.utils.data.Dataset):
             if n_atoms < int(min_atoms) or n_atoms > int(max_atoms):
                 n_dropped += 1
                 continue
-            kept_items.append(_DatasetItem(
-                atom_types=atom_types.clone(),
-                coords=coords.clone(),
-                reward_weight=torch.tensor(float(w_f), dtype=torch.float32),
-            ))
+            kept_items.append(
+                _DatasetItem(
+                    atom_types=atom_types.clone(),
+                    coords=coords.clone(),
+                    reward_weight=torch.tensor(float(w_f), dtype=torch.float32),
+                )
+            )
             kept_smiles.append(smi)
             kept_weights.append(float(w_f))
         self.items = kept_items
@@ -316,7 +323,9 @@ class LambdaRewardDataset(torch.utils.data.Dataset):
         if verbose:
             log.info(
                 "[LambdaRewardDataset] kept=%d dropped=%d (n_input=%d)",
-                len(self.items), n_dropped, len(pairs),
+                len(self.items),
+                n_dropped,
+                len(pairs),
             )
 
     # ------------------------------------------------------------------
@@ -346,6 +355,7 @@ class LambdaRewardDataset(torch.utils.data.Dataset):
         triple the CFM ``train_step`` already understands.
         """
         from molmetal.domain import Molecule
+
         out = []
         for item in self.items:
             n = int(item.coords.shape[0])
@@ -424,10 +434,14 @@ def build_lambda_reward_dataset(
             lambda_samples_to_reward_targets,
         )
     except Exception as exc:  # noqa: BLE001
-        log.warning("[build_lambda_reward_dataset] coupling_adapter import "
-                    "failed: %s; returning empty dataset", exc)
-        return LambdaRewardDataset([], max_atoms=max_atoms,
-                                   min_atoms=min_atoms, verbose=verbose)
+        log.warning(
+            "[build_lambda_reward_dataset] coupling_adapter import "
+            "failed: %s; returning empty dataset",
+            exc,
+        )
+        return LambdaRewardDataset(
+            [], max_atoms=max_atoms, min_atoms=min_atoms, verbose=verbose
+        )
 
     pairs = lambda_samples_to_reward_targets(
         n_samples=int(n_samples),

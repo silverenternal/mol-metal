@@ -73,9 +73,9 @@ W320G_W5_R17 = ["M43", "M44"]  # R17 ship 84-rule MLE + 18-rule + 4 NEW SMARTS
 ALL_320G_MECHANISMS = (
     W320G_W1_MATH + W320G_W2_ARCH + W320G_W3_R20 + W320G_W4_WF + W320G_W5_R17
 )
-assert len(ALL_320G_MECHANISMS) == 23, (
-    f"Wf-320G expects 23 (M22-M44) but got {len(ALL_320G_MECHANISMS)}"
-)
+assert (
+    len(ALL_320G_MECHANISMS) == 23
+), f"Wf-320G expects 23 (M22-M44) but got {len(ALL_320G_MECHANISMS)}"
 
 # Per-mechanism labels (mechanism name as written in §13).
 MECHANISM_LABELS: dict[str, str] = {
@@ -239,9 +239,9 @@ def test_wf320g_mechanism_status_tag(mid: str, section_13_text: str) -> None:
     )
     assert row_match, f"{mid} row not found in §13"
     row = row_match.group(0)
-    assert expected_status in row, (
-        f"{mid} status '{expected_status}' not found in row: {row!r}"
-    )
+    assert (
+        expected_status in row
+    ), f"{mid} status '{expected_status}' not found in row: {row!r}"
 
 
 @pytest.mark.parametrize(
@@ -263,9 +263,9 @@ def test_wf320g_mechanism_required_fields(mid: str, section_13_text: str) -> Non
     # section header OR are referenced in the section preamble text.
     preamble = section_13_text[: section_13_text.find(row_match.group(0))]
     for field in REQUIRED_FIELDS:
-        assert field.lower() in preamble.lower(), (
-            f"{mid} required field '{field}' not in §13 preamble (preamble length={len(preamble)})"
-        )
+        assert (
+            field.lower() in preamble.lower()
+        ), f"{mid} required field '{field}' not in §13 preamble (preamble length={len(preamble)})"
 
 
 # ---------------------------------------------------------------------------
@@ -284,9 +284,9 @@ def test_wf320g_section_13_6_cross_mapping_table(mapping_text: str) -> None:
     table = match.group(0)
     for mid in ALL_320G_MECHANISMS:
         pattern = rf"\| \*\*{re.escape(mid)}\*\* "
-        assert re.search(pattern, table), (
-            f"{mid} not in §13.6 cross-mapping summary table"
-        )
+        assert re.search(
+            pattern, table
+        ), f"{mid} not in §13.6 cross-mapping summary table"
 
 
 # ---------------------------------------------------------------------------
@@ -309,9 +309,9 @@ def test_wf320g_section_13_7_failure_mode_table(mapping_text: str) -> None:
     for mid in ALL_320G_MECHANISMS:
         if mid.lower() not in table:
             missing.append(mid)
-    assert not missing, (
-        f"Wf-320G failure-mode diagnostic table missing references for: {missing}"
-    )
+    assert (
+        not missing
+    ), f"Wf-320G failure-mode diagnostic table missing references for: {missing}"
 
 
 # ---------------------------------------------------------------------------
@@ -321,42 +321,42 @@ def test_wf320g_section_13_7_failure_mode_table(mapping_text: str) -> None:
 
 def test_wf320g_section_14_1_plan_id_crosswalk(section_14_text: str) -> None:
     """§14.1 must map every M22-M44 to a plan ID / Wf ID / R17 Wf + existing M-ID."""
-    assert "### §14.1 Plan-ID → M-ID cross-walk" in section_14_text, (
-        "§14.1 Plan-ID → M-ID cross-walk table missing"
-    )
+    assert (
+        "### §14.1 Plan-ID → M-ID cross-walk" in section_14_text
+    ), "§14.1 Plan-ID → M-ID cross-walk table missing"
     for mid in ALL_320G_MECHANISMS:
         # §14.1 table cells use unbolded "M{id}" inside "| M{id} |".
         pattern = rf"\| {re.escape(mid)} \|"
-        assert re.search(pattern, section_14_text), (
-            f"{mid} not in §14.1 plan-ID cross-walk table"
-        )
+        assert re.search(
+            pattern, section_14_text
+        ), f"{mid} not in §14.1 plan-ID cross-walk table"
 
 
 def test_wf320g_section_14_2_plan_section_mapping(section_14_text: str) -> None:
     """§14.2 must map every R18 / R19 / R20 plan section to an M-ID."""
-    assert "### §14.2 R18 / R19 / R20 plan section" in section_14_text, (
-        "§14.2 plan section mapping table missing"
-    )
+    assert (
+        "### §14.2 R18 / R19 / R20 plan section" in section_14_text
+    ), "§14.2 plan section mapping table missing"
     # Each M22-M32 should appear at least once in §14.2 (R18 P0-1..P1-7).
     for mid in W320G_W1_MATH:
         # §14.2 table cells use unbolded "M{id}" inside "| M{id} |".
         pattern = rf"\| {re.escape(mid)} \|"
-        assert re.search(pattern, section_14_text), (
-            f"{mid} not in §14.2 R18 plan section mapping"
-        )
+        assert re.search(
+            pattern, section_14_text
+        ), f"{mid} not in §14.2 R18 plan section mapping"
     # M35-M40 should appear in §14.2 (R20-P1..P6).
     for mid in W320G_W3_R20:
         pattern = rf"\| {re.escape(mid)} \|"
-        assert re.search(pattern, section_14_text), (
-            f"{mid} not in §14.2 R20-P plan section mapping"
-        )
+        assert re.search(
+            pattern, section_14_text
+        ), f"{mid} not in §14.2 R20-P plan section mapping"
 
 
 def test_wf320g_section_14_3_honest_framing(section_14_text: str) -> None:
     """§14.3 must declare honest framing with status categorization."""
-    assert "### §14.3 Honest framing" in section_14_text, (
-        "§14.3 honest-framing section missing"
-    )
+    assert (
+        "### §14.3 Honest framing" in section_14_text
+    ), "§14.3 honest-framing section missing"
     required_phrases = [
         "23 mechanisms are documentation work",
         "zero fabricated numbers",
@@ -367,9 +367,9 @@ def test_wf320g_section_14_3_honest_framing(section_14_text: str) -> None:
         "MEASURED",
     ]
     for phrase in required_phrases:
-        assert phrase in section_14_text, (
-            f"§14.3 honest-framing missing required phrase: {phrase!r}"
-        )
+        assert (
+            phrase in section_14_text
+        ), f"§14.3 honest-framing missing required phrase: {phrase!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -392,9 +392,9 @@ def test_wf320g_wave_grouping(
 ) -> None:
     """Each Wf-320G wave section header must exist and contain its mechanisms."""
     pattern = rf"### {re.escape(wave_label)}"
-    assert re.search(pattern, mapping_text), (
-        f"Wf-320G wave section header missing: {wave_label}"
-    )
+    assert re.search(
+        pattern, mapping_text
+    ), f"Wf-320G wave section header missing: {wave_label}"
 
 
 # ---------------------------------------------------------------------------
@@ -404,9 +404,9 @@ def test_wf320g_wave_grouping(
 
 def test_wf320g_total_mechanism_count() -> None:
     """Wf-320G must register exactly 23 mechanisms (M22-M44)."""
-    assert len(ALL_320G_MECHANISMS) == 23, (
-        f"Wf-320G mechanism count mismatch: expected 23, got {len(ALL_320G_MECHANISMS)}"
-    )
+    assert (
+        len(ALL_320G_MECHANISMS) == 23
+    ), f"Wf-320G mechanism count mismatch: expected 23, got {len(ALL_320G_MECHANISMS)}"
 
 
 def test_wf320g_status_distribution(section_13_text: str) -> None:
@@ -426,19 +426,19 @@ def test_wf320g_status_distribution(section_13_text: str) -> None:
         f"CPU-ONLY-SKELETON count mismatch: expected 12 (M22, M23, M26, M27, M28, M29, M30, M31, M32, M35, M37, M39), "
         f"got {counts['CPU-ONLY-SKELETON']}"
     )
-    assert counts["PLAN-ONLY"] == 2, (
-        f"PLAN-ONLY count mismatch: expected 2 (M24, M25), got {counts['PLAN-ONLY']}"
-    )
-    assert counts["PROJECTED @ R20"] == 2, (
-        f"PROJECTED @ R20 count mismatch: expected 2 (M36, M38), got {counts['PROJECTED @ R20']}"
-    )
+    assert (
+        counts["PLAN-ONLY"] == 2
+    ), f"PLAN-ONLY count mismatch: expected 2 (M24, M25), got {counts['PLAN-ONLY']}"
+    assert (
+        counts["PROJECTED @ R20"] == 2
+    ), f"PROJECTED @ R20 count mismatch: expected 2 (M36, M38), got {counts['PROJECTED @ R20']}"
     assert counts["HONEST-NEGATIVE"] == 5, (
         f"HONEST-NEGATIVE count mismatch: expected 5 (M33, M34, M40, M41, M42), "
         f"got {counts['HONEST-NEGATIVE']}"
     )
-    assert counts["MEASURED"] == 2, (
-        f"MEASURED count mismatch: expected 2 (M43, M44), got {counts['MEASURED']}"
-    )
+    assert (
+        counts["MEASURED"] == 2
+    ), f"MEASURED count mismatch: expected 2 (M43, M44), got {counts['MEASURED']}"
 
 
 def test_wf320g_m40_deprecated(section_13_text: str) -> None:
@@ -449,12 +449,12 @@ def test_wf320g_m40_deprecated(section_13_text: str) -> None:
     )
     assert match, "M40 row not found in §13"
     row = match.group(0)
-    assert "DEPRECATED" in row, (
-        f"M40 (Wet-lab IC50) must be marked DEPRECATED per Wf-317 Tier-2; row: {row!r}"
-    )
-    assert "HONEST-NEGATIVE" in row, (
-        f"M40 (Wet-lab IC50) must also be HONEST-NEGATIVE precondition; row: {row!r}"
-    )
+    assert (
+        "DEPRECATED" in row
+    ), f"M40 (Wet-lab IC50) must be marked DEPRECATED per Wf-317 Tier-2; row: {row!r}"
+    assert (
+        "HONEST-NEGATIVE" in row
+    ), f"M40 (Wet-lab IC50) must also be HONEST-NEGATIVE precondition; row: {row!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -464,7 +464,9 @@ def test_wf320g_m40_deprecated(section_13_text: str) -> None:
 
 def test_wf320g_mapping_doc_exists() -> None:
     """The mapping doc must exist on disk."""
-    assert MAPPING_PATH.exists(), f"MECHANISM_METRIC_MAPPING.md missing at {MAPPING_PATH}"
+    assert (
+        MAPPING_PATH.exists()
+    ), f"MECHANISM_METRIC_MAPPING.md missing at {MAPPING_PATH}"
 
 
 def test_wf320g_no_duplicate_mechanism_id(section_13_text: str) -> None:
@@ -474,6 +476,4 @@ def test_wf320g_no_duplicate_mechanism_id(section_13_text: str) -> None:
         matches = re.findall(pattern, section_13_text)
         # Should appear in §13.1/13/§13.3/§13.4/§13.5 table row + §13.7 diagnostic + §14 = 3+ matches
         # But the §13 row uses "| **M{id}** |" pattern; we check >= 1.
-        assert len(matches) >= 1, (
-            f"{mid} missing from §13"
-        )
+        assert len(matches) >= 1, f"{mid} missing from §13"

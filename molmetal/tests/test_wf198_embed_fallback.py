@@ -64,20 +64,27 @@ def _build_mol(smiles: str) -> Optional[Chem.Mol]:
 def test_each_strategy_succeeds_on_normal_smi(strategy: str):
     """All three strategies must embed a run-of-the-mill cisplatin-like mol."""
     Chem, AllChem = _embed_worker_init.__globals__["_EMBED_FUNC"] or (
-        None, None,
+        None,
+        None,
     )
     Chem, AllChem = _embed_worker_init.__globals__.get(
-        "_EMBED_FUNC", (None, None),
+        "_EMBED_FUNC",
+        (None, None),
     )
     # The worker-init fn returns None; rebuild the handle:
     from rdkit import Chem as _Chem  # noqa: WPS433
     from rdkit.Chem import AllChem as _AllChem  # noqa: WPS433
+
     mol = _build_mol("[Pt](N)(N)(Cl)(Cl)")
     assert mol is not None
     ok = _try_embed_with_strategy(
-        _Chem, _AllChem, mol,
-        strategy=strategy, seed=42,
-        max_attempts=5, max_iterations=200,
+        _Chem,
+        _AllChem,
+        mol,
+        strategy=strategy,
+        seed=42,
+        max_attempts=5,
+        max_iterations=200,
     )
     assert ok is True
     assert mol.GetNumConformers() > 0
@@ -93,14 +100,18 @@ def test_strategy_returns_false_for_unembeddable():
     """A bogus SMILES-like object should not crash the strategy."""
     from rdkit import Chem as _Chem
     from rdkit.Chem import AllChem as _AllChem
+
     mol = _Chem.MolFromSmiles("C")  # smallest valid SMILES
     mol = _Chem.AddHs(mol)
     # Valid SMILES — strategy must succeed.  The point of this test is
     # that *no* strategy raises.
     for strat in ("etkdg", "random_coords", "etkdgv3_mmff"):
         ok = _try_embed_with_strategy(
-            _Chem, _AllChem, mol,
-            strategy=strat, seed=7,
+            _Chem,
+            _AllChem,
+            mol,
+            strategy=strat,
+            seed=7,
         )
         assert ok is True, f"{strat} failed on a valid C molecule"
 

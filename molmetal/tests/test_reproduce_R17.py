@@ -23,6 +23,7 @@ Or skip on a quick CI lane::
 
     pytest -m "not reproduce_R17"
 """
+
 from __future__ import annotations
 
 import os
@@ -51,8 +52,7 @@ def test_script_is_executable():
     without first chmod-ing."""
     mode = SCRIPT.stat().st_mode
     assert mode & stat.S_IXUSR, (
-        f"{SCRIPT} is not executable (mode={oct(mode)}); run "
-        f"`chmod +x {SCRIPT}`"
+        f"{SCRIPT} is not executable (mode={oct(mode)}); run " f"`chmod +x {SCRIPT}`"
     )
 
 
@@ -68,15 +68,20 @@ def test_script_has_all_done_marker():
 def test_script_has_eight_sections():
     """The script must define 8 numbered sections (per the G1 spec)."""
     import re
+
     text = SCRIPT.read_text(encoding="utf-8")
     # Sections are announced via ``echo "[wf_reproduce_R17] SECTION N — …"``.
-    section_nums = {
-        int(m.group(1))
-        for m in re.finditer(r"SECTION\s+(\d+)\b", text)
-    }
-    assert section_nums == {1, 2, 3, 4, 5, 6, 7, 8}, (
-        f"expected SECTION markers {{1..8}} in the script, found {sorted(section_nums)}"
-    )
+    section_nums = {int(m.group(1)) for m in re.finditer(r"SECTION\s+(\d+)\b", text)}
+    assert section_nums == {
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+    }, f"expected SECTION markers {{1..8}} in the script, found {sorted(section_nums)}"
 
 
 # ---------------------------------------------------------------------------
@@ -88,7 +93,9 @@ def _have_uv() -> bool:
 
 
 @pytest.mark.reproduce_R17
-@pytest.mark.skipif(not _have_uv(), reason="uv not on PATH; cannot drive wf_reproduce_R17.sh")
+@pytest.mark.skipif(
+    not _have_uv(), reason="uv not on PATH; cannot drive wf_reproduce_R17.sh"
+)
 @pytest.mark.skipif(
     not os.environ.get("MOLMETAL_RUN_REPRODUCE"),
     reason=(
@@ -117,6 +124,5 @@ def test_script_runs_and_emits_all_done():
         f"stderr (tail 2000 chars):\n{proc.stderr[-2000:]}"
     )
     assert "ALL DONE" in proc.stdout, (
-        f"expected `ALL DONE` in stdout; last 2000 chars:\n"
-        f"{proc.stdout[-2000:]}"
+        f"expected `ALL DONE` in stdout; last 2000 chars:\n" f"{proc.stdout[-2000:]}"
     )

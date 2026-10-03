@@ -72,9 +72,7 @@ SPLITTER_FACTORIES: Dict[str, callable] = {
     "ligand_dedup": lambda seed: LigandDeduplicatedSplitter(
         strategy="largest_first", seed=seed
     ),
-    "scaffold": lambda seed: ScaffoldSplitter(
-        strategy="largest_first", seed=seed
-    ),
+    "scaffold": lambda seed: ScaffoldSplitter(strategy="largest_first", seed=seed),
     "temporal": lambda seed: TemporalSplitter(cutoff_year=2024),
     "chemical": lambda seed: ChemicalSplitter(threshold=0.7, seed=seed),
 }
@@ -185,8 +183,10 @@ class MorganXGBBaseline:
             idx, y, test_size=0.2, stratify=y, random_state=self.seed
         )
         idx_val, idx_test, _, _ = train_test_split(
-            idx_tmp, np.asarray(y[idx_tmp]).astype(int),
-            test_size=0.5, stratify=np.asarray(y[idx_tmp]).astype(int),
+            idx_tmp,
+            np.asarray(y[idx_tmp]).astype(int),
+            test_size=0.5,
+            stratify=np.asarray(y[idx_tmp]).astype(int),
             random_state=self.seed,
         )
         return idx_train, idx_val, idx_test

@@ -60,6 +60,7 @@ if str(_ADAPTER_PATH) not in sys.path:
 def _try_import_adapter():
     try:
         from molmetal.scripts import drugood_ecfp4_scaffold_adapter as _adapter
+
         return _adapter
     except Exception:
         return None
@@ -95,7 +96,9 @@ def test_drugood_load(adapter):
     from molmetal.data.drugood_loader import load_drugood
 
     df = load_drugood(
-        subset=adapter.DEFAULT_SUBSET, split="train", prefer_library=False,
+        subset=adapter.DEFAULT_SUBSET,
+        split="train",
+        prefer_library=False,
     )
     assert isinstance(df, pd.DataFrame)
     expected_cols = ["smiles", "metal", "cell_line", "protein", "pIC50", "active"]
@@ -106,13 +109,13 @@ def test_drugood_load(adapter):
     assert len(df) > 0, "DrugOOD train split is empty"
     # At least one positive label — DrugOOD is a binary activity prediction
     # task; an all-negative split would indicate a loader bug.
-    assert int(df["active"].astype(int).sum()) > 0, (
-        "DrugOOD train split has no positive labels; loader is likely broken."
-    )
+    assert (
+        int(df["active"].astype(int).sum()) > 0
+    ), "DrugOOD train split has no positive labels; loader is likely broken."
     # pIC50 must be numeric (or NaN-coerced) — never a free-form string.
-    assert pd.api.types.is_numeric_dtype(df["pIC50"]), (
-        f"DrugOOD pIC50 column is not numeric: dtype={df['pIC50'].dtype!r}"
-    )
+    assert pd.api.types.is_numeric_dtype(
+        df["pIC50"]
+    ), f"DrugOOD pIC50 column is not numeric: dtype={df['pIC50'].dtype!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -126,12 +129,12 @@ def test_ecfp4_compute(adapter):
     on a tiny canonical-SMILES corpus (5 drug-like + 1 methane control).
     """
     smiles_list = [
-        "CCO",                                   # ethanol
-        "c1ccccc1",                              # benzene
-        "CCN(CC)CC",                             # triethylamine
-        "CC(=O)Oc1ccccc1C(=O)O",                 # aspirin
-        "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",          # caffeine
-        "C",                                     # methane (single C)
+        "CCO",  # ethanol
+        "c1ccccc1",  # benzene
+        "CCN(CC)CC",  # triethylamine
+        "CC(=O)Oc1ccccc1C(=O)O",  # aspirin
+        "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",  # caffeine
+        "C",  # methane (single C)
     ]
     fps, canon = adapter.compute_ecfp4_fingerprints(smiles_list)
     assert isinstance(fps, np.ndarray)
@@ -141,9 +144,9 @@ def test_ecfp4_compute(adapter):
         f"Got {fps.shape[0]} fingerprints for {len(smiles_list)} SMILES; "
         f"all 6 should parse (CCO/benzene/triethylamine/aspirin/caffeine/methane)."
     )
-    assert fps.shape[1] == adapter.DEFAULT_ECFP4_NBITS, (
-        f"fps.shape[1]={fps.shape[1]}, expected {adapter.DEFAULT_ECFP4_NBITS}"
-    )
+    assert (
+        fps.shape[1] == adapter.DEFAULT_ECFP4_NBITS
+    ), f"fps.shape[1]={fps.shape[1]}, expected {adapter.DEFAULT_ECFP4_NBITS}"
     # All 6 should parse cleanly; canonical SMILES should be non-empty.
     assert len(canon) == len(smiles_list)
     assert all(isinstance(s, str) and len(s) > 0 for s in canon)
@@ -151,16 +154,16 @@ def test_ecfp4_compute(adapter):
     # has radius-2 self-hash only; its popcount is also > 0 but trivial).
     popcounts = fps.sum(axis=1)
     assert int(popcounts.min()) >= 0
-    assert int(popcounts.max()) > 0, (
-        "All fingerprints have popcount=0; ECFP4 implementation is broken."
-    )
+    assert (
+        int(popcounts.max()) > 0
+    ), "All fingerprints have popcount=0; ECFP4 implementation is broken."
     # Per the Wf-275B adapter contract, hex-packed length = ceil(n_bits/4).
     hex_len = (adapter.DEFAULT_ECFP4_NBITS + 3) // 4
     for k in range(fps.shape[0]):
         packed = adapter._arr_to_hex_packed(fps[k])
-        assert len(packed) == hex_len, (
-            f"Hex pack length mismatch: got {len(packed)}, expected {hex_len}"
-        )
+        assert (
+            len(packed) == hex_len
+        ), f"Hex pack length mismatch: got {len(packed)}, expected {hex_len}"
         assert int(packed, 16) >= 0
 
 
@@ -176,19 +179,21 @@ def test_scaffold_split_zero_leak(adapter):
     verify that each scaffold appears in exactly one partition.
     """
     smiles_corpus = [
-        "c1ccccc1C",                  # toluene -> benzene scaffold
-        "c1ccccc1O",                  # phenol  -> benzene scaffold
-        "C1CCCCC1C",                  # methylcyclohexane -> cyclohexane scaffold
-        "C1CCCCC1O",                  # cyclohexanol -> cyclohexane scaffold
-        "CC",                         # ethane -> empty scaffold
-        "CCC",                        # propane -> empty scaffold
+        "c1ccccc1C",  # toluene -> benzene scaffold
+        "c1ccccc1O",  # phenol  -> benzene scaffold
+        "C1CCCCC1C",  # methylcyclohexane -> cyclohexane scaffold
+        "C1CCCCC1O",  # cyclohexanol -> cyclohexane scaffold
+        "CC",  # ethane -> empty scaffold
+        "CCC",  # propane -> empty scaffold
     ]
     train_idx, val_idx, test_idx = adapter.scaffold_split_largest_first(
-        smiles_corpus, fractions=(0.34, 0.33, 0.33), seed=42,
+        smiles_corpus,
+        fractions=(0.34, 0.33, 0.33),
+        seed=42,
     )
-    assert len(train_idx) + len(val_idx) + len(test_idx) == len(smiles_corpus), (
-        "Scaffold split dropped rows; should be a permutation of all indices."
-    )
+    assert len(train_idx) + len(val_idx) + len(test_idx) == len(
+        smiles_corpus
+    ), "Scaffold split dropped rows; should be a permutation of all indices."
     # Pairwise-disjoint index sets.
     s_tr = set(int(i) for i in train_idx)
     s_va = set(int(i) for i in val_idx)
@@ -198,7 +203,10 @@ def test_scaffold_split_zero_leak(adapter):
     assert s_va.isdisjoint(s_te)
     # Zero scaffold leakage.
     leak = adapter.count_scaffold_leakage(
-        smiles_corpus, train_idx, val_idx, test_idx,
+        smiles_corpus,
+        train_idx,
+        val_idx,
+        test_idx,
     )
     assert leak["train_val_leak"] == 0
     assert leak["train_test_leak"] == 0
@@ -252,9 +260,9 @@ def test_csv_schema(tmp_path, adapter):
     # Zero scaffold leakage per the AdapterSummary.
     assert summary.scaffold_leak["train_val_leak"] == 0
     assert summary.scaffold_leak["train_test_leak"] == 0
-    assert summary.scaffold_leak["val_test_leak"] == 0, (
-        f"Scaffold leakage in summary: {summary.scaffold_leak}"
-    )
+    assert (
+        summary.scaffold_leak["val_test_leak"] == 0
+    ), f"Scaffold leakage in summary: {summary.scaffold_leak}"
 
 
 # ---------------------------------------------------------------------------
@@ -301,21 +309,29 @@ def test_smoke_chemprop_v3(tmp_path, adapter):
                     arr[bit_idx] = 1
         return arr
 
-    X_train = np.stack([
-        _hex_to_arr(h, adapter.DEFAULT_ECFP4_NBITS)
-        for h in train_df["ecfp4_bits"].tolist()
-    ], axis=0).astype(np.float32)
+    X_train = np.stack(
+        [
+            _hex_to_arr(h, adapter.DEFAULT_ECFP4_NBITS)
+            for h in train_df["ecfp4_bits"].tolist()
+        ],
+        axis=0,
+    ).astype(np.float32)
     y_train = train_df["active"].astype(int).to_numpy()
-    X_val = np.stack([
-        _hex_to_arr(h, adapter.DEFAULT_ECFP4_NBITS)
-        for h in val_df["ecfp4_bits"].tolist()
-    ], axis=0).astype(np.float32)
+    X_val = np.stack(
+        [
+            _hex_to_arr(h, adapter.DEFAULT_ECFP4_NBITS)
+            for h in val_df["ecfp4_bits"].tolist()
+        ],
+        axis=0,
+    ).astype(np.float32)
     y_val = val_df["active"].astype(int).to_numpy()
 
     # Drop rows with single-class labels (sklearn requires both classes).
     if len(set(y_train)) < 2:
-        pytest.skip("Train split has single class; chemprop v3 smoke cannot "
-                    "fit a binary classifier on it.")
+        pytest.skip(
+            "Train split has single class; chemprop v3 smoke cannot "
+            "fit a binary classifier on it."
+        )
     if len(set(y_val)) < 2:
         # Replace the smoke-test val labels with a synthetic 50/50 so we
         # still measure forward + backward end-to-end.  This is a smoke
@@ -334,6 +350,7 @@ def test_smoke_chemprop_v3(tmp_path, adapter):
     # but the model must produce non-degenerate probabilities.
     if len(set(y_val)) >= 2:
         from sklearn.metrics import roc_auc_score
+
         try:
             auc = float(roc_auc_score(y_val, proba))
             assert 0.0 <= auc <= 1.0, f"AUC out of range: {auc}"

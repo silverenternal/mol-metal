@@ -61,30 +61,30 @@ class TestWf371A2Wf368C1Standalone:
         )
 
         # Sanity: pre-flight state numbers should be present
-        assert "92 PASS / 0 FAIL / 2 SKIP / 94 TOTAL" in text, (
-            "Wf-371-A2 standalone closeout should cite pre-flight 92/0/2/94 state"
-        )
+        assert (
+            "92 PASS / 0 FAIL / 2 SKIP / 94 TOTAL" in text
+        ), "Wf-371-A2 standalone closeout should cite pre-flight 92/0/2/94 state"
 
         # Sanity: m6_kappa + m2 R² HONEST-NEGATIVE markers should be present
-        assert "HONEST_NEGATIVE_PARTIAL_STRUCTURAL" in text, (
-            "Wf-371-A2 standalone closeout should preserve m6_kappa HONEST_NEGATIVE marker"
-        )
-        assert "HONEST_NEGATIVE_R2_DEEP" in text, (
-            "Wf-371-A2 standalone closeout should preserve m2 R² HONEST_NEGATIVE marker"
-        )
+        assert (
+            "HONEST_NEGATIVE_PARTIAL_STRUCTURAL" in text
+        ), "Wf-371-A2 standalone closeout should preserve m6_kappa HONEST_NEGATIVE marker"
+        assert (
+            "HONEST_NEGATIVE_R2_DEEP" in text
+        ), "Wf-371-A2 standalone closeout should preserve m2 R² HONEST_NEGATIVE marker"
 
         # Sanity: 7 USER_OK-gated launches should be referenced
-        assert "launch_wf124_p3_g5.sh" in text, (
-            "Wf-371-A2 standalone closeout should reference G5 USER_OK-gated launch"
-        )
-        assert "recover_g6_failed_tuples.sh" in text, (
-            "Wf-371-A2 standalone closeout should reference G6 recover USER_OK-gated launch"
-        )
+        assert (
+            "launch_wf124_p3_g5.sh" in text
+        ), "Wf-371-A2 standalone closeout should reference G5 USER_OK-gated launch"
+        assert (
+            "recover_g6_failed_tuples.sh" in text
+        ), "Wf-371-A2 standalone closeout should reference G6 recover USER_OK-gated launch"
 
         # Sanity: AGENTS.md §5 standing directives re-confirmed
-        assert "§5.1" in text and "§5.2" in text and "§5.4" in text, (
-            "Wf-371-A2 standalone closeout should re-confirm AGENTS.md §5.1..§5.4 directives"
-        )
+        assert (
+            "§5.1" in text and "§5.2" in text and "§5.4" in text
+        ), "Wf-371-A2 standalone closeout should re-confirm AGENTS.md §5.1..§5.4 directives"
 
 
 if __name__ == "__main__":

@@ -38,9 +38,9 @@ class TestWf377A4DashboardFinal:
         assert isinstance(d["launchers"], list)
         assert len(d["launchers"]) == d.get("launcher_count", len(d["launchers"]))
         for launcher in d["launchers"]:
-            assert "pair_progress" in launcher, (
-                f"launcher {launcher.get('name')} missing pair_progress"
-            )
+            assert (
+                "pair_progress" in launcher
+            ), f"launcher {launcher.get('name')} missing pair_progress"
             pp = launcher["pair_progress"]
             assert "total_pairs" in pp
             assert "discovered_pairs" in pp
@@ -54,9 +54,9 @@ class TestWf377A4DashboardFinal:
         d = _load_dashboard()
         assert "budget_status" in d, "dashboard missing budget_status"
         bs = d["budget_status"]
-        assert bs.get("session_cap_hr") == 10.0, (
-            f"session_cap_hr should be 10.0 (Wf-262 §7.1), got {bs.get('session_cap_hr')}"
-        )
+        assert (
+            bs.get("session_cap_hr") == 10.0
+        ), f"session_cap_hr should be 10.0 (Wf-262 §7.1), got {bs.get('session_cap_hr')}"
         assert "per_launcher" in bs
         assert isinstance(bs["per_launcher"], list)
         assert len(bs["per_launcher"]) == len(d["launchers"])
@@ -74,9 +74,9 @@ class TestWf377A4DashboardFinal:
     def test_preflight_state_recorded_correctly(self):
         """Test 3: pre-flight state 89/2/3/94 recorded correctly per Wf-377-A4."""
         d = _load_dashboard()
-        assert "preflight_state" in d, (
-            "dashboard missing preflight_state (Wf-377-A4 refresh)"
-        )
+        assert (
+            "preflight_state" in d
+        ), "dashboard missing preflight_state (Wf-377-A4 refresh)"
         ps = d["preflight_state"]
         assert ps.get("pass") == 89, f"expected 89 PASS, got {ps.get('pass')}"
         assert ps.get("fail") == 2, f"expected 2 FAIL, got {ps.get('fail')}"
@@ -84,9 +84,9 @@ class TestWf377A4DashboardFinal:
         assert ps.get("total") == 94, f"expected 94 TOTAL, got {ps.get('total')}"
         assert ps.get("expected_gate_counts_all") == 94
         assert ps.get("wall_sec") is not None
-        assert ps.get("wall_sec") < 300, (
-            f"wall_sec too high ({ps.get('wall_sec')}); indicates pre-flight incomplete"
-        )
+        assert (
+            ps.get("wall_sec") < 300
+        ), f"wall_sec too high ({ps.get('wall_sec')}); indicates pre-flight incomplete"
         per_pipeline = ps.get("per_pipeline", {})
         assert per_pipeline.get("all") == 94
         assert per_pipeline.get("chemprop_v2_v3") == 14
@@ -96,9 +96,9 @@ class TestWf377A4DashboardFinal:
     def test_install_state_zotero_tectonic(self):
         """Test 4 (bonus): Zotero + tectonic install state recorded per Wf-372."""
         d = _load_dashboard()
-        assert "install_state" in d, (
-            "dashboard missing install_state (Wf-372 Zotero+tectonic)"
-        )
+        assert (
+            "install_state" in d
+        ), "dashboard missing install_state (Wf-372 Zotero+tectonic)"
         inst = d["install_state"]
         assert inst.get("zotero", {}).get("installed") is True
         assert inst.get("tectonic", {}).get("installed") is True
@@ -111,6 +111,6 @@ class TestWf377A4DashboardFinal:
         assert d.get("activation_gated") is True
         assert d.get("user_ok_required") is True
         assert d.get("dashboard_mode") == "READ-ONLY_SCAFFOLD"
-        assert d.get("activation_flag_set") is False, (
-            "activation_flag_set must remain False — no GPU launch triggered"
-        )
+        assert (
+            d.get("activation_flag_set") is False
+        ), "activation_flag_set must remain False — no GPU launch triggered"

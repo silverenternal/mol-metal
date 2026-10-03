@@ -104,9 +104,11 @@ def _maybe_batched_gelu_mlp(
     K = len(linear_layers) // 2
     if K == 0:
         return x
-    if K == 1 or (not x.is_cuda) or (not _triton_config.should_use_fused(
-        x, op="batched_gelu_mlp"
-    )):
+    if (
+        K == 1
+        or (not x.is_cuda)
+        or (not _triton_config.should_use_fused(x, op="batched_gelu_mlp"))
+    ):
         # Sequential fallback: explicit ``F.gelu`` + linear chain.
         h = x
         for k in range(K):
@@ -127,6 +129,7 @@ def _maybe_batched_gelu_mlp(
     b2s = torch.stack([lb.bias for lb in (linear_layers[1::2])], dim=0)
     return _batched_fused_gelu_mlp(x, w1s, b1s, w2s, b2s)
 
+
 CHECKPOINT_DIR = PROJECT_ROOT / "molmetal" / "checkpoints"
 REPORTS_DIR = PROJECT_ROOT / "molmetal" / "reports"
 DEFAULT_CKPT = CHECKPOINT_DIR / "dmpnn_tmqm_pretrained.pt"
@@ -139,9 +142,9 @@ _TM_SET = frozenset(TRANSITION_METALS)
 # ---------------------------------------------------------------------------
 @dataclass
 class GraphSample:
-    x: np.ndarray            # (n_atoms, 39)
-    edge_index: np.ndarray   # (2, n_edges)
-    edge_attr: np.ndarray    # (n_edges, 6)
+    x: np.ndarray  # (n_atoms, 39)
+    edge_index: np.ndarray  # (2, n_edges)
+    edge_attr: np.ndarray  # (n_edges, 6)
     metal_idx: int
     coord_number: float
     metal_bo: float
@@ -173,11 +176,7 @@ def featurize_rows(
                 n_failed += 1
                 continue
             metal_idx = next(
-                (
-                    a.GetIdx()
-                    for a in mol.GetAtoms()
-                    if a.GetSymbol() in _TM_SET
-                ),
+                (a.GetIdx() for a in mol.GetAtoms() if a.GetSymbol() in _TM_SET),
                 None,
             )
             if metal_idx is None:
@@ -398,16 +397,21 @@ def main(argv: list[str] | None = None) -> int:
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
     device = torch.device(
-        "cuda" if (args.device == "auto" and torch.cuda.is_available()) else
-        ("cuda" if args.device == "cuda" else "cpu")
+        "cuda"
+        if (args.device == "auto" and torch.cuda.is_available())
+        else ("cuda" if args.device == "cuda" else "cpu")
     )
     metals = None if args.all_metals else list(args.metals)
-    print(f"[pretrain] device={device} metals={metals or 'ALL'} "
-          f"epochs={args.epochs} bs={args.batch_size} lr={args.lr}")
+    print(
+        f"[pretrain] device={device} metals={metals or 'ALL'} "
+        f"epochs={args.epochs} bs={args.batch_size} lr={args.lr}"
+    )
 
     df = load_tmqm(metals=metals, require_smiles=True)
     if args.limit:
-        df = df.sample(n=min(args.limit, len(df)), random_state=args.seed).reset_index(drop=True)
+        df = df.sample(n=min(args.limit, len(df)), random_state=args.seed).reset_index(
+            drop=True
+        )
     print(f"[pretrain] tmQM rows: {len(df):,}")
 
     t0 = time.time()
@@ -416,8 +420,10 @@ def main(argv: list[str] | None = None) -> int:
         df["coord_number"].tolist(),
         df["metal_bo_total"].tolist(),
     )
-    print(f"[pretrain] featurised {len(samples):,} graphs "
-          f"({n_failed:,} skipped) in {time.time() - t0:.1f}s")
+    print(
+        f"[pretrain] featurised {len(samples):,} graphs "
+        f"({n_failed:,} skipped) in {time.time() - t0:.1f}s"
+    )
     if not samples:
         print("[pretrain] ERROR: no usable samples")
         return 1
@@ -455,10 +461,13 @@ def main(argv: list[str] | None = None) -> int:
     for epoch in range(1, args.epochs + 1):
         t_ep = time.time()
         order = rng.permutation(train_idx)
-        tr = run_epoch(model, samples, order, args.batch_size, device, mean, std, optimizer)
+        tr = run_epoch(
+            model, samples, order, args.batch_size, device, mean, std, optimizer
+        )
         va = (
             run_epoch(model, samples, val_idx, args.batch_size, device, mean, std, None)
-            if len(val_idx) else dict.fromkeys(tr, float("nan"))
+            if len(val_idx)
+            else dict.fromkeys(tr, float("nan"))
         )
         rec = {
             "epoch": epoch,

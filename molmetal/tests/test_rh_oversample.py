@@ -51,6 +51,7 @@ from molmetal.scripts.train_metal_lomo_v2 import (
 # Wf-187 m19 fix tests.
 # ---------------------------------------------------------------------------
 
+
 class TestWf187M19Oversample:
     """Verify the m19 Rh oversample fix wires end-to-end."""
 
@@ -89,9 +90,9 @@ class TestWf187M19Oversample:
 
         # Sanity check pre-condition.
         pre_pos_rate = float((active[metals == "Rh"] == 1).mean())
-        assert pre_pos_rate == pytest.approx(0.10, abs=1e-6), (
-            f"Setup invariant violated: pre_pos_rate={pre_pos_rate}"
-        )
+        assert pre_pos_rate == pytest.approx(
+            0.10, abs=1e-6
+        ), f"Setup invariant violated: pre_pos_rate={pre_pos_rate}"
 
         # Apply the helper.
         (
@@ -113,9 +114,7 @@ class TestWf187M19Oversample:
         # Verify post-conditions.
         assert isinstance(stats, dict)
         assert "Rh" in stats
-        assert stats["Rh"] > 0, (
-            f"expected Rh positives appended, got stats={stats}"
-        )
+        assert stats["Rh"] > 0, f"expected Rh positives appended, got stats={stats}"
         # Re-only check: Re had 0 rows, so stats['Re'] should be 0.
         assert stats.get("Re", 0) == 0
 
@@ -133,9 +132,9 @@ class TestWf187M19Oversample:
         )
         # Ru should be untouched.
         ru_mask = met2 == "Ru"
-        assert int(ru_mask.sum()) == n_ru_pre, (
-            f"Ru rows were modified: pre={n_ru_pre} post={int(ru_mask.sum())}"
-        )
+        assert (
+            int(ru_mask.sum()) == n_ru_pre
+        ), f"Ru rows were modified: pre={n_ru_pre} post={int(ru_mask.sum())}"
 
     def test_pos_weight_changes_loss(self) -> None:
         """``MultiTaskLoss(pos_weight=10)`` produces different cls loss.
@@ -192,6 +191,6 @@ class TestWf187M19Oversample:
             f"default={reg_default.item():.6f} pos10={reg_pos10.item():.6f}"
         )
         # Total loss should differ (cls differs, reg same).
-        assert total_default.item() != pytest.approx(total_pos10.item(), abs=1e-4), (
-            f"total loss did not change between paths"
-        )
+        assert total_default.item() != pytest.approx(
+            total_pos10.item(), abs=1e-4
+        ), f"total loss did not change between paths"

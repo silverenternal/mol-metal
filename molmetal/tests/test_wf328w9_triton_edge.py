@@ -60,9 +60,7 @@ if str(_PROJECT_ROOT) not in sys.path:
 # ---------------------------------------------------------------------------
 # Helper: CPU-vs-Triton parity harness
 # ---------------------------------------------------------------------------
-def _run_fused_or_torch(
-    fn, x, w, b
-):
+def _run_fused_or_torch(fn, x, w, b):
     """Run ``fn(x, w, b)`` (the Triton fused path) or the PyTorch reference.
 
     On CPU the dispatch gate forces the PyTorch path so the test exercises
@@ -128,9 +126,7 @@ def test_relu_linear_kernel_correctness_vs_cpu_reference():
             f"fused={tuple(out_fused.shape)} torch={tuple(out_torch.shape)}"
         )
         diff = (out_fused - out_torch).abs().max().item()
-        assert diff < 1e-3, (
-            f"M={M} D={D} H={H}: max abs diff {diff:.3e} >= 1e-3"
-        )
+        assert diff < 1e-3, f"M={M} D={D} H={H}: max abs diff {diff:.3e} >= 1e-3"
 
 
 # ---------------------------------------------------------------------------
@@ -171,9 +167,9 @@ def test_relu_mlp_kernel_correctness_vs_cpu_reference():
             f"fused={tuple(out_fused.shape)} torch={tuple(out_torch.shape)}"
         )
         diff = (out_fused - out_torch).abs().max().item()
-        assert diff < 1e-3, (
-            f"M={M} D={D} H1={H1} H2={H2}: max abs diff {diff:.3e} >= 1e-3"
-        )
+        assert (
+            diff < 1e-3
+        ), f"M={M} D={D} H1={H1} H2={H2}: max abs diff {diff:.3e} >= 1e-3"
 
 
 # ---------------------------------------------------------------------------
@@ -319,6 +315,7 @@ def test_fallback_to_native_works(monkeypatch):
     monkeypatch.setenv("TRITON_EDGE_UPDATE", "0")
     # Rebuild the singleton so it reads the new env values.
     from triton_kernels import config as _config
+
     monkeypatch.setattr(_config, "triton_config", _config.TritonConfig())
 
     cfg = _config.triton_config
@@ -332,9 +329,9 @@ def test_fallback_to_native_works(monkeypatch):
     b = torch.randn(H, device=device, dtype=torch.float32) * 0.05
 
     # With gate closed, the gate MUST return False regardless of CUDA.
-    assert cfg.use_fused_relu_linear(x) is False, (
-        "use_fused_relu_linear returned True with TRITON_USE_FUSED=0"
-    )
+    assert (
+        cfg.use_fused_relu_linear(x) is False
+    ), "use_fused_relu_linear returned True with TRITON_USE_FUSED=0"
 
     # And the fused_relu_linear function must produce the canonical
     # output bit-exactly.

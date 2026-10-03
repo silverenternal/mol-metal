@@ -70,21 +70,21 @@ class TestWf331X1CloseoutDocsExist:
 
     def test_326h_closeout_doc_has_formal_close_marker(self) -> None:
         text = CLOSE_326H.read_text()
-        assert "FORMALLY CLOSED" in text, (
-            "Wf-326H closeout doc must declare FORMAL CLOSE status."
-        )
+        assert (
+            "FORMALLY CLOSED" in text
+        ), "Wf-326H closeout doc must declare FORMAL CLOSE status."
 
     def test_326f_closeout_doc_references_wf331_x1(self) -> None:
         text = CLOSE_326F.read_text()
-        assert "Wf-331-X1" in text, (
-            "Wf-326F closeout doc must reference Wf-331-X1 as the gap closer."
-        )
+        assert (
+            "Wf-331-X1" in text
+        ), "Wf-326F closeout doc must reference Wf-331-X1 as the gap closer."
 
     def test_326h_closeout_doc_references_wf331_x1(self) -> None:
         text = CLOSE_326H.read_text()
-        assert "Wf-331-X1" in text, (
-            "Wf-326H closeout doc must reference Wf-331-X1 as the gap closer."
-        )
+        assert (
+            "Wf-331-X1" in text
+        ), "Wf-326H closeout doc must reference Wf-331-X1 as the gap closer."
 
 
 class TestWf331X1NoOrphanReferences:
@@ -145,7 +145,10 @@ class TestWf331X1NoOrphanReferences:
             if re.search(r"\b(OPEN|PENDING|UNRESOLVED|UNSHIPPED)\b", line):
                 # Allow lines that also reference the closeout doc
                 # (i.e. status resolved/closed via this Wf).
-                if "326f_memory_ceiling_closeout" in line or "326h_synthesis_closeout" in line:
+                if (
+                    "326f_memory_ceiling_closeout" in line
+                    or "326h_synthesis_closeout" in line
+                ):
                     continue
                 offending_lines.append((lineno, line.strip()[:120]))
         assert not offending_lines, (

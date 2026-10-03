@@ -69,6 +69,7 @@ class _IdentityRule(ReactionRule):
                 MoleculeClosedTerm as _MCT,
             )
             from molmetal_lam.bonds.application import FreeSiteLedger
+
             new_atoms = list(state.atoms) + list(tile.atoms)
             return [
                 _MCT(
@@ -88,8 +89,7 @@ class _IdentityRule(ReactionRule):
 def _default_tiles() -> List[MoleculeClosedTerm]:
     """Tiny 4-tile library — matches the unit-test fixture."""
     return [
-        MoleculeClosedTerm.from_smiles(smi)
-        for smi in ("CCO", "CCN", "CCCl", "CCS")
+        MoleculeClosedTerm.from_smiles(smi) for smi in ("CCO", "CCN", "CCCl", "CCS")
     ]
 
 
@@ -120,7 +120,7 @@ def _build_search(
         top_k=3,
         rng=random.Random(int(seed)),
         dirichlet_alpha=0.0,  # disable Dirichlet noise for determinism
-        early_stop=False,      # honour the full budget deterministically
+        early_stop=False,  # honour the full budget deterministically
         debug=bool(debug),
     )
 
@@ -134,27 +134,38 @@ def main(argv: List[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
-        "--seed", type=int, default=0,
+        "--seed",
+        type=int,
+        default=0,
         help="RNG seed (default: 0).",
     )
     parser.add_argument(
-        "--depth", type=int, default=3,
+        "--depth",
+        type=int,
+        default=3,
         help="Max β-reduction chain length per simulation (default: 3).",
     )
     parser.add_argument(
-        "--sims", type=int, default=10,
+        "--sims",
+        type=int,
+        default=10,
         help="Number of MCTS simulations to run (default: 10).",
     )
     parser.add_argument(
-        "--c-puct", type=float, default=1.4,
+        "--c-puct",
+        type=float,
+        default=1.4,
         help="PUCT exploration constant (default: 1.4).",
     )
     parser.add_argument(
-        "--start-smiles", type=str, default="CCO",
+        "--start-smiles",
+        type=str,
+        default="CCO",
         help="Starting molecule SMILES (default: CCO).",
     )
     parser.add_argument(
-        "--debug-mcts", action="store_true",
+        "--debug-mcts",
+        action="store_true",
         help=(
             "TODO-IMPROVEMENT_BACKLOG B3 — print per-iteration PUCT "
             "trace: step, node being expanded, PUCT formula components "
@@ -163,7 +174,8 @@ def main(argv: List[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
-        "--print-summary", action="store_true",
+        "--print-summary",
+        action="store_true",
         help=(
             "Print a JSON-style summary at the end of the run with the "
             "final best_score, mean_score, n_states_explored, and the "
@@ -196,19 +208,13 @@ def main(argv: List[str] | None = None) -> int:
         # form.  This is the canonical output of the wrapper script.
         try:
             best_score = (
-                float(search.history[-1]["best_score"])
-                if search.history
-                else 0.0
+                float(search.history[-1]["best_score"]) if search.history else 0.0
             )
             mean_score = (
-                float(search.history[-1]["mean_score"])
-                if search.history
-                else 0.0
+                float(search.history[-1]["mean_score"]) if search.history else 0.0
             )
             n_states = (
-                int(search.history[-1]["n_states_explored"])
-                if search.history
-                else 0
+                int(search.history[-1]["n_states_explored"]) if search.history else 0
             )
         except Exception:
             best_score = 0.0
@@ -222,10 +228,7 @@ def main(argv: List[str] | None = None) -> int:
             f"nfe={int(search.nfe)}"
         )
         if args.debug_mcts and getattr(search, "debug_trace", None):
-            print(
-                f"[debug-mcts] debug_trace_len="
-                f"{len(search.debug_trace)}"
-            )
+            print(f"[debug-mcts] debug_trace_len=" f"{len(search.debug_trace)}")
 
     return 0
 

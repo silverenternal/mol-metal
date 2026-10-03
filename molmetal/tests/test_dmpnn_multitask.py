@@ -58,8 +58,14 @@ from molmetal.baselines.dmpnn import (
 # Helpers
 # ---------------------------------------------------------------------------
 SMILES_8 = [
-    "CCO", "CC(=O)O", "c1ccccc1", "CC(C)C",
-    "CCC", "C1CCCCC1", "CCOCC", "CCCC",
+    "CCO",
+    "CC(=O)O",
+    "c1ccccc1",
+    "CC(C)C",
+    "CCC",
+    "C1CCCCC1",
+    "CCOCC",
+    "CCCC",
 ]
 
 
@@ -83,7 +89,7 @@ def test_dual_head_shapes():
     model = DMPNNMultiTaskModel(
         atom_dim=ATOM_FEATURE_DIM,
         bond_dim=BOND_FEATURE_DIM,
-        hidden=64,   # small for fast test
+        hidden=64,  # small for fast test
         depth=2,
         dropout=0.0,
     )
@@ -91,12 +97,15 @@ def test_dual_head_shapes():
     with torch.no_grad():
         pic50, active_logits = model(atom_f, bond_f, e_src, e_dst)
     assert pic50.shape == (8,), f"Expected pic50 shape (8,), got {pic50.shape}"
-    assert active_logits.shape == (8, 2), (
-        f"Expected active_logits shape (8, 2), got {active_logits.shape}"
-    )
+    assert active_logits.shape == (
+        8,
+        2,
+    ), f"Expected active_logits shape (8, 2), got {active_logits.shape}"
     # No NaN / Inf
     assert torch.isfinite(pic50).all(), "pic50 contains non-finite values"
-    assert torch.isfinite(active_logits).all(), "active_logits contains non-finite values"
+    assert torch.isfinite(
+        active_logits
+    ).all(), "active_logits contains non-finite values"
 
 
 # ---------------------------------------------------------------------------
@@ -149,9 +158,9 @@ def test_loss_finite_and_decreases():
         f"initial={initial:.4f} final={final:.4f}"
     )
     # And absolutely: final loss should be smaller than initial by at least 0.3
-    assert initial - final >= 0.3, (
-        f"Loss decrease too small: {initial - final:.4f} < 0.3"
-    )
+    assert (
+        initial - final >= 0.3
+    ), f"Loss decrease too small: {initial - final:.4f} < 0.3"
 
 
 # ---------------------------------------------------------------------------
@@ -192,7 +201,9 @@ def test_multitask_beats_single():
     mt_model = DMPNNMultiTaskModel(
         atom_dim=ATOM_FEATURE_DIM,
         bond_dim=BOND_FEATURE_DIM,
-        hidden=64, depth=2, dropout=0.0,
+        hidden=64,
+        depth=2,
+        dropout=0.0,
     )
     optimizer = torch.optim.Adam(mt_model.parameters(), lr=5e-3)
     criterion = MultiTaskLoss(alpha=MT_ALPHA)
@@ -214,8 +225,11 @@ def test_multitask_beats_single():
     from molmetal.baselines.dmpnn import DMPNNModel
 
     st_model = DMPNNModel(
-        atom_dim=ATOM_FEATURE_DIM, bond_dim=BOND_FEATURE_DIM,
-        hidden=64, depth=2, dropout=0.0,
+        atom_dim=ATOM_FEATURE_DIM,
+        bond_dim=BOND_FEATURE_DIM,
+        hidden=64,
+        depth=2,
+        dropout=0.0,
     )
     opt2 = torch.optim.Adam(st_model.parameters(), lr=5e-3)
     bce = torch.nn.BCEWithLogitsLoss()
@@ -232,6 +246,7 @@ def test_multitask_beats_single():
         st_probs = 1.0 / (1.0 + np.exp(-st_logits))
 
     from sklearn.metrics import roc_auc_score
+
     try:
         mt_auc = float(roc_auc_score(active_latent, mt_probs))
         st_auc = float(roc_auc_score(active_latent, st_probs))
@@ -278,6 +293,7 @@ FIVE_METALS_5 = ("Ru", "Ir", "Rh", "Os", "Re")
 def _toy_single_atom_graph():
     """Build a single-atom, no-bond graph (always valid)."""
     from molmetal.baselines.dmpnn import ATOM_FEATURE_DIM, BOND_FEATURE_DIM
+
     atom_f = np.zeros((1, ATOM_FEATURE_DIM), dtype=np.float32)
     atom_f[0, 0] = 1.0  # mark as a real atom
     bond_f = np.zeros((0, BOND_FEATURE_DIM), dtype=np.float32)
@@ -383,9 +399,9 @@ def test_per_metal_head_distinct_params():
     # Pairwise: different metals must have different head weights
     for i in range(n_metals):
         for j in range(i + 1, n_metals):
-            assert not torch.allclose(first_reg_weights[i], first_reg_weights[j]), (
-                f"reg_heads[{i}] == reg_heads[{j}] — per-metal heads share weights"
-            )
+            assert not torch.allclose(
+                first_reg_weights[i], first_reg_weights[j]
+            ), f"reg_heads[{i}] == reg_heads[{j}] — per-metal heads share weights"
 
 
 # ---------------------------------------------------------------------------
@@ -405,9 +421,7 @@ def test_joint_loss_alpha_half():
     expected_cls = float(
         torch.nn.functional.cross_entropy(active_logits, active_t).item()
     )
-    expected_reg = float(
-        torch.nn.functional.mse_loss(pic50_pred, pic50_t).item()
-    )
+    expected_reg = float(torch.nn.functional.mse_loss(pic50_pred, pic50_t).item())
     expected = 0.5 * expected_cls + 0.5 * expected_reg
 
     assert abs(loss.item() - expected) < 1e-5
@@ -451,9 +465,7 @@ def test_joint_loss_alpha_zero():
     active_t = torch.tensor([1, 0, 1], dtype=torch.long)
 
     loss, lc, lr = criterion(pic50_pred, active_logits, pic50_t, active_t)
-    expected_reg = float(
-        torch.nn.functional.mse_loss(pic50_pred, pic50_t).item()
-    )
+    expected_reg = float(torch.nn.functional.mse_loss(pic50_pred, pic50_t).item())
     assert abs(lr.item() - expected_reg) < 1e-5
     assert abs(loss.item() - expected_reg) < 1e-5
 
@@ -570,15 +582,23 @@ def test_joint_gradient_flow_to_encoder():
 
     # Use real SMILES with bonds (each metal gets one with bonds)
     real_smiles = [
-        "CCO", "CC(=O)O", "c1ccccc1", "CC(C)C",
-        "CCC", "C1CCCCC1", "CCOCC", "CCCC",
-        "c1ccncc1", "CCS",
+        "CCO",
+        "CC(=O)O",
+        "c1ccccc1",
+        "CC(C)C",
+        "CCC",
+        "C1CCCCC1",
+        "CCOCC",
+        "CCCC",
+        "c1ccncc1",
+        "CCS",
     ]
     graphs = featurize_smiles_list(real_smiles)
     # Filter out any None from featurizer failures
     valid = [
         (g, i % n_metals, 5.0 + 0.1 * i, i % 2)
-        for i, g in enumerate(graphs) if g is not None
+        for i, g in enumerate(graphs)
+        if g is not None
     ]
     graphs = [v[0] for v in valid]
     mids = [v[1] for v in valid]
@@ -598,16 +618,17 @@ def test_joint_gradient_flow_to_encoder():
     # forward): atom_emb, bond_emb, gru_update. (Note: edge_init exists
     # on DMPNNMultiTaskModel but is unused in `_forward_one_mol`.)
     backbone_submodules = (
-        model.encoder.atom_emb, model.encoder.bond_emb,
+        model.encoder.atom_emb,
+        model.encoder.bond_emb,
         model.encoder.gru_update,
     )
     backbone_grad_norm = 0.0
     n_params_with_grad = 0
     for sub in backbone_submodules:
         for p in sub.parameters():
-            assert p.grad is not None, (
-                f"backbone param in {type(sub).__name__} missing gradient"
-            )
+            assert (
+                p.grad is not None
+            ), f"backbone param in {type(sub).__name__} missing gradient"
             backbone_grad_norm += float(p.grad.norm().item())
             n_params_with_grad += 1
     assert n_params_with_grad > 0
@@ -615,7 +636,8 @@ def test_joint_gradient_flow_to_encoder():
 
     # At least one per-metal head received gradient
     n_head_grads = sum(
-        1 for head in model.reg_heads
+        1
+        for head in model.reg_heads
         for p in head.parameters()
         if p.grad is not None and p.grad.abs().sum() > 0
     )
@@ -633,17 +655,24 @@ def test_5metal_split_csv_roundtrip(tmp_path: Path):
     import csv as _csv
 
     rows = []
-    for i, (smi, metal, split) in enumerate([
-        ("CCO", "Ru", "train"),
-        ("CCN", "Ir", "val"),
-        ("CCCl", "Os", "test"),
-        ("CCBr", "Rh", "train"),
-        ("CCI", "Re", "val"),
-    ]):
-        rows.append({
-            "smiles": smi, "metal": metal, "scaffold_id": f"sc{i}",
-            "split": split, "activity": "0",
-        })
+    for i, (smi, metal, split) in enumerate(
+        [
+            ("CCO", "Ru", "train"),
+            ("CCN", "Ir", "val"),
+            ("CCCl", "Os", "test"),
+            ("CCBr", "Rh", "train"),
+            ("CCI", "Re", "val"),
+        ]
+    ):
+        rows.append(
+            {
+                "smiles": smi,
+                "metal": metal,
+                "scaffold_id": f"sc{i}",
+                "split": split,
+                "activity": "0",
+            }
+        )
     csv_path = tmp_path / "tiny_5metal.csv"
     with csv_path.open("w", newline="") as fh:
         writer = _csv.DictWriter(fh, fieldnames=list(rows[0].keys()))
@@ -679,30 +708,34 @@ def test_5metal_split_indices_build(tmp_path: Path):
     # required by MetalCytotoxDataset (SMILES_Ligands, Metal, Cell_line,
     # pIC50, active, Year, Charge_complex, Oxidation_state).
     db_rows = []
-    for i, (smi, metal, split) in enumerate([
-        ("CCO", "Ru", "train"),
-        ("CCN", "Ru", "val"),
-        ("CCCl", "Ru", "test"),
-        ("CCBr", "Ir", "train"),
-        ("CCI", "Ir", "val"),
-        ("CC=O", "Ir", "test"),
-        ("CCS", "Os", "train"),
-        ("CC=O", "Os", "val"),
-        ("CC=NC", "Rh", "train"),
-        ("c1ccccc1", "Rh", "val"),
-        ("CCOC", "Re", "train"),
-        ("CCNC", "Re", "val"),
-    ]):
-        db_rows.append({
-            "SMILES_Ligands": smi,
-            "Metal": metal,
-            "Cell_line": "A549",
-            "pIC50": 6.0,
-            "active": 1 if i % 2 == 0 else 0,
-            "Year": 2024,
-            "Charge_complex": 0,
-            "Oxidation_state": 0,
-        })
+    for i, (smi, metal, split) in enumerate(
+        [
+            ("CCO", "Ru", "train"),
+            ("CCN", "Ru", "val"),
+            ("CCCl", "Ru", "test"),
+            ("CCBr", "Ir", "train"),
+            ("CCI", "Ir", "val"),
+            ("CC=O", "Ir", "test"),
+            ("CCS", "Os", "train"),
+            ("CC=O", "Os", "val"),
+            ("CC=NC", "Rh", "train"),
+            ("c1ccccc1", "Rh", "val"),
+            ("CCOC", "Re", "train"),
+            ("CCNC", "Re", "val"),
+        ]
+    ):
+        db_rows.append(
+            {
+                "SMILES_Ligands": smi,
+                "Metal": metal,
+                "Cell_line": "A549",
+                "pIC50": 6.0,
+                "active": 1 if i % 2 == 0 else 0,
+                "Year": 2024,
+                "Charge_complex": 0,
+                "Oxidation_state": 0,
+            }
+        )
     db_df = _pd.DataFrame(db_rows)
     ds = MetalCytotoxDataset(df=db_df, cache_dir=tmp_path)
 
@@ -722,12 +755,18 @@ def test_5metal_split_indices_build(tmp_path: Path):
         ("CCOC", "Re", "train"),
         ("CCNC", "Re", "val"),
     ]:
-        split_rows.append({
-            "smiles": smi, "metal": metal,
-            "scaffold_id": "sc", "split": split, "activity": "0",
-        })
+        split_rows.append(
+            {
+                "smiles": smi,
+                "metal": metal,
+                "scaffold_id": "sc",
+                "split": split,
+                "activity": "0",
+            }
+        )
     csv_path = tmp_path / "split.csv"
     import csv as _csv
+
     with csv_path.open("w", newline="") as fh:
         writer = _csv.DictWriter(fh, fieldnames=list(split_rows[0].keys()))
         writer.writeheader()
@@ -751,7 +790,7 @@ def test_5metal_collate_filters_invalid():
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import collate_multimetal
 
     graphs = _toy_molecule_graphs(5)
-    graphs[1] = None   # drop a row
+    graphs[1] = None  # drop a row
     mids = [0, 1, 2, 3, 4]
     pic50 = np.array([5.0, float("nan"), 7.0, 6.0, 5.5], dtype=np.float32)
     active = np.array([0, 1, 1, 0, 1], dtype=np.int64)
@@ -807,6 +846,6 @@ def test_5metal_joint_loss_decreases():
         )
         losses.append(loss)
 
-    assert losses[0] > losses[-1], (
-        f"loss did not decrease across 3 epochs: {losses[0]:.4f} → {losses[-1]:.4f}"
-    )
+    assert (
+        losses[0] > losses[-1]
+    ), f"loss did not decrease across 3 epochs: {losses[0]:.4f} → {losses[-1]:.4f}"

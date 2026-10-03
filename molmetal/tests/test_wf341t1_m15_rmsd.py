@@ -30,6 +30,7 @@ Honest framing (party-twenty-spirit §3.5)
   ``metrics/by_metric/docked_pose_rmsd.json`` (MEASURED by Wf-179
   BD-9 + Wf-246-B + Wf-247-A); skipif if missing.
 """
+
 from __future__ import annotations
 
 import json
@@ -106,9 +107,9 @@ def test_rmsd_via_meeko() -> None:
     # Self-alignment → ~0 RMSD
     result = evaluate_rmsd_with_threshold(elements, coords, elements, coords)
     assert result["rmsd_angstrom"] is not None
-    assert result["rmsd_angstrom"] < 0.01, (
-        f"self-alignment RMSD should be ~0, got {result['rmsd_angstrom']:.4f}"
-    )
+    assert (
+        result["rmsd_angstrom"] < 0.01
+    ), f"self-alignment RMSD should be ~0, got {result['rmsd_angstrom']:.4f}"
     assert result["passes_2_0a_sota"] is True
     assert result["passes_2_5a_practical"] is True
     assert result["n_heavy"] == len(elements)
@@ -167,9 +168,9 @@ def test_per_pocket_rmsd_bench() -> None:
       * ``per_seed_best_rmsd_angstrom`` is a list
     """
     results = per_pocket_rmsd_bench(DEFAULT_POCKETS)
-    assert len(results) == len(DEFAULT_POCKETS), (
-        f"expected {len(DEFAULT_POCKETS)} per-pocket records, got {len(results)}"
-    )
+    assert len(results) == len(
+        DEFAULT_POCKETS
+    ), f"expected {len(DEFAULT_POCKETS)} per-pocket records, got {len(results)}"
     pocket_ids = [r.pocket for r in results]
     for pid in DEFAULT_POCKETS:
         assert pid in pocket_ids, f"missing pocket record: {pid}"
@@ -184,7 +185,9 @@ def test_per_pocket_rmsd_bench() -> None:
         # When measured, RMSD must be a positive float under SOTA.
         if r.median_best_rmsd_angstrom is not None:
             assert r.median_best_rmsd_angstrom >= 0
-            assert r.median_best_rmsd_angstrom <= RMSD_PRACTICAL_THRESHOLD_ANGSTROM * 5, (
+            assert (
+                r.median_best_rmsd_angstrom <= RMSD_PRACTICAL_THRESHOLD_ANGSTROM * 5
+            ), (
                 f"median RMSD suspiciously large for {r.pocket}: "
                 f"{r.median_best_rmsd_angstrom:.3f}"
             )
@@ -192,9 +195,7 @@ def test_per_pocket_rmsd_bench() -> None:
     # Canonical 5/5 SOTA pass on the MEASURED baseline
     # (per Wf-179 BD-9 + Wf-246-B + Wf-247-A).
     n_pass = sum(1 for r in results if r.passes_2_0a_sota)
-    assert n_pass >= 1, (
-        f"at least 1 pocket must pass the 2.0 Å SOTA gate; got {n_pass}"
-    )
+    assert n_pass >= 1, f"at least 1 pocket must pass the 2.0 Å SOTA gate; got {n_pass}"
 
 
 # ---------------------------------------------------------------------------
@@ -230,7 +231,9 @@ def test_m15_metric_lift() -> None:
 
     # Aggregate metric lift (the headline claim).
     assert summary.aggregate_median_best_rmsd_angstrom is not None
-    assert summary.aggregate_median_best_rmsd_angstrom <= RMSD_PRACTICAL_THRESHOLD_ANGSTROM, (
+    assert (
+        summary.aggregate_median_best_rmsd_angstrom <= RMSD_PRACTICAL_THRESHOLD_ANGSTROM
+    ), (
         f"aggregate median {summary.aggregate_median_best_rmsd_angstrom:.3f} Å "
         f"must be <= practical threshold {RMSD_PRACTICAL_THRESHOLD_ANGSTROM}"
     )

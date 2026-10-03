@@ -124,8 +124,9 @@ def diffdock_cli_available(repo_root: str = DEFAULT_REPO_ROOT) -> bool:
 # Aggregation
 # ---------------------------------------------------------------------------
 def _aggregate(confidences: Sequence[float]) -> tuple[Optional[float], Optional[float]]:
-    finite = [c for c in confidences
-              if isinstance(c, (int, float)) and math.isfinite(c)]
+    finite = [
+        c for c in confidences if isinstance(c, (int, float)) and math.isfinite(c)
+    ]
     if not finite:
         return None, None
     mean = sum(finite) / len(finite)
@@ -138,29 +139,51 @@ def _aggregate(confidences: Sequence[float]) -> tuple[Optional[float], Optional[
 # ---------------------------------------------------------------------------
 # Subprocess invocation
 # ---------------------------------------------------------------------------
-def _build_cli(inference_script: Path, smiles: str, protein_path: str,
-               out_dir: str, samples_per_complex: int, config_yaml: Optional[Path],
-               complex_name: str) -> List[str]:
+def _build_cli(
+    inference_script: Path,
+    smiles: str,
+    protein_path: str,
+    out_dir: str,
+    samples_per_complex: int,
+    config_yaml: Optional[Path],
+    complex_name: str,
+) -> List[str]:
     cmd: List[str] = [
-        sys.executable, str(inference_script),
-        "--protein_path", protein_path,
-        "--ligand_description", smiles,
-        "--complex_name", complex_name,
-        "--out_dir", out_dir,
-        "--samples_per_complex", str(int(samples_per_complex)),
+        sys.executable,
+        str(inference_script),
+        "--protein_path",
+        protein_path,
+        "--ligand_description",
+        smiles,
+        "--complex_name",
+        complex_name,
+        "--out_dir",
+        out_dir,
+        "--samples_per_complex",
+        str(int(samples_per_complex)),
     ]
     if config_yaml is not None and config_yaml.is_file():
         cmd.extend(["--config", str(config_yaml)])
     return cmd
 
 
-def _run_one_subprocess(inference_script: Path, smiles: str, protein_path: str,
-                        out_dir: Path, samples_per_complex: int,
-                        config_yaml: Optional[Path], timeout_sec: float) -> tuple[int, str]:
+def _run_one_subprocess(
+    inference_script: Path,
+    smiles: str,
+    protein_path: str,
+    out_dir: Path,
+    samples_per_complex: int,
+    config_yaml: Optional[Path],
+    timeout_sec: float,
+) -> tuple[int, str]:
     """Invoke DiffDock inference.py once; return (returncode, stderr_snippet)."""
     cmd = _build_cli(
-        inference_script, smiles, protein_path,
-        str(out_dir), samples_per_complex, config_yaml,
+        inference_script,
+        smiles,
+        protein_path,
+        str(out_dir),
+        samples_per_complex,
+        config_yaml,
         DEFAULT_COMPLEX_NAME,
     )
     try:
@@ -186,8 +209,10 @@ def _parse_confidence_from_outdir(out_dir: Path, complex_name: str) -> float:
         from molmetal_lam.sbdd_env.diffdock_adapter import (
             DiffDockAdapter,
         )
+
         return DiffDockAdapter.parse_confidence_from_outdir(
-            str(out_dir), complex_name,
+            str(out_dir),
+            complex_name,
         )
     except Exception:
         return float("nan")
@@ -234,22 +259,31 @@ def score_candidates(
     """
     if not candidates:
         return DiffDockScoreColumn(
-            status="ok", n_invoked=0, n_scored=0,
-            diffdock_score_mean=None, diffdock_score_std=None,
+            status="ok",
+            n_invoked=0,
+            n_scored=0,
+            diffdock_score_mean=None,
+            diffdock_score_std=None,
             notes="no candidates supplied",
         )
 
     if not diffdock_cli_available(repo_root):
         return DiffDockScoreColumn(
-            status="unavailable", n_invoked=len(candidates), n_scored=0,
-            diffdock_score_mean=None, diffdock_score_std=None,
+            status="unavailable",
+            n_invoked=len(candidates),
+            n_scored=0,
+            diffdock_score_mean=None,
+            diffdock_score_std=None,
             notes=f"DiffDock inference.py not found at {repo_root!r}",
         )
 
     if not Path(protein_path).is_file():
         return DiffDockScoreColumn(
-            status="error", n_invoked=len(candidates), n_scored=0,
-            diffdock_score_mean=None, diffdock_score_std=None,
+            status="error",
+            n_invoked=len(candidates),
+            n_scored=0,
+            diffdock_score_mean=None,
+            diffdock_score_std=None,
             notes=f"protein_path not found: {protein_path!r}",
         )
 
@@ -269,14 +303,21 @@ def score_candidates(
         with tempfile.TemporaryDirectory(prefix="diffdock_sota_") as tmp:
             tmp_path = Path(tmp)
             rc, stderr = _run_one_subprocess(
-                inference_script, smiles, protein_path, tmp_path,
-                samples_per_complex, cfg_path, timeout_sec,
+                inference_script,
+                smiles,
+                protein_path,
+                tmp_path,
+                samples_per_complex,
+                cfg_path,
+                timeout_sec,
             )
             last_stderr = stderr
             if rc != 0:
                 logger.warning(
                     "DiffDock subprocess failed rc=%d for %s: %s",
-                    rc, smiles[:40], stderr,
+                    rc,
+                    smiles[:40],
+                    stderr,
                 )
                 confidences[smiles] = float("nan")
                 continue
@@ -294,9 +335,13 @@ def score_candidates(
         status = "ok"
     notes = "" if status != "error" else f"last stderr: {last_stderr}"
     return DiffDockScoreColumn(
-        status=status, n_invoked=n_invoked, n_scored=n_scored,
-        diffdock_score_mean=mean, diffdock_score_std=std,
-        per_smiles=confidences, notes=notes,
+        status=status,
+        n_invoked=n_invoked,
+        n_scored=n_scored,
+        diffdock_score_mean=mean,
+        diffdock_score_std=std,
+        per_smiles=confidences,
+        notes=notes,
     )
 
 

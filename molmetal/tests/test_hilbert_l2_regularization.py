@@ -61,7 +61,8 @@ def _hilbert_feature_map(X_12d, hilbert_dim=64):
         for j in range(i + 1, F):
             interactions.append(X_12d[:, i] * X_12d[:, j])
     inter_arr = (
-        np.stack(interactions, axis=1) if interactions
+        np.stack(interactions, axis=1)
+        if interactions
         else np.zeros((n, 0), dtype=np.float32)
     )
     base = np.concatenate([X_12d, bias], axis=1)
@@ -135,9 +136,7 @@ def test_objective_clam_adds_ridge_term() -> None:
     assert loss_lam == pytest.approx(loss_no + expected_ridge_loss, abs=1e-12)
 
     # Gradient should match closed form: ridge term contributes ``lam * x``.
-    expected_grad = (
-        feat.T @ (feat @ x - tgt) / max(1, tgt.shape[0]) + 0.1 * x
-    )
+    expected_grad = feat.T @ (feat @ x - tgt) / max(1, tgt.shape[0]) + 0.1 * x
     assert np.allclose(grad_lam, expected_grad, atol=1e-12)
 
 
@@ -214,15 +213,23 @@ def test_l2_regularization_prevents_train_r2_divergence() -> None:
         Xva, yva = X_h[n_tr:], (y[n_tr:] * 128).astype(np.float64)
 
         hil = LambdaASTSRHilbert(
-            population_dim=64, n_iters=50,
-            lr_primal=0.05, lr_dual=0.05,
-            l2_lambda=0.01, max_l2_lambda=20.0,
+            population_dim=64,
+            n_iters=50,
+            lr_primal=0.05,
+            lr_dual=0.05,
+            l2_lambda=0.01,
+            max_l2_lambda=20.0,
             seed=seed,
-            grad_clip_max_norm=1.0, step_size_decay=0.5,
-            adaptive_l2=True, val_check_every=5,
+            grad_clip_max_norm=1.0,
+            step_size_decay=0.5,
+            adaptive_l2=True,
+            val_check_every=5,
         )
         hil.optimize(
-            Xtr, ytr, val_features=Xva, val_target=yva,
+            Xtr,
+            ytr,
+            val_features=Xva,
+            val_target=yva,
             loss_scale=128.0,
         )
         assert hil.best_r2_train_ >= -0.5, (
@@ -251,11 +258,15 @@ def test_adaptive_lambda_doubles_on_val_regression() -> None:
     Xva, yva = X[n_tr:], y[n_tr:]
 
     hil = LambdaASTSRHilbert(
-        population_dim=dim, n_iters=80,
-        lr_primal=0.05, lr_dual=0.05,
-        l2_lambda=0.01, max_l2_lambda=8.0,
+        population_dim=dim,
+        n_iters=80,
+        lr_primal=0.05,
+        lr_dual=0.05,
+        l2_lambda=0.01,
+        max_l2_lambda=8.0,
         seed=0,
-        adaptive_l2=True, val_check_every=5,
+        adaptive_l2=True,
+        val_check_every=5,
     )
     hil.optimize(Xtr, ytr, val_features=Xva, val_target=yva)
     assert hil.n_l2_doublings_ >= 2, (
@@ -284,9 +295,14 @@ def test_adaptive_lambda_does_not_double_when_val_improves() -> None:
     Xva, yva = X[n_tr:], y[n_tr:]
 
     hil = LambdaASTSRHilbert(
-        population_dim=dim, n_iters=80, lr_primal=0.005,
-        lr_dual=0.005, l2_lambda=0.01, seed=0,
-        adaptive_l2=True, val_check_every=10,
+        population_dim=dim,
+        n_iters=80,
+        lr_primal=0.005,
+        lr_dual=0.005,
+        l2_lambda=0.01,
+        seed=0,
+        adaptive_l2=True,
+        val_check_every=10,
         max_l2_lambda=2.0,
     )
     hil.optimize(Xtr, ytr, val_features=Xva, val_target=yva)
@@ -306,10 +322,15 @@ def test_adaptive_lambda_capped_at_max() -> None:
     Xtr, ytr = X[:n_tr], y[:n_tr]
     Xva, yva = X[n_tr:], y[n_tr:]
     hil = LambdaASTSRHilbert(
-        population_dim=dim, n_iters=80,
-        lr_primal=0.05, lr_dual=0.05,
-        l2_lambda=0.01, max_l2_lambda=0.5,
-        seed=0, adaptive_l2=True, val_check_every=5,
+        population_dim=dim,
+        n_iters=80,
+        lr_primal=0.05,
+        lr_dual=0.05,
+        l2_lambda=0.01,
+        max_l2_lambda=0.5,
+        seed=0,
+        adaptive_l2=True,
+        val_check_every=5,
     )
     hil.optimize(Xtr, ytr, val_features=Xva, val_target=yva)
     assert hil.best_l2_lambda_ <= 0.5 + 1e-12
@@ -331,8 +352,13 @@ def test_static_adaptive_path_records_no_doublings() -> None:
     Xtr, ytr = X[:n_tr], y[:n_tr]
     Xva, yva = X[n_tr:], y[n_tr:]
     hil = LambdaASTSRHilbert(
-        population_dim=dim, n_iters=40, lr_primal=0.05,
-        lr_dual=0.05, l2_lambda=0.05, seed=0, adaptive_l2=False,
+        population_dim=dim,
+        n_iters=40,
+        lr_primal=0.05,
+        lr_dual=0.05,
+        l2_lambda=0.05,
+        seed=0,
+        adaptive_l2=False,
     )
     hil.optimize(Xtr, ytr, val_features=Xva, val_target=yva)
     assert hil.n_l2_doublings_ == 0
@@ -351,16 +377,20 @@ def test_no_val_supplied_disables_adaptive_path() -> None:
     X = rng.standard_normal((n, dim))
     y = 0.5 * rng.standard_normal(n)
     hil = LambdaASTSRHilbert(
-        population_dim=dim, n_iters=40, lr_primal=0.05,
-        lr_dual=0.05, l2_lambda=0.05, seed=0, adaptive_l2=True,
+        population_dim=dim,
+        n_iters=40,
+        lr_primal=0.05,
+        lr_dual=0.05,
+        l2_lambda=0.05,
+        seed=0,
+        adaptive_l2=True,
     )
     hil.optimize(X, y)  # no val_* args
     assert hil.n_l2_doublings_ == 0
     assert np.isnan(hil.best_r2_val_)
     assert hil.best_l2_lambda_ == pytest.approx(0.05, abs=1e-12)
     assert len(hil.l2_lambda_history_) == 40
-    assert all(v == pytest.approx(0.05, abs=1e-12)
-               for v in hil.l2_lambda_history_)
+    assert all(v == pytest.approx(0.05, abs=1e-12) for v in hil.l2_lambda_history_)
 
 
 def test_val_length_mismatch_raises() -> None:
@@ -369,12 +399,17 @@ def test_val_length_mismatch_raises() -> None:
     X = rng.standard_normal((60, 12))
     y = rng.standard_normal(60)
     hil = LambdaASTSRHilbert(
-        population_dim=12, n_iters=10, lr_primal=0.05,
-        lr_dual=0.05, seed=0, adaptive_l2=True,
+        population_dim=12,
+        n_iters=10,
+        lr_primal=0.05,
+        lr_dual=0.05,
+        seed=0,
+        adaptive_l2=True,
     )
     with pytest.raises(ValueError):
         hil.optimize(
-            X[:30], y[:30],
+            X[:30],
+            y[:30],
             val_features=X[30:50],
             val_target=y[30:55],
         )
@@ -389,8 +424,12 @@ def test_l2_lambda_history_populated() -> None:
     X = rng.standard_normal((n, dim))
     y = 0.5 * rng.standard_normal(n)
     hil = LambdaASTSRHilbert(
-        population_dim=dim, n_iters=20, lr_primal=0.05,
-        lr_dual=0.05, l2_lambda=0.05, seed=0,
+        population_dim=dim,
+        n_iters=20,
+        lr_primal=0.05,
+        lr_dual=0.05,
+        l2_lambda=0.05,
+        seed=0,
     )
     hil.optimize(X, y)
     assert len(hil.l2_lambda_history_) == 20

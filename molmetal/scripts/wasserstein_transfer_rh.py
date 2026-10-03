@@ -91,9 +91,7 @@ from molmetal.molmetal_lam.reward.wasserstein_transfer import (
 DEFAULT_CSV = (
     PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 )
-DEFAULT_OUT_DIR = (
-    PROJECT_ROOT / "molmetal" / "reports" / "wf131_p2_rh_oversample"
-)
+DEFAULT_OUT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf131_p2_rh_oversample"
 PER_METAL_DEMONSTRATION = ("Ru", "Ir", "Os", "Rh", "Re")
 EMBEDDING_DIM = 16  # 16-d RDKit-style synthetic embedding for the demo
 
@@ -108,39 +106,56 @@ def _parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         description="Wf-131 P2 — Wasserstein transfer + Rh closure oversample for m19 LOMO.",
     )
     p.add_argument(
-        "--target-cohort-size", type=int, default=500,
+        "--target-cohort-size",
+        type=int,
+        default=500,
         help="Number of synthetic Rh compounds to generate (default: 500).",
     )
     p.add_argument(
-        "--max-depth", type=int, default=2,
+        "--max-depth",
+        type=int,
+        default=2,
         help="BFS depth budget for the closure theorem (default: 2).",
     )
     p.add_argument(
-        "--per-scaffold-cap", type=int, default=200,
+        "--per-scaffold-cap",
+        type=int,
+        default=200,
         help="Per-scaffold yield cap for the closure BFS (default: 200).",
     )
     p.add_argument(
-        "--n-projections", type=int, default=64,
+        "--n-projections",
+        type=int,
+        default=64,
         help="Number of random projections for the sliced-W₂ estimator.",
     )
     p.add_argument(
-        "--seed", type=int, default=0,
+        "--seed",
+        type=int,
+        default=0,
         help="RNG seed (default: 0).",
     )
     p.add_argument(
-        "--csv", type=str, default=str(DEFAULT_CSV),
+        "--csv",
+        type=str,
+        default=str(DEFAULT_CSV),
         help=f"MetalCytoToxDB CSV (default: {DEFAULT_CSV}).",
     )
     p.add_argument(
-        "--out-dir", type=str, default=str(DEFAULT_OUT_DIR),
+        "--out-dir",
+        type=str,
+        default=str(DEFAULT_OUT_DIR),
         help=f"Output directory (default: {DEFAULT_OUT_DIR}).",
     )
     p.add_argument(
-        "--max-train-rows", type=int, default=2000,
+        "--max-train-rows",
+        type=int,
+        default=2000,
         help="Max train rows to sample per metal for the W₂ demo.",
     )
     p.add_argument(
-        "--quick", action="store_true",
+        "--quick",
+        action="store_true",
         help="Quick mode — generate only 50 synthetic compounds.",
     )
     return p.parse_args(argv)
@@ -204,9 +219,7 @@ def _smiles_to_embedding(
     for smi in smiles:
         cnt = Counter(smi)
         # Compute char-frequency vector of length |vocab|.
-        char_freq = torch.tensor(
-            [cnt.get(c, 0) for c in vocab], dtype=torch.float32
-        )
+        char_freq = torch.tensor([cnt.get(c, 0) for c in vocab], dtype=torch.float32)
         char_freq = char_freq / char_freq.sum().clamp_min(1.0)
         # Project to ``dim`` via a fixed random matrix (seeded).
         proj = torch.randn(len(vocab), dim, generator=g)
@@ -226,9 +239,7 @@ def _build_per_metal_embeddings(
     per_metal_emb: Dict[str, torch.Tensor] = {}
     per_metal_n: Dict[str, int] = {}
     for metal in metals:
-        smis = _load_per_metal_train_smiles(
-            csv_path, metal, max_train_rows, seed
-        )
+        smis = _load_per_metal_train_smiles(csv_path, metal, max_train_rows, seed)
         emb = _smiles_to_embedding(smis, embedding_dim, seed + hash(metal) % 1000)
         per_metal_emb[metal] = emb
         per_metal_n[metal] = int(emb.size(0))
@@ -303,8 +314,10 @@ def _wass_decay_curve(
             if other_emb.numel() == 0:
                 continue
             w2_t = wasserstein_loss(
-                rh_interp, other_emb,
-                n_mc=n_projections, seed=seed + k,
+                rh_interp,
+                other_emb,
+                n_mc=n_projections,
+                seed=seed + k,
             )
             w2 = float(w2_t.item())
             step[f"rh_vs_{m}_w2"] = w2
@@ -373,27 +386,26 @@ def _build_synthesis_markdown(
         # below ("the W₂ distance may *increase* when synthetics are
         # added").
         decay_pct = (
-            100.0 * (last_mean - first_mean) / first_mean
-            if first_mean > 0 else 0.0
+            100.0 * (last_mean - first_mean) / first_mean if first_mean > 0 else 0.0
         )
     else:
         first_mean = last_mean = decay_pct = 0.0
 
     lines = []
-    lines.append("# Wf-131 Phase 2 — Rh closure oversample + Wasserstein transfer for m19 LOMO")
-    lines.append("")
     lines.append(
-        "**Date**: 2026-09-27  "
+        "# Wf-131 Phase 2 — Rh closure oversample + Wasserstein transfer for m19 LOMO"
     )
+    lines.append("")
+    lines.append("**Date**: 2026-09-27  ")
     lines.append(
         "**Status**: PASS — M1 wasserstein_transfer_loss + M2 closure_oversample "
         "wired into one driver; 500 Rh synthetic compounds generated with "
         "Catherine 6/6 PASS per compound; Wasserstein distance decay measured.  "
     )
+    lines.append("**Owner**: Hugo Lee + ultracode agents.  ")
     lines.append(
-        "**Owner**: Hugo Lee + ultracode agents.  "
+        "**Parent**: TODO/pending/121_m19_lomo_strengthen.md (m19 LOMO strengthen).  "
     )
-    lines.append("**Parent**: TODO/pending/121_m19_lomo_strengthen.md (m19 LOMO strengthen).  ")
     lines.append("")
     lines.append("---")
     lines.append("")
@@ -460,6 +472,7 @@ def _build_synthesis_markdown(
     lines.append("")
     if cohort.per_compound:
         from collections import Counter
+
         depth_dist = Counter(c.depth for c in cohort.per_compound)
         lines.append("| depth | count |")
         lines.append("|---|---|")
@@ -489,7 +502,19 @@ def _build_synthesis_markdown(
     lines.append("")
     lines.append("### Pairwise W₂ distance matrix (real Rh cohort)")
     lines.append("")
-    lines.append("| anchor \\ partner | " + " | ".join(wass_real.per_pair and [p.partner for p in wass_real.per_pair if p.anchor == wass_real.per_pair[0].anchor] or []) + " |")
+    lines.append(
+        "| anchor \\ partner | "
+        + " | ".join(
+            wass_real.per_pair
+            and [
+                p.partner
+                for p in wass_real.per_pair
+                if p.anchor == wass_real.per_pair[0].anchor
+            ]
+            or []
+        )
+        + " |"
+    )
     # Build a per-pair summary grouped by anchor.
     per_anchor: Dict[str, Dict[str, float]] = {}
     for p in wass_real.per_pair:
@@ -549,9 +574,7 @@ def _build_synthesis_markdown(
         "Rh-bottleneck fix requires the *combined* W₂ regulariser "
         "(trained jointly with multi-task D-MPNN) to project the "
         "synthetic compounds into the *real* Rh distribution at training "
-        "time — this is the Wf-131 P3 deliverable (TODO-121 §3 P1.3).".format(
-            decay_pct
-        )
+        "time — this is the Wf-131 P3 deliverable (TODO-121 §3 P1.3).".format(decay_pct)
     )
     lines.append(
         "* **The sliced-W₂ estimator is biased upward** for very small "
@@ -605,9 +628,7 @@ def _build_synthesis_markdown(
         "* `molmetal/molmetal_lam/lam_chem/closure.py` — closure theorem "
         "BFS (R17 ship, Wf-36/37/41)."
     )
-    lines.append(
-        "* `TODO/pending/121_m19_lomo_strengthen.md` — parent plan."
-    )
+    lines.append("* `TODO/pending/121_m19_lomo_strengthen.md` — parent plan.")
     lines.append("")
     return "\n".join(lines)
 
@@ -648,9 +669,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         f"wall={cohort.wall_time_s:.2f}s",
         flush=True,
     )
-    all_catherine_pass = all(
-        c.catherine_6of6_pass for c in cohort.per_compound
-    )
+    all_catherine_pass = all(c.catherine_6of6_pass for c in cohort.per_compound)
     if not all_catherine_pass:
         print(
             f"[wf131-p2] ERROR: not all kept compounds pass Catherine 6/6!",
@@ -764,7 +783,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     print(f"[wf131-p2] wrote {out_dir / 'wasserstein_decay.json'}", flush=True)
 
     # 3. synthesis.md
-    md = _build_synthesis_markdown(args, cohort, wass_real, decay, per_metal_n, len(oversampler.partner_smis))
+    md = _build_synthesis_markdown(
+        args, cohort, wass_real, decay, per_metal_n, len(oversampler.partner_smis)
+    )
     (out_dir / "synthesis.md").write_text(md)
     print(f"[wf131-p2] wrote {out_dir / 'synthesis.md'}", flush=True)
 

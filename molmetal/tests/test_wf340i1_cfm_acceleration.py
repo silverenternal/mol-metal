@@ -53,6 +53,7 @@ import torch
 # Test 1: EDM precondition factors
 # ---------------------------------------------------------------------------
 
+
 def test_edm_precondition_factors_correctness():
     """Verify ``edm_precondition_factors`` matches Karras 2022 identity.
 
@@ -68,6 +69,7 @@ def test_edm_precondition_factors_correctness():
         edm_loss_weight,
         sample_edm_sigma,
     )
+
     cfg = EDMPreconditionerConfig(sigma_data=1.0)
     sigma = torch.tensor([0.1, 0.5, 1.0, 2.0, 10.0])
     c_skip, c_out, c_in, c_noise = edm_precondition_factors(sigma, cfg)
@@ -92,6 +94,7 @@ def test_edm_precondition_factors_correctness():
 # Test 2: Log-normal t-sampling
 # ---------------------------------------------------------------------------
 
+
 def test_log_normal_t_sampling_distribution():
     """Verify ``sample_log_normal_t`` stays in [0, 1] and has median < 0.5.
 
@@ -103,6 +106,7 @@ def test_log_normal_t_sampling_distribution():
     from molmetal.adapters.flow_matching_lipman.acceleration import (
         sample_log_normal_t,
     )
+
     t = sample_log_normal_t(2000, p_mean=-1.2, p_std=1.2, device=torch.device("cpu"))
     assert t.shape == (2000,)
     assert (t >= 0.0).all() and (t <= 1.0).all()
@@ -117,6 +121,7 @@ def test_log_normal_t_sampling_distribution():
 # ---------------------------------------------------------------------------
 # Test 3: Shortcut consistency loss finiteness
 # ---------------------------------------------------------------------------
+
 
 def test_shortcut_consistency_loss_finite():
     """Verify shortcut consistency loss is finite (p_self>0) and 0 (p_self=0).
@@ -147,8 +152,9 @@ def test_shortcut_consistency_loss_finite():
 
     def _stub_path_sampler(x_0, x_1, t):
         # Linear interpolation: x_t = (1-t) x_0 + t x_1.
-        x_t2 = (1.0 - t.view(-1, *([1] * (x_0.ndim - 1)))) * x_0 \
-               + t.view(-1, *([1] * (x_0.ndim - 1))) * x_1
+        x_t2 = (1.0 - t.view(-1, *([1] * (x_0.ndim - 1)))) * x_0 + t.view(
+            -1, *([1] * (x_0.ndim - 1))
+        ) * x_1
         return _StubPathSample(x_t=x_t2, dx_t=x_1 - x_0)
 
     # p_self=0 should always return zero.
@@ -156,8 +162,10 @@ def test_shortcut_consistency_loss_finite():
     loss_zero = shortcut_consistency_loss(
         v_pred_primary=v_pred_primary,
         velocity_field=_stub_velocity_field,
-        x_t=x_t, t_primary=t_primary,
-        x_0=x_0, x_1=x_1,
+        x_t=x_t,
+        t_primary=t_primary,
+        x_0=x_0,
+        x_1=x_1,
         cfg=cfg_zero,
         path_sampler=_stub_path_sampler,
     )
@@ -168,8 +176,10 @@ def test_shortcut_consistency_loss_finite():
     loss_one = shortcut_consistency_loss(
         v_pred_primary=v_pred_primary,
         velocity_field=_stub_velocity_field,
-        x_t=x_t, t_primary=t_primary,
-        x_0=x_0, x_1=x_1,
+        x_t=x_t,
+        t_primary=t_primary,
+        x_0=x_0,
+        x_1=x_1,
         cfg=cfg_one,
         path_sampler=_stub_path_sampler,
     )
@@ -182,6 +192,7 @@ def test_shortcut_consistency_loss_finite():
 # ---------------------------------------------------------------------------
 # Test 4: EMA halflife calibration
 # ---------------------------------------------------------------------------
+
 
 def test_ema_decay_halflife_calibration():
     """Verify EMA decay = 0.5^(batch_size / halflife_imgs).
@@ -203,8 +214,7 @@ def test_ema_decay_halflife_calibration():
     ema = ExponentialMovingAverage(model, halflife_kimg=500.0, batch_size=64)
     expected_decay = 0.5 ** (64 / (500 * 1000))
     assert abs(ema.decay - expected_decay) < 1e-9, (
-        f"EMA decay formula mismatch: got {ema.decay}, "
-        f"expected {expected_decay}"
+        f"EMA decay formula mismatch: got {ema.decay}, " f"expected {expected_decay}"
     )
     # Shadow params should be initialised to a clone of model params.
     for name, param in model.named_parameters():
@@ -226,19 +236,21 @@ def test_ema_decay_halflife_calibration():
 # Test 5: Linear lr-warmup
 # ---------------------------------------------------------------------------
 
+
 def test_lr_warmup_linear_schedule():
     """Verify lr-warmup reaches exactly base_lr at step==warmup_steps."""
     from molmetal.adapters.flow_matching_lipman.acceleration import (
         LinearWarmupLRScheduler,
     )
+
     p = torch.nn.Parameter(torch.zeros(1))
     opt = torch.optim.SGD([p], lr=0.1)
     scheduler = LinearWarmupLRScheduler(opt, warmup_steps=10)
     # Step 1: lr = 0.1 * 1/10 = 0.01.
     scheduler.step()
-    assert abs(opt.param_groups[0]["lr"] - 0.01) < 1e-9, (
-        f"step 1 lr mismatch: got {opt.param_groups[0]['lr']}, expected 0.01"
-    )
+    assert (
+        abs(opt.param_groups[0]["lr"] - 0.01) < 1e-9
+    ), f"step 1 lr mismatch: got {opt.param_groups[0]['lr']}, expected 0.01"
     # Step 5: lr = 0.1 * 5/10 = 0.05.
     for _ in range(4):
         scheduler.step()
@@ -246,9 +258,9 @@ def test_lr_warmup_linear_schedule():
     # Step 10: lr = 0.1.
     for _ in range(5):
         scheduler.step()
-    assert abs(opt.param_groups[0]["lr"] - 0.1) < 1e-9, (
-        f"step 10 lr mismatch: got {opt.param_groups[0]['lr']}, expected 0.1"
-    )
+    assert (
+        abs(opt.param_groups[0]["lr"] - 0.1) < 1e-9
+    ), f"step 10 lr mismatch: got {opt.param_groups[0]['lr']}, expected 0.1"
     # Step 11: lr stays at base_lr (no base_scheduler).
     scheduler.step()
     assert abs(opt.param_groups[0]["lr"] - 0.1) < 1e-9
@@ -257,6 +269,7 @@ def test_lr_warmup_linear_schedule():
 # ---------------------------------------------------------------------------
 # Test 6: Trainer CLI flag integration
 # ---------------------------------------------------------------------------
+
 
 def test_integration_with_trainer_cli():
     """Verify the CFM trainer --use-* flags parse + default to False.
@@ -272,21 +285,25 @@ def test_integration_with_trainer_cli():
     p.add_argument("--use-edm-precond", action="store_true", default=False)
     p.add_argument("--use-log-normal-t", action="store_true", default=False)
     p.add_argument("--use-ema", action="store_true", default=False)
-    p.add_argument("--use-shortcut-consistency", action="store_true",
-                   default=False)
+    p.add_argument("--use-shortcut-consistency", action="store_true", default=False)
     p.add_argument("--use-lr-warmup", action="store_true", default=False)
-    p.add_argument("--use-exact-ot-coupling", action="store_true",
-                   default=False)
+    p.add_argument("--use-exact-ot-coupling", action="store_true", default=False)
     p.add_argument("--use-cudagraphs-cfm", action="store_true", default=False)
     # Default-off: no flags passed.
     args = p.parse_args([])
-    for f in ("edm_precond", "log_normal_t", "ema",
-              "shortcut_consistency", "lr_warmup",
-              "exact_ot_coupling", "cudagraphs_cfm"):
+    for f in (
+        "edm_precond",
+        "log_normal_t",
+        "ema",
+        "shortcut_consistency",
+        "lr_warmup",
+        "exact_ot_coupling",
+        "cudagraphs_cfm",
+    ):
         attr = f"use_{f}"
-        assert getattr(args, attr) is False, (
-            f"flag {attr} must default to False, got {getattr(args, attr)}"
-        )
+        assert (
+            getattr(args, attr) is False
+        ), f"flag {attr} must default to False, got {getattr(args, attr)}"
     # Enable each flag individually.
     args = p.parse_args(["--use-edm-precond"])
     assert args.use_edm_precond is True
@@ -297,6 +314,7 @@ def test_integration_with_trainer_cli():
 # ---------------------------------------------------------------------------
 # Test 7: build_acceleration_bundle default-off
 # ---------------------------------------------------------------------------
+
 
 def test_backward_compat_default_off():
     """Verify ``build_acceleration_bundle`` returns an empty bundle
@@ -362,6 +380,7 @@ def test_backward_compat_default_off():
 # Test 8: CPU throughput bench — log-normal vs uniform t-sampling
 # ---------------------------------------------------------------------------
 
+
 def test_per_config_warp_speedup_cpu_bench():
     """CPU throughput bench: log-normal vs uniform t-sampling.
 
@@ -389,8 +408,7 @@ def test_per_config_warp_speedup_cpu_bench():
     # Log-normal proposed.
     start_t = time.perf_counter()
     for _ in range(n_iters):
-        sample_log_normal_t(batch, p_mean=-1.2, p_std=1.2,
-                             device=torch.device("cpu"))
+        sample_log_normal_t(batch, p_mean=-1.2, p_std=1.2, device=torch.device("cpu"))
     lognormal_t = time.perf_counter() - start_t
 
     # Log-normal may be ~2-3× slower than uniform (extra exp + clamp);
@@ -402,6 +420,6 @@ def test_per_config_warp_speedup_cpu_bench():
         f"ratio={lognormal_t/uniform_t:.2f}x"
     )
     # And within 1e-3 s absolute (fast path).
-    assert lognormal_t < 5.0, (
-        f"log-normal t-sampling absolute wall too slow: {lognormal_t:.2f}s"
-    )
+    assert (
+        lognormal_t < 5.0
+    ), f"log-normal t-sampling absolute wall too slow: {lognormal_t:.2f}s"

@@ -115,11 +115,11 @@ def test_learned_prior_smoke_3_states():
     dilutes the signal).
     """
     train_smiles = [
-        "C#CC[N-]=[N+]=[N-]",          # alkyne + azide
-        "c1ccc(B(O)O)cc1",             # aryl-boronic acid
-        "CC(=O)O",                     # acetic acid
-        "C=CCS",                       # thiol-ene (alkene + thiol)
-        "c1ccccc1",                    # aromatic → no rule (zero vector)
+        "C#CC[N-]=[N+]=[N-]",  # alkyne + azide
+        "c1ccc(B(O)O)cc1",  # aryl-boronic acid
+        "CC(=O)O",  # acetic acid
+        "C=CCS",  # thiol-ene (alkene + thiol)
+        "c1ccccc1",  # aromatic → no rule (zero vector)
     ]
     prior = LearnedPolicyPrior(seed=7, mix_uniform=0.3)
     losses = prior.fit(train_smiles, epochs=20, lr=1e-2, l2=1e-4, verbose=False)
@@ -129,9 +129,9 @@ def test_learned_prior_smoke_3_states():
     # zero-target rows, which the fit() guards against by filtering).
     assert all(math.isfinite(v) for v in losses)
     # Now probe held-out states
-    probs_azide = prior.predict_proba("CC[N-]=[N+]=[N-]")            # azide
-    probs_aryl = prior.predict_proba("c1ccccc1B(O)O")                # aryl-boronic
-    probs_acid = prior.predict_proba("OC(=O)c1ccccc1")               # benzoic acid
+    probs_azide = prior.predict_proba("CC[N-]=[N+]=[N-]")  # azide
+    probs_aryl = prior.predict_proba("c1ccccc1B(O)O")  # aryl-boronic
+    probs_acid = prior.predict_proba("OC(=O)c1ccccc1")  # benzoic acid
     # Each distribution must be valid (sum=1)
     for d in (probs_azide, probs_aryl, probs_acid):
         s = sum(d.values())
@@ -205,9 +205,7 @@ def test_functional_group_overlap_normalized():
 # ---------------------------------------------------------------------------
 # 6. Empty / whitespace SMILES → uniform fallback
 # ---------------------------------------------------------------------------
-@pytest.mark.parametrize(
-    "empty_smiles", ["", " ", "\n", "  \t", "\r\n"]
-)
+@pytest.mark.parametrize("empty_smiles", ["", " ", "\n", "  \t", "\r\n"])
 def test_predict_proba_handles_empty_smiles(empty_smiles):
     """predict_proba returns uniform 0.2 for empty / whitespace input."""
     prior = LearnedPolicyPrior(seed=0)
@@ -264,8 +262,7 @@ def test_batched_predict_matches_single():
         assert set(s.keys()) == set(b.keys())
         for r in s:
             assert math.isclose(s[r], b[r], abs_tol=1e-5), (
-                f"single vs batch mismatch on {r}: "
-                f"single={s[r]} batch={b[r]}"
+                f"single vs batch mismatch on {r}: " f"single={s[r]} batch={b[r]}"
             )
 
 

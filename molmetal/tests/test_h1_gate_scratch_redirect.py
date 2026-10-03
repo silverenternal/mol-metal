@@ -53,7 +53,9 @@ def test_wf385_gate_fails_on_unusable_out_dir(tmp_path: Path) -> None:
     blocker = tmp_path / "blocker"
     blocker.write_text("regular file", encoding="utf-8")
     res = pf.gate_wf385_scaffold_loss_wire_in_verified(
-        "probe", "P3", "wf385a3",
+        "probe",
+        "P3",
+        "wf385a3",
         pf.SCRIPT_DIR / "wf385a3_scaffold_wire_in_gate.py",
         out_dir=blocker / "sub",
     )
@@ -66,7 +68,9 @@ def test_hp_provenance_gate_fails_on_unusable_target(tmp_path: Path) -> None:
     blocker = tmp_path / "blocker"
     blocker.write_text("regular file", encoding="utf-8")
     res = pf.gate_p1_hp_provenance_log(
-        "probe", "P3", "wf350a3",
+        "probe",
+        "P3",
+        "wf350a3",
         (pf.CONFIGS_DIR / "default.yaml",),
         blocker / "sub" / "hp.jsonl",
     )
@@ -78,12 +82,17 @@ def _write_jsonl(path: Path, n: int) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as fh:
         for i in range(n):
-            fh.write(json.dumps({
-                "config_path": f"config-{i}.yaml",
-                "current_sha": "0" * 40,
-                "recent_commits": [],
-                "uncommitted_changes": False,
-            }) + "\n")
+            fh.write(
+                json.dumps(
+                    {
+                        "config_path": f"config-{i}.yaml",
+                        "current_sha": "0" * 40,
+                        "recent_commits": [],
+                        "uncommitted_changes": False,
+                    }
+                )
+                + "\n"
+            )
 
 
 def test_manifest_prefers_scratch_over_legacy(tmp_path: Path, monkeypatch) -> None:
@@ -95,13 +104,14 @@ def test_manifest_prefers_scratch_over_legacy(tmp_path: Path, monkeypatch) -> No
     monkeypatch.setattr(pf, "GATE_SCRATCH_ROOT", scratch)
     monkeypatch.setattr(pf, "MOLMETAL_ROOT", legacy_root)
     manifest = pf._build_reproducibility_manifest()
-    assert len(manifest["hp_provenance"]) == 1, (
-        "scratch JSONL must win over the legacy molmetal/reports/ copy"
-    )
+    assert (
+        len(manifest["hp_provenance"]) == 1
+    ), "scratch JSONL must win over the legacy molmetal/reports/ copy"
 
 
 def test_manifest_falls_back_to_legacy_when_scratch_absent(
-    tmp_path: Path, monkeypatch,
+    tmp_path: Path,
+    monkeypatch,
 ) -> None:
     pf = _pf()
     scratch = tmp_path / "scratch"  # never created

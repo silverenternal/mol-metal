@@ -14,6 +14,7 @@ PROJECTED ≥ 0.6 R² honesty gate.  The CPU proxy may not reach that gate
 — in which case the bench declares HONEST_NEGATIVE_TRIANGLE_GPU_DEFERRED
 and routes the work to the GPU launch wrapper.
 """
+
 from __future__ import annotations
 
 import math
@@ -32,8 +33,8 @@ for _p in (str(HERE.parent), str(REPO_ROOT)):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-from molmetal.scripts import triangle_features_12d as tf12   # noqa: E402
-from molmetal.scripts import triangle_closure as tc           # noqa: E402
+from molmetal.scripts import triangle_features_12d as tf12  # noqa: E402
+from molmetal.scripts import triangle_closure as tc  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -62,9 +63,18 @@ def test_12d_feature_extraction() -> None:
     for v in feats:
         assert math.isfinite(float(v)), f"Non-finite feature value: {v}"
     assert tf12.FEATURE_NAMES_12D == (
-        "MolWt", "MolLogP", "TPSA", "HBA", "HBD", "NRotB",
-        "HeavyAtoms", "RingCount", "NumAromaticRings",
-        "FractionCSP3", "MolMR", "BalabanJ",
+        "MolWt",
+        "MolLogP",
+        "TPSA",
+        "HBA",
+        "HBD",
+        "NRotB",
+        "HeavyAtoms",
+        "RingCount",
+        "NumAromaticRings",
+        "FractionCSP3",
+        "MolMR",
+        "BalabanJ",
     )
     # Fallback path: malformed SMILES.
     fallback = tf12.compute_rdkit_2d_12d("not_a_real_smiles@@@")
@@ -77,7 +87,9 @@ def test_12d_feature_extraction() -> None:
 
     # Matrix builder: same contract.
     X, names = tf12.build_triangle_feature_matrix(
-        [CISPLATIN, OXALIPLATIN], ["Pt", "Pt"], mode="12d",
+        [CISPLATIN, OXALIPLATIN],
+        ["Pt", "Pt"],
+        mode="12d",
     )
     assert X.shape == (2, 12)
     assert names == tf12.FEATURE_NAMES_12D
@@ -132,9 +144,9 @@ def test_triangle_closure_12d_integration() -> None:
         h = rd["vertices"]["hilbert"]
         m = rd["vertices"]["mcts"]
         assert math.isfinite(h["r2"]), f"Non-finite Hilbert R²: {h['r2']}"
-        assert math.isfinite(m["variance_reduction"]), (
-            f"Non-finite variance reduction: {m['variance_reduction']}"
-        )
+        assert math.isfinite(
+            m["variance_reduction"]
+        ), f"Non-finite variance reduction: {m['variance_reduction']}"
     # The closure-level mean_hilbert_r2 is finite and reports a value.
     assert "mean_hilbert_r2" in report["summary"]
     assert math.isfinite(report["summary"]["mean_hilbert_r2"])
@@ -171,25 +183,31 @@ def test_backward_compat_5d_unchanged() -> None:
     smiles_list = [CISPLATIN, OXALIPLATIN, CARBOPLATIN, "C", ""]
     metal_list = ["Pt", "Pt", "Pt", "Au", "Pd"]
     X, names = tf12.build_triangle_feature_matrix(
-        smiles_list, metal_list, mode="5d",
+        smiles_list,
+        metal_list,
+        mode="5d",
     )
     assert X.shape == (5, 5)
     assert names == tf12.FEATURE_NAMES_5D
     # The first 3 rows must equal the per-row extractor bit-for-bit.
     for i, (smi_i, met_i) in enumerate(zip(smiles_list[:3], metal_list[:3])):
         expected = tf12.compute_features_5d(smi_i, met_i)
-        assert np.allclose(X[i, :], np.asarray(expected, dtype=np.float64)), (
-            f"5-d row {i} does not match legacy extractor"
-        )
+        assert np.allclose(
+            X[i, :], np.asarray(expected, dtype=np.float64)
+        ), f"5-d row {i} does not match legacy extractor"
 
     # 17-d mode: first 5 columns equal the 5-d path bit-for-bit.
     X17, names17 = tf12.build_triangle_feature_matrix(
-        smiles_list[:3], metal_list[:3], mode="17d",
+        smiles_list[:3],
+        metal_list[:3],
+        mode="17d",
     )
     assert X17.shape == (3, 17)
     assert names17 == tf12.FEATURE_NAMES_5D + tf12.FEATURE_NAMES_12D
     X5, _ = tf12.build_triangle_feature_matrix(
-        smiles_list[:3], metal_list[:3], mode="5d",
+        smiles_list[:3],
+        metal_list[:3],
+        mode="5d",
     )
     assert np.allclose(X17[:, :5], X5), "17-d first 5 columns must equal 5-d path"
 
@@ -222,7 +240,11 @@ def test_convergence_lift_cpu_proxy() -> None:
     )
     y5 = X5 @ rng_5d.standard_normal(5) + 0.05 * rng_5d.standard_normal(n)
     closure5 = tc.TriangleClosure(
-        n_trajectories=6, n_rounds=2, n_features=5, seed=0, hilbert_iters=8,
+        n_trajectories=6,
+        n_rounds=2,
+        n_features=5,
+        seed=0,
+        hilbert_iters=8,
     )
     closure5.feature_names_ = names5
     closure5._make_design = lambda *_args, **_kwargs: (X5, y5)  # type: ignore[method-assign]
@@ -237,7 +259,11 @@ def test_convergence_lift_cpu_proxy() -> None:
     )
     y12 = X12 @ rng_12d.standard_normal(12) + 0.05 * rng_12d.standard_normal(n)
     closure12 = tc.TriangleClosure(
-        n_trajectories=6, n_rounds=2, n_features=12, seed=0, hilbert_iters=8,
+        n_trajectories=6,
+        n_rounds=2,
+        n_features=12,
+        seed=0,
+        hilbert_iters=8,
     )
     closure12.feature_names_ = names12
     closure12._make_design = lambda *_args, **_kwargs: (X12, y12)  # type: ignore[method-assign]
@@ -258,6 +284,7 @@ def test_convergence_lift_cpu_proxy() -> None:
         # We don't fail the test — we just document the honest-negative.
         # The wrap below gives the test runner a deterministic signal.
         import warnings
+
         with warnings.catch_warnings(record=True) as wlog:
             warnings.simplefilter("always")
             warnings.warn(
@@ -267,6 +294,5 @@ def test_convergence_lift_cpu_proxy() -> None:
                 UserWarning,
             )
             assert any(
-                "HONEST_NEGATIVE_TRIANGLE_GPU_DEFERRED" in str(w.message)
-                for w in wlog
+                "HONEST_NEGATIVE_TRIANGLE_GPU_DEFERRED" in str(w.message) for w in wlog
             )

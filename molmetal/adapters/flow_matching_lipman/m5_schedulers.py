@@ -72,6 +72,7 @@ Tests
 ``molmetal/tests/test_m5_schedulers.py`` — 20 unit tests covering
 range contracts, edge cases, and the spec invariants.
 """
+
 from __future__ import annotations
 
 from typing import Optional
@@ -137,17 +138,11 @@ class AdaptiveTimestepScheduler:
         target_curvature: float = 1.0,
     ) -> None:
         if min_step <= 0.0:
-            raise ValueError(
-                f"min_step must be positive, got {min_step!r}"
-            )
+            raise ValueError(f"min_step must be positive, got {min_step!r}")
         if max_step <= 0.0:
-            raise ValueError(
-                f"max_step must be positive, got {max_step!r}"
-            )
+            raise ValueError(f"max_step must be positive, got {max_step!r}")
         if min_step > max_step:
-            raise ValueError(
-                f"min_step ({min_step}) must be <= max_step ({max_step})"
-            )
+            raise ValueError(f"min_step ({min_step}) must be <= max_step ({max_step})")
         if not (target_curvature > 0.0):
             raise ValueError(
                 f"target_curvature must be positive, got {target_curvature!r}"
@@ -259,13 +254,9 @@ class LossAnnealer:
         warmup_frac: float = 0.1,
     ) -> None:
         if total_steps <= 0:
-            raise ValueError(
-                f"total_steps must be positive, got {total_steps!r}"
-            )
+            raise ValueError(f"total_steps must be positive, got {total_steps!r}")
         if not (0.0 <= warmup_frac < 1.0):
-            raise ValueError(
-                f"warmup_frac must be in [0.0, 1.0), got {warmup_frac!r}"
-            )
+            raise ValueError(f"warmup_frac must be in [0.0, 1.0), got {warmup_frac!r}")
         self.total_steps = int(total_steps)
         self.warmup_frac = float(warmup_frac)
         self.warmup_steps = int(self.warmup_frac * self.total_steps)
@@ -417,9 +408,8 @@ class VarianceReducedEstimator:
             self._initialized = True
         else:
             self.baseline = (
-                (1.0 - self.baseline_decay) * self.baseline
-                + self.baseline_decay * adv_mean
-            )
+                1.0 - self.baseline_decay
+            ) * self.baseline + self.baseline_decay * adv_mean
         self.n_calls += 1
         return out.detach()
 

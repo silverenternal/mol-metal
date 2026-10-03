@@ -115,29 +115,29 @@ log = logging.getLogger("wf_lambda1")
 # ---------------------------------------------------------------------------
 CLICK_RULE_ALIASES: Dict[str, List[str]] = {
     # "all-5" / "all_5" / "all" — the canonical 5 click rules.
-    "all-5":   ["CuAAC", "SPAAC", "Suzuki", "ThiolEne", "AmideCoupling"],
-    "all_5":   ["CuAAC", "SPAAC", "Suzuki", "ThiolEne", "AmideCoupling"],
-    "all":     ["CuAAC", "SPAAC", "Suzuki", "ThiolEne", "AmideCoupling"],
+    "all-5": ["CuAAC", "SPAAC", "Suzuki", "ThiolEne", "AmideCoupling"],
+    "all_5": ["CuAAC", "SPAAC", "Suzuki", "ThiolEne", "AmideCoupling"],
+    "all": ["CuAAC", "SPAAC", "Suzuki", "ThiolEne", "AmideCoupling"],
     "default": ["CuAAC", "SPAAC", "Suzuki", "ThiolEne", "AmideCoupling"],
     # Individual rule pass-throughs (also accept the lower-case /
     # dashed variants that :data:`CLICK_REACTIONS` already understands).
-    "CuAAC":         ["CuAAC"],
-    "cuaac":         ["CuAAC"],
-    "SPAAC":         ["SPAAC"],
-    "spaac":         ["SPAAC"],
-    "Suzuki":        ["Suzuki"],
-    "suzuki":        ["Suzuki"],
-    "ThiolEne":      ["ThiolEne"],
-    "thiol-ene":     ["ThiolEne"],
-    "thiol_ene":     ["ThiolEne"],
-    "thiolene":      ["ThiolEne"],
+    "CuAAC": ["CuAAC"],
+    "cuaac": ["CuAAC"],
+    "SPAAC": ["SPAAC"],
+    "spaac": ["SPAAC"],
+    "Suzuki": ["Suzuki"],
+    "suzuki": ["Suzuki"],
+    "ThiolEne": ["ThiolEne"],
+    "thiol-ene": ["ThiolEne"],
+    "thiol_ene": ["ThiolEne"],
+    "thiolene": ["ThiolEne"],
     "AmideCoupling": ["AmideCoupling"],
     "amide-coupling": ["AmideCoupling"],
     "amide_coupling": ["AmideCoupling"],
-    "amide":         ["AmideCoupling"],
+    "amide": ["AmideCoupling"],
     # Comma-separated friendly lists.
-    "cu+spaac":      ["CuAAC", "SPAAC"],
-    "click-azide":   ["CuAAC", "SPAAC"],
+    "cu+spaac": ["CuAAC", "SPAAC"],
+    "click-azide": ["CuAAC", "SPAAC"],
     # F2(a) — metal-coordination family (Pt_II / Ru_II / Ir_III).
     # These opt-in rules are NOT included in the default ``all-5``
     # set; they are activated explicitly via the ``metal-coord``
@@ -145,22 +145,36 @@ CLICK_RULE_ALIASES: Dict[str, List[str]] = {
     # separate from the click family because the search treats them
     # as a different chemistry regime (single-bond ligand
     # substitution vs 3-bond click cycloaddition).
-    "metal-coord":   ["MetalLigandExchange", "AquaExchange"],
-    "metal_coord":   ["MetalLigandExchange", "AquaExchange"],
-    "MetalLigandExchange":    ["MetalLigandExchange"],
-    "metal-ligand-exchange":  ["MetalLigandExchange"],
-    "metal_ligand_exchange":  ["MetalLigandExchange"],
-    "ammonia-substitution":   ["MetalLigandExchange"],
-    "ammine-substitution":    ["MetalLigandExchange"],
-    "AquaExchange":   ["AquaExchange"],
-    "aqua-exchange":  ["AquaExchange"],
-    "aqua_exchange":  ["AquaExchange"],
-    "aquation":       ["AquaExchange"],
+    "metal-coord": ["MetalLigandExchange", "AquaExchange"],
+    "metal_coord": ["MetalLigandExchange", "AquaExchange"],
+    "MetalLigandExchange": ["MetalLigandExchange"],
+    "metal-ligand-exchange": ["MetalLigandExchange"],
+    "metal_ligand_exchange": ["MetalLigandExchange"],
+    "ammonia-substitution": ["MetalLigandExchange"],
+    "ammine-substitution": ["MetalLigandExchange"],
+    "AquaExchange": ["AquaExchange"],
+    "aqua-exchange": ["AquaExchange"],
+    "aqua_exchange": ["AquaExchange"],
+    "aquation": ["AquaExchange"],
     # Composed family — click + metal-coordination (7 rules total).
-    "all-7":   ["CuAAC", "SPAAC", "Suzuki", "ThiolEne", "AmideCoupling",
-                "MetalLigandExchange", "AquaExchange"],
-    "all_7":   ["CuAAC", "SPAAC", "Suzuki", "ThiolEne", "AmideCoupling",
-                "MetalLigandExchange", "AquaExchange"],
+    "all-7": [
+        "CuAAC",
+        "SPAAC",
+        "Suzuki",
+        "ThiolEne",
+        "AmideCoupling",
+        "MetalLigandExchange",
+        "AquaExchange",
+    ],
+    "all_7": [
+        "CuAAC",
+        "SPAAC",
+        "Suzuki",
+        "ThiolEne",
+        "AmideCoupling",
+        "MetalLigandExchange",
+        "AquaExchange",
+    ],
     # F2-B: scaffold-aware aliases (WF-Lambda-Fix-FullPath-v2 Fix 2
     # IMPROVED).  Each alias expands to the click-rule subset that is
     # chemistry-compatible with a given metal-scaffold category (see
@@ -190,27 +204,27 @@ CLICK_RULE_ALIASES: Dict[str, List[str]] = {
     # For ``auto-pt-strict`` we list ONLY the compatible+marginal
     # rules (CuAAC + SPAAC + Suzuki); ThiolEne + AmideCoupling are
     # GATED OUT (incompatible on strict Pt_II).
-    "auto-pt-strict":  ["CuAAC", "SPAAC", "Suzuki"],
-    "auto_pt_strict":  ["CuAAC", "SPAAC", "Suzuki"],
+    "auto-pt-strict": ["CuAAC", "SPAAC", "Suzuki"],
+    "auto_pt_strict": ["CuAAC", "SPAAC", "Suzuki"],
     # Pt_IV / Pt_II_chelating / labile_metal all enable all 5
     # (no incompatible rules).
-    "auto-pt-iv":      ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
-    "auto_pt_iv":      ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
+    "auto-pt-iv": ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
+    "auto_pt_iv": ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
     "auto-pt-chelate": ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
     "auto_pt_chelate": ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
-    "auto-labile":     ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
-    "auto_labile":     ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
+    "auto-labile": ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
+    "auto_labile": ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
     # auto-unknown mirrors the historical all-5 behaviour (the
     # scaffold could not be classified; fall back to the broadest
     # set so the user is never silently restricted).
-    "auto-unknown":    ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
-    "auto_unknown":    ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
+    "auto-unknown": ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
+    "auto_unknown": ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"],
     # The ``strict-Pt-II`` alias is the friendly name for the
     # narrowest scaffold-gated subset (CuAAC + SPAAC, dropping even
     # the marginal Suzuki).  Useful for the strict-coordination
     # baseline cell.
-    "strict-Pt-II":   ["CuAAC", "SPAAC"],
-    "strict_pt_ii":   ["CuAAC", "SPAAC"],
+    "strict-Pt-II": ["CuAAC", "SPAAC"],
+    "strict_pt_ii": ["CuAAC", "SPAAC"],
     "click-azide-only": ["CuAAC", "SPAAC"],
     "click_azide_only": ["CuAAC", "SPAAC"],
 }
@@ -439,11 +453,7 @@ def pocket_derived_metal_seed(
     name_upper = pocket_name.upper()
     if "CA2" in name_upper or "CARBONIC" in name_upper:
         return _POCKET_METAL_BUCKETS["Pt(II)"]
-    if (
-        "MMP" in name_upper
-        or "HDAC" in name_upper
-        or "ZINCIN" in name_upper
-    ):
+    if "MMP" in name_upper or "HDAC" in name_upper or "ZINCIN" in name_upper:
         return _POCKET_METAL_BUCKETS["Zn(II)"]
 
     # Defensive: missing pocket_features → fallback (no exception).
@@ -505,11 +515,15 @@ METAL_PRIOR_WEIGHT: float = 0.5
 def _import_lambda_stack():
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
     from molmetal_lam.lam_chem.rules import CLICK_REACTIONS, METAL_COORDINATION_RULES
-    from molmetal_lam.tile_lib.library import FRAGMENT_LIBRARY_200_TILES, build_tile_library
+    from molmetal_lam.tile_lib.library import (
+        FRAGMENT_LIBRARY_200_TILES,
+        build_tile_library,
+    )
     from molmetal_lam.search_alg.proof_search import MCTSProofSearch
     from molmetal_lam.types.predicates import TypePredicate
     from molmetal_lam.binding.types import BindingSite
     from molmetal_lam.lam_chem.well_formedness import check_beta_normal_form
+
     return {
         "MoleculeClosedTerm": MoleculeClosedTerm,
         "CLICK_REACTIONS": CLICK_REACTIONS,
@@ -855,6 +869,7 @@ def synthesizability_via_lambda_paths(
             from molmetal_lam.lam_chem.well_formedness import (
                 check_beta_normal_form_for_rdkit_term as _check_valence_bnf_term,
             )
+
             # Term-level valence-based BNF — uses RDKit's
             # ``valence_used`` (implicit-H-inclusive) plus bond-ledger
             # used_sites as a cross-check.  This is the chemistry-
@@ -883,6 +898,7 @@ def synthesizability_via_lambda_paths(
 def _tanimoto(fp_a, fp_b) -> float:
     try:
         from rdkit.DataStructs import TanimotoSimilarity  # type: ignore
+
         return float(TanimotoSimilarity(fp_a, fp_b))
     except Exception:
         return 0.0
@@ -1049,6 +1065,7 @@ def diversity_homotype(states: Sequence[Any]) -> float:
             continue
         try:
             from rdkit import Chem  # type: ignore
+
             mol = Chem.MolFromSmiles(smi)
             if mol is None:
                 continue
@@ -1345,6 +1362,7 @@ def _import_metallodrug_proxies():
         from molmetal_lam.priors.metallodrug_property_proxies import (  # type: ignore
             compute_metallodrug_proxies,
         )
+
         return compute_metallodrug_proxies
     except Exception:
         return None
@@ -1507,6 +1525,7 @@ def _import_metrics_v2():
     """
     try:
         from molmetal_lam.sbdd_env import metrics_v2  # type: ignore
+
         return metrics_v2
     except Exception:
         return None
@@ -1793,7 +1812,7 @@ def _embed_3d_for_rmsd(mol) -> bool:
         mol_h = Chem.AddHs(mol)
         params = AllChem.ETKDGv3()
         params.randomSeed = 0xF00D  # deterministic
-        params.numZeroFail = 1      # ETKDGv3 equivalent of "maxAttempts=1"
+        params.numZeroFail = 1  # ETKDGv3 equivalent of "maxAttempts=1"
         # Belt-and-braces: pass maxAttempts positionally too so older
         # RDKit builds that DO accept it still work — but only when
         # an ``EmbedParameters`` object isn't already providing the
@@ -1937,9 +1956,7 @@ def _mol_center_of_mass(mol):
             [list(conf.GetAtomPosition(i)) for i in range(n_atoms)],
             dtype=float,
         )
-        masses = _np.array(
-            [a.GetMass() for a in mol.GetAtoms()], dtype=float
-        )
+        masses = _np.array([a.GetMass() for a in mol.GetAtoms()], dtype=float)
         if masses.sum() <= 0.0:
             return 0.0
         com = (coords * masses[:, None]).sum(axis=0) / masses.sum()
@@ -1984,10 +2001,7 @@ def metric_com_shift_mean(
         return 0.0
     com_g = _mol_center_of_mass(gen_mol)
     com_r = _mol_center_of_mass(ref_ligand_mol)
-    if (
-        not isinstance(com_g, _np.ndarray)
-        or not isinstance(com_r, _np.ndarray)
-    ):
+    if not isinstance(com_g, _np.ndarray) or not isinstance(com_r, _np.ndarray):
         return 0.0
     try:
         diff = com_g - com_r
@@ -2097,6 +2111,7 @@ def build_lambda_only_aggregator(
             return float("nan")
         try:
             from molmetal_lam.sbdd_env.sa_score import sa_score_ertl  # type: ignore
+
             return float(sa_score_ertl(smi))
         except Exception:
             return float("nan")
@@ -2131,6 +2146,7 @@ def build_lambda_only_aggregator(
             from molmetal_lam.lam_chem.lambda_reward_channel import (
                 register_lambda_reward_channel,
             )
+
             register_lambda_reward_channel(agg, weight=float(lambda_reward_weight))
         if float(pharmacophore_weight) > 0.0:
             # TODO-30 P2.5 Phase A (2026-09-17) — wire the pharmacophore
@@ -2142,6 +2158,7 @@ def build_lambda_only_aggregator(
             from molmetal_lam.lam_chem.pharmacophore_reward_channel import (
                 register_pharmacophore_channel,
             )
+
             register_pharmacophore_channel(
                 agg,
                 weight=float(pharmacophore_weight),
@@ -2155,6 +2172,7 @@ def build_lambda_only_aggregator(
             from molmetal_lam.lam_chem.wetlab_reward_channel import (
                 register_wetlab_channel,
             )
+
             register_wetlab_channel(
                 agg,
                 measurement_dict=wetlab_measurements,
@@ -2166,6 +2184,7 @@ def build_lambda_only_aggregator(
         from molmetal_lam.lam_chem.lambda_reward_channel import (
             register_lambda_reward_channel,
         )
+
         register_lambda_reward_channel(agg, weight=float(lambda_reward_weight))
     if float(pharmacophore_weight) > 0.0:
         # TODO-30 P2.5 Phase A — same wiring as the platinai arm
@@ -2174,6 +2193,7 @@ def build_lambda_only_aggregator(
         from molmetal_lam.lam_chem.pharmacophore_reward_channel import (
             register_pharmacophore_channel,
         )
+
         register_pharmacophore_channel(
             agg,
             weight=float(pharmacophore_weight),
@@ -2187,6 +2207,7 @@ def build_lambda_only_aggregator(
         from molmetal_lam.lam_chem.wetlab_reward_channel import (
             register_wetlab_channel,
         )
+
         register_wetlab_channel(
             agg,
             measurement_dict=wetlab_measurements,
@@ -2460,9 +2481,7 @@ def run_one_cell(
     # decoder_rework is a no-op here.  Recorded for audit.
     cell.warnings.append(f"decoder_rework={bool(decoder_rework)}")
     # WF-SA-Fragment-Pool-Optimize: record pool-filter mode.
-    cell.warnings.append(
-        f"keep_high_sa_tiles={bool(keep_high_sa_tiles)}"
-    )
+    cell.warnings.append(f"keep_high_sa_tiles={bool(keep_high_sa_tiles)}")
     # WF-Metallodrug-Vertical Phase 3 protocol-align — record the
     # TargetDiff-aligned eval parameters on the cell so downstream
     # JSON consumers can audit the protocol exactly.  These three are
@@ -2485,6 +2504,7 @@ def run_one_cell(
     if float(platinai_weight) > 0.0 and "_R4_PLATINAI_ORACLE" not in globals():
         try:
             from molmetal_lam.reward.platinai_oracle import PlatinAIOracle
+
             _R4_PLATINAI_ORACLE = PlatinAIOracle()
             if _R4_PLATINAI_ORACLE.available:
                 cell.warnings.append(
@@ -2497,9 +2517,7 @@ def run_one_cell(
                     "oracle_UNAVAILABLE (graceful 0.0)"
                 )
         except Exception as exc:  # pragma: no cover - defensive
-            cell.warnings.append(
-                f"platinai_oracle_load_failed: {exc}"
-            )
+            cell.warnings.append(f"platinai_oracle_load_failed: {exc}")
             _R4_PLATINAI_ORACLE = None
         globals()["_R4_PLATINAI_ORACLE"] = _R4_PLATINAI_ORACLE
 
@@ -2516,7 +2534,8 @@ def run_one_cell(
     _args_for_wetlab = globals().get("args")
     _wetlab_input_path = (
         getattr(_args_for_wetlab, "wetlab_input", None)
-        if _args_for_wetlab is not None else None
+        if _args_for_wetlab is not None
+        else None
     )
     if _wetlab_input_path:
         try:
@@ -2524,6 +2543,7 @@ def run_one_cell(
                 assays_to_dict,
                 load_assays,
             )
+
             assays = load_assays(str(_wetlab_input_path))
             _R4_WETLAB_MEASUREMENTS = assays_to_dict(assays, metric="pIC50")
             log.info(
@@ -2534,7 +2554,8 @@ def run_one_cell(
         except Exception as exc:
             log.warning(
                 "wetlab_input_load_failed: %s — falling back to empty "
-                "measurement dict (channel will be a no-op)", exc,
+                "measurement dict (channel will be a no-op)",
+                exc,
             )
             _R4_WETLAB_MEASUREMENTS = {}
         globals()["_R4_WETLAB_MEASUREMENTS"] = _R4_WETLAB_MEASUREMENTS
@@ -2555,11 +2576,16 @@ def run_one_cell(
     # Click-Rules-All5 cell behaviour).
     # ------------------------------------------------------------------
     auto_aliases = {
-        "auto-pt-strict", "auto_pt_strict",
-        "auto-pt-iv", "auto_pt_iv",
-        "auto-pt-chelate", "auto_pt_chelate",
-        "auto-labile", "auto_labile",
-        "auto-unknown", "auto_unknown",
+        "auto-pt-strict",
+        "auto_pt_strict",
+        "auto-pt-iv",
+        "auto_pt_iv",
+        "auto-pt-chelate",
+        "auto_pt_chelate",
+        "auto-labile",
+        "auto_labile",
+        "auto-unknown",
+        "auto_unknown",
     }
     if click_rules is not None and any(
         str(t).strip() in auto_aliases for t in click_rules
@@ -2580,8 +2606,7 @@ def run_one_cell(
             # alkyne seed from METAL_SEED_SMILES; fall back to the
             # full SMILES if the seed name is not recognised).
             seed_smi = (
-                METAL_SEED_SMILES.get(metal_seed)
-                if metal_seed is not None else None
+                METAL_SEED_SMILES.get(metal_seed) if metal_seed is not None else None
             )
             scaffold = detect_scaffold(seed_smi, name_hint=metal_seed)
             cell.warnings.append(
@@ -2592,28 +2617,28 @@ def run_one_cell(
             # auto-* alias in click_rules as the scaffold key
             # (``auto-unknown`` falls back to all-5).
             chosen_alias = next(
-                str(t).strip() for t in click_rules
-                if str(t).strip() in auto_aliases
+                str(t).strip() for t in click_rules if str(t).strip() in auto_aliases
             )
             # alias -> scaffold-key override map.  ``auto-unknown``
             # forces all-5 regardless of detection; ``auto-labile`` /
             # ``auto-pt-iv`` / ``auto-pt-chelate`` ignore the
             # detection and use the wider rule set.
             alias_to_scaffold = {
-                "auto-pt-strict":   "strict_Pt_II",
-                "auto_pt_strict":   "strict_Pt_II",
-                "auto-pt-iv":       "Pt_IV",
-                "auto_pt_iv":       "Pt_IV",
-                "auto-pt-chelate":  "Pt_II_chelating",
-                "auto_pt_chelate":  "Pt_II_chelating",
-                "auto-labile":      "labile_metal",
-                "auto_labile":      "labile_metal",
-                "auto-unknown":     "unknown",
-                "auto_unknown":     "unknown",
+                "auto-pt-strict": "strict_Pt_II",
+                "auto_pt_strict": "strict_Pt_II",
+                "auto-pt-iv": "Pt_IV",
+                "auto_pt_iv": "Pt_IV",
+                "auto-pt-chelate": "Pt_II_chelating",
+                "auto_pt_chelate": "Pt_II_chelating",
+                "auto-labile": "labile_metal",
+                "auto_labile": "labile_metal",
+                "auto-unknown": "unknown",
+                "auto_unknown": "unknown",
             }
             scaffold_key = alias_to_scaffold.get(chosen_alias, scaffold)
             rules = default_compatible_rules(
-                scaffold_key, allow_incompatible=allow_incompatible_click,
+                scaffold_key,
+                allow_incompatible=allow_incompatible_click,
             )
             cell.warnings.append(
                 f"auto_rules_expanded={rules} from={chosen_alias} "
@@ -2688,6 +2713,7 @@ def run_one_cell(
     binding_site_for_features = None
     try:
         from molmetal_lam.binding.types import BindingSite as _BS
+
         binding_site_for_features = _BS(name=f"lambda_only::{pocket_id}")
     except Exception:
         binding_site_for_features = None
@@ -2742,9 +2768,7 @@ def run_one_cell(
                 f"elapsed_ms={ref_record.elapsed_ms:.2f}"
             )
             try:
-                root = MoleculeClosedTerm.from_smiles(
-                    ref_record.smiles, embed_3d=False
-                )
+                root = MoleculeClosedTerm.from_smiles(ref_record.smiles, embed_3d=False)
                 cell.warnings.append(
                     f"reference_ligand_root_loaded: smiles={ref_record.smiles!r}"
                 )
@@ -2769,13 +2793,10 @@ def run_one_cell(
                 from molmetal_lam.search_alg.warm_start import (
                     pocket_features_from_binding_site,
                 )
-                v_pocket = pocket_features_from_binding_site(
-                    binding_site_for_features
-                )
+
+                v_pocket = pocket_features_from_binding_site(binding_site_for_features)
             except Exception as exc:
-                cell.warnings.append(
-                    f"pocket_features_from_binding_site_failed: {exc}"
-                )
+                cell.warnings.append(f"pocket_features_from_binding_site_failed: {exc}")
                 v_pocket = None
         try:
             derived_name, derived_smi = pocket_derived_metal_seed(v_pocket)
@@ -2865,6 +2886,7 @@ def run_one_cell(
                 TOP10_HIGHEST_SA_SMILES,
                 top10_filter_pool,
             )
+
             pre_count = len(tile_library)
             tile_library = top10_filter_pool(
                 tile_library, keep_high_sa=bool(keep_high_sa_tiles)
@@ -2886,6 +2908,7 @@ def run_one_cell(
     try:
         from molmetal_lam.binding.types import BindingSite as _BS
         from molmetal_lam.types.predicates import TypePredicate as _TP
+
         # ``BindingSite`` requires a ``name``; we use the pocket id and
         # leave ``constraints`` empty so the search never typechecks
         # against docking / ADMET signals.
@@ -2970,6 +2993,7 @@ def run_one_cell(
                 from molmetal_lam.search_alg.learned_prior import (
                     LearnedPolicyPrior,
                 )
+
                 # The LearnedPolicyPrior model is fitted on tmQM
                 # reactions (sub-fix B).  When the model is not yet
                 # fitted we silently fall back to a uniform prior
@@ -2978,9 +3002,7 @@ def run_one_cell(
                 # before the model is shipped.
                 learned_prior_obj = LearnedPolicyPrior()
                 _search_kwargs["learned_prior"] = learned_prior_obj
-                _search_kwargs["pocket_boost_strength"] = (
-                    float(pocket_boost_strength)
-                )
+                _search_kwargs["pocket_boost_strength"] = float(pocket_boost_strength)
                 _search_kwargs["learned_prior_mix_uniform"] = 0.5
                 cell.warnings.append(
                     f"learned_prior_active=True pocket_boost_strength="
@@ -3023,8 +3045,7 @@ def run_one_cell(
                 )
             except Exception as exc:
                 cell.warnings.append(
-                    f"learned_shaping_register_failed: {exc}; "
-                    "falling back to off"
+                    f"learned_shaping_register_failed: {exc}; " "falling back to off"
                 )
         if use_pocket_macro_inference:
             _search_kwargs["use_pocket_macro"] = True
@@ -3144,7 +3165,11 @@ def run_one_cell(
         scaffold_seen: Optional[str] = None
         for c in candidates:
             try:
-                smi = c.canonical_smiles() if hasattr(c, "canonical_smiles") else _candidate_smi(c)
+                smi = (
+                    c.canonical_smiles()
+                    if hasattr(c, "canonical_smiles")
+                    else _candidate_smi(c)
+                )
             except Exception:
                 smi = _candidate_smi(c)
             if not smi:
@@ -3165,12 +3190,15 @@ def run_one_cell(
                             _coord = _conf.GetPositions()
                             try:
                                 import numpy as _np  # type: ignore
+
                                 _coord_np = _np.asarray(
-                                    _coord[:_n], dtype=float,
+                                    _coord[:_n],
+                                    dtype=float,
                                 )
                                 if _torch_local is not None:
                                     c.coords_3d = _torch_local.as_tensor(
-                                        _coord_np, dtype=_torch_local.float32,
+                                        _coord_np,
+                                        dtype=_torch_local.float32,
                                     )
                                     n_coords_3d += 1
                                 # 3b. ReworkedDecoder pass — only when
@@ -3181,12 +3209,17 @@ def run_one_cell(
                                 if _rd_decoder is not None and AtomCloud is not None:
                                     try:
                                         _z = _torch_local.as_tensor(
-                                            [_mol_no_h.GetAtomWithIdx(int(i)).GetAtomicNum()
-                                             for i in range(_n)],
+                                            [
+                                                _mol_no_h.GetAtomWithIdx(
+                                                    int(i)
+                                                ).GetAtomicNum()
+                                                for i in range(_n)
+                                            ],
                                             dtype=_torch_local.long,
                                         )
                                         _xyz = _torch_local.as_tensor(
-                                            _coord_np, dtype=_torch_local.float32,
+                                            _coord_np,
+                                            dtype=_torch_local.float32,
                                         )
                                         _cloud = AtomCloud(
                                             positions=_xyz,
@@ -3194,7 +3227,7 @@ def run_one_cell(
                                         )
                                         _dec = _rd_decoder.decode(_cloud)
                                         c.decoder_status = (
-                                            _dec.error or 'decoded_path_b'
+                                            _dec.error or "decoded_path_b"
                                         )
                                     except Exception as _exc_rework_run:
                                         c.decoder_status = (
@@ -3242,7 +3275,9 @@ def run_one_cell(
             if _status is None:
                 continue
             _total += 1
-            if str(_status).startswith("decoded_path_b") or str(_status).startswith("rework_sanitize_failed"):
+            if str(_status).startswith("decoded_path_b") or str(_status).startswith(
+                "rework_sanitize_failed"
+            ):
                 _pass += 1
         if _total > 0:
             cell.decoder_pass_rate = float(_pass) / float(_total)
@@ -3274,10 +3309,12 @@ def run_one_cell(
     # 6) synthesizability_rate
     if smis:
         cell.synthesizability_rate = sum(
-            1.0 if synthesizability_via_lambda_paths(
+            1.0
+            if synthesizability_via_lambda_paths(
                 _state_from_smi(s, MoleculeClosedTerm),
                 check_bnf=check_beta_normal_form,
-            ) else 0.0
+            )
+            else 0.0
             for s in smis
         ) / len(smis)
     # 7) metal_compliance_rate (WF-Lambda-Fix-Singleton Fix 3 — truthful)
@@ -3409,11 +3446,13 @@ def run_one_cell(
                 metric_max_sim_known_pt_drugs,
                 scaffold_in_known_pt_drugs,
             )
+
             max_sims: List[float] = []
             above_0_4 = 0
             above_0_7 = 0
             scaf_match = 0
             from collections import Counter
+
             closest_drug_counts: Counter = Counter()
             for smi in smis:
                 m = metric_max_sim_known_pt_drugs(smi)
@@ -3434,9 +3473,7 @@ def run_one_cell(
             cell.patent_scaffold_match_rate = float(scaf_match / denom)
             if closest_drug_counts:
                 # Tie-break by first insertion order — sort by count desc.
-                cell.patent_closest_drug = str(
-                    closest_drug_counts.most_common(1)[0][0]
-                )
+                cell.patent_closest_drug = str(closest_drug_counts.most_common(1)[0][0])
         except Exception as exc:
             cell.warnings.append(f"patent_axis_compute_failed: {exc}")
     # ---- WF-Rigid-RMSD-Metric: rigid RMSD vs reference ligand ----
@@ -3450,6 +3487,7 @@ def run_one_cell(
         try:
             from rdkit import Chem  # type: ignore
             from rdkit.Chem import AllChem  # type: ignore
+
             ref_mol = Chem.MolFromSmiles(reference_smiles)
             if ref_mol is not None and _embed_3d_for_rmsd(ref_mol):
                 rmsd_vals: List[float] = []
@@ -3461,9 +3499,7 @@ def run_one_cell(
                     if v > 0.0:
                         rmsd_vals.append(v)
                 if rmsd_vals:
-                    cell.rigid_rmsd_mean = float(
-                        sum(rmsd_vals) / len(rmsd_vals)
-                    )
+                    cell.rigid_rmsd_mean = float(sum(rmsd_vals) / len(rmsd_vals))
         except Exception as exc:
             cell.warnings.append(f"rigid_rmsd_compute_failed: {exc}")
     # ---- WF-CoM-Shift-Metric: CoM shift vs reference ligand ----
@@ -3476,6 +3512,7 @@ def run_one_cell(
     if reference_smiles and smis:
         try:
             from rdkit import Chem  # type: ignore
+
             ref_mol_com = None
             # Reuse the embedded ref_mol from the rigid_rmsd block when
             # it exists in the local scope (it does when the prior block
@@ -3493,9 +3530,7 @@ def run_one_cell(
                     if v > 0.0:
                         com_vals.append(v)
                 if com_vals:
-                    cell.com_shift_mean = float(
-                        sum(com_vals) / len(com_vals)
-                    )
+                    cell.com_shift_mean = float(sum(com_vals) / len(com_vals))
         except Exception as exc:
             cell.warnings.append(f"com_shift_compute_failed: {exc}")
     return cell
@@ -3519,9 +3554,7 @@ def _state_from_smi(smi: str, MoleculeClosedTerm):
 # TODO-30 / P6.1+P6.2 — split hygiene helper
 # ---------------------------------------------------------------------------
 _SPLIT_DEFAULT_DIR = _REPO_ROOT / "molmetal" / "data" / "metallo_scaffold_split"
-_METALLO_POOL_DEFAULT = (
-    _REPO_ROOT / "molmetal" / "data" / "metallo_drugs_500_train.csv"
-)
+_METALLO_POOL_DEFAULT = _REPO_ROOT / "molmetal" / "data" / "metallo_drugs_500_train.csv"
 
 
 def _load_split_training_smiles(split: str, seed: int = 42) -> List[str]:
@@ -3571,6 +3604,7 @@ def _load_split_training_smiles(split: str, seed: int = 42) -> List[str]:
         rows = load_input(_METALLO_POOL_DEFAULT)
         if split == "random":
             import random as _random
+
             rng = _random.Random(int(seed))
             order = list(rows)
             rng.shuffle(order)
@@ -3653,9 +3687,7 @@ def run_sweep(
     """
     rows = load_manifest(manifest_path)
     if not rows:
-        raise RuntimeError(
-            f"No manifest rows found at {manifest_path}; aborting."
-        )
+        raise RuntimeError(f"No manifest rows found at {manifest_path}; aborting.")
     rows = rows[:n_pockets]
     cells: List[CellResult] = []
     started = time.time()
@@ -3666,10 +3698,7 @@ def run_sweep(
     # default for this workflow; set auto_pt_strict_default=False
     # to opt back into the legacy all-5 default.
     effective_click_rules = click_rules
-    if (
-        auto_pt_strict_default
-        and (click_rules is None or len(click_rules) == 0)
-    ):
+    if auto_pt_strict_default and (click_rules is None or len(click_rules) == 0):
         effective_click_rules = ["auto-pt-strict"]
     for row in rows:
         pid = row.get("pocket_id", "?")
@@ -3691,6 +3720,7 @@ def run_sweep(
                 from molmetal_lam.search_alg.warm_start import (
                     pocket_features_from_binding_site,
                 )
+
                 # Use the pocket_id as a name hint; the manifest does
                 # not carry residue data, so the discriminator will
                 # fall back to the zero vector → Pd(II) on empty
@@ -3706,7 +3736,10 @@ def run_sweep(
         for seed in seeds:
             log.info(
                 "running pocket=%s seed=%d n_simulations=%d top_k=%d",
-                pid, seed, n_simulations, n_top_k,
+                pid,
+                seed,
+                n_simulations,
+                n_top_k,
             )
             cell = run_one_cell(
                 pocket_id=pid,
@@ -3767,7 +3800,9 @@ def run_sweep(
                 )
             # Update novelty against the training set.
             if training_smiles and cell.candidates:
-                cell.novelty = training_set_novelty(cell.candidates, list(training_smiles))
+                cell.novelty = training_set_novelty(
+                    cell.candidates, list(training_smiles)
+                )
             cells.append(cell)
     elapsed = time.time() - started
 
@@ -3775,12 +3810,21 @@ def run_sweep(
     agg: Dict[str, float] = {}
     ox_dist_merged: Dict[str, int] = {}
     if cells:
+
         def _mean(field_name: str) -> float:
-            vals = [getattr(c, field_name) for c in cells if getattr(c, field_name) is not None]
+            vals = [
+                getattr(c, field_name)
+                for c in cells
+                if getattr(c, field_name) is not None
+            ]
             return float(sum(vals) / len(vals)) if vals else 0.0
 
         def _sum_int(field_name: str) -> int:
-            vals = [getattr(c, field_name) for c in cells if getattr(c, field_name) is not None]
+            vals = [
+                getattr(c, field_name)
+                for c in cells
+                if getattr(c, field_name) is not None
+            ]
             return int(sum(vals)) if vals else 0
 
         agg["validity_rate"] = _mean("validity_rate")
@@ -3834,9 +3878,7 @@ def run_sweep(
         agg["metallodrug_reduction_potential_mean"] = _mean(
             "metallodrug_reduction_potential_mean"
         )
-        agg["metallodrug_trans_effect_mean"] = _mean(
-            "metallodrug_trans_effect_mean"
-        )
+        agg["metallodrug_trans_effect_mean"] = _mean("metallodrug_trans_effect_mean")
         agg["metallodrug_lfse_mean"] = _mean("metallodrug_lfse_mean")
         agg["metallodrug_pt_dna_crosslink_mean"] = _mean(
             "metallodrug_pt_dna_crosslink_mean"
@@ -3869,9 +3911,7 @@ def run_sweep(
             "n_top_k": int(n_top_k),
             "prior_enabled": bool(prior_enabled),
             "manifest_path": str(manifest_path),
-            "click_rules": (
-                list(click_rules) if click_rules is not None else "all-5"
-            ),
+            "click_rules": (list(click_rules) if click_rules is not None else "all-5"),
             "metal_seed": metal_seed,
             "sa_weight": float(sa_weight),
         },
@@ -4033,18 +4073,20 @@ def _render_summary_md(payload: Dict[str, Any]) -> str:
     lines.append(f"| anticancer_index | {agg.get('anticancer_index', 0.0):.4f} |")
     ox_dist = payload.get("oxidation_state_distribution_total", {}) or {}
     if ox_dist:
-        ox_str = ", ".join(
-            f"{k}={v}" for k, v in sorted(ox_dist.items())
-        )
+        ox_str = ", ".join(f"{k}={v}" for k, v in sorted(ox_dist.items()))
     else:
         ox_str = "(none)"
     lines.append(f"| oxidation_state_distribution | {ox_str} |")
     lines.append("")
-    lines.append("## WF-Phase3b-MetricsV2 — 8 tumor-relevant anticancer / ADMET columns")
+    lines.append(
+        "## WF-Phase3b-MetricsV2 — 8 tumor-relevant anticancer / ADMET columns"
+    )
     lines.append("")
     lines.append("Lit basis: Weininger 1990 / Patrick 2009 / Hou 2007 / Veith 2009 /")
     lines.append("Benigni-Richard 2005 / Hughes 2008 / Delaney 2004 ESOL / Obach 1999.")
-    lines.append("All CPU-only; zero GPU load. Heuristic evaluators (NOT wet-lab calibrated).")
+    lines.append(
+        "All CPU-only; zero GPU load. Heuristic evaluators (NOT wet-lab calibrated)."
+    )
     lines.append("")
     lines.append("| metric | value |")
     lines.append("|---|---|")
@@ -4062,26 +4104,32 @@ def _render_summary_md(payload: Dict[str, Any]) -> str:
     lines.append("")
     lines.append("## WF-Phase3D-PerResidue-Diversity + WF-Phase3G-MetalCoordProbe")
     lines.append("")
-    lines.append("Lit basis: Bemis & Murcko 1996 / Jasial 2021 IntDiv / Peter 2019 SPF;")
-    lines.append("Lippard & Berg 1995 / Reedijk 1987 / Miessler 2014 d-block geometries.")
+    lines.append(
+        "Lit basis: Bemis & Murcko 1996 / Jasial 2021 IntDiv / Peter 2019 SPF;"
+    )
+    lines.append(
+        "Lippard & Berg 1995 / Reedijk 1987 / Miessler 2014 d-block geometries."
+    )
     lines.append("")
     lines.append("| metric | value |")
     lines.append("|---|---|")
     lines.append(
-        f"| diversity_subpocket | "
-        f"{agg.get('diversity_subpocket', 0.0):.4f} |"
+        f"| diversity_subpocket | " f"{agg.get('diversity_subpocket', 0.0):.4f} |"
     )
     lines.append(
-        f"| metal_coord_compliance | "
-        f"{agg.get('metal_coord_compliance', 0.0):.4f} |"
+        f"| metal_coord_compliance | " f"{agg.get('metal_coord_compliance', 0.0):.4f} |"
     )
     # ---- WF-T25-Metallo-Proxies: 4 metallodrug proxies (opt-in) -------
     if bool(agg.get("metallodrug_proxies_enabled", False)):
         lines.append("")
         lines.append("## WF-T25-Metallo-Proxies — 4 metallodrug-specific proxies")
         lines.append("")
-        lines.append("Lit basis: Shriver & Atkins Table 17.7 (spectrochemical series) +")
-        lines.append("Appleton 1997 Coord. Chem. Rev. (trans-effect series) + Wang 2005 +")
+        lines.append(
+            "Lit basis: Shriver & Atkins Table 17.7 (spectrochemical series) +"
+        )
+        lines.append(
+            "Appleton 1997 Coord. Chem. Rev. (trans-effect series) + Wang 2005 +"
+        )
         lines.append("Cohen 2007 (Pt-DNA crosslink). All values in [0, 1].")
         lines.append("PROXIES, not measured quantities — see `molmetal/reports/")
         lines.append("wf_t25_metallo_proxies/final.md` for the honest framing.")
@@ -4112,8 +4160,12 @@ def _render_summary_md(payload: Dict[str, Any]) -> str:
     lines.append("")
     lines.append("## Per-cell results")
     lines.append("")
-    lines.append("| pocket | seed | n_cand | n_distinct | valid | uniq | div_tan | div_hom | novel | syn | metal | ref_tan | rigid_rmsd | com_shift | logP | TPSA | RotB | coord | gsh | dna | ai | cl | warnings |")
-    lines.append("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+    lines.append(
+        "| pocket | seed | n_cand | n_distinct | valid | uniq | div_tan | div_hom | novel | syn | metal | ref_tan | rigid_rmsd | com_shift | logP | TPSA | RotB | coord | gsh | dna | ai | cl | warnings |"
+    )
+    lines.append(
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"
+    )
     for c in cells:
         lines.append(
             "| {pid} | {seed} | {nc} | {nd} | {v:.3f} | {u:.3f} | "
@@ -4725,8 +4777,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--split",
         type=str,
-        choices=("none", "scaffold", "time", "random",
-                 "scaffold_tanimoto_0.4"),
+        choices=("none", "scaffold", "time", "random", "scaffold_tanimoto_0.4"),
         default="none",
         help=(
             "TODO-30 / P6.1+P6.2 — split discipline for the "
@@ -4818,7 +4869,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         log.warning(
             "n_simulations=%d exceeds SAFETY_MAX=%d; clamping to %d "
             "(set SAFETY_MAX higher if you really need more).",
-            args.n_simulations, SAFETY_MAX, SAFETY_MAX,
+            args.n_simulations,
+            SAFETY_MAX,
+            SAFETY_MAX,
         )
         args.n_simulations = SAFETY_MAX
     if args.n_simulations < 1:
@@ -4861,13 +4914,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 log.info(
                     "Applying --split=%s: novelty training pool restricted "
                     "to %d SMILES (was %d)",
-                    args.split, len(split_smiles), len(training_smiles),
+                    args.split,
+                    len(split_smiles),
+                    len(training_smiles),
                 )
                 training_smiles = split_smiles
         except Exception as exc:
             log.warning(
                 "Could not apply --split=%s: %s (falling back to legacy "
-                "training-set loader)", args.split, exc,
+                "training-set loader)",
+                args.split,
+                exc,
             )
 
     payload, cells = run_sweep(
@@ -4885,9 +4942,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         platinai_weight=args.reward_platinai_weight,
         lambda_reward_weight=args.reward_lambda_weight,
         pharmacophore_weight=getattr(args, "reward_pharmacophore_weight", 0.0),
-        pharmacophore_strict=bool(
-            getattr(args, "pharmacophore_strict", False)
-        ),
+        pharmacophore_strict=bool(getattr(args, "pharmacophore_strict", False)),
         pharmacophore_allow_acyclic=bool(
             getattr(args, "pharmacophore_allow_acyclic", True)
         ),
@@ -4895,23 +4950,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         decoder_rework=bool(args.decoder_rework),
         keep_high_sa_tiles=bool(args.keep_high_sa_tiles),
         metal_seed_from_pocket=bool(args.metal_seed_from_pocket),
-        use_pocket_conditioned_reference=bool(
-            args.use_pocket_conditioned_reference
-        ),
+        use_pocket_conditioned_reference=bool(args.use_pocket_conditioned_reference),
         use_learned_prior=bool(args.use_learned_prior),
         pocket_boost_strength=float(getattr(args, "pocket_boost_strength", 1.0)),
         use_sa_prior=bool(args.use_sa_prior),
         sa_prior_strength=float(args.sa_prior_strength),
         use_learned_shaping=bool(getattr(args, "use_learned_shaping", False)),
-        learned_shaping_weight=float(
-            getattr(args, "learned_shaping_weight", 1.0)
-        ),
+        learned_shaping_weight=float(getattr(args, "learned_shaping_weight", 1.0)),
         use_pocket_macro_inference=bool(
             getattr(args, "use_pocket_macro_inference", False)
         ),
-        use_symbolic_reward=bool(
-            getattr(args, "use_symbolic_reward", False)
-        ),
+        use_symbolic_reward=bool(getattr(args, "use_symbolic_reward", False)),
         n_samples=int(args.n_samples),
         pocket10_radius=float(args.pocket10_radius),
         reference_ligand=bool(args.reference_ligand),
@@ -4926,8 +4975,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     log.info("Wrote report to %s/report.json", out)
     log.info("Wrote summary to %s/summary.md", out)
-    print(json.dumps({"output_dir": str(out), "n_cells": len(cells),
-                      "aggregate": payload["aggregate"]}, indent=2))
+    print(
+        json.dumps(
+            {
+                "output_dir": str(out),
+                "n_cells": len(cells),
+                "aggregate": payload["aggregate"],
+            },
+            indent=2,
+        )
+    )
     return 0
 
 

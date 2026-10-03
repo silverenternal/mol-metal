@@ -30,14 +30,18 @@ METRICS_JSON = REPO_ROOT / "metrics" / "by_metric" / "uff_energy_pt_pool.json"
 
 def _load_pool() -> dict:
     if not POOL_JSON.exists():
-        pytest.skip(f"pool JSON not found at {POOL_JSON}; run wf319b_uff_min_pt_pool.py first")
+        pytest.skip(
+            f"pool JSON not found at {POOL_JSON}; run wf319b_uff_min_pt_pool.py first"
+        )
     with POOL_JSON.open("r", encoding="utf-8") as fh:
         return json.load(fh)
 
 
 def _load_metrics() -> dict:
     if not METRICS_JSON.exists():
-        pytest.skip(f"metrics JSON not found at {METRICS_JSON}; run wf319b_uff_min_pt_pool.py first")
+        pytest.skip(
+            f"metrics JSON not found at {METRICS_JSON}; run wf319b_uff_min_pt_pool.py first"
+        )
     with METRICS_JSON.open("r", encoding="utf-8") as fh:
         return json.load(fh)
 
@@ -54,9 +58,13 @@ def test_wf319b_pool_records_present():
     assert len(conformers) > 0, "pool has no conformers"
     for c in conformers:
         assert "pool_index" in c, f"missing pool_index in {c.get('pool_index')}"
-        assert "n_atoms" in c and c["n_atoms"] > 0, f"missing/zero n_atoms in {c.get('pool_index')}"
+        assert (
+            "n_atoms" in c and c["n_atoms"] > 0
+        ), f"missing/zero n_atoms in {c.get('pool_index')}"
         assert "embed_method" in c, f"missing embed_method in {c.get('pool_index')}"
-        assert "energy_kcal_mol" in c, f"missing energy_kcal_mol in {c.get('pool_index')}"
+        assert (
+            "energy_kcal_mol" in c
+        ), f"missing energy_kcal_mol in {c.get('pool_index')}"
 
 
 def test_wf319b_energies_finite_or_null():
@@ -67,8 +75,11 @@ def test_wf319b_energies_finite_or_null():
         e = c.get("energy_kcal_mol")
         if e is None:
             continue
-        assert isinstance(e, (int, float)), f"non-numeric energy in {c.get('pool_index')}: {e}"
+        assert isinstance(
+            e, (int, float)
+        ), f"non-numeric energy in {c.get('pool_index')}: {e}"
         import math
+
         assert math.isfinite(e), f"non-finite energy in {c.get('pool_index')}: {e}"
 
 
@@ -98,12 +109,14 @@ def test_wf319b_distribution_buckets_well_formed():
     metrics = _load_metrics()
     buckets = metrics.get("energy_kcal_per_mol", {}).get("distribution_buckets", {})
     expected_keys = {"<0", "0-50", "50-200", "200-500", ">=500"}
-    assert set(buckets.keys()) == expected_keys, f"unexpected bucket keys: {set(buckets.keys())}"
+    assert (
+        set(buckets.keys()) == expected_keys
+    ), f"unexpected bucket keys: {set(buckets.keys())}"
     n_from_buckets = sum(buckets.values())
     n_total = metrics.get("n_conformers_generated", 0)
-    assert n_from_buckets == n_total, (
-        f"bucket sum {n_from_buckets} != n_conformers_generated {n_total}"
-    )
+    assert (
+        n_from_buckets == n_total
+    ), f"bucket sum {n_from_buckets} != n_conformers_generated {n_total}"
 
 
 # ---------------------------------------------------------------------------
@@ -114,9 +127,9 @@ def test_wf319b_distribution_buckets_well_formed():
 def test_wf319b_metrics_honest_negative_tag():
     """The HONEST_NEGATIVE_UFF_PT_PARAMS_MISSING tag is set (UFF lacks d-block Pt)."""
     metrics = _load_metrics()
-    assert metrics.get("HONEST_NEGATIVE_UFF_PT_PARAMS_MISSING") is True, (
-        "expected HONEST_NEGATIVE_UFF_PT_PARAMS_MISSING=True"
-    )
+    assert (
+        metrics.get("HONEST_NEGATIVE_UFF_PT_PARAMS_MISSING") is True
+    ), "expected HONEST_NEGATIVE_UFF_PT_PARAMS_MISSING=True"
     reason = metrics.get("honest_negative_reason", "")
     assert "Pt" in reason, f"honest_negative_reason should mention Pt: {reason[:80]}"
     assert len(reason) >= 50, f"honest_negative_reason is too short: {len(reason)}"

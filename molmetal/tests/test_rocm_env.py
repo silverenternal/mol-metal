@@ -89,9 +89,7 @@ class TestRocmEnv(unittest.TestCase):
         :data:`molmetal.adapters.flow_matching_lipman.amp.ROCM_GFX1101_ENV_VARS`
         (``molmetal/adapters/flow_matching_lipman/amp.py:73-76``).
         """
-        with mock.patch(
-            "molmetal._is_gfx1101_gpu", return_value=True
-        ):
+        with mock.patch("molmetal._is_gfx1101_gpu", return_value=True):
             _apply_rocm_gfx1101_env(force=True, quiet=True)
 
         self.assertEqual(
@@ -109,9 +107,7 @@ class TestRocmEnv(unittest.TestCase):
         :data:`molmetal.adapters.flow_matching_lipman.amp.ROCM_GFX1101_ENV_VARS`
         (``molmetal/adapters/flow_matching_lipman/amp.py:73-76``).
         """
-        with mock.patch(
-            "molmetal._is_gfx1101_gpu", return_value=True
-        ):
+        with mock.patch("molmetal._is_gfx1101_gpu", return_value=True):
             _apply_rocm_gfx1101_env(force=True, quiet=True)
 
         self.assertEqual(

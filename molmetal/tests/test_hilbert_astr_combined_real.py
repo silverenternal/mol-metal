@@ -40,6 +40,7 @@ Test inventory
     ``per_seed_metrics.json`` is well-formed JSON with all required
     keys.
 """
+
 from __future__ import annotations
 
 import json
@@ -55,9 +56,12 @@ import pytest
 
 _HERE = Path(__file__).resolve().parent
 _REPO_ROOT = _HERE.parent  # molmetal/
-while _REPO_ROOT != _REPO_ROOT.parent and not (
-    _REPO_ROOT / "molmetal" / "scripts" / "bench_hilbert_astr_combined_real.py"
-).exists():
+while (
+    _REPO_ROOT != _REPO_ROOT.parent
+    and not (
+        _REPO_ROOT / "molmetal" / "scripts" / "bench_hilbert_astr_combined_real.py"
+    ).exists()
+):
     _REPO_ROOT = _REPO_ROOT.parent
 for _p in (str(_HERE.parent), str(_REPO_ROOT)):
     if _p not in sys.path:
@@ -241,6 +245,7 @@ def test_load_platinai_cell_mcf7() -> None:
         _REPO_ROOT,
         load_platinai_cell,
     )
+
     X, y, smiles = load_platinai_cell(_REPO_ROOT, "mcf7", n_max=50)
     assert X.shape[0] == y.shape[0] == len(smiles)
     assert X.shape[0] >= 1
@@ -254,6 +259,7 @@ def test_load_platinai_cell_unknown_raises() -> None:
         _REPO_ROOT,
         load_platinai_cell,
     )
+
     with pytest.raises(ValueError):
         load_platinai_cell(_REPO_ROOT, "hela_unknown")
 
@@ -262,9 +268,7 @@ def test_load_platinai_cell_unknown_raises() -> None:
 # Predictor clip.
 # ---------------------------------------------------------------------------
 def test_predict_hilbert_clip() -> None:
-    X = np.array(
-        [[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0]]
-    )
+    X = np.array([[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0]])
     bp = np.zeros(12)
     bp[0] = 1e12
     y_hat = predict_hilbert(X, bp)
@@ -281,12 +285,7 @@ def test_hilbert_astr_combined_real_smoke() -> None:
 
     Wall-time budget: < 60 s on CPU with --epochs 10.
     """
-    script = (
-        _REPO_ROOT
-        / "molmetal"
-        / "scripts"
-        / "bench_hilbert_astr_combined_real.py"
-    )
+    script = _REPO_ROOT / "molmetal" / "scripts" / "bench_hilbert_astr_combined_real.py"
     assert script.exists()
     # Build a 50-row PlatinAI-like subset in a temp dir.
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -294,7 +293,10 @@ def test_hilbert_astr_combined_real_smoke() -> None:
         subset_csv = tmp / "platinai_subset.csv"
         real_csv = _REPO_ROOT / "molmetal" / "data" / "platinai_4cell.csv"
         with open(real_csv, "r", encoding="utf-8") as fin, open(
-            subset_csv, "w", encoding="utf-8", newline="",
+            subset_csv,
+            "w",
+            encoding="utf-8",
+            newline="",
         ) as fout:
             fout.write(fin.readline())  # header
             for i, line in enumerate(fin):
@@ -331,9 +333,7 @@ def test_hilbert_astr_combined_real_smoke() -> None:
             )
         )
         env = os.environ.copy()
-        env["PYTHONPATH"] = (
-            str(_REPO_ROOT) + os.pathsep + env.get("PYTHONPATH", "")
-        )
+        env["PYTHONPATH"] = str(_REPO_ROOT) + os.pathsep + env.get("PYTHONPATH", "")
         proc = subprocess.run(
             [sys.executable, str(wrapper)],
             cwd=str(_REPO_ROOT),

@@ -67,6 +67,7 @@ All 4 tests are CPU-only — no GPU launch per AGENTS.md §5.1.
 The wrapper is still dry-run only; downstream Wf-333-G3+ runs the
 actual GPU launch when VRAM frees.
 """
+
 from __future__ import annotations
 
 import json
@@ -180,9 +181,9 @@ def test_platinai_4cell_per_cell_breakdown(tmp_path: Path) -> None:
 
     # ---- projected_per_metal_r2 has all 7 entries ----
     ppm = p4["projected_per_metal_r2"]
-    assert len(ppm) == 7, (
-        f"projected_per_metal_r2 should have 7 entries; got {len(ppm)}"
-    )
+    assert (
+        len(ppm) == 7
+    ), f"projected_per_metal_r2 should have 7 entries; got {len(ppm)}"
     for m in expected_metals:
         assert m in ppm, (
             f"projected_per_metal_r2 missing metal {m!r}; "
@@ -234,12 +235,9 @@ def test_platinai_4cell_per_cell_breakdown(tmp_path: Path) -> None:
     with open(json_path) as fh:
         payload = json.load(fh)
     assert "platinai_4cell" in payload["per_cohort_breakdown"]
-    assert (
-        payload["per_cohort_breakdown"]["platinai_4cell"][
-            "projected_mean_hilbert_r2"
-        ]
-        == pytest.approx(0.594)
-    )
+    assert payload["per_cohort_breakdown"]["platinai_4cell"][
+        "projected_mean_hilbert_r2"
+    ] == pytest.approx(0.594)
 
 
 # ===========================================================================
@@ -294,9 +292,7 @@ def test_metalcytotox_5metal_per_metal_breakdown(tmp_path: Path) -> None:
         assert m5["projected_per_metal_r2"][m] == pytest.approx(r)
 
     # ---- wf_closeout / recovery_status ----
-    assert m5["wf_closeout"] == (
-        "TODO/completed/330t2_triangle_metalcytotox.md"
-    )
+    assert m5["wf_closeout"] == ("TODO/completed/330t2_triangle_metalcytotox.md")
     assert m5["recovery_status"] == "MEASURED=BELOW_TARGET"
     assert m5["wf_id"] == "Wf-330-T2"
 
@@ -330,9 +326,7 @@ def test_metalcytotox_5metal_per_metal_breakdown(tmp_path: Path) -> None:
     assert "MEASURED=BELOW_TARGET" in md_text
     # Per-metal anchors should appear in the markdown.
     for m, r in METALCYTO_5METAL_PROJECTED_R2.items():
-        assert f"- {m}:" in md_text, (
-            f"per-metal anchor for {m} missing from MD"
-        )
+        assert f"- {m}:" in md_text, f"per-metal anchor for {m} missing from MD"
     with open(json_path) as fh:
         payload = json.load(fh)
     assert payload["per_cohort_breakdown"]["metalcytotox_5metal"][
@@ -350,24 +344,36 @@ def test_feature_modes_5d_12d_17d() -> None:
     and emits the matching feature shape for both cohorts.
     """
     # ---- CLI parsing for all 3 feature modes ----
-    cfg_5d = parse_args([
-        "--triangle-feature-mode", "5d",
-        "--triangle-cohort", "platinai_4cell",
-    ])
+    cfg_5d = parse_args(
+        [
+            "--triangle-feature-mode",
+            "5d",
+            "--triangle-cohort",
+            "platinai_4cell",
+        ]
+    )
     assert cfg_5d.triangle_feature_mode == "5d"
     assert cfg_5d.triangle_cohort == "platinai_4cell"
 
-    cfg_12d = parse_args([
-        "--triangle-feature-mode", "12d",
-        "--triangle-cohort", "metalcytotox_5metal",
-    ])
+    cfg_12d = parse_args(
+        [
+            "--triangle-feature-mode",
+            "12d",
+            "--triangle-cohort",
+            "metalcytotox_5metal",
+        ]
+    )
     assert cfg_12d.triangle_feature_mode == "12d"
     assert cfg_12d.triangle_cohort == "metalcytotox_5metal"
 
-    cfg_17d = parse_args([
-        "--triangle-feature-mode", "17d",
-        "--triangle-cohort", "both",
-    ])
+    cfg_17d = parse_args(
+        [
+            "--triangle-feature-mode",
+            "17d",
+            "--triangle-cohort",
+            "both",
+        ]
+    )
     assert cfg_17d.triangle_feature_mode == "17d"
     assert cfg_17d.triangle_cohort == "both"
 
@@ -402,14 +408,11 @@ def test_feature_modes_5d_12d_17d() -> None:
 
     # ---- resolve_triangle_cohorts ----
     assert resolve_triangle_cohorts("both") == (
-        "platinai_4cell", "metalcytotox_5metal",
-    )
-    assert resolve_triangle_cohorts("platinai_4cell") == (
         "platinai_4cell",
-    )
-    assert resolve_triangle_cohorts("metalcytotox_5metal") == (
         "metalcytotox_5metal",
     )
+    assert resolve_triangle_cohorts("platinai_4cell") == ("platinai_4cell",)
+    assert resolve_triangle_cohorts("metalcytotox_5metal") == ("metalcytotox_5metal",)
     with pytest.raises(ValueError):
         resolve_triangle_cohorts("nci60")
 
@@ -422,7 +425,8 @@ def test_feature_modes_5d_12d_17d() -> None:
 
     # ---- build_full_per_cohort_breakdown("both") ----
     full_both = build_full_per_cohort_breakdown(
-        "both", feature_mode="12d",
+        "both",
+        feature_mode="12d",
     )
     assert set(full_both.keys()) == {"platinai_4cell", "metalcytotox_5metal"}
 
@@ -453,14 +457,13 @@ def test_gpu_wrapper_initialization_cpu_only(tmp_path: Path) -> None:
     """
     # ---- Default config (Wf-333-G2 baseline + Wf-335-M3 new fields) ----
     cfg = TriangleGPUConfig()
-    assert cfg.feature_mode == "12d", (
-        f"default feature_mode should be '12d'; got {cfg.feature_mode!r}"
-    )
+    assert (
+        cfg.feature_mode == "12d"
+    ), f"default feature_mode should be '12d'; got {cfg.feature_mode!r}"
     assert cfg.hilbert_dim == 64
     assert cfg.launch is False
     assert cfg.triangle_cohort == "both", (
-        f"default triangle_cohort should be 'both'; "
-        f"got {cfg.triangle_cohort!r}"
+        f"default triangle_cohort should be 'both'; " f"got {cfg.triangle_cohort!r}"
     )
     assert cfg.triangle_feature_mode == "12d"
 
@@ -483,9 +486,7 @@ def test_gpu_wrapper_initialization_cpu_only(tmp_path: Path) -> None:
     # ---- Hilbert torch module parameter count ----
     hilbert_module = build_hilbert_torch_module(hilbert_dim=cfg.hilbert_dim)
     n_trainable = int(sum(p.numel() for p in hilbert_module.parameters()))
-    assert n_trainable == 64, (
-        f"hilbert_dim=64 → 64 trainable params; got {n_trainable}"
-    )
+    assert n_trainable == 64, f"hilbert_dim=64 → 64 trainable params; got {n_trainable}"
 
     # ---- Per-cohort breakdown: both cohorts when triangle_cohort=both ----
     assert isinstance(summary.per_cohort_breakdown, dict)
@@ -503,9 +504,7 @@ def test_gpu_wrapper_initialization_cpu_only(tmp_path: Path) -> None:
 
     # ---- Honest-negative flags (Wf-333-G2 + Wf-335-M3) ----
     # Wf-333-G2 baseline flag.
-    assert "HONEST_NEGATIVE_TRIANGLE_GPU_DEFERRED" in (
-        summary.honest_negative_flags
-    )
+    assert "HONEST_NEGATIVE_TRIANGLE_GPU_DEFERRED" in (summary.honest_negative_flags)
     # Wf-335-M3 per-cohort flags.
     assert "HONEST_NEGATIVE_PERSISTENT_PLATINAI_4CELL" in (
         summary.honest_negative_flags
@@ -534,9 +533,7 @@ def test_gpu_wrapper_initialization_cpu_only(tmp_path: Path) -> None:
     assert "metalcytotox_5metal" in payload["per_cohort_breakdown"]
     # The Wf-333-G2 fields are also preserved.
     assert payload["project_tag"] == "PROJECTED"
-    assert "HONEST_NEGATIVE_TRIANGLE_GPU_DEFERRED" in (
-        payload["honest_negative_flags"]
-    )
+    assert "HONEST_NEGATIVE_TRIANGLE_GPU_DEFERRED" in (payload["honest_negative_flags"])
     # MD has the per-cohort table.
     md_text = md_path.read_text()
     assert "Triangle cohort breakdown" in md_text
@@ -549,12 +546,17 @@ def test_gpu_wrapper_initialization_cpu_only(tmp_path: Path) -> None:
 
     # ---- add_wf333g2_args idempotency (carries the new flags) ----
     import argparse as _ap
+
     parser = _ap.ArgumentParser()
     parser = add_wf333g2_args(parser)
     parser = add_wf333g2_args(parser)  # idempotent — must not raise
-    ns = parser.parse_args([
-        "--triangle-cohort", "metalcytotox_5metal",
-        "--triangle-feature-mode", "17d",
-    ])
+    ns = parser.parse_args(
+        [
+            "--triangle-cohort",
+            "metalcytotox_5metal",
+            "--triangle-feature-mode",
+            "17d",
+        ]
+    )
     assert ns.triangle_cohort == "metalcytotox_5metal"
     assert ns.triangle_feature_mode == "17d"

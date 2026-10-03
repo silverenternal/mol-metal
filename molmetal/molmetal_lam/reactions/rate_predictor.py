@@ -58,6 +58,7 @@ _L5_BACKEND: Dict[str, str] = {}
 #   0 mw_a          logP_a   TPSA_a   HeavyAtoms_a
 #   4 mw_b          logP_b   TPSA_b   HeavyAtoms_b
 
+
 def smiles_pair_features(smiles_a: str, smiles_b: str) -> List[float]:
     """Return the 8-d numerical descriptor of a (reactant_a, reactant_b) pair."""
     from rdkit import Chem  # type: ignore[import-not-found]
@@ -108,7 +109,12 @@ _LIT_DOI = {
         # Wu & Fokin 2007 — alkyl azide + propargyl ether, 91%.
         ("CCCN=[N+]=[N-]", "C#CCOCC", 0.91, "10.1002/adsc.200700092"),
         # Hong et al. 2009 — sugar azide + propargyl sugar, 87%.
-        ("N(=[N+]=[N-])CC1OC(CO)C(O)C(O)C1O", "C#CCC2OC(CO)C(O)C(O)C2O", 0.87, "10.1021/ja809724g"),
+        (
+            "N(=[N+]=[N-])CC1OC(CO)C(O)C(O)C1O",
+            "C#CCC2OC(CO)C(O)C(O)C2O",
+            0.87,
+            "10.1021/ja809724g",
+        ),
         # Kislukhin et al. 2012 — PEG azide + coumarin-alkyne, 93%.
         ("N(=[N+]=[N-])CCOCCO", "C#Cc3ccc4oc(=O)ccc4c3", 0.93, "10.1021/jo301233n"),
         # Strieter & Bhunia 2009 — mesyl azide + alkyne, 75%.
@@ -126,16 +132,30 @@ _LIT_DOI = {
         # Sletten & Bertozzi 2009 — BCN + alkyl azide, 91%.
         ("CCN=[N+]=[N-]", "C1CC2CCC1C#C2", 0.91, "10.1021/ja809923q"),
         # Dommerholt et al. 2010 — BCN + sugar azide, 86%.
-        ("N(=[N+]=[N-])CC1OC(CO)C(O)C(O)C1O", "C1CC2CCC1C#C2", 0.86, "10.1021/ja103014p"),
+        (
+            "N(=[N+]=[N-])CC1OC(CO)C(O)C(O)C1O",
+            "C1CC2CCC1C#C2",
+            0.86,
+            "10.1021/ja103014p",
+        ),
         # Jewett et al. 2010 — DIBO + benzyl azide, 89%.
         ("[N-]=[N+]=NCc1ccccc1", "c1ccc2CC3CCC#CC3Cc2c1", 0.89, "10.1021/ja906935s"),
         # Debets et al. 2010 — oxanorbornadiene + azide, 78%.
         ("CCN=[N+]=[N-]", "C1=CC2OC2C=C1", 0.78, "10.1039/c0cc02305g"),
         # Gordon et al. 2012 — DIFO + glyco-azide, 88%.
-        ("N(=[N+]=[N-])CC(O)C(O)C(O)C(O)CO", "FC(F)(F)C2CCCC#CC2(F)F", 0.88, "10.1021/ja2108915"),
+        (
+            "N(=[N+]=[N-])CC(O)C(O)C(O)C(O)CO",
+            "FC(F)(F)C2CCCC#CC2(F)F",
+            0.88,
+            "10.1021/ja2108915",
+        ),
         # Patterson et al. 2014 — BCN + DNA-azide, 85%.
-        ("N(=[N+]=[N-])CCOP(=O)(O)OCC3OC(n4ccc(N)n4)C(O)C3O",
-         "C1CC2CCC1C#C2", 0.85, "10.1021/ja5059812"),
+        (
+            "N(=[N+]=[N-])CCOP(=O)(O)OCC3OC(n4ccc(N)n4)C(O)C3O",
+            "C1CC2CCC1C#C2",
+            0.85,
+            "10.1021/ja5059812",
+        ),
         # Van Geel et al. 2012 — BCN + protein azide, 92%.
         ("CC(C)CN=[N+]=[N-]", "C1CC2CCC1C#C2", 0.92, "10.1021/bc200484h"),
         # Blackman et al. 2008 — BCN + aryl azide, 84%.
@@ -143,25 +163,60 @@ _LIT_DOI = {
     ],
     "SPC": [
         # Saxon & Bertozzi 2000 — benzyl azide + triphenylphosphine, 95%.
-        ("[N-]=[N+]=NCc1ccccc1", "P(c2ccccc2)(c3ccccc3)c4ccccc4", 0.95, "10.1126/science.288.5467.858"),
+        (
+            "[N-]=[N+]=NCc1ccccc1",
+            "P(c2ccccc2)(c3ccccc3)c4ccccc4",
+            0.95,
+            "10.1126/science.288.5467.858",
+        ),
         # Nilsson et al. 2000 — azido-sugar + Ph3P, 92%.
-        ("N(=[N+]=[N-])CC1OC(CO)C(O)C(O)C1O", "P(c2ccccc2)(c3ccccc3)c4ccccc4", 0.92, "10.1021/ol006091p"),
+        (
+            "N(=[N+]=[N-])CC1OC(CO)C(O)C(O)C1O",
+            "P(c2ccccc2)(c3ccccc3)c4ccccc4",
+            0.92,
+            "10.1021/ol006091p",
+        ),
         # Soellner et al. 2002 — peptide azide + Ph3P, 90%.
-        ("CC(=O)NCCN=[N+]=[N-]", "P(c1ccccc1)(c2ccccc2)c3ccccc3", 0.90, "10.1021/ja020742b"),
+        (
+            "CC(=O)NCCN=[N+]=[N-]",
+            "P(c1ccccc1)(c2ccccc2)c3ccccc3",
+            0.90,
+            "10.1021/ja020742b",
+        ),
         # Kiick et al. 2002 — glyco azide + Ph3P, 88%.
-        ("N(=[N+]=[N-])CC(O)C(O)C(O)C(O)CO", "P(c1ccccc1)(c2ccccc2)c3ccccc3", 0.88, "10.1021/ja0177086"),
+        (
+            "N(=[N+]=[N-])CC(O)C(O)C(O)C(O)CO",
+            "P(c1ccccc1)(c2ccccc2)c3ccccc3",
+            0.88,
+            "10.1021/ja0177086",
+        ),
         # Lin et al. 2005 — modified Staudinger with phosphinothioester, 85%.
         ("CCCN=[N+]=[N-]", "SCCP(=O)(O)OCC", 0.85, "10.1021/ja054715y"),
         # Hang & Bertozzi 2001 — azidoglycan + Ph3P, 91%.
-        ("N(=[N+]=[N-])CC2OC(C)C(O)C(O)C2O", "P(c1ccccc1)(c2ccccc2)c3ccccc3", 0.91, "10.1021/ja010016e"),
+        (
+            "N(=[N+]=[N-])CC2OC(C)C(O)C(O)C2O",
+            "P(c1ccccc1)(c2ccccc2)c3ccccc3",
+            0.91,
+            "10.1021/ja010016e",
+        ),
         # Bräse et al. 2005 — benzyl azide + trimethylphosphine, 78%.
         ("[N-]=[N+]=NCc1ccccc1", "CP(C)C", 0.78, "10.1002/9783527626050.ch5"),
         # Kohn et al. 2003 — alkyl azide + tris(2-carboxyethyl)phosphine, 80%.
         ("CCCN=[N+]=[N-]", "P(CC(=O)O)(CC(=O)O)CC(=O)O", 0.80, "10.1021/bc034049z"),
         # Bernardes et al. 2007 — glycopeptide azide + Ph3P, 93%.
-        ("CC(=O)NC(C)C(=O)NCCN=[N+]=[N-]", "P(c1ccccc1)(c2ccccc2)c3ccccc3", 0.93, "10.1002/cbic.200700258"),
+        (
+            "CC(=O)NC(C)C(=O)NCCN=[N+]=[N-]",
+            "P(c1ccccc1)(c2ccccc2)c3ccccc3",
+            0.93,
+            "10.1002/cbic.200700258",
+        ),
         # Schilling et al. 2011 — aryl azide + Ph3P traceless, 86%.
-        ("[N-]=[N+]=Nc1ccc(Cl)cc1", "P(c2ccccc2)(c3ccccc3)c4ccccc4", 0.86, "10.1039/c1cc11566e"),
+        (
+            "[N-]=[N+]=Nc1ccc(Cl)cc1",
+            "P(c2ccccc2)(c3ccccc3)c4ccccc4",
+            0.86,
+            "10.1039/c1cc11566e",
+        ),
     ],
     "DielsAlder": [
         # Diels & Alder 1928 (cited via Woodward 1942 review) — cyclopentadiene + maleic anhydride, 99%.
@@ -225,10 +280,19 @@ _LIT_DOI = {
         # Liu et al. 2013 — aryl azide + propargyl amide on solid support, 89%.
         ("[N-]=[N+]=Nc1ccc(Cl)cc1", "C#CCNC(=O)OCC", 0.89, "10.1021/jo302117b"),
         # Pathak et al. 2012 — sugar azide + alkyne-tagged nucleoside, 86%.
-        ("N(=[N+]=[N-])CC1OC(CO)C(O)C(O)C1O",
-         "C#CCNC2=NC=NC3=C2N=CN3", 0.86, "10.1021/jo301526g"),
+        (
+            "N(=[N+]=[N-])CC1OC(CO)C(O)C(O)C1O",
+            "C#CCNC2=NC=NC3=C2N=CN3",
+            0.86,
+            "10.1021/jo301526g",
+        ),
         # Bao et al. 2014 — aryl azide + coumarin alkyne, 91%.
-        ("[N-]=[N+]=Nc1ccc(Br)cc1", "C#Cc2ccc3oc(=O)ccc3c2", 0.91, "10.1021/acs.joc.5b00520"),
+        (
+            "[N-]=[N+]=Nc1ccc(Br)cc1",
+            "C#Cc2ccc3oc(=O)ccc3c2",
+            0.91,
+            "10.1021/acs.joc.5b00520",
+        ),
     ],
 }
 
@@ -305,7 +369,9 @@ def predict_yield(
     reg = models.get(reaction_name)
     if reg is None:
         reg = train_rate_predictor(reaction_name)
-    feats = np.asarray(smiles_pair_features(smiles_a, smiles_b), dtype=float).reshape(1, -1)
+    feats = np.asarray(smiles_pair_features(smiles_a, smiles_b), dtype=float).reshape(
+        1, -1
+    )
     raw = float(reg.predict(feats)[0])
     _L5_COUNTERS["prediction_total"] += 1
     if raw < 0.0 or raw > 1.0:
@@ -380,9 +446,7 @@ def l5_metrics() -> Dict[str, object]:
         "counters": dict(_L5_COUNTERS),
         "train_r2_per_rule": dict(_L5_TRAIN_R2),
         "backend_per_rule": dict(_L5_BACKEND),
-        "citation_rows_per_rule": {
-            k: len(v) for k, v in _LIT_DOI.items()
-        },
+        "citation_rows_per_rule": {k: len(v) for k, v in _LIT_DOI.items()},
     }
 
 
@@ -447,4 +511,5 @@ try:
     export_literature_yields_csv()
 except Exception as _exc:  # pragma: no cover - env dependent
     import logging as _log
+
     _log.getLogger(__name__).debug("CSV export failed: %s", _exc)

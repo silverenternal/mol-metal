@@ -114,12 +114,12 @@ FG_COMPATIBILITY: Dict[str, Dict[str, List[str]]] = {
     # canonical literature scope per Kolb 2001).
     "CuAAC": {
         "tolerated": [
-            "[N:1]=[N:2]=[N:3]",            # azide handle
-            "[C:1]#[C:2]",                  # alkyne handle
-            "[CX3](=O)[OX2H1]",             # -COOH (benign at Cu(I))
-            "[CX3](=O)[OX2]",               # ester (benign)
-            "[NX3;H2,H1,H0]",                 # amines (stabilise Cu(I))
-            "[OX2H]",                       # -OH (benign)
+            "[N:1]=[N:2]=[N:3]",  # azide handle
+            "[C:1]#[C:2]",  # alkyne handle
+            "[CX3](=O)[OX2H1]",  # -COOH (benign at Cu(I))
+            "[CX3](=O)[OX2]",  # ester (benign)
+            "[NX3;H2,H1,H0]",  # amines (stabilise Cu(I))
+            "[OX2H]",  # -OH (benign)
         ],
         "disfavored": [
             # Free thiols (R-SH) attack Cu(I) and poison the click cycle.
@@ -139,7 +139,7 @@ FG_COMPATIBILITY: Dict[str, Dict[str, List[str]]] = {
             "[C:1]#[C:2]",
             "[CX3](=O)[OX2H1]",
             "[CX3](=O)[OX2]",
-            "[SX2H]",                       # thiols tolerated (no Cu)
+            "[SX2H]",  # thiols tolerated (no Cu)
             "[OX2H]",
         ],
         "disfavored": [
@@ -172,7 +172,7 @@ FG_COMPATIBILITY: Dict[str, Dict[str, List[str]]] = {
     # amines but the canonical scope is permissive.
     "DielsAlder": {
         "tolerated": [
-            "[CX3]=[CX3]",                  # C=C double bond
+            "[CX3]=[CX3]",  # C=C double bond
             "[OX2H]",
             "[CX3](=O)[OX2H1]",
             "[CX3](=O)[OX2]",
@@ -214,8 +214,8 @@ FG_COMPATIBILITY: Dict[str, Dict[str, List[str]]] = {
     # see Miyaura 1995).
     "Suzuki": {
         "tolerated": [
-            "[#6][B]",                      # aryl- or alkyl-boron
-            "[#6][F,Cl,Br,I]",              # aryl- or alkyl-halide
+            "[#6][B]",  # aryl- or alkyl-boron
+            "[#6][F,Cl,Br,I]",  # aryl- or alkyl-halide
             "[CX3](=O)[OX2H1]",
             "[CX3](=O)[OX2]",
             "[OX2H]",
@@ -234,8 +234,8 @@ FG_COMPATIBILITY: Dict[str, Dict[str, List[str]]] = {
     # rules.
     "AmideCoupling": {
         "tolerated": [
-            "[CX3](=O)[OX2H1]",             # -COOH (the acid)
-            "[NX3;H2]",                     # -NH2 (the amine)
+            "[CX3](=O)[OX2H1]",  # -COOH (the acid)
+            "[NX3;H2]",  # -NH2 (the amine)
             "[CX3](=O)[OX2]",
             "[OX2H]",
         ],
@@ -259,7 +259,7 @@ FG_COMPATIBILITY: Dict[str, Dict[str, List[str]]] = {
             "[Pt][Cl]",
             "[Pd][Cl]",
             "[Au][Cl]",
-            "[NX3;H2,H1,H0]",                 # the incoming 2e-donor N
+            "[NX3;H2,H1,H0]",  # the incoming 2e-donor N
         ],
         "disfavored": [
             # Thiols + carboxylates bind Pt_II tightly, displacing the
@@ -290,15 +290,22 @@ FG_COMPATIBILITY: Dict[str, Dict[str, List[str]]] = {
 
 # Canonical rule names in display order (used by the audit report).
 FG_COMPAT_RULE_NAMES: Tuple[str, ...] = (
-    "CuAAC", "SPC", "DielsAlder", "ThiolEne", "SPAAC",
-    "Suzuki", "AmideCoupling",
-    "MetalLigandExchange", "AquaExchange",
+    "CuAAC",
+    "SPC",
+    "DielsAlder",
+    "ThiolEne",
+    "SPAAC",
+    "Suzuki",
+    "AmideCoupling",
+    "MetalLigandExchange",
+    "AquaExchange",
 )
 
 
 # ---------------------------------------------------------------------------
 # Low-level SMARTS matcher (CPU-only, RDKit).
 # ---------------------------------------------------------------------------
+
 
 def _match_any(smiles: str, smarts_list: List[str]) -> List[str]:
     """Return the list of SMARTS in ``smarts_list`` that match ``smiles``.
@@ -460,9 +467,7 @@ def vet_smiles_against_rule(
     bool
         ``True`` = allow the reduction to proceed.  ``False`` = veto.
     """
-    ok, _, _ = check_fg_compatibility(
-        smiles, reaction_name, strict=strict
-    )
+    ok, _, _ = check_fg_compatibility(smiles, reaction_name, strict=strict)
     return ok
 
 

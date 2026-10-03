@@ -16,6 +16,7 @@ Cold-path contract (per WF-Deflex phase1_design.md §4):
   hot loops; the HOF swap is purely a refactor of the mass-balance
   audit path that runs at rule instantiation time.
 """
+
 from __future__ import annotations
 
 import random
@@ -273,7 +274,9 @@ def _make_diff_fixture(
 def test_diff_counts_equivalence() -> None:
     """HOF vs imperative ``_diff_counts`` match bit-for-bit on 100 random
     (reactants, products) fixture pairs."""
-    failures: List[Tuple[int, List[str], List[str], Dict[str, int], Dict[str, int]]] = []
+    failures: List[
+        Tuple[int, List[str], List[str], Dict[str, int], Dict[str, int]]
+    ] = []
     for seed in range(100):
         reactants, products = _make_diff_fixture(seed)
         # Skip if either side has a non-parseable SMILES that both
@@ -399,6 +402,7 @@ def test_cold_swap_beta_reductions_module_imports() -> None:
     old function body + the new import) would break module load.
     """
     import molmetal_lam.reactions.beta_reductions as br
+
     # _count_heavy_atoms and _diff_counts must be callable on the module.
     assert callable(br._count_heavy_atoms)
     assert callable(br._diff_counts)

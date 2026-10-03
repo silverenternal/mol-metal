@@ -26,6 +26,7 @@ Wf-285) confirm that the regression is in the parent pipeline's
 schema-extraction layer, NOT in the underlying work products -- so a
 wrapper-level detector is the right place to fix it.
 """
+
 from __future__ import annotations
 
 import json

@@ -62,6 +62,7 @@ References
   algorithm that masters chess, shogi, and Go through self-play".
   *Science* 362, 1140-1144.  §3 (AlphaZero).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -473,90 +474,125 @@ def _build_argparser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
-        "--smoke", action="store_true",
+        "--smoke",
+        action="store_true",
         help="Smoke harness: synthetic 32-entry buffer × 5 steps × batch 8.",
     )
     parser.add_argument(
-        "--smoke-platinai", action="store_true",
+        "--smoke-platinai",
+        action="store_true",
         help="PlatinAI 4-cell smoke: real labelled pIC50 as a "
-             "single-arm replay buffer (mcf7 by default).",
+        "single-arm replay buffer (mcf7 by default).",
     )
     parser.add_argument(
-        "--replay-buffer", type=str, default=None,
+        "--replay-buffer",
+        type=str,
+        default=None,
         help="Path to a replay buffer file (.pkl / .jsonl).",
     )
     parser.add_argument(
-        "--n-steps", type=int, default=5,
+        "--n-steps",
+        type=int,
+        default=5,
         help="Number of training steps (default 5).",
     )
     parser.add_argument(
-        "--batch-size", type=int, default=32,
+        "--batch-size",
+        type=int,
+        default=32,
         help="Mini-batch size (default 32).",
     )
     parser.add_argument(
-        "--lr", type=float, default=DEFAULT_LR,
+        "--lr",
+        type=float,
+        default=DEFAULT_LR,
         help=f"Learning rate (default {DEFAULT_LR}).",
     )
     parser.add_argument(
-        "--feature-dim", type=int, default=DEFAULT_FEATURE_DIM,
+        "--feature-dim",
+        type=int,
+        default=DEFAULT_FEATURE_DIM,
         help=f"Feature dimensionality (default {DEFAULT_FEATURE_DIM}).",
     )
     parser.add_argument(
-        "--n-actions", type=int, default=DEFAULT_N_ACTIONS,
+        "--n-actions",
+        type=int,
+        default=DEFAULT_N_ACTIONS,
         help=f"Policy-head output dim (default {DEFAULT_N_ACTIONS}).",
     )
     parser.add_argument(
-        "--weight-decay", type=float, default=DEFAULT_WEIGHT_DECAY,
+        "--weight-decay",
+        type=float,
+        default=DEFAULT_WEIGHT_DECAY,
         help=f"L2 weight decay (default {DEFAULT_WEIGHT_DECAY}).",
     )
     parser.add_argument(
-        "--value-loss-weight", type=float, default=DEFAULT_VALUE_LOSS_WEIGHT,
+        "--value-loss-weight",
+        type=float,
+        default=DEFAULT_VALUE_LOSS_WEIGHT,
         help=f"Composite-loss weight on the value term (default "
-             f"{DEFAULT_VALUE_LOSS_WEIGHT}).",
+        f"{DEFAULT_VALUE_LOSS_WEIGHT}).",
     )
     parser.add_argument(
-        "--value-clip", type=float, default=DEFAULT_VALUE_CLIP,
+        "--value-clip",
+        type=float,
+        default=DEFAULT_VALUE_CLIP,
         help=f"Clip the target value to ±value-clip (default "
-             f"{DEFAULT_VALUE_CLIP}).",
+        f"{DEFAULT_VALUE_CLIP}).",
     )
     parser.add_argument(
-        "--baseline", choices=("value_head", "mean_batch", "none"),
+        "--baseline",
+        choices=("value_head", "mean_batch", "none"),
         default="value_head",
         help="Advantage baseline mode (default value_head).",
     )
     parser.add_argument(
-        "--seed", type=int, default=0,
+        "--seed",
+        type=int,
+        default=0,
         help="RNG seed (default 0).",
     )
     parser.add_argument(
-        "--synth-entries", type=int, default=64,
+        "--synth-entries",
+        type=int,
+        default=64,
         help="Synthetic fixture entries when no replay file is given.",
     )
     parser.add_argument(
-        "--synth-states", type=int, default=8,
+        "--synth-states",
+        type=int,
+        default=8,
         help="Synthetic fixture states when no replay file is given.",
     )
     parser.add_argument(
-        "--platinai-csv", type=str, default=None,
-        help=f"Path to PlatinAI 4-cell CSV (default "
-             f"{DEFAULT_PLATINAI_CSV}).",
+        "--platinai-csv",
+        type=str,
+        default=None,
+        help=f"Path to PlatinAI 4-cell CSV (default " f"{DEFAULT_PLATINAI_CSV}).",
     )
     parser.add_argument(
-        "--cell-line", type=str, default=DEFAULT_CELL_LINE,
+        "--cell-line",
+        type=str,
+        default=DEFAULT_CELL_LINE,
         choices=sorted(PLATINAI_CELL_COLS),
         help=f"PlatinAI cell line for --smoke-platinai (default "
-             f"{DEFAULT_CELL_LINE}).",
+        f"{DEFAULT_CELL_LINE}).",
     )
     parser.add_argument(
-        "--platinai-n-max", type=int, default=256,
+        "--platinai-n-max",
+        type=int,
+        default=256,
         help="Cap on PlatinAI rows loaded into the buffer (default 256).",
     )
     parser.add_argument(
-        "--out-dir", type=str, default=str(DEFAULT_OUT_DIR),
+        "--out-dir",
+        type=str,
+        default=str(DEFAULT_OUT_DIR),
         help=f"Output directory (default {DEFAULT_OUT_DIR}).",
     )
     parser.add_argument(
-        "--json", action="store_true",
+        "--json",
+        action="store_true",
         help="Emit the full report as a single JSON line on stdout.",
     )
     return parser

@@ -120,7 +120,9 @@ class TestClosureBoundedSmilesGeneration:
     @pytest.mark.parametrize("pid", list(SUPPORTED_POCKETS))
     def test_pocket_returns_bounded_result(self, pid):
         r = closure_bounded_smiles_generation(
-            pocket_id=pid, n=10, max_depth=2,
+            pocket_id=pid,
+            n=10,
+            max_depth=2,
             max_products=80,
         )
         assert isinstance(r, BoundedGenerationResult)
@@ -138,7 +140,9 @@ class TestClosureBoundedSmilesGeneration:
 
     def test_unknown_pocket_returns_empty(self):
         r = closure_bounded_smiles_generation(
-            pocket_id="XXXX", n=10, max_depth=2,
+            pocket_id="XXXX",
+            n=10,
+            max_depth=2,
         )
         assert r.n_seeds == 0
         assert r.n_candidates_kept == 0
@@ -147,7 +151,9 @@ class TestClosureBoundedSmilesGeneration:
     def test_invalid_n_zero(self):
         # Should NOT raise — n is just a cap; with n=0, we cap at 0.
         r = closure_bounded_smiles_generation(
-            pocket_id="1h36", n=0, max_depth=2,
+            pocket_id="1h36",
+            n=0,
+            max_depth=2,
         )
         # n=0 means we cap at 0 candidates; the BFS may still emit
         # raw candidates but the cap triggers immediately after one
@@ -175,7 +181,9 @@ class TestClosureOversample:
         # defaults (which may not have the metal scaffold pool).
         # We just verify the function returns a dict (not raises).
         d = closure_oversample(
-            "unbiased", n=10, per_scaffold_cap=2,
+            "unbiased",
+            n=10,
+            per_scaffold_cap=2,
             seed_scaffolds=("CCO",),
         )
         assert isinstance(d, dict)
@@ -255,29 +263,46 @@ class TestAggregateRecords:
 
     def test_nan_filtering(self):
         from bench_sa_closure_bias import CohortRecord  # type: ignore
+
         mod = _import_bench_module()
         records = [
             CohortRecord(
-                cohort_label="x", pocket_id="x", seed=0,
-                n_requested=10, n_emitted_raw=10, n_kept=10,
-                catherine_pass_rate=1.0, sa_mean=2.5,
-                sa_median=2.5, sa_std=0.1, sa_min=2.0,
-                sa_max=3.0, n_valid_sa=10,
+                cohort_label="x",
+                pocket_id="x",
+                seed=0,
+                n_requested=10,
+                n_emitted_raw=10,
+                n_kept=10,
+                catherine_pass_rate=1.0,
+                sa_mean=2.5,
+                sa_median=2.5,
+                sa_std=0.1,
+                sa_min=2.0,
+                sa_max=3.0,
+                n_valid_sa=10,
                 aizynth_synthesizable_rate=0.5,
                 aizynth_engine_breakdown={"smarts_fallback": 10},
-                per_compound=[], wall_time_s=1.0,
+                per_compound=[],
+                wall_time_s=1.0,
             ),
             CohortRecord(
-                cohort_label="x", pocket_id="x", seed=1,
-                n_requested=10, n_emitted_raw=10, n_kept=10,
+                cohort_label="x",
+                pocket_id="x",
+                seed=1,
+                n_requested=10,
+                n_emitted_raw=10,
+                n_kept=10,
                 catherine_pass_rate=1.0,
                 sa_mean=float("nan"),  # NaN
-                sa_median=float("nan"), sa_std=float("nan"),
-                sa_min=float("nan"), sa_max=float("nan"),
+                sa_median=float("nan"),
+                sa_std=float("nan"),
+                sa_min=float("nan"),
+                sa_max=float("nan"),
                 n_valid_sa=0,
                 aizynth_synthesizable_rate=0.5,
                 aizynth_engine_breakdown={"smarts_fallback": 10},
-                per_compound=[], wall_time_s=1.0,
+                per_compound=[],
+                wall_time_s=1.0,
             ),
         ]
         agg = mod._aggregate_records(records)
@@ -295,10 +320,12 @@ class TestAggregateRecords:
 class TestMergeEngineBreakdowns:
     def test_merge_two(self):
         mod = _import_bench_module()
-        merged = mod._merge_engine_breakdowns([
-            {"aizynthfinder": 2, "smarts_fallback": 3},
-            {"aizynthfinder": 1, "smarts_fallback": 5},
-        ])
+        merged = mod._merge_engine_breakdowns(
+            [
+                {"aizynthfinder": 2, "smarts_fallback": 3},
+                {"aizynthfinder": 1, "smarts_fallback": 5},
+            ]
+        )
         assert merged == {"aizynthfinder": 3, "smarts_fallback": 8}
 
     def test_merge_empty(self):
@@ -323,11 +350,16 @@ class TestBenchScriptCLI:
 
         argv = [
             "prog",
-            "--cohort", "closure_bounded",
-            "--pocket", "1h36",
-            "--cohort-size", "5",
-            "--seeds", "0",
-            "--out-dir", str(out_dir),
+            "--cohort",
+            "closure_bounded",
+            "--pocket",
+            "1h36",
+            "--cohort-size",
+            "5",
+            "--seeds",
+            "0",
+            "--out-dir",
+            str(out_dir),
             "--quiet",
         ]
         saved = sys.argv
@@ -349,9 +381,16 @@ class TestBenchScriptCLI:
         mod = _import_bench_module()
         bench_main = mod.main
         argv = [
-            "prog", "--cohort", "closure_bounded",
-            "--cohort-size", "5", "--seeds", "0",
-            "--out-dir", str(tmp_path), "--quiet",
+            "prog",
+            "--cohort",
+            "closure_bounded",
+            "--cohort-size",
+            "5",
+            "--seeds",
+            "0",
+            "--out-dir",
+            str(tmp_path),
+            "--quiet",
         ]
         saved = sys.argv
         try:
@@ -367,9 +406,16 @@ class TestBenchScriptCLI:
         out_dir = tmp_path / "sa_unbiased"
         out_dir.mkdir()
         argv = [
-            "prog", "--cohort", "unbiased",
-            "--cohort-size", "5", "--seeds", "0",
-            "--out-dir", str(out_dir), "--quiet",
+            "prog",
+            "--cohort",
+            "unbiased",
+            "--cohort-size",
+            "5",
+            "--seeds",
+            "0",
+            "--out-dir",
+            str(out_dir),
+            "--quiet",
         ]
         saved = sys.argv
         try:

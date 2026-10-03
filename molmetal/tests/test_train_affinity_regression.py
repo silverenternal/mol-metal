@@ -71,7 +71,7 @@ def test_recipe_constants_match_brief() -> None:
     assert mod.RECIPE_HIDDEN == 128
     assert mod.RECIPE_DEPTH == 3
     assert mod.RECIPE_DROPOUT == 0.1
-    assert mod.RECIPE_ALPHA == 0.0      # regression-only (MSE on pIC50)
+    assert mod.RECIPE_ALPHA == 0.0  # regression-only (MSE on pIC50)
     assert mod.RECIPE_EVAL_EVERY == 5
 
 
@@ -79,7 +79,11 @@ def test_init_choices_include_r17_and_r18() -> None:
     """``--init`` choices mirror the R18 init contract."""
     mod = _import_module()
     assert mod.INIT_CHOICES == (
-        "tmqm", "random", "se3sb", "transport", "multiph",
+        "tmqm",
+        "random",
+        "se3sb",
+        "transport",
+        "multiph",
     )
 
 
@@ -162,18 +166,31 @@ def test_parse_args_rejects_unknown_init() -> None:
 def test_parse_args_cli_overrides() -> None:
     """User-provided CLI overrides are parsed correctly."""
     mod = _import_module()
-    args = mod.parse_args([
-        "--dataset", "hela48h",
-        "--epochs", "5",
-        "--batch", "16",
-        "--lr", "5e-4",
-        "--seeds", "0", "1",
-        "--hidden", "64",
-        "--depth", "2",
-        "--init", "se3sb",
-        "--cell-line", "MCF-7",
-        "--time-h", "24.0",
-    ])
+    args = mod.parse_args(
+        [
+            "--dataset",
+            "hela48h",
+            "--epochs",
+            "5",
+            "--batch",
+            "16",
+            "--lr",
+            "5e-4",
+            "--seeds",
+            "0",
+            "1",
+            "--hidden",
+            "64",
+            "--depth",
+            "2",
+            "--init",
+            "se3sb",
+            "--cell-line",
+            "MCF-7",
+            "--time-h",
+            "24.0",
+        ]
+    )
     assert args.dataset == "hela48h"
     assert args.epochs == 5
     assert args.batch == 16
@@ -237,6 +254,7 @@ def test_to_jsonable_handles_nan() -> None:
     """``_to_jsonable`` converts NaN → None and numpy → Python scalars."""
     mod = _import_module()
     import numpy as np
+
     obj = {
         "nan": float("nan"),
         "inf": float("inf"),
@@ -264,6 +282,7 @@ def test_platinai_dataset_shape() -> None:
     mod = _import_module()
     pytest.importorskip("rdkit")
     from pathlib import Path
+
     ds = mod.PlatinAIRegressionDataset.from_csv(
         _REPO_ROOT / "molmetal" / "data" / "platinai_4cell.csv"
     )
@@ -273,9 +292,7 @@ def test_platinai_dataset_shape() -> None:
     counts = ds.per_cell_line_valid_counts()
     # Each cell line should have ~4078 valid pIC50s (the CSV is dense).
     for line in mod.PLATINAI_CELL_LINES:
-        assert counts[line] >= 4000, (
-            f"too few valid pIC50s for {line}: {counts[line]}"
-        )
+        assert counts[line] >= 4000, f"too few valid pIC50s for {line}: {counts[line]}"
 
 
 @pytest.mark.skipif(
@@ -287,13 +304,14 @@ def test_platinai_pic50_value_range() -> None:
     mod = _import_module()
     pytest.importorskip("rdkit")
     import numpy as np
+
     ds = mod.PlatinAIRegressionDataset.from_csv(
         _REPO_ROOT / "molmetal" / "data" / "platinai_4cell.csv"
     )
     flat = ds.pic50[np.isfinite(ds.pic50)]
-    assert (flat >= 3.0).all() and (flat <= 9.0).all(), (
-        f"pIC50 out of range: min={flat.min()} max={flat.max()}"
-    )
+    assert (flat >= 3.0).all() and (
+        flat <= 9.0
+    ).all(), f"pIC50 out of range: min={flat.min()} max={flat.max()}"
 
 
 # ---------------------------------------------------------------------------
@@ -335,9 +353,7 @@ def test_cli_smoke_platinai_one_seed(tmp_path: Path) -> None:
     """CLI smoke: 1 seed, 1 epoch on platinai dataset — exits 0."""
     pytest.importorskip("torch")
     pytest.importorskip("rdkit")
-    venv_py = (
-        _REPO_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
-    )
+    venv_py = _REPO_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
     if not venv_py.exists():
         pytest.skip(f"venv missing at {venv_py}")
     metrics_path = tmp_path / "metrics.json"
@@ -346,20 +362,34 @@ def test_cli_smoke_platinai_one_seed(tmp_path: Path) -> None:
     cmd = [
         str(venv_py),
         str(_SCRIPT_DIR / "train_affinity_regression.py"),
-        "--dataset", "platinai",
-        "--seeds", "0",
-        "--epochs", "1",
-        "--batch", "16",
-        "--hidden", "32",
-        "--depth", "2",
-        "--eval-every", "1",
-        "--init", "random",
-        "--out-dir", str(out_dir),
-        "--metrics-path", str(metrics_path),
-        "--summary-path", str(summary_path),
+        "--dataset",
+        "platinai",
+        "--seeds",
+        "0",
+        "--epochs",
+        "1",
+        "--batch",
+        "16",
+        "--hidden",
+        "32",
+        "--depth",
+        "2",
+        "--eval-every",
+        "1",
+        "--init",
+        "random",
+        "--out-dir",
+        str(out_dir),
+        "--metrics-path",
+        str(metrics_path),
+        "--summary-path",
+        str(summary_path),
     ]
     result = subprocess.run(
-        cmd, capture_output=True, text=True, timeout=180,
+        cmd,
+        capture_output=True,
+        text=True,
+        timeout=180,
     )
     assert result.returncode == 0, (
         f"CLI exited {result.returncode}\n"
@@ -381,9 +411,7 @@ def test_aggregate_json_platinai_contract(tmp_path: Path) -> None:
     """Aggregate JSON has the Wf-32 contract keys (per_seed, headline, etc.)."""
     pytest.importorskip("torch")
     pytest.importorskip("rdkit")
-    venv_py = (
-        _REPO_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
-    )
+    venv_py = _REPO_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
     if not venv_py.exists():
         pytest.skip(f"venv missing at {venv_py}")
     metrics_path = tmp_path / "metrics.json"
@@ -392,17 +420,28 @@ def test_aggregate_json_platinai_contract(tmp_path: Path) -> None:
     cmd = [
         str(venv_py),
         str(_SCRIPT_DIR / "train_affinity_regression.py"),
-        "--dataset", "platinai",
-        "--seeds", "0",
-        "--epochs", "1",
-        "--batch", "16",
-        "--hidden", "32",
-        "--depth", "2",
-        "--eval-every", "1",
-        "--init", "random",
-        "--out-dir", str(out_dir),
-        "--metrics-path", str(metrics_path),
-        "--summary-path", str(summary_path),
+        "--dataset",
+        "platinai",
+        "--seeds",
+        "0",
+        "--epochs",
+        "1",
+        "--batch",
+        "16",
+        "--hidden",
+        "32",
+        "--depth",
+        "2",
+        "--eval-every",
+        "1",
+        "--init",
+        "random",
+        "--out-dir",
+        str(out_dir),
+        "--metrics-path",
+        str(metrics_path),
+        "--summary-path",
+        str(summary_path),
     ]
     subprocess.run(cmd, capture_output=True, text=True, timeout=180, check=True)
     payload = json.loads(metrics_path.read_text())

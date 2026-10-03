@@ -8,6 +8,7 @@ structured JSON.
 
 Wall-budget: <1 s CPU-only. 0 GPU launches.
 """
+
 from __future__ import annotations
 
 import json
@@ -37,6 +38,7 @@ REPORTS_DIR = _WF410A4_MOD.REPORTS_DIR
 
 
 # --- Tests -------------------------------------------------------------------
+
 
 def test_wf410a4_wave_alias_mapping_runs():
     """Wf-410-A4 NEW contract: --wave 1/2/3 alias mapping check."""
@@ -102,8 +104,8 @@ def test_wf410a4_full_chain_emits_json():
 
 def test_wf410a4_expected_cfm_flags_count():
     """Verify EXPECTED_CFM_FLAGS table has 16 flags (per Wf-385-A2 + Wf-392-A3)."""
-    assert len(EXPECTED_CFM_FLAGS) == 16, (
-        f"expected 16 Wf-388 flags, got {len(EXPECTED_CFM_FLAGS)}: {EXPECTED_CFM_FLAGS}"
-    )
+    assert (
+        len(EXPECTED_CFM_FLAGS) == 16
+    ), f"expected 16 Wf-388 flags, got {len(EXPECTED_CFM_FLAGS)}: {EXPECTED_CFM_FLAGS}"
     # Verify --flowmol-unified is intentionally excluded (LICENSE-GATED CC-BY-NC).
     assert "--flowmol-unified" not in EXPECTED_CFM_FLAGS

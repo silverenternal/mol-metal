@@ -60,9 +60,9 @@ class TestMetalloproteinCatalogue:
         """Every family exposes ≥ 3 PDB IDs (brief requires ≥ 3)."""
         for name, target in METALLOPROTEIN_TARGETS.items():
             n_pdbs = len(target.pdb_ids)
-            assert n_pdbs >= 3, (
-                f"{name} has only {n_pdbs} PDB IDs (need >= 3): {target.pdb_ids}"
-            )
+            assert (
+                n_pdbs >= 3
+            ), f"{name} has only {n_pdbs} PDB IDs (need >= 3): {target.pdb_ids}"
             # PDB IDs are 4-char uppercase alphanumeric
             for pdb in target.pdb_ids:
                 assert isinstance(pdb, str)
@@ -82,9 +82,9 @@ class TestMetalloproteinCatalogue:
         pdbs = combined_pdb_ids()
         assert isinstance(pdbs, list)
         assert len(pdbs) == len(set(pdbs)), "combined_pdb_ids contains duplicates"
-        assert len(pdbs) >= 40, (
-            f"Expected >= 40 PDB IDs across 8 families (rough sanity), got {len(pdbs)}"
-        )
+        assert (
+            len(pdbs) >= 40
+        ), f"Expected >= 40 PDB IDs across 8 families (rough sanity), got {len(pdbs)}"
 
     def test_metal_partition(self) -> None:
         """families_by_metal returns the expected partitions."""
@@ -148,7 +148,10 @@ class TestMetalloproteinFamilyShape:
         assert target.ec_number
         assert target.metal in ("Zn", "Mg", "Fe", "Cu")
         assert target.coordination in (
-            "tetrahedral", "octahedral", "trigonal bipyramidal", "square planar"
+            "tetrahedral",
+            "octahedral",
+            "trigonal bipyramidal",
+            "square planar",
         )
         # PDB IDs are consistent: each appears in both binding_site_residues
         # and zn_triad_resnums
@@ -157,7 +160,9 @@ class TestMetalloproteinFamilyShape:
             assert pdb in target.zn_triad_resnums
         # Each binding_site_residues entry has 6-8 resnums
         for pdb, residues in target.binding_site_residues.items():
-            assert len(residues) >= 6, f"{target.name}/{pdb} has {len(residues)} residues"
+            assert (
+                len(residues) >= 6
+            ), f"{target.name}/{pdb} has {len(residues)} residues"
         # Each zn_triad_resnums entry has 3 (chain, resnum) pairs
         for pdb, triad in target.zn_triad_resnums.items():
             assert len(triad) == 3, f"{target.name}/{pdb} triad length != 3"

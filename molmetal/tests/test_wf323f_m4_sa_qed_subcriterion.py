@@ -30,6 +30,7 @@ Honest framing (party-twenty-spirit §3.5):
   the rest of the panel — no fabricated readings, no hand-rolled
   constants.
 """
+
 from __future__ import annotations
 
 import json
@@ -76,7 +77,7 @@ pytestmark_rdkit = pytest.mark.skipif(
 
 
 @pytest.mark.skipif(not _WF323F_AVAILABLE, reason="wf323f import failed")
-@ pytestmark_rdkit
+@pytestmark_rdkit
 def test_wf323f_compute_sub_rate_function_correctness(tmp_path):
     """compute_sub_rate() returns the canonical schema with valid SA/QED.
 
@@ -91,7 +92,7 @@ def test_wf323f_compute_sub_rate_function_correctness(tmp_path):
     csv_path.write_text(
         "smiles\n"
         "CC(=O)Oc1ccccc1C(=O)O\n"  # aspirin
-        "CCO\n"                      # ethanol
+        "CCO\n"  # ethanol
         "c1ccc2c(c1)ccc1ccccc12\n",  # phenanthrene (3 fused rings)
         encoding="utf-8",
     )
@@ -107,10 +108,14 @@ def test_wf323f_compute_sub_rate_function_correctness(tmp_path):
     distribution = result["per_pool_distribution"]
     assert isinstance(distribution, dict)
     assert set(distribution.keys()) == {
-        "sa_bucket_lt_2_8", "sa_bucket_2_8_to_4",
-        "sa_bucket_4_to_6", "sa_bucket_6_plus",
-        "qed_bucket_lt_0_25", "qed_bucket_0_25_to_0_5",
-        "qed_bucket_0_5_to_0_75", "qed_bucket_0_75_plus",
+        "sa_bucket_lt_2_8",
+        "sa_bucket_2_8_to_4",
+        "sa_bucket_4_to_6",
+        "sa_bucket_6_plus",
+        "qed_bucket_lt_0_25",
+        "qed_bucket_0_25_to_0_5",
+        "qed_bucket_0_5_to_0_75",
+        "qed_bucket_0_75_plus",
     }
     # Sanity: bucket counts sum to n_parsed for SA side AND QED side.
     sa_total = sum(v for k, v in distribution.items() if k.startswith("sa_"))
@@ -191,8 +196,7 @@ def test_wf323f_report_json_contract():
     assert 0.0 <= data["sub_rate_qed_only"] <= 1.0
     # The MEASURED cohort sub-rate is 1/449 = ~0.0022.
     assert abs(data["sub_rate_sa_qed"] - 1.0 / 449.0) < 1e-3, (
-        f"sub_rate_sa_qed={data['sub_rate_sa_qed']:.4f} "
-        f"expected ~{1.0 / 449.0:.4f}"
+        f"sub_rate_sa_qed={data['sub_rate_sa_qed']:.4f} " f"expected ~{1.0 / 449.0:.4f}"
     )
     # per_pool_distribution: 8 buckets with sane counts.
     distribution = data["per_pool_distribution"]
@@ -228,8 +232,7 @@ def test_wf323f_p3_m4_sa_qed_subcriterion_gate_defined():
     """
     text = PRE_FLIGHT_SCRIPT.read_text()
     assert '"p3_m4_sa_qed_subcriterion_documented"' in text, (
-        "p3_m4_sa_qed_subcriterion_documented gate not found in "
-        "pre_flight_check.py"
+        "p3_m4_sa_qed_subcriterion_documented gate not found in " "pre_flight_check.py"
     )
     # Confirm the gate references the Wf-323F artefact paths.
     assert "wf323f_m4_sa_qed_subcriterion" in text
@@ -259,18 +262,16 @@ def test_wf323f_expected_gate_counts_bumped():
     text = PRE_FLIGHT_SCRIPT.read_text()
     # Read the EXPECTED_GATE_COUNTS dict via simple text match.
     assert '"all": 57' in text, "EXPECTED_GATE_COUNTS['all'] should be 57 (was 56)"
-    assert '"frontier": 24' in text, (
-        "EXPECTED_GATE_COUNTS['frontier'] should be 24 (was 23)"
-    )
+    assert (
+        '"frontier": 24' in text
+    ), "EXPECTED_GATE_COUNTS['frontier'] should be 24 (was 23)"
 
 
 # ---------------------------------------------------------------------------
 # 6. WEAK_TO_STRONG §2.4 integration — TODO closeout doc on disk
 # ---------------------------------------------------------------------------
 
-WF323F_TODO_DOC = (
-    REPO_ROOT / "TODO" / "completed" / "323f_m4_sa_qed_subcriterion.md"
-)
+WF323F_TODO_DOC = REPO_ROOT / "TODO" / "completed" / "323f_m4_sa_qed_subcriterion.md"
 
 
 @pytest.mark.skipif(

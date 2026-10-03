@@ -58,6 +58,7 @@ class TestM1MasterWasserstein:
             MasterWassersteinGradientFlow,
             MasterWassersteinConfig,
         )
+
         assert MasterWassersteinGradientFlow is not None
         assert MasterWassersteinConfig is not None
 
@@ -68,6 +69,7 @@ class TestM1MasterWasserstein:
             MasterWassersteinGradientFlow,
             MasterWassersteinConfig,
         )
+
         cfg = MasterWassersteinConfig(n_mc=8)
         m1 = MasterWassersteinGradientFlow(cfg)
         v_pred = torch.randn(64, 3)
@@ -91,6 +93,7 @@ class TestM2MasterCatherine:
             MasterCatherineClosureBias,
             MasterCatherineBiasResult,
         )
+
         assert MasterCatherineClosureBias is not None
         assert MasterCatherineBiasResult is not None
 
@@ -99,6 +102,7 @@ class TestM2MasterCatherine:
         from molmetal.molmetal_lam.reward.master_catherine_closure_bias import (
             MasterCatherineClosureBias,
         )
+
         m2 = MasterCatherineClosureBias()
         payload = {
             "term_id": "t1",
@@ -119,10 +123,7 @@ class TestM2MasterCatherine:
 class TestCFMDriverWiresM1M2:
     def test_wf124_p2_engine_tags_present(self):
         """Wf-124 P2 per_epoch_metrics.json carries the 3 engine tags."""
-        path = (
-            Path(_REPO)
-            / "molmetal/reports/wf124_p2_cfm_full/per_epoch_metrics.json"
-        )
+        path = Path(_REPO) / "molmetal/reports/wf124_p2_cfm_full/per_epoch_metrics.json"
         if not path.exists():
             pytest.skip("Wf-124 P2 per_epoch_metrics.json not found")
         with open(path, "r", encoding="utf-8") as fh:
@@ -134,10 +135,7 @@ class TestCFMDriverWiresM1M2:
 
     def test_wf124_p2_synthesis_references_master_modules(self):
         """Wf-124 P2 synthesis.md cites M1 + M2 master facades."""
-        path = (
-            Path(_REPO)
-            / "molmetal/reports/wf124_p2_cfm_full/synthesis.md"
-        )
+        path = Path(_REPO) / "molmetal/reports/wf124_p2_cfm_full/synthesis.md"
         if not path.exists():
             pytest.skip("Wf-124 P2 synthesis.md not found")
         text = path.read_text(encoding="utf-8")
@@ -153,13 +151,11 @@ class TestChempropDriverWiresM1M2:
     def test_wf250_use_master_wass_flag_in_driver(self):
         """``train_chemprop_v2_v3.py`` exposes ``--use-master-wass`` flag."""
         import subprocess
+
         proc = subprocess.run(
             [
                 "/home/hugo/codes/mol-metal/.venv/bin/python",
-                str(
-                    Path(_REPO)
-                    / "molmetal/scripts/train_chemprop_v2_v3.py"
-                ),
+                str(Path(_REPO) / "molmetal/scripts/train_chemprop_v2_v3.py"),
                 "--help",
             ],
             capture_output=True,
@@ -173,6 +169,7 @@ class TestChempropDriverWiresM1M2:
     def test_wf250_master_module_imports(self):
         """The chemprop driver imports the master facades (per Wf-250-Apply)."""
         from molmetal.scripts import train_chemprop_v2_v3 as driver
+
         assert hasattr(driver, "_HAVE_MASTER_WASS")
         assert hasattr(driver, "_HAVE_MASTER_CATH")
         assert driver._HAVE_MASTER_WASS is True

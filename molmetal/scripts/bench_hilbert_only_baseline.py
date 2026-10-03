@@ -71,6 +71,7 @@ Pytest
 
     pytest molmetal/tests/test_hilbert_only_baseline.py -v
 """
+
 from __future__ import annotations
 
 import argparse
@@ -159,7 +160,9 @@ class DatasetSpec:
     n_max: int = 10000
 
 
-def _load_dataset(spec: DatasetSpec) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List[str]]:
+def _load_dataset(
+    spec: DatasetSpec,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List[str]]:
     """Return ``(X, Y, cohort_idx, cohort_names)``.
 
     ``X`` is (n_samples, 8) float32; rows with failed SMILES are dropped.
@@ -457,7 +460,8 @@ def _evaluate_dataset(
                         "n_test": int(len(te)),
                         "r2": float(r2),
                         "collapse_detected": bool(collapse),
-                        "wall_s": float(time.perf_counter() - t0) / max(fold_idx + 1, 1)
+                        "wall_s": float(time.perf_counter() - t0)
+                        / max(fold_idx + 1, 1)
                         / max(t_idx + 1, 1),
                     }
                 )
@@ -478,8 +482,7 @@ def _evaluate_dataset(
             np.asarray(all_y_pred, dtype=np.float64),
         )
         per_target_mean = {
-            t: float(np.mean(v)) if v else 0.0
-            for t, v in fold_r2_per_target.items()
+            t: float(np.mean(v)) if v else 0.0 for t, v in fold_r2_per_target.items()
         }
         per_target_std = {
             t: float(np.std(v)) if len(v) > 1 else 0.0
@@ -564,11 +567,15 @@ def _write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     lines: List[str] = ["# Wf-77 Phase 1 — Hilbert-only R² baseline synthesis", ""]
     lines.append("**Date**: 2026-09-26")
-    lines.append("**Constraint**: Hilbert-only (no ASTSR, no Multi-PH); per party-twenty-spirit §3.5.")
+    lines.append(
+        "**Constraint**: Hilbert-only (no ASTSR, no Multi-PH); per party-twenty-spirit §3.5."
+    )
     lines.append("")
     lines.append("## Cross-dataset summary")
     lines.append("")
-    lines.append("| Dataset | n_samples | overall R² mean ± std | per-target (mean ± std) | collapse? |")
+    lines.append(
+        "| Dataset | n_samples | overall R² mean ± std | per-target (mean ± std) | collapse? |"
+    )
     lines.append("|---|---:|---|---|---|")
     for r in all_results:
         pt_parts = []
@@ -590,14 +597,26 @@ def _write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
     lines.append("")
     lines.append("## Notes")
     lines.append("")
-    lines.append("- **ANCHOR role**: this Hilbert-only R² is the Wf-56 R20-P2 baseline.  Any")
-    lines.append("  composite R² lift on the same data is attributed to ASTSR / Multi-PH /")
+    lines.append(
+        "- **ANCHOR role**: this Hilbert-only R² is the Wf-56 R20-P2 baseline.  Any"
+    )
+    lines.append(
+        "  composite R² lift on the same data is attributed to ASTSR / Multi-PH /"
+    )
     lines.append("  Dual-Init rather than to the Hilbert regressor itself.")
-    lines.append("- **Negative R² is not a failure mode** for this script — it is the literal")
-    lines.append("  anchor.  If `overall R² < 0` consistently across 5 seeds, the composite")
+    lines.append(
+        "- **Negative R² is not a failure mode** for this script — it is the literal"
+    )
+    lines.append(
+        "  anchor.  If `overall R² < 0` consistently across 5 seeds, the composite"
+    )
     lines.append("  stack must lift *above* this number to claim any attribution.")
-    lines.append("- **GPU path**: `--device cuda` is accepted for symmetry; the current")
-    lines.append("  `LambdaASTSRHilbert` runs CPU fp32 with optional fp64 fallback.  No")
+    lines.append(
+        "- **GPU path**: `--device cuda` is accepted for symmetry; the current"
+    )
+    lines.append(
+        "  `LambdaASTSRHilbert` runs CPU fp32 with optional fp64 fallback.  No"
+    )
     lines.append("  Blackwell acceleration is required for Wf-77 P1.")
     lines.append("")
     lines.append("## Per-seed R² detail")

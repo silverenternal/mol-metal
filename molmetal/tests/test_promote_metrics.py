@@ -37,6 +37,7 @@ Verifies the ``promote_metrics.py`` script:
 
 All tests run on CPU in <5s — no GPU, no RDKit, no metric fabrication.
 """
+
 from __future__ import annotations
 
 import json
@@ -120,9 +121,9 @@ def test_promote_runs() -> None:
 def test_promote_at_least_5_new_files() -> None:
     """Wf-87 P2 verify gate: ≥5 NEW central metric files promoted."""
     log = _load_log()
-    assert log["promoted_count"] >= 5, (
-        f"expected ≥5 promoted, got {log['promoted_count']}"
-    )
+    assert (
+        log["promoted_count"] >= 5
+    ), f"expected ≥5 promoted, got {log['promoted_count']}"
     assert len(log["new_files"]) >= 5, log["new_files"]
 
 
@@ -146,13 +147,13 @@ def test_promote_existing_target_preserved() -> None:
     assert result.returncode == 0, result.stderr
     log_second = _load_log()
     collision_targets = {c["target"] for c in log_second["collisions"]}
-    assert target in collision_targets, (
-        f"Expected collision on {target} on second run; got {log_second['collisions']}"
-    )
+    assert (
+        target in collision_targets
+    ), f"Expected collision on {target} on second run; got {log_second['collisions']}"
     # The file on disk should be unchanged in size (no overwrite).
-    assert (PROJECT_ROOT / target).stat().st_size == original_size, (
-        f"{target} was overwritten without --force"
-    )
+    assert (
+        PROJECT_ROOT / target
+    ).stat().st_size == original_size, f"{target} was overwritten without --force"
 
 
 # ---------------------------------------------------------------------------
@@ -212,12 +213,10 @@ def test_promote_metalcytotox_5metal_r2_promoted() -> None:
         assert isinstance(entry["combined_r2_mean"], (int, float)), entry
         assert entry["n_seeds"] == 5, entry
     # Aggregate should be the mean of the 5 metal means.
-    expected = sum(
-        e["combined_r2_mean"] for e in data["per_metal"].values()
-    ) / 5.0
-    assert abs(data["aggregate_combined_r2_mean"] - expected) < 1e-9, (
-        f"aggregate {data['aggregate_combined_r2_mean']} != mean {expected}"
-    )
+    expected = sum(e["combined_r2_mean"] for e in data["per_metal"].values()) / 5.0
+    assert (
+        abs(data["aggregate_combined_r2_mean"] - expected) < 1e-9
+    ), f"aggregate {data['aggregate_combined_r2_mean']} != mean {expected}"
 
 
 def test_promote_tmqm_combined_r2_promoted() -> None:
@@ -246,9 +245,9 @@ def test_promote_platinai_combined_r2_promoted() -> None:
     # Wf-77 baseline ASTSR value should match the source JSON
     # (wf77_p2_astr_baseline/platinai_4cell/per_seed_metrics.json
     #  overall_r2_mean = -0.4027960052271771).
-    assert abs(data["baseline_astr_r2_mean"] - (-0.4027960052271771)) < 1e-9, (
-        data["baseline_astr_r2_mean"]
-    )
+    assert abs(data["baseline_astr_r2_mean"] - (-0.4027960052271771)) < 1e-9, data[
+        "baseline_astr_r2_mean"
+    ]
     # n_methods should be 3 (hilbert baseline + astr baseline + 3-way pll).
     assert data["n_methods"] == 3, data["n_methods"]
 
@@ -259,9 +258,9 @@ def test_promote_ood_per_metal_promoted() -> None:
     assert data["metric"] == "ood_per_metal_reachability"
     assert data["status"] == "MEASURED", data["status"]
     assert data["n_metals"] == 5
-    assert set(data["per_metal"].keys()) == {"Ru", "Ir", "Os", "Rh", "Re"}, (
-        data["per_metal"].keys()
-    )
+    assert set(data["per_metal"].keys()) == {"Ru", "Ir", "Os", "Rh", "Re"}, data[
+        "per_metal"
+    ].keys()
     # Each metal row carries ood_pass_rate (0-1) + n_samples.
     for metal, row in data["per_metal"].items():
         assert 0.0 <= row["ood_pass_rate"] <= 1.0, (metal, row)
@@ -275,9 +274,9 @@ def test_promote_ood_per_element_promoted() -> None:
     assert data["status"] == "MEASURED", data["status"]
     assert data["gate_threshold"] == 0.4, data["gate_threshold"]
     assert data["n_elements"] == 5
-    assert set(data["per_element"].keys()) == {"Co", "Ni", "Cu", "Au", "Hg"}, (
-        data["per_element"].keys()
-    )
+    assert set(data["per_element"].keys()) == {"Co", "Ni", "Cu", "Au", "Hg"}, data[
+        "per_element"
+    ].keys()
     for elem, row in data["per_element"].items():
         assert 0.0 <= row["ood_pass_rate"] <= 1.0, (elem, row)
         # gate_pass is a boolean derived from ood_pass_rate vs gate.
@@ -339,9 +338,7 @@ def test_promote_honest_framing_in_promoted_files() -> None:
     for relpath in existing:
         data = _load_metric(relpath)
         assert "status" in data, f"{relpath} missing status"
-        assert "honest_framing_note" in data, (
-            f"{relpath} missing honest_framing_note"
-        )
+        assert "honest_framing_note" in data, f"{relpath} missing honest_framing_note"
 
 
 def test_promote_no_projected_in_central() -> None:
@@ -354,9 +351,9 @@ def test_promote_no_projected_in_central() -> None:
         # Allow "PROJECTED" inside honest_framing_note strings only.
         # We don't expect any since we only promote MEASURED-on-disk files.
         # A real PROJECTED token would appear as '"status": "PROJECTED"'.
-        assert '"status": "PROJECTED"' not in text, (
-            f"{relpath} leaks a PROJECTED status into central metrics"
-        )
+        assert (
+            '"status": "PROJECTED"' not in text
+        ), f"{relpath} leaks a PROJECTED status into central metrics"
 
 
 def test_promote_promotion_log_present() -> None:
@@ -397,9 +394,7 @@ def test_promote_dry_run_does_not_write() -> None:
     assert result.returncode == 0, result.stderr
 
     post_text = p.read_text(encoding="utf-8")
-    assert pre_text == post_text, (
-        f"--dry-run modified {sample}"
-    )
+    assert pre_text == post_text, f"--dry-run modified {sample}"
 
     # The promotion_log.json should still be written (so reviewers see
     # what *would* have happened).
@@ -416,9 +411,9 @@ def test_promote_force_overwrites() -> None:
     result = _run_promotion("--force")
     assert result.returncode == 0, result.stderr
     log = _load_log()
-    assert sample in log["new_files"], (
-        f"--force should have listed {sample} as a new file write"
-    )
+    assert (
+        sample in log["new_files"]
+    ), f"--force should have listed {sample} as a new file write"
 
 
 if __name__ == "__main__":

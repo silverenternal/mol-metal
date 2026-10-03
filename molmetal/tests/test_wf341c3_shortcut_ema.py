@@ -36,6 +36,7 @@ Honest framing (party-twenty-spirit §3.5)
   (:class:`TinyVelocityField`) rather than the real EGNN — full-fidelity
   validation is deferred to Wf-340-A7 GPU A/B.
 """
+
 from __future__ import annotations
 
 import json
@@ -112,9 +113,9 @@ def test_shortcut_consistency_loss() -> None:
         cfg=cfg_zero,
         path_sampler=linear_path_sample,
     )
-    assert torch.allclose(loss_zero, torch.zeros(())), (
-        f"Expected zero loss with p_self=0, got {loss_zero.item()}"
-    )
+    assert torch.allclose(
+        loss_zero, torch.zeros(())
+    ), f"Expected zero loss with p_self=0, got {loss_zero.item()}"
 
     # (b) p_self = 1 -> loss is finite.
     cfg_full = ShortcutConfig(p_self=1.0, weight=0.1)
@@ -128,9 +129,9 @@ def test_shortcut_consistency_loss() -> None:
         cfg=cfg_full,
         path_sampler=linear_path_sample,
     )
-    assert torch.isfinite(loss_full), (
-        f"Shortcut loss must be finite with p_self=1, got {loss_full.item()}"
-    )
+    assert torch.isfinite(
+        loss_full
+    ), f"Shortcut loss must be finite with p_self=1, got {loss_full.item()}"
     assert loss_full.item() >= 0.0, "Shortcut loss must be non-negative"
 
     # (c) Weight scaling — doubling weight doubles the loss contribution.
@@ -149,9 +150,7 @@ def test_shortcut_consistency_loss() -> None:
     # Verify ratio is approximately 2.0 (allowing for stochastic variance
     # from the SECOND mask-draw inside the loss function).
     ratio = loss_weight_2.item() / max(loss_full.item(), 1e-12)
-    assert 1.5 < ratio < 2.5, (
-        f"Expected weight ratio ~2.0, got {ratio:.4f}"
-    )
+    assert 1.5 < ratio < 2.5, f"Expected weight ratio ~2.0, got {ratio:.4f}"
 
 
 # ---------------------------------------------------------------------------
@@ -174,14 +173,16 @@ def test_ema_model_weights() -> None:
     halflife_kimg = DEFAULT_EMA_HALFLIFE_KIMG
     model = TinyVelocityField(hidden_dim=DEFAULT_HIDDEN_DIM)
     ema = ExponentialMovingAverage(
-        model, halflife_kimg=halflife_kimg, batch_size=batch_size,
+        model,
+        halflife_kimg=halflife_kimg,
+        batch_size=batch_size,
     )
 
     # (a) decay formula.
     expected_decay = 0.5 ** (batch_size / (halflife_kimg * 1000.0))
-    assert math.isclose(ema.decay, expected_decay, rel_tol=1e-9), (
-        f"Expected decay {expected_decay:.6f}, got {ema.decay:.6f}"
-    )
+    assert math.isclose(
+        ema.decay, expected_decay, rel_tol=1e-9
+    ), f"Expected decay {expected_decay:.6f}, got {ema.decay:.6f}"
     # 0.5 < decay < 1.0 for any positive halflife.
     assert 0.5 < ema.decay < 1.0, f"decay out of range: {ema.decay}"
 
@@ -189,10 +190,7 @@ def test_ema_model_weights() -> None:
     # initialised clone by (1 - decay) of the step delta.  We perturb
     # the model in a controlled way and assert the shadow follows.
     # Snapshot a "before-step" snapshot of the shadow params.
-    before_shadow = {
-        name: p.detach().clone()
-        for name, p in ema.shadow_params.items()
-    }
+    before_shadow = {name: p.detach().clone() for name, p in ema.shadow_params.items()}
     # Perturb model weights with a fixed delta.
     with torch.no_grad():
         for p in model.parameters():
@@ -204,9 +202,9 @@ def test_ema_model_weights() -> None:
     for name, new_shadow in ema.shadow_params.items():
         delta = (new_shadow - before_shadow[name]).abs().mean().item()
         expected = (1.0 - ema.decay) * 0.1
-        assert math.isclose(delta, expected, rel_tol=1e-3), (
-            f"Shadow param {name} delta {delta:.6f} != expected {expected:.6f}"
-        )
+        assert math.isclose(
+            delta, expected, rel_tol=1e-3
+        ), f"Shadow param {name} delta {delta:.6f} != expected {expected:.6f}"
 
     # (c) copy_to restores shadow into model.
     # Snapshot current model weights.
@@ -214,9 +212,9 @@ def test_ema_model_weights() -> None:
     ema.copy_to(model)
     for name, param in model.named_parameters():
         # After copy_to, model param should equal ema shadow.
-        assert torch.allclose(param.data, ema.shadow_params[name].data), (
-            f"copy_to did not restore shadow param {name}"
-        )
+        assert torch.allclose(
+            param.data, ema.shadow_params[name].data
+        ), f"copy_to did not restore shadow param {name}"
         # And it should differ from model_before (because shadow != original).
         if not torch.allclose(param.data, model_before[name].data):
             # Different — good, restoration changed the params.
@@ -328,15 +326,15 @@ def test_cpu_bench() -> None:
     # (b) Branch ratio check.
     assert summary.shortcut_branch_n_total > 0
     branch_ratio = summary.shortcut_branch_n_shortcut / summary.shortcut_branch_n_total
-    assert abs(branch_ratio - DEFAULT_SHORTCUT_P_SELF) < 0.10, (
-        f"Branch ratio {branch_ratio:.3f} != p_self {DEFAULT_SHORTCUT_P_SELF}"
-    )
+    assert (
+        abs(branch_ratio - DEFAULT_SHORTCUT_P_SELF) < 0.10
+    ), f"Branch ratio {branch_ratio:.3f} != p_self {DEFAULT_SHORTCUT_P_SELF}"
 
     # (c) EMA decay matches formula.
     expected_decay = 0.5 ** (DEFAULT_BATCH_SIZE / (DEFAULT_EMA_HALFLIFE_KIMG * 1000.0))
-    assert math.isclose(summary.ema_decay, expected_decay, rel_tol=1e-9), (
-        f"EMA decay {summary.ema_decay:.6f} != expected {expected_decay:.6f}"
-    )
+    assert math.isclose(
+        summary.ema_decay, expected_decay, rel_tol=1e-9
+    ), f"EMA decay {summary.ema_decay:.6f} != expected {expected_decay:.6f}"
 
     # (d) Projected speedup is documented.
     assert summary.projected_speedup == "1.5-3x"

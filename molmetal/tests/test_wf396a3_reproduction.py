@@ -55,13 +55,9 @@ def reproduction_module():
     try:
         import importlib
 
-        mod = importlib.import_module(
-            "molmetal.scripts.wf396a3_minimal_reproduction"
-        )
+        mod = importlib.import_module("molmetal.scripts.wf396a3_minimal_reproduction")
     except Exception as exc:  # pragma: no cover
-        pytest.skip(
-            f"Wf-396-A3 reproduction module unavailable: {exc}"
-        )
+        pytest.skip(f"Wf-396-A3 reproduction module unavailable: {exc}")
     return mod
 
 
@@ -93,8 +89,7 @@ def test_baseline_no_flags(reproduction_module) -> None:
             f"optional dep): {res.get('notes', '')}"
         )
     assert 0.0 <= res["decode_ratio"] <= 1.0, (
-        f"Wf-396-A3: baseline decode_ratio out of range: "
-        f"{res['decode_ratio']}"
+        f"Wf-396-A3: baseline decode_ratio out of range: " f"{res['decode_ratio']}"
     )
     assert res["decode_ratio"] >= 0.8, (
         f"Wf-396-A3: baseline decode_ratio regressed below the "
@@ -157,9 +152,7 @@ def test_single_flag_isolation(reproduction_module) -> None:
         )
         res = by_name[run_name]
         # Each result must have a decode_ratio (or None with notes).
-        assert "decode_ratio" in res, (
-            f"Wf-396-A3: {run_name} missing decode_ratio"
-        )
+        assert "decode_ratio" in res, f"Wf-396-A3: {run_name} missing decode_ratio"
         if res["decode_ratio"] is not None:
             assert 0.0 <= res["decode_ratio"] <= 1.0, (
                 f"Wf-396-A3: {run_name} decode_ratio out of "
@@ -205,9 +198,7 @@ def test_problematic_combination(reproduction_module) -> None:
         f"Wf-396-A3: combination_tests should return a list, "
         f"got {type(results).__name__}"
     )
-    assert len(results) >= 1, (
-        "Wf-396-A3: combination_tests returned empty list"
-    )
+    assert len(results) >= 1, "Wf-396-A3: combination_tests returned empty list"
     # Find the Wf-380 SCAFFOLD banner combination by name.
     by_name = {r["flags"]["name"]: r for r in results}
     assert "combination_wf380_scaffold_banner" in by_name, (
@@ -220,12 +211,10 @@ def test_problematic_combination(reproduction_module) -> None:
     flags = res["flags"]
     # Verify the combination has all 4 banner defaults set.
     assert flags["top_p"] == 0.9, (
-        f"Wf-396-A3: Wf-380 banner top_p should be 0.9, "
-        f"got {flags['top_p']}"
+        f"Wf-396-A3: Wf-380 banner top_p should be 0.9, " f"got {flags['top_p']}"
     )
     assert flags["top_k"] == 50, (
-        f"Wf-396-A3: Wf-380 banner top_k should be 50, "
-        f"got {flags['top_k']}"
+        f"Wf-396-A3: Wf-380 banner top_k should be 50, " f"got {flags['top_k']}"
     )
     assert flags["mmd_weight"] == 0.1, (
         f"Wf-396-A3: Wf-380 banner mmd_weight should be 0.1, "
@@ -236,9 +225,9 @@ def test_problematic_combination(reproduction_module) -> None:
         f"0.05, got {flags['repulsion_weight']}"
     )
     # The combination runs to completion (no exception raised).
-    assert "wall_seconds" in res, (
-        "Wf-396-A3: Wf-380 banner combination missing wall_seconds"
-    )
+    assert (
+        "wall_seconds" in res
+    ), "Wf-396-A3: Wf-380 banner combination missing wall_seconds"
     # decode_ratio is either a float in [0, 1] or None with notes
     # (tolerate env-specific failures; e.g. torch import error).
     if res["decode_ratio"] is not None:
@@ -264,8 +253,7 @@ def test_reproduction_result_on_disk(reproduction_module) -> None:
     )
     missing = expected_keys - set(aggregate.keys())
     assert not missing, (
-        f"Wf-396-A3: reproduce_decode_ratio_regression missing "
-        f"keys: {missing}"
+        f"Wf-396-A3: reproduce_decode_ratio_regression missing " f"keys: {missing}"
     )
     assert "results" in aggregate
     assert isinstance(aggregate["results"], list)

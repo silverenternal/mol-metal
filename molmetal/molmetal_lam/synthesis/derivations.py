@@ -88,9 +88,7 @@ class SynthesisPath:
     """
 
     target: MoleculeClosedTerm
-    steps: List[Tuple[ReactionRule, MoleculeClosedTerm]] = field(
-        default_factory=list
-    )
+    steps: List[Tuple[ReactionRule, MoleculeClosedTerm]] = field(default_factory=list)
     starting_materials: List[MoleculeClosedTerm] = field(default_factory=list)
 
     # ------------------------------------------------------------------
@@ -318,9 +316,7 @@ def synthesize(
     FrontierEntry = Tuple[int, Tuple[ReactionRule, ...], Tuple[str, ...]]
 
     initial_smis = tuple(_smi(m) for m in starting_materials)
-    queue: deque[FrontierEntry] = deque(
-        [(0, (), initial_smis)]
-    )
+    queue: deque[FrontierEntry] = deque([(0, (), initial_smis)])
     visited: set[Tuple[str, ...]] = {initial_smis}
 
     while queue:
@@ -344,17 +340,17 @@ def synthesize(
                         return list(rule_seq + (rule,))
                     # Build the next frontier: original frontier plus
                     # the new product, deduplicated by SMILES.
-                    new_frontier = _dedup_frontier(
-                        frontier_smis + (prod_smi,)
-                    )
+                    new_frontier = _dedup_frontier(frontier_smis + (prod_smi,))
                     if new_frontier in visited:
                         continue
                     visited.add(new_frontier)
-                    queue.append((
-                        depth + 1,
-                        rule_seq + (rule,),
-                        new_frontier,
-                    ))
+                    queue.append(
+                        (
+                            depth + 1,
+                            rule_seq + (rule,),
+                            new_frontier,
+                        )
+                    )
 
     return None
 
@@ -578,9 +574,7 @@ def _candidate_bisections(
     return out
 
 
-def _subterm(
-    target: MoleculeClosedTerm, indices: Sequence[int]
-) -> MoleculeClosedTerm:
+def _subterm(target: MoleculeClosedTerm, indices: Sequence[int]) -> MoleculeClosedTerm:
     """Build the sub-term of ``target`` restricted to atoms at ``indices``.
 
     Bonds are kept iff both endpoints are in ``indices``.  The atom list
@@ -591,15 +585,15 @@ def _subterm(
     index_set = set(indices)
     new_atoms = [target.atoms[i] for i in indices]
     new_bonds = [
-        b for b in target.bonds
-        if b.atom_a in index_set and b.atom_b in index_set
+        b for b in target.bonds if b.atom_a in index_set and b.atom_b in index_set
     ]
     return MoleculeClosedTerm(
         atoms=new_atoms,
         bonds=new_bonds,
         ledger=target.ledger,
-        valence_used={i: target.valence_used.get(orig, 0)
-                      for i, orig in enumerate(indices)},
+        valence_used={
+            i: target.valence_used.get(orig, 0) for i, orig in enumerate(indices)
+        },
         source_smiles=target.source_smiles,
         term=target.term,
     )
@@ -642,6 +636,7 @@ def _default_rules() -> Sequence[ReactionRule]:
     """Lazy import of the click-rule registry."""
     try:
         from molmetal_lam.reactions.beta_reductions import REACTION_RULES
+
         return list(REACTION_RULES.values())
     except Exception:
         return []

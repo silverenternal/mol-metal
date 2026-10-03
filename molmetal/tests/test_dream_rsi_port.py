@@ -82,9 +82,7 @@ def _make_world(
 def _closed_world(baseline: float = 0.0) -> DiscoveryTree:
     """Build a world whose every cell is already revealed (so the probe
     has nothing left to reveal)."""
-    tree = DiscoveryTree(
-        baseline_score=baseline, branch_count=1, refine_count=1
-    )
+    tree = DiscoveryTree(baseline_score=baseline, branch_count=1, refine_count=1)
     slot = tree.add_branch_slot(0)
     slot.evaluated = True
     slot.score = 0.5
@@ -268,10 +266,10 @@ def test_dream_loop_selects_better_candidate():
         branch_count=2,
         refine_count=2,
         branch_scores={
-            0: 0.5,            # branch-0 root scores 0.5
-            (0, 1): 2.0,       # branch-0 first refinement scores 2.0
-            1: 0.4,            # branch-1 root scores 0.4
-            (1, 1): 0.3,       # branch-1 first refinement scores 0.3
+            0: 0.5,  # branch-0 root scores 0.5
+            (0, 1): 2.0,  # branch-0 first refinement scores 2.0
+            1: 0.4,  # branch-1 root scores 0.4
+            (1, 1): 0.3,  # branch-1 first refinement scores 0.3
         },
     )
 
@@ -352,7 +350,9 @@ def test_replay_determinism_same_world_same_result():
 
 def test_reward_function_eq1():
     """Eq. 1: V = max(s_v) − β₁ · N + β₂ · N / max(1, k*)."""
-    cfg = RewardConfig(max_parallelism=2, beta1=0.05, beta2=0.1, lambda_=1.0, baseline_score=0.0)
+    cfg = RewardConfig(
+        max_parallelism=2, beta1=0.05, beta2=0.1, lambda_=1.0, baseline_score=0.0
+    )
     # N=4 probes, k*=2 rounds, attainment=1.0
     v = replay_value(attainment=1.0, probes=4, rounds=2, cfg=cfg)
     assert math.isclose(v, 1.0 - 0.05 * 4 + 0.1 * 4 / 2)

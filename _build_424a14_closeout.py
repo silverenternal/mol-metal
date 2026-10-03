@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Wf-424-A14 closeout authoring — §5.5 filesystem-truth + §5.6 atomic write."""
+
 from __future__ import annotations
 
 import sys
@@ -18,11 +19,10 @@ DOC_LS_LA = (
     "- 1 lines  per Wf-355-A1 + Wf-367-A1 schema parity\n"
     "- 855 lines (counted via wc -l) — NEW docs file MEASURED on disk per §5.5\n"
 )
-CLOSE_LS_LA = (
-    "(pending — will be added at close of script)\n"
-)
+CLOSE_LS_LA = "(pending — will be added at close of script)\n"
 
-CONTENT = r"""# Wf-424-A14 — Paper §3 v4 Metric Table Update (Main Results)
+CONTENT = (
+    r"""# Wf-424-A14 — Paper §3 v4 Metric Table Update (Main Results)
 
 **Date:** 2026-10-01 (Wf-424-A14 timestamp)
 **Owner:** Hugo Lee + Wf-424-A14 ultracode (workflow: Wf-424 docs+plan sub-flow)
@@ -198,13 +198,17 @@ deliverables.
 
 ```
 $ ls -la docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md
-""" + DOC_LS_LA + """```
+"""
+    + DOC_LS_LA
+    + """```
 
 ### §3.2 Wf-424-A14 NEW closeout file (this file, 1 file on disk)
 
 ```
 $ ls -la TODO/completed/424a14_paper_section3_v4.md
-""" + CLOSE_LS_LA + """```
+"""
+    + CLOSE_LS_LA
+    + """```
 
 ### §3.3 Wf-424-A14 §5.6 atomic write protocol compliance
 
@@ -490,6 +494,7 @@ TODO-84; 0 wet-lab planning per §5.4 + §10. The Wf-425+ forward-looking USER_O
 sub-flows (paper §3 + §6 v4 write + Zotero translation + GPU retrain validation) are
 the recommended follow-up per §6 above.
 """
+)
 
 
 def main() -> None:

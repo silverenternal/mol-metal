@@ -144,11 +144,7 @@ def pocket_derived_metal_seed(
     name_upper = pocket_name.upper()
     if "CA2" in name_upper or "CARBONIC" in name_upper:
         return _POCKET_METAL_BUCKETS["Pt(II)"]
-    if (
-        "MMP" in name_upper
-        or "HDAC" in name_upper
-        or "ZINCIN" in name_upper
-    ):
+    if "MMP" in name_upper or "HDAC" in name_upper or "ZINCIN" in name_upper:
         return _POCKET_METAL_BUCKETS["Zn(II)"]
 
     # Defensive: missing pocket_features → fallback (no exception).

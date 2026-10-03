@@ -14,6 +14,7 @@ Outputs the per-arm variance + KL divergence between the two
 samplers and prints a PASS/FAIL line for the
 "score-repellent variance ≤ Dirichlet variance" contract.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -30,6 +31,7 @@ def _run_smoke(n_samples: int) -> int:
         DEFAULT_SCORE_REPELLENT_ALPHA,
         DirichletVarianceComparator,
     )
+
     cmp = DirichletVarianceComparator(
         alpha=DEFAULT_DIRICHLET_ALPHA,
         score_repellent_alpha=DEFAULT_SCORE_REPELLENT_ALPHA,
@@ -44,17 +46,21 @@ def _run_smoke(n_samples: int) -> int:
     print(f"alpha (Dirichlet)        : {report['alpha_dirichlet']}")
     print(f"alpha (Score-Repellent)  : {report['alpha_score_repellent']}")
     print()
-    print(f"per-arm var (Dirichlet)        : "
-          f"{[round(v, 6) for v in report['per_arm_var_dirichlet']]}")
-    print(f"per-arm var (Score-Repellent)  : "
-          f"{[round(v, 6) for v in report['per_arm_var_score_repellent']]}")
+    print(
+        f"per-arm var (Dirichlet)        : "
+        f"{[round(v, 6) for v in report['per_arm_var_dirichlet']]}"
+    )
+    print(
+        f"per-arm var (Score-Repellent)  : "
+        f"{[round(v, 6) for v in report['per_arm_var_score_repellent']]}"
+    )
     print()
-    print(f"total var (Dirichlet)          : "
-          f"{report['total_var_dirichlet']:.6f}")
-    print(f"total var (Score-Repellent)    : "
-          f"{report['total_var_score_repellent']:.6f}")
-    print(f"KL(Dirichlet || Score-Rep)     : "
-          f"{report['kl_divergence']:.6f}")
+    print(f"total var (Dirichlet)          : " f"{report['total_var_dirichlet']:.6f}")
+    print(
+        f"total var (Score-Repellent)    : "
+        f"{report['total_var_score_repellent']:.6f}"
+    )
+    print(f"KL(Dirichlet || Score-Rep)     : " f"{report['kl_divergence']:.6f}")
     # Contract: score-repellent variance ≤ Dirichlet variance
     # per arm (allow a tiny tolerance for floating-point noise).
     pass_contract = all(

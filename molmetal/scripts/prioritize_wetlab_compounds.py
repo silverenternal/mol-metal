@@ -75,6 +75,7 @@ Constraints (per TODO-97 R20-P6 + TODO-84 paper rule)
 * No paper-text edits.
 * No wet-lab synthesis (only in-silico ranking).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -99,15 +100,11 @@ import numpy as np
 # Paths
 # ---------------------------------------------------------------------------
 
-DEFAULT_PLATINAI_CSV: Path = (
-    _REPO_ROOT / "molmetal" / "data" / "platinai_5k.csv"
-)
+DEFAULT_PLATINAI_CSV: Path = _REPO_ROOT / "molmetal" / "data" / "platinai_5k.csv"
 DEFAULT_METALCYTO_CSV: Path = (
     _REPO_ROOT / "molmetal" / "data" / "metalcytotox_rdkit_features.csv"
 )
-DEFAULT_OUT_DIR: Path = (
-    _REPO_ROOT / "molmetal" / "reports" / "wf58_wetlab_dryrun"
-)
+DEFAULT_OUT_DIR: Path = _REPO_ROOT / "molmetal" / "reports" / "wf58_wetlab_dryrun"
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -119,11 +116,11 @@ WETLAB_PRIORITY_METALS: Tuple[str, ...] = ("Pt", "Pd", "Au", "Ru", "Ir")
 
 # Multi-objective weights (sums to 1.0).
 WEIGHTS: Dict[str, float] = {
-    "dmpnn_pic50": 0.40,   # higher better (pIC50 in [4, 9])
-    "qed": 0.20,           # higher better (QED in [0, 1])
-    "sa": 0.15,            # lower better (we negate below)
-    "vina_kcal": 0.15,     # lower better (more negative = better dock)
-    "astsr_score": 0.10,   # higher better (5-d reduced)
+    "dmpnn_pic50": 0.40,  # higher better (pIC50 in [4, 9])
+    "qed": 0.20,  # higher better (QED in [0, 1])
+    "sa": 0.15,  # lower better (we negate below)
+    "vina_kcal": 0.15,  # lower better (more negative = better dock)
+    "astsr_score": 0.10,  # higher better (5-d reduced)
 }
 
 SEEDS: Tuple[int, ...] = (0, 1, 2, 3, 4)
@@ -173,6 +170,7 @@ def _try_rdkit():
     try:
         from rdkit import Chem
         from rdkit.Chem import AllChem, Descriptors, QED
+
         return Chem, AllChem, Descriptors, QED
     except ImportError:
         return None, None, None, None
@@ -271,8 +269,12 @@ def compute_vina_proxy_kcal(smiles: Sequence[str]) -> np.ndarray:
             n_heavy = mol.GetNumHeavyAtoms()
             # Deterministic linear proxy in [-12, -4]:
             #   -4 (poor) for high logp + heavy, +2 for low TPSA penalty.
-            kcal = -4.0 - 0.30 * max(0.0, logp) - 0.005 * max(0, n_heavy - 20) \
+            kcal = (
+                -4.0
+                - 0.30 * max(0.0, logp)
+                - 0.005 * max(0, n_heavy - 20)
                 - 0.010 * max(0, 80 - tpsa) * 0.10
+            )
             out[i] = max(-12.0, min(-4.0, kcal))
         except Exception:
             out[i] = -6.0
@@ -558,7 +560,9 @@ def run_pipeline(
                 composite_score=float(composite[i]),
             )
         )
-    return PipelineResult(seed=seed, top_ids=[r.cand_id for r in top_rows], top_rows=top_rows)
+    return PipelineResult(
+        seed=seed, top_ids=[r.cand_id for r in top_rows], top_rows=top_rows
+    )
 
 
 def write_outputs(
@@ -640,11 +644,11 @@ def write_outputs(
             f.write(f"| `{k}` | {w:.2f} | {direction} |\n")
         f.write("\n## D-MPNN pIC50 spread (verify gate)\n\n")
         f.write(f"* min/max: {pic50_spread:.4f} log units (gate: ≥ 1.5)\n")
-        f.write(
-            f"* status: {'PASS' if pic50_spread >= 1.5 else 'FAIL'}\n\n"
-        )
+        f.write(f"* status: {'PASS' if pic50_spread >= 1.5 else 'FAIL'}\n\n")
         f.write("## Seed stability (5 seeds × top-20)\n\n")
-        f.write(f"* overlap_vs_seed-0: min={overlap_min}/20, mean={overlap_mean:.2f}/20\n")
+        f.write(
+            f"* overlap_vs_seed-0: min={overlap_min}/20, mean={overlap_mean:.2f}/20\n"
+        )
         f.write(
             f"* status: {'PASS' if overlap_min >= 16 else 'FAIL'} (gate: min ≥ 16)\n\n"
         )
@@ -652,7 +656,9 @@ def write_outputs(
         f.write("| Metal | Count |\n|---|---:|\n")
         for m in WETLAB_PRIORITY_METALS:
             f.write(f"| {m} | {metal_counts.get(m, 0)} |\n")
-        f.write(f"| (other) | {sum(v for k, v in metal_counts.items() if k not in WETLAB_PRIORITY_METALS)} |\n\n")
+        f.write(
+            f"| (other) | {sum(v for k, v in metal_counts.items() if k not in WETLAB_PRIORITY_METALS)} |\n\n"
+        )
         f.write("## Honest-negative framing\n\n")
         f.write(
             "* **D-MPNN pIC50** is a deterministic RDKit-fingerprint "
@@ -702,7 +708,9 @@ def write_outputs(
 
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Wf-58 P1 wet-lab compound prioritization dry-run")
+    p = argparse.ArgumentParser(
+        description="Wf-58 P1 wet-lab compound prioritization dry-run"
+    )
     p.add_argument(
         "--platinai-csv",
         type=Path,

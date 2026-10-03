@@ -22,6 +22,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -31,6 +32,7 @@ del _wf130_os
 #  on this host, causing Wf-60 P1 m1/m2/m19 FileNotFoundError 5/5 seeds).
 import os as _wf50_os
 from pathlib import Path as _wf50_Path
+
 _wf50_proj_root = _wf50_Path(__file__).resolve().parent.parent.parent
 _wf50_default_data = _wf50_proj_root / ".data" / "molmetal"
 if not _wf50_os.environ.get("MOLMETAL_DATA_DIR") and _wf50_default_data.exists():
@@ -74,6 +76,7 @@ try:
         safe_overwrite_check,
         detect_truncation,
     )
+
     _WF416_HAS_ATOMIC = True
 except ImportError:  # pragma: no cover — fallback when running as standalone
     _WF416_HAS_ATOMIC = False
@@ -94,7 +97,9 @@ GATE_AUC = 0.70  # TODO/METRICS_TARGETS.md §2 / Metric 19
 # test on metal == M.  We pick val from the same train pool (random subset
 # of the 4 held-in metals) so we never leak the test metal into validation.
 # ---------------------------------------------------------------------------
-def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
+def _wf416_atomic_write_text(
+    path, content: str, min_lines: int = 50, expected_min_length: int = 200
+) -> None:
     """Wf-416-A1 atomic-write-protocol wrapper around direct write_text.
 
     Falls back to direct write_text if atomic_write_file is unavailable
@@ -106,18 +111,22 @@ def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_m
             _risk = safe_overwrite_check(path, content, min_lines=min_lines)
             if _risk is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-416-A1] safe_overwrite_check diff_ratio=%.3f at %s",
-                    _risk, path,
+                    _risk,
+                    path,
                 )
         atomic_write_file(path, content, encoding="utf-8")
         if detect_truncation is not None:
             _trunc = detect_truncation(content, expected_min_length=expected_min_length)
             if _trunc is not None:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "[Wf-416-A1] detect_truncation reason=%r at %s",
-                    _trunc, path,
+                    _trunc,
+                    path,
                 )
     else:  # pragma: no cover — fallback when atomic primitive unavailable
         Path(path).write_text(content, encoding="utf-8")
@@ -220,7 +229,9 @@ class LOMODMPNNRunner:
 # CLI
 # ---------------------------------------------------------------------------
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Metric 19 — multi-metal LOMO transfer AUC.")
+    p = argparse.ArgumentParser(
+        description="Metric 19 — multi-metal LOMO transfer AUC."
+    )
     p.add_argument(
         "--metals",
         nargs="+",
@@ -343,7 +354,9 @@ def pd_series(x):
 # ---------------------------------------------------------------------------
 # Single fold+seed
 # ---------------------------------------------------------------------------
-def _run_one(args: argparse.Namespace, ds: MetalCytotoxDataset, metal: str, seed: int) -> Dict[str, object]:
+def _run_one(
+    args: argparse.Namespace, ds: MetalCytotoxDataset, metal: str, seed: int
+) -> Dict[str, object]:
     print(
         f"\n[metric19] === fold held_out={metal}  seed={seed}  (epochs={args.epochs}) ===",
         flush=True,
@@ -387,8 +400,13 @@ def _aggregate(per_run: List[Dict[str, object]]) -> Dict[str, object]:
         if "test_metrics" not in d:
             continue
         per_fold.setdefault(d["fold"], []).append(float(d["test_metrics"]["roc_auc"]))
-    per_fold_mean = {m: float(statistics.mean(v)) if v else float("nan") for m, v in per_fold.items()}
-    per_fold_std = {m: float(statistics.pstdev(v)) if len(v) > 1 else 0.0 for m, v in per_fold.items()}
+    per_fold_mean = {
+        m: float(statistics.mean(v)) if v else float("nan") for m, v in per_fold.items()
+    }
+    per_fold_std = {
+        m: float(statistics.pstdev(v)) if len(v) > 1 else 0.0
+        for m, v in per_fold.items()
+    }
     return {
         "n_runs": len(aucs),
         "n_folds": len(per_fold),
@@ -436,7 +454,9 @@ def _write_report(
     fold_stds = aggregate["per_fold_auc_std"]
     for m in args.metals:
         if m in fold_means:
-            n_runs = sum(1 for d in per_run if d.get("fold") == m and "test_metrics" in d)
+            n_runs = sum(
+                1 for d in per_run if d.get("fold") == m and "test_metrics" in d
+            )
             lines.append(
                 f"| {m} | {fold_means[m]:.4f} | {fold_stds[m]:.4f} | {n_runs} |"
             )
@@ -448,9 +468,11 @@ def _write_report(
         f"(n={aggregate['n_runs']} runs across {aggregate['n_folds']} folds)",
         f"- Gate threshold (TODO/METRICS_TARGETS.md §2 / Metric 19): mean ≥ 0.70",
         f"- **Verdict:** "
-        + ("PASS — mean LOMO AUC ≥ 0.70 (transfer to held-out metal is non-trivial)"
-           if gate_pass else
-           "BELOW GATE — mean LOMO AUC < 0.70 (transfer is weak)"),
+        + (
+            "PASS — mean LOMO AUC ≥ 0.70 (transfer to held-out metal is non-trivial)"
+            if gate_pass
+            else "BELOW GATE — mean LOMO AUC < 0.70 (transfer is weak)"
+        ),
         "",
         "## Per-run detail",
         "",
@@ -459,7 +481,9 @@ def _write_report(
     ]
     for d in per_run:
         if "test_metrics" not in d:
-            lines.append(f"| {d['fold']} | {d['seed']} | ERROR {d.get('error','?')} | — | — | — | — | — |")
+            lines.append(
+                f"| {d['fold']} | {d['seed']} | ERROR {d.get('error','?')} | — | — | — | — | — |"
+            )
             continue
         tm = d["test_metrics"]
         vm = d["val_metrics"]
@@ -502,7 +526,9 @@ def main(argv: list[str] | None = None) -> int:
             try:
                 d = _run_one(args, ds, metal, seed)
             except Exception as exc:  # pragma: no cover — keep going on failures
-                print(f"[metric19] fold {metal} seed {seed} FAILED: {exc!r}", flush=True)
+                print(
+                    f"[metric19] fold {metal} seed {seed} FAILED: {exc!r}", flush=True
+                )
                 d = {"fold": metal, "seed": seed, "error": repr(exc)}
             per_run.append(d)
             run_path = out_dir / f"fold-{metal}-seed{seed}.json"
@@ -551,7 +577,9 @@ def main(argv: list[str] | None = None) -> int:
 
     full_payload = {**payload, "per_run": per_run, "aggregate": agg}
     aggregate_path = out_dir / "aggregate.json"
-    _wf416_atomic_write_text(aggregate_path, json.dumps(full_payload, indent=2, default=str))
+    _wf416_atomic_write_text(
+        aggregate_path, json.dumps(full_payload, indent=2, default=str)
+    )
     print(f"[metric19] wrote {aggregate_path}", flush=True)
 
     print(

@@ -40,6 +40,7 @@ if str(PROJECT_ROOT) not in sys.path:
 def test_diagnostic_cli_importable():
     """molmetal.scripts.dmpnn_ckpt_diagnostic imports and parse_args works."""
     from molmetal.scripts.dmpnn_ckpt_diagnostic import parse_args, main
+
     assert callable(parse_args)
     assert callable(main)
 
@@ -47,6 +48,7 @@ def test_diagnostic_cli_importable():
 def test_diagnostic_parse_args_defaults():
     """Default flags: ckpt-dir = molmetal/checkpoints, pattern includes seed wildcard."""
     from molmetal.scripts.dmpnn_ckpt_diagnostic import parse_args
+
     ns = parse_args(["--ckpt-dir", "/tmp/fake_ckpts", "--out-dir", "/tmp/fake_out"])
     assert ns.ckpt_dir == Path("/tmp/fake_ckpts")
     assert ns.out_dir == Path("/tmp/fake_out")
@@ -60,6 +62,7 @@ def test_diagnostic_parse_args_defaults():
 def test_training_cli_importable():
     """molmetal.scripts.train_dmpnn_pic50_real imports and parse_args works."""
     from molmetal.scripts.train_dmpnn_pic50_real import parse_args, main
+
     assert callable(parse_args)
     assert callable(main)
 
@@ -139,11 +142,16 @@ def test_diagnostic_load_helper_handles_corrupt_ckpt(tmp_path):
 # ---------------------------------------------------------------------------
 class _FakeDataset:
     """Minimal stand-in for MetalCytotoxDataset: just .smiles and .metals attrs."""
+
     def __init__(self, smiles, metal, pic50=None, active=None):
         self.smiles = np.asarray(smiles, dtype=object)
         self.metals = np.asarray(metal, dtype=object)
-        self.pic50 = np.asarray(pic50 if pic50 is not None else np.full(len(smiles), 5.0))
-        self.active = np.asarray(active if active is not None else np.zeros(len(smiles), dtype=int))
+        self.pic50 = np.asarray(
+            pic50 if pic50 is not None else np.full(len(smiles), 5.0)
+        )
+        self.active = np.asarray(
+            active if active is not None else np.zeros(len(smiles), dtype=int)
+        )
 
 
 def test_split_index_builder_returns_sane_shapes():
@@ -155,20 +163,29 @@ def test_split_index_builder_returns_sane_shapes():
 
     # Tiny fake dataset: 6 Ru rows + 4 Ir rows
     smiles = [
-        "Cc1ccccc1", "CCO", "c1ccccc1",
-        "CC(=O)Oc1ccccc1C(=O)O", "CN1C=NC2=C1C(=O)N(C(=O)N2C)C", "O=C([O-])c1ccccc1",
-        "C1CCCC1", "CCN(CC)CC", "C1CCCCC1", "CCC",
+        "Cc1ccccc1",
+        "CCO",
+        "c1ccccc1",
+        "CC(=O)Oc1ccccc1C(=O)O",
+        "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
+        "O=C([O-])c1ccccc1",
+        "C1CCCC1",
+        "CCN(CC)CC",
+        "C1CCCCC1",
+        "CCC",
     ]
     metal = ["Ru", "Ru", "Ru", "Ru", "Ru", "Ru", "Ir", "Ir", "Ir", "Ir"]
     ds = _FakeDataset(smiles, metal)
 
-    split_df = pd.DataFrame({
-        "smiles": smiles[:6] + ["C1CCCC1", "CCN(CC)CC"],
-        "metal": ["Ru"] * 6 + ["Ir"] * 2,
-        "scaffold_id": [""] * 8,
-        "split": ["train", "train", "train", "val", "val", "test", "train", "test"],
-        "activity": [0, 1, 0, 1, 1, 0, 1, 0],
-    })
+    split_df = pd.DataFrame(
+        {
+            "smiles": smiles[:6] + ["C1CCCC1", "CCN(CC)CC"],
+            "metal": ["Ru"] * 6 + ["Ir"] * 2,
+            "scaffold_id": [""] * 8,
+            "split": ["train", "train", "train", "val", "val", "test", "train", "test"],
+            "activity": [0, 1, 0, 1, 1, 0, 1, 0],
+        }
+    )
 
     idx_train, idx_val, idx_test = build_metal_split_indices(split_df, ds, metal="Ru")
 
@@ -192,6 +209,7 @@ def test_split_index_builder_returns_sane_shapes():
 def test_training_default_constants():
     """DEFAULT_EPOCHS / DEFAULT_ALPHA / FIVE_METALS are wired correctly."""
     from molmetal.scripts import train_dmpnn_pic50_real as m
+
     assert m.DEFAULT_EPOCHS >= 1
     assert 0.0 <= m.DEFAULT_ALPHA <= 1.0
     assert set(m.FIVE_METALS) == {"Ru", "Ir", "Rh", "Os", "Re"}
@@ -276,4 +294,5 @@ def test_diagnostic_empty_dir_does_not_crash(tmp_path):
 
 if __name__ == "__main__":
     import sys
+
     sys.exit(pytest.main([__file__, "-v", "--tb=short"]))

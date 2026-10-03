@@ -221,13 +221,20 @@ class FlowDockAdapter:
         resolved = self._resolved or ""
         return [
             resolved,
-            "--protein", pocket_pdb,
-            "--ligand", smiles,
-            "--out_dir", os.path.dirname(out_json),
-            "--num_samples", str(int(exhaustiveness)),
-            "--ode_steps", str(int(self.ode_steps)),
-            "--device", str(self.device),
-            "--out_json", out_json,
+            "--protein",
+            pocket_pdb,
+            "--ligand",
+            smiles,
+            "--out_dir",
+            os.path.dirname(out_json),
+            "--num_samples",
+            str(int(exhaustiveness)),
+            "--ode_steps",
+            str(int(self.ode_steps)),
+            "--device",
+            str(self.device),
+            "--out_json",
+            out_json,
         ]
 
     @staticmethod
@@ -237,11 +244,15 @@ class FlowDockAdapter:
                 payload: Any = json.load(fh)
         except Exception as exc:  # pragma: no cover - defensive
             logger.warning("FlowDock output parse failed: %s", exc)
-            return DockResult(rmsd_A=float("nan"), vina_kcal=float("nan"), confidence=0.0)
+            return DockResult(
+                rmsd_A=float("nan"), vina_kcal=float("nan"), confidence=0.0
+            )
         if isinstance(payload, list) and payload:
             payload = payload[0]
         if not isinstance(payload, dict):
-            return DockResult(rmsd_A=float("nan"), vina_kcal=float("nan"), confidence=0.0)
+            return DockResult(
+                rmsd_A=float("nan"), vina_kcal=float("nan"), confidence=0.0
+            )
         return DockResult(
             rmsd_A=float(payload.get("rmsd", float("nan"))),
             vina_kcal=float(payload.get("vina_score", float("nan"))),

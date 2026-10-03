@@ -47,6 +47,7 @@ Honest framing
   pocket-derived distances are wired in cfm_vina_dock_panel.py
   ``_closest_donor_distances`` and ``_metal_centre_coords_from_smiles``.
 """
+
 from __future__ import annotations
 
 import math
@@ -58,6 +59,7 @@ import pytest
 
 try:
     from rdkit import Chem, RDLogger  # type: ignore
+
     RDLogger.DisableLog("rdApp.*")
     _HAVE_RDKIT = True
 except Exception:  # pragma: no cover
@@ -77,7 +79,8 @@ from molmetal.molmetal_lam.sbdd_env.metal_coord_term import (  # noqa: E402
 )
 
 pytestmark = pytest.mark.skipif(
-    not _HAVE_RDKIT, reason="rdkit not installed",
+    not _HAVE_RDKIT,
+    reason="rdkit not installed",
 )
 
 
@@ -120,21 +123,19 @@ class TestPerBondF2ASelector:
 
     def test_f2a_per_bond_smarts_has_7_patterns(self) -> None:
         """The per-bond SMARTS library must hold exactly 7 patterns."""
-        assert len(F2A_PER_BOND_SMARTS) == 7, (
-            f"expected 7 per-bond patterns, got {len(F2A_PER_BOND_SMARTS)}"
-        )
+        assert (
+            len(F2A_PER_BOND_SMARTS) == 7
+        ), f"expected 7 per-bond patterns, got {len(F2A_PER_BOND_SMARTS)}"
 
     def test_per_centre_cisplatin_count_is_1(self) -> None:
         """Per-centre F2(a) for cisplatin counts 1 (one Pt centre)."""
         scorer = F2AMetalLigandScorer(use_per_bond=False)
         assert scorer.use_per_bond is False
-        assert scorer.count_covalent_bonds(CISPLATIN_SMILES) == 1, (
-            "per-centre F2(a) for cisplatin must detect 1 Pt centre"
-        )
+        assert (
+            scorer.count_covalent_bonds(CISPLATIN_SMILES) == 1
+        ), "per-centre F2(a) for cisplatin must detect 1 Pt centre"
         # Per-centre apply: vina -3.282 + 1 * -1.5 = -4.782.
-        f2a_pc, mod, n = scorer.apply_covalent_modifier(
-            CISPLATIN_SMILES, -3.282
-        )
+        f2a_pc, mod, n = scorer.apply_covalent_modifier(CISPLATIN_SMILES, -3.282)
         assert n == 1, f"per-centre n_bonds must be 1, got {n}"
         assert mod == pytest.approx(-1.5, abs=1e-6)
         assert f2a_pc == pytest.approx(-4.782, abs=1e-3)
@@ -143,13 +144,11 @@ class TestPerBondF2ASelector:
         """Per-bond F2(a) for cisplatin counts 2 (the 2 Pt-N donor arms)."""
         scorer = F2AMetalLigandScorer(use_per_bond=True)
         assert scorer.use_per_bond is True
-        assert scorer.count_covalent_bonds(CISPLATIN_SMILES) == 2, (
-            "per-bond F2(a) for cisplatin must detect 2 Pt-N bonds"
-        )
+        assert (
+            scorer.count_covalent_bonds(CISPLATIN_SMILES) == 2
+        ), "per-bond F2(a) for cisplatin must detect 2 Pt-N bonds"
         # Per-bond apply: vina -3.282 + 2 * -1.5 = -6.282.
-        f2a_pb, mod, n = scorer.apply_covalent_modifier(
-            CISPLATIN_SMILES, -3.282
-        )
+        f2a_pb, mod, n = scorer.apply_covalent_modifier(CISPLATIN_SMILES, -3.282)
         assert n == 2, f"per-bond n_bonds must be 2, got {n}"
         assert mod == pytest.approx(-3.0, abs=1e-6)
         assert f2a_pb == pytest.approx(-6.282, abs=1e-3)
@@ -159,12 +158,8 @@ class TestPerBondF2ASelector:
         (the PROJECTED P2 lift per Wf-331-R1 §6.3)."""
         scorer_pc = F2AMetalLigandScorer(use_per_bond=False)
         scorer_pb = F2AMetalLigandScorer(use_per_bond=True)
-        f2a_pc, _, _ = scorer_pc.apply_covalent_modifier(
-            CISPLATIN_SMILES, -3.282
-        )
-        f2a_pb, _, _ = scorer_pb.apply_covalent_modifier(
-            CISPLATIN_SMILES, -3.282
-        )
+        f2a_pc, _, _ = scorer_pc.apply_covalent_modifier(CISPLATIN_SMILES, -3.282)
+        f2a_pb, _, _ = scorer_pb.apply_covalent_modifier(CISPLATIN_SMILES, -3.282)
         delta = f2a_pb - f2a_pc
         assert delta == pytest.approx(PER_BOND_PROJECTED_LIFT_KCAL_MOL, abs=1e-3), (
             f"per-bond lift delta must be {PER_BOND_PROJECTED_LIFT_KCAL_MOL} "
@@ -177,9 +172,7 @@ class TestPerBondF2ASelector:
         carboplatin = "[Pt](N)(N)(OC(=O)C1CCC1)C(=O)O"
         scorer = F2AMetalLigandScorer(use_per_bond=True)
         n = scorer.count_covalent_bonds(carboplatin)
-        assert n >= 2, (
-            f"per-bond n_bonds for carboplatin must be >= 2, got {n}"
-        )
+        assert n >= 2, f"per-bond n_bonds for carboplatin must be >= 2, got {n}"
 
     def test_per_bond_organic_returns_0(self) -> None:
         """Per-bond F2(a) for organic-only SMILES returns 0."""
@@ -208,14 +201,12 @@ class TestDistanceSubscoreWireIn:
         assert s is not None
         assert s < 1.0
         # Gaussian with sigma=0.20, diff=0.26 -> exp(-(0.26/0.20)**2)
-        expected = math.exp(-(0.26 / PT_N_SIGMA_ANGSTROM) ** 2)
+        expected = math.exp(-((0.26 / PT_N_SIGMA_ANGSTROM) ** 2))
         assert s == pytest.approx(expected, abs=1e-3)
 
     def test_pocket_donor_counts_basic(self) -> None:
         """pocket_donor_counts_from_atomicnums: counts N/O/S/P atoms."""
-        counts = pocket_donor_counts_from_atomicnums(
-            [7, 7, 7, 8, 8, 16, 15, 6, 6]
-        )
+        counts = pocket_donor_counts_from_atomicnums([7, 7, 7, 8, 8, 16, 15, 6, 6])
         assert counts == {"N": 3, "O": 2, "S": 1, "P": 1}
 
     def test_panel_distance_subscore_wire_in_runs(self) -> None:
@@ -226,13 +217,16 @@ class TestDistanceSubscoreWireIn:
             _closest_donor_distances,
             _metal_centre_coords_from_smiles,
         )
+
         metal_pos = _metal_centre_coords_from_smiles(CISPLATIN_SMILES)
-        assert metal_pos is not None, (
-            "metal centre must be extractable from cisplatin SMILES"
-        )
+        assert (
+            metal_pos is not None
+        ), "metal centre must be extractable from cisplatin SMILES"
         donors = {
-            "N": [(metal_pos[0] + 2.04, metal_pos[1], metal_pos[2]),
-                  (metal_pos[0] + 4.0, metal_pos[1], metal_pos[2])],
+            "N": [
+                (metal_pos[0] + 2.04, metal_pos[1], metal_pos[2]),
+                (metal_pos[0] + 4.0, metal_pos[1], metal_pos[2]),
+            ],
             "O": [(metal_pos[0] + 2.0, metal_pos[1], metal_pos[2])],
             "S": [],  # no S donors in this test
             "P": [],  # no P donors in this test
@@ -271,12 +265,8 @@ class TestPerPocketLift:
         vina = WF143_CISPLATIN_KCAL_MOL["1h36"]
         scorer_pc = F2AMetalLigandScorer(use_per_bond=False)
         scorer_pb = F2AMetalLigandScorer(use_per_bond=True)
-        f2a_pc, _, _ = scorer_pc.apply_covalent_modifier(
-            CISPLATIN_SMILES, vina
-        )
-        f2a_pb, _, _ = scorer_pb.apply_covalent_modifier(
-            CISPLATIN_SMILES, vina
-        )
+        f2a_pc, _, _ = scorer_pc.apply_covalent_modifier(CISPLATIN_SMILES, vina)
+        f2a_pb, _, _ = scorer_pb.apply_covalent_modifier(CISPLATIN_SMILES, vina)
         v3_combined = f2a_pb + P3_PROJECTED_LIFT_KCAL_MOL
         assert v3_combined == pytest.approx(-8.089, abs=1e-3)
         assert (v3_combined - vina) == pytest.approx(-4.5, abs=1e-3)
@@ -287,12 +277,8 @@ class TestPerPocketLift:
         vina = WF143_CISPLATIN_KCAL_MOL["4aaw"]
         scorer_pc = F2AMetalLigandScorer(use_per_bond=False)
         scorer_pb = F2AMetalLigandScorer(use_per_bond=True)
-        f2a_pc, _, _ = scorer_pc.apply_covalent_modifier(
-            CISPLATIN_SMILES, vina
-        )
-        f2a_pb, _, _ = scorer_pb.apply_covalent_modifier(
-            CISPLATIN_SMILES, vina
-        )
+        f2a_pc, _, _ = scorer_pc.apply_covalent_modifier(CISPLATIN_SMILES, vina)
+        f2a_pb, _, _ = scorer_pb.apply_covalent_modifier(CISPLATIN_SMILES, vina)
         v3_combined = f2a_pb + P3_PROJECTED_LIFT_KCAL_MOL
         assert v3_combined == pytest.approx(-7.782, abs=1e-3)
         assert (v3_combined - vina) == pytest.approx(-4.5, abs=1e-3)
@@ -306,12 +292,8 @@ class TestPerPocketLift:
         vina = WF143_CISPLATIN_KCAL_MOL[pocket_id]
         scorer_pc = F2AMetalLigandScorer(use_per_bond=False)
         scorer_pb = F2AMetalLigandScorer(use_per_bond=True)
-        f2a_pc, _, _ = scorer_pc.apply_covalent_modifier(
-            CISPLATIN_SMILES, vina
-        )
-        f2a_pb, _, _ = scorer_pb.apply_covalent_modifier(
-            CISPLATIN_SMILES, vina
-        )
+        f2a_pc, _, _ = scorer_pc.apply_covalent_modifier(CISPLATIN_SMILES, vina)
+        f2a_pb, _, _ = scorer_pb.apply_covalent_modifier(CISPLATIN_SMILES, vina)
         v3_combined = f2a_pb + P3_PROJECTED_LIFT_KCAL_MOL
         delta = v3_combined - vina
         assert delta == pytest.approx(-4.5, abs=1e-3), (
@@ -342,9 +324,9 @@ class TestCombinedV1V2V3Lift:
         med = _median(v1_scores)
         assert med == pytest.approx(-4.782, abs=1e-3)
         # V1 lift vs V0 = -1.5 kcal/mol.
-        assert (med - _median(list(WF143_CISPLATIN_KCAL_MOL.values()))) == pytest.approx(
-            -1.5, abs=1e-3
-        )
+        assert (
+            med - _median(list(WF143_CISPLATIN_KCAL_MOL.values()))
+        ) == pytest.approx(-1.5, abs=1e-3)
 
     def test_cohort_median_v2_per_bond(self) -> None:
         """Cross-pocket median V2 (per-bond F2(a)) = -6.282."""
@@ -388,9 +370,9 @@ class TestCombinedV1V2V3Lift:
             f"{INDUSTRY_CUTOFF_KCAL_MOL}; got gap = {gap}"
         )
         # 0.782 kcal/mol margin.
-        assert abs(gap - (-0.782)) < 0.01, (
-            f"V3 combined gap should be ~-0.782 kcal/mol, got {gap}"
-        )
+        assert (
+            abs(gap - (-0.782)) < 0.01
+        ), f"V3 combined gap should be ~-0.782 kcal/mol, got {gap}"
 
     def test_v3_recovery_verdict_resolved(self) -> None:
         """The Wf-333-V3 verdict for cisplatin_eta_200_cohort: when
@@ -418,10 +400,9 @@ class TestCombinedV1V2V3Lift:
         """Total V1 + V2 + V3 combined lift = -4.5 kcal/mol
         (the PROJECTED total per Wf-333-V3 task brief)."""
         v1 = DEFAULT_COVALENT_MODIFIER_KCAL_MOL  # -1.5
-        v2 = PER_BOND_PROJECTED_LIFT_KCAL_MOL    # -1.5 (additional)
-        v3 = P3_PROJECTED_LIFT_KCAL_MOL           # -1.5 (additional)
+        v2 = PER_BOND_PROJECTED_LIFT_KCAL_MOL  # -1.5 (additional)
+        v3 = P3_PROJECTED_LIFT_KCAL_MOL  # -1.5 (additional)
         total = v1 + v2 + v3
         assert total == pytest.approx(-4.5, abs=1e-6), (
-            f"V1+V2+V3 combined PROJECTED lift must be -4.5 kcal/mol, "
-            f"got {total}"
+            f"V1+V2+V3 combined PROJECTED lift must be -4.5 kcal/mol, " f"got {total}"
         )

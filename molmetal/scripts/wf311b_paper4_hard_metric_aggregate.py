@@ -358,7 +358,11 @@ def aggregate_main_results() -> Dict[str, Any]:
     lomo_rows: List[Dict[str, Any]] = []
     for metal in sorted(lomo_per_metal.keys()):
         seed_block = lomo_per_metal_seed.get(metal, {})
-        seed_aucs = [v.get("auc") for v in seed_block.values() if isinstance(v.get("auc"), (int, float))]
+        seed_aucs = [
+            v.get("auc")
+            for v in seed_block.values()
+            if isinstance(v.get("auc"), (int, float))
+        ]
         lomo_rows.append(
             {
                 "metal": metal,
@@ -577,7 +581,12 @@ def refresh_section_4_6(rmsd_agg: Dict[str, Any]) -> Dict[str, Any]:
     }
     refreshed["cells_design_to_measured"] = existing.get(
         "cells_design_to_measured",
-        {"metal_column": 6, "sa_column": 30, "pb_column_smoke_only": 1, "pb_column_production": 0},
+        {
+            "metal_column": 6,
+            "sa_column": 30,
+            "pb_column_smoke_only": 1,
+            "pb_column_production": 0,
+        },
     )
     refreshed["missing_for_paper_grade"] = existing.get(
         "missing_for_paper_grade",

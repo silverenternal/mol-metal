@@ -118,12 +118,12 @@ DEFAULT_CSV = _REPO_ROOT / "molmetal" / "data" / "platinai_5k.csv"
 # Default pipeline constants
 # ---------------------------------------------------------------------------
 PIPELINE_STEPS: Tuple[str, ...] = (
-    "lambda_cfm",       # Wf-4 — Lambda closure → CFM
-    "se3_ode",          # Wf-14 phase 1 — SE(3) SB ODE
-    "multi_ph",         # Wf-14 phase 4 — Multi-PH feature map
-    "variance_puct",    # Wf-14 phase 5 — Variance-controlled PUCT
-    "hilbert",          # Wf-14 phase 2 — Hilbert primal-dual reward
-    "bidirectional",    # Wf-21 phase 1 — Lambda ↔ CFM round-trip
+    "lambda_cfm",  # Wf-4 — Lambda closure → CFM
+    "se3_ode",  # Wf-14 phase 1 — SE(3) SB ODE
+    "multi_ph",  # Wf-14 phase 4 — Multi-PH feature map
+    "variance_puct",  # Wf-14 phase 5 — Variance-controlled PUCT
+    "hilbert",  # Wf-14 phase 2 — Hilbert primal-dual reward
+    "bidirectional",  # Wf-21 phase 1 — Lambda ↔ CFM round-trip
 )
 
 
@@ -172,7 +172,9 @@ def _build_lambda_cfm_runner() -> Callable[..., Tuple[bool, Dict[str, Any]]]:
 
     pipe = load_joint_pipeline(alpha=0.5, seed=0)
 
-    def _run(smiles: str, pocket: np.ndarray, n_steps: int) -> Tuple[bool, Dict[str, Any]]:
+    def _run(
+        smiles: str, pocket: np.ndarray, n_steps: int
+    ) -> Tuple[bool, Dict[str, Any]]:
         try:
             out = pipe.run_full_pipeline(smiles, pocket, n_steps=int(n_steps))
         except Exception as exc:
@@ -197,8 +199,12 @@ def _build_se3_runner() -> Callable[..., Tuple[bool, Dict[str, Any]]]:
     """
     ok, torch = _try_import("torch")
     if not ok:
-        def _skip(smiles: str, pocket: np.ndarray, n_steps: int) -> Tuple[bool, Dict[str, Any]]:
+
+        def _skip(
+            smiles: str, pocket: np.ndarray, n_steps: int
+        ) -> Tuple[bool, Dict[str, Any]]:
             return False, {"error": f"torch unavailable: {torch}"}
+
         return _skip
 
     from molmetal.adapters.se3_lipman_integration import SE3LipmanSolver  # noqa: E402
@@ -216,7 +222,9 @@ def _build_se3_runner() -> Callable[..., Tuple[bool, Dict[str, Any]]]:
         method="midpoint",
     )
 
-    def _run(smiles: str, pocket: np.ndarray, n_steps: int) -> Tuple[bool, Dict[str, Any]]:
+    def _run(
+        smiles: str, pocket: np.ndarray, n_steps: int
+    ) -> Tuple[bool, Dict[str, Any]]:
         try:
             torch.manual_seed(0)
             x0 = torch.randn(1, 6, 3)
@@ -239,13 +247,21 @@ def _build_multi_ph_runner() -> Callable[..., Tuple[bool, Dict[str, Any]]]:
     """Wf-14 phase 4 — Multi-PH + PLL signature on a SMILES."""
     ok, _ = _try_import("rdkit")
     if not ok:
-        def _skip(smiles: str, pocket: np.ndarray, n_steps: int) -> Tuple[bool, Dict[str, Any]]:
+
+        def _skip(
+            smiles: str, pocket: np.ndarray, n_steps: int
+        ) -> Tuple[bool, Dict[str, Any]]:
             return False, {"error": "rdkit unavailable"}
+
         return _skip
     ok, torch = _try_import("torch")
     if not ok:
-        def _skip(smiles: str, pocket: np.ndarray, n_steps: int) -> Tuple[bool, Dict[str, Any]]:
+
+        def _skip(
+            smiles: str, pocket: np.ndarray, n_steps: int
+        ) -> Tuple[bool, Dict[str, Any]]:
             return False, {"error": "torch unavailable"}
+
         return _skip
 
     try:
@@ -253,13 +269,19 @@ def _build_multi_ph_runner() -> Callable[..., Tuple[bool, Dict[str, Any]]]:
             MultiPHPLLSignature,
         )
     except Exception as exc:
-        def _skip(smiles: str, pocket: np.ndarray, n_steps: int) -> Tuple[bool, Dict[str, Any]]:
+
+        def _skip(
+            smiles: str, pocket: np.ndarray, n_steps: int
+        ) -> Tuple[bool, Dict[str, Any]]:
             return False, {"error": f"multi_ph import failed: {exc}"}
+
         return _skip
 
     sig = MultiPHPLLSignature(n_bins=8, k=8, knn=4, multi_seed=0)
 
-    def _run(smiles: str, pocket: np.ndarray, n_steps: int) -> Tuple[bool, Dict[str, Any]]:
+    def _run(
+        smiles: str, pocket: np.ndarray, n_steps: int
+    ) -> Tuple[bool, Dict[str, Any]]:
         try:
             feat, eig = sig.compute(smiles)
         except Exception as exc:
@@ -279,15 +301,24 @@ def _build_variance_puct_runner() -> Callable[..., Tuple[bool, Dict[str, Any]]]:
             VarianceControlledPUCT,
         )
     except Exception as exc:
-        def _skip(smiles: str, pocket: np.ndarray, n_steps: int) -> Tuple[bool, Dict[str, Any]]:
+
+        def _skip(
+            smiles: str, pocket: np.ndarray, n_steps: int
+        ) -> Tuple[bool, Dict[str, Any]]:
             return False, {"error": f"variance_puct import failed: {exc}"}
+
         return _skip
 
     selector = VarianceControlledPUCT(
-        c_puct=1.0, c_var=0.5, score_repellent=True, n_min_visits=2,
+        c_puct=1.0,
+        c_var=0.5,
+        score_repellent=True,
+        n_min_visits=2,
     )
 
-    def _run(smiles: str, pocket: np.ndarray, n_steps: int) -> Tuple[bool, Dict[str, Any]]:
+    def _run(
+        smiles: str, pocket: np.ndarray, n_steps: int
+    ) -> Tuple[bool, Dict[str, Any]]:
         # Build a deterministic 4-arm tree — same shape across samples.
         root = IntegrationNode(node_id=f"root|{smiles[:8]}", prior=1.0)
         for j in range(4):
@@ -298,7 +329,8 @@ def _build_variance_puct_runner() -> Callable[..., Tuple[bool, Dict[str, Any]]]:
             for _ in range(4):
                 action = selector.select(root)
                 selector.update(
-                    root, action,
+                    root,
+                    action,
                     value=float((action + 1) * 0.1),
                     variance=0.04,
                 )
@@ -318,8 +350,12 @@ def _build_hilbert_runner() -> Callable[..., Tuple[bool, Dict[str, Any]]]:
         )
         from molmetal.molmetal_lam.reward.lambda_astsr import DEFAULT_FEATURE_COLUMNS  # noqa: E402
     except Exception as exc:
-        def _skip(smiles: str, pocket: np.ndarray, n_steps: int) -> Tuple[bool, Dict[str, Any]]:
+
+        def _skip(
+            smiles: str, pocket: np.ndarray, n_steps: int
+        ) -> Tuple[bool, Dict[str, Any]]:
             return False, {"error": f"hilbert import failed: {exc}"}
+
         return _skip
 
     composite = HilbertASTSRComposite(
@@ -337,14 +373,22 @@ def _build_hilbert_runner() -> Callable[..., Tuple[bool, Dict[str, Any]]]:
         fit_err = repr(exc)
 
     if fit_err is not None:
-        def _skip(smiles: str, pocket: np.ndarray, n_steps: int, _msg: str = fit_err) -> Tuple[bool, Dict[str, Any]]:
+
+        def _skip(
+            smiles: str, pocket: np.ndarray, n_steps: int, _msg: str = fit_err
+        ) -> Tuple[bool, Dict[str, Any]]:
             return False, {"error": f"hilbert.fit failed: {_msg}"}
+
         return _skip
 
     channel = make_hilbert_astsr_reward_channel(composite, enabled=True)
 
-    def _run(smiles: str, pocket: np.ndarray, n_steps: int) -> Tuple[bool, Dict[str, Any]]:
-        row = {fn: float((i + 1) * 0.01) for i, fn in enumerate(DEFAULT_FEATURE_COLUMNS)}
+    def _run(
+        smiles: str, pocket: np.ndarray, n_steps: int
+    ) -> Tuple[bool, Dict[str, Any]]:
+        row = {
+            fn: float((i + 1) * 0.01) for i, fn in enumerate(DEFAULT_FEATURE_COLUMNS)
+        }
         try:
             reward = float(channel(row))
         except Exception as exc:
@@ -363,13 +407,19 @@ def _build_bidirectional_runner() -> Callable[..., Tuple[bool, Dict[str, Any]]]:
             BidirectionalCoupling,
         )
     except Exception as exc:
-        def _skip(smiles: str, pocket: np.ndarray, n_steps: int) -> Tuple[bool, Dict[str, Any]]:
+
+        def _skip(
+            smiles: str, pocket: np.ndarray, n_steps: int
+        ) -> Tuple[bool, Dict[str, Any]]:
             return False, {"error": f"bidirectional import failed: {exc}"}
+
         return _skip
 
     bi = BidirectionalCoupling()
 
-    def _run(smiles: str, pocket: np.ndarray, n_steps: int) -> Tuple[bool, Dict[str, Any]]:
+    def _run(
+        smiles: str, pocket: np.ndarray, n_steps: int
+    ) -> Tuple[bool, Dict[str, Any]]:
         try:
             res = bi.round_trip(smiles, pocket, n_steps=int(min(n_steps, 20)))
         except Exception as exc:
@@ -400,8 +450,12 @@ def _build_step_runners() -> Dict[str, Callable[..., Tuple[bool, Dict[str, Any]]
         try:
             runners[name] = builder()
         except Exception as exc:
-            def _skip(smiles: str, pocket: np.ndarray, n_steps: int, _msg=repr(exc)) -> Tuple[bool, Dict[str, Any]]:
+
+            def _skip(
+                smiles: str, pocket: np.ndarray, n_steps: int, _msg=repr(exc)
+            ) -> Tuple[bool, Dict[str, Any]]:
                 return False, {"error": f"runner build failed: {_msg}"}
+
             runners[name] = _skip
     return runners
 
@@ -450,27 +504,39 @@ def _run_pipeline(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
-        "--n-samples", type=int, default=200,
+        "--n-samples",
+        type=int,
+        default=200,
         help="Number of PlatinAI samples (default: 200).",
     )
     parser.add_argument(
-        "--n-steps", type=int, default=20,
+        "--n-steps",
+        type=int,
+        default=20,
         help="CFM ODE integration steps (default: 20).",
     )
     parser.add_argument(
-        "--pocket-size", type=int, default=8,
+        "--pocket-size",
+        type=int,
+        default=8,
         help="Pocket conditioning vector size (default: 8).",
     )
     parser.add_argument(
-        "--alpha", type=float, default=0.5,
+        "--alpha",
+        type=float,
+        default=0.5,
         help="Lambda vs pocket convex weight in CFM target (default: 0.5).",
     )
     parser.add_argument(
-        "--csv-path", type=str, default=str(DEFAULT_CSV),
+        "--csv-path",
+        type=str,
+        default=str(DEFAULT_CSV),
         help="PlatinAI CSV path (default: molmetal/data/platinai_5k.csv).",
     )
     parser.add_argument(
-        "--out-dir", type=str, default=str(REPORT_DIR),
+        "--out-dir",
+        type=str,
+        default=str(REPORT_DIR),
         help="Output directory for benchmark.json.",
     )
     args = parser.parse_args()
@@ -522,8 +588,7 @@ def main() -> int:
 
     total_wall = float(time.perf_counter() - total_t0)
     peak_mem_total = float(
-        max(0, tracemalloc.get_traced_memory()[1] - base_mem_total)
-        / (1024.0 * 1024.0)
+        max(0, tracemalloc.get_traced_memory()[1] - base_mem_total) / (1024.0 * 1024.0)
     )
     tracemalloc.stop()
 
@@ -557,9 +622,7 @@ def main() -> int:
         "per_step_wall_time": {
             s: _agg_walls(per_step_walls[s]) for s in PIPELINE_STEPS
         },
-        "per_step_memory_mb": {
-            s: _agg_mem(per_step_mem[s]) for s in PIPELINE_STEPS
-        },
+        "per_step_memory_mb": {s: _agg_mem(per_step_mem[s]) for s in PIPELINE_STEPS},
         "per_step_ok_count": {s: int(per_step_ok[s]) for s in PIPELINE_STEPS},
         "total_wall_time_s": float(total_wall),
         "mean_wall_time_per_sample_s": float(

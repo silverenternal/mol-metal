@@ -119,9 +119,7 @@ class WetLabSchedulingHelper:
             except (TypeError, ValueError):
                 return 0.0
         if isinstance(p, str):
-            return WetLabSchedulingHelper._PRIORITY_MAP.get(
-                p.strip().lower(), 0.0
-            )
+            return WetLabSchedulingHelper._PRIORITY_MAP.get(p.strip().lower(), 0.0)
         return 0.0
 
     @staticmethod
@@ -136,7 +134,8 @@ class WetLabSchedulingHelper:
         return ""
 
     def schedule_assays(
-        self, priority_list: Sequence[Mapping[str, Any]],
+        self,
+        priority_list: Sequence[Mapping[str, Any]],
     ) -> List[Dict[str, Any]]:
         """Bucket ``priority_list`` into weeks respecting capacity.
 
@@ -168,12 +167,14 @@ class WetLabSchedulingHelper:
         for idx, item in enumerate(priority_list):
             if not isinstance(item, Mapping):
                 continue
-            enriched.append({
-                "_idx": idx,
-                "label": self._item_label(item),
-                "priority": self._priority_key(item),
-                "raw": dict(item),
-            })
+            enriched.append(
+                {
+                    "_idx": idx,
+                    "label": self._item_label(item),
+                    "priority": self._priority_key(item),
+                    "raw": dict(item),
+                }
+            )
 
         # Sort by (-priority, original_index) — stable.
         enriched.sort(key=lambda x: (-x["priority"], x["_idx"]))
@@ -186,12 +187,14 @@ class WetLabSchedulingHelper:
             while week_counts[week] >= cap:
                 week += 1
             week_counts[week] += 1
-            out.append({
-                "label": row["label"],
-                "week": week,
-                "priority": float(row["priority"]),
-                "raw": row["raw"],
-            })
+            out.append(
+                {
+                    "label": row["label"],
+                    "week": week,
+                    "priority": float(row["priority"]),
+                    "raw": row["raw"],
+                }
+            )
 
         out.sort(key=lambda x: (x["week"], -x["priority"], x["label"]))
         return out
@@ -316,8 +319,10 @@ class CollaboratorTracker:
         # Dedup on (name, institution) — same person from a new lab
         # would be added again with their new affiliation.
         for existing in self._collaborators:
-            if (existing["name"] == record["name"]
-                    and existing["institution"] == record["institution"]):
+            if (
+                existing["name"] == record["name"]
+                and existing["institution"] == record["institution"]
+            ):
                 # Merge in any non-empty new fields.
                 for k, v in record.items():
                     if v and not existing.get(k):
@@ -367,9 +372,11 @@ class AssayDataParser:
                 for row in reader:
                     if not row:
                         continue
-                    cleaned = {str(k).strip(): str(v).strip()
-                               for k, v in row.items()
-                               if k is not None}
+                    cleaned = {
+                        str(k).strip(): str(v).strip()
+                        for k, v in row.items()
+                        if k is not None
+                    }
                     if any(cleaned.values()):
                         out.append(cleaned)
         except (OSError, UnicodeDecodeError, csv.Error):
@@ -478,7 +485,8 @@ class WetLabFeedbackIntegrator:
         return 0.0
 
     def integrate_assay_results(
-        self, results: Sequence[Mapping[str, Any]],
+        self,
+        results: Sequence[Mapping[str, Any]],
     ) -> float:
         """Run ``recalibrate_fn(results)`` and return the calibration delta.
 

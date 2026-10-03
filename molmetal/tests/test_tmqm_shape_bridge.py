@@ -48,9 +48,9 @@ def test_production_shape_bridge_loads_gt_40_of_42_keys():
     """``load_tmQM_pretrained(None, ...)`` fills >40/43 EGNN slots from a
     42-key DMPNN checkpoint (vs. 0/42 in the round-8 smoke)."""
     vf = load_tmQM_pretrained(None, CKPT_PATH)
-    assert isinstance(vf, EGNNVelocityField), (
-        f"expected EGNNVelocityField, got {type(vf).__name__}"
-    )
+    assert isinstance(
+        vf, EGNNVelocityField
+    ), f"expected EGNNVelocityField, got {type(vf).__name__}"
     # The EGNN has 43 own state_dict keys; the round-9 bridge must fill
     # >40 of them from the 42-key DMPNN checkpoint.
     n_own = len(vf.state_dict())
@@ -140,6 +140,4 @@ def test_legacy_dmpnn_in_place_path_transfers_42_of_42_keys():
     src_keys = set(ckpt["encoder_state_dict"].keys())
     own_keys = set(encoder.state_dict().keys())
     n_intersect = len(src_keys & own_keys)
-    assert n_intersect == 42, (
-        f"expected 42 DMPNN keys to match, got {n_intersect}."
-    )
+    assert n_intersect == 42, f"expected 42 DMPNN keys to match, got {n_intersect}."

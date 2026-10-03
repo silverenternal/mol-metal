@@ -42,6 +42,7 @@ def _read(path: Path) -> str:
 # Test 1: Tier-2 venue selection (JCAMD primary)
 # ---------------------------------------------------------------------------
 
+
 def test_tier2_venue_selection():
     """Tier-2 venue must be selected with JCAMD as primary.
 
@@ -69,18 +70,19 @@ def test_tier2_venue_selection():
         f"Found only: {found_backups}. Expected ≥ 2 from {backup_venues}."
     )
     # Must reject JCIM (Tier-1 downgrade)
-    assert "JCIM" in text, (
-        "Plan must explicitly address the JCIM (Tier-1) downgrade rationale."
-    )
+    assert (
+        "JCIM" in text
+    ), "Plan must explicitly address the JCIM (Tier-1) downgrade rationale."
     # Must cite AGENTS.md §5.4
-    assert "§5.4" in text or "5.4" in text, (
-        "Plan must cross-reference AGENTS.md §5.4 (Tier-2 directive)."
-    )
+    assert (
+        "§5.4" in text or "5.4" in text
+    ), "Plan must cross-reference AGENTS.md §5.4 (Tier-2 directive)."
 
 
 # ---------------------------------------------------------------------------
 # Test 2: Paper §4 LEAD claims reorganization
 # ---------------------------------------------------------------------------
+
 
 def test_section4_lead_claims_reorganization():
     """Paper §4 LEAD claims reorganization must be Tier-2 tone.
@@ -109,22 +111,24 @@ def test_section4_lead_claims_reorganization():
     )
     # Must address removal of SOTA-beating language
     removal_section = (
-        "removed" in text.lower() or "reworded" in text.lower() or
-        "what gets removed" in text.lower()
+        "removed" in text.lower()
+        or "reworded" in text.lower()
+        or "what gets removed" in text.lower()
     )
     assert removal_section, (
         "Plan must explicitly address removal of 'SOTA-beating' language "
         "from §4 LEAD claims."
     )
     # Methodological contribution framing
-    assert "methodological contribution" in text or "methodological" in text.lower(), (
-        "Plan must emphasize methodological contribution framing."
-    )
+    assert (
+        "methodological contribution" in text or "methodological" in text.lower()
+    ), "Plan must emphasize methodological contribution framing."
 
 
 # ---------------------------------------------------------------------------
 # Test 3: Paper §4.5 honest-negative disclosures reorganization
 # ---------------------------------------------------------------------------
+
 
 def test_section45_honest_negative_reorganization():
     """Paper §4.5 honest-negative disclosures must be reorganized as a
@@ -153,15 +157,16 @@ def test_section45_honest_negative_reorganization():
         f"Found {honest_neg_count}."
     )
     # Must document lift attempts
-    assert "lift attempts" in text.lower() or "rescue" in text.lower(), (
-        "Plan must document lift attempts per honest-negative."
-    )
+    assert (
+        "lift attempts" in text.lower() or "rescue" in text.lower()
+    ), "Plan must document lift attempts per honest-negative."
     # Must cross-link to §6 limitations
-    assert "§6" in text, (
-        "Plan must cross-link §4.5 honest-negative to §6 limitations."
-    )
+    assert "§6" in text, "Plan must cross-link §4.5 honest-negative to §6 limitations."
     # Must include "Methodological limitations acknowledged up-front" framing
-    assert "Methodological limitations" in text or "methodological due diligence" in text.lower(), (
+    assert (
+        "Methodological limitations" in text
+        or "methodological due diligence" in text.lower()
+    ), (
         "Plan must use 'Methodological limitations acknowledged up-front' framing "
         "for §4.5 lead-in."
     )
@@ -170,6 +175,7 @@ def test_section45_honest_negative_reorganization():
 # ---------------------------------------------------------------------------
 # Test 4: Paper §6 limitations reorganization
 # ---------------------------------------------------------------------------
+
 
 def test_section6_limitations_reorganization():
     """Paper §6 limitations must be reorganized to Tier-2 acceptance bar.
@@ -191,11 +197,16 @@ def test_section6_limitations_reorganization():
         f"Found {len(section6_unique)} unique §6.x: {section6_unique}"
     )
     # Must use 'computational-only by design' framing
-    assert "computational-only by design" in text.lower() or "computational-only" in text.lower(), (
-        "Plan must use 'computational-only by design' framing for §6."
-    )
+    assert (
+        "computational-only by design" in text.lower()
+        or "computational-only" in text.lower()
+    ), "Plan must use 'computational-only by design' framing for §6."
     # Must reference Tier-2 acceptance bar
-    tier2_acceptance = ["Tier-2 acceptance", "Tier-2 acceptance bar", "tier-2 acceptance"]
+    tier2_acceptance = [
+        "Tier-2 acceptance",
+        "Tier-2 acceptance bar",
+        "tier-2 acceptance",
+    ]
     has_tier2_acceptance = any(kw.lower() in text.lower() for kw in tier2_acceptance)
     assert has_tier2_acceptance, (
         f"Plan must reference Tier-2 acceptance bar explicitly. "
@@ -225,4 +236,5 @@ def test_section6_limitations_reorganization():
 if __name__ == "__main__":
     # Allow `python -m molmetal.tests.test_wf341t3_todo138` smoke run
     import sys
+
     sys.exit(pytest.main([__file__, "-v"]))

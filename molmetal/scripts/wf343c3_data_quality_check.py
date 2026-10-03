@@ -111,9 +111,9 @@ NA_FILL = "NA"
 # the soft-warn threshold (pIC50 = 3.0, IC50 = 1 mM) — datasets with
 # pIC50 in [SOFT_FLOOR, MIN_OK) are PASS but flagged with a soft-warn
 # detail so agents can choose to clip them.
-PIC50_SOFT_FLOOR = 2.5   # pIC50 < 2.5 → IC50 > 3 mM → FAIL
-PIC50_MIN_OK = 3.0       # pIC50 ∈ [2.5, 3.0) → PASS with soft-warn detail
-PIC50_MAX_OK = 12.0      # RDKit pharmacological ceiling
+PIC50_SOFT_FLOOR = 2.5  # pIC50 < 2.5 → IC50 > 3 mM → FAIL
+PIC50_MIN_OK = 3.0  # pIC50 ∈ [2.5, 3.0) → PASS with soft-warn detail
+PIC50_MAX_OK = 12.0  # RDKit pharmacological ceiling
 
 # Class-balance band — positive class must be in [5 %, 95 %] of rows.
 ACTIVE_POS_MIN = 0.05
@@ -140,7 +140,9 @@ _DRUGOOD_TARGET_ROOT = (
 _DRUGOOD_JSON = _DRUGOOD_TARGET_ROOT / "lbap_refined_ic50_assay.json"
 
 # 5-metal multitask CSV (pre-computed scaffold_id + split).
-_METALCYTO_V4 = _REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
+_METALCYTO_V4 = (
+    _REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
+)
 
 # PlatinAI 4-cell CSV.
 _PLATINAI_4CELL = _REPO_ROOT / "molmetal" / "data" / "platinai_4cell.csv"
@@ -154,7 +156,7 @@ class CheckResult:
     """One check's verdict + evidence (single source for the JSON report)."""
 
     name: str
-    status: str           # PASS | FAIL | SKIP
+    status: str  # PASS | FAIL | SKIP
     detail: str = ""
     metrics: dict = field(default_factory=dict)
 
@@ -384,7 +386,11 @@ def _check_label_range(df: pd.DataFrame, label: str) -> CheckResult:
         detail=(
             f"{label}: pIC50 range [{pmin:.3f}, {pmax:.3f}], "
             f"mean={pmean:.3f}, std={pstd:.3f}"
-            + (" (SOFT-WARN: min in [2.5, 3.0) — weak-binding rows present)" if soft_warn else "")
+            + (
+                " (SOFT-WARN: min in [2.5, 3.0) — weak-binding rows present)"
+                if soft_warn
+                else ""
+            )
         ),
         metrics={"min": pmin, "max": pmax, "mean": pmean, "std": pstd},
     )
@@ -422,9 +428,7 @@ def _check_scaffold_split(
                     f"observed {sorted(splits_present)}"
                 ),
             )
-        counts = (
-            df["split"].astype(str).value_counts().reindex(list(expected_splits))
-        )
+        counts = df["split"].astype(str).value_counts().reindex(list(expected_splits))
         if counts.isna().any() or (counts.fillna(0) <= 0).any():
             return CheckResult(
                 name="scaffold_split",
@@ -588,7 +592,9 @@ def _load_platinai_4cell() -> Optional[pd.DataFrame]:
         return None
     try:
         raw = pd.read_csv(_PLATINAI_4CELL, low_memory=False)
-        ic40_cols = [c for c in raw.columns if c.startswith("ic50_") and c.endswith("_nm")]
+        ic40_cols = [
+            c for c in raw.columns if c.startswith("ic50_") and c.endswith("_nm")
+        ]
         if not ic40_cols:
             return None
         rows = []
@@ -599,14 +605,16 @@ def _load_platinai_4cell() -> Optional[pd.DataFrame]:
                     continue
                 cell_line = col[len("ic50_") : -len("_nm")]
                 pic50 = float(9.0 - __import__("math").log10(float(v)))
-                rows.append({
-                    "smiles": str(r["smiles"]),
-                    "metal": "Pt",
-                    "cell_line": cell_line,
-                    "protein": NA_FILL,
-                    "pIC50": pic50,
-                    "active": bool(pic50 >= 5.0),
-                })
+                rows.append(
+                    {
+                        "smiles": str(r["smiles"]),
+                        "metal": "Pt",
+                        "cell_line": cell_line,
+                        "protein": NA_FILL,
+                        "pIC50": pic50,
+                        "active": bool(pic50 >= 5.0),
+                    }
+                )
         if not rows:
             return None
         return pd.DataFrame(rows, columns=list(CANONICAL_COLUMNS))
@@ -635,14 +643,25 @@ def run_one_loader(
     rep.checks.append(_check_csv_loads(df, label))
     if df is None or len(df) == 0:
         # All other checks SKIP if CSV doesn't load.
-        for c in ("per_metal_balance", "scaffold_split", "class_balance", "label_range"):
+        for c in (
+            "per_metal_balance",
+            "scaffold_split",
+            "class_balance",
+            "label_range",
+        ):
             rep.checks.append(
-                CheckResult(name=c, status="SKIP", detail=f"{label}: skipped (loader returned no rows)")
+                CheckResult(
+                    name=c,
+                    status="SKIP",
+                    detail=f"{label}: skipped (loader returned no rows)",
+                )
             )
         return rep
 
     # Check 2 (per-metal balance)
-    rep.checks.append(_check_per_metal_balance(df, label, expected_metals=expected_metals))
+    rep.checks.append(
+        _check_per_metal_balance(df, label, expected_metals=expected_metals)
+    )
 
     # Check 3 (scaffold split)
     rep.checks.append(
@@ -767,11 +786,21 @@ def write_summary_md(reports: list[LoaderReport], out_dir: Path) -> Path:
     lines: list[str] = []
     lines.append("# Wf-343c-I3 Data Quality Summary\n")
     lines.append(f"Loaders checked: **{len(reports)}**  ")
-    lines.append("Checks per loader: **5** (csv_loads / per_metal_balance / "
-                 "scaffold_split / class_balance / label_range)\n")
-    lines.append("| loader | csv_loads | per_metal | scaffold | class | label | overall |")
+    lines.append(
+        "Checks per loader: **5** (csv_loads / per_metal_balance / "
+        "scaffold_split / class_balance / label_range)\n"
+    )
+    lines.append(
+        "| loader | csv_loads | per_metal | scaffold | class | label | overall |"
+    )
     lines.append("|---|---|---|---|---|---|---|")
-    check_names = ("csv_loads", "per_metal_balance", "scaffold_split", "class_balance", "label_range")
+    check_names = (
+        "csv_loads",
+        "per_metal_balance",
+        "scaffold_split",
+        "class_balance",
+        "label_range",
+    )
     for r in reports:
         cells = [r.loader]
         for cn in check_names:
@@ -783,7 +812,9 @@ def write_summary_md(reports: list[LoaderReport], out_dir: Path) -> Path:
     n_pass = sum(1 for r in reports if r.status == "PASS")
     n_fail = sum(1 for r in reports if r.status == "FAIL")
     n_skip = sum(1 for r in reports if r.status == "SKIP")
-    lines.append(f"**TOTALS**: {len(reports)} loaders  |  PASS={n_pass}  FAIL={n_fail}  SKIP={n_skip}")
+    lines.append(
+        f"**TOTALS**: {len(reports)} loaders  |  PASS={n_pass}  FAIL={n_fail}  SKIP={n_skip}"
+    )
     path = out_dir / "summary.md"
     with open(path, "w", encoding="utf-8") as fh:
         fh.write("\n".join(lines) + "\n")

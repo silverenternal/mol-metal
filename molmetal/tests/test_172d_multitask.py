@@ -26,6 +26,7 @@ References
 * molmetal/scripts/build_172d_features.py (Wf-128 P1)
 * molmetal/molmetal_lam/reward/wasserstein_loss.py (Wf-123 P1)
 """
+
 from __future__ import annotations
 
 import math
@@ -94,7 +95,10 @@ def test_cache_path_is_in_data_dir() -> None:
 def test_shared_trunk_output_shape() -> None:
     """Shared trunk output = (B, 128)."""
     trunk = m._SharedTrunk(
-        input_dim=172, hidden_dim=256, latent_dim=128, dropout=0.2,
+        input_dim=172,
+        hidden_dim=256,
+        latent_dim=128,
+        dropout=0.2,
     )
     trunk.eval()
     x = torch.randn(8, 172)
@@ -214,9 +218,7 @@ def test_load_platinai_4cell_cell_y_values_finite() -> None:
     )
     for cl in m.DEFAULT_CELL_LINES:
         n_finite = int(np.sum(np.isfinite(cell_y[cl])))
-        assert n_finite > 1000, (
-            f"Expected > 1000 finite pIC50 for {cl}; got {n_finite}"
-        )
+        assert n_finite > 1000, f"Expected > 1000 finite pIC50 for {cl}; got {n_finite}"
 
 
 # ---------------------------------------------------------------------------
@@ -260,9 +262,9 @@ def test_strict_scaffold_kfold_no_overlap_and_complete() -> None:
     assert set(scaffold_to_folds.keys()) == unique_sc
     # And each scaffold appears in exactly one test fold.
     for sc in unique_sc:
-        assert len(scaffold_to_folds[sc]) == 1, (
-            f"scaffold {sc} appears in {len(scaffold_to_folds[sc])} folds"
-        )
+        assert (
+            len(scaffold_to_folds[sc]) == 1
+        ), f"scaffold {sc} appears in {len(scaffold_to_folds[sc])} folds"
 
 
 def test_kfold_dispatcher_picks_strict_scaffold() -> None:
@@ -270,8 +272,11 @@ def test_kfold_dispatcher_picks_strict_scaffold() -> None:
     n = 30
     scaffold_ids = [f"sc_{i // 6}" for i in range(n)]
     splits = m._kfold_indices(
-        n, k=3, seed=0,
-        scaffold_ids=scaffold_ids, strict_scaffold=True,
+        n,
+        k=3,
+        seed=0,
+        scaffold_ids=scaffold_ids,
+        strict_scaffold=True,
     )
     assert len(splits) == 3
 

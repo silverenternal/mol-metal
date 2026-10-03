@@ -20,6 +20,7 @@ pool finalisation contract:
   vs ``include_sa_friendly=False`` (so backward compatibility is
   preserved).
 """
+
 from __future__ import annotations
 
 import pytest
@@ -120,9 +121,7 @@ def test_sa_friendly_pool_all_below_3p5_sa() -> None:
         sa = sa_score_ertl(smi)
         if sa >= 3.5:
             violations.append((smi, sa))
-    assert not violations, (
-        f"SA-friendly fragments with SA >= 3.5: {violations}"
-    )
+    assert not violations, f"SA-friendly fragments with SA >= 3.5: {violations}"
 
 
 # ---------------------------------------------------------------------------
@@ -161,8 +160,7 @@ def test_sa_friendly_pool_no_internal_duplicates() -> None:
     canon = [c for c in canon if c]
     dups = {c for c in canon if canon.count(c) > 1}
     assert not dups, (
-        f"FRAGMENT_POOL_SA_FRIENDLY has internal canonical-form "
-        f"duplicates: {dups}"
+        f"FRAGMENT_POOL_SA_FRIENDLY has internal canonical-form " f"duplicates: {dups}"
     )
 
 
@@ -211,9 +209,9 @@ def test_sa_friendly_pool_descriptor_filter() -> None:
         logp = float(Descriptors.MolLogP(mol))
         if not (40.0 <= mw <= 300.0) or not (-2.0 <= logp <= 5.0):
             out_of_range.append((smi, mw, logp))
-    assert not out_of_range, (
-        f"SA-friendly fragments out of descriptor bounds: {out_of_range}"
-    )
+    assert (
+        not out_of_range
+    ), f"SA-friendly fragments out of descriptor bounds: {out_of_range}"
 
 
 # ---------------------------------------------------------------------------
@@ -239,9 +237,7 @@ def test_fragments_from_chembl_reactive_sa_friendly_toggle() -> None:
         if c:
             added_canon.add(c)
     missing = expected - added_canon
-    assert not missing, (
-        f"include_sa_friendly=True did not add these tiles: {missing}"
-    )
+    assert not missing, f"include_sa_friendly=True did not add these tiles: {missing}"
     # Pool size delta must equal the number of SA-friendly tiles that
     # actually survived validation (here all 20 are expected to pass).
     delta = len(full) - len(no_sa)
@@ -270,9 +266,9 @@ def test_l6_metrics_sa_friendly_counters_populated() -> None:
     metrics_before = dict(l6_fragment_pool_metrics().get("sa_friendly", {}))
     fragments_from_chembl_reactive(include_sa_friendly=True)
     metrics_after = l6_fragment_pool_metrics()["sa_friendly"]
-    assert "sa_friendly" in metrics_before or True, (
-        "sa_friendly key should appear after first pool build"
-    )
+    assert (
+        "sa_friendly" in metrics_before or True
+    ), "sa_friendly key should appear after first pool build"
     # delta in input counter == number of SA-friendly entries processed
     delta_in = metrics_after["input"] - metrics_before.get("input", 0)
     assert delta_in == len(FRAGMENT_POOL_SA_FRIENDLY), (

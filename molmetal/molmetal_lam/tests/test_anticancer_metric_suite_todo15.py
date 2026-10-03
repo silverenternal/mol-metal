@@ -20,6 +20,7 @@ different specs:
 Run with:
     uv run pytest -q molmetal/molmetal_lam/tests/test_anticancer_metric_suite_todo15.py
 """
+
 from __future__ import annotations
 
 import math
@@ -215,10 +216,19 @@ def test_composite_score_cisplatin_returns_full_dict():
     cisplatin = "[Pt](N)(N)(Cl)Cl"
     result = suite.composite_score(cisplatin)
     required_keys = {
-        "logP", "TPSA", "RotB", "MW", "NumHA", "NumHD",
-        "iv_window_ok", "mw_iv_flag",
-        "metal_score", "gsh_evasion", "dna_proxy",
-        "is_metal_complex", "anticancer_index",
+        "logP",
+        "TPSA",
+        "RotB",
+        "MW",
+        "NumHA",
+        "NumHD",
+        "iv_window_ok",
+        "mw_iv_flag",
+        "metal_score",
+        "gsh_evasion",
+        "dna_proxy",
+        "is_metal_complex",
+        "anticancer_index",
     }
     assert required_keys.issubset(result.keys())
     assert isinstance(result["anticancer_index"], float)
@@ -302,9 +312,12 @@ def test_reward_aggregator_aggregate_with_anticancer_index_enabled():
         def canonical_smiles(self):
             return "[Pt](N)(N)(Cl)Cl"
 
-    score = agg.aggregate("[Pt](N)(N)(Cl)Cl", channels={
-        "r_anticancer_index": agg.r_anticancer_index(State()),
-    })
+    score = agg.aggregate(
+        "[Pt](N)(N)(Cl)Cl",
+        channels={
+            "r_anticancer_index": agg.r_anticancer_index(State()),
+        },
+    )
     assert math.isfinite(score)
     assert score > 0.0  # cisplatin should yield a positive anticancer_index
 
@@ -377,9 +390,7 @@ def test_compute_metal_proxies_pt_iv_octahedral():
     """A Pt(IV) hexa-coordinate complex: oxidation_state=+4, coord=6,
     octahedral geometry.
     """
-    out = AnticancerMetricSuite.compute_metal_proxies(
-        "[Pt](N)(N)(Cl)(Cl)(Cl)Cl"
-    )
+    out = AnticancerMetricSuite.compute_metal_proxies("[Pt](N)(N)(Cl)(Cl)(Cl)Cl")
     assert out["oxidation_state"] == 4
     assert out["coordination_number"] == 6
     assert out["geometry"] == "octahedral"
@@ -448,13 +459,20 @@ def test_descriptor_report_emits_all_thirteen_metrics():
     """
     rep = AnticancerMetricSuite().descriptor_report("[Pt](N)(N)(Cl)Cl")
     # Legacy 8 keys
-    for k in ("logP", "TPSA", "RotB", "MW", "NumHA", "NumHD",
-              "iv_window_ok", "mw_iv_flag"):
+    for k in (
+        "logP",
+        "TPSA",
+        "RotB",
+        "MW",
+        "NumHA",
+        "NumHD",
+        "iv_window_ok",
+        "mw_iv_flag",
+    ):
         assert k in rep
     # New 5 keys (4 truly new + TPSA/RotB wrappers whose domain is
     # already in the legacy set; we count the new fields below).
-    for k in ("oxidation_state", "coordination_number", "geometry",
-              "dna_kb_proxy_v1"):
+    for k in ("oxidation_state", "coordination_number", "geometry", "dna_kb_proxy_v1"):
         assert k in rep
     # Total ≥ 12 (we accept 12 because TPSA/RotB are not re-emitted
     # as separate compute_* fields — they share the legacy slots).

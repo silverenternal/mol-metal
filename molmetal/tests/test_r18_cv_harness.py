@@ -29,6 +29,7 @@ The 15 tests pin the 5-fold CV contract:
 
 All tests are CPU-only, deterministic, and run in < 60 seconds total.
 """
+
 from __future__ import annotations
 
 import json
@@ -98,9 +99,7 @@ def smoke_payload() -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 def test_cv_5_fold() -> None:
     """The harness default is exactly 5 folds."""
-    assert DEFAULT_N_FOLDS == 5, (
-        f"expected DEFAULT_N_FOLDS=5, got {DEFAULT_N_FOLDS}"
-    )
+    assert DEFAULT_N_FOLDS == 5, f"expected DEFAULT_N_FOLDS=5, got {DEFAULT_N_FOLDS}"
 
 
 # ---------------------------------------------------------------------------
@@ -114,9 +113,9 @@ def test_per_module_per_fold(smoke_payload: Dict[str, Any]) -> None:
         assert "folds" in rec, f"missing folds for {mod_id}"
         assert "mean" in rec, f"missing mean for {mod_id}"
         assert "std" in rec, f"missing std for {mod_id}"
-        assert len(rec["folds"]) == n_folds, (
-            f"{mod_id} has {len(rec['folds'])} folds; expected {n_folds}"
-        )
+        assert (
+            len(rec["folds"]) == n_folds
+        ), f"{mod_id} has {len(rec['folds'])} folds; expected {n_folds}"
         for fold in rec["folds"]:
             assert "accuracy" in fold
             assert "wall_time_ms_median" in fold
@@ -131,19 +130,21 @@ def test_per_module_per_fold(smoke_payload: Dict[str, Any]) -> None:
 def test_compute_mean_std(smoke_payload: Dict[str, Any]) -> None:
     """Each module's mean/std is computed and contains finite numbers."""
     import math
+
     pmp = smoke_payload["per_module_per_fold_metrics"]
     for mod_id, rec in pmp.items():
         m = rec["mean"]
         s = rec["std"]
-        for key in ("accuracy", "wall_time_ms_median", "wall_time_ms_mean", "memory_mb"):
+        for key in (
+            "accuracy",
+            "wall_time_ms_median",
+            "wall_time_ms_mean",
+            "memory_mb",
+        ):
             assert key in m, f"missing mean.{key} for {mod_id}"
             assert key in s, f"missing std.{key} for {mod_id}"
-            assert math.isfinite(m[key]), (
-                f"{mod_id} mean.{key}={m[key]} not finite"
-            )
-            assert math.isfinite(s[key]), (
-                f"{mod_id} std.{key}={s[key]} not finite"
-            )
+            assert math.isfinite(m[key]), f"{mod_id} mean.{key}={m[key]} not finite"
+            assert math.isfinite(s[key]), f"{mod_id} std.{key}={s[key]} not finite"
 
 
 # ---------------------------------------------------------------------------
@@ -151,9 +152,9 @@ def test_compute_mean_std(smoke_payload: Dict[str, Any]) -> None:
 # ---------------------------------------------------------------------------
 def test_default_modules_is_32(registry: Dict[str, Any]) -> None:
     """The full registry contains exactly 32 modules (matches R18 ship manifest)."""
-    assert len(registry) == 32, (
-        f"R18 CV registry changed: got {len(registry)}, expected 32"
-    )
+    assert (
+        len(registry) == 32
+    ), f"R18 CV registry changed: got {len(registry)}, expected 32"
 
 
 # ---------------------------------------------------------------------------
@@ -163,9 +164,7 @@ def test_fold_seeds_are_distinct(smoke_payload: Dict[str, Any]) -> None:
     """Fold seeds are unique (seed + k for k in [0, n_folds))."""
     seeds = smoke_payload["fold_seeds"]
     assert len(seeds) == smoke_payload["n_folds"]
-    assert len(set(seeds)) == len(seeds), (
-        f"duplicate fold seeds: {seeds}"
-    )
+    assert len(set(seeds)) == len(seeds), f"duplicate fold seeds: {seeds}"
 
 
 # ---------------------------------------------------------------------------
@@ -182,9 +181,7 @@ def test_fold_sizes_balanced(smoke_payload: Dict[str, Any]) -> None:
     assert len(sizes) == n_folds
     assert sum(sizes) == smoke_payload["n_samples_total"]
     # max - min <= 1
-    assert max(sizes) - min(sizes) <= 1, (
-        f"fold sizes unbalanced: {sizes}"
-    )
+    assert max(sizes) - min(sizes) <= 1, f"fold sizes unbalanced: {sizes}"
 
 
 # ---------------------------------------------------------------------------
@@ -197,9 +194,9 @@ def test_accuracy_in_unit_interval(smoke_payload: Dict[str, Any]) -> None:
         assert 0.0 <= m_acc <= 1.0, f"{mod_id} mean accuracy {m_acc} outside [0,1]"
         for fold in rec["folds"]:
             f_acc = fold["accuracy"]
-            assert 0.0 <= f_acc <= 1.0, (
-                f"{mod_id} fold {fold['fold_idx']} accuracy {f_acc} outside [0,1]"
-            )
+            assert (
+                0.0 <= f_acc <= 1.0
+            ), f"{mod_id} fold {fold['fold_idx']} accuracy {f_acc} outside [0,1]"
 
 
 # ---------------------------------------------------------------------------
@@ -307,9 +304,9 @@ def test_smoke_run_invokes_every_module(
 ) -> None:
     """The smoke payload covers every module in the registry."""
     pmp = smoke_payload["per_module_per_fold_metrics"]
-    assert set(pmp.keys()) == set(registry.keys()), (
-        f"smoke run missed modules: {set(registry.keys()) - set(pmp.keys())}"
-    )
+    assert set(pmp.keys()) == set(
+        registry.keys()
+    ), f"smoke run missed modules: {set(registry.keys()) - set(pmp.keys())}"
 
 
 # ---------------------------------------------------------------------------

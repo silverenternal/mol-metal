@@ -298,9 +298,7 @@ def test_pocket_invariance_avoided():
         for pocket, label in data:
             _, logits = model(pocket)
             target = torch.tensor([label], dtype=torch.long)
-            loss = F.cross_entropy(
-                logits.unsqueeze(0), target, label_smoothing=0.05
-            )
+            loss = F.cross_entropy(logits.unsqueeze(0), target, label_smoothing=0.05)
             loss.backward()
         optimiser.step()
 
@@ -319,18 +317,18 @@ def test_pocket_invariance_avoided():
     # Each pocket must classify to its own family — strict
     # discrimination in the head, which is what the MCTS root
     # prior consumes.
-    assert pred_ca2 == int(ScaffoldClass.ZN_TETRA_HHH), (
-        f"CA2 misclassified: pred={pred_ca2}, expected={int(ScaffoldClass.ZN_TETRA_HHH)}"
-    )
-    assert pred_mmp2 == int(ScaffoldClass.ZN_TETRA_HHE), (
-        f"MMP2 misclassified: pred={pred_mmp2}, expected={int(ScaffoldClass.ZN_TETRA_HHE)}"
-    )
-    assert pred_pka == int(ScaffoldClass.MG_OCTA_KINASE), (
-        f"PKA misclassified: pred={pred_pka}, expected={int(ScaffoldClass.MG_OCTA_KINASE)}"
-    )
-    assert pred_cyp == int(ScaffoldClass.FE_HEME_CYS), (
-        f"CYP misclassified: pred={pred_cyp}, expected={int(ScaffoldClass.FE_HEME_CYS)}"
-    )
+    assert pred_ca2 == int(
+        ScaffoldClass.ZN_TETRA_HHH
+    ), f"CA2 misclassified: pred={pred_ca2}, expected={int(ScaffoldClass.ZN_TETRA_HHH)}"
+    assert (
+        pred_mmp2 == int(ScaffoldClass.ZN_TETRA_HHE)
+    ), f"MMP2 misclassified: pred={pred_mmp2}, expected={int(ScaffoldClass.ZN_TETRA_HHE)}"
+    assert (
+        pred_pka == int(ScaffoldClass.MG_OCTA_KINASE)
+    ), f"PKA misclassified: pred={pred_pka}, expected={int(ScaffoldClass.MG_OCTA_KINASE)}"
+    assert pred_cyp == int(
+        ScaffoldClass.FE_HEME_CYS
+    ), f"CYP misclassified: pred={pred_cyp}, expected={int(ScaffoldClass.FE_HEME_CYS)}"
 
 
 # ---------------------------------------------------------------------------
@@ -445,24 +443,18 @@ def test_anchor_tier_8_dim():
     feature vectors (so the HHH-vs-HHE collapse is broken).
     """
     # Total feature dim is 33 (= 29 v1 + 4 anchor_position).
-    assert PER_RESIDUE_FEATURES == 33, (
-        f"PER_RESIDUE_FEATURES should be 33 (v2); got {PER_RESIDUE_FEATURES}"
-    )
+    assert (
+        PER_RESIDUE_FEATURES == 33
+    ), f"PER_RESIDUE_FEATURES should be 33 (v2); got {PER_RESIDUE_FEATURES}"
 
     embedder = ResidueEmbedder()
     # Three "His" residues at different anchor positions (0, 1, 2).
     # v1 would have produced IDENTICAL vectors for all three (same
     # AA, same is_metal_anchor, same dist_bin).  v2 must produce
     # DISTINCT vectors because the anchor_position slot is different.
-    v_pos0 = embedder(
-        "H", 94, 2.5, chain="A", is_metal_anchor=True, anchor_position=0
-    )
-    v_pos1 = embedder(
-        "H", 96, 3.0, chain="A", is_metal_anchor=True, anchor_position=1
-    )
-    v_pos2 = embedder(
-        "H", 119, 2.0, chain="A", is_metal_anchor=True, anchor_position=2
-    )
+    v_pos0 = embedder("H", 94, 2.5, chain="A", is_metal_anchor=True, anchor_position=0)
+    v_pos1 = embedder("H", 96, 3.0, chain="A", is_metal_anchor=True, anchor_position=1)
+    v_pos2 = embedder("H", 119, 2.0, chain="A", is_metal_anchor=True, anchor_position=2)
     v_non = embedder(
         "V", 143, 4.5, chain="A", is_metal_anchor=False, anchor_position=-1
     )
@@ -525,8 +517,11 @@ def test_ca2_hhh_no_longer_collapses():
         for i, aa in enumerate(triad_aa):
             residues.append(
                 PocketResidue(
-                    aa, 94 + i, 2.0 + 0.5 * i,
-                    chain=chain_letter, is_metal_anchor=True,
+                    aa,
+                    94 + i,
+                    2.0 + 0.5 * i,
+                    chain=chain_letter,
+                    is_metal_anchor=True,
                 )
             )
         shell = ["V", "L", "F", "E", "T", "K", "W"]
@@ -560,9 +555,7 @@ def test_ca2_hhh_no_longer_collapses():
         for pocket, label in data:
             _, logits = model(pocket)
             target = torch.tensor([label], dtype=torch.long)
-            loss = F.cross_entropy(
-                logits.unsqueeze(0), target, label_smoothing=0.05
-            )
+            loss = F.cross_entropy(logits.unsqueeze(0), target, label_smoothing=0.05)
             loss.backward()
         optimiser.step()
 
@@ -579,9 +572,7 @@ def test_ca2_hhh_no_longer_collapses():
     # the other 3 HHH-family classes are checked as a softer
     # "no regression" property (≥ 1 of 3 HHH-family non-HHH classes
     # also classifies correctly).
-    assert preds[int(ScaffoldClass.ZN_TETRA_HHH)] == int(
-        ScaffoldClass.ZN_TETRA_HHH
-    ), (
+    assert preds[int(ScaffoldClass.ZN_TETRA_HHH)] == int(ScaffoldClass.ZN_TETRA_HHH), (
         f"ZN_TETRA_HHH still misclassified: pred="
         f"{preds[int(ScaffoldClass.ZN_TETRA_HHH)]} "
         f"(expected {int(ScaffoldClass.ZN_TETRA_HHH)}) — v2 "

@@ -101,9 +101,9 @@ def test_vel_scale_learnable():
         "EGNNVelocityField must expose a learnable `vel_scale` parameter "
         "(P1.2 — replaces legacy tanh saturation gate)"
     )
-    assert isinstance(vf.vel_scale, torch.nn.Parameter), (
-        f"vel_scale must be an nn.Parameter, got {type(vf.vel_scale)}"
-    )
+    assert isinstance(
+        vf.vel_scale, torch.nn.Parameter
+    ), f"vel_scale must be an nn.Parameter, got {type(vf.vel_scale)}"
     assert vf.vel_scale.requires_grad, (
         "vel_scale must have requires_grad=True so the optimiser can "
         "update it during training"
@@ -112,7 +112,9 @@ def test_vel_scale_learnable():
     # preserved at init — bit-for-bit when vel_scale is the only P1.2
     # change and the rest of the architecture is unchanged.
     assert torch.allclose(
-        vf.vel_scale.detach(), torch.tensor(1.0), atol=1e-6,
+        vf.vel_scale.detach(),
+        torch.tensor(1.0),
+        atol=1e-6,
     ), f"vel_scale should init to 1.0, got {vf.vel_scale.detach()}"
     # Confirm it sits on the parameter list (so AdamW picks it up).
     param_ids = {id(p) for p in vf.parameters()}
@@ -199,14 +201,14 @@ def test_p1_does_not_break_p0():
     """
     torch.manual_seed(0)
     adapter = LipmanFlowMatchingAdapter(
-        hidden_dim=128,           # P1.1 default
-        n_layers=2,               # tiny for speed; not part of the P1 contract
+        hidden_dim=128,  # P1.1 default
+        n_layers=2,  # tiny for speed; not part of the P1 contract
         max_atomic_number=20,
-        use_bond_head=False,      # P0 F1 path; keeps the smoke test fast
+        use_bond_head=False,  # P0 F1 path; keeps the smoke test fast
         joint_train=False,
-        vocab_mask=True,          # P0 F3
+        vocab_mask=True,  # P0 F3
         cfg_scale=1.0,
-        context_dropout=0.0,      # disable CFG dropout for deterministic forward
+        context_dropout=0.0,  # disable CFG dropout for deterministic forward
     )
     # No UserWarning should fire — hidden_dim=128 is above the
     # P0-F4 threshold of 64.
@@ -214,7 +216,8 @@ def test_p1_does_not_break_p0():
         warnings.simplefilter("always")
         adapter.setup(device="cpu")
     user_warnings = [
-        w for w in caught
+        w
+        for w in caught
         if issubclass(w.category, UserWarning) and "hidden_dim" in str(w.message)
     ]
     assert not user_warnings, (
@@ -225,6 +228,7 @@ def test_p1_does_not_break_p0():
     # is built.  Bit-exact contract: a single train_step on a tiny
     # dummy molecule must produce a finite scalar loss.
     from molmetal.domain import Molecule
+
     coords = torch.tensor(
         [
             [0.0, 0.0, 0.0],
@@ -237,21 +241,24 @@ def test_p1_does_not_break_p0():
     bonds = torch.tensor([[0, 1], [1, 0], [0, 2], [2, 0]], dtype=torch.long)
     bond_types = torch.tensor([1, 1, 1, 1], dtype=torch.long)
     mol = Molecule(
-        coords=coords, atom_types=atom_types,
-        bonds=bonds, bond_types=bond_types,
+        coords=coords,
+        atom_types=atom_types,
+        bonds=bonds,
+        bond_types=bond_types,
     )
     loss = adapter.train_step(pocket=None, mols=[mol])
-    assert math.isfinite(loss), (
-        f"P1.1 + P1.2 train_step must return a finite loss; got {loss!r}"
-    )
-    assert loss >= 0.0, (
-        f"CFM + atom-CE loss is non-negative by construction; got {loss!r}"
-    )
+    assert math.isfinite(
+        loss
+    ), f"P1.1 + P1.2 train_step must return a finite loss; got {loss!r}"
+    assert (
+        loss >= 0.0
+    ), f"CFM + atom-CE loss is non-negative by construction; got {loss!r}"
 
 
 # ===========================================================================
 # Phase 2 tests: P1.3 (cross-attention pocket) + P1.4 (Connectivity decoder)
 # ===========================================================================
+
 
 # ---------------------------------------------------------------------------
 # Test 5 (P1.3): cross-attention pocket conditioning
@@ -280,12 +287,14 @@ def test_cross_attention_pocket():
     hidden_dim = 32  # smaller for speed
     max_atomic_number = 20
     vf = EGNNVelocityField(
-        hidden_dim=hidden_dim, n_layers=2, max_atomic_number=max_atomic_number,
+        hidden_dim=hidden_dim,
+        n_layers=2,
+        max_atomic_number=max_atomic_number,
     )
     # 1. Cross-attention modules are present.
-    assert hasattr(vf, "pocket_residue_embed"), (
-        "EGNNVelocityField must expose pocket_residue_embed (P1.3)"
-    )
+    assert hasattr(
+        vf, "pocket_residue_embed"
+    ), "EGNNVelocityField must expose pocket_residue_embed (P1.3)"
     assert isinstance(vf.pocket_residue_embed, torch.nn.Linear), (
         f"pocket_residue_embed must be nn.Linear, got "
         f"{type(vf.pocket_residue_embed)}"
@@ -300,27 +309,23 @@ def test_cross_attention_pocket():
         f"got out_features={vf.pocket_residue_embed.out_features}"
     )
     # MultiheadAttention with num_heads=4 — the Pocket2Mol default.
-    assert hasattr(vf, "cross_attn"), (
-        "EGNNVelocityField must expose cross_attn (P1.3)"
-    )
+    assert hasattr(vf, "cross_attn"), "EGNNVelocityField must expose cross_attn (P1.3)"
     assert isinstance(vf.cross_attn, torch.nn.MultiheadAttention), (
-        f"cross_attn must be nn.MultiheadAttention, got "
-        f"{type(vf.cross_attn)}"
+        f"cross_attn must be nn.MultiheadAttention, got " f"{type(vf.cross_attn)}"
     )
-    assert vf.cross_attn.num_heads == 4, (
-        f"Pocket2Mol default num_heads=4, got {vf.cross_attn.num_heads}"
-    )
+    assert (
+        vf.cross_attn.num_heads == 4
+    ), f"Pocket2Mol default num_heads=4, got {vf.cross_attn.num_heads}"
     assert vf.cross_attn.embed_dim == hidden_dim, (
         f"cross_attn embed_dim must match hidden_dim={hidden_dim}, "
         f"got {vf.cross_attn.embed_dim}"
     )
     # LayerNorm on the residual stream.
-    assert hasattr(vf, "cross_attn_norm"), (
-        "EGNNVelocityField must expose cross_attn_norm (P1.3)"
-    )
+    assert hasattr(
+        vf, "cross_attn_norm"
+    ), "EGNNVelocityField must expose cross_attn_norm (P1.3)"
     assert isinstance(vf.cross_attn_norm, torch.nn.LayerNorm), (
-        f"cross_attn_norm must be nn.LayerNorm, got "
-        f"{type(vf.cross_attn_norm)}"
+        f"cross_attn_norm must be nn.LayerNorm, got " f"{type(vf.cross_attn_norm)}"
     )
 
     vf.eval()
@@ -351,14 +356,17 @@ def test_cross_attention_pocket():
     pocket_atom_mask = torch.ones(b, p_pocket, dtype=torch.bool)
     with torch.no_grad():
         out_cond = vf(
-            x, atom_types, edge_index, t,
+            x,
+            atom_types,
+            edge_index,
+            t,
             pocket_atom_embed=pocket_atom_embed,
             pocket_atom_mask=pocket_atom_mask,
         )
     assert out_cond["vel"].shape == (b, n, 3)
-    assert torch.isfinite(out_cond["vel"]).all(), (
-        "Conditioned forward produced non-finite velocity values"
-    )
+    assert torch.isfinite(
+        out_cond["vel"]
+    ).all(), "Conditioned forward produced non-finite velocity values"
 
     # 2c. With random weights the cross-attention block produces a
     # different output than the unconditioned forward.  We allow a
@@ -371,7 +379,10 @@ def test_cross_attention_pocket():
         vf.cross_attn.in_proj_weight.fill_(0.01)
         vf.cross_attn.out_proj.weight.fill_(0.01)
         out_cond2 = vf(
-            x, atom_types, edge_index, t,
+            x,
+            atom_types,
+            edge_index,
+            t,
             pocket_atom_embed=pocket_atom_embed,
             pocket_atom_mask=pocket_atom_mask,
         )
@@ -388,7 +399,10 @@ def test_cross_attention_pocket():
         pocket_atom_mask = torch.ones(b, p_pocket_try, dtype=torch.bool)
         with torch.no_grad():
             out_try = vf(
-                x, atom_types, edge_index, t,
+                x,
+                atom_types,
+                edge_index,
+                t,
                 pocket_atom_embed=pocket_atom_embed,
                 pocket_atom_mask=pocket_atom_mask,
             )
@@ -402,18 +416,26 @@ def test_cross_attention_pocket():
     # field with zero-init cross-attention weights to ensure the
     # conditioning is structurally a no-op.
     vf_zero = EGNNVelocityField(
-        hidden_dim=hidden_dim, n_layers=2, max_atomic_number=max_atomic_number,
+        hidden_dim=hidden_dim,
+        n_layers=2,
+        max_atomic_number=max_atomic_number,
     )
     vf_zero.eval()
     with torch.no_grad():
         out_no_pocket = vf_zero(x, atom_types, edge_index, t)
     with torch.no_grad():
         out_with_pocket_none = vf_zero(
-            x, atom_types, edge_index, t,
-            pocket_atom_embed=None, pocket_atom_mask=None,
+            x,
+            atom_types,
+            edge_index,
+            t,
+            pocket_atom_embed=None,
+            pocket_atom_mask=None,
         )
     assert torch.allclose(
-        out_no_pocket["vel"], out_with_pocket_none["vel"], atol=1e-6,
+        out_no_pocket["vel"],
+        out_with_pocket_none["vel"],
+        atol=1e-6,
     ), (
         "When pocket_atom_embed and pocket_atom_mask are both None the "
         "forward must be bit-exact with the legacy unconditioned path "
@@ -458,9 +480,10 @@ def test_connectivity_decoder_rejects_disconnected():
     )
     assert n_comp == 2, f"two disjoint pairs ⇒ 2 components, got {n_comp}"
     assert largest == 2, f"largest component should have 2 atoms, got {largest}"
-    assert sorted(atoms) in ([0, 1], [2, 3]), (
-        f"largest-component atoms should be one of the disjoint pairs, got {atoms}"
-    )
+    assert sorted(atoms) in (
+        [0, 1],
+        [2, 3],
+    ), f"largest-component atoms should be one of the disjoint pairs, got {atoms}"
 
     # Build a hand-crafted DecodedMol with two disconnected fragments.
     # We mock the inner BondAwareDecoder by subclassing so the wrapper
@@ -472,8 +495,15 @@ def test_connectivity_decoder_rejects_disconnected():
 
     # Two disjoint chains: 0-1-2-3 (path) and 4-5 (path). 6 atoms, 2 components.
     positions = torch.tensor(
-        [[0.0, 0, 0], [1.5, 0, 0], [3.0, 0, 0], [4.5, 0, 0],
-         [10.0, 0, 0], [11.5, 0, 0], [13.0, 0, 0]],
+        [
+            [0.0, 0, 0],
+            [1.5, 0, 0],
+            [3.0, 0, 0],
+            [4.5, 0, 0],
+            [10.0, 0, 0],
+            [11.5, 0, 0],
+            [13.0, 0, 0],
+        ],
     )
     atomic_numbers = torch.tensor([6, 6, 6, 6, 6, 6, 6], dtype=torch.long)
     cloud = AtomCloud(positions=positions, atomic_numbers=atomic_numbers)
@@ -497,25 +527,25 @@ def test_connectivity_decoder_rejects_disconnected():
     wrapper = ConnectivityAwareDecoder(bond_decoder=mock)
 
     result = wrapper.decode(cloud)
-    assert isinstance(result, ConnectivityResult), (
-        "ConnectivityAwareDecoder.decode must return a ConnectivityResult"
-    )
-    assert result.is_connected is False, (
-        "Predicted graph has 2 components ⇒ is_connected must be False"
-    )
-    assert result.n_components == 2, (
-        f"n_components must equal 2, got {result.n_components}"
-    )
-    assert result.largest_component_size == 4, (
-        f"largest fragment has 4 atoms, got {result.largest_component_size}"
-    )
+    assert isinstance(
+        result, ConnectivityResult
+    ), "ConnectivityAwareDecoder.decode must return a ConnectivityResult"
+    assert (
+        result.is_connected is False
+    ), "Predicted graph has 2 components ⇒ is_connected must be False"
+    assert (
+        result.n_components == 2
+    ), f"n_components must equal 2, got {result.n_components}"
+    assert (
+        result.largest_component_size == 4
+    ), f"largest fragment has 4 atoms, got {result.largest_component_size}"
     assert sorted(result.largest_component_atoms) == [0, 1, 2, 3], (
         f"largest fragment atoms must be [0, 1, 2, 3], got "
         f"{result.largest_component_atoms}"
     )
-    assert result.rejected_reason is not None, (
-        "Disconnected prediction must carry a rejected_reason"
-    )
+    assert (
+        result.rejected_reason is not None
+    ), "Disconnected prediction must carry a rejected_reason"
     assert "disconnected" in result.rejected_reason, (
         f"rejected_reason must describe the disconnect, got "
         f"{result.rejected_reason!r}"
@@ -529,7 +559,8 @@ def test_connectivity_decoder_rejects_disconnected():
     # verdict — the wrapper is purely diagnostic; the policy lives in
     # the caller.
     wrapper2 = ConnectivityAwareDecoder(
-        bond_decoder=mock, accept_only_connected=False,
+        bond_decoder=mock,
+        accept_only_connected=False,
     )
     result2 = wrapper2.decode(cloud)
     assert result2.is_connected is False, (
@@ -590,9 +621,9 @@ def test_connectivity_decoder_keeps_connected():
         f"Single-chain graph must be connected, got is_connected="
         f"{result.is_connected}"
     )
-    assert result.n_components == 1, (
-        f"n_components must be 1, got {result.n_components}"
-    )
+    assert (
+        result.n_components == 1
+    ), f"n_components must be 1, got {result.n_components}"
     assert result.largest_component_size == 4, (
         f"All 4 atoms should be in the main fragment, got "
         f"{result.largest_component_size}"
@@ -621,9 +652,9 @@ def test_connectivity_decoder_keeps_connected():
     )
     mock._fixed_decoded = cyclic
     result_cyclic = wrapper.decode(cloud)
-    assert result_cyclic.is_connected is True, (
-        "Cyclic connected graph must be flagged as connected"
-    )
+    assert (
+        result_cyclic.is_connected is True
+    ), "Cyclic connected graph must be flagged as connected"
     assert result_cyclic.n_components == 1
 
     # Edge case: single-atom cloud (trivially connected).
@@ -634,9 +665,9 @@ def test_connectivity_decoder_keeps_connected():
     single = DecodedMol(bond_orders=[], smiles="C", n_atoms=1, n_bonds=0)
     mock._fixed_decoded = single
     result_single = wrapper.decode(cloud_1)
-    assert result_single.is_connected is True, (
-        "Single-atom cloud must be trivially connected"
-    )
+    assert (
+        result_single.is_connected is True
+    ), "Single-atom cloud must be trivially connected"
     assert result_single.n_components == 1
     assert result_single.largest_component_size == 1
     assert result_single.largest_component_atoms == [0]

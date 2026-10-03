@@ -48,7 +48,9 @@ import train_dmpnn_multitask_wasserstein as mtw  # noqa: E402
 from molmetal.models.dmpnn import DomainAdversarialHead  # noqa: E402
 
 
-def _baseline_params(n_metals: int = 2, hidden: int = 32, depth: int = 2, dropout: float = 0.1) -> int:
+def _baseline_params(
+    n_metals: int = 2, hidden: int = 32, depth: int = 2, dropout: float = 0.1
+) -> int:
     """Build the Wf-131 P1 baseline (no DANN) and return its parameter count.
 
     The baseline is ``MultiTaskWassersteinModel(n_metals=n_metals, hidden=..., depth=..., dropout=...)``
@@ -59,7 +61,10 @@ def _baseline_params(n_metals: int = 2, hidden: int = 32, depth: int = 2, dropou
     """
     torch.manual_seed(0)
     model = mtw.MultiTaskWassersteinModel(
-        n_metals=n_metals, hidden=hidden, depth=depth, dropout=dropout,
+        n_metals=n_metals,
+        hidden=hidden,
+        depth=depth,
+        dropout=dropout,
     )
     return sum(p.numel() for p in model.parameters())
 
@@ -74,17 +79,18 @@ def test_dann_off_default() -> None:
     """
     torch.manual_seed(0)
     model = mtw.MultiTaskWassersteinModel(
-        n_metals=2, hidden=32, depth=2, dropout=0.1,
+        n_metals=2,
+        hidden=32,
+        depth=2,
+        dropout=0.1,
     )
-    assert model.use_dann is False, (
-        "use_dann default must be False for Wf-131 P1 backward compat"
-    )
-    assert model.domain_head is None, (
-        "domain_head must be None when use_dann=False"
-    )
-    assert model.num_domains == 4, (
-        "num_domains default must be 4 (MetalCytoToxDB / DrugOOD / NCI-60 / BindingDB)"
-    )
+    assert (
+        model.use_dann is False
+    ), "use_dann default must be False for Wf-131 P1 backward compat"
+    assert model.domain_head is None, "domain_head must be None when use_dann=False"
+    assert (
+        model.num_domains == 4
+    ), "num_domains default must be 4 (MetalCytoToxDB / DrugOOD / NCI-60 / BindingDB)"
     # Parameter count matches the Wf-131 P1 baseline.
     n_params = sum(p.numel() for p in model.parameters())
     expected = _baseline_params()
@@ -104,31 +110,31 @@ def test_dann_on() -> None:
     """
     torch.manual_seed(0)
     model = mtw.MultiTaskWassersteinModel(
-        n_metals=2, hidden=32, depth=2, dropout=0.1, use_dann=True,
+        n_metals=2,
+        hidden=32,
+        depth=2,
+        dropout=0.1,
+        use_dann=True,
         num_domains=4,
     )
-    assert model.use_dann is True, (
-        "use_dann=True must be reflected on the model"
-    )
+    assert model.use_dann is True, "use_dann=True must be reflected on the model"
     assert isinstance(model.domain_head, DomainAdversarialHead), (
         f"use_dann=True must register DomainAdversarialHead, got "
         f"{type(model.domain_head).__name__}"
     )
-    assert model.num_domains == 4, (
-        "num_domains must propagate from constructor kwarg"
-    )
+    assert model.num_domains == 4, "num_domains must propagate from constructor kwarg"
     # The DomainAdversarialHead sub-module is also accessible via
     # ``model.encoder.domain_head`` (the encoder is the actual owner).
-    assert isinstance(model.encoder.domain_head, DomainAdversarialHead), (
-        "encoder.domain_head must mirror model.domain_head"
-    )
+    assert isinstance(
+        model.encoder.domain_head, DomainAdversarialHead
+    ), "encoder.domain_head must mirror model.domain_head"
     # Parameter count strictly increases (domain head has its own
     # Linear weights + biases on top of the shared encoder).
     n_params_off = _baseline_params()
     n_params_on = sum(p.numel() for p in model.parameters())
-    assert n_params_on > n_params_off, (
-        f"use_dann=True must add params: on={n_params_on} vs off={n_params_off}"
-    )
+    assert (
+        n_params_on > n_params_off
+    ), f"use_dann=True must add params: on={n_params_on} vs off={n_params_off}"
 
 
 def test_dann_passes_to_model() -> None:
@@ -144,14 +150,22 @@ def test_dann_passes_to_model() -> None:
     torch.manual_seed(0)
     # OFF propagation: encoder.domain_head is None.
     model_off = mtw.MultiTaskWassersteinModel(
-        n_metals=2, hidden=32, depth=2, dropout=0.1, use_dann=False,
+        n_metals=2,
+        hidden=32,
+        depth=2,
+        dropout=0.1,
+        use_dann=False,
     )
     assert model_off.encoder.use_dann is False
     assert model_off.encoder.domain_head is None
 
     # ON propagation: encoder.domain_head is a DomainAdversarialHead.
     model_on = mtw.MultiTaskWassersteinModel(
-        n_metals=2, hidden=32, depth=2, dropout=0.1, use_dann=True,
+        n_metals=2,
+        hidden=32,
+        depth=2,
+        dropout=0.1,
+        use_dann=True,
         num_domains=4,
     )
     assert model_on.encoder.use_dann is True

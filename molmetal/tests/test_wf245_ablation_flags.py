@@ -48,8 +48,10 @@ def test_argparse_accepts_no_wass_flag():
 
     p = argparse.ArgumentParser()
     p.add_argument(
-        "--no-wass", dest="use_wass",
-        action="store_false", default=True,
+        "--no-wass",
+        dest="use_wass",
+        action="store_false",
+        default=True,
     )
     args = p.parse_args([])
     assert args.use_wass is True  # default ON
@@ -63,8 +65,10 @@ def test_argparse_accepts_no_multi_task_flag():
 
     p = argparse.ArgumentParser()
     p.add_argument(
-        "--no-multi-task", dest="use_multi_task",
-        action="store_false", default=True,
+        "--no-multi-task",
+        dest="use_multi_task",
+        action="store_false",
+        default=True,
     )
     args = p.parse_args([])
     assert args.use_multi_task is True
@@ -284,16 +288,22 @@ def test_all_wf243_flags_still_parse():
 
     p = argparse.ArgumentParser()
     p.add_argument(
-        "--no-kendall", dest="use_kendall",
-        action="store_false", default=True,
+        "--no-kendall",
+        dest="use_kendall",
+        action="store_false",
+        default=True,
     )
     p.add_argument(
-        "--no-dann", dest="use_dann",
-        action="store_false", default=True,
+        "--no-dann",
+        dest="use_dann",
+        action="store_false",
+        default=True,
     )
     p.add_argument(
-        "--no-bf16", dest="bf16",
-        action="store_false", default=True,
+        "--no-bf16",
+        dest="bf16",
+        action="store_false",
+        default=True,
     )
     p.add_argument("--wass-weight", type=float, default=0.05)
     p.add_argument("--lambda-grl", type=float, default=0.1)
@@ -304,18 +314,27 @@ def test_all_wf243_flags_still_parse():
     )
     p.add_argument("--grad-clip", type=float, default=1.0)
     p.add_argument(
-        "--no-grad-clip", dest="grad_clip",
-        action="store_const", const=0.0, default=1.0,
+        "--no-grad-clip",
+        dest="grad_clip",
+        action="store_const",
+        const=0.0,
+        default=1.0,
     )
-    args = p.parse_args([
-        "--no-kendall",
-        "--no-dann",
-        "--no-bf16",
-        "--wass-weight", "0.0",
-        "--lambda-grl", "0.05",
-        "--dann-domain-mode", "single",
-        "--grad-clip", "5.0",
-    ])
+    args = p.parse_args(
+        [
+            "--no-kendall",
+            "--no-dann",
+            "--no-bf16",
+            "--wass-weight",
+            "0.0",
+            "--lambda-grl",
+            "0.05",
+            "--dann-domain-mode",
+            "single",
+            "--grad-clip",
+            "5.0",
+        ]
+    )
     assert args.use_kendall is False
     assert args.use_dann is False
     assert args.bf16 is False
@@ -334,7 +353,9 @@ def test_help_works():
 
     p = argparse.ArgumentParser()
     p.add_argument("--no-wass", dest="use_wass", action="store_false", default=True)
-    p.add_argument("--no-multi-task", dest="use_multi_task", action="store_false", default=True)
+    p.add_argument(
+        "--no-multi-task", dest="use_multi_task", action="store_false", default=True
+    )
     p.add_argument("--single-metal")
     p.add_argument("--n-seeds-min", type=int, default=3)
     p.add_argument("--allow-single-seed", action="store_true")

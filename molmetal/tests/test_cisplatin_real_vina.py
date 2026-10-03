@@ -65,6 +65,7 @@ def _have_vina_meeko() -> bool:
     try:
         import vina  # noqa: F401
         import meeko  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -85,8 +86,16 @@ class TestBenchCisplatinRealVinaSweep:
 
     SWEEP_DIR = REPO_ROOT / "molmetal" / "reports" / "wf121_cisplatin_real_vina"
     POCKETS = (
-        "830c", "1h36", "3eml", "3ny8", "4aaw",
-        "4rlu", "4rn0", "1fmc", "1g9v", "2hnx",
+        "830c",
+        "1h36",
+        "3eml",
+        "3ny8",
+        "4aaw",
+        "4rlu",
+        "4rn0",
+        "1fmc",
+        "1g9v",
+        "2hnx",
     )
 
     def test_sweep_dir_exists_with_per_pocket_json(self):
@@ -109,9 +118,9 @@ class TestBenchCisplatinRealVinaSweep:
     def test_sweep_summary_contains_10_pockets(self):
         p = self.SWEEP_DIR / "sweep_summary.json"
         summary = json.loads(p.read_text())
-        assert summary["_n_pockets"] == 10, (
-            f"expected 10 pockets, got {summary['_n_pockets']}"
-        )
+        assert (
+            summary["_n_pockets"] == 10
+        ), f"expected 10 pockets, got {summary['_n_pockets']}"
 
     def test_all_per_seed_records_are_measured(self):
         for pocket_id in self.POCKETS:
@@ -126,9 +135,9 @@ class TestBenchCisplatinRealVinaSweep:
                 if entry["status"] == "MEASURED":
                     kcal = entry["kcal_mol"]
                     assert isinstance(kcal, (int, float))
-                    assert math.isfinite(kcal), (
-                        f"{pocket_id} seed={entry['seed']}: non-finite kcal/mol"
-                    )
+                    assert math.isfinite(
+                        kcal
+                    ), f"{pocket_id} seed={entry['seed']}: non-finite kcal/mol"
 
 
 # ---------------------------------------------------------------------------
@@ -195,9 +204,18 @@ class TestPerPocketRecordShape:
 
     SWEEP_DIR = REPO_ROOT / "molmetal" / "reports" / "wf121_cisplatin_real_vina"
     REQUIRED_TOP_KEYS = {
-        "_workflow", "_phase", "_generated_utc", "_engine",
-        "_engine_version", "_smiles", "_n_poses", "_exhaustiveness",
-        "_pocket", "_boltz_affinity_pic50", "_per_seed", "_aggregate",
+        "_workflow",
+        "_phase",
+        "_generated_utc",
+        "_engine",
+        "_engine_version",
+        "_smiles",
+        "_n_poses",
+        "_exhaustiveness",
+        "_pocket",
+        "_boltz_affinity_pic50",
+        "_per_seed",
+        "_aggregate",
     }
 
     def test_required_top_level_keys_present(self):
@@ -224,9 +242,17 @@ class TestPerPocketRecordShape:
         )
         entry = record["_per_seed"][0]
         for k in (
-            "pocket_id", "seed", "smiles", "method", "kcal_mol",
-            "elapsed_s", "n_poses", "n_atoms_ligand",
-            "best_pose_rmsd_lb", "best_pose_rmsd_ub", "status",
+            "pocket_id",
+            "seed",
+            "smiles",
+            "method",
+            "kcal_mol",
+            "elapsed_s",
+            "n_poses",
+            "n_atoms_ligand",
+            "best_pose_rmsd_lb",
+            "best_pose_rmsd_ub",
+            "status",
         ):
             assert k in entry, f"per_seed entry missing key {k!r}"
 
@@ -237,9 +263,7 @@ class TestPerPocketRecordShape:
         # Either the Python binding (preferred) or the CLI binary is
         # fine — both produce real Vina kcal/mol. We just forbid mock
         # / stub / placeholder substrings.
-        engine_str = (
-            f"{record['_engine']} {record['_engine_version']}".lower()
-        )
+        engine_str = f"{record['_engine']} {record['_engine_version']}".lower()
         for forbidden in ("mock", "stub", "placeholder"):
             assert forbidden not in engine_str, (
                 f"engine string {engine_str!r} contains forbidden "
@@ -286,8 +310,9 @@ class TestSynthesisMarkdown:
             # section (i.e. explaining what we replaced), not as a
             # measurement.
             import re
+
             for m in re.finditer(r"-9\.6574", text):
-                ctx = text[max(0, m.start()-40):m.end()+40]
+                ctx = text[max(0, m.start() - 40) : m.end() + 40]
                 # The marker should appear in a "not ... floor" or
                 # "not ... stub" context — anything else would mean
                 # we're surfacing it as a measurement.
@@ -309,18 +334,21 @@ class TestScoreAnyRegistration:
 
     def test_vina_metal_fallback_in_registry(self):
         from molmetal.scoring.score_any import REGISTRY
-        assert "vina_metal_fallback" in REGISTRY, (
-            "vina_metal_fallback missing from score_any.REGISTRY"
-        )
+
+        assert (
+            "vina_metal_fallback" in REGISTRY
+        ), "vina_metal_fallback missing from score_any.REGISTRY"
 
     def test_vina_metal_fallback_in_routing_policy(self):
         from molmetal.scoring.score_any import ROUTING_POLICY
-        assert "vina_metal_fallback" in ROUTING_POLICY, (
-            "vina_metal_fallback missing from score_any.ROUTING_POLICY"
-        )
+
+        assert (
+            "vina_metal_fallback" in ROUTING_POLICY
+        ), "vina_metal_fallback missing from score_any.ROUTING_POLICY"
 
     def test_vina_metal_fallback_fallback_chain_is_boltz(self):
         from molmetal.scoring.score_any import ROUTING_POLICY
+
         entry = ROUTING_POLICY["vina_metal_fallback"]
         assert "boltz_affinity" in entry.fallback_chain, (
             f"fallback_chain must include boltz_affinity; got "
@@ -329,6 +357,7 @@ class TestScoreAnyRegistration:
 
     def test_vina_metal_fallback_status_is_measured(self):
         from molmetal.scoring.score_any import ROUTING_POLICY
+
         entry = ROUTING_POLICY["vina_metal_fallback"]
         assert entry.wf43_status == "MEASURED", (
             f"vina_metal_fallback wf43_status must be MEASURED "
@@ -337,6 +366,7 @@ class TestScoreAnyRegistration:
 
     def test_vina_metal_fallback_backend_is_python_cli(self):
         from molmetal.scoring.score_any import REGISTRY
+
         ref = REGISTRY["vina_metal_fallback"]
         assert ref.backend == "python+cli", (
             f"backend must be 'python+cli' (Vina supports both "
@@ -356,6 +386,7 @@ class TestScoreAnyRegistration:
         """Wf-43 invariant: no metric name in REGISTRY contains
         'mock'."""
         from molmetal.scoring.score_any import REGISTRY
+
         for name in REGISTRY:
             assert "mock" not in name.lower(), (
                 f"REGISTRY metric name {name!r} contains 'mock' — "
@@ -379,7 +410,8 @@ class TestVinaMetalFallbackWrapper:
         coords = torch.zeros(50, 3, dtype=torch.float32)
         coords[:, 0] = torch.linspace(-8.0, 8.0, 50)
         return Pocket(
-            pdb_id="SYN", coords=coords,
+            pdb_id="SYN",
+            coords=coords,
             atom_types=torch.full((50,), 6, dtype=torch.long),
             residue_ids=torch.zeros(50, dtype=torch.long),
             chain_ids=torch.zeros(50, dtype=torch.long),
@@ -390,25 +422,30 @@ class TestVinaMetalFallbackWrapper:
 
     def test_wrapper_returns_a_list(self):
         from molmetal.scoring.score_any import _w_vina_metal_fallback
+
         pocket = self._build_synthetic_pocket()
         # Use a SMILES that will hit the boltz_affinity fallback path
         # (cisplatin with a synthetic pocket — Vina may not produce a
         # finite score, exercising the fallback branch).
         out = _w_vina_metal_fallback(
-            {"molecules": ["[Pt](N)(N)(Cl)Cl"], "pocket": pocket,
-             "exhaustiveness": 1, "n_poses": 1}
+            {
+                "molecules": ["[Pt](N)(N)(Cl)Cl"],
+                "pocket": pocket,
+                "exhaustiveness": 1,
+                "n_poses": 1,
+            }
         )
         assert isinstance(out, list)
         assert len(out) == 1
 
     def test_wrapper_requires_pocket(self):
         from molmetal.scoring.score_any import (
-            AdapterUnavailable, _w_vina_metal_fallback,
+            AdapterUnavailable,
+            _w_vina_metal_fallback,
         )
+
         with pytest.raises(AdapterUnavailable) as ei:
-            _w_vina_metal_fallback(
-                {"molecules": ["[Pt](N)(N)(Cl)Cl"], "pocket": None}
-            )
+            _w_vina_metal_fallback({"molecules": ["[Pt](N)(N)(Cl)Cl"], "pocket": None})
         assert "pocket" in str(ei.value).lower()
 
     def test_wrapper_handles_empty_complexes_via_fallback(self):
@@ -425,8 +462,12 @@ class TestVinaMetalFallbackWrapper:
             vina_adapter.dock_smiles = lambda *a, **k: []
             pocket = self._build_synthetic_pocket()
             out = _w_vina_metal_fallback(
-                {"molecules": ["[Pt](N)(N)(Cl)Cl"], "pocket": pocket,
-                 "exhaustiveness": 1, "n_poses": 1}
+                {
+                    "molecules": ["[Pt](N)(N)(Cl)Cl"],
+                    "pocket": pocket,
+                    "exhaustiveness": 1,
+                    "n_poses": 1,
+                }
             )
             assert isinstance(out, list)
             assert len(out) == 1
@@ -448,6 +489,7 @@ class TestBenchCisplatinRealVinaScript:
 
     def test_module_importable(self):
         from molmetal.scripts import bench_cisplatin_real_vina
+
         assert hasattr(bench_cisplatin_real_vina, "CISPLATIN_SMILES")
         assert hasattr(bench_cisplatin_real_vina, "DEFAULT_POCKETS")
         assert hasattr(bench_cisplatin_real_vina, "run_pocket_sweep")
@@ -455,26 +497,36 @@ class TestBenchCisplatinRealVinaScript:
 
     def test_cisplatin_smiles_is_canonical(self):
         from molmetal.scripts import bench_cisplatin_real_vina
-        assert (
-            bench_cisplatin_real_vina.CISPLATIN_SMILES == "[Pt](N)(N)(Cl)Cl"
-        )
+
+        assert bench_cisplatin_real_vina.CISPLATIN_SMILES == "[Pt](N)(N)(Cl)Cl"
 
     def test_default_pockets_match_wf30_cohort(self):
         from molmetal.scripts import bench_cisplatin_real_vina
+
         expected = (
-            "830c", "1h36", "3eml", "3ny8", "4aaw",
-            "4rlu", "4rn0", "1fmc", "1g9v", "2hnx",
+            "830c",
+            "1h36",
+            "3eml",
+            "3ny8",
+            "4aaw",
+            "4rlu",
+            "4rn0",
+            "1fmc",
+            "1g9v",
+            "2hnx",
         )
         assert bench_cisplatin_real_vina.DEFAULT_POCKETS == expected
 
     def test_default_seeds_are_three(self):
         from molmetal.scripts import bench_cisplatin_real_vina
+
         assert bench_cisplatin_real_vina.DEFAULT_SEEDS == (0, 1, 2)
 
     def test_rewrite_metal_atype_changes_M_to_Mg(self, tmp_path):
         from molmetal.scripts.bench_cisplatin_real_vina import (
             _rewrite_metal_atype_for_vina,
         )
+
         # Build a minimal PDBQT with one 'M' atom-type row.
         pdbqt_text = (
             "ATOM      1 Pt   UNL     1      -0.016   0.710   0.008  1.00  0.00    +0.000 M \n"
@@ -492,13 +544,16 @@ class TestBenchCisplatinRealVinaScript:
         pt_line = [l for l in text.splitlines() if "Pt" in l][0]
         assert pt_line[77:79].strip() == "Mg"
         # The N atom should be unchanged.
-        n_line = [l for l in text.splitlines() if l.startswith("ATOM") and "N " in l[12:16]][0]
+        n_line = [
+            l for l in text.splitlines() if l.startswith("ATOM") and "N " in l[12:16]
+        ][0]
         assert n_line[77:79].strip() == "N"
 
     def test_boltz_pic50_returns_real_number_or_none(self):
         """The boltz_affinity fallback must produce either a real
         D-MPNN pIC50 float or None — never a fabricated value."""
         from molmetal.scripts.bench_cisplatin_real_vina import _boltz_pic50
+
         v = _boltz_pic50("[Pt](N)(N)(Cl)Cl")
         assert v is None or (
             isinstance(v, float) and math.isfinite(v)

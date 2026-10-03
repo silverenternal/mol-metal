@@ -257,9 +257,15 @@ class TestParseArgs:
     def test_custom_pockets(self):
         mod = _import_bench_module()
         argv = [
-            "prog", "--pockets", "3eml", "1h36",
-            "--seeds", "0", "1",
-            "--cohort-size", "10",
+            "prog",
+            "--pockets",
+            "3eml",
+            "1h36",
+            "--seeds",
+            "0",
+            "1",
+            "--cohort-size",
+            "10",
         ]
         saved = sys.argv
         try:
@@ -293,18 +299,21 @@ class TestBenchScriptCLI:
             "reason": "test-force",
             "checked_paths": [],
         }
-        monkeypatch.setattr(
-            mod, "_detect_vina_binary", lambda: force_status
-        )
+        monkeypatch.setattr(mod, "_detect_vina_binary", lambda: force_status)
 
         out_dir = tmp_path / "vina"
         out_dir.mkdir()
         argv = [
             "prog",
-            "--pockets", "1h36", "3eml",
-            "--seeds", "0",
-            "--cohort-size", "3",
-            "--out-dir", str(out_dir),
+            "--pockets",
+            "1h36",
+            "3eml",
+            "--seeds",
+            "0",
+            "--cohort-size",
+            "3",
+            "--out-dir",
+            str(out_dir),
             "--quiet",
         ]
         saved = sys.argv
@@ -314,9 +323,7 @@ class TestBenchScriptCLI:
         finally:
             sys.argv = saved
         assert rc == 0
-        summary = json.loads(
-            (out_dir / "per_pocket_summary.json").read_text()
-        )
+        summary = json.loads((out_dir / "per_pocket_summary.json").read_text())
         # Both pockets present.
         assert "1h36" in summary["per_pocket"]
         assert "3eml" in summary["per_pocket"]
@@ -340,16 +347,21 @@ class TestBenchScriptCLI:
             "reason": "test-force",
             "checked_paths": [],
         }
-        monkeypatch.setattr(
-            mod, "_detect_vina_binary", lambda: force_status
-        )
+        monkeypatch.setattr(mod, "_detect_vina_binary", lambda: force_status)
 
         out_dir = tmp_path / "vina"
         out_dir.mkdir()
         argv = [
-            "prog", "--pockets", "1h36",
-            "--seeds", "0", "--cohort-size", "3",
-            "--out-dir", str(out_dir), "--quiet",
+            "prog",
+            "--pockets",
+            "1h36",
+            "--seeds",
+            "0",
+            "--cohort-size",
+            "3",
+            "--out-dir",
+            str(out_dir),
+            "--quiet",
         ]
         saved = sys.argv
         try:
@@ -358,9 +370,7 @@ class TestBenchScriptCLI:
         finally:
             sys.argv = saved
         assert rc == 0
-        summary = json.loads(
-            (out_dir / "per_pocket_summary.json").read_text()
-        )
+        summary = json.loads((out_dir / "per_pocket_summary.json").read_text())
         # With stub fallback, no real rates → pass_uniform_floor=False.
         assert summary["primary"]["pass_uniform_floor_all_pockets"] is False
 
@@ -411,9 +421,13 @@ class TestVinaCellRecord:
         mod = _import_bench_module()
         VinaCellRecord = mod.VinaCellRecord
         c = VinaCellRecord(
-            pocket="1h36", cand_smiles="CCO", seed=0,
-            score_kcal_mol=-7.5, vina_status="REAL_VINA",
-            high_affinity=True, wall_time_s=1.0,
+            pocket="1h36",
+            cand_smiles="CCO",
+            seed=0,
+            score_kcal_mol=-7.5,
+            vina_status="REAL_VINA",
+            high_affinity=True,
+            wall_time_s=1.0,
         )
         assert c.pocket == "1h36"
         assert c.score_kcal_mol == -7.5
@@ -424,9 +438,13 @@ class TestVinaCellRecord:
         mod = _import_bench_module()
         VinaCellRecord = mod.VinaCellRecord
         c = VinaCellRecord(
-            pocket="3eml", cand_smiles="c1ccccc1", seed=1,
-            score_kcal_mol=None, vina_status="STUB_FALLBACK",
-            high_affinity=None, wall_time_s=0.5,
+            pocket="3eml",
+            cand_smiles="c1ccccc1",
+            seed=1,
+            score_kcal_mol=None,
+            vina_status="STUB_FALLBACK",
+            high_affinity=None,
+            wall_time_s=0.5,
             note="binary missing",
         )
         assert c.high_affinity is None
@@ -444,8 +462,10 @@ class TestWassersteinPocketLossReused:
         from molmetal.molmetal_lam.reward.wasserstein_loss import (
             wasserstein_pocket_loss,
         )
+
         # Smoke-test the loss on synthetic data.
         import torch
+
         cand = torch.zeros(4, 4)
         ref = torch.ones(4, 4)
         w = wasserstein_pocket_loss(cand, ref, pocket_id="1h36", n_mc=10)
@@ -461,7 +481,10 @@ class TestSmilesFromBounded:
     def test_extracts_smiles(self):
         mod = _import_bench_module()
         r = closure_bounded_smiles_generation(
-            pocket_id="1h36", n=5, max_depth=2, max_products=40,
+            pocket_id="1h36",
+            n=5,
+            max_depth=2,
+            max_products=40,
         )
         smiles = mod._smiles_from_bounded(r)
         assert isinstance(smiles, list)

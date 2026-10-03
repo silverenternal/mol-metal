@@ -45,7 +45,9 @@ verifier = _load_verifier_module()
 
 VERIFIER = REPO_ROOT / "molmetal" / "scripts" / "wf392a3_lomo_wrapper_verify.py"
 LOMO_WRAPPER = REPO_ROOT / "scripts" / "launch_wf119_p1_4_chemprop_v3_lomo.sh"
-DRUGOOD_WRAPPER = REPO_ROOT / "scripts" / "launch_wf310e_r20_p3_drugood_1.58M_chemprop_v2.sh"
+DRUGOOD_WRAPPER = (
+    REPO_ROOT / "scripts" / "launch_wf310e_r20_p3_drugood_1.58M_chemprop_v2.sh"
+)
 WF299_WRAPPER = REPO_ROOT / "molmetal" / "scripts" / "launch_wf299_cfm_main.sh"
 CHEMPROP_TRAINER = REPO_ROOT / "molmetal" / "scripts" / "train_chemprop_v2_v3.py"
 CFM_TRAINER = REPO_ROOT / "molmetal" / "scripts" / "train_cfm_yuelbond_wasserstein.py"
@@ -59,11 +61,14 @@ def _run_verifier_json(wrapper: Path, trainer: Path, expected: list[str]) -> dic
     argv = [
         sys.executable,
         str(VERIFIER),
-        "--wrapper", str(wrapper),
-        "--trainer", str(trainer),
+        "--wrapper",
+        str(wrapper),
+        "--trainer",
+        str(trainer),
         "--json",
         "--bash-n",
-        "--expected-json", json.dumps(expected),
+        "--expected-json",
+        json.dumps(expected),
     ]
     r = subprocess.run(
         argv,
@@ -116,7 +121,8 @@ class TestLomoWrapperFlags(unittest.TestCase):
         passed = [v for v in report["verdicts"] if v["status"] == "PASSED"]
         gaps = [v for v in report["verdicts"] if v["status"].startswith("GAP-")]
         self.assertGreaterEqual(
-            len(passed), len(expected_common) - 1,
+            len(passed),
+            len(expected_common) - 1,
             f"Expected >= {len(expected_common) - 1} PASSED verdicts, got {len(passed)}; "
             f"gaps={[(g['flag'], g['status']) for g in gaps]}",
         )
@@ -136,16 +142,23 @@ class TestLomoWrapperFlags(unittest.TestCase):
         # The wrapper hard-codes these tokens in its --dry-run sanity check
         # (lines 89-96). Verify they are NOT defined in the trainer, which
         # is the source of the honest-negative.
-        lomo_levers = ["--chemprop-mode", "--chemprop-min-epochs", "--chemprop-lomo-init-scale"]
+        lomo_levers = [
+            "--chemprop-mode",
+            "--chemprop-min-epochs",
+            "--chemprop-lomo-init-scale",
+        ]
         report = _run_verifier_json(
             wrapper=LOMO_WRAPPER,
             trainer=CHEMPROP_TRAINER,
             expected=lomo_levers,
         )
         # All 3 should be GAP-TRAINER-MISSING (trainer doesn't define them)
-        gap_trainer = [v for v in report["verdicts"] if v["status"] == "GAP-TRAINER-MISSING"]
+        gap_trainer = [
+            v for v in report["verdicts"] if v["status"] == "GAP-TRAINER-MISSING"
+        ]
         self.assertEqual(
-            len(gap_trainer), len(lomo_levers),
+            len(gap_trainer),
+            len(lomo_levers),
             f"Expected {len(lomo_levers)} GAP-TRAINER-MISSING verdicts, got {len(gap_trainer)}; "
             f"verdicts={[(v['flag'], v['status']) for v in report['verdicts']]}",
         )
@@ -164,21 +177,22 @@ class TestWf299WrapperFlags(unittest.TestCase):
     def test_wf299_wrapper_flags(self) -> None:
         # Wf-388-A2/A3 NEW flags that should be present in the trainer:
         wf388_new_flags = [
-            "--top-p",                # Wf-388-A2 #1
-            "--top-k",                # Wf-388-A2 #2
-            "--temperature",          # Wf-388-A2 #3
-            "--mmd-weight",           # Wf-388-A2 #4
-            "--repulsion-weight",     # Wf-388-A2 #5
-            "--scaffold-conditioning",# Wf-388-A2 #6
-            "--sa-penalty",           # Wf-388-A3 #1
-            "--sa-target",            # Wf-388-A3 #2
+            "--top-p",  # Wf-388-A2 #1
+            "--top-k",  # Wf-388-A2 #2
+            "--temperature",  # Wf-388-A2 #3
+            "--mmd-weight",  # Wf-388-A2 #4
+            "--repulsion-weight",  # Wf-388-A2 #5
+            "--scaffold-conditioning",  # Wf-388-A2 #6
+            "--sa-penalty",  # Wf-388-A3 #1
+            "--sa-target",  # Wf-388-A3 #2
         ]
         # Sanity check: trainer argparse must define all 8 Wf-388 flags
         # (this is the source-of-truth gate for the trainer-side wire-in).
         trainer_flags = verifier.trainer_flag_set(CFM_TRAINER)
         missing_in_trainer = [f for f in wf388_new_flags if f not in trainer_flags]
         self.assertEqual(
-            missing_in_trainer, [],
+            missing_in_trainer,
+            [],
             f"Wf-388 NEW flags missing from CFM trainer argparse: {missing_in_trainer}",
         )
 
@@ -193,21 +207,25 @@ class TestWf299WrapperFlags(unittest.TestCase):
         # (scaffold-conditioning, sa-penalty, sa-target) BEFORE the Wf-392
         # edit. The test verifies the gap is observable so the follow-up
         # edit can close it.
-        gap_wrapper = [v for v in report["verdicts"] if v["status"] == "GAP-WRAPPER-MISSING"]
+        gap_wrapper = [
+            v for v in report["verdicts"] if v["status"] == "GAP-WRAPPER-MISSING"
+        ]
         passed = [v for v in report["verdicts"] if v["status"] == "PASSED"]
 
         # After Wf-392-A3 closes the gap, gap_wrapper should be empty
         # (the Wf-392-A3 edit adds the 3 missing flags:
         # --scaffold-conditioning, --sa-penalty, --sa-target).
         self.assertEqual(
-            len(gap_wrapper), 0,
+            len(gap_wrapper),
+            0,
             f"Wf-299 wrapper should miss 0 Wf-388 flags after Wf-392-A3 edit, "
             f"got {len(gap_wrapper)}: {[v['flag'] for v in gap_wrapper]}",
         )
         # We must have passed all 8 (5 pre-existing Wf-388-A2 diversity
         # flags + 3 NEW Wf-388-A2/A3 flags added by Wf-392-A3).
         self.assertEqual(
-            len(passed), 8,
+            len(passed),
+            8,
             f"Wf-299 wrapper should pass 8 Wf-388 flags after edit, got {len(passed)}",
         )
         # bash -n must succeed on the wrapper
@@ -230,10 +248,19 @@ class TestDrugoodWrapperFlags(unittest.TestCase):
     def test_drugood_wrapper_wf185_flags(self) -> None:
         # The build_wf185_flags function constructs these for both modes.
         expected = [
-            "--configs", "--cache-dir", "--reset-cache",
-            "--seeds", "--epochs", "--hidden", "--depth",
-            "--head-hidden", "--batch", "--lr", "--bf16",
-            "--num-workers", "--time-budget-s",
+            "--configs",
+            "--cache-dir",
+            "--reset-cache",
+            "--seeds",
+            "--epochs",
+            "--hidden",
+            "--depth",
+            "--head-hidden",
+            "--batch",
+            "--lr",
+            "--bf16",
+            "--num-workers",
+            "--time-budget-s",
         ]
         report = _run_verifier_json(
             wrapper=DRUGOOD_WRAPPER,
@@ -244,7 +271,8 @@ class TestDrugoodWrapperFlags(unittest.TestCase):
         # We expect at least 11 of 13 to PASS (--bf16 + --time-budget-s
         # may not both be defined identically in Wf-185 trainer's argparse).
         self.assertGreaterEqual(
-            len(passed), len(expected) - 3,
+            len(passed),
+            len(expected) - 3,
             f"Expected >= {len(expected) - 3} PASSED verdicts, got {len(passed)}; "
             f"verdicts={[(v['flag'], v['status']) for v in report['verdicts']]}",
         )

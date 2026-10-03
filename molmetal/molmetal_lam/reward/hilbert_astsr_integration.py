@@ -23,6 +23,7 @@ Honest framing
   machine-dependent — the comparison is intended for *relative*
   speedup, not absolute numbers.
 """
+
 from __future__ import annotations
 
 import os
@@ -177,6 +178,7 @@ class HilbertASTSRComposite:
             from molmetal.molmetal_lam.reward.hilbert_primal_dual import (
                 LambdaASTSRHilbert,
             )
+
             # Wf-127 Phase 2: forward the L2 weight-decay guard so the
             # composite's default matches the Phase 1 stable weight.
             # Callers that supply their own ``hilbert_optimizer`` keep
@@ -220,9 +222,7 @@ class HilbertASTSRComposite:
         feats = np.asarray(features, dtype=float)
         tgt = np.asarray(target, dtype=float).reshape(-1)
         if feats.ndim != 2:
-            raise ValueError(
-                f"features must be (N, F); got shape {feats.shape}"
-            )
+            raise ValueError(f"features must be (N, F); got shape {feats.shape}")
         if feats.shape[0] != tgt.shape[0]:
             raise ValueError(
                 f"features / target length mismatch: "
@@ -250,20 +250,24 @@ class HilbertASTSRComposite:
                 loss_scale_used = float(self.loss_scale)
             try:
                 self.hilbert_optimizer.optimize(
-                    feats_eff, tgt_eff, loss_scale=loss_scale_used,
+                    feats_eff,
+                    tgt_eff,
+                    loss_scale=loss_scale_used,
                 )
                 y_hat = self.hilbert_optimizer.predict(feats_eff)
                 r2 = float(
-                    getattr(self.hilbert_optimizer, "best_r2_train_",
-                            compute_r2(tgt_eff, y_hat))
+                    getattr(
+                        self.hilbert_optimizer,
+                        "best_r2_train_",
+                        compute_r2(tgt_eff, y_hat),
+                    )
                 )
-            except Exception:                        # pragma: no cover
+            except Exception:  # pragma: no cover
                 r2 = float("nan")
                 y_hat = np.zeros(feats.shape[0], dtype=float)
             # ----- Wf-44 Phase 4: fp64 fallback on NaN / inf ---------
-            if (
-                self.fp64_fallback
-                and (not np.isfinite(r2) or not np.all(np.isfinite(y_hat)))
+            if self.fp64_fallback and (
+                not np.isfinite(r2) or not np.all(np.isfinite(y_hat))
             ):
                 feats64 = np.asarray(feats, dtype=np.float64)
                 tgt64 = np.asarray(tgt, dtype=np.float64)
@@ -271,12 +275,17 @@ class HilbertASTSRComposite:
                 # has no underflow risk; the goal of loss_scale is to
                 # keep residuals in the fp32 representable range).
                 self.hilbert_optimizer.optimize(
-                    feats64, tgt64, loss_scale=1.0,
+                    feats64,
+                    tgt64,
+                    loss_scale=1.0,
                 )
                 y_hat = self.hilbert_optimizer.predict(feats64)
                 r2 = float(
-                    getattr(self.hilbert_optimizer, "best_r2_train_",
-                            compute_r2(tgt64, y_hat))
+                    getattr(
+                        self.hilbert_optimizer,
+                        "best_r2_train_",
+                        compute_r2(tgt64, y_hat),
+                    )
                 )
                 fp64_fallback_used = True
         else:
@@ -297,9 +306,7 @@ class HilbertASTSRComposite:
             l2_weight_used = float(
                 getattr(self.hilbert_optimizer, "l2_weight_used_", self.l2_weight)
             )
-            l2_penalty = float(
-                getattr(self.hilbert_optimizer, "last_l2_penalty_", 0.0)
-            )
+            l2_penalty = float(getattr(self.hilbert_optimizer, "last_l2_penalty_", 0.0))
         else:
             l2_weight_used = float(self.l2_weight)
             l2_penalty = 0.0
@@ -309,9 +316,7 @@ class HilbertASTSRComposite:
         # path; we fall back to the composite's configured bounds so
         # the output fields always have a defined value.
         if not self.use_hilbert and self.lambda_astsr is not None:
-            n_clipped = int(
-                getattr(self.lambda_astsr, "n_clipped_predictions_", 0)
-            )
+            n_clipped = int(getattr(self.lambda_astsr, "n_clipped_predictions_", 0))
             clip_min_used = float(
                 getattr(self.lambda_astsr, "last_scale_clip_min_", self.scale_clip_min)
             )
@@ -333,21 +338,27 @@ class HilbertASTSRComposite:
         self.n_clipped_predictions_ = n_clipped
         self.last_scale_clip_min_used_ = clip_min_used
         self.last_scale_clip_max_used_ = clip_max_used
-        self.fit_history_.append({
-            "wall_s": wall_s, "r2": r2, "backend": backend,
-            "loss_scale": loss_scale_used,
-            "fp64_fallback": fp64_fallback_used,
-            "l2_weight": l2_weight_used,
-            "l2_penalty": l2_penalty,
-            "n_clipped": n_clipped,
-            "scale_clip_min": clip_min_used,
-            "scale_clip_max": clip_max_used,
-        })
+        self.fit_history_.append(
+            {
+                "wall_s": wall_s,
+                "r2": r2,
+                "backend": backend,
+                "loss_scale": loss_scale_used,
+                "fp64_fallback": fp64_fallback_used,
+                "l2_weight": l2_weight_used,
+                "l2_penalty": l2_penalty,
+                "n_clipped": n_clipped,
+                "scale_clip_min": clip_min_used,
+                "scale_clip_max": clip_max_used,
+            }
+        )
         # Cache the predictions so a subsequent switch without a re-fit
         # returns the same output rather than zeros.
         self.last_predictions_ = np.asarray(y_hat, dtype=float).reshape(-1).copy()
         return {
-            "r2": r2, "wall_s": wall_s, "backend": backend,
+            "r2": r2,
+            "wall_s": wall_s,
+            "backend": backend,
             "loss_scale": loss_scale_used,
             "fp64_fallback": fp64_fallback_used,
             "l2_weight": l2_weight_used,
@@ -385,9 +396,9 @@ class HilbertASTSRComposite:
                 pass
         else:
             try:
-                out = np.asarray(
-                    self.lambda_astsr.predict(feats), dtype=float
-                ).reshape(-1)
+                out = np.asarray(self.lambda_astsr.predict(feats), dtype=float).reshape(
+                    -1
+                )
                 self.last_predictions_ = out.copy()
                 return out
             except RuntimeError:
@@ -405,21 +416,15 @@ class HilbertASTSRComposite:
         hilbert_fitted = (
             getattr(self.hilbert_optimizer, "best_params_", None) is not None
         )
-        evol_fitted = (
-            getattr(self.lambda_astsr, "best_ast_", None) is not None
-        )
+        evol_fitted = getattr(self.lambda_astsr, "best_ast_", None) is not None
         return hilbert_fitted or evol_fitted
 
     @property
     def active_fitted(self) -> bool:
         """``True`` if the currently-active regressor has been fitted."""
         if self.use_hilbert:
-            return (
-                getattr(self.hilbert_optimizer, "best_params_", None) is not None
-            )
-        return (
-            getattr(self.lambda_astsr, "best_ast_", None) is not None
-        )
+            return getattr(self.hilbert_optimizer, "best_params_", None) is not None
+        return getattr(self.lambda_astsr, "best_ast_", None) is not None
 
 
 # ---------------------------------------------------------------------------
@@ -501,8 +506,7 @@ class HilbertEvolutionaryComparator:
         avg_hilbert_wall = float(np.mean(hilbert_walls))
         avg_evol_wall = float(np.mean(evol_walls))
         speedup = (
-            avg_evol_wall / avg_hilbert_wall
-            if avg_hilbert_wall > 0 else float("inf")
+            avg_evol_wall / avg_hilbert_wall if avg_hilbert_wall > 0 else float("inf")
         )
         return {
             "hilbert_wall_s": avg_hilbert_wall,

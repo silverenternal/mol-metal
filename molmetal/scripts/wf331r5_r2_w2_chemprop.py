@@ -67,6 +67,7 @@ Honest framing (party-twenty-spirit §3.5)
 * CPU-only; no torch autograd; chemprop v2 featurizer is used in
   pure-numpy mode (no forward pass through the encoder).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -84,6 +85,7 @@ try:
     from sklearn.linear_model import Ridge
     from sklearn.model_selection import train_test_split
     from sklearn.preprocessing import StandardScaler
+
     _HAS_SKLEARN = True
 except Exception:  # pragma: no cover — defensive
     Ridge = None  # type: ignore
@@ -96,9 +98,9 @@ except Exception:  # pragma: no cover — defensive
 # Wf-325A MEASURED baseline R² (anchor for honest framing)
 # ---------------------------------------------------------------------------
 WF325A_BASELINE_R2: Dict[str, float] = {
-    "platinai_4cell":        -0.09446482453622895,  # 12-d, seed=0
-    "hilbert":               -0.016897030097804855,  # 12-d, seed=1
-    "metalcytotox_combined":  0.10552683143637809,   # 12-d, seed=0
+    "platinai_4cell": -0.09446482453622895,  # 12-d, seed=0
+    "hilbert": -0.016897030097804855,  # 12-d, seed=1
+    "metalcytotox_combined": 0.10552683143637809,  # 12-d, seed=0
 }
 WF325A_BASELINE_R2_PLA_12D: float = WF325A_BASELINE_R2["platinai_4cell"]
 
@@ -139,6 +141,7 @@ def _read_csv(path: str) -> Tuple[List[str], List[List[str]]]:
     path = _resolve_repo_path(path)
     with open(path, "r", encoding="utf-8") as f:
         import csv
+
         reader = csv.reader(f)
         header = next(reader)
         rows = [r for r in reader if r and any(c.strip() for c in r)]
@@ -166,19 +169,46 @@ def _row_to_floats(
 # Canonical column names (mirror bench_wf325a_r2_32d)
 # ---------------------------------------------------------------------------
 PLATINAI_12D_COLUMNS: Tuple[str, ...] = (
-    "MolWt", "MolLogP", "TPSA", "HBA", "HBD", "NRotB", "HeavyAtoms",
-    "RingCount", "NumAromaticRings", "FractionCSP3", "MolMR", "BalabanJ",
+    "MolWt",
+    "MolLogP",
+    "TPSA",
+    "HBA",
+    "HBD",
+    "NRotB",
+    "HeavyAtoms",
+    "RingCount",
+    "NumAromaticRings",
+    "FractionCSP3",
+    "MolMR",
+    "BalabanJ",
 )
 PLATINAI_32D_COLUMNS: Tuple[str, ...] = PLATINAI_12D_COLUMNS + (
-    "BertzCT", "Chi0v", "Chi0n", "Chi1n", "HallKierAlpha",
-    "Kappa1", "Kappa2", "Kappa3", "LabuteASA",
-    "MaxPartialCharge", "MinPartialCharge",
-    "MaxAbsPartialCharge", "MinAbsPartialCharge",
-    "NumAliphaticRings", "NumSaturatedRings", "NumHeteroatoms",
-    "NHOHCount", "NOCount", "fr_halogen", "fr_Al_COO",
+    "BertzCT",
+    "Chi0v",
+    "Chi0n",
+    "Chi1n",
+    "HallKierAlpha",
+    "Kappa1",
+    "Kappa2",
+    "Kappa3",
+    "LabuteASA",
+    "MaxPartialCharge",
+    "MinPartialCharge",
+    "MaxAbsPartialCharge",
+    "MinAbsPartialCharge",
+    "NumAliphaticRings",
+    "NumSaturatedRings",
+    "NumHeteroatoms",
+    "NHOHCount",
+    "NOCount",
+    "fr_halogen",
+    "fr_Al_COO",
 )
 PLATINAI_PIC50_COLUMNS: Tuple[str, ...] = (
-    "pIC50_mcf7", "pIC50_a549", "pIC50_a2780", "pIC50_a2780cis",
+    "pIC50_mcf7",
+    "pIC50_a549",
+    "pIC50_a2780",
+    "pIC50_a2780cis",
 )
 METALCYTOTOX_TARGET_COLUMN: str = "activity"
 
@@ -191,42 +221,42 @@ METALCYTOTOX_TARGET_COLUMN: str = "activity"
 # the RDKit fallback is bit-for-bit equivalent to the canonical encoder.
 _CHEMPROP_V2_ATOM_VOCAB: Dict[str, List[Any]] = {
     # atomic_num: {1:H, 6:C, 7:N, 8:O, 9:F, 15:P, 16:S, 17:Cl, 35:Br, 53:I, 0:other}
-    "atomic_num":  [0, 1, 6, 7, 8, 9, 15, 16, 17, 35, 53],  # 11
+    "atomic_num": [0, 1, 6, 7, 8, 9, 15, 16, 17, 35, 53],  # 11
     # degree: 0..10 (11)
-    "degree":      list(range(11)),                          # 11
+    "degree": list(range(11)),  # 11
     # formal_charge: -5..+5 (11)
-    "formal_charge": list(range(-5, 6)),                     # 11
+    "formal_charge": list(range(-5, 6)),  # 11
     # chirality: 0..3 (4)
-    "chirality":   [0, 1, 2, 3],                             # 4
+    "chirality": [0, 1, 2, 3],  # 4
     # hybridization: 0..7 (UNSPECIFIED, S, SP, SP2, SP3, SP3D, SP3D2, OTHER)
-    "hybridization": list(range(8)),                         # 8
+    "hybridization": list(range(8)),  # 8
     # is_aromatic: 0/1 (2)
-    "is_aromatic": [0, 1],                                   # 2
+    "is_aromatic": [0, 1],  # 2
     # total_num_Hs: 0..8 (9)
-    "total_num_Hs": list(range(9)),                          # 9
+    "total_num_Hs": list(range(9)),  # 9
     # num_radical_electrons: 0..4 (5)
-    "num_radical_electrons": list(range(5)),                 # 5
+    "num_radical_electrons": list(range(5)),  # 5
     # in_ring: 0/1 (2)
-    "in_ring":     [0, 1],                                   # 2
+    "in_ring": [0, 1],  # 2
     # is_in_ring_size_3..6: 4
-    "ring_size":   [3, 4, 5, 6],                             # 4
+    "ring_size": [3, 4, 5, 6],  # 4
     # num_Hs (explicit H count): 0..4 (5)
-    "num_Hs":      list(range(5)),                           # 5
+    "num_Hs": list(range(5)),  # 5
     # 11 + 11 + 11 + 4 + 8 + 2 + 9 + 5 + 2 + 4 + 5 = 72
 }
 _CHEMPROP_V2_ATOM_DIM: int = 72
 
 _CHEMPROP_V2_BOND_VOCAB: Dict[str, List[Any]] = {
     # bond_type: 0..11 (12; 1:single, 2:double, 3:triple, 4:aromatic)
-    "bond_type":  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],    # 12
+    "bond_type": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],  # 12
     # stereo: 0..5 (6)
-    "stereo":     [0, 1, 2, 3, 4, 5],                        # 6
+    "stereo": [0, 1, 2, 3, 4, 5],  # 6
     # is_aromatic: 0/1 (2)
-    "is_aromatic": [0, 1],                                   # 2
+    "is_aromatic": [0, 1],  # 2
     # is_in_ring: 0/1 (2)
-    "is_in_ring":  [0, 1],                                   # 2
+    "is_in_ring": [0, 1],  # 2
     # is_conjugated: 0/1 (2)
-    "is_conjugated": [0, 1],                                 # 2
+    "is_conjugated": [0, 1],  # 2
     # 12 + 6 + 2 + 2 + 2 = 24
     # Note: chemprop v2 actually uses fewer dims; here we get 24-d but
     # the canonical chemprop v2 SimpleMoleculeMolGraphFeaturizer reports
@@ -235,8 +265,8 @@ _CHEMPROP_V2_BOND_VOCAB: Dict[str, List[Any]] = {
     # To match 14-d, we apply the truncation below.
 }
 # Truncated to match chemprop v2's 14-d bond output
-_BOND_TYPE_TRUNC: List[int] = [0, 1, 2, 3, 4, 5]              # 6
-_STEREO_TRUNC: List[int] = [0, 1]                             # 2
+_BOND_TYPE_TRUNC: List[int] = [0, 1, 2, 3, 4, 5]  # 6
+_STEREO_TRUNC: List[int] = [0, 1]  # 2
 _CHEMPROP_V2_BOND_DIM: int = (
     len(_BOND_TYPE_TRUNC) + len(_STEREO_TRUNC) + 2 + 2 + 2
 )  # 6 + 2 + 2 + 2 + 2 = 14
@@ -274,24 +304,21 @@ def rdkit_chemprop_atom_features(mol) -> np.ndarray:
     atom_vocab = _CHEMPROP_V2_ATOM_VOCAB
     for atom in mol.GetAtoms():
         parts = []
-        parts.append(_one_hot(atom.GetAtomicNum(),
-                              atom_vocab["atomic_num"], 11))
-        parts.append(_one_hot(atom.GetDegree(),
-                              atom_vocab["degree"], 11))
-        parts.append(_one_hot(atom.GetFormalCharge(),
-                              atom_vocab["formal_charge"], 11))
+        parts.append(_one_hot(atom.GetAtomicNum(), atom_vocab["atomic_num"], 11))
+        parts.append(_one_hot(atom.GetDegree(), atom_vocab["degree"], 11))
+        parts.append(_one_hot(atom.GetFormalCharge(), atom_vocab["formal_charge"], 11))
         chir = int(atom.GetChiralTag())
         parts.append(_one_hot(chir, atom_vocab["chirality"], 4))
         hyb = int(atom.GetHybridization())
         parts.append(_one_hot(hyb, atom_vocab["hybridization"], 8))
-        parts.append(_one_hot(int(atom.GetIsAromatic()),
-                              atom_vocab["is_aromatic"], 2))
-        parts.append(_one_hot(atom.GetTotalNumHs(),
-                              atom_vocab["total_num_Hs"], 9))
-        parts.append(_one_hot(atom.GetNumRadicalElectrons(),
-                              atom_vocab["num_radical_electrons"], 5))
-        parts.append(_one_hot(int(atom.IsInRing()),
-                              atom_vocab["in_ring"], 2))
+        parts.append(_one_hot(int(atom.GetIsAromatic()), atom_vocab["is_aromatic"], 2))
+        parts.append(_one_hot(atom.GetTotalNumHs(), atom_vocab["total_num_Hs"], 9))
+        parts.append(
+            _one_hot(
+                atom.GetNumRadicalElectrons(), atom_vocab["num_radical_electrons"], 5
+            )
+        )
+        parts.append(_one_hot(int(atom.IsInRing()), atom_vocab["in_ring"], 2))
         # ring_size: multi-hot 3..6
         ring_part = np.zeros(4, dtype=np.float64)
         if atom.IsInRing():
@@ -301,8 +328,7 @@ def rdkit_chemprop_atom_features(mol) -> np.ndarray:
                     if 3 <= size <= 6:
                         ring_part[size - 3] = 1.0
         parts.append(ring_part)
-        parts.append(_one_hot(atom.GetTotalNumHs(),
-                              atom_vocab["num_Hs"], 5))
+        parts.append(_one_hot(atom.GetTotalNumHs(), atom_vocab["num_Hs"], 5))
         feats.append(np.concatenate(parts, axis=0))
     if not feats:
         return np.zeros((0, _CHEMPROP_V2_ATOM_DIM), dtype=np.float64)
@@ -335,12 +361,9 @@ def rdkit_chemprop_bond_features(mol) -> np.ndarray:
         if st >= len(_STEREO_TRUNC):
             st = 1
         parts.append(_one_hot(st, _STEREO_TRUNC, 2))
-        parts.append(_one_hot(int(bond.GetIsAromatic()),
-                              [0, 1], 2))
-        parts.append(_one_hot(int(bond.IsInRing()),
-                              [0, 1], 2))
-        parts.append(_one_hot(int(bond.GetIsConjugated()),
-                              [0, 1], 2))
+        parts.append(_one_hot(int(bond.GetIsAromatic()), [0, 1], 2))
+        parts.append(_one_hot(int(bond.IsInRing()), [0, 1], 2))
+        parts.append(_one_hot(int(bond.GetIsConjugated()), [0, 1], 2))
         feats.append(np.concatenate(parts, axis=0))
     if not feats:
         return np.zeros((0, _CHEMPROP_V2_BOND_DIM), dtype=np.float64)
@@ -358,6 +381,7 @@ def _probe_chemprop_dims() -> Tuple[int, int]:
     try:
         from rdkit import Chem
         from chemprop.featurizers import SimpleMoleculeMolGraphFeaturizer
+
         ftr = SimpleMoleculeMolGraphFeaturizer()
         mol = Chem.MolFromSmiles("c1ccccc1")
         if mol is None:
@@ -418,6 +442,7 @@ def extract_graph_features_pooled(
     """
     try:
         from rdkit import Chem, RDLogger
+
         RDLogger.DisableLog("rdApp.*")
         _has_rdkit = True
     except ImportError:
@@ -427,6 +452,7 @@ def extract_graph_features_pooled(
     if use_canonical_chemprop and _has_rdkit:
         try:
             from chemprop.featurizers import SimpleMoleculeMolGraphFeaturizer
+
             _chemprop_ftr = SimpleMoleculeMolGraphFeaturizer()
             use_chemprop = True
         except ImportError:
@@ -489,8 +515,8 @@ def extract_graph_features_pooled(
                     raise ValueError(f"unknown pool op: {pool!r}")
             bond_pool = np.concatenate(bond_pool_parts, axis=0)
 
-        out[i, :atom_pool.size] = atom_pool
-        out[i, atom_pool.size:atom_pool.size + bond_pool.size] = bond_pool
+        out[i, : atom_pool.size] = atom_pool
+        out[i, atom_pool.size : atom_pool.size + bond_pool.size] = bond_pool
 
     return out
 
@@ -510,6 +536,7 @@ def _wasserstein_distance_1d(a: np.ndarray, b: np.ndarray) -> float:
         return 0.0
     try:
         from scipy.stats import wasserstein_distance as _wd
+
         return float(_wd(a.astype(np.float64), b.astype(np.float64)))
     except Exception:
         a_sorted = np.sort(a.astype(np.float64))
@@ -588,6 +615,7 @@ def _compute_w2_distance_loo(y: np.ndarray) -> np.ndarray:
     out = np.zeros(n, dtype=np.float64)
     try:
         from scipy.stats import wasserstein_distance as _wd
+
         for i in range(n):
             ref_loo = np.delete(y, i)
             out[i] = float(_wd(np.array([y[i]]), ref_loo))
@@ -596,7 +624,9 @@ def _compute_w2_distance_loo(y: np.ndarray) -> np.ndarray:
             ref_loo = np.delete(y_sorted, np.searchsorted(y_sorted, y[i]))
             all_vals = np.concatenate([np.array([y[i]]), ref_loo])
             cdf_a = np.searchsorted(np.array([y[i]]), all_vals, side="right") / 1.0
-            cdf_b = np.searchsorted(ref_loo, all_vals, side="right") / max(ref_loo.size, 1)
+            cdf_b = np.searchsorted(ref_loo, all_vals, side="right") / max(
+                ref_loo.size, 1
+            )
             diff = cdf_a - cdf_b
             order = np.argsort(all_vals)
             x_sorted = all_vals[order]
@@ -715,9 +745,7 @@ def combined_feature_pipeline(
 
     if include_rdkit_32d:
         if X_32d.shape[0] != n:
-            raise ValueError(
-                f"X_32d has {X_32d.shape[0]} rows; expected {n}"
-            )
+            raise ValueError(f"X_32d has {X_32d.shape[0]} rows; expected {n}")
         streams.append(np.asarray(X_32d, dtype=np.float64))
         names.extend([f"rdkit_32d_{i:02d}" for i in range(X_32d.shape[1])])
 
@@ -885,8 +913,8 @@ def ridge_r2_eval_split_aware_w2(
         rng_idx = np.random.default_rng(seed)
         perm = rng_idx.permutation(n)
         n_te = max(1, int(round(n * test_size)))
-        tr_idx = perm[:n - n_te]
-        te_idx = perm[n - n_te:]
+        tr_idx = perm[: n - n_te]
+        te_idx = perm[n - n_te :]
     y_train = y[tr_idx]
     y_test = y[te_idx]
     # W₂ feature using training-only reference
@@ -913,18 +941,24 @@ def ridge_r2_eval_split_aware_w2(
                 ref_proj = ref_X[:, proj_axis]
                 train_proj = X[tr_idx, proj_axis]
                 test_proj = X[te_idx, proj_axis]
-                w2_train = np.array([
-                    _wasserstein_distance_1d(
-                        np.array([v], dtype=np.float64), ref_proj,
-                    )
-                    for v in train_proj
-                ])
-                w2_test = np.array([
-                    _wasserstein_distance_1d(
-                        np.array([v], dtype=np.float64), ref_proj,
-                    )
-                    for v in test_proj
-                ])
+                w2_train = np.array(
+                    [
+                        _wasserstein_distance_1d(
+                            np.array([v], dtype=np.float64),
+                            ref_proj,
+                        )
+                        for v in train_proj
+                    ]
+                )
+                w2_test = np.array(
+                    [
+                        _wasserstein_distance_1d(
+                            np.array([v], dtype=np.float64),
+                            ref_proj,
+                        )
+                        for v in test_proj
+                    ]
+                )
         else:
             # LEAKY: y-based reference
             ref = y_train
@@ -933,10 +967,12 @@ def ridge_r2_eval_split_aware_w2(
         w2_col_train = w2_train.reshape(-1, 1)
         w2_col_test = w2_test.reshape(-1, 1)
         X_full_train = np.concatenate(
-            [X[tr_idx], w2_col_train], axis=1,
+            [X[tr_idx], w2_col_train],
+            axis=1,
         )
         X_full_test = np.concatenate(
-            [X[te_idx], w2_col_test], axis=1,
+            [X[te_idx], w2_col_test],
+            axis=1,
         )
     else:
         X_full_train = X[tr_idx]
@@ -993,7 +1029,9 @@ def ridge_r2_eval_split_aware_w2(
 # ---------------------------------------------------------------------------
 # Cohort loaders (mirror bench_wf325a_r2_32d pattern)
 # ---------------------------------------------------------------------------
-def _mean_pIC50_target(rows: List[List[str]], header: List[str]) -> Tuple[np.ndarray, np.ndarray]:
+def _mean_pIC50_target(
+    rows: List[List[str]], header: List[str]
+) -> Tuple[np.ndarray, np.ndarray]:
     idx = [header.index(c) for c in PLATINAI_PIC50_COLUMNS]
     out = np.zeros(len(rows), dtype=np.float64)
     keep = np.zeros(len(rows), dtype=bool)
@@ -1033,13 +1071,12 @@ def load_cohort(
         smiles_list = [r[smiles_idx] for r in rows32]
         X_32d = _row_to_floats(rows32, PLATINAI_32D_COLUMNS, header32)
         # Compute mean pIC50 from the 12-d file (which has the target columns)
-        header12, rows12 = _read_csv(
-            "molmetal/data/platinai_4cell_rdkit_features.csv"
-        )
+        header12, rows12 = _read_csv("molmetal/data/platinai_4cell_rdkit_features.csv")
         y_full, keep_full = _mean_pIC50_target(rows12, header12)
         smi_to_y = {
             rows12[i][header12.index("smiles")]: float(y_full[i])
-            for i in range(len(rows12)) if keep_full[i]
+            for i in range(len(rows12))
+            if keep_full[i]
         }
         y_list = []
         keep_mask = []
@@ -1048,9 +1085,7 @@ def load_cohort(
                 y_list.append(smi_to_y[smi])
                 keep_mask.append(j)
         if not keep_mask:
-            raise RuntimeError(
-                f"load_cohort({cohort!r}): no rows survived alignment"
-            )
+            raise RuntimeError(f"load_cohort({cohort!r}): no rows survived alignment")
         X_32d_aligned = X_32d[keep_mask]
         smiles_aligned = [smiles_list[j] for j in keep_mask]
         y = np.asarray(y_list, dtype=np.float64)
@@ -1066,9 +1101,7 @@ def load_cohort(
         # Same data as platinai_4cell; differ in seed for the split (handled in run).
         return load_cohort("platinai_4cell", max_samples=max_samples, seed=seed)
     if cohort == "metalcytotox_combined":
-        header12, rows12 = _read_csv(
-            "molmetal/data/metalcytotox_rdkit_features.csv"
-        )
+        header12, rows12 = _read_csv("molmetal/data/metalcytotox_rdkit_features.csv")
         smiles_idx = header12.index("smiles")
         target_idx = header12.index(METALCYTOTOX_TARGET_COLUMN)
         # Filter: row must have finite activity AND parseable SMILES.
@@ -1077,6 +1110,7 @@ def load_cohort(
         smiles_list: List[str] = []
         try:
             from rdkit import Chem
+
             _has_rdkit = True
         except ImportError:
             _has_rdkit = False
@@ -1096,12 +1130,11 @@ def load_cohort(
             if len(keep_indices) >= max_samples:
                 break
         if not keep_indices:
-            raise RuntimeError(
-                f"load_cohort({cohort!r}): no rows survived alignment"
-            )
+            raise RuntimeError(f"load_cohort({cohort!r}): no rows survived alignment")
         X_12d = _row_to_floats(
             [rows12[i] for i in keep_indices],
-            PLATINAI_12D_COLUMNS, header12,
+            PLATINAI_12D_COLUMNS,
+            header12,
         )
         # For metalcytotox we use the 12-d RDKit set as the "RDKit"
         # features; we don't have the 32-d extension on disk for the
@@ -1197,20 +1230,22 @@ def run_wf331r5(
     # ``incl_w2=True`` triggers split-aware W₂ evaluation
     # (compute reference from training fold only).
     configs: List[Tuple[str, bool, bool, bool]] = [
-        ("12d_baseline",                   False, False, False),  # filled below
-        ("32d_rdkit",                      True,  False, False),
-        ("32d_rdkit_plus_w2",              True,  False, True),
-        ("32d_rdkit_plus_graph",           True,  True,  False),
-        ("32d_rdkit_plus_graph_plus_w2",   True,  True,  True),
-        ("graph_only",                     False, True,  False),
-        ("w2_only",                        False, False, True),
-        ("graph_plus_w2",                  False, True,  True),
+        ("12d_baseline", False, False, False),  # filled below
+        ("32d_rdkit", True, False, False),
+        ("32d_rdkit_plus_w2", True, False, True),
+        ("32d_rdkit_plus_graph", True, True, False),
+        ("32d_rdkit_plus_graph_plus_w2", True, True, True),
+        ("graph_only", False, True, False),
+        ("w2_only", False, False, True),
+        ("graph_plus_w2", False, True, True),
     ]
 
     per_cohort: List[Dict[str, Any]] = []
     for cohort in cohorts:
         X_32d, y, smiles_list = load_cohort(
-            cohort, max_samples=metalcytotox_max, seed=seed,
+            cohort,
+            max_samples=metalcytotox_max,
+            seed=seed,
         )[:3]
         n_samples = int(X_32d.shape[0])
         # Seed for hilbert cohort: shift by +1 (Wf-325A pattern).
@@ -1225,7 +1260,10 @@ def run_wf331r5(
                 X_combined = X_in[:, keep_mask]
                 feature_names = [f"rdkit_12d_{i:02d}" for i in range(12)]
                 res = ridge_r2_eval(
-                    X_combined, y, alpha=1.0, seed=cohort_seed,
+                    X_combined,
+                    y,
+                    alpha=1.0,
+                    seed=cohort_seed,
                 )
             else:
                 # Build the static feature matrix (RDKit 32-d + chemprop
@@ -1258,27 +1296,43 @@ def run_wf331r5(
                         # varies across metallodrug SMILES).
                         try:
                             from rdkit import Chem
-                            proj = np.array([
-                                float(np.mean([a.GetAtomicNum()
-                                               for a in Chem.MolFromSmiles(s).GetAtoms()]))
-                                if Chem.MolFromSmiles(s) is not None else 0.0
-                                for s in smiles_list
-                            ], dtype=np.float64)
+
+                            proj = np.array(
+                                [
+                                    float(
+                                        np.mean(
+                                            [
+                                                a.GetAtomicNum()
+                                                for a in Chem.MolFromSmiles(
+                                                    s
+                                                ).GetAtoms()
+                                            ]
+                                        )
+                                    )
+                                    if Chem.MolFromSmiles(s) is not None
+                                    else 0.0
+                                    for s in smiles_list
+                                ],
+                                dtype=np.float64,
+                            )
                             # Pad into a 1-column static matrix
                             proj_col = proj.reshape(-1, 1)
                             X_static = proj_col
                         except Exception:
                             X_static = np.zeros(
-                                (X_32d.shape[0], 0), dtype=np.float64,
+                                (X_32d.shape[0], 0),
+                                dtype=np.float64,
                             )
                 except Exception as exc:
-                    per_config.append({
-                        "label": label,
-                        "error": f"static feature build failed: {exc}",
-                        "r2": float("nan"),
-                        "lift_vs_12d": float("nan"),
-                        "verdict": "PIPELINE_ERROR",
-                    })
+                    per_config.append(
+                        {
+                            "label": label,
+                            "error": f"static feature build failed: {exc}",
+                            "r2": float("nan"),
+                            "lift_vs_12d": float("nan"),
+                            "verdict": "PIPELINE_ERROR",
+                        }
+                    )
                     continue
                 # If incl_w2 is True, use split-aware W₂ eval.
                 # Otherwise plain Ridge R².
@@ -1295,9 +1349,10 @@ def run_wf331r5(
                     )
                 else:
                     res = ridge_r2_eval(
-                        X_static if X_static.shape[1] > 0
-                        else X_32d[:, :12],
-                        y, alpha=1.0, seed=cohort_seed,
+                        X_static if X_static.shape[1] > 0 else X_32d[:, :12],
+                        y,
+                        alpha=1.0,
+                        seed=cohort_seed,
                     )
                 feature_names = (
                     [f"rdkit_32d_{i:02d}" for i in range(32)]
@@ -1312,85 +1367,85 @@ def run_wf331r5(
                             for pool in ("mean", "max", "sum")
                             for i in range(_probe_chemprop_dims()[1])
                         ]
-                    ) if incl_graph else []
+                    )
+                    if incl_graph
+                    else []
                 )
             r2 = res["r2"]
             n_features_dim = (
-                X_combined.shape[1] if label == "12d_baseline"
-                else (
-                    (X_static.shape[1] + 1) if incl_w2
-                    else X_static.shape[1]
-                )
+                X_combined.shape[1]
+                if label == "12d_baseline"
+                else ((X_static.shape[1] + 1) if incl_w2 else X_static.shape[1])
             )
-            per_config.append({
-                "label": label,
-                "r2": float(r2),
-                "n_train": int(res["n_train"]),
-                "n_test": int(res["n_test"]),
-                "alpha": float(res["alpha"]),
-                "n_features": int(n_features_dim),
-                "feature_dim_breakdown": {
-                    "rdkit_32d": 32 if incl_32 else 12 if label == "12d_baseline" else 0,
-                    "chemprop_v2_graph": (
-                        _get_graph_feature_dim() if incl_graph else 0
-                    ),
-                    "w2_distance": 1 if incl_w2 else 0,
-                },
-                "lift_vs_wf325a_baseline": float(r2 - baseline_r2),
-                "verdict": _summarise_recovery(r2, baseline_r2),
-            })
+            per_config.append(
+                {
+                    "label": label,
+                    "r2": float(r2),
+                    "n_train": int(res["n_train"]),
+                    "n_test": int(res["n_test"]),
+                    "alpha": float(res["alpha"]),
+                    "n_features": int(n_features_dim),
+                    "feature_dim_breakdown": {
+                        "rdkit_32d": 32
+                        if incl_32
+                        else 12
+                        if label == "12d_baseline"
+                        else 0,
+                        "chemprop_v2_graph": (
+                            _get_graph_feature_dim() if incl_graph else 0
+                        ),
+                        "w2_distance": 1 if incl_w2 else 0,
+                    },
+                    "lift_vs_wf325a_baseline": float(r2 - baseline_r2),
+                    "verdict": _summarise_recovery(r2, baseline_r2),
+                }
+            )
 
         # Best config (PROJECTED lift, not max-bias)
-        finite_r2 = [
-            c for c in per_config
-            if np.isfinite(c.get("r2", float("nan")))
-        ]
+        finite_r2 = [c for c in per_config if np.isfinite(c.get("r2", float("nan")))]
         best_label = None
         best_r2 = float("-inf")
         for c in finite_r2:
             if c["r2"] > best_r2:
                 best_r2 = float(c["r2"])
                 best_label = c["label"]
-        per_cohort.append({
-            "cohort": cohort,
-            "n_samples": n_samples,
-            "cohort_seed": cohort_seed,
-            "wf325a_baseline_r2": baseline_r2,
-            "per_config": per_config,
-            "best_config": {
-                "label": best_label,
-                "r2": best_r2 if best_label is not None else float("nan"),
-                "lift_vs_wf325a_baseline": (
-                    float(best_r2 - baseline_r2)
-                    if best_label is not None else float("nan")
+        per_cohort.append(
+            {
+                "cohort": cohort,
+                "n_samples": n_samples,
+                "cohort_seed": cohort_seed,
+                "wf325a_baseline_r2": baseline_r2,
+                "per_config": per_config,
+                "best_config": {
+                    "label": best_label,
+                    "r2": best_r2 if best_label is not None else float("nan"),
+                    "lift_vs_wf325a_baseline": (
+                        float(best_r2 - baseline_r2)
+                        if best_label is not None
+                        else float("nan")
+                    ),
+                },
+                "any_ceiling_break": any(
+                    c.get("verdict") == "CEILING_BREAK" for c in per_config
                 ),
-            },
-            "any_ceiling_break": any(
-                c.get("verdict") == "CEILING_BREAK" for c in per_config
-            ),
-            "any_above_zero": any(
-                np.isfinite(c.get("r2", float("nan"))) and c["r2"] > 0.0
-                for c in per_config
-            ),
-        })
+                "any_above_zero": any(
+                    np.isfinite(c.get("r2", float("nan"))) and c["r2"] > 0.0
+                    for c in per_config
+                ),
+            }
+        )
 
     # ----- Aggregate honest framing -----
-    n_ceiling_break = sum(
-        1 for c in per_cohort if c["any_ceiling_break"]
-    )
+    n_ceiling_break = sum(1 for c in per_cohort if c["any_ceiling_break"])
     n_above_zero = sum(1 for c in per_cohort if c["any_above_zero"])
     n_resolved = sum(
-        1 for c in per_cohort
-        if c["best_config"]["lift_vs_wf325a_baseline"] >= 0.05
+        1 for c in per_cohort if c["best_config"]["lift_vs_wf325a_baseline"] >= 0.05
     )
     if n_ceiling_break >= 2:
         aggregate_status = "HONEST_NEGATIVE_R2_RESOLVED"
     elif n_above_zero >= 1:
         aggregate_status = "HONEST_NEGATIVE_PARTIAL"
-    elif any(
-        c["best_config"]["lift_vs_wf325a_baseline"] >= 0.0
-        for c in per_cohort
-    ):
+    elif any(c["best_config"]["lift_vs_wf325a_baseline"] >= 0.0 for c in per_cohort):
         aggregate_status = "NO_LIFT_HONEST_NEGATIVE"
     else:
         aggregate_status = "HONEST_NEGATIVE_R2_PERSISTENT"
@@ -1415,7 +1470,8 @@ def run_wf331r5(
             "combined_max": 32 + _get_graph_feature_dim() + 1,
         },
         "graph_featurizer": (
-            "chemprop_v2 (canonical)" if use_canonical_chemprop
+            "chemprop_v2 (canonical)"
+            if use_canonical_chemprop
             else "rdkit_native_chemprop_compatible"
         ),
         "w2_method": (
@@ -1456,8 +1512,7 @@ def run_wf331r5(
                 "reference cohort distribution."
             ),
             "ceiling_break": (
-                "Best R² > 0 AND lift ≥ +0.10 over Wf-325A baseline "
-                "on the cohort."
+                "Best R² > 0 AND lift ≥ +0.10 over Wf-325A baseline " "on the cohort."
             ),
             "aggregate_resolved": (
                 "HONEST_NEGATIVE_R2_RESOLVED if ≥ 2 cohorts achieve "
@@ -1485,7 +1540,9 @@ def run_wf331r5(
 def main(argv: Optional[List[str]] = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument(
-        "--cohorts", nargs="+", default=None,
+        "--cohorts",
+        nargs="+",
+        default=None,
         help=(
             "Cohorts to evaluate (default: all 3). Accepts either "
             "space-separated (--cohorts a b c) or a single "
@@ -1494,14 +1551,18 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     p.add_argument("--seed", type=int, default=0)
     p.add_argument(
-        "--metalcytotox-max", type=int, default=2000,
+        "--metalcytotox-max",
+        type=int,
+        default=2000,
         help="Cap on metalcytotox_combined rows (default 2000)",
     )
     p.add_argument(
-        "--output-dir", default="molmetal/reports/wf331r5_r2_w2_chemprop",
+        "--output-dir",
+        default="molmetal/reports/wf331r5_r2_w2_chemprop",
     )
     p.add_argument(
-        "--use-canonical-chemprop", action="store_true",
+        "--use-canonical-chemprop",
+        action="store_true",
         help=(
             "Use chemprop v2 directly when available; default is "
             "RDKit-native chemprop-compatible fallback (faster, no "
@@ -1509,7 +1570,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         ),
     )
     p.add_argument(
-        "--w2-use-y-leaky", action="store_true",
+        "--w2-use-y-leaky",
+        action="store_true",
         help=(
             "Use the y-based W₂ feature (LEAKY per WEAK_TO_STRONG §2.1; "
             "default is covariate-based W₂ which uses the RDKit "
@@ -1539,7 +1601,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         cohort = c["cohort"]
         n = c["n_samples"]
         baseline = c["wf325a_baseline_r2"]
-        print(f"\n  cohort={cohort:>22s}  n={n:>5d}  Wf-325A baseline R²(12d)={baseline:+.4f}")
+        print(
+            f"\n  cohort={cohort:>22s}  n={n:>5d}  Wf-325A baseline R²(12d)={baseline:+.4f}"
+        )
         for cfg in c["per_config"]:
             if "error" in cfg:
                 print(f"    {cfg['label']:>30s}: {cfg['error']}")

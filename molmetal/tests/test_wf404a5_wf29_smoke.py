@@ -49,16 +49,12 @@ from typing import Any, Dict
 import pytest
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent.parent
-SMOKE_SCRIPT = (
-    PROJECT_ROOT / "molmetal" / "scripts" / "wf404a5_wf29_attr_fix_smoke.py"
-)
+SMOKE_SCRIPT = PROJECT_ROOT / "molmetal" / "scripts" / "wf404a5_wf29_attr_fix_smoke.py"
 TRAIN_SCRIPT = PROJECT_ROOT / "molmetal" / "scripts" / "train_se3sb.py"
 DEFAULT_DATA = (
     PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 )
-VENV_PY = (
-    PROJECT_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
-)
+VENV_PY = PROJECT_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
 
 #: Canonical expected forward() output keys (5 metal + coord).
 EXPECTED_FORWARD_KEYS = ("Ru", "Ir", "Rh", "Re", "Os", "coord")
@@ -113,9 +109,7 @@ def test_attr_fix_smoke_inv1_argparse(tmp_path: Path) -> None:
     """Inv1 — Wf-29 fix surfaces as ``se3_use_sinkhorn`` in ``parse_args``."""
     smoke = _import_smoke()
     inv1 = smoke.verify_attr_dict_compatibility()
-    assert inv1["verdict"] == "PASS", (
-        f"argparse contract regressed: {inv1}"
-    )
+    assert inv1["verdict"] == "PASS", f"argparse contract regressed: {inv1}"
     assert "se3_use_sinkhorn" in inv1["attrs_present"]
     assert "se3_sinkhorn" not in inv1["attrs_present"]
 
@@ -131,8 +125,7 @@ def test_attr_fix_smoke_inv1_legacy_typo_absent(tmp_path: Path) -> None:
     inv1 = smoke.verify_attr_dict_compatibility()
     must_not_have = inv1["must_not_have"]
     assert must_not_have not in inv1["attrs_present"], (
-        f"legacy typo {must_not_have!r} present in parse_args "
-        "— Wf-29 fix regressed"
+        f"legacy typo {must_not_have!r} present in parse_args " "— Wf-29 fix regressed"
     )
 
 
@@ -143,9 +136,7 @@ def test_attr_dict_compatibility(tmp_path: Path) -> None:
     """V4MultiTaskDMPNN.forward() returns canonical 5-metal + coord keys."""
     smoke = _import_smoke()
     inv2 = smoke.verify_forward_dict_shape()
-    assert inv2["verdict"] == "PASS", (
-        f"forward dict shape regressed: {inv2}"
-    )
+    assert inv2["verdict"] == "PASS", f"forward dict shape regressed: {inv2}"
     assert inv2["shape_match"] is True
     assert sorted(inv2["output_keys"]) == sorted(EXPECTED_FORWARD_KEYS)
 
@@ -163,6 +154,7 @@ def test_attr_dict_compatibility_keys_explicit() -> None:
         SUPPORTED_METALS,
         V4MultiTaskDMPNN,
     )
+
     model = V4MultiTaskDMPNN(
         hidden_dim=32,
         n_layers=2,
@@ -176,8 +168,7 @@ def test_attr_dict_compatibility_keys_explicit() -> None:
             "train_se3sb.py loss loop will KeyError"
         )
     assert "coord" in out, (
-        "coord head missing from forward output — "
-        "coord loss will KeyError"
+        "coord head missing from forward output — " "coord loss will KeyError"
     )
     # No extra unexpected keys (e.g. accidentally registered twice).
     unexpected = set(out.keys()) - set(SUPPORTED_METALS) - {"coord"}
@@ -202,17 +193,28 @@ def test_attr_fix_subprocess_smoke(tmp_path: Path) -> None:
     cmd = [
         str(VENV_PY),
         str(TRAIN_SCRIPT),
-        "--seeds", "0",
-        "--epochs", "1",
-        "--batch", "8",
-        "--hidden", "32",
-        "--depth", "2",
-        "--train-max-per-metal", "8",
-        "--se3-n-steps", "2",
-        "--out-dir", str(tmp_path / "ckpt"),
-        "--metrics-path", str(tmp_path / "metrics.json"),
-        "--summary-path", str(tmp_path / "summary.json"),
-        "--data", str(DEFAULT_DATA),
+        "--seeds",
+        "0",
+        "--epochs",
+        "1",
+        "--batch",
+        "8",
+        "--hidden",
+        "32",
+        "--depth",
+        "2",
+        "--train-max-per-metal",
+        "8",
+        "--se3-n-steps",
+        "2",
+        "--out-dir",
+        str(tmp_path / "ckpt"),
+        "--metrics-path",
+        str(tmp_path / "metrics.json"),
+        "--summary-path",
+        str(tmp_path / "summary.json"),
+        "--data",
+        str(DEFAULT_DATA),
     ]
     result = subprocess.run(
         cmd,
@@ -226,9 +228,9 @@ def test_attr_fix_subprocess_smoke(tmp_path: Path) -> None:
         f"stderr (tail):\n{result.stderr[-2000:]}"
     )
     combined = (result.stdout or "") + "\n" + (result.stderr or "")
-    assert "AttributeError" not in combined, (
-        f"AttributeError leaked:\n{combined[-1500:]}"
-    )
+    assert (
+        "AttributeError" not in combined
+    ), f"AttributeError leaked:\n{combined[-1500:]}"
     assert "'Namespace' object has no attribute" not in combined
     # Verify metrics were emitted.
     metrics_path = tmp_path / "metrics.json"
@@ -245,13 +247,23 @@ def test_smoke_report_contract(tmp_path: Path) -> None:
     report = _run_in_process_smoke(tmp_path)
     # Required top-level keys.
     required_keys = {
-        "wf_id", "recipe", "purpose", "provenance", "aggregate_verdict",
-        "invariants", "expected_keys", "supported_metals", "wall_seconds",
-        "data_csv_used", "env", "cross_refs", "honest_framing",
+        "wf_id",
+        "recipe",
+        "purpose",
+        "provenance",
+        "aggregate_verdict",
+        "invariants",
+        "expected_keys",
+        "supported_metals",
+        "wall_seconds",
+        "data_csv_used",
+        "env",
+        "cross_refs",
+        "honest_framing",
     }
-    assert required_keys.issubset(report.keys()), (
-        f"missing required keys {required_keys - set(report.keys())}"
-    )
+    assert required_keys.issubset(
+        report.keys()
+    ), f"missing required keys {required_keys - set(report.keys())}"
     # Invariants sub-dict must have all three arms.
     inv_keys = {
         "inv1_argparse_contract",
@@ -264,7 +276,9 @@ def test_smoke_report_contract(tmp_path: Path) -> None:
     # Provenance discipline per party-twenty-spirit §3.5.
     assert report["provenance"] == "MEASURED"
     # Honest framing clause present.
-    assert "BLOCKED" in report["honest_framing"] or "USER_OK" in report["honest_framing"]
+    assert (
+        "BLOCKED" in report["honest_framing"] or "USER_OK" in report["honest_framing"]
+    )
 
 
 def test_invariants_run_in_isolation() -> None:

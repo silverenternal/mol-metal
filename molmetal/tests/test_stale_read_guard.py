@@ -267,7 +267,10 @@ def test_wait_until_epoch_reached_returns_1_on_timeout(tmp_path: Path) -> None:
     "line,expected",
     [
         # Real Wf-84 reference format (single-space and double-space padding)
-        ("  [Ru seed=0] epoch  1/10 loss=0.6412 cls=0.6412 reg=31.7370 val_rmse=5.661 (11.4s)", (1, 10)),
+        (
+            "  [Ru seed=0] epoch  1/10 loss=0.6412 cls=0.6412 reg=31.7370 val_rmse=5.661 (11.4s)",
+            (1, 10),
+        ),
         ("  [Ru seed=0] epoch  2/10 loss=0.5816 (6.8s)", (2, 10)),
         ("  [Ir seed=1] epoch 17/50 val_auc=0.6991 (63.0s)", (17, 50)),
         # Single-space padding variant
@@ -279,9 +282,9 @@ def test_wait_until_epoch_reached_returns_1_on_timeout(tmp_path: Path) -> None:
 def test_stale_read_pattern_detection(line: str, expected: Tuple[int, int]) -> None:
     """The (epoch N/M) regex MUST parse real training-log lines correctly."""
     parsed = parse_epoch_line(line)
-    assert parsed == expected, (
-        f"parse_epoch_line({line!r}) returned {parsed!r}; expected {expected!r}"
-    )
+    assert (
+        parsed == expected
+    ), f"parse_epoch_line({line!r}) returned {parsed!r}; expected {expected!r}"
 
     # Negative cases — lines without the epoch marker MUST return None.
     assert parse_epoch_line("[Ru seed=0] starting training") is None

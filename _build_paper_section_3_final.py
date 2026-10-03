@@ -4,6 +4,7 @@
 Writes docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md via atomic_write_file
 per AGENTS.md §5.6 (atomic write protocol adoption rule).
 """
+
 from __future__ import annotations
 
 import sys

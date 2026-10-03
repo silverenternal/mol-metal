@@ -65,14 +65,26 @@ PER_CFG_DIR = OUT_DIR / "per_config"
 # bits: (K=kendall, D=dann, F=four-domain)
 # 2^3 = 8 unique non-empty configurations.
 CONFIGS_8 = [
-    {"code": "000", "K": False, "D": False, "F": False, "label": "baseline (no levers)"},
-    {"code": "100", "K": True,  "D": False, "F": False, "label": "K only (Kendall loss)"},
-    {"code": "010", "K": False, "D": True,  "F": False, "label": "D only (DANN)"},
-    {"code": "001", "K": False, "D": False, "F": True,  "label": "F only (four-domain)"},
-    {"code": "110", "K": True,  "D": True,  "F": False, "label": "K + D"},
-    {"code": "101", "K": True,  "D": False, "F": True,  "label": "K + F"},
-    {"code": "011", "K": False, "D": True,  "F": True,  "label": "D + F"},
-    {"code": "111", "K": True,  "D": True,  "F": True,  "label": "full recipe (K+D+F)"},
+    {
+        "code": "000",
+        "K": False,
+        "D": False,
+        "F": False,
+        "label": "baseline (no levers)",
+    },
+    {
+        "code": "100",
+        "K": True,
+        "D": False,
+        "F": False,
+        "label": "K only (Kendall loss)",
+    },
+    {"code": "010", "K": False, "D": True, "F": False, "label": "D only (DANN)"},
+    {"code": "001", "K": False, "D": False, "F": True, "label": "F only (four-domain)"},
+    {"code": "110", "K": True, "D": True, "F": False, "label": "K + D"},
+    {"code": "101", "K": True, "D": False, "F": True, "label": "K + F"},
+    {"code": "011", "K": False, "D": True, "F": True, "label": "D + F"},
+    {"code": "111", "K": True, "D": True, "F": True, "label": "full recipe (K+D+F)"},
 ]
 
 # Wf-252-Apply Fix #4 (F4-AblationCPU) — quick-pilot config subset.
@@ -81,10 +93,16 @@ CONFIGS_8 = [
 # the attribution evidence focused on the per-lever + full-recipe
 # signal; baseline is recovered via the seed-0 K-only run offset.
 CONFIGS_4_QUICK = [
-    {"code": "100", "K": True,  "D": False, "F": False, "label": "K only (Kendall loss)"},
-    {"code": "010", "K": False, "D": True,  "F": False, "label": "D only (DANN)"},
-    {"code": "001", "K": False, "D": False, "F": True,  "label": "F only (four-domain)"},
-    {"code": "111", "K": True,  "D": True,  "F": True,  "label": "full recipe (K+D+F)"},
+    {
+        "code": "100",
+        "K": True,
+        "D": False,
+        "F": False,
+        "label": "K only (Kendall loss)",
+    },
+    {"code": "010", "K": False, "D": True, "F": False, "label": "D only (DANN)"},
+    {"code": "001", "K": False, "D": False, "F": True, "label": "F only (four-domain)"},
+    {"code": "111", "K": True, "D": True, "F": True, "label": "full recipe (K+D+F)"},
 ]
 QUICK_PILOT_OUT = OUT_DIR / "quick_pilot"
 QUICK_PILOT_PER_CFG = QUICK_PILOT_OUT / "per_config"
@@ -104,11 +122,16 @@ def _run_subprocess(cfg: dict, seed: int, epochs: int, *, quick: bool = False) -
         out = PER_CFG_DIR / f"cfg{cfg['code']}_seed{seed}.json"
         log = LOG_DIR / f"cfg{cfg['code']}_seed{seed}.log"
     cmd = [
-        PY, str(RUN_ONE),
-        "--code", cfg["code"],
-        "--epochs", str(epochs),
-        "--seed", str(seed),
-        "--out", str(out),
+        PY,
+        str(RUN_ONE),
+        "--code",
+        cfg["code"],
+        "--epochs",
+        str(epochs),
+        "--seed",
+        str(seed),
+        "--out",
+        str(out),
     ]
     if cfg["K"]:
         cmd.append("--use-kendall-loss")
@@ -140,7 +163,9 @@ def _run_subprocess(cfg: dict, seed: int, epochs: int, *, quick: bool = False) -
     return {
         "code": cfg["code"],
         "label": cfg["label"],
-        "K": cfg["K"], "D": cfg["D"], "F": cfg["F"],
+        "K": cfg["K"],
+        "D": cfg["D"],
+        "F": cfg["F"],
         "seed": seed,
         "returncode": proc.returncode,
         "wall_seconds": elapsed,
@@ -153,8 +178,12 @@ def _run_subprocess(cfg: dict, seed: int, epochs: int, *, quick: bool = False) -
 def _extract_metrics(out_path: Path) -> dict:
     """Pull test_auc, test_pearson, val_auc from the training JSON."""
     if not out_path.exists():
-        return {"test_auc": None, "test_pearson": None, "val_auc": None,
-                "error": "output JSON missing"}
+        return {
+            "test_auc": None,
+            "test_pearson": None,
+            "val_auc": None,
+            "error": "output JSON missing",
+        }
     try:
         with open(out_path) as f:
             payload = json.load(f)
@@ -208,12 +237,20 @@ def _compute_attribution(results: list[dict]) -> dict:
     full_recipe_lift = auc("111") - base_auc
     three_way = (
         full_recipe_lift
-        - single["K"] - single["D"] - single["F"]
-        - pair_KD - pair_KF - pair_DF
+        - single["K"]
+        - single["D"]
+        - single["F"]
+        - pair_KD
+        - pair_KF
+        - pair_DF
     )
     additivity_gap = full_recipe_lift - (
-        single["K"] + single["D"] + single["F"]
-        + pair_KD + pair_KF + pair_DF
+        single["K"]
+        + single["D"]
+        + single["F"]
+        + pair_KD
+        + pair_KF
+        + pair_DF
         + three_way
     )  # = 0 by construction (sanity)
     sum_single = sum(single.values())
@@ -231,30 +268,49 @@ def _compute_attribution(results: list[dict]) -> dict:
         "sum_two_way": sum_pairs,
         "three_way": three_way,
         "additivity_gap": additivity_gap,
-        "by_code": {c: {"test_auc": auc(c)} for c in ["000","100","010","001","110","101","011","111"]},
+        "by_code": {
+            c: {"test_auc": auc(c)}
+            for c in ["000", "100", "010", "001", "110", "101", "011", "111"]
+        },
     }
 
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--epochs", type=int, default=5,
-                   help="Training epochs per config (default: 5 for time budget)")
-    p.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2, 3],
-                   help="Seeds. seed 0 used for all 8 configs; extras for baseline variance.")
-    p.add_argument("--n-parallel", type=int, default=1,
-                   help="Parallel processes (1=sequential to avoid GPU contention)")
+    p.add_argument(
+        "--epochs",
+        type=int,
+        default=5,
+        help="Training epochs per config (default: 5 for time budget)",
+    )
+    p.add_argument(
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=[0, 1, 2, 3],
+        help="Seeds. seed 0 used for all 8 configs; extras for baseline variance.",
+    )
+    p.add_argument(
+        "--n-parallel",
+        type=int,
+        default=1,
+        help="Parallel processes (1=sequential to avoid GPU contention)",
+    )
     # Wf-252-Apply Fix #4 (F4-AblationCPU) — opt-in CPU pilot.
     # 4 configs (K-only / D-only / F-only / K+D+F) × 3 seeds = 12 runs.
     # Outputs under molmetal/reports/wf229_ablation/quick_pilot/.
     # Default OFF so the paper-grade sweep remains the canonical run.
-    p.add_argument("--quick", action="store_true", default=False,
-                   help=(
-                       "Wf-252-Apply F4-AblationCPU: 4 configs × 3 seeds = "
-                       "12 runs on CPU.  Outputs under quick_pilot/.  "
-                       "Default: off (paper-grade 8-config × 5-seed GPU "
-                       "sweep)."
-                   ),
-                   )
+    p.add_argument(
+        "--quick",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-252-Apply F4-AblationCPU: 4 configs × 3 seeds = "
+            "12 runs on CPU.  Outputs under quick_pilot/.  "
+            "Default: off (paper-grade 8-config × 5-seed GPU "
+            "sweep)."
+        ),
+    )
     args = p.parse_args()
 
     if args.quick:
@@ -277,8 +333,7 @@ def main():
         pilot_results = []
         for cfg in CONFIGS_4_QUICK:
             for seed in pilot_seeds:
-                res = _run_subprocess(cfg, seed=seed, epochs=args.epochs,
-                                      quick=True)
+                res = _run_subprocess(cfg, seed=seed, epochs=args.epochs, quick=True)
                 pilot_results.append(res)
                 print(
                     f"[wf229 --quick] cfg={cfg['code']} seed={seed} "
@@ -293,11 +348,13 @@ def main():
         pilot_wall = time.time() - pilot_t0
         # Quick-pilot per-config summary (mean over seeds).
         from collections import defaultdict
+
         per_cfg_aucs: Dict[str, List[float]] = defaultdict(list)
         for r in pilot_results:
             if r.get("test_auc") is not None:
                 per_cfg_aucs[r["code"]].append(float(r["test_auc"]))
         import statistics as _stats
+
         per_cfg_mean = {
             code: (_stats.mean(aucs) if aucs else None)
             for code, aucs in per_cfg_aucs.items()
@@ -343,15 +400,18 @@ def main():
             "per_lever_attribution_relative_to_k_only": {
                 "K_only_baseline_auc": k_only,
                 "D_only_delta_vs_K": (
-                    float(d_only - k_only) if (d_only is not None and k_only is not None)
+                    float(d_only - k_only)
+                    if (d_only is not None and k_only is not None)
                     else None
                 ),
                 "F_only_delta_vs_K": (
-                    float(f_only - k_only) if (f_only is not None and k_only is not None)
+                    float(f_only - k_only)
+                    if (f_only is not None and k_only is not None)
                     else None
                 ),
                 "full_recipe_KDF_delta_vs_K": (
-                    float(full - k_only) if (full is not None and k_only is not None)
+                    float(full - k_only)
+                    if (full is not None and k_only is not None)
                     else None
                 ),
             },
@@ -368,17 +428,17 @@ def main():
                 "baseline 000 config); paper-grade attribution requires "
                 "GPU retrain at h=128 / 30 epochs (deferred)."
             ),
-            "status": "MEASURED" if pilot_results and any(
-                r.get("test_auc") is not None for r in pilot_results
-            ) else "UNMEASURED",
+            "status": "MEASURED"
+            if pilot_results
+            and any(r.get("test_auc") is not None for r in pilot_results)
+            else "UNMEASURED",
             "timestamp": "2026-09-28",
             "wf_design_ref": (
                 "molmetal/reports/wf252_research/fix_design.md §4 Fix F4"
             ),
         }
         pilot_summary_path = QUICK_PILOT_OUT / "ablation_summary.json"
-        pilot_summary_path.write_text(json.dumps(pilot_summary, indent=2,
-                                                 default=str))
+        pilot_summary_path.write_text(json.dumps(pilot_summary, indent=2, default=str))
         print(
             f"[wf229 --quick F4] wrote {pilot_summary_path}",
             flush=True,
@@ -399,7 +459,9 @@ def main():
     all_results = []
 
     # 8 configs at seed 0
-    print(f"[wf229] launching 2^3 = 8 configs at seed=0 epochs={args.epochs}", flush=True)
+    print(
+        f"[wf229] launching 2^3 = 8 configs at seed=0 epochs={args.epochs}", flush=True
+    )
     for cfg in CONFIGS_8:
         res = _run_subprocess(cfg, seed=0, epochs=args.epochs)
         all_results.append(res)
@@ -427,10 +489,13 @@ def main():
         r.update(m)
 
     # Variance over baseline seeds
-    baseline_seeds = [r for r in all_results if r["code"] == "000" and r.get("test_auc") is not None]
+    baseline_seeds = [
+        r for r in all_results if r["code"] == "000" and r.get("test_auc") is not None
+    ]
     baseline_aucs = [r["test_auc"] for r in baseline_seeds]
     if len(baseline_aucs) >= 2:
         import statistics
+
         baseline_mean = statistics.mean(baseline_aucs)
         baseline_std = statistics.stdev(baseline_aucs)
     else:
@@ -477,7 +542,9 @@ def main():
     with open(syn, "w") as f:
         f.write(f"# Wf-229 per-innovation ablation — train_dmpnn_multitask.py\n\n")
         f.write(f"3 levers: K (Kendall loss), D (DANN), F (four-domain)\n")
-        f.write(f"Total runs: {len(all_results)} (8 unique configs @ seed=0 + {len(extra_seeds)} baseline seeds)\n")
+        f.write(
+            f"Total runs: {len(all_results)} (8 unique configs @ seed=0 + {len(extra_seeds)} baseline seeds)\n"
+        )
         f.write(f"Total wall: {total_wall:.1f}s ({total_wall/60:.1f} min)\n\n")
         f.write("## Per-config test_auc (seed=0)\n\n")
         f.write("| code | K | D | F | test_auc | wall_s |\n")
@@ -494,11 +561,19 @@ def main():
         f.write("\n## Two-way interactions\n\n")
         for k, v in attribution.get("two_way_interactions", {}).items():
             f.write(f"- **{k}**: {v:+.4f}\n")
-        f.write(f"\n## Full recipe (111) lift: {attribution.get('full_recipe_lift', 0):+.4f}\n")
+        f.write(
+            f"\n## Full recipe (111) lift: {attribution.get('full_recipe_lift', 0):+.4f}\n"
+        )
         f.write(f"\n## Honest framing (party-twenty-spirit §3.5)\n\n")
-        f.write("- 5 epochs only — metric deltas are RELATIVE within this cohort, NOT comparable to Wf-124 P3 absolute anchor at 30 epochs / h=128.\n")
-        f.write("- Per-lever attribution uses seed=0 only; baseline seeds 1/2/3 reported as variance bars.\n")
-        f.write("- Race-condition detection: each config log parsed for repeated epoch lines; report any issues in the launcher.log.\n")
+        f.write(
+            "- 5 epochs only — metric deltas are RELATIVE within this cohort, NOT comparable to Wf-124 P3 absolute anchor at 30 epochs / h=128.\n"
+        )
+        f.write(
+            "- Per-lever attribution uses seed=0 only; baseline seeds 1/2/3 reported as variance bars.\n"
+        )
+        f.write(
+            "- Race-condition detection: each config log parsed for repeated epoch lines; report any issues in the launcher.log.\n"
+        )
 
     print(f"[wf229] wrote {syn}", flush=True)
     print(f"[wf229] DONE  total_wall={total_wall:.1f}s", flush=True)

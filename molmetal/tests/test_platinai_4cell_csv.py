@@ -11,6 +11,7 @@ Output CSV: /home/hugo/codes/mol-metal/.data/molmetal/platinai_4cell.csv
 Schema:
     SMILES_Ligands, pIC50_mcf7, pIC50_a549, pIC50_a2780, pIC50_a2780cis, metal
 """
+
 from __future__ import annotations
 
 import csv
@@ -45,7 +46,9 @@ def test_platinai_load() -> None:
     with CSV_PATH.open() as f:
         r = csv.DictReader(f)
         fieldnames = r.fieldnames or []
-        assert "SMILES_Ligands" in fieldnames, f"missing SMILES_Ligands col: {fieldnames}"
+        assert (
+            "SMILES_Ligands" in fieldnames
+        ), f"missing SMILES_Ligands col: {fieldnames}"
         for row in r:
             rows.append(row)
     assert len(rows) > 0, "CSV has no data rows"
@@ -81,7 +84,9 @@ def test_4cell_filter() -> None:
                 if not (3.0 <= x <= 10.0):
                     n_bad += 1
         assert n_rows > 0, "CSV has no data rows"
-        assert n_bad == 0, f"{n_bad} bad pIC50 values across 4 cell lines ({n_rows} rows)"
+        assert (
+            n_bad == 0
+        ), f"{n_bad} bad pIC50 values across 4 cell lines ({n_rows} rows)"
 
 
 # ---------------------------------------------------------------------------
@@ -93,6 +98,6 @@ def test_csv_schema() -> None:
     with CSV_PATH.open() as f:
         r = csv.DictReader(f)
         actual = r.fieldnames or []
-    assert actual == REQUIRED_COLUMNS, (
-        f"schema mismatch: expected {REQUIRED_COLUMNS}, got {actual}"
-    )
+    assert (
+        actual == REQUIRED_COLUMNS
+    ), f"schema mismatch: expected {REQUIRED_COLUMNS}, got {actual}"

@@ -354,9 +354,7 @@ class PerResidueProteinMetalAUC:
             y_score = y_score.reshape(-1)
         n_complex = len(df)
         if n_complex != len(y_score):
-            raise ValueError(
-                f"y_score length {len(y_score)} != df length {n_complex}"
-            )
+            raise ValueError(f"y_score length {len(y_score)} != df length {n_complex}")
 
         # --- per-complex AUC (legacy reproduction, exactly the same
         # formula as train_protein_metal.py) ----------------------------
@@ -386,10 +384,22 @@ class PerResidueProteinMetalAUC:
         n_each = max(1, max_reconciliation_rows // 2)
         pos_idx = np.where(active == 1)[0]
         neg_idx = np.where(active == 0)[0]
-        pos_conf = np.abs(active[pos_idx] - y_score[pos_idx]) if pos_idx.size else np.array([])
-        neg_conf = np.abs(active[neg_idx] - y_score[neg_idx]) if neg_idx.size else np.array([])
-        pos_top = pos_idx[np.argsort(-pos_conf)[:n_each]] if pos_idx.size else np.array([], dtype=int)
-        neg_top = neg_idx[np.argsort(-neg_conf)[:n_each]] if neg_idx.size else np.array([], dtype=int)
+        pos_conf = (
+            np.abs(active[pos_idx] - y_score[pos_idx]) if pos_idx.size else np.array([])
+        )
+        neg_conf = (
+            np.abs(active[neg_idx] - y_score[neg_idx]) if neg_idx.size else np.array([])
+        )
+        pos_top = (
+            pos_idx[np.argsort(-pos_conf)[:n_each]]
+            if pos_idx.size
+            else np.array([], dtype=int)
+        )
+        neg_top = (
+            neg_idx[np.argsort(-neg_conf)[:n_each]]
+            if neg_idx.size
+            else np.array([], dtype=int)
+        )
         combined = np.concatenate([pos_top, neg_top])
         recon: List[PerResidueReconRow] = []
         for i in combined.tolist():

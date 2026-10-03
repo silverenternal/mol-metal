@@ -117,6 +117,7 @@ EPS_STD: float = 1e-3
 try:
     import torch  # type: ignore
     import torch.nn as nn  # type: ignore
+
     _HAS_TORCH = True
 except Exception:  # pragma: no cover
     torch = None  # type: ignore
@@ -130,6 +131,7 @@ except Exception:  # pragma: no cover
 @dataclass
 class FitRecord:
     """Per-(metal, seed, fold) record."""
+
     metal: str
     seed: int
     fold: int
@@ -150,6 +152,7 @@ class FitRecord:
 @dataclass
 class MetalSeedSummary:
     """Per-metal per-seed aggregate over folds."""
+
     metal: str
     seed: int
     n_folds: int
@@ -197,7 +200,7 @@ def load_metal_cohort(
         try:
             data = np.load(npz_path, allow_pickle=True)
             mid = data["metal_id"]
-            mask = (mid == _METAL_TO_ID.get(metal, -1))
+            mask = mid == _METAL_TO_ID.get(metal, -1)
             n_for_metal = int(mask.sum())
             if n_for_metal > 0:
                 X_all = data["X"][mask]
@@ -213,9 +216,7 @@ def load_metal_cohort(
     if not use_npz:
         # CSV fallback — RDKit 12-d only (PLL/Multi-PH zero-padded).
         if not csv_path.exists():
-            raise FileNotFoundError(
-                f"No NPZ ({npz_path}) and no CSV ({csv_path})."
-            )
+            raise FileNotFoundError(f"No NPZ ({npz_path}) and no CSV ({csv_path}).")
         rows = _read_csv(csv_path)
         Xs: List[List[float]] = []
         ys: List[float] = []
@@ -298,7 +299,10 @@ def _featurize_smiles_12d(smiles: str) -> Optional[List[float]]:
 # 3-way streams — Hilbert, Multi-PH, ASTSR — each takes (X, y) → fit/predict.
 # ---------------------------------------------------------------------------
 def _stable_ridge_fit(
-    X_tr: np.ndarray, y_tr: np.ndarray, *, ridge_alpha: float = 0.1,
+    X_tr: np.ndarray,
+    y_tr: np.ndarray,
+    *,
+    ridge_alpha: float = 0.1,
 ) -> Tuple[np.ndarray, float]:
     feats = np.asarray(X_tr, dtype=float).reshape(-1, X_tr.shape[-1])
     tgt = np.asarray(y_tr, dtype=float).reshape(-1)
@@ -346,8 +350,11 @@ def _zscore(X_tr: np.ndarray, X_te: np.ndarray) -> Tuple[np.ndarray, np.ndarray]
 
 
 def fit_hilbert_stream(
-    X_tr: np.ndarray, y_tr: np.ndarray, X_te: np.ndarray,
-    *, hilbert_dim: int = DEFAULT_HILBERT_DIM,
+    X_tr: np.ndarray,
+    y_tr: np.ndarray,
+    X_te: np.ndarray,
+    *,
+    hilbert_dim: int = DEFAULT_HILBERT_DIM,
 ) -> Tuple[np.ndarray, float]:
     """Hilbert feature map (linear + bias + pairwise interactions truncated
     to hilbert_dim) → closed-form ridge.  Returns ``(weights, train_r2)``."""
@@ -367,7 +374,9 @@ def fit_hilbert_stream(
             X_te[:, i] * X_te[:, j] for i in range(F) for j in range(i + 1, F)
         ]
         inter_arr_te = (
-            np.stack(interactions_te, axis=1) if interactions_te else np.zeros((X_te.shape[0], 0))
+            np.stack(interactions_te, axis=1)
+            if interactions_te
+            else np.zeros((X_te.shape[0], 0))
         )
         aug_te = np.concatenate([X_te, bias_te, inter_arr_te], axis=1)
         if aug_tr.shape[1] > hilbert_dim:
@@ -391,7 +400,9 @@ def fit_hilbert_stream(
         elif aug_tr.shape[1] < hilbert_dim:
             pad_tr = np.zeros((n, hilbert_dim - aug_tr.shape[1]), dtype=float)
             aug_tr = np.concatenate([aug_tr, pad_tr], axis=1)
-            pad_te = np.zeros((X_te.shape[0], hilbert_dim - aug_te.shape[1]), dtype=float)
+            pad_te = np.zeros(
+                (X_te.shape[0], hilbert_dim - aug_te.shape[1]), dtype=float
+            )
             aug_te = np.concatenate([aug_te, pad_te], axis=1)
     w, train_r2 = _stable_ridge_fit(aug_tr, y_tr, ridge_alpha=0.1)
     return w, train_r2, aug_te
@@ -404,14 +415,16 @@ def predict_hilbert(w: np.ndarray, X_aug_te: np.ndarray) -> np.ndarray:
 
 
 def fit_mph_stream(
-    X_tr: np.ndarray, y_tr: np.ndarray, X_te: np.ndarray,
+    X_tr: np.ndarray,
+    y_tr: np.ndarray,
+    X_te: np.ndarray,
 ) -> Tuple[np.ndarray, float, np.ndarray]:
     """Multi-PH stream — closed-form ridge on the 32-d Multi-PH slice.
 
     Returns ``(weights, train_r2, X_te_z)``.
     """
-    mph_tr = X_tr[:, RDKIT_DIM: RDKIT_DIM + MULTI_PH_DIM]
-    mph_te = X_te[:, RDKIT_DIM: RDKIT_DIM + MULTI_PH_DIM]
+    mph_tr = X_tr[:, RDKIT_DIM : RDKIT_DIM + MULTI_PH_DIM]
+    mph_te = X_te[:, RDKIT_DIM : RDKIT_DIM + MULTI_PH_DIM]
     mph_tr_z, mph_te_z = _zscore(mph_tr, mph_te)
     w, train_r2 = _stable_ridge_fit(mph_tr_z, y_tr, ridge_alpha=0.1)
     return w, train_r2, mph_te_z
@@ -424,7 +437,8 @@ def predict_mph(w: np.ndarray, X_te_z: np.ndarray) -> np.ndarray:
 
 
 def fit_astr_stream(
-    X_tr: np.ndarray, y_tr: np.ndarray,
+    X_tr: np.ndarray,
+    y_tr: np.ndarray,
     *,
     use_astr_scale_guard: bool,
 ) -> Tuple[Optional[Any], float]:
@@ -442,7 +456,10 @@ def fit_astr_stream(
         return None, 0.0
     try:
         reg = LambdaASTSR(
-            depth=4, population=24, generations=10, seed=0,
+            depth=4,
+            population=24,
+            generations=10,
+            seed=0,
             feature_names=tuple(_RDKIT_FEATURE_NAMES),
             early_stop_on_nan=True,
         )
@@ -461,7 +478,9 @@ def fit_astr_stream(
 
 
 def predict_astr(
-    reg: Optional[Any], X_te: np.ndarray, *,
+    reg: Optional[Any],
+    X_te: np.ndarray,
+    *,
     use_astr_scale_guard: bool,
 ) -> np.ndarray:
     rdkit_te = X_te[:, :RDKIT_DIM]
@@ -478,8 +497,18 @@ def predict_astr(
 
 
 _RDKIT_FEATURE_NAMES: Tuple[str, ...] = (
-    "MolWt", "MolLogP", "TPSA", "HBA", "HBD", "NRotB", "HeavyAtoms",
-    "RingCount", "NumAromaticRings", "FractionCSP3", "MolMR", "BalabanJ",
+    "MolWt",
+    "MolLogP",
+    "TPSA",
+    "HBA",
+    "HBD",
+    "NRotB",
+    "HeavyAtoms",
+    "RingCount",
+    "NumAromaticRings",
+    "FractionCSP3",
+    "MolMR",
+    "BalabanJ",
 )
 
 
@@ -487,8 +516,13 @@ _RDKIT_FEATURE_NAMES: Tuple[str, ...] = (
 # 3-way combined predictor + collapse detector.
 # ---------------------------------------------------------------------------
 def _combine(
-    h_pred: np.ndarray, m_pred: np.ndarray, a_pred: np.ndarray,
-    *, alpha_h: float = 0.4, alpha_m: float = 0.4, alpha_a: float = 0.2,
+    h_pred: np.ndarray,
+    m_pred: np.ndarray,
+    a_pred: np.ndarray,
+    *,
+    alpha_h: float = 0.4,
+    alpha_m: float = 0.4,
+    alpha_a: float = 0.2,
 ) -> np.ndarray:
     return alpha_h * h_pred + alpha_m * m_pred + alpha_a * a_pred
 
@@ -524,12 +558,17 @@ if _HAS_TORCH:  # pragma: no cover
         """Linear 172 → 128 latent + per-metal heads — for the Wf-128 P2 multi-task
         trainer.  When torch is unavailable the bench falls back to the
         closed-form ridge stack on the 3-way streams."""
-        def __init__(self, n_metals: int, in_dim: int = FEATURE_DIM, latent_dim: int = 128):
+
+        def __init__(
+            self, n_metals: int, in_dim: int = FEATURE_DIM, latent_dim: int = 128
+        ):
             super().__init__()
             self.fc1 = nn.Linear(int(in_dim), int(latent_dim))
             self.act = nn.ReLU()
             self.drop = nn.Dropout(p=0.2)
-            self.heads = nn.ModuleList([_MTHead(int(latent_dim)) for _ in range(int(n_metals))])
+            self.heads = nn.ModuleList(
+                [_MTHead(int(latent_dim)) for _ in range(int(n_metals))]
+            )
             for lin in (self.fc1,):
                 nn.init.kaiming_uniform_(lin.weight, nonlinearity="relu")
                 nn.init.zeros_(lin.bias)
@@ -543,9 +582,14 @@ if _HAS_TORCH:  # pragma: no cover
 
 
 def _fit_multitask_backbone(
-    X_tr: np.ndarray, y_tr: np.ndarray, metal_id_tr: np.ndarray,
-    X_te: np.ndarray, *,
-    epochs: int, lr: float, w_w: float,
+    X_tr: np.ndarray,
+    y_tr: np.ndarray,
+    metal_id_tr: np.ndarray,
+    X_te: np.ndarray,
+    *,
+    epochs: int,
+    lr: float,
+    w_w: float,
     use_l2_guard: bool,
     device: str,
 ) -> Tuple[np.ndarray, np.ndarray]:
@@ -555,7 +599,9 @@ def _fit_multitask_backbone(
     Falls back to zero predictions if torch is unavailable.
     """
     if not _HAS_TORCH:
-        return np.zeros(X_tr.shape[0], dtype=float), np.zeros(X_te.shape[0], dtype=float)
+        return np.zeros(X_tr.shape[0], dtype=float), np.zeros(
+            X_te.shape[0], dtype=float
+        )
 
     n_metals = int(max(metal_id_tr.max() + 1, 1))
     model = _MTBackbone(n_metals=int(n_metals)).to(device)
@@ -606,8 +652,11 @@ def evaluate_fold(
     metal: str,
     seed: int,
     fold: int,
-    tr: np.ndarray, te: np.ndarray,
-    X: np.ndarray, y: np.ndarray, mid: np.ndarray,
+    tr: np.ndarray,
+    te: np.ndarray,
+    X: np.ndarray,
+    y: np.ndarray,
+    mid: np.ndarray,
     epochs: int,
     hilbert_dim: int,
     lr: float,
@@ -645,7 +694,10 @@ def evaluate_fold(
     # Hilbert stream.
     try:
         w_h, train_r2_h, aug_te_h = fit_hilbert_stream(
-            X_tr_z, y_tr, X_te_z, hilbert_dim=hilbert_dim,
+            X_tr_z,
+            y_tr,
+            X_te_z,
+            hilbert_dim=hilbert_dim,
         )
         y_h_te = predict_hilbert(w_h, aug_te_h)
     except Exception:
@@ -661,10 +713,14 @@ def evaluate_fold(
     # ASTSR stream.
     try:
         reg_a, train_r2_a = fit_astr_stream(
-            X_tr, y_tr, use_astr_scale_guard=use_astr_scale_guard,
+            X_tr,
+            y_tr,
+            use_astr_scale_guard=use_astr_scale_guard,
         )
         y_a_te = predict_astr(
-            reg_a, X_te, use_astr_scale_guard=use_astr_scale_guard,
+            reg_a,
+            X_te,
+            use_astr_scale_guard=use_astr_scale_guard,
         )
     except Exception:
         y_a_te = np.zeros(len(te), dtype=float)
@@ -676,12 +732,20 @@ def evaluate_fold(
     if multitask_backbone:
         try:
             _, mt_pred = _fit_multitask_backbone(
-                X_tr_z, y_tr, mid_tr, X_te_z,
-                epochs=epochs, lr=lr, w_w=w_w,
-                use_l2_guard=use_l2_guard, device=device,
+                X_tr_z,
+                y_tr,
+                mid_tr,
+                X_te_z,
+                epochs=epochs,
+                lr=lr,
+                w_w=w_w,
+                use_l2_guard=use_l2_guard,
+                device=device,
             )
             y_combined_te = 0.5 * y_combined_te + 0.5 * np.clip(
-                mt_pred, -PRED_CLIP, PRED_CLIP,
+                mt_pred,
+                -PRED_CLIP,
+                PRED_CLIP,
             )
         except Exception:
             pass
@@ -698,13 +762,17 @@ def evaluate_fold(
     collapse_c = _collapse_detected(y_combined_te, y_te)
 
     return FitRecord(
-        metal=metal, seed=int(seed), fold=int(fold),
-        n_train=int(len(tr)), n_test=int(len(te)),
+        metal=metal,
+        seed=int(seed),
+        fold=int(fold),
+        n_train=int(len(tr)),
+        n_test=int(len(te)),
         combined_r2=float(r2_c) if math.isfinite(r2_c) else float("nan"),
         hilbert_r2=float(r2_h) if math.isfinite(r2_h) else float("nan"),
         mph_r2=float(r2_m) if math.isfinite(r2_m) else float("nan"),
         astr_r2=float(r2_a) if math.isfinite(r2_a) else float("nan"),
-        wall_s=float(wall), peak_mem_mb=float(peak_mb),
+        wall_s=float(wall),
+        peak_mem_mb=float(peak_mb),
         collapse_detected=bool(collapse_c),
         use_l2_guard=bool(use_l2_guard),
         use_astr_scale_guard=bool(use_astr_scale_guard),
@@ -716,7 +784,9 @@ def evaluate_fold(
 # K-fold splitting (random — strict-scaffold requires scaffold_id; the 172-d
 # NPZ only carries the SMILES hash).
 # ---------------------------------------------------------------------------
-def _random_kfold_indices(n: int, k: int, seed: int) -> List[Tuple[np.ndarray, np.ndarray]]:
+def _random_kfold_indices(
+    n: int, k: int, seed: int
+) -> List[Tuple[np.ndarray, np.ndarray]]:
     rng = np.random.default_rng(seed)
     perm = rng.permutation(n)
     folds = np.array_split(perm, k)
@@ -749,7 +819,10 @@ def evaluate_metal(
 ) -> List[FitRecord]:
     """Run the 3-way bench for one metal across all seeds × folds."""
     X, y, mid, smiles = load_metal_cohort(
-        metal, npz_path=npz_path, csv_path=csv_path, max_rows=max_rows,
+        metal,
+        npz_path=npz_path,
+        csv_path=csv_path,
+        max_rows=max_rows,
     )
     n = X.shape[0]
     if n < 5:
@@ -762,10 +835,18 @@ def evaluate_metal(
             if len(te) == 0:
                 continue
             rec = evaluate_fold(
-                metal=metal, seed=int(seed), fold=int(fold),
-                tr=tr, te=te, X=X, y=y, mid=mid,
-                epochs=int(epochs), hilbert_dim=int(hilbert_dim),
-                lr=float(lr), w_w=float(w_w),
+                metal=metal,
+                seed=int(seed),
+                fold=int(fold),
+                tr=tr,
+                te=te,
+                X=X,
+                y=y,
+                mid=mid,
+                epochs=int(epochs),
+                hilbert_dim=int(hilbert_dim),
+                lr=float(lr),
+                w_w=float(w_w),
                 use_l2_guard=bool(use_l2_guard),
                 use_astr_scale_guard=bool(use_astr_scale_guard),
                 multitask_backbone=bool(multitask_backbone),
@@ -795,18 +876,23 @@ def aggregate_metal(records: List[FitRecord]) -> List[MetalSeedSummary]:
         astr = np.asarray([r.astr_r2 for r in recs], dtype=float)
         wall = np.asarray([r.wall_s for r in recs], dtype=float)
         peak = np.asarray([r.peak_mem_mb for r in recs], dtype=float)
-        out.append(MetalSeedSummary(
-            metal=metal, seed=int(seed),
-            n_folds=int(len(recs)),
-            combined_r2_mean=float(np.nanmean(combined)) if combined.size else 0.0,
-            combined_r2_std=float(np.nanstd(combined)) if combined.size > 1 else 0.0,
-            hilbert_r2_mean=float(np.nanmean(hilbert)) if hilbert.size else 0.0,
-            mph_r2_mean=float(np.nanmean(mph)) if mph.size else 0.0,
-            astr_r2_mean=float(np.nanmean(astr)) if astr.size else 0.0,
-            wall_s_mean=float(np.nanmean(wall)) if wall.size else 0.0,
-            peak_mem_mb_mean=float(np.nanmean(peak)) if peak.size else 0.0,
-            collapse_detected_any=bool(any(r.collapse_detected for r in recs)),
-        ))
+        out.append(
+            MetalSeedSummary(
+                metal=metal,
+                seed=int(seed),
+                n_folds=int(len(recs)),
+                combined_r2_mean=float(np.nanmean(combined)) if combined.size else 0.0,
+                combined_r2_std=float(np.nanstd(combined))
+                if combined.size > 1
+                else 0.0,
+                hilbert_r2_mean=float(np.nanmean(hilbert)) if hilbert.size else 0.0,
+                mph_r2_mean=float(np.nanmean(mph)) if mph.size else 0.0,
+                astr_r2_mean=float(np.nanmean(astr)) if astr.size else 0.0,
+                wall_s_mean=float(np.nanmean(wall)) if wall.size else 0.0,
+                peak_mem_mb_mean=float(np.nanmean(peak)) if peak.size else 0.0,
+                collapse_detected_any=bool(any(r.collapse_detected for r in recs)),
+            )
+        )
     return out
 
 
@@ -875,16 +961,22 @@ def write_synthesis(out_dir: Path, all_records: List[FitRecord]) -> None:
     lines.append(f"**{n_pass} of {len(metal_means)} metals pass the gate.**")
     lines.append("")
     if verdict == "PASS":
-        lines.append("**Verdict: PASS** — at least one metal hits R² ≥ 0 on REAL MetalCytoToxDB pIC50.")
+        lines.append(
+            "**Verdict: PASS** — at least one metal hits R² ≥ 0 on REAL MetalCytoToxDB pIC50."
+        )
     else:
-        lines.append("**Verdict: FAIL** — no metal hits R² ≥ 0; honest framing per "
-                     "`party-twenty-spirit §3.5`.")
+        lines.append(
+            "**Verdict: FAIL** — no metal hits R² ≥ 0; honest framing per "
+            "`party-twenty-spirit §3.5`."
+        )
     lines.append("")
     lines.append("## Per-(metal, seed) detail")
     for metal, recs in by_metal.items():
         lines.append(f"### {metal}")
         lines.append("")
-        lines.append("| seed | combined R² | Hilbert R² | Multi-PH R² | ASTSR R² | wall_s | collapse |")
+        lines.append(
+            "| seed | combined R² | Hilbert R² | Multi-PH R² | ASTSR R² | wall_s | collapse |"
+        )
         lines.append("|---:|---:|---:|---:|---:|---:|---|")
         summaries = aggregate_metal(recs)
         for s in summaries:
@@ -899,22 +991,36 @@ def write_synthesis(out_dir: Path, all_records: List[FitRecord]) -> None:
 
     lines.append("## Honest framing")
     lines.append("")
-    lines.append("- **REAL data**: MetalCytoToxDB 5-metal binary activity; "
-                 "the CSV exposes ``activity`` (0/1) — R² is regression on a "
-                 "binary target, not a continuous pIC50.")
-    lines.append("- **Feature stack**: 172-d = 12-d RDKit + 32-d Multi-PH "
-                 "Fourier coefficients + 128-d PLL signature (zero-padded).")
-    lines.append("- **Multi-task backbone**: shared 172 → 128 trunk + 5 "
-                 "per-metal 128 → 64 → 1 heads (Wf-128 P1 ship).")
-    lines.append("- **Wasserstein weight 0.05**: sliced-W² penalty between "
-                 "predicted pIC50 distribution and the training reference.")
+    lines.append(
+        "- **REAL data**: MetalCytoToxDB 5-metal binary activity; "
+        "the CSV exposes ``activity`` (0/1) — R² is regression on a "
+        "binary target, not a continuous pIC50."
+    )
+    lines.append(
+        "- **Feature stack**: 172-d = 12-d RDKit + 32-d Multi-PH "
+        "Fourier coefficients + 128-d PLL signature (zero-padded)."
+    )
+    lines.append(
+        "- **Multi-task backbone**: shared 172 → 128 trunk + 5 "
+        "per-metal 128 → 64 → 1 heads (Wf-128 P1 ship)."
+    )
+    lines.append(
+        "- **Wasserstein weight 0.05**: sliced-W² penalty between "
+        "predicted pIC50 distribution and the training reference."
+    )
     lines.append("- **L2 guard**: ``clip_grad_norm_(parameters, max_norm=1.0)``.")
-    lines.append("- **ASTSR scale guard**: predictions clipped to `[0, 1]` "
-                 "(Wf-127 P1 stable-region cap; loss_scale > 1.0 collapse regime).")
-    lines.append("- **CPU + GPU-1**: CPU is default; GPU-1 is selected when "
-                 "``CUDA_VISIBLE_DEVICES=1`` is set and ``--device cuda``.")
-    lines.append("- **Collapse detector**: ``pred_std / y_test_std < 0.10`` "
-                 "per fold → flag in ``per_seed_metrics.json``.")
+    lines.append(
+        "- **ASTSR scale guard**: predictions clipped to `[0, 1]` "
+        "(Wf-127 P1 stable-region cap; loss_scale > 1.0 collapse regime)."
+    )
+    lines.append(
+        "- **CPU + GPU-1**: CPU is default; GPU-1 is selected when "
+        "``CUDA_VISIBLE_DEVICES=1`` is set and ``--device cuda``."
+    )
+    lines.append(
+        "- **Collapse detector**: ``pred_std / y_test_std < 0.10`` "
+        "per fold → flag in ``per_seed_metrics.json``."
+    )
     lines.append("")
     lines.append(
         f"Per `party-twenty-spirit §3.5`: aggregate combined R² = "
@@ -955,44 +1061,65 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "backbone + Wasserstein + L2/ASTR guards)."
         )
     )
-    parser.add_argument("--metals", type=_parse_metals, nargs="+",
-                        default=list(DEFAULT_METALS))
-    parser.add_argument("--seeds", type=_parse_seeds, nargs="+",
-                        default=list(DEFAULT_SEEDS))
+    parser.add_argument(
+        "--metals", type=_parse_metals, nargs="+", default=list(DEFAULT_METALS)
+    )
+    parser.add_argument(
+        "--seeds", type=_parse_seeds, nargs="+", default=list(DEFAULT_SEEDS)
+    )
     parser.add_argument("--n-folds", type=int, default=DEFAULT_N_FOLDS)
     parser.add_argument("--epochs", type=int, default=DEFAULT_EPOCHS)
     parser.add_argument("--hilbert-dim", type=int, default=DEFAULT_HILBERT_DIM)
     parser.add_argument("--lr", type=float, default=DEFAULT_LR)
-    parser.add_argument("--wasserstein-weight", type=float, default=DEFAULT_W_W,
-                        dest="wasserstein_weight")
-    parser.add_argument("--use-l2-guard", dest="use_l2_guard",
-                        action="store_true", default=True)
-    parser.add_argument("--no-l2-guard", dest="use_l2_guard",
-                        action="store_false")
-    parser.add_argument("--use-astr-scale-guard",
-                        dest="use_astr_scale_guard",
-                        action="store_true", default=True)
-    parser.add_argument("--no-astr-scale-guard",
-                        dest="use_astr_scale_guard",
-                        action="store_false")
-    parser.add_argument("--features-172d", dest="features_172d",
-                        action="store_true", default=True,
-                        help="Use the 172-d NPZ feature stack (default True).")
-    parser.add_argument("--no-features-172d", dest="features_172d",
-                        action="store_false")
-    parser.add_argument("--multitask-backbone", dest="multitask_backbone",
-                        action="store_true", default=True,
-                        help="Apply the multi-task 256→128 backbone "
-                             "(default True).")
-    parser.add_argument("--no-multitask-backbone", dest="multitask_backbone",
-                        action="store_false")
+    parser.add_argument(
+        "--wasserstein-weight",
+        type=float,
+        default=DEFAULT_W_W,
+        dest="wasserstein_weight",
+    )
+    parser.add_argument(
+        "--use-l2-guard", dest="use_l2_guard", action="store_true", default=True
+    )
+    parser.add_argument("--no-l2-guard", dest="use_l2_guard", action="store_false")
+    parser.add_argument(
+        "--use-astr-scale-guard",
+        dest="use_astr_scale_guard",
+        action="store_true",
+        default=True,
+    )
+    parser.add_argument(
+        "--no-astr-scale-guard", dest="use_astr_scale_guard", action="store_false"
+    )
+    parser.add_argument(
+        "--features-172d",
+        dest="features_172d",
+        action="store_true",
+        default=True,
+        help="Use the 172-d NPZ feature stack (default True).",
+    )
+    parser.add_argument(
+        "--no-features-172d", dest="features_172d", action="store_false"
+    )
+    parser.add_argument(
+        "--multitask-backbone",
+        dest="multitask_backbone",
+        action="store_true",
+        default=True,
+        help="Apply the multi-task 256→128 backbone " "(default True).",
+    )
+    parser.add_argument(
+        "--no-multitask-backbone", dest="multitask_backbone", action="store_false"
+    )
     parser.add_argument("--device", choices=["cpu", "cuda"], default="cpu")
     parser.add_argument("--npz-path", type=Path, default=DEFAULT_NPZ_PATH)
     parser.add_argument("--csv-path", type=Path, default=DEFAULT_METALCSV_PATH)
     parser.add_argument("--max-rows", type=int, default=DEFAULT_MAX_ROWS)
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR)
-    parser.add_argument("--smoke", action="store_true",
-                        help="Smoke mode: 1 metal (Ru), 1 seed, 2 folds, 10 epochs.")
+    parser.add_argument(
+        "--smoke",
+        action="store_true",
+        help="Smoke mode: 1 metal (Ru), 1 seed, 2 folds, 10 epochs.",
+    )
     args = parser.parse_args(argv)
 
     if args.device == "cuda" and _HAS_TORCH and torch.cuda.is_available():
@@ -1041,13 +1168,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print(f"[wf128-p2] === metal={metal} ===")
         try:
             recs = evaluate_metal(
-                metal=metal, seeds=flat_seeds, n_folds=n_folds,
-                epochs=epochs, hilbert_dim=int(args.hilbert_dim),
-                lr=float(args.lr), w_w=float(args.wasserstein_weight),
+                metal=metal,
+                seeds=flat_seeds,
+                n_folds=n_folds,
+                epochs=epochs,
+                hilbert_dim=int(args.hilbert_dim),
+                lr=float(args.lr),
+                w_w=float(args.wasserstein_weight),
                 use_l2_guard=bool(args.use_l2_guard),
                 use_astr_scale_guard=bool(args.use_astr_scale_guard),
                 multitask_backbone=bool(args.multitask_backbone),
-                device=device, npz_path=args.npz_path, csv_path=args.csv_path,
+                device=device,
+                npz_path=args.npz_path,
+                csv_path=args.csv_path,
                 max_rows=max_rows,
             )
         except Exception as exc:
@@ -1083,8 +1216,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "per_seed": [asdict(s) for s in summaries],
             "per_fold": [asdict(r) for r in recs],
         }
-        _write_json(per_seed_dir := per_metal_dir / "per_seed_metrics.json",
-                    per_seed_payload)
+        _write_json(
+            per_seed_dir := per_metal_dir / "per_seed_metrics.json", per_seed_payload
+        )
         print(f"[wf128-p2] wrote {per_seed_dir}")
 
     write_synthesis(args.out_dir, all_records)

@@ -25,6 +25,7 @@ tests pin the retry contract:
 
 All tests are CPU-only, deterministic, and complete in < 5 seconds.
 """
+
 from __future__ import annotations
 
 import json
@@ -124,9 +125,9 @@ def test_retry_succeeds_after_correction() -> None:
     )
 
     # 1. Result must be the real values, NOT the schema.
-    assert result is not None, (
-        "Retry helper returned None even though the retry succeeded."
-    )
+    assert (
+        result is not None
+    ), "Retry helper returned None even though the retry succeeded."
     parsed = json.loads(result)
     assert parsed == _REAL_VALUES, (
         "Retry helper returned the schema-shape payload instead of "
@@ -140,9 +141,9 @@ def test_retry_succeeds_after_correction() -> None:
     )
 
     # 3. Retry attempt: prompt must mention the schema fields.
-    assert seen_correction_prompts[1] is not None, (
-        "Retry attempt did not receive a correction prompt."
-    )
+    assert (
+        seen_correction_prompts[1] is not None
+    ), "Retry attempt did not receive a correction prompt."
     retry_prompt = seen_correction_prompts[1]
     for field in ("G1_cuda_fix_verified", "G4_n_pre_flight_items"):
         assert field in retry_prompt, (
@@ -186,8 +187,7 @@ def test_retry_exhausts_after_max() -> None:
     # 1. Result must be None (budget exhausted).
     assert result is None, (
         "Helper returned %r even though every attempt returned "
-        "schema-shape.  Caller would not be able to fall back."
-        % (result,)
+        "schema-shape.  Caller would not be able to fall back." % (result,)
     )
 
     # 2. Total invocations = 1 initial + max_retries retries = 3.
@@ -209,9 +209,7 @@ def test_retry_exhausts_after_max() -> None:
         schema_dict=_SCHEMA_PAYLOAD,
         max_retries=0,
     )
-    assert result_zero is None, (
-        "max_retries=0 + schema-shape must still return None."
-    )
+    assert result_zero is None, "max_retries=0 + schema-shape must still return None."
     assert single_call_count == 1, (
         "max_retries=0 must yield exactly 1 invocation (initial), "
         "got %d." % (single_call_count,)
@@ -266,9 +264,9 @@ def test_first_attempt_succeeds_no_retry() -> None:
     )
 
     # 3. The single invocation must have had NO correction prompt.
-    assert seen_kwargs[0]["correction_prompt"] is None, (
-        "First attempt must NOT receive a correction prompt."
-    )
+    assert (
+        seen_kwargs[0]["correction_prompt"] is None
+    ), "First attempt must NOT receive a correction prompt."
 
 
 # ---------------------------------------------------------------------------
@@ -290,7 +288,7 @@ def test_dict_returning_agent_schema_then_values() -> None:
         attempts.append(correction_prompt)
         if correction_prompt is None:
             return _SCHEMA_PAYLOAD  # dict form of the schema
-        return _REAL_VALUES        # dict form of the real values
+        return _REAL_VALUES  # dict form of the real values
 
     result = run_agent_with_retry(
         agent_callable=dict_agent,
@@ -299,8 +297,7 @@ def test_dict_returning_agent_schema_then_values() -> None:
     )
 
     assert result == _REAL_VALUES, (
-        "Dict-returning agent's real values were not surfaced.  Got: %r"
-        % (result,)
+        "Dict-returning agent's real values were not surfaced.  Got: %r" % (result,)
     )
     assert len(attempts) == 2
 
@@ -314,6 +311,7 @@ def test_correction_prompt_omits_field_hint_when_disabled() -> None:
     base = build_correction_prompt(_SCHEMA_PAYLOAD, field_hint=False)
     assert base == DEFAULT_CORRECTION_PROMPT
     for field in ("G1_cuda_fix_verified", "G4_n_pre_flight_items"):
-        assert field not in base, (
-            "field_hint=False should omit %r; got: %r" % (field, base)
+        assert field not in base, "field_hint=False should omit %r; got: %r" % (
+            field,
+            base,
         )

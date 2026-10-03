@@ -73,6 +73,7 @@ WRAPPER = PROJECT_ROOT / "scripts" / "pre_flight_gpu_ready.sh"
 # Test 1: bash -n syntax check on the modified script
 # ---------------------------------------------------------------------------
 
+
 def test_wf378a1_syntax_check():
     """Wf-378-A1 task contract — modified pre_flight_gpu_ready.sh parses clean.
 
@@ -84,7 +85,9 @@ def test_wf378a1_syntax_check():
 
     proc = subprocess.run(
         ["bash", "-n", str(WRAPPER)],
-        capture_output=True, text=True, timeout=10,
+        capture_output=True,
+        text=True,
+        timeout=10,
     )
     assert proc.returncode == 0, (
         f"bash -n syntax check failed; rc={proc.returncode} "
@@ -95,6 +98,7 @@ def test_wf378a1_syntax_check():
 # ---------------------------------------------------------------------------
 # Test 2: Wf-378-A1 USER_OK hard entry gate source pattern is present
 # ---------------------------------------------------------------------------
+
 
 def test_wf378a1_hard_gate_source_present():
     """Wf-378-A1 task contract — the hard entry gate is wired into the script.
@@ -114,20 +118,20 @@ def test_wf378a1_hard_gate_source_present():
     text = WRAPPER.read_text()
 
     # 1. DRY_RUN-ne-1 conditional present
-    assert re.search(r"DRY_RUN\}\s*-ne\s*1", text), (
-        "DRY_RUN-ne-1 conditional missing; hard entry gate is not wired"
-    )
+    assert re.search(
+        r"DRY_RUN\}\s*-ne\s*1", text
+    ), "DRY_RUN-ne-1 conditional missing; hard entry gate is not wired"
 
     # 2. USER_OK=1 check inside that conditional (with default 0 fallback)
     assert re.search(r'USER_OK:-0[^=]*!=\s*"1"', text), (
-        'USER_OK=1 check (with :0 default fallback) missing; '
-        'hard entry gate may misfire on unset USER_OK'
+        "USER_OK=1 check (with :0 default fallback) missing; "
+        "hard entry gate may misfire on unset USER_OK"
     )
 
     # 3. exit 64 (Wf-294B family convention)
-    assert re.search(r"exit\s+64", text), (
-        "exit 64 missing; hard entry gate does not follow Wf-294B convention"
-    )
+    assert re.search(
+        r"exit\s+64", text
+    ), "exit 64 missing; hard entry gate does not follow Wf-294B convention"
 
     # 4. kill_then_adapt directive reference
     assert "kill_then_adapt" in text, (
@@ -148,9 +152,9 @@ def test_wf378a1_hard_gate_source_present():
     )
 
     # 7. Updated exit-code documentation (64 added to the comment block)
-    assert re.search(r"64\s*=\s*USER_OK\s+hard\s+gate\s+refused", text), (
-        "exit-code documentation does not list 64 for USER_OK hard gate"
-    )
+    assert re.search(
+        r"64\s*=\s*USER_OK\s+hard\s+gate\s+refused", text
+    ), "exit-code documentation does not list 64 for USER_OK hard gate"
 
     # 8. Updated Gate 5 comment: PASS/SKIP-only after Wf-378-A1
     assert re.search(
@@ -160,14 +164,13 @@ def test_wf378a1_hard_gate_source_present():
     ) or re.search(
         r"Wf-378-A1\s+hard\s+entry\s+gate\s+pre-filtered",
         text,
-    ), (
-        "Gate 5 not updated to PASS/SKIP-only after Wf-378-A1 hard entry gate"
-    )
+    ), "Gate 5 not updated to PASS/SKIP-only after Wf-378-A1 hard entry gate"
 
 
 # ---------------------------------------------------------------------------
 # Test 3: USER_OK unset + LIVE mode → exit 64 (Wf-294B family convention)
 # ---------------------------------------------------------------------------
+
 
 def test_wf378a1_user_ok_unset_live_exits_64():
     """Wf-378-A1 task contract — LIVE mode without USER_OK=1 → exit 64.
@@ -189,7 +192,9 @@ def test_wf378a1_user_ok_unset_live_exits_64():
 
     proc = subprocess.run(
         ["bash", str(WRAPPER)],  # no --dry-run → LIVE mode
-        capture_output=True, text=True, timeout=15,
+        capture_output=True,
+        text=True,
+        timeout=15,
         cwd=str(PROJECT_ROOT),
         env=env,
     )
@@ -220,6 +225,7 @@ def test_wf378a1_user_ok_unset_live_exits_64():
 # Test 4: --dry-run skips the hard gate (USER_OK not required for CPU verify)
 # ---------------------------------------------------------------------------
 
+
 def test_wf378a1_dry_run_skips_gate():
     """Wf-378-A1 task contract — --dry-run bypasses the hard gate.
 
@@ -241,7 +247,9 @@ def test_wf378a1_dry_run_skips_gate():
 
     proc = subprocess.run(
         ["bash", str(WRAPPER), "--dry-run"],
-        capture_output=True, text=True, timeout=300,
+        capture_output=True,
+        text=True,
+        timeout=300,
         cwd=str(PROJECT_ROOT),
         env=env,
     )
@@ -262,19 +270,20 @@ def test_wf378a1_dry_run_skips_gate():
     )
 
     # SKIP evidence references Wf-378-A1
-    assert "Wf-378-A1" in combined, (
-        "SKIP gate evidence should reference Wf-378-A1 for traceability"
-    )
+    assert (
+        "Wf-378-A1" in combined
+    ), "SKIP gate evidence should reference Wf-378-A1 for traceability"
 
     # Hard gate must NOT have fired (no "USER_OK gate refused" in output)
-    assert "USER_OK gate refused" not in combined, (
-        "Hard gate fired on --dry-run; bypass semantics broken"
-    )
+    assert (
+        "USER_OK gate refused" not in combined
+    ), "Hard gate fired on --dry-run; bypass semantics broken"
 
 
 # ---------------------------------------------------------------------------
 # Test 5: USER_OK=1 + LIVE mode bypasses hard gate (script proceeds past it)
 # ---------------------------------------------------------------------------
+
 
 def test_wf378a1_user_ok_one_live_proceeds_past_hard_gate():
     """Wf-378-A1 task contract — USER_OK=1 + LIVE mode → hard gate passes.
@@ -356,8 +365,7 @@ def test_wf378a1_user_ok_one_live_proceeds_past_hard_gate():
 
     # DRY_RUN must be 0 (proves we're in LIVE mode, not dry-run)
     assert "DRY_RUN=0" in combined, (
-        "USER_OK=1 + LIVE mode: DRY_RUN flag is not 0; "
-        f"combined={combined[:500]!r}"
+        "USER_OK=1 + LIVE mode: DRY_RUN flag is not 0; " f"combined={combined[:500]!r}"
     )
 
     # rc may be 0, 1, or other (depending on cascading pre-flight gates),
@@ -365,6 +373,5 @@ def test_wf378a1_user_ok_one_live_proceeds_past_hard_gate():
     # USER_OK=1).
     final_rc = proc.returncode
     assert final_rc != 64, (
-        f"USER_OK=1 + LIVE mode: hard gate unexpectedly exited 64; "
-        f"rc={final_rc}"
+        f"USER_OK=1 + LIVE mode: hard gate unexpectedly exited 64; " f"rc={final_rc}"
     )

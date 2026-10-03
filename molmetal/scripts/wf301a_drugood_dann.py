@@ -90,7 +90,7 @@ DEFAULT_BATCH: int = 64
 DEFAULT_LR: float = 1e-3
 DEFAULT_SEED_TIME_BUDGET_S: float = 600.0
 DEFAULT_DANN_LAMBDA: float = 1.0
-DEFAULT_DANN_N_DOMAINS: int = 16   # top-15 scaffold bins + 1 OOV bin
+DEFAULT_DANN_N_DOMAINS: int = 16  # top-15 scaffold bins + 1 OOV bin
 DEFAULT_USE_DANN: bool = True
 
 # Wf-185 chemprop v2 baseline (lbap_refined_ic50_scaffold split).
@@ -124,9 +124,9 @@ def _hex_to_bit_array(hex_str: str, n_bits: int = 2048) -> np.ndarray:
     return out
 
 
-def _load_ecfp4_csv(csv_path: Path) -> Tuple[np.ndarray, np.ndarray,
-                                              np.ndarray, np.ndarray,
-                                              Dict[str, int]]:
+def _load_ecfp4_csv(
+    csv_path: Path,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, Dict[str, int]]:
     """Load the Wf-275B tidy CSV.
 
     Returns
@@ -170,8 +170,10 @@ def _load_ecfp4_csv(csv_path: Path) -> Tuple[np.ndarray, np.ndarray,
     scaffold_id = np.zeros(n_rows, dtype=np.int64)
     for i, s in enumerate(scaffold_strs):
         scaffold_id[i] = (
-            list(top_scaffolds).index(s) if s in top_scaffolds else top_k
-        ) if s in top_scaffolds else top_k
+            (list(top_scaffolds).index(s) if s in top_scaffolds else top_k)
+            if s in top_scaffolds
+            else top_k
+        )
     n_unique = len(set(scaffold_id.tolist()))
     _log(f"scaffold binning: top-{top_k} + OOV = {n_unique} bins")
     return X, y, split_idx, scaffold_id, split_counts
@@ -204,8 +206,13 @@ class _ECFP4DANN(nn.Module):
     DANN head: gradient-reversed linear -> [n_domains] classifier.
     """
 
-    def __init__(self, n_in: int = 2048, head_hidden: int = 300,
-                 n_domains: int = 16, use_dann: bool = True):
+    def __init__(
+        self,
+        n_in: int = 2048,
+        head_hidden: int = 300,
+        n_domains: int = 16,
+        use_dann: bool = True,
+    ):
         super().__init__()
         self.proj = nn.Linear(n_in, head_hidden)
         self.head = BinaryClassificationFFN(
@@ -230,16 +237,22 @@ class _ECFP4DANN(nn.Module):
         return logit, domain_logits
 
 
-def _train_one_seed(seed: int, X: np.ndarray, y: np.ndarray,
-                    split_idx: np.ndarray, scaffold_id: np.ndarray,
-                    args: argparse.Namespace, device: torch.device) -> Dict[str, float]:
+def _train_one_seed(
+    seed: int,
+    X: np.ndarray,
+    y: np.ndarray,
+    split_idx: np.ndarray,
+    scaffold_id: np.ndarray,
+    args: argparse.Namespace,
+    device: torch.device,
+) -> Dict[str, float]:
     torch.manual_seed(seed)
     np.random.seed(seed)
     t0 = time.time()
 
-    train_mask = (split_idx == 0)
-    val_mask = (split_idx == 1)
-    test_mask = (split_idx == 2)
+    train_mask = split_idx == 0
+    val_mask = split_idx == 1
+    test_mask = split_idx == 2
     X_tr = torch.from_numpy(X[train_mask]).to(device)
     y_tr = torch.from_numpy(y[train_mask].astype(np.float32)).to(device)
     s_tr = torch.from_numpy(scaffold_id[train_mask]).to(device)
@@ -270,7 +283,7 @@ def _train_one_seed(seed: int, X: np.ndarray, y: np.ndarray,
         total_loss = 0.0
         n_batches = 0
         for start in range(0, n_train, args.batch):
-            idx = perm[start:start + args.batch]
+            idx = perm[start : start + args.batch]
             xb = X_tr[idx]
             yb = y_tr[idx]
             sb = s_tr[idx]
@@ -286,9 +299,11 @@ def _train_one_seed(seed: int, X: np.ndarray, y: np.ndarray,
             total_loss += float(loss.detach().cpu().item()) * len(idx)
             n_batches += len(idx)
         if epoch == 1 or epoch == args.epochs or epoch % 5 == 0:
-            _log(f"[seed={seed}] epoch={epoch:2d}/{args.epochs}  "
-                 f"loss={total_loss / max(n_batches, 1):.4f}  "
-                 f"elapsed={time.time() - t0:.1f}s")
+            _log(
+                f"[seed={seed}] epoch={epoch:2d}/{args.epochs}  "
+                f"loss={total_loss / max(n_batches, 1):.4f}  "
+                f"elapsed={time.time() - t0:.1f}s"
+            )
 
     # Eval.
     model.eval()
@@ -301,7 +316,7 @@ def _train_one_seed(seed: int, X: np.ndarray, y: np.ndarray,
         ):
             scores = []
             for start in range(0, X_e.size(0), args.batch):
-                logit, _ = model(X_e[start:start + args.batch])
+                logit, _ = model(X_e[start : start + args.batch])
                 scores.append(torch.sigmoid(logit).cpu().numpy())
             scores = np.concatenate(scores, axis=0)
             if len(np.unique(y_e)) < 2:
@@ -311,14 +326,16 @@ def _train_one_seed(seed: int, X: np.ndarray, y: np.ndarray,
             out[f"{split_name}_auc"] = float(auc)
             _log(f"[seed={seed}] {split_name}_auc={auc:.4f} n={len(y_e)}")
 
-    out.update({
-        "elapsed_s": float(time.time() - t0),
-        "n_train": n_train,
-        "n_val": int(val_mask.sum()),
-        "n_test": int(test_mask.sum()),
-        "use_dann": bool(args.use_dann),
-        "n_domains": n_domains,
-    })
+    out.update(
+        {
+            "elapsed_s": float(time.time() - t0),
+            "n_train": n_train,
+            "n_val": int(val_mask.sum()),
+            "n_test": int(test_mask.sum()),
+            "use_dann": bool(args.use_dann),
+            "n_domains": n_domains,
+        }
+    )
     return out
 
 
@@ -334,18 +351,24 @@ def main(argv: Optional[List[str]] = None) -> int:
     p.add_argument("--lr", type=float, default=DEFAULT_LR)
     p.add_argument("--device", default="cpu")
     p.add_argument("--out", default=str(DEFAULT_OUT))
-    p.add_argument("--seed-time-budget-s", type=float,
-                   default=DEFAULT_SEED_TIME_BUDGET_S)
-    p.add_argument("--use-dann", dest="use_dann", action="store_true",
-                   default=DEFAULT_USE_DANN)
+    p.add_argument(
+        "--seed-time-budget-s", type=float, default=DEFAULT_SEED_TIME_BUDGET_S
+    )
+    p.add_argument(
+        "--use-dann", dest="use_dann", action="store_true", default=DEFAULT_USE_DANN
+    )
     p.add_argument("--no-dann", dest="use_dann", action="store_false")
     p.add_argument("--dann-lambda", type=float, default=DEFAULT_DANN_LAMBDA)
-    p.add_argument("--data-csv", default=None,
-                   help="Alias for --csv (Wf-301A spec compat).")
-    p.add_argument("--chemprop-mode", default="v3-fallback",
-                   help="Cosmetic only: v3-fallback is the canonical mode "
-                        "for chemprop v2 BinaryClassificationFFN (matches "
-                        "Wf-263A-Audit verdict).")
+    p.add_argument(
+        "--data-csv", default=None, help="Alias for --csv (Wf-301A spec compat)."
+    )
+    p.add_argument(
+        "--chemprop-mode",
+        default="v3-fallback",
+        help="Cosmetic only: v3-fallback is the canonical mode "
+        "for chemprop v2 BinaryClassificationFFN (matches "
+        "Wf-263A-Audit verdict).",
+    )
     args = p.parse_args(argv)
 
     # Handle --data-csv alias.
@@ -360,10 +383,12 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     X, y, split_idx, scaffold_id, split_counts = _load_ecfp4_csv(csv_path)
     device = torch.device(args.device)
-    _log(f"device={device}  seeds={args.seeds}  epochs={args.epochs}  "
-         f"head_hidden={args.head_hidden}  batch={args.batch}  "
-         f"lr={args.lr}  use_dann={args.use_dann}  "
-         f"chemprop_mode={args.chemprop_mode}")
+    _log(
+        f"device={device}  seeds={args.seeds}  epochs={args.epochs}  "
+        f"head_hidden={args.head_hidden}  batch={args.batch}  "
+        f"lr={args.lr}  use_dann={args.use_dann}  "
+        f"chemprop_mode={args.chemprop_mode}"
+    )
 
     wall_start = time.time()
     results: List[Dict[str, float]] = []
@@ -372,6 +397,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             r = _train_one_seed(seed, X, y, split_idx, scaffold_id, args, device)
         except Exception as exc:
             import traceback
+
             traceback.print_exc()
             _log(f"[seed={seed}] FAILED: {exc}")
             r = {"seed": seed, "error": str(exc)}
@@ -379,19 +405,28 @@ def main(argv: Optional[List[str]] = None) -> int:
         per_seed_path = out_dir / f"seed{seed}.json"
         per_seed_path.write_text(json.dumps(r, indent=2))
         if "test_auc" in r:
-            _log(f"[seed={seed}] FINAL  train={r['train_auc']:.4f}  "
-                 f"val={r['val_auc']:.4f}  test={r['test_auc']:.4f}  "
-                 f"({r['elapsed_s']:.1f}s)")
+            _log(
+                f"[seed={seed}] FINAL  train={r['train_auc']:.4f}  "
+                f"val={r['val_auc']:.4f}  test={r['test_auc']:.4f}  "
+                f"({r['elapsed_s']:.1f}s)"
+            )
 
     total_wall_min = (time.time() - wall_start) / 60.0
 
     # Aggregate.
-    test_aucs = [r["test_auc"] for r in results
-                 if "test_auc" in r and not np.isnan(r["test_auc"])]
-    val_aucs = [r["val_auc"] for r in results
-                if "val_auc" in r and not np.isnan(r["val_auc"])]
-    train_aucs = [r["train_auc"] for r in results
-                  if "train_auc" in r and not np.isnan(r["train_auc"])]
+    test_aucs = [
+        r["test_auc"]
+        for r in results
+        if "test_auc" in r and not np.isnan(r["test_auc"])
+    ]
+    val_aucs = [
+        r["val_auc"] for r in results if "val_auc" in r and not np.isnan(r["val_auc"])
+    ]
+    train_aucs = [
+        r["train_auc"]
+        for r in results
+        if "train_auc" in r and not np.isnan(r["train_auc"])
+    ]
 
     def _m(xs):
         return float(np.mean(xs)) if xs else float("nan")
@@ -408,7 +443,9 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # Pass-gates.
     passes_field_avg = bool(test_mean >= FIELD_AVG_TARGET_LO)
-    passes_wf185_minus_slack = bool(test_mean >= WF185_BASELINE_MEAN - WF185_BASELINE_SEED_SLACK)
+    passes_wf185_minus_slack = bool(
+        test_mean >= WF185_BASELINE_MEAN - WF185_BASELINE_SEED_SLACK
+    )
     passes_wf185 = bool(test_mean >= WF185_BASELINE_MEAN)
 
     if passes_wf185:
@@ -442,9 +479,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         "config": {
             "seeds": list(args.seeds),
             "epochs": args.epochs,
-            "hidden": args.hidden, "depth": args.depth,
+            "hidden": args.hidden,
+            "depth": args.depth,
             "head_hidden": args.head_hidden,
-            "batch": args.batch, "lr": args.lr,
+            "batch": args.batch,
+            "lr": args.lr,
             "device": str(device),
             "seed_time_budget_s": args.seed_time_budget_s,
             "use_dann": bool(args.use_dann),
@@ -454,9 +493,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         },
         "per_seed": results,
         "n_seeds_completed": int(len(test_aucs)),
-        "train_auc_mean": train_mean, "train_auc_std": train_std,
-        "val_auc_mean": val_mean, "val_auc_std": val_std,
-        "test_auc_mean": test_mean, "test_auc_std": test_std,
+        "train_auc_mean": train_mean,
+        "train_auc_std": train_std,
+        "val_auc_mean": val_mean,
+        "val_auc_std": val_std,
+        "test_auc_mean": test_mean,
+        "test_auc_std": test_std,
         "wf185_v2_baseline_mean": WF185_BASELINE_MEAN,
         "wf185_v2_baseline_std": WF185_BASELINE_STD,
         "field_avg_target_lo": FIELD_AVG_TARGET_LO,
@@ -470,9 +512,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     }
     (out_dir / "aggregate.json").write_text(json.dumps(aggregate, indent=2))
     _log(f"wrote {out_dir / 'aggregate.json'}")
-    _log(f"TEST AUC = {test_mean:.4f} ± {test_std:.4f}  "
-         f"vs Wf-185 v2 = {WF185_BASELINE_MEAN:.4f} ± {WF185_BASELINE_STD:.4f}  "
-         f"verdict={verdict}")
+    _log(
+        f"TEST AUC = {test_mean:.4f} ± {test_std:.4f}  "
+        f"vs Wf-185 v2 = {WF185_BASELINE_MEAN:.4f} ± {WF185_BASELINE_STD:.4f}  "
+        f"verdict={verdict}"
+    )
     return 0
 
 

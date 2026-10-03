@@ -15,6 +15,7 @@ integration with the Wf-74 IC50 analysis pipeline
 thresholds are **validated against the synthetic pipeline**, not real wet-lab
 measurements.
 """
+
 from __future__ import annotations
 
 import sys
@@ -33,6 +34,7 @@ import pytest
 # scipy is missing).
 try:
     from molmetal.scripts import template_ic50_pipeline as ic50p  # noqa: E402
+
     _HAS_IC50P = True
 except Exception as exc:
     ic50p = None
@@ -50,8 +52,8 @@ pytestmark = pytest.mark.skipif(
 # §6a edge-case threshold constants (mirrors wetlab_sop_cytotoxicity_assay.md §6a)
 # ---------------------------------------------------------------------------
 NEG_OD_REJECT_FRAC = 0.10  # > 10% wells → reject plate
-ASYM_TOP_MAX = 1.05        # Top > 1.05 → asymptote drift
-ASYM_BOTTOM_MIN = -0.05    # Bottom < -0.05 → cytotoxic floor artefact
+ASYM_TOP_MAX = 1.05  # Top > 1.05 → asymptote drift
+ASYM_BOTTOM_MIN = -0.05  # Bottom < -0.05 → cytotoxic floor artefact
 CISP_UM_MIN, CISP_UM_MAX = 1.0, 5.0
 CISP_UM_BATCH_REJECT_MIN, CISP_UM_BATCH_REJECT_MAX = 0.5, 10.0
 HILL_MIN, HILL_MAX = 0.5, 3.0
@@ -197,6 +199,9 @@ def test_honest_framing_wetlab_gate_deferred(tmp_path):
         for flag in flags:
             # No fabricated flags like "real_data" or "wetlab_passed"
             assert flag in {
-                "hill_outlier", "asymptote_outlier", "insufficient_doses",
-                "fit_fail", "replicate_mismatch",
+                "hill_outlier",
+                "asymptote_outlier",
+                "insufficient_doses",
+                "fit_fail",
+                "replicate_mismatch",
             }, f"Unexpected QC flag (suggests fabricated wet-lab status): {flag}"

@@ -124,8 +124,9 @@ def test_g6_launcher_has_no_cuda_graphs() -> None:
         f"RuntimeError regression."
     )
     # Sanity: the line is actually a CLI flag, not just a substring match
-    assert any("--no-cuda-graphs" in line and not line.startswith("#")
-               for line in active_lines)
+    assert any(
+        "--no-cuda-graphs" in line and not line.startswith("#") for line in active_lines
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -239,9 +240,9 @@ def test_no_cudagraphs_runtime_error() -> None:
 
     # Case B: --no-cuda-graphs explicit.
     args_on = parse_args(["--no-cuda-graphs"])
-    assert args_on.cudagraphs_disabled is True, (
-        "--no-cuda-graphs must set cudagraphs_disabled=True."
-    )
+    assert (
+        args_on.cudagraphs_disabled is True
+    ), "--no-cuda-graphs must set cudagraphs_disabled=True."
 
     # Case C: --cudagraphs explicit (opt-out for Wf-326C reproducer).
     args_off = parse_args(["--cudagraphs"])
@@ -253,7 +254,8 @@ def test_no_cudagraphs_runtime_error() -> None:
     # Case D: torch_compile_mode default is CUDA-Graphs-free
     # (cross-cuts Test 2 — restated here for the override contract).
     assert args_default.torch_compile_mode in {
-        "default", "max-autotune-no-cudagraphs"
+        "default",
+        "max-autotune-no-cudagraphs",
     }, (
         f"Trainer torch_compile_mode default is "
         f"{args_default.torch_compile_mode!r}; must be "

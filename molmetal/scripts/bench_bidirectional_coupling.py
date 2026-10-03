@@ -141,9 +141,7 @@ def _try_import_joint():
 # ---------------------------------------------------------------------------
 # CSV loaders — same as Phase 1 (kept consistent so reports align)
 # ---------------------------------------------------------------------------
-def _load_platinai_smiles(
-    csv_path: Path, n: int
-) -> List[Dict[str, str]]:
+def _load_platinai_smiles(csv_path: Path, n: int) -> List[Dict[str, str]]:
     """Return up to ``n`` ``{smiles, metal}`` rows from PlatinAI 5K CSV."""
     out: List[Dict[str, str]] = []
     if not csv_path.exists():
@@ -233,34 +231,48 @@ def _run_round_trip(
     pocket_arr = np.asarray(pocket, dtype=np.float32).reshape(-1)
     if on_pocket_change is not None:
         pocket_arr = np.asarray(
-            on_pocket_change(pocket_arr), dtype=np.float32,
+            on_pocket_change(pocket_arr),
+            dtype=np.float32,
         ).reshape(-1)
     t0 = time.perf_counter()
     try:
         out = bc.round_trip(
-            smiles, pocket_arr, n_steps=int(n_steps), top_k=3,
+            smiles,
+            pocket_arr,
+            n_steps=int(n_steps),
+            top_k=3,
         )
     except Exception as exc:
-        return False, {"error": f"round_trip failed: {exc}"}, float(time.perf_counter() - t0)
+        return (
+            False,
+            {"error": f"round_trip failed: {exc}"},
+            float(time.perf_counter() - t0),
+        )
     wall = float(time.perf_counter() - t0)
     if not isinstance(out, dict):
         return False, {"error": "non-dict round_trip output"}, wall
     rt_loss = float(out.get("round_trip_loss", float("nan")))
     if not math.isfinite(rt_loss):
         return False, {"error": "non-finite round_trip_loss"}, wall
-    return True, {
-        "cfm_output": out.get("cfm_output"),
-        "lambda_features": out.get("lambda_features"),
-        "decoded_smiles": list(out.get("decoded_smiles", [])),
-        "round_trip_loss": rt_loss,
-    }, wall
+    return (
+        True,
+        {
+            "cfm_output": out.get("cfm_output"),
+            "lambda_features": out.get("lambda_features"),
+            "decoded_smiles": list(out.get("decoded_smiles", [])),
+            "round_trip_loss": rt_loss,
+        },
+        wall,
+    )
 
 
 # ---------------------------------------------------------------------------
 # Metric helpers
 # ---------------------------------------------------------------------------
 def _project_cfm_to_lambda(
-    cfm_output: np.ndarray, lambda_dim: int, embed_dim: int,
+    cfm_output: np.ndarray,
+    lambda_dim: int,
+    embed_dim: int,
 ) -> np.ndarray:
     """Project a 64-d CFM output to 32-d λ-feature space.
 
@@ -299,7 +311,8 @@ def _bridge_rmse(
     a = np.asarray(lambda_features, dtype=np.float32).reshape(-1)
     b = _project_cfm_to_lambda(
         np.asarray(cfm_output, dtype=np.float32).reshape(-1),
-        lambda_dim=lambda_dim, embed_dim=embed_dim,
+        lambda_dim=lambda_dim,
+        embed_dim=embed_dim,
     )
     if a.size != lambda_dim:
         pad = np.zeros(lambda_dim, dtype=np.float32)
@@ -368,7 +381,10 @@ def _bench_seed(
     for idx, row in enumerate(samples):
         smi = row.get("smiles") or ""
         ok, payload, wall = _run_round_trip(
-            bc, smi, pocket, n_steps=n_steps,
+            bc,
+            smi,
+            pocket,
+            n_steps=n_steps,
         )
         walls.append(wall)
         success_flags.append(ok)
@@ -376,7 +392,10 @@ def _bench_seed(
             cfm = payload.get("cfm_output")
             lf = payload.get("lambda_features")
             rmse = _bridge_rmse(
-                lf, cfm, lambda_dim=lambda_dim, embed_dim=embed_dim,
+                lf,
+                cfm,
+                lambda_dim=lambda_dim,
+                embed_dim=embed_dim,
             )
             bridge_rmses.append(rmse)
             decoded = payload.get("decoded_smiles", [])
@@ -393,6 +412,7 @@ def _bench_seed(
                 from molmetal.molmetal_lam.lam_chem.coupling_bidirectional import (
                     _FALLBACK_TILES,
                 )
+
                 tiles = set(_FALLBACK_TILES)
             except Exception:
                 tiles = set()
@@ -409,9 +429,7 @@ def _bench_seed(
                     "smiles": str(smi),
                     "metal": str(row.get("metal", "")),
                     "wall_time_s": float(wall),
-                    "bridge_rmse": float(rmse)
-                    if math.isfinite(rmse)
-                    else None,
+                    "bridge_rmse": float(rmse) if math.isfinite(rmse) else None,
                     "decode_count": int(decode_counts[-1]),
                     "round_trip_loss": float(rt_loss)
                     if math.isfinite(rt_loss)
@@ -450,16 +468,12 @@ def _bench_seed(
             "mean_wall_time_s": _safe_mean(walls),
             "max_wall_time_s": float(max(walls)) if walls else 0.0,
             "mean_decode_count": (
-                _safe_mean([float(c) for c in decode_counts])
-                if decode_counts
-                else 0.0
+                _safe_mean([float(c) for c in decode_counts]) if decode_counts else 0.0
             ),
             "mean_bridge_rmse": _safe_mean(bridge_rmses),
             "mean_round_trip_loss": _safe_mean(rt_losses),
             "tile_hit_rate": (
-                _safe_mean([float(x) for x in tile_hits])
-                if tile_hits
-                else 0.0
+                _safe_mean([float(x) for x in tile_hits]) if tile_hits else 0.0
             ),
         },
         "sample_records": sample_records,
@@ -560,9 +574,7 @@ def _render_markdown(report: Dict[str, Any]) -> str:
 # CLI
 # ---------------------------------------------------------------------------
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description=__doc__.splitlines()[1]
-    )
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[1])
     parser.add_argument(
         "--n-samples",
         type=int,
@@ -670,21 +682,24 @@ def main() -> int:
         )
     except Exception as exc:
         print(
-            f"[bench] load_joint_pipeline failed: {exc}", file=sys.stderr,
+            f"[bench] load_joint_pipeline failed: {exc}",
+            file=sys.stderr,
         )
         return 1
     try:
         reverse_obj = CFMLambdaReverse()
     except Exception as exc:
         print(
-            f"[bench] CFMLambdaReverse init failed: {exc}", file=sys.stderr,
+            f"[bench] CFMLambdaReverse init failed: {exc}",
+            file=sys.stderr,
         )
         return 1
     try:
         # Inject the loaded forward pipeline so the round-trip uses
         # the trained bridge (not the stub fallback).
         bidirectional_obj = BidirectionalCoupling(
-            lambda_to_cfm=pipe_forward, cfm_to_lambda=reverse_obj,
+            lambda_to_cfm=pipe_forward,
+            cfm_to_lambda=reverse_obj,
         )
     except Exception as exc:
         print(
@@ -727,8 +742,11 @@ def main() -> int:
         for seed in seeds:
             blocks.append(
                 _bench_seed(
-                    bidirectional_obj, platinai_samples, int(seed),
-                    lambda_dim=lambda_dim, embed_dim=embed_dim,
+                    bidirectional_obj,
+                    platinai_samples,
+                    int(seed),
+                    lambda_dim=lambda_dim,
+                    embed_dim=embed_dim,
                     n_steps=int(args.n_steps),
                     pocket_size=int(args.pocket_size),
                 )
@@ -745,8 +763,11 @@ def main() -> int:
         for seed in seeds:
             blocks.append(
                 _bench_seed(
-                    bidirectional_obj, metalcyto_samples, int(seed),
-                    lambda_dim=lambda_dim, embed_dim=embed_dim,
+                    bidirectional_obj,
+                    metalcyto_samples,
+                    int(seed),
+                    lambda_dim=lambda_dim,
+                    embed_dim=embed_dim,
                     n_steps=int(args.n_steps),
                     pocket_size=int(args.pocket_size),
                 )
@@ -772,9 +793,7 @@ def main() -> int:
         "lambda_dim": int(lambda_dim),
         "embed_dim": int(embed_dim),
         "peak_memory_mb": float(peak_mem_mb),
-        "timestamp_utc": datetime.now(timezone.utc).strftime(
-            "%Y-%m-%dT%H:%M:%SZ"
-        ),
+        "timestamp_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "per_dataset": per_dataset,
     }
 

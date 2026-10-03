@@ -182,8 +182,7 @@ def biomlm_cli_available(repo_root: str = DEFAULT_REPO_ROOT) -> bool:
 # Aggregation
 # ---------------------------------------------------------------------------
 def _aggregate(scores: Sequence[float]) -> tuple[Optional[float], Optional[float]]:
-    finite = [s for s in scores
-              if isinstance(s, (int, float)) and math.isfinite(s)]
+    finite = [s for s in scores if isinstance(s, (int, float)) and math.isfinite(s)]
     if not finite:
         return None, None
     mean = sum(finite) / len(finite)
@@ -196,9 +195,14 @@ def _aggregate(scores: Sequence[float]) -> tuple[Optional[float], Optional[float
 # ---------------------------------------------------------------------------
 # Subprocess invocation
 # ---------------------------------------------------------------------------
-def _build_cli(scoring_script: Path, model_path: Optional[str],
-               out_dir: str, encoder: str, model_type: str,
-               outprefix: str) -> List[str]:
+def _build_cli(
+    scoring_script: Path,
+    model_path: Optional[str],
+    out_dir: str,
+    encoder: str,
+    model_type: str,
+    outprefix: str,
+) -> List[str]:
     """Compose the upstream BioLM-Score scoring CLI invocation.
 
     The upstream ``casf2016_scoring_ranking.py`` requires
@@ -207,10 +211,14 @@ def _build_cli(scoring_script: Path, model_path: Optional[str],
     hidden dims, …) is hard-coded in the upstream script.
     """
     cmd: List[str] = [
-        sys.executable, str(scoring_script),
-        "--encoder", str(encoder),
-        "--model_type", str(model_type),
-        "--outprefix", str(outprefix),
+        sys.executable,
+        str(scoring_script),
+        "--encoder",
+        str(encoder),
+        "--model_type",
+        str(model_type),
+        "--outprefix",
+        str(outprefix),
     ]
     if model_path:
         cmd.extend(["--model_path", str(model_path)])
@@ -222,13 +230,23 @@ def _build_cli(scoring_script: Path, model_path: Optional[str],
     return cmd
 
 
-def _run_one_subprocess(scoring_script: Path, model_path: Optional[str],
-                        out_dir: Path, encoder: str, model_type: str,
-                        outprefix: str, timeout_sec: float) -> tuple[int, str]:
+def _run_one_subprocess(
+    scoring_script: Path,
+    model_path: Optional[str],
+    out_dir: Path,
+    encoder: str,
+    model_type: str,
+    outprefix: str,
+    timeout_sec: float,
+) -> tuple[int, str]:
     """Invoke BioLM-Score scoring script once; return (returncode, stderr_snippet)."""
     cmd = _build_cli(
-        scoring_script, model_path, str(out_dir),
-        encoder, model_type, outprefix,
+        scoring_script,
+        model_path,
+        str(out_dir),
+        encoder,
+        model_type,
+        outprefix,
     )
     try:
         proc = subprocess.run(
@@ -237,7 +255,9 @@ def _run_one_subprocess(scoring_script: Path, model_path: Optional[str],
             capture_output=True,
             text=True,
             timeout=timeout_sec,
-            cwd=str(scoring_script.parent.parent),  # repo root, where BioLM_Score/ lives
+            cwd=str(
+                scoring_script.parent.parent
+            ),  # repo root, where BioLM_Score/ lives
         )
     except subprocess.TimeoutExpired:
         return -1, f"timeout after {timeout_sec:g}s"
@@ -338,17 +358,25 @@ def score_candidates(
     """
     if not candidates:
         return BioLMSScoreColumn(
-            status="ok", n_invoked=0, n_scored=0,
-            biomlm_score_mean=None, biomlm_score_std=None,
-            encoder=encoder, model_type=model_type,
+            status="ok",
+            n_invoked=0,
+            n_scored=0,
+            biomlm_score_mean=None,
+            biomlm_score_std=None,
+            encoder=encoder,
+            model_type=model_type,
             notes="no candidates supplied",
         )
 
     if not biomlm_cli_available(repo_root):
         return BioLMSScoreColumn(
-            status="unavailable", n_invoked=len(candidates), n_scored=0,
-            biomlm_score_mean=None, biomlm_score_std=None,
-            encoder=encoder, model_type=model_type,
+            status="unavailable",
+            n_invoked=len(candidates),
+            n_scored=0,
+            biomlm_score_mean=None,
+            biomlm_score_std=None,
+            encoder=encoder,
+            model_type=model_type,
             notes=f"BioLM-Score scoring script not found at {repo_root!r}",
         )
 
@@ -367,18 +395,29 @@ def score_candidates(
         # about.  This is the honest behaviour: BioLM-Score does not
         # accept per-SMILES CLI invocations like DiffDock-L does.
         rc, stderr = _run_one_subprocess(
-            scoring_script, ckpt_path, tmp_path,
-            encoder, model_type, DEFAULT_OUT_PREFIX, timeout_sec,
+            scoring_script,
+            ckpt_path,
+            tmp_path,
+            encoder,
+            model_type,
+            DEFAULT_OUT_PREFIX,
+            timeout_sec,
         )
         last_stderr = stderr
         if rc != 0:
             logger.warning(
-                "BioLM-Score subprocess failed rc=%d: %s", rc, stderr,
+                "BioLM-Score subprocess failed rc=%d: %s",
+                rc,
+                stderr,
             )
             return BioLMSScoreColumn(
-                status="error", n_invoked=len(candidates), n_scored=0,
-                biomlm_score_mean=None, biomlm_score_std=None,
-                encoder=encoder, model_type=model_type,
+                status="error",
+                n_invoked=len(candidates),
+                n_scored=0,
+                biomlm_score_mean=None,
+                biomlm_score_std=None,
+                encoder=encoder,
+                model_type=model_type,
                 notes=f"last stderr: {last_stderr}",
             )
         pdbid_to_score = _parse_scores_from_outdir(tmp_path, DEFAULT_OUT_PREFIX)
@@ -405,10 +444,14 @@ def score_candidates(
         status = "ok"
     notes = "" if status != "error" else f"last stderr: {last_stderr}"
     return BioLMSScoreColumn(
-        status=status, n_invoked=n_invoked, n_scored=n_scored,
-        biomlm_score_mean=mean, biomlm_score_std=std,
+        status=status,
+        n_invoked=n_invoked,
+        n_scored=n_scored,
+        biomlm_score_mean=mean,
+        biomlm_score_std=std,
         per_smiles=scores,
-        encoder=encoder, model_type=model_type,
+        encoder=encoder,
+        model_type=model_type,
         notes=notes,
     )
 

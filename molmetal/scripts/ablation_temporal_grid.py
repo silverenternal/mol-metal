@@ -142,7 +142,9 @@ def _train_eval_grid(
 def _format_table(rows: List[Dict[str, object]]) -> str:
     """Markdown table summarising per-grid metrics."""
     lines: List[str] = []
-    lines.append(f"# A3 — Multi-granularity Temporal Splits ({rows[0].get('metal', '?')})\n")
+    lines.append(
+        f"# A3 — Multi-granularity Temporal Splits ({rows[0].get('metal', '?')})\n"
+    )
     lines.append(
         "Each row trains Morgan-FP + XGBoost on the **train** portion of one "
         "temporal grid and evaluates on the **test** portion.  Hit rate = "
@@ -151,9 +153,7 @@ def _format_table(rows: List[Dict[str, object]]) -> str:
     lines.append(
         "| split | n_train | n_test | hit_rate_train | hit_rate_test | AUC | PR_AUC | mean_year_test |"
     )
-    lines.append(
-        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"
-    )
+    lines.append("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
     for r in rows:
         lines.append(
             "| {split} | {ntr} | {nte} | {hrt:.4f} | {hrte:.4f} | {auc:.4f} | {pr:.4f} | {my:.2f} |".format(
@@ -192,7 +192,9 @@ def _format_hit_rate_plot(
     lines: List[str] = []
     lines.append("## Hit-rate vs publication year\n")
     lines.append("```")
-    lines.append(f"hit-rate (y) per year (x), bar width = scaled hit-rate ({bar_max*100:.1f}% = full bar)")
+    lines.append(
+        f"hit-rate (y) per year (x), bar width = scaled hit-rate ({bar_max*100:.1f}% = full bar)"
+    )
     lines.append("")
     # Header scale
     lines.append(f"  1.00 |" + "-" * W)
@@ -209,7 +211,9 @@ def _format_hit_rate_plot(
             if cut == y:
                 marker = "  <-- cutoff"
                 break
-        lines.append(f"  {y:>5d} |" + "#" * bar + " " * (W - bar) + f" {hr*100:5.1f}%" + marker)
+        lines.append(
+            f"  {y:>5d} |" + "#" * bar + " " * (W - bar) + f" {hr*100:5.1f}%" + marker
+        )
     lines.append(f"  {hi+1:>5d} |" + "-" * W)
     lines.append("```")
     lines.append("")
@@ -231,8 +235,12 @@ def _interpret(rows: List[Dict[str, object]]) -> str:
     # Find the lowest test hit-rate (most biased OOD set)
     hr_min = min(rows, key=lambda r: r["hit_rate_test"])
     hr_max = max(rows, key=lambda r: r["hit_rate_test"])
-    auc_min = min(rows, key=lambda r: r["auc"] if not np.isnan(r["auc"]) else float("inf"))
-    auc_max = max(rows, key=lambda r: r["auc"] if not np.isnan(r["auc"]) else -float("inf"))
+    auc_min = min(
+        rows, key=lambda r: r["auc"] if not np.isnan(r["auc"]) else float("inf")
+    )
+    auc_max = max(
+        rows, key=lambda r: r["auc"] if not np.isnan(r["auc"]) else -float("inf")
+    )
 
     lines.append(
         f"- **Test hit-rate range**: {hr_min['split']} has the lowest "
@@ -246,9 +254,7 @@ def _interpret(rows: List[Dict[str, object]]) -> str:
     )
 
     # Hit-rate decay
-    deltas = [
-        (r["split"], r["hit_rate_test"] - r["hit_rate_train"]) for r in rows
-    ]
+    deltas = [(r["split"], r["hit_rate_test"] - r["hit_rate_train"]) for r in rows]
     deltas.sort(key=lambda x: x[1])
     worst_decay = deltas[0]
     best_decay = deltas[-1]
@@ -281,17 +287,19 @@ def _interpret(rows: List[Dict[str, object]]) -> str:
         return gap - size_penalty
 
     rec = max(eligible, key=_score)
-    runner_up = sorted(
-        eligible,
-        key=_score,
-        reverse=True,
-    )[1] if len(eligible) > 1 else None
+    runner_up = (
+        sorted(
+            eligible,
+            key=_score,
+            reverse=True,
+        )[1]
+        if len(eligible) > 1
+        else None
+    )
 
     lines.append("")
     lines.append("### Recommendation\n")
-    lines.append(
-        f"**Use `{rec['split']}` as the paper's main temporal-test split.**"
-    )
+    lines.append(f"**Use `{rec['split']}` as the paper's main temporal-test split.**")
     lines.append("")
     lines.append(
         f"Rationale: largest test-train hit-rate gap ("
@@ -324,7 +332,9 @@ def _interpret(rows: List[Dict[str, object]]) -> str:
 # Main
 # ---------------------------------------------------------------------------
 def _parse_args(argv: List[str] | None = None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Run A3 multi-granularity temporal split ablation.")
+    p = argparse.ArgumentParser(
+        description="Run A3 multi-granularity temporal split ablation."
+    )
     p.add_argument("--metal", default="Ru", help="Metal centre (Ru/Ir/Rh/Os/Re).")
     p.add_argument(
         "--report",

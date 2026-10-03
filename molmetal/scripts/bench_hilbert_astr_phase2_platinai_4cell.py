@@ -104,6 +104,7 @@ Pytest
 
     pytest molmetal/tests/test_hilbert_astr_phase2_platinai_4cell.py -v
 """
+
 from __future__ import annotations
 
 import argparse
@@ -339,7 +340,8 @@ def hilbert_feature_map(
         out_tr = np.concatenate([aug_tr, pad], axis=1)
         if aug_te is not None:
             pad_te = np.zeros(
-                (n_te, hilbert_dim - aug_te.shape[1]), dtype=np.float32,
+                (n_te, hilbert_dim - aug_te.shape[1]),
+                dtype=np.float32,
             )
             out_te = np.concatenate([aug_te, pad_te], axis=1)
             return out_tr, out_te
@@ -387,6 +389,7 @@ def fit_hilbert(
     from molmetal.molmetal_lam.reward.hilbert_primal_dual import (
         LambdaASTSRHilbert,
     )
+
     opt_kwargs = dict(
         population_dim=hilbert_dim,
         lr_primal=lr,
@@ -436,6 +439,7 @@ def fit_astr(
     ``(-10, 10)`` per Wf-127 P1 l2_sweep.json.
     """
     from molmetal.molmetal_lam.reward.lambda_astsr import LambdaASTSR
+
     reg_kwargs = dict(
         depth=depth,
         population=population,
@@ -625,21 +629,29 @@ def evaluate_cell_line(
             X_tr_n = np.nan_to_num(X_tr_n, nan=0.0, posinf=0.0, neginf=0.0)
             X_te_n = np.nan_to_num(X_te_n, nan=0.0, posinf=0.0, neginf=0.0)
             X_tr_inner_n = np.nan_to_num(
-                X_tr_inner_n, nan=0.0, posinf=0.0, neginf=0.0,
+                X_tr_inner_n,
+                nan=0.0,
+                posinf=0.0,
+                neginf=0.0,
             )
             X_te_inner_n = np.nan_to_num(
-                X_te_inner_n, nan=0.0, posinf=0.0, neginf=0.0,
+                X_te_inner_n,
+                nan=0.0,
+                posinf=0.0,
+                neginf=0.0,
             )
 
             # Hilbert feature map: build on inner-train (for alpha
             # selection) AND on full outer-train (for final test
             # prediction). Each call returns aligned train + (test | None).
             X_tr_inner_h, X_te_inner_h = hilbert_feature_map(
-                X_tr_inner_n.astype(np.float32), hilbert_dim,
+                X_tr_inner_n.astype(np.float32),
+                hilbert_dim,
                 X_12d_test=X_te_inner_n.astype(np.float32),
             )
             X_tr_h, X_te_h = hilbert_feature_map(
-                X_tr_n.astype(np.float32), hilbert_dim,
+                X_tr_n.astype(np.float32),
+                hilbert_dim,
                 X_12d_test=X_te_n.astype(np.float32),
             )
 
@@ -732,8 +744,7 @@ def evaluate_cell_line(
                     "combined_r2": float(r2_c),
                     "alpha_chosen": float(alpha),
                     "collapse_detected": bool(collapse_c),
-                    "wall_s": float(time.perf_counter() - t0)
-                    / max(fold_idx + 1, 1),
+                    "wall_s": float(time.perf_counter() - t0) / max(fold_idx + 1, 1),
                 }
             )
             all_y_true.extend(y_te.tolist())
@@ -773,7 +784,9 @@ def evaluate_cell_line(
                 "hilbert_r2_per_fold_mean": seed_r2_h,
                 "astr_r2_per_fold_mean": seed_r2_a,
                 "alpha_mean": float(np.mean(alphas_chosen)) if alphas_chosen else 1.0,
-                "alpha_std": float(np.std(alphas_chosen)) if len(alphas_chosen) > 1 else 0.0,
+                "alpha_std": float(np.std(alphas_chosen))
+                if len(alphas_chosen) > 1
+                else 0.0,
                 "per_fold": per_fold,
                 "wall_time_s": float(time.perf_counter() - t0),
                 "n_samples": int(n),
@@ -795,17 +808,21 @@ def evaluate_cell_line(
         "feature_columns": list(FEATURE_COLUMNS),
         "n_seeds": len(seeds),
         "combined_r2_mean": float(np.mean(r2_combined_per_seed))
-        if r2_combined_per_seed else 0.0,
+        if r2_combined_per_seed
+        else 0.0,
         "combined_r2_std": float(np.std(r2_combined_per_seed))
-        if len(r2_combined_per_seed) > 1 else 0.0,
+        if len(r2_combined_per_seed) > 1
+        else 0.0,
         "hilbert_r2_mean": float(np.mean(r2_hilbert_per_seed))
-        if r2_hilbert_per_seed else 0.0,
+        if r2_hilbert_per_seed
+        else 0.0,
         "hilbert_r2_std": float(np.std(r2_hilbert_per_seed))
-        if len(r2_hilbert_per_seed) > 1 else 0.0,
-        "astr_r2_mean": float(np.mean(r2_astr_per_seed))
-        if r2_astr_per_seed else 0.0,
+        if len(r2_hilbert_per_seed) > 1
+        else 0.0,
+        "astr_r2_mean": float(np.mean(r2_astr_per_seed)) if r2_astr_per_seed else 0.0,
         "astr_r2_std": float(np.std(r2_astr_per_seed))
-        if len(r2_astr_per_seed) > 1 else 0.0,
+        if len(r2_astr_per_seed) > 1
+        else 0.0,
         "per_seed": per_seed,
     }
     return summary
@@ -860,9 +877,7 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
         )
         combined_means.append(r["combined_r2_mean"])
     aggregate = float(np.mean(combined_means)) if combined_means else 0.0
-    aggregate_std = (
-        float(np.std(combined_means)) if len(combined_means) > 1 else 0.0
-    )
+    aggregate_std = float(np.std(combined_means)) if len(combined_means) > 1 else 0.0
     lines.append(
         "| **4-cell aggregate** | — | **{agg:+.4f} ± {ags:.4f}** | — | — |".format(
             agg=aggregate,
@@ -875,7 +890,9 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
     if aggregate >= 0.50:
         verdict = "✅ **PASS**"
     elif aggregate >= 0.30:
-        verdict = "🟡 **PARTIAL** (above Wf-77 P3 anchor, below Wf-83 P1 stretch target)"
+        verdict = (
+            "🟡 **PARTIAL** (above Wf-77 P3 anchor, below Wf-83 P1 stretch target)"
+        )
     else:
         verdict = "❌ **FAIL** (below both anchor + stretch)"
     lines.append(
@@ -906,15 +923,31 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
         lines.append("")
     lines.append("## Honest framing")
     lines.append("")
-    lines.append("- **MEASURED today**: 10 seeds × 5-fold × 4 cell lines on PlatinAI 4-cell")
-    lines.append("  real pIC50 data; Hilbert+ASTSR convex blend with per-fold alpha selection.")
+    lines.append(
+        "- **MEASURED today**: 10 seeds × 5-fold × 4 cell lines on PlatinAI 4-cell"
+    )
+    lines.append(
+        "  real pIC50 data; Hilbert+ASTSR convex blend with per-fold alpha selection."
+    )
     lines.append("- **Alpha selection**: per-fold 90/10 inner validation; grid over")
-    lines.append("  alpha ∈ {0.0, 0.25, 0.5, 0.75, 1.0}; reported as `alpha_chosen` per fold.")
-    lines.append("- **Collapse detector**: `pred_std / y_test_std < 0.10` flagged in `per_fold`.")
-    lines.append("- **No Multi-PH + PLL**: this is the **combined Hilbert+ASTSR** anchor;")
-    lines.append("  Multi-PH/PLL augmentation is a separate workstream (Wf-79 P2 3-way + PLL).")
-    lines.append("- **CPU smoke**: full 10-seed × 5-fold × 4-cell runs in < 6 minutes on a")
-    lines.append("  single CPU core (verified smoke); GPU-0 Blackwell optional but not required.")
+    lines.append(
+        "  alpha ∈ {0.0, 0.25, 0.5, 0.75, 1.0}; reported as `alpha_chosen` per fold."
+    )
+    lines.append(
+        "- **Collapse detector**: `pred_std / y_test_std < 0.10` flagged in `per_fold`."
+    )
+    lines.append(
+        "- **No Multi-PH + PLL**: this is the **combined Hilbert+ASTSR** anchor;"
+    )
+    lines.append(
+        "  Multi-PH/PLL augmentation is a separate workstream (Wf-79 P2 3-way + PLL)."
+    )
+    lines.append(
+        "- **CPU smoke**: full 10-seed × 5-fold × 4-cell runs in < 6 minutes on a"
+    )
+    lines.append(
+        "  single CPU core (verified smoke); GPU-0 Blackwell optional but not required."
+    )
     lines.append("")
     lines.append(
         "Per `party-twenty-spirit §3.5`: aggregate combined R² = "
@@ -947,8 +980,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         nargs="+",
         default=["mcf7", "a549", "a2780", "a2780cis"],
         help=(
-            "PlatinAI cell lines to benchmark "
-            "(default: mcf7 a549 a2780 a2780cis)."
+            "PlatinAI cell lines to benchmark " "(default: mcf7 a549 a2780 a2780cis)."
         ),
     )
     parser.add_argument(
@@ -1008,41 +1040,53 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     # Wf-127 Phase 4 guard flags.
     parser.add_argument(
-        "--use-l2-guard", dest="use_l2_guard",
-        action="store_true", default=False,
+        "--use-l2-guard",
+        dest="use_l2_guard",
+        action="store_true",
+        default=False,
         help="Wf-127 P2 L2 weight-decay guard on Hilbert primal+dual "
-             "(default: False; P2 ship default is off, P4 turns on with --use-l2-guard).",
+        "(default: False; P2 ship default is off, P4 turns on with --use-l2-guard).",
     )
     parser.add_argument(
-        "--no-l2-guard", dest="use_l2_guard",
+        "--no-l2-guard",
+        dest="use_l2_guard",
         action="store_false",
         help="Disable the Wf-127 P2 L2 weight-decay guard (explicit override).",
     )
     parser.add_argument(
-        "--l2-weight", type=float, default=0.01,
+        "--l2-weight",
+        type=float,
+        default=0.01,
         help="L2 weight-decay guard value when --use-l2-guard is set "
-             "(default: 0.01, Phase 1 stable on synthetic).",
+        "(default: 0.01, Phase 1 stable on synthetic).",
     )
     parser.add_argument(
-        "--use-astr-scale-guard", dest="use_astr_scale_guard",
-        action="store_true", default=False,
+        "--use-astr-scale-guard",
+        dest="use_astr_scale_guard",
+        action="store_true",
+        default=False,
         help="Wf-127 P3 ASTSR value-space scale clip guard "
-             "(default: False; P3 ship default is off, P4 turns on with --use-astr-scale-guard).",
+        "(default: False; P3 ship default is off, P4 turns on with --use-astr-scale-guard).",
     )
     parser.add_argument(
-        "--no-astr-scale-guard", dest="use_astr_scale_guard",
+        "--no-astr-scale-guard",
+        dest="use_astr_scale_guard",
         action="store_false",
         help="Disable the Wf-127 P3 ASTSR scale-guard (explicit override).",
     )
     parser.add_argument(
-        "--scale-clip-min", type=float, default=-10.0,
+        "--scale-clip-min",
+        type=float,
+        default=-10.0,
         help="ASTSR scale clip min when --use-astr-scale-guard is set "
-             "(default: -10.0, Phase 1 stable on synthetic).",
+        "(default: -10.0, Phase 1 stable on synthetic).",
     )
     parser.add_argument(
-        "--scale-clip-max", type=float, default=10.0,
+        "--scale-clip-max",
+        type=float,
+        default=10.0,
         help="ASTSR scale clip max when --use-astr-scale-guard is set "
-             "(default: 10.0, Phase 1 stable on synthetic).",
+        "(default: 10.0, Phase 1 stable on synthetic).",
     )
     parser.add_argument(
         "--output",
@@ -1056,7 +1100,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         # With nargs="+", the parser may pass the default list as a
         # nested list (one outer list, one inner list). Flatten once.
         if isinstance(cl, list):
-            args.cell_lines = [c for sub in args.cell_lines for c in (sub if isinstance(sub, list) else [sub])]
+            args.cell_lines = [
+                c
+                for sub in args.cell_lines
+                for c in (sub if isinstance(sub, list) else [sub])
+            ]
             break
 
     # Flatten seeds similarly: argparse nargs="+" with list default can

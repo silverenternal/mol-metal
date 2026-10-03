@@ -66,6 +66,7 @@ Lit anchors
 * Wf-329-W2 — prior honest-negative: per-cell R² = -98.08 +
   variance_reduction = 0.0097.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -359,8 +360,7 @@ def _run_one_cell_one_seed(
                     "astsr": {
                         "name": "astsr",
                         "wall_s": float(astsr_v.wall_s),
-                        "r2": float(astsr_v.r2)
-                        if math.isfinite(astsr_v.r2) else 0.0,
+                        "r2": float(astsr_v.r2) if math.isfinite(astsr_v.r2) else 0.0,
                         "success": astsr_ok,
                         "metadata": dict(astsr_v.metadata),
                     },
@@ -368,7 +368,8 @@ def _run_one_cell_one_seed(
                         "name": "hilbert",
                         "wall_s": float(hilbert_v.wall_s),
                         "r2": float(hilbert_v.r2)
-                        if math.isfinite(hilbert_v.r2) else 0.0,
+                        if math.isfinite(hilbert_v.r2)
+                        else 0.0,
                         "success": hilbert_ok,
                         "metadata": dict(hilbert_v.metadata),
                     },
@@ -376,9 +377,7 @@ def _run_one_cell_one_seed(
                         "name": "mcts",
                         "wall_s": float(mcts_v.wall_s),
                         "n_actions": int(mcts_v.n_actions),
-                        "variance_reduction": float(
-                            mcts_v.variance_reduction
-                        ),
+                        "variance_reduction": float(mcts_v.variance_reduction),
                         "success": mcts_ok,
                         "metadata": dict(mcts_v.metadata),
                     },
@@ -394,25 +393,36 @@ def _run_one_cell_one_seed(
         cell=str(cell),
         seed=int(seed),
         n_rows=int(X.shape[0]),
-        mean_hilbert_r2=float(np.mean(
-            [r["vertices"]["hilbert"]["r2"] for r in per_round]
-        )) if per_round else 0.0,
-        mean_evolutionary_r2=float(np.mean(
-            [r["vertices"]["astsr"]["r2"] for r in per_round]
-        )) if per_round else 0.0,
-        mean_variance_reduction=float(np.mean(
-            [r["vertices"]["mcts"]["variance_reduction"]
-             for r in per_round]
-        )) if per_round else 0.0,
-        astsr_success_rate=float(np.mean(
-            [r["vertices"]["astsr"]["success"] for r in per_round]
-        )) if per_round else 0.0,
-        hilbert_success_rate=float(np.mean(
-            [r["vertices"]["hilbert"]["success"] for r in per_round]
-        )) if per_round else 0.0,
-        mcts_success_rate=float(np.mean(
-            [r["vertices"]["mcts"]["success"] for r in per_round]
-        )) if per_round else 0.0,
+        mean_hilbert_r2=float(
+            np.mean([r["vertices"]["hilbert"]["r2"] for r in per_round])
+        )
+        if per_round
+        else 0.0,
+        mean_evolutionary_r2=float(
+            np.mean([r["vertices"]["astsr"]["r2"] for r in per_round])
+        )
+        if per_round
+        else 0.0,
+        mean_variance_reduction=float(
+            np.mean([r["vertices"]["mcts"]["variance_reduction"] for r in per_round])
+        )
+        if per_round
+        else 0.0,
+        astsr_success_rate=float(
+            np.mean([r["vertices"]["astsr"]["success"] for r in per_round])
+        )
+        if per_round
+        else 0.0,
+        hilbert_success_rate=float(
+            np.mean([r["vertices"]["hilbert"]["success"] for r in per_round])
+        )
+        if per_round
+        else 0.0,
+        mcts_success_rate=float(
+            np.mean([r["vertices"]["mcts"]["success"] for r in per_round])
+        )
+        if per_round
+        else 0.0,
         total_wall_s=float(total_wall),
         per_round=per_round,
     )
@@ -441,15 +451,9 @@ def _aggregate_per_cell(
             "mean_variance_reduction": 0.0,
             "std_variance_reduction": 0.0,
         }
-    h_r2 = np.asarray(
-        [r.mean_hilbert_r2 for r in per_cell_seeds], dtype=float
-    )
-    e_r2 = np.asarray(
-        [r.mean_evolutionary_r2 for r in per_cell_seeds], dtype=float
-    )
-    v_r = np.asarray(
-        [r.mean_variance_reduction for r in per_cell_seeds], dtype=float
-    )
+    h_r2 = np.asarray([r.mean_hilbert_r2 for r in per_cell_seeds], dtype=float)
+    e_r2 = np.asarray([r.mean_evolutionary_r2 for r in per_cell_seeds], dtype=float)
+    v_r = np.asarray([r.mean_variance_reduction for r in per_cell_seeds], dtype=float)
     return {
         "n_seeds": int(len(per_cell_seeds)),
         "mean_hilbert_r2": float(np.mean(h_r2)),
@@ -477,9 +481,7 @@ def build_report(
     repo_root = _REPO_ROOT
     csv_path = repo_root / platinai_csv
     if not csv_path.exists():
-        raise FileNotFoundError(
-            f"PlatinAI 4-cell CSV not found: {csv_path}"
-        )
+        raise FileNotFoundError(f"PlatinAI 4-cell CSV not found: {csv_path}")
 
     per_cell_records: Dict[str, List[CellSeedResult]] = {}
     per_cell_load_stats: Dict[str, Dict[str, int]] = {}
@@ -516,34 +518,27 @@ def build_report(
     # Per-cell aggregation.
     per_cell_summary: Dict[str, Dict[str, Any]] = {}
     for cell in cell_lines:
-        per_cell_summary[str(cell)] = _aggregate_per_cell(
-            per_cell_records[str(cell)]
-        )
+        per_cell_summary[str(cell)] = _aggregate_per_cell(per_cell_records[str(cell)])
 
     # Global aggregation: mean of per-cell means (Wf-329-W2 contract).
     if per_cell_summary:
-        mean_hilbert = float(np.mean([
-            per_cell_summary[c]["mean_hilbert_r2"]
-            for c in cell_lines
-        ]))
-        mean_evol = float(np.mean([
-            per_cell_summary[c]["mean_evolutionary_r2"]
-            for c in cell_lines
-        ]))
-        mean_var_red = float(np.mean([
-            per_cell_summary[c]["mean_variance_reduction"]
-            for c in cell_lines
-        ]))
+        mean_hilbert = float(
+            np.mean([per_cell_summary[c]["mean_hilbert_r2"] for c in cell_lines])
+        )
+        mean_evol = float(
+            np.mean([per_cell_summary[c]["mean_evolutionary_r2"] for c in cell_lines])
+        )
+        mean_var_red = float(
+            np.mean(
+                [per_cell_summary[c]["mean_variance_reduction"] for c in cell_lines]
+            )
+        )
     else:
         mean_hilbert = mean_evol = mean_var_red = 0.0
 
     # Honest-negative recovery verdict.
-    hilbert_resolved = bool(
-        mean_hilbert >= PROJECTED_HILBERT_R2_MIN
-    )
-    var_red_resolved = bool(
-        mean_var_red >= PROJECTED_VAR_REDUCTION_MIN
-    )
+    hilbert_resolved = bool(mean_hilbert >= PROJECTED_HILBERT_R2_MIN)
+    var_red_resolved = bool(mean_var_red >= PROJECTED_VAR_REDUCTION_MIN)
     if hilbert_resolved and var_red_resolved:
         recovery_status = "HONEST_NEGATIVE_RESOLVED"
     elif hilbert_resolved or var_red_resolved:
@@ -568,9 +563,7 @@ def build_report(
         "wf329_w2_baseline": dict(WF329_W2_BASELINE),
         "projected_targets": {
             "mean_hilbert_r2_min": float(PROJECTED_HILBERT_R2_MIN),
-            "mean_variance_reduction_min": float(
-                PROJECTED_VAR_REDUCTION_MIN
-            ),
+            "mean_variance_reduction_min": float(PROJECTED_VAR_REDUCTION_MIN),
         },
         "recovery_status": str(recovery_status),
         "hilbert_resolved": bool(hilbert_resolved),
@@ -642,22 +635,31 @@ def write_report(
         # Match Wf-329-W2 schema byte-for-byte.
         with open(csv_path, "w", encoding="utf-8", newline="") as fh:
             w = csv.writer(fh)
-            w.writerow([
-                "cell", "n_seeds", "mean_hilbert_r2", "std_hilbert_r2",
-                "mean_evolutionary_r2", "std_evolutionary_r2",
-                "mean_variance_reduction", "std_variance_reduction",
-            ])
+            w.writerow(
+                [
+                    "cell",
+                    "n_seeds",
+                    "mean_hilbert_r2",
+                    "std_hilbert_r2",
+                    "mean_evolutionary_r2",
+                    "std_evolutionary_r2",
+                    "mean_variance_reduction",
+                    "std_variance_reduction",
+                ]
+            )
             for cell, agg in report.get("per_cell_summary", {}).items():
-                w.writerow([
-                    cell,
-                    agg.get("n_seeds", 0),
-                    f"{agg.get('mean_hilbert_r2', 0.0):.4f}",
-                    f"{agg.get('std_hilbert_r2', 0.0):.4f}",
-                    f"{agg.get('mean_evolutionary_r2', 0.0):.4f}",
-                    f"{agg.get('std_evolutionary_r2', 0.0):.4f}",
-                    f"{agg.get('mean_variance_reduction', 0.0):.4f}",
-                    f"{agg.get('std_variance_reduction', 0.0):.4f}",
-                ])
+                w.writerow(
+                    [
+                        cell,
+                        agg.get("n_seeds", 0),
+                        f"{agg.get('mean_hilbert_r2', 0.0):.4f}",
+                        f"{agg.get('std_hilbert_r2', 0.0):.4f}",
+                        f"{agg.get('mean_evolutionary_r2', 0.0):.4f}",
+                        f"{agg.get('std_evolutionary_r2', 0.0):.4f}",
+                        f"{agg.get('mean_variance_reduction', 0.0):.4f}",
+                        f"{agg.get('std_variance_reduction', 0.0):.4f}",
+                    ]
+                )
 
     md_path: Optional[Path] = None
     if also_markdown:
@@ -760,9 +762,7 @@ def smoke_run(
     for cell in DEFAULT_CELL_LINES:
         if cell not in per_cell:
             return False
-        if not math.isfinite(
-            per_cell[cell].get("mean_hilbert_r2", float("nan"))
-        ):
+        if not math.isfinite(per_cell[cell].get("mean_hilbert_r2", float("nan"))):
             return False
     return True
 
@@ -775,35 +775,54 @@ def main() -> int:
         )
     )
     parser.add_argument(
-        "--platinai-csv", type=str, default=DEFAULT_PLATINAI_CSV,
+        "--platinai-csv",
+        type=str,
+        default=DEFAULT_PLATINAI_CSV,
     )
     parser.add_argument(
-        "--n-trajectories", type=int, default=DEFAULT_N_TRAJECTORIES,
+        "--n-trajectories",
+        type=int,
+        default=DEFAULT_N_TRAJECTORIES,
     )
     parser.add_argument(
-        "--n-rounds", type=int, default=DEFAULT_N_ROUNDS,
+        "--n-rounds",
+        type=int,
+        default=DEFAULT_N_ROUNDS,
     )
     parser.add_argument(
-        "--seeds", type=int, nargs="+", default=list(DEFAULT_SEEDS),
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=list(DEFAULT_SEEDS),
     )
     parser.add_argument(
-        "--n-arms", type=int, default=DEFAULT_N_ARMS,
+        "--n-arms",
+        type=int,
+        default=DEFAULT_N_ARMS,
     )
     parser.add_argument(
-        "--hilbert-iters", type=int, default=DEFAULT_HILBERT_ITERS,
+        "--hilbert-iters",
+        type=int,
+        default=DEFAULT_HILBERT_ITERS,
     )
     parser.add_argument(
-        "--cell-lines", type=str, nargs="+",
+        "--cell-lines",
+        type=str,
+        nargs="+",
         default=list(DEFAULT_CELL_LINES),
     )
     parser.add_argument(
-        "--out-dir", type=str, default=DEFAULT_OUT_DIR,
+        "--out-dir",
+        type=str,
+        default=DEFAULT_OUT_DIR,
     )
     parser.add_argument(
-        "--smoke", action="store_true",
+        "--smoke",
+        action="store_true",
     )
     parser.add_argument(
-        "--quiet", action="store_true",
+        "--quiet",
+        action="store_true",
     )
     args = parser.parse_args()
 

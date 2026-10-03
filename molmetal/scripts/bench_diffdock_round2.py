@@ -96,8 +96,16 @@ GENERATED_UTC = datetime.now(timezone.utc).isoformat()
 # Constants
 # ---------------------------------------------------------------------------
 DEFAULT_POCKETS: Tuple[str, ...] = (
-    "830c", "1h36", "3eml", "3ny8", "4aaw",
-    "4rlu", "1g9v", "2hnx", "4rn0", "1fmc",
+    "830c",
+    "1h36",
+    "3eml",
+    "3ny8",
+    "4aaw",
+    "4rlu",
+    "1g9v",
+    "2hnx",
+    "4rn0",
+    "1fmc",
 )
 
 DEFAULT_CANDIDATES: Tuple[str, ...] = (
@@ -207,13 +215,15 @@ def _detect_diffdock_backend(
         which = shutil.which(name)
         if which:
             candidates.append(which)
-    candidates.extend([
-        "/home/hugo/.mamba/bin/diffdock",
-        "/home/hugo/micromamba/bin/diffdock",
-        "/usr/local/bin/diffdock",
-        "/opt/diffdock/bin/diffdock",
-        str(REPO_ROOT / "molmetal" / "references" / "DiffDock"),
-    ])
+    candidates.extend(
+        [
+            "/home/hugo/.mamba/bin/diffdock",
+            "/home/hugo/micromamba/bin/diffdock",
+            "/usr/local/bin/diffdock",
+            "/opt/diffdock/bin/diffdock",
+            str(REPO_ROOT / "molmetal" / "references" / "DiffDock"),
+        ]
+    )
 
     seen: List[str] = []
     for cand in candidates:
@@ -238,7 +248,10 @@ def _detect_diffdock_backend(
             version = ""
             try:
                 cp = subprocess.run(
-                    [str(p), "--version"], capture_output=True, text=True, timeout=5,
+                    [str(p), "--version"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
                 )
                 version = (cp.stdout or cp.stderr or "").strip().splitlines()[0]
             except Exception:  # pragma: no cover - defensive
@@ -272,9 +285,7 @@ def _detect_diffdock_backend(
 # ---------------------------------------------------------------------------
 # Stub fallback
 # ---------------------------------------------------------------------------
-def _stub_score(
-    pocket: str, smiles: str, seed: int, reason: str
-) -> CellRecord:
+def _stub_score(pocket: str, smiles: str, seed: int, reason: str) -> CellRecord:
     """Honest stub — never fabricates a real DiffDock score.
 
     The confidence / RMSD / Vina values are deterministic functions of
@@ -282,9 +293,7 @@ def _stub_score(
     They are flagged as ``status="STUB_FALLBACK"`` so the gate cannot
     mistake them for real measurements.
     """
-    digest = hashlib.sha256(
-        f"{pocket}|{smiles}|{seed}".encode("utf-8")
-    ).digest()
+    digest = hashlib.sha256(f"{pocket}|{smiles}|{seed}".encode("utf-8")).digest()
     frac = int.from_bytes(digest[:4], "big") / 2**32
 
     lo_c, hi_c = STUB_CONFIDENCE_RANGE
@@ -334,7 +343,9 @@ def _real_diffdock_score(
         )
     except Exception as e:
         return CellRecord(
-            pocket=pocket, smiles=smiles, seed=seed,
+            pocket=pocket,
+            smiles=smiles,
+            seed=seed,
             status="MISSING_DEP",
             elapsed_s=time.monotonic() - t0,
             note=f"diffdock_adapter import failed: {type(e).__name__}: {e}",
@@ -355,23 +366,30 @@ def _real_diffdock_score(
         result = adapter.dock(smiles, mock_pdb, exhaustiveness=1)
         elapsed = time.monotonic() - t0
         return CellRecord(
-            pocket=pocket, smiles=smiles, seed=seed,
+            pocket=pocket,
+            smiles=smiles,
+            seed=seed,
             status="OK",
             confidence=float(result.confidence),
             rmsd_A=float(result.rmsd_A) if result.rmsd_A == result.rmsd_A else None,
             vina_kcal=(
                 float(result.vina_kcal)
-                if result.vina_kcal == result.vina_kcal else None
+                if result.vina_kcal == result.vina_kcal
+                else None
             ),
             elapsed_s=elapsed,
             note="real DiffDock-L adapter call",
         )
     except AdapterUnavailable as e:
         return _stub_score(
-            pocket, smiles, seed,
+            pocket,
+            smiles,
+            seed,
             f"AdapterUnavailable: {e}; STUB_FALLBACK (no fabricated scores)",
         ).__class__(
-            pocket=pocket, smiles=smiles, seed=seed,
+            pocket=pocket,
+            smiles=smiles,
+            seed=seed,
             status="STUB_FALLBACK",
             confidence=_stub_score(pocket, smiles, seed, "").confidence,
             rmsd_A=_stub_score(pocket, smiles, seed, "").rmsd_A,
@@ -381,7 +399,9 @@ def _real_diffdock_score(
         )
     except Exception as e:  # pragma: no cover - defensive
         return CellRecord(
-            pocket=pocket, smiles=smiles, seed=seed,
+            pocket=pocket,
+            smiles=smiles,
+            seed=seed,
             status="RUNTIME_ERROR",
             elapsed_s=time.monotonic() - t0,
             note=f"{type(e).__name__}: {e}",
@@ -404,9 +424,8 @@ def _aggregate_pocket(pocket: str, cells: List[CellRecord]) -> PocketMetrics:
                 confidences.append(c.confidence)
             if c.rmsd_A is not None:
                 rmsds.append(c.rmsd_A)
-            if (
-                best is None
-                or (c.confidence is not None and c.confidence > best.confidence)
+            if best is None or (
+                c.confidence is not None and c.confidence > best.confidence
             ):
                 best = c
         elif c.status == "STUB_FALLBACK":
@@ -418,16 +437,18 @@ def _aggregate_pocket(pocket: str, cells: List[CellRecord]) -> PocketMetrics:
                 confidences.append(c.confidence)
         else:
             pm.n_failed += 1
-        pm.cells.append({
-            "smiles": c.smiles,
-            "seed": c.seed,
-            "status": c.status,
-            "confidence": c.confidence,
-            "rmsd_A": c.rmsd_A,
-            "vina_kcal": c.vina_kcal,
-            "elapsed_s": round(c.elapsed_s, 4),
-            "note": c.note,
-        })
+        pm.cells.append(
+            {
+                "smiles": c.smiles,
+                "seed": c.seed,
+                "status": c.status,
+                "confidence": c.confidence,
+                "rmsd_A": c.rmsd_A,
+                "vina_kcal": c.vina_kcal,
+                "elapsed_s": round(c.elapsed_s, 4),
+                "note": c.note,
+            }
+        )
 
     if confidences:
         pm.mean_confidence = sum(confidences) / len(confidences)
@@ -455,28 +476,39 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         description=__doc__.splitlines()[0],
     )
     parser.add_argument(
-        "--pockets", nargs="+", default=list(DEFAULT_POCKETS),
+        "--pockets",
+        nargs="+",
+        default=list(DEFAULT_POCKETS),
         help="Pocket IDs to benchmark.",
     )
     parser.add_argument(
-        "--cands", nargs="+", default=list(DEFAULT_CANDIDATES),
+        "--cands",
+        nargs="+",
+        default=list(DEFAULT_CANDIDATES),
         help="Candidate ligand SMILES.",
     )
     parser.add_argument(
-        "--seeds", nargs="+", type=int, default=list(DEFAULT_SEEDS),
+        "--seeds",
+        nargs="+",
+        type=int,
+        default=list(DEFAULT_SEEDS),
         help="Random seeds.",
     )
     parser.add_argument(
-        "--use-real-diffdock", action="store_true",
+        "--use-real-diffdock",
+        action="store_true",
         help="Opt-in switch: try to invoke a real DiffDock backend. "
-             "When omitted the script always returns STUB_FALLBACK.",
+        "When omitted the script always returns STUB_FALLBACK.",
     )
     parser.add_argument(
-        "--diffdock-path", default=None,
+        "--diffdock-path",
+        default=None,
         help="Explicit path to a DiffDock CLI / python wrapper.",
     )
     parser.add_argument(
-        "--out-dir", type=Path, default=DEFAULT_OUT_DIR,
+        "--out-dir",
+        type=Path,
+        default=DEFAULT_OUT_DIR,
         help="Output directory for the per-pocket metrics and status JSON.",
     )
     parser.add_argument("--verbose", "-v", action="store_true")
@@ -496,7 +528,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     LOG.info(
         "  status=%s bin=%s",
-        diffdock_status["status"], diffdock_status.get("bin"),
+        diffdock_status["status"],
+        diffdock_status.get("bin"),
     )
 
     # ---- write diffdock_status.json (bench-level) ------------------------
@@ -540,16 +573,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         for smiles in args.cands:
             for seed in args.seeds:
                 if is_real:
-                    cell = _real_diffdock_score(
-                        pocket, smiles, seed, diffdock_status
-                    )
+                    cell = _real_diffdock_score(pocket, smiles, seed, diffdock_status)
                 else:
                     cell = _stub_score(pocket, smiles, seed, miss_reason)
                 cells.append(cell)
-                sweep_records.append({
-                    "pocket": pocket, "smiles": smiles, "seed": seed,
-                    "status": cell.status, "confidence": cell.confidence,
-                })
+                sweep_records.append(
+                    {
+                        "pocket": pocket,
+                        "smiles": smiles,
+                        "seed": seed,
+                        "status": cell.status,
+                        "confidence": cell.confidence,
+                    }
+                )
 
         pm = _aggregate_pocket(pocket, cells)
         pm_path = pocket_dir / "metrics.json"
@@ -570,12 +606,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "diffdock_status": diffdock_status["status"],
             "cells": pm.cells,
         }
-        pm_path.write_text(
-            json.dumps(pm_payload, indent=2, ensure_ascii=False) + "\n"
-        )
+        pm_path.write_text(json.dumps(pm_payload, indent=2, ensure_ascii=False) + "\n")
         LOG.info(
             "wrote %s (n_cells=%d n_real=%d n_stub=%d)",
-            pm_path, pm.n_cells, pm.n_real, pm.n_stub,
+            pm_path,
+            pm.n_cells,
+            pm.n_real,
+            pm.n_stub,
         )
         summary_per_pocket[pocket] = {
             "n_cells": pm.n_cells,
@@ -583,9 +620,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "n_stub": pm.n_stub,
             "n_failed": pm.n_failed,
             "mean_confidence": pm.mean_confidence,
-            "best_cell_smiles": (
-                pm.best_cell.get("smiles") if pm.best_cell else None
-            ),
+            "best_cell_smiles": (pm.best_cell.get("smiles") if pm.best_cell else None),
             "best_cell_confidence": (
                 pm.best_cell.get("confidence") if pm.best_cell else None
             ),
@@ -610,8 +645,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             (
                 "Real DiffDock path was exercised for every cell when "
                 "the binary was reachable (status='REAL_DIFFDOCK_AVAILABLE')."
-                if is_real else
-                "DiffDock backend was not reachable; every cell is "
+                if is_real
+                else "DiffDock backend was not reachable; every cell is "
                 "STUB_FALLBACK (no fabricated DiffDock scores).  Set "
                 "DIFFDOCK_BIN or pass --diffdock-path to enable real "
                 "inference."

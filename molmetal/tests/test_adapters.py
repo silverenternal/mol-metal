@@ -38,7 +38,9 @@ def _make_pocket(n_atoms: int = 4) -> Pocket:
     return Pocket(
         pdb_id="test",
         coords=torch.zeros(n_atoms, 3, dtype=torch.float32),
-        atom_types=torch.tensor([6, 7, 8, 16] * (n_atoms // 4 + 1), dtype=torch.long)[:n_atoms],
+        atom_types=torch.tensor([6, 7, 8, 16] * (n_atoms // 4 + 1), dtype=torch.long)[
+            :n_atoms
+        ],
         residue_ids=torch.zeros(n_atoms, dtype=torch.long),
         chain_ids=torch.zeros(n_atoms, dtype=torch.long),
         mask=torch.ones(n_atoms, dtype=torch.bool),
@@ -74,9 +76,9 @@ class TestRDKitPredictorAspirin:
         mol = _aspirin_mol()
         pred = predictor.predict(mol)
         # Aspirin MW = 180.16 g/mol; spec says "MW=180" so allow ±1.
-        assert pytest.approx(180.0, abs=1.0) == pred.mol_weight, (
-            f"aspirin MW should be ~180, got {pred.mol_weight}"
-        )
+        assert (
+            pytest.approx(180.0, abs=1.0) == pred.mol_weight
+        ), f"aspirin MW should be ~180, got {pred.mol_weight}"
 
     def test_aspirin_logp_in_range(self, predictor: RDKitPropertyPredictor):
         mol = _aspirin_mol()
@@ -119,11 +121,13 @@ class TestRDKitPredictorCisplatin:
         # cisplatin = cis-[Pt(NH3)2Cl2]; SMILES ``N.N.[Pt](Cl)Cl`` parses
         # to MW = 300.05 — close enough to 300 but per spec assert MW > 300.
         # The exact MW is 300.05 so pytest.approx with abs=1.0 confirms.
-        assert pred.mol_weight > 290.0, (
-            f"cisplatin-like MW should be ~300, got {pred.mol_weight}"
-        )
+        assert (
+            pred.mol_weight > 290.0
+        ), f"cisplatin-like MW should be ~300, got {pred.mol_weight}"
 
-    def test_cisplatin_returns_valid_prediction(self, predictor: RDKitPropertyPredictor):
+    def test_cisplatin_returns_valid_prediction(
+        self, predictor: RDKitPropertyPredictor
+    ):
         mol = _cisplatin_like_mol()
         pred = predictor.predict(mol)
         assert isinstance(pred, PropertyPrediction)
@@ -132,7 +136,9 @@ class TestRDKitPredictorCisplatin:
         assert pred.sa_score > 0.0
         assert pred.num_h_donors >= 0  # 2 NH3 -> at least 0 donors (no -OH / -NH)
 
-    def test_cisplatin_no_fatal_error_on_metal_atom(self, predictor: RDKitPropertyPredictor):
+    def test_cisplatin_no_fatal_error_on_metal_atom(
+        self, predictor: RDKitPropertyPredictor
+    ):
         """[Pt] is an unusual atom — the predictor should NOT crash."""
         mol = _cisplatin_like_mol()
         # Should not raise.

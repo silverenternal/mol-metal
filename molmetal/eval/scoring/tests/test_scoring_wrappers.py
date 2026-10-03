@@ -12,6 +12,7 @@ Three required tests:
 Plus a few sanity tests for the per-mol metric shape and the SoftMol
 hit-rate gate.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -65,7 +66,9 @@ def test_score_dispatcher_routes_correctly():
 
     # each known method returns its expected schema
     td = score_with("targetdiff", _SMILES_BASIC)
-    assert td is not None and "per_mol" in td and "summary" in td and "vina_scores" in td
+    assert (
+        td is not None and "per_mol" in td and "summary" in td and "vina_scores" in td
+    )
     assert td["vina_scores"] is None  # docking intentionally not lifted
 
     pm = score_with("pocket2mol", _SMILES_BASIC)
@@ -79,8 +82,16 @@ def test_score_dispatcher_routes_correctly():
         target="parp1",
     )
     assert sm is not None
-    for k in ("n_input", "n_dedup", "n_qs", "n_hits", "target",
-              "hit_threshold", "qed_threshold", "sa_threshold"):
+    for k in (
+        "n_input",
+        "n_dedup",
+        "n_qs",
+        "n_hits",
+        "target",
+        "hit_threshold",
+        "qed_threshold",
+        "sa_threshold",
+    ):
         assert k in sm, f"softmol key missing: {k}"
 
 
@@ -131,12 +142,18 @@ def test_targetdiff_per_mol_metric_shape():
     assert out is not None
     assert out["summary"]["n_input"] == len(_SMILES_BASIC) + len(_SMILES_BAD)
     # Each bad row should be None
-    n_none = sum(1 for r in out["per_mol"][-len(_SMILES_BAD):] if r is None)
+    n_none = sum(1 for r in out["per_mol"][-len(_SMILES_BAD) :] if r is None)
     assert n_none == len(_SMILES_BAD)
     # Each good row should have the right keys
     for row in out["per_mol"][: len(_SMILES_BASIC)]:
         assert set(row.keys()) >= {
-            "qed", "sa", "logp", "lipinski", "ring_size", "pains", "vina",
+            "qed",
+            "sa",
+            "logp",
+            "lipinski",
+            "ring_size",
+            "pains",
+            "vina",
         }
         assert row["vina"] is None  # docking path not lifted
     # Summary numbers must be sensible
@@ -152,7 +169,14 @@ def test_pocket2mol_per_mol_metric_shape():
     assert out is not None
     for row in out["per_mol"]:
         assert set(row.keys()) >= {
-            "qed", "sa", "logp", "hacc", "hdon", "lipinski", "rdkit_rmsd", "vina",
+            "qed",
+            "sa",
+            "logp",
+            "hacc",
+            "hdon",
+            "lipinski",
+            "rdkit_rmsd",
+            "vina",
         }
         assert isinstance(row["hacc"], int)
         assert isinstance(row["hdon"], int)

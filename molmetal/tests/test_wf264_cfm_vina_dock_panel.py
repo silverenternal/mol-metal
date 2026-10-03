@@ -34,9 +34,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-SCRIPT_PATH = (
-    PROJECT_ROOT / "molmetal" / "scripts" / "cfm_vina_dock_panel.py"
-)
+SCRIPT_PATH = PROJECT_ROOT / "molmetal" / "scripts" / "cfm_vina_dock_panel.py"
 POCKETS_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf30_pocket_prep"
 
 
@@ -50,9 +48,7 @@ def _load_module():
     """
     mod_name = "cfm_vina_dock_panel"
     spec = importlib.util.spec_from_file_location(mod_name, str(SCRIPT_PATH))
-    assert spec and spec.loader, (
-        "cfm_vina_dock_panel.py must exist and be importable"
-    )
+    assert spec and spec.loader, "cfm_vina_dock_panel.py must exist and be importable"
     mod = importlib.util.module_from_spec(spec)
     sys.modules[mod_name] = mod
     try:
@@ -82,9 +78,7 @@ def test_default_pockets_enumerated():
 # ---------------------------------------------------------------------------
 def test_default_vina_bin_path():
     mod = _load_module()
-    expected = str(
-        PROJECT_ROOT / "molmetal" / "bin" / "vina"
-    )
+    expected = str(PROJECT_ROOT / "molmetal" / "bin" / "vina")
     assert mod.DEFAULT_VINA_BIN == expected, (
         f"Default vina bin must be the project wrapper at "
         f"{expected}; got {mod.DEFAULT_VINA_BIN}"
@@ -106,11 +100,15 @@ def test_cli_help():
         f"--help should exit 0; got {result.returncode}\n"
         f"STDOUT={result.stdout}\nSTDERR={result.stderr}"
     )
-    for flag in ("--smiles-csv", "--pocket-pdb-dir", "--out-json",
-                 "--vina-bin", "--n-candidates"):
+    for flag in (
+        "--smiles-csv",
+        "--pocket-pdb-dir",
+        "--out-json",
+        "--vina-bin",
+        "--n-candidates",
+    ):
         assert flag in result.stdout, (
-            f"--help must mention {flag}; "
-            f"got STDOUT={result.stdout[:200]}"
+            f"--help must mention {flag}; " f"got STDOUT={result.stdout[:200]}"
         )
 
 
@@ -129,9 +127,11 @@ def test_smiles_csv_parse(tmp_path):
         writer.writerow(["CC(=O)Oc1ccccc1C(=O)O", "aspirin"])
 
     out = mod.read_smiles_csv(csv_path)
-    assert out == ["CCO", "c1ccccc1", "CC(=O)Oc1ccccc1C(=O)O"], (
-        f"Expected 3 SMILES after dropping blank; got {out}"
-    )
+    assert out == [
+        "CCO",
+        "c1ccccc1",
+        "CC(=O)Oc1ccccc1C(=O)O",
+    ], f"Expected 3 SMILES after dropping blank; got {out}"
 
     # Missing 'smiles' column raises ValueError.
     bad_csv = tmp_path / "bad.csv"
@@ -181,17 +181,21 @@ class _FakeRunner:
         **kwargs,
     ):
         from molmetal.scripts.cfm_vina_dock_panel import (
-            PocketCell, STATUS_REAL_VINA,
+            PocketCell,
+            STATUS_REAL_VINA,
         )
-        self.calls.append({
-            "smiles": smiles,
-            "pocket_id": pocket_id,
-            "vina_bin": vina_bin,
-            "exhaustiveness": exhaustiveness,
-            "n_poses": n_poses,
-            "box_size": box_size,
-            "center": center,
-        })
+
+        self.calls.append(
+            {
+                "smiles": smiles,
+                "pocket_id": pocket_id,
+                "vina_bin": vina_bin,
+                "exhaustiveness": exhaustiveness,
+                "n_poses": n_poses,
+                "box_size": box_size,
+                "center": center,
+            }
+        )
         # Deterministic kcal/mol: base + a per-smiles small offset.
         # hash gives a deterministic 0..1 jitter per molecule.
         h = abs(hash(smiles)) % 1000 / 1000.0
@@ -285,26 +289,27 @@ def test_build_panel_scaffold_no_real_vina(tmp_path):
         # Every pocket must be enumerated.
         for pocket_id in mod.DEFAULT_POCKETS:
             assert pocket_id in entry["per_pocket"], (
-                f"per_pocket must enumerate all 5 pockets; "
-                f"missing {pocket_id}"
+                f"per_pocket must enumerate all 5 pockets; " f"missing {pocket_id}"
             )
             cell = entry["per_pocket"][pocket_id]
-            for key in ("best_kcal_mol", "n_poses", "wall_time_s",
-                        "status", "note"):
-                assert key in cell, (
-                    f"pocket cell missing key {key!r}: {cell}"
-                )
+            for key in ("best_kcal_mol", "n_poses", "wall_time_s", "status", "note"):
+                assert key in cell, f"pocket cell missing key {key!r}: {cell}"
 
     # Aggregate per-pocket shape.
     agg = panel["aggregate"]
     assert "per_pocket" in agg
     for pocket_id in mod.DEFAULT_POCKETS:
         a = agg["per_pocket"][pocket_id]
-        for key in ("n", "n_real_vina", "n_stub_fallback",
-                    "n_other", "mean", "min", "max"):
-            assert key in a, (
-                f"aggregate per_pocket {pocket_id} missing key {key!r}"
-            )
+        for key in (
+            "n",
+            "n_real_vina",
+            "n_stub_fallback",
+            "n_other",
+            "mean",
+            "min",
+            "max",
+        ):
+            assert key in a, f"aggregate per_pocket {pocket_id} missing key {key!r}"
     assert "best_pocket_overall" in agg
     assert "best_score_overall" in agg
     assert "mean_score_overall" in agg
@@ -337,8 +342,7 @@ def test_build_panel_aggregate_stats_match_fake_runner(tmp_path):
     # hash-jitter (-0..-1).  We can recompute them.
     for pocket_id, base_kcal in runner.kcal_by_pocket.items():
         cells = [
-            m["per_pocket"][pocket_id]["best_kcal_mol"]
-            for m in panel["per_molecule"]
+            m["per_pocket"][pocket_id]["best_kcal_mol"] for m in panel["per_molecule"]
         ]
         # All cells are not None because the fake runner returns real kcal.
         assert all(c is not None for c in cells), (
@@ -457,16 +461,26 @@ def test_cli_end_to_end_with_stub_fallback(tmp_path):
 
     result = subprocess.run(
         [
-            sys.executable, str(SCRIPT_PATH),
-            "--smiles-csv", str(csv_path),
-            "--pocket-pdb-dir", str(pockets_dir),
-            "--out-json", str(out_path),
-            "--vina-bin", str(fake_vina),
-            "--n-candidates", "3",
-            "--exhaustiveness", "1",
-            "--seed", "0",
-            "--dock-timeout", "10",
-            "--work-dir", str(tmp_path / "wd"),
+            sys.executable,
+            str(SCRIPT_PATH),
+            "--smiles-csv",
+            str(csv_path),
+            "--pocket-pdb-dir",
+            str(pockets_dir),
+            "--out-json",
+            str(out_path),
+            "--vina-bin",
+            str(fake_vina),
+            "--n-candidates",
+            "3",
+            "--exhaustiveness",
+            "1",
+            "--seed",
+            "0",
+            "--dock-timeout",
+            "10",
+            "--work-dir",
+            str(tmp_path / "wd"),
             "--quiet",
         ],
         capture_output=True,
@@ -487,8 +501,7 @@ def test_cli_end_to_end_with_stub_fallback(tmp_path):
     for entry in panel["per_molecule"]:
         for cell in entry["per_pocket"].values():
             assert cell["status"] == "STUB_FALLBACK", (
-                f"Expected STUB_FALLBACK when binary missing; got "
-                f"{cell['status']}"
+                f"Expected STUB_FALLBACK when binary missing; got " f"{cell['status']}"
             )
             assert cell["best_kcal_mol"] is None
     # aggregate best_score_overall must be None.

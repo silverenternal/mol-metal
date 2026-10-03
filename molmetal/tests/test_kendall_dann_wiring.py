@@ -71,21 +71,21 @@ def test_kendall_on() -> None:
     ``alpha * BCE + (1 - alpha) * MSE`` formula.
     """
     loss = MultiTaskLoss(alpha=0.5, use_kendall_loss=True)
-    assert loss.use_kendall_loss is True, (
-        "MultiTaskLoss.use_kendall_loss flag must be True after wiring"
-    )
+    assert (
+        loss.use_kendall_loss is True
+    ), "MultiTaskLoss.use_kendall_loss flag must be True after wiring"
     pic50_pred, active_logits, pic50_target, active_target = _tiny_inputs()
     total, lc, lr_ = loss(pic50_pred, active_logits, pic50_target, active_target)
     assert total.requires_grad, "Kendall-weighted loss must remain differentiable"
-    assert lc.item() > 0 and lr_.item() > 0, (
-        "cls and reg components must be positive for the random init"
-    )
+    assert (
+        lc.item() > 0 and lr_.item() > 0
+    ), "cls and reg components must be positive for the random init"
     # The Kendall module is lazily built on first forward() — verify it
     # was instantiated and is registered as a sub-module (so the
     # optimiser picks up its log-sigma parameters).
-    assert loss._kendall is not None, (
-        "Kendall UW head must be lazily created on first forward()"
-    )
+    assert (
+        loss._kendall is not None
+    ), "Kendall UW head must be lazily created on first forward()"
     assert any(
         isinstance(m, nn.Module) and "UncertaintyWeighted" in type(m).__name__
         for m in loss.modules()
@@ -102,9 +102,9 @@ def test_kendall_off() -> None:
     NOT instantiated.
     """
     loss = MultiTaskLoss(alpha=0.5, use_kendall_loss=False)
-    assert loss.use_kendall_loss is False, (
-        "MultiTaskLoss.use_kendall_loss flag must be False after wiring"
-    )
+    assert (
+        loss.use_kendall_loss is False
+    ), "MultiTaskLoss.use_kendall_loss flag must be False after wiring"
     pic50_pred, active_logits, pic50_target, active_target = _tiny_inputs()
     total, lc, lr_ = loss(pic50_pred, active_logits, pic50_target, active_target)
 
@@ -115,9 +115,9 @@ def test_kendall_off() -> None:
         f"vs expected={expected_total.item()}"
     )
     # The Kendall UW head must NOT have been lazily created.
-    assert loss._kendall is None, (
-        "Kendall UW head must NOT be created when use_kendall_loss=False"
-    )
+    assert (
+        loss._kendall is None
+    ), "Kendall UW head must NOT be created when use_kendall_loss=False"
 
 
 # ===========================================================================
@@ -135,17 +135,23 @@ def test_dann_on_off() -> None:
 
     # OFF: no domain head, parameter count = baseline
     model_off = mtw.MultiTaskWassersteinModel(
-        n_metals=2, hidden=32, depth=2, dropout=0.1, use_dann=False,
+        n_metals=2,
+        hidden=32,
+        depth=2,
+        dropout=0.1,
+        use_dann=False,
     )
     assert model_off.use_dann is False
-    assert model_off.domain_head is None, (
-        "use_dann=False must leave domain_head=None"
-    )
+    assert model_off.domain_head is None, "use_dann=False must leave domain_head=None"
     n_params_off = sum(p.numel() for p in model_off.parameters())
 
     # ON: domain head attached, parameter count grows
     model_on = mtw.MultiTaskWassersteinModel(
-        n_metals=2, hidden=32, depth=2, dropout=0.1, use_dann=True,
+        n_metals=2,
+        hidden=32,
+        depth=2,
+        dropout=0.1,
+        use_dann=True,
         num_domains=4,
     )
     assert model_on.use_dann is True
@@ -158,9 +164,9 @@ def test_dann_on_off() -> None:
 
     # ON must strictly increase parameter count (domain_head has its
     # own Linear weights + biases on top of the shared encoder).
-    assert n_params_on > n_params_off, (
-        f"use_dann=True must add params, but on={n_params_on} vs off={n_params_off}"
-    )
+    assert (
+        n_params_on > n_params_off
+    ), f"use_dann=True must add params, but on={n_params_on} vs off={n_params_off}"
     # OFF must match the head-less baseline: the domain_head attribute
     # exists but is None, and the per-metal heads + encoder are intact.
     assert hasattr(model_off, "domain_head")

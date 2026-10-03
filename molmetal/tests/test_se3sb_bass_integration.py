@@ -256,7 +256,9 @@ def test_a4b_make_ot_sampler_se3_sb() -> None:
 def test_a4c_make_ot_sampler_bass_martingale() -> None:
     """``make_ot_sampler(use_bass_martingale=True)`` returns Bass sampler."""
     mode, sampler = make_ot_sampler(
-        use_bass_martingale=True, bass_eps=0.7, bass_input_dim=6,
+        use_bass_martingale=True,
+        bass_eps=0.7,
+        bass_input_dim=6,
     )
     assert mode == OTCouplingMode.BASS_MARTINGALE
     assert isinstance(sampler, BassMartingaleOTSampler)
@@ -315,7 +317,8 @@ def test_b4_mutually_exclusive_flags() -> None:
     """Both flags raise on construction (mutually exclusive)."""
     with pytest.raises(ValueError, match="mutually exclusive"):
         WaveformRelaxationSolver(
-            use_se3_sb=True, use_bass_martingale=True,
+            use_se3_sb=True,
+            use_bass_martingale=True,
         )
 
 
@@ -331,7 +334,9 @@ def test_b5_default_solve_finite(z0) -> None:
 def test_b6_se3sb_solve_finite(z0) -> None:
     """SE(3) SB solver produces finite output of the right shape."""
     solver = WaveformRelaxationSolver(
-        use_se3_sb=True, sb_n_iters=20, sb_eps=0.5,
+        use_se3_sb=True,
+        sb_n_iters=20,
+        sb_eps=0.5,
     )
     with torch.no_grad():
         out = solver.solve(_linear_velocity_fn, z0.clone(), (0.0, 1.0))
@@ -342,7 +347,8 @@ def test_b6_se3sb_solve_finite(z0) -> None:
 def test_b7_bass_solve_finite(z0) -> None:
     """Bass martingale solver produces finite output of the right shape."""
     solver = WaveformRelaxationSolver(
-        use_bass_martingale=True, bass_eps=0.5,
+        use_bass_martingale=True,
+        bass_eps=0.5,
     )
     with torch.no_grad():
         out = solver.solve(_linear_velocity_fn, z0.clone(), (0.0, 1.0))

@@ -49,6 +49,7 @@ Per AGENTS.md §5.2 honest framing, all assertions are MEASURED via
 subprocess / re.search against the actual on-disk wrapper state. No
 PROJECTED claims — every assertion has a verifiable source path.
 """
+
 from __future__ import annotations
 
 import os
@@ -76,6 +77,7 @@ def _resolve_python() -> str:
     if Path("/home/hugo/codes/mol-metal/.venv/bin/python").is_file():
         return "/home/hugo/codes/mol-metal/.venv/bin/python"
     import sys
+
     return sys.executable
 
 
@@ -87,7 +89,8 @@ def _resolve_python() -> str:
 # therefore exercises the EXTRA_FLAGS passthrough accumulator:
 WF380_FLAGS = [
     "--edm-preconditioning",
-    "--consistency-weight", "1.0",
+    "--consistency-weight",
+    "1.0",
     # --use-ot-cfm + --stable-vm + --so3-average + --log-normal-t +
     # --triton-ot + --shortcut-distill + --top-p + --top-k +
     # --temperature + --mmd-weight + --repulsion-weight +
@@ -99,11 +102,16 @@ WF380_FLAGS = [
     "--log-normal-t",
     "--triton-ot",
     "--shortcut-distill",
-    "--top-p", "0.9",
-    "--top-k", "50",
-    "--temperature", "1.0",
-    "--mmd-weight", "0.1",
-    "--repulsion-weight", "0.05",
+    "--top-p",
+    "0.9",
+    "--top-k",
+    "50",
+    "--temperature",
+    "1.0",
+    "--mmd-weight",
+    "0.1",
+    "--repulsion-weight",
+    "0.05",
     "--per-cohort-features",
 ]
 
@@ -112,8 +120,10 @@ WF380_FLAGS = [
 # (scaffold-conditioning + sa-penalty + sa-target are NEW per Wf-392-A3).
 WF388_FLAGS = [
     "--scaffold-conditioning",
-    "--sa-penalty", "0.5",
-    "--sa-target", "2.5",
+    "--sa-penalty",
+    "0.5",
+    "--sa-target",
+    "2.5",
 ]
 
 
@@ -124,11 +134,15 @@ WF405_WF408_FLAGS = [
     "--chemprop-v3-cache",
     "--cfm-chemprop-v3-cache",
     "--cfm-multiph-pll",
-    "--cfm-multiph-pll-top-k", "8",
-    "--cfm-multiph-pll-weight", "0.3",
+    "--cfm-multiph-pll-top-k",
+    "8",
+    "--cfm-multiph-pll-weight",
+    "0.3",
     "--lambda-cfm-coupling",
-    "--lambda-cfm-coupling-weight", "0.4",
-    "--lambda-cfm-coupling-samples", "300",
+    "--lambda-cfm-coupling-weight",
+    "0.4",
+    "--lambda-cfm-coupling-samples",
+    "300",
 ]
 
 
@@ -182,8 +196,7 @@ def test_wrapper_accepts_wf380_flags() -> None:
     """
     rc, stdout, stderr = _run_wrapper(WF380_FLAGS)
     assert rc == 0, (
-        f"wrapper died with rc={rc} on Wf-380 flags; stderr tail: "
-        f"{stderr[-2000:]}"
+        f"wrapper died with rc={rc} on Wf-380 flags; stderr tail: " f"{stderr[-2000:]}"
     )
     # The wrapper must NOT print "unknown arg: <flag>" for any of the
     # Wf-380 flags we passed.
@@ -210,8 +223,7 @@ def test_wrapper_accepts_wf388_flags() -> None:
     """
     rc, stdout, stderr = _run_wrapper(WF388_FLAGS)
     assert rc == 0, (
-        f"wrapper died with rc={rc} on Wf-388 flags; stderr tail: "
-        f"{stderr[-2000:]}"
+        f"wrapper died with rc={rc} on Wf-388 flags; stderr tail: " f"{stderr[-2000:]}"
     )
     combined = stdout + stderr
     for flag in WF388_FLAGS:
@@ -285,12 +297,7 @@ def test_wrapper_dry_run_no_die() -> None:
     # config). The LAST one (catherine_only) is the canonical
     # verification target per the existing wrapper convention.
     dry_run_log = (
-        REPO_ROOT
-        / "molmetal"
-        / "reports"
-        / "wf299_cfm_main"
-        / "wave_a"
-        / "DRY_RUN.log"
+        REPO_ROOT / "molmetal" / "reports" / "wf299_cfm_main" / "wave_a" / "DRY_RUN.log"
     )
     if dry_run_log.is_file():
         text = dry_run_log.read_text(encoding="utf-8")

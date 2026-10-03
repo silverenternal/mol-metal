@@ -268,9 +268,7 @@ def _extract_from_sdf(sdf_path: Path) -> Dict[str, object]:
         mol = Chem.RemoveHs(raw)
     except Exception:  # noqa: BLE001
         atoms_to_drop = [
-            atom.GetIdx()
-            for atom in raw.GetAtoms()
-            if atom.GetAtomicNum() == 1
+            atom.GetIdx() for atom in raw.GetAtoms() if atom.GetAtomicNum() == 1
         ]
         editable = Chem.EditableMol(raw)
         # Drop from highest index to lowest so re-indexing doesn't shift
@@ -284,9 +282,7 @@ def _extract_from_sdf(sdf_path: Path) -> Dict[str, object]:
         Chem.SanitizeMol(
             mol,
             sanitizeOps=(
-                Chem.SANITIZE_ALL
-                ^ Chem.SANITIZE_KEKULIZE
-                ^ Chem.SANITIZE_PROPERTIES
+                Chem.SANITIZE_ALL ^ Chem.SANITIZE_KEKULIZE ^ Chem.SANITIZE_PROPERTIES
             ),
         )
         Chem.Kekulize(mol)
@@ -325,8 +321,7 @@ def _extract_from_sdf(sdf_path: Path) -> Dict[str, object]:
             return {
                 "ok": False,
                 "error": (
-                    f"sanitize + template-assign both failed: "
-                    f"first={first_exc}"
+                    f"sanitize + template-assign both failed: " f"first={first_exc}"
                 ),
             }
 
@@ -383,7 +378,9 @@ def extract_one(spec: LigandSource) -> Dict[str, object]:
     record: Dict[str, object] = {
         "pocket_id": spec.pocket_id,
         "source_path": str(spec.source_path),
-        "source_sha256": _sha256(spec.source_path) if spec.source_path.exists() else None,
+        "source_sha256": _sha256(spec.source_path)
+        if spec.source_path.exists()
+        else None,
         "extraction_kind": spec.extraction_kind,
         "ligand_resname": spec.ligand_resname,
         "notes": spec.notes,
@@ -433,9 +430,7 @@ def write_outputs(records: List[Dict[str, object]]) -> None:
                 "generated_utc": datetime.now(timezone.utc).isoformat(),
                 "out_dir": str(OUT_DIR),
                 "n_pockets": len(json_safe_records),
-                "n_extracted_ok": sum(
-                    1 for r in json_safe_records if r.get("ok")
-                ),
+                "n_extracted_ok": sum(1 for r in json_safe_records if r.get("ok")),
                 "n_extracted_fail": sum(
                     1 for r in json_safe_records if not r.get("ok")
                 ),
@@ -516,8 +511,7 @@ def write_outputs(records: List[Dict[str, object]]) -> None:
         )
     elif verdict == "PARTIAL":
         synth_lines.append(
-            "Phase 1 PARTIAL — investigate failed pockets before "
-            "launching Phase 2."
+            "Phase 1 PARTIAL — investigate failed pockets before " "launching Phase 2."
         )
     else:
         synth_lines.append(
@@ -548,11 +542,7 @@ def verify_only(metadata_path: Path) -> int:
         return 1
 
     # Check InChIKey uniqueness
-    inchi_keys = [
-        p["inchikey"]
-        for p in payload.get("pockets", [])
-        if p.get("ok")
-    ]
+    inchi_keys = [p["inchikey"] for p in payload.get("pockets", []) if p.get("ok")]
     if len(set(inchi_keys)) != len(inchi_keys):
         print(f"FAIL: InChIKey collision: {inchi_keys}")
         return 1
@@ -614,9 +604,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(f"VERDICT: PARTIAL — {n_ok}/6 extracted, investigate failures")
         return 0
     else:
-        print(
-            f"VERDICT: HALT — only {n_ok}/6 extracted (< 5 acceptance gate)"
-        )
+        print(f"VERDICT: HALT — only {n_ok}/6 extracted (< 5 acceptance gate)")
         return 1
 
 

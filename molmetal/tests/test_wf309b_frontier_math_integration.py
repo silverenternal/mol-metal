@@ -23,6 +23,7 @@ Honest framing
   :class:`FrontierMathIntegration` — no direct adapter import.
 * All 4 tests are CPU-only and run in <1 s on a single thread.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -36,6 +37,7 @@ import torch
 def fmi():
     """Return a :class:`FrontierMathIntegration` with default config."""
     from molmetal.adapters.frontier_math_integration import FrontierMathIntegration
+
     return FrontierMathIntegration()
 
 
@@ -47,6 +49,7 @@ def test_multi_ph_forward(fmi):
     from molmetal.adapters.frontier_math_integration import (
         FrontierMathIntegration,
     )
+
     assert isinstance(fmi, FrontierMathIntegration)
     features_mod = fmi.get_multi_ph_features()
     # Use the smallest W2.3 smoke config to keep the test <100 ms.
@@ -72,10 +75,12 @@ def test_se3_lipman_solver_init(fmi):
     solver = fmi.get_se3_lipman_solver()
     # Canonical W2.1 / Integration 1 defaults.
     assert solver.n_steps == 50, f"n_steps should default to 50, got {solver.n_steps}"
-    assert solver.method == "midpoint", f"method should default to 'midpoint', got {solver.method!r}"
-    assert solver.ortho_tol == pytest.approx(1e-3), (
-        f"ortho_tol should default to 1e-3, got {solver.ortho_tol}"
-    )
+    assert (
+        solver.method == "midpoint"
+    ), f"method should default to 'midpoint', got {solver.method!r}"
+    assert solver.ortho_tol == pytest.approx(
+        1e-3
+    ), f"ortho_tol should default to 1e-3, got {solver.ortho_tol}"
     # ``se3_adapter`` is the wrapper, must be present (the default
     # fallback is a zero-velocity wrapper around a dummy EGNN).
     assert solver.se3_adapter is not None
@@ -88,13 +93,13 @@ def test_se3_sb_decoder_init(fmi):
     """``get_se3_sb_decoder`` returns a usable SE3SBDecoder."""
     decoder = fmi.get_se3_sb_decoder()
     # Canonical W2.1 defaults.
-    assert decoder.eps == pytest.approx(0.1), (
-        f"eps should default to 0.1, got {decoder.eps}"
-    )
+    assert decoder.eps == pytest.approx(
+        0.1
+    ), f"eps should default to 0.1, got {decoder.eps}"
     assert decoder.n_iters == 50, f"n_iters should default to 50, got {decoder.n_iters}"
-    assert decoder.use_sinkhorn is True, (
-        f"use_sinkhorn should default to True, got {decoder.use_sinkhorn}"
-    )
+    assert (
+        decoder.use_sinkhorn is True
+    ), f"use_sinkhorn should default to True, got {decoder.use_sinkhorn}"
 
 
 # ---------------------------------------------------------------------------
@@ -104,16 +109,18 @@ def test_transport_relaxation_init(fmi):
     """``get_transport_relaxation`` returns a usable RelaxedEndpointTerm."""
     term = fmi.get_transport_relaxation()
     # Canonical W2.2 defaults.
-    assert term.lambda_relax == pytest.approx(1e-3), (
-        f"lambda_relax should default to 1e-3, got {term.lambda_relax}"
-    )
+    assert term.lambda_relax == pytest.approx(
+        1e-3
+    ), f"lambda_relax should default to 1e-3, got {term.lambda_relax}"
     assert term.eps == pytest.approx(0.1), f"eps should default to 0.1, got {term.eps}"
     # Forward on a synthetic (B=4, D=3) endpoint + equal energies
     # should produce exactly zero KL (Gibbs-minimum case).
     trajectory = torch.randn(4, 3)
-    energies = torch.zeros(4)            # all-equal → q_T is uniform
+    energies = torch.zeros(4)  # all-equal → q_T is uniform
     penalty = term.forward(trajectory, energies)
-    assert penalty.dim() == 0, f"penalty must be scalar, got shape {tuple(penalty.shape)}"
-    assert float(penalty.item()) == pytest.approx(0.0, abs=1e-6), (
-        f"penalty on uniform q_T should be 0, got {float(penalty.item())}"
-    )
+    assert (
+        penalty.dim() == 0
+    ), f"penalty must be scalar, got shape {tuple(penalty.shape)}"
+    assert float(penalty.item()) == pytest.approx(
+        0.0, abs=1e-6
+    ), f"penalty on uniform q_T should be 0, got {float(penalty.item())}"

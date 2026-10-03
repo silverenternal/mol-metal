@@ -88,20 +88,29 @@ def test_all_optimization_flags_parse():
     #     implicitly by the W1 smoke run which shows the cache hit on
     #     re-run)
     argv = [
-        "--device", "cpu",
-        "--epochs", "1",
+        "--device",
+        "cpu",
+        "--epochs",
+        "1",
         "--torch-compile",
-        "--torch-compile-mode", "reduce-overhead",
+        "--torch-compile-mode",
+        "reduce-overhead",
         "--bf16",
         "--tf32",
-        "--w2-gradient-mode", "sort",
-        "--num-workers", "2",
-        "--cpu-num-workers", "4",
+        "--w2-gradient-mode",
+        "sort",
+        "--num-workers",
+        "2",
+        "--cpu-num-workers",
+        "4",
         "--cuda-graph",
-        "--cuda-graph-static-bs", "8",
+        "--cuda-graph-static-bs",
+        "8",
         "--triton-edge-update",
-        "--metals", "Ir",
-        "--seeds", "0",
+        "--metals",
+        "Ir",
+        "--seeds",
+        "0",
     ]
     args = trainer.parse_args(argv)
     assert args.torch_compile is True
@@ -120,17 +129,17 @@ def test_all_optimization_flags_parse():
     # parse and the default is 'pyg'.  Bogus values still raise
     # SystemExit(2).
     args_default = trainer.parse_args(["--device", "cpu"])
-    assert args_default.dmpnn_backend == "pyg", (
-        f"default dmpnn_backend must be 'pyg', got {args_default.dmpnn_backend!r}"
-    )
+    assert (
+        args_default.dmpnn_backend == "pyg"
+    ), f"default dmpnn_backend must be 'pyg', got {args_default.dmpnn_backend!r}"
     args_loop = trainer.parse_args(["--dmpnn-backend", "loop", "--device", "cpu"])
-    assert args_loop.dmpnn_backend == "loop", (
-        f"--dmpnn-backend loop must set namespace to 'loop', got {args_loop.dmpnn_backend!r}"
-    )
+    assert (
+        args_loop.dmpnn_backend == "loop"
+    ), f"--dmpnn-backend loop must set namespace to 'loop', got {args_loop.dmpnn_backend!r}"
     args_pyg = trainer.parse_args(["--dmpnn-backend", "pyg", "--device", "cpu"])
-    assert args_pyg.dmpnn_backend == "pyg", (
-        f"--dmpnn-backend pyg must set namespace to 'pyg', got {args_pyg.dmpnn_backend!r}"
-    )
+    assert (
+        args_pyg.dmpnn_backend == "pyg"
+    ), f"--dmpnn-backend pyg must set namespace to 'pyg', got {args_pyg.dmpnn_backend!r}"
     with pytest.raises(SystemExit) as exc_info:
         trainer.parse_args(["--dmpnn-backend", "cuda", "--device", "cpu"])
     assert exc_info.value.code == 2  # argparse's standard "invalid choice" exit code
@@ -194,14 +203,18 @@ def test_forward_pass_with_torch_compile():
     """
     trainer = _load_trainer_module()
     model = trainer.MultiTaskWassersteinModel(
-        n_metals=5, hidden=64, depth=2,
+        n_metals=5,
+        hidden=64,
+        depth=2,
     )
 
     # Per-metal regression head is a 3-layer MLP.  We pass a 2H-dim
     # pooled representation (the encoder's output) and verify torch.compile
     # produces the same shape.
     in_dim = 2 * 64  # 2H concat pool
-    head0 = model.reg_heads[0]  # nn.Sequential(Linear(in_features=2H, H), ReLU, Dropout, Linear(H, 1))
+    head0 = model.reg_heads[
+        0
+    ]  # nn.Sequential(Linear(in_features=2H, H), ReLU, Dropout, Linear(H, 1))
     head0.eval()
 
     pooled = torch.randn(2, in_dim, dtype=torch.float32)

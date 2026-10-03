@@ -43,6 +43,7 @@ Honest framing (party-twenty-spirit §3.5):
     numpy versions but the comparison shape (which config beats
     the Wf-325A baseline) is the load-bearing invariant.
 """
+
 from __future__ import annotations
 
 import json
@@ -86,22 +87,29 @@ class TestW2DistanceAsFeatureMultiAxis(unittest.TestCase):
     def test_w2_distance_as_feature_multi_axis(self) -> None:
         # Synthetic covariate matrix: 100 rows × 8 cols.
         rng = np.random.default_rng(0)
-        X = np.stack([
-            rng.normal(loc=300.0, scale=80.0, size=100),    # 0: MolWt-like
-            rng.normal(loc=2.5, scale=1.2, size=100),      # 1: MolLogP-like
-            rng.normal(loc=80.0, scale=30.0, size=100),     # 2: TPSA-like
-            rng.normal(loc=5.0, scale=2.0, size=100),      # 3
-            rng.normal(loc=2.0, scale=1.0, size=100),      # 4
-            rng.normal(loc=0.5, scale=0.3, size=100),      # 5
-            rng.normal(loc=10.0, scale=4.0, size=100),     # 6
-            rng.normal(loc=20.0, scale=8.0, size=100),     # 7: HeavyAtoms-like
-        ], axis=1)
+        X = np.stack(
+            [
+                rng.normal(loc=300.0, scale=80.0, size=100),  # 0: MolWt-like
+                rng.normal(loc=2.5, scale=1.2, size=100),  # 1: MolLogP-like
+                rng.normal(loc=80.0, scale=30.0, size=100),  # 2: TPSA-like
+                rng.normal(loc=5.0, scale=2.0, size=100),  # 3
+                rng.normal(loc=2.0, scale=1.0, size=100),  # 4
+                rng.normal(loc=0.5, scale=0.3, size=100),  # 5
+                rng.normal(loc=10.0, scale=4.0, size=100),  # 6
+                rng.normal(loc=20.0, scale=8.0, size=100),  # 7: HeavyAtoms-like
+            ],
+            axis=1,
+        )
         # Synthetic target correlated with col 0 (MolWt-like)
         y = 0.3 * X[:, 0] + 0.1 * X[:, 7] + rng.normal(loc=0.0, scale=5.0, size=100)
 
         # W₂ axis selection — try axes 0, 1, 2, 7
         sel = select_best_w2_axis(
-            X, y, n_splits=5, n_seeds=2, alpha=1.0,
+            X,
+            y,
+            n_splits=5,
+            n_seeds=2,
+            alpha=1.0,
         )
         self.assertIn(sel["best_axis"], [0, 1, 2, 7])
         self.assertTrue(np.isfinite(sel["best_axis_r2_mean"]))
@@ -123,10 +131,20 @@ class TestW2DistanceAsFeatureMultiAxis(unittest.TestCase):
 
         # Verify multi-axis W₂ evaluation directly
         cv_axis0 = ridge_r2_eval_with_w2(
-            X, y, projection_axis=0, n_splits=5, n_seeds=2, alpha=1.0,
+            X,
+            y,
+            projection_axis=0,
+            n_splits=5,
+            n_seeds=2,
+            alpha=1.0,
         )
         cv_axis7 = ridge_r2_eval_with_w2(
-            X, y, projection_axis=7, n_splits=5, n_seeds=2, alpha=1.0,
+            X,
+            y,
+            projection_axis=7,
+            n_splits=5,
+            n_seeds=2,
+            alpha=1.0,
         )
         self.assertTrue(np.isfinite(cv_axis0["r2_mean"]))
         self.assertTrue(np.isfinite(cv_axis7["r2_mean"]))
@@ -144,11 +162,14 @@ class TestChempropV2GraphFeaturesCombinedPipeline(unittest.TestCase):
     def test_chemprop_v2_graph_features_combined_pipeline(self) -> None:
         # Use platinai_4cell cohort (small, fast).
         X_32d, y, smiles_list = load_cohort(
-            "platinai_4cell", max_samples=200, seed=0,
+            "platinai_4cell",
+            max_samples=200,
+            seed=0,
         )[:3]
         # Build FULL static feature matrix (RDKit 32-d + chemprop v2 graph)
         X_static, feature_names = build_full_feature_matrix(
-            smiles_list, X_32d,
+            smiles_list,
+            X_32d,
             include_rdkit_32d=True,
             include_chemprop_v2_graph=True,
         )
@@ -156,7 +177,7 @@ class TestChempropV2GraphFeaturesCombinedPipeline(unittest.TestCase):
         # RDKit 32-d column count + 3 pools × (72 atom + 14 bond) = 32 + 258 = 290
         # (Some columns may be constant and dropped; allow 100 - 290 range.)
         expected_min = 100
-        expected_max = 32 + 258       # 290
+        expected_max = 32 + 258  # 290
         self.assertGreaterEqual(X_static.shape[1], expected_min)
         self.assertLessEqual(X_static.shape[1], expected_max)
         self.assertEqual(X_static.shape[0], n)
@@ -166,7 +187,11 @@ class TestChempropV2GraphFeaturesCombinedPipeline(unittest.TestCase):
         self.assertEqual(len(feature_names), 32 + 258)
         # Multi-drop CV R² on the FULL static matrix
         cv = ridge_r2_cv(
-            X_static, y, n_splits=5, n_seeds=2, alpha=1.0,
+            X_static,
+            y,
+            n_splits=5,
+            n_seeds=2,
+            alpha=1.0,
         )
         self.assertTrue(np.isfinite(cv["r2_mean"]))
         self.assertEqual(len(cv["r2_per_seed"]), 2)
@@ -176,7 +201,11 @@ class TestChempropV2GraphFeaturesCombinedPipeline(unittest.TestCase):
         # Test that graph features alone also work (sanity check)
         graph_only = extract_graph_features_pooled(smiles_list)
         cv_graph_only = ridge_r2_cv(
-            graph_only, y, n_splits=5, n_seeds=2, alpha=1.0,
+            graph_only,
+            y,
+            n_splits=5,
+            n_seeds=2,
+            alpha=1.0,
         )
         self.assertTrue(np.isfinite(cv_graph_only["r2_mean"]))
 
@@ -309,10 +338,7 @@ class TestCombinedPipelineMultiSeedCvThreeCohorts(unittest.TestCase):
 
         # ----- Honest framing: Wf-325A anchors preserved -----
         for cohort, baseline_r2 in WF325A_BASELINE_R2.items():
-            cohort_entry = next(
-                c for c in data["per_cohort"]
-                if c["cohort"] == cohort
-            )
+            cohort_entry = next(c for c in data["per_cohort"] if c["cohort"] == cohort)
             self.assertAlmostEqual(
                 float(cohort_entry["wf325a_baseline_r2"]),
                 float(baseline_r2),
@@ -369,9 +395,7 @@ class TestR2LiftVsWf325aBaselineMultiSeedCv(unittest.TestCase):
                     lift,
                     r2 - baseline_r2,
                     places=6,
-                    msg=(
-                        f"{cohort} / {cfg['label']}: lift ≠ r2 - baseline"
-                    ),
+                    msg=(f"{cohort} / {cfg['label']}: lift ≠ r2 - baseline"),
                 )
                 # Verdict is documented
                 self.assertIn(cfg["verdict"], valid_verdicts)
@@ -409,15 +433,12 @@ class TestR2LiftVsWf325aBaselineMultiSeedCv(unittest.TestCase):
                 # CV R² is finite on this small sample
                 if cfg.get("r2_mean") is not None:
                     self.assertTrue(
-                        np.isfinite(cfg["r2_mean"])
-                        or cfg["r2_mean"] == 0.0,
+                        np.isfinite(cfg["r2_mean"]) or cfg["r2_mean"] == 0.0,
                     )
 
         # ----- Print summary for human inspection -----
         print()
-        print(
-            f"  Wf-335-M2 aggregate_status = {result['aggregate_status']}"
-        )
+        print(f"  Wf-335-M2 aggregate_status = {result['aggregate_status']}")
         for cohort_entry in result["per_cohort"]:
             cohort = cohort_entry["cohort"]
             baseline = cohort_entry["wf325a_baseline_r2"]

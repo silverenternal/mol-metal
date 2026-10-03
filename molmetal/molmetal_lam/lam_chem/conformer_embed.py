@@ -101,6 +101,7 @@ try:  # pragma: no cover - import-only check
     from rdkit import Chem  # type: ignore
     from rdkit.Chem import AllChem  # type: ignore
     from rdkit import RDLogger  # type: ignore
+
     _RDKIT_AVAILABLE: bool = True
 except Exception as exc:  # pragma: no cover
     Chem = None  # type: ignore
@@ -201,9 +202,7 @@ def has_finite_3d(mol_with_3d) -> bool:
     conf = mol_with_3d.GetConformer(0)
     for i in range(mol_with_3d.GetNumAtoms()):
         pos = conf.GetAtomPosition(i)
-        if not (
-            np.isfinite(pos.x) and np.isfinite(pos.y) and np.isfinite(pos.z)
-        ):
+        if not (np.isfinite(pos.x) and np.isfinite(pos.y) and np.isfinite(pos.z)):
             return False
     return True
 
@@ -308,32 +307,25 @@ def generate_conformer(
         The error message identifies the offending stage.
     """
     if not _RDKIT_AVAILABLE:
-        raise ConformerEmbedError(
-            f"RDKit not available: {_IMPORT_ERR!r}; cannot embed"
-        )
+        raise ConformerEmbedError(f"RDKit not available: {_IMPORT_ERR!r}; cannot embed")
 
     # --- Step 1: parse SMILES -----------------------------------------
     mol = _parse_smiles(smiles)
     if mol is None:
-        raise ConformerEmbedError(
-            f"RDKit could not parse SMILES: {smiles!r}"
-        )
+        raise ConformerEmbedError(f"RDKit could not parse SMILES: {smiles!r}")
     if mol.GetNumAtoms() == 0:
-        raise ConformerEmbedError(
-            f"SMILES parses to a 0-atom molecule: {smiles!r}"
-        )
+        raise ConformerEmbedError(f"SMILES parses to a 0-atom molecule: {smiles!r}")
 
     # --- Step 2: add Hs -----------------------------------------------
     if add_hs:
         mol = Chem.AddHs(mol)
         if mol.GetNumAtoms() == 0:
-            raise ConformerEmbedError(
-                "AddHs returned a 0-atom mol for {smiles!r}"
-            )
+            raise ConformerEmbedError("AddHs returned a 0-atom mol for {smiles!r}")
 
     # --- Step 3: ETKDGv3 sample ---------------------------------------
     params = _make_etkdg_params(
-        seed=seed, max_attempts=max_attempts,
+        seed=seed,
+        max_attempts=max_attempts,
         use_random_coords=use_random_coords,
     )
     status = AllChem.EmbedMolecule(mol, params)
@@ -351,20 +343,14 @@ def generate_conformer(
     # unpack — we trap that and degrade to a plain ``0`` for the
     # tuple-vs-int branch only when the function *did* succeed.
     try:
-        ff_status = AllChem.MMFFOptimizeMolecule(
-            mol, maxIters=int(max_iters)
-        )
+        ff_status = AllChem.MMFFOptimizeMolecule(mol, maxIters=int(max_iters))
     except TypeError:
         # Tuple-returning variant: ``(converged, energy)``.
-        ff_status, _energy = AllChem.MMFFOptimizeMolecule(
-            mol, maxIters=int(max_iters)
-        )
+        ff_status, _energy = AllChem.MMFFOptimizeMolecule(mol, maxIters=int(max_iters))
     except Exception as exc:
         # Some metal centres have no MMFF parameters — fall back to UFF.
         try:
-            ff_status = AllChem.UFFOptimizeMolecule(
-                mol, maxIters=int(max_iters)
-            )
+            ff_status = AllChem.UFFOptimizeMolecule(mol, maxIters=int(max_iters))
         except TypeError:
             ff_status, _energy = AllChem.UFFOptimizeMolecule(
                 mol, maxIters=int(max_iters)
@@ -431,33 +417,28 @@ def generate_conformers(
         ``n_confs < 1`` raises immediately.
     """
     if n_confs < 1:
-        raise ConformerEmbedError(
-            f"n_confs must be >= 1, got {n_confs}"
-        )
+        raise ConformerEmbedError(f"n_confs must be >= 1, got {n_confs}")
     if not _RDKIT_AVAILABLE:
-        raise ConformerEmbedError(
-            f"RDKit not available: {_IMPORT_ERR!r}; cannot embed"
-        )
+        raise ConformerEmbedError(f"RDKit not available: {_IMPORT_ERR!r}; cannot embed")
 
     mol = _parse_smiles(smiles)
     if mol is None:
-        raise ConformerEmbedError(
-            f"RDKit could not parse SMILES: {smiles!r}"
-        )
+        raise ConformerEmbedError(f"RDKit could not parse SMILES: {smiles!r}")
     if mol.GetNumAtoms() == 0:
-        raise ConformerEmbedError(
-            f"SMILES parses to a 0-atom molecule: {smiles!r}"
-        )
+        raise ConformerEmbedError(f"SMILES parses to a 0-atom molecule: {smiles!r}")
     if add_hs:
         mol = Chem.AddHs(mol)
 
     params = _make_etkdg_params(
-        seed=seed, max_attempts=max_attempts,
+        seed=seed,
+        max_attempts=max_attempts,
         use_random_coords=use_random_coords,
     )
     # EmbedMultipleConfs writes N conformers into the mol and returns a
     # list of int atom IDs of failed attempts (RDKit convention).
-    conf_ids = list(AllChem.EmbedMultipleConfs(mol, numConfs=int(n_confs), params=params))
+    conf_ids = list(
+        AllChem.EmbedMultipleConfs(mol, numConfs=int(n_confs), params=params)
+    )
     if len(conf_ids) == 0:
         raise ConformerEmbedError(
             f"EmbedMultipleConfs returned no conformers for "

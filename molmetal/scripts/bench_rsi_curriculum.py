@@ -64,18 +64,33 @@ from molmetal.replay.curriculum import (  # noqa: E402
 # Distinct aromatic SMILES — diverse enough that Tanimoto < 0.4 holds
 # across rows for the diversity filter to actually drop duplicates.
 BENCH_AROMATIC_POOL: List[str] = [
-    "c1ccccc1", "c1ccccc1C", "c1ccccc1O", "c1ccccc1N",
-    "c1ccccc1Cl", "c1ccccc1F", "c1ccccc1Br", "c1ccncc1",
-    "c1cnccc1", "c1ncccc1", "c1ccc2ccccc12", "c1ccc2[nH]ccc2c1",
-    "c1ccc(C)c(C)c1", "c1ccc(O)c(O)c1", "c1ccc(N)c(N)c1",
-    "c1ccc(Cl)c(Cl)c1", "c1ccc(F)c(F)c1", "c1cc(ccc1Cl)Cl",
-    "c1ccc2cccnc2c1", "c1ccc2ncccc2c1",
+    "c1ccccc1",
+    "c1ccccc1C",
+    "c1ccccc1O",
+    "c1ccccc1N",
+    "c1ccccc1Cl",
+    "c1ccccc1F",
+    "c1ccccc1Br",
+    "c1ccncc1",
+    "c1cnccc1",
+    "c1ncccc1",
+    "c1ccc2ccccc12",
+    "c1ccc2[nH]ccc2c1",
+    "c1ccc(C)c(C)c1",
+    "c1ccc(O)c(O)c1",
+    "c1ccc(N)c(N)c1",
+    "c1ccc(Cl)c(Cl)c1",
+    "c1ccc(F)c(F)c1",
+    "c1cc(ccc1Cl)Cl",
+    "c1ccc2cccnc2c1",
+    "c1ccc2ncccc2c1",
 ]
 
 
 def _synth_samples(metal: str, n: int, seed: int) -> List[Dict[str, Any]]:
     """Build a deterministic synthetic per-sample list."""
     import numpy as np
+
     rng = np.random.default_rng(seed * 1_000 + hash(metal) % 1000)
     out: List[Dict[str, Any]] = []
     for i in range(n):
@@ -133,7 +148,8 @@ def _summarise_reports(reports: List[CurriculumStepReport]) -> Dict[str, Any]:
                 if d["predictor_mae_n"] > 0
                 else None
             ),
-            "mean_projection_lift": float(d["projection_lift_sum"]) / float(d["n_steps"]),
+            "mean_projection_lift": float(d["projection_lift_sum"])
+            / float(d["n_steps"]),
         }
     return summary
 
@@ -206,9 +222,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--out-dir",
-        default=str(
-            PROJECT_ROOT / "molmetal" / "reports" / "wf_bench_rsi_curriculum"
-        ),
+        default=str(PROJECT_ROOT / "molmetal" / "reports" / "wf_bench_rsi_curriculum"),
         help="Output directory for bench.json.",
     )
     args = parser.parse_args()

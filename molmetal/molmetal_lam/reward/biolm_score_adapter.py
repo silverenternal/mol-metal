@@ -144,6 +144,7 @@ try:
         biomlm_cli_available as _biomlm_cli_available,
         BioLMSScoreColumn as _BioLMSScoreColumn,
     )
+
     _HAS_BIOLM = True
 except Exception as exc:  # pragma: no cover - defensive
     # We deliberately swallow the import error so the channel can be
@@ -334,7 +335,9 @@ class BiolmScoreChannel(RewardChannel):
     pocket: Any = None
     #: Per-call override; defaults to deriving from the
     #: ``BIOLM_DISABLE_WEIGHTS`` env var at construction time.
-    disable_weights: bool = field(default_factory=lambda: _truthy_env(_DISABLE_WEIGHTS_ENV))
+    disable_weights: bool = field(
+        default_factory=lambda: _truthy_env(_DISABLE_WEIGHTS_ENV)
+    )
 
     # ---- internal state ------------------------------------------------
     #: Instance-level lock guarding subprocess invocation.
@@ -362,7 +365,9 @@ class BiolmScoreChannel(RewardChannel):
           GPU availability.
         """
         try:
-            cli_ok = bool(_biomlm_cli_available(self.repo_root)) if _HAS_BIOLM else False
+            cli_ok = (
+                bool(_biomlm_cli_available(self.repo_root)) if _HAS_BIOLM else False
+            )
         except Exception:
             cli_ok = False
         self._cli_available = bool(cli_ok) and not bool(self.disable_weights)

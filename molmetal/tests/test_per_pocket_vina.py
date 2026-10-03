@@ -19,6 +19,7 @@ Coverage
 4. CLI script — full smoke (force STUB_FALLBACK), output files written,
    per-pocket exhaustiveness map exposed in the summary.
 """
+
 from __future__ import annotations
 
 import csv
@@ -40,6 +41,7 @@ if str(PROJECT_ROOT) not in sys.path:
 class TestPocketVinaConfig:
     def test_defaults(self):
         from molmetal.adapters.per_pocket_vina_config import PocketVinaConfig
+
         c = PocketVinaConfig()
         assert c.exhaustiveness == 8
         assert c.n_poses == 5
@@ -49,6 +51,7 @@ class TestPocketVinaConfig:
 
     def test_custom_values(self):
         from molmetal.adapters.per_pocket_vina_config import PocketVinaConfig
+
         c = PocketVinaConfig(
             exhaustiveness=16,
             n_poses=10,
@@ -64,17 +67,20 @@ class TestPocketVinaConfig:
 
     def test_immutable(self):
         from molmetal.adapters.per_pocket_vina_config import PocketVinaConfig
+
         c = PocketVinaConfig()
         with pytest.raises(Exception):
             c.exhaustiveness = 32  # type: ignore[misc]
 
     def test_invalid_exhaustiveness_raises(self):
         from molmetal.adapters.per_pocket_vina_config import PocketVinaConfig
+
         with pytest.raises(ValueError, match="exhaustiveness"):
             PocketVinaConfig(exhaustiveness=0)
 
     def test_invalid_n_poses_raises(self):
         from molmetal.adapters.per_pocket_vina_config import PocketVinaConfig
+
         with pytest.raises(ValueError, match="n_poses"):
             PocketVinaConfig(n_poses=0)
 
@@ -87,6 +93,7 @@ class TestPerPocketVinaConfig:
         from molmetal.adapters.per_pocket_vina_config import (
             PerPocketVinaConfig,
         )
+
         cfg = PerPocketVinaConfig()
         expected = {"1h36", "3eml", "3ny8", "4aaw", "4rlu"}
         assert set(cfg.supported_pockets()) == expected
@@ -96,6 +103,7 @@ class TestPerPocketVinaConfig:
         from molmetal.adapters.per_pocket_vina_config import (
             PerPocketVinaConfig,
         )
+
         cfg = PerPocketVinaConfig()
         c = cfg.get("1h36")
         assert c.exhaustiveness == 16
@@ -108,6 +116,7 @@ class TestPerPocketVinaConfig:
         from molmetal.adapters.per_pocket_vina_config import (
             PerPocketVinaConfig,
         )
+
         cfg = PerPocketVinaConfig()
         c = cfg.get("4rlu")
         assert c.exhaustiveness == 8
@@ -119,6 +128,7 @@ class TestPerPocketVinaConfig:
         from molmetal.adapters.per_pocket_vina_config import (
             PerPocketVinaConfig,
         )
+
         cfg = PerPocketVinaConfig()
         c = cfg.get("XXXX")
         # Global fallback = same as 4rlu baseline (ex=8, n_poses=5).
@@ -133,11 +143,9 @@ class TestPerPocketVinaConfig:
         from molmetal.adapters.per_pocket_vina_config import (
             PerPocketVinaConfig,
         )
+
         cfg = PerPocketVinaConfig()
-        ex_by_pocket = {
-            p: cfg.exhaustiveness_for(p)
-            for p in cfg.supported_pockets()
-        }
+        ex_by_pocket = {p: cfg.exhaustiveness_for(p) for p in cfg.supported_pockets()}
         # 1h36 ≠ 4rlu (the two anchor pockets in the spec)
         assert ex_by_pocket["1h36"] != ex_by_pocket["4rlu"]
         assert ex_by_pocket["1h36"] == 16
@@ -148,6 +156,7 @@ class TestPerPocketVinaConfig:
             PerPocketVinaConfig,
             PocketVinaConfig,
         )
+
         cfg = PerPocketVinaConfig(
             overrides={"1h36": PocketVinaConfig(exhaustiveness=64, n_poses=20)},
         )
@@ -164,6 +173,7 @@ class TestPerPocketVinaConfig:
             PerPocketVinaConfig,
             PocketVinaConfig,
         )
+
         cfg = PerPocketVinaConfig(
             pocket_map={"foo": PocketVinaConfig(exhaustiveness=4, n_poses=2)},
         )
@@ -177,6 +187,7 @@ class TestPerPocketVinaConfig:
             PerPocketVinaConfig,
         )
         from molmetal.ports import DockingConfig
+
         cfg = PerPocketVinaConfig()
         dc = cfg.to_docking_config("1h36")
         assert isinstance(dc, DockingConfig)
@@ -188,6 +199,7 @@ class TestPerPocketVinaConfig:
             PerPocketVinaConfig,
         )
         from molmetal.ports import DockingConfig
+
         cfg = PerPocketVinaConfig()
         base = DockingConfig(seed=123, n_poses=1, exhaustiveness=1)
         dc = cfg.to_docking_config("1h36", base_config=base)
@@ -200,6 +212,7 @@ class TestPerPocketVinaConfig:
         from molmetal.adapters.per_pocket_vina_config import (
             PerPocketVinaConfig,
         )
+
         cfg = PerPocketVinaConfig()
         d = cfg.as_dict()
         # Round-trip through JSON to prove no non-serialisable types.
@@ -214,6 +227,7 @@ class TestPerPocketVinaConfig:
             default_per_pocket_config,
             PerPocketVinaConfig,
         )
+
         a = default_per_pocket_config()
         b = default_per_pocket_config()
         # Each call returns a fresh instance — no shared mutable state.
@@ -238,8 +252,9 @@ class TestDockPerPocketVinaCLI:
     def test_help(self):
         """The CLI exposes ``--help``."""
         # Already validated by manual invocation; this test pins it.
-        assert (PROJECT_ROOT / "molmetal" / "scripts" /
-                "dock_per_pocket_vina.py").is_file()
+        assert (
+            PROJECT_ROOT / "molmetal" / "scripts" / "dock_per_pocket_vina.py"
+        ).is_file()
 
     def test_cli_smoke_with_stub_fallback(self, tmp_path, monkeypatch):
         """Full CLI smoke — force MISSING_DEP so every cell is
@@ -261,10 +276,21 @@ class TestDockPerPocketVinaCLI:
         out_dir.mkdir()
         argv = [
             "prog",
-            "--pockets", "1h36", "3eml", "3ny8", "4aaw", "4rlu",
-            "--smiles", "CCO", "c1ccccc1",
-            "--seeds", "0", "1", "2",
-            "--out-dir", str(out_dir),
+            "--pockets",
+            "1h36",
+            "3eml",
+            "3ny8",
+            "4aaw",
+            "4rlu",
+            "--smiles",
+            "CCO",
+            "c1ccccc1",
+            "--seeds",
+            "0",
+            "1",
+            "2",
+            "--out-dir",
+            str(out_dir),
             "--quiet",
         ]
         saved = sys.argv
@@ -276,9 +302,7 @@ class TestDockPerPocketVinaCLI:
         assert rc == 0
 
         # Smoke summary exists + records per-pocket exhaustiveness.
-        summary = json.loads(
-            (out_dir / "smoke_summary.json").read_text()
-        )
+        summary = json.loads((out_dir / "smoke_summary.json").read_text())
         assert "per_pocket_exhaustiveness" in summary
         ex = summary["per_pocket_exhaustiveness"]
         assert ex["1h36"] == 16
@@ -327,12 +351,24 @@ class TestDockPerPocketVinaCLI:
         out_dir.mkdir()
         argv = [
             "prog",
-            "--pockets", "1h36", "3eml", "3ny8", "4aaw", "4rlu",
+            "--pockets",
+            "1h36",
+            "3eml",
+            "3ny8",
+            "4aaw",
+            "4rlu",
             "--smiles",
-                "CCO", "c1ccccc1", "CC(=O)Oc1ccccc1C(=O)O",
-                "Nc1ncnc2[nH]cnc12", "O=C(O)c1ccccc1",
-            "--seeds", "0", "1", "2",
-            "--out-dir", str(out_dir),
+            "CCO",
+            "c1ccccc1",
+            "CC(=O)Oc1ccccc1C(=O)O",
+            "Nc1ncnc2[nH]cnc12",
+            "O=C(O)c1ccccc1",
+            "--seeds",
+            "0",
+            "1",
+            "2",
+            "--out-dir",
+            str(out_dir),
             "--quiet",
         ]
         saved = sys.argv
@@ -343,9 +379,7 @@ class TestDockPerPocketVinaCLI:
             sys.argv = saved
         assert rc == 0
 
-        summary = json.loads(
-            (out_dir / "smoke_summary.json").read_text()
-        )
+        summary = json.loads((out_dir / "smoke_summary.json").read_text())
         # 5 × 5 × 3 = 75 cells (matches Wf-179 P2 reference of 75
         # docked poses — 5 pockets × 3 seeds × 5 poses).
         assert summary["metadata"]["n_cells"] == 75
@@ -374,6 +408,7 @@ class TestPerPocketWiring:
             default_per_pocket_config,
         )
         from molmetal.ports import DockingConfig
+
         cfg = default_per_pocket_config()
         for pocket in cfg.supported_pockets():
             dc = cfg.to_docking_config(pocket)
@@ -387,10 +422,8 @@ class TestPerPocketWiring:
         from molmetal.adapters.per_pocket_vina_config import (
             default_per_pocket_config,
         )
+
         cfg = default_per_pocket_config()
-        ex_values = {
-            p: cfg.exhaustiveness_for(p)
-            for p in cfg.supported_pockets()
-        }
+        ex_values = {p: cfg.exhaustiveness_for(p) for p in cfg.supported_pockets()}
         # At least two pockets have distinct exhaustiveness.
         assert len(set(ex_values.values())) >= 2

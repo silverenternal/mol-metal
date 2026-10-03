@@ -79,6 +79,7 @@ Usage
     python molmetal/scripts/wf380a5_multi_template_mm_gbsa.py \\
         --backend real --meeko --vina-binary vina
 """
+
 from __future__ import annotations
 
 import argparse
@@ -106,7 +107,11 @@ PER_POCKET_SUCCESS_RATE: float = 0.80
 # Constants — multi-template defaults
 # ---------------------------------------------------------------------------
 DEFAULT_POCKETS: Tuple[str, ...] = (
-    "1h36", "3eml", "3ny8", "4aaw", "4rlu",
+    "1h36",
+    "3eml",
+    "3ny8",
+    "4aaw",
+    "4rlu",
 )
 DEFAULT_N_TEMPLATES: int = 5
 DEFAULT_N_POSES: int = 9
@@ -389,7 +394,12 @@ def mm_gbsa_rescore(
     best_template_idx, best_pose_idx = np.unravel_index(flat_idx, mmgbsa_grid.shape)
     best_rmsd_angstrom = float(rmsd_grid[best_template_idx, best_pose_idx])
     best_mmgbsa_kcal = float(mmgbsa_grid[best_template_idx, best_pose_idx])
-    return int(best_template_idx), int(best_pose_idx), best_rmsd_angstrom, best_mmgbsa_kcal
+    return (
+        int(best_template_idx),
+        int(best_pose_idx),
+        best_rmsd_angstrom,
+        best_mmgbsa_kcal,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -466,7 +476,9 @@ def aggregate_median_rmsd(
     best_rmsds = [r.best_rmsd_angstrom for r in per_pocket]
     n_pass_2_0a = sum(1 for r in per_pocket if r.passes_2_0a_sota)
     n_pass_2_5a = sum(
-        1 for r in per_pocket if r.best_rmsd_angstrom <= RMSD_PRACTICAL_THRESHOLD_ANGSTROM
+        1
+        for r in per_pocket
+        if r.best_rmsd_angstrom <= RMSD_PRACTICAL_THRESHOLD_ANGSTROM
     )
     agg_median = float(statistics.median(best_rmsds))
     success_rate_2_0a = n_pass_2_0a / len(per_pocket)

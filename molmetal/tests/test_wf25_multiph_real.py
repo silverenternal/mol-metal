@@ -17,6 +17,7 @@ Test inventory (10 tests)
    ``build_design_matrix`` + ``cross_validate`` is deterministic and
    matches the artefacts.
 """
+
 from __future__ import annotations
 
 import json
@@ -70,13 +71,20 @@ def metrics() -> dict:
 
 
 REQUIRED_KEYS = {
-    "rdkit_acc_mean", "rdkit_acc_std",
-    "rdkit_f1_mean", "rdkit_f1_std",
-    "rdkit_wall_train_mean", "rdkit_wall_train_std",
-    "multiph_acc_mean", "multiph_acc_std",
-    "multiph_f1_mean", "multiph_f1_std",
-    "multiph_wall_train_mean", "multiph_wall_train_std",
-    "n_samples", "n_folds",
+    "rdkit_acc_mean",
+    "rdkit_acc_std",
+    "rdkit_f1_mean",
+    "rdkit_f1_std",
+    "rdkit_wall_train_mean",
+    "rdkit_wall_train_std",
+    "multiph_acc_mean",
+    "multiph_acc_std",
+    "multiph_f1_mean",
+    "multiph_f1_std",
+    "multiph_wall_train_mean",
+    "multiph_wall_train_std",
+    "n_samples",
+    "n_folds",
     "per_fold",
 }
 
@@ -90,16 +98,22 @@ def test_metrics_has_required_top_level_keys(metrics: dict) -> None:
 def test_metrics_types_correct(metrics: dict) -> None:
     """Scalar keys are floats/ints; per_fold is a list."""
     for key in [
-        "rdkit_acc_mean", "rdkit_acc_std",
-        "rdkit_f1_mean", "rdkit_f1_std",
-        "multiph_acc_mean", "multiph_acc_std",
-        "multiph_f1_mean", "multiph_f1_std",
-        "rdkit_wall_train_mean", "rdkit_wall_train_std",
-        "multiph_wall_train_mean", "multiph_wall_train_std",
+        "rdkit_acc_mean",
+        "rdkit_acc_std",
+        "rdkit_f1_mean",
+        "rdkit_f1_std",
+        "multiph_acc_mean",
+        "multiph_acc_std",
+        "multiph_f1_mean",
+        "multiph_f1_std",
+        "rdkit_wall_train_mean",
+        "rdkit_wall_train_std",
+        "multiph_wall_train_mean",
+        "multiph_wall_train_std",
     ]:
-        assert isinstance(metrics[key], (int, float)), (
-            f"{key} must be numeric; got {type(metrics[key]).__name__}"
-        )
+        assert isinstance(
+            metrics[key], (int, float)
+        ), f"{key} must be numeric; got {type(metrics[key]).__name__}"
     assert isinstance(metrics["n_samples"], int)
     assert isinstance(metrics["n_folds"], int)
     assert isinstance(metrics["per_fold"], list)
@@ -134,8 +148,10 @@ def test_macro_f1_in_unit_interval(metrics: dict) -> None:
 def test_wall_times_non_negative(metrics: dict) -> None:
     """Wall-time means are non-negative for both backends."""
     for key in (
-        "multiph_wall_train_mean", "multiph_wall_train_std",
-        "rdkit_wall_train_mean", "rdkit_wall_train_std",
+        "multiph_wall_train_mean",
+        "multiph_wall_train_std",
+        "rdkit_wall_train_mean",
+        "rdkit_wall_train_std",
     ):
         v = float(metrics[key])
         assert v >= 0.0, f"{key}={v} must be non-negative"
@@ -147,9 +163,9 @@ def test_wall_times_non_negative(metrics: dict) -> None:
 def test_per_fold_count_matches_n_folds(metrics: dict) -> None:
     """``len(per_fold) == n_folds``."""
     n_folds = int(metrics["n_folds"])
-    assert len(metrics["per_fold"]) == n_folds, (
-        f"len(per_fold)={len(metrics['per_fold'])} != n_folds={n_folds}"
-    )
+    assert (
+        len(metrics["per_fold"]) == n_folds
+    ), f"len(per_fold)={len(metrics['per_fold'])} != n_folds={n_folds}"
 
 
 def test_per_fold_train_test_sum_to_n_samples(metrics: dict) -> None:
@@ -157,9 +173,9 @@ def test_per_fold_train_test_sum_to_n_samples(metrics: dict) -> None:
     n_samples = int(metrics["n_samples"])
     for fold in metrics["per_fold"]:
         total = int(fold["n_train"]) + int(fold["n_test"])
-        assert total == n_samples, (
-            f"fold {fold['fold']}: n_train+n_test={total} != n_samples={n_samples}"
-        )
+        assert (
+            total == n_samples
+        ), f"fold {fold['fold']}: n_train+n_test={total} != n_samples={n_samples}"
 
 
 # ---------------------------------------------------------------------------
@@ -177,22 +193,22 @@ def test_helpers_deterministic() -> None:
     k = 5
     splits_a = _kfold_indices(n, k, seed=42)
     splits_b = _kfold_indices(n, k, seed=42)
-    assert splits_a == splits_b, (
-        "_kfold_indices must be deterministic for the same seed"
-    )
+    assert (
+        splits_a == splits_b
+    ), "_kfold_indices must be deterministic for the same seed"
     # Test indices across folds are a partition of [0, n) — each
     # sample appears as test exactly once.
     all_test_idx: list[int] = []
     for _, test_idx in splits_a:
         all_test_idx.extend(test_idx)
-    assert sorted(all_test_idx) == list(range(n)), (
-        "test indices must form a partition of [0, n) across folds"
-    )
+    assert sorted(all_test_idx) == list(
+        range(n)
+    ), "test indices must form a partition of [0, n) across folds"
     # Train indices per fold = complement of test indices.
     for fold_idx, (train_idx, test_idx) in enumerate(splits_a):
-        assert set(train_idx) == set(range(n)) - set(test_idx), (
-            f"fold {fold_idx}: train set is not the complement of test set"
-        )
+        assert set(train_idx) == set(range(n)) - set(
+            test_idx
+        ), f"fold {fold_idx}: train set is not the complement of test set"
 
 
 def test_multiph_features_shape_contract() -> None:
@@ -209,18 +225,18 @@ def test_multiph_features_shape_contract() -> None:
     # Tiny pocket cloud.
     coords = torch.zeros(1, 5, 3)
     atom_types = torch.ones(1, 5, dtype=torch.long)
-    coords[0] = torch.tensor([
-        [0.0, 0.0, 0.0],
-        [1.5, 0.0, 0.0],
-        [0.0, 1.5, 0.0],
-        [0.0, 0.0, 1.5],
-        [1.0, 1.0, 1.0],
-    ])
+    coords[0] = torch.tensor(
+        [
+            [0.0, 0.0, 0.0],
+            [1.5, 0.0, 0.0],
+            [0.0, 1.5, 0.0],
+            [0.0, 0.0, 1.5],
+            [1.0, 1.0, 1.0],
+        ]
+    )
     atom_types[0] = torch.tensor([6, 6, 6, 6, 6])
     out = feats.compute_with_atom_types(coords, atom_types)
-    assert out.shape == (1, 8, 8), (
-        f"expected (1, 8, 8); got {tuple(out.shape)}"
-    )
+    assert out.shape == (1, 8, 8), f"expected (1, 8, 8); got {tuple(out.shape)}"
     flat_dim = out.reshape(-1).shape[0]
     assert flat_dim == 8 * 8, f"flat_dim must be n_bins ** 2 = 64; got {flat_dim}"
 
@@ -228,6 +244,7 @@ def test_multiph_features_shape_contract() -> None:
 def test_script_imports_cleanly() -> None:
     """The script module imports cleanly (catches typos / syntax errors)."""
     from molmetal.scripts import wf25_multiph_real_eval  # noqa: F401
+
     assert hasattr(wf25_multiph_real_eval, "build_design_matrix")
     assert hasattr(wf25_multiph_real_eval, "cross_validate")
     assert hasattr(wf25_multiph_real_eval, "compute_multi_ph_features")

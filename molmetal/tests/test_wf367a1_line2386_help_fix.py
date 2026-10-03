@@ -70,8 +70,7 @@ def test_line_2384_has_pct_not_pct_literal() -> None:
 
     line_2384 = lines[2383]  # 0-indexed
     assert "PROJECTED +20-30 pct training speed" in line_2384, (
-        f"Line 2384 missing Wf-367-A1 'pct' replacement; got: "
-        f"{line_2384[:120]}"
+        f"Line 2384 missing Wf-367-A1 'pct' replacement; got: " f"{line_2384[:120]}"
     )
     # Specifically ensure no literal "%" pattern that argparse would
     # mis-format. Allow "%" only if escaped ("%%") or if followed by
@@ -96,8 +95,7 @@ def test_line_2386_introduces_no_help_eq_with_literal_pct() -> None:
     # Defensive: ensure no `help=` substring + literal % in the same
     # comment line (would-be-help= block).
     assert "help=" not in line_2386, (
-        f"Line 2386 should be a plain comment (no help=); got: "
-        f"{line_2386[:120]}"
+        f"Line 2386 should be a plain comment (no help=); got: " f"{line_2386[:120]}"
     )
     assert not re.search(r"%(?!\(default\)|\(type\)|\(prog\)|%)", line_2386), (
         f"Line 2386 contains unsafe literal '%' (potential copy-paste "
@@ -174,9 +172,9 @@ def test_full_subprocess_help_runs_with_wf367a1_fix() -> None:
         f"stderr={result.stderr[:1000]}"
     )
     # Confirm Wf-358-B1 / Wf-367-A1 markers visible
-    assert "--wasserstein-w1" in result.stdout, (
-        f"--wasserstein-w1 missing from --help:\n{result.stdout[:500]}"
-    )
+    assert (
+        "--wasserstein-w1" in result.stdout
+    ), f"--wasserstein-w1 missing from --help:\n{result.stdout[:500]}"
     assert "PROJECTED +20-30 pct" in result.stdout, (
         f"Wf-358-A1 'pct' marker missing (regression?): "
         f"{result.stdout[max(0, result.stdout.find('wasserstein-w1')-50):result.stdout.find('wasserstein-w1')+500]}"

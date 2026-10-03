@@ -9,7 +9,9 @@ def test_cisplatin_high_aquation():
 
 def test_carboplatin_lower_than_cisplatin():
     m = MetalHydrationAnalyzer()
-    assert m.aquation_rate_proxy("N[Pt]1(OC(=O)CC(=O)O1)N") <= m.aquation_rate_proxy("N[Pt](N)(Cl)Cl")
+    assert m.aquation_rate_proxy("N[Pt]1(OC(=O)CC(=O)O1)N") <= m.aquation_rate_proxy(
+        "N[Pt](N)(Cl)Cl"
+    )
 
 
 def test_ruthenium_bpy_inert():
@@ -25,7 +27,10 @@ def test_gsh_resistance_bulky():
 
 
 def test_reduction_class():
-    assert MetalHydrationAnalyzer().reduction_potential_class("Cl[Pt]N") == "moderately_reduced"
+    assert (
+        MetalHydrationAnalyzer().reduction_potential_class("Cl[Pt]N")
+        == "moderately_reduced"
+    )
 
 
 def test_bounds_and_invalid_default():
@@ -49,13 +54,22 @@ def test_phosphine_trans_donor_is_strong():
 
 def test_trans_effect_invalid_smiles_fallback():
     result = MetalHydrationAnalyzer().trans_effect_indicator("invalid")
-    assert result == {"strongest_trans_donor": None,
-                      "trans_labilization_score": 0.5,
-                      "labile_position_index": None}
+    assert result == {
+        "strongest_trans_donor": None,
+        "trans_labilization_score": 0.5,
+        "labile_position_index": None,
+    }
 
 
 def test_trans_effect_donor_type_and_constructor_signature():
     result = MetalHydrationAnalyzer().trans_effect_indicator("Cl[Pt](N)(N)Cl")
-    assert result["strongest_trans_donor"] is None or isinstance(result["strongest_trans_donor"], str)
+    assert result["strongest_trans_donor"] is None or isinstance(
+        result["strongest_trans_donor"], str
+    )
     signature = inspect.signature(MetalHydrationAnalyzer.__init__)
-    assert list(signature.parameters) == ["self", "metal", "oxidation_state", "default_pH"]
+    assert list(signature.parameters) == [
+        "self",
+        "metal",
+        "oxidation_state",
+        "default_pH",
+    ]

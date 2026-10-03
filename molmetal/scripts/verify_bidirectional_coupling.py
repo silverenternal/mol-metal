@@ -85,16 +85,14 @@ def main() -> int:
     try:
         bc = BidirectionalCoupling()
         out = bc.round_trip(
-            args.seed, np.zeros(8, dtype=np.float32), n_steps=10,
+            args.seed,
+            np.zeros(8, dtype=np.float32),
+            n_steps=10,
         )
         loss = float(out.get("round_trip_loss", 0.0))
         cfm = out.get("cfm_output")
         recon = out.get("reconstructed_lambda")
-        if (
-            np.isfinite(loss)
-            and cfm is not None
-            and recon is not None
-        ):
+        if np.isfinite(loss) and cfm is not None and recon is not None:
             n_pass += 1
     except Exception:
         pass
@@ -124,10 +122,13 @@ def main() -> int:
         bc = BidirectionalCoupling()
         a = bc.round_trip(args.seed, np.zeros(8, dtype=np.float32), n_steps=10)
         b = bc.round_trip(args.seed, np.zeros(8, dtype=np.float32), n_steps=10)
-        if abs(
-            float(a.get("round_trip_loss", 0.0))
-            - float(b.get("round_trip_loss", 0.0))
-        ) < 1e-6:
+        if (
+            abs(
+                float(a.get("round_trip_loss", 0.0))
+                - float(b.get("round_trip_loss", 0.0))
+            )
+            < 1e-6
+        ):
             n_pass += 1
     except Exception:
         pass

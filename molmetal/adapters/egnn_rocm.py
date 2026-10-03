@@ -110,7 +110,9 @@ def _scatter_sum(
     would fail with a partially-initialised module error.
     """
     from molmetal.models._scatter import scatter_sum_legacy
+
     return scatter_sum_legacy(msg, dst, dim=dim, dim_size=dim_size)
+
 
 # Process-wide gate for the fused axis-angle coord update (Phase-2 wiring).
 # ``True`` (default) routes the EGNN coord update through
@@ -237,10 +239,10 @@ class EquivariantGraphConv(nn.Module):
 
     def forward(
         self,
-        h: torch.Tensor,      # [n_nodes, in_node_dim] node scalar features
-        x: torch.Tensor,       # [n_nodes, 3] node coordinates
+        h: torch.Tensor,  # [n_nodes, in_node_dim] node scalar features
+        x: torch.Tensor,  # [n_nodes, 3] node coordinates
         edge_index: torch.Tensor,  # [2, n_edges] source->target edges
-        n_nodes: int = None,   # explicit n_nodes to avoid relying on h.size(0)
+        n_nodes: int = None,  # explicit n_nodes to avoid relying on h.size(0)
         dative_bond_edge_attr: torch.Tensor | None = None,
         edge_types: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
@@ -523,7 +525,7 @@ class EquivariantGraphConv(nn.Module):
         if h.size(-1) == self.hidden_dim:
             return h
         # Use a learned projection if dimensions don't match
-        if not hasattr(self, '_h_proj'):
+        if not hasattr(self, "_h_proj"):
             self._h_proj = nn.Linear(h.size(-1), self.hidden_dim).to(h.device)
         return self._h_proj(h)
 
@@ -561,13 +563,15 @@ class EGNN(nn.Module):
         #
         # NOTE: use_reentrant=False is mandatory on PyTorch 2.14 + ROCm 7.2.
         # use_reentrant=True raises "Expected tensor metadata" on HIP builds.
-        self.layers = nn.ModuleList([
-            CheckpointedEGNNLayer(
-                block=EquivariantGraphConv(hidden_dim, hidden_dim),
-                enabled=egnn_checkpoint_default_enabled(),
-            )
-            for _ in range(n_layers)
-        ])
+        self.layers = nn.ModuleList(
+            [
+                CheckpointedEGNNLayer(
+                    block=EquivariantGraphConv(hidden_dim, hidden_dim),
+                    enabled=egnn_checkpoint_default_enabled(),
+                )
+                for _ in range(n_layers)
+            ]
+        )
 
         # Output projection (pool -> scalar)
         self.output_proj = nn.Linear(hidden_dim, hidden_dim)
@@ -609,9 +613,13 @@ class EGNN(nn.Module):
         h = self.input_proj(h)
 
         for layer in self.layers:
-            h, x = layer(h, x, edge_index,
-                         dative_bond_edge_attr=dative_bond_edge_attr,
-                         edge_types=edge_types)
+            h, x = layer(
+                h,
+                x,
+                edge_index,
+                dative_bond_edge_attr=dative_bond_edge_attr,
+                edge_types=edge_types,
+            )
 
         h = self.output_proj(h)
         return h, x

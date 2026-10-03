@@ -98,8 +98,11 @@ class UnifiedAtomBondFlowHead(nn.Module):
         atom_v = self.atom_head(h)
         if not self.cfg.use_bond_flow:
             bond_v = torch.zeros(
-                edge_attr_h.shape[0], edge_attr_h.shape[1], 3,
-                dtype=edge_attr_h.dtype, device=edge_attr_h.device,
+                edge_attr_h.shape[0],
+                edge_attr_h.shape[1],
+                3,
+                dtype=edge_attr_h.dtype,
+                device=edge_attr_h.device,
             )
         elif self.cfg.user_ok_required and not _user_ok():
             # Honest license gate — zero the bond stream unless USER_OK.

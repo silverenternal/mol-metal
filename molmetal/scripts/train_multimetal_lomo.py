@@ -103,6 +103,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -136,7 +137,7 @@ from molmetal.models.v4_multitask_dmpnn import (
 )
 
 import train_ru_5metal_se3sb as _w31_mod  # type: ignore[import-not-found]  # noqa: F401  — exposed for downstream introspection
-from train_ru_5metal_se3sb import (      # type: ignore[import-not-found]
+from train_ru_5metal_se3sb import (  # type: ignore[import-not-found]
     COORD_BY_METAL,
     RECIPE_BATCH,
     RECIPE_DEPTH,
@@ -168,12 +169,12 @@ from molmetal.adapters.se3_sb_integration import (
 # Lazy import inside ``attach_hilbert_components`` so the cold-start
 # path (``--init tmqm`` / ``--init se3sb``) does not require the
 # optional PySR dependency.
-try:                                            # pragma: no cover
+try:  # pragma: no cover
     from molmetal.molmetal_lam.reward.hilbert_astsr_integration import (
         HilbertASTSRComposite as _HilbertASTSRComposite,
     )
-except Exception:                               # pragma: no cover
-    _HilbertASTSRComposite = None               # type: ignore[assignment]
+except Exception:  # pragma: no cover
+    _HilbertASTSRComposite = None  # type: ignore[assignment]
 
 # Wf-35 Phase 2 — shared argparse / GPU env / MEASURED-vs-PROJECTED tag.
 from molmetal.scripts._common_train_args import (
@@ -222,9 +223,9 @@ def parse_fold_token(fold: str) -> str:
     upper = f.upper()
     # Accept canonical ``leave-{metal}-out`` / ``leave-{metal}``.
     if upper.startswith("LEAVE-") and upper.endswith("-OUT"):
-        m = upper[len("LEAVE-"):-len("-OUT")]
+        m = upper[len("LEAVE-") : -len("-OUT")]
     elif upper.startswith("LEAVE-"):
-        m = upper[len("LEAVE-"):]
+        m = upper[len("LEAVE-") :]
     else:
         m = upper
     # Match case-insensitively against SUPPORTED_METALS; return the
@@ -346,8 +347,8 @@ def attach_hilbert_components(
         use_hilbert=True,
         population_dim=int(population_dim),
     )
-    wrapper.hilbert_composite = composite          # type: ignore[attr-defined]
-    wrapper.hilbert_n_iters = int(n_iters)         # type: ignore[attr-defined]
+    wrapper.hilbert_composite = composite  # type: ignore[attr-defined]
+    wrapper.hilbert_n_iters = int(n_iters)  # type: ignore[attr-defined]
     return {"hilbert_composite": composite}
 
 
@@ -375,7 +376,7 @@ def eval_lomo_test_auc(
     labels: List[int] = []
     wrapper.eval()
     for start in range(0, len(pool), batch_size):
-        chunk = pool[start:start + batch_size]
+        chunk = pool[start : start + batch_size]
         smis = [s for s, _ in chunk]
         ys = torch.tensor([y for _, y in chunk], dtype=torch.long)
         mids = torch.full((len(chunk),), mid, dtype=torch.long).to(device)
@@ -416,7 +417,7 @@ def eval_lomo_val_auc(
         labels: List[int] = []
         wrapper.eval()
         for start in range(0, len(pool), batch_size):
-            chunk = pool[start:start + batch_size]
+            chunk = pool[start : start + batch_size]
             smis = [s for s, _ in chunk]
             ys = torch.tensor([y for _, y in chunk], dtype=torch.long)
             mids = torch.full((len(chunk),), mid, dtype=torch.long).to(device)
@@ -454,11 +455,14 @@ def se3_integration_smoke(
     samples = torch.randn(2, n_atoms, 3)
     try:
         x_final = integrate_with_cfm(
-            samples, twist_head, n_steps=n_steps, method="midpoint",
+            samples,
+            twist_head,
+            n_steps=n_steps,
+            method="midpoint",
         )
         out_norm = float(x_final.norm().item())
         finite = bool(torch.isfinite(x_final).all().item())
-    except Exception as exc:                                # pragma: no cover
+    except Exception as exc:  # pragma: no cover
         return {"out_norm": float("nan"), "finite": False, "error": str(exc)}
     return {"out_norm": out_norm, "finite": finite}
 
@@ -470,6 +474,7 @@ def hilbert_smoke(composite, n_rows: int = 4, n_feats: int = 8) -> Dict[str, obj
     """Run a tiny Hilbert primal-dual fit to confirm wiring is alive."""
     try:
         import numpy as _np
+
         feats = _np.zeros((n_rows, n_feats), dtype=float)
         feats[:, 0] = 1.0
         tgt = _np.array([0.1, 0.2, 0.3, 0.4], dtype=float)[:n_rows]
@@ -482,7 +487,7 @@ def hilbert_smoke(composite, n_rows: int = 4, n_feats: int = 8) -> Dict[str, obj
             "backend": str(result.get("backend", "?")),
             "active_fitted": bool(composite.active_fitted()),
         }
-    except Exception as exc:                                # pragma: no cover
+    except Exception as exc:  # pragma: no cover
         return {"wall_s": float("nan"), "r2": float("nan"), "error": str(exc)}
 
 
@@ -528,11 +533,17 @@ def train_one_fold_seed(
     r18_components: Dict[str, object] = {}
     if args.init == "hilbert":
         r18_components = attach_hilbert_components(
-            wrapper, device, population_dim=HILBERT_DIM, n_iters=32,
+            wrapper,
+            device,
+            population_dim=HILBERT_DIM,
+            n_iters=32,
         )
     else:
         r18_components = attach_init_components(
-            args.init, wrapper, device, hidden_dim=args.hidden,
+            args.init,
+            wrapper,
+            device,
+            hidden_dim=args.hidden,
         )
 
     n_frozen, n_trainable = _freeze_encoder_layers_1_2(backbone)
@@ -548,9 +559,7 @@ def train_one_fold_seed(
         lr=args.lr,
         weight_decay=1e-4,
     )
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=args.epochs
-    )
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
     loss_fn = Ru5MetalSe3SBLoss(
         n_coord_classes=RECIPE_N_COORD_CLASSES,
         coord_weight=COORD_LOSS_WEIGHT,
@@ -560,8 +569,7 @@ def train_one_fold_seed(
     # Build LOMO view — held-out metal only in test.
     lomo_view, counts = build_lomo_view(data, held_out_metal)
     print(
-        f"[train_multimetal_lomo] fold=leave-{held_out_metal}-out "
-        f"counts={counts}"
+        f"[train_multimetal_lomo] fold=leave-{held_out_metal}-out " f"counts={counts}"
     )
 
     best_val_mean = -1.0
@@ -577,8 +585,9 @@ def train_one_fold_seed(
         n_batches = 0
         per_metal_batches = {
             m: build_batches(
-                cap_pool(gather_train_pool(lomo_view, m),
-                         args.train_max_per_metal, rng),
+                cap_pool(
+                    gather_train_pool(lomo_view, m), args.train_max_per_metal, rng
+                ),
                 wrapper.metal_id(m),
                 args.batch,
                 rng,
@@ -616,7 +625,8 @@ def train_one_fold_seed(
             if isinstance(batch_loss, torch.Tensor):
                 batch_loss.backward()
                 torch.nn.utils.clip_grad_norm_(
-                    wrapper.parameters(), max_norm=5.0,
+                    wrapper.parameters(),
+                    max_norm=5.0,
                 )
                 optimizer.step()
                 epoch_loss += float(batch_loss.item())
@@ -625,13 +635,19 @@ def train_one_fold_seed(
 
         if epoch % args.eval_every == 0 or epoch == args.epochs:
             mean_val, val_aucs = eval_lomo_val_auc(
-                wrapper, lomo_view, train_metals, device, args.batch,
+                wrapper,
+                lomo_view,
+                train_metals,
+                device,
+                args.batch,
             )
-            val_history.append({
-                "epoch": epoch,
-                "mean_val_auc": mean_val,
-                "per_metal": val_aucs,
-            })
+            val_history.append(
+                {
+                    "epoch": epoch,
+                    "mean_val_auc": mean_val,
+                    "per_metal": val_aucs,
+                }
+            )
             print(
                 f"[train_multimetal_lomo] fold=leave-{held_out_metal}-out "
                 f"seed={seed} epoch={epoch:3d} "
@@ -643,13 +659,16 @@ def train_one_fold_seed(
                 best_val_mean = mean_val
                 best_epoch = epoch
                 best_state = {
-                    k: v.detach().cpu().clone()
-                    for k, v in wrapper.state_dict().items()
+                    k: v.detach().cpu().clone() for k, v in wrapper.state_dict().items()
                 }
 
     wrapper.load_state_dict(best_state)
     test_auc, n_test = eval_lomo_test_auc(
-        wrapper, lomo_view, held_out_metal, device, args.batch,
+        wrapper,
+        lomo_view,
+        held_out_metal,
+        device,
+        args.batch,
     )
     print(
         f"[train_multimetal_lomo] fold=leave-{held_out_metal}-out "
@@ -726,10 +745,7 @@ def aggregate_per_fold(
     means: Dict[str, float] = {}
     stds: Dict[str, float] = {}
     for m, rs in fold_results.items():
-        vals = [
-            float(r["test_auc"]) for r in rs
-            if not np.isnan(float(r["test_auc"]))
-        ]
+        vals = [float(r["test_auc"]) for r in rs if not np.isnan(float(r["test_auc"]))]
         if not vals:
             means[m] = float("nan")
             stds[m] = float("nan")
@@ -744,7 +760,9 @@ def aggregate_overall(
 ) -> Tuple[float, float]:
     """Mean ± std across all 25 runs (5 folds × 5 seeds)."""
     vals = [
-        float(r["test_auc"]) for rs in fold_results.values() for r in rs
+        float(r["test_auc"])
+        for rs in fold_results.values()
+        for r in rs
         if not np.isnan(float(r["test_auc"]))
     ]
     if not vals:
@@ -840,7 +858,9 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
-        "--se3-n-steps", type=int, default=8,
+        "--se3-n-steps",
+        type=int,
+        default=8,
         help="Number of SE(3) integration steps for the smoke test.",
     )
     return p.parse_args(argv)
@@ -860,15 +880,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     unknown_head = [m for m in head_pool if m not in SUPPORTED_METALS]
     if unknown_head:
         raise ValueError(
-            f"Unknown metals {unknown_head!r}; supported = "
-            f"{SUPPORTED_METALS!r}"
+            f"Unknown metals {unknown_head!r}; supported = " f"{SUPPORTED_METALS!r}"
         )
     held_out_metals = split_folds(args.folds)
     bad = [m for m in held_out_metals if m not in head_pool]
     if bad:
-        raise ValueError(
-            f"Held-out metals {bad!r} not in head pool {head_pool!r}"
-        )
+        raise ValueError(f"Held-out metals {bad!r} not in head pool {head_pool!r}")
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     args.metrics_path.parent.mkdir(parents=True, exist_ok=True)
@@ -883,8 +900,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     data = load_5metal_csv(args.data)
     summary_counts = {
-        m: {sp: len(data[m][sp]) for sp in ("train", "val", "test")}
-        for m in head_pool
+        m: {sp: len(data[m][sp]) for sp in ("train", "val", "test")} for m in head_pool
     }
     print(f"[train_multimetal_lomo] split counts: {summary_counts}")
 
@@ -892,13 +908,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     print(f"[train_multimetal_lomo] device={device}")
 
     t0 = time.time()
-    fold_results: Dict[str, List[Dict[str, object]]] = {
-        m: [] for m in held_out_metals
-    }
+    fold_results: Dict[str, List[Dict[str, object]]] = {m: [] for m in held_out_metals}
     for held_out in held_out_metals:
         for seed in args.seeds:
             result = train_one_fold_seed(
-                held_out, seed, data, args, device,
+                held_out,
+                seed,
+                data,
+                args,
+                device,
             )
             fold_results[held_out].append(result)
             ckpt_path = (
@@ -921,8 +939,10 @@ def main(argv: Optional[List[str]] = None) -> int:
                     "state_dict": result["best_state"],
                     "recipe": {
                         "init": args.init,
-                        "epochs": args.epochs, "batch": args.batch,
-                        "lr": args.lr, "hidden": args.hidden,
+                        "epochs": args.epochs,
+                        "batch": args.batch,
+                        "lr": args.lr,
+                        "hidden": args.hidden,
                         "depth": args.depth,
                         "se3_n_steps": args.se3_n_steps,
                         "folds": list(held_out_metals),
@@ -932,9 +952,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 },
                 ckpt_path,
             )
-            print(
-                f"[train_multimetal_lomo] wrote {ckpt_path}"
-            )
+            print(f"[train_multimetal_lomo] wrote {ckpt_path}")
     wall = time.time() - t0
     print(f"[train_multimetal_lomo] total wall={wall:.1f}s")
 
@@ -964,28 +982,18 @@ def main(argv: Optional[List[str]] = None) -> int:
         "wall_seconds": wall,
         "per_fold": {
             m: {
-                "test_auc_per_seed": [
-                    float(r["test_auc"]) for r in fold_results[m]
-                ],
-                "test_auc_per_seed_n_test": [
-                    int(r["n_test"]) for r in fold_results[m]
-                ],
+                "test_auc_per_seed": [float(r["test_auc"]) for r in fold_results[m]],
+                "test_auc_per_seed_n_test": [int(r["n_test"]) for r in fold_results[m]],
                 "best_val_mean_auc_per_seed": [
                     float(r["best_val_mean_auc"]) for r in fold_results[m]
                 ],
                 "best_val_epoch_per_seed": [
                     int(r["best_val_epoch"]) for r in fold_results[m]
                 ],
-                "val_history_per_seed": [
-                    r["val_history"] for r in fold_results[m]
-                ],
-                "components_per_seed": [
-                    r["components"] for r in fold_results[m]
-                ],
+                "val_history_per_seed": [r["val_history"] for r in fold_results[m]],
+                "components_per_seed": [r["components"] for r in fold_results[m]],
                 "se3_smoke_per_seed": [r["se3_smoke"] for r in fold_results[m]],
-                "hilbert_smoke_per_seed": [
-                    r["hilbert_smoke"] for r in fold_results[m]
-                ],
+                "hilbert_smoke_per_seed": [r["hilbert_smoke"] for r in fold_results[m]],
             }
             for m in held_out_metals
         },
@@ -1008,9 +1016,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             "is the future fix."
         ),
     }
-    args.metrics_path.write_text(
-        json.dumps(_to_jsonable(metrics), indent=2)
-    )
+    args.metrics_path.write_text(json.dumps(_to_jsonable(metrics), indent=2))
     print(
         f"[train_multimetal_lomo] wrote {args.metrics_path} "
         f"(overall mean ± std = {overall_mean:.4f} ± {overall_std:.4f})"
@@ -1031,13 +1037,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         "mean_test_auc_overall": overall_mean,
         "std_test_auc_overall": overall_std,
         "r17_baseline_lomo_auc": 0.535,
-        "wf32_headline": (
-            "mean(LOMO test AUC across 25 runs) — beat R17 0.535"
-        ),
+        "wf32_headline": ("mean(LOMO test AUC across 25 runs) — beat R17 0.535"),
     }
-    args.summary_path.write_text(
-        json.dumps(_to_jsonable(final_summary), indent=2)
-    )
+    args.summary_path.write_text(json.dumps(_to_jsonable(final_summary), indent=2))
     print(f"[train_multimetal_lomo] wrote {args.summary_path}")
     # Return ``(exit_code, args_namespace)`` so the
     # :func:`MEASURED_vs_PROJECTED_decorator` wrapper uses the

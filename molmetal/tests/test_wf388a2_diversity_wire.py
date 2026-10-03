@@ -113,12 +113,12 @@ def test_top_p_top_k_temperature_flags(parse_args_fn):
         args = parse_args_fn()
     finally:
         sys.argv = saved_argv
-    assert args.top_p == 1.0, (
-        f"Wf-388-A2: default top_p must be 1.0 (no truncation); got {args.top_p}"
-    )
-    assert args.top_k == 0, (
-        f"Wf-388-A2: default top_k must be 0 (no truncation); got {args.top_k}"
-    )
+    assert (
+        args.top_p == 1.0
+    ), f"Wf-388-A2: default top_p must be 1.0 (no truncation); got {args.top_p}"
+    assert (
+        args.top_k == 0
+    ), f"Wf-388-A2: default top_k must be 0 (no truncation); got {args.top_k}"
     assert args.temperature == 1.0, (
         f"Wf-388-A2: default temperature must be 1.0 (no rescale); "
         f"got {args.temperature}"
@@ -178,16 +178,23 @@ def test_nucleus_sample_in_c(ds_mod):
     # (ii) p <= 0 → argmax fallback.
     sampled_argmax = ds_mod.nucleus_sample(logits, p=0.0, k=50, temperature=1.0)
     assert torch.equal(
-        sampled_argmax, logits.argmax(dim=-1),
+        sampled_argmax,
+        logits.argmax(dim=-1),
     ), "p=0.0 must produce argmax"
 
     # (iii) temperature != 1.0 → rescale (greedy at low τ).
     logits_uniform = torch.zeros(4, 10)  # all equal logits
     sampled_t1 = ds_mod.nucleus_sample(
-        logits_uniform, p=0.9, k=5, temperature=1.0,
+        logits_uniform,
+        p=0.9,
+        k=5,
+        temperature=1.0,
     )
     sampled_t_low = ds_mod.nucleus_sample(
-        logits_uniform, p=0.9, k=5, temperature=0.1,
+        logits_uniform,
+        p=0.9,
+        k=5,
+        temperature=0.1,
     )
     # Uniform logits + low temperature + k=5 → should sample in {0..4}.
     assert sampled_t_low.max().item() < 5, (
@@ -201,7 +208,10 @@ def test_nucleus_sample_in_c(ds_mod):
 
     # (iv) k = 0 → no top-k truncation; full vocab reachable.
     sampled_k0 = ds_mod.nucleus_sample(
-        logits, p=1.0, k=0, temperature=1.0,
+        logits,
+        p=1.0,
+        k=0,
+        temperature=1.0,
     )
     assert sampled_k0.max().item() < 100
 
@@ -232,21 +242,23 @@ def test_mmd_loss_in_c(ds_mod):
 
     # (i) Non-negativity.
     mmd_val = ds_mod.mmd_loss(a, b, sigma=1.0, unbiased=False)
-    assert mmd_val.item() >= 0.0, (
-        f"MMD^2 must be non-negative (Cauchy-Schwarz); got {mmd_val.item()}"
-    )
+    assert (
+        mmd_val.item() >= 0.0
+    ), f"MMD^2 must be non-negative (Cauchy-Schwarz); got {mmd_val.item()}"
 
     # (ii) Symmetry.
     mmd_val_swap = ds_mod.mmd_loss(b, a, sigma=1.0, unbiased=False)
     assert torch.allclose(
-        mmd_val, mmd_val_swap, atol=1e-5,
+        mmd_val,
+        mmd_val_swap,
+        atol=1e-5,
     ), f"MMD must be symmetric; got {mmd_val.item()} vs {mmd_val_swap.item()}"
 
     # (iii) Identity (with clamp).
     mmd_identical = ds_mod.mmd_loss(a, a_identical, sigma=1.0, unbiased=False)
-    assert mmd_identical.item() < 1e-5, (
-        f"MMD^2(A, A) must be 0 (clamped); got {mmd_identical.item()}"
-    )
+    assert (
+        mmd_identical.item() < 1e-5
+    ), f"MMD^2(A, A) must be 0 (clamped); got {mmd_identical.item()}"
 
     # (iv) Input validation rejects non-2D.
     with pytest.raises(ValueError):
@@ -286,7 +298,10 @@ def test_scaffold_conditioning_in_c(sc_mod):
 
     # (i) scaffold_bias=None → identity (Wf-380-B1 backward compat).
     out_none = sc_mod.scaffold_condition(
-        logits, scaffold_idx, n_scaffolds=256, scaffold_bias=None,
+        logits,
+        scaffold_idx,
+        n_scaffolds=256,
+        scaffold_bias=None,
     )
     assert torch.equal(out_none, logits), (
         "scaffold_condition(bias=None) must return logits unchanged for "
@@ -296,7 +311,10 @@ def test_scaffold_conditioning_in_c(sc_mod):
     # (ii) scaffold_bias=zeros → logits + 0 = logits (no perturbation).
     zero_bias = torch.zeros(256, V, dtype=logits.dtype)
     out_zero = sc_mod.scaffold_condition(
-        logits, scaffold_idx, n_scaffolds=256, scaffold_bias=zero_bias,
+        logits,
+        scaffold_idx,
+        n_scaffolds=256,
+        scaffold_bias=zero_bias,
     )
     assert torch.equal(out_zero, logits), (
         "scaffold_condition(bias=zeros) must return logits unchanged "
@@ -309,7 +327,10 @@ def test_scaffold_conditioning_in_c(sc_mod):
     # contracts.
     bad_logits_2d = torch.randn(B, V)  # 2-D — now accepted
     out_2d = sc_mod.scaffold_condition(
-        bad_logits_2d, scaffold_idx, n_scaffolds=256, scaffold_bias=zero_bias,
+        bad_logits_2d,
+        scaffold_idx,
+        n_scaffolds=256,
+        scaffold_bias=zero_bias,
     )
     assert torch.equal(out_2d, bad_logits_2d), (
         "scaffold_condition 2D auto-reshape should return 2D logits "
@@ -319,20 +340,29 @@ def test_scaffold_conditioning_in_c(sc_mod):
     bad_logits_4d = torch.randn(B, 2, N, V)  # 4-D, expected to fail
     with pytest.raises(ValueError):
         sc_mod.scaffold_condition(
-            bad_logits_4d, scaffold_idx, n_scaffolds=256, scaffold_bias=zero_bias,
+            bad_logits_4d,
+            scaffold_idx,
+            n_scaffolds=256,
+            scaffold_bias=zero_bias,
         )
 
     bad_idx = torch.zeros(B + 1, dtype=torch.long)
     with pytest.raises(ValueError):
         sc_mod.scaffold_condition(
-            logits, bad_idx, n_scaffolds=256, scaffold_bias=zero_bias,
+            logits,
+            bad_idx,
+            n_scaffolds=256,
+            scaffold_bias=zero_bias,
         )
 
     # (iv) One-hot bias table on a single batch → logits + bias[0].
     one_hot_bias = torch.zeros(256, V, dtype=logits.dtype)
     one_hot_bias[0, 7] = 1.0  # one-hot at vocab index 7
     out_onehot = sc_mod.scaffold_condition(
-        logits, scaffold_idx, n_scaffolds=256, scaffold_bias=one_hot_bias,
+        logits,
+        scaffold_idx,
+        n_scaffolds=256,
+        scaffold_bias=one_hot_bias,
     )
     expected = logits + 1.0  # bias[0, :] is added to every (N, V) row
     expected[..., 7] = logits[..., 7] + 1.0

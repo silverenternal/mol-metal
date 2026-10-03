@@ -5,6 +5,7 @@ the OT scheduler was folded into ``flow_matching.sampler_config.SamplerConfig``.
 This shim preserves the legacy import path so the adapter can keep using
 ``CondOTScheduler``.
 """
+
 from __future__ import annotations
 
 from molmetal.adapters.flow_matching_lipman._reference.upstream_flow_matching.sampler_config import (  # noqa: E501

@@ -39,6 +39,7 @@ import torch.nn.functional as F
 try:  # pragma: no cover
     import triton
     import triton.language as tl
+
     _TRITON_AVAILABLE = True
 except ImportError:  # pragma: no cover
     _TRITON_AVAILABLE = False
@@ -121,9 +122,14 @@ if _TRITON_AVAILABLE:
     @triton.autotune(configs=_FUSED_BOND_HEAD_CONFIGS, key=["E", "NUM_CLASSES_P2"])
     @triton.jit
     def _fused_bond_head_kernel(  # pragma: no cover — GPU-only
-        x_ptr, w1_ptr, b1_ptr,
-        w2_ptr, b2_ptr,
-        w3_ptr, b3_ptr, out_ptr,
+        x_ptr,
+        w1_ptr,
+        b1_ptr,
+        w2_ptr,
+        b2_ptr,
+        w3_ptr,
+        b3_ptr,
+        out_ptr,
         E,
         NUM_CLASSES: tl.constexpr,
         IN_DIM: tl.constexpr,
@@ -151,7 +157,8 @@ if _TRITON_AVAILABLE:
         # ---- First layer + ReLU ----
         x_block = tl.load(
             x_ptr + offs_e[:, None] * IN_DIM + offs_in[None, :],
-            mask=mask_e[:, None], other=0.0,
+            mask=mask_e[:, None],
+            other=0.0,
         )
         w1_block = tl.load(
             w1_ptr + offs_h[:, None] * IN_DIM + offs_in[None, :],
@@ -171,7 +178,8 @@ if _TRITON_AVAILABLE:
         # ---- Output layer ----
         w3_block = tl.load(
             w3_ptr + offs_c[:, None] * HIDDEN + offs_h[None, :],
-            mask=mask_c[:, None], other=0.0,
+            mask=mask_c[:, None],
+            other=0.0,
         )
         out = tl.dot(h2, tl.trans(w3_block))
         b3 = tl.load(b3_ptr + offs_c, mask=mask_c, other=0.0)
@@ -182,6 +190,7 @@ if _TRITON_AVAILABLE:
             mask=mask_e[:, None] & mask_c[None, :],
         )
 else:
+
     def _fused_bond_head_kernel(*args, **kwargs):  # type: ignore
         raise RuntimeError(
             "Triton unavailable — _fused_bond_head_kernel cannot run. "
@@ -261,15 +270,22 @@ def fused_bond_head_aggregation(
     if force_pytorch is False:
         (w1, b1), (w2, b2), (w3, b3) = weights
         if b1 is None:
-            b1 = torch.zeros(w1.shape[0], dtype=pair_features.dtype, device=pair_features.device)
+            b1 = torch.zeros(
+                w1.shape[0], dtype=pair_features.dtype, device=pair_features.device
+            )
         if b2 is None:
-            b2 = torch.zeros(w2.shape[0], dtype=pair_features.dtype, device=pair_features.device)
+            b2 = torch.zeros(
+                w2.shape[0], dtype=pair_features.dtype, device=pair_features.device
+            )
         if b3 is None:
-            b3 = torch.zeros(w3.shape[0], dtype=pair_features.dtype, device=pair_features.device)
+            b3 = torch.zeros(
+                w3.shape[0], dtype=pair_features.dtype, device=pair_features.device
+            )
         E = pair_features.shape[0]
         in_dim = w1.shape[1]
         hidden = w1.shape[0]
         num_classes = w3.shape[0]
+
         # Pad in_dim + num_classes to next power of 2 (Triton tl.arange
         # requirement) and pad hidden to next power of 2 if needed.
         def _next_pow2(x):
@@ -286,22 +302,43 @@ def fused_bond_head_aggregation(
         # assume hidden ≤ 128 (next pow2 is 128); for larger models,
         # the caller should pre-pad to a power of 2.
         if hidden != hidden_p2 or in_dim != in_dim_p2:
-            w1_pad = torch.zeros(hidden_p2, in_dim_p2, dtype=pair_features.dtype, device=pair_features.device)
+            w1_pad = torch.zeros(
+                hidden_p2,
+                in_dim_p2,
+                dtype=pair_features.dtype,
+                device=pair_features.device,
+            )
             w1_pad[:hidden, :in_dim] = w1
             w1 = w1_pad
-            w2_pad = torch.zeros(hidden_p2, hidden_p2, dtype=pair_features.dtype, device=pair_features.device)
+            w2_pad = torch.zeros(
+                hidden_p2,
+                hidden_p2,
+                dtype=pair_features.dtype,
+                device=pair_features.device,
+            )
             w2_pad[:hidden, :hidden] = w2
             w2 = w2_pad
-            w3_pad = torch.zeros(num_classes_p2, hidden_p2, dtype=pair_features.dtype, device=pair_features.device)
+            w3_pad = torch.zeros(
+                num_classes_p2,
+                hidden_p2,
+                dtype=pair_features.dtype,
+                device=pair_features.device,
+            )
             w3_pad[:num_classes, :hidden] = w3
             w3 = w3_pad
-            b1_pad = torch.zeros(hidden_p2, dtype=pair_features.dtype, device=pair_features.device)
+            b1_pad = torch.zeros(
+                hidden_p2, dtype=pair_features.dtype, device=pair_features.device
+            )
             b1_pad[:hidden] = b1
             b1 = b1_pad
-            b2_pad = torch.zeros(hidden_p2, dtype=pair_features.dtype, device=pair_features.device)
+            b2_pad = torch.zeros(
+                hidden_p2, dtype=pair_features.dtype, device=pair_features.device
+            )
             b2_pad[:hidden] = b2
             b2 = b2_pad
-            b3_pad = torch.zeros(num_classes_p2, dtype=pair_features.dtype, device=pair_features.device)
+            b3_pad = torch.zeros(
+                num_classes_p2, dtype=pair_features.dtype, device=pair_features.device
+            )
             b3_pad[:num_classes] = b3
             b3 = b3_pad
             in_dim = in_dim_p2
@@ -309,18 +346,28 @@ def fused_bond_head_aggregation(
         # Also pad pair_features if in_dim changed — the kernel uses
         # in_dim as the row stride.
         if pair_features.shape[1] != in_dim:
-            pf_pad = torch.zeros(E, in_dim, dtype=pair_features.dtype, device=pair_features.device)
-            pf_pad[:, :pair_features.shape[1]] = pair_features
+            pf_pad = torch.zeros(
+                E, in_dim, dtype=pair_features.dtype, device=pair_features.device
+            )
+            pf_pad[:, : pair_features.shape[1]] = pair_features
             pair_features = pf_pad
-        out = torch.empty(E, num_classes, dtype=pair_features.dtype, device=pair_features.device)
+        out = torch.empty(
+            E, num_classes, dtype=pair_features.dtype, device=pair_features.device
+        )
         grid = lambda meta: (triton.cdiv(E, meta["BLOCK_E"]),)
         _fused_bond_head_kernel[grid](
-            pair_features, w1, b1,
-            w2, b2,
-            w3, b3, out,
+            pair_features,
+            w1,
+            b1,
+            w2,
+            b2,
+            w3,
+            b3,
+            out,
             E,
             NUM_CLASSES=num_classes,
-            IN_DIM=in_dim, HIDDEN=hidden,
+            IN_DIM=in_dim,
+            HIDDEN=hidden,
             NUM_CLASSES_P2=num_classes_p2,
         )
         return out

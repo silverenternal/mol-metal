@@ -93,6 +93,7 @@ Honest framing (AGENTS.md §5.2)
   Wf-333-G2 task spec; downstream Wf-333-G3+ runs the actual
   launch when VRAM frees.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -147,7 +148,13 @@ SUCCESS_RATE_HONESTY_GATE: float = 0.95
 # ---------------------------------------------------------------------------
 #: Canonical metal lists per cohort (Wf-330-T1 + Wf-330-T2 ship surface).
 PLATINAI_4CELL_METAL_LIST: Tuple[str, ...] = (
-    "Pt", "Pd", "Ru", "Rh", "Ir", "Os", "Au",
+    "Pt",
+    "Pd",
+    "Ru",
+    "Rh",
+    "Ir",
+    "Os",
+    "Au",
 )
 PLATINAI_4CELL_METAL_TO_IDX: Dict[str, int] = {
     m: i for i, m in enumerate(PLATINAI_4CELL_METAL_LIST)
@@ -159,15 +166,24 @@ METALCYTO_5METAL_TO_IDX: Dict[str, int] = {
 }
 #: PROJECTED R^2 targets per metal on MetalCytoToxDB 5-metal (skill §4.3).
 METALCYTO_5METAL_PROJECTED_R2: Dict[str, float] = {
-    "Ru": 0.65, "Ir": 0.63, "Rh": 0.62, "Os": 0.61, "Re": 0.60,
+    "Ru": 0.65,
+    "Ir": 0.63,
+    "Rh": 0.62,
+    "Os": 0.61,
+    "Re": 0.60,
 }
 #: Unweighted cohort mean PROJECTED targets.
 PLATINAI_4CELL_PROJECTED_MEAN: float = 0.594  # skill §4.2
 METALCYTO_5METAL_PROJECTED_MEAN: float = 0.622  # skill §4.3
 #: PlatinAI 4-cell PROJECTED per-cell R² (skill §4.2, 7 metals).
 PLATINAI_4CELL_PROJECTED_R2: Dict[str, float] = {
-    "Pt": 0.62, "Pd": 0.61, "Ru": 0.60, "Rh": 0.60,
-    "Ir": 0.59, "Os": 0.58, "Au": 0.58,
+    "Pt": 0.62,
+    "Pd": 0.61,
+    "Ru": 0.60,
+    "Rh": 0.60,
+    "Ir": 0.59,
+    "Os": 0.58,
+    "Au": 0.58,
 }
 
 #: Cohort registry — single source of truth for the Wf-335-M3 extension.
@@ -199,7 +215,9 @@ TRIANGLE_COHORT_REGISTRY: Dict[str, Dict[str, Any]] = {
 }
 DEFAULT_TRIANGLE_COHORT: str = "both"
 TRIANGLE_COHORT_CHOICES: Tuple[str, ...] = (
-    "platinai_4cell", "metalcytotox_5metal", "both",
+    "platinai_4cell",
+    "metalcytotox_5metal",
+    "both",
 )
 DEFAULT_TRIANGLE_FEATURE_MODE: str = DEFAULT_FEATURE_MODE
 TRIANGLE_FEATURE_MODE_CHOICES: Tuple[str, ...] = ("5d", "12d", "17d")
@@ -358,6 +376,7 @@ def add_wf333g2_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser
     try:
         from molmetal.scripts._common_train_args import _add
     except Exception:
+
         def _add(root_parser, group, *args, **kwargs):
             group.add_argument(*args, **kwargs)
 
@@ -365,71 +384,153 @@ def add_wf333g2_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser
         "Wf-333-G2 wrapper",
         "Triangle 12-d GPU launch wrapper (Wf-331-R2 / R20-P2 ship surface).",
     )
-    _add(parser, group, "--feature-mode", choices=("5d", "12d", "17d"),
-         default=DEFAULT_FEATURE_MODE,
-         help="Triangle feature schema (default: %(default)s).")
+    _add(
+        parser,
+        group,
+        "--feature-mode",
+        choices=("5d", "12d", "17d"),
+        default=DEFAULT_FEATURE_MODE,
+        help="Triangle feature schema (default: %(default)s).",
+    )
     # --- Wf-335-M3 — Triangle cohort + per-cohort feature mode ---
-    _add(parser, group, "--triangle-cohort",
-         choices=TRIANGLE_COHORT_CHOICES,
-         default=DEFAULT_TRIANGLE_COHORT,
-         help=(
-             "Wf-335-M3 cohort selector — 'platinai_4cell' / "
-             "'metalcytotox_5metal' / 'both' (default: %(default)s). "
-             "When set the wrapper emits per-cell / per-metal "
-             "R² breakdown anchored to the Wf-330-T1 + Wf-330-T2 "
-             "closeouts."
-         ))
-    _add(parser, group, "--triangle-feature-mode",
-         choices=TRIANGLE_FEATURE_MODE_CHOICES,
-         default=DEFAULT_TRIANGLE_FEATURE_MODE,
-         help=(
-             "Wf-335-M3 per-cohort feature mode — '5d' / '12d' / "
-             "'17d' (default: %(default)s).  Mirrors --feature-mode "
-             "for clarity; defaults to the same value."
-         ))
-    _add(parser, group, "--hilbert-dim", type=int, default=DEFAULT_HILBERT_DIM,
-         help=f"Hilbert space dim (default: {DEFAULT_HILBERT_DIM}).")
-    _add(parser, group, "--epochs", type=int, default=DEFAULT_EPOCHS,
-         help=f"PD iterations per fold (default: {DEFAULT_EPOCHS}).")
-    _add(parser, group, "--lr", type=float, default=DEFAULT_LR,
-         help=f"Peak learning rate (default: {DEFAULT_LR}).")
-    _add(parser, group, "--seeds", type=int, default=DEFAULT_SEEDS,
-         help=f"Number of seeds (default: {DEFAULT_SEEDS}).")
-    _add(parser, group, "--n-folds", type=int, default=DEFAULT_N_FOLDS,
-         help=f"CV folds per seed (default: {DEFAULT_N_FOLDS}).")
-    _add(parser, group, "--dataset",
-         choices=("nci60", "platinai", "both", "metalcytotox"),
-         default="nci60",
-         help="Dataset selector (default: %(default)s).")
-    _add(parser, group, "--output", type=str,
-         default="molmetal/reports/wf333g2_triangle_gpu",
-         help="Output directory for the JSON / Markdown summary.")
+    _add(
+        parser,
+        group,
+        "--triangle-cohort",
+        choices=TRIANGLE_COHORT_CHOICES,
+        default=DEFAULT_TRIANGLE_COHORT,
+        help=(
+            "Wf-335-M3 cohort selector — 'platinai_4cell' / "
+            "'metalcytotox_5metal' / 'both' (default: %(default)s). "
+            "When set the wrapper emits per-cell / per-metal "
+            "R² breakdown anchored to the Wf-330-T1 + Wf-330-T2 "
+            "closeouts."
+        ),
+    )
+    _add(
+        parser,
+        group,
+        "--triangle-feature-mode",
+        choices=TRIANGLE_FEATURE_MODE_CHOICES,
+        default=DEFAULT_TRIANGLE_FEATURE_MODE,
+        help=(
+            "Wf-335-M3 per-cohort feature mode — '5d' / '12d' / "
+            "'17d' (default: %(default)s).  Mirrors --feature-mode "
+            "for clarity; defaults to the same value."
+        ),
+    )
+    _add(
+        parser,
+        group,
+        "--hilbert-dim",
+        type=int,
+        default=DEFAULT_HILBERT_DIM,
+        help=f"Hilbert space dim (default: {DEFAULT_HILBERT_DIM}).",
+    )
+    _add(
+        parser,
+        group,
+        "--epochs",
+        type=int,
+        default=DEFAULT_EPOCHS,
+        help=f"PD iterations per fold (default: {DEFAULT_EPOCHS}).",
+    )
+    _add(
+        parser,
+        group,
+        "--lr",
+        type=float,
+        default=DEFAULT_LR,
+        help=f"Peak learning rate (default: {DEFAULT_LR}).",
+    )
+    _add(
+        parser,
+        group,
+        "--seeds",
+        type=int,
+        default=DEFAULT_SEEDS,
+        help=f"Number of seeds (default: {DEFAULT_SEEDS}).",
+    )
+    _add(
+        parser,
+        group,
+        "--n-folds",
+        type=int,
+        default=DEFAULT_N_FOLDS,
+        help=f"CV folds per seed (default: {DEFAULT_N_FOLDS}).",
+    )
+    _add(
+        parser,
+        group,
+        "--dataset",
+        choices=("nci60", "platinai", "both", "metalcytotox"),
+        default="nci60",
+        help="Dataset selector (default: %(default)s).",
+    )
+    _add(
+        parser,
+        group,
+        "--output",
+        type=str,
+        default="molmetal/reports/wf333g2_triangle_gpu",
+        help="Output directory for the JSON / Markdown summary.",
+    )
     # --- GPU env (mirrors add_gpu_args from _common_train_args) ---
-    _add(parser, group, "--mixed-precision",
-         choices=("bf16", "fp16", "none"),
-         default=DEFAULT_MIXED_PRECISION,
-         help="Autocast dtype (default: %(default)s).")
-    _add(parser, group, "--num-workers", type=int, default=DEFAULT_NUM_WORKERS,
-         help=f"DataLoader worker count (default: {DEFAULT_NUM_WORKERS}).")
-    _add(parser, group, "--cuda-visible-devices", type=str,
-         default=DEFAULT_CUDA_VISIBLE_DEVICES,
-         help=(
-             "CUDA_VISIBLE_DEVICES override (default '1' — "
-             "RTX 5090 GPU 0 reserved for VLM venv)."
-         ))
+    _add(
+        parser,
+        group,
+        "--mixed-precision",
+        choices=("bf16", "fp16", "none"),
+        default=DEFAULT_MIXED_PRECISION,
+        help="Autocast dtype (default: %(default)s).",
+    )
+    _add(
+        parser,
+        group,
+        "--num-workers",
+        type=int,
+        default=DEFAULT_NUM_WORKERS,
+        help=f"DataLoader worker count (default: {DEFAULT_NUM_WORKERS}).",
+    )
+    _add(
+        parser,
+        group,
+        "--cuda-visible-devices",
+        type=str,
+        default=DEFAULT_CUDA_VISIBLE_DEVICES,
+        help=(
+            "CUDA_VISIBLE_DEVICES override (default '1' — "
+            "RTX 5090 GPU 0 reserved for VLM venv)."
+        ),
+    )
     # --- torch.compile (Wf-326/328 wire-in) ---
-    _add(parser, group, "--torch-compile", action="store_true",
-         default=DEFAULT_TORCH_COMPILE,
-         help="Wrap the hot path in torch.compile "
-              "(first-call latency ~30s; default: %(default)s).")
-    _add(parser, group, "--torch-compile-mode",
-         choices=("default", "reduce-overhead", "max-autotune"),
-         default=DEFAULT_TORCH_COMPILE_MODE,
-         help="torch.compile mode (default: %(default)s).")
+    _add(
+        parser,
+        group,
+        "--torch-compile",
+        action="store_true",
+        default=DEFAULT_TORCH_COMPILE,
+        help="Wrap the hot path in torch.compile "
+        "(first-call latency ~30s; default: %(default)s).",
+    )
+    _add(
+        parser,
+        group,
+        "--torch-compile-mode",
+        choices=("default", "reduce-overhead", "max-autotune"),
+        default=DEFAULT_TORCH_COMPILE_MODE,
+        help="torch.compile mode (default: %(default)s).",
+    )
     # --- launch vs dry-run ---
-    _add(parser, group, "--launch", action="store_true", default=False,
-         help="Actually launch the GPU training. "
-              "Default: dry-run (CLI scaffolding only).")
+    _add(
+        parser,
+        group,
+        "--launch",
+        action="store_true",
+        default=False,
+        help="Actually launch the GPU training. "
+        "Default: dry-run (CLI scaffolding only).",
+    )
     return parser
 
 
@@ -488,25 +589,37 @@ def resolve_feature_schema(mode: str) -> Tuple[Tuple[str, ...], int]:
     except Exception:
         # CPU-only fallback: hard-coded mirror of the canonical names.
         FEATURE_NAMES_5D = (
-            "smiles_length", "n_heavy_atoms", "n_branches",
-            "n_charges", "metal_idx",
+            "smiles_length",
+            "n_heavy_atoms",
+            "n_branches",
+            "n_charges",
+            "metal_idx",
         )
         FEATURE_NAMES_12D = (
-            "MolWt", "MolLogP", "TPSA", "HBA", "HBD", "NRotB",
-            "HeavyAtoms", "RingCount", "NumAromaticRings",
-            "FractionCSP3", "MolMR", "BalabanJ",
+            "MolWt",
+            "MolLogP",
+            "TPSA",
+            "HBA",
+            "HBD",
+            "NRotB",
+            "HeavyAtoms",
+            "RingCount",
+            "NumAromaticRings",
+            "FractionCSP3",
+            "MolMR",
+            "BalabanJ",
         )
         FEATURE_MODES = ("5d", "12d", "17d")
     if mode not in FEATURE_MODES:
-        raise ValueError(
-            f"feature_mode={mode!r} not in {FEATURE_MODES}"
-        )
+        raise ValueError(f"feature_mode={mode!r} not in {FEATURE_MODES}")
     if mode == "5d":
         return FEATURE_NAMES_5D, len(FEATURE_NAMES_5D)
     if mode == "12d":
         return FEATURE_NAMES_12D, len(FEATURE_NAMES_12D)
     # 17d = 5d + 12d concat
-    return FEATURE_NAMES_5D + FEATURE_NAMES_12D, len(FEATURE_NAMES_5D) + len(FEATURE_NAMES_12D)
+    return FEATURE_NAMES_5D + FEATURE_NAMES_12D, len(FEATURE_NAMES_5D) + len(
+        FEATURE_NAMES_12D
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -526,9 +639,7 @@ def resolve_triangle_cohorts(
     :data:`TRIANGLE_COHORT_CHOICES`.
     """
     if cohort not in TRIANGLE_COHORT_CHOICES:
-        raise ValueError(
-            f"triangle_cohort={cohort!r} not in {TRIANGLE_COHORT_CHOICES}"
-        )
+        raise ValueError(f"triangle_cohort={cohort!r} not in {TRIANGLE_COHORT_CHOICES}")
     if cohort == "both":
         return ("platinai_4cell", "metalcytotox_5metal")
     return (cohort,)
@@ -542,9 +653,7 @@ def get_cohort_metadata(cohort: str) -> Dict[str, Any]:
     callers can be explicit about the expected registry contract.
     """
     if cohort not in TRIANGLE_COHORT_REGISTRY:
-        raise KeyError(
-            f"cohort={cohort!r} not in TRIANGLE_COHORT_REGISTRY"
-        )
+        raise KeyError(f"cohort={cohort!r} not in TRIANGLE_COHORT_REGISTRY")
     return TRIANGLE_COHORT_REGISTRY[cohort]
 
 
@@ -589,12 +698,8 @@ def build_per_cohort_breakdown(
         "n_metals": int(len(meta["metal_list"])),
         "feature_mode": str(feature_mode),
         "default_dataset_csv": meta["default_dataset_csv"],
-        "projected_mean_hilbert_r2": float(
-            meta["projected_mean_hilbert_r2"]
-        ),
-        "projected_per_metal_r2": {
-            m: float(v) for m, v in projected_per_metal.items()
-        },
+        "projected_mean_hilbert_r2": float(meta["projected_mean_hilbert_r2"]),
+        "projected_per_metal_r2": {m: float(v) for m, v in projected_per_metal.items()},
         "wf_closeout": meta["wf_closeout"],
         "recovery_status": meta["recovery_status"],
         "wf_id": meta["wf_id"],
@@ -619,8 +724,7 @@ def build_full_per_cohort_breakdown(
     """
     cohorts = resolve_triangle_cohorts(cohort)
     return {
-        c: build_per_cohort_breakdown(c, feature_mode=feature_mode)
-        for c in cohorts
+        c: build_per_cohort_breakdown(c, feature_mode=feature_mode) for c in cohorts
     }
 
 
@@ -639,6 +743,7 @@ def build_toy_design_matrix(
     correctly.
     """
     import numpy as np
+
     rng = np.random.default_rng(int(seed))
     X = rng.standard_normal((int(n_samples), int(n_features))).astype("float32")
     # Toy target: linear in the first 3 columns + small Gaussian noise.
@@ -722,9 +827,9 @@ def triangle_composite(
     """
     w_h, w_e, w_v = weights
     return float(
-        w_h * float(hilbert_r2) +
-        w_e * float(evolutionary_r2) +
-        w_v * float(variance_reduction)
+        w_h * float(hilbert_r2)
+        + w_e * float(evolutionary_r2)
+        + w_v * float(variance_reduction)
     )
 
 
@@ -855,13 +960,9 @@ def build_triangle_gpu_trainer(
     for _cohort_key, _cohort_meta in per_cohort_breakdown.items():
         rs = _cohort_meta.get("recovery_status", "")
         if rs == "HONEST_NEGATIVE_PERSISTENT":
-            honest_neg_flags.append(
-                "HONEST_NEGATIVE_PERSISTENT_PLATINAI_4CELL"
-            )
+            honest_neg_flags.append("HONEST_NEGATIVE_PERSISTENT_PLATINAI_4CELL")
         elif rs == "MEASURED=BELOW_TARGET":
-            honest_neg_flags.append(
-                "HONEST_NEGATIVE_BELOW_TARGET_METALCYTO_5METAL"
-            )
+            honest_neg_flags.append("HONEST_NEGATIVE_BELOW_TARGET_METALCYTO_5METAL")
 
     # Per-gate verdict — placeholder values for the wrapper (no GPU
     # launch yet).  Downstream Wf-333-G3+ replaces these with real
@@ -932,10 +1033,12 @@ def write_summary(
     ]
     # Per-cohort breakdown table.
     if summary.per_cohort_breakdown:
-        md_lines.extend([
-            "| Cohort | n_metals | cohort_kind | PROJECTED mean R² | recovery_status | closeout |",
-            "|---|---:|---|---:|---|---|",
-        ])
+        md_lines.extend(
+            [
+                "| Cohort | n_metals | cohort_kind | PROJECTED mean R² | recovery_status | closeout |",
+                "|---|---:|---|---:|---|---|",
+            ]
+        )
         for _ck, _cm in summary.per_cohort_breakdown.items():
             md_lines.append(
                 f"| {_ck} | {_cm['n_metals']} | "
@@ -944,22 +1047,26 @@ def write_summary(
                 f"{_cm['recovery_status']} | "
                 f"`{_cm['wf_closeout']}` |"
             )
-        md_lines.extend([
-            "",
-            "### Per-metal PROJECTED R² targets",
-            "",
-        ])
+        md_lines.extend(
+            [
+                "",
+                "### Per-metal PROJECTED R² targets",
+                "",
+            ]
+        )
         for _ck, _cm in summary.per_cohort_breakdown.items():
             md_lines.append(f"**{_ck}** (cohort_kind={_cm['cohort_kind']}):")
             for _m, _r in _cm["projected_per_metal_r2"].items():
                 md_lines.append(f"- {_m}: {_r:.4f}")
             md_lines.append("")
-    md_lines.extend([
-        "## Honesty gate verdict (PROJECTED; CPU proxy did not meet gate)",
-        "",
-        "| Gate | Value | Threshold | Pass | Tag |",
-        "|---|---|---|---|---|",
-    ])
+    md_lines.extend(
+        [
+            "## Honesty gate verdict (PROJECTED; CPU proxy did not meet gate)",
+            "",
+            "| Gate | Value | Threshold | Pass | Tag |",
+            "|---|---|---|---|---|",
+        ]
+    )
     for gate_name, gate_info in summary.honesty_gate_status.items():
         md_lines.append(
             f"| {gate_name} | {gate_info['value']:.4f} | "
@@ -967,23 +1074,25 @@ def write_summary(
             f"{'PASS' if gate_info['pass'] else 'FAIL'} | "
             f"{gate_info.get('tag', 'PROJECTED')} |"
         )
-    md_lines.extend([
-        "",
-        "## 3-vertex loop (ASTSR ↔ Hilbert ↔ MCTS)",
-        "",
-        "Vertex labels: " + ", ".join(summary.vertex_labels),
-        "",
-        "Honest framing: this wrapper is **dry-run only** — the GPU",
-        "launch is deferred to Wf-333-G3+ per AGENTS.md §5.1",
-        "(`kill_then_adapt` directive).  Downstream paper §3.6 / R20-P2",
-        "launchers should consume ``summary.json`` and re-run",
-        ":func:`build_triangle_gpu_trainer` with ``config.launch=True``",
-        "when CUDA + free VRAM is available.",
-        "",
-        "MEASURED-vs-PROJECTED discipline: every numeric value in this",
-        "summary traces to the resolved TriangleGPUConfig or the",
-        "honesty gate constants — no fabricated numbers.",
-    ])
+    md_lines.extend(
+        [
+            "",
+            "## 3-vertex loop (ASTSR ↔ Hilbert ↔ MCTS)",
+            "",
+            "Vertex labels: " + ", ".join(summary.vertex_labels),
+            "",
+            "Honest framing: this wrapper is **dry-run only** — the GPU",
+            "launch is deferred to Wf-333-G3+ per AGENTS.md §5.1",
+            "(`kill_then_adapt` directive).  Downstream paper §3.6 / R20-P2",
+            "launchers should consume ``summary.json`` and re-run",
+            ":func:`build_triangle_gpu_trainer` with ``config.launch=True``",
+            "when CUDA + free VRAM is available.",
+            "",
+            "MEASURED-vs-PROJECTED discipline: every numeric value in this",
+            "summary traces to the resolved TriangleGPUConfig or the",
+            "honesty gate constants — no fabricated numbers.",
+        ]
+    )
     md_path = out_dir / "summary.md"
     with open(md_path, "w") as f:
         f.write("\n".join(md_lines) + "\n")
@@ -1019,8 +1128,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     print(f"Wall time: {summary.wall_s:.3f}s")
     # Wf-335-M3 — per-cohort summary on stdout.
     if summary.per_cohort_breakdown:
-        print(f"\nTriangle cohort breakdown ({config.triangle_cohort}, "
-              f"feature_mode={config.triangle_feature_mode}):")
+        print(
+            f"\nTriangle cohort breakdown ({config.triangle_cohort}, "
+            f"feature_mode={config.triangle_feature_mode}):"
+        )
         for _ck, _cm in summary.per_cohort_breakdown.items():
             print(
                 f"  - {_ck}: {_cm['n_metals']} metals "
@@ -1033,7 +1144,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Wrapper ships dry-run only; GPU launch deferred is the
         # standing honest-negative — this is NOT a FAIL of the wrapper
         # itself, just a deferred-launch label.
-        print("\nSTATUS: SKIP (HONEST_NEGATIVE_TRIANGLE_GPU_DEFERRED — wrapper dry-run only)")
+        print(
+            "\nSTATUS: SKIP (HONEST_NEGATIVE_TRIANGLE_GPU_DEFERRED — wrapper dry-run only)"
+        )
         return 0  # SKIP-as-pass per Wf-326/328 convention for deferred launches
     print("\nSTATUS: PASS")
     return 0

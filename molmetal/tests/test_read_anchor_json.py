@@ -24,6 +24,7 @@ parse-failure sanity check at the bottom to round out coverage.
 
 Hardware: CPU-only. No GPU required.
 """
+
 from __future__ import annotations
 
 import json
@@ -249,9 +250,9 @@ def test_missing_anchor_raises(tmp_path: Path) -> None:
     ``except FileNotFoundError`` keep working.
     """
     missing_path = tmp_path / "does_not_exist.json"
-    assert not missing_path.exists(), (
-        f"test setup error: {missing_path} should not exist"
-    )
+    assert (
+        not missing_path.exists()
+    ), f"test setup error: {missing_path} should not exist"
 
     guard = AnchorGuard(path=missing_path, max_age_sec=86400.0)
 
@@ -259,9 +260,9 @@ def test_missing_anchor_raises(tmp_path: Path) -> None:
         guard.read()
 
     # Exception MUST surface the path so the caller can log it.
-    assert str(missing_path) in str(excinfo.value), (
-        f"missing-path message must contain path; got {excinfo.value!r}"
-    )
+    assert str(missing_path) in str(
+        excinfo.value
+    ), f"missing-path message must contain path; got {excinfo.value!r}"
 
     # require() — same exception
     with pytest.raises(AnchorMissingError):
@@ -273,9 +274,9 @@ def test_missing_anchor_raises(tmp_path: Path) -> None:
 
     # Backward-compat: AnchorMissingError is a FileNotFoundError so
     # legacy ``except FileNotFoundError`` callers keep working.
-    assert issubclass(AnchorMissingError, FileNotFoundError), (
-        "AnchorMissingError must inherit FileNotFoundError for back-compat"
-    )
+    assert issubclass(
+        AnchorMissingError, FileNotFoundError
+    ), "AnchorMissingError must inherit FileNotFoundError for back-compat"
 
 
 # ---------------------------------------------------------------------------
@@ -299,9 +300,9 @@ def test_malformed_json_raises_anchor_json_error(tmp_path: Path) -> None:
         guard.read()
 
     msg = str(excinfo.value)
-    assert str(bad_path) in msg, (
-        f"AnchorJSONError message must include anchor path; got {msg!r}"
-    )
+    assert (
+        str(bad_path) in msg
+    ), f"AnchorJSONError message must include anchor path; got {msg!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -337,7 +338,7 @@ def test_anchor_version_pin_required_version_passes(anchor_path: str) -> None:
 
     guard = AnchorGuard(
         path=path,
-        max_age_sec=7 * 86400.0,         # 7-day freshness window
+        max_age_sec=7 * 86400.0,  # 7-day freshness window
         required_version="1.0.0",
         version_field="version",
     )
@@ -379,12 +380,12 @@ def test_anchor_version_pin_mismatch_raises(tmp_path: Path) -> None:
     with pytest.raises(AnchorVersionMismatchError) as excinfo:
         guard.read()
     msg = str(excinfo.value)
-    assert "2.0.0" in msg, (
-        f"error message must contain expected version '2.0.0'; got {msg!r}"
-    )
-    assert "1.0.0" in msg, (
-        f"error message must contain actual version '1.0.0'; got {msg!r}"
-    )
+    assert (
+        "2.0.0" in msg
+    ), f"error message must contain expected version '2.0.0'; got {msg!r}"
+    assert (
+        "1.0.0" in msg
+    ), f"error message must contain actual version '1.0.0'; got {msg!r}"
 
 
 # ---------------------------------------------------------------------------

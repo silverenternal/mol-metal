@@ -120,13 +120,13 @@ def test_combined_length_with_all_full() -> None:
     # NCI-60 pre-filtered (allow ±2 for trailing-newline quirks):
     assert abs(full_lens[DOMAIN_NCI60] - 7_824) <= 2
     # BindingDB IC50 is ~1.07M rows (allow ±10 for trailing-newline quirks)
-    assert 1_070_000 < full_lens[DOMAIN_BINDINGDB] < 1_080_000, (
-        f"BindingDB has {full_lens[DOMAIN_BINDINGDB]} rows, expected ~1.07M"
-    )
+    assert (
+        1_070_000 < full_lens[DOMAIN_BINDINGDB] < 1_080_000
+    ), f"BindingDB has {full_lens[DOMAIN_BINDINGDB]} rows, expected ~1.07M"
     # DrugOOD is 1.58M; allow ±10 to accommodate header/trailing-newline quirks
-    assert 1_583_000 < full_lens[DOMAIN_DRUGOOD] < 1_584_000, (
-        f"DrugOOD has {full_lens[DOMAIN_DRUGOOD]} rows, expected ~1.58M"
-    )
+    assert (
+        1_583_000 < full_lens[DOMAIN_DRUGOOD] < 1_584_000
+    ), f"DrugOOD has {full_lens[DOMAIN_DRUGOOD]} rows, expected ~1.58M"
     # MetalCytoToxDB after filter (5_000 ≤ n ≤ 5_500 is the realistic band)
     assert 5_000 <= full_lens[DOMAIN_METALCYTOTOX] <= 5_500
     assert len(ds) == sum(full_lens.values())
@@ -151,17 +151,17 @@ def test_combined_total_is_2_6m() -> None:
     domain3 = ds._domain_3  # type: ignore[attr-defined]
     if domain3.using_fallback:
         # Without the real BindingDB symlink, we only get the 5K fallback.
-        assert 1_590_000 < total < 1_620_000, (
-            f"fallback total = {total}; expected ~1.61M (no BindingDB symlink)"
-        )
+        assert (
+            1_590_000 < total < 1_620_000
+        ), f"fallback total = {total}; expected ~1.61M (no BindingDB symlink)"
         return
     # Real BindingDB IC50 wired: total ≈ 2.66M
-    assert 2_650_000 < total < 2_680_000, (
-        f"four-domain total = {total}; expected ~2.66M with real BindingDB IC50"
-    )
-    assert 1_070_000 < full_lens[DOMAIN_BINDINGDB] < 1_080_000, (
-        f"BindingDB has {full_lens[DOMAIN_BINDINGDB]} rows, expected ~1.07M"
-    )
+    assert (
+        2_650_000 < total < 2_680_000
+    ), f"four-domain total = {total}; expected ~2.66M with real BindingDB IC50"
+    assert (
+        1_070_000 < full_lens[DOMAIN_BINDINGDB] < 1_080_000
+    ), f"BindingDB has {full_lens[DOMAIN_BINDINGDB]} rows, expected ~1.07M"
 
 
 # ---------------------------------------------------------------------------
@@ -179,7 +179,9 @@ def test_item_returns_smiles_y_domain_id(four_ds: FourDomainDataset) -> None:
     assert seen_domains == {0, 1, 2, 3}
 
 
-def test_iter_three_tuples_yields_three_tuple_per_item(four_ds: FourDomainDataset) -> None:
+def test_iter_three_tuples_yields_three_tuple_per_item(
+    four_ds: FourDomainDataset,
+) -> None:
     """``iter_three_tuples`` yields ``(smiles, y, domain_id)`` per TODO-143 §2.5."""
     first_few = []
     for s, y, d in iter_three_tuples(four_ds):
@@ -198,9 +200,9 @@ def test_domain_offset_resolution(four_ds: FourDomainDataset) -> None:
         # The first row of each domain is at the cumulative offset
         idx = four_ds._offsets[d]  # type: ignore[attr-defined]
         item = four_ds[int(idx)]
-        assert item.domain_id == d, (
-            f"offset {idx} should map to domain {d}, got {item.domain_id}"
-        )
+        assert (
+            item.domain_id == d
+        ), f"offset {idx} should map to domain {d}, got {item.domain_id}"
 
 
 # ---------------------------------------------------------------------------
@@ -209,9 +211,9 @@ def test_domain_offset_resolution(four_ds: FourDomainDataset) -> None:
 @pytest.mark.parametrize(
     "alpha, expected",
     [
-        (0.0, None),     # inverse-freq — checked numerically below
-        (0.5, None),     # soft balance — checked numerically below
-        (1.0, None),     # uniform — checked numerically below
+        (0.0, None),  # inverse-freq — checked numerically below
+        (0.5, None),  # soft balance — checked numerically below
+        (1.0, None),  # uniform — checked numerically below
     ],
 )
 def test_compute_domain_weights_alpha_formula(alpha: float, expected) -> None:
@@ -225,7 +227,9 @@ def test_compute_domain_weights_alpha_formula(alpha: float, expected) -> None:
     w = compute_domain_weights(domain_lengths, alpha=alpha)
     n_target = 1000.0
     expected_w0 = (n_target / 10.0) ** (1.0 - alpha)  # big oversampling for d=0
-    expected_w1 = (n_target / 1000.0) ** (1.0 - alpha)  # = 1 always (for d=1, the largest)
+    expected_w1 = (n_target / 1000.0) ** (
+        1.0 - alpha
+    )  # = 1 always (for d=1, the largest)
     assert math.isclose(w[0], expected_w0, rel_tol=1e-9)
     assert math.isclose(w[1], expected_w1, rel_tol=1e-9)
 
@@ -243,10 +247,10 @@ def test_alpha_0_yields_inverse_freq() -> None:
     domain_lengths = {0: 100, 1: 50_000, 2: 5_000, 3: 1_000}
     w = compute_domain_weights(domain_lengths, alpha=0.0)
     n_target = 50_000.0
-    assert math.isclose(w[0], n_target / 100.0)         # 500x oversample
-    assert math.isclose(w[1], n_target / 50_000.0)     # = 1 (largest domain)
-    assert math.isclose(w[2], n_target / 5_000.0)      # 10x oversample
-    assert math.isclose(w[3], n_target / 1_000.0)      # 50x oversample
+    assert math.isclose(w[0], n_target / 100.0)  # 500x oversample
+    assert math.isclose(w[1], n_target / 50_000.0)  # = 1 (largest domain)
+    assert math.isclose(w[2], n_target / 5_000.0)  # 10x oversample
+    assert math.isclose(w[3], n_target / 1_000.0)  # 50x oversample
 
 
 def test_alpha_0_5_yields_sqrt_inverse_freq() -> None:
@@ -254,10 +258,10 @@ def test_alpha_0_5_yields_sqrt_inverse_freq() -> None:
     domain_lengths = {0: 100, 1: 50_000, 2: 5_000, 3: 1_000}
     w = compute_domain_weights(domain_lengths, alpha=0.5)
     n_target = 50_000.0
-    assert math.isclose(w[0], math.sqrt(n_target / 100.0))       # ~22.36
-    assert math.isclose(w[1], math.sqrt(n_target / 50_000.0))   # = 1
-    assert math.isclose(w[2], math.sqrt(n_target / 5_000.0))    # ~3.16
-    assert math.isclose(w[3], math.sqrt(n_target / 1_000.0))    # ~7.07
+    assert math.isclose(w[0], math.sqrt(n_target / 100.0))  # ~22.36
+    assert math.isclose(w[1], math.sqrt(n_target / 50_000.0))  # = 1
+    assert math.isclose(w[2], math.sqrt(n_target / 5_000.0))  # ~3.16
+    assert math.isclose(w[3], math.sqrt(n_target / 1_000.0))  # ~7.07
 
 
 # ---------------------------------------------------------------------------
@@ -267,9 +271,9 @@ def test_expand_weights_length_matches_dataset(four_ds: FourDomainDataset) -> No
     """The per-row weight list has length equal to ``len(dataset)``."""
     w = compute_domain_weights(four_ds.domain_lengths(), alpha=0.5)
     per_row = expand_weights_to_per_row(four_ds, w)
-    assert len(per_row) == len(four_ds), (
-        f"len(per_row)={len(per_row)} but len(dataset)={len(four_ds)}"
-    )
+    assert len(per_row) == len(
+        four_ds
+    ), f"len(per_row)={len(per_row)} but len(dataset)={len(four_ds)}"
 
 
 def test_expand_weights_are_constant_within_domain(four_ds: FourDomainDataset) -> None:
@@ -309,7 +313,9 @@ def test_sampler_iteration_works(four_ds: FourDomainDataset) -> None:
     assert all(0 <= int(i) < len(four_ds) for i in indices)
 
 
-def test_sampler_with_seeded_generator_is_deterministic(four_ds: FourDomainDataset) -> None:
+def test_sampler_with_seeded_generator_is_deterministic(
+    four_ds: FourDomainDataset,
+) -> None:
     """Two seeded samplers produce the same index sequence."""
     gen1 = torch.Generator().manual_seed(42)
     gen2 = torch.Generator().manual_seed(42)
@@ -385,9 +391,9 @@ def test_sampled_domain_mix_matches_expected_within_tolerance(
     # Tolerance: ±3 % absolute for 20K draws (3σ ≈ √(0.5 * 0.5 / 20K) ≈ 0.35 %,
     # so 3 % is very generous)
     for d in range(4):
-        assert abs(observed[d] - expected[d]) < 0.03, (
-            f"d={d} expected={expected[d]:.3f} observed={observed[d]:.3f}"
-        )
+        assert (
+            abs(observed[d] - expected[d]) < 0.03
+        ), f"d={d} expected={expected[d]:.3f} observed={observed[d]:.3f}"
 
 
 # ---------------------------------------------------------------------------
@@ -405,7 +411,11 @@ def test_cli_accepts_four_domain_flag() -> None:
         capture_output=True,
         text=True,
         cwd=str(PROJECT_ROOT),
-        env={"PATH": "/usr/bin:/bin", "HOME": str(Path.home()), "PYTHONPATH": str(PROJECT_ROOT)},
+        env={
+            "PATH": "/usr/bin:/bin",
+            "HOME": str(Path.home()),
+            "PYTHONPATH": str(PROJECT_ROOT),
+        },
     )
     assert out.returncode == 0, out.stderr
     assert "--data-config" in out.stdout

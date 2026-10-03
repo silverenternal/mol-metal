@@ -37,6 +37,7 @@ fix per Wf-397-A1 (SHIPPED per Wf-399-A2 §6.26 catalog entry but not
 re-verified by Wf-410-A4), (d) the user's standing USER_OK grant per
 AGENTS.md §5.1.
 """
+
 from __future__ import annotations
 
 import json
@@ -128,7 +129,11 @@ def verify_wf299_wave_alias_mapping(launcher_path: Path = LAUNCHER) -> Dict[str,
     DQ = chr(34)  # double-quote
     alias_body_patterns = [
         re.compile(
-            r"case\s+[" + DQ + r"']?\$\{?WAVE_TARGET\}?[" + DQ + r"']?\s+in\s+(.+?)\s+esac",
+            r"case\s+["
+            + DQ
+            + r"']?\$\{?WAVE_TARGET\}?["
+            + DQ
+            + r"']?\s+in\s+(.+?)\s+esac",
             re.MULTILINE | re.DOTALL,
         ),
     ]
@@ -143,9 +148,7 @@ def verify_wf299_wave_alias_mapping(launcher_path: Path = LAUNCHER) -> Dict[str,
                 # Extract each `N) WAVE_TARGET="X"` alias pair from the
                 # case-body. N is the numeric alias (1/2/3); X is
                 # the lettered target (A/B/C).
-                inner_pattern = (
-                    r"(\d)\)\s*WAVE_TARGET\s*=\s*" + DQ + r"([ABC])" + DQ
-                )
+                inner_pattern = r"(\d)\)\s*WAVE_TARGET\s*=\s*" + DQ + r"([ABC])" + DQ
                 for alias, letter in re.findall(inner_pattern, g):
                     if alias in {"1", "2", "3"} and letter in {"A", "B", "C"}:
                         accepted_aliases.append(alias)
@@ -160,10 +163,24 @@ def verify_wf299_wave_alias_mapping(launcher_path: Path = LAUNCHER) -> Dict[str,
     # || [ "${WAVE_TARGET}" = "B" ] || [ "${WAVE_TARGET}" = "C" ] with
     # the trailing backslash line-continuation + || die "wave must be...".
     validator_pattern = re.compile(
-        r"\[\s+" + DQ + r"\$\{WAVE_TARGET\}" + DQ
-        + r"\s*=\s*" + DQ + r"all" + DQ + r"\s*\]"
-        + r"(?:\s*\|\|\s*\[\s+" + DQ + r"\$\{WAVE_TARGET\}" + DQ
-        + r"\s*=\s*" + DQ + r"[ABC]" + DQ + r"\s*\])+"
+        r"\[\s+"
+        + DQ
+        + r"\$\{WAVE_TARGET\}"
+        + DQ
+        + r"\s*=\s*"
+        + DQ
+        + r"all"
+        + DQ
+        + r"\s*\]"
+        + r"(?:\s*\|\|\s*\[\s+"
+        + DQ
+        + r"\$\{WAVE_TARGET\}"
+        + DQ
+        + r"\s*=\s*"
+        + DQ
+        + r"[ABC]"
+        + DQ
+        + r"\s*\])+"
         + r"\s*\\?\s*\|\|\s*die",
         re.MULTILINE,
     )
@@ -240,8 +257,7 @@ def verify_wf299_trainer_flag_wirein(
     # env flag, NOT a trainer arg).
     dmpnn_src = TRAINER_DMPNN.read_text(encoding="utf-8")
     no_enforce_budget_in_dmpnn = (
-        '"--no-enforce-budget"' in dmpnn_src
-        or "'--no-enforce-budget'" in dmpnn_src
+        '"--no-enforce-budget"' in dmpnn_src or "'--no-enforce-budget'" in dmpnn_src
     )
 
     contract_satisfied = all_wired and not no_enforce_budget_in_dmpnn
@@ -320,10 +336,15 @@ def main() -> int:
     # Check for lettered form (e.g. `A)` or `"A")`) OR the Wf-408-A3
     # numbered form (e.g. `WAVE_TARGET="A"` after `1)`/`2)`/`3)`).
     case_includes_abc_or_123 = (
-        all_case_text.count("A)") + all_case_text.count("B)") + all_case_text.count("C)") + all_case_text.count("all)") >= 4
-        or all_case_text.count('1) WAVE_TARGET=' + DQ2 + 'A' + DQ2)
-            + all_case_text.count('2) WAVE_TARGET=' + DQ2 + 'B' + DQ2)
-            + all_case_text.count('3) WAVE_TARGET=' + DQ2 + 'C' + DQ2) >= 3
+        all_case_text.count("A)")
+        + all_case_text.count("B)")
+        + all_case_text.count("C)")
+        + all_case_text.count("all)")
+        >= 4
+        or all_case_text.count("1) WAVE_TARGET=" + DQ2 + "A" + DQ2)
+        + all_case_text.count("2) WAVE_TARGET=" + DQ2 + "B" + DQ2)
+        + all_case_text.count("3) WAVE_TARGET=" + DQ2 + "C" + DQ2)
+        >= 3
     )
 
     checks = {

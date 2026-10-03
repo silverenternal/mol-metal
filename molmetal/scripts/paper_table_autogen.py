@@ -141,7 +141,9 @@ def _safe_get(d: Dict[str, Any], *keys: str, default: Any = None) -> Any:
     return cur
 
 
-def _extract_platinai_success_rate(platinai: Dict[str, Any]) -> Tuple[Optional[float], int]:
+def _extract_platinai_success_rate(
+    platinai: Dict[str, Any],
+) -> Tuple[Optional[float], int]:
     """PlatinAI: overall success rate (0-1) over n=500."""
     rate = platinai.get("success_rate")
     n = platinai.get("n_samples", 0) or 0
@@ -150,7 +152,9 @@ def _extract_platinai_success_rate(platinai: Dict[str, Any]) -> Tuple[Optional[f
     return (float(rate), int(n))
 
 
-def _extract_platinai_step3_ok_rate(platinai: Dict[str, Any]) -> Tuple[Optional[float], int]:
+def _extract_platinai_step3_ok_rate(
+    platinai: Dict[str, Any],
+) -> Tuple[Optional[float], int]:
     """PlatinAI: step3_multiph ok-rate (the bottleneck step)."""
     counts = _safe_get(platinai, "per_step_status_counts", "step3_multiph", default={})
     ok = counts.get("ok", 0) if isinstance(counts, dict) else 0
@@ -160,7 +164,9 @@ def _extract_platinai_step3_ok_rate(platinai: Dict[str, Any]) -> Tuple[Optional[
     return (float(ok) / total, total)
 
 
-def _extract_platinai_total_wall_time(platinai: Dict[str, Any]) -> Tuple[Optional[float], int]:
+def _extract_platinai_total_wall_time(
+    platinai: Dict[str, Any],
+) -> Tuple[Optional[float], int]:
     """PlatinAI: total wall-clock seconds for the full pipeline."""
     wall = platinai.get("total_wall_time_s")
     n = platinai.get("n_samples", 0) or 0
@@ -169,7 +175,9 @@ def _extract_platinai_total_wall_time(platinai: Dict[str, Any]) -> Tuple[Optiona
     return (float(wall), int(n))
 
 
-def _extract_platinai_per_step_wall(platinai: Dict[str, Any], step: str) -> Tuple[Optional[float], int]:
+def _extract_platinai_per_step_wall(
+    platinai: Dict[str, Any], step: str
+) -> Tuple[Optional[float], int]:
     """PlatinAI: per-step total wall-clock (seconds)."""
     wall = _safe_get(platinai, "per_step_wall_time_s", step)
     n = platinai.get("n_samples", 0) or 0
@@ -178,7 +186,9 @@ def _extract_platinai_per_step_wall(platinai: Dict[str, Any], step: str) -> Tupl
     return (float(wall), int(n))
 
 
-def _extract_metalcytotox_overall(metalcytotox: Dict[str, Any]) -> Tuple[Optional[float], int]:
+def _extract_metalcytotox_overall(
+    metalcytotox: Dict[str, Any],
+) -> Tuple[Optional[float], int]:
     """MetalCytoTox: aggregate success rate averaged over the 5 metals.
 
     Returns (mean_rate, total_samples).  If per_metal_success_rate is
@@ -196,7 +206,9 @@ def _extract_metalcytotox_overall(metalcytotox: Dict[str, Any]) -> Tuple[Optiona
     return (sum(vals) / len(vals), total)
 
 
-def _extract_metalcytotox_per_metal_rate(metalcytotox: Dict[str, Any], metal: str) -> Tuple[Optional[float], int]:
+def _extract_metalcytotox_per_metal_rate(
+    metalcytotox: Dict[str, Any], metal: str
+) -> Tuple[Optional[float], int]:
     """MetalCytoTox: success rate for one specific metal (e.g. 'Ru')."""
     rates = _safe_get(metalcytotox, "per_metal_success_rate", default={})
     if not isinstance(rates, dict) or metal not in rates:
@@ -205,10 +217,17 @@ def _extract_metalcytotox_per_metal_rate(metalcytotox: Dict[str, Any], metal: st
     return (float(rates[metal]), int(n_per_metal))
 
 
-def _extract_metalcytotox_step3_error(metalcytotox: Dict[str, Any], metal: str) -> Tuple[Optional[float], int]:
+def _extract_metalcytotox_step3_error(
+    metalcytotox: Dict[str, Any], metal: str
+) -> Tuple[Optional[float], int]:
     """MetalCytoTox: step3_multiph error count for one metal."""
-    counts = _safe_get(metalcytotox, "per_step_per_metal_status_counts",
-                       "step3_multiph", metal, default={})
+    counts = _safe_get(
+        metalcytotox,
+        "per_step_per_metal_status_counts",
+        "step3_multiph",
+        metal,
+        default={},
+    )
     if not isinstance(counts, dict):
         return (None, 0)
     err = counts.get("error", 0)
@@ -546,7 +565,9 @@ def _build_metric_specs() -> List[_MetricSpec]:
 
 # Augment the catalog with the missing step-ok-rate extractors (kept
 # near the catalog so the row count stays self-documenting).
-def _extract_platinai_step1_ok_rate(platinai: Dict[str, Any]) -> Tuple[Optional[float], int]:
+def _extract_platinai_step1_ok_rate(
+    platinai: Dict[str, Any],
+) -> Tuple[Optional[float], int]:
     counts = _safe_get(platinai, "per_step_status_counts", "step1_closure", default={})
     ok = counts.get("ok", 0) if isinstance(counts, dict) else 0
     total = sum(int(v) for v in counts.values()) if isinstance(counts, dict) else 0
@@ -555,7 +576,9 @@ def _extract_platinai_step1_ok_rate(platinai: Dict[str, Any]) -> Tuple[Optional[
     return (float(ok) / total, total)
 
 
-def _extract_platinai_step2_ok_rate(platinai: Dict[str, Any]) -> Tuple[Optional[float], int]:
+def _extract_platinai_step2_ok_rate(
+    platinai: Dict[str, Any],
+) -> Tuple[Optional[float], int]:
     counts = _safe_get(platinai, "per_step_status_counts", "step2_se3", default={})
     ok = counts.get("ok", 0) if isinstance(counts, dict) else 0
     total = sum(int(v) for v in counts.values()) if isinstance(counts, dict) else 0
@@ -564,7 +587,9 @@ def _extract_platinai_step2_ok_rate(platinai: Dict[str, Any]) -> Tuple[Optional[
     return (float(ok) / total, total)
 
 
-def _extract_platinai_step5_ok_rate(platinai: Dict[str, Any]) -> Tuple[Optional[float], int]:
+def _extract_platinai_step5_ok_rate(
+    platinai: Dict[str, Any],
+) -> Tuple[Optional[float], int]:
     counts = _safe_get(platinai, "per_step_status_counts", "step5_hilbert", default={})
     ok = counts.get("ok", 0) if isinstance(counts, dict) else 0
     total = sum(int(v) for v in counts.values()) if isinstance(counts, dict) else 0
@@ -635,9 +660,25 @@ def _format_r18_e2e(metric_id: str, value: Optional[float], samples: int) -> str
         return "PENDING (R18 e2e benchmark not run)"
     pct = value * 100.0 if 0.0 <= value <= 1.0 else value
     # Proportion-style metrics: emit as a fraction.
-    if metric_id.startswith(("m1", "m2_", "m17", "m19", "m21", "m6", "m8",
-                              "m11", "m12", "m13", "m14", "m16", "m18",
-                              "deflexpressor", "moleculenet")):
+    if metric_id.startswith(
+        (
+            "m1",
+            "m2_",
+            "m17",
+            "m19",
+            "m21",
+            "m6",
+            "m8",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m16",
+            "m18",
+            "deflexpressor",
+            "moleculenet",
+        )
+    ):
         return f"{value:.3f} \\MEASURED{{}} ({samples} samples)"
     # Wall-time style (e.g. m3_vina / m10_vina_min wall-clock proxies)
     if metric_id in ("m3_vina", "m10_vina_min"):
@@ -717,13 +758,14 @@ def render_latex(rows: Sequence[Table2Row], timestamp: str = "") -> str:
     for r in rows:
         if r.category != current_cat:
             out.append(
-                "\\multicolumn{6}{l}{\\textit{%s}} \\\\\n"
-                % _escape_text(r.category)
+                "\\multicolumn{6}{l}{\\textit{%s}} \\\\\n" % _escape_text(r.category)
             )
             current_cat = r.category
         out.append(_render_row(r))
 
-    stamp = timestamp or _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds")
+    stamp = timestamp or _dt.datetime.now(_dt.timezone.utc).isoformat(
+        timespec="seconds"
+    )
     out.append(LATEX_TABLE_FOOTER % stamp)
     return "".join(out)
 

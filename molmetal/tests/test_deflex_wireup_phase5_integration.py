@@ -69,8 +69,11 @@ def test_full_chain_no_crash():
     class _StubLP:
         def predict_proba(self, smiles: str):
             return {
-                "cuacc": 0.5, "spaac": 0.3, "thiol_ene": 0.1,
-                "suzuki": 0.05, "amide_coupling": 0.05,
+                "cuacc": 0.5,
+                "spaac": 0.3,
+                "thiol_ene": 0.1,
+                "suzuki": 0.05,
+                "amide_coupling": 0.05,
             }
 
     lp = _StubLP()
@@ -120,6 +123,7 @@ def test_search_kwargs_accepted():
     try:
         import inspect
         from molmetal_lam.search_alg.proof_search import MCTSProofSearch
+
         sig = inspect.signature(MCTSProofSearch.search)
     except Exception as exc:
         pytest.skip(f"proof_search not importable: {exc}")

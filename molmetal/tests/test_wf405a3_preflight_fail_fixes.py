@@ -127,7 +127,9 @@ def test_loi_status_header_accepted(tmp_path: Path) -> None:
         f"gate must PASS with TEMPLATE_NOT_NEEDED_FOR_TIER2 status; "
         f"got status={result.status!r} evidence={result.evidence!r}"
     )
-    assert "4/4 LOI drafts ready-to-send" in result.evidence or "4 LOI" in result.evidence
+    assert (
+        "4/4 LOI drafts ready-to-send" in result.evidence or "4 LOI" in result.evidence
+    )
     assert result.wall_sec > 0.0
 
 
@@ -156,8 +158,7 @@ def test_loi_without_status_fail(tmp_path: Path) -> None:
     # Three good ones, one bad one — total ≥ 4 but ≥1 fails the regex check.
     loi_ok = tmp_path / "wetlab_loi_ok.md"
     loi_ok.write_text(
-        "# LOI-OK\n\n"
-        "**Status:** **TEMPLATE_NOT_NEEDED_FOR_TIER2**\n",
+        "# LOI-OK\n\n" "**Status:** **TEMPLATE_NOT_NEEDED_FOR_TIER2**\n",
         encoding="utf-8",
     )
     review = tmp_path / "wetlab_loi_consolidation_review.md"
@@ -179,8 +180,10 @@ def test_loi_without_status_fail(tmp_path: Path) -> None:
         f"gate must FAIL when a LOI lacks the status header; "
         f"got status={result.status!r} evidence={result.evidence!r}"
     )
-    assert "missing-status" in result.evidence or "parsed-fail" in result.evidence or (
-        "wetlab_loi_missing_status.md" in result.evidence
+    assert (
+        "missing-status" in result.evidence
+        or "parsed-fail" in result.evidence
+        or ("wetlab_loi_missing_status.md" in result.evidence)
     )
 
 
@@ -208,14 +211,20 @@ def test_anchor_freshness_refresh() -> None:
     import json
 
     # Verify both target files exist + parse + carry the canonical schema.
-    wf269c_real = REPO_ROOT / "molmetal" / "reports" / "wf269c_cfm_real" / "wf269c_report.json"
-    wf269c_pilot = REPO_ROOT / "molmetal" / "reports" / "wf277c_real_pilot" / "wf269c_report.json"
+    wf269c_real = (
+        REPO_ROOT / "molmetal" / "reports" / "wf269c_cfm_real" / "wf269c_report.json"
+    )
+    wf269c_pilot = (
+        REPO_ROOT / "molmetal" / "reports" / "wf277c_real_pilot" / "wf269c_report.json"
+    )
     for p in (wf269c_real, wf269c_pilot):
-        assert p.is_file(), f"{p.relative_to(REPO_ROOT)} MUST be on disk after Wf-405-A3 touch"
+        assert (
+            p.is_file()
+        ), f"{p.relative_to(REPO_ROOT)} MUST be on disk after Wf-405-A3 touch"
         data = json.loads(p.read_text(encoding="utf-8"))
-        assert "configs" in data, (
-            f"{p.relative_to(REPO_ROOT)} MUST carry canonical Wf-269C schema"
-        )
+        assert (
+            "configs" in data
+        ), f"{p.relative_to(REPO_ROOT)} MUST carry canonical Wf-269C schema"
         assert len(data["configs"]) >= 1
 
     # Verify mtimes are < 24h.
@@ -240,7 +249,9 @@ def test_anchor_freshness_refresh() -> None:
 
     # Build an isolated pattern list containing only these 2 files. We use
     # the parent-dir pattern + a name filter to scope down.
-    scoped_pattern = "molmetal/reports/wf{269c_cfm_real,277c_real_pilot}/wf269c_report.json"
+    scoped_pattern = (
+        "molmetal/reports/wf{269c_cfm_real,277c_real_pilot}/wf269c_report.json"
+    )
     result = gate_wf343c4_anchor_freshness_24h(
         "p3_wf343c4_anchor_freshness_24h",
         "P3",
@@ -252,8 +263,10 @@ def test_anchor_freshness_refresh() -> None:
         f"got status={result.status!r} evidence={result.evidence!r}"
     )
     # The 2 wf269c_report.json files MUST be checked.
-    assert "2/2" in result.evidence or "all 2/2" in result.evidence or (
-        len(re.findall(r"\d+/\d+", result.evidence)) >= 1
+    assert (
+        "2/2" in result.evidence
+        or "all 2/2" in result.evidence
+        or (len(re.findall(r"\d+/\d+", result.evidence)) >= 1)
     )
 
 
@@ -272,7 +285,9 @@ def test_anchor_age_calculation(tmp_path: Path) -> None:
     """
     # Create a synthetic anchor with a known age = 12 hours (fresh).
     target = tmp_path / "anchor_12h.json"
-    target.write_text(json.dumps({"version": "1.0.0", "wf": "wf405a3_test"}), encoding="utf-8")
+    target.write_text(
+        json.dumps({"version": "1.0.0", "wf": "wf405a3_test"}), encoding="utf-8"
+    )
     # Backdate mtime by 12 hours.
     now = time.time()
     twelve_h_ago = now - (12 * 3600)
@@ -290,9 +305,9 @@ def test_anchor_age_calculation(tmp_path: Path) -> None:
         glob_patterns=(abs_pattern,),
         max_age_sec=24 * 3600.0,
     )
-    assert result.status == "PASS", (
-        f"12-hour-old anchor MUST be PASS; got {result.status!r} {result.evidence!r}"
-    )
+    assert (
+        result.status == "PASS"
+    ), f"12-hour-old anchor MUST be PASS; got {result.status!r} {result.evidence!r}"
 
     # Now backdate to 25h and re-test.
     twenty_five_h_ago = now - (25 * 3600)
@@ -304,16 +319,16 @@ def test_anchor_age_calculation(tmp_path: Path) -> None:
         glob_patterns=(abs_pattern,),
         max_age_sec=24 * 3600.0,
     )
-    assert result_stale.status == "FAIL", (
-        f"25-hour-old anchor MUST be FAIL; got {result_stale.status!r} {result_stale.evidence!r}"
-    )
+    assert (
+        result_stale.status == "FAIL"
+    ), f"25-hour-old anchor MUST be FAIL; got {result_stale.status!r} {result_stale.evidence!r}"
     assert "STALE" in result_stale.evidence or "stale" in result_stale.evidence.lower()
     # Confirm age-hours is in the FAIL evidence (e.g. "(age=25.0h > 24h)").
     age_match = re.search(r"age=(\d+\.?\d*)h", result_stale.evidence)
-    assert age_match is not None, (
-        f"FAIL evidence MUST include age in hours; got {result_stale.evidence!r}"
-    )
+    assert (
+        age_match is not None
+    ), f"FAIL evidence MUST include age in hours; got {result_stale.evidence!r}"
     age_hours_reported = float(age_match.group(1))
-    assert 24.5 <= age_hours_reported <= 25.5, (
-        f"age_hours MUST be ~25.0; got {age_hours_reported}"
-    )
+    assert (
+        24.5 <= age_hours_reported <= 25.5
+    ), f"age_hours MUST be ~25.0; got {age_hours_reported}"

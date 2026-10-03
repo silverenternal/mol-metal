@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Wf-424-A14: Append §22.110 entry to TODO/INDEX.md via atomic_write_file."""
+
 from __future__ import annotations
 
 import sys

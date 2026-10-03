@@ -72,12 +72,14 @@ avoiding invasive surgery on the shipped Wf-131 P1 trainer.
         --epochs 50 --hidden 128 --depth 3 --device cuda \\
         --out-dir molmetal/reports/wf305d_drugood_dann
 """
+
 from __future__ import annotations
 
 # --- Wf-130 GPU default -----------------------------------------
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -129,6 +131,7 @@ from molmetal.baselines.dmpnn_multitask import (
 
 try:
     from rdkit import RDLogger
+
     RDLogger.DisableLog("rdApp.*")
 except Exception:
     pass
@@ -144,7 +147,7 @@ DEFAULT_OUT_DIR: Path = PROJECT_ROOT / "molmetal" / "reports" / "wf305d_drugood_
 DEFAULT_CKPT_DIR: Path = PROJECT_ROOT / "molmetal" / "checkpoints"
 
 DEFAULT_SEEDS: Tuple[int, ...] = (0,)
-DEFAULT_EPOCHS: int = 1          # CPU smoke default; full GPU run: 50
+DEFAULT_EPOCHS: int = 1  # CPU smoke default; full GPU run: 50
 DEFAULT_LR: float = 1e-3
 DEFAULT_BATCH_SIZE: int = 64
 DEFAULT_ALPHA: float = 0.5
@@ -155,7 +158,7 @@ DEFAULT_DROPOUT: float = 0.0
 DOMAIN_ID_TRAIN: int = 0
 DOMAIN_ID_VAL: int = 1
 DOMAIN_ID_TEST: int = 2
-NUM_DOMAINS: int = 4   # index 3 reserved for future NCI-60 cross-domain
+NUM_DOMAINS: int = 4  # index 3 reserved for future NCI-60 cross-domain
 
 # Honest field-avg target per Wf-297B + Wf-301A.
 FIELD_AVG_TARGET_LO: float = 0.55
@@ -184,17 +187,17 @@ def load_drugood_split_table(csv_path: Path) -> pd.DataFrame:
     expected = {"smiles", "scaffold", "pIC50", "active", "split"}
     missing = expected - set(df.columns)
     if missing:
-        raise ValueError(
-            f"DrugOOD CSV missing required columns: {missing}"
-        )
-    out = pd.DataFrame({
-        "smiles": df["smiles"].astype(str),
-        "metal": "DrugOOD",
-        "scaffold_id": df["scaffold"].astype(str),
-        "split": df["split"].astype(str),
-        "activity": df["active"].astype(int),
-        "pIC50": pd.to_numeric(df["pIC50"], errors="coerce").astype(np.float32),
-    })
+        raise ValueError(f"DrugOOD CSV missing required columns: {missing}")
+    out = pd.DataFrame(
+        {
+            "smiles": df["smiles"].astype(str),
+            "metal": "DrugOOD",
+            "scaffold_id": df["scaffold"].astype(str),
+            "split": df["split"].astype(str),
+            "activity": df["active"].astype(int),
+            "pIC50": pd.to_numeric(df["pIC50"], errors="coerce").astype(np.float32),
+        }
+    )
     out = out.reset_index(drop=False).rename(columns={"index": "row_id"})
     return out
 
@@ -221,7 +224,7 @@ class SeedResult:
     n_val: int
     n_test: int
     val_auc: float
-    test_auc: float        # this is the "ood_test_auc" the Wf-297B brief asks for
+    test_auc: float  # this is the "ood_test_auc" the Wf-297B brief asks for
     val_pearson: float
     test_pearson: float
     elapsed_seconds: float
@@ -346,9 +349,13 @@ def train_one_seed(
         w_history.append(float(avg_w))
 
         y_true_v, y_score_v, pic50_pred_v = predict_joint(
-            model, val_graphs, val_mids,
-            val_pic50, val_active,
-            batch_size=batch_size, device=device,
+            model,
+            val_graphs,
+            val_mids,
+            val_pic50,
+            val_active,
+            batch_size=batch_size,
+            device=device,
         )
         if len(set(y_true_v.tolist())) >= 2:
             val_auc = float(roc_auc_score(y_true_v, y_score_v))
@@ -369,36 +376,44 @@ def train_one_seed(
             best_val_auc = val_auc
             best_epoch = epoch + 1
             best_state = {
-                k: v.detach().cpu().clone()
-                for k, v in model.state_dict().items()
+                k: v.detach().cpu().clone() for k, v in model.state_dict().items()
             }
 
     if best_state is None:
         best_state = {
-            k: v.detach().cpu().clone()
-            for k, v in model.state_dict().items()
+            k: v.detach().cpu().clone() for k, v in model.state_dict().items()
         }
         best_epoch = epochs
     train_seconds = time.time() - t_train
 
     model.load_state_dict(best_state)
     y_true_v, y_score_v, pic50_pred_v = predict_joint(
-        model, val_graphs, val_mids,
-        val_pic50, val_active,
-        batch_size=batch_size, device=device,
+        model,
+        val_graphs,
+        val_mids,
+        val_pic50,
+        val_active,
+        batch_size=batch_size,
+        device=device,
     )
     y_true_t, y_score_t, pic50_pred_t = predict_joint(
-        model, test_graphs, test_mids,
-        test_pic50, test_active,
-        batch_size=batch_size, device=device,
+        model,
+        test_graphs,
+        test_mids,
+        test_pic50,
+        test_active,
+        batch_size=batch_size,
+        device=device,
     )
     val_auc_final = (
         float(roc_auc_score(y_true_v, y_score_v))
-        if len(set(y_true_v.tolist())) >= 2 else float("nan")
+        if len(set(y_true_v.tolist())) >= 2
+        else float("nan")
     )
     test_auc_final = (
         float(roc_auc_score(y_true_t, y_score_t))
-        if len(set(y_true_t.tolist())) >= 2 else float("nan")
+        if len(set(y_true_t.tolist())) >= 2
+        else float("nan")
     )
     val_pearson_final = float(regression_metrics(val_pic50, pic50_pred_v)["pearson"])
     test_pearson_final = float(regression_metrics(test_pic50, pic50_pred_t)["pearson"])
@@ -466,85 +481,125 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         )
     )
     p.add_argument(
-        "--csv", type=Path, default=DEFAULT_CSV,
+        "--csv",
+        type=Path,
+        default=DEFAULT_CSV,
         help="Wf-275B ECFP4 + scaffold-split CSV path",
     )
     p.add_argument(
-        "--out-dir", type=Path, default=DEFAULT_OUT_DIR,
+        "--out-dir",
+        type=Path,
+        default=DEFAULT_OUT_DIR,
         help="Output directory for per-seed metrics JSON.",
     )
     p.add_argument(
-        "--ckpt-dir", type=Path, default=DEFAULT_CKPT_DIR,
+        "--ckpt-dir",
+        type=Path,
+        default=DEFAULT_CKPT_DIR,
         help="Checkpoint directory.",
     )
     p.add_argument(
-        "--seeds", type=int, nargs="+", default=list(DEFAULT_SEEDS),
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=list(DEFAULT_SEEDS),
         help="Random seeds (default: 0 — CPU smoke).",
     )
     p.add_argument(
-        "--epochs", type=int, default=DEFAULT_EPOCHS,
+        "--epochs",
+        type=int,
+        default=DEFAULT_EPOCHS,
         help="Epochs per seed (default 1 — CPU smoke; full GPU: 50).",
     )
     p.add_argument(
-        "--hidden", type=int, default=DEFAULT_HIDDEN,
+        "--hidden",
+        type=int,
+        default=DEFAULT_HIDDEN,
         help="D-MPNN hidden dim (default 128).",
     )
     p.add_argument(
-        "--depth", type=int, default=DEFAULT_DEPTH,
+        "--depth",
+        type=int,
+        default=DEFAULT_DEPTH,
         help="D-MPNN message-passing depth (default 3).",
     )
     p.add_argument("--lr", type=float, default=DEFAULT_LR)
     p.add_argument(
-        "--batch-size", type=int, default=DEFAULT_BATCH_SIZE,
+        "--batch-size",
+        type=int,
+        default=DEFAULT_BATCH_SIZE,
         help="Batch size (default 64).",
     )
     p.add_argument(
-        "--alpha", type=float, default=DEFAULT_ALPHA,
+        "--alpha",
+        type=float,
+        default=DEFAULT_ALPHA,
         help="BCE weight in MTL loss (default 0.5).",
     )
     p.add_argument(
-        "--wasserstein-weight", type=float, default=DEFAULT_WASSERSTEIN_WEIGHT,
+        "--wasserstein-weight",
+        type=float,
+        default=DEFAULT_WASSERSTEIN_WEIGHT,
         help="Wasserstein pIC50 loss weight w_w (default 0.05).",
     )
     p.add_argument(
-        "--lambda-grl", type=float, default=0.1,
+        "--lambda-grl",
+        type=float,
+        default=0.1,
         help="DANN gradient-reversal weight (default 0.1).",
     )
     p.add_argument(
-        "--grl-alpha", type=float, default=0.1,
+        "--grl-alpha",
+        type=float,
+        default=0.1,
         help="DANN ReverseLayerF alpha (default 0.1 — constant).",
     )
     p.add_argument(
-        "--use-l2-guard", dest="use_l2_guard",
-        action="store_true", default=True,
+        "--use-l2-guard",
+        dest="use_l2_guard",
+        action="store_true",
+        default=True,
         help="Apply grad-norm clip (default ON).",
     )
     p.add_argument(
-        "--no-l2-guard", dest="use_l2_guard", action="store_false",
+        "--no-l2-guard",
+        dest="use_l2_guard",
+        action="store_false",
     )
     p.add_argument(
-        "--use-dann", dest="use_dann",
-        action="store_true", default=True,
+        "--use-dann",
+        dest="use_dann",
+        action="store_true",
+        default=True,
         help="Enable DANN Gradient-Reversal Layer (default ON).",
     )
     p.add_argument(
-        "--no-dann", dest="use_dann", action="store_false",
+        "--no-dann",
+        dest="use_dann",
+        action="store_false",
     )
     p.add_argument(
-        "--use-kendall", dest="use_kendall",
-        action="store_true", default=True,
+        "--use-kendall",
+        dest="use_kendall",
+        action="store_true",
+        default=True,
         help="Enable Kendall UW MTL loss (default ON).",
     )
     p.add_argument(
-        "--no-kendall", dest="use_kendall", action="store_false",
+        "--no-kendall",
+        dest="use_kendall",
+        action="store_false",
     )
     p.add_argument("--device", default=None)
     p.add_argument(
-        "--cuda-visible-devices", default="",
+        "--cuda-visible-devices",
+        default="",
         help="Override CUDA_VISIBLE_DEVICES before device resolution.",
     )
     p.add_argument(
-        "--cpu-num-workers", type=int, default=0,
+        "--cpu-num-workers",
+        type=int,
+        default=0,
         help="DataLoader num_workers (default 0 — manual loop).",
     )
     return p.parse_args(argv)
@@ -616,6 +671,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             )
         except Exception as exc:
             import traceback
+
             traceback.print_exc()
             _log(f"[seed={seed}] FAILED: {exc!r}")
             res = SeedResult(
@@ -675,10 +731,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # Honest field-avg gate: PROJECTED, not measured.  Single-seed
     # smoke runs are NOT statistically significant on this gate.
-    passes = bool(
-        not math.isnan(test_mean) and
-        test_mean >= FIELD_AVG_TARGET_LO
-    )
+    passes = bool(not math.isnan(test_mean) and test_mean >= FIELD_AVG_TARGET_LO)
 
     aggregate = {
         "wf": "wf305d-drugood-dann-multitask",
@@ -739,9 +792,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             "50-epoch run requires user OK per kill_then_adapt (Wf-294B)."
         ),
     }
-    (args.out_dir / "training_summary.json").write_text(
-        json.dumps(aggregate, indent=2)
-    )
+    (args.out_dir / "training_summary.json").write_text(json.dumps(aggregate, indent=2))
     _log(
         f"TEST (ood) AUC = {test_mean:.4f} ± {test_std:.4f}  "
         f"VAL AUC = {val_mean:.4f} ± {val_std:.4f}  "

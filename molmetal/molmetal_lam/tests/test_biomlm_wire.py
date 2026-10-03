@@ -53,6 +53,7 @@ def test_biomlm_sota_scoring_importable() -> None:
         biomlm_cli_available,
         score_candidates,
     )
+
     fields = BioLMSScoreColumn.__dataclass_fields__
     assert "biomlm_score_mean" in fields
     assert "biomlm_score_std" in fields
@@ -143,6 +144,7 @@ def test_biomlm_subprocess_call_routed(tmp_path: Path, monkeypatch) -> None:
         from molmetal_lam.sbdd_env.biomlm_sota_scoring import (
             BioLMRealAdapter,
         )
+
         real_adapter_cls = BioLMRealAdapter
     except (ImportError, AttributeError):
         real_adapter_cls = None
@@ -151,12 +153,15 @@ def test_biomlm_subprocess_call_routed(tmp_path: Path, monkeypatch) -> None:
         # STUB contract path: assert score_candidates doesn't crash and
         # returns the documented 0.0 / "unavailable" semantics.
         col = scoring.score_candidates(
-            [{"smiles": "CCO"}], str(fake_pdb),
+            [{"smiles": "CCO"}],
+            str(fake_pdb),
             repo_root=str(tmp_path / "no_such_biomlm_repo"),
         )
-        assert col.status in ("unavailable", "ok", "partial"), (
-            f"unexpected STUB status: {col.status!r}"
-        )
+        assert col.status in (
+            "unavailable",
+            "ok",
+            "partial",
+        ), f"unexpected STUB status: {col.status!r}"
         # Skip the rest of the test when the upstream adapter is unavailable;
         # the load-bearing STUB-contract assertion has already been validated.
         pytest.skip(
@@ -167,7 +172,16 @@ def test_biomlm_subprocess_call_routed(tmp_path: Path, monkeypatch) -> None:
 
     # 2. REAL adapter installed: drive 10-SMILES subprocess mock path.
     batch = [
-        "CCO", "CCN", "c1ccccc1", "CO", "CN", "CCO", "CCN", "CCC", "CCCO", "COC",
+        "CCO",
+        "CCN",
+        "c1ccccc1",
+        "CO",
+        "CN",
+        "CCO",
+        "CCN",
+        "CCC",
+        "CCCO",
+        "COC",
     ]
 
     def _score_for(smiles: str) -> float:
@@ -196,6 +210,7 @@ def test_biomlm_subprocess_call_routed(tmp_path: Path, monkeypatch) -> None:
         class _Result:
             returncode = 0
             stderr = ""
+
         return _Result()
 
     monkeypatch.setattr(scoring.subprocess, "run", _fake_subprocess_run)
@@ -210,7 +225,8 @@ def test_biomlm_subprocess_call_routed(tmp_path: Path, monkeypatch) -> None:
 
     candidates = [{"smiles": s} for s in batch]
     col = scoring.score_candidates(
-        candidates, str(fake_pdb),
+        candidates,
+        str(fake_pdb),
         repo_root=str(repo),
         timeout_sec=30.0,
     )
@@ -236,10 +252,12 @@ def test_biomlm_subprocess_call_routed(tmp_path: Path, monkeypatch) -> None:
 def test_biomlm_score_candidates_unavailable(tmp_path: Path) -> None:
     """When the vendored BioLM-Score repo is missing, status='unavailable'."""
     from molmetal_lam.sbdd_env.biomlm_sota_scoring import score_candidates
+
     fake_pdb = tmp_path / "fake.pdb"
     fake_pdb.write_text("ATOM\nEND\n")
     col = score_candidates(
-        [{"smiles": "CCO"}], str(fake_pdb),
+        [{"smiles": "CCO"}],
+        str(fake_pdb),
         repo_root=str(tmp_path / "no_such_biomlm_repo"),
     )
     assert col.status == "unavailable"
@@ -255,6 +273,7 @@ def test_biomlm_score_candidates_unavailable(tmp_path: Path) -> None:
 def test_biomlm_score_candidates_empty() -> None:
     """When no candidates are supplied, status='ok' with zero invocations."""
     from molmetal_lam.sbdd_env.biomlm_sota_scoring import score_candidates
+
     col = score_candidates([], "/tmp/doesnt_matter_pdb")
     assert col.status == "ok"
     assert col.n_invoked == 0
@@ -271,6 +290,7 @@ def test_biomlm_score_candidates_empty() -> None:
 def test_biomlm_aggregation_helper() -> None:
     """The internal _aggregate helper returns the right mean/std values."""
     from molmetal_lam.sbdd_env.biomlm_sota_scoring import _aggregate
+
     # n=0 -> (None, None)
     assert _aggregate([]) == (None, None)
     # n=1 -> (mean, None)
@@ -298,24 +318,42 @@ def test_biomlm_score_recorded_in_report(tmp_path: Path, monkeypatch) -> None:
     synthetic :class:`PocketResult` and a ``biomlm_config``; then we
     inspect the worker output JSON for the new columns.
     """
+
     def _fake_run_one_pocket(*args, **kwargs):
         from molmetal.scripts.r4_c_full_sweep import PocketResult
+
         return PocketResult(
             pocket_id="fake_000",
             status="ok",
             n_candidates=2,
             candidates=[
-                {"smiles": "CCO", "is_generated": True, "sa": 1.0, "qed": 0.5,
-                 "lipinski": True, "vina_proxy": -7.0},
-                {"smiles": "CCN", "is_generated": True, "sa": 1.5, "qed": 0.4,
-                 "lipinski": True, "vina_proxy": -6.5},
+                {
+                    "smiles": "CCO",
+                    "is_generated": True,
+                    "sa": 1.0,
+                    "qed": 0.5,
+                    "lipinski": True,
+                    "vina_proxy": -7.0,
+                },
+                {
+                    "smiles": "CCN",
+                    "is_generated": True,
+                    "sa": 1.5,
+                    "qed": 0.4,
+                    "lipinski": True,
+                    "vina_proxy": -6.5,
+                },
             ],
             top1_smiles="CCO",
-            top1_sa=1.0, top1_qed=0.5, top1_lipinski=True,
+            top1_sa=1.0,
+            top1_qed=0.5,
+            top1_lipinski=True,
             top1_vina_proxy=-7.0,
-            mean_sa=1.25, mean_qed=0.45,
+            mean_sa=1.25,
+            mean_qed=0.45,
             lipinski_pass_count=2,
-            n_generated_candidates=2, n_seed_candidates=0,
+            n_generated_candidates=2,
+            n_seed_candidates=0,
             receptor_path=str(tmp_path / "fake.pdb"),
             ligand_path=str(tmp_path / "fake.sdf"),
             seed=42,
@@ -338,12 +376,12 @@ def test_biomlm_score_recorded_in_report(tmp_path: Path, monkeypatch) -> None:
         dat_path = out_dir / f"{outprefix}.dat"
         pdbid_cco = f"r4_{abs(hash('CCO')) % 10**8}"
         pdbid_ccn = f"r4_{abs(hash('CCN')) % 10**8}"
-        dat_path.write_text(
-            f"#code\tscore\n{pdbid_cco}\t7.20\n{pdbid_ccn}\t6.80\n"
-        )
+        dat_path.write_text(f"#code\tscore\n{pdbid_cco}\t7.20\n{pdbid_ccn}\t6.80\n")
+
         class _Result:
             returncode = 0
             stderr = ""
+
         return _Result()
 
     monkeypatch.setattr(scoring.subprocess, "run", _fake_subprocess_run)
@@ -381,12 +419,18 @@ def test_biomlm_score_recorded_in_report(tmp_path: Path, monkeypatch) -> None:
 
     # Patch run_one_pocket inside the r4_c_full_sweep module.
     import importlib
+
     r4 = importlib.import_module("molmetal.scripts.r4_c_full_sweep")
     monkeypatch.setattr(r4, "run_one_pocket", _fake_run_one_pocket)
 
     saved_argv = sys.argv[:]
-    sys.argv = [saved_argv[0], "--worker-input", str(worker_input),
-                "--worker-output", str(worker_output)]
+    sys.argv = [
+        saved_argv[0],
+        "--worker-input",
+        str(worker_input),
+        "--worker-output",
+        str(worker_output),
+    ]
     try:
         rc = r4.main()
     finally:
@@ -428,6 +472,7 @@ def test_biomlm_score_candidates_subprocess_error(tmp_path: Path, monkeypatch) -
         class _Result:
             returncode = 2
             stderr = "ModuleNotFoundError: No module named 'torch_scatter'"
+
         return _Result()
 
     monkeypatch.setattr(scoring.subprocess, "run", _fake_subprocess_run)
@@ -445,7 +490,8 @@ def test_biomlm_score_candidates_subprocess_error(tmp_path: Path, monkeypatch) -
     fake_pdb.write_text("ATOM\nEND\n")
 
     col = scoring.score_candidates(
-        [{"smiles": "CCO"}], str(fake_pdb),
+        [{"smiles": "CCO"}],
+        str(fake_pdb),
         repo_root=str(repo),
         timeout_sec=30.0,
     )
@@ -463,6 +509,7 @@ def test_biomlm_score_candidates_subprocess_error(tmp_path: Path, monkeypatch) -
 def test_biomlm_real_vendored_repo_detection() -> None:
     """The vendored BioLM-Score checkout at molmetal/references/ is recognised."""
     from molmetal_lam.sbdd_env import biomlm_sota_scoring as scoring
+
     real_repo = Path(ROOT) / "molmetal" / "references" / "BioLM-Score"
     if not (real_repo / "BioLM_Score" / "__init__.py").is_file():
         pytest.skip("Vendored BioLM-Score repo not present (clone missing)")

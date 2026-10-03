@@ -139,9 +139,7 @@ class CaputoDerivative:
 
     def __init__(self, alpha: float = 0.5, n_steps: int = 100) -> None:
         if not (0.0 < float(alpha) <= 1.0):
-            raise ValueError(
-                f"alpha must be in (0.0, 1.0], got {alpha!r}."
-            )
+            raise ValueError(f"alpha must be in (0.0, 1.0], got {alpha!r}.")
         if int(n_steps) < 1:
             raise ValueError(f"n_steps must be >= 1, got {n_steps!r}.")
         self.alpha = float(alpha)
@@ -195,9 +193,7 @@ class CaputoDerivative:
                 f"got {f.shape} vs {t.shape}."
             )
         if f.ndim != 1:
-            raise ValueError(
-                f"f_values must be 1-D, got {f.ndim}-D."
-            )
+            raise ValueError(f"f_values must be 1-D, got {f.ndim}-D.")
         n = f.shape[0]
         if n < 2:
             # Caputo derivative at a single point is zero (empty kernel).
@@ -206,9 +202,7 @@ class CaputoDerivative:
         # ``np.linspace`` for the time grid — see FractionalCFM).
         h = float(t[1] - t[0])
         if h <= 0.0:
-            raise ValueError(
-                f"t_values must be strictly increasing; got dt={h}."
-            )
+            raise ValueError(f"t_values must be strictly increasing; got dt={h}.")
         h_alpha = h ** (-self.alpha)
         # Caputo GL convolution: D_C^α f(t_i) = h^{-α} (w * (f - f(0)))[i]
         # We shift ``f`` by ``f[0]`` so the convolution collapses to the
@@ -216,7 +210,7 @@ class CaputoDerivative:
         # convolution of the weight vector with the shifted sample vector,
         # truncated to the first ``n`` entries.
         shifted = f - f[0]
-        full_conv = np.convolve(self._weights, shifted, mode="full")[: n]
+        full_conv = np.convolve(self._weights, shifted, mode="full")[:n]
         out = h_alpha * full_conv
         # At t=0 the Caputo integral kernel vanishes, so D_C^α f(0) = 0
         # by construction (consistent with the analytic limit).
@@ -274,9 +268,7 @@ class FractionalODESolver:
         base_method: str = "euler",
     ) -> None:
         if not (0.0 < float(alpha) <= 1.0):
-            raise ValueError(
-                f"alpha must be in (0.0, 1.0], got {alpha!r}."
-            )
+            raise ValueError(f"alpha must be in (0.0, 1.0], got {alpha!r}.")
         if int(n_steps) < 1:
             raise ValueError(f"n_steps must be >= 1, got {n_steps!r}.")
         if base_method not in self._ALLOWED_BASE_METHODS:
@@ -327,7 +319,7 @@ class FractionalODESolver:
         if dt <= 0.0:
             raise ValueError(f"dt must be > 0, got {dt}.")
         f_now = np.asarray(f(t, y), dtype=np.float64)
-        return np.asarray(y, dtype=np.float64) + (dt ** self.alpha) * f_now
+        return np.asarray(y, dtype=np.float64) + (dt**self.alpha) * f_now
 
     # ------------------------------------------------------------------
     # Full integration over ``t_span``.
@@ -368,12 +360,10 @@ class FractionalODESolver:
         """
         t0, tf = float(t_span[0]), float(t_span[1])
         if tf <= t0:
-            raise ValueError(
-                f"t_span must satisfy tf > t0; got ({t0}, {tf})."
-            )
+            raise ValueError(f"t_span must satisfy tf > t0; got ({t0}, {tf}).")
         ts = np.linspace(t0, tf, self.n_steps + 1, dtype=np.float64)
         h = float(ts[1] - ts[0])
-        h_alpha = h ** self.alpha
+        h_alpha = h**self.alpha
         y0 = np.asarray(y0, dtype=np.float64)
         # Allocate the trajectory with a leading axis of size n_steps+1.
         traj = np.empty((self.n_steps + 1,) + y0.shape, dtype=np.float64)
@@ -393,14 +383,8 @@ class FractionalODESolver:
                 f_predict_sum = f_predict_sum + weights[j] * f_history[n - j]
             long_memory = np.zeros_like(y0)
             for j in range(1, n + 2):
-                long_memory = long_memory + weights[j] * (
-                    traj[n + 1 - j] - y0
-                )
-            y_pred = (
-                y0
-                - long_memory
-                + h_alpha * f_predict_sum
-            )
+                long_memory = long_memory + weights[j] * (traj[n + 1 - j] - y0)
+            y_pred = y0 - long_memory + h_alpha * f_predict_sum
             # ----- Corrector (2nd-order, predictor substitution) -----
             # y_{n+1} = y_0 − Σ_{j=1}^{n+1} w_j (y_{n+1-j} − y_0)
             #           + h^α · f(t_{n+1}, y_{n+1}^p)
@@ -412,11 +396,7 @@ class FractionalODESolver:
             # corrector becomes the implicit Euler step
             # y_{n+1} = y_n + h · f(t_{n+1}, y_{n+1}^p).
             f_new = np.asarray(f(ts[n + 1], y_pred), dtype=np.float64)
-            y_next = (
-                y0
-                - long_memory
-                + h_alpha * f_new
-            )
+            y_next = y0 - long_memory + h_alpha * f_new
             traj[n + 1] = y_next
             # Roll the f-history forward.
             if n + 1 < self.n_steps:

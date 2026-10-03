@@ -49,9 +49,7 @@ from typing import Any, Dict
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-TRAINER_PATH = (
-    REPO_ROOT / "molmetal/scripts/train_cfm_yuelbond_wasserstein.py"
-)
+TRAINER_PATH = REPO_ROOT / "molmetal/scripts/train_cfm_yuelbond_wasserstein.py"
 sys.path.insert(0, str(REPO_ROOT))
 
 
@@ -76,12 +74,18 @@ def _run_3epoch_smoke(
     cmd = [
         sys.executable,
         str(TRAINER_PATH),
-        "--epochs", "3",
-        "--batch-size", "4",
-        "--n-train", "200",
-        "--n-val", "8",
-        "--device", "cpu",
-        "--out-dir", str(out_dir),
+        "--epochs",
+        "3",
+        "--batch-size",
+        "4",
+        "--n-train",
+        "200",
+        "--n-val",
+        "8",
+        "--device",
+        "cpu",
+        "--out-dir",
+        str(out_dir),
     ] + extra_flags
     t0 = time.time()
     completed = subprocess.run(
@@ -132,17 +136,16 @@ def test_patch_application_loss_decrease() -> None:
         '"--lambda-cfm-coupling-weight"',
         '"--lambda-cfm-coupling-samples"',
     ]:
-        assert flag in src, (
-            f"Wf-406-A2 patch not applied: {flag} not found in trainer"
-        )
-    assert "build_lambda_reward_dataset" in src, (
-        "Wf-406-A2 patch not applied: dataset-build block missing"
-    )
-    assert "lambda_cfm_mean_weight" in src, (
-        "Wf-406-A2 patch not applied: loss-multiplier kwarg missing"
-    )
+        assert flag in src, f"Wf-406-A2 patch not applied: {flag} not found in trainer"
+    assert (
+        "build_lambda_reward_dataset" in src
+    ), "Wf-406-A2 patch not applied: dataset-build block missing"
+    assert (
+        "lambda_cfm_mean_weight" in src
+    ), "Wf-406-A2 patch not applied: loss-multiplier kwarg missing"
     # Trainer must still parse cleanly after the patch.
     import ast
+
     ast.parse(src, filename=str(TRAINER_PATH))
 
     # ---- Check 2: 50-step smoke with coupling OFF (backward-compat) ----
@@ -159,9 +162,9 @@ def test_patch_application_loss_decrease() -> None:
     epochs_off = smoke_off["metrics"]["per_epoch_metrics"]
     decode_offs = [ep["decode_ratio_rdkit_strict"] for ep in epochs_off]
     losses_off = [ep["train_loss"] for ep in epochs_off]
-    assert max(decode_offs) > 0.0, (
-        f"§5.7 floor FAIL: decode_ratio = {decode_offs}; must be > 0"
-    )
+    assert (
+        max(decode_offs) > 0.0
+    ), f"§5.7 floor FAIL: decode_ratio = {decode_offs}; must be > 0"
     assert losses_off[0] > losses_off[-1], (
         f"§5.7 floor FAIL: loss did not decrease — "
         f"loss[0]={losses_off[0]:.4f}, loss[-1]={losses_off[-1]:.4f}"
@@ -173,8 +176,10 @@ def test_patch_application_loss_decrease() -> None:
         out_dir_on,
         [
             "--lambda-cfm-coupling",
-            "--lambda-cfm-coupling-weight", "0.1",
-            "--lambda-cfm-coupling-samples", "8",
+            "--lambda-cfm-coupling-weight",
+            "0.1",
+            "--lambda-cfm-coupling-samples",
+            "8",
         ],
     )
     assert smoke_on["returncode"] == 0, (
@@ -202,6 +207,4 @@ def test_patch_application_loss_decrease() -> None:
 
 
 if __name__ == "__main__":
-    raise SystemExit(
-        pytest.main([__file__, "-v", "--tb=short"])
-    )
+    raise SystemExit(pytest.main([__file__, "-v", "--tb=short"]))

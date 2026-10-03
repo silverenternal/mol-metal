@@ -45,8 +45,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 PRE_FLIGHT_PATH = REPO_ROOT / "molmetal" / "scripts" / "pre_flight_check.py"
 
 
-def _run_pre_flight(*args: str, env_extra: dict[str, str] | None = None,
-                    timeout_sec: int = 600) -> subprocess.CompletedProcess:
+def _run_pre_flight(
+    *args: str, env_extra: dict[str, str] | None = None, timeout_sec: int = 600
+) -> subprocess.CompletedProcess:
     """Invoke pre_flight_check.py as a subprocess.
 
     Reproduces the canonical wrapper invocation pattern that fails
@@ -73,7 +74,9 @@ def test_preflight_import_works_without_PYTHONPATH() -> None:
     sys.path at lines 54-65 (after standard imports, before the
     read_anchor_json import).
     """
-    result = _run_pre_flight("--pipeline", "cfm", "--strict", "--json", "/tmp/wf415a2_test_cfm.json")
+    result = _run_pre_flight(
+        "--pipeline", "cfm", "--strict", "--json", "/tmp/wf415a2_test_cfm.json"
+    )
     # Must NOT raise ModuleNotFoundError; exit code 0 or 2 are both PASS
     # (0 = all gates PASS, 2 = --strict surfaces a SKIP). Exit code 1
     # would mean a gate FAIL but not the path-injection regression.
@@ -83,9 +86,9 @@ def test_preflight_import_works_without_PYTHONPATH() -> None:
         f"stderr tail: {result.stderr[-500:]}"
     )
     # Belt-and-braces: assert no ModuleNotFoundError in stderr.
-    assert "ModuleNotFoundError" not in result.stderr, (
-        f"ModuleNotFoundError regressed: {result.stderr[-500:]}"
-    )
+    assert (
+        "ModuleNotFoundError" not in result.stderr
+    ), f"ModuleNotFoundError regressed: {result.stderr[-500:]}"
     # The JSON output must be parseable.
     json_path = Path("/tmp/wf415a2_test_cfm.json")
     if json_path.exists():
@@ -100,7 +103,11 @@ def test_preflight_import_works_with_PYTHONPATH() -> None:
     wrapper pattern that prepends PYTHONPATH).
     """
     result = _run_pre_flight(
-        "--pipeline", "cfm", "--strict", "--json", "/tmp/wf415a2_test_pyp.json",
+        "--pipeline",
+        "cfm",
+        "--strict",
+        "--json",
+        "/tmp/wf415a2_test_pyp.json",
         env_extra={"PYTHONPATH": str(REPO_ROOT)},
     )
     assert result.returncode in (0, 2), (
@@ -122,8 +129,11 @@ def test_preflight_pipeline_cfm_strict() -> None:
     * JSON has at least one gate definition
     """
     result = _run_pre_flight(
-        "--pipeline", "cfm", "--strict",
-        "--json", "/tmp/wf415a2_test_cfm_strict.json",
+        "--pipeline",
+        "cfm",
+        "--strict",
+        "--json",
+        "/tmp/wf415a2_test_cfm_strict.json",
         timeout_sec=900,  # cfm --strict runs all 6 cfm gates
     )
     assert result.returncode in (0, 2), (
@@ -133,24 +143,22 @@ def test_preflight_pipeline_cfm_strict() -> None:
     )
     assert "ModuleNotFoundError" not in result.stderr
     json_path = Path("/tmp/wf415a2_test_cfm_strict.json")
-    assert json_path.exists(), (
-        f"--json output file {json_path} was not written"
-    )
+    assert json_path.exists(), f"--json output file {json_path} was not written"
     data = json.loads(json_path.read_text())
     # Required top-level keys per Wf-259 + Wf-353-B1 contract.
     assert "pipeline" in data, f"missing 'pipeline' key in {data.keys()}"
     assert data["pipeline"] == "cfm"
     assert "timestamp" in data, f"missing 'timestamp' key"
     # At least one gate suite should be present.
-    assert "gates" in data, (
-        f"expected 'gates' key in pre_flight JSON, got {data.keys()}"
-    )
-    assert isinstance(data["gates"], list), (
-        f"'gates' should be a list, got {type(data['gates'])}"
-    )
-    assert len(data["gates"]) >= 1, (
-        f"expected ≥1 gate in 'gates' list, got {len(data['gates'])}"
-    )
+    assert (
+        "gates" in data
+    ), f"expected 'gates' key in pre_flight JSON, got {data.keys()}"
+    assert isinstance(
+        data["gates"], list
+    ), f"'gates' should be a list, got {type(data['gates'])}"
+    assert (
+        len(data["gates"]) >= 1
+    ), f"expected ≥1 gate in 'gates' list, got {len(data['gates'])}"
 
 
 if __name__ == "__main__":

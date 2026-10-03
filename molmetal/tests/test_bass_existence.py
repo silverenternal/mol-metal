@@ -53,15 +53,17 @@ from molmetal.math_skills import BassExistenceTheorem, RegularityCondition
 # ---------------------------------------------------------------------------
 
 
-def _uniform_samples(n: int, low: float = -1.0, high: float = 1.0,
-                    seed: int = 0) -> torch.Tensor:
+def _uniform_samples(
+    n: int, low: float = -1.0, high: float = 1.0, seed: int = 0
+) -> torch.Tensor:
     """Return ``n`` i.i.d. uniform samples in ``[low, high]``."""
     g = torch.Generator().manual_seed(seed)
     return torch.empty(n).uniform_(low, high, generator=g)
 
 
-def _gaussian_samples(n: int, mean: float = 0.0, std: float = 1.0,
-                     d: int = 1, seed: int = 0) -> torch.Tensor:
+def _gaussian_samples(
+    n: int, mean: float = 0.0, std: float = 1.0, d: int = 1, seed: int = 0
+) -> torch.Tensor:
     """Return ``n`` i.i.d. Gaussian samples of shape ``(n,)`` or ``(n, d)``."""
     g = torch.Generator().manual_seed(seed)
     shape = (n,) if d == 1 else (n, d)
@@ -324,15 +326,14 @@ def test_bass_existence_module_is_standalone() -> None:
     """Module source has no imports from `molmetal.adapters.*` /
     `molmetal.molmetal_lam.*` (standalone skeleton contract)."""
     src_path = (
-        Path(__file__).resolve().parent.parent
-        / "math_skills" / "bass_existence.py"
+        Path(__file__).resolve().parent.parent / "math_skills" / "bass_existence.py"
     )
     source = src_path.read_text()
     # The standalone contract: only stdlib + torch.
     forbidden = ["molmetal.adapters", "molmetal.molmetal_lam"]
     for token in forbidden:
-        assert token not in source, (
-            f"bass_existence.py must not import {token}; found in source."
-        )
+        assert (
+            token not in source
+        ), f"bass_existence.py must not import {token}; found in source."
     # And the only third-party import we allow is torch.
     assert "import torch" in source

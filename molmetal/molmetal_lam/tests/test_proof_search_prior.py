@@ -19,6 +19,7 @@ Run with::
         molmetal/molmetal_lam/tests/test_proof_search_prior.py \
         --tb=short
 """
+
 from __future__ import annotations
 
 import random
@@ -87,9 +88,7 @@ class _StubRule:
         if isinstance(molecule, tuple):
             if len(molecule) == 0:
                 return []
-            state, tile = molecule[0], (
-                molecule[1] if len(molecule) > 1 else None
-            )
+            state, tile = molecule[0], (molecule[1] if len(molecule) > 1 else None)
         else:
             state, tile = molecule, None
         try:
@@ -108,9 +107,7 @@ class _StubRule:
         # total atom count AND the tile identity — so different
         # (state, tile) pairs collide only on α-equivalent inputs.
         try:
-            base = ("C" * max(1, new_atoms)) + (
-                tile_smi if tile_smi else ""
-            )
+            base = ("C" * max(1, new_atoms)) + (tile_smi if tile_smi else "")
             prod = MoleculeClosedTerm.from_smiles(base, embed_3d=False)
         except Exception:
             prod = MoleculeClosedTerm()
@@ -149,6 +146,7 @@ def _stub_channels_per_state() -> Dict[str, Any]:
     interactions), lower SA (proxy: bigger = harder to synthesise,
     so SA is high → after inversion, low), and a constant QED.
     """
+
     def _vina(state):
         try:
             return -float(state.n_atoms)
@@ -251,8 +249,7 @@ def test_heuristic_no_longer_constant() -> None:
 
     # 1) Not all 0.5 — the regression we want to catch.
     assert not all(abs(p - 0.5) < 1e-9 for p in priors), (
-        f"heuristic must no longer be the constant 0.5 stub, "
-        f"got priors={priors!r}"
+        f"heuristic must no longer be the constant 0.5 stub, " f"got priors={priors!r}"
     )
     # 2) The three priors are *distinct* (different molecules →
     # different per-channel aggregations → different PUCT priors).
@@ -262,9 +259,7 @@ def test_heuristic_no_longer_constant() -> None:
     )
     # 3) Each prior is a valid probability mass in (0, 1).
     for p in priors:
-        assert 0.0 < p < 1.0, (
-            f"each heuristic() result must be in (0, 1), got {p!r}"
-        )
+        assert 0.0 < p < 1.0, f"each heuristic() result must be in (0, 1), got {p!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -288,10 +283,12 @@ class _RecordingAggregator(RewardAggregator):
         # Record the call **before** delegating to the base impl so
         # the test sees a non-empty call list even if the parent
         # implementation raises.
-        self.aggregate_calls.append({
-            "smiles": str(smiles),
-            "channels": dict(channels) if channels else {},
-        })
+        self.aggregate_calls.append(
+            {
+                "smiles": str(smiles),
+                "channels": dict(channels) if channels else {},
+            }
+        )
         return super().aggregate(smiles, channels)
 
 
@@ -514,9 +511,9 @@ def test_proof_search_accepts_reward_aggregator_kwarg() -> None:
         n_simulations=2,
         rng=random.Random(1),
     )
-    assert mcts2._resolved_reward() is agg2, (
-        f"reward= kwarg must still resolve, got {mcts2._resolved_reward()!r}"
-    )
+    assert (
+        mcts2._resolved_reward() is agg2
+    ), f"reward= kwarg must still resolve, got {mcts2._resolved_reward()!r}"
 
     # 4) ``reward_aggregator`` wins over ``reward`` when both are
     # supplied (preferred-spelling precedence).

@@ -88,6 +88,7 @@ def _load(path: Path) -> dict | None:
 def test_module_imports() -> None:
     """``bench_pb_valid`` imports without error."""
     import sys
+
     p = str(SCRIPTS)
     if p not in sys.path:
         sys.path.insert(0, p)
@@ -104,6 +105,7 @@ def test_module_imports() -> None:
 def test_default_pockets_count_10() -> None:
     """DEFAULT_POCKETS must list exactly 10 WF-30 pockets."""
     from bench_pb_valid import DEFAULT_POCKETS  # type: ignore
+
     assert len(DEFAULT_POCKETS) == N_POCKETS
     assert set(DEFAULT_POCKETS) == set(WF32_POCKETS)
 
@@ -111,14 +113,19 @@ def test_default_pockets_count_10() -> None:
 def test_default_pb_modes() -> None:
     """DEFAULT_PB_MODES must be ('mol', 'dock')."""
     from bench_pb_valid import DEFAULT_PB_MODES  # type: ignore
+
     assert DEFAULT_PB_MODES == ("mol", "dock")
 
 
 def test_default_trajectory_methods() -> None:
     """DEFAULT_TRAJECTORY_METHODS includes the 4 Wf-30 trajectory tags."""
     from bench_pb_valid import DEFAULT_TRAJECTORY_METHODS  # type: ignore
+
     assert set(DEFAULT_TRAJECTORY_METHODS) == {
-        "se3sb", "transport", "multiph", "baseline",
+        "se3sb",
+        "transport",
+        "multiph",
+        "baseline",
     }
 
 
@@ -129,6 +136,7 @@ def test_n_pb_checks_dock_is_26() -> None:
         N_PB_CHECKS_MOL,
         N_PB_CHECKS_TOTAL,
     )
+
     assert N_PB_CHECKS_DOCK == 26
     assert N_PB_CHECKS_MOL == 14
     assert N_PB_CHECKS_TOTAL == 26
@@ -141,6 +149,7 @@ def test_default_candidates_load() -> None:
         DEFAULT_CANDIDATES_TXT,
         load_default_candidates,
     )
+
     cands = load_default_candidates(DEFAULT_CANDIDATES_TXT)
     assert len(cands) >= N_CANDIDATES
     for c in cands[:N_CANDIDATES]:
@@ -159,6 +168,7 @@ def test_select_candidates_caps() -> None:
         load_default_candidates,
         select_candidates,
     )
+
     pool = load_default_candidates(DEFAULT_CANDIDATES_TXT)
     picked = select_candidates(pool, n=2)
     assert len(picked) == 2
@@ -173,6 +183,7 @@ def test_select_candidates_full() -> None:
         load_default_candidates,
         select_candidates,
     )
+
     pool = load_default_candidates(DEFAULT_CANDIDATES_TXT)
     picked = select_candidates(pool, n=0)
     assert len(picked) == len(pool)
@@ -184,6 +195,7 @@ def test_load_pocket_bundle_existing() -> None:
         WF30_POCKET_DIR,
         load_pocket_bundle,
     )
+
     bundle = load_pocket_bundle("830c", WF30_POCKET_DIR)
     assert bundle.pocket_id == "830c"
     assert bundle.pdbqt_path.name == "receptor.pdbqt"
@@ -196,6 +208,7 @@ def test_load_pocket_bundle_missing() -> None:
         WF30_POCKET_DIR,
         load_pocket_bundle,
     )
+
     bundle = load_pocket_bundle("__no_such_pocket__", WF30_POCKET_DIR)
     assert bundle.pdbqt_exists is False
 
@@ -208,15 +221,16 @@ def test_per_check_counts_for_passed_mol_report() -> None:
     from bench_pb_valid import _per_check_counts  # type: ignore
 
     report = {
-        "checks": {"sanitization": True, "bond_lengths": True,
-                   "internal_steric_clash": False},
+        "checks": {
+            "sanitization": True,
+            "bond_lengths": True,
+            "internal_steric_clash": False,
+        },
         "failures": ["internal_steric_clash"],
         "missing_checks": (),
         "config": "mol",
     }
-    n_total, n_passed, n_failed, n_skipped, failed, missing = (
-        _per_check_counts(report)
-    )
+    n_total, n_passed, n_failed, n_skipped, failed, missing = _per_check_counts(report)
     assert n_total == 3
     assert n_passed == 2
     assert n_failed == 1
@@ -235,9 +249,7 @@ def test_per_check_counts_handles_missing_checks() -> None:
         "missing_checks": ("cofactor_distance",),
         "config": "dock",
     }
-    n_total, n_passed, n_failed, n_skipped, failed, missing = (
-        _per_check_counts(report)
-    )
+    n_total, n_passed, n_failed, n_skipped, failed, missing = _per_check_counts(report)
     assert n_total == 3
     assert n_passed == 1
     assert n_failed == 0
@@ -248,6 +260,7 @@ def test_per_check_counts_handles_missing_checks() -> None:
 def test_coerce_status_passed() -> None:
     """_coerce_status: True → ('passed', True)."""
     from bench_pb_valid import _coerce_status  # type: ignore
+
     status, pb_valid = _coerce_status({"pb_valid": True, "skipped": False})
     assert status == "passed"
     assert pb_valid is True
@@ -256,6 +269,7 @@ def test_coerce_status_passed() -> None:
 def test_coerce_status_skipped() -> None:
     """_coerce_status: skipped=True → ('skipped', None)."""
     from bench_pb_valid import _coerce_status  # type: ignore
+
     status, pb_valid = _coerce_status({"skipped": True, "pb_valid": None})
     assert status == "skipped"
     assert pb_valid is None
@@ -267,6 +281,7 @@ def test_coerce_status_skipped() -> None:
 def test_aggregate_results_empty() -> None:
     """aggregate_results returns ({}, {}) on empty input."""
     from bench_pb_valid import aggregate_results  # type: ignore
+
     per_pocket, aggregate = aggregate_results([])
     assert per_pocket == {}
     assert aggregate == {}
@@ -278,25 +293,60 @@ def test_aggregate_results_synthetic() -> None:
         PBResult,
         aggregate_results,
     )
+
     results = [
-        PBResult(pocket_id="830c", candidate="CCO", candidate_name="c0",
-                 method="mol", trajectory_method="se3sb",
-                 status="passed", pb_valid=True,
-                 n_checks=14, n_passed=14, n_failed=0, n_skipped=0,
-                 pass_rate=1.0, failed_checks=(), missing_checks=(),
-                 elapsed_s=0.1),
-        PBResult(pocket_id="830c", candidate="CCN", candidate_name="c1",
-                 method="mol", trajectory_method="se3sb",
-                 status="failed", pb_valid=False,
-                 n_checks=14, n_passed=12, n_failed=2, n_skipped=1,
-                 pass_rate=12 / 14, failed_checks=("bond_lengths",),
-                 missing_checks=(), elapsed_s=0.1),
-        PBResult(pocket_id="830c", candidate="CCO", candidate_name="c0",
-                 method="dock", trajectory_method="se3sb",
-                 status="skipped", pb_valid=None,
-                 n_checks=0, n_passed=0, n_failed=0, n_skipped=0,
-                 pass_rate=0.0, failed_checks=(), missing_checks=(),
-                 elapsed_s=0.0, note="receptor missing"),
+        PBResult(
+            pocket_id="830c",
+            candidate="CCO",
+            candidate_name="c0",
+            method="mol",
+            trajectory_method="se3sb",
+            status="passed",
+            pb_valid=True,
+            n_checks=14,
+            n_passed=14,
+            n_failed=0,
+            n_skipped=0,
+            pass_rate=1.0,
+            failed_checks=(),
+            missing_checks=(),
+            elapsed_s=0.1,
+        ),
+        PBResult(
+            pocket_id="830c",
+            candidate="CCN",
+            candidate_name="c1",
+            method="mol",
+            trajectory_method="se3sb",
+            status="failed",
+            pb_valid=False,
+            n_checks=14,
+            n_passed=12,
+            n_failed=2,
+            n_skipped=1,
+            pass_rate=12 / 14,
+            failed_checks=("bond_lengths",),
+            missing_checks=(),
+            elapsed_s=0.1,
+        ),
+        PBResult(
+            pocket_id="830c",
+            candidate="CCO",
+            candidate_name="c0",
+            method="dock",
+            trajectory_method="se3sb",
+            status="skipped",
+            pb_valid=None,
+            n_checks=0,
+            n_passed=0,
+            n_failed=0,
+            n_skipped=0,
+            pass_rate=0.0,
+            failed_checks=(),
+            missing_checks=(),
+            elapsed_s=0.0,
+            note="receptor missing",
+        ),
     ]
     per_pocket, aggregate = aggregate_results(results)
     assert "830c" in per_pocket
@@ -334,6 +384,6 @@ def test_wf32_summary_overall_finite() -> None:
     assert "mol" in overall
     assert "dock" in overall
     for m, v in overall.items():
-        assert v is None or (isinstance(v, (int, float)) and math.isfinite(v)), (
-            f"{m}: non-finite overall_pb_pass_rate={v!r}"
-        )
+        assert v is None or (
+            isinstance(v, (int, float)) and math.isfinite(v)
+        ), f"{m}: non-finite overall_pb_pass_rate={v!r}"

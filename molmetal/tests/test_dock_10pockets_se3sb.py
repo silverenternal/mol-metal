@@ -70,6 +70,7 @@ DEFAULT_CANDIDATES_TXT = (
 def _import_dock_module():
     sys.path.insert(0, str(SCRIPTS_DIR))
     import dock_10pockets_se3sb  # type: ignore[import-not-found]
+
     return dock_10pockets_se3sb
 
 
@@ -114,8 +115,10 @@ def test_pocket_subset() -> None:
     assert len(args.pockets) == 2
     # Cross-product math: 2 × 5 × 4 × 5 = 200 default evals.
     n = (
-        len(args.pockets) * mod.DEFAULT_N_CANDIDATES
-        * len(mod.DEFAULT_METHODS) * len(mod.DEFAULT_SEEDS)
+        len(args.pockets)
+        * mod.DEFAULT_N_CANDIDATES
+        * len(mod.DEFAULT_METHODS)
+        * len(mod.DEFAULT_SEEDS)
     )
     assert n == 200
 
@@ -149,8 +152,16 @@ def test_default_pockets_count_is_10() -> None:
     assert len(mod.DEFAULT_POCKETS) == 10
     # Pin the order so any accidental edit triggers a clear failure.
     assert mod.DEFAULT_POCKETS == (
-        "830c", "1h36", "3eml", "3ny8", "4aaw",
-        "4rlu", "1g9v", "2hnx", "4rn0", "1fmc",
+        "830c",
+        "1h36",
+        "3eml",
+        "3ny8",
+        "4aaw",
+        "4rlu",
+        "1g9v",
+        "2hnx",
+        "4rn0",
+        "1fmc",
     )
 
 
@@ -193,11 +204,7 @@ def test_load_candidates_csv_round_trip(tmp_path: Path) -> None:
     """A 2-column CSV round-trips through :func:`load_candidates_csv`."""
     mod = _import_dock_module()
     csv_path = tmp_path / "cands.csv"
-    csv_path.write_text(
-        "name,smiles\n"
-        "foo,CCO\n"
-        "bar,c1ccccc1\n"
-    )
+    csv_path.write_text("name,smiles\n" "foo,CCO\n" "bar,c1ccccc1\n")
     candidates = mod.load_candidates_csv(csv_path)
     assert len(candidates) == 2
     assert candidates[0].name == "foo"
@@ -343,18 +350,29 @@ def test_metrics_path_written(tmp_path: Path) -> None:
     summary_path = tmp_path / "summary.json"
     candidates_csv = tmp_path / "cands.csv"
     candidates_csv.write_text("name,smiles\nmethane,C\n")
-    rc = mod.main([
-        "--pockets", pocket_id,
-        "--methods", "baseline",
-        "--seeds", "0",
-        "--n-seeds", "1",
-        "--candidates-csv", str(candidates_csv),
-        "--pocket-dir", str(pocket_dir),
-        "--out-dir", str(tmp_path),
-        "--metrics-path", str(metrics_path),
-        "--summary-path", str(summary_path),
-        "--quiet",
-    ])
+    rc = mod.main(
+        [
+            "--pockets",
+            pocket_id,
+            "--methods",
+            "baseline",
+            "--seeds",
+            "0",
+            "--n-seeds",
+            "1",
+            "--candidates-csv",
+            str(candidates_csv),
+            "--pocket-dir",
+            str(pocket_dir),
+            "--out-dir",
+            str(tmp_path),
+            "--metrics-path",
+            str(metrics_path),
+            "--summary-path",
+            str(summary_path),
+            "--quiet",
+        ]
+    )
     assert rc == 0
     assert metrics_path.exists()
     assert summary_path.exists()

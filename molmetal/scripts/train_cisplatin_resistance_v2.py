@@ -83,6 +83,7 @@ from __future__ import annotations
 # RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
 # BEFORE `import torch` so CUDA init sees the env var.
 import os as _wf130_os
+
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -117,18 +118,18 @@ from molmetal.adapters.se3_sb_integration import (
 # R18 W2.2 / W2.3 adapter wiring — only used when --init is
 # transport / multiph.  Lazy import to keep the cold-start path
 # (--init tmqm) import-clean.
-try:                                            # pragma: no cover
+try:  # pragma: no cover
     from molmetal.adapters.transport_relaxation_integration import (
         RelaxedEndpointTerm as _RelaxedEndpointTerm,
     )
-except Exception:                               # pragma: no cover
-    _RelaxedEndpointTerm = None                  # type: ignore[assignment]
-try:                                            # pragma: no cover
+except Exception:  # pragma: no cover
+    _RelaxedEndpointTerm = None  # type: ignore[assignment]
+try:  # pragma: no cover
     from molmetal.adapters.multi_ph_integration import (
         MultiPHPocketFeatures as _MultiPHPocketFeatures,
     )
-except Exception:                               # pragma: no cover
-    _MultiPHPocketFeatures = None               # type: ignore[assignment]
+except Exception:  # pragma: no cover
+    _MultiPHPocketFeatures = None  # type: ignore[assignment]
 
 # Cisplatin-resistance chemoinformatic side features (10-dim).
 from molmetal_lam.lam_chem.cisplatin_resistance import (
@@ -174,7 +175,10 @@ N_RESIST_FEAT: int = 10
 
 # Init choice contract — must match the W2.1 trainers (Wf-31).
 INIT_CHOICES: Tuple[str, ...] = (
-    "tmqm", "se3sb", "transport", "multiph",
+    "tmqm",
+    "se3sb",
+    "transport",
+    "multiph",
 )
 INIT_DEFAULT: str = "tmqm"
 
@@ -182,9 +186,7 @@ INIT_DEFAULT: str = "tmqm"
 # ---------------------------------------------------------------------------
 # Default paths (overridable on every CLI)
 # ---------------------------------------------------------------------------
-DEFAULT_DATA = (
-    PROJECT_ROOT / "molmetal" / "data" / "platinai_4cell.csv"
-)
+DEFAULT_DATA = PROJECT_ROOT / "molmetal" / "data" / "platinai_4cell.csv"
 DEFAULT_ENCODER_CKPT = (
     PROJECT_ROOT / "models" / "tmqm_pretrained" / "tmqm_pretrained_encoder.pt"
 )
@@ -305,9 +307,7 @@ class FourCellResistanceDMPNN(nn.Module):
         resist_feat: torch.Tensor,
     ) -> Dict[str, torch.Tensor]:
         if cell_ids.dim() != 1:
-            raise ValueError(
-                f"cell_ids must be 1-D, got {tuple(cell_ids.shape)}"
-            )
+            raise ValueError(f"cell_ids must be 1-D, got {tuple(cell_ids.shape)}")
         if cell_ids.size(0) != len(smiles_list):
             raise ValueError(
                 f"cell_ids.size(0)={cell_ids.size(0)} must equal "
@@ -324,10 +324,10 @@ class FourCellResistanceDMPNN(nn.Module):
                 f"n_resist_feat={self.n_resist_feat}"
             )
 
-        h = self.encoder(smiles_list)                          # (B, hidden_dim)
-        r = self.resist_proj(resist_feat)                      # (B, 64)
-        c = self.cell_embed(cell_ids.long())                   # (B, 32)
-        z = torch.cat([h, r, c], dim=-1)                       # (B, hidden+64+32)
+        h = self.encoder(smiles_list)  # (B, hidden_dim)
+        r = self.resist_proj(resist_feat)  # (B, 64)
+        c = self.cell_embed(cell_ids.long())  # (B, 32)
+        z = torch.cat([h, r, c], dim=-1)  # (B, hidden+64+32)
         return {cl: head(z) for cl, head in self.cell_heads.items()}
 
 
@@ -412,9 +412,7 @@ class _StubEGNNVelocityNet(nn.Module):
     def forward(self, x: torch.Tensor, t: torch.Tensor, pocket=None):
         """Return per-atom velocity of shape ``(B, N, 3)`` (zeros)."""
         if x.dim() != 3 or x.shape[-1] != 3:
-            raise ValueError(
-                f"x must have shape (B, N, 3), got {tuple(x.shape)}"
-            )
+            raise ValueError(f"x must have shape (B, N, 3), got {tuple(x.shape)}")
         return torch.zeros_like(x)
 
 
@@ -440,11 +438,14 @@ def se3_integration_smoke(
     samples = torch.randn(2, n_atoms, 3)
     try:
         x_final = integrate_with_cfm(
-            samples, twist_head, n_steps=n_steps, method="midpoint",
+            samples,
+            twist_head,
+            n_steps=n_steps,
+            method="midpoint",
         )
         out_norm = float(x_final.norm().item())
         finite = bool(torch.isfinite(x_final).all().item())
-    except Exception as exc:                                # pragma: no cover
+    except Exception as exc:  # pragma: no cover
         return {"out_norm": float("nan"), "finite": False, "error": str(exc)}
     return {"out_norm": out_norm, "finite": finite}
 
@@ -466,7 +467,7 @@ def attach_init_components(
     if init == "se3sb":
         twist_head = build_se3_twist_head(hidden_dim=hidden_dim).to(device)
         # Attach as a sibling so the optimiser sees the parameters.
-        model.se3_field = twist_head        # type: ignore[attr-defined]
+        model.se3_field = twist_head  # type: ignore[attr-defined]
         components["se3_field"] = twist_head
     elif init == "transport":
         if _RelaxedEndpointTerm is None:
@@ -477,7 +478,7 @@ def attach_init_components(
             )
             return components
         relax_term = _RelaxedEndpointTerm(lambda_relax=1e-3, eps=0.1)
-        model.relax_term = relax_term        # type: ignore[attr-defined]
+        model.relax_term = relax_term  # type: ignore[attr-defined]
         components["relax_term"] = relax_term
     elif init == "multiph":
         if _MultiPHPocketFeatures is None:
@@ -488,14 +489,14 @@ def attach_init_components(
             )
             return components
         mphp = _MultiPHPocketFeatures(
-            max_radius=5.0, max_coord=4.0, n_bins=8,
+            max_radius=5.0,
+            max_coord=4.0,
+            n_bins=8,
         ).to(device)
-        model.mphp = mphp                    # type: ignore[attr-defined]
+        model.mphp = mphp  # type: ignore[attr-defined]
         components["mphp"] = mphp
     else:
-        raise ValueError(
-            f"Unknown init {init!r}; expected one of {INIT_CHOICES}"
-        )
+        raise ValueError(f"Unknown init {init!r}; expected one of {INIT_CHOICES}")
     return components
 
 
@@ -560,6 +561,7 @@ def load_dataset(csv_path: Path) -> Tuple[List[str], np.ndarray, np.ndarray]:
 
     # Resistance side-features (9 keys + 1 sparsity slot = 10-dim).
     from rdkit import Chem, RDLogger
+
     RDLogger.DisableLog("rdApp.*")
     res_mat = np.zeros((n, len(RESISTANCE_FEATURE_KEYS)), dtype=np.float32)
     for i, smi in enumerate(smiles):
@@ -625,7 +627,7 @@ def build_batches(
     if shuffle:
         rng.shuffle(idx)
     return [
-        (idx[start:start + batch_size], cell_id)
+        (idx[start : start + batch_size], cell_id)
         for start in range(0, len(idx), batch_size)
     ]
 
@@ -651,7 +653,7 @@ def _eval_cell_auc(
     labels: List[int] = []
     cell_idx_in_arr = CELL_LINES.index(cell)
     for start in range(0, len(indices), batch_size):
-        idx = indices[start:start + batch_size]
+        idx = indices[start : start + batch_size]
         keep = [i for i in idx if active[i, cell_idx_in_arr] >= 0]
         if not keep:
             continue
@@ -700,7 +702,10 @@ def train_one_seed(
 
     # Attach the per-init R18 adapter components.
     r18_components = attach_init_components(
-        args.init, model, device, hidden_dim=args.hidden,
+        args.init,
+        model,
+        device,
+        hidden_dim=args.hidden,
     )
 
     n_frozen, n_trainable = freeze_encoder_layers_1_2(model)
@@ -724,9 +729,7 @@ def train_one_seed(
         lr=args.lr,
         weight_decay=1e-4,
     )
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=args.epochs
-    )
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 
     best_val_mean = -1.0
     best_state: Dict[str, torch.Tensor] = {
@@ -743,7 +746,11 @@ def train_one_seed(
         # One batch pool per cell line (B=batch_size rows routed to the cell).
         per_cell_batches: Dict[str, List[Tuple[np.ndarray, int]]] = {
             cl: build_batches(
-                tr_idx, CELL_LINES.index(cl), args.batch, rng, shuffle=True,
+                tr_idx,
+                CELL_LINES.index(cl),
+                args.batch,
+                rng,
+                shuffle=True,
             )
             for cl in CELL_LINES
         }
@@ -766,7 +773,9 @@ def train_one_seed(
                 targets = {
                     cl2: torch.from_numpy(
                         np.maximum(active[keep, CELL_LINES.index(cl2)], 0)
-                    ).long().to(device)
+                    )
+                    .long()
+                    .to(device)
                     for cl2 in CELL_LINES
                 }
                 with torch.amp.autocast(
@@ -781,7 +790,8 @@ def train_one_seed(
                 any_grad = True
             if any_grad:
                 torch.nn.utils.clip_grad_norm_(
-                    model.parameters(), max_norm=5.0,
+                    model.parameters(),
+                    max_norm=5.0,
                 )
                 optimizer.step()
                 epoch_loss += batch_loss
@@ -792,18 +802,26 @@ def train_one_seed(
             val_aucs: Dict[str, float] = {}
             for cl in CELL_LINES:
                 a, n = _eval_cell_auc(
-                    model, smiles, active, res_feat, va_idx,
-                    device, args.batch, cl, CELL_LINES.index(cl),
+                    model,
+                    smiles,
+                    active,
+                    res_feat,
+                    va_idx,
+                    device,
+                    args.batch,
+                    cl,
+                    CELL_LINES.index(cl),
                 )
                 val_aucs[cl] = a
             valid_aucs = [v for v in val_aucs.values() if not np.isnan(v)]
-            mean_val = (
-                float(np.mean(valid_aucs)) if valid_aucs else float("nan")
+            mean_val = float(np.mean(valid_aucs)) if valid_aucs else float("nan")
+            val_history.append(
+                {
+                    "epoch": epoch,
+                    "mean_val_auc": mean_val,
+                    "per_cell": val_aucs,
+                }
             )
-            val_history.append({
-                "epoch": epoch, "mean_val_auc": mean_val,
-                "per_cell": val_aucs,
-            })
             print(
                 f"[train_cisplatin_resistance_v2] seed={seed} "
                 f"epoch={epoch:3d} loss={epoch_loss / max(n_batches, 1):.4f} "
@@ -814,8 +832,7 @@ def train_one_seed(
                 best_val_mean = mean_val
                 best_epoch = epoch
                 best_state = {
-                    k: v.detach().cpu().clone()
-                    for k, v in model.state_dict().items()
+                    k: v.detach().cpu().clone() for k, v in model.state_dict().items()
                 }
 
     model.load_state_dict(best_state)
@@ -824,8 +841,15 @@ def train_one_seed(
     test_aucs: Dict[str, float] = {}
     for cl in CELL_LINES:
         a, n = _eval_cell_auc(
-            model, smiles, active, res_feat, te_idx,
-            device, args.batch, cl, CELL_LINES.index(cl),
+            model,
+            smiles,
+            active,
+            res_feat,
+            te_idx,
+            device,
+            args.batch,
+            cl,
+            CELL_LINES.index(cl),
         )
         test_aucs[cl] = a
         print(
@@ -843,10 +867,7 @@ def train_one_seed(
     se3_smoke: Dict[str, object] = {}
     if args.init == "se3sb" and hasattr(model, "se3_field"):
         se3_smoke = se3_integration_smoke(model.se3_field)
-        print(
-            f"[train_cisplatin_resistance_v2] seed={seed} "
-            f"se3_smoke={se3_smoke}"
-        )
+        print(f"[train_cisplatin_resistance_v2] seed={seed} " f"se3_smoke={se3_smoke}")
 
     return {
         "seed": seed,
@@ -881,8 +902,7 @@ def aggregate_per_cell(
         vals = [
             float(r["test_auc_per_cell"][c])
             for r in seed_results
-            if c in r["test_auc_per_cell"]
-            and not np.isnan(r["test_auc_per_cell"][c])
+            if c in r["test_auc_per_cell"] and not np.isnan(r["test_auc_per_cell"][c])
         ]
         if not vals:
             means[c] = float("nan")
@@ -1059,20 +1079,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         "per_seed": seed_results,
         "per_cell_mean_auc": per_cell_mean,
         "per_cell_std_auc": per_cell_std,
-        "headline_auc_per_seed": [
-            r["mean_test_auc"] for r in seed_results
-        ],
-        "headline_auc_mean": float(np.nanmean(
-            [r["mean_test_auc"] for r in seed_results]
-        )),
-        "headline_auc_std": float(np.nanstd(
-            [r["mean_test_auc"] for r in seed_results]
-        )),
+        "headline_auc_per_seed": [r["mean_test_auc"] for r in seed_results],
+        "headline_auc_mean": float(
+            np.nanmean([r["mean_test_auc"] for r in seed_results])
+        ),
+        "headline_auc_std": float(
+            np.nanstd([r["mean_test_auc"] for r in seed_results])
+        ),
         "headline_cell_auc_per_seed": [
-            [
-                r["test_auc_per_cell"].get(cl, float("nan"))
-                for cl in CELL_LINES
-            ]
+            [r["test_auc_per_cell"].get(cl, float("nan")) for cl in CELL_LINES]
             for r in seed_results
         ],
         "r17_baseline_3cell_auc": 0.648,
@@ -1090,10 +1105,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         if args.init == "se3sb"
         else {},
         "r18_components_meta": (
-            {"se3_field": "SE3SBVelocityField"} if args.init == "se3sb"
-            else ({"relax_term": "RelaxedEndpointTerm"} if args.init == "transport"
-                  else ({"mphp": "MultiPHPocketFeatures"} if args.init == "multiph"
-                        else {}))
+            {"se3_field": "SE3SBVelocityField"}
+            if args.init == "se3sb"
+            else (
+                {"relax_term": "RelaxedEndpointTerm"}
+                if args.init == "transport"
+                else (
+                    {"mphp": "MultiPHPocketFeatures"} if args.init == "multiph" else {}
+                )
+            )
         ),
     }
     args.metrics_path.write_text(json.dumps(metrics, indent=2))
@@ -1104,9 +1124,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # Slim final summary.
     summary = {
-        "recipe": (
-            "wf31_r18_se3sb_cisplatin_resistance_v2_final_summary"
-        ),
+        "recipe": ("wf31_r18_se3sb_cisplatin_resistance_v2_final_summary"),
         "n_seeds": len(seed_results),
         "epochs": args.epochs,
         "init": args.init,

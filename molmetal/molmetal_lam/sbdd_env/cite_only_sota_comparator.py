@@ -47,6 +47,7 @@ Public surface
     applicable_flags, n_samples_ours, n_samples_target,
     fairness_verdict, notes
 """
+
 from __future__ import annotations
 
 import math
@@ -81,25 +82,49 @@ class ProtocolMismatchFlag:
     applies_when: str  # human-readable predicate
 
     def to_dict(self) -> dict:
-        return {"code": self.code, "description": self.description,
-                "applies_when": self.applies_when}
+        return {
+            "code": self.code,
+            "description": self.description,
+            "applies_when": self.applies_when,
+        }
 
 
 PROTOCOL_MISMATCH_FLAGS: List[ProtocolMismatchFlag] = [
-    ProtocolMismatchFlag("M1", "CrossDocked2020 split version (Luo 2021 vs SPINDR vs PDBbind time-split).",
-                         "row.dataset != 'CrossDocked2020 (Luo 2021)'"),
-    ProtocolMismatchFlag("M2", "Docking engine and version (QVina vs QuickVina 2 vs DiffDock-L vs Vina 1.2.7).",
-                         "row.docking_engine != user.engine"),
-    ProtocolMismatchFlag("M3", "Validity definition (RDKit-only vs PB-augmented); structurally incomparable.",
-                         "row.validity != user.validity_def"),
-    ProtocolMismatchFlag("M4", "Novelty definition (random vs scaffold vs time split); random-split numbers inflated.",
-                         "row.novelty != user.novelty_def"),
-    ProtocolMismatchFlag("M5", "Diversity definition (Tanimoto-based vs Homotype); incomparable on constitutional isomers.",
-                         "row.diversity != user.diversity_def"),
-    ProtocolMismatchFlag("M6", "Number of seeds (1 vs >=3); per-seed sigma ~ 0.46 kcal/mol at n_docked=4.",
-                         "row.n_seeds != user.n_seeds"),
-    ProtocolMismatchFlag("M7", "Pocket count (single vs >=10 vs 100); pocket-specific variance ~ +-2 kcal/mol.",
-                         "row.n_pockets != user.n_pockets"),
+    ProtocolMismatchFlag(
+        "M1",
+        "CrossDocked2020 split version (Luo 2021 vs SPINDR vs PDBbind time-split).",
+        "row.dataset != 'CrossDocked2020 (Luo 2021)'",
+    ),
+    ProtocolMismatchFlag(
+        "M2",
+        "Docking engine and version (QVina vs QuickVina 2 vs DiffDock-L vs Vina 1.2.7).",
+        "row.docking_engine != user.engine",
+    ),
+    ProtocolMismatchFlag(
+        "M3",
+        "Validity definition (RDKit-only vs PB-augmented); structurally incomparable.",
+        "row.validity != user.validity_def",
+    ),
+    ProtocolMismatchFlag(
+        "M4",
+        "Novelty definition (random vs scaffold vs time split); random-split numbers inflated.",
+        "row.novelty != user.novelty_def",
+    ),
+    ProtocolMismatchFlag(
+        "M5",
+        "Diversity definition (Tanimoto-based vs Homotype); incomparable on constitutional isomers.",
+        "row.diversity != user.diversity_def",
+    ),
+    ProtocolMismatchFlag(
+        "M6",
+        "Number of seeds (1 vs >=3); per-seed sigma ~ 0.46 kcal/mol at n_docked=4.",
+        "row.n_seeds != user.n_seeds",
+    ),
+    ProtocolMismatchFlag(
+        "M7",
+        "Pocket count (single vs >=10 vs 100); pocket-specific variance ~ +-2 kcal/mol.",
+        "row.n_pockets != user.n_pockets",
+    ),
 ]
 
 
@@ -139,9 +164,13 @@ SOTA_ROWS: List[SOTARow] = [
         validity="RDKit-only",
         novelty="Tanimoto <0.4",
         diversity="Tanimoto (Morgan r=2)",
-        vina_mean=-7.62, vina_std=None,
-        sa=2.81, qed=None, pb_pass=0.246,
-        n_pockets=100, n_seeds=1,
+        vina_mean=-7.62,
+        vina_std=None,
+        sa=2.81,
+        qed=None,
+        pb_pass=0.246,
+        n_pockets=100,
+        n_seeds=1,
     ),
     SOTARow(
         paper="Pocket2Mol (2022, ICML)",
@@ -150,9 +179,13 @@ SOTA_ROWS: List[SOTARow] = [
         validity="RDKit-only",
         novelty="Tanimoto <0.4",
         diversity="Tanimoto (Morgan r=2)",
-        vina_mean=-7.07, vina_std=None,
-        sa=2.51, qed=0.55, pb_pass=0.498,
-        n_pockets=100, n_seeds=1,
+        vina_mean=-7.07,
+        vina_std=None,
+        sa=2.51,
+        qed=0.55,
+        pb_pass=0.498,
+        n_pockets=100,
+        n_seeds=1,
     ),
     SOTARow(
         paper="TargetDiff (2023, ICLR)",
@@ -161,9 +194,13 @@ SOTA_ROWS: List[SOTARow] = [
         validity="RDKit-only",
         novelty="Tanimoto <0.4",
         diversity="Tanimoto (Morgan r=2)",
-        vina_mean=-8.45, vina_std=None,
-        sa=2.65, qed=0.48, pb_pass=0.351,
-        n_pockets=100, n_seeds=1,
+        vina_mean=-8.45,
+        vina_std=None,
+        sa=2.65,
+        qed=0.48,
+        pb_pass=0.351,
+        n_pockets=100,
+        n_seeds=1,
     ),
     SOTARow(
         paper="MolDiff (2023, AAAI)",
@@ -172,9 +209,13 @@ SOTA_ROWS: List[SOTARow] = [
         validity="RDKit-only",
         novelty="Tanimoto <0.4",
         diversity="Tanimoto (Morgan r=2)",
-        vina_mean=-7.55, vina_std=None,
-        sa=2.71, qed=0.51, pb_pass=0.291,
-        n_pockets=100, n_seeds=1,
+        vina_mean=-7.55,
+        vina_std=None,
+        sa=2.71,
+        qed=0.51,
+        pb_pass=0.291,
+        n_pockets=100,
+        n_seeds=1,
     ),
     SOTARow(
         paper="DecompDiff (2024, ICLR)",
@@ -183,9 +224,13 @@ SOTA_ROWS: List[SOTARow] = [
         validity="RDKit-only",
         novelty="Tanimoto <0.4",
         diversity="Tanimoto (Morgan r=2)",
-        vina_mean=-8.39, vina_std=None,
-        sa=2.71, qed=None, pb_pass=0.390,
-        n_pockets=100, n_seeds=1,
+        vina_mean=-8.39,
+        vina_std=None,
+        sa=2.71,
+        qed=None,
+        pb_pass=0.390,
+        n_pockets=100,
+        n_seeds=1,
     ),
     SOTARow(
         paper="FLOWr (2025, Nat Comput Sci)",
@@ -194,9 +239,13 @@ SOTA_ROWS: List[SOTARow] = [
         validity="PoseBusters only",
         novelty="Tanimoto <0.4",
         diversity="Tanimoto (Morgan r=2)",
-        vina_mean=-6.93, vina_std=None,
-        sa=2.86, qed=None, pb_pass=0.94,
-        n_pockets=100, n_seeds=1,
+        vina_mean=-6.93,
+        vina_std=None,
+        sa=2.86,
+        qed=None,
+        pb_pass=0.94,
+        n_pockets=100,
+        n_seeds=1,
     ),
     SOTARow(
         paper="DiffDock (2022, ICML / 2024 ICLR)",
@@ -205,9 +254,13 @@ SOTA_ROWS: List[SOTARow] = [
         validity="RMSD-to-native <2 A",
         novelty="out-of-PDBbind",
         diversity="pose-mode coverage",
-        vina_mean=None, vina_std=None,
-        sa=None, qed=None, pb_pass=None,
-        n_pockets=363, n_seeds=10,
+        vina_mean=None,
+        vina_std=None,
+        sa=None,
+        qed=None,
+        pb_pass=None,
+        n_pockets=363,
+        n_seeds=10,
     ),
     SOTARow(
         paper="BindNet (2024, NeurIPS)",
@@ -216,9 +269,13 @@ SOTA_ROWS: List[SOTARow] = [
         validity="RMSD-to-native <2 A",
         novelty="out-of-PDBbind",
         diversity="ligand-mode coverage",
-        vina_mean=None, vina_std=None,
-        sa=None, qed=None, pb_pass=None,
-        n_pockets=340, n_seeds=3,
+        vina_mean=None,
+        vina_std=None,
+        sa=None,
+        qed=None,
+        pb_pass=None,
+        n_pockets=340,
+        n_seeds=3,
     ),
     SOTARow(
         paper="RoseTTAFold-AA (2024, Nat Methods)",
@@ -227,9 +284,13 @@ SOTA_ROWS: List[SOTARow] = [
         validity="all-atom clash-free",
         novelty="sequence-only",
         diversity="backbone RMSD",
-        vina_mean=None, vina_std=None,
-        sa=None, qed=None, pb_pass=None,
-        n_pockets=150, n_seeds=5,
+        vina_mean=None,
+        vina_std=None,
+        sa=None,
+        qed=None,
+        pb_pass=None,
+        n_pockets=150,
+        n_seeds=5,
     ),
 ]
 
@@ -240,6 +301,7 @@ SOTA_ROWS: List[SOTARow] = [
 @dataclass(frozen=True)
 class GapMetrics:
     """Per-metric gap (our_value - target_value)."""
+
     vina: Optional[float] = None
     sa: Optional[float] = None
     qed: Optional[float] = None
@@ -252,6 +314,7 @@ class GapMetrics:
 @dataclass(frozen=True)
 class ComparisonReport:
     """Per-row comparison result from ``CiteOnlySOTAComparator.compare``."""
+
     row: SOTARow
     our_value: float  # Vina score (our_value)
     gap: GapMetrics
@@ -284,12 +347,16 @@ class CiteOnlySOTAComparator:
     per-row gaps and emits a per-pocket comparison row.
     """
 
-    DEFAULT_TEX_PATH = ("/home/hugo/codes/try_triton_on_rocm/molmetal/reports/"
-                        "wf_3_citeonly_sota.tex")
+    DEFAULT_TEX_PATH = (
+        "/home/hugo/codes/try_triton_on_rocm/molmetal/reports/" "wf_3_citeonly_sota.tex"
+    )
 
-    def __init__(self, tex_path: Optional[str] = None,
-                 rows: Optional[List[SOTARow]] = None,
-                 flags: Optional[List[ProtocolMismatchFlag]] = None):
+    def __init__(
+        self,
+        tex_path: Optional[str] = None,
+        rows: Optional[List[SOTARow]] = None,
+        flags: Optional[List[ProtocolMismatchFlag]] = None,
+    ):
         """Initialise the comparator.
 
         ``tex_path`` — optional LaTeX file path.  If supplied, the
@@ -303,7 +370,9 @@ class CiteOnlySOTAComparator:
         ``flags`` — override the protocol-mismatch flag list.
         """
         self.rows: List[SOTARow] = list(rows) if rows is not None else list(SOTA_ROWS)
-        self.flags: List[ProtocolMismatchFlag] = list(flags) if flags is not None else list(PROTOCOL_MISMATCH_FLAGS)
+        self.flags: List[ProtocolMismatchFlag] = (
+            list(flags) if flags is not None else list(PROTOCOL_MISMATCH_FLAGS)
+        )
         self._parser_discrepancies: List[str] = []
         if tex_path is not None and Path(tex_path).is_file():
             self._parser_discrepancies = self._cross_check_with_tex(tex_path)
@@ -339,8 +408,9 @@ class CiteOnlySOTAComparator:
                 return row
         return None
 
-    def _applicable_flags(self, row: SOTARow,
-                          protocol_flags: Dict[str, object]) -> List[str]:
+    def _applicable_flags(
+        self, row: SOTARow, protocol_flags: Dict[str, object]
+    ) -> List[str]:
         """Return the list of protocol-mismatch flag codes that apply.
 
         Heuristic:
@@ -359,17 +429,27 @@ class CiteOnlySOTAComparator:
         # Normalise engine-name overlap: vina and qvina/qvina-quickvina2
         # share a per-engine family.  We compare on the *first word*.
         row_engine = row.docking_engine.lower().split()[0] if row.docking_engine else ""
-        if user_engine and row_engine and not row_engine.startswith(user_engine.split()[0]):
+        if (
+            user_engine
+            and row_engine
+            and not row_engine.startswith(user_engine.split()[0])
+        ):
             # DiffDock-L and DiffDock are not strictly Vina/QVina; flag M2.
             codes.append("M2")
-        if (str(protocol_flags.get("validity_def", "")).lower()
-                and protocol_flags.get("validity_def") != row.validity):
+        if (
+            str(protocol_flags.get("validity_def", "")).lower()
+            and protocol_flags.get("validity_def") != row.validity
+        ):
             codes.append("M3")
-        if (str(protocol_flags.get("novelty_def", "")).lower()
-                and protocol_flags.get("novelty_def") != row.novelty):
+        if (
+            str(protocol_flags.get("novelty_def", "")).lower()
+            and protocol_flags.get("novelty_def") != row.novelty
+        ):
             codes.append("M4")
-        if (str(protocol_flags.get("diversity_def", "")).lower()
-                and protocol_flags.get("diversity_def") != row.diversity):
+        if (
+            str(protocol_flags.get("diversity_def", "")).lower()
+            and protocol_flags.get("diversity_def") != row.diversity
+        ):
             codes.append("M5")
         user_seeds = protocol_flags.get("n_seeds")
         if isinstance(user_seeds, int) and user_seeds != row.n_seeds:
@@ -379,9 +459,9 @@ class CiteOnlySOTAComparator:
             codes.append("M7")
         return codes
 
-    def _fairness_verdict(self, applicable: List[str],
-                          our_value: float,
-                          row: SOTARow) -> str:
+    def _fairness_verdict(
+        self, applicable: List[str], our_value: float, row: SOTARow
+    ) -> str:
         """Compute the fairness verdict.
 
         * 'comparable' — 0 protocol flags apply AND row has Vina score
@@ -394,10 +474,14 @@ class CiteOnlySOTAComparator:
             return "flag_only"
         return "incomparable"
 
-    def _compute_gap(self, our_value: float, row: SOTARow,
-                     our_sa: Optional[float] = None,
-                     our_qed: Optional[float] = None,
-                     our_pb: Optional[float] = None) -> GapMetrics:
+    def _compute_gap(
+        self,
+        our_value: float,
+        row: SOTARow,
+        our_sa: Optional[float] = None,
+        our_qed: Optional[float] = None,
+        our_pb: Optional[float] = None,
+    ) -> GapMetrics:
         """Compute per-metric gaps (our_value - target_value).
 
         For vina: lower (more negative) is better, so a positive gap
@@ -406,17 +490,32 @@ class CiteOnlySOTAComparator:
         means we are BETTER.
         """
         gap_vina = (our_value - row.vina_mean) if row.vina_mean is not None else None
-        gap_sa = (our_sa - row.sa) if (our_sa is not None and row.sa is not None) else None
-        gap_qed = (our_qed - row.qed) if (our_qed is not None and row.qed is not None) else None
-        gap_pb = (our_pb - row.pb_pass) if (our_pb is not None and row.pb_pass is not None) else None
+        gap_sa = (
+            (our_sa - row.sa) if (our_sa is not None and row.sa is not None) else None
+        )
+        gap_qed = (
+            (our_qed - row.qed)
+            if (our_qed is not None and row.qed is not None)
+            else None
+        )
+        gap_pb = (
+            (our_pb - row.pb_pass)
+            if (our_pb is not None and row.pb_pass is not None)
+            else None
+        )
         return GapMetrics(vina=gap_vina, sa=gap_sa, qed=gap_qed, pb=gap_pb)
 
-    def compare(self, our_value: float, num_samples: int,
-                protocol_flags: Optional[Dict[str, object]] = None,
-                *, row_name: Optional[str] = None,
-                our_sa: Optional[float] = None,
-                our_qed: Optional[float] = None,
-                our_pb: Optional[float] = None) -> List[ComparisonReport]:
+    def compare(
+        self,
+        our_value: float,
+        num_samples: int,
+        protocol_flags: Optional[Dict[str, object]] = None,
+        *,
+        row_name: Optional[str] = None,
+        our_sa: Optional[float] = None,
+        our_qed: Optional[float] = None,
+        our_pb: Optional[float] = None,
+    ) -> List[ComparisonReport]:
         """Compare our_value against every (or one named) SOTA row.
 
         Parameters
@@ -458,7 +557,9 @@ class CiteOnlySOTAComparator:
                 f"{len(applicable)}/7 protocol-mismatch flags apply",
             ]
             if row.vina_mean is None:
-                notes_parts.append("row uses non-Vina metric (e.g. RMSD); gap_vina undefined")
+                notes_parts.append(
+                    "row uses non-Vina metric (e.g. RMSD); gap_vina undefined"
+                )
             report = ComparisonReport(
                 row=row,
                 our_value=our_value,
@@ -472,10 +573,14 @@ class CiteOnlySOTAComparator:
             reports.append(report)
         return reports
 
-    def compare_per_pocket(self, pocket_id: str, our_value: float,
-                           num_samples: int,
-                           protocol_flags: Optional[Dict[str, object]] = None,
-                           **kwargs) -> List[Dict[str, object]]:
+    def compare_per_pocket(
+        self,
+        pocket_id: str,
+        our_value: float,
+        num_samples: int,
+        protocol_flags: Optional[Dict[str, object]] = None,
+        **kwargs,
+    ) -> List[Dict[str, object]]:
         """Convenience wrapper that returns per-pocket CSV-ready dicts.
 
         Each dict has keys: pocket_id, paper, dataset, vina_target,
@@ -492,7 +597,9 @@ class CiteOnlySOTAComparator:
                 "gap_vina": r.gap.vina,
                 "n_samples_ours": r.n_samples_ours,
                 "n_samples_target": r.n_samples_target,
-                "applicable_flags": ",".join(r.applicable_flags) if r.applicable_flags else "",
+                "applicable_flags": ",".join(r.applicable_flags)
+                if r.applicable_flags
+                else "",
                 "fairness_verdict": r.fairness_verdict,
                 "notes": r.notes,
             }
@@ -544,10 +651,24 @@ def _parse_tex_rows(tex_path: str) -> List[Dict[str, str]]:
         # Skip Mol-Metal rows (they are MEASURED rows, not CITED-ONLY)
         if "Mol-Metal" in paper or "textbf{Mol-Metal" in paper:
             continue
-        rows.append({k: m.group(k).strip() for k in (
-            "paper", "dataset", "engine", "validity", "novelty",
-            "diversity", "vina", "sa", "qed", "pb", "n_pockets",
-        )})
+        rows.append(
+            {
+                k: m.group(k).strip()
+                for k in (
+                    "paper",
+                    "dataset",
+                    "engine",
+                    "validity",
+                    "novelty",
+                    "diversity",
+                    "vina",
+                    "sa",
+                    "qed",
+                    "pb",
+                    "n_pockets",
+                )
+            }
+        )
     return rows
 
 
@@ -574,10 +695,12 @@ def _safe_int(value: str) -> Optional[int]:
 # ---------------------------------------------------------------------------
 # Convenience entry-point for CLI integration
 # ---------------------------------------------------------------------------
-def build_per_pocket_comparison_rows(pocket_id: str, our_value: float,
-                                      num_samples: int,
-                                      protocol_flags: Optional[Dict[str, object]] = None
-                                      ) -> List[Dict[str, object]]:
+def build_per_pocket_comparison_rows(
+    pocket_id: str,
+    our_value: float,
+    num_samples: int,
+    protocol_flags: Optional[Dict[str, object]] = None,
+) -> List[Dict[str, object]]:
     """One-shot helper for ``r4_c_full_sweep.py`` integration.
 
     Returns the CSV-ready per-row dicts from

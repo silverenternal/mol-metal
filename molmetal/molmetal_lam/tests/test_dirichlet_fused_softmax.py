@@ -20,8 +20,7 @@ from triton_kernels.config import triton_config
 def _scalar_dirichlet_mix(priors, noise, eps):
     """Reference scalar-path Dirichlet mixing with no renormalisation."""
     return [
-        max(0.0, min(1.0, (1.0 - eps) * p + eps * e))
-        for p, e in zip(priors, noise)
+        max(0.0, min(1.0, (1.0 - eps) * p + eps * e)) for p, e in zip(priors, noise)
     ]
 
 

@@ -38,9 +38,9 @@ CATALOG_PATH = _REPO_ROOT / "docs" / "HONEST_NEGATIVE_CATALOG.md"
 @pytest.fixture(scope="module")
 def catalog_text() -> str:
     """Read the catalog markdown file once per module."""
-    assert CATALOG_PATH.exists(), (
-        f"docs/HONEST_NEGATIVE_CATALOG.md must exist at {CATALOG_PATH}"
-    )
+    assert (
+        CATALOG_PATH.exists()
+    ), f"docs/HONEST_NEGATIVE_CATALOG.md must exist at {CATALOG_PATH}"
     return CATALOG_PATH.read_text(encoding="utf-8")
 
 
@@ -86,9 +86,9 @@ def test_01_catalog_size_and_wf340_368_coverage(
     launch; no external network.
     """
     # 1) File exists at the canonical location.
-    assert CATALOG_PATH.exists(), (
-        f"docs/HONEST_NEGATIVE_CATALOG.md must exist at {CATALOG_PATH}"
-    )
+    assert (
+        CATALOG_PATH.exists()
+    ), f"docs/HONEST_NEGATIVE_CATALOG.md must exist at {CATALOG_PATH}"
     file_size = CATALOG_PATH.stat().st_size
     assert file_size > 10_000, (
         f"catalog must be substantial (>10KB after §6 expansion); "
@@ -103,10 +103,18 @@ def test_01_catalog_size_and_wf340_368_coverage(
     assert "3" in main_sections, "§3 Per-launcher section must be present"
     assert "4" in main_sections, "§4 Resolved section must be present"
     assert "5" in main_sections, "§5 Open section must be present"
-    assert "6" in main_sections, "§6 NEW Wf-340..368 section must be present (Wf-369-A3)"
-    assert "7" in main_sections, "§7 WETLAB_DEPRECATED section must be present (Wf-375-A2 NEW)"
-    assert "8" in main_sections, "§8 Closing section must be present (renumbered from §7 per Wf-375-A2)"
-    assert "9" in main_sections, "§9 Cross-references section must be present (renumbered from §8 per Wf-375-A2)"
+    assert (
+        "6" in main_sections
+    ), "§6 NEW Wf-340..368 section must be present (Wf-369-A3)"
+    assert (
+        "7" in main_sections
+    ), "§7 WETLAB_DEPRECATED section must be present (Wf-375-A2 NEW)"
+    assert (
+        "8" in main_sections
+    ), "§8 Closing section must be present (renumbered from §7 per Wf-375-A2)"
+    assert (
+        "9" in main_sections
+    ), "§9 Cross-references section must be present (renumbered from §8 per Wf-375-A2)"
 
     # 3) Entry count ≥ 50 (Wf-369-A3 task brief §4 target).
     # Wf-369-A3 expansion: 40 → 65 (15 NEW §6 entries + structural).
@@ -133,9 +141,9 @@ def test_01_catalog_size_and_wf340_368_coverage(
         re.MULTILINE | re.DOTALL,
     )
     section_6_blocks = section_6_pattern.findall(catalog_text)
-    assert len(section_6_blocks) >= 10, (
-        f"§6 must have ≥10 entry blocks; got {len(section_6_blocks)}"
-    )
+    assert (
+        len(section_6_blocks) >= 10
+    ), f"§6 must have ≥10 entry blocks; got {len(section_6_blocks)}"
 
     # 6) Wf-340..368 reference coverage: catalog must cite at least
     # 20 NEW Wf-340..368 workflows (Wf-340..368 in closeouts).
@@ -149,25 +157,25 @@ def test_01_catalog_size_and_wf340_368_coverage(
 
     # 7) Honest framing discipline preserved (per `party-twenty-spirit`
     # §3.5). Catalog must contain both MEASURED and PROJECTED tags.
-    assert "MEASURED" in catalog_text, (
-        "catalog must use MEASURED tag discipline (party-twenty-spirit §3.5)"
-    )
-    assert "PROJECTED" in catalog_text, (
-        "catalog must use PROJECTED tag discipline for non-measured claims"
-    )
+    assert (
+        "MEASURED" in catalog_text
+    ), "catalog must use MEASURED tag discipline (party-twenty-spirit §3.5)"
+    assert (
+        "PROJECTED" in catalog_text
+    ), "catalog must use PROJECTED tag discipline for non-measured claims"
     # New HONEST_NEGATIVE_<KIND> markers added by §6.
-    assert "HONEST_NEGATIVE_PARTIAL_STRUCTURAL" in catalog_text, (
-        "catalog must preserve HONEST_NEGATIVE_PARTIAL_STRUCTURAL marker"
-    )
-    assert "HONEST_NEGATIVE_R2_DEEP" in catalog_text, (
-        "catalog must preserve HONEST_NEGATIVE_R2_DEEP marker"
-    )
-    assert "HONEST_NEGATIVE_RESOLVED" in catalog_text, (
-        "catalog must preserve HONEST_NEGATIVE_RESOLVED marker for §4 + §6"
-    )
-    assert "HONEST_NEGATIVE_BLOCKED" in catalog_text, (
-        "catalog must preserve HONEST_NEGATIVE_BLOCKED marker for §5"
-    )
+    assert (
+        "HONEST_NEGATIVE_PARTIAL_STRUCTURAL" in catalog_text
+    ), "catalog must preserve HONEST_NEGATIVE_PARTIAL_STRUCTURAL marker"
+    assert (
+        "HONEST_NEGATIVE_R2_DEEP" in catalog_text
+    ), "catalog must preserve HONEST_NEGATIVE_R2_DEEP marker"
+    assert (
+        "HONEST_NEGATIVE_RESOLVED" in catalog_text
+    ), "catalog must preserve HONEST_NEGATIVE_RESOLVED marker for §4 + §6"
+    assert (
+        "HONEST_NEGATIVE_BLOCKED" in catalog_text
+    ), "catalog must preserve HONEST_NEGATIVE_BLOCKED marker for §5"
 
     # 8) Source citations: every entry must cite a `TODO/completed/...md`
     # or `molmetal/reports/...json` source path.
@@ -193,20 +201,26 @@ def test_01_catalog_size_and_wf340_368_coverage(
 
     # 10) Standing directives preserved (per AGENTS.md §5):
     # §5.1 GPU grant, §5.2 honest framing, §5.3 no paper, §5.4 Tier-2.
-    assert "§5.1" in catalog_text, "AGENTS.md §5.1 GPU grant reference must be preserved"
-    assert "§5.2" in catalog_text, "AGENTS.md §5.2 honest framing reference must be preserved"
-    assert "§5.3" in catalog_text, "AGENTS.md §5.3 no-paper-work reference must be preserved"
+    assert (
+        "§5.1" in catalog_text
+    ), "AGENTS.md §5.1 GPU grant reference must be preserved"
+    assert (
+        "§5.2" in catalog_text
+    ), "AGENTS.md §5.2 honest framing reference must be preserved"
+    assert (
+        "§5.3" in catalog_text
+    ), "AGENTS.md §5.3 no-paper-work reference must be preserved"
     assert "§5.4" in catalog_text, "AGENTS.md §5.4 Tier-2 reference must be preserved"
 
     # 11) Pre-flight cascade FULLY CLOSED reference (Wf-367-A2).
-    assert "Wf-367-A2" in catalog_text, (
-        "catalog must reference Wf-367-A2 pre-flight cascade FULLY CLOSED baseline"
-    )
+    assert (
+        "Wf-367-A2" in catalog_text
+    ), "catalog must reference Wf-367-A2 pre-flight cascade FULLY CLOSED baseline"
 
     # 12) Wf-369-A3 attribution in header + closing.
-    assert "Wf-369-A3" in catalog_text, (
-        "catalog must include Wf-369-A3 attribution in header + closing"
-    )
+    assert (
+        "Wf-369-A3" in catalog_text
+    ), "catalog must include Wf-369-A3 attribution in header + closing"
 
     print(
         f"  [test_01] catalog OK: path={CATALOG_PATH.name} "

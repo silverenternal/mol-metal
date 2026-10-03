@@ -253,6 +253,7 @@ def compute_qm9_position_scale(dataset, n_samples: int = 1000) -> float:
     if not stds:
         return 1.0
     import statistics
+
     return float(statistics.median(stds))
 
 
@@ -305,9 +306,11 @@ def collate_qm9(
     # label.  ``None`` for the unconditional dataset (12-D label
     # concatenated or no label at all).
     cond_list: list[torch.Tensor] = []
-    has_cond = bool(items) and getattr(items[0], "label", None) is not None and tuple(
-        items[0].label.shape
-    ) == (1,)
+    has_cond = (
+        bool(items)
+        and getattr(items[0], "label", None) is not None
+        and tuple(items[0].label.shape) == (1,)
+    )
 
     for i, s in enumerate(items):
         n = min(s.coords.shape[0], max_atoms)
@@ -324,7 +327,7 @@ def collate_qm9(
     # (1) Per-molecule centering over real atoms only.
     n_real = node_mask.float().sum(dim=1, keepdim=True).clamp(min=1.0)  # (B, 1)
     masked_sum = (positions * node_mask.unsqueeze(-1).float()).sum(dim=1)  # (B, 3)
-    centroid = masked_sum / n_real                                       # (B, 3)
+    centroid = masked_sum / n_real  # (B, 3)
     positions = (positions - centroid.unsqueeze(1)) * node_mask.unsqueeze(-1)
 
     # (2) Global scaling by a fixed ``position_scale`` (computed once
@@ -334,25 +337,27 @@ def collate_qm9(
     positions = positions / float(position_scale)
 
     # (3) Distance-cutoff edges.
-    dists = torch.cdist(positions, positions)                            # (B, N, N)
-    real_pair = node_mask.unsqueeze(1) & node_mask.unsqueeze(2)         # (B, N, N)
+    dists = torch.cdist(positions, positions)  # (B, N, N)
+    real_pair = node_mask.unsqueeze(1) & node_mask.unsqueeze(2)  # (B, N, N)
     no_self = ~torch.eye(max_atoms, dtype=torch.bool, device=device).unsqueeze(0)
     cutoff_mask = dists < float(edge_cutoff)
-    edge_valid = real_pair & no_self & cutoff_mask                      # (B, N, N)
+    edge_valid = real_pair & no_self & cutoff_mask  # (B, N, N)
 
     # Pack to (B, 2, E_max).  E_max is the worst case (fully connected
     # minus self-loops); with the cutoff most molecules use far fewer.
     e_max = max_atoms * (max_atoms - 1)
-    src_all = torch.arange(max_atoms, device=device).view(1, max_atoms, 1).expand(
-        b, max_atoms, max_atoms
+    src_all = (
+        torch.arange(max_atoms, device=device)
+        .view(1, max_atoms, 1)
+        .expand(b, max_atoms, max_atoms)
     )
     dst_all = src_all.transpose(1, 2)
-    edge_src = src_all[edge_valid]                                       # (total_real,)
+    edge_src = src_all[edge_valid]  # (total_real,)
     edge_dst = dst_all[edge_valid]
     # Bucket edges back per-batch by counting how many each batch
     # element contributed.  ``scatter_add`` into a (b, e_max) buffer
     # is awkward; we use a simple cumulative-index approach.
-    counts = edge_valid.view(b, -1).sum(dim=1)                          # (B,)
+    counts = edge_valid.view(b, -1).sum(dim=1)  # (B,)
     # Build (B, e_max) tensors filled with the first valid edge per row.
     edge_src_b = torch.zeros(b, e_max, dtype=torch.long, device=device)
     edge_dst_b = torch.zeros(b, e_max, dtype=torch.long, device=device)
@@ -365,7 +370,7 @@ def collate_qm9(
             edge_dst_b[i, :n_e] = edge_dst[cursor : cursor + n_e]
             edge_mask_b[i, :n_e] = True
             cursor += n_e
-    edge_index = torch.stack([edge_src_b, edge_dst_b], dim=1)           # (B, 2, e_max)
+    edge_index = torch.stack([edge_src_b, edge_dst_b], dim=1)  # (B, 2, e_max)
 
     batch = {
         "positions": positions,
@@ -587,7 +592,11 @@ def train(cfg: dict, args: argparse.Namespace) -> None:
     seed = int(cfg.get("seed", 42))
     torch.manual_seed(seed)
 
-    epochs = int(args.epochs if args.epochs is not None else cfg.get("train", {}).get("epochs", 100))
+    epochs = int(
+        args.epochs
+        if args.epochs is not None
+        else cfg.get("train", {}).get("epochs", 100)
+    )
     batch_size = int(
         args.batch_size
         if args.batch_size is not None
@@ -598,16 +607,23 @@ def train(cfg: dict, args: argparse.Namespace) -> None:
     grad_clip_norm = float(cfg.get("train", {}).get("grad_clip_norm", 1.0))
     ema_decay = float(cfg.get("train", {}).get("ema_decay", 0.999))
     edge_cutoff = float(cfg.get("train", {}).get("edge_cutoff", _QM9_EDGE_CUTOFF))
-    print(f"[train] epochs={epochs} batch_size={batch_size} lr={lr} warmup_steps={warmup_steps} grad_clip_norm={grad_clip_norm} ema_decay={ema_decay} edge_cutoff={edge_cutoff}")
+    print(
+        f"[train] epochs={epochs} batch_size={batch_size} lr={lr} warmup_steps={warmup_steps} grad_clip_norm={grad_clip_norm} ema_decay={ema_decay} edge_cutoff={edge_cutoff}"
+    )
 
     # 1. dataset + loader ----------------------------------------------------
-    dataset, target_index_eff = build_dataset(cfg, target_index_override=args.target_index)
+    dataset, target_index_eff = build_dataset(
+        cfg, target_index_override=args.target_index
+    )
     print(f"[train] dataset = {type(dataset).__name__} (size={len(dataset)})")
     if target_index_eff is not None:
         from data.qm9 import QM9Dataset as _CanonicalQM9
-        target_name = _CanonicalQM9.TARGETS[target_index_eff] if hasattr(
-            _CanonicalQM9, "TARGETS"
-        ) else str(target_index_eff)
+
+        target_name = (
+            _CanonicalQM9.TARGETS[target_index_eff]
+            if hasattr(_CanonicalQM9, "TARGETS")
+            else str(target_index_eff)
+        )
         print(
             f"[train] conditional path enabled on QM9 target index "
             f"{target_index_eff} ({target_name}); a Conditioner will be "
@@ -618,9 +634,9 @@ def train(cfg: dict, args: argparse.Namespace) -> None:
     from data.mol_dataset import QM9Dataset as _QM9Dataset
 
     # Compute (or default) the global position scale for QM9.
-    position_scale = compute_qm9_position_scale(dataset) if isinstance(
-        dataset, _QM9Dataset
-    ) else 1.0
+    position_scale = (
+        compute_qm9_position_scale(dataset) if isinstance(dataset, _QM9Dataset) else 1.0
+    )
     print(f"[train] position_scale = {position_scale:.4f}")
 
     def _collate(items):
@@ -636,7 +652,9 @@ def train(cfg: dict, args: argparse.Namespace) -> None:
         # Tabular (MetalCytoToxDB).  Heavy normalization: raw
         # descriptors are ~10^2, so divide them down to keep projected
         # positions on a tiny lattice scale.
-        feats = torch.stack([s.features for s in items if s.features is not None], dim=0)
+        feats = torch.stack(
+            [s.features for s in items if s.features is not None], dim=0
+        )
         feats = feats / 1000.0
         return collate_tabular_items(feats, device=device)
 
@@ -664,9 +682,15 @@ def train(cfg: dict, args: argparse.Namespace) -> None:
     n_params = (
         sum(p.numel() for p in velocity_net.parameters())
         + sum(p.numel() for p in encoder.parameters())
-        + (sum(p.numel() for p in conditioner.parameters()) if conditioner is not None else 0)
+        + (
+            sum(p.numel() for p in conditioner.parameters())
+            if conditioner is not None
+            else 0
+        )
     )
-    print(f"[train] params (velocity+encoder{'+conditioner' if conditioner is not None else ''}) = {n_params:,}")
+    print(
+        f"[train] params (velocity+encoder{'+conditioner' if conditioner is not None else ''}) = {n_params:,}"
+    )
 
     # Wire the encoder (and conditioner) into the loss so it computes
     # ``h_node`` internally from (atomic_numbers, positions, edge_index)
@@ -688,11 +712,12 @@ def train(cfg: dict, args: argparse.Namespace) -> None:
     # ``velocity_net_ema_state_dict`` so :mod:`scripts.generate` can
     # prefer the smoother shadow over the noisy live weights.
     velocity_net_ema: dict[str, torch.Tensor] = {
-        name: param.detach().clone()
-        for name, param in velocity_net.named_parameters()
+        name: param.detach().clone() for name, param in velocity_net.named_parameters()
     }
-    print(f"[train] EMA shadow initialised for {len(velocity_net_ema)} velocity_net parameters "
-          f"(decay={ema_decay})")
+    print(
+        f"[train] EMA shadow initialised for {len(velocity_net_ema)} velocity_net parameters "
+        f"(decay={ema_decay})"
+    )
 
     # 3. training loop -------------------------------------------------------
     CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
@@ -745,7 +770,9 @@ def train(cfg: dict, args: argparse.Namespace) -> None:
             optimizer.zero_grad()
             loss.backward()
 
-            params_with_grads = list(velocity_net.parameters()) + list(encoder.parameters())
+            params_with_grads = list(velocity_net.parameters()) + list(
+                encoder.parameters()
+            )
             if conditioner is not None:
                 params_with_grads += list(conditioner.parameters())
 
@@ -876,7 +903,13 @@ def train(cfg: dict, args: argparse.Namespace) -> None:
         torch.save(ckpt, CHECKPOINT_PATH)
         print(f"[train] checkpoint saved -> {CHECKPOINT_PATH}")
 
-    return initial_loss, final_loss if final_loss is not None else (epoch_loss / max(n_batches_epoch, 1)), optimizer.param_groups[0]["lr"]
+    return (
+        initial_loss,
+        final_loss
+        if final_loss is not None
+        else (epoch_loss / max(n_batches_epoch, 1)),
+        optimizer.param_groups[0]["lr"],
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -891,7 +924,9 @@ def main() -> None:
     result = train(cfg, args)
     if result is not None:
         initial_loss, final_loss, lr_at_end = result
-        print(f"[train] summary initial_loss={initial_loss:.6f} final_loss={final_loss:.6f} lr_at_end={lr_at_end:.6e}")
+        print(
+            f"[train] summary initial_loss={initial_loss:.6f} final_loss={final_loss:.6f} lr_at_end={lr_at_end:.6e}"
+        )
 
 
 if __name__ == "__main__":

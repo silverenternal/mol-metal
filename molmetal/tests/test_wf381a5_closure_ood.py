@@ -12,6 +12,7 @@ the spec:
 
 The test is **CPU-only** — no GPU cross-domain retrain is launched.
 """
+
 from __future__ import annotations
 
 import sys
@@ -30,6 +31,7 @@ if str(SCRIPT_DIR) not in sys.path:
 def _import_scaffold():
     try:
         from molmetal.scripts import wf381a5_r20_plan_cpu_close as scaffold
+
         return scaffold
     except Exception as exc:  # pragma: no cover
         pytest.skip(
@@ -65,7 +67,10 @@ def test_todo98_closure_ood_scaffold() -> None:
     for key in ("script_ood", "script_ood_30metals"):
         assert key in todo98, f"TODO-98 missing key {key}"
     assert todo98["script_ood"] == "molmetal/scripts/bench_closure_ood.py"
-    assert todo98["script_ood_30metals"] == "molmetal/scripts/bench_closure_ood_30metals.py"
+    assert (
+        todo98["script_ood_30metals"]
+        == "molmetal/scripts/bench_closure_ood_30metals.py"
+    )
 
     # Both bench scripts are on disk.
     for script_path in (todo98["script_ood"], todo98["script_ood_30metals"]):
@@ -112,6 +117,7 @@ def test_todo98_closure_ood_scaffold() -> None:
 
     # The closure OOD module exposes the per-domain stratification.
     from molmetal.scripts import bench_closure_ood as ood
+
     # Per-domain defaults: PlatinAI 5K + MetalCytoToxDB 5-metal.
     assert "Pt" in ood.PLATINAI_METALS
     assert "Ru" in ood.METALCYTO_METALS
@@ -123,6 +129,7 @@ def test_todo98_closure_ood_scaffold() -> None:
 
     # The 30-metals OOD module exposes the same 30-metal cohort.
     from molmetal.scripts import bench_closure_ood_30metals as ood_30
+
     # Public functions exist (bench loop + metal selection).
     assert hasattr(ood_30, "_benchmark_one")
     assert hasattr(ood_30, "_filter_ood_subset")

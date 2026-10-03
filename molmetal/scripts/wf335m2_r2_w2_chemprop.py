@@ -56,6 +56,7 @@ Honest framing (party-twenty-spirit §3.5)
 * CPU-only; no torch autograd; chemprop v2 featurizer in pure-numpy
   fallback mode.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -70,6 +71,7 @@ import numpy as np
 try:
     from sklearn.linear_model import Ridge
     from sklearn.preprocessing import StandardScaler
+
     _HAS_SKLEARN = True
 except Exception:  # pragma: no cover — defensive
     Ridge = None  # type: ignore
@@ -169,7 +171,7 @@ def ridge_r2_cv(
         fold_idx = []
         start = 0
         for fs in fold_sizes:
-            fold_idx.append(perm[start:start + fs])
+            fold_idx.append(perm[start : start + fs])
             start += fs
         for k in range(n_splits):
             te_idx = fold_idx[k]
@@ -192,7 +194,8 @@ def ridge_r2_cv(
                 XtX = Xs_tr.T @ Xs_tr
                 Xty = Xs_tr.T @ ytr
                 w = np.linalg.solve(
-                    XtX + alpha * np.eye(XtX.shape[0]), Xty,
+                    XtX + alpha * np.eye(XtX.shape[0]),
+                    Xty,
                 )
                 yhat = Xs_te @ w
                 ss_res = float(np.sum((yte - yhat) ** 2))
@@ -254,7 +257,7 @@ def ridge_r2_eval_with_w2(
         fold_idx = []
         start = 0
         for fs in fold_sizes:
-            fold_idx.append(perm[start:start + fs])
+            fold_idx.append(perm[start : start + fs])
             start += fs
         for k in range(n_splits):
             te_idx = fold_idx[k]
@@ -274,18 +277,22 @@ def ridge_r2_eval_with_w2(
                 # Reference = full training matrix Xtr_full (m × D)
                 # (covariate_w2_distance requires reference.shape[1] == X.shape[1]).
                 w2_tr = compute_covariate_w2_distance(
-                    Xtr_full, reference=Xtr_full,
+                    Xtr_full,
+                    reference=Xtr_full,
                     projection_axis=proj_axis,
                 )
                 w2_te = compute_covariate_w2_distance(
-                    Xte_full, reference=Xtr_full,
+                    Xte_full,
+                    reference=Xtr_full,
                     projection_axis=proj_axis,
                 )
                 X_full_tr = np.concatenate(
-                    [Xtr_full, w2_tr.reshape(-1, 1)], axis=1,
+                    [Xtr_full, w2_tr.reshape(-1, 1)],
+                    axis=1,
                 )
                 X_full_te = np.concatenate(
-                    [Xte_full, w2_te.reshape(-1, 1)], axis=1,
+                    [Xte_full, w2_te.reshape(-1, 1)],
+                    axis=1,
                 )
             # Drop constant columns defensively
             if X_full_tr.shape[1] > 0:
@@ -311,7 +318,8 @@ def ridge_r2_eval_with_w2(
                 XtX = Xs_tr.T @ Xs_tr
                 Xty = Xs_tr.T @ ytr
                 w = np.linalg.solve(
-                    XtX + alpha * np.eye(XtX.shape[0]), Xty,
+                    XtX + alpha * np.eye(XtX.shape[0]),
+                    Xty,
                 )
                 yhat = Xs_te @ w
                 ss_res = float(np.sum((yte - yhat) ** 2))
@@ -362,8 +370,12 @@ def select_best_w2_axis(
         if axis >= X_static.shape[1]:
             continue
         cv = ridge_r2_eval_with_w2(
-            X_static, y, projection_axis=axis,
-            n_splits=n_splits, n_seeds=n_seeds, alpha=alpha,
+            X_static,
+            y,
+            projection_axis=axis,
+            n_splits=n_splits,
+            n_seeds=n_seeds,
+            alpha=alpha,
             seed_offset=seed_offset,
         )
         results[axis] = {
@@ -391,10 +403,16 @@ def select_best_w2_axis(
 # Per-cell / per-metal R² breakdown
 # ---------------------------------------------------------------------------
 PLATINAI_PER_CELL_COLUMNS: Tuple[str, ...] = (
-    "pIC50_mcf7", "pIC50_a549", "pIC50_a2780", "pIC50_a2780cis",
+    "pIC50_mcf7",
+    "pIC50_a549",
+    "pIC50_a2780",
+    "pIC50_a2780cis",
 )
 PLATINAI_PER_CELL_LABELS: Tuple[str, ...] = (
-    "mcf7", "a549", "a2780", "a2780cis",
+    "mcf7",
+    "a549",
+    "a2780",
+    "a2780cis",
 )
 
 
@@ -402,6 +420,7 @@ def _read_csv(path: str) -> Tuple[List[str], List[List[str]]]:
     """Read CSV at the data/ path (replicated from Wf-331-R5 for self-containment)."""
     path = _resolve_repo_path(path)
     import csv
+
     with open(path, "r", encoding="utf-8") as f:
         reader = csv.reader(f)
         header = next(reader)
@@ -425,13 +444,8 @@ def per_cell_r2_breakdown(
     """
     if cohort != "platinai_4cell":
         return {}
-    header12, rows12 = _read_csv(
-        "molmetal/data/platinai_4cell_rdkit_features.csv"
-    )
-    smi_to_idx = {
-        rows12[i][header12.index("smiles")]: i
-        for i in range(len(rows12))
-    }
+    header12, rows12 = _read_csv("molmetal/data/platinai_4cell_rdkit_features.csv")
+    smi_to_idx = {rows12[i][header12.index("smiles")]: i for i in range(len(rows12))}
     per_cell_results: Dict[str, Dict[str, float]] = {}
     for col, label in zip(PLATINAI_PER_CELL_COLUMNS, PLATINAI_PER_CELL_LABELS):
         y_cell = np.zeros(len(smiles_list), dtype=np.float64)
@@ -455,8 +469,11 @@ def per_cell_r2_breakdown(
             }
             continue
         cv = ridge_r2_cv(
-            X_static[valid], y_cell[valid],
-            n_splits=n_splits, n_seeds=n_seeds, alpha=alpha,
+            X_static[valid],
+            y_cell[valid],
+            n_splits=n_splits,
+            n_seeds=n_seeds,
+            alpha=alpha,
             seed_offset=seed_offset,
         )
         per_cell_results[label] = {
@@ -480,9 +497,7 @@ def per_metal_r2_breakdown(
     Loads the metal column from metalcytotox_rdkit_features.csv and
     evaluates R² per metal separately.
     """
-    header12, rows12 = _read_csv(
-        "molmetal/data/metalcytotox_rdkit_features.csv"
-    )
+    header12, rows12 = _read_csv("molmetal/data/metalcytotox_rdkit_features.csv")
     smi_to_metal: Dict[str, str] = {}
     smi_to_y: Dict[str, float] = {}
     smi_idx_col = header12.index("smiles")
@@ -499,13 +514,13 @@ def per_metal_r2_breakdown(
         smi_to_metal[smi] = r[metal_col]
         smi_to_y[smi] = y_val
     per_metal_results: Dict[str, Dict[str, Any]] = {}
-    metals_in_cohort = sorted({
-        smi_to_metal[s] for s in smiles_list if s in smi_to_metal
-    })
+    metals_in_cohort = sorted(
+        {smi_to_metal[s] for s in smiles_list if s in smi_to_metal}
+    )
     for metal in metals_in_cohort:
-        mask_m = np.array([
-            smi_to_metal.get(s) == metal for s in smiles_list
-        ], dtype=bool)
+        mask_m = np.array(
+            [smi_to_metal.get(s) == metal for s in smiles_list], dtype=bool
+        )
         if mask_m.sum() < n_splits:
             per_metal_results[metal] = {
                 "r2_mean": float("nan"),
@@ -513,12 +528,15 @@ def per_metal_r2_breakdown(
                 "n_samples": int(mask_m.sum()),
             }
             continue
-        y_metal = np.array([
-            smi_to_y.get(s, float("nan")) for s in smiles_list
-        ], dtype=np.float64)
+        y_metal = np.array(
+            [smi_to_y.get(s, float("nan")) for s in smiles_list], dtype=np.float64
+        )
         cv = ridge_r2_cv(
-            X_static[mask_m], y_metal[mask_m],
-            n_splits=n_splits, n_seeds=n_seeds, alpha=alpha,
+            X_static[mask_m],
+            y_metal[mask_m],
+            n_splits=n_splits,
+            n_seeds=n_seeds,
+            alpha=alpha,
             seed_offset=seed_offset,
         )
         per_metal_results[metal] = {
@@ -576,7 +594,7 @@ def feature_importance_topk(
         names_aligned = list(feature_names) + [
             f"f{i:03d}" for i in range(len(feature_names), len(w))
         ]
-        names_aligned = names_aligned[:len(w)]
+        names_aligned = names_aligned[: len(w)]
     else:
         names_aligned = list(feature_names)
     abs_w = np.abs(w)
@@ -611,30 +629,30 @@ def build_full_feature_matrix(
     names: List[str] = []
     if include_rdkit_32d:
         if X_32d.shape[0] != n:
-            raise ValueError(
-                f"X_32d has {X_32d.shape[0]} rows; expected {n}"
-            )
+            raise ValueError(f"X_32d has {X_32d.shape[0]} rows; expected {n}")
         rdkit_part = np.asarray(X_32d, dtype=np.float64)
         keep = rdkit_part.std(axis=0) > 1e-9
         streams.append(rdkit_part[:, keep])
-        names.extend([
-            f"rdkit_32d_{i:02d}" for i in range(rdkit_part.shape[1])
-        ])
+        names.extend([f"rdkit_32d_{i:02d}" for i in range(rdkit_part.shape[1])])
     if include_chemprop_v2_graph:
         graph_part = extract_graph_features_pooled(smiles_list)
         keep = graph_part.std(axis=0) > 1e-9
         streams.append(graph_part[:, keep])
         atom_dim, bond_dim = _probe_chemprop_dims()
-        names.extend([
-            f"graph_atom_{pool}_{i:02d}"
-            for pool in ("mean", "max", "sum")
-            for i in range(atom_dim)
-        ])
-        names.extend([
-            f"graph_bond_{pool}_{i:02d}"
-            for pool in ("mean", "max", "sum")
-            for i in range(bond_dim)
-        ])
+        names.extend(
+            [
+                f"graph_atom_{pool}_{i:02d}"
+                for pool in ("mean", "max", "sum")
+                for i in range(atom_dim)
+            ]
+        )
+        names.extend(
+            [
+                f"graph_bond_{pool}_{i:02d}"
+                for pool in ("mean", "max", "sum")
+                for i in range(bond_dim)
+            ]
+        )
     if not streams:
         return np.zeros((n, 0), dtype=np.float64), []
     X = np.concatenate(streams, axis=1)
@@ -696,53 +714,78 @@ def run_wf335m2(
         # on the same 200 SMILES (per Wf-325A / Wf-331-R5 pattern).
         cohort_seed_offset = 10 if cohort == "hilbert" else 0
         X_32d, y, smiles_list = load_cohort(
-            cohort, max_samples=metalcytotox_max, seed=0,
+            cohort,
+            max_samples=metalcytotox_max,
+            seed=0,
         )[:3]
         n_samples = int(X_32d.shape[0])
         baseline_r2 = WF325A_BASELINE_R2[cohort]
         # Build FULL static feature matrix
         X_static, feature_names = build_full_feature_matrix(
-            smiles_list, X_32d,
+            smiles_list,
+            X_32d,
             include_rdkit_32d=True,
             include_chemprop_v2_graph=True,
         )
         # 12-d baseline
         X_12d = X_32d[:, :12]
         cv_12d = ridge_r2_cv(
-            X_12d, y, n_splits=n_splits, n_seeds=n_seeds,
-            alpha=alpha, seed_offset=cohort_seed_offset,
+            X_12d,
+            y,
+            n_splits=n_splits,
+            n_seeds=n_seeds,
+            alpha=alpha,
+            seed_offset=cohort_seed_offset,
         )
         # 32-d RDKit baseline
         cv_32d = ridge_r2_cv(
-            np.asarray(X_32d, dtype=np.float64), y,
-            n_splits=n_splits, n_seeds=n_seeds,
-            alpha=alpha, seed_offset=cohort_seed_offset,
+            np.asarray(X_32d, dtype=np.float64),
+            y,
+            n_splits=n_splits,
+            n_seeds=n_seeds,
+            alpha=alpha,
+            seed_offset=cohort_seed_offset,
         )
         # FULL combined (RDKit 32-d + chemprop v2 graph)
         cv_combined = ridge_r2_cv(
-            X_static, y,
-            n_splits=n_splits, n_seeds=n_seeds,
-            alpha=alpha, seed_offset=cohort_seed_offset,
+            X_static,
+            y,
+            n_splits=n_splits,
+            n_seeds=n_seeds,
+            alpha=alpha,
+            seed_offset=cohort_seed_offset,
         )
         # FULL combined + W₂ (multi-axis: pick best)
         axis_sel = select_best_w2_axis(
-            X_static, y,
-            n_splits=n_splits, n_seeds=axis_selection_seeds,
-            alpha=alpha, seed_offset=cohort_seed_offset,
+            X_static,
+            y,
+            n_splits=n_splits,
+            n_seeds=axis_selection_seeds,
+            alpha=alpha,
+            seed_offset=cohort_seed_offset,
         )
         best_axis = axis_sel["best_axis"]
         if best_axis >= 0:
             cv_combined_plus_w2 = ridge_r2_eval_with_w2(
-                X_static, y, projection_axis=best_axis,
-                n_splits=n_splits, n_seeds=n_seeds,
-                alpha=alpha, seed_offset=cohort_seed_offset,
+                X_static,
+                y,
+                projection_axis=best_axis,
+                n_splits=n_splits,
+                n_seeds=n_seeds,
+                alpha=alpha,
+                seed_offset=cohort_seed_offset,
             )
         else:
             cv_combined_plus_w2 = {
-                "r2_mean": float("nan"), "r2_std": float("nan"),
-                "r2_per_seed": [], "r2_per_split": [],
-                "n_splits": n_splits, "n_seeds": n_seeds, "alpha": alpha,
+                "r2_mean": float("nan"),
+                "r2_std": float("nan"),
+                "r2_per_seed": [],
+                "r2_per_split": [],
+                "n_splits": n_splits,
+                "n_seeds": n_seeds,
+                "alpha": alpha,
             }
+
         # Verdict helpers
         def verdict(r2_mean: float, baseline: float) -> str:
             if not np.isfinite(r2_mean):
@@ -757,6 +800,7 @@ def run_wf335m2(
             if lift >= 0.0:
                 return "NO_LIFT_HONEST_NEGATIVE"
             return "HONEST_NEGATIVE_R2_DEEP"
+
         per_config = [
             {
                 "label": "12d_baseline",
@@ -796,16 +840,15 @@ def run_wf335m2(
                     cv_combined_plus_w2["r2_mean"] - baseline_r2,
                 ),
                 "verdict": verdict(
-                    cv_combined_plus_w2["r2_mean"], baseline_r2,
+                    cv_combined_plus_w2["r2_mean"],
+                    baseline_r2,
                 ),
                 "n_features": int(X_static.shape[1] + 1),
                 "best_w2_axis": int(best_axis),
             },
         ]
         # Best config (by R² mean, then by lift)
-        finite_r2 = [
-            c for c in per_config if np.isfinite(c["r2_mean"])
-        ]
+        finite_r2 = [c for c in per_config if np.isfinite(c["r2_mean"])]
         best_label = None
         best_r2 = float("-inf")
         for c in finite_r2:
@@ -817,15 +860,22 @@ def run_wf335m2(
         per_metal_results: Dict[str, Any] = {}
         if include_per_cell and cohort == "platinai_4cell":
             per_cell_results = per_cell_r2_breakdown(
-                smiles_list, X_static,
-                cohort=cohort, n_splits=n_splits, n_seeds=3,
-                alpha=alpha, seed_offset=cohort_seed_offset,
+                smiles_list,
+                X_static,
+                cohort=cohort,
+                n_splits=n_splits,
+                n_seeds=3,
+                alpha=alpha,
+                seed_offset=cohort_seed_offset,
             )
         if include_per_metal and cohort == "metalcytotox_combined":
             per_metal_results = per_metal_r2_breakdown(
-                smiles_list, X_static,
-                n_splits=n_splits, n_seeds=3,
-                alpha=alpha, seed_offset=cohort_seed_offset,
+                smiles_list,
+                X_static,
+                n_splits=n_splits,
+                n_seeds=3,
+                alpha=alpha,
+                seed_offset=cohort_seed_offset,
             )
         # Feature importance (top 10) for the FULL combined + W₂ config
         top_features: List[Dict[str, Any]] = []
@@ -833,67 +883,70 @@ def run_wf335m2(
             try:
                 if best_axis >= 0:
                     w2_full = compute_covariate_w2_distance(
-                        X_static, projection_axis=best_axis,
+                        X_static,
+                        projection_axis=best_axis,
                     )
                 else:
                     w2_full = np.zeros(X_static.shape[0], dtype=np.float64)
                 X_with_w2 = np.concatenate(
-                    [X_static, w2_full.reshape(-1, 1)], axis=1,
+                    [X_static, w2_full.reshape(-1, 1)],
+                    axis=1,
                 )
                 names_with_w2 = list(feature_names) + ["w2_dist_to_ref"]
                 top_features = feature_importance_topk(
-                    X_with_w2, y, names_with_w2, topk=10, alpha=alpha,
+                    X_with_w2,
+                    y,
+                    names_with_w2,
+                    topk=10,
+                    alpha=alpha,
                 )
             except Exception as exc:
                 top_features = [{"error": str(exc)}]
-        per_cohort.append({
-            "cohort": cohort,
-            "n_samples": n_samples,
-            "n_features_static": int(X_static.shape[1]),
-            "wf325a_baseline_r2": baseline_r2,
-            "per_config": per_config,
-            "best_config": {
-                "label": best_label,
-                "r2_mean": best_r2 if best_label is not None else float("nan"),
-                "lift_vs_wf325a_baseline": (
-                    float(best_r2 - baseline_r2)
-                    if best_label is not None else float("nan")
-                ),
-            },
-            "w2_axis_selection": axis_sel,
-            "per_cell_r2": per_cell_results,
-            "per_metal_r2": per_metal_results,
-            "top10_feature_importance": top_features,
-            "elapsed_sec": float(time.time() - t0),
-        })
+        per_cohort.append(
+            {
+                "cohort": cohort,
+                "n_samples": n_samples,
+                "n_features_static": int(X_static.shape[1]),
+                "wf325a_baseline_r2": baseline_r2,
+                "per_config": per_config,
+                "best_config": {
+                    "label": best_label,
+                    "r2_mean": best_r2 if best_label is not None else float("nan"),
+                    "lift_vs_wf325a_baseline": (
+                        float(best_r2 - baseline_r2)
+                        if best_label is not None
+                        else float("nan")
+                    ),
+                },
+                "w2_axis_selection": axis_sel,
+                "per_cell_r2": per_cell_results,
+                "per_metal_r2": per_metal_results,
+                "top10_feature_importance": top_features,
+                "elapsed_sec": float(time.time() - t0),
+            }
+        )
     # Aggregate honest framing
     n_ceiling_break = sum(
-        1 for c in per_cohort
-        if any(
-            cfg.get("verdict") == "CEILING_BREAK"
-            for cfg in c["per_config"]
-        )
+        1
+        for c in per_cohort
+        if any(cfg.get("verdict") == "CEILING_BREAK" for cfg in c["per_config"])
     )
     n_above_zero = sum(
-        1 for c in per_cohort
+        1
+        for c in per_cohort
         if any(
-            np.isfinite(cfg.get("r2_mean", float("nan")))
-            and cfg["r2_mean"] > 0.0
+            np.isfinite(cfg.get("r2_mean", float("nan"))) and cfg["r2_mean"] > 0.0
             for cfg in c["per_config"]
         )
     )
     n_resolved = sum(
-        1 for c in per_cohort
-        if c["best_config"]["lift_vs_wf325a_baseline"] >= 0.05
+        1 for c in per_cohort if c["best_config"]["lift_vs_wf325a_baseline"] >= 0.05
     )
     if n_ceiling_break >= 2:
         aggregate_status = "HONEST_NEGATIVE_R2_RESOLVED"
     elif n_above_zero >= 1:
         aggregate_status = "HONEST_NEGATIVE_PARTIAL"
-    elif any(
-        c["best_config"]["lift_vs_wf325a_baseline"] >= 0.0
-        for c in per_cohort
-    ):
+    elif any(c["best_config"]["lift_vs_wf325a_baseline"] >= 0.0 for c in per_cohort):
         aggregate_status = "NO_LIFT_HONEST_NEGATIVE"
     else:
         aggregate_status = "HONEST_NEGATIVE_R2_PERSISTENT"
@@ -986,7 +1039,9 @@ def run_wf335m2(
 def main(argv: Optional[List[str]] = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument(
-        "--cohorts", nargs="+", default=None,
+        "--cohorts",
+        nargs="+",
+        default=None,
         help=(
             "Cohorts to evaluate (default: all 3). Accepts either "
             "space-separated (--cohorts a b c) or a single "
@@ -998,7 +1053,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     p.add_argument("--n-seeds", type=int, default=5)
     p.add_argument("--alpha", type=float, default=1.0)
     p.add_argument(
-        "--axis-selection-seeds", type=int, default=3,
+        "--axis-selection-seeds",
+        type=int,
+        default=3,
         help="Number of seeds for W₂ axis selection (smaller for speed)",
     )
     p.add_argument(
@@ -1006,15 +1063,18 @@ def main(argv: Optional[List[str]] = None) -> int:
         default="molmetal/reports/wf335m2_r2",
     )
     p.add_argument(
-        "--no-per-cell", action="store_true",
+        "--no-per-cell",
+        action="store_true",
         help="Skip per-cell R² breakdown for platinai_4cell",
     )
     p.add_argument(
-        "--no-per-metal", action="store_true",
+        "--no-per-metal",
+        action="store_true",
         help="Skip per-metal R² breakdown for metalcytotox_combined",
     )
     p.add_argument(
-        "--no-feature-importance", action="store_true",
+        "--no-feature-importance",
+        action="store_true",
         help="Skip top-10 feature importance diagnostic",
     )
     args = p.parse_args(argv)

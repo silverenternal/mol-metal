@@ -51,6 +51,7 @@ Honest framing (party-twenty-spirit §3.5)
   future YAML regresses to a non-aliased non-canonical schema,
   these tests will catch it at the test layer.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -80,11 +81,12 @@ if str(REPO_ROOT) not in sys.path:
 def _load_preflight_module():
     """Import ``molmetal.scripts.pre_flight_check`` via :mod:`importlib`."""
     spec = importlib.util.spec_from_file_location(
-        "pre_flight_check_under_test", PREFLIGHT_SCRIPT,
+        "pre_flight_check_under_test",
+        PREFLIGHT_SCRIPT,
     )
-    assert spec is not None and spec.loader is not None, (
-        f"pre_flight_check.py has no import spec ({PREFLIGHT_SCRIPT})"
-    )
+    assert (
+        spec is not None and spec.loader is not None
+    ), f"pre_flight_check.py has no import spec ({PREFLIGHT_SCRIPT})"
     mod = importlib.util.module_from_spec(spec)
     sys.modules["pre_flight_check_under_test"] = mod
     spec.loader.exec_module(mod)
@@ -100,6 +102,7 @@ def preflight():
 def _write_yaml(path: Path, body: dict) -> Path:
     """Write a YAML fixture from a dict (uses real yaml.safe_dump)."""
     import yaml as _yaml
+
     path.write_text(_yaml.safe_dump(body, sort_keys=False), encoding="utf-8")
     return path
 
@@ -128,15 +131,20 @@ def test_alias_resolution_canonical_keys_pass(preflight, tmp_path) -> None:
             "data": {"dataset": "qm9"},
             "model": {"hidden_dim": 128, "n_layers": 4},
             "train": {"batch_size": 32, "lr": 1.0e-4},
-            "protocol": {"time_budget_hr": 10.0},  # alias candidates — should NOT be used
+            "protocol": {
+                "time_budget_hr": 10.0
+            },  # alias candidates — should NOT be used
         },
     )
     result = preflight.gate_wf343c4_hyperparams_config_complete(
-        "wf345a1_canonical", "P3", "wf343c4", (yaml_path,),
+        "wf345a1_canonical",
+        "P3",
+        "wf343c4",
+        (yaml_path,),
     )
-    assert result.status == "PASS", (
-        f"canonical-schema YAML should PASS; got {result.status}: {result.evidence}"
-    )
+    assert (
+        result.status == "PASS"
+    ), f"canonical-schema YAML should PASS; got {result.status}: {result.evidence}"
     # No alias resolutions should be reported (all canonical).
     assert "alias-resolved" not in result.evidence, (
         f"canonical YAML should NOT trigger alias-resolved branch; "
@@ -175,18 +183,21 @@ def test_alias_resolution_alias_keys_pass(preflight, tmp_path) -> None:
         {
             "data": {"dataset": "qm9"},
             "model": {
-                "hidden_dim": 128,       # canonical
-                "depth": 3,               # alias for n_layers
+                "hidden_dim": 128,  # canonical
+                "depth": 3,  # alias for n_layers
             },
-            "train": {},                  # NO canonical batch_size / lr
+            "train": {},  # NO canonical batch_size / lr
             "protocol": {
-                "batch_size": 64,         # alias for train.batch_size
-                "lr": 1.0e-3,             # alias for train.lr
+                "batch_size": 64,  # alias for train.batch_size
+                "lr": 1.0e-3,  # alias for train.lr
             },
         },
     )
     alias_result = preflight.gate_wf343c4_hyperparams_config_complete(
-        "wf345a1_alias", "P3", "wf343c4", (alias_yaml,),
+        "wf345a1_alias",
+        "P3",
+        "wf343c4",
+        (alias_yaml,),
     )
     assert alias_result.status == "PASS", (
         f"alias-only YAML should PASS via KEY_ALIASES; "
@@ -199,24 +210,26 @@ def test_alias_resolution_alias_keys_pass(preflight, tmp_path) -> None:
         f"alias YAML should trigger alias-resolved branch; "
         f"evidence={alias_result.evidence}"
     )
-    assert "n_layers:model.depth" in alias_result.evidence, (
-        f"model.depth alias not surfaced in evidence: {alias_result.evidence}"
-    )
-    assert "batch_size:protocol.batch_size" in alias_result.evidence, (
-        f"protocol.batch_size alias not surfaced: {alias_result.evidence}"
-    )
-    assert "lr:protocol.lr" in alias_result.evidence, (
-        f"protocol.lr alias not surfaced: {alias_result.evidence}"
-    )
+    assert (
+        "n_layers:model.depth" in alias_result.evidence
+    ), f"model.depth alias not surfaced in evidence: {alias_result.evidence}"
+    assert (
+        "batch_size:protocol.batch_size" in alias_result.evidence
+    ), f"protocol.batch_size alias not surfaced: {alias_result.evidence}"
+    assert (
+        "lr:protocol.lr" in alias_result.evidence
+    ), f"protocol.lr alias not surfaced: {alias_result.evidence}"
 
     # ---- (b) no-match YAML FAILs ----
     nomatch_yaml = _write_yaml(
         tmp_path / "no_match.yaml",
         {
             "data": {"dataset": "qm9"},
-            "model": {"hidden_dim": 128},  # missing n_layers + model.depth + model.num_layers
-            "train": {"epochs": 30},       # missing batch_size + lr
-            "foo": {                       # unknown section
+            "model": {
+                "hidden_dim": 128
+            },  # missing n_layers + model.depth + model.num_layers
+            "train": {"epochs": 30},  # missing batch_size + lr
+            "foo": {  # unknown section
                 "batch_size": 64,
                 "lr": 1.0e-3,
                 "depth": 3,
@@ -224,19 +237,22 @@ def test_alias_resolution_alias_keys_pass(preflight, tmp_path) -> None:
         },
     )
     nomatch_result = preflight.gate_wf343c4_hyperparams_config_complete(
-        "wf345a1_no_match", "P3", "wf343c4", (nomatch_yaml,),
+        "wf345a1_no_match",
+        "P3",
+        "wf343c4",
+        (nomatch_yaml,),
     )
     assert nomatch_result.status == "FAIL", (
         f"no-match YAML should FAIL; got {nomatch_result.status}: "
         f"{nomatch_result.evidence}"
     )
     # The evidence MUST name the missing canonical keys.
-    assert "missing" in nomatch_result.evidence.lower(), (
-        f"FAIL evidence should name 'missing'; got {nomatch_result.evidence}"
-    )
-    assert "n_layers" in nomatch_result.evidence, (
-        f"FAIL evidence should name n_layers; got {nomatch_result.evidence}"
-    )
+    assert (
+        "missing" in nomatch_result.evidence.lower()
+    ), f"FAIL evidence should name 'missing'; got {nomatch_result.evidence}"
+    assert (
+        "n_layers" in nomatch_result.evidence
+    ), f"FAIL evidence should name n_layers; got {nomatch_result.evidence}"
 
 
 # ---------------------------------------------------------------------------
@@ -271,12 +287,15 @@ def test_all_7_active_yamls_pass_after_alias_resolution(preflight) -> None:
     # Sanity check: every YAML exists on disk (otherwise this test is a
     # false PASS / FAIL signal rather than a meaningful contract).
     missing_files = [str(p) for p in yaml_paths if not p.is_file()]
-    assert not missing_files, (
-        f"missing configs/*.yaml on disk (test fixture broken): {missing_files}"
-    )
+    assert (
+        not missing_files
+    ), f"missing configs/*.yaml on disk (test fixture broken): {missing_files}"
 
     result = preflight.gate_wf343c4_hyperparams_config_complete(
-        "wf345a1_all_7_yamls", "P3", "wf343c4", yaml_paths,
+        "wf345a1_all_7_yamls",
+        "P3",
+        "wf343c4",
+        yaml_paths,
     )
     assert result.status == "PASS", (
         f"all 7 active configs/*.yaml should PASS after alias resolution; "
@@ -284,9 +303,9 @@ def test_all_7_active_yamls_pass_after_alias_resolution(preflight) -> None:
     )
     # The evidence MUST mention all 7 YAML names.
     for p in yaml_paths:
-        assert p.name in result.evidence, (
-            f"{p.name} missing from PASS evidence: {result.evidence}"
-        )
+        assert (
+            p.name in result.evidence
+        ), f"{p.name} missing from PASS evidence: {result.evidence}"
     # The alias-resolutions dict MUST name the 5 YAMLs that resolved
     # via alias (default.yaml + cfm_full_retrain.yaml are fully
     # canonical, so they should NOT appear in alias_resolutions).
@@ -309,9 +328,9 @@ def test_all_7_active_yamls_pass_after_alias_resolution(preflight) -> None:
         "wf124_p3_remaining_metals_g4.yaml",
     ]
     for name in expected_alias_yaml_names:
-        assert name in result.evidence, (
-            f"{name} missing from PASS evidence: {result.evidence}"
-        )
+        assert (
+            name in result.evidence
+        ), f"{name} missing from PASS evidence: {result.evidence}"
 
 
 # ---------------------------------------------------------------------------
@@ -337,18 +356,21 @@ def test_alias_resolutions_in_evidence_message(preflight, tmp_path) -> None:
         tmp_path / "mixed.yaml",
         {
             "model": {
-                "hidden_dim": 128,       # canonical
-                "depth": 3,               # alias for n_layers
+                "hidden_dim": 128,  # canonical
+                "depth": 3,  # alias for n_layers
             },
             "train": {
-                "batch_size": 32,         # canonical
+                "batch_size": 32,  # canonical
                 # lr missing — should be supplied via protocol.lr alias
             },
-            "protocol": {"lr": 1.0e-4},    # alias for train.lr
+            "protocol": {"lr": 1.0e-4},  # alias for train.lr
         },
     )
     mixed_result = preflight.gate_wf343c4_hyperparams_config_complete(
-        "wf345a1_mixed", "P3", "wf343c4", (mixed_yaml,),
+        "wf345a1_mixed",
+        "P3",
+        "wf343c4",
+        (mixed_yaml,),
     )
     assert mixed_result.status == "PASS", (
         f"mixed canonical+alias YAML should PASS; "
@@ -357,12 +379,12 @@ def test_alias_resolutions_in_evidence_message(preflight, tmp_path) -> None:
     # Exactly 2 alias resolutions reported (n_layers:model.depth + lr:protocol.lr);
     # batch_size is canonical so NOT in alias-resolved.
     alias_section = mixed_result.evidence.split("alias-resolved:")[1]
-    assert "n_layers:model.depth" in alias_section, (
-        f"n_layers:model.depth alias missing from evidence: {alias_section}"
-    )
-    assert "lr:protocol.lr" in alias_section, (
-        f"lr:protocol.lr alias missing from evidence: {alias_section}"
-    )
+    assert (
+        "n_layers:model.depth" in alias_section
+    ), f"n_layers:model.depth alias missing from evidence: {alias_section}"
+    assert (
+        "lr:protocol.lr" in alias_section
+    ), f"lr:protocol.lr alias missing from evidence: {alias_section}"
     assert "batch_size" not in alias_section, (
         f"canonical batch_size should NOT appear in alias-resolved branch: "
         f"{alias_section}"
@@ -377,7 +399,10 @@ def test_alias_resolutions_in_evidence_message(preflight, tmp_path) -> None:
         },
     )
     canonical_result = preflight.gate_wf343c4_hyperparams_config_complete(
-        "wf345a1_fully_canonical", "P3", "wf343c4", (canonical_yaml,),
+        "wf345a1_fully_canonical",
+        "P3",
+        "wf343c4",
+        (canonical_yaml,),
     )
     assert canonical_result.status == "PASS", (
         f"fully-canonical YAML should PASS; "

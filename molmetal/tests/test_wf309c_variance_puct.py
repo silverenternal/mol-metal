@@ -27,6 +27,7 @@ Run via::
     /home/hugo/.venv-flowmol311/bin/python -m pytest \\
         molmetal/tests/test_wf309c_variance_puct.py -v
 """
+
 from __future__ import annotations
 
 import argparse
@@ -93,9 +94,7 @@ def _import_proof_search():
                 "molmetal.molmetal_lam.search_alg.proof_search"
             )
         except Exception as exc:
-            pytest.skip(
-                f"proof_search.py cannot be imported in this env ({exc!r})"
-            )
+            pytest.skip(f"proof_search.py cannot be imported in this env ({exc!r})")
 
 
 # Stubs filled in by _import_proof_search on first call.
@@ -242,10 +241,11 @@ def test_build_puct_selector_returns_variance_puct_by_default():
         from molmetal.molmetal_lam.search_alg.variance_puct_integration import (
             VarianceControlledPUCT,
         )
+
         assert isinstance(sel, VarianceControlledPUCT)
-        assert sel.c_var > 0.0, (
-            f"VariancePUCT default must have c_var > 0; got {sel.c_var}"
-        )
+        assert (
+            sel.c_var > 0.0
+        ), f"VariancePUCT default must have c_var > 0; got {sel.c_var}"
 
 
 def test_build_puct_selector_dirichlet_returns_c_var_zero():
@@ -256,10 +256,11 @@ def test_build_puct_selector_dirichlet_returns_c_var_zero():
         from molmetal.molmetal_lam.search_alg.variance_puct_integration import (
             VarianceControlledPUCT,
         )
+
         assert isinstance(sel, VarianceControlledPUCT)
-        assert sel.c_var == 0.0, (
-            f"Legacy Dirichlet PUCT selector must have c_var=0; got {sel.c_var}"
-        )
+        assert (
+            sel.c_var == 0.0
+        ), f"Legacy Dirichlet PUCT selector must have c_var=0; got {sel.c_var}"
 
 
 # ---------------------------------------------------------------------------

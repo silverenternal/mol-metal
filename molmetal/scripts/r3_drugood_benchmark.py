@@ -175,7 +175,9 @@ def eval_subset(
 
     if spec["kind"] == "scaffold_split_test":
         # Re-use the same ScaffoldSplitter the ID baseline uses.
-        splitter = ScaffoldSplitter(strategy="largest_first", fractions=(0.8, 0.1, 0.1), seed=SEED)
+        splitter = ScaffoldSplitter(
+            strategy="largest_first", fractions=(0.8, 0.1, 0.1), seed=SEED
+        )
         sr = splitter(ds)
         test_idx = sr.test_idx
         kind_note = "scaffold_test"
@@ -222,7 +224,9 @@ def eval_subset(
         "name": name,
         "n_test": int(len(test_idx)),
         "active_fraction_true": float(np.mean(y_true)),
-        "active_fraction_pred": float(np.mean(y_score[~np.isnan(pic50_pred)])) if valid.sum() else float("nan"),
+        "active_fraction_pred": float(np.mean(y_score[~np.isnan(pic50_pred)]))
+        if valid.sum()
+        else float("nan"),
         "auc_pic50_thresholded": float(auc),
         "pearson_pred_vs_observed": float(pearson),
         "inference_seconds": float(round(elapsed, 2)),

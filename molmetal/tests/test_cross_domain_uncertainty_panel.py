@@ -487,9 +487,7 @@ def test_panel_builder_aggregates_5_metal_9_cell_4_source(tmp_path: Path):
     with candidate_csv.open("w", newline="", encoding="utf-8") as h:
         # Union of all source-specific keys; extrasaction="ignore" so heterogeneous
         # candidates whose keys differ by source still serialise cleanly.
-        all_keys: list[str] = sorted(
-            {k for row in manual_rows for k in row.keys()}
-        )
+        all_keys: list[str] = sorted({k for row in manual_rows for k in row.keys()})
         w = csv.DictWriter(h, fieldnames=all_keys, extrasaction="ignore")
         w.writeheader()
         w.writerows(manual_rows)
@@ -501,7 +499,5 @@ def test_panel_builder_aggregates_5_metal_9_cell_4_source(tmp_path: Path):
     assert summary["candidate_count"] == 5
     assert set(summary["metal_coverage"].keys()) == set(FIVE_METALS)
     # All 4 sources calibrated (each candidate contributes 1 source).
-    calibrated = sum(
-        1 for s in FOUR_SOURCES if summary["source_ece"][s] is not None
-    )
+    calibrated = sum(1 for s in FOUR_SOURCES if summary["source_ece"][s] is not None)
     assert calibrated == 4

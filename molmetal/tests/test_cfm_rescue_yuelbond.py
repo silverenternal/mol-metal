@@ -47,25 +47,31 @@ def _cisplatin_like_cloud() -> AtomCloud:
 
     Layout: Pt at origin, 4 donors at ~2.05 Å in a square-planar motif.
     """
-    positions = torch.tensor([
-        [0.0, 0.0, 0.0],            # Pt
-        [2.05, 0.0, 0.0],            # Cl  (right)
-        [-2.05, 0.0, 0.0],           # Cl  (left)
-        [0.0, 2.05, 0.0],            # NH3 (top)
-        [0.0, -2.05, 0.0],           # NH3 (bottom) — using N for dative
-    ], dtype=torch.float32)
+    positions = torch.tensor(
+        [
+            [0.0, 0.0, 0.0],  # Pt
+            [2.05, 0.0, 0.0],  # Cl  (right)
+            [-2.05, 0.0, 0.0],  # Cl  (left)
+            [0.0, 2.05, 0.0],  # NH3 (top)
+            [0.0, -2.05, 0.0],  # NH3 (bottom) — using N for dative
+        ],
+        dtype=torch.float32,
+    )
     atomic_numbers = torch.tensor([78, 17, 17, 7, 7], dtype=torch.long)
     return AtomCloud(positions=positions, atomic_numbers=atomic_numbers)
 
 
 def _distant_cloud() -> AtomCloud:
     """Build a 4-atom cloud with all pairs > 5 Å — no bonds expected."""
-    positions = torch.tensor([
-        [0.0, 0.0, 0.0],
-        [10.0, 0.0, 0.0],
-        [0.0, 10.0, 0.0],
-        [0.0, 0.0, 10.0],
-    ], dtype=torch.float32)
+    positions = torch.tensor(
+        [
+            [0.0, 0.0, 0.0],
+            [10.0, 0.0, 0.0],
+            [0.0, 10.0, 0.0],
+            [0.0, 0.0, 10.0],
+        ],
+        dtype=torch.float32,
+    )
     atomic_numbers = torch.tensor([6, 6, 6, 6], dtype=torch.long)
     return AtomCloud(positions=positions, atomic_numbers=atomic_numbers)
 
@@ -88,26 +94,26 @@ def test_yuelbond_head_forward_returns_correct_shape():
     head = YuelBondDecoderHead(hidden_dim=32, n_layers=2)
     cloud = _cisplatin_like_cloud()
     out = head(cloud)
-    assert isinstance(out, tuple), (
-        "YuelBondDecoderHead.forward must return (logits, (i_idx, j_idx))"
-    )
+    assert isinstance(
+        out, tuple
+    ), "YuelBondDecoderHead.forward must return (logits, (i_idx, j_idx))"
     logits, (i_idx, j_idx) = out
     assert logits.dim() == 2, f"logits should be (E, 5), got shape {logits.shape}"
-    assert logits.shape[-1] == NUM_BOND_CLASSES, (
-        f"logits last dim should be {NUM_BOND_CLASSES}, got {logits.shape[-1]}"
-    )
+    assert (
+        logits.shape[-1] == NUM_BOND_CLASSES
+    ), f"logits last dim should be {NUM_BOND_CLASSES}, got {logits.shape[-1]}"
     assert i_idx.shape == j_idx.shape, "i_idx and j_idx must have same shape"
-    assert i_idx.numel() == logits.shape[0], (
-        f"logits.shape[0]={logits.shape[0]} must match edge count {i_idx.numel()}"
-    )
+    assert (
+        i_idx.numel() == logits.shape[0]
+    ), f"logits.shape[0]={logits.shape[0]} must match edge count {i_idx.numel()}"
     # Should be at least 4 Pt-donor pairs
-    assert i_idx.numel() >= 4, (
-        f"Expected >= 4 edges (Pt-donor pairs), got {i_idx.numel()}"
-    )
+    assert (
+        i_idx.numel() >= 4
+    ), f"Expected >= 4 edges (Pt-donor pairs), got {i_idx.numel()}"
     # No bond class bias should be slightly negative (init check)
-    assert logits[:, BOND_NO_BOND].mean() < 0.0, (
-        "BOND_NO_BOND class should be biased negative at init"
-    )
+    assert (
+        logits[:, BOND_NO_BOND].mean() < 0.0
+    ), "BOND_NO_BOND class should be biased negative at init"
 
 
 # ---------------------------------------------------------------------------
@@ -166,9 +172,9 @@ def test_yuelbond_decoder_handles_empty_cloud():
     )
     result_one = decoder.featurise(cloud_one)
     # N=1 should not crash; may return decode_succeeded=False with empty edges
-    assert result_one.edge_index.shape[1] == 0, (
-        f"N=1 should have 0 edges, got {result_one.edge_index.shape[1]}"
-    )
+    assert (
+        result_one.edge_index.shape[1] == 0
+    ), f"N=1 should have 0 edges, got {result_one.edge_index.shape[1]}"
 
 
 # ---------------------------------------------------------------------------
@@ -192,7 +198,9 @@ def test_yuelbond_decoder_distance_cutoff_filters_long_pairs():
     # The error should mention empty_edge_list OR the head should return
     # (logits shape (0, 5), empty indices)
     if not result.decode_succeeded:
-        assert result.error in ("empty_edge_list", None) or "empty" in (result.error or "")
+        assert result.error in ("empty_edge_list", None) or "empty" in (
+            result.error or ""
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -216,9 +224,9 @@ def test_yuelbond_decoder_dative_flag_for_N_Pt_pair():
     # We have 2 NH3 -> Pt pairs, expect n_dative >= 2 (other pairs in
     # the cluster might also be dative if both atoms are in the
     # donor set AND one is Pt, but our cloud only has 1 Pt).
-    assert n_dative >= 2, (
-        f"Expected at least 2 dative flags (NH3 -> Pt × 2), got {n_dative}"
-    )
+    assert (
+        n_dative >= 2
+    ), f"Expected at least 2 dative flags (NH3 -> Pt × 2), got {n_dative}"
     # The 2 Pt-N edges (i=Pt, j=N) and 2 N-Pt edges (i=N, j=Pt)
     # depending on ordering.  Verify that every dative flag has Z_i in
     # {7,8,16} AND Z_j == 78 OR Z_i == 78 AND Z_j in {7,8,16}.
@@ -226,10 +234,7 @@ def test_yuelbond_decoder_dative_flag_for_N_Pt_pair():
         if pf.is_dative_candidate[k]:
             zi = int(pf.z_i[k])
             zj = int(pf.z_j[k])
-            ok = (
-                (zi in (7, 8, 16) and zj == 78)
-                or (zj in (7, 8, 16) and zi == 78)
-            )
+            ok = (zi in (7, 8, 16) and zj == 78) or (zj in (7, 8, 16) and zi == 78)
             assert ok, (
                 f"Dative pair (Z_i={zi}, Z_j={zj}) must have one donor "
                 f"and one Pt; got (Z_i={zi}, Z_j={zj})"

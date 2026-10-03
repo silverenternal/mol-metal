@@ -74,10 +74,10 @@ class TestDriftGuard:
     def test_evaluate_basic(self):
         g = DriftGuard(threshold=0.5)
         samples = [
-            {"row_id": 0, "predicted": 0.5, "on_policy": 0.5},   # keep
-            {"row_id": 1, "predicted": 0.5, "on_policy": 1.5},   # retire (|diff|=1.0)
-            {"row_id": 2, "predicted": 0.5, "on_policy": 0.9},   # keep (|diff|=0.4)
-            {"row_id": 3, "predicted": 0.5, "on_policy": 0.0},   # keep (|diff|=0.5)
+            {"row_id": 0, "predicted": 0.5, "on_policy": 0.5},  # keep
+            {"row_id": 1, "predicted": 0.5, "on_policy": 1.5},  # retire (|diff|=1.0)
+            {"row_id": 2, "predicted": 0.5, "on_policy": 0.9},  # keep (|diff|=0.4)
+            {"row_id": 3, "predicted": 0.5, "on_policy": 0.0},  # keep (|diff|=0.5)
             {"row_id": 4, "predicted": 0.5, "on_policy": -0.1},  # retire (|diff|=0.6)
         ]
         r = g.evaluate("Rh", epoch=7, samples=samples)
@@ -102,7 +102,11 @@ class TestDriftGuard:
         g = DriftGuard(threshold=0.1)
         # Half the samples diverge.
         samples = [
-            {"row_id": i, "predicted": 0.5, "on_policy": 0.5 + (1.0 if i % 2 == 0 else 0.0)}
+            {
+                "row_id": i,
+                "predicted": 0.5,
+                "on_policy": 0.5 + (1.0 if i % 2 == 0 else 0.0),
+            }
             for i in range(10)
         ]
         r = g.evaluate("Ru", epoch=0, samples=samples)

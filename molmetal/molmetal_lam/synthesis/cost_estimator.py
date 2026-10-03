@@ -16,6 +16,7 @@ def _rdkit_modules():
     try:
         from rdkit import Chem, RDLogger
         from rdkit.Chem import rdMolDescriptors
+
         RDLogger.DisableLog("rdApp.error")
         return Chem, rdMolDescriptors
     except Exception:
@@ -35,6 +36,7 @@ def _sa_score(mol, descriptors) -> float:
     """
     try:
         from rdkit.Contrib.SA_Score import sascorer  # type: ignore
+
         raw = float(sascorer.calculateScore(mol))
         return _clip((raw - 1.0) / 9.0)
     except Exception:
@@ -75,17 +77,23 @@ def _building_block_cost(mol, smiles: str, blocks: list[str] | None, Chem) -> fl
 def _complexity_cost(mol, descriptors) -> float:
     rings = descriptors.CalcNumRings(mol)
     from rdkit import Chem
+
     chiral = len(Chem.FindMolChiralCenters(mol, includeUnassigned=True))
     hetero = descriptors.CalcNumHeteroatoms(mol)
-    bond_stereo = sum(1 for bond in mol.GetBonds()
-                      if bond.GetStereo() != Chem.rdchem.BondStereo.STEREONONE)
+    bond_stereo = sum(
+        1
+        for bond in mol.GetBonds()
+        if bond.GetStereo() != Chem.rdchem.BondStereo.STEREONONE
+    )
     stereo = descriptors.CalcNumAtomStereoCenters(mol) + bond_stereo
     # Weighted counts, normalized to a practical medicinal-chemistry range.
     raw = 0.9 * rings + 0.8 * chiral + 0.35 * hetero + 0.6 * stereo
     return _clip(raw / 18.0)
 
 
-def synthesis_cost(mol_smiles: str, available_building_blocks: list[str] | None = None) -> float:
+def synthesis_cost(
+    mol_smiles: str, available_building_blocks: list[str] | None = None
+) -> float:
     """Return a retrosynthesis feasibility cost in the inclusive range [0, 1]."""
     modules = _rdkit_modules()
     if modules is None:
@@ -106,14 +114,20 @@ def synthesis_cost(mol_smiles: str, available_building_blocks: list[str] | None 
 class SynthesisCostEstimator:
     """Configurable wrapper around :func:`synthesis_cost`."""
 
-    def __init__(self, available_building_blocks: list[str] | None = None,
-                 sa_weight: float = 0.5, bb_weight: float = 0.3,
-                 complexity_weight: float = 0.2):
+    def __init__(
+        self,
+        available_building_blocks: list[str] | None = None,
+        sa_weight: float = 0.5,
+        bb_weight: float = 0.3,
+        complexity_weight: float = 0.2,
+    ):
         weights = (float(sa_weight), float(bb_weight), float(complexity_weight))
         if any(w < 0 for w in weights) or sum(weights) <= 0:
             raise ValueError("weights must be non-negative and have positive sum")
         total = sum(weights)
-        self.sa_weight, self.bb_weight, self.complexity_weight = (w / total for w in weights)
+        self.sa_weight, self.bb_weight, self.complexity_weight = (
+            w / total for w in weights
+        )
         self.available_building_blocks = available_building_blocks
 
     def cost(self, smiles: str) -> float:
@@ -126,9 +140,14 @@ class SynthesisCostEstimator:
             mol = Chem.MolFromSmiles(smiles)
             if mol is None or mol.GetNumAtoms() == 0:
                 return 1.0
-            return _clip(self.sa_weight * _sa_score(mol, descriptors)
-                         + self.bb_weight * _building_block_cost(mol, smiles, self.available_building_blocks, Chem)
-                         + self.complexity_weight * _complexity_cost(mol, descriptors))
+            return _clip(
+                self.sa_weight * _sa_score(mol, descriptors)
+                + self.bb_weight
+                * _building_block_cost(
+                    mol, smiles, self.available_building_blocks, Chem
+                )
+                + self.complexity_weight * _complexity_cost(mol, descriptors)
+            )
         except Exception:
             return 1.0
 

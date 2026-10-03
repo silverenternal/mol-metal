@@ -52,7 +52,12 @@ def test_wf320f_canonical_columns_exact_order():
     """Returns the canonical 6-col schema in exact order (GATE-6)."""
     df = load_binding_db()
     assert df.columns.tolist() == [
-        "smiles", "metal", "cell_line", "protein", "pIC50", "active",
+        "smiles",
+        "metal",
+        "cell_line",
+        "protein",
+        "pIC50",
+        "active",
     ]
 
 
@@ -105,7 +110,8 @@ def test_wf320f_scaffold_split_three_index_arrays():
             continue
         try:
             scaffold = MurckoScaffold.MurckoScaffoldSmiles(
-                mol=mol, includeChirality=False,
+                mol=mol,
+                includeChirality=False,
             )
         except Exception:
             continue
@@ -145,7 +151,9 @@ def test_wf320f_missing_csv_raises_filenotfound(tmp_path: Path):
 def test_wf320f_malformed_csv_missing_columns_raises_valueerror(tmp_path: Path):
     """CSV missing a required column raises ValueError (schema guard)."""
     bad_csv = tmp_path / "bad_bindingdb.csv"
-    bad_csv.write_text("smiles,metal,cell_line\nCCO,Ru,MCF7\n")  # missing protein/pIC50/active
+    bad_csv.write_text(
+        "smiles,metal,cell_line\nCCO,Ru,MCF7\n"
+    )  # missing protein/pIC50/active
     with pytest.raises(ValueError):
         load_binding_db(path=bad_csv)
 
@@ -158,10 +166,10 @@ def test_wf320f_malformed_csv_missing_columns_raises_valueerror(tmp_path: Path):
 def test_wf320f_smiles_rdkit_round_trip_subsample():
     """RDKit can round-trip ≥95% of BindingDB SMILES (subsample 1k)."""
     from rdkit import Chem
+
     df = load_binding_db().sample(n=min(1000, len(load_binding_db())), random_state=1)
     parsed = sum(
-        1 for smi in df["smiles"].tolist()
-        if Chem.MolFromSmiles(smi) is not None
+        1 for smi in df["smiles"].tolist() if Chem.MolFromSmiles(smi) is not None
     )
     parse_rate = parsed / len(df)
     assert parse_rate >= 0.95, f"SMILES parse rate {parse_rate:.3f} < 0.95"
@@ -176,7 +184,12 @@ def test_wf320f_dataframe_consumable_by_canonical_concat():
     # canonical 6-col schema (no extra cols, no missing cols).
     combined = pd.concat([df_bdb, df_nci, df_dgo], ignore_index=True)
     assert combined.columns.tolist() == [
-        "smiles", "metal", "cell_line", "protein", "pIC50", "active",
+        "smiles",
+        "metal",
+        "cell_line",
+        "protein",
+        "pIC50",
+        "active",
     ]
     assert len(combined) == len(df_bdb) + len(df_nci) + len(df_dgo)
 

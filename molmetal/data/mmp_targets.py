@@ -154,12 +154,12 @@ MMP2_TARGET = MMPTarget(
     # Pochetti et al. 2009; Scribner et al. 2017; Cierpicki et al. 2019;
     # Aramini et al. 2017).
     pdb_ids=(
-        "1HOV",   # apo MMP2 catalytic domain, X-ray 2.0 Å
-        "1QIB",   # MMP2 + SC-74020 (broad-spectrum hydroxamate)
-        "2AYU",   # MMP2 + inhibitor (pyrimidine-2,4-dione)
-        "3AYU",   # MMP2 + cyclic sulfonamide hydroxamate
-        "4WKI",   # MMP2 + arylsulfonamide hydroxamate clinical lead
-        "4JIJ",   # MMP2 + selective phosphonate inhibitor
+        "1HOV",  # apo MMP2 catalytic domain, X-ray 2.0 Å
+        "1QIB",  # MMP2 + SC-74020 (broad-spectrum hydroxamate)
+        "2AYU",  # MMP2 + inhibitor (pyrimidine-2,4-dione)
+        "3AYU",  # MMP2 + cyclic sulfonamide hydroxamate
+        "4WKI",  # MMP2 + arylsulfonamide hydroxamate clinical lead
+        "4JIJ",  # MMP2 + selective phosphonate inhibitor
     ),
     binding_site_residues={
         # Catalytic-domain residues within 6 Å of the catalytic Zn²⁺
@@ -240,12 +240,12 @@ MMP9_TARGET = MMPTarget(
     ),
     ec_number="EC 3.4.24.35",
     pdb_ids=(
-        "1GKC",   # MMP9 + batimastat (BB-94) — canonical co-crystal
-        "1L6J",   # MMP9 + (R)-ND-336 selective inhibitor
-        "2OVZ",   # MMP9 + sulfonamide hydroxamate
-        "4W0V",   # MMP9 + phosphonate inhibitor
-        "4XCT",   # MMP9 + cyclic sulfonamide hydroxamate
-        "5I3L",   # MMP9 + clinical lead (marine natural product derivative)
+        "1GKC",  # MMP9 + batimastat (BB-94) — canonical co-crystal
+        "1L6J",  # MMP9 + (R)-ND-336 selective inhibitor
+        "2OVZ",  # MMP9 + sulfonamide hydroxamate
+        "4W0V",  # MMP9 + phosphonate inhibitor
+        "4XCT",  # MMP9 + cyclic sulfonamide hydroxamate
+        "5I3L",  # MMP9 + clinical lead (marine natural product derivative)
     ),
     binding_site_residues={
         # Catalytic-domain residues (MMP9 chB / catalytic domain)
@@ -325,9 +325,7 @@ def get_target(name: str) -> MMPTarget:
     """Return :class:`MMPTarget` by uppercase name (``"MMP2"`` / ``"MMP9"``)."""
     key = name.upper()
     if key not in _TARGETS:
-        raise KeyError(
-            f"Unknown MMP target {name!r}; expected one of {list(_TARGETS)}"
-        )
+        raise KeyError(f"Unknown MMP target {name!r}; expected one of {list(_TARGETS)}")
     return _TARGETS[key]
 
 

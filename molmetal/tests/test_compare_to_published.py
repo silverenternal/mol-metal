@@ -11,6 +11,7 @@ Two focused tests as specified in the H4 task spec:
      that documents whether the test sets match (this is the
      "honest caveats" guarantee for the paper).
 """
+
 from __future__ import annotations
 
 import pytest
@@ -32,16 +33,16 @@ def test_published_numbers_loaded():
 
     The four are: Pocket2Mol, TargetDiff, DiffSBDD, DrugOOD-DMPNN.
     """
-    assert EXPECTED_METHODS.issubset(set(PUBLISHED_NUMBERS.keys())), (
-        f"Missing methods: {EXPECTED_METHODS - set(PUBLISHED_NUMBERS.keys())}"
-    )
+    assert EXPECTED_METHODS.issubset(
+        set(PUBLISHED_NUMBERS.keys())
+    ), f"Missing methods: {EXPECTED_METHODS - set(PUBLISHED_NUMBERS.keys())}"
     for method in EXPECTED_METHODS:
         method_dict = PUBLISHED_NUMBERS[method]
         assert method_dict, f"Empty entry for {method}"
         non_empty = sum(1 for v in method_dict.values() if v)
-        assert non_empty >= 1, (
-            f"{method} has no non-empty metric blocks: {list(method_dict)}"
-        )
+        assert (
+            non_empty >= 1
+        ), f"{method} has no non-empty metric blocks: {list(method_dict)}"
 
 
 def test_protocol_match():
@@ -78,9 +79,9 @@ def test_protocol_match():
     seen_protocols = set()
     for r in rows:
         assert "protocol" in r, f"row missing protocol field: {r}"
-        assert r["protocol"] in legal_protocols, (
-            f"unexpected protocol value {r['protocol']!r} for {r}"
-        )
+        assert (
+            r["protocol"] in legal_protocols
+        ), f"unexpected protocol value {r['protocol']!r} for {r}"
         seen_protocols.add(r["protocol"])
 
     # Sanity: with our protocol = MMP13/9 surrogate, every published
@@ -120,12 +121,22 @@ def test_our_lambda_metrics_keys_present():
     """The our_lambda_metrics dict has all keys the table renderer expects."""
     # We don't actually run the heavy generator here (test would be slow).
     # Just check that the *static* contract is satisfied.
-    required = {"vina", "success_pct", "sa_score", "qed", "pic50",
-                "synthesis_pct", "interpretable", "test_set", "source"}
+    required = {
+        "vina",
+        "success_pct",
+        "sa_score",
+        "qed",
+        "pic50",
+        "synthesis_pct",
+        "interpretable",
+        "test_set",
+        "source",
+    }
     # Mock our_row the same way the function constructs it.
     our_row = our_lambda_metrics.__defaults__  # type: ignore[attr-defined]
     # If the function signature changed, just import the module-level
     # constants instead.
     from molmetal.molmetal_lam.scripts.compare_to_published import OUR_PROTOCOL  # noqa: E402
+
     assert isinstance(OUR_PROTOCOL, str) and len(OUR_PROTOCOL) > 0
     assert required.issubset(required), "key contract drift"

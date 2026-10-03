@@ -63,8 +63,8 @@ def test_cuaac_1_4_regio() -> None:
     (the aromatic 5-membered N-N-N-C-C ring), and the
     ``stereo_info["regio"]`` must be ``"1,4-triazole"``.
     """
-    alkyne = "C#CC"          # propyne
-    azide = "CN=[N+]=[N-]"   # methyl azide (canonical form)
+    alkyne = "C#CC"  # propyne
+    azide = "CN=[N+]=[N-]"  # methyl azide (canonical form)
     result = apply_cuaac_with_regio(alkyne, azide)
 
     assert isinstance(result, StereoReductionResult)
@@ -73,9 +73,9 @@ def test_cuaac_1_4_regio() -> None:
 
     # Regiochemistry label
     assert result.stereo_info["reaction"] == "CuAAC"
-    assert result.stereo_info["regio"] == "1,4-triazole", (
-        f"Himo 2005 says CuAAC is 100% 1,4; got {result.stereo_info['regio']}"
-    )
+    assert (
+        result.stereo_info["regio"] == "1,4-triazole"
+    ), f"Himo 2005 says CuAAC is 100% 1,4; got {result.stereo_info['regio']}"
     assert result.stereo_info["regio_probability"] == 1.0
 
     # The product should contain exactly 3 nitrogens (the triazole
@@ -83,9 +83,9 @@ def test_cuaac_1_4_regio() -> None:
     # with sanitize=False and re-sanitize skipping Kekulize because
     # the [n+]/[n-] aromatic form cannot be kekulized.
     product_mol = Chem.MolFromSmiles(result.product_smiles, sanitize=False)
-    assert product_mol is not None, (
-        f"product SMILES not parseable: {result.product_smiles}"
-    )
+    assert (
+        product_mol is not None
+    ), f"product SMILES not parseable: {result.product_smiles}"
     Chem.SanitizeMol(
         product_mol,
         sanitizeOps=Chem.SANITIZE_ALL ^ Chem.SanitizeFlags.SANITIZE_KEKULIZE,
@@ -125,9 +125,9 @@ def test_cuaac_1_5_regio_forbidden() -> None:
     azide = "CN=[N+]=[N-]"
     result = apply_cuaac_with_regio(alkyne, azide)
     assert result.success
-    assert result.stereo_info["regio"] != "1,5-triazole", (
-        "1,5-triazole is forbidden in Cu(I)-catalysed Huisgen cycloaddition"
-    )
+    assert (
+        result.stereo_info["regio"] != "1,5-triazole"
+    ), "1,5-triazole is forbidden in Cu(I)-catalysed Huisgen cycloaddition"
 
     # (b) The reported regio is on the *output* of a real run, not a
     #     mock; we cannot directly observe a "1,5 product" because the
@@ -140,9 +140,9 @@ def test_cuaac_1_5_regio_forbidden() -> None:
     )
 
     # (c) The lit-level invariant
-    assert CUAAC_REGIO_PROBABILITY["1,5-triazole"] == 0.0, (
-        "Cu(I) cycle gates 1,5-regio out; probability must be 0.0"
-    )
+    assert (
+        CUAAC_REGIO_PROBABILITY["1,5-triazole"] == 0.0
+    ), "Cu(I) cycle gates 1,5-regio out; probability must be 0.0"
     assert CUAAC_REGIO_PROBABILITY["1,4-triazole"] == 1.0
 
 
@@ -158,7 +158,7 @@ def test_spaac_diazole_regio() -> None:
     C#C are related by a mirror plane through the ring).  Therefore
     the SPAAC regio label must be ``"1,4-diazole (symmetric)"``.
     """
-    cyclooctyne = "C1CCC#CCCC1"   # cyclooctyne, symmetric
+    cyclooctyne = "C1CCC#CCCC1"  # cyclooctyne, symmetric
     azide = "CN=[N+]=[N-]"
     result = apply_spaac_with_regio(cyclooctyne, azide)
 
@@ -203,8 +203,8 @@ def test_suzuki_retention_stereo() -> None:
     ``regio_probability`` must equal 1.0 (the published retention
     prior) and the product must be a biaryl.
     """
-    boronic = "OB(O)c1ccccc1"      # phenyl boronic acid (B(O)(O)-Ph)
-    halide = "Brc1ccccc1"           # bromobenzene
+    boronic = "OB(O)c1ccccc1"  # phenyl boronic acid (B(O)(O)-Ph)
+    halide = "Brc1ccccc1"  # bromobenzene
     result = apply_suzuki_with_stereo(boronic, halide)
 
     assert isinstance(result, StereoReductionResult)
@@ -226,9 +226,7 @@ def test_suzuki_retention_stereo() -> None:
     symbols = {a.GetSymbol() for a in product_mol.GetAtoms()}
     assert "B" not in symbols, f"biphenyl should have no B; got {symbols}"
     assert "Br" not in symbols, f"biphenyl should have no Br; got {symbols}"
-    assert symbols == {"C"}, (
-        f"biphenyl heavy atoms should be C only; got {symbols}"
-    )
+    assert symbols == {"C"}, f"biphenyl heavy atoms should be C only; got {symbols}"
 
 
 # ---------------------------------------------------------------------------
@@ -291,11 +289,11 @@ def test_batch_apply_cuaac() -> None:
     atoms respectively).
     """
     alkynes = [
-        "C#CC",        # propyne   (3 C)
-        "C#CCC",       # but-1-yne (4 C)
-        "C#CCCC",      # pent-1-yne (5 C)
-        "C#CCCCC",     # hex-1-yne (6 C)
-        "C#CCCCCC",    # hept-1-yne (7 C)
+        "C#CC",  # propyne   (3 C)
+        "C#CCC",  # but-1-yne (4 C)
+        "C#CCCC",  # pent-1-yne (5 C)
+        "C#CCCCC",  # hex-1-yne (6 C)
+        "C#CCCCCC",  # hept-1-yne (7 C)
     ]
     azide = "CN=[N+]=[N-]"
 
@@ -368,7 +366,7 @@ def test_spaac_symmetric_vs_unsymmetric_regio() -> None:
 
     Both reactions must succeed and emit the right regio label.
     """
-    cyclooctyne = "C1CCC#CCCC1"   # symmetric
+    cyclooctyne = "C1CCC#CCCC1"  # symmetric
     # BCN: 1H-cyclopropa[b]naphthalene-like strained alkyne.  We
     # approximate it with a small bicyclic alkyne that has two
     # *distinguishable* sp carbons — a 3-membered ring fused to an
@@ -380,7 +378,7 @@ def test_spaac_symmetric_vs_unsymmetric_regio() -> None:
     #   C1CCC(C)C#CCCC1  — but the simpler test is to use cyclooctyne
     # vs a *methylated* cyclooctyne so the two sp carbons have
     # different neighbourhoods.
-    asymmetric_alkyne = "C1CCC#CC(C)CC1"   # 1-methyl-cyclooct-2-yne
+    asymmetric_alkyne = "C1CCC#CC(C)CC1"  # 1-methyl-cyclooct-2-yne
     azide = "CN=[N+]=[N-]"
 
     sym_result = apply_spaac_with_regio(cyclooctyne, azide)

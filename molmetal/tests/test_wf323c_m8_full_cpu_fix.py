@@ -21,6 +21,7 @@ Test breakdown:
 
 All CPU-only. No GPU launch per AGENTS.md §5.1.
 """
+
 from __future__ import annotations
 
 import json
@@ -33,7 +34,9 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 REPORTS_DIR = ROOT / "molmetal" / "reports" / "wf323c_m8_full"
-WF319B_POOL_JSON = ROOT / "molmetal" / "reports" / "wf319b_uff_min_pt_pool" / "pool.json"
+WF319B_POOL_JSON = (
+    ROOT / "molmetal" / "reports" / "wf319b_uff_min_pt_pool" / "pool.json"
+)
 WF246D_DIR = ROOT / "molmetal" / "reports" / "wf246d_m8_pb_dock"
 METRICS_DIR = ROOT / "metrics" / "by_metric"
 RESULT_JSON = REPORTS_DIR / "result.json"
@@ -124,23 +127,22 @@ def test_wf323c_pt_zn_substitution_recorded():
     records = result.get("results", [])
     assert len(records) > 0, "no per-conformer records"
     ok_records = [
-        r for r in records
-        if isinstance(r.get("vina_status"), str)
-        and r["vina_status"].startswith("OK")
+        r
+        for r in records
+        if isinstance(r.get("vina_status"), str) and r["vina_status"].startswith("OK")
     ]
     assert len(ok_records) > 0, (
-        f"no OK Vina records (statuses: "
-        f"{[r.get('vina_status') for r in records]})"
+        f"no OK Vina records (statuses: " f"{[r.get('vina_status') for r in records]})"
     )
     # At least one record must have pt_zn_substituted=True + non-None kcal_mol
     zn_records = [
-        r for r in ok_records
-        if r.get("pt_zn_substituted") is True
-        and r.get("kcal_mol") is not None
+        r
+        for r in ok_records
+        if r.get("pt_zn_substituted") is True and r.get("kcal_mol") is not None
     ]
-    assert len(zn_records) > 0, (
-        "no Pt→Zn substituted records with kcal_mol — pipeline did not run"
-    )
+    assert (
+        len(zn_records) > 0
+    ), "no Pt→Zn substituted records with kcal_mol — pipeline did not run"
 
 
 # ---------------------------------------------------------------------------
@@ -153,13 +155,11 @@ def test_wf323c_n_poses_pre_relaxed_matches_records():
     top_n = result.get("n_poses_pre_relaxed", 0)
     records = result.get("results", [])
     ok_n = sum(
-        1 for r in records
-        if isinstance(r.get("vina_status"), str)
-        and r["vina_status"].startswith("OK")
+        1
+        for r in records
+        if isinstance(r.get("vina_status"), str) and r["vina_status"].startswith("OK")
     )
-    assert top_n == ok_n, (
-        f"n_poses_pre_relaxed={top_n} != OK records in results={ok_n}"
-    )
+    assert top_n == ok_n, f"n_poses_pre_relaxed={top_n} != OK records in results={ok_n}"
     # Must be > 0 (else the pipeline didn't run).
     assert top_n > 0, "n_poses_pre_relaxed == 0; pipeline did not execute"
 
@@ -181,19 +181,19 @@ def test_wf323c_honest_negative_tags_consistent():
             f"m8_full={full} < 0.05 but "
             f"HONEST_NEGATIVE_UFF_INSUFFICIENT={flag} (expected True)"
         )
-        assert isinstance(reason, str) and len(reason) >= 80, (
-            f"honest_negative_reason too short or wrong type: {reason[:80]!r}"
-        )
+        assert (
+            isinstance(reason, str) and len(reason) >= 80
+        ), f"honest_negative_reason too short or wrong type: {reason[:80]!r}"
         # Pt→Zn substitution tag should also be present (per Wf-323C).
         if result.get("n_pt_zn_substituted", 0) > 0:
             pt_flag = result.get("HONEST_NEGATIVE_VINA_PT_REJECTED")
             pt_reason = result.get("honest_negative_vina_pt_reason", "")
-            assert pt_flag is True, (
-                f"Pt substitution ran but HONEST_NEGATIVE_VINA_PT_REJECTED={pt_flag}"
-            )
-            assert isinstance(pt_reason, str) and len(pt_reason) >= 80, (
-                f"vina_pt_reason too short: {pt_reason[:80]!r}"
-            )
+            assert (
+                pt_flag is True
+            ), f"Pt substitution ran but HONEST_NEGATIVE_VINA_PT_REJECTED={pt_flag}"
+            assert (
+                isinstance(pt_reason, str) and len(pt_reason) >= 80
+            ), f"vina_pt_reason too short: {pt_reason[:80]!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -223,18 +223,16 @@ def test_wf323c_preflight_gate_pass():
         metric_json=METRIC_1H36,
         pool_json=WF319B_POOL_JSON,
     )
-    assert isinstance(result, GateResult), (
-        f"gate returned wrong type: {type(result).__name__}"
-    )
-    assert result.status in ("PASS", "FAIL"), (
-        f"unexpected status {result.status!r}"
-    )
+    assert isinstance(
+        result, GateResult
+    ), f"gate returned wrong type: {type(result).__name__}"
+    assert result.status in ("PASS", "FAIL"), f"unexpected status {result.status!r}"
     if RESULT_JSON.exists() and METRIC_1H36.exists() and WF319B_POOL_JSON.exists():
         # The gate is intentionally strict — if the 3 artefacts ship
         # together (which they do post-Wf-323C run), it MUST pass.
-        assert result.status == "PASS", (
-            f"3 artefacts ship but gate FAILED: {result.evidence}"
-        )
+        assert (
+            result.status == "PASS"
+        ), f"3 artefacts ship but gate FAILED: {result.evidence}"
 
 
 # ---------------------------------------------------------------------------
@@ -249,6 +247,7 @@ def test_wf323c_expected_gate_count_bumped():
     the Wf-321D gate-count consistency audit.
     """
     from molmetal.scripts.pre_flight_check import EXPECTED_GATE_COUNTS
+
     expected = EXPECTED_GATE_COUNTS.get("all")
     assert expected is not None and expected >= 57, (
         f"EXPECTED_GATE_COUNTS['all']={expected}; "

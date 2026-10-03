@@ -46,6 +46,7 @@ Run with::
         /home/hugo/.venv-flowmol311/bin/python -m pytest -v \\
         molmetal/tests/test_wf330c2_closure_ood.py --tb=short
 """
+
 from __future__ import annotations
 
 import csv
@@ -88,6 +89,7 @@ from molmetal.scripts.bench_closure_ood import (  # noqa: E402
 def _have_rdkit() -> bool:
     try:
         from rdkit import Chem  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -105,11 +107,20 @@ requires_rdkit = pytest.mark.skipif(
 THREE_DOMAINS: List[str] = ["platinai_5k", "metalcytotox_5metal", "tmqm_dblock"]
 
 EXPECTED_AGGREGATE_KEYS: List[str] = [
-    "n_input", "n_ood", "n_samples", "n_closure_ok",
-    "closure_reachability_rate", "ood_rate",
-    "mean_wall_time", "std_wall_time", "median_wall_time",
-    "peak_memory_mb", "total_wall_time",
-    "n_error", "n_metal_coordinated", "metal_coordination_rate",
+    "n_input",
+    "n_ood",
+    "n_samples",
+    "n_closure_ok",
+    "closure_reachability_rate",
+    "ood_rate",
+    "mean_wall_time",
+    "std_wall_time",
+    "median_wall_time",
+    "peak_memory_mb",
+    "total_wall_time",
+    "n_error",
+    "n_metal_coordinated",
+    "metal_coordination_rate",
 ]
 
 
@@ -222,13 +233,11 @@ def test_per_domain_reachability_contract(
         assert isinstance(agg["n_input"], int)
         assert isinstance(agg["n_ood"], int)
         rate = float(agg["closure_reachability_rate"])
-        assert 0.0 <= rate <= 1.0, (
-            f"{dom!r}: closure_reachability_rate={rate} out of [0,1]"
-        )
+        assert (
+            0.0 <= rate <= 1.0
+        ), f"{dom!r}: closure_reachability_rate={rate} out of [0,1]"
         ood_rate = float(agg["ood_rate"])
-        assert 0.0 <= ood_rate <= 1.0, (
-            f"{dom!r}: ood_rate={ood_rate} out of [0,1]"
-        )
+        assert 0.0 <= ood_rate <= 1.0, f"{dom!r}: ood_rate={ood_rate} out of [0,1]"
 
         # If the OOD filter accepted ≥ 1 sample for this domain,
         # the rate MUST be a *true* fraction (computed from at
@@ -303,9 +312,9 @@ def test_tanimoto_lt_0_4_ood_protocol(
     # (e) Markdown artefact references the OOD protocol.
     md_path = three_domain_ood_artefacts["markdown"]
     text = md_path.read_text()
-    assert "Tanimoto" in text or "tanimoto" in text, (
-        "Markdown summary must reference the Tanimoto protocol"
-    )
+    assert (
+        "Tanimoto" in text or "tanimoto" in text
+    ), "Markdown summary must reference the Tanimoto protocol"
     assert "0.4" in text or "OOD" in text or "ood" in text
 
 
@@ -333,9 +342,15 @@ def test_output_schema(
     # (a) JSON artefact.
     payload = json.loads(json_path.read_text())
     for k in (
-        "schema_version", "tool", "pilot_id", "method", "domains",
-        "n_samples_per_metal", "tanimoto_threshold",
-        "per_domain", "aggregate",
+        "schema_version",
+        "tool",
+        "pilot_id",
+        "method",
+        "domains",
+        "n_samples_per_metal",
+        "tanimoto_threshold",
+        "per_domain",
+        "aggregate",
     ):
         assert k in payload, f"ood_closure.json missing key {k!r}"
     assert payload["schema_version"] == 1
@@ -348,9 +363,7 @@ def test_output_schema(
     for dom in payload["domains"]:
         d_agg = payload["per_domain"][dom]["aggregate"]
         missing = [k for k in EXPECTED_AGGREGATE_KEYS if k not in d_agg]
-        assert not missing, (
-            f"per_domain[{dom!r}].aggregate missing keys {missing!r}"
-        )
+        assert not missing, f"per_domain[{dom!r}].aggregate missing keys {missing!r}"
 
     # (c) Per-domain CSV has the documented header.
     with csv_path.open("r", newline="") as fh:
@@ -361,16 +374,13 @@ def test_output_schema(
 
     # (d) Markdown summary carries the documented header.
     text = md_path.read_text()
-    assert "Wf-41 Phase 2" in text, (
-        "Markdown summary must carry the Wf-41 Phase 2 header"
-    )
+    assert (
+        "Wf-41 Phase 2" in text
+    ), "Markdown summary must carry the Wf-41 Phase 2 header"
 
     # (e) In-memory payload matches the persisted JSON.
     assert three_domain_ood_payload["method"] == payload["method"]
-    assert (
-        list(three_domain_ood_payload["domains"])
-        == list(payload["domains"])
-    )
+    assert list(three_domain_ood_payload["domains"]) == list(payload["domains"])
 
 
 # ---------------------------------------------------------------------------

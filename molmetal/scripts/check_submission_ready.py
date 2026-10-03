@@ -16,6 +16,7 @@ Exit codes:
     1 — at least one auto-checked item FAILed
     2 — the checker itself could not run (missing repo root, etc.)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -30,6 +31,7 @@ PAPER = REPO_ROOT / "paper"
 METRICS = REPO_ROOT / "metrics"
 
 # ---------------------------------------------------------------- checks -----
+
 
 def chk_pdf() -> tuple[bool, str]:
     p = PAPER / "main.pdf"
@@ -65,7 +67,10 @@ def chk_author_populated() -> tuple[bool, str]:
     bad = "TODO: author list" in src
     has_corr = bool(re.search(r"\\correspondingauthor\{[^}]+\}", src))
     ok = (not bad) and has_corr
-    return ok, f"TODO={'yes' if bad else 'no'}, corresponding={'yes' if has_corr else 'no'}"
+    return (
+        ok,
+        f"TODO={'yes' if bad else 'no'}, corresponding={'yes' if has_corr else 'no'}",
+    )
 
 
 def chk_appendices() -> tuple[bool, str]:
@@ -75,7 +80,10 @@ def chk_appendices() -> tuple[bool, str]:
     need = {"closure_theorem.tex", "betanf_semantics.tex"}
     have = {p.name for p in ap.glob("*.tex")}
     missing = need - have
-    return not missing, f"have {sorted(have & need)}, missing {sorted(missing) or 'none'}"
+    return (
+        not missing,
+        f"have {sorted(have & need)}, missing {sorted(missing) or 'none'}",
+    )
 
 
 def chk_supplementary() -> tuple[bool, str]:
@@ -135,13 +143,16 @@ def chk_future_work() -> tuple[bool, str]:
 def chk_overclaim() -> tuple[bool, str]:
     main = (PAPER / "main.tex").read_text(errors="replace")
     sections_dir = PAPER / "sections"
-    sec_src = "\n".join((sections_dir / f).read_text(errors="replace")
-                        for f in ("04_results.tex",) if (sections_dir / f).exists())
+    sec_src = "\n".join(
+        (sections_dir / f).read_text(errors="replace")
+        for f in ("04_results.tex",)
+        if (sections_dir / f).exists()
+    )
     blob = main + "\n" + sec_src
     flagged = []
     for phrase in (r"\bSOTA\b", r"\bstate-of-the-art\b", r"\bunprecedented\b"):
         for m in re.finditer(phrase, blob, re.IGNORECASE):
-            ctx = blob[max(0, m.start()-40):m.end()+40].replace("\n", " ")
+            ctx = blob[max(0, m.start() - 40) : m.end() + 40].replace("\n", " ")
             if "qualified" not in ctx.lower() and "benchmark" not in ctx.lower():
                 flagged.append(m.group(0))
     return (not flagged, f"flagged: {sorted(set(flagged)) or 'none'}")
@@ -189,15 +200,25 @@ def main() -> int:
             ok, detail = fn()
         except Exception as exc:  # noqa: BLE001
             ok, detail = False, f"checker error: {type(exc).__name__}: {exc}"
-        results.append({"id": label, "status": "PASS" if ok else "FAIL", "detail": detail})
+        results.append(
+            {"id": label, "status": "PASS" if ok else "FAIL", "detail": detail}
+        )
         n_pass += int(ok)
         n_fail += int(not ok)
 
     deferred = [{"id": d[0], "cmd": d[1], "status": "DEFER"} for d in DEFERRED]
 
     if args.json:
-        print(json.dumps({"auto": results, "deferred": deferred,
-                          "summary": {"pass": n_pass, "fail": n_fail}}, indent=2))
+        print(
+            json.dumps(
+                {
+                    "auto": results,
+                    "deferred": deferred,
+                    "summary": {"pass": n_pass, "fail": n_fail},
+                },
+                indent=2,
+            )
+        )
     else:
         print("arXiv pre-flight — auto-checked items")
         print("=" * 60)

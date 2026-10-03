@@ -147,12 +147,12 @@ def test_trainer_uses_build_optimized_loader(monkeypatch):
         / "train_dmpnn_multitask_wasserstein.py"
     )
     src_text = trainer_src.read_text()
-    assert "from molmetal.scripts.wf326b_dataloader_optimized import" in src_text, (
-        "trainer must import Wf-326B factory"
-    )
-    assert "build_optimized_loader(" in src_text, (
-        "trainer must call build_optimized_loader()"
-    )
+    assert (
+        "from molmetal.scripts.wf326b_dataloader_optimized import" in src_text
+    ), "trainer must import Wf-326B factory"
+    assert (
+        "build_optimized_loader(" in src_text
+    ), "trainer must call build_optimized_loader()"
 
     # Functional check — round-trip with num_workers=2 (factory path).
     device = torch.device("cpu")
@@ -162,6 +162,7 @@ def test_trainer_uses_build_optimized_loader(monkeypatch):
     crit = MultiTaskLoss(alpha=0.5)
     ref = torch.tensor(pic50, dtype=torch.float32, device=device)
     from molmetal.molmetal_lam.reward.wasserstein_loss import WassersteinConfig
+
     wcfg = WassersteinConfig()
 
     avg_loss, avg_cls, avg_reg, avg_w = train_one_epoch_joint(
@@ -205,15 +206,12 @@ def test_suggest_num_workers_default_and_flag_help():
         / "train_dmpnn_multitask_wasserstein.py"
     )
     src_text = trainer_src.read_text()
-    assert '"--num-workers"' in src_text or "'--num-workers'" in src_text, (
-        "trainer must register --num-workers flag"
-    )
-    assert "Wf-328-W6" in src_text, (
-        "trainer must carry Wf-328-W6 marker"
-    )
+    assert (
+        '"--num-workers"' in src_text or "'--num-workers'" in src_text
+    ), "trainer must register --num-workers flag"
+    assert "Wf-328-W6" in src_text, "trainer must carry Wf-328-W6 marker"
     print(
-        f"  [test_suggest_num_workers_default_and_flag_help] "
-        f"suggested={s} flag-OK"
+        f"  [test_suggest_num_workers_default_and_flag_help] " f"suggested={s} flag-OK"
     )
 
 
@@ -236,9 +234,9 @@ def test_num_workers_flag_overrides_cpu_num_workers(monkeypatch):
         if cli_num_workers is not None
         else int(cli_cpu_num_workers)
     )
-    assert effective == 8, (
-        f"effective num_workers={effective} should equal --num-workers={cli_num_workers}"
-    )
+    assert (
+        effective == 8
+    ), f"effective num_workers={effective} should equal --num-workers={cli_num_workers}"
     print(
         f"  [test_num_workers_flag_overrides_cpu_num_workers] "
         f"effective={effective} OK"
@@ -251,9 +249,9 @@ def test_num_workers_flag_overrides_cpu_num_workers(monkeypatch):
         / "train_dmpnn_multitask_wasserstein.py"
     )
     src_text = trainer_src.read_text()
-    assert "effective_num_workers" in src_text, (
-        "trainer must compute effective_num_workers via precedence logic"
-    )
+    assert (
+        "effective_num_workers" in src_text
+    ), "trainer must compute effective_num_workers via precedence logic"
 
 
 # ---------------------------------------------------------------------------
@@ -279,12 +277,12 @@ def test_trainer_integration_with_factory():
         n_workers_override=2,
     )
     # Loader config sanity
-    assert loader.num_workers == 2, (
-        f"loader.num_workers={loader.num_workers} (expected 2)"
-    )
-    assert loader.pin_memory is False, (
-        f"loader.pin_memory={loader.pin_memory} (expected False on CPU)"
-    )
+    assert (
+        loader.num_workers == 2
+    ), f"loader.num_workers={loader.num_workers} (expected 2)"
+    assert (
+        loader.pin_memory is False
+    ), f"loader.pin_memory={loader.pin_memory} (expected False on CPU)"
     assert loader.prefetch_factor == OPTIMAL_PREFETCH_FACTOR, (
         f"loader.prefetch_factor={loader.prefetch_factor} "
         f"(expected OPTIMAL_PREFETCH_FACTOR={OPTIMAL_PREFETCH_FACTOR})"

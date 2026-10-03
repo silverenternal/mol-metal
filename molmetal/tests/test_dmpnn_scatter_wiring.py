@@ -45,10 +45,14 @@ from molmetal.models._scatter import (
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-def _torch_scatter_sum(values: torch.Tensor, index: torch.Tensor, dim_size: int) -> torch.Tensor:
+def _torch_scatter_sum(
+    values: torch.Tensor, index: torch.Tensor, dim_size: int
+) -> torch.Tensor:
     """The original pure-PyTorch baseline (copied verbatim from the
     pre-wiring :func:`_scatter_sum` in ``molmetal/models/dmpnn.py``)."""
-    out = torch.zeros(dim_size, values.size(-1), device=values.device, dtype=values.dtype)
+    out = torch.zeros(
+        dim_size, values.size(-1), device=values.device, dtype=values.dtype
+    )
     idx = index.view(-1, *([1] * (values.dim() - 1))).expand_as(values)
     out.scatter_add_(0, idx, values)
     return out

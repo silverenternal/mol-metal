@@ -43,9 +43,7 @@ import torch
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 REPORTS = PROJECT_ROOT / "molmetal" / "reports"
-SCRIPT = (
-    PROJECT_ROOT / "molmetal" / "scripts" / "r10_pt_prior_ablation_1h36.py"
-)
+SCRIPT = PROJECT_ROOT / "molmetal" / "scripts" / "r10_pt_prior_ablation_1h36.py"
 
 
 # ---------------------------------------------------------------------------
@@ -55,18 +53,16 @@ def _square_planar_pt_complex(device: str = "cpu"):
     """Pt(II) with 4 donors at ideal 90 deg (cisplatin analogue)."""
     coords = torch.tensor(
         [
-            [0.0, 0.0, 0.0],   # Pt (Z=78)
-            [2.0, 0.0, 0.0],   # N  +
+            [0.0, 0.0, 0.0],  # Pt (Z=78)
+            [2.0, 0.0, 0.0],  # N  +
             [-2.0, 0.0, 0.0],  # N  -
-            [0.0, 2.0, 0.0],   # Cl +
+            [0.0, 2.0, 0.0],  # Cl +
             [0.0, -2.0, 0.0],  # Cl -
         ],
         device=device,
         dtype=torch.float32,
     )
-    atom_types = torch.tensor(
-        [78, 7, 7, 17, 17], device=device, dtype=torch.long
-    )
+    atom_types = torch.tensor([78, 7, 7, 17, 17], device=device, dtype=torch.long)
     n = coords.size(0)
     src, dst = [], []
     for i in range(n):
@@ -78,8 +74,10 @@ def _square_planar_pt_complex(device: str = "cpu"):
     edge_types = torch.zeros(edge_index.size(1), device=device, dtype=torch.long)
     pt_idx = 0
     for k in range(edge_index.size(1)):
-        if (int(edge_index[1, k].item()) == pt_idx
-                and int(edge_index[0, k].item()) != pt_idx):
+        if (
+            int(edge_index[1, k].item()) == pt_idx
+            and int(edge_index[0, k].item()) != pt_idx
+        ):
             edge_types[k] = 2  # EDGE_TYPE_DATIVE
     return coords, atom_types, edge_index, edge_types
 
@@ -92,6 +90,7 @@ def test_enabled_default_true():
     from molmetal.molmetal_lam.priors.metal_geometry import (
         MetalGeometryPrior,
     )
+
     p = MetalGeometryPrior(weight=1.0)
     assert p.enabled is True
     p2 = MetalGeometryPrior()
@@ -104,36 +103,39 @@ def test_enabled_default_true():
 def test_disabled_prior_returns_zero_on_perfect_geometry():
     """When ``enabled=False`` the prior returns 0 regardless of geometry."""
     from molmetal.molmetal_lam.priors.metal_geometry import (
-        MetalGeometryPrior, Geometry,
+        MetalGeometryPrior,
+        Geometry,
     )
+
     coords, atom_types, edge_index, edge_types = _square_planar_pt_complex()
     p = MetalGeometryPrior(weight=1.0, enabled=False)
     # Perfect square-planar Pt — but prior is OFF so loss must be exactly
     # zero, not the small ~0 rad ideal value.
     loss = p.prior_loss(
-        coords=coords, atom_types=atom_types, edge_types=edge_types, edge_index=edge_index,
-        metal_idx=0, geometry=Geometry.SQUARE_PLANAR,
+        coords=coords,
+        atom_types=atom_types,
+        edge_types=edge_types,
+        edge_index=edge_index,
+        metal_idx=0,
+        geometry=Geometry.SQUARE_PLANAR,
     )
-    assert loss.item() == 0.0, (
-        f"disabled prior should return 0; got {loss.item()}"
-    )
+    assert loss.item() == 0.0, f"disabled prior should return 0; got {loss.item()}"
 
 
 def test_disabled_prior_returns_zero_on_distorted_geometry():
     """Distorted geometry with prior OFF → still zero (gate wins)."""
     from molmetal.molmetal_lam.priors.metal_geometry import (
-        MetalGeometryPrior, Geometry,
+        MetalGeometryPrior,
+        Geometry,
     )
+
     coords = torch.tensor(
         [
             [0.0, 0.0, 0.0],
             [2.0, 0.0, 0.0],
-            [math.cos(math.radians(45)) * 2.0,
-             math.sin(math.radians(45)) * 2.0, 0.0],
-            [math.cos(math.radians(90)) * 2.0,
-             math.sin(math.radians(90)) * 2.0, 0.0],
-            [math.cos(math.radians(135)) * 2.0,
-             math.sin(math.radians(135)) * 2.0, 0.0],
+            [math.cos(math.radians(45)) * 2.0, math.sin(math.radians(45)) * 2.0, 0.0],
+            [math.cos(math.radians(90)) * 2.0, math.sin(math.radians(90)) * 2.0, 0.0],
+            [math.cos(math.radians(135)) * 2.0, math.sin(math.radians(135)) * 2.0, 0.0],
         ],
         dtype=torch.float32,
     )
@@ -151,12 +153,14 @@ def test_disabled_prior_returns_zero_on_distorted_geometry():
     edge_types = torch.tensor(et, dtype=torch.long)
     p = MetalGeometryPrior(weight=1.0, enabled=False)
     loss = p.prior_loss(
-        coords=coords, atom_types=atom_types, edge_types=edge_types, edge_index=edge_index,
-        metal_idx=0, geometry=Geometry.SQUARE_PLANAR,
+        coords=coords,
+        atom_types=atom_types,
+        edge_types=edge_types,
+        edge_index=edge_index,
+        metal_idx=0,
+        geometry=Geometry.SQUARE_PLANAR,
     )
-    assert loss.item() == 0.0, (
-        f"disabled prior should return 0; got {loss.item()}"
-    )
+    assert loss.item() == 0.0, f"disabled prior should return 0; got {loss.item()}"
 
 
 # ---------------------------------------------------------------------------
@@ -165,23 +169,33 @@ def test_disabled_prior_returns_zero_on_distorted_geometry():
 def test_disable_enable_toggle():
     """``.disable()`` flips ``enabled`` to False; ``.enable()`` flips it back."""
     from molmetal.molmetal_lam.priors.metal_geometry import (
-        MetalGeometryPrior, Geometry,
+        MetalGeometryPrior,
+        Geometry,
     )
+
     coords, atom_types, edge_index, edge_types = _square_planar_pt_complex()
     p = MetalGeometryPrior(weight=1.0)
     assert p.enabled is True
     p.disable()
     assert p.enabled is False
     loss_off = p.prior_loss(
-        coords=coords, atom_types=atom_types, edge_types=edge_types, edge_index=edge_index,
-        metal_idx=0, geometry=Geometry.SQUARE_PLANAR,
+        coords=coords,
+        atom_types=atom_types,
+        edge_types=edge_types,
+        edge_index=edge_index,
+        metal_idx=0,
+        geometry=Geometry.SQUARE_PLANAR,
     )
     assert loss_off.item() == 0.0
     p.enable()
     assert p.enabled is True
     loss_on = p.prior_loss(
-        coords=coords, atom_types=atom_types, edge_types=edge_types, edge_index=edge_index,
-        metal_idx=0, geometry=Geometry.SQUARE_PLANAR,
+        coords=coords,
+        atom_types=atom_types,
+        edge_types=edge_types,
+        edge_index=edge_index,
+        metal_idx=0,
+        geometry=Geometry.SQUARE_PLANAR,
     )
     # Perfect geometry → ~0 rad (well below 1 deg).
     assert loss_on.item() < math.radians(1.0)
@@ -194,18 +208,24 @@ def test_enabled_flag_independent_of_weight():
     """The ``enabled`` flag is orthogonal to ``weight``: weight=1 + "
     "enabled=False still returns zero."""
     from molmetal.molmetal_lam.priors.metal_geometry import (
-        MetalGeometryPrior, Geometry,
+        MetalGeometryPrior,
+        Geometry,
     )
+
     coords, atom_types, edge_index, edge_types = _square_planar_pt_complex()
     p = MetalGeometryPrior(weight=10.0, enabled=False)
     loss = p.prior_loss(
-        coords=coords, atom_types=atom_types, edge_types=edge_types, edge_index=edge_index,
-        metal_idx=0, geometry=Geometry.SQUARE_PLANAR,
+        coords=coords,
+        atom_types=atom_types,
+        edge_types=edge_types,
+        edge_index=edge_index,
+        metal_idx=0,
+        geometry=Geometry.SQUARE_PLANAR,
     )
     # The flag should win over weight — output is exactly 0.
-    assert loss.item() == 0.0, (
-        f"enabled=False should override weight; got {loss.item()}"
-    )
+    assert (
+        loss.item() == 0.0
+    ), f"enabled=False should override weight; got {loss.item()}"
 
 
 # ---------------------------------------------------------------------------
@@ -218,13 +238,21 @@ def test_functional_apply_metal_prior_respects_enabled():
     "True for backward compat).  This test asserts the *behaviour* is
     "governed by the wrapper instantiation default, which is True."""
     from molmetal.molmetal_lam.priors.metal_geometry import (
-        apply_metal_prior, prior_loss, Geometry,
+        apply_metal_prior,
+        prior_loss,
+        Geometry,
     )
+
     coords, atom_types, edge_index, edge_types = _square_planar_pt_complex()
     # Default (enabled=True) — perfect geometry → ~0 rad
     val = apply_metal_prior(
-        coords=coords, atom_types=atom_types, edge_types=edge_types, edge_index=edge_index,
-        metal_idx=0, geometry=Geometry.SQUARE_PLANAR, weight=1.0,
+        coords=coords,
+        atom_types=atom_types,
+        edge_types=edge_types,
+        edge_index=edge_index,
+        metal_idx=0,
+        geometry=Geometry.SQUARE_PLANAR,
+        weight=1.0,
     )
     assert val.item() < math.radians(1.0), (
         f"functional wrapper default should report near-zero on perfect "
@@ -232,8 +260,12 @@ def test_functional_apply_metal_prior_respects_enabled():
     )
     # raw prior_loss (no weight multiplier) — same expectation
     val2 = prior_loss(
-        coords=coords, atom_types=atom_types, edge_types=edge_types, edge_index=edge_index,
-        metal_idx=0, geometry=Geometry.SQUARE_PLANAR,
+        coords=coords,
+        atom_types=atom_types,
+        edge_types=edge_types,
+        edge_index=edge_index,
+        metal_idx=0,
+        geometry=Geometry.SQUARE_PLANAR,
     )
     assert val2.item() < math.radians(1.0), (
         f"raw prior_loss should report near-zero on perfect geometry; "
@@ -248,13 +280,19 @@ def test_apply_prior_disabled_returns_zero():
     """``apply_prior`` (the no-weight method) must also short-circuit when "
     "``enabled=False``."""
     from molmetal.molmetal_lam.priors.metal_geometry import (
-        MetalGeometryPrior, Geometry,
+        MetalGeometryPrior,
+        Geometry,
     )
+
     coords, atom_types, edge_index, edge_types = _square_planar_pt_complex()
     p = MetalGeometryPrior(weight=2.5, enabled=False)
     raw = p.apply_prior(
-        coords=coords, atom_types=atom_types, edge_types=edge_types, edge_index=edge_index,
-        metal_idx=0, geometry=Geometry.SQUARE_PLANAR,
+        coords=coords,
+        atom_types=atom_types,
+        edge_types=edge_types,
+        edge_index=edge_index,
+        metal_idx=0,
+        geometry=Geometry.SQUARE_PLANAR,
     )
     assert raw.item() == 0.0
 
@@ -267,6 +305,7 @@ def test_ideal_square_planar_angle_is_pi_over_two():
     from molmetal.molmetal_lam.priors.metal_geometry import (
         IDEAL_SQUARE_PLANAR_ANGLE,
     )
+
     assert abs(IDEAL_SQUARE_PLANAR_ANGLE - math.pi / 2.0) < 1e-12
 
 
@@ -284,11 +323,13 @@ def test_ablation_script_help():
         pytest.skip(f"missing harness script: {SCRIPT}")
     proc = subprocess.run(
         [sys.executable, str(SCRIPT), "--help"],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
-    assert proc.returncode == 0, (
-        f"--help failed with code {proc.returncode}: {proc.stderr}"
-    )
+    assert (
+        proc.returncode == 0
+    ), f"--help failed with code {proc.returncode}: {proc.stderr}"
     assert "prior" in proc.stdout.lower(), (
         "--help output should mention 'prior'; got:\n" + proc.stdout[:500]
     )
@@ -299,9 +340,7 @@ def test_ablation_script_help():
 # ---------------------------------------------------------------------------
 def test_1h36_pdb_path_constant():
     """The harness's EXAMPLE_PDB path should match the canonical 1h36 fixture."""
-    expected_suffix = (
-        "1h36_A_rec_1h36_r88_lig_tt_docked_0_pocket10.pdb"
-    )
+    expected_suffix = "1h36_A_rec_1h36_r88_lig_tt_docked_0_pocket10.pdb"
     text = SCRIPT.read_text()
     assert expected_suffix in text, (
         f"harness should reference {expected_suffix}; got:\n"

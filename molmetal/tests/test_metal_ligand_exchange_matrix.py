@@ -89,35 +89,48 @@ from molmetal_lam.lam_chem.pt_metal_ligand_exchange import (
 # The 12 metals of the matrix — matches the spec in
 # ``TODO/pending/31_r17_ultracode_dispatch.md`` §L-R17-B2.
 EXPECTED_METALS: Tuple[str, ...] = (
-    "Pt_II", "Pt_IV",
-    "Ru_II", "Ru_III",
-    "Ir_III", "Ir_IV",
-    "Os_II", "Os_III",
-    "Rh_I", "Rh_III",
-    "Au_I", "Au_III",
+    "Pt_II",
+    "Pt_IV",
+    "Ru_II",
+    "Ru_III",
+    "Ir_III",
+    "Ir_IV",
+    "Os_II",
+    "Os_III",
+    "Rh_I",
+    "Rh_III",
+    "Au_I",
+    "Au_III",
 )
 
 # The 7 entering ligands of the matrix.
 EXPECTED_LIGANDS: Tuple[str, ...] = (
-    "Cl", "NH3", "H2O", "CN", "OH", "SCN", "CO",
+    "Cl",
+    "NH3",
+    "H2O",
+    "CN",
+    "OH",
+    "SCN",
+    "CO",
 )
 
 # Canonical SMILES donor used by the test cases.  Each donor
 # corresponds to one of the 7 matrix ligands.
 CANONICAL_DONOR_SMILES: dict = {
-    "Cl":  "[Cl]",
+    "Cl": "[Cl]",
     "NH3": "[NH3]",
     "H2O": "[OH2]",
-    "CN":  "[C-]#N",
-    "OH":  "[OH-]",
+    "CN": "[C-]#N",
+    "OH": "[OH-]",
     "SCN": "[S-]C#N",
-    "CO":  "[C-]#[O+]",  # CO triple bond with formal charges
+    "CO": "[C-]#[O+]",  # CO triple bond with formal charges
 }
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _matrix_names() -> List[str]:
     """Return the list of pattern names in the matrix."""
@@ -138,6 +151,7 @@ def _reaction_template(smarts: str):
     syntactically.
     """
     from rdkit.Chem import rdChemReactions
+
     rxn = rdChemReactions.ReactionFromSmarts(smarts)
     assert rxn is not None, f"RDKit failed to parse SMARTS: {smarts!r}"
     return rxn
@@ -147,11 +161,12 @@ def _reaction_template(smarts: str):
 # 1. Matrix cardinality — 84 patterns with 84 unique names
 # ---------------------------------------------------------------------------
 
+
 def test_metal_ligand_exchange_matrix_has_84_entries() -> None:
     """The L-R17-B2 matrix must hold exactly 84 entries."""
-    assert len(METAL_LIGAND_EXCHANGE_MATRIX) == 84, (
-        f"expected 84 matrix patterns, got {len(METAL_LIGAND_EXCHANGE_MATRIX)}"
-    )
+    assert (
+        len(METAL_LIGAND_EXCHANGE_MATRIX) == 84
+    ), f"expected 84 matrix patterns, got {len(METAL_LIGAND_EXCHANGE_MATRIX)}"
 
 
 def test_metal_ligand_exchange_matrix_unique_names() -> None:
@@ -176,6 +191,7 @@ def test_metal_ligand_exchange_matrix_accessor_returns_84() -> None:
 # 2. SMARTS parse — every entry's SMARTS parses via RDKit
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize("pattern_name", _matrix_names())
 def test_matrix_pattern_smarts_parses(pattern_name: str) -> None:
     """Each of the 84 matrix SMARTS must parse via RDKit ``ReactionFromSmarts``."""
@@ -198,6 +214,7 @@ def test_matrix_pattern_smarts_parses(pattern_name: str) -> None:
 # 3. Per-metal coverage — each of the 12 metals has 7 patterns
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize("metal", EXPECTED_METALS)
 def test_matrix_per_metal_coverage(metal: str) -> None:
     """Each of the 12 metals must have 7 matrix patterns (one per ligand)."""
@@ -215,7 +232,8 @@ def test_matrix_per_metal_covers_all_7_ligands(metal: str) -> None:
     """Each metal must have a pattern for every one of the 7 ligands."""
     metal_patterns = {
         n.split(f"{metal}_Cl_", 1)[1]: s
-        for (n, s) in _matrix_smarts() if n.startswith(f"{metal}_Cl_")
+        for (n, s) in _matrix_smarts()
+        if n.startswith(f"{metal}_Cl_")
     }
     missing = set(EXPECTED_LIGANDS) - set(metal_patterns)
     assert missing == set(), (
@@ -227,22 +245,21 @@ def test_matrix_per_metal_covers_all_7_ligands(metal: str) -> None:
 @pytest.mark.parametrize("metal", EXPECTED_METALS)
 def test_matrix_per_metal_leaving_group_is_cl(metal: str) -> None:
     """Every (metal, ligand) cell must have a [Cl:2] leaving group."""
-    metal_smarts = [
-        s for (n, s) in _matrix_smarts() if n.startswith(f"{metal}_Cl_")
-    ]
+    metal_smarts = [s for (n, s) in _matrix_smarts() if n.startswith(f"{metal}_Cl_")]
     assert len(metal_smarts) == 7
     for smarts in metal_smarts:
         # The leaving group is the [Cl:2] token — appears on both
         # reactant side (the bound Cl) and product side (the released
         # Cl-).  We just check the SMARTS contains [Cl:2].
-        assert "[Cl:2]" in smarts, (
-            f"{metal}: SMARTS missing [Cl:2] leaving group: {smarts}"
-        )
+        assert (
+            "[Cl:2]" in smarts
+        ), f"{metal}: SMARTS missing [Cl:2] leaving group: {smarts}"
 
 
 # ---------------------------------------------------------------------------
 # 4. Per-ligand coverage — each of the 7 ligands has 12 patterns
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize("ligand", EXPECTED_LIGANDS)
 def test_matrix_per_ligand_coverage(ligand: str) -> None:
@@ -261,7 +278,8 @@ def test_matrix_per_ligand_covers_all_12_metals(ligand: str) -> None:
     """Each ligand must have a pattern for every one of the 12 metals."""
     ligand_patterns = {
         n.rsplit(f"_Cl_{ligand}", 1)[0]: s
-        for (n, s) in _matrix_smarts() if n.endswith(f"_Cl_{ligand}")
+        for (n, s) in _matrix_smarts()
+        if n.endswith(f"_Cl_{ligand}")
     }
     missing = set(EXPECTED_METALS) - set(ligand_patterns)
     assert missing == set(), (
@@ -278,9 +296,7 @@ def test_matrix_per_ligand_has_donor_atom_map(ligand: str) -> None:
     donor IS Cl so the SMARTS uses ``[Cl:2]`` (same as the leaving group)
     — degenerate case where donor + leaving group share the atom-map.
     """
-    ligand_patterns = [
-        s for (n, s) in _matrix_smarts() if n.endswith(f"_Cl_{ligand}")
-    ]
+    ligand_patterns = [s for (n, s) in _matrix_smarts() if n.endswith(f"_Cl_{ligand}")]
     assert len(ligand_patterns) == 12
     if ligand == "Cl":
         expected_map = ":2"
@@ -290,14 +306,15 @@ def test_matrix_per_ligand_has_donor_atom_map(ligand: str) -> None:
         # The expected donor atom-map marker appears inside the donor
         # bracket block — e.g. [NH3:4], [Cl:4], [C-:4]#N. We just
         # check the SMARTS contains the expected_map substring.
-        assert expected_map in smarts, (
-            f"{ligand}: SMARTS missing donor {expected_map} atom-map: {smarts}"
-        )
+        assert (
+            expected_map in smarts
+        ), f"{ligand}: SMARTS missing donor {expected_map} atom-map: {smarts}"
 
 
 # ---------------------------------------------------------------------------
 # 5. Registration helper — register_metal_ligand_exchange_rules()
 # ---------------------------------------------------------------------------
+
 
 def test_register_metal_ligand_exchange_rules_returns_84() -> None:
     """``register_metal_ligand_exchange_rules()`` returns >= 84 patterns."""
@@ -327,6 +344,7 @@ def test_register_metal_ligand_exchange_rules_pushes_to_registry() -> None:
     ``test_f2a_metal_ligand_exchange.py``.
     """
     from molmetal_lam.reactions.rule_registry import list_rules
+
     register_metal_ligand_exchange_rules(register_into_rule_registry=True)
     after_count = len(list_rules(scope="metal-coord-matrix"))
     assert after_count >= 84, (
@@ -342,11 +360,9 @@ def test_registered_matrix_rules_carry_smarts_metadata() -> None:
         unregister_rule,
         list_rules,
     )
+
     # Register one known pattern and verify its smarts field roundtrips.
-    expected_smarts = (
-        "[Pt:1]([Cl:2])[*:3].[NH3:4]>>"
-        "[Pt:1]([NH3:4])[*:3].[Cl:2]"
-    )
+    expected_smarts = "[Pt:1]([Cl:2])[*:3].[NH3:4]>>" "[Pt:1]([NH3:4])[*:3].[Cl:2]"
     register_rule(
         name="MLE_matrix_test_roundtrip",
         smarts=expected_smarts,
@@ -367,6 +383,7 @@ def test_registered_matrix_rules_carry_smarts_metadata() -> None:
 # ---------------------------------------------------------------------------
 # 6. Backward-compat — the F2(a) curated library is unchanged
 # ---------------------------------------------------------------------------
+
 
 def test_f2a_mle_library_unchanged() -> None:
     """The 5-pattern F2(a) curated library must still be 5 entries."""
@@ -397,14 +414,15 @@ def test_matrix_does_not_collide_with_f2a_library() -> None:
     # subset of the matrix names (they would be if there were a
     # collision).
     exact_collisions = f2a_names & matrix_names
-    assert exact_collisions == set(), (
-        f"unexpected F2(a)-vs-matrix name collisions: {exact_collisions}"
-    )
+    assert (
+        exact_collisions == set()
+    ), f"unexpected F2(a)-vs-matrix name collisions: {exact_collisions}"
 
 
 # ---------------------------------------------------------------------------
 # 7. Canonical-pattern equivalence — Pt_II + NH3 in matrix == F2(a) Pt_Cl_NH3
 # ---------------------------------------------------------------------------
+
 
 def test_matrix_pt_ii_nh3_matches_f2a_canonical() -> None:
     """The matrix pattern ``Pt_II_Cl_NH3`` must be syntactically identical
@@ -416,9 +434,9 @@ def test_matrix_pt_ii_nh3_matches_f2a_canonical() -> None:
     matrix — future edits that drift the two apart would fail this
     test."""
     matrix_pt_ii_nh3 = dict(_matrix_smarts())["Pt_II_Cl_NH3"]
-    f2a_pt_cl_nh3 = dict(
-        (n, s) for (n, s, _d) in METAL_LIGAND_EXCHANGE_SMARTS
-    )["Pt_Cl_NH3"]
+    f2a_pt_cl_nh3 = dict((n, s) for (n, s, _d) in METAL_LIGAND_EXCHANGE_SMARTS)[
+        "Pt_Cl_NH3"
+    ]
     assert matrix_pt_ii_nh3 == f2a_pt_cl_nh3, (
         f"matrix Pt_II_Cl_NH3 SMARTS must match F2(a) Pt_Cl_NH3 SMARTS "
         f"shape-for-shape:\n  matrix: {matrix_pt_ii_nh3}\n  f2a:     "
@@ -432,9 +450,9 @@ def test_matrix_pt_ii_h2o_matches_f2a_canonical() -> None:
     pattern adds the ``_first`` suffix to mark it as the first-
     aquation step)."""
     matrix_pt_ii_h2o = dict(_matrix_smarts())["Pt_II_Cl_H2O"]
-    f2a_pt_cl_h2o = dict(
-        (n, s) for (n, s, _d) in AQUA_EXCHANGE_SMARTS
-    )["Pt_Cl_H2O_first"]
+    f2a_pt_cl_h2o = dict((n, s) for (n, s, _d) in AQUA_EXCHANGE_SMARTS)[
+        "Pt_Cl_H2O_first"
+    ]
     assert matrix_pt_ii_h2o == f2a_pt_cl_h2o, (
         f"matrix Pt_II_Cl_H2O SMARTS must match F2(a) Pt_Cl_H2O_first SMARTS:\n"
         f"  matrix: {matrix_pt_ii_h2o}\n  f2a:     {f2a_pt_cl_h2o}"
@@ -445,6 +463,7 @@ def test_matrix_pt_ii_h2o_matches_f2a_canonical() -> None:
 # 8. Per-metal × per-ligand SMILES donor inventory
 # ---------------------------------------------------------------------------
 
+
 def test_donor_smiles_for_every_ligand() -> None:
     """Every matrix ligand must have a canonical donor SMILES.
 
@@ -452,9 +471,9 @@ def test_donor_smiles_for_every_ligand() -> None:
     (subsequent test files in this round) will draw from.
     """
     for lig in EXPECTED_LIGANDS:
-        assert lig in CANONICAL_DONOR_SMILES, (
-            f"ligand {lig!r} missing from CANONICAL_DONOR_SMILES table"
-        )
+        assert (
+            lig in CANONICAL_DONOR_SMILES
+        ), f"ligand {lig!r} missing from CANONICAL_DONOR_SMILES table"
 
 
 # ---------------------------------------------------------------------------
@@ -472,6 +491,7 @@ def test_donor_smiles_for_every_ligand() -> None:
 # sanitised products; this is the same trade-off the F2(a) tests
 # make — see test_f2a_metal_ligand_exchange.py §Honest framing).
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize("metal", EXPECTED_METALS)
 @pytest.mark.parametrize("ligand", EXPECTED_LIGANDS)
@@ -504,10 +524,10 @@ def test_matrix_cell_donor_smiles_parses(metal: str, ligand: str) -> None:
     """
     donor_smiles = CANONICAL_DONOR_SMILES[ligand]
     from rdkit import Chem
+
     mol = Chem.MolFromSmiles(donor_smiles)
     assert mol is not None, (
-        f"{metal}_Cl_{ligand}: donor SMILES {donor_smiles!r} "
-        f"failed RDKit parse"
+        f"{metal}_Cl_{ligand}: donor SMILES {donor_smiles!r} " f"failed RDKit parse"
     )
 
 
@@ -544,9 +564,9 @@ def test_matrix_cell_metal_atom_map_is_1(metal: str, ligand: str) -> None:
     # The metal is the FIRST atom token in the SMARTS — its :1 atom-map
     # marks it as the centre that's preserved across the substitution.
     metal_token = f"[{metal.split('_')[0]}:1]"
-    assert metal_token in smarts, (
-        f"{pattern_name}: metal atom-map {metal_token!r} missing from SMARTS: {smarts}"
-    )
+    assert (
+        metal_token in smarts
+    ), f"{pattern_name}: metal atom-map {metal_token!r} missing from SMARTS: {smarts}"
 
 
 @pytest.mark.parametrize("metal", EXPECTED_METALS)
@@ -558,12 +578,12 @@ def test_matrix_cell_cl_atom_map_is_2(metal: str, ligand: str) -> None:
     # The Cl leaving-group atom-map :2 must be present on both sides.
     reactant_side = smarts.split(">>", 1)[0]
     product_side = smarts.split(">>", 1)[1]
-    assert "[Cl:2]" in reactant_side, (
-        f"{pattern_name}: reactant side missing [Cl:2] leaving-group atom-map"
-    )
-    assert "[Cl:2]" in product_side, (
-        f"{pattern_name}: product side missing released [Cl:2] leaving-group atom-map"
-    )
+    assert (
+        "[Cl:2]" in reactant_side
+    ), f"{pattern_name}: reactant side missing [Cl:2] leaving-group atom-map"
+    assert (
+        "[Cl:2]" in product_side
+    ), f"{pattern_name}: product side missing released [Cl:2] leaving-group atom-map"
 
 
 # ---------------------------------------------------------------------------
@@ -586,6 +606,7 @@ def test_matrix_cell_cl_atom_map_is_2(metal: str, ligand: str) -> None:
 # 84 cells, not that the products are RDKit-sanitisable.
 # ---------------------------------------------------------------------------
 
+
 def _canonical_metal_cl_substrate(metal: str) -> str:
     """Build a canonical M-Cl2 substrate SMILES for the matrix test.
 
@@ -604,9 +625,7 @@ def _canonical_metal_cl_substrate(metal: str) -> str:
 
 @pytest.mark.parametrize("metal", EXPECTED_METALS)
 @pytest.mark.parametrize("ligand", EXPECTED_LIGANDS)
-def test_matrix_cell_rule_fires_via_runreactants(
-    metal: str, ligand: str
-) -> None:
+def test_matrix_cell_rule_fires_via_runreactants(metal: str, ligand: str) -> None:
     """The (metal, ligand) rule fires via ``RunReactants`` on canonical
     substrates — produces a (possibly empty) tuple of product Mol sets.
 
@@ -643,14 +662,13 @@ def test_matrix_cell_rule_fires_via_runreactants(
     substrate_smiles = _canonical_metal_cl_substrate(metal)
     donor_smiles = CANONICAL_DONOR_SMILES[ligand]
     from rdkit import Chem
+
     substrate_mol = Chem.MolFromSmiles(substrate_smiles)
     donor_mol = Chem.MolFromSmiles(donor_smiles)
-    assert substrate_mol is not None, (
-        f"{pattern_name}: substrate {substrate_smiles!r} failed parse"
-    )
-    assert donor_mol is not None, (
-        f"{pattern_name}: donor {donor_smiles!r} failed parse"
-    )
+    assert (
+        substrate_mol is not None
+    ), f"{pattern_name}: substrate {substrate_smiles!r} failed parse"
+    assert donor_mol is not None, f"{pattern_name}: donor {donor_smiles!r} failed parse"
     try:
         product_sets = rxn.RunReactants((substrate_mol, donor_mol))
     except Exception as exc:
@@ -660,7 +678,8 @@ def test_matrix_cell_rule_fires_via_runreactants(
         # about; the metal valence bookkeeping is the search
         # layer's job, not this test's.
         if any(
-            marker in str(exc) for marker in (
+            marker in str(exc)
+            for marker in (
                 "RunReactants failed",
                 "Explicit valence",
                 "Can't kekulize",
@@ -688,28 +707,28 @@ def test_matrix_cell_rule_fires_via_runreactants(
     # product_sets is a tuple of tuples — each outer entry is a
     # possible match; each inner entry is the product Mol set.
     # We just assert it ran without raising.
-    assert product_sets is not None, (
-        f"{pattern_name}: RunReactants returned None"
-    )
+    assert product_sets is not None, f"{pattern_name}: RunReactants returned None"
 
 
 # ---------------------------------------------------------------------------
 # 10. Matrix accessor functions for the public API
 # ---------------------------------------------------------------------------
 
+
 def test_get_metal_ligand_matrix_metals_returns_12() -> None:
     """``get_metal_ligand_matrix_metals()`` returns 12 (symbol, ox, geometry)
     tuples covering the 12-metal set."""
     metals = get_metal_ligand_matrix_metals()
-    assert len(metals) == 12, (
-        f"expected 12 metal entries, got {len(metals)}"
-    )
+    assert len(metals) == 12, f"expected 12 metal entries, got {len(metals)}"
     for metal_sym, ox_state, geometry in metals:
         assert metal_sym in {"Pt", "Ru", "Ir", "Os", "Rh", "Au"}
         assert ox_state in {"I", "II", "III", "IV"}
         assert geometry in {
-            "square_planar", "octahedral", "tetrahedral",
-            "linear", "trigonal_planar",
+            "square_planar",
+            "octahedral",
+            "tetrahedral",
+            "linear",
+            "trigonal_planar",
         }
 
 
@@ -717,10 +736,8 @@ def test_get_metal_ligand_matrix_ligands_returns_7() -> None:
     """``get_metal_ligand_matrix_ligands()`` returns 7 ligand tuples
     covering the 7-entering-ligand set."""
     ligands = get_metal_ligand_matrix_ligands()
-    assert len(ligands) == 7, (
-        f"expected 7 ligand entries, got {len(ligands)}"
-    )
+    assert len(ligands) == 7, f"expected 7 ligand entries, got {len(ligands)}"
     lig_names = {l[0] for l in ligands}
-    assert lig_names == set(EXPECTED_LIGANDS), (
-        f"expected ligand names {set(EXPECTED_LIGANDS)}, got {lig_names}"
-    )
+    assert lig_names == set(
+        EXPECTED_LIGANDS
+    ), f"expected ligand names {set(EXPECTED_LIGANDS)}, got {lig_names}"

@@ -36,11 +36,11 @@ FIXTURE_SMILES = [
     "c1ccccc1",
     "CC(=O)O",
     "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",  # caffeine
-    "CC(C)CC(N)C(=O)O",              # leucine
-    "C1CCCCC1",                       # cyclohexane
+    "CC(C)CC(N)C(=O)O",  # leucine
+    "C1CCCCC1",  # cyclohexane
     "CCN",
-    "CC(=O)N",                        # acetamide
-    "OC(=O)C(=O)O",                   # oxalic acid
+    "CC(=O)N",  # acetamide
+    "OC(=O)C(=O)O",  # oxalic acid
     "C(C(C(C(C(C(C=O)O)O)O)O)O)O)O",  # glucose
 ]
 
@@ -136,15 +136,11 @@ def test_integration_with_dmpnn_trainer():
     cache.precompute_smiles(smiles)
     # First call: tier-2 miss → build (slower path).
     h_atom_B1, edge_index_B1, edge_attr_B1, batch_idx_B1, atom_mask_B1 = (
-        encoder._featurize_batch(
-            smiles, DEVICE, cache=cache, batch_idx_key=0
-        )
+        encoder._featurize_batch(smiles, DEVICE, cache=cache, batch_idx_key=0)
     )
     # Second call: tier-2 hit.
     h_atom_B2, edge_index_B2, edge_attr_B2, batch_idx_B2, atom_mask_B2 = (
-        encoder._featurize_batch(
-            smiles, DEVICE, cache=cache, batch_idx_key=0
-        )
+        encoder._featurize_batch(smiles, DEVICE, cache=cache, batch_idx_key=0)
     )
 
     # Bit-exact agreement.
@@ -190,7 +186,8 @@ def test_speedup_benchmark():
     for ep in range(n_epochs):
         for b in range(n_batches):
             batch_smiles = smiles_full[
-                b * (len(smiles_full) // n_batches):(b + 1) * (len(smiles_full) // n_batches)
+                b * (len(smiles_full) // n_batches) : (b + 1)
+                * (len(smiles_full) // n_batches)
             ]
             encoder._featurize_batch(batch_smiles, DEVICE)
     no_cache_wall = time.time() - t0
@@ -205,11 +202,10 @@ def test_speedup_benchmark():
         cache.begin_epoch(ep)
         for b in range(n_batches):
             batch_smiles = smiles_full[
-                b * (len(smiles_full) // n_batches):(b + 1) * (len(smiles_full) // n_batches)
+                b * (len(smiles_full) // n_batches) : (b + 1)
+                * (len(smiles_full) // n_batches)
             ]
-            encoder._featurize_batch(
-                batch_smiles, DEVICE, cache=cache, batch_idx_key=b
-            )
+            encoder._featurize_batch(batch_smiles, DEVICE, cache=cache, batch_idx_key=b)
     cached_wall = time.time() - t0
 
     speedup_ratio = no_cache_wall / max(cached_wall, 1e-9)

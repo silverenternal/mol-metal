@@ -90,6 +90,7 @@ Pytest
 
     pytest molmetal/tests/test_diag_hilbert_astsr_param_sweep.py -v
 """
+
 from __future__ import annotations
 
 import argparse
@@ -204,11 +205,13 @@ def hilbert_feature_map(
         for j in range(i + 1, F):
             interactions.append(X_12d[:, i] * X_12d[:, j])
     inter_arr = (
-        np.stack(interactions, axis=1) if interactions
+        np.stack(interactions, axis=1)
+        if interactions
         else np.zeros((n, 0), dtype=np.float64)
     )
     aug = np.concatenate(
-        [X_12d, bias, inter_arr], axis=1,
+        [X_12d, bias, inter_arr],
+        axis=1,
     )
     if aug.shape[1] <= hilbert_dim:
         pad = np.zeros((n, hilbert_dim - aug.shape[1]), dtype=np.float64)
@@ -238,6 +241,7 @@ def hilbert_feature_map(
 @dataclass
 class HilbertRunResult:
     """Container for one (l2_lambda, init_mode) Hilbert run."""
+
     l2_lambda: float
     init_mode: str
     seed: int
@@ -277,9 +281,10 @@ def run_hilbert_sweep(
     hil = LambdaASTSRHilbert(
         population_dim=effective_dim,
         n_iters=int(n_iters),
-        lr_primal=lr, lr_dual=lr,
+        lr_primal=lr,
+        lr_dual=lr,
         l2_lambda=float(l2_lambda),
-        adaptive_l2=False,            # static L2 — sweep axis is the value itself
+        adaptive_l2=False,  # static L2 — sweep axis is the value itself
         max_l2_lambda=max(float(l2_lambda), 1.0),
         seed=int(seed),
         grad_clip_max_norm=1.0,
@@ -316,6 +321,7 @@ def run_hilbert_sweep(
 @dataclass
 class AstrRunResult:
     """Container for one ``loss_scale`` ASTSR run."""
+
     loss_scale: float
     seed: int
     train_r2: float
@@ -368,7 +374,9 @@ def run_astr_sweep(
     # Hilbert dim.
     composite = HilbertASTSRComposite(
         lambda_astsr=LambdaASTSR(
-            depth=depth, population=population, generations=generations,
+            depth=depth,
+            population=population,
+            generations=generations,
             seed=int(seed),
             feature_names=tuple(f"f{i}" for i in range(X_tr_n.shape[1])),
         ),
@@ -376,7 +384,7 @@ def run_astr_sweep(
         use_hilbert=True,
         population_dim=hilbert_dim,
         loss_scale=float(loss_scale),
-        fp64_fallback=False,         # isolate fp32 sweep; report fallback
+        fp64_fallback=False,  # isolate fp32 sweep; report fallback
     )
     # Force the Hilbert dim to match the (small) feature dim.
     if X_tr_n.shape[1] < hilbert_dim:
@@ -411,7 +419,8 @@ def run_astr_sweep(
 # Per-axis sweep runners.
 # ---------------------------------------------------------------------------
 def l2_axis_sweep(
-    X: np.ndarray, y: np.ndarray,
+    X: np.ndarray,
+    y: np.ndarray,
     *,
     seeds: Sequence[int],
     n_iters: int,
@@ -426,7 +435,10 @@ def l2_axis_sweep(
             X_tr, X_te, y_tr, y_te = train_test_split(X, y, seed=s)
             per_seed.append(
                 run_hilbert_sweep(
-                    X_tr, y_tr, X_te, y_te,
+                    X_tr,
+                    y_tr,
+                    X_te,
+                    y_te,
                     l2_lambda=lam,
                     init_mode="random_normal",  # fix init axis
                     n_iters=n_iters,
@@ -437,24 +449,27 @@ def l2_axis_sweep(
             )
         test_r2s = [r.test_r2 for r in per_seed]
         train_r2s = [r.train_r2 for r in per_seed]
-        rows.append({
-            "l2_lambda": float(lam),
-            "test_r2_mean": float(np.mean(test_r2s)),
-            "test_r2_std": float(np.std(test_r2s)),
-            "train_r2_mean": float(np.mean(train_r2s)),
-            "train_r2_std": float(np.std(train_r2s)),
-            "stable": all(r >= STABLE_R2_THRESHOLD for r in test_r2s),
-            "per_seed": [
-                {
-                    "seed": r.seed,
-                    "train_r2": r.train_r2,
-                    "test_r2": r.test_r2,
-                    "wall_s": r.wall_s,
-                    "n_steps_with_clipped_grad": r.n_steps_with_clipped_grad,
-                    "n_l2_doublings": r.n_l2_doublings,
-                } for r in per_seed
-            ],
-        })
+        rows.append(
+            {
+                "l2_lambda": float(lam),
+                "test_r2_mean": float(np.mean(test_r2s)),
+                "test_r2_std": float(np.std(test_r2s)),
+                "train_r2_mean": float(np.mean(train_r2s)),
+                "train_r2_std": float(np.std(train_r2s)),
+                "stable": all(r >= STABLE_R2_THRESHOLD for r in test_r2s),
+                "per_seed": [
+                    {
+                        "seed": r.seed,
+                        "train_r2": r.train_r2,
+                        "test_r2": r.test_r2,
+                        "wall_s": r.wall_s,
+                        "n_steps_with_clipped_grad": r.n_steps_with_clipped_grad,
+                        "n_l2_doublings": r.n_l2_doublings,
+                    }
+                    for r in per_seed
+                ],
+            }
+        )
     return {
         "axis": "l2_lambda",
         "axis_values": [float(x) for x in L2_SWEEP],
@@ -466,7 +481,8 @@ def l2_axis_sweep(
 
 
 def astr_axis_sweep(
-    X: np.ndarray, y: np.ndarray,
+    X: np.ndarray,
+    y: np.ndarray,
     *,
     seeds: Sequence[int],
     population: int,
@@ -482,7 +498,10 @@ def astr_axis_sweep(
             X_tr, X_te, y_tr, y_te = train_test_split(X, y, seed=s)
             per_seed.append(
                 run_astr_sweep(
-                    X_tr, y_tr, X_te, y_te,
+                    X_tr,
+                    y_tr,
+                    X_te,
+                    y_te,
                     loss_scale=ls,
                     population=population,
                     generations=generations,
@@ -493,23 +512,26 @@ def astr_axis_sweep(
             )
         test_r2s = [r.test_r2 for r in per_seed]
         train_r2s = [r.train_r2 for r in per_seed]
-        rows.append({
-            "loss_scale": float(ls),
-            "test_r2_mean": float(np.mean(test_r2s)),
-            "test_r2_std": float(np.std(test_r2s)),
-            "train_r2_mean": float(np.mean(train_r2s)),
-            "train_r2_std": float(np.std(train_r2s)),
-            "stable": all(r >= STABLE_R2_THRESHOLD for r in test_r2s),
-            "per_seed": [
-                {
-                    "seed": r.seed,
-                    "train_r2": r.train_r2,
-                    "test_r2": r.test_r2,
-                    "wall_s": r.wall_s,
-                    "fp64_fallback_used": r.fp64_fallback_used,
-                } for r in per_seed
-            ],
-        })
+        rows.append(
+            {
+                "loss_scale": float(ls),
+                "test_r2_mean": float(np.mean(test_r2s)),
+                "test_r2_std": float(np.std(test_r2s)),
+                "train_r2_mean": float(np.mean(train_r2s)),
+                "train_r2_std": float(np.std(train_r2s)),
+                "stable": all(r >= STABLE_R2_THRESHOLD for r in test_r2s),
+                "per_seed": [
+                    {
+                        "seed": r.seed,
+                        "train_r2": r.train_r2,
+                        "test_r2": r.test_r2,
+                        "wall_s": r.wall_s,
+                        "fp64_fallback_used": r.fp64_fallback_used,
+                    }
+                    for r in per_seed
+                ],
+            }
+        )
     return {
         "axis": "astr_loss_scale",
         "axis_values": [float(x) for x in ASTR_SCALE_SWEEP],
@@ -520,7 +542,8 @@ def astr_axis_sweep(
 
 
 def init_axis_sweep(
-    X: np.ndarray, y: np.ndarray,
+    X: np.ndarray,
+    y: np.ndarray,
     *,
     seeds: Sequence[int],
     n_iters: int,
@@ -536,7 +559,10 @@ def init_axis_sweep(
             X_tr, X_te, y_tr, y_te = train_test_split(X, y, seed=s)
             per_seed.append(
                 run_hilbert_sweep(
-                    X_tr, y_tr, X_te, y_te,
+                    X_tr,
+                    y_tr,
+                    X_te,
+                    y_te,
                     l2_lambda=l2_lambda_fixed,  # fix L2 at Wf-122 default
                     init_mode=mode,
                     n_iters=n_iters,
@@ -547,24 +573,27 @@ def init_axis_sweep(
             )
         test_r2s = [r.test_r2 for r in per_seed]
         train_r2s = [r.train_r2 for r in per_seed]
-        rows.append({
-            "init_mode": str(mode),
-            "test_r2_mean": float(np.mean(test_r2s)),
-            "test_r2_std": float(np.std(test_r2s)),
-            "train_r2_mean": float(np.mean(train_r2s)),
-            "train_r2_std": float(np.std(train_r2s)),
-            "stable": all(r >= STABLE_R2_THRESHOLD for r in test_r2s),
-            "per_seed": [
-                {
-                    "seed": r.seed,
-                    "train_r2": r.train_r2,
-                    "test_r2": r.test_r2,
-                    "wall_s": r.wall_s,
-                    "n_steps_with_clipped_grad": r.n_steps_with_clipped_grad,
-                    "n_l2_doublings": r.n_l2_doublings,
-                } for r in per_seed
-            ],
-        })
+        rows.append(
+            {
+                "init_mode": str(mode),
+                "test_r2_mean": float(np.mean(test_r2s)),
+                "test_r2_std": float(np.std(test_r2s)),
+                "train_r2_mean": float(np.mean(train_r2s)),
+                "train_r2_std": float(np.std(train_r2s)),
+                "stable": all(r >= STABLE_R2_THRESHOLD for r in test_r2s),
+                "per_seed": [
+                    {
+                        "seed": r.seed,
+                        "train_r2": r.train_r2,
+                        "test_r2": r.test_r2,
+                        "wall_s": r.wall_s,
+                        "n_steps_with_clipped_grad": r.n_steps_with_clipped_grad,
+                        "n_l2_doublings": r.n_l2_doublings,
+                    }
+                    for r in per_seed
+                ],
+            }
+        )
     return {
         "axis": "init_mode",
         "axis_values": list(INIT_MODE_SWEEP),
@@ -601,6 +630,7 @@ def run_platinai_cell(
             PLATINAI_CELL_COLS,
             load_platinai_cell,
         )
+
         repo_root = Path(__file__).resolve().parent.parent.parent
         X, y, smiles = load_platinai_cell(repo_root, cell_line)
     except Exception as exc:  # pragma: no cover — PlatinAI optional
@@ -627,12 +657,14 @@ def run_platinai_cell(
             seed=int(s),
             lr=lr,
         )
-        per_seed.append({
-            "seed": int(s),
-            "train_r2": res.train_r2,
-            "test_r2": res.test_r2,
-            "wall_s": res.wall_s,
-        })
+        per_seed.append(
+            {
+                "seed": int(s),
+                "train_r2": res.train_r2,
+                "test_r2": res.test_r2,
+                "wall_s": res.wall_s,
+            }
+        )
     test_r2s = [r["test_r2"] for r in per_seed]
     return {
         "cell_line": cell_line,
@@ -651,8 +683,15 @@ def run_platinai_cell(
 def _stable_axis_values(sweep: Dict[str, Any]) -> List[Any]:
     """Return the axis values where every seed crossed ``STABLE_R2_THRESHOLD``."""
     return [
-        r[sweep["axis"].replace("astr_", "").replace("init_mode", "init_mode").replace("l2_lambda", "l2_lambda").replace("loss_scale", "loss_scale")]
-        for r in sweep["results"] if r.get("stable", False)
+        r[
+            sweep["axis"]
+            .replace("astr_", "")
+            .replace("init_mode", "init_mode")
+            .replace("l2_lambda", "l2_lambda")
+            .replace("loss_scale", "loss_scale")
+        ]
+        for r in sweep["results"]
+        if r.get("stable", False)
     ]
 
 
@@ -670,26 +709,32 @@ def write_synthesis(
         out: List[Dict[str, Any]] = []
         for r in sweep["results"]:
             if sweep["axis"] == "l2_lambda":
-                out.append({
-                    "value": r["l2_lambda"],
-                    "test_r2_mean": r["test_r2_mean"],
-                    "test_r2_std": r["test_r2_std"],
-                    "stable": r["stable"],
-                })
+                out.append(
+                    {
+                        "value": r["l2_lambda"],
+                        "test_r2_mean": r["test_r2_mean"],
+                        "test_r2_std": r["test_r2_std"],
+                        "stable": r["stable"],
+                    }
+                )
             elif sweep["axis"] == "astr_loss_scale":
-                out.append({
-                    "value": r["loss_scale"],
-                    "test_r2_mean": r["test_r2_mean"],
-                    "test_r2_std": r["test_r2_std"],
-                    "stable": r["stable"],
-                })
+                out.append(
+                    {
+                        "value": r["loss_scale"],
+                        "test_r2_mean": r["test_r2_mean"],
+                        "test_r2_std": r["test_r2_std"],
+                        "stable": r["stable"],
+                    }
+                )
             elif sweep["axis"] == "init_mode":
-                out.append({
-                    "value": r["init_mode"],
-                    "test_r2_mean": r["test_r2_mean"],
-                    "test_r2_std": r["test_r2_std"],
-                    "stable": r["stable"],
-                })
+                out.append(
+                    {
+                        "value": r["init_mode"],
+                        "test_r2_mean": r["test_r2_mean"],
+                        "test_r2_std": r["test_r2_std"],
+                        "stable": r["stable"],
+                    }
+                )
         return out
 
     l2_stable = [r for r in l2_sweep["results"] if r["stable"]]
@@ -700,15 +745,19 @@ def write_synthesis(
     lines.append("# Wf-127 Phase 1 — Hilbert+ASTSR parameter-sweep diagnostic")
     lines.append("")
     lines.append("**Date**: 2026-09-27")
-    lines.append("**Constraint**: CPU-only diagnostic; honest framing per "
-                 "`party-twenty-spirit §3.5`.")
-    lines.append("**Why this exists**: Wf-83 Phase 1 reported "
-                 "`combined R² = -6.71` on PlatinAI 4-cell (real pIC50) "
-                 "below the Wf-77 Phase 3 anchor `+0.30` on synthetic. "
-                 "Wf-127 P1 sweeps the (L2 weight, ASTSR loss_scale, "
-                 "init mode) axes to identify the **stable region** on "
-                 "synthetic — i.e. the parameter setting where the "
-                 "Hilbert primal-dual + ASTSR combination does not collapse.")
+    lines.append(
+        "**Constraint**: CPU-only diagnostic; honest framing per "
+        "`party-twenty-spirit §3.5`."
+    )
+    lines.append(
+        "**Why this exists**: Wf-83 Phase 1 reported "
+        "`combined R² = -6.71` on PlatinAI 4-cell (real pIC50) "
+        "below the Wf-77 Phase 3 anchor `+0.30` on synthetic. "
+        "Wf-127 P1 sweeps the (L2 weight, ASTSR loss_scale, "
+        "init mode) axes to identify the **stable region** on "
+        "synthetic — i.e. the parameter setting where the "
+        "Hilbert primal-dual + ASTSR combination does not collapse."
+    )
     lines.append("")
     lines.append("## 1 Sweep axes")
     lines.append("")
@@ -718,8 +767,10 @@ def write_synthesis(
     lines.append(f"| `astr_loss_scale` | {list(ASTR_SCALE_SWEEP)} |")
     lines.append(f"| `init_mode` | {list(INIT_MODE_SWEEP)} |")
     lines.append("")
-    lines.append(f"Stable-region gate: held-out `R² ≥ {STABLE_R2_THRESHOLD}` "
-                 "on synthetic (snr=1.0, n=800, dim=12) for ALL seeds.")
+    lines.append(
+        f"Stable-region gate: held-out `R² ≥ {STABLE_R2_THRESHOLD}` "
+        "on synthetic (snr=1.0, n=800, dim=12) for ALL seeds."
+    )
     lines.append("")
 
     # L2 sweep table.
@@ -765,10 +816,10 @@ def write_synthesis(
     lines.append("## 5 Stable region (synthetic R² ≥ 0)")
     lines.append("")
     lines.append(f"- L2 stable: {[r['l2_lambda'] for r in l2_stable]}")
-    lines.append(f"- ASTSR loss_scale stable: "
-                 f"{[r['loss_scale'] for r in astr_stable]}")
-    lines.append(f"- Init mode stable: "
-                 f"{[r['init_mode'] for r in init_stable]}")
+    lines.append(
+        f"- ASTSR loss_scale stable: " f"{[r['loss_scale'] for r in astr_stable]}"
+    )
+    lines.append(f"- Init mode stable: " f"{[r['init_mode'] for r in init_stable]}")
     lines.append("")
 
     # PlatinAI cross-check (if requested).
@@ -811,17 +862,25 @@ def write_synthesis(
 
     lines.append("## 7 Honest framing (party-twenty-spirit §3.5)")
     lines.append("")
-    lines.append("- **MEASURED today**: all sweep cells are MEASURED "
-                 "on synthetic data (n=800, dim=12, snr=1.0).")
-    lines.append("- **Stable region**: defined as `R² ≥ 0` on synthetic; "
-                 "this does NOT guarantee PlatinAI 4-cell lift.")
-    lines.append("- **No fabricated lift**: the diagnostic reports "
-                 "PlatinAI R² only when `--cell-line` is passed; "
-                 "default run is synthetic-only.")
-    lines.append("- **PROJECTED follow-ons**: Wf-122 Phase 2 (adaptive "
-                 "L2 with finer doubling) + Wf-127 Phase 2 (joint "
-                 "sweep + per-fold validation) + Wf-56 R20-P2 "
-                 "(GPU retrain on Blackwell sm_120).")
+    lines.append(
+        "- **MEASURED today**: all sweep cells are MEASURED "
+        "on synthetic data (n=800, dim=12, snr=1.0)."
+    )
+    lines.append(
+        "- **Stable region**: defined as `R² ≥ 0` on synthetic; "
+        "this does NOT guarantee PlatinAI 4-cell lift."
+    )
+    lines.append(
+        "- **No fabricated lift**: the diagnostic reports "
+        "PlatinAI R² only when `--cell-line` is passed; "
+        "default run is synthetic-only."
+    )
+    lines.append(
+        "- **PROJECTED follow-ons**: Wf-122 Phase 2 (adaptive "
+        "L2 with finer doubling) + Wf-127 Phase 2 (joint "
+        "sweep + per-fold validation) + Wf-56 R20-P2 "
+        "(GPU retrain on Blackwell sm_120)."
+    )
     lines.append("")
 
     out_path = out_dir / "synthesis.md"
@@ -839,7 +898,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--dim", type=int, default=12, help="synthetic dim")
     parser.add_argument("--snr", type=float, default=1.0, help="synthetic SNR")
     parser.add_argument(
-        "--seeds", type=int, nargs="+", default=[0, 1, 2],
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=[0, 1, 2],
         help="seeds for averaging",
     )
     parser.add_argument("--n-iters", type=int, default=50, help="Hilbert PD iters")
@@ -849,11 +911,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--astr-generations", type=int, default=6)
     parser.add_argument("--astr-depth", type=int, default=3)
     parser.add_argument(
-        "--cell-line", type=str, default=None,
+        "--cell-line",
+        type=str,
+        default=None,
         help="optional PlatinAI 4-cell column for cross-check (e.g. mcf7)",
     )
     parser.add_argument(
-        "--output", type=Path,
+        "--output",
+        type=Path,
         default=Path("molmetal/reports/wf127_p1_diagnostics"),
         help="output directory",
     )
@@ -871,7 +936,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # ----- L2 sweep -----
     t0 = time.perf_counter()
     l2_sweep = l2_axis_sweep(
-        X_syn, y_syn,
+        X_syn,
+        y_syn,
         seeds=args.seeds,
         n_iters=args.n_iters,
         hilbert_dim=args.hilbert_dim,
@@ -882,7 +948,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # ----- ASTSR loss_scale sweep -----
     t0 = time.perf_counter()
     astr_sweep = astr_axis_sweep(
-        X_syn, y_syn,
+        X_syn,
+        y_syn,
         seeds=args.seeds,
         population=args.astr_population,
         generations=args.astr_generations,
@@ -894,7 +961,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # ----- Init mode sweep -----
     t0 = time.perf_counter()
     init_sweep = init_axis_sweep(
-        X_syn, y_syn,
+        X_syn,
+        y_syn,
         seeds=args.seeds,
         n_iters=args.n_iters,
         hilbert_dim=args.hilbert_dim,
@@ -929,17 +997,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     # ----- JSON dumps -----
     (out_dir / "l2_sweep.json").write_text(
-        json.dumps(l2_sweep, indent=2), encoding="utf-8",
+        json.dumps(l2_sweep, indent=2),
+        encoding="utf-8",
     )
     (out_dir / "astr_sweep.json").write_text(
-        json.dumps(astr_sweep, indent=2), encoding="utf-8",
+        json.dumps(astr_sweep, indent=2),
+        encoding="utf-8",
     )
     (out_dir / "init_sweep.json").write_text(
-        json.dumps(init_sweep, indent=2), encoding="utf-8",
+        json.dumps(init_sweep, indent=2),
+        encoding="utf-8",
     )
     if platinai_cross is not None:
         (out_dir / "platinai_cross.json").write_text(
-            json.dumps(platinai_cross, indent=2), encoding="utf-8",
+            json.dumps(platinai_cross, indent=2),
+            encoding="utf-8",
         )
 
     # ----- Synthesis -----

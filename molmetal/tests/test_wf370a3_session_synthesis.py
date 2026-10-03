@@ -42,7 +42,9 @@ def test_01_synthesis_doc_exists_and_has_10_sections() -> None:
 
     # Sanity: contains Tier-2 verdict + 65 honest-negative catalog + 7 USER_OK wrappers
     assert "Tier-2" in text, "Missing Tier-2 reference"
-    assert "65" in text or "65 honest-negative" in text, "Missing 65-entry catalog reference"
+    assert (
+        "65" in text or "65 honest-negative" in text
+    ), "Missing 65-entry catalog reference"
     assert "USER_OK" in text, "Missing USER_OK reference"
     assert "92" in text and "94" in text, "Missing pre-flight 92/0/2/94 reference"
     assert "Wf-370-A3" in text, "Missing Wf-370-A3 self-reference"
@@ -94,7 +96,9 @@ def test_02_synthesis_doc_aligned_with_agendots_standing_rules() -> None:
     assert "kill_then_adapt" in text, "Missing kill_then_adapt reference"
 
     # No wet-lab planning per Tier-2
-    assert "wet-lab" in text.lower() or "wetlab" in text.lower(), "Missing wet-lab deprecation reference"
+    assert (
+        "wet-lab" in text.lower() or "wetlab" in text.lower()
+    ), "Missing wet-lab deprecation reference"
 
 
 def test_03_closeout_doc_exists_and_references_synthesis() -> None:

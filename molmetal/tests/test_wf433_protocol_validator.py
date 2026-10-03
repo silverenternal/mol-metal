@@ -177,9 +177,7 @@ class TestWf433ProtocolValidatorKrasnov(unittest.TestCase):
         """End-to-end: read results + compare against Krasnov Ru 0.81 + emit verdict."""
         import tempfile
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as fh:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as fh:
             json.dump(self.results, fh)
             tmp_path = Path(fh.name)
         try:
@@ -240,9 +238,7 @@ class TestWf433ProtocolValidatorRusanov(unittest.TestCase):
         """End-to-end: A2780cis MEASURED 0.6476 PASSES Rusanov baseline 0.62."""
         import tempfile
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as fh:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as fh:
             json.dump(self.results, fh)
             tmp_path = Path(fh.name)
         try:
@@ -259,7 +255,9 @@ class TestWf433ProtocolValidatorRusanov(unittest.TestCase):
             self.assertAlmostEqual(payload["threshold_comparable"] or 0.0, 0.59)
             self.assertEqual(payload["verdict"], "PASS_BASELINE_GE_THRESHOLD")
             self.assertTrue(payload["pass"])
-            self.assertEqual(payload["alignment_level"], "DATASET+METRIC+SPLIT APPROX ALIGN")
+            self.assertEqual(
+                payload["alignment_level"], "DATASET+METRIC+SPLIT APPROX ALIGN"
+            )
         finally:
             tmp_path.unlink(missing_ok=True)
 
@@ -287,9 +285,7 @@ class TestWf433ProtocolValidatorDrugood(unittest.TestCase):
         """End-to-end: m17 3-split mean 0.7789 vs iMoLD mean 0.6962 → PASS."""
         import tempfile
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as fh:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as fh:
             json.dump(self.results, fh)
             tmp_path = Path(fh.name)
         try:
@@ -305,7 +301,9 @@ class TestWf433ProtocolValidatorDrugood(unittest.TestCase):
             self.assertAlmostEqual(payload["baseline_value"] or 0.0, 0.6962, places=4)
             self.assertAlmostEqual(payload["protocol_adjustment"], 0.0)
             # threshold_comparable == baseline_value (no adjustment)
-            self.assertAlmostEqual(payload["threshold_comparable"] or 0.0, 0.6962, places=4)
+            self.assertAlmostEqual(
+                payload["threshold_comparable"] or 0.0, 0.6962, places=4
+            )
             self.assertEqual(payload["verdict"], "PASS_BASELINE_GE_THRESHOLD")
             self.assertTrue(payload["pass"])
             self.assertEqual(
@@ -323,9 +321,7 @@ class TestWf433ProtocolValidatorEdgeCases(unittest.TestCase):
         """Passing an unsupported --baseline value raises ValueError."""
         import tempfile
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as fh:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as fh:
             json.dump(_make_m1_results(), fh)
             tmp_path = Path(fh.name)
         try:
@@ -354,9 +350,7 @@ class TestWf433ProtocolValidatorEdgeCases(unittest.TestCase):
 
         # Bare JSON with no ``metric`` field — should still infer from stem.
         bare = {"value": 0.5}
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as fh:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as fh:
             json.dump(bare, fh)
             tmp_path = Path(fh.name)
         try:
@@ -366,9 +360,7 @@ class TestWf433ProtocolValidatorEdgeCases(unittest.TestCase):
             tmp_path.unlink(missing_ok=True)
 
         # With the metric field set explicitly.
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as fh:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as fh:
             json.dump({"metric": "metal_lomo_auc_wasserstein", "value": 0.5}, fh)
             tmp_path2 = Path(fh.name)
         try:
@@ -423,9 +415,7 @@ class TestWf433ProtocolAlignmentValidator(unittest.TestCase):
         """m1 results JSON passes all 4 alignment axes for Krasnov."""
         import tempfile
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as fh:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as fh:
             json.dump(self.results_m1, fh)
             tmp_path = Path(fh.name)
         try:
@@ -440,10 +430,14 @@ class TestWf433ProtocolAlignmentValidator(unittest.TestCase):
             self.assertTrue(payload["alignment_match"])
             self.assertEqual(payload["n_fail"], 0)
             # dataset axis should PASS (path contains metalcytotox_5metal_multitask_v4.csv).
-            ds_axis = next(a for a in payload["axes"] if a["axis_name"] == "dataset_path")
+            ds_axis = next(
+                a for a in payload["axes"] if a["axis_name"] == "dataset_path"
+            )
             self.assertEqual(ds_axis["verdict"], "PASS")
             # seed axis should PASS (n_seeds=7 from per_run_auc).
-            seed_axis = next(a for a in payload["axes"] if a["axis_name"] == "seed_coverage")
+            seed_axis = next(
+                a for a in payload["axes"] if a["axis_name"] == "seed_coverage"
+            )
             self.assertEqual(seed_axis["verdict"], "PASS")
         finally:
             tmp_path.unlink(missing_ok=True)
@@ -452,9 +446,7 @@ class TestWf433ProtocolAlignmentValidator(unittest.TestCase):
         """m2 results JSON passes alignment for Rusanov."""
         import tempfile
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as fh:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as fh:
             json.dump(self.results_m2, fh)
             tmp_path = Path(fh.name)
         try:
@@ -473,9 +465,7 @@ class TestWf433ProtocolAlignmentValidator(unittest.TestCase):
         alignment_match stays True (lenient semantics: WARN is non-blocking)."""
         import tempfile
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as fh:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as fh:
             json.dump(self.results_m17, fh)
             tmp_path = Path(fh.name)
         try:
@@ -489,7 +479,9 @@ class TestWf433ProtocolAlignmentValidator(unittest.TestCase):
             # alignment_match stays True.
             self.assertTrue(payload["alignment_match"])
             self.assertGreaterEqual(payload["n_warn"], 1)
-            ds_axis = next(a for a in payload["axes"] if a["axis_name"] == "dataset_path")
+            ds_axis = next(
+                a for a in payload["axes"] if a["axis_name"] == "dataset_path"
+            )
             self.assertEqual(ds_axis["verdict"], "WARN")
             self.assertIn("FALLBACK", ds_axis["verdict_detail"])
         finally:
@@ -501,9 +493,7 @@ class TestWf433ProtocolAlignmentValidator(unittest.TestCase):
         bad["data_source"] = "/tmp/wrong_path/some_random_file.csv"
         import tempfile
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as fh:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as fh:
             json.dump(bad, fh)
             tmp_path = Path(fh.name)
         try:
@@ -512,7 +502,9 @@ class TestWf433ProtocolAlignmentValidator(unittest.TestCase):
                 baseline_key="krasnov_2026",
                 out_path=None,
             )
-            ds_axis = next(a for a in payload["axes"] if a["axis_name"] == "dataset_path")
+            ds_axis = next(
+                a for a in payload["axes"] if a["axis_name"] == "dataset_path"
+            )
             self.assertEqual(ds_axis["verdict"], "FAIL")
             self.assertFalse(payload["alignment_match"])
             self.assertEqual(payload["n_fail"], 1)
@@ -526,9 +518,7 @@ class TestWf433ProtocolAlignmentValidator(unittest.TestCase):
         del bad["split"]
         import tempfile
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as fh:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as fh:
             json.dump(bad, fh)
             tmp_path = Path(fh.name)
         try:
@@ -537,7 +527,9 @@ class TestWf433ProtocolAlignmentValidator(unittest.TestCase):
                 baseline_key="krasnov_2026",
                 out_path=None,
             )
-            split_axis = next(a for a in payload["axes"] if a["axis_name"] == "split_protocol")
+            split_axis = next(
+                a for a in payload["axes"] if a["axis_name"] == "split_protocol"
+            )
             self.assertEqual(split_axis["verdict"], "WARN")
             # WARN does NOT count as fail (lenient semantics).
             self.assertTrue(payload["alignment_match"])
@@ -561,9 +553,7 @@ class TestWf433ProtocolBatch(unittest.TestCase):
 
         paths: List[Path] = []
         for data in (_make_m1_results(), _make_m2_results(), _make_m17_results()):
-            fh = tempfile.NamedTemporaryFile(
-                mode="w", suffix=".json", delete=False
-            )
+            fh = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
             json.dump(data, fh)
             fh.close()
             paths.append(Path(fh.name))
@@ -582,7 +572,8 @@ class TestWf433ProtocolBatch(unittest.TestCase):
             self.assertEqual(payload["n_alignment_fail"], 6)
             # Find same-pair entries.
             same_pair = [
-                e for e in payload["batch_results"]
+                e
+                for e in payload["batch_results"]
                 if (e["metric_id"] == "m1" and e["baseline"] == "krasnov_2026")
                 or (e["metric_id"] == "m2" and e["baseline"] == "rusanov_2025")
                 or (e["metric_id"] == "m17" and e["baseline"] == "drugood_2022")
@@ -602,9 +593,7 @@ class TestWf433ProtocolAtomicWrite(unittest.TestCase):
         """When --out is provided, the validator writes via atomic_write_file."""
         import tempfile
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as fh:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as fh:
             json.dump(_make_m1_results(), fh)
             tmp_path = Path(fh.name)
         out_path = Path(tempfile.gettempdir()) / "wf433_test_atomic_write.json"

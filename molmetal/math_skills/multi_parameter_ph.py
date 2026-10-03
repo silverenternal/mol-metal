@@ -112,6 +112,7 @@ _FOURIER_THRESHOLD: int = 1024
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _check_inputs(
     pocket_coords: Tensor,
     pocket_atom_types: Tensor,
@@ -157,6 +158,7 @@ def _check_inputs(
 # ---------------------------------------------------------------------------
 # 1. Two-parameter filtration
 # ---------------------------------------------------------------------------
+
 
 def two_param_filtration(
     pocket_coords: Tensor,
@@ -218,7 +220,11 @@ def two_param_filtration(
       larger pockets (see TODO above).
     """
     _check_inputs(
-        pocket_coords, pocket_atom_types, max_radius, max_coord, n_bins,
+        pocket_coords,
+        pocket_atom_types,
+        max_radius,
+        max_coord,
+        n_bins,
     )
     b, n, _ = pocket_coords.shape
 
@@ -230,8 +236,7 @@ def two_param_filtration(
     radial = torch.cdist(pocket_coords, pocket_coords, p=2.0)  # (B, N, N)
     # Atomic-number difference matrix.
     atom_diff = (
-        pocket_atom_types.float().unsqueeze(2)
-        - pocket_atom_types.float().unsqueeze(1)
+        pocket_atom_types.float().unsqueeze(2) - pocket_atom_types.float().unsqueeze(1)
     ).abs()  # (B, N, N)
     # Inflate to broadcast over bins.
     radial = radial.unsqueeze(-1).expand(b, n, n, n_bins).contiguous()
@@ -249,11 +254,13 @@ def two_param_filtration(
     # ``[0, max_radius] x [0, max_coord]`` rather than dropping
     # into a half-open last bin.
     r_idx = (
-        (radial / float(max_radius)).clamp(0.0, 1.0 - 1e-7) * n_bins
-    ).floor().long()  # (B, N, N, n_bins)
+        ((radial / float(max_radius)).clamp(0.0, 1.0 - 1e-7) * n_bins).floor().long()
+    )  # (B, N, N, n_bins)
     d_idx = (
-        (atom_diff / max(float(max_coord), _EPS_LOG)).clamp(0.0, 1.0 - 1e-7) * n_bins
-    ).floor().long()  # (B, N, N, n_bins)
+        ((atom_diff / max(float(max_coord), _EPS_LOG)).clamp(0.0, 1.0 - 1e-7) * n_bins)
+        .floor()
+        .long()
+    )  # (B, N, N, n_bins)
 
     # Self-edge filter: skip diagonal (i == j) which would dominate
     # the (r=0, d=0) cell.  The pair-AND mask is "either filter
@@ -264,8 +271,7 @@ def two_param_filtration(
     # Build the feature map by summing the mask over (i, j) for each
     # (b, r_idx, d_idx).  We do this as a scatter_add into the
     # (B, n_bins, n_bins) output tensor.
-    feat = torch.zeros(b, n_bins, n_bins, dtype=radial.dtype,
-                       device=radial.device)
+    feat = torch.zeros(b, n_bins, n_bins, dtype=radial.dtype, device=radial.device)
     flat_r = r_idx.view(b, n * n * n_bins)
     flat_d = d_idx.view(b, n * n * n_bins)
     flat_mask = diag_mask.expand(b, n, n, n_bins).reshape(b, n * n * n_bins)
@@ -274,7 +280,9 @@ def two_param_filtration(
     flat_idx = flat_r * n_bins + flat_d  # (B, N*N*n_bins)
     feat_flat = feat.view(b, n_bins * n_bins)
     feat_flat.scatter_add_(
-        1, flat_idx, flat_mask,
+        1,
+        flat_idx,
+        flat_mask,
     )
     feat = feat_flat.view(b, n_bins, n_bins)
 
@@ -298,6 +306,7 @@ def two_param_filtration(
 # 2. Two-parameter persistence diagram / feature-map wrapper
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TwoParameterDiagram:
     """Discrete 2-parameter persistence diagram.
@@ -319,8 +328,8 @@ class TwoParameterDiagram:
     """
 
     feature_map: Tensor  # (B, n_bins, n_bins)
-    r_grid: Tensor       # (n_bins,)
-    d_grid: Tensor       # (n_bins,)
+    r_grid: Tensor  # (n_bins,)
+    d_grid: Tensor  # (n_bins,)
     max_radius: float
     max_coord: float
 
@@ -394,7 +403,9 @@ class TwoParameterDiagram:
             coords_per_cell = rd[cells[:, 0], cells[:, 1]]  # (k, 2)
             counts = f[cells[:, 0], cells[:, 1]].long()  # (k,)
             repeats = torch.repeat_interleave(
-                coords_per_cell, counts, dim=0,
+                coords_per_cell,
+                counts,
+                dim=0,
             )  # (P_b, 2)
             p = repeats.shape[0]
             out[bi, :p] = repeats
@@ -413,6 +424,7 @@ class TwoParameterDiagram:
 # ---------------------------------------------------------------------------
 # 3. Sliced Wasserstein kernel on 2-PH diagrams
 # ---------------------------------------------------------------------------
+
 
 def _sliced_wasserstein_proj(
     points_a: Tensor,
@@ -474,7 +486,9 @@ def _sliced_wasserstein_proj(
             torch.zeros(mask.shape[0], dtype=torch.long, device=mask.device),
         )
         first_val = torch.gather(
-            proj, 1, first_real.view(-1, 1, 1).expand(-1, 1, k),
+            proj,
+            1,
+            first_real.view(-1, 1, 1).expand(-1, 1, k),
         )  # (B, 1, K)
         pad_block = first_val.expand(-1, p - proj.shape[1], -1)
         proj = torch.cat([proj, pad_block], dim=1)
@@ -482,9 +496,12 @@ def _sliced_wasserstein_proj(
         # 1-D mean — but since both sides replicate the same
         # value the squared-diff is zero.
         mask_pad = torch.ones(
-            proj.shape[0], p, dtype=mask.dtype, device=mask.device,
+            proj.shape[0],
+            p,
+            dtype=mask.dtype,
+            device=mask.device,
         )
-        mask_pad[:, :mask.shape[1]] = mask
+        mask_pad[:, : mask.shape[1]] = mask
         return proj, mask_pad.float()
 
     proj_a, mask_a_f = _pad(proj_a, mask_a, p_max)
@@ -610,8 +627,7 @@ class TwoParameterFiltration:
         """
         if clouds.dim() != 3:
             raise ValueError(
-                f"clouds must be (B, N, 3) or (B, N, 4); got "
-                f"{tuple(clouds.shape)}"
+                f"clouds must be (B, N, 3) or (B, N, 4); got " f"{tuple(clouds.shape)}"
             )
         b, n, d = clouds.shape
         if d not in (3, 4):
@@ -622,19 +638,26 @@ class TwoParameterFiltration:
         if n < 2:
             # Single-atom pockets have no edges; return zero map.
             return torch.zeros(
-                b, self.n_bins, self.n_bins,
-                dtype=clouds.dtype, device=clouds.device,
+                b,
+                self.n_bins,
+                self.n_bins,
+                dtype=clouds.dtype,
+                device=clouds.device,
             )
         if d == 3:
             coords = clouds
             atom_types = torch.full(
-                (b, n), 6, dtype=torch.long, device=clouds.device,
+                (b, n),
+                6,
+                dtype=torch.long,
+                device=clouds.device,
             )
         else:
             coords = clouds[..., :3]
             atom_types = clouds[..., 3].long()
         return two_param_filtration(
-            coords, atom_types,
+            coords,
+            atom_types,
             max_radius=self.max_radius,
             max_coord=self.max_coord,
             n_bins=self.n_bins,
@@ -652,7 +675,8 @@ class TwoParameterFiltration:
         :func:`two_param_filtration` entry point.
         """
         return two_param_filtration(
-            coords, atom_types,
+            coords,
+            atom_types,
             max_radius=self.max_radius,
             max_coord=self.max_coord,
             n_bins=self.n_bins,
@@ -716,15 +740,11 @@ class MultiPHKernel:
         seed: Optional[int] = 0,
     ) -> None:
         if kernel not in self._KERNELS:
-            raise ValueError(
-                f"kernel must be one of {self._KERNELS}, got {kernel!r}"
-            )
+            raise ValueError(f"kernel must be one of {self._KERNELS}, got {kernel!r}")
         if sigma <= 0.0:
             raise ValueError(f"sigma must be > 0, got {sigma}")
         if n_projections < 1:
-            raise ValueError(
-                f"n_projections must be >= 1, got {n_projections}"
-            )
+            raise ValueError(f"n_projections must be >= 1, got {n_projections}")
         self.kernel = str(kernel)
         self.sigma = float(sigma)
         self.n_projections = int(n_projections)
@@ -771,7 +791,9 @@ class MultiPHKernel:
         return 1.0 - cos
 
     def _sliced_wasserstein_distance(
-        self, x: Tensor, y: Tensor,
+        self,
+        x: Tensor,
+        y: Tensor,
     ) -> Tensor:
         """Pairwise sliced-Wasserstein distance between feature maps.
 
@@ -807,7 +829,8 @@ class MultiPHKernel:
         )
         # Use the dedicated distance function (no RBF wrapping).
         return _sliced_wasserstein_distance(
-            diag_a, diag_b,
+            diag_a,
+            diag_b,
             n_projections=self.n_projections,
             seed=self.seed,
         )
@@ -837,15 +860,13 @@ class MultiPHKernel:
         """
         if x.dim() not in (2, 3):
             raise ValueError(
-                f"x must be (B, n_bins, n_bins) or (B, F); got "
-                f"{tuple(x.shape)}"
+                f"x must be (B, n_bins, n_bins) or (B, F); got " f"{tuple(x.shape)}"
             )
         if y is None:
             y = x
         elif y.dim() not in (2, 3):
             raise ValueError(
-                f"y must be (B, n_bins, n_bins) or (B, F); got "
-                f"{tuple(y.shape)}"
+                f"y must be (B, n_bins, n_bins) or (B, F); got " f"{tuple(y.shape)}"
             )
 
         if self.kernel == "rbf":
@@ -913,17 +934,17 @@ def _sliced_wasserstein_distance(
     if seed is not None:
         gen.manual_seed(int(seed))
     directions = torch.randn(n_projections, 2, generator=gen)
-    directions = directions / (
-        directions.norm(dim=-1, keepdim=True) + _EPS_LOG
-    )
+    directions = directions / (directions.norm(dim=-1, keepdim=True) + _EPS_LOG)
 
     b_a, b_b = pts_a.shape[0], pts_b.shape[0]
     out = torch.zeros(b_a, b_b, dtype=pts_a.dtype, device=pts_a.device)
     for i in range(b_a):
         for j in range(b_b):
             out[i, j] = _sliced_wasserstein_proj(
-                pts_a[i : i + 1], pts_b[j : j + 1],
-                mask_a[i : i + 1], mask_b[j : j + 1],
+                pts_a[i : i + 1],
+                pts_b[j : j + 1],
+                mask_a[i : i + 1],
+                mask_b[j : j + 1],
                 directions,
             )[0]
     return out
@@ -1050,8 +1071,7 @@ class MultiPHSummarizer:
             # matches the "birth distribution" summary used by
             # Kim-Jung 2026 §4.1.
             r_centers = (
-                torch.arange(n_bins, dtype=torch.float32, device=device)
-                + 0.5
+                torch.arange(n_bins, dtype=torch.float32, device=device) + 0.5
             ) / float(n_bins)
             weight = r_centers.view(-1, 1).expand(n_bins, n_bins).contiguous()
             out[bi, 2] = ff * weight
@@ -1163,9 +1183,7 @@ def sliced_wasserstein_kernel(
     if seed is not None:
         gen.manual_seed(int(seed))
     directions = torch.randn(n_projections, 2, generator=gen)
-    directions = directions / (
-        directions.norm(dim=-1, keepdim=True) + _EPS_LOG
-    )
+    directions = directions / (directions.norm(dim=-1, keepdim=True) + _EPS_LOG)
 
     b_a, b_b = pts_a.shape[0], pts_b.shape[0]
     out = torch.zeros(b_a, b_b, dtype=pts_a.dtype, device=pts_a.device)
@@ -1174,8 +1192,10 @@ def sliced_wasserstein_kernel(
     for i in range(b_a):
         for j in range(b_b):
             out[i, j] = _sliced_wasserstein_proj(
-                pts_a[i : i + 1], pts_b[j : j + 1],
-                mask_a[i : i + 1], mask_b[j : j + 1],
+                pts_a[i : i + 1],
+                pts_b[j : j + 1],
+                mask_a[i : i + 1],
+                mask_b[j : j + 1],
                 directions,
             )[0]
     # Convert SW distance to a kernel value via RBF.

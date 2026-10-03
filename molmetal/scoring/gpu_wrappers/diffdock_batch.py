@@ -26,6 +26,7 @@ Public API
 ----------
 * :func:`diffdock_pose_batch` — list[float] (confidence per ligand).
 """
+
 from __future__ import annotations
 
 import logging
@@ -197,7 +198,9 @@ def diffdock_pose_batch(
     try:
         adapter = dd_mod.DiffDockAdapter(
             binary=backend if os.path.isfile(backend) else None,
-            repo_path=backend if os.path.isdir(backend) else dd_mod.DEFAULT_DIFFDOCK_REPO,
+            repo_path=backend
+            if os.path.isdir(backend)
+            else dd_mod.DEFAULT_DIFFDOCK_REPO,
             timeout_sec=float(timeout_sec),
         )
     except Exception as exc:

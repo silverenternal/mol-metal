@@ -12,6 +12,7 @@ Validates that ``molmetal/scripts/check_r2_baseline.py`` correctly:
 4. **Sanity runners** — spread baseline hits ``normal_positive_R2``,
    collapse baseline hits ``mean_collapse`` (2 tests).
 """
+
 from __future__ import annotations
 
 import json
@@ -42,6 +43,7 @@ SCRIPT_PATH = _REPO_ROOT / "molmetal/scripts/check_r2_baseline.py"
 def _import_script():
     import importlib.util
     import sys as _sys
+
     mod_name = "check_r2_baseline"
     spec = importlib.util.spec_from_file_location(
         mod_name,
@@ -63,12 +65,12 @@ def _run_cli_once() -> None:
         return
     out = subprocess.run(
         [sys.executable, str(SCRIPT_PATH)],
-        capture_output=True, text=True, timeout=120,
+        capture_output=True,
+        text=True,
+        timeout=120,
     )
     if out.returncode != 0:
-        raise RuntimeError(
-            f"check_r2_baseline CLI failed: {out.stderr or out.stdout}"
-        )
+        raise RuntimeError(f"check_r2_baseline CLI failed: {out.stderr or out.stdout}")
 
 
 # ---------------------------------------------------------------------------
@@ -91,9 +93,14 @@ def baseline() -> dict:
 
 def test_baseline_top_level_keys(baseline: dict) -> None:
     expected = {
-        "workflow", "title", "description", "n_cases",
-        "collapse_count", "weak_count",
-        "normal_negative_count", "normal_positive_count",
+        "workflow",
+        "title",
+        "description",
+        "n_cases",
+        "collapse_count",
+        "weak_count",
+        "normal_negative_count",
+        "normal_positive_count",
         "cases",
     }
     missing = expected - set(baseline.keys())
@@ -102,11 +109,19 @@ def test_baseline_top_level_keys(baseline: dict) -> None:
 
 def test_baseline_cases_have_expected_keys(baseline: dict) -> None:
     expected = {
-        "model_name", "actual_R2", "zero_R2",
-        "pred_std", "y_test_std", "std_ratio",
-        "y_train_mean", "y_test_mean",
-        "collapse_threshold_ratio", "weak_threshold_ratio",
-        "verdict", "n_train", "n_test",
+        "model_name",
+        "actual_R2",
+        "zero_R2",
+        "pred_std",
+        "y_test_std",
+        "std_ratio",
+        "y_train_mean",
+        "y_test_mean",
+        "collapse_threshold_ratio",
+        "weak_threshold_ratio",
+        "verdict",
+        "n_train",
+        "n_test",
     }
     for case in baseline["cases"]:
         missing = expected - set(case.keys())
@@ -120,9 +135,9 @@ def test_baseline_counts_match_cases(baseline: dict) -> None:
         + baseline["normal_negative_count"]
         + baseline["normal_positive_count"]
     )
-    assert counts == baseline["n_cases"], (
-        f"verdict counts ({counts}) != n_cases ({baseline['n_cases']})"
-    )
+    assert (
+        counts == baseline["n_cases"]
+    ), f"verdict counts ({counts}) != n_cases ({baseline['n_cases']})"
     assert len(baseline["cases"]) == baseline["n_cases"]
 
 
@@ -164,7 +179,9 @@ def test_check_model_collapse_label_when_constant() -> None:
     y_pred = np.full_like(y_test, float(np.mean(y_train)))
     payload = mod.check_model(
         model_name="test_collapse",
-        y_train=y_train, y_test=y_test, y_pred=y_pred,
+        y_train=y_train,
+        y_test=y_test,
+        y_pred=y_pred,
     )
     assert payload["verdict"] == "mean_collapse"
     assert payload["std_ratio"] == 0.0
@@ -203,8 +220,10 @@ def test_sanity_collapse_baseline_is_mean_collapse() -> None:
 def test_cli_exits_zero() -> None:
     out = subprocess.run(
         [sys.executable, str(SCRIPT_PATH), "--seed", "1"],
-        capture_output=True, text=True, timeout=120,
+        capture_output=True,
+        text=True,
+        timeout=120,
     )
-    assert out.returncode == 0, (
-        f"CLI exited with {out.returncode}: {out.stderr or out.stdout}"
-    )
+    assert (
+        out.returncode == 0
+    ), f"CLI exited with {out.returncode}: {out.stderr or out.stdout}"

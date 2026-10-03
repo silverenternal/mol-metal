@@ -58,11 +58,11 @@ from molmetal.scripts.r18_pipeline_orchestrator import (  # noqa: E402
 # Tiny canned SMILES — drawn from the canonical R17/R18 test fixtures.
 # ---------------------------------------------------------------------------
 CANNED_SMILES: List[str] = [
-    "CCN=[N+]=[N-]",                    # azide — step 1 + multi-PH handle
-    "C#CC",                              # alkyne — small, parseable
-    "CCO",                               # ethanol — minimal C-only
-    "c1ccccc1",                          # benzene — aromatic edge-case
-    "NCCN",                              # diamine — symmetric
+    "CCN=[N+]=[N-]",  # azide — step 1 + multi-PH handle
+    "C#CC",  # alkyne — small, parseable
+    "CCO",  # ethanol — minimal C-only
+    "c1ccccc1",  # benzene — aromatic edge-case
+    "NCCN",  # diamine — symmetric
 ]
 
 
@@ -90,10 +90,16 @@ def test_pipeline_default_construction() -> None:
 def test_pipeline_custom_construction() -> None:
     """Custom kwargs propagate correctly."""
     pipe = R18Pipeline(
-        use_se3=False, use_hilbert=False, use_multiph=True,
-        use_variance_mcts=False, closure_max_depth=2,
-        se3_n_steps=5, multiph_n_bins=4,
-        mcts_n_actions=8, hilbert_pop_dim=16, seed=42,
+        use_se3=False,
+        use_hilbert=False,
+        use_multiph=True,
+        use_variance_mcts=False,
+        closure_max_depth=2,
+        se3_n_steps=5,
+        multiph_n_bins=4,
+        mcts_n_actions=8,
+        hilbert_pop_dim=16,
+        seed=42,
     )
     assert pipe.use_se3 is False
     assert pipe.use_hilbert is False
@@ -422,8 +428,11 @@ def test_benchmark_per_step_wall_time_has_all_steps() -> None:
     report = bench.benchmark_full_pipeline(CANNED_SMILES[:2])
     keys = set(report["per_step_wall_time_s"].keys())
     expected = {
-        "step1_closure", "step2_se3", "step3_multiph",
-        "step4_mcts", "step5_hilbert",
+        "step1_closure",
+        "step2_se3",
+        "step3_multiph",
+        "step4_mcts",
+        "step5_hilbert",
     }
     assert keys == expected
 
@@ -489,7 +498,9 @@ def test_all_disabled_pipeline_returns_success() -> None:
     ``use_multiph``, ``use_variance_mcts``) emit ``status="skipped"``.
     """
     pipe = R18Pipeline(
-        use_closure=False, use_se3=False, use_multiph=False,
+        use_closure=False,
+        use_se3=False,
+        use_multiph=False,
         use_variance_mcts=False,
     )
     res = pipe.run_full_pipeline(CANNED_SMILES[0])

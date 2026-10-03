@@ -55,8 +55,7 @@ def _render_text_table(report: Dict[str, Any]) -> str:
     lines.append(f"  n_samples       : {report.get('n_samples', 0)}")
     lines.append(f"  success_rate    : {report.get('success_rate', 0.0):.2%}")
     lines.append(
-        f"  total_wall_time : "
-        f"{report.get('total_wall_time_s', 0.0):7.2f}s"
+        f"  total_wall_time : " f"{report.get('total_wall_time_s', 0.0):7.2f}s"
     )
     lines.append("-" * 64)
     lines.append(f"  {'step':<22} {'wall':>10} {'mem_mb':>10} {'status':>10}")
@@ -87,6 +86,7 @@ def _write_json(report: Dict[str, Any], dest: Path) -> None:
     def _coerce(o: Any) -> Any:
         try:
             import numpy as _np
+
             if isinstance(o, (_np.floating, _np.integer)):
                 return o.item()
             if isinstance(o, _np.ndarray):
@@ -108,12 +108,20 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="R18 pipeline e2e smoke verification.",
     )
-    parser.add_argument("--smoke", action="store_true",
-                        help="Run the 5-sample PlatinAI smoke (default).")
-    parser.add_argument("--n-samples", type=int, default=5,
-                        help="Sample count for the smoke (default 5).")
-    parser.add_argument("--no-write", action="store_true",
-                        help="Skip the JSON report dump.")
+    parser.add_argument(
+        "--smoke",
+        action="store_true",
+        help="Run the 5-sample PlatinAI smoke (default).",
+    )
+    parser.add_argument(
+        "--n-samples",
+        type=int,
+        default=5,
+        help="Sample count for the smoke (default 5).",
+    )
+    parser.add_argument(
+        "--no-write", action="store_true", help="Skip the JSON report dump."
+    )
     return parser
 
 

@@ -115,7 +115,12 @@ def test_cli_features_flag_accepted():
     proc = subprocess.run(
         [
             sys.executable,
-            str(PROJECT_ROOT / "molmetal" / "scripts" / "extract_rdkit_2d_descriptors.py"),
+            str(
+                PROJECT_ROOT
+                / "molmetal"
+                / "scripts"
+                / "extract_rdkit_2d_descriptors.py"
+            ),
             "--help",
         ],
         capture_output=True,

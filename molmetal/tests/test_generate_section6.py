@@ -39,7 +39,9 @@ DEFAULT_REPORT = REPO_ROOT / "paper" / "reports" / "wf_section6_gen"
 def _run_generator(*args: str) -> subprocess.CompletedProcess:
     return subprocess.run(
         [sys.executable, str(SCRIPT), *args],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
 
 
@@ -61,11 +63,16 @@ def test_dry_run_exits_zero_and_has_anchors():
 def test_writes_06_limitations_auto_tex(tmp_path):
     paper_out = tmp_path / "paper"
     proc = _run_generator(
-        "--out-dir", str(paper_out),
-        "--metrics-dir", str(METRICS_DIR),
-        "--index-md", str(INDEX_MD),
-        "--mapping-md", str(MAPPING_MD),
-        "--report-dir", str(paper_out / "reports" / "wf_section6_gen"),
+        "--out-dir",
+        str(paper_out),
+        "--metrics-dir",
+        str(METRICS_DIR),
+        "--index-md",
+        str(INDEX_MD),
+        "--mapping-md",
+        str(MAPPING_MD),
+        "--report-dir",
+        str(paper_out / "reports" / "wf_section6_gen"),
     )
     assert proc.returncode == 0, proc.stderr
     tex = paper_out / "sections" / "06_limitations_auto.tex"
@@ -83,11 +90,16 @@ def test_writes_06_limitations_auto_tex(tmp_path):
 def test_writes_summary_md(tmp_path):
     paper_out = tmp_path / "paper"
     proc = _run_generator(
-        "--out-dir", str(paper_out),
-        "--metrics-dir", str(METRICS_DIR),
-        "--index-md", str(INDEX_MD),
-        "--mapping-md", str(MAPPING_MD),
-        "--report-dir", str(paper_out / "reports" / "wf_section6_gen"),
+        "--out-dir",
+        str(paper_out),
+        "--metrics-dir",
+        str(METRICS_DIR),
+        "--index-md",
+        str(INDEX_MD),
+        "--mapping-md",
+        str(MAPPING_MD),
+        "--report-dir",
+        str(paper_out / "reports" / "wf_section6_gen"),
     )
     assert proc.returncode == 0, proc.stderr
     summary = paper_out / "reports" / "wf_section6_gen" / "summary.md"
@@ -103,11 +115,16 @@ def test_writes_summary_md(tmp_path):
 def test_real_snapshot_emits_metric_paragraph(tmp_path):
     paper_out = tmp_path / "paper"
     proc = _run_generator(
-        "--out-dir", str(paper_out),
-        "--metrics-dir", str(METRICS_DIR),
-        "--index-md", str(INDEX_MD),
-        "--mapping-md", str(MAPPING_MD),
-        "--report-dir", str(paper_out / "reports" / "wf_section6_gen"),
+        "--out-dir",
+        str(paper_out),
+        "--metrics-dir",
+        str(METRICS_DIR),
+        "--index-md",
+        str(INDEX_MD),
+        "--mapping-md",
+        str(MAPPING_MD),
+        "--report-dir",
+        str(paper_out / "reports" / "wf_section6_gen"),
     )
     assert proc.returncode == 0, proc.stderr
     tex = paper_out / "sections" / "06_limitations_auto.tex"
@@ -134,11 +151,16 @@ def test_missing_metrics_dir_renders_gracefully(tmp_path):
     empty.mkdir()
     paper_out = tmp_path / "paper"
     proc = _run_generator(
-        "--out-dir", str(paper_out),
-        "--metrics-dir", str(empty),
-        "--index-md", str(INDEX_MD),
-        "--mapping-md", str(MAPPING_MD),
-        "--report-dir", str(paper_out / "reports" / "wf_section6_gen"),
+        "--out-dir",
+        str(paper_out),
+        "--metrics-dir",
+        str(empty),
+        "--index-md",
+        str(INDEX_MD),
+        "--mapping-md",
+        str(MAPPING_MD),
+        "--report-dir",
+        str(paper_out / "reports" / "wf_section6_gen"),
     )
     assert proc.returncode == 0, proc.stderr
     tex = paper_out / "sections" / "06_limitations_auto.tex"

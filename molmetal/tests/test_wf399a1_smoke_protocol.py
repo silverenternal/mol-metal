@@ -86,14 +86,28 @@ def test_smoke_protocol_runs(tmp_path: Path) -> None:
     # NOTE: subprocess.run with cmd=[sys.executable, "-c", "<code>", ...] works as expected.
     # We rebuild the command manually since `run_smoke_50step` prepends `sys.executable trainer_path`.
     import sys as _sys
-    cmd = [_sys.executable, "-c", mock_trainer, "--out-dir", str(out_dir), "--device", "cpu"]
+
+    cmd = [
+        _sys.executable,
+        "-c",
+        mock_trainer,
+        "--out-dir",
+        str(out_dir),
+        "--device",
+        "cpu",
+    ]
     completed = subprocess.run(
-        cmd, cwd=str(Path(__file__).resolve().parents[2]),
-        capture_output=True, text=True, timeout=120,
+        cmd,
+        cwd=str(Path(__file__).resolve().parents[2]),
+        capture_output=True,
+        text=True,
+        timeout=120,
     )
 
     # Build a SmokeOutput directly so we test the verifier logic
-    parsed_metrics = json.loads(metrics_json.read_text()) if metrics_json.exists() else {}
+    parsed_metrics = (
+        json.loads(metrics_json.read_text()) if metrics_json.exists() else {}
+    )
     direct_smoke = SmokeOutput(
         trainer_path="mock-trainer",
         flags=flags_list,
@@ -137,8 +151,14 @@ def test_decode_ratio_invariant() -> None:
     """
     # (a) metrics key source
     smoke_a = SmokeOutput(
-        trainer_path="t", flags=[], returncode=0, stdout="", stderr="",
-        metrics_path=None, metrics={"decode_ratio": 0.85}, wall_seconds=0.1,
+        trainer_path="t",
+        flags=[],
+        returncode=0,
+        stdout="",
+        stderr="",
+        metrics_path=None,
+        metrics={"decode_ratio": 0.85},
+        wall_seconds=0.1,
     )
     v_a = verify_decode_ratio(smoke_a)
     assert v_a["invariant_holds"] is True
@@ -148,9 +168,14 @@ def test_decode_ratio_invariant() -> None:
 
     # (b) nested final key source
     smoke_b = SmokeOutput(
-        trainer_path="t", flags=[], returncode=0, stdout="", stderr="",
+        trainer_path="t",
+        flags=[],
+        returncode=0,
+        stdout="",
+        stderr="",
         metrics_path=None,
-        metrics={"final": {"decode_ratio": 0.92, "epoch": 1}}, wall_seconds=0.1,
+        metrics={"final": {"decode_ratio": 0.92, "epoch": 1}},
+        wall_seconds=0.1,
     )
     v_b = verify_decode_ratio(smoke_b)
     assert v_b["invariant_holds"] is True
@@ -159,9 +184,14 @@ def test_decode_ratio_invariant() -> None:
 
     # (c) stdout regex source (no metrics dict)
     smoke_c = SmokeOutput(
-        trainer_path="t", flags=[], returncode=0,
+        trainer_path="t",
+        flags=[],
+        returncode=0,
         stdout="[wf299] Best decode_ratio = 0.788 (96/122) vs target 0.80",
-        stderr="", metrics_path=None, metrics={}, wall_seconds=0.1,
+        stderr="",
+        metrics_path=None,
+        metrics={},
+        wall_seconds=0.1,
     )
     v_c = verify_decode_ratio(smoke_c)
     assert v_c["invariant_holds"] is True
@@ -170,9 +200,14 @@ def test_decode_ratio_invariant() -> None:
 
     # (d) missing case — invariant_holds=False + error set
     smoke_d = SmokeOutput(
-        trainer_path="t", flags=[], returncode=0,
-        stdout="training step 0/50 loss=1.0", stderr="",
-        metrics_path=None, metrics={"epoch": 1}, wall_seconds=0.1,
+        trainer_path="t",
+        flags=[],
+        returncode=0,
+        stdout="training step 0/50 loss=1.0",
+        stderr="",
+        metrics_path=None,
+        metrics={"epoch": 1},
+        wall_seconds=0.1,
     )
     v_d = verify_decode_ratio(smoke_d)
     assert v_d["invariant_holds"] is False
@@ -182,8 +217,14 @@ def test_decode_ratio_invariant() -> None:
 
     # (e) verify_loss_decrease missing case (curve has 0 or 1 points)
     smoke_e = SmokeOutput(
-        trainer_path="t", flags=[], returncode=0, stdout="", stderr="",
-        metrics_path=None, metrics={"loss_curve": [0.5]}, wall_seconds=0.1,
+        trainer_path="t",
+        flags=[],
+        returncode=0,
+        stdout="",
+        stderr="",
+        metrics_path=None,
+        metrics={"loss_curve": [0.5]},
+        wall_seconds=0.1,
     )
     ld_e = verify_loss_decrease(smoke_e)
     assert ld_e["decreasing"] is False

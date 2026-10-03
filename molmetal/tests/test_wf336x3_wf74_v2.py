@@ -88,18 +88,18 @@ def test_launch_wf74_v2_drugood_dann_script_parses() -> None:
         g) Mode selector accepts R1 + R3
         h) bash -n parses the script cleanly (no heredoc / quoting bugs)
     """
-    assert LAUNCH_SCRIPT.exists(), (
-        f"launch script missing: {LAUNCH_SCRIPT} (Wf-336-X3 brief)"
-    )
+    assert (
+        LAUNCH_SCRIPT.exists()
+    ), f"launch script missing: {LAUNCH_SCRIPT} (Wf-336-X3 brief)"
     text = LAUNCH_SCRIPT.read_text()
 
     # ----- (a) USER_OK gate marker -------------------------------------
     assert "USER_OK" in text, "USER_OK gate marker missing"
     assert "user_ok_gate" in text, "user_ok_gate function missing"
     # R3 mode must require USER_OK=YES (per Wf-300C + Wf-294B)
-    assert re.search(r'R3.*USER_OK.*YES|USER_OK.*YES.*R3', text, re.DOTALL), (
-        "Wf-335-R3 mode must require USER_OK=YES (kill_then_adapt)"
-    )
+    assert re.search(
+        r"R3.*USER_OK.*YES|USER_OK.*YES.*R3", text, re.DOTALL
+    ), "Wf-335-R3 mode must require USER_OK=YES (kill_then_adapt)"
 
     # ----- (b) pre_flight_check.py invoked -----------------------------
     assert "pre_flight_check" in text, "pre_flight_check.py invocation missing"
@@ -116,22 +116,22 @@ def test_launch_wf74_v2_drugood_dann_script_parses() -> None:
     assert "vram_gate" in text, "vram_gate function missing"
 
     # ----- (e) Wf-328 wire-ups wired -----------------------------------
-    assert "--cpu-num-workers 8" in text or "WF328_NUM_WORKERS=8" in text, (
-        "Wf-328-W2 (--cpu-num-workers 8) missing"
-    )
-    assert "sort" in text.lower() and "w2-gradient" in text.lower(), (
-        "Wf-328-W5 (--w2-gradient-mode sort) missing"
-    )
+    assert (
+        "--cpu-num-workers 8" in text or "WF328_NUM_WORKERS=8" in text
+    ), "Wf-328-W2 (--cpu-num-workers 8) missing"
+    assert (
+        "sort" in text.lower() and "w2-gradient" in text.lower()
+    ), "Wf-328-W5 (--w2-gradient-mode sort) missing"
     assert "--use-dann" in text, "Wf-305D --use-dann flag missing"
     assert "--use-kendall" in text, "Wf-305D --use-kendall flag missing"
-    assert "ReverseLayerF" in text or "reverse-layer" in text.lower(), (
-        "DANN ReverseLayerF marker missing"
-    )
+    assert (
+        "ReverseLayerF" in text or "reverse-layer" in text.lower()
+    ), "DANN ReverseLayerF marker missing"
 
     # ----- (f) Default mode = Wf-335-R1 --------------------------------
-    assert 'MODE="R1"' in text or "WF-335-R1" in text or "Wf-335-R1" in text, (
-        "Wf-335-R1 default mode marker missing"
-    )
+    assert (
+        'MODE="R1"' in text or "WF-335-R1" in text or "Wf-335-R1" in text
+    ), "Wf-335-R1 default mode marker missing"
 
     # ----- (g) Mode selector accepts R1 + R3 ---------------------------
     assert '"R1"' in text and '"R3"' in text, "Mode selector must accept R1 + R3"
@@ -139,11 +139,11 @@ def test_launch_wf74_v2_drugood_dann_script_parses() -> None:
     # ----- (h) bash parses cleanly -------------------------------------
     rc = subprocess.run(
         ["bash", "-n", str(LAUNCH_SCRIPT)],
-        capture_output=True, text=True, timeout=10,
+        capture_output=True,
+        text=True,
+        timeout=10,
     )
-    assert rc.returncode == 0, (
-        f"bash -n failed: stderr={rc.stderr!r}"
-    )
+    assert rc.returncode == 0, f"bash -n failed: stderr={rc.stderr!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -175,6 +175,7 @@ def test_wf74_v2_drugood_dann_preflight_integration() -> None:
     # This catches unclosed try/finally + syntax regressions without
     # requiring torch / rdkit / cuda.
     import ast
+
     try:
         ast.parse(text)
     except SyntaxError as exc:
@@ -188,13 +189,11 @@ def test_wf74_v2_drugood_dann_preflight_integration() -> None:
     pf_text = PRE_FLIGHT.read_text()
     assert "--pipeline" in pf_text, "pre_flight --pipeline flag missing"
     # The v3 gate emits status=PASS / status=FAIL on stdout
-    assert "PASS" in pf_text and "FAIL" in pf_text, (
-        "pre_flight PASS/FAIL stdout markers missing"
-    )
+    assert (
+        "PASS" in pf_text and "FAIL" in pf_text
+    ), "pre_flight PASS/FAIL stdout markers missing"
 
     # ----- DrugOOD CSV exists (the launch script will need it) ----------
     assert DRUGOOD_CSV.exists(), f"DrugOOD CSV missing: {DRUGOOD_CSV}"
     n_lines = sum(1 for _ in DRUGOOD_CSV.open())
-    assert n_lines > 1000, (
-        f"DrugOOD CSV has only {n_lines} lines; expected > 1000"
-    )
+    assert n_lines > 1000, f"DrugOOD CSV has only {n_lines} lines; expected > 1000"

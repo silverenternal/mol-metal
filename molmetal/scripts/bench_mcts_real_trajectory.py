@@ -89,6 +89,7 @@ Usage
     uv run --no-sync python molmetal/scripts/bench_mcts_real_trajectory.py \\
         --smoke --n-trajectories 5
 """
+
 from __future__ import annotations
 
 import argparse
@@ -158,7 +159,15 @@ DEFAULT_C_VAR: float = 0.5
 
 #: 9 task-spec metals (matches Wf-36 §2 metal list).
 TASK_SPEC_METALS: Tuple[str, ...] = (
-    "Pt", "Ru", "Ir", "Rh", "Re", "Os", "Au", "Pd", "Ag",
+    "Pt",
+    "Ru",
+    "Ir",
+    "Rh",
+    "Re",
+    "Os",
+    "Au",
+    "Pd",
+    "Ag",
 )
 
 
@@ -413,11 +422,7 @@ def _mock_scorer_for_cpu_bench(smiles: str) -> Any:
             smi = str(state.canonical_smiles() or "")
         except Exception:
             smi = str(getattr(state, "source_smiles", "") or "")
-        smi_hash = (
-            float(abs(hash(smi)) % 1000) / 1000.0
-            if smi
-            else base_hash
-        )
+        smi_hash = float(abs(hash(smi)) % 1000) / 1000.0 if smi else base_hash
         return float(
             min(
                 1.0,
@@ -451,9 +456,7 @@ def _real_scorer_via_score_any(smiles: str) -> Any:
     from molmetal.scoring.score_any import AdapterUnavailable, score_any
 
     try:
-        baseline = float(
-            score_any("sa_score", molecules=[str(smiles)])["values"][0]
-        )
+        baseline = float(score_any("sa_score", molecules=[str(smiles)])["values"][0])
     except AdapterUnavailable as e:
         # Re-raise with context — never silently substitute.
         raise AdapterUnavailable(
@@ -737,7 +740,8 @@ def _run_variance_trajectory(
         mode=str(mode),
     )
     report = wrapper.search_with_proof_search(
-        state, max_depth=int(depth),
+        state,
+        max_depth=int(depth),
     )
     wall = float(report.get("wall_time_s", time.time() - t0))
     if "error" in report:
@@ -761,12 +765,10 @@ def _run_variance_trajectory(
     try:
         if wrapper.base_search.history:
             best = float(
-                wrapper.base_search.history[-1].get("best_score", 0.0)
-                or 0.0,
+                wrapper.base_search.history[-1].get("best_score", 0.0) or 0.0,
             )
             n_states = int(
-                wrapper.base_search.history[-1].get("n_states_explored", 0)
-                or 0,
+                wrapper.base_search.history[-1].get("n_states_explored", 0) or 0,
             )
     except Exception:
         pass
@@ -779,8 +781,7 @@ def _run_variance_trajectory(
         "best_score": float(best),
         "leaf_value_var": float(leaf_var),
         "per_candidate_var": [
-            float(v)
-            for v in (var_report.get("per_candidate_var", []) or [])
+            float(v) for v in (var_report.get("per_candidate_var", []) or [])
         ],
         "mean_var": float(var_report.get("mean_var", 0.0) or 0.0),
         "n_candidates": int(last_stats.get("n_candidates", 0) or 0),
@@ -827,9 +828,7 @@ def _aggregate(records: List[Dict[str, Any]]) -> PerStrategyAggregate:
         bests = [float(r.get("best_score", 0.0)) for r in ok]
         leaf_vars = [float(r.get("leaf_value_var", 0.0)) for r in ok]
         mean_vars = [
-            float(r.get("mean_var", 0.0))
-            for r in ok
-            if r.get("mean_var") is not None
+            float(r.get("mean_var", 0.0)) for r in ok if r.get("mean_var") is not None
         ]
 
         def _mean(xs: List[float]) -> float:
@@ -899,29 +898,23 @@ def _vulnerability_scan(
             else "none"
         ),
         "verdict": (
-            "OK" if max(proof_agg.n_error, var_agg.n_error) <= 5 else
-            "WARN" if max(proof_agg.n_error, var_agg.n_error) <= 25 else
-            "CRITICAL"
+            "OK"
+            if max(proof_agg.n_error, var_agg.n_error) <= 5
+            else "WARN"
+            if max(proof_agg.n_error, var_agg.n_error) <= 25
+            else "CRITICAL"
         ),
     }
 
     # Vuln B
     denom = float(proof_agg.mean_leaf_value_var)
-    ratio = (
-        float(var_agg.mean_leaf_value_var) / denom
-        if denom > 0.0
-        else 0.0
-    )
+    ratio = float(var_agg.mean_leaf_value_var) / denom if denom > 0.0 else 0.0
     scan["vuln_b"] = {
         "mean_leaf_value_var_proof_search": float(proof_agg.mean_leaf_value_var),
         "mean_leaf_value_var_variance_mcts": float(var_agg.mean_leaf_value_var),
         "variance_ratio": float(ratio),
         "target_ratio_max": 0.80,
-        "verdict": (
-            "OK" if ratio <= 0.80 else
-            "WARN" if ratio <= 1.00 else
-            "CRITICAL"
-        ),
+        "verdict": ("OK" if ratio <= 0.80 else "WARN" if ratio <= 1.00 else "CRITICAL"),
     }
 
     # Vuln C
@@ -938,9 +931,11 @@ def _vulnerability_scan(
         "saturation_rate_proof_search": _sat_rate(proof_records),
         "saturation_rate_variance_mcts": _sat_rate(variance_records),
         "verdict": (
-            "OK" if max(_sat_rate(proof_records), _sat_rate(variance_records)) <= 0.30 else
-            "WARN" if max(_sat_rate(proof_records), _sat_rate(variance_records)) <= 0.60 else
-            "CRITICAL"
+            "OK"
+            if max(_sat_rate(proof_records), _sat_rate(variance_records)) <= 0.30
+            else "WARN"
+            if max(_sat_rate(proof_records), _sat_rate(variance_records)) <= 0.60
+            else "CRITICAL"
         ),
     }
 
@@ -979,11 +974,7 @@ def _write_per_strategy_csv(
         writer.writerow(header)
         for s in strategy_names:
             a = aggregates[s]
-            top_err = (
-                max(a.error_modes, key=a.error_modes.get)
-                if a.error_modes
-                else ""
-            )
+            top_err = max(a.error_modes, key=a.error_modes.get) if a.error_modes else ""
             writer.writerow(
                 [
                     s,
@@ -1023,9 +1014,7 @@ def _write_markdown_summary(
         "| strategy | n_traj | n_ok | n_err | success_rate | "
         "mean_wall_s | mean_n_states | mean_best | mean_leaf_var |"
     )
-    lines.append(
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|"
-    )
+    lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---:|")
     for s, a in aggregates.items():
         lines.append(
             f"| `{s}` | {a.n_trajectories} | {a.n_ok} | {a.n_error} | "
@@ -1075,7 +1064,9 @@ class BenchConfig:
     metal_whitelist: Optional[Tuple[str, ...]] = None
     skip_metalcyto: bool = False
     smoke: bool = False
-    mode: str = "mock"  # Wf-43 Phase 3 — 'mock' (CPU stub, default) or 'real' (score_any)
+    mode: str = (
+        "mock"  # Wf-43 Phase 3 — 'mock' (CPU stub, default) or 'real' (score_any)
+    )
 
 
 def _build_argparser() -> argparse.ArgumentParser:
@@ -1088,33 +1079,75 @@ def _build_argparser() -> argparse.ArgumentParser:
             "count, value estimate, and a 3-vuln algorithm scan."
         ),
     )
-    p.add_argument("--n-trajectories", type=int, default=DEFAULT_N_TRAJECTORIES,
-                   help="Trajectories per (dataset × strategy) cell.")
-    p.add_argument("--n-simulations", type=int, default=DEFAULT_N_SIMULATIONS,
-                   help="MCTS simulations per trajectory.")
-    p.add_argument("--max-depth", type=int, default=DEFAULT_MAX_DEPTH,
-                   help="Rollout depth budget per simulation.")
-    p.add_argument("--seed", type=int, default=DEFAULT_SEED,
-                   help="Master RNG seed.")
-    p.add_argument("--c-puct", type=float, default=DEFAULT_C_PUCT,
-                   help="PUCT exploration constant.")
-    p.add_argument("--c-var", type=float, default=DEFAULT_C_VAR,
-                   help="Variance penalty coefficient (variance_mcts).")
-    p.add_argument("--platinai-csv", type=str, default=DEFAULT_PLATINAI_CSV,
-                   help="PlatinAI 5K CSV path.")
-    p.add_argument("--metalcyto-csv", type=str, default=DEFAULT_METALCYTO_CSV,
-                   help="MetalCytoToxDB CSV path.")
-    p.add_argument("--out-dir", type=str, default=DEFAULT_OUT_DIR,
-                   help="Output directory for the bench report.")
-    p.add_argument("--metals", type=str, nargs="*", default=None,
-                   help=(
-                       "Metal whitelist for MetalCytoToxDB (default: all 5 "
-                       "precious metals).  Example: --metals Pt Ru Ir."
-                   ))
-    p.add_argument("--skip-metalcyto", action="store_true",
-                   help="Skip the MetalCytoToxDB cell (PlatinAI only).")
-    p.add_argument("--smoke", action="store_true",
-                   help="Smoke mode (5 trajectories × 5 sims × depth=2).")
+    p.add_argument(
+        "--n-trajectories",
+        type=int,
+        default=DEFAULT_N_TRAJECTORIES,
+        help="Trajectories per (dataset × strategy) cell.",
+    )
+    p.add_argument(
+        "--n-simulations",
+        type=int,
+        default=DEFAULT_N_SIMULATIONS,
+        help="MCTS simulations per trajectory.",
+    )
+    p.add_argument(
+        "--max-depth",
+        type=int,
+        default=DEFAULT_MAX_DEPTH,
+        help="Rollout depth budget per simulation.",
+    )
+    p.add_argument("--seed", type=int, default=DEFAULT_SEED, help="Master RNG seed.")
+    p.add_argument(
+        "--c-puct",
+        type=float,
+        default=DEFAULT_C_PUCT,
+        help="PUCT exploration constant.",
+    )
+    p.add_argument(
+        "--c-var",
+        type=float,
+        default=DEFAULT_C_VAR,
+        help="Variance penalty coefficient (variance_mcts).",
+    )
+    p.add_argument(
+        "--platinai-csv",
+        type=str,
+        default=DEFAULT_PLATINAI_CSV,
+        help="PlatinAI 5K CSV path.",
+    )
+    p.add_argument(
+        "--metalcyto-csv",
+        type=str,
+        default=DEFAULT_METALCYTO_CSV,
+        help="MetalCytoToxDB CSV path.",
+    )
+    p.add_argument(
+        "--out-dir",
+        type=str,
+        default=DEFAULT_OUT_DIR,
+        help="Output directory for the bench report.",
+    )
+    p.add_argument(
+        "--metals",
+        type=str,
+        nargs="*",
+        default=None,
+        help=(
+            "Metal whitelist for MetalCytoToxDB (default: all 5 "
+            "precious metals).  Example: --metals Pt Ru Ir."
+        ),
+    )
+    p.add_argument(
+        "--skip-metalcyto",
+        action="store_true",
+        help="Skip the MetalCytoToxDB cell (PlatinAI only).",
+    )
+    p.add_argument(
+        "--smoke",
+        action="store_true",
+        help="Smoke mode (5 trajectories × 5 sims × depth=2).",
+    )
     p.add_argument(
         "--mode",
         type=str,
@@ -1143,9 +1176,7 @@ def run_bench(cfg: BenchConfig) -> Dict[str, Any]:
         n_traj = min(n_traj, 5)
         sims = min(sims, 5)
         depth = min(depth, 2)
-    metal_whitelist = (
-        tuple(cfg.metal_whitelist) if cfg.metal_whitelist else None
-    )
+    metal_whitelist = tuple(cfg.metal_whitelist) if cfg.metal_whitelist else None
 
     out_dir = Path(cfg.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -1160,7 +1191,10 @@ def run_bench(cfg: BenchConfig) -> Dict[str, Any]:
     if not cfg.skip_metalcyto:
         try:
             metalcyto_rows = _load_metalcytotox(
-                cfg.metalcyto_csv, n_traj, seed, metal_whitelist,
+                cfg.metalcyto_csv,
+                n_traj,
+                seed,
+                metal_whitelist,
             )
             n_per_dataset["metalcytotox"] = int(len(metalcyto_rows))
         except Wf39Error as exc:
@@ -1280,8 +1314,11 @@ def run_bench(cfg: BenchConfig) -> Dict[str, Any]:
             for r in var_records
         ],
         "per_dataset_variance_mcts_per_candidate_vars": [
-            {"dataset": r.get("dataset"), "seed": r.get("seed"),
-             "per_candidate_var": r.get("per_candidate_var", [])}
+            {
+                "dataset": r.get("dataset"),
+                "seed": r.get("seed"),
+                "per_candidate_var": r.get("per_candidate_var", []),
+            }
             for r in var_records
         ],
     }

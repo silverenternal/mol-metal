@@ -82,6 +82,7 @@ def _load_atom_bond_dims() -> tuple:
         ATOM_FEATURE_DIM,
         BOND_FEATURE_DIM,
     )
+
     return ATOM_FEATURE_DIM, BOND_FEATURE_DIM
 
 
@@ -108,6 +109,7 @@ def _make_model(hidden: int = 32, depth: int = 2):
     before any D-MPNN import is attempted.
     """
     from molmetal.baselines.dmpnn_multitask import DMPNNMultiTaskModel
+
     atom_dim, bond_dim = _load_atom_bond_dims()
     torch.manual_seed(0)
     return DMPNNMultiTaskModel(
@@ -134,6 +136,7 @@ VALID_TORCH_COMPILE_MODES = (
 # ---------------------------------------------------------------------------
 # 1: torch.compile mode selection (4 sub-cases)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize("mode", VALID_TORCH_COMPILE_MODES)
 def test_torch_compile_mode_selection(mode: str) -> None:
@@ -175,9 +178,9 @@ def test_torch_compile_mode_selection(mode: str) -> None:
         effective_mode = "default"
 
     compiled_enc = _make_compiled_encoder_forward(encoder, mode=effective_mode)
-    assert callable(compiled_enc), (
-        f"_make_compiled_encoder_forward(mode={mode}) returned non-callable"
-    )
+    assert callable(
+        compiled_enc
+    ), f"_make_compiled_encoder_forward(mode={mode}) returned non-callable"
 
     # Forward pass — 1st call compiles, 2nd call hits the cache.
     with torch.no_grad():
@@ -187,9 +190,9 @@ def test_torch_compile_mode_selection(mode: str) -> None:
 
     # Shape check: encoder returns pooled features of shape (hidden*2,)
     assert out_1.ndim == 1, f"compiled encoder output ndim={out_1.ndim} (expected 1)"
-    assert out_1.shape == out_2.shape, (
-        f"compiled encoder output shape unstable: {out_1.shape} vs {out_2.shape}"
-    )
+    assert (
+        out_1.shape == out_2.shape
+    ), f"compiled encoder output shape unstable: {out_1.shape} vs {out_2.shape}"
     # Both calls must return identical results (compile-cache deterministic).
     assert torch.allclose(out_1, out_2, atol=1e-6), (
         f"compiled encoder output differs between calls: "
@@ -200,9 +203,9 @@ def test_torch_compile_mode_selection(mode: str) -> None:
     ref = torch.randn(20)
     pred = torch.randn(8, requires_grad=True)
     w2_wrapper = _make_compiled_w2_penalty(w_weight=1.0, mode=effective_mode)
-    assert callable(w2_wrapper), (
-        f"_make_compiled_w2_penalty(mode={mode}) returned non-callable"
-    )
+    assert callable(
+        w2_wrapper
+    ), f"_make_compiled_w2_penalty(mode={mode}) returned non-callable"
     w_pen = w2_wrapper(pred, ref)
     assert w_pen.ndim == 0, f"W₂ wrapper returned non-scalar: ndim={w_pen.ndim}"
     assert torch.isfinite(w_pen), f"W₂ wrapper returned non-finite: {w_pen.item()}"
@@ -211,6 +214,7 @@ def test_torch_compile_mode_selection(mode: str) -> None:
 # ---------------------------------------------------------------------------
 # 2: Compiled model forward/backward correctness
 # ---------------------------------------------------------------------------
+
 
 def test_compiled_model_forward_backward_correctness() -> None:
     """Compiled encoder forward + autograd gradient matches eager path.
@@ -240,7 +244,8 @@ def test_compiled_model_forward_backward_correctness() -> None:
     # (this is what the production trainer does — see line 1266 of the
     # production trainer).
     compiled = _make_compiled_encoder_forward(
-        encoder_compiled, mode="default",
+        encoder_compiled,
+        mode="default",
     )
     original = encoder_compiled._forward_one_mol
     encoder_compiled._forward_one_mol = compiled  # type: ignore[assignment]
@@ -250,13 +255,16 @@ def test_compiled_model_forward_backward_correctness() -> None:
     # Forward (autograd ON).
     pooled_eager = encoder_eager._forward_one_mol(atom_f, bond_f, e_src, e_dst)
     pooled_compiled = encoder_compiled._forward_one_mol(
-        atom_f, bond_f, e_src, e_dst,
+        atom_f,
+        bond_f,
+        e_src,
+        e_dst,
     )
 
     fwd_diff = (pooled_eager - pooled_compiled).abs().max().item()
-    assert fwd_diff < 1e-4, (
-        f"Compiled forward diverges from eager: max abs diff = {fwd_diff}"
-    )
+    assert (
+        fwd_diff < 1e-4
+    ), f"Compiled forward diverges from eager: max abs diff = {fwd_diff}"
 
     # Backward: pipe through a downstream Linear head + sum, then
     # verify gradients match.
@@ -268,7 +276,10 @@ def test_compiled_model_forward_backward_correctness() -> None:
     head.weight.data = head_eager_weight
     bond_eager = bond_f.detach().clone().requires_grad_(True)
     pooled_e = encoder_eager._forward_one_mol(
-        atom_f, bond_eager, e_src, e_dst,
+        atom_f,
+        bond_eager,
+        e_src,
+        e_dst,
     )
     out_e = head(pooled_e).sum()
     out_e.backward()
@@ -278,16 +289,19 @@ def test_compiled_model_forward_backward_correctness() -> None:
     head.weight.data = head_compiled_weight
     bond_compiled = bond_f.detach().clone().requires_grad_(True)
     pooled_c = encoder_compiled._forward_one_mol(
-        atom_f, bond_compiled, e_src, e_dst,
+        atom_f,
+        bond_compiled,
+        e_src,
+        e_dst,
     )
     out_c = head(pooled_c).sum()
     out_c.backward()
     grad_compiled = bond_compiled.grad.detach().clone()
 
     bwd_diff = (grad_eager - grad_compiled).abs().max().item()
-    assert bwd_diff < 1e-3, (
-        f"Compiled autograd gradient diverges from eager: max abs diff = {bwd_diff}"
-    )
+    assert (
+        bwd_diff < 1e-3
+    ), f"Compiled autograd gradient diverges from eager: max abs diff = {bwd_diff}"
 
     # Restore original forward (production trainer does the same at line 1424).
     encoder_compiled._forward_one_mol = original  # type: ignore[assignment]
@@ -296,6 +310,7 @@ def test_compiled_model_forward_backward_correctness() -> None:
 # ---------------------------------------------------------------------------
 # 3: Compilation errors handled gracefully
 # ---------------------------------------------------------------------------
+
 
 def test_compilation_errors_handled_gracefully() -> None:
     """torch.compile failures raise a clear RuntimeError, not silent corruption.
@@ -351,7 +366,10 @@ def test_compilation_errors_handled_gracefully() -> None:
         raise RuntimeError("[wf327f5] simulated W₂ compile error for test")
 
     broken_wrapper = torch.compile(
-        _broken_w2, mode="default", fullgraph=False, dynamic=False,
+        _broken_w2,
+        mode="default",
+        fullgraph=False,
+        dynamic=False,
     )
     broken_pred = torch.randn(8, requires_grad=True)
     broken_ref = torch.randn(20)
@@ -372,6 +390,7 @@ def test_compilation_errors_handled_gracefully() -> None:
 # ---------------------------------------------------------------------------
 # 4: Integration with trainer CLI
 # ---------------------------------------------------------------------------
+
 
 def test_integration_with_trainer_cli() -> None:
     """``--torch-compile`` CLI flag activates compile wrappers in trainer.
@@ -415,9 +434,13 @@ def test_integration_with_trainer_cli() -> None:
     )
 
     # (c) --torch-compile + --torch-compile-mode default.
-    args_mode = parse_args([
-        "--torch-compile", "--torch-compile-mode", "default",
-    ])
+    args_mode = parse_args(
+        [
+            "--torch-compile",
+            "--torch-compile-mode",
+            "default",
+        ]
+    )
     assert bool(args_mode.torch_compile) is True
     assert str(args_mode.torch_compile_mode) == "default", (
         f"--torch-compile-mode default should set "

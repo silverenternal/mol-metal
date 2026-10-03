@@ -85,10 +85,18 @@ def batch_builder(torch_device):
 
     def _make(batch_size: int, n_atoms: int = 28, n_edges: int = 58):
         return {
-            "atom_feats": torch.randn(batch_size, n_atoms, ATOM_FEATURE_DIM, device=torch_device),
-            "bond_feats": torch.randn(batch_size, n_edges, BOND_FEATURE_DIM, device=torch_device),
-            "edge_src": torch.randint(0, n_atoms, (batch_size, n_edges), device=torch_device),
-            "edge_dst": torch.randint(0, n_atoms, (batch_size, n_edges), device=torch_device),
+            "atom_feats": torch.randn(
+                batch_size, n_atoms, ATOM_FEATURE_DIM, device=torch_device
+            ),
+            "bond_feats": torch.randn(
+                batch_size, n_edges, BOND_FEATURE_DIM, device=torch_device
+            ),
+            "edge_src": torch.randint(
+                0, n_atoms, (batch_size, n_edges), device=torch_device
+            ),
+            "edge_dst": torch.randint(
+                0, n_atoms, (batch_size, n_edges), device=torch_device
+            ),
         }
 
     return _make
@@ -123,7 +131,9 @@ def test_bf16_forward_correctness(encoder, batch_builder, torch_device):
     import torch
 
     if torch_device.type != "cuda":
-        pytest.skip("BF16 forward correctness is GPU-only (CPU BF16 has no tensor cores)")
+        pytest.skip(
+            "BF16 forward correctness is GPU-only (CPU BF16 has no tensor cores)"
+        )
     batch = batch_builder(batch_size=64)
     with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
         h_pool = _encode_only(encoder, batch)
@@ -138,7 +148,9 @@ def test_bf16_backward_correctness(encoder, batch_builder, torch_device):
     if torch_device.type != "cuda":
         pytest.skip("BF16 backward correctness is GPU-only")
     head_reg = torch.nn.Linear(256, 1).to(torch_device)
-    optimizer = torch.optim.Adam(list(encoder.parameters()) + list(head_reg.parameters()), lr=1e-3)
+    optimizer = torch.optim.Adam(
+        list(encoder.parameters()) + list(head_reg.parameters()), lr=1e-3
+    )
     batch = batch_builder(batch_size=64)
     optimizer.zero_grad()
     with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
@@ -176,15 +188,21 @@ def test_bf16_vs_fp32_loss_closeness(encoder, batch_builder, torch_device):
 
     # FP32 baseline
     h32 = _encode_only(encoder, batch)
-    loss32 = torch.nn.functional.mse_loss(head_reg(h32).squeeze(-1), torch.zeros(64, device=torch_device)).item()
+    loss32 = torch.nn.functional.mse_loss(
+        head_reg(h32).squeeze(-1), torch.zeros(64, device=torch_device)
+    ).item()
 
     # BF16 forward
     with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
         h16 = _encode_only(encoder, batch)
-    loss16 = torch.nn.functional.mse_loss(head_reg(h16).squeeze(-1), torch.zeros(64, device=torch_device)).item()
+    loss16 = torch.nn.functional.mse_loss(
+        head_reg(h16).squeeze(-1), torch.zeros(64, device=torch_device)
+    ).item()
 
     rel = abs(loss16 - loss32) / max(abs(loss32), 1e-6)
-    assert rel < 0.10, f"BF16 loss ({loss16:.4f}) vs FP32 ({loss32:.4f}) drift = {rel:.1%} > 10%"
+    assert (
+        rel < 0.10
+    ), f"BF16 loss ({loss16:.4f}) vs FP32 ({loss32:.4f}) drift = {rel:.1%} > 10%"
 
 
 # ---------------------------------------------------------------------------
@@ -263,11 +281,13 @@ def test_peak_memory_under_budget():
     if bf16_row is None:
         pytest.skip("BF16 row missing — autoload may have fallen back to FP32")
     if bf16_row.overflow:
-        pytest.skip("batch=512 / BF16 overflowed on this GPU — skip (still expected on smaller cards)")
+        pytest.skip(
+            "batch=512 / BF16 overflowed on this GPU — skip (still expected on smaller cards)"
+        )
     assert bf16_row.peak_memory_mb is not None
-    assert bf16_row.peak_memory_mb <= 24.0 * 1024.0, (
-        f"BF16 peak {bf16_row.peak_memory_mb:.0f} MB > 24 GB budget"
-    )
+    assert (
+        bf16_row.peak_memory_mb <= 24.0 * 1024.0
+    ), f"BF16 peak {bf16_row.peak_memory_mb:.0f} MB > 24 GB budget"
 
 
 @pytest.mark.skipif(
@@ -287,14 +307,20 @@ def test_memory_growth_sublinear_with_batch():
         n_warmup=1,
         n_measure=2,
     )
-    bf16_rows = [r for r in sweep.rows if r.dtype == "bf16" and r.peak_memory_mb is not None]
+    bf16_rows = [
+        r for r in sweep.rows if r.dtype == "bf16" and r.peak_memory_mb is not None
+    ]
     if len(bf16_rows) < 2:
-        pytest.skip("could not capture BF16 memory at both batch sizes (OOM or fallback)")
+        pytest.skip(
+            "could not capture BF16 memory at both batch sizes (OOM or fallback)"
+        )
     bf16_rows.sort(key=lambda r: r.batch_size)
     mem_64, mem_256 = bf16_rows[0].peak_memory_mb, bf16_rows[1].peak_memory_mb
     # Linear scaling would be 4x.  Allow up to 3.5x (sub-linear amortization).
     ratio = mem_256 / max(mem_64, 1.0)
-    assert ratio < 3.5, f"BF16 memory grew {ratio:.2f}x from 64→256 batch (expect sub-3.5x)"
+    assert (
+        ratio < 3.5
+    ), f"BF16 memory grew {ratio:.2f}x from 64→256 batch (expect sub-3.5x)"
 
 
 # ---------------------------------------------------------------------------
@@ -325,7 +351,9 @@ def test_recommendation_consumable_by_trainer():
     rec_dtype = sweep.recommended_dtype
 
     # Smoke-run one fake step using the recommended batch_size + stub encoder.
-    model = torch.nn.Sequential(torch.nn.Linear(39, 128), torch.nn.ReLU(), torch.nn.Linear(128, 256))
+    model = torch.nn.Sequential(
+        torch.nn.Linear(39, 128), torch.nn.ReLU(), torch.nn.Linear(128, 256)
+    )
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
     atom_feats = torch.randn(rec_batch, 12, 39)

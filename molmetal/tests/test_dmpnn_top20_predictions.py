@@ -54,8 +54,19 @@ def _ensure_fixtures():
         # 5 candidates spanning 3 metals
         with TOP20_FIXTURE.open("w") as f:
             w = csv.writer(f)
-            w.writerow(["rank", "compound_smiles", "id", "metal",
-                        "dmpnn_pic50", "qed", "sa", "vina_kcal", "astsr_score"])
+            w.writerow(
+                [
+                    "rank",
+                    "compound_smiles",
+                    "id",
+                    "metal",
+                    "dmpnn_pic50",
+                    "qed",
+                    "sa",
+                    "vina_kcal",
+                    "astsr_score",
+                ]
+            )
             w.writerow([1, "CCO", "test_001", "Pt", 7.0, 0.5, 1.0, -5.0, 0.05])
             w.writerow([2, "CC(=O)O", "test_002", "Pd", 6.5, 0.4, 1.0, -5.5, 0.04])
             w.writerow([3, "c1ccccc1", "test_003", "Ir", 7.2, 0.6, 1.0, -4.8, 0.06])
@@ -65,30 +76,66 @@ def _ensure_fixtures():
     if not DATA_FIXTURE.exists():
         # 30-row synthetic Pt dataset with all 4 IC50 columns
         import random
+
         random.seed(0)
         smiles_pool = [
-            "CCO", "CC(=O)O", "c1ccccc1", "CCCC", "CC(C)C",
-            "CCN", "CC=O", "CCCO", "CCCCO", "c1ccc(O)cc1",
-            "C1CCCCC1", "c1ccc(N)cc1", "c1ccc(F)cc1", "c1cccnc1",
-            "CCS", "CC(C)O", "CCOC", "CCSC", "C1CCNCC1", "c1ccsc1",
-            "C1=CC=CC=C1", "C=CC=C", "CC=CC", "CC=CCC", "C=CC=CC",
-            "CC#C", "C#N", "CC(=O)C", "CCCCCC", "c1cnccn1",
+            "CCO",
+            "CC(=O)O",
+            "c1ccccc1",
+            "CCCC",
+            "CC(C)C",
+            "CCN",
+            "CC=O",
+            "CCCO",
+            "CCCCO",
+            "c1ccc(O)cc1",
+            "C1CCCCC1",
+            "c1ccc(N)cc1",
+            "c1ccc(F)cc1",
+            "c1cccnc1",
+            "CCS",
+            "CC(C)O",
+            "CCOC",
+            "CCSC",
+            "C1CCNCC1",
+            "c1ccsc1",
+            "C1=CC=CC=C1",
+            "C=CC=C",
+            "CC=CC",
+            "CC=CCC",
+            "C=CC=CC",
+            "CC#C",
+            "C#N",
+            "CC(=O)C",
+            "CCCCCC",
+            "c1cnccn1",
         ]
         with DATA_FIXTURE.open("w") as f:
             w = csv.writer(f)
-            w.writerow(["complex_id", "smiles", "ic50_mcf7_nm", "ic50_a549_nm",
-                        "ic50_a2780_nm", "ic50_a2780cis_nm", "source"])
+            w.writerow(
+                [
+                    "complex_id",
+                    "smiles",
+                    "ic50_mcf7_nm",
+                    "ic50_a549_nm",
+                    "ic50_a2780_nm",
+                    "ic50_a2780cis_nm",
+                    "source",
+                ]
+            )
             for i in range(30):
                 smi = smiles_pool[i % len(smiles_pool)]
-                w.writerow([
-                    f"pt_fix_{i:04d}",
-                    smi,
-                    1000.0 + random.gauss(0, 200),
-                    5000.0 + random.gauss(0, 500),
-                    800.0 + random.gauss(0, 150),
-                    10000.0 + random.gauss(0, 1500),
-                    f"src_{i % 5}",
-                ])
+                w.writerow(
+                    [
+                        f"pt_fix_{i:04d}",
+                        smi,
+                        1000.0 + random.gauss(0, 200),
+                        5000.0 + random.gauss(0, 500),
+                        800.0 + random.gauss(0, 150),
+                        10000.0 + random.gauss(0, 1500),
+                        f"src_{i % 5}",
+                    ]
+                )
 
 
 @pytest.fixture
@@ -112,6 +159,7 @@ def out_dir():
 # ---------------------------------------------------------------------------
 def test_load_top20_returns_list_of_records(top20_path):
     from molmetal.scripts.bench_dmpnn_top20_predictions import load_top20
+
     top20 = load_top20(top20_path)
     assert isinstance(top20, list)
     assert len(top20) == 5
@@ -122,6 +170,7 @@ def test_load_top20_returns_list_of_records(top20_path):
 
 def test_load_top20_preserves_rank_order(top20_path):
     from molmetal.scripts.bench_dmpnn_top20_predictions import load_top20
+
     top20 = load_top20(top20_path)
     ranks = [c.rank for c in top20]
     assert ranks == sorted(ranks), f"ranks not sorted: {ranks}"
@@ -129,6 +178,7 @@ def test_load_top20_preserves_rank_order(top20_path):
 
 def test_load_top20_handles_missing_file(tmp_path):
     from molmetal.scripts.bench_dmpnn_top20_predictions import load_top20
+
     with pytest.raises(FileNotFoundError):
         load_top20(tmp_path / "does_not_exist.csv")
 
@@ -138,15 +188,19 @@ def test_load_top20_handles_missing_file(tmp_path):
 # ---------------------------------------------------------------------------
 def test_predict_pic50_external_returns_n_by_4():
     from molmetal.scripts.bench_dmpnn_top20_predictions import (
-        CELL_LINES, predict_pic50_external,
+        CELL_LINES,
+        predict_pic50_external,
     )
     from molmetal.scripts.train_platinai_4cell import DMPNNFourCellModel
+
     # Build a freshly-initialised model (not trained) — only the *shape* contract
     fresh_model = DMPNNFourCellModel()
+
     # Wrap into a minimal "runner" stub
     class _StubRunner:
         model = fresh_model
         device = torch.device("cpu")
+
     smiles = ["CCO", "c1ccccc1", "INVALID$$$"]
     pic50 = predict_pic50_external(_StubRunner(), smiles, batch_size=2)
     assert pic50.shape == (3, 4)
@@ -159,9 +213,11 @@ def test_predict_pic50_external_returns_n_by_4():
 def test_predict_pic50_external_raises_without_fit():
     from molmetal.scripts.bench_dmpnn_top20_predictions import predict_pic50_external
     from molmetal.scripts.train_platinai_4cell import DMPNNFourCellModel
+
     class _EmptyRunner:
         model = None
         device = torch.device("cpu")
+
     with pytest.raises(RuntimeError):
         predict_pic50_external(_EmptyRunner(), ["CCO"])
 
@@ -171,8 +227,11 @@ def test_predict_pic50_external_raises_without_fit():
 # ---------------------------------------------------------------------------
 def test_aggregate_per_cell_returns_all_four_lines():
     from molmetal.scripts.bench_dmpnn_top20_predictions import (
-        CELL_LINES, aggregate_per_cell, Top20Candidate,
+        CELL_LINES,
+        aggregate_per_cell,
+        Top20Candidate,
     )
+
     # 2 seeds × 3 compounds × 4 cells
     arr1 = np.array([[6.0, 6.5, 5.5, 7.0], [6.1, 6.6, 5.6, 7.1], [6.2, 6.7, 5.7, 7.2]])
     arr2 = arr1 + 0.05  # small shift
@@ -192,11 +251,15 @@ def test_aggregate_per_cell_returns_all_four_lines():
 
 def test_per_compound_table_has_expected_count():
     from molmetal.scripts.bench_dmpnn_top20_predictions import (
-        build_per_compound_table, Top20Candidate,
+        build_per_compound_table,
+        Top20Candidate,
     )
+
     arr = np.full((3, 4), 6.5)
-    top20 = [Top20Candidate(rank=i, compound_smiles="CCO",
-                            compound_id=f"t{i}", metal="Pt") for i in range(3)]
+    top20 = [
+        Top20Candidate(rank=i, compound_smiles="CCO", compound_id=f"t{i}", metal="Pt")
+        for i in range(3)
+    ]
     per_seed = [(0, arr, top20), (1, arr, top20), (2, arr, top20)]
     table = build_per_compound_table(per_seed)
     assert len(table) == 9  # 3 compounds × 3 seeds
@@ -204,11 +267,16 @@ def test_per_compound_table_has_expected_count():
 
 def test_per_compound_std_handles_constant_predictions():
     from molmetal.scripts.bench_dmpnn_top20_predictions import (
-        aggregate_per_compound_std, Top20Candidate, PIC50_STD_GATE,
+        aggregate_per_compound_std,
+        Top20Candidate,
+        PIC50_STD_GATE,
     )
+
     arr = np.full((4, 4), 6.5)
-    top20 = [Top20Candidate(rank=i, compound_smiles="CCO",
-                            compound_id=f"t{i}", metal="Pt") for i in range(4)]
+    top20 = [
+        Top20Candidate(rank=i, compound_smiles="CCO", compound_id=f"t{i}", metal="Pt")
+        for i in range(4)
+    ]
     per_seed = [(0, arr, top20), (1, arr, top20), (2, arr, top20)]
     out = aggregate_per_compound_std(per_seed)
     assert len(out) == 4
@@ -225,39 +293,62 @@ def test_synthesis_md_includes_honest_framing(tmp_path):
     """Synthesis must contain the honest-framing section (paper gate)."""
     import argparse
     from molmetal.scripts.bench_dmpnn_top20_predictions import (
-        build_synthesis_md, Top20Candidate,
+        build_synthesis_md,
+        Top20Candidate,
     )
+
     args = argparse.Namespace(
-        hidden=64, depth=2, dropout=0.1,
-        epochs=2, lr=1e-3, batch_size=8, alpha=0.5,
-        device="cpu", seeds=[0, 1],
+        hidden=64,
+        depth=2,
+        dropout=0.1,
+        epochs=2,
+        lr=1e-3,
+        batch_size=8,
+        alpha=0.5,
+        device="cpu",
+        seeds=[0, 1],
     )
-    top20 = [Top20Candidate(rank=i, compound_smiles="CCO",
-                            compound_id=f"t{i}", metal="Pt") for i in range(2)]
+    top20 = [
+        Top20Candidate(rank=i, compound_smiles="CCO", compound_id=f"t{i}", metal="Pt")
+        for i in range(2)
+    ]
     arr = np.array([[6.0, 6.5, 5.5, 7.0], [6.1, 6.6, 5.6, 7.1]])
     per_seed = [(0, arr, top20), (1, arr, top20)]
     per_compound_std = [
-        {"rank": c.rank, "compound_id": c.compound_id, "metal": c.metal,
-         "per_cell_mean": {l: 6.5 for l in ["MCF7", "A549", "A2780", "A2780cis"]},
-         "std_pooled_log_units": 0.05, "gate_pass": True}
+        {
+            "rank": c.rank,
+            "compound_id": c.compound_id,
+            "metal": c.metal,
+            "per_cell_mean": {l: 6.5 for l in ["MCF7", "A549", "A2780", "A2780cis"]},
+            "std_pooled_log_units": 0.05,
+            "gate_pass": True,
+        }
         for c in top20
     ]
-    per_cell_agg = {l: {"mean": 6.5, "median": 6.5, "std": 0.05,
-                         "min": 6.0, "max": 7.1, "n": 4}
-                    for l in ["MCF7", "A549", "A2780", "A2780cis"]}
+    per_cell_agg = {
+        l: {"mean": 6.5, "median": 6.5, "std": 0.05, "min": 6.0, "max": 7.1, "n": 4}
+        for l in ["MCF7", "A549", "A2780", "A2780cis"]
+    }
     per_seed_meta = [
-        {"auc_mean": 0.78, "auc_a2780cis": 0.75,
-         "per_line_auc": {l: 0.77 for l in ["MCF7", "A549", "A2780", "A2780cis"]},
-         "per_line_ap": {l: 0.7 for l in ["MCF7", "A549", "A2780", "A2780cis"]},
-         "per_line_n": {l: 100 for l in ["MCF7", "A549", "A2780", "A2780cis"]}},
-        {"auc_mean": 0.79, "auc_a2780cis": 0.76,
-         "per_line_auc": {l: 0.78 for l in ["MCF7", "A549", "A2780", "A2780cis"]},
-         "per_line_ap": {l: 0.72 for l in ["MCF7", "A549", "A2780", "A2780cis"]},
-         "per_line_n": {l: 100 for l in ["MCF7", "A549", "A2780", "A2780cis"]}},
+        {
+            "auc_mean": 0.78,
+            "auc_a2780cis": 0.75,
+            "per_line_auc": {l: 0.77 for l in ["MCF7", "A549", "A2780", "A2780cis"]},
+            "per_line_ap": {l: 0.7 for l in ["MCF7", "A549", "A2780", "A2780cis"]},
+            "per_line_n": {l: 100 for l in ["MCF7", "A549", "A2780", "A2780cis"]},
+        },
+        {
+            "auc_mean": 0.79,
+            "auc_a2780cis": 0.76,
+            "per_line_auc": {l: 0.78 for l in ["MCF7", "A549", "A2780", "A2780cis"]},
+            "per_line_ap": {l: 0.72 for l in ["MCF7", "A549", "A2780", "A2780cis"]},
+            "per_line_n": {l: 100 for l in ["MCF7", "A549", "A2780", "A2780cis"]},
+        },
     ]
     out_path = tmp_path / "synthesis.md"
-    build_synthesis_md(args, top20, per_seed_meta, per_seed,
-                       per_compound_std, per_cell_agg, out_path)
+    build_synthesis_md(
+        args, top20, per_seed_meta, per_seed, per_compound_std, per_cell_agg, out_path
+    )
     text = out_path.read_text()
     assert "Honest framing" in text
     assert "Cross-metal transfer" in text
@@ -280,21 +371,28 @@ def test_end_to_end_smoke_cli_runs(out_dir, top20_path, data_path):
     cmd = [
         sys.executable,
         str(SCRIPT),
-        "--top20", str(top20_path),
-        "--data", str(data_path),
-        "--seeds", "0",
-        "--epochs", "2",
-        "--batch-size", "8",
-        "--hidden", "32",
-        "--depth", "2",
-        "--device", "cpu",
-        "--out-dir", str(out_dir),
+        "--top20",
+        str(top20_path),
+        "--data",
+        str(data_path),
+        "--seeds",
+        "0",
+        "--epochs",
+        "2",
+        "--batch-size",
+        "8",
+        "--hidden",
+        "32",
+        "--depth",
+        "2",
+        "--device",
+        "cpu",
+        "--out-dir",
+        str(out_dir),
     ]
     res = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     if res.returncode != 0:
-        pytest.fail(
-            f"CLI failed:\nSTDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
-        )
+        pytest.fail(f"CLI failed:\nSTDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}")
     # Check all 4 outputs
     expected_files = [
         "per_compound_pic50.json",
@@ -312,5 +410,8 @@ def test_end_to_end_smoke_cli_runs(out_dir, top20_path, data_path):
     # Verify per_cell has 4 cell lines
     pca = json.loads((out_dir / "per_cell_pic50.json").read_text())
     assert set(pca["per_cell_aggregate"].keys()) == {
-        "MCF7", "A549", "A2780", "A2780cis",
+        "MCF7",
+        "A549",
+        "A2780",
+        "A2780cis",
     }

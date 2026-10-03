@@ -78,8 +78,7 @@ def test_rules_module_exposes_five_click_reactions() -> None:
     """
     expected = ["CuAAC", "SPAAC", "ThiolEne", "Suzuki", "AmideCoupling"]
     assert _rules_list_reactions() == expected, (
-        f"list_reactions() = {_rules_list_reactions()!r}; "
-        f"expected {expected!r}"
+        f"list_reactions() = {_rules_list_reactions()!r}; " f"expected {expected!r}"
     )
 
     # Lower-case / dashed / spaced spellings should resolve to the
@@ -165,8 +164,7 @@ def test_resolve_expand_tile_pool_returns_220() -> None:
         f"ROUND10_5_CLICK env var is not set to 0."
     )
     assert int(mcts.expand_pool_size) == len(pool), (
-        f"expand_pool_size={mcts.expand_pool_size} must equal "
-        f"len(pool)={len(pool)}"
+        f"expand_pool_size={mcts.expand_pool_size} must equal " f"len(pool)={len(pool)}"
     )
 
 
@@ -181,24 +179,27 @@ def _handle_pair_for(
 ) -> Tuple[MoleculeClosedTerm, MoleculeClosedTerm]:
     """Pick one valid educt pair for ``rule_name`` from the canonical pool."""
     family_map = {
-        "CuAAC":         ("azide",        "terminal_alkyne"),
-        "SPAAC":         ("azide",        "cyclooctyne"),
-        "ThiolEne":      ("thiol",        "dienophile"),
-        "Suzuki":        ("boronic_acid", "aryl_halide"),
+        "CuAAC": ("azide", "terminal_alkyne"),
+        "SPAAC": ("azide", "cyclooctyne"),
+        "ThiolEne": ("thiol", "dienophile"),
+        "Suzuki": ("boronic_acid", "aryl_halide"),
         "AmideCoupling": ("carboxylic_acid", "amine"),
     }
     family = family_map[rule_name]
     pool = fragments_from_chembl_reactive()
-    handles_a = [t for t in pool if any(
-        family[0] in (tag or "") for tag in (t.functional_groups or [])
-    )]
-    handles_b = [t for t in pool if any(
-        family[1] in (tag or "") for tag in (t.functional_groups or [])
-    )]
+    handles_a = [
+        t
+        for t in pool
+        if any(family[0] in (tag or "") for tag in (t.functional_groups or []))
+    ]
+    handles_b = [
+        t
+        for t in pool
+        if any(family[1] in (tag or "") for tag in (t.functional_groups or []))
+    ]
     if not handles_a or not handles_b:
         raise AssertionError(
-            f"rule {rule_name!r}: no handle tiles found for "
-            f"families {family!r}"
+            f"rule {rule_name!r}: no handle tiles found for " f"families {family!r}"
         )
     return (
         MoleculeClosedTerm.from_smiles(handles_a[0].smiles, embed_3d=False),
@@ -304,22 +305,17 @@ class _StubRule:
 
     def reduce(self, molecule):  # noqa: D401
         from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+
         if isinstance(molecule, tuple):
             state = molecule[0]
             tile = molecule[1] if len(molecule) > 1 else None
         else:
             state, tile = molecule, None
         try:
-            tile_smi = (
-                str(tile.canonical_smiles()) if tile is not None else ""
-            )
+            tile_smi = str(tile.canonical_smiles()) if tile is not None else ""
         except Exception:
             tile_smi = ""
         try:
-            return [
-                MoleculeClosedTerm.from_smiles(
-                    "C" + tile_smi, embed_3d=False
-                )
-            ]
+            return [MoleculeClosedTerm.from_smiles("C" + tile_smi, embed_3d=False)]
         except Exception:
             return [MoleculeClosedTerm()]

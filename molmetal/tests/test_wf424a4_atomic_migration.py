@@ -27,6 +27,7 @@ Combined Wf-406-A3 (3) + Wf-410-A3 (5) + Wf-414-A3 (5) + Wf-416-A1 (10) + Wf-424
 scripts migrated to the canonical I/O substrate per AGENTS.md §5.6 atomic write protocol
 adoption rule.
 """
+
 from __future__ import annotations
 
 import ast
@@ -118,9 +119,9 @@ def test_wf424a4_helper_defined(script_rel: str) -> None:
     """The migrated script must define the _wf424_atomic_write_text helper."""
     path = (REPO_ROOT / script_rel).resolve()
     content = path.read_text(encoding="utf-8")
-    assert "def _wf424_atomic_write_text(" in content, (
-        f"{script_rel} is missing the _wf424_atomic_write_text helper function."
-    )
+    assert (
+        "def _wf424_atomic_write_text(" in content
+    ), f"{script_rel} is missing the _wf424_atomic_write_text helper function."
 
 
 @pytest.mark.parametrize("script_rel", MIGRATED_SCRIPTS)
@@ -128,9 +129,9 @@ def test_wf424a4_tryexcept_import_fallback(script_rel: str) -> None:
     """The migration uses a try/except ImportError fallback to preserve backward compat."""
     path = (REPO_ROOT / script_rel).resolve()
     content = path.read_text(encoding="utf-8")
-    assert "except ImportError" in content, (
-        f"{script_rel} must use try/except ImportError fallback for the atomic import."
-    )
+    assert (
+        "except ImportError" in content
+    ), f"{script_rel} must use try/except ImportError fallback for the atomic import."
 
 
 @pytest.mark.parametrize("script_rel", MIGRATED_SCRIPTS)
@@ -154,9 +155,9 @@ def test_wf424a4_helper_calls_atomic_write_file(script_rel: str) -> None:
     """The _wf424_atomic_write_text helper must call atomic_write_file when available."""
     path = (REPO_ROOT / script_rel).resolve()
     content = path.read_text(encoding="utf-8")
-    assert "atomic_write_file(" in content, (
-        f"{script_rel} helper does not call atomic_write_file — migration is incomplete."
-    )
+    assert (
+        "atomic_write_file(" in content
+    ), f"{script_rel} helper does not call atomic_write_file — migration is incomplete."
 
 
 # --------------------------------------------------------------------------------------
@@ -201,9 +202,9 @@ def test_wf424a4_combined_migration_total() -> None:
         # Wf-424-A4 (10 scripts)
         *MIGRATED_SCRIPTS,
     }
-    assert len(ALL_MIGRATED) == 33, (
-        f"Expected 33 total migrated scripts (3+5+5+10+10), got {len(ALL_MIGRATED)}."
-    )
+    assert (
+        len(ALL_MIGRATED) == 33
+    ), f"Expected 33 total migrated scripts (3+5+5+10+10), got {len(ALL_MIGRATED)}."
     n_with_marker = 0
     n_missing = 0
     for rel_path in ALL_MIGRATED:
@@ -237,6 +238,7 @@ def test_wf424a4_atomic_primitive_loads() -> None:
         safe_overwrite_check,
         detect_truncation,
     )
+
     # All three names are callable
     assert callable(atomic_write_file)
     assert callable(safe_overwrite_check)
@@ -248,6 +250,7 @@ def test_wf424a4_migration_helper_idempotent(tmp_path: Path) -> None:
     (idempotency). Use a copy of wf264_panel_cfm_properties.py as test input.
     """
     import shutil
+
     src = REPO_ROOT / "molmetal/scripts/wf264_panel_cfm_properties.py"
     if not src.exists():
         pytest.skip("Source script not in this repo snapshot")
@@ -261,10 +264,16 @@ def test_wf424a4_migration_helper_idempotent(tmp_path: Path) -> None:
         try:
             from wf424a4_migrate_closeout_scripts import migrate_one  # type: ignore[import-not-found]
         except ImportError:
-            pytest.skip("wf424a4 helper not importable; expected when script not on sys.path")
+            pytest.skip(
+                "wf424a4 helper not importable; expected when script not on sys.path"
+            )
         changed, msg = migrate_one(dst)
-        assert changed is False, f"Re-running on already-migrated script should be no-op, got changed={changed} msg={msg}"
-        assert msg == "already_migrated_by_prior_wave", f"Expected idempotent skip, got msg={msg!r}"
+        assert (
+            changed is False
+        ), f"Re-running on already-migrated script should be no-op, got changed={changed} msg={msg}"
+        assert (
+            msg == "already_migrated_by_prior_wave"
+        ), f"Expected idempotent skip, got msg={msg!r}"
     finally:
         sys_mod.path[:] = sys_path_backup
 

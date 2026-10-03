@@ -68,7 +68,7 @@ class MetalHybridV3Config:
     # Coord refinement head
     coord_refine_hidden: int = 64
     coord_refine_max_step: float = 0.3  # Angstrom, max coordinate shift
-    coord_loss_weight: float = 0.05     # gamma
+    coord_loss_weight: float = 0.05  # gamma
     # Whether to load pretrained D-MPNN weights
     load_pretrained_encoder: bool = True
     pretrained_ckpt: str = str(DEFAULT_PRETRAINED_CKPT)
@@ -104,8 +104,8 @@ class _CoordRefineHead(nn.Module):
 
     def forward(
         self,
-        h: torch.Tensor,        # (N, D) per-atom features (after EGNN)
-        x: torch.Tensor,        # (N, 3) per-atom coords
+        h: torch.Tensor,  # (N, D) per-atom features (after EGNN)
+        x: torch.Tensor,  # (N, 3) per-atom coords
         edge_index: torch.Tensor,  # (2, E) directed edges
     ) -> torch.Tensor:
         """Predict coord shift Δx.  Returns (N, 3)."""
@@ -191,7 +191,9 @@ class MetalHybridV3Model(nn.Module):
 
         # Readout + dual head (same shape as V1/V2)
         self.head_mlp = nn.Sequential(
-            nn.Linear(self.base_cfg.hidden_dim + metal_embedding_dim, self.base_cfg.hidden_dim),
+            nn.Linear(
+                self.base_cfg.hidden_dim + metal_embedding_dim, self.base_cfg.hidden_dim
+            ),
             nn.ReLU(),
             nn.Dropout(self.base_cfg.dropout),
             nn.Linear(self.base_cfg.hidden_dim, self.base_cfg.hidden_dim // 2),
@@ -418,8 +420,11 @@ class MetalHybridV3Model(nn.Module):
             dmpnn_per_atom[b, :n_a] = dmpnn_out
 
         egnn_per_atom = self.egnn(
-            dmpnn_per_atom, coords, edge_index,
-            torch.full((B, N_max), -1, dtype=torch.long, device=device), atom_mask,
+            dmpnn_per_atom,
+            coords,
+            edge_index,
+            torch.full((B, N_max), -1, dtype=torch.long, device=device),
+            atom_mask,
         )
 
         # Coord refinement per molecule
@@ -476,8 +481,11 @@ class MetalHybridV3Model(nn.Module):
             dmpnn_per_atom[b, :n_a] = dmpnn_out
 
         egnn_per_atom = self.egnn(
-            dmpnn_per_atom, coords, edge_index,
-            torch.full((B, N_max), -1, dtype=torch.long, device=device), atom_mask,
+            dmpnn_per_atom,
+            coords,
+            edge_index,
+            torch.full((B, N_max), -1, dtype=torch.long, device=device),
+            atom_mask,
         )
 
         loss = torch.tensor(0.0, device=device)
@@ -504,4 +512,9 @@ class MetalHybridV3Model(nn.Module):
         return loss * self.cfg.coord_loss_weight
 
 
-__all__ = ["MetalHybridV3Config", "MetalHybridV3Model", "_CoordRefineHead", "DEFAULT_PRETRAINED_CKPT"]
+__all__ = [
+    "MetalHybridV3Config",
+    "MetalHybridV3Model",
+    "_CoordRefineHead",
+    "DEFAULT_PRETRAINED_CKPT",
+]

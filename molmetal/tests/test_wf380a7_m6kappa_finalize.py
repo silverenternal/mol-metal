@@ -123,7 +123,8 @@ class TestW380A7M6KappaFinalize(unittest.TestCase):
             self.assertTrue(path.exists(), f"{key} doc missing: {path}")
             size = path.stat().st_size
             self.assertGreater(
-                size, 5000,
+                size,
+                5000,
                 f"{key} doc too small ({size} bytes); expected > 5000 LOC worth of docs",
             )
 
@@ -132,7 +133,8 @@ class TestW380A7M6KappaFinalize(unittest.TestCase):
         text = self.text["PAPER_S6"]
         for header in EXPECTED_SECTIONS["PAPER_S6"]:
             self.assertIn(
-                header, text,
+                header,
+                text,
                 f"PAPER_S6 missing section: {header}",
             )
 
@@ -140,7 +142,8 @@ class TestW380A7M6KappaFinalize(unittest.TestCase):
         text = self.text["SECTION_3"]
         for header in EXPECTED_SECTIONS["SECTION_3"]:
             self.assertIn(
-                header, text,
+                header,
+                text,
                 f"SECTION_3 missing section: {header}",
             )
 
@@ -148,7 +151,8 @@ class TestW380A7M6KappaFinalize(unittest.TestCase):
         text = self.text["REDESIGN"]
         for header in EXPECTED_SECTIONS["REDESIGN"]:
             self.assertIn(
-                header, text,
+                header,
+                text,
                 f"REDESIGN missing section: {header}",
             )
 
@@ -156,7 +160,8 @@ class TestW380A7M6KappaFinalize(unittest.TestCase):
         text = self.text["FINAL_VERDICT"]
         for header in EXPECTED_SECTIONS["FINAL_VERDICT"]:
             self.assertIn(
-                header, text,
+                header,
+                text,
                 f"FINAL_VERDICT missing section: {header}",
             )
 
@@ -165,7 +170,8 @@ class TestW380A7M6KappaFinalize(unittest.TestCase):
         for src_key, target_wf in CROSS_REF_INVARIANTS:
             text = self.text[src_key]
             self.assertIn(
-                target_wf, text,
+                target_wf,
+                text,
                 f"{src_key} missing cross-ref to {target_wf}",
             )
 
@@ -191,13 +197,15 @@ class TestW380A7M6KappaFinalize(unittest.TestCase):
             "Wf-371-A1",
         ]:
             self.assertIn(
-                path_label, paper_s6,
+                path_label,
+                paper_s6,
                 f"PAPER_S6 §1.4 7-path inventory missing {path_label}",
             )
         # REDESIGN extends to 8 paths (7 + Wf-377-A1 metric-redesign layer)
         redesign = self.text["REDESIGN"]
         self.assertIn(
-            "Wf-377-A1", redesign,
+            "Wf-377-A1",
+            redesign,
             "REDESIGN must reference itself as the 8th path",
         )
         # 8-path aggregate check: total paths mentioned across docs == 8 unique
@@ -212,11 +220,10 @@ class TestW380A7M6KappaFinalize(unittest.TestCase):
             "Wf-377-A1",
         }
         for path in all_paths:
-            count = sum(
-                1 for text in self.text.values() if path in text
-            )
+            count = sum(1 for text in self.text.values() if path in text)
             self.assertGreater(
-                count, 0,
+                count,
+                0,
                 f"{path} not mentioned in any of the 4 docs",
             )
 
@@ -241,7 +248,8 @@ class TestW380A7M6KappaFinalize(unittest.TestCase):
             # KEEP m1_auc + m2 + m3 + m15 as headline
             for headline_metric in headline_metrics:
                 self.assertIn(
-                    headline_metric, text,
+                    headline_metric,
+                    text,
                     f"{key} missing headline metric reference: {headline_metric}",
                 )
 
@@ -252,7 +260,8 @@ class TestW380A7M6KappaFinalize(unittest.TestCase):
         redesign = self.text["REDESIGN"]
         for alt in ["MolLogP", "MorganDensity_r2", "Chi3v"]:
             self.assertIn(
-                alt, redesign,
+                alt,
+                redesign,
                 f"REDESIGN missing top-3 alternative: {alt}",
             )
 
@@ -262,7 +271,8 @@ class TestW380A7M6KappaFinalize(unittest.TestCase):
         for key in ("PAPER_S6", "SECTION_3", "REDESIGN", "FINAL_VERDICT"):
             text = self.text[key]
             self.assertIn(
-                "Wf-380-A7", text,
+                "Wf-380-A7",
+                text,
                 f"{key} missing Wf-380-A7 self-reference (added by this closeout)",
             )
 
@@ -274,11 +284,13 @@ class TestW380A7M6KappaFinalize(unittest.TestCase):
         for key in ("PAPER_S6", "SECTION_3"):
             text = self.text[key]
             self.assertIn(
-                "\\begin{itemize}", text,
+                "\\begin{itemize}",
+                text,
                 f"{key} missing \\begin{{itemize}} LaTeX block (per task brief)",
             )
             self.assertIn(
-                "\\MEASURED", text,
+                "\\MEASURED",
+                text,
                 f"{key} missing \\MEASURED tag discipline",
             )
 

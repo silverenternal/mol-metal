@@ -47,6 +47,7 @@ Usage
 Exit codes: 0 = PASS (SCAFFOLD + smoke validated), 2 = SKIP (binary
 missing on PATH), 1 = FAIL (synthetic validation error).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -81,20 +82,20 @@ SEED_JITTER_KCAL: float = 0.02
 # arXiv:2210.01776 §4.2 + PocketMol arXiv:2305.16289 §4.1.
 # ---------------------------------------------------------------------------
 PARAM_GRID_4LEVEL: Dict[str, Dict[str, int]] = {
-    "ex8_nposes5":    {"exhaustiveness":  8, "n_poses":  5},
-    "ex16_nposes10":  {"exhaustiveness": 16, "n_poses": 10},
-    "ex32_nposes20":  {"exhaustiveness": 32, "n_poses": 20},
-    "ex64_nposes50":  {"exhaustiveness": 64, "n_poses": 50},
+    "ex8_nposes5": {"exhaustiveness": 8, "n_poses": 5},
+    "ex16_nposes10": {"exhaustiveness": 16, "n_poses": 10},
+    "ex32_nposes20": {"exhaustiveness": 32, "n_poses": 20},
+    "ex64_nposes50": {"exhaustiveness": 64, "n_poses": 50},
 }
 
 # Per-level base kcal/mol (Wf-141 §0 + Wf-333-V3 PROJECTED lift curve).
 # Round values chosen to mirror the Wf-381-A1 low=-7.0 / medium=-7.5 /
 # high=-8.0 ladder, with the new ex16_nposes10 mid-tier at -7.25.
 BASE_KCAL_PER_LEVEL_WF404A1: Dict[str, float] = {
-    "ex8_nposes5":    -7.00,
-    "ex16_nposes10":  -7.25,
-    "ex32_nposes20":  -7.50,
-    "ex64_nposes50":  -8.00,
+    "ex8_nposes5": -7.00,
+    "ex16_nposes10": -7.25,
+    "ex32_nposes20": -7.50,
+    "ex64_nposes50": -8.00,
 }
 
 # Per-pocket offsets (subset of Wf-381-A1 5-pocket offsets, with 4rlu
@@ -135,7 +136,9 @@ def load_cohort_4pockets(
     Returns a dict with keys ``pockets`` and ``seeds``.
     """
     return {
-        "pockets": list(pockets) if pockets is not None else list(COHORT_POCKETS_WF333V3),
+        "pockets": list(pockets)
+        if pockets is not None
+        else list(COHORT_POCKETS_WF333V3),
         "seeds": list(seeds) if seeds is not None else list(COHORT_SEEDS_DEFAULT),
         "smiles": CISPLATIN_SMILES,
         "industry_cutoff_kcal_mol": INDUSTRY_CUTOFF_KCAL_MOL,
@@ -171,6 +174,7 @@ def validate_param_grid(param_grid: Dict[str, Dict[str, int]]) -> None:
 def _seed_jitter(pocket: str, seed: int) -> float:
     """Deterministic +/- SEED_JITTER_KCAL jitter per (pocket, seed)."""
     import hashlib
+
     h_bytes = hashlib.blake2b(
         f"{pocket}|{seed}".encode("utf-8"), digest_size=4
     ).digest()
@@ -206,9 +210,7 @@ def tune_docking(
     """
     grid = param_grid if param_grid is not None else PARAM_GRID_4LEVEL
     if level not in grid:
-        raise ValueError(
-            f"Unknown level '{level}'; expected one of {list(grid)}"
-        )
+        raise ValueError(f"Unknown level '{level}'; expected one of {list(grid)}")
     if level not in BASE_KCAL_PER_LEVEL_WF404A1:
         raise ValueError(
             f"Missing base kcal/mol for level '{level}' in "
@@ -221,14 +223,10 @@ def tune_docking(
     per_pocket_median_kcal: Dict[str, float] = {}
     for pocket in pockets:
         offset = PER_POCKET_OFFSET_KCAL_4POCKETS.get(pocket, 0.0)
-        vals = [
-            round(base + offset + _seed_jitter(pocket, seed), 4) for seed in seeds
-        ]
+        vals = [round(base + offset + _seed_jitter(pocket, seed), 4) for seed in seeds]
         per_pocket_seed_kcal[pocket] = vals
         per_pocket_median_kcal[pocket] = round(statistics.median(vals), 4)
-    cohort_median = round(
-        statistics.median(per_pocket_median_kcal.values()), 4
-    )
+    cohort_median = round(statistics.median(per_pocket_median_kcal.values()), 4)
     return {
         "level": level,
         "exhaustiveness": grid[level]["exhaustiveness"],
@@ -250,10 +248,7 @@ def aggregate_per_level(cohort_results: Dict[str, Dict[str, Any]]) -> Dict[str, 
         lvl: res["cohort_median_kcal"] for lvl, res in cohort_results.items()
     }
     baseline = per_level_median["ex8_nposes5"]
-    lift = {
-        lvl: round(per_level_median[lvl] - baseline, 4)
-        for lvl in per_level_median
-    }
+    lift = {lvl: round(per_level_median[lvl] - baseline, 4) for lvl in per_level_median}
     expected_pass = {
         lvl: per_level_median[lvl] <= INDUSTRY_CUTOFF_KCAL_MOL
         for lvl in per_level_median
@@ -309,18 +304,30 @@ def invoke_vina_cli(
     """
     cmd: List[str] = [
         binary,
-        "--receptor", str(receptor_pdbqt),
-        "--ligand",   str(ligand_pdbqt),
-        "--out",      str(out_pdbqt),
-        "--center_x", str(center_xyz[0]),
-        "--center_y", str(center_xyz[1]),
-        "--center_z", str(center_xyz[2]),
-        "--size_x",   str(box_size_xyz[0]),
-        "--size_y",   str(box_size_xyz[1]),
-        "--size_z",   str(box_size_xyz[2]),
-        "--exhaustiveness", str(exhaustiveness),
-        "--num_modes",      str(n_poses),
-        "--cpu",            str(cpu),
+        "--receptor",
+        str(receptor_pdbqt),
+        "--ligand",
+        str(ligand_pdbqt),
+        "--out",
+        str(out_pdbqt),
+        "--center_x",
+        str(center_xyz[0]),
+        "--center_y",
+        str(center_xyz[1]),
+        "--center_z",
+        str(center_xyz[2]),
+        "--size_x",
+        str(box_size_xyz[0]),
+        "--size_y",
+        str(box_size_xyz[1]),
+        "--size_z",
+        str(box_size_xyz[2]),
+        "--exhaustiveness",
+        str(exhaustiveness),
+        "--num_modes",
+        str(n_poses),
+        "--cpu",
+        str(cpu),
     ]
     resolved = which_vina(binary)
     if dry_run or resolved is None:
@@ -335,9 +342,7 @@ def invoke_vina_cli(
             "tag": "PROJECTED",
         }
     try:
-        proc = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=timeout_sec
-        )
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_sec)
         return {
             "cmd": cmd,
             "exit_code": proc.returncode,
@@ -443,17 +448,15 @@ def run_smoke(
     validate_param_grid(param_grid)
     cohort = load_cohort_4pockets()
     binary_resolved = which_vina(binary)
-    cohort_results = {
-        lvl: tune_docking(cohort, lvl, param_grid) for lvl in param_grid
-    }
+    cohort_results = {lvl: tune_docking(cohort, lvl, param_grid) for lvl in param_grid}
     aggregate = aggregate_per_level(cohort_results)
     write_smoke_report(
         out_path, param_grid, cohort, cohort_results, aggregate, binary_resolved
     )
     LOG.info(
-        "Wf-404-A1 SCAFFOLD smoke run complete (binary_resolved=%s, "
-        "out_path=%s)",
-        binary_resolved, out_path,
+        "Wf-404-A1 SCAFFOLD smoke run complete (binary_resolved=%s, " "out_path=%s)",
+        binary_resolved,
+        out_path,
     )
     return aggregate
 
@@ -464,15 +467,21 @@ def run_smoke(
 def _cli() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument(
-        "--out", type=Path, default=DEFAULT_OUT_PATH,
+        "--out",
+        type=Path,
+        default=DEFAULT_OUT_PATH,
         help=f"Smoke report output path (default: {DEFAULT_OUT_PATH})",
     )
     parser.add_argument(
-        "--binary", type=str, default=DEFAULT_VINA_BINARY,
+        "--binary",
+        type=str,
+        default=DEFAULT_VINA_BINARY,
         help=f"Vina binary name on PATH (default: {DEFAULT_VINA_BINARY})",
     )
     parser.add_argument(
-        "--verbose", action="store_true", help="Verbose DEBUG logging",
+        "--verbose",
+        action="store_true",
+        help="Verbose DEBUG logging",
     )
     args = parser.parse_args()
     logging.basicConfig(

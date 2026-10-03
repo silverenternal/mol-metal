@@ -49,6 +49,7 @@ Run::
         --output molmetal/reports/wf25_combined \\
         2>&1 | tee molmetal/reports/wf25_combined/run.log
 """
+
 from __future__ import annotations
 
 import argparse
@@ -239,7 +240,9 @@ def build_design_matrix(
     metalcytotox_csv: Optional[Path],
     n_samples: int,
     seed: int = 42,
-) -> Tuple[List[str], List[List[float]], List[List[float]], List[float], Dict[str, int]]:
+) -> Tuple[
+    List[str], List[List[float]], List[List[float]], List[float], Dict[str, int]
+]:
     """Build a deterministic ``(smiles, astr, mph, target)`` quadruple for CV.
 
     Returns
@@ -287,7 +290,11 @@ def build_design_matrix(
             n_parsed += 1
 
     # ---- 2. Supplement: PlatinAI 5K (Pt, Pd) — synthetic target ----
-    if len(smiles_list) < n_samples and platinai_csv is not None and platinai_csv.exists():
+    if (
+        len(smiles_list) < n_samples
+        and platinai_csv is not None
+        and platinai_csv.exists()
+    ):
         pt_rows = load_platinai_5k(platinai_csv)
         rng.shuffle(pt_rows)
         for row in pt_rows:
@@ -299,9 +306,8 @@ def build_design_matrix(
                 n_failed += 1
                 continue
             try:
-                target = (
-                    float(row.get("metal") == "Pt")
-                    + 0.1 * float(rng.standard_normal())
+                target = float(row.get("metal") == "Pt") + 0.1 * float(
+                    rng.standard_normal()
                 )
             except Exception:
                 target = 0.05 * float(rng.standard_normal())
@@ -313,7 +319,9 @@ def build_design_matrix(
     # ---- 3. Multi-PH features for the survivor set ----
     print(f"  Computing Multi-PH features for {len(smiles_list)} molecules...")
     mph_feats, mph_stats = compute_multi_ph_features(
-        smiles_list, n_bins=MULTI_PH_N_BINS, max_atoms=MAX_POCKET_ATOMS,
+        smiles_list,
+        n_bins=MULTI_PH_N_BINS,
+        max_atoms=MAX_POCKET_ATOMS,
     )
     # Align by dropping multi-PH failures from the trio.
     if len(mph_feats) < len(smiles_list):
@@ -363,9 +371,7 @@ def _kfold_indices(n: int, k: int, seed: int = 0) -> List[Tuple[List[int], List[
     out: List[Tuple[List[int], List[int]]] = []
     for i in range(int(k)):
         test_idx = folds[i].tolist()
-        train_idx = np.concatenate(
-            [folds[j] for j in range(int(k)) if j != i]
-        ).tolist()
+        train_idx = np.concatenate([folds[j] for j in range(int(k)) if j != i]).tolist()
         out.append((train_idx, test_idx))
     return out
 
@@ -480,9 +486,7 @@ def cross_validate(
         # ``features.T @ features`` in the Hilbert primal-dual update
         # overflows on the 256-d multi-PH inputs.
         mu_mph = mph_tr.mean(axis=0)
-        sigma_mph = np.where(
-            mph_tr.std(axis=0) < 1e-9, 1.0, mph_tr.std(axis=0)
-        )
+        sigma_mph = np.where(mph_tr.std(axis=0) < 1e-9, 1.0, mph_tr.std(axis=0))
         mph_tr_n = (mph_tr - mu_mph) / sigma_mph
         mph_te_n = (mph_te - mu_mph) / sigma_mph
 
@@ -520,26 +524,24 @@ def cross_validate(
         )
         astr_reg.optimize(astr_tr_n, y_tr)
         mph_reg.optimize(mph_tr_n, y_tr)
-        y_hat_astr = np.asarray(
-            astr_reg.predict(astr_te_n), dtype=float
-        ).reshape(-1)
-        y_hat_mph = np.asarray(
-            mph_reg.predict(mph_te_n), dtype=float
-        ).reshape(-1)
+        y_hat_astr = np.asarray(astr_reg.predict(astr_te_n), dtype=float).reshape(-1)
+        y_hat_mph = np.asarray(mph_reg.predict(mph_te_n), dtype=float).reshape(-1)
         y_hat_sep = np.clip(y_hat_astr + y_hat_mph, -1e6, 1e6)
         sep_wall = float(time.perf_counter() - t0)
         sep_r2 = _compute_r2(y_te, y_hat_sep)
 
-        per_fold.append({
-            "fold": fold_idx,
-            "n_train": len(train_idx),
-            "n_test": len(test_idx),
-            "joint_r2": float(joint_r2),
-            "joint_wall_s": float(joint_wall),
-            "joint_join_dim": int(joint_res["join_dim"]),
-            "separate_r2": float(sep_r2),
-            "separate_wall_s": float(sep_wall),
-        })
+        per_fold.append(
+            {
+                "fold": fold_idx,
+                "n_train": len(train_idx),
+                "n_test": len(test_idx),
+                "joint_r2": float(joint_r2),
+                "joint_wall_s": float(joint_wall),
+                "joint_join_dim": int(joint_res["join_dim"]),
+                "separate_r2": float(sep_r2),
+                "separate_wall_s": float(sep_wall),
+            }
+        )
         joint_r2s.append(float(joint_r2))
         sep_r2s.append(float(sep_r2))
         joint_walls.append(float(joint_wall))
@@ -627,27 +629,29 @@ def render_table(metrics: Dict[str, Any], stats: Dict[str, int]) -> str:
             f"{fold['joint_r2']:+.4f} | {fold['joint_wall_s']:.4f} | "
             f"{fold['separate_r2']:+.4f} | {fold['separate_wall_s']:.4f} |"
         )
-    out.extend([
-        "",
-        "## Honest framing",
-        "",
-        "* ASTSR features here are 8 RDKit descriptors — the true "
-        "Deflexpressor AST bank (R17 ship) operates on the AST search "
-        "tree, which requires a pre-fitted AST bank unavailable in this "
-        "offline CPU script. The 8-d descriptor set is the *honest* "
-        "ASTSR-proxy used by Wf-25 Phase 1.",
-        "* Multi-PH features are deterministic (no learned parameters); "
-        "only the downstream Hilbert regressor is trained.",
-        "* Activity is binary (0/1) — the target is ``activity + "
-        "N(0, 0.05)``, the regressor sees a noisy continuous signal, "
-        "and R² measures how much of that binary signal the joint "
-        "Hilbert regressor recovers.",
-        "* The separate branch fits two ``LambdaASTSRHilbert`` regressors "
-        "(one per stream) and sums predictions at inference; the joint "
-        "branch uses the Wf-21 phase-5 ``JointHilbertOptimizer``.",
-        "* Wall-time is machine-dependent; the speedup column is the "
-        "intended *relative* metric.",
-    ])
+    out.extend(
+        [
+            "",
+            "## Honest framing",
+            "",
+            "* ASTSR features here are 8 RDKit descriptors — the true "
+            "Deflexpressor AST bank (R17 ship) operates on the AST search "
+            "tree, which requires a pre-fitted AST bank unavailable in this "
+            "offline CPU script. The 8-d descriptor set is the *honest* "
+            "ASTSR-proxy used by Wf-25 Phase 1.",
+            "* Multi-PH features are deterministic (no learned parameters); "
+            "only the downstream Hilbert regressor is trained.",
+            "* Activity is binary (0/1) — the target is ``activity + "
+            "N(0, 0.05)``, the regressor sees a noisy continuous signal, "
+            "and R² measures how much of that binary signal the joint "
+            "Hilbert regressor recovers.",
+            "* The separate branch fits two ``LambdaASTSRHilbert`` regressors "
+            "(one per stream) and sums predictions at inference; the joint "
+            "branch uses the Wf-21 phase-5 ``JointHilbertOptimizer``.",
+            "* Wall-time is machine-dependent; the speedup column is the "
+            "intended *relative* metric.",
+        ]
+    )
     return "\n".join(out) + "\n"
 
 
@@ -659,37 +663,51 @@ def main() -> int:
         description=__doc__.splitlines()[0],
     )
     parser.add_argument(
-        "--n-samples", type=int, default=500,
+        "--n-samples",
+        type=int,
+        default=500,
         help="Number of (SMILES, target) rows to featurize.",
     )
     parser.add_argument(
-        "--n-folds", type=int, default=5,
+        "--n-folds",
+        type=int,
+        default=5,
         help="Number of cross-validation folds.",
     )
     parser.add_argument(
-        "--data", type=str, default="molmetal/data/platinai_5k.csv",
+        "--data",
+        type=str,
+        default="molmetal/data/platinai_5k.csv",
         help="PlatinAI 5K CSV path (SMILES source).",
     )
     parser.add_argument(
-        "--metalcytotox", type=str,
+        "--metalcytotox",
+        type=str,
         default=".data/molmetal/metalcytotox_5metal_multitask_v4.csv",
         help="MetalCytoToxDB CSV path (target source).",
     )
     parser.add_argument(
-        "--output", type=str,
+        "--output",
+        type=str,
         default="molmetal/reports/wf25_combined",
         help="Output directory for run.log / metrics.json / comparison_table.md.",
     )
     parser.add_argument(
-        "--seed", type=int, default=42,
+        "--seed",
+        type=int,
+        default=42,
         help="Random seed for SMILES sampling.",
     )
     parser.add_argument(
-        "--n-iters", type=int, default=JOINT_N_ITERS,
+        "--n-iters",
+        type=int,
+        default=JOINT_N_ITERS,
         help="Hilbert primal-dual iterations.",
     )
     parser.add_argument(
-        "--lr", type=float, default=JOINT_LR,
+        "--lr",
+        type=float,
+        default=JOINT_LR,
         help="Hilbert primal/dual learning rate.",
     )
     args = parser.parse_args()
@@ -742,10 +760,14 @@ def main() -> int:
         return 1
 
     # ---- Run CV ----
-    print(f"\n[2/3] Running {args.n_folds}-fold cross-validation "
-          "(joint vs separate Hilbert)...")
+    print(
+        f"\n[2/3] Running {args.n_folds}-fold cross-validation "
+        "(joint vs separate Hilbert)..."
+    )
     metrics = cross_validate(
-        astr_feats, mph_feats, targets,
+        astr_feats,
+        mph_feats,
+        targets,
         n_folds=args.n_folds,
         hilbert_dim=JOINT_HILBERT_DIM,
         n_iters=args.n_iters,

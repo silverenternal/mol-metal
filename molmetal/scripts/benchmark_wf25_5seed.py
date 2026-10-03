@@ -118,7 +118,9 @@ DEFAULT_SEEDS: Tuple[int, ...] = (0, 1, 2, 3, 4)
 DEFAULT_N_SAMPLES: int = 500
 DEFAULT_N_FOLDS: int = 5
 DEFAULT_PLATINAI_CSV: Path = _REPO_ROOT / "molmetal" / "data" / "platinai_5k.csv"
-DEFAULT_METALCYTOX_CSV: Path = _REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
+DEFAULT_METALCYTOX_CSV: Path = (
+    _REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
+)
 DEFAULT_OUT_DIR: Path = _REPO_ROOT / "molmetal" / "reports" / "wf25_5seed_bench"
 
 
@@ -295,8 +297,8 @@ class DesignMatrix:
     """Container for the (astr, mph, target) design matrix."""
 
     smiles: Tuple[str, ...]
-    astr: Tuple[Tuple[float, ...], ...]   # (N, 8)
-    mph: Tuple[Tuple[float, ...], ...]    # (N, n_bins ** 2)
+    astr: Tuple[Tuple[float, ...], ...]  # (N, 8)
+    mph: Tuple[Tuple[float, ...], ...]  # (N, n_bins ** 2)
     target: Tuple[float, ...]
     stats: Dict[str, int]
 
@@ -369,9 +371,8 @@ def build_design_matrix(
                 n_failed += 1
                 continue
             try:
-                target = (
-                    float(row.get("metal") == "Pt")
-                    + 0.1 * float(rng.standard_normal())
+                target = float(row.get("metal") == "Pt") + 0.1 * float(
+                    rng.standard_normal()
                 )
             except Exception:
                 target = 0.05 * float(rng.standard_normal())
@@ -385,7 +386,9 @@ def build_design_matrix(
     mph_stats: Dict[str, int] = {"n_parsed": 0, "n_failed": 0, "n_too_large": 0}
     if smiles_list:
         mph_feats, mph_stats = compute_multi_ph_features(
-            smiles_list, n_bins=MULTI_PH_N_BINS, max_atoms=MAX_POCKET_ATOMS,
+            smiles_list,
+            n_bins=MULTI_PH_N_BINS,
+            max_atoms=MAX_POCKET_ATOMS,
         )
 
     # Align by dropping multi-PH failures.
@@ -431,9 +434,7 @@ def build_design_matrix(
 # ---------------------------------------------------------------------------
 # k-fold partition
 # ---------------------------------------------------------------------------
-def kfold_indices(
-    n: int, k: int, seed: int
-) -> List[Tuple[List[int], List[int]]]:
+def kfold_indices(n: int, k: int, seed: int) -> List[Tuple[List[int], List[int]]]:
     """Deterministic k-fold split."""
     import numpy as np
 
@@ -444,9 +445,7 @@ def kfold_indices(
     out: List[Tuple[List[int], List[int]]] = []
     for i in range(int(k)):
         test_idx = folds[i].tolist()
-        train_idx = np.concatenate(
-            [folds[j] for j in range(int(k)) if j != i]
-        ).tolist()
+        train_idx = np.concatenate([folds[j] for j in range(int(k)) if j != i]).tolist()
         out.append((train_idx, test_idx))
     return out
 
@@ -533,8 +532,13 @@ def _fit_predict_hilbert(
 
 
 def _fit_predict_joint(
-    astr_tr: Any, mph_tr: Any, y_tr: Any,
-    astr_te: Any, mph_te: Any, seed: int, hp: Dict[str, Any],
+    astr_tr: Any,
+    mph_tr: Any,
+    y_tr: Any,
+    astr_te: Any,
+    mph_te: Any,
+    seed: int,
+    hp: Dict[str, Any],
 ) -> Tuple[Any, float, int]:
     """``JointHilbertOptimizer`` (Wf-21 phase-5 ship)."""
     from molmetal.molmetal_lam.reward.astsr_multiph_hilbert import (
@@ -625,8 +629,10 @@ def run_5seed_benchmark(
         print(f"\n[wf25_5seed] === seed={seed} ===")
         splits = kfold_indices(design.n_samples, int(n_folds), seed=int(seed))
         for fold_idx, (train_idx, test_idx) in enumerate(splits):
-            print(f"  seed={seed} fold={fold_idx}: "
-                  f"train={len(train_idx)} test={len(test_idx)}")
+            print(
+                f"  seed={seed} fold={fold_idx}: "
+                f"train={len(train_idx)} test={len(test_idx)}"
+            )
 
             astr_tr = astr_arr[train_idx]
             astr_te = astr_arr[test_idx]
@@ -647,14 +653,20 @@ def run_5seed_benchmark(
                 try:
                     if method == "astsr":
                         y_hat, wall = _fit_predict_astsr(
-                            astr_tr_n, y_tr, astr_te_n,
-                            seed=int(seed), hp=hp["astsr"],
+                            astr_tr_n,
+                            y_tr,
+                            astr_te_n,
+                            seed=int(seed),
+                            hp=hp["astsr"],
                         )
                         peak = tracemalloc.get_traced_memory()[1]
                     elif method == "hilbert":
                         y_hat, wall = _fit_predict_hilbert(
-                            astr_tr_n, y_tr, astr_te_n,
-                            seed=int(seed), hp=hp["hilbert"],
+                            astr_tr_n,
+                            y_tr,
+                            astr_te_n,
+                            seed=int(seed),
+                            hp=hp["hilbert"],
                         )
                         peak = tracemalloc.get_traced_memory()[1]
                     elif method == "joint":
@@ -663,15 +675,18 @@ def run_5seed_benchmark(
                         # features`` overflows on the 256-d inputs.
                         mu_mph = mph_tr.mean(axis=0)
                         sigma_mph = np.where(
-                            mph_tr.std(axis=0) < 1e-9, 1.0,
-                            mph_tr.std(axis=0)
+                            mph_tr.std(axis=0) < 1e-9, 1.0, mph_tr.std(axis=0)
                         )
                         mph_tr_n = (mph_tr - mu_mph) / sigma_mph
                         mph_te_n = (mph_te - mu_mph) / sigma_mph
                         y_hat, wall, _jd = _fit_predict_joint(
-                            astr_tr_n, mph_tr_n, y_tr,
-                            astr_te_n, mph_te_n,
-                            seed=int(seed), hp=hp["joint"],
+                            astr_tr_n,
+                            mph_tr_n,
+                            y_tr,
+                            astr_te_n,
+                            mph_te_n,
+                            seed=int(seed),
+                            hp=hp["joint"],
                         )
                         peak = tracemalloc.get_traced_memory()[1]
                     else:
@@ -680,7 +695,8 @@ def run_5seed_benchmark(
                     tracemalloc.stop()
                 y_hat_arr = np.clip(
                     np.asarray(y_hat, dtype=float).reshape(-1),
-                    -1e6, 1e6,
+                    -1e6,
+                    1e6,
                 )
                 r2 = float(_compute_r2(y_te.tolist(), y_hat_arr.tolist()))
                 rec = FoldRecord(
@@ -693,16 +709,18 @@ def run_5seed_benchmark(
                     peak_mem_mb=float(peak) / (1024.0 * 1024.0),
                 )
                 per_method_records[method].append(rec)
-                fold_records.append({
-                    "seed": rec.seed,
-                    "fold_idx": rec.fold_idx,
-                    "n_train": rec.n_train,
-                    "n_test": rec.n_test,
-                    "r2_test": rec.r2_test,
-                    "wall_s": rec.wall_s,
-                    "peak_mem_mb": rec.peak_mem_mb,
-                    "method": method,
-                })
+                fold_records.append(
+                    {
+                        "seed": rec.seed,
+                        "fold_idx": rec.fold_idx,
+                        "n_train": rec.n_train,
+                        "n_test": rec.n_test,
+                        "r2_test": rec.r2_test,
+                        "wall_s": rec.wall_s,
+                        "peak_mem_mb": rec.peak_mem_mb,
+                        "method": method,
+                    }
+                )
                 print(
                     f"    {method:7s}: R²={rec.r2_test:+.4f} "
                     f"wall={rec.wall_s:.3f}s "
@@ -730,9 +748,7 @@ def run_5seed_benchmark(
                     "r2_mean": _mean([r.r2_test for r in s_recs]),
                     "r2_std": _std([r.r2_test for r in s_recs]),
                     "wall_s_mean": _mean([r.wall_s for r in s_recs]),
-                    "peak_mem_mb_mean": _mean(
-                        [r.peak_mem_mb for r in s_recs]
-                    ),
+                    "peak_mem_mb_mean": _mean([r.peak_mem_mb for r in s_recs]),
                 }
         per_method[method] = {
             "method": method,
@@ -820,11 +836,10 @@ def render_5seed_table(payload: Dict[str, Any]) -> str:
         agg = per_method[m]
         speedup = (
             agg["wall_s_mean"] / per_method[fastest]["wall_s_mean"]
-            if per_method[fastest]["wall_s_mean"] > 0 else float("inf")
+            if per_method[fastest]["wall_s_mean"] > 0
+            else float("inf")
         )
-        speedup_str = (
-            f"{speedup:.2f}x (ref)" if m == fastest else f"{speedup:.2f}x"
-        )
+        speedup_str = f"{speedup:.2f}x (ref)" if m == fastest else f"{speedup:.2f}x"
         lines.append(
             f"| {m} | {agg['r2_mean']:+.4f} ± {agg['r2_std']:.4f} | "
             f"{agg['wall_s_mean']:.3f} ± {agg['wall_s_std']:.3f} | "
@@ -832,13 +847,15 @@ def render_5seed_table(payload: Dict[str, Any]) -> str:
             f"{speedup_str} |"
         )
 
-    lines.extend([
-        "",
-        "## Per-seed R² (mean across folds)",
-        "",
-        "| Method | " + " | ".join(f"seed {s}" for s in seeds) + " |",
-        "|---|" + "|".join(["---"] * len(seeds)) + "|",
-    ])
+    lines.extend(
+        [
+            "",
+            "## Per-seed R² (mean across folds)",
+            "",
+            "| Method | " + " | ".join(f"seed {s}" for s in seeds) + " |",
+            "|---|" + "|".join(["---"] * len(seeds)) + "|",
+        ]
+    )
     for m in methods:
         cells = []
         for s in seeds:
@@ -849,13 +866,15 @@ def render_5seed_table(payload: Dict[str, Any]) -> str:
                 cells.append(f"{v['r2_mean']:+.4f}")
         lines.append(f"| {m} | " + " | ".join(cells) + " |")
 
-    lines.extend([
-        "",
-        "## Per-seed wall time (mean across folds)",
-        "",
-        "| Method | " + " | ".join(f"seed {s}" for s in seeds) + " |",
-        "|---|" + "|".join(["---"] * len(seeds)) + "|",
-    ])
+    lines.extend(
+        [
+            "",
+            "## Per-seed wall time (mean across folds)",
+            "",
+            "| Method | " + " | ".join(f"seed {s}" for s in seeds) + " |",
+            "|---|" + "|".join(["---"] * len(seeds)) + "|",
+        ]
+    )
     for m in methods:
         cells = []
         for s in seeds:
@@ -866,28 +885,30 @@ def render_5seed_table(payload: Dict[str, Any]) -> str:
                 cells.append(f"{v['wall_s_mean']:.3f}s")
         lines.append(f"| {m} | " + " | ".join(cells) + " |")
 
-    lines.extend([
-        "",
-        "## Honest framing",
-        "",
-        "* ASTSR features are 8 RDKit descriptors — the F5 schema is",
-        "  unavailable offline (requires a Pareto-front computation).",
-        "* The three backends operate on different feature sets:",
-        "  ASTSR + Hilbert share the 8-d RDKit stream; Joint adds a 256-d",
-        "  multi-PH stream (16×16 bins flattened) concatenated to 264-d",
-        "  before fitting.",
-        "* Wall-time and memory are machine-dependent; the speedup column",
-        "  is the intended *relative* metric against the fastest backend",
-        f"  ({fastest}).",
-        "* `seed` controls the k-fold partition only; the per-backend",
-        "  internal RNG is reset independently for each (seed, fold).",
-        "* Activity is binary (0/1); the target is `activity + N(0, 0.05)`",
-        "  — R² measures how much of that binary signal each backend",
-        "  recovers from descriptors alone.",
-        "",
-        f"**Run timestamp (UTC):** {payload['metadata']['timestamp_utc']}",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            "## Honest framing",
+            "",
+            "* ASTSR features are 8 RDKit descriptors — the F5 schema is",
+            "  unavailable offline (requires a Pareto-front computation).",
+            "* The three backends operate on different feature sets:",
+            "  ASTSR + Hilbert share the 8-d RDKit stream; Joint adds a 256-d",
+            "  multi-PH stream (16×16 bins flattened) concatenated to 264-d",
+            "  before fitting.",
+            "* Wall-time and memory are machine-dependent; the speedup column",
+            "  is the intended *relative* metric against the fastest backend",
+            f"  ({fastest}).",
+            "* `seed` controls the k-fold partition only; the per-backend",
+            "  internal RNG is reset independently for each (seed, fold).",
+            "* Activity is binary (0/1); the target is `activity + N(0, 0.05)`",
+            "  — R² measures how much of that binary signal each backend",
+            "  recovers from descriptors alone.",
+            "",
+            f"**Run timestamp (UTC):** {payload['metadata']['timestamp_utc']}",
+            "",
+        ]
+    )
     return "\n".join(lines) + "\n"
 
 
@@ -940,18 +961,23 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p.add_argument("--n-samples", type=int, default=DEFAULT_N_SAMPLES)
     p.add_argument("--n-folds", type=int, default=DEFAULT_N_FOLDS)
     p.add_argument("--data", type=str, default=str(DEFAULT_PLATINAI_CSV))
-    p.add_argument("--metalcytotox", type=str,
-                   default=str(DEFAULT_METALCYTOX_CSV))
+    p.add_argument("--metalcytotox", type=str, default=str(DEFAULT_METALCYTOX_CSV))
     p.add_argument("--output", type=str, default=str(DEFAULT_OUT_DIR))
-    p.add_argument("--seed", type=int, default=0,
-                   help="Base seed; sweep runs seeds {seed, seed+1, ..., seed+4}")
+    p.add_argument(
+        "--seed",
+        type=int,
+        default=0,
+        help="Base seed; sweep runs seeds {seed, seed+1, ..., seed+4}",
+    )
     p.add_argument("--hilbert-n-iters", type=int, default=HILBERT_N_ITERS)
     p.add_argument("--hilbert-lr", type=float, default=HILBERT_LR)
     p.add_argument("--astsr-depth", type=int, default=ASTSR_DEPTH)
     p.add_argument("--astsr-population", type=int, default=ASTSR_POPULATION)
     p.add_argument("--astsr-generations", type=int, default=ASTSR_GENERATIONS)
     p.add_argument(
-        "--methods", type=str, nargs="+",
+        "--methods",
+        type=str,
+        nargs="+",
         default=["astsr", "hilbert", "joint"],
         choices=["astsr", "hilbert", "joint"],
     )
@@ -965,8 +991,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     hyperparams = {
         "hilbert": {"n_iters": args.hilbert_n_iters, "lr": args.hilbert_lr},
-        "joint":   {"n_iters": args.hilbert_n_iters, "lr": args.hilbert_lr},
-        "astsr":   {
+        "joint": {"n_iters": args.hilbert_n_iters, "lr": args.hilbert_lr},
+        "astsr": {
             "depth": args.astsr_depth,
             "population": args.astsr_population,
             "generations": args.astsr_generations,

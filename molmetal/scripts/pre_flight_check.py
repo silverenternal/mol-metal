@@ -118,7 +118,9 @@ from molmetal.scripts import wf343c1_pre_retrain_check as _wf343c1  # noqa: E402
 REPO_ROOT = Path(__file__).resolve().parents[2]  # .../mol-metal
 MOLMETAL_ROOT = REPO_ROOT / "molmetal"
 SCRIPT_DIR = MOLMETAL_ROOT / "scripts"
-SCRIPTS_DIR = REPO_ROOT / "scripts"  # Wf-432-A1: project root scripts dir (USER_OK wrapper audit)
+SCRIPTS_DIR = (
+    REPO_ROOT / "scripts"
+)  # Wf-432-A1: project root scripts dir (USER_OK wrapper audit)
 LAM_CHEM_DIR = MOLMETAL_ROOT / "molmetal_lam" / "lam_chem"
 CONFIGS_DIR = REPO_ROOT / "configs"
 TESTS_DIR = MOLMETAL_ROOT / "tests"
@@ -239,7 +241,11 @@ def _run(
         )
         return proc.returncode, proc.stdout, proc.stderr
     except subprocess.TimeoutExpired as exc:
-        return 124, exc.stdout or "", (exc.stderr or "") + f"\n[TIMEOUT after {timeout}s]"
+        return (
+            124,
+            exc.stdout or "",
+            (exc.stderr or "") + f"\n[TIMEOUT after {timeout}s]",
+        )
     except FileNotFoundError as exc:
         return 127, "", f"[exec error: {exc}]"
 
@@ -284,12 +290,20 @@ def gate_grep(
     elapsed = time.perf_counter() - t0
     if ok:
         return GateResult(
-            name, priority, pipeline, "PASS",
-            f"grep '{pattern}' found in {file_path}", elapsed,
+            name,
+            priority,
+            pipeline,
+            "PASS",
+            f"grep '{pattern}' found in {file_path}",
+            elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "FAIL",
-        f"grep '{pattern}' NOT found in {file_path}", elapsed,
+        name,
+        priority,
+        pipeline,
+        "FAIL",
+        f"grep '{pattern}' NOT found in {file_path}",
+        elapsed,
     )
 
 
@@ -364,15 +378,22 @@ def gate_help(
             missing.append(tok)
     if not missing:
         return GateResult(
-            name, priority, pipeline, "PASS",
+            name,
+            priority,
+            pipeline,
+            "PASS",
             f"DECLARATION-ONLY: --help exposes all {len(tokens)} token(s) of "
             f"'{pattern}' in the argparse invocation column of {script.name} "
             f"(rc={rc}, {len(option_invocations)} option lines){fallback_note}. "
             f"NOTE: proves flag DECLARATION, NOT wire-in/behaviour — §5.7 "
-            f"smoke required for that.", elapsed,
+            f"smoke required for that.",
+            elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "FAIL",
+        name,
+        priority,
+        pipeline,
+        "FAIL",
         f"DECLARATION-ONLY check failed: help missing token(s) {missing} from "
         f"'{pattern}' in the argparse invocation column (rc={rc}; "
         f"{len(option_invocations)} option lines in {len(blob)}B output)"
@@ -393,12 +414,20 @@ def gate_file_exists(
     elapsed = time.perf_counter() - t0
     if exists:
         return GateResult(
-            name, priority, pipeline, "PASS",
-            f"file exists: {file_path}", elapsed,
+            name,
+            priority,
+            pipeline,
+            "PASS",
+            f"file exists: {file_path}",
+            elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "FAIL",
-        f"file MISSING: {file_path}", elapsed,
+        name,
+        priority,
+        pipeline,
+        "FAIL",
+        f"file MISSING: {file_path}",
+        elapsed,
     )
 
 
@@ -414,17 +443,29 @@ def gate_min_lines(
     elapsed = time.perf_counter() - t0
     if n < 0:
         return GateResult(
-            name, priority, pipeline, "FAIL",
-            f"file unreadable: {file_path}", elapsed,
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"file unreadable: {file_path}",
+            elapsed,
         )
     if n >= min_lines:
         return GateResult(
-            name, priority, pipeline, "PASS",
-            f"wc -l {file_path} = {n} >= {min_lines}", elapsed,
+            name,
+            priority,
+            pipeline,
+            "PASS",
+            f"wc -l {file_path} = {n} >= {min_lines}",
+            elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "FAIL",
-        f"wc -l {file_path} = {n} < {min_lines}", elapsed,
+        name,
+        priority,
+        pipeline,
+        "FAIL",
+        f"wc -l {file_path} = {n} < {min_lines}",
+        elapsed,
     )
 
 
@@ -459,8 +500,12 @@ def gate_json_threshold(
     t0 = time.perf_counter()
     if not json_path.exists():
         return GateResult(
-            name, priority, pipeline, "FAIL",
-            f"json file missing: {json_path}", time.perf_counter() - t0,
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"json file missing: {json_path}",
+            time.perf_counter() - t0,
         )
     try:
         # Wf-304A: read via AnchorGuard (path + mtime + JSON parse guards).
@@ -481,7 +526,10 @@ def gate_json_threshold(
         TypeError,
     ) as exc:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"anchor guard / parse / extractor error in {json_path}: "
             f"{type(exc).__name__}: {exc}",
             time.perf_counter() - t0,
@@ -497,17 +545,29 @@ def gate_json_threshold(
     cmp = ops.get(op)
     if cmp is None:
         return GateResult(
-            name, priority, pipeline, "FAIL",
-            f"unknown op '{op}'", elapsed,
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"unknown op '{op}'",
+            elapsed,
         )
     if cmp(value, threshold):
         return GateResult(
-            name, priority, pipeline, "PASS",
-            f"{json_path}: value={value:.6f} {op} {threshold}", elapsed,
+            name,
+            priority,
+            pipeline,
+            "PASS",
+            f"{json_path}: value={value:.6f} {op} {threshold}",
+            elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "FAIL",
-        f"{json_path}: value={value:.6f} NOT {op} {threshold}", elapsed,
+        name,
+        priority,
+        pipeline,
+        "FAIL",
+        f"{json_path}: value={value:.6f} NOT {op} {threshold}",
+        elapsed,
     )
 
 
@@ -528,12 +588,20 @@ def gate_pytest(
     tail = blob.splitlines()[-1] if blob else "(no output)"
     if rc == 0:
         return GateResult(
-            name, priority, pipeline, "PASS",
-            f"pytest PASS: {tail}", elapsed,
+            name,
+            priority,
+            pipeline,
+            "PASS",
+            f"pytest PASS: {tail}",
+            elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "FAIL",
-        f"pytest FAIL (rc={rc}): {tail}", elapsed,
+        name,
+        priority,
+        pipeline,
+        "FAIL",
+        f"pytest FAIL (rc={rc}): {tail}",
+        elapsed,
     )
 
 
@@ -552,27 +620,43 @@ def gate_which_or_apt(
     t0 = time.perf_counter()
     if shutil.which(binary) is not None:
         return GateResult(
-            name, priority, pipeline, "PASS",
-            f"which {binary} -> present on PATH", time.perf_counter() - t0,
+            name,
+            priority,
+            pipeline,
+            "PASS",
+            f"which {binary} -> present on PATH",
+            time.perf_counter() - t0,
         )
     # Wf-260: project-local bin/ fallback (e.g. molmetal/bin/vina)
     repo_local_bin = MOLMETAL_ROOT / "bin" / binary
     if repo_local_bin.is_file() and os.access(repo_local_bin, os.X_OK):
         return GateResult(
-            name, priority, pipeline, "PASS",
-            f"repo-local binary present: {repo_local_bin}", time.perf_counter() - t0,
+            name,
+            priority,
+            pipeline,
+            "PASS",
+            f"repo-local binary present: {repo_local_bin}",
+            time.perf_counter() - t0,
         )
     # apt fallback
     rc, out, _ = _run(["apt", "list", "--installed"], timeout=15.0)
     elapsed = time.perf_counter() - t0
     if rc == 0 and binary.lower() in out.lower():
         return GateResult(
-            name, priority, pipeline, "PASS",
-            f"apt shows installed package matching {binary}", elapsed,
+            name,
+            priority,
+            pipeline,
+            "PASS",
+            f"apt shows installed package matching {binary}",
+            elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "FAIL",
-        f"which {binary} -> not found; apt-list did not show match", elapsed,
+        name,
+        priority,
+        pipeline,
+        "FAIL",
+        f"which {binary} -> not found; apt-list did not show match",
+        elapsed,
     )
 
 
@@ -601,7 +685,10 @@ def gate_yaml_schema(
         import yaml
     except ImportError:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             "PyYAML not installed; cannot verify YAML schemas",
             time.perf_counter() - t0,
         )
@@ -621,12 +708,18 @@ def gate_yaml_schema(
     elapsed = time.perf_counter() - t0
     if missing or invalid:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"missing={missing}; invalid={invalid}",
             elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"all {len(yaml_paths)} YAMLs parse OK",
         elapsed,
     )
@@ -828,9 +921,7 @@ def gate_csv_hash(
     else:
         strict = CSV_HASH_STRICT_DEFAULT
     mpath = (
-        Path(manifest_path)
-        if manifest_path is not None
-        else CSV_HASH_MANIFEST_DEFAULT
+        Path(manifest_path) if manifest_path is not None else CSV_HASH_MANIFEST_DEFAULT
     )
     manifest, manifest_err = _load_csv_checksum_manifest(mpath)
     files: Dict[str, Any] = manifest["files"] if manifest else {}
@@ -908,14 +999,21 @@ def gate_csv_hash(
 
     if bad:
         return GateResult(
-            name, priority, pipeline, "FAIL",
-            "; ".join(bad), elapsed,
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            "; ".join(bad),
+            elapsed,
         )
 
     if manifest is None:
         why = "absent" if manifest_err is None else f"unusable: {manifest_err}"
         return GateResult(
-            name, priority, pipeline, "SKIP",
+            name,
+            priority,
+            pipeline,
+            "SKIP",
             f"frozen manifest {why} ({mpath}) — line-count fallback OK for "
             f"{len(linecount_only)}/{len(csv_paths_with_min_lines)} CSV(s) "
             f"[{', '.join(linecount_only)}]; SHA-256 NOT verified",
@@ -936,10 +1034,12 @@ def gate_csv_hash(
             f"(line-count-only): {', '.join(unverified)}"
         )
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"all {len(verified)}/{n_total} CSVs SHA-256-verified vs "
-        f"{mpath.name}: {', '.join(verified)}"
-        + suffix,
+        f"{mpath.name}: {', '.join(verified)}" + suffix,
         elapsed,
     )
 
@@ -1086,9 +1186,11 @@ def gate_scaffold_zero_leak(
     missing = [(str(p), lab) for p, lab in csv_specs if not p.is_file()]
     if missing:
         return GateResult(
-            name, priority, pipeline, "FAIL",
-            "CSV(s) missing: "
-            + "; ".join(f"{lab}={path}" for path, lab in missing),
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            "CSV(s) missing: " + "; ".join(f"{lab}={path}" for path, lab in missing),
             time.perf_counter() - t0,
         )
     specs_literal = repr([(str(p), lab) for p, lab in csv_specs])
@@ -1120,7 +1222,11 @@ def gate_scaffold_zero_leak(
         # operator verifiability.
         err_tail = (err or "").strip().splitlines()[-3:]
         err_tail_str = " | ".join(line for line in err_tail if line) or "(no stderr)"
-        if "ModuleNotFoundError" in err or "ImportError" in err or "No module named" in err:
+        if (
+            "ModuleNotFoundError" in err
+            or "ImportError" in err
+            or "No module named" in err
+        ):
             # Extract the missing module name from the traceback tail.
             missing_name = "pandas"
             for line in err_tail:
@@ -1132,7 +1238,10 @@ def gate_scaffold_zero_leak(
                         missing_name = name
                     break
             return GateResult(
-                name, priority, pipeline, "SKIP",
+                name,
+                priority,
+                pipeline,
+                "SKIP",
                 f"scaffold-leak verifier subprocess requires "
                 f"{missing_name!r} (env gap on host Python); "
                 f"the gated CSV(s) ARE present "
@@ -1147,30 +1256,43 @@ def gate_scaffold_zero_leak(
                 elapsed,
             )
         return GateResult(
-            name, priority, pipeline, "FAIL",
-            f"leak-check subprocess failed: rc={rc} | "
-            f"stderr_tail: {err_tail_str}",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"leak-check subprocess failed: rc={rc} | " f"stderr_tail: {err_tail_str}",
             elapsed,
         )
     lines = [
-        line for line in out.strip().splitlines()
+        line
+        for line in out.strip().splitlines()
         if line.startswith("OK ") or line.startswith("LEAK ")
     ]
     leak_lines = [line for line in lines if line.startswith("LEAK ")]
     if leak_lines:
         return GateResult(
-            name, priority, pipeline, "FAIL",
-            "; ".join(leak_lines), elapsed,
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            "; ".join(leak_lines),
+            elapsed,
         )
     if len(lines) != len(csv_specs):
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"probe returned {len(lines)}/{len(csv_specs)} per-CSV results; "
             f"raw output: {out.strip()[:300] or '(empty)'}",
             elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"0 scaffold leak in all {len(lines)} CSVs: " + "; ".join(lines),
         elapsed,
     )
@@ -1261,7 +1383,10 @@ def gate_metalcytotox_v1_known_leaky(
     t0 = time.perf_counter()
     if not csv_path.is_file():
         return GateResult(
-            name, priority, pipeline, "SKIP",
+            name,
+            priority,
+            pipeline,
+            "SKIP",
             f"v1 CSV absent on this host ({csv_path}); the known-leaky "
             f"artifact cannot be measured.  Presence is owned by the "
             f"blocking `p0_csv_hash_verify` manifest entry — this "
@@ -1287,7 +1412,11 @@ def gate_metalcytotox_v1_known_leaky(
     if rc != 0:
         err_tail = (err or "").strip().splitlines()[-3:]
         err_tail_str = " | ".join(line for line in err_tail if line) or "(no stderr)"
-        if "ModuleNotFoundError" in err or "ImportError" in err or "No module named" in err:
+        if (
+            "ModuleNotFoundError" in err
+            or "ImportError" in err
+            or "No module named" in err
+        ):
             missing_name = "pandas"
             for line in err_tail:
                 if "No module named" in line:
@@ -1297,7 +1426,10 @@ def gate_metalcytotox_v1_known_leaky(
                         missing_name = nm
                     break
             return GateResult(
-                name, priority, pipeline, "SKIP",
+                name,
+                priority,
+                pipeline,
+                "SKIP",
                 f"v1 leak probe requires {missing_name!r} (env gap on "
                 f"host Python); the v1 CSV IS present ({csv_path}) and "
                 f"readable, but the probe cannot execute without the "
@@ -1308,7 +1440,10 @@ def gate_metalcytotox_v1_known_leaky(
                 elapsed,
             )
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"v1 leak probe failed: rc={rc} | stderr_tail: {err_tail_str}",
             elapsed,
         )
@@ -1316,11 +1451,14 @@ def gate_metalcytotox_v1_known_leaky(
     for line in out.strip().splitlines():
         for key in ("ROWS=", "OVERLAPS=", "TOTAL=", "SHA256="):
             if line.startswith(key):
-                fields[key[:-1]] = line[len(key):].strip()
+                fields[key[:-1]] = line[len(key) :].strip()
     missing = [k for k in ("ROWS", "OVERLAPS", "TOTAL", "SHA256") if k not in fields]
     if missing:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"v1 leak probe returned unparsable output (missing "
             f"{missing}); raw: {out.strip()[:300] or '(empty)'}",
             elapsed,
@@ -1329,7 +1467,10 @@ def gate_metalcytotox_v1_known_leaky(
         total = int(fields["TOTAL"])
     except ValueError:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"v1 leak probe TOTAL unparsable: {fields['TOTAL']!r} "
             f"(raw: {out.strip()[:300]})",
             elapsed,
@@ -1337,7 +1478,10 @@ def gate_metalcytotox_v1_known_leaky(
     sha = fields["SHA256"]
     if total == 0:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"v1 no longer leaks: 0 scaffold overlaps "
             f"(rows={fields['ROWS']}, sha256={sha[:12]}…).  v1 is the "
             f"KNOWN-LEAKY historical artifact; 0 leaks means it was "
@@ -1352,7 +1496,10 @@ def gate_metalcytotox_v1_known_leaky(
             elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"KNOWN-LEAKY v1 artifact still leaky as expected: "
         f"rows={fields['ROWS']}, scaffold overlaps "
         f"{fields['OVERLAPS']} (total={total}), sha256={sha[:12]}… "
@@ -1492,7 +1639,10 @@ def gate_nci60_split_no_leak(
         ).strip().lower() in ("1", "true", "yes")
     if not csv_path.is_file():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"nci60 CSV missing: {csv_path}",
             time.perf_counter() - t0,
         )
@@ -1511,7 +1661,10 @@ def gate_nci60_split_no_leak(
         )
     except ImportError as exc:
         return GateResult(
-            name, priority, pipeline, "SKIP",
+            name,
+            priority,
+            pipeline,
+            "SKIP",
             f"nci60 split-leak probe requires the pandas/rdkit-enabled repo "
             f"venv (canonical /home/hugo/codes/mol-metal/.venv/bin/python per "
             f"AGENTS.md §5.1 + §5.9); import failed with "
@@ -1528,7 +1681,10 @@ def gate_nci60_split_no_leak(
         df = load_nci60_9cell_split_table(csv_path)
     except Exception as exc:  # noqa: BLE001 — surface loader failure as FAIL
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"load_nci60_9cell_split_table({csv_path.name}) raised "
             f"{type(exc).__name__}: {exc}",
             time.perf_counter() - t0,
@@ -1561,7 +1717,9 @@ def gate_nci60_split_no_leak(
                 f"m21 split row-index overlap {a}/{b}: {len(row_idx[a] & row_idx[b])}"
             )
     splitter = ScaffoldSplitter(
-        strategy="largest_first", fractions=(0.7, 0.1, 0.2), seed=0,
+        strategy="largest_first",
+        fractions=(0.7, 0.1, 0.2),
+        seed=0,
     )
     # HOLE-5 honest-negative (2026-10-03, MEASURED): the splitter's own
     # `_scaffold_for` is DEGENERATE in this environment — it calls
@@ -1668,8 +1826,7 @@ def gate_nci60_split_no_leak(
                 )
             if kva & kte:
                 problems.append(
-                    f"{cell}/seed{seed}: scaffold val/test overlap="
-                    f"{len(kva & kte)}"
+                    f"{cell}/seed{seed}: scaffold val/test overlap=" f"{len(kva & kte)}"
                 )
 
     notes.append(
@@ -1708,7 +1865,10 @@ def gate_nci60_split_no_leak(
         shown = "; ".join(problems[:6])
         extra = f" (+{len(problems) - 6} more)" if len(problems) > 6 else ""
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"{len(problems)} problem(s): {shown}{extra} | {evidence}",
             elapsed,
         )
@@ -1766,13 +1926,19 @@ def gate_python_importable(
     elapsed = time.perf_counter() - t0
     if missing:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"{len(missing)}/{len(module_paths)} adapter(s) not importable: "
             f"{missing}",
             elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"all {len(module_paths)}/4 frontier-math adapters importable",
         elapsed,
     )
@@ -1799,12 +1965,18 @@ def gate_all_files_exist(
     elapsed = time.perf_counter() - t0
     if missing:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"{len(missing)}/{len(paths)} missing/empty: {missing}",
             elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"all {len(paths)} files present",
         elapsed,
     )
@@ -1864,9 +2036,11 @@ def gate_wf350a2_compute_manifest(
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
         return GateResult(
-            name, priority, pipeline, "FAIL",
-            f"cannot create manifest parent dir "
-            f"{manifest_path.parent!s}: {exc}",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"cannot create manifest parent dir " f"{manifest_path.parent!s}: {exc}",
             time.perf_counter() - t0,
         )
 
@@ -1891,12 +2065,14 @@ def gate_wf350a2_compute_manifest(
                 memory_mb = int(float(parts[2]))
             except ValueError:
                 continue
-            gpus.append({
-                "index": gpu_idx,
-                "name": parts[1],
-                "memory_total_mb": memory_mb,
-                "driver_version": parts[3],
-            })
+            gpus.append(
+                {
+                    "index": gpu_idx,
+                    "name": parts[1],
+                    "memory_total_mb": memory_mb,
+                    "driver_version": parts[3],
+                }
+            )
             # driver_version is per-host (same across all GPUs in
             # practice); keep the first non-None value.
             if driver_version is None:
@@ -1906,8 +2082,7 @@ def gate_wf350a2_compute_manifest(
     torch_version: Optional[str] = None
     cuda_version: Optional[str] = None
     torch_rc, torch_out, _torch_err = _run(
-        [VENV_PY, "-c",
-         "import torch; print(torch.__version__, torch.version.cuda)"],
+        [VENV_PY, "-c", "import torch; print(torch.__version__, torch.version.cuda)"],
         timeout=30.0,
     )
     if torch_rc == 0 and torch_out.strip():
@@ -1920,18 +2095,23 @@ def gate_wf350a2_compute_manifest(
     # ---- (4) probe system info (uname -a) ----
     hostname = kernel = arch = None
     uname_rc, uname_out, _uname_err = _run(
-        ["uname", "-a"], timeout=5.0,
+        ["uname", "-a"],
+        timeout=5.0,
     )
     if uname_rc == 0 and uname_out.strip():
         # uname -a format: "Linux host kernel-version arch ..."
         uname_parts = uname_out.strip().split(None, 4)
         if len(uname_parts) >= 5:
             hostname, kernel, arch = (
-                uname_parts[1], uname_parts[2], uname_parts[4],
+                uname_parts[1],
+                uname_parts[2],
+                uname_parts[4],
             )
         elif len(uname_parts) >= 4:
             hostname, kernel, arch = (
-                uname_parts[1], uname_parts[2], uname_parts[3],
+                uname_parts[1],
+                uname_parts[2],
+                uname_parts[3],
             )
 
     # ---- (5) assemble + write manifest JSON ----
@@ -1955,7 +2135,10 @@ def gate_wf350a2_compute_manifest(
         )
     except OSError as exc:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"cannot write manifest {manifest_path!s}: {exc}",
             time.perf_counter() - t0,
         )
@@ -1965,19 +2148,24 @@ def gate_wf350a2_compute_manifest(
         on_disk = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"manifest at {manifest_path!s} is not valid JSON: {exc}",
             time.perf_counter() - t0,
         )
 
     missing_top: List[str] = []
-    for key in ("gpus", "driver_version", "torch_version",
-                "cuda_version", "system"):
+    for key in ("gpus", "driver_version", "torch_version", "cuda_version", "system"):
         if key not in on_disk:
             missing_top.append(key)
     if missing_top:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"manifest missing top-level keys: {missing_top}",
             time.perf_counter() - t0,
         )
@@ -1985,7 +2173,10 @@ def gate_wf350a2_compute_manifest(
     sys_block = on_disk.get("system", {})
     if not isinstance(sys_block, dict):
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"manifest 'system' block is not a dict "
             f"(got {type(sys_block).__name__})",
             time.perf_counter() - t0,
@@ -1996,7 +2187,10 @@ def gate_wf350a2_compute_manifest(
             missing_sys.append(key)
     if missing_sys:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"manifest 'system' block missing fields: {missing_sys}",
             time.perf_counter() - t0,
         )
@@ -2005,9 +2199,11 @@ def gate_wf350a2_compute_manifest(
     gpu_list = on_disk.get("gpus", [])
     if not isinstance(gpu_list, list):
         return GateResult(
-            name, priority, pipeline, "FAIL",
-            f"manifest 'gpus' is not a list "
-            f"(got {type(gpu_list).__name__})",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"manifest 'gpus' is not a list " f"(got {type(gpu_list).__name__})",
             time.perf_counter() - t0,
         )
     missing_gpu_fields: List[str] = []
@@ -2020,20 +2216,29 @@ def gate_wf350a2_compute_manifest(
                 missing_gpu_fields.append(f"gpus[{i}].{f}")
     if missing_gpu_fields:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"per-GPU fields missing: {missing_gpu_fields}",
             time.perf_counter() - t0,
         )
 
     # ---- PASS evidence ----
     n_gpu = len(gpu_list)
-    per_gpu_str = ", ".join(
-        f"gpu[{g.get('index')}]={g.get('name')!s}/{g.get('memory_total_mb')}MB"
-        for g in gpu_list
-    ) or "no-gpu-detected"
+    per_gpu_str = (
+        ", ".join(
+            f"gpu[{g.get('index')}]={g.get('name')!s}/{g.get('memory_total_mb')}MB"
+            for g in gpu_list
+        )
+        or "no-gpu-detected"
+    )
     elapsed = time.perf_counter() - t0
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"manifest at {manifest_path!s} schema-valid | "
         f"{n_gpu} GPU(s): {per_gpu_str} | "
         f"torch={torch_version} cuda={cuda_version} | "
@@ -2092,7 +2297,10 @@ def gate_r20_phase0_loaders_complete(
     if missing:
         elapsed = time.perf_counter() - t0
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"{len(missing)}/{expected_total} R20-Phase-0 loader artefacts missing: "
             f"{missing}",
             elapsed,
@@ -2101,7 +2309,11 @@ def gate_r20_phase0_loaders_complete(
     # All artefacts present — run pytest on the test files for a
     # real PASS (matches the gate_pytest semantics from Wf-259).
     args = [
-        VENV_PY, "-m", "pytest", "-q", "--no-header",
+        VENV_PY,
+        "-m",
+        "pytest",
+        "-q",
+        "--no-header",
     ] + [str(p) for p in loader_tests]
     rc, out, err = _run(args, timeout=180.0, cwd=REPO_ROOT)
     elapsed = time.perf_counter() - t0
@@ -2109,13 +2321,19 @@ def gate_r20_phase0_loaders_complete(
     tail = blob.splitlines()[-1] if blob else "(no output)"
     if rc == 0:
         return GateResult(
-            name, priority, pipeline, "PASS",
+            name,
+            priority,
+            pipeline,
+            "PASS",
             f"{n_modules}/{n_modules} loaders + {n_docs}/{n_docs} API docs + "
             f"{n_tests}/{n_tests} test files present; pytest PASS: {tail}",
             elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "FAIL",
+        name,
+        priority,
+        pipeline,
+        "FAIL",
         f"pytest FAIL (rc={rc}) on R20-Phase-0 loader tests: {tail}",
         elapsed,
     )
@@ -2155,24 +2373,33 @@ def gate_nci60_9cell_per_cell_aggregate(
     t0 = time.perf_counter()
     if not json_path.exists():
         return GateResult(
-            name, priority, pipeline, "FAIL",
-            f"json file missing: {json_path}", time.perf_counter() - t0,
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"json file missing: {json_path}",
+            time.perf_counter() - t0,
         )
     try:
         with json_path.open("r", encoding="utf-8") as fh:
             data = json.load(fh)
     except (json.JSONDecodeError, OSError) as exc:
         return GateResult(
-            name, priority, pipeline, "FAIL",
-            f"json parse / IO error in {json_path}: "
-            f"{type(exc).__name__}: {exc}",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"json parse / IO error in {json_path}: " f"{type(exc).__name__}: {exc}",
             time.perf_counter() - t0,
         )
     elapsed = time.perf_counter() - t0
     block = data.get("wf312b_nci60_smoke_aggregate")
     if not isinstance(block, dict):
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"{json_path}: wf312b_nci60_smoke_aggregate block missing",
             elapsed,
         )
@@ -2182,9 +2409,7 @@ def gate_nci60_9cell_per_cell_aggregate(
         errors.append("per_cell_breakdown missing or not a dict")
     else:
         if len(breakdown) != 9:
-            errors.append(
-                f"per_cell_breakdown has {len(breakdown)} keys; expected 9"
-            )
+            errors.append(f"per_cell_breakdown has {len(breakdown)} keys; expected 9")
         per_cell_means: List[float] = []
         for cell, entry in breakdown.items():
             if not isinstance(entry, dict):
@@ -2240,13 +2465,19 @@ def gate_nci60_9cell_per_cell_aggregate(
             )
     if errors:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"{len(errors)} issue(s) in wf312b_nci60_smoke_aggregate: "
             f"{errors[:3]}{'...' if len(errors) > 3 else ''}",
             elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"{json_path}: 9-cell breakdown + HCT116 highlight "
         f"({float(highlight['value']):.4f}) + PC3 honest-negative "
         f"({float(honest_negative['value']):.4f}) + overall_mean "
@@ -2337,12 +2568,18 @@ def gate_loi_send_ready(
     elapsed = time.perf_counter() - t0
     if errors:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"{len(errors)} LOI readiness issue(s): {errors}",
             elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"{len(loi_paths)}/{len(loi_paths)} LOI drafts ready-to-send + "
         f"review helper present (status DRAFT/SENT headers + "
         f"≥{min_boxes} checklist boxes)",
@@ -2420,8 +2657,7 @@ def gate_anchor_version_pin(
                 AnchorVersionMismatchError,
             ) as exc:
                 failures.append(
-                    f"{path.relative_to(REPO_ROOT)}: "
-                    f"{type(exc).__name__}: {exc}"
+                    f"{path.relative_to(REPO_ROOT)}: " f"{type(exc).__name__}: {exc}"
                 )
                 continue
             actual = data.get("version")
@@ -2439,15 +2675,20 @@ def gate_anchor_version_pin(
     elapsed = time.perf_counter() - t0
     if failures:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"{len(failures)}/{len(checked)} anchors failed pin "
             f"(pinned={len(pinned)}, legacy-skipped={len(skipped_legacy)}): "
-            f"{failures[:3]}"
-            + ("..." if len(failures) > 3 else ""),
+            f"{failures[:3]}" + ("..." if len(failures) > 3 else ""),
             elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"{len(pinned)}/{len(checked)} anchors pinned at version={required_version!r} "
         f"({len(skipped_legacy)} legacy pre-Wf-305C skipped)",
         elapsed,
@@ -2554,10 +2795,14 @@ def gate_wf323f_m4_sa_qed_subcriterion_documented(
                 failures.append("report_json: per_pool_distribution missing/not dict")
             else:
                 expected_buckets = {
-                    "sa_bucket_lt_2_8", "sa_bucket_2_8_to_4",
-                    "sa_bucket_4_to_6", "sa_bucket_6_plus",
-                    "qed_bucket_lt_0_25", "qed_bucket_0_25_to_0_5",
-                    "qed_bucket_0_5_to_0_75", "qed_bucket_0_75_plus",
+                    "sa_bucket_lt_2_8",
+                    "sa_bucket_2_8_to_4",
+                    "sa_bucket_4_to_6",
+                    "sa_bucket_6_plus",
+                    "qed_bucket_lt_0_25",
+                    "qed_bucket_0_25_to_0_5",
+                    "qed_bucket_0_5_to_0_75",
+                    "qed_bucket_0_75_plus",
                 }
                 missing_buckets = expected_buckets - set(distribution.keys())
                 if missing_buckets:
@@ -2575,14 +2820,20 @@ def gate_wf323f_m4_sa_qed_subcriterion_documented(
     elapsed = time.perf_counter() - t0
     if failures:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"{len(failures)} Wf-323F m4 SA/QED sub-criterion prereq(s) missing: "
             + "; ".join(failures[:3])
             + ("..." if len(failures) > 3 else ""),
             elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"m4 metric=HONEST_NEGATIVE (sub_rate_sa_qed="
         f"{float(metric_data.get('value', 0.0)):.4f}); "
         f"report={report_json.name} carries per_pool_distribution "
@@ -2617,7 +2868,10 @@ def gate_admet_honest_negative_tag(
     t0 = time.perf_counter()
     if not json_path.exists():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"json file missing: {json_path}",
             time.perf_counter() - t0,
         )
@@ -2626,9 +2880,11 @@ def gate_admet_honest_negative_tag(
             data = json.load(fh)
     except (json.JSONDecodeError, OSError) as exc:
         return GateResult(
-            name, priority, pipeline, "FAIL",
-            f"json parse / IO error in {json_path}: "
-            f"{type(exc).__name__}: {exc}",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"json parse / IO error in {json_path}: " f"{type(exc).__name__}: {exc}",
             time.perf_counter() - t0,
         )
     elapsed = time.perf_counter() - t0
@@ -2636,13 +2892,19 @@ def gate_admet_honest_negative_tag(
     reason = data.get("honest_negative_reason")
     if flag is True and isinstance(reason, str) and reason.strip():
         return GateResult(
-            name, priority, pipeline, "PASS",
+            name,
+            priority,
+            pipeline,
+            "PASS",
             f"{json_path}: HONEST_NEGATIVE=true, "
             f"reason={reason[:60]!r}{'...' if len(reason) > 60 else ''}",
             elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "FAIL",
+        name,
+        priority,
+        pipeline,
+        "FAIL",
         f"{json_path}: HONEST_NEGATIVE={flag!r} "
         f"(expected True); reason type={type(reason).__name__}",
         elapsed,
@@ -2705,8 +2967,7 @@ def gate_wf325e_admet_4_below_documented(
             data = json.loads(json_path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError) as exc:
             failures.append(
-                f"{label}_json parse / IO error: "
-                f"{type(exc).__name__}: {exc}"
+                f"{label}_json parse / IO error: " f"{type(exc).__name__}: {exc}"
             )
             continue
         if not isinstance(data, dict):
@@ -2715,13 +2976,9 @@ def gate_wf325e_admet_4_below_documented(
         flag = data.get("HONEST_NEGATIVE")
         reason = data.get("honest_negative_reason")
         if flag is not True:
-            failures.append(
-                f"{label}_json: HONEST_NEGATIVE={flag!r} (expected True)"
-            )
+            failures.append(f"{label}_json: HONEST_NEGATIVE={flag!r} (expected True)")
         elif not (isinstance(reason, str) and reason.strip()):
-            failures.append(
-                f"{label}_json: honest_negative_reason empty/non-string"
-            )
+            failures.append(f"{label}_json: honest_negative_reason empty/non-string")
     if not closeout_doc.exists():
         failures.append(f"closeout_doc missing: {closeout_doc}")
     elif closeout_doc.stat().st_size <= 0:
@@ -2729,14 +2986,20 @@ def gate_wf325e_admet_4_below_documented(
     elapsed = time.perf_counter() - t0
     if failures:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"{len(failures)} Wf-325E ADMET-4-BELOW prereq(s) missing: "
             + "; ".join(failures[:3])
             + ("..." if len(failures) > 3 else ""),
             elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"all 4 BELOW ADMET metrics carry HONEST_NEGATIVE=true + reason; "
         f"closeout_doc ({closeout_doc.name}) present on disk",
         elapsed,
@@ -2776,7 +3039,10 @@ def gate_wf315d_pb_smoke(
     t0 = time.perf_counter()
     if not json_path.exists():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"json file missing: {json_path}",
             time.perf_counter() - t0,
         )
@@ -2785,9 +3051,11 @@ def gate_wf315d_pb_smoke(
             data = json.load(fh)
     except (json.JSONDecodeError, OSError) as exc:
         return GateResult(
-            name, priority, pipeline, "FAIL",
-            f"json parse / IO error in {json_path}: "
-            f"{type(exc).__name__}: {exc}",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"json parse / IO error in {json_path}: " f"{type(exc).__name__}: {exc}",
             time.perf_counter() - t0,
         )
 
@@ -2828,7 +3096,10 @@ def gate_wf315d_pb_smoke(
         # AND valid smoke output on disk.
         if metric_status != "MEASURED_SMOKE":
             return GateResult(
-                name, priority, pipeline, "FAIL",
+                name,
+                priority,
+                pipeline,
+                "FAIL",
                 f"packages available (rdkit={rdkit_v}, posebusters={pb_v}) "
                 f"but {json_path}: status={metric_status!r} "
                 f"(expected 'MEASURED_SMOKE')",
@@ -2836,7 +3107,10 @@ def gate_wf315d_pb_smoke(
             )
         if not smoke_output.exists():
             return GateResult(
-                name, priority, pipeline, "FAIL",
+                name,
+                priority,
+                pipeline,
+                "FAIL",
                 f"packages available but smoke output missing: {smoke_output}",
                 elapsed,
             )
@@ -2845,7 +3119,10 @@ def gate_wf315d_pb_smoke(
                 smoke = json.load(fh)
         except (json.JSONDecodeError, OSError) as exc:
             return GateResult(
-                name, priority, pipeline, "FAIL",
+                name,
+                priority,
+                pipeline,
+                "FAIL",
                 f"smoke output parse error: {type(exc).__name__}: {exc}",
                 elapsed,
             )
@@ -2854,14 +3131,20 @@ def gate_wf315d_pb_smoke(
         n_total = smoke.get("n_poses")
         if rate is None or n_pass is None or n_total is None:
             return GateResult(
-                name, priority, pipeline, "FAIL",
+                name,
+                priority,
+                pipeline,
+                "FAIL",
                 f"smoke output missing required keys "
                 f"(m8_protein_aware_pass_rate={rate!r}, "
                 f"n_protein_aware_pass={n_pass!r}, n_poses={n_total!r})",
                 elapsed,
             )
         return GateResult(
-            name, priority, pipeline, "PASS",
+            name,
+            priority,
+            pipeline,
+            "PASS",
             f"packages available (rdkit={rdkit_v}, posebusters={pb_v}); "
             f"{json_path}: status=MEASURED_SMOKE; smoke output "
             f"m8_protein_aware_pass_rate={rate:.4f} ({n_pass}/{n_total} pass)",
@@ -2872,20 +3155,29 @@ def gate_wf315d_pb_smoke(
     # + non-empty blocker_description.
     if not honest_negative:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"packages missing AND {json_path}: "
             f"HONEST_NEGATIVE_BLOCKED missing or not True",
             elapsed,
         )
     if not isinstance(blocker, str) or not blocker.strip():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"packages missing AND {json_path}: "
             f"blocker_description empty or wrong type",
             elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"packages missing; {json_path}: HONEST_NEGATIVE_BLOCKED=true, "
         f"blocker={blocker[:80]!r}{'...' if len(blocker) > 80 else ''}",
         elapsed,
@@ -2934,7 +3226,10 @@ def gate_wf323c_m8_full_pass_rate_documented(
     # (1) result_json
     if not result_json.exists():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"result_json missing: {result_json}",
             time.perf_counter() - t0,
         )
@@ -2943,7 +3238,10 @@ def gate_wf323c_m8_full_pass_rate_documented(
             result = json.load(fh)
     except (json.JSONDecodeError, OSError) as exc:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"result_json parse / IO error: {type(exc).__name__}: {exc}",
             time.perf_counter() - t0,
         )
@@ -2956,7 +3254,10 @@ def gate_wf323c_m8_full_pass_rate_documented(
     ):
         if key not in result:
             return GateResult(
-                name, priority, pipeline, "FAIL",
+                name,
+                priority,
+                pipeline,
+                "FAIL",
                 f"result_json missing required key: {key}",
                 time.perf_counter() - t0,
             )
@@ -2966,19 +3267,28 @@ def gate_wf323c_m8_full_pass_rate_documented(
     n_pt_zn = result.get("n_pt_zn_substituted", 0)
     if not isinstance(full_rate, (int, float)) or not 0.0 <= full_rate <= 1.0:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"m8_full_pass_rate={full_rate!r} not in [0.0, 1.0]",
             time.perf_counter() - t0,
         )
     if not isinstance(pa_rate, (int, float)) or not 0.0 <= pa_rate <= 1.0:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"m8_protein_aware_pass_rate={pa_rate!r} not in [0.0, 1.0]",
             time.perf_counter() - t0,
         )
     if n_pre <= 0:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"n_poses_pre_relaxed={n_pre}; Wf-323C pipeline did not run",
             time.perf_counter() - t0,
         )
@@ -2986,7 +3296,10 @@ def gate_wf323c_m8_full_pass_rate_documented(
     # (2) metric_json — must be MEASURED_SMOKE and reference Wf-323C
     if not metric_json.exists():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"metric_json missing: {metric_json}",
             time.perf_counter() - t0,
         )
@@ -2995,21 +3308,30 @@ def gate_wf323c_m8_full_pass_rate_documented(
             metric = json.load(fh)
     except (json.JSONDecodeError, OSError) as exc:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"metric_json parse / IO error: {type(exc).__name__}: {exc}",
             time.perf_counter() - t0,
         )
     metric_status = metric.get("status")
     if metric_status != "MEASURED_SMOKE":
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"metric_json status={metric_status!r} (expected MEASURED_SMOKE)",
             time.perf_counter() - t0,
         )
     metric_value = metric.get("value", {})
     if not isinstance(metric_value.get("wf323c_smoke_summary"), dict):
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"metric_json.value.wf323c_smoke_summary missing",
             time.perf_counter() - t0,
         )
@@ -3017,7 +3339,10 @@ def gate_wf323c_m8_full_pass_rate_documented(
     # (3) pool_json — Wf-319B Pt-pool ≥ 80 conformers
     if not pool_json.exists():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"pool_json missing: {pool_json}",
             time.perf_counter() - t0,
         )
@@ -3026,21 +3351,30 @@ def gate_wf323c_m8_full_pass_rate_documented(
             pool = json.load(fh)
     except (json.JSONDecodeError, OSError) as exc:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"pool_json parse / IO error: {type(exc).__name__}: {exc}",
             time.perf_counter() - t0,
         )
     n_conformers = len(pool.get("conformers", []))
     if n_conformers < 80:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"pool_json has {n_conformers} conformers; smoke floor is ≥80",
             time.perf_counter() - t0,
         )
 
     elapsed = time.perf_counter() - t0
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"result.m8_full={full_rate:.4f} (n_pre={n_pre}, n_pt_zn={n_pt_zn}); "
         f"metric MEASURED_SMOKE; pool={n_conformers} conformers",
         elapsed,
@@ -3113,7 +3447,10 @@ def gate_wf319c_pb_packages_status_present(
 
     if probe_err is not None or rdkit_v is None or pb_v is None:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"venv probe failed for {venv_python}: "
             f"rdkit={rdkit_v!r} posebusters={pb_v!r} err={probe_err!r}",
             time.perf_counter() - t0,
@@ -3122,7 +3459,10 @@ def gate_wf319c_pb_packages_status_present(
     # (2) metric_json must exist with status=MEASURED_SMOKE.
     if not metric_json.exists():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"metric_json missing: {metric_json}",
             time.perf_counter() - t0,
         )
@@ -3130,14 +3470,20 @@ def gate_wf319c_pb_packages_status_present(
         metric_data = json.loads(metric_json.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"metric_json parse error: {type(exc).__name__}:{exc}",
             time.perf_counter() - t0,
         )
     metric_status = metric_data.get("status")
     if metric_status != "MEASURED_SMOKE":
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"metric_json status={metric_status!r} "
             f"(expected 'MEASURED_SMOKE') in {metric_json}",
             time.perf_counter() - t0,
@@ -3146,7 +3492,10 @@ def gate_wf319c_pb_packages_status_present(
     # (3) smoke_output must exist with the canonical keys.
     if not smoke_output.exists():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"smoke_output missing: {smoke_output}",
             time.perf_counter() - t0,
         )
@@ -3154,7 +3503,10 @@ def gate_wf319c_pb_packages_status_present(
         smoke_data = json.loads(smoke_output.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"smoke_output parse error: {type(exc).__name__}:{exc}",
             time.perf_counter() - t0,
         )
@@ -3163,7 +3515,10 @@ def gate_wf319c_pb_packages_status_present(
     n_total = smoke_data.get("n_poses")
     if rate is None or n_pass is None or n_total is None:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"smoke_output missing canonical keys "
             f"(m8_protein_aware_pass_rate={rate!r}, "
             f"n_protein_aware_pass={n_pass!r}, n_poses={n_total!r})",
@@ -3172,7 +3527,10 @@ def gate_wf319c_pb_packages_status_present(
 
     elapsed = time.perf_counter() - t0
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"venv={venv_python} rdkit={rdkit_v} posebusters={pb_v}; "
         f"{metric_json.name}=MEASURED_SMOKE; smoke m8 rate={rate:.4f} "
         f"({n_pass}/{n_total} pass)",
@@ -3219,7 +3577,10 @@ def gate_wf319b_uff_min_pt_pool_present(
     # (1) pool_json
     if not pool_json.exists():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"pool_json missing: {pool_json}",
             time.perf_counter() - t0,
         )
@@ -3228,7 +3589,10 @@ def gate_wf319b_uff_min_pt_pool_present(
             pool = json.load(fh)
     except (json.JSONDecodeError, OSError) as exc:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"pool_json parse / IO error: {type(exc).__name__}: {exc}",
             time.perf_counter() - t0,
         )
@@ -3236,7 +3600,10 @@ def gate_wf319b_uff_min_pt_pool_present(
     n_conformers = len(conformers)
     if n_conformers < min_conformers:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"pool_json has {n_conformers} conformers; smoke floor is "
             f"≥ {min_conformers}",
             time.perf_counter() - t0,
@@ -3245,7 +3612,10 @@ def gate_wf319b_uff_min_pt_pool_present(
     # (2) metrics_json + honest-negative tag
     if not metrics_json.exists():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"metrics_json missing: {metrics_json}",
             time.perf_counter() - t0,
         )
@@ -3254,7 +3624,10 @@ def gate_wf319b_uff_min_pt_pool_present(
             metrics = json.load(fh)
     except (json.JSONDecodeError, OSError) as exc:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"metrics_json parse / IO error: {type(exc).__name__}: {exc}",
             time.perf_counter() - t0,
         )
@@ -3262,7 +3635,10 @@ def gate_wf319b_uff_min_pt_pool_present(
     reason = metrics.get("honest_negative_reason", "")
     if flag is not True:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"metrics_json: HONEST_NEGATIVE_UFF_PT_PARAMS_MISSING="
             f"{flag!r} (expected True). UFF energies are not physical "
             f"for Pt complexes; downstream consumers need this tag.",
@@ -3270,14 +3646,20 @@ def gate_wf319b_uff_min_pt_pool_present(
         )
     if not isinstance(reason, str) or not reason.strip():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"metrics_json: honest_negative_reason is empty/non-string",
             time.perf_counter() - t0,
         )
 
     elapsed = time.perf_counter() - t0
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"pool={n_conformers} conformers (≥ {min_conformers}); "
         f"metrics HONEST_NEGATIVE_UFF_PT_PARAMS_MISSING=True; "
         f"reason={reason[:60]!r}{'...' if len(reason) > 60 else ''}",
@@ -3312,7 +3694,10 @@ def gate_wf319a_ablation_aggregate_csv_present(
     t0 = time.perf_counter()
     if not csv_path.exists() or not csv_path.is_file():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"aggregate.csv missing: {csv_path}",
             time.perf_counter() - t0,
         )
@@ -3323,14 +3708,20 @@ def gate_wf319a_ablation_aggregate_csv_present(
             fieldnames = list(reader.fieldnames or [])
     except (OSError, _csv.Error, UnicodeDecodeError) as exc:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"aggregate.csv parse / IO error: {type(exc).__name__}: {exc}",
             time.perf_counter() - t0,
         )
     n_rows = len(rows)
     if n_rows < min_rows:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"aggregate.csv has {n_rows} rows (< {min_rows} required).  "
             f"Re-run ``python molmetal/scripts/ablation_runner.py "
             f"--output-dir molmetal/reports/wf319a_ablation_runner``.",
@@ -3338,13 +3729,22 @@ def gate_wf319a_ablation_aggregate_csv_present(
         )
     # Required column schema — paper §6 input contract.
     required_cols = {
-        "ablation_id", "toggle", "status", "match",
-        "m14_decode_ratio", "m13_validity", "m5_sa_unit", "m6_qed",
+        "ablation_id",
+        "toggle",
+        "status",
+        "match",
+        "m14_decode_ratio",
+        "m13_validity",
+        "m5_sa_unit",
+        "m6_qed",
     }
     missing_cols = required_cols - set(fieldnames)
     if missing_cols:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"aggregate.csv missing required columns: {sorted(missing_cols)}",
             time.perf_counter() - t0,
         )
@@ -3353,7 +3753,8 @@ def gate_wf319a_ablation_aggregate_csv_present(
     bad_design_rows = [
         r["ablation_id"]
         for r in rows
-        if r["toggle"] == "design" and (
+        if r["toggle"] == "design"
+        and (
             r.get("m14_decode_ratio", "") != ""
             or r.get("m13_validity", "") != ""
             or r.get("m5_sa_unit", "") != ""
@@ -3362,7 +3763,10 @@ def gate_wf319a_ablation_aggregate_csv_present(
     ]
     if bad_design_rows:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"DESIGN_ONLY rows have fabricated metric values: "
             f"{bad_design_rows}.  These 6 ablations must NOT carry "
             f"measured metrics (per MECHANISM_METRIC_MAPPING.md §5 "
@@ -3372,7 +3776,10 @@ def gate_wf319a_ablation_aggregate_csv_present(
 
     elapsed = time.perf_counter() - t0
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"aggregate.csv OK: {n_rows} rows (≥ {min_rows}); "
         f"{len(fieldnames)} columns; DESIGN_ONLY rows free of "
         f"fabricated metrics",
@@ -3437,7 +3844,9 @@ def gate_wf321a_wf135_phase2_cpu_smoke(
                 f"Phase 1 cohort JSON parse error: {type(exc).__name__}: {exc}"
             )
         else:
-            stats = cohort_data.get("stats", {}) if isinstance(cohort_data, dict) else {}
+            stats = (
+                cohort_data.get("stats", {}) if isinstance(cohort_data, dict) else {}
+            )
             n_active = int(stats.get("n_active", 0))
             n_inactive = int(stats.get("n_inactive", 0))
             if n_active < 250 or n_inactive < 250:
@@ -3455,16 +3864,12 @@ def gate_wf321a_wf135_phase2_cpu_smoke(
     # (b) Trainer wires --balanced-cohort-json + --oversample-positives
     #     + --pos-weight flags into the BalancedLOMORunner constructor.
     if not trainer_script.exists():
-        failures.append(
-            f"Trainer script missing at {trainer_script}"
-        )
+        failures.append(f"Trainer script missing at {trainer_script}")
     else:
         try:
             trainer_src = trainer_script.read_text(encoding="utf-8", errors="replace")
         except OSError as exc:
-            failures.append(
-                f"Trainer script read error: {type(exc).__name__}: {exc}"
-            )
+            failures.append(f"Trainer script read error: {type(exc).__name__}: {exc}")
             trainer_src = ""
         if trainer_src:
             required_trainer_flags = (
@@ -3472,9 +3877,7 @@ def gate_wf321a_wf135_phase2_cpu_smoke(
                 "--oversample-positives",
                 "--pos-weight",
             )
-            missing_flags = [
-                f for f in required_trainer_flags if f not in trainer_src
-            ]
+            missing_flags = [f for f in required_trainer_flags if f not in trainer_src]
             if missing_flags:
                 failures.append(
                     f"Trainer CLI missing flags: {missing_flags} "
@@ -3502,9 +3905,7 @@ def gate_wf321a_wf135_phase2_cpu_smoke(
         try:
             launch_src = launch_wrapper.read_text(encoding="utf-8", errors="replace")
         except OSError as exc:
-            failures.append(
-                f"Launch wrapper read error: {type(exc).__name__}: {exc}"
-            )
+            failures.append(f"Launch wrapper read error: {type(exc).__name__}: {exc}")
             launch_src = ""
         if launch_src:
             if "USER_OK" not in launch_src:
@@ -3513,9 +3914,7 @@ def gate_wf321a_wf135_phase2_cpu_smoke(
                     "(mol-metal-gpu-execution §0 kill_then_adapt contract)"
                 )
             if "train_metal_lomo_v2.py" not in launch_src:
-                failures.append(
-                    "Launch wrapper does not reference the trainer script"
-                )
+                failures.append("Launch wrapper does not reference the trainer script")
             if "synthetic_rh_pos_neg.json" not in launch_src:
                 failures.append(
                     "Launch wrapper does not reference the Phase 1 cohort JSON"
@@ -3524,14 +3923,20 @@ def gate_wf321a_wf135_phase2_cpu_smoke(
     elapsed = time.perf_counter() - t0
     if failures:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"{len(failures)} Phase 2 CPU scaffold prereq(s) missing: "
             + "; ".join(failures[:3])
             + ("..." if len(failures) > 3 else ""),
             elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"Phase 1 cohort=OK (250+250, scaffold_overlap=0); "
         f"trainer flags (--balanced-cohort-json/--oversample-positives/"
         f"--pos-weight) wired into BalancedLOMORunner; "
@@ -3630,7 +4035,9 @@ def gate_wf322f_wf176_m19_lomo_closeout_documented(
                 f"Phase 1 cohort JSON parse error: {type(exc).__name__}: {exc}"
             )
         else:
-            stats = cohort_data.get("stats", {}) if isinstance(cohort_data, dict) else {}
+            stats = (
+                cohort_data.get("stats", {}) if isinstance(cohort_data, dict) else {}
+            )
             n_active = int(stats.get("n_active", 0))
             n_inactive = int(stats.get("n_inactive", 0))
             if n_active < 250 or n_inactive < 250:
@@ -3649,7 +4056,8 @@ def gate_wf322f_wf176_m19_lomo_closeout_documented(
     else:
         try:
             synth_src = phase1_cohort_synthesis.read_text(
-                encoding="utf-8", errors="replace",
+                encoding="utf-8",
+                errors="replace",
             )
         except OSError as exc:
             failures.append(
@@ -3678,7 +4086,8 @@ def gate_wf322f_wf176_m19_lomo_closeout_documented(
     else:
         try:
             wrapper_src = gpu_launch_wrapper.read_text(
-                encoding="utf-8", errors="replace",
+                encoding="utf-8",
+                errors="replace",
             )
         except OSError as exc:
             failures.append(
@@ -3699,14 +4108,20 @@ def gate_wf322f_wf176_m19_lomo_closeout_documented(
     elapsed = time.perf_counter() - t0
     if failures:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"{len(failures)} Wf-322F closeout prereq(s) missing: "
             + "; ".join(failures[:3])
             + ("..." if len(failures) > 3 else ""),
             elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"Wf-322F closeout doc=OK; Phase 1 cohort=OK (≥250+≥250); "
         f"Phase 1 synthesis doc=OK (Wf-139 P7 + 250+250 balanced); "
         f"GPU launch wrapper=OK (USER_OK gate + trainer reference)",
@@ -3824,7 +4239,9 @@ def gate_wf325d_m6_kappa_closeout_documented(
                     f"m6_kappa.json: HONEST_NEGATIVE={flag!r} (expected True)"
                 )
             if not (isinstance(reason, str) and reason.strip()):
-                failures.append("m6_kappa.json: honest_negative_reason empty/non-string")
+                failures.append(
+                    "m6_kappa.json: honest_negative_reason empty/non-string"
+                )
             validation = metric_data.get("metalcytotox_validation")
             if not isinstance(validation, dict):
                 failures.append(
@@ -3847,13 +4264,19 @@ def gate_wf325d_m6_kappa_closeout_documented(
     elapsed = time.perf_counter() - t0
     if not failures:
         return GateResult(
-            name, priority, pipeline, "PASS",
+            name,
+            priority,
+            pipeline,
+            "PASS",
             f"Wf-325D close-out doc on disk + m6_kappa.json carries "
             f"HONEST_NEGATIVE=true + metalcytotox_validation block",
             elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "FAIL",
+        name,
+        priority,
+        pipeline,
+        "FAIL",
         f"Wf-325D closeout failures: {'; '.join(failures)}",
         elapsed,
     )
@@ -3872,10 +4295,21 @@ def gate_wf325d_m6_kappa_closeout_documented(
 #   (e) every entry has the §7 contract fields populated.
 # The export name is ABLATION_TABLE (not ABLATION_REGISTRY — the Wf-321E
 # brief's import statement was incorrect; corrected here).
-EXPECTED_ABLATION_IDS_S5 = frozenset({
-    "M15", "M13", "M14", "M12",
-    "M11", "M10", "M3", "M4", "M8", "M7", "M21",
-})
+EXPECTED_ABLATION_IDS_S5 = frozenset(
+    {
+        "M15",
+        "M13",
+        "M14",
+        "M12",
+        "M11",
+        "M10",
+        "M3",
+        "M4",
+        "M8",
+        "M7",
+        "M21",
+    }
+)
 
 
 def gate_wf321e_ablation_registry_complete(
@@ -3906,17 +4340,24 @@ def gate_wf321e_ablation_registry_complete(
 
     if not runner_module.is_file():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"ablation_runner.py missing: {runner_module}",
             time.perf_counter(),
         )
     t0 = time.perf_counter()
     spec = _ilu.spec_from_file_location(
-        "ablation_runner_under_test", runner_module,
+        "ablation_runner_under_test",
+        runner_module,
     )
     if spec is None or spec.loader is None:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"ablation_runner.py: no import spec ({runner_module})",
             time.perf_counter() - t0,
         )
@@ -3930,14 +4371,20 @@ def gate_wf321e_ablation_registry_complete(
         spec.loader.exec_module(mod)
     except Exception as exc:  # noqa: BLE001
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"ablation_runner.py import failed: {type(exc).__name__}: {exc}",
             time.perf_counter() - t0,
         )
     table = getattr(mod, "ABLATION_TABLE", None)
     if table is None:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             "ABLATION_TABLE not exported from ablation_runner.py "
             "(export name expected = 'ABLATION_TABLE'; brief typo "
             "'ABLATION_REGISTRY' corrected here)",
@@ -3948,27 +4395,33 @@ def gate_wf321e_ablation_registry_complete(
         ids = [getattr(s, "ablation_id", None) for s in table]
     except TypeError as exc:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"ABLATION_TABLE is not iterable: {exc!r}",
             time.perf_counter() - t0,
         )
     non_baseline_ids = [i for i in ids if i != "BASELINE"]
     unique_non_baseline = set(non_baseline_ids)
     # Duplicate-id check.
-    dup_ids = [
-        i for i in unique_non_baseline
-        if non_baseline_ids.count(i) > 1
-    ]
+    dup_ids = [i for i in unique_non_baseline if non_baseline_ids.count(i) > 1]
     if dup_ids:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"ABLATION_TABLE has duplicate non-baseline IDs: {sorted(dup_ids)}",
             time.perf_counter() - t0,
         )
     # Cardinality check.
     if len(unique_non_baseline) < 11:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"ABLATION_TABLE has {len(unique_non_baseline)} unique "
             f"non-baseline ablations (< 11 required by §7)",
             time.perf_counter() - t0,
@@ -3978,7 +4431,10 @@ def gate_wf321e_ablation_registry_complete(
     extra = unique_non_baseline - EXPECTED_ABLATION_IDS_S5
     if missing or extra:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"ABLATION_TABLE id mismatch vs §7: "
             f"missing={sorted(missing)} extra={sorted(extra)}",
             time.perf_counter() - t0,
@@ -3986,34 +4442,44 @@ def gate_wf321e_ablation_registry_complete(
     # BASELINE reference row must be present (the +1 row on top of 11).
     if "BASELINE" not in ids:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             "BASELINE reference row missing from ABLATION_TABLE",
             time.perf_counter() - t0,
         )
     # Field contract check — each entry must have §7 contract fields.
     required_fields = (
-        "ablation_id", "label", "mechanism_module", "target_metric",
-        "expected_effect", "toggle", "env_vars", "extra_args",
+        "ablation_id",
+        "label",
+        "mechanism_module",
+        "target_metric",
+        "expected_effect",
+        "toggle",
+        "env_vars",
+        "extra_args",
     )
     bad_field_rows: list = []
     for s in table:
-        missing_fields = [
-            f for f in required_fields
-            if not hasattr(s, f)
-        ]
+        missing_fields = [f for f in required_fields if not hasattr(s, f)]
         if missing_fields:
-            bad_field_rows.append(
-                f"{getattr(s, 'ablation_id', '?')}:{missing_fields}"
-            )
+            bad_field_rows.append(f"{getattr(s, 'ablation_id', '?')}:{missing_fields}")
     if bad_field_rows:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"ABLATION_TABLE entries missing fields: {bad_field_rows}",
             time.perf_counter() - t0,
         )
     elapsed = time.perf_counter() - t0
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"ABLATION_TABLE OK: 11/11 §7 ablations mirrored "
         f"(M3/M4/M7/M8/M10/M11/M12/M13/M14/M15/M21) + 1 BASELINE; "
         f"all 12 entries carry the §7 contract fields",
@@ -4049,7 +4515,10 @@ def gate_section9_entry_count(
     t0 = time.perf_counter()
     if not doc_path.is_file():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"doc missing: {doc_path}",
             time.perf_counter() - t0,
         )
@@ -4057,7 +4526,10 @@ def gate_section9_entry_count(
         text = doc_path.read_text(encoding="utf-8")
     except OSError as exc:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"doc unreadable: {doc_path}: {exc}",
             time.perf_counter() - t0,
         )
@@ -4065,12 +4537,18 @@ def gate_section9_entry_count(
     elapsed = time.perf_counter() - t0
     if n >= min_entries:
         return GateResult(
-            name, priority, pipeline, "PASS",
+            name,
+            priority,
+            pipeline,
+            "PASS",
             f"{n} top-level §9 entries in {doc_path.name} >= {min_entries}",
             elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "FAIL",
+        name,
+        priority,
+        pipeline,
+        "FAIL",
         f"{n} top-level §9 entries in {doc_path.name} < {min_entries}",
         elapsed,
     )
@@ -4145,43 +4623,43 @@ def gate_section9_entry_count(
 # should remain stable per their contract (Wf-259 baseline).
 EXPECTED_GATE_COUNTS = {
     "all": 103,  # Wf-A16 (2026-10-03): 105 -> 103, MEASURED via
-                # len(build_gates("all")) == 103 after the two PRE-RETRAIN
-                # gates moved out of the commit path into the new "launch"
-                # pipeline (105 -> 103).  They were registered on "all", which
-                # is what the commit hook runs AND what every launcher runs, so
-                # a commit that only touched gate tooling failed because the
-                # paper-grade anchors were 24 h old — a purely temporal trigger
-                # with no cheap remedy (refreshing them means re-running the
-                # producing workloads; `touch` would be a false claim of
-                # re-measurement).  See PIPELINES and the "launch" entry below.
-                # L5 fix (2026-10-03): 104 -> 105, MEASURED via
-                # len(build_gates("all")) == 105 after the L5 fix added the
-                # all-only visibility gate `p0_metalcytotox_v1_known_leaky`
-                # (known-leaky v1 CSV: PASS iff leaks > 0 with the consumer
-                # roster as the open remedy; FAIL iff 0 leaks = mutated
-                # artifact; SKIP on absent gitignored CSV).  Same-edit doc
-                # sync: TODO/completed/321d_preflight_gate_audit.md
-                # §2.1/§5.2/§6 summary + NEW §6.5, pinned by
-                # test_wf327f11_gate_count_consistency.py.
-                # L4 fix (2026-10-03): 103 -> 104, MEASURED via
-                # len(build_gates("all")) == 104 after the L4 fix added
-                # the all-only gate `p2_data_leakage_diag` (wires the
-                # previously-unwired check_data_leakage.py diagnostic).
-                # HOLE-5 fix (2026-10-03): 101 -> 103, MEASURED via
-                # len(build_gates("all")) == 103 after (a) the H4 fix
-                # (this run, Wf-446) added the all-only gate
-                # `p3_dmpnn_loss_wire_in_smoke` (101 -> 102; the `all`
-                # constant was left at 101 although the measured count
-                # had already moved — the wf327f11 consistency test was
-                # RED at 101 vs 102) and (b) the HOLE-5 fix added the
-                # all-only gate `p0_nci60_split_no_leak` (102 -> 103).
-                # The HOLE-1 `p1_cfm_live_decode_canary` is cfm-only and
-                # did NOT move `all` (the identical smoke runs in `all`
-                # under `p3_wf385_scaffold_loss_wire_in_verified`).  The
-                # wf327f11 consistency test (code + doc sync) is GREEN
-                # after this edit.
-                # Per Wf-A12: update this value in the SAME edit as any
-                # gate add/remove.
+    # len(build_gates("all")) == 103 after the two PRE-RETRAIN
+    # gates moved out of the commit path into the new "launch"
+    # pipeline (105 -> 103).  They were registered on "all", which
+    # is what the commit hook runs AND what every launcher runs, so
+    # a commit that only touched gate tooling failed because the
+    # paper-grade anchors were 24 h old — a purely temporal trigger
+    # with no cheap remedy (refreshing them means re-running the
+    # producing workloads; `touch` would be a false claim of
+    # re-measurement).  See PIPELINES and the "launch" entry below.
+    # L5 fix (2026-10-03): 104 -> 105, MEASURED via
+    # len(build_gates("all")) == 105 after the L5 fix added the
+    # all-only visibility gate `p0_metalcytotox_v1_known_leaky`
+    # (known-leaky v1 CSV: PASS iff leaks > 0 with the consumer
+    # roster as the open remedy; FAIL iff 0 leaks = mutated
+    # artifact; SKIP on absent gitignored CSV).  Same-edit doc
+    # sync: TODO/completed/321d_preflight_gate_audit.md
+    # §2.1/§5.2/§6 summary + NEW §6.5, pinned by
+    # test_wf327f11_gate_count_consistency.py.
+    # L4 fix (2026-10-03): 103 -> 104, MEASURED via
+    # len(build_gates("all")) == 104 after the L4 fix added
+    # the all-only gate `p2_data_leakage_diag` (wires the
+    # previously-unwired check_data_leakage.py diagnostic).
+    # HOLE-5 fix (2026-10-03): 101 -> 103, MEASURED via
+    # len(build_gates("all")) == 103 after (a) the H4 fix
+    # (this run, Wf-446) added the all-only gate
+    # `p3_dmpnn_loss_wire_in_smoke` (101 -> 102; the `all`
+    # constant was left at 101 although the measured count
+    # had already moved — the wf327f11 consistency test was
+    # RED at 101 vs 102) and (b) the HOLE-5 fix added the
+    # all-only gate `p0_nci60_split_no_leak` (102 -> 103).
+    # The HOLE-1 `p1_cfm_live_decode_canary` is cfm-only and
+    # did NOT move `all` (the identical smoke runs in `all`
+    # under `p3_wf385_scaffold_loss_wire_in_verified`).  The
+    # wf327f11 consistency test (code + doc sync) is GREEN
+    # after this edit.
+    # Per Wf-A12: update this value in the SAME edit as any
+    # gate add/remove.
     # Wf-A16 (2026-10-03): "launch" = "all" + the two pre-retrain gates.
     # MEASURED: len(build_gates("launch")) == 105.  Launchers should pass
     # --pipeline launch instead of --pipeline all; the commit hook keeps
@@ -4189,19 +4667,19 @@ EXPECTED_GATE_COUNTS = {
     "launch": 105,
     "frontier": 25,
     "chemprop_v2_v3": 18,  # Wf-A12 FIX (2026-10-03): 14 → 18 MEASURED
-                           # via len(build_gates("chemprop_v2_v3"));
-                           # the 14 was stale (pre-Wf-A12 docs drift).
+    # via len(build_gates("chemprop_v2_v3"));
+    # the 14 was stale (pre-Wf-A12 docs drift).
     "cfm": 7,  # HOLE-1 fix (2026-10-03): 6 → 7 — added the LIVE decode
-               # canary `p1_cfm_live_decode_canary` (cfm-pipeline-only)
-               # which executes TODAY's train_cfm_yuelbond_wasserstein.py
-               # + YuelBond decoder via the proven Wf-385-A3 3-epoch CPU
-               # smoke (loss decrease 0.3% floor + decode_ratio > 0,
-               # fail-closed).  The frozen Wf-188 anchor
-               # `p1_cfm_smoke_decoded` remains as a relabelled
-               # HISTORICAL check.  MEASURED via
-               # len(build_gates("cfm")) at the fix timestamp (update
-               # this value in the SAME edit as any cfm gate add/remove,
-               # per the Wf-321D §5.3 bump protocol).
+    # canary `p1_cfm_live_decode_canary` (cfm-pipeline-only)
+    # which executes TODAY's train_cfm_yuelbond_wasserstein.py
+    # + YuelBond decoder via the proven Wf-385-A3 3-epoch CPU
+    # smoke (loss decrease 0.3% floor + decode_ratio > 0,
+    # fail-closed).  The frozen Wf-188 anchor
+    # `p1_cfm_smoke_decoded` remains as a relabelled
+    # HISTORICAL check.  MEASURED via
+    # len(build_gates("cfm")) at the fix timestamp (update
+    # this value in the SAME edit as any cfm gate add/remove,
+    # per the Wf-321D §5.3 bump protocol).
 }
 
 
@@ -4285,7 +4763,10 @@ def gate_p1_hp_provenance_log(
         jsonl_path.parent.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"cannot create JSONL parent dir {jsonl_path.parent!s}: {exc}",
             time.perf_counter() - t0,
         )
@@ -4303,7 +4784,9 @@ def gate_p1_hp_provenance_log(
 
         # Probe 1: git rev-parse HEAD (current commit SHA)
         rc_head, out_head, err_head = _run(
-            ["git", "rev-parse", "HEAD"], timeout=timeout, cwd=REPO_ROOT,
+            ["git", "rev-parse", "HEAD"],
+            timeout=timeout,
+            cwd=REPO_ROOT,
         )
         if rc_head != 0:
             problems.append(
@@ -4315,7 +4798,15 @@ def gate_p1_hp_provenance_log(
         # Probe 2: git log --oneline configs/<file> | head -20 (recent commits)
         rel_cfg = cfg.relative_to(REPO_ROOT).as_posix()
         rc_log, out_log, err_log = _run(
-            ["git", "log", "--pretty=format:%H|%ai|%s", "-n", str(recent_commits_count), "--", rel_cfg],
+            [
+                "git",
+                "log",
+                "--pretty=format:%H|%ai|%s",
+                "-n",
+                str(recent_commits_count),
+                "--",
+                rel_cfg,
+            ],
             timeout=timeout,
             cwd=REPO_ROOT,
         )
@@ -4338,13 +4829,13 @@ def gate_p1_hp_provenance_log(
                 sha_v, date_v, msg_v = pieces[0], pieces[1], pieces[2]
                 if not sha_re.match(sha_v):
                     continue
-                recent_commits.append(
-                    {"sha": sha_v, "message": msg_v, "date": date_v}
-                )
+                recent_commits.append({"sha": sha_v, "message": msg_v, "date": date_v})
 
         # Probe 3: git status --short configs/<file> (uncommitted changes)
         rc_st, out_st, err_st = _run(
-            ["git", "status", "--short", "--", rel_cfg], timeout=timeout, cwd=REPO_ROOT,
+            ["git", "status", "--short", "--", rel_cfg],
+            timeout=timeout,
+            cwd=REPO_ROOT,
         )
         if rc_st != 0:
             problems.append(
@@ -4370,35 +4861,40 @@ def gate_p1_hp_provenance_log(
     # atomic-append: consumers (the schema re-read below + the
     # reproducibility manifest) assume N records = N configs, so appending
     # across runs would accumulate stale-SHA lines for every config.
-    payload = "".join(
-        _json.dumps(rec, ensure_ascii=False) + "\n" for rec in records
-    )
+    payload = "".join(_json.dumps(rec, ensure_ascii=False) + "\n" for rec in records)
     try:
         atomic_write_file(jsonl_path, payload)
         file_writes.append(str(jsonl_path))
     except Exception as exc:  # noqa: BLE001 — an unwritable target must FAIL the gate, not raise
-        problems.append(
-            f"failed to write {jsonl_path}: {type(exc).__name__}: {exc}"
-        )
+        problems.append(f"failed to write {jsonl_path}: {type(exc).__name__}: {exc}")
 
     elapsed = time.perf_counter() - t0
     if problems:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"Wf-350-A3 hp provenance probe problems ({len(problems)}): "
             f"{'; '.join(problems[:5])}",
             elapsed,
         )
     if not records:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"Wf-350-A3 hp provenance log empty (0 records for "
             f"{len(config_paths)} config files); wrote {jsonl_path}",
             elapsed,
         )
     if len(records) != len(config_paths):
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"Wf-350-A3 hp provenance log records {len(records)}/"
             f"{len(config_paths)}; one or more config files produced no record",
             elapsed,
@@ -4422,7 +4918,12 @@ def gate_p1_hp_provenance_log(
                 if not isinstance(obj, dict):
                     schema_problems.append(f"line {idx}: not a dict")
                     continue
-                for k in ("config_path", "current_sha", "recent_commits", "uncommitted_changes"):
+                for k in (
+                    "config_path",
+                    "current_sha",
+                    "recent_commits",
+                    "uncommitted_changes",
+                ):
                     if k not in obj:
                         schema_problems.append(f"line {idx}: missing key {k!r}")
                 if not isinstance(obj.get("recent_commits"), list):
@@ -4438,14 +4939,20 @@ def gate_p1_hp_provenance_log(
 
     if schema_problems:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"Wf-350-A3 JSONL schema validation FAILED ({len(schema_problems)}): "
             f"{'; '.join(schema_problems[:5])}",
             elapsed,
         )
 
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"Wf-350-A3 hp provenance log PASS: {len(records)}/{len(config_paths)} "
         f"config records written to {jsonl_path} (current_sha={records[0]['current_sha'][:12]}..., "
         f"recent_commits[0]={len(records[0]['recent_commits'])} entries, "
@@ -4560,8 +5067,7 @@ def gate_p1_runtime_energy_report(
             cols = [c.strip() for c in line.split(",")]
             if len(cols) != 3:
                 problems.append(
-                    f"nvidia-smi row has {len(cols)} cols (expected 3): "
-                    f"{line!r}"
+                    f"nvidia-smi row has {len(cols)} cols (expected 3): " f"{line!r}"
                 )
                 continue
             try:
@@ -4569,9 +5075,7 @@ def gate_p1_runtime_energy_report(
                 power_draw = float(cols[1])
                 power_limit = float(cols[2])
             except ValueError as exc:
-                problems.append(
-                    f"nvidia-smi row parse failure ({exc}): {line!r}"
-                )
+                problems.append(f"nvidia-smi row parse failure ({exc}): {line!r}")
                 continue
             per_gpu.append(
                 {
@@ -4613,14 +5117,19 @@ def gate_p1_runtime_energy_report(
     # ---- FAIL branches (ordered by severity) ----
     if problems:
         return GateResult(
-            name, priority, pipeline, "FAIL",
-            f"{len(problems)} nvidia-smi probe problem(s): "
-            f"{problems[:3]}",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"{len(problems)} nvidia-smi probe problem(s): " f"{problems[:3]}",
             elapsed,
         )
     if not per_gpu:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"0 GPUs reported (nvidia-smi rc={rc}, out={out[:200]!r}, "
             f"err={err[:200]!r}); artefact written to {json_path} "
             f"with empty per_gpu list",
@@ -4628,14 +5137,20 @@ def gate_p1_runtime_energy_report(
         )
     if estimated_energy_j < 0:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"estimated_energy_j={estimated_energy_j} < 0 (impossible — "
             f"non-negative sanity contract)",
             elapsed,
         )
 
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"Wf-350-A1 runtime+energy PASS: {len(per_gpu)} GPU(s) reported "
         f"(power_draw range {min(g['power_draw_w'] for g in per_gpu):.2f}-"
         f"{max(g['power_draw_w'] for g in per_gpu):.2f}W; "
@@ -4707,9 +5222,11 @@ def gate_p1_gpu_env_probe(
         env_json_path.parent.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
         return GateResult(
-            name, priority, pipeline, "FAIL",
-            f"cannot create env-json parent dir "
-            f"{env_json_path.parent!s}: {exc}",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"cannot create env-json parent dir " f"{env_json_path.parent!s}: {exc}",
             time.perf_counter() - t0,
         )
 
@@ -4718,7 +5235,10 @@ def gate_p1_gpu_env_probe(
     # env_json_path so each gate run produces a fresh snapshot.
     if not probe_script.is_file():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"probe script not on disk: {probe_script}",
             time.perf_counter() - t0,
         )
@@ -4730,7 +5250,10 @@ def gate_p1_gpu_env_probe(
     )
     if rc != 0:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"probe script rc={rc}: {err.strip()[:200]!r}; "
             f"expected JSON at {env_json_path} not written",
             time.perf_counter() - t0,
@@ -4739,7 +5262,10 @@ def gate_p1_gpu_env_probe(
     # ---- (3) re-read the JSON artefact ----
     if not env_json_path.is_file():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"probe exit-code 0 but artefact not at {env_json_path}",
             time.perf_counter() - t0,
         )
@@ -4747,7 +5273,10 @@ def gate_p1_gpu_env_probe(
         env_summary = json.loads(env_json_path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"env summary at {env_json_path} is not valid JSON: {exc}",
             time.perf_counter() - t0,
         )
@@ -4755,9 +5284,11 @@ def gate_p1_gpu_env_probe(
     # ---- (4) schema validity checks ----
     if not isinstance(env_summary, dict):
         return GateResult(
-            name, priority, pipeline, "FAIL",
-            f"env summary is not a JSON object "
-            f"(got {type(env_summary).__name__})",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"env summary is not a JSON object " f"(got {type(env_summary).__name__})",
             time.perf_counter() - t0,
         )
 
@@ -4767,7 +5298,10 @@ def gate_p1_gpu_env_probe(
             missing_top.append(key)
     if missing_top:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"env summary missing top-level keys: {missing_top}",
             time.perf_counter() - t0,
         )
@@ -4775,7 +5309,10 @@ def gate_p1_gpu_env_probe(
     torch_probe = env_summary.get("torch_probe", {})
     if not isinstance(torch_probe, dict):
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"env summary 'torch_probe' is not a dict "
             f"(got {type(torch_probe).__name__})",
             time.perf_counter() - t0,
@@ -4787,7 +5324,10 @@ def gate_p1_gpu_env_probe(
             missing_probe.append(key)
     if missing_probe:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"env summary 'torch_probe' missing fields: {missing_probe}",
             time.perf_counter() - t0,
         )
@@ -4795,7 +5335,10 @@ def gate_p1_gpu_env_probe(
     gpu_names = env_summary.get("gpu_names", [])
     if not isinstance(gpu_names, list):
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"env summary 'gpu_names' is not a list "
             f"(got {type(gpu_names).__name__})",
             time.perf_counter() - t0,
@@ -4804,7 +5347,10 @@ def gate_p1_gpu_env_probe(
     # ---- (5) FAIL branches (ordered by severity) ----
     if not torch_probe.get("ok", False):
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"torch.cuda.is_available == False on every probed venv "
             f"(torch_probe={torch_probe}); host has no GPU-backed "
             f"PyTorch installation — every GPU launch path is BLOCKED. "
@@ -4815,7 +5361,10 @@ def gate_p1_gpu_env_probe(
     device_count = int(torch_probe.get("device_count", 0))
     if device_count < 1:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"torch.cuda.device_count == {device_count} "
             f"(expected >= 1); torch reports 0 usable GPUs despite "
             f"torch.cuda.is_available == True — driver/runtime mismatch. "
@@ -4825,7 +5374,10 @@ def gate_p1_gpu_env_probe(
 
     if len(gpu_names) < 1:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"gpu_names list is empty (nvidia-smi reported 0 GPUs); "
             f"host has no NVIDIA GPU visible. torch_probe reports "
             f"torch.cuda.is_available=True but the system driver "
@@ -4836,7 +5388,10 @@ def gate_p1_gpu_env_probe(
     # ---- PASS evidence ----
     elapsed = time.perf_counter() - t0
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"Wf-350-C1 GPU/CUDA env probe PASS: "
         f"torch.cuda.is_available=True | "
         f"torch.cuda.device_count={device_count} | "
@@ -4913,13 +5468,19 @@ def gate_wf327_cpu_num_workers_sufficient(
     elapsed = time.perf_counter() - t0
     if missing:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"missing launch script(s): {missing}",
             elapsed,
         )
     if offending:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"{len(offending)}/{len(launch_scripts)} launch scripts "
             f"use --cpu-num-workers/--num-workers < {min_workers}: "
             f"{offending}; passed: {passed}.  Per Wf-326B §6.2 + "
@@ -4929,7 +5490,10 @@ def gate_wf327_cpu_num_workers_sufficient(
             elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"{len(passed)}/{len(launch_scripts)} launch scripts request "
         f">= {min_workers} workers (Wf-328-W2 + Wf-326B §6.2): {passed}",
         elapsed,
@@ -5209,7 +5773,10 @@ def _resolve_one_config_via_loader(
     try:
         from molmetal.scripts import wfA2_config_loader as _loader
     except Exception as exc:  # noqa: BLE001 — probe must never crash the gate
-        return [], f"{yaml_path.name}: loader import failed: {type(exc).__name__}: {exc}"
+        return (
+            [],
+            f"{yaml_path.name}: loader import failed: {type(exc).__name__}: {exc}",
+        )
     parser = _probe_parser_for_trainer(script)
     args = parser.parse_args([])
     # Force-quiet (the gate re-reports the skips itself) and drop any
@@ -5241,11 +5808,13 @@ def _resolve_one_config_via_loader(
         key = str(entry.get("key", ""))
         try:
             if callable(predicate) and predicate(entry):
-                classified.append({
-                    "key": key,
-                    "bucket": "loader",
-                    "why": "canonical loader _NON_TRAINER_SECTIONS/_NON_TRAINER_KEYS",
-                })
+                classified.append(
+                    {
+                        "key": key,
+                        "bucket": "loader",
+                        "why": "canonical loader _NON_TRAINER_SECTIONS/_NON_TRAINER_KEYS",
+                    }
+                )
                 continue
         except Exception:  # noqa: BLE001 — classification must never crash
             pass
@@ -5340,7 +5909,10 @@ def gate_wf343c4_hyperparams_config_complete(
         import yaml as _yaml
     except ImportError:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             "PyYAML not installed; cannot verify hyperparameter contract",
             time.perf_counter() - t0,
         )
@@ -5451,8 +6023,7 @@ def gate_wf343c4_hyperparams_config_complete(
             unresolved, res_err = _resolve_one_config_via_loader(p, obj)
         except Exception as exc:  # noqa: BLE001 — probe must never crash the gate
             res_err = (
-                f"{p.name}: resolution probe raised "
-                f"{type(exc).__name__}: {exc}"
+                f"{p.name}: resolution probe raised " f"{type(exc).__name__}: {exc}"
             )
         if res_err:
             resolution_errors.append(res_err)
@@ -5480,7 +6051,9 @@ def gate_wf343c4_hyperparams_config_complete(
                 )
             if not isinstance(value, expected_type):
                 # Allow bool→int (yaml coerces); reject str (no guessing).
-                if isinstance(expected_type, tuple) and isinstance(value, expected_type):
+                if isinstance(expected_type, tuple) and isinstance(
+                    value, expected_type
+                ):
                     pass
                 elif isinstance(expected_type, int) and isinstance(value, bool):
                     pass
@@ -5534,9 +6107,7 @@ def gate_wf343c4_hyperparams_config_complete(
         if residual_keys:
             shown = ", ".join(residual_keys[:6])
             more = (
-                f", …(+{len(residual_keys) - 6} more)"
-                if len(residual_keys) > 6
-                else ""
+                f", …(+{len(residual_keys) - 6} more)" if len(residual_keys) > 6 else ""
             )
             resolution_bits.append(
                 f"{yname}: {len(residual_keys)} RESIDUAL + {n_exempt} exempt "
@@ -5581,7 +6152,10 @@ def gate_wf343c4_hyperparams_config_complete(
 
     if problems:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"{len(yaml_paths) - len(passed)}/{len(yaml_paths)} YAMLs missing "
             f"AGENTS.md §5.1 standing GPU grant hyperparam contract: "
             f"{'; '.join(problems)}" + resolution_suffix,
@@ -5589,28 +6163,29 @@ def gate_wf343c4_hyperparams_config_complete(
         )
     if resolution_strict and (n_residual or required_unresolved):
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"STRICT RESOLUTION MODE ({HYPERPARAMS_RESOLUTION_STRICT_ENV}=1): "
             f"{n_residual} RESIDUAL key(s) resolve to no trainer argparse dest "
             f"(documented loader/reader/spec exemptions are NOT counted; "
             f"{n_loader + n_reader + n_spec} exempt key(s) ignored) + "
             f"{len(required_unresolved)} REQUIRED-HYPERPARAM unresolved.  This "
             f"mode is OFF by default on purpose (residual debt is still "
-            f"non-zero); flip it only after residual reaches zero."
-            + resolution_suffix,
+            f"non-zero); flip it only after residual reaches zero." + resolution_suffix,
             elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"all {len(passed)}/{len(yaml_paths)} active YAMLs carry "
         f"train.batch_size + train.lr + model.hidden_dim + model.n_layers "
         f"(AGENTS.md §5.1 standing GPU grant hyperparam contract): "
         f"{passed}"
-        + (
-            f" (alias-resolved: {alias_resolutions})"
-            if alias_resolutions
-            else ""
-        )
+        + (f" (alias-resolved: {alias_resolutions})" if alias_resolutions else "")
         + resolution_suffix,
         elapsed,
     )
@@ -5685,22 +6260,32 @@ def gate_wf343c4_yuelbond_decoder_env(
     t0 = time.perf_counter()
     if not decoder_module.is_file():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"decoder module missing: {decoder_module}",
             time.perf_counter() - t0,
         )
     if decoder_module.stat().st_size <= 0:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"decoder module empty: {decoder_module}",
             time.perf_counter() - t0,
         )
     spec = _ilu.spec_from_file_location(
-        "wf343c4_yuelbond_decoder_under_test", decoder_module,
+        "wf343c4_yuelbond_decoder_under_test",
+        decoder_module,
     )
     if spec is None or spec.loader is None:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"no import spec for {decoder_module}",
             time.perf_counter() - t0,
         )
@@ -5717,7 +6302,10 @@ def gate_wf343c4_yuelbond_decoder_env(
         # AGENTS.md §5.1.
         missing_name = getattr(exc, "name", None) or "torch"
         return GateResult(
-            name, priority, pipeline, "SKIP",
+            name,
+            priority,
+            pipeline,
+            "SKIP",
             f"decoder module requires {missing_name!r} (env gap on "
             f"host Python); cfm_decoder_yuelbond.py CANNOT be "
             f"loaded without the expected torch-enabled runtime "
@@ -5732,25 +6320,35 @@ def gate_wf343c4_yuelbond_decoder_env(
         )
     except Exception as exc:  # noqa: BLE001
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"decoder module import failed: {type(exc).__name__}: {exc}",
             time.perf_counter() - t0,
         )
     cls = getattr(mod, expected_class, None)
     if cls is None:
         available = sorted(
-            k for k in dir(mod)
+            k
+            for k in dir(mod)
             if not k.startswith("_") and isinstance(getattr(mod, k, None), type)
         )
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"decoder module {decoder_module.name} does not export "
             f"{expected_class!r}; available top-level classes: {available}",
             time.perf_counter() - t0,
         )
     elapsed = time.perf_counter() - t0
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"{decoder_module.name} ({decoder_module.stat().st_size}B) exports "
         f"{expected_class} (per Wf-272I / Wf-269C YuelBond-conditionality "
         f"structural check; --no-yuelbond → decode_ratio 0.000 MEASURED "
@@ -5853,27 +6451,39 @@ def gate_wf343c4_anchor_freshness_24h(
     elapsed = time.perf_counter() - t0
     if missing:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"{len(missing)}/{len(checked)} paper-grade anchors missing: "
             f"{missing[:3]}",
             elapsed,
         )
     if failures:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"{len(failures)}/{len(checked)} anchor stat() failures: "
             f"{failures[:3]}",
             elapsed,
         )
     if stale:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"{len(stale)}/{len(checked)} paper-grade anchors STALE "
             f"(> {max_age_sec / 3600:.0f}h): {stale[:3]}",
             elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"all {len(checked)}/{len(checked)} paper-grade anchors fresh "
         f"(<= {max_age_sec / 3600:.0f}h; Wf-302A / Wf-304A AnchorGuard "
         f"pre-retrain freshness contract)",
@@ -5948,7 +6558,10 @@ def gate_wf343c4_wave_budget_remaining_nonneg(
     t0 = time.perf_counter()
     if not wave_budget_report.exists():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"wave_budget_report.json missing at {wave_budget_report} "
             f"(run molmetal/scripts/wave_budget_tracker.py first)",
             time.perf_counter() - t0,
@@ -5958,16 +6571,21 @@ def gate_wf343c4_wave_budget_remaining_nonneg(
             report = json.load(fh)
     except (json.JSONDecodeError, OSError) as exc:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"wave_budget_report parse error: {type(exc).__name__}: {exc}",
             time.perf_counter() - t0,
         )
     elapsed = time.perf_counter() - t0
     if not isinstance(report, dict):
         return GateResult(
-            name, priority, pipeline, "FAIL",
-            f"wave_budget_report top-level not dict (got "
-            f"{type(report).__name__})",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"wave_budget_report top-level not dict (got " f"{type(report).__name__})",
             elapsed,
         )
     budget_hr = report.get("budget_hr")
@@ -5981,14 +6599,16 @@ def gate_wf343c4_wave_budget_remaining_nonneg(
         problems.append(f"remaining_hr={remaining_hr!r} (expected numeric)")
     if not isinstance(deferred_waves, list):
         problems.append(
-            f"deferred_waves type={type(deferred_waves).__name__} "
-            f"(expected list)"
+            f"deferred_waves type={type(deferred_waves).__name__} " f"(expected list)"
         )
     if not isinstance(waves, list):
         problems.append(f"waves type={type(waves).__name__} (expected list)")
     if problems:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"wave_budget_report contract violation(s): {problems}",
             elapsed,
         )
@@ -6031,7 +6651,10 @@ def gate_wf343c4_wave_budget_remaining_nonneg(
         # overrun is accepted; the DEFERRED waves are the dominant
         # cause and they will not run this session.
         return GateResult(
-            name, priority, pipeline, "SKIP",
+            name,
+            priority,
+            pipeline,
+            "SKIP",
             f"remaining_hr={remaining_hr:.2f}h is negative AND "
             f"{n_deferred} DEFERRED wave(s) "
             f"({deferred_waves[:3]}{'...' if n_deferred > 3 else ''}) "
@@ -6047,7 +6670,10 @@ def gate_wf343c4_wave_budget_remaining_nonneg(
         # overrun (every wave in the report contributes; the user
         # has not deferred anything).
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"remaining_hr={remaining_hr:.2f}h is negative AND no "
             f"DEFERRED waves exist — every wave in the report "
             f"contributes to over-budget (non_deferred_cost="
@@ -6063,7 +6689,10 @@ def gate_wf343c4_wave_budget_remaining_nonneg(
         # exhausted by non-deferred + DEFERRED waves combined; the
         # gate emits SKIP to flag the budget-exhaustion honestly.
         return GateResult(
-            name, priority, pipeline, "SKIP",
+            name,
+            priority,
+            pipeline,
+            "SKIP",
             f"remaining_hr={remaining_hr:.2f}h is zero AND "
             f"{n_deferred} DEFERRED wave(s) "
             f"({deferred_waves[:3]}{'...' if n_deferred > 3 else ''}) "
@@ -6073,7 +6702,10 @@ def gate_wf343c4_wave_budget_remaining_nonneg(
             elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"wave_budget_report: budget_hr={budget_hr}, "
         f"remaining_hr={remaining_hr}, deferred_waves={deferred_waves} "
         f"(non_deferred_cost={non_deferred_cost:.2f}h, "
@@ -6140,16 +6772,24 @@ def gate_wf343c2_per_wave_runtime_check(
     t0 = time.perf_counter()
     if not script_path.is_file():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"script missing: {script_path}",
             time.perf_counter() - t0,
         )
     args = [
-        VENV_PY, str(script_path),
-        "--wave", wave,
-        "--pairs-metals", pairs_metals,
-        "--pairs-seeds", pairs_seeds,
-        "--budget-hr", str(budget_hr),
+        VENV_PY,
+        str(script_path),
+        "--wave",
+        wave,
+        "--pairs-metals",
+        pairs_metals,
+        "--pairs-seeds",
+        pairs_seeds,
+        "--budget-hr",
+        str(budget_hr),
         "--skip-live",
         # NOTE (Wf-367-A2): do NOT pass --strict here. The --skip-live flag
         # legitimately produces 3 SKIPs (hyperparams + gpu + disk); --strict
@@ -6166,7 +6806,10 @@ def gate_wf343c2_per_wave_runtime_check(
     tail = blob.splitlines()[-1] if blob else "(no output)"
     if rc == 0:
         return GateResult(
-            name, priority, pipeline, "PASS",
+            name,
+            priority,
+            pipeline,
+            "PASS",
             f"wf343c2_per_wave_check.py PASS (rc=0; wave={wave!r}, "
             f"pairs=({pairs_metals})×({pairs_seeds}), "
             f"budget={budget_hr}h, --skip-live, no --strict per Wf-367-A2): "
@@ -6174,7 +6817,10 @@ def gate_wf343c2_per_wave_runtime_check(
             elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "FAIL",
+        name,
+        priority,
+        pipeline,
+        "FAIL",
         f"wf343c2_per_wave_check.py FAIL (rc={rc}, wave={wave!r}, "
         f"--skip-live, no --strict per Wf-367-A2): {tail}",
         elapsed,
@@ -6230,7 +6876,10 @@ def gate_wf343c3_data_quality_check(
     t0 = time.perf_counter()
     if not script_path.is_file():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"script missing: {script_path}",
             time.perf_counter() - t0,
         )
@@ -6243,13 +6892,19 @@ def gate_wf343c3_data_quality_check(
     tail = blob.splitlines()[-1] if blob else "(no output)"
     if rc == 0:
         return GateResult(
-            name, priority, pipeline, "PASS",
+            name,
+            priority,
+            pipeline,
+            "PASS",
             f"wf343c3_data_quality_check.py PASS (rc=0; "
             f"out_dir={out_dir or 'default'} --strict): {tail}",
             elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "FAIL",
+        name,
+        priority,
+        pipeline,
+        "FAIL",
         f"wf343c3_data_quality_check.py FAIL (rc={rc}; "
         f"out_dir={out_dir or 'default'} --strict): {tail}",
         elapsed,
@@ -6351,7 +7006,10 @@ def gate_wf385_scaffold_loss_wire_in_verified(
         out_dir.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"cannot create out-dir {out_dir!s}: {exc}",
             time.perf_counter() - t0,
         )
@@ -6359,23 +7017,33 @@ def gate_wf385_scaffold_loss_wire_in_verified(
     # ---- (2) invoke the gate script as a subprocess ----
     if not script_path.is_file():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"gate script not on disk: {script_path}",
             time.perf_counter() - t0,
         )
 
     cmd = [
-        python_bin, str(script_path),
-        "--out-dir", str(out_dir),
-        "--python-bin", python_bin,
-        "--timeout", str(int(timeout - 30)),  # leave headroom for JSON re-read
+        python_bin,
+        str(script_path),
+        "--out-dir",
+        str(out_dir),
+        "--python-bin",
+        python_bin,
+        "--timeout",
+        str(int(timeout - 30)),  # leave headroom for JSON re-read
     ]
     rc, _out, err = _run(cmd, timeout=timeout, cwd=REPO_ROOT)
     if rc != 0:
         blob = (_out + "\n" + err).strip()
         tail = blob.splitlines()[-1] if blob else "(no output)"
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"wf385a3_scaffold_wire_in_gate.py FAIL (rc={rc}): {tail}",
             time.perf_counter() - t0,
         )
@@ -6384,7 +7052,10 @@ def gate_wf385_scaffold_loss_wire_in_verified(
     gate_json = out_dir / "gate_result.json"
     if not gate_json.is_file():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"gate exit-code 0 but gate_result.json not at {gate_json}",
             time.perf_counter() - t0,
         )
@@ -6392,7 +7063,10 @@ def gate_wf385_scaffold_loss_wire_in_verified(
         gate_result = json.loads(gate_json.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"gate_result.json is not valid JSON: {exc}",
             time.perf_counter() - t0,
         )
@@ -6405,14 +7079,20 @@ def gate_wf385_scaffold_loss_wire_in_verified(
     # SKIP propagation (env-aware per Wf-345-A2).
     if verdict == "SKIP":
         return GateResult(
-            name, priority, pipeline, "SKIP",
+            name,
+            priority,
+            pipeline,
+            "SKIP",
             f"wf385a3_scaffold_wire_in_gate.py SKIP: {reason}",
             elapsed,
         )
     # FAIL propagation.
     if verdict != "PASS":
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"wf385a3_scaffold_wire_in_gate.py FAIL (verdict={verdict!r}): "
             f"{reason}",
             elapsed,
@@ -6429,7 +7109,10 @@ def gate_wf385_scaffold_loss_wire_in_verified(
     bad_modules = [m["filename"] for m in modules if not m.get("export_ok")]
     if bad_modules:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"gate PASSED but {len(bad_modules)} module(s) failed export "
             f"verification: {bad_modules}; gate.json verdict={verdict!r} "
             f"may be stale",
@@ -6438,7 +7121,10 @@ def gate_wf385_scaffold_loss_wire_in_verified(
 
     # ---- (6) emit final PASS ----
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"wf385a3_scaffold_wire_in_gate.py PASS (rc=0, "
         f"verdict=PASS): all {len(modules)} SCAFFOLD modules export "
         f"expected callable + 50-step smoke PASSED: loss[0]={loss_first:.4f} "
@@ -6487,7 +7173,10 @@ def _run_wf343c1_gate(
         wf_result = runner()
     except Exception as exc:  # noqa: BLE001 — surface any gate error
         return GateResult(
-            name, "?", "wf343c1", "FAIL",
+            name,
+            "?",
+            "wf343c1",
+            "FAIL",
             f"wf343c1 runner raised: {type(exc).__name__}: {exc}",
             time.perf_counter() - t0,
         )
@@ -6574,7 +7263,10 @@ def gate_gate_count_consistency_audit(
     # EXPECTED_GATE_COUNTS must use only those keys.
     if pipeline not in PIPELINES:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"INVALID_PIPELINE: pipeline={pipeline!r} is not in PIPELINES="
             f"{PIPELINES!r}.  Per Wf-321D §5.2 design contract, the audit "
             f"gate may only be invoked with one of {PIPELINES!r}.  "
@@ -6588,7 +7280,10 @@ def gate_gate_count_consistency_audit(
         actual_runners = build_gates(pipeline)
     except Exception as exc:  # noqa: BLE001 — surface any build_gates error
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"build_gates({pipeline!r}) raised: {type(exc).__name__}: {exc}",
             time.perf_counter() - t0,
         )
@@ -6615,22 +7310,30 @@ def gate_gate_count_consistency_audit(
         else:
             suffix = " (explicit expected_total — drift check active)"
         return GateResult(
-            name, priority, pipeline, "PASS",
+            name,
+            priority,
+            pipeline,
+            "PASS",
             f"gate count consistent for pipeline={pipeline!r}: "
             f"actual={actual_total} == expected={expected_total}{suffix}",
             elapsed,
         )
-    direction = "+DRIFT (silent gate bloat)" if actual_total > expected_total \
+    direction = (
+        "+DRIFT (silent gate bloat)"
+        if actual_total > expected_total
         else "-DRIFT (silent gate loss)"
+    )
     return GateResult(
-        name, priority, pipeline, "FAIL",
+        name,
+        priority,
+        pipeline,
+        "FAIL",
         f"gate count drift for pipeline={pipeline!r}: actual={actual_total} "
         f"vs expected={expected_total} [{direction}].  "
         f"Update TODO/completed/321d_preflight_gate_audit.md AND "
         f"EXPECTED_GATE_COUNTS together.",
         elapsed,
     )
-
 
 
 # Wf-432-A1 — PRE_TRAINING_GATE_v2: 32 NEW gate definitions + registrations
@@ -6651,11 +7354,17 @@ def gate_gate_count_consistency_audit(
 
 # ---- Tier-1 must-pass gates (§2) ----
 
+
 def gate_p3_protocol_alignment_dataset_match(
-    name: str, priority: str, pipeline: str,
-    metalcytotox_csv: Path, platinai_csv: Path,
-    crossdocked_csv: Path, nci60_csv: Path,
-    balanced_rh_json: Path, drugood_loader: Path,
+    name: str,
+    priority: str,
+    pipeline: str,
+    metalcytotox_csv: Path,
+    platinai_csv: Path,
+    crossdocked_csv: Path,
+    nci60_csv: Path,
+    balanced_rh_json: Path,
+    drugood_loader: Path,
 ) -> GateResult:
     """Wf-432-A1 §2 L1-1 — Tier-1 LEAD dataset match gate.
 
@@ -6665,24 +7374,44 @@ def gate_p3_protocol_alignment_dataset_match(
     """
     t0 = time.perf_counter()
     failures: List[str] = []
-    for p in (metalcytotox_csv, platinai_csv, crossdocked_csv,
-              nci60_csv, balanced_rh_json, drugood_loader):
+    for p in (
+        metalcytotox_csv,
+        platinai_csv,
+        crossdocked_csv,
+        nci60_csv,
+        balanced_rh_json,
+        drugood_loader,
+    ):
         if not p.exists():
             failures.append(f"missing: {p}")
     if failures:
-        return GateResult(name, priority, pipeline, "FAIL",
-            "; ".join(failures), time.perf_counter() - t0)
-    return GateResult(name, priority, pipeline, "PASS",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            "; ".join(failures),
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"all 7 Tier-1 LEAD metric datasets on disk: "
         f"metalcytotox={metalcytotox_csv.name}, platinai={platinai_csv.name}, "
         f"crossdocked={crossdocked_csv.name}, nci60={nci60_csv.name}, "
         f"balanced_rh={balanced_rh_json.name}, drugood_loader={drugood_loader.name}",
-        time.perf_counter() - t0)
+        time.perf_counter() - t0,
+    )
 
 
 def gate_p3_protocol_alignment_split_match(
-    name: str, priority: str, pipeline: str,
-    leakage_utils_py: Path, drugood_all_results_json: Path,
+    name: str,
+    priority: str,
+    pipeline: str,
+    leakage_utils_py: Path,
+    drugood_all_results_json: Path,
 ) -> GateResult:
     """Wf-432-A1 §2 L1-2 — Tier-1 LEAD split protocol match gate."""
     t0 = time.perf_counter()
@@ -6691,33 +7420,58 @@ def gate_p3_protocol_alignment_split_match(
         if not p.exists():
             failures.append(f"missing: {p}")
     if failures:
-        return GateResult(name, priority, pipeline, "FAIL",
-            "; ".join(failures), time.perf_counter() - t0)
-    return GateResult(name, priority, pipeline, "PASS",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            "; ".join(failures),
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"scaffold_split + drugood 3-splits on disk: "
         f"leakage_utils={leakage_utils_py.name}, "
         f"drugood_all_results={drugood_all_results_json.name}",
-        time.perf_counter() - t0)
+        time.perf_counter() - t0,
+    )
 
 
 def gate_p3_protocol_alignment_metric_match(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     eval_all_evaluators_py: Path,
 ) -> GateResult:
     """Wf-432-A1 §2 L1-3 — Tier-1 LEAD metric definition match gate."""
     t0 = time.perf_counter()
     if not eval_all_evaluators_py.exists():
-        return GateResult(name, priority, pipeline, "FAIL",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"missing: {eval_all_evaluators_py}",
-            time.perf_counter() - t0)
-    return GateResult(name, priority, pipeline, "PASS",
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"eval_all_evaluators.py on disk: {eval_all_evaluators_py.name} "
         f"(7 Tier-1 LEAD metric definitions bit-for-bit identical to baseline)",
-        time.perf_counter() - t0)
+        time.perf_counter() - t0,
+    )
 
 
 def gate_p3_protocol_alignment_seed_cohort_per_seed_per_split(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     train_metal_cytotox_py: Path,
     train_platinai_py: Path,
     train_nci60_10cell_py: Path,
@@ -6726,50 +7480,89 @@ def gate_p3_protocol_alignment_seed_cohort_per_seed_per_split(
     """Wf-432-A1 §2 L1-4 — Per-seed + per-split statistics contract."""
     t0 = time.perf_counter()
     failures: List[str] = []
-    for p in (train_metal_cytotox_py, train_platinai_py, train_nci60_10cell_py,
-              per_seed_template_dir):
+    for p in (
+        train_metal_cytotox_py,
+        train_platinai_py,
+        train_nci60_10cell_py,
+        per_seed_template_dir,
+    ):
         if not p.exists():
             failures.append(f"missing: {p}")
     if failures:
-        return GateResult(name, priority, pipeline, "FAIL",
-            "; ".join(failures), time.perf_counter() - t0)
-    return GateResult(name, priority, pipeline, "PASS",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            "; ".join(failures),
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"per-seed + per-split stdout format emitters registered: "
         f"metal_cytotox={train_metal_cytotox_py.name}, "
         f"platinai={train_platinai_py.name}, "
         f"nci60={train_nci60_10cell_py.name}",
-        time.perf_counter() - t0)
+        time.perf_counter() - t0,
+    )
 
 
 def gate_p3_protocol_alignment_honest_limitation_minor_section(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     honest_negative_catalog_md: Path,
 ) -> GateResult:
     """Wf-432-A1 §2 L1-5 — §6 catalog + per-metric minor-section template."""
     t0 = time.perf_counter()
     if not honest_negative_catalog_md.exists():
-        return GateResult(name, priority, pipeline, "FAIL",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"missing: {honest_negative_catalog_md}",
-            time.perf_counter() - t0)
+            time.perf_counter() - t0,
+        )
     try:
         text = honest_negative_catalog_md.read_text(encoding="utf-8")
     except OSError as exc:
-        return GateResult(name, priority, pipeline, "FAIL",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"read error: {type(exc).__name__}: {exc}",
-            time.perf_counter() - t0)
+            time.perf_counter() - t0,
+        )
     # Require the canonical §6 catalog section header per Wf-416-B1.
     if "## §6" not in text:
-        return GateResult(name, priority, pipeline, "FAIL",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             "HONEST_NEGATIVE_CATALOG.md missing canonical §6 section header",
-            time.perf_counter() - t0)
-    return GateResult(name, priority, pipeline, "PASS",
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"HONEST_NEGATIVE_CATALOG.md on disk with §6 catalog section: "
         f"{honest_negative_catalog_md.name} ({len(text)} bytes)",
-        time.perf_counter() - t0)
+        time.perf_counter() - t0,
+    )
 
 
 def gate_p3_protocol_alignment_paper_section_6_template(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     section_6_template_md: Path,
     paper_section_6_v4_md: Path,
 ) -> GateResult:
@@ -6780,16 +7573,29 @@ def gate_p3_protocol_alignment_paper_section_6_template(
         if not p.exists():
             failures.append(f"missing: {p}")
     if failures:
-        return GateResult(name, priority, pipeline, "FAIL",
-            "; ".join(failures), time.perf_counter() - t0)
-    return GateResult(name, priority, pipeline, "PASS",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            "; ".join(failures),
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"§6 templates on disk: section_6_template={section_6_template_md.name}, "
         f"paper_section_6_v4={paper_section_6_v4_md.name}",
-        time.perf_counter() - t0)
+        time.perf_counter() - t0,
+    )
 
 
 def gate_p3_protocol_alignment_user_ok_gate(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     scripts_dir: Path,
     wrapper_names: Tuple[str, ...],
 ) -> GateResult:
@@ -6814,41 +7620,76 @@ def gate_p3_protocol_alignment_user_ok_gate(
         if "USER_OK" not in text:
             missing.append(f"no USER_OK in: {wp.name}")
     if missing:
-        return GateResult(name, priority, pipeline, "FAIL",
-            "; ".join(missing), time.perf_counter() - t0)
-    return GateResult(name, priority, pipeline, "PASS",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            "; ".join(missing),
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"all {len(wrapper_names)} retrain wrappers have USER_OK gate: "
         + ", ".join(wrapper_names),
-        time.perf_counter() - t0)
+        time.perf_counter() - t0,
+    )
 
 
 def gate_p3_protocol_alignment_baseline_paper_refs_bib(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     paper_refs_bib: Path,
-    required_keys: Tuple[str, ...] = ("krasnov2026metalcytotoxdb",
-                                       "rusanov2025platinai",
-                                       "ji2022drugood"),
+    required_keys: Tuple[str, ...] = (
+        "krasnov2026metalcytotoxdb",
+        "rusanov2025platinai",
+        "ji2022drugood",
+    ),
 ) -> GateResult:
     """Wf-432-A1 §2 L1-8 — 3 baseline paper BibTeX entries in paper/refs.bib."""
     t0 = time.perf_counter()
     if not paper_refs_bib.exists():
-        return GateResult(name, priority, pipeline, "FAIL",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"missing: {paper_refs_bib}",
-            time.perf_counter() - t0)
+            time.perf_counter() - t0,
+        )
     try:
         text = paper_refs_bib.read_text(encoding="utf-8")
     except OSError as exc:
-        return GateResult(name, priority, pipeline, "FAIL",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"read error: {type(exc).__name__}: {exc}",
-            time.perf_counter() - t0)
+            time.perf_counter() - t0,
+        )
     missing = [k for k in required_keys if k not in text]
     if missing:
-        return GateResult(name, priority, pipeline, "FAIL",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"refs.bib missing {len(missing)} keys: {missing}",
-            time.perf_counter() - t0)
-    return GateResult(name, priority, pipeline, "PASS",
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"paper/refs.bib has all 3 baseline paper keys: {list(required_keys)}",
-        time.perf_counter() - t0)
+        time.perf_counter() - t0,
+    )
 
 
 def _yaml_load_alldata(
@@ -6876,7 +7717,9 @@ def _yaml_load_alldata(
 
 
 def gate_p3_protocol_alignment_yaml_dataset_authorized(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     yaml_paths: Tuple[Path, ...],
 ) -> GateResult:
     """Wf-A8 §5.5 filesystem-truth Gate 1 — yaml data.dataset is benchmark-authorized.
@@ -6899,8 +7742,12 @@ def gate_p3_protocol_alignment_yaml_dataset_authorized(
     """
     t0 = time.perf_counter()
     ALLOWED = {
-        "metalcytotox_5metal", "platinai_4cell", "platinai_5k",
-        "drugood", "nci60_10cell", "crossdocked_100",
+        "metalcytotox_5metal",
+        "platinai_4cell",
+        "platinai_5k",
+        "drugood",
+        "nci60_10cell",
+        "crossdocked_100",
     }
     failures: List[str] = []
     parse_failures: List[str] = []
@@ -6909,23 +7756,37 @@ def gate_p3_protocol_alignment_yaml_dataset_authorized(
         if not ok:
             parse_failures.append(f"{p.name}: {err}")
             continue
-        ds = obj.get("data", {}).get("dataset") if isinstance(obj.get("data"), dict) else None
+        ds = (
+            obj.get("data", {}).get("dataset")
+            if isinstance(obj.get("data"), dict)
+            else None
+        )
         if ds is None:
             # Some legacy yamls use ``data.split`` only (no top-level dataset).
             # That is HONEST-NEGATIVE per user voice "alignment-not-reproduction":
             # for Tier-1 LEAD we require an explicit dataset field.
-            failures.append(f"{p.name}: missing data.dataset (alignment-not-reproduction)")
+            failures.append(
+                f"{p.name}: missing data.dataset (alignment-not-reproduction)"
+            )
             continue
         if ds not in ALLOWED:
-            failures.append(f"{p.name}: data.dataset={ds!r} not in Tier-1 authorized list")
+            failures.append(
+                f"{p.name}: data.dataset={ds!r} not in Tier-1 authorized list"
+            )
     if failures or parse_failures:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"dataset_alignment_failures={failures}; parse_failures={parse_failures}",
             time.perf_counter() - t0,
         )
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"all {len(yaml_paths)} yamls have data.dataset in Tier-1 authorized list "
         f"({len(ALLOWED)} datasets): {[p.name for p in yaml_paths]}",
         time.perf_counter() - t0,
@@ -6933,7 +7794,9 @@ def gate_p3_protocol_alignment_yaml_dataset_authorized(
 
 
 def gate_p3_protocol_alignment_yaml_split_matches_baseline(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     yaml_paths: Tuple[Path, ...],
 ) -> GateResult:
     """Wf-A8 §5.5 filesystem-truth Gate 2 — yaml data.split.type matches baseline paper.
@@ -6949,8 +7812,11 @@ def gate_p3_protocol_alignment_yaml_split_matches_baseline(
     """
     t0 = time.perf_counter()
     BASELINE_SPLIT = {
-        "per_cell_line", "per_cell_line_balanced", "scaffold_split",
-        "scaffold_split_5fold_cv", "3_split_assay_scaffold_size",
+        "per_cell_line",
+        "per_cell_line_balanced",
+        "scaffold_split",
+        "scaffold_split_5fold_cv",
+        "3_split_assay_scaffold_size",
     }
     failures: List[str] = []
     parse_failures: List[str] = []
@@ -6978,12 +7844,18 @@ def gate_p3_protocol_alignment_yaml_split_matches_baseline(
             )
     if failures or parse_failures:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"split_baseline_failures={failures}; parse_failures={parse_failures}",
             time.perf_counter() - t0,
         )
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"all {len(yaml_paths)} yamls have data.split.type in baseline mapping "
         f"({len(BASELINE_SPLIT)} split types)",
         time.perf_counter() - t0,
@@ -6991,7 +7863,9 @@ def gate_p3_protocol_alignment_yaml_split_matches_baseline(
 
 
 def gate_p3_protocol_alignment_yaml_target_in_baseline_range(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     yaml_paths: Tuple[Path, ...],
     tolerance: float = 0.05,
 ) -> GateResult:
@@ -7024,8 +7898,8 @@ def gate_p3_protocol_alignment_yaml_target_in_baseline_range(
         "A2780cis": (0.80, 0.90),
     }
     PER_METAL_RANGE = (0.78, 0.85)  # Krasnov 2026 5-metal
-    OVERALL_RANGE = (0.69, 0.79)    # PlatinAI 4-cell average
-    DRUGOOD_RANGE = (0.65, 0.80)   # DrugOOD 3-split OOD broad band
+    OVERALL_RANGE = (0.69, 0.79)  # PlatinAI 4-cell average
+    DRUGOOD_RANGE = (0.65, 0.80)  # DrugOOD 3-split OOD broad band
     DECODE_RATIO_RANGE = (0.50, 1.00)
     TEST_AUC_RANGE = (0.65, 0.90)
 
@@ -7115,20 +7989,28 @@ def gate_p3_protocol_alignment_yaml_target_in_baseline_range(
 
     if failures:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"target_baseline_failures={failures}; "
             f"warnings={warnings}; parse_failures={parse_failures}",
             time.perf_counter() - t0,
         )
     if warnings:
         return GateResult(
-            name, priority, pipeline, "WARN",
-            f"target_baseline_warnings={warnings}; "
-            f"parse_failures={parse_failures}",
+            name,
+            priority,
+            pipeline,
+            "WARN",
+            f"target_baseline_warnings={warnings}; " f"parse_failures={parse_failures}",
             time.perf_counter() - t0,
         )
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"all {len(yaml_paths)} yamls have eval targets within baseline paper ranges "
         f"(±{tolerance} tolerance)",
         time.perf_counter() - t0,
@@ -7136,7 +8018,9 @@ def gate_p3_protocol_alignment_yaml_target_in_baseline_range(
 
 
 def gate_p3_protocol_alignment_yaml_no_inline_cli(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     yaml_paths: Tuple[Path, ...],
 ) -> GateResult:
     """Wf-A8 §5.5 filesystem-truth Gate 4 — yaml entry.command must NOT contain inline CLI flags.
@@ -7154,11 +8038,25 @@ def gate_p3_protocol_alignment_yaml_no_inline_cli(
     """
     t0 = time.perf_counter()
     FORBIDDEN_FLAGS = {
-        "--metals", "--seeds", "--epochs", "--batch-size", "--lr",
-        "--hidden", "--hidden-dim", "--n-layers", "--depth",
-        "--alpha", "--wasserstein-weight", "--pocket-id",
-        "--out-dir", "--ckpt-dir", "--csv", "--n-train",
-        "--steps", "--joint-train", "--bond-head",
+        "--metals",
+        "--seeds",
+        "--epochs",
+        "--batch-size",
+        "--lr",
+        "--hidden",
+        "--hidden-dim",
+        "--n-layers",
+        "--depth",
+        "--alpha",
+        "--wasserstein-weight",
+        "--pocket-id",
+        "--out-dir",
+        "--ckpt-dir",
+        "--csv",
+        "--n-train",
+        "--steps",
+        "--joint-train",
+        "--bond-head",
     }
     DEBUG_FLAG_OVERRIDES = {"--device", "--dry-run", "--no-enforce-budget", "--config"}
 
@@ -7186,6 +8084,7 @@ def gate_p3_protocol_alignment_yaml_no_inline_cli(
         # before scanning for forbidden flags — placeholders are NOT
         # inline CLI flags, they are yaml-template substitution.
         import re as _re
+
         sanitized = _re.sub(r"\{[a-zA-Z0-9_]+\}", "", cmd)
         tokens = sanitized.split()
         bad_flags: List[str] = []
@@ -7210,12 +8109,18 @@ def gate_p3_protocol_alignment_yaml_no_inline_cli(
 
     if failures or parse_failures:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"yaml_no_inline_cli_failures={failures}; parse_failures={parse_failures}",
             time.perf_counter() - t0,
         )
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"all {len(yaml_paths)} yamls have entry.command aligned to yaml "
         f"(no inline CLI flags beyond debug overrides)",
         time.perf_counter() - t0,
@@ -7224,8 +8129,11 @@ def gate_p3_protocol_alignment_yaml_no_inline_cli(
 
 # ---- Tier-2 recommended gates (§3) ----
 
+
 def gate_p3_protocol_recommended_seed_count_3(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     train_metal_cytotox_py: Path,
     train_platinai_py: Path,
     train_nci60_10cell_py: Path,
@@ -7237,17 +8145,30 @@ def gate_p3_protocol_recommended_seed_count_3(
         if not p.exists():
             failures.append(f"missing: {p}")
     if failures:
-        return GateResult(name, priority, pipeline, "WARN",
-            "; ".join(failures), time.perf_counter() - t0)
-    return GateResult(name, priority, pipeline, "PASS",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "WARN",
+            "; ".join(failures),
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"3 trainer wrappers emit per-seed JSON: "
         f"{train_metal_cytotox_py.name}, {train_platinai_py.name}, "
         f"{train_nci60_10cell_py.name}",
-        time.perf_counter() - t0)
+        time.perf_counter() - t0,
+    )
 
 
 def gate_p3_protocol_recommended_per_cell_breakdown(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     train_platinai_py: Path,
     train_nci60_10cell_py: Path,
     per_cohort_template_json: Path,
@@ -7259,16 +8180,29 @@ def gate_p3_protocol_recommended_per_cell_breakdown(
         if not p.exists():
             failures.append(f"missing: {p}")
     if failures:
-        return GateResult(name, priority, pipeline, "WARN",
-            "; ".join(failures), time.perf_counter() - t0)
-    return GateResult(name, priority, pipeline, "PASS",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "WARN",
+            "; ".join(failures),
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"per-cell breakdown CLI flag registered: "
         f"platinai={train_platinai_py.name}, nci60={train_nci60_10cell_py.name}",
-        time.perf_counter() - t0)
+        time.perf_counter() - t0,
+    )
 
 
 def gate_p3_protocol_recommended_5_fold_cv_compatibility_50x(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     train_metal_cytotox_py: Path,
     drugood_loader_py: Path,
 ) -> GateResult:
@@ -7279,65 +8213,112 @@ def gate_p3_protocol_recommended_5_fold_cv_compatibility_50x(
         if not p.exists():
             failures.append(f"missing: {p}")
     if failures:
-        return GateResult(name, priority, pipeline, "WARN",
-            "; ".join(failures), time.perf_counter() - t0)
-    return GateResult(name, priority, pipeline, "PASS",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "WARN",
+            "; ".join(failures),
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"5-fold CV CLI flag registered: "
         f"metal_cytotox={train_metal_cytotox_py.name}, "
         f"drugood_loader={drugood_loader_py.name}",
-        time.perf_counter() - t0)
+        time.perf_counter() - t0,
+    )
 
 
 def gate_p3_protocol_recommended_krasnov_paper_table_4_replication(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     reports_dir: Path,
 ) -> GateResult:
     """Wf-432-A1 §3 L2-4 — Recommend Krasnov 2026 paper Table 4 replication."""
     t0 = time.perf_counter()
     p = reports_dir / "krasnov_2026_paper_table4_replication"
     if not p.exists():
-        return GateResult(name, priority, pipeline, "WARN",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "WARN",
             f"missing: {p} (Krasnov paper Table 4 replication template is "
             f"RECOMMENDED per D-Wf-431 alignment, not required)",
-            time.perf_counter() - t0)
-    return GateResult(name, priority, pipeline, "PASS",
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"Krasnov paper Table 4 replication directory present: {p}",
-        time.perf_counter() - t0)
+        time.perf_counter() - t0,
+    )
 
 
 def gate_p3_protocol_recommended_drugood_3_splits_full_alignment(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     drugood_all_results_json: Path,
 ) -> GateResult:
     """Wf-432-A1 §3 L2-5 — DrugOOD 3-split full alignment (assay+scaffold+size)."""
     t0 = time.perf_counter()
     if not drugood_all_results_json.exists():
-        return GateResult(name, priority, pipeline, "WARN",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "WARN",
             f"missing: {drugood_all_results_json}",
-            time.perf_counter() - t0)
+            time.perf_counter() - t0,
+        )
     try:
         data = json.loads(drugood_all_results_json.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
-        return GateResult(name, priority, pipeline, "WARN",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "WARN",
             f"parse error: {type(exc).__name__}: {exc}",
-            time.perf_counter() - t0)
+            time.perf_counter() - t0,
+        )
     splits_present = []
     if isinstance(data, dict):
         for split in ("assay", "scaffold", "size"):
             if split in data or any(split in k for k in data.keys()):
                 splits_present.append(split)
     if len(splits_present) >= 3:
-        return GateResult(name, priority, pipeline, "PASS",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "PASS",
             f"all 3 DrugOOD splits present: {splits_present}",
-            time.perf_counter() - t0)
-    return GateResult(name, priority, pipeline, "WARN",
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "WARN",
         f"only {len(splits_present)}/3 DrugOOD splits in "
         f"{drugood_all_results_json.name}: {splits_present}",
-        time.perf_counter() - t0)
+        time.perf_counter() - t0,
+    )
 
 
 def gate_p3_protocol_recommended_rusanov_per_cell_line_baseline_lookup(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     reports_dir: Path,
     train_platinai_py: Path,
 ) -> GateResult:
@@ -7350,209 +8331,359 @@ def gate_p3_protocol_recommended_rusanov_per_cell_line_baseline_lookup(
     if not train_platinai_py.exists():
         failures.append(f"missing: {train_platinai_py}")
     if failures:
-        return GateResult(name, priority, pipeline, "WARN",
-            "; ".join(failures), time.perf_counter() - t0)
-    return GateResult(name, priority, pipeline, "PASS",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "WARN",
+            "; ".join(failures),
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"Rusanov baseline lookup wired: "
         f"baseline={p.name}, platinai={train_platinai_py.name}",
-        time.perf_counter() - t0)
+        time.perf_counter() - t0,
+    )
 
 
 def gate_p3_protocol_recommended_section_6_honest_minor_section_auto_emit(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     auto_emit_section_6_minor_py: Path,
 ) -> GateResult:
     """Wf-432-A1 §3 L2-7 — §6 minor-section auto-emit script."""
     t0 = time.perf_counter()
     if not auto_emit_section_6_minor_py.exists():
-        return GateResult(name, priority, pipeline, "WARN",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "WARN",
             f"missing: {auto_emit_section_6_minor_py}",
-            time.perf_counter() - t0)
-    return GateResult(name, priority, pipeline, "PASS",
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"§6 minor-section auto-emit script on disk: "
         f"{auto_emit_section_6_minor_py.name}",
-        time.perf_counter() - t0)
+        time.perf_counter() - t0,
+    )
 
 
 # ---- MOCK → REAL verification gates (§5) ----
 
+
 def gate_p3_mock_to_real_m3_vina_kcal_per_mol_REAL_5_pocket(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     vina_kcal_per_mol_json: Path,
 ) -> GateResult:
     """Wf-432-A1 §5 L3-1 — m3 Vina REAL-MEASURED on 5-pocket cohort."""
     t0 = time.perf_counter()
     if not vina_kcal_per_mol_json.exists():
-        return GateResult(name, priority, pipeline, "FAIL",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"missing: {vina_kcal_per_mol_json}",
-            time.perf_counter() - t0)
+            time.perf_counter() - t0,
+        )
     try:
         data = json.loads(vina_kcal_per_mol_json.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
-        return GateResult(name, priority, pipeline, "FAIL",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"parse error: {type(exc).__name__}: {exc}",
-            time.perf_counter() - t0)
+            time.perf_counter() - t0,
+        )
     # Look for v3_cohort_median_REAL or aggregate_v3_real field.
     # Per actual on-disk JSON schema (Wf-430 fresh-run audit):
     # vina_kcal_per_mol.json::aggregate.cisplatin_mean_kcal_per_mol is the
     # REAL-MEASURED cisplatin cohort mean (Wf-121 P3). v3_cohort_median
     # is the projected pIC50-targeted delta field (Wf-333-V3) — kept as a
     # fallback for forward-compat if v3-cohort REAL measurement ships.
-    real_value = (data.get("v3_cohort_median_REAL")
-                  or data.get("aggregate", {}).get("v3_cohort_median_REAL")
-                  or data.get("v3_cohort_median")
-                  or data.get("aggregate", {}).get("cisplatin_mean_kcal_per_mol"))
+    real_value = (
+        data.get("v3_cohort_median_REAL")
+        or data.get("aggregate", {}).get("v3_cohort_median_REAL")
+        or data.get("v3_cohort_median")
+        or data.get("aggregate", {}).get("cisplatin_mean_kcal_per_mol")
+    )
     if real_value is None:
-        return GateResult(name, priority, pipeline, "FAIL",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"vina_kcal_per_mol.json missing v3_cohort_median_REAL field "
             f"(and aggregate.cisplatin_mean_kcal_per_mol fallback)",
-            time.perf_counter() - t0)
-    return GateResult(name, priority, pipeline, "PASS",
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"m3 Vina REAL-MEASURED on 5-pocket cohort: median = {real_value} kcal/mol "
         f"(PASSES industry -7.0 by +0.782 margin per Wf-333-V3 + Wf-362-A2)",
-        time.perf_counter() - t0)
+        time.perf_counter() - t0,
+    )
 
 
 def gate_p3_mock_to_real_m15_rmsd_REAL_5_pocket(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     docked_pose_rmsd_json: Path,
 ) -> GateResult:
     """Wf-432-A1 §5 L3-2 — m15 RMSD REAL-MEASURED on 5-pocket cohort."""
     t0 = time.perf_counter()
     if not docked_pose_rmsd_json.exists():
-        return GateResult(name, priority, pipeline, "FAIL",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"missing: {docked_pose_rmsd_json}",
-            time.perf_counter() - t0)
+            time.perf_counter() - t0,
+        )
     try:
         data = json.loads(docked_pose_rmsd_json.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
-        return GateResult(name, priority, pipeline, "FAIL",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"parse error: {type(exc).__name__}: {exc}",
-            time.perf_counter() - t0)
+            time.perf_counter() - t0,
+        )
     # Per actual on-disk JSON schema (Wf-430 fresh-run audit):
     # docked_pose_rmsd.json::aggregate_median_across_pockets = 0.6578 A
     # is the REAL-MEASURED median across the 5-pocket cohort.
     # aggregate_median_best_rmsd_REAL is a forward-compat field for the
     # v3 redesign (Wf-362-A3). Both checked for back-compat.
-    real_value = (data.get("aggregate_median_best_rmsd_REAL")
-                  or data.get("aggregate", {}).get("aggregate_median_best_rmsd_REAL")
-                  or data.get("aggregate_median_best_rmsd")
-                  or data.get("aggregate_median_across_pockets"))
+    real_value = (
+        data.get("aggregate_median_best_rmsd_REAL")
+        or data.get("aggregate", {}).get("aggregate_median_best_rmsd_REAL")
+        or data.get("aggregate_median_best_rmsd")
+        or data.get("aggregate_median_across_pockets")
+    )
     if real_value is None:
-        return GateResult(name, priority, pipeline, "FAIL",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"docked_pose_rmsd.json missing aggregate_median_best_rmsd_REAL field",
-            time.perf_counter() - t0)
-    return GateResult(name, priority, pipeline, "PASS",
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"m15 RMSD REAL-MEASURED on 5-pocket cohort: median = {real_value} Å "
         f"(5/5 PASS 2.0 Å SOTA gate per Wf-341-T1 + Wf-362-A3)",
-        time.perf_counter() - t0)
+        time.perf_counter() - t0,
+    )
 
 
 def gate_p3_mock_to_real_m14_decode_ratio_REAL_30_probes(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     decode_ratio_json: Path,
 ) -> GateResult:
     """Wf-432-A1 §5 L3-3 — m14 decode_ratio REAL-MEASURED on 30 probes."""
     t0 = time.perf_counter()
     if not decode_ratio_json.exists():
-        return GateResult(name, priority, pipeline, "FAIL",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"missing: {decode_ratio_json}",
-            time.perf_counter() - t0)
+            time.perf_counter() - t0,
+        )
     try:
         data = json.loads(decode_ratio_json.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
-        return GateResult(name, priority, pipeline, "FAIL",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"parse error: {type(exc).__name__}: {exc}",
-            time.perf_counter() - t0)
-    real_value = (data.get("aggregate", {}).get("all_measured_cfm_decode_ratio_REAL")
-                  or data.get("aggregate", {}).get("all_measured_cfm_decode_ratio")
-                  or data.get("all_measured_cfm_decode_ratio"))
+            time.perf_counter() - t0,
+        )
+    real_value = (
+        data.get("aggregate", {}).get("all_measured_cfm_decode_ratio_REAL")
+        or data.get("aggregate", {}).get("all_measured_cfm_decode_ratio")
+        or data.get("all_measured_cfm_decode_ratio")
+    )
     if real_value is None or float(real_value) < 0.5:
-        return GateResult(name, priority, pipeline, "FAIL",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"decode_ratio.json missing or low REAL field: {real_value} "
             f"(< 0.5 = degenerate trajectory per Wf-398-A3 stale-aggregate fix)",
-            time.perf_counter() - t0)
-    return GateResult(name, priority, pipeline, "PASS",
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"m14 decode_ratio REAL-MEASURED on 30 probes: ratio = {real_value} "
         f"(PASSES internal target ≥0.8 per Wf-398-A3 + Wf-148 m14_real_cfm)",
-        time.perf_counter() - t0)
+        time.perf_counter() - t0,
+    )
 
 
 def gate_p3_mock_to_real_m17_drugood_assay_REAL_3_seeds(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     drugood_od_auc_json: Path,
 ) -> GateResult:
     """Wf-432-A1 §5 L3-4 — m17 DrugOOD assay REAL-MEASURED on 3 seeds."""
     t0 = time.perf_counter()
     if not drugood_od_auc_json.exists():
-        return GateResult(name, priority, pipeline, "FAIL",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"missing: {drugood_od_auc_json}",
-            time.perf_counter() - t0)
+            time.perf_counter() - t0,
+        )
     try:
         data = json.loads(drugood_od_auc_json.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
-        return GateResult(name, priority, pipeline, "FAIL",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"parse error: {type(exc).__name__}: {exc}",
-            time.perf_counter() - t0)
+            time.perf_counter() - t0,
+        )
     # Per actual on-disk JSON schema (Wf-430 fresh-run audit):
     # drugood_ood_auc.json::results.<split>.ood_auc_mean is the
     # REAL-MEASURED DrugOOD assay/scaffold/size OOD AUC.
     # assay_split_REAL / metacytotox_fallback_* are forward-compat
     # field names from earlier drafts; primary path is results.assay.ood_auc_mean.
     results = data.get("results", {})
-    real_value = (data.get("assay_split_REAL")
-                  or data.get("assay_split", {}).get("value")
-                  or data.get("assay_split")
-                  or (results.get("assay", {}).get("ood_auc_mean")
-                      if isinstance(results, dict) else None)
-                  or data.get("aggregate", {}).get("metacytotox_fallback_assay_split"))
+    real_value = (
+        data.get("assay_split_REAL")
+        or data.get("assay_split", {}).get("value")
+        or data.get("assay_split")
+        or (
+            results.get("assay", {}).get("ood_auc_mean")
+            if isinstance(results, dict)
+            else None
+        )
+        or data.get("aggregate", {}).get("metacytotox_fallback_assay_split")
+    )
     if real_value is None:
-        return GateResult(name, priority, pipeline, "FAIL",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"drugood_od_auc.json missing assay_split_REAL field",
-            time.perf_counter() - t0)
-    return GateResult(name, priority, pipeline, "PASS",
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"m17 DrugOOD assay split REAL-MEASURED on 3 seeds: "
         f"value = {real_value} (iMoLD-gate PASS per Wf-393-A2 §11.1)",
-        time.perf_counter() - t0)
+        time.perf_counter() - t0,
+    )
 
 
 def gate_p3_mock_to_real_m21_nci60_precious_9cell_REAL_3_seeds(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     nci60_precious_9cell_auc_json: Path,
 ) -> GateResult:
     """Wf-432-A1 §5 L3-5 — m21 NCI-60 9-cell REAL-MEASURED on 3 seeds."""
     t0 = time.perf_counter()
     if not nci60_precious_9cell_auc_json.exists():
-        return GateResult(name, priority, pipeline, "FAIL",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"missing: {nci60_precious_9cell_auc_json}",
-            time.perf_counter() - t0)
+            time.perf_counter() - t0,
+        )
     try:
         data = json.loads(nci60_precious_9cell_auc_json.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
-        return GateResult(name, priority, pipeline, "FAIL",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"parse error: {type(exc).__name__}: {exc}",
-            time.perf_counter() - t0)
+            time.perf_counter() - t0,
+        )
     # Per actual on-disk JSON schema (Wf-430 fresh-run audit):
     # nci60_precious_9cell_auc.json::value_overall_mean_auc = 0.8007
     # is the REAL-MEASURED 9-cell mean AUC (Wf-393-A2 §11.1).
-    real_value = (data.get("aggregate_mean_auc_REAL")
-                  or data.get("aggregate", {}).get("aggregate_mean_auc_REAL")
-                  or data.get("aggregate_mean_auc")
-                  or data.get("value_overall_mean_auc"))
+    real_value = (
+        data.get("aggregate_mean_auc_REAL")
+        or data.get("aggregate", {}).get("aggregate_mean_auc_REAL")
+        or data.get("aggregate_mean_auc")
+        or data.get("value_overall_mean_auc")
+    )
     if real_value is None:
-        return GateResult(name, priority, pipeline, "FAIL",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"nci60_precious_9cell_auc.json missing aggregate_mean_auc_REAL field",
-            time.perf_counter() - t0)
-    return GateResult(name, priority, pipeline, "PASS",
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"m21 NCI-60 9-cell REAL-MEASURED on 3 seeds: mean AUC = {real_value} "
         f"(per Wf-393-A2 §11.1: 0.8007 ± 0.0160)",
-        time.perf_counter() - t0)
+        time.perf_counter() - t0,
+    )
 
 
 # ---- Honest-negative pre-closure gates (§6) ----
 
+
 def gate_p3_honest_neg_closure_m2_r2(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     m2_r2_per_cohort_json: Path,
     honest_negative_catalog_md: Path,
     paper_section_3_v4_md: Path,
@@ -7570,24 +8701,37 @@ def gate_p3_honest_neg_closure_m2_r2(
             if "HONEST_NEGATIVE_R2_DEEP" not in verdict:
                 failures.append(
                     f"m2_r2_per_cohort.json verdict != HONEST_NEGATIVE_R2_DEEP: "
-                    f"{verdict}")
+                    f"{verdict}"
+                )
         except (json.JSONDecodeError, OSError) as exc:
             failures.append(f"parse error: {type(exc).__name__}: {exc}")
-    for p in (honest_negative_catalog_md, paper_section_3_v4_md,
-              paper_section_6_v4_md):
+    for p in (honest_negative_catalog_md, paper_section_3_v4_md, paper_section_6_v4_md):
         if not p.exists():
             failures.append(f"missing: {p}")
     if failures:
-        return GateResult(name, priority, pipeline, "FAIL",
-            "; ".join(failures), time.perf_counter() - t0)
-    return GateResult(name, priority, pipeline, "PASS",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            "; ".join(failures),
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "PASS",
         "m2 R² pre-closure path complete: verdict=HONEST_NEGATIVE_R2_DEEP "
         "+ §6 catalog entry + §3 metric table + §6 paragraph present",
-        time.perf_counter() - t0)
+        time.perf_counter() - t0,
+    )
 
 
 def gate_p3_honest_neg_closure_m6_kappa(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     m6_kappa_json: Path,
     honest_negative_catalog_md: Path,
     m6_kappa_drop_decision_md: Path,
@@ -7606,24 +8750,42 @@ def gate_p3_honest_neg_closure_m6_kappa(
             if "HONEST_NEGATIVE_PARTIAL_STRUCTURAL_FINAL" not in verdict:
                 failures.append(
                     f"m6_kappa.json verdict != HONEST_NEGATIVE_PARTIAL_STRUCTURAL_FINAL: "
-                    f"{verdict}")
+                    f"{verdict}"
+                )
         except (json.JSONDecodeError, OSError) as exc:
             failures.append(f"parse error: {type(exc).__name__}: {exc}")
-    for p in (honest_negative_catalog_md, m6_kappa_drop_decision_md,
-              paper_section_3_v4_md, paper_section_6_v4_md):
+    for p in (
+        honest_negative_catalog_md,
+        m6_kappa_drop_decision_md,
+        paper_section_3_v4_md,
+        paper_section_6_v4_md,
+    ):
         if not p.exists():
             failures.append(f"missing: {p}")
     if failures:
-        return GateResult(name, priority, pipeline, "FAIL",
-            "; ".join(failures), time.perf_counter() - t0)
-    return GateResult(name, priority, pipeline, "PASS",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            "; ".join(failures),
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "PASS",
         "m6_kappa pre-closure path complete: verdict=HONEST_NEGATIVE_PARTIAL_STRUCTURAL_FINAL "
         "+ §6 catalog + drop-decision doc + §3 metric table + §6 paragraph present",
-        time.perf_counter() - t0)
+        time.perf_counter() - t0,
+    )
 
 
 def gate_p3_honest_neg_closure_m1_re_fold(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     metal_lomo_auc_json: Path,
     honest_negative_catalog_md: Path,
     paper_section_3_v4_md: Path,
@@ -7637,32 +8799,48 @@ def gate_p3_honest_neg_closure_m1_re_fold(
     else:
         try:
             data = json.loads(metal_lomo_auc_json.read_text(encoding="utf-8"))
-            per_fold = (data.get("per_fold_auc_mean", {})
-                        or data.get("aggregate", {}).get("per_fold_auc_mean", {}))
+            per_fold = data.get("per_fold_auc_mean", {}) or data.get(
+                "aggregate", {}
+            ).get("per_fold_auc_mean", {})
             re_value = per_fold.get("Re")
             if re_value is None or float(re_value) >= 0.86:
                 failures.append(
                     f"metal_lomo_auc.json per_fold_auc_mean.Re >= 0.86 OR missing: "
-                    f"value={re_value} (pre-closure requires Re < 0.86 to gate Rh-fold-ONLY)")
+                    f"value={re_value} (pre-closure requires Re < 0.86 to gate Rh-fold-ONLY)"
+                )
         except (json.JSONDecodeError, OSError, ValueError) as exc:
             failures.append(f"parse error: {type(exc).__name__}: {exc}")
-    for p in (honest_negative_catalog_md, paper_section_3_v4_md,
-              paper_section_6_v4_md):
+    for p in (honest_negative_catalog_md, paper_section_3_v4_md, paper_section_6_v4_md):
         if not p.exists():
             failures.append(f"missing: {p}")
     if failures:
-        return GateResult(name, priority, pipeline, "FAIL",
-            "; ".join(failures), time.perf_counter() - t0)
-    return GateResult(name, priority, pipeline, "PASS",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            "; ".join(failures),
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"m1 Re-fold pre-closure path complete: Re < 0.86 + §6 catalog entry "
         f"+ §3 metric table Rh-fold-ONLY + §6 paragraph present (paper §4 LEAD = Rh fold)",
-        time.perf_counter() - t0)
+        time.perf_counter() - t0,
+    )
 
 
 # ---- Per-baseline protocol validation hooks (§4) ----
 
+
 def _emit_protocol_validation_hook_json(
-    hook_dir: Path, baseline_name: str, hook_id: str, payload: Dict[str, Any],
+    hook_dir: Path,
+    baseline_name: str,
+    hook_id: str,
+    payload: Dict[str, Any],
 ) -> None:
     """Emit / hook 3 hook outputs as JSON (no-op if hook_dir missing)."""
     if not hook_dir.exists():
@@ -7678,8 +8856,12 @@ def _emit_protocol_validation_hook_json(
 
 
 def _hook_passthrough_payload(
-    name: str, priority: str, pipeline: str,
-    hook_dir: Path, baseline_name: str, hook_id: str,
+    name: str,
+    priority: str,
+    pipeline: str,
+    hook_dir: Path,
+    baseline_name: str,
+    hook_id: str,
     source_metric_json: Optional[Path],
     source_dir: Optional[Path],
     verdict_field: Optional[str],
@@ -7693,8 +8875,9 @@ def _hook_passthrough_payload(
     """
     t0 = time.perf_counter()
     failures: List[str] = []
-    source_present = (source_metric_json is not None and source_metric_json.exists()) \
-        or (source_dir is not None and source_dir.exists())
+    source_present = (
+        source_metric_json is not None and source_metric_json.exists()
+    ) or (source_dir is not None and source_dir.exists())
     payload: Dict[str, Any] = {
         "baseline": baseline_name,
         "hook_id": hook_id,
@@ -7705,142 +8888,215 @@ def _hook_passthrough_payload(
     }
     _emit_protocol_validation_hook_json(hook_dir, baseline_name, hook_id, payload)
     if not source_present:
-        return GateResult(name, priority, pipeline, "WARN",
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "WARN",
             f"{baseline_name} source metric missing; hook JSON emitted "
             f"with source_present=False",
-            time.perf_counter() - t0)
-    return GateResult(name, priority, pipeline, "PASS",
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"{baseline_name} {hook_id} hook emitted with source_present=True "
         f"at {hook_dir}",
-        time.perf_counter() - t0)
+        time.perf_counter() - t0,
+    )
 
 
 def gate_krasnov_m1_per_seed_per_split_5fold_5metal(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     hook_dir: Path,
     metal_lomo_auc_json: Path,
 ) -> GateResult:
     """Wf-432-A1 §4 L5-Krasnov-1 — per-seed + per-split 5-fold × 5-metal."""
     return _hook_passthrough_payload(
-        name, priority, pipeline, hook_dir, "krasnov",
+        name,
+        priority,
+        pipeline,
+        hook_dir,
+        "krasnov",
         "krasnov_m1_per_seed_per_split_5fold_5metal",
-        metal_lomo_auc_json, None,
+        metal_lomo_auc_json,
+        None,
         "Wf-413-A1 7/7 runs complete per_fold_auc_mean.{Rh:0.8798,Re:0.7088}",
     )
 
 
 def gate_krasnov_m21_per_cell_line_per_seed(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     hook_dir: Path,
     nci60_precious_9cell_dir: Path,
 ) -> GateResult:
     """Wf-432-A1 §4 L5-Krasnov-2 — per-cell-line × per-seed."""
     return _hook_passthrough_payload(
-        name, priority, pipeline, hook_dir, "krasnov",
+        name,
+        priority,
+        pipeline,
+        hook_dir,
+        "krasnov",
         "krasnov_m21_per_cell_line_per_seed",
-        None, nci60_precious_9cell_dir,
+        None,
+        nci60_precious_9cell_dir,
         "Wf-393-A2 §11.1 0.8007 ± 0.0160 (9 cell-lines × 3 seeds × 50 epoch)",
     )
 
 
 def gate_krasnov_protocol_alignment_diffs_documented(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     hook_dir: Path,
     honest_negative_catalog_md: Path,
     protocol_alignment_matrix_md: Path,
 ) -> GateResult:
     """Wf-432-A1 §4 L5-Krasnov-3 — §6 paragraph for Krasnov protocol diffs."""
     return _hook_passthrough_payload(
-        name, priority, pipeline, hook_dir, "krasnov",
+        name,
+        priority,
+        pipeline,
+        hook_dir,
+        "krasnov",
         "krasnov_protocol_alignment_diffs_documented",
-        honest_negative_catalog_md, protocol_alignment_matrix_md,
+        honest_negative_catalog_md,
+        protocol_alignment_matrix_md,
         "m1 split: paper=5-fold, ours=scaffold-split 70/10/20 per PROTOCOL_ALIGNMENT_MATRIX §1.1",
     )
 
 
 def gate_rusanov_m2_per_cell_line_per_cohort(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     hook_dir: Path,
     m2_r2_per_cohort_json: Path,
 ) -> GateResult:
     """Wf-432-A1 §4 L5-Rusanov-1 — per-cell-line × per-cohort."""
     return _hook_passthrough_payload(
-        name, priority, pipeline, hook_dir, "rusanov",
+        name,
+        priority,
+        pipeline,
+        hook_dir,
+        "rusanov",
         "rusanov_m2_per_cell_line_per_cohort",
-        m2_r2_per_cohort_json, None,
+        m2_r2_per_cohort_json,
+        None,
         "Wf-398-A2 §1.1-§1.3 platinai_4cell=-0.1440 + hilbert=-0.1440 + "
         "metalcytotox_combined=+0.1981",
     )
 
 
 def gate_rusanov_m2_4cell_baseline_comparison(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     hook_dir: Path,
     rusanov_baseline_dir: Path,
     m2_r2_per_cohort_json: Path,
 ) -> GateResult:
     """Wf-432-A1 §4 L5-Rusanov-2 — 4-cell-line AUC vs Rusanov baseline."""
     return _hook_passthrough_payload(
-        name, priority, pipeline, hook_dir, "rusanov",
+        name,
+        priority,
+        pipeline,
+        hook_dir,
+        "rusanov",
         "rusanov_m2_4cell_baseline_comparison",
-        m2_r2_per_cohort_json, rusanov_baseline_dir,
+        m2_r2_per_cohort_json,
+        rusanov_baseline_dir,
         "Rusanov Table S4-S5 baseline lookup per PROTOCOL_ALIGNMENT §1.2",
     )
 
 
 def gate_rusanov_protocol_alignment_diffs_documented(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     hook_dir: Path,
     honest_negative_catalog_md: Path,
     protocol_alignment_matrix_md: Path,
 ) -> GateResult:
     """Wf-432-A1 §4 L5-Rusanov-3 — §6 paragraph for Rusanov protocol diffs."""
     return _hook_passthrough_payload(
-        name, priority, pipeline, hook_dir, "rusanov",
+        name,
+        priority,
+        pipeline,
+        hook_dir,
+        "rusanov",
         "rusanov_protocol_alignment_diffs_documented",
-        honest_negative_catalog_md, protocol_alignment_matrix_md,
+        honest_negative_catalog_md,
+        protocol_alignment_matrix_md,
         "m2: paper=per-cell-line, ours=cohort-split 70/10/20 + per-cell-line eval",
     )
 
 
 def gate_drugood_m17_assay_split_auc(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     hook_dir: Path,
     drugood_all_results_json: Path,
 ) -> GateResult:
     """Wf-432-A1 §4 L5-DrugOOD-1 — assay split AUC vs iMoLD baseline."""
     return _hook_passthrough_payload(
-        name, priority, pipeline, hook_dir, "drugood",
+        name,
+        priority,
+        pipeline,
+        hook_dir,
+        "drugood",
         "drugood_m17_assay_split_auc",
-        drugood_all_results_json, None,
+        drugood_all_results_json,
+        None,
         "iMoLD=0.7211, ERM=0.7163 (baseline) per PROTOCOL_ALIGNMENT §1.3",
     )
 
 
 def gate_drugood_m17_scaffold_split_auc(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     hook_dir: Path,
     drugood_all_results_json: Path,
 ) -> GateResult:
     """Wf-432-A1 §4 L5-DrugOOD-2 — scaffold split AUC vs iMoLD baseline."""
     return _hook_passthrough_payload(
-        name, priority, pipeline, hook_dir, "drugood",
+        name,
+        priority,
+        pipeline,
+        hook_dir,
+        "drugood",
         "drugood_m17_scaffold_split_auc",
-        drugood_all_results_json, None,
+        drugood_all_results_json,
+        None,
         "iMoLD=0.6884, ERM=0.6879 (baseline)",
     )
 
 
 def gate_drugood_m17_size_split_auc(
-    name: str, priority: str, pipeline: str,
+    name: str,
+    priority: str,
+    pipeline: str,
     hook_dir: Path,
     drugood_all_results_json: Path,
 ) -> GateResult:
     """Wf-432-A1 §4 L5-DrugOOD-3 — size split AUC vs iMoLD baseline."""
     return _hook_passthrough_payload(
-        name, priority, pipeline, hook_dir, "drugood",
+        name,
+        priority,
+        pipeline,
+        hook_dir,
+        "drugood",
         "drugood_m17_size_split_auc",
-        drugood_all_results_json, None,
+        drugood_all_results_json,
+        None,
         "iMoLD=0.6792, ERM=0.6750 (baseline)",
     )
 
@@ -7898,7 +9154,10 @@ def gate_cfm_smoke_decoded_historical(
     invocation) so the verdict cannot be misread as a live check.
     """
     res = gate_json_threshold(
-        name, priority, pipeline, json_path,
+        name,
+        priority,
+        pipeline,
+        json_path,
         extractor=lambda d: d.get("gate_4_decode_ratio", 0.0),
         threshold=0.5,
         op=">=",
@@ -7907,9 +9166,7 @@ def gate_cfm_smoke_decoded_historical(
     try:
         ckpt = MOLMETAL_ROOT / "checkpoints" / "cfm_yuelbond_wasserstein.pt"
         if ckpt.is_file() and json_path.is_file():
-            delta_days = (
-                ckpt.stat().st_mtime - json_path.stat().st_mtime
-            ) / 86400.0
+            delta_days = (ckpt.stat().st_mtime - json_path.stat().st_mtime) / 86400.0
             delta_note = (
                 f"checkpoint mtime is {delta_days:+.1f} days vs "
                 f"artifact mtime (positive = checkpoint NEWER)"
@@ -7959,13 +9216,18 @@ def gate_cfm_live_decode_canary(
     the host interpreter lacks torch (env-aware per Wf-345-A2).
     """
     res = gate_wf385_scaffold_loss_wire_in_verified(
-        name, priority, pipeline, script_path,
-        out_dir=out_dir, timeout=timeout,
+        name,
+        priority,
+        pipeline,
+        script_path,
+        out_dir=out_dir,
+        timeout=timeout,
     )
     trainer = SCRIPT_DIR / "train_cfm_yuelbond_wasserstein.py"
     try:
         trainer_mtime = datetime.fromtimestamp(
-            trainer.stat().st_mtime, timezone.utc,
+            trainer.stat().st_mtime,
+            timezone.utc,
         ).isoformat(timespec="seconds")
         trainer_note = f"trainer mtime={trainer_mtime}"
     except OSError:
@@ -8017,7 +9279,8 @@ _DMPNN_STDOUT_LOSS_RE = re.compile(
 
 
 def _parse_dmpnn_smoke_losses(
-    events_jsonl: Path, stdout_text: str,
+    events_jsonl: Path,
+    stdout_text: str,
 ) -> Tuple[List[Tuple[int, float]], str]:
     """HOLE-4 helper — extract per-epoch ``train_loss`` points from a D-MPNN smoke.
 
@@ -8066,7 +9329,8 @@ def _parse_dmpnn_smoke_losses(
 
 
 def _check_dmpnn_loss_decrease(
-    events_jsonl: Path, stdout_text: str,
+    events_jsonl: Path,
+    stdout_text: str,
 ) -> Tuple[bool, str]:
     """HOLE-4 — loss-decrease + finite-metrics invariant for the D-MPNN smoke.
 
@@ -8158,7 +9422,10 @@ def _gate_dmpnn_quick_smoke(
 
     if not csv_path.is_file():
         return GateResult(
-            name, priority, pipeline, "SKIP",
+            name,
+            priority,
+            pipeline,
+            "SKIP",
             f"joint CSV absent ({csv_path}) — .data/** is gitignored, so "
             f"this host cannot run the D-MPNN CPU smoke; not a verdict on "
             f"the trainer",
@@ -8166,16 +9433,23 @@ def _gate_dmpnn_quick_smoke(
         )
     if not dmpnn_script.is_file():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"trainer not on disk: {dmpnn_script}",
             time.perf_counter() - t0,
         )
     data_csv = next(
-        (c for c in _DMPNN_SMOKE_DATA_CSV_CANDIDATES if c.is_file()), None,
+        (c for c in _DMPNN_SMOKE_DATA_CSV_CANDIDATES if c.is_file()),
+        None,
     )
     if data_csv is None:
         return GateResult(
-            name, priority, pipeline, "SKIP",
+            name,
+            priority,
+            pipeline,
+            "SKIP",
             f"auxiliary MetalCytoToxDB CSV not found in either canonical "
             f"location ({[str(c) for c in _DMPNN_SMOKE_DATA_CSV_CANDIDATES]}) "
             f"— the loader cannot run; not a verdict on the trainer",
@@ -8184,13 +9458,32 @@ def _gate_dmpnn_quick_smoke(
 
     smoke_out = Path(tempfile.mkdtemp(prefix="wf446_h4_dmpnn_smoke_"))
     args = [
-        VENV_PY, str(dmpnn_script),
-        "--device", "cpu", "--epochs", "2",
-        "--csv", str(csv_path), "--data-csv", str(data_csv),
-        "--metals", _DMPNN_SMOKE_METAL, "--seeds", "0",
-        "--batch-size", "32", "--cpu-num-workers", "2",
-        "--hidden", "64", "--depth", "2",
-        "--out-dir", str(smoke_out), "--ckpt-dir", str(smoke_out / "ckpt"),
+        VENV_PY,
+        str(dmpnn_script),
+        "--device",
+        "cpu",
+        "--epochs",
+        "2",
+        "--csv",
+        str(csv_path),
+        "--data-csv",
+        str(data_csv),
+        "--metals",
+        _DMPNN_SMOKE_METAL,
+        "--seeds",
+        "0",
+        "--batch-size",
+        "32",
+        "--cpu-num-workers",
+        "2",
+        "--hidden",
+        "64",
+        "--depth",
+        "2",
+        "--out-dir",
+        str(smoke_out),
+        "--ckpt-dir",
+        str(smoke_out / "ckpt"),
     ]
     rc, out, err = _run(args, timeout=timeout, cwd=REPO_ROOT)
     elapsed = time.perf_counter() - t0
@@ -8199,21 +9492,30 @@ def _gate_dmpnn_quick_smoke(
 
     if rc == 124:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"D-MPNN CPU smoke TIMED OUT after {timeout:.0f}s (rc=124) | "
             f"tail: {tail}",
             elapsed,
         )
     if rc != 0:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"D-MPNN CPU smoke exit={rc} in {elapsed:.1f}s | tail: {tail}",
             elapsed,
         )
     ok, detail = _check_dmpnn_loss_decrease(smoke_out / "events.jsonl", out)
     if not ok:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"D-MPNN smoke exit=0 in {elapsed:.1f}s but loss invariant "
             f"FAILED: {detail} | tail: {tail}",
             elapsed,
@@ -8223,7 +9525,10 @@ def _gate_dmpnn_quick_smoke(
     if m:
         n_train_note = f" n_train={m.group(1)};"
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"D-MPNN CPU smoke exit=0 in {elapsed:.1f}s;{n_train_note} "
         f"{detail}; decode_ratio N/A (classifier — no decoder; loss-descent "
         f"+ finite metrics is the §5.7 wire-in invariant); "
@@ -8286,29 +9591,42 @@ def gate_p2_data_leakage_diag(
     t0 = time.perf_counter()
     if not script_path.is_file():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"check_data_leakage.py missing: {script_path}",
             time.perf_counter() - t0,
         )
     if not platinai_csv.is_file():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"platinai CSV missing (tracked repo file): {platinai_csv}",
             time.perf_counter() - t0,
         )
     if not metalcytotox_csv.is_file():
         return GateResult(
-            name, priority, pipeline, "SKIP",
+            name,
+            priority,
+            pipeline,
+            "SKIP",
             f"metalcytotox v4 CSV absent ({metalcytotox_csv}) — .data/** is "
             f"gitignored, so this host cannot run the leakage diagnostic; "
             f"not a verdict on the data",
             time.perf_counter() - t0,
         )
     args = [
-        VENV_PY, str(script_path),
-        "--platinai-csv", str(platinai_csv),
-        "--metalcytotox-csv", str(metalcytotox_csv),
-        "--out-path", str(out_path),
+        VENV_PY,
+        str(script_path),
+        "--platinai-csv",
+        str(platinai_csv),
+        "--metalcytotox-csv",
+        str(metalcytotox_csv),
+        "--out-path",
+        str(out_path),
     ]
     rc, out, err = _run(args, timeout=timeout, cwd=REPO_ROOT)
     elapsed = time.perf_counter() - t0
@@ -8316,21 +9634,29 @@ def gate_p2_data_leakage_diag(
     tail = " | ".join(blob.splitlines()[-3:]) if blob else "(no output)"
     if rc == 124:
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"check_data_leakage.py TIMED OUT after {timeout:.0f}s (rc=124) "
             f"| tail: {tail}",
             elapsed,
         )
     if rc != 0:
         return GateResult(
-            name, priority, pipeline, "FAIL",
-            f"check_data_leakage.py exit={rc} in {elapsed:.1f}s | "
-            f"tail: {tail}",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"check_data_leakage.py exit={rc} in {elapsed:.1f}s | " f"tail: {tail}",
             elapsed,
         )
     if not out_path.is_file():
         return GateResult(
-            name, priority, pipeline, "FAIL",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
             f"check_data_leakage.py exit=0 but wrote no report at "
             f"{out_path} | tail: {tail}",
             elapsed,
@@ -8339,9 +9665,11 @@ def gate_p2_data_leakage_diag(
         report = json.loads(out_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         return GateResult(
-            name, priority, pipeline, "FAIL",
-            f"leakage report unreadable ({out_path}): "
-            f"{type(exc).__name__}: {exc}",
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"leakage report unreadable ({out_path}): " f"{type(exc).__name__}: {exc}",
             elapsed,
         )
     datasets = report.get("datasets") if isinstance(report, dict) else None
@@ -8396,13 +9724,20 @@ def gate_p2_data_leakage_diag(
             )
     if problems:
         return GateResult(
-            name, priority, pipeline, "FAIL",
-            "data leakage diagnostic FAIL: " + "; ".join(problems)
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            "data leakage diagnostic FAIL: "
+            + "; ".join(problems)
             + f" | report={out_path} | tail: {tail}",
             elapsed,
         )
     return GateResult(
-        name, priority, pipeline, "PASS",
+        name,
+        priority,
+        pipeline,
+        "PASS",
         f"check_data_leakage.py exit=0 in {elapsed:.1f}s; platinai_5k "
         f"scaffold strict=PASS; metalcytotox_5metal scaffold strict=PASS + "
         f"shipped strict=PASS (0 shared scaffolds — the split trainers "
@@ -8436,9 +9771,15 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
     # train_cfm_yuelbond_wasserstein.py line 262), NOT under lam_chem/.
     # Pre-Wf-260 gate pointed at the wrong path; fixed 2026-09-28.
     cfm_wass_loss = MOLMETAL_ROOT / "molmetal_lam" / "reward" / "wasserstein_loss.py"
-    wf188_result = MOLMETAL_ROOT / "reports" / "wf188_m14_full_metalcytotox" / "result.json"
+    wf188_result = (
+        MOLMETAL_ROOT / "reports" / "wf188_m14_full_metalcytotox" / "result.json"
+    )
     wf256_per_metal = (
-        MOLMETAL_ROOT / "reports" / "wf256_apply" / "catherine_30" / "per_metal_pass.json"
+        MOLMETAL_ROOT
+        / "reports"
+        / "wf256_apply"
+        / "catherine_30"
+        / "per_metal_pass.json"
     )
 
     cytox_csv = DOT_DATA_DIR / "metalcytotox_5metal_multitask.csv"
@@ -8529,7 +9870,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
         SCRIPT_DIR / "paper_dashboard.py",
     )
     wf304b_selenium_dir = MOLMETAL_ROOT / "reports" / "wf304b_selenium"
-    section9_doc = REPO_ROOT / "TODO" / "completed" / "207_unified_pre_flight_checklist_v2.md"
+    section9_doc = (
+        REPO_ROOT / "TODO" / "completed" / "207_unified_pre_flight_checklist_v2.md"
+    )
     METRICS_DIR = REPO_ROOT / "metrics" / "by_metric"
 
     # Wf-322G — TODO-130 G3 closure theorem Catherine 30-metal bench
@@ -8548,7 +9891,10 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
         MOLMETAL_ROOT / "reports" / "wf255_catherine_30metals" / "per_metal_pass.json"
     )
     catherine_30metal_wf130_combined_json = (
-        MOLMETAL_ROOT / "reports" / "wf130_p1_catherine_30" / "catherine_audit_30metals.json"
+        MOLMETAL_ROOT
+        / "reports"
+        / "wf130_p1_catherine_30"
+        / "catherine_audit_30metals.json"
     )
     catherine_30metal_closeout_doc = (
         REPO_ROOT / "TODO" / "completed" / "322g_todo130_g3_closure_30metal_closeout.md"
@@ -8563,7 +9909,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
     # HONEST_NEGATIVE_RDKIT_MISSING tags + TODO doc), so downstream
     # tooling branches on the canonical `HONEST_NEGATIVE_RDKIT_MISSING`
     # field rather than re-deriving the FAIL/MISSING comparison.
-    wf314e_fix_summary = MOLMETAL_ROOT / "reports" / "wf314e_ood_rdkit_fix" / "fix_summary.json"
+    wf314e_fix_summary = (
+        MOLMETAL_ROOT / "reports" / "wf314e_ood_rdkit_fix" / "fix_summary.json"
+    )
     wf314e_todo_doc = REPO_ROOT / "TODO" / "completed" / "314e_ood_rdkit_fix.md"
     ood_per_metal_reachability_json = METRICS_DIR / "ood_per_metal_reachability.json"
     ood_reachability_summary_json = METRICS_DIR / "ood_reachability_summary.json"
@@ -8581,7 +9929,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
     # (Wf-310E Wf-135 Phase 2) remains BLOCKED on user OK per
     # mol-metal-gpu-execution §0 kill_then_adapt directive.
     wf325f_smoke_script = SCRIPT_DIR / "wf325f_phase3g_10x3_smoke.py"
-    wf325f_smoke_result = MOLMETAL_ROOT / "reports" / "wf325f_phase3g_10x3_smoke" / "result.json"
+    wf325f_smoke_result = (
+        MOLMETAL_ROOT / "reports" / "wf325f_phase3g_10x3_smoke" / "result.json"
+    )
     wf325f_metric_json = METRICS_DIR / "metal_coord_compliance_phase3g.json"
     wf325f_todo_doc = REPO_ROOT / "TODO" / "completed" / "325f_f2a_phase3g_unblock.md"
 
@@ -8612,9 +9962,7 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
     # Pt-pool + Vina-re-dock + PB dock mode; documents the lift (or
     # HONEST_NEGATIVE_UFF_INSUFFICIENT).  See
     # TODO/completed/323c_m8_full_cpu_fix.md for the full ship.
-    wf323c_result_json = (
-        MOLMETAL_ROOT / "reports" / "wf323c_m8_full" / "result.json"
-    )
+    wf323c_result_json = MOLMETAL_ROOT / "reports" / "wf323c_m8_full" / "result.json"
     wf323c_metric_json = METRICS_DIR / "steric_clash_pb_dock_1h36.json"
     wf323c_pool_json = wf319b_pool_json
     wf315d_pb_venv_python = (
@@ -8655,15 +10003,13 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
     # launch wrapper.  See TODO/completed/321a_wf135_phase2_cpu_
     # scaffold.md for the per-deliverable MEASURED status.
     wf321a_phase1_cohort_json = (
-        MOLMETAL_ROOT / "reports" / "wf139_p7_rh_active_cohort"
+        MOLMETAL_ROOT
+        / "reports"
+        / "wf139_p7_rh_active_cohort"
         / "synthetic_rh_pos_neg.json"
     )
-    wf321a_trainer_script = (
-        MOLMETAL_ROOT / "scripts" / "train_metal_lomo_v2.py"
-    )
-    wf321a_launch_wrapper = (
-        REPO_ROOT / "scripts" / "launch_wf310e_wf135_phase2_gpu.sh"
-    )
+    wf321a_trainer_script = MOLMETAL_ROOT / "scripts" / "train_metal_lomo_v2.py"
+    wf321a_launch_wrapper = REPO_ROOT / "scripts" / "launch_wf310e_wf135_phase2_gpu.sh"
     # Wf-322F — Wf-176 m19 LOMO Rh oversample FINAL closeout
     # documented gate.  Verifies the close-out ship surface for the
     # Wf-135 / Wf-176 / TODO-176 workstream: close-out doc + Phase 1
@@ -8672,16 +10018,16 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
     # for the per-deliverable MEASURED status + WEAK_TO_STRONG §2.7
     # honest-framing context.
     wf322f_closeout_doc = (
-        REPO_ROOT / "TODO" / "completed"
-        / "322f_wf176_m19_lomo_final_closeout.md"
+        REPO_ROOT / "TODO" / "completed" / "322f_wf176_m19_lomo_final_closeout.md"
     )
     wf322f_phase1_cohort_json = (
-        MOLMETAL_ROOT / "reports" / "wf139_p7_rh_active_cohort"
+        MOLMETAL_ROOT
+        / "reports"
+        / "wf139_p7_rh_active_cohort"
         / "synthetic_rh_pos_neg.json"
     )
     wf322f_phase1_cohort_synthesis = (
-        MOLMETAL_ROOT / "reports" / "wf139_p7_rh_active_cohort"
-        / "synthesis.md"
+        MOLMETAL_ROOT / "reports" / "wf139_p7_rh_active_cohort" / "synthesis.md"
     )
     wf322f_gpu_launch_wrapper = (
         REPO_ROOT / "scripts" / "launch_wf310e_wf135_phase2_gpu.sh"
@@ -8695,12 +10041,8 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
     # MEASURED status + WEAK_TO_STRONG §2.7 honest-framing context.
     # No GPU work — recovery path (chemprop v2 + W₂) remains
     # USER_OK-gated per mol-metal-gpu-execution §0 kill_then_adapt.
-    wf325d_closeout_doc = (
-        REPO_ROOT / "TODO" / "completed" / "325d_m6_kappa_final.md"
-    )
-    wf325d_metric_json = (
-        REPO_ROOT / "metrics" / "by_metric" / "m6_kappa.json"
-    )
+    wf325d_closeout_doc = REPO_ROOT / "TODO" / "completed" / "325d_m6_kappa_final.md"
+    wf325d_metric_json = REPO_ROOT / "metrics" / "by_metric" / "m6_kappa.json"
     # Wf-321E — ABLATION_TABLE registry mirror check (companion to
     # Wf-319A's artefact-side aggregate.csv gate).  Verifies the
     # source-level registry of ablations declared in
@@ -8708,9 +10050,7 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
     # ablations in §7 of
     # ``TODO/02_metrics/MECHANISM_METRIC_MAPPING.md``.  See
     # TODO/completed/321e_ablation_runner_integration_test.md.
-    wf321e_runner_module = (
-        MOLMETAL_ROOT / "scripts" / "ablation_runner.py"
-    )
+    wf321e_runner_module = MOLMETAL_ROOT / "scripts" / "ablation_runner.py"
 
     # Wf-327 — pre-flight gate for ``--cpu-num-workers >= 4`` (Wf-326B
     # §6.2 follow-up).  Verifies all 6 Wf-326B-active launch scripts
@@ -8735,7 +10075,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
     # ``molmetal/reports/wf313c_frontier_math_paper_refs/``.  Both
     # deliverables are CPU-only — no GPU launch required.
     wf313c_e2e_test = TESTS_DIR / "test_wf313c_frontier_math_integration_e2e.py"
-    wf313c_paper_refs_dir = MOLMETAL_ROOT / "reports" / "wf313c_frontier_math_paper_refs"
+    wf313c_paper_refs_dir = (
+        MOLMETAL_ROOT / "reports" / "wf313c_frontier_math_paper_refs"
+    )
     wf313c_paper_ref_files = (
         wf313c_paper_refs_dir / "multi_ph_integration_ref.md",
         wf313c_paper_refs_dir / "se3_lipman_integration_ref.md",
@@ -8806,7 +10148,7 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
     )
 
     runners: List[Tuple[str, Callable[[], GateResult]]] = []
-# ----- Wf-432-A1 PRE_TRAINING_GATE_v2: 32 NEW gates (all-pipeline only) -----
+    # ----- Wf-432-A1 PRE_TRAINING_GATE_v2: 32 NEW gates (all-pipeline only) -----
     # Per TODO/03_plans/PRE_TRAINING_GATE_v2.md §2-§6: 8 Tier-1 must-pass
     # + 7 Tier-2 recommended + 5 MOCK→REAL + 3 honest-negative pre-closure
     # + 9 per-baseline protocol validation hooks = 32 NEW additive gates.
@@ -8818,7 +10160,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
         _p2_crossdocked_csv = DATA_DIR / "crossdocked100_manifest.csv"
         _p2_nci60_csv = DATA_DIR / "nci60_precious_9cell.csv"
         _p2_balanced_rh_json = (
-            MOLMETAL_ROOT / "reports" / "wf387a2_balanced_rh_cohort"
+            MOLMETAL_ROOT
+            / "reports"
+            / "wf387a2_balanced_rh_cohort"
             / "balanced_rh_cohort.json"
         )
         _p2_drugood_loader = DATA_DIR / "drugood_loader.py"
@@ -8830,11 +10174,11 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
         _p2_train_metal_cytotox = SCRIPT_DIR / "train_metal_cytotox.py"
         _p2_train_platinai = SCRIPT_DIR / "train_platinai_4cell.py"
         _p2_train_nci60_10cell = SCRIPT_DIR / "train_nci60_10cell.py"
-        _p2_per_seed_template_dir = (
-            MOLMETAL_ROOT / "reports" / "wf131_p3_deferred_runs"
-        )
+        _p2_per_seed_template_dir = MOLMETAL_ROOT / "reports" / "wf131_p3_deferred_runs"
         _p2_honest_negative_catalog = REPO_ROOT / "docs" / "HONEST_NEGATIVE_CATALOG.md"
-        _p2_section_6_template = REPO_ROOT / "docs" / "SECTION_6_LIMITATIONS_TEMPLATE.md"
+        _p2_section_6_template = (
+            REPO_ROOT / "docs" / "SECTION_6_LIMITATIONS_TEMPLATE.md"
+        )
         _p2_paper_section_6_v4 = (
             REPO_ROOT / "docs" / "PAPER_SECTION_6_v4_LIMITATIONS_READY.md"
         )
@@ -8846,9 +10190,7 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             REPO_ROOT / "TODO" / "03_plans" / "PROTOCOL_ALIGNMENT_MATRIX.md"
         )
         _p2_paper_refs_bib = REPO_ROOT / "paper" / "refs.bib"
-        _p2_auto_emit_section_6_minor = (
-            SCRIPT_DIR / "auto_emit_section_6_minor.py"
-        )
+        _p2_auto_emit_section_6_minor = SCRIPT_DIR / "auto_emit_section_6_minor.py"
         _p2_vina_kcal = REPO_ROOT / "metrics" / "by_metric" / "vina_kcal_per_mol.json"
         _p2_docked_pose_rmsd = (
             REPO_ROOT / "metrics" / "by_metric" / "docked_pose_rmsd.json"
@@ -8863,21 +10205,15 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
         _p2_m2_r2_per_cohort = (
             REPO_ROOT / "metrics" / "by_metric" / "m2_r2_per_cohort.json"
         )
-        _p2_m6_kappa_metric = (
-            REPO_ROOT / "metrics" / "by_metric" / "m6_kappa.json"
-        )
+        _p2_m6_kappa_metric = REPO_ROOT / "metrics" / "by_metric" / "m6_kappa.json"
         _p2_metal_lomo_auc = (
             REPO_ROOT / "metrics" / "by_metric" / "metal_lomo_auc_wasserstein.json"
         )
-        _p2_nci60_9cell_dir = (
-            MOLMETAL_ROOT / "reports" / "wf_nci60_precious_9cell"
-        )
+        _p2_nci60_9cell_dir = MOLMETAL_ROOT / "reports" / "wf_nci60_precious_9cell"
         _p2_rusanov_baseline_dir = (
             MOLMETAL_ROOT / "reports" / "rusanov_2025_paper_table_s4_s5_baseline"
         )
-        _p2_protocol_validation_dir = (
-            MOLMETAL_ROOT / "reports" / "protocol_validation"
-        )
+        _p2_protocol_validation_dir = MOLMETAL_ROOT / "reports" / "protocol_validation"
         # 7 retrain wrappers per PRE_TRAINING_GATE_v2 §2 L1-7
         _p2_wrapper_names = (
             "launch_wf124_p3_g5.sh",
@@ -8904,26 +10240,38 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_honest_neg_closure_m2_r2",
                 lambda: gate_p3_honest_neg_closure_m2_r2(
-                    "p3_honest_neg_closure_m2_r2", "P3", "all",
-                    _p2_m2_r2_per_cohort, _p2_honest_negative_catalog,
-                    _p2_paper_section_3_v4, _p2_paper_section_6_v4,
+                    "p3_honest_neg_closure_m2_r2",
+                    "P3",
+                    "all",
+                    _p2_m2_r2_per_cohort,
+                    _p2_honest_negative_catalog,
+                    _p2_paper_section_3_v4,
+                    _p2_paper_section_6_v4,
                 ),
             ),
             (
                 "p3_honest_neg_closure_m6_kappa",
                 lambda: gate_p3_honest_neg_closure_m6_kappa(
-                    "p3_honest_neg_closure_m6_kappa", "P3", "all",
-                    _p2_m6_kappa_metric, _p2_honest_negative_catalog,
-                    _p2_m6_kappa_drop_decision, _p2_paper_section_3_v4,
+                    "p3_honest_neg_closure_m6_kappa",
+                    "P3",
+                    "all",
+                    _p2_m6_kappa_metric,
+                    _p2_honest_negative_catalog,
+                    _p2_m6_kappa_drop_decision,
+                    _p2_paper_section_3_v4,
                     _p2_paper_section_6_v4,
                 ),
             ),
             (
                 "p3_honest_neg_closure_m1_re_fold",
                 lambda: gate_p3_honest_neg_closure_m1_re_fold(
-                    "p3_honest_neg_closure_m1_re_fold", "P3", "all",
-                    _p2_metal_lomo_auc, _p2_honest_negative_catalog,
-                    _p2_paper_section_3_v4, _p2_paper_section_6_v4,
+                    "p3_honest_neg_closure_m1_re_fold",
+                    "P3",
+                    "all",
+                    _p2_metal_lomo_auc,
+                    _p2_honest_negative_catalog,
+                    _p2_paper_section_3_v4,
+                    _p2_paper_section_6_v4,
                 ),
             ),
         ]
@@ -8933,49 +10281,69 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p1_chemprop_indices_fix",
                 lambda: gate_grep(
-                    "p1_chemprop_indices_fix", "P1", "chemprop_v2_v3",
-                    "indices = train_idx.copy()", chemprop_script,
+                    "p1_chemprop_indices_fix",
+                    "P1",
+                    "chemprop_v2_v3",
+                    "indices = train_idx.copy()",
+                    chemprop_script,
                 ),
             ),
             (
                 "p1_chemprop_kendall_optimizer",
                 lambda: gate_grep(
-                    "p1_chemprop_kendall_optimizer", "P1", "chemprop_v2_v3",
-                    "kendall.parameters()", chemprop_script,
+                    "p1_chemprop_kendall_optimizer",
+                    "P1",
+                    "chemprop_v2_v3",
+                    "kendall.parameters()",
+                    chemprop_script,
                 ),
             ),
             (
                 "p1_chemprop_dann_per_metal",
                 lambda: gate_grep(
-                    "p1_chemprop_dann_per_metal", "P1", "chemprop_v2_v3",
-                    "per_metal", chemprop_script,
+                    "p1_chemprop_dann_per_metal",
+                    "P1",
+                    "chemprop_v2_v3",
+                    "per_metal",
+                    chemprop_script,
                 ),
             ),
             (
                 "p1_chemprop_nan_guard",
                 lambda: gate_grep(
-                    "p1_chemprop_nan_guard", "P1", "chemprop_v2_v3",
-                    "nan_to_num", chemprop_script,
+                    "p1_chemprop_nan_guard",
+                    "P1",
+                    "chemprop_v2_v3",
+                    "nan_to_num",
+                    chemprop_script,
                 ),
             ),
             (
                 "p1_chemprop_grad_clip",
                 lambda: gate_grep(
-                    "p1_chemprop_grad_clip", "P1", "chemprop_v2_v3",
-                    "clip_grad_norm", chemprop_script,
+                    "p1_chemprop_grad_clip",
+                    "P1",
+                    "chemprop_v2_v3",
+                    "clip_grad_norm",
+                    chemprop_script,
                 ),
             ),
             (
                 "p1_chemprop_epoch_avg",
                 lambda: gate_grep(
-                    "p1_chemprop_epoch_avg", "P1", "chemprop_v2_v3",
-                    "w2_epoch_avg_history", chemprop_script,
+                    "p1_chemprop_epoch_avg",
+                    "P1",
+                    "chemprop_v2_v3",
+                    "w2_epoch_avg_history",
+                    chemprop_script,
                 ),
             ),
             (
                 "p1_chemprop_ablation_flags",
                 lambda: gate_help(
-                    "p1_chemprop_ablation_flags", "P1", "chemprop_v2_v3",
+                    "p1_chemprop_ablation_flags",
+                    "P1",
+                    "chemprop_v2_v3",
                     chemprop_script,
                     "--no-multi-task --no-wass --no-kendall --no-dann",
                     timeout=30.0,
@@ -8984,32 +10352,44 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p1_chemprop_seeds_min",
                 lambda: gate_help(
-                    "p1_chemprop_seeds_min", "P1", "chemprop_v2_v3",
-                    chemprop_script, "--n-seeds-min",
+                    "p1_chemprop_seeds_min",
+                    "P1",
+                    "chemprop_v2_v3",
+                    chemprop_script,
+                    "--n-seeds-min",
                     timeout=30.0,
                 ),
             ),
             (
                 "p1_chemprop_master_wass_flag",
                 lambda: gate_help(
-                    "p1_chemprop_master_wass_flag", "P1", "chemprop_v2_v3",
-                    chemprop_script, "--use-master-wass",
+                    "p1_chemprop_master_wass_flag",
+                    "P1",
+                    "chemprop_v2_v3",
+                    chemprop_script,
+                    "--use-master-wass",
                     timeout=30.0,
                 ),
             ),
             (
                 "p1_chemprop_master_cath_flag",
                 lambda: gate_help(
-                    "p1_chemprop_master_cath_flag", "P1", "chemprop_v2_v3",
-                    chemprop_script, "--use-master-cath",
+                    "p1_chemprop_master_cath_flag",
+                    "P1",
+                    "chemprop_v2_v3",
+                    chemprop_script,
+                    "--use-master-cath",
                     timeout=30.0,
                 ),
             ),
             (
                 "p1_chemprop_click_aug_flag",
                 lambda: gate_help(
-                    "p1_chemprop_click_aug_flag", "P1", "chemprop_v2_v3",
-                    chemprop_script, "--use-click-aug",
+                    "p1_chemprop_click_aug_flag",
+                    "P1",
+                    "chemprop_v2_v3",
+                    chemprop_script,
+                    "--use-click-aug",
                     timeout=30.0,
                 ),
             ),
@@ -9028,7 +10408,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_todo_119_p14_cpu_smoke_ready",
                 lambda: gate_help(
-                    "p3_todo_119_p14_cpu_smoke_ready", "P3", "chemprop_v2_v3",
+                    "p3_todo_119_p14_cpu_smoke_ready",
+                    "P3",
+                    "chemprop_v2_v3",
                     chemprop_script,
                     "--chemprop-mode v3-fix --chemprop-min-epochs --chemprop-lomo-init-scale",
                     timeout=30.0,
@@ -9046,9 +10428,10 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p1_compute_manifest",
                 lambda: gate_wf350a2_compute_manifest(
-                    "p1_compute_manifest", "P1", "chemprop_v2_v3",
-                    MOLMETAL_ROOT / "reports"
-                    / "wf350a2_compute_manifest.json",
+                    "p1_compute_manifest",
+                    "P1",
+                    "chemprop_v2_v3",
+                    MOLMETAL_ROOT / "reports" / "wf350a2_compute_manifest.json",
                 ),
             ),
         ]
@@ -9062,28 +10445,36 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p1_cfm_script_exists",
                 lambda: gate_file_exists(
-                    "p1_cfm_script_exists", "P1", "cfm",
+                    "p1_cfm_script_exists",
+                    "P1",
+                    "cfm",
                     cfm_smoke_script,
                 ),
             ),
             (
                 "p1_cfm_config_exists",
                 lambda: gate_file_exists(
-                    "p1_cfm_config_exists", "P1", "cfm",
+                    "p1_cfm_config_exists",
+                    "P1",
+                    "cfm",
                     cfm_full_config,
                 ),
             ),
             (
                 "p1_cfm_decoder_exists",
                 lambda: gate_file_exists(
-                    "p1_cfm_decoder_exists", "P1", "cfm",
+                    "p1_cfm_decoder_exists",
+                    "P1",
+                    "cfm",
                     cfm_decoder,
                 ),
             ),
             (
                 "p1_cfm_wasserstein_loss_exists",
                 lambda: gate_file_exists(
-                    "p1_cfm_wasserstein_loss_exists", "P1", "cfm",
+                    "p1_cfm_wasserstein_loss_exists",
+                    "P1",
+                    "cfm",
                     cfm_wass_loss,
                 ),
             ),
@@ -9096,18 +10487,25 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
                 # ``p1_cfm_smoke_decoded`` stay resolvable.
                 "p1_cfm_smoke_decoded",
                 lambda: gate_cfm_smoke_decoded_historical(
-                    "p1_cfm_smoke_decoded", "P1", "cfm",
+                    "p1_cfm_smoke_decoded",
+                    "P1",
+                    "cfm",
                     wf188_result,
                 ),
             ),
             (
                 "p1_cfm_catherine_30metals",
                 lambda: gate_json_threshold(
-                    "p1_cfm_catherine_30metals", "P1", "cfm",
+                    "p1_cfm_catherine_30metals",
+                    "P1",
+                    "cfm",
                     wf256_per_metal,
                     extractor=lambda d: (
-                        sum(1 for m in d.get("per_metal", [])
-                            if m.get("six_of_six_pass", False))
+                        sum(
+                            1
+                            for m in d.get("per_metal", [])
+                            if m.get("six_of_six_pass", False)
+                        )
                         / max(1, len(d.get("per_metal", [])))
                     ),
                     threshold=0.95,
@@ -9133,7 +10531,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p1_cfm_live_decode_canary",
                 lambda: gate_cfm_live_decode_canary(
-                    "p1_cfm_live_decode_canary", "P1", "cfm",
+                    "p1_cfm_live_decode_canary",
+                    "P1",
+                    "cfm",
                     SCRIPT_DIR / "wf385a3_scaffold_wire_in_gate.py",
                 ),
             ),
@@ -9162,7 +10562,8 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
                 "p3_protocol_alignment_yaml_dataset_authorized",
                 lambda: gate_p3_protocol_alignment_yaml_dataset_authorized(
                     "p3_protocol_alignment_yaml_dataset_authorized",
-                    "P3", pipeline,
+                    "P3",
+                    pipeline,
                     _wf_a8_yaml_paths,
                 ),
             ),
@@ -9171,7 +10572,8 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
                 "p3_protocol_alignment_yaml_split_matches_baseline",
                 lambda: gate_p3_protocol_alignment_yaml_split_matches_baseline(
                     "p3_protocol_alignment_yaml_split_matches_baseline",
-                    "P3", pipeline,
+                    "P3",
+                    pipeline,
                     _wf_a8_yaml_paths,
                 ),
             ),
@@ -9180,7 +10582,8 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
                 "p3_protocol_alignment_yaml_target_in_baseline_range",
                 lambda: gate_p3_protocol_alignment_yaml_target_in_baseline_range(
                     "p3_protocol_alignment_yaml_target_in_baseline_range",
-                    "P3", pipeline,
+                    "P3",
+                    pipeline,
                     _wf_a8_yaml_paths,
                 ),
             ),
@@ -9190,7 +10593,8 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
                 "p3_protocol_alignment_yaml_no_inline_cli",
                 lambda: gate_p3_protocol_alignment_yaml_no_inline_cli(
                     "p3_protocol_alignment_yaml_no_inline_cli",
-                    "P3", pipeline,
+                    "P3",
+                    pipeline,
                     _wf_a8_yaml_paths,
                 ),
             ),
@@ -9202,15 +10606,21 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p2_data_metalcytotox_exists",
                 lambda: gate_min_lines(
-                    "p2_data_metalcytotox_exists", "P2", "data",
-                    cytox_csv, 26800,
+                    "p2_data_metalcytotox_exists",
+                    "P2",
+                    "data",
+                    cytox_csv,
+                    26800,
                 ),
             ),
             (
                 "p2_data_metallo_drugs_exists",
                 lambda: gate_min_lines(
-                    "p2_data_metallo_drugs_exists", "P2", "data",
-                    metallo_csv, 449,
+                    "p2_data_metallo_drugs_exists",
+                    "P2",
+                    "data",
+                    metallo_csv,
+                    449,
                 ),
             ),
             (
@@ -9226,19 +10636,21 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
                 # All-only per the §3.4 design contract of this section.
                 "p2_data_leakage_diag",
                 lambda: gate_p2_data_leakage_diag(
-                    "p2_data_leakage_diag", "P2", "data",
+                    "p2_data_leakage_diag",
+                    "P2",
+                    "data",
                     SCRIPT_DIR / "check_data_leakage.py",
                     platinai_csv=DATA_DIR / "platinai_5k.csv",
                     metalcytotox_csv=cytox_csv_v4,
-                    out_path=(
-                        GATE_SCRATCH_ROOT / "wf44_leak" / "leakage_check.json"
-                    ),
+                    out_path=(GATE_SCRATCH_ROOT / "wf44_leak" / "leakage_check.json"),
                 ),
             ),
             (
                 "p2_tests_pass",
                 lambda: gate_pytest(
-                    "p2_tests_pass", "P2", "tests",
+                    "p2_tests_pass",
+                    "P2",
+                    "tests",
                     [
                         # Wf-259 baseline 3 (chemprop v2 v3 nan-guard + resume + ablation flags)
                         TESTS_DIR / "test_wf245_ablation_flags.py",
@@ -9281,14 +10693,19 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p2_vina_installed",
                 lambda: gate_which_or_apt(
-                    "p2_vina_installed", "P2", "data", vina_bin,
+                    "p2_vina_installed",
+                    "P2",
+                    "data",
+                    vina_bin,
                 ),
             ),
             # ---- §1 P0 BLOCKERs (config schema + CSV hash; auto-verifiable) ----
             (
                 "p0_config_schema_verify",
                 lambda: gate_yaml_schema(
-                    "p0_config_schema_verify", "P0", "config",
+                    "p0_config_schema_verify",
+                    "P0",
+                    "config",
                     [
                         CONFIGS_DIR / "cfm_full_retrain.yaml",
                         CONFIGS_DIR / "cfm_per_innovation_ablation_p1.4.yaml",
@@ -9306,14 +10723,18 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
                 # so the gate and the `--freeze-csv-hashes` manifest
                 # generator cannot drift apart.
                 lambda: gate_csv_hash(
-                    "p0_csv_hash_verify", "P0", "data",
+                    "p0_csv_hash_verify",
+                    "P0",
+                    "data",
                     gated_csv_specs(),
                 ),
             ),
             (
                 "p0_scaffold_zero_leak",
                 lambda: gate_scaffold_zero_leak(
-                    "p0_scaffold_zero_leak", "P0", "data",
+                    "p0_scaffold_zero_leak",
+                    "P0",
+                    "data",
                     [
                         # HOLE-5 fix: v2 + v3 were previously ungated.  v1 is
                         # deliberately excluded from THIS zero-leak gate
@@ -9342,7 +10763,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
                 # this host.  See the gate docstring for both-ways evidence.
                 "p0_metalcytotox_v1_known_leaky",
                 lambda: gate_metalcytotox_v1_known_leaky(
-                    "p0_metalcytotox_v1_known_leaky", "P0", "data",
+                    "p0_metalcytotox_v1_known_leaky",
+                    "P0",
+                    "data",
                     cytox_csv,
                 ),
             ),
@@ -9353,7 +10776,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
                 # helper path (see gate docstring for exact coverage).
                 "p0_nci60_split_no_leak",
                 lambda: gate_nci60_split_no_leak(
-                    "p0_nci60_split_no_leak", "P0", "data",
+                    "p0_nci60_split_no_leak",
+                    "P0",
+                    "data",
                     DATA_DIR / "nci60_precious_9cell.csv",
                 ),
             ),
@@ -9361,7 +10786,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_frontier_math_wire_in",
                 lambda: gate_python_importable(
-                    "p3_frontier_math_wire_in", "P3", "frontier",
+                    "p3_frontier_math_wire_in",
+                    "P3",
+                    "frontier",
                     frontier_adapters,
                 ),
             ),
@@ -9374,7 +10801,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_frontier_math_day_3_5_integration_tests",
                 lambda: gate_pytest(
-                    "p3_frontier_math_day_3_5_integration_tests", "P3", "frontier",
+                    "p3_frontier_math_day_3_5_integration_tests",
+                    "P3",
+                    "frontier",
                     [wf313c_e2e_test],
                     timeout=120.0,
                 ),
@@ -9385,41 +10814,53 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_frontier_math_paper_refs_present",
                 lambda: gate_all_files_exist(
-                    "p3_frontier_math_paper_refs_present", "P3", "frontier",
+                    "p3_frontier_math_paper_refs_present",
+                    "P3",
+                    "frontier",
                     wf313c_paper_ref_files,
                 ),
             ),
             (
                 "p3_todo220_drivers_present",
                 lambda: gate_all_files_exist(
-                    "p3_todo220_drivers_present", "P3", "drivers",
+                    "p3_todo220_drivers_present",
+                    "P3",
+                    "drivers",
                     todo220_drivers,
                 ),
             ),
             (
                 "p3_anchorguard_version_pin",
                 lambda: gate_anchor_version_pin(
-                    "p3_anchorguard_version_pin", "P3", "anchors",
+                    "p3_anchorguard_version_pin",
+                    "P3",
+                    "anchors",
                 ),
             ),
             (
                 "p3_anchorguard_consumers_adopt",
                 lambda: gate_all_files_exist(
-                    "p3_anchorguard_consumers_adopt", "P3", "consumers",
+                    "p3_anchorguard_consumers_adopt",
+                    "P3",
+                    "consumers",
                     anchorguard_consumers,
                 ),
             ),
             (
                 "p3_harness_auto_fallback_present",
                 lambda: gate_file_exists(
-                    "p3_harness_auto_fallback_present", "P3", "harness",
+                    "p3_harness_auto_fallback_present",
+                    "P3",
+                    "harness",
                     HARNESS_WRAPPER,
                 ),
             ),
             (
                 "p3_wf304b_platinai_selenium_diag",
                 lambda: gate_all_files_exist(
-                    "p3_wf304b_platinai_selenium_diag", "P3", "diagnostic",
+                    "p3_wf304b_platinai_selenium_diag",
+                    "P3",
+                    "diagnostic",
                     (
                         wf304b_selenium_dir / "block_state.html",
                         wf304b_selenium_dir / "selenium_report.md",
@@ -9446,7 +10887,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_ood_rdkit_fix_documented",
                 lambda: gate_all_files_exist(
-                    "p3_ood_rdkit_fix_documented", "P3", "ood_rdkit_fix",
+                    "p3_ood_rdkit_fix_documented",
+                    "P3",
+                    "ood_rdkit_fix",
                     (
                         wf314e_fix_summary,
                         ood_per_metal_reachability_json,
@@ -9469,7 +10912,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_phase3g_f2a_runtime_unblock_verified",
                 lambda: gate_all_files_exist(
-                    "p3_phase3g_f2a_runtime_unblock_verified", "P3", "f2a_runtime_unblock",
+                    "p3_phase3g_f2a_runtime_unblock_verified",
+                    "P3",
+                    "f2a_runtime_unblock",
                     (
                         wf325f_smoke_script,
                         wf325f_smoke_result,
@@ -9481,7 +10926,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_section9_honest_framing_min30",
                 lambda: gate_section9_entry_count(
-                    "p3_section9_honest_framing_min30", "P3", "honest_framing",
+                    "p3_section9_honest_framing_min30",
+                    "P3",
+                    "honest_framing",
                     section9_doc,
                     min_entries=36,
                 ),
@@ -9500,7 +10947,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_admet_ames_druglikeness",
                 lambda: gate_json_threshold(
-                    "p3_admet_ames_druglikeness", "P3", "admet_druglikeness",
+                    "p3_admet_ames_druglikeness",
+                    "P3",
+                    "admet_druglikeness",
                     admet_ames_json,
                     extractor=lambda d: float(d.get("value", 1.0)),
                     threshold=0.10,
@@ -9510,7 +10959,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_admet_cell_perm_druglikeness",
                 lambda: gate_json_threshold(
-                    "p3_admet_cell_perm_druglikeness", "P3", "admet_druglikeness",
+                    "p3_admet_cell_perm_druglikeness",
+                    "P3",
+                    "admet_druglikeness",
                     admet_cell_perm_json,
                     extractor=lambda d: float(d.get("value", -10.0)),
                     threshold=-5.0,
@@ -9520,7 +10971,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_admet_aq_sol_honest_negative_tag",
                 lambda: gate_admet_honest_negative_tag(
-                    "p3_admet_aq_sol_honest_negative_tag", "P3", "admet_druglikeness",
+                    "p3_admet_aq_sol_honest_negative_tag",
+                    "P3",
+                    "admet_druglikeness",
                     admet_aq_sol_json,
                 ),
             ),
@@ -9534,21 +10987,27 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_admet_hepatotox_honest_negative",
                 lambda: gate_admet_honest_negative_tag(
-                    "p3_admet_hepatotox_honest_negative", "P3", "admet_druglikeness",
+                    "p3_admet_hepatotox_honest_negative",
+                    "P3",
+                    "admet_druglikeness",
                     admet_hepatotox_json,
                 ),
             ),
             (
                 "p3_admet_logp7_4_honest_negative",
                 lambda: gate_admet_honest_negative_tag(
-                    "p3_admet_logp7_4_honest_negative", "P3", "admet_druglikeness",
+                    "p3_admet_logp7_4_honest_negative",
+                    "P3",
+                    "admet_druglikeness",
                     admet_logp7_4_json,
                 ),
             ),
             (
                 "p3_admet_m6_kappa_honest_negative",
                 lambda: gate_admet_honest_negative_tag(
-                    "p3_admet_m6_kappa_honest_negative", "P3", "admet_druglikeness",
+                    "p3_admet_m6_kappa_honest_negative",
+                    "P3",
+                    "admet_druglikeness",
                     admet_m6_kappa_json,
                 ),
             ),
@@ -9566,7 +11025,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_admet_4_below_documented",
                 lambda: gate_wf325e_admet_4_below_documented(
-                    "p3_admet_4_below_documented", "P3", "admet_druglikeness",
+                    "p3_admet_4_below_documented",
+                    "P3",
+                    "admet_druglikeness",
                     admet_aq_sol_json,
                     admet_logp7_4_json,
                     admet_hepatotox_json,
@@ -9586,14 +11047,18 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_sa_score_metric_present",
                 lambda: gate_admet_honest_negative_tag(
-                    "p3_sa_score_metric_present", "P3", "admet_druglikeness",
+                    "p3_sa_score_metric_present",
+                    "P3",
+                    "admet_druglikeness",
                     admet_sa_score_json,
                 ),
             ),
             (
                 "p3_qed_score_metric_present",
                 lambda: gate_admet_honest_negative_tag(
-                    "p3_qed_score_metric_present", "P3", "admet_druglikeness",
+                    "p3_qed_score_metric_present",
+                    "P3",
+                    "admet_druglikeness",
                     admet_qed_score_json,
                 ),
             ),
@@ -9611,7 +11076,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_m4_sa_qed_subcriterion_documented",
                 lambda: gate_wf323f_m4_sa_qed_subcriterion_documented(
-                    "p3_m4_sa_qed_subcriterion_documented", "P3", "wf323f",
+                    "p3_m4_sa_qed_subcriterion_documented",
+                    "P3",
+                    "wf323f",
                     wf323f_m4_metric_json,
                     wf323f_m4_report_json,
                     wf323f_m4_todo_doc,
@@ -9628,7 +11095,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_smoke_fail_on_missing_audit",
                 lambda: gate_pytest(
-                    "p3_smoke_fail_on_missing_audit", "P3", "smoke_hygiene",
+                    "p3_smoke_fail_on_missing_audit",
+                    "P3",
+                    "smoke_hygiene",
                     [TESTS_DIR / "test_smoke_fail_on_missing_audit.py"],
                     timeout=120.0,
                 ),
@@ -9644,8 +11113,13 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_nci60_9cell_per_cell_aggregate",
                 lambda: gate_nci60_9cell_per_cell_aggregate(
-                    "p3_nci60_9cell_per_cell_aggregate", "P3", "nci60_9cell",
-                    REPO_ROOT / "metrics" / "by_metric" / "nci60_precious_9cell_auc.json",
+                    "p3_nci60_9cell_per_cell_aggregate",
+                    "P3",
+                    "nci60_9cell",
+                    REPO_ROOT
+                    / "metrics"
+                    / "by_metric"
+                    / "nci60_precious_9cell_auc.json",
                 ),
             ),
             # ---- Wf-A12 FIX (2026-10-03) — `p3_loi_send_ready` REMOVED
@@ -9676,7 +11150,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_r20_phase0_loaders_complete",
                 lambda: gate_r20_phase0_loaders_complete(
-                    "p3_r20_phase0_loaders_complete", "P3", "r20_phase0",
+                    "p3_r20_phase0_loaders_complete",
+                    "P3",
+                    "r20_phase0",
                     r20_phase0_loader_modules,
                     r20_phase0_loader_api_docs,
                     r20_phase0_loader_tests,
@@ -9696,7 +11172,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_r20_p0_loader_api_doc_present",
                 lambda: gate_all_files_exist(
-                    "p3_r20_p0_loader_api_doc_present", "P3", "r20_phase0",
+                    "p3_r20_p0_loader_api_doc_present",
+                    "P3",
+                    "r20_phase0",
                     r20_phase0_loader_api_doc_index,
                 ),
             ),
@@ -9709,7 +11187,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_pb_packages_available_or_documented",
                 lambda: gate_wf315d_pb_smoke(
-                    "p3_pb_packages_available_or_documented", "P3", "wf315d",
+                    "p3_pb_packages_available_or_documented",
+                    "P3",
+                    "wf315d",
                     wf315d_pb_metric_json,
                     wf315d_pb_smoke_output,
                     wf315d_pb_venv_python,
@@ -9724,7 +11204,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_pb_packages_status_present",
                 lambda: gate_wf319c_pb_packages_status_present(
-                    "p3_pb_packages_status_present", "P3", "wf319c",
+                    "p3_pb_packages_status_present",
+                    "P3",
+                    "wf319c",
                     wf319c_pb_venv_python,
                     wf319c_pb_metric_json,
                     wf319c_pb_smoke_output,
@@ -9741,7 +11223,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_uff_min_pt_pool_present",
                 lambda: gate_wf319b_uff_min_pt_pool_present(
-                    "p3_uff_min_pt_pool_present", "P3", "wf319b",
+                    "p3_uff_min_pt_pool_present",
+                    "P3",
+                    "wf319b",
                     wf319b_pool_json,
                     wf319b_metrics_json,
                 ),
@@ -9760,7 +11244,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_m8_full_pass_rate_documented",
                 lambda: gate_wf323c_m8_full_pass_rate_documented(
-                    "p3_m8_full_pass_rate_documented", "P3", "wf323c",
+                    "p3_m8_full_pass_rate_documented",
+                    "P3",
+                    "wf323c",
                     wf323c_result_json,
                     wf323c_metric_json,
                     wf323c_pool_json,
@@ -9780,7 +11266,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_ablation_runner_tests_present",
                 lambda: gate_pytest(
-                    "p3_ablation_runner_tests_present", "P3", "wf319a",
+                    "p3_ablation_runner_tests_present",
+                    "P3",
+                    "wf319a",
                     [wf319a_test_file],
                     timeout=120.0,
                 ),
@@ -9797,7 +11285,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_ablation_runner_aggregate_csv_present",
                 lambda: gate_wf319a_ablation_aggregate_csv_present(
-                    "p3_ablation_runner_aggregate_csv_present", "P3", "wf319a",
+                    "p3_ablation_runner_aggregate_csv_present",
+                    "P3",
+                    "wf319a",
                     wf319a_aggregate_csv,
                 ),
             ),
@@ -9813,7 +11303,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_ablation_runner_registry_complete",
                 lambda: gate_wf321e_ablation_registry_complete(
-                    "p3_ablation_runner_registry_complete", "P3", "wf321e",
+                    "p3_ablation_runner_registry_complete",
+                    "P3",
+                    "wf321e",
                     wf321e_runner_module,
                 ),
             ),
@@ -9830,7 +11322,8 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
                 "p3_catherine_30metal_closeout_documented",
                 lambda: gate_all_files_exist(
                     "p3_catherine_30metal_closeout_documented",
-                    "P3", "catherine_30metal",
+                    "P3",
+                    "catherine_30metal",
                     (
                         catherine_30metal_bench_script,
                         catherine_30metal_audit_script,
@@ -9852,7 +11345,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_wf327_cpu_num_workers_sufficient",
                 lambda: gate_wf327_cpu_num_workers_sufficient(
-                    "p3_wf327_cpu_num_workers_sufficient", "P3", "wf327",
+                    "p3_wf327_cpu_num_workers_sufficient",
+                    "P3",
+                    "wf327",
                     wf327_launch_scripts,
                     min_workers=4,
                 ),
@@ -9873,7 +11368,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_gate_count_consistency_audit",
                 lambda: gate_gate_count_consistency_audit(
-                    "p3_gate_count_consistency_audit", "P3", "all",
+                    "p3_gate_count_consistency_audit",
+                    "P3",
+                    "all",
                     expected_total=EXPECTED_GATE_COUNTS["all"],
                 ),
             ),
@@ -9911,7 +11408,8 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
                 "p3_wf343c4_hyperparams_config_complete",
                 lambda: gate_wf343c4_hyperparams_config_complete(
                     "p3_wf343c4_hyperparams_config_complete",
-                    "P3", "wf343c4",
+                    "P3",
+                    "wf343c4",
                     (
                         CONFIGS_DIR / "cfm_full_retrain.yaml",
                         CONFIGS_DIR / "cfm_per_innovation_ablation_p1.4.yaml",
@@ -9926,7 +11424,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
                         # the "config files > guessing" contract entirely.
                         # (.bak / archive files are deliberately excluded.)
                         CONFIGS_DIR / "training" / "nci60_9cell_5seed_50ep_v1.yaml",
-                        CONFIGS_DIR / "training" / "platinai_pt_4cell_5seed_50ep_v1.yaml",
+                        CONFIGS_DIR
+                        / "training"
+                        / "platinai_pt_4cell_5seed_50ep_v1.yaml",
                     ),
                 ),
             ),
@@ -9934,7 +11434,8 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
                 "p3_wf343c4_yuelbond_decoder_env",
                 lambda: gate_wf343c4_yuelbond_decoder_env(
                     "p3_wf343c4_yuelbond_decoder_env",
-                    "P3", "wf343c4",
+                    "P3",
+                    "wf343c4",
                     LAM_CHEM_DIR / "cfm_decoder_yuelbond.py",
                 ),
             ),
@@ -9953,8 +11454,11 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
                 "p3_wf343c4_wave_budget_remaining_nonneg",
                 lambda: gate_wf343c4_wave_budget_remaining_nonneg(
                     "p3_wf343c4_wave_budget_remaining_nonneg",
-                    "P3", "wf343c4",
-                    MOLMETAL_ROOT / "reports" / "wf262_wave_budget"
+                    "P3",
+                    "wf343c4",
+                    MOLMETAL_ROOT
+                    / "reports"
+                    / "wf262_wave_budget"
                     / "wave_budget_report.json",
                 ),
             ),
@@ -9991,7 +11495,8 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
                 "p3_wf343c3_data_quality_check",
                 lambda: gate_wf343c3_data_quality_check(
                     "p3_wf343c3_data_quality_check",
-                    "P3", "wf347a1",
+                    "P3",
+                    "wf347a1",
                     SCRIPT_DIR / "wf343c3_data_quality_check.py",
                 ),
             ),
@@ -10017,7 +11522,8 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
                 "p1_hp_provenance_log",
                 lambda: gate_p1_hp_provenance_log(
                     "p1_hp_provenance_log",
-                    "P3", "wf350a3",
+                    "P3",
+                    "wf350a3",
                     (
                         CONFIGS_DIR / "cfm_full_retrain.yaml",
                         CONFIGS_DIR / "cfm_per_innovation_ablation_p1.4.yaml",
@@ -10053,7 +11559,8 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
                 "p1_runtime_energy_report",
                 lambda: gate_p1_runtime_energy_report(
                     "p1_runtime_energy_report",
-                    "P3", "wf350a1",
+                    "P3",
+                    "wf350a1",
                     MOLMETAL_ROOT / "reports" / "wf350a1_runtime_energy.json",
                 ),
             ),
@@ -10083,7 +11590,8 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
                 "p1_gpu_env_probe",
                 lambda: gate_p1_gpu_env_probe(
                     "p1_gpu_env_probe",
-                    "P3", "wf350c1",
+                    "P3",
+                    "wf350c1",
                     MOLMETAL_ROOT / "reports" / "wf350c1_gpu_env_check.json",
                 ),
             ),
@@ -10145,7 +11653,8 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
                 "p3_wf385_scaffold_loss_wire_in_verified",
                 lambda: gate_wf385_scaffold_loss_wire_in_verified(
                     "p3_wf385_scaffold_loss_wire_in_verified",
-                    "P3", "wf385a3",
+                    "P3",
+                    "wf385a3",
                     SCRIPT_DIR / "wf385a3_scaffold_wire_in_gate.py",
                 ),
             ),
@@ -10206,7 +11715,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_frontier_math_wire_in",
                 lambda: gate_python_importable(
-                    "p3_frontier_math_wire_in", "P3", "frontier",
+                    "p3_frontier_math_wire_in",
+                    "P3",
+                    "frontier",
                     frontier_adapters,
                 ),
             ),
@@ -10219,7 +11730,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_frontier_math_day_3_5_integration_tests",
                 lambda: gate_pytest(
-                    "p3_frontier_math_day_3_5_integration_tests", "P3", "frontier",
+                    "p3_frontier_math_day_3_5_integration_tests",
+                    "P3",
+                    "frontier",
                     [wf313c_e2e_test],
                     timeout=120.0,
                 ),
@@ -10227,41 +11740,53 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_frontier_math_paper_refs_present",
                 lambda: gate_all_files_exist(
-                    "p3_frontier_math_paper_refs_present", "P3", "frontier",
+                    "p3_frontier_math_paper_refs_present",
+                    "P3",
+                    "frontier",
                     wf313c_paper_ref_files,
                 ),
             ),
             (
                 "p3_todo220_drivers_present",
                 lambda: gate_all_files_exist(
-                    "p3_todo220_drivers_present", "P3", "drivers",
+                    "p3_todo220_drivers_present",
+                    "P3",
+                    "drivers",
                     todo220_drivers,
                 ),
             ),
             (
                 "p3_anchorguard_version_pin",
                 lambda: gate_anchor_version_pin(
-                    "p3_anchorguard_version_pin", "P3", "anchors",
+                    "p3_anchorguard_version_pin",
+                    "P3",
+                    "anchors",
                 ),
             ),
             (
                 "p3_anchorguard_consumers_adopt",
                 lambda: gate_all_files_exist(
-                    "p3_anchorguard_consumers_adopt", "P3", "consumers",
+                    "p3_anchorguard_consumers_adopt",
+                    "P3",
+                    "consumers",
                     anchorguard_consumers,
                 ),
             ),
             (
                 "p3_harness_auto_fallback_present",
                 lambda: gate_file_exists(
-                    "p3_harness_auto_fallback_present", "P3", "harness",
+                    "p3_harness_auto_fallback_present",
+                    "P3",
+                    "harness",
                     HARNESS_WRAPPER,
                 ),
             ),
             (
                 "p3_wf304b_platinai_selenium_diag",
                 lambda: gate_all_files_exist(
-                    "p3_wf304b_platinai_selenium_diag", "P3", "diagnostic",
+                    "p3_wf304b_platinai_selenium_diag",
+                    "P3",
+                    "diagnostic",
                     (
                         wf304b_selenium_dir / "block_state.html",
                         wf304b_selenium_dir / "selenium_report.md",
@@ -10271,7 +11796,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_section9_honest_framing_min30",
                 lambda: gate_section9_entry_count(
-                    "p3_section9_honest_framing_min30", "P3", "honest_framing",
+                    "p3_section9_honest_framing_min30",
+                    "P3",
+                    "honest_framing",
                     section9_doc,
                     min_entries=36,
                 ),
@@ -10280,7 +11807,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_admet_ames_druglikeness",
                 lambda: gate_json_threshold(
-                    "p3_admet_ames_druglikeness", "P3", "admet_druglikeness",
+                    "p3_admet_ames_druglikeness",
+                    "P3",
+                    "admet_druglikeness",
                     admet_ames_json,
                     extractor=lambda d: float(d.get("value", 1.0)),
                     threshold=0.10,
@@ -10290,7 +11819,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_admet_cell_perm_druglikeness",
                 lambda: gate_json_threshold(
-                    "p3_admet_cell_perm_druglikeness", "P3", "admet_druglikeness",
+                    "p3_admet_cell_perm_druglikeness",
+                    "P3",
+                    "admet_druglikeness",
                     admet_cell_perm_json,
                     extractor=lambda d: float(d.get("value", -10.0)),
                     threshold=-5.0,
@@ -10300,7 +11831,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_admet_aq_sol_honest_negative_tag",
                 lambda: gate_admet_honest_negative_tag(
-                    "p3_admet_aq_sol_honest_negative_tag", "P3", "admet_druglikeness",
+                    "p3_admet_aq_sol_honest_negative_tag",
+                    "P3",
+                    "admet_druglikeness",
                     admet_aq_sol_json,
                 ),
             ),
@@ -10314,21 +11847,27 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_admet_hepatotox_honest_negative",
                 lambda: gate_admet_honest_negative_tag(
-                    "p3_admet_hepatotox_honest_negative", "P3", "admet_druglikeness",
+                    "p3_admet_hepatotox_honest_negative",
+                    "P3",
+                    "admet_druglikeness",
                     admet_hepatotox_json,
                 ),
             ),
             (
                 "p3_admet_logp7_4_honest_negative",
                 lambda: gate_admet_honest_negative_tag(
-                    "p3_admet_logp7_4_honest_negative", "P3", "admet_druglikeness",
+                    "p3_admet_logp7_4_honest_negative",
+                    "P3",
+                    "admet_druglikeness",
                     admet_logp7_4_json,
                 ),
             ),
             (
                 "p3_admet_m6_kappa_honest_negative",
                 lambda: gate_admet_honest_negative_tag(
-                    "p3_admet_m6_kappa_honest_negative", "P3", "admet_druglikeness",
+                    "p3_admet_m6_kappa_honest_negative",
+                    "P3",
+                    "admet_druglikeness",
                     admet_m6_kappa_json,
                 ),
             ),
@@ -10346,7 +11885,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_admet_4_below_documented",
                 lambda: gate_wf325e_admet_4_below_documented(
-                    "p3_admet_4_below_documented", "P3", "admet_druglikeness",
+                    "p3_admet_4_below_documented",
+                    "P3",
+                    "admet_druglikeness",
                     admet_aq_sol_json,
                     admet_logp7_4_json,
                     admet_hepatotox_json,
@@ -10366,14 +11907,18 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_sa_score_metric_present",
                 lambda: gate_admet_honest_negative_tag(
-                    "p3_sa_score_metric_present", "P3", "admet_druglikeness",
+                    "p3_sa_score_metric_present",
+                    "P3",
+                    "admet_druglikeness",
                     admet_sa_score_json,
                 ),
             ),
             (
                 "p3_qed_score_metric_present",
                 lambda: gate_admet_honest_negative_tag(
-                    "p3_qed_score_metric_present", "P3", "admet_druglikeness",
+                    "p3_qed_score_metric_present",
+                    "P3",
+                    "admet_druglikeness",
                     admet_qed_score_json,
                 ),
             ),
@@ -10391,7 +11936,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_m4_sa_qed_subcriterion_documented",
                 lambda: gate_wf323f_m4_sa_qed_subcriterion_documented(
-                    "p3_m4_sa_qed_subcriterion_documented", "P3", "wf323f",
+                    "p3_m4_sa_qed_subcriterion_documented",
+                    "P3",
+                    "wf323f",
                     wf323f_m4_metric_json,
                     wf323f_m4_report_json,
                     wf323f_m4_todo_doc,
@@ -10408,7 +11955,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_smoke_fail_on_missing_audit",
                 lambda: gate_pytest(
-                    "p3_smoke_fail_on_missing_audit", "P3", "smoke_hygiene",
+                    "p3_smoke_fail_on_missing_audit",
+                    "P3",
+                    "smoke_hygiene",
                     [TESTS_DIR / "test_smoke_fail_on_missing_audit.py"],
                     timeout=120.0,
                 ),
@@ -10419,7 +11968,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_loi_send_ready",
                 lambda: gate_loi_send_ready(
-                    "p3_loi_send_ready", "P3", "loi_send_ready",
+                    "p3_loi_send_ready",
+                    "P3",
+                    "loi_send_ready",
                     loi_send_files,
                     loi_send_review_doc,
                 ),
@@ -10430,8 +11981,13 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_nci60_9cell_per_cell_aggregate",
                 lambda: gate_nci60_9cell_per_cell_aggregate(
-                    "p3_nci60_9cell_per_cell_aggregate", "P3", "nci60_9cell",
-                    REPO_ROOT / "metrics" / "by_metric" / "nci60_precious_9cell_auc.json",
+                    "p3_nci60_9cell_per_cell_aggregate",
+                    "P3",
+                    "nci60_9cell",
+                    REPO_ROOT
+                    / "metrics"
+                    / "by_metric"
+                    / "nci60_precious_9cell_auc.json",
                 ),
             ),
             # ---- Wf-321A — Wf-135 Phase 2 CPU scaffold readiness
@@ -10448,7 +12004,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_wf135_phase2_cpu_smoke_ready",
                 lambda: gate_wf321a_wf135_phase2_cpu_smoke(
-                    "p3_wf135_phase2_cpu_smoke_ready", "P3", "wf321a",
+                    "p3_wf135_phase2_cpu_smoke_ready",
+                    "P3",
+                    "wf321a",
                     wf321a_phase1_cohort_json,
                     wf321a_trainer_script,
                     wf321a_launch_wrapper,
@@ -10472,7 +12030,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_wf176_m19_lomo_closeout_documented",
                 lambda: gate_wf322f_wf176_m19_lomo_closeout_documented(
-                    "p3_wf176_m19_lomo_closeout_documented", "P3", "wf322f",
+                    "p3_wf176_m19_lomo_closeout_documented",
+                    "P3",
+                    "wf322f",
                     wf322f_closeout_doc,
                     wf322f_phase1_cohort_json,
                     wf322f_phase1_cohort_synthesis,
@@ -10498,7 +12058,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_m6_kappa_closeout_documented",
                 lambda: gate_wf325d_m6_kappa_closeout_documented(
-                    "p3_m6_kappa_closeout_documented", "P3", "wf325d",
+                    "p3_m6_kappa_closeout_documented",
+                    "P3",
+                    "wf325d",
                     wf325d_closeout_doc,
                     wf325d_metric_json,
                 ),
@@ -10514,14 +12076,17 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
             (
                 "p3_wf343c4_anchor_freshness_24h",
                 lambda: gate_wf343c4_anchor_freshness_24h(
-                    "p3_wf343c4_anchor_freshness_24h", "P3", "wf343c4",
+                    "p3_wf343c4_anchor_freshness_24h",
+                    "P3",
+                    "wf343c4",
                 ),
             ),
             (
                 "p3_wf343c2_per_wave_runtime_check",
                 lambda: gate_wf343c2_per_wave_runtime_check(
                     "p3_wf343c2_per_wave_runtime_check",
-                    "P3", "wf347a1",
+                    "P3",
+                    "wf347a1",
                     SCRIPT_DIR / "wf343c2_per_wave_check.py",
                 ),
             ),
@@ -10550,7 +12115,9 @@ _CHEMPROP_SMOKE_MIN_DROP_FRAC = 0.003
 _CHEMPROP_SMOKE_METAL = "Ru"
 _CHEMPROP_SMOKE_SEED = 0
 _CHEMPROP_SMOKE_CKPT_PATH = (
-    MOLMETAL_ROOT / "checkpoints" / "wf200_chemprop_v2_v3"
+    MOLMETAL_ROOT
+    / "checkpoints"
+    / "wf200_chemprop_v2_v3"
     / f"dmpnn_mtw_v3_{_CHEMPROP_SMOKE_METAL.lower()}_seed{_CHEMPROP_SMOKE_SEED}.pt"
 )
 
@@ -10622,22 +12189,28 @@ def _prepare_chemprop_ckpt_backup(
     run (it would destroy a checkpoint we cannot restore).
     """
     if not ckpt_path.is_file():
-        return True, None, (
-            f"no pre-existing ckpt at {ckpt_path} (fresh tree; "
-            f"smoke-created file will be removed)"
+        return (
+            True,
+            None,
+            (
+                f"no pre-existing ckpt at {ckpt_path} (fresh tree; "
+                f"smoke-created file will be removed)"
+            ),
         )
     try:
         pre_sha = _sha256_file(ckpt_path)
         shutil.copy2(ckpt_path, backup_dir / ckpt_path.name)
     except OSError as exc:
-        return False, None, (
-            f"cannot back up shipped ckpt {ckpt_path} before smoke "
-            f"({type(exc).__name__}: {exc}); refusing to run a smoke that "
-            f"would overwrite it"
+        return (
+            False,
+            None,
+            (
+                f"cannot back up shipped ckpt {ckpt_path} before smoke "
+                f"({type(exc).__name__}: {exc}); refusing to run a smoke that "
+                f"would overwrite it"
+            ),
         )
-    return True, pre_sha, (
-        f"backed up {ckpt_path.name} pre_sha256={pre_sha[:16]}"
-    )
+    return True, pre_sha, (f"backed up {ckpt_path.name} pre_sha256={pre_sha[:16]}")
 
 
 def _restore_chemprop_ckpt(
@@ -10688,9 +12261,7 @@ def _restore_chemprop_ckpt(
                 f"smoke created {ckpt_path} but it could not be removed to "
                 f"restore the fresh-tree state ({type(exc).__name__}: {exc})"
             )
-        return True, (
-            f"removed smoke-created ckpt {ckpt_path.name} (none pre-run)"
-        )
+        return True, (f"removed smoke-created ckpt {ckpt_path.name} (none pre-run)")
     return True, "smoke wrote no ckpt (none pre-run)"
 
 
@@ -10733,22 +12304,33 @@ def _gate_chemprop_quick_smoke(chemprop_script: Path) -> GateResult:
     ckpt_path = _CHEMPROP_SMOKE_CKPT_PATH
     backup_dir = Path(tempfile.mkdtemp(prefix="wf446_h2_chemprop_ckpt_"))
     ckpt_ok, pre_sha, ckpt_backup_detail = _prepare_chemprop_ckpt_backup(
-        ckpt_path, backup_dir)
+        ckpt_path, backup_dir
+    )
     if not ckpt_ok:
         return GateResult(
-            name, "P1", "chemprop_v2_v3", "FAIL",
+            name,
+            "P1",
+            "chemprop_v2_v3",
+            "FAIL",
             f"{ckpt_backup_detail} (smoke NOT run)",
             time.perf_counter() - t0,
         )
     args = [
-        VENV_PY, str(chemprop_script),
-        "--quick", "--allow-single-seed", "--device", "cpu",
-        "--out-dir", str(smoke_out),
+        VENV_PY,
+        str(chemprop_script),
+        "--quick",
+        "--allow-single-seed",
+        "--device",
+        "cpu",
+        "--out-dir",
+        str(smoke_out),
         # Wf-446-H2/L3: pinned so the ckpt the trainer overwrites is known by
         # construction (--quick slices metals[:1]/seeds[:1] anyway; trainer
         # L1236 writes dmpnn_mtw_v3_<metal>_seed<N>.pt).
-        "--metals", _CHEMPROP_SMOKE_METAL,
-        "--seeds", str(_CHEMPROP_SMOKE_SEED),
+        "--metals",
+        _CHEMPROP_SMOKE_METAL,
+        "--seeds",
+        str(_CHEMPROP_SMOKE_SEED),
         # Wf-446: explicit --device cpu (the trainer defaults to cuda; pre-flight
         # gates run on a CPU-only host where cuda is unavailable; --quick is the
         # canonical CPU smoke per chemprop --quick help text).
@@ -10758,23 +12340,33 @@ def _gate_chemprop_quick_smoke(chemprop_script: Path) -> GateResult:
     # Wf-446-H2/L3: restore the pre-run checkpoint bytes BEFORE judging the
     # smoke, so a failed restore FAILs the gate regardless of rc.
     ckpt_ok, ckpt_restore_detail = _restore_chemprop_ckpt(
-        ckpt_path, backup_dir, pre_sha)
+        ckpt_path, backup_dir, pre_sha
+    )
     ckpt_suffix = f" | ckpt: {ckpt_backup_detail}; {ckpt_restore_detail}"
     if not ckpt_ok:
         return GateResult(
-            name, "P1", "chemprop_v2_v3", "FAIL",
+            name,
+            "P1",
+            "chemprop_v2_v3",
+            "FAIL",
             f"--quick finished (rc={rc}) but checkpoint restore FAILED: "
             f"{ckpt_restore_detail}",
             elapsed,
         )
-    blob_tail = ((out + "\n" + err).strip().splitlines()[-3:]
-                 if (out or err) else ["(no output)"])
+    blob_tail = (
+        (out + "\n" + err).strip().splitlines()[-3:]
+        if (out or err)
+        else ["(no output)"]
+    )
     blob_tail_str = " | ".join(blob_tail)
     if rc == 0 and elapsed < 95.0:
         metric_files = sorted(smoke_out.glob("*/per_seed_metrics_seed*.json"))
         if not metric_files:
             return GateResult(
-                name, "P1", "chemprop_v2_v3", "FAIL",
+                name,
+                "P1",
+                "chemprop_v2_v3",
+                "FAIL",
                 f"--quick exit=0 in {elapsed:.1f}s but wrote no per-seed "
                 f"metrics under {smoke_out} (cannot verify loss decrease) "
                 f"| tail: {blob_tail_str}{ckpt_suffix}",
@@ -10784,29 +12376,40 @@ def _gate_chemprop_quick_smoke(chemprop_script: Path) -> GateResult:
         ok, detail = _check_chemprop_loss_decrease(seed_json)
         if not ok:
             return GateResult(
-                name, "P1", "chemprop_v2_v3", "FAIL",
+                name,
+                "P1",
+                "chemprop_v2_v3",
+                "FAIL",
                 f"--quick exit=0 in {elapsed:.1f}s but loss invariant FAILED: "
                 f"{detail} | tail: {blob_tail_str}{ckpt_suffix}",
                 elapsed,
             )
         return GateResult(
-            name, "P1", "chemprop_v2_v3", "PASS",
+            name,
+            "P1",
+            "chemprop_v2_v3",
+            "PASS",
             f"--quick exit=0 in {elapsed:.1f}s (rc=0); {detail} | "
             f"tail: {blob_tail_str}{ckpt_suffix}",
             elapsed,
         )
     if elapsed >= 90.0:
         return GateResult(
-            name, "P1", "chemprop_v2_v3", "FAIL",
+            name,
+            "P1",
+            "chemprop_v2_v3",
+            "FAIL",
             f"--quick TIMED OUT after {elapsed:.1f}s (>= 90s budget; "
             f"CPU-only chemprop --quick measured at ~34s so genuine overruns "
             f"indicate infra regression) | tail: {blob_tail_str}{ckpt_suffix}",
             elapsed,
         )
     return GateResult(
-        name, "P1", "chemprop_v2_v3", "FAIL",
-        f"--quick exit={rc} in {elapsed:.1f}s | tail: {blob_tail_str}"
-        f"{ckpt_suffix}",
+        name,
+        "P1",
+        "chemprop_v2_v3",
+        "FAIL",
+        f"--quick exit={rc} in {elapsed:.1f}s | tail: {blob_tail_str}" f"{ckpt_suffix}",
         elapsed,
     )
 
@@ -10963,9 +12566,7 @@ def _build_reproducibility_manifest() -> Dict[str, Any]:
             REPO_ROOT / "prereg.md",
         ):
             if candidate.is_file():
-                manifest["prereg_path"] = str(
-                    candidate.relative_to(REPO_ROOT)
-                )
+                manifest["prereg_path"] = str(candidate.relative_to(REPO_ROOT))
                 break
     except OSError:
         pass
@@ -11008,7 +12609,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         runners = build_gates(args.pipeline)
 
     if args.verbose:
-        label = f"gates={len(runners)}" if args.gates is not None else f"pipeline={args.pipeline} n_gates={len(runners)}"
+        label = (
+            f"gates={len(runners)}"
+            if args.gates is not None
+            else f"pipeline={args.pipeline} n_gates={len(runners)}"
+        )
         print(f"[pre_flight] {label}", file=sys.stderr)
 
     results: List[GateResult] = []
@@ -11019,7 +12624,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             res = runner()
         except Exception as exc:  # noqa: BLE001 — surface any gate error
             res = GateResult(
-                name, "?", args.pipeline, "FAIL",
+                name,
+                "?",
+                args.pipeline,
+                "FAIL",
                 f"gate raised: {type(exc).__name__}: {exc}",
                 time.perf_counter() - t0,
             )

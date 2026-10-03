@@ -32,6 +32,7 @@ Honest framing
   measured + projected results into the file that downstream
   consumers (paper §4.5, dashboard) read.
 """
+
 from __future__ import annotations
 
 import json
@@ -44,11 +45,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 JSON_PATH = REPO_ROOT / "metrics" / "by_metric" / "vina_kcal_per_mol.json"
 SMOKE_PATH = (
-    REPO_ROOT
-    / "molmetal"
-    / "reports"
-    / "wf333v3_vina_p2p3"
-    / "smoke_per_pocket.json"
+    REPO_ROOT / "molmetal" / "reports" / "wf333v3_vina_p2p3" / "smoke_per_pocket.json"
 )
 
 # The headline median that Wf-362-A2 propagates into the JSON.
@@ -83,7 +80,8 @@ class TestV3EntryPresent:
         """At least one measurement entry must be a wf333_v3_* combined run."""
         data = _load_json(JSON_PATH)
         v3_entries = [
-            m for m in data["measurements"]
+            m
+            for m in data["measurements"]
             if isinstance(m, dict)
             and isinstance(m.get("run", ""), str)
             and m["run"].startswith("wf333_v3_")
@@ -98,22 +96,24 @@ class TestV3EntryPresent:
         """The Wf-333-V3 combined entry must be dated 2026-09-29."""
         data = _load_json(JSON_PATH)
         v3_entries = [
-            m for m in data["measurements"]
+            m
+            for m in data["measurements"]
             if isinstance(m, dict)
             and isinstance(m.get("run", ""), str)
             and m["run"].startswith("wf333_v3_")
         ]
         assert v3_entries, "no wf333_v3_* entry found"
         dates = {m.get("date_utc") for m in v3_entries}
-        assert "2026-09-29" in dates, (
-            f"V3 entry must be dated 2026-09-29, got dates {dates}"
-        )
+        assert (
+            "2026-09-29" in dates
+        ), f"V3 entry must be dated 2026-09-29, got dates {dates}"
 
     def test_v3_entry_sources_smoke_per_pocket_json(self) -> None:
         """The V3 entry must cite wf333v3_vina_p2p3/smoke_per_pocket.json."""
         data = _load_json(JSON_PATH)
         v3_entries = [
-            m for m in data["measurements"]
+            m
+            for m in data["measurements"]
             if isinstance(m, dict)
             and isinstance(m.get("run", ""), str)
             and m["run"].startswith("wf333_v3_")
@@ -130,16 +130,17 @@ class TestV3EntryPresent:
         """The V3 entry's value (cohort median) must be -7.782 kcal/mol."""
         data = _load_json(JSON_PATH)
         v3_entries = [
-            m for m in data["measurements"]
+            m
+            for m in data["measurements"]
             if isinstance(m, dict)
             and isinstance(m.get("run", ""), str)
             and m["run"].startswith("wf333_v3_")
         ]
         assert v3_entries, "no wf333_v3_* entry found"
         m = v3_entries[0]
-        assert m.get("value") == pytest.approx(-7.782, abs=1e-6), (
-            f"V3 entry value must be -7.782 kcal/mol, got {m.get('value')!r}"
-        )
+        assert m.get("value") == pytest.approx(
+            -7.782, abs=1e-6
+        ), f"V3 entry value must be -7.782 kcal/mol, got {m.get('value')!r}"
 
     def test_aggregate_has_v3_block(self) -> None:
         """The aggregate section must include wf333_v3_combined_* keys."""
@@ -152,17 +153,17 @@ class TestV3EntryPresent:
             "wf333_v3_combined_verdict",
             "wf333_v3_combined_source",
         ):
-            assert required in agg, (
-                f"aggregate.{required} must be present after Wf-362-A2 refresh"
-            )
+            assert (
+                required in agg
+            ), f"aggregate.{required} must be present after Wf-362-A2 refresh"
 
     def test_refresh_metadata_present(self) -> None:
         """The top-level description / last_refresh_utc fields must reflect
         the 2026-09-29 Wf-362-A2 refresh."""
         data = _load_json(JSON_PATH)
-        assert "last_refresh_utc" in data, (
-            "vina_kcal_per_mol.json must have last_refresh_utc after refresh"
-        )
+        assert (
+            "last_refresh_utc" in data
+        ), "vina_kcal_per_mol.json must have last_refresh_utc after refresh"
         assert data["last_refresh_utc"].startswith("2026-09-29"), (
             f"last_refresh_utc must start with 2026-09-29, got "
             f"{data['last_refresh_utc']!r}"
@@ -171,9 +172,9 @@ class TestV3EntryPresent:
             f"last_refresh_wf must reference Wf-362-A2, got "
             f"{data.get('last_refresh_wf', '')!r}"
         )
-        assert data.get("stale_flag_at_24h") is False, (
-            "stale_flag_at_24h must be False after refresh"
-        )
+        assert (
+            data.get("stale_flag_at_24h") is False
+        ), "stale_flag_at_24h must be False after refresh"
 
 
 # ---------------------------------------------------------------------------
@@ -185,17 +186,14 @@ class TestV3CombinedMedianMatchesSmoke:
     """
 
     def test_smoke_per_pocket_json_exists(self) -> None:
-        assert SMOKE_PATH.exists(), (
-            f"smoke_per_pocket.json missing at {SMOKE_PATH}"
-        )
+        assert SMOKE_PATH.exists(), f"smoke_per_pocket.json missing at {SMOKE_PATH}"
 
     def test_smoke_per_pocket_headline_median(self) -> None:
         """smoke_per_pocket.json headline V3 median must be -7.782 kcal/mol."""
         smoke = _load_json(SMOKE_PATH)
         headline = smoke.get("headline", {})
-        assert (
-            headline.get("cohort_v3_combined_median_kcal_mol")
-            == pytest.approx(V3_COMBINED_MEDIAN_KCAL_MOL, abs=1e-6)
+        assert headline.get("cohort_v3_combined_median_kcal_mol") == pytest.approx(
+            V3_COMBINED_MEDIAN_KCAL_MOL, abs=1e-6
         ), (
             f"smoke headline V3 median must be {V3_COMBINED_MEDIAN_KCAL_MOL}, "
             f"got {headline.get('cohort_v3_combined_median_kcal_mol')!r}"
@@ -205,9 +203,8 @@ class TestV3CombinedMedianMatchesSmoke:
         """smoke_per_pocket.json headline V3 gap must be -0.782 kcal/mol."""
         smoke = _load_json(SMOKE_PATH)
         headline = smoke.get("headline", {})
-        assert (
-            headline.get("v3_combined_gap_to_industry_kcal_mol")
-            == pytest.approx(-0.782, abs=1e-3)
+        assert headline.get("v3_combined_gap_to_industry_kcal_mol") == pytest.approx(
+            -0.782, abs=1e-3
         ), (
             f"smoke headline V3 gap must be -0.782 kcal/mol, got "
             f"{headline.get('v3_combined_gap_to_industry_kcal_mol')!r}"
@@ -229,7 +226,8 @@ class TestV3CombinedMedianMatchesSmoke:
 
         # Cross-check 2: the wf333_v3_* measurement's value field
         v3_entries = [
-            m for m in data["measurements"]
+            m
+            for m in data["measurements"]
             if isinstance(m, dict)
             and isinstance(m.get("run", ""), str)
             and m["run"].startswith("wf333_v3_")
@@ -247,7 +245,8 @@ class TestV3CombinedMedianMatchesSmoke:
         data = _load_json(JSON_PATH)
         smoke = _load_json(SMOKE_PATH)
         v3_entries = [
-            m for m in data["measurements"]
+            m
+            for m in data["measurements"]
             if isinstance(m, dict)
             and isinstance(m.get("run", ""), str)
             and m["run"].startswith("wf333_v3_")
@@ -262,9 +261,9 @@ class TestV3CombinedMedianMatchesSmoke:
         )
         for pocket, json_v in json_per_pocket.items():
             smoke_v = smoke_per_pocket[pocket]["v3_combined_kcal_mol"]
-            assert json_v == pytest.approx(smoke_v, abs=1e-3), (
-                f"pocket {pocket}: json V3={json_v}, smoke V3={smoke_v}"
-            )
+            assert json_v == pytest.approx(
+                smoke_v, abs=1e-3
+            ), f"pocket {pocket}: json V3={json_v}, smoke V3={smoke_v}"
 
     def test_v3_passes_industry_cutoff_in_json(self) -> None:
         """The V3 combined median in the JSON must be < -7.0
@@ -273,12 +272,10 @@ class TestV3CombinedMedianMatchesSmoke:
         agg = data["aggregate"]
         median = agg["wf333_v3_combined_median_kcal_mol"]
         gap = agg["wf333_v3_combined_gap_to_industry_kcal_mol"]
-        assert median < -7.0, (
-            f"V3 median {median} must be < -7.0 industry cutoff"
-        )
-        assert gap == pytest.approx(median - (-7.0), abs=1e-3), (
-            f"V3 gap {gap} must equal median - industry cutoff = {median - (-7.0)}"
-        )
+        assert median < -7.0, f"V3 median {median} must be < -7.0 industry cutoff"
+        assert gap == pytest.approx(
+            median - (-7.0), abs=1e-3
+        ), f"V3 gap {gap} must equal median - industry cutoff = {median - (-7.0)}"
         assert agg["wf333_v3_combined_passes_industry_cutoff"] is True
         assert agg["wf333_v3_combined_verdict"] == "HONEST_NEGATIVE_VINA_RESOLVED"
 
@@ -286,7 +283,8 @@ class TestV3CombinedMedianMatchesSmoke:
         """All 5 pockets in the V3 cohort must PASS the -7.0 cutoff."""
         data = _load_json(JSON_PATH)
         v3_entries = [
-            m for m in data["measurements"]
+            m
+            for m in data["measurements"]
             if isinstance(m, dict)
             and isinstance(m.get("run", ""), str)
             and m["run"].startswith("wf333_v3_")
@@ -295,9 +293,7 @@ class TestV3CombinedMedianMatchesSmoke:
         m = v3_entries[0]
         json_per_pocket = m.get("per_pocket_v3_combined_kcal_mol", {})
         for pocket, v in json_per_pocket.items():
-            assert v < -7.0, (
-                f"pocket {pocket} V3 combined = {v} must PASS -7.0 cutoff"
-            )
+            assert v < -7.0, f"pocket {pocket} V3 combined = {v} must PASS -7.0 cutoff"
         assert m.get("n_pockets_pass_cutoff_minus7") == len(json_per_pocket), (
             f"n_pockets_pass_cutoff_minus7 must equal {len(json_per_pocket)} "
             f"(the cohort size), got {m.get('n_pockets_pass_cutoff_minus7')}"

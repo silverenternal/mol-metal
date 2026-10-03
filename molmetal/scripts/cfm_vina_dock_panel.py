@@ -90,6 +90,7 @@ Honest framing (party-twenty-spirit §3.5)
 * Per-pocket ``status="STUB_FALLBACK"`` is the diagnostic — it tells
   downstream consumers the score should not be trusted.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -114,13 +115,15 @@ PANEL_VERSION = "wf264-vina/v1"
 # ---------------------------------------------------------------------------
 #: Canonical 5-pocket Wf-179 m15 cohort (per Wf-179 + Wf-30 staging).
 DEFAULT_POCKETS: Tuple[str, ...] = (
-    "1h36", "3eml", "3ny8", "4aaw", "4rlu",
+    "1h36",
+    "3eml",
+    "3ny8",
+    "4aaw",
+    "4rlu",
 )
 
 #: Default Vina CLI binary location (project wrapper).
-DEFAULT_VINA_BIN: str = str(
-    Path(__file__).resolve().parent.parent / "bin" / "vina"
-)
+DEFAULT_VINA_BIN: str = str(Path(__file__).resolve().parent.parent / "bin" / "vina")
 
 #: Wf-338-V2 — Engine selector constants. Wf-264 sub-panel + recovery:
 #: when the canonical AutoDock Vina binary is missing or the panel
@@ -217,10 +220,12 @@ def _probe_meeko_alternative() -> Dict[str, Any]:
     }
     try:
         import meeko  # type: ignore  # noqa: WPS433
+
         out["available"] = True
         out["version"] = str(getattr(meeko, "__version__", "unknown"))
         try:
             from meeko import MoleculePreparation, PDBQTWriterLegacy  # type: ignore  # noqa: WPS433
+
             out["moleculeprep_class"] = str(MoleculePreparation.__name__)
             out["pdbqt_writer"] = str(PDBQTWriterLegacy.__name__)
         except Exception as exc:  # noqa: BLE001
@@ -250,6 +255,7 @@ def get_meeko_probe(force_refresh: bool = False) -> Dict[str, Any]:
 @dataclass
 class PocketCell:
     """One (molecule, pocket) docking cell."""
+
     pocket: str
     best_kcal_mol: Optional[float] = None
     n_poses: int = 0
@@ -296,6 +302,7 @@ class PocketCell:
 @dataclass
 class MoleculeRecord:
     """Per-molecule aggregation across all pockets."""
+
     smiles: str
     parse_ok: bool = False
     pdbqt_ok: bool = False
@@ -304,7 +311,8 @@ class MoleculeRecord:
     @property
     def best_pocket(self) -> Optional[str]:
         scored = [
-            (p, c.best_kcal_mol) for p, c in self.per_pocket.items()
+            (p, c.best_kcal_mol)
+            for p, c in self.per_pocket.items()
             if c.best_kcal_mol is not None
         ]
         if not scored:
@@ -315,7 +323,8 @@ class MoleculeRecord:
     @property
     def best_kcal_mol(self) -> Optional[float]:
         scored = [
-            c.best_kcal_mol for c in self.per_pocket.values()
+            c.best_kcal_mol
+            for c in self.per_pocket.values()
             if c.best_kcal_mol is not None
         ]
         return min(scored) if scored else None
@@ -323,7 +332,8 @@ class MoleculeRecord:
     @property
     def mean_kcal_mol(self) -> Optional[float]:
         scored = [
-            c.best_kcal_mol for c in self.per_pocket.values()
+            c.best_kcal_mol
+            for c in self.per_pocket.values()
             if c.best_kcal_mol is not None
         ]
         if not scored:
@@ -339,7 +349,8 @@ class MoleculeRecord:
         F2(a) was disabled or no pocket produced a score).
         """
         scored = [
-            c.f2a_kcal_mol for c in self.per_pocket.values()
+            c.f2a_kcal_mol
+            for c in self.per_pocket.values()
             if c.f2a_kcal_mol is not None
         ]
         return min(scored) if scored else None
@@ -347,7 +358,8 @@ class MoleculeRecord:
     @property
     def f2a_mean_kcal_mol(self) -> Optional[float]:
         scored = [
-            c.f2a_kcal_mol for c in self.per_pocket.values()
+            c.f2a_kcal_mol
+            for c in self.per_pocket.values()
             if c.f2a_kcal_mol is not None
         ]
         if not scored:
@@ -374,7 +386,8 @@ class MoleculeRecord:
         Wf-246-C was disabled or no pocket produced a score).
         """
         scored = [
-            c.metal_coord_kcal_mol for c in self.per_pocket.values()
+            c.metal_coord_kcal_mol
+            for c in self.per_pocket.values()
             if c.metal_coord_kcal_mol is not None
         ]
         return min(scored) if scored else None
@@ -382,7 +395,8 @@ class MoleculeRecord:
     @property
     def metal_coord_mean_kcal_mol(self) -> Optional[float]:
         scored = [
-            c.metal_coord_kcal_mol for c in self.per_pocket.values()
+            c.metal_coord_kcal_mol
+            for c in self.per_pocket.values()
             if c.metal_coord_kcal_mol is not None
         ]
         if not scored:
@@ -408,7 +422,8 @@ class MoleculeRecord:
         """Best V3-combined kcal/mol across pockets (None when V3
         did not fire for any pocket)."""
         scored = [
-            c.v3_combined_kcal_mol for c in self.per_pocket.values()
+            c.v3_combined_kcal_mol
+            for c in self.per_pocket.values()
             if c.v3_combined_kcal_mol is not None
         ]
         return min(scored) if scored else None
@@ -416,7 +431,8 @@ class MoleculeRecord:
     @property
     def v3_combined_mean_kcal_mol(self) -> Optional[float]:
         scored = [
-            c.v3_combined_kcal_mol for c in self.per_pocket.values()
+            c.v3_combined_kcal_mol
+            for c in self.per_pocket.values()
             if c.v3_combined_kcal_mol is not None
         ]
         if not scored:
@@ -438,6 +454,7 @@ class MoleculeRecord:
 # ---------------------------------------------------------------------------
 def _utc_now_iso() -> str:
     from datetime import datetime, timezone
+
     return datetime.now(timezone.utc).isoformat()
 
 
@@ -458,8 +475,7 @@ def read_smiles_csv(path: Path) -> List[str]:
                 lowered = [c.strip().lower() for c in row]
                 if "smiles" not in lowered:
                     raise ValueError(
-                        f"CSV at {path} has no 'smiles' column "
-                        f"(header={row!r})"
+                        f"CSV at {path} has no 'smiles' column " f"(header={row!r})"
                     )
                 header = row
                 col_idx = lowered.index("smiles")
@@ -472,9 +488,7 @@ def read_smiles_csv(path: Path) -> List[str]:
     return smiles_list
 
 
-def _resolve_pocket_receptor(
-    pocket_pdb_dir: Path, pocket_id: str
-) -> Optional[Path]:
+def _resolve_pocket_receptor(pocket_pdb_dir: Path, pocket_id: str) -> Optional[Path]:
     """Locate ``receptor.pdbqt`` under ``<pocket_pdb_dir>/<pocket_id>/``.
 
     Returns ``None`` if the receptor file is not staged.  Accepts both
@@ -503,11 +517,13 @@ def _pocket_center(receptor: Path) -> Tuple[float, float, float]:
                 if not (line.startswith("ATOM") or line.startswith("HETATM")):
                     continue
                 try:
-                    coords.append((
-                        float(line[30:38]),
-                        float(line[38:46]),
-                        float(line[46:54]),
-                    ))
+                    coords.append(
+                        (
+                            float(line[30:38]),
+                            float(line[38:46]),
+                            float(line[46:54]),
+                        )
+                    )
                 except (ValueError, IndexError):
                     continue
     except OSError:
@@ -544,14 +560,16 @@ PT_ATOMIC_NUM: int = 78
 #: complex still has these atoms after Pt-stripping (e.g. exotic Pt
 #: + PPh3 / S / Se / I shells), we additionally drop them so UFF has
 #: a chance to converge.
-UFF_UNSUPPORTED_ATOMIC_NUMS: frozenset[int] = frozenset({
-    78,  # Pt
-    46,  # Pd
-    77,  # Ir
-    44,  # Ru
-    79,  # Au
-    45,  # Rh
-})
+UFF_UNSUPPORTED_ATOMIC_NUMS: frozenset[int] = frozenset(
+    {
+        78,  # Pt
+        46,  # Pd
+        77,  # Ir
+        44,  # Ru
+        79,  # Au
+        45,  # Rh
+    }
+)
 
 
 def _strip_pt_and_largest_fragment(
@@ -721,6 +739,7 @@ def _get_f2a_scorer(
         from molmetal.scripts.wf329w3_f2a_metal_ligand import (  # type: ignore
             F2AMetalLigandScorer,
         )
+
         if modifier_kcal_mol is not None:
             return (
                 F2AMetalLigandScorer(
@@ -760,6 +779,7 @@ def _get_metal_coord_term() -> Tuple[Optional["MetalCoordinationTerm"], Optional
         from molmetal.molmetal_lam.sbdd_env.metal_coord_term import (  # type: ignore
             MetalCoordinationTerm,
         )
+
         _METAL_COORD_TERM = MetalCoordinationTerm()
         _METAL_COORD_IMPORT_ERROR = None
         return _METAL_COORD_TERM, None
@@ -768,14 +788,19 @@ def _get_metal_coord_term() -> Tuple[Optional["MetalCoordinationTerm"], Optional
         return None, _METAL_COORD_IMPORT_ERROR
 
 
-def _read_pocket_donor_coords(receptor: Path) -> Dict[str, List[Tuple[float, float, float]]]:
+def _read_pocket_donor_coords(
+    receptor: Path,
+) -> Dict[str, List[Tuple[float, float, float]]]:
     """Read pocket atom coords grouped by donor class (N/O/S/P).
 
     Returns ``{"N": [(x,y,z), ...], "O": [...], "S": [...], "P": [...]}``.
     Hydrogen atoms and non-donor heavy atoms are skipped.
     """
     coords: Dict[str, List[Tuple[float, float, float]]] = {
-        "N": [], "O": [], "S": [], "P": [],
+        "N": [],
+        "O": [],
+        "S": [],
+        "P": [],
     }
     try:
         with receptor.open("r", encoding="utf-8", errors="replace") as fh:
@@ -815,12 +840,13 @@ def _closest_donor_distances(
     Classes with zero donor atoms are omitted from the result.
     """
     import math as _math
+
     out: Dict[str, float] = {}
     for cls, atoms in donor_coords.items():
         if not atoms:
             continue
         best = float("inf")
-        for (x, y, z) in atoms:
+        for x, y, z in atoms:
             dx = x - metal_pos[0]
             dy = y - metal_pos[1]
             dz = z - metal_pos[2]
@@ -832,7 +858,9 @@ def _closest_donor_distances(
     return out
 
 
-def _metal_centre_coords_from_smiles(smiles: str) -> Optional[Tuple[float, float, float]]:
+def _metal_centre_coords_from_smiles(
+    smiles: str,
+) -> Optional[Tuple[float, float, float]]:
     """Return the 3-D position of the first metal centre (Pt/Pd/Ir/Ru/Au/Os/Rh/Re)
     from an RDKit ETKDGv3 conformer, or ``None`` when the SMILES has no
     metal centre or the embed fails.
@@ -946,6 +974,7 @@ def _get_wf246c_term(
         from molmetal.molmetal_lam.sbdd_env.metal_coord_term import (  # type: ignore  # noqa: WPS433
             MetalCoordinationTerm,
         )
+
         if kcal_per_unit is not None:
             return MetalCoordinationTerm(kcal_per_unit=float(kcal_per_unit)), None
         _WF246C_TERM = MetalCoordinationTerm()
@@ -1023,8 +1052,10 @@ def _smiles_to_pdbqt_string(
     if pt_strip:
         stripped, pt_strip_note = _strip_pt_and_largest_fragment(mol)
         if stripped is None or stripped.GetNumHeavyAtoms() == 0:
-            return None, STATUS_PDBQT_FAIL, (
-                f"pt-strip produced no dockable fragment: {pt_strip_note}"
+            return (
+                None,
+                STATUS_PDBQT_FAIL,
+                (f"pt-strip produced no dockable fragment: {pt_strip_note}"),
             )
         mol = stripped
 
@@ -1041,7 +1072,8 @@ def _smiles_to_pdbqt_string(
             embed_code = AllChem.EmbedMolecule(mol_h, params_v2)
             if int(embed_code) != 0:
                 return (
-                    None, STATUS_PDBQT_FAIL,
+                    None,
+                    STATUS_PDBQT_FAIL,
                     f"RDKit embed failed code={embed_code}",
                 )
         # MMFF94 optimisation — non-fatal if it returns non-zero.
@@ -1056,7 +1088,8 @@ def _smiles_to_pdbqt_string(
         from meeko import MoleculePreparation, PDBQTWriterLegacy  # type: ignore  # noqa: WPS433
     except Exception as exc:  # pragma: no cover - meeko optional
         return (
-            None, STATUS_PDBQT_FAIL,
+            None,
+            STATUS_PDBQT_FAIL,
             f"meeko import failed: {exc!r}",
         )
 
@@ -1072,9 +1105,7 @@ def _smiles_to_pdbqt_string(
         return None, STATUS_PDBQT_FAIL, f"meeko prepare failed: {exc!r}"
 
 
-def _write_pdbqt_tmp(
-    pdbqt_string: str, work_dir: Path, tag: str
-) -> Path:
+def _write_pdbqt_tmp(pdbqt_string: str, work_dir: Path, tag: str) -> Path:
     """Write a PDBQT string to a temp file under ``work_dir``."""
     out = work_dir / f"{tag}.pdbqt"
     out.write_text(pdbqt_string, encoding="utf-8")
@@ -1096,7 +1127,10 @@ def _probe_vina_binary(vina_bin: str) -> Tuple[bool, str]:
     try:
         cp = subprocess.run(
             [str(path), "--version"],
-            check=False, capture_output=True, text=True, timeout=10,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
         return False, ""
@@ -1154,7 +1188,10 @@ def _probe_smina_binary(smina_bin: str = DEFAULT_SMINA_BIN) -> Tuple[bool, str]:
     try:
         cp = subprocess.run(
             [str(path), "--version"],
-            check=False, capture_output=True, text=True, timeout=10,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
         return False, ""
@@ -1191,7 +1228,10 @@ def _probe_quickvina2_binary(
     try:
         cp = subprocess.run(
             [str(path), "--version"],
-            check=False, capture_output=True, text=True, timeout=10,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
         return False, ""
@@ -1353,19 +1393,32 @@ def _dock_one(
 
     cmd = [
         str(vina_bin),
-        "--receptor", str(receptor),
-        "--ligand", str(lig_pdbqt),
-        "--center_x", f"{center[0]:.3f}",
-        "--center_y", f"{center[1]:.3f}",
-        "--center_z", f"{center[2]:.3f}",
-        "--size_x", f"{box_size:.3f}",
-        "--size_y", f"{box_size:.3f}",
-        "--size_z", f"{box_size:.3f}",
-        "--out", str(out_pdbqt),
-        "--exhaustiveness", str(int(exhaustiveness)),
-        "--num_modes", str(int(n_poses)),
-        "--seed", str(int(seed)),
-        "--verbosity", "0",
+        "--receptor",
+        str(receptor),
+        "--ligand",
+        str(lig_pdbqt),
+        "--center_x",
+        f"{center[0]:.3f}",
+        "--center_y",
+        f"{center[1]:.3f}",
+        "--center_z",
+        f"{center[2]:.3f}",
+        "--size_x",
+        f"{box_size:.3f}",
+        "--size_y",
+        f"{box_size:.3f}",
+        "--size_z",
+        f"{box_size:.3f}",
+        "--out",
+        str(out_pdbqt),
+        "--exhaustiveness",
+        str(int(exhaustiveness)),
+        "--num_modes",
+        str(int(n_poses)),
+        "--seed",
+        str(int(seed)),
+        "--verbosity",
+        "0",
     ]
 
     try:
@@ -1387,7 +1440,9 @@ def _dock_one(
             cell.wall_time_s = time.perf_counter() - t0
             return cell
         except (FileNotFoundError, OSError) as exc:
-            cell.status = STATUS_NO_RECEPTOR if "receptor" in str(exc) else STATUS_DOCK_FAIL
+            cell.status = (
+                STATUS_NO_RECEPTOR if "receptor" in str(exc) else STATUS_DOCK_FAIL
+            )
             cell.note = f"subprocess error: {exc!r}"
             cell.wall_time_s = time.perf_counter() - t0
             return cell
@@ -1409,7 +1464,9 @@ def _dock_one(
             cell.note = f"vina did not write --out file at {out_pdbqt}"
             cell.wall_time_s = time.perf_counter() - t0
             return cell
-        scores = _parse_vina_output(out_pdbqt.read_text(encoding="utf-8", errors="replace"))
+        scores = _parse_vina_output(
+            out_pdbqt.read_text(encoding="utf-8", errors="replace")
+        )
         if not scores:
             cell.status = STATUS_DOCK_FAIL
             cell.note = "vina output had no VINA RESULT lines"
@@ -1441,12 +1498,8 @@ def _dock_one(
                 cell.f2a_n_bonds = int(n_bonds)
                 if n_bonds > 0:
                     dispatch = scorer_pc.dispatch(smiles)
-                    cell.f2a_matched_patterns = ",".join(
-                        dispatch.matched_patterns
-                    )
-                cell.f2a_recovery_status, _gap = scorer_pc.classify_recovery(
-                    f2a_score
-                )
+                    cell.f2a_matched_patterns = ",".join(dispatch.matched_patterns)
+                cell.f2a_recovery_status, _gap = scorer_pc.classify_recovery(f2a_score)
 
             # Wf-333-V3 P2: per-bond F2(a) selector.  Use a separate
             # scorer instance with ``use_per_bond=True`` so the
@@ -1541,9 +1594,7 @@ def _dock_one(
                 metal_pos = _metal_centre_coords_from_smiles(smiles)
                 donor_coords = _read_pocket_donor_coords(receptor)
                 if metal_pos is not None and donor_coords:
-                    closest = _closest_donor_distances(
-                        metal_pos, donor_coords
-                    )
+                    closest = _closest_donor_distances(metal_pos, donor_coords)
                     if closest:
                         try:
                             score_obj = term.score(
@@ -1554,12 +1605,8 @@ def _dock_one(
                             score_obj = None
                         if score_obj is not None:
                             cell.metal_coord_score = score_obj.total
-                            cell.metal_coord_distance_score = (
-                                score_obj.distance_score
-                            )
-                            cell.metal_coord_geometry_score = (
-                                score_obj.geometry_score
-                            )
+                            cell.metal_coord_distance_score = score_obj.distance_score
+                            cell.metal_coord_geometry_score = score_obj.geometry_score
                             cell.metal_coord_hsab_score = score_obj.hsab_score
                             adj = term.kcal_adjustment(score_obj)
                             cell.metal_coord_adjustment = (
@@ -1616,9 +1663,7 @@ def _dock_one(
                 else:
                     combined = float(base) + float(mc_adj)
             cell.v3_combined_kcal_mol = float(combined)
-            cell.v3_combined_lift_kcal_mol = (
-                float(combined) - float(cell.best_kcal_mol)
-            )
+            cell.v3_combined_lift_kcal_mol = float(combined) - float(cell.best_kcal_mol)
             # Recovery status classification.
             gap_to_industry = float(combined) - (-7.0)
             if gap_to_industry <= 0.0:
@@ -1626,9 +1671,7 @@ def _dock_one(
             elif gap_to_industry <= 1.7:
                 cell.v3_combined_recovery_status = "RECOVERY_BORDERLINE"
             else:
-                cell.v3_combined_recovery_status = (
-                    "HONEST_NEG_VINA_PERSISTENT"
-                )
+                cell.v3_combined_recovery_status = "HONEST_NEG_VINA_PERSISTENT"
 
         return cell
     finally:
@@ -1772,7 +1815,8 @@ def build_panel(
             vina_ok = sel_ok
             vina_version = (
                 f"engine={selected_engine} bin={selected_bin}"
-                if sel_ok else f"engine={engine} (no probe ok)"
+                if sel_ok
+                else f"engine={engine} (no probe ok)"
             )
         else:
             vina_ok, vina_version = _probe_vina_binary(vina_bin)
@@ -1812,9 +1856,7 @@ def build_panel(
         except OSError:
             pocket_donor_counts_cache[p] = None
             continue
-        pocket_donor_counts_cache[p] = pocket_donor_counts_from_atomicnums(
-            atomic_nums
-        )
+        pocket_donor_counts_cache[p] = pocket_donor_counts_from_atomicnums(atomic_nums)
 
     molecules: List[MoleculeRecord] = []
     n_parsed = 0
@@ -1854,9 +1896,7 @@ def build_panel(
                             f"meeko_{pocket_id}_"
                             f"{abs(hash((smiles, pocket_id))) % (10 ** 8)}"
                         )
-                        lig_path = _write_pdbqt_tmp(
-                            pdbqt_string, work_dir, tag
-                        )
+                        lig_path = _write_pdbqt_tmp(pdbqt_string, work_dir, tag)
                         mol_rec.per_pocket[pocket_id] = PocketCell(
                             pocket=pocket_id,
                             status=STATUS_MEEKO_PREP_ONLY,
@@ -1959,34 +1999,37 @@ def build_panel(
             "v3_combined_kcal_mol": c.v3_combined_kcal_mol,
             "v3_combined_lift_kcal_mol": (
                 round(c.v3_combined_lift_kcal_mol, 4)
-                if c.v3_combined_lift_kcal_mol is not None else None
+                if c.v3_combined_lift_kcal_mol is not None
+                else None
             ),
             "v3_combined_recovery_status": c.v3_combined_recovery_status,
         }
 
     per_molecule_json: List[Dict[str, Any]] = []
     for m in molecules:
-        per_molecule_json.append({
-            "smiles": m.smiles,
-            "parse_ok": bool(m.parse_ok),
-            "pdbqt_ok": bool(m.pdbqt_ok),
-            "per_pocket": {p: _cell_to_dict(c) for p, c in m.per_pocket.items()},
-            "best_pocket": m.best_pocket,
-            "best_kcal_mol": m.best_kcal_mol,
-            "mean_kcal_mol": m.mean_kcal_mol,
-            # Wf-329-W3 F2(a) per-molecule aggregate.
-            "f2a_best_kcal_mol": m.f2a_best_kcal_mol,
-            "f2a_mean_kcal_mol": m.f2a_mean_kcal_mol,
-            "f2a_n_bonds_total": m.f2a_n_bonds_total,
-            # Wf-333-V2 Wf-246-C per-molecule aggregate.
-            "metal_coord_best_kcal_mol": m.metal_coord_best_kcal_mol,
-            "metal_coord_mean_kcal_mol": m.metal_coord_mean_kcal_mol,
-            "metal_coord_total_score": m.metal_coord_total_score,
-            # Wf-333-V3 V3 combined lift per-molecule aggregate.
-            "v3_combined_best_kcal_mol": m.v3_combined_best_kcal_mol,
-            "v3_combined_mean_kcal_mol": m.v3_combined_mean_kcal_mol,
-            "v3_combined_lift_total": m.v3_combined_lift_total,
-        })
+        per_molecule_json.append(
+            {
+                "smiles": m.smiles,
+                "parse_ok": bool(m.parse_ok),
+                "pdbqt_ok": bool(m.pdbqt_ok),
+                "per_pocket": {p: _cell_to_dict(c) for p, c in m.per_pocket.items()},
+                "best_pocket": m.best_pocket,
+                "best_kcal_mol": m.best_kcal_mol,
+                "mean_kcal_mol": m.mean_kcal_mol,
+                # Wf-329-W3 F2(a) per-molecule aggregate.
+                "f2a_best_kcal_mol": m.f2a_best_kcal_mol,
+                "f2a_mean_kcal_mol": m.f2a_mean_kcal_mol,
+                "f2a_n_bonds_total": m.f2a_n_bonds_total,
+                # Wf-333-V2 Wf-246-C per-molecule aggregate.
+                "metal_coord_best_kcal_mol": m.metal_coord_best_kcal_mol,
+                "metal_coord_mean_kcal_mol": m.metal_coord_mean_kcal_mol,
+                "metal_coord_total_score": m.metal_coord_total_score,
+                # Wf-333-V3 V3 combined lift per-molecule aggregate.
+                "v3_combined_best_kcal_mol": m.v3_combined_best_kcal_mol,
+                "v3_combined_mean_kcal_mol": m.v3_combined_mean_kcal_mol,
+                "v3_combined_lift_total": m.v3_combined_lift_total,
+            }
+        )
 
     # ------------------------------------------------------------------
     # Aggregate stats.
@@ -1994,36 +2037,22 @@ def build_panel(
     aggregate_per_pocket: Dict[str, Dict[str, Any]] = {}
     for pocket_id in pockets:
         cells = [
-            m.per_pocket.get(pocket_id) for m in molecules
-            if pocket_id in m.per_pocket
+            m.per_pocket.get(pocket_id) for m in molecules if pocket_id in m.per_pocket
         ]
         cells = [c for c in cells if c is not None]
-        real_scores = [
-            c.best_kcal_mol for c in cells
-            if c.best_kcal_mol is not None
-        ]
-        f2a_scores = [
-            c.f2a_kcal_mol for c in cells
-            if c.f2a_kcal_mol is not None
-        ]
+        real_scores = [c.best_kcal_mol for c in cells if c.best_kcal_mol is not None]
+        f2a_scores = [c.f2a_kcal_mol for c in cells if c.f2a_kcal_mol is not None]
         mc_scores = [
-            c.metal_coord_kcal_mol for c in cells
-            if c.metal_coord_kcal_mol is not None
+            c.metal_coord_kcal_mol for c in cells if c.metal_coord_kcal_mol is not None
         ]
         n_real = sum(1 for c in cells if c.status == STATUS_REAL_VINA)
         n_stub = sum(1 for c in cells if c.status == STATUS_STUB_FALLBACK)
         # Wf-336-X4: meeko alternative integration — count cells that
         # recovered from STUB_FALLBACK to MEEKO_PREP_ONLY (the prepared
         # PDBQT is on disk for downstream consumption).
-        n_meeko = sum(
-            1 for c in cells
-            if c.status == STATUS_MEEKO_PREP_ONLY
-        )
+        n_meeko = sum(1 for c in cells if c.status == STATUS_MEEKO_PREP_ONLY)
         n_f2a = sum(1 for c in cells if c.f2a_n_bonds > 0)
-        n_mc = sum(
-            1 for c in cells
-            if c.metal_coord_total is not None
-        )
+        n_mc = sum(1 for c in cells if c.metal_coord_total is not None)
         aggregate_per_pocket[pocket_id] = {
             "n": int(len(cells)),
             "n_real_vina": int(n_real),
@@ -2033,31 +2062,24 @@ def build_panel(
             "n_other": int(len(cells) - n_real - n_stub - n_meeko),
             "mean": (
                 float(round(sum(real_scores) / len(real_scores), 4))
-                if real_scores else None
+                if real_scores
+                else None
             ),
-            "min": (
-                float(round(min(real_scores), 4)) if real_scores else None
-            ),
-            "max": (
-                float(round(max(real_scores), 4)) if real_scores else None
-            ),
+            "min": (float(round(min(real_scores), 4)) if real_scores else None),
+            "max": (float(round(max(real_scores), 4)) if real_scores else None),
             # Wf-329-W3 F2(a) MetalLigandExchange aggregate.
             "f2a_mean": (
                 float(round(sum(f2a_scores) / len(f2a_scores), 4))
-                if f2a_scores else None
+                if f2a_scores
+                else None
             ),
-            "f2a_min": (
-                float(round(min(f2a_scores), 4)) if f2a_scores else None
-            ),
+            "f2a_min": (float(round(min(f2a_scores), 4)) if f2a_scores else None),
             "f2a_n_covalent": int(n_f2a),
             # Wf-333-V2 Wf-246-C metal-coordination aggregate.
             "metal_coord_mean": (
-                float(round(sum(mc_scores) / len(mc_scores), 4))
-                if mc_scores else None
+                float(round(sum(mc_scores) / len(mc_scores), 4)) if mc_scores else None
             ),
-            "metal_coord_min": (
-                float(round(min(mc_scores), 4)) if mc_scores else None
-            ),
+            "metal_coord_min": (float(round(min(mc_scores), 4)) if mc_scores else None),
             "metal_coord_n_with_total": int(n_mc),
         }
 
@@ -2081,7 +2103,8 @@ def build_panel(
 
     mean_score_overall: Optional[float] = (
         float(round(sum(all_real_scores) / len(all_real_scores), 4))
-        if all_real_scores else None
+        if all_real_scores
+        else None
     )
 
     # Wf-329-W3: F2(a) cohort-wide aggregates.
@@ -2093,7 +2116,8 @@ def build_panel(
     ]
     f2a_mean_score_overall: Optional[float] = (
         float(round(sum(all_f2a_scores) / len(all_f2a_scores), 4))
-        if all_f2a_scores else None
+        if all_f2a_scores
+        else None
     )
     f2a_cohort_median: Optional[float] = None
     if all_f2a_scores:
@@ -2111,7 +2135,11 @@ def build_panel(
     # gives the per-cell median covalent lift.  We compute it as
     # median(F2(a)) - median(Vina) for the same cell population.
     f2a_cohort_median_lift: Optional[float] = None
-    if all_real_scores and all_f2a_scores and len(all_real_scores) == len(all_f2a_scores):
+    if (
+        all_real_scores
+        and all_f2a_scores
+        and len(all_real_scores) == len(all_f2a_scores)
+    ):
         sorted_vina = sorted(all_real_scores)
         sorted_f2a = sorted(all_f2a_scores)
         n = len(sorted_vina)
@@ -2133,7 +2161,8 @@ def build_panel(
     ]
     mc_mean_score_overall: Optional[float] = (
         float(round(sum(all_mc_scores) / len(all_mc_scores), 4))
-        if all_mc_scores else None
+        if all_mc_scores
+        else None
     )
     mc_cohort_median: Optional[float] = None
     if all_mc_scores:
@@ -2196,7 +2225,8 @@ def build_panel(
     ]
     v3_mean_score_overall: Optional[float] = (
         float(round(sum(all_v3_scores) / len(all_v3_scores), 4))
-        if all_v3_scores else None
+        if all_v3_scores
+        else None
     )
     v3_cohort_median: Optional[float] = None
     if all_v3_scores:
@@ -2229,26 +2259,31 @@ def build_panel(
     aggregate_per_pocket_pb: Dict[str, Dict[str, Any]] = {}
     for pocket_id in pockets:
         cells = [
-            m.per_pocket.get(pocket_id) for m in molecules
-            if pocket_id in m.per_pocket
+            m.per_pocket.get(pocket_id) for m in molecules if pocket_id in m.per_pocket
         ]
         cells = [c for c in cells if c is not None]
         pb_scores = [
-            c.f2a_per_bond_kcal_mol for c in cells
+            c.f2a_per_bond_kcal_mol
+            for c in cells
             if c.f2a_per_bond_kcal_mol is not None
         ]
         v3_pocket_scores = [
-            c.v3_combined_kcal_mol for c in cells
-            if c.v3_combined_kcal_mol is not None
+            c.v3_combined_kcal_mol for c in cells if c.v3_combined_kcal_mol is not None
         ]
         pb_med = float(round(sum(pb_scores) / len(pb_scores), 4)) if pb_scores else None
-        v3_med = float(round(sum(v3_pocket_scores) / len(v3_pocket_scores), 4)) if v3_pocket_scores else None
+        v3_med = (
+            float(round(sum(v3_pocket_scores) / len(v3_pocket_scores), 4))
+            if v3_pocket_scores
+            else None
+        )
         # Update the per-pocket aggregate dict in place.
         if pocket_id in aggregate_per_pocket:
-            aggregate_per_pocket[pocket_id].update({
-                "f2a_per_bond_mean": pb_med,
-                "v3_combined_mean": v3_med,
-            })
+            aggregate_per_pocket[pocket_id].update(
+                {
+                    "f2a_per_bond_mean": pb_med,
+                    "v3_combined_mean": v3_med,
+                }
+            )
 
     metadata = {
         "panel_version": PANEL_VERSION,
@@ -2273,9 +2308,7 @@ def build_panel(
         # Wf-336-X4: meeko alternative integration probe.
         "meeko_available": bool(meeko_probe.get("available", False)),
         "meeko_version": str(meeko_probe.get("version", "")),
-        "meeko_moleculeprep_class": str(
-            meeko_probe.get("moleculeprep_class", "")
-        ),
+        "meeko_moleculeprep_class": str(meeko_probe.get("moleculeprep_class", "")),
         "meeko_pdbqt_writer": str(meeko_probe.get("pdbqt_writer", "")),
         "meeko_import_error": str(meeko_probe.get("import_error", "")),
         "meeko_alternative_path": (
@@ -2287,10 +2320,7 @@ def build_panel(
             # could rescue a docking cell that would otherwise be
             # STUB_FALLBACK (i.e. ``vina_binary_ok == False`` and
             # ``meeko_available == True``).
-            bool(
-                meeko_probe.get("available", False)
-                and not vina_ok
-            )
+            bool(meeko_probe.get("available", False) and not vina_ok)
         ),
         "meeko_only_mode": bool(meeko_only),
         # Wf-329-W3 F2(a) MetalLigandExchange metadata.
@@ -2334,7 +2364,8 @@ def build_panel(
             "industry_cutoff_kcal_mol": -7.0,
             "f2a_cohort_median_gap_to_industry": (
                 float(round(f2a_cohort_median - (-7.0), 4))
-                if f2a_cohort_median is not None else None
+                if f2a_cohort_median is not None
+                else None
             ),
             # Wf-333-V2 Wf-246-C metal-coordination cohort aggregate.
             "metal_coord_mean_score_overall": mc_mean_score_overall,
@@ -2343,7 +2374,8 @@ def build_panel(
             "metal_coord_cohort_median_lift_vs_f2a": mc_over_f2a_median_lift,
             "metal_coord_cohort_median_gap_to_industry": (
                 float(round(mc_cohort_median - (-7.0), 4))
-                if mc_cohort_median is not None else None
+                if mc_cohort_median is not None
+                else None
             ),
             # Wf-333-V3 V3 combined cohort aggregate.
             "v3_combined_mean_score_overall": v3_mean_score_overall,
@@ -2351,7 +2383,8 @@ def build_panel(
             "v3_combined_cohort_median_lift_vs_vina": v3_cohort_median_lift,
             "v3_combined_cohort_median_gap_to_industry": (
                 float(round(v3_cohort_median - (-7.0), 4))
-                if v3_cohort_median is not None else None
+                if v3_cohort_median is not None
+                else None
             ),
         },
     }
@@ -2360,6 +2393,7 @@ def build_panel(
 def tempfile_workspace() -> str:
     """Return a unique temp workspace path (test seam)."""
     import tempfile
+
     return tempfile.mkdtemp(prefix="wf264_vina_")
 
 
@@ -2378,69 +2412,85 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--smiles-csv", required=True, type=Path,
+        "--smiles-csv",
+        required=True,
+        type=Path,
         help="CSV with a 'smiles' column (one molecule per row).",
     )
     p.add_argument(
-        "--pocket-pdb-dir", required=True, type=Path,
+        "--pocket-pdb-dir",
+        required=True,
+        type=Path,
         help=(
             "Directory containing one subdirectory per pocket, each "
             "with receptor.pdbqt (Wf-30 staging layout)."
         ),
     )
     p.add_argument(
-        "--out-json", required=True, type=Path,
+        "--out-json",
+        required=True,
+        type=Path,
         help="Output JSON path; will be created or overwritten.",
     )
     p.add_argument(
-        "--vina-bin", type=str, default=DEFAULT_VINA_BIN,
+        "--vina-bin",
+        type=str,
+        default=DEFAULT_VINA_BIN,
+        help=(f"Path to the AutoDock Vina CLI binary. " f"Default: {DEFAULT_VINA_BIN}"),
+    )
+    p.add_argument(
+        "--n-candidates",
+        type=int,
+        default=DEFAULT_N_POSES,
+        help=(f"Vina --num_modes (n_poses). " f"Default: {DEFAULT_N_POSES}"),
+    )
+    p.add_argument(
+        "--pockets",
+        nargs="+",
+        default=list(DEFAULT_POCKETS),
         help=(
-            f"Path to the AutoDock Vina CLI binary. "
-            f"Default: {DEFAULT_VINA_BIN}"
+            "Pocket identifiers to enumerate. " f"Default: {' '.join(DEFAULT_POCKETS)}"
         ),
     )
     p.add_argument(
-        "--n-candidates", type=int, default=DEFAULT_N_POSES,
-        help=(
-            f"Vina --num_modes (n_poses). "
-            f"Default: {DEFAULT_N_POSES}"
-        ),
-    )
-    p.add_argument(
-        "--pockets", nargs="+", default=list(DEFAULT_POCKETS),
-        help=(
-            "Pocket identifiers to enumerate. "
-            f"Default: {' '.join(DEFAULT_POCKETS)}"
-        ),
-    )
-    p.add_argument(
-        "--exhaustiveness", type=int, default=DEFAULT_EXHAUSTIVENESS,
+        "--exhaustiveness",
+        type=int,
+        default=DEFAULT_EXHAUSTIVENESS,
         help=f"Vina --exhaustiveness. Default: {DEFAULT_EXHAUSTIVENESS}",
     )
     p.add_argument(
-        "--box-size", type=float, default=DEFAULT_BOX_SIZE,
+        "--box-size",
+        type=float,
+        default=DEFAULT_BOX_SIZE,
         help=f"Cubed box size (Å) around pocket centre. Default: {DEFAULT_BOX_SIZE}",
     )
     p.add_argument(
-        "--seed", type=int, default=DEFAULT_SEED,
+        "--seed",
+        type=int,
+        default=DEFAULT_SEED,
         help=f"Vina --seed. Default: {DEFAULT_SEED}",
     )
     p.add_argument(
-        "--dock-timeout", type=int, default=DEFAULT_DOCK_TIMEOUT,
+        "--dock-timeout",
+        type=int,
+        default=DEFAULT_DOCK_TIMEOUT,
         help=(
             f"Per-dock timeout (s). Default: {DEFAULT_DOCK_TIMEOUT}. "
             f"Use a small value for smoke tests."
         ),
     )
     p.add_argument(
-        "--work-dir", type=Path, default=None,
+        "--work-dir",
+        type=Path,
+        default=None,
         help=(
             "Working directory for per-dock PDBQT + log files "
             "(auto-created). Defaults to a sibling of --out-json."
         ),
     )
     p.add_argument(
-        "--pt-strip", action="store_true",
+        "--pt-strip",
+        action="store_true",
         help=(
             "Wf-301B: strip precious-metal coordination shell "
             "([Pt](lig1)(lig2)...) and dock the largest remaining "
@@ -2450,7 +2500,8 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--use-f2a-metal-ligand", action="store_true",
+        "--use-f2a-metal-ligand",
+        action="store_true",
         help=(
             "Wf-329-W3: apply the F2(a) MetalLigandExchange "
             "covalent scoring modifier on top of Vina kcal/mol. "
@@ -2463,7 +2514,9 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--f2a-modifier-kcal-mol", type=float, default=None,
+        "--f2a-modifier-kcal-mol",
+        type=float,
+        default=None,
         help=(
             "Wf-329-W3: override the default covalent scoring "
             "modifier (-1.5 kcal/mol per detected covalent bond). "
@@ -2471,7 +2524,8 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--use-wf246c-metal-coord", action="store_true",
+        "--use-wf246c-metal-coord",
+        action="store_true",
         help=(
             "Wf-333-V2: apply the Wf-246-C metal-coordination "
             "composite (coordination geometry + HSAB + distance) "
@@ -2488,7 +2542,9 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--wf246c-kcal-per-unit", type=float, default=None,
+        "--wf246c-kcal-per-unit",
+        type=float,
+        default=None,
         help=(
             "Wf-333-V2: override the Wf-246-C kcal/mol scale "
             "(default 1.0 kcal/mol per unit of composite "
@@ -2497,7 +2553,8 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--use-per-bond-f2a", action="store_true",
+        "--use-per-bond-f2a",
+        action="store_true",
         help=(
             "Wf-333-V3 P2: replace per-centre F2(a) count with "
             "per-metal-donor-arm-bond count. For cisplatin this "
@@ -2507,7 +2564,8 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--use-distance-score", action="store_true",
+        "--use-distance-score",
+        action="store_true",
         help=(
             "Wf-333-V3 P3: wire the Wf-246-C distance sub-score "
             "from the docked pocket's donor-atom positions to the "
@@ -2517,11 +2575,14 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--quiet", action="store_true", help="Suppress progress logging.",
+        "--quiet",
+        action="store_true",
+        help="Suppress progress logging.",
     )
     # Wf-336-X4: meeko alternative integration CLI flag.
     p.add_argument(
-        "--meeko-only", action="store_true",
+        "--meeko-only",
+        action="store_true",
         help=(
             "Wf-336-X4: skip Vina CLI invocation entirely. Only the "
             "meeko ligand preparation step runs; every cell is "
@@ -2532,7 +2593,9 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     # Wf-338-V2: Smina / QuickVina 2 engine recovery paths.
     p.add_argument(
-        "--engine", type=str, default=DEFAULT_ENGINE,
+        "--engine",
+        type=str,
+        default=DEFAULT_ENGINE,
         choices=("vina", "smina", "quickvina2", "auto"),
         help=(
             "Wf-338-V2: docking engine selector. "
@@ -2545,14 +2608,18 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--smina-bin", type=str, default=DEFAULT_SMINA_BIN,
+        "--smina-bin",
+        type=str,
+        default=DEFAULT_SMINA_BIN,
         help=(
             "Wf-338-V2: path to the Smina CLI binary (used when "
             "--engine={smina,auto}). Default: 'smina' (PATH lookup)."
         ),
     )
     p.add_argument(
-        "--qvina2-bin", type=str, default=DEFAULT_QUICKVINA2_BIN,
+        "--qvina2-bin",
+        type=str,
+        default=DEFAULT_QUICKVINA2_BIN,
         help=(
             "Wf-338-V2: path to the QuickVina 2 CLI binary (used when "
             "--engine={quickvina2,auto}). Default: 'qvina2' (PATH lookup)."

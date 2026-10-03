@@ -294,8 +294,8 @@ def lift_to_hilbert_dim(
 
     # Build the column blocks.  Each is an (N, k) array.
     cols: List[np.ndarray] = []
-    cols.append(np.ones((n, 1), dtype=float))             # c0
-    cols.append(X)                                          # x1..xF
+    cols.append(np.ones((n, 1), dtype=float))  # c0
+    cols.append(X)  # x1..xF
 
     # Pairwise products x_i * x_j with i < j, and individual squares.
     pairs: List[np.ndarray] = []
@@ -379,9 +379,7 @@ def make_kfold_indices(
     cursor = 0
     for size in fold_sizes:
         test_idx = perm[cursor : cursor + size]
-        train_idx = np.concatenate(
-            [perm[:cursor], perm[cursor + size :]]
-        )
+        train_idx = np.concatenate([perm[:cursor], perm[cursor + size :]])
         folds.append((train_idx, test_idx))
         cursor += size
     return folds
@@ -394,7 +392,7 @@ def make_kfold_indices(
 class FoldResult:
     """Per-fold record for one backend."""
 
-    backend: str           # "evolutionary" | "hilbert"
+    backend: str  # "evolutionary" | "hilbert"
     fold_idx: int
     n_train: int
     n_test: int
@@ -539,15 +537,21 @@ def evaluate_backend_on_fold(
     """Dispatch to the requested backend and return a :class:`FoldResult`."""
     if backend == "evolutionary":
         y_pred, wall_s, _fold_idx = fit_evolutionary_fold(
-            X_train, y_train, X_test,
+            X_train,
+            y_train,
+            X_test,
             feature_names=feature_names,
-            fold_idx=fold_idx, seed=seed,
+            fold_idx=fold_idx,
+            seed=seed,
         )
     elif backend == "hilbert":
         y_pred, wall_s, _fold_idx = fit_hilbert_fold(
-            X_train, y_train, X_test,
+            X_train,
+            y_train,
+            X_test,
             feature_names=feature_names,
-            fold_idx=fold_idx, seed=seed,
+            fold_idx=fold_idx,
+            seed=seed,
             population_dim=int(population_dim),
         )
     else:
@@ -617,12 +621,8 @@ def evaluate_dmpnn_baseline_on_fold(
 
     t0 = time.perf_counter()
     try:
-        train_pred = score_any("boltz_affinity", molecules=list(smiles_train))[
-            "values"
-        ]
-        test_pred = score_any("boltz_affinity", molecules=list(smiles_test))[
-            "values"
-        ]
+        train_pred = score_any("boltz_affinity", molecules=list(smiles_train))["values"]
+        test_pred = score_any("boltz_affinity", molecules=list(smiles_test))["values"]
     except AdapterUnavailable as exc:
         return {
             "r2_test": float("nan"),
@@ -705,10 +705,16 @@ def run_extended_cv_benchmark(
                 "elapsed_seconds": float,
             }
     """
-    pop_dim = int(population_dim) if population_dim is not None else HILBERT_POPULATION_DIM
+    pop_dim = (
+        int(population_dim) if population_dim is not None else HILBERT_POPULATION_DIM
+    )
     h_n_iters = int(hilbert_n_iters) if hilbert_n_iters is not None else HILBERT_N_ITERS
-    h_lr_primal = float(hilbert_lr_primal) if hilbert_lr_primal is not None else HILBERT_LR_PRIMAL
-    h_lr_dual = float(hilbert_lr_dual) if hilbert_lr_dual is not None else HILBERT_LR_DUAL
+    h_lr_primal = (
+        float(hilbert_lr_primal) if hilbert_lr_primal is not None else HILBERT_LR_PRIMAL
+    )
+    h_lr_dual = (
+        float(hilbert_lr_dual) if hilbert_lr_dual is not None else HILBERT_LR_DUAL
+    )
 
     feats = load_platinai_features(
         csv_path=Path(csv_path),
@@ -736,7 +742,10 @@ def run_extended_cv_benchmark(
         evo_results.append(
             evaluate_backend_on_fold(
                 "evolutionary",
-                X_train, y_train, X_test, y_test,
+                X_train,
+                y_train,
+                X_test,
+                y_test,
                 feature_names=hilbert_feature_names,
                 fold_idx=fold_idx,
                 seed=int(seed),
@@ -744,7 +753,10 @@ def run_extended_cv_benchmark(
         )
         hilbert_results.append(
             _evaluate_hilbert_fold(
-                X_train, y_train, X_test, y_test,
+                X_train,
+                y_train,
+                X_test,
+                y_test,
                 feature_names=hilbert_feature_names,
                 fold_idx=fold_idx,
                 seed=int(seed),
@@ -761,11 +773,13 @@ def run_extended_cv_benchmark(
     r2_delta = abs(evo_agg["r2_mean"] - hilbert_agg["r2_mean"])
     speedup = (
         evo_agg["wall_s_mean"] / hilbert_agg["wall_s_mean"]
-        if hilbert_agg["wall_s_mean"] > 0 else float("inf")
+        if hilbert_agg["wall_s_mean"] > 0
+        else float("inf")
     )
 
     elapsed = float(time.perf_counter() - t_start)
     from datetime import datetime, timezone
+
     timestamp = datetime.now(timezone.utc).isoformat()
 
     return {
@@ -917,10 +931,7 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "--hilbert-lr",
         type=float,
         default=None,
-        help=(
-            f"Override HILBERT_LR_PRIMAL/DUAL (default "
-            f"{HILBERT_LR_PRIMAL})."
-        ),
+        help=(f"Override HILBERT_LR_PRIMAL/DUAL (default " f"{HILBERT_LR_PRIMAL})."),
     )
     return p.parse_args(argv)
 
@@ -945,7 +956,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     elapsed = float(time.perf_counter() - t0)
 
     evo = payload["evolutionary"]  # type: ignore[index]
-    hil = payload["hilbert"]        # type: ignore[index]
+    hil = payload["hilbert"]  # type: ignore[index]
     print(
         f"[wf_astsr_extended] evolutionary R² = "
         f"{evo['r2_mean']:.4f} ± {evo['r2_std']:.4f}  "

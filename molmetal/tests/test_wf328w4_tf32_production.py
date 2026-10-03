@@ -120,14 +120,14 @@ def test_tf32_flag_override():
     try:
         # --- CLI parser test ---
         args_on = parse_args(["--tf32"])
-        assert args_on.tf32 is True, (
-            f"--tf32 should yield args.tf32=True; got {args_on.tf32!r}"
-        )
+        assert (
+            args_on.tf32 is True
+        ), f"--tf32 should yield args.tf32=True; got {args_on.tf32!r}"
 
         args_off = parse_args(["--no-tf32"])
-        assert args_off.tf32 is False, (
-            f"--no-tf32 should yield args.tf32=False; got {args_off.tf32!r}"
-        )
+        assert (
+            args_off.tf32 is False
+        ), f"--no-tf32 should yield args.tf32=False; got {args_off.tf32!r}"
 
         args_default = parse_args([])
         assert args_default.tf32 is DEFAULT_TF32, (

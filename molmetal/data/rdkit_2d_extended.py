@@ -63,6 +63,7 @@ Lit anchors
 * arXiv:2510.23428 (MetaModel = RDKit + ChemProp +0.22 AUC on BACE)
 * Landrum G. RDKit: Open-Source Cheminformatics.  https://www.rdkit.org
 """
+
 from __future__ import annotations
 
 import sys
@@ -77,6 +78,7 @@ import numpy as np
 try:
     from rdkit import Chem, RDLogger  # type: ignore
     from rdkit.Chem import Descriptors  # type: ignore
+
     RDLogger.DisableLog("rdApp.*")
     _HAS_RDKIT = True
     _RDKIT_IMPORT_ERROR: Optional[BaseException] = None
@@ -123,6 +125,7 @@ def _load_canonical_columns() -> Tuple[Tuple[str, ...], Tuple[str, ...]]:
             RDKIT_2D_EXTENDED_FEATURE_COLUMNS,
             RDKIT_2D_FEATURE_COLUMNS,
         )
+
         return (
             tuple(RDKIT_2D_EXTENDED_FEATURE_COLUMNS),
             tuple(RDKIT_2D_FEATURE_COLUMNS),
@@ -190,7 +193,9 @@ _FALLBACK_32D_COLUMNS: Tuple[str, ...] = (
 )
 
 
-_RDKIT_2D_EXTENDED_FEATURE_COLUMNS, _RDKIT_2D_FEATURE_COLUMNS = _load_canonical_columns()
+_RDKIT_2D_EXTENDED_FEATURE_COLUMNS, _RDKIT_2D_FEATURE_COLUMNS = (
+    _load_canonical_columns()
+)
 
 
 #: Canonical 32-d RDKit 2D feature column names (Wf-248 / Wf-218).
@@ -366,7 +371,7 @@ def compute_rdkit_2d_12d(smiles: str) -> Optional[np.ndarray]:
         return None
     if full.shape[0] != RDKIT_2D_DIM:
         return None  # defensive — schema drift safeguard
-    return full[: RDKIT_2D_BASE_DIM].copy()
+    return full[:RDKIT_2D_BASE_DIM].copy()
 
 
 def extended_feature_columns() -> Tuple[str, ...]:
@@ -429,8 +434,7 @@ def _self_check() -> None:
         )
     if probe.shape != (RDKIT_2D_DIM,):
         raise RDKit2DExtendedError(
-            f"Self-check produced shape {probe.shape}; expected "
-            f"({RDKIT_2D_DIM},)."
+            f"Self-check produced shape {probe.shape}; expected " f"({RDKIT_2D_DIM},)."
         )
 
 

@@ -280,6 +280,7 @@ def write_markdown(rows: List[Dict[str, object]], path: str) -> None:
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
@@ -341,9 +342,7 @@ def main() -> int:
 
     # Sort pockets alphabetically; slice the requested window.
     entries = sorted(os.listdir(args.pockets))
-    pocket_window = entries[
-        args.pocket_offset : args.pocket_offset + args.n_pockets
-    ]
+    pocket_window = entries[args.pocket_offset : args.pocket_offset + args.n_pockets]
     if not pocket_window:
         print(f"[bench] no pockets found in window", file=sys.stderr)
         return 1
@@ -372,8 +371,7 @@ def main() -> int:
                 pocket_dir = os.path.join(args.pockets, name)
                 seed_offset = args.pocket_offset + idx + branching + n_sims
                 print(
-                    f"[bench] branching={branching} n_sims={n_sims} "
-                    f"pocket={name}"
+                    f"[bench] branching={branching} n_sims={n_sims} " f"pocket={name}"
                 )
                 row = run_one_pocket_benchmark(
                     pocket_dir,

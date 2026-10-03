@@ -197,8 +197,7 @@ def test_per_cell_breakdown_on_platinai_4cell() -> None:
     # All 4 cell lines are present.
     cell_names = {c.get("cell") for c in per_cell}
     assert set(CELL_LINES).issubset(cell_names), (
-        f"missing cell lines in per-cell breakdown: "
-        f"{set(CELL_LINES) - cell_names}"
+        f"missing cell lines in per-cell breakdown: " f"{set(CELL_LINES) - cell_names}"
     )
     # Each cell has finite (or zero-sentinel) per-cell R² values.
     for c in per_cell:
@@ -305,6 +304,7 @@ def test_integration_with_catherine_dblock_bench_skill() -> None:
         from molmetal.math_skills.catherine_properties import (
             verify_all_catherine_properties,
         )
+
         assert callable(verify_all_catherine_properties)
     except ImportError:
         # Tolerated: catherine_properties is a separate package;

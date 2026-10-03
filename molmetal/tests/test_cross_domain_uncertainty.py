@@ -49,7 +49,11 @@ from molmetal.molmetal_lam.sbdd_env.cross_domain_uncertainty import (
 
 def test_domain_specs_covers_five_molmetal_domains() -> None:
     assert set(DOMAIN_SPECS.keys()) == {
-        "binding", "admet", "pose", "postprocess", "metal_cytotox",
+        "binding",
+        "admet",
+        "pose",
+        "postprocess",
+        "metal_cytotox",
     }
 
 
@@ -293,17 +297,19 @@ def test_ece_zero_for_perfectly_calibrated_domain(tmp_path: Path) -> None:
     rows = []
     for i in range(10):
         p = (i + 0.5) / 10.0  # bin centre for bin i in [0, 1]
-        rows.append({
-            "candidate_id": f"row_{i}",
-            "target_id": "t",
-            "binding_probability": p,
-            # 5/10 with label=True; since |bin|=1, this requires label=bool(p>=0.5)
-            # Easier: use bin centres and label=bool(p>0.5) — but then
-            # mean_confidence in upper half is 0.75 while accuracy is 1.0
-            # → ECE > 0. Use probability == label instead:
-            "binding_label": True if p > 0.5 else False,
-            "binding_applicability_domain_status": "in_domain",
-        })
+        rows.append(
+            {
+                "candidate_id": f"row_{i}",
+                "target_id": "t",
+                "binding_probability": p,
+                # 5/10 with label=True; since |bin|=1, this requires label=bool(p>=0.5)
+                # Easier: use bin centres and label=bool(p>0.5) — but then
+                # mean_confidence in upper half is 0.75 while accuracy is 1.0
+                # → ECE > 0. Use probability == label instead:
+                "binding_label": True if p > 0.5 else False,
+                "binding_applicability_domain_status": "in_domain",
+            }
+        )
     candidate_json = tmp_path / "calibrated.json"
     candidate_json.write_text(json.dumps(rows), encoding="utf-8")
     output_dir = tmp_path / "calibrated_panel"
@@ -397,21 +403,28 @@ def test_main_cli_writes_outputs(tmp_path: Path) -> None:
     """End-to-end CLI: input JSON → output panel files written."""
     candidate_json = tmp_path / "cli_candidates.json"
     candidate_json.write_text(
-        json.dumps([
-            {
-                "candidate_id": "row_cli",
-                "binding_probability": 0.8,
-                "binding_label": True,
-                "binding_applicability_domain_status": "in_domain",
-            }
-        ]),
+        json.dumps(
+            [
+                {
+                    "candidate_id": "row_cli",
+                    "binding_probability": 0.8,
+                    "binding_label": True,
+                    "binding_applicability_domain_status": "in_domain",
+                }
+            ]
+        ),
         encoding="utf-8",
     )
     output_dir = tmp_path / "cli_panel"
-    rc = main([
-        "--candidate-json", str(candidate_json),
-        "--output-dir", str(output_dir),
-        "--panel-id", "cli_test",
-    ])
+    rc = main(
+        [
+            "--candidate-json",
+            str(candidate_json),
+            "--output-dir",
+            str(output_dir),
+            "--panel-id",
+            "cli_test",
+        ]
+    )
     assert rc == 0
     assert (output_dir / "cli_test_summary.json").exists()

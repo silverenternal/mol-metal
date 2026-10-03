@@ -160,13 +160,9 @@ class SymplecticPoint:
                 f"(the symplectic half-dim n), got q.ndim={q.ndim}"
             )
         if q.dtype != p.dtype:
-            raise ValueError(
-                f"q and p must share dtype, got {q.dtype} vs {p.dtype}"
-            )
+            raise ValueError(f"q and p must share dtype, got {q.dtype} vs {p.dtype}")
         if q.device != p.device:
-            raise ValueError(
-                f"q and p must share device, got {q.device} vs {p.device}"
-            )
+            raise ValueError(f"q and p must share device, got {q.device} vs {p.device}")
         self.q = q
         self.p = p
 
@@ -222,29 +218,45 @@ class SymplecticPoint:
         # Sum to get a scalar gradient target.  For constant tensors
         # (no requires_grad), the gradient is trivially None — handle
         # by short-circuiting to a zero bracket.
-        sum_f = f_val.sum() if f_val.numel() > 0 else torch.zeros(
-            (), dtype=q.dtype, device=q.device
+        sum_f = (
+            f_val.sum()
+            if f_val.numel() > 0
+            else torch.zeros((), dtype=q.dtype, device=q.device)
         )
-        sum_g = g_val.sum() if g_val.numel() > 0 else torch.zeros(
-            (), dtype=q.dtype, device=q.device
+        sum_g = (
+            g_val.sum()
+            if g_val.numel() > 0
+            else torch.zeros((), dtype=q.dtype, device=q.device)
         )
         # If neither f nor g depends on (q, p), the bracket is zero.
         if not sum_f.requires_grad and not sum_g.requires_grad:
             return torch.zeros_like(sum_f)
         grad_f_q = torch.autograd.grad(
-            sum_f, q, create_graph=False, retain_graph=True,
+            sum_f,
+            q,
+            create_graph=False,
+            retain_graph=True,
             allow_unused=True,
         )[0]
         grad_f_p = torch.autograd.grad(
-            sum_f, p, create_graph=False, retain_graph=True,
+            sum_f,
+            p,
+            create_graph=False,
+            retain_graph=True,
             allow_unused=True,
         )[0]
         grad_g_q = torch.autograd.grad(
-            sum_g, q, create_graph=False, retain_graph=False,
+            sum_g,
+            q,
+            create_graph=False,
+            retain_graph=False,
             allow_unused=True,
         )[0]
         grad_g_p = torch.autograd.grad(
-            sum_g, p, create_graph=False, retain_graph=False,
+            sum_g,
+            p,
+            create_graph=False,
+            retain_graph=False,
             allow_unused=True,
         )[0]
         # Default to zeros if the observable does not depend on the
@@ -257,9 +269,7 @@ class SymplecticPoint:
             grad_g_q = torch.zeros_like(q)
         if grad_g_p is None:
             grad_g_p = torch.zeros_like(p)
-        return (
-            (grad_f_q * grad_g_p - grad_f_p * grad_g_q).sum(dim=-1)
-        )
+        return (grad_f_q * grad_g_p - grad_f_p * grad_g_q).sum(dim=-1)
 
     # -- composition -------------------------------------------------------
 
@@ -478,7 +488,7 @@ class BetaReductionSymp:
 
         Returns a scalar (after ``sum``-ing the trailing dim).
         """
-        return (point.q[..., 0] + point.p[..., 0])
+        return point.q[..., 0] + point.p[..., 0]
 
     def commutes_with_quantization(
         self,
@@ -521,12 +531,8 @@ class BetaReductionSymp:
         # operationalised for our finite-dim symplectic point model.
         composed_ab = self.apply(point1, point2)
         composed_ba = self.apply(point2, point1)
-        q_close = torch.allclose(
-            composed_ab.q, composed_ba.q, atol=1.0e-6
-        )
-        p_close = torch.allclose(
-            composed_ab.p, composed_ba.p, atol=1.0e-6
-        )
+        q_close = torch.allclose(composed_ab.q, composed_ba.q, atol=1.0e-6)
+        p_close = torch.allclose(composed_ab.p, composed_ba.p, atol=1.0e-6)
         return bool(q_close and p_close)
 
 

@@ -61,9 +61,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-DEFAULT_OUT_DIR = (
-    PROJECT_ROOT / "molmetal" / "reports" / "wf126_p1_staging"
-)
+DEFAULT_OUT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf126_p1_staging"
 MOLMETAL_DATA_DIR = Path(
     __import__("os").environ.get(
         "MOLMETAL_DATA_DIR",
@@ -96,12 +94,7 @@ POCKETS: List[PocketSpec] = [
             / "SQHC_ALIAD_1_631_0"
             / "1h36_A_rec_1h35_r01_lig_tt_min_0_pocket10.pdb"
         ),
-        metric_path=(
-            PROJECT_ROOT
-            / "metrics"
-            / "by_metric"
-            / "vina_score_1h36.json"
-        ),
+        metric_path=(PROJECT_ROOT / "metrics" / "by_metric" / "vina_score_1h36.json"),
         notes=(
             "SQHC_ALIAD (squalene-hopene cyclase). CrossDocked pocket10 "
             "cut. Already READY under wf30_pocket_prep/1h36/."
@@ -115,12 +108,7 @@ POCKETS: List[PocketSpec] = [
             / "AA2AR_HUMAN_1_315_TM_0"
             / "3eml_A_rec_3eml_zma_lig_tt_min_0_pocket10.pdb"
         ),
-        metric_path=(
-            PROJECT_ROOT
-            / "metrics"
-            / "by_metric"
-            / "vina_score_3eml.json"
-        ),
+        metric_path=(PROJECT_ROOT / "metrics" / "by_metric" / "vina_score_3eml.json"),
         notes=(
             "AA2AR_HUMAN (A2A adenosine receptor TM). CrossDocked "
             "pocket10 cut. Already READY under wf30_pocket_prep/3eml/."
@@ -134,12 +122,7 @@ POCKETS: List[PocketSpec] = [
             / "ADRB2_HUMAN_26_357_TM_0"
             / "3ny8_A_rec_3d4s_tim_lig_tt_min_0_pocket10.pdb"
         ),
-        metric_path=(
-            PROJECT_ROOT
-            / "metrics"
-            / "by_metric"
-            / "vina_score_3ny8.json"
-        ),
+        metric_path=(PROJECT_ROOT / "metrics" / "by_metric" / "vina_score_3ny8.json"),
         notes=(
             "ADRB2_HUMAN (β2 adrenergic receptor TM). CrossDocked "
             "pocket10 cut. Already READY under wf30_pocket_prep/3ny8/."
@@ -153,12 +136,7 @@ POCKETS: List[PocketSpec] = [
             / "GLMU_STRPN_2_459_0"
             / "4aaw_A_rec_4ac3_r83_lig_tt_min_0_pocket10.pdb"
         ),
-        metric_path=(
-            PROJECT_ROOT
-            / "metrics"
-            / "by_metric"
-            / "vina_score_4aaw.json"
-        ),
+        metric_path=(PROJECT_ROOT / "metrics" / "by_metric" / "vina_score_4aaw.json"),
         notes=(
             "GLMU_STRPN (glutamate mutarotase, R84 ligand). CrossDocked "
             "pocket10 cut. Already READY under wf30_pocket_prep/4aaw/."
@@ -170,12 +148,7 @@ POCKETS: List[PocketSpec] = [
             "/home/hugo/codes/pocket/data/pdbbindpp-2020/extracted/"
             "pbpp-2020/4rlu/4rlu_protein.pdb"
         ),
-        metric_path=(
-            PROJECT_ROOT
-            / "metrics"
-            / "by_metric"
-            / "vina_score_4rlu.json"
-        ),
+        metric_path=(PROJECT_ROOT / "metrics" / "by_metric" / "vina_score_4rlu.json"),
         notes=(
             "Trypsin HCC inhibitor. pdbbindpp-2020 full protein (not "
             "the pocket cut). 12 histidines forced to HIE. Already READY "
@@ -292,11 +265,7 @@ def prepare_one(
         "wf30_audit": _read_existing_wf30_status(spec.pocket_id),
     }
     pdbqt_path = out_dir / "receptor.pdbqt"
-    if (
-        skip_existing
-        and pdbqt_path.exists()
-        and pdbqt_path.stat().st_size > 0
-    ):
+    if skip_existing and pdbqt_path.exists() and pdbqt_path.stat().st_size > 0:
         record.update(
             status="SKIPPED",
             pdbqt_path=str(pdbqt_path),
@@ -310,9 +279,7 @@ def prepare_one(
             record["source_pdb_size_bytes"] = spec.source_pdb.stat().st_size
         return record
     if spec.source_pdb is None or not spec.source_pdb.exists():
-        record["error"] = (
-            f"source PDB missing on disk: {spec.source_pdb}"
-        )
+        record["error"] = f"source PDB missing on disk: {spec.source_pdb}"
         return record
     record["source_pdb"] = str(spec.source_pdb)
     record["source_pdb_sha256"] = _sha256(spec.source_pdb)
@@ -341,9 +308,7 @@ def prepare_one(
         cmd.extend(["--set_template", spec.set_template])
     record["command"] = cmd
     try:
-        proc = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=timeout_s
-        )
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_s)
     except subprocess.TimeoutExpired as exc:
         record["error"] = f"TimeoutExpired after {timeout_s}s"
         record["stderr_tail"] = (exc.stderr or "")[-1500:]
@@ -359,10 +324,7 @@ def prepare_one(
         )
         record["elapsed_seconds"] = time.monotonic() - started
         return record
-    if (
-        not pdbqt_path.exists()
-        or pdbqt_path.stat().st_size == 0
-    ):
+    if not pdbqt_path.exists() or pdbqt_path.stat().st_size == 0:
         record["error"] = (
             "mk_prepare_receptor.py reported success but receptor.pdbqt "
             "is missing or empty."
@@ -415,9 +377,7 @@ def _load_metric_value(spec: PocketSpec) -> Optional[Dict[str, object]]:
     block = payload.get("value") or {}
     pocket_block = payload.get("pocket") or {}
     return {
-        "metric_file": str(
-            spec.metric_path.relative_to(PROJECT_ROOT)
-        ),
+        "metric_file": str(spec.metric_path.relative_to(PROJECT_ROOT)),
         "metric_status": payload.get("status"),
         "mean": block.get("mean"),
         "unit": block.get("unit") or payload.get("unit"),
@@ -493,9 +453,7 @@ def main() -> int:
         )
     summary = _summary(records)
     status_payload = {
-        "generated_utc": datetime.now(timezone.utc).isoformat(
-            timespec="seconds"
-        ),
+        "generated_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "workflow": "wf126_p1",
         "out_dir": str(args.out_dir),
         "molmetal_data_dir": str(MOLMETAL_DATA_DIR),

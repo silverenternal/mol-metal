@@ -15,6 +15,7 @@ Validates the deterministic sub-pocket fingerprint diversity metric:
 9. Pairwise helper is symmetric.
 10. Bit-partition helper is deterministic and total.
 """
+
 from __future__ import annotations
 
 import math
@@ -47,14 +48,13 @@ def _have_rdkit() -> bool:
         from rdkit import Chem  # noqa: F401
         from rdkit.Chem import AllChem  # noqa: F401
         from rdkit import DataStructs  # noqa: F401
+
         return True
     except Exception:
         return False
 
 
-pytestmark = pytest.mark.skipif(
-    not _have_rdkit(), reason="rdkit not installed"
-)
+pytestmark = pytest.mark.skipif(not _have_rdkit(), reason="rdkit not installed")
 
 
 # ---------------------------------------------------------------------------
@@ -118,9 +118,9 @@ def test_per_residue_weighted_uniform_matches_plain_tanimoto():
     d = per_residue_diversity([smiles_a, smiles_b], weights)
     # Permitting a small tolerance because per-residue partitions are
     # not perfectly identical for arbitrary K and bit-partition.
-    assert math.isclose(d, plain_dist, abs_tol=0.05), (
-        f"d={d} vs plain_dist={plain_dist} (>0.05 apart)"
-    )
+    assert math.isclose(
+        d, plain_dist, abs_tol=0.05
+    ), f"d={d} vs plain_dist={plain_dist} (>0.05 apart)"
 
 
 # ---------------------------------------------------------------------------
@@ -170,9 +170,9 @@ def test_per_residue_handles_single_residue():
 
     # K = 1 collapses to "all bits owned by residue 0".
     d = per_residue_diversity([smiles_a, smiles_b], [1])
-    assert math.isclose(d, plain_dist, abs_tol=1e-9), (
-        f"single-residue d={d} vs plain_dist={plain_dist}"
-    )
+    assert math.isclose(
+        d, plain_dist, abs_tol=1e-9
+    ), f"single-residue d={d} vs plain_dist={plain_dist}"
 
 
 # ---------------------------------------------------------------------------
@@ -237,9 +237,9 @@ def test_residue_bit_partition_deterministic_and_total():
     expected = n_bits // n_res
     for r, group in enumerate(p1):
         # Each group is either floor or ceil of the average.
-        assert expected <= len(group) <= expected + 1, (
-            f"residue {r} got {len(group)} bits, expected ~{expected}"
-        )
+        assert (
+            expected <= len(group) <= expected + 1
+        ), f"residue {r} got {len(group)} bits, expected ~{expected}"
     # Edge case: n_res = 1 → all bits in group 0.
     p_single = residue_bit_partition(100, 1)
     assert p_single == [list(range(100))]

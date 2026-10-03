@@ -12,6 +12,7 @@ Usage:
     python molmetal/scripts/verify_r20_ship.py --json /tmp/verification.json
     python molmetal/scripts/verify_r20_ship.py --strict  # exit non-zero on any NOT MET
 """
+
 from __future__ import annotations
 
 import argparse
@@ -66,7 +67,13 @@ def verify_r20_p1() -> dict[str, Any]:
     """
     sign_flip = REPORTS_DIR / "wf65_p1_sign_audit" / "sign_flip_audit.json"
     audit_script = REPO_ROOT / "molmetal" / "scripts" / "audit_variance_puct_sign.py"
-    integration_mod = REPO_ROOT / "molmetal" / "molmetal_lam" / "search_alg" / "variance_puct_integration.py"
+    integration_mod = (
+        REPO_ROOT
+        / "molmetal"
+        / "molmetal_lam"
+        / "search_alg"
+        / "variance_puct_integration.py"
+    )
     close_out = TODO_COMPLETED / "92_r20_p1_variance_puct_lazy_rdkit.md"
 
     sub_tasks = {
@@ -88,7 +95,11 @@ def verify_r20_p1() -> dict[str, Any]:
         "sub_tasks": sub_tasks,
         "verified_count": verified,
         "total_count": len(sub_tasks),
-        "verdict": "✅ VERIFIED" if verified >= 4 else "⚠️ IN FLIGHT" if not sub_tasks["close_out_md"] else "❌ NOT MET",
+        "verdict": "✅ VERIFIED"
+        if verified >= 4
+        else "⚠️ IN FLIGHT"
+        if not sub_tasks["close_out_md"]
+        else "❌ NOT MET",
     }
 
 
@@ -99,11 +110,15 @@ def verify_r20_p2() -> dict[str, Any]:
     """
     close_out = TODO_COMPLETED / "93_r20_p2_hilbert_astsr_gpu.md"
     skill = SKILLS_DIR / "mol-metal-hilbert-astsr-e2e" / "SKILL.md"
-    skill_test = SKILLS_DIR / "mol-metal-hilbert-astsr-e2e" / "test_hilbert_astsr_e2e.py"
+    skill_test = (
+        SKILLS_DIR / "mol-metal-hilbert-astsr-e2e" / "test_hilbert_astsr_e2e.py"
+    )
 
     sub_tasks = {
         "close_out_md": file_exists(close_out, min_bytes=10000),
-        "skill_skill_md": file_exists(skill, min_bytes=250 * 80),  # ≥ 250 LOC (heuristic: 80 chars/line)
+        "skill_skill_md": file_exists(
+            skill, min_bytes=250 * 80
+        ),  # ≥ 250 LOC (heuristic: 80 chars/line)
         "skill_test_py": file_exists(skill_test),
         "hilbert_astsr_r2_measured": False,  # DEFERRED (GPU; Wf-37 P3 +0.087 baseline carry-forward)
         "triangle_closure_real_r2_measured": False,  # DEFERRED (GPU)
@@ -243,7 +258,9 @@ def verify_r20_p5() -> dict[str, Any]:
         "sub_tasks": sub_tasks,
         "verified_count": verified,
         "total_count": len(sub_tasks),
-        "verdict": "✅ VERIFIED (Catherine)" if catherine_pass and not reach_gate_pass else "🟡 PARTIAL",
+        "verdict": "✅ VERIFIED (Catherine)"
+        if catherine_pass and not reach_gate_pass
+        else "🟡 PARTIAL",
     }
 
 
@@ -320,14 +337,28 @@ def verify_r20_skill_ecosystem() -> dict[str, Any]:
     """R20 skill ecosystem — 8 NEW skills (4 R20 + 4 R21) (TODO-99 / Wf-55)."""
     close_out = TODO_COMPLETED / "99_r20_skill_ecosystem.md"
     skills = {
-        "S1_mol-metal-variance-puct": SKILLS_DIR / "mol-metal-variance-puct" / "SKILL.md",
-        "S2_mol-metal-hilbert-astsr-e2e": SKILLS_DIR / "mol-metal-hilbert-astsr-e2e" / "SKILL.md",
+        "S1_mol-metal-variance-puct": SKILLS_DIR
+        / "mol-metal-variance-puct"
+        / "SKILL.md",
+        "S2_mol-metal-hilbert-astsr-e2e": SKILLS_DIR
+        / "mol-metal-hilbert-astsr-e2e"
+        / "SKILL.md",
         "S3_mol-metal-multiph-pll": SKILLS_DIR / "mol-metal-multiph-pll" / "SKILL.md",
-        "S4_mol-metal-3way-integration": SKILLS_DIR / "mol-metal-3way-integration" / "SKILL.md",
-        "S5_mol-metal-closure-catherine": SKILLS_DIR / "mol-metal-closure-catherine" / "SKILL.md",
-        "S6_mol-metal-wetlab-protocol": SKILLS_DIR / "mol-metal-wetlab-protocol" / "SKILL.md",
-        "S7_mol-metal-triangle-closure": SKILLS_DIR / "mol-metal-triangle-closure" / "SKILL.md",
-        "S8_mol-metal-mcts-replay-learner": SKILLS_DIR / "mol-metal-mcts-replay-learner" / "SKILL.md",
+        "S4_mol-metal-3way-integration": SKILLS_DIR
+        / "mol-metal-3way-integration"
+        / "SKILL.md",
+        "S5_mol-metal-closure-catherine": SKILLS_DIR
+        / "mol-metal-closure-catherine"
+        / "SKILL.md",
+        "S6_mol-metal-wetlab-protocol": SKILLS_DIR
+        / "mol-metal-wetlab-protocol"
+        / "SKILL.md",
+        "S7_mol-metal-triangle-closure": SKILLS_DIR
+        / "mol-metal-triangle-closure"
+        / "SKILL.md",
+        "S8_mol-metal-mcts-replay-learner": SKILLS_DIR
+        / "mol-metal-mcts-replay-learner"
+        / "SKILL.md",
     }
     sub_tasks = {
         "close_out_md": file_exists(close_out, min_bytes=10000),
@@ -357,9 +388,15 @@ def aggregate(results: list[dict[str, Any]]) -> dict[str, Any]:
         "aggregate_verified_sub_tasks": verified_sub,
         "aggregate_total_sub_tasks": total_sub,
         "aggregate_verified_ratio": f"{verified_sub}/{total_sub}",
-        "n_r20_p_with_close_out": sum(1 for r in results if r["sub_tasks"].get("close_out_md")),
+        "n_r20_p_with_close_out": sum(
+            1 for r in results if r["sub_tasks"].get("close_out_md")
+        ),
         "n_r20_p_total": len(results),
-        "n_r20_p_fully_meet_all_gates": sum(1 for r in results if r["verdict"] == "✅ VERIFIED" or r["verdict"] == "✅ PHASE 2 PARTIAL"),
+        "n_r20_p_fully_meet_all_gates": sum(
+            1
+            for r in results
+            if r["verdict"] == "✅ VERIFIED" or r["verdict"] == "✅ PHASE 2 PARTIAL"
+        ),
     }
 
 
@@ -422,8 +459,12 @@ def main() -> int:
         print(f"   verified: {r['verified_count']}/{r['total_count']} sub-tasks")
     print()
     print(f"Aggregate: {agg['aggregate_verified_ratio']} sub-tasks verified")
-    print(f"R20-P close-out files SHIP: {agg['n_r20_p_with_close_out']}/{agg['n_r20_p_total']}")
-    print(f"R20-P fully meeting all gates: {agg['n_r20_p_fully_meet_all_gates']}/{agg['n_r20_p_total']}")
+    print(
+        f"R20-P close-out files SHIP: {agg['n_r20_p_with_close_out']}/{agg['n_r20_p_total']}"
+    )
+    print(
+        f"R20-P fully meeting all gates: {agg['n_r20_p_fully_meet_all_gates']}/{agg['n_r20_p_total']}"
+    )
     print()
 
     if args.strict:

@@ -45,6 +45,7 @@ def ood_module():
         summarise_tanimoto_ood,
         write_tanimoto_ood_summary_json,
     )
+
     return {
         "TanimotoOODSummary": TanimotoOODSummary,
         "apply_tanimoto_ood_filter": apply_tanimoto_ood_filter,
@@ -106,6 +107,7 @@ class TestApplyTanimotoOODFilter:
         from molmetal.molmetal_lam.lam_chem.ood_protocol import (
             DEFAULT_TANIMOTO_THRESHOLD,
         )
+
         assert DEFAULT_TANIMOTO_THRESHOLD == 0.4
 
 
@@ -126,9 +128,10 @@ class TestCFMOODFilterSmilesList:
     def test_payloads_round_trip(self, ood_module):
         """Per-query payload is kept or dropped together with its SMILES."""
         fn = ood_module["cfm_ood_filter_smiles_list"]
-        payloads = [{"smi": s, "idx": i} for i, s in enumerate(
-            ["c1ccccc1O", "N.N.[Cl][Pt][Cl]"]
-        )]
+        payloads = [
+            {"smi": s, "idx": i}
+            for i, s in enumerate(["c1ccccc1O", "N.N.[Cl][Pt][Cl]"])
+        ]
         in_d, ood = fn(
             ["c1ccccc1O", "N.N.[Cl][Pt][Cl]"],
             payloads,
@@ -152,6 +155,7 @@ class TestCFMOODFilterSmilesList:
         from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (
             AtomCloud,
         )
+
         cloud1 = AtomCloud(
             positions=torch.zeros(5, 3),
             atomic_numbers=torch.tensor([78, 17, 17, 7, 7]),
@@ -241,6 +245,7 @@ class TestWriteTanimotoOODSummaryJSON:
 def test_existing_cfm_imports_unaffected(ood_module):
     """Adding the OOD filter module must not break CFM imports."""
     from molmetal.scripts import train_cfm_yuelbond_wasserstein as tcfm
+
     assert hasattr(tcfm, "evaluate_decode_ratio")
     assert hasattr(tcfm, "build_training_cohort")
 
@@ -248,10 +253,16 @@ def test_existing_cfm_imports_unaffected(ood_module):
 def test_ood_filter_cli_flag_exists_in_train_script(ood_module):
     """``--use-tanimoto-ood-filter`` must appear in ``--help`` output."""
     import subprocess
+
     proc = subprocess.run(
         [
             "/home/hugo/codes/mol-metal/.venv/bin/python",
-            str(Path(_REPO) / "molmetal" / "scripts" / "train_cfm_yuelbond_wasserstein.py"),
+            str(
+                Path(_REPO)
+                / "molmetal"
+                / "scripts"
+                / "train_cfm_yuelbond_wasserstein.py"
+            ),
             "--help",
         ],
         capture_output=True,

@@ -64,6 +64,7 @@ Cross-references
 * :mod:`wf302d_retry_with_correction` — sibling defence for
   StructuredOutput schema confusion; this module is the I/O twin.
 """
+
 from __future__ import annotations
 
 import logging
@@ -101,14 +102,14 @@ def _lock_for(path: Union[str, Path]) -> threading.Lock:
 # Markdown, JSON, Python, plain English closeout patterns.
 # ---------------------------------------------------------------------------
 _CLOSING_TOKENS = (
-    "\n# ",      # Markdown next-section header
-    "\n## ",     # Markdown sub-section header
-    "\n### ",    # Markdown sub-sub-section header
-    "```\n",     # Fenced code block close
-    "\n```",     # Fenced code block close (no newline after)
-    "}\n",       # JSON closing brace + newline
-    "\"\"\"\n",  # Python docstring close
-    "\n",        # Any newline-ending line (most permissive fallback)
+    "\n# ",  # Markdown next-section header
+    "\n## ",  # Markdown sub-section header
+    "\n### ",  # Markdown sub-sub-section header
+    "```\n",  # Fenced code block close
+    "\n```",  # Fenced code block close (no newline after)
+    "}\n",  # JSON closing brace + newline
+    '"""\n',  # Python docstring close
+    "\n",  # Any newline-ending line (most permissive fallback)
 )
 
 
@@ -178,7 +179,9 @@ def atomic_write_file(
         # Use NamedTemporaryFile with delete=False so we get a unique
         # name (avoids collisions even within the same process).
         fd, tmp_str = tempfile.mkstemp(
-            prefix=f".{path.name}.tmp.", suffix=".part", dir=str(parent),
+            prefix=f".{path.name}.tmp.",
+            suffix=".part",
+            dir=str(parent),
         )
         tmp_path = Path(tmp_str)
         try:
@@ -333,7 +336,8 @@ def write_closeout(
     """
     path = Path(path)
     risk = safe_overwrite_check(
-        path, content,
+        path,
+        content,
         min_lines=50,
         diff_threshold=0.5,
         raise_on_risk=raise_on_overwrite,
@@ -341,7 +345,8 @@ def write_closeout(
     if risk is not None:
         LOG.warning(
             "write_closeout: overwrite risk at %s (ratio=%.3f) — caller should confirm USER_OK",
-            path, risk,
+            path,
+            risk,
         )
 
     atomic_write_file(path, content, encoding=encoding)
@@ -353,7 +358,8 @@ def write_closeout(
     if truncation is not None:
         LOG.warning(
             "write_closeout: post-write truncation check failed for %s (%s)",
-            path, truncation,
+            path,
+            truncation,
         )
 
 

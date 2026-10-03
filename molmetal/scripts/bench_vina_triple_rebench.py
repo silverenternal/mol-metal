@@ -96,8 +96,16 @@ DEFAULT_CANDIDATES: Tuple[str, ...] = (
 )
 
 DEFAULT_POCKETS: Tuple[str, ...] = (
-    "830c", "1h36", "3eml", "3ny8", "4aaw",
-    "4rlu", "1g9v", "2hnx", "4rn0", "1fmc",
+    "830c",
+    "1h36",
+    "3eml",
+    "3ny8",
+    "4aaw",
+    "4rlu",
+    "1g9v",
+    "2hnx",
+    "4rn0",
+    "1fmc",
 )
 
 # m4 triple success = (vina_score ≤ -7.0 kcal/mol) AND (PB pass) AND (QED > 0.5)
@@ -171,7 +179,10 @@ def _detect_vina_binary() -> Dict[str, object]:
             version = ""
             try:
                 cp = subprocess.run(
-                    [str(p), "--version"], capture_output=True, text=True, timeout=5,
+                    [str(p), "--version"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
                 )
                 version = (cp.stdout or cp.stderr or "").strip().splitlines()[0]
             except Exception:  # pragma: no cover
@@ -268,8 +279,12 @@ def _real_vina_score(
         from molmetal.molmetal_lam.sbdd_env import vina_adapter  # type: ignore
     except Exception as e:
         return CellRecord(
-            pocket=pocket, cand_smiles=cand, seed=seed,
-            score_kcal_mol=None, pb_pass=None, qed=None,
+            pocket=pocket,
+            cand_smiles=cand,
+            seed=seed,
+            score_kcal_mol=None,
+            pb_pass=None,
+            qed=None,
             triple_success=None,
             status="MISSING_DEP",
             elapsed_s=time.monotonic() - t0,
@@ -277,12 +292,19 @@ def _real_vina_score(
         )
     try:
         complexes = vina_adapter.dock_smiles(
-            cand, str(receptor_pdbqt), n_poses=4, exhaustiveness=2,
+            cand,
+            str(receptor_pdbqt),
+            n_poses=4,
+            exhaustiveness=2,
         )
     except Exception as e:
         return CellRecord(
-            pocket=pocket, cand_smiles=cand, seed=seed,
-            score_kcal_mol=None, pb_pass=None, qed=None,
+            pocket=pocket,
+            cand_smiles=cand,
+            seed=seed,
+            score_kcal_mol=None,
+            pb_pass=None,
+            qed=None,
             triple_success=None,
             status="VINA_RUNTIME_ERROR",
             elapsed_s=time.monotonic() - t0,
@@ -290,8 +312,12 @@ def _real_vina_score(
         )
     if not complexes:
         return CellRecord(
-            pocket=pocket, cand_smiles=cand, seed=seed,
-            score_kcal_mol=None, pb_pass=None, qed=None,
+            pocket=pocket,
+            cand_smiles=cand,
+            seed=seed,
+            score_kcal_mol=None,
+            pb_pass=None,
+            qed=None,
             triple_success=None,
             status="VINA_NO_POSES",
             elapsed_s=time.monotonic() - t0,
@@ -302,11 +328,19 @@ def _real_vina_score(
     qed = _try_qed(cand)
     pb_pass = _try_pb_pass(receptor_pdbqt, cand)
     triple = None
-    if score is not None and (qed is None or qed > TRIPLE_QED_MIN) and (pb_pass is None or pb_pass):
+    if (
+        score is not None
+        and (qed is None or qed > TRIPLE_QED_MIN)
+        and (pb_pass is None or pb_pass)
+    ):
         triple = bool(score <= TRIPLE_AFFINITY_CUTOFF_KCAL)
     return CellRecord(
-        pocket=pocket, cand_smiles=cand, seed=seed,
-        score_kcal_mol=score, pb_pass=pb_pass, qed=qed,
+        pocket=pocket,
+        cand_smiles=cand,
+        seed=seed,
+        score_kcal_mol=score,
+        pb_pass=pb_pass,
+        qed=qed,
         triple_success=triple,
         status="OK",
         elapsed_s=time.monotonic() - t0,
@@ -374,7 +408,9 @@ def _run_pocket(
                 rec = _real_vina_score(pocket, cand, seed, receptor_pdbqt)
             else:
                 rec = _stub_score(
-                    pocket, cand, seed,
+                    pocket,
+                    cand,
+                    seed,
                     reason="use_real_vina=False OR binary MISSING_DEP"
                     if vina_binary_status["status"] != "REAL_VINA_AVAILABLE"
                     else "use_real_vina=True but binary unavailable",
@@ -449,33 +485,48 @@ def _summarise_pocket(pocket: str, cells: List[CellRecord]) -> Dict[str, object]
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument(
-        "--pockets", nargs="+", default=list(DEFAULT_POCKETS),
+        "--pockets",
+        nargs="+",
+        default=list(DEFAULT_POCKETS),
         help=f"Pocket IDs to bench (default: 10 Wf-30 staged: {' '.join(DEFAULT_POCKETS)})",
     )
     p.add_argument(
-        "--cands", nargs="+", default=list(DEFAULT_CANDIDATES),
+        "--cands",
+        nargs="+",
+        default=list(DEFAULT_CANDIDATES),
         help="Candidate SMILES (default: 5 cisplatin analogs)",
     )
     p.add_argument(
-        "--seeds", nargs="+", type=int, default=[0, 1, 2],
+        "--seeds",
+        nargs="+",
+        type=int,
+        default=[0, 1, 2],
         help="Random seeds (default: 0 1 2)",
     )
     p.add_argument(
-        "--use-real-vina", action="store_true",
+        "--use-real-vina",
+        action="store_true",
         help="Attempt real Vina docking; without this flag, STUB_FALLBACK is used",
     )
     p.add_argument(
-        "--pocket-status-json", type=Path,
-        default=PROJECT_ROOT / "molmetal" / "reports" / "wf30_pocket_prep" / "pocket_status.json",
+        "--pocket-status-json",
+        type=Path,
+        default=PROJECT_ROOT
+        / "molmetal"
+        / "reports"
+        / "wf30_pocket_prep"
+        / "pocket_status.json",
         help="pocket_status.json from Wf-30 staging",
     )
     p.add_argument(
-        "--out-dir", type=Path,
+        "--out-dir",
+        type=Path,
         default=PROJECT_ROOT / "molmetal" / "reports" / "wf60_vina_triple",
         help="Output directory for per-pocket metrics + binary status",
     )
     p.add_argument(
-        "--dry-run", action="store_true",
+        "--dry-run",
+        action="store_true",
         help="Print plan only; do not invoke scoring",
     )
     return p
@@ -483,7 +534,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = _build_parser().parse_args(argv)
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s"
+    )
     out_dir: Path = args.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -514,26 +567,31 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     for pocket in args.pockets:
         LOG.info("=== pocket %s ===", pocket)
         rec = _run_pocket(
-            pocket, args.cands, args.seeds,
-            bool(args.use_real_vina), vina_binary_status,
+            pocket,
+            args.cands,
+            args.seeds,
+            bool(args.use_real_vina),
+            vina_binary_status,
             args.pocket_status_json,
         )
         per_pocket.append(rec)
         # write per-pocket JSON
         per_pocket_path = out_dir / pocket
         per_pocket_path.mkdir(parents=True, exist_ok=True)
-        (per_pocket_path / "metrics.json").write_text(
-            json.dumps(rec, indent=2) + "\n"
-        )
+        (per_pocket_path / "metrics.json").write_text(json.dumps(rec, indent=2) + "\n")
 
     # Top-level synthesis
     n_with_real_score = sum(
-        1 for p in per_pocket for c in p.get("cells", []) if c.get("score_kcal_mol") is not None
+        1
+        for p in per_pocket
+        for c in p.get("cells", [])
+        if c.get("score_kcal_mol") is not None
     )
     n_total_cells = sum(p.get("n_cells", 0) for p in per_pocket)
     m10_global = [
         c.get("score_kcal_mol")
-        for p in per_pocket for c in p.get("cells", [])
+        for p in per_pocket
+        for c in p.get("cells", [])
         if c.get("score_kcal_mol") is not None
     ]
     synthesis = {
@@ -544,17 +602,25 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "n_total_cells": n_total_cells,
         "n_with_real_score": n_with_real_score,
         "m4_global_triple_rate": (
-            float(sum(
-                1 for p in per_pocket for c in p.get("cells", [])
-                if c.get("triple_success")
-            ) / max(1, n_with_real_score))
-            if n_with_real_score else None
+            float(
+                sum(
+                    1
+                    for p in per_pocket
+                    for c in p.get("cells", [])
+                    if c.get("triple_success")
+                )
+                / max(1, n_with_real_score)
+            )
+            if n_with_real_score
+            else None
         ),
         "m10_global_min_kcal_mol": float(min(m10_global)) if m10_global else None,
         "per_pocket": [
             {
-                "pocket": p["pocket"], "status": p["status"],
-                "n_cells": p["n_cells"], "status_counts": p["status_counts"],
+                "pocket": p["pocket"],
+                "status": p["status"],
+                "n_cells": p["n_cells"],
+                "status_counts": p["status_counts"],
                 "m4_triple_rate": p["m4_triple_rate"],
                 "m4_n_real": p["m4_n_real"],
                 "m10_min_kcal_mol": p["m10_min_kcal_mol"],
@@ -569,8 +635,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # Console summary
     LOG.info("=== synthesis ===")
     LOG.info("vina_binary_status: %s", vina_binary_status["status"])
-    LOG.info("n_pockets=%d n_cells=%d n_with_real_score=%d",
-             synthesis["n_pockets"], n_total_cells, n_with_real_score)
+    LOG.info(
+        "n_pockets=%d n_cells=%d n_with_real_score=%d",
+        synthesis["n_pockets"],
+        n_total_cells,
+        n_with_real_score,
+    )
     LOG.info("m4_global_triple_rate=%s", synthesis["m4_global_triple_rate"])
     LOG.info("m10_global_min_kcal_mol=%s", synthesis["m10_global_min_kcal_mol"])
     return 0

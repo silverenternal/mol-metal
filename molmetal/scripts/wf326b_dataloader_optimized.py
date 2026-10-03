@@ -139,7 +139,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 # thrash).  These are conservative defaults — ``suggest_num_workers()``
 # returns a host-aware value at runtime.
 DEFAULT_CPU_PHYSICAL: int = 24  # MFGs (MEASURED via psutil)
-DEFAULT_CPU_LOGICAL: int = 32    # MFGs (MEASURED via psutil)
+DEFAULT_CPU_LOGICAL: int = 32  # MFGs (MEASURED via psutil)
 
 # PROJECTED optimal num_workers on a 24-core host: 8 collate workers
 # (each doing SMILES→graph padding + scatter) parallel to GPU compute.
@@ -228,7 +228,10 @@ def suggest_num_workers(
         # Fall back to os.cpu_count() if psutil is unavailable.
         try:
             import psutil  # type: ignore
-            n_physical_cores = int(psutil.cpu_count(logical=False) or os.cpu_count() or 1)
+
+            n_physical_cores = int(
+                psutil.cpu_count(logical=False) or os.cpu_count() or 1
+            )
         except Exception:
             n_physical_cores = int(os.cpu_count() or 1)
     # Heuristic — 4 × num_GPUs × num_CPUs_per_GPU, capped.
@@ -290,11 +293,13 @@ def build_optimized_loader(
       off (pinned host memory is harmless but wasteful on CPU).
     """
     cfg_num_workers = (
-        int(n_workers_override) if n_workers_override is not None
+        int(n_workers_override)
+        if n_workers_override is not None
         else suggest_num_workers(cap=num_workers_cap)
     )
     cfg_pf = (
-        int(prefetch_factor_override) if prefetch_factor_override is not None
+        int(prefetch_factor_override)
+        if prefetch_factor_override is not None
         else OPTIMAL_PREFETCH_FACTOR
     )
     pin_memory = bool(device is not None and device.type == "cuda")
@@ -378,15 +383,28 @@ def _cli() -> int:
             "1-epoch self-test on a toy SMILES list (CPU-only, < 30 s)."
         )
     )
-    p.add_argument("--num-workers", type=int, default=None,
-                   help="Override num_workers (default: suggest_num_workers).")
-    p.add_argument("--prefetch-factor", type=int, default=None,
-                   help="Override prefetch_factor (default: 8).")
+    p.add_argument(
+        "--num-workers",
+        type=int,
+        default=None,
+        help="Override num_workers (default: suggest_num_workers).",
+    )
+    p.add_argument(
+        "--prefetch-factor",
+        type=int,
+        default=None,
+        help="Override prefetch_factor (default: 8).",
+    )
     p.add_argument("--batch-size", type=int, default=64)
-    p.add_argument("--n-samples", type=int, default=128,
-                   help="Number of toy SMILES samples (default 128).")
-    p.add_argument("--dry-run", action="store_true",
-                   help="Print the resolved config and exit.")
+    p.add_argument(
+        "--n-samples",
+        type=int,
+        default=128,
+        help="Number of toy SMILES samples (default 128).",
+    )
+    p.add_argument(
+        "--dry-run", action="store_true", help="Print the resolved config and exit."
+    )
     args = p.parse_args()
 
     cfg = LoaderConfig()
@@ -419,7 +437,10 @@ def _cli() -> int:
     # Self-test: build a tiny loader with toy data and confirm 1 epoch
     # round-trips without error.
     from molmetal.baselines.dmpnn import featurize_smiles_list
-    toy_smiles = ["CCO", "CCN", "CC=O", "CC(=O)O", "c1ccccc1"] * (args.n_samples // 5 + 1)
+
+    toy_smiles = ["CCO", "CCN", "CC=O", "CC(=O)O", "c1ccccc1"] * (
+        args.n_samples // 5 + 1
+    )
     toy_smiles = toy_smiles[: args.n_samples]
     graphs = featurize_smiles_list(toy_smiles)
     mids = [i % 5 for i in range(len(graphs))]
@@ -427,9 +448,17 @@ def _cli() -> int:
     active = [i % 2 for i in range(len(graphs))]
 
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import _JointGraphDataset
-    ds = _JointGraphDataset(graphs, mids, np_array_helper(pic50, "float32"), np_array_helper(active, "int64"))
+
+    ds = _JointGraphDataset(
+        graphs,
+        mids,
+        np_array_helper(pic50, "float32"),
+        np_array_helper(active, "int64"),
+    )
     loader = build_optimized_loader(
-        ds, batch_size=args.batch_size, device=torch.device("cpu"),
+        ds,
+        batch_size=args.batch_size,
+        device=torch.device("cpu"),
         n_workers_override=cfg.num_workers,
         prefetch_factor_override=cfg.prefetch_factor,
     )
@@ -438,13 +467,16 @@ def _cli() -> int:
         if batch is None:
             continue
         n_batches += 1
-    print(f"[wf326b] 1-epoch self-test OK — n_batches={n_batches} (loader config as above)")
+    print(
+        f"[wf326b] 1-epoch self-test OK — n_batches={n_batches} (loader config as above)"
+    )
     return 0
 
 
 def np_array_helper(values, dtype):
     """Helper — build a numpy array without importing numpy at module top."""
     import numpy as np
+
     return np.array(values, dtype=getattr(np, dtype))
 
 

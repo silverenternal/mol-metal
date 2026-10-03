@@ -84,11 +84,11 @@ def _check_cuda_pointers(arg_names: dict[str, object]) -> None:
 @triton.autotune(configs=AUTOTUNE_CONFIGS, key=["N"])
 @triton.jit
 def _softmax_kernel(
-    out_ptr,           # *fp   [M, N]
-    in_ptr,            # *fp   [M, N]
-    in_row_stride,     # i32
-    out_row_stride,    # i32
-    n_rows,            # i32
+    out_ptr,  # *fp   [M, N]
+    in_ptr,  # *fp   [M, N]
+    in_row_stride,  # i32
+    out_row_stride,  # i32
+    n_rows,  # i32
     n_cols: tl.constexpr,
     BLOCK_SIZE: tl.constexpr,
 ):
@@ -127,7 +127,9 @@ def _next_pow2(n: int) -> int:
     return out
 
 
-def _move_axis_to_end(x: torch.Tensor, dim: int) -> tuple[torch.Tensor, tuple[int, ...]]:
+def _move_axis_to_end(
+    x: torch.Tensor, dim: int
+) -> tuple[torch.Tensor, tuple[int, ...]]:
     """Return ``(x_perm, original_shape)`` where ``dim`` is the last axis.
 
     The returned ``x_perm`` has the same data as ``x`` but with axis
@@ -137,16 +139,16 @@ def _move_axis_to_end(x: torch.Tensor, dim: int) -> tuple[torch.Tensor, tuple[in
     if dim < 0:
         dim = x.dim() + dim
     if not (0 <= dim < x.dim()):
-        raise ValueError(
-            f"`dim` out of range for {x.dim()}-D tensor: {dim}"
-        )
+        raise ValueError(f"`dim` out of range for {x.dim()}-D tensor: {dim}")
     if dim == x.dim() - 1:
         return x.contiguous(), tuple(x.shape)
     perm = [d for d in range(x.dim()) if d != dim] + [dim]
     return x.permute(perm).contiguous(), tuple(x.shape)
 
 
-def _move_axis_from_end(x: torch.Tensor, original_shape: tuple[int, ...], dim: int) -> torch.Tensor:
+def _move_axis_from_end(
+    x: torch.Tensor, original_shape: tuple[int, ...], dim: int
+) -> torch.Tensor:
     """Inverse of :func:`_move_axis_to_end`.
 
     ``x`` here is a 2-D tensor of shape
@@ -157,9 +159,7 @@ def _move_axis_from_end(x: torch.Tensor, original_shape: tuple[int, ...], dim: i
         dim = len(original_shape) + dim
     # Build the shape of the permuted view (which is what we have
     # *before* flattening).
-    leading_shape = (
-        list(original_shape[:dim]) + list(original_shape[dim + 1 :])
-    )
+    leading_shape = list(original_shape[:dim]) + list(original_shape[dim + 1 :])
     permuted_shape = tuple(leading_shape) + (original_shape[dim],)
     x_perm = x.reshape(permuted_shape)
     if dim == len(original_shape) - 1:

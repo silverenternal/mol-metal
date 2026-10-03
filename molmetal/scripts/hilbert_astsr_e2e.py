@@ -36,6 +36,7 @@ CLI flag
 --------
 * ``--self-test`` (default) — exercise the gate + return JSON.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -187,20 +188,24 @@ def run_self_test() -> Dict[str, Any]:
 def _build_argparser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Wf-381-A5 R20-P2 Hilbert ASTSR end-to-end CPU SCAFFOLD "
-            "self-test"
+            "Wf-381-A5 R20-P2 Hilbert ASTSR end-to-end CPU SCAFFOLD " "self-test"
         ),
     )
     parser.add_argument(
-        "--self-test", action="store_true", default=True,
+        "--self-test",
+        action="store_true",
+        default=True,
         help="Run the CPU SCAFFOLD self-test (default).",
     )
     parser.add_argument(
-        "--json", action="store_true",
+        "--json",
+        action="store_true",
         help="Emit JSON to stdout (no on-disk write).",
     )
     parser.add_argument(
-        "--out", type=str, default=None,
+        "--out",
+        type=str,
+        default=None,
         help="If set, write JSON verdict to this path.",
     )
     return parser
@@ -220,8 +225,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         out_path.parent.mkdir(parents=True, exist_ok=True)
         with out_path.open("w") as fh:
             json.dump(verdict, fh, indent=2, default=str)
-        print(f"[wf381a5-hilbert-astsr-e2e] wrote {out_path}",
-              file=sys.stderr)
+        print(f"[wf381a5-hilbert-astsr-e2e] wrote {out_path}", file=sys.stderr)
 
     return 0
 

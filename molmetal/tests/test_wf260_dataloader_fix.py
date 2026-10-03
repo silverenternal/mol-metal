@@ -11,6 +11,7 @@ Verifies:
 
 Run with: pytest molmetal/tests/test_wf260_dataloader_fix.py -v
 """
+
 import math
 from pathlib import Path
 
@@ -100,8 +101,8 @@ def test_collate_batch_drops_nan_and_none():
     g = _toy_graph()
     batch = [
         (g, 0, 5.0, 1),
-        (None, 1, 6.0, 0),       # None graph
-        (g, 2, float("nan"), 1), # NaN pic50
+        (None, 1, 6.0, 0),  # None graph
+        (g, 2, float("nan"), 1),  # NaN pic50
         (g, 3, 7.0, 1),
     ]
     out = _collate_batch_for_loader(batch)
@@ -125,6 +126,7 @@ def test_collate_batch_empty_returns_none():
 def test_train_one_epoch_joint_accepts_num_workers_kwarg():
     """num_workers is now part of the public signature (no TypeError)."""
     import inspect
+
     sig = inspect.signature(train_one_epoch_joint)
     assert "num_workers" in sig.parameters
     # Default must remain backward-compat (0).
@@ -143,12 +145,17 @@ def test_train_one_epoch_joint_manual_loop_path():
 
         def forward(self, atom_f, bond_f, e_src, e_dst, mids_t):
             b = mids_t.size(0)
-            return torch.zeros(b, requires_grad=True), torch.zeros(b, b, requires_grad=True)
+            return torch.zeros(b, requires_grad=True), torch.zeros(
+                b, b, requires_grad=True
+            )
 
     model = _StubModel()
     opt = torch.optim.SGD(model.parameters(), lr=0.0)
-    crit = lambda pred, cls, p, a: (torch.tensor(0.0, requires_grad=True),
-                                       torch.tensor(0.0), torch.tensor(0.0))
+    crit = lambda pred, cls, p, a: (
+        torch.tensor(0.0, requires_grad=True),
+        torch.tensor(0.0),
+        torch.tensor(0.0),
+    )
 
     class _DummyCfg:
         n_mc = 1
@@ -207,4 +214,4 @@ def test_collate_multimetal_still_works():
     out = collate_multimetal(graphs, mids, pic50, active)
     assert out is not None
     atom_f, bond_f, e_src, e_dst, mids_t, pic50_t, active_t = out
-    assert mids_t.tolist() == [0, 2]   # dropped index 1 (NaN)
+    assert mids_t.tolist() == [0, 2]  # dropped index 1 (NaN)

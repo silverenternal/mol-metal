@@ -143,7 +143,7 @@ def _random_rotation(
     # "fix the sign" trick (Mezzadri 2007, §3).
     det = torch.linalg.det(R)
     v_flipped = v.clone()
-    need_flip = (det < 0)
+    need_flip = det < 0
     if need_flip.any():
         v_flipped[need_flip, -1, :] = -v_flipped[need_flip, -1, :]
     R = u @ v_flipped
@@ -151,7 +151,7 @@ def _random_rotation(
 
 
 def _canonical_frame(
-    x: torch.Tensor,                # (B, N, 3) input
+    x: torch.Tensor,  # (B, N, 3) input
     eps: float = _EPS_TRIG,
 ) -> torch.Tensor:
     """Build the canonical right-handed orthonormal frame ``F``
@@ -197,24 +197,20 @@ def _canonical_frame(
     need a different fallback should pre-filter their inputs.
     """
     if x.dim() != 3 or x.shape[-1] != 3:
-        raise ValueError(
-            f"x must have shape (B, N, 3), got {tuple(x.shape)}"
-        )
+        raise ValueError(f"x must have shape (B, N, 3), got {tuple(x.shape)}")
     if x.shape[1] < 3:
-        raise ValueError(
-            f"canonical_frame requires N >= 3, got N={x.shape[1]}"
-        )
+        raise ValueError(f"canonical_frame requires N >= 3, got N={x.shape[1]}")
     b = x.shape[0]
     # Vector from atom 0 to atom 1.
-    e1 = x[:, 1, :] - x[:, 0, :]                 # (B, 3)
+    e1 = x[:, 1, :] - x[:, 0, :]  # (B, 3)
     e1_norm = e1.norm(dim=-1, keepdim=True).clamp_min(eps)
-    e1_hat = e1 / e1_norm                        # (B, 3)
+    e1_hat = e1 / e1_norm  # (B, 3)
     # Vector from atom 0 to atom 2, orthogonalised against e1_hat.
-    e2 = x[:, 2, :] - x[:, 0, :]                 # (B, 3)
-    proj = (e2 * e1_hat).sum(dim=-1, keepdim=True)   # (B, 1)
-    e2_perp = e2 - proj * e1_hat                 # (B, 3)
+    e2 = x[:, 2, :] - x[:, 0, :]  # (B, 3)
+    proj = (e2 * e1_hat).sum(dim=-1, keepdim=True)  # (B, 1)
+    e2_perp = e2 - proj * e1_hat  # (B, 3)
     e2_norm = e2_perp.norm(dim=-1, keepdim=True).clamp_min(eps)
-    e2_hat = e2_perp / e2_norm                   # (B, 3)
+    e2_hat = e2_perp / e2_norm  # (B, 3)
     # Right-hand rule.
     e3_hat = torch.linalg.cross(e1_hat, e2_hat, dim=-1)  # (B, 3)
     # Stack columns -> (B, 3, 3) frame.
@@ -316,9 +312,7 @@ class QuotientSpace:
             transformation ``(R, t)`` (within numerical tolerance).
         """
         if x.dim() != 3 or x.shape[-1] != 3:
-            raise ValueError(
-                f"x must have shape (B, N, 3), got {tuple(x.shape)}"
-            )
+            raise ValueError(f"x must have shape (B, N, 3), got {tuple(x.shape)}")
         if x.shape[1] < 3:
             raise ValueError(
                 f"project requires N >= 3 (need 3 atoms to build the "
@@ -357,13 +351,9 @@ class QuotientSpace:
         use :meth:`project` and :meth:`lift`.
         """
         if x.dim() != 3 or x.shape[-1] != 3:
-            raise ValueError(
-                f"x must have shape (B, N, 3), got {tuple(x.shape)}"
-            )
+            raise ValueError(f"x must have shape (B, N, 3), got {tuple(x.shape)}")
         if x.shape[1] < 3:
-            raise ValueError(
-                f"project requires N >= 3, got N={x.shape[1]}"
-            )
+            raise ValueError(f"project requires N >= 3, got N={x.shape[1]}")
         if self.manifold == "translation":
             c = x.mean(dim=1, keepdim=True)
             rep = x - c
@@ -381,10 +371,14 @@ class QuotientSpace:
             x_in = x - c
         else:  # "rotation"
             c = torch.zeros(
-                x.shape[0], 1, 3, dtype=x.dtype, device=x.device,
+                x.shape[0],
+                1,
+                3,
+                dtype=x.dtype,
+                device=x.device,
             )
             x_in = x
-        F = _canonical_frame(x_in, eps=self.eps)   # (B, 3, 3)
+        F = _canonical_frame(x_in, eps=self.eps)  # (B, 3, 3)
         out = torch.matmul(x_in, F)
         return out, F, c
 
@@ -411,9 +405,7 @@ class QuotientSpace:
             SE(3) space.
         """
         if rep.dim() != 3 or rep.shape[-1] != 3:
-            raise ValueError(
-                f"rep must have shape (B, N, 3), got {tuple(rep.shape)}"
-            )
+            raise ValueError(f"rep must have shape (B, N, 3), got {tuple(rep.shape)}")
         # The lift is the *identity* on the representative: the
         # representative already lives in a canonical frame, which
         # is a valid point in the original space.  For
@@ -531,9 +523,7 @@ class QuotientDiffusionScheduler:
         ``t=n_steps`` we get ``sigma_max``.
         """
         if not (0 <= t <= self.n_steps):
-            raise ValueError(
-                f"t must be in [0, {self.n_steps}], got {t}"
-            )
+            raise ValueError(f"t must be in [0, {self.n_steps}], got {t}")
         if t == 0:
             return self.sigma_min
         if t == self.n_steps:
@@ -542,7 +532,7 @@ class QuotientDiffusionScheduler:
         # Use a normalised progress u in (0, 1) so the schedule is
         # smooth across the integer boundary.
         u = float(t) / float(self.n_steps)
-        return self.sigma_min * (ratio ** u)
+        return self.sigma_min * (ratio**u)
 
     def alpha_beta(self, t: int) -> Tuple[float, float]:
         """Return :math:`(\\alpha(t), \\beta(t))` for the VP schedule.
@@ -584,13 +574,9 @@ class QuotientDiffusionScheduler:
             Noisier conformer at time ``t + 1``, shape ``(B, N, 3)``.
         """
         if x.dim() != 3 or x.shape[-1] != 3:
-            raise ValueError(
-                f"x must have shape (B, N, 3), got {tuple(x.shape)}"
-            )
+            raise ValueError(f"x must have shape (B, N, 3), got {tuple(x.shape)}")
         if not (0 <= t < self.n_steps):
-            raise ValueError(
-                f"step requires t in [0, {self.n_steps - 1}], got {t}"
-            )
+            raise ValueError(f"step requires t in [0, {self.n_steps - 1}], got {t}")
         sig_t = self.sigma(t)
         sig_tp = self.sigma(t + 1)
         delta_var = max(sig_tp * sig_tp - sig_t * sig_t, 0.0)
@@ -601,7 +587,10 @@ class QuotientDiffusionScheduler:
                 int(self.seed) + int(t),
             )
         eps = torch.randn(
-            x.shape, dtype=x.dtype, device=x.device, generator=gen,
+            x.shape,
+            dtype=x.dtype,
+            device=x.device,
+            generator=gen,
         )
         return x + math.sqrt(delta_var) * eps
 
@@ -630,9 +619,7 @@ class QuotientDiffusionScheduler:
             Noisy conformer of shape ``(B, N, 3)``.
         """
         if x0.dim() != 3 or x0.shape[-1] != 3:
-            raise ValueError(
-                f"x0 must have shape (B, N, 3), got {tuple(x0.shape)}"
-            )
+            raise ValueError(f"x0 must have shape (B, N, 3), got {tuple(x0.shape)}")
         alpha, beta = self.alpha_beta(t)
         gen = None
         if self.seed is not None:
@@ -640,7 +627,10 @@ class QuotientDiffusionScheduler:
                 int(self.seed) + int(t) * 9973,
             )
         eps = torch.randn(
-            x0.shape, dtype=x0.dtype, device=x0.device, generator=gen,
+            x0.shape,
+            dtype=x0.dtype,
+            device=x0.device,
+            generator=gen,
         )
         return alpha * x0 + beta * eps
 
@@ -700,9 +690,7 @@ class QuotientSpaceCFM:
                 f"{type(quotient).__name__}"
             )
         if base_cfm is None or not callable(base_cfm):
-            raise TypeError(
-                f"base_cfm must be callable, got {type(base_cfm).__name__}"
-            )
+            raise TypeError(f"base_cfm must be callable, got {type(base_cfm).__name__}")
         self.base_cfm = base_cfm
         self.quotient = quotient
 
@@ -711,8 +699,8 @@ class QuotientSpaceCFM:
     # ------------------------------------------------------------------
     def forward(
         self,
-        z0: torch.Tensor,                # (B, N, 3) source
-        t: torch.Tensor,                 # (B,) or scalar
+        z0: torch.Tensor,  # (B, N, 3) source
+        t: torch.Tensor,  # (B,) or scalar
     ) -> torch.Tensor:
         """Compute ``z(t)`` in the quotient space.
 
@@ -742,9 +730,7 @@ class QuotientSpaceCFM:
             Conformer at time ``t``, shape ``(B, N, 3)``.
         """
         if z0.dim() != 3 or z0.shape[-1] != 3:
-            raise ValueError(
-                f"z0 must have shape (B, N, 3), got {tuple(z0.shape)}"
-            )
+            raise ValueError(f"z0 must have shape (B, N, 3), got {tuple(z0.shape)}")
         # Project to the quotient, capturing the canonicalisation
         # frame so we can lift back to the original frame.
         z0_qu, F, c = self.quotient._project_with_frame(z0)
@@ -809,7 +795,7 @@ class QuotientSpaceCFM:
         torch.manual_seed(int(seed))
         x = torch.randn(2, 4, 3)
         t = torch.tensor([0.5, 0.5])
-        x_ref = self.forward(x, t)            # (B, N, 3)
+        x_ref = self.forward(x, t)  # (B, N, 3)
         ref_norm = x_ref.flatten(start_dim=1).norm(dim=-1).clamp_min(1e-9)
         max_err = 0.0
         for k in range(int(n_runs)):
@@ -819,20 +805,30 @@ class QuotientSpaceCFM:
                 device=x.device,
                 seed=int(seed) + 1000 + k,
             )
-            t_b = torch.randn(x.shape[0], 3, generator=torch.Generator().manual_seed(
-                int(seed) + 2000 + k,
-            ))
+            t_b = torch.randn(
+                x.shape[0],
+                3,
+                generator=torch.Generator().manual_seed(
+                    int(seed) + 2000 + k,
+                ),
+            )
             # Apply (R, t_b) to x.
             x_trans = torch.einsum("bij,bnj->bni", R, x) + t_b.unsqueeze(1)
             # Wrapper output on the transformed conformer.
             out_trans = self.forward(x_trans, t)
             # Apply (R, t_b) to the reference output.
             out_ref_trans = torch.einsum(
-                "bij,bnj->bni", R, x_ref,
+                "bij,bnj->bni",
+                R,
+                x_ref,
             ) + t_b.unsqueeze(1)
-            err = (out_trans - out_ref_trans).flatten(
-                start_dim=1,
-            ).norm(dim=-1)
+            err = (
+                (out_trans - out_ref_trans)
+                .flatten(
+                    start_dim=1,
+                )
+                .norm(dim=-1)
+            )
             rel = (err / ref_norm).max().item()
             max_err = max(max_err, rel)
         return float(max_err)

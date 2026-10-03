@@ -20,8 +20,9 @@ from molmetal.adapters.flow_matching_lipman import LipmanFlowMatchingAdapter
 from molmetal.domain import Molecule
 
 
-def _make_gen_config(n_samples: int = 16, n_steps: int = 4,
-                     n_atoms: int = 8, seed: int = 0) -> SimpleNamespace:
+def _make_gen_config(
+    n_samples: int = 16, n_steps: int = 4, n_atoms: int = 8, seed: int = 0
+) -> SimpleNamespace:
     """Build a GenerationConfig-compatible namespace with ``n_atoms``.
 
     ``GenerationConfig`` is a frozen dataclass that does not include an
@@ -42,8 +43,7 @@ def _make_gen_config(n_samples: int = 16, n_steps: int = 4,
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-def _make_random_molecule(n_atoms: int = 8, seed: int = 0,
-                          z_max: int = 10) -> Molecule:
+def _make_random_molecule(n_atoms: int = 8, seed: int = 0, z_max: int = 10) -> Molecule:
     """Build a small random Molecule on CPU; the adapter moves tensors.
 
     ``z_max`` defaults to 10 because the velocity field's ``atom_head``
@@ -115,16 +115,21 @@ class TestGenerateAtomTypes:
         for i in range(8):
             coords = torch.randn(8, 3, generator=g, dtype=torch.float32) * 0.1
             atom_types = torch.tensor(
-                [priors[int(idx)] for idx in torch.randint(0, len(priors), (8,), generator=g)],
+                [
+                    priors[int(idx)]
+                    for idx in torch.randint(0, len(priors), (8,), generator=g)
+                ],
                 dtype=torch.long,
             )
-            mols.append(Molecule(
-                coords=coords,
-                atom_types=atom_types,
-                bonds=torch.zeros(2, 0, dtype=torch.long),
-                bond_types=torch.zeros(0, dtype=torch.long),
-                formal_charges=torch.zeros(8, dtype=torch.long),
-            ))
+            mols.append(
+                Molecule(
+                    coords=coords,
+                    atom_types=atom_types,
+                    bonds=torch.zeros(2, 0, dtype=torch.long),
+                    bond_types=torch.zeros(0, dtype=torch.long),
+                    formal_charges=torch.zeros(8, dtype=torch.long),
+                )
+            )
 
         # Train longer (50 steps) on a fixed batch so the atom_head really
         # concentrates mass on the small subset of classes seen above.
@@ -138,8 +143,9 @@ class TestGenerateAtomTypes:
         assert len(out) == 16
         # concat all atom_types for a single check
         all_z = torch.cat([m.atom_types for m in out])
-        assert int(all_z.min()) >= 1, (
-            f"min Z = {int(all_z.min())} — should be ≥ 1 (padding is masked)")
+        assert (
+            int(all_z.min()) >= 1
+        ), f"min Z = {int(all_z.min())} — should be ≥ 1 (padding is masked)"
         assert int(all_z.max()) <= 18, (
             f"max Z = {int(all_z.max())} — should be ≤ 18 (no noble gases / "
             f"heavy metals in realistic range)"
@@ -190,5 +196,6 @@ class TestGenerateAtomTypes:
         )
         # Also sanity-check total loss is finite.
         assert torch.isfinite(torch.tensor(first_total)), "initial loss is NaN/Inf"
-        assert torch.isfinite(torch.tensor(adapter.last_losses["total"])), \
-            "final loss is NaN/Inf"
+        assert torch.isfinite(
+            torch.tensor(adapter.last_losses["total"])
+        ), "final loss is NaN/Inf"

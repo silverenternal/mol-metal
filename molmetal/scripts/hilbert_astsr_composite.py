@@ -86,6 +86,7 @@ Lit anchors
 * Silver 2016 + Burch & Bardsley 2022 — variance-controlled PUCT.
 * Schmidt & Lipson 2009 — evolutionary SR template.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -208,8 +209,7 @@ def _load_platinai_4cell(csv_path: Path) -> List[Dict[str, str]]:
     """
     if not csv_path.exists():
         raise FileNotFoundError(
-            f"PlatinAI 4-cell CSV not found: {csv_path} "
-            f"(repo root = {_REPO_ROOT})"
+            f"PlatinAI 4-cell CSV not found: {csv_path} " f"(repo root = {_REPO_ROOT})"
         )
     rows: List[Dict[str, str]] = []
     with open(csv_path, "r", encoding="utf-8") as fh:
@@ -396,38 +396,42 @@ def _run_one_cell_one_seed(
         astsr_ok = bool(math.isfinite(astsr_v.r2))
         hilbert_ok = bool(math.isfinite(hilbert_v.r2))
         mcts_ok = bool(math.isfinite(mcts_v.variance_reduction))
-        per_round.append({
-            "round": int(r),
-            "seed": int(round_seed),
-            "n_rows": int(X_run.shape[0]),
-            "vertices": {
-                "astsr": {
-                    "name": "astsr",
-                    "wall_s": float(astsr_v.wall_s),
-                    "r2": float(astsr_v.r2) if astsr_ok else 0.0,
-                    "success": astsr_ok,
-                    "metadata": dict(astsr_v.metadata),
+        per_round.append(
+            {
+                "round": int(r),
+                "seed": int(round_seed),
+                "n_rows": int(X_run.shape[0]),
+                "vertices": {
+                    "astsr": {
+                        "name": "astsr",
+                        "wall_s": float(astsr_v.wall_s),
+                        "r2": float(astsr_v.r2) if astsr_ok else 0.0,
+                        "success": astsr_ok,
+                        "metadata": dict(astsr_v.metadata),
+                    },
+                    "hilbert": {
+                        "name": "hilbert",
+                        "wall_s": float(hilbert_v.wall_s),
+                        "r2": float(hilbert_v.r2) if hilbert_ok else 0.0,
+                        "success": hilbert_ok,
+                        "metadata": dict(hilbert_v.metadata),
+                    },
+                    "mcts": {
+                        "name": "mcts",
+                        "wall_s": float(mcts_v.wall_s),
+                        "n_actions": int(mcts_v.n_actions),
+                        "variance_reduction": float(mcts_v.variance_reduction),
+                        "success": mcts_ok,
+                        "metadata": dict(mcts_v.metadata),
+                    },
                 },
-                "hilbert": {
-                    "name": "hilbert",
-                    "wall_s": float(hilbert_v.wall_s),
-                    "r2": float(hilbert_v.r2) if hilbert_ok else 0.0,
-                    "success": hilbert_ok,
-                    "metadata": dict(hilbert_v.metadata),
-                },
-                "mcts": {
-                    "name": "mcts",
-                    "wall_s": float(mcts_v.wall_s),
-                    "n_actions": int(mcts_v.n_actions),
-                    "variance_reduction": float(mcts_v.variance_reduction),
-                    "success": mcts_ok,
-                    "metadata": dict(mcts_v.metadata),
-                },
-            },
-        })
+            }
+        )
         # Closure feedback to next round.
         if r + 1 < int(n_rounds):
-            X_run, y_run = closure._feedback_dataset(X_run, y_run, mcts_v, round_idx=int(r))
+            X_run, y_run = closure._feedback_dataset(
+                X_run, y_run, mcts_v, round_idx=int(r)
+            )
 
     total_wall = float(time.perf_counter() - t_total_0)
 
@@ -448,17 +452,25 @@ def _run_one_cell_one_seed(
         "mean_hilbert_wall_s": float(np.mean(hilbert_walls)) if hilbert_walls else 0.0,
         "mean_mcts_wall_s": float(np.mean(mcts_walls)) if mcts_walls else 0.0,
         "astsr_success_rate": float(np.mean(astsr_success)) if astsr_success else 0.0,
-        "hilbert_success_rate": float(np.mean(hilbert_success)) if hilbert_success else 0.0,
+        "hilbert_success_rate": float(np.mean(hilbert_success))
+        if hilbert_success
+        else 0.0,
         "mcts_success_rate": float(np.mean(mcts_success)) if mcts_success else 0.0,
-        "mean_hilbert_r2": float(np.mean(
-            [r["vertices"]["hilbert"]["r2"] for r in per_round]
-        )) if per_round else 0.0,
-        "mean_evolutionary_r2": float(np.mean(
-            [r["vertices"]["astsr"]["r2"] for r in per_round]
-        )) if per_round else 0.0,
-        "mean_variance_reduction": float(np.mean(
-            [r["vertices"]["mcts"]["variance_reduction"] for r in per_round]
-        )) if per_round else 0.0,
+        "mean_hilbert_r2": float(
+            np.mean([r["vertices"]["hilbert"]["r2"] for r in per_round])
+        )
+        if per_round
+        else 0.0,
+        "mean_evolutionary_r2": float(
+            np.mean([r["vertices"]["astsr"]["r2"] for r in per_round])
+        )
+        if per_round
+        else 0.0,
+        "mean_variance_reduction": float(
+            np.mean([r["vertices"]["mcts"]["variance_reduction"] for r in per_round])
+        )
+        if per_round
+        else 0.0,
     }
 
 
@@ -499,23 +511,25 @@ def build_report(
             )
             if design.X.shape[0] == 0:
                 # Empty cell — record a sentinel zero-row result.
-                per_cell_seed_results[cell].append({
-                    "cell": cell,
-                    "seed": int(s),
-                    "n_trajectories": 0,
-                    "n_rounds": int(n_rounds),
-                    "total_wall_s": 0.0,
-                    "per_round": [],
-                    "mean_astsr_wall_s": 0.0,
-                    "mean_hilbert_wall_s": 0.0,
-                    "mean_mcts_wall_s": 0.0,
-                    "astsr_success_rate": 0.0,
-                    "hilbert_success_rate": 0.0,
-                    "mcts_success_rate": 0.0,
-                    "mean_hilbert_r2": 0.0,
-                    "mean_evolutionary_r2": 0.0,
-                    "mean_variance_reduction": 0.0,
-                })
+                per_cell_seed_results[cell].append(
+                    {
+                        "cell": cell,
+                        "seed": int(s),
+                        "n_trajectories": 0,
+                        "n_rounds": int(n_rounds),
+                        "total_wall_s": 0.0,
+                        "per_round": [],
+                        "mean_astsr_wall_s": 0.0,
+                        "mean_hilbert_wall_s": 0.0,
+                        "mean_mcts_wall_s": 0.0,
+                        "astsr_success_rate": 0.0,
+                        "hilbert_success_rate": 0.0,
+                        "mcts_success_rate": 0.0,
+                        "mean_hilbert_r2": 0.0,
+                        "mean_evolutionary_r2": 0.0,
+                        "mean_variance_reduction": 0.0,
+                    }
+                )
                 continue
             res = _run_one_cell_one_seed(
                 cell=cell,
@@ -534,27 +548,43 @@ def build_report(
     for cell in CELL_LINES:
         seed_results = per_cell_seed_results[cell]
         if not seed_results:
-            per_cell_summary.append({
-                "cell": cell,
-                "n_seeds": 0,
-                "mean_hilbert_r2": 0.0,
-                "std_hilbert_r2": 0.0,
-                "mean_evolutionary_r2": 0.0,
-                "std_evolutionary_r2": 0.0,
-                "mean_variance_reduction": 0.0,
-                "std_variance_reduction": 0.0,
-            })
+            per_cell_summary.append(
+                {
+                    "cell": cell,
+                    "n_seeds": 0,
+                    "mean_hilbert_r2": 0.0,
+                    "std_hilbert_r2": 0.0,
+                    "mean_evolutionary_r2": 0.0,
+                    "std_evolutionary_r2": 0.0,
+                    "mean_variance_reduction": 0.0,
+                    "std_variance_reduction": 0.0,
+                }
+            )
             continue
-        per_cell_summary.append({
-            "cell": cell,
-            "n_seeds": int(len(seed_results)),
-            "mean_hilbert_r2": float(np.mean([r["mean_hilbert_r2"] for r in seed_results])),
-            "std_hilbert_r2": float(np.std([r["mean_hilbert_r2"] for r in seed_results])),
-            "mean_evolutionary_r2": float(np.mean([r["mean_evolutionary_r2"] for r in seed_results])),
-            "std_evolutionary_r2": float(np.std([r["mean_evolutionary_r2"] for r in seed_results])),
-            "mean_variance_reduction": float(np.mean([r["mean_variance_reduction"] for r in seed_results])),
-            "std_variance_reduction": float(np.std([r["mean_variance_reduction"] for r in seed_results])),
-        })
+        per_cell_summary.append(
+            {
+                "cell": cell,
+                "n_seeds": int(len(seed_results)),
+                "mean_hilbert_r2": float(
+                    np.mean([r["mean_hilbert_r2"] for r in seed_results])
+                ),
+                "std_hilbert_r2": float(
+                    np.std([r["mean_hilbert_r2"] for r in seed_results])
+                ),
+                "mean_evolutionary_r2": float(
+                    np.mean([r["mean_evolutionary_r2"] for r in seed_results])
+                ),
+                "std_evolutionary_r2": float(
+                    np.std([r["mean_evolutionary_r2"] for r in seed_results])
+                ),
+                "mean_variance_reduction": float(
+                    np.mean([r["mean_variance_reduction"] for r in seed_results])
+                ),
+                "std_variance_reduction": float(
+                    np.std([r["mean_variance_reduction"] for r in seed_results])
+                ),
+            }
+        )
 
     # Aggregate over all cells (unweighted).
     def _mean(key: str) -> float:
@@ -619,23 +649,31 @@ def write_report(
     csv_path = out / "per_cell.csv"
     with open(csv_path, "w", encoding="utf-8", newline="") as fh:
         w = csv.writer(fh)
-        w.writerow([
-            "cell", "n_seeds",
-            "mean_hilbert_r2", "std_hilbert_r2",
-            "mean_evolutionary_r2", "std_evolutionary_r2",
-            "mean_variance_reduction", "std_variance_reduction",
-        ])
+        w.writerow(
+            [
+                "cell",
+                "n_seeds",
+                "mean_hilbert_r2",
+                "std_hilbert_r2",
+                "mean_evolutionary_r2",
+                "std_evolutionary_r2",
+                "mean_variance_reduction",
+                "std_variance_reduction",
+            ]
+        )
         for row in report.get("per_cell", []):
-            w.writerow([
-                row.get("cell", ""),
-                row.get("n_seeds", 0),
-                f"{row.get('mean_hilbert_r2', 0.0):.4f}",
-                f"{row.get('std_hilbert_r2', 0.0):.4f}",
-                f"{row.get('mean_evolutionary_r2', 0.0):.4f}",
-                f"{row.get('std_evolutionary_r2', 0.0):.4f}",
-                f"{row.get('mean_variance_reduction', 0.0):.4f}",
-                f"{row.get('std_variance_reduction', 0.0):.4f}",
-            ])
+            w.writerow(
+                [
+                    row.get("cell", ""),
+                    row.get("n_seeds", 0),
+                    f"{row.get('mean_hilbert_r2', 0.0):.4f}",
+                    f"{row.get('std_hilbert_r2', 0.0):.4f}",
+                    f"{row.get('mean_evolutionary_r2', 0.0):.4f}",
+                    f"{row.get('std_evolutionary_r2', 0.0):.4f}",
+                    f"{row.get('mean_variance_reduction', 0.0):.4f}",
+                    f"{row.get('std_variance_reduction', 0.0):.4f}",
+                ]
+            )
 
     md_path: Optional[Path] = None
     if also_markdown:
@@ -643,7 +681,9 @@ def write_report(
         summary = report.get("summary", {}) or {}
         per_cell = report.get("per_cell", []) or []
         with open(md_path, "w", encoding="utf-8") as fh:
-            fh.write("# Wf-329 W2 — HilbertASTSRComposite per-cell triangle closure\n\n")
+            fh.write(
+                "# Wf-329 W2 — HilbertASTSRComposite per-cell triangle closure\n\n"
+            )
             fh.write(
                 f"n_trajectories = {summary.get('n_trajectories', '?')}, "
                 f"n_rounds = {summary.get('n_rounds', '?')}, "
@@ -651,9 +691,15 @@ def write_report(
                 f"platinai_rows = {summary.get('platinai_rows_loaded', '?')}\n\n"
             )
             fh.write("## Summary (unweighted mean over cells)\n\n")
-            fh.write(f"- mean_hilbert_r2: **{summary.get('mean_hilbert_r2', 0.0):.4f}**\n")
-            fh.write(f"- mean_evolutionary_r2: **{summary.get('mean_evolutionary_r2', 0.0):.4f}**\n")
-            fh.write(f"- mean_variance_reduction: **{summary.get('mean_variance_reduction', 0.0):.4f}**\n")
+            fh.write(
+                f"- mean_hilbert_r2: **{summary.get('mean_hilbert_r2', 0.0):.4f}**\n"
+            )
+            fh.write(
+                f"- mean_evolutionary_r2: **{summary.get('mean_evolutionary_r2', 0.0):.4f}**\n"
+            )
+            fh.write(
+                f"- mean_variance_reduction: **{summary.get('mean_variance_reduction', 0.0):.4f}**\n"
+            )
             fh.write("\n## Per-cell breakdown\n\n")
             fh.write("| cell | n_seeds | hilbert R² | evol R² | var_red |\n")
             fh.write("|---|---:|---:|---:|---:|\n")
@@ -709,49 +755,63 @@ def main() -> int:
         ),
     )
     parser.add_argument(
-        "--platinai-csv", type=str, default=DEFAULT_PLATINAI_4CELL_CSV,
+        "--platinai-csv",
+        type=str,
+        default=DEFAULT_PLATINAI_4CELL_CSV,
         help=f"PlatinAI 4-cell CSV path (default {DEFAULT_PLATINAI_4CELL_CSV}).",
     )
     parser.add_argument(
-        "--n-trajectories", type=int, default=DEFAULT_N_TRAJECTORIES,
+        "--n-trajectories",
+        type=int,
+        default=DEFAULT_N_TRAJECTORIES,
         help=f"Rows per cell (default {DEFAULT_N_TRAJECTORIES}).",
     )
     parser.add_argument(
-        "--n-rounds", type=int, default=DEFAULT_N_ROUNDS,
+        "--n-rounds",
+        type=int,
+        default=DEFAULT_N_ROUNDS,
         help=f"Closure rounds per cell (default {DEFAULT_N_ROUNDS}).",
     )
     parser.add_argument(
-        "--seeds", type=int, nargs="+", default=list(DEFAULT_SEEDS),
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=list(DEFAULT_SEEDS),
         help="RNG seeds (default 0 1).",
     )
     parser.add_argument(
-        "--n-arms", type=int, default=DEFAULT_N_ARMS,
+        "--n-arms",
+        type=int,
+        default=DEFAULT_N_ARMS,
         help=f"MCTS arm count (default {DEFAULT_N_ARMS}).",
     )
     parser.add_argument(
-        "--hilbert-iters", type=int, default=DEFAULT_HILBERT_ITERS,
+        "--hilbert-iters",
+        type=int,
+        default=DEFAULT_HILBERT_ITERS,
         help=f"Hilbert iterations (default {DEFAULT_HILBERT_ITERS}).",
     )
     parser.add_argument(
-        "--out-dir", type=str, default=DEFAULT_OUT_DIR,
+        "--out-dir",
+        type=str,
+        default=DEFAULT_OUT_DIR,
         help=f"Output dir (default {DEFAULT_OUT_DIR}).",
     )
     parser.add_argument(
-        "--smoke", action="store_true",
+        "--smoke",
+        action="store_true",
         help="Run the canonical smoke and exit with 0/1.",
     )
     parser.add_argument(
-        "--quiet", action="store_true",
+        "--quiet",
+        action="store_true",
         help="Suppress per-cell progress output.",
     )
     args = parser.parse_args()
 
     if args.smoke:
         ok = smoke_run()
-        print(
-            "Wf-329 W2 hilbert_astsr_composite: smoke "
-            f"{'PASS' if ok else 'FAIL'}"
-        )
+        print("Wf-329 W2 hilbert_astsr_composite: smoke " f"{'PASS' if ok else 'FAIL'}")
         return 0 if ok else 1
 
     report = build_report(
@@ -784,10 +844,7 @@ def main() -> int:
         report=report,
         also_markdown=True,
     )
-    print(
-        f"Wrote {json_path}"
-        + (f" + {md_path}" if md_path is not None else "")
-    )
+    print(f"Wrote {json_path}" + (f" + {md_path}" if md_path is not None else ""))
     return 0
 
 

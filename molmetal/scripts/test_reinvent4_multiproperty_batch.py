@@ -19,6 +19,7 @@ Usage::
     uv run python molmetal/scripts/test_reinvent4_multiproperty_batch.py \
         --output-dir molmetal/reports/wf_extra2_batch/
 """
+
 from __future__ import annotations
 
 import argparse
@@ -40,16 +41,16 @@ from typing import Any, Dict, List, Optional
 # ring-containing aromatics, drug-like with H-bond donors/acceptors.
 # ---------------------------------------------------------------------------
 SMILES_BATCH: List[str] = [
-    "CCO",                              # ethanol — tiny, low MW
-    "c1ccccc1",                         # benzene — single aromatic ring
-    "CC(=O)Oc1ccccc1C(=O)O",            # aspirin — drug-like, mixed donors
-    "Cn1c(=O)c2c(ncn2C)n(C)c1=O",      # caffeine — multi-ring, drug-like
-    "CC(C)Cc1ccc(cc1)C(C)C(=O)O",      # ibuprofen — NSAID
-    "CCN(CC)CC",                        # triethylamine — non-aromatic
-    "C1CCCCC1",                         # cyclohexane — saturated ring
-    "OC1=CC=CC=C1",                     # phenol — aromatic + donor
-    "CC(=O)NCC(=O)N",                   # acetamide dimer — donor-rich
-    "CCCCCCCC",                         # n-octane — long aliphatic
+    "CCO",  # ethanol — tiny, low MW
+    "c1ccccc1",  # benzene — single aromatic ring
+    "CC(=O)Oc1ccccc1C(=O)O",  # aspirin — drug-like, mixed donors
+    "Cn1c(=O)c2c(ncn2C)n(C)c1=O",  # caffeine — multi-ring, drug-like
+    "CC(C)Cc1ccc(cc1)C(C)C(=O)O",  # ibuprofen — NSAID
+    "CCN(CC)CC",  # triethylamine — non-aromatic
+    "C1CCCCC1",  # cyclohexane — saturated ring
+    "OC1=CC=CC=C1",  # phenol — aromatic + donor
+    "CC(=O)NCC(=O)N",  # acetamide dimer — donor-rich
+    "CCCCCCCC",  # n-octane — long aliphatic
 ]
 
 
@@ -181,7 +182,9 @@ def main() -> int:
         nargs=2,
         default=[
             Path("molmetal/molmetal_lam/sbdd_env/reinvent4_jsonl_worker.py"),
-            Path("molmetal/molmetal_lam/sbdd_env/reinvent4_multiproperty_jsonl_worker.py"),
+            Path(
+                "molmetal/molmetal_lam/sbdd_env/reinvent4_multiproperty_jsonl_worker.py"
+            ),
         ],
         help="<proxy_worker> <learned_worker> paths",
     )
@@ -241,7 +244,9 @@ def main() -> int:
         )
 
     # Aggregate metrics
-    learned_vals = [float(r["learned_score"]) for r in rows if r["learned_score"] is not None]
+    learned_vals = [
+        float(r["learned_score"]) for r in rows if r["learned_score"] is not None
+    ]
     proxy_vals = [float(r["proxy_score"]) for r in rows if r["proxy_score"] is not None]
     deltas = [float(r["delta"]) for r in rows if r["delta"] is not None]
     abs_deltas = [float(r["abs_delta"]) for r in rows if r["abs_delta"] is not None]
@@ -258,12 +263,8 @@ def main() -> int:
             "proxy": n_smiles - n_succeeded_proxy,
         },
         "learned_proxy_correlation": correlation,
-        "mean_learned_score": (
-            statistics.mean(learned_vals) if learned_vals else None
-        ),
-        "mean_proxy_score": (
-            statistics.mean(proxy_vals) if proxy_vals else None
-        ),
+        "mean_learned_score": (statistics.mean(learned_vals) if learned_vals else None),
+        "mean_proxy_score": (statistics.mean(proxy_vals) if proxy_vals else None),
         "mean_delta": statistics.mean(deltas) if deltas else None,
         "mean_abs_delta": statistics.mean(abs_deltas) if abs_deltas else None,
         "max_abs_delta": max(abs_deltas) if abs_deltas else None,
@@ -275,12 +276,12 @@ def main() -> int:
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "method": "10-SMILES batch test of REINVENT4 learned multiproperty",
         "scope": "MEASURED — direct subprocess calls into both workers, "
-                 "real REINVENT4 binary at /mnt/storage/env-projects/reinvent4-rocm/.venv/bin/reinvent",
+        "real REINVENT4 binary at /mnt/storage/env-projects/reinvent4-rocm/.venv/bin/reinvent",
         "honest_framing": {
             "MEASURED": "10 SMILES, single-process, gfx1101 RX 7800 XT, "
-                        "uv-managed Python 3.12 (this run)",
+            "uv-managed Python 3.12 (this run)",
             "PROJECTED": "production batch — many SMILES, GPU submission, "
-                         "wall-clock would amortise REINVENT4 Python cold-start across the batch",
+            "wall-clock would amortise REINVENT4 Python cold-start across the batch",
         },
         "config": {
             "components": DEFAULT_COMPONENTS,
@@ -300,33 +301,42 @@ def main() -> int:
     }
 
     # Write report.json
-    (out_dir / "report.json").write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
+    (out_dir / "report.json").write_text(
+        json.dumps(report, indent=2, allow_nan=False) + "\n"
+    )
 
     # Write delta_table.csv
     with (out_dir / "delta_table.csv").open("w", newline="") as fh:
         w = csv.writer(fh)
         w.writerow(["smiles", "learned_score", "proxy_score", "delta", "abs_delta"])
         for r in rows:
-            w.writerow([
-                r["smiles"],
-                "" if r["learned_score"] is None else f"{r['learned_score']:.6f}",
-                "" if r["proxy_score"] is None else f"{r['proxy_score']:.6f}",
-                "" if r["delta"] is None else f"{r['delta']:+.6f}",
-                "" if r["abs_delta"] is None else f"{r['abs_delta']:.6f}",
-            ])
+            w.writerow(
+                [
+                    r["smiles"],
+                    "" if r["learned_score"] is None else f"{r['learned_score']:.6f}",
+                    "" if r["proxy_score"] is None else f"{r['proxy_score']:.6f}",
+                    "" if r["delta"] is None else f"{r['delta']:+.6f}",
+                    "" if r["abs_delta"] is None else f"{r['abs_delta']:.6f}",
+                ]
+            )
 
     # Print summary
     print()
     print("=" * 60)
-    print(json.dumps({
-        "n_smiles": metrics["n_smiles"],
-        "n_succeeded": metrics["n_succeeded"],
-        "learned_proxy_correlation": metrics["learned_proxy_correlation"],
-        "mean_learned_score": metrics["mean_learned_score"],
-        "mean_proxy_score": metrics["mean_proxy_score"],
-        "mean_abs_delta": metrics["mean_abs_delta"],
-        "passed": report["passed"],
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "n_smiles": metrics["n_smiles"],
+                "n_succeeded": metrics["n_succeeded"],
+                "learned_proxy_correlation": metrics["learned_proxy_correlation"],
+                "mean_learned_score": metrics["mean_learned_score"],
+                "mean_proxy_score": metrics["mean_proxy_score"],
+                "mean_abs_delta": metrics["mean_abs_delta"],
+                "passed": report["passed"],
+            },
+            indent=2,
+        )
+    )
 
     return 0 if report["passed"] else 1
 

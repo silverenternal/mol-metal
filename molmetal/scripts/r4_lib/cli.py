@@ -278,8 +278,12 @@ def _build_argparser() -> argparse.ArgumentParser:
         default=None,
         choices=[
             None,
-            "cisplatin", "carboplatin", "oxaliplatin", "nedaplatin",
-            "ru_arene", "ir_cp_star",
+            "cisplatin",
+            "carboplatin",
+            "oxaliplatin",
+            "nedaplatin",
+            "ru_arene",
+            "ir_cp_star",
         ],
         help=(
             "Optional metal-containing root scaffold for MCTS. When set, "
@@ -703,8 +707,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--split",
         type=str,
-        choices=("none", "scaffold", "time", "random",
-                 "scaffold_tanimoto_0.4"),
+        choices=("none", "scaffold", "time", "random", "scaffold_tanimoto_0.4"),
         default="none",
         help=(
             "TODO-30 / P6.1+P6.2 — split discipline for the "
@@ -893,10 +896,10 @@ def _resolve_paper_sweep_preset(args: argparse.Namespace) -> argparse.Namespace:
         preset = _R17_LEGACY_DEFAULTS
 
     for field_name, preset_value in (
-        ("pockets",       preset["pockets"]),
-        ("seeds",         preset["seeds"]),
+        ("pockets", preset["pockets"]),
+        ("seeds", preset["seeds"]),
         ("n_simulations", preset["n_simulations"]),
-        ("manifest",      preset["manifest"]),
+        ("manifest", preset["manifest"]),
     ):
         current = getattr(args, field_name)
         if current is None:
@@ -911,9 +914,7 @@ def _resolve_paper_sweep_preset(args: argparse.Namespace) -> argparse.Namespace:
             )
     # Surface the resolved preset for downstream logging.
     args.r17_preset_active = (
-        "paper_grade" if args.r17_paper_grade
-        else "smoke" if args.smoke
-        else "legacy"
+        "paper_grade" if args.r17_paper_grade else "smoke" if args.smoke else "legacy"
     )
     return args
 
@@ -932,7 +933,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         log.info(
             "--seed=%d supplied alongside --seeds=%s; --seeds wins "
             "(the more-specific CLI token takes precedence).",
-            args.seed, args.seeds,
+            args.seed,
+            args.seeds,
         )
     # TODO M-R17-A2 / WF-Paper-Sweep-Spec (2026-09-25) — apply the
     # --smoke / --r17-paper-grade preset overrides BEFORE the
@@ -944,7 +946,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         args.r17_preset_active,
         args.pockets,
         args.seeds,
-        args.n_simulations, args.manifest,
+        args.n_simulations,
+        args.manifest,
     )
     # WF-Lift-N-Sim-Cap (2026-09-14): the historical 100-simulation
     # hard-cap silently clamped ``--n-simulations`` so the CLI flag had
@@ -957,7 +960,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         log.warning(
             "n_simulations=%d exceeds SAFETY_MAX=%d; clamping to %d "
             "(set SAFETY_MAX higher if you really need more).",
-            args.n_simulations, SAFETY_MAX, SAFETY_MAX,
+            args.n_simulations,
+            SAFETY_MAX,
+            SAFETY_MAX,
         )
         args.n_simulations = SAFETY_MAX
     if args.n_simulations < 1:
@@ -1002,11 +1007,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "Both --output-dir=%s and --out-dir=%s supplied; "
                 "--out-dir wins (absolute path is the safer, more "
                 "explicit fallback).  --output-dir=%s logged for "
-                "audit.", args.output_dir, args.out_dir, args.output_dir
+                "audit.",
+                args.output_dir,
+                args.out_dir,
+                args.output_dir,
             )
     else:
         # Build output dir under molmetal/reports/.
-        output_root = Path(__file__).resolve().parent.parent.parent.parent / "molmetal" / "reports"
+        output_root = (
+            Path(__file__).resolve().parent.parent.parent.parent
+            / "molmetal"
+            / "reports"
+        )
         out = output_root / f"wf_lambda1_{args.output_dir}"
     out.mkdir(parents=True, exist_ok=True)
     log.info("Output directory: %s", out)
@@ -1039,19 +1051,24 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 log.info(
                     "Applying --split=%s: novelty training pool restricted "
                     "to %d SMILES (was %d)",
-                    args.split, len(split_smiles), len(training_smiles),
+                    args.split,
+                    len(split_smiles),
+                    len(training_smiles),
                 )
                 training_smiles = split_smiles
         except Exception as exc:
             log.warning(
                 "Could not apply --split=%s: %s (falling back to legacy "
-                "training-set loader)", args.split, exc,
+                "training-set loader)",
+                args.split,
+                exc,
             )
 
     # Surface the parsed ``args`` namespace into the runner module so
     # :func:`run_one_cell` can read CLI-only knobs (``fg_veto_strict``,
     # ``wetlab_input``) via ``globals().get("args")``.
     from . import runner as _runner_mod
+
     _runner_mod.args = args  # type: ignore[attr-defined]
 
     payload, cells = run_sweep(
@@ -1069,9 +1086,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         platinai_weight=args.reward_platinai_weight,
         lambda_reward_weight=args.reward_lambda_weight,
         pharmacophore_weight=getattr(args, "reward_pharmacophore_weight", 0.0),
-        pharmacophore_strict=bool(
-            getattr(args, "pharmacophore_strict", False)
-        ),
+        pharmacophore_strict=bool(getattr(args, "pharmacophore_strict", False)),
         pharmacophore_allow_acyclic=bool(
             getattr(args, "pharmacophore_allow_acyclic", True)
         ),
@@ -1079,23 +1094,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         decoder_rework=bool(args.decoder_rework),
         keep_high_sa_tiles=bool(args.keep_high_sa_tiles),
         metal_seed_from_pocket=bool(args.metal_seed_from_pocket),
-        use_pocket_conditioned_reference=bool(
-            args.use_pocket_conditioned_reference
-        ),
+        use_pocket_conditioned_reference=bool(args.use_pocket_conditioned_reference),
         use_learned_prior=bool(args.use_learned_prior),
         pocket_boost_strength=float(getattr(args, "pocket_boost_strength", 1.0)),
         use_sa_prior=bool(args.use_sa_prior),
         sa_prior_strength=float(args.sa_prior_strength),
         use_learned_shaping=bool(getattr(args, "use_learned_shaping", False)),
-        learned_shaping_weight=float(
-            getattr(args, "learned_shaping_weight", 1.0)
-        ),
+        learned_shaping_weight=float(getattr(args, "learned_shaping_weight", 1.0)),
         use_pocket_macro_inference=bool(
             getattr(args, "use_pocket_macro_inference", False)
         ),
-        use_symbolic_reward=bool(
-            getattr(args, "use_symbolic_reward", False)
-        ),
+        use_symbolic_reward=bool(getattr(args, "use_symbolic_reward", False)),
         n_samples=int(args.n_samples),
         pocket10_radius=float(args.pocket10_radius),
         reference_ligand=bool(args.reference_ligand),
@@ -1110,6 +1119,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     log.info("Wrote report to %s/report.json", out)
     log.info("Wrote summary to %s/summary.md", out)
-    print(json.dumps({"output_dir": str(out), "n_cells": len(cells),
-                      "aggregate": payload["aggregate"]}, indent=2))
+    print(
+        json.dumps(
+            {
+                "output_dir": str(out),
+                "n_cells": len(cells),
+                "aggregate": payload["aggregate"],
+            },
+            indent=2,
+        )
+    )
     return 0

@@ -319,9 +319,7 @@ def main(argv: list) -> int:
         smoke = _smoke_run()
         wrapper = _wrapper_smoke()
         # Reasons breakdown — count by veto type.
-        fg_vetoes = sum(
-            1 for r in smoke["smoke_results"][:10] if r == 1
-        )
+        fg_vetoes = sum(1 for r in smoke["smoke_results"][:10] if r == 1)
         # (The smoke_results array is not bucketed; we just
         # report the per-case pass/fail.)
         report = {

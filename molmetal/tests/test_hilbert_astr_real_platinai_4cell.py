@@ -47,6 +47,7 @@ Test inventory
     ``per_seed_metrics.json`` is well-formed JSON with all required
     keys + a non-zero ``n_samples``.
 """
+
 from __future__ import annotations
 
 import json
@@ -64,9 +65,15 @@ import pytest
 _HERE = Path(__file__).resolve().parent
 # Tests live in molmetal/tests/; the repo root is one level above molmetal.
 _REPO_ROOT = _HERE.parent  # molmetal/
-while _REPO_ROOT != _REPO_ROOT.parent and not (
-    _REPO_ROOT / "molmetal" / "scripts" / "bench_hilbert_astr_real_platinai_4cell.py"
-).exists():
+while (
+    _REPO_ROOT != _REPO_ROOT.parent
+    and not (
+        _REPO_ROOT
+        / "molmetal"
+        / "scripts"
+        / "bench_hilbert_astr_real_platinai_4cell.py"
+    ).exists()
+):
     _REPO_ROOT = _REPO_ROOT.parent
 for _p in (str(_HERE.parent), str(_REPO_ROOT)):
     if _p not in sys.path:
@@ -234,9 +241,9 @@ def test_strict_scaffold_disjoint() -> None:
         # Dedupe scaffolds within this fold's test set first.
         unique_scaffolds_in_fold = {scaffolds[idx] for idx in test}
         for sc in unique_scaffolds_in_fold:
-            assert sc not in seen_in_test_per_scaffold, (
-                f"Scaffold {sc!r} appears in test of multiple folds"
-            )
+            assert (
+                sc not in seen_in_test_per_scaffold
+            ), f"Scaffold {sc!r} appears in test of multiple folds"
             seen_in_test_per_scaffold[sc] = fold_idx
 
 
@@ -272,17 +279,18 @@ def test_random_kfold_no_overlap() -> None:
 def test_kfold_indices_dispatches_to_strict_when_enabled() -> None:
     scaffolds = ["A", "B", "A", "B", "C", "C"]
     splits = _kfold_indices(
-        len(scaffolds), k=2, seed=0,
-        scaffold_ids=scaffolds, strict_scaffold=True,
+        len(scaffolds),
+        k=2,
+        seed=0,
+        scaffold_ids=scaffolds,
+        strict_scaffold=True,
     )
     # Strict path yields disjoint scaffolds per fold.
     seen: dict = {}
     for fold_idx, (_, test) in enumerate(splits):
         unique_scaffolds_in_fold = {scaffolds[idx] for idx in test}
         for sc in unique_scaffolds_in_fold:
-            assert sc not in seen, (
-                f"Scaffold {sc!r} appears in test of multiple folds"
-            )
+            assert sc not in seen, f"Scaffold {sc!r} appears in test of multiple folds"
             seen[sc] = fold_idx
 
 
@@ -297,9 +305,7 @@ def test_bemis_murcko_scaffold_fallback() -> None:
     scaffold = _bemis_murcko_scaffold(smi)
     # Bemis-Murcko will return empty for this (no rings), but the
     # tier-2 fallback should yield a non-empty canonicalised ligand.
-    assert scaffold != "", (
-        f"Tier-2 fallback failed: scaffold={scaffold!r}"
-    )
+    assert scaffold != "", f"Tier-2 fallback failed: scaffold={scaffold!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -316,9 +322,9 @@ def test_load_platinai_cell_mcf7_smoke() -> None:
     # Strict-scaffold scaffolds must be non-empty for the script to
     # work (the two-tier fallback ensures this even for open-chain
     # Pt-coordination complexes where Bemis-Murcko returns "").
-    assert all(s for s in scaffolds), (
-        "Some rows have empty scaffold (would collapse strict-scaffold split)"
-    )
+    assert all(
+        s for s in scaffolds
+    ), "Some rows have empty scaffold (would collapse strict-scaffold split)"
 
 
 def test_load_platinai_cell_unknown_raises() -> None:
@@ -407,11 +413,20 @@ def test_transformed_wf86_p3_outputs_exist() -> None:
         data = json.loads(cl_path.read_text(encoding="utf-8"))
         # Required keys per Wf-86 P3 schema.
         for key in (
-            "cell_line", "target_col", "n_samples",
-            "n_features", "feature_columns", "n_seeds",
-            "strict_scaffold", "combined_r2_mean", "combined_r2_std",
-            "hilbert_r2_mean", "hilbert_r2_std",
-            "astr_r2_mean", "astr_r2_std", "per_seed",
+            "cell_line",
+            "target_col",
+            "n_samples",
+            "n_features",
+            "feature_columns",
+            "n_seeds",
+            "strict_scaffold",
+            "combined_r2_mean",
+            "combined_r2_std",
+            "hilbert_r2_mean",
+            "hilbert_r2_std",
+            "astr_r2_mean",
+            "astr_r2_std",
+            "per_seed",
         ):
             assert key in data, f"missing Wf-86 P3 key {key!r} for {cl}"
         assert data["strict_scaffold"] is True
@@ -420,10 +435,16 @@ def test_transformed_wf86_p3_outputs_exist() -> None:
         # Each per-seed entry has the Wf-86 P3 schema fields.
         for ps in data["per_seed"]:
             for k in (
-                "seed", "combined_r2_overall", "hilbert_r2_overall",
-                "astr_r2_overall", "combined_r2_per_fold_mean",
-                "alpha_mean", "per_fold", "wall_time_s",
-                "collapse_detected_combined", "source_wf85_p3",
+                "seed",
+                "combined_r2_overall",
+                "hilbert_r2_overall",
+                "astr_r2_overall",
+                "combined_r2_per_fold_mean",
+                "alpha_mean",
+                "per_fold",
+                "wall_time_s",
+                "collapse_detected_combined",
+                "source_wf85_p3",
             ):
                 assert k in ps, f"missing Wf-86 P3 per-seed key {k!r} for {cl}"
     # Synthesis.md exists.
@@ -442,7 +463,12 @@ def test_combined_baseline_smoke(tmp_path: Path) -> None:
     if repo_root.name != "mol-metal":
         # Fallback: walk up to find ``mol-metal``.
         for cand in [_REPO_ROOT, _REPO_ROOT.parent]:
-            if (cand / "molmetal" / "scripts" / "bench_hilbert_astr_real_platinai_4cell.py").exists():
+            if (
+                cand
+                / "molmetal"
+                / "scripts"
+                / "bench_hilbert_astr_real_platinai_4cell.py"
+            ).exists():
                 repo_root = cand
                 break
     cmd = [
@@ -463,23 +489,35 @@ def test_combined_baseline_smoke(tmp_path: Path) -> None:
     env = dict(os.environ)
     env.setdefault("PYTHONPATH", f"{repo_root}:{env.get('PYTHONPATH', '')}")
     proc = subprocess.run(
-        cmd, cwd=str(repo_root), env=env,
-        capture_output=True, text=True, timeout=120,
+        cmd,
+        cwd=str(repo_root),
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=120,
     )
-    assert proc.returncode == 0, (
-        f"script failed:\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
-    )
+    assert (
+        proc.returncode == 0
+    ), f"script failed:\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
     json_path = tmp_path / "mcf7" / "per_seed_metrics.json"
     assert json_path.exists()
     with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
     # All required keys present.
     for key in (
-        "cell_line", "target_col", "n_samples", "n_features",
-        "feature_columns", "n_seeds", "strict_scaffold",
-        "combined_r2_mean", "combined_r2_std",
-        "hilbert_r2_mean", "hilbert_r2_std",
-        "astr_r2_mean", "astr_r2_std",
+        "cell_line",
+        "target_col",
+        "n_samples",
+        "n_features",
+        "feature_columns",
+        "n_seeds",
+        "strict_scaffold",
+        "combined_r2_mean",
+        "combined_r2_std",
+        "hilbert_r2_mean",
+        "hilbert_r2_std",
+        "astr_r2_mean",
+        "astr_r2_std",
         "per_seed",
     ):
         assert key in data, f"missing key {key!r} in per_seed_metrics.json"

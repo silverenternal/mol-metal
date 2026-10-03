@@ -146,7 +146,9 @@ def apply_tanimoto_ood_filter(
         the train pool (max-Tanimoto < threshold).
     """
     proto = TanimotoOODProtocol(
-        threshold=float(threshold), radius=int(radius), n_bits=int(n_bits),
+        threshold=float(threshold),
+        radius=int(radius),
+        n_bits=int(n_bits),
     )
     return [proto.is_ood(q, list(train_smiles)) for q in query_smiles]
 
@@ -199,8 +201,11 @@ def cfm_ood_filter_smiles_list(
             f"len(query_payloads)={len(query_payloads)}"
         )
     flags = apply_tanimoto_ood_filter(
-        query_smiles, train_smiles,
-        threshold=threshold, radius=radius, n_bits=n_bits,
+        query_smiles,
+        train_smiles,
+        threshold=threshold,
+        radius=radius,
+        n_bits=n_bits,
     )
     in_domain = [p for p, f in zip(query_payloads, flags) if not f]
     ood = [p for p, f in zip(query_payloads, flags) if f]
@@ -237,7 +242,9 @@ def summarise_tanimoto_ood(
         ``metrics/by_metric/tanimoto_ood.json`` reporting.
     """
     proto = TanimotoOODProtocol(
-        threshold=float(threshold), radius=int(radius), n_bits=int(n_bits),
+        threshold=float(threshold),
+        radius=int(radius),
+        n_bits=int(n_bits),
     )
     train_list = list(train_smiles)
     n_total = len(query_smiles)
@@ -272,7 +279,8 @@ def summarise_tanimoto_ood(
 # JSON IO helper (DIAGNOSTIC report)
 # ---------------------------------------------------------------------------
 def write_tanimoto_ood_summary_json(
-    summary: TanimotoOODSummary, path: str,
+    summary: TanimotoOODSummary,
+    path: str,
 ) -> None:
     """Write a :class:`TanimotoOODSummary` to ``path`` as JSON."""
     with open(path, "w", encoding="utf-8") as fh:

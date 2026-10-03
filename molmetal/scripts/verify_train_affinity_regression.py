@@ -58,28 +58,36 @@ def _check_argparse_contract() -> None:
         f"_common_train_args.RECIPE_EPOCHS={_common_train_args.RECIPE_EPOCHS}"
     )
     assert train_affinity_regression.RECIPE_ALPHA == 0.0
-    print("[1/4] argparse contract OK (default --dataset=platinai "
-          f"--init={args.init} --epochs={args.epochs} "
-          f"--alpha={train_affinity_regression.RECIPE_ALPHA})")
+    print(
+        "[1/4] argparse contract OK (default --dataset=platinai "
+        f"--init={args.init} --epochs={args.epochs} "
+        f"--alpha={train_affinity_regression.RECIPE_ALPHA})"
+    )
 
 
 def _check_r18_init_lazy_imports() -> None:
     """R18 init lazy import handles are wired in (None-acceptable)."""
     import train_affinity_regression as tar
 
-    for name in ("_SE3SBVelocityField", "_RelaxedEndpointTerm",
-                 "_MultiPHPocketFeatures"):
+    for name in (
+        "_SE3SBVelocityField",
+        "_RelaxedEndpointTerm",
+        "_MultiPHPocketFeatures",
+    ):
         assert hasattr(tar, name), f"R18 init handle missing: {name}"
-    print("[2/4] R18 init lazy imports wired in "
-          f"(se3sb={tar._SE3SBVelocityField is not None}, "
-          f"transport={tar._RelaxedEndpointTerm is not None}, "
-          f"multiph={tar._MultiPHPocketFeatures is not None})")
+    print(
+        "[2/4] R18 init lazy imports wired in "
+        f"(se3sb={tar._SE3SBVelocityField is not None}, "
+        f"transport={tar._RelaxedEndpointTerm is not None}, "
+        f"multiph={tar._MultiPHPocketFeatures is not None})"
+    )
 
 
 def _check_platinai_dataset_load() -> None:
     """Smoke-load the PlatinAI 4-cell dataset."""
     import train_affinity_regression as tar
     from rdkit import RDLogger
+
     RDLogger.DisableLog("rdApp.*")
 
     csv_path = _REPO_ROOT / "molmetal" / "data" / "platinai_4cell.csv"
@@ -88,19 +96,14 @@ def _check_platinai_dataset_load() -> None:
         return
     ds = tar.PlatinAIRegressionDataset.from_csv(csv_path)
     counts = ds.per_cell_line_valid_counts()
-    print(
-        f"[3/4] PlatinAI dataset: rows={len(ds)} "
-        f"per_cell_valid={counts}"
-    )
+    print(f"[3/4] PlatinAI dataset: rows={len(ds)} " f"per_cell_valid={counts}")
 
 
 def _check_platinai_smoke_train() -> None:
     """Run the platinai trainer for 1 seed × 1 epoch on tiny arch."""
     import subprocess
 
-    venv_py = (
-        _REPO_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
-    )
+    venv_py = _REPO_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
     if not venv_py.exists():
         print("[4/4] SKIP venv not found")
         return
@@ -111,24 +114,40 @@ def _check_platinai_smoke_train() -> None:
         cmd = [
             str(venv_py),
             str(_HERE / "train_affinity_regression.py"),
-            "--dataset", "platinai",
-            "--seeds", "0",
-            "--epochs", "1",
-            "--batch", "16",
-            "--hidden", "32",
-            "--depth", "2",
-            "--eval-every", "1",
-            "--init", "random",
-            "--out-dir", str(out_dir),
-            "--metrics-path", str(metrics_path),
-            "--summary-path", str(summary_path),
+            "--dataset",
+            "platinai",
+            "--seeds",
+            "0",
+            "--epochs",
+            "1",
+            "--batch",
+            "16",
+            "--hidden",
+            "32",
+            "--depth",
+            "2",
+            "--eval-every",
+            "1",
+            "--init",
+            "random",
+            "--out-dir",
+            str(out_dir),
+            "--metrics-path",
+            str(metrics_path),
+            "--summary-path",
+            str(summary_path),
         ]
         result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=180,
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=180,
         )
         if result.returncode != 0:
-            print("[4/4] FAIL: platinai smoke exit "
-                  f"{result.returncode}\nstderr (tail):\n{result.stderr[-1500:]}")
+            print(
+                "[4/4] FAIL: platinai smoke exit "
+                f"{result.returncode}\nstderr (tail):\n{result.stderr[-1500:]}"
+            )
             return
         if not metrics_path.exists():
             print("[4/4] FAIL: metrics JSON missing")
@@ -136,9 +155,7 @@ def _check_platinai_smoke_train() -> None:
         payload = json.loads(metrics_path.read_text())
         headline = payload.get("headline_pearson_r_mean")
         per_cell = payload.get("per_cell_line_pearson_r", {})
-        cell_strs = ", ".join(
-            f"{l}={per_cell[l]['mean']:.3f}" for l in per_cell
-        )
+        cell_strs = ", ".join(f"{l}={per_cell[l]['mean']:.3f}" for l in per_cell)
         print(
             f"[4/4] PlatinAI smoke OK "
             f"(headline_pearson={headline}, per_cell_means={cell_strs})"

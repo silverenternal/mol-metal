@@ -16,6 +16,7 @@ Validates:
   (≥10 MEASURED, MOCK_DELETED reserved for the 4 Phase-4A external
   scorers only).
 """
+
 from __future__ import annotations
 
 import json
@@ -40,15 +41,13 @@ class TestPolicyShape:
     def test_routing_policy_is_dict(self):
         assert isinstance(ROUTING_POLICY, dict)
         assert len(ROUTING_POLICY) >= 25, (
-            "Wf-43 Phase 2 ships ≥25 routed metrics; got "
-            f"{len(ROUTING_POLICY)}"
+            "Wf-43 Phase 2 ships ≥25 routed metrics; got " f"{len(ROUTING_POLICY)}"
         )
 
     def test_every_policy_entry_is_a_policy_entry(self):
         for metric, entry in ROUTING_POLICY.items():
             assert isinstance(entry, PolicyEntry), (
-                f"{metric!r} maps to {type(entry).__name__}, "
-                f"not PolicyEntry"
+                f"{metric!r} maps to {type(entry).__name__}, " f"not PolicyEntry"
             )
 
     def test_every_entry_has_required_fields(self):
@@ -59,15 +58,17 @@ class TestPolicyShape:
             assert isinstance(entry.license, str) and entry.license
             assert isinstance(entry.fallback_chain, tuple)
             assert isinstance(entry.required_data, tuple)
-            assert entry.wf43_status in {"MEASURED", "RESERVED", "MOCK_DELETED"}, (
-                f"{metric!r} has invalid wf43_status {entry.wf43_status!r}"
-            )
+            assert entry.wf43_status in {
+                "MEASURED",
+                "RESERVED",
+                "MOCK_DELETED",
+            }, f"{metric!r} has invalid wf43_status {entry.wf43_status!r}"
 
     def test_no_mock_keyword_in_policy_or_registry(self):
         for n in list(REGISTRY.keys()) + list(ROUTING_POLICY.keys()):
-            assert "mock" not in n.lower(), (
-                f"metric name {n!r} contains 'mock' — forbidden by Wf-43"
-            )
+            assert (
+                "mock" not in n.lower()
+            ), f"metric name {n!r} contains 'mock' — forbidden by Wf-43"
 
 
 # ---------------------------------------------------------------------------
@@ -94,9 +95,9 @@ class TestRegistryPolicyAlignment:
     def test_measured_metrics_have_a_real_module(self):
         for metric, entry in ROUTING_POLICY.items():
             if entry.wf43_status == "MEASURED":
-                assert entry.module != "NOT_SHIPPED" and entry.module != "N/A", (
-                    f"MEASURED metric {metric!r} has no module: {entry.module!r}"
-                )
+                assert (
+                    entry.module != "NOT_SHIPPED" and entry.module != "N/A"
+                ), f"MEASURED metric {metric!r} has no module: {entry.module!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -145,7 +146,10 @@ class TestRoutingPolicyContent:
                     f"this means 'we never decided on a tool'. Either "
                     f"declare the expected module path or mark MOCK_DELETED."
                 )
-                assert entry.module.startswith("molmetal.") or entry.module == "NOT_SHIPPED", (
+                assert (
+                    entry.module.startswith("molmetal.")
+                    or entry.module == "NOT_SHIPPED"
+                ), (
                     f"RESERVED metric {metric!r} module={entry.module!r}; "
                     f"expected a molmetal.* path or NOT_SHIPPED."
                 )
@@ -161,9 +165,9 @@ class TestRoutingPolicyContent:
     def test_fallback_chain_refs_exist(self):
         for metric, entry in ROUTING_POLICY.items():
             for fb in entry.fallback_chain:
-                assert fb in ROUTING_POLICY, (
-                    f"{metric!r}.fallback_chain has unknown ref {fb!r}"
-                )
+                assert (
+                    fb in ROUTING_POLICY
+                ), f"{metric!r}.fallback_chain has unknown ref {fb!r}"
 
     def test_no_fallback_to_mock_deleted(self):
         for metric, entry in ROUTING_POLICY.items():
@@ -181,12 +185,8 @@ class TestRoutingPolicyContent:
 class TestPolicyJSONSync:
     @pytest.fixture(scope="class")
     def policy_json(self) -> dict:
-        path = (
-            Path(__file__).resolve().parents[1] / "scoring" / "policy.json"
-        )
-        assert path.is_file(), (
-            f"policy.json missing at {path} — run Wf-43 Phase 2 ship"
-        )
+        path = Path(__file__).resolve().parents[1] / "scoring" / "policy.json"
+        assert path.is_file(), f"policy.json missing at {path} — run Wf-43 Phase 2 ship"
         with path.open() as f:
             return json.load(f)
 
@@ -199,9 +199,9 @@ class TestPolicyJSONSync:
         """Every in-process ROUTING_POLICY entry must be present in
         policy.json with at least the metric name + wf43_status."""
         for metric, entry in ROUTING_POLICY.items():
-            assert metric in policy_json["policy"], (
-                f"metric {metric!r} is in ROUTING_POLICY but missing from policy.json"
-            )
+            assert (
+                metric in policy_json["policy"]
+            ), f"metric {metric!r} is in ROUTING_POLICY but missing from policy.json"
             json_entry = policy_json["policy"][metric]
             assert json_entry["wf43_status"] == entry.wf43_status, (
                 f"{metric!r}: in-process wf43_status={entry.wf43_status}, "
@@ -213,16 +213,13 @@ class TestPolicyJSONSync:
         # Recompute the counts from the in-process dict and compare.
         in_process = {
             "MEASURED": sum(
-                1 for e in ROUTING_POLICY.values()
-                if e.wf43_status == "MEASURED"
+                1 for e in ROUTING_POLICY.values() if e.wf43_status == "MEASURED"
             ),
             "RESERVED": sum(
-                1 for e in ROUTING_POLICY.values()
-                if e.wf43_status == "RESERVED"
+                1 for e in ROUTING_POLICY.values() if e.wf43_status == "RESERVED"
             ),
             "MOCK_DELETED": sum(
-                1 for e in ROUTING_POLICY.values()
-                if e.wf43_status == "MOCK_DELETED"
+                1 for e in ROUTING_POLICY.values() if e.wf43_status == "MOCK_DELETED"
             ),
         }
         # The in-process dict covers ROUTING_POLICY only; policy.json

@@ -46,6 +46,7 @@ References
 * Wf-333-V4 result.json — chemprop_plus_pll best-of-5 candidate.
 * Wf-331-R3 / Wf-329W5 — Multi-PH + PLL + chemprop v2 anchors.
 """
+
 from __future__ import annotations
 
 import json
@@ -61,6 +62,7 @@ import numpy as np
 try:
     from sklearn.linear_model import Ridge
     from sklearn.metrics import r2_score
+
     _SKLEARN_AVAILABLE = True
 except Exception:  # pragma: no cover
     Ridge = None  # type: ignore
@@ -308,24 +310,30 @@ class MAMLRecoveryReport:
             "augmented_mean_meta": round(self.augmented_mean_meta, 6),
             "augmented_mean_adapted": round(self.augmented_mean_adapted, 6),
             "delta_adapted_vs_baseline": round(
-                self.delta_adapted_vs_baseline, 6,
+                self.delta_adapted_vs_baseline,
+                6,
             ),
             "delta_adapted_vs_meta": round(
-                self.delta_adapted_vs_meta, 6,
+                self.delta_adapted_vs_meta,
+                6,
             ),
             "baseline_mean": round(self.baseline_mean, 6),
             "pass_rate_baseline": round(self.pass_rate_baseline, 6),
             "pass_rate_augmented_meta": round(
-                self.pass_rate_augmented_meta, 6,
+                self.pass_rate_augmented_meta,
+                6,
             ),
             "pass_rate_augmented_adapted": round(
-                self.pass_rate_augmented_adapted, 6,
+                self.pass_rate_augmented_adapted,
+                6,
             ),
             "pass_rate_lift_adapted": round(
-                self.pass_rate_lift_adapted, 6,
+                self.pass_rate_lift_adapted,
+                6,
             ),
             "pass_rate_lift_adapted_adaptive": round(
-                self.pass_rate_lift_adapted_adaptive, 6,
+                self.pass_rate_lift_adapted_adaptive,
+                6,
             ),
             "cv_r2_mean_meta": round(self.cv_r2_mean_meta, 6),
             "cv_r2_mean_adapted": round(self.cv_r2_mean_adapted, 6),
@@ -337,14 +345,17 @@ class MAMLRecoveryReport:
                     "query_size": v.query_size,
                     "cv_r2_meta": round(v.cv_r2_meta, 6),
                     "cv_r2_inner_adapted": round(
-                        v.cv_r2_inner_adapted, 6,
+                        v.cv_r2_inner_adapted,
+                        6,
                     ),
                     "query_mean": round(v.query_mean, 6),
                     "query_pred_mean_meta": round(
-                        v.query_pred_mean_meta, 6,
+                        v.query_pred_mean_meta,
+                        6,
                     ),
                     "query_pred_mean_adapted": round(
-                        v.query_pred_mean_adapted, 6,
+                        v.query_pred_mean_adapted,
+                        6,
                     ),
                     "wall_seconds": round(v.wall_seconds, 4),
                 }
@@ -388,6 +399,7 @@ def load_cohort_with_m6_kappa(
     if not p.exists():
         return rows
     import csv as _csv
+
     with open(p, "r", encoding="utf-8") as fh:
         reader = _csv.DictReader(fh)
         for raw in reader:
@@ -403,6 +415,7 @@ def load_cohort_with_m6_kappa(
         from molmetal.molmetal_lam.sbdd_env.metrics_v2 import (
             m6_kappa_from_smiles,
         )
+
         for r in rows:
             try:
                 v = m6_kappa_from_smiles(r["smiles"])
@@ -413,6 +426,7 @@ def load_cohort_with_m6_kappa(
         # Fallback: assign synthetic m6_kappa from RDKit
         from rdkit import Chem
         from rdkit.Chem import Descriptors
+
         for r in rows:
             m = Chem.MolFromSmiles(r["smiles"])
             if m is None:
@@ -443,6 +457,7 @@ def compute_murcko_scaffolds(
         from rdkit import Chem
         from rdkit.Chem.Scaffolds import MurckoScaffold
         from rdkit import RDLogger
+
         RDLogger.DisableLog("rdApp.*")
     except Exception:
         for r in rows:
@@ -456,7 +471,8 @@ def compute_murcko_scaffolds(
                 r["scaffold"] = ""
                 continue
             sc = MurckoScaffold.MurckoScaffoldSmiles(
-                mol=m, includeChirality=False,
+                mol=m,
+                includeChirality=False,
             )
             r["scaffold"] = sc if sc else ""
         except Exception:
@@ -575,8 +591,7 @@ def inner_adapt_ridge(
     alpha_blend = 0.7
     inner_coef = alpha_blend * model.coef_ + (1.0 - alpha_blend) * meta_coef
     inner_intercept = (
-        alpha_blend * float(model.intercept_)
-        + (1.0 - alpha_blend) * meta_intercept
+        alpha_blend * float(model.intercept_) + (1.0 - alpha_blend) * meta_intercept
     )
     return inner_coef, inner_intercept
 
@@ -640,7 +655,8 @@ def evaluate_loso(
     else:
         all_rows = list(rows_other) + list(rows_with_scaffold)
         joint, _ = build_meta_features(
-            all_rows, use_chemprop_fallback=config.use_chemprop_fallback,
+            all_rows,
+            use_chemprop_fallback=config.use_chemprop_fallback,
         )
         n_other = len(rows_other)
         n_with = len(rows_with_scaffold)
@@ -674,7 +690,10 @@ def evaluate_loso(
         X_support = X_with[idx, :]
         y_support = y_with[idx]
         inner_coef, inner_intercept = inner_adapt_ridge(
-            X_support, y_support, meta_coef, meta_intercept,
+            X_support,
+            y_support,
+            meta_coef,
+            meta_intercept,
             alpha_inner=config.ridge_alpha_inner,
         )
         y_pred_adapted = X_with @ inner_coef + inner_intercept
@@ -743,7 +762,8 @@ def wire_maml_m6_kappa_recovery(
     t0 = time.time()
     if rows is None:
         rows = load_cohort_with_m6_kappa(
-            csv_path=csv_path, max_samples=max_samples,
+            csv_path=csv_path,
+            max_samples=max_samples,
         )
     if not rows:
         raise MAMLM6KappaError(
@@ -752,12 +772,11 @@ def wire_maml_m6_kappa_recovery(
 
     # ---- Build features ONCE (cached across folds + epochs) ----
     joint, _ = build_meta_features(
-        rows, use_chemprop_fallback=config.use_chemprop_fallback,
+        rows,
+        use_chemprop_fallback=config.use_chemprop_fallback,
     )
     n_total = joint.shape[0]
-    assert n_total == len(rows), (
-        f"feature rows {n_total} != cohort rows {len(rows)}"
-    )
+    assert n_total == len(rows), f"feature rows {n_total} != cohort rows {len(rows)}"
 
     # Identify top-N scaffolds by frequency
     scaffold_counts: Dict[str, int] = {}
@@ -767,7 +786,7 @@ def wire_maml_m6_kappa_recovery(
     top_scaffolds = sorted(
         scaffold_counts.items(),
         key=lambda x: -x[1],
-    )[:config.n_scaffolds]
+    )[: config.n_scaffolds]
     scaffold_keys = [sc for sc, _ in top_scaffolds]
 
     # Pre-compute per-scaffold row indices for fast slicing
@@ -780,14 +799,13 @@ def wire_maml_m6_kappa_recovery(
     per_scaffold: Dict[str, MAMLFoldResult] = {}
     for sc in scaffold_keys:
         with_idx = scaffold_indices[sc]
-        other_idx = [
-            i for i in range(n_total) if i not in set(with_idx)
-        ]
+        other_idx = [i for i in range(n_total) if i not in set(with_idx)]
         rows_with = [rows[i] for i in with_idx]
         rows_other = [rows[i] for i in other_idx]
         if with_idx and other_idx:
             cached_joint = np.concatenate(
-                [joint[other_idx, :], joint[with_idx, :]], axis=0,
+                [joint[other_idx, :], joint[with_idx, :]],
+                axis=0,
             )
             n_other = len(other_idx)
             n_with = len(with_idx)
@@ -796,7 +814,10 @@ def wire_maml_m6_kappa_recovery(
             n_other = 0
             n_with = 0
         fold = evaluate_loso(
-            rows_with, rows_other, sc, config,
+            rows_with,
+            rows_other,
+            sc,
+            config,
             cached_joint=cached_joint,
             cached_n_other=n_other,
             cached_n_with=n_with,
@@ -819,14 +840,18 @@ def wire_maml_m6_kappa_recovery(
         dtype=np.float64,
     )
     weights = weights / max(weights.sum(), 1e-9)
-    augmented_mean_meta = float(np.average(
-        [per_scaffold[sc].query_pred_mean_meta for sc in scaffold_keys],
-        weights=weights,
-    ))
-    augmented_mean_adapted = float(np.average(
-        [per_scaffold[sc].query_pred_mean_adapted for sc in scaffold_keys],
-        weights=weights,
-    ))
+    augmented_mean_meta = float(
+        np.average(
+            [per_scaffold[sc].query_pred_mean_meta for sc in scaffold_keys],
+            weights=weights,
+        )
+    )
+    augmented_mean_adapted = float(
+        np.average(
+            [per_scaffold[sc].query_pred_mean_adapted for sc in scaffold_keys],
+            weights=weights,
+        )
+    )
     baseline_mean = float(np.mean(y_global))
 
     # Pass-rate contract
@@ -836,19 +861,20 @@ def wire_maml_m6_kappa_recovery(
     pass_rate_lift = pass_rate_adapted - pass_rate_baseline
     pass_rate_baseline_adaptive = _pass_rate(y_global, config.threshold_adaptive)
     pass_rate_adapted_adaptive = _pass_rate(
-        y_pred_global, config.threshold_adaptive,
+        y_pred_global,
+        config.threshold_adaptive,
     )
-    pass_rate_lift_adaptive = (
-        pass_rate_adapted_adaptive - pass_rate_baseline_adaptive
-    )
+    pass_rate_lift_adaptive = pass_rate_adapted_adaptive - pass_rate_baseline_adaptive
 
     # CV-R² averaging across scaffolds
     cv_r2_meta_list = [
-        per_scaffold[sc].cv_r2_meta for sc in scaffold_keys
+        per_scaffold[sc].cv_r2_meta
+        for sc in scaffold_keys
         if math.isfinite(per_scaffold[sc].cv_r2_meta)
     ]
     cv_r2_adapted_list = [
-        per_scaffold[sc].cv_r2_inner_adapted for sc in scaffold_keys
+        per_scaffold[sc].cv_r2_inner_adapted
+        for sc in scaffold_keys
         if math.isfinite(per_scaffold[sc].cv_r2_inner_adapted)
     ]
     cv_r2_mean_meta = (
@@ -996,17 +1022,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         type=int,
         default=100,
         help="Cap on cohort rows (default 100; "
-             "PLL extraction is the bottleneck ~5-10 ms/SMILES)",
+        "PLL extraction is the bottleneck ~5-10 ms/SMILES)",
     )
     args = parser.parse_args(argv)
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"[Wf-361-B1] Loading cohort from {args.csv} "
-          f"(max {args.max_samples}) ...")
+    print(
+        f"[Wf-361-B1] Loading cohort from {args.csv} " f"(max {args.max_samples}) ..."
+    )
     rows = load_cohort_with_m6_kappa(
-        csv_path=args.csv, max_samples=args.max_samples,
+        csv_path=args.csv,
+        max_samples=args.max_samples,
     )
     print(f"[Wf-361-B1] Loaded {len(rows)} rows with m6_kappa.")
 
@@ -1032,13 +1060,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             seed=config.seed + ep,
         )
         rep = wire_maml_m6_kappa_recovery(
-            rows=rows, config=cfg, max_samples=args.max_samples,
+            rows=rows,
+            config=cfg,
+            max_samples=args.max_samples,
         )
         reports.append(rep)
-        print(f"  epoch {ep+1}/{args.epochs}: "
-              f"aug_meta={rep.augmented_mean_meta:.4f}, "
-              f"aug_adapted={rep.augmented_mean_adapted:.4f}, "
-              f"verdict={rep.verdict}")
+        print(
+            f"  epoch {ep+1}/{args.epochs}: "
+            f"aug_meta={rep.augmented_mean_meta:.4f}, "
+            f"aug_adapted={rep.augmented_mean_adapted:.4f}, "
+            f"verdict={rep.verdict}"
+        )
 
     # Average across epochs
     def avg(key):
@@ -1083,17 +1115,25 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     print(f"  n_samples          : {final_report.n_samples}")
     print(f"  n_features         : {final_report.n_features}")
     print(f"  n_scaffolds        : {final_report.n_scaffolds}")
-    print(f"  baseline_mean      : {final_report.baseline_mean:.4f} "
-          f"(Wf-335-M1 MEASURED = {WF335M1_MEASURED_BASELINE:.4f}; "
-          f"Wf-359-A1 R20-P3 = {WF359A1_MEASURED_AUGMENTED_MEAN:.4f})")
+    print(
+        f"  baseline_mean      : {final_report.baseline_mean:.4f} "
+        f"(Wf-335-M1 MEASURED = {WF335M1_MEASURED_BASELINE:.4f}; "
+        f"Wf-359-A1 R20-P3 = {WF359A1_MEASURED_AUGMENTED_MEAN:.4f})"
+    )
     print(f"  augmented_mean_meta: {final_report.augmented_mean_meta:.4f}")
-    print(f"  augmented_mean_adapted: {final_report.augmented_mean_adapted:.4f} "
-          f"(threshold = {M6_KAPPA_THRESHOLD})")
-    print(f"  delta_adapted_vs_baseline : {final_report.delta_adapted_vs_baseline:+.4f}")
+    print(
+        f"  augmented_mean_adapted: {final_report.augmented_mean_adapted:.4f} "
+        f"(threshold = {M6_KAPPA_THRESHOLD})"
+    )
+    print(
+        f"  delta_adapted_vs_baseline : {final_report.delta_adapted_vs_baseline:+.4f}"
+    )
     print(f"  delta_adapted_vs_meta     : {final_report.delta_adapted_vs_meta:+.4f}")
     print(f"  pass_rate_baseline        : {final_report.pass_rate_baseline:.4f}")
     print(f"  pass_rate_meta            : {final_report.pass_rate_augmented_meta:.4f}")
-    print(f"  pass_rate_adapted         : {final_report.pass_rate_augmented_adapted:.4f}")
+    print(
+        f"  pass_rate_adapted         : {final_report.pass_rate_augmented_adapted:.4f}"
+    )
     print(f"  cv_r2_mean_meta    : {final_report.cv_r2_mean_meta:+.4f}")
     print(f"  cv_r2_mean_adapted : {final_report.cv_r2_mean_adapted:+.4f}")
     print(f"  verdict            : {final_report.verdict}")

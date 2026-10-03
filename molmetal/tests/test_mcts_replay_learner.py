@@ -32,6 +32,7 @@ Run via::
     uv run --no-sync python -m pytest \\
         molmetal/tests/test_mcts_replay_learner.py -v
 """
+
 from __future__ import annotations
 
 import json
@@ -127,8 +128,9 @@ def _mk_entry(
     )
 
 
-def _mk_buffer(n_entries: int = 64, n_states: int = 4, n_actions: int = 4,
-               seed: int = 0) -> MCTSReplayBuffer:
+def _mk_buffer(
+    n_entries: int = 64, n_states: int = 4, n_actions: int = 4, seed: int = 0
+) -> MCTSReplayBuffer:
     """Build a synthetic replay buffer for tests."""
     buf = MCTSReplayBuffer(max_size=max(16, 4 * n_entries), seed=seed)
     synth_populate_buffer(
@@ -187,8 +189,14 @@ class TestImports:
 class TestFeaturiseEntry:
     def test_featurise_entry_shape_and_range(self) -> None:
         """featurise_entry returns a fixed-length feature vector in range."""
-        e = _mk_entry(state="CCO", action="action_0", value=0.7,
-                      prior=0.4, variance=0.02, visit_count=4)
+        e = _mk_entry(
+            state="CCO",
+            action="action_0",
+            value=0.7,
+            prior=0.4,
+            variance=0.02,
+            visit_count=4,
+        )
         feat = featurise_entry(e, feature_dim=DEFAULT_FEATURE_DIM)
         assert isinstance(feat, np.ndarray)
         assert feat.shape == (DEFAULT_FEATURE_DIM,)
@@ -216,10 +224,14 @@ class TestValueNetwork:
     def test_value_network_forward(self) -> None:
         """ValueNetwork.forward returns a 1-D output of the right length."""
         net = ValueNetwork(
-            feature_dim=DEFAULT_FEATURE_DIM, hidden_dim=16, seed=0,
+            feature_dim=DEFAULT_FEATURE_DIM,
+            hidden_dim=16,
+            seed=0,
         )
         x = np.random.default_rng(0).normal(
-            0.0, 0.5, size=(4, DEFAULT_FEATURE_DIM),
+            0.0,
+            0.5,
+            size=(4, DEFAULT_FEATURE_DIM),
         )
         out, h_pre, h_post = net.forward(x)
         assert out.shape == (4,)
@@ -233,7 +245,10 @@ class TestValueNetwork:
     def test_value_network_update_decreases_mse(self) -> None:
         """A few SGD updates drive the value MSE down on a constant target."""
         net = ValueNetwork(
-            feature_dim=DEFAULT_FEATURE_DIM, hidden_dim=16, lr=1.0e-2, seed=0,
+            feature_dim=DEFAULT_FEATURE_DIM,
+            hidden_dim=16,
+            lr=1.0e-2,
+            seed=0,
         )
         rng = np.random.default_rng(0)
         x = rng.normal(0.0, 0.5, size=(32, DEFAULT_FEATURE_DIM))
@@ -252,10 +267,14 @@ class TestValueNetwork:
     def test_value_network_predict_matches_forward(self) -> None:
         """predict is a no-grad wrapper around forward."""
         net = ValueNetwork(
-            feature_dim=DEFAULT_FEATURE_DIM, hidden_dim=16, seed=0,
+            feature_dim=DEFAULT_FEATURE_DIM,
+            hidden_dim=16,
+            seed=0,
         )
         x = np.random.default_rng(0).normal(
-            0.0, 0.5, size=(3, DEFAULT_FEATURE_DIM),
+            0.0,
+            0.5,
+            size=(3, DEFAULT_FEATURE_DIM),
         )
         pred = net.predict(x)
         fwd, _, _ = net.forward(x)
@@ -271,10 +290,14 @@ class TestPolicyNetwork:
     def test_policy_network_forward(self) -> None:
         """PolicyNetwork.forward returns a row-stochastic probability matrix."""
         net = PolicyNetwork(
-            feature_dim=DEFAULT_FEATURE_DIM, n_actions=8, seed=0,
+            feature_dim=DEFAULT_FEATURE_DIM,
+            n_actions=8,
+            seed=0,
         )
         x = np.random.default_rng(0).normal(
-            0.0, 0.5, size=(5, DEFAULT_FEATURE_DIM),
+            0.0,
+            0.5,
+            size=(5, DEFAULT_FEATURE_DIM),
         )
         probs = net.forward(x)
         assert probs.shape == (5, 8)
@@ -286,7 +309,10 @@ class TestPolicyNetwork:
     def test_policy_network_update_decreases_ce(self) -> None:
         """A few SGD updates drive the policy CE loss down on a fixed target."""
         net = PolicyNetwork(
-            feature_dim=DEFAULT_FEATURE_DIM, n_actions=4, lr=1.0e-2, seed=0,
+            feature_dim=DEFAULT_FEATURE_DIM,
+            n_actions=4,
+            lr=1.0e-2,
+            seed=0,
         )
         rng = np.random.default_rng(0)
         x = rng.normal(0.0, 0.5, size=(32, DEFAULT_FEATURE_DIM))
@@ -306,10 +332,15 @@ class TestPolicyNetwork:
     def test_policy_network_update_handles_uniform_target(self) -> None:
         """A uniform target produces a finite, well-defined loss."""
         net = PolicyNetwork(
-            feature_dim=DEFAULT_FEATURE_DIM, n_actions=4, lr=1.0e-2, seed=0,
+            feature_dim=DEFAULT_FEATURE_DIM,
+            n_actions=4,
+            lr=1.0e-2,
+            seed=0,
         )
         x = np.random.default_rng(0).normal(
-            0.0, 0.5, size=(8, DEFAULT_FEATURE_DIM),
+            0.0,
+            0.5,
+            size=(8, DEFAULT_FEATURE_DIM),
         )
         target = np.full((8, 4), 0.25, dtype=float)
         loss = net.update(x, target)
@@ -403,9 +434,15 @@ class TestLearnerIntegration:
         assert learner.policy_net.n_updates_ == len(history)
         # Summary keys present.
         for k in [
-            "n_epochs_run", "final_value_loss", "final_policy_loss",
-            "value_loss_drop", "policy_loss_drop", "converged",
-            "total_wall_time_s", "value_net_updates", "policy_net_updates",
+            "n_epochs_run",
+            "final_value_loss",
+            "final_policy_loss",
+            "value_loss_drop",
+            "policy_loss_drop",
+            "converged",
+            "total_wall_time_s",
+            "value_net_updates",
+            "policy_net_updates",
         ]:
             assert k in summary, f"missing key: {k}"
         # Updates counters match.
@@ -415,7 +452,10 @@ class TestLearnerIntegration:
     def test_learner_fit_rejects_none_buffer(self) -> None:
         """fit() rejects a None buffer with MCTSReplayLearnerError."""
         learner = MCTSReplayLearner(
-            feature_dim=DEFAULT_FEATURE_DIM, n_epochs=1, batch_size=4, seed=0,
+            feature_dim=DEFAULT_FEATURE_DIM,
+            n_epochs=1,
+            batch_size=4,
+            seed=0,
         )
         with pytest.raises(MCTSReplayLearnerError):
             learner.fit(None)  # type: ignore[arg-type]
@@ -424,7 +464,10 @@ class TestLearnerIntegration:
         """fit() on an empty buffer logs zero loss without crashing."""
         buf = MCTSReplayBuffer(max_size=16, seed=0)
         learner = MCTSReplayLearner(
-            feature_dim=DEFAULT_FEATURE_DIM, n_epochs=3, batch_size=4, seed=0,
+            feature_dim=DEFAULT_FEATURE_DIM,
+            n_epochs=3,
+            batch_size=4,
+            seed=0,
         )
         history = learner.fit(buf)
         # Each epoch logs zero loss and zero n_samples.
@@ -459,8 +502,13 @@ class TestRunner:
         )
         # Top-level keys present.
         for k in [
-            "config", "replay_source", "buffer_stats", "summary",
-            "history", "wall_time_s", "version",
+            "config",
+            "replay_source",
+            "buffer_stats",
+            "summary",
+            "history",
+            "wall_time_s",
+            "version",
         ]:
             assert k in report, f"missing key: {k}"
         assert report["replay_source"].startswith("synthetic:")

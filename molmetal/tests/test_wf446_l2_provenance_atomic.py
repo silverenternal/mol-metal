@@ -48,15 +48,17 @@ def test_write_fails_on_unwritable_parent_dir(tmp_path: Path) -> None:
     os.chmod(ro_dir, 0o500)
     try:
         res = pf.gate_p1_hp_provenance_log(
-            "probe", "P3", "wf350a3",
+            "probe",
+            "P3",
+            "wf350a3",
             (pf.CONFIGS_DIR / "default.yaml",),
             ro_dir / "hp.jsonl",
         )
     finally:
         os.chmod(ro_dir, 0o700)  # allow pytest tmp cleanup
-    assert res.status == "FAIL", (
-        f"unwritable target must FAIL the gate, got {res.status}: {res.evidence}"
-    )
+    assert (
+        res.status == "FAIL"
+    ), f"unwritable target must FAIL the gate, got {res.status}: {res.evidence}"
     assert "failed to write" in res.evidence, res.evidence
 
 
@@ -72,19 +74,21 @@ def test_write_failure_of_primitive_fails_gate(
 
     monkeypatch.setattr(pf, "atomic_write_file", _boom)
     res = pf.gate_p1_hp_provenance_log(
-        "probe", "P3", "wf350a3",
+        "probe",
+        "P3",
+        "wf350a3",
         (pf.CONFIGS_DIR / "default.yaml",),
         tmp_path / "hp.jsonl",
     )
-    assert res.status == "FAIL", (
-        f"raise from atomic_write_file must FAIL the gate, got {res.status}"
-    )
-    assert "failed to write" in res.evidence and exc_type.__name__ in res.evidence, (
-        res.evidence
-    )
-    assert not (tmp_path / "hp.jsonl").exists(), (
-        "gate must not leave a partial artefact after a write failure"
-    )
+    assert (
+        res.status == "FAIL"
+    ), f"raise from atomic_write_file must FAIL the gate, got {res.status}"
+    assert (
+        "failed to write" in res.evidence and exc_type.__name__ in res.evidence
+    ), res.evidence
+    assert not (
+        tmp_path / "hp.jsonl"
+    ).exists(), "gate must not leave a partial artefact after a write failure"
 
 
 def test_write_is_whole_file_replace_not_append(tmp_path: Path) -> None:
@@ -96,15 +100,24 @@ def test_write_is_whole_file_replace_not_append(tmp_path: Path) -> None:
         pf.CONFIGS_DIR / "cfm_full_retrain.yaml",
     )
     res1 = pf.gate_p1_hp_provenance_log(
-        "probe", "P3", "wf350a3", configs[:1], jsonl_path,
+        "probe",
+        "P3",
+        "wf350a3",
+        configs[:1],
+        jsonl_path,
     )
     assert res1.status == "PASS", res1.evidence
     res2 = pf.gate_p1_hp_provenance_log(
-        "probe", "P3", "wf350a3", configs[:2], jsonl_path,
+        "probe",
+        "P3",
+        "wf350a3",
+        configs[:2],
+        jsonl_path,
     )
     assert res2.status == "PASS", res2.evidence
     lines = [
-        line for line in jsonl_path.read_text(encoding="utf-8").splitlines()
+        line
+        for line in jsonl_path.read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
     assert len(lines) == 2, (

@@ -10,6 +10,7 @@ Returns: PASS / FAIL / WARN with detailed JSON report.
 Standalone CLI; no GPU launches; no paper/* touches; no wet-lab; no sudo.
 Per AGENTS.md §5.1 + §5.2 + §5.5 + §5.6 + party-twenty-spirit §3.5.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -107,9 +108,11 @@ def cmd_validate(args: argparse.Namespace) -> Dict[str, Any]:
         "gap": aggregate_gap,
         "verdict": verdict,
         "verdict_by_cohort": verdict_by_cohort,
-        "alignment_level": "DATASET + METRIC ALIGN" if args.strict_alignment else
-                          "DATASET ALIGN" if args.allow_split_diff else
-                          "FULL ALIGN (only if dataset+protocol+metric all match)",
+        "alignment_level": "DATASET + METRIC ALIGN"
+        if args.strict_alignment
+        else "DATASET ALIGN"
+        if args.allow_split_diff
+        else "FULL ALIGN (only if dataset+protocol+metric all match)",
         "honest_framing": (
             "MEASURED-vs-PROJECTED tag discipline preserved per party-twenty-spirit §3.5; "
             "PASS / FAIL here is per-benchmark-gate, not for paper §4 headline claim"
@@ -127,7 +130,9 @@ def cmd_validate(args: argparse.Namespace) -> Dict[str, Any]:
     if args.json:
         print(json.dumps(report, indent=2, ensure_ascii=False))
     else:
-        print(f"baseline={baseline['name']} ours={aggregate_ours:.4f} baseline_value={baseline_value:.4f} verdict={verdict}")
+        print(
+            f"baseline={baseline['name']} ours={aggregate_ours:.4f} baseline_value={baseline_value:.4f} verdict={verdict}"
+        )
     return report
 
 
@@ -146,16 +151,31 @@ def build_parser() -> argparse.ArgumentParser:
     sub = p.add_subparsers(dest="cmd", required=True)
 
     p_val = sub.add_parser("validate", help="validate trainer results against baseline")
-    p_val.add_argument("--trainer-results", required=True,
-                       help="Path to trainer-results JSON (e.g., metrics/by_metric/metal_lomo_auc_wasserstein.json)")
-    p_val.add_argument("--baseline", required=True, choices=sorted(BASELINE_TEMPLATES),
-                       help="Baseline paper to compare against")
-    p_val.add_argument("--strict-alignment", action="store_true",
-                       help="Require DATASET + METRIC + SPLIT FULL ALIGN")
-    p_val.add_argument("--allow-split-diff", action="store_true",
-                       help="Allow split difference (DATASET + METRIC only)")
+    p_val.add_argument(
+        "--trainer-results",
+        required=True,
+        help="Path to trainer-results JSON (e.g., metrics/by_metric/metal_lomo_auc_wasserstein.json)",
+    )
+    p_val.add_argument(
+        "--baseline",
+        required=True,
+        choices=sorted(BASELINE_TEMPLATES),
+        help="Baseline paper to compare against",
+    )
+    p_val.add_argument(
+        "--strict-alignment",
+        action="store_true",
+        help="Require DATASET + METRIC + SPLIT FULL ALIGN",
+    )
+    p_val.add_argument(
+        "--allow-split-diff",
+        action="store_true",
+        help="Allow split difference (DATASET + METRIC only)",
+    )
     p_val.add_argument("--out", help="Output JSON path")
-    p_val.add_argument("--json", action="store_true", help="Print JSON output to stdout")
+    p_val.add_argument(
+        "--json", action="store_true", help="Print JSON output to stdout"
+    )
     p_val.set_defaults(func=cmd_validate)
 
     p_list = sub.add_parser("list-baselines", help="list available baseline templates")

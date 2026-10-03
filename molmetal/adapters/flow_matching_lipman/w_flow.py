@@ -125,7 +125,9 @@ DEFAULT_N_RUNS: int = 10
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-def _as_0d_tensor(value: Any, *, dtype: torch.dtype, device: torch.device) -> torch.Tensor:
+def _as_0d_tensor(
+    value: Any, *, dtype: torch.dtype, device: torch.device
+) -> torch.Tensor:
     """Coerce ``value`` to a 0-dim scalar tensor with the right dtype/device.
 
     Mirrors the convention used by :class:`_reference.solver.ODESolver`
@@ -285,17 +287,13 @@ class WaveformRelaxationSolver:
         bass_input_dim: int = 3,
     ) -> None:
         if int(n_windows) < 1:
-            raise ValueError(
-                f"n_windows must be >= 1; got {n_windows!r}"
-            )
+            raise ValueError(f"n_windows must be >= 1; got {n_windows!r}")
         if int(n_iters_per_window) < 1:
             raise ValueError(
                 f"n_iters_per_window must be >= 1; got {n_iters_per_window!r}"
             )
         if not math.isfinite(float(tol)) or float(tol) <= 0:
-            raise ValueError(
-                f"tol must be a positive finite float; got {tol!r}"
-            )
+            raise ValueError(f"tol must be a positive finite float; got {tol!r}")
         if int(n_substeps_per_window) < 1:
             raise ValueError(
                 f"n_substeps_per_window must be >= 1; got {n_substeps_per_window!r}"
@@ -374,13 +372,9 @@ class WaveformRelaxationSolver:
             )
         t0, t1 = float(t_span[0]), float(t_span[1])
         if not (math.isfinite(t0) and math.isfinite(t1)):
-            raise ValueError(
-                f"t_span entries must be finite; got {t_span!r}"
-            )
+            raise ValueError(f"t_span entries must be finite; got {t_span!r}")
         if t1 <= t0:
-            raise ValueError(
-                f"t_span[1] must be > t_span[0]; got {t_span!r}"
-            )
+            raise ValueError(f"t_span[1] must be > t_span[0]; got {t_span!r}")
 
         # Reset diagnostic state — :meth:`solve` is re-entrant safe.
         self.last_n_outer_iters = 0
@@ -450,15 +444,18 @@ class WaveformRelaxationSolver:
                 # iterations, which is a soft variance-reduction lever
                 # for the inner-step midpoint evaluation (especially for
                 # ``use_bass_martingale=True`` on heavy-tail distributions).
-                if self.ot_mode != OTCouplingMode.LEGACY and n_w >= 1 and (
-                    prev_endpoints[1].shape == window_endpoints[1].shape
+                if (
+                    self.ot_mode != OTCouplingMode.LEGACY
+                    and n_w >= 1
+                    and (prev_endpoints[1].shape == window_endpoints[1].shape)
                 ):
                     try:
                         # Pair ``prev_endpoints[1]`` against
                         # ``window_endpoints[1]`` (the first window's
                         # right edge on the current iteration).
                         idx = self.ot_sampler.couple(
-                            prev_endpoints[1], window_endpoints[1],
+                            prev_endpoints[1],
+                            window_endpoints[1],
                         )
                         # Record the permutation for diagnostics (the
                         # last outer iteration's permutation is the one
@@ -499,9 +496,7 @@ class WaveformRelaxationSolver:
                 # endpoint to its previous-iteration value.
                 max_residual = 0.0
                 for w in range(1, n_w + 1):
-                    diff = (
-                        window_endpoints[w] - prev_endpoints[w]
-                    ).abs().max().item()
+                    diff = (window_endpoints[w] - prev_endpoints[w]).abs().max().item()
                     if diff > max_residual:
                         max_residual = diff
                 self.last_n_outer_iters = outer_iter + 1
@@ -618,9 +613,7 @@ class WFlowCFM:
         bass_input_dim: int = 3,
     ) -> None:
         if int(n_windows) < 1:
-            raise ValueError(
-                f"n_windows must be >= 1; got {n_windows!r}"
-            )
+            raise ValueError(f"n_windows must be >= 1; got {n_windows!r}")
         self.base_cfm_solver = base_cfm_solver
         self.use_se3_sb = bool(use_se3_sb)
         self.use_bass_martingale = bool(use_bass_martingale)
@@ -674,9 +667,7 @@ class WFlowCFM:
                 "set_velocity_fn(velocity_fn) first.",
             )
         if float(t) <= 0:
-            raise ValueError(
-                f"t must be > 0; got {t!r}"
-            )
+            raise ValueError(f"t must be > 0; got {t!r}")
         return self.solver.solve(
             velocity_fn=self._velocity_fn,
             x0=z0,

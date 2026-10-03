@@ -28,6 +28,7 @@ This file ships the **16 pytest contracts** that pin the behaviour of
 
 All tests CPU-only, deterministic, complete < 60 s combined.
 """
+
 from __future__ import annotations
 
 import csv
@@ -205,24 +206,41 @@ def test_aggregate_per_metal_keys() -> None:
     """_aggregate_per_metal returns expected keys including cache_hits."""
     recs = [
         {
-            "idx": 0, "status": "ok", "closure_ok": True,
-            "wall_time_s": 0.1, "memory_mb": 0.5,
-            "n_unique_total": 100, "from_cache": False,
+            "idx": 0,
+            "status": "ok",
+            "closure_ok": True,
+            "wall_time_s": 0.1,
+            "memory_mb": 0.5,
+            "n_unique_total": 100,
+            "from_cache": False,
         },
         {
-            "idx": 1, "status": "ok", "closure_ok": False,
-            "wall_time_s": 0.2, "memory_mb": 0.6,
-            "n_unique_total": 100, "from_cache": True,
+            "idx": 1,
+            "status": "ok",
+            "closure_ok": False,
+            "wall_time_s": 0.2,
+            "memory_mb": 0.6,
+            "n_unique_total": 100,
+            "from_cache": True,
         },
     ]
     agg = _aggregate_per_metal(recs)
     expected_keys = (
-        "n_samples", "n_unique", "n_repeats",
-        "sampled_with_replacement", "n_closure_ok",
-        "closure_reachability_rate", "n_parse_error",
-        "n_cache_hits", "mean_wall_time_s", "median_wall_time_s",
-        "std_wall_time_s", "total_wall_time_s", "peak_memory_mb",
-        "gate_target", "gate_pass",
+        "n_samples",
+        "n_unique",
+        "n_repeats",
+        "sampled_with_replacement",
+        "n_closure_ok",
+        "closure_reachability_rate",
+        "n_parse_error",
+        "n_cache_hits",
+        "mean_wall_time_s",
+        "median_wall_time_s",
+        "std_wall_time_s",
+        "total_wall_time_s",
+        "peak_memory_mb",
+        "gate_target",
+        "gate_pass",
     )
     for key in expected_keys:
         assert key in agg, f"aggregate missing key {key!r}"
@@ -259,8 +277,11 @@ def test_smoke_run_3_metals(smoke_payload: Dict[str, Any]) -> None:
     # Aggregate fields
     agg = smoke_payload["aggregate"]
     for key in (
-        "n_metals", "n_samples", "n_closure_ok",
-        "micro_reachability_rate", "macro_reachability_rate",
+        "n_metals",
+        "n_samples",
+        "n_closure_ok",
+        "micro_reachability_rate",
+        "macro_reachability_rate",
         "macro_std_of_means",
     ):
         assert key in agg, f"aggregate missing key {key!r}"
@@ -281,7 +302,10 @@ def test_smoke_run_3_metals(smoke_payload: Dict[str, Any]) -> None:
 def test_per_metal_files_written(tmp_path: Path) -> None:
     """Per-metal {metal}/reachability.json files are written."""
     payload = run_benchmark(
-        n_metals=2, n_samples=3, metals=["Pt", "Ru"], output_dir=tmp_path,
+        n_metals=2,
+        n_samples=3,
+        metals=["Pt", "Ru"],
+        output_dir=tmp_path,
     )
     paths = save_per_metal(payload, output_dir=tmp_path)
     assert (tmp_path / "Pt" / "reachability.json").is_file()
@@ -301,7 +325,10 @@ def test_per_metal_files_written(tmp_path: Path) -> None:
 def test_macro_micro_reachability_present(tmp_path: Path) -> None:
     """Payload carries both macro (equal-weight) and micro (weighted)."""
     payload = run_benchmark(
-        n_metals=2, n_samples=3, metals=["Pt", "Ru"], output_dir=tmp_path,
+        n_metals=2,
+        n_samples=3,
+        metals=["Pt", "Ru"],
+        output_dir=tmp_path,
     )
     agg = payload["aggregate"]
     assert "macro_reachability_rate" in agg
@@ -325,7 +352,9 @@ def test_macro_micro_reachability_present(tmp_path: Path) -> None:
 def test_synthesis_md_written(tmp_path: Path) -> None:
     """synthesis.md contains TL;DR, baselines, per-metal, honest framing."""
     payload = run_benchmark(
-        n_metals=3, n_samples=3, metals=["Pt", "Ru", "Pd"],
+        n_metals=3,
+        n_samples=3,
+        metals=["Pt", "Ru", "Pd"],
         output_dir=tmp_path,
     )
     save_per_metal(payload, output_dir=tmp_path)
@@ -374,28 +403,44 @@ def test_honest_negative_metals_in_synthesis(tmp_path: Path) -> None:
         "honest_negative_threshold": 0.50,
         "per_metal": {
             "Pt": {
-                "n_samples": 100, "n_unique": 100, "n_repeats": 0,
-                "sampled_with_replacement": False, "n_closure_ok": 70,
+                "n_samples": 100,
+                "n_unique": 100,
+                "n_repeats": 0,
+                "sampled_with_replacement": False,
+                "n_closure_ok": 70,
                 "closure_reachability_rate": 0.70,
-                "n_parse_error": 0, "n_cache_hits": 0,
-                "mean_wall_time_s": 0.1, "median_wall_time_s": 0.1,
-                "std_wall_time_s": 0.0, "total_wall_time_s": 10.0,
+                "n_parse_error": 0,
+                "n_cache_hits": 0,
+                "mean_wall_time_s": 0.1,
+                "median_wall_time_s": 0.1,
+                "std_wall_time_s": 0.0,
+                "total_wall_time_s": 10.0,
                 "peak_memory_mb": 0.5,
-                "gate_target": 0.85, "gate_pass": False,
+                "gate_target": 0.85,
+                "gate_pass": False,
             },
             "Pd": {
-                "n_samples": 100, "n_unique": 100, "n_repeats": 0,
-                "sampled_with_replacement": False, "n_closure_ok": 30,
+                "n_samples": 100,
+                "n_unique": 100,
+                "n_repeats": 0,
+                "sampled_with_replacement": False,
+                "n_closure_ok": 30,
                 "closure_reachability_rate": 0.30,
-                "n_parse_error": 0, "n_cache_hits": 0,
-                "mean_wall_time_s": 0.1, "median_wall_time_s": 0.1,
-                "std_wall_time_s": 0.0, "total_wall_time_s": 10.0,
+                "n_parse_error": 0,
+                "n_cache_hits": 0,
+                "mean_wall_time_s": 0.1,
+                "median_wall_time_s": 0.1,
+                "std_wall_time_s": 0.0,
+                "total_wall_time_s": 10.0,
                 "peak_memory_mb": 0.5,
-                "gate_target": 0.85, "gate_pass": False,
+                "gate_target": 0.85,
+                "gate_pass": False,
             },
         },
         "aggregate": {
-            "n_metals": 2, "n_samples": 200, "n_closure_ok": 100,
+            "n_metals": 2,
+            "n_samples": 200,
+            "n_closure_ok": 100,
             "micro_reachability_rate": 0.50,
             "macro_reachability_rate": 0.50,
             "macro_std_of_means": 0.20,
@@ -483,12 +528,12 @@ def test_load_unique_metal_smis_pt() -> None:
     if not DEFAULT_TMQM_CSV.is_file():
         pytest.skip(f"tmQM parsed CSV missing at {DEFAULT_TMQM_CSV}")
     smis = _load_unique_metal_smis(
-        DEFAULT_TMQM_CSV, "Pt",
-        metal_column="metal", smiles_column="smiles",
+        DEFAULT_TMQM_CSV,
+        "Pt",
+        metal_column="metal",
+        smiles_column="smiles",
     )
-    assert len(smis) > 1000, (
-        f"Expected >1000 unique Pt SMILES, got {len(smis)}"
-    )
+    assert len(smis) > 1000, f"Expected >1000 unique Pt SMILES, got {len(smis)}"
     # All entries non-empty
     assert all(len(s) > 0 for s in smis)
     # No duplicates
@@ -500,13 +545,13 @@ def test_load_unique_metal_smis_la() -> None:
     if not DEFAULT_TMQM_CSV.is_file():
         pytest.skip(f"tmQM parsed CSV missing at {DEFAULT_TMQM_CSV}")
     smis = _load_unique_metal_smis(
-        DEFAULT_TMQM_CSV, "La",
-        metal_column="metal", smiles_column="smiles",
+        DEFAULT_TMQM_CSV,
+        "La",
+        metal_column="metal",
+        smiles_column="smiles",
     )
     # La is the smallest metal in tmQM parsed CSV (~100-150 samples).
-    assert 50 < len(smis) < 500, (
-        f"Expected 50-500 unique La SMILES, got {len(smis)}"
-    )
+    assert 50 < len(smis) < 500, f"Expected 50-500 unique La SMILES, got {len(smis)}"
 
 
 def test_run_benchmark_with_replacement_la(tmp_path: Path) -> None:
@@ -514,7 +559,9 @@ def test_run_benchmark_with_replacement_la(tmp_path: Path) -> None:
     if not DEFAULT_TMQM_CSV.is_file():
         pytest.skip(f"tmQM parsed CSV missing at {DEFAULT_TMQM_CSV}")
     payload = run_benchmark(
-        n_metals=1, n_samples=200, metals=["La"],
+        n_metals=1,
+        n_samples=200,
+        metals=["La"],
         output_dir=tmp_path,
     )
     assert payload["per_metal"]["La"]["sampled_with_replacement"] is True
@@ -525,9 +572,9 @@ def test_run_benchmark_with_replacement_la(tmp_path: Path) -> None:
     # skipped because of repeated SMILES.
     la_summary = payload["per_metal"]["La"]
     assert la_summary["n_unique"] < la_summary["n_samples"]
-    assert la_summary["n_cache_hits"] > 0, (
-        "with-replacement sampling should trigger cache hits"
-    )
+    assert (
+        la_summary["n_cache_hits"] > 0
+    ), "with-replacement sampling should trigger cache hits"
 
 
 def test_default_sample_seed_42() -> None:
@@ -551,7 +598,9 @@ def test_memory_mb_conversion() -> None:
 def test_benchmark_one_smoke() -> None:
     """_benchmark_one on cisplatin returns the expected per-sample record."""
     rec = _benchmark_one(
-        "[NH3][Pt]([NH3])([Cl])([Cl])", 0, "Pt",
+        "[NH3][Pt]([NH3])([Cl])([Cl])",
+        0,
+        "Pt",
         click_rules=_load_click_rules(),
         partner_terms=_load_partner_terms(),
         max_depth=1,
@@ -574,7 +623,10 @@ def test_benchmark_one_smoke() -> None:
 def test_per_metal_csv_schema(tmp_path: Path) -> None:
     """Per-metal reachability.json has the documented schema fields."""
     payload = run_benchmark(
-        n_metals=2, n_samples=3, metals=["Pt", "Ru"], output_dir=tmp_path,
+        n_metals=2,
+        n_samples=3,
+        metals=["Pt", "Ru"],
+        output_dir=tmp_path,
     )
     save_per_metal(payload, output_dir=tmp_path)
     for metal in ("Pt", "Ru"):
@@ -587,10 +639,16 @@ def test_per_metal_csv_schema(tmp_path: Path) -> None:
         assert "samples" in data
         summary = data["summary"]
         for k in (
-            "n_samples", "n_unique", "n_repeats",
-            "sampled_with_replacement", "n_closure_ok",
-            "closure_reachability_rate", "n_cache_hits",
-            "mean_wall_time_s", "gate_target", "gate_pass",
+            "n_samples",
+            "n_unique",
+            "n_repeats",
+            "sampled_with_replacement",
+            "n_closure_ok",
+            "closure_reachability_rate",
+            "n_cache_hits",
+            "mean_wall_time_s",
+            "gate_target",
+            "gate_pass",
         ):
             assert k in summary, f"summary missing key {k!r}"
 
@@ -598,7 +656,9 @@ def test_per_metal_csv_schema(tmp_path: Path) -> None:
 def test_run_benchmark_error_payload() -> None:
     """run_benchmark returns an error payload when both CSVs are missing."""
     payload = run_benchmark(
-        n_metals=2, n_samples=3, metals=["Pt", "Ru"],
+        n_metals=2,
+        n_samples=3,
+        metals=["Pt", "Ru"],
         tmqm_csv=Path("/nonexistent/path/that/does/not/exist.csv"),
         fallback_csv=Path("/nonexistent/fallback/path.csv"),
     )
@@ -609,7 +669,9 @@ def test_run_benchmark_error_payload() -> None:
 def test_run_benchmark_includes_baseline_constants() -> None:
     """Payload carries Wf-67 + Wf-68 baseline constants."""
     payload = run_benchmark(
-        n_metals=1, n_samples=3, metals=["Pt"],
+        n_metals=1,
+        n_samples=3,
+        metals=["Pt"],
     )
     assert payload["wf67_baseline_reachability"] == WF67_BASELINE_REACHABILITY
     assert payload["wf68_baseline_reachability"] == WF68_BASELINE_REACHABILITY
@@ -620,7 +682,10 @@ def test_run_benchmark_includes_baseline_constants() -> None:
 def test_run_benchmark_records_per_metal_records(tmp_path: Path) -> None:
     """Payload carries per_metal_records for cache-hit reporting."""
     payload = run_benchmark(
-        n_metals=1, n_samples=200, metals=["La"], output_dir=tmp_path,
+        n_metals=1,
+        n_samples=200,
+        metals=["La"],
+        output_dir=tmp_path,
     )
     assert "per_metal_records" in payload
     assert "La" in payload["per_metal_records"]

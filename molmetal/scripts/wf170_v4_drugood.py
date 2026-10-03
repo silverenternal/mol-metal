@@ -63,6 +63,7 @@ try:
         make_indexed_dataloader,
         IndexedListDataset,
     )
+
     _HAS_DATA_LOADER_HELPER = True
 except Exception:  # pragma: no cover
     _HAS_DATA_LOADER_HELPER = False
@@ -90,14 +91,14 @@ SPLIT_FILES = {
 # Training configuration (matched to 1-hour wall budget)
 RECIPE_HIDDEN = 128
 RECIPE_N_LAYERS = 2
-RECIPE_N_METALS = 1           # DrugOOD is single-task
+RECIPE_N_METALS = 1  # DrugOOD is single-task
 RECIPE_N_COORD_CLASSES = 5
 RECIPE_METAL_EMBED_DIM = 64
 RECIPE_BATCH = 128
 RECIPE_LR = 1e-3
 RECIPE_EPOCHS = 30
-RECIPE_TRAIN_MAX_PER_EPOCH = 2000   # subsample per epoch (data has ~34K rows)
-RECIPE_EVAL_EVERY = 5              # eval every 5 epochs to save time
+RECIPE_TRAIN_MAX_PER_EPOCH = 2000  # subsample per epoch (data has ~34K rows)
+RECIPE_EVAL_EVERY = 5  # eval every 5 epochs to save time
 RECIPE_SEEDS = (0, 1, 2, 3, 4)
 
 # Coord-geometry auxiliary head proxy labels (constant per-batch, since
@@ -114,7 +115,11 @@ SINGLE_METAL = "DrugOOD"
 def load_split_csv(path: Path) -> Dict[str, List[Dict[str, str]]]:
     """Load DrugOOD CSV into a per-split dict (train/ood_val/ood_test/iid_val/iid_test)."""
     out: Dict[str, List[Dict[str, str]]] = {
-        "train": [], "ood_val": [], "ood_test": [], "iid_val": [], "iid_test": [],
+        "train": [],
+        "ood_val": [],
+        "ood_test": [],
+        "iid_val": [],
+        "iid_test": [],
     }
     with path.open("r", encoding="utf-8") as fh:
         reader = csv.DictReader(fh)
@@ -206,7 +211,8 @@ def compute_padded_dims(
     rng = np.random.default_rng(0)
     sample_idx = (
         rng.choice(len(rows), size=min(sample, len(rows)), replace=False)
-        if len(rows) > sample else np.arange(len(rows))
+        if len(rows) > sample
+        else np.arange(len(rows))
     )
     for i in sample_idx:
         smi = rows[int(i)]["smiles"]
@@ -237,7 +243,7 @@ def _build_model(device: torch.device) -> V4MultiTaskDMPNN:
         metal_embed_dim=RECIPE_METAL_EMBED_DIM,
         head_dropout=0.2,
         metals=(SINGLE_METAL,),
-        use_cached_encoding=True,    # always use pre-featurized tensors
+        use_cached_encoding=True,  # always use pre-featurized tensors
     ).to(device)
 
 
@@ -285,9 +291,7 @@ def _train_one_seed(
         lr=args.lr,
         weight_decay=1e-4,
     )
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=args.epochs
-    )
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
     loss_fn = V4MultiTaskLoss(
         n_coord_classes=RECIPE_N_COORD_CLASSES,
         coord_weight=COORD_LOSS_WEIGHT,
@@ -313,7 +317,10 @@ def _train_one_seed(
 
     # Coord labels — constant proxy (linear) for entire train set
     coord_proxy = torch.full(
-        (1,), COORD_PROXY_LABEL, dtype=torch.long, device=device,
+        (1,),
+        COORD_PROXY_LABEL,
+        dtype=torch.long,
+        device=device,
     )
 
     best_val_auc = -1.0
@@ -321,7 +328,9 @@ def _train_one_seed(
     best_state: Optional[Dict[str, torch.Tensor]] = None
     val_history: List[Dict[str, float]] = []
 
-    def _eval(feats: Dict[str, torch.Tensor], max_samples: int = 4000) -> Tuple[float, int]:
+    def _eval(
+        feats: Dict[str, torch.Tensor], max_samples: int = 4000
+    ) -> Tuple[float, int]:
         af = feats["atom_features"].to(device)
         ei = feats["edge_index"].to(device)
         am = feats["atom_mask"].to(device)
@@ -344,7 +353,7 @@ def _train_one_seed(
         model.eval()
         with torch.no_grad():
             for start in range(0, len(valid_idx), B):
-                chunk = valid_idx[start:start + B]
+                chunk = valid_idx[start : start + B]
                 idx_t = torch.from_numpy(chunk).long().to(device)
                 af_b = af.index_select(0, idx_t)
                 ei_b = ei.index_select(0, idx_t)
@@ -352,7 +361,11 @@ def _train_one_seed(
                 ea_b = ea.index_select(0, idx_t)
                 mid_b = torch.zeros(len(chunk), dtype=torch.long, device=device)
                 out = model(
-                    af_b, mid_b, ei_b, atom_mask=am_b, edge_attr=ea_b,
+                    af_b,
+                    mid_b,
+                    ei_b,
+                    atom_mask=am_b,
+                    edge_attr=ea_b,
                 )
                 logits = out[SINGLE_METAL].float()
                 probs = F.softmax(logits, dim=-1)[:, 1].cpu().numpy()
@@ -391,10 +404,7 @@ def _train_one_seed(
         # existing ``.index_select`` calls do the GPU gather. This gives us
         # the worker-prefetch overlap for the numpy shuffle / list-pack
         # steps (which DO happen on CPU) without disturbing the GPU side.
-        if (
-            getattr(args, "use_data_loader", False)
-            and _HAS_DATA_LOADER_HELPER
-        ):
+        if getattr(args, "use_data_loader", False) and _HAS_DATA_LOADER_HELPER:
             _items = [(int(i),) for i in epoch_idx]  # tiny boxed ints; cheap to IPC
 
             class _IntIndexDataset(IndexedListDataset):
@@ -423,12 +433,18 @@ def _train_one_seed(
                 y_b = y_t.index_select(0, idx_t)
                 mid_b = torch.zeros(len(chunk), dtype=torch.long, device=device)
                 crd_b = torch.full(
-                    (len(chunk),), COORD_PROXY_LABEL,
-                    dtype=torch.long, device=device,
+                    (len(chunk),),
+                    COORD_PROXY_LABEL,
+                    dtype=torch.long,
+                    device=device,
                 )
                 optimizer.zero_grad(set_to_none=True)
                 out = model(
-                    af_b, mid_b, ei_b, atom_mask=am_b, edge_attr=ea_b,
+                    af_b,
+                    mid_b,
+                    ei_b,
+                    atom_mask=am_b,
+                    edge_attr=ea_b,
                 )
                 y_true = {SINGLE_METAL: y_b}
                 loss, _ = loss_fn(out, y_true, crd_b)
@@ -437,6 +453,7 @@ def _train_one_seed(
                 optimizer.step()
                 return float(loss.item())
         else:
+
             def _train_one_batch(chunk):
                 idx_t = torch.from_numpy(chunk).long().to(device)
                 af_b = af_t.index_select(0, idx_t)
@@ -446,12 +463,18 @@ def _train_one_seed(
                 y_b = y_t.index_select(0, idx_t)
                 mid_b = torch.zeros(len(chunk), dtype=torch.long, device=device)
                 crd_b = torch.full(
-                    (len(chunk),), COORD_PROXY_LABEL,
-                    dtype=torch.long, device=device,
+                    (len(chunk),),
+                    COORD_PROXY_LABEL,
+                    dtype=torch.long,
+                    device=device,
                 )
                 optimizer.zero_grad(set_to_none=True)
                 out = model(
-                    af_b, mid_b, ei_b, atom_mask=am_b, edge_attr=ea_b,
+                    af_b,
+                    mid_b,
+                    ei_b,
+                    atom_mask=am_b,
+                    edge_attr=ea_b,
                 )
                 y_true = {SINGLE_METAL: y_b}
                 loss, _ = loss_fn(out, y_true, crd_b)
@@ -461,13 +484,10 @@ def _train_one_seed(
                 return float(loss.item())
 
         for step in range(n_steps):
-            if (
-                getattr(args, "use_data_loader", False)
-                and _HAS_DATA_LOADER_HELPER
-            ):
+            if getattr(args, "use_data_loader", False) and _HAS_DATA_LOADER_HELPER:
                 chunk = list(next(iter(dl)))
             else:
-                chunk = epoch_idx[step * args.batch:(step + 1) * args.batch]
+                chunk = epoch_idx[step * args.batch : (step + 1) * args.batch]
             epoch_loss += _train_one_batch(chunk)
             n_batches += 1
         scheduler.step()
@@ -475,11 +495,13 @@ def _train_one_seed(
         if epoch % args.eval_every == 0 or epoch == args.epochs:
             val_auc, n_val = _eval(feats_val)
             iid_auc, n_iid = _eval(feats_iid_test)
-            val_history.append({
-                "epoch": epoch,
-                "val_auc": val_auc,
-                "iid_test_auc": iid_auc,
-            })
+            val_history.append(
+                {
+                    "epoch": epoch,
+                    "val_auc": val_auc,
+                    "iid_test_auc": iid_auc,
+                }
+            )
             print(
                 f"[wf170:{split_name} seed={seed}] epoch={epoch:3d} "
                 f"loss={epoch_loss / max(n_batches, 1):.4f} "
@@ -491,8 +513,7 @@ def _train_one_seed(
                 best_val_auc = val_auc
                 best_epoch = epoch
                 best_state = {
-                    k: v.detach().cpu().clone()
-                    for k, v in model.state_dict().items()
+                    k: v.detach().cpu().clone() for k, v in model.state_dict().items()
                 }
 
     train_time = time.time() - t0_train
@@ -536,7 +557,9 @@ def _train_one_seed(
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     p.add_argument(
-        "--split", dest="splits", nargs="+",
+        "--split",
+        dest="splits",
+        nargs="+",
         default=["assay", "scaffold", "size"],
         choices=["assay", "scaffold", "size"],
     )
@@ -547,7 +570,8 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p.add_argument("--hidden", type=int, default=RECIPE_HIDDEN)
     p.add_argument("--depth", type=int, default=RECIPE_N_LAYERS)
     p.add_argument(
-        "--train-max-per-epoch", type=int,
+        "--train-max-per-epoch",
+        type=int,
         default=RECIPE_TRAIN_MAX_PER_EPOCH,
     )
     p.add_argument("--eval-every", type=int, default=RECIPE_EVAL_EVERY)
@@ -658,36 +682,47 @@ def main(argv: Optional[List[str]] = None) -> int:
                             "iid_test_auc": r["iid_test_auc"],
                             "state_dict": r["best_state"],
                             "recipe": {
-                                "epochs": args.epochs, "batch": args.batch,
-                                "lr": args.lr, "hidden": args.hidden,
-                                "depth": args.depth, "split": split,
+                                "epochs": args.epochs,
+                                "batch": args.batch,
+                                "lr": args.lr,
+                                "hidden": args.hidden,
+                                "depth": args.depth,
+                                "split": split,
                             },
                         },
                         ckpt_path,
                     )
                 json_path = REPORTS_DIR / "per_seed" / f"{split}__seed{seed}.json"
                 json_safe = {k: v for k, v in r.items() if k != "best_state"}
-                json_path.write_text(json.dumps(_to_jsonable(json_safe), indent=2, default=float))
+                json_path.write_text(
+                    json.dumps(_to_jsonable(json_safe), indent=2, default=float)
+                )
                 print(f"[wf170] wrote {ckpt_path} and {json_path}", flush=True)
                 per_seed_results.append(r)
             except Exception as e:
                 import traceback
+
                 traceback.print_exc()
                 print(f"[wf170:{split} seed={seed}] FAILED: {e}", flush=True)
-                per_seed_results.append({
-                    "seed": seed, "error": str(e),
-                    "ood_test_auc": float("nan"),
-                    "iid_test_auc": float("nan"),
-                    "val_auc_final": float("nan"),
-                })
+                per_seed_results.append(
+                    {
+                        "seed": seed,
+                        "error": str(e),
+                        "ood_test_auc": float("nan"),
+                        "iid_test_auc": float("nan"),
+                        "val_auc_final": float("nan"),
+                    }
+                )
 
         # Aggregate
         ood_aucs = [
-            r["ood_test_auc"] for r in per_seed_results
+            r["ood_test_auc"]
+            for r in per_seed_results
             if not np.isnan(r.get("ood_test_auc", float("nan")))
         ]
         iid_aucs = [
-            r["iid_test_auc"] for r in per_seed_results
+            r["iid_test_auc"]
+            for r in per_seed_results
             if not np.isnan(r.get("iid_test_auc", float("nan")))
         ]
         summary[split] = {
@@ -729,9 +764,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "wall_minutes": wall / 60.0,
         "results": summary,
         "data_source": "drugood_lbap_core_ic50_csv",
-        "config_files": {
-            s: str(DATA_DIR / SPLIT_FILES[s]) for s in args.splits
-        },
+        "config_files": {s: str(DATA_DIR / SPLIT_FILES[s]) for s in args.splits},
         "honest_framing_note": (
             "V4MultiTaskDMPNN with n_metals=1 used as a single-task "
             "binary classifier on DrugOOD IC50 (lbap_core). Per-epoch "
@@ -788,8 +821,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         row = [s]
         for seed in args.seeds:
             # find matching
-            found = [a for ps in summary[s]["per_seed"] if ps["seed"] == seed
-                     for a in [ps.get("ood_test_auc", float("nan"))]]
+            found = [
+                a
+                for ps in summary[s]["per_seed"]
+                if ps["seed"] == seed
+                for a in [ps.get("ood_test_auc", float("nan"))]
+            ]
             row.append(f"{found[0]:.4f}" if found and not np.isnan(found[0]) else "n/a")
         md_lines.append("| " + " | ".join(row) + " |")
 

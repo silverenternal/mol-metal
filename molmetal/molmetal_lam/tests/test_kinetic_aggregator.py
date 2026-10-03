@@ -1,4 +1,5 @@
 """Tests for kinetic aggregation and the sklearn interpolation fallback."""
+
 import logging
 
 import pytest
@@ -49,8 +50,8 @@ def test_aggregate_score_is_bounded():
 
 def test_tuple_pair_input_supported():
     aggregator = KineticAggregator()
-    pairs = [(('CC', 'CC'), 0.3), (('CCC', 'CCC'), 0.6)]
-    assert 0.0 <= aggregator.interpolate_rate('CC', 'CCC', pairs) <= 1.0
+    pairs = [(("CC", "CC"), 0.3), (("CCC", "CCC"), 0.6)]
+    assert 0.0 <= aggregator.interpolate_rate("CC", "CCC", pairs) <= 1.0
 
 
 def test_default_reaction_names_are_present():

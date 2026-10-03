@@ -54,18 +54,14 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-SCRIPT_PATH = (
-    PROJECT_ROOT / "molmetal" / "scripts" / "cfm_vina_dock_panel.py"
-)
+SCRIPT_PATH = PROJECT_ROOT / "molmetal" / "scripts" / "cfm_vina_dock_panel.py"
 
 
 def _load_module():
     """Load cfm_vina_dock_panel.py as a module (test seam)."""
     mod_name = "cfm_vina_dock_panel"
     spec = importlib.util.spec_from_file_location(mod_name, str(SCRIPT_PATH))
-    assert spec and spec.loader, (
-        "cfm_vina_dock_panel.py must exist and be importable"
-    )
+    assert spec and spec.loader, "cfm_vina_dock_panel.py must exist and be importable"
     mod = importlib.util.module_from_spec(spec)
     sys.modules[mod_name] = mod
     try:
@@ -150,15 +146,20 @@ class _FakeRunner:
         **kwargs,
     ):
         from molmetal.scripts.cfm_vina_dock_panel import (
-            PocketCell, STATUS_REAL_VINA, _get_f2a_scorer,
+            PocketCell,
+            STATUS_REAL_VINA,
+            _get_f2a_scorer,
             _compute_wf246c_adjustment_for_smiles,
         )
-        self.calls.append({
-            "smiles": smiles,
-            "pocket_id": pocket_id,
-            "use_f2a_metal_ligand": use_f2a_metal_ligand,
-            "use_wf246c_metal_coord": use_wf246c_metal_coord,
-        })
+
+        self.calls.append(
+            {
+                "smiles": smiles,
+                "pocket_id": pocket_id,
+                "use_f2a_metal_ligand": use_f2a_metal_ligand,
+                "use_wf246c_metal_coord": use_wf246c_metal_coord,
+            }
+        )
 
         cell = PocketCell(
             pocket=pocket_id,
@@ -176,22 +177,16 @@ class _FakeRunner:
             )
             if scorer is not None:
                 try:
-                    f2a_score, mod_total, n_bonds = (
-                        scorer.apply_covalent_modifier(
-                            smiles, cell.best_kcal_mol
-                        )
+                    f2a_score, mod_total, n_bonds = scorer.apply_covalent_modifier(
+                        smiles, cell.best_kcal_mol
                     )
                     cell.f2a_kcal_mol = float(f2a_score)
                     cell.f2a_modifier_total = float(mod_total)
                     cell.f2a_n_bonds = int(n_bonds)
                     if n_bonds > 0:
                         dispatch = scorer.dispatch(smiles)
-                        cell.f2a_matched_patterns = ",".join(
-                            dispatch.matched_patterns
-                        )
-                    cell.f2a_recovery_status, _gap = (
-                        scorer.classify_recovery(f2a_score)
-                    )
+                        cell.f2a_matched_patterns = ",".join(dispatch.matched_patterns)
+                    cell.f2a_recovery_status, _gap = scorer.classify_recovery(f2a_score)
                 except Exception:
                     pass  # F2(a) import or score failure → leave fields None.
 
@@ -211,13 +206,9 @@ class _FakeRunner:
                 cell.metal_coord_adjustment = float(
                     mc_diag.get("metal_coord_kcal_adjustment", 0.0)
                 )
-                cell.metal_coord_geometry_score = (
-                    mc_diag.get("geometry_score")
-                )
+                cell.metal_coord_geometry_score = mc_diag.get("geometry_score")
                 cell.metal_coord_hsab_score = mc_diag.get("hsab_score")
-                cell.metal_coord_distance_score = (
-                    mc_diag.get("distance_score")
-                )
+                cell.metal_coord_distance_score = mc_diag.get("distance_score")
             if mc_adj is not None:
                 base = cell.f2a_kcal_mol
                 if base is None:
@@ -227,17 +218,11 @@ class _FakeRunner:
                     cell._v2_mc_adj = float(mc_adj)
                     combined = cell.metal_coord_kcal_mol
                     if combined <= -7.0:
-                        cell.metal_coord_recovery_status = (
-                            "INDUSTRY_CUTOFF_PASS"
-                        )
+                        cell.metal_coord_recovery_status = "INDUSTRY_CUTOFF_PASS"
                     elif combined <= -5.0:
-                        cell.metal_coord_recovery_status = (
-                            "PARTIAL_RECOVERY"
-                        )
+                        cell.metal_coord_recovery_status = "PARTIAL_RECOVERY"
                     else:
-                        cell.metal_coord_recovery_status = (
-                            "INSUFFICIENT_RECOVERY"
-                        )
+                        cell.metal_coord_recovery_status = "INSUFFICIENT_RECOVERY"
             elif cell.f2a_kcal_mol is not None:
                 cell.metal_coord_kcal_mol = cell.f2a_kcal_mol
                 cell.metal_coord_recovery_status = cell.f2a_recovery_status
@@ -265,6 +250,7 @@ def test_p0_sign_fix_perfect_yields_bonus():
         MetalCoordinationTerm,
         MetalCoordinationScore,
     )
+
     term = MetalCoordinationTerm()
     perfect = MetalCoordinationScore(
         total=1.0,
@@ -280,8 +266,7 @@ def test_p0_sign_fix_perfect_yields_bonus():
         f"WRONG sign — fixed in Wf-333-V2 P0 to (1-2*comp)*kcal_per_unit."
     )
     assert adj == pytest.approx(-1.0, abs=1e-6), (
-        f"Perfect composite adjustment magnitude must be 1.0 kcal/mol; "
-        f"got {adj}"
+        f"Perfect composite adjustment magnitude must be 1.0 kcal/mol; " f"got {adj}"
     )
 
 
@@ -292,6 +277,7 @@ def test_p0_sign_fix_zero_yields_penalty():
         MetalCoordinationTerm,
         MetalCoordinationScore,
     )
+
     term = MetalCoordinationTerm()
     zero = MetalCoordinationScore(
         total=0.0,
@@ -315,6 +301,7 @@ def test_p0_sign_fix_organic_yields_zero():
         MetalCoordinationTerm,
         MetalCoordinationScore,
     )
+
     term = MetalCoordinationTerm()
     organic = MetalCoordinationScore(total=None)
     adj = term.kcal_adjustment(organic)
@@ -364,9 +351,7 @@ def test_p1_wirein_metal_coord_flag_populates_pocketcell(tmp_path):
     per_mol = panel["per_molecule"][0]
     cells = list(per_mol["per_pocket"].values())
 
-    n_with_total = sum(
-        1 for c in cells if c.get("metal_coord_total") is not None
-    )
+    n_with_total = sum(1 for c in cells if c.get("metal_coord_total") is not None)
     assert n_with_total >= 1, (
         f"At least one pocket must have a metal-coord total populated "
         "when use_wf246c_metal_coord=True; got "
@@ -447,9 +432,9 @@ def test_p1_combined_f2a_and_wf246c_additive(tmp_path):
     per_mol = panel["per_molecule"][0]
     cells = list(per_mol["per_pocket"].values())
     metal_cells = [
-        c for c in cells
-        if c.get("metal_coord_total") is not None
-        and c.get("f2a_kcal_mol") is not None
+        c
+        for c in cells
+        if c.get("metal_coord_total") is not None and c.get("f2a_kcal_mol") is not None
     ]
     assert metal_cells, (
         "Need at least one cell with both F2(a) + Wf-246-C populated "
@@ -461,8 +446,7 @@ def test_p1_combined_f2a_and_wf246c_additive(tmp_path):
     f2a = cell["f2a_kcal_mol"]
     mc = cell["metal_coord_kcal_mol"]
     assert vina is not None and f2a is not None and mc is not None, (
-        f"vina/f2a/mc must be set on metal cells; got vina={vina} "
-        f"f2a={f2a} mc={mc}"
+        f"vina/f2a/mc must be set on metal cells; got vina={vina} " f"f2a={f2a} mc={mc}"
     )
     # Combined additive: mc == f2a + mc_adjustment
     mc_adj = float(cell["metal_coord_adjustment"])
@@ -473,9 +457,9 @@ def test_p1_combined_f2a_and_wf246c_additive(tmp_path):
         f"{expected_mc}"
     )
     # mc must be more negative than f2a (sign-correct Wf-246-C bonus).
-    assert mc <= f2a + 1e-6, (
-        f"Wf-333-V2 sign fix: mc={mc} must be ≤ f2a={f2a} for cisplatin"
-    )
+    assert (
+        mc <= f2a + 1e-6
+    ), f"Wf-333-V2 sign fix: mc={mc} must be ≤ f2a={f2a} for cisplatin"
 
     # metadata records both flags as True.
     md = panel["metadata"]
@@ -545,9 +529,9 @@ def test_p1_per_pocket_lift_varies_by_pocket_donor_counts(tmp_path):
             f"per-pocket aggregate must contain metal_coord_mean; "
             f"got keys={list(agg.keys())}"
         )
-        assert "metal_coord_n_with_total" in agg, (
-            f"per-pocket aggregate must contain metal_coord_n_with_total"
-        )
+        assert (
+            "metal_coord_n_with_total" in agg
+        ), f"per-pocket aggregate must contain metal_coord_n_with_total"
 
 
 # ---------------------------------------------------------------------------
@@ -608,8 +592,7 @@ def test_p1_cohort_aggregate_5pocket(tmp_path):
     # the Wf-325B baseline -3.282 + F2(a) -1.5 + Wf-246-C ~-1.0.
     # Verifying it is at most -5 (better than baseline):
     assert mc_med < 0.0, (
-        f"Cohort median kcal/mol must be NEGATIVE (Vina convention); "
-        f"got {mc_med}"
+        f"Cohort median kcal/mol must be NEGATIVE (Vina convention); " f"got {mc_med}"
     )
 
     mc_lift_vina = agg["metal_coord_cohort_median_lift_vs_vina"]
@@ -688,13 +671,16 @@ def test_cli_help_mentions_wf246c_flags():
     wire-in."""
     result = __import__("subprocess").run(
         [sys.executable, str(SCRIPT_PATH), "--help"],
-        capture_output=True, text=True, check=False, timeout=60,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=60,
     )
     assert result.returncode == 0, (
         f"--help should exit 0; got {result.returncode}\n"
         f"STDOUT={result.stdout}\nSTDERR={result.stderr}"
     )
     for flag in ("--use-wf246c-metal-coord", "--wf246c-kcal-per-unit"):
-        assert flag in result.stdout, (
-            f"--help must mention {flag}; STDOUT head={result.stdout[:400]}"
-        )
+        assert (
+            flag in result.stdout
+        ), f"--help must mention {flag}; STDOUT head={result.stdout[:400]}"

@@ -25,6 +25,7 @@ Honest framing (per ``party-twenty-spirit §3.5``):
 
 CPU-only; no paper work touched (TODO-84 gate honored).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -52,35 +53,217 @@ OUT_MD = OUT_DIR / "synthesis.md"
 
 METRICS_22: List[Dict[str, str]] = [
     # STRONG_REAL_PAPER_READY (10 per INDEX §17.1)
-    {"id": "m6",  "title": "QED",                                "category_bucket": "STRONG_REAL", "primary": "metrics/by_metric/qed.json",                          "fallback": "TODO/completed/87l_undefined_metrics_definition.md", "rationale": "Wf-61 + Wf-87 audit close — JSON on disk"},
-    {"id": "m9",  "title": "Water solubility logS",              "category_bucket": "STRONG_REAL", "primary": "metrics/by_metric/aqueous_solubility_logS.json",     "fallback": "TODO/completed/87l_undefined_metrics_definition.md", "rationale": "Wf-61 NEW MEASURED"},
-    {"id": "m11", "title": "n_distinct",                         "category_bucket": "STRONG_REAL", "primary": "metrics/by_metric/n_distinct.json",                "fallback": None, "rationale": "RDKit n_distinct=20"},
-    {"id": "m13", "title": "RDKit validity",                     "category_bucket": "STRONG_REAL", "primary": "metrics/by_metric/rdkit_validity.json",               "fallback": "TODO/completed/87l_undefined_metrics_definition.md", "rationale": "RDKit parse 1.000 (Wf-87 audit close)"},
-    {"id": "m14", "title": "CFM decode",                         "category_bucket": "STRONG_REAL", "primary": "metrics/by_metric/decode_ratio.json",              "fallback": None, "rationale": "CFM decode=1.000"},
-    {"id": "m17", "title": "DrugOOD OOD AUC",                    "category_bucket": "STRONG_REAL", "primary": "metrics/by_metric/drugood_ood_auc.json",          "fallback": None, "rationale": "0.891 beats iMoLD 0.7211"},
-    {"id": "m21", "title": "NCI-60 9-cell AUC",                  "category_bucket": "STRONG_REAL", "primary": "metrics/by_metric/nci60_precious_9cell_auc.json", "fallback": None, "rationale": "0.8007 ± 0.0160 Krasnov-approaching"},
-    {"id": "m22", "title": "m18 Protein-Metal binding AUC",      "category_bucket": "STRONG_REAL", "primary": "metrics/by_metric/metric18_protein_metal_v2.json", "fallback": None, "rationale": "Wf-32 P2 SHIP — NEW m22"},
-    {"id": "m23", "title": "PlatinAI 3-cell resistance AUC",     "category_bucket": "STRONG_REAL", "primary": "metrics/by_metric/platinai_3cell_resistance.json", "fallback": None, "rationale": "Wf-31 + Wf-61 SHIP — NEW m23"},
-    {"id": "m24", "title": "cross-dataset macro R²",             "category_bucket": "STRONG_REAL", "primary": "molmetal/reports/wf71_p3_wf49_cross_round2/cross_dataset_summary.json", "fallback": None, "rationale": "Wf-71 P3 Wf-49 round-2 SHIP — NEW m24"},
+    {
+        "id": "m6",
+        "title": "QED",
+        "category_bucket": "STRONG_REAL",
+        "primary": "metrics/by_metric/qed.json",
+        "fallback": "TODO/completed/87l_undefined_metrics_definition.md",
+        "rationale": "Wf-61 + Wf-87 audit close — JSON on disk",
+    },
+    {
+        "id": "m9",
+        "title": "Water solubility logS",
+        "category_bucket": "STRONG_REAL",
+        "primary": "metrics/by_metric/aqueous_solubility_logS.json",
+        "fallback": "TODO/completed/87l_undefined_metrics_definition.md",
+        "rationale": "Wf-61 NEW MEASURED",
+    },
+    {
+        "id": "m11",
+        "title": "n_distinct",
+        "category_bucket": "STRONG_REAL",
+        "primary": "metrics/by_metric/n_distinct.json",
+        "fallback": None,
+        "rationale": "RDKit n_distinct=20",
+    },
+    {
+        "id": "m13",
+        "title": "RDKit validity",
+        "category_bucket": "STRONG_REAL",
+        "primary": "metrics/by_metric/rdkit_validity.json",
+        "fallback": "TODO/completed/87l_undefined_metrics_definition.md",
+        "rationale": "RDKit parse 1.000 (Wf-87 audit close)",
+    },
+    {
+        "id": "m14",
+        "title": "CFM decode",
+        "category_bucket": "STRONG_REAL",
+        "primary": "metrics/by_metric/decode_ratio.json",
+        "fallback": None,
+        "rationale": "CFM decode=1.000",
+    },
+    {
+        "id": "m17",
+        "title": "DrugOOD OOD AUC",
+        "category_bucket": "STRONG_REAL",
+        "primary": "metrics/by_metric/drugood_ood_auc.json",
+        "fallback": None,
+        "rationale": "0.891 beats iMoLD 0.7211",
+    },
+    {
+        "id": "m21",
+        "title": "NCI-60 9-cell AUC",
+        "category_bucket": "STRONG_REAL",
+        "primary": "metrics/by_metric/nci60_precious_9cell_auc.json",
+        "fallback": None,
+        "rationale": "0.8007 ± 0.0160 Krasnov-approaching",
+    },
+    {
+        "id": "m22",
+        "title": "m18 Protein-Metal binding AUC",
+        "category_bucket": "STRONG_REAL",
+        "primary": "metrics/by_metric/metric18_protein_metal_v2.json",
+        "fallback": None,
+        "rationale": "Wf-32 P2 SHIP — NEW m22",
+    },
+    {
+        "id": "m23",
+        "title": "PlatinAI 3-cell resistance AUC",
+        "category_bucket": "STRONG_REAL",
+        "primary": "metrics/by_metric/platinai_3cell_resistance.json",
+        "fallback": None,
+        "rationale": "Wf-31 + Wf-61 SHIP — NEW m23",
+    },
+    {
+        "id": "m24",
+        "title": "cross-dataset macro R²",
+        "category_bucket": "STRONG_REAL",
+        "primary": "molmetal/reports/wf71_p3_wf49_cross_round2/cross_dataset_summary.json",
+        "fallback": None,
+        "rationale": "Wf-71 P3 Wf-49 round-2 SHIP — NEW m24",
+    },
     # WEAK_REAL_NEEDS_MORE_DATA (11 per INDEX §17.1)
-    {"id": "m1",  "title": "Ru AUC",                             "category_bucket": "WEAK_REAL",   "primary": "metrics/by_metric/metalcytotox_ru_auc.json",       "fallback": None, "rationale": "0.7123 (1-seed); Krasnov gate 0.81 NOT MET"},
-    {"id": "m2",  "title": "Pt 4-cell AUC",                      "category_bucket": "WEAK_REAL",   "primary": "metrics/by_metric/platinai_4cell_auc.json",        "fallback": None, "rationale": "0.553; lift blocked on R20-P2/P3 GPU"},
-    {"id": "m4",  "title": "Vina triple success",                "category_bucket": "WEAK_REAL",   "primary": "metrics/by_metric/vina_triple_success.json",      "fallback": None, "rationale": "0.0; per-pocket Vina Phase-1B pending"},
-    {"id": "m5",  "title": "SA mean",                            "category_bucket": "WEAK_REAL",   "primary": "metrics/by_metric/sa_mean.json",                  "fallback": None, "rationale": "3.099 borderline"},
-    {"id": "m7",  "title": "Diversity Tanimoto",                 "category_bucket": "WEAK_REAL",   "primary": "metrics/by_metric/diversity_tanimoto.json",       "fallback": None, "rationale": "R17 0.1065 canonical; Wf-31 MEASURED +0.9036 but cohort differs (PlatinAI 5K vs generated)"},
-    {"id": "m8",  "title": "PoseBusters pass-rate",              "category_bucket": "WEAK_REAL",   "primary": "metrics/by_metric/pb_pass_rate.json",            "fallback": None, "rationale": "n_distinct=1 collapse; Wf-32 m16/m19/m8 lift-blocked"},
-    {"id": "m10", "title": "Vina min score",                     "category_bucket": "WEAK_REAL",   "primary": "metrics/by_metric/vina_min_score.json",           "fallback": None, "rationale": "-4.158 kcal/mol; per-pocket retrain pending"},
-    {"id": "m15", "title": "RMSD",                               "category_bucket": "WEAK_REAL",   "primary": "TODO/completed/85_mock_audit.md",                  "fallback": None, "rationale": "0.428; ground truth missing"},
-    {"id": "m16", "title": "Affinity Pearson r",                 "category_bucket": "WEAK_REAL",   "primary": "metrics/by_metric/pearson_r_pic50.json",          "fallback": None, "rationale": "0.207 ridge; Wf-32 P4 SMOKE -0.040 on PlatinAI 4-cell"},
-    {"id": "m19", "title": "Multi-metal LOMO",                   "category_bucket": "WEAK_REAL",   "primary": "metrics/by_metric/metal_lomo_auc.json",           "fallback": None, "rationale": "0.535; Rh 0.368 bottleneck"},
-    {"id": "per_pocket_vina", "title": "per-pocket Vina Phase-1B","category_bucket": "WEAK_REAL",  "primary": "TODO/completed/82b_vina_dock_retrain.md",         "fallback": None, "rationale": "Vina stub m3 fix; Phase-1B 5-pocket retrain planned"},
+    {
+        "id": "m1",
+        "title": "Ru AUC",
+        "category_bucket": "WEAK_REAL",
+        "primary": "metrics/by_metric/metalcytotox_ru_auc.json",
+        "fallback": None,
+        "rationale": "0.7123 (1-seed); Krasnov gate 0.81 NOT MET",
+    },
+    {
+        "id": "m2",
+        "title": "Pt 4-cell AUC",
+        "category_bucket": "WEAK_REAL",
+        "primary": "metrics/by_metric/platinai_4cell_auc.json",
+        "fallback": None,
+        "rationale": "0.553; lift blocked on R20-P2/P3 GPU",
+    },
+    {
+        "id": "m4",
+        "title": "Vina triple success",
+        "category_bucket": "WEAK_REAL",
+        "primary": "metrics/by_metric/vina_triple_success.json",
+        "fallback": None,
+        "rationale": "0.0; per-pocket Vina Phase-1B pending",
+    },
+    {
+        "id": "m5",
+        "title": "SA mean",
+        "category_bucket": "WEAK_REAL",
+        "primary": "metrics/by_metric/sa_mean.json",
+        "fallback": None,
+        "rationale": "3.099 borderline",
+    },
+    {
+        "id": "m7",
+        "title": "Diversity Tanimoto",
+        "category_bucket": "WEAK_REAL",
+        "primary": "metrics/by_metric/diversity_tanimoto.json",
+        "fallback": None,
+        "rationale": "R17 0.1065 canonical; Wf-31 MEASURED +0.9036 but cohort differs (PlatinAI 5K vs generated)",
+    },
+    {
+        "id": "m8",
+        "title": "PoseBusters pass-rate",
+        "category_bucket": "WEAK_REAL",
+        "primary": "metrics/by_metric/pb_pass_rate.json",
+        "fallback": None,
+        "rationale": "n_distinct=1 collapse; Wf-32 m16/m19/m8 lift-blocked",
+    },
+    {
+        "id": "m10",
+        "title": "Vina min score",
+        "category_bucket": "WEAK_REAL",
+        "primary": "metrics/by_metric/vina_min_score.json",
+        "fallback": None,
+        "rationale": "-4.158 kcal/mol; per-pocket retrain pending",
+    },
+    {
+        "id": "m15",
+        "title": "RMSD",
+        "category_bucket": "WEAK_REAL",
+        "primary": "TODO/completed/85_mock_audit.md",
+        "fallback": None,
+        "rationale": "0.428; ground truth missing",
+    },
+    {
+        "id": "m16",
+        "title": "Affinity Pearson r",
+        "category_bucket": "WEAK_REAL",
+        "primary": "metrics/by_metric/pearson_r_pic50.json",
+        "fallback": None,
+        "rationale": "0.207 ridge; Wf-32 P4 SMOKE -0.040 on PlatinAI 4-cell",
+    },
+    {
+        "id": "m19",
+        "title": "Multi-metal LOMO",
+        "category_bucket": "WEAK_REAL",
+        "primary": "metrics/by_metric/metal_lomo_auc.json",
+        "fallback": None,
+        "rationale": "0.535; Rh 0.368 bottleneck",
+    },
+    {
+        "id": "per_pocket_vina",
+        "title": "per-pocket Vina Phase-1B",
+        "category_bucket": "WEAK_REAL",
+        "primary": "TODO/completed/82b_vina_dock_retrain.md",
+        "fallback": None,
+        "rationale": "Vina stub m3 fix; Phase-1B 5-pocket retrain planned",
+    },
     # MOCK_NEEDS_REMEASURE (4+ per INDEX §17.1)
-    {"id": "m3",  "title": "Vina Dock stub",                     "category_bucket": "MOCK",        "primary": "TODO/completed/82b_vina_dock_retrain.md",         "fallback": None, "rationale": "stub -9.6574 CRITICAL; per-host Vina install + receptor fetch needed"},
-    {"id": "external_scorers", "title": "4 external scorers (coord_geometry / phototherapy / ptiv / metalloprotein)", "category_bucket": "MOCK", "primary": "TODO/completed/85_mock_audit.md",        "fallback": None, "rationale": "MOCK_DELETED per ROUTING_POLICY"},
+    {
+        "id": "m3",
+        "title": "Vina Dock stub",
+        "category_bucket": "MOCK",
+        "primary": "TODO/completed/82b_vina_dock_retrain.md",
+        "fallback": None,
+        "rationale": "stub -9.6574 CRITICAL; per-host Vina install + receptor fetch needed",
+    },
+    {
+        "id": "external_scorers",
+        "title": "4 external scorers (coord_geometry / phototherapy / ptiv / metalloprotein)",
+        "category_bucket": "MOCK",
+        "primary": "TODO/completed/85_mock_audit.md",
+        "fallback": None,
+        "rationale": "MOCK_DELETED per ROUTING_POLICY",
+    },
     # DEFERRED_HOST_GAP (3 per INDEX §17.1, kept on disk honestly)
-    {"id": "diversity_subpocket", "title": "diversity_subpocket", "category_bucket": "DEFERRED",   "primary": "metrics/by_metric/diversity_subpocket.json",      "fallback": None, "rationale": "DESIGN_ONLY (RDKit not installed on host)"},
-    {"id": "steric_clash", "title": "steric_clash (PB dock-mode)", "category_bucket": "DEFERRED",  "primary": "metrics/by_metric/steric_clash_pb_dock.json",     "fallback": None, "rationale": "DEFERRED_posebusters_unavailable"},
-    {"id": "vina_test_001", "title": "vina_*_test_001 (×4 sub-variants)", "category_bucket": "DEFERRED", "primary": "metrics/by_metric/vina_score_test_001.json", "fallback": None, "rationale": "DEFERRED_receptors_missing"},
+    {
+        "id": "diversity_subpocket",
+        "title": "diversity_subpocket",
+        "category_bucket": "DEFERRED",
+        "primary": "metrics/by_metric/diversity_subpocket.json",
+        "fallback": None,
+        "rationale": "DESIGN_ONLY (RDKit not installed on host)",
+    },
+    {
+        "id": "steric_clash",
+        "title": "steric_clash (PB dock-mode)",
+        "category_bucket": "DEFERRED",
+        "primary": "metrics/by_metric/steric_clash_pb_dock.json",
+        "fallback": None,
+        "rationale": "DEFERRED_posebusters_unavailable",
+    },
+    {
+        "id": "vina_test_001",
+        "title": "vina_*_test_001 (×4 sub-variants)",
+        "category_bucket": "DEFERRED",
+        "primary": "metrics/by_metric/vina_score_test_001.json",
+        "fallback": None,
+        "rationale": "DEFERRED_receptors_missing",
+    },
 ]
 
 
@@ -90,12 +273,25 @@ METRICS_22: List[Dict[str, str]] = [
 
 _STATUS_RE = re.compile(r'"status"\s*:\s*"([A-Za-z_]+)"')
 _VALUE_RE = re.compile(r'"value"\s*:\s*([0-9eE+\-.]+|null|true|false)')
-_AUC_VALUE_RE = re.compile(r'"(value_overall_mean_auc|test_auc_mean|ood_auc_mean|id_auc_mean|auc_mean|cross_dataset_macro_r2_mean|value_1d|value_2d)"\s*:\s*([0-9eE+\-.]+)')
+_AUC_VALUE_RE = re.compile(
+    r'"(value_overall_mean_auc|test_auc_mean|ood_auc_mean|id_auc_mean|auc_mean|cross_dataset_macro_r2_mean|value_1d|value_2d)"\s*:\s*([0-9eE+\-.]+)'
+)
 _DEFERRED_RE = re.compile(r'"deferred_reason"\s*:\s*"([^"]+)"')
 _DATE_RE = re.compile(r'"date_utc"\s*:\s*"([^"]+)"')
 _VERDICT_RE = re.compile(r'"verdict"\s*:\s*"([^"]+)"')
-_MEASURED_BUCKET = {"MEASURED", "MEASURED_SMOKE", "MEASURED_FILE", "MEASURED_BELOW_GATE", "MEASURED_DEFERRED_GPU"}
-_DEFERRED_STATUS = {"DEFERRED", "DESIGN_ONLY", "DESIGN", "DESIGN_ONLY_DEFERRED_HOST_GAP"}
+_MEASURED_BUCKET = {
+    "MEASURED",
+    "MEASURED_SMOKE",
+    "MEASURED_FILE",
+    "MEASURED_BELOW_GATE",
+    "MEASURED_DEFERRED_GPU",
+}
+_DEFERRED_STATUS = {
+    "DEFERRED",
+    "DESIGN_ONLY",
+    "DESIGN",
+    "DESIGN_ONLY_DEFERRED_HOST_GAP",
+}
 _DEFERRED_PREFIX = ("DEFERRED_", "DESIGN_ONLY", "DESIGN")
 
 
@@ -137,9 +333,13 @@ def _scan_status_counts(text: str) -> Tuple[int, int, int]:
     measured signal — BUT only when there is no DEFERRED token in the file,
     so that ``diversity_subpocket.json`` (status="DESIGN") stays DEFERRED.
     """
-    measured = sum(1 for m in _STATUS_RE.finditer(text) if _is_measured_status(m.group(1)))
+    measured = sum(
+        1 for m in _STATUS_RE.finditer(text) if _is_measured_status(m.group(1))
+    )
     projected = sum(1 for m in _STATUS_RE.finditer(text) if m.group(1) == "PROJECTED")
-    deferred = sum(1 for m in _STATUS_RE.finditer(text) if _is_deferred_status(m.group(1)))
+    deferred = sum(
+        1 for m in _STATUS_RE.finditer(text) if _is_deferred_status(m.group(1))
+    )
 
     # Heuristic: top-level "value" + "timestamp" JSON-blob metrics.
     # Only apply when there is no DEFERRED token (preserves honest framing).
@@ -213,7 +413,11 @@ def audit_file(relpath: str) -> Dict[str, Any]:
         latest_status = "MEASURED"
     elif projected:
         latest_status = "PROJECTED"
-    elif '"value"' in text and '"null"' in text and re.search(r'"n_docked"\s*:\s*0', text):
+    elif (
+        '"value"' in text
+        and '"null"' in text
+        and re.search(r'"n_docked"\s*:\s*0', text)
+    ):
         # vina_*_test_001 pattern: top-level value: {mean: null, n_docked: 0}
         latest_status = "DEFERRED_HOST_GAP"
     elif latest_value is not None and re.search(r'"timestamp"\s*:', text):
@@ -241,6 +445,7 @@ def audit_file(relpath: str) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Per-metric row builder
 # ---------------------------------------------------------------------------
+
 
 def build_per_metric_status() -> Dict[str, Any]:
     """Build the 22-row per-metric status table."""
@@ -360,7 +565,9 @@ def write_synthesis(per_metric: Dict[str, Any]) -> Path:
     md_lines.append("## 1. Aggregate")
     md_lines.append("")
     md_lines.append(f"- `metrics/by_metric/` files scanned: **{by_md}** JSON files.")
-    md_lines.append(f"- Conceptual metrics audited (per `TODO/INDEX.md` §17.1): **{n_conc}**.")
+    md_lines.append(
+        f"- Conceptual metrics audited (per `TODO/INDEX.md` §17.1): **{n_conc}**."
+    )
     md_lines.append("- Conceptual category distribution:")
     for cat, n in sorted(cat_counts.items()):
         md_lines.append(f"  - **{cat}**: {n}")
@@ -427,17 +634,24 @@ def write_synthesis(per_metric: Dict[str, Any]) -> Path:
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Wf-87 Phase 1 — per-metric disk audit.")
+    parser = argparse.ArgumentParser(
+        description="Wf-87 Phase 1 — per-metric disk audit."
+    )
     parser.add_argument("--out-json", default=str(OUT_JSON), help="Output JSON path")
-    parser.add_argument("--out-md", default=str(OUT_MD), help="Output markdown synthesis path")
+    parser.add_argument(
+        "--out-md", default=str(OUT_MD), help="Output markdown synthesis path"
+    )
     args = parser.parse_args()
 
     per_metric = build_per_metric_status()
 
     out_json = Path(args.out_json)
     out_json.parent.mkdir(parents=True, exist_ok=True)
-    out_json.write_text(json.dumps(per_metric, indent=2, ensure_ascii=False), encoding="utf-8")
+    out_json.write_text(
+        json.dumps(per_metric, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
 
     md_path = write_synthesis(per_metric)
 
@@ -450,7 +664,9 @@ def main() -> int:
 
     print(f"[wf87-p1] scanned {n_files} files in metrics/by_metric/")
     print(f"[wf87-p1] {n_conc} conceptual metrics audited")
-    print(f"[wf87-p1] category counts: STRONG={n_strong} WEAK={n_weak} MOCK={n_mock} DEFERRED={n_deferred}")
+    print(
+        f"[wf87-p1] category counts: STRONG={n_strong} WEAK={n_weak} MOCK={n_mock} DEFERRED={n_deferred}"
+    )
     print(f"[wf87-p1] JSON → {out_json}")
     print(f"[wf87-p1] MD   → {md_path}")
     return 0

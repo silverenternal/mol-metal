@@ -124,13 +124,16 @@ def sample_so3_rotations(
     two_pi_u3 = 2.0 * math.pi * u3
     q0 = sqrt_1mu1 * torch.sin(two_pi_u2)  # x
     q1 = sqrt_1mu1 * torch.cos(two_pi_u2)  # y
-    q2 = sqrt_u1 * torch.sin(two_pi_u3)    # z
-    q3 = sqrt_u1 * torch.cos(two_pi_u3)    # w
+    q2 = sqrt_u1 * torch.sin(two_pi_u3)  # z
+    q3 = sqrt_u1 * torch.cos(two_pi_u3)  # w
     return _quats_to_rotmat(q0, q1, q2, q3)
 
 
 def _quats_to_rotmat(
-    q0: torch.Tensor, q1: torch.Tensor, q2: torch.Tensor, q3: torch.Tensor,
+    q0: torch.Tensor,
+    q1: torch.Tensor,
+    q2: torch.Tensor,
+    q3: torch.Tensor,
 ) -> torch.Tensor:
     """Convert unit-quaternion components (x, y, z, w) into SO(3) matrices.
 
@@ -150,9 +153,15 @@ def _quats_to_rotmat(
     wz = q3 * q2
     zero = torch.zeros_like(xx)
     one = torch.ones_like(xx)
-    row0 = torch.stack([1.0 - 2.0 * (yy + zz), 2.0 * (xy - wz),     2.0 * (xz + wy)], dim=-1)
-    row1 = torch.stack([2.0 * (xy + wz),     1.0 - 2.0 * (xx + zz), 2.0 * (yz - wx)], dim=-1)
-    row2 = torch.stack([2.0 * (xz - wy),     2.0 * (yz + wx),     1.0 - 2.0 * (xx + yy)], dim=-1)
+    row0 = torch.stack(
+        [1.0 - 2.0 * (yy + zz), 2.0 * (xy - wz), 2.0 * (xz + wy)], dim=-1
+    )
+    row1 = torch.stack(
+        [2.0 * (xy + wz), 1.0 - 2.0 * (xx + zz), 2.0 * (yz - wx)], dim=-1
+    )
+    row2 = torch.stack(
+        [2.0 * (xz - wy), 2.0 * (yz + wx), 1.0 - 2.0 * (xx + yy)], dim=-1
+    )
     return torch.stack([row0, row1, row2], dim=-2)  # (N, 3, 3)
 
 
@@ -161,11 +170,11 @@ def _quats_to_rotmat(
 # ---------------------------------------------------------------------------
 def so3_averaged_fm_loss(
     velocity_fn: Callable[[torch.Tensor], torch.Tensor],
-    x_t: torch.Tensor,                       # (B, N, 3) or (N, 3)
-    target_dx_t: torch.Tensor,                # (B, N, 3) or (N, 3)  — x_1 − x_0
+    x_t: torch.Tensor,  # (B, N, 3) or (N, 3)
+    target_dx_t: torch.Tensor,  # (B, N, 3) or (N, 3)  — x_1 − x_0
     n_rotations: int = 4,
     node_mask: Optional[torch.Tensor] = None,  # (B, N) bool, True = real atom
-    rotations: Optional[torch.Tensor] = None,   # (K, 3, 3) optional pre-computed
+    rotations: Optional[torch.Tensor] = None,  # (K, 3, 3) optional pre-computed
     reduction: str = "mean",
 ) -> torch.Tensor:
     """SO(3)-averaged conditional FM loss (Cao et al. 2025 §3.2).
@@ -255,7 +264,9 @@ def so3_averaged_fm_loss(
     # Resolve rotation tensor.
     if rotations is None:
         rotations = sample_so3_rotations(
-            n_rotations, device=x_t.device, dtype=x_t.dtype,
+            n_rotations,
+            device=x_t.device,
+            dtype=x_t.dtype,
         )  # (K, 3, 3)
     else:
         if rotations.dim() != 3 or rotations.shape[-2:] != (3, 3):
@@ -277,7 +288,9 @@ def so3_averaged_fm_loss(
             )
     else:
         node_mask_b = torch.ones(
-            x_t_batched.shape[:2], dtype=torch.bool, device=x_t.device,
+            x_t_batched.shape[:2],
+            dtype=torch.bool,
+            device=x_t.device,
         )
 
     # We accumulate the loss in float32 to avoid rare overflow on
@@ -316,7 +329,9 @@ def so3_averaged_fm_loss(
         elif reduction == "sum":
             accum = accum + per_atom.sum()
         else:  # batch_mean
-            per_batch = per_atom.sum(dim=(1, 2)) / mask_3d.sum(dim=(1, 2)).clamp(min=1.0)
+            per_batch = per_atom.sum(dim=(1, 2)) / mask_3d.sum(dim=(1, 2)).clamp(
+                min=1.0
+            )
             accum = accum + per_batch.mean()
     return accum / k
 

@@ -97,9 +97,9 @@ def test_fused_residual_add_matches_unfused():
     u = torch.randn(8, 16, device=DEVICE, dtype=torch.float32)
     y_fused = _triton_fused_residual_add(h, u)
     y_ref = h + u
-    assert torch.allclose(y_fused, y_ref, atol=1e-5, rtol=1e-5), (
-        f"parity mismatch: max diff {(y_fused - y_ref).abs().max().item()}"
-    )
+    assert torch.allclose(
+        y_fused, y_ref, atol=1e-5, rtol=1e-5
+    ), f"parity mismatch: max diff {(y_fused - y_ref).abs().max().item()}"
 
 
 def test_fused_residual_add_zero_init():
@@ -113,9 +113,9 @@ def test_fused_residual_add_zero_init():
     h = torch.randn(4, 32, device=DEVICE, dtype=torch.float32)
     u = torch.zeros_like(h)
     y = _triton_fused_residual_add(h, u)
-    assert torch.allclose(y, h, atol=1e-6, rtol=1e-6), (
-        f"zero-residual mismatch: max diff {(y - h).abs().max().item()}"
-    )
+    assert torch.allclose(
+        y, h, atol=1e-6, rtol=1e-6
+    ), f"zero-residual mismatch: max diff {(y - h).abs().max().item()}"
 
 
 def test_fused_residual_add_large_residual():
@@ -131,9 +131,9 @@ def test_fused_residual_add_large_residual():
     u = torch.randn(64, 64, device=DEVICE, dtype=torch.float32) * 100.0
     y_fused = _triton_fused_residual_add(h, u)
     y_ref = h + u
-    assert torch.allclose(y_fused, y_ref, atol=1e-3, rtol=1e-4), (
-        f"large-residual mismatch: max diff {(y_fused - y_ref).abs().max().item()}"
-    )
+    assert torch.allclose(
+        y_fused, y_ref, atol=1e-3, rtol=1e-4
+    ), f"large-residual mismatch: max diff {(y_fused - y_ref).abs().max().item()}"
 
 
 # ---------------------------------------------------------------------------
@@ -190,9 +190,9 @@ def test_velocity_net_falls_back_unfused(monkeypatch):
     h = torch.randn(2, 8, 16, device=DEVICE, dtype=torch.float32)
     u = torch.randn(2, 8, 16, device=DEVICE, dtype=torch.float32)
     y = velocity_net._maybe_fused_residual_add(h, u)
-    assert calls["n"] == 0, (
-        f"fused_residual_add called {calls['n']} times despite disabled gate"
-    )
+    assert (
+        calls["n"] == 0
+    ), f"fused_residual_add called {calls['n']} times despite disabled gate"
     assert torch.allclose(y, h + u, atol=1e-6)
 
 
@@ -264,9 +264,9 @@ def test_fused_residual_add_backward():
     y_ref.backward(grad)
     y_fused.backward(grad)
 
-    assert torch.allclose(h_fused.grad, h_ref.grad, atol=1e-5, rtol=1e-5), (
-        f"grad_h mismatch: max diff {(h_fused.grad - h_ref.grad).abs().max().item()}"
-    )
-    assert torch.allclose(u_fused.grad, u_ref.grad, atol=1e-5, rtol=1e-5), (
-        f"grad_u mismatch: max diff {(u_fused.grad - u_ref.grad).abs().max().item()}"
-    )
+    assert torch.allclose(
+        h_fused.grad, h_ref.grad, atol=1e-5, rtol=1e-5
+    ), f"grad_h mismatch: max diff {(h_fused.grad - h_ref.grad).abs().max().item()}"
+    assert torch.allclose(
+        u_fused.grad, u_ref.grad, atol=1e-5, rtol=1e-5
+    ), f"grad_u mismatch: max diff {(u_fused.grad - u_ref.grad).abs().max().item()}"

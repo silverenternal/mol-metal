@@ -49,6 +49,7 @@ try:
         register_lambda_reward_channel,
         set_lambda_candidates,
     )
+
     _HAS_CHANNEL = True
 except Exception:  # pragma: no cover
     compute_lambda_score = None
@@ -62,6 +63,7 @@ try:
         CouplingAdapter,
         load_coupling_adapter,
     )
+
     _HAS_COUPLING = True
 except Exception:  # pragma: no cover
     CouplingAdapter = None
@@ -70,6 +72,7 @@ except Exception:  # pragma: no cover
 
 try:
     from molmetal_lam.search_alg.proof_search import RewardAggregator
+
     _HAS_REWARD_AGGREGATOR = True
 except Exception:  # pragma: no cover
     RewardAggregator = None

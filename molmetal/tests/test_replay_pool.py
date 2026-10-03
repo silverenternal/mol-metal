@@ -102,25 +102,33 @@ class TestTrajectoryRecord:
     def test_record_rejects_empty_config_hash(self):
         with pytest.raises(ValueError):
             TrajectoryRecord(
-                config_hash="", hp_dict={}, final_test_score=0.5,
+                config_hash="",
+                hp_dict={},
+                final_test_score=0.5,
             )
 
     def test_record_rejects_non_numeric_score(self):
         with pytest.raises(ValueError):
             TrajectoryRecord(
-                config_hash="abc", hp_dict={}, final_test_score="bad",
+                config_hash="abc",
+                hp_dict={},
+                final_test_score="bad",
             )
 
     def test_record_rejects_nan_score(self):
         with pytest.raises(ValueError):
             TrajectoryRecord(
-                config_hash="abc", hp_dict={}, final_test_score=float("nan"),
+                config_hash="abc",
+                hp_dict={},
+                final_test_score=float("nan"),
             )
 
     def test_record_rejects_inf_score(self):
         with pytest.raises(ValueError):
             TrajectoryRecord(
-                config_hash="abc", hp_dict={}, final_test_score=float("inf"),
+                config_hash="abc",
+                hp_dict={},
+                final_test_score=float("inf"),
             )
 
 
@@ -212,7 +220,11 @@ class TestReplayPoolQuery:
     def _build(self) -> ReplayPool:
         p = ReplayPool(max_size=32)
         p.add(_mk_record(metal="Ru", score=0.7, hp={"lr": 1e-3, "hidden_dim": 256}))
-        p.add(_mk_record(metal="Ru", score=0.8, hp={"lr": 1e-4, "hidden_dim": 256}, seed=1))
+        p.add(
+            _mk_record(
+                metal="Ru", score=0.8, hp={"lr": 1e-4, "hidden_dim": 256}, seed=1
+            )
+        )
         p.add(_mk_record(metal="Ir", score=0.5, hp={"lr": 1e-3, "hidden_dim": 256}))
         return p
 
@@ -292,7 +304,9 @@ class TestReplayPoolReplayPredict:
         p = ReplayPool(max_size=32)
         for s in [0.6, 0.7, 0.8]:
             p.add(_mk_record(metal="Ru", score=s, hp={"lr": 1e-3, "hidden_dim": 256}))
-        est = p.replay_predict({"lr": 1e-3, "hidden_dim": 256}, metal="Ru", baseline=0.5)
+        est = p.replay_predict(
+            {"lr": 1e-3, "hidden_dim": 256}, metal="Ru", baseline=0.5
+        )
         assert 0.0 <= est.score <= 1.0
         assert est.n_neighbors == 3
 
@@ -384,8 +398,10 @@ class TestReplayPoolDisagreementUncertainty:
         p.add(_mk_record(metal="Ru", score=0.8, hp={"lr": 1e-3, "hidden_dim": 256}))
         p.add(_mk_record(metal="Ru", score=0.5, hp={"lr": 5e-4, "hidden_dim": 300}))
         u = p.disagreement_uncertainty(
-            {"lr": 1e-3, "hidden_dim": 256}, metal="Ru",
-            k_perturbations=8, seed=0,
+            {"lr": 1e-3, "hidden_dim": 256},
+            metal="Ru",
+            k_perturbations=8,
+            seed=0,
         )
         assert u >= 0.0
         assert math.isfinite(u)

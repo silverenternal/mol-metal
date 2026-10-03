@@ -66,18 +66,18 @@ def _make_synthetic_pack(
     ea = torch.randn(n_rows, n_edges, edge_feat_dim, dtype=torch.float32)
     mask = torch.ones(n_rows, n_atoms, dtype=torch.bool)
     # Cycle through 5 metals so the per-metal head sees variety.
-    metal_idx = torch.tensor(
-        [0, 1, 2, 3, 4] * (n_rows // 5 + 1), dtype=torch.int64
-    )[:n_rows]
+    metal_idx = torch.tensor([0, 1, 2, 3, 4] * (n_rows // 5 + 1), dtype=torch.int64)[
+        :n_rows
+    ]
     y = torch.randn(n_rows, dtype=torch.float32)
     # Half active, half inactive — gives the loss a real signal.
     active = torch.tensor(
         [1.0, 0.0, 1.0, 0.0, 1.0] * (n_rows // 5 + 1), dtype=torch.float32
     )[:n_rows]
     # Cycle through 4 domains so coord head sees variety.
-    domain = torch.tensor(
-        [0, 1, 2, 3, 0] * (n_rows // 5 + 1), dtype=torch.int64
-    )[:n_rows]
+    domain = torch.tensor([0, 1, 2, 3, 0] * (n_rows // 5 + 1), dtype=torch.int64)[
+        :n_rows
+    ]
     return {
         "atom_features": af,
         "edge_index": ei,
@@ -125,15 +125,23 @@ def test_pretrain_path_runs_n_steps(
     epoch × 2 epochs = 8 steps).
     """
     out_path = tmp_path / "pretrain_record.json"
-    rc = td.main([
-        "--data-config", "pretrain",
-        "--batch", "4",
-        "--epochs", "2",
-        "--out", str(out_path),
-        "--metal", "Ru",
-        "--seed", "0",
-        "--no-bf16",  # force CPU path for the test
-    ])
+    rc = td.main(
+        [
+            "--data-config",
+            "pretrain",
+            "--batch",
+            "4",
+            "--epochs",
+            "2",
+            "--out",
+            str(out_path),
+            "--metal",
+            "Ru",
+            "--seed",
+            "0",
+            "--no-bf16",  # force CPU path for the test
+        ]
+    )
     assert rc == 0, f"main() returned {rc} (expected 0)"
     payload = json.loads(out_path.read_text())
     # The training block ran for at least one step.
@@ -149,9 +157,9 @@ def test_pretrain_path_runs_n_steps(
         f"got n_steps_total={n_steps}. Short-circuit not removed?"
     )
     # n_epochs matches --epochs.
-    assert int(training["n_epochs"]) == 2, (
-        f"Expected n_epochs=2, got {training['n_epochs']}"
-    )
+    assert (
+        int(training["n_epochs"]) == 2
+    ), f"Expected n_epochs=2, got {training['n_epochs']}"
     # initial_loss / final_loss are both recorded.
     assert training["initial_loss"] is not None
     assert training["final_loss"] is not None
@@ -198,15 +206,23 @@ def test_pretrain_path_uses_cached_forward(
     v4.V4MultiTaskDMPNN.forward_cached = _spy_forward_cached  # type: ignore[assignment]
     try:
         out_path = tmp_path / "pretrain_record.json"
-        rc = td.main([
-            "--data-config", "pretrain",
-            "--batch", "4",
-            "--epochs", "1",
-            "--out", str(out_path),
-            "--metal", "Ru",
-            "--seed", "0",
-            "--no-bf16",
-        ])
+        rc = td.main(
+            [
+                "--data-config",
+                "pretrain",
+                "--batch",
+                "4",
+                "--epochs",
+                "1",
+                "--out",
+                str(out_path),
+                "--metal",
+                "Ru",
+                "--seed",
+                "0",
+                "--no-bf16",
+            ]
+        )
         # Restore forward even if the test fails (use finally via the
         # try/finally around the assertion).
         assert rc == 0, (
@@ -248,15 +264,23 @@ def test_pretrain_path_loss_decreases(
         the noisiness of 8 random init steps)
     """
     out_path = tmp_path / "pretrain_record.json"
-    rc = td.main([
-        "--data-config", "pretrain",
-        "--batch", "4",
-        "--epochs", "2",
-        "--out", str(out_path),
-        "--metal", "Ru",
-        "--seed", "0",
-        "--no-bf16",
-    ])
+    rc = td.main(
+        [
+            "--data-config",
+            "pretrain",
+            "--batch",
+            "4",
+            "--epochs",
+            "2",
+            "--out",
+            str(out_path),
+            "--metal",
+            "Ru",
+            "--seed",
+            "0",
+            "--no-bf16",
+        ]
+    )
     assert rc == 0
     payload = json.loads(out_path.read_text())
     training = payload["training"]
@@ -277,9 +301,9 @@ def test_pretrain_path_loss_decreases(
     # Allow some slack — we just need the loss to drop by a
     # non-trivial margin over 8 steps on a tiny random init.
     decrease = float(training["loss_decrease"])
-    assert decrease > 0.0, (
-        f"loss_decrease={decrease:.4f} — Adam should drive it positive."
-    )
+    assert (
+        decrease > 0.0
+    ), f"loss_decrease={decrease:.4f} — Adam should drive it positive."
 
 
 # ---------------------------------------------------------------------------
@@ -289,14 +313,21 @@ def test_run_pretrain_training_directly(
     patched_pretrain_path: Path,
 ) -> None:
     """Direct call to :func:`run_pretrain_training` works end-to-end."""
-    args = td._parse_args([
-        "--data-config", "pretrain",
-        "--batch", "4",
-        "--epochs", "1",
-        "--metal", "Ru",
-        "--seed", "0",
-        "--no-bf16",
-    ])
+    args = td._parse_args(
+        [
+            "--data-config",
+            "pretrain",
+            "--batch",
+            "4",
+            "--epochs",
+            "1",
+            "--metal",
+            "Ru",
+            "--seed",
+            "0",
+            "--no-bf16",
+        ]
+    )
     loader = td.build_pretrain_dataloader(
         batch_size=args.batch,
         shuffle=False,

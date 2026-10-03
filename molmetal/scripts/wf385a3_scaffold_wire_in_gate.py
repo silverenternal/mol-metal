@@ -61,6 +61,7 @@ consumers / paper-dashboard reproducibility table).
 See ``TODO/completed/385a3_scaffold_wire_in_gate.md`` for the
 Wf-385-A3 ship summary.
 """
+
 from __future__ import annotations
 
 import importlib.util as _ilu
@@ -84,6 +85,7 @@ try:
         safe_overwrite_check,
         detect_truncation,
     )
+
     _WF414_HAS_ATOMIC = True
 except ImportError:  # pragma: no cover — fallback when running as standalone
     _WF414_HAS_ATOMIC = False
@@ -104,24 +106,29 @@ except ImportError:  # pragma: no cover — fallback when running as standalone
 # Adding a NEW Wf-380 SCAFFOLD requires updating this table.
 SCAFFOLD_MODULES: Tuple[Tuple[str, str, str], ...] = (
     # (filename, module_attr, expected_function_or_class)
-    ("edm_preconditioning.py", "wf385_edm_preconditioning",
-     "preconditioned_loss"),
-    ("optimal_transport_v2_solver.py", "wf385_ot_v2_solver",
-     "ot_solver"),
+    ("edm_preconditioning.py", "wf385_edm_preconditioning", "preconditioned_loss"),
+    ("optimal_transport_v2_solver.py", "wf385_ot_v2_solver", "ot_solver"),
     ("stable_vm.py", "wf385_stable_vm", "stable_vm_loss"),
     ("so3_average.py", "wf385_so3_average", "so3_average_loss"),
-    ("triton_mini_batch_ot.py", "wf385_triton_mini_batch_ot",
-     "triton_mini_batch_ot"),
-    ("shortcut_distillation_wf380.py", "wf385_shortcut_distillation",
-     "shortcut_distillation_loss"),
-    ("consistency_regularization_wf380.py",
-     "wf385_consistency_regularization", "consistency_loss_fn"),
-    ("flowmol_unified.py", "wf385_flowmol_unified",
-     "UnifiedAtomBondFlowHead"),
+    ("triton_mini_batch_ot.py", "wf385_triton_mini_batch_ot", "triton_mini_batch_ot"),
+    (
+        "shortcut_distillation_wf380.py",
+        "wf385_shortcut_distillation",
+        "shortcut_distillation_loss",
+    ),
+    (
+        "consistency_regularization_wf380.py",
+        "wf385_consistency_regularization",
+        "consistency_loss_fn",
+    ),
+    ("flowmol_unified.py", "wf385_flowmol_unified", "UnifiedAtomBondFlowHead"),
     ("log_normal_t.py", "wf385_log_normal_t", "log_normal_t_sampling"),
     ("lr_warmup.py", "wf385_lr_warmup", "LinearWarmupLR"),
-    ("diversity_sampling.py", "wf385_diversity_sampling",
-     "diversity_aware_sampling_step"),
+    (
+        "diversity_sampling.py",
+        "wf385_diversity_sampling",
+        "diversity_aware_sampling_step",
+    ),
 )
 
 # --- Wf-385-A3 default invocation -------------------------------
@@ -129,35 +136,50 @@ SCAFFOLD_MODULES: Tuple[Tuple[str, str, str], ...] = (
 # All 14 Wf-380-B1 flags ON simultaneously so the trainer main loop
 # exercises every SCAFFOLD in one pass.
 DEFAULT_SMOKE_FLAGS: Tuple[str, ...] = (
-    "--epochs", "3",
-    "--batch-size", "4",
-    "--n-train", "16",
-    "--n-val", "8",
-    "--hidden-dim", "32",
-    "--n-layers", "2",
-    "--device", "cpu",
+    "--epochs",
+    "3",
+    "--batch-size",
+    "4",
+    "--n-train",
+    "16",
+    "--n-val",
+    "8",
+    "--hidden-dim",
+    "32",
+    "--n-layers",
+    "2",
+    "--device",
+    "cpu",
     "--edm-preconditioning",
     "--use-log-normal-t",
     "--use-ema",
     "--use-shortcut-consistency",
-    "--consistency-weight", "1.0",
+    "--consistency-weight",
+    "1.0",
     "--use-shortcut-distillation",
     "--use-lr-warmup",
-    "--lr-warmup-steps", "100",
+    "--lr-warmup-steps",
+    "100",
     "--use-exact-ot-coupling",
     "--triton-minibatch-ot",
     "--use-so3-averaged-fm",
-    "--so3-averaged-fm-k", "2",
-    "--mmd-weight", "0.1",
-    "--top-p", "0.9",
-    "--top-k", "50",
-    "--temperature", "1.0",
+    "--so3-averaged-fm-k",
+    "2",
+    "--mmd-weight",
+    "0.1",
+    "--top-p",
+    "0.9",
+    "--top-k",
+    "50",
+    "--temperature",
+    "1.0",
     "--stable-vm",
     "--so3-average",
     "--log-normal-t",
     "--triton-ot",
     "--shortcut-distill",
-    "--pocket-id", "smoke_wf385a3",
+    "--pocket-id",
+    "smoke_wf385a3",
     # Wf-A13 FIX (2026-10-03): `--out-dir` and `--ckpt-dir` used to be
     # hardcoded HERE, pointing into the git-tracked reports tree. That was
     # not merely untidy — it silently defeated the caller's redirect.
@@ -171,7 +193,8 @@ DEFAULT_SMOKE_FLAGS: Tuple[str, ...] = (
     # redirect that looked implemented and did nothing.
     # They are now injected dynamically (after *smoke_flags, so the dynamic
     # value still wins if a caller passes its own).
-    "--seed", "0",
+    "--seed",
+    "0",
     # Disable CUDA Graphs (Blackwell cudagraphs retune per Wf-335-R3
     # SAFETY lever) + fused-adam (CUDA-only per Wf-357-D1).
 )
@@ -297,10 +320,13 @@ def run_smoke_training(
     # that silently overrode the dynamic path (see the note on
     # DEFAULT_SMOKE_FLAGS). Keeping them last means this caller always wins.
     cmd: List[str] = [
-        python_bin, str(trainer),
+        python_bin,
+        str(trainer),
         *smoke_flags,
-        "--out-dir", str(trainer_out_dir),
-        "--ckpt-dir", str(trainer_ckpt_dir),
+        "--out-dir",
+        str(trainer_out_dir),
+        "--ckpt-dir",
+        str(trainer_ckpt_dir),
     ]
     try:
         proc = subprocess.run(
@@ -319,9 +345,7 @@ def run_smoke_training(
             "per_epoch_metrics_path": None,
             "error": f"timeout after {timeout}s",
         }
-    per_epoch_path = (
-        _repo_root() / out_dir / "per_epoch_metrics.json"
-    )
+    per_epoch_path = _repo_root() / out_dir / "per_epoch_metrics.json"
     return {
         "returncode": proc.returncode,
         "stdout_tail": (proc.stdout or "")[-400:],
@@ -329,9 +353,9 @@ def run_smoke_training(
         "per_epoch_metrics_path": (
             str(per_epoch_path) if per_epoch_path.is_file() else None
         ),
-        "error": None if proc.returncode == 0 else (
-            f"rc={proc.returncode}; stderr_tail={((proc.stderr or '')[-300:])}"
-        ),
+        "error": None
+        if proc.returncode == 0
+        else (f"rc={proc.returncode}; stderr_tail={((proc.stderr or '')[-300:])}"),
     }
 
 
@@ -381,6 +405,7 @@ def parse_smoke_metrics(per_epoch_path: Path) -> Dict[str, Any]:
     # Decrease check: loss_last should be < loss_first * (1 - tolerance).
     # Catastrophic collapse (loss becomes NaN or >10x initial) is FAIL.
     import math
+
     if math.isnan(loss_first) or math.isnan(loss_last):
         passed_decrease = False
         decrease_pct = None
@@ -463,8 +488,12 @@ def gate_main(
             smoke_metric_candidates.append(Path(smoke["per_epoch_metrics_path"]))
         smoke_metric_candidates.append(out_dir / "train" / "per_epoch_metrics.json")
         smoke_metric_candidates.append(
-            _repo_root() / "molmetal" / "reports" /
-            "wf385a3_scaffold_wire_in" / "train" / "per_epoch_metrics.json"
+            _repo_root()
+            / "molmetal"
+            / "reports"
+            / "wf385a3_scaffold_wire_in"
+            / "train"
+            / "per_epoch_metrics.json"
         )
         smoke_metric_candidates.append(
             _repo_root() / out_dir / "per_epoch_metrics.json"
@@ -556,6 +585,7 @@ def gate_main(
 def main(argv: List[str] | None = None) -> int:
     """CLI entry point — prints verdict + writes gate_result.json."""
     import argparse
+
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument(
         "--out-dir",

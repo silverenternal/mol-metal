@@ -13,6 +13,7 @@ These tests:
   3. Verify the EVALUATORS_MIGRATED.md count matches the audit script's
      MEASURED count (test_evaluator_doc_updated).
 """
+
 from __future__ import annotations
 
 import json
@@ -40,16 +41,27 @@ def test_evaluator_count() -> None:
         by_tier[ev["tier"]] = by_tier.get(ev["tier"], 0) + 1
 
     assert "R17" in by_tier, f"R17 tier missing; got tiers {list(by_tier.keys())}"
-    assert "SCAFFOLD" in by_tier, f"SCAFFOLD tier missing; got tiers {list(by_tier.keys())}"
-    assert by_tier["R17"] >= 10, f"R17 has only {by_tier['R17']} entries, expected >= 10"
+    assert (
+        "SCAFFOLD" in by_tier
+    ), f"SCAFFOLD tier missing; got tiers {list(by_tier.keys())}"
+    assert (
+        by_tier["R17"] >= 10
+    ), f"R17 has only {by_tier['R17']} entries, expected >= 10"
 
     # All module paths must be non-empty strings
     for ev in EVALUATOR_INVENTORY:
-        assert isinstance(ev["module"], str) and ev["module"], f"empty module path: {ev}"
-        assert isinstance(ev["function"], str) and ev["function"], f"empty function name: {ev}"
-        assert ev["tier"] in {"R17", "SCAFFOLD", "WIRE-IN", "MEASURED-ON-REAL"}, (
-            f"unknown tier {ev['tier']!r}"
-        )
+        assert (
+            isinstance(ev["module"], str) and ev["module"]
+        ), f"empty module path: {ev}"
+        assert (
+            isinstance(ev["function"], str) and ev["function"]
+        ), f"empty function name: {ev}"
+        assert ev["tier"] in {
+            "R17",
+            "SCAFFOLD",
+            "WIRE-IN",
+            "MEASURED-ON-REAL",
+        }, f"unknown tier {ev['tier']!r}"
 
 
 def test_each_evaluator_runs() -> None:
@@ -63,9 +75,9 @@ def test_each_evaluator_runs() -> None:
     n_total = sum(by_tier.values())
     records = test_each_evaluator()
 
-    assert len(records) == n_total, (
-        f"records ({len(records)}) != by_tier total ({n_total})"
-    )
+    assert (
+        len(records) == n_total
+    ), f"records ({len(records)}) != by_tier total ({n_total})"
 
     # Aggregate pass count: expect at least 18/22 (allowing for honest-negative
     # SCAFFOLD probes that need real-cohort input)
@@ -120,7 +132,9 @@ def test_evaluator_doc_updated() -> None:
 
 def test_wf395a1_audit_json_persisted() -> None:
     """Audit script persists per-evaluator JSON record."""
-    json_path = _ROOT / "molmetal" / "reports" / "wf395a1_evaluator_audit" / "audit.json"
+    json_path = (
+        _ROOT / "molmetal" / "reports" / "wf395a1_evaluator_audit" / "audit.json"
+    )
     # The audit script writes JSON when run; if not yet run, this test is informational
     # (test is OPTIONAL; only enforced if the audit has been run)
     if json_path.exists():

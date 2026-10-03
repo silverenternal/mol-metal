@@ -6,6 +6,7 @@ Validates 3 tiers:
    naphthalene passes, an unrealistic geometry fails on clash).
 3. Bulk pass-rate over the 12 click tiles.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -73,10 +74,17 @@ class TestValidateMol:
         assert r.n_checks > 0
         assert r.pass_rate >= 0.5
         # All of the structural chemistry checks should pass:
-        for key in ("sanitization", "inchi_convertible", "all_atoms_connected",
-                    "no_radicals", "bond_lengths", "bond_angles",
-                    "internal_steric_clash", "passes_valence_checks",
-                    "passes_kekulization"):
+        for key in (
+            "sanitization",
+            "inchi_convertible",
+            "all_atoms_connected",
+            "no_radicals",
+            "bond_lengths",
+            "bond_angles",
+            "internal_steric_clash",
+            "passes_valence_checks",
+            "passes_kekulization",
+        ):
             assert r.details.get(key) is True, f"methane failed check: {key}"
 
     def test_report_to_dict(self):
@@ -99,6 +107,7 @@ class TestBulk:
     def test_pass_rate_12_click_tiles(self):
         # The 12 click tiles shipped in molmetal_lam/tile_lib/library.py
         from molmetal.molmetal_lam.tile_lib.click_tiles import STANDARD_12_TILES
+
         smiles_list = [t.smiles for t in STANDARD_12_TILES()]
         rate = pass_rate(smiles_list)
         # We don't assert a specific rate here — print for visibility.
@@ -122,19 +131,19 @@ class TestBulk:
 # the only invariant is that each contains a triazole ring with
 # varied substituents (alkyl, aryl, alcohol, amine, ester, amide).
 _CUAAC_PRODUCTS = [
-    "Cn1cc(C)nn1",                      # 1,4-dimethyl-triazole
-    "Cc1cn(-c2ccccc2)nn1",              # 1-phenyl-4-methyl
-    "CCn1cc(CC)nn1",                    # 1,4-diethyl
-    "OCc1cn(Cc2ccccc2)nn1",             # 1-benzyl-4-(HO-CH2)
-    "OCCCn1cc(-c2ccccc2)nn1",           # 1-(3-OH-propyl)-4-phenyl
-    "NCC1=CN(C)N=N1",                   # 1-methyl-4-(H2N-CH2)
-    "COC(=O)c1cn(CC)nn1",               # 1-ethyl-4-(MeO-CO)
-    "COCc1cn(-c2ccccc2)nn1",            # 1-phenyl-4-(MeO-CH2)
-    "CC(=O)c1cn(Cc2ccccc2)nn1",         # 1-benzyl-4-acetyl
-    "CC(=O)OCCc1cn(OCC)nn1",            # 1-(Et-O)-4-(AcO-CH2CH2)
-    "OCCc1cn(NCCC)nn1",                 # 1-(3-NH2-propyl)-4-(HO-CH2)
-    "CCCCn1cc(CCC)nn1",                 # 1-butyl-4-propyl
-    "O=C(NCCc1ccccc1)c1cn(CC)nn1",      # 1-ethyl-4-amide
+    "Cn1cc(C)nn1",  # 1,4-dimethyl-triazole
+    "Cc1cn(-c2ccccc2)nn1",  # 1-phenyl-4-methyl
+    "CCn1cc(CC)nn1",  # 1,4-diethyl
+    "OCc1cn(Cc2ccccc2)nn1",  # 1-benzyl-4-(HO-CH2)
+    "OCCCn1cc(-c2ccccc2)nn1",  # 1-(3-OH-propyl)-4-phenyl
+    "NCC1=CN(C)N=N1",  # 1-methyl-4-(H2N-CH2)
+    "COC(=O)c1cn(CC)nn1",  # 1-ethyl-4-(MeO-CO)
+    "COCc1cn(-c2ccccc2)nn1",  # 1-phenyl-4-(MeO-CH2)
+    "CC(=O)c1cn(Cc2ccccc2)nn1",  # 1-benzyl-4-acetyl
+    "CC(=O)OCCc1cn(OCC)nn1",  # 1-(Et-O)-4-(AcO-CH2CH2)
+    "OCCc1cn(NCCC)nn1",  # 1-(3-NH2-propyl)-4-(HO-CH2)
+    "CCCCn1cc(CCC)nn1",  # 1-butyl-4-propyl
+    "O=C(NCCc1ccccc1)c1cn(CC)nn1",  # 1-ethyl-4-amide
 ]
 
 
@@ -162,9 +171,9 @@ class TestMMFF94:
         reports = [validate_mol(s) for s in _CUAAC_PRODUCTS]
         passed = sum(r.passed for r in reports)
         rate = passed / len(reports)
-        assert rate >= 0.60, (
-            f"CuAAC pass-rate {rate:.3f} ({passed}/{len(reports)}) < 0.60"
-        )
+        assert (
+            rate >= 0.60
+        ), f"CuAAC pass-rate {rate:.3f} ({passed}/{len(reports)}) < 0.60"
 
     def test_mmff94_geometry_lower_than_uff(self):
         """A direct energy check: MMFF94 should reach a lower
@@ -177,7 +186,7 @@ class TestMMFF94:
         from rdkit import Chem
         from rdkit.Chem import AllChem
 
-        s = "Cn1cc(C)nn1"   # 1,4-dimethyl-triazole
+        s = "Cn1cc(C)nn1"  # 1,4-dimethyl-triazole
         m1 = Chem.AddHs(Chem.MolFromSmiles(s))
         AllChem.EmbedMolecule(m1, AllChem.ETKDGv3())
         res_mmff = AllChem.MMFFOptimizeMolecule(m1, maxIters=200)

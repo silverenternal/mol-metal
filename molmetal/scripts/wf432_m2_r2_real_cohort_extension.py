@@ -8,6 +8,7 @@ Then run Ridge regression 5x5 CV per Wf-388-A1 protocol.
 CPU-only; no GPU launches; no paper/* touches; no wet-lab; no sudo.
 Per AGENTS.md §5.1 + §5.2 + §5.5 + §5.6 + party-twenty-spirit §3.5.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -30,7 +31,9 @@ def _read_csv_smiles(path: Path) -> List[Tuple[str, str]]:
     with open(path) as f:
         reader = csv.DictReader(f)
         if "smiles" not in reader.fieldnames or "target" not in reader.fieldnames:
-            raise SystemExit(f"CSV must have 'smiles' and 'target' columns; got {reader.fieldnames}")
+            raise SystemExit(
+                f"CSV must have 'smiles' and 'target' columns; got {reader.fieldnames}"
+            )
         for row in reader:
             pairs.append((row["smiles"].strip(), row["target"].strip()))
     return pairs
@@ -49,8 +52,16 @@ def _feature_config(tier: str) -> Dict[str, Any]:
     """Map a cohort-size tier to a feature-config dict."""
     return {
         "n_lt_300": {"n_features": 12, "alpha": 1.0, "tier": "rdkit_12d"},
-        "n_lt_1000": {"n_features": 32, "alpha": 0.5, "tier": "rdkit_32d_plus_chemprop_v3_subset"},
-        "n_gte_1000": {"n_features": 50, "alpha": 0.1, "tier": "rdkit_50d_plus_chemprop_v3_plus_hilbert_subset"},
+        "n_lt_1000": {
+            "n_features": 32,
+            "alpha": 0.5,
+            "tier": "rdkit_32d_plus_chemprop_v3_subset",
+        },
+        "n_gte_1000": {
+            "n_features": 50,
+            "alpha": 0.1,
+            "tier": "rdkit_50d_plus_chemprop_v3_plus_hilbert_subset",
+        },
     }[tier]
 
 
@@ -76,7 +87,9 @@ def _rdkit_features(smiles_list: List[str], n_dims: int) -> np.ndarray:
         ("BertzCT", Descriptors.BertzCT),
         ("Chi0v", Descriptors.Chi0v),
     ]
-    assert n_dims <= len(descriptors), f"requested n_dims={n_dims} > max={len(descriptors)}"
+    assert n_dims <= len(
+        descriptors
+    ), f"requested n_dims={n_dims} > max={len(descriptors)}"
 
     rows = []
     for smiles in smiles_list:
@@ -92,7 +105,13 @@ def _rdkit_features(smiles_list: List[str], n_dims: int) -> np.ndarray:
     return np.array(rows, dtype=np.float64)
 
 
-def _ridge_5x5_cv(features: np.ndarray, target: np.ndarray, alpha: float, n_seeds: int = 5, n_folds: int = 5) -> Dict[str, float]:
+def _ridge_5x5_cv(
+    features: np.ndarray,
+    target: np.ndarray,
+    alpha: float,
+    n_seeds: int = 5,
+    n_folds: int = 5,
+) -> Dict[str, float]:
     """Run Ridge regression with intercept-only closed-form per Wf-335-M2 protocol.
 
     5 seeds × 5-fold CV = 25 splits; returns mean + std of R² across splits.
@@ -162,7 +181,9 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     smiles_list = [p[0] for p in pairs]
     target_list = [_parse_pic50(p[1]) for p in pairs]
-    valid_pairs = [(s, t) for s, t in zip(smiles_list, target_list) if t == t]  # filter NaN
+    valid_pairs = [
+        (s, t) for s, t in zip(smiles_list, target_list) if t == t
+    ]  # filter NaN
     if len(valid_pairs) < n:
         print(f"WARN: filtered {n - len(valid_pairs)} rows with unparseable target")
     smiles_list, target_list = zip(*valid_pairs)
@@ -175,7 +196,9 @@ def cmd_run(args: argparse.Namespace) -> int:
     alpha = cfg["alpha"]
 
     features = _rdkit_features(smiles_list, n_dims)
-    cv = _ridge_5x5_cv(features, target, alpha=alpha, n_seeds=args.n_seeds, n_folds=args.n_folds)
+    cv = _ridge_5x5_cv(
+        features, target, alpha=alpha, n_seeds=args.n_seeds, n_folds=args.n_folds
+    )
 
     out = {
         "wf": "Wf-432-A2",
@@ -204,7 +227,9 @@ def cmd_run(args: argparse.Namespace) -> int:
     if args.verbose:
         print(json.dumps(out, indent=2, ensure_ascii=False))
     else:
-        print(f"{args.cohort_name} r2_mean={out['r2_mean']:.4f} r2_std={out['r2_std']:.4f} tier={tier}")
+        print(
+            f"{args.cohort_name} r2_mean={out['r2_mean']:.4f} r2_std={out['r2_std']:.4f} tier={tier}"
+        )
     return 0
 
 
@@ -212,10 +237,16 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="Wf-432-A2 m2 R² real-cohort extension CPU-only pipeline"
     )
-    p.add_argument("--cohort-csv", required=True,
-                   help="Path to cohort CSV (smiles, target columns)")
-    p.add_argument("--cohort-name", required=True,
-                   help="Cohort name (e.g. platinai_4cell, hilbert, metalcytotox_combined)")
+    p.add_argument(
+        "--cohort-csv",
+        required=True,
+        help="Path to cohort CSV (smiles, target columns)",
+    )
+    p.add_argument(
+        "--cohort-name",
+        required=True,
+        help="Cohort name (e.g. platinai_4cell, hilbert, metalcytotox_combined)",
+    )
     p.add_argument("--out", help="Output JSON path")
     p.add_argument("--n-seeds", type=int, default=5, help="Number of CV seeds")
     p.add_argument("--n-folds", type=int, default=5, help="Number of CV folds")

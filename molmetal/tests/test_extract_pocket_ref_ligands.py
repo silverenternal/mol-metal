@@ -113,17 +113,17 @@ def test_02_smi_file_is_tsv_three_columns(pocket_id: str):
         pytest.skip("smi file missing")
     content = _read_smi(pocket_id)
     parts = content.split("\t")
-    assert len(parts) == 3, (
-        f"{pocket_id}_ligand.smi should be 3 TSV columns, got {len(parts)}: {content!r}"
-    )
+    assert (
+        len(parts) == 3
+    ), f"{pocket_id}_ligand.smi should be 3 TSV columns, got {len(parts)}: {content!r}"
     smi, inchi_key, pid = parts
     assert smi, f"empty SMILES for {pocket_id}"
     assert inchi_key, f"empty InChIKey for {pocket_id}"
     assert pid == pocket_id, f"pocket_id mismatch: {pid!r} != {pocket_id!r}"
     # InChIKey is 14-char uppercase hex string + '-' + 10-char + '-' + 1-char
-    assert "-" in inchi_key and len(inchi_key) == 27, (
-        f"InChIKey {inchi_key!r} not 14-10-1 format"
-    )
+    assert (
+        "-" in inchi_key and len(inchi_key) == 27
+    ), f"InChIKey {inchi_key!r} not 14-10-1 format"
 
 
 # ---------------------------------------------------------------------------
@@ -168,9 +168,7 @@ def test_05_all_inchikeys_unique():
     if not all(_smi_exists(p) for p in POCKETS):
         pytest.skip("some smi files missing")
     inchi_keys = [_read_smi(p).split("\t")[1] for p in POCKETS]
-    assert len(set(inchi_keys)) == len(inchi_keys), (
-        f"InChIKey collision: {inchi_keys}"
-    )
+    assert len(set(inchi_keys)) == len(inchi_keys), f"InChIKey collision: {inchi_keys}"
 
 
 # ---------------------------------------------------------------------------
@@ -193,12 +191,12 @@ def test_07_metadata_n_extracted_ok_is_six():
     if not _metadata_exists():
         pytest.skip("metadata file missing")
     payload = _read_metadata()
-    assert payload["n_extracted_ok"] == 6, (
-        f"expected 6 OK, got {payload['n_extracted_ok']}"
-    )
-    assert payload["n_extracted_fail"] == 0, (
-        f"expected 0 failures, got {payload['n_extracted_fail']}"
-    )
+    assert (
+        payload["n_extracted_ok"] == 6
+    ), f"expected 6 OK, got {payload['n_extracted_ok']}"
+    assert (
+        payload["n_extracted_fail"] == 0
+    ), f"expected 0 failures, got {payload['n_extracted_fail']}"
 
 
 def test_08_metadata_pockets_list_has_six_entries():
@@ -206,13 +204,13 @@ def test_08_metadata_pockets_list_has_six_entries():
     if not _metadata_exists():
         pytest.skip("metadata file missing")
     payload = _read_metadata()
-    assert len(payload["pockets"]) == 6, (
-        f"expected 6 pockets, got {len(payload['pockets'])}"
-    )
+    assert (
+        len(payload["pockets"]) == 6
+    ), f"expected 6 pockets, got {len(payload['pockets'])}"
     pocket_ids = sorted(p["pocket_id"] for p in payload["pockets"])
-    assert pocket_ids == sorted(POCKETS), (
-        f"pocket_ids mismatch: {pocket_ids} != {sorted(POCKETS)}"
-    )
+    assert pocket_ids == sorted(
+        POCKETS
+    ), f"pocket_ids mismatch: {pocket_ids} != {sorted(POCKETS)}"
 
 
 @pytest.mark.parametrize("pocket_id", POCKETS)
@@ -221,9 +219,7 @@ def test_09_metadata_per_pocket_schema_complete(pocket_id: str):
     if not _metadata_exists():
         pytest.skip("metadata file missing")
     payload = _read_metadata()
-    record = next(
-        (p for p in payload["pockets"] if p["pocket_id"] == pocket_id), None
-    )
+    record = next((p for p in payload["pockets"] if p["pocket_id"] == pocket_id), None)
     assert record is not None, f"{pocket_id} missing from metadata"
     assert record.get("ok"), f"{pocket_id} ok=False in metadata"
     for key in (
@@ -292,8 +288,10 @@ def test_11_synthesis_md_pass():
         pytest.skip(f"{synth_path} missing")
     content = synth_path.read_text()
     assert "**Status**: PASS" in content, "synthesis.md missing PASS status"
-    assert "6/6" in content or "n_extracted_ok == 6" in content.lower() or (
-        "Pockets extracted OK**: 6/6" in content
+    assert (
+        "6/6" in content
+        or "n_extracted_ok == 6" in content.lower()
+        or ("Pockets extracted OK**: 6/6" in content)
     ), "synthesis.md missing 6/6 line"
     assert "Phase 1 PASS" in content, "synthesis.md missing Phase 1 PASS decision"
 
@@ -309,11 +307,9 @@ def test_12_heavy_atom_count_in_drug_like_range(pocket_id: str):
     if not _metadata_exists():
         pytest.skip("metadata file missing")
     payload = _read_metadata()
-    record = next(
-        (p for p in payload["pockets"] if p["pocket_id"] == pocket_id), None
-    )
+    record = next((p for p in payload["pockets"] if p["pocket_id"] == pocket_id), None)
     assert record is not None
     heavy = record.get("heavy_atom_count", 0)
-    assert 15 <= heavy <= 60, (
-        f"{pocket_id}: heavy_atom_count {heavy} outside drug-like range [15, 60]"
-    )
+    assert (
+        15 <= heavy <= 60
+    ), f"{pocket_id}: heavy_atom_count {heavy} outside drug-like range [15, 60]"

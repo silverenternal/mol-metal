@@ -80,6 +80,7 @@ Cross-references
 * ``TODO/completed/343c4_integration.md`` — the Wf-343C4 ship
   summary + the cross-script integration context.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -115,11 +116,12 @@ def _load_preflight_module():
     pre_flight_check.py.
     """
     spec = importlib.util.spec_from_file_location(
-        "pre_flight_check_under_test", PREFLIGHT_SCRIPT,
+        "pre_flight_check_under_test",
+        PREFLIGHT_SCRIPT,
     )
-    assert spec is not None and spec.loader is not None, (
-        f"pre_flight_check.py has no import spec ({PREFLIGHT_SCRIPT})"
-    )
+    assert (
+        spec is not None and spec.loader is not None
+    ), f"pre_flight_check.py has no import spec ({PREFLIGHT_SCRIPT})"
     mod = importlib.util.module_from_spec(spec)
     sys.modules["pre_flight_check_under_test"] = mod
     spec.loader.exec_module(mod)
@@ -177,7 +179,8 @@ def _write_yaml(path: Path, *, with_hyperparams: bool) -> Path:
 
 
 def test_gate_wf343c4_hyperparams_config_complete_pass_on_fixture(
-    preflight, tmp_path,
+    preflight,
+    tmp_path,
 ) -> None:
     """Wf-343C4 (1) — hyperparams_config_complete PASS on fixture + FAIL when hyperparam missing.
 
@@ -202,20 +205,26 @@ def test_gate_wf343c4_hyperparams_config_complete_pass_on_fixture(
 
     # PASS branch — all 4 present.
     good = preflight.gate_wf343c4_hyperparams_config_complete(
-        "wf343c4_hp_test_pass", "P3", "wf343c4", (good_yaml,),
+        "wf343c4_hp_test_pass",
+        "P3",
+        "wf343c4",
+        (good_yaml,),
     )
-    assert good.status == "PASS", (
-        f"good_yaml fixture should PASS; got {good.status}: {good.evidence}"
-    )
+    assert (
+        good.status == "PASS"
+    ), f"good_yaml fixture should PASS; got {good.status}: {good.evidence}"
     assert "train.batch_size" in good.evidence or "4" in good.evidence
 
     # FAIL branch — train.batch_size / train.lr / model.hidden_dim / model.n_layers all missing.
     bad = preflight.gate_wf343c4_hyperparams_config_complete(
-        "wf343c4_hp_test_fail", "P3", "wf343c4", (bad_yaml,),
+        "wf343c4_hp_test_fail",
+        "P3",
+        "wf343c4",
+        (bad_yaml,),
     )
-    assert bad.status == "FAIL", (
-        f"bad_yaml fixture (missing hyperparams) should FAIL; got {bad.status}: {bad.evidence}"
-    )
+    assert (
+        bad.status == "FAIL"
+    ), f"bad_yaml fixture (missing hyperparams) should FAIL; got {bad.status}: {bad.evidence}"
     assert "missing" in bad.evidence.lower() or "hyperparam" in bad.evidence.lower()
 
 
@@ -225,7 +234,10 @@ def test_gate_wf343c4_hyperparams_config_complete_pass_on_fixture(
 
 
 def _write_yuelbond_stub(
-    path: Path, *, export_class: bool, class_name: str = "YuelBondDecoder",
+    path: Path,
+    *,
+    export_class: bool,
+    class_name: str = "YuelBondDecoder",
 ) -> Path:
     """Write a stub ``cfm_decoder_yuelbond.py`` fixture.
 
@@ -254,7 +266,8 @@ def _write_yuelbond_stub(
 
 
 def test_gate_wf343c4_yuelbond_decoder_env_on_canonical(
-    preflight, tmp_path,
+    preflight,
+    tmp_path,
 ) -> None:
     """Wf-343C4 (2) / Wf-345A2 — yuelbond_decoder_env PASS / FAIL / SKIP contracts.
 
@@ -286,7 +299,9 @@ def test_gate_wf343c4_yuelbond_decoder_env_on_canonical(
     #   * torch available → PASS (regression test for Wf-272I / Wf-269C).
     #   * torch missing   → honest-negative SKIP (Wf-345A2 env gap).
     canonical = preflight.gate_wf343c4_yuelbond_decoder_env(
-        "wf343c4_yb_canonical", "P3", "wf343c4",
+        "wf343c4_yb_canonical",
+        "P3",
+        "wf343c4",
         CANONICAL_YUELBOND_MODULE,
     )
     assert canonical.status in {"PASS", "SKIP"}, (
@@ -305,26 +320,34 @@ def test_gate_wf343c4_yuelbond_decoder_env_on_canonical(
     # The stub does NOT import torch, so FAIL is expected regardless
     # of host env.
     stub_path = _write_yuelbond_stub(
-        tmp_path / "cfm_decoder_yuelbond_stub.py", export_class=False,
+        tmp_path / "cfm_decoder_yuelbond_stub.py",
+        export_class=False,
     )
     stub = preflight.gate_wf343c4_yuelbond_decoder_env(
-        "wf343c4_yb_stub_fail", "P3", "wf343c4", stub_path,
+        "wf343c4_yb_stub_fail",
+        "P3",
+        "wf343c4",
+        stub_path,
     )
-    assert stub.status == "FAIL", (
-        f"stub without YuelBondDecoder should FAIL; got {stub.status}: {stub.evidence}"
-    )
+    assert (
+        stub.status == "FAIL"
+    ), f"stub without YuelBondDecoder should FAIL; got {stub.status}: {stub.evidence}"
     assert "YuelBondDecoder" in stub.evidence  # the missing-class name is named
 
     # PASS — stub that DOES export YuelBondDecoder (no torch dep).
     ok_stub_path = _write_yuelbond_stub(
-        tmp_path / "cfm_decoder_yuelbond_ok_stub.py", export_class=True,
+        tmp_path / "cfm_decoder_yuelbond_ok_stub.py",
+        export_class=True,
     )
     ok_stub = preflight.gate_wf343c4_yuelbond_decoder_env(
-        "wf343c4_yb_stub_pass", "P3", "wf343c4", ok_stub_path,
+        "wf343c4_yb_stub_pass",
+        "P3",
+        "wf343c4",
+        ok_stub_path,
     )
-    assert ok_stub.status == "PASS", (
-        f"stub with class should PASS; got {ok_stub.status}: {ok_stub.evidence}"
-    )
+    assert (
+        ok_stub.status == "PASS"
+    ), f"stub with class should PASS; got {ok_stub.status}: {ok_stub.evidence}"
 
 
 # ---------------------------------------------------------------------------
@@ -333,7 +356,8 @@ def test_gate_wf343c4_yuelbond_decoder_env_on_canonical(
 
 
 def test_gate_wf343c4_anchor_freshness_24h_pass_on_fresh_fixture(
-    preflight, tmp_path,
+    preflight,
+    tmp_path,
 ) -> None:
     """Wf-343C4 (3) — anchor_freshness_24h PASS on fresh fixture + FAIL on stale.
 
@@ -373,22 +397,28 @@ def test_gate_wf343c4_anchor_freshness_24h_pass_on_fresh_fixture(
     # PASS branch — only the fresh anchor matches the glob.
     only_fresh_glob = (str(fresh_path),)
     good = preflight.gate_wf343c4_anchor_freshness_24h(
-        "wf343c4_fresh_test_pass", "P3", "wf343c4",
-        glob_patterns=only_fresh_glob, max_age_sec=24 * 3600.0,
+        "wf343c4_fresh_test_pass",
+        "P3",
+        "wf343c4",
+        glob_patterns=only_fresh_glob,
+        max_age_sec=24 * 3600.0,
     )
-    assert good.status == "PASS", (
-        f"fresh-only anchor should PASS; got {good.status}: {good.evidence}"
-    )
+    assert (
+        good.status == "PASS"
+    ), f"fresh-only anchor should PASS; got {good.status}: {good.evidence}"
 
     # FAIL branch — both anchors match, stale one trips the gate.
     both_glob = (str(fresh_path), str(stale_path))
     bad = preflight.gate_wf343c4_anchor_freshness_24h(
-        "wf343c4_fresh_test_fail", "P3", "wf343c4",
-        glob_patterns=both_glob, max_age_sec=24 * 3600.0,
+        "wf343c4_fresh_test_fail",
+        "P3",
+        "wf343c4",
+        glob_patterns=both_glob,
+        max_age_sec=24 * 3600.0,
     )
-    assert bad.status == "FAIL", (
-        f"stale anchor should FAIL; got {bad.status}: {bad.evidence}"
-    )
+    assert (
+        bad.status == "FAIL"
+    ), f"stale anchor should FAIL; got {bad.status}: {bad.evidence}"
     assert "STALE" in bad.evidence or "stale" in bad.evidence.lower()
 
 
@@ -398,8 +428,12 @@ def test_gate_wf343c4_anchor_freshness_24h_pass_on_fresh_fixture(
 
 
 def _write_wave_budget_report(
-    path: Path, *, budget_hr: float, remaining_hr: float,
-    deferred_waves: list, waves: list,
+    path: Path,
+    *,
+    budget_hr: float,
+    remaining_hr: float,
+    deferred_waves: list,
+    waves: list,
 ) -> Path:
     """Write a Wf-262 §7.1 schema wave_budget_report.json fixture.
 
@@ -426,7 +460,8 @@ def _write_wave_budget_report(
 
 
 def test_gate_wf343c4_wave_budget_remaining_nonneg_cross_script(
-    preflight, tmp_path,
+    preflight,
+    tmp_path,
 ) -> None:
     """Wf-343C4 (4) — wave_budget_remaining_nonneg PASS on fixture + FAIL on real overrun
     + Wf-321D ``EXPECTED_GATE_COUNTS['all'] == 66`` invariant + cross-script
@@ -487,16 +522,29 @@ def test_gate_wf343c4_wave_budget_remaining_nonneg_cross_script(
     # PASS branch — fresh budget, no deferred waves.
     good_report = _write_wave_budget_report(
         tmp_path / "wave_budget_good.json",
-        budget_hr=10.0, remaining_hr=4.0, deferred_waves=[],
+        budget_hr=10.0,
+        remaining_hr=4.0,
+        deferred_waves=[],
         waves=[
-            {"wave_name": "Wave-1:smoke", "estimated_hr": 0.5,
-             "actual_hr": 0.5, "status": "COMPLETE"},
-            {"wave_name": "Wave-2:full_sweep", "estimated_hr": 5.5,
-             "actual_hr": None, "status": "PLANNED"},
+            {
+                "wave_name": "Wave-1:smoke",
+                "estimated_hr": 0.5,
+                "actual_hr": 0.5,
+                "status": "COMPLETE",
+            },
+            {
+                "wave_name": "Wave-2:full_sweep",
+                "estimated_hr": 5.5,
+                "actual_hr": None,
+                "status": "PLANNED",
+            },
         ],
     )
     good = preflight.gate_wf343c4_wave_budget_remaining_nonneg(
-        "wf343c4_wb_good", "P3", "wf343c4", good_report,
+        "wf343c4_wb_good",
+        "P3",
+        "wf343c4",
+        good_report,
     )
     assert good.status == "PASS", (
         f"10h-budget / 4h-remaining / 0-deferred should PASS; got "
@@ -516,17 +564,29 @@ def test_gate_wf343c4_wave_budget_remaining_nonneg_cross_script(
     # SKIP-with-explanation design.
     bad_report = _write_wave_budget_report(
         tmp_path / "wave_budget_bad.json",
-        budget_hr=10.0, remaining_hr=-183.04,
+        budget_hr=10.0,
+        remaining_hr=-183.04,
         deferred_waves=["Wave-cfm:cfm_full_retrain"],
         waves=[
-            {"wave_name": "Wave-1:smoke", "estimated_hr": 0.5,
-             "actual_hr": 0.5, "status": "COMPLETE"},
-            {"wave_name": "Wave-cfm:cfm_full_retrain", "estimated_hr": 16.0,
-             "actual_hr": None, "status": "DEFERRED"},
+            {
+                "wave_name": "Wave-1:smoke",
+                "estimated_hr": 0.5,
+                "actual_hr": 0.5,
+                "status": "COMPLETE",
+            },
+            {
+                "wave_name": "Wave-cfm:cfm_full_retrain",
+                "estimated_hr": 16.0,
+                "actual_hr": None,
+                "status": "DEFERRED",
+            },
         ],
     )
     bad = preflight.gate_wf343c4_wave_budget_remaining_nonneg(
-        "wf343c4_wb_bad", "P3", "wf343c4", bad_report,
+        "wf343c4_wb_bad",
+        "P3",
+        "wf343c4",
+        bad_report,
     )
     assert bad.status in {"FAIL", "SKIP"}, (
         f"over-budget / deferred-waves report should FAIL or SKIP; got "
@@ -591,14 +651,16 @@ def test_gate_wf343c4_wave_budget_remaining_nonneg_cross_script(
     for new_name in expected_new:
         runner = next(r for n, r in all_runners if n == new_name)
         result = runner()
-        synthetic_gates.append({
-            "name": new_name,
-            "priority": "P3",
-            "status": result.status,
-            "evidence": result.evidence,
-        })
-    _p0, _p1, _p2, p3, _n_pass, _n_fail = (
-        pwc_mod._partition_gates_by_priority(synthetic_gates)
+        synthetic_gates.append(
+            {
+                "name": new_name,
+                "priority": "P3",
+                "status": result.status,
+                "evidence": result.evidence,
+            }
+        )
+    _p0, _p1, _p2, p3, _n_pass, _n_fail = pwc_mod._partition_gates_by_priority(
+        synthetic_gates
     )
     p3_names = [g["name"] for g in p3]
     assert all(n in p3_names for n in expected_new), (
